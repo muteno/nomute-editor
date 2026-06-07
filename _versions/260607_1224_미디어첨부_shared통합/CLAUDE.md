@@ -42,20 +42,6 @@
 - ⚠️ 기존 **단축 트리거 타이핑('4'·'ㄱ'·🚦STOP 등) 멀티턴 흐름은 그대로 병행** — 버튼은 그 분기를 *대체*가 아니라 *추가*(버튼으로도, 타이핑으로도 응답 가능).
 - 정본 = 이 라우터(플랫폼 공통). 각 앱은 자기 분기에서 이 룰을 따른다(뉴스 = `apps/news/01` 편향 가드·STOP).
 
-## 🖼 미디어 첨부 입력 (플랫폼 공통 · 260607)
-이미지·영상 첨부를 받는 앱(`/th`·`/comp`·`/ly`·`/news`)은 **첨부 경로를 추측·하드코딩하지 말고** `shared/attach.py`의 `latest_attachment()`로 가져온다. 접속 환경마다 첨부 저장 위치가 다르거나 없어서다(아래 4환경 실측). 각 앱 지침·메모리의 `/mnt/user-data/uploads/...` 표기는 **레거시 예시** → 이 함수 결과로 대체.
-
-| 접속 환경 | 첨부 디스크 경로 | 대화로그(jsonl) base64 |
-|---|---|---|
-| 안드로이드 **모바일 앱** | `~/.claude/uploads/<세션ID>/` ✅ | ✅ |
-| 안드로이드 **웹앱** · **PC-웹** · **데스크탑(Win)** | ❌ 없음 | ✅ |
-| (구) Claude.ai 코드실행 | `/mnt/user-data/uploads/` | — |
-
-- **동작**: 디스크 우선 탐색(`/mnt/user-data/uploads`·`~/.claude/uploads`) → 없으면 **현재 세션 jsonl(`~/.claude/projects/**/*.jsonl`)의 timestamp 최신 image base64 디코드**. 어느 환경이든 최신 첨부 1장을 로컬 경로로 반환. (배치 다장 = `session_images()`.)
-- **호출**: `import sys; sys.path.insert(0,'shared')` → `from attach import latest_attachment` → `path, src = latest_attachment()`. 로직 정본은 `shared/attach.py` **하나**(라우터엔 코드 안 박음 = 얇게 유지).
-- ⚠️ **영상**: 디스크 경로로만 검증. jsonl base64는 이미지 위주(영상은 용량상 인라인 안 될 공산) → 영상 첨부 실측은 향후 과제.
-- 이 규칙은 **입력(첨부)** 한정. 출력 경로(`/mnt/user-data/outputs/`)·산출물 전송은 무관(정상 작동).
-
 ## 🗺 파일 지도 (플랫폼)
 - `apps/news/` = **뉴스 에디터**: `00_뉴스에디터_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*`
 - `apps/thumbnail/` = **썸네일 제작**: `00_지침_v22.19`(운영) · `MEMORY` · `nomute_overlay/compose/copyright.py`(절대규칙 1번: 불변·import만). ⚠️ 실행 경로·폰트 포팅 별도.
@@ -65,4 +51,4 @@
 - `.claude/skills/` = 앱 진입 명령어(`news`, `th`, `x`, `ly`, `comp`)
 - `PROJECT_MEMORY.md` = 공용 메모리(브랜드 룰·결정 로그) — 모든 앱이 참조
 - `_versions/` = 시스템 파일 백업(수정 모드) / `_산출/` = 뉴스 산출물 보관
-- `shared/` = 앱 간 공유 유틸 — `attach.py`(미디어 첨부 경로 해석: `latest_attachment()`·`session_images()` → §미디어 첨부 입력. 전 앱·이식 프로젝트 공통)
+- (예정) `shared/`(앱 간 공유 — 진짜 중복 생기면 그때 추출)
