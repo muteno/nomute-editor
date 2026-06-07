@@ -13,7 +13,7 @@ argument-hint: "[문구 / post|reels / 이미지첨부]"
 
 **2) 스크립트**(절대규칙 1번: **수정 금지·import/호출만**, 사용자 직접 교체만 예외): `nomute_overlay.py`·`nomute_compose.py`·`nomute_copyright.py`. setup.sh가 `/mnt/project`에 심볼릭으로 걸어 지침의 표준 bash(`cp /mnt/project/*...`)가 그대로 동작.
 
-⚠️ 이 환경 주의: 업로드 BG는 **`shared/attach.py`의 `latest_attachment()`로 경로 확보**(환경별 디스크/jsonl 폴백 — 라우터 §미디어 첨부 입력). 경로 추측·하드코딩 금지(`/mnt/user-data/uploads/...`는 레거시 예시). mediapipe는 `mp.solutions` 부재라 case=3은 에지/기본값 fallback(원본 환경과 동일 거동).
+⚠️ 이 환경 주의: 업로드 BG는 **실제 업로드 경로**를 직접 넘겨라. mediapipe는 `mp.solutions` 부재라 case=3은 에지/기본값 fallback(원본 환경과 동일 거동).
 
 이 스킬 로드 동안 위 지침이 모든 턴에서 유효하다.
 
