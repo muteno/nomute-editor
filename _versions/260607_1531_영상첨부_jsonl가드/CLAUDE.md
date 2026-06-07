@@ -53,7 +53,7 @@
 
 - **동작**: 디스크 우선 탐색(`/mnt/user-data/uploads`·`~/.claude/uploads`) → 없으면 **현재 세션 jsonl(`~/.claude/projects/**/*.jsonl`)의 timestamp 최신 image base64 디코드**. 어느 환경이든 최신 첨부 1장을 로컬 경로로 반환. (배치 다장 = `session_images()`.)
 - **호출**: `import sys; sys.path.insert(0,'shared')` → `from attach import latest_attachment` → `path, src = latest_attachment()`. 로직 정본은 `shared/attach.py` **하나**(라우터엔 코드 안 박음 = 얇게 유지).
-- ⚠️ **영상**: 디스크 떨어지는 환경(모바일 앱)에서만 가능 — jsonl 폴백 불가(실측 확정: 영상은 대화로그에 base64 미포함). 디스크 부재(웹·PC웹·데스크탑)면 영상 접근 불가 → 영상 URL(yt-dlp)·SRT/STT 텍스트·모바일 앱으로 우회. `latest_attachment(kinds=VID_EXT)`는 디스크에서만 잡고 그 외엔 None.
+- ⚠️ **영상**: 디스크 경로로만 검증. jsonl base64는 이미지 위주(영상은 용량상 인라인 안 될 공산) → 영상 첨부 실측은 향후 과제.
 - 이 규칙은 **입력(첨부)** 한정. 출력 경로(`/mnt/user-data/outputs/`)·산출물 전송은 무관(정상 작동).
 
 ## 🗺 파일 지도 (플랫폼)
