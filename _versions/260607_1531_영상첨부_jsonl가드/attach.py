@@ -18,10 +18,8 @@
     path, src = latest_attachment()          # 최신 첨부 1장 (이미지 기본)
     # path: 로컬 파일 경로 또는 None / src: 'disk' | 'jsonl' | None
 
-⚠️ 영상: 디스크 떨어지는 환경(모바일 앱)에서만 가능 — jsonl 폴백 불가(실측 확정:
-   영상은 대화로그에 base64로 안 들어옴, 모바일 앱조차 jsonl엔 영상 미포함).
-   디스크 부재 환경(웹·PC웹·데스크탑)의 영상 첨부는 접근 불가 → 영상 URL(yt-dlp)·
-   SRT/STT 텍스트·모바일 앱으로 우회. kinds=VID_EXT 로 디스크 탐색.
+⚠️ 영상: 디스크 경로로만 검증됨. jsonl base64는 이미지 위주(영상은 용량상
+   인라인 안 될 공산) — 영상 첨부 실측은 향후 과제. kinds=VID_EXT 로 디스크 탐색 가능.
 """
 
 import os
@@ -83,11 +81,7 @@ def latest_attachment(save_dir='/tmp', kinds=IMG_EXT):
     if cands:
         return max(cands, key=os.path.getmtime), 'disk'
 
-    # 2) jsonl base64 폴백 — 이미지 전용. 영상은 대화로그에 base64로 안 들어옴(실측 확정:
-    #    모바일 앱조차 jsonl엔 영상 미포함). 비(非)이미지 요청(kinds=VID_EXT 등)이면 폴백
-    #    없이 종료 → 영상은 디스크 떨어지는 환경(모바일 앱)에서만, 그 외엔 URL/SRT로 우회.
-    if not any(e.lower() in IMG_EXT for e in kinds):
-        return None, None
+    # 2) jsonl base64 폴백 (웹앱·PC-웹·데스크탑 — 이미지 한정)
     jls = glob.glob(os.path.expanduser('~/.claude/projects/**/*.jsonl'), recursive=True)
     if not jls:
         return None, None

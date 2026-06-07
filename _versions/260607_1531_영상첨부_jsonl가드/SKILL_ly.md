@@ -16,7 +16,7 @@ argument-hint: "[mp4/영상 첨부 또는 SRT·STT 텍스트 또는 영상 URL]"
 추가 규칙:
 - **PHASE 0 자동 분기**: mp4/영상 첨부 → STT 파이프라인(ffmpeg 오디오 추출 → Gemini STT → 자막 변환) 자동 실행, 되묻지 않음 / SRT·STT 텍스트 → 바로 자막 변환 / 영상 URL → yt-dlp 다운로드 후 STT.
 - **절대 규칙**(지침 [절대 규칙]): 내용 누락 금지 · 1박스=1문장(.?! 기준) · 한국어 한 줄 최대 13자(11자 권장)·박스 최대 3줄 · 기본값 **통합 모드**.
-- ⚠ **실행 환경(포팅 완료)**: `setup.sh`가 ffmpeg·yt-dlp·requests·경로를 준비한다. **Gemini STT 키는 평문 금지** — 환경변수 `GEMINI_API_KEY`로 주입(지침 STEP 0-2가 `os.environ`에서 읽음). 키 없으면 영상 STT는 막히지만 **SRT/STT 텍스트 입력은 키 없이 동작**. 업로드 영상은 **`shared/attach.py`의 `latest_attachment(kinds=VID_EXT)`로 경로 확보** 후 ffmpeg에 넘겨라(라우터 §미디어 첨부 입력). ⚠️ 영상은 jsonl 폴백 불가(실측 확정) — **디스크 떨어지는 모바일 앱에서만** 첨부 STT 가능. 웹·PC웹·데스크탑은 영상이 디스크·jsonl 둘 다 없어 막힘 → 영상 **URL**(yt-dlp)이나 **SRT/STT 텍스트**로 우회(전 환경 동작).
+- ⚠ **실행 환경(포팅 완료)**: `setup.sh`가 ffmpeg·yt-dlp·requests·경로를 준비한다. **Gemini STT 키는 평문 금지** — 환경변수 `GEMINI_API_KEY`로 주입(지침 STEP 0-2가 `os.environ`에서 읽음). 키 없으면 영상 STT는 막히지만 **SRT/STT 텍스트 입력은 키 없이 동작**. 업로드 영상은 **`shared/attach.py`의 `latest_attachment(kinds=VID_EXT)`로 경로 확보** 후 ffmpeg에 넘겨라(라우터 §미디어 첨부 입력). ⚠️ 영상은 jsonl base64 미검증 — 디스크에 안 떨어지는 환경(웹·데스크탑)에선 STT가 막힐 수 있어 실측 필요.
 - `PROJECT_MEMORY.md`의 고정 사실(브랜드)을 따른다.
 - 이 스킬이 로드된 동안 위 지침은 **모든 턴에서 유효**하다(통합↔분리 전환 트리거 포함).
 
