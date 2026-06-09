@@ -91,9 +91,7 @@ def latest_attachment(save_dir='/tmp', kinds=IMG_EXT):
     jls = glob.glob(os.path.expanduser('~/.claude/projects/**/*.jsonl'), recursive=True)
     if not jls:
         return None, None
-    # 최근 수정 jsonl = 현재 세션으로 간주. ⚠️ 알려진 한계: 다른 세션이 동시에 살아
-    # 있으면 그쪽 로그가 더 최신일 수 있음 → 첨부 작업은 가급적 한 세션에서만.
-    jl = max(jls, key=os.path.getmtime)
+    jl = max(jls, key=os.path.getmtime)          # 최근 수정 = 현재 세션
     blocks = list(_iter_image_blocks(jl))
     if not blocks:
         return None, None
