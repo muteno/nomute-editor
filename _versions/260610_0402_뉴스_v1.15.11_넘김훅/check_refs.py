@@ -27,7 +27,7 @@ SCAN_GLOBS = ('*.md', 'apps/**/*.md', '.claude/skills/**/*.md')
 # 루트 기준 경로 참조로 보는 접두사 + 확장자
 PATH_PREFIX = re.compile(r'^(?:apps|shared|\.claude|_산출)/')
 PATH_EXT = re.compile(r'\.(?:md|py|sh|png)$')
-# 앱 문서 내부의 형제 파일 참조 (NN_으로 시작하는 .md — 예: 01_지침_*.md 실명 참조)
+# 앱 문서 내부의 형제 파일 참조 (예: 01_지침_뉴스에디터_v1.15.9.md)
 SIBLING = re.compile(r'^\d{2}_[^/]+\.md$')
 # 백틱 스팬 / 버전 토큰
 BACKTICK = re.compile(r'`([^`\n]+)`')
