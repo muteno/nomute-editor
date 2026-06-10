@@ -57,7 +57,7 @@
 - 이 규칙은 **입력(첨부)** 한정. 출력 경로(`/mnt/user-data/outputs/`)·산출물 전송은 무관(정상 작동).
 
 ## 🗺 파일 지도 (플랫폼)
-- `apps/news/` = **뉴스 에디터**: `00_뉴스에디터_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*` · `fact_guard.py`(수치 대조 소프트 게이트)
+- `apps/news/` = **뉴스 에디터**: `00_뉴스에디터_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*`
 - `apps/thumbnail/` = **썸네일 제작**: `00_지침_v22.22`(운영) · `MEMORY` · 스크립트 4파일 `nomute_overlay.py`·`nomute_compose.py`·`nomute_copyright.py`·`nomute_reels2.py`(**릴스 헤더형=형태2**, 강조無 릴스·좌우마진 자간sweep·**"흰 배경 제거" 요청 시 흰칸 없는 nobg**) · `assets/reels2_base.png`(형태2 베이스) — 스크립트는 절대규칙 1번: 불변·import만. ⚠️ 실행 경로·폰트 포팅 별도.
 - `apps/x/` = **X 게시물 제작**: `00_X톤지침_v2`(톤·형식·스탠스·금기·트레이닝 로그) — 기사→X 수익화 게시물(담백 단문+펀치라인·여론 정렬·복사용 코드블록)
 - `apps/ly/` = **릴스/쇼츠 자막**: `00_지침_v2.5`(입력 감지·STT 파이프라인[Whisper large-v3-turbo·로컬·키 불필요]·박스 규칙·통합/분리/**한국어 원본=짧은 조각 개별 복사** 모드·의역 철학·자가검증) · `setup.sh`(ffmpeg·faster-whisper·yt-dlp·**large-v3-turbo prefetch**·멱등) — mp4/SRT·STT → 릴스용 자막. STT는 로컬 Whisper **large-v3-turbo** 단독(외부 API·키 불필요, 1.6GB). 재다운로드는 **환경 Setup script 캐싱**으로 회피(7일).
