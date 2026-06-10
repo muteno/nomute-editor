@@ -6,17 +6,12 @@
 # 사용: 새 세션 첫 메시지로 → bash shared/check_env.sh
 #   ✅ = 스냅샷 캐시 적중(그 항목 설치 없이 즉시) / ❌ = 미적중(해당 앱 첫 진입 때 그 항목 설치 발생)
 #
-# ── 환경 Setup script 표준 블록(정본 v2) — claude.ai/code 환경 설정에 이대로 붙여넣기 ──
+# ── 환경 Setup script 표준 블록(정본) — claude.ai/code 환경 설정에 이대로 붙여넣기 ──
 # 실행 기록을 ~/.cache/nomute_setup.log에 남겨, 세션 안에서 에디터가 직접 판독한다(아래 [실행 흔적]).
-# ⚠️ v2 핵심: 빌드는 레포 밖(실측: pwd=/home/user, 레포=/home/user/nomute-editor, HOME=/root)에서 돌므로
-#    레포를 찾아 cd부터 한다(구버전은 상대경로 빗나가 3줄 전부 즉시 실패 = 0/7 사고의 원인).
 #
 #   #!/bin/bash
 #   # 노뮤트 — 환경 셋업(빌드 1회·스냅샷 캐시). 로그 = ~/.cache/nomute_setup.log
 #   mkdir -p ~/.cache
-#   # 레포 자동 탐색: 현재 cwd 우선, 없으면 /home/user·/root 등 흔한 위치 스캔
-#   REPO="$(find . /home/user /root /workspace -maxdepth 3 -name CLAUDE.md -path '*nomute*' 2>/dev/null | head -1 | xargs -r dirname)"
-#   cd "$REPO" 2>/dev/null || { echo "[FATAL] 레포 못 찾음 pwd=$(pwd) HOME=$HOME" | tee ~/.cache/nomute_setup.log; exit 0; }
 #   {
 #     echo "== nomute setup $(date '+%y%m%d %H:%M') pwd=$(pwd) =="
 #     bash apps/comp/setup.sh      || echo "[FAIL] comp"       # /comp: 폰트·pkg·card_news.py 링크
