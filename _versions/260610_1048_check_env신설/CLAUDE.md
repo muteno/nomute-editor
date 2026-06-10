@@ -65,4 +65,4 @@
 - `.claude/skills/` = 앱 진입 명령어(`news`, `th`, `x`, `ly`, `comp`)
 - `PROJECT_MEMORY.md` = 공용 메모리(브랜드 룰·결정 로그) — 모든 앱이 참조
 - `_versions/` = 시스템 파일 백업(수정 모드) / `_산출/` = 뉴스 산출물 보관
-- `shared/` = 앱 간 공유 유틸 — `attach.py`(미디어 첨부 경로 해석: `latest_attachment()`·`session_images()` → §미디어 첨부 입력. 전 앱·이식 프로젝트 공통) · `check_refs.py`(참조·버전 정합 점검 — 수정 모드 ③에서 커밋 전 실행) · `check_env.sh`(환경 캐시 점검 — 새 세션에서 `bash shared/check_env.sh` 실행하면 Setup script 스냅샷 반영 여부를 ✅/❌ 객관 판정·설치 0·정성 판단 대체)
+- `shared/` = 앱 간 공유 유틸 — `attach.py`(미디어 첨부 경로 해석: `latest_attachment()`·`session_images()` → §미디어 첨부 입력. 전 앱·이식 프로젝트 공통) · `check_refs.py`(참조·버전 정합 점검 — 수정 모드 ③에서 커밋 전 실행)
