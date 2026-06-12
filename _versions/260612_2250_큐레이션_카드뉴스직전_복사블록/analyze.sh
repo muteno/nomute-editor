@@ -39,8 +39,7 @@ for f in "${files[@]}"; do
     echo "::endgroup::"; continue
   fi
 
-  # 900s — 큐레이션 다이제스트 + 콘텐츠 초안(자유요약·IG·Thread·썸네일·시사점)까지 생성(260612 확장)
-  out="$(timeout 900 claude -p "$(cat "$PROMPT_FILE")
+  out="$(timeout 600 claude -p "$(cat "$PROMPT_FILE")
 
 분석할 기사 URL: ${url}" \
         --model "$MODEL" \

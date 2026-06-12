@@ -32,11 +32,6 @@
   .md h1 { font-size:20px; } .md h2 { font-size:15px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:4px; margin-top:22px; }
   .md a { color:var(--accent); } .md code { background:#0b0d11; padding:1px 5px; border-radius:5px; }
   .md ul { padding-left:20px; }
-  .md pre { position:relative; background:#0b0d11; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:10px 0; }
-  .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word; font-family:inherit; font-size:14px; line-height:1.7; }
-  .copy { position:absolute; top:8px; right:8px; font-size:11px; background:var(--card); color:var(--mut); border:1px solid var(--line); border-radius:7px; padding:3px 10px; cursor:pointer; }
-  .copy:hover { color:var(--accent); border-color:var(--accent); }
-  .copy.ok { color:var(--accent); border-color:var(--accent); }
 </style>
 </head>
 <body>
@@ -100,30 +95,9 @@ function render() {
   });
 }
 function open(a) {
-  const md = $('#mdbody');
-  md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
-  // 코드블록마다 복사 버튼 — 다이제스트의 ```text 복사 박스(자유요약·IG·Thread·썸네일)를 탭 한 번에 복사
-  md.querySelectorAll('pre').forEach(pre => {
-    const btn = document.createElement('button');
-    btn.className = 'copy'; btn.textContent = '복사';
-    btn.onclick = ev => { ev.stopPropagation(); copyBlock(pre, btn); };
-    pre.appendChild(btn);
-  });
+  $('#mdbody').innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   $('#dlg').showModal();
-}
-async function copyBlock(pre, btn) {
-  const code = pre.querySelector('code');
-  const text = (code ? code.innerText : pre.innerText).replace(/\n+$/, '');
-  try { await navigator.clipboard.writeText(text); }
-  catch {
-    // 폴백 — dialog가 top layer라 textarea도 dialog 안에 넣어야 선택·복사가 된다
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    $('#dlg').appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-  }
-  btn.textContent = '✅ 복사됨'; btn.classList.add('ok');
-  setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('ok'); }, 1500);
 }
 const esc = s => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 $('#q').addEventListener('input', render);
