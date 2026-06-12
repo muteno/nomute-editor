@@ -7,10 +7,7 @@ const QUEUE = 'queue';
 const OUT = 'viewer/articles.json';
 
 function parseFrontmatter(raw) {
-  // 첫 두 '---' 사이를 단순 key: "value" 파싱(중첩 없음).
-  // frontmatter 앞 모델 사족 허용 — 첫 '---' 줄부터 파싱(구버전 파일 호환).
-  const start = raw.search(/^---\s*$/m);
-  if (start > 0) raw = raw.slice(start);
+  // 첫 두 '---' 사이를 단순 key: "value" 파싱(중첩 없음)
   const m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
   if (!m) return { meta: {}, body: raw };
   const meta = {};
