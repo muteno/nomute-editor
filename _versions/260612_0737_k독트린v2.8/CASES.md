@@ -1,7 +1,7 @@
 # /k CASES — 실증 케이스 원장
 
 > **온디맨드 로드**: 평소 `/k` 진입 시 읽지 않는다 — 피드백 적립·패턴 참조 때만. 원문 = 패턴의 정본(**요약 금지**). 핵심 패턴 한 줄 요약은 `MEMORY.md` §실증 케이스에.
-> **⭐ 베스트 픽(지침 §9·10)**: 조립 참조 = ⭐ 케이스만(버킷 = 모드×화풍 계열, 버킷당 1~2개). 신규 ✅ 적립 시 같은 버킷 ⭐와 비교(교체/유지 버튼) — 교체식 상위 유지. 현재 ⭐: Omni×실사 = 케이스 2 / 3.0×실사 = 케이스 3 / Omni×치환 = 케이스 4 / Omni×애니 = 케이스 5 + **케이스 6**(다이내믹 연기형 — 버킷 내 2개).
+> **⭐ 베스트 픽(지침 §9·10)**: 조립 참조 = ⭐ 케이스만(버킷 = 모드×화풍 계열, 버킷당 1~2개). 신규 ✅ 적립 시 같은 버킷 ⭐와 비교(교체/유지 버튼) — 교체식 상위 유지. 현재 ⭐: Omni×실사 = 케이스 2 / 3.0×실사 = 케이스 3 / Omni×치환 = 케이스 4 / Omni×애니 = 케이스 5.
 
 ## 적립 양식 (피드백 루프 — 지침 §9·10)
 ```
@@ -48,14 +48,6 @@
 > `@이미지`를 생동감 넘치는 3D 애니메이션으로 움직이게 해줘. 18세기풍 유럽 자갈길 거리를 배경으로 한 희극적인 오페라 부파 장면. 카메라는 드론처럼 3인칭 시점으로 거리를 거니는 주인공을 부드럽게 따라가며, 동작에 따라 앵글이 자연스럽게 전환된다. [드론 하이앵글에서 하강] 자갈길 거리를 위에서 내려다보며 시작해, 거리 한복판을 활보하는 이발사 피가로(갈색 곱슬머리와 풍성한 수염, 파란색과 금색 자수 정장, 부츠)에게 부드럽게 카메라가 내려온다. 그는 두 팔을 활짝 벌리고 고개를 젖힌 채 자아도취에 빠져 우렁차게 노래를 부른다. [트래킹 미디엄 샷] 피가로가 경쾌하고 과장된 스텝으로 거리를 누비며, 검지를 하늘로 치켜들고 자기가 도시 최고의 이발사라는 듯 황홀한 표정으로 노래한다. [클로즈업] 피가로가 눈을 감고 꾀꼬리처럼 "라라라~" 흥얼거리다가, 입을 오므려 경쾌하게 휘파람을 분다. [시민 반응 컷] 거리의 시민들이 하던 일을 멈추고 그를 쳐다본다. (사과 상인 "뭐야 저 사람?" / 아낙 관자놀이 손가락 / 남자 고개 절레절레) [피가로 풀샷] 시선에 개의치 않고 더 신이 나서, 한 손을 가슴에 얹고 빙글 한 바퀴 돌며 과장된 몸짓으로 계속 노래한다. [드론 풀백 상승] 카메라가 천천히 위로 상승하며 거리 전체를 부감으로 잡는다. 밝은 한낮의 따뜻한 햇살, 활기찬 거리, 코믹하고 경쾌한 오페라 부파 분위기. 표정과 몸짓이 풍부하고 과장된 카툰풍 연기. 오디오: 경쾌하고 빠른 템포의 오페라 부파 바리톤 노래(신나는 "라라라"와 반복되는 "Figaro! Figaro!" 외침), 중간중간 경쾌한 휘파람, 자갈길 위를 걷는 발소리, 활기찬 거리의 앰비언트(웅성거림, 새소리), 시민들의 어이없어하는 한숨.
 > (영문판 동일 구조: Animate `@이미지` into a lively 3D animation. ... [DRONE HIGH-ANGLE DESCENDING] ... [TRACKING MEDIUM SHOT] ... [CLOSE-UP] ... [REACTION CUT ON TOWNSFOLK] ... [FULL SHOT ON FIGARO] ... [DRONE PULL-BACK RISING] ...)
 - 패턴/교훈: 화풍 선언 맨 앞 / [샷 라벨] 인라인 분할 / 인물 외형 괄호 정의 1회 → 이후 이름 반복 / 군중 리액션 개별 연기 / 오디오: 섹션 후미 / 한·영 동일 작동. 사용자 판정: 잘 나왔고 **샷 분할(커스텀)이면 더 잘 나왔을 것** + 있는 이야기(오페라 서사)를 풀어 적용한 게 주효.
-
-### 케이스 6 — 피가로 면도 작전 (Omni · 단일 프롬프트 + [샷 라벨] · 사용자 구작 · 260612 비교 실측) — 판정 ✅⭐ (커스텀 분할판 대비 액션·자연스러움 우세)
-- 모듈: STYLE12 + [샷 라벨] 7컷 체인 + 리액션 컷(쿨레쇼프) + SFX 온리(비대사) + 락 0(@참조가 정체성 담당)
-- 프롬프트 원문:
-> Animate `@이미지` into a lively 3D animation. A comedic scheming scene in an ornate 18th-century barber's parlor — keep the same location throughout, but let the camera angle cut naturally between shots following the characters' actions and reactions.[WIDE SHOT] The barber parlor. On the right, the cunning barber Figaro (brown curly hair, thick beard, blue-and-gold embroidered coat) lathers foam with a shaving brush onto the chin of the seated old man Bartolo (grey hair, beige cape, white foam on chin). On the left, Rosina (brown updo, blue-and-gold dress, pearl jewelry) watches.[CLOSE-UP ON FIGARO] A sly grin spreads across his face. He gently tilts Bartolo's head back to block his view, glancing sideways at Rosina.[CLOSE-UP ON HANDS] Pretending to shave, his other hand discreetly slips a small note from his sleeve.[REACTION SHOT ON ROSINA] Rosina turns her head, eyes widening with a curious "hm?" expression.[CLOSE-UP ON BARTOLO] Bartolo senses something and starts to open his eyes.[TWO-SHOT] Figaro quickly and nonchalantly returns to shaving. Rosina smiles faintly and looks away pretending innocence, while Figaro gives a knowing wink to the audience.Warm interior lighting, soft garden light through the window, a playful comedic opera-buffa mood. Rich, exaggerated cartoon-style expressions and gestures.No dialogue — sound effects only: swish of the shaving brush, water droplets, a faint chair creak, rustling fabric, light playful suspenseful orchestral music, Rosina's small curious "hm?" breath.
-- 판정·코멘트: 사용자 — "커스텀 분할판 대비 훨씬 더 자연스럽고 액션이 좋음".
-- 패턴/교훈: ① **컷 재량 마스터 지시**("keep the same location throughout, but let the camera cut naturally following actions and reactions") = 엔진이 동작 절단점에서 컷 ② **리액션 인과 체인**(곁눈질→hm?→눈치챔→복귀+윙크) ③ **락 0** — @참조만으로 정체성 유지, 모션 억제 없음 ④ 비대사 + SFX 온리("hm?" 호흡음까지 설계) ⑤ 같은 장소 고정 + 다각 컷 = 일관성과 다이내믹 양립. → v2.8 독트린 개정의 근거(C방식 다이내믹 1순위·락 다이얼).
-- 승격 처리: §3 C방식 ★승격 / §5 락 다이얼 신설 / Omni×애니 버킷 ⭐ 추가(케이스 5와 공동).
 
 ---
 
