@@ -17,13 +17,8 @@ if [ ${#files[@]} -eq 0 ]; then
   exit 0
 fi
 
-# 파일명 = ASCII-safe 한정 (타임스탬프 + URL 유래 기사ID). 한글 제목은 frontmatter title에만.
-# (구 슬러그 방식은 cut -c 바이트 절단이 UTF-8 멀티바이트를 깨뜨려 폐지 — run#2 ENOENT 원인)
-article_id() {
-  local u="$1" id
-  id=$(printf '%s' "$u" | sed -E 's/[?#].*$//; s:/+$::; s:.*/::' | tr -cd 'A-Za-z0-9._-' | cut -c1-24)
-  [ -n "$id" ] || id=$(printf '%s' "$u" | sha1sum | cut -c1-8)
-  printf '%s' "$id"
+slugify() {  # 안전한 파일명 슬러그(한글 허용, 위험문자 제거)
+  echo "$1" | tr -d '\r' | sed -E 's#[/\\:*?"<>|]+##g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-|-$//g' | cut -c1-40
 }
 
 for f in "${files[@]}"; do
@@ -61,15 +56,16 @@ for f in "${files[@]}"; do
     echo "::endgroup::"; continue
   fi
 
-  # 성공: ASCII 파일명(타임스탬프+기사ID) — 충돌 시 -2, -3 …
-  id="$(article_id "$url")"
+  # 성공: slug 추출 → queue 파일명
+  slug="$(grep -m1 '^slug:' <<<"$out" | sed -E 's/^slug:[[:space:]]*//; s/^"//; s/"$//')"
+  slug="$(slugify "${slug:-$stamp}")"
+  [ -z "$slug" ] && slug="$stamp"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
 
-  outfile="queue/${stamp}-${id}.md"
-  n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
+  outfile="queue/${stamp}-${slug}.md"
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
-  echo "${title:-$id}" >> /tmp/analyzed_titles.txt
+  echo "${title:-$slug}" >> /tmp/analyzed_titles.txt
   echo "성공 → $outfile"
   echo "::endgroup::"
 done

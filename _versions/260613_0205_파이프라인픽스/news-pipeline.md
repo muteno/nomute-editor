@@ -11,13 +11,13 @@
 [GitHub Actions: news-analyze]   (트리거 = pending/** push)
       │  1) Claude Code 헤드리스(claude -p, claude-opus-4-8)로 각 URL 분석
       │     - 분석 기준 = prompts/news-analysis.md (→ apps/news 에디터 지침에 종속)
-      │  2) 결과 md → queue/YYMMDD-HHMM-기사ID.md (파일명 ASCII 한정 — 한글 제목은 frontmatter)
+      │  2) 결과 md → queue/YYMMDD-HHMM-슬러그.md
       │  3) 처리한 pending 삭제 / 실패는 pending/failed/ 로 격리(+.log)
-      │  4) 분석 직후 즉시 한 커밋으로 push ("analyze: <제목>", if: always — 분석물 최우선 보존)
+      │  4) node build-viewer.mjs → viewer/articles.json
+      │  5) 한 커밋으로 push  ("analyze: <제목>")
       ▼
 [Cloudflare Pages]  (queue/ 커밋마다 자동 재배포)
       │  build: node build-viewer.mjs / output: viewer
-      │  (viewer 빌드는 Pages 전담 — Actions에서 중복 실행 안 함, articles.json은 빌드 산출물)
       ▼
 [뷰어]  최신순 리스트 · 검색 · 날짜 필터 · 클릭 시 md 렌더
       │
@@ -30,7 +30,7 @@
 |---|---|
 | `pending/` | Termux가 URL(.txt)을 넣는 입력함. `YYMMDD-HHMMSS.txt`, 내용=URL 한 줄 |
 | `pending/failed/` | 분석 실패 격리(원본 .txt + `.log`) — 큐 전체는 안 죽음 |
-| `queue/` | 분석 결과 md (`YYMMDD-HHMM-기사ID.md` — ASCII 한정, 제목은 frontmatter `title`) |
+| `queue/` | 분석 결과 md (`YYMMDD-HHMM-슬러그.md`) |
 | `prompts/news-analysis.md` | 큐레이션 분석 프롬프트(에디터 지침 종속) |
 | `.github/workflows/news-analyze.yml` + `.github/scripts/analyze.sh` | 자동화 본체 |
 | `build-viewer.mjs` · `viewer/` | 정적 뷰어 빌드 + 페이지 |
