@@ -61,9 +61,6 @@ for f in "${files[@]}"; do
     echo "::endgroup::"; continue
   fi
 
-  # 모델이 frontmatter 앞에 사족(인사·진행 멘트)을 붙이는 드리프트 방어 — 첫 '---' 줄부터만 저장
-  out="$(printf '%s\n' "$out" | sed -n '/^---[[:space:]]*$/,$p')"
-
   # 성공: ASCII 파일명(타임스탬프+기사ID) — 충돌 시 -2, -3 …
   id="$(article_id "$url")"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
