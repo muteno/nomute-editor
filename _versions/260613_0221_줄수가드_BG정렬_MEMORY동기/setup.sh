@@ -25,5 +25,4 @@ ln -sf "$DIR/nomute_copyright.py" /mnt/project/nomute_copyright.py
 ln -sf "$DIR/nomute_reels2.py"    /mnt/project/nomute_reels2.py
 ln -sf "$DIR/assets/reels2_base.png" /mnt/project/reels2_base.png
 ln -sf "$DIR/assets/reels2_base.png" /home/claude/reels2_base.png
-ln -sf "$DIR/../../shared/attach.py" /mnt/project/attach.py   # BG 첨부 해석(라우터 §미디어 첨부 — 지침 ②③ 템플릿이 사용)
-echo "[setup] thumbnail env ready (fonts+pkgs+paths+reels2+attach)"
+echo "[setup] thumbnail env ready (fonts+pkgs+paths+reels2)"
