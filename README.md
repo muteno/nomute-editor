@@ -13,7 +13,8 @@
 
 ## 뉴스 큐레이션 자동화 (폰 공유 → 다이제스트 → 뷰어)
 폰에서 기사 URL을 공유하면 `pending/`에 쌓이고 → GitHub Actions가 Claude Code 헤드리스로 **큐레이션 다이제스트**를 만들어 `queue/`에 커밋 → Cloudflare Pages 뷰어에서 훑어보고 → 심화할 것만 `/news` 풀 파이프라인(콘텐츠화). **설정·전체 그림·테스트 = [`docs/news-pipeline.md`](docs/news-pipeline.md).**
-- 시크릿 `ANTHROPIC_API_KEY`(레포 Settings→Secrets) · Cloudflare Pages(build `node build-viewer.mjs` / output `viewer`) · Termux 스크립트 `docs/termux-share.sh`.
+- 인증 = **구독 OAuth 토큰**(API 키 아님): 시크릿 `CLAUDE_CODE_OAUTH_TOKEN_MUTENO`(기본)·`CLAUDE_CODE_OAUTH_TOKEN_EMS1130G`(스위칭). · Cloudflare Pages(build `node build-viewer.mjs` / output `viewer`) · Termux 스크립트 `docs/termux-share.sh`.
+- **계정 전환** = GitHub 리포 **Settings → Secrets and variables → Actions → Variables**에서 `ACTIVE_ACCOUNT` 값을 `MUTENO`/`EMS1130G`로 변경 → 다음 분석부터 적용(변수 없으면 MUTENO). 1회성은 Actions → Run workflow의 `account` 입력.
 - 에디터(`apps/`)와 완전 분리 — Actions 러너에서 독립 실행(앱 셋업 미사용).
 
 ## 쓰는 법

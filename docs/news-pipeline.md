@@ -39,10 +39,17 @@
 
 ## 설정 (1회)
 
-### 1) ANTHROPIC_API_KEY 시크릿
-GitHub 레포 → **Settings → Secrets and variables → Actions → New repository secret**
-- Name: `ANTHROPIC_API_KEY` / Value: 콘솔의 API 키.
-- ⚠️ 키는 코드·로그에 절대 노출 금지(워크플로는 `${{ secrets.ANTHROPIC_API_KEY }}` 참조만).
+### 1) 구독 OAuth 토큰 시크릿 (API 키 아님)
+GitHub 레포 → **Settings → Secrets and variables → Actions → Secrets** 에 Max 계정별 토큰 2개:
+- `CLAUDE_CODE_OAUTH_TOKEN_MUTENO` ← 기본 계정
+- `CLAUDE_CODE_OAUTH_TOKEN_EMS1130G` ← 스위칭용
+- 토큰 생성: 로컬에서 `claude setup-token`(구독 로그인) → 출력 토큰을 시크릿 값으로.
+- ⚠️ 토큰은 코드·로그에 절대 노출 금지(워크플로는 `secrets[...]` 동적 참조만, CLI는 `CLAUDE_CODE_OAUTH_TOKEN` env로 받음).
+
+#### 계정 전환
+- **상시 전환**: Settings → Secrets and variables → Actions → **Variables** 탭에서 `ACTIVE_ACCOUNT` 값을 `MUTENO` ↔ `EMS1130G`로 변경 → **다음 분석부터 적용**. (변수 없으면 `MUTENO` 기본.)
+- **1회성**: Actions → news-analyze → **Run workflow** 의 `account` 드롭다운에서 선택(변수 안 건드림).
+- 선택 로직: `수동 inputs.account → vars.ACTIVE_ACCOUNT → MUTENO`. 동적 참조 `secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', …)]`는 GitHub Actions 공식 지원 문법(검증 완료).
 
 ### 2) Cloudflare Pages 연결
 Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택 후:
@@ -59,11 +66,12 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).
 - **동시 실행**: `concurrency: news-analyze` 로 순차 처리.
 - **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속.
+- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 MUTENO)로 동적 선택 — 위 [계정 전환].
 - **모델**: `claude-opus-4-8` 고정. 분석 도구는 `WebFetch,WebSearch`만 허용.
 - **품질 추종**: 분석 프롬프트가 워크플로에 하드코딩돼 있지 않고 `apps/news/`의 최신 에디터 지침을 읽어 쓰므로, 에디터가 개선되면 큐레이션 품질도 따라간다.
 
 ## 테스트 (E2E 1회)
-1. 위 **시크릿 등록** 확인(없으면 분석 스텝 실패).
+1. 위 **OAuth 토큰 시크릿 2개 등록** 확인(없으면 분석 스텝이 명확한 에러로 중단).
 2. `main`에 샘플 투입:
    ```bash
    echo "https://www.example-news.com/article/123" > pending/$(date +%y%m%d-%H%M%S).txt

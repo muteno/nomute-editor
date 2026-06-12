@@ -8,7 +8,15 @@ on:
     branches: [main]
     paths:
       - 'pending/**'
-  workflow_dispatch: {}   # 수동 실행(테스트용)
+  workflow_dispatch:        # 수동 실행 — account 1회성 오버라이드(변수 안 건드림)
+    inputs:
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
 
 # 동시 실행 충돌 방지 — 순차 처리(진행 중 작업 취소 안 함).
 concurrency:
@@ -38,8 +46,17 @@ jobs:
 
       - name: Analyze pending articles
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: bash .github/scripts/analyze.sh
+          # 인증 = 구독 OAuth 토큰(API 키 미사용). 계정 동적 선택:
+          #   수동 실행 inputs.account → 리포 변수 vars.ACTIVE_ACCOUNT → 기본 MUTENO
+          #   (secrets[format(...)] 동적 인덱싱·vars||기본값 = 공식 지원 문법)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음 — 등록 확인"; exit 1
+          fi
+          bash .github/scripts/analyze.sh
 
       - name: Build viewer data
         run: node build-viewer.mjs
