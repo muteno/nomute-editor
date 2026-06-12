@@ -11,6 +11,12 @@
 | `/ly` | 릴스/쇼츠 자막 | mp4·SRT·STT·URL → 릴스 자막(로컬 Whisper large-v3-turbo) |
 | `/comp` | 카드뉴스 합성 | 이미지 + 텍스트 → 1080×1350 카드뉴스 JPG |
 
+## 뉴스 큐레이션 자동화 (폰 공유 → 다이제스트 → 뷰어)
+폰에서 기사 URL을 공유하면 `pending/`에 쌓이고 → GitHub Actions가 Claude Code 헤드리스로 **큐레이션 다이제스트**를 만들어 `queue/`에 커밋 → Cloudflare Pages 뷰어에서 훑어보고 → 심화할 것만 `/news` 풀 파이프라인(콘텐츠화). **설정·전체 그림·테스트 = [`docs/news-pipeline.md`](docs/news-pipeline.md).**
+- 인증 = **구독 OAuth 토큰**(API 키 아님): 시크릿 `CLAUDE_CODE_OAUTH_TOKEN_MUTENO`(기본)·`CLAUDE_CODE_OAUTH_TOKEN_EMS1130G`(스위칭). · Cloudflare Pages(build `node build-viewer.mjs` / output `viewer`) · Termux 스크립트 `docs/termux-share.sh`.
+- **계정 전환** = GitHub 리포 **Settings → Secrets and variables → Actions → Variables**에서 `ACTIVE_ACCOUNT` 값을 `MUTENO`/`EMS1130G`로 변경 → 다음 분석부터 적용(변수 없으면 MUTENO). 1회성은 Actions → Run workflow의 `account` 입력.
+- 에디터(`apps/`)와 완전 분리 — Actions 러너에서 독립 실행(앱 셋업 미사용).
+
 ## 쓰는 법
 1. Claude Code(폰 앱·웹·데스크탑)에서 **이 레포(`muteno/nomute-editor`)를 연다.**
 2. `/news`·`/th`·`/x`·`/ly`·`/comp`로 진입(정확·오분류 0). 명령 없이 긴 기사 원문이면 라우터가 뉴스로, mp4/SRT 첨부면 `/ly`로 — 애매하면 어느 앱인지 되묻는다.

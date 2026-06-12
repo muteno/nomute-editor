@@ -1,0 +1,80 @@
+name: news-analyze
+
+# pending/ 에 URL(.txt)이 들어오면 Claude Code 헤드리스로 큐레이션 다이제스트를 만들어 queue/ 에 커밋.
+# - queue/ 커밋이 다시 트리거하지 않도록 paths 필터는 pending/** 만.
+# - GITHUB_TOKEN 푸시는 기본적으로 워크플로를 재트리거하지 않음(이중 안전).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pending/**'
+  workflow_dispatch:        # 수동 실행 — account 1회성 오버라이드(변수 안 건드림)
+    inputs:
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+# 동시 실행 충돌 방지 — 순차 처리(진행 중 작업 취소 안 함).
+concurrency:
+  group: news-analyze
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Analyze pending articles
+        env:
+          # 인증 = 구독 OAuth 토큰(API 키 미사용). 계정 동적 선택:
+          #   수동 실행 inputs.account → 리포 변수 vars.ACTIVE_ACCOUNT → 기본 MUTENO
+          #   (secrets[format(...)] 동적 인덱싱·vars||기본값 = 공식 지원 문법)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음 — 등록 확인"; exit 1
+          fi
+          bash .github/scripts/analyze.sh
+
+      - name: Build viewer data
+        run: node build-viewer.mjs
+
+      - name: Commit results
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add queue pending viewer
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 생략"
+            exit 0
+          fi
+          TITLES=$(cat /tmp/analyzed_titles.txt 2>/dev/null | paste -sd'; ' - || echo "기사")
+          git commit -m "analyze: ${TITLES:-기사}"
+          # 동시 푸시 경합 대비 rebase 재시도
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((2**i))
+          done
+          echo "push 실패"; exit 1
