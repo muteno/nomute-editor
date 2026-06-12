@@ -25,28 +25,22 @@ try {
   files = readdirSync(QUEUE).filter(f => f.endsWith('.md'));
 } catch { /* queue 없음 */ }
 
-const articles = [];
-for (const f of files) {
-  // 방어: 못 여는 파일(깨진 파일명·인코딩 등)은 빌드를 죽이지 말고 건너뛰며 경고만
-  try {
-    const raw = readFileSync(join(QUEUE, f), 'utf8');
-    const { meta, body } = parseFrontmatter(raw);
-    articles.push({
-      file: f,
-      title: meta.title || f.replace(/\.md$/, ''),
-      url: meta.url || '',
-      date: meta.date || '',
-      media: meta.media || '',
-      type: meta.type || '',
-      bias: meta.bias || '',
-      tags: meta.tags || '',
-      summary: meta.summary || '',
-      body,
-    });
-  } catch (e) {
-    console.warn(`skip ${f}: ${e.message}`);
-  }
-}
+const articles = files.map(f => {
+  const raw = readFileSync(join(QUEUE, f), 'utf8');
+  const { meta, body } = parseFrontmatter(raw);
+  return {
+    file: f,
+    title: meta.title || f.replace(/\.md$/, ''),
+    url: meta.url || '',
+    date: meta.date || '',
+    media: meta.media || '',
+    type: meta.type || '',
+    bias: meta.bias || '',
+    tags: meta.tags || '',
+    summary: meta.summary || '',
+    body,
+  };
+});
 
 // 파일명(앞에 YYMMDD-HHMM) 기준 최신순
 articles.sort((a, b) => (a.file < b.file ? 1 : a.file > b.file ? -1 : 0));
