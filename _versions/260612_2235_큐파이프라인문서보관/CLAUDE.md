@@ -67,5 +67,4 @@
 - `.claude/skills/` = 앱 진입 명령어(`news`, `1`·`2`·`3`·`4`(썸네일)·`th`(썸네일 안내·버튼 분기), `x`, `ly`, `comp`, `k`)
 - `PROJECT_MEMORY.md` = 공용 메모리(브랜드 룰·결정 로그) — 모든 앱이 참조
 - `_versions/` = 시스템 파일 백업(수정 모드) / `_산출/` = 뉴스 산출물 보관
-- `docs/` = **뉴스 큐 파이프라인 문서**(폰 공유→Actions 분석→Pages 뷰어 — 260612 구축): 입구 = `news-pipeline.md`(운영 개요+문서 인덱스). 구조보고서 PDF · 시행착오로그(교본 원자료 — run #1 401 원인은 이 로그가 정본) · 폰재구축플레이북 · 구축보고 · `termux-share.sh`
 - `shared/` = 앱 간 공유 유틸 — `attach.py`(미디어 첨부 경로 해석: `latest_attachment()`·`session_images()` → §미디어 첨부 입력. 전 앱·이식 프로젝트 공통) · `check_refs.py`(참조·버전 정합 점검 — 수정 모드 ③에서 커밋 전 실행) · `check_env.sh`(환경 캐시 점검 — 새 세션에서 `bash shared/check_env.sh` 실행하면 Setup script 스냅샷 반영 여부를 ✅/❌ 객관 판정·설치 0·정성 판단 대체) · `profile_session.py`(세션 사고 판독 — 작업 세션 끝에 실행하면 턴별 사고량·소요·최장갭 리포트, `--full`=사고 전문 파일. 사고 내용이 로그에 없는 모델은 시간 갭으로 정량화)
