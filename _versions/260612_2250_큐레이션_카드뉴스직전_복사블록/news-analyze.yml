@@ -29,16 +29,12 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    timeout-minutes: 90   # 6건 직렬 분석 대비(건당 timeout 900s — 콘텐츠 초안 포함이라 상향)
+    timeout-minutes: 60   # 6건 직렬 분석 대비(건당 timeout 600s)
     steps:
       - name: Checkout
         uses: actions/checkout@v5   # Node24 (6/16 러너 디폴트 전환 대응)
         with:
           fetch-depth: 0
-          # 트리거 커밋(github.sha)이 아니라 체크아웃 시점의 최신 main을 받는다.
-          # concurrency 순차 큐에서 뒤 run이 옛 커밋을 체크아웃하면 앞 run이 이미
-          # 처리한 pending을 재분석 → failed 로그 add/add 충돌로 push 실패(run#5 원인).
-          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -80,13 +76,9 @@ jobs:
           fi
           TITLES=$(cat /tmp/analyzed_titles.txt 2>/dev/null | paste -sd'; ' - || echo "기사")
           git commit -m "analyze: ${TITLES:-기사}"
-          # 동시 푸시 경합 대비 rebase 재시도.
-          # -X theirs = rebase 충돌 시 이 run의 분석 결과 우선(분석물 보존 최우선).
-          # 실패하면 rebase --abort로 깨끗이 되돌린 뒤 재시도 — abort 없이 pull만 반복하면
-          # "unmerged files" fatal로 전 재시도가 무력화된다(run#5 원인).
+          # 동시 푸시 경합 대비 rebase 재시도
           for i in 1 2 3 4; do
-            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then exit 0; fi
-            git rebase --abort 2>/dev/null || true
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep $((2**i))
           done
           echo "push 실패"; exit 1
