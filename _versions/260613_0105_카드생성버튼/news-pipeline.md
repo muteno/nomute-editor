@@ -34,9 +34,6 @@
 | `prompts/news-analysis.md` | 큐레이션 분석 프롬프트(에디터 지침 종속) |
 | `.github/workflows/news-analyze.yml` + `.github/scripts/analyze.sh` | 자동화 본체 |
 | `build-viewer.mjs` · `viewer/` | 정적 뷰어 빌드 + 페이지 |
-| `cards/<기사stem>/` | 카드뉴스 산출물(status.json · cards.md · `_final_*.jpg`) — 아래 §카드 제작 |
-| `prompts/card-make.md` + `.github/workflows/card-make.yml` + `.github/scripts/cardmake.sh`·`drive_cards.py` | 카드 제작 자동화 |
-| `functions/api/make-cards.js` | 뷰어 버튼 → 워크플로 발사(Pages Function, 암호 게이트) |
 
 > ⚠️ 기존 에디터(`apps/`)와 완전 분리. 이 파이프라인은 Actions 러너에서 독립적으로 돈다 — apps/comp·thumbnail·ly 셋업 스크립트는 **실행하지 않는다**(러너엔 불필요).
 
@@ -73,26 +70,6 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 
 ### 3) Termux (폰)
 `docs/termux-share.sh` 참고 — `~/bin/queue-news`로 두고 Termux 공유 시트에 등록. 기사 공유 → URL이 `pending/`에 push → Actions 발동.
-
-## 🎴 카드 제작 (뷰어 버튼 → 카드뉴스까지 · 260613)
-뷰어에서 기사 열고 **"🎴 카드뉴스 일괄 생성"**(또는 헤더 **🎴 일괄** = 미제작 전체) → 암호 입력 → `card-make` 워크플로 발사:
-```
-[버튼] → functions/api/make-cards (PASSCODE 검증, GH_TOKEN으로 dispatch)
-  → [card-make] status "generating" 커밋(뷰어 ⏳) → Claude 헤드리스 Step 4(prompts/card-make.md
-     — apps/news 지침 종속, 🍌만·STOP 없음) → cards/<기사>/cards.md 커밋
-  → GDRIVE_SA_JSON 있으면: Drive Prompt 폴더 업로드 = 기존 Apps Script→Gemini→Cloud Run 발사
-     → .gen_complete 폴링(≤25분) → _final_*.jpg 회수·커밋 → 뷰어 갤러리+⬇저장
-```
-- ⚠️ **버튼 = 유료 발사**(Opus 토큰 + Gemini·Cloud Run). 그래서 암호 게이트 + 뷰어 확인창. 세션 파이프라인의 🚦STOP은 그대로(이 버튼 경로는 운영자가 누른 것 자체가 GO).
-- 뷰어는 60초마다 자동 갱신 — ⏳ → 🚀 → 🎴 전환이 새로고침 없이 반영(커밋→Pages 재배포 단위라 1~2분 지연).
-- 상태: `generating`(생성중) / `text_done`(MD까지 — Drive 시크릿 없을 때) / `fired_partial`(발사됐으나 대기시간 내 미완 — Drive에선 계속 생성) / `done` / `failed`(cards/<기사>/error.log).
-
-### 설정 (1회 — 이거 안 하면 버튼이 동작 안 함)
-1. **GitHub PAT** (버튼→워크플로 발사용): GitHub → Settings → Developer settings → **Fine-grained tokens** → 이 레포만, **Actions: Read and write** 권한으로 생성.
-2. **Cloudflare Pages 환경변수**: Pages 프로젝트 → Settings → **Variables and Secrets** (Production)
-   - `GH_TOKEN` = 위 PAT (Secret)
-   - `PASSCODE` = 버튼 암호(원하는 문자열, Secret) — 뷰어가 공개 URL이라 이게 과금 게이트.
-3. **GDRIVE_SA_JSON** (이미지 발사·회수용): GitHub 레포 → Settings → Secrets → Actions 에 운영자 보유 서비스계정 키 JSON **본문** 등록 + Drive **Prompt 폴더**(`1jQBoDqnDk5-fw51tCdDLD_cuDBAJp3kf`)를 SA 이메일에 **편집자 공유**. 미등록이면 카드 MD(`text_done`)까지만 — 이미지 없이도 텍스트·프롬프트는 뷰어에서 복사 가능.
 
 ## 동작·안전장치
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).
