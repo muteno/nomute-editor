@@ -73,6 +73,7 @@ UNITS = [
     "30_genre_conventions.tsv",
     "31_graphic_title_design.tsv",
     "32_blocking_staging.tsv",
+    "33_gesture_interaction.tsv",
 ]
 
 SSOT_BANNER = (
