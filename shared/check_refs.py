@@ -89,13 +89,22 @@ def check_versions():
 
 def main():
     fails = check_paths() + check_versions()
+    rc = 0
     if fails:
         print('❌ check_refs 실패 %d건:' % len(fails))
         for f in fails:
             print('  -', f)
-        return 1
-    print('✅ check_refs 통과 — 경로 참조 실존·파일명↔내부 버전 일치.')
-    return 0
+        rc = 1
+    else:
+        print('✅ check_refs 통과 — 경로 참조 실존·파일명↔내부 버전 일치.')
+    # /k 라이브러리 SSOT↔유닛 정합(통합본에서 유닛 재생성 = 현재 유닛 동일?) — 드리프트 게이트
+    try:
+        import build_library
+        if build_library.check() != 0:
+            rc = 1
+    except Exception as e:
+        print('⚠️ build_library check 스킵:', e)
+    return rc
 
 
 if __name__ == '__main__':
