@@ -45,7 +45,6 @@ for (const f of files) {
       date: meta.date || '',
       media: meta.media || '',
       type: meta.type || '',
-      category: meta.category || '',
       bias: meta.bias || '',
       tags: meta.tags || '',
       summary: meta.summary || '',
