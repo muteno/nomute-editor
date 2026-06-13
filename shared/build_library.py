@@ -66,6 +66,13 @@ UNITS = [
     "24_film_movements.tsv",
     "25_vfx_effects.tsv",
     "26_prompt_engineering_meta.tsv",
+    # 400% 보강 wave2 신규 챕터 (260613 — 재질·세트미술·의상소품·장르문법·자막타이틀·블로킹)
+    "27_materials_texture.tsv",
+    "28_set_production_design.tsv",
+    "29_wardrobe_props.tsv",
+    "30_genre_conventions.tsv",
+    "31_graphic_title_design.tsv",
+    "32_blocking_staging.tsv",
 ]
 
 SSOT_BANNER = (
