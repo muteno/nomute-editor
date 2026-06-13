@@ -74,6 +74,21 @@ UNITS = [
     "31_graphic_title_design.tsv",
     "32_blocking_staging.tsv",
     "33_gesture_interaction.tsv",
+    # 400% 보강 wave3·4 (260613) — 시대·추상·한국문화·세트피스 / 카드뉴스 거리·앵글·연출 / 퓨전 / 크리에이터 팁 / 액션
+    "34_era_period_visual.tsv",
+    "35_abstract_experimental.tsv",
+    "36_korea_cultural_ref.tsv",
+    "37_scene_setpieces.tsv",
+    "38_cardnews_distance_crop.tsv",
+    "39_cardnews_angle_height.tsv",
+    "40_cardnews_staging.tsv",
+    "41_style_fusion.tsv",
+    "42_crossdomain_fusion.tsv",
+    "43_creator_tips_image.tsv",
+    "44_creator_tips_video.tsv",
+    "45_creator_tips_framing_pov.tsv",
+    "46_creator_tips_viral.tsv",
+    "47_action_dynamics.tsv",
 ]
 
 SSOT_BANNER = (
@@ -191,7 +206,8 @@ def _check_addendum_refs():
         if not os.path.exists(p):
             continue
         for i, ln in enumerate(open(p, encoding="utf-8"), 1):
-            for tok in re.findall(r"S-\d+", ln):
+            # (?<![A-Za-z]) = 앞 글자가 문자면 제외 → FUS-01·CTS-01 의 'S-01' 부분일치 오탐 차단(260613)
+            for tok in re.findall(r"(?<![A-Za-z])S-\d+", ln):
                 if tok not in alive:
                     viol.append(f"{name}:{i} → {tok} (삭제된 애드덤 코드 참조)")
     return viol
