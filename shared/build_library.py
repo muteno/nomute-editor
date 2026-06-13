@@ -153,15 +153,44 @@ def _diff_against(ref_dir, label):
     return mismatches, missing
 
 
+def _check_addendum_refs():
+    """전 유닛의 S-N(화풍 애드덤) 참조가 생존 S코드만 가리키는지 검증.
+    삭제된 애드덤 코드(예: 08 큐레이션 때 컷된 S-9·S-33 등)를 다른 챕터가
+    아직 참조하면 위반으로 잡는다 — 09 '원본'·04 비고 같은 stale 재발 방지."""
+    import re
+    alive = set()
+    idx = os.path.join(LIBDIR, "08a_style_addendum_index.tsv")
+    if os.path.exists(idx):
+        for ln in open(idx, encoding="utf-8"):
+            m = re.match(r"(S-\d+)\b", ln)
+            if m:
+                alive.add(m.group(1))
+    if not alive:
+        return []  # 08a 없으면 검사 스킵(오탐 방지)
+    viol = []
+    for name in UNITS:
+        if name.startswith("08"):  # 정의처(08·08a) 자신은 제외
+            continue
+        p = os.path.join(LIBDIR, name)
+        if not os.path.exists(p):
+            continue
+        for i, ln in enumerate(open(p, encoding="utf-8"), 1):
+            for tok in re.findall(r"S-\d+", ln):
+                if tok not in alive:
+                    viol.append(f"{name}:{i} → {tok} (삭제된 애드덤 코드 참조)")
+    return viol
+
+
 def check():
-    """왕복 검증: SSOT→유닛 재생성이 '현재 유닛'과 바이트 동일한지."""
+    """왕복 검증: SSOT→유닛 재생성이 '현재 유닛'과 바이트 동일 + 애드덤 참조 정합."""
     mism, miss = _diff_against(LIBDIR, "현재")
     # SSOT 가 모든 UNITS 를 빠짐없이 담았는지
     units = _ssot_to_units()
     notin = [n for n in UNITS if n not in units]
-    ok = not (mism or miss or notin)
+    addref = _check_addendum_refs()  # 삭제 S코드 참조 게이트(재발 방지)
+    ok = not (mism or miss or notin or addref)
     if ok:
-        print(f"check ✓ 완전 일치 — SSOT→유닛 재생성 = 현재 유닛 ({len(units)}개) 바이트 동일.")
+        print(f"check ✓ 완전 일치 — SSOT→유닛 재생성 = 현재 유닛 ({len(units)}개) 바이트 동일 · 애드덤 참조 정합.")
         return 0
     print("check ✗ 불일치:")
     for n, d in mism:
@@ -170,6 +199,8 @@ def check():
         print(f"  - {n}: 현재 유닛에 없음")
     for n in notin:
         print(f"  - {n}: SSOT 에 누락")
+    for v in addref:
+        print(f"  - {v}")
     return 1
 
 
