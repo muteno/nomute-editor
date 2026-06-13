@@ -37,17 +37,6 @@
   .copy { position:absolute; top:8px; right:8px; font-size:11px; background:var(--card); color:var(--mut); border:1px solid var(--line); border-radius:7px; padding:3px 10px; cursor:pointer; }
   .copy:hover { color:var(--accent); border-color:var(--accent); }
   .copy.ok { color:var(--accent); border-color:var(--accent); }
-  .mkbtn { display:block; width:100%; margin:14px 0 4px; padding:10px; font-size:14px; background:transparent; color:var(--accent); border:1px dashed var(--accent); border-radius:10px; cursor:pointer; }
-  .mkbtn:hover { background:rgba(15,253,2,.06); }
-  .mkall { background:var(--card); color:var(--mut); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; cursor:pointer; }
-  .mkall:hover { color:var(--accent); border-color:var(--accent); }
-  .genstat { margin:14px 0 4px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; color:var(--mut); font-size:13px; }
-  .cardnote { margin:16px 0 6px; font-size:13px; color:var(--accent); font-weight:600; }
-  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin:8px 0; }
-  .gal figure { margin:0; }
-  .gal img { width:100%; border-radius:8px; border:1px solid var(--line); display:block; }
-  .gal .dl { display:block; text-align:center; font-size:11px; color:var(--mut); text-decoration:none; padding:3px 0; }
-  .gal .dl:hover { color:var(--accent); }
 </style>
 </head>
 <body>
@@ -57,7 +46,6 @@
     <div class="bar">
       <input id="q" type="search" placeholder="제목·매체 검색">
       <select id="day"><option value="">전체 날짜</option></select>
-      <button id="mkall" class="mkall" title="카드 미제작 기사 전체 일괄 생성(유료)">🎴 일괄</button>
       <span class="meta" id="meta"></span>
     </div>
   </div>
@@ -66,14 +54,12 @@
 
 <dialog id="dlg">
   <div class="dlg-h"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()">닫기</button></div>
-  <div class="md" id="cardsec"></div>
   <div class="md" id="mdbody"></div>
 </dialog>
 
 <script>
 const $ = s => document.querySelector(s);
 let DATA = [];
-let CUR = '';   // 열려 있는 기사 file — 자동 갱신 때 다이얼로그 카드 섹션 동기화용
 marked.setOptions({ breaks:true });
 
 async function load() {
@@ -82,17 +68,10 @@ async function load() {
     const j = await r.json();
     DATA = j.articles || [];
     $('#meta').textContent = `${j.count}건 · ${(j.generated||'').slice(0,10)}`;
-    const sel = $('#day'), keep = sel.value;
-    sel.innerHTML = '<option value="">전체 날짜</option>';
     const days = [...new Set(DATA.map(a => a.date).filter(Boolean))].sort().reverse();
-    for (const d of days) { const o = document.createElement('option'); o.value=d; o.textContent=d; sel.appendChild(o); }
-    sel.value = keep;
+    for (const d of days) { const o = document.createElement('option'); o.value=d; o.textContent=d; $('#day').appendChild(o); }
   } catch(e) { DATA = []; $('#meta').textContent = 'articles.json 없음'; }
   render();
-  if ($('#dlg').open && CUR) {
-    const a = DATA.find(x => x.file === CUR);
-    if (a) cardSec(a);
-  }
 }
 
 function render() {
@@ -108,7 +87,6 @@ function render() {
     const c = document.createElement('div'); c.className='card';
     c.innerHTML = `<div class="t"></div><div class="s"></div>
       <div class="chips">
-        ${cardChip(a)}
         ${a.media?`<span class="chip">📰 ${esc(a.media)}</span>`:''}
         ${a.date?`<span class="chip">${esc(a.date)}</span>`:''}
         ${a.type?`<span class="chip">유형 ${esc(a.type)}</span>`:''}
@@ -122,90 +100,17 @@ function render() {
   });
 }
 function open(a) {
-  CUR = a.file;
   const md = $('#mdbody');
   md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
-  addCopyButtons(md);
-  cardSec(a);
-  const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
-  $('#dlg').showModal();
-}
-// 코드블록마다 복사 버튼 — ```text 복사 박스(자유요약·IG·Thread·썸네일·카드)를 탭 한 번에 복사
-function addCopyButtons(root) {
-  root.querySelectorAll('pre').forEach(pre => {
+  // 코드블록마다 복사 버튼 — 다이제스트의 ```text 복사 박스(자유요약·IG·Thread·썸네일)를 탭 한 번에 복사
+  md.querySelectorAll('pre').forEach(pre => {
     const btn = document.createElement('button');
     btn.className = 'copy'; btn.textContent = '복사';
     btn.onclick = ev => { ev.stopPropagation(); copyBlock(pre, btn); };
     pre.appendChild(btn);
   });
-}
-
-// ── 카드뉴스 섹션: 상태별 버튼/로딩/갤러리 ──────────────────────────
-const CARD_LABEL = { generating:'⏳ 생성중', done:'🎴 카드', fired_partial:'🚀 발사됨', text_done:'📝 텍스트', failed:'⚠️ 실패' };
-function cardChip(a) {
-  const st = a.cards && a.cards.state;
-  return st ? `<span class="chip">${CARD_LABEL[st] || st}</span>` : '';
-}
-function cardSec(a) {
-  const sec = $('#cardsec'); sec.innerHTML = '';
-  const c = a.cards || {}, st = c.state || '';
-  if (!st || st === 'failed') {
-    if (st === 'failed') sec.insertAdjacentHTML('beforeend',
-      `<div class="genstat">⚠️ 직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
-    const b = document.createElement('button');
-    b.className = 'mkbtn';
-    b.textContent = st === 'failed' ? '🎴 카드뉴스 다시 생성 (유료 발사)' : '🎴 카드뉴스 일괄 생성 (유료 발사)';
-    b.onclick = () => makeCards(a.file, b);
-    sec.appendChild(b);
-    return;
-  }
-  if (st === 'generating') {
-    sec.innerHTML = `<div class="genstat">⏳ 카드 생성 중… 완료되면 여기에 자동으로 뜸(1~2분 단위 갱신)</div>`;
-    return;
-  }
-  const note = {
-    done: '🎴 카드뉴스 완성 — 이미지 탭하면 원본, ⬇로 저장',
-    fired_partial: '🚀 발사됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
-    text_done: '📝 카드 텍스트·프롬프트 생성 완료 (이미지 발사는 GDRIVE_SA_JSON 시크릿 등록 후)',
-  }[st] || st;
-  sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
-  if (c.images && c.images.length) {
-    const gal = document.createElement('div'); gal.className = 'gal';
-    gal.innerHTML = c.images.map(p =>
-      `<figure><a href="${esc(p)}" target="_blank" rel="noopener"><img src="${esc(p)}" loading="lazy" alt=""></a>
-       <a class="dl" href="${esc(p)}" download>⬇ 저장</a></figure>`).join('');
-    sec.appendChild(gal);
-  }
-  if (c.md) {
-    const div = document.createElement('div');
-    div.innerHTML = DOMPurify.sanitize(marked.parse(c.md));
-    addCopyButtons(div);
-    sec.appendChild(div);
-  }
-}
-async function makeCards(target, btn) {
-  const n = target === 'all'
-    ? DATA.filter(a => !a.cards || !a.cards.state || a.cards.state === 'failed').length
-    : 1;
-  if (target === 'all' && !n) { alert('미제작 기사 없음'); return; }
-  if (!confirm(`카드뉴스 ${n}건 일괄 생성 — 유료 발사야(Opus + Gemini·Cloud Run). 진행?`)) return;
-  let pass = localStorage.getItem('cardpass') || prompt('카드 생성 암호');
-  if (!pass) return;
-  try {
-    const r = await fetch('api/make-cards', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ article: target === 'all' ? 'all' : target, pass }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok && j.ok) {
-      localStorage.setItem('cardpass', pass);
-      if (btn) btn.outerHTML = `<div class="genstat">🚀 발사됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
-      else alert(`발사됨 — ${n}건 순차 생성 시작`);
-    } else {
-      if (r.status === 401) localStorage.removeItem('cardpass');
-      alert(j.error || `실패 (${r.status})`);
-    }
-  } catch (e) { alert('요청 실패: ' + e.message); }
+  const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
+  $('#dlg').showModal();
 }
 async function copyBlock(pre, btn) {
   const code = pre.querySelector('code');
@@ -223,9 +128,6 @@ async function copyBlock(pre, btn) {
 const esc = s => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 $('#q').addEventListener('input', render);
 $('#day').addEventListener('change', render);
-$('#mkall').addEventListener('click', () => makeCards('all', null));
-// 자동 갱신 — 생성 중 상태가 커밋→Pages 재배포로 바뀌는 걸 새로고침 없이 반영
-setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);
 load();
 </script>
 </body>
