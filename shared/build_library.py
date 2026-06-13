@@ -58,6 +58,14 @@ UNITS = [
     "17_composition.tsv",
     "18_english_tails.tsv",
     "19_safety_frame_prompts.tsv",
+    # 400% 보강 신규 챕터 (260613 — 새 인덱싱 축: 화면비·전환·표정감정·날씨·영화사조·VFX·프롬프트공학)
+    "20_aspect_ratio_format.tsv",
+    "21_transitions_editing.tsv",
+    "22_expression_emotion.tsv",
+    "23_weather_atmosphere.tsv",
+    "24_film_movements.tsv",
+    "25_vfx_effects.tsv",
+    "26_prompt_engineering_meta.tsv",
 ]
 
 SSOT_BANNER = (
