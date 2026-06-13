@@ -18,7 +18,7 @@ function parseFrontmatter(raw) {
   for (const line of m[1].split('\n')) {
     const kv = line.match(/^([A-Za-z_]+):\s*(.*)$/);
     if (!kv) continue;
-    let v = kv[2].trim().replace(/^"(.*)"$/, '$1');
+    let v = kv[2].trim().replace(/^"(.*)"$/, '$1').replace(/\\"/g, '"');
     meta[kv[1]] = v;
   }
   return { meta, body: m[2].trim() };
