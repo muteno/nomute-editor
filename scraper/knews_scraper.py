@@ -9,7 +9,7 @@ knews_scraper.py — 한국 주요 뉴스 RSS 스크래퍼 (독립 실행 모듈
   봇 탐지가 걸린 HTML을 뚫는 대신, 애초에 공개된 RSS만 사용한다 → 차단 위험 0.
 
 출력
-  articles.json : 수집된 전체 기사 (주요도 점수 포함, 주요도순 정렬)
+  articles.json : 수집된 전체 기사 (주요도 점수·대표이미지 포함, 주요도순 정렬)
   top_urls.txt  : 주요도 상위 기사의 원문 URL 목록
                   (다음 단계 — GitHub pending/ 에 꽂아 분석 파이프라인에 연결할 용도)
 
@@ -182,6 +182,37 @@ def parse_time(entry):
     return None
 
 
+# ── 대표 이미지 추출 ─────────────────────────────────────────────────
+# RSS 안에 든 이미지만 본다 — 원문 HTML 페이지는 안 긁음(차단위험 0 원칙 유지).
+_IMG_SRC_RE = re.compile(r'<img[^>]+src=["\']([^"\']+)["\']', re.I)
+_IMG_EXT_RE = re.compile(r"\.(?:jpe?g|png|gif|webp)(?:[?#]|$)", re.I)
+
+
+def extract_image(entry):
+    """RSS 항목 대표 이미지 URL. 우선순위 enclosure → media:content → media:thumbnail → 본문 <img>.
+    (nomute 홈페이지 fetchRSS 로직 차용. 단 원문 og:image 폴백은 RSS-only·차단위험 때문에 일부러 뺌.)"""
+    for enc in entry.get("enclosures") or []:
+        href = enc.get("href") or enc.get("url")
+        if href and ((enc.get("type") or "").startswith("image") or _IMG_EXT_RE.search(href)):
+            return href
+    for mc in entry.get("media_content") or []:
+        url = mc.get("url")
+        if url and (mc.get("medium") == "image"
+                    or (mc.get("type") or "").startswith("image")
+                    or _IMG_EXT_RE.search(url)):
+            return url
+    for mt in entry.get("media_thumbnail") or []:
+        if mt.get("url"):
+            return mt["url"]
+    blobs = [entry.get("summary") or ""]
+    blobs += [c.get("value") or "" for c in (entry.get("content") or [])]
+    for blob in blobs:
+        m = _IMG_SRC_RE.search(blob)
+        if m:
+            return m.group(1)
+    return None
+
+
 def collect(feeds, hours):
     """모든 피드를 긁어 기사 리스트 생성 (시간필터 + 중복제거)."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
@@ -211,6 +242,7 @@ def collect(feeds, hours):
                 "category": feed["categories"],
                 "published": pub.isoformat() if pub else None,
                 "summary": strip_tags(e.get("summary", ""))[:200],
+                "image": extract_image(e),
             })
 
     log(f"피드 결과: 성공 {ok} / 죽음 {dead} / 수집 기사 {len(articles)}건")
