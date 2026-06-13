@@ -38,6 +38,7 @@ import time
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 import requests
 import feedparser
@@ -89,11 +90,22 @@ def load_feeds(csv_path, categories):
 
 
 # ── 텍스트 처리 ──────────────────────────────────────────────────────
+# 링크에서 떼어낼 추적 파라미터. 쿼리 전체를 지우면 서울신문(newsView.php?id=…)처럼
+# 기사 식별자가 쿼리에 든 매체는 전 기사가 한 URL로 뭉개져 대량 오중복제거된다.
+# → 추적용 키만 골라 떼고 ?id= 같은 기능성 파라미터는 보존한다.
+_TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "fbclid", "gclid", "igshid", "spm", "ref", "ref_src", "cid", "ncid",
+}
+
+
 def normalize_link(url):
-    """링크 정규화 — 쿼리/프래그먼트 제거해 중복 판정 정확도↑."""
+    """링크 정규화 — 추적 파라미터·프래그먼트만 제거(식별자 쿼리는 보존)해 중복 판정 정확도↑."""
     url = (url or "").strip()
-    url = re.sub(r"#.*$", "", url)
-    url = re.sub(r"\?.*$", "", url)
+    parts = urlsplit(url)
+    q = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
+         if k.lower() not in _TRACKING_PARAMS]
+    url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(q), ""))
     return url.rstrip("/")
 
 
