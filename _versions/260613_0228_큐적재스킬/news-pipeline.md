@@ -25,11 +25,6 @@
 [운영자]  심화할 기사 선택 → 클라우드 세션에서 /news 풀 파이프라인(콘텐츠화)
 ```
 
-## 큐 적재 입구 2개
-- **폰(Termux)**: 기사 URL 공유 → `pending/*.txt` push → Actions(`news-analyze`)가 분석 → `queue/`. (구독 OAuth 헤드리스)
-- **클로드 코드 세션**: `/q` 스킬 — 이 세션에 붙인 기사(URL/전문)를 같은 다이제스트 형식으로 만들어 `queue/`에 직접 커밋(GitHub MCP). Actions 안 거침 → 붙여넣은 전문·nate처럼 헤드리스 fetch 막히는 매체도 처리. 정본=`.claude/skills/q`.
-- 둘 다 종착 = `queue/` → Pages 재빌드 → 뷰어 누적(같은 카드 UI).
-
 ## 폴더
 | 경로 | 용도 |
 |---|---|
