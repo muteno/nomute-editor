@@ -1,0 +1,63 @@
+name: card-make
+
+# 뷰어 버튼(Pages Function /api/make-cards) 또는 수동 Run workflow → 카드뉴스 일괄 제작.
+# 흐름: queue md → Claude 헤드리스 Step 4(카드 MD) → cards/<기사>/ 커밋(뷰어 ⏳→완료)
+#       → GDRIVE_SA_JSON 시크릿 있으면 Drive 발사(기존 Apps Script→Gemini→Cloud Run) + _final_*.jpg 회수.
+# ⚠️ 유료 발사: Opus 토큰 + (Drive 경로 시) Gemini·Cloud Run 과금 — 트리거는 암호 게이트 뒤에만.
+on:
+  workflow_dispatch:
+    inputs:
+      article:
+        description: 'queue md 파일명 1개 또는 all(미제작 전체 일괄)'
+        type: string
+        default: 'all'
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: card-make
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300   # 건당 카드 생성 ≤25분 + 이미지 대기 ≤25분, 일괄 대비
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main   # 최신 main 기준(news-analyze와 동일 — 옛 커밋 체크아웃 금지)
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install deps
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          pip install --quiet google-auth requests
+
+      - name: Make cards
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+          TARGET: ${{ inputs.article }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음"; exit 1
+          fi
+          [ -z "${GDRIVE_SA_JSON}" ] && echo "::warning::GDRIVE_SA_JSON 미등록 — 카드 MD까지만(이미지 발사 생략)"
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/cardmake.sh "${TARGET}"

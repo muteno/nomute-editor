@@ -1,7 +1,6 @@
-// build-viewer.mjs — queue/*.md + cards/<기사>/ 를 스캔해 viewer/articles.json 생성,
-// 카드 이미지(_final 등)는 viewer/cards/ 로 복사해 Pages가 서빙 (zero-dependency, Node 18+).
+// build-viewer.mjs — queue/*.md 를 스캔해 viewer/articles.json 생성 (zero-dependency, Node 18+).
 // Cloudflare Pages 빌드 명령으로 실행: `node build-viewer.mjs` / 출력 디렉터리: viewer
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const QUEUE = 'queue';
@@ -18,7 +17,7 @@ function parseFrontmatter(raw) {
   for (const line of m[1].split('\n')) {
     const kv = line.match(/^([A-Za-z_]+):\s*(.*)$/);
     if (!kv) continue;
-    let v = kv[2].trim().replace(/^"(.*)"$/, '$1').replace(/\\"/g, '"');
+    let v = kv[2].trim().replace(/^"(.*)"$/, '$1');
     meta[kv[1]] = v;
   }
   return { meta, body: m[2].trim() };
@@ -50,30 +49,6 @@ for (const f of files) {
   } catch (e) {
     console.warn(`skip ${f}: ${e.message}`);
   }
-}
-
-// 카드 산출물 병합: cards/<기사stem>/{status.json, cards.md, *.jpg|png}
-// 이미지는 viewer/cards/<stem>/ 로 복사(출력 디렉터리만 서빙됨)
-rmSync('viewer/cards', { recursive: true, force: true });
-for (const a of articles) {
-  const stem = a.file.replace(/\.md$/, '');
-  const dir = join('cards', stem);
-  if (!existsSync(dir)) continue;
-  let status = {};
-  try { status = JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8')); } catch { /* 상태 없음 */ }
-  let cardsMd = '';
-  try { cardsMd = readFileSync(join(dir, 'cards.md'), 'utf8'); } catch { /* 텍스트 없음 */ }
-  const images = readdirSync(dir).filter(n => /\.(jpe?g|png)$/i.test(n)).sort();
-  if (images.length) {
-    mkdirSync(join('viewer/cards', stem), { recursive: true });
-    for (const n of images) copyFileSync(join(dir, n), join('viewer/cards', stem, n));
-  }
-  a.cards = {
-    state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
-    updated: status.updated || '',
-    md: cardsMd,
-    images: images.map(n => `cards/${stem}/${n}`),
-  };
 }
 
 // 파일명(앞에 YYMMDD-HHMM) 기준 최신순
