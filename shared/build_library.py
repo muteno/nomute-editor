@@ -48,6 +48,13 @@ UNITS = [
     "09_style_kling_video.tsv",
     "10_audio_music.tsv",
     "11_acting_shadow_light.tsv",
+    # 백과사전 흡수분 (260613 — /news 출신 지식: 감정조명·뉴스화풍·색이론·수사학·큐레이션·합성)
+    "12_lighting_emotion.tsv",
+    "13_style_news_canon.tsv",
+    "14_color_grading.tsv",
+    "15_visual_rhetoric.tsv",
+    "16_curation_dispatch.tsv",
+    "17_composition.tsv",
 ]
 
 SSOT_BANNER = (
