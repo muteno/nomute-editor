@@ -55,6 +55,8 @@ UNITS = [
     "15_visual_rhetoric.tsv",
     "16_curation_dispatch.tsv",
     "17_composition.tsv",
+    "18_english_tails.tsv",
+    "19_safety_frame_prompts.tsv",
 ]
 
 SSOT_BANNER = (
