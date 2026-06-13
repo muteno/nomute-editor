@@ -76,13 +76,6 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 - Node 버전: 18+ (기본값으로 충분)
 → `queue/` 가 커밋될 때마다 Pages가 자동 재배포. (마크다운 렌더·DOMPurify는 CDN에서 로드 — 추가 의존성 없음.)
 
-**🛰 배포 좌표 (계정 ID·딥링크 — 260613 명시)**: Cloudflare가 신규 Pages 생성 UI를 숨기고 Workers로 유도할 때(→ 시행착오로그 사건 6), 아래 **딥링크**로 정상 Pages 생성 화면에 직접 진입한다:
-- `dash.cloudflare.com/{ACCOUNT_ID}/pages/new/provider/github`
-- **계정 ID = URL 가운데 32자리 해시**(이메일 아님·로그인해야 보임):
-  - ① **현재 라이브 `nomute-editor.pages.dev`** = `b3ca893503b580ac6afba9a7b284d93f` (PR CI 웹훅 URL 기준)
-  - ② **proton 계정**(`Namanilhae@proton.me`) = `abac2d0d00f5ed4778b8179389fe01aa` (별개 계정 — 여기로 만들면 새 프로젝트)
-- 진입 후 설정값은 위와 동일(branch `main` · build `node build-viewer.mjs` · output `viewer` · preset None). 404·Workers로 튕기면 시행착오로그 사건 6 참조.
-
 ### 3) Termux (폰)
 `docs/termux-share.sh` 참고 — `~/bin/queue-news`로 두고 Termux 공유 시트에 등록. 기사 공유 → URL이 `pending/`에 push → Actions 발동.
 
