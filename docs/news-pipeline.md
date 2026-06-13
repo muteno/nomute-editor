@@ -2,6 +2,8 @@
 
 폰에서 기사를 공유 → 자동으로 큐레이션 다이제스트가 쌓이고 → 뷰어에서 훑어보고 → 필요한 것만 클라우드 세션에서 **콘텐츠화**(풀 파이프라인)하는 흐름. 이 자동화의 범위 = **카드뉴스(Step 4) 직전까지**: 다이제스트(분류·요약) + 📦 콘텐츠 초안(자유요약·IG·Thread·썸네일·시사점 — 뷰어 코드블록에서 버튼으로 복사). 카드뉴스 제작·발사만 클라우드 세션 몫. (260612 — 구 '다이제스트 only'에서 확장.)
 
+> 📐 **구조·컴포넌트 관점**(세션 앱 vs 독립 러너 · 컴포넌트 구분 기준 · 데이터 계약 이음매 · 라이브러리화 경로)은 → [`architecture.md`](architecture.md). 여긴 운영 절차 정본.
+
 ## 전체 그림
 
 ```
@@ -25,10 +27,11 @@
 [운영자]  심화할 기사 선택 → 클라우드 세션에서 /news 풀 파이프라인(콘텐츠화)
 ```
 
-## 큐 적재 입구 2개
+## 큐 적재 입구 3개
 - **폰(Termux)**: 기사 URL 공유 → `pending/*.txt` push → Actions(`news-analyze`)가 분석 → `queue/`. (구독 OAuth 헤드리스)
 - **클로드 코드 세션**: `/q` 스킬 — 이 세션에 붙인 기사(URL/전문)를 같은 다이제스트 형식으로 만들어 `queue/`에 직접 커밋(GitHub MCP). Actions 안 거침 → 붙여넣은 전문·nate처럼 헤드리스 fetch 막히는 매체도 처리. 정본=`.claude/skills/q`.
-- 둘 다 종착 = `queue/` → Pages 재빌드 → 뷰어 누적(같은 카드 UI).
+- **RSS 자동 수집(scrape)**: `.github/workflows/scrape.yml`(수동/cron) — `scraper/knews_scraper.py`가 한국 주요 언론 RSS를 긁어 교차등장 상위 기사만 추려 `scraper/to_pending.py`가 `pending/`에 적재(중복 스킵=`scraper/seen_urls.txt` 원장) → 곧바로 news-analyze 디스패치. **무인 자동 입구**(폰·세션 없이 수집→분석). `GITHUB_TOKEN` push는 트리거 안 되므로 명시 디스패치. cron은 기본 꺼둠(비용 노브 — 켜면 무인 토큰 소비).
+- 셋 다 종착 = `queue/` → Pages 재빌드 → 뷰어 누적(같은 카드 UI).
 
 ## 폴더
 | 경로 | 용도 |
@@ -38,6 +41,7 @@
 | `queue/` | 분석 결과 md (`YYMMDD-HHMM-기사ID.md` — ASCII 한정, 제목은 frontmatter `title`) |
 | `prompts/news-analysis.md` | 큐레이션 분석 프롬프트(에디터 지침 종속) |
 | `.github/workflows/news-analyze.yml` + `.github/scripts/analyze.sh` | 자동화 본체 |
+| `.github/workflows/scrape.yml` + `scraper/knews_scraper.py`·`to_pending.py`·`seen_urls.txt` | RSS 수집 → `pending/` 자동 적재(② 연결) — 무인 입구 |
 | `build-viewer.mjs` · `viewer/` | 정적 뷰어 빌드 + 페이지 |
 | `cards/<기사stem>/` | 카드뉴스 산출물(status.json · cards.md · `_final_*.jpg`) — 아래 §카드 제작 |
 | `prompts/card-make.md` + `.github/workflows/card-make.yml` + `.github/scripts/cardmake.sh`·`drive_cards.py` | 카드 제작 자동화 |

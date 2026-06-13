@@ -1,0 +1,73 @@
+name: scrape
+# 한국 주요 뉴스 RSS 수집(① knews_scraper) → pending/ 적재(② to_pending) → news-analyze 발동(③).
+# 수집기를 파이프라인 입구에 자동으로 물리는 '연결' 워크플로.
+# 비용 노브: schedule(자동 정기수집)은 무인 토큰 소비 → 기본 꺼둠. min_cross↑ = 적게 적재 = 비용↓.
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: '최근 N시간 기사만 수집'
+        default: '24'
+      min_cross:
+        description: '교차등장 최소 매체 수(↑일수록 중요한 것만 = 적게 적재 = 비용↓)'
+        default: '2'
+      top:
+        description: '한 번에 적재할 최대 기사 수(상한)'
+        default: '20'
+  # ── 자동 정기 수집 (무인 토큰 소비 — 켜기 전 비용 확인) ──────────────
+  # 아래 2줄 주석 풀면 정기 가동. cron 은 UTC 기준.
+  # schedule:
+  #   - cron: '0 21,9 * * *'   # 매일 06:00·18:00 KST (UTC 21:00·09:00)
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # pending/ · seen_urls.txt 커밋·push
+  actions: write    # news-analyze 디스패치(GITHUB_TOKEN push 는 news-analyze 를 못 깨움 → 명시 발동)
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet feedparser requests
+
+      - name: Collect (RSS → top_urls.txt)
+        run: |
+          python3 scraper/knews_scraper.py \
+            --out scraper/out \
+            --hours "${{ inputs.hours || '24' }}" \
+            --min-cross "${{ inputs.min_cross || '2' }}" \
+            --top "${{ inputs.top || '20' }}"
+
+      - name: Emit to pending/ (중복 스킵)
+        run: python3 scraper/to_pending.py | tee /tmp/emit.out
+
+      - name: Commit & trigger analyze
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt)" ]; then
+            echo "신규 적재분 없음 — 커밋·분석발동 생략"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pending scraper/seen_urls.txt
+          NEW="$(sed -n 's/^NEW=//p' /tmp/emit.out | tail -1)"
+          git commit -m "scrape: pending ${NEW:-?}건 적재 (RSS 교차등장)"
+          git push
+          # GITHUB_TOKEN 푸시는 news-analyze(push 트리거)를 재귀방지로 못 깨운다 → 명시 디스패치.
+          gh workflow run news-analyze.yml \
+            || echo "::warning::news-analyze 디스패치 실패 — Actions 탭에서 수동 실행"
