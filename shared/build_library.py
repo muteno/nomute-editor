@@ -30,7 +30,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LIBDIR = os.path.join(ROOT, "apps", "k", "library")
 SSOT = os.path.join(LIBDIR, "archive_media_master.tsv")
 
-# SSOT를 구성하는 유닛 = 로드 순서. (08_style_addendum_image.md 는 산문 원본이라 제외·독립 유지.)
+# SSOT를 구성하는 유닛 = 로드 순서. (08_style_addendum_image.md = 산문+코드블록 챕터, 줄 단위 보존 편입.)
 UNITS = [
     "00_module_index.tsv",
     "01a_camera_lens_focal_length.tsv",
@@ -44,6 +44,7 @@ UNITS = [
     "05_negative_control.tsv",
     "06_camera_movement_video.tsv",
     "07_pov_video.tsv",
+    "08_style_addendum_image.md",
     "08a_style_addendum_index.tsv",
     "09_style_kling_video.tsv",
     "10_audio_music.tsv",
