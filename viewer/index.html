@@ -206,7 +206,19 @@
   .phase > summary:hover { color:#5ef98a; }
   .phase .md { padding:2px 18px 22px; }
   /* 카드 이미지 프롬프트 = 3줄만 보이고 내부 스크롤(길게 안 늘어지게) */
-  #cardsec pre.promptbox code { max-height:5.2em; overflow-y:auto; }
+  /* 카드 이미지 프롬프트 = 기본 3줄(클립)+더보기, 펼치면 전문. 내부 스크롤 X
+     (모바일에서 작은 박스가 페이지 스크롤을 뺏는 문제 원천 차단 — 접힘=스크롤영역 없음) */
+  #cardsec pre.promptbox.clip { overflow:hidden; }
+  #cardsec pre.promptbox.clip code { max-height:5.2em; overflow:hidden; display:block; }
+  #cardsec pre.promptbox.clip::after { content:''; position:absolute; left:1px; right:1px; bottom:1px; height:30px;
+    background:linear-gradient(transparent, rgba(5,12,8,.92)); pointer-events:none; border-radius:0 0 15px 15px; }
+  .morebtn { display:block; width:100%; margin:6px 0 2px; padding:7px; font-size:12px; font-weight:700; font-family:inherit;
+    color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:10px; cursor:pointer; }
+  .morebtn:hover { color:var(--accent); border-color:rgba(15,253,2,.3); }
+  /* 카드 N 헤더 — 강조색+구분선으로 카드별 구분감 */
+  #cardsec h3 { color:var(--accent); font-size:14px; font-weight:800; letter-spacing:-.2px;
+    margin:22px 0 8px; padding-top:14px; border-top:1px solid var(--line2); }
+  #cardsec h3:first-of-type { border-top:none; padding-top:2px; margin-top:8px; }
 
   /* ── 모바일 ── */
   @media (max-width:640px) {
@@ -271,6 +283,7 @@
 const $ = s => document.querySelector(s);
 let DATA = [];
 let CUR = '';
+let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
 // 6 큐레이션 분류 — 글자색만 다르게(도형 X)
@@ -292,7 +305,8 @@ async function load() {
   render();
   if ($('#dlg').open && CUR) {
     const a = DATA.find(x => x.file === CUR);
-    if (a) cardSec(a);
+    // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
+    if (a && ((a.cards && a.cards.state) || '') !== CUR_STATE) cardSec(a);
   }
 }
 
@@ -377,6 +391,7 @@ function cardChip(a) {
 function cardSec(a) {
   const sec = $('#cardsec'); sec.innerHTML = '';
   const c = a.cards || {}, st = c.state || '';
+  CUR_STATE = st;
   // 카드 phase 헤더에 상태 반영(접어도 보이게)
   const sumlabel = { '':'카드뉴스', generating:'🍌 카드뉴스 — 프롬프팅 중…', text_done:'카드뉴스 — 텍스트·프롬프트',
     done:'카드뉴스 — 완성', fired_partial:'🚀 카드뉴스 — 발사됨', failed:'⚠️ 카드뉴스 — 실패' };
@@ -412,10 +427,18 @@ function cardSec(a) {
   if (c.md) {
     const div = document.createElement('div');
     div.innerHTML = DOMPurify.sanitize(marked.parse(c.md));
-    // 이미지 프롬프트 박스만 3줄+내부 스크롤(직전 라벨에 '이미지 프롬프트' 있는 pre)
+    // 이미지 프롬프트 박스 = 기본 3줄 클립 + 더보기/접기(내부 스크롤 X). 직전 라벨에 '이미지 프롬프트' 있는 pre.
     div.querySelectorAll('pre').forEach(pre => {
       const prev = pre.previousElementSibling;
-      if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) pre.classList.add('promptbox');
+      if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) {
+        pre.classList.add('promptbox', 'clip');
+        const mb = document.createElement('button');
+        mb.className = 'morebtn'; mb.textContent = '더 보기 ▾';
+        mb.onclick = ev => { ev.stopPropagation();
+          const clipped = pre.classList.toggle('clip');
+          mb.textContent = clipped ? '더 보기 ▾' : '접기 ▴'; };
+        pre.after(mb);
+      }
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
     sec.appendChild(div);
