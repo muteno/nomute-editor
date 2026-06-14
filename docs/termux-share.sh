@@ -22,9 +22,10 @@ fi
 git reset -q --hard origin/main
 
 mkdir -p pending
-echo "$URL" > "pending/$(date +%y%m%d-%H%M%S).txt"
+echo "$URL" > "pending/$(date +%y%m%d-%H%M%S)-$RANDOM.txt"
 git add pending
-git -c user.name=muteno-phone -c user.email=phone@nomute commit -qm "queue: $URL"
+git -c user.name=muteno-phone -c user.email=phone@nomute commit -qm "queue: $URL" \
+  || { notify "큐 실패 ❌" "commit 실패(중복/빈 변경?)"; log "COMMIT_FAIL"; exit 1; }
 
 if git push -q origin HEAD:main; then
   notify "큐 등록됨 ✅" "$URL"; log "OK"
