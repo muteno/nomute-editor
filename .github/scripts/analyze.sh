@@ -87,7 +87,9 @@ ${extracted}"
   # --disallowedTools = 미허용 도구를 '권한 대기'가 아니라 '즉시 거부'로 만들어 헤드리스가
   #   절대 멈추지 않게(오늘 [D] 근인 = 허용목록만으론 Write/Bash 시도가 900s 행이 됨).
   # --max-turns = 도구 무한루프(레포 탐색 등) 차단. 둘 다 "제약없이=막힘없이"의 핵심.
-  out="$(timeout 900 claude -p "$prompt" \
+  # 프롬프트는 stdin으로 전달 — 지침 강제주입이 커서 명령행 인자로는 ARG_MAX('Argument list too long')
+  # 위험(stdin은 무제한). claude -p 는 인자 없으면 stdin을 프롬프트로 읽는다.
+  out="$(printf '%s' "$prompt" | timeout 900 claude -p \
         --model "$MODEL" \
         --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
         --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
