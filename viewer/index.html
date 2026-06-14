@@ -101,6 +101,8 @@
   .dh-cnt { color:var(--mut); } .dh-cnt b { color:var(--accent); font-weight:800; }
   /* 드래프트 헤더의 글자수 메타(— 약 N자) 미강조 */
   .cnt { color:var(--mut); font-weight:400; font-size:.92em; }
+  /* h2 섹션 괄호 부연(…): 강조 해제(흰색·일반 두께) */
+  .paren { color:var(--fg); font-weight:400; }
 
   /* ── 기사 카드 ── */
   #list { margin-top:14px; }
@@ -462,10 +464,15 @@ function decorate(root) {
     if (/시사점/.test(h.textContent)) return;
     if (h.firstChild && h.firstChild.nodeType === 3)
       h.firstChild.data = h.firstChild.data.replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '');
-    if (h.tagName === 'H2' && h.firstChild && h.firstChild.nodeType === 3 && !/^📍/.test(h.firstChild.data))
-      h.firstChild.data = '📍 ' + h.firstChild.data;   // 말머리(섹션)
-    if (/약\s*\d.*자/.test(h.textContent))   // 글자수: 실제 카운트만 강조, '/상한'(고정값)은 미강조
-      h.innerHTML = esc(h.textContent).replace(/(\/\d+)/g, '<span class="cnt">$1</span>');
+    // h3 드래프트 [라벨 — 약 N/M자]: 라벨·실제 카운트(N)만 강조, 나머지([·—·약·/M·자])는 미강조
+    const dm = h.textContent.match(/^(\[)(.+?)(\s*[—\-]\s*약\s*)(\d+)(.*)$/);
+    if (dm) { h.innerHTML = `<span class="cnt">${esc(dm[1])}</span>${esc(dm[2])}<span class="cnt">${esc(dm[3])}</span>${esc(dm[4])}<span class="cnt">${esc(dm[5])}</span>`; return; }
+    // h2 섹션: 📍 말머리 + 괄호 부연(…)은 흰색(강조 해제)
+    if (h.tagName === 'H2') {
+      const pm = h.textContent.match(/^(.+?)(\s*\(.+\)\s*)$/);
+      if (pm) h.innerHTML = '📍 ' + esc(pm[1]) + '<span class="paren">' + esc(pm[2]) + '</span>';
+      else if (h.firstChild && h.firstChild.nodeType === 3 && !/^📍/.test(h.firstChild.data)) h.firstChild.data = '📍 ' + h.firstChild.data;
+    }
   });
   // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
   const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
