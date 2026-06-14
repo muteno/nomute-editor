@@ -271,15 +271,7 @@
   .bpop[hidden] { display:none; }
   .bpop b { font-size:13px; font-weight:800; color:var(--accent); }
   .bpop span { font-size:11.5px; color:var(--mut); line-height:1.5; }
-  /* T 이스터에그 — 카메라맨이 검색바 위를 통통 달림. 탭=찰칵 플래시. (transform=GPU 60fps) */
-  .egg { position:absolute; left:0; top:-20px; z-index:7; cursor:pointer; opacity:0; pointer-events:none; }
-  .egg.run { opacity:1; pointer-events:auto; animation:eggrun var(--egg-dur,6.5s) linear forwards; }
-  .egg .egg-in { animation:eggbob .42s ease-in-out infinite; transform-origin:bottom center; }
-  @keyframes eggrun { 0%{ transform:translateX(-44px); } 100%{ transform:translateX(calc(100vw + 44px)); } }
-  @keyframes eggbob { 0%,100%{ transform:translateY(0) rotate(-4deg); } 50%{ transform:translateY(-3px) rotate(4deg); } }
-  .egg-flash { position:fixed; inset:0; z-index:60; background:#fff; pointer-events:none; animation:eggflash .34s ease-out forwards; }
-  @keyframes eggflash { 0%{ opacity:.6; } 100%{ opacity:0; } }
-  @media (prefers-reduced-motion: reduce) { .banner, .egg.run, .egg .egg-in { animation:none; } .egg, .egg.run { opacity:0; pointer-events:none; } }
+  @media (prefers-reduced-motion: reduce) { .banner { animation:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
   .totop { position:fixed; right:18px; bottom:calc(80px + env(safe-area-inset-bottom)); z-index:34;
@@ -328,7 +320,10 @@
   dialog::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
-    padding:12px 16px; display:flex; gap:10px; align-items:center; }
+    padding:11px 16px 12px; display:flex; flex-direction:column; gap:11px; }
+  .dlg-top { display:flex; gap:10px; align-items:center; }
+  /* 모달 헤더 진행바 = 섹션 점프 nav(.prog 재사용·클릭=jumpTo). 비었으면 숨김. */
+  .dlg-prog:empty { display:none; }
   /* Y(개정2): 원문·닫기 = 깔끔한 소프트 글래스 원/알약. X=얇은 라인. */
   .dlg-h a, .dlg-h button { height:34px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center;
     background:rgba(255,255,255,.06); color:var(--mut); border:1px solid rgba(255,255,255,.12); border-radius:999px;
@@ -472,7 +467,6 @@
 <div class="filterbar">
   <div class="dhead"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-sep"></span><span class="dh-cnt" id="dhCnt"></span></div>
   <div class="bar">
-    <div class="egg" id="egg" aria-hidden="true"><div class="egg-in"><svg viewBox="0 0 54 34" width="44" height="28" fill="none" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><rect x="4" y="13" width="19" height="11" fill="#D9663C"/><rect x="6.5" y="11" width="14" height="2.4" fill="#D9663C"/><rect x="8.5" y="15.6" width="2.6" height="2.9" fill="#2a1610"/><rect x="15" y="15.6" width="2.6" height="2.9" fill="#2a1610"/><rect x="5.5" y="24" width="3" height="4.6" fill="#D9663C"/><rect x="10.3" y="24" width="3" height="4.6" fill="#D9663C"/><rect x="14.6" y="24" width="3" height="4.6" fill="#D9663C"/><rect x="19" y="24" width="3" height="4.6" fill="#D9663C"/><rect x="5.5" y="27.6" width="3" height="2" fill="#F7F1E6"/><rect x="10.3" y="27.6" width="3" height="2" fill="#F7F1E6"/><rect x="14.6" y="27.6" width="3" height="2" fill="#F7F1E6"/><rect x="19" y="27.6" width="3" height="2" fill="#F7F1E6"/><rect x="22" y="18.5" width="8" height="3" fill="#D9663C"/><rect x="31" y="9.6" width="6" height="3.2" fill="#33291f"/><rect x="29" y="12.6" width="18" height="11" fill="#2b2018" stroke="#D9663C" stroke-width="1.3"/><rect x="37.6" y="15.2" width="6.4" height="6.4" fill="#0e0c0a" stroke="#D9663C" stroke-width="1.2"/><rect x="39.8" y="17.4" width="2.2" height="2.2" fill="#F7F1E6"/><rect x="44.4" y="10.6" width="2.4" height="2.4" fill="#ff5b5b"/></svg></div></div>
     <input id="q" type="search" placeholder="Search">
     <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
   </div>
@@ -485,7 +479,7 @@
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <dialog id="dlg">
-  <div class="dlg-h"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
@@ -698,6 +692,16 @@ function open(a) {
   addCopyButtons(md);
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   cardSec(a);
+  // 모달 헤더 진행바 = 섹션 점프 nav(요약·프롬프트·카드). 모달 열린 상태라 jumpTo만(open 불필요).
+  const dp = $('#dlgprog');
+  if (dp) {
+    dp.innerHTML = progGauge(a);
+    dp.querySelectorAll('.seg[data-j]').forEach(s => {
+      const go = () => jumpTo(s.dataset.j);
+      s.onclick = go;
+      s.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+    });
+  }
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
   document.documentElement.style.overflow = 'hidden';   // PC: 모달 밖(백드롭) 스크롤 시 배경 페이지 스크롤 차단(#5)
@@ -1108,22 +1112,6 @@ document.addEventListener('click', e => {
   if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) bpop.hidden = true;
 });
 
-// T 이스터에그 — 카메라맨이 검색바 위를 달림(가끔). 탭=찰칵 플래시.
-const egg = $('#egg');
-function runEgg() {
-  if (!egg) return;
-  egg.style.setProperty('--egg-dur', (5 + Math.random() * 2.5).toFixed(1) + 's');
-  egg.classList.remove('run'); void egg.offsetWidth; egg.classList.add('run');
-}
-if (egg) {
-  egg.addEventListener('animationend', () => egg.classList.remove('run'));
-  egg.addEventListener('click', () => {
-    const f = document.createElement('div'); f.className = 'egg-flash'; document.body.appendChild(f);
-    setTimeout(() => f.remove(), 340);
-  });
-  setTimeout(runEgg, 2800);
-  setInterval(() => { if (document.visibilityState === 'visible' && Math.random() < .5) runEgg(); }, 42000);
-}
 
 load();
 loadMessages();
