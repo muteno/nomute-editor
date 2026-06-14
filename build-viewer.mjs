@@ -49,6 +49,7 @@ for (const f of files) {
       media: meta.media || '',
       bias: meta.bias || '',
       tags: meta.tags || '',
+      category: meta.category || '',   // 옛 큐 frontmatter category(있으면) — 뷰어 UI 5버킷 매핑용(C). 새 기사엔 없음.
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
       body,

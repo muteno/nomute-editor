@@ -157,11 +157,16 @@
   /* NMT 레일 → 진행바 세그먼트로 통합(A5). 카드 = 단일 컬럼. */
   .card { display:block; }
   .cardmain { min-width:0; }
-  /* #1 첫줄 = 보도일+시각(맨 위, 제목 위). 박스 없이 텍스트만, 오늘이면 강조색. */
-  .cardtop { font-size:11.5px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; }
-  .cardtop.today { color:var(--accent); font-weight:800; }
-  .row1 { display:block; }   /* NMT 레일 분리 → 제목 줄만 */
-  .card .t { font-weight:700; font-size:15px; line-height:1.45; letter-spacing:-.3px; display:inline; }
+  /* #1 첫줄 = IN(적재)·WRITE(보도) 두 날짜. WRITE 항상 강조(accent), IN은 오늘일 때만 강조(B). */
+  .cardtop { font-size:11.5px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; gap:13px; flex-wrap:wrap; }
+  .cardtop .dl { font-style:normal; opacity:.55; font-size:.82em; font-weight:700; margin-right:3px; letter-spacing:0; }
+  .cardtop .d-in { color:var(--mut); }
+  .cardtop .d-in.today { color:var(--accent); font-weight:800; }
+  .cardtop .d-wr { color:var(--accent); font-weight:800; }
+  .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
+  /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
+  .cat { flex:none; align-self:center; font-size:10.5px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
+  .card .t { flex:1; min-width:0; font-weight:700; font-size:15px; line-height:1.45; letter-spacing:-.3px; }
   /* (NMT 레일 제거 — 진행바 세그먼트로 통합. A5) */
   .card .s { color:var(--mut); font-size:13px; line-height:1.55; margin-top:6px;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -177,11 +182,9 @@
     box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
   .gauge i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#e8ff3d,var(--accent)); }
   .gauge.na { background:repeating-linear-gradient(135deg, rgba(15,253,2,.30) 0 4px, transparent 4px 9px); box-shadow:none; }
-  /* 민감 칸 태그 칩 — 개별 해시태그(#성범죄 등). 기본=정치/일반 muted */
-  .tagchip { font-size:10.5px; color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2);
-    border-radius:999px; padding:2px 8px; white-space:nowrap; line-height:1.4; }
-  /* 보호성 민감 태그 — 앰버 경고 틴트(과하지 않게, --bg 녹색과 충돌 회피) */
-  .tagchip.warn { color:#f0c050; border-color:rgba(240,200,80,.35); background:rgba(240,200,80,.08); }
+  /* 민감 키워드 = 박스 없이 흰 글자만(E). */
+  .tagchip { font-size:12.5px; color:var(--fg); white-space:nowrap; line-height:1.4; font-weight:600; }
+  .tagchip.warn { color:var(--fg); }
   /* 민감 없음(—) — muted, 칸 비지 않게 */
   .senshyphen { font-size:13px; font-weight:700; color:var(--mut); }
   /* 유형값 + 태그칩 묶음 — 한 줄에 흐르되 좁으면 줄바꿈 */
@@ -384,7 +387,7 @@
 <div class="filterbar">
   <div class="dhead"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-cnt" id="dhCnt"></span></div>
   <div class="bar">
-    <input id="q" type="search" placeholder="제목 검색">
+    <input id="q" type="search" placeholder="Search">
     <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
   </div>
 </div>
@@ -461,14 +464,14 @@ function render() {
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
-        <div class="cardtop${isToday(a.date)?' today':''}">${repDateTime(a)}</div>
-        <div class="row1"><span class="t"></span></div>
+        <div class="cardtop">${dateLine(a)}</div>
+        <div class="row1">${catChip(a.category)}<span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
           ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
           <div class="sensgrp">
             <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
-            ${a.bias?`<div><span>편향</span><b>${esc((a.bias||'').replace(BIAS_RE,'').trim())}</b>${gauge(a.bias)}</div>`:''}
+            ${a.bias?`<div><span>편향</span>${biasText(a.bias)}${gauge(a.bias)}</div>`:''}
           </div>
         </div>
         <div class="botrow">
@@ -547,6 +550,37 @@ function repDateTime(a) {
   const base = repDate(a.date);
   const t = (a.time || '').trim();
   return /^\d{1,2}:\d{2}$/.test(t) ? `${base} ${esc(t)}` : base;
+}
+// IN(적재) 날짜 — 파일명 YYMMDD-HHMM 파싱. WRITE는 repDateTime(a). (B)
+function inDateTime(a) {
+  const m = /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(a.file || '');
+  if (!m) return { txt: '', today: false };
+  const W = ['일','월','화','수','목','금','토'];
+  const d = new Date(2000 + +m[1], +m[2] - 1, +m[3]);
+  return { txt: `${+m[2]}/${+m[3]} (${W[d.getDay()]}) ${m[4]}:${m[5]}`, today: `${m[1]}${m[2]}${m[3]}` === todayYMD6() };
+}
+function dateLine(a) {
+  const inn = inDateTime(a);
+  const inHtml = inn.txt ? `<span class="d-in${inn.today ? ' today' : ''}"><i class="dl">IN</i>${esc(inn.txt)}</span>` : '';
+  return inHtml + `<span class="d-wr"><i class="dl">WRITE</i>${esc(repDateTime(a))}</span>`;
+}
+// 편향 색(D) — 약우=연파랑·우=파랑·약좌=연빨강·좌=빨강·중립=연강조. 좌우무관 → "무관".
+const BIAS_COLOR = { '약우':'#8fb4ff', '우':'#5b8fff', '약좌':'#ff9d9d', '좌':'#ff6b6b', '중립':'#74e89a' };
+function biasText(bias) {
+  const s = (bias || '').replace(BIAS_RE, '').trim();
+  if (!s) return '';
+  if (/무관|N\s*\/?\s*A/i.test(s)) return `<b class="bias" style="color:var(--mut)">무관</b>`;
+  let col = 'var(--fg)';
+  for (const k of ['약우','약좌','중립','우','좌']) if (s.includes(k)) { col = BIAS_COLOR[k]; break; }
+  return `<b class="bias" style="color:${col}">${esc(s)}</b>`;
+}
+// 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
+const CAT_MAP = { '사회':'사회','정치':'사회','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };
+const CAT_COLOR = { '사회':'#7fd0a0','경제':'#e7c977','국제':'#b79be8','문화':'#e89bc4','테크':'#7fc8d8' };
+function catBucket(cat) { const c = (cat || '').trim(); return CAT_MAP[c] || (['사회','경제','문화','국제','테크'].includes(c) ? c : ''); }
+function catChip(cat) {
+  const b = catBucket(cat); if (!b) return '';
+  return `<span class="cat" style="color:${CAT_COLOR[b]}">${esc(b)}</span>`;
 }
 
 function open(a) {
