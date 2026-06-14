@@ -136,11 +136,12 @@ import re, sys
 t = re.sub(r'^title:\s*\"?|\"\s*$', '', sys.stdin.read().strip())
 t = re.sub(r'[^0-9A-Za-z가-힣]+', '_', t)[:16].strip('_')
 print(t or 'news')")"
-    if python3 .github/scripts/drive_cards.py --md "cards/$stem/cards.md" --topic "$topic" --out "cards/$stem"; then
-      state="done"
-    else
-      state="fired_partial"   # 발사됐으나 대기시간 내 미완/일부 — Drive에서 마저 생성될 수 있음
-    fi
+    # 실패 로직 — drive_cards.py exit코드 분기:
+    #   0=done · 2=fired_partial(발사 OK·시간 내 미완, Drive엔 계속 생성→나중 재회수) · 그 외(1/크래시)=failed(하드 에러: 인증·403·업로드 실패→재시도)
+    python3 .github/scripts/drive_cards.py --md "cards/$stem/cards.md" --topic "$topic" --out "cards/$stem"; rc=$?
+    if   [ "$rc" -eq 0 ]; then state="done"
+    elif [ "$rc" -eq 2 ]; then state="fired_partial"
+    else state="failed"; fi
   fi
   status_json "cards/$stem" "$state" "$pv"
   commit_push "cards: $stem ($state)"
