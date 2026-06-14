@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a120d">
 <title>노뮤트 뉴스 큐레이션</title>
-<link rel="icon" type="image/jpeg" href="assets/brand/main_profile.jpg">
-<link rel="apple-touch-icon" href="assets/brand/main_profile.jpg">
+<!-- 파비콘 = 💕 이모지(시스템 이모지 폰트로 렌더 → 두부 방지). 인라인 SVG data-uri -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E%F0%9F%92%95%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20180%20180'%3E%3Crect%20width='180'%20height='180'%20fill='%230a120d'/%3E%3Ctext%20x='90'%20y='96'%20font-size='118'%20text-anchor='middle'%20dominant-baseline='central'%3E%F0%9F%92%95%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
@@ -53,6 +55,41 @@
   .profile img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
   .profile:hover { transform:translateY(-2px) scale(1.03); }
   .profile:active { transform:scale(.97); }
+  /* 메시지 1개+ 일 때만: 프로필 둘레 아주 얇고 은은한 강조 테두리 + 숫자 배지(0이면 둘 다 숨김) */
+  .profile.hasmsg { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.5px rgba(15,253,2,.55), 0 0 10px rgba(15,253,2,.28); }
+  .pbadge { position:absolute; top:-5px; right:-5px; z-index:7; min-width:18px; height:18px; padding:0 5px;
+    display:none; align-items:center; justify-content:center; border-radius:999px;
+    font:800 11px/1 "Pretendard Variable", Pretendard, sans-serif; color:var(--on-accent);
+    background:linear-gradient(135deg,#d8ff3d,var(--accent)); border:1.5px solid var(--bg);
+    box-shadow:0 2px 6px rgba(0,0,0,.4); }
+  .profile.hasmsg .pbadge { display:flex; }
+
+  /* ── 메시지 팝업(프로필 근처) ── */
+  .msgpop { position:absolute; right:24px; top:46px; z-index:21; width:min(300px,82vw);
+    background:linear-gradient(165deg, rgba(24,40,29,.96), rgba(12,21,15,.97));
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--line); border-radius:16px; padding:6px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55); transform-origin:top right;
+    animation:popIn .16s cubic-bezier(.22,.61,.36,1) both; }
+  .msgpop[hidden] { display:none; }
+  .msgpop .mh { display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
+  .msgpop .mh b { font-size:13px; font-weight:800; }
+  .msgpop .mh .mc { font-size:11px; color:var(--mut); }
+  .msgpop .mh .mx { margin-left:auto; width:26px; height:26px; flex:none; display:grid; place-items:center;
+    background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:8px;
+    font:inherit; font-size:14px; cursor:pointer; }
+  .msgpop .mh .mx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .msglist { max-height:46vh; overflow:auto; padding:2px; }
+  .msgitem { padding:9px 10px; border-radius:10px; }
+  .msgitem + .msgitem { border-top:1px solid var(--line2); }
+  .msgitem .mt { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+  .msgitem .md8 { font-size:11px; color:var(--mut); margin-top:4px; }
+  .msgempty { padding:18px 12px; text-align:center; color:var(--mut); font-size:12px; }
+
+  /* ── 지침 버전 칩(요약·카드 phase 헤더 옆) — 기사가 어떤 지침으로 갱신됐는지 표식 ── */
+  .gvchip { display:inline-block; font:700 10px/1 "Pretendard Variable", Pretendard, monospace;
+    color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2);
+    border-radius:999px; padding:3px 8px; letter-spacing:.02em; white-space:nowrap; flex:none; }
   .pmenu { position:absolute; right:24px; top:46px; z-index:20; min-width:170px;
     background:linear-gradient(165deg, rgba(24,40,29,.96), rgba(12,21,15,.97));
     backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
@@ -291,12 +328,17 @@
 
 <div class="topbanner">
   <img class="banner" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL">
-  <button class="profile" id="profile" aria-label="프로필 메뉴"><img src="assets/brand/main_profile.jpg" alt="프로필"></button>
+  <button class="profile" id="profile" aria-label="프로필 메뉴"><img src="assets/brand/main_profile.jpg" alt="프로필"><span class="pbadge" id="pbadge"></span></button>
   <div class="pmenu" id="pmenu" hidden>
     <div class="pname">노뮤트</div>
     <div class="psub">뉴스 큐레이션</div>
     <a href="https://nomute.kr" target="_blank" rel="noopener">노뮤트 홈 ↗</a>
+    <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
     <button id="refresh">새로고침</button>
+  </div>
+  <div class="msgpop" id="msgpop" hidden>
+    <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기">✕</button></div>
+    <div class="msglist" id="msglist"></div>
   </div>
 </div>
 
@@ -421,6 +463,7 @@ function open(a) {
   md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
   decorate(md);
   addCopyButtons(md);
+  gvChip($('#ph-sum').querySelector('summary'), a.guidelines_version);   // 요약 = 어떤 지침 버전으로 갱신됐는지
   cardSec(a);
   updateJump();
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
@@ -539,6 +582,7 @@ function cardSec(a) {
   const sumlabel = { '':'카드뉴스', generating:'🍌 카드뉴스 — 프롬프팅 중…', text_done:'카드뉴스 — 텍스트·프롬프트',
     done:'카드뉴스 — 완성', fired_partial:'🚀 카드뉴스 — 발사됨', failed:'⚠️ 카드뉴스 — 실패' };
   const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '카드뉴스';
+  gvChip(cs, c.guidelines_version);   // 카드 = 어떤 지침 버전으로 갱신됐는지(요약 해시와 다른 게 정상)
 
   if (!st || st === 'failed') {
     if (st === 'failed') sec.insertAdjacentHTML('beforeend',
@@ -655,11 +699,59 @@ function updateJump() {
 }
 const esc = s => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
+// 지침 버전 칩 — phase summary 옆에 작은 칩. 기존 칩 제거 후, 값 있을 때만 단다.
+function gvChip(summary, ver) {
+  if (!summary) return;
+  const old = summary.querySelector('.gvchip'); if (old) old.remove();
+  if (!ver) return;
+  const sp = document.createElement('span');
+  sp.className = 'gvchip'; sp.textContent = '지침 ' + ver.slice(0, 7);
+  sp.title = '이 단계가 갱신된 지침 버전: ' + ver;
+  summary.appendChild(sp);   // summary는 flex(::after ▾가 margin-left:auto로 우측 고정) → 칩은 텍스트 뒤
+}
+
+// ── 알림·메시지 ──
+let MSGS = [];
+async function loadMessages() {
+  try {
+    const r = await fetch('messages.json?_=' + Date.now());
+    MSGS = await r.json();
+    if (!Array.isArray(MSGS)) MSGS = [];
+  } catch { MSGS = []; }   // 없으면 조용히 빈 배열(배지·테두리 숨김)
+  renderMsgBadge();
+}
+function renderMsgBadge() {
+  const n = MSGS.length;
+  const prof = $('#profile'), badge = $('#pbadge');
+  if (prof) prof.classList.toggle('hasmsg', n > 0);
+  if (badge) badge.textContent = n > 99 ? '99+' : String(n);
+  const bc = $('#msgbtncnt'); if (bc) bc.textContent = n ? `(${n})` : '';
+}
+function renderMsgList() {
+  const cnt = $('#msgpopcnt'); if (cnt) cnt.textContent = MSGS.length ? `${MSGS.length}건` : '';
+  const list = $('#msglist'); if (!list) return;
+  if (!MSGS.length) { list.innerHTML = '<div class="msgempty">새 메시지 없음</div>'; return; }
+  list.innerHTML = '';
+  MSGS.forEach(m => {
+    const it = document.createElement('div'); it.className = 'msgitem';
+    const t = document.createElement('div'); t.className = 'mt'; t.textContent = m.text || '';
+    it.appendChild(t);
+    if (m.ts) { const d = document.createElement('div'); d.className = 'md8'; d.textContent = m.ts; it.appendChild(d); }
+    list.appendChild(it);
+  });
+}
+
 // 프로필 메뉴
 const pmenu = $('#pmenu');
-$('#profile').addEventListener('click', e => { e.stopPropagation(); pmenu.hidden = !pmenu.hidden; });
-document.addEventListener('click', e => { if (!pmenu.hidden && !pmenu.contains(e.target)) pmenu.hidden = true; });
-$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); });
+const msgpop = $('#msgpop');
+$('#profile').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; pmenu.hidden = !pmenu.hidden; });
+document.addEventListener('click', e => {
+  if (!pmenu.hidden && !pmenu.contains(e.target) && !$('#profile').contains(e.target)) pmenu.hidden = true;
+  if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
+});
+$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); });
+$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); pmenu.hidden = true; renderMsgList(); msgpop.hidden = false; });
+$('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
 $('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
@@ -679,8 +771,9 @@ window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
 $('#q').addEventListener('input', render);
 $('#cat').addEventListener('change', render);
 $('#cardonly').addEventListener('change', render);
-setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);
+setInterval(() => { if (document.visibilityState === 'visible') { load(); loadMessages(); } }, 60000);
 load();
+loadMessages();
 </script>
 </body>
 </html>

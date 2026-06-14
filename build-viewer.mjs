@@ -6,6 +6,8 @@ import { join } from 'node:path';
 
 const QUEUE = 'queue';
 const OUT = 'viewer/articles.json';
+const MSG_DIR = 'messages';
+const MSG_OUT = 'viewer/messages.json';
 
 // 브랜드 자산(정본 assets/brand/) → 뷰어 서빙 경로 복사(Pages output = viewer 한정)
 try { cpSync('assets/brand', 'viewer/assets/brand', { recursive: true }); } catch { /* 자산 없음 */ }
@@ -92,3 +94,40 @@ articles.sort((a, b) => (a.file < b.file ? 1 : a.file > b.file ? -1 : 0));
 
 writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString(), count: articles.length, articles }, null, 2));
 console.log(`viewer/articles.json 생성 — ${articles.length}건`);
+
+// ── 알림·메시지: messages/*.md|json → viewer/messages.json (최신순 [{id, ts, text}]) ──
+// 저장은 git 누적(messages/ 에 파일로 쌓임). 비어 있으면 [] 로 둔다(뷰어가 조용히 배지·테두리 숨김).
+// .md = 프론트매터 text/ts/id(없으면 본문 전체가 text) · .json = {id,ts,text} 또는 그 배열.
+const messages = [];
+let msgFiles = [];
+try {
+  // README/숨김파일은 메시지가 아님 — 제외
+  msgFiles = readdirSync(MSG_DIR).filter(f => /\.(md|json)$/i.test(f) && !/^(README|\.)/i.test(f));
+} catch { /* messages 디렉터리 없음 */ }
+for (const f of msgFiles) {
+  try {
+    const raw = readFileSync(join(MSG_DIR, f), 'utf8');
+    if (/\.json$/i.test(f)) {
+      const parsed = JSON.parse(raw);
+      for (const m of (Array.isArray(parsed) ? parsed : [parsed])) {
+        const text = (m && m.text != null) ? String(m.text).trim() : '';
+        if (!text) continue;
+        messages.push({ id: m.id != null ? String(m.id) : f, ts: m.ts != null ? String(m.ts) : '', text });
+      }
+    } else {
+      const { meta, body } = parseFrontmatter(raw);
+      const text = (meta.text || body || '').trim();
+      if (!text) continue;
+      messages.push({ id: meta.id || f.replace(/\.md$/i, ''), ts: meta.ts || meta.date || '', text });
+    }
+  } catch (e) {
+    console.warn(`skip message ${f}: ${e.message}`);
+  }
+}
+// 최신순: ts 내림차순(있을 때) → 없으면 id(파일명 보통 시간접두) 내림차순
+messages.sort((a, b) => {
+  const t = (b.ts || '').localeCompare(a.ts || '');
+  return t !== 0 ? t : (b.id || '').localeCompare(a.id || '');
+});
+writeFileSync(MSG_OUT, JSON.stringify(messages, null, 2));
+console.log(`viewer/messages.json 생성 — ${messages.length}건`);
