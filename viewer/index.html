@@ -389,6 +389,9 @@
     padding:14px 44px 14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
+  /* 복사박스 강조점 — *문구*/**문구** 마커: 안쪽 문구=강조색, * 자체는 흐리게. 복사는 innerText라 *…* 원문 보존. */
+  .md pre code .cem { color:var(--mut); opacity:.5; }
+  .md pre code .cem i { color:var(--accent); font-style:normal; font-weight:700; opacity:1; }
   /* 복사 = 아이콘 버튼(진회색 일괄·I). 누르면 ✓ 잠깐 초록 피드백. */
   .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
     color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer;
@@ -719,6 +722,11 @@ function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code');
     pre.appendChild(copyBtn(() => code ? code.innerText : pre.innerText, '복사'));
+    // 강조점 하이라이트: *문구*/**문구** → 강조색(코드블록만·버튼은 pre라 무영향). 복사=innerText라 *…* 원문 그대로.
+    if (code && !code.dataset.hl) {
+      code.dataset.hl = '1';
+      code.innerHTML = code.innerHTML.replace(/(\*{1,2})([^*\n<>]+?)(\*{1,2})/g, '<span class="cem">$1<i>$2</i>$3</span>');
+    }
   });
 }
 
