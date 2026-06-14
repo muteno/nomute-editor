@@ -617,11 +617,16 @@ const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 async function copyText(text, btn) {
   text = (text || '').replace(/\n+$/, '');
-  try { await navigator.clipboard.writeText(text); }
-  catch {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {   // 폴백: 모달(showModal)은 dialog 밖이 inert → textarea를 #dlg 안에 두고 선택영역 명시
     const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    $('#dlg').appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+    $('#dlg').appendChild(ta); ta.focus(); ta.select();
+    try { ta.setSelectionRange(0, text.length); } catch {}
+    try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
   }
   if (btn) { btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
     setTimeout(() => { btn.innerHTML = COPY_SVG; btn.classList.remove('ok'); }, 1500); }
