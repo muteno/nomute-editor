@@ -99,9 +99,8 @@
   .dh-date { color:var(--accent); font-weight:800; letter-spacing:-.1px; }
   .dh-sep { width:1px; height:14px; background:var(--line); }
   .dh-cnt { color:var(--mut); } .dh-cnt b { color:var(--accent); font-weight:800; }
-  /* 오늘 들어온 기사 New 배지 */
-  .badge-new { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.04em; line-height:1.4;
-    color:var(--on-accent); background:linear-gradient(90deg,#d8ff3d,var(--accent)); border-radius:999px; padding:2px 8px; margin-bottom:5px; }
+  /* 드래프트 헤더의 글자수 메타(— 약 N자) 미강조 */
+  .cnt { color:var(--mut); font-weight:400; font-size:.92em; }
 
   /* ── 기사 카드 ── */
   #list { margin-top:14px; }
@@ -337,14 +336,11 @@ function render() {
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
   list.innerHTML = '';
-  const today6 = todayYMD6();
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     const col = CAT_COLOR[a.category] || 'var(--mut)';
-    const isNew = (a.file||'').slice(0,6) === today6;        // 오늘(자정 기준) 들어온 기사
     c.innerHTML = `
-      ${isNew?`<span class="badge-new">New</span>`:''}
       ${a.category?`<div class="cat" style="color:${col}">${esc(a.category)}</div>`:''}
       <div class="row1"><div class="t"></div><span class="go">↗</span></div>
       <div class="s"></div>
@@ -383,7 +379,7 @@ function open(a) {
   addCopyButtons(md);
   cardSec(a);
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
-  $('#dlg').showModal();
+  const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
   // #src(원문) 링크가 모달 첫 focusable이라 showModal이 auto-focus → 브라우저가 좌하단 상태바에
   // 그 링크 URL을 노출함. 닫기 버튼으로 포커스를 옮겨 차단.
   const cb = $('#dlg').querySelector('.dlg-h button'); if (cb) cb.focus();
@@ -424,7 +420,7 @@ function addClip(pre) {
 }
 
 // 다이제스트 후처리: [썸네일] 섹션 제거 · 헤더 이모지 strip(💡 시사점 유지) · 편향 색도형 strip · 키워드 강조 · 드래프트 더보기
-const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜]/gu;
+const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅]/gu;
 const KW_RE = /(약보수 보정|앵글 후보|[가-힣A-Za-z0-9]{1,8} ?관점)/g;
 function decorate(root) {
   // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
@@ -434,11 +430,13 @@ function decorate(root) {
     while (n && !/^H[1-3]$/.test(n.tagName)) { const k = n; n = n.nextElementSibling; k.remove(); }
     h.remove();
   });
-  // 2) 섹션 헤더 이모지 strip(시사점 💡만 유지) — 헤더는 순수 텍스트노드
+  // 2) 섹션 헤더 이모지 strip(시사점 💡만 유지) + 드래프트 글자수 메타(— 약 N자) 미강조
   root.querySelectorAll('h2, h3').forEach(h => {
     if (/시사점/.test(h.textContent)) return;
     if (h.firstChild && h.firstChild.nodeType === 3)
       h.firstChild.data = h.firstChild.data.replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '');
+    const m = h.textContent.match(/^(.*?)(\s*[—\-]\s*약\s*[\d/]+\s*자.*)$/);
+    if (m) h.innerHTML = esc(m[1]) + '<span class="cnt">' + esc(m[2]) + '</span>';
   });
   // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
   const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -456,8 +454,12 @@ function decorate(root) {
       else frag.append(document.createTextNode(p)); });
     n.replaceWith(frag);
   });
-  // 4) 요약 드래프트(자유요약·IG·Thread 등 pre) 더보기/접기
-  root.querySelectorAll('pre').forEach(addClip);
+  // 4) 요약 드래프트 더보기/접기 — '자유요약'만 클립(IG·Thread는 전체 표시)
+  root.querySelectorAll('pre').forEach(pre => {
+    let h = pre.previousElementSibling;
+    while (h && !/^H[1-3]$/.test(h.tagName)) h = h.previousElementSibling;
+    if (h && /자유요약/.test(h.textContent)) addClip(pre);
+  });
 }
 
 // ── 카드뉴스 섹션 ──
