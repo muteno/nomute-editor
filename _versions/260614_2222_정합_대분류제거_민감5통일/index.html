@@ -160,7 +160,9 @@
   /* #1 첫줄 = 보도일+시각(맨 위, 제목 위). 박스 없이 텍스트만, 오늘이면 강조색. */
   .cardtop { font-size:11.5px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; }
   .cardtop.today { color:var(--accent); font-weight:800; }
-  .row1 { display:block; }   /* NMT 레일 분리 → 제목 줄만 */
+  /* #2 대분류 = 제목 좌측 인라인(색라벨 + 제목). 폰트·색 유지. */
+  .cat { font-size:11px; font-weight:800; letter-spacing:.03em; margin-right:6px; white-space:nowrap; }
+  .row1 { display:block; }   /* NMT 레일 분리 → 제목 줄만(인라인 .cat 포함) */
   .card .t { font-weight:700; font-size:15px; line-height:1.45; letter-spacing:-.3px; display:inline; }
   /* #3 카드 셀 N·M·T 네비 — 카드 우측 세로 레일. 작은 글래스 버튼 3개 세로 스택. 클릭=모달 열고 해당 섹션 점프(#7) */
   .nmt { flex:none; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:flex-start;
@@ -394,6 +396,16 @@
   <div class="dhead"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-cnt" id="dhCnt"></span></div>
   <div class="bar">
     <input id="q" type="search" placeholder="제목 검색">
+    <select id="cat">
+      <option value="">전체 분류</option>
+      <option value="정치">정치</option>
+      <option value="경제">경제</option>
+      <option value="사회">사회</option>
+      <option value="국제">국제</option>
+      <option value="문화">문화</option>
+      <option value="과학·테크">과학·테크</option>
+      <option value="정보">정보</option>
+    </select>
     <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
   </div>
 </div>
@@ -435,9 +447,15 @@ let CUR = '';
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
-// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 5개. 전부 보호성 → 앰버 경고 틴트(.warn).
-// (대분류·정치민감 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
-const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모'];
+// 7 큐레이션 분류 — 글자색만 다르게(도형 X). '테크'→'과학·테크' 개명(색 승계)·'정보' 신설.
+const CAT_COLOR = {
+  정치:'#ff6b6b', 경제:'#36e0a0', 사회:'#4db8ff', 국제:'#ffb84d', 문화:'#ff7bd5',
+  '과학·테크':'#9b8cff', 정보:'#7fd4c4',
+  테크:'#9b8cff',   // 구키 alias — 옛 큐 기사(category:"테크") 색 빠짐 방지
+};
+// 민감 태그 2계열 — 보호성(앰버 경고 틴트) / 정치(중립 muted)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동·청소년','#동물학대','#마약','#살인·잔혹'];
+const SENS_POLITIC = ['#북한','#중국','#부정선거','#정부','#노조','#다양성'];
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 
@@ -458,8 +476,10 @@ async function load() {
 
 function render() {
   const q = $('#q').value.trim().toLowerCase();
+  const cat = $('#cat').value;
   const cardonly = $('#cardonly').checked;
   const rows = DATA.filter(a =>
+    (!cat || (a.category||'') === cat) &&
     (!cardonly || hasCardImage(a)) &&
     (!q || (a.title+a.media).toLowerCase().includes(q)));
   const list = $('#list');
@@ -468,10 +488,11 @@ function render() {
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
+    const col = CAT_COLOR[a.category] || 'var(--mut)';
     c.innerHTML = `
       <div class="cardmain">
         <div class="cardtop${isToday(a.date)?' today':''}">${repDateTime(a)}</div>
-        <div class="row1"><span class="t"></span></div>
+        <div class="row1">${a.category?`<span class="cat" style="color:${col}">${esc(a.category)}</span>`:''}<span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
           ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
@@ -513,8 +534,8 @@ function nmtNav() {
     <button type="button" data-j="t" aria-label="카드 이미지로">T</button>
   </div>`;
 }
-// 민감 태그 → 개별 칩. "#성범죄 #자살자해" 공백 split. "해당 없음"/빈값이면 muted '—'.
-// 본체 5개(SENS_PROTECT)=앰버 경고 틴트(.warn). 목록 외(옛 큐 잔여 태그)=기본 muted.
+// #6 민감 태그 → 개별 칩. "#성범죄 #자살자해" 공백 split. "해당 없음"/빈값이면 muted '—'.
+// 보호성(SENS_PROTECT)=앰버 경고 틴트(.warn), 정치(SENS_POLITIC) 및 목록 외=기본 muted.
 function sensChips(tags) {
   if (!tags || tags === '해당 없음') return '<b class="senshyphen">—</b>';
   const arr = tags.split(/\s+/).filter(Boolean);
@@ -938,6 +959,7 @@ const fadeTop = () => { totop.style.opacity = window.scrollY > 240 ? '1' : '.45'
 window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
 
 $('#q').addEventListener('input', render);
+$('#cat').addEventListener('change', render);
 $('#cardonly').addEventListener('change', render);
 setInterval(() => { if (document.visibilityState === 'visible') { load(); loadMessages(); } }, 60000);
 load();
