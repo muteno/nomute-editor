@@ -389,6 +389,9 @@
     padding:14px 44px 14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
+  /* 복사박스 강조점 — *문구*/**문구** 마커: 안쪽 문구=강조색, * 자체는 흐리게. 복사는 innerText라 *…* 원문 보존. */
+  .md pre code .cem { color:var(--mut); opacity:.5; }
+  .md pre code .cem i { color:var(--accent); font-style:normal; font-weight:700; opacity:1; }
   /* 복사 = 아이콘 버튼(진회색 일괄·I). 누르면 ✓ 잠깐 초록 피드백. */
   .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
     color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer;
@@ -467,7 +470,7 @@
     <a href="https://nomute.kr" target="_blank" rel="noopener">Home ↗</a>
     <a href="https://instagram.com/no_mute" target="_blank" rel="noopener">Instagram ↗</a>
     <a href="https://www.threads.com/?hl=ko" target="_blank" rel="noopener">Thread ↗</a>
-    <a href="https://x.com/home" target="_blank" rel="noopener">X ↗</a>
+    <a href="https://x.com/NOMUTE" target="_blank" rel="noopener">X ↗</a>
     <a href="https://www.facebook.com/" target="_blank" rel="noopener">Facebook ↗</a>
     <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
   </div>
@@ -520,10 +523,10 @@
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
 <nav class="bnav" id="bnav">
   <button class="bnav-i active" data-tab="main" aria-label="메인"><svg viewBox="0 0 24 24"><path d="M3 10.6 12 3l9 7.6"/><path d="M5.5 9.4V20h13V9.4"/><path d="M9.5 20v-5.5h5V20"/></svg><span>메인</span></button>
-  <a class="bnav-i" href="https://instagram.com/no_mute" target="_blank" rel="noopener" aria-label="인스타그램"><svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="13.5" rx="4"/><circle cx="12" cy="13.2" r="3.8"/><circle cx="17.2" cy="9.6" r="1.05" fill="currentColor" stroke="none"/></svg><span>인스타</span></a>
+  <a class="bnav-i" href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="인스타그램"><svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="13.5" rx="4"/><circle cx="12" cy="13.2" r="3.8"/><circle cx="17.2" cy="9.6" r="1.05" fill="currentColor" stroke="none"/></svg><span>인스타</span></a>
   <a class="bnav-fab" href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener" aria-label="지면뉴스"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
-  <a class="bnav-i" href="https://www.threads.net/@no_mute" target="_blank" rel="noopener" aria-label="스레드"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M15 12v1.6a2.2 2.2 0 0 0 4.4 0 7.8 7.8 0 1 0-2.4 5.5"/></svg><span>스레드</span></a>
-  <a class="bnav-i" href="https://x.com/no_mute" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg><span>X</span></a>
+  <a class="bnav-i" href="https://www.threads.net/" target="_blank" rel="noopener" aria-label="스레드"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M15 12v1.6a2.2 2.2 0 0 0 4.4 0 7.8 7.8 0 1 0-2.4 5.5"/></svg><span>스레드</span></a>
+  <a class="bnav-i" href="https://x.com/home" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg><span>X</span></a>
 </nav>
 <div class="bpop" id="bpop" hidden></div>
 
@@ -719,6 +722,11 @@ function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code');
     pre.appendChild(copyBtn(() => code ? code.innerText : pre.innerText, '복사'));
+    // 강조점 하이라이트: *문구*/**문구** → 강조색(코드블록만·버튼은 pre라 무영향). 복사=innerText라 *…* 원문 그대로.
+    if (code && !code.dataset.hl) {
+      code.dataset.hl = '1';
+      code.innerHTML = code.innerHTML.replace(/(\*{1,2})([^*\n<>]+?)(\*{1,2})/g, '<span class="cem">$1<i>$2</i>$3</span>');
+    }
   });
 }
 
