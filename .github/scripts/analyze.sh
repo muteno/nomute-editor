@@ -39,10 +39,21 @@ for f in "${files[@]}"; do
     echo "::endgroup::"; continue
   fi
 
-  # 900s — 큐레이션 다이제스트 + 콘텐츠 초안(자유요약·IG·Thread·썸네일·시사점)까지 생성(260612 확장)
-  out="$(timeout 900 claude -p "$(cat "$PROMPT_FILE")
+  # 인코딩 정규화 사전 추출 — 네이트(news.nate.com) 등 EUC-KR 매체를 모델 WebFetch 가
+  # UTF-8 로 오독해 본문이 깨지는(���) 문제를 입구에서 차단. 빈약/실패면 빈 문자열 → 모델 WebFetch 폴백.
+  extracted="$(bash .github/scripts/fetch_article.sh "$url" 2>/dev/null || true)"
+  prompt="$(cat "$PROMPT_FILE")
 
-분석할 기사 URL: ${url}" \
+분석할 기사 URL: ${url}"
+  if [ -n "${extracted// }" ]; then
+    prompt="${prompt}
+
+[사전 추출 본문 — 페이지 인코딩 정규화 완료(EUC-KR 등 → UTF-8). 이 텍스트를 1차 사실 출처로 삼아라. 부족하거나 검증이 필요하면 WebFetch/WebSearch 로 보강·교차확인하되, 추출이 충분하면 그대로 써도 된다]:
+${extracted}"
+  fi
+
+  # 900s — 큐레이션 다이제스트 + 콘텐츠 초안(자유요약·IG·Thread·썸네일·시사점)까지 생성(260612 확장)
+  out="$(timeout 900 claude -p "$prompt" \
         --model "$MODEL" \
         --allowedTools "WebFetch,WebSearch" \
         2> "/tmp/${base}.err")"
