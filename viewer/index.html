@@ -158,7 +158,8 @@
 
   /* 모달 섹션 바로가기 — 세로 N/M/T(노뮤트). dialog 안이라 모달 열렸을 때만 표시. */
   .jump { position:fixed; top:50%; transform:translateY(-50%); z-index:40;
-    right:calc((100vw - min(820px, 94vw)) / 2 + 8px);
+    /* 다이얼로그 바깥 오른쪽 거터에 둠 — 본문 위로 안 겹침(거터 좁으면 화면 우측 끝 클램프) */
+    right:max(6px, calc((100vw - min(820px, 94vw)) / 2 - 50px));
     display:flex; flex-direction:column; border-radius:15px; overflow:hidden;
     background:linear-gradient(165deg, rgba(24,40,29,.66), rgba(12,21,15,.74));
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
@@ -170,7 +171,10 @@
   .jump button:hover { color:var(--fg); background:rgba(255,255,255,.05); }
   .jump button:active { color:var(--accent); background:var(--accent-dim); text-shadow:0 0 12px rgba(15,253,2,.45); }
   .jump button:disabled { opacity:.28; pointer-events:none; }
-  @media (max-width:640px) { .jump { right:8px; } }
+  /* 거터 좁은 화면(모바일·태블릿) = 본문 옆 공간 없음 → 우하단 코너로 내려 세로 유지(가운데 본문 안 가림) */
+  @media (max-width:980px) {
+    .jump { top:auto; bottom:calc(6vh + 12px); transform:none; right:10px; opacity:.94; }
+  }
 
   /* ── 다이얼로그 ── */
   dialog {
@@ -194,7 +198,13 @@
   .md h3 { font-size:13px; color:var(--mut); margin:18px 0 6px; font-weight:700; }
   /* 다이제스트(요약) — 기사 제목 강조 + 섹션마다 구분선·상하 간격·강조색(아래 카드처럼) */
   /* 대주제 = 상단 기사 제목(썸네일) = 카드뉴스 제목 동일 + 복사 가능 */
-  #mdbody h1, #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:4px 0 12px; padding-right:40px; }
+  /* 상단 기사 제목(요약) = 평범한 제목 — 복사 버튼 없음(#3) */
+  #mdbody h1 { font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; }
+  /* 카드뉴스 제목 = 드래프트 박스처럼 테두리·배경 있는 복사 블록(한눈에 '복사 영역') */
+  #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px;
+    margin:6px 0 14px; padding:13px 46px 13px 15px;
+    background:rgba(5,12,8,.55); border:1px solid var(--line2); border-radius:16px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   #mdbody h2, #mdbody h3 { color:var(--accent); border-top:1px solid var(--line2); border-bottom:none;
     padding-top:16px; margin:22px 0 8px; font-weight:800; letter-spacing:-.2px; }
   #mdbody h2 { font-size:14px; } #mdbody h3 { font-size:13.5px; }
@@ -204,10 +214,14 @@
   #cardsec p.lbl::before { content:'• '; color:var(--mut); font-weight:700; }
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
+  /* 앵글 후보 ①② = 배지 도형(번호 포함 #4) */
+  .angle { display:inline-block; padding:1px 9px; border-radius:999px; font-weight:800; font-size:.92em;
+    color:var(--accent); background:var(--accent-dim); border:1px solid var(--line); white-space:nowrap; }
   .md a { color:var(--accent); } .md ul { padding-left:18px; }
   .md code { background:rgba(5,12,8,.55); padding:1px 5px; border-radius:6px; }
+  /* 첫 줄이 바로 위에서 시작 — 복사 아이콘은 오른쪽 거터(44px)에 둠(위 빈 줄 제거 #7) */
   .md pre { position:relative; background:rgba(5,12,8,.55); border:1px solid var(--line2); border-radius:16px;
-    padding:32px 15px 14px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+    padding:14px 44px 14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
   /* 복사 = 아이콘 버튼(강조색 오버레이, 누르면 반응형) */
@@ -411,6 +425,7 @@ function open(a) {
   updateJump();
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
+  document.documentElement.style.overflow = 'hidden';   // PC: 모달 밖(백드롭) 스크롤 시 배경 페이지 스크롤 차단(#5)
   // #src(원문) 링크가 모달 첫 focusable이라 showModal이 auto-focus → 브라우저가 좌하단 상태바에
   // 그 링크 URL을 노출함. 닫기 버튼으로 포커스를 옮겨 차단.
   const cb = $('#dlg').querySelector('.dlg-h button'); if (cb) cb.focus();
@@ -450,7 +465,7 @@ function addClip(pre) {
 
 // 다이제스트 후처리: [썸네일] 섹션 제거 · 헤더 이모지 strip(💡 시사점 유지) · 편향 색도형 strip · 키워드 강조 · 드래프트 더보기
 const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅]/gu;
-const KW_RE = /(약보수 보정|앵글 후보|[가-힣A-Za-z0-9]{1,8} ?관점)/g;
+const KW_RE = /(앵글 후보\s*[①-⑳0-9]*|약보수 보정|[가-힣A-Za-z0-9]{1,8} ?관점)/g;
 function decorate(root) {
   // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
   root.querySelectorAll('h3').forEach(h => {
@@ -487,8 +502,12 @@ function decorate(root) {
     const frag = document.createDocumentFragment();
     parts.forEach((p, i) => { if (!p) return;
       if (i % 2) {
-        if (/^약보수 보정/.test(p)) frag.append(document.createElement('br'));   // '약보수 보정'은 항상 줄바꿈
-        const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = p; frag.append(sp);
+        if (/^앵글 후보/.test(p)) {                                                  // 앵글 후보 ①② = 배지 도형(번호 포함)
+          const sp = document.createElement('span'); sp.className = 'angle'; sp.textContent = p.trim(); frag.append(sp);
+        } else {
+          if (/^약보수 보정/.test(p)) frag.append(document.createElement('br'));      // '약보수 보정'은 항상 줄바꿈
+          const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = p; frag.append(sp);
+        }
       } else frag.append(document.createTextNode(p)); });
     n.replaceWith(frag);
   });
@@ -498,9 +517,7 @@ function decorate(root) {
     while (h && !/^H[1-3]$/.test(h.tagName)) h = h.previousElementSibling;
     if (h && /자유요약/.test(h.textContent)) addClip(pre);
   });
-  // 5) 대주제(기사 제목 = 상단 썸네일) 복사 가능 — 카드뉴스 제목과 동일 형태
-  const mh1 = root.querySelector('h1');
-  if (mh1) { const t = mh1.textContent; mh1.appendChild(copyBtn(() => t, '제목 복사')); }
+  // 5) 상단 기사 제목 = 복사 버튼 없음(#3) — 카드뉴스 제목만 복사 영역으로(cardSec)
 }
 
 // ── 카드뉴스 섹션 ──
@@ -570,7 +587,7 @@ function cardSec(a) {
   if (st === 'text_done') {
     const b = document.createElement('button');
     b.className = 'mkbtn';
-    b.textContent = '🚀 진짜 생성 — 이미지 발사';
+    b.textContent = '🚀 이미지 생성 & 카드 합성';
     b.onclick = () => makeCards(a.file, b, 'shoot');
     sec.appendChild(b);
   }
@@ -600,11 +617,16 @@ const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 async function copyText(text, btn) {
   text = (text || '').replace(/\n+$/, '');
-  try { await navigator.clipboard.writeText(text); }
-  catch {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {   // 폴백: 모달(showModal)은 dialog 밖이 inert → textarea를 #dlg 안에 두고 선택영역 명시
     const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    $('#dlg').appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+    $('#dlg').appendChild(ta); ta.focus(); ta.select();
+    try { ta.setSelectionRange(0, text.length); } catch {}
+    try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
   }
   if (btn) { btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
     setTimeout(() => { btn.innerHTML = COPY_SVG; btn.classList.remove('ok'); }, 1500); }
@@ -638,6 +660,9 @@ const pmenu = $('#pmenu');
 $('#profile').addEventListener('click', e => { e.stopPropagation(); pmenu.hidden = !pmenu.hidden; });
 document.addEventListener('click', e => { if (!pmenu.hidden && !pmenu.contains(e.target)) pmenu.hidden = true; });
 $('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); });
+
+// 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
+$('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
 
 // 모달 섹션 바로가기 N/M/T
 $('#jump').addEventListener('click', e => {
