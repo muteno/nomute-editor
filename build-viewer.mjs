@@ -49,6 +49,7 @@ for (const f of files) {
       bias: meta.bias || '',
       tags: meta.tags || '',
       summary: meta.summary || '',
+      guidelines_version: meta.guidelines_version || '',
       body,
     });
   } catch (e) {
@@ -75,6 +76,7 @@ for (const a of articles) {
   a.cards = {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     updated: status.updated || '',
+    guidelines_version: status.guidelines_version || '',
     md: cardsMd,
     images: images.map(n => `cards/${stem}/${n}`),
   };

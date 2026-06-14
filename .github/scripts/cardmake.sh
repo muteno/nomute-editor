@@ -9,6 +9,12 @@ PROMPT_FILE="prompts/card-make.md"
 MODEL="claude-opus-4-8"
 TARGET="${1:-all}"
 
+# 지침 SSOT 강제 주입 — 요약과 동일한 단일 헬퍼(주입 로직 갈라짐 방지). card 프로필.
+source "$ROOT/shared/inject_guidelines.sh"
+GVER="$(guidelines_version card)"
+GBLOCK="$(guidelines_block card)"
+echo "지침 버전(card): ${GVER}"
+
 git config user.name  "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -30,7 +36,8 @@ commit_push() {
 }
 
 status_json() {  # $1=dir $2=state
-  printf '{"state":"%s","updated":"%s"}\n' "$2" "$(date -u +%FT%TZ)" > "$1/status.json"
+  printf '{"state":"%s","updated":"%s","guidelines_version":"%s"}\n' \
+    "$2" "$(date -u +%FT%TZ)" "$GVER" > "$1/status.json"
 }
 
 # 대상 결정: all = cards/ 미존재(미제작) 큐 전체 / 그 외 = queue 파일명 1개
@@ -39,7 +46,10 @@ targets=()
 if [ "$TARGET" = "all" ]; then
   for q in queue/*.md; do
     stem="$(basename "$q" .md)"
-    [ -d "cards/$stem" ] || targets+=("$q")
+    if [ ! -d "cards/$stem" ]; then targets+=("$q"); continue; fi
+    # 지침 게이트 — 카드의 지침 버전이 현재와 다르면(갱신됨) 재생성 대상에 포함.
+    cv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
+    [ "$cv" = "$GVER" ] || { echo "지침 변경 — 카드 재생성 대상: $stem (${cv:-없음}→${GVER})"; targets+=("$q"); }
   done
 else
   base="$(basename "$TARGET")"
@@ -65,12 +75,18 @@ for q in "${targets[@]}"; do
   stem="$(basename "$q" .md)"
   echo "::group::카드 제작: $stem"
 
+  # 고정부(프롬프트 + 강제 주입 지침) → 가변부(다이제스트) 순서 = 캐시 prefix 안정화.
+  # --disallowedTools + --max-turns = 헤드리스 무중단(파일쓰기/권한대기/툴 무한루프 차단, analyze.sh와 동일).
   out="$(timeout 1500 claude -p "$(cat "$PROMPT_FILE")
+
+${GBLOCK}
 
 [큐레이션 다이제스트 — 이 기사로 카드뉴스 MD를 만든다]
 $(cat "$q")" \
         --model "$MODEL" \
         --allowedTools "WebFetch,WebSearch" \
+        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
+        --max-turns 40 \
         2> "/tmp/${stem}.err")"
   rc=$?
 
