@@ -45,7 +45,6 @@ for (const f of files) {
       title: meta.title || f.replace(/\.md$/, ''),
       url: meta.url || '',
       date: meta.date || '',
-      time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.
       media: meta.media || '',
       type: meta.type || '',
       category: meta.category || '',
