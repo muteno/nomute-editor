@@ -169,6 +169,3 @@ NEGATIVE — strictly avoid:
 - no main subject in the lower portion, no key element in the bottom third
 - no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
-
-[지침반영:01-OK]
-[지침반영:02-OK]
