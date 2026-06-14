@@ -45,7 +45,6 @@ for (const f of files) {
       title: meta.title || f.replace(/\.md$/, ''),
       url: meta.url || '',
       date: meta.date || '',
-      time: meta.time || '',
       media: meta.media || '',
       type: meta.type || '',
       category: meta.category || '',
