@@ -68,6 +68,10 @@ for (const a of articles) {
   try { status = JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8')); } catch { /* 상태 없음 */ }
   let cardsMd = '';
   try { cardsMd = readFileSync(join(dir, 'cards.md'), 'utf8'); } catch { /* 텍스트 없음 */ }
+  let cardErr = '';
+  if ((status.state || '') === 'failed') {
+    try { cardErr = readFileSync(join(dir, 'error.log'), 'utf8'); } catch { /* 로그 없음 */ }
+  }
   const images = readdirSync(dir).filter(n => /\.(jpe?g|png)$/i.test(n)).sort();
   if (images.length) {
     mkdirSync(join('viewer/cards', stem), { recursive: true });
@@ -77,6 +81,7 @@ for (const a of articles) {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
+    error: cardErr,
     md: cardsMd,
     images: images.map(n => `cards/${stem}/${n}`),
   };

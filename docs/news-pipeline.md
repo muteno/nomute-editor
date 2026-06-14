@@ -97,7 +97,7 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
   → [card-make] status "generating" 커밋(뷰어 ⏳) → Claude 헤드리스 Step 4(prompts/card-make.md
      — apps/news 지침 종속, 🍌만·STOP 없음) → cards/<기사>/cards.md 커밋
   → GDRIVE_SA_JSON 있으면: Drive Prompt 폴더 업로드 = 기존 Apps Script→Gemini→Cloud Run 발사
-     → .gen_complete 폴링(≤25분) → _final_*.jpg 회수·커밋 → 뷰어 갤러리+⬇저장
+     → .gen_complete 적응형 폴링(첫 ~5분·1~2분 간격·상한 15분, 정본 apps/news/03) → _final_*.jpg 회수·커밋 → 뷰어 갤러리+⬇저장
 ```
 - ⚠️ **버튼 = 유료 발사**(Opus 토큰 + Gemini·Cloud Run). 그래서 암호 게이트 + 뷰어 확인창. 세션 파이프라인의 🚦STOP은 그대로(이 버튼 경로는 운영자가 누른 것 자체가 GO).
 - 뷰어는 60초마다 자동 갱신 — ⏳ → 🚀 → 🎴 전환이 새로고침 없이 반영(커밋→Pages 재배포 단위라 1~2분 지연).

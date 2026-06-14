@@ -11,6 +11,13 @@ on:
         description: 'queue md 파일명 1개 또는 all(미제작 전체 일괄)'
         type: string
         default: 'all'
+      mode:
+        description: 'full=클로드+렌더(기본) / shoot=렌더만(자동 카드프롬프트로 이미지만 발사)'
+        type: choice
+        default: full
+        options:
+          - full
+          - shoot
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -29,7 +36,7 @@ permissions:
 jobs:
   cards:
     runs-on: ubuntu-latest
-    timeout-minutes: 300   # 건당 카드 생성 ≤25분 + 이미지 대기 ≤25분, 일괄 대비
+    timeout-minutes: 300   # 잡 전체 상한(일괄 다건 직렬 대비). 건당 이미지 대기는 적응형 상한 15분(정본 apps/news/03)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -53,11 +60,12 @@ jobs:
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
           TARGET: ${{ inputs.article }}
+          MODE: ${{ inputs.mode || 'full' }}
         run: |
-          echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET}"
+          echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET} / 모드: ${MODE}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
             echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음"; exit 1
           fi
           [ -z "${GDRIVE_SA_JSON}" ] && echo "::warning::GDRIVE_SA_JSON 미등록 — 카드 MD까지만(이미지 발사 생략)"
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
-          bash .github/scripts/cardmake.sh "${TARGET}"
+          bash .github/scripts/cardmake.sh "${TARGET}" "${MODE}"
