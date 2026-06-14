@@ -177,9 +177,13 @@
     box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
   .gauge i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#e8ff3d,var(--accent)); }
   .gauge.na { background:repeating-linear-gradient(135deg, rgba(15,253,2,.30) 0 4px, transparent 4px 9px); box-shadow:none; }
-  /* 유형 옆 태그 칩 — 개별 해시태그(#성범죄 등). 기존 .chip 톤 유사하나 더 촘촘 */
+  /* 민감 칸 태그 칩 — 개별 해시태그(#성범죄 등). 기본=정치/일반 muted */
   .tagchip { font-size:10.5px; color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2);
     border-radius:999px; padding:2px 8px; white-space:nowrap; line-height:1.4; }
+  /* 보호성 민감 태그 — 앰버 경고 틴트(과하지 않게, --bg 녹색과 충돌 회피) */
+  .tagchip.warn { color:#f0c050; border-color:rgba(240,200,80,.35); background:rgba(240,200,80,.08); }
+  /* 민감 없음(—) — muted, 칸 비지 않게 */
+  .senshyphen { font-size:13px; font-weight:700; color:var(--mut); }
   /* 유형값 + 태그칩 묶음 — 한 줄에 흐르되 좁으면 줄바꿈 */
   .typewrap { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
   .typewrap b { display:inline; white-space:nowrap; }
@@ -358,11 +362,12 @@
     <select id="cat">
       <option value="">전체 분류</option>
       <option value="정치">정치</option>
+      <option value="경제">경제</option>
       <option value="사회">사회</option>
       <option value="국제">국제</option>
-      <option value="경제">경제</option>
       <option value="문화">문화</option>
-      <option value="테크">테크</option>
+      <option value="과학·테크">과학·테크</option>
+      <option value="정보">정보</option>
     </select>
     <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
   </div>
@@ -391,12 +396,15 @@ let CUR = '';
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
-// 6 큐레이션 분류 — 글자색만 다르게(도형 X)
+// 7 큐레이션 분류 — 글자색만 다르게(도형 X). '테크'→'과학·테크' 개명(색 승계)·'정보' 신설.
 const CAT_COLOR = {
-  정치:'#ff6b6b', 사회:'#4db8ff', 국제:'#ffb84d', 경제:'#36e0a0', 문화:'#ff7bd5', 테크:'#9b8cff',
+  정치:'#ff6b6b', 경제:'#36e0a0', 사회:'#4db8ff', 국제:'#ffb84d', 문화:'#ff7bd5',
+  '과학·테크':'#9b8cff', 정보:'#7fd4c4',
+  테크:'#9b8cff',   // 구키 alias — 옛 큐 기사(category:"테크") 색 빠짐 방지
 };
-// 에디터 유형 코드 A~H 풀어쓰기(표시 전용 — 지침 type 체계는 그대로)
-const TYPE_LABEL = { A:'사건비판', B:'구조비판', C:'정보', D:'인물', E:'사건', F:'휴먼', G:'화제', H:'지식' };
+// 민감 태그 2계열 — 보호성(앰버 경고 틴트) / 정치(중립 muted)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동·청소년','#동물학대','#마약','#살인·잔혹'];
+const SENS_POLITIC = ['#북한','#중국','#부정선거','#정부','#노조','#다양성'];
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 
@@ -436,7 +444,7 @@ function render() {
       <div class="s"></div>
       <div class="kv">
         ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
-        ${a.type?`<div class="typecol"><span>유형</span><div class="typewrap"><b>${esc(typeLabel(a.type))}</b>${tagChips(a.tags)}</div></div>`:''}
+        <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
         ${a.bias?`<div><span>편향</span><b>${esc((a.bias||'').replace(BIAS_RE,'').trim())}</b>${gauge(a.bias)}</div>`:''}
       </div>
       <div class="botrow">
@@ -455,10 +463,6 @@ function render() {
   });
 }
 
-function typeLabel(t) {
-  const code = (t||'').trim().charAt(0).toUpperCase();
-  return TYPE_LABEL[code] ? `${TYPE_LABEL[code]}` : t;
-}
 // 편향 게이지 바 — N/10 → 옐로→그린 채움, 좌우 무관(N/A) → 빗금
 function gauge(b) {
   const m = /(\d+)\s*\/\s*10/.exec(b || '');
@@ -475,11 +479,16 @@ function nmtNav() {
     <button type="button" data-j="t" aria-label="카드 이미지로">T</button>
   </div>`;
 }
-// #6 해시태그 → 유형 옆 개별 칩. "#성범죄 #자살자해" 공백 split, "해당 없음"이면 칩 없음.
-function tagChips(tags) {
-  if (!tags || tags === '해당 없음') return '';
-  return tags.split(/\s+/).filter(Boolean)
-    .map(t => `<span class="tagchip">${esc(t)}</span>`).join('');
+// #6 민감 태그 → 개별 칩. "#성범죄 #자살자해" 공백 split. "해당 없음"/빈값이면 muted '—'.
+// 보호성(SENS_PROTECT)=앰버 경고 틴트(.warn), 정치(SENS_POLITIC) 및 목록 외=기본 muted.
+function sensChips(tags) {
+  if (!tags || tags === '해당 없음') return '<b class="senshyphen">—</b>';
+  const arr = tags.split(/\s+/).filter(Boolean);
+  if (!arr.length) return '<b class="senshyphen">—</b>';
+  return arr.map(t => {
+    const warn = SENS_PROTECT.includes(t) ? ' warn' : '';
+    return `<span class="tagchip${warn}">${esc(t)}</span>`;
+  }).join('');
 }
 // #4 진행 게이지 — 4단계(실패·요약·프롬프트·카드), 누적 점등. state→단계 매핑.
 function progGauge(a) {
