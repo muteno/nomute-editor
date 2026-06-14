@@ -230,6 +230,29 @@
     box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.10);
   }
   dialog::backdrop { background:rgba(4,8,5,.6); backdrop-filter:blur(3px); }
+
+  /* ── 슛 PIN 다이얼로그 ── (작은 중앙 모달 — 일반 dialog 모바일 풀스크린 룰 무력화) */
+  #pindlg { width:min(340px,90vw); max-width:340px; max-height:none; height:auto; margin:auto;
+    border-radius:24px; padding:26px 22px 22px; text-align:center; }
+  #pindlg .pin-title { font-size:18px; font-weight:800; color:var(--accent); letter-spacing:-.3px; }
+  #pindlg .pin-sub { margin:8px 0 18px; font-size:12.5px; line-height:1.5; color:var(--mut); }
+  .pin-boxes { display:flex; gap:10px; justify-content:center; }
+  .pin-cell {
+    width:54px; height:64px; text-align:center; font:800 26px/1 inherit; color:var(--fg);
+    background:rgba(5,12,8,.6); border:2px solid var(--line); border-radius:14px; caret-color:var(--accent);
+    transition:border-color .15s, box-shadow .15s, background .15s; -webkit-text-security:disc;
+  }
+  .pin-cell:focus { outline:none; border-color:var(--accent); background:rgba(15,253,2,.08);
+    box-shadow:0 0 0 3px rgba(15,253,2,.22), 0 0 16px rgba(15,253,2,.25); }
+  .pin-cell.filled { border-color:rgba(15,253,2,.45); }
+  .pin-boxes.err .pin-cell { border-color:#ff5b5b; box-shadow:0 0 0 2px rgba(255,91,91,.25); }
+  .pin-boxes.shake { animation:pinShake .4s ease; }
+  @keyframes pinShake { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-8px);} 40%,80%{transform:translateX(8px);} }
+  .pin-err { min-height:16px; margin-top:12px; font-size:12px; font-weight:700; color:#ff7676; }
+  .pin-cancel { margin-top:16px; padding:9px 22px; font:700 13px inherit; color:var(--mut);
+    background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
+  .pin-cancel:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  @media (max-width:600px) { #pindlg { width:90vw; height:auto; max-height:none; border-radius:24px; border:1px solid var(--line); } }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.82); backdrop-filter:blur(16px);
     -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--line2);
     padding:12px 16px; display:flex; gap:10px; align-items:center; }
@@ -382,6 +405,20 @@
     <summary id="cardsum">카드뉴스</summary>
     <div class="md" id="cardsec"></div>
   </details>
+</dialog>
+
+<!-- 슛(유료 발사) PIN 입력 — confirm/안내 다이얼로그 대체. 4칸 자동이동·자동인증 -->
+<dialog id="pindlg">
+  <div class="pin-title">🚀 발사 PIN</div>
+  <div class="pin-sub">유료 발사야(Gemini·Cloud Run). 4자리 암호 입력.</div>
+  <div class="pin-boxes" id="pinboxes">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 1">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 2">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 3">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 4">
+  </div>
+  <div class="pin-err" id="pinerr"></div>
+  <button class="pin-cancel" type="button" onclick="pindlg.close()">취소</button>
 </dialog>
 
 <script>
@@ -684,26 +721,99 @@ function cardSec(a) {
     sec.appendChild(b);
   }
 }
+// ── 슛 PIN 입력 UI ──
+// confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.
+// 한 자 입력→다음 칸 자동이동, 4번째 입력→엔터 없이 자동 resolve. 취소=null.
+// 숫자만(비숫자 무시), 백스페이스로 이전 칸, 4자리 붙여넣기 지원.
+let _pinWired = false, _pinResolve = null;
+function _pinCells() { return [...$('#pindlg').querySelectorAll('.pin-cell')]; }
+function _pinValue() { return _pinCells().map(c => c.value).join(''); }
+function _pinReset() {                       // 칸 비우고 첫 칸 포커스
+  const cells = _pinCells();
+  cells.forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  const boxes = $('#pinboxes'); boxes.classList.remove('err', 'shake');
+  cells[0].focus();
+}
+function _pinShake(msg) {                     // 오답: 흔들기 + 에러문구 + 초기화
+  const boxes = $('#pinboxes'), err = $('#pinerr');
+  if (err) err.textContent = msg || '암호가 틀렸어. 다시.';
+  boxes.classList.add('err');
+  boxes.classList.remove('shake'); void boxes.offsetWidth;   // 리플로우 → 애니 재시작
+  boxes.classList.add('shake');
+  const cells = _pinCells();
+  cells.forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  cells[0].focus();
+}
+function _wirePin() {                         // 입력 배선(1회만)
+  if (_pinWired) return; _pinWired = true;
+  const dlg = $('#pindlg'), cells = _pinCells();
+  cells.forEach((cell, i) => {
+    cell.addEventListener('input', () => {
+      cell.value = (cell.value.match(/\d/g) || []).join('').slice(-1);   // 숫자 1자만 유지
+      cell.classList.toggle('filled', !!cell.value);
+      $('#pinboxes').classList.remove('err');
+      if (cell.value && i < cells.length - 1) cells[i + 1].focus();      // 다음 칸 자동 이동
+      if (_pinValue().length === cells.length) {                          // 4자리 다 차면 자동 인증
+        const v = _pinValue();
+        if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(v); }
+      }
+    });
+    cell.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !cell.value && i > 0) { cells[i - 1].focus(); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft' && i > 0) { cells[i - 1].focus(); e.preventDefault(); }
+      else if (e.key === 'ArrowRight' && i < cells.length - 1) { cells[i + 1].focus(); e.preventDefault(); }
+    });
+    cell.addEventListener('paste', e => {                                 // 4자리 붙여넣기
+      const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+      const digits = (txt.match(/\d/g) || []).slice(0, cells.length);
+      if (!digits.length) return;
+      e.preventDefault();
+      cells.forEach((c, k) => { c.value = digits[k] || ''; c.classList.toggle('filled', !!c.value); });
+      const last = Math.min(digits.length, cells.length) - 1;
+      cells[Math.min(last + 1, cells.length - 1)].focus();
+      if (_pinValue().length === cells.length && _pinResolve) {
+        const r = _pinResolve; _pinResolve = null; r(_pinValue());
+      }
+    });
+  });
+  // dialog가 닫히면(취소·esc·백드롭) 대기 중 Promise를 null로 정리
+  dlg.addEventListener('close', () => { if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(null); } });
+}
+// PIN 한 번 받기 — err 있으면 흔들기 표시 후 재입력. resolve = 4자리 문자열 또는 null(취소)
+function askPin(err) {
+  _wirePin();
+  const dlg = $('#pindlg');
+  if (!dlg.open) dlg.showModal();
+  if (err) _pinShake(err); else { $('#pinerr').textContent = ''; _pinReset(); }
+  // showModal 직후 자동 포커스 보장(브라우저 따라 빗나가는 케이스 대비)
+  requestAnimationFrame(() => { const c = _pinCells()[0]; if (c && !_pinValue()) c.focus(); });
+  return new Promise(res => { _pinResolve = res; });
+}
+
 async function makeCards(target, btn, mode) {
   const shoot = mode === 'shoot';
-  if (!confirm(shoot ? '이미지 발사 — 유료야(Gemini·Cloud Run). 진행?'
-                     : '카드뉴스 생성 — 유료 발사야(Opus + Gemini·Cloud Run). 진행?')) return;
-  let pass = localStorage.getItem('cardpass') || prompt('카드 생성 암호');
-  if (!pass) return;
-  try {
-    const r = await fetch('api/make-cards', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ article: target, pass, mode: shoot ? 'shoot' : 'full' }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (r.ok && j.ok) {
-      localStorage.setItem('cardpass', pass);
-      if (btn) btn.outerHTML = `<div class="genstat live">🚀 발사됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
-    } else {
-      if (r.status === 401) localStorage.removeItem('cardpass');
+  // 유료 확인창(confirm)·prompt 제거 → 곧장 4칸 PIN UI. PIN=암호(passcode), 검증은 서버 PASSCODE 그대로.
+  let err = null;
+  for (;;) {                                    // 틀리면 흔들고 재입력(루프), 취소면 종료
+    const pass = await askPin(err);
+    if (!pass) return;                          // 취소
+    try {
+      const r = await fetch('api/make-cards', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ article: target, pass, mode: shoot ? 'shoot' : 'full' }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        $('#pindlg').close();                   // 성공 → PIN 닫고 기존 후속 처리 그대로
+        if (btn) btn.outerHTML = `<div class="genstat live">🚀 발사됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
+        return;
+      }
+      if (r.status === 401) { err = j.error || '암호가 틀렸어. 다시.'; continue; }   // 오답 → 재입력
+      $('#pindlg').close();
       alert(j.error || `실패 (${r.status})`);
-    }
-  } catch (e) { alert('요청 실패: ' + e.message); }
+      return;
+    } catch (e) { $('#pindlg').close(); alert('요청 실패: ' + e.message); return; }
+  }
 }
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
