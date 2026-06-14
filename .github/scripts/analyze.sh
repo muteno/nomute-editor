@@ -11,6 +11,13 @@ MODEL="claude-opus-4-8"
 : > /tmp/analyzed_titles.txt
 : > /tmp/analyzed_failures.txt   # 실패 URL 적재 → 워크플로가 잡을 빨갛게(조용한 실패 차단)
 
+# 지침 SSOT 강제 주입 — live 에디터 지침을 프롬프트 고정부에 떠먹인다(읽기 의존 X = 강제).
+# GVER(지침 버전 도장)는 산출물 frontmatter에 박혀, 지침이 바뀌면 같은 기사 재공유 시 재생성된다.
+source "$ROOT/shared/inject_guidelines.sh"
+GVER="$(guidelines_version summary)"
+GBLOCK="$(guidelines_block summary)"
+echo "지침 버전(summary): ${GVER}"
+
 shopt -s nullglob
 files=(pending/*.txt)
 if [ ${#files[@]} -eq 0 ]; then
@@ -40,19 +47,30 @@ for f in "${files[@]}"; do
     echo "::endgroup::"; continue
   fi
 
-  # 중복 방지 — 같은 기사(article_id)가 이미 queue/ 에 있으면 분석 자체를 생략(토큰 절약 +
-  # 같은 기사 재공유 시 카드 2장 생기던 버그 차단). pending 원본은 제거.
+  # 중복 방지 + 지침 게이트 — 같은 기사(article_id)가 이미 queue/ 에 있으면:
+  #   · 그 카드의 지침 버전 == 현재 == 진짜 중복 → 분석 생략(토큰 절약, 카드 2장 버그 차단).
+  #   · 다르면(지침이 그새 갱신됨) → 재생성(덮어쓰기). 잘못된 1개보다 제대로 된 1개를 2× 비용으로.
   id="$(article_id "$url")"
-  if compgen -G "queue/*-${id}.md" >/dev/null; then
-    echo "중복 — 이미 카드 있음(${id}) → 분석 생략"
-    rm -f "$f"
-    echo "::endgroup::"; continue
+  REGEN_TARGET=""
+  existing="$(compgen -G "queue/*-${id}.md" 2>/dev/null | head -n1 || true)"
+  if [ -n "$existing" ]; then
+    ev="$(grep -m1 '^guidelines_version:' "$existing" | sed -E 's/^guidelines_version:[[:space:]]*"?([^"]*)"?.*/\1/')"
+    if [ "$ev" = "$GVER" ]; then
+      echo "중복 — 같은 지침 버전 카드 있음(${id} / ${GVER}) → 분석 생략"
+      rm -f "$f"
+      echo "::endgroup::"; continue
+    fi
+    echo "지침 변경 감지(${ev:-없음}→${GVER}) — 재생성(덮어쓰기): $existing"
+    REGEN_TARGET="$existing"
   fi
 
   # 인코딩 정규화 사전 추출 — 네이트(news.nate.com) 등 EUC-KR 매체를 모델 WebFetch 가
   # UTF-8 로 오독해 본문이 깨지는(���) 문제를 입구에서 차단. 빈약/실패면 빈 문자열 → 모델 WebFetch 폴백.
   extracted="$(bash .github/scripts/fetch_article.sh "$url" 2>/dev/null || true)"
+  # 고정부(프롬프트 + 강제 주입 지침) → 가변부(기사) 순서 = 캐시 prefix 안정화.
   prompt="$(cat "$PROMPT_FILE")
+
+${GBLOCK}
 
 분석할 기사 URL: ${url}"
   if [ -n "${extracted// }" ]; then
@@ -95,14 +113,21 @@ ${extracted}"
   # 모델이 frontmatter 앞에 사족(인사·진행 멘트)을 붙이는 드리프트 방어 — 첫 '---' 줄부터만 저장
   out="$(printf '%s\n' "$out" | sed -n '/^---[[:space:]]*$/,$p')"
 
-  # 성공: ASCII 파일명(타임스탬프+기사ID, id는 위에서 산출) — 충돌 시 -2, -3 …
-  title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
+  # 지침 버전 도장 — 첫 '---' 바로 뒤에 삽입(모델이 쓰는 게 아니라 스크립트가 박는다 = 정확).
+  out="$(printf '%s\n' "$out" | awk -v v="$GVER" \
+        '!done && /^---[[:space:]]*$/{print; print "guidelines_version: \"" v "\""; done=1; next} {print}')"
 
-  outfile="queue/${stamp}-${id}.md"
-  n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
+  # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.
+  title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
+  if [ -n "$REGEN_TARGET" ]; then
+    outfile="$REGEN_TARGET"
+  else
+    outfile="queue/${stamp}-${id}.md"
+    n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
+  fi
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
   echo "${title:-$id}" >> /tmp/analyzed_titles.txt
-  echo "성공 → $outfile"
+  echo "성공 → $outfile (지침 ${GVER})"
   echo "::endgroup::"
 done

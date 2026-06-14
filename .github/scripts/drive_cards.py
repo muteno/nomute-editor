@@ -36,7 +36,7 @@ def main():
     ap.add_argument('--md', required=True)
     ap.add_argument('--topic', required=True)
     ap.add_argument('--out', required=True)
-    ap.add_argument('--wait-min', type=int, default=25)
+    ap.add_argument('--wait-min', type=int, default=15)  # 상한(정본 apps/news/03 260613: 15분 적응형)
     a = ap.parse_args()
 
     h = auth_header()
@@ -54,23 +54,26 @@ def main():
              'file': (f'{name}.md', open(a.md, 'rb'), 'text/markdown')}
     r = requests.post(f'{UPLOAD}?uploadType=multipart&supportsAllDrives=true', headers=h, files=files)
     r.raise_for_status()
-    print(f'발사: Drive Prompt/{name} (folder {fid}) — Apps Script 1분 폴링 대기')
+    print(f'발사: Drive Prompt/{name} (folder {fid}) — 적응형 대기(첫 확인 ~5분 후, 1~2분 간격, 상한 {a.wait_min}분)')
 
-    # .gen_complete(전 카드 처리 완료 마커) 폴링
+    # .gen_complete(전 카드 처리 완료 마커) 적응형 폴링 (정본 apps/news/03 260613).
+    # 실측: 6장 업로드→합성 ~6분 → 첫 files.list를 ~5분 뒤로 미뤄 불필요한 조기 폴링 제거.
     deadline = time.time() + a.wait_min * 60
     done = False
+    time.sleep(min(300, a.wait_min * 60))   # 초기 대기 ~5분(상한이 더 짧으면 그만큼)
     while time.time() < deadline:
-        time.sleep(30)
         try:
             names = [f['name'] for f in list_folder(h, fid, 'files(name)')]
         except requests.RequestException as e:
             print(f'폴링 오류(재시도): {e}')
             h = auth_header()
+            time.sleep(90)
             continue
         if '.gen_complete' in names:
             done = True
             break
         print(f'생성 대기중… 폴더 {len(names)}개 파일')
+        time.sleep(90)   # 1~2분 간격 재확인
 
     # _final_*.jpg 회수 (미완이어도 있는 만큼)
     finals = [f for f in list_folder(h, fid) if '_final' in f['name'] and f['name'].lower().endswith(('.jpg', '.jpeg', '.png'))]
