@@ -1,0 +1,947 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a120d">
+<title>노뮤트 뉴스 큐레이션</title>
+<!-- 파비콘·홈 아이콘 = 노뮤트 프로필(PNG). 모바일 홈화면은 SVG data-uri 미지원 → PNG 필수 -->
+<link rel="icon" type="image/png" href="assets/brand/icon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg:#0a120d;
+    --glass:rgba(38,64,46,.42); --glass2:rgba(14,26,18,.55);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --fg:#eef7f0; --mut:#8fa697;
+    --accent:#0FFD02; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+    --r:24px;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  /* 스크롤바 톤앤톤(초록 글래스) — 페이지·다이얼로그 공통 */
+  html { scrollbar-width:thin; scrollbar-color:rgba(15,253,2,.30) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(15,253,2,.26); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.45); background-clip:padding-box; }
+  dialog::-webkit-scrollbar-thumb { border-color:rgba(16,28,20,.9); }
+  body {
+    margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; letter-spacing:-.2px;
+    -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom);
+  }
+  .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 10% -4%, rgba(216,255,61,.08), transparent 60%),
+    radial-gradient(720px 460px at 108% 6%, rgba(15,253,2,.07), transparent 62%),
+    radial-gradient(640px 720px at 46% 116%, rgba(15,253,2,.05), transparent 60%); }
+  .wrap { max-width:860px; margin:0 auto; padding:0 16px 48px; }
+
+  /* ── 전면 배너(최상단) + 오버랩 프로필 메뉴 ── */
+  .topbanner { position:relative; max-width:860px; margin:0 auto; padding:10px 16px 0; }
+  .banner { width:100%; display:block; border-radius:20px; border:1px solid var(--line);
+    box-shadow:0 18px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.10); }
+  .profile { position:absolute; right:30px; bottom:-22px; z-index:6;
+    width:60px; height:60px; padding:0; border-radius:50%; cursor:pointer;
+    border:3px solid var(--bg); background:none; overflow:visible;
+    box-shadow:0 10px 22px rgba(0,0,0,.5); transition:transform .16s; }
+  .profile::after { content:''; position:absolute; inset:-3px; border-radius:50%;
+    background:linear-gradient(135deg,#d8ff3d,var(--accent)); z-index:-1; }
+  .profile img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
+  .profile:hover { transform:translateY(-2px) scale(1.03); }
+  .profile:active { transform:scale(.97); }
+  /* 메시지 1개+ 일 때만: 프로필 둘레 아주 얇고 은은한 강조 테두리 + 숫자 배지(0이면 둘 다 숨김) */
+  .profile.hasmsg { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.5px rgba(15,253,2,.55), 0 0 10px rgba(15,253,2,.28); }
+  .pbadge { position:absolute; top:-5px; right:-5px; z-index:7; min-width:18px; height:18px; padding:0 5px;
+    display:none; align-items:center; justify-content:center; border-radius:999px;
+    font:800 11px/1 "Pretendard Variable", Pretendard, sans-serif; color:var(--on-accent);
+    background:linear-gradient(135deg,#d8ff3d,var(--accent)); border:1.5px solid var(--bg);
+    box-shadow:0 2px 6px rgba(0,0,0,.4); }
+  .profile.hasmsg .pbadge { display:flex; }
+
+  /* ── 메시지 팝업(프로필 근처) ── */
+  .msgpop { position:absolute; right:24px; top:46px; z-index:21; width:min(300px,82vw);
+    background:linear-gradient(165deg, rgba(24,40,29,.96), rgba(12,21,15,.97));
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--line); border-radius:16px; padding:6px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55); transform-origin:top right;
+    animation:popIn .16s cubic-bezier(.22,.61,.36,1) both; }
+  .msgpop[hidden] { display:none; }
+  .msgpop .mh { display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
+  .msgpop .mh b { font-size:13px; font-weight:800; }
+  .msgpop .mh .mc { font-size:11px; color:var(--mut); }
+  .msgpop .mh .mx { margin-left:auto; width:26px; height:26px; flex:none; display:grid; place-items:center;
+    background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:8px;
+    font:inherit; font-size:14px; cursor:pointer; }
+  .msgpop .mh .mx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .msglist { max-height:46vh; overflow:auto; padding:2px; }
+  .msgitem { padding:9px 10px; border-radius:10px; }
+  .msgitem + .msgitem { border-top:1px solid var(--line2); }
+  .msgitem .mt { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+  .msgitem .md8 { font-size:11px; color:var(--mut); margin-top:4px; }
+  .msgempty { padding:18px 12px; text-align:center; color:var(--mut); font-size:12px; }
+
+  /* ── 지침 버전 칩(요약·카드 phase 헤더 옆) — 기사가 어떤 지침으로 갱신됐는지 표식 ── */
+  .gvchip { display:inline-block; font:700 10px/1 "Pretendard Variable", Pretendard, monospace;
+    color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2);
+    border-radius:999px; padding:3px 8px; letter-spacing:.02em; white-space:nowrap; flex:none; }
+  .pmenu { position:absolute; right:24px; top:46px; z-index:20; min-width:170px;
+    background:linear-gradient(165deg, rgba(24,40,29,.96), rgba(12,21,15,.97));
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--line); border-radius:16px; padding:6px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55); transform-origin:top right;
+    animation:popIn .16s cubic-bezier(.22,.61,.36,1) both; }
+  .pmenu[hidden] { display:none; }
+  .pmenu .pname { padding:8px 12px 4px; font-weight:800; font-size:14px; }
+  .pmenu .psub { padding:0 12px 8px; font-size:11px; color:var(--mut); border-bottom:1px solid var(--line2); margin-bottom:4px; }
+  .pmenu a, .pmenu button { display:block; width:100%; text-align:left; background:none; border:none;
+    color:var(--fg); font:inherit; font-size:13px; padding:9px 12px; border-radius:10px; cursor:pointer; text-decoration:none; }
+  .pmenu a:hover, .pmenu button:hover { background:rgba(255,255,255,.06); color:var(--accent); }
+  @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
+
+  /* ── 필터바(배너 아래·스티키) ── */
+  .filterbar { position:sticky; top:0; z-index:5; margin-top:18px;
+    background:rgba(10,18,13,.78); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--line2); padding:12px 0; }
+  .bar { max-width:860px; margin:0 auto; padding:0 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .bar input, .bar select {
+    background:rgba(255,255,255,.05); color:var(--fg); border:1px solid var(--line); border-radius:999px;
+    padding:9px 16px; font-size:13px; font-family:inherit; outline:none; min-height:40px;
+  }
+  #q { flex:1; min-width:120px; }
+  .bar input::placeholder { color:var(--mut); }
+  .bar input:focus, .bar select:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
+  .bar select { appearance:none; -webkit-appearance:none; padding-right:30px; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238fa697' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 13px center; }
+  /* 카드 on/off 토글 */
+  .toggle { display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-size:12px; color:var(--mut);
+    user-select:none; padding:4px 4px 4px 2px; white-space:nowrap; }
+  .toggle input { display:none; }
+  .tk { width:40px; height:23px; border-radius:999px; background:rgba(255,255,255,.13); position:relative;
+    transition:background .2s; flex:none; box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
+  .tk::after { content:''; position:absolute; top:2.5px; left:2.5px; width:18px; height:18px; border-radius:50%;
+    background:#fff; transition:transform .22s cubic-bezier(.4,1.4,.6,1); }
+  .toggle input:checked + .tk { background:linear-gradient(90deg,#d8ff3d,var(--accent)); }
+  .toggle input:checked + .tk::after { transform:translateX(17px); }
+  .toggle input:checked ~ .tlbl { color:var(--accent); font-weight:700; }
+  .meta { color:var(--mut); font-size:12px; flex:1 0 100%; text-align:right; padding-top:2px; }
+  /* 날짜 헤더(검색 위) — 날짜 강조 · 세로 구분선 · Today 강조 */
+  .dhead { display:flex; align-items:center; gap:14px; max-width:860px; margin:0 auto; padding:0 16px 11px; font-size:13px; }
+  .dh-date { color:var(--accent); font-weight:800; letter-spacing:-.1px; }
+  .dh-sep { width:1px; height:14px; background:var(--line); }
+  .dh-cnt { color:var(--mut); } .dh-cnt b { color:var(--accent); font-weight:800; }
+  /* 드래프트 헤더의 글자수 메타(— 약 N자) 미강조 */
+  .cnt { color:var(--mut); font-weight:400; font-size:.92em; }
+  /* h2 섹션 괄호 부연(…): 강조 해제(흰색·일반 두께) */
+  .paren { color:var(--fg); font-weight:400; }
+
+  /* ── 기사 카드 ── */
+  #list { margin-top:14px; }
+  .card {
+    background:linear-gradient(150deg,var(--glass) 0%,var(--glass2) 58%,rgba(11,21,15,.6) 100%);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--line); border-radius:var(--r); padding:18px; margin:14px 0;
+    cursor:pointer; transition:border-color .15s, transform .1s;
+    box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.10);
+    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both;
+  }
+  @keyframes cardIn { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
+  .card:hover { border-color:rgba(15,253,2,.30); }
+  .card:active { transform:scale(.99); }
+  /* 전면 재배치(#3): 카드 = 메인 본문(좌) + 세로 NMT 레일(우) flex 2분할 */
+  .card { display:flex; align-items:stretch; gap:14px; }
+  .cardmain { flex:1; min-width:0; }   /* 좌측 본문 컬럼(첫줄·제목·요약·kv·botrow) */
+  /* #1 첫줄 = 보도일+시각(맨 위, 제목 위). 박스 없이 텍스트만, 오늘이면 강조색. */
+  .cardtop { font-size:11.5px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; }
+  .cardtop.today { color:var(--accent); font-weight:800; }
+  .row1 { display:block; }   /* NMT 레일 분리 → 제목 줄만 */
+  .card .t { font-weight:700; font-size:15px; line-height:1.45; letter-spacing:-.3px; display:inline; }
+  /* #3 카드 셀 N·M·T 네비 — 카드 우측 세로 레일. 작은 글래스 버튼 3개 세로 스택. 클릭=모달 열고 해당 섹션 점프(#7) */
+  .nmt { flex:none; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:flex-start;
+    padding-left:12px; border-left:1px solid var(--line); }
+  .nmt button { width:30px; height:30px; padding:0; display:grid; place-items:center; cursor:pointer;
+    font:800 12px/1 inherit; letter-spacing:.04em; color:var(--mut); border-radius:9px;
+    background:rgba(255,255,255,.05); border:1px solid var(--line);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:color .15s, background .15s, border-color .15s, transform .1s; }
+  .nmt button:hover { color:var(--accent); background:var(--accent-dim); border-color:rgba(15,253,2,.4); }
+  .nmt button:active { transform:scale(.9); background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .card .s { color:var(--mut); font-size:13px; line-height:1.55; margin-top:6px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  /* #4 매체 ←[큰 갭]→ 민감·편향(편향=민감 인접 한 묶음). 매체와 민감 사이를 크게 벌림. */
+  .kv { display:flex; flex-wrap:wrap; align-items:start; column-gap:34px; row-gap:8px; margin-top:14px; }
+  .kv div { min-width:0; }
+  .kv span { display:block; font-size:11px; color:var(--mut); margin-bottom:3px; }
+  .kv b { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }
+  .kv .typecol b { overflow:visible; } /* 태그칩 줄바꿈 허용(typewrap이 흐름 관리) */
+  .kv .sensgrp { display:flex; align-items:start; gap:18px; }   /* #4 민감·편향 인접 한 묶음 */
+  /* #5 편향 게이지 2배(120→240px) */
+  .gauge { height:9px; max-width:240px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:7px;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
+  .gauge i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#e8ff3d,var(--accent)); }
+  .gauge.na { background:repeating-linear-gradient(135deg, rgba(15,253,2,.30) 0 4px, transparent 4px 9px); box-shadow:none; }
+  /* 민감 칸 태그 칩 — 개별 해시태그(#성범죄 등). 기본=정치/일반 muted */
+  .tagchip { font-size:10.5px; color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2);
+    border-radius:999px; padding:2px 8px; white-space:nowrap; line-height:1.4; }
+  /* 보호성 민감 태그 — 앰버 경고 틴트(과하지 않게, --bg 녹색과 충돌 회피) */
+  .tagchip.warn { color:#f0c050; border-color:rgba(240,200,80,.35); background:rgba(240,200,80,.08); }
+  /* 민감 없음(—) — muted, 칸 비지 않게 */
+  .senshyphen { font-size:13px; font-weight:700; color:var(--mut); }
+  /* 유형값 + 태그칩 묶음 — 한 줄에 흐르되 좁으면 줄바꿈 */
+  .typewrap { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  .typewrap b { display:inline; white-space:nowrap; }
+
+  /* ── 카드 하단 줄: 진행게이지(보도일·시각은 #1로 맨 위 cardtop 이관) ── */
+  .botrow { display:flex; align-items:flex-end; gap:10px; margin-top:18px; }
+  /* #6 진행 게이지 — 4단계(실패·요약·프롬프트·카드), 누적 점등. 점(dot)이 트랙 라인 중앙을 관통,
+     라벨은 점 위. 라벨 높이만큼 위 여백(padding-top), 카드 하단과 여유(padding-bottom = 다닥다닥 방지). */
+  .prog { position:relative; width:62%; min-width:170px; max-width:260px;
+    padding-top:15px;     /* 라벨이 점 위에 들어갈 공간 */
+    padding-bottom:8px;   /* 카드 하단과 여유 */
+  }
+  .prog .track { position:relative; height:2px; background:var(--line); border-radius:999px; margin:0 5px; }
+  .prog .fill { position:absolute; left:0; top:0; height:100%; background:var(--accent); border-radius:999px;
+    box-shadow:0 0 6px rgba(15,253,2,.5); transition:width .3s; }
+  /* node = 트랙 라인 y(top:0) 기준. dot 중심이 라인 중앙에 오게 translateY(-50%) → 선 위에 점이 얹힘. */
+  .prog .node { position:absolute; top:0; transform:translate(-50%,0); display:flex; flex-direction:column;
+    align-items:center; }
+  .prog .dot { width:9px; height:9px; border-radius:50%; background:var(--line); border:1px solid rgba(255,255,255,.12);
+    box-shadow:inset 0 1px 1px rgba(0,0,0,.3); transform:translateY(-50%); position:relative; }
+  /* 라벨 = 점 위(트랙 라인 위쪽) */
+  .prog .nlbl { position:absolute; bottom:9px; font-size:8.5px; line-height:1; color:var(--mut); white-space:nowrap;
+    letter-spacing:-.2px; }
+  .prog .node.lit .dot { background:var(--accent); border-color:var(--accent); box-shadow:0 0 6px rgba(15,253,2,.6); }
+  .prog .node.lit .nlbl { color:var(--accent); font-weight:700; }
+  .pill { font-size:11px; font-weight:800; border-radius:999px; padding:5px 12px; }
+  .pill.ok { background:linear-gradient(90deg,#d8ff3d,var(--accent)); color:var(--on-accent); }
+  .pill.gen { color:var(--accent); border:1px solid rgba(15,253,2,.4); animation:pulse 1.6s ease-in-out infinite; }
+  .pill.bad { color:#ff7b72; border:1px solid rgba(255,123,114,.4); }
+  @keyframes pulse { 50% { opacity:.45; } }
+  .empty { color:var(--mut); text-align:center; padding:56px 0; }
+
+  /* ── 맨 위로(우하단 고정) ── */
+  .totop { position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:30;
+    width:48px; height:48px; border-radius:50%; cursor:pointer; display:grid; place-items:center;
+    font-size:19px; color:var(--accent); font-family:inherit;
+    background:linear-gradient(165deg, rgba(24,40,29,.82), rgba(12,21,15,.9));
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(15,253,2,.35); box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10);
+    transition:transform .16s, background .16s, opacity .25s; }
+  .totop:hover { transform:translateY(-2px); background:linear-gradient(165deg, rgba(28,46,33,.9), rgba(14,24,17,.94)); }
+  .totop:active { transform:scale(.94); }
+
+
+  /* ── 슛 PIN 다이얼로그 ── (작은 중앙 모달 — 일반 dialog 모바일 풀스크린 룰 무력화) */
+  #pindlg { width:min(340px,90vw); max-width:340px; max-height:none; height:auto; margin:auto;
+    border-radius:24px; padding:26px 22px 22px; text-align:center; }
+  #pindlg .pin-title { font-size:18px; font-weight:800; color:var(--accent); letter-spacing:-.3px; }
+  #pindlg .pin-sub { margin:8px 0 18px; font-size:12.5px; line-height:1.5; color:var(--mut); }
+  .pin-boxes { display:flex; gap:10px; justify-content:center; }
+  .pin-cell {
+    width:54px; height:64px; text-align:center; font:800 26px/1 inherit; color:var(--fg);
+    background:rgba(5,12,8,.6); border:2px solid var(--line); border-radius:14px; caret-color:var(--accent);
+    transition:border-color .15s, box-shadow .15s, background .15s; -webkit-text-security:disc;
+  }
+  /* 활성칸 = 강조색 테두리 + 글로우 */
+  .pin-cell:focus { outline:none; border-color:var(--accent); background:rgba(15,253,2,.08);
+    box-shadow:0 0 0 3px rgba(15,253,2,.22), 0 0 16px rgba(15,253,2,.25); }
+  .pin-cell.filled { border-color:rgba(15,253,2,.45); }
+  .pin-boxes.err .pin-cell { border-color:#ff5b5b; box-shadow:0 0 0 2px rgba(255,91,91,.25); }
+  .pin-boxes.shake { animation:pinShake .4s ease; }
+  @keyframes pinShake { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-8px);} 40%,80%{transform:translateX(8px);} }
+  .pin-err { min-height:16px; margin-top:12px; font-size:12px; font-weight:700; color:#ff7676; }
+  .pin-cancel { margin-top:16px; padding:9px 22px; font:700 13px inherit; color:var(--mut);
+    background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
+  .pin-cancel:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  @media (max-width:600px) { #pindlg { width:90vw; height:auto; max-height:none; border-radius:24px; border:1px solid var(--line); } }
+
+  /* ── 다이얼로그 ── */
+  dialog {
+    width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
+    background:linear-gradient(165deg, rgba(24,40,29,.88), rgba(12,21,15,.92));
+    backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+    border:1px solid var(--line); border-radius:26px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.10);
+  }
+  dialog::backdrop { background:rgba(4,8,5,.6); backdrop-filter:blur(3px); }
+  .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.82); backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--line2);
+    padding:12px 16px; display:flex; gap:10px; align-items:center; }
+  .dlg-h a { color:var(--accent); font-size:12px; font-weight:700; text-decoration:none;
+    background:var(--accent-dim); border:1px solid var(--line); border-radius:999px; padding:7px 14px; }
+  .dlg-h button { margin-left:auto; background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line);
+    border-radius:999px; padding:7px 16px; font-size:13px; font-family:inherit; cursor:pointer; min-height:36px; }
+  .md { padding:8px 18px 26px; }
+  .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
+  .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
+  .md h3 { font-size:13px; color:var(--mut); margin:18px 0 6px; font-weight:700; }
+  /* 다이제스트(요약) — 기사 제목 강조 + 섹션마다 구분선·상하 간격·강조색(아래 카드처럼) */
+  /* 대주제 = 상단 기사 제목(썸네일) = 카드뉴스 제목 동일 + 복사 가능 */
+  /* 상단 기사 제목(요약) = 평범한 제목 — 복사 버튼 없음(#3) */
+  #mdbody h1 { font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; }
+  /* 카드뉴스 제목 = 드래프트 박스처럼 테두리·배경 있는 복사 블록(한눈에 '복사 영역') */
+  #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px;
+    margin:6px 0 14px; padding:13px 46px 13px 15px;
+    background:rgba(5,12,8,.55); border:1px solid var(--line2); border-radius:16px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+  #mdbody h2, #mdbody h3 { color:var(--accent); border-top:1px solid var(--line2); border-bottom:none;
+    padding-top:16px; margin:22px 0 8px; font-weight:800; letter-spacing:-.2px; }
+  #mdbody h2 { font-size:14px; } #mdbody h3 { font-size:13.5px; }
+  /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
+  /* 소머리(•) — 카드 텍스트·이미지프롬프트 라벨 */
+  #cardsec p.lbl { margin:14px 0 4px; }
+  #cardsec p.lbl::before { content:'• '; color:var(--mut); font-weight:700; }
+  /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
+  .kw { color:var(--accent); font-weight:700; }
+  /* 앵글 후보 ①② = 배지 도형(번호 포함 #4) */
+  .angle { display:inline-block; padding:1px 9px; border-radius:999px; font-weight:800; font-size:.92em;
+    color:var(--accent); background:var(--accent-dim); border:1px solid var(--line); white-space:nowrap; }
+  .md a { color:var(--accent); } .md ul { padding-left:18px; }
+  .md code { background:rgba(5,12,8,.55); padding:1px 5px; border-radius:6px; }
+  /* 첫 줄이 바로 위에서 시작 — 복사 아이콘은 오른쪽 거터(44px)에 둠(위 빈 줄 제거 #7) */
+  .md pre { position:relative; background:rgba(5,12,8,.55); border:1px solid var(--line2); border-radius:16px;
+    padding:14px 44px 14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+  .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
+    font-family:inherit; font-size:14px; line-height:1.7; }
+  /* 복사 = 아이콘 버튼(강조색 오버레이, 누르면 반응형) */
+  .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); border-radius:9px; cursor:pointer;
+    transition:transform .12s, background .15s, border-color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .copy svg { display:block; }
+  .copy:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
+  .copy:active { transform:scale(.85); }
+  .copy.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+
+  /* ── 카드뉴스 섹션 ── */
+  .mkbtn {
+    display:block; width:100%; margin:14px 0 4px; padding:14px; font-size:14px; font-weight:800; font-family:inherit;
+    background:linear-gradient(135deg,#5ef98a,var(--accent)); color:var(--on-accent);
+    border:none; border-radius:999px; cursor:pointer; box-shadow:0 6px 24px rgba(15,253,2,.22);
+  }
+  .mkbtn:active { transform:scale(.98); }
+  .genstat { margin:14px 0 4px; padding:13px 15px; border:1px solid var(--line); border-radius:16px;
+    color:var(--mut); font-size:13px; background:rgba(255,255,255,.04); }
+  .genstat.live { color:var(--accent); border-color:rgba(15,253,2,.3); animation:pulse 1.6s ease-in-out infinite; }
+  .cardnote { margin:16px 0 6px; font-size:13px; color:var(--accent); font-weight:700; }
+  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin:8px 0; }
+  .gal figure { margin:0; }
+  .gal img { width:100%; border-radius:14px; border:1px solid var(--line); display:block; }
+  .gal .dl { display:block; text-align:center; font-size:11px; font-weight:700; color:var(--mut); text-decoration:none; padding:5px 0; }
+  .gal .dl:hover { color:var(--accent); }
+
+  /* ── 접이식 단계(phase) — 요약 / 카드 ── */
+  .phase { border-top:1px solid var(--line2); }
+  .phase > summary { cursor:pointer; list-style:none; user-select:none; outline:none;
+    padding:15px 18px 11px; font-size:14px; font-weight:800; color:var(--accent);
+    display:flex; align-items:center; gap:8px; letter-spacing:-.2px; }
+  .phase > summary::-webkit-details-marker { display:none; }
+  .phase > summary::after { content:'▾'; margin-left:auto; color:var(--mut); font-size:12px; transition:transform .2s; }
+  .phase:not([open]) > summary::after { transform:rotate(-90deg); }
+  .phase > summary:hover { color:#5ef98a; }
+  .phase .md { padding:2px 18px 22px; }
+  /* 긴 박스(카드 이미지 프롬프트·요약 드래프트) = 기본 3줄 클립 + 더보기/접기, 펼치면 전문.
+     내부 스크롤 X — 모바일에서 작은 박스가 페이지 스크롤 뺏는 문제 차단(접힘=스크롤영역 없음). */
+  .md pre.clip { overflow:hidden; }
+  .md pre.clip code { max-height:5.2em; overflow:hidden; display:block; }
+  .md pre.clip::after { content:''; position:absolute; left:1px; right:1px; bottom:1px; height:30px;
+    background:linear-gradient(transparent, rgba(5,12,8,.95)); pointer-events:none; border-radius:0 0 15px 15px; }
+  .morebtn { display:block; width:100%; margin:6px 0 2px; padding:7px; font-size:12px; font-weight:700; font-family:inherit;
+    color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:10px; cursor:pointer; }
+  .morebtn:hover { color:var(--accent); border-color:rgba(15,253,2,.3); }
+  /* 카드 N 헤더 — 강조색+구분선으로 카드별 구분감 */
+  #cardsec h3 { color:var(--accent); font-size:14px; font-weight:800; letter-spacing:-.2px;
+    margin:22px 0 8px; padding-top:14px; border-top:1px solid var(--line2); }
+  #cardsec h3:first-of-type { border-top:none; padding-top:2px; margin-top:8px; }
+
+  /* ── 모바일 ── */
+  @media (max-width:640px) {
+    .wrap { padding:0 12px 48px; }
+    .topbanner { padding:8px 12px 0; }
+    .profile { width:54px; height:54px; right:22px; bottom:-20px; }
+    .bar { padding:0 12px; }
+    dialog { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
+    .md { padding:6px 14px 44px; }
+    .gal { grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="bgfx"></div>
+
+<div class="topbanner">
+  <img class="banner" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL">
+  <button class="profile" id="profile" aria-label="프로필 메뉴"><img src="assets/brand/main_profile.jpg" alt="프로필"><span class="pbadge" id="pbadge"></span></button>
+  <div class="pmenu" id="pmenu" hidden>
+    <div class="pname">노뮤트</div>
+    <div class="psub">뉴스 큐레이션</div>
+    <a href="https://nomute.kr" target="_blank" rel="noopener">노뮤트 홈 ↗</a>
+    <a href="https://instagram.com/no_mute" target="_blank" rel="noopener">노뮤트 인스타그램 ↗</a>
+    <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
+    <button id="refresh">새로고침</button>
+  </div>
+  <div class="msgpop" id="msgpop" hidden>
+    <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기">✕</button></div>
+    <div class="msglist" id="msglist"></div>
+  </div>
+</div>
+
+<div class="filterbar">
+  <div class="dhead"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-cnt" id="dhCnt"></span></div>
+  <div class="bar">
+    <input id="q" type="search" placeholder="제목 검색">
+    <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
+  </div>
+</div>
+
+<div class="wrap"><div id="list"></div></div>
+
+<button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
+
+<dialog id="dlg">
+  <div class="dlg-h"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()">닫기</button></div>
+  <details class="phase" id="ph-sum" open>
+    <summary>📄 기사 요약 · 시사점</summary>
+    <div class="md" id="mdbody"></div>
+  </details>
+  <details class="phase" id="ph-card" open>
+    <summary id="cardsum">카드뉴스</summary>
+    <div class="md" id="cardsec"></div>
+  </details>
+</dialog>
+
+<!-- 슛(유료 발사) PIN 입력 — confirm/안내 다이얼로그·prompt 대체. 4칸 자동이동·자동인증 -->
+<dialog id="pindlg">
+  <div class="pin-title">🚀 발사 PIN</div>
+  <div class="pin-sub">유료 발사야(Gemini·Cloud Run). 4자리 암호 입력.</div>
+  <div class="pin-boxes" id="pinboxes">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 1">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 2">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 3">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 4">
+  </div>
+  <div class="pin-err" id="pinerr"></div>
+  <button class="pin-cancel" type="button" onclick="pindlg.close()">취소</button>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+let DATA = [];
+let CUR = '';
+let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
+marked.setOptions({ breaks:true });
+
+// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 5개. 전부 보호성 → 앰버 경고 틴트(.warn).
+// (대분류·정치민감 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모'];
+// '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
+const hasCardImage = a => a.cards && a.cards.state === 'done';
+
+async function load() {
+  try {
+    const r = await fetch('articles.json?_=' + Date.now());
+    const j = await r.json();
+    DATA = j.articles || [];
+    dateHead(j.count || DATA.length);
+  } catch(e) { DATA = []; const d = $('#dhCnt'); if (d) d.textContent = 'articles.json 없음'; }
+  render();
+  if ($('#dlg').open && CUR) {
+    const a = DATA.find(x => x.file === CUR);
+    // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
+    if (a && ((a.cards && a.cards.state) || '') !== CUR_STATE) cardSec(a);
+  }
+}
+
+function render() {
+  const q = $('#q').value.trim().toLowerCase();
+  const cardonly = $('#cardonly').checked;
+  const rows = DATA.filter(a =>
+    (!cardonly || hasCardImage(a)) &&
+    (!q || (a.title+a.media).toLowerCase().includes(q)));
+  const list = $('#list');
+  if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
+  list.innerHTML = '';
+  rows.forEach((a, i) => {
+    const c = document.createElement('div'); c.className='card';
+    c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
+    c.innerHTML = `
+      <div class="cardmain">
+        <div class="cardtop${isToday(a.date)?' today':''}">${repDateTime(a)}</div>
+        <div class="row1"><span class="t"></span></div>
+        <div class="s"></div>
+        <div class="kv">
+          ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
+          <div class="sensgrp">
+            <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
+            ${a.bias?`<div><span>편향</span><b>${esc((a.bias||'').replace(BIAS_RE,'').trim())}</b>${gauge(a.bias)}</div>`:''}
+          </div>
+        </div>
+        <div class="botrow">
+          ${progGauge(a)}
+        </div>
+      </div>
+      ${nmtNav()}`;
+    c.querySelector('.t').textContent = a.title;
+    c.querySelector('.s').textContent = a.summary || '';
+    c.onclick = () => open(a);
+    // 카드 셀 N·M·T = 모달 열고 해당 섹션 점프(본문 클릭=open과 충돌 방지 위해 stopPropagation)
+    c.querySelectorAll('.nmt button[data-j]').forEach(btn => {
+      btn.onclick = e => { e.stopPropagation(); open(a);
+        requestAnimationFrame(() => jumpTo(btn.dataset.j)); };
+    });
+    list.appendChild(c);
+  });
+}
+
+// 편향 게이지 바 — N/10 → 옐로→그린 채움, 좌우 무관(N/A) → 빗금
+function gauge(b) {
+  const m = /(\d+)\s*\/\s*10/.exec(b || '');
+  if (m) return `<div class="gauge"><i style="width:${Math.min(100, +m[1]*10)}%"></i></div>`;
+  return `<div class="gauge na"></div>`;
+}
+
+// ── 카드 셀 하단 헬퍼들(#4~#7) ──
+// #7 카드 셀 N·M·T 네비 — 기존 ↗(.go) 대체. 배선은 render()에서(data-j로 jumpTo).
+function nmtNav() {
+  return `<div class="nmt">
+    <button type="button" data-j="n" aria-label="인스타 요약으로">N</button>
+    <button type="button" data-j="m" aria-label="카드 프롬프트로">M</button>
+    <button type="button" data-j="t" aria-label="카드 이미지로">T</button>
+  </div>`;
+}
+// 민감 태그 → 개별 칩. "#성범죄 #자살자해" 공백 split. "해당 없음"/빈값이면 muted '—'.
+// 본체 5개(SENS_PROTECT)=앰버 경고 틴트(.warn). 목록 외(옛 큐 잔여 태그)=기본 muted.
+function sensChips(tags) {
+  if (!tags || tags === '해당 없음') return '<b class="senshyphen">—</b>';
+  const arr = tags.split(/\s+/).filter(Boolean);
+  if (!arr.length) return '<b class="senshyphen">—</b>';
+  return arr.map(t => {
+    const warn = SENS_PROTECT.includes(t) ? ' warn' : '';
+    return `<span class="tagchip${warn}">${esc(t)}</span>`;
+  }).join('');
+}
+// #4 진행 게이지 — 4단계(실패·요약·프롬프트·카드), 누적 점등. state→단계 매핑.
+function progGauge(a) {
+  const st = (a.cards && a.cards.state) || '';
+  // failed=1 / 디제스트존재·카드없음(''·generating·fired_partial)=2 / text_done=3 / done=4
+  let lvl;
+  if (st === 'failed') lvl = 1;
+  else if (st === 'done') lvl = 4;
+  else if (st === 'text_done') lvl = 3;
+  else lvl = 2;   // 큐의 모든 기사는 요약(디제스트) 보유 → 최소 2단계
+  const labels = ['실패', '요약', '프롬프트', '카드'];
+  // 4노드 등간격(0·1/3·2/3·1) → %로 배치(트랙은 좌우 5px 안쪽 margin)
+  const pos = [0, 100/3, 200/3, 100];
+  const nodes = labels.map((lb, i) => {
+    const lit = (i + 1) <= lvl ? ' lit' : '';
+    return `<div class="node${lit}" style="left:${pos[i]}%">`
+      + `<span class="nlbl">${lb}</span><span class="dot"></span></div>`;
+  }).join('');
+  const fillPct = lvl <= 1 ? 0 : pos[lvl - 1];   // 점등 노드까지 연결선 채움
+  return `<div class="prog"><div class="track"><div class="fill" style="width:${fillPct}%"></div>${nodes}</div></div>`;
+}
+// #1 보도일 — "M/D (요일)" + 시각(time:HH:MM이면 뒤에 붙임). 박스 없이 텍스트, 카드 맨 위.
+function isToday(date) {
+  if (!date) return false;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return false;
+  return `${m[1].slice(2)}${m[2]}${m[3]}` === todayYMD6();   // YYMMDD(로컬=KST) 비교
+}
+function repDate(date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  if (!m) return esc(date || '');
+  const W = ['일','월','화','수','목','금','토'];
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return `${+m[2]}/${+m[3]} (${W[d.getDay()]})`;
+}
+// #1 보도일 + 시각 — a.time이 HH:MM 형식일 때만 ' HH:MM' 붙임(아니면 날짜만). 6/14 (일) 11:00 꼴.
+function repDateTime(a) {
+  const base = repDate(a.date);
+  const t = (a.time || '').trim();
+  return /^\d{1,2}:\d{2}$/.test(t) ? `${base} ${esc(t)}` : base;
+}
+
+function open(a) {
+  CUR = a.file;
+  const md = $('#mdbody');
+  md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
+  decorate(md);
+  addCopyButtons(md);
+  gvChip($('#ph-sum').querySelector('summary'), a.guidelines_version);   // 요약 = 어떤 지침 버전으로 갱신됐는지
+  cardSec(a);
+  const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
+  const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
+  document.documentElement.style.overflow = 'hidden';   // PC: 모달 밖(백드롭) 스크롤 시 배경 페이지 스크롤 차단(#5)
+  // #src(원문) 링크가 모달 첫 focusable이라 showModal이 auto-focus → 브라우저가 좌하단 상태바에
+  // 그 링크 URL을 노출함. 닫기 버튼으로 포커스를 옮겨 차단.
+  const cb = $('#dlg').querySelector('.dlg-h button'); if (cb) cb.focus();
+}
+function addCopyButtons(root) {
+  root.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code');
+    pre.appendChild(copyBtn(() => code ? code.innerText : pre.innerText, '복사'));
+  });
+}
+
+// 오늘(브라우저 로컬=KST) YYMMDD — 기사 파일명 앞 6자와 비교(자정 기준 New/Today)
+function todayYMD6() {
+  const n = new Date(), p = x => String(x).padStart(2,'0');
+  return `${String(n.getFullYear()).slice(2)}${p(n.getMonth()+1)}${p(n.getDate())}`;
+}
+// 날짜 헤더: yyyy-mm-dd 요일 │ Today {오늘} / {총합}
+function dateHead(total) {
+  const W = ['일','월','화','수','목','금','토'];
+  const n = new Date(), p = x => String(x).padStart(2,'0');
+  const dd = $('#dhDate'); if (dd) dd.textContent = `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())} ${W[n.getDay()]}`;
+  const t6 = todayYMD6();
+  const todayN = DATA.filter(a => (a.file||'').slice(0,6) === t6).length;
+  const dc = $('#dhCnt'); if (dc) dc.innerHTML = `Today <b>${todayN}</b> / ${total}`;
+}
+
+// 긴 박스(카드 프롬프트·요약 드래프트) 3줄 클립 + 더보기/접기
+function addClip(pre) {
+  pre.classList.add('clip');
+  const mb = document.createElement('button');
+  mb.className = 'morebtn'; mb.textContent = '더 보기 ▾';
+  mb.onclick = ev => { ev.stopPropagation();
+    const clipped = pre.classList.toggle('clip');
+    mb.textContent = clipped ? '더 보기 ▾' : '접기 ▴'; };
+  pre.after(mb);
+}
+
+// 다이제스트 후처리: [썸네일] 섹션 제거 · 헤더 이모지 strip(💡 시사점 유지) · 편향 색도형 strip · 키워드 강조 · 드래프트 더보기
+const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅]/gu;
+const KW_RE = /(앵글 후보\s*[①-⑳0-9]*|약보수 보정|[가-힣A-Za-z0-9]{1,8} ?관점)/g;
+function decorate(root) {
+  // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
+  root.querySelectorAll('h3').forEach(h => {
+    if (!/썸네일/.test(h.textContent)) return;
+    let n = h.nextElementSibling;
+    while (n && !/^H[1-3]$/.test(n.tagName)) { const k = n; n = n.nextElementSibling; k.remove(); }
+    h.remove();
+  });
+  // 2) 섹션 헤더 이모지 strip(시사점 💡만 유지) + 드래프트 글자수 메타(— 약 N자) 미강조
+  root.querySelectorAll('h2, h3').forEach(h => {
+    if (/시사점/.test(h.textContent)) return;
+    if (h.firstChild && h.firstChild.nodeType === 3)
+      h.firstChild.data = h.firstChild.data.replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '');
+    // h3 드래프트 [라벨 — 약 N/M자]: 라벨·실제 카운트(N)만 강조, 나머지([·—·약·/M·자])는 미강조
+    const dm = h.textContent.match(/^(\[)(.+?)(\s*[—\-]\s*약\s*)(\d+)(.*)$/);
+    if (dm) { h.innerHTML = `<span class="cnt">${esc(dm[1])}</span>${esc(dm[2])}<span class="cnt">${esc(dm[3])}</span>${esc(dm[4])}<span class="cnt">${esc(dm[5])}</span>`; return; }
+    // h2 섹션: 📍 말머리 + 괄호 부연(…)은 흰색(강조 해제)
+    if (h.tagName === 'H2') {
+      const pm = h.textContent.match(/^(.+?)(\s*\(.+\)\s*)$/);
+      if (pm) h.innerHTML = '📍 ' + esc(pm[1]) + '<span class="paren">' + esc(pm[2]) + '</span>';
+      else if (h.firstChild && h.firstChild.nodeType === 3 && !/^📍/.test(h.firstChild.data)) h.firstChild.data = '📍 ' + h.firstChild.data;
+    }
+  });
+  // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
+  const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n; (n = tw.nextNode());) {
+    if (!n.parentElement || n.parentElement.closest('pre, code, h1, h2, h3')) continue;
+    nodes.push(n);
+  }
+  nodes.forEach(n => {
+    const s = n.data.replace(BIAS_RE, '');
+    const parts = s.split(KW_RE);
+    if (parts.length < 2) { if (s !== n.data) n.data = s; return; }
+    const frag = document.createDocumentFragment();
+    parts.forEach((p, i) => { if (!p) return;
+      if (i % 2) {
+        if (/^앵글 후보/.test(p)) {                                                  // 앵글 후보 ①② = 배지 도형(번호 포함)
+          const sp = document.createElement('span'); sp.className = 'angle'; sp.textContent = p.trim(); frag.append(sp);
+        } else {
+          if (/^약보수 보정/.test(p)) frag.append(document.createElement('br'));      // '약보수 보정'은 항상 줄바꿈
+          const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = p; frag.append(sp);
+        }
+      } else frag.append(document.createTextNode(p)); });
+    n.replaceWith(frag);
+  });
+  // 4) 요약 드래프트 더보기/접기 — '자유요약'만 클립(IG·Thread는 전체 표시)
+  root.querySelectorAll('pre').forEach(pre => {
+    let h = pre.previousElementSibling;
+    while (h && !/^H[1-3]$/.test(h.tagName)) h = h.previousElementSibling;
+    if (h && /자유요약/.test(h.textContent)) addClip(pre);
+  });
+  // 5) 상단 기사 제목 = 복사 버튼 없음(#3) — 카드뉴스 제목만 복사 영역으로(cardSec)
+}
+
+// ── 카드뉴스 섹션 ──
+function cardSec(a) {
+  const sec = $('#cardsec'); sec.innerHTML = '';
+  const c = a.cards || {}, st = c.state || '';
+  CUR_STATE = st;
+  // 카드 phase 헤더에 상태 반영(접어도 보이게)
+  const sumlabel = { '':'카드뉴스', generating:'🍌 카드뉴스 — 프롬프팅 중…', text_done:'카드뉴스 — 텍스트·프롬프트',
+    done:'카드뉴스 — 완성', fired_partial:'🚀 카드뉴스 — 발사됨', failed:'⚠️ 카드뉴스 — 실패' };
+  const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '카드뉴스';
+  gvChip(cs, c.guidelines_version);   // 카드 = 어떤 지침 버전으로 갱신됐는지(요약 해시와 다른 게 정상)
+
+  if (!st || st === 'failed') {
+    if (st === 'failed') sec.insertAdjacentHTML('beforeend',
+      `<div class="genstat">⚠️ 직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
+    const b = document.createElement('button');
+    b.className = 'mkbtn';
+    b.textContent = st === 'failed' ? '카드뉴스 다시 생성' : '카드뉴스 생성';
+    b.onclick = () => makeCards(a.file, b);
+    sec.appendChild(b);
+    return;
+  }
+  if (st === 'generating') {
+    sec.innerHTML = `<div class="genstat live">🍌 카드뉴스 프롬프팅 중입니다… 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
+    return;
+  }
+  const note = {
+    done: '카드뉴스 완성 — 이미지 탭하면 원본, ⬇로 저장',
+    fired_partial: '🚀 발사됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
+  }[st];
+  if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
+  if (c.images && c.images.length) {
+    const gal = document.createElement('div'); gal.className = 'gal';
+    gal.innerHTML = c.images.map(p =>
+      `<figure><a href="${esc(p)}" target="_blank" rel="noopener"><img src="${esc(p)}" loading="lazy" alt=""></a>
+       <a class="dl" href="${esc(p)}" download>⬇ 저장</a></figure>`).join('');
+    sec.appendChild(gal);
+  }
+  if (c.md) {
+    const div = document.createElement('div');
+    div.innerHTML = DOMPurify.sanitize(marked.parse(c.md));
+    div.querySelectorAll('h3').forEach(h => { h.textContent = '📍 ' + h.textContent; });   // [카드 N] = 말머리
+    div.querySelectorAll('p > strong').forEach(s => {                                        // 텍스트·이미지프롬프트 = 소머리(•)
+      if (/^(텍스트|이미지\s*프롬프트)$/.test((s.textContent || '').trim())) s.parentElement.classList.add('lbl');
+    });
+    // 이미지 프롬프트 박스 = 기본 3줄 클립 + 더보기/접기(내부 스크롤 X). 직전 라벨에 '이미지 프롬프트' 있는 pre.
+    div.querySelectorAll('pre').forEach(pre => {
+      const prev = pre.previousElementSibling;
+      if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
+    });
+    addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
+    const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
+    if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
+    sec.appendChild(div);
+  }
+  // text_done = '슛'(이미지 발사) 버튼 — 이미지 나오면(done) 사라짐
+  if (st === 'text_done') {
+    const b = document.createElement('button');
+    b.className = 'mkbtn';
+    b.textContent = '🚀 이미지 생성 & 카드 합성';
+    b.onclick = () => makeCards(a.file, b, 'shoot');
+    sec.appendChild(b);
+  }
+}
+// ── 슛 PIN 입력 UI ──
+// confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.
+// 한 자 입력→다음 칸 자동이동, 4번째 입력→엔터 없이 자동 resolve. 취소=null.
+// 숫자만(비숫자 무시), 백스페이스로 이전 칸, 4자리 붙여넣기 분배. ⚠️ PIN은 세션/로컬에 저장 안 함(매번 입력).
+let _pinWired = false, _pinResolve = null;
+function _pinCells() { return [...$('#pindlg').querySelectorAll('.pin-cell')]; }
+function _pinValue() { return _pinCells().map(c => c.value).join(''); }
+function _pinReset() {                       // 칸 비우고 첫 칸 포커스
+  const cells = _pinCells();
+  cells.forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  const boxes = $('#pinboxes'); boxes.classList.remove('err', 'shake');
+  cells[0].focus();
+}
+function _pinShake(msg) {                     // 오답: 흔들기 + 에러문구 + 초기화 재입력
+  const boxes = $('#pinboxes'), err = $('#pinerr');
+  if (err) err.textContent = msg || '암호가 틀렸어. 다시.';
+  boxes.classList.add('err');
+  boxes.classList.remove('shake'); void boxes.offsetWidth;   // 리플로우 → 애니 재시작
+  boxes.classList.add('shake');
+  const cells = _pinCells();
+  cells.forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  cells[0].focus();
+}
+function _wirePin() {                         // 입력 배선(1회만)
+  if (_pinWired) return; _pinWired = true;
+  const dlg = $('#pindlg'), cells = _pinCells();
+  cells.forEach((cell, i) => {
+    cell.addEventListener('input', () => {
+      cell.value = (cell.value.match(/\d/g) || []).join('').slice(-1);   // 숫자 1자만 유지
+      cell.classList.toggle('filled', !!cell.value);
+      $('#pinboxes').classList.remove('err');
+      if (cell.value && i < cells.length - 1) cells[i + 1].focus();      // 다음 칸 자동 이동
+      if (_pinValue().length === cells.length) {                          // 4자리 다 차면 자동 인증(엔터 X)
+        const v = _pinValue();
+        if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(v); }
+      }
+    });
+    cell.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !cell.value && i > 0) { cells[i - 1].focus(); e.preventDefault(); }   // 빈 칸 백스페이스 → 이전 칸
+      else if (e.key === 'ArrowLeft' && i > 0) { cells[i - 1].focus(); e.preventDefault(); }
+      else if (e.key === 'ArrowRight' && i < cells.length - 1) { cells[i + 1].focus(); e.preventDefault(); }
+    });
+    cell.addEventListener('paste', e => {                                 // 4자리 붙여넣기 → 칸 분배
+      const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+      const digits = (txt.match(/\d/g) || []).slice(0, cells.length);
+      if (!digits.length) return;
+      e.preventDefault();
+      cells.forEach((c, k) => { c.value = digits[k] || ''; c.classList.toggle('filled', !!c.value); });
+      const last = Math.min(digits.length, cells.length) - 1;
+      cells[Math.min(last + 1, cells.length - 1)].focus();
+      if (_pinValue().length === cells.length && _pinResolve) {
+        const r = _pinResolve; _pinResolve = null; r(_pinValue());
+      }
+    });
+  });
+  // dialog가 닫히면(취소·esc·백드롭) 대기 중 Promise를 null로 정리
+  dlg.addEventListener('close', () => { if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(null); } });
+}
+// PIN 한 번 받기 — err 있으면 흔들기 표시 후 재입력. resolve = 4자리 문자열 또는 null(취소)
+function askPin(err) {
+  _wirePin();
+  const dlg = $('#pindlg');
+  if (!dlg.open) dlg.showModal();
+  if (err) _pinShake(err); else { $('#pinerr').textContent = ''; _pinReset(); }
+  // showModal 직후 자동 포커스 보장(브라우저 따라 빗나가는 케이스 대비)
+  requestAnimationFrame(() => { const c = _pinCells()[0]; if (c && !_pinValue()) c.focus(); });
+  return new Promise(res => { _pinResolve = res; });
+}
+
+async function makeCards(target, btn, mode) {
+  const shoot = mode === 'shoot';
+  // 유료 확인창(confirm)·prompt('암호') 제거 → 곧장 4칸 PIN UI. PIN=암호(passcode), 검증은 서버 PASSCODE 그대로.
+  let err = null;
+  for (;;) {                                    // 틀리면 흔들고 재입력(루프), 취소면 종료
+    const pass = await askPin(err);
+    if (!pass) return;                          // 취소(닫기·esc)
+    try {
+      const r = await fetch('api/make-cards', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ article: target, pass, mode: shoot ? 'shoot' : 'full' }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) {
+        $('#pindlg').close();                   // 성공 → PIN 닫고 기존 '발사됨' 처리 그대로
+        if (btn) btn.outerHTML = `<div class="genstat live">🚀 발사됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
+        return;
+      }
+      if (r.status === 401) { err = j.error || '암호가 틀렸어. 다시.'; continue; }   // 오답 → 흔들기+초기화 재입력
+      $('#pindlg').close();
+      alert(j.error || `실패 (${r.status})`);
+      return;
+    } catch (e) { $('#pindlg').close(); alert('요청 실패: ' + e.message); return; }
+  }
+}
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+async function copyText(text, btn) {
+  text = (text || '').replace(/\n+$/, '');
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {   // 폴백: 모달(showModal)은 dialog 밖이 inert → textarea를 #dlg 안에 두고 선택영역 명시
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+    $('#dlg').appendChild(ta); ta.focus(); ta.select();
+    try { ta.setSelectionRange(0, text.length); } catch {}
+    try { ok = document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  if (btn) { btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
+    setTimeout(() => { btn.innerHTML = COPY_SVG; btn.classList.remove('ok'); }, 1500); }
+}
+function copyBtn(getText, label) {
+  const b = document.createElement('button'); b.className = 'copy'; b.type = 'button';
+  b.innerHTML = COPY_SVG; b.setAttribute('aria-label', label || '복사');
+  b.onclick = ev => { ev.stopPropagation(); copyText(getText(), b); };
+  return b;
+}
+// #7 모달 섹션 점프(N=인스타요약 / M=카드프롬프트 / T=카드이미지). 타깃 없으면 안전 return.
+function jumpTo(which) {
+  let el;
+  const sec = $('#cardsec');
+  if (which === 'n') {
+    // N → #mdbody의 IG(인스타·자유요약) 섹션 헤딩
+    el = [...$('#mdbody').querySelectorAll('h2, h3')].find(h => /\[?\s*IG|인스타|자유요약/.test(h.textContent));
+  } else if (which === 'm') {
+    // M → 카드뉴스 첫 '[카드' 헤딩(텍스트 시작). 없으면 카드섹션/플레이스홀더 폴백
+    el = [...sec.querySelectorAll('h1, h2, h3')].find(h => /\[\s*카드/.test(h.textContent))
+       || (sec.firstElementChild ? sec : $('#ph-card'));
+  } else if (which === 't') {
+    // T → 카드 결과 갤러리(없으면 슛 버튼). 갤러리가 모달 상단에 오게(block:'start')
+    el = sec.querySelector('.gal') || sec.querySelector('.mkbtn');
+  }
+  if (!el) return;   // 타깃 없으면 안전 return
+  const d = el.closest('details'); if (d) d.setAttribute('open', '');   // 접혀 있으면 펼침
+  el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+const esc = s => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+// 지침 버전 칩 — phase summary 옆에 작은 칩. 기존 칩 제거 후, 값 있을 때만 단다.
+function gvChip(summary, ver) {
+  if (!summary) return;
+  const old = summary.querySelector('.gvchip'); if (old) old.remove();
+  if (!ver) return;
+  const sp = document.createElement('span');
+  sp.className = 'gvchip'; sp.textContent = '지침 ' + ver.slice(0, 7);
+  sp.title = '이 단계가 갱신된 지침 버전: ' + ver;
+  summary.appendChild(sp);   // summary는 flex(::after ▾가 margin-left:auto로 우측 고정) → 칩은 텍스트 뒤
+}
+
+// ── 알림·메시지 ──
+let MSGS = [];
+async function loadMessages() {
+  try {
+    const r = await fetch('messages.json?_=' + Date.now());
+    MSGS = await r.json();
+    if (!Array.isArray(MSGS)) MSGS = [];
+  } catch { MSGS = []; }   // 없으면 조용히 빈 배열(배지·테두리 숨김)
+  renderMsgBadge();
+}
+function renderMsgBadge() {
+  const n = MSGS.length;
+  const prof = $('#profile'), badge = $('#pbadge');
+  if (prof) prof.classList.toggle('hasmsg', n > 0);
+  if (badge) badge.textContent = n > 99 ? '99+' : String(n);
+  const bc = $('#msgbtncnt'); if (bc) bc.textContent = n ? `(${n})` : '';
+}
+function renderMsgList() {
+  const cnt = $('#msgpopcnt'); if (cnt) cnt.textContent = MSGS.length ? `${MSGS.length}건` : '';
+  const list = $('#msglist'); if (!list) return;
+  if (!MSGS.length) { list.innerHTML = '<div class="msgempty">새 메시지 없음</div>'; return; }
+  list.innerHTML = '';
+  MSGS.forEach(m => {
+    const it = document.createElement('div'); it.className = 'msgitem';
+    const t = document.createElement('div'); t.className = 'mt'; t.textContent = m.text || '';
+    it.appendChild(t);
+    if (m.ts) { const d = document.createElement('div'); d.className = 'md8'; d.textContent = m.ts; it.appendChild(d); }
+    list.appendChild(it);
+  });
+}
+
+// 프로필 메뉴
+const pmenu = $('#pmenu');
+const msgpop = $('#msgpop');
+$('#profile').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; pmenu.hidden = !pmenu.hidden; });
+document.addEventListener('click', e => {
+  if (!pmenu.hidden && !pmenu.contains(e.target) && !$('#profile').contains(e.target)) pmenu.hidden = true;
+  if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
+});
+$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); });
+$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); pmenu.hidden = true; renderMsgList(); msgpop.hidden = false; });
+$('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
+
+// 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
+$('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
+
+// (모달 플로팅 N/M/T 네비는 카드 셀 .nmt 버튼으로 이관 — render()에서 배선)
+
+// 맨 위로 — 항상 노출, 최상단 근처에선 살짝 흐리게
+const totop = $('#totop');
+totop.addEventListener('click', () => window.scrollTo({ top:0, behavior:'smooth' }));
+const fadeTop = () => { totop.style.opacity = window.scrollY > 240 ? '1' : '.45'; };
+window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
+
+$('#q').addEventListener('input', render);
+$('#cardonly').addEventListener('change', render);
+setInterval(() => { if (document.visibilityState === 'visible') { load(); loadMessages(); } }, 60000);
+load();
+loadMessages();
+</script>
+</body>
+</html>
