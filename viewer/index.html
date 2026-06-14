@@ -195,6 +195,19 @@
   .gal .dl { display:block; text-align:center; font-size:11px; font-weight:700; color:var(--mut); text-decoration:none; padding:5px 0; }
   .gal .dl:hover { color:var(--accent); }
 
+  /* ── 접이식 단계(phase) — 요약 / 카드 ── */
+  .phase { border-top:1px solid var(--line2); }
+  .phase > summary { cursor:pointer; list-style:none; user-select:none; outline:none;
+    padding:15px 18px 11px; font-size:14px; font-weight:800; color:var(--accent);
+    display:flex; align-items:center; gap:8px; letter-spacing:-.2px; }
+  .phase > summary::-webkit-details-marker { display:none; }
+  .phase > summary::after { content:'▾'; margin-left:auto; color:var(--mut); font-size:12px; transition:transform .2s; }
+  .phase:not([open]) > summary::after { transform:rotate(-90deg); }
+  .phase > summary:hover { color:#5ef98a; }
+  .phase .md { padding:2px 18px 22px; }
+  /* 카드 이미지 프롬프트 = 3줄만 보이고 내부 스크롤(길게 안 늘어지게) */
+  #cardsec pre.promptbox code { max-height:5.2em; overflow-y:auto; }
+
   /* ── 모바일 ── */
   @media (max-width:640px) {
     .wrap { padding:0 12px 48px; }
@@ -244,8 +257,14 @@
 
 <dialog id="dlg">
   <div class="dlg-h"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()">닫기</button></div>
-  <div class="md" id="cardsec"></div>
-  <div class="md" id="mdbody"></div>
+  <details class="phase" id="ph-sum" open>
+    <summary>📄 기사 요약 · 시사점</summary>
+    <div class="md" id="mdbody"></div>
+  </details>
+  <details class="phase" id="ph-card" open>
+    <summary id="cardsum">🎴 카드뉴스</summary>
+    <div class="md" id="cardsec"></div>
+  </details>
 </dialog>
 
 <script>
@@ -355,6 +374,11 @@ function cardChip(a) {
 function cardSec(a) {
   const sec = $('#cardsec'); sec.innerHTML = '';
   const c = a.cards || {}, st = c.state || '';
+  // 카드 phase 헤더에 상태 반영(접어도 보이게)
+  const sumlabel = { '':'🎴 카드뉴스', generating:'🍌 카드뉴스 — 프롬프팅 중…', text_done:'🎴 카드뉴스 — 텍스트·프롬프트',
+    done:'🎴 카드뉴스 — 완성', fired_partial:'🚀 카드뉴스 — 발사됨', failed:'⚠️ 카드뉴스 — 실패' };
+  const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '🎴 카드뉴스';
+
   if (!st || st === 'failed') {
     if (st === 'failed') sec.insertAdjacentHTML('beforeend',
       `<div class="genstat">⚠️ 직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
@@ -366,13 +390,13 @@ function cardSec(a) {
     return;
   }
   if (st === 'generating') {
-    sec.innerHTML = `<div class="genstat live">⏳ 카드 생성 중… 완료되면 여기에 자동으로 뜸(1~2분 단위 갱신)</div>`;
+    sec.innerHTML = `<div class="genstat live">🍌 카드뉴스 프롬프팅 중입니다… 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
     return;
   }
   const note = {
     done: '🎴 카드뉴스 완성 — 이미지 탭하면 원본, ⬇로 저장',
     fired_partial: '🚀 발사됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
-    text_done: '📝 카드 텍스트·프롬프트 생성 완료 (이미지 발사는 GDRIVE_SA_JSON 시크릿 등록 후)',
+    text_done: '📝 카드 텍스트·프롬프트 완성 — 아래 박스에서 개별 복사. 이미지는 "진짜 생성"으로 발사(유료).',
   }[st] || st;
   sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   if (c.images && c.images.length) {
@@ -385,18 +409,33 @@ function cardSec(a) {
   if (c.md) {
     const div = document.createElement('div');
     div.innerHTML = DOMPurify.sanitize(marked.parse(c.md));
-    addCopyButtons(div);
+    // 이미지 프롬프트 박스만 3줄+내부 스크롤(직전 라벨에 '이미지 프롬프트' 있는 pre)
+    div.querySelectorAll('pre').forEach(pre => {
+      const prev = pre.previousElementSibling;
+      if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) pre.classList.add('promptbox');
+    });
+    addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
     sec.appendChild(div);
   }
+  // text_done = '슛'(이미지 발사) 버튼 — 이미지 나오면(done) 사라짐
+  if (st === 'text_done') {
+    const b = document.createElement('button');
+    b.className = 'mkbtn';
+    b.textContent = '🚀 진짜 생성 — 이미지 발사 (유료)';
+    b.onclick = () => makeCards(a.file, b, 'shoot');
+    sec.appendChild(b);
+  }
 }
-async function makeCards(target, btn) {
-  if (!confirm('카드뉴스 생성 — 유료 발사야(Opus + Gemini·Cloud Run). 진행?')) return;
+async function makeCards(target, btn, mode) {
+  const shoot = mode === 'shoot';
+  if (!confirm(shoot ? '이미지 발사 — 유료야(Gemini·Cloud Run). 진행?'
+                     : '카드뉴스 생성 — 유료 발사야(Opus + Gemini·Cloud Run). 진행?')) return;
   let pass = localStorage.getItem('cardpass') || prompt('카드 생성 암호');
   if (!pass) return;
   try {
     const r = await fetch('api/make-cards', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ article: target, pass }),
+      body: JSON.stringify({ article: target, pass, mode: shoot ? 'shoot' : 'full' }),
     });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.ok) {

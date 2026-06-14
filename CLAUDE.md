@@ -79,6 +79,16 @@
 - ⚠️ **영상**: 디스크 떨어지는 환경(모바일 앱)에서만 가능 — jsonl 폴백 불가(실측 확정: 영상은 대화로그에 base64 미포함). 디스크 부재(웹·PC웹·데스크탑)면 영상 접근 불가 → 영상 URL(yt-dlp)·SRT/STT 텍스트·모바일 앱으로 우회. `latest_attachment(kinds=VID_EXT)`는 디스크에서만 잡고 그 외엔 None.
 - 이 규칙은 **입력(첨부)** 한정. 출력 경로(`/mnt/user-data/outputs/`)·산출물 전송은 무관(정상 작동).
 
+## 📰 뉴스 큐 파이프라인 — 기틀 + 불변 (플랫폼 인프라 · 260614)
+폰→Actions→Pages 자동 큐레이션. **정본 상세 = `docs/news-pipeline.md` + `apps/news/`**; 여기엔 *기틀·불변·헷갈림 방지*만(라우터는 얇게).
+- **흐름(한 기사 = 3단계):** 폰 공유→`pending/**` push → `news-analyze`의 analyze 잡이 다이제스트→`queue/`*.md* → **같은 워크플로 `card_plan` 잡**(`needs: analyze`)이 **자동 카드 프롬프트**(텍스트만·`state=text_done`) → 뷰어에서 운영자 **'슛'**(버튼→`make-cards.js`→`card-make` 워크플로 `mode=shoot`)이 제미나이 렌더→이미지(`done`). 상태: `generating`→`text_done`(프롬프트까지)→`done`(이미지)/`fired_partial`(대기)/`failed`(error.log).
+- 🔒 **깨면 안 되는 불변(미래 세션 주의 — '효율화'로 부수지 마):**
+  - **지침 SSOT 강제주입** = `shared/inject_guidelines.sh` 단일 헬퍼가 live 에디터 지침을 프롬프트에 *떠먹임*(요약·카드 공용). "읽어라"(소프트)·프롬프트에 룰 하드코딩 **금지**. 산출물에 `guidelines_version`(주입블록 sha256) 도장 → 지침이 한 바이트만 바뀌어도 같은 기사 **재생성**(조용한 드리프트 차단). *이게 이 파이프라인의 심장 — "요약·카드가 git 지침을 live로 따라온다".*
+  - **프롬프트는 stdin 전달**(`printf | claude -p`) — 지침 주입이 커서 argv면 ARG_MAX(`Argument list too long` 126)로 전건 실패.
+  - **자동 카드플랜 = 제미나이 0**(이중잠금: 자동 워크플로에 `GDRIVE_SA_JSON` env **부재**[Lock A] + cardmake `text`모드 `unset`[Lock B]). **제미나이/Zapier/Cloud Run = 유료, 오직 '슛'(암호 게이트 `make-cards.js`)에서만.** 자동경로엔 절대 GDRIVE 붙이지 마.
+  - `card_plan` 잡 concurrency group=`card-make`(같은 `cards/` 직렬화) · `MAX_BATCH=3`·최신 먼저 · 좀비 `generating` always-sweep(모달 영구 '프롬프팅 중' 차단) · 헤드리스 무중단(`--disallowedTools`/`--max-turns`) · 이미지 대기 **적응형 상한 15분**(정본 `apps/news/03_자동화_레퍼런스.md`).
+- 🧭 **새 세션 안 헤매기(할 때마다 고생 방지):** ① 작업 첫 손 = `git fetch origin main` — **라이브 파이프라인은 main에서만 돈다**(`ref: main`); 브랜치/draft는 라이브 아님(=새 세션은 옛 복제본일 수 있음). ② **요약 지침 ≠ 카드 지침 해시**(파일집합 다름: 요약=01+MEMORY, 카드=00+01+02+MEMORY) — 두 도장 값이 다른 게 정상. ③ `text_done`(텍스트·프롬프트, 이미지 0) ≠ `done`(이미지). ④ 자동은 **텍스트까지만**, 이미지는 운영자 '슛'. ⑤ 라이브 검증은 머지 후 `git show origin/main:<파일>`로만.
+
 ## 🗺 파일 지도 (플랫폼)
 - `apps/news/` = **뉴스 에디터**: `00_뉴스에디터_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*` · `fact_guard.py`(수치 대조 소프트 게이트)
 - `apps/thumbnail/` = **썸네일 제작** (진입 `/1`·`/2`·`/3`·`/4`): `00_지침_v22.25`(운영) · `CHANGELOG`(이력 전체 — 00에서 분리·로드 토큰 감량) · `MEMORY` · 스크립트 4파일 `nomute_overlay.py`·`nomute_compose.py`·`nomute_copyright.py`·`nomute_reels2.py`(**릴스 헤더형=형태2**, 강조無 릴스·좌우마진 자간sweep·**기본 2종 출력=흰배경無 nobg+흰칸**) · `assets/reels2_base.png`(형태2 베이스) · `setup.sh`(2단 멱등 — **환경 Setup script 등록 권장**: 무거운 설치 스냅샷 캐시→진입 즉시, ly와 동일 방식) — 스크립트는 절대규칙 1번: 불변·import만. ⚠️ 실행 경로·폰트 포팅 별도.
