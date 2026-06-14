@@ -154,6 +154,22 @@
   .totop:hover { transform:translateY(-2px); background:linear-gradient(165deg, rgba(28,46,33,.9), rgba(14,24,17,.94)); }
   .totop:active { transform:scale(.94); }
 
+  /* 모달 섹션 바로가기 — 세로 N/M/T(노뮤트). dialog 안이라 모달 열렸을 때만 표시. */
+  .jump { position:fixed; top:50%; transform:translateY(-50%); z-index:40;
+    right:calc((100vw - min(820px, 94vw)) / 2 + 8px);
+    display:flex; flex-direction:column; border-radius:15px; overflow:hidden;
+    background:linear-gradient(165deg, rgba(24,40,29,.66), rgba(12,21,15,.74));
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--line); box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10); }
+  .jump button { width:42px; height:42px; display:grid; place-items:center; cursor:pointer; font:800 14px/1 inherit;
+    letter-spacing:.06em; color:var(--mut); background:none; border:none; border-top:1px solid var(--line2);
+    transition:color .15s, background .15s; }
+  .jump button:first-child { border-top:none; }
+  .jump button:hover { color:var(--fg); background:rgba(255,255,255,.05); }
+  .jump button:active { color:var(--accent); background:var(--accent-dim); text-shadow:0 0 12px rgba(15,253,2,.45); }
+  .jump button:disabled { opacity:.28; pointer-events:none; }
+  @media (max-width:640px) { .jump { right:8px; } }
+
   /* ── 다이얼로그 ── */
   dialog {
     width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
@@ -180,7 +196,7 @@
     padding-top:16px; margin:22px 0 8px; font-weight:800; letter-spacing:-.2px; }
   #mdbody h2 { font-size:14px; } #mdbody h3 { font-size:13.5px; }
   /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
-  #cardsec h1 { color:var(--accent); font-size:17px; font-weight:800; margin:4px 0 12px; line-height:1.4; }
+  #cardsec h1 { position:relative; font-size:17px; font-weight:800; margin:4px 0 12px; padding-right:38px; line-height:1.4; }
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
   .md a { color:var(--accent); } .md ul { padding-left:18px; }
@@ -189,10 +205,14 @@
     padding:32px 15px 14px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
-  .copy { position:absolute; top:9px; right:9px; font-size:11px; font-weight:700; background:rgba(255,255,255,.07);
-    color:var(--mut); border:1px solid var(--line); border-radius:999px; padding:5px 12px; cursor:pointer; font-family:inherit;
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  .copy:hover, .copy.ok { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  /* 복사 = 아이콘 버튼(강조색 오버레이, 누르면 반응형) */
+  .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); border-radius:9px; cursor:pointer;
+    transition:transform .12s, background .15s, border-color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .copy svg { display:block; }
+  .copy:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
+  .copy:active { transform:scale(.85); }
+  .copy.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 
   /* ── 카드뉴스 섹션 ── */
   .mkbtn {
@@ -292,6 +312,11 @@
     <summary id="cardsum">카드뉴스</summary>
     <div class="md" id="cardsec"></div>
   </details>
+  <nav class="jump" id="jump" aria-label="섹션 바로가기">
+    <button type="button" data-j="n" aria-label="인스타 요약으로">N</button>
+    <button type="button" data-j="m" aria-label="카드 프롬프트로">M</button>
+    <button type="button" data-j="t" aria-label="카드 이미지로">T</button>
+  </nav>
 </dialog>
 
 <script>
@@ -321,7 +346,7 @@ async function load() {
   if ($('#dlg').open && CUR) {
     const a = DATA.find(x => x.file === CUR);
     // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
-    if (a && ((a.cards && a.cards.state) || '') !== CUR_STATE) cardSec(a);
+    if (a && ((a.cards && a.cards.state) || '') !== CUR_STATE) { cardSec(a); updateJump(); }
   }
 }
 
@@ -378,6 +403,7 @@ function open(a) {
   decorate(md);
   addCopyButtons(md);
   cardSec(a);
+  updateJump();
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
   // #src(원문) 링크가 모달 첫 focusable이라 showModal이 auto-focus → 브라우저가 좌하단 상태바에
@@ -386,10 +412,8 @@ function open(a) {
 }
 function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
-    const btn = document.createElement('button');
-    btn.className = 'copy'; btn.textContent = '복사';
-    btn.onclick = ev => { ev.stopPropagation(); copyBlock(pre, btn); };
-    pre.appendChild(btn);
+    const code = pre.querySelector('code');
+    pre.appendChild(copyBtn(() => code ? code.innerText : pre.innerText, '복사'));
   });
 }
 
@@ -435,8 +459,8 @@ function decorate(root) {
     if (/시사점/.test(h.textContent)) return;
     if (h.firstChild && h.firstChild.nodeType === 3)
       h.firstChild.data = h.firstChild.data.replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '');
-    const m = h.textContent.match(/^(.*?)(\s*[—\-]\s*약\s*[\d/]+\s*자.*)$/);
-    if (m) h.innerHTML = esc(m[1]) + '<span class="cnt">' + esc(m[2]) + '</span>';
+    if (/약\s*\d.*자/.test(h.textContent))   // 글자수: 실제 카운트만 강조, '/상한'(고정값)은 미강조
+      h.innerHTML = esc(h.textContent).replace(/(\/\d+)/g, '<span class="cnt">$1</span>');
   });
   // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
   const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -450,8 +474,10 @@ function decorate(root) {
     if (parts.length < 2) { if (s !== n.data) n.data = s; return; }
     const frag = document.createDocumentFragment();
     parts.forEach((p, i) => { if (!p) return;
-      if (i % 2) { const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = p; frag.append(sp); }
-      else frag.append(document.createTextNode(p)); });
+      if (i % 2) {
+        if (/^약보수 보정/.test(p)) frag.append(document.createElement('br'));   // '약보수 보정'은 항상 줄바꿈
+        const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = p; frag.append(sp);
+      } else frag.append(document.createTextNode(p)); });
     n.replaceWith(frag);
   });
   // 4) 요약 드래프트 더보기/접기 — '자유요약'만 클립(IG·Thread는 전체 표시)
@@ -517,6 +543,8 @@ function cardSec(a) {
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
+    const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
+    if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
     sec.appendChild(div);
   }
   // text_done = '슛'(이미지 발사) 버튼 — 이미지 나오면(done) 사라짐
@@ -549,17 +577,40 @@ async function makeCards(target, btn, mode) {
     }
   } catch (e) { alert('요청 실패: ' + e.message); }
 }
-async function copyBlock(pre, btn) {
-  const code = pre.querySelector('code');
-  const text = (code ? code.innerText : pre.innerText).replace(/\n+$/, '');
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+async function copyText(text, btn) {
+  text = (text || '').replace(/\n+$/, '');
   try { await navigator.clipboard.writeText(text); }
   catch {
     const ta = document.createElement('textarea');
     ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
     $('#dlg').appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
   }
-  btn.textContent = '✅ 복사됨'; btn.classList.add('ok');
-  setTimeout(() => { btn.textContent = '복사'; btn.classList.remove('ok'); }, 1500);
+  if (btn) { btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
+    setTimeout(() => { btn.innerHTML = COPY_SVG; btn.classList.remove('ok'); }, 1500); }
+}
+function copyBtn(getText, label) {
+  const b = document.createElement('button'); b.className = 'copy'; b.type = 'button';
+  b.innerHTML = COPY_SVG; b.setAttribute('aria-label', label || '복사');
+  b.onclick = ev => { ev.stopPropagation(); copyText(getText(), b); };
+  return b;
+}
+// 모달 섹션 점프(N=인스타요약 / M=카드프롬프트 / T=카드이미지)
+function jumpTo(which) {
+  let el;
+  if (which === 'n') el = [...$('#mdbody').querySelectorAll('h2, h3')].find(h => /IG|인스타|자유요약/.test(h.textContent));
+  else if (which === 'm') el = $('#cardsec').firstElementChild ? $('#cardsec') : $('#ph-card');
+  else if (which === 't') el = $('#cardsec').querySelector('.gal') || $('#cardsec').querySelector('.mkbtn');
+  if (!el) return;
+  const d = el.closest('details'); if (d) d.setAttribute('open', '');   // 접혀 있으면 펼침
+  el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+function updateJump() {
+  const j = $('#jump'); if (!j) return;
+  j.querySelector('[data-j=n]').disabled = ![...$('#mdbody').querySelectorAll('h2, h3')].some(h => /IG|자유요약/.test(h.textContent));
+  j.querySelector('[data-j=m]').disabled = !$('#cardsec').firstElementChild;
+  j.querySelector('[data-j=t]').disabled = !($('#cardsec').querySelector('.gal') || $('#cardsec').querySelector('.mkbtn'));
 }
 const esc = s => (s||'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
@@ -568,6 +619,12 @@ const pmenu = $('#pmenu');
 $('#profile').addEventListener('click', e => { e.stopPropagation(); pmenu.hidden = !pmenu.hidden; });
 document.addEventListener('click', e => { if (!pmenu.hidden && !pmenu.contains(e.target)) pmenu.hidden = true; });
 $('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); });
+
+// 모달 섹션 바로가기 N/M/T
+$('#jump').addEventListener('click', e => {
+  const b = e.target.closest('button[data-j]'); if (!b || b.disabled) return;
+  e.stopPropagation(); jumpTo(b.dataset.j);
+});
 
 // 맨 위로 — 항상 노출, 최상단 근처에선 살짝 흐리게
 const totop = $('#totop');
