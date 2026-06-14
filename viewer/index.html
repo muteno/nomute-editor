@@ -120,7 +120,7 @@
   .filterbar { position:sticky; top:0; z-index:5; margin-top:18px;
     background:rgba(10,18,13,.78); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
     border-bottom:1px solid var(--line2); padding:12px 0; }
-  .bar { max-width:860px; margin:0 auto; padding:0 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .bar { max-width:860px; margin:0 auto; padding:0 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; position:relative; }
   .bar input, .bar select {
     background:rgba(255,255,255,.05); color:var(--fg); border:1px solid var(--line); border-radius:999px;
     padding:9px 16px; font-size:13px; font-family:inherit; outline:none; min-height:40px;
@@ -239,10 +239,37 @@
   .empty { color:var(--mut); text-align:center; padding:56px 0; }
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
-    padding:30px 16px calc(34px + env(safe-area-inset-bottom)); }
+    padding:30px 16px calc(92px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 */
+  /* S 하단 네비바(노뮤트 글래스) + 클릭 시 작은 팝업 */
+  .bnav { position:fixed; left:0; right:0; bottom:0; z-index:35; display:flex; justify-content:space-around; align-items:stretch;
+    padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg, rgba(8,15,11,.95), rgba(13,23,16,.82)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border-top:1px solid var(--line); box-shadow:0 -10px 30px rgba(0,0,0,.45); }
+  .bnav-i { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px; background:none; border:none;
+    color:var(--mut); font:inherit; font-size:10px; font-weight:700; letter-spacing:-.2px; cursor:pointer; border-radius:13px; transition:color .15s, background .15s; }
+  .bnav-ic { font-size:18px; line-height:1; }
+  .bnav-i:hover { color:var(--fg); background:rgba(255,255,255,.04); }
+  .bnav-i.active { color:var(--accent); }
+  .bnav-i.active .bnav-ic { filter:drop-shadow(0 0 7px rgba(15,253,2,.55)); }
+  .bpop { position:fixed; z-index:36; transform:translateX(-50%); min-width:140px; max-width:230px;
+    background:linear-gradient(165deg, rgba(24,40,29,.97), rgba(12,21,15,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--line); border-radius:15px; padding:11px 15px; box-shadow:0 18px 46px rgba(0,0,0,.6);
+    display:flex; flex-direction:column; gap:3px; animation:popIn .16s cubic-bezier(.22,.61,.36,1) both; }
+  .bpop[hidden] { display:none; }
+  .bpop b { font-size:13px; font-weight:800; color:var(--accent); }
+  .bpop span { font-size:11.5px; color:var(--mut); line-height:1.5; }
+  /* T 이스터에그 — 카메라맨이 검색바 위를 통통 달림. 탭=찰칵 플래시. (transform=GPU 60fps) */
+  .egg { position:absolute; left:0; top:-20px; z-index:7; cursor:pointer; opacity:0; pointer-events:none; }
+  .egg.run { opacity:1; pointer-events:auto; animation:eggrun var(--egg-dur,6.5s) linear forwards; }
+  .egg .egg-in { animation:eggbob .42s ease-in-out infinite; transform-origin:bottom center; }
+  @keyframes eggrun { 0%{ transform:translateX(-44px); } 100%{ transform:translateX(calc(100vw + 44px)); } }
+  @keyframes eggbob { 0%,100%{ transform:translateY(0) rotate(-4deg); } 50%{ transform:translateY(-3px) rotate(4deg); } }
+  .egg-flash { position:fixed; inset:0; z-index:60; background:#fff; pointer-events:none; animation:eggflash .34s ease-out forwards; }
+  @keyframes eggflash { 0%{ opacity:.6; } 100%{ opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .banner, .egg.run, .egg .egg-in { animation:none; } .egg { opacity:0; } }
 
   /* ── 맨 위로(우하단 고정) ── */
-  .totop { position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:30;
+  .totop { position:fixed; right:18px; bottom:calc(80px + env(safe-area-inset-bottom)); z-index:34;
     width:48px; height:48px; border-radius:50%; cursor:pointer; display:grid; place-items:center;
     font-size:19px; color:var(--accent); font-family:inherit;
     background:linear-gradient(165deg, rgba(24,40,29,.82), rgba(12,21,15,.9));
@@ -433,6 +460,7 @@
 <div class="filterbar">
   <div class="dhead"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-sep"></span><span class="dh-cnt" id="dhCnt"></span></div>
   <div class="bar">
+    <div class="egg" id="egg" aria-hidden="true"><div class="egg-in"><svg viewBox="0 0 44 30" width="34" height="23" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="13" width="11" height="11" rx="4" fill="#0FFD02"/><circle cx="11.5" cy="8" r="4.3" fill="#0FFD02"/><rect x="7.5" y="23" width="2.6" height="5.5" rx="1.3" fill="#0FFD02"/><rect x="12.8" y="23" width="2.6" height="5.5" rx="1.3" fill="#0FFD02"/><rect x="17" y="9" width="19" height="13" rx="3" fill="#16261b" stroke="#0FFD02" stroke-width="1.7"/><circle cx="26.5" cy="15.5" r="4.2" fill="#0a120d" stroke="#0FFD02" stroke-width="1.7"/><circle cx="26.5" cy="15.5" r="1.6" fill="#0FFD02"/><rect x="30" y="4.5" width="3.6" height="5" rx="1.2" fill="#0FFD02"/></svg></div></div>
     <input id="q" type="search" placeholder="Search">
     <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
   </div>
@@ -469,6 +497,15 @@
   <div class="pin-err" id="pinerr"></div>
   <button class="pin-cancel" type="button" onclick="pindlg.close()">취소</button>
 </dialog>
+
+<!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
+<nav class="bnav" id="bnav">
+  <button class="bnav-i active" data-tab="main"><span class="bnav-ic">🏠</span>메인</button>
+  <button class="bnav-i" data-tab="scrap"><span class="bnav-ic">🗂️</span>스크랩</button>
+  <button class="bnav-i" data-tab="stat"><span class="bnav-ic">📊</span>통계</button>
+  <button class="bnav-i" data-tab="set"><span class="bnav-ic">⚙️</span>설정</button>
+</nav>
+<div class="bpop" id="bpop" hidden></div>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -1050,6 +1087,40 @@ function tickClock() {
 }
 setInterval(tickClock, 1000); tickClock();
 setInterval(() => { if (document.visibilityState === 'visible') { load(); loadMessages(); } }, 60000);
+
+// S 하단 네비 — 클릭 시 그 버튼 위에 작은 팝업(메인=맨 위로)
+const bpop = $('#bpop');
+$('#bnav').addEventListener('click', e => {
+  const b = e.target.closest('.bnav-i'); if (!b) return;
+  $('#bnav').querySelectorAll('.bnav-i').forEach(x => x.classList.toggle('active', x === b));
+  if (b.dataset.tab === 'main') { bpop.hidden = true; window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  const r = b.getBoundingClientRect();
+  bpop.innerHTML = `<b>${esc(b.textContent.trim())}</b><span>준비 중 — 곧 추가됩니다 🛠</span>`;
+  bpop.hidden = false;
+  bpop.style.left = Math.round(r.left + r.width / 2) + 'px';
+  bpop.style.bottom = Math.round(window.innerHeight - r.top + 10) + 'px';
+});
+document.addEventListener('click', e => {
+  if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) bpop.hidden = true;
+});
+
+// T 이스터에그 — 카메라맨이 검색바 위를 달림(가끔). 탭=찰칵 플래시.
+const egg = $('#egg');
+function runEgg() {
+  if (!egg) return;
+  egg.style.setProperty('--egg-dur', (5 + Math.random() * 2.5).toFixed(1) + 's');
+  egg.classList.remove('run'); void egg.offsetWidth; egg.classList.add('run');
+}
+if (egg) {
+  egg.addEventListener('animationend', () => egg.classList.remove('run'));
+  egg.addEventListener('click', () => {
+    const f = document.createElement('div'); f.className = 'egg-flash'; document.body.appendChild(f);
+    setTimeout(() => f.remove(), 340);
+  });
+  setTimeout(runEgg, 2800);
+  setInterval(() => { if (document.visibilityState === 'visible' && Math.random() < .5) runEgg(); }, 42000);
+}
+
 load();
 loadMessages();
 </script>
