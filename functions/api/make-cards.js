@@ -10,9 +10,9 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
 
-  if (!env.PASSCODE || !env.GH_TOKEN)
-    return json({ error: '서버 미설정 — Cloudflare Pages 환경변수 GH_TOKEN·PASSCODE 등록 필요(docs/news-pipeline.md §카드 제작)' }, 500);
-  if (body.pass !== env.PASSCODE) return json({ error: '암호 불일치' }, 401);
+  if (!env.GH_TOKEN)
+    return json({ error: '서버 미설정 — Cloudflare Pages 환경변수 GH_TOKEN 등록 필요(docs/news-pipeline.md §카드 제작)' }, 500);
+  // L: 암호 게이트 제거(사용자 요청 260614 — 지출 직접 모니터링·추후 재설정). PASSCODE 검증 생략.
 
   // 대상 검증: queue 파일명(ASCII) 1개 또는 all
   const article = /^[A-Za-z0-9._-]+\.md$/.test(body.article || '') ? body.article : 'all';

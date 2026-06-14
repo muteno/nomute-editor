@@ -197,6 +197,7 @@
   .prog .seg { flex:1; display:flex; flex-direction:column; gap:8px; align-items:center; cursor:pointer; min-width:0; outline:none; }
   .prog .sl { font-size:10.5px; line-height:1; letter-spacing:-.3px; color:var(--mut); font-weight:700;
     opacity:.55; white-space:nowrap; transition:color .3s, opacity .3s; }
+  .prog .sk { font-style:normal; font-size:.7em; opacity:.5; margin-left:3px; font-weight:800; letter-spacing:.05em; }
   .prog .bar { width:100%; height:7px; border-radius:999px; background:rgba(255,255,255,.06); position:relative;
     overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.3); transition:background .35s; }
   .prog .seg:hover .sl, .prog .seg:focus-visible .sl { opacity:1; color:var(--fg); }
@@ -266,10 +267,18 @@
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.82); backdrop-filter:blur(16px);
     -webkit-backdrop-filter:blur(16px); border-bottom:1px solid var(--line2);
     padding:12px 16px; display:flex; gap:10px; align-items:center; }
-  .dlg-h a { color:var(--accent); font-size:12px; font-weight:700; text-decoration:none;
-    background:var(--accent-dim); border:1px solid var(--line); border-radius:999px; padding:7px 14px; }
-  .dlg-h button { margin-left:auto; background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line);
-    border-radius:999px; padding:7px 16px; font-size:13px; font-family:inherit; cursor:pointer; min-height:36px; }
+  /* Y: 원문 = 검회색 글래스(de-emphasize) */
+  .dlg-h a { color:var(--mut); font-size:12px; font-weight:700; text-decoration:none;
+    background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; padding:7px 14px;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:color .15s, border-color .15s; }
+  .dlg-h a:hover { color:var(--fg); border-color:rgba(255,255,255,.2); }
+  /* Y: 닫기 = X 아이콘(원형 글래스) */
+  .dlg-h button { margin-left:auto; width:36px; height:36px; padding:0; display:grid; place-items:center;
+    background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:50%;
+    font-size:0; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .15s, border-color .15s; }
+  .dlg-h button::before { content:'✕'; font-size:15px; line-height:1; color:var(--mut); }
+  .dlg-h button:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); }
+  .dlg-h button:hover::before { color:var(--fg); }
   .md { padding:8px 18px 26px; }
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
@@ -312,12 +321,12 @@
     padding:14px 44px 14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
-  /* 복사 = 아이콘 버튼(강조색 오버레이, 누르면 반응형) */
+  /* 복사 = 아이콘 버튼(진회색 일괄·I). 누르면 ✓ 잠깐 초록 피드백. */
   .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
-    color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); border-radius:9px; cursor:pointer;
-    transition:transform .12s, background .15s, border-color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer;
+    transition:transform .12s, background .15s, border-color .15s, color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .copy svg { display:block; }
-  .copy:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
+  .copy:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); color:var(--fg); }
   .copy:active { transform:scale(.85); }
   .copy.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 
@@ -407,7 +416,7 @@
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <dialog id="dlg">
-  <div class="dlg-h"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()">닫기</button></div>
+  <div class="dlg-h"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()" aria-label="닫기" title="닫기">닫기</button></div>
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
@@ -537,7 +546,7 @@ function progGauge(a) {
     if (i < done) cls = ' done';
     else if (i === done && busy) cls = ' cur';
     else if (i === done && fail) cls = ' fail';
-    return `<div class="seg${cls}" data-j="${j}" role="button" tabindex="0" aria-label="${aria[j]}"><span class="sl">${lb}</span><span class="bar"></span></div>`;
+    return `<div class="seg${cls}" data-j="${j}" role="button" tabindex="0" aria-label="${aria[j]}"><span class="sl">${lb}<i class="sk">${j.toUpperCase()}</i></span><span class="bar"></span></div>`;
   }).join('');
   return `<div class="prog">${html}</div>`;
 }
@@ -737,6 +746,7 @@ function cardSec(a) {
   }[st];
   if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   if (c.images && c.images.length) {
+    sec.insertAdjacentHTML('beforeend', '<h3 class="imgsec">3. 카드 이미지</h3>');   // F3
     const gal = document.createElement('div'); gal.className = 'gal';
     gal.innerHTML = c.images.map(p =>
       `<figure><a href="${esc(p)}" target="_blank" rel="noopener"><img src="${esc(p)}" loading="lazy" alt=""></a>
@@ -840,28 +850,20 @@ function askPin(err) {
 
 async function makeCards(target, btn, mode) {
   const shoot = mode === 'shoot';
-  // 유료 확인창(confirm)·prompt('암호') 제거 → 곧장 4칸 PIN UI. PIN=암호(passcode), 검증은 서버 PASSCODE 그대로.
-  let err = null;
-  for (;;) {                                    // 틀리면 흔들고 재입력(루프), 취소면 종료
-    const pass = await askPin(err);
-    if (!pass) return;                          // 취소(닫기·esc)
-    try {
-      const r = await fetch('api/make-cards', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ article: target, pass, mode: shoot ? 'shoot' : 'full' }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && j.ok) {
-        $('#pindlg').close();                   // 성공 → PIN 닫고 기존 '발사됨' 처리 그대로
-        if (btn) btn.outerHTML = `<div class="genstat live">🚀 발사됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
-        return;
-      }
-      if (r.status === 401) { err = j.error || '암호가 틀렸어. 다시.'; continue; }   // 오답 → 흔들기+초기화 재입력
-      $('#pindlg').close();
-      alert(j.error || `실패 (${r.status})`);
+  // L: PIN 게이트 제거 — 바로 발사(사용자 요청 260614·지출 직접 모니터링·내일 재설정 예정).
+  // (PIN UI/askPin/#pindlg는 dead로 남겨둠 — 재게이트 시 makeCards만 되돌리면 됨.)
+  try {
+    const r = await fetch('api/make-cards', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ article: target, mode: shoot ? 'shoot' : 'full' }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.ok) {
+      if (btn) btn.outerHTML = `<div class="genstat live">🚀 발사됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
       return;
-    } catch (e) { $('#pindlg').close(); alert('요청 실패: ' + e.message); return; }
-  }
+    }
+    alert(j.error || `실패 (${r.status})`);
+  } catch (e) { alert('요청 실패: ' + e.message); }
 }
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
@@ -894,7 +896,7 @@ function jumpTo(which) {
   let el;
   if (which === 'n')      el = $('#ph-sum');                       // 1. 기사 요약·시사점(시작 = 위 구분선)
   else if (which === 'm') el = $('#ph-card');                      // 2. 카드뉴스 — 텍스트·프롬프트
-  else if (which === 't') el = sec.querySelector('.gal') || sec.querySelector('.mkbtn') || $('#ph-card');  // 3. 카드 이미지
+  else if (which === 't') el = sec.querySelector('.imgsec') || sec.querySelector('.gal') || sec.querySelector('.mkbtn') || $('#ph-card');  // 3. 카드 이미지
   if (!el) return;
   const d = el.closest('details'); if (d) d.setAttribute('open', '');   // 접혀 있으면 펼침
   const dlg = $('#dlg'), stickyH = ($('.dlg-h') ? $('.dlg-h').offsetHeight : 0);
