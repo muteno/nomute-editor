@@ -53,9 +53,12 @@ ${extracted}"
   fi
 
   # 900s — 큐레이션 다이제스트 + 콘텐츠 초안(자유요약·IG·Thread·썸네일·시사점)까지 생성(260612 확장)
+  # 허용 도구 = WebFetch·WebSearch(사실 확보) + Read·Glob·Grep(품질기준 §7 지침 읽기 — 읽기전용).
+  # ⚠️ Write·Edit·Bash 류는 일절 불허(모델이 파일 쓰기·커밋을 시도하다 권한 대기로 멈춰
+  # 다이제스트 대신 '승인 요청' 텍스트를 뱉어 failed 격리된 사건 대응 — 프롬프트 §⛔와 한 쌍).
   out="$(timeout 900 claude -p "$prompt" \
         --model "$MODEL" \
-        --allowedTools "WebFetch,WebSearch" \
+        --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
         2> "/tmp/${base}.err")"
   rc=$?
 
