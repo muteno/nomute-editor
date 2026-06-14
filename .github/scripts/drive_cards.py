@@ -7,6 +7,7 @@ import argparse, datetime, json, os, sys, time
 
 import requests
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials as UserCredentials
 from google.auth.transport.requests import Request
 
 PROMPT_FOLDER = '1jQBoDqnDk5-fw51tCdDLD_cuDBAJp3kf'  # nomute_imagen/Prompt (apps/news/03 정본)
@@ -15,9 +16,15 @@ UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 
 
 def auth_header():
+    # GDRIVE_SA_JSON = 서비스계정 키(type=service_account) **또는** OAuth 사용자 토큰(token.json) 둘 다 허용.
+    # ⚠️ 서비스계정은 개인 'My Drive'에 파일 업로드 불가(저장공간 0 → 403). 개인 Gmail은 사용자 OAuth 토큰을 써야 함.
+    #    (수동 도구 gen_images.py 가 token.json 으로 도는 것과 동일 인증.)
     info = json.loads(os.environ['GDRIVE_SA_JSON'])
-    creds = service_account.Credentials.from_service_account_info(
-        info, scopes=['https://www.googleapis.com/auth/drive'])
+    if info.get('type') == 'service_account':
+        creds = service_account.Credentials.from_service_account_info(
+            info, scopes=['https://www.googleapis.com/auth/drive'])
+    else:
+        creds = UserCredentials.from_authorized_user_info(info)   # 토큰 자체 scope 사용
     creds.refresh(Request())
     return {'Authorization': f'Bearer {creds.token}'}
 
