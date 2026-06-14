@@ -262,7 +262,7 @@
     <div class="md" id="mdbody"></div>
   </details>
   <details class="phase" id="ph-card" open>
-    <summary id="cardsum">🎴 카드뉴스</summary>
+    <summary id="cardsum">카드뉴스</summary>
     <div class="md" id="cardsec"></div>
   </details>
 </dialog>
@@ -350,6 +350,9 @@ function open(a) {
   cardSec(a);
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   $('#dlg').showModal();
+  // #src(원문) 링크가 모달 첫 focusable이라 showModal이 auto-focus → 브라우저가 좌하단 상태바에
+  // 그 링크 URL을 노출함. 닫기 버튼으로 포커스를 옮겨 차단.
+  const cb = $('#dlg').querySelector('.dlg-h button'); if (cb) cb.focus();
 }
 function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
@@ -362,7 +365,7 @@ function addCopyButtons(root) {
 
 // ── 카드뉴스 섹션 ──
 const CARD_LABEL = {
-  generating:['⏳ 생성중','gen'], done:['🎴 카드 완성','ok'], fired_partial:['🚀 발사됨','gen'],
+  generating:['⏳ 생성중','gen'], done:['카드 완성','ok'], fired_partial:['🚀 발사됨','gen'],
   text_done:['📝 텍스트','ok'], failed:['⚠️ 실패','bad'],
 };
 function cardChip(a) {
@@ -375,16 +378,16 @@ function cardSec(a) {
   const sec = $('#cardsec'); sec.innerHTML = '';
   const c = a.cards || {}, st = c.state || '';
   // 카드 phase 헤더에 상태 반영(접어도 보이게)
-  const sumlabel = { '':'🎴 카드뉴스', generating:'🍌 카드뉴스 — 프롬프팅 중…', text_done:'🎴 카드뉴스 — 텍스트·프롬프트',
-    done:'🎴 카드뉴스 — 완성', fired_partial:'🚀 카드뉴스 — 발사됨', failed:'⚠️ 카드뉴스 — 실패' };
-  const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '🎴 카드뉴스';
+  const sumlabel = { '':'카드뉴스', generating:'🍌 카드뉴스 — 프롬프팅 중…', text_done:'카드뉴스 — 텍스트·프롬프트',
+    done:'카드뉴스 — 완성', fired_partial:'🚀 카드뉴스 — 발사됨', failed:'⚠️ 카드뉴스 — 실패' };
+  const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '카드뉴스';
 
   if (!st || st === 'failed') {
     if (st === 'failed') sec.insertAdjacentHTML('beforeend',
       `<div class="genstat">⚠️ 직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
     const b = document.createElement('button');
     b.className = 'mkbtn';
-    b.textContent = st === 'failed' ? '🎴 카드뉴스 다시 생성 (유료 발사)' : '🎴 카드뉴스 생성 (유료 발사)';
+    b.textContent = st === 'failed' ? '카드뉴스 다시 생성' : '카드뉴스 생성';
     b.onclick = () => makeCards(a.file, b);
     sec.appendChild(b);
     return;
@@ -394,9 +397,9 @@ function cardSec(a) {
     return;
   }
   const note = {
-    done: '🎴 카드뉴스 완성 — 이미지 탭하면 원본, ⬇로 저장',
+    done: '카드뉴스 완성 — 이미지 탭하면 원본, ⬇로 저장',
     fired_partial: '🚀 발사됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
-    text_done: '📝 카드 텍스트·프롬프트 완성 — 아래 박스에서 개별 복사. 이미지는 "진짜 생성"으로 발사(유료).',
+    text_done: '📝 카드 텍스트·프롬프트 완성 — 아래 박스에서 개별 복사.',
   }[st] || st;
   sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   if (c.images && c.images.length) {
@@ -421,7 +424,7 @@ function cardSec(a) {
   if (st === 'text_done') {
     const b = document.createElement('button');
     b.className = 'mkbtn';
-    b.textContent = '🚀 진짜 생성 — 이미지 발사 (유료)';
+    b.textContent = '🚀 진짜 생성 — 이미지 발사';
     b.onclick = () => makeCards(a.file, b, 'shoot');
     sec.appendChild(b);
   }
