@@ -94,6 +94,14 @@
   .toggle input:checked + .tk::after { transform:translateX(17px); }
   .toggle input:checked ~ .tlbl { color:var(--accent); font-weight:700; }
   .meta { color:var(--mut); font-size:12px; flex:1 0 100%; text-align:right; padding-top:2px; }
+  /* 날짜 헤더(검색 위) — 날짜 강조 · 세로 구분선 · Today 강조 */
+  .dhead { display:flex; align-items:center; gap:14px; max-width:860px; margin:0 auto; padding:0 16px 11px; font-size:13px; }
+  .dh-date { color:var(--accent); font-weight:800; letter-spacing:-.1px; }
+  .dh-sep { width:1px; height:14px; background:var(--line); }
+  .dh-cnt { color:var(--mut); } .dh-cnt b { color:var(--accent); font-weight:800; }
+  /* 오늘 들어온 기사 New 배지 */
+  .badge-new { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.04em; line-height:1.4;
+    color:var(--on-accent); background:linear-gradient(90deg,#d8ff3d,var(--accent)); border-radius:999px; padding:2px 8px; margin-bottom:5px; }
 
   /* ── 기사 카드 ── */
   #list { margin-top:14px; }
@@ -167,10 +175,19 @@
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
   .md h3 { font-size:13px; color:var(--mut); margin:18px 0 6px; font-weight:700; }
+  /* 다이제스트(요약) — 기사 제목 강조 + 섹션마다 구분선·상하 간격·강조색(아래 카드처럼) */
+  #mdbody h1 { color:var(--accent); }
+  #mdbody h2, #mdbody h3 { color:var(--accent); border-top:1px solid var(--line2); border-bottom:none;
+    padding-top:16px; margin:22px 0 8px; font-weight:800; letter-spacing:-.2px; }
+  #mdbody h2 { font-size:14px; } #mdbody h3 { font-size:13.5px; }
+  /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
+  #cardsec h1 { color:var(--accent); font-size:17px; font-weight:800; margin:4px 0 12px; line-height:1.4; }
+  /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
+  .kw { color:var(--accent); font-weight:700; }
   .md a { color:var(--accent); } .md ul { padding-left:18px; }
   .md code { background:rgba(5,12,8,.55); padding:1px 5px; border-radius:6px; }
   .md pre { position:relative; background:rgba(5,12,8,.55); border:1px solid var(--line2); border-radius:16px;
-    padding:14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+    padding:32px 15px 14px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
   .copy { position:absolute; top:9px; right:9px; font-size:11px; font-weight:700; background:rgba(255,255,255,.07);
@@ -205,13 +222,12 @@
   .phase:not([open]) > summary::after { transform:rotate(-90deg); }
   .phase > summary:hover { color:#5ef98a; }
   .phase .md { padding:2px 18px 22px; }
-  /* 카드 이미지 프롬프트 = 3줄만 보이고 내부 스크롤(길게 안 늘어지게) */
-  /* 카드 이미지 프롬프트 = 기본 3줄(클립)+더보기, 펼치면 전문. 내부 스크롤 X
-     (모바일에서 작은 박스가 페이지 스크롤을 뺏는 문제 원천 차단 — 접힘=스크롤영역 없음) */
-  #cardsec pre.promptbox.clip { overflow:hidden; }
-  #cardsec pre.promptbox.clip code { max-height:5.2em; overflow:hidden; display:block; }
-  #cardsec pre.promptbox.clip::after { content:''; position:absolute; left:1px; right:1px; bottom:1px; height:30px;
-    background:linear-gradient(transparent, rgba(5,12,8,.92)); pointer-events:none; border-radius:0 0 15px 15px; }
+  /* 긴 박스(카드 이미지 프롬프트·요약 드래프트) = 기본 3줄 클립 + 더보기/접기, 펼치면 전문.
+     내부 스크롤 X — 모바일에서 작은 박스가 페이지 스크롤 뺏는 문제 차단(접힘=스크롤영역 없음). */
+  .md pre.clip { overflow:hidden; }
+  .md pre.clip code { max-height:5.2em; overflow:hidden; display:block; }
+  .md pre.clip::after { content:''; position:absolute; left:1px; right:1px; bottom:1px; height:30px;
+    background:linear-gradient(transparent, rgba(5,12,8,.95)); pointer-events:none; border-radius:0 0 15px 15px; }
   .morebtn { display:block; width:100%; margin:6px 0 2px; padding:7px; font-size:12px; font-weight:700; font-family:inherit;
     color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:10px; cursor:pointer; }
   .morebtn:hover { color:var(--accent); border-color:rgba(15,253,2,.3); }
@@ -247,6 +263,7 @@
 </div>
 
 <div class="filterbar">
+  <div class="dhead"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-cnt" id="dhCnt"></span></div>
   <div class="bar">
     <input id="q" type="search" placeholder="제목 검색">
     <select id="cat">
@@ -259,7 +276,6 @@
       <option value="테크">테크</option>
     </select>
     <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
-    <span class="meta" id="meta"></span>
   </div>
 </div>
 
@@ -300,8 +316,8 @@ async function load() {
     const r = await fetch('articles.json?_=' + Date.now());
     const j = await r.json();
     DATA = j.articles || [];
-    $('#meta').textContent = `${j.count}건 · ${(j.generated||'').slice(0,10)}`;
-  } catch(e) { DATA = []; $('#meta').textContent = 'articles.json 없음'; }
+    dateHead(j.count || DATA.length);
+  } catch(e) { DATA = []; const d = $('#dhCnt'); if (d) d.textContent = 'articles.json 없음'; }
   render();
   if ($('#dlg').open && CUR) {
     const a = DATA.find(x => x.file === CUR);
@@ -321,18 +337,21 @@ function render() {
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
   list.innerHTML = '';
+  const today6 = todayYMD6();
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     const col = CAT_COLOR[a.category] || 'var(--mut)';
+    const isNew = (a.file||'').slice(0,6) === today6;        // 오늘(자정 기준) 들어온 기사
     c.innerHTML = `
+      ${isNew?`<span class="badge-new">New</span>`:''}
       ${a.category?`<div class="cat" style="color:${col}">${esc(a.category)}</div>`:''}
       <div class="row1"><div class="t"></div><span class="go">↗</span></div>
       <div class="s"></div>
       <div class="kv">
         ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
         ${a.type?`<div><span>유형</span><b>${esc(typeLabel(a.type))}</b></div>`:''}
-        ${a.bias?`<div><span>편향</span><b>${esc(a.bias)}</b>${gauge(a.bias)}</div>`:''}
+        ${a.bias?`<div><span>편향</span><b>${esc((a.bias||'').replace(BIAS_RE,'').trim())}</b>${gauge(a.bias)}</div>`:''}
       </div>
       <div class="chips">
         ${cardChip(a)}
@@ -360,6 +379,7 @@ function open(a) {
   CUR = a.file;
   const md = $('#mdbody');
   md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
+  decorate(md);
   addCopyButtons(md);
   cardSec(a);
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
@@ -375,6 +395,69 @@ function addCopyButtons(root) {
     btn.onclick = ev => { ev.stopPropagation(); copyBlock(pre, btn); };
     pre.appendChild(btn);
   });
+}
+
+// 오늘(브라우저 로컬=KST) YYMMDD — 기사 파일명 앞 6자와 비교(자정 기준 New/Today)
+function todayYMD6() {
+  const n = new Date(), p = x => String(x).padStart(2,'0');
+  return `${String(n.getFullYear()).slice(2)}${p(n.getMonth()+1)}${p(n.getDate())}`;
+}
+// 날짜 헤더: yyyy-mm-dd 요일 │ Today {오늘} / {총합}
+function dateHead(total) {
+  const W = ['일','월','화','수','목','금','토'];
+  const n = new Date(), p = x => String(x).padStart(2,'0');
+  const dd = $('#dhDate'); if (dd) dd.textContent = `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())} ${W[n.getDay()]}`;
+  const t6 = todayYMD6();
+  const todayN = DATA.filter(a => (a.file||'').slice(0,6) === t6).length;
+  const dc = $('#dhCnt'); if (dc) dc.innerHTML = `Today <b>${todayN}</b> / ${total}`;
+}
+
+// 긴 박스(카드 프롬프트·요약 드래프트) 3줄 클립 + 더보기/접기
+function addClip(pre) {
+  pre.classList.add('clip');
+  const mb = document.createElement('button');
+  mb.className = 'morebtn'; mb.textContent = '더 보기 ▾';
+  mb.onclick = ev => { ev.stopPropagation();
+    const clipped = pre.classList.toggle('clip');
+    mb.textContent = clipped ? '더 보기 ▾' : '접기 ▴'; };
+  pre.after(mb);
+}
+
+// 다이제스트 후처리: [썸네일] 섹션 제거 · 헤더 이모지 strip(💡 시사점 유지) · 편향 색도형 strip · 키워드 강조 · 드래프트 더보기
+const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜]/gu;
+const KW_RE = /(약보수 보정|앵글 후보|[가-힣A-Za-z0-9]{1,8} ?관점)/g;
+function decorate(root) {
+  // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
+  root.querySelectorAll('h3').forEach(h => {
+    if (!/썸네일/.test(h.textContent)) return;
+    let n = h.nextElementSibling;
+    while (n && !/^H[1-3]$/.test(n.tagName)) { const k = n; n = n.nextElementSibling; k.remove(); }
+    h.remove();
+  });
+  // 2) 섹션 헤더 이모지 strip(시사점 💡만 유지) — 헤더는 순수 텍스트노드
+  root.querySelectorAll('h2, h3').forEach(h => {
+    if (/시사점/.test(h.textContent)) return;
+    if (h.firstChild && h.firstChild.nodeType === 3)
+      h.firstChild.data = h.firstChild.data.replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '');
+  });
+  // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
+  const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n; (n = tw.nextNode());) {
+    if (!n.parentElement || n.parentElement.closest('pre, code, h1, h2, h3')) continue;
+    nodes.push(n);
+  }
+  nodes.forEach(n => {
+    const s = n.data.replace(BIAS_RE, '');
+    const parts = s.split(KW_RE);
+    if (parts.length < 2) { if (s !== n.data) n.data = s; return; }
+    const frag = document.createDocumentFragment();
+    parts.forEach((p, i) => { if (!p) return;
+      if (i % 2) { const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = p; frag.append(sp); }
+      else frag.append(document.createTextNode(p)); });
+    n.replaceWith(frag);
+  });
+  // 4) 요약 드래프트(자유요약·IG·Thread 등 pre) 더보기/접기
+  root.querySelectorAll('pre').forEach(addClip);
 }
 
 // ── 카드뉴스 섹션 ──
@@ -414,9 +497,8 @@ function cardSec(a) {
   const note = {
     done: '카드뉴스 완성 — 이미지 탭하면 원본, ⬇로 저장',
     fired_partial: '🚀 발사됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
-    text_done: '📝 카드 텍스트·프롬프트 완성 — 아래 박스에서 개별 복사.',
-  }[st] || st;
-  sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
+  }[st];
+  if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   if (c.images && c.images.length) {
     const gal = document.createElement('div'); gal.className = 'gal';
     gal.innerHTML = c.images.map(p =>
@@ -430,15 +512,7 @@ function cardSec(a) {
     // 이미지 프롬프트 박스 = 기본 3줄 클립 + 더보기/접기(내부 스크롤 X). 직전 라벨에 '이미지 프롬프트' 있는 pre.
     div.querySelectorAll('pre').forEach(pre => {
       const prev = pre.previousElementSibling;
-      if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) {
-        pre.classList.add('promptbox', 'clip');
-        const mb = document.createElement('button');
-        mb.className = 'morebtn'; mb.textContent = '더 보기 ▾';
-        mb.onclick = ev => { ev.stopPropagation();
-          const clipped = pre.classList.toggle('clip');
-          mb.textContent = clipped ? '더 보기 ▾' : '접기 ▴'; };
-        pre.after(mb);
-      }
+      if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
     sec.appendChild(div);
