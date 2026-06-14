@@ -324,8 +324,20 @@
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
     padding:11px 16px 12px; display:flex; flex-direction:column; gap:11px; }
   .dlg-top { display:flex; gap:10px; align-items:center; }
-  /* 모달 헤더 진행바 = 섹션 점프 nav(.prog 재사용·클릭=jumpTo). 비었으면 숨김. */
-  .dlg-prog:empty { display:none; }
+  /* 모달 헤더 스왑: 맨 위=원문/X / 스크롤=스크러버(스크롤 위치 게이지). */
+  .dlg-prog { display:none; }
+  .dlg-h.scrolled .dlg-top { display:none; }
+  .dlg-h.scrolled .dlg-prog { display:block; }
+  .scrub { display:flex; flex-direction:column; gap:8px; padding:3px 3px 1px; }
+  .scrub-bar { position:relative; height:6px; border-radius:999px; background:rgba(255,255,255,.09); cursor:pointer; }
+  .scrub-fill { position:absolute; left:0; top:0; bottom:0; border-radius:999px; background:linear-gradient(90deg,#d8ff3d,var(--accent)); box-shadow:0 0 8px rgba(15,253,2,.4); }
+  .scrub-tick { position:absolute; top:50%; width:2px; height:10px; transform:translate(-50%,-50%); background:rgba(255,255,255,.4); border-radius:1px; pointer-events:none; }
+  .scrub-dot { position:absolute; top:50%; width:13px; height:13px; transform:translate(-50%,-50%); border-radius:50%; background:#fff; box-shadow:0 0 0 3px rgba(15,253,2,.35), 0 1px 5px rgba(0,0,0,.45); pointer-events:none; transition:left .08s linear; }
+  .scrub-labels { display:flex; justify-content:space-between; font-size:10.5px; font-weight:700; color:var(--mut); letter-spacing:-.2px; }
+  .scrub-lb { cursor:pointer; transition:color .15s; padding:1px 4px; }
+  .scrub-lb:hover { color:var(--fg); }
+  .scrub-lb.cur { color:var(--accent); }
+  .scrub-lb.off { opacity:.4; pointer-events:none; }
   /* Y(개정2): 원문·닫기 = 깔끔한 소프트 글래스 원/알약. X=얇은 라인. */
   .dlg-h a, .dlg-h button { height:34px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center;
     background:rgba(255,255,255,.06); color:var(--mut); border:1px solid rgba(255,255,255,.12); border-radius:999px;
@@ -696,16 +708,7 @@ function open(a) {
   addCopyButtons(md);
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   cardSec(a);
-  // 모달 헤더 진행바 = 섹션 점프 nav(요약·프롬프트·카드). 모달 열린 상태라 jumpTo만(open 불필요).
-  const dp = $('#dlgprog');
-  if (dp) {
-    dp.innerHTML = progGauge(a);
-    dp.querySelectorAll('.seg[data-j]').forEach(s => {
-      const go = () => jumpTo(s.dataset.j);
-      s.onclick = go;
-      s.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
-    });
-  }
+  setupScrub();   // 모달 헤더 = 스크롤 위치 스크러버(게이지 + 요약·프롬프트·카드 틱 + 클릭 점프)
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
   document.documentElement.style.overflow = 'hidden';   // PC: 모달 밖(백드롭) 스크롤 시 배경 페이지 스크롤 차단(#5)
@@ -1073,6 +1076,48 @@ $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidd
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
 $('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
+$('#dlg').addEventListener('scroll', updateScrub, { passive: true });
+
+// 모달 헤더 스크러버 — 스크롤 위치 게이지 + 섹션(요약·프롬프트·카드) 틱 + 클릭 점프. 맨위=원문/X, 스크롤=스크러버.
+function setupScrub() {
+  const dp = $('#dlgprog'); if (!dp) return;
+  const h = $('.dlg-h'); if (h) h.classList.remove('scrolled');   // 열릴 땐 맨 위(원문/X)
+  dp.innerHTML = `<div class="scrub"><div class="scrub-bar" id="scrubBar"><div class="scrub-fill" id="scrubFill"></div><i class="scrub-tick" data-j="n"></i><i class="scrub-tick" data-j="m"></i><i class="scrub-tick" data-j="t"></i><div class="scrub-dot" id="scrubDot"></div></div><div class="scrub-labels"><span class="scrub-lb" data-j="n">요약</span><span class="scrub-lb" data-j="m">프롬프트</span><span class="scrub-lb" data-j="t">카드</span></div></div>`;
+  const bar = $('#scrubBar');
+  bar.onclick = e => {
+    const dlg = $('#dlg'), r = bar.getBoundingClientRect(), range = dlg.scrollHeight - dlg.clientHeight;
+    dlg.scrollTo({ top: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * range, behavior: 'smooth' });
+  };
+  dp.querySelectorAll('.scrub-lb').forEach(lb => { lb.onclick = () => jumpTo(lb.dataset.j); });
+  requestAnimationFrame(updateScrub);
+}
+function scrubTargets() {
+  const sec = $('#cardsec');
+  return { n: $('#ph-sum'), m: $('#ph-card'), t: (sec ? (sec.querySelector('.gal') || sec.querySelector('.mkbtn') || null) : null) };
+}
+function updateScrub() {
+  const dlg = $('#dlg'); if (!dlg || !dlg.open) return;
+  const dp = $('#dlgprog'); if (!dp || !dp.firstElementChild) return;
+  const range = dlg.scrollHeight - dlg.clientHeight, st = dlg.scrollTop;
+  const pct = range > 0 ? Math.max(0, Math.min(100, st / range * 100)) : 0;
+  const fill = $('#scrubFill'), dot = $('#scrubDot');
+  if (fill) fill.style.width = pct + '%';
+  if (dot) dot.style.left = pct + '%';
+  const top = dlg.getBoundingClientRect().top, tg = scrubTargets();
+  const hh = ($('.dlg-h') ? $('.dlg-h').offsetHeight : 0);
+  let cur = 'n';
+  ['n', 'm', 't'].forEach(k => {
+    const el = tg[k], tick = dp.querySelector(`.scrub-tick[data-j="${k}"]`), lb = dp.querySelector(`.scrub-lb[data-j="${k}"]`);
+    if (!el) { if (tick) tick.style.display = 'none'; if (lb) lb.classList.add('off'); return; }
+    if (lb) lb.classList.remove('off');
+    const off = st + (el.getBoundingClientRect().top - top);
+    const p = range > 0 ? Math.max(0, Math.min(100, off / range * 100)) : 0;
+    if (tick) { tick.style.display = ''; tick.style.left = p + '%'; }
+    if (st >= off - hh - 8) cur = k;
+  });
+  dp.querySelectorAll('.scrub-lb').forEach(lb => lb.classList.toggle('cur', lb.dataset.j === cur && !lb.classList.contains('off')));
+  const hd = $('.dlg-h'); if (hd) hd.classList.toggle('scrolled', st > 60);
+}
 
 // (모달 플로팅 N/M/T 네비는 카드 셀 .nmt 버튼으로 이관 — render()에서 배선)
 
