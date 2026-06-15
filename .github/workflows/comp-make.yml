@@ -40,8 +40,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Setup comp env (fonts + deps)
-        run: bash apps/comp/setup.sh
+      - name: Setup comp env (러너 — 폰트 + deps)
+        # setup.sh는 Claude Code의 root 경로(/mnt·/home/claude) 가정 → 러너(non-root)선 직접 설치.
+        # 폰트=Noto CJK(apt), deps=setup-python의 python으로(card_news.py가 그 python에서 import).
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          pip install --quiet pillow numpy opencv-python-headless mediapipe
 
       - name: Compose card
         env:
@@ -67,6 +72,7 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
-          git add "viewer/comp_out/${IN_ID}" "uploads/${IN_ID}" 2>/dev/null || true
+          git add "viewer/comp_out/${IN_ID}" 2>/dev/null || true
+          git add "uploads/${IN_ID}" 2>/dev/null || true
           git commit -m "comp: ${IN_ID} 합성 출력" || { echo "커밋할 것 없음"; exit 0; }
           for i in 1 2 3 4; do git push && break || sleep $((i*3)); done
