@@ -2271,6 +2271,15 @@ const RKEY = 'nm_ratings';
 const ratingsAll = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '{}'); } catch { return {}; } };
 const saveRating = (id, patch) => { const r = ratingsAll(); r[id] = { ...(r[id] || {}), ...patch }; localStorage.setItem(RKEY, JSON.stringify(r)); };
 const candId = c => c.id || c.url || c.title;
+const scRelTime = iso => {   // published(ISO) → 상대시각(렌더 시점 계산 = 안 틀어짐)
+  if (!iso) return '';
+  const t = new Date(iso); if (isNaN(t)) return '';
+  const s = Math.max(0, (Date.now() - t.getTime()) / 1000);
+  if (s < 60) return '방금 전';
+  if (s < 3600) return Math.floor(s / 60) + '분 전';
+  if (s < 86400) return Math.floor(s / 3600) + '시간 전';
+  return Math.floor(s / 86400) + '일 전';
+};
 async function loadCandidates() {
   try { const r = await fetch('candidates.json?_=' + Date.now()); CANDS = r.ok ? await r.json() : []; } catch { CANDS = []; }
   if (!Array.isArray(CANDS)) CANDS = [];
@@ -2287,8 +2296,9 @@ function renderScrap() {
     const el = document.createElement('div');
     el.className = 'sc-item' + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
     const lo = (c.cross || 0) < 2 ? ' lo' : '';
+    const tm = scRelTime(c.published) || c.time || '';
     el.innerHTML =
-      `<div class="sc-top">${c.cat ? catChip(c.cat) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${c.time ? ' · ' + esc(c.time) : ''}</span></div>
+      `<div class="sc-top">${c.cat ? catChip(c.cat) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
        <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
        <div class="sc-bot"><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button">${st.picked ? '골랐음 ✓' : '고르기'}</button></div>`;
     el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
