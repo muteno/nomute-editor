@@ -2281,9 +2281,14 @@ const scRelTime = iso => {   // published(ISO) → 상대시각(렌더 시점 �
   return Math.floor(s / 86400) + '일 전';
 };
 async function loadCandidates() {
-  try { const r = await fetch('candidates.json?_=' + Date.now()); CANDS = r.ok ? await r.json() : []; } catch { CANDS = []; }
-  if (!Array.isArray(CANDS)) CANDS = [];
-  SCRAP_LOADED = true; renderScrap();
+  // api/candidates = 라이브 서빙(GitHub 직독, 빌드 우회) 우선 → 실패 시 정적 candidates.json 폴백.
+  for (const u of ['api/candidates', 'candidates.json?_=' + Date.now()]) {
+    try {
+      const r = await fetch(u);
+      if (r.ok) { const d = await r.json(); if (Array.isArray(d)) { CANDS = d; SCRAP_LOADED = true; renderScrap(); return; } }
+    } catch { /* 다음 소스 */ }
+  }
+  CANDS = []; SCRAP_LOADED = true; renderScrap();
 }
 function renderScrap() {
   const wrap = $('#scrapList'); if (!wrap) return;
