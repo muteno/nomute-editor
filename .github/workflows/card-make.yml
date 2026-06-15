@@ -12,12 +12,25 @@ on:
         type: string
         default: 'all'
       mode:
-        description: 'full=클로드+렌더(기본) / shoot=렌더만(자동 카드프롬프트로 이미지만 발사)'
+        description: 'full=클로드+렌더(기본) / shoot=렌더만 / edit=단일 카드 재발사'
         type: choice
         default: full
         options:
           - full
           - shoot
+          - edit
+      card:
+        description: 'edit 모드: 변경할 카드 번호(1-base)'
+        type: string
+        default: ''
+      text:
+        description: 'edit 모드: 변경 텍스트(*강조* 포함)'
+        type: string
+        default: ''
+      wish:
+        description: 'edit 모드: 이미지 수정 희망'
+        type: string
+        default: ''
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -61,8 +74,11 @@ jobs:
           GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
           TARGET: ${{ inputs.article }}
           MODE: ${{ inputs.mode || 'full' }}
+          CARD_N: ${{ inputs.card }}
+          EDIT_TEXT: ${{ inputs.text }}
+          EDIT_WISH: ${{ inputs.wish }}
         run: |
-          echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET} / 모드: ${MODE}"
+          echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET} / 모드: ${MODE}${CARD_N:+ / 카드: ${CARD_N}}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
             echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음"; exit 1
           fi

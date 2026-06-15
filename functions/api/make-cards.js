@@ -16,8 +16,18 @@ export async function onRequestPost({ request, env }) {
 
   // 대상 검증: queue 파일명(ASCII) 1개 또는 all
   const article = /^[A-Za-z0-9._-]+\.md$/.test(body.article || '') ? body.article : 'all';
-  // 모드: shoot = 렌더만(자동으로 만든 카드 프롬프트로 이미지만 발사) / full = 클로드+렌더(기본)
-  const mode = body.mode === 'shoot' ? 'shoot' : 'full';
+  // 모드: shoot = 렌더만 / full = 클로드+렌더(기본) / edit = 단일 카드 재발사(텍스트·이미지 희망)
+  const mode = ['shoot', 'edit'].includes(body.mode) ? body.mode : 'full';
+
+  const inputs = { article, mode };
+  if (mode === 'edit') {
+    const card = String(parseInt(body.card, 10) || 0);
+    if (!/^[1-9][0-9]?$/.test(card)) return json({ error: '카드 번호 오류' }, 400);
+    if (article === 'all') return json({ error: 'edit는 기사 1건 지정 필요' }, 400);
+    inputs.card = card;
+    inputs.text = String(body.text || '').slice(0, 2000);
+    inputs.wish = String(body.wish || '').slice(0, 1000);
+  }
 
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/card-make.yml/dispatches',
@@ -29,7 +39,7 @@ export async function onRequestPost({ request, env }) {
         'user-agent': 'nomute-viewer',
         'x-github-api-version': '2022-11-28',
       },
-      body: JSON.stringify({ ref: 'main', inputs: { article, mode } }),
+      body: JSON.stringify({ ref: 'main', inputs }),
     },
   );
   if (r.status === 204) return json({ ok: true, article, mode });

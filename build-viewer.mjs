@@ -1,7 +1,7 @@
 // build-viewer.mjs — queue/*.md + cards/<기사>/ 를 스캔해 viewer/articles.json 생성,
 // 카드 이미지(_final 등)는 viewer/cards/ 로 복사해 Pages가 서빙 (zero-dependency, Node 18+).
 // Cloudflare Pages 빌드 명령으로 실행: `node build-viewer.mjs` / 출력 디렉터리: viewer
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const QUEUE = 'queue';
@@ -86,7 +86,11 @@ for (const a of articles) {
     error: cardErr,
     failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터
     md: cardsMd,
-    images: images.map(n => `cards/${stem}/${n}`),
+    // ?v=mtime = 캐시버스트: 재발사로 같은 파일명·새 내용일 때 브라우저가 새 이미지를 받게.
+    images: images.map(n => {
+      let v = ''; try { v = '?v=' + Math.floor(statSync(join(dir, n)).mtimeMs); } catch { /* noop */ }
+      return `cards/${stem}/${n}${v}`;
+    }),
   };
 }
 
