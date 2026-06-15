@@ -340,6 +340,8 @@
   .ed-chip.sp { background:none; border:none; padding:0 2px; cursor:default; }
   .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
   .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; }
+  .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }   /* 줄 한도 초과 거부 */
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
   .ed-br { flex-basis:100%; width:100%; height:0; }   /* 줄바꿈 = flex 줄넘김(<br>은 flex서 무력 → full-width 브레이크) */
   .ed-foot { display:flex; gap:10px; justify-content:flex-end; align-items:center; padding:11px 16px; border-top:1px solid var(--line2); }
   .ed-cancel { padding:9px 18px; font:700 12.5px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
@@ -1359,6 +1361,18 @@ function parseEmphWords(s) {
   }
   return tokens;
 }
+// 카드 텍스트 제약(card-make 지침 §출력형식): 줄 ≤4 · 한글 ≤18/줄 · 가중폭 ≤19.5/줄.
+const EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5;
+function edHangul(s) { return (s.match(/[가-힣]/g) || []).length; }
+function edWidth(s) { let w = 0; for (const ch of s) w += /[가-힣ㄱ-ㅎㅏ-ㅣ　-〿＀-￯]/.test(ch) ? 1 : 0.5; return w; }
+function edLineAround(idx, newText) {   // idx 어절이 속한 줄(텍스트) — 그 어절을 newText로 치환해 길이 계산
+  let s = idx; while (s > 0 && edTokens[s - 1].t !== 'nl') s--;
+  let e = idx; while (e < edTokens.length - 1 && edTokens[e + 1].t !== 'nl') e++;
+  let out = '';
+  for (let k = s; k <= e; k++) { const t = edTokens[k]; if (t.t === 'sp') out += ' '; else if (t.t === 'word') out += (k === idx ? newText : t.text); }
+  return out;
+}
+function edReject(el) { el.classList.add('reject'); setTimeout(() => el.classList.remove('reject'), 600); }
 function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름 충돌 금지 — 어절칩 전용
   const wrap = $('#edChips'); wrap.innerHTML = '';
   edTokens.forEach(tok => {
@@ -1367,13 +1381,17 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
     const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : ''); sp.textContent = tok.text;
     sp.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
     sp.onclick = () => { if (sp.isContentEditable) return; tok.on = !tok.on; sp.classList.toggle('on'); };
-    sp.ondblclick = () => { sp.contentEditable = 'true'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
+    sp.ondblclick = () => { sp.contentEditable = 'true'; sp.spellcheck = true; sp.lang = 'ko'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
     sp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); sp.blur(); } };
     sp.onblur = () => {
       sp.contentEditable = 'false'; sp.classList.remove('editing');
       const nt = sp.textContent.replace(/\s+/g, ' ').trim();
       if (nt === tok.text) return;
       const idx = edTokens.indexOf(tok);
+      if (nt) {   // 카드 줄 한도(한글 ≤18·가중폭 ≤19.5/줄) 초과 = 거부(빨강+흔들림). 4줄↑ 밀림 방지.
+        const line = edLineAround(idx, nt);
+        if (edHangul(line) > EDLINE_HANGUL || edWidth(line) > EDLINE_WIDTH) { sp.textContent = tok.text; edReject(sp); return; }
+      }
       if (!nt) {   // 비우면 어절 삭제(+ 인접 공백 1개)
         edTokens.splice(idx, 1);
         if (edTokens[idx] && edTokens[idx].t === 'sp') edTokens.splice(idx, 1);
