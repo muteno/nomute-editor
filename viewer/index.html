@@ -519,7 +519,8 @@
   /* ── 섹션 3: 카드 뉴스 피드(인스타형 가로 스냅·한 장씩) ── */
   .feedhead { margin:6px 0 16px; }
   .fi-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .fi-title { flex:1; margin:0; font-size:22px; font-weight:800; color:var(--fg); line-height:1.32; letter-spacing:-.5px; }  /* 부제 — 크게 */
+  /* 부제 — 2배·흰색. #feedsec.md 라 '.md h3'(13px·mut)에 눌려있던 걸 ID로 이김(이게 안 먹던 원인). */
+  #feedsec .fi-title { flex:1; margin:0; font-size:44px; font-weight:800; color:#fff; line-height:1.2; letter-spacing:-1px; }
   .fi-saveall { flex:none; align-self:flex-start; margin-top:2px; display:inline-flex; align-items:center; gap:4px; font:800 10.5px/1 inherit; color:#fff;   /* 70% 축소·글래스 톤(강조색 X) */
     background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 10px; cursor:pointer; white-space:nowrap;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
@@ -559,12 +560,13 @@
   .sbtn:active { transform:scale(.85); }
   .sbtn:disabled { opacity:.5; cursor:default; }
   .sbtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
-  /* 앞뒤(버전) 네비 — 하단중앙. 바(글래스 알약) 투명, 화살표만 떠서 기능(요청). */
+  /* 앞뒤(버전) 네비 — 하단중앙 글래스 알약. 현재 미표시(최신 판만) — 캐러셀 좌우와 혼동돼 보류, 추후 UX 재설계. */
   .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:flex; align-items:center; gap:1px;
-    background:none; border:none; padding:2px; }
-  .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; text-shadow:0 1px 5px rgba(0,0,0,.85); }
+    background:rgba(12,16,14,.4); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:2px;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; }
   .vbtn:disabled { opacity:.3; cursor:default; } .vbtn:not(:disabled):active { transform:scale(.85); }
-  .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; text-shadow:0 1px 5px rgba(0,0,0,.85); }
+  .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; }
   .sbtn.voted { color:var(--accent); border-color:rgba(15,253,2,.45); background:rgba(15,253,2,.14); }
   /* 따봉/다운 피드백 패널(슬라이드 상단 오버레이·글래스) */
   .slide-fb { position:absolute; top:52px; left:10px; right:10px; z-index:4; padding:12px; border-radius:14px;
@@ -1323,10 +1325,7 @@ function feedSec(a, keepIdx = 0) {
     ui.querySelector('.fbup').onclick = () => onThumb(card, 'up', ui, a.file);
     ui.querySelector('.fbdown').onclick = () => onThumb(card, 'down', ui, a.file);
     applyVoteState(ui, a.file, card.n);   // 기존 투표(localStorage) 반영
-    if (card.versions.length > 1) {       // 앞뒤(버전) 네비 — 좌우(카드)와 다른 축
-      uiVer.hidden = false; uiVlbl.textContent = `v${card.cur + 1}/${card.versions.length}`;
-      uiVprev.disabled = card.cur <= 0; uiVnext.disabled = card.cur >= card.versions.length - 1;
-    } else uiVer.hidden = true;
+    uiVer.hidden = true;   // 버전 네비 보류(캐러셀 좌우와 혼동) — 최신 판만 표시. 추후 UX 재설계 시 복원.
     const fb = ui.querySelector('.slide-fb'); if (fb) fb.remove();   // 카드 전환 = 열린 피드백 패널 닫기
     ui.classList.toggle('reshooting', !!(track.children[idx] && track.children[idx].classList.contains('reshooting')));   // 재생성 중 카드면 오버레이 조작 잠금
   };
