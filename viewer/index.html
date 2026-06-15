@@ -535,6 +535,13 @@
   .sbtn:active { transform:scale(.85); }
   .sbtn:disabled { opacity:.5; cursor:default; }
   .sbtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  /* 앞뒤(버전) 네비 — 하단중앙 부드러운 글래스 알약 */
+  .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:flex; align-items:center; gap:1px;
+    background:rgba(12,16,14,.4); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:2px;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+  .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; }
+  .vbtn:disabled { opacity:.3; cursor:default; } .vbtn:not(:disabled):active { transform:scale(.85); }
+  .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; }
   .slide-wait { aspect-ratio:4/5; display:grid; place-items:center; border-radius:16px; border:1px solid var(--line);
     background:rgba(5,12,8,.4); color:var(--accent); font-size:13px; text-align:center; padding:0 18px; line-height:1.5; }
   @media (prefers-reduced-motion: reduce) { .feedtrack { scroll-behavior:auto; } .slide-img img { transition:none; } }
@@ -1136,14 +1143,21 @@ function sensitiveTag(text = '') {
   return '';
 }
 function buildFeedModel(a) {
-  const c = a.cards || {}, imgs = c.images || [];
+  const c = a.cards || {}, imgs = c.images || [], vmap = c.versions || {};
   const cards = parseCards(c.md);
   const base = cards.length ? cards : imgs.map((_, i) => ({ n: i + 1, caption: '', prompt: '' }));   // 파싱 실패 폴백
-  return base.map((cd, i) => ({
-    n: cd.n, ratio: '4/5',
-    versions: [{ caption: cd.caption, prompt: cd.prompt, image: imgs[i] || null }],   // 1b: 갱신본 push
-    cur: 0,                                                                            // 1b: 전/후 포인터
-  }));
+  return base.map((cd, i) => {
+    const vh = vmap[String(cd.n)];   // 버전 히스토리(앞뒤) — [{img,text}…] v0..vK(마지막=현재)
+    if (vh && vh.length > 1) {
+      return {
+        n: cd.n, ratio: '4/5',
+        versions: vh.map((v, k) => ({ image: v.img, prompt: cd.prompt,
+          caption: k === vh.length - 1 ? cd.caption : (v.text || cd.caption) })),
+        cur: vh.length - 1,   // 현재 = 마지막 판
+      };
+    }
+    return { n: cd.n, ratio: '4/5', versions: [{ caption: cd.caption, prompt: cd.prompt, image: imgs[i] || null }], cur: 0 };
+  });
 }
 function capHtml(s = '') { return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b class="kw">$1</b>'); }
 
@@ -1226,6 +1240,18 @@ function renderSlide(card, i, ctx) {
     im.onclick = () => openLightbox(v.image);   // 탭 → 풀스크린 라이트박스(좌상단 뒤로)
     const eb = fig.querySelector('.sbtn.edit');
     eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 변경(1b)
+    if (card.versions.length > 1) {   // 앞뒤(버전) 네비 — 좌우(카드)와 다른 축
+      const ver = document.createElement('div'); ver.className = 'slide-ver';
+      ver.innerHTML = `<button class="vbtn" data-d="-1" aria-label="이전 판"${card.cur <= 0 ? ' disabled' : ''}>‹</button>`
+        + `<span class="vlbl">v${card.cur + 1}/${card.versions.length}</span>`
+        + `<button class="vbtn" data-d="1" aria-label="다음 판"${card.cur >= card.versions.length - 1 ? ' disabled' : ''}>›</button>`;
+      ver.querySelectorAll('.vbtn').forEach(b => b.onclick = () => {
+        const nc = card.cur + Number(b.dataset.d);
+        if (nc < 0 || nc >= card.versions.length) return;
+        card.cur = nc; fig.replaceWith(renderSlide(card, i, ctx));   // 같은 자리, 이미지·텍스트 교체
+      });
+      fig.querySelector('.slide-img').appendChild(ver);
+    }
   } else {
     fig.innerHTML = `<div class="slide-img"><div class="slide-wait">🍌 이미지 생성 대기…<br>다음 갱신 때 채워져</div></div>`;
   }

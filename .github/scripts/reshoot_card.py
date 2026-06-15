@@ -31,6 +31,16 @@ def extract_prompt(block, n):
     return pm.group(1).strip()
 
 
+def _card_text(md, n):   # 카드 N의 **텍스트** 블록 본문(버전 보존용). 없으면 None.
+    if not md:
+        return None
+    blk = re.search(rf'###\s*\[카드\s*{int(n)}\]([\s\S]*?)(?=\n###\s*\[카드|\Z)', md)
+    if not blk:
+        return None
+    tm = re.search(r'\*\*텍스트\*\*\s*```(?:text)?\s*([\s\S]*?)```', blk.group(1))
+    return tm.group(1).strip() if tm else None
+
+
 def cmd_build(cardsmd, n, outmd):
     md = open(cardsmd, encoding='utf-8').read()
     tm = re.search(r'^#\s+(.+)$', md, re.M)
@@ -68,24 +78,34 @@ def cmd_finalize(cards_dir, n, render_dir):
     if not cand:
         sys.exit("재발사 결과 _final 이미지 없음 — 렌더 실패/미완")
     new_img = sorted(cand)[-1]
+    new_text = os.environ.get('EDIT_TEXT', '').strip()
+    cm_text = open(cm, encoding='utf-8').read() if os.path.exists(cm) else ''
+
+    # ── 버전 v0..vK (앞뒤 히스토리) — v0=원본, 재발사마다 v{k} append, 루트=현재 vK ──
     vdir = os.path.join(cards_dir, 'versions', f'card-{n:02d}')
     os.makedirs(vdir, exist_ok=True)
-    ts = datetime.datetime.utcnow().strftime('%y%m%d_%H%M%S')
-    shutil.copy2(os.path.join(cards_dir, old_name), os.path.join(vdir, f'prev_{ts}.jpg'))   # 옛 버전 보존(롤백·전후용)
-    shutil.copy2(new_img, os.path.join(vdir, f'curr_{ts}.jpg'))                             # 새 버전 보존
-    shutil.copy2(new_img, os.path.join(cards_dir, old_name))                               # 제자리 덮어쓰기(파일명 유지)
-    # cards.md 카드 N 텍스트 블록 갱신
-    p = os.path.join(cards_dir, 'cards.md')
-    text = os.environ.get('EDIT_TEXT', '').strip()
-    if os.path.exists(p) and text:
-        md = open(p, encoding='utf-8').read()
+    nums_v = [int(m.group(1)) for f in os.listdir(vdir) for m in [re.match(r'v(\d+)\.jpg$', f)] if m]
+    if not nums_v:   # 최초 재발사 = 현재 루트를 v0(원본)으로 보존 + 그 텍스트
+        shutil.copy2(os.path.join(cards_dir, old_name), os.path.join(vdir, 'v0.jpg'))
+        v0_text = _card_text(cm_text, n)
+        if v0_text:
+            open(os.path.join(vdir, 'v0.txt'), 'w', encoding='utf-8').write(v0_text)
+        k = 1
+    else:
+        k = max(nums_v) + 1
+    shutil.copy2(new_img, os.path.join(vdir, f'v{k}.jpg'))                  # 새 판 = vK
+    if new_text:
+        open(os.path.join(vdir, f'v{k}.txt'), 'w', encoding='utf-8').write(new_text)
+    shutil.copy2(new_img, os.path.join(cards_dir, old_name))               # 루트 미러(현재=vK, 파일명 유지=페어링)
 
+    # cards.md 카드 N 텍스트 블록 갱신
+    if os.path.exists(cm) and new_text:
         def repl(m):
             return re.sub(r'(\*\*텍스트\*\*\s*```(?:text)?\s*)([\s\S]*?)(```)',
-                          lambda mm: mm.group(1) + text + '\n' + mm.group(3), m.group(1), count=1)
-        md2 = re.sub(rf'(###\s*\[카드\s*{n}\][\s\S]*?)(?=\n###\s*\[카드|\Z)', repl, md, count=1)
-        open(p, 'w', encoding='utf-8').write(md2)
-    print(f"스왑 완료: {old_name} ← {os.path.basename(new_img)} · versions/card-{n:02d} 보존")
+                          lambda mm: mm.group(1) + new_text + '\n' + mm.group(3), m.group(1), count=1)
+        md2 = re.sub(rf'(###\s*\[카드\s*{n}\][\s\S]*?)(?=\n###\s*\[카드|\Z)', repl, cm_text, count=1)
+        open(cm, 'w', encoding='utf-8').write(md2)
+    print(f"스왑 완료: {old_name} ← v{k} · versions/card-{n:02d} (총 {k + 1}판)")
 
 
 if __name__ == '__main__':
