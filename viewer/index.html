@@ -338,15 +338,17 @@
   .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(3px * var(--eds,1)) calc(6px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2);
     color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
   .ed-chip:hover { border-color:rgba(15,253,2,.4); }
-  .ed-chip.sp { background:none; border:none; padding:0 calc(5px * var(--eds,1)); cursor:pointer; position:relative; border-radius:5px; }   /* 줄바꿈 토글 슬롯 */
-  .ed-chip.sp:hover { background:rgba(15,253,2,.1); }
+  .ed-chip.sp { background:none; border:none; padding:2px 7px; cursor:pointer; position:relative; border-radius:5px; display:inline-flex; align-items:center; align-self:stretch; }   /* 줄바꿈 토글 슬롯 — 손가락 탭폭 확보(고정) */
+  .ed-chip.sp::before { content:''; border-left:1.5px dotted rgba(15,253,2,.4); height:52%; min-height:13px; }   /* '여기서 줄바꿈 가능' 항상 표시(모바일=hover 없음) */
+  .ed-chip.sp:hover, .ed-chip.sp:active { background:rgba(15,253,2,.12); }
+  .ed-chip.sp:hover::before, .ed-chip.sp:active::before { border-color:var(--accent); }
   .ed-chip.sp:hover::after { content:'↵'; position:absolute; left:50%; top:-9px; transform:translateX(-50%); font-size:9px; color:var(--accent); }
   .ed-nl { display:inline-flex; align-items:center; font-size:10px; color:var(--accent); opacity:.7; cursor:pointer; padding:0 4px; align-self:center; }
   .ed-nl:hover { opacity:1; }
   .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
   .ed-chip.warn { border-color:rgba(255,176,32,.55); }   /* 줄 김(가중폭>14) — 줄바꿈 권장 */
   .ed-chip.warn.on { border-color:var(--accent); }
-  .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; }
+  .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; white-space:normal; word-break:break-word; max-width:100%; }   /* 편집 중엔 줄바꿈 허용 → 화면 밖 안 나감 */
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }   /* 줄 한도 초과 거부 */
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
   .ed-nl { flex:none; }   /* ↵ 병합 핸들 = 그 행 끝에 붙음 */
@@ -1442,7 +1444,7 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
       return;
     }
     if (tok.t === 'sp') {   // 공백칩 = 줄바꿈 토글 슬롯(단어 사이에서만·4줄 캡)
-      const g = document.createElement('span'); g.className = 'ed-chip sp'; g.innerHTML = '&nbsp;'; g.title = '탭하면 여기서 줄바꿈';
+      const g = document.createElement('span'); g.className = 'ed-chip sp'; g.title = '탭하면 여기서 줄바꿈';
       g.onclick = () => {
         const i = edTokens.indexOf(tok);
         if (i <= 0 || i >= edTokens.length - 1 || edTokens[i - 1].t !== 'word' || edTokens[i + 1].t !== 'word') return;
@@ -1456,6 +1458,7 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
     sp.onclick = () => { if (sp.isContentEditable) return; tok.on = !tok.on; sp.classList.toggle('on'); };
     sp.ondblclick = () => { sp.contentEditable = 'true'; sp.spellcheck = true; sp.lang = 'ko'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
     sp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); sp.blur(); } };
+    sp.oninput = () => fitEditLines($('#edChips'));   // 편집 중 길어지면 행 폭 재계산 → 화면 밖으로 안 나감
     sp.onblur = () => {
       sp.contentEditable = 'false'; sp.classList.remove('editing');
       const nt = sp.textContent.replace(/\s+/g, ' ').trim();
@@ -1485,14 +1488,20 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
 function fitEditLines(wrap) {
   if (!wrap) return;
   const rows = wrap.querySelectorAll('.ed-line');
-  wrap.style.setProperty('--eds', '1');   // 기준(1배)에서 실폭 측정
+  if (!rows.length) return;
   const cs = getComputedStyle(wrap);
-  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 1;
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2;
   if (avail <= 0) return;
-  let ratio = 1;
-  rows.forEach(r => { const w = r.scrollWidth; if (w > avail && w > 0) ratio = Math.min(ratio, avail / w); });
-  ratio = Math.max(0.6, Math.min(1, ratio));   // 하한 0.6(과축소 방지)
-  wrap.style.setProperty('--eds', ratio.toFixed(3));
+  wrap.style.setProperty('--eds', '1');   // 기준(1배)에서 실폭 측정
+  let eds = 1;
+  // 고정 테두리(1px) 때문에 폭이 완전 선형이 아님 → 수렴까지 누적 보정(2~3회면 충분, 잔여 overflow 0).
+  for (let pass = 0; pass < 4; pass++) {
+    let maxw = 0;
+    rows.forEach(r => { if (r.scrollWidth > maxw) maxw = r.scrollWidth; });
+    if (maxw <= avail) break;
+    eds = Math.max(0.5, eds * avail / maxw);
+    wrap.style.setProperty('--eds', eds.toFixed(3));
+  }
 }
 // 어절 강조 → *강조* 문자열(연속 강조어절 병합·끝공백 제외·줄넘김 비강조=합성기 '줄넘김 금지')
 function buildEmphText() {
