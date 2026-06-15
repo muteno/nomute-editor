@@ -325,7 +325,7 @@
   .ed-x { margin-left:auto; width:30px; height:30px; border-radius:50%; font-size:13px; color:var(--mut);
     background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }
   .ed-x:hover { color:var(--fg); }
-  .ed-body { padding:12px 16px 16px; overflow-y:auto; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }
+  .ed-body { padding:12px 16px 16px; overflow-x:hidden; overflow-y:auto; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }
   .ed-img { display:block; max-width:100%; max-height:30vh; width:auto; height:auto; margin:2px auto 4px; border-radius:14px; border:1px solid var(--line); background:var(--glass2); }
   .ed-lbl { font-size:12px; font-weight:800; color:var(--mut); margin-top:9px; }
   .ed-hint { font-weight:600; opacity:.6; }
@@ -338,7 +338,7 @@
   .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(3px * var(--eds,1)) calc(6px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2);
     color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
   .ed-chip:hover { border-color:rgba(15,253,2,.4); }
-  .ed-chip.sp { background:none; border:none; padding:2px 7px; cursor:pointer; position:relative; border-radius:5px; display:inline-flex; align-items:center; align-self:stretch; }   /* 줄바꿈 토글 슬롯 — 손가락 탭폭 확보(고정) */
+  .ed-chip.sp { background:none; border:none; padding:2px calc(7px * var(--eds,1)); cursor:pointer; position:relative; border-radius:5px; display:inline-flex; align-items:center; align-self:stretch; }   /* 줄바꿈 토글 슬롯 — 폭과 함께 축소(초과줄도 박스 안에 담기게) */
   .ed-chip.sp::before { content:''; border-left:1.5px dotted rgba(15,253,2,.4); height:52%; min-height:13px; }   /* '여기서 줄바꿈 가능' 항상 표시(모바일=hover 없음) */
   .ed-chip.sp:hover, .ed-chip.sp:active { background:rgba(15,253,2,.12); }
   .ed-chip.sp:hover::before, .ed-chip.sp:active::before { border-color:var(--accent); }
@@ -348,6 +348,8 @@
   .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
   .ed-chip.warn { border-color:rgba(255,176,32,.55); }   /* 줄 김(가중폭>14) — 줄바꿈 권장 */
   .ed-chip.warn.on { border-color:var(--accent); }
+  .ed-chip.over { border-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.16); font-weight:800; }   /* 한도 초과 부분 = 빨강(저장 게이트) */
+  .ed-chip.over.on { border-color:#ff5d5d; color:#ff7a7a; }   /* 강조여도 초과면 빨강 우선 */
   .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; white-space:normal; word-break:break-word; max-width:100%; }   /* 편집 중엔 줄바꿈 허용 → 화면 밖 안 나감 */
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }   /* 줄 한도 초과 거부 */
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
@@ -1415,11 +1417,29 @@ const EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5, EDLINE_SOFT = 14;
 function edHangul(s) { return (s.match(/[가-힣]/g) || []).length; }
 // 가중폭 = 한글/자모/전각/곡선따옴표·전각부호=1.0, 그외(영문·숫자·반각·공백)=0.5 (wcswidth/2 동치).
 function edWidth(s) { let w = 0; for (const ch of s) w += /[가-힣ㄱ-ㅎㅏ-ㅣ‘-‟…　-〿＀-￯]/.test(ch) ? 1 : 0.5; return w; }
-function edMarkWarn() {   // 줄별 가중폭 > SOFT(14)면 그 줄 어절에 _warn(줄바꿈 권장 호박색)
-  let w = 0, line = [];
-  const flush = () => { const over = w > EDLINE_SOFT; line.forEach(t => { t._warn = over; }); w = 0; line = []; };
-  for (const t of edTokens) { if (t.t === 'nl') flush(); else if (t.t === 'sp') w += 0.5; else { w += edWidth(t.text); line.push(t); } }
+function edMarkWarn() {   // 줄별: 가중폭>SOFT(14)=권장(호박) / 누적이 한도(가중폭19.5·한글18) 넘는 어절부터=초과(빨강)
+  let w = 0, hg = 0, line = [], over = false;
+  const flush = () => { const warn = w > EDLINE_SOFT; line.forEach(t => { t._warn = warn && !t._over; }); w = 0; hg = 0; line = []; over = false; };
+  for (const t of edTokens) {
+    if (t.t === 'nl') { flush(); continue; }
+    if (t.t === 'sp') { w += 0.5; continue; }
+    w += edWidth(t.text); hg += edHangul(t.text);
+    if (w > EDLINE_WIDTH || hg > EDLINE_HANGUL) over = true;
+    t._over = over;   // 이 어절부터 한도 초과 = 빨강(줄바꿈을 지워 합쳐도 여기서 잡힘)
+    line.push(t);
+  }
   flush();
+}
+// 줄 중 하나라도 한도 초과(빨강)인지 — 저장(변경) 게이트.
+function edAnyOver() {
+  let w = 0, hg = 0, over = false;
+  for (const t of edTokens) {
+    if (t.t === 'nl') { if (over) return true; w = 0; hg = 0; over = false; continue; }
+    if (t.t === 'sp') { w += 0.5; continue; }
+    w += edWidth(t.text); hg += edHangul(t.text);
+    if (w > EDLINE_WIDTH || hg > EDLINE_HANGUL) over = true;
+  }
+  return over;
 }
 function edLineAround(idx, newText) {   // idx 어절이 속한 줄(텍스트) — 그 어절을 newText로 치환해 길이 계산
   let s = idx; while (s > 0 && edTokens[s - 1].t !== 'nl') s--;
@@ -1453,7 +1473,7 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
       };
       row.appendChild(g); return;
     }
-    const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : '') + (tok._warn ? ' warn' : ''); sp.textContent = tok.text;
+    const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : '') + (tok._warn ? ' warn' : '') + (tok._over ? ' over' : ''); sp.textContent = tok.text;
     sp.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
     sp.onclick = () => { if (sp.isContentEditable) return; tok.on = !tok.on; sp.classList.toggle('on'); };
     sp.ondblclick = () => { sp.contentEditable = 'true'; sp.spellcheck = true; sp.lang = 'ko'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
@@ -1464,10 +1484,7 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
       const nt = sp.textContent.replace(/\s+/g, ' ').trim();
       if (nt === tok.text) return;
       const idx = edTokens.indexOf(tok);
-      if (nt) {   // 카드 줄 한도(한글 ≤18·가중폭 ≤19.5/줄) 초과 = 거부(빨강+흔들림). 4줄↑ 밀림 방지.
-        const line = edLineAround(idx, nt);
-        if (edHangul(line) > EDLINE_HANGUL || edWidth(line) > EDLINE_WIDTH) { sp.textContent = tok.text; edReject(sp); return; }
-      }
+      // 한도 초과는 막지 않고 빨강 표시(edMarkWarn) — 저장(변경) 때만 게이트(edAnyOver). '미리보기에서 오버=빨강'.
       if (!nt) {   // 비우면 어절 삭제(+ 인접 공백 1개)
         edTokens.splice(idx, 1);
         if (edTokens[idx] && edTokens[idx].t === 'sp') edTokens.splice(idx, 1);
@@ -1508,8 +1525,9 @@ function fitEditLines(wrap) {
   let eds = refW > 0 ? Math.min(1.1, avail / refW) : 1;   // 19.5 줄 = 박스폭 (소폭 확대 허용)
   eds = Math.max(0.45, eds);
   wrap.style.setProperty('--eds', eds.toFixed(3));
-  // 안전망 — 기준보다 빽빽한 줄(어절 많음)·고정 테두리 비선형으로 혹시 넘치면 수렴까지 축소(overflow 0 보장).
-  for (let pass = 0; pass < 3; pass++) {
+  // 안전망 — 어느 줄이든 박스를 넘으면(빽빽/비선형/한도초과) 수렴 축소해 박스 안에 둠
+  // (초과줄도 박스 안에 들어오되 넘치는 어절은 빨강으로 보임 → '오버되는 부분'이 화면 안에서 빨갛게 보임).
+  for (let pass = 0; pass < 4; pass++) {
     let maxw = 0; rows.forEach(r => { if (r.scrollWidth > maxw) maxw = r.scrollWidth; });
     if (maxw <= avail) break;
     eds = Math.max(0.4, eds * avail / maxw);
@@ -1536,6 +1554,7 @@ let REPENDING = null, _pendTries = 0;   // { file, card, oldImg } 자동 교체 
 function submitEdit() {
   if (!EDIT_CTX) return;
   if (!buildEmphText().trim()) { alert('텍스트가 비어 있어.'); return; }
+  if (edAnyOver()) { alert('빨간 어절 = 카드 한 줄 한도(가중폭 19.5·한글 18) 초과야.\n그 자리에서 줄을 나누거나(점선 탭) 줄여줘.'); return; }
   // 이미지 수정 희망이 비면 = 문구만 교체(기존 장면 그대로 로컬 합성·과금 0) → 확인 없이 바로 변경.
   // 채우면 = 이미지까지 재생성(유료) → 한 번만 확인.
   if (!$('#edWish').value.trim()) { fireEdit(); return; }
