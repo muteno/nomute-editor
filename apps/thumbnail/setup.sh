@@ -5,25 +5,28 @@
 #    미등록 환경도 동작 동일 — 첫 /th 때 설치(기존 폴백). 강제 재설치 = rm ~/.cache/nomute_th_env_ready 후 재실행.
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# 양쪽 호환: Claude Code(root) / GitHub 러너(non-root → sudo)
+SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
 
 # ── 1단: 무거운 설치(apt 폰트 + pip 패키지) — 성공 후 스탬프, 이후 단락 ──
 STAMP="$HOME/.cache/nomute_th_env_ready"
 if [ ! -f "$STAMP" ]; then
   if ! fc-list 2>/dev/null | grep -qi "noto sans cjk"; then
-    apt-get update -qq && apt-get install -y -qq fonts-noto-cjk
+    $SUDO apt-get update -qq && $SUDO apt-get install -y -qq fonts-noto-cjk
   fi
   python3 -c "import PIL,numpy,cv2,mediapipe" 2>/dev/null || \
     pip3 install -q pillow numpy opencv-python-headless mediapipe
   mkdir -p "$HOME/.cache" && touch "$STAMP"
 fi
 
-# ── 2단: 가벼운 경로·심볼릭(매 세션 — 레포가 세션마다 새로 풀리므로 항상 재링크) ──
-mkdir -p /mnt/project /home/claude /mnt/user-data/outputs /mnt/user-data/uploads
-ln -sf "$DIR/nomute_overlay.py"   /mnt/project/nomute_overlay.py
-ln -sf "$DIR/nomute_compose.py"   /mnt/project/nomute_compose.py
-ln -sf "$DIR/nomute_copyright.py" /mnt/project/nomute_copyright.py
-ln -sf "$DIR/nomute_reels2.py"    /mnt/project/nomute_reels2.py
-ln -sf "$DIR/assets/reels2_base.png" /mnt/project/reels2_base.png
-ln -sf "$DIR/assets/reels2_base.png" /home/claude/reels2_base.png
-ln -sf "$DIR/../../shared/attach.py" /mnt/project/attach.py   # BG 첨부 해석(라우터 §미디어 첨부 — 지침 ②③ 템플릿이 사용)
+# ── 2단: 가벼운 경로·심볼릭(Claude Code용 — 러너[/mnt 권한 없음]선 자동 스킵) ──
+if mkdir -p /mnt/project /home/claude /mnt/user-data/outputs /mnt/user-data/uploads 2>/dev/null; then
+  ln -sf "$DIR/nomute_overlay.py"   /mnt/project/nomute_overlay.py
+  ln -sf "$DIR/nomute_compose.py"   /mnt/project/nomute_compose.py
+  ln -sf "$DIR/nomute_copyright.py" /mnt/project/nomute_copyright.py
+  ln -sf "$DIR/nomute_reels2.py"    /mnt/project/nomute_reels2.py
+  ln -sf "$DIR/assets/reels2_base.png" /mnt/project/reels2_base.png
+  ln -sf "$DIR/assets/reels2_base.png" /home/claude/reels2_base.png
+  ln -sf "$DIR/../../shared/attach.py" /mnt/project/attach.py   # BG 첨부 해석(라우터 §미디어 첨부)
+fi
 echo "[setup] thumbnail env ready (fonts+pkgs+paths+reels2+attach)"

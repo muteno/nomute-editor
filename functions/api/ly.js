@@ -23,13 +23,15 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
 
   const subs = String(body.subs || '').slice(0, 20000);
-  if (!subs.trim()) return json({ error: 'SRT 또는 자막 텍스트가 필요해' }, 400);
+  const url = String(body.url || '').trim().slice(0, 500);
+  if (!subs.trim() && !url) return json({ error: 'SRT/자막 텍스트 또는 영상 URL이 필요해' }, 400);
+  if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
 
   const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, subs },
+    ref: REF, inputs: { id, subs, url },
   });
-  if (r.status === 204) return json({ ok: true, id, out: `ly_out/${id}/subs.md` });
+  if (r.status === 204) return json({ ok: true, id, url: !!url, out: `ly_out/${id}/subs.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
