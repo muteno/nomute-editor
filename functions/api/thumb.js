@@ -54,11 +54,12 @@ export async function onRequestPost({ request, env }) {
     else {
       const year = clip(p.year, 8), name = clip(p.name, 60), platform = clip(p.platform, 60);
       if (!year || !name || !platform) return json({ error: '연도/이름/플랫폼 또는 raw 문구가 필요해' }, 400);
+      if (!/^\d{1,8}$/.test(year)) return json({ error: '연도는 숫자만(예: 2026)' }, 400);   // --raw 등 플래그 혼동 차단
       params = { fmt, year, name, platform };
     }
   }
 
-  const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14);   // YYMMDDHHMMSS
+  const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS-rand(동초 충돌 방지)
 
   // /1만 배경 이미지 업로드(uploads/<id>/src.*)
   let imgPath = '';

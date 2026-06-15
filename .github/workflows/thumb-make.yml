@@ -114,6 +114,9 @@ jobs:
           git add "uploads/${IN_ID}" 2>/dev/null || true
           git commit -m "thumb: ${IN_ID} 렌더 출력" || { echo "커밋할 것 없음"; exit 0; }
           # 동시 렌더 push 레이스 대비 — 매 시도 origin 흡수 후 push(naive 재push는 non-ff로 무한실패)
+          pushed=0
           for i in 1 2 3 4 5; do
-            git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH" && break || { git rebase --abort 2>/dev/null || true; sleep $((i*3)); }
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
           done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }

@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
   if (!b64 || b64.length > 12_000_000) return json({ error: '이미지가 필요해(≤9MB)' }, 400);
   const ext = /\.(png|jpe?g|webp)$/i.test(body.name || '') ? body.name.match(/\.(png|jpe?g|webp)$/i)[0].toLowerCase() : '.jpg';
 
-  const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14);   // YYMMDDHHMMSS
+  const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS-rand(동초 충돌 방지)
   const imgPath = `uploads/${id}/src${ext}`;
 
   // ① 이미지 레포 커밋
