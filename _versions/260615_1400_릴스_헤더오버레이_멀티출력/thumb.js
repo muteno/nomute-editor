@@ -46,22 +46,10 @@ export async function onRequestPost({ request, env }) {
       if (Number.isFinite(+p.opacity) && p.opacity !== '') params.opacity = Math.max(0, Math.min(100, Math.trunc(+p.opacity)));
       if (p.blur) params.blur = true;
     }
-  } else if (app === '2') {                   // 릴스 — 헤더(부제+제목) | 오버레이(이미지옵션+opa+lines)
-    const mode = p.mode === 'overlay' ? 'overlay' : 'header';
-    if (mode === 'header') {
-      const sub = clip(p.sub, 200), title = clip(p.title, 200);
-      if (!sub && !title) return json({ error: '부제(sub) 또는 제목(title)이 필요해' }, 400);
-      params = { mode, sub, title };
-    } else {                                  // 오버레이 — 항상 opa60·30, 직접입력은 추가(+1)
-      const lines = cleanLines(p.lines);
-      if (!lines.length) return json({ error: '텍스트 줄(lines)이 필요해' }, 400);
-      const opas = [60, 30];
-      if (p.extraOpa !== null && p.extraOpa !== '' && Number.isFinite(+p.extraOpa)) {
-        const ex = Math.max(0, Math.min(100, Math.trunc(+p.extraOpa)));
-        if (!opas.includes(ex)) opas.push(ex);
-      }
-      params = { mode, lines, opas };
-    }
+  } else if (app === '2') {                   // 릴스 — 부제 + 제목
+    const sub = clip(p.sub, 200), title = clip(p.title, 200);
+    if (!sub && !title) return json({ error: '부제(sub) 또는 제목(title)이 필요해' }, 400);
+    params = { sub, title };
   } else {                                    // 3 저작권 — raw 또는 year/name/platform
     if (p.raw) params = { fmt, raw: clip(p.raw, 200) };
     else {
@@ -74,14 +62,13 @@ export async function onRequestPost({ request, env }) {
 
   const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS-rand(동초 충돌 방지)
 
-  // 배경 이미지 업로드(uploads/<id>/src.*) — /1=필수 · /2 오버레이=옵션
+  // /1만 배경 이미지 업로드(uploads/<id>/src.*)
   let imgPath = '';
-  const wantImg = app === '1' || (app === '2' && params.mode === 'overlay' && body.imageB64);
-  if (wantImg) {
+  if (app === '1') {
     let b64 = String(body.imageB64 || '');
     const dm = b64.match(/^data:image\/(?:png|jpe?g|webp);base64,(.+)$/);
     if (dm) b64 = dm[1];
-    if (!b64 || b64.length > 12_000_000) return json({ error: '배경 이미지가 필요해(≤9MB)' }, 400);
+    if (!b64 || b64.length > 12_000_000) return json({ error: '/1은 배경 이미지가 필요해(≤9MB)' }, 400);
     const ext = /\.(png|jpe?g|webp)$/i.test(body.name || '') ? body.name.match(/\.(png|jpe?g|webp)$/i)[0].toLowerCase() : '.jpg';
     imgPath = `uploads/${id}/src${ext}`;
     const put = await GH(env.GH_TOKEN, `contents/${imgPath}`, 'PUT', {
@@ -95,21 +82,6 @@ export async function onRequestPost({ request, env }) {
   const r = await GH(env.GH_TOKEN, 'actions/workflows/thumb-make.yml/dispatches', 'POST', {
     ref: REF, inputs: { app, id, image: imgPath, params: JSON.stringify(params) },
   });
-  if (r.status === 204) {
-    const dir = `thumb_out/${id}`;
-    let outs;
-    if (app === '2' && params.mode === 'header') {
-      outs = [
-        { path: `${dir}/nobg.png`, label: '기본 (흰칸 없음)' },
-        { path: `${dir}/box.png`, label: '흰칸 (영상자리)' },
-      ];
-    } else if (app === '2' && params.mode === 'overlay') {
-      const kind = imgPath ? '합성본' : '오버레이';
-      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
-    } else {
-      outs = [{ path: `${dir}/out.png`, label: '' }];
-    }
-    return json({ ok: true, id, out: outs[0].path, outs });
-  }
+  if (r.status === 204) return json({ ok: true, id, out: `thumb_out/${id}/out.png` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
