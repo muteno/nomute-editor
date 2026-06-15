@@ -25,6 +25,10 @@ on:
         description: '주관 의견(선택)'
         type: string
         default: ''
+      action:
+        description: 'record(적재) | delete(취소·파일삭제)'
+        type: string
+        default: 'record'
 
 concurrency:
   group: feedback
@@ -48,13 +52,14 @@ jobs:
           FB_VOTE: ${{ inputs.vote }}
           FB_ASPECT: ${{ inputs.aspect }}
           FB_COMMENT: ${{ inputs.comment }}
+          FB_ACTION: ${{ inputs.action }}
         run: |
           python3 .github/scripts/feedback_record.py
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add feedback
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
-          git commit -m "feedback: ${FB_ARTICLE%.md} 카드${FB_CARD} ${FB_VOTE}"
+          git commit -m "feedback: ${FB_ACTION:-record} ${FB_ARTICLE%.md} 카드${FB_CARD} ${FB_VOTE}"
           for i in 0 1 2 3; do
             [ "$i" -gt 0 ] && sleep $((2**i))
             git pull --rebase -X ours origin main && git push origin HEAD:main && exit 0

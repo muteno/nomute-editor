@@ -521,6 +521,7 @@
   .feedtrack { display:flex; overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x mandatory;
     scroll-behavior:smooth; -webkit-overflow-scrolling:touch; outline:none; scrollbar-width:none; margin:0 -2px; }
   .feedtrack::-webkit-scrollbar { display:none; }
+  @media (hover:hover) and (pointer:fine) { .feedtrack { cursor:grab; } .feedtrack.dragging { cursor:grabbing; scroll-behavior:auto; scroll-snap-type:none; } }   /* PC 잡아끌기 */
   .slide { flex:0 0 100%; scroll-snap-align:center; scroll-snap-stop:always; box-sizing:border-box; padding:0 2px; min-width:0; }
   .slide-img { position:relative; }
   .slide-img > a { display:block; }
@@ -1245,6 +1246,20 @@ function feedSec(a) {
     if (e.key === 'ArrowRight') { e.preventDefault(); track.scrollTo({ left: (idx + 1) * w, behavior: 'smooth' }); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); track.scrollTo({ left: (idx - 1) * w, behavior: 'smooth' }); }
   });
+  // PC: 마우스로 잡아끌어 좌우 넘김(터치는 네이티브 스와이프). 드래그 후 클릭(라이트박스)은 억제.
+  track.addEventListener('mousedown', e => {
+    if (e.button !== 0 || e.target.closest('.sbtn,.vbtn,.slide-fb,.feednav')) return;   // 버튼/패널 위에선 드래그 안 함
+    const sl = track.scrollLeft, x0 = e.clientX; let moved = false;
+    track.classList.add('dragging');
+    const mv = ev => { track.scrollLeft = sl - (ev.clientX - x0); if (Math.abs(ev.clientX - x0) > 4) moved = true; };
+    const up = () => {
+      window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up);
+      track.classList.remove('dragging'); track._dragged = moved;
+      const w = track.clientWidth || 1; track.scrollTo({ left: Math.round(track.scrollLeft / w) * w, behavior: 'smooth' });
+    };
+    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); e.preventDefault();
+  });
+  track.addEventListener('click', e => { if (track._dragged) { e.stopPropagation(); e.preventDefault(); track._dragged = false; } }, true);   // 드래그 직후 클릭 억제
   intro.querySelector('.fi-saveall').onclick = e => saveAll(model, slug, e.currentTarget);
 }
 
@@ -1269,8 +1284,9 @@ function renderSlide(card, i, ctx) {
     im.onclick = () => openLightbox(v.image);   // 탭 → 풀스크린 라이트박스(좌상단 뒤로)
     const eb = fig.querySelector('.sbtn.edit');
     eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 변경(1b)
-    fig.querySelector('.fbup').onclick = () => openFeedback(card, 'up', fig, ctx.file);     // 👍 누적
-    fig.querySelector('.fbdown').onclick = () => openFeedback(card, 'down', fig, ctx.file); // 👎 누적
+    fig.querySelector('.fbup').onclick = () => onThumb(card, 'up', fig, ctx.file);     // 👍 (1표·재탭=취소)
+    fig.querySelector('.fbdown').onclick = () => onThumb(card, 'down', fig, ctx.file); // 👎
+    applyVoteState(fig, ctx.file, card.n);   // 기존 투표(localStorage) 반영
     if (card.versions.length > 1) {   // 앞뒤(버전) 네비 — 좌우(카드)와 다른 축
       const ver = document.createElement('div'); ver.className = 'slide-ver';
       ver.innerHTML = `<button class="vbtn" data-d="-1" aria-label="이전 판"${card.cur <= 0 ? ' disabled' : ''}>‹</button>`
@@ -1449,15 +1465,56 @@ function submitFeedback(p, fb, slideEl) {
   const save = fb.querySelector('.fb-save'); save.disabled = true; save.textContent = '기록 중…';
   fetch('api/feedback', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ article: p.file, card: String(p.card), vote: p.vote, aspect: p.aspect, comment: p.comment }),
+    body: JSON.stringify({ action: 'record', article: p.file, card: String(p.card), vote: p.vote, aspect: p.aspect, comment: p.comment }),
   }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
     .then(({ ok, j }) => {
       if (ok && j.ok) {
+        setVote(p.file, p.card, p.vote);            // 1표 상태 저장 → 반대쪽 잠금
+        applyVoteState(slideEl, p.file, p.card);
         fb.innerHTML = '<div class="fb-done">기록됐어 — 고마워! 🙌</div>';
-        const b = slideEl.querySelector(p.vote === 'up' ? '.fbup' : '.fbdown'); if (b) b.classList.add('voted');
         setTimeout(() => fb.remove(), 1100);
       } else { save.disabled = false; save.textContent = '기록'; alert(j.error || '실패'); }
     }).catch(e => { save.disabled = false; save.textContent = '기록'; alert('요청 실패: ' + e.message); });
+}
+// ── 투표 상태(1카드 1표·localStorage) — 기록하면 반대쪽 잠금, 같은 쪽 재탭=취소(DB 삭제) ──
+function getVote(file, card) { try { return (JSON.parse(localStorage.getItem('nomute_fb') || '{}'))[`${file}#${card}`] || null; } catch { return null; } }
+function setVote(file, card, v) {
+  let m = {}; try { m = JSON.parse(localStorage.getItem('nomute_fb') || '{}'); } catch { /* noop */ }
+  if (v) m[`${file}#${card}`] = v; else delete m[`${file}#${card}`];
+  try { localStorage.setItem('nomute_fb', JSON.stringify(m)); } catch { /* noop */ }
+}
+function applyVoteState(fig, file, card) {
+  const v = getVote(file, card), up = fig.querySelector('.fbup'), down = fig.querySelector('.fbdown');
+  if (!up || !down) return;
+  up.classList.toggle('voted', v === 'up'); down.classList.toggle('voted', v === 'down');
+  up.disabled = v === 'down'; down.disabled = v === 'up';   // 하나 기록되면 다른 쪽 비활성
+}
+function onThumb(card, vote, fig, file) {
+  const cur = getVote(file, card.n);
+  if (cur === vote) { confirmCancelVote(card, vote, fig, file); return; }   // 같은 쪽 재탭 = 취소
+  if (cur) return;                                                          // 다른 쪽 이미 투표 = 잠김(disabled)
+  openFeedback(card, vote, fig, file);                                      // 미투표 = 패널(크로스전환은 패널서)
+}
+function confirmCancelVote(card, vote, fig, file) {
+  const host = fig.querySelector('.slide-img'); if (!host) return;
+  const ex = host.querySelector('.slide-fb'); if (ex) ex.remove();
+  const fb = document.createElement('div'); fb.className = 'slide-fb';
+  fb.innerHTML = `<button type="button" class="fb-x" aria-label="닫기">✕</button>
+     <div class="fb-vote">${vote === 'up' ? '👍 좋아요' : '👎 아쉬워요'} 취소할까요? <span class="fb-sub">— 기록도 삭제돼</span></div>
+     <div class="fb-act"><button type="button" class="fb-save">취소(삭제)</button></div>`;
+  fb.querySelector('.fb-x').onclick = () => fb.remove();
+  fb.querySelector('.fb-save').onclick = () => {
+    const save = fb.querySelector('.fb-save'); save.disabled = true; save.textContent = '삭제 중…';
+    fetch('api/feedback', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', article: file, card: String(card.n), vote }),
+    }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
+      .then(({ ok, j }) => {
+        if (ok && j.ok) { setVote(file, card.n, null); applyVoteState(fig, file, card.n); fb.innerHTML = '<div class="fb-done">취소됐어 ✓</div>'; setTimeout(() => fb.remove(), 900); }
+        else { save.disabled = false; save.textContent = '취소(삭제)'; alert(j.error || '실패'); }
+      }).catch(e => { save.disabled = false; save.textContent = '취소(삭제)'; alert('요청 실패: ' + e.message); });
+  };
+  host.appendChild(fb);
 }
 // ── 슛 PIN 입력 UI ──
 // confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.

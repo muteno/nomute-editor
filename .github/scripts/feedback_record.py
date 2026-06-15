@@ -3,6 +3,7 @@
 # 따봉/다운 누적 — 좋았던/아쉬운 카드의 (텍스트+프롬프트)를 측면(이미지/텍스트)·의견과 함께
 # feedback/<ts>-<stem>-c<N>-<vote>.json 으로 적재. 나중에 빅데이터 분석 → 카드뉴스 품질 개선 데이터.
 import datetime
+import glob
 import json
 import os
 import re
@@ -12,6 +13,14 @@ n = int(os.environ['FB_CARD'])
 vote = 'down' if os.environ.get('FB_VOTE') == 'down' else 'up'
 aspect = 'text' if os.environ.get('FB_ASPECT') == 'text' else 'image'
 comment = os.environ.get('FB_COMMENT', '').strip()
+action = os.environ.get('FB_ACTION', 'record')
+
+# ── 취소(delete) — 해당 (기사·카드·vote) 피드백 파일 전부 삭제 ──
+if action == 'delete':
+    pat = f"feedback/*-{stem}-c{n}-{vote}.json"
+    gone = [f for f in glob.glob(pat) if (os.remove(f) or True)]
+    print(f"삭제: {len(gone)}건 ({pat})")
+    raise SystemExit(0)
 
 text = prompt = ''
 cm = f"cards/{stem}/cards.md"
