@@ -13,6 +13,10 @@ on:
       scene:
         description: '장면/기사 입력 텍스트'
         type: string
+      refimage:
+        description: '레퍼런스 이미지도 생성(유료 Gemini/Drive)'
+        type: string
+        default: 'false'
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -31,7 +35,7 @@ permissions:
 jobs:
   k:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30   # 레퍼런스 이미지(Drive 적응형 대기 상한 15분) 옵트인 대비
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -59,6 +63,26 @@ jobs:
           # OAuth를 조용히 덮어쓰는 변수 방어적 제거(news-analyze와 동일)
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/kmake.sh "$IN_ID"
+
+      - name: Reference image (유료 Gemini/Drive — 옵트인)
+        if: ${{ inputs.refimage == 'true' }}
+        env:
+          GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$GDRIVE_SA_JSON" ] || { echo "::warning::GDRIVE_SA_JSON 미등록 — 레퍼런스 생략"; exit 0; }
+          MD="viewer/k_out/${IN_ID}/prompt.md"
+          [ -s "$MD" ] || { echo "::warning::prompt.md 없음 — 레퍼런스 생략"; exit 0; }
+          pip install --quiet google-auth requests pillow || { echo "::warning::deps 설치 실패 — 생략"; exit 0; }
+          python3 .github/scripts/k_refmd.py "$MD" /tmp/kref.md || { echo "::warning::레퍼런스 프롬프트 없음 — 생략"; exit 0; }
+          # 빈 텍스트(합성 스킵) → 원본 장면만 --scenes-out으로 회수. _final 없어 drive_cards rc=2지만 장면=성공.
+          python3 .github/scripts/drive_cards.py --md /tmp/kref.md --topic "kref_${IN_ID}" --out /tmp/kref --scenes-out "viewer/k_out/${IN_ID}" --wait-min 15 || true
+          if [ -f "viewer/k_out/${IN_ID}/장면01.jpg" ]; then
+            mv "viewer/k_out/${IN_ID}/장면01.jpg" "viewer/k_out/${IN_ID}/ref.jpg"
+            echo "레퍼런스 회수 → ref.jpg"
+          else
+            echo "::warning::레퍼런스 이미지 미회수 — Drive 폴더에서 계속 생성될 수 있음"
+          fi
 
       - name: Commit output
         if: always()

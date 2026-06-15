@@ -26,10 +26,11 @@ export async function onRequestPost({ request, env }) {
   if (!scene.trim()) return json({ error: '장면/기사 입력이 필요해' }, 400);
 
   const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);
+  const refimage = (body.refimage === true || body.refimage === 'true') ? 'true' : 'false';
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/k-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, scene },
+    ref: REF, inputs: { id, scene, refimage },
   });
-  if (r.status === 204) return json({ ok: true, id, out: `k_out/${id}/prompt.md` });
+  if (r.status === 204) return json({ ok: true, id, refimage: refimage === 'true', out: `k_out/${id}/prompt.md`, ref: `k_out/${id}/ref.jpg` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
