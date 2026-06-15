@@ -47,10 +47,6 @@
   /* 경고문 프리셋 = 줄바꿈 허용 세그 */
   .wseg { flex-wrap:wrap; }
   .wseg button { min-width:62px; }
-  /* 실시간 자간(tracking) 표시 — 줄어들기 시작하면 노랑, 한도 초과 빨강 */
-  .trk { font-size:12px; font-weight:800; }
-  .trk.on { color:#ffd84d; }
-  .trk.over { color:#ff7a7a; }
   .file { display:block; padding:10px; border:1px dashed var(--line); border-radius:8px; text-align:center; color:var(--mut); cursor:pointer; }
   .file img { max-width:100%; max-height:170px; border-radius:6px; margin-top:8px; }
   .go { width:100%; margin-top:16px; padding:13px; background:var(--grn); color:#07210a; border:none; border-radius:10px; font-weight:800; font-size:15px; cursor:pointer; }
@@ -151,7 +147,8 @@
     <div id="linesBox" class="none">
       <label>텍스트 (줄바꿈 = 여러 줄)</label>
       <textarea id="lines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
-      <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · <span id="linesMax"></span> <span id="linesTrk" class="trk"></span></div>
+      <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · <span id="linesMax"></span></div>
+      <button type="button" id="cardEditBtn" class="none" style="width:100%;margin-top:8px;padding:11px;background:var(--glass2);color:var(--grn);border:1px solid var(--grn);border-radius:10px;font-weight:700;cursor:pointer">🃏 칩 에디터로 편집 (줄·강조·한도 빨강)</button>
     </div>
 
     <!-- /4 경고문 — 프리셋 선택(법적 검토) + 직접입력. 선택 시 채워지고 수정 가능 -->
@@ -199,7 +196,7 @@
         </div>
         <label>텍스트 (줄바꿈 = 여러 줄)</label>
         <textarea id="rLines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
-        <div class="hint"><b>*별표*</b>로 강조 · 기본 <b>opa60+opa30</b>, 직접입력 +1 <span id="rLinesTrk" class="trk"></span></div>
+        <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · 기본 출력 <b>opa60 + opa30</b>, 직접입력은 추가(+1)</div>
       </div>
     </div>
 
@@ -222,12 +219,6 @@
       <div class="hint" id="copyHint">→ ⓒ 2026. nomute(instagram). all rights reserved.</div>
     </div>
 
-    <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
-    <div id="cardBox" class="none">
-      <label>카드 텍스트 <span style="color:var(--mut);font-weight:400">— 탭=강조 · 더블탭=수정 · + 줄추가 · 최대 4줄·한 줄 한글 18자</span></label>
-      <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
-    </div>
-
     <button class="go" id="go">웹 렌더 발사</button>
   </div>
 
@@ -236,6 +227,17 @@
     <div class="result" id="result"></div>
   </div>
 </div>
+
+<!-- 카드뉴스(/5) 텍스트 칩 에디터 — 뷰어 #editdlg 포팅(어절칩·줄=행·강조·한도 빨강) -->
+<dialog id="editdlg">
+  <div class="ed-h"><b class="ed-title">카드 텍스트</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()">✕</button></div>
+  <div class="ed-body">
+    <img class="ed-img" alt="" style="display:none">
+    <label class="ed-lbl">텍스트 <span class="ed-hint">— 탭=강조 · 더블탭=수정 · + 줄추가 · 비우면 줄삭제 · 최대 4줄·한 줄 한글 18자</span></label>
+    <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
+  </div>
+  <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">적용</button></div>
+</dialog>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -249,16 +251,14 @@ function selApp(a) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.app === a));
   // 표시 토글
   $('#imgBox').classList.toggle('none', !(a === '1' || a === '5'));   // 이미지 = /1·/5
-  $('#linesBox').classList.toggle('none', a !== '1');   // 텍스트 = /1 포스트만 (/5는 칩 에디터)
-  $('#warnBox').classList.toggle('none', a !== '4');                    // 경고문 = /4 (프리셋)
-  $('#cardBox').classList.toggle('none', a !== '5');                    // 카드뉴스 = /5 인라인 칩 에디터
+  $('#linesBox').classList.toggle('none', !(a === '1' || a === '5'));   // 텍스트 = /1·/5
+  $('#warnBox').classList.toggle('none', a !== '4');                    // 경고문 = /4 (지침 프리필)
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
-  $('#linesMax').textContent = a === '1' ? '최대 3줄' : '';
-  if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
-  if (a === '1') updateTrkHint('lines', 'linesTrk', 'post');                   // 실시간 자간
+  $('#linesMax').textContent = a === '1' ? '최대 3줄' : a === '5' ? '최대 4줄' : '';   // 공유 textarea 모드별 줄 한도
+  $('#cardEditBtn').classList.toggle('none', a !== '5');   // 칩 에디터 = /5 카드뉴스만
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => selApp(t.dataset.app));
 
@@ -335,7 +335,6 @@ function selRmode(m) {
   document.querySelectorAll('#rmodeSeg button').forEach(b => b.classList.toggle('on', b.dataset.rmode === m));
   $('#rHeader').classList.toggle('none', m !== 'header');
   $('#rOverlay').classList.toggle('none', m !== 'overlay');
-  if (m === 'overlay') updateTrkHint('rLines', 'rLinesTrk', 'reels');   // 실시간 자간
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
 
@@ -665,42 +664,32 @@ function buildEmphText() {
     return out;
   }).filter(s => s !== '').join('\n');
 }
-// ---- 실시간 자간(tracking) 추정 — 워크플로 measure+sweep의 브라우저판 (글자폭 = PIL 실측 상수) ----
-const TRK = {
-  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
-  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30 },
-};
-function lineWidthPx(text, tr, cfg) {   // ΣbbW + tp*(len-1) + 5 (한글 monospace · 약간 보수적)
-  const plain = text.replace(/\*/g, '');
-  let s = 0; for (const ch of plain) s += /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N;
-  return s + (tr / 1000 * cfg.fs) * Math.max(plain.length - 1, 0) + 5;
+// 엔트리 = /5 현 텍스트(#lines)에서 열기 · 엑시트 = buildEmphText → #lines (재슛 plumbing 제거)
+function openCardEditor() {
+  const img = $('#editdlg .ed-img');
+  if (IMG.b64) { img.src = IMG.b64; img.style.display = 'block'; } else { img.removeAttribute('src'); img.style.display = 'none'; }
+  edLines = parseEmphLines($('#lines').value || '');
+  if (!edLines.length) edLines = [[]];
+  PENDING_FOCUS = null; PENDING_EDIT = null;
+  renderEditChips();
+  $('#editdlg').showModal();
+  fitEditLines($('#edChips'));
 }
-function estTracking(lines, fmt) {   // 전 줄이 마진 안에 드는 전역 tr (워크플로 fit_tracking 동일 로직)
-  const cfg = TRK[fmt];
-  const widest = tr => Math.max(0, ...lines.map(l => lineWidthPx(l, tr, cfg)));
-  if (widest(cfg.start) <= cfg.limit) return { tr: cfg.start, swept: false, over: false };
-  for (let x = cfg.start; x >= cfg.floor; x--) if (widest(x) <= cfg.limit) return { tr: x, swept: true, over: false };
-  return { tr: cfg.floor, swept: true, over: true };
+function applyCardEditor() {
+  if (edAnyOver()) { alert('빨간 글자 = 한 줄 한도(한글 18자) 초과야. 그 어절을 줄이거나 + 로 새 줄을 만들어줘.'); return; }
+  $('#lines').value = buildEmphText().trim();
+  $('#editdlg').close();
 }
-function updateTrkHint(taId, hintId, fmt) {   // 자간 줄어들기 시작하면 그때부터 '자간 -N' · 한도 초과 빨강
-  const el = $('#' + hintId); if (!el) return;
-  const lines = ($('#' + taId).value || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const r = lines.length ? estTracking(lines, fmt) : null;
-  if (!r || (!r.swept && !r.over)) { el.textContent = ''; el.className = 'trk'; return; }   // 여유 = 숨김
-  if (r.over) { el.textContent = `⚠ 자간 ${TRK[fmt].floor}로도 초과 — 축약 필요`; el.className = 'trk over'; }
-  else { el.textContent = `· 자간 ${r.tr}`; el.className = 'trk on'; }
-}
-$('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', 'post'));
-$('#rLines').addEventListener('input', () => updateTrkHint('rLines', 'rLinesTrk', 'reels'));
+$('#edGo').onclick = applyCardEditor;
+$('#cardEditBtn').onclick = openCardEditor;
 
 // ---- 발사 ----
 $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err'); $('#result').innerHTML = '';
   // 카드뉴스(5) = /api/compose (이미지 + 텍스트, 1080×1350)
   if (APP === '5') {
+    const clines = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
     if (!IMG.b64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
-    if (edAnyOver()) { status.textContent = '빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄'; status.classList.add('err'); return; }
-    const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);   // 인라인 칩 에디터 → *강조* 텍스트
     if (!clines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
     $('#go').disabled = true; status.textContent = '발사 중…';
     try {
