@@ -367,7 +367,7 @@
   .dlgtop.ed-top { position:absolute; right:14px; bottom:66px; left:auto; width:40px; height:40px; box-shadow:0 6px 18px rgba(0,0,0,.45); }
   /* 재생성 중 배지(자동 교체 대기) */
   .slide.reshooting .slide-img { filter:brightness(.5) saturate(.7); }
-  .slide.reshooting .slide-acts, .slide.reshooting .slide-ver { pointer-events:none; opacity:.5; }   /* 재생성 중 = 그 카드 조작 잠금(중복 발사 방지) */
+  .feed-ui.reshooting .slide-acts, .feed-ui.reshooting .slide-ver { pointer-events:none; opacity:.5; }   /* 재생성 중 = 그 카드 조작 잠금(중복 발사 방지) — 버튼은 오버레이로 이관됨 */
   .reshoot-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; font-size:12.5px; font-weight:800; color:#fff;
     background:rgba(8,15,11,.62); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:8px 15px; white-space:nowrap;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,.4); }
@@ -535,6 +535,9 @@
   .slide-img img { width:100%; aspect-ratio:4/5; object-fit:cover; border-radius:16px; border:1px solid var(--line);
     display:block; background:var(--glass2); opacity:0; transition:opacity .25s; }
   .slide-img img.in { opacity:1; }
+  /* UI 오버레이 — 캐러셀 위에 고정(사진만 넘어감). 컨테이너는 클릭 통과(스와이프·라이트박스), 버튼/패널만 클릭. */
+  .feed-ui { position:absolute; inset:0; z-index:2; pointer-events:none; }
+  .feed-ui .sbtn, .feed-ui .vbtn, .feed-ui .slide-ver, .feed-ui .slide-fb { pointer-events:auto; }
   /* 좌상단 카운트 오버레이 — 반투명(N=형광) */
   .slide-no { position:absolute; top:10px; left:10px; z-index:2; font-size:11.5px; font-weight:800; color:rgba(255,255,255,.82);
     background:rgba(0,0,0,.28); padding:3px 10px; border-radius:999px; letter-spacing:.03em; text-shadow:0 1px 3px rgba(0,0,0,.7);
@@ -767,12 +770,10 @@ async function load() {
       const model = buildFeedModel(a), slot = model.findIndex(m => m.n === REPENDING.card);
       const newImg = slot >= 0 ? (c.images[slot] || null) : null;
       if (newImg && newImg !== REPENDING.oldImg) {
-        const old = $(`#feedsec .slide[data-card="${REPENDING.card}"]`);
-        if (old) {
-          const title = feedTitle(c.md) || a.title || '카드뉴스';
-          const slug = title.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_').slice(0, 40) || 'nomute';
-          old.replaceWith(renderSlide(model[slot], slot, { slug, total: model.length, file: CUR }));
-        }
+        // 새 이미지(+버전) 반영 — 캐러셀 위치 보존하며 피드 재구성(고정 UI가 현재 사진에 재바인딩)
+        const tr = $('#feedsec .feedtrack');
+        const keepIdx = tr ? Math.round(tr.scrollLeft / (tr.clientWidth || 1)) : 0;
+        feedSec(a, keepIdx);
         REPENDING = null;
       }
     }
@@ -1211,7 +1212,7 @@ function buildFeedModel(a) {
 }
 function capHtml(s = '') { return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b class="kw">$1</b>'); }
 
-function feedSec(a) {
+function feedSec(a, keepIdx = 0) {
   const ph = $('#ph-feed'), host = $('#feedsec'); if (!ph || !host) return;
   host.innerHTML = '';
   const c = a.cards || {}, imgs = c.images || [];
@@ -1281,44 +1282,75 @@ function feedSec(a) {
     window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); e.preventDefault();
   });
   track.addEventListener('click', e => { if (track._dragged) { e.stopPropagation(); e.preventDefault(); track._dragged = false; } }, true);   // 드래그 직후 클릭 억제
+
+  // ── 고정 UI 오버레이 — 사진만 넘어가고 카운트·버튼·버전네비는 제자리. 스크롤 정착 시 현재 사진에 바인딩 ──
+  const ui = document.createElement('div'); ui.className = 'feed-ui';
+  ui.innerHTML =
+    `<span class="slide-no"></span>
+     <div class="slide-acts">
+       <button class="sbtn fbup" type="button" aria-label="좋았던 카드">${THUMBUP_SVG}</button>
+       <button class="sbtn fbdown" type="button" aria-label="아쉬운 카드">${THUMBDOWN_SVG}</button>
+       <button class="sbtn edit" type="button" aria-label="이 카드 수정" title="이 카드 수정">${EDIT_SVG}</button>
+       <a class="sbtn save" aria-label="이 사진 저장">${DOWNLOAD_SVG}</a>
+     </div>
+     <div class="slide-ver" hidden>
+       <button class="vbtn vprev" type="button" aria-label="이전 판">‹</button>
+       <span class="vlbl"></span>
+       <button class="vbtn vnext" type="button" aria-label="다음 판">›</button>
+     </div>`;
+  wrap.appendChild(ui);
+  const uiNo = ui.querySelector('.slide-no'), uiEdit = ui.querySelector('.edit'), uiSave = ui.querySelector('.save'),
+    uiVer = ui.querySelector('.slide-ver'), uiVlbl = ui.querySelector('.vlbl'),
+    uiVprev = ui.querySelector('.vprev'), uiVnext = ui.querySelector('.vnext');
+  let curIdx = -1;
+  const setSlideImage = (slideEl, image) => {   // 같은 자리 사진만 교체(버전 넘김)
+    const im = slideEl && slideEl.querySelector('img'); if (!im) return;
+    im.classList.remove('in'); im.onload = () => im.classList.add('in'); im.src = image; im.onclick = () => openLightbox(image);
+  };
+  const syncFeed = idx => {   // 현재 사진(idx)에 오버레이 바인딩 — '넘어간 후 그 사진에 버튼 적용'
+    const card = model[idx]; if (!card) return;
+    curIdx = idx;
+    const v = card.versions[card.cur] || {};
+    uiNo.innerHTML = `<b>${card.n}</b>/${totalN}`;
+    uiEdit.onclick = () => openEdit({ card, idx, file: a.file });
+    if (v.image) { uiSave.style.display = ''; uiSave.href = v.image; uiSave.setAttribute('download', `${slug}_${String(idx + 1).padStart(2, '0')}.jpg`); }
+    else uiSave.style.display = 'none';
+    ui.querySelector('.fbup').onclick = () => onThumb(card, 'up', ui, a.file);
+    ui.querySelector('.fbdown').onclick = () => onThumb(card, 'down', ui, a.file);
+    applyVoteState(ui, a.file, card.n);   // 기존 투표(localStorage) 반영
+    if (card.versions.length > 1) {       // 앞뒤(버전) 네비 — 좌우(카드)와 다른 축
+      uiVer.hidden = false; uiVlbl.textContent = `v${card.cur + 1}/${card.versions.length}`;
+      uiVprev.disabled = card.cur <= 0; uiVnext.disabled = card.cur >= card.versions.length - 1;
+    } else uiVer.hidden = true;
+    const fb = ui.querySelector('.slide-fb'); if (fb) fb.remove();   // 카드 전환 = 열린 피드백 패널 닫기
+    ui.classList.toggle('reshooting', !!(track.children[idx] && track.children[idx].classList.contains('reshooting')));   // 재생성 중 카드면 오버레이 조작 잠금
+  };
+  const changeVer = d => {
+    const card = model[curIdx]; if (!card) return;
+    const nc = card.cur + d; if (nc < 0 || nc >= card.versions.length) return;
+    card.cur = nc; setSlideImage(track.children[curIdx], card.versions[nc].image); syncFeed(curIdx);
+  };
+  uiVprev.onclick = () => changeVer(-1); uiVnext.onclick = () => changeVer(1);
+  track._sync = syncFeed;   // REPENDING 자동교체 후 재바인딩용
+  // 스크롤로 다른 사진이 가운데 오면(인덱스 변화) 그 사진에 버튼 재바인딩
+  track.addEventListener('scroll', () => {
+    const idx = Math.round(track.scrollLeft / (track.clientWidth || 1));
+    if (idx !== curIdx) syncFeed(idx);
+  }, { passive: true });
+  const startIdx = Math.min(Math.max(0, keepIdx), totalN - 1);
+  if (startIdx > 0) requestAnimationFrame(() => { track.scrollLeft = startIdx * (track.clientWidth || 1); });   // REPENDING 후 위치 복원
+  syncFeed(startIdx);
 }
 
 function renderSlide(card, i, ctx) {
   const v = card.versions[card.cur];
   const fig = document.createElement('div'); fig.className = 'slide'; fig.dataset.card = card.n;   // 자동 제자리 교체용
-  const dlName = `${ctx.slug}_${String(i + 1).padStart(2, '0')}.jpg`;
+  // 슬라이드 = 사진만(버튼·카운트·버전네비는 고정 오버레이 .feed-ui로 이관 — 넘길 때 UI 그대로, 사진만 넘어감).
   if (v.image) {
-    fig.innerHTML =
-      `<div class="slide-img">
-         <img class="slide-photo" loading="lazy" alt="카드 ${card.n}">
-         <span class="slide-no"><b>${card.n}</b>/${ctx.total}</span>
-         <div class="slide-acts">
-           <button class="sbtn fbup" type="button" aria-label="좋았던 카드">${THUMBUP_SVG}</button>
-           <button class="sbtn fbdown" type="button" aria-label="아쉬운 카드">${THUMBDOWN_SVG}</button>
-           <button class="sbtn edit" type="button" aria-label="장면 ${card.n} 수정" title="이 카드 수정">${EDIT_SVG}</button>
-           <a class="sbtn" href="${esc(v.image)}" download="${esc(dlName)}" aria-label="장면 ${card.n} 저장">${DOWNLOAD_SVG}</a>
-         </div>
-       </div>`;
+    fig.innerHTML = `<div class="slide-img"><img class="slide-photo" loading="lazy" alt="카드 ${card.n}"></div>`;
     const im = fig.querySelector('img');
     im.onload = () => im.classList.add('in'); im.onerror = () => im.classList.add('in'); im.src = v.image;
     im.onclick = () => openLightbox(v.image);   // 탭 → 풀스크린 라이트박스(좌상단 뒤로)
-    const eb = fig.querySelector('.sbtn.edit');
-    eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 변경(1b)
-    fig.querySelector('.fbup').onclick = () => onThumb(card, 'up', fig, ctx.file);     // 👍 (1표·재탭=취소)
-    fig.querySelector('.fbdown').onclick = () => onThumb(card, 'down', fig, ctx.file); // 👎
-    applyVoteState(fig, ctx.file, card.n);   // 기존 투표(localStorage) 반영
-    if (card.versions.length > 1) {   // 앞뒤(버전) 네비 — 좌우(카드)와 다른 축
-      const ver = document.createElement('div'); ver.className = 'slide-ver';
-      ver.innerHTML = `<button class="vbtn" data-d="-1" aria-label="이전 판"${card.cur <= 0 ? ' disabled' : ''}>‹</button>`
-        + `<span class="vlbl">v${card.cur + 1}/${card.versions.length}</span>`
-        + `<button class="vbtn" data-d="1" aria-label="다음 판"${card.cur >= card.versions.length - 1 ? ' disabled' : ''}>›</button>`;
-      ver.querySelectorAll('.vbtn').forEach(b => b.onclick = () => {
-        const nc = card.cur + Number(b.dataset.d);
-        if (nc < 0 || nc >= card.versions.length) return;
-        card.cur = nc; fig.replaceWith(renderSlide(card, i, ctx));   // 같은 자리, 이미지·텍스트 교체
-      });
-      fig.querySelector('.slide-img').appendChild(ver);
-    }
   } else {
     fig.innerHTML = `<div class="slide-img"><div class="slide-wait">🍌 이미지 생성 대기…<br>다음 갱신 때 채워져</div></div>`;
   }
@@ -1492,6 +1524,7 @@ function fireEdit() {
 function markReshooting(n, textOnly) {
   const s = $(`#feedsec .slide[data-card="${n}"]`); if (!s) return;
   s.classList.add('reshooting');
+  const ui = $('#feedsec .feed-ui'); if (ui) ui.classList.add('reshooting');   // 편집은 현재 표시 카드 = 오버레이 즉시 잠금(중복 발사 방지)
   if (!s.querySelector('.reshoot-badge')) {
     const b = document.createElement('div'); b.className = 'reshoot-badge';
     b.textContent = textOnly ? '✍️ 문구 바꾸는 중…' : '🍌 다시 그리는 중…';
@@ -1509,7 +1542,7 @@ function openLightbox(src) { const lb = $('#lbox'); lb.querySelector('.lbox-img'
 
 // ── 따봉/다운 피드백 누적 — 좋았던/아쉬운 카드의 (텍스트+프롬프트)를 측면(이미지/텍스트)·의견과 적재 → 품질개선 데이터 ──
 function openFeedback(card, vote, slideEl, file) {
-  const host = slideEl.querySelector('.slide-img'); if (!host) return;
+  const host = slideEl.querySelector('.slide-img') || slideEl; if (!host) return;   // 오버레이(.feed-ui)면 자신이 host
   const ex = host.querySelector('.slide-fb'); if (ex) { ex.remove(); }
   const up = vote === 'up';
   const fb = document.createElement('div'); fb.className = 'slide-fb';
@@ -1563,7 +1596,7 @@ function onThumb(card, vote, fig, file) {
   openFeedback(card, vote, fig, file);                                      // 미투표 = 패널(크로스전환은 패널서)
 }
 function confirmCancelVote(card, vote, fig, file) {
-  const host = fig.querySelector('.slide-img'); if (!host) return;
+  const host = fig.querySelector('.slide-img') || fig; if (!host) return;   // 오버레이(.feed-ui)면 자신이 host
   const ex = host.querySelector('.slide-fb'); if (ex) ex.remove();
   const fb = document.createElement('div'); fb.className = 'slide-fb';
   fb.innerHTML = `<button type="button" class="fb-x" aria-label="닫기">✕</button>
