@@ -59,20 +59,8 @@
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
   .slot { margin-bottom:14px; }
   .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
-  .slot-img { min-height:40px; position:relative; }
+  .slot-img { min-height:40px; }
   .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
-  /* 결과 이미지 다운로드 (우상단 · 뷰어 캐러셀 계승) */
-  .imgdl { position:absolute; top:10px; right:10px; width:36px; height:36px; display:grid; place-items:center; color:#fff; background:rgba(8,15,11,.6); border:1px solid rgba(255,255,255,.22); border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; }
-  .imgdl:active { transform:scale(.9); } .imgdl svg { display:block; }
-  /* 텍스트칸 붙여넣기↔복사 (우상단 · 뷰어 .copy 계승) */
-  .iobtn { position:absolute; top:8px; right:8px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer; z-index:2; transition:transform .12s, background .15s, color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  .iobtn:hover { background:rgba(255,255,255,.12); color:var(--fg); }
-  .iobtn:active { transform:scale(.85); }
-  .iobtn.ok { background:var(--grn); color:#07210a; border-color:var(--grn); }
-  .iobtn svg { display:block; }
-  .cardhdr { display:flex; align-items:center; gap:8px; margin:12px 0 5px; }
-  .cardhdr .hdlbl { font-size:13px; color:var(--mut); }
-  .cardhdr .hdsub { font-size:11px; color:var(--mut); opacity:.7; flex:1; min-width:0; }
   .slot-wait { font-size:13px; color:var(--mut); }
   .none { display:none; }
 
@@ -215,7 +203,7 @@
 
     <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
     <div id="cardBox" class="none">
-      <div class="cardhdr"><span class="hdlbl">카드 텍스트</span><span class="hdsub">탭=강조 · 더블탭=수정 · + 줄추가 · 최대 4줄·한글18/줄</span></div>
+      <label>카드 텍스트 <span style="color:var(--mut);font-weight:400">— 탭=강조 · 더블탭=수정 · + 줄추가 · 최대 4줄·한 줄 한글 18자</span></label>
       <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
@@ -299,7 +287,6 @@ const WARN_PRESETS = {
 document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#warnPreset button').forEach(x => x.classList.toggle('on', x === b));
   $('#warnLines').value = WARN_PRESETS[b.dataset.wp] || '';
-  $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼(복사/붙여넣기) 아이콘 갱신
   if (b.dataset.wp === 'custom') $('#warnLines').focus();
 });
 
@@ -375,49 +362,6 @@ function bindFile(inp, lab, store) {
 bindFile($('#file'), $('#fileLab'), IMG);
 bindFile($('#rFile'), $('#rFileLab'), RIMG);
 
-// ==== 붙여넣기↔복사 + 다운로드 (뷰어 버튼 UIUX 계승) ====
-const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
-const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-const DOWNLOAD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
-const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
-async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
-  try { await navigator.clipboard.writeText(text || ''); } catch {}
-  btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
-  setTimeout(() => { btn.classList.remove('ok'); after(); }, 1200);
-}
-function attachCopyPaste(el) {   // 비었으면 붙여넣기, 차있으면 복사
-  const wrap = document.createElement('div'); wrap.style.position = 'relative';
-  el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
-  el.style.paddingRight = '42px';
-  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn'; wrap.appendChild(btn);
-  const refresh = () => {
-    if (btn.classList.contains('ok')) return;
-    const filled = (el.value || '').trim().length > 0;
-    btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste';
-    btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기');
-  };
-  btn.onclick = async ev => {
-    ev.preventDefault();
-    if (btn.dataset.mode === 'copy') clipCopy(el.value, btn, refresh);
-    else { try { const t = await navigator.clipboard.readText(); if (t) { el.value = t; el.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} refresh(); }
-  };
-  el.addEventListener('input', refresh); refresh();
-}
-['lines', 'sub', 'title', 'rLines', 'warnLines'].forEach(id => { const el = $('#' + id); if (el) attachCopyPaste(el); });
-// 카드뉴스 칩 에디터 copy/paste (buildEmphText ↔ parseEmphLines) — cardIo는 renderEditChips 끝에서 갱신
-let cardIo = null;
-(function () {
-  const hdr = $('#cardBox .cardhdr'); if (!hdr) return;
-  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn'; btn.style.position = 'static'; hdr.appendChild(btn);
-  cardIo = () => { if (btn.classList.contains('ok')) return; const filled = buildEmphText().trim().length > 0; btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste'; btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기'); };
-  btn.onclick = async ev => {
-    ev.preventDefault();
-    if (btn.dataset.mode === 'copy') clipCopy(buildEmphText(), btn, cardIo);
-    else { try { const t = await navigator.clipboard.readText(); if (t) { edLines = parseEmphLines(t); if (!edLines.length) edLines = [[]]; renderEditChips(); } } catch {} cardIo(); }
-  };
-  cardIo();
-})();
-
 // ---- 입력 → params ----
 function buildParams() {
   const linesArr = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -453,7 +397,7 @@ function pollMany(outs) {
       img.onload = () => {
         done[i] = true;
         const slot = result.querySelector('.slot[data-i="' + i + '"] .slot-img');
-        if (slot) slot.innerHTML = '<a class="imgdl" href="' + url + '" download="' + (o.path.split('/').pop() || 'nomute.png') + '" aria-label="다운로드">' + DOWNLOAD_SVG + '</a><img src="' + url + '">';
+        if (slot) slot.innerHTML = '<img src="' + url + '">';
       };
       img.src = url;   // 아직 없으면 무시 → 다음 tick 재시도
     });
@@ -648,7 +592,6 @@ function renderEditChips() {
   }
   _edRendering = false;
   requestAnimationFrame(() => fitEditLines(wrap));
-  if (cardIo) cardIo();
 }
 function addLineAfter(li) {
   if (edLines.length >= MAX_LINES) return;
