@@ -524,7 +524,7 @@
   .feedhead { margin:6px 0 16px; }
   .fi-top { display:flex; align-items:flex-start; gap:10px; margin-bottom:16px; }   /* 부제↔카드박스 간격 조금 더 */
   /* 부제 — 흰색·18px(이전 24의 75%). #feedsec.md 라 '.md h3'(13px·mut)에 눌려있던 걸 ID로 이김(이게 안 먹던 원인). */
-  #feedsec .fi-title { flex:1; margin:0; font-size:18px; font-weight:800; color:#fff; line-height:1.3; letter-spacing:-.4px; }
+  #feedsec .fi-title { flex:1; margin:0; padding-left:8px; font-size:18px; font-weight:800; color:#fff; line-height:1.3; letter-spacing:-.4px; }   /* 살짝 왼쪽 들여쓰기 */
   .fi-saveall { flex:none; align-self:flex-start; margin-top:2px; display:inline-flex; align-items:center; gap:4px; font:800 10.5px/1 inherit; color:#fff;   /* 70% 축소·글래스 톤(강조색 X) */
     background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 10px; cursor:pointer; white-space:nowrap;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
@@ -690,7 +690,6 @@
     <summary>3. 카드 뉴스</summary>
     <div class="md" id="feedsec"></div>
   </details>
-  <button class="dlgtop" id="dlgtop" type="button" aria-label="맨 위로" title="맨 위로"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>
 </dialog>
 
 <!-- 슛(유료 발사) PIN 입력 — confirm/안내 다이얼로그·prompt 대체. 4칸 자동이동·자동인증 -->
@@ -1024,6 +1023,11 @@ function decorate(root) {
       if (pm) h.innerHTML = '📍 ' + esc(pm[1].trim());
       else if (h.firstChild && h.firstChild.nodeType === 3 && !/^📍/.test(h.firstChild.data)) h.firstChild.data = '📍 ' + h.firstChild.data;
     }
+  });
+  // 2b) 기사 제목(h1) 맨 앞 이모지 제거(요청 — 제목엔 이모지 X)
+  root.querySelectorAll('h1').forEach(h => {
+    if (h.firstChild && h.firstChild.nodeType === 3)
+      h.firstChild.data = h.firstChild.data.replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '');
   });
   // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
   const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -1947,10 +1951,7 @@ const totop = $('#totop');
 totop.addEventListener('click', () => window.scrollTo({ top:0, behavior:'smooth' }));
 const fadeTop = () => { totop.style.opacity = window.scrollY > 240 ? '1' : '.45'; };
 window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
-// 모달 내부 맨 위로 — #dlg 스크롤 360 넘으면 노출.
-const dlgTop = $('#dlgtop'), dlgEl = $('#dlg');
-dlgTop.addEventListener('click', () => dlgEl.scrollTo({ top:0, behavior:'smooth' }));
-dlgEl.addEventListener('scroll', () => dlgTop.classList.toggle('show', dlgEl.scrollTop > 360), { passive:true });
+// (모달 내부 '맨 위로' 버튼 제거 — #dlg backdrop-filter가 position:fixed를 깨 '날아다님' + sticky 헤더로 대체 가능)
 // 카드 변경 팝업 배선(1회) — 텍스트는 어절칩(입력창 없음). 맨위로 = ed-body 스크롤.
 $('#edGo').onclick = submitEdit;
 $('#editdlg .ed-cno').onclick = () => $('#editdlg .ed-foot').classList.remove('confirm');
