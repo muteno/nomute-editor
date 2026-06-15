@@ -183,8 +183,8 @@
   .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; gap:13px; flex-wrap:wrap; }
   .cardtop .dl { font-style:normal; opacity:.55; font-weight:700; margin-right:3px; letter-spacing:0; }
   .cardtop .d-in { color:var(--mut); }
-  .cardtop .d-in.today { color:var(--accent); font-weight:800; }
-  .cardtop .d-wr { color:var(--accent); font-weight:800; }
+  .cardtop .d-in.today { color:var(--fg); font-weight:800; }   /* 강조 = 초록→흰색(요청) */
+  .cardtop .d-wr { color:var(--fg); font-weight:800; }
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
@@ -340,6 +340,8 @@
   .ed-chip:hover { border-color:rgba(15,253,2,.4); }
   .ed-chip.sp { background:none; border:none; padding:0 2px; cursor:default; }
   .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
+  .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; }
+  .ed-br { flex-basis:100%; width:100%; height:0; }   /* 줄바꿈 = flex 줄넘김(<br>은 flex서 무력 → full-width 브레이크) */
   .ed-foot { display:flex; gap:10px; justify-content:flex-end; align-items:center; padding:11px 16px; border-top:1px solid var(--line2); }
   .ed-cancel { padding:9px 18px; font:700 12.5px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
   .ed-cancel:hover { color:var(--fg); }
@@ -362,10 +364,12 @@
     background:rgba(8,15,11,.62); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:8px 15px; white-space:nowrap;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,.4); }
   @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
+  @media (min-aspect-ratio:1/1) { #editdlg { max-height:66vh; } .ed-img { max-height:24vh; } .ed-body { max-height:calc(66vh - 114px); } }   /* PC(가로>세로) = 창 ~60%대 */
 
   /* 카드 이미지 라이트박스(풀스크린 + 좌상단 뒤로 — 글래스) */
   #lbox { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; padding:0; border:none;
     background:rgba(4,8,5,.96); display:flex; align-items:center; justify-content:center; overflow:auto; }
+  #lbox:not([open]) { display:none; }   /* 🚨 닫혔을 땐 숨김 — display:flex가 dialog 기본 display:none을 덮어 빈 박스로 깔리는 버그 차단 */
   #lbox::backdrop { background:rgba(0,0,0,.5); }
   .lbox-img { display:block; max-width:100vw; max-height:100dvh; object-fit:contain; }
   .lbox-back { position:fixed; top:calc(12px + env(safe-area-inset-top)); left:14px; z-index:2; display:inline-flex; align-items:center; gap:4px;
@@ -404,6 +408,8 @@
   .dlg-prog { display:none; }
   .dlg-h.scrolled .dlg-top { display:none; }
   .dlg-h.scrolled .dlg-prog { display:block; }
+  .dlg-x { position:absolute; top:11px; right:14px; z-index:3; margin:0 !important; }   /* X 닫기 = 스왑 밖, 스크롤해도 항상 보임 */
+  .dlg-h.scrolled .scrub { padding-right:44px; }   /* 스크러버 라벨이 X 밑으로 안 가게 */
   .scrub { display:flex; flex-direction:column; gap:8px; padding:3px 3px 1px; }
   .scrub-bar { position:relative; height:6px; border-radius:999px; background:rgba(255,255,255,.09); cursor:pointer; }
   .scrub-fill { position:absolute; left:0; top:0; bottom:0; border-radius:999px; background:linear-gradient(90deg,#d8ff3d,var(--accent)); box-shadow:0 0 8px rgba(15,253,2,.4); }
@@ -554,7 +560,10 @@
     border:1px solid var(--line2); border-radius:10px; cursor:pointer; transition:color .12s, background .12s, border-color .12s; }
   .fb-aspect button.on { color:var(--accent); border-color:rgba(15,253,2,.4); background:rgba(15,253,2,.1); }
   .fb-comment { font:inherit; font-size:13px; color:#fff; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
-  .fb-comment::placeholder { color:rgba(255,255,255,.4); } .fb-comment:focus { outline:none; border-color:rgba(15,253,2,.4); }
+  .fb-comment::placeholder { color:rgba(255,255,255,.4); font-style:italic; } .fb-comment:focus { outline:none; border-color:rgba(15,253,2,.4); }
+  .fb-x { position:absolute; top:8px; right:9px; width:26px; height:26px; border-radius:50%; font-size:11px; color:rgba(255,255,255,.6);
+    background:rgba(255,255,255,.06); border:1px solid var(--line2); cursor:pointer; display:grid; place-items:center; }
+  .fb-x:hover { color:#fff; }
   .fb-act { display:flex; gap:8px; justify-content:flex-end; }
   .fb-act button { padding:8px 15px; font:700 12.5px inherit; border-radius:999px; cursor:pointer; }
   .fb-cancel { color:rgba(255,255,255,.7); background:rgba(255,255,255,.06); border:1px solid var(--line2); }
@@ -647,7 +656,7 @@
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <dialog id="dlg">
-  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><a id="src" target="_blank" rel="noopener">원문 ↗</a><button onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><a id="src" target="_blank" rel="noopener">원문 ↗</a></div><button class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
@@ -1296,21 +1305,20 @@ async function saveAll(model, slug, btn) {
 }
 
 // ── 카드 개별 변경(2차 팝업) — 텍스트(음절칩 강조)·이미지 희망 → 변경(1b) ──
-let EDIT_CTX = null, edEmph = new Set(), edTokens = [];   // edTokens=[{t:word|sp|nl,text}], edEmph=강조 어절 인덱스
+let EDIT_CTX = null, edTokens = [];   // edTokens=[{t:'word'|'sp'|'nl', text, on}] — on=강조(어절). 칩이 곧 텍스트(입력창 없음).
 function openEdit(o) {
   EDIT_CTX = o;
   const v = o.card.versions[o.card.cur], dlg = $('#editdlg');
   dlg.querySelector('.ed-title').textContent = `카드 ${o.card.n} 변경`;
   const img = dlg.querySelector('.ed-img'); img.src = v.image || ''; img.alt = `카드 ${o.card.n}`;
-  const p = parseEmphWords(v.caption || '');   // *마커 → 어절 토큰 + 강조 어절(텍스트 입력창 없이 칩이 곧 텍스트)
-  edTokens = p.tokens; edEmph = p.emph;
+  edTokens = parseEmphWords(v.caption || '');   // *마커 → 어절 토큰(줄바꿈 보존·강조 어절)
   $('#edWish').value = '';
   renderEditChips();
   dlg.querySelector('.ed-foot').classList.remove('confirm');   // 확인 게이트 초기화
   dlg.querySelector('.ed-body').scrollTop = 0; $('#edtop').classList.remove('show');   // 맨 위
   dlg.showModal();
 }
-// "*전쟁 종전*을" → 어절 토큰 + 강조 어절 인덱스. 합성기 강조 규약 = *…* 단일 별표. 어절=띄어쓰기 기준.
+// "*전쟁 종전*을\n끝" → 어절 토큰(word.on=강조 / sp / nl). 어절=띄어쓰기. 합성기 강조=*…* 단일별표.
 function parseEmphWords(s) {
   const arr = [...s]; let plain = ''; const ce = new Set(); let on = false;
   for (let p = 0; p < arr.length; p++) {
@@ -1318,41 +1326,59 @@ function parseEmphWords(s) {
     if (on) ce.add(plain.length);
     plain += arr[p];
   }
-  const pc = [...plain], tokens = [], emph = new Set();
-  let i = 0;
+  const pc = [...plain], tokens = []; let i = 0;
   while (i < pc.length) {
     const ch = pc[i];
-    if (ch === '\n') { tokens.push({ t: 'nl', text: '\n' }); i++; continue; }
-    if (ch === ' ' || ch === '\t') { tokens.push({ t: 'sp', text: ' ' }); i++; continue; }
+    if (ch === '\n') { tokens.push({ t: 'nl' }); i++; continue; }
+    if (ch === ' ' || ch === '\t') { let j = i; while (j < pc.length && (pc[j] === ' ' || pc[j] === '\t')) j++; tokens.push({ t: 'sp' }); i = j; continue; }
     let j = i, any = false;
     while (j < pc.length && pc[j] !== ' ' && pc[j] !== '\t' && pc[j] !== '\n') { if (ce.has(j)) any = true; j++; }
-    if (any) emph.add(tokens.length);
-    tokens.push({ t: 'word', text: pc.slice(i, j).join('') });
+    tokens.push({ t: 'word', text: pc.slice(i, j).join(''), on: any });
     i = j;
   }
-  return { tokens, emph };
+  return tokens;
 }
-function renderEditChips() {   // 어절 칩 — 탭하면 강조(별표 없이). 메인 필터칩 renderChips(별개)와 이름 충돌 금지.
+function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름 충돌 금지 — 어절칩 전용
   const wrap = $('#edChips'); wrap.innerHTML = '';
-  edTokens.forEach((tok, i) => {
-    if (tok.t === 'nl') { wrap.appendChild(document.createElement('br')); return; }
+  edTokens.forEach(tok => {
+    if (tok.t === 'nl') { const br = document.createElement('span'); br.className = 'ed-br'; wrap.appendChild(br); return; }   // 줄바꿈 = flex 줄넘김
     if (tok.t === 'sp') { const g = document.createElement('span'); g.className = 'ed-chip sp'; g.innerHTML = '&nbsp;'; wrap.appendChild(g); return; }
-    const sp = document.createElement('span'); sp.className = 'ed-chip' + (edEmph.has(i) ? ' on' : ''); sp.textContent = tok.text;
-    sp.onclick = () => { edEmph.has(i) ? edEmph.delete(i) : edEmph.add(i); sp.classList.toggle('on'); };
+    const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : ''); sp.textContent = tok.text;
+    sp.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
+    sp.onclick = () => { if (sp.isContentEditable) return; tok.on = !tok.on; sp.classList.toggle('on'); };
+    sp.ondblclick = () => { sp.contentEditable = 'true'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
+    sp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); sp.blur(); } };
+    sp.onblur = () => {
+      sp.contentEditable = 'false'; sp.classList.remove('editing');
+      const nt = sp.textContent.replace(/\s+/g, ' ').trim();
+      if (nt === tok.text) return;
+      const idx = edTokens.indexOf(tok);
+      if (!nt) {   // 비우면 어절 삭제(+ 인접 공백 1개)
+        edTokens.splice(idx, 1);
+        if (edTokens[idx] && edTokens[idx].t === 'sp') edTokens.splice(idx, 1);
+        else if (idx > 0 && edTokens[idx - 1] && edTokens[idx - 1].t === 'sp') edTokens.splice(idx - 1, 1);
+      } else if (/\s/.test(nt)) {   // 공백 포함 = 여러 어절로 분할
+        const parts = nt.split(/\s+/), ins = [];
+        parts.forEach((w, k) => { if (k) ins.push({ t: 'sp' }); ins.push({ t: 'word', text: w, on: tok.on }); });
+        edTokens.splice(idx, 1, ...ins);
+      } else { tok.text = nt; }
+      renderEditChips();
+    };
     wrap.appendChild(sp);
   });
 }
-// 강조 어절 → *강조* 문자열(연속 강조 어절 병합·끝 공백 제외·줄넘김 비강조=합성기 '줄넘김 금지' 준수)
+// 어절 강조 → *강조* 문자열(연속 강조어절 병합·끝공백 제외·줄넘김 비강조=합성기 '줄넘김 금지')
 function buildEmphText() {
   let out = '', on = false;
   for (let i = 0; i < edTokens.length; i++) {
     const tok = edTokens[i];
-    if (tok.t !== 'word') { out += tok.text; continue; }
-    if (edEmph.has(i) && !on) { out += '*'; on = true; }
+    if (tok.t === 'nl') { if (on) { out += '*'; on = false; } out += '\n'; continue; }
+    if (tok.t === 'sp') { out += ' '; continue; }
+    if (tok.on && !on) { out += '*'; on = true; }
     out += tok.text;
-    let nextWordEmph = false;
-    for (let j = i + 1; j < edTokens.length; j++) { if (edTokens[j].t === 'nl') break; if (edTokens[j].t === 'word') { nextWordEmph = edEmph.has(j); break; } }
-    if (on && !nextWordEmph) { out += '*'; on = false; }
+    let nextWordOn = false;
+    for (let j = i + 1; j < edTokens.length; j++) { if (edTokens[j].t === 'nl') break; if (edTokens[j].t === 'word') { nextWordOn = edTokens[j].on; break; } }
+    if (on && !nextWordOn) { out += '*'; on = false; }
   }
   return on ? out + '*' : out;
 }
@@ -1405,15 +1431,16 @@ function openFeedback(card, vote, slideEl, file) {
   const up = vote === 'up';
   const fb = document.createElement('div'); fb.className = 'slide-fb';
   fb.innerHTML =
-    `<div class="fb-vote">${up ? '👍 좋았던 점' : '👎 아쉬운 점'} <span class="fb-sub">— 무엇에 대해?</span></div>
+    `<button type="button" class="fb-x" aria-label="닫기">✕</button>
+     <div class="fb-vote">${up ? '👍 좋았던 점' : '👎 아쉬운 점'} <span class="fb-sub">— 무엇에 대해?</span></div>
      <div class="fb-aspect"><button type="button" data-a="image" class="on">이미지</button><button type="button" data-a="text">텍스트</button></div>
-     <input class="fb-comment" maxlength="300" placeholder="의견(선택) — 안 써도 돼">
-     <div class="fb-act"><button type="button" class="fb-cancel">취소</button><button type="button" class="fb-save">기록</button></div>`;
+     <input class="fb-comment" maxlength="300" placeholder="의견">
+     <div class="fb-act"><button type="button" class="fb-save">기록</button></div>`;
   let aspect = 'image';
   fb.querySelectorAll('.fb-aspect button').forEach(b => b.onclick = () => {
     aspect = b.dataset.a; fb.querySelectorAll('.fb-aspect button').forEach(x => x.classList.toggle('on', x === b));
   });
-  fb.querySelector('.fb-cancel').onclick = () => fb.remove();
+  fb.querySelector('.fb-x').onclick = () => fb.remove();
   fb.querySelector('.fb-save').onclick = () => submitFeedback({ file, card: card.n, vote, aspect, comment: fb.querySelector('.fb-comment').value.trim() }, fb, slideEl);
   host.appendChild(fb);
   setTimeout(() => fb.querySelector('.fb-comment').focus({ preventScroll: true }), 50);
@@ -1705,6 +1732,9 @@ edBody.addEventListener('scroll', () => edTop.classList.toggle('show', edBody.sc
 // 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
 $('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
 $('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
+// 메인 모달 #dlg·편집팝업 #editdlg 백드롭(바깥) 클릭 = 닫기
+$('#dlg').addEventListener('click', e => { if (e.target.id === 'dlg') $('#dlg').close(); });
+$('#editdlg').addEventListener('click', e => { if (e.target.id === 'editdlg') $('#editdlg').close(); });
 
 $('#q').addEventListener('input', render);
 $('#cardonly').addEventListener('change', render);
