@@ -307,8 +307,14 @@
 
   .fabmenu, .appsheet { position:fixed; left:50%; will-change:transform,opacity; }
   .fabmenu[hidden], .appsheet[hidden] { display:none; }
+  @keyframes crtOn { 0%{opacity:0; transform:translateY(-50%) scaleX(.15) scaleY(1)} 10%{opacity:.8; transform:translateY(-50%) scaleX(1) scaleY(1)} 38%{opacity:.6} 100%{opacity:0; transform:translateY(-50%) scaleX(1) scaleY(130)} }
+  /* CRT 시그니처: 스캔라인 + 튜브 비네트(곡률 음영) */
   .fabmenu::before, .appsheet::before { content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:0;
-    background:repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 1px, transparent 1px 3px); opacity:.45; }
+    background:radial-gradient(135% 110% at 50% 50%, transparent 56%, rgba(0,0,0,.34)), repeating-linear-gradient(0deg, rgba(0,0,0,.2) 0 1px, transparent 1px 3px); opacity:.5; }
+  /* CRT 전원 인입 플래시(열릴 때 1회) — 오버레이라 패널 변형/접근성 불간섭 */
+  .fabmenu::after, .appsheet::after { content:''; position:absolute; left:6%; right:6%; top:50%; height:2px; z-index:3; pointer-events:none; border-radius:2px;
+    transform:translateY(-50%) scaleX(.15); opacity:0; background:linear-gradient(90deg, transparent, #eaffea 18%, #fff 50%, #eaffea 82%, transparent); box-shadow:0 0 12px #fff, 0 0 26px var(--accent); }
+  .fabmenu.show::after, .appsheet.show::after { animation:crtOn .5s cubic-bezier(.3,.7,.3,1); }
   .fabmenu > *, .appsheet > * { position:relative; z-index:1; }
   .fabmenu { z-index:37; bottom:calc(84px + env(safe-area-inset-bottom)); width:min(290px,88vw);
     max-height:calc(100dvh - 96px - env(safe-area-inset-bottom)); overflow-y:auto; overscroll-behavior:contain;
@@ -374,7 +380,7 @@
   .as-h { display:flex; align-items:center; gap:11px; }
   .as-h .fm-ic { width:38px; height:38px; } .as-h .fm-ic svg { width:21px; height:21px; }
   .as-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0; }
-  .as-x { margin-left:auto; width:32px; height:32px; border-radius:50%; font-size:12px; color:var(--mut);
+  .as-x { margin-left:auto; width:38px; height:38px; border-radius:50%; font-size:12px; color:var(--mut);
     background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; flex:none; transition:color .15s, background .15s; }
   .as-x:hover { color:var(--fg); background:rgba(255,255,255,.1); }
   .as-desc { font-size:12.5px; line-height:1.6; letter-spacing:-.1px; color:var(--mut); margin:11px 0 14px; }
@@ -393,7 +399,7 @@
   @media (prefers-reduced-motion: reduce) {
     .banner { animation:none; }
     .fabmenu, .appsheet, .fab-scrim, .fm-row, .fm-leaf, .fm-children, .fm-arr, .bnav-fab svg, .fabmenu::before, .appsheet::before { animation:none !important; transition:none !important; }
-    .bnav-fab.open::after { animation:none !important; opacity:0; }
+    .bnav-fab.open::after, .fabmenu.show::after, .appsheet.show::after { animation:none !important; opacity:0; }
     .fabmenu.show .fm-row, .fm-children.open .fm-leaf { opacity:1 !important; transform:none !important; }
   }
 
@@ -2093,6 +2099,15 @@ appsheet.addEventListener('click', e => {
 });
 document.addEventListener('click', () => { if (isOpen(fabmenu)) closeMenu(); if (isOpen(appsheet)) closeSheet(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (isOpen(appsheet)) closeSheet(); else if (isOpen(fabmenu)) closeMenu(); } });
+// 시트(모달) 포커스 트랩 — aria-modal 약속 이행(Tab 순환)
+appsheet.addEventListener('keydown', e => {
+  if (e.key !== 'Tab' || !isOpen(appsheet)) return;
+  const f = appsheet.querySelectorAll('button');
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 
 
 load();
