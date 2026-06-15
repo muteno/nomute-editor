@@ -52,9 +52,18 @@ def cmd_build(cardsmd, n, outmd):
 def cmd_finalize(cards_dir, n, render_dir):
     n = int(n)
     imgs = sorted(f for f in os.listdir(cards_dir) if IMG_RE.search(f))
-    if n < 1 or n > len(imgs):
-        sys.exit(f"카드 {n} 이미지 슬롯 없음(총 {len(imgs)}장)")
-    old_name = imgs[n - 1]                       # 정렬 N-1 = 카드 N (build-viewer 페어링과 동일 기준)
+    # 슬롯 = cards.md 카드 블록 순서에서 N의 '위치'(뷰어 buildFeedModel의 인덱스 페어링과 동일). 폴백 = n-1.
+    pos = n - 1
+    cm = os.path.join(cards_dir, 'cards.md')
+    if os.path.exists(cm):
+        nums = [int(x) for x in re.findall(r'###\s*\[카드\s*(\d+)\]', open(cm, encoding='utf-8').read())]
+        if n in nums:
+            pos = nums.index(n)
+        if nums and len(nums) != len(imgs):
+            print(f"::warning::카드블록 {len(nums)} != 이미지 {len(imgs)} — 슬롯 페어링 주의")
+    if pos < 0 or pos >= len(imgs):
+        sys.exit(f"카드 {n} 이미지 슬롯 없음(위치 {pos}/{len(imgs)}장)")
+    old_name = imgs[pos]                          # 뷰어와 동일 인덱스 슬롯
     cand = [f for f in glob.glob(os.path.join(render_dir, '*_final_*')) if IMG_RE.search(f)]
     if not cand:
         sys.exit("재발사 결과 _final 이미지 없음 — 렌더 실패/미완")
