@@ -393,6 +393,21 @@
   .as-note { font-size:11.5px; line-height:1.6; letter-spacing:-.1px; color:var(--mut); opacity:.85; margin-top:13px; }
   .as-note b { color:var(--accent); opacity:.95; }
 
+  /* comp 합성 폼(시트 내부) */
+  .cmp-file { display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:13px; margin:4px 0 10px; border-radius:13px;
+    border:1px dashed rgba(15,253,2,.42); background:rgba(15,253,2,.05); color:var(--accent); font:700 13px inherit; letter-spacing:-.2px; cursor:pointer; text-align:center; }
+  .cmp-file:hover { background:rgba(15,253,2,.09); }
+  .cmp-prev { display:block; width:100%; max-height:28vh; object-fit:cover; border-radius:12px; border:1px solid var(--line); margin:0 0 10px; }
+  .cmp-prev[hidden] { display:none; }
+  .cmp-lines { width:100%; box-sizing:border-box; min-height:68px; padding:11px 13px; border-radius:12px; resize:vertical;
+    background:rgba(5,12,8,.6); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.55; }
+  .cmp-lines:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,253,2,.16); }
+  .cmp-run { width:100%; margin:11px 0 0; padding:13px; min-height:46px; justify-content:center; }
+  .cmp-run[disabled] { opacity:.55; cursor:default; }
+  .cmp-status { font-size:12px; color:var(--mut); margin-top:10px; text-align:center; min-height:16px; line-height:1.5; }
+  .cmp-status.err { color:#ff7b7b; }
+  .cmp-result { display:block; width:100%; border-radius:13px; border:1px solid var(--line); margin-top:12px; }
+
   /* 키보드 포커스 링(접근성) */
   .fm-row:focus-visible, .fm-leaf:focus-visible, .as-x:focus-visible, .as-copy:focus-visible, .bnav-fab:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   /* 모션 저감 */
@@ -2055,12 +2070,20 @@ const closeMenu = () => { collapseAll(); vanish(fabmenu); fab.classList.remove('
 const closeSheet = () => { vanish(appsheet); syncScrim(); if (lastFocus) { lastFocus.focus(); lastFocus = null; } };
 
 function openSheet(app, icon) {
-  appsheet.innerHTML =
-    `<div class="as-grip"></div><div class="as-h"><span class="fm-ic"><svg viewBox="0 0 24 24">${icon}</svg></span>`
-    + `<h2 class="as-title" id="asTitle">${app.label}</h2><button type="button" class="as-x" id="asX" aria-label="닫기">✕</button></div>`
-    + `<div class="as-desc">${app.desc || ''}</div>`
-    + `<div class="as-cmd"><code>${app.cmd}</code><button type="button" class="as-copy" data-cmd="${app.cmd}">명령 복사</button></div>`
-    + `<div class="as-note"><b>웹에서 직접 실행</b>은 백엔드 연결 단계(슛 버튼 방식) — 순차 적용 예정. 지금은 클로드 코드에서 위 명령으로 실행.</div>`;
+  const head = `<div class="as-grip"></div><div class="as-h"><span class="fm-ic"><svg viewBox="0 0 24 24">${icon}</svg></span>`
+    + `<h2 class="as-title" id="asTitle">${app.label}</h2><button type="button" class="as-x" id="asX" aria-label="닫기">✕</button></div>`;
+  const body = app.id === 'comp'
+    ? `<div class="as-desc">이미지 + 텍스트 → 카드뉴스 합성(1080×1350). 강조는 *별표*로 감싸.</div>`
+      + `<label class="cmp-file"><input type="file" id="cmpImg" accept="image/*" hidden><span id="cmpPickTxt">📷 배경 이미지 선택</span></label>`
+      + `<img class="cmp-prev" id="cmpPrev" alt="미리보기" hidden>`
+      + `<textarea class="cmp-lines" id="cmpLines" placeholder="첫 줄&#10;*강조* 둘째 줄"></textarea>`
+      + `<button type="button" class="as-copy cmp-run" id="cmpRun">합성 실행</button>`
+      + `<div class="cmp-status" id="cmpStatus" aria-live="polite"></div>`
+      + `<div class="as-note">웹 합성은 GitHub Actions에서 무료 처리 — 결과가 여기 뜬다(1–3분).</div>`
+    : `<div class="as-desc">${app.desc || ''}</div>`
+      + `<div class="as-cmd"><code>${app.cmd}</code><button type="button" class="as-copy" data-cmd="${app.cmd}">명령 복사</button></div>`
+      + `<div class="as-note"><b>웹에서 직접 실행</b>은 백엔드 연결 단계(슛 버튼 방식) — 순차 적용 예정. 지금은 클로드 코드에서 위 명령으로 실행.</div>`;
+  appsheet.innerHTML = head + body;
   appsheet.setAttribute('aria-labelledby', 'asTitle');
   lastFocus = document.activeElement;
   collapseAll(); vanish(fabmenu); fab.classList.remove('open'); fab.setAttribute('aria-expanded', 'false');
@@ -2090,13 +2113,58 @@ fabmenu.addEventListener('click', e => {
 appsheet.addEventListener('click', e => {
   e.stopPropagation();
   if (e.target.closest('#asX')) { closeSheet(); return; }
+  if (e.target.closest('#cmpRun')) { runCompose(); return; }
   const cp = e.target.closest('.as-copy');
-  if (cp) {
+  if (cp && cp.dataset.cmd) {
     const done = () => { cp.textContent = '복사됨 ✓'; setTimeout(() => cp.textContent = '명령 복사', 1200); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cp.dataset.cmd).then(done).catch(() => { cp.textContent = '복사 실패'; });
     else done();
   }
 });
+// comp 이미지 미리보기
+appsheet.addEventListener('change', e => {
+  if (e.target.id !== 'cmpImg') return;
+  const f = e.target.files[0]; if (!f) return;
+  const prev = appsheet.querySelector('#cmpPrev'), txt = appsheet.querySelector('#cmpPickTxt');
+  const r = new FileReader();
+  r.onload = () => { if (prev) { prev.src = r.result; prev.hidden = false; } if (txt) txt.textContent = '📷 ' + f.name + ' (바꾸려면 탭)'; };
+  r.readAsDataURL(f);
+});
+// comp 합성 실행 — /api/compose 발사 → viewer/comp_out/<id>/card.jpg 폴링
+async function runCompose() {
+  const fileEl = appsheet.querySelector('#cmpImg'), linesEl = appsheet.querySelector('#cmpLines');
+  const st = appsheet.querySelector('#cmpStatus'), runEl = appsheet.querySelector('#cmpRun');
+  if (!st || !runEl) return;
+  const setErr = m => { st.textContent = m; st.classList.add('err'); runEl.disabled = false; };
+  st.classList.remove('err');
+  const file = fileEl && fileEl.files[0];
+  const lines = ((linesEl && linesEl.value) || '').split('\n').map(s => s.trim()).filter(Boolean);
+  if (!file) return setErr('이미지를 먼저 선택해.');
+  if (!lines.length) return setErr('텍스트 줄을 입력해.');
+  runEl.disabled = true; st.textContent = '업로드·발사 중…';
+  let b64;
+  try { b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
+  catch { return setErr('이미지 읽기 실패'); }
+  let resp;
+  try { resp = await (await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: b64, name: file.name, lines }) })).json(); }
+  catch { return setErr('네트워크 오류(/api/compose 미배포일 수 있음)'); }
+  if (!resp || !resp.ok) return setErr('발사 실패: ' + ((resp && resp.error) || '서버 미설정/미배포'));
+  st.textContent = '합성 중… GitHub Actions (1–3분 소요)';
+  const url = '/' + resp.out;
+  let n = 0;
+  const timer = setInterval(() => {
+    n++;
+    const probe = new Image();
+    probe.onload = () => {
+      clearInterval(timer); st.textContent = '';
+      let res = appsheet.querySelector('#cmpResult');
+      if (!res) { res = document.createElement('img'); res.id = 'cmpResult'; res.className = 'cmp-result'; res.alt = '합성 결과'; st.after(res); }
+      res.src = url + '?t=' + Date.now(); runEl.disabled = false;
+    };
+    probe.onerror = () => { if (n > 75) { clearInterval(timer); setErr('시간 초과 — 잠시 후 새로고침해 확인'); } };
+    probe.src = url + '?t=' + Date.now();
+  }, 4000);
+}
 document.addEventListener('click', () => { if (isOpen(fabmenu)) closeMenu(); if (isOpen(appsheet)) closeSheet(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (isOpen(appsheet)) closeSheet(); else if (isOpen(fabmenu)) closeMenu(); } });
 // 시트(모달) 포커스 트랩 — aria-modal 약속 이행(Tab 순환)
