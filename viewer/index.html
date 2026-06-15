@@ -347,6 +347,30 @@
   .ed-go:active { transform:scale(.97); } .ed-go[disabled] { opacity:.55; cursor:default; }
   @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
 
+  /* 카드 이미지 라이트박스(풀스크린 + 좌상단 뒤로 — 글래스) */
+  #lbox { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; padding:0; border:none;
+    background:rgba(4,8,5,.96); display:flex; align-items:center; justify-content:center; overflow:auto; }
+  #lbox::backdrop { background:rgba(0,0,0,.5); }
+  .lbox-img { display:block; max-width:100vw; max-height:100dvh; object-fit:contain; }
+  .lbox-back { position:fixed; top:calc(12px + env(safe-area-inset-top)); left:14px; z-index:2; display:inline-flex; align-items:center; gap:4px;
+    padding:9px 16px 9px 11px; font:800 13.5px inherit; color:#fff; cursor:pointer; border-radius:999px;
+    background:rgba(12,16,14,.42); border:1px solid rgba(255,255,255,.22); box-shadow:0 4px 16px rgba(0,0,0,.35);
+    backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2); }
+  .lbox-back:active { transform:scale(.95); } .lbox-back svg { display:block; }
+
+  /* 피드 좌우 넘김 화살표(PC·반투명 글래스) */
+  .feedwrap { position:relative; }
+  .feednav { position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:42px; height:42px; border-radius:50%;
+    display:grid; place-items:center; font-size:24px; line-height:0; color:#fff; padding-bottom:3px; cursor:pointer;
+    background:rgba(12,16,14,.34); border:1px solid rgba(255,255,255,.2); box-shadow:0 4px 16px rgba(0,0,0,.28);
+    backdrop-filter:blur(12px) saturate(1.2); -webkit-backdrop-filter:blur(12px) saturate(1.2);
+    opacity:.85; transition:background .15s, opacity .15s, transform .1s; }
+  .feednav:hover { background:rgba(12,16,14,.55); opacity:1; }
+  .feednav:active { transform:translateY(-50%) scale(.9); }
+  .feednav.prev { left:8px; } .feednav.next { right:8px; }
+  .feednav:disabled { opacity:0; pointer-events:none; }
+  .slide-img img { cursor:zoom-in; }
+
   /* ── 다이얼로그 ── */
   dialog {
     width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
@@ -460,11 +484,12 @@
   /* ── 섹션 3: 카드 뉴스 피드(인스타형 가로 스냅·한 장씩) ── */
   .feedhead { margin:6px 0 16px; }
   .fi-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .fi-title { flex:1; margin:0; font-size:17px; font-weight:800; color:var(--fg); line-height:1.35; letter-spacing:-.4px; }  /* 부제 크기 */
-  .fi-saveall { flex:none; display:inline-flex; align-items:center; gap:6px; font:800 12.5px/1 inherit; color:var(--accent);
-    background:rgba(8,15,11,.5); border:1px solid rgba(15,253,2,.42); border-radius:999px; padding:9px 15px; cursor:pointer; white-space:nowrap; }
+  .fi-title { flex:1; margin:0; font-size:19px; font-weight:800; color:var(--fg); line-height:1.4; letter-spacing:-.4px; }  /* 부제 = 상단 h1과 동일 19px */
+  .fi-saveall { flex:none; display:inline-flex; align-items:center; gap:5px; font:800 12px/1 inherit; color:#fff;   /* 아래 슬라이드 버튼과 동일 글래스 톤(강조색 X) */
+    background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:8px 13px; cursor:pointer; white-space:nowrap;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .fi-saveall svg { display:block; } .fi-saveall:active { transform:scale(.95); } .fi-saveall[disabled] { opacity:.6; }
-  .feedcount { font-size:13px; font-weight:600; color:var(--mut); }   /* 헤더 옆 '총 N장' */
+  .feedcount { font-size:13px; font-weight:600; color:var(--mut); }   /* (미사용) */
   .fi-card { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:16px; padding:13px 15px; }
   .fi-summary { font-size:13.5px; line-height:1.65; color:var(--fg); }
   .fi-tech { margin-top:11px; padding-top:10px; border-top:1px solid var(--line2); font-size:12.5px; color:var(--mut); white-space:nowrap; overflow-x:auto; scrollbar-width:none; }
@@ -480,13 +505,15 @@
   .slide-img img { width:100%; aspect-ratio:4/5; object-fit:cover; border-radius:16px; border:1px solid var(--line);
     display:block; background:var(--glass2); opacity:0; transition:opacity .25s; }
   .slide-img img.in { opacity:1; }
-  /* 좌상단 카운트 오버레이 — 반투명 검정 알약·흰글자+그림자 */
-  .slide-no { position:absolute; top:10px; left:10px; z-index:2; font-size:11.5px; font-weight:800; color:#fff;
-    background:rgba(0,0,0,.42); padding:3px 10px; border-radius:999px; letter-spacing:.03em; text-shadow:0 1px 3px rgba(0,0,0,.75); }
-  /* 우상단 액션(저장·수정) = 섹션2 복사 버튼과 동일 톤 */
+  /* 좌상단 카운트 오버레이 — 반투명(N=형광) */
+  .slide-no { position:absolute; top:10px; left:10px; z-index:2; font-size:11.5px; font-weight:800; color:rgba(255,255,255,.82);
+    background:rgba(0,0,0,.28); padding:3px 10px; border-radius:999px; letter-spacing:.03em; text-shadow:0 1px 3px rgba(0,0,0,.7);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .slide-no b { color:var(--accent); font-weight:800; }   /* 현재 N = 형광 */
+  /* 우상단 액션(수정·저장) = 반투명 글래스 */
   .slide-acts { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:6px; }
-  .sbtn { display:grid; place-items:center; width:34px; height:34px; padding:0; color:#fff; text-decoration:none;
-    background:rgba(8,15,11,.5); border:1px solid rgba(255,255,255,.18); border-radius:10px; cursor:pointer;
+  .sbtn { display:grid; place-items:center; width:34px; height:34px; padding:0; color:rgba(255,255,255,.92); text-decoration:none;
+    background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); border-radius:10px; cursor:pointer;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }
   .sbtn svg { display:block; }
   .sbtn:hover:not(:disabled) { background:rgba(255,255,255,.16); }
@@ -622,6 +649,12 @@
     <textarea class="ed-wish" id="edWish" placeholder="예: 더 밝게 / 인물 클로즈업 / 배경 단순하게 (비우면 텍스트만 반영)"></textarea>
   </div>
   <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">변경</button></div>
+</dialog>
+
+<!-- 카드 이미지 라이트박스 — 풀스크린 + 좌상단 뒤로 -->
+<dialog id="lbox">
+  <button class="lbox-back" type="button" aria-label="뒤로" onclick="lbox.close()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>뒤로</button>
+  <img class="lbox-img" alt="">
 </dialog>
 
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
@@ -1027,14 +1060,20 @@ function parseCards(md = '') {
 function feedTitle(md = '') { const m = md.match(/^#\s+(.+)$/m); return m ? m[1].trim() : ''; }
 // 화풍 한글 라벨 — 프롬프트 Style 줄 키워드 사전 매칭(매칭 0이면 칩 숨김 = 깨진 라벨 방지). 정본 1곳.
 const STYLE_MAP = [
-  [/korean manhwa|manhwa/, '한국 만화풍'], [/cinematic|film-?noir|\bnoir\b/, '시네마틱 누아르'],
+  [/serious drama|drama illustration|graphic novel|극화/, '극화'],   // 뉴스 기본 = 극화(만화풍 시리어스 드라마)
+  [/korean manhwa|\bmanhwa\b/, '만화풍'], [/film-?noir|\bnoir\b/, '느와르'],
   [/chiaroscuro|low-key/, '명암 대비'], [/water\s?color/, '수채'], [/3d render|octane|pixar|unreal/, '3D 렌더'],
   [/photoreal|photo-?realistic|photograph/, '실사'], [/oil paint/, '유화'], [/flat\s?design|\bvector\b/, '플랫 벡터'],
   [/desaturated|muted palette/, '저채도'], [/single color accent|neon green|#0?ffd0?02/, '네온 포인트'],
 ];
+// 화풍 = 첫 카드 이미지 프롬프트 산문(없으면 Style: 줄, 그도 없으면 전체) 키워드 매칭.
+function styleSource(md = '') {
+  const pm = md.match(/\*\*이미지\s*프롬프트\*\*\s*```(?:text)?\s*([\s\S]*?)```/);
+  const sm = md.match(/^\s*Style:\s*(.+)$/mi);
+  return (pm ? pm[1] : sm ? sm[1] : md).toLowerCase();
+}
 function styleLabels(md = '') {
-  const m = md.match(/^\s*Style:\s*(.+)$/mi); if (!m) return [];
-  const s = m[1].toLowerCase(), hits = [];
+  const s = styleSource(md), hits = [];
   for (const [re, ko] of STYLE_MAP) if (re.test(s) && !hits.includes(ko)) hits.push(ko);
   return hits.slice(0, 3);
 }
@@ -1050,7 +1089,7 @@ const MOOD_MAP = [
   [/hope|warm|uplift|bright/, '희망적'], [/calm|quiet|still|serene/, '담담'],
 ];
 function moodLabel(md = '') {
-  const s = (md.match(/Style:\s*(.+)/i)?.[1] || '').toLowerCase();
+  const s = styleSource(md);
   for (const [re, ko] of MOOD_MAP) if (re.test(s)) return ko;
   return '진중';
 }
@@ -1089,20 +1128,21 @@ function feedSec(a) {
   const styles = styleLabels(c.md);
   const doneN = imgs.length, totalN = model.length, partial = c.state === 'fired_partial' || doneN < totalN;
 
-  // 섹션 헤더 옆에 '총 N장'(+대기) — 현재 글자크기 유지.
+  // 섹션 헤더 = '3. 카드 뉴스'만(총 N장은 표현기법 줄 좌측으로 이동).
   const sm = ph.querySelector('summary');
-  if (sm) sm.innerHTML = `3. 카드 뉴스 <span class="feedcount">· 총 ${totalN}장${partial ? ` · ${totalN - doneN}장 대기` : ''}</span>`;
+  if (sm) sm.textContent = '3. 카드 뉴스';
 
-  // 개요 = 제목(부제·박스 밖) + 한줄요약 + 표현기법 1줄. 전부 기존 데이터 유도.
+  // 개요 = 제목(부제·박스 밖) + 한줄요약 + 표현기법 1줄(총 N장 | 화풍 | 분위기 | 민감 키워드). 전부 기존 데이터 유도.
   const summary = oneLineSummary(a.body);
   const stag = sensitiveTag(`${title} ${summary}`);
-  const tech = `화풍 : <b>${esc(styles[0] || '—')}</b><span class="fi-sep">|</span>분위기 : <b>${esc(moodLabel(c.md))}</b>`
+  const tech = `총 <b>${totalN}</b>장${partial ? ` (${totalN - doneN} 대기)` : ''}<span class="fi-sep">|</span>`
+    + `화풍 : <b>${esc(styles[0] || '—')}</b><span class="fi-sep">|</span>분위기 : <b>${esc(moodLabel(c.md))}</b>`
     + (stag ? `<span class="fi-sep">|</span>민감 키워드 : <b class="acc">#${esc(stag)}</b>` : '');
 
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =
     `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3>
-       <button class="fi-saveall" type="button">${DOWNLOAD_SVG}<span class="lbl">모두 저장</span></button></div>
+       <button class="fi-saveall" type="button" title="모두 저장">${DOWNLOAD_SVG}<span class="lbl">ALL</span></button></div>
      <div class="fi-card">
        ${summary ? `<div class="fi-summary">${esc(summary)}</div>` : ''}
        <div class="fi-tech">${tech}</div>
@@ -1112,7 +1152,19 @@ function feedSec(a) {
   const track = document.createElement('div'); track.className = 'feedtrack'; track.tabIndex = 0;
   track.setAttribute('aria-label', '카드 뉴스 피드 — 좌우로 한 장씩 넘겨보기');
   model.forEach((card, i) => track.appendChild(renderSlide(card, i, { slug, total: totalN, file: a.file })));
-  host.appendChild(track);
+  const wrap = document.createElement('div'); wrap.className = 'feedwrap'; wrap.appendChild(track);
+  if (totalN > 1) {   // 좌우 글래스 화살표(PC 넘김 — 모바일은 스와이프 병행)
+    const step = dir => track.scrollBy({ left: dir * (track.clientWidth || 1), behavior: 'smooth' });
+    const navP = document.createElement('button'), navN = document.createElement('button');
+    navP.type = navN.type = 'button'; navP.className = 'feednav prev'; navN.className = 'feednav next';
+    navP.setAttribute('aria-label', '이전'); navN.setAttribute('aria-label', '다음');
+    navP.innerHTML = '‹'; navN.innerHTML = '›';
+    navP.onclick = () => step(-1); navN.onclick = () => step(1);
+    const updateNav = () => { const max = track.scrollWidth - track.clientWidth - 2; navP.disabled = track.scrollLeft <= 2; navN.disabled = track.scrollLeft >= max; };
+    track.addEventListener('scroll', updateNav, { passive: true });
+    wrap.append(navP, navN); requestAnimationFrame(updateNav);
+  }
+  host.appendChild(wrap);
 
   // 키보드 ←/→ = 한 장씩(스냅). 위치 카운트는 각 슬라이드 좌상단 오버레이.
   track.addEventListener('keydown', e => {
@@ -1130,17 +1182,18 @@ function renderSlide(card, i, ctx) {
   if (v.image) {
     fig.innerHTML =
       `<div class="slide-img">
-         <a href="${esc(v.image)}" target="_blank" rel="noopener"><img loading="lazy" alt="카드 ${card.n}"></a>
-         <span class="slide-no">${card.n}/${ctx.total}</span>
+         <img class="slide-photo" loading="lazy" alt="카드 ${card.n}">
+         <span class="slide-no"><b>${card.n}</b>/${ctx.total}</span>
          <div class="slide-acts">
-           <a class="sbtn" href="${esc(v.image)}" download="${esc(dlName)}" aria-label="장면 ${card.n} 저장">${DOWNLOAD_SVG}</a>
            <button class="sbtn edit" type="button" aria-label="장면 ${card.n} 수정" title="이 카드 수정">${EDIT_SVG}</button>
+           <a class="sbtn" href="${esc(v.image)}" download="${esc(dlName)}" aria-label="장면 ${card.n} 저장">${DOWNLOAD_SVG}</a>
          </div>
        </div>`;
     const im = fig.querySelector('img');
     im.onload = () => im.classList.add('in'); im.onerror = () => im.classList.add('in'); im.src = v.image;
+    im.onclick = () => openLightbox(v.image);   // 탭 → 풀스크린 라이트박스(좌상단 뒤로)
     const eb = fig.querySelector('.sbtn.edit');
-    eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 재발사(1b)
+    eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 변경(1b)
   } else {
     fig.innerHTML = `<div class="slide-img"><div class="slide-wait">🍌 이미지 생성 대기…<br>다음 갱신 때 채워져</div></div>`;
   }
@@ -1159,7 +1212,7 @@ async function saveAll(model, slug, btn) {
     if (lbl) lbl.textContent = `저장 중… ${i + 1}/${imgs.length}`;
     await new Promise(r => setTimeout(r, 250));
   }
-  if (lbl) { lbl.textContent = '완료 ✓'; setTimeout(() => { lbl.textContent = orig || '모두 저장'; }, 1800); }
+  if (lbl) { lbl.textContent = '✓'; setTimeout(() => { lbl.textContent = orig || 'ALL'; }, 1800); }
 }
 
 // ── 카드 개별 변경(2차 팝업) — 텍스트(음절칩 강조)·이미지 희망 → 변경(1b) ──
@@ -1229,6 +1282,9 @@ function submitEdit() {
       } else { go.disabled = false; go.textContent = '변경'; alert(j.error || `실패 (${ok ? 'ok' : 'err'})`); }
     }).catch(e => { go.disabled = false; go.textContent = '변경'; alert('요청 실패: ' + e.message); });
 }
+
+// 카드 이미지 라이트박스 — 풀스크린(좌상단 뒤로). 새 탭(target=_blank) 대신 인앱.
+function openLightbox(src) { const lb = $('#lbox'); lb.querySelector('.lbox-img').src = src || ''; lb.showModal(); }
 // ── 슛 PIN 입력 UI ──
 // confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.
 // 한 자 입력→다음 칸 자동이동, 4번째 입력→엔터 없이 자동 resolve. 취소=null.
@@ -1343,12 +1399,19 @@ function copyBtn(getText, label) {
 }
 // 모달 섹션 점프(N=요약·IG / M=카드 프롬프트 / T=카드 이미지). 각 섹션의 윗 구분선이
 // 스티키 헤더 바로 아래 오도록 dialog를 정확히 스크롤(A6). 타깃 없으면 안전 return.
+// SNS 요약 = 본문(#mdbody)의 IG(인스타) 초안 시작점. 없으면 '콘텐츠 초안' 헤더.
+function igHead() {
+  const md = $('#mdbody'); if (!md) return null;
+  const hs = [...md.querySelectorAll('h1,h2,h3,h4')];
+  return hs.find(h => /^\s*\[?\s*IG\b/i.test(h.textContent)) || hs.find(h => /콘텐츠\s*초안/.test(h.textContent)) || null;
+}
 function jumpTo(which) {
   const sec = $('#cardsec');
   let el;
-  if (which === 'n')      el = $('#ph-sum');                       // 1. 기사 요약·시사점(시작 = 위 구분선)
-  else if (which === 'm') el = $('#ph-card');                      // 2. 카드뉴스 — 텍스트·프롬프트
-  else if (which === 't') { const f = $('#ph-feed'); el = (f && !f.hidden) ? f : (sec.querySelector('.mkbtn') || $('#ph-card')); }  // 3. 카드 피드(이미지 없으면 슛 버튼)
+  if (which === 'n')      el = $('#ph-sum');                       // 1/4 요약(시작 = 위 구분선)
+  else if (which === 's') el = igHead() || $('#ph-sum');           // 2/4 SNS 요약(인스타 초안 시작점)
+  else if (which === 'm') el = $('#ph-card');                      // 3/4 프롬프트 — 카드뉴스 텍스트
+  else if (which === 't') { const f = $('#ph-feed'); el = (f && !f.hidden) ? f : (sec.querySelector('.mkbtn') || $('#ph-card')); }  // 4/4 카드 피드
   if (!el) return;
   const d = el.closest('details'); if (d) d.setAttribute('open', '');   // 접혀 있으면 펼침
   const dlg = $('#dlg'), stickyH = ($('.dlg-h') ? $('.dlg-h').offsetHeight : 0);
@@ -1435,7 +1498,7 @@ $('#dlg').addEventListener('scroll', updateScrub, { passive: true });
 function setupScrub() {
   const dp = $('#dlgprog'); if (!dp) return;
   const h = $('.dlg-h'); if (h) h.classList.remove('scrolled');   // 열릴 땐 맨 위(원문/X)
-  dp.innerHTML = `<div class="scrub"><div class="scrub-bar" id="scrubBar"><div class="scrub-fill" id="scrubFill"></div><i class="scrub-tick" data-j="n"></i><i class="scrub-tick" data-j="m"></i><i class="scrub-tick" data-j="t"></i><div class="scrub-dot" id="scrubDot"></div></div><div class="scrub-labels"><span class="scrub-lb" data-j="n">요약</span><span class="scrub-lb" data-j="m">프롬프트</span><span class="scrub-lb" data-j="t">카드</span></div></div>`;
+  dp.innerHTML = `<div class="scrub"><div class="scrub-bar" id="scrubBar"><div class="scrub-fill" id="scrubFill"></div><i class="scrub-tick" data-j="n"></i><i class="scrub-tick" data-j="s"></i><i class="scrub-tick" data-j="m"></i><i class="scrub-tick" data-j="t"></i><div class="scrub-dot" id="scrubDot"></div></div><div class="scrub-labels"><span class="scrub-lb" data-j="n">요약</span><span class="scrub-lb" data-j="s">SNS 요약</span><span class="scrub-lb" data-j="m">프롬프트</span><span class="scrub-lb" data-j="t">카드</span></div></div>`;
   const bar = $('#scrubBar');
   bar.onclick = e => {
     const dlg = $('#dlg'), r = bar.getBoundingClientRect(), range = dlg.scrollHeight - dlg.clientHeight;
@@ -1446,7 +1509,7 @@ function setupScrub() {
 }
 function scrubTargets() {
   const sec = $('#cardsec'), f = $('#ph-feed');
-  return { n: $('#ph-sum'), m: $('#ph-card'), t: (f && !f.hidden) ? f : (sec ? (sec.querySelector('.mkbtn') || null) : null) };
+  return { n: $('#ph-sum'), s: igHead(), m: $('#ph-card'), t: (f && !f.hidden) ? f : (sec ? (sec.querySelector('.mkbtn') || null) : null) };
 }
 function updateScrub() {
   const dlg = $('#dlg'); if (!dlg || !dlg.open) return;
@@ -1459,7 +1522,7 @@ function updateScrub() {
   const top = dlg.getBoundingClientRect().top, tg = scrubTargets();
   const hh = ($('.dlg-h') ? $('.dlg-h').offsetHeight : 0);
   let cur = 'n';
-  ['n', 'm', 't'].forEach(k => {
+  ['n', 's', 'm', 't'].forEach(k => {
     const el = tg[k], tick = dp.querySelector(`.scrub-tick[data-j="${k}"]`), lb = dp.querySelector(`.scrub-lb[data-j="${k}"]`);
     if (!el) { if (tick) tick.style.display = 'none'; if (lb) lb.classList.add('off'); return; }
     if (lb) lb.classList.remove('off');
@@ -1486,6 +1549,9 @@ dlgEl.addEventListener('scroll', () => dlgTop.classList.toggle('show', dlgEl.scr
 // 카드 변경 팝업 배선(1회)
 $('#edText').addEventListener('input', renderChips);
 $('#edGo').onclick = submitEdit;
+// 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
+$('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
+$('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
 
 $('#q').addEventListener('input', render);
 $('#cardonly').addEventListener('change', render);
