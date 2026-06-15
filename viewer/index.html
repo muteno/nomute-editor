@@ -280,7 +280,7 @@
   @media (prefers-reduced-motion: reduce) { .banner { animation:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
-  .totop { position:fixed; right:18px; bottom:calc(80px + env(safe-area-inset-bottom)); z-index:34;
+  .totop { position:fixed; right:18px; bottom:calc(104px + env(safe-area-inset-bottom)); z-index:34;   /* 하단 네비바와 충분히 띄움 */
     width:48px; height:48px; border-radius:50%; cursor:pointer; display:grid; place-items:center;
     font-size:19px; color:var(--accent); font-family:inherit;
     background:linear-gradient(165deg, rgba(24,40,29,.48), rgba(12,21,15,.55));
@@ -482,9 +482,8 @@
     padding:14px 44px 14px 15px; margin:10px 0; box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap; word-break:break-word;
     font-family:inherit; font-size:14px; line-height:1.7; }
-  /* 복사박스 강조점 — *문구*/**문구** 마커: 안쪽 문구=강조색, * 자체는 흐리게. 복사는 innerText라 *…* 원문 보존. */
-  .md pre code .cem { color:var(--mut); opacity:.5; }
-  .md pre code .cem i { color:var(--accent); font-style:normal; font-weight:700; opacity:1; }
+  /* 복사박스 강조점 — *문구*/**문구** 마커: 문구만 강조색(별표는 미표시). 복사는 data-mk로 *…* 복원(합성기 포맷 보존). */
+  .md pre code .cem { color:var(--accent); font-style:normal; font-weight:700; }
   /* 복사 = 아이콘 버튼(진회색 일괄·I). 누르면 ✓ 잠깐 초록 피드백. */
   .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
     color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer;
@@ -942,13 +941,24 @@ function open(a) {
 function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code');
-    pre.appendChild(copyBtn(() => code ? code.innerText : pre.innerText, '복사'));
-    // 강조점 하이라이트: *문구*/**문구** → 강조색(코드블록만·버튼은 pre라 무영향). 복사=innerText라 *…* 원문 그대로.
+    // 강조 마커 *문구*/**문구** → 문구만 강조색 <i>(별표 미표시). 복사는 codeCopyText가 data-mk로 *…* 복원.
     if (code && !code.dataset.hl) {
       code.dataset.hl = '1';
-      code.innerHTML = code.innerHTML.replace(/(\*{1,2})([^*\n<>]+?)(\*{1,2})/g, '<span class="cem">$1<i>$2</i>$3</span>');
+      code.innerHTML = code.innerHTML.replace(/(\*{1,2})([^*\n<>]+?)\*{1,2}/g,
+        (m, mk, t) => `<i class="cem" data-mk="${mk}">${t}</i>`);
     }
+    pre.appendChild(copyBtn(() => code ? codeCopyText(code) : pre.innerText, '복사'));
   });
+}
+// 강조 <i class="cem" data-mk="*|**"> → *문구*/**문구** 복원(나머지 텍스트 그대로) — 복사 시 합성기 포맷 보존.
+function codeCopyText(code) {
+  let out = '';
+  code.childNodes.forEach(n => {
+    if (n.nodeType === 1 && n.classList && n.classList.contains('cem')) {
+      const mk = n.getAttribute('data-mk') || '*'; out += mk + n.textContent + mk;
+    } else { out += n.textContent; }
+  });
+  return out;
 }
 
 // 오늘(브라우저 로컬=KST) YYMMDD — 기사 파일명 앞 6자와 비교(자정 기준 New/Today)
@@ -1052,7 +1062,7 @@ function cardSec(a) {
   const stuck = stuckMin > 18;
   // 카드 phase 헤더에 상태 반영(접어도 보이게)
   const sumlabel = { '':'2. 카드뉴스', generating:'2. 카드뉴스 — 프롬프팅 중…', text_done:'2. 카드뉴스 — 텍스트·프롬프트',
-    done:'2. 카드뉴스 — 완성', fired_partial:'2. 카드뉴스 — 발사됨', failed:'2. 카드뉴스 — 실패' };
+    done:'2. 카드뉴스', fired_partial:'2. 카드뉴스 — 발사됨', failed:'2. 카드뉴스 — 실패' };
   const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '카드뉴스';
   gvChip(cs, c.guidelines_version);   // 카드 = 어떤 지침 버전으로 갱신됐는지(요약 해시와 다른 게 정상)
 
@@ -1081,7 +1091,6 @@ function cardSec(a) {
     return;
   }
   let note = {
-    done: '카드뉴스 완성 — 아래 ‘3. 카드 피드’에서 넘겨보기·저장',
     fired_partial: '🚀 발사됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
   }[st];
   if (st === 'fired_partial' && stuck)   // 발사 후 18분째 이미지 미완 = 인증 만료/렌더 실패 가능 → 재시도 유도
@@ -1228,8 +1237,7 @@ function feedSec(a) {
 
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =
-    `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3>
-       <button class="fi-saveall" type="button" title="모두 저장">${DOWNLOAD_SVG}<span class="lbl">ALL</span></button></div>
+    `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3></div>
      <div class="fi-card">
        ${summary ? `<div class="fi-summary">${esc(summary)}</div>` : ''}
        <div class="fi-tech">${tech}</div>
@@ -1273,7 +1281,6 @@ function feedSec(a) {
     window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); e.preventDefault();
   });
   track.addEventListener('click', e => { if (track._dragged) { e.stopPropagation(); e.preventDefault(); track._dragged = false; } }, true);   // 드래그 직후 클릭 억제
-  intro.querySelector('.fi-saveall').onclick = e => saveAll(model, slug, e.currentTarget);
 }
 
 function renderSlide(card, i, ctx) {
@@ -1455,31 +1462,39 @@ let REPENDING = null, _pendTries = 0;   // { file, card, oldImg } 자동 교체 
 function submitEdit() {
   if (!EDIT_CTX) return;
   if (!buildEmphText().trim()) { alert('텍스트가 비어 있어.'); return; }
-  $('#editdlg .ed-foot').classList.add('confirm');   // "이 카드만 다시 생성할까요? 취소/확인"
+  // 이미지 수정 희망이 비면 = 문구만 교체(기존 장면 그대로 로컬 합성·과금 0) → 확인 없이 바로 변경.
+  // 채우면 = 이미지까지 재생성(유료) → 한 번만 확인.
+  if (!$('#edWish').value.trim()) { fireEdit(); return; }
+  $('#editdlg .ed-cmsg').textContent = '이미지까지 다시 생성할까요? (유료)';
+  $('#editdlg .ed-foot').classList.add('confirm');
 }
 function fireEdit() {
   if (!EDIT_CTX) return;
   const ctx = EDIT_CTX, text = buildEmphText().trim(), wish = $('#edWish').value.trim();
-  const yes = $('#editdlg .ed-cyes'); yes.disabled = true; yes.textContent = '발사 중…';
+  // 확인 게이트(유료 재생성)면 '확인' 버튼, 아니면(문구만) '변경' 버튼에 진행표시.
+  const btn = $('#editdlg .ed-foot').classList.contains('confirm') ? $('#editdlg .ed-cyes') : $('#edGo');
+  const label = btn.textContent; btn.disabled = true; btn.textContent = '변경 중…';
+  const reset = () => { btn.disabled = false; btn.textContent = label; };
   fetch('api/make-cards', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ article: ctx.file, mode: 'edit', card: String(ctx.card.n), text, wish }),
   }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
     .then(({ ok, j }) => {
-      yes.disabled = false; yes.textContent = '확인';
+      reset();
       if (ok && j.ok) {
         REPENDING = { file: ctx.file, card: ctx.card.n, oldImg: ctx.card.versions[ctx.card.cur].image };
-        markReshooting(ctx.card.n);
+        markReshooting(ctx.card.n, !wish);   // wish 비면 = 문구만(이미지 유지) → 배지 문구 구분
         $('#editdlg').close();          // 보던 캐러셀 그대로(스크롤 유지)
         _pendTries = 0; pollWhilePending();
       } else { alert(j.error || `실패 (${ok ? 'ok' : 'err'})`); }
-    }).catch(e => { yes.disabled = false; yes.textContent = '확인'; alert('요청 실패: ' + e.message); });
+    }).catch(e => { reset(); alert('요청 실패: ' + e.message); });
 }
-function markReshooting(n) {
+function markReshooting(n, textOnly) {
   const s = $(`#feedsec .slide[data-card="${n}"]`); if (!s) return;
   s.classList.add('reshooting');
   if (!s.querySelector('.reshoot-badge')) {
-    const b = document.createElement('div'); b.className = 'reshoot-badge'; b.textContent = '🍌 다시 그리는 중…';
+    const b = document.createElement('div'); b.className = 'reshoot-badge';
+    b.textContent = textOnly ? '✍️ 문구 바꾸는 중…' : '🍌 다시 그리는 중…';
     (s.querySelector('.slide-img') || s).appendChild(b);
   }
 }
@@ -1838,11 +1853,10 @@ $('#editdlg .ed-cyes').onclick = fireEdit;
 const edBody = $('#editdlg .ed-body'), edTop = $('#edtop');
 edTop.onclick = () => edBody.scrollTo({ top: 0, behavior: 'smooth' });
 edBody.addEventListener('scroll', () => {
-  const ae = document.activeElement;   // 입력 중(키보드 자동스크롤)엔 토글 안 함 — '번쩍' 방지
+  const ae = document.activeElement;   // 입력 중(키보드 자동스크롤)엔 토글 안 함 — '번쩍' 방지(상태는 그대로 유지)
   if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
-  edTop.classList.toggle('show', edBody.scrollTop > 120);
+  edTop.classList.toggle('show', edBody.scrollTop > 56);   // 조금만 내려도 노출
 }, { passive: true });
-$('#edWish').addEventListener('focus', () => edTop.classList.remove('show'));   // 이미지희망 입력 진입 = 맨위로 숨김
 // 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
 $('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
 $('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
