@@ -19,7 +19,7 @@ on:
         type: string
 
 concurrency:
-  group: comp-make
+  group: comp-make-${{ inputs.id }}
   cancel-in-progress: false
 
 permissions:
@@ -69,10 +69,14 @@ jobs:
         if: always()
         env:
           IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
           git add "viewer/comp_out/${IN_ID}" 2>/dev/null || true
           git add "uploads/${IN_ID}" 2>/dev/null || true
           git commit -m "comp: ${IN_ID} 합성 출력" || { echo "커밋할 것 없음"; exit 0; }
-          for i in 1 2 3 4; do git push && break || sleep $((i*3)); done
+          # 동시 렌더 push 레이스 대비 — 매 시도 origin 흡수 후 push(naive 재push는 non-ff로 무한실패)
+          for i in 1 2 3 4 5; do
+            git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH" && break || { git rebase --abort 2>/dev/null || true; sleep $((i*3)); }
+          done
