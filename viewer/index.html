@@ -337,8 +337,14 @@
   .ed-chip { font-size:16px; line-height:1.4; padding:3px 6px; border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2);
     color:var(--fg); cursor:pointer; user-select:none; transition:background .12s, color .12s, border-color .12s; }
   .ed-chip:hover { border-color:rgba(15,253,2,.4); }
-  .ed-chip.sp { background:none; border:none; padding:0 2px; cursor:default; }
+  .ed-chip.sp { background:none; border:none; padding:0 5px; cursor:pointer; position:relative; border-radius:5px; }   /* 줄바꿈 토글 슬롯 */
+  .ed-chip.sp:hover { background:rgba(15,253,2,.1); }
+  .ed-chip.sp:hover::after { content:'↵'; position:absolute; left:50%; top:-9px; transform:translateX(-50%); font-size:9px; color:var(--accent); }
+  .ed-nl { display:inline-flex; align-items:center; font-size:10px; color:var(--accent); opacity:.7; cursor:pointer; padding:0 4px; align-self:center; }
+  .ed-nl:hover { opacity:1; }
   .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
+  .ed-chip.warn { border-color:rgba(255,176,32,.55); }   /* 줄 김(가중폭>14) — 줄바꿈 권장 */
+  .ed-chip.warn.on { border-color:var(--accent); }
   .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; }
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }   /* 줄 한도 초과 거부 */
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
@@ -693,7 +699,7 @@
   <div class="ed-h"><b class="ed-title">카드 변경</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()">✕</button></div>
   <div class="ed-body">
     <img class="ed-img" alt="">
-    <label class="ed-lbl">텍스트 <span class="ed-hint">— 단어를 탭하면 강조</span></label>
+    <label class="ed-lbl">텍스트 <span class="ed-hint">— 단어=강조 · 띄어쓰기=줄바꿈 · 더블탭=수정</span></label>
     <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     <label class="ed-lbl">이미지 수정 희망</label>
     <textarea class="ed-wish" id="edWish" placeholder="예: 더 밝게 / 인물 클로즈업 / 배경 단순하게 (비우면 텍스트만 반영)"></textarea>
@@ -1361,10 +1367,17 @@ function parseEmphWords(s) {
   }
   return tokens;
 }
-// 카드 텍스트 제약(card-make 지침 §출력형식): 줄 ≤4 · 한글 ≤18/줄 · 가중폭 ≤19.5/줄.
-const EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5;
+// 카드 텍스트 제약(card-make 지침 §출력형식): 줄 ≤4 · 한글 ≤18/줄 · 가중폭 ≤19.5/줄. SOFT=14(실측 99% 보존·권장 줄넘김).
+const EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5, EDLINE_SOFT = 14;
 function edHangul(s) { return (s.match(/[가-힣]/g) || []).length; }
-function edWidth(s) { let w = 0; for (const ch of s) w += /[가-힣ㄱ-ㅎㅏ-ㅣ　-〿＀-￯]/.test(ch) ? 1 : 0.5; return w; }
+// 가중폭 = 한글/자모/전각/곡선따옴표·전각부호=1.0, 그외(영문·숫자·반각·공백)=0.5 (wcswidth/2 동치).
+function edWidth(s) { let w = 0; for (const ch of s) w += /[가-힣ㄱ-ㅎㅏ-ㅣ‘-‟…　-〿＀-￯]/.test(ch) ? 1 : 0.5; return w; }
+function edMarkWarn() {   // 줄별 가중폭 > SOFT(14)면 그 줄 어절에 _warn(줄바꿈 권장 호박색)
+  let w = 0, line = [];
+  const flush = () => { const over = w > EDLINE_SOFT; line.forEach(t => { t._warn = over; }); w = 0; line = []; };
+  for (const t of edTokens) { if (t.t === 'nl') flush(); else if (t.t === 'sp') w += 0.5; else { w += edWidth(t.text); line.push(t); } }
+  flush();
+}
 function edLineAround(idx, newText) {   // idx 어절이 속한 줄(텍스트) — 그 어절을 newText로 치환해 길이 계산
   let s = idx; while (s > 0 && edTokens[s - 1].t !== 'nl') s--;
   let e = idx; while (e < edTokens.length - 1 && edTokens[e + 1].t !== 'nl') e++;
@@ -1375,10 +1388,26 @@ function edLineAround(idx, newText) {   // idx 어절이 속한 줄(텍스트) �
 function edReject(el) { el.classList.add('reject'); setTimeout(() => el.classList.remove('reject'), 600); }
 function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름 충돌 금지 — 어절칩 전용
   const wrap = $('#edChips'); wrap.innerHTML = '';
+  edMarkWarn();   // 줄별 가중폭 경고 마킹
+  const nlNum = edTokens.filter(t => t.t === 'nl').length;
   edTokens.forEach(tok => {
-    if (tok.t === 'nl') { const br = document.createElement('span'); br.className = 'ed-br'; wrap.appendChild(br); return; }   // 줄바꿈 = flex 줄넘김
-    if (tok.t === 'sp') { const g = document.createElement('span'); g.className = 'ed-chip sp'; g.innerHTML = '&nbsp;'; wrap.appendChild(g); return; }
-    const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : ''); sp.textContent = tok.text;
+    if (tok.t === 'nl') {   // 줄바꿈 — ↵ 마커(탭하면 윗줄과 합침) + flex 줄넘김
+      const mk = document.createElement('span'); mk.className = 'ed-nl'; mk.textContent = '↵'; mk.title = '줄바꿈 — 탭하면 합침';
+      mk.onclick = () => { edTokens[edTokens.indexOf(tok)] = { t: 'sp' }; renderEditChips(); };
+      const br = document.createElement('span'); br.className = 'ed-br';
+      wrap.appendChild(mk); wrap.appendChild(br); return;
+    }
+    if (tok.t === 'sp') {   // 공백칩 = 줄바꿈 토글 슬롯(단어 사이에서만·4줄 캡)
+      const g = document.createElement('span'); g.className = 'ed-chip sp'; g.innerHTML = '&nbsp;'; g.title = '탭하면 여기서 줄바꿈';
+      g.onclick = () => {
+        const i = edTokens.indexOf(tok);
+        if (i <= 0 || i >= edTokens.length - 1 || edTokens[i - 1].t !== 'word' || edTokens[i + 1].t !== 'word') return;
+        if (nlNum >= 3) { edReject(g); return; }   // 4줄 하드캡(nl 3개=4줄)
+        edTokens[i] = { t: 'nl' }; renderEditChips();
+      };
+      wrap.appendChild(g); return;
+    }
+    const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : '') + (tok._warn ? ' warn' : ''); sp.textContent = tok.text;
     sp.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
     sp.onclick = () => { if (sp.isContentEditable) return; tok.on = !tok.on; sp.classList.toggle('on'); };
     sp.ondblclick = () => { sp.contentEditable = 'true'; sp.spellcheck = true; sp.lang = 'ko'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
