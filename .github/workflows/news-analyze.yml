@@ -165,3 +165,19 @@ jobs:
             git rebase --abort 2>/dev/null || true; sleep $((2**i))
           done
           echo "::warning::스윕 push 실패"
+
+      # 큐레이션 즉시 전달 — 분석·카드 커밋 후 Cloudflare 재빌드 1회 트리거 → 피드에 바로 반영
+      # (정기 빌드[deploy-hook 12h] 안 기다림). 픽은 드물어 빌드 한도 영향 미미. 시크릿 없으면 no-op(다음 정기빌드).
+      - name: 큐레이션 즉시 전달 (Cloudflare 재빌드)
+        if: always()
+        env:
+          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
+        run: |
+          if [ -z "${CF_DEPLOY_HOOK}" ]; then
+            echo "CF_DEPLOY_HOOK 미설정 — 즉시 재빌드 생략(다음 정기 빌드 때 피드 반영)"; exit 0
+          fi
+          if curl -fsS -X POST "${CF_DEPLOY_HOOK}" -o /dev/null; then
+            echo "Cloudflare 재빌드 트리거 — 큐레이션 결과 곧 피드 반영"
+          else
+            echo "::warning::재빌드 트리거 실패(다음 정기 빌드 때 반영)"
+          fi
