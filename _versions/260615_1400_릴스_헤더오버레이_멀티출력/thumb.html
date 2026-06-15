@@ -38,11 +38,6 @@
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
   .status.err { color:#ff8a8a; }
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
-  .slot { margin-bottom:14px; }
-  .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
-  .slot-img { min-height:40px; }
-  .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
-  .slot-wait { font-size:13px; color:var(--mut); }
   .none { display:none; }
 </style>
 </head>
@@ -94,40 +89,12 @@
       <div class="hint"><b>*별표*</b>로 감싸면 초록 강조</div>
     </div>
 
-    <!-- /2 릴스 — 헤더(기본) / 오버레이 모드 -->
+    <!-- /2 릴스 -->
     <div id="reelsBox" class="none">
-      <label>모드</label>
-      <div class="seg" id="rmodeSeg">
-        <button data-rmode="header" class="on">헤더 (기본)</button>
-        <button data-rmode="overlay">오버레이</button>
-      </div>
-
-      <!-- 헤더 모드: 부제 + 제목 → 기본(흰칸無) + 흰칸 2장 -->
-      <div id="rHeader">
-        <label>부제 (흰색)</label>
-        <input type="text" id="sub" placeholder="부제 한 줄">
-        <label>제목 (초록)</label>
-        <input type="text" id="title" placeholder="제목 한 줄">
-        <div class="hint">출력 2장 — <b>기본</b>(흰칸 없음) + <b>흰칸</b>(영상자리)</div>
-      </div>
-
-      <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
-      <div id="rOverlay" class="none">
-        <label>배경 이미지 <span style="color:var(--mut);font-weight:400">(옵션 — 없으면 오버레이만)</span></label>
-        <label class="file" id="rFileLab"><span>탭해서 이미지 선택</span>
-          <input type="file" accept="image/*" id="rFile" style="display:none">
-        </label>
-        <label>투명도 (OPA)</label>
-        <div class="seg" id="rOpaSeg">
-          <button data-opa="60" class="on">60 (기본)</button>
-          <button data-opa="30">30</button>
-          <button data-opa="custom">직접입력</button>
-        </div>
-        <input type="number" id="rOpaNum" min="0" max="100" value="45" placeholder="0–100" class="none" style="margin-top:6px">
-        <label>텍스트 (줄바꿈 = 여러 줄)</label>
-        <textarea id="rLines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
-        <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · 기본 출력 <b>opa60 + opa30</b>, 직접입력은 추가(+1)</div>
-      </div>
+      <label>부제 (흰색)</label>
+      <input type="text" id="sub" placeholder="부제 한 줄">
+      <label>제목 (초록)</label>
+      <input type="text" id="title" placeholder="제목 한 줄">
     </div>
 
     <!-- /3 저작권 -->
@@ -152,9 +119,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let APP = '1', FMT = 'post', RMODE = 'header';
-const IMG = { b64: '', name: '' };    // /1·/5 배경
-const RIMG = { b64: '', name: '' };   // /2 오버레이 배경(옵션)
+let APP = '1', FMT = 'post', IMG_B64 = '', IMG_NAME = '';
 
 // ---- 탭 ----
 function selApp(a) {
@@ -187,85 +152,45 @@ function getOpa() {
   return parseInt(sel && sel.dataset.opa) || 58;
 }
 
-// ---- 릴스 모드 세그 (헤더 기본 / 오버레이) ----
-function selRmode(m) {
-  RMODE = m;
-  document.querySelectorAll('#rmodeSeg button').forEach(b => b.classList.toggle('on', b.dataset.rmode === m));
-  $('#rHeader').classList.toggle('none', m !== 'header');
-  $('#rOverlay').classList.toggle('none', m !== 'overlay');
-}
-document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
-
-// ---- 릴스 오버레이 OPA 세그 (60 기본 / 30 / 직접입력) ----
-document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#rOpaSeg button').forEach(x => x.classList.toggle('on', x === b));
-  $('#rOpaNum').classList.toggle('none', b.dataset.opa !== 'custom');
-});
-function getReelsExtraOpa() {   // 직접입력일 때만 추가 opa(+1), 아니면 null (기본 60·30은 항상 출력)
-  const sel = document.querySelector('#rOpaSeg .on');
-  if (sel && sel.dataset.opa === 'custom') return Math.max(0, Math.min(100, parseInt($('#rOpaNum').value) || 0));
-  return null;
-}
-
-// ---- 파일 (재사용 바인더 — #file=/1·/5, #rFile=/2 오버레이) ----
-function bindFile(inp, lab, store) {
-  const handler = e => {
-    const f = e.target.files[0]; if (!f) return;
-    store.name = f.name;
-    const r = new FileReader();
-    r.onload = () => {
-      store.b64 = r.result;
-      lab.innerHTML = '<span>' + f.name + ' ✓</span><img src="' + r.result + '">' +
-        '<input type="file" accept="image/*" style="display:none">';
-      lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
-    };
-    r.readAsDataURL(f);
+// ---- 파일 ----
+$('#file').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  IMG_NAME = f.name;
+  const r = new FileReader();
+  r.onload = () => {
+    IMG_B64 = r.result;
+    $('#fileLab').innerHTML = '<span>' + f.name + ' ✓</span><img src="' + r.result + '">' +
+      '<input type="file" accept="image/*" id="file" style="display:none">';
+    $('#fileLab').querySelector('#file').onchange = $('#file').onchange;
   };
-  inp.onchange = handler;
-}
-bindFile($('#file'), $('#fileLab'), IMG);
-bindFile($('#rFile'), $('#rFileLab'), RIMG);
+  r.readAsDataURL(f);
+};
 
 // ---- 입력 → params ----
 function buildParams() {
   const linesArr = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
   if (APP === '4') return { fmt: FMT, lines: linesArr };
   if (APP === '1') return { fmt: 'post', lines: linesArr, opacity: getOpa() };   // /1 = post 고정 + OPA
-  if (APP === '2') {
-    if (RMODE === 'header') return { mode: 'header', sub: $('#sub').value.trim(), title: $('#title').value.trim() };
-    const rlines = ($('#rLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);   // 오버레이 = lines + 이미지(옵션)
-    return { mode: 'overlay', lines: rlines, extraOpa: getReelsExtraOpa() };
-  }
+  if (APP === '2') return { sub: $('#sub').value.trim(), title: $('#title').value.trim() };
   if (APP === '3') return { fmt: FMT, year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: $('#cplat').value.trim() };
 }
 
-// ---- 폴링 (N장: 각 슬롯 독립 로드) ----
-function pollMany(outs) {
-  const result = $('#result'), status = $('#status');
-  if (!outs.length) { status.textContent = '출력 경로 없음'; status.classList.add('err'); return; }
-  result.innerHTML = outs.map((o, i) =>
-    '<div class="slot" data-i="' + i + '">' +
-    (o.label ? '<div class="slot-lab">' + o.label + '</div>' : '') +
-    '<div class="slot-img"><span class="slot-wait">⏳ 대기…</span></div></div>').join('');
+// ---- 폴링 ----
+function poll(outPath) {
   const t0 = Date.now();
-  const done = outs.map(() => false);
+  const result = $('#result'), status = $('#status');
   const tick = () => {
     const sec = Math.round((Date.now() - t0) / 1000);
-    if (done.every(Boolean)) { status.textContent = '✅ 완료 (' + sec + 's) · ' + outs.length + '장'; return; }
     if (sec > 600) { status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); return; }
-    status.textContent = '⏳ 렌더 중… ' + sec + 's (' + done.filter(Boolean).length + '/' + outs.length + '장 · 보통 1–2분)';
-    outs.forEach((o, i) => {
-      if (done[i]) return;
-      const img = new Image();
-      const url = o.path + '?t=' + Date.now();
-      img.onload = () => {
-        done[i] = true;
-        const slot = result.querySelector('.slot[data-i="' + i + '"] .slot-img');
-        if (slot) slot.innerHTML = '<img src="' + url + '">';
-      };
-      img.src = url;   // 아직 없으면 무시 → 다음 tick 재시도
-    });
-    setTimeout(tick, 5000);
+    status.textContent = '⏳ 렌더 중… ' + sec + 's (러너 실행 + 배포 대기, 보통 1–2분)';
+    const img = new Image();
+    const url = outPath + '?t=' + Date.now();
+    img.onload = () => {
+      status.textContent = '✅ 완료 (' + sec + 's)';
+      result.innerHTML = '<img src="' + url + '">';
+    };
+    img.onerror = () => setTimeout(tick, 5000);
+    img.src = url;
   };
   tick();
 }
@@ -276,31 +201,28 @@ $('#go').onclick = async () => {
   // 카드뉴스(5) = /api/compose (이미지 + 텍스트, 1080×1350)
   if (APP === '5') {
     const clines = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
-    if (!IMG.b64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
+    if (!IMG_B64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
     if (!clines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
     $('#go').disabled = true; status.textContent = '발사 중…';
     try {
-      const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG.b64, name: IMG.name, lines: clines }) });
+      const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG_B64, name: IMG_NAME, lines: clines }) });
       const j = await res.json();
       if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); }
-      else pollMany([{ path: j.out, label: '' }]);
+      else poll(j.out);
     } catch (e) { status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err'); }
     finally { $('#go').disabled = false; }
     return;
   }
   const params = buildParams();
-  if (APP === '1' && !IMG.b64) { status.textContent = '배경 이미지를 선택해줘'; status.classList.add('err'); return; }
-  if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { status.textContent = '부제 또는 제목을 입력해줘'; status.classList.add('err'); return; }
-  if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
+  if (APP === '1' && !IMG_B64) { status.textContent = '배경 이미지를 선택해줘'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '발사 중…';
   try {
     const payload = { app: APP, params };
-    if (APP === '1') { payload.imageB64 = IMG.b64; payload.name = IMG.name; }
-    if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
+    if (APP === '1') { payload.imageB64 = IMG_B64; payload.name = IMG_NAME; }
     const res = await fetch('/api/thumb', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();
     if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); $('#go').disabled = false; return; }
-    pollMany(j.outs || (j.out ? [{ path: j.out, label: '' }] : []));
+    poll(j.out);
   } catch (e) {
     status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
   } finally { $('#go').disabled = false; }
