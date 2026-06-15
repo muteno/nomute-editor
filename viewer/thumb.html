@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>노뮤트 썸네일 — 웹</title>
 <style>
-  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --grn:#0FFD02; }
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --grn:#0FFD02;
+          --accent:#0FFD02; --accent-dim:rgba(15,253,2,.15); --on-accent:#07210a; --line2:#2a2c31; --glass2:#0e0f11; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:560px; margin:0 auto; padding:18px 16px 60px; }
@@ -43,6 +44,9 @@
   .pbtn svg { width:58%; height:54%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
   .pbtn svg .solid { fill:currentColor; stroke:none; }
   .pbtn .plab { font-size:11px; font-weight:600; }
+  /* 경고문 프리셋 = 줄바꿈 허용 세그 */
+  .wseg { flex-wrap:wrap; }
+  .wseg button { min-width:62px; }
   .file { display:block; padding:10px; border:1px dashed var(--line); border-radius:8px; text-align:center; color:var(--mut); cursor:pointer; }
   .file img { max-width:100%; max-height:170px; border-radius:6px; margin-top:8px; }
   .go { width:100%; margin-top:16px; padding:13px; background:var(--grn); color:#07210a; border:none; border-radius:10px; font-weight:800; font-size:15px; cursor:pointer; }
@@ -57,6 +61,45 @@
   .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
   .slot-wait { font-size:13px; color:var(--mut); }
   .none { display:none; }
+
+  /* ── 카드 텍스트 칩 에디터 (뷰어 #editdlg 포팅) ── */
+  #editdlg { width:min(460px,94vw); max-width:460px; max-height:94vh; height:auto; margin:auto; padding:0; color:var(--fg);
+    background:linear-gradient(165deg, rgba(27,44,32,.96), rgba(11,19,14,.98)); border:1px solid rgba(255,255,255,.14); border-radius:22px; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  #editdlg::backdrop { background:rgba(4,8,5,.6); }
+  .ed-h { display:flex; align-items:center; padding:13px 16px; border-bottom:1px solid var(--line2); }
+  .ed-title { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-.2px; }
+  .ed-x { margin-left:auto; width:30px; height:30px; border-radius:50%; font-size:13px; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }
+  .ed-body { padding:12px 16px 16px; overflow-x:hidden; overflow-y:auto; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }
+  .ed-img { display:block; max-width:100%; max-height:30vh; width:auto; height:auto; margin:2px auto 4px; border-radius:14px; border:1px solid var(--line); }
+  .ed-lbl { font-size:12px; font-weight:800; color:var(--mut); margin-top:9px; }
+  .ed-hint { font-weight:600; opacity:.6; }
+  .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
+  .ed-line { display:flex; flex-wrap:nowrap; align-items:center; gap:calc(6px * var(--eds,1)); min-height:calc(30px * var(--eds,1)); position:relative; padding-right:22px; }
+  .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(2px * var(--eds,1)) calc(3px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2); color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
+  .ed-chip:hover { border-color:rgba(15,253,2,.4); }
+  .ed-add { position:absolute; right:2px; top:50%; transform:translateY(-50%); flex:none; width:16px; height:calc(30px * var(--eds,1)); padding:0; border-radius:5px; display:inline-flex; align-items:center; justify-content:center; font:800 16px/1 inherit; color:var(--accent); background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.42); cursor:pointer; }
+  .ed-add:active { transform:translateY(-50%) scale(.9); }
+  .ed-add.cap { color:transparent; cursor:not-allowed; opacity:.55; border-color:rgba(255,77,77,.5); filter:brightness(.6); background:repeating-linear-gradient(45deg, rgba(255,77,77,.5) 0 3px, transparent 3px 6px), rgba(10,14,12,.6); }
+  .ed-empty { min-width:calc(46px * var(--eds,1)); min-height:calc(22px * var(--eds,1)); cursor:text; white-space:normal; }
+  .ed-empty:empty::before { content:'입력…'; color:var(--mut); opacity:.5; }
+  .ed-chip:empty { min-width:calc(15px * var(--eds,1)); }
+  .ed-addw { flex:none; display:inline-flex; align-items:center; justify-content:center; width:calc(22px * var(--eds,1)); height:calc(22px * var(--eds,1)); border-radius:50%; color:var(--accent); font:800 calc(15px * var(--eds,1))/1 inherit; cursor:pointer; user-select:none; align-self:center; background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.4); }
+  .ovc { color:#ff5d5d; font-weight:800; }
+  .emon { color:var(--accent); font-weight:800; }
+  .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
+  .ed-chip.warn { border-color:rgba(255,176,32,.55); }
+  .ed-chip.warn.on { border-color:var(--accent); }
+  .ed-chip.over { border-color:#ff5d5d; background:rgba(255,77,77,.14); }
+  .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; white-space:normal; word-break:break-word; max-width:100%; }
+  .ed-chip.editing.over { outline-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.12); }
+  .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  .ed-foot { display:flex; gap:10px; justify-content:flex-end; align-items:center; padding:11px 16px; border-top:1px solid var(--line2); }
+  .ed-cancel { padding:9px 18px; font:700 12.5px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
+  .ed-go { padding:9px 24px; font:800 12.5px inherit; color:var(--on-accent); background:linear-gradient(90deg,#d8ff3d,var(--accent)); border:none; border-radius:999px; cursor:pointer; }
+  .ed-go:active { transform:scale(.97); } .ed-go[disabled] { opacity:.55; cursor:default; }
+  @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
+  @media (min-aspect-ratio:1/1) { #editdlg { max-height:66vh; } .ed-img { max-height:24vh; } .ed-body { max-height:calc(66vh - 114px); } }
 </style>
 </head>
 <body>
@@ -105,14 +148,21 @@
       <label>텍스트 (줄바꿈 = 여러 줄)</label>
       <textarea id="lines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
       <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · <span id="linesMax"></span></div>
+      <button type="button" id="cardEditBtn" class="none" style="width:100%;margin-top:8px;padding:11px;background:var(--glass2);color:var(--grn);border:1px solid var(--grn);border-radius:10px;font-weight:700;cursor:pointer">🃏 칩 에디터로 편집 (줄·강조·한도 빨강)</button>
     </div>
 
-    <!-- /4 경고문 — 지침 기본문구 프리필(수정 가능, 최대 2줄) -->
+    <!-- /4 경고문 — 프리셋 선택(법적 검토) + 직접입력. 선택 시 채워지고 수정 가능 -->
     <div id="warnBox" class="none">
-      <label>경고문 텍스트 <span style="color:var(--mut);font-weight:400">(지침 기본문구 · 수정 가능 · 최대 2줄)</span></label>
-      <textarea id="warnLines">⚠ 시청 전 민감한 장면이 있을 수 있으니 주의 바랍니다.
-본 게시물은 사회 시사 및 공익 정보 전달 목적의 콘텐츠입니다.</textarea>
-      <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · 최대 2줄</div>
+      <label>경고문 선택 <span style="color:var(--mut);font-weight:400">(탭하면 채워짐 · 수정 가능 · 최대 2줄)</span></label>
+      <div class="seg wseg" id="warnPreset">
+        <button type="button" data-wp="caution" class="on">시청 주의</button>
+        <button type="button" data-wp="ai">AI 생성</button>
+        <button type="button" data-wp="sensitive">민감·자극성</button>
+        <button type="button" data-wp="custom">직접입력</button>
+      </div>
+      <textarea id="warnLines">민감·충격적 장면이 포함될 수 있으니 시청에 주의 바랍니다.
+본 게시물은 공익 정보 전달 목적의 콘텐츠입니다.</textarea>
+      <div class="hint"><b>*별표*</b>로 강조 · 최대 2줄 · <b>AI 생성</b>=AI기본법 §31② 표시의무(나머지는 자율 안내)</div>
     </div>
 
     <!-- /2 릴스 — 헤더(기본) / 오버레이 모드 -->
@@ -178,6 +228,17 @@
   </div>
 </div>
 
+<!-- 카드뉴스(/5) 텍스트 칩 에디터 — 뷰어 #editdlg 포팅(어절칩·줄=행·강조·한도 빨강) -->
+<dialog id="editdlg">
+  <div class="ed-h"><b class="ed-title">카드 텍스트</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()">✕</button></div>
+  <div class="ed-body">
+    <img class="ed-img" alt="" style="display:none">
+    <label class="ed-lbl">텍스트 <span class="ed-hint">— 탭=강조 · 더블탭=수정 · + 줄추가 · 비우면 줄삭제 · 최대 4줄·한 줄 한글 18자</span></label>
+    <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
+  </div>
+  <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">적용</button></div>
+</dialog>
+
 <script>
 const $ = s => document.querySelector(s);
 let APP = '1', FMT = 'post', RMODE = 'header';
@@ -197,6 +258,7 @@ function selApp(a) {
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
   $('#linesMax').textContent = a === '1' ? '최대 3줄' : a === '5' ? '최대 4줄' : '';   // 공유 textarea 모드별 줄 한도
+  $('#cardEditBtn').classList.toggle('none', a !== '5');   // 칩 에디터 = /5 카드뉴스만
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => selApp(t.dataset.app));
 
@@ -236,6 +298,19 @@ document.querySelectorAll('#pseg button').forEach(b => b.onclick = () => {
   updateCopyHint();
 });
 ['cplat', 'cyear', 'cname'].forEach(id => $('#' + id).addEventListener('input', updateCopyHint));
+
+// ---- /4 경고문 프리셋 (Opus 5인 만장일치 검토 — AI=AI기본법 §31② 표시의무, 나머지=자율 안내) ----
+const WARN_PRESETS = {
+  caution: '민감·충격적 장면이 포함될 수 있으니 시청에 주의 바랍니다.\n본 게시물은 공익 정보 전달 목적의 콘텐츠입니다.',
+  ai: '본 이미지는 생성형 AI로 제작·합성되었습니다.',
+  sensitive: '일부 시청자에게 불편할 수 있는 민감한 내용이 포함되어 있습니다.',
+  custom: '',
+};
+document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#warnPreset button').forEach(x => x.classList.toggle('on', x === b));
+  $('#warnLines').value = WARN_PRESETS[b.dataset.wp] || '';
+  if (b.dataset.wp === 'custom') $('#warnLines').focus();
+});
 
 // ---- 포맷 세그 ----
 document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
@@ -344,6 +419,269 @@ function pollMany(outs) {
   };
   tick();
 }
+
+// ==== 카드뉴스(/5) 칩 에디터 — 뷰어 #editdlg 포팅 (어절칩·줄=행·강조·한도 빨강). 입출력만 /5(텍스트→#lines)로 갈아끼움 ====
+let edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false;
+const MAX_LINES = 4, EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5, EDLINE_SOFT = 14;
+const edHangul = s => (s.match(/[가-힣]/g) || []).length;
+const edWidth = s => { let w = 0; for (const ch of s) w += /[가-힣ㄱ-ㅎㅏ-ㅣ‘-‟…　-〿＀-￯]/.test(ch) ? 1 : 0.5; return w; };
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function parseEmphLines(s) {
+  const arr = [...s]; const plain = []; const ce = []; let on = false;
+  for (let p = 0; p < arr.length; p++) {
+    if (arr[p] === '*') { on = !on; continue; }
+    plain.push(arr[p]); ce.push(on);
+  }
+  const lines = [[]]; let cur = lines[0]; let i = 0;
+  while (i < plain.length) {
+    const ch = plain[i];
+    if (ch === '\n') { cur = []; lines.push(cur); i++; continue; }
+    if (ch === ' ' || ch === '\t') { i++; continue; }
+    let j = i, text = ''; const em = []; let allOn = true, allOff = true;
+    while (j < plain.length && plain[j] !== ' ' && plain[j] !== '\t' && plain[j] !== '\n') {
+      em.push(ce[j]); if (ce[j]) allOff = false; else allOn = false; text += plain[j]; j++;
+    }
+    if (allOn) cur.push({ text, on: true });
+    else if (allOff) cur.push({ text, on: false });
+    else cur.push({ text, on: false, em });
+    i = j;
+  }
+  return lines.slice(0, MAX_LINES);
+}
+function edMarkWarn() {
+  for (const line of edLines) {
+    let w = 0, hg = 0, over = false;
+    line.forEach((wd, k) => {
+      if (k) w += 0.5;
+      const wasOver = over; let from = -1;
+      const chars = [...wd.text];
+      for (let ci = 0; ci < chars.length; ci++) {
+        w += edWidth(chars[ci]); hg += edHangul(chars[ci]);
+        if (!over && (w > EDLINE_WIDTH || hg > EDLINE_HANGUL)) { over = true; from = ci; }
+      }
+      if (wasOver) { wd._over = true; wd._overFrom = 0; }
+      else if (over) { wd._over = true; wd._overFrom = from >= 0 ? from : 0; }
+      else { wd._over = false; wd._overFrom = -1; }
+    });
+    let tw = 0; line.forEach((wd, k) => { if (k) tw += 0.5; tw += edWidth(wd.text); });
+    const warn = tw > EDLINE_SOFT;
+    line.forEach(wd => { wd._warn = warn && !wd._over; });
+  }
+}
+function edAnyOver() {
+  for (const line of edLines) {
+    let w = 0, hg = 0;
+    for (let k = 0; k < line.length; k++) {
+      if (k) w += 0.5;
+      for (const ch of line[k].text) { w += edWidth(ch); hg += edHangul(ch); if (w > EDLINE_WIDTH || hg > EDLINE_HANGUL) return true; }
+    }
+  }
+  return false;
+}
+function lineWidthWith(li, wi, newText) {
+  let w = 0, hg = 0;
+  edLines[li].forEach((wd, k) => { if (k) w += 0.5; const t = k === wi ? newText : wd.text; w += edWidth(t); hg += edHangul(t); });
+  return { w, hg };
+}
+function lineFull(line) {
+  let w = 0, hg = 0;
+  line.forEach((wd, k) => { if (k) w += 0.5; w += edWidth(wd.text); hg += edHangul(wd.text); });
+  return w >= EDLINE_WIDTH || hg >= EDLINE_HANGUL;
+}
+function clipLineOver(li) {
+  const line = edLines[li]; if (!line) return;
+  let w = 0, hg = 0;
+  for (let k = 0; k < line.length; k++) {
+    if (k) w += 0.5;
+    const chars = [...line[k].text];
+    let cut = -1;
+    for (let ci = 0; ci < chars.length; ci++) {
+      w += edWidth(chars[ci]); hg += edHangul(chars[ci]);
+      if (w > EDLINE_WIDTH || hg > EDLINE_HANGUL) { cut = ci; break; }
+    }
+    if (cut < 0) continue;
+    const kept = chars.slice(0, cut).join('');
+    if (kept) { line[k].text = kept; line[k].em = null; line.length = k + 1; }
+    else { line.length = k; }
+    for (let j = line.length - 1; j >= 0; j--) if (line[j].text === '') line.splice(j, 1);
+    return;
+  }
+}
+function edReject(el) { el.classList.add('reject'); setTimeout(() => el.classList.remove('reject'), 600); }
+function renderEditChips() {
+  _edRendering = true;
+  const wrap = $('#edChips'); wrap.innerHTML = '';
+  edLines.forEach((line, li) => {
+    for (let j = line.length - 1; j >= 0; j--) {
+      const pending = PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi === j;
+      if (line[j].text === '' && !pending) {
+        line.splice(j, 1);
+        if (PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi > j) PENDING_EDIT.wi--;
+      }
+    }
+  });
+  edMarkWarn();
+  const full = edLines.length >= MAX_LINES;
+  edLines.forEach((line, li) => {
+    const row = document.createElement('div'); row.className = 'ed-line'; row.dataset.li = li;
+    if (line.length === 0) {
+      const e = document.createElement('span'); e.className = 'ed-chip ed-empty'; e.contentEditable = 'true'; e.spellcheck = true; e.lang = 'ko';
+      e.oninput = () => fitEditLines(wrap);
+      e.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); e.blur(); } };
+      e.onblur = () => {
+        if (_edRendering || !e.isConnected) return;
+        const nt = e.textContent.replace(/\s+/g, ' ').trim();
+        if (!nt) { dropLine(li); return; }
+        edLines[li] = nt.split(/\s+/).map(t => ({ text: t, on: false }));
+        clipLineOver(li);
+        renderEditChips();
+      };
+      row.appendChild(e);
+    } else {
+      line.forEach((wd, wi) => {
+        const chip = document.createElement('span');
+        chip.className = 'ed-chip' + (wd.on ? ' on' : '') + (wd._warn ? ' warn' : '') + (wd._over ? ' over' : '');
+        chip.dataset.li = li; chip.dataset.wi = wi;
+        if (wd._over && wd._overFrom > 0) {
+          const a = [...wd.text];
+          chip.innerHTML = esc(a.slice(0, wd._overFrom).join('')) + '<span class="ovc">' + esc(a.slice(wd._overFrom).join('')) + '</span>';
+        } else if (wd._over) { chip.innerHTML = '<span class="ovc">' + esc(wd.text) + '</span>'; }
+        else if (wd.em) {
+          const a = [...wd.text]; let h = '', run = null;
+          a.forEach((c, ci) => { const e = !!wd.em[ci]; if (e !== run) { if (run !== null) h += '</span>'; h += e ? '<span class="emon">' : '<span>'; run = e; } h += esc(c); });
+          if (run !== null) h += '</span>'; chip.innerHTML = h;
+        }
+        else { chip.textContent = wd.text; }
+        chip.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
+        chip.onclick = () => { if (chip.isContentEditable) return; if (wd.em) { wd.em = null; wd.on = true; renderEditChips(); return; } wd.on = !wd.on; chip.classList.toggle('on'); };
+        chip.ondblclick = () => { chip.textContent = wd.text; chip.contentEditable = 'true'; chip.spellcheck = true; chip.lang = 'ko'; chip.classList.add('editing'); chip.focus(); window.getSelection()?.selectAllChildren(chip); };
+        chip.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); chip.blur(); } };
+        chip.oninput = ev => {
+          const raw = chip.textContent, si = raw.search(/\s/);
+          if (si >= 0 && !ev.isComposing) {
+            const left = raw.slice(0, si).trim(), right = raw.slice(si + 1).trim();
+            if (left) { edLines[li].splice(wi, 1, { text: left, on: wd.on }, { text: right, on: wd.on }); PENDING_EDIT = { li, wi: wi + 1 }; renderEditChips(); return; }
+            chip.textContent = right;
+          }
+          fitEditLines(wrap);
+          const { w, hg } = lineWidthWith(li, wi, raw.replace(/\s+/g, ' ').trim());
+          chip.classList.toggle('over', w > EDLINE_WIDTH || hg > EDLINE_HANGUL);
+        };
+        chip.onblur = () => {
+          if (_edRendering || !chip.isConnected) return;
+          chip.contentEditable = 'false'; chip.classList.remove('editing');
+          const nt = chip.textContent.replace(/\s+/g, ' ').trim();
+          if (nt === wd.text) { clipLineOver(li); renderEditChips(); return; }
+          if (!nt) { edLines[li].splice(wi, 1); if (edLines[li].length === 0) { dropLine(li); return; } }
+          else if (/\s/.test(nt)) { edLines[li].splice(wi, 1, ...nt.split(/\s+/).map(t => ({ text: t, on: wd.on }))); }
+          else { wd.text = nt; wd.em = null; }
+          clipLineOver(li);
+          renderEditChips();
+        };
+        row.appendChild(chip);
+      });
+      if (!lineFull(line)) {
+        const addw = document.createElement('span'); addw.className = 'ed-addw'; addw.textContent = '+'; addw.title = '이 줄에 어절 추가';
+        addw.onclick = () => { edLines[li].push({ text: '', on: false }); PENDING_EDIT = { li, wi: edLines[li].length - 1 }; renderEditChips(); };
+        row.appendChild(addw);
+      }
+    }
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'ed-add' + (full ? ' cap' : ''); add.textContent = '+'; add.setAttribute('aria-label', '새 줄 추가'); add.title = full ? '최대 4줄' : '아래에 줄 추가';
+    add.onclick = () => { if (full) { edReject(add); return; } addLineAfter(li); };
+    row.appendChild(add);
+    wrap.appendChild(row);
+  });
+  if (PENDING_FOCUS != null) {
+    const e = wrap.querySelector(`.ed-line[data-li="${PENDING_FOCUS}"] .ed-empty`);
+    if (e) e.focus();
+    PENDING_FOCUS = null;
+  }
+  if (PENDING_EDIT) {
+    const { li: pl, wi: pw } = PENDING_EDIT; PENDING_EDIT = null;
+    const c = wrap.querySelector(`.ed-chip[data-li="${pl}"][data-wi="${pw}"]`), pwd = edLines[pl] && edLines[pl][pw];
+    if (c && pwd) {
+      c.textContent = pwd.text; c.contentEditable = 'true'; c.spellcheck = true; c.lang = 'ko'; c.classList.add('editing'); c.focus();
+      const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(c); r.collapse(false); sel.removeAllRanges(); sel.addRange(r);
+    }
+  }
+  _edRendering = false;
+  requestAnimationFrame(() => fitEditLines(wrap));
+}
+function addLineAfter(li) {
+  if (edLines.length >= MAX_LINES) return;
+  edLines.splice(li + 1, 0, []);
+  PENDING_FOCUS = li + 1;
+  renderEditChips();
+}
+function dropLine(li) {
+  if (edLines.length <= 1) { edLines[0] = []; renderEditChips(); return; }
+  edLines.splice(li, 1);
+  renderEditChips();
+}
+function fitEditLines(wrap) {
+  if (!wrap) return;
+  const rows = wrap.querySelectorAll('.ed-line');
+  if (!rows.length) return;
+  const cs = getComputedStyle(wrap);
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2;
+  if (avail <= 0) return;
+  wrap.style.setProperty('--eds', '1');
+  const ref = document.createElement('div'); ref.className = 'ed-line';
+  ref.style.cssText = 'position:absolute; left:-9999px; top:0; visibility:hidden; width:max-content;';
+  ['뉴스종합', '정치경제', '국제사회', '심층분석속보'].forEach(t => {
+    const c = document.createElement('span'); c.className = 'ed-chip'; c.textContent = t; ref.appendChild(c);
+  });
+  { const aw = document.createElement('span'); aw.className = 'ed-addw'; aw.textContent = '+'; ref.appendChild(aw); }
+  wrap.appendChild(ref);
+  const refW = ref.getBoundingClientRect().width;
+  wrap.removeChild(ref);
+  let eds = refW > 0 ? Math.min(1.1, avail / refW) : 1;
+  eds = Math.max(0.45, eds);
+  wrap.style.setProperty('--eds', eds.toFixed(3));
+  for (let pass = 0; pass < 4; pass++) {
+    let maxw = 0; rows.forEach(r => { if (r.scrollWidth > maxw) maxw = r.scrollWidth; });
+    if (maxw <= avail) break;
+    eds = Math.max(0.4, eds * avail / maxw);
+    wrap.style.setProperty('--eds', eds.toFixed(3));
+  }
+}
+function buildEmphText() {
+  const charEm = (wd, ci) => wd.em ? !!wd.em[ci] : wd.on;
+  return edLines.map(line => {
+    const words = line.filter(wd => wd.text !== '');
+    const seq = [];
+    words.forEach((wd, k) => {
+      const chars = [...wd.text];
+      if (k) {
+        const prev = words[k - 1], pc = [...prev.text];
+        seq.push({ c: ' ', e: charEm(prev, pc.length - 1) && charEm(wd, 0) });
+      }
+      chars.forEach((c, ci) => seq.push({ c, e: charEm(wd, ci) }));
+    });
+    let out = '', on = false;
+    seq.forEach(s => { if (s.e && !on) { out += '*'; on = true; } else if (!s.e && on) { out += '*'; on = false; } out += s.c; });
+    if (on) out += '*';
+    return out;
+  }).filter(s => s !== '').join('\n');
+}
+// 엔트리 = /5 현 텍스트(#lines)에서 열기 · 엑시트 = buildEmphText → #lines (재슛 plumbing 제거)
+function openCardEditor() {
+  const img = $('#editdlg .ed-img');
+  if (IMG.b64) { img.src = IMG.b64; img.style.display = 'block'; } else { img.removeAttribute('src'); img.style.display = 'none'; }
+  edLines = parseEmphLines($('#lines').value || '');
+  if (!edLines.length) edLines = [[]];
+  PENDING_FOCUS = null; PENDING_EDIT = null;
+  renderEditChips();
+  $('#editdlg').showModal();
+  fitEditLines($('#edChips'));
+}
+function applyCardEditor() {
+  if (edAnyOver()) { alert('빨간 글자 = 한 줄 한도(한글 18자) 초과야. 그 어절을 줄이거나 + 로 새 줄을 만들어줘.'); return; }
+  $('#lines').value = buildEmphText().trim();
+  $('#editdlg').close();
+}
+$('#edGo').onclick = applyCardEditor;
+$('#cardEditBtn').onclick = openCardEditor;
 
 // ---- 발사 ----
 $('#go').onclick = async () => {
