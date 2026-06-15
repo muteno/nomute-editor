@@ -355,6 +355,7 @@
   .ed-cno { color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); }
   .ed-cyes { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }   /* 부드러운 강조색 글래스(채움 X) */
   .ed-cno:active, .ed-cyes:active { transform:scale(.95); } .ed-cyes[disabled] { opacity:.55; }
+  .dlgtop.ed-top { position:absolute; right:14px; bottom:66px; left:auto; width:40px; height:40px; box-shadow:0 6px 18px rgba(0,0,0,.45); }
   /* 재생성 중 배지(자동 교체 대기) */
   .slide.reshooting .slide-img { filter:brightness(.5) saturate(.7); }
   .reshoot-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; font-size:12.5px; font-weight:800; color:#fff;
@@ -676,18 +677,17 @@
   <button class="pin-cancel" type="button" onclick="pindlg.close()">취소</button>
 </dialog>
 
-<!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(음절칩 강조)·이미지 희망 입력 → 변경(1b) -->
+<!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
 <dialog id="editdlg">
   <div class="ed-h"><b class="ed-title">카드 변경</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()">✕</button></div>
   <div class="ed-body">
     <img class="ed-img" alt="">
-    <label class="ed-lbl">텍스트</label>
-    <textarea class="ed-text" id="edText" placeholder="카드 문구"></textarea>
-    <label class="ed-lbl">강조 <span class="ed-hint">— 음절을 탭하면 강조색</span></label>
-    <div class="ed-chips" id="edChips" aria-label="음절 — 탭하면 강조"></div>
+    <label class="ed-lbl">텍스트 <span class="ed-hint">— 단어를 탭하면 강조</span></label>
+    <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     <label class="ed-lbl">이미지 수정 희망</label>
     <textarea class="ed-wish" id="edWish" placeholder="예: 더 밝게 / 인물 클로즈업 / 배경 단순하게 (비우면 텍스트만 반영)"></textarea>
   </div>
+  <button class="dlgtop ed-top" id="edtop" type="button" aria-label="맨 위로" title="맨 위로"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>
   <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">변경</button><div class="ed-confirm"><span class="ed-cmsg">이 카드만 다시 생성할까요?</span><button class="ed-cno" type="button">취소</button><button class="ed-cyes" type="button">확인</button></div></div>
 </dialog>
 
@@ -1296,53 +1296,64 @@ async function saveAll(model, slug, btn) {
 }
 
 // ── 카드 개별 변경(2차 팝업) — 텍스트(음절칩 강조)·이미지 희망 → 변경(1b) ──
-let EDIT_CTX = null, edEmph = new Set();
+let EDIT_CTX = null, edEmph = new Set(), edTokens = [];   // edTokens=[{t:word|sp|nl,text}], edEmph=강조 어절 인덱스
 function openEdit(o) {
   EDIT_CTX = o;
   const v = o.card.versions[o.card.cur], dlg = $('#editdlg');
   dlg.querySelector('.ed-title').textContent = `카드 ${o.card.n} 변경`;
   const img = dlg.querySelector('.ed-img'); img.src = v.image || ''; img.alt = `카드 ${o.card.n}`;
-  const p = parseEmph(v.caption || '');   // 기존 ** → 평문 + 강조 음절 인덱스
-  $('#edText').value = p.text; edEmph = p.emph;
+  const p = parseEmphWords(v.caption || '');   // *마커 → 어절 토큰 + 강조 어절(텍스트 입력창 없이 칩이 곧 텍스트)
+  edTokens = p.tokens; edEmph = p.emph;
   $('#edWish').value = '';
   renderEditChips();
   dlg.querySelector('.ed-foot').classList.remove('confirm');   // 확인 게이트 초기화
+  dlg.querySelector('.ed-body').scrollTop = 0; $('#edtop').classList.remove('show');   // 맨 위
   dlg.showModal();
-  setTimeout(() => $('#edText').focus({ preventScroll: true }), 50);
 }
-// "*전쟁*을" → { text:"전쟁을", emph:Set{0,1} }(음절 인덱스). 합성기 강조 규약 = *…* 단일 별표.
-function parseEmph(s) {
-  const arr = [...s]; let text = '', emph = new Set(), on = false, idx = 0;
+// "*전쟁 종전*을" → 어절 토큰 + 강조 어절 인덱스. 합성기 강조 규약 = *…* 단일 별표. 어절=띄어쓰기 기준.
+function parseEmphWords(s) {
+  const arr = [...s]; let plain = ''; const ce = new Set(); let on = false;
   for (let p = 0; p < arr.length; p++) {
-    if (arr[p] === '*') { on = !on; continue; }   // *강조* (단일) — 합성기 호환
-    if (on) emph.add(idx);
-    text += arr[p]; idx++;
+    if (arr[p] === '*') { on = !on; continue; }
+    if (on) ce.add(plain.length);
+    plain += arr[p];
   }
-  return { text, emph };
+  const pc = [...plain], tokens = [], emph = new Set();
+  let i = 0;
+  while (i < pc.length) {
+    const ch = pc[i];
+    if (ch === '\n') { tokens.push({ t: 'nl', text: '\n' }); i++; continue; }
+    if (ch === ' ' || ch === '\t') { tokens.push({ t: 'sp', text: ' ' }); i++; continue; }
+    let j = i, any = false;
+    while (j < pc.length && pc[j] !== ' ' && pc[j] !== '\t' && pc[j] !== '\n') { if (ce.has(j)) any = true; j++; }
+    if (any) emph.add(tokens.length);
+    tokens.push({ t: 'word', text: pc.slice(i, j).join('') });
+    i = j;
+  }
+  return { tokens, emph };
 }
-function renderEditChips() {   // ⚠️ 메인 필터칩 renderChips(별개)와 이름 충돌 금지 — 음절칩 전용
-  const chars = [...$('#edText').value];
-  [...edEmph].forEach(i => { if (i >= chars.length) edEmph.delete(i); });   // 텍스트 줄면 정리
+function renderEditChips() {   // 어절 칩 — 탭하면 강조(별표 없이). 메인 필터칩 renderChips(별개)와 이름 충돌 금지.
   const wrap = $('#edChips'); wrap.innerHTML = '';
-  chars.forEach((ch, i) => {
-    if (ch === '\n') { wrap.appendChild(document.createElement('br')); return; }
-    const sp = document.createElement('span');
-    if (ch === ' ') { sp.className = 'ed-chip sp'; sp.innerHTML = '&nbsp;'; }
-    else {
-      sp.className = 'ed-chip' + (edEmph.has(i) ? ' on' : ''); sp.textContent = ch;
-      sp.onclick = () => { edEmph.has(i) ? edEmph.delete(i) : edEmph.add(i); sp.classList.toggle('on'); };
-    }
+  edTokens.forEach((tok, i) => {
+    if (tok.t === 'nl') { wrap.appendChild(document.createElement('br')); return; }
+    if (tok.t === 'sp') { const g = document.createElement('span'); g.className = 'ed-chip sp'; g.innerHTML = '&nbsp;'; wrap.appendChild(g); return; }
+    const sp = document.createElement('span'); sp.className = 'ed-chip' + (edEmph.has(i) ? ' on' : ''); sp.textContent = tok.text;
+    sp.onclick = () => { edEmph.has(i) ? edEmph.delete(i) : edEmph.add(i); sp.classList.toggle('on'); };
     wrap.appendChild(sp);
   });
 }
-// 강조 음절 인덱스 → *강조* 문자열(연속 구간 묶음·줄넘김 비강조=합성기 '줄넘김 금지' 준수)
+// 강조 어절 → *강조* 문자열(연속 강조 어절 병합·끝 공백 제외·줄넘김 비강조=합성기 '줄넘김 금지' 준수)
 function buildEmphText() {
-  const chars = [...$('#edText').value]; let out = '', on = false;
-  chars.forEach((ch, i) => {
-    const e = edEmph.has(i) && ch !== ' ' && ch !== '\n';
-    if (e && !on) { out += '*'; on = true; } else if (!e && on) { out += '*'; on = false; }
-    out += ch;
-  });
+  let out = '', on = false;
+  for (let i = 0; i < edTokens.length; i++) {
+    const tok = edTokens[i];
+    if (tok.t !== 'word') { out += tok.text; continue; }
+    if (edEmph.has(i) && !on) { out += '*'; on = true; }
+    out += tok.text;
+    let nextWordEmph = false;
+    for (let j = i + 1; j < edTokens.length; j++) { if (edTokens[j].t === 'nl') break; if (edTokens[j].t === 'word') { nextWordEmph = edEmph.has(j); break; } }
+    if (on && !nextWordEmph) { out += '*'; on = false; }
+  }
   return on ? out + '*' : out;
 }
 // 변경 흐름 — '변경'=확인 게이트 노출, '확인'=단일 카드 재발사(유료 Gemini, mode=edit) → 캐러셀 복귀·자동 제자리 교체.
@@ -1684,11 +1695,13 @@ window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
 const dlgTop = $('#dlgtop'), dlgEl = $('#dlg');
 dlgTop.addEventListener('click', () => dlgEl.scrollTo({ top:0, behavior:'smooth' }));
 dlgEl.addEventListener('scroll', () => dlgTop.classList.toggle('show', dlgEl.scrollTop > 360), { passive:true });
-// 카드 변경 팝업 배선(1회)
-$('#edText').addEventListener('input', renderEditChips);
+// 카드 변경 팝업 배선(1회) — 텍스트는 어절칩(입력창 없음). 맨위로 = ed-body 스크롤.
 $('#edGo').onclick = submitEdit;
 $('#editdlg .ed-cno').onclick = () => $('#editdlg .ed-foot').classList.remove('confirm');
 $('#editdlg .ed-cyes').onclick = fireEdit;
+const edBody = $('#editdlg .ed-body'), edTop = $('#edtop');
+edTop.onclick = () => edBody.scrollTo({ top: 0, behavior: 'smooth' });
+edBody.addEventListener('scroll', () => edTop.classList.toggle('show', edBody.scrollTop > 120), { passive: true });
 // 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
 $('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
 $('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
