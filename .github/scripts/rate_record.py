@@ -22,6 +22,7 @@ def main():
         "title": (os.environ.get("R_TITLE", "") or "")[:300],
         "score": score,
         "picked": (os.environ.get("R_PICKED", "") or "").lower() in ("1", "true", "yes"),
+        "memo": (os.environ.get("R_MEMO", "") or "")[:200],
     }
     if not rec["id"] and not rec["url"]:
         print("빈 레코드 — 스킵")
@@ -29,7 +30,7 @@ def main():
     LEDGER.parent.mkdir(parents=True, exist_ok=True)
     with open(LEDGER, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-    print(f"적재: score={rec['score']} picked={rec['picked']} | {rec['title'][:40]}")
+    print(f"적재: score={rec['score']} picked={rec['picked']} memo={'Y' if rec['memo'] else '-'} | {rec['title'][:40]}")
 
 
 if __name__ == "__main__":
