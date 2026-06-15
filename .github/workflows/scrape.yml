@@ -1,7 +1,8 @@
 name: scrape
-# 한국 주요 뉴스 RSS 수집(① knews_scraper) → pending/ 적재(② to_pending) → news-analyze 발동(③).
-# 수집기를 파이프라인 입구에 자동으로 물리는 '연결' 워크플로.
-# 비용 노브: schedule(자동 정기수집)은 무인 토큰 소비 → 기본 꺼둠. min_cross↑ = 적게 적재 = 비용↓.
+# 한국 주요 뉴스 RSS 수집(knews_scraper) → ① viewer/candidates.json 갱신(수집함, 항상·과금0)
+#                                        → ② analyze=true 일 때만 pending 적재 + news-analyze 발동(유료).
+# 기본 = 수집만(큐레이션). 사람이 스크랩 탭에서 고름(픽=분석은 별도). cron 은 수집만 돌려 무인 토큰 0.
+# 비용: 이 레포 public → Actions 무제한 무료. 자동분석(analyze=true)만 Opus 토큰 소비.
 
 on:
   workflow_dispatch:
@@ -10,23 +11,24 @@ on:
         description: '최근 N시간 기사만 수집'
         default: '24'
       min_cross:
-        description: '교차등장 최소 매체 수(↑일수록 중요한 것만 = 적게 적재 = 비용↓)'
+        description: '교차등장 최소 매체 수(수집함·분석 공통 기본값 — to_candidates 는 CAND_MIN_CROSS 사용)'
         default: '2'
       top:
-        description: '한 번에 적재할 최대 기사 수(상한)'
+        description: '자동분석 시 적재 최대 기사 수(analyze=true 한정)'
         default: '20'
-  # ── 자동 정기 수집 (무인 토큰 소비 — 켜기 전 비용 확인) ──────────────
-  # 아래 2줄 주석 풀면 정기 가동. cron 은 UTC 기준.
-  # schedule:
-  #   - cron: '0 21,9 * * *'   # 매일 06:00·18:00 KST (UTC 21:00·09:00)
+      analyze:
+        description: 'true = 수집 후 top-N 자동분석까지(유료·Opus). 기본 false = 수집만.'
+        default: 'false'
+  schedule:
+    - cron: '0 21,9 * * *'   # 매일 06:00·18:00 KST (UTC 21:00·09:00) — 수집만(analyze 기본 false)
 
 concurrency:
   group: scrape
   cancel-in-progress: false
 
 permissions:
-  contents: write   # pending/ · seen_urls.txt 커밋·push
-  actions: write    # news-analyze 디스패치(GITHUB_TOKEN push 는 news-analyze 를 못 깨움 → 명시 발동)
+  contents: write   # candidates.json · pending/ · seen_urls.txt 커밋·push
+  actions: write    # news-analyze 디스패치(analyze=true 한정)
 
 jobs:
   scrape:
@@ -34,6 +36,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -43,7 +48,7 @@ jobs:
       - name: Install deps
         run: pip install --quiet feedparser requests
 
-      - name: Collect (RSS → top_urls.txt)
+      - name: Collect (RSS → articles.json · top_urls.txt)
         run: |
           python3 scraper/knews_scraper.py \
             --out scraper/out \
@@ -51,10 +56,32 @@ jobs:
             --min-cross "${{ inputs.min_cross || '2' }}" \
             --top "${{ inputs.top || '20' }}"
 
+      - name: Update 수집함 (candidates.json — 항상)
+        run: python3 scraper/to_candidates.py scraper/out/articles.json
+
+      - name: Commit candidates.json
+        run: |
+          if [ -z "$(git status --porcelain viewer/candidates.json)" ]; then
+            echo "수집함 변동 없음 — 커밋 생략"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add viewer/candidates.json
+          git commit -m "scrape: 수집함 candidates 갱신"
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+          done
+          echo "::error::candidates push 실패"; exit 1
+
+      # ── 자동분석 (analyze=true 한정 — 유료) ──────────────────────────────
       - name: Emit to pending/ (중복 스킵)
+        if: ${{ (inputs.analyze || 'false') == 'true' }}
         run: python3 scraper/to_pending.py | tee /tmp/emit.out
 
       - name: Commit & trigger analyze
+        if: ${{ (inputs.analyze || 'false') == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -67,7 +94,11 @@ jobs:
           git add pending scraper/seen_urls.txt
           NEW="$(sed -n 's/^NEW=//p' /tmp/emit.out | tail -1)"
           git commit -m "scrape: pending ${NEW:-?}건 적재 (RSS 교차등장)"
-          git push
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && break
+            git rebase --abort 2>/dev/null || true
+          done
           # GITHUB_TOKEN 푸시는 news-analyze(push 트리거)를 재귀방지로 못 깨운다 → 명시 디스패치.
           gh workflow run news-analyze.yml \
             || echo "::warning::news-analyze 디스패치 실패 — Actions 탭에서 수동 실행"
