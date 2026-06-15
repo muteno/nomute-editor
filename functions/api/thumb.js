@@ -43,6 +43,7 @@ export async function onRequestPost({ request, env }) {
     if (app === '1') {
       for (const k of ['offset_x', 'offset_y']) if (Number.isFinite(+p[k]) && p[k] !== '') params[k] = Math.trunc(+p[k]);
       if (Number.isFinite(+p.scale) && p.scale !== '') params.scale = Math.max(0.1, Math.min(5, +p.scale));
+      if (Number.isFinite(+p.opacity) && p.opacity !== '') params.opacity = Math.max(0, Math.min(100, Math.trunc(+p.opacity)));
       if (p.blur) params.blur = true;
     }
   } else if (app === '2') {                   // 릴스 — 부제 + 제목

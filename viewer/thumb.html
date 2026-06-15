@@ -70,6 +70,17 @@
       </label>
     </div>
 
+    <!-- OPA (1 — 오버레이 투명도: 58 기본 / 30 / 직접입력) -->
+    <div id="opaBox" class="none">
+      <label>투명도 (OPA)</label>
+      <div class="seg" id="opaSeg">
+        <button data-opa="58" class="on">58 (기본)</button>
+        <button data-opa="30">30</button>
+        <button data-opa="custom">직접입력</button>
+      </div>
+      <input type="number" id="opaNum" min="0" max="100" value="45" placeholder="0–100" class="none" style="margin-top:6px">
+    </div>
+
     <!-- lines (1·4) -->
     <div id="linesBox" class="none">
       <label>텍스트 (줄바꿈 = 여러 줄)</label>
@@ -119,6 +130,7 @@ function selApp(a) {
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2');   // 1=포스트·2=릴스는 포맷 고정(명령어가 포맷)
+  $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => selApp(t.dataset.app));
 
@@ -127,6 +139,17 @@ document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
   FMT = b.dataset.fmt;
   document.querySelectorAll('#fmtSeg button').forEach(x => x.classList.toggle('on', x === b));
 });
+
+// ---- OPA 세그 (58 기본 / 30 / 직접입력) ----
+document.querySelectorAll('#opaSeg button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#opaSeg button').forEach(x => x.classList.toggle('on', x === b));
+  $('#opaNum').classList.toggle('none', b.dataset.opa !== 'custom');
+});
+function getOpa() {
+  const sel = document.querySelector('#opaSeg .on');
+  if (sel && sel.dataset.opa === 'custom') return Math.max(0, Math.min(100, parseInt($('#opaNum').value) || 0));
+  return parseInt(sel && sel.dataset.opa) || 58;
+}
 
 // ---- 파일 ----
 $('#file').onchange = e => {
@@ -146,7 +169,7 @@ $('#file').onchange = e => {
 function buildParams() {
   const linesArr = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
   if (APP === '4') return { fmt: FMT, lines: linesArr };
-  if (APP === '1') return { fmt: 'post', lines: linesArr };   // /1 = post 고정
+  if (APP === '1') return { fmt: 'post', lines: linesArr, opacity: getOpa() };   // /1 = post 고정 + OPA
   if (APP === '2') return { sub: $('#sub').value.trim(), title: $('#title').value.trim() };
   if (APP === '3') return { fmt: FMT, year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: $('#cplat').value.trim() };
 }
