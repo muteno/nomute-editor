@@ -315,6 +315,37 @@
   .pin-cancel:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   @media (max-width:600px) { #pindlg { width:90vw; height:auto; max-height:none; border-radius:24px; border:1px solid var(--line); } }
 
+  /* ── 카드 수정 2차 팝업(글래스) ── */
+  #editdlg { width:min(440px,94vw); max-width:440px; max-height:92vh; height:auto; margin:auto; padding:0; color:var(--fg);
+    background:linear-gradient(165deg, rgba(27,44,32,.82), rgba(11,19,14,.92)); backdrop-filter:blur(30px) saturate(1.5); -webkit-backdrop-filter:blur(30px) saturate(1.5);
+    border:1px solid rgba(255,255,255,.14); border-radius:22px; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  #editdlg::backdrop { background:rgba(4,8,5,.5); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .ed-h { display:flex; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line2); }
+  .ed-title { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-.2px; }
+  .ed-x { margin-left:auto; width:30px; height:30px; border-radius:50%; font-size:13px; color:var(--mut);
+    background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }
+  .ed-x:hover { color:var(--fg); }
+  .ed-body { padding:14px 16px; overflow-y:auto; max-height:calc(92vh - 132px); display:flex; flex-direction:column; gap:7px; }
+  .ed-img { width:100%; aspect-ratio:4/5; object-fit:cover; border-radius:14px; border:1px solid var(--line); display:block; background:var(--glass2); }
+  .ed-lbl { font-size:12px; font-weight:800; color:var(--mut); margin-top:9px; }
+  .ed-hint { font-weight:600; opacity:.7; } .ed-hint b { color:var(--accent); }
+  .ed-tools { display:flex; gap:7px; }
+  .ed-emph { font:800 12px inherit; color:var(--accent); background:var(--accent-dim); border:1px solid rgba(15,253,2,.4);
+    border-radius:999px; padding:6px 13px; cursor:pointer; } .ed-emph:active { transform:scale(.94); }
+  .ed-text, .ed-wish { width:100%; box-sizing:border-box; font:inherit; font-size:14px; line-height:1.6; color:var(--fg);
+    background:rgba(5,12,8,.6); border:1px solid var(--line); border-radius:12px; padding:11px 13px; resize:vertical; }
+  .ed-text:focus, .ed-wish:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,253,2,.18); }
+  .ed-prevwrap { display:flex; gap:8px; align-items:baseline; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:10px; padding:8px 11px; }
+  .ed-prevlbl { font-size:10.5px; font-weight:800; color:var(--mut); flex:none; }
+  .ed-prev { font-size:14px; line-height:1.6; color:var(--fg); white-space:pre-line; min-height:1.6em; }
+  .ed-prev .kw { color:var(--accent); font-weight:800; }
+  .ed-foot { display:flex; gap:10px; padding:13px 16px; border-top:1px solid var(--line2); }
+  .ed-cancel { flex:1; padding:12px; font:700 13px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
+  .ed-cancel:hover { color:var(--fg); }
+  .ed-go { flex:2; padding:12px; font:800 13px inherit; color:var(--on-accent); background:linear-gradient(90deg,#d8ff3d,var(--accent)); border:none; border-radius:999px; cursor:pointer; }
+  .ed-go:active { transform:scale(.97); } .ed-go[disabled] { opacity:.55; cursor:default; }
+  @media (max-width:600px) { #editdlg { width:94vw; } }
+
   /* ── 다이얼로그 ── */
   dialog {
     width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
@@ -572,6 +603,21 @@
   </div>
   <div class="pin-err" id="pinerr"></div>
   <button class="pin-cancel" type="button" onclick="pindlg.close()">취소</button>
+</dialog>
+
+<!-- 카드 개별 수정(2차 팝업) — 이미지 보며 텍스트·이미지 희망 입력 → 재발사(1b) -->
+<dialog id="editdlg">
+  <div class="ed-h"><b class="ed-title">카드 수정</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()">✕</button></div>
+  <div class="ed-body">
+    <img class="ed-img" alt="">
+    <label class="ed-lbl">텍스트 <span class="ed-hint">— 글자 선택 후 <b>✦강조</b></span></label>
+    <div class="ed-tools"><button class="ed-emph" type="button">✦ 강조</button></div>
+    <textarea class="ed-text" id="edText" rows="4" placeholder="카드 문구"></textarea>
+    <div class="ed-prevwrap"><span class="ed-prevlbl">미리보기</span><div class="ed-prev" id="edPrev"></div></div>
+    <label class="ed-lbl">이미지 수정 희망</label>
+    <textarea class="ed-wish" id="edWish" rows="3" placeholder="예: 더 밝게 / 인물 클로즈업 / 배경 단순하게 (비우면 텍스트만 반영)"></textarea>
+  </div>
+  <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">재발사</button></div>
 </dialog>
 
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
@@ -1031,7 +1077,7 @@ function feedSec(a) {
 
   const track = document.createElement('div'); track.className = 'feedtrack'; track.tabIndex = 0;
   track.setAttribute('aria-label', '카드 뉴스 피드 — 좌우로 한 장씩 넘겨보기');
-  model.forEach((card, i) => track.appendChild(renderSlide(card, i, { slug, total: totalN })));
+  model.forEach((card, i) => track.appendChild(renderSlide(card, i, { slug, total: totalN, file: a.file })));
   host.appendChild(track);
 
   // 키보드 ←/→ = 한 장씩(스냅). 위치 카운트는 각 슬라이드 좌상단 오버레이.
@@ -1054,11 +1100,13 @@ function renderSlide(card, i, ctx) {
          <span class="slide-no">${card.n}/${ctx.total}</span>
          <div class="slide-acts">
            <a class="sbtn" href="${esc(v.image)}" download="${esc(dlName)}" aria-label="장면 ${card.n} 저장">${DOWNLOAD_SVG}</a>
-           <button class="sbtn edit" type="button" aria-label="장면 ${card.n} 수정" disabled title="곧 — 개별 수정·재생성">${EDIT_SVG}</button>
+           <button class="sbtn edit" type="button" aria-label="장면 ${card.n} 수정" title="이 카드 수정">${EDIT_SVG}</button>
          </div>
        </div>`;
     const im = fig.querySelector('img');
     im.onload = () => im.classList.add('in'); im.onerror = () => im.classList.add('in'); im.src = v.image;
+    const eb = fig.querySelector('.sbtn.edit');
+    eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 재발사(1b)
   } else {
     fig.innerHTML = `<div class="slide-img"><div class="slide-wait">🍌 이미지 생성 대기…<br>다음 갱신 때 채워져</div></div>`;
   }
@@ -1078,6 +1126,36 @@ async function saveAll(model, slug, btn) {
     await new Promise(r => setTimeout(r, 250));
   }
   if (btn) { btn.textContent = '저장 완료 ✓'; setTimeout(() => { btn.textContent = label || '모두 저장'; }, 1800); }
+}
+
+// ── 카드 개별 수정(2차 팝업) — 이미지 보며 텍스트·이미지 희망 입력 → 재발사(1b) ──
+let EDIT_CTX = null;
+function openEdit(o) {
+  EDIT_CTX = o;
+  const v = o.card.versions[o.card.cur], dlg = $('#editdlg');
+  dlg.querySelector('.ed-title').textContent = `카드 ${o.card.n} 수정`;
+  const img = dlg.querySelector('.ed-img'); img.src = v.image || ''; img.alt = `카드 ${o.card.n}`;
+  $('#edText').value = v.caption || '';   // 텍스트 = 현재 캡션 프리필(요구사항)
+  $('#edWish').value = '';
+  renderEditPreview();
+  dlg.showModal();
+  setTimeout(() => $('#edText').focus({ preventScroll: true }), 50);
+}
+function renderEditPreview() { $('#edPrev').innerHTML = capHtml($('#edText').value) || '<span style="opacity:.4">(빈 텍스트)</span>'; }
+// 선택 영역을 **…**로 토글 — '*' 직접 안 쳐도 강조(내부 저장은 ** 유지·렌더 호환).
+function emphasize() {
+  const t = $('#edText'), s = t.selectionStart, e = t.selectionEnd, val = t.value, sel = val.slice(s, e);
+  if (s === e) { t.value = val.slice(0, s) + '****' + val.slice(e); t.selectionStart = t.selectionEnd = s + 2; }
+  else if (val.slice(s - 2, s) === '**' && val.slice(e, e + 2) === '**') { t.value = val.slice(0, s - 2) + sel + val.slice(e + 2); t.selectionStart = s - 2; t.selectionEnd = e - 2; }
+  else { t.value = val.slice(0, s) + '**' + sel + '**' + val.slice(e); t.selectionStart = s + 2; t.selectionEnd = e + 2; }
+  t.focus(); renderEditPreview();
+}
+function submitEdit() {
+  if (!EDIT_CTX) return;
+  const text = $('#edText').value.trim(), wish = $('#edWish').value.trim();   // eslint-disable-line no-unused-vars
+  // 🚧 단일카드 재발사 백엔드는 다음 단계 연결 — 지금은 입력 UX 확정 단계(유료 발사 미연결).
+  const go = $('#edGo'), lbl = go.textContent; go.disabled = true; go.textContent = '재발사 연결 예정 — 곧';
+  setTimeout(() => { go.disabled = false; go.textContent = lbl; $('#editdlg').close(); }, 1600);
 }
 // ── 슛 PIN 입력 UI ──
 // confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.
@@ -1333,6 +1411,10 @@ window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
 const dlgTop = $('#dlgtop'), dlgEl = $('#dlg');
 dlgTop.addEventListener('click', () => dlgEl.scrollTo({ top:0, behavior:'smooth' }));
 dlgEl.addEventListener('scroll', () => dlgTop.classList.toggle('show', dlgEl.scrollTop > 360), { passive:true });
+// 카드 수정 팝업 배선(1회)
+$('#edText').addEventListener('input', renderEditPreview);
+$('#editdlg').querySelector('.ed-emph').onclick = emphasize;
+$('#edGo').onclick = submitEdit;
 
 $('#q').addEventListener('input', render);
 $('#cardonly').addEventListener('change', render);
