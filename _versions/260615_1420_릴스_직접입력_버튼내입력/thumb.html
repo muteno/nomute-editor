@@ -30,12 +30,6 @@
   .seg { display:flex; gap:6px; }
   .seg button { flex:1; padding:8px; background:#0e0f11; border:1px solid var(--line); border-radius:8px; color:var(--fg); cursor:pointer; }
   .seg button.on { border-color:var(--grn); color:var(--grn); }
-  /* 직접입력 = 버튼 자체가 입력창 (선택 시 라벨 숨고 안에 커서) */
-  #rOpaCustom { padding:0; overflow:hidden; }
-  #rOpaCustom .lab { display:block; padding:8px 2px; }
-  #rOpaCustom #rOpaNum { display:none; width:100%; padding:8px 2px; border:none; background:transparent; color:var(--grn); text-align:center; font:inherit; outline:none; }
-  #rOpaCustom.on .lab { display:none; }
-  #rOpaCustom.on #rOpaNum { display:block; }
   .file { display:block; padding:10px; border:1px dashed var(--line); border-radius:8px; text-align:center; color:var(--mut); cursor:pointer; }
   .file img { max-width:100%; max-height:170px; border-radius:6px; margin-top:8px; }
   .go { width:100%; margin-top:16px; padding:13px; background:var(--grn); color:#07210a; border:none; border-radius:10px; font-weight:800; font-size:15px; cursor:pointer; }
@@ -127,8 +121,9 @@
         <div class="seg" id="rOpaSeg">
           <button data-opa="60" class="on">60 (기본)</button>
           <button data-opa="30">30</button>
-          <button data-opa="custom" id="rOpaCustom"><span class="lab">직접입력</span><input type="text" id="rOpaNum" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
+          <button data-opa="custom">직접입력</button>
         </div>
+        <input type="number" id="rOpaNum" min="0" max="100" value="45" placeholder="0–100" class="none" style="margin-top:6px">
         <label>텍스트 (줄바꿈 = 여러 줄)</label>
         <textarea id="rLines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
         <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · 기본 출력 <b>opa60 + opa30</b>, 직접입력은 추가(+1)</div>
@@ -201,23 +196,15 @@ function selRmode(m) {
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
 
-// ---- 릴스 오버레이 OPA 세그 (60 기본 / 30 / 직접입력 = 버튼 안 입력창) ----
-const rOpaNum = $('#rOpaNum');
+// ---- 릴스 오버레이 OPA 세그 (60 기본 / 30 / 직접입력) ----
 document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#rOpaSeg button').forEach(x => x.classList.toggle('on', x === b));
-  if (b.dataset.opa === 'custom') { rOpaNum.focus(); rOpaNum.select(); }   // 누른 그 순간 버튼 안에 커서 활성
+  $('#rOpaNum').classList.toggle('none', b.dataset.opa !== 'custom');
 });
-rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 차면 바로 포커스 아웃(키보드 내려감)
-  let v = rOpaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
-  if (v !== '') v = String(Math.min(100, parseInt(v, 10)));
-  rOpaNum.value = v;
-  if (v.length >= 2) rOpaNum.blur();
-});
-function getReelsExtraOpa() {   // 직접입력 + 값 있을 때만 추가 opa(+1). 빈 값/비선택이면 null (기본 60·30만)
+function getReelsExtraOpa() {   // 직접입력일 때만 추가 opa(+1), 아니면 null (기본 60·30은 항상 출력)
   const sel = document.querySelector('#rOpaSeg .on');
-  if (!sel || sel.dataset.opa !== 'custom') return null;
-  const n = parseInt(rOpaNum.value, 10);
-  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
+  if (sel && sel.dataset.opa === 'custom') return Math.max(0, Math.min(100, parseInt($('#rOpaNum').value) || 0));
+  return null;
 }
 
 // ---- 파일 (재사용 바인더 — #file=/1·/5, #rFile=/2 오버레이) ----
