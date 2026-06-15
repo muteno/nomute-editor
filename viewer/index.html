@@ -332,12 +332,13 @@
   .ed-wish { width:100%; box-sizing:border-box; font:inherit; font-size:15px; line-height:1.6; color:var(--fg);
     background:rgba(5,12,8,.6); border:1px solid var(--line); border-radius:12px; padding:12px 13px; resize:vertical; min-height:78px; }
   .ed-wish:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,253,2,.18); }
-  /* 음절 칩 — 탭하면 강조(*불필요·칩이 곧 미리보기) */
-  .ed-chips { display:flex; flex-wrap:wrap; gap:3px; align-items:center; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
-  .ed-chip { font-size:16px; line-height:1.4; padding:3px 6px; border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2);
-    color:var(--fg); cursor:pointer; user-select:none; transition:background .12s, color .12s, border-color .12s; }
+  /* 어절 칩 — 한 줄=한 행(.ed-line). 카드 줄바꿈과 1:1 (폰 가로 달라도 행이 폭에 맞춰 균일 축소 --eds). */
+  .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
+  .ed-line { display:flex; flex-wrap:nowrap; align-items:center; gap:calc(3px * var(--eds,1)); min-height:calc(30px * var(--eds,1)); }   /* 한 카드 줄 = 한 행(중간 줄바꿈 없음) */
+  .ed-chip { font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(3px * var(--eds,1)) calc(6px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2);
+    color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
   .ed-chip:hover { border-color:rgba(15,253,2,.4); }
-  .ed-chip.sp { background:none; border:none; padding:0 5px; cursor:pointer; position:relative; border-radius:5px; }   /* 줄바꿈 토글 슬롯 */
+  .ed-chip.sp { background:none; border:none; padding:0 calc(5px * var(--eds,1)); cursor:pointer; position:relative; border-radius:5px; }   /* 줄바꿈 토글 슬롯 */
   .ed-chip.sp:hover { background:rgba(15,253,2,.1); }
   .ed-chip.sp:hover::after { content:'↵'; position:absolute; left:50%; top:-9px; transform:translateX(-50%); font-size:9px; color:var(--accent); }
   .ed-nl { display:inline-flex; align-items:center; font-size:10px; color:var(--accent); opacity:.7; cursor:pointer; padding:0 4px; align-self:center; }
@@ -348,7 +349,7 @@
   .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; }
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }   /* 줄 한도 초과 거부 */
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
-  .ed-br { flex-basis:100%; width:100%; height:0; }   /* 줄바꿈 = flex 줄넘김(<br>은 flex서 무력 → full-width 브레이크) */
+  .ed-nl { flex:none; }   /* ↵ 병합 핸들 = 그 행 끝에 붙음 */
   .ed-foot { display:flex; gap:10px; justify-content:flex-end; align-items:center; padding:11px 16px; border-top:1px solid var(--line2); }
   .ed-cancel { padding:9px 18px; font:700 12.5px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
   .ed-cancel:hover { color:var(--fg); }
@@ -1429,12 +1430,15 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
   const wrap = $('#edChips'); wrap.innerHTML = '';
   edMarkWarn();   // 줄별 가중폭 경고 마킹
   const nlNum = edTokens.filter(t => t.t === 'nl').length;
+  // 한 카드 줄 = 한 행(.ed-line, 중간 줄바꿈 없음). nl이면 그 행을 닫고 새 행 시작 → 에디터 행 = 카드 줄 1:1.
+  let row = document.createElement('div'); row.className = 'ed-line'; wrap.appendChild(row);
   edTokens.forEach(tok => {
-    if (tok.t === 'nl') {   // 줄바꿈 — ↵ 마커(탭하면 윗줄과 합침) + flex 줄넘김
+    if (tok.t === 'nl') {   // 줄바꿈 — ↵ 병합 핸들(탭하면 윗줄과 합침)을 그 행 끝에 붙이고 새 행으로
       const mk = document.createElement('span'); mk.className = 'ed-nl'; mk.textContent = '↵'; mk.title = '줄바꿈 — 탭하면 합침';
       mk.onclick = () => { edTokens[edTokens.indexOf(tok)] = { t: 'sp' }; renderEditChips(); };
-      const br = document.createElement('span'); br.className = 'ed-br';
-      wrap.appendChild(mk); wrap.appendChild(br); return;
+      row.appendChild(mk);
+      row = document.createElement('div'); row.className = 'ed-line'; wrap.appendChild(row);
+      return;
     }
     if (tok.t === 'sp') {   // 공백칩 = 줄바꿈 토글 슬롯(단어 사이에서만·4줄 캡)
       const g = document.createElement('span'); g.className = 'ed-chip sp'; g.innerHTML = '&nbsp;'; g.title = '탭하면 여기서 줄바꿈';
@@ -1444,7 +1448,7 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
         if (nlNum >= 3) { edReject(g); return; }   // 4줄 하드캡(nl 3개=4줄)
         edTokens[i] = { t: 'nl' }; renderEditChips();
       };
-      wrap.appendChild(g); return;
+      row.appendChild(g); return;
     }
     const sp = document.createElement('span'); sp.className = 'ed-chip' + (tok.on ? ' on' : '') + (tok._warn ? ' warn' : ''); sp.textContent = tok.text;
     sp.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
@@ -1471,8 +1475,23 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
       } else { tok.text = nt; }
       renderEditChips();
     };
-    wrap.appendChild(sp);
+    row.appendChild(sp);
   });
+  requestAnimationFrame(() => fitEditLines(wrap));   // 반응형 폭 맞춤(폰 가로 무관·균일 축소)
+}
+// 각 행(=카드 줄)이 박스 폭에 들어오도록 균일 축소율(--eds) 계산 — 자간·폰트·여백을 한꺼번에 % 스케일.
+// nowrap 행의 실폭(scrollWidth) 중 최대가 가용폭을 넘으면 그 비율만큼 전 행을 같은 크기로 줄임(줄=행 1:1 유지).
+function fitEditLines(wrap) {
+  if (!wrap) return;
+  const rows = wrap.querySelectorAll('.ed-line');
+  wrap.style.setProperty('--eds', '1');   // 기준(1배)에서 실폭 측정
+  const cs = getComputedStyle(wrap);
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 1;
+  if (avail <= 0) return;
+  let ratio = 1;
+  rows.forEach(r => { const w = r.scrollWidth; if (w > avail && w > 0) ratio = Math.min(ratio, avail / w); });
+  ratio = Math.max(0.6, Math.min(1, ratio));   // 하한 0.6(과축소 방지)
+  wrap.style.setProperty('--eds', ratio.toFixed(3));
 }
 // 어절 강조 → *강조* 문자열(연속 강조어절 병합·끝공백 제외·줄넘김 비강조=합성기 '줄넘김 금지')
 function buildEmphText() {
@@ -1890,6 +1909,8 @@ edBody.addEventListener('scroll', () => {
   if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
   edTop.classList.toggle('show', edBody.scrollTop > 56);   // 조금만 내려도 노출
 }, { passive: true });
+// 화면 회전·리사이즈 시 어절칩 행 폭 재계산(팝업 열려 있을 때만)
+window.addEventListener('resize', () => { if ($('#editdlg').open) fitEditLines($('#edChips')); }, { passive: true });
 // 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
 $('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
 $('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
