@@ -518,9 +518,9 @@
   .gal .dl:hover { color:var(--accent); }
   /* ── 섹션 3: 카드 뉴스 피드(인스타형 가로 스냅·한 장씩) ── */
   .feedhead { margin:6px 0 16px; }
-  .fi-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  /* 부제 — 2배·흰색. #feedsec.md 라 '.md h3'(13px·mut)에 눌려있던 걸 ID로 이김(이게 안 먹던 원인). */
-  #feedsec .fi-title { flex:1; margin:0; font-size:24px; font-weight:800; color:#fff; line-height:1.3; letter-spacing:-.5px; }
+  .fi-top { display:flex; align-items:flex-start; gap:10px; margin-bottom:16px; }   /* 부제↔카드박스 간격 조금 더 */
+  /* 부제 — 흰색·18px(이전 24의 75%). #feedsec.md 라 '.md h3'(13px·mut)에 눌려있던 걸 ID로 이김(이게 안 먹던 원인). */
+  #feedsec .fi-title { flex:1; margin:0; font-size:18px; font-weight:800; color:#fff; line-height:1.3; letter-spacing:-.4px; }
   .fi-saveall { flex:none; align-self:flex-start; margin-top:2px; display:inline-flex; align-items:center; gap:4px; font:800 10.5px/1 inherit; color:#fff;   /* 70% 축소·글래스 톤(강조색 X) */
     background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 10px; cursor:pointer; white-space:nowrap;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
@@ -560,13 +560,12 @@
   .sbtn:active { transform:scale(.85); }
   .sbtn:disabled { opacity:.5; cursor:default; }
   .sbtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
-  /* 앞뒤(버전) 네비 — 하단중앙 글래스 알약. 현재 미표시(최신 판만) — 캐러셀 좌우와 혼동돼 보류, 추후 UX 재설계. */
-  .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:flex; align-items:center; gap:1px;
-    background:rgba(12,16,14,.4); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:2px;
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
-  .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; }
-  .vbtn:disabled { opacity:.3; cursor:default; } .vbtn:not(:disabled):active { transform:scale(.85); }
-  .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; }
+  /* 버전 네비 = '전'/'후' 텍스트(하단중앙·바 없음). 여러 판일 때만(.show). 그 방향 판 있으면 흰색+그림자, 없으면 25% 비활성 느낌. */
+  .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:none; align-items:center; gap:22px; }
+  .slide-ver.show { display:flex; }
+  .vbtn { background:none; border:none; padding:4px 6px; font:800 13px inherit; letter-spacing:1px; color:rgba(255,255,255,.25); cursor:default; }   /* 기본 = 비활성(25% 흰색) */
+  .vbtn:not(:disabled) { color:#fff; text-shadow:0 1px 7px rgba(0,0,0,.95); cursor:pointer; }   /* 그 방향 판 있음 = 흰색+그림자 */
+  .vbtn:not(:disabled):active { transform:scale(.9); }
   .sbtn.voted { color:var(--accent); border-color:rgba(15,253,2,.45); background:rgba(15,253,2,.14); }
   /* 따봉/다운 피드백 패널(슬라이드 상단 오버레이·글래스) */
   .slide-fb { position:absolute; top:52px; left:10px; right:10px; z-index:4; padding:12px; border-radius:14px;
@@ -1245,12 +1244,14 @@ function feedSec(a, keepIdx = 0) {
 
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =
-    `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3></div>
+    `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3>
+       <button class="fi-saveall" type="button" title="모두 저장">${DOWNLOAD_SVG}<span class="lbl">Save All</span></button></div>
      <div class="fi-card">
        ${summary ? `<div class="fi-summary">${esc(summary)}</div>` : ''}
        <div class="fi-tech">${tech}</div>
      </div>`;
   host.appendChild(intro);
+  intro.querySelector('.fi-saveall').onclick = e => saveAll(model, slug, e.currentTarget);   // 모두 저장(우측 정렬)
 
   const track = document.createElement('div'); track.className = 'feedtrack'; track.tabIndex = 0;
   track.setAttribute('aria-label', '카드 뉴스 피드 — 좌우로 한 장씩 넘겨보기');
@@ -1300,10 +1301,9 @@ function feedSec(a, keepIdx = 0) {
        <button class="sbtn edit" type="button" aria-label="이 카드 수정" title="이 카드 수정">${EDIT_SVG}</button>
        <a class="sbtn save" aria-label="이 사진 저장">${DOWNLOAD_SVG}</a>
      </div>
-     <div class="slide-ver" hidden>
-       <button class="vbtn vprev" type="button" aria-label="이전 판">‹</button>
-       <span class="vlbl"></span>
-       <button class="vbtn vnext" type="button" aria-label="다음 판">›</button>
+     <div class="slide-ver">
+       <button class="vbtn vprev" type="button" aria-label="이전 판">전</button>
+       <button class="vbtn vnext" type="button" aria-label="다음 판">후</button>
      </div>`;
   wrap.appendChild(ui);
   const uiNo = ui.querySelector('.slide-no'), uiEdit = ui.querySelector('.edit'), uiSave = ui.querySelector('.save'),
@@ -1312,7 +1312,7 @@ function feedSec(a, keepIdx = 0) {
   let curIdx = -1;
   const setSlideImage = (slideEl, image) => {   // 같은 자리 사진만 교체(버전 넘김)
     const im = slideEl && slideEl.querySelector('img'); if (!im) return;
-    im.classList.remove('in'); im.onload = () => im.classList.add('in'); im.src = image; im.onclick = () => openLightbox(image);
+    im.classList.remove('in'); im.onload = () => im.classList.add('in'); im.src = image;   // 라이트박스 끔(탭 확대 없음)
   };
   const syncFeed = idx => {   // 현재 사진(idx)에 오버레이 바인딩 — '넘어간 후 그 사진에 버튼 적용'
     const card = model[idx]; if (!card) return;
@@ -1325,7 +1325,10 @@ function feedSec(a, keepIdx = 0) {
     ui.querySelector('.fbup').onclick = () => onThumb(card, 'up', ui, a.file);
     ui.querySelector('.fbdown').onclick = () => onThumb(card, 'down', ui, a.file);
     applyVoteState(ui, a.file, card.n);   // 기존 투표(localStorage) 반영
-    uiVer.hidden = true;   // 버전 네비 보류(캐러셀 좌우와 혼동) — 최신 판만 표시. 추후 UX 재설계 시 복원.
+    // 버전 네비 = 전/후. 여러 판일 때만 노출, 그 방향 판이 있으면 흰색+그림자(:not(:disabled)) 없으면 25% 비활성.
+    const showVer = card.versions.length > 1;
+    uiVer.classList.toggle('show', showVer);   // [hidden]은 .slide-ver{display}에 눌려서 안 먹음 → 클래스로 제어
+    if (showVer) { uiVprev.disabled = card.cur <= 0; uiVnext.disabled = card.cur >= card.versions.length - 1; }
     const fb = ui.querySelector('.slide-fb'); if (fb) fb.remove();   // 카드 전환 = 열린 피드백 패널 닫기
     ui.classList.toggle('reshooting', !!(track.children[idx] && track.children[idx].classList.contains('reshooting')));   // 재생성 중 카드면 오버레이 조작 잠금
   };
@@ -1354,7 +1357,7 @@ function renderSlide(card, i, ctx) {
     fig.innerHTML = `<div class="slide-img"><img class="slide-photo" loading="lazy" alt="카드 ${card.n}"></div>`;
     const im = fig.querySelector('img');
     im.onload = () => im.classList.add('in'); im.onerror = () => im.classList.add('in'); im.src = v.image;
-    im.onclick = () => openLightbox(v.image);   // 탭 → 풀스크린 라이트박스(좌상단 뒤로)
+    // 탭 확대(라이트박스) 끔 — 요청. (스와이프·드래그만)
   } else {
     fig.innerHTML = `<div class="slide-img"><div class="slide-wait">🍌 이미지 생성 대기…<br>다음 갱신 때 채워져</div></div>`;
   }
