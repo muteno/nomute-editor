@@ -79,6 +79,25 @@ for (const a of articles) {
     mkdirSync(join('viewer/cards', stem), { recursive: true });
     for (const n of images) copyFileSync(join(dir, n), join('viewer/cards', stem, n));
   }
+  const bust = p => { try { return '?v=' + Math.floor(statSync(p).mtimeMs); } catch { return ''; } };
+  // 버전 히스토리(앞뒤) — cards/<stem>/versions/card-NN/v0..vK(+v?.txt). { "N": [{img,text}, …] } (v0..vK, 마지막=현재).
+  const versions = {};
+  const vroot = join(dir, 'versions');
+  if (existsSync(vroot)) {
+    for (const cd of readdirSync(vroot)) {
+      const m = cd.match(/^card-(\d+)$/); if (!m) continue;
+      const vdir = join(vroot, cd);
+      const vs = readdirSync(vdir).filter(f => /^v\d+\.jpg$/i.test(f))
+        .sort((x, y) => parseInt(x.slice(1)) - parseInt(y.slice(1)));
+      if (vs.length < 2) continue;   // 1판뿐이면 히스토리 불필요
+      mkdirSync(join('viewer/cards', stem, 'versions', cd), { recursive: true });
+      versions[String(parseInt(m[1], 10))] = vs.map(f => {
+        copyFileSync(join(vdir, f), join('viewer/cards', stem, 'versions', cd, f));
+        let text = ''; try { text = readFileSync(join(vdir, f.replace(/\.jpg$/i, '.txt')), 'utf8'); } catch { /* 없음 */ }
+        return { img: `cards/${stem}/versions/${cd}/${f}${bust(join(vdir, f))}`, text: text.trim() };
+      });
+    }
+  }
   a.cards = {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     updated: status.updated || '',
@@ -87,10 +106,8 @@ for (const a of articles) {
     failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터
     md: cardsMd,
     // ?v=mtime = 캐시버스트: 재발사로 같은 파일명·새 내용일 때 브라우저가 새 이미지를 받게.
-    images: images.map(n => {
-      let v = ''; try { v = '?v=' + Math.floor(statSync(join(dir, n)).mtimeMs); } catch { /* noop */ }
-      return `cards/${stem}/${n}${v}`;
-    }),
+    images: images.map(n => `cards/${stem}/${n}${bust(join(dir, n))}`),
+    versions,   // 버전 히스토리(앞뒤축) — 비어있으면 {}
   };
 }
 
