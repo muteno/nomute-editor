@@ -10,7 +10,10 @@ on:
         description: '출력 id(타임스탬프)'
         type: string
       subs:
-        description: 'SRT 또는 STT/자막 텍스트'
+        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때)'
+        type: string
+      url:
+        description: '영상 URL(yt-dlp+Whisper STT) — 있으면 subs 무시'
         type: string
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
@@ -30,7 +33,7 @@ permissions:
 jobs:
   ly:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30   # 영상 URL 경로 Whisper 첫 다운(1.6GB)+STT 대비
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -45,6 +48,27 @@ jobs:
       - name: Install claude-code
         run: npm install -g @anthropic-ai/claude-code
 
+      # 영상 URL일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
+      - name: STT 환경 (영상 URL)
+        if: ${{ inputs.url != '' }}
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/ly/setup.sh
+          whisper: 'true'
+
+      - name: STT (영상 URL → Whisper 트랜스크립트)
+        if: ${{ inputs.url != '' }}
+        env:
+          URL: ${{ inputs.url }}
+        run: |
+          set -e
+          yt-dlp -x --audio-format mp3 --no-playlist -o "/tmp/audio.%(ext)s" "$URL" \
+            || { echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 > /tmp/transcript.txt \
+            || { echo "::error::Whisper STT 실패"; exit 1; }
+          echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
+          echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
+
       - name: Make ly subtitles
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || 'MUTENO')] }}
@@ -54,6 +78,10 @@ jobs:
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
           if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
             echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1
+          fi
+          # 영상 URL 경로면 STT 트랜스크립트를 입력(SUBS)으로 덮어씀
+          if [ -n "${LY_TRANSCRIPT:-}" ] && [ -s "${LY_TRANSCRIPT}" ]; then
+            SUBS="$(cat "${LY_TRANSCRIPT}")"; export SUBS
           fi
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/lymake.sh "$IN_ID"
