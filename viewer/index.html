@@ -418,6 +418,7 @@
   .feednav:active { transform:translateY(-50%) scale(.9); }
   .feednav.prev { left:8px; } .feednav.next { right:8px; }
   .feednav:disabled { opacity:0; pointer-events:none; }
+  @media (hover:hover) and (pointer:fine) { .feednav { width:42px; height:42px; font-size:24px; padding-bottom:3px; } }   /* PC = 원래 크기 / 폰(coarse)은 25px 유지 */
   .slide-img img { cursor:zoom-in; }
 
   /* ── 다이얼로그 ── */
@@ -1525,6 +1526,17 @@ function edReject(el) { el.classList.add('reject'); setTimeout(() => el.classLis
 function renderEditChips() {   // 어절칩 렌더 — 중첩 모델(edLines). 메인 필터칩 renderChips와 별개.
   _edRendering = true;   // innerHTML='' 가 포커스 칩을 떼면 동기 blur가 터짐 → 그 stale blur가 분할 재실행하는 것 차단
   const wrap = $('#edChips'); wrap.innerHTML = '';
+  // 빈 어절칩 정리 — 갓 추가돼 편집 대기 중인 1개(PENDING_EDIT)만 남기고 모두 제거.
+  // (_edRendering 가드가 빈칩 blur 정리를 삼켜 '+' 반복 시 빈 도형이 잔존하던 것 방지)
+  edLines.forEach((line, li) => {
+    for (let j = line.length - 1; j >= 0; j--) {
+      const pending = PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi === j;
+      if (line[j].text === '' && !pending) {
+        line.splice(j, 1);
+        if (PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi > j) PENDING_EDIT.wi--;   // 인덱스 보정
+      }
+    }
+  });
   edMarkWarn();
   const full = edLines.length >= MAX_LINES;
   edLines.forEach((line, li) => {
