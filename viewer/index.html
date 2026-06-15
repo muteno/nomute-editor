@@ -542,6 +542,24 @@
   .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; }
   .vbtn:disabled { opacity:.3; cursor:default; } .vbtn:not(:disabled):active { transform:scale(.85); }
   .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; }
+  .sbtn.voted { color:var(--accent); border-color:rgba(15,253,2,.45); background:rgba(15,253,2,.14); }
+  /* 따봉/다운 피드백 패널(슬라이드 상단 오버레이·글래스) */
+  .slide-fb { position:absolute; top:52px; left:10px; right:10px; z-index:4; padding:12px; border-radius:14px;
+    background:rgba(8,12,10,.78); border:1px solid rgba(255,255,255,.16); box-shadow:0 10px 30px rgba(0,0,0,.45);
+    backdrop-filter:blur(18px) saturate(1.2); -webkit-backdrop-filter:blur(18px) saturate(1.2); display:flex; flex-direction:column; gap:9px; }
+  .fb-vote { font-size:13px; font-weight:800; color:#fff; } .fb-sub { font-weight:600; color:rgba(255,255,255,.55); font-size:11.5px; }
+  .fb-aspect { display:flex; gap:7px; }
+  .fb-aspect button { flex:1; padding:8px; font:700 12.5px inherit; color:rgba(255,255,255,.72); background:rgba(255,255,255,.06);
+    border:1px solid var(--line2); border-radius:10px; cursor:pointer; transition:color .12s, background .12s, border-color .12s; }
+  .fb-aspect button.on { color:var(--accent); border-color:rgba(15,253,2,.4); background:rgba(15,253,2,.1); }
+  .fb-comment { font:inherit; font-size:13px; color:#fff; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
+  .fb-comment::placeholder { color:rgba(255,255,255,.4); } .fb-comment:focus { outline:none; border-color:rgba(15,253,2,.4); }
+  .fb-act { display:flex; gap:8px; justify-content:flex-end; }
+  .fb-act button { padding:8px 15px; font:700 12.5px inherit; border-radius:999px; cursor:pointer; }
+  .fb-cancel { color:rgba(255,255,255,.7); background:rgba(255,255,255,.06); border:1px solid var(--line2); }
+  .fb-save { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }
+  .fb-save[disabled] { opacity:.55; } .fb-act button:active { transform:scale(.95); }
+  .fb-done { font-size:13px; font-weight:800; color:var(--accent); text-align:center; padding:6px 0; }
   .slide-wait { aspect-ratio:4/5; display:grid; place-items:center; border-radius:16px; border:1px solid var(--line);
     background:rgba(5,12,8,.4); color:var(--accent); font-size:13px; text-align:center; padding:0 18px; line-height:1.5; }
   @media (prefers-reduced-motion: reduce) { .feedtrack { scroll-behavior:auto; } .slide-img img { transition:none; } }
@@ -1231,6 +1249,8 @@ function renderSlide(card, i, ctx) {
          <img class="slide-photo" loading="lazy" alt="카드 ${card.n}">
          <span class="slide-no"><b>${card.n}</b>/${ctx.total}</span>
          <div class="slide-acts">
+           <button class="sbtn fbup" type="button" aria-label="좋았던 카드">${THUMBUP_SVG}</button>
+           <button class="sbtn fbdown" type="button" aria-label="아쉬운 카드">${THUMBDOWN_SVG}</button>
            <button class="sbtn edit" type="button" aria-label="장면 ${card.n} 수정" title="이 카드 수정">${EDIT_SVG}</button>
            <a class="sbtn" href="${esc(v.image)}" download="${esc(dlName)}" aria-label="장면 ${card.n} 저장">${DOWNLOAD_SVG}</a>
          </div>
@@ -1240,6 +1260,8 @@ function renderSlide(card, i, ctx) {
     im.onclick = () => openLightbox(v.image);   // 탭 → 풀스크린 라이트박스(좌상단 뒤로)
     const eb = fig.querySelector('.sbtn.edit');
     eb.onclick = () => openEdit({ card, idx: i, file: ctx.file });   // 2차 팝업 — 텍스트·이미지 수정 → 변경(1b)
+    fig.querySelector('.fbup').onclick = () => openFeedback(card, 'up', fig, ctx.file);     // 👍 누적
+    fig.querySelector('.fbdown').onclick = () => openFeedback(card, 'down', fig, ctx.file); // 👎 누적
     if (card.versions.length > 1) {   // 앞뒤(버전) 네비 — 좌우(카드)와 다른 축
       const ver = document.createElement('div'); ver.className = 'slide-ver';
       ver.innerHTML = `<button class="vbtn" data-d="-1" aria-label="이전 판"${card.cur <= 0 ? ' disabled' : ''}>‹</button>`
@@ -1364,6 +1386,41 @@ function pollWhilePending() {
 
 // 카드 이미지 라이트박스 — 풀스크린(좌상단 뒤로). 새 탭(target=_blank) 대신 인앱.
 function openLightbox(src) { const lb = $('#lbox'); lb.querySelector('.lbox-img').src = src || ''; lb.showModal(); }
+
+// ── 따봉/다운 피드백 누적 — 좋았던/아쉬운 카드의 (텍스트+프롬프트)를 측면(이미지/텍스트)·의견과 적재 → 품질개선 데이터 ──
+function openFeedback(card, vote, slideEl, file) {
+  const host = slideEl.querySelector('.slide-img'); if (!host) return;
+  const ex = host.querySelector('.slide-fb'); if (ex) { ex.remove(); }
+  const up = vote === 'up';
+  const fb = document.createElement('div'); fb.className = 'slide-fb';
+  fb.innerHTML =
+    `<div class="fb-vote">${up ? '👍 좋았던 점' : '👎 아쉬운 점'} <span class="fb-sub">— 무엇에 대해?</span></div>
+     <div class="fb-aspect"><button type="button" data-a="image" class="on">이미지</button><button type="button" data-a="text">텍스트</button></div>
+     <input class="fb-comment" maxlength="300" placeholder="의견(선택) — 안 써도 돼">
+     <div class="fb-act"><button type="button" class="fb-cancel">취소</button><button type="button" class="fb-save">기록</button></div>`;
+  let aspect = 'image';
+  fb.querySelectorAll('.fb-aspect button').forEach(b => b.onclick = () => {
+    aspect = b.dataset.a; fb.querySelectorAll('.fb-aspect button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  fb.querySelector('.fb-cancel').onclick = () => fb.remove();
+  fb.querySelector('.fb-save').onclick = () => submitFeedback({ file, card: card.n, vote, aspect, comment: fb.querySelector('.fb-comment').value.trim() }, fb, slideEl);
+  host.appendChild(fb);
+  setTimeout(() => fb.querySelector('.fb-comment').focus({ preventScroll: true }), 50);
+}
+function submitFeedback(p, fb, slideEl) {
+  const save = fb.querySelector('.fb-save'); save.disabled = true; save.textContent = '기록 중…';
+  fetch('api/feedback', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ article: p.file, card: String(p.card), vote: p.vote, aspect: p.aspect, comment: p.comment }),
+  }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
+    .then(({ ok, j }) => {
+      if (ok && j.ok) {
+        fb.innerHTML = '<div class="fb-done">기록됐어 — 고마워! 🙌</div>';
+        const b = slideEl.querySelector(p.vote === 'up' ? '.fbup' : '.fbdown'); if (b) b.classList.add('voted');
+        setTimeout(() => fb.remove(), 1100);
+      } else { save.disabled = false; save.textContent = '기록'; alert(j.error || '실패'); }
+    }).catch(e => { save.disabled = false; save.textContent = '기록'; alert('요청 실패: ' + e.message); });
+}
 // ── 슛 PIN 입력 UI ──
 // confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.
 // 한 자 입력→다음 칸 자동이동, 4번째 입력→엔터 없이 자동 resolve. 취소=null.
@@ -1453,6 +1510,8 @@ async function makeCards(target, btn, mode) {
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const DOWNLOAD_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
 const EDIT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
+const THUMBUP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3z"/><path d="M7 10l4.5-7.5a2 2 0 0 1 2.5 2V8h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.6 20H7"/></svg>';
+const THUMBDOWN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3z"/><path d="M17 14l-4.5 7.5a2 2 0 0 1-2.5-2V16H5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 6.4 4H17"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 async function copyText(text, btn) {
   text = (text || '').replace(/\n+$/, '');
