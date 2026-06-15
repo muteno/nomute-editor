@@ -506,11 +506,11 @@
   /* ── 섹션 3: 카드 뉴스 피드(인스타형 가로 스냅·한 장씩) ── */
   .feedhead { margin:6px 0 16px; }
   .fi-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-  .fi-title { flex:1; margin:0; font-size:19px; font-weight:800; color:var(--fg); line-height:1.4; letter-spacing:-.4px; }  /* 부제 = 상단 h1과 동일 19px */
-  .fi-saveall { flex:none; display:inline-flex; align-items:center; gap:5px; font:800 12px/1 inherit; color:#fff;   /* 아래 슬라이드 버튼과 동일 글래스 톤(강조색 X) */
-    background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:8px 13px; cursor:pointer; white-space:nowrap;
+  .fi-title { flex:1; margin:0; font-size:22px; font-weight:800; color:var(--fg); line-height:1.32; letter-spacing:-.5px; }  /* 부제 — 크게 */
+  .fi-saveall { flex:none; align-self:flex-start; margin-top:2px; display:inline-flex; align-items:center; gap:4px; font:800 10.5px/1 inherit; color:#fff;   /* 70% 축소·글래스 톤(강조색 X) */
+    background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 10px; cursor:pointer; white-space:nowrap;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
-  .fi-saveall svg { display:block; } .fi-saveall:active { transform:scale(.95); } .fi-saveall[disabled] { opacity:.6; }
+  .fi-saveall svg { display:block; width:12px; height:12px; } .fi-saveall:active { transform:scale(.95); } .fi-saveall[disabled] { opacity:.6; }
   .feedcount { font-size:13px; font-weight:600; color:var(--mut); }   /* (미사용) */
   .fi-card { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:16px; padding:13px 15px; }
   .fi-summary { font-size:13.5px; line-height:1.65; color:var(--fg); }
@@ -1165,9 +1165,15 @@ const SENSITIVE_MAP = [
   [/자살|부고|사망|숨졌|목숨|투신/, '인명피해'], [/마약|펜타닐|필로폰/, '마약'], [/아동|미성년|소아/, '아동'],
   [/참사|재난|붕괴|화재|침몰/, '참사'], [/학대|폭행|폭력|구타/, '폭력'], [/혐오|차별|증오/, '혐오'], [/테러/, '테러'],
 ];
-function sensitiveTag(text = '') {
-  for (const [re, ko] of SENSITIVE_MAP) if (re.test(text)) return ko;
-  return '';
+// 주의(민감) 태그 — 제목+요약 스캔, 유관도(매칭 횟수)순 최대 2개.
+function sensitiveTags(text = '') {
+  const hits = [];
+  for (const [re, ko] of SENSITIVE_MAP) {
+    const m = text.match(new RegExp(re.source, 'gi'));
+    if (m) hits.push({ ko, n: m.length });
+  }
+  hits.sort((a, b) => b.n - a.n);   // 많이 언급 = 더 유관
+  return hits.slice(0, 2).map(h => h.ko);
 }
 function buildFeedModel(a) {
   const c = a.cards || {}, imgs = c.images || [], vmap = c.versions || {};
@@ -1207,10 +1213,10 @@ function feedSec(a) {
 
   // 개요 = 제목(부제·박스 밖) + 한줄요약 + 표현기법 1줄(총 N장 | 화풍 | 분위기 | 민감 키워드). 전부 기존 데이터 유도.
   const summary = oneLineSummary(a.body);
-  const stag = sensitiveTag(`${title} ${summary}`);
+  const stags = sensitiveTags(`${title} ${summary}`);   // 최대 2개·유관도순
   const tech = `총 <b>${totalN}</b>장${partial ? ` (${totalN - doneN} 대기)` : ''}<span class="fi-sep">|</span>`
     + `화풍 : <b>${esc(styles[0] || '—')}</b><span class="fi-sep">|</span>분위기 : <b>${esc(moodLabel(c.md))}</b>`
-    + (stag ? `<span class="fi-sep">|</span>민감 키워드 : <b class="acc">#${esc(stag)}</b>` : '');
+    + (stags.length ? `<span class="fi-sep">|</span>주의 : ${stags.map(s => `<b class="acc">#${esc(s)}</b>`).join(' ')}` : '');
 
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =
@@ -1784,7 +1790,12 @@ $('#editdlg .ed-cno').onclick = () => $('#editdlg .ed-foot').classList.remove('c
 $('#editdlg .ed-cyes').onclick = fireEdit;
 const edBody = $('#editdlg .ed-body'), edTop = $('#edtop');
 edTop.onclick = () => edBody.scrollTo({ top: 0, behavior: 'smooth' });
-edBody.addEventListener('scroll', () => edTop.classList.toggle('show', edBody.scrollTop > 120), { passive: true });
+edBody.addEventListener('scroll', () => {
+  const ae = document.activeElement;   // 입력 중(키보드 자동스크롤)엔 토글 안 함 — '번쩍' 방지
+  if (ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable)) return;
+  edTop.classList.toggle('show', edBody.scrollTop > 120);
+}, { passive: true });
+$('#edWish').addEventListener('focus', () => edTop.classList.remove('show'));   // 이미지희망 입력 진입 = 맨위로 숨김
 // 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
 $('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
 $('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
