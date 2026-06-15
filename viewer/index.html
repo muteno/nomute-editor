@@ -1484,7 +1484,9 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
   requestAnimationFrame(() => fitEditLines(wrap));   // 반응형 폭 맞춤(폰 가로 무관·균일 축소)
 }
 // 각 행(=카드 줄)이 박스 폭에 들어오도록 균일 축소율(--eds) 계산 — 자간·폰트·여백을 한꺼번에 % 스케일.
-// nowrap 행의 실폭(scrollWidth) 중 최대가 가용폭을 넘으면 그 비율만큼 전 행을 같은 크기로 줄임(줄=행 1:1 유지).
+// 박스 폭 = 카드 한 줄 '최대치'(가중폭 EDLINE_WIDTH≈19.5)에 대응하도록 보정(--eds = 폰트·자간·여백 % 스케일).
+// 방법: 19.5짜리 대표 줄을 숨겨(content-width로) 측정 → 그게 박스폭(avail)이 되게 scale. 그러면 실제 줄은
+// 한도대비 비율만큼 가로를 차지(가득 차면 박스 끝). 폰 가로 달라도 % 비례. 비선형/빽빽한 줄은 안전망이 흡수.
 function fitEditLines(wrap) {
   if (!wrap) return;
   const rows = wrap.querySelectorAll('.ed-line');
@@ -1492,14 +1494,25 @@ function fitEditLines(wrap) {
   const cs = getComputedStyle(wrap);
   const avail = wrap.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2;
   if (avail <= 0) return;
-  wrap.style.setProperty('--eds', '1');   // 기준(1배)에서 실폭 측정
-  let eds = 1;
-  // 고정 테두리(1px) 때문에 폭이 완전 선형이 아님 → 수렴까지 누적 보정(2~3회면 충분, 잔여 overflow 0).
-  for (let pass = 0; pass < 4; pass++) {
-    let maxw = 0;
-    rows.forEach(r => { if (r.scrollWidth > maxw) maxw = r.scrollWidth; });
+  wrap.style.setProperty('--eds', '1');   // 기준(1배)에서 측정
+  // 기준 줄 = 가중폭 ~19.5(카드 전형 4어절). content-width로 재려고 absolute(stretch 영향 제거).
+  const ref = document.createElement('div'); ref.className = 'ed-line';
+  ref.style.cssText = 'position:absolute; left:-9999px; top:0; visibility:hidden; width:max-content;';
+  ['뉴스종합', '정치경제', '국제사회', '심층분석속보'].forEach((t, i) => {   // 18자+공백3 ≈ 가중폭 19.5
+    if (i) { const s = document.createElement('span'); s.className = 'ed-chip sp'; ref.appendChild(s); }
+    const c = document.createElement('span'); c.className = 'ed-chip'; c.textContent = t; ref.appendChild(c);
+  });
+  wrap.appendChild(ref);
+  const refW = ref.getBoundingClientRect().width;
+  wrap.removeChild(ref);
+  let eds = refW > 0 ? Math.min(1.1, avail / refW) : 1;   // 19.5 줄 = 박스폭 (소폭 확대 허용)
+  eds = Math.max(0.45, eds);
+  wrap.style.setProperty('--eds', eds.toFixed(3));
+  // 안전망 — 기준보다 빽빽한 줄(어절 많음)·고정 테두리 비선형으로 혹시 넘치면 수렴까지 축소(overflow 0 보장).
+  for (let pass = 0; pass < 3; pass++) {
+    let maxw = 0; rows.forEach(r => { if (r.scrollWidth > maxw) maxw = r.scrollWidth; });
     if (maxw <= avail) break;
-    eds = Math.max(0.5, eds * avail / maxw);
+    eds = Math.max(0.4, eds * avail / maxw);
     wrap.style.setProperty('--eds', eds.toFixed(3));
   }
 }
