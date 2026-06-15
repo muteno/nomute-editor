@@ -282,6 +282,11 @@
   .sc-pick:hover { background:rgba(15,253,2,.2); }
   .sc-pick:active { transform:scale(.93); }
   .sc-pick.done { color:var(--mut); background:rgba(255,255,255,.05); border-color:var(--line2); cursor:default; }
+  .sc-memo { margin-top:1px; }
+  .sc-memo-in { width:100%; box-sizing:border-box; background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:9px;
+    padding:7px 10px; color:var(--fg); font-size:12.5px; font-family:inherit; letter-spacing:-.1px; }
+  .sc-memo-in::placeholder { color:var(--mut); }
+  .sc-memo-in:focus { outline:none; border-color:var(--accent); background:rgba(15,253,2,.04); }
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
     padding:30px 16px calc(92px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 */
@@ -2303,13 +2308,28 @@ function renderScrap() {
     const lo = (c.cross || 0) < 2 ? ' lo' : '';
     const tm = scRelTime(c.published) || c.time || '';
     const catB = articleCat({ category: c.cat, title: c.title });   // 피드 카테고리 없거나(_all_) 미매핑이면 제목 키워드로 추정
+    const showMemo = (st.score === 1 || st.score === 5) && (c.cross || 0) >= 7;   // 극단 평점(1·5) + 교차⛓≥7 → 주관식 메모(강한 신호 = 취향 데이터 핵심)
     el.innerHTML =
       `<div class="sc-top">${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
        <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
-       <div class="sc-bot"><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>`;
+       <div class="sc-bot"><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
+       ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 메모 (선택·엔터 저장)"></div>` : ''}`;
     el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
     el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
     el.querySelector('.sc-pick').onclick = () => pickCard(c);
+    const mi = el.querySelector('.sc-memo-in');
+    if (mi) {                                   // value 는 프로퍼티로 주입(esc·따옴표 안전)
+      mi.value = st.memo || '';
+      const saveMemo = () => {
+        const v = mi.value.trim().slice(0, 200);
+        const cur = ratingsAll()[candId(c)] || {};
+        if (v === (cur.memo || '')) return;     // 변동 없으면 발사 안 함(스팸 방지)
+        saveRating(candId(c), { memo: v });
+        postRate({ id: candId(c), url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo: v });
+      };
+      mi.onblur = saveMemo;
+      mi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); mi.blur(); } };
+    }
     wrap.appendChild(el);
   });
 }
@@ -2317,7 +2337,7 @@ const _rateTimers = {};
 function rateCard(c, n) {
   const id = candId(c); saveRating(id, { score: n }); renderScrap();
   clearTimeout(_rateTimers[id]);   // 빠른 재평가(3→4→5)는 묶어 1회만 발사(커밋 스팸 방지)
-  _rateTimers[id] = setTimeout(() => { const s = ratingsAll()[id] || {}; postRate({ id, url: c.url || '', title: c.title || '', score: s.score || n, picked: !!s.picked }); }, 1000);
+  _rateTimers[id] = setTimeout(() => { const s = ratingsAll()[id] || {}; postRate({ id, url: c.url || '', title: c.title || '', score: s.score || n, picked: !!s.picked, memo: s.memo || '' }); }, 1000);
 }
 async function pickCard(c) {
   const id = candId(c); const cur = ratingsAll()[id] || {};

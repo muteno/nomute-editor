@@ -1,21 +1,20 @@
-# 월드컵 중계권 독점한 JTBC, 정작 한-체코전 날 '부도'
+# 월드컵 중계권 독점하고도 부도, JTBC '승자의 저주'
 
 ### [카드 1]
 **텍스트**
 ```text
-월드컵 중계권 독점한 JTBC ㅗㅗㅠㅗ허ㅜ
-한-체코전 터진 그날
-'부도'에 빠졌다
+월드컵 흥행 터진 그날
+중계권 독점 JTBC가 부도났다
+206억을 못 갚았다
+환호는 왜 비명이 됐나
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows. Camera: wide shot from low angle, shot on 24mm wide lens. Lighting/mood: single hard side-light cutting across the room with the green glow of a giant broadcast screen washing the dark control room, deep chiaroscuro, tense atmosphere. Scene: a dim broadcast control room in Korea (generic, no real logos); anchored in the upper-center, a lone director in a suit slumps at a control desk with head buried in hands, while glowing monitors above blaze with a roaring stadium victory crowd — the celebration light collapses onto his defeated posture, triumph and ruin in one frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dim broadcast control room) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium close-up from a low angle, shot on 70mm short telephoto lens. Lighting/mood: cold blue dim interior light from a wall of monitors, heavy and suffocating with faint trembling tension.
-Scene: a generic Korean broadcaster executive in a dark suit stands in a broadcast control room, his hollow tense face lit from below by a wall of live-soccer monitors glowing faintly in the upper area; a single small red default-warning indicator pulses near his hand, his eyes fixed forward in dread as a stadium roars unseen on the screens behind. Korean setting and faces by default.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02 glowing from the monitors), film-noir low-key lighting, deep shadows.
-no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Composition: ONE continuous surface (the control room floor and desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+minimal Korean text only if essential (a few characters max); convey meaning through pictograms and composition, not letters.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -27,19 +26,18 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-OTT에 광고가 무너지는데
-안전판인 '코리아풀'을 버리고
-JTBC는 단독 베팅에 나섰다
+답은 무너지는 광고 시장
+OTT에 밀려 매출이 추락했다
+4조원대 광고가 2조원대로
+그런데도 안전판을 버렸다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows. Camera: medium shot from a Dutch tilted angle, shot on 50mm lens. Lighting/mood: cold dim light, heavy and suffocating, faint trembling tension. Scene: a lone executive figure in a suit, anchored upper-center, deliberately steps out from under a large shared umbrella (a single broad canopy symbolizing the broadcasters' joint-purchase shelter) into cold rain, walking alone; behind and above him on a wall looms a steeply descending bar-graph silhouette of collapsing advertising revenue, the bars sinking lower and lower; the tilted horizon makes his choice feel unstable and reckless.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark newsroom floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: wide shot from a bird's-eye view, shot on 24mm wide lens. Lighting/mood: overcast diffused cold light, flat shadows, muted somber mood with a single hard glow tracing one path.
-Scene: seen from directly above, a falling staircase of collapsing blocks shaped like a descending bar chart cuts across a dark newsroom floor; a lone suited figure steps away from a tight cluster of three other figures standing together, walking alone onto a narrow lit path that leads into surrounding darkness. The lone figure reads as a reckless bet, the abandoned group reads as the safety net left behind. Korean setting and faces by default.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02 tracing the lone figure's path), film-noir low-key lighting, deep shadows.
-no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Composition: ONE continuous surface (the wet rain-soaked street) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+minimal Korean text only if essential (a few characters max); convey the falling-revenue idea through the descending bar-graph shape, not numbers or letters.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -51,19 +49,18 @@ NEGATIVE — strictly avoid:
 ### [카드 3]
 **텍스트**
 ```text
-올림픽·월드컵 중계권 7천억원
-국내에 되팔려던 계산은
-지상파의 외면에 빗나갔다
+공동구매 코리아풀서 나와
+7천억에 중계권을 독식했다
+되팔아 남기려던 계산
+1900억 산 걸 140억에 넘겼다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows. Camera: extreme close-up from high angle, shot on 100mm macro lens. Lighting/mood: warm focused desk-lamp light over a dark surface, quiet wistful tension, precise close-up texture. Scene: extreme close-up looking down on two hands at a desk, anchored upper-center — one hand pushes forward a thick, heavy, expensive sealed broadcast-rights contract (its wax seal glowing faint neon green), while the other hand receives in return only a thin, pitifully small slip; the buy-high, sell-cheap exchange captured in the gesture and the stark size contrast between the two objects; fine ink detail and screentone.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark negotiation table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium shot from a high angle, shot on 35mm lens. Lighting/mood: single hard side-light cutting across the table with deep chiaroscuro shadows and a tense atmosphere.
-Scene: looking down on a dark negotiation table, a pair of tense hands push a thick stack of contract papers and a towering pile of money chips forward toward three suited figures who are turning their backs and walking away into shadow; the offered stack sits huge and ignored in the upper-center, the rejection vector reads clearly in the turned shoulders. The mood is a deal collapsing. Korean setting and faces by default.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02 on the rejected stack), film-noir low-key lighting, deep shadows.
-no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Composition: ONE continuous surface (the desk surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+minimal Korean text only if essential (a few characters max); the documents carry NO readable body text — convey value through thickness and size contrast, not letters.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -75,19 +72,18 @@ NEGATIVE — strictly avoid:
 ### [카드 4]
 **텍스트**
 ```text
-부채비율 2443%로 치솟고
+헐값 재판매에 빚만 쌓였다
+부채비율 2443.6%
 신용등급은 투기등급 추락
 불똥은 중앙일보로 번졌다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows. Camera: extreme long shot from worm's-eye view, shot on 20mm wide lens. Lighting/mood: cold blue desolate pre-dawn tone, vast empty void, oppressive scale. Scene: from far below, a tiny lone broadcaster tower-building, anchored upper-center, stands dwarfed beneath a colossal credit-rating gauge whose needle plunges steeply downward like a collapsing arc, the green accent draining out of it; a single giant domino tilts and begins toppling toward a second, smaller adjacent building (the parent company) — the failure spreading; immense desolate emptiness emphasizes the fall.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark office interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: tight close-up from eye-level, shot on 85mm portrait lens. Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension with a creeping ember glow at the edge.
-Scene: a tight close-up of a generic Korean executive's face filling the upper frame, eyes downcast and jaw clenched in despair; behind him a steep debt line soars up then snaps downward like a falling body, and a thin line of orange embers creeps from his shoulder toward a second faint building silhouette in the background, signalling the spread of crisis. Emotional peak — no relief in the expression. Korean setting and faces by default.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02 on the plunging graph line, with a faint orange ember spread), film-noir low-key lighting, deep shadows.
-no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Composition: ONE continuous surface (the vast dark ground and void) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+minimal Korean text only if essential (a few characters max); show the downgrade as a plunging gauge needle and a falling arc, NOT as rendered letters or rating codes.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -99,19 +95,18 @@ NEGATIVE — strictly avoid:
 ### [카드 5]
 **텍스트**
 ```text
-독점은 더는 승리 공식이 아니다
+독점은 더 이상 승리 공식이 아니다
+안전판 버린 베팅의 끝
 승자의 저주는 운이 아니라
-구조에서 비롯된다
+구조가 부른 결말이다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows. Camera: wide shot from eye-level, shot on 35mm lens. Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber finality. Scene: a vast empty stadium at dusk, the stands deserted, anchored upper-center a single toppled trophy and a broken crown lie on the field where a championship should have stood; faint neon-green light bubbles drift up and burst in the still air — the burst of a market bubble; the loneliness of a hollow victory, quiet and final.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark stage floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: wide shot from a worm's-eye view, shot on 50mm standard lens. Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense closing atmosphere.
-Scene: from near the floor looking up, a lone oversized broadcast-trophy crown stands toppled and cracked on a bare dark stage, its fractured surface still leaking a fading thread of light while the vast empty hall looms above it; the fallen monument reads as the collapse of a 'monopoly equals victory' belief. Solemn, final, no figures needed. Korean setting by default.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. monochrome desaturated base with a single color accent (neon green #0FFD02 fading from the cracked crown), film-noir low-key lighting, deep shadows.
-no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Composition: ONE continuous surface (the stadium field) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+minimal Korean text only if essential (a few characters max); convey meaning through the broken crown and bursting bubbles, not letters.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
