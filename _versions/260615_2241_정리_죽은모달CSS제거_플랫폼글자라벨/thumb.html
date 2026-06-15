@@ -6,7 +6,7 @@
 <title>노뮤트 썸네일 — 웹</title>
 <style>
   :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --grn:#0FFD02;
-          --accent:#0FFD02; --accent-dim:rgba(15,253,2,.15); --line2:#2a2c31; }
+          --accent:#0FFD02; --accent-dim:rgba(15,253,2,.15); --on-accent:#07210a; --line2:#2a2c31; --glass2:#0e0f11; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:560px; margin:0 auto; padding:18px 16px 60px; }
@@ -39,8 +39,10 @@
   #rOpaCustom.on #rOpaNum { display:block; }
   /* 플랫폼 로고 선택 (2:1 박스 가로 한 줄) */
   .pseg { display:flex; gap:6px; flex-wrap:nowrap; }
-  .pbtn { flex:1 1 0; min-width:0; aspect-ratio:2/1; display:flex; align-items:center; justify-content:center; background:#0e0f11; border:1px solid var(--line); border-radius:8px; color:var(--mut); cursor:pointer; padding:0; font-weight:800; font-size:14px; }
+  .pbtn { flex:1 1 0; min-width:0; aspect-ratio:2/1; display:flex; align-items:center; justify-content:center; background:#0e0f11; border:1px solid var(--line); border-radius:8px; color:var(--mut); cursor:pointer; padding:0; }
   .pbtn.on { border-color:var(--grn); color:var(--grn); }
+  .pbtn svg { width:58%; height:54%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .pbtn svg .solid { fill:currentColor; stroke:none; }
   .pbtn .plab { font-size:11px; font-weight:600; }
   /* 경고문 프리셋 = 줄바꿈 허용 세그 */
   .wseg { flex-wrap:wrap; }
@@ -64,7 +66,17 @@
   .slot-wait { font-size:13px; color:var(--mut); }
   .none { display:none; }
 
-  /* ── 카드 텍스트 칩 에디터 (인라인 — /5 카드뉴스) ── */
+  /* ── 카드 텍스트 칩 에디터 (뷰어 #editdlg 포팅) ── */
+  #editdlg { width:min(460px,94vw); max-width:460px; max-height:94vh; height:auto; margin:auto; padding:0; color:var(--fg);
+    background:linear-gradient(165deg, rgba(27,44,32,.96), rgba(11,19,14,.98)); border:1px solid rgba(255,255,255,.14); border-radius:22px; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  #editdlg::backdrop { background:rgba(4,8,5,.6); }
+  .ed-h { display:flex; align-items:center; padding:13px 16px; border-bottom:1px solid var(--line2); }
+  .ed-title { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-.2px; }
+  .ed-x { margin-left:auto; width:30px; height:30px; border-radius:50%; font-size:13px; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }
+  .ed-body { padding:12px 16px 16px; overflow-x:hidden; overflow-y:auto; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }
+  .ed-img { display:block; max-width:100%; max-height:30vh; width:auto; height:auto; margin:2px auto 4px; border-radius:14px; border:1px solid var(--line); }
+  .ed-lbl { font-size:12px; font-weight:800; color:var(--mut); margin-top:9px; }
+  .ed-hint { font-weight:600; opacity:.6; }
   .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
   .ed-line { display:flex; flex-wrap:nowrap; align-items:center; gap:calc(6px * var(--eds,1)); min-height:calc(30px * var(--eds,1)); position:relative; padding-right:22px; }
   .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(2px * var(--eds,1)) calc(3px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2); color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
@@ -86,6 +98,12 @@
   .ed-chip.editing.over { outline-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.12); }
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  .ed-foot { display:flex; gap:10px; justify-content:flex-end; align-items:center; padding:11px 16px; border-top:1px solid var(--line2); }
+  .ed-cancel { padding:9px 18px; font:700 12.5px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
+  .ed-go { padding:9px 24px; font:800 12.5px inherit; color:var(--on-accent); background:linear-gradient(90deg,#d8ff3d,var(--accent)); border:none; border-radius:999px; cursor:pointer; }
+  .ed-go:active { transform:scale(.97); } .ed-go[disabled] { opacity:.55; cursor:default; }
+  @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
+  @media (min-aspect-ratio:1/1) { #editdlg { max-height:66vh; } .ed-img { max-height:24vh; } .ed-body { max-height:calc(66vh - 114px); } }
 </style>
 </head>
 <body>
@@ -193,11 +211,11 @@
       </div>
       <label>플랫폼 <span style="color:var(--mut);font-weight:400">(로고 탭 · 직접입력은 마지막)</span></label>
       <div class="pseg" id="pseg">
-        <button type="button" class="pbtn" data-plat="youtube" title="유튜브">YT</button>
-        <button type="button" class="pbtn on" data-plat="instagram" title="인스타그램">IG</button>
-        <button type="button" class="pbtn" data-plat="threads" title="스레드">Th</button>
-        <button type="button" class="pbtn" data-plat="x" title="X">X</button>
-        <button type="button" class="pbtn" data-plat="facebook" title="페이스북">Fb</button>
+        <button type="button" class="pbtn" data-plat="youtube" title="유튜브"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="4"/><path class="solid" d="M10 9l5 3-5 3z"/></svg></button>
+        <button type="button" class="pbtn on" data-plat="instagram" title="인스타그램"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle class="solid" cx="16.6" cy="7.4" r="1.1"/></svg></button>
+        <button type="button" class="pbtn" data-plat="threads" title="스레드"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M15 12v1.6a2.2 2.2 0 0 0 4.4 0 7.8 7.8 0 1 0-2.4 5.5"/></svg></button>
+        <button type="button" class="pbtn" data-plat="x" title="X"><svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg></button>
+        <button type="button" class="pbtn" data-plat="facebook" title="페이스북"><svg viewBox="0 0 24 24"><path class="solid" d="M13.5 21v-7h2.3l.4-3h-2.7V9.1c0-.9.3-1.5 1.5-1.5H16V5c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V11H8v3h2.1v7z"/></svg></button>
         <button type="button" class="pbtn" data-plat="custom" id="pCustom" title="직접입력"><span class="plab">직접</span></button>
       </div>
       <input type="text" id="cplat" class="none" placeholder="플랫폼 직접입력 (예: tiktok)" style="margin-top:6px">
@@ -403,7 +421,7 @@ function pollMany(outs) {
   tick();
 }
 
-// ==== 카드뉴스(/5) 칩 에디터 (인라인) — 어절칩·줄=행·강조·한도 빨강. 뷰어 카드편집기 포팅(입출력=칩↔compose) ====
+// ==== 카드뉴스(/5) 칩 에디터 — 뷰어 #editdlg 포팅 (어절칩·줄=행·강조·한도 빨강). 입출력만 /5(텍스트→#lines)로 갈아끼움 ====
 let edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false;
 const MAX_LINES = 4, EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5, EDLINE_SOFT = 14;
 const edHangul = s => (s.match(/[가-힣]/g) || []).length;
