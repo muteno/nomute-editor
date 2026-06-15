@@ -84,6 +84,7 @@ for (const a of articles) {
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
     error: cardErr,
+    failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터
     md: cardsMd,
     images: images.map(n => `cards/${stem}/${n}`),
   };
