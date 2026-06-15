@@ -1,0 +1,72 @@
+name: comp-make
+
+# 뷰어 comp 시트(Pages Function /api/compose)가 발사 → 업로드 이미지 + 텍스트로
+# 카드뉴스 합성(1080×1350) → viewer/comp_out/<id>/card.jpg 커밋(뷰어가 폴링해 표시).
+# 무료: 파이썬 + Noto 폰트만(유료 API 무관). apps/comp/card_news.py 무수정 import.
+# ⚠️ workflow_dispatch는 워크플로 파일이 기본 브랜치(main)에 있어야 파일명으로 발사됨 —
+#    사본(작업 브랜치) 단계에선 통합 후 라이브. 스크립트 핵심은 로컬 실측 통과.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '출력 id(타임스탬프)'
+        type: string
+      image:
+        description: '업로드 이미지 레포 경로(uploads/<id>/src.*)'
+        type: string
+      lines:
+        description: '텍스트 줄 — JSON 배열 문자열'
+        type: string
+
+concurrency:
+  group: comp-make
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  comp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup comp env (fonts + deps)
+        run: bash apps/comp/setup.sh
+
+      - name: Compose card
+        env:
+          IN_IMAGE: ${{ inputs.image }}
+          IN_LINES: ${{ inputs.lines }}
+          IN_ID: ${{ inputs.id }}
+        run: |
+          set -e
+          if [ -z "${IN_ID}" ] || [ -z "${IN_IMAGE}" ] || [ -z "${IN_LINES}" ]; then
+            echo "::error::id/image/lines 입력 누락"; exit 1
+          fi
+          if [ ! -f "${IN_IMAGE}" ]; then echo "::error::이미지 없음: ${IN_IMAGE}"; exit 1; fi
+          mkdir -p "viewer/comp_out/${IN_ID}"
+          OUT="viewer/comp_out/${IN_ID}/card.jpg"
+          # 배치 import 방식(지침 정본) — 로컬 실측 통과한 호출
+          python3 -c "import sys,json; sys.path.insert(0,'apps/comp'); from card_news import generate; sys.exit(0 if generate(sys.argv[1], json.loads(sys.argv[2]), sys.argv[3]) else 2)" \
+            "${IN_IMAGE}" "${IN_LINES}" "${OUT}"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/comp_out/${IN_ID}" "uploads/${IN_ID}" 2>/dev/null || true
+          git commit -m "comp: ${IN_ID} 합성 출력" || { echo "커밋할 것 없음"; exit 0; }
+          for i in 1 2 3 4; do git push && break || sleep $((i*3)); done
