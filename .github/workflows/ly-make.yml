@@ -60,10 +60,14 @@ jobs:
         if: ${{ inputs.url != '' }}
         env:
           URL: ${{ inputs.url }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           set -e
-          yt-dlp -x --audio-format mp3 --no-playlist -o "/tmp/audio.%(ext)s" "$URL" \
-            || { echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
+          # YouTube/IG 봇차단 우회 — YT_COOKIES 시크릿(쿠키 Netscape txt 본문) 있으면 사용
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          yt-dlp -x --audio-format mp3 --no-playlist $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
+            || { echo "::error::yt-dlp 다운로드 실패(YouTube/IG는 YT_COOKIES 시크릿 필요할 수 있음): $URL"; exit 1; }
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 > /tmp/transcript.txt \
             || { echo "::error::Whisper STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
