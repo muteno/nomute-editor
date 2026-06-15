@@ -5,7 +5,7 @@
 // env: GH_TOKEN = comp/make-cards와 동일 PAT(이 레포, Actions+contents: write).
 // ⚠️ ref = 작업 브랜치. 통합 후 main 으로 교체. 무료 경로(유료 API 무관).
 const REPO = 'muteno/nomute-editor';
-const REF = 'claude/nice-rubin-jmuubj';   // 통합 후 'main'
+const REF = 'main';   // 통합 완료(PR #173 머지)
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
   headers: {
