@@ -15,6 +15,7 @@ export async function onRequestPost({ request, env }) {
   if (!article || !/^[1-9][0-9]?$/.test(card) || !vote) return json({ error: '잘못된 피드백' }, 400);
   const aspect = body.aspect === 'text' ? 'text' : 'image';
   const comment = String(body.comment || '').slice(0, 300);
+  const action = body.action === 'delete' ? 'delete' : 'record';   // record=적재 / delete=취소(파일 삭제)
 
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/feedback.yml/dispatches',
@@ -26,7 +27,7 @@ export async function onRequestPost({ request, env }) {
         'user-agent': 'nomute-viewer',
         'x-github-api-version': '2022-11-28',
       },
-      body: JSON.stringify({ ref: 'main', inputs: { article, card, vote, aspect, comment } }),
+      body: JSON.stringify({ ref: 'main', inputs: { article, card, vote, aspect, comment, action } }),
     },
   );
   if (r.status === 204) return json({ ok: true });
