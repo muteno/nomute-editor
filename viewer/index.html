@@ -351,6 +351,7 @@
   .ed-chip.over { border-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.16); font-weight:800; }   /* 한도 초과 부분 = 빨강(저장 게이트) */
   .ed-chip.over.on { border-color:#ff5d5d; color:#ff7a7a; }   /* 강조여도 초과면 빨강 우선 */
   .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; white-space:normal; word-break:break-word; max-width:100%; }   /* 편집 중엔 줄바꿈 허용 → 화면 밖 안 나감 */
+  .ed-chip.editing.over { outline-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.12); }   /* 편집 중 한도 초과 = 즉시 빨강 */
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }   /* 줄 한도 초과 거부 */
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
   .ed-nl { flex:none; }   /* ↵ 병합 핸들 = 그 행 끝에 붙음 */
@@ -558,13 +559,12 @@
   .sbtn:active { transform:scale(.85); }
   .sbtn:disabled { opacity:.5; cursor:default; }
   .sbtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
-  /* 앞뒤(버전) 네비 — 하단중앙 부드러운 글래스 알약 */
+  /* 앞뒤(버전) 네비 — 하단중앙. 바(글래스 알약) 투명, 화살표만 떠서 기능(요청). */
   .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:flex; align-items:center; gap:1px;
-    background:rgba(12,16,14,.4); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:2px;
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
-  .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; }
+    background:none; border:none; padding:2px; }
+  .vbtn { width:26px; height:26px; border:none; background:none; color:#fff; font-size:16px; line-height:0; cursor:pointer; border-radius:50%; text-shadow:0 1px 5px rgba(0,0,0,.85); }
   .vbtn:disabled { opacity:.3; cursor:default; } .vbtn:not(:disabled):active { transform:scale(.85); }
-  .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; }
+  .vlbl { font-size:11px; font-weight:700; color:rgba(255,255,255,.9); padding:0 6px; letter-spacing:.02em; text-shadow:0 1px 5px rgba(0,0,0,.85); }
   .sbtn.voted { color:var(--accent); border-color:rgba(15,253,2,.45); background:rgba(15,253,2,.14); }
   /* 따봉/다운 피드백 패널(슬라이드 상단 오버레이·글래스) */
   .slide-fb { position:absolute; top:52px; left:10px; right:10px; z-index:4; padding:12px; border-radius:14px;
@@ -1478,7 +1478,11 @@ function renderEditChips() {   // 메인 필터칩 renderChips(별개)와 이름
     sp.onclick = () => { if (sp.isContentEditable) return; tok.on = !tok.on; sp.classList.toggle('on'); };
     sp.ondblclick = () => { sp.contentEditable = 'true'; sp.spellcheck = true; sp.lang = 'ko'; sp.classList.add('editing'); sp.focus(); window.getSelection()?.selectAllChildren(sp); };
     sp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); sp.blur(); } };
-    sp.oninput = () => fitEditLines($('#edChips'));   // 편집 중 길어지면 행 폭 재계산 → 화면 밖으로 안 나감
+    sp.oninput = () => {   // 편집 중: 행 폭 재계산 + 한도 넘으면 그 자리서 즉시 빨강(블러 전에도)
+      fitEditLines($('#edChips'));
+      const ln = edLineAround(edTokens.indexOf(tok), sp.textContent.replace(/\s+/g, ' ').trim());
+      sp.classList.toggle('over', edWidth(ln) > EDLINE_WIDTH || edHangul(ln) > EDLINE_HANGUL);
+    };
     sp.onblur = () => {
       sp.contentEditable = 'false'; sp.classList.remove('editing');
       const nt = sp.textContent.replace(/\s+/g, ' ').trim();
