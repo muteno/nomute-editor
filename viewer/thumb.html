@@ -11,8 +11,8 @@
   .wrap { max-width:560px; margin:0 auto; padding:18px 16px 60px; }
   h1 { font-size:18px; margin:6px 0 14px; }
   h1 b { color:var(--grn); }
-  .tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:16px; }
-  .tab { padding:11px 4px; text-align:center; background:var(--pan); border:1px solid var(--line); border-radius:10px; cursor:pointer; font-weight:600; font-size:13px; }
+  .tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-bottom:16px; }
+  .tab { padding:11px 3px; text-align:center; background:var(--pan); border:1px solid var(--line); border-radius:10px; cursor:pointer; font-weight:600; font-size:12.5px; }
   .tab small { display:block; color:var(--mut); font-weight:400; font-size:11px; margin-top:2px; }
   .tab.on { border-color:var(--grn); color:var(--grn); }
   .tab.on small { color:#bfeeb6; }
@@ -46,10 +46,11 @@
   <h1>노뮤트 <b>썸네일</b> · 웹 렌더</h1>
 
   <div class="tabs" id="tabs">
-    <div class="tab" data-app="1">포스트<small>/1 배경+합성</small></div>
-    <div class="tab" data-app="2">릴스<small>/2 헤더형</small></div>
-    <div class="tab" data-app="3">저작권<small>/3 오버레이</small></div>
-    <div class="tab" data-app="4">경고문<small>/4 오버레이</small></div>
+    <div class="tab" data-app="1">포스트</div>
+    <div class="tab" data-app="2">릴스</div>
+    <div class="tab" data-app="3">저작권</div>
+    <div class="tab" data-app="4">경고문</div>
+    <div class="tab" data-app="5">카드뉴스</div>
   </div>
 
   <div class="panel">
@@ -125,11 +126,11 @@ function selApp(a) {
   APP = a;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.app === a));
   // 표시 토글
-  $('#imgBox').classList.toggle('none', a !== '1');
-  $('#linesBox').classList.toggle('none', !(a === '1' || a === '4'));
+  $('#imgBox').classList.toggle('none', !(a === '1' || a === '5'));   // 이미지 = /1·/5
+  $('#linesBox').classList.toggle('none', !(a === '1' || a === '4' || a === '5'));   // 텍스트 = /1·/4·/5
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
-  $('#fmtBox').classList.toggle('none', a === '1' || a === '2');   // 1=포스트·2=릴스는 포맷 고정(명령어가 포맷)
+  $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => selApp(t.dataset.app));
@@ -197,6 +198,21 @@ function poll(outPath) {
 // ---- 발사 ----
 $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err'); $('#result').innerHTML = '';
+  // 카드뉴스(5) = /api/compose (이미지 + 텍스트, 1080×1350)
+  if (APP === '5') {
+    const clines = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (!IMG_B64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
+    if (!clines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
+    $('#go').disabled = true; status.textContent = '발사 중…';
+    try {
+      const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG_B64, name: IMG_NAME, lines: clines }) });
+      const j = await res.json();
+      if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); }
+      else poll(j.out);
+    } catch (e) { status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err'); }
+    finally { $('#go').disabled = false; }
+    return;
+  }
   const params = buildParams();
   if (APP === '1' && !IMG_B64) { status.textContent = '배경 이미지를 선택해줘'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '발사 중…';
