@@ -295,7 +295,8 @@ def score_crosspost(articles):
 # ── 메인 ────────────────────────────────────────────────────────────
 def main():
     ap = argparse.ArgumentParser(description="한국 주요 뉴스 RSS 스크래퍼")
-    ap.add_argument("--feeds", default="feeds.csv", help="피드 목록 CSV")
+    ap.add_argument("--feeds", default=str(Path(__file__).resolve().parent / "feeds.csv"),
+                    help="피드 목록 CSV(기본=스크립트 옆 feeds.csv — CWD 무관)")
     ap.add_argument("--out", default=".", help="출력 디렉토리")
     ap.add_argument("--hours", type=int, default=24, help="최근 N시간 기사만 수집")
     ap.add_argument("--categories", default="major",
