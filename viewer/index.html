@@ -367,7 +367,7 @@
   .dlgtop.ed-top { position:absolute; right:14px; bottom:66px; left:auto; width:40px; height:40px; box-shadow:0 6px 18px rgba(0,0,0,.45); }
   /* 재생성 중 배지(자동 교체 대기) */
   .slide.reshooting .slide-img { filter:brightness(.5) saturate(.7); }
-  .slide.reshooting .slide-acts, .slide.reshooting .slide-ver { pointer-events:none; opacity:.5; }   /* 재생성 중 = 그 카드 조작 잠금(중복 발사 방지) */
+  .feed-ui.reshooting .slide-acts, .feed-ui.reshooting .slide-ver { pointer-events:none; opacity:.5; }   /* 재생성 중 = 그 카드 조작 잠금(중복 발사 방지) — 버튼은 오버레이로 이관됨 */
   .reshoot-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; font-size:12.5px; font-weight:800; color:#fff;
     background:rgba(8,15,11,.62); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:8px 15px; white-space:nowrap;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,.4); }
@@ -1323,6 +1323,7 @@ function feedSec(a, keepIdx = 0) {
       uiVprev.disabled = card.cur <= 0; uiVnext.disabled = card.cur >= card.versions.length - 1;
     } else uiVer.hidden = true;
     const fb = ui.querySelector('.slide-fb'); if (fb) fb.remove();   // 카드 전환 = 열린 피드백 패널 닫기
+    ui.classList.toggle('reshooting', !!(track.children[idx] && track.children[idx].classList.contains('reshooting')));   // 재생성 중 카드면 오버레이 조작 잠금
   };
   const changeVer = d => {
     const card = model[curIdx]; if (!card) return;
@@ -1523,6 +1524,7 @@ function fireEdit() {
 function markReshooting(n, textOnly) {
   const s = $(`#feedsec .slide[data-card="${n}"]`); if (!s) return;
   s.classList.add('reshooting');
+  const ui = $('#feedsec .feed-ui'); if (ui) ui.classList.add('reshooting');   // 편집은 현재 표시 카드 = 오버레이 즉시 잠금(중복 발사 방지)
   if (!s.querySelector('.reshoot-badge')) {
     const b = document.createElement('div'); b.className = 'reshoot-badge';
     b.textContent = textOnly ? '✍️ 문구 바꾸는 중…' : '🍌 다시 그리는 중…';
