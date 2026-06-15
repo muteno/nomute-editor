@@ -345,6 +345,21 @@
   .ed-cancel:hover { color:var(--fg); }
   .ed-go { padding:9px 24px; font:800 12.5px inherit; color:var(--on-accent); background:linear-gradient(90deg,#d8ff3d,var(--accent)); border:none; border-radius:999px; cursor:pointer; }
   .ed-go:active { transform:scale(.97); } .ed-go[disabled] { opacity:.55; cursor:default; }
+  /* 확인 게이트 — 부드러운 글래스(강조 최소) */
+  .ed-confirm { display:none; align-items:center; gap:9px; width:100%; }
+  .ed-foot.confirm .ed-cancel, .ed-foot.confirm #edGo { display:none; }
+  .ed-foot.confirm .ed-confirm { display:flex; }
+  .ed-cmsg { flex:1; font-size:12.5px; color:var(--mut); letter-spacing:-.2px; }
+  .ed-cno, .ed-cyes { padding:9px 17px; font:700 12.5px inherit; border-radius:999px; cursor:pointer; white-space:nowrap;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .1s; }
+  .ed-cno { color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); }
+  .ed-cyes { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }   /* 부드러운 강조색 글래스(채움 X) */
+  .ed-cno:active, .ed-cyes:active { transform:scale(.95); } .ed-cyes[disabled] { opacity:.55; }
+  /* 재생성 중 배지(자동 교체 대기) */
+  .slide.reshooting .slide-img { filter:brightness(.5) saturate(.7); }
+  .reshoot-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; font-size:12.5px; font-weight:800; color:#fff;
+    background:rgba(8,15,11,.62); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:8px 15px; white-space:nowrap;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,.4); }
   @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
 
   /* 카드 이미지 라이트박스(풀스크린 + 좌상단 뒤로 — 글래스) */
@@ -648,7 +663,7 @@
     <label class="ed-lbl">이미지 수정 희망</label>
     <textarea class="ed-wish" id="edWish" placeholder="예: 더 밝게 / 인물 클로즈업 / 배경 단순하게 (비우면 텍스트만 반영)"></textarea>
   </div>
-  <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">변경</button></div>
+  <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">변경</button><div class="ed-confirm"><span class="ed-cmsg">이 카드만 다시 생성할까요?</span><button class="ed-cno" type="button">취소</button><button class="ed-cyes" type="button">확인</button></div></div>
 </dialog>
 
 <!-- 카드 이미지 라이트박스 — 풀스크린 + 좌상단 뒤로 -->
@@ -703,6 +718,23 @@ async function load() {
     const a = DATA.find(x => x.file === CUR);
     // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
     if (a && ((a.cards && a.cards.state) || '') !== CUR_STATE) { cardSec(a); feedSec(a); }
+  }
+  // 변경 발사 후 자동 제자리 교체 — 새 이미지(?v 갱신) 오면 그 슬라이드만 교체(캐러셀 스크롤 보존).
+  if (REPENDING && $('#dlg').open && CUR === REPENDING.file) {
+    const a = DATA.find(x => x.file === CUR), c = a && a.cards;
+    if (c && c.images && c.images.length) {
+      const model = buildFeedModel(a), slot = model.findIndex(m => m.n === REPENDING.card);
+      const newImg = slot >= 0 ? (c.images[slot] || null) : null;
+      if (newImg && newImg !== REPENDING.oldImg) {
+        const old = $(`#feedsec .slide[data-card="${REPENDING.card}"]`);
+        if (old) {
+          const title = feedTitle(c.md) || a.title || '카드뉴스';
+          const slug = title.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_').slice(0, 40) || 'nomute';
+          old.replaceWith(renderSlide(model[slot], slot, { slug, total: model.length, file: CUR }));
+        }
+        REPENDING = null;
+      }
+    }
   }
 }
 
@@ -1177,7 +1209,7 @@ function feedSec(a) {
 
 function renderSlide(card, i, ctx) {
   const v = card.versions[card.cur];
-  const fig = document.createElement('div'); fig.className = 'slide';
+  const fig = document.createElement('div'); fig.className = 'slide'; fig.dataset.card = card.n;   // 자동 제자리 교체용
   const dlName = `${ctx.slug}_${String(i + 1).padStart(2, '0')}.jpg`;
   if (v.image) {
     fig.innerHTML =
@@ -1226,6 +1258,7 @@ function openEdit(o) {
   $('#edText').value = p.text; edEmph = p.emph;
   $('#edWish').value = '';
   renderEditChips();
+  dlg.querySelector('.ed-foot').classList.remove('confirm');   // 확인 게이트 초기화
   dlg.showModal();
   setTimeout(() => $('#edText').focus({ preventScroll: true }), 50);
 }
@@ -1264,23 +1297,43 @@ function buildEmphText() {
   });
   return on ? out + '*' : out;
 }
-// 변경 발사 — 단일 카드 재발사(유료 Gemini). /api/make-cards mode=edit.
+// 변경 흐름 — '변경'=확인 게이트 노출, '확인'=단일 카드 재발사(유료 Gemini, mode=edit) → 캐러셀 복귀·자동 제자리 교체.
+let REPENDING = null, _pendTries = 0;   // { file, card, oldImg } 자동 교체 대기
 function submitEdit() {
   if (!EDIT_CTX) return;
-  const text = buildEmphText().trim(), wish = $('#edWish').value.trim();
-  if (!text) { alert('텍스트가 비어 있어.'); return; }
-  const go = $('#edGo'); go.disabled = true; go.textContent = '변경 발사 중…';
+  if (!buildEmphText().trim()) { alert('텍스트가 비어 있어.'); return; }
+  $('#editdlg .ed-foot').classList.add('confirm');   // "이 카드만 다시 생성할까요? 취소/확인"
+}
+function fireEdit() {
+  if (!EDIT_CTX) return;
+  const ctx = EDIT_CTX, text = buildEmphText().trim(), wish = $('#edWish').value.trim();
+  const yes = $('#editdlg .ed-cyes'); yes.disabled = true; yes.textContent = '발사 중…';
   fetch('api/make-cards', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ article: EDIT_CTX.file, mode: 'edit', card: String(EDIT_CTX.card.n), text, wish }),
+    body: JSON.stringify({ article: ctx.file, mode: 'edit', card: String(ctx.card.n), text, wish }),
   }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
     .then(({ ok, j }) => {
+      yes.disabled = false; yes.textContent = '확인';
       if (ok && j.ok) {
-        go.textContent = '발사됨 ✓';
-        setTimeout(() => { go.disabled = false; go.textContent = '변경'; $('#editdlg').close();
-          alert(`카드 ${EDIT_CTX.card.n} 변경 발사됨 — 1~2분 후 이미지 갱신. 새로고침해줘.`); }, 900);
-      } else { go.disabled = false; go.textContent = '변경'; alert(j.error || `실패 (${ok ? 'ok' : 'err'})`); }
-    }).catch(e => { go.disabled = false; go.textContent = '변경'; alert('요청 실패: ' + e.message); });
+        REPENDING = { file: ctx.file, card: ctx.card.n, oldImg: ctx.card.versions[ctx.card.cur].image };
+        markReshooting(ctx.card.n);
+        $('#editdlg').close();          // 보던 캐러셀 그대로(스크롤 유지)
+        _pendTries = 0; pollWhilePending();
+      } else { alert(j.error || `실패 (${ok ? 'ok' : 'err'})`); }
+    }).catch(e => { yes.disabled = false; yes.textContent = '확인'; alert('요청 실패: ' + e.message); });
+}
+function markReshooting(n) {
+  const s = $(`#feedsec .slide[data-card="${n}"]`); if (!s) return;
+  s.classList.add('reshooting');
+  if (!s.querySelector('.reshoot-badge')) {
+    const b = document.createElement('div'); b.className = 'reshoot-badge'; b.textContent = '🍌 다시 그리는 중…';
+    (s.querySelector('.slide-img') || s).appendChild(b);
+  }
+}
+// 발사 후엔 빠르게(18s) 폴링해 새 이미지 오면 즉시 제자리 교체(load 내 REPENDING 처리). 상한 ~6분.
+function pollWhilePending() {
+  if (!REPENDING || _pendTries > 20) return;
+  setTimeout(() => { if (REPENDING) { _pendTries++; load(); pollWhilePending(); } }, 18000);
 }
 
 // 카드 이미지 라이트박스 — 풀스크린(좌상단 뒤로). 새 탭(target=_blank) 대신 인앱.
@@ -1549,6 +1602,8 @@ dlgEl.addEventListener('scroll', () => dlgTop.classList.toggle('show', dlgEl.scr
 // 카드 변경 팝업 배선(1회)
 $('#edText').addEventListener('input', renderEditChips);
 $('#edGo').onclick = submitEdit;
+$('#editdlg .ed-cno').onclick = () => $('#editdlg .ed-foot').classList.remove('confirm');
+$('#editdlg .ed-cyes').onclick = fireEdit;
 // 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
 $('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
 $('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
