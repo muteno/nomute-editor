@@ -3,7 +3,7 @@
 # → .gen_complete 폴링 → _final_*.jpg 를 --out 으로 다운로드.
 # 인증 = GDRIVE_SA_JSON env(서비스계정 키 JSON 본문). Prompt 폴더가 SA 이메일에 편집자 공유돼 있어야 함.
 # exit: 0=완료(_final 회수) / 2=발사됐으나 대기시간 내 미완(Drive엔 계속 생성됨) / 1=발사 실패
-import argparse, datetime, io, json, os, re, sys, time
+import argparse, datetime, json, os, sys, time
 
 import requests
 from google.oauth2 import service_account
@@ -43,8 +43,6 @@ def main():
     ap.add_argument('--md', required=True)
     ap.add_argument('--topic', required=True)
     ap.add_argument('--out', required=True)
-    # 텍스트-free 장면(장면NN.png)을 여기에 장면NN.jpg(q95)로 보존 → 이후 텍스트만 변경 = 로컬 재합성(제미나이 0).
-    ap.add_argument('--scenes-out', default='')
     ap.add_argument('--wait-min', type=int, default=15)  # 상한(정본 apps/news/03 260613: 15분 적응형)
     a = ap.parse_args()
 
@@ -84,9 +82,8 @@ def main():
         print(f'생성 대기중… 폴더 {len(names)}개 파일')
         time.sleep(90)   # 1~2분 간격 재확인
 
-    # 폴더 1회 조회 → _final(합성본)과 장면(텍스트-free 원본) 분리 회수.
-    listing = list_folder(h, fid)
-    finals = [f for f in listing if '_final' in f['name'] and f['name'].lower().endswith(('.jpg', '.jpeg', '.png'))]
+    # _final_*.jpg 회수 (미완이어도 있는 만큼)
+    finals = [f for f in list_folder(h, fid) if '_final' in f['name'] and f['name'].lower().endswith(('.jpg', '.jpeg', '.png'))]
     os.makedirs(a.out, exist_ok=True)
     for f in sorted(finals, key=lambda x: x['name']):
         r = requests.get(f"{API}/files/{f['id']}", headers=h,
@@ -95,22 +92,6 @@ def main():
         with open(os.path.join(a.out, f['name']), 'wb') as fp:
             fp.write(r.content)
         print(f"회수: {f['name']} ({len(r.content)//1024}KB)")
-
-    # 텍스트-free 장면 보존(장면NN.png, _final 아님) → 장면NN.jpg(q95)로 변환 저장.
-    # 이후 '텍스트만 변경'은 이 장면에 새 문구를 로컬 합성(제미나이/Cloud Run 0·이미지 100% 보존).
-    if a.scenes_out:
-        scenes = [f for f in listing if re.search(r'장면\s*0*(\d+)\.png$', f['name']) and '_final' not in f['name']]
-        if scenes:
-            from PIL import Image   # 보존 시에만 필요(설치는 워크플로 Install deps)
-            os.makedirs(a.scenes_out, exist_ok=True)
-            for f in scenes:
-                nn = int(re.search(r'장면\s*0*(\d+)', f['name']).group(1))
-                r = requests.get(f"{API}/files/{f['id']}", headers=h,
-                                 params={'alt': 'media', 'supportsAllDrives': 'true'})
-                r.raise_for_status()
-                dst = os.path.join(a.scenes_out, f'장면{nn:02d}.jpg')
-                Image.open(io.BytesIO(r.content)).convert('RGB').save(dst, 'JPEG', quality=95)
-                print(f"장면 보존: 장면{nn:02d}.jpg ({os.path.getsize(dst)//1024}KB ← {len(r.content)//1024}KB png)")
 
     if done and finals:
         print(f'완료: _final {len(finals)}장')
