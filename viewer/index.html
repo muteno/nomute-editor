@@ -187,8 +187,9 @@
   .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; gap:13px; flex-wrap:wrap; }
   .cardtop .dl { font-style:normal; opacity:.55; font-weight:700; margin-right:3px; letter-spacing:0; }
   .cardtop .d-in { color:var(--mut); }
-  .cardtop .d-in.today { color:var(--fg); font-weight:800; }   /* 강조 = 초록→흰색(요청) */
+  .cardtop .d-in.today { color:var(--accent); font-weight:800; }   /* 오늘 적재 = 강조색(요청) */
   .cardtop .d-wr { color:var(--fg); font-weight:800; }
+  .cardtop .d-wr.today { color:var(--accent); }   /* 오늘 보도 = 강조색 */
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
@@ -796,7 +797,7 @@ function render() {
   const rows = DATA.filter(a =>
     (!cardonly || hasCardImage(a)) &&
     (!q || (a.title+a.media).toLowerCase().includes(q)) &&
-    (!FILTERS.cats.size || FILTERS.cats.has(catBucket(a.category))) &&
+    (!FILTERS.cats.size || FILTERS.cats.has(articleCat(a))) &&
     (!FILTERS.breaking || a.breaking || /속보/.test(a.title || '')));
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
@@ -807,7 +808,7 @@ function render() {
     c.innerHTML = `
       <div class="cardmain">
         <div class="cardtop">${dateLine(a)}</div>
-        <div class="row1">${catChip(a.category)}<span class="t"></span></div>
+        <div class="row1">${catChip(articleCat(a))}<span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
           ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
@@ -907,10 +908,14 @@ function inDateTime(a) {
   const d = new Date(2000 + +m[1], +m[2] - 1, +m[3]);
   return { txt: `${+m[2]}/${+m[3]} (${W[d.getDay()]}) ${m[4]}:${m[5]}`, today: `${m[1]}${m[2]}${m[3]}` === todayYMD6() };
 }
+function repToday(date) {   // a.date(YYYY-MM-DD)가 오늘인지
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
+  return m ? `${m[1].slice(2)}${m[2]}${m[3]}` === todayYMD6() : false;
+}
 function dateLine(a) {
   const inn = inDateTime(a);
   const inHtml = inn.txt ? `<span class="d-in${inn.today ? ' today' : ''}"><i class="dl">IN</i>${esc(inn.txt)}</span>` : '';
-  return inHtml + `<span class="d-wr"><i class="dl">WRITE</i>${esc(repDateTime(a))}</span>`;
+  return inHtml + `<span class="d-wr${repToday(a.date) ? ' today' : ''}"><i class="dl">WRITE</i>${esc(repDateTime(a))}</span>`;
 }
 // 편향 색(D) — 약우=연파랑·우=파랑·약좌=연빨강·좌=빨강·중립=연강조. 좌우무관 → "무관".
 const BIAS_COLOR = { '약우':'#8fb4ff', '우':'#5b8fff', '약좌':'#ff9d9d', '좌':'#ff6b6b', '중립':'#74e89a' };
@@ -929,6 +934,21 @@ function catBucket(cat) { const c = (cat || '').trim(); return CAT_MAP[c] || (['
 function catChip(cat) {
   const b = catBucket(cat); if (!b) return '';
   return `<span class="cat" style="color:${CAT_COLOR[b]}">${esc(b)}</span>`;
+}
+// category 프론트매터가 없는 새 기사 → 제목+요약 키워드로 대분류 추정(배지 복원). 큐에 값 있으면 그게 정본.
+const CAT_KW = {
+  국제: ['트럼프','바이든','미국','중국','일본','러시아','우크라','이란','이스라엘','가자','전쟁','외교','정상','종전','협상','백악관','관세','푸틴','시진핑','나토','중동','북한','김정은','파병','수교'],
+  경제: ['경제','금융','증시','주가','코스피','코스닥','환율','부동산','집값','금리','채무','부도','파산','매출','영업','실적','투자','수출','무역','물가','부채','임금','실업','고용','세금','연봉','상장','회장','은행','경영','독점','인수','합병'],
+  사회: ['사건','사고','경찰','검찰','법원','재판','판결','구속','파업','교육','학교','복지','의료','병원','범죄','화재','시위','노조','국회','대통령','여당','야당','선거','의원','장관','수사','고소','논란','갑질','마약'],
+  문화: ['영화','드라마','음악','가수','배우','공연','전시','예술','연예','아이돌','스포츠','축구','야구','올림픽','월드컵','중계','게임','웹툰','콘서트','앨범','예능','감독'],
+  테크: ['AI','인공지능','반도체','스타트업','플랫폼','과학','우주','로봇','데이터','클라우드','전기차','배터리','네이버','카카오','구글','애플','갤럭시','아이폰'],
+};
+function articleCat(a) {
+  const b = catBucket(a.category); if (b) return b;   // 큐 category 있으면 정본
+  const t = `${a.title || ''} ${a.summary || ''}`;
+  let best = '', bn = 0;
+  for (const k in CAT_KW) { let n = 0; for (const w of CAT_KW[k]) if (t.includes(w)) n++; if (n > bn) { bn = n; best = k; } }
+  return bn ? best : '';   // 1개 이상 매칭 시만(불명확하면 배지 없음)
 }
 
 function open(a) {
@@ -1079,8 +1099,7 @@ function cardSec(a) {
   // 카드 phase 헤더에 상태 반영(접어도 보이게)
   const sumlabel = { '':'2. 카드뉴스', generating:'2. 카드뉴스 — 프롬프팅 중…', text_done:'2. 카드뉴스 — 텍스트·프롬프트',
     done:'2. 카드뉴스', fired_partial:'2. 카드뉴스 — 발사됨', failed:'2. 카드뉴스 — 실패' };
-  const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '카드뉴스';
-  gvChip(cs, c.guidelines_version);   // 카드 = 어떤 지침 버전으로 갱신됐는지(요약 해시와 다른 게 정상)
+  const cs = $('#cardsum'); if (cs) cs.textContent = sumlabel[st] || '카드뉴스';   // 지침 버전 칩 제거(요청) — 도장은 status.json에만
 
   if (!st || st === 'failed') {
     if (st === 'failed') sec.insertAdjacentHTML('beforeend',
