@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노뮤트 영상 프롬프트 — 웹</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --grn:#0FFD02; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:680px; margin:0 auto; padding:18px 16px 70px; }
+  h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--grn); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:0 0 6px; }
+  textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:10px; color:var(--fg); font:inherit; resize:vertical; }
+  .go { width:100%; margin-top:14px; padding:13px; background:var(--grn); color:#07210a; border:none; border-radius:10px; font-weight:800; font-size:15px; cursor:pointer; }
+  .go:disabled { opacity:.5; cursor:default; }
+  .chk { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px; color:var(--fg); cursor:pointer; }
+  .chk input { width:18px; height:18px; accent-color:var(--grn); }
+  .paid { color:var(--mut); font-size:12px; }
+  .ref { margin:0 0 16px; }
+  .ref img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
+  .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; }
+  .status.err { color:#ff8a8a; }
+  .out { margin-top:18px; }
+  .out h1.t { font-size:20px; color:var(--fg); margin:18px 0 6px; }
+  .out h2 { font-size:16px; color:var(--grn); margin:18px 0 6px; }
+  .out h3 { font-size:14px; color:var(--fg); margin:16px 0 6px; }
+  .out p { margin:6px 0; color:#cfd2d7; }
+  .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 14px; }
+  .code pre { margin:0; padding:13px 13px 13px; white-space:pre-wrap; word-break:break-word; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e9eaec; }
+  .code button { position:absolute; top:8px; right:8px; padding:5px 10px; background:var(--grn); color:#07210a; border:none; border-radius:7px; font-weight:700; font-size:12px; cursor:pointer; }
+  .code button.done { background:#2a2c31; color:var(--grn); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>노뮤트 <b>영상 프롬프트</b> · 웹</h1>
+  <p class="sub">장면·기사 넣으면 → Kling 복붙 프롬프트(샷별 복사). 영상 생성은 Kling 웹앱에서 붙여넣어. ※ 원샷(대화형 /k는 Claude Code).</p>
+
+  <label>장면 / 기사 입력</label>
+  <textarea id="scene" placeholder="예) 폭우 속 한강 다리 위, 우산 쓴 사람이 카메라를 향해 천천히 걸어온다. 네온 반사, 시네마틱..."></textarea>
+  <label class="chk"><input type="checkbox" id="refimage"> 레퍼런스 이미지도 생성 <span class="paid">유료 Gemini · 최대 ~15분</span></label>
+  <button class="go" id="go">웹 렌더 발사</button>
+
+  <div class="status" id="status"></div>
+  <div class="out" id="out"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+
+// 최소 마크다운 렌더: ``` 펜스 = 코드블록(복사 버튼), 그 외 #/##/### 헤딩 + 문단.
+function renderMd(md) {
+  const parts = md.split('```');
+  let html = '';
+  parts.forEach((part, i) => {
+    if (i % 2 === 1) {                    // 코드블록
+      let code = part;
+      const nl = code.indexOf('\n');
+      const first = nl >= 0 ? code.slice(0, nl).trim() : '';
+      if (/^[a-zA-Z]+$/.test(first)) code = code.slice(nl + 1);   // 언어 태그 줄 제거(```text 등)
+      code = code.replace(/\s+$/, '');
+      const enc = encodeURIComponent(code);
+      html += `<div class="code"><button data-c="${enc}">복사</button><pre>${esc(code)}</pre></div>`;
+    } else {
+      part.split('\n').forEach(line => {
+        const t = line.trim();
+        if (!t) return;
+        if (t.startsWith('### ')) html += `<h3>${esc(t.slice(4))}</h3>`;
+        else if (t.startsWith('## ')) html += `<h2>${esc(t.slice(3))}</h2>`;
+        else if (t.startsWith('# ')) html += `<h1 class="t">${esc(t.slice(2))}</h1>`;
+        else html += `<p>${esc(t)}</p>`;
+      });
+    }
+  });
+  return html;
+}
+
+function wireCopy() {
+  document.querySelectorAll('.code button').forEach(b => b.onclick = () => {
+    navigator.clipboard.writeText(decodeURIComponent(b.dataset.c)).then(() => {
+      b.textContent = '복사됨 ✓'; b.classList.add('done');
+      setTimeout(() => { b.textContent = '복사'; b.classList.remove('done'); }, 1500);
+    });
+  });
+}
+
+function poll(outPath, refPath) {
+  const t0 = Date.now(), status = $('#status'), out = $('#out');
+  const budget = refPath ? 1200 : 600;
+  const tick = async () => {
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (sec > budget) { status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); return; }
+    status.textContent = '⏳ /k 생성 중… ' + sec + 's' + (refPath ? ' (레퍼런스 이미지 포함 — 최대 ~15분)' : ' (보통 1–3분)');
+    try {
+      const r = await fetch(outPath + '?t=' + Date.now());
+      if (r.ok) {
+        const md = await r.text();
+        if (md && md.trim()) {
+          status.textContent = '✅ 완료 (' + sec + 's)';
+          let html = renderMd(md);
+          if (refPath) html = '<div class="ref"><img src="' + refPath + '?t=' + Date.now() + '" onerror="this.parentElement.style.display=\'none\'"><div class="cap">🖼 레퍼런스 이미지</div></div>' + html;
+          out.innerHTML = html;
+          wireCopy();
+          return;
+        }
+      }
+    } catch (e) { /* 아직 — 재시도 */ }
+    setTimeout(tick, 5000);
+  };
+  tick();
+}
+
+$('#go').onclick = async () => {
+  const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
+  const scene = $('#scene').value.trim();
+  if (!scene) { status.textContent = '장면을 입력해줘'; status.classList.add('err'); return; }
+  $('#go').disabled = true; status.textContent = '발사 중…';
+  try {
+    const refimage = $('#refimage').checked;
+    const res = await fetch('/api/k', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scene, refimage }) });
+    const j = await res.json();
+    if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); return; }
+    poll(j.out, j.refimage ? j.ref : null);
+  } catch (e) {
+    status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
+  } finally { $('#go').disabled = false; }
+};
+</script>
+</body>
+</html>
