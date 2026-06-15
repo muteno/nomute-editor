@@ -153,10 +153,11 @@
   .chip-brk.on { color:#ff8a7a; text-shadow:0 0 11px rgba(255,100,90,.5); }
   /* 날짜 헤더(검색 위) — 날짜 강조 · 세로 구분선 · Today 강조 */
   .dhead { display:flex; align-items:center; gap:14px; max-width:860px; margin:0 auto; padding:0 16px 11px; font-size:13px; }
-  .dh-date { color:var(--accent); font-weight:800; letter-spacing:-.1px; }
+  .dh-date { color:var(--mut); font-weight:700; letter-spacing:-.1px; }
   .dh-sep { width:1px; height:14px; background:var(--line); }
   .dh-cnt { color:var(--mut); } .dh-cnt b { color:var(--accent); font-weight:800; } .dh-cnt b.z { color:var(--mut); }
   .dh-clock { color:var(--mut); font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+  .dh-clock .ck-t { color:var(--accent); font-weight:800; }
   /* 드래프트 헤더의 글자수 메타(— 약 N자) 미강조 */
   .cnt { color:var(--mut); font-weight:400; font-size:.92em; }
   /* h2 섹션 괄호 부연(…): 강조 해제(흰색·일반 두께) */
@@ -233,6 +234,10 @@
   /* 실패/멈춤 = '진행되다 깨짐' 표식: 연 반투명 노랑 + 살짝 빗금, 라벨은 빨강 50% */
   .prog .seg.fail .sl { color:rgba(255,74,62,.5); opacity:1; }
   .prog .seg.fail .bar { background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); box-shadow:none; }
+  /* 실패 이력(error.log 잔존=한 번이라도 깨짐) = 영속 흉터: 라벨 빨강50 + 막대에 연 노랑 빗금 덧입힘(완료·진행 위에도). */
+  .prog .seg.scar .sl { color:rgba(255,74,62,.5); }
+  .prog .seg.scar .bar::before { content:''; position:absolute; inset:0; border-radius:999px; pointer-events:none;
+    background:repeating-linear-gradient(45deg,rgba(255,206,64,.30) 0 4px,rgba(255,206,64,.10) 4px 8px); }
   @keyframes shine { to { transform:translateX(360%); } }
   .pill { font-size:11px; font-weight:800; border-radius:999px; padding:5px 12px; }
   .pill.ok { background:linear-gradient(90deg,#d8ff3d,var(--accent)); color:var(--on-accent); }
@@ -379,6 +384,7 @@
   .ovmeta .ov-l { opacity:.55; font-weight:700; font-size:.88em; margin-right:3px; }
   .ovmeta .ov-cat { font-weight:800; }
   .ovmeta .ov-d { color:var(--accent); font-weight:700; }
+  .ovmeta .ov-media { color:var(--fg); font-weight:700; }
   /* H 섹션 부제 괄호 → #연회색 해시태그 */
   .hashsub { color:rgba(255,255,255,.4); font-weight:600; font-size:.9em; letter-spacing:-.2px; }
   /* M 편향 줄 • 말머리 */
@@ -646,12 +652,15 @@ function progGauge(a) {
   else if (st === 'text_done') done = 2;                        // 프롬프트까지·카드 대기
   else if (st === 'generating') { if (stuck) fail = true; else busy = true; }   // 카드 프롬프팅 중
   else if (st === 'failed') { fail = true; if (hasMd) done = 2; }   // 텍스트 있으면 카드 단계 실패(seg 카드)
+  // 실패 이력(error.log 잔존) = 한 번이라도 깨진 흔적 → 해당 단계에 영속 흉터(scar). 재시도·성공해도 유지.
+  const scarSeg = (a.cards && a.cards.failedOnce) ? (hasMd ? 2 : 1) : -1;
   const aria = { n:'인스타 요약으로 이동', m:'카드 프롬프트로 이동', t:'카드 이미지로 이동' };
   const html = segs.map(([lb, j], i) => {
     let cls = '';
     if (i < done) cls = ' done';
     else if (i === done && busy) cls = ' cur';
     else if (i === done && fail) cls = ' fail';
+    if (i === scarSeg) cls += ' scar';
     return `<div class="seg${cls}" data-j="${j}" role="button" tabindex="0" aria-label="${aria[j]}"><span class="sl">${lb}</span><span class="bar"></span></div>`;
   }).join('');
   return `<div class="prog">${html}</div>`;
@@ -1060,7 +1069,7 @@ function overviewMeta(a) {
   const inn = inDateTime(a);
   const p = [];
   if (cat) p.push(`<span class="ov-cat" style="color:${CAT_COLOR[cat]}">${esc(cat)}</span>`);
-  if (a.media) p.push(esc(a.media));
+  if (a.media) p.push(`<span class="ov-media">${esc(a.media)}</span>`);
   p.push(esc(rp || '-'));   // 기자명 항상 표기, 없으면 '-'(사용자 결정)
   p.push(`<span class="ov-l">WRITE</span><span class="ov-d">${esc(repDateTime(a))}</span>`);
   if (inn.txt) p.push(`<span class="ov-l">IN</span><span class="ov-d">${esc(inn.txt)}</span>`);
@@ -1177,7 +1186,7 @@ renderChips();
 // W 실시간 시계(초까지·KST)
 function tickClock() {
   const el = $('#dhClock'); if (!el) return;
-  el.textContent = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Seoul', hour12: false }) + ' KST';
+  el.innerHTML = `<b class="ck-t">${new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Seoul', hour12: false })}</b> KST`;
 }
 setInterval(tickClock, 1000); tickClock();
 // (주기 자동 새로고침 제거 — 사용자 요청 260614. 갱신 = 메뉴 새로고침 버튼.)
