@@ -46,11 +46,14 @@
   .topbanner { position:relative; max-width:860px; margin:0 auto; padding:10px 16px 0; }
   .banner { width:100%; display:block; border-radius:20px; border:1px solid var(--line);
     box-shadow:0 18px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.10);
-    animation:bannerbreath 5.5s ease-in-out infinite; will-change:filter; }
-  /* P: TV 뒤 불빛 브리딩 — 밝아졌다 은은히 죽었다 다시(절대 깜깜 X). filter=GPU 컴포지트(60fps). */
+    --glow:15,253,2;            /* 글로우 색(피드=초록·기본) */
+    animation:bannerbreath 5.5s ease-in-out infinite; will-change:filter;
+    transition:filter .4s ease; }
+  .banner.scrap { --glow:255,150,20; }   /* 스크랩 탭 = 앰버 글로우(ORANGE 배너 헤일로 매칭) */
+  /* P: TV 뒤 불빛 브리딩 — 밝아졌다 은은히 죽었다 다시(절대 깜깜 X). filter=GPU 컴포지트(60fps). 색=--glow(탭별). */
   @keyframes bannerbreath {
-    0%,100% { filter:brightness(1) saturate(1) drop-shadow(0 0 2px rgba(15,253,2,0)); }
-    50% { filter:brightness(1.12) saturate(1.13) drop-shadow(0 0 16px rgba(15,253,2,.28)); }
+    0%,100% { filter:brightness(1) saturate(1) drop-shadow(0 0 2px rgba(var(--glow),0)); }
+    50% { filter:brightness(1.12) saturate(1.13) drop-shadow(0 0 16px rgba(var(--glow),.28)); }
   }
   .profile { position:absolute; right:30px; bottom:-22px; z-index:6;
     width:60px; height:60px; padding:0; border-radius:50%; cursor:pointer;
@@ -2364,6 +2367,9 @@ function showTab(tab) {
   if (fb) fb.hidden = !feed;
   if (wp) wp.hidden = !feed;
   if (sv) sv.hidden = feed;
+  // 배너 탭별 교체: 피드=초록(main_background) / 스크랩=주황(ORANGE) + 주황 글로우(.scrap)
+  const bn = $('.banner');
+  if (bn) { bn.src = feed ? 'assets/brand/main_background.jpg' : 'assets/brand/ORANGE.png'; bn.classList.toggle('scrap', !feed); }
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (!feed) { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2371,6 +2377,8 @@ function showTab(tab) {
 
 load();
 loadMessages();
+// 스크랩 배너(ORANGE) 유휴시 미리 받아둠 → 첫 탭 전환 즉시 표시(초록→주황 깜빡임 방지)
+(window.requestIdleCallback || (cb => setTimeout(cb, 1600)))(() => { new Image().src = 'assets/brand/ORANGE.png'; });
 </script>
 </body>
 </html>
