@@ -445,7 +445,7 @@
   .scrub-bar { position:relative; height:6px; border-radius:999px; background:rgba(255,255,255,.09); cursor:pointer; }
   .scrub-fill { position:absolute; left:0; top:0; bottom:0; border-radius:999px; background:linear-gradient(90deg,#d8ff3d,var(--accent)); box-shadow:0 0 8px rgba(15,253,2,.4); }
   .scrub-tick { position:absolute; top:50%; width:2px; height:10px; transform:translate(-50%,-50%); background:rgba(255,255,255,.4); border-radius:1px; pointer-events:none; }
-  .scrub-dot { position:absolute; top:50%; width:13px; height:13px; transform:translate(-50%,-50%); border-radius:50%; background:#fff; box-shadow:0 0 0 3px rgba(15,253,2,.35), 0 1px 5px rgba(0,0,0,.45); pointer-events:none; transition:left .08s linear; }
+  .scrub-dot { position:absolute; top:50%; width:13px; height:13px; transform:translate(-50%,-50%); border-radius:50%; background:#fff; box-shadow:0 0 0 3px rgba(15,253,2,.35), 0 1px 5px rgba(0,0,0,.45); pointer-events:none; }   /* 끝단=초록 fill과 같은 pct로 동시 갱신 — transition 빼서 딱 붙어 이동(lag 제거) */
   .scrub-labels { display:flex; justify-content:space-between; font-size:10.5px; font-weight:700; color:var(--mut); letter-spacing:-.2px; }
   .scrub-lb { cursor:pointer; transition:color .15s; padding:1px 4px; }
   .scrub-lb:hover { color:var(--fg); }
@@ -477,6 +477,7 @@
   #mdbody h2, #mdbody h3 { color:var(--accent); border-top:1px solid var(--line2); border-bottom:none;
     padding-top:16px; margin:22px 0 8px; font-weight:800; letter-spacing:-.2px; }
   #mdbody h2 { font-size:14px; } #mdbody h3 { font-size:13.5px; }
+  #mdbody h3.subtop { border-top:none; padding-top:0; margin-top:4px; }   /* 섹션(h2) 바로 밑 서브헤더 = 위 구분선·빈 줄 제거(콘텐츠 초안→자유요약) */
   /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
   /* 소머리(•) — 카드 텍스트·이미지프롬프트 라벨 */
   #cardsec p.lbl { margin:14px 0 4px; }
@@ -1057,6 +1058,11 @@ function decorate(root) {
       else if (h.firstChild && h.firstChild.nodeType === 3 && !/^📍/.test(h.firstChild.data)) h.firstChild.data = '📍 ' + h.firstChild.data;
     }
   });
+  // 2c) 섹션 헤더(h2) 바로 밑 서브헤더(h3) = 사이 구분선·빈 줄 제거(콘텐츠 초안→자유요약 등)
+  root.querySelectorAll('h3').forEach(h => {
+    const pv = h.previousElementSibling;
+    if (pv && pv.tagName === 'H2') h.classList.add('subtop');
+  });
   // 2b) 기사 제목(h1) 맨 앞 이모지 제거(요청 — 제목엔 이모지 X)
   root.querySelectorAll('h1').forEach(h => {
     if (h.firstChild && h.firstChild.nodeType === 3)
@@ -1088,9 +1094,11 @@ function decorate(root) {
     const nx = ag.nextSibling;
     if (nx && nx.nodeType === 3) nx.data = nx.data.replace(/^\s*:\s*/, ' ');
   });
-  // M: 활용옵션 편향 줄(단독 p)에 • 말머리
+  // M: 편향 줄(단독 p) — 좌우무관/N/A면 '편향: 무관'으로 축약(보정 면제 문구 제거, 메인과 동일), 그 외엔 • 말머리만
   root.querySelectorAll('p').forEach(p => {
-    if (/^\s*편향\s*[:：]/.test(p.textContent)) p.classList.add('bullet');
+    if (!/^\s*편향\s*[:：]/.test(p.textContent)) return;
+    if (/무관|N\s*\/?\s*A/i.test(p.textContent)) p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>';
+    p.classList.add('bullet');
   });
   // 4) 요약 드래프트 더보기/접기 — '자유요약'만 클립(IG·Thread는 전체 표시)
   root.querySelectorAll('pre').forEach(pre => {
