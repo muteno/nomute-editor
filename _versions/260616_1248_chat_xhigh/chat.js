@@ -6,7 +6,7 @@
 
 const MODEL = 'claude-opus-4-8';
 const API = 'https://api.anthropic.com/v1/messages';
-const MAX_TOKENS = 64000;       // effort=max 권장 하한(사고+출력 공유 상한 — 낮으면 사고 도중 잘림). 스트리밍이라 타임아웃·과금은 실사용분만.
+const MAX_TOKENS = 8000;        // 재요약(전체 다시쓰기)도 담을 여유. 스트리밍이라 타임아웃 무관.
 const MAX_TURNS = 24;           // 히스토리 안전 상한(과금·프롬프트 폭주 방지)
 const MAX_MSG = 4000;           // 메시지 1건 길이 상한
 const MAX_CTX = 16000;          // 카드 본문(context) 길이 상한
@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
         max_tokens: MAX_TOKENS,
         stream: true,
         thinking: { type: 'adaptive', display: 'summarized' },   // Opus 4.8 = adaptive 전용(budget_tokens=400). 사고요약 표시.
-        output_config: { effort: 'max' },                        // 노력 최대치(사용자 선택). max_tokens 64K와 한 쌍(사고 도중 잘림 방지).
+        output_config: { effort: 'max' },                        // 노력 최대치(사용자 요청)
         system,
         messages,
       }),
