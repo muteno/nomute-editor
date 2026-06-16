@@ -2894,9 +2894,11 @@ const TRIAGE = {
     { k: '지식', d: '효과적 콘텐츠면 팔로워가 유용하다고 느낄 것이라 판단' } ] },
 };
 function askReason(act, c, el) {
-  if (!el || el.querySelector('.sc-rsn')) return;
+  if (!el) return;
+  const ex = el.querySelector('.sc-rsn');   // 이미 열린 사유 패널: 같은 액션=토글 닫기 / 다른 액션=갈아끼움(전환 버그 수정)
+  if (ex) { const same = ex.dataset.act === act; ex.remove(); if (same) return; }
   const A = TRIAGE[act];
-  const p = document.createElement('div'); p.className = 'sc-rsn rsn-' + act;
+  const p = document.createElement('div'); p.className = 'sc-rsn rsn-' + act; p.dataset.act = act;
   p.innerHTML = `<div class="sc-rsn-q">${A.q}</div>
     <div class="sc-rsn-chips">${A.reasons.map(r => `<button type="button" class="sc-rsn-c${r.input ? ' inp' : ''}" data-k="${esc(r.k)}"${r.d ? ` title="${esc(r.d)}"` : ''}>${esc(r.k)}</button>`).join('')}</div>
     <div class="sc-rsn-iw" hidden><input class="sc-rsn-in" type="text" maxlength="200" placeholder="이유 한 줄"></div>
