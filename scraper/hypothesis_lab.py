@@ -57,6 +57,8 @@ SIGNALS = {
     "cross":        lambda x: x.get("cross"),
     "burst":        lambda x: x.get("burst"),
     "꼬리h":         lambda x: tail_h(x),
+    "report_cnt":   lambda x: x.get("report_count"),   # 연속보도(arts 증가 사이클) — 사건>보도자료 기대
+    "arts":         lambda x: x.get("arts"),            # 클러스터 기사 수
     "seen_count":   lambda x: x.get("seen_count"),
     "burst/cross":  lambda x: (x.get("burst") or 0)/(x.get("cross") or 1),  # 동시성(↑=보도자료 의심)
 }
