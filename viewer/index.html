@@ -1319,14 +1319,33 @@ function open(a) {
 }
 
 // ── 카드별 채팅봇 — 이 요약(a.body)을 context로 질문/재구성. 백엔드=api/chat(claude-opus-4-8·노력 max·NDJSON 스트림). ──
-let CHAT = { ctx: '', title: '', history: [], busy: false };
+let CHAT = { key: '', gen: 0, abort: null, ctx: '', title: '', history: [], busy: false };
+// 카드별 채팅 영속(이탈=저장): localStorage에 카드 key(=a.file)별 history 보존 → 재진입 시 복원.
+const CHAT_LS = 'nm_chat';
+function chatStore() { try { return JSON.parse(localStorage.getItem(CHAT_LS) || '{}'); } catch { return {}; } }
+function chatLoad(key) { if (!key) return []; const s = chatStore()[key]; return Array.isArray(s) ? s : []; }
+function chatSave(key, history) { if (!key) return; try { const s = chatStore(); s[key] = (history || []).slice(-40); localStorage.setItem(CHAT_LS, JSON.stringify(s)); } catch {} }
+function renderChatHistory(history) {
+  (history || []).forEach(m => {
+    if (m.role === 'user') chatBubble('u', m.content);
+    else { const el = chatBubble('a', ''); el.classList.add('md-rich'); try { el.innerHTML = DOMPurify.sanitize(marked.parse(m.content || '')); } catch { el.textContent = m.content || ''; } }
+  });
+  scrollChat();
+}
 function resetChat(a) {
-  CHAT = { ctx: a.body || a.summary || '', title: a.title || '', history: [], busy: false };
+  if (CHAT.abort) { try { CHAT.abort.abort(); } catch {} }   // 이전 카드 스트림 중단(다른 카드 thread로 새는 것 방지)
+  const key = a.file || a.url || a.title || '';
+  const saved = chatLoad(key);
+  CHAT = { key, gen: (CHAT.gen || 0) + 1, abort: null, ctx: a.body || a.summary || '', title: a.title || '', history: saved.slice(), busy: false };
   const box = $('#chatbox'); if (box) box.classList.remove('open');
   const panel = $('#chatPanel'); if (panel) panel.hidden = true;
   const launch = $('#chatLaunch'); if (launch) launch.setAttribute('aria-expanded', 'false');
   const thread = $('#chatThread');
-  if (thread) thread.innerHTML = '<div class="chat-empty">이 기사 요약에 대해 물어보거나,<br>"다시 요약해줘 / 더 짧게 / 카드용으로" 처럼 재구성을 요청해봐.</div>';
+  if (thread) {
+    thread.innerHTML = '';
+    if (saved.length) renderChatHistory(saved);   // 저장된 대화 복원
+    else thread.innerHTML = '<div class="chat-empty">이 기사 요약에 대해 물어보거나,<br>"다시 요약해줘 / 더 짧게 / 카드용으로" 처럼 재구성을 요청해봐.</div>';
+  }
   const input = $('#chatInput'); if (input) { input.value = ''; input.style.height = ''; }
   setChatBusy(false);
 }
@@ -1364,9 +1383,11 @@ async function sendChat() {
   think.innerHTML = '<span class="dot"></span><span class="lbl">생각하는 중…</span>';
   thread.appendChild(think); scrollChat();
   CHAT.busy = true; setChatBusy(true);
+  const myGen = CHAT.gen, ac = (typeof AbortController !== 'undefined') ? new AbortController() : null; CHAT.abort = ac;
   let answer = '', refused = false, errMsg = '';
   try {
     const r = await fetch('api/chat', { method: 'POST', headers: { 'content-type': 'application/json' },
+      signal: ac ? ac.signal : undefined,
       body: JSON.stringify({ context: CHAT.ctx, title: CHAT.title, messages: reqMsgs }) });
     if (!r.ok || !r.body) {
       const d = await r.json().catch(() => ({}));
@@ -1387,13 +1408,14 @@ async function sendChat() {
         }
       }
     }
-  } catch { errMsg = '전송 실패 — 네트워크 또는 백엔드(ANTHROPIC_API_KEY) 미설정.'; }
-  finally { CHAT.busy = false; setChatBusy(false); }
+  } catch (e) { if (!(e && e.name === 'AbortError')) errMsg = '전송 실패 — 네트워크 또는 백엔드(ANTHROPIC_API_KEY) 미설정.'; }
+  finally { if (CHAT.gen === myGen) { CHAT.busy = false; setChatBusy(false); } }
+  if (CHAT.gen !== myGen) return;   // 카드 바뀜(이탈) → 이 응답 폐기(다른 카드 thread로 안 샘)
   think.remove();
   if (answer) {
     aEl.classList.add('md-rich');
     aEl.innerHTML = DOMPurify.sanitize(marked.parse(answer));
-    CHAT.history = reqMsgs.concat([{ role: 'assistant', content: answer }]);   // 성공 → 한 쌍 커밋
+    CHAT.history = reqMsgs.concat([{ role: 'assistant', content: answer }]); chatSave(CHAT.key, CHAT.history);   // 성공 → 한 쌍 커밋 + 카드별 저장(이탈해도 보존)
     scrollChat();
   } else {
     aEl.remove(); userEl.classList.add('failed');   // 실패 → 히스토리 미커밋(다음 전송 시 교대 깨짐 방지). 버블은 흐리게 남김.
@@ -2793,7 +2815,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
-     ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
+     ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
   if (triage) {   // 신속 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 인박스서 접힘
     el.querySelector('.sc-tg.down').onclick = () => askReason('down', c, el);
@@ -2830,7 +2852,13 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
 }
 const _rateTimers = {};
 function rateCard(c, n) {
-  const id = candId(c); ratedKeep.add(id); saveRating(id, { score: n }); renderScrap();   // ratedKeep = 이번 세션 유지(다음 갱신 때 제외)
+  const id = candId(c); ratedKeep.add(id);
+  // 진행 중 메모 입력 보존 — 별점 변경 재렌더로 텍스트·포커스·커서 유실 방지
+  const af = document.activeElement, editing = (af && af.classList && af.classList.contains('sc-memo-in')) ? af : null;
+  const mid = editing ? editing.dataset.id : null, mpos = editing ? (editing.selectionStart != null ? editing.selectionStart : (editing.value || '').length) : 0;
+  if (editing) saveRating(mid, { memo: (editing.value || '').trim().slice(0, 200) });
+  saveRating(id, { score: n }); renderScrap();   // ratedKeep = 이번 세션 유지(다음 갱신 때 제외)
+  if (mid) { const mi2 = [...document.querySelectorAll('.sc-memo-in')].find(x => x.dataset.id === mid); if (mi2) { mi2.focus({ preventScroll: true }); try { mi2.setSelectionRange(mpos, mpos); } catch {} } }
   clearTimeout(_rateTimers[id]);   // 빠른 재평가(3→4→5)는 묶어 1회만 발사(커밋 스팸 방지)
   _rateTimers[id] = setTimeout(() => { const s = ratingsAll()[id] || {}; postRate({ id, url: c.url || '', title: c.title || '', score: s.score || n, picked: !!s.picked, memo: s.memo || '' }); }, 1000);
 }
