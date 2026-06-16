@@ -832,11 +832,11 @@
 
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
 <nav class="bnav" id="bnav">
-  <button class="bnav-i" data-tab="scrap" aria-label="스크랩(수집·큐레이션)"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.2V20l-4-2.2v-4.6z"/></svg><span>스크랩</span></button>
+  <button class="bnav-i" data-tab="scrap" aria-label="레거시(스크랩·큐레이션)"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.2V20l-4-2.2v-4.6z"/></svg><span>레거시</span></button>
   <button class="bnav-i" data-tab="sns" aria-label="SNS"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M15 12v1.6a2.2 2.2 0 0 0 4.4 0 7.8 7.8 0 1 0-2.4 5.5"/></svg><span>SNS</span></button>
   <button class="bnav-fab" id="toolfab" type="button" aria-label="제작 도구"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-  <button class="bnav-i active" data-tab="feed" aria-label="피드(기사)"><svg viewBox="0 0 24 24"><path d="M3 10.6 12 3l9 7.6"/><path d="M5.5 9.4V20h13V9.4"/><path d="M9.5 20v-5.5h5V20"/></svg><span>피드</span></button>
-  <a class="bnav-i" href="https://x.com" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg><span>X</span></a>
+  <button class="bnav-i active" data-tab="feed" aria-label="뉴스 요약"><svg viewBox="0 0 24 24"><path d="M3 10.6 12 3l9 7.6"/><path d="M5.5 9.4V20h13V9.4"/><path d="M9.5 20v-5.5h5V20"/></svg><span>뉴스 요약</span></button>
+  <button class="bnav-i" id="linkfab" type="button" aria-label="링크(피드 탐색)"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1.1-1.1"/></svg><span>링크</span></button>
 </nav>
 <div class="bpop" id="bpop" hidden>
   <b>제작 도구</b>
@@ -844,6 +844,13 @@
   <a href="/ly.html">릴스 자막</a>
   <a href="/k.html">영상 프롬프트</a>
   <a href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener">지면 뉴스 ↗</a>
+</div>
+<div class="bpop" id="linkpop" hidden>
+  <b>피드 탐색</b>
+  <a href="https://news.naver.com/newspaper" target="_blank" rel="noopener">레거시 피드 ↗</a>
+  <a href="https://x.com/home" target="_blank" rel="noopener">X ↗</a>
+  <a href="https://threads.com" target="_blank" rel="noopener">Thread ↗</a>
+  <a href="https://www.instagram.com/" target="_blank" rel="noopener">인스타그램 ↗</a>
 </div>
 
 <script>
@@ -2296,22 +2303,24 @@ setInterval(tickClock, 1000); tickClock();
 // (주기 자동 새로고침 제거 — 사용자 요청 260614. 갱신 = 메뉴 새로고침 버튼.)
 
 // S(개정) 하단 네비 — 스크랩/피드=인앱 탭 전환 / SNS=<a> 직접 이동 / FAB(+)=제작도구 팝업.
-const bpop = $('#bpop');
+const bpop = $('#bpop'), linkpop = $('#linkpop');
+function popAt(pop, btn) {        // 팝업을 버튼 위에 띄움(좌우 화면 밖 안 나가게 클램프)
+  const r = btn.getBoundingClientRect();
+  pop.style.left = Math.max(120, Math.min(r.left + r.width / 2, window.innerWidth - 120)) + 'px';
+  pop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+}
 $('#bnav').addEventListener('click', e => {
-  // 스크랩/피드 = 탭 전환(showTab). SNS는 <a href target=_blank> 직접 이동. FAB(+)=제작도구 팝업 토글.
+  // 레거시/SNS/뉴스요약 = 탭 전환(showTab). ＋=제작도구 팝업 / 링크=피드 탐색 팝업(둘은 상호 배타).
   const b = e.target.closest('.bnav-i[data-tab]');
   if (b) { e.preventDefault(); showTab(b.dataset.tab); return; }
   const f = e.target.closest('#toolfab');
-  if (f) {
-    e.preventDefault();
-    const r = f.getBoundingClientRect();
-    bpop.style.left = (r.left + r.width / 2) + 'px';
-    bpop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
-    bpop.hidden = !bpop.hidden;
-  }
+  if (f) { e.preventDefault(); linkpop.hidden = true; popAt(bpop, f); bpop.hidden = !bpop.hidden; return; }
+  const lk = e.target.closest('#linkfab');
+  if (lk) { e.preventDefault(); bpop.hidden = true; popAt(linkpop, lk); linkpop.hidden = !linkpop.hidden; return; }
 });
 document.addEventListener('click', e => {
   if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) bpop.hidden = true;
+  if (!linkpop.hidden && !linkpop.contains(e.target) && !$('#bnav').contains(e.target)) linkpop.hidden = true;
 });
 
 
