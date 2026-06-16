@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # scraper 출력(articles.json) → viewer/candidates.json 갱신 = 스크랩(수집함) 탭 데이터.
-# 클러스터 대표만 추려 url 기준 누적·중복제거·보관기간(10일) 폐기·교차순·보관한도. 자동분석과 무관(수집만, 과금 0).
+# 클러스터 대표만 추려 url 기준 누적·중복제거·TTL(48h) 탈락·교차순·상한. 자동분석과 무관(수집만, 과금 0).
 #   사용: python3 scraper/to_candidates.py [articles.json경로]
 import json
 import os
@@ -14,10 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "scraper" / "out" / "articles.json"
 DST = ROOT / "viewer" / "candidates.json"
 
-# 용어 통일: 수집 수(긁은 기사 총량, knews_scraper) · 사건 수(중복 합친 distinct, 아래 kept) ·
-#            보관한도(수집함에 들고 있는 최대 사건 수=CAP) · 보관기간(등장 후 폐기까지 시간=TTL).
-TTL_HOURS = int(os.environ.get("CAND_TTL_HOURS", "240"))  # 보관기간: 등장 후 N시간 지나면 폐기(240=10일)
-CAP = int(os.environ.get("CAND_CAP", "3000"))             # 보관한도: 수집함 최대 사건 수(10일치 여유 — 실제 컷은 보관기간이 함)
+TTL_HOURS = int(os.environ.get("CAND_TTL_HOURS", "48"))   # 등장 후 N시간 지나면 수집함에서 탈락
+CAP = int(os.environ.get("CAND_CAP", "80"))               # 수집함 최대 노출 수
 MIN_CROSS = int(os.environ.get("CAND_MIN_CROSS", "2"))    # 교차등장 최소 매체 수(2=2개 이상 매체에 뜬 것만 = 뉴스성)
 
 KST = timezone(timedelta(hours=9))
@@ -85,8 +83,7 @@ def main():
 
     DST.parent.mkdir(parents=True, exist_ok=True)
     DST.write_text(json.dumps(kept, ensure_ascii=False), encoding="utf-8")
-    print(f"수집함: 사건 {len(kept)}건 (신규 {len(fresh)} · 기존 {len(existing)}) · "
-          f"보관한도 {CAP} · 보관기간 {TTL_HOURS}h(약 {TTL_HOURS // 24}일) · 교차≥{MIN_CROSS}")
+    print(f"candidates.json: {len(kept)}건 (신규수집 {len(fresh)} · 기존 {len(existing)} · TTL {TTL_HOURS}h · 교차≥{MIN_CROSS})")
 
 
 if __name__ == "__main__":
