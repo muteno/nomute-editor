@@ -343,11 +343,11 @@
   .sc-item.removing { opacity:0; transform:scale(.96) translateX(16px); pointer-events:none; overflow:hidden;
     transition:height .32s ease, opacity .3s ease, transform .3s ease, margin .32s ease, padding .32s ease; }
   @media (prefers-reduced-motion:reduce) { .sc-item.removing { transition:opacity .12s; } }
-  /* 🚨 속보(breaking) — 빨강 강조: 카드 배지/테두리 · 프로필 링 · 포그라운드 토스트 (1·2단계 backend가 breaking 확정) */
-  .sc-brk { display:inline-flex; align-items:center; gap:3px; font-weight:800; font-size:9.5px; color:#fff; letter-spacing:.02em;
-    background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:1px 7px; box-shadow:0 0 9px rgba(255,60,60,.5); }
-  .sc-item.breaking { border-color:rgba(255,75,60,.5); box-shadow:0 0 0 1px rgba(255,75,60,.28), 0 0 15px rgba(255,60,50,.16); }
-  .scrap-col.green .sc-item.breaking, .scrap-col.black .sc-item.breaking { border-color:rgba(255,80,60,.5); }
+  /* ⚡ 이슈(burst 급증·검증된 화제) — 수집함 '최신' 컬럼 한정 노랑 배지(누적 컬럼·검증 메이저는 미표시). 빨강 속보 알림(링·토스트)은 별개. */
+  .sc-brk { display:inline-flex; align-items:center; gap:3px; font-weight:800; font-size:9.5px; color:#1a1400; letter-spacing:.02em;
+    background:linear-gradient(135deg,#ffe14a,#ffc31f); border-radius:999px; padding:1px 7px; box-shadow:0 0 9px rgba(255,200,40,.45); }
+  .sc-item.breaking { border-color:rgba(255,200,50,.5); box-shadow:0 0 0 1px rgba(255,200,50,.28), 0 0 15px rgba(255,195,40,.16); }
+  .scrap-col.green .sc-item.breaking, .scrap-col.black .sc-item.breaking { border-color:rgba(255,200,55,.5); }
   body.has-breaking .profile { border-radius:50%; animation:profBrk 1.7s ease-in-out infinite; }
   @keyframes profBrk { 0%,100% { box-shadow:0 0 0 2px #ff3b3b, 0 0 8px rgba(255,60,50,.45); } 50% { box-shadow:0 0 0 2px #ff5a4a, 0 0 18px rgba(255,85,60,.8); } }
   .nm-toast { position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(18px);
@@ -2575,13 +2575,13 @@ const SC_COLS_HTML =
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
-  el.className = 'sc-item' + (c.breaking ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
+  el.className = 'sc-item' + (c.breaking && col !== 'cross' ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
   const catB = articleCat({ category: c.cat, title: c.title });
   const showMemo = (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸 노출(안 쓰면 주요도서 숨김)
   el.innerHTML =
-    `<div class="sc-top">${c.breaking ? '<span class="sc-brk">🚨 속보</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+    `<div class="sc-top">${c.breaking && col !== 'cross' ? '<span class="sc-brk">⚡ 이슈</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot">${col === 'cross' ? '' : `<button class="sc-down" type="button" title="관심 없음 — 숨기기(별점 1점 미만·취향 기록)" aria-label="관심 없음">${THUMBDOWN_SVG}</button>`}<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;

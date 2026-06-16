@@ -85,6 +85,13 @@ def main():
         c["first_seen"] = merged[url].get("first_seen", nowiso) if url in merged else nowiso
         merged[url] = {**merged.get(url, {}), **c}
 
+    # 속보 강등(만료): burst 가 1차 게이트(≥BREAKING_BURST) 밑으로 떨어진 사건은 굳은 breaking 플래그 해제.
+    # burst 2 vs 3 = 넘사벽 — 급증 끝난 사건이 🚨로 눌어붙던 버그 차단. rubric 도 비워 재급증 시 재판정.
+    for c in merged.values():
+        if not c.get("breaking_candidate"):
+            c.pop("breaking", None)
+            c.pop("breaking_rubric", None)
+
     def age_h(c):
         try:
             return (now - datetime.fromisoformat(c.get("first_seen") or nowiso)).total_seconds() / 3600
