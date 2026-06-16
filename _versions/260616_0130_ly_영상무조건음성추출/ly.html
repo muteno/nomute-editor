@@ -42,7 +42,7 @@
   <label>영상 URL <span class="paid">(yt-dlp · 유튜브·IG·드라이브/직접 링크 — 큰 영상은 네 저장소에 올리고 링크)</span></label>
   <input type="text" id="url" placeholder="https://…  (넣으면 파일·텍스트 무시)">
   <div class="orsep">— 또는 —</div>
-  <label>영상·오디오 파일 <span class="paid">(영상은 브라우저서 음성만 추출 → 길이·용량 무관 · 오디오는 그대로 · Whisper STT)</span></label>
+  <label>영상·오디오 파일 <span class="paid">(mp4·mov·mp3·m4a · 20MB↑ 영상은 브라우저서 음성만 추출 → 길이무관 · Whisper STT)</span></label>
   <label class="file" id="fileLab"><span id="fileTxt">탭해서 영상·오디오 파일 선택</span>
     <input type="file" accept="video/*,audio/*" id="file" style="display:none">
   </label>
@@ -98,13 +98,13 @@ async function ffExtractAudio(file, onMsg) {
 $('#file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   const st = $('#status'); st.classList.remove('err'); st.textContent = '';
-  const isVideo = /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|3gp)$/i.test(f.name);
-  if (!isVideo) {                                        // 오디오 = 그대로(이미 작음)
-    if (f.size > FILE_MAX) { clearFile(`오디오가 커 — ${(f.size / 1048576).toFixed(1)}MB (최대 20MB). URL로.`, true); return; }
-    await readB64(f, f.name); $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has'); return;
+  if (f.size <= FILE_MAX) {                              // 직접 업로드
+    await readB64(f, f.name);
+    $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has');
+    return;
   }
-  if (f.size > FILE_HARD) { clearFile(`영상이 너무 큼 — ${(f.size / 1048576).toFixed(0)}MB (한계 ${Math.round(FILE_HARD / 1048576)}MB). URL로 시도해줘.`, true); return; }
-  // 영상 = 무조건 음성만 추출(길이·용량 무관)
+  if (f.size > FILE_HARD) { clearFile(`너무 큼 — ${(f.size / 1048576).toFixed(0)}MB (한계 ${Math.round(FILE_HARD / 1048576)}MB). URL로 시도해줘.`, true); return; }
+  // 20MB 초과 → 브라우저서 음성만 추출(길이·용량 무관해짐)
   $('#fileLab').classList.remove('has'); $('#fileTxt').textContent = f.name + ' — 음성 추출 중…';
   try {
     const blob = await ffExtractAudio(f, m => { st.textContent = m; });
@@ -113,12 +113,7 @@ $('#file').onchange = async e => {
     $('#fileTxt').textContent = f.name + ' → 음성 ✓'; $('#fileLab').classList.add('has');
     st.textContent = `✅ 음성 추출 완료 (${(blob.size / 1048576).toFixed(1)}MB) — 자막 발사 가능`;
   } catch (err) {
-    if (f.size <= FILE_MAX) {                            // 추출 실패 + 작은 영상 → 그대로 업로드(러너가 추출)
-      await readB64(f, f.name); $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has');
-      st.textContent = '음성 추출 건너뜀 → 영상 그대로 업로드(러너가 추출).';
-    } else {
-      clearFile('음성 추출 실패 — 영상 URL로 시도해줘 (' + ((err && err.message) ? err.message.slice(0, 40) : 'error') + ')', true);
-    }
+    clearFile('음성 추출 실패 — 영상 URL로 시도해줘 (' + ((err && err.message) ? err.message.slice(0, 50) : 'error') + ')', true);
   }
 };
 
