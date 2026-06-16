@@ -42,7 +42,7 @@
   <label>영상 URL <span class="paid">(yt-dlp · 유튜브·IG·드라이브/직접 링크 — 큰 영상은 네 저장소에 올리고 링크)</span></label>
   <input type="text" id="url" placeholder="https://…  (넣으면 파일·텍스트 무시)">
   <div class="orsep">— 또는 —</div>
-  <label>영상·오디오 파일 <span class="paid">(mp4·mov·mp3·m4a · 최대 20MB · 오디오 길이무관 · Whisper STT)</span></label>
+  <label>영상·오디오 파일 <span class="paid">(mp4·mov·mp3·m4a · 영상 ≤15MB · 오디오 길이무관 · Whisper STT)</span></label>
   <label class="file" id="fileLab"><span id="fileTxt">탭해서 영상·오디오 파일 선택</span>
     <input type="file" accept="video/*,audio/*" id="file" style="display:none">
   </label>
@@ -60,18 +60,8 @@ const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
 
 let FILE_B64 = '', FILE_NAME = '';
-const FILE_MAX = 20 * 1024 * 1024;   // 20MB — base64→GitHub 경로 안전선. 넘으면 첨부 거부(큰 영상은 URL)
 $('#file').onchange = e => {
   const f = e.target.files[0]; if (!f) return;
-  if (f.size > FILE_MAX) {
-    const st = $('#status');
-    st.textContent = `파일이 커서 첨부 불가 — ${(f.size / 1048576).toFixed(1)}MB (최대 20MB). 큰 영상은 위 URL칸에 링크로(드라이브 등 직링크).`;
-    st.classList.add('err');
-    e.target.value = ''; FILE_B64 = ''; FILE_NAME = '';
-    $('#fileTxt').textContent = '탭해서 영상·오디오 파일 선택'; $('#fileLab').classList.remove('has');
-    return;
-  }
-  $('#status').textContent = ''; $('#status').classList.remove('err');
   FILE_NAME = f.name;
   const r = new FileReader();
   r.onload = () => { FILE_B64 = r.result; $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has'); };
