@@ -67,6 +67,10 @@
   /* 결과 이미지 다운로드 (우상단 · 뷰어 캐러셀 계승) */
   .imgdl { position:absolute; top:10px; right:10px; width:36px; height:36px; display:grid; place-items:center; color:#fff; background:rgba(8,15,11,.6); border:1px solid rgba(255,255,255,.22); border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; }
   .imgdl:active { transform:scale(.9); } .imgdl svg { display:block; }
+  /* 전체 저장(Save All · 결과 상단 · 뷰어 캐러셀 계승) — 개별 ↓는 유지 */
+  .result-top { display:flex; justify-content:flex-end; margin-bottom:8px; }
+  .saveall { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#07210a; background:var(--grn); border:none; border-radius:999px; padding:8px 14px; cursor:pointer; }
+  .saveall:active { transform:scale(.96); } .saveall svg { display:block; }
   /* 텍스트칸 붙여넣기↔복사 (우상단 · 뷰어 .copy 계승) */
   .iobtn { position:absolute; top:8px; right:8px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer; z-index:2; transition:transform .12s, background .15s, color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .iobtn:hover { background:rgba(255,255,255,.12); color:var(--fg); }
@@ -426,7 +430,7 @@ function buildParams() {
 function pollMany(outs) {
   const result = $('#result'), status = $('#status');
   if (!outs.length) { status.textContent = '출력 경로 없음'; status.classList.add('err'); return; }
-  result.innerHTML = outs.map((o, i) =>
+  result.innerHTML = (outs.length >= 2 ? '<div class="result-top" id="resultTop"></div>' : '') + outs.map((o, i) =>
     '<div class="slot" data-i="' + i + '">' +
     (o.label ? '<div class="slot-lab">' + o.label + '</div>' : '') +
     '<div class="slot-img"><span class="slot-wait">⏳ 대기…</span></div></div>').join('');
@@ -434,7 +438,21 @@ function pollMany(outs) {
   const done = outs.map(() => false);
   const tick = () => {
     const sec = Math.round((Date.now() - t0) / 1000);
-    if (done.every(Boolean)) { status.textContent = '✅ 완료 (' + sec + 's) · ' + outs.length + '장'; return; }
+    if (done.every(Boolean)) {
+      status.textContent = '✅ 완료 (' + sec + 's) · ' + outs.length + '장';
+      const top = $('#resultTop');   // Save All = 개별 ↓ 유지 + 전체 일괄 저장(2장 이상)
+      if (top && !top.querySelector('.saveall')) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'saveall';
+        b.innerHTML = DOWNLOAD_SVG + '<span>Save All</span>';
+        b.onclick = () => outs.forEach((o, i) => setTimeout(() => {
+          const a = document.createElement('a'); a.href = o.path + '?t=' + Date.now();
+          a.download = o.path.split('/').pop() || ('nomute_' + (i + 1) + '.png');
+          document.body.appendChild(a); a.click(); a.remove();
+        }, i * 350));
+        top.appendChild(b);
+      }
+      return;
+    }
     if (sec > 600) { status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); return; }
     status.textContent = '⏳ 제작 중… ' + sec + 's (' + done.filter(Boolean).length + '/' + outs.length + '장 · 보통 1–2분)';
     outs.forEach((o, i) => {
@@ -786,6 +804,11 @@ $('#go').onclick = async () => {
   if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { status.textContent = '부제 또는 제목을 입력해줘'; status.classList.add('err'); return; }
   if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
   if (APP === '4' && !params.lines.length) { status.textContent = '경고문 텍스트를 입력해줘'; status.classList.add('err'); return; }
+  // 릴스/포스트 오버레이 = 강조(*별표*) 빠뜨리면 확인
+  if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {
+    const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
+    if (!/\*[^*\n]+\*/.test(_t) && !confirm('강조를 안 넣었는데, 진행할까요?')) { status.textContent = ''; return; }
+  }
   $('#go').disabled = true; status.textContent = '발사 중…';
   try {
     const payload = { app: APP, params };
