@@ -91,7 +91,7 @@
   body[data-tab="sns"] .pbadge { background:linear-gradient(135deg,#9becff,#0cd0f7); }
 
   /* ── 메시지 팝업(프로필 근처) ── */
-  .msgpop { position:fixed; z-index:21; width:min(300px,82vw);
+  .msgpop { position:fixed; z-index:21; width:min(300px,82vw); overflow:auto;
     background:linear-gradient(165deg, rgba(22,36,27,.66), rgba(11,19,14,.74));   /* 살짝 반투명 글래스 모피즘 */
     backdrop-filter:blur(26px) saturate(1.5); -webkit-backdrop-filter:blur(26px) saturate(1.5);
     border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:6px;
@@ -642,7 +642,7 @@
   }
   dialog::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
   /* 제작 도구 모달(iframe) — 도구 페이지를 뷰어 위 모달로(클릭→등장). backdrop은 dialog 공통(뒤 dimmed·블러7) 상속 */
-  #tooldlg { width:min(900px,96vw); height:90vh; max-height:90vh; padding:0; overflow:hidden; display:flex; flex-direction:column;
+  #tooldlg { width:min(900px,96vw); height:90dvh; max-height:90dvh; padding:0; overflow:hidden; display:flex; flex-direction:column;
     background:var(--bg); border:1px solid rgba(255,255,255,.13); border-radius:22px;
     animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
   @keyframes toolIn { from { opacity:0; transform:scale(.965) translateY(10px); } to { opacity:1; transform:none; } }
@@ -654,6 +654,7 @@
     color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
   .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   #toolframe { flex:1; width:100%; border:0; background:var(--bg); display:block; }
+  @media (max-width:640px){ #tooldlg { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; border-radius:0; } .tool-h { padding-top:calc(10px + env(safe-area-inset-top)); } }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
     padding:11px 16px 12px; display:flex; flex-direction:column; gap:11px; }
@@ -1073,9 +1074,9 @@
 </dialog>
 
 <!-- 제작 도구 모달(iframe) — + 메뉴 항목(썸네일·릴스·영상) 클릭 시 새 페이지 대신 뷰어 위에 모달로 등장(뉴스 요약 모달과 동일 결). -->
-<dialog id="tooldlg">
+<dialog id="tooldlg" aria-labelledby="toolTitle">
   <div class="tool-h"><b id="toolTitle">제작 도구</b><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-  <iframe id="toolframe" title="제작 도구" src="about:blank"></iframe>
+  <iframe id="toolframe" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
 </dialog>
 
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
@@ -2591,10 +2592,13 @@ $('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loa
 // 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
 function placeMsgpop() {
   const pr = $('#profile').getBoundingClientRect();
-  msgpop.style.top = Math.round(pr.top + pr.height / 2) + 'px';        // 프로필 세로 중앙 → 아래로
-  msgpop.style.right = Math.round(window.innerWidth - pr.right) + 'px'; // 프로필 우측 라인 → 좌측으로
+  const top = Math.round(pr.top + pr.height / 2);
+  msgpop.style.top = top + 'px';                                       // 프로필 세로 중앙 → 아래로
+  msgpop.style.right = Math.max(8, Math.round(window.innerWidth - pr.right)) + 'px';   // 프로필 우측 라인 → 좌측(좌측 넘침 방지)
   msgpop.style.left = 'auto'; msgpop.style.bottom = 'auto';
+  msgpop.style.maxHeight = (window.innerHeight - top - 12) + 'px';     // 하단 넘침 방지(내부 스크롤)
 }
+['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!msgpop.hidden) placeMsgpop(); }, { passive: true }));
 $('#msgbtn').addEventListener('click', e => { e.stopPropagation(); closeOverlays('msg'); renderMsgList(); placeMsgpop(); msgpop.hidden = false; });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
@@ -2980,6 +2984,7 @@ const TRIAGE = {
   down: { q: '👎 관심 없음 — 왜? (택1)', reasons: [
     { k: '국지적', d: '국지적·개별·특정 회사 사안 = 범국민적 공감 어려움' },
     { k: '배포용', d: '기업·문화계 영리목적 / 정부 정책홍보 보도자료 일시배포(전국민 관심↓)' },
+    { k: '특정주', d: '특정 주식 관련 보도 기사 자료 — 콘텐츠 부적합' },
     { k: '직접입력', input: true } ] },
   pass: { q: '⏭ 패스 — 왜? (택1)', reasons: [
     { k: '별로', d: '콘텐츠로 다루기에는 가치가 그닥 없다' },
@@ -3090,11 +3095,17 @@ function openAsk() { bpop.hidden = true; linkpop.hidden = true; $('#askStatus').
 $('#askmenu').addEventListener('click', e => { e.preventDefault(); openAsk(); });
 // 제작 도구(썸네일·릴스·영상) = + 메뉴 항목 클릭 → 새 페이지 대신 뷰어 위 모달(iframe)로 등장. href는 폴백.
 const tooldlg = $('#tooldlg');
-function openTool(src, title) { $('#toolTitle').textContent = title || '제작 도구'; $('#toolframe').src = src; closeOverlays(); tooldlg.showModal(); }
+// 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
+function openTool(src, title) {
+  $('#toolTitle').textContent = title || '제작 도구';
+  closeOverlays(); document.documentElement.style.overflow = 'hidden';
+  tooldlg.showModal(); $('#toolframe').src = src; setTimeout(() => $('#toolX').focus(), 0);
+}
 $('#bpop').addEventListener('click', e => { const a = e.target.closest('a[data-tool]'); if (a) { e.preventDefault(); openTool(a.getAttribute('href'), a.textContent.trim()); } });
 $('#toolX').addEventListener('click', () => tooldlg.close());
-tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; });   // 닫으면 iframe 정지(상태·메모리 초기화)
+tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus(); });   // iframe 정지 + 스크롤락 해제(중첩 가드) + 트리거 포커스 복귀
 tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close(); });   // 백드롭 클릭 닫기
+$('#toolframe').addEventListener('load', () => { try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
 $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 // 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
