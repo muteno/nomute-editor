@@ -44,12 +44,17 @@
 
   /* ── 전면 배너(최상단) + 오버랩 프로필 메뉴 ── */
   .topbanner { position:relative; max-width:860px; margin:0 auto; padding:10px 16px 0; }
-  .banner { width:100%; display:block; border-radius:20px; border:1px solid var(--line);
+  /* 배너 = 2겹(피드 초록 / 스크랩 앰버) 슬라이드 오버레이 전환. 글로우=프레임(클립 영향X)·슬라이드=클립 내부(틈/삐져나옴 X). */
+  .bannerframe { position:relative; border-radius:20px;
     box-shadow:0 18px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.10);
     --glow:15,253,2;            /* 글로우 색(피드=초록·기본) */
-    animation:bannerbreath 5.5s ease-in-out infinite; will-change:filter;
-    transition:filter .4s ease; }
-  .banner.scrap { --glow:255,150,20; }   /* 스크랩 탭 = 앰버 글로우(ORANGE 배너 헤일로 매칭) */
+    animation:bannerbreath 5.5s ease-in-out infinite; will-change:filter; }
+  body.tab-scrap .bannerframe { --glow:255,150,20; }   /* 스크랩 탭 = 앰버 글로우 */
+  .bannerclip { position:relative; border-radius:20px; overflow:hidden; border:1px solid var(--line); }
+  .banner { width:100%; display:block; }
+  .banner.layer-scrap { position:absolute; inset:0; transform:translateX(101%);
+    transition:transform .52s cubic-bezier(.5,.04,.18,1); will-change:transform; }
+  body.tab-scrap .banner.layer-scrap { transform:translateX(0); }   /* 촤르륵: 스크랩 배너가 우→좌 슬라이드 오버레이 */
   /* P: TV 뒤 불빛 브리딩 — 밝아졌다 은은히 죽었다 다시(절대 깜깜 X). filter=GPU 컴포지트(60fps). 색=--glow(탭별). */
   @keyframes bannerbreath {
     0%,100% { filter:brightness(1) saturate(1) drop-shadow(0 0 2px rgba(var(--glow),0)); }
@@ -72,6 +77,10 @@
     background:linear-gradient(135deg,#d8ff3d,var(--accent)); border:1.5px solid var(--bg);
     box-shadow:0 2px 6px rgba(0,0,0,.4); }
   .profile.hasmsg .pbadge { display:flex; }
+  /* 스크랩 탭: 프로필 링·메시지 글로우·배지를 배너 컬러(앰버)로 매칭 */
+  body.tab-scrap .profile::after { background:linear-gradient(135deg,#ffd24a,#ff9614); }
+  body.tab-scrap .profile.hasmsg { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.5px rgba(255,150,20,.6), 0 0 10px rgba(255,150,20,.32); }
+  body.tab-scrap .pbadge { background:linear-gradient(135deg,#ffd24a,#ff9614); }
 
   /* ── 메시지 팝업(프로필 근처) ── */
   .msgpop { position:absolute; right:24px; top:46px; z-index:21; width:min(300px,82vw);
@@ -324,7 +333,7 @@
   .bpop span { font-size:11.5px; color:var(--mut); line-height:1.5; }
   .bpop a { display:block; padding:8px 4px; font-size:13px; font-weight:600; color:var(--fg); text-decoration:none; border-radius:7px; }
   .bpop a:hover { color:var(--accent); background:rgba(255,255,255,.05); }
-  @media (prefers-reduced-motion: reduce) { .banner { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .banner.layer-scrap { transition:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
   .totop { position:fixed; right:18px; bottom:calc(104px + env(safe-area-inset-bottom)); z-index:34;   /* 하단 네비바와 충분히 띄움 */
@@ -694,7 +703,10 @@
 <div class="bgfx"></div>
 
 <div class="topbanner">
-  <img class="banner" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL">
+  <div class="bannerframe"><div class="bannerclip">
+    <img class="banner layer-feed" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL">
+    <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
+  </div></div>
   <button class="profile" id="profile" aria-label="프로필 메뉴"><img src="assets/brand/main_profile.jpg" alt="프로필"><span class="pbadge" id="pbadge"></span></button>
   <div class="pmenu" id="pmenu" hidden>
     <div class="pmenu-h">
@@ -2367,9 +2379,8 @@ function showTab(tab) {
   if (fb) fb.hidden = !feed;
   if (wp) wp.hidden = !feed;
   if (sv) sv.hidden = feed;
-  // 배너 탭별 교체: 피드=초록(main_background) / 스크랩=주황(ORANGE) + 주황 글로우(.scrap)
-  const bn = $('.banner');
-  if (bn) { bn.src = feed ? 'assets/brand/main_background.jpg' : 'assets/brand/ORANGE.png'; bn.classList.toggle('scrap', !feed); }
+  // 배너(2겹 슬라이드)·프로필 컬러 = body.tab-scrap가 CSS로 구동(피드 초록 / 스크랩 앰버 촤르륵 오버레이)
+  document.body.classList.toggle('tab-scrap', !feed);
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (!feed) { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2377,8 +2388,6 @@ function showTab(tab) {
 
 load();
 loadMessages();
-// 스크랩 배너(ORANGE) 유휴시 미리 받아둠 → 첫 탭 전환 즉시 표시(초록→주황 깜빡임 방지)
-(window.requestIdleCallback || (cb => setTimeout(cb, 1600)))(() => { new Image().src = 'assets/brand/ORANGE.png'; });
 </script>
 </body>
 </html>
