@@ -24,30 +24,14 @@ export async function onRequestPost({ request, env }) {
 
   const subs = String(body.subs || '').slice(0, 20000);
   const url = String(body.url || '').trim().slice(0, 500);
-  let fileB64 = String(body.fileB64 || '');
-  const name = String(body.name || '');
-  if (!subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
+  if (!subs.trim() && !url) return json({ error: 'SRT/자막 텍스트 또는 영상 URL이 필요해' }, 400);
   if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
 
   const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);
 
-  // 파일 업로드(uploads/<id>/src.*) — url 우선(있으면 파일 무시). 러너가 ffmpeg로 오디오 추출+STT 후 git에서 제거.
-  let filePath = '';
-  if (!url && fileB64) {
-    const dm = fileB64.match(/^data:[^;]+;base64,(.+)$/);
-    if (dm) fileB64 = dm[1];
-    if (!fileB64 || fileB64.length > 20_000_000) return json({ error: '파일은 ≤15MB — 큰 영상은 URL로(드라이브 등 직링크 / 너 저장소에 올리고 링크)' }, 400);
-    const ext = (name.match(/\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i) || ['.mp4'])[0].toLowerCase();
-    filePath = `uploads/${id}/src${ext}`;
-    const put = await GH(env.GH_TOKEN, `contents/${filePath}`, 'PUT', { message: `ly upload ${id}`, content: fileB64, branch: REF });
-    if (put.status !== 201 && put.status !== 200) {
-      return json({ error: `업로드 실패 GitHub ${put.status}: ${(await put.text()).slice(0, 200)}` }, 502);
-    }
-  }
-
   const r = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, subs, url, file: filePath },
+    ref: REF, inputs: { id, subs, url },
   });
-  if (r.status === 204) return json({ ok: true, id, url: !!url, file: !!filePath, out: `ly_out/${id}/subs.md` });
+  if (r.status === 204) return json({ ok: true, id, url: !!url, out: `ly_out/${id}/subs.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
