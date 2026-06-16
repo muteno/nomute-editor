@@ -67,7 +67,7 @@ def main():
     big = max(cl0.values(), key=len)
     pubs = len({arts[m]["publisher"] for m in big})
     print(f"\n[최대 블롭] {len(big)}개 기사 · {pubs}매체 (= 무관 기사 chaining 의심)")
-    for m in sorted(big, key=lambda m: arts[m].get("published", ""))[:14]:
+    for m in sorted(big, key=lambda m: arts[m].get("published") or "")[:14]:
         print(f"     {arts[m]['publisher']:9s} {arts[m]['title'][:52]}")
     bt = Counter()
     for m in big:
