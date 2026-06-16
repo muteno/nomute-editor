@@ -2763,9 +2763,11 @@ function renderScrap() {
     if (key === 'new') {   // 신속 = 최근 6h · 최신순(+⚡이슈 고정). '오늘 막 일어난 일'
       arr = pool.filter(c => _untri(c) && (_now - scTs(c)) < AGE6);
       arr.sort((a, b) => (pinB(b) - pinB(a)) || scTs(b) - scTs(a));
-    } else {   // 누적 = 6h 이상 · cross≥5(폭넓게 보도된 것만) · ⚡고정 → 중요도(scScore = cross × 후속 신선도 감쇠)순. 후속 끊기면 하강·재등장(cross↑·last_seen 리셋)하면 재점프.
+    } else {   // 누적 = 6h 이상 · cross≥5(폭넓게 보도된 것만) · 최신성 우선 + cross 최대 25% 신선도 보너스(+⚡이슈 고정). '올드한 게 너무 위' 방지
       arr = pool.filter(c => _untri(c) && (_now - scTs(c)) >= AGE6 && (c.cross || 0) >= CROSS_MIN);
-      arr.sort((a, b) => (pinB(b) - pinB(a)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a));
+      const cMax = Math.max(1, ...arr.map(c => c.cross || 0));
+      const effAge = c => (_now - scTs(c)) / (1 + 0.25 * ((c.cross || 0) / cMax));   // 나이↓(=신선) 우선, cross 높으면 최대 25% 더 신선 취급
+      arr.sort((a, b) => (pinB(b) - pinB(a)) || effAge(a) - effAge(b));
     }
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
@@ -2782,7 +2784,7 @@ function renderScrap() {
     }
   });
 }
-// scTs = 발행시각(최신 컬럼 정렬·6h 나이 경계용). 누적 컬럼은 아래 scScore(중요도)로 정렬.
+// 좌=주요도(cross↓, 동점은 최신) · 우=최신(최신↓, 동점은 cross) — cross 포화(21에 다수) 2차키로 해소. 점수 블렌드·튜닝 0.
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 // 중요도 = 누적 cross × '후속 신선도' 감쇠. last_seen(마지막 후속=distinct 매체 cross 증가 시각) 이후
 // 시간이 흐를수록 DECAY_H 반감기로 점수 절반 → 후속 끊긴 사건은 하강, 새 후속(cross↑·last_seen 갱신) 들어오면 상단.
@@ -2792,6 +2794,10 @@ const scScore = c => (c.cross || 0) * Math.pow(0.5, Math.max(0, (Date.now() - sc
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // ⚡이슈(breaking) & 아직 안 픽 = 양 컬럼 상단 고정(시간대 밀려도 위에). 픽한 건 고정 안 함(처리됨 → 정상 정렬).
 const pinB = c => (c.breaking && !(scRT[candId(c)] || {}).picked) ? 1 : 0;
+const SC_SORTS = {
+  cross: (a, b) => (pinB(b) - pinB(a)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a),   // 이슈고정 → 신선도가중 중요도 → 최신
+  new: (a, b) => (pinB(b) - pinB(a)) || scLast(b) - scLast(a) || (b.cross || 0) - (a.cross || 0),   // 이슈/지속(최근 후속활동) 상단 → 최신활동순
+};
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
