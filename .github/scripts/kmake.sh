@@ -19,6 +19,7 @@ ${SCENE}"
 # Write/Edit/Bash/Task 불허 = 헤드리스 무중단(권한 대기로 멈춤 차단, analyze.sh와 동일).
 out="$(printf '%s' "$prompt" | timeout 900 claude -p \
       --model "$MODEL" \
+      --effort max \
       --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \
       --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
       --max-turns 40 \

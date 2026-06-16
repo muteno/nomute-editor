@@ -155,6 +155,7 @@ ${GBLOCK}
 $(cat "$q")"
     out="$(printf '%s' "$fp" | timeout 1500 claude -p \
           --model "$MODEL" \
+          --effort max \
           --allowedTools "WebFetch,WebSearch" \
           --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
           --max-turns 40 \

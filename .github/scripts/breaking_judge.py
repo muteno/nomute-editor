@@ -59,7 +59,7 @@ def judge(items):
     prompt = f"{RUBRIC}\n[사건 목록]\n{listing}\n\n[판정 출력]"
     try:
         p = subprocess.run(
-            ["claude", "-p", "--model", MODEL,
+            ["claude", "-p", "--model", MODEL, "--effort", "max",
              "--disallowedTools",
              "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
              "--max-turns", "1"],

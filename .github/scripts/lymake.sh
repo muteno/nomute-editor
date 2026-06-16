@@ -17,6 +17,7 @@ ${SUBS}"
 
 out="$(printf '%s' "$prompt" | timeout 900 claude -p \
       --model "$MODEL" \
+      --effort max \
       --allowedTools "Read,Glob,Grep" \
       --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
       --max-turns 40 \
