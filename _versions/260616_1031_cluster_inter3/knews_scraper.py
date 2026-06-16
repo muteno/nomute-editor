@@ -32,7 +32,6 @@ import argparse
 import csv
 import html
 import json
-import os
 import re
 import sys
 import time
@@ -69,12 +68,9 @@ STOPWORDS = {
 FEED_DELAY = 0.4    # 피드 간 딜레이(초) — 서버 매너
 REQ_TIMEOUT = 10    # 요청 타임아웃(초)
 # 교차등장 판정: 핵심 명사 교집합이 이 개수 이상이면 같은 토픽으로 본다.
-# 2→3 (260616): inter=2 단일링크가 정치 공통어(이란·선관위·국힘…)로 무관 기사를 transitive
-# chaining → 거대블롭(실측 980개=45%·cross20). 3 요구하면 블롭 980→126·cross20→16, 후보는
-# 오히려 100→179(블롭이 삼키던 진짜 사건들이 드러남). 짧은 제목은 JACCARD_BACKUP이 보완해 recall 유지.
-MIN_TOKEN_OVERLAP = int(os.environ.get("CLUSTER_MIN_OVERLAP", "3"))
+MIN_TOKEN_OVERLAP = 2
 # 겹침이 1개뿐일 때 보조로 쓰는 자카드 임계값(짧은 제목 보정)
-JACCARD_BACKUP = float(os.environ.get("CLUSTER_JACCARD", "0.5"))
+JACCARD_BACKUP = 0.5
 
 
 def log(msg):
