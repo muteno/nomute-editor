@@ -182,8 +182,12 @@ function poll(outPath, isUrl) {
     try {
       const r = await fetch(outPath + '?t=' + Date.now());
       if (r.ok) {
+        const ct = (r.headers.get('content-type') || '').toLowerCase();
         const md = await r.text();
-        if (md && md.trim()) { status.textContent = '✅ 완료 (' + sec + 's)'; out.innerHTML = renderMd(md); wireCopy(); return; }
+        // 결과(subs.md)가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 준다 → 그걸 결과로 오인하면
+        // '완료 (0s)'에 페이지 HTML이 통째로 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과시킨다.
+        const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
+        if (md && md.trim() && !isHtml) { status.textContent = '✅ 완료 (' + sec + 's)'; out.innerHTML = renderMd(md); wireCopy(); return; }
       }
     } catch (e) { /* 재시도 */ }
     setTimeout(tick, 5000);

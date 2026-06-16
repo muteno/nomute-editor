@@ -100,8 +100,12 @@ function poll(outPath, refPath) {
     try {
       const r = await fetch(outPath + '?t=' + Date.now());
       if (r.ok) {
+        const ct = (r.headers.get('content-type') || '').toLowerCase();
         const md = await r.text();
-        if (md && md.trim()) {
+        // 결과 md가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 줌 → 결과로 오인 시 '완료 (0s)'에
+        // 페이지 HTML 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과.
+        const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
+        if (md && md.trim() && !isHtml) {
           status.textContent = '✅ 완료 (' + sec + 's)';
           let html = renderMd(md);
           if (refPath) html = '<div class="ref"><img src="' + refPath + '?t=' + Date.now() + '" onerror="this.parentElement.style.display=\'none\'"><div class="cap">🖼 레퍼런스 이미지</div></div>' + html;
