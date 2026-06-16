@@ -196,7 +196,7 @@
   .paren { color:var(--fg); font-weight:400; }
 
   /* ── 기사 카드 ── */
-  #list { margin-top:14px; }
+  #list { margin-top:8px; }   /* 카테고리↔기사 간격 조금 줄임(뉴스요약) */
   .card {
     background:linear-gradient(150deg,var(--glass) 0%,var(--glass2) 58%,rgba(11,21,15,.6) 100%);
     backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
@@ -279,12 +279,15 @@
   @keyframes pulse { 50% { opacity:.45; } }
   .empty { color:var(--mut); text-align:center; padding:56px 0; }
   /* ── 스크랩(수집·큐레이션) 뷰 ── */
-  .scrapview, .snsview { max-width:860px; margin:0 auto; padding:14px 16px 64px; }
+  .scrapview { max-width:860px; margin:0 auto; padding:14px 16px 64px; }   /* 레거시 = 간격 유지 */
+  .snsview { max-width:860px; margin:0 auto; padding:8px 16px 64px; }      /* SNS = 조금 줄임 */
   .scrap-head { padding:6px 2px 12px; }
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
   /* 탭별 공유 헤더바 = 주제+짧은 설명. 펫이 이 바 위로 걷는 상단바(모든 탭 공통, 활성 탭 따라 텍스트 갱신). */
   .viewhead { position:relative; max-width:860px; margin:22px auto 4px; padding:0 16px; }   /* 펫 빠짐(상단검색바로) → top 축소 / 부제↔카테고리 간격 축소 */
+  .vh-cardonly { position:absolute; top:-3px; right:16px; display:none; }   /* 카드만 = 프로필 원 바로 아래·우측, 피드 탭에서만 */
+  body[data-tab="feed"] .vh-cardonly { display:inline-flex; }
   .vh-title { font-size:18px; font-weight:800; letter-spacing:-.3px; margin:0 0 4px; color:var(--fg);
     animation:vhGlow 4.6s ease-in-out infinite; will-change:text-shadow; }   /* 은은한 네온 점등→소등(오버 X) */
   @keyframes vhGlow { 0%,100% { text-shadow:0 0 0 rgba(15,253,2,0); } 50% { text-shadow:0 0 11px rgba(15,253,2,.3); } }
@@ -750,7 +753,7 @@
   }
 </style>
 </head>
-<body>
+<body data-tab="feed">
 <div class="bgfx"></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
@@ -785,14 +788,12 @@
 </div>
 
 <div class="viewhead" id="viewhead">
+  <label class="toggle vh-cardonly"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
   <h2 class="vh-title" id="vhTitle">뉴스 요약</h2>
   <p class="vh-sub" id="vhSub"></p>
 </div>
 
 <div class="filterbar">
-  <div class="bar">
-    <label class="toggle"><input type="checkbox" id="cardonly"><span class="tk"></span><span class="tlbl">카드만</span></label>
-  </div>
   <div class="chipbar" id="chips"></div>
 </div>
 
@@ -2490,6 +2491,7 @@ function showTab(tab) {
   if (snv) snv.hidden = (tab !== 'sns');
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
   document.body.classList.toggle('tab-scrap', tab === 'scrap');
+  document.body.dataset.tab = tab;   // 카드만 토글 = 피드 탭에서만 표시(CSS body[data-tab=feed])
   setViewhead(tab);
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'scrap') { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
