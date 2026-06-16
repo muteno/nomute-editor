@@ -74,9 +74,9 @@ export async function onRequestPost({ request, env }) {
 
   const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS-rand(동초 충돌 방지)
 
-  // 배경 이미지 업로드(uploads/<id>/src.*) — /1=필수 · /2 오버레이=옵션
+  // 배경 이미지 업로드(uploads/<id>/src.*) — /1·/2 오버레이 모두 옵션(이미지 있을 때만 업로드)
   let imgPath = '';
-  const wantImg = app === '1' || (app === '2' && params.mode === 'overlay' && body.imageB64);
+  const wantImg = (app === '1' || (app === '2' && params.mode === 'overlay')) && body.imageB64;
   if (wantImg) {
     let b64 = String(body.imageB64 || '');
     const dm = b64.match(/^data:image\/(?:png|jpe?g|webp);base64,(.+)$/);

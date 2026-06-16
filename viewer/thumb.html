@@ -131,7 +131,7 @@
 
     <!-- /1 배경 이미지 -->
     <div id="imgBox" class="none">
-      <label>배경 이미지</label>
+      <label>배경 이미지 <span style="color:var(--mut);font-weight:400">(옵션 — 없으면 오버레이만)</span></label>
       <label class="file" id="fileLab"><span>탭해서 이미지 선택</span>
         <input type="file" accept="image/*" id="file" style="display:none">
       </label>
@@ -800,7 +800,6 @@ $('#go').onclick = async () => {
     return;
   }
   const params = buildParams();
-  if (APP === '1' && !IMG.b64) { status.textContent = '배경 이미지를 선택해줘'; status.classList.add('err'); return; }
   if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { status.textContent = '부제 또는 제목을 입력해줘'; status.classList.add('err'); return; }
   if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
   if (APP === '4' && !params.lines.length) { status.textContent = '경고문 텍스트를 입력해줘'; status.classList.add('err'); return; }
@@ -812,7 +811,7 @@ $('#go').onclick = async () => {
   $('#go').disabled = true; status.textContent = '발사 중…';
   try {
     const payload = { app: APP, params };
-    if (APP === '1') { payload.imageB64 = IMG.b64; payload.name = IMG.name; }
+    if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }   // 포스트 배경 = 옵션(없으면 오버레이만)
     if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
     const res = await fetch('/api/thumb', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();

@@ -70,6 +70,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   # Write/Edit/Bash 불허 → 헤드리스가 권한대기로 멈추지 않음(analyze와 동일 방어).
   out="$(printf '%s' "$prompt" | timeout 900 claude -p \
         --model "$MODEL" \
+        --effort max \
         --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
         --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
         --max-turns 50 \

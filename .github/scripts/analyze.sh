@@ -91,6 +91,7 @@ ${extracted}"
   # 위험(stdin은 무제한). claude -p 는 인자 없으면 stdin을 프롬프트로 읽는다.
   out="$(printf '%s' "$prompt" | timeout 900 claude -p \
         --model "$MODEL" \
+        --effort max \
         --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
         --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
         --max-turns 40 \
