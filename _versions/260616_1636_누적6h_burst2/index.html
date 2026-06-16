@@ -2787,8 +2787,8 @@ function renderScrap() {
     if (key === 'new') {   // 신속 = 속보 캐처. 속도/긴급(scFast) AND 발생 FAST_MAX_H 내. 정렬 = fastScore(긴급도 × 시간 반감 decay → 시간 지날수록 아래로) → 최신.
       arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);
       arr.sort((a, b) => (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));
-    } else {   // 누적 = 9시뉴스감(좌측). cross≥5 AND 발생 6h↑(신속서 졸업 = 시간 지나 좌측으로). 신속(우측 <6h)과 시간 배타 — 최근 것은 누적에 안 들어감. 중요도(scScore = log2 cross × 후속신선 × 반복)순.
-      arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
+    } else {   // 누적 = 9시뉴스감. cross≥5(폭넓게 보도=다수매체 검증). 대형 속보도 cross≥5면 여기 동시 노출(⚡핀 상단 — 9시뉴스 톱). 중요도(scScore = log2 cross × 후속신선 감쇠 × 반복등장)순.
+      arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN);
       arr.sort((a, b) => (pinB(b) - pinB(a)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a));
     }
     const lim = Math.min(scShown[key], arr.length);
@@ -2809,7 +2809,7 @@ function renderScrap() {
 // scTs = 발행시각(정렬·신선도 판정용).
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 // ── 신속 게이트(scFast): 나이가 아니라 속도/긴급 신호로 신속 컬럼 진입 판정 ──
-const BURST_FAST = 2, FAST_MAX_H = 6, FAST_HALF_H = 2;   // 신속(우측) = (breaking OR burst≥2 동시) AND 발생 6h 내. 6h 지나면 누적(좌측)으로. FAST_HALF_H = 하강 반감기(2h마다 점수 절반). 모두 조정 가능.
+const BURST_FAST = 3, FAST_MAX_H = 6, FAST_HALF_H = 2;   // 신속 = (breaking OR burst≥3) AND 발생 6h 내. FAST_HALF_H = 하강 반감기(2h마다 점수 절반 → 시간 지날수록 아래로). 조정 가능.
 const scFast = c => !!c.breaking || (c.burst || 0) >= BURST_FAST;
 // 신속 정렬 점수 = 긴급도(burst + breaking 보너스) × 시간 반감 decay(발생 후 FAST_HALF_H마다 절반). 옛 속보는 자연 하강.
 const fastScore = c => ((c.burst || 0) + (c.breaking ? 5 : 0)) * Math.pow(0.5, Math.max(0, (Date.now() - scTs(c)) / 3600000) / FAST_HALF_H);
