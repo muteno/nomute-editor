@@ -2784,8 +2784,8 @@ function renderScrap() {
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
-    if (key === 'new') {   // 신속 = 속보 캐처. 속도/긴급(scFast) AND 발생 FAST_MAX_H 내(stale burst가 옛 기사를 오래 띄우던 버그 차단). ⚡고정 → burst↓ → 최신순.
-      arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);
+    if (key === 'new') {   // 신속 = 속보 캐처. 순수 속도/긴급 게이트 scFast(breaking·burst≥3). ⚡고정 → burst↓ → 최신순.
+      arr = pool.filter(c => _untri(c) && scFast(c));
       arr.sort((a, b) => (pinB(b) - pinB(a)) || (b.burst || 0) - (a.burst || 0) || scTs(b) - scTs(a));
     } else {   // 누적 = 9시뉴스감. cross≥5(폭넓게 보도=다수매체 검증). 대형 속보도 cross≥5면 여기 동시 노출(⚡핀 상단 — 9시뉴스 톱). 중요도(scScore = log2 cross × 후속신선 감쇠 × 반복등장)순.
       arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN);
@@ -2809,7 +2809,7 @@ function renderScrap() {
 // scTs = 발행시각(정렬·신선도 판정용).
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 // ── 신속 게이트(scFast): 나이가 아니라 속도/긴급 신호로 신속 컬럼 진입 판정 ──
-const BURST_FAST = 3, FAST_MAX_H = 6;   // 신속 = (breaking OR burst≥3) AND 발생 6h 내. 속도/긴급 게이트 + 최신 컷(stale burst로 옛 기사 떠있던 버그 차단). 둘 다 조정 가능.
+const BURST_FAST = 3;   // 신속 = breaking OR burst≥3(15분 내 3매체 동시 = 급발). 순수 속도/긴급 게이트 — 조용한 신선글은 신속 아님(잡탕 방지). 조정 가능.
 const scFast = c => !!c.breaking || (c.burst || 0) >= BURST_FAST;
 // 누적 중요도 = log2(1+cross)[다수매체·포화 변별] × 후속 신선도 감쇠(반감기 DECAY_H) × 반복등장 가점(seen_count=수집 사이클마다 또 등장=보도 템포).
 // last_seen(마지막 후속=distinct 매체 cross 증가) 후 DECAY_H 반감기로 절반 → 후속 끊기면 하강.
