@@ -1,25 +1,19 @@
-# 트럼프 "석유가 흐르게 하라"…106일 이란전쟁 멈췄다
+# 🕊 트럼프 "석유가 흐르게 하라"…106일 이란전쟁 멈췄다
 
 ### [카드 1]
 **텍스트**
 ```text
 게시글 한 줄로
 106일 전쟁이 멈췄다
-트럼프가 남긴
-마지막 한 마디는
+트럼프 "합의 끝났다"
+그가 다음 줄에 적은 건?
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Camera: medium close-up (MCU) from a low angle looking up, shot on 50mm standard lens.
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere.
-Scene: a commanding statesman figure (generic, not resembling any specific real person) seen from below, gripping a smartphone held up in the upper-center of the frame; the phone screen casts a cold neon-green glow up onto his shadowed jaw and the underside of his hand; the short social-media post on the screen is suggested only as faint abstract light-bars, not legible letters; the rest of the room dissolves into deep black; the glowing phone and the lit hand sit in the upper-center, well above the lower portion.
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 carried by the phone glow), film-noir low-key lighting, deep shadows.
-Korea default: Korean facial features and styling for any incidental figures.
-Text: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential (a few characters max).
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a single hand grips a smartphone in a dark room, the screen glowing where a freshly posted social-media message has just gone up, the cold light catching the knuckles and throwing the rest into shadow; the post body shown only as abstract glowing lines, never readable letters; the weight of a world-changing announcement made with one tap. International (non-Korean) setting. Camera: tight close-up (S09) from a high angle (H02) looking down onto the phone, shot on 100mm macro lens (L13). Lighting/mood: cold blue-white screen glow rising from below (6500K), no fill light, surrounding darkness, suffocating quiet tension (LGT03). monochrome desaturated base with a single color accent (neon green #0FFD02) rimming the glowing screen, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark room around the figure) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark interior space around the glowing phone) extending edge to edge from top to bottom of the frame. The main subject (the hand and the lit phone) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -31,21 +25,17 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
+"호르무즈를 열어라
+해상 봉쇄도 풀어라"
+세계의 배들아, 엔진을 켜
 석유가 흐르게 하라
-호르무즈가 열렸다
-해상 봉쇄 즉시 해제
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Camera: extreme long shot (EWS) from a bird's-eye view looking straight down, shot on 20mm wide lens.
-Lighting/mood: cold blue pre-dawn tone, faint reflection on the dark water, desolate stillness.
-Scene: a narrow sea strait seen from high above; a long line of oil tankers begins to move through the channel while grey naval warships pull back toward the dark edges; a single thin trail of neon-green light marks the open shipping lane glowing on the black water in the upper-center; the vast dark sea fills the frame as one continuous surface; the moving tankers and the green lane sit in the upper-center, away from the bottom.
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the open shipping lane), film-noir low-key lighting, deep shadows.
-Text: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential (a few characters max).
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: an extreme wide overhead view of the narrow Strait of Hormuz, a fleet of oil tankers strung along the dark channel as a heavy chain that had blocked the passage breaks and sinks away, the sea route reopening; a faint glowing line traces the freed shipping lane through black water, conveying oil set free to flow. No flags, no logos, no signage. International maritime setting. Camera: extreme long shot (S02) from a bird's-eye overhead angle (H04) looking straight down, shot on 14mm ultra-wide lens (L03). Lighting/mood: harsh overexposed late-day light on hard steel hulls with deep shadowed water, oppressive scale (LGT07). monochrome desaturated base with a single color accent (neon green #0FFD02) on the glowing reopened shipping lane, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark sea) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark sea of the strait) extending edge to edge from top to bottom of the frame. The main subject (the tanker fleet and the glowing lane) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -57,21 +47,17 @@ NEGATIVE — strictly avoid:
 ### [카드 3]
 **텍스트**
 ```text
-중재국은 파키스탄
-19일 스위스 서명식
-모든 전선 멈춘다
+중재국 파키스탄이 알렸다
+"모든 전선에서
+즉각·영구 종료"
+19일, 스위스 서명식
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Camera: wide shot (WS) from eye-level, shot on 35mm lens with natural documentary perspective.
-Lighting/mood: warm soft desk-lamp light pooling on the table, the rest of the hall in quiet wistful shadow.
-Scene: a long formal negotiating table in a grand hall, still empty of people, set for a signing — two closed document folders and two pens laid out, awaiting the ceremony; a single pen catches a neon-green highlight; cold light from a tall window falls across the upper-center where the documents wait; the polished table is one continuous surface running edge to edge; the documents and pens are anchored in the upper-center, kept out of the bottom area.
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the pen), film-noir low-key lighting, deep shadows.
-Text: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential (a few characters max).
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a generic mediator figure (no real likeness, no logos) stands at a plain briefing lectern, mid-announcement, one hand raised in measured emphasis, expression grave but steadying, addressing an unseen press room; a single faint glowing marker on the bare lectern hints at the upcoming signing. International diplomatic setting. Camera: medium shot (S06) at eye level (H01) facing the speaker, shot on 70mm short telephoto lens (L11). Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber formal mood (LGT08). monochrome desaturated base with a single color accent (neon green #0FFD02) on the glowing marker at the lectern, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the negotiating table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the briefing-room floor and back wall behind the lectern) extending edge to edge from top to bottom of the frame. The main subject (the mediator at the lectern) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -83,23 +69,17 @@ NEGATIVE — strictly avoid:
 ### [카드 4]
 **텍스트**
 ```text
-한국 증시도
-곧바로 반응했다
-올해 14번째
-사이드카가 걸렸다
+이란도 "전쟁 즉각 중단"
+60일 휴전 각서에 서명
+하지만 핵협상은
+아직 시작도 안 했다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Camera: medium shot (MS) from a high angle looking down, shot on 70mm short telephoto lens.
-Lighting/mood: cold blue dim interior light, the glow of trading screens washing over the figure, tense charged air.
-Scene: a single trader figure (generic, Korean) seen from above, standing before a towering wall of market display boards; the boards blaze with rising neon-green light, abstract glowing bars and arrows surging upward rendered as pictograms rather than legible numbers; the trader's upturned, tense face and shoulders are lit green in the upper-center of the frame; the screen wall and the trader form one continuous interior surface; the lit face stays out of the bottom portion.
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the rising market boards), film-noir low-key lighting, deep shadows.
-Korea default: Korean facial features and styling for the trader.
-Text: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential (a few characters max).
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a top-down view of a signed agreement document resting on a dark table, a pen laid across it — but one signature line at the bottom of the page is still glowing and empty, unfinished; the document is rendered with abstract ruled lines only (no readable text), conveying a deal half-done with the hardest part still ahead. International setting, no logos. Camera: close-up (S08) from a high angle (H02) looking down at the document on the desk surface, shot on 100mm macro lens (L13). Lighting/mood: a single hard side-light cutting across the paper, deep chiaroscuro shadows, tense atmosphere (LGT09). monochrome desaturated base with a single color accent (neon green #0FFD02) on the empty glowing signature line, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the trading-floor interior and screen wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark table top holding the document) extending edge to edge from top to bottom of the frame. The main subject (the document and pen) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -111,21 +91,17 @@ NEGATIVE — strictly avoid:
 ### [카드 5]
 **텍스트**
 ```text
-종전을 움직인 건
-안보가 아니었다
-호르무즈 석유였다
+"전쟁이 끝난다"
+증시가 먼저 반응했다
+코스피, 올해 14번째
+매수 사이드카 발동
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Camera: extreme close-up (ECU) from a bird's-eye view looking straight down, shot on 100mm macro lens.
-Lighting/mood: single hard side-light raking across the surface, deep chiaroscuro, oppressive weight.
-Scene: a tight overhead macro of thick dark crude oil flowing and pooling, its glossy black surface catching a single sharp neon-green reflection that streaks across the upper-center like a lit vein; fine surface texture and slow viscous ripples fill the whole frame as one continuous oil surface; the bright green reflection is anchored in the upper-center, away from the bottom edge.
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 reflected on the oil), film-noir low-key lighting, deep shadows.
-Text: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential (a few characters max).
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a lone trader stands before a towering market board in a dim trading room, looking up as the index surges, a steep glowing line shooting upward across the board; the figure's posture caught between relief and disbelief; numbers shown as abstract glowing strokes, never readable digits. Korean financial-market setting. Camera: medium close-up (S07) at eye level (H01), three-quarter angle on the figure with the board filling the background, shot on 35mm lens (L08). Lighting/mood: cold blue-white glow from the giant board lighting the face, surrounding room in shadow, charged tension (LGT03). monochrome desaturated base with a single color accent (neon green #0FFD02) on the surging market line, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the flowing oil) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the trading-room space with the market board as its back wall) extending edge to edge from top to bottom of the frame. The main subject (the trader before the surging board) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -137,22 +113,17 @@ NEGATIVE — strictly avoid:
 ### [카드 6]
 **텍스트**
 ```text
-전쟁은 멈췄지만
-끝난 건 아니다
-서명도 협상도 남아
-이제부터가 진짜다
+전쟁을 연 것도, 닫은 것도
+대통령의 게시글 한 줄
+'사실상 종전'이라는 절반의 말
+서명과 협상이 남아 있다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Camera: close-up (CU) from a high angle looking down, shot on 85mm portrait lens.
-Lighting/mood: warm soft desk-lamp light on the paper, surrounding hall sinking into heavy shadow, fragile stillness.
-Scene: a high overhead close-up of a single ceasefire document resting on a dark desk, its signature line still blank and empty; a pen lies beside it, untouched, a thin neon-green glint along its barrel; the empty signature line and the waiting pen sit in the upper-center, lit and sharp, while the desk falls away into black; the desk is one continuous surface edge to edge; the blank line and pen stay out of the bottom portion.
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the pen), film-noir low-key lighting, deep shadows.
-Text: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential (a few characters max).
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a lone powerful figure seen from behind (no real likeness, no logos) stands at the edge of a high platform, facing out over a vast dark expanse; ahead a thin fragile bridge made of a single sheet of paper stretches across an abyss, half-formed and trembling, a faint glowing line marking where it is still unfinished — the precariousness of a half-done peace. International setting. Camera: wide shot (S03) from a low angle (H03) looking up at the figure from behind (O04 back shot), shot on 24mm wide lens (L06). Lighting/mood: cold blue pre-dawn tone, desolate stillness, long shadows stretching toward the abyss (LGT02). monochrome desaturated base with a single color accent (neon green #0FFD02) on the unfinished paper bridge, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the high platform and the dark expanse beyond it) extending edge to edge from top to bottom of the frame. The main subject (the figure from behind and the paper bridge) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
