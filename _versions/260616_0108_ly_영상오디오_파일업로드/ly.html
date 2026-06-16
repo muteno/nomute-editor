@@ -16,8 +16,6 @@
   input[type=text] { width:100%; padding:11px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
   .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
-  .file { display:block; padding:12px; border:1px dashed var(--line); border-radius:9px; text-align:center; color:var(--mut); cursor:pointer; }
-  .file.has { color:var(--grn); border-color:var(--grn); border-style:solid; }
   .go { width:100%; margin-top:14px; padding:13px; background:var(--grn); color:#07210a; border:none; border-radius:10px; font-weight:800; font-size:15px; cursor:pointer; }
   .go:disabled { opacity:.5; cursor:default; }
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; } .status.err { color:#ff8a8a; }
@@ -39,13 +37,8 @@
   <h1>노뮤트 <b>릴스 자막</b> · 웹</h1>
   <p class="sub">영상 URL 또는 SRT/자막 텍스트 → 짧은 조각 + SNS 감성 의역 → 조각별 복사. 원샷.</p>
 
-  <label>영상 URL <span class="paid">(yt-dlp · 유튜브·IG·드라이브/직접 링크 — 큰 영상은 네 저장소에 올리고 링크)</span></label>
-  <input type="text" id="url" placeholder="https://…  (넣으면 파일·텍스트 무시)">
-  <div class="orsep">— 또는 —</div>
-  <label>영상·오디오 파일 <span class="paid">(mp4·mov·mp3·m4a · 영상 ≤15MB · 오디오 길이무관 · Whisper STT)</span></label>
-  <label class="file" id="fileLab"><span id="fileTxt">탭해서 영상·오디오 파일 선택</span>
-    <input type="file" accept="video/*,audio/*" id="file" style="display:none">
-  </label>
+  <label>영상 URL <span class="paid">(yt-dlp + Whisper STT · 첫 회 ~수분)</span></label>
+  <input type="text" id="url" placeholder="https://…  (넣으면 아래 텍스트 무시)">
   <div class="orsep">— 또는 —</div>
   <label>SRT / 자막·대사 텍스트 붙여넣기</label>
   <textarea id="subs" placeholder="1&#10;00:00:01,000 --> 00:00:03,200&#10;Hello, welcome back to my channel&#10;&#10;2&#10;..."></textarea>
@@ -58,15 +51,6 @@
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
-
-let FILE_B64 = '', FILE_NAME = '';
-$('#file').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  FILE_NAME = f.name;
-  const r = new FileReader();
-  r.onload = () => { FILE_B64 = r.result; $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has'); };
-  r.readAsDataURL(f);
-};
 
 // 최소 마크다운: ``` 코드블록(복사 버튼) · #/##/### 헤딩 · | 표 · 문단.
 function renderMd(md) {
@@ -139,14 +123,13 @@ $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
   const subs = $('#subs').value.trim();
   const url = $('#url').value.trim();
-  if (!subs && !url && !FILE_B64) { status.textContent = '영상 URL · 파일 · SRT 중 하나는 넣어줘'; status.classList.add('err'); return; }
+  if (!subs && !url) { status.textContent = '영상 URL이나 SRT/자막을 넣어줘'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '발사 중…';
   try {
-    const payload = url ? { url } : FILE_B64 ? { fileB64: FILE_B64, name: FILE_NAME } : { subs };   // 우선순위 url > 파일 > 텍스트
-    const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subs, url }) });
     const j = await res.json();
     if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); return; }
-    poll(j.out, j.url || j.file);
+    poll(j.out, j.url);
   } catch (e) {
     status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
   } finally { $('#go').disabled = false; }
