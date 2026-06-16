@@ -88,8 +88,6 @@ def main():
         #            아니면 기존 유지. 뷰어가 (now - last_seen)으로 중요도 신선도를 감쇠(후속 끊기면 하강).
         grew = (not prev) or ((c.get("cross") or 0) > (prev.get("cross") or 0))
         c["last_seen"] = nowiso if grew else (prev.get("last_seen") or c["first_seen"])
-        # seen_count = 수집 사이클마다 또 등장한 횟수(보도 템포). 반복 등장 = 전국민 대형급 → 뷰어 누적 중요도 가점.
-        c["seen_count"] = (prev.get("seen_count") or 0) + 1
         merged[url] = {**prev, **c}
 
     # 속보 강등(만료): burst 가 1차 게이트(≥BREAKING_BURST) 밑으로 떨어진 사건은 굳은 breaking 플래그 해제.
