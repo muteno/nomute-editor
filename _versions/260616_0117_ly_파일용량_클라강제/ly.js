@@ -36,7 +36,7 @@ export async function onRequestPost({ request, env }) {
   if (!url && fileB64) {
     const dm = fileB64.match(/^data:[^;]+;base64,(.+)$/);
     if (dm) fileB64 = dm[1];
-    if (!fileB64 || fileB64.length > 28_000_000) return json({ error: '파일은 ≤20MB — 큰 영상은 URL로(드라이브 등 직링크 / 너 저장소에 올리고 링크)' }, 400);
+    if (!fileB64 || fileB64.length > 20_000_000) return json({ error: '파일은 ≤15MB — 큰 영상은 URL로(드라이브 등 직링크 / 너 저장소에 올리고 링크)' }, 400);
     const ext = (name.match(/\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i) || ['.mp4'])[0].toLowerCase();
     filePath = `uploads/${id}/src${ext}`;
     const put = await GH(env.GH_TOKEN, `contents/${filePath}`, 'PUT', { message: `ly upload ${id}`, content: fileB64, branch: REF });
