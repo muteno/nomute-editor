@@ -72,6 +72,10 @@
     background:linear-gradient(135deg,#d8ff3d,var(--accent)); border:1.5px solid var(--bg);
     box-shadow:0 2px 6px rgba(0,0,0,.4); }
   .profile.hasmsg .pbadge { display:flex; }
+  /* 스크랩 탭: 프로필 링·메시지 글로우·배지를 배너 컬러(앰버)로 매칭 */
+  body.tab-scrap .profile::after { background:linear-gradient(135deg,#ffd24a,#ff9614); }
+  body.tab-scrap .profile.hasmsg { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.5px rgba(255,150,20,.6), 0 0 10px rgba(255,150,20,.32); }
+  body.tab-scrap .pbadge { background:linear-gradient(135deg,#ffd24a,#ff9614); }
 
   /* ── 메시지 팝업(프로필 근처) ── */
   .msgpop { position:absolute; right:24px; top:46px; z-index:21; width:min(300px,82vw);
@@ -2367,9 +2371,10 @@ function showTab(tab) {
   if (fb) fb.hidden = !feed;
   if (wp) wp.hidden = !feed;
   if (sv) sv.hidden = feed;
-  // 배너 탭별 교체: 피드=초록(main_background) / 스크랩=주황(ORANGE) + 주황 글로우(.scrap)
+  // 배너+프로필 탭별 컬러: 피드=초록(main_background) / 스크랩=앰버(scrap 배너·글로우·프로필 링)
   const bn = $('.banner');
-  if (bn) { bn.src = feed ? 'assets/brand/main_background.jpg' : 'assets/brand/ORANGE.png'; bn.classList.toggle('scrap', !feed); }
+  if (bn) { bn.src = feed ? 'assets/brand/main_background.jpg' : 'assets/brand/main_background_scrap.jpg'; bn.classList.toggle('scrap', !feed); }
+  document.body.classList.toggle('tab-scrap', !feed);
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (!feed) { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2377,8 +2382,8 @@ function showTab(tab) {
 
 load();
 loadMessages();
-// 스크랩 배너(ORANGE) 유휴시 미리 받아둠 → 첫 탭 전환 즉시 표시(초록→주황 깜빡임 방지)
-(window.requestIdleCallback || (cb => setTimeout(cb, 1600)))(() => { new Image().src = 'assets/brand/ORANGE.png'; });
+// 스크랩 배너 유휴시 미리 받아둠 → 첫 탭 전환 즉시 표시(초록→앰버 깜빡임 방지)
+(window.requestIdleCallback || (cb => setTimeout(cb, 1600)))(() => { new Image().src = 'assets/brand/main_background_scrap.jpg'; });
 </script>
 </body>
 </html>
