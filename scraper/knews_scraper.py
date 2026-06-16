@@ -245,7 +245,7 @@ def collect(feeds, hours):
                 "image": extract_image(e),
             })
 
-    log(f"피드 결과: 성공 {ok} / 죽음 {dead} / 수집 기사 {len(articles)}건")
+    log(f"피드 결과: 성공 {ok} / 죽음 {dead} / 수집 수 {len(articles)}건")
     return articles
 
 

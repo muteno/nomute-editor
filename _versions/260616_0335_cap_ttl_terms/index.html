@@ -329,10 +329,6 @@
   .scrap-cols .sc-bot { gap:5px; flex-wrap:wrap; }
   .scrap-cols .sc-star { width:20px; height:20px; font-size:14px; }
   .scrap-cols .sc-pick { font-size:11px; padding:4px 10px; }
-  .sc-more { width:100%; margin-top:8px; padding:9px; font-size:11.5px; font-weight:700; cursor:pointer;
-             color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:10px; }
-  .sc-more:hover { color:var(--fg); background:rgba(255,255,255,.07); }
-  .sc-more:active { transform:scale(.98); }
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
     padding:30px 16px calc(92px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 */
@@ -2358,10 +2354,6 @@ async function loadCandidates() {
   }
   CANDS = []; SCRAP_LOADED = true; renderScrap();
 }
-// 보관한도(데이터)는 크게(10일·수천 건) 두되, 화면은 컬럼당 SC_PAGE장만 그려 가볍게 유지.
-// 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → '더 보기'로 청크 추가.
-const SC_PAGE = 150;
-const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
 function renderScrap() {
   const host = $('#scrapList'); if (!host) return;
   if (!CANDS.length) { host.classList.remove('scrap-cols'); host.innerHTML = '<div class="scrap-empty">수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.</div>'; return; }
@@ -2369,17 +2361,8 @@ function renderScrap() {
   host.innerHTML = SC_COLS_HTML;
   const rt = ratingsAll();
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {       // 좌=주요도 / 우=최신 — 같은 데이터, 정렬만 다름
-    const key = col.dataset.col;
-    const arr = [...CANDS].sort(SC_SORTS[key]);
-    const lim = Math.min(scShown[key], arr.length);
-    for (let i = 0; i < lim; i++) col.appendChild(makeScItem(arr[i], rt[candId(arr[i])] || {}));
-    if (arr.length > lim) {                                             // 나머지는 보관만 — 탭하면 추가 렌더
-      const more = document.createElement('button');
-      more.className = 'sc-more'; more.type = 'button';
-      more.textContent = `더 보기 +${Math.min(SC_PAGE, arr.length - lim)}  ·  남은 ${arr.length - lim}건`;
-      more.onclick = () => { scShown[key] += SC_PAGE; renderScrap(); };
-      col.appendChild(more);
-    }
+    const arr = [...CANDS].sort(SC_SORTS[col.dataset.col]);
+    arr.forEach(c => col.appendChild(makeScItem(c, rt[candId(c)] || {})));
   });
 }
 // 좌=주요도(cross↓, 동점은 최신) · 우=최신(최신↓, 동점은 cross) — cross 포화(21에 다수) 2차키로 해소. 점수 블렌드·튜닝 0.
