@@ -322,14 +322,10 @@ def score_crosspost(articles):
         rep = min(members, key=lambda m: (articles[m]["published"] is None,
                                           articles[m]["published"] or ""))
         burst = _burst(members, articles)
-        # 속보 픽 = 보수메이저 우선(조선>동아…) — 없으면 최초보도.
-        # ⚠️ 대표와 '동일 토픽'인 멤버로만 한정 = transitive chaining 오병합(무관 기사가 한
-        #   클러스터에 섞임)일 때 엉뚱한 기사를 픽하는 것 차단(예: '서울대 10개'↔'삼성전기 10배').
-        sub = [m for m in members
-               if m == rep or (toks[rep] and toks[m] and same_topic(toks[rep], toks[m]))]
-        pick = min(sub, key=lambda m: (_pick_rank(articles[m]["publisher"]),
-                                       articles[m]["published"] is None,
-                                       articles[m]["published"] or ""))
+        # 속보 픽 = 보수메이저 우선(조선>동아…) — 없으면 최초보도
+        pick = min(members, key=lambda m: (_pick_rank(articles[m]["publisher"]),
+                                           articles[m]["published"] is None,
+                                           articles[m]["published"] or ""))
         for m in members:
             articles[m]["cross_score"] = score
             articles[m]["cluster_size"] = len(members)
