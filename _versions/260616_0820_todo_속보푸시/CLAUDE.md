@@ -80,12 +80,6 @@
 - ⚠️ **영상**: 디스크 떨어지는 환경(모바일 앱)에서만 가능 — jsonl 폴백 불가(실측 확정: 영상은 대화로그에 base64 미포함). 디스크 부재(웹·PC웹·데스크탑)면 영상 접근 불가 → 영상 URL(yt-dlp)·SRT/STT 텍스트·모바일 앱으로 우회. `latest_attachment(kinds=VID_EXT)`는 디스크에서만 잡고 그 외엔 None.
 - 이 규칙은 **입력(첨부)** 한정. 출력 경로(`/mnt/user-data/outputs/`)·산출물 전송은 무관(정상 작동).
 
-## 📋 복사·붙여넣기 버튼 = 캐러셀 UI/UX 자동 계승 (플랫폼 공통 UX · 260616)
-복사/붙여넣기·클립보드 버튼은 **말 안 해도 항상 뉴스요약 카드뉴스 캐러셀 버튼(`.sbtn` 글래스 아이콘)의 UI/UX를 계승**한다 — 이 UI 구조 화면이 여럿(요약 요청·썸네일 제작 등)이라 매번 설명 안 하게 여기 못박음. **새 화면·새 입력칸도 자동 적용**(별도 지시 불필요).
-- **모양**: `.sbtn` 글래스 아이콘 버튼(이모지 금지 · SVG 아이콘만 · 둥근 사각·blur). 입력칸 **우측 상단에 떠** 있고 **도형 너비 절반(≈17px)만큼 아래**로 내려 배치.
-- **동작 = 컨텍스트 1버튼**(두 버튼 X): 입력칸이 **비었으면 붙여넣기**(PASTE 아이콘), **문자열이 있으면 복사**(COPY 아이콘 · 성공 시 CHECK 아이콘으로 플래시 후 복귀). 입력 변화에 따라 아이콘·동작 자동 토글.
-- **정본 구현** = `viewer/index.html`(`.sbtn`·`.askclip`·`COPY_SVG`/`PASTE_SVG`/`CHECK_SVG`·`updateAskClip`). 다른 화면 이식 시 이 구현을 그대로 따른다.
-
 ## 📰 뉴스 큐 파이프라인 — 기틀 + 불변 (플랫폼 인프라 · 260614)
 폰→Actions→Pages 자동 큐레이션. **정본 상세 = `docs/news-pipeline.md` + `apps/news/`**; 여기엔 *기틀·불변·헷갈림 방지*만(라우터는 얇게).
 - **흐름(한 기사 = 3단계):** 폰 공유→`pending/**` push → `news-analyze`의 analyze 잡이 다이제스트→`queue/`*.md* → **같은 워크플로 `card_plan` 잡**(`needs: analyze`)이 **자동 카드 프롬프트**(텍스트만·`state=text_done`) → 뷰어에서 운영자 **'슛'**(버튼→`make-cards.js`→`card-make` 워크플로 `mode=shoot`)이 제미나이 렌더→이미지(`done`). 상태: `generating`→`text_done`(프롬프트까지)→`done`(이미지)/`fired_partial`(대기)/`failed`(error.log).
@@ -97,8 +91,6 @@
 - 🧭 **새 세션 안 헤매기(할 때마다 고생 방지):** ① 작업 첫 손 = `git fetch origin main` — **라이브 파이프라인은 main에서만 돈다**(`ref: main`); 브랜치/draft는 라이브 아님(=새 세션은 옛 복제본일 수 있음). ② **요약 지침 ≠ 카드 지침 해시**(파일집합 다름: 요약=01+MEMORY, 카드=00+01+02+MEMORY) — 두 도장 값이 다른 게 정상. ③ `text_done`(텍스트·프롬프트, 이미지 0) ≠ `done`(이미지). ④ 자동은 **텍스트까지만**, 이미지는 운영자 '슛'. ⑤ 라이브 검증은 머지 후 `git show origin/main:<파일>`로만.
 - 🖥 **뷰어 캐시 = 항상 최신(주요 혼란 요인이라 박음 · 260615):** `viewer/_headers`가 HTML·JSON에 `Cache-Control: no-cache`(매 로드 재검증) → **새 배포가 하드새로고침 없이 바로 반영**(뷰어 자주 바뀌어 '옛 화면' 오해가 잦았음). 카드 이미지는 URL `?v=mtime` 버스트로 캐시 OK. 뷰어 화면이 안 바뀌어 보이면 코드부터 의심 말고 캐시·배포부터 확인.
 - 🎬 **뷰어 탑배너 탭 전환 = 크로스페이드 디졸브 (정본 · 260616):** 하단 네비로 탭 전환 시 **상단 배너가 바뀔 땐 즉시 교체·슬라이드 금지 → opacity 크로스페이드(디졸브)로 부드럽게**(앞 배너 위로 새 배너가 점차 떠오름 — 사용자 확정 "와우 완벽"). 구현 = `viewer/index.html` 배너 2겹(`bannerframe`[글로우·브리딩] › `bannerclip`[overflow hidden] › `.banner.layer-feed`/`.banner.layer-scrap`), `body.tab-scrap` 토글 하나로 `.banner.layer-scrap{opacity 0↔1, .6s ease}` + 글로우색(`--glow`)·프로필 링/배지 컬러 **동반 전환**. **새 탭/배너 추가해도 이 크로스페이드 패턴 유지**(슬라이드·즉시교체 X). `prefers-reduced-motion`이면 즉시 전환. GPU 컴포지트(opacity)라 60fps.
-- 🚨 **속보(breaking) 검출·알림 (라이브 · 260616):** 수집함 후보 중 *급발 사건*을 자동 검출·알림. ① **velocity** = `knews_scraper`가 클러스터별 burst(15분 내 동시 매체 최대) 계산 → burst≥3 = `breaking_candidate`(거대 over-merge 제외) + 보수메이저 픽(조선>동아…, 대표-동일토픽 한정). ② **판정** = `breaking-judge.yml`(scrape가 새 후보 뜰 때 디스패치·self-gate) → `breaking_judge.py`가 Claude 1콜 배치 급발 판정 → `breaking` 확정. **사고·화재·재난·사망·선고·강력사건=알림 / 행정공지·정책발표·의료정책=컷.** rubric 해시 도장(`breaking_rubric`) → rubric 바뀌면 자동 재판정(드리프트 차단). ③ **뷰어** = `breaking:true` 사건에 🚨배지·주요도 최상단 정렬·프로필 빨강 펄스 링·포그라운드 토스트(seen 누적 재알림X · 120s 라이브폴·visibilitychange). 임계 = `BURST_BREAKING`(env)·rubric(`breaking_judge.py`). 정본 코드 = `scraper/knews_scraper.py`·`scraper/to_candidates.py`·`.github/scripts/breaking_judge.py`·`viewer/index.html`.
-  - **TODO(나중·큐) — 속보 진짜 푸시(Phase 2):** 앱 꺼도 오는 웹푸시. 필요 = **VAPID 키(사용자가 생성·시크릿 등록)** + service worker + 알림권한 UI + 구독 저장(Function/KV) + breaking-judge에서 발송. **지금은 포그라운드(앱 열렸을 때 토스트/링)까지만.**
 
 ## 🗺 파일 지도 (플랫폼)
 - `apps/news/` = **뉴스 에디터**: `00_뉴스에디터_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*` · `fact_guard.py`(수치 대조 소프트 게이트)
