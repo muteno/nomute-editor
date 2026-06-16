@@ -32,7 +32,6 @@ import argparse
 import csv
 import html
 import json
-import os
 import re
 import sys
 import time
@@ -72,10 +71,6 @@ REQ_TIMEOUT = 10    # 요청 타임아웃(초)
 MIN_TOKEN_OVERLAP = 2
 # 겹침이 1개뿐일 때 보조로 쓰는 자카드 임계값(짧은 제목 보정)
 JACCARD_BACKUP = 0.5
-# B(클러스터 recall↑): 희귀한(고유명사·기업·숫자급) 토큰은 1개만 공유해도 같은 사건으로 본다.
-# 흔한 단어('정부'·'대통령')는 df가 높아 희귀집합에서 빠지므로 오병합 안 됨.
-RARE_DF_FRAC = float(os.environ.get("CROSS_RARE_FRAC", "0.04"))   # 전체 기사의 이 비율 이하 등장 = 희귀
-RARE_MINLEN = int(os.environ.get("CROSS_RARE_MINLEN", "3"))       # 3자+ (이름·기업·고유명사·4자리 숫자)
 
 
 def log(msg):
@@ -272,25 +267,12 @@ def score_crosspost(articles):
             parent[rb] = ra
 
     toks = [tokenize(a["title"]) for a in articles]
-    # 토큰 문서빈도(df) → 희귀어 집합(흔한 단어 제외, 고유명사·기업·4자리 숫자급만)
-    df = defaultdict(int)
-    for ts in toks:
-        for t in set(ts):
-            df[t] += 1
-    rare_max = max(2, int(n * RARE_DF_FRAC))
-    rare = {t for t, c in df.items() if c <= rare_max and len(t) >= RARE_MINLEN}
-
-    def same(i, j):
-        if same_topic(toks[i], toks[j]):                      # 기존: 2토큰 공유 또는 자카드 보정
-            return True
-        return any(t in rare for t in (toks[i] & toks[j]))    # B: 희귀 고유명사 1개 공유로도 같은 사건
-
     # O(n²) — RSS 기사 수백 건 규모라 충분히 빠르다.
     for i in range(n):
         if not toks[i]:
             continue
         for j in range(i + 1, n):
-            if toks[j] and same(i, j):
+            if toks[j] and same_topic(toks[i], toks[j]):
                 union(i, j)
 
     clusters = defaultdict(list)
@@ -307,12 +289,6 @@ def score_crosspost(articles):
             articles[m]["cross_score"] = score
             articles[m]["cluster_size"] = len(members)
             articles[m]["is_cluster_rep"] = (m == rep)
-
-    # 진단 로그(B 효과 가시화): 대표(=후보) cross 분포 — cross≥2가 실제 수집함行
-    reps = [a for a in articles if a.get("is_cluster_rep")]
-    c1 = sum(1 for a in reps if a["cross_score"] == 1)
-    c2 = sum(1 for a in reps if a["cross_score"] >= 2)
-    log(f"클러스터: 기사 {n} → 대표 {len(reps)} (cross=1 {c1} · cross≥2 {c2}=수집함行) · 희귀어 {len(rare)}개·df≤{rare_max}")
     return articles
 
 
