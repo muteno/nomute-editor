@@ -19,10 +19,6 @@ DST = ROOT / "viewer" / "candidates.json"
 TTL_HOURS = int(os.environ.get("CAND_TTL_HOURS", "240"))  # 보관기간: 등장 후 N시간 지나면 폐기(240=10일)
 CAP = int(os.environ.get("CAND_CAP", "3000"))             # 보관한도: 수집함 최대 사건 수(10일치 여유 — 실제 컷은 보관기간이 함)
 MIN_CROSS = int(os.environ.get("CAND_MIN_CROSS", "2"))    # 교차등장 최소 매체 수(2=2개 이상 매체에 뜬 것만 = 뉴스성)
-# ── 속보(velocity) 1차 게이트 — burst(15분 내 동시 매체) 기반. 2차 내용판정은 별도(Claude). ──
-BREAKING_BURST = int(os.environ.get("BREAKING_BURST", "3"))          # 속보 후보: burst 이 값 이상
-MEGA_MEMBERS = int(os.environ.get("BREAKING_MEGA_MEMBERS", "40"))    # 멤버 이상 = over-merge 의심 → 속보 제외
-MEGA_CROSS = int(os.environ.get("BREAKING_MEGA_CROSS", "18"))        # 누적 매체 이상 = over-merge 의심 → 속보 제외
 
 KST = timezone(timedelta(hours=9))
 # 스크래퍼 영문 섹션 → 뷰어 카테고리(catBucket 호환: 정치→사회 매핑은 뷰어가 처리)
@@ -63,21 +59,13 @@ def main():
         url = a.get("link") or ""
         if not url:
             continue
-        burst = a.get("burst") or 0
-        cross = a.get("cross_score") or 0
-        size = a.get("cluster_size") or 0
-        mega = size > MEGA_MEMBERS or cross > MEGA_CROSS   # over-merge 의심(대표 신뢰 불가)
         fresh[url] = {
             "id": url, "url": url,
             "title": a.get("title") or "",
             "media": a.get("publisher") or "",
             "cat": cat_ko(a.get("category")),
-            "cross": cross,
+            "cross": a.get("cross_score") or 0,
             "published": a.get("published") or "",
-            "burst": burst,
-            # 속보 1차 후보(velocity) — 2차 내용판정(Claude)이 breaking 을 확정한다.
-            "breaking_candidate": bool(burst >= BREAKING_BURST and not mega),
-            "breaking_pick": a.get("breaking_pick") or None,
         }
 
     merged = dict(existing)
@@ -95,12 +83,10 @@ def main():
     kept.sort(key=lambda c: (c.get("cross") or 0, c.get("published") or ""), reverse=True)
     kept = kept[:CAP]
 
-    nbreak = sum(1 for c in kept if c.get("breaking_candidate"))
     DST.parent.mkdir(parents=True, exist_ok=True)
     DST.write_text(json.dumps(kept, ensure_ascii=False), encoding="utf-8")
     print(f"수집함: 사건 {len(kept)}건 (신규 {len(fresh)} · 기존 {len(existing)}) · "
-          f"보관한도 {CAP} · 보관기간 {TTL_HOURS}h(약 {TTL_HOURS // 24}일) · 교차≥{MIN_CROSS} · "
-          f"🚨속보후보(burst≥{BREAKING_BURST}) {nbreak}건")
+          f"보관한도 {CAP} · 보관기간 {TTL_HOURS}h(약 {TTL_HOURS // 24}일) · 교차≥{MIN_CROSS}")
 
 
 if __name__ == "__main__":

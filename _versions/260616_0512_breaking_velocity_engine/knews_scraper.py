@@ -250,42 +250,6 @@ def collect(feeds, hours):
 
 
 # ── 주요도 산정 (교차등장) ───────────────────────────────────────────
-# burst = 한 사건(클러스터)을 BURST_WINDOW_MIN 분 안에 동시 보도한 서로 다른 매체 수.
-# cross(24h 누적)와 분리된 '동시성/속도' 지표 — 속보 1차 게이트(to_candidates 에서 burst≥3).
-BURST_WINDOW_MIN = 15
-# 속보 픽: 가장 메이저한 '보수매체' 우선(조선>동아) → 메이저/통신 → 없으면 최초보도.
-PICK_PRIORITY = ["조선일보", "동아일보", "세계일보", "한국경제", "매일경제",
-                 "연합뉴스", "국민일보", "서울신문", "이데일리", "뉴시스"]
-
-
-def _pick_rank(pub):
-    return PICK_PRIORITY.index(pub) if pub in PICK_PRIORITY else len(PICK_PRIORITY)
-
-
-def _burst(members, articles):
-    """멤버 발행시각을 BURST_WINDOW_MIN 슬라이딩 윈도우로 훑어 동시 매체(distinct) 최대치."""
-    pts = []
-    for m in members:
-        p = articles[m].get("published")
-        if not p:
-            continue
-        try:
-            pts.append((datetime.fromisoformat(p), articles[m]["publisher"]))
-        except ValueError:
-            continue
-    pts.sort(key=lambda x: x[0])
-    best = 0
-    for i, (t0, _) in enumerate(pts):
-        pubs = set()
-        for t, pb in pts[i:]:
-            if (t - t0).total_seconds() > BURST_WINDOW_MIN * 60:
-                break
-            pubs.add(pb)
-        if len(pubs) > best:
-            best = len(pubs)
-    return best
-
-
 def score_crosspost(articles):
     """유사 제목끼리 Union-Find 로 묶고, 클러스터 내 '고유 매체 수'를 주요도로."""
     n = len(articles)
@@ -321,21 +285,10 @@ def score_crosspost(articles):
         # 클러스터 대표 = 가장 먼저 보도한 기사(최초 발) — 빈 시각은 뒤로
         rep = min(members, key=lambda m: (articles[m]["published"] is None,
                                           articles[m]["published"] or ""))
-        burst = _burst(members, articles)
-        # 속보 픽 = 보수메이저 우선(조선>동아…) — 없으면 최초보도
-        pick = min(members, key=lambda m: (_pick_rank(articles[m]["publisher"]),
-                                           articles[m]["published"] is None,
-                                           articles[m]["published"] or ""))
         for m in members:
             articles[m]["cross_score"] = score
             articles[m]["cluster_size"] = len(members)
             articles[m]["is_cluster_rep"] = (m == rep)
-            articles[m]["burst"] = burst
-        articles[rep]["breaking_pick"] = {
-            "url": articles[pick]["link"],
-            "media": articles[pick]["publisher"],
-            "title": articles[pick]["title"],
-        }
     return articles
 
 
