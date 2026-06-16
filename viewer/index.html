@@ -161,7 +161,7 @@
     transition:width .32s cubic-bezier(.4,0,.2,1), opacity .25s, padding .3s; }
   .topsearch.open input { width:min(60vw,300px); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인을 따라 좌우로 산책. 엇박(불규칙 dart·멈칫·방향전환)으로 = 단조롭지 않게 */
+  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인을 따라 좌우로 왔다갔다(alternate) 산책 */
   .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
     pointer-events:none; user-select:none; z-index:6; will-change:transform;
     filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
@@ -916,7 +916,7 @@
     <a href="https://nomute.kr" target="_blank" rel="noopener">Home ↗</a>
     <a href="https://instagram.com/no_mute" target="_blank" rel="noopener">Instagram ↗</a>
     <a href="https://www.threads.com/?hl=ko" target="_blank" rel="noopener">Thread ↗</a>
-    <a href="https://x.com/home" target="_blank" rel="noopener">X ↗</a>
+    <a href="https://x.com/NOMUTE" target="_blank" rel="noopener">X ↗</a>
     <a href="https://www.facebook.com/" target="_blank" rel="noopener">Facebook ↗</a>
     <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
   </div>
@@ -2596,11 +2596,20 @@ function renderScrap() {
   if (!pool.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; return; }
   host.classList.add('scrap-cols');
   host.innerHTML = SC_COLS_HTML;
-  host.querySelectorAll('.scrap-list[data-col]').forEach(col => {       // 좌=주요도 / 우=최신 — 같은 데이터, 정렬만 다름
+  const AGE6 = 6 * 3600000, _now = Date.now();   // 6시간 = 신속/누적 경계
+  const _untri = c => { const r = rt[candId(c)] || {}; return !(r.action || r.passed || r.picked); };   // 트리아지 처리된 건 양 컬럼서 제외
+  host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
-    let arr = [...pool].sort(SC_SORTS[key]);   // pool = 검색 필터 적용된 후보(전반)
-    if (key === 'cross') arr = arr.filter(c => !scHideFromCross(rt[candId(c)] || {}));   // ≤1·5점 무메모 = 주요도서 숨김(최신엔 유지)
-    if (key === 'new') arr = arr.filter(c => { const r = rt[candId(c)] || {}; return !(r.action || r.passed || r.picked); });   // 신속 = 트리아지(👎/pass/pick) 처리된 건 인박스서 비움
+    let arr;
+    if (key === 'new') {   // 신속 = 최근 6h · 최신순(+⚡이슈 고정). '오늘 막 일어난 일'
+      arr = pool.filter(c => _untri(c) && (_now - scTs(c)) < AGE6);
+      arr.sort((a, b) => (pinB(b) - pinB(a)) || scTs(b) - scTs(a));
+    } else {   // 누적 = 6h 이상 · 최신성 우선 + cross(보도량) 최대 25% 신선도 보너스(+⚡이슈 고정). '올드한 게 너무 위' 방지
+      arr = pool.filter(c => _untri(c) && (_now - scTs(c)) >= AGE6);
+      const cMax = Math.max(1, ...arr.map(c => c.cross || 0));
+      const effAge = c => (_now - scTs(c)) / (1 + 0.25 * ((c.cross || 0) / cMax));   // 나이↓(=신선) 우선, cross 높으면 최대 25% 더 신선 취급
+      arr.sort((a, b) => (pinB(b) - pinB(a)) || effAge(a) - effAge(b));
+    }
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
       const el = makeScItem(arr[i], rt[candId(arr[i])] || {}, key);
@@ -2635,14 +2644,14 @@ const SC_COLS_HTML =
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
-  el.className = 'sc-item' + (c.breaking && col !== 'cross' ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
+  el.className = 'sc-item' + (c.breaking ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
   const catB = articleCat({ category: c.cat, title: c.title });
-  const triage = col === 'new';   // 신속 = 트리아지 인박스([👎][PASS][PICK]+사유 객관식) · 누적 = 검증된 거(★+PICK 유지)
+  const triage = true;   // 누적·신속 둘 다 트리아지([👎][PASS][PICK]+사유)로 통일(사용자 요청 — 판단 기준 일원화)
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   el.innerHTML =
-    `<div class="sc-top">${c.breaking && col !== 'cross' ? '<span class="sc-brk">⚡ 이슈</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+    `<div class="sc-top">${c.breaking ? '<span class="sc-brk">⚡ 이슈</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`
