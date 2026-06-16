@@ -139,16 +139,21 @@
   .bar input::placeholder { color:var(--mut); }
   .bar input:focus, .bar select:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
   /* 상단 검색바 = 프로필 원 기준 세로중앙·배너 위 은근히 걸침. 검정 반투명(배너 비침), 키워드 텍스트만 또렷(불투명). 모든 탭 항상 표시. */
-  .topsearch { position:absolute; left:16px; right:96px; bottom:-14px; z-index:5;
-    display:flex; align-items:center; gap:9px; height:42px; padding:0 15px;
-    background:rgba(4,5,6,.4); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
-    border:1px solid rgba(255,255,255,.08); border-radius:999px; box-shadow:0 6px 18px rgba(0,0,0,.3); }
-  .topsearch .ts-ico { width:16px; height:16px; flex:none; stroke:rgba(255,255,255,.55); fill:none; stroke-width:2; stroke-linecap:round; }
-  .topsearch input { flex:1; min-width:0; background:none; border:none; outline:none; color:#fff; font:inherit; font-size:13.5px; font-weight:600; padding:0; }
+  /* 접이식 검색: 기본=아이콘만(프로필 옆·테두리색·박스 없음), 클릭 시 좌측으로 입력바 펼침. */
+  .topsearch { position:absolute; right:94px; bottom:-11px; z-index:6; display:flex; align-items:center; gap:4px; }
+  .ts-toggle { width:36px; height:36px; flex:none; background:none; border:none; padding:0; cursor:pointer; display:grid; place-items:center; }
+  .ts-toggle:active { transform:scale(.92); }
+  .topsearch .ts-ico { width:20px; height:20px; flex:none; stroke:var(--accent); fill:none; stroke-width:2.2; stroke-linecap:round;
+    filter:drop-shadow(0 0 5px rgba(15,253,2,.4)); transition:stroke .3s; }   /* 프로필 테두리색(피드=그린) */
+  body.tab-scrap .topsearch .ts-ico { stroke:#ff9614; filter:drop-shadow(0 0 5px rgba(255,150,20,.4)); }   /* 스크랩 탭=앰버(프로필 테두리 따라) */
+  .topsearch input { width:0; opacity:0; padding:0; height:38px; min-width:0; border:1px solid transparent; border-radius:999px;
+    background:rgba(4,5,6,.5); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
+    color:#fff; font:inherit; font-size:13.5px; font-weight:600; outline:none;
+    transition:width .32s cubic-bezier(.4,0,.2,1), opacity .25s, padding .3s; }
+  .topsearch.open input { width:min(60vw,300px); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  .topsearch:focus-within { border-color:rgba(15,253,2,.35); background:rgba(4,5,6,.55); }
-  /* 검색바 위 마스코트(노뮤트 펫) — WebP 제자리 드리블 + 좌우로 자연스레 산책 */
-  .pet { position:absolute; left:clamp(44px,17%,150px); bottom:calc(100% - 5px); height:50px; width:auto;
+  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인을 따라 좌우로 왔다갔다(alternate) 산책 */
+  .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
     pointer-events:none; user-select:none; z-index:6; will-change:transform;
     filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
     animation:petStroll 5.5s ease-in-out infinite alternate; }
@@ -762,10 +767,10 @@
     <img class="banner layer-feed" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL">
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
   </div></div>
-  <div class="topsearch">
-    <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false">
-    <svg class="ts-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false">
+  <div class="topsearch" id="topsearch">
     <input id="q" type="search" placeholder="검색">
+    <button class="ts-toggle" id="searchToggle" type="button" aria-label="검색"><svg class="ts-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
   </div>
   <button class="profile" id="profile" aria-label="프로필 메뉴"><img src="assets/brand/main_profile.jpg" alt="프로필"><span class="pbadge" id="pbadge"></span></button>
   <div class="pmenu" id="pmenu" hidden>
@@ -2314,6 +2319,10 @@ $('#editdlg').addEventListener('click', e => { if (e.target.id === 'editdlg') $(
 let CURTAB = 'feed';   // 현재 탭(검색이 어느 콘텐츠에 걸릴지 결정)
 function searchActive() { if (CURTAB === 'scrap') renderScrap(); else if (CURTAB === 'sns') renderSns(); else render(); }
 $('#q').addEventListener('input', searchActive);   // 검색바=탭별: 레거시→후보 전반 / 뉴스요약→기사 / SNS→SNS
+// 접이식 검색: 아이콘 클릭 → 좌측으로 펼침+커서 포커스 / 바깥 클릭 → 접힘
+const topsearch = $('#topsearch'), searchToggle = $('#searchToggle');
+searchToggle.addEventListener('click', e => { e.stopPropagation(); if (topsearch.classList.toggle('open')) $('#q').focus(); });
+document.addEventListener('click', e => { if (topsearch.classList.contains('open') && !topsearch.contains(e.target)) topsearch.classList.remove('open'); });
 $('#cardonly').addEventListener('change', render);
 // R 필터 칩 토글
 $('#chips').addEventListener('click', e => {
