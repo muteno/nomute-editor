@@ -105,6 +105,19 @@
   .ed-chip.editing.over { outline-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.12); }
   .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  /* 확인 모달 — 네이티브 confirm 대체(뉴스 요약기 글래스 UI 계승) */
+  .cfm { border:none; border-radius:18px; padding:0; width:88vw; max-width:420px; color:var(--fg);
+    position:fixed; inset:0; margin:auto; height:max-content;
+    background:linear-gradient(150deg, rgba(38,64,46,.5), rgba(11,21,15,.72)); backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2);
+    border:1px solid rgba(15,253,2,.18); box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06); }
+  .cfm::backdrop { background:rgba(0,0,0,.55); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); }
+  .cfm-in { padding:20px 20px 16px; }
+  .cfm-msg { font-size:15px; font-weight:600; line-height:1.55; color:var(--fg); }
+  .cfm-bot { display:flex; gap:10px; margin-top:18px; justify-content:flex-end; }
+  .cfm-btn { padding:9px 18px; border-radius:999px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); }
+  .cfm-btn:active { transform:scale(.97); }
+  .cfm-btn.go2 { border:none; background:linear-gradient(135deg,#d8ff3d,var(--grn)); color:#07210a; box-shadow:0 6px 16px rgba(15,253,2,.3); }
 </style>
 </head>
 <body>
@@ -235,8 +248,36 @@
   </div>
 </div>
 
+<!-- 확인 모달 — 네이티브 confirm 대체(앱 UI 계승) -->
+<dialog id="cfmdlg" class="cfm">
+  <div class="cfm-in">
+    <div class="cfm-msg" id="cfmMsg"></div>
+    <div class="cfm-bot">
+      <button class="cfm-btn" id="cfmNo" type="button">취소</button>
+      <button class="cfm-btn go2" id="cfmYes" type="button">진행</button>
+    </div>
+  </div>
+</dialog>
+
 <script>
 const $ = s => document.querySelector(s);
+// 네이티브 confirm 대체 — 앱 글래스 모달(뉴스 요약기 UI 계승). 진행=true / 취소·바깥·ESC=false.
+function askConfirm(msg) {
+  return new Promise(resolve => {
+    const dlg = $('#cfmdlg'); $('#cfmMsg').textContent = msg;
+    const done = v => { dlg.close(); cleanup(); resolve(v); };
+    const onYes = () => done(true), onNo = () => done(false);
+    const onBackdrop = e => { if (e.target === dlg) done(false); };   // 바깥 클릭 = 취소
+    const onCancel = e => { e.preventDefault(); done(false); };       // ESC
+    function cleanup() {
+      $('#cfmYes').removeEventListener('click', onYes); $('#cfmNo').removeEventListener('click', onNo);
+      dlg.removeEventListener('click', onBackdrop); dlg.removeEventListener('cancel', onCancel);
+    }
+    $('#cfmYes').addEventListener('click', onYes); $('#cfmNo').addEventListener('click', onNo);
+    dlg.addEventListener('click', onBackdrop); dlg.addEventListener('cancel', onCancel);
+    dlg.showModal();
+  });
+}
 let APP = '1', FMT = 'post', RMODE = 'header';
 const IMG = { b64: '', name: '' };    // /1·/5 배경
 const RIMG = { b64: '', name: '' };   // /2 오버레이 배경(옵션)
@@ -806,7 +847,7 @@ $('#go').onclick = async () => {
   // 릴스/포스트 오버레이 = 강조(*별표*) 빠뜨리면 확인
   if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {
     const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
-    if (!/\*[^*\n]+\*/.test(_t) && !confirm('강조를 안 넣었는데, 진행할까요?')) { status.textContent = ''; return; }
+    if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) { status.textContent = ''; return; }
   }
   $('#go').disabled = true; status.textContent = '발사 중…';
   try {
