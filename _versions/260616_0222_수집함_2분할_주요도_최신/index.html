@@ -299,26 +299,6 @@
     padding:7px 10px; color:var(--fg); font-size:12.5px; font-family:inherit; letter-spacing:-.1px; }
   .sc-memo-in::placeholder { color:var(--mut); }
   .sc-memo-in:focus { outline:none; border-color:var(--accent); background:rgba(15,253,2,.04); }
-  /* ── 수집함 2열 (좌=주요도/기존 초록 · 우=최신/스포티 블랙). 색은 둘만 — 다른 색 안 섞음 ── */
-  .scrap-cols { display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:start; }
-  .scrap-col { min-width:0; border-radius:14px; padding:6px 7px 12px; }
-  .scrap-col.black { background:linear-gradient(180deg, rgba(10,10,12,.5), rgba(6,6,7,.16)); }
-  .scrap-coltitle { font-size:12.5px; font-weight:800; letter-spacing:-.2px; padding:3px 3px 9px; }
-  .scrap-coltitle small { font-weight:600; font-size:10px; opacity:.55; }
-  .ct-cross { color:var(--accent); }    /* 주요도 = 기존 초록 */
-  .ct-new { color:var(--fg); }           /* 최신 = 스포티 블랙(흰 텍스트) */
-  .scrap-cols .scrap-list { gap:8px; }
-  .scrap-cols .sc-item { padding:9px 10px; gap:6px; border-radius:12px; }
-  .scrap-col.black .sc-item { background:linear-gradient(165deg, rgba(24,24,27,.6), rgba(9,9,11,.74)); border-color:rgba(255,255,255,.1); }
-  .scrap-col.black .sc-item.picked { background:rgba(15,253,2,.06); }   /* 픽 상태는 양쪽 동일 표식(초록 테두리) */
-  .scrap-cols .sc-top { font-size:10px; gap:5px; flex-wrap:wrap; }
-  .scrap-cols .sc-cross { font-size:9.5px; padding:1px 6px; }
-  .scrap-cols .sc-media { font-size:9.5px; }
-  .scrap-cols .sc-title { font-size:12.5px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-  .scrap-cols .sc-title a { display:block; }
-  .scrap-cols .sc-bot { gap:5px; flex-wrap:wrap; }
-  .scrap-cols .sc-star { width:20px; height:20px; font-size:14px; }
-  .scrap-cols .sc-pick { font-size:11px; padding:4px 10px; }
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
     padding:30px 16px calc(92px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 */
@@ -763,7 +743,7 @@
     <h2 class="scrap-title">스크랩 · 큐레이션</h2>
     <p class="scrap-sub">RSS로 들어온 후보 — 관심도 ★를 매기고(누적=취향 데이터), 고른 건 분석으로 넘겨.</p>
   </div>
-  <div id="scrapList"></div>
+  <div class="scrap-list" id="scrapList"></div>
 </section>
 <footer class="foot">ⓒ 2025-26. 노뮤트. all rights reserved.</footer>
 
@@ -2331,54 +2311,42 @@ async function loadCandidates() {
   CANDS = []; SCRAP_LOADED = true; renderScrap();
 }
 function renderScrap() {
-  const host = $('#scrapList'); if (!host) return;
-  if (!CANDS.length) { host.classList.remove('scrap-cols'); host.innerHTML = '<div class="scrap-empty">수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.</div>'; return; }
-  host.classList.add('scrap-cols');
-  host.innerHTML = SC_COLS_HTML;
+  const wrap = $('#scrapList'); if (!wrap) return;
+  if (!CANDS.length) { wrap.innerHTML = '<div class="scrap-empty">수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.</div>'; return; }
   const rt = ratingsAll();
-  host.querySelectorAll('.scrap-list[data-col]').forEach(col => {       // 좌=주요도 / 우=최신 — 같은 데이터, 정렬만 다름
-    const arr = [...CANDS].sort(SC_SORTS[col.dataset.col]);
-    arr.forEach(c => col.appendChild(makeScItem(c, rt[candId(c)] || {})));
+  const rows = [...CANDS].sort((a, b) => (b.cross || 0) - (a.cross || 0));   // 교차점수순(나중엔 예측 관심도순)
+  wrap.innerHTML = '';
+  rows.forEach(c => {
+    const st = rt[candId(c)] || {};
+    const el = document.createElement('div');
+    el.className = 'sc-item' + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
+    const lo = (c.cross || 0) < 2 ? ' lo' : '';
+    const tm = scRelTime(c.published) || c.time || '';
+    const catB = articleCat({ category: c.cat, title: c.title });   // 피드 카테고리 없거나(_all_) 미매핑이면 제목 키워드로 추정
+    const showMemo = (st.score === 1 || st.score === 5) && (c.cross || 0) >= 7;   // 극단 평점(1·5) + 교차⛓≥7 → 주관식 메모(강한 신호 = 취향 데이터 핵심)
+    el.innerHTML =
+      `<div class="sc-top">${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+       <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
+       <div class="sc-bot"><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
+       ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 메모 (선택·엔터 저장)"></div>` : ''}`;
+    el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
+    el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
+    el.querySelector('.sc-pick').onclick = () => pickCard(c);
+    const mi = el.querySelector('.sc-memo-in');
+    if (mi) {                                   // value 는 프로퍼티로 주입(esc·따옴표 안전)
+      mi.value = st.memo || '';
+      const saveMemo = () => {
+        const v = mi.value.trim().slice(0, 200);
+        const cur = ratingsAll()[candId(c)] || {};
+        if (v === (cur.memo || '')) return;     // 변동 없으면 발사 안 함(스팸 방지)
+        saveRating(candId(c), { memo: v });
+        postRate({ id: candId(c), url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo: v });
+      };
+      mi.onblur = saveMemo;
+      mi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); mi.blur(); } };
+    }
+    wrap.appendChild(el);
   });
-}
-// 좌=주요도(cross↓, 동점은 최신) · 우=최신(최신↓, 동점은 cross) — cross 포화(21에 다수) 2차키로 해소. 점수 블렌드·튜닝 0.
-const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
-const SC_SORTS = {
-  cross: (a, b) => (b.cross || 0) - (a.cross || 0) || scTs(b) - scTs(a),
-  new: (a, b) => scTs(b) - scTs(a) || (b.cross || 0) - (a.cross || 0),
-};
-const SC_COLS_HTML =
-  '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">주요도 <small>누적 우선</small></div><div class="scrap-list" data-col="cross"></div></div>' +
-  '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신 <small>최신 우선</small></div><div class="scrap-list" data-col="new"></div></div>';
-function makeScItem(c, st) {            // 카드 1장 생성(반환). 픽·평점·메모 로직 기존 그대로 — 두 컬럼 공용.
-  const el = document.createElement('div');
-  el.className = 'sc-item' + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
-  const lo = (c.cross || 0) < 2 ? ' lo' : '';
-  const tm = scRelTime(c.published) || c.time || '';
-  const catB = articleCat({ category: c.cat, title: c.title });
-  const showMemo = (st.score === 1 || st.score === 5) && (c.cross || 0) >= 7;
-  el.innerHTML =
-    `<div class="sc-top">${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
-     <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
-     <div class="sc-bot"><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
-     ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 메모 (선택·엔터 저장)"></div>` : ''}`;
-  el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
-  el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
-  el.querySelector('.sc-pick').onclick = () => pickCard(c);
-  const mi = el.querySelector('.sc-memo-in');
-  if (mi) {
-    mi.value = st.memo || '';
-    const saveMemo = () => {
-      const v = mi.value.trim().slice(0, 200);
-      const cur = ratingsAll()[candId(c)] || {};
-      if (v === (cur.memo || '')) return;
-      saveRating(candId(c), { memo: v });
-      postRate({ id: candId(c), url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo: v });
-    };
-    mi.onblur = saveMemo;
-    mi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); mi.blur(); } };
-  }
-  return el;
 }
 const _rateTimers = {};
 function rateCard(c, n) {
