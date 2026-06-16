@@ -80,6 +80,12 @@
 - ⚠️ **영상**: 디스크 떨어지는 환경(모바일 앱)에서만 가능 — jsonl 폴백 불가(실측 확정: 영상은 대화로그에 base64 미포함). 디스크 부재(웹·PC웹·데스크탑)면 영상 접근 불가 → 영상 URL(yt-dlp)·SRT/STT 텍스트·모바일 앱으로 우회. `latest_attachment(kinds=VID_EXT)`는 디스크에서만 잡고 그 외엔 None.
 - 이 규칙은 **입력(첨부)** 한정. 출력 경로(`/mnt/user-data/outputs/`)·산출물 전송은 무관(정상 작동).
 
+## 📋 복사·붙여넣기 버튼 = 캐러셀 UI/UX 자동 계승 (플랫폼 공통 UX · 260616)
+복사/붙여넣기·클립보드 버튼은 **말 안 해도 항상 뉴스요약 카드뉴스 캐러셀 버튼(`.sbtn` 글래스 아이콘)의 UI/UX를 계승**한다 — 이 UI 구조 화면이 여럿(요약 요청·썸네일 제작 등)이라 매번 설명 안 하게 여기 못박음. **새 화면·새 입력칸도 자동 적용**(별도 지시 불필요).
+- **모양**: `.sbtn` 글래스 아이콘 버튼(이모지 금지 · SVG 아이콘만 · 둥근 사각·blur). 입력칸 **우측 상단에 떠** 있고 **도형 너비 절반(≈17px)만큼 아래**로 내려 배치.
+- **동작 = 컨텍스트 1버튼**(두 버튼 X): 입력칸이 **비었으면 붙여넣기**(PASTE 아이콘), **문자열이 있으면 복사**(COPY 아이콘 · 성공 시 CHECK 아이콘으로 플래시 후 복귀). 입력 변화에 따라 아이콘·동작 자동 토글.
+- **정본 구현** = `viewer/index.html`(`.sbtn`·`.askclip`·`COPY_SVG`/`PASTE_SVG`/`CHECK_SVG`·`updateAskClip`). 다른 화면 이식 시 이 구현을 그대로 따른다.
+
 ## 📰 뉴스 큐 파이프라인 — 기틀 + 불변 (플랫폼 인프라 · 260614)
 폰→Actions→Pages 자동 큐레이션. **정본 상세 = `docs/news-pipeline.md` + `apps/news/`**; 여기엔 *기틀·불변·헷갈림 방지*만(라우터는 얇게).
 - **흐름(한 기사 = 3단계):** 폰 공유→`pending/**` push → `news-analyze`의 analyze 잡이 다이제스트→`queue/`*.md* → **같은 워크플로 `card_plan` 잡**(`needs: analyze`)이 **자동 카드 프롬프트**(텍스트만·`state=text_done`) → 뷰어에서 운영자 **'슛'**(버튼→`make-cards.js`→`card-make` 워크플로 `mode=shoot`)이 제미나이 렌더→이미지(`done`). 상태: `generating`→`text_done`(프롬프트까지)→`done`(이미지)/`fired_partial`(대기)/`failed`(error.log).
