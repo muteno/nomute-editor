@@ -82,8 +82,13 @@ def main():
 
     merged = dict(existing)
     for url, c in fresh.items():
-        c["first_seen"] = merged[url].get("first_seen", nowiso) if url in merged else nowiso
-        merged[url] = {**merged.get(url, {}), **c}
+        prev = merged.get(url, {})
+        c["first_seen"] = prev.get("first_seen", nowiso)
+        # last_seen = 마지막 '후속'(distinct 매체 = cross 증가) 시각. 신규 or cross 성장이면 now,
+        #            아니면 기존 유지. 뷰어가 (now - last_seen)으로 중요도 신선도를 감쇠(후속 끊기면 하강).
+        grew = (not prev) or ((c.get("cross") or 0) > (prev.get("cross") or 0))
+        c["last_seen"] = nowiso if grew else (prev.get("last_seen") or c["first_seen"])
+        merged[url] = {**prev, **c}
 
     def age_h(c):
         try:
