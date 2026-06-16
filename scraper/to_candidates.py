@@ -82,8 +82,13 @@ def main():
 
     merged = dict(existing)
     for url, c in fresh.items():
-        c["first_seen"] = merged[url].get("first_seen", nowiso) if url in merged else nowiso
-        merged[url] = {**merged.get(url, {}), **c}
+        prev = merged.get(url, {})
+        c["first_seen"] = prev.get("first_seen", nowiso)
+        # last_seen = 마지막 '후속'(distinct 매체 = cross 증가) 시각. 신규 or cross 성장이면 now,
+        #            아니면 기존 유지. 뷰어가 (now - last_seen)으로 중요도 신선도를 감쇠(후속 끊기면 하강).
+        grew = (not prev) or ((c.get("cross") or 0) > (prev.get("cross") or 0))
+        c["last_seen"] = nowiso if grew else (prev.get("last_seen") or c["first_seen"])
+        merged[url] = {**prev, **c}
 
     # 속보 강등(만료): burst 가 1차 게이트(≥BREAKING_BURST) 밑으로 떨어진 사건은 굳은 breaking 플래그 해제.
     # burst 2 vs 3 = 넘사벽 — 급증 끝난 사건이 🚨로 눌어붙던 버그 차단. rubric 도 비워 재급증 시 재판정.
