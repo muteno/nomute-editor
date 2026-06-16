@@ -91,12 +91,18 @@
   body[data-tab="sns"] .pbadge { background:linear-gradient(135deg,#9becff,#0cd0f7); }
 
   /* ── 메시지 팝업(프로필 근처) ── */
-  .msgpop { position:absolute; right:24px; top:46px; z-index:21; width:min(300px,82vw);
-    background:linear-gradient(165deg, rgba(24,40,29,.96), rgba(12,21,15,.97));
-    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-    border:1px solid var(--line); border-radius:16px; padding:6px;
-    box-shadow:0 24px 60px rgba(0,0,0,.55); transform-origin:top right;
-    animation:popIn .16s cubic-bezier(.22,.61,.36,1) both; }
+  .msgpop { position:fixed; z-index:21; width:min(300px,82vw);
+    background:linear-gradient(165deg, rgba(22,36,27,.66), rgba(11,19,14,.74));   /* 살짝 반투명 글래스 모피즘 */
+    backdrop-filter:blur(26px) saturate(1.5); -webkit-backdrop-filter:blur(26px) saturate(1.5);
+    border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:6px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); transform-origin:top right;
+    animation:msgUnfold .26s cubic-bezier(.22,.61,.36,1) both; }   /* 위치=JS(프로필 우측·세로중앙 앵커) · 우상단 기준 좌하단으로 촤르륵 */
+  @keyframes msgUnfold { from { opacity:0; transform:scale(.82) translateY(-8px); } to { opacity:1; transform:none; } }
+  .msglist > * { animation:msgItem .34s cubic-bezier(.22,.61,.36,1) both; }   /* 메시지 항목 촤르륵(우→좌 스태거) */
+  .msglist > *:nth-child(2){ animation-delay:.05s } .msglist > *:nth-child(3){ animation-delay:.1s }
+  .msglist > *:nth-child(4){ animation-delay:.15s } .msglist > *:nth-child(n+5){ animation-delay:.2s }
+  @keyframes msgItem { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce){ .msgpop, .msglist > * { animation:none; } }
   .msgpop[hidden] { display:none; }
   .msgpop .mh { display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
   .msgpop .mh b { font-size:13px; font-weight:800; }
@@ -2562,7 +2568,14 @@ document.addEventListener('click', e => {
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
 });
 $('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); loadCandidates(); });
-$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); closeOverlays('msg'); renderMsgList(); msgpop.hidden = false; });
+// 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
+function placeMsgpop() {
+  const pr = $('#profile').getBoundingClientRect();
+  msgpop.style.top = Math.round(pr.top + pr.height / 2) + 'px';        // 프로필 세로 중앙 → 아래로
+  msgpop.style.right = Math.round(window.innerWidth - pr.right) + 'px'; // 프로필 우측 라인 → 좌측으로
+  msgpop.style.left = 'auto'; msgpop.style.bottom = 'auto';
+}
+$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); closeOverlays('msg'); renderMsgList(); placeMsgpop(); msgpop.hidden = false; });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
