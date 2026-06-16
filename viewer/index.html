@@ -816,6 +816,8 @@
   .askhead { display:flex; align-items:center; justify-content:space-between; }
   .askhead b { font-size:16px; color:var(--accent); text-shadow:0 0 12px rgba(15,253,2,.4); }
   .askx { background:none; border:none; color:var(--mut); font-size:16px; cursor:pointer; padding:4px 6px; }
+  .asksub { font-size:12px; color:var(--mut); line-height:1.55; margin:6px 0 12px; }
+  .asksub b { color:var(--fg); }
   .askta { width:100%; box-sizing:border-box; min-height:96px; resize:vertical; border-radius:14px; padding:12px 14px;
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
   .askta:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
@@ -949,6 +951,7 @@
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
     <div class="askhead"><b>✨ 요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기">✕</button></div>
+    <p class="asksub">자연어로 요청(URL·기사·질문)하거나 캡처를 첨부해. 해석해서 제일 메이저 기사를 찾아 <b>뉴스요약</b>에 큐레이션해줘. 모호하면 알아서 큐레이션으로 올림.</p>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder="예) 요즘 층간소음 사건 관련 기사 정리해줘 — 또는 캡처만 첨부"></textarea>
       <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
@@ -972,7 +975,7 @@
 </nav>
 <div class="bpop" id="bpop" hidden>
   <b>제작 도구</b>
-  <a href="#" id="askmenu" class="bpop-hl">✨ 요약 요청</a>
+  <a href="#" id="askmenu" class="bpop-hl">✨ 요약 요청 — 기사·캡처 큐레이션</a>
   <a href="/thumb.html">썸네일 제작</a>
   <a href="/ly.html">릴스 자막</a>
   <a href="/k.html">영상 프롬프트</a>
@@ -2551,7 +2554,7 @@ function renderScrap() {
     if (key === 'cross') arr = arr.filter(c => !scHideFromCross(rt[candId(c)] || {}));   // ≤1·5점 무메모 = 주요도서 숨김(최신엔 유지)
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
-      const el = makeScItem(arr[i], rt[candId(arr[i])] || {}, key);
+      const el = makeScItem(arr[i], rt[candId(arr[i])] || {});
       el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(펼쳐짐)
       col.appendChild(el);
     }
@@ -2566,14 +2569,19 @@ function renderScrap() {
 }
 // 좌=주요도(cross↓, 동점은 최신) · 우=최신(최신↓, 동점은 cross) — cross 포화(21에 다수) 2차키로 해소. 점수 블렌드·튜닝 0.
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
+// 중요도 = 누적 cross × '후속 신선도' 감쇠. last_seen(마지막 후속=distinct 매체 cross 증가 시각) 이후
+// 시간이 흐를수록 DECAY_H 반감기로 점수 절반 → 후속 끊긴 사건은 하강, 새 후속(cross↑·last_seen 갱신) 들어오면 상단.
+const DECAY_H = 6;   // 중요도 반감기(시간). 낮을수록 신선도 가중↑(후속 빨리 사그라듦). 조정 가능.
+const scLast = c => { const t = Date.parse(c.last_seen || c.first_seen || c.published || ''); return isNaN(t) ? 0 : t; };
+const scScore = c => (c.cross || 0) * Math.pow(0.5, Math.max(0, (Date.now() - scLast(c)) / 3600000) / DECAY_H);
 const SC_SORTS = {
-  cross: (a, b) => ((b.breaking ? 1 : 0) - (a.breaking ? 1 : 0)) || (b.cross || 0) - (a.cross || 0) || scTs(b) - scTs(a),   // 🚨속보 최상단 → cross → 최신
-  new: (a, b) => scTs(b) - scTs(a) || (b.cross || 0) - (a.cross || 0),
+  cross: (a, b) => ((b.breaking ? 1 : 0) - (a.breaking ? 1 : 0)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a),   // 🚨속보 최상단 → 신선도 가중 중요도 → 최신
+  new: (a, b) => scTs(b) - scTs(a) || (scScore(b) - scScore(a)),   // 최신 우선, 동률은 신선도 가중 중요도
 };
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
-function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
+function makeScItem(c, st) {            // 카드 1장 생성(반환). 픽·평점·메모 로직 기존 그대로 — 두 컬럼 공용.
   const el = document.createElement('div');
   el.className = 'sc-item' + (c.breaking ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
@@ -2583,12 +2591,12 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   el.innerHTML =
     `<div class="sc-top">${c.breaking ? '<span class="sc-brk">🚨 속보</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
-     <div class="sc-bot">${col === 'cross' ? '' : `<button class="sc-down" type="button" title="관심 없음 — 숨기기(별점 1점 미만·취향 기록)" aria-label="관심 없음">${THUMBDOWN_SVG}</button>`}<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
+     <div class="sc-bot"><button class="sc-down" type="button" title="관심 없음 — 숨기기(별점 1점 미만·취향 기록)" aria-label="관심 없음">${THUMBDOWN_SVG}</button><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
   el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
   el.querySelector('.sc-pick').onclick = () => pickCard(c);
-  const _dn = el.querySelector('.sc-down'); if (_dn) _dn.onclick = () => askDismissReason(c, el);
+  el.querySelector('.sc-down').onclick = () => askDismissReason(c, el);
   const mi = el.querySelector('.sc-memo-in');
   if (mi) {
     mi.value = st.memo || '';
