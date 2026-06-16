@@ -822,10 +822,9 @@
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
   .askta:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
   .askta::placeholder { color:var(--mut); }
-  .asktools { display:flex; gap:7px; margin-top:7px; }
-  .askmini { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:999px; color:var(--mut);
-    font:inherit; font-size:12px; font-weight:600; padding:5px 11px; cursor:pointer; }
-  .askmini:hover { color:var(--fg); border-color:rgba(15,253,2,.3); }
+  .asktawrap { position:relative; }
+  /* 복사·붙여넣기 = 캐러셀 .sbtn 글래스 아이콘 계승(이모지 X). 입력칸 우상단·도형 너비 절반(17px)만큼 아래. */
+  .askclip { position:absolute; top:17px; right:11px; }
   .askimgs { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
   .askimg { position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; border:1px solid var(--line2); }
   .askimg img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -955,14 +954,11 @@
     <p class="asksub">자연어로 요청(URL·기사·질문)하거나 캡처를 첨부해. 해석해서 제일 메이저 기사를 찾아 <b>뉴스요약</b>에 큐레이션해줘. 모호하면 알아서 큐레이션으로 올림.</p>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder="예) 요즘 층간소음 사건 관련 기사 정리해줘 — 또는 캡처만 첨부"></textarea>
-      <div class="asktools">
-        <button class="askmini" id="askPaste" type="button">📋 붙여넣기</button>
-        <button class="askmini" id="askCopy" type="button">⧉ 복사</button>
-      </div>
+      <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
     </div>
     <div class="askimgs" id="askImgs"></div>
     <div class="askbot">
-      <label class="askattach" id="askAttach">🖼 이미지 첨부<input id="askFile" type="file" accept="image/*" multiple hidden></label>
+      <label class="askattach" id="askAttach">이미지 첨부<input id="askFile" type="file" accept="image/*" multiple hidden></label>
       <span class="askstatus" id="askStatus"></span>
       <button class="asksend" id="askSend" type="button">요청 보내기 →</button>
     </div>
@@ -2161,6 +2157,7 @@ async function makeCards(target, btn, mode) {
   } catch (e) { alert('요청 실패: ' + e.message); }
 }
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
 const DOWNLOAD_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
 const LAYERS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>';
 // ── 오버레이만 투명 PNG (클라이언트 canvas — card_news.py 렌더 포팅: 하단 그라데이션 + 글자, 투명 배경) ──
@@ -2720,12 +2717,21 @@ function renderSns() {
 const askdlg = $('#askdlg');
 let askImages = [];   // 압축 이미지 {dataUrl, kb}
 const ASK_MAX = 8;
-function openAsk() { bpop.hidden = true; linkpop.hidden = true; $('#askStatus').textContent = ''; askdlg.showModal(); setTimeout(() => $('#askText').focus(), 60); }
+function openAsk() { bpop.hidden = true; linkpop.hidden = true; $('#askStatus').textContent = ''; updateAskClip(); askdlg.showModal(); setTimeout(() => $('#askText').focus(), 60); }
 $('#askmenu').addEventListener('click', e => { e.preventDefault(); openAsk(); });
 $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
-$('#askPaste').addEventListener('click', async () => { try { const t = await navigator.clipboard.readText(); const ta = $('#askText'); ta.value = (ta.value ? ta.value + '\n' : '') + t; ta.focus(); } catch { $('#askStatus').textContent = '클립보드 권한 막힘 — 직접 붙여넣어'; } });
-$('#askCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#askText').value); $('#askStatus').textContent = '복사됨'; } catch {} });
+// 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
+function updateAskClip() { const b = $('#askClip'); if (!b) return; const has = $('#askText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; }
+$('#askText').addEventListener('input', updateAskClip);
+$('#askClip').addEventListener('click', async () => {
+  const ta = $('#askText'), b = $('#askClip');
+  if (ta.value.trim()) {                                  // 문자열 있음 = 복사(체크 플래시)
+    try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); $('#askStatus').textContent = '복사됨'; setTimeout(() => { b.classList.remove('ok'); updateAskClip(); }, 1200); } catch { $('#askStatus').textContent = '복사 실패'; }
+  } else {                                                 // 비었음 = 붙여넣기
+    try { const t = await navigator.clipboard.readText(); ta.value = t; ta.focus(); updateAskClip(); } catch { $('#askStatus').textContent = '클립보드 권한 막힘 — 직접 붙여넣어'; }
+  }
+});
 $('#askFile').addEventListener('change', e => { addAskImages(e.target.files); e.target.value = ''; });
 $('#askText').addEventListener('paste', e => { const imgs = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean); if (imgs.length) { e.preventDefault(); addAskImages(imgs); } });
 async function addAskImages(files) {
@@ -2759,7 +2765,7 @@ $('#askSend').addEventListener('click', async () => {
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; askImages = []; renderAskImgs(); setTimeout(() => askdlg.close(), 1600); }
+    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); setTimeout(() => askdlg.close(), 1600); }
     else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); }
   } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.disabled = false;
