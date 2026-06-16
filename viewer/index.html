@@ -343,6 +343,22 @@
   .sc-item.removing { opacity:0; transform:scale(.96) translateX(16px); pointer-events:none; overflow:hidden;
     transition:height .32s ease, opacity .3s ease, transform .3s ease, margin .32s ease, padding .32s ease; }
   @media (prefers-reduced-motion:reduce) { .sc-item.removing { transition:opacity .12s; } }
+  /* 🚨 속보(breaking) — 빨강 강조: 카드 배지/테두리 · 프로필 링 · 포그라운드 토스트 (1·2단계 backend가 breaking 확정) */
+  .sc-brk { display:inline-flex; align-items:center; gap:3px; font-weight:800; font-size:9.5px; color:#fff; letter-spacing:.02em;
+    background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:1px 7px; box-shadow:0 0 9px rgba(255,60,60,.5); }
+  .sc-item.breaking { border-color:rgba(255,75,60,.5); box-shadow:0 0 0 1px rgba(255,75,60,.28), 0 0 15px rgba(255,60,50,.16); }
+  .scrap-col.green .sc-item.breaking, .scrap-col.black .sc-item.breaking { border-color:rgba(255,80,60,.5); }
+  body.has-breaking .profile { border-radius:50%; animation:profBrk 1.7s ease-in-out infinite; }
+  @keyframes profBrk { 0%,100% { box-shadow:0 0 0 2px #ff3b3b, 0 0 8px rgba(255,60,50,.45); } 50% { box-shadow:0 0 0 2px #ff5a4a, 0 0 18px rgba(255,85,60,.8); } }
+  .nm-toast { position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(18px);
+    z-index:60; max-width:min(92vw,430px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
+    background:linear-gradient(135deg, rgba(42,13,11,.95), rgba(20,9,9,.95)); border:1px solid rgba(255,85,60,.5); border-radius:14px;
+    box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#fff; font-size:13px; font-weight:700; line-height:1.35;
+    backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2); opacity:0; transition:opacity .3s, transform .3s; }
+  .nm-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .nm-toast .tg { flex:none; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:2px 8px; box-shadow:0 0 8px rgba(255,60,50,.5); }
+  .nm-toast b { color:#ffd9cf; }
+  @media (prefers-reduced-motion:reduce) { body.has-breaking .profile { animation:none; box-shadow:0 0 0 2px #ff3b3b; } .nm-toast { transition:opacity .15s; } }
   .sc-memo { margin-top:1px; }
   .sc-memo-in { width:100%; box-sizing:border-box; background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:9px;
     padding:7px 10px; color:var(--fg); font-size:12.5px; font-family:inherit; letter-spacing:-.1px; }
@@ -2321,7 +2337,7 @@ document.addEventListener('click', e => {
   if (!pmenu.hidden && !pmenu.contains(e.target) && !$('#profile').contains(e.target)) pmenu.hidden = true;
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
 });
-$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); });
+$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); loadCandidates(); });
 $('#msgbtn').addEventListener('click', e => { e.stopPropagation(); pmenu.hidden = true; renderMsgList(); msgpop.hidden = false; });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
@@ -2461,15 +2477,50 @@ const scRelTime = iso => {   // published(ISO) → 상대시각(렌더 시점 �
   if (s < 86400) return Math.floor(s / 3600) + '시간 전';
   return Math.floor(s / 86400) + '일 전';
 };
+let SCRAP_LOADING = false;
 async function loadCandidates() {
-  // api/candidates = 라이브 서빙(GitHub 직독, 빌드 우회) 우선 → 실패 시 정적 candidates.json 폴백.
-  for (const u of ['api/candidates', 'candidates.json?_=' + Date.now()]) {
-    try {
-      const r = await fetch(u);
-      if (r.ok) { const d = await r.json(); if (Array.isArray(d)) { CANDS = d; SCRAP_LOADED = true; renderScrap(); return; } }
-    } catch { /* 다음 소스 */ }
+  if (SCRAP_LOADING) return; SCRAP_LOADING = true;   // 동기 가드 — eager 부트 + 탭 진입 중복 fetch 방지
+  try {
+    // api/candidates = 라이브 서빙(GitHub 직독, 빌드 우회) 우선 → 실패 시 정적 candidates.json 폴백.
+    for (const u of ['api/candidates', 'candidates.json?_=' + Date.now()]) {
+      try {
+        const r = await fetch(u);
+        if (r.ok) { const d = await r.json(); if (Array.isArray(d)) { CANDS = d; SCRAP_LOADED = true; detectBreaking(); if (CURTAB === 'scrap') renderScrap(); return; } }
+      } catch { /* 다음 소스 */ }
+    }
+    CANDS = []; SCRAP_LOADED = true; if (CURTAB === 'scrap') renderScrap();
+  } finally { SCRAP_LOADING = false; }
+}
+// ── 🚨 속보 알림(포그라운드 · Phase 1) — backend가 breaking 확정한 사건을 토스트+프로필 링으로.
+// 본 것(candId)은 BRK_SEEN에 누적 → 재알림 안 함. 수집함 열면 현재 속보 = 본 것 처리(링 끔).
+const BKEY = 'nomute_brk_seen';
+const brkSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BKEY) || '[]')); } catch { return new Set(); } };
+const breakingNow = () => CANDS.filter(c => c.breaking && !(ratingsAll()[candId(c)] || {}).dismissed);
+function detectBreaking() {
+  if (CURTAB === 'scrap') { markBreakingSeen(); return; }   // 이미 수집함 보는 중 = 바로 본 것 처리
+  const seen = brkSeen();
+  const fresh = breakingNow().filter(c => !seen.has(candId(c)));
+  document.body.classList.toggle('has-breaking', fresh.length > 0);
+  if (fresh.length) showToast(fresh.length, fresh[0]);
+}
+function markBreakingSeen() {
+  const seen = brkSeen();
+  breakingNow().forEach(c => seen.add(candId(c)));
+  try { localStorage.setItem(BKEY, JSON.stringify([...seen])); } catch {}
+  document.body.classList.remove('has-breaking');
+}
+let _toastT;
+function showToast(n, sample) {
+  let t = document.getElementById('nmToast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast';
+    t.onclick = () => { t.classList.remove('show'); showTab('scrap'); };   // 탭 → 수집함(거기서 markBreakingSeen)
+    document.body.appendChild(t);
   }
-  CANDS = []; SCRAP_LOADED = true; renderScrap();
+  const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
+  t.innerHTML = `<span class="tg">🚨 속보</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
+  requestAnimationFrame(() => t.classList.add('show'));
+  clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 6500);
 }
 // 보관한도(데이터)는 크게(10일·수천 건) 두되, 화면은 컬럼당 SC_PAGE장만 그려 가볍게 유지.
 // 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → '더 보기'로 청크 추가.
@@ -2505,7 +2556,7 @@ function renderScrap() {
 // 좌=주요도(cross↓, 동점은 최신) · 우=최신(최신↓, 동점은 cross) — cross 포화(21에 다수) 2차키로 해소. 점수 블렌드·튜닝 0.
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 const SC_SORTS = {
-  cross: (a, b) => (b.cross || 0) - (a.cross || 0) || scTs(b) - scTs(a),
+  cross: (a, b) => ((b.breaking ? 1 : 0) - (a.breaking ? 1 : 0)) || (b.cross || 0) - (a.cross || 0) || scTs(b) - scTs(a),   // 🚨속보 최상단 → cross → 최신
   new: (a, b) => scTs(b) - scTs(a) || (b.cross || 0) - (a.cross || 0),
 };
 const SC_COLS_HTML =
@@ -2513,13 +2564,13 @@ const SC_COLS_HTML =
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신 <small>최신 우선</small></div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st) {            // 카드 1장 생성(반환). 픽·평점·메모 로직 기존 그대로 — 두 컬럼 공용.
   const el = document.createElement('div');
-  el.className = 'sc-item' + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
+  el.className = 'sc-item' + (c.breaking ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '');
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
   const catB = articleCat({ category: c.cat, title: c.title });
   const showMemo = (st.score === 1 || st.score === 5) && (c.cross || 0) >= 7;
   el.innerHTML =
-    `<div class="sc-top">${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+    `<div class="sc-top">${c.breaking ? '<span class="sc-brk">🚨 속보</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot"><button class="sc-down" type="button" title="관심 없음 — 숨기기(별점 1점 미만·취향 기록)" aria-label="관심 없음">${THUMBDOWN_SVG}</button><div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로)'}">${st.picked ? '큐레이션 ✓' : '고르기'}</button></div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 메모 (선택·엔터 저장)"></div>` : ''}`;
@@ -2613,7 +2664,7 @@ function showTab(tab) {
 
   setViewhead(tab);
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'scrap') { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
+  if (tab === 'scrap') { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); markBreakingSeen(); }
   else if (tab === 'sns') renderSns();
   else render();   // 피드: 현재 검색어 재적용
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2690,6 +2741,7 @@ $('#toolfab').addEventListener('pointerdown', () => { window.__tfLong = false; _
 
 load();
 loadMessages();
+loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 setViewhead('feed');   // 기본 탭=뉴스요약 헤더 초기화
 try { const _lt = localStorage.getItem('nomute_tab'); if (_lt && _lt !== 'feed' && ['scrap', 'sns'].includes(_lt)) showTab(_lt); } catch {}   // 새로고침 시 마지막 탭 복원
 </script>
