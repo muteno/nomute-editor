@@ -640,6 +640,19 @@
     box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
   }
   dialog::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
+  /* 제작 도구 모달(iframe) — 도구 페이지를 뷰어 위 모달로(클릭→등장). backdrop은 dialog 공통(뒤 dimmed·블러7) 상속 */
+  #tooldlg { width:min(900px,96vw); height:90vh; max-height:90vh; padding:0; overflow:hidden; display:flex; flex-direction:column;
+    background:var(--bg); border:1px solid rgba(255,255,255,.13); border-radius:22px;
+    animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes toolIn { from { opacity:0; transform:scale(.965) translateY(10px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce) { #tooldlg { animation:none; } }
+  .tool-h { flex:none; display:flex; align-items:center; justify-content:space-between; padding:10px 14px;
+    background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2); -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2); }
+  .tool-h b { font-size:14px; font-weight:800; color:var(--accent); }
+  .tool-x { width:30px; height:30px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.06);
+    color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
+  .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  #toolframe { flex:1; width:100%; border:0; background:var(--bg); display:block; }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
     padding:11px 16px 12px; display:flex; flex-direction:column; gap:11px; }
@@ -1058,6 +1071,12 @@
   </div>
 </dialog>
 
+<!-- 제작 도구 모달(iframe) — + 메뉴 항목(썸네일·릴스·영상) 클릭 시 새 페이지 대신 뷰어 위에 모달로 등장(뉴스 요약 모달과 동일 결). -->
+<dialog id="tooldlg">
+  <div class="tool-h"><b id="toolTitle">제작 도구</b><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <iframe id="toolframe" title="제작 도구" src="about:blank"></iframe>
+</dialog>
+
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
 <nav class="bnav" id="bnav">
   <button class="bnav-i" data-tab="scrap" aria-label="레거시(스크랩·큐레이션)"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.2V20l-4-2.2v-4.6z"/></svg><span>레거시</span></button>
@@ -1069,9 +1088,9 @@
 <div class="bpop" id="bpop" hidden>
   <b>제작 도구</b>
   <a href="#" id="askmenu" class="bpop-hl">✨ 요약 요청</a>
-  <a href="/thumb.html">썸네일 제작</a>
-  <a href="/ly.html">릴스 자막</a>
-  <a href="/k.html">영상 프롬프트</a>
+  <a href="/thumb.html" data-tool>썸네일 제작</a>
+  <a href="/ly.html" data-tool>릴스 자막</a>
+  <a href="/k.html" data-tool>영상 프롬프트</a>
   <a href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener">지면 뉴스 ↗</a>
 </div>
 <div class="bpop" id="linkpop" hidden>
@@ -3064,6 +3083,13 @@ let askImages = [];   // 압축 이미지 {dataUrl, kb}
 const ASK_MAX = 8;
 function openAsk() { bpop.hidden = true; linkpop.hidden = true; $('#askStatus').textContent = ''; updateAskClip(); askdlg.showModal(); setTimeout(() => $('#askText').focus(), 60); }
 $('#askmenu').addEventListener('click', e => { e.preventDefault(); openAsk(); });
+// 제작 도구(썸네일·릴스·영상) = + 메뉴 항목 클릭 → 새 페이지 대신 뷰어 위 모달(iframe)로 등장. href는 폴백.
+const tooldlg = $('#tooldlg');
+function openTool(src, title) { $('#toolTitle').textContent = title || '제작 도구'; $('#toolframe').src = src; closeOverlays(); tooldlg.showModal(); }
+$('#bpop').addEventListener('click', e => { const a = e.target.closest('a[data-tool]'); if (a) { e.preventDefault(); openTool(a.getAttribute('href'), a.textContent.trim()); } });
+$('#toolX').addEventListener('click', () => tooldlg.close());
+tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; });   // 닫으면 iframe 정지(상태·메모리 초기화)
+tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close(); });   // 백드롭 클릭 닫기
 $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 // 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
