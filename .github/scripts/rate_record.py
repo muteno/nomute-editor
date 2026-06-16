@@ -25,6 +25,8 @@ def main():
         "picked": (os.environ.get("R_PICKED", "") or "").lower() in ("1", "true", "yes"),
         "memo": (os.environ.get("R_MEMO", "") or "")[:200],
         "dismissed": (os.environ.get("R_DISMISSED", "") or "").lower() in ("1", "true", "yes"),
+        "action": (os.environ.get("R_ACTION", "") or "")[:12],    # 신속 트리아지 down|pass|pick
+        "reason": (os.environ.get("R_REASON", "") or "")[:40],    # 사유(객관식 키) — 기준=docs/curation-rubric.md
     }
     if not rec["id"] and not rec["url"]:
         print("빈 레코드 — 스킵")

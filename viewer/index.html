@@ -384,6 +384,30 @@
   .sc-rsn-x { background:rgba(255,255,255,.05); color:var(--mut); }
   .sc-rsn-go { background:rgba(255,120,120,.16); color:#ffb4b4; border-color:rgba(255,120,120,.3); }
   .sc-rsn-go:active, .sc-rsn-x:active { transform:scale(.95); }
+  /* ── 신속 트리아지: [👎][PASS][PICK] 버튼 + 사유 칩(객관식) ── */
+  .sc-bot.triage { gap:6px; }
+  .sc-tg { flex:1; display:grid; place-items:center; height:30px; padding:0 8px; font-size:12px; font-weight:800; cursor:pointer;
+    border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
+  .sc-tg svg { display:block; }
+  .sc-tg:active { transform:scale(.9); }
+  .sc-tg.down:hover { color:#ff9b9b; border-color:rgba(255,90,90,.5); }
+  .sc-tg.pass:hover { color:#ffce54; border-color:rgba(255,200,60,.55); }
+  .sc-tg.pick { color:var(--accent); background:var(--accent-dim); border-color:rgba(15,253,2,.4); }
+  .sc-tg.pick:hover { background:rgba(15,253,2,.2); }
+  .sc-rsn { position:relative; }
+  .sc-rsn-chips { display:flex; flex-wrap:wrap; gap:6px; padding-right:22px; }
+  .sc-rsn-c { font:700 11.5px inherit; border-radius:999px; padding:5px 11px; cursor:pointer;
+    background:rgba(255,255,255,.06); color:rgba(255,255,255,.82); border:1px solid var(--line2);
+    transition:background .12s, color .12s, border-color .12s; }
+  .sc-rsn-c:hover { background:rgba(255,255,255,.13); color:#fff; }
+  .sc-rsn-c.inp { border-style:dashed; color:var(--mut); }
+  .rsn-down .sc-rsn-c:hover { border-color:rgba(255,90,90,.5); color:#ff9b9b; }
+  .rsn-pick .sc-rsn-c:hover { border-color:rgba(15,253,2,.5); color:var(--accent); }
+  .sc-rsn-iw[hidden] { display:none; }
+  .sc-rsn-x { position:absolute; top:5px; right:6px; width:20px; height:20px; border-radius:50%; padding:0; font-size:11px;
+    display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--mut); border:1px solid var(--line2); cursor:pointer; }
+  .sc-rsn-x:hover { color:#fff; }
   /* ── 수집함 2열 (좌=주요도/기존 초록 · 우=최신/스포티 블랙). 색은 둘만 — 다른 색 안 섞음 ── */
   .scrap-cols { display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:start; }
   /* 칼럼 = 글래스모피즘(스포티 블랙·블러+틴트+미세 하이라이트) + 컬럼별 네온: 주요도=오렌지 / 최신=강조색(네온그린). */
@@ -2557,6 +2581,7 @@ function renderScrap() {
     const key = col.dataset.col;
     let arr = [...pool].sort(SC_SORTS[key]);   // pool = 검색 필터 적용된 후보(전반)
     if (key === 'cross') arr = arr.filter(c => !scHideFromCross(rt[candId(c)] || {}));   // ≤1·5점 무메모 = 주요도서 숨김(최신엔 유지)
+    if (key === 'new') arr = arr.filter(c => { const r = rt[candId(c)] || {}; return !(r.action || r.passed || r.picked); });   // 신속 = 트리아지(👎/pass/pick) 처리된 건 인박스서 비움
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
       const el = makeScItem(arr[i], rt[candId(arr[i])] || {}, key);
@@ -2595,27 +2620,34 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
   const catB = articleCat({ category: c.cat, title: c.title });
-  const showMemo = (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸 노출(안 쓰면 주요도서 숨김)
+  const triage = col === 'new';   // 신속 = 트리아지 인박스([👎][PASS][PICK]+사유 객관식) · 누적 = 검증된 거(★+PICK 유지)
+  const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   el.innerHTML =
     `<div class="sc-top">${c.breaking && col !== 'cross' ? '<span class="sc-brk">⚡ 이슈</span>' : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
-     <div class="sc-bot">${col === 'cross' ? '' : `<button class="sc-down" type="button" title="관심 없음 — 숨기기(별점 1점 미만·취향 기록)" aria-label="관심 없음">${THUMBDOWN_SVG}</button>`}<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button></div>
+     <div class="sc-bot${triage ? ' triage' : ''}">${triage
+       ? `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`
+       : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
-  el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
-  // PICK = 2단 확인(오발사 차단): 1탭 → '재확인'(앰버) · 2탭 → 게이지 차며 전송. 3.5s 무동작이면 원복.
-  const _pk = el.querySelector('.sc-pick');
-  if (!st.picked) {
-    const _lbl = _pk.querySelector('span'); let _armed = false, _armT;
-    _pk.onclick = () => {
-      if (_pk.classList.contains('firing')) return;
-      if (!_armed) { _armed = true; _pk.classList.add('arm'); _lbl.textContent = '재확인';
-        clearTimeout(_armT); _armT = setTimeout(() => { _armed = false; _pk.classList.remove('arm'); _lbl.textContent = 'PICK'; }, 3500); return; }
-      clearTimeout(_armT); _pk.classList.remove('arm'); _pk.classList.add('firing'); _lbl.textContent = '전송';
-      setTimeout(() => pickCard(c), 720);   // 게이지 차는 동안(.sc-pick.firing ::before)
-    };
+  if (triage) {   // 신속 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 인박스서 접힘
+    el.querySelector('.sc-tg.down').onclick = () => askReason('down', c, el);
+    el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
+    el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
+  } else {   // 누적 = ★평점 + PICK 2단 확인게이지(기존)
+    el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
+    const _pk = el.querySelector('.sc-pick');
+    if (!st.picked) {
+      const _lbl = _pk.querySelector('span'); let _armed = false, _armT;
+      _pk.onclick = () => {
+        if (_pk.classList.contains('firing')) return;
+        if (!_armed) { _armed = true; _pk.classList.add('arm'); _lbl.textContent = '재확인';
+          clearTimeout(_armT); _armT = setTimeout(() => { _armed = false; _pk.classList.remove('arm'); _lbl.textContent = 'PICK'; }, 3500); return; }
+        clearTimeout(_armT); _pk.classList.remove('arm'); _pk.classList.add('firing'); _lbl.textContent = '전송';
+        setTimeout(() => pickCard(c), 720);
+      };
+    }
   }
-  const _dn = el.querySelector('.sc-down'); if (_dn) _dn.onclick = () => askDismissReason(c, el);
   const mi = el.querySelector('.sc-memo-in');
   if (mi) {
     mi.value = st.memo || '';
@@ -2673,25 +2705,67 @@ function askDismissReason(c, el) {
   input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); p.remove(); } };
 }
 // 👎 관심없음 = 별점 1점 미만(취향 부정신호) → dismissed 기록(이유=메모) → 풀에서 제외. DB(ratings.jsonl)에 누적.
-function dismissCard(c, el, reason) {
-  const id = candId(c);
-  const prev = ratingsAll()[id] || {};
-  const memo = (reason || '').trim() || prev.memo || '';   // 👎 이유(있으면) = 메모로 기록
-  saveRating(id, { dismissed: true, memo });
-  const cur = ratingsAll()[id] || {};
-  postRate({ id, url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo, dismissed: true });
+// 카드 자연스럽게 접혀 사라짐(인박스 클리어 공용 — 👎·pass·pick 후).
+function collapseCard(el) {
   if (!el) { renderScrap(); return; }
-  el.style.height = el.offsetHeight + 'px';   // 현재 높이 고정(읽기=reflow)
-  el.style.overflow = 'hidden';
-  el.getBoundingClientRect();                 // 시작 높이 적용 보장
-  el.classList.add('removing');               // transition + opacity:0 + transform(클래스)
-  el.style.height = '0';                       // 높이 0으로 접힘 애니
-  el.style.marginTop = '0'; el.style.marginBottom = '0';
+  el.style.height = el.offsetHeight + 'px'; el.style.overflow = 'hidden';
+  el.getBoundingClientRect();
+  el.classList.add('removing');
+  el.style.height = '0'; el.style.marginTop = '0'; el.style.marginBottom = '0';
   el.style.paddingTop = '0'; el.style.paddingBottom = '0';
-  let done = false;
-  const fin = () => { if (done) return; done = true; el.remove(); };
-  el.addEventListener('transitionend', fin, { once: true });
-  setTimeout(fin, 440);                        // transitionend 미발화 안전망
+  let done = false; const fin = () => { if (done) return; done = true; el.remove(); };
+  el.addEventListener('transitionend', fin, { once: true }); setTimeout(fin, 440);
+}
+function dismissCard(c, el, reason) { applyTriage('down', c, el, '직접입력', reason); }   // 레거시 호출 호환
+// ── 신속(최신) 트리아지 = [👎][PASS][PICK] + 무조건 사유(객관식) 선택 ──
+// 사유 = 나중 알고리즘이 '왜 제꼈나'를 정량화할 지표. 의미 기준 정본 = docs/curation-rubric.md.
+const TRIAGE = {
+  down: { q: '👎 관심 없음 — 왜? (택1)', reasons: [
+    { k: '국지적', d: '국지적·개별·특정 회사 사안 = 범국민적 공감 어려움' },
+    { k: '배포용', d: '기업·문화계 영리목적 / 정부 정책홍보 보도자료 일시배포(전국민 관심↓)' },
+    { k: '직접입력', input: true } ] },
+  pass: { q: '⏭ 패스 — 왜? (택1)', reasons: [
+    { k: '애매함', d: '조금 이목은 끌 수 있으나 전혀 콘텐츠화 할 정도 아님' },
+    { k: '기타', input: true } ] },
+  pick: { q: '✅ PICK — 어떤 가치? (택1)', reasons: [
+    { k: '속보/사건', d: '빠르게 전달하면 모두가 감정적 격동을 느낄 것이라 판단' },
+    { k: '토픽/논란', d: '범국민적 토픽·주제라고 판단' },
+    { k: '지식', d: '효과적 콘텐츠면 팔로워가 유용하다고 느낄 것이라 판단' } ] },
+};
+function askReason(act, c, el) {
+  if (!el || el.querySelector('.sc-rsn')) return;
+  const A = TRIAGE[act];
+  const p = document.createElement('div'); p.className = 'sc-rsn rsn-' + act;
+  p.innerHTML = `<div class="sc-rsn-q">${A.q}</div>
+    <div class="sc-rsn-chips">${A.reasons.map(r => `<button type="button" class="sc-rsn-c${r.input ? ' inp' : ''}" data-k="${esc(r.k)}"${r.d ? ` title="${esc(r.d)}"` : ''}>${esc(r.k)}</button>`).join('')}</div>
+    <div class="sc-rsn-iw" hidden><input class="sc-rsn-in" type="text" maxlength="200" placeholder="이유 한 줄"></div>
+    <button type="button" class="sc-rsn-x" aria-label="취소">✕</button>`;
+  el.appendChild(p);
+  const iw = p.querySelector('.sc-rsn-iw'), input = p.querySelector('.sc-rsn-in');
+  p.querySelector('.sc-rsn-x').onclick = () => p.remove();
+  p.querySelectorAll('.sc-rsn-c').forEach(b => b.onclick = () => {
+    const k = b.dataset.k;
+    if (b.classList.contains('inp')) {
+      iw.hidden = false; setTimeout(() => input.focus({ preventScroll: true }), 30);
+      input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); applyTriage(act, c, el, k, input.value); } else if (e.key === 'Escape') { e.preventDefault(); p.remove(); } };
+      return;
+    }
+    applyTriage(act, c, el, k, '');
+  });
+}
+// 트리아지 확정 — action(down/pass/pick)+reason 기록(DB 누적·정량화) → 인박스서 접힘. pick은 큐레이션 디스패치.
+function applyTriage(act, c, el, reason, text) {
+  const id = candId(c); const memo = (text || '').trim();
+  const patch = { action: act, reason }; if (memo) patch.memo = memo;
+  if (act === 'down') patch.dismissed = true;
+  if (act === 'pick') patch.picked = true;
+  saveRating(id, patch);
+  const cur = ratingsAll()[id] || {};
+  postRate({ id, url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo: cur.memo || memo, dismissed: !!cur.dismissed, action: act, reason });
+  if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
+    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '' }) }).catch(() => {});
+  }
+  collapseCard(el);
 }
 function postRate(p) { fetch('api/rate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) }).catch(() => {}); }
 // ── 탭 전환 (피드 · 스크랩 · SNS) ── 기본=피드. FAB(제작도구)·X는 외부/팝업이라 여기서 안 다룸.

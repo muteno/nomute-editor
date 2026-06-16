@@ -16,6 +16,8 @@ export async function onRequestPost({ request, env }) {
   const picked = body.picked ? 'true' : '';
   const memo = String(body.memo || '').slice(0, 200);   // 1·5점 주관식 메모(선택)
   const dismissed = body.dismissed ? 'true' : '';        // 👎 관심없음(별점 1점 미만) = 부정 취향신호
+  const action = String(body.action || '').slice(0, 12);   // 신속 트리아지: down|pass|pick
+  const reason = String(body.reason || '').slice(0, 40);   // 사유(객관식 키) = 정량화 지표(기준=docs/curation-rubric.md)
   if (!id && !url) return json({ error: '잘못된 평점' }, 400);
 
   const r = await fetch(
@@ -28,7 +30,7 @@ export async function onRequestPost({ request, env }) {
         'user-agent': 'nomute-viewer',
         'x-github-api-version': '2022-11-28',
       },
-      body: JSON.stringify({ ref: 'main', inputs: { id, url, title, score, picked, memo, dismissed } }),
+      body: JSON.stringify({ ref: 'main', inputs: { id, url, title, score, picked, memo, dismissed, action, reason } }),
     },
   );
   if (r.status === 204) return json({ ok: true });
