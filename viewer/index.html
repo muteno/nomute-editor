@@ -266,7 +266,7 @@
   @keyframes pulse { 50% { opacity:.45; } }
   .empty { color:var(--mut); text-align:center; padding:56px 0; }
   /* ── 스크랩(수집·큐레이션) 뷰 ── */
-  .scrapview { max-width:860px; margin:0 auto; padding:14px 16px 64px; }
+  .scrapview, .snsview { max-width:860px; margin:0 auto; padding:14px 16px 64px; }
   .scrap-head { padding:6px 2px 12px; }
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
@@ -765,6 +765,13 @@
   </div>
   <div id="scrapList"></div>
 </section>
+<section class="snsview" id="snsview" hidden>
+  <div class="scrap-head">
+    <h2 class="scrap-title">SNS</h2>
+    <p class="scrap-sub">제목 · 제목설명 — 일단 구성만(내용 없이).</p>
+  </div>
+  <div id="snsList"></div>
+</section>
 <footer class="foot">ⓒ 2025-26. 노뮤트. all rights reserved.</footer>
 
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
@@ -822,7 +829,7 @@
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
 <nav class="bnav" id="bnav">
   <button class="bnav-i" data-tab="scrap" aria-label="스크랩(수집·큐레이션)"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.2V20l-4-2.2v-4.6z"/></svg><span>스크랩</span></button>
-  <a class="bnav-i" href="https://www.threads.net/" target="_blank" rel="noopener" aria-label="SNS"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M15 12v1.6a2.2 2.2 0 0 0 4.4 0 7.8 7.8 0 1 0-2.4 5.5"/></svg><span>SNS</span></a>
+  <button class="bnav-i" data-tab="sns" aria-label="SNS"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M15 12v1.6a2.2 2.2 0 0 0 4.4 0 7.8 7.8 0 1 0-2.4 5.5"/></svg><span>SNS</span></button>
   <button class="bnav-fab" id="toolfab" type="button" aria-label="제작 도구"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="bnav-i active" data-tab="feed" aria-label="피드(기사)"><svg viewBox="0 0 24 24"><path d="M3 10.6 12 3l9 7.6"/><path d="M5.5 9.4V20h13V9.4"/><path d="M9.5 20v-5.5h5V20"/></svg><span>피드</span></button>
   <a class="bnav-i" href="https://x.com" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg><span>X</span></a>
@@ -2404,18 +2411,34 @@ async function pickCard(c) {
   }
 }
 function postRate(p) { fetch('api/rate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) }).catch(() => {}); }
-// ── 탭 전환 (스크랩 ↔ 피드) ── 기본=피드. FAB(제작도구)·SNS는 외부/팝업이라 여기서 안 다룸.
+// ── 탭 전환 (피드 · 스크랩 · SNS) ── 기본=피드. FAB(제작도구)·X는 외부/팝업이라 여기서 안 다룸.
 function showTab(tab) {
-  const feed = tab !== 'scrap';
-  const fb = $('.filterbar'), wp = $('.wrap'), sv = $('#scrapview');
-  if (fb) fb.hidden = !feed;
-  if (wp) wp.hidden = !feed;
-  if (sv) sv.hidden = feed;
-  // 배너(2겹 슬라이드)·프로필 컬러 = body.tab-scrap가 CSS로 구동(피드 초록 / 스크랩 앰버 촤르륵 오버레이)
-  document.body.classList.toggle('tab-scrap', !feed);
+  const fb = $('.filterbar'), wp = $('.wrap'), sv = $('#scrapview'), snv = $('#snsview');
+  if (fb) fb.hidden = (tab !== 'feed');
+  if (wp) wp.hidden = (tab !== 'feed');
+  if (sv) sv.hidden = (tab !== 'scrap');
+  if (snv) snv.hidden = (tab !== 'sns');
+  // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
+  document.body.classList.toggle('tab-scrap', tab === 'scrap');
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (!feed) { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
+  if (tab === 'scrap') { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); }
+  else if (tab === 'sns') renderSns();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// SNS 뷰 — 기사 카드 구성과 동일하되 내용 없이 흰 제목(.t)+제목설명(.s)만 (일단 구성·DATA 재사용 · 260616)
+function renderSns() {
+  const list = $('#snsList'); if (!list) return;
+  if (!DATA.length) { list.innerHTML = '<div class="empty">아직 없음</div>'; return; }
+  list.innerHTML = '';
+  DATA.forEach((a, i) => {
+    const c = document.createElement('div'); c.className = 'card';
+    c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
+    c.innerHTML = `<div class="cardmain"><div class="row1"><span class="t"></span></div><div class="s"></div></div>`;
+    c.querySelector('.t').textContent = a.title;
+    c.querySelector('.s').textContent = a.summary || '';
+    list.appendChild(c);
+  });
 }
 
 load();
