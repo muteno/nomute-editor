@@ -1,0 +1,74 @@
+name: news-ask
+
+# 뷰어 ✨요약 요청(asks/*.json = 자연어 + 캡처) → Claude 헤드리스가 해석·기사검색(WebSearch)·캡처판독(Read)
+# → 큐레이션 다이제스트를 queue/ 에 커밋(= 뉴스요약에 뜸). Termux 대체 멀티모달 입구.
+# news-analyze(pending/** = URL)와 별개 트랙 — analyze 불변 안 건드림. 출력 포맷·지침주입은 analyze 재사용.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'asks/**'
+  workflow_dispatch:
+    inputs:
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: news-ask
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ask:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 최신 main 기준(순차 큐에서 옛 커밋 체크아웃 방지)
+
+      - name: Process asks
+        env:
+          # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/ask.sh
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add queue asks
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "ask: 요약 요청 큐레이션"
+          for i in 1 2 3 4; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((2**i))
+          done
+          echo "push 실패"; exit 1
+
+      - name: Surface failures
+        if: always()
+        run: |
+          if compgen -G "asks/failed/*.log" > /dev/null 2>&1; then
+            echo "::error::요약 요청 처리 실패 — asks/failed/ 로그 확인"
+            cat asks/failed/*.log 2>/dev/null | head -60
+            exit 1
+          fi
+          echo "실패 없음"
