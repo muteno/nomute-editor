@@ -2784,9 +2784,9 @@ function renderScrap() {
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
-    if (key === 'new') {   // 신속 = 속보 캐처. 속도/긴급(scFast) AND 발생 FAST_MAX_H 내. 정렬 = fastScore(긴급도 × 시간 반감 decay → 시간 지날수록 아래로) → 최신.
+    if (key === 'new') {   // 신속 = 속보 캐처. 속도/긴급(scFast) AND 발생 FAST_MAX_H 내(stale burst가 옛 기사를 오래 띄우던 버그 차단). ⚡고정 → burst↓ → 최신순.
       arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);
-      arr.sort((a, b) => (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));
+      arr.sort((a, b) => (pinB(b) - pinB(a)) || (b.burst || 0) - (a.burst || 0) || scTs(b) - scTs(a));
     } else {   // 누적 = 9시뉴스감. cross≥5(폭넓게 보도=다수매체 검증). 대형 속보도 cross≥5면 여기 동시 노출(⚡핀 상단 — 9시뉴스 톱). 중요도(scScore = log2 cross × 후속신선 감쇠 × 반복등장)순.
       arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN);
       arr.sort((a, b) => (pinB(b) - pinB(a)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a));
@@ -2809,10 +2809,8 @@ function renderScrap() {
 // scTs = 발행시각(정렬·신선도 판정용).
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 // ── 신속 게이트(scFast): 나이가 아니라 속도/긴급 신호로 신속 컬럼 진입 판정 ──
-const BURST_FAST = 3, FAST_MAX_H = 6, FAST_HALF_H = 2;   // 신속 = (breaking OR burst≥3) AND 발생 6h 내. FAST_HALF_H = 하강 반감기(2h마다 점수 절반 → 시간 지날수록 아래로). 조정 가능.
+const BURST_FAST = 3, FAST_MAX_H = 6;   // 신속 = (breaking OR burst≥3) AND 발생 6h 내. 속도/긴급 게이트 + 최신 컷(stale burst로 옛 기사 떠있던 버그 차단). 둘 다 조정 가능.
 const scFast = c => !!c.breaking || (c.burst || 0) >= BURST_FAST;
-// 신속 정렬 점수 = 긴급도(burst + breaking 보너스) × 시간 반감 decay(발생 후 FAST_HALF_H마다 절반). 옛 속보는 자연 하강.
-const fastScore = c => ((c.burst || 0) + (c.breaking ? 5 : 0)) * Math.pow(0.5, Math.max(0, (Date.now() - scTs(c)) / 3600000) / FAST_HALF_H);
 // 누적 중요도 = log2(1+cross)[다수매체·포화 변별] × 후속 신선도 감쇠(반감기 DECAY_H) × 반복등장 가점(seen_count=수집 사이클마다 또 등장=보도 템포).
 // last_seen(마지막 후속=distinct 매체 cross 증가) 후 DECAY_H 반감기로 절반 → 후속 끊기면 하강.
 const DECAY_H = 6;   // 중요도 반감기(시간). 낮을수록 신선도 가중↑(후속 빨리 사그라듦). 조정 가능.
