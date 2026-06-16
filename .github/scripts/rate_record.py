@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# 뷰어 스크랩 관심도(★1~5)·픽 → scraper/ratings.jsonl 에 한 줄씩 누적(append-only 원장).
+# 뷰어 스크랩 관심도(★1~5)·픽·👎 → scraper/ratings.jsonl 에 한 줄씩 누적(append-only 원장).
 # 트리거: Pages Function /api/rate → rate.yml. 분석·취향학습용 라벨 데이터(누적이 곧 데이터).
+# ⚠️ 각 라벨(👎·★1~5·PICK)의 *의미 기준* 정본 = docs/curation-rubric.md (없으면 이 데이터 해석 불가).
 import json
 import os
 import re
