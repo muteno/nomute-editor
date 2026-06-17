@@ -403,12 +403,10 @@
   .nm-toast b { color:#ffd9cf; }
   @media (prefers-reduced-motion:reduce) { body.has-breaking .profile { animation:none; box-shadow:0 0 0 2px #ff3b3b; } .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패 — 수집함 '다시'(전문 붙여넣기) 버튼 + 속보급 알림(앰버=속보 빨강과 구분·동일 prominence). */
-  .sc-fail { margin-left:auto; font-size:11px; font-weight:800; color:#ffb02e; background:rgba(255,176,46,.14);
-    border:1px solid rgba(255,176,46,.5); border-radius:999px; padding:4px 11px; cursor:pointer; line-height:1.2;
-    display:inline-flex; align-items:center; gap:4px; }
-  .sc-fail:hover { background:rgba(255,176,46,.24); }
-  .sc-fail:active { transform:scale(.94); }
-  .scrap-cols .sc-fail { font-size:10.5px; padding:4px 10px; }
+  .sc-fail { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+    color:#ff6b6b; background:rgba(255,90,90,.14); border:1px solid rgba(255,90,90,.5); cursor:pointer; }   /* Failed = Picking…/PICKED 동급 풀폭 칩(빨강 · 탭하면 사유+보강) */
+  .sc-fail:hover { background:rgba(255,90,90,.24); }
+  .sc-fail:active { transform:scale(.97); }
   .sc-item.pickfail { border-color:rgba(255,176,46,.5); }
   .scrap-col.green .sc-item.pickfail, .scrap-col.black .sc-item.pickfail { border-color:rgba(255,176,46,.5); }
   body.has-pickfail:not(.has-breaking) .profile { border-radius:50%; animation:profFail 1.7s ease-in-out infinite; }   /* 속보(빨강)가 있으면 그게 우선 */
@@ -2947,7 +2945,7 @@ async function pollPicking() {   // 분석 완료까지 폴링 → Picking… �
       if (!el.querySelector('.sc-got.picking')) return;     // 이미 PICKED/실패면 건너뜀
       const c = CANDS.find(x => candId(x) === el.dataset.cid), bot = el.querySelector('.sc-bot');
       if (!c || !bot) return;
-      if (pfailHas(c)) { bot.innerHTML = `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">⚠ 분석 실패 · 다시</button>`; const fb = bot.querySelector('.sc-fail'); if (fb) fb.onclick = () => failRetry(c); el.classList.add('pickfail'); }
+      if (pfailHas(c)) { bot.innerHTML = `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">Failed</button>`; const fb = bot.querySelector('.sc-fail'); if (fb) fb.onclick = () => failRetry(c); el.classList.add('pickfail'); }
       else if (pickInFeed(c)) { bot.innerHTML = '<div class="sc-got" aria-label="픽 완료">PICKED</div>'; }
       else remaining++;
     });
@@ -3088,7 +3086,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (st.picked
            ? (pfailHas(c)
-               ? `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">⚠ 분석 실패 · 다시</button>`
+               ? `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">Failed</button>`
                : (pickInFeed(c)
                    ? `<div class="sc-got" aria-label="픽 완료">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
