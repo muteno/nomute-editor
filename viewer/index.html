@@ -455,6 +455,12 @@
   .sc-got { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:var(--accent); border:1px solid rgba(15,253,2,.4); pointer-events:none; user-select:none;
     background:repeating-linear-gradient(45deg, rgba(15,253,2,.20) 0 5px, rgba(15,253,2,.05) 5px 10px); }
+  .sc-got.picking { position:relative; overflow:hidden; background:rgba(15,253,2,.10); }   /* 분석 진행(피드 진입 전) = 움직이는 shine */
+  .sc-got.picking > span { position:relative; z-index:1; }
+  .sc-got.picking::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%;
+    background:linear-gradient(90deg,transparent,rgba(15,253,2,.5),transparent); transform:translateX(-120%);
+    animation:shine 1.2s linear infinite; pointer-events:none; }
+  @media (prefers-reduced-motion:reduce){ .sc-got.picking::after { animation:none; } }
   .sc-rsn { position:relative; }
   .sc-rsn-chips { display:flex; flex-wrap:wrap; gap:6px; padding-right:22px; }
   .sc-rsn-c { font:700 11.5px inherit; border-radius:999px; padding:5px 11px; cursor:pointer;
@@ -2924,6 +2930,31 @@ async function loadPickFails() {
 }
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
 const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pfailHas(c); });
+// ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
+const pickInFeed = c => DATA.some(a => a && a.url && _normU(a.url) === _normU(c.url));   // 픽 결과가 피드(3번 메뉴)에 등장했나
+const pickingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickInFeed(c) && !pfailHas(c); });   // 픽했는데 아직 피드 미등장·미실패 = 분석 중
+let _pickPolling = false;
+async function pollPicking() {   // 분석 완료까지 폴링 → Picking… 칩만 제자리 교체(전체 재렌더 X = 깜빡임 방지)
+  if (_pickPolling || !pickingNow().length) return;
+  _pickPolling = true;
+  const t0 = Date.now();
+  while (Date.now() - t0 < 15 * 60000) {   // 파이프라인 적응형 상한 15분
+    await new Promise(r => setTimeout(r, 25000));
+    if (document.visibilityState !== 'visible') continue;   // 백그라운드면 쉼
+    try { await load(); await loadPickFails(); } catch {}   // 피드(DATA)·실패목록 갱신
+    let remaining = 0;
+    document.querySelectorAll('.sc-item.picked').forEach(el => {
+      if (!el.querySelector('.sc-got.picking')) return;     // 이미 PICKED/실패면 건너뜀
+      const c = CANDS.find(x => candId(x) === el.dataset.cid), bot = el.querySelector('.sc-bot');
+      if (!c || !bot) return;
+      if (pfailHas(c)) { bot.innerHTML = `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">⚠ 분석 실패 · 다시</button>`; const fb = bot.querySelector('.sc-fail'); if (fb) fb.onclick = () => failRetry(c); el.classList.add('pickfail'); }
+      else if (pickInFeed(c)) { bot.innerHTML = '<div class="sc-got" aria-label="픽 완료">PICKED</div>'; }
+      else remaining++;
+    });
+    if (!remaining) break;
+  }
+  _pickPolling = false;
+}
 function detectPickFail() {
   const seen = pfSeen();
   const fresh = pickFailNow().filter(c => !seen.has(candId(c)));
@@ -3002,6 +3033,7 @@ function renderScrap() {
       col.appendChild(more);
     }
   });
+  pollPicking();   // 픽 후·새로고침 잔존 Picking… 분석완료 폴 시동(가드: 진행중·picking 없으면 즉시 반환)
 }
 // scTs = 발행시각(정렬·신선도 판정용).
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
@@ -3044,6 +3076,7 @@ const SC_COLS_HTML =
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
   el.className = 'sc-item' + (isBreaking(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pfailHas(c) ? ' pickfail' : '') + (st.acked ? ' acked' : '');
+  el.dataset.cid = candId(c);   // Picking…→PICKED 제자리 갱신 매칭용
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
   const catB = articleCat({ category: c.cat, title: c.title });
@@ -3056,7 +3089,9 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
        ? (st.picked
            ? (pfailHas(c)
                ? `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">⚠ 분석 실패 · 다시</button>`
-               : `<div class="sc-got" aria-label="픽 완료">PICKED</div>`)
+               : (pickInFeed(c)
+                   ? `<div class="sc-got" aria-label="픽 완료">PICKED</div>`
+                   : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
            : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분${isBreaking(c) ? ' · 긴급 점등 끔' : ''})">${CHECK_SVG}</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
@@ -3215,8 +3250,9 @@ function applyTriage(act, c, el, reason, text) {
   if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '' }) }).catch(() => {});
   }
-  if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 PICKED 비활성으로(다음 렌더 때 맨 아래로 정렬)
-    if (el) { el.classList.add('picked'); const rsn = el.querySelector('.sc-rsn'); if (rsn) rsn.remove(); const bot = el.querySelector('.sc-bot'); if (bot) bot.innerHTML = '<div class="sc-got" aria-label="픽 완료">PICKED</div>'; }
+  if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 'Picking…'(분석 중) → 피드 진입 시 PICKED
+    if (el) { el.classList.add('picked'); const rsn = el.querySelector('.sc-rsn'); if (rsn) rsn.remove(); const bot = el.querySelector('.sc-bot'); if (bot) bot.innerHTML = '<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>'; }
+    pollPicking();   // 분석 완료(피드 등장)까지 폴 → 떴으면 PICKED, 실패면 분석 실패
   } else {
     collapseCard(el);   // down/pass = 접혀 사라짐
   }
