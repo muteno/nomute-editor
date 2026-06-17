@@ -17,9 +17,6 @@ KST = timezone(timedelta(hours=9))
 
 def main():
     url = (os.environ.get("PICK_URL") or "").strip()
-    # 제목(수집기 메타) = fetch 차단 매체일 때 분석기가 같은 사건의 접근 가능한 다른 매체를
-    # WebSearch 로 찾는 단서. 개행 제거(파일 2번째 줄로 들어가므로 한 줄 보장).
-    title = " ".join((os.environ.get("PICK_TITLE") or "").split()).strip()[:300]
     if not url.startswith(("http://", "https://")):
         print("PICK_URL 없음/무효 — 스킵", file=sys.stderr)
         print("NEW=0")
@@ -32,10 +29,7 @@ def main():
     PENDING.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(KST).strftime("%y%m%d-%H%M%S")
     name = f"{stamp}-pick-{os.urandom(2).hex()}.txt"   # 동시 픽 충돌 방지 random 접미
-    # 1줄 = URL(불변·dedup·analyze 가 head -n1 로 읽음), 2줄 = '# title: …'(선택·analyze 단서).
-    # 폰공유/스크래퍼 자동분은 2줄이 없어 동작 동일(하위호환).
-    body = url + "\n" + (f"# title: {title}\n" if title else "")
-    (PENDING / name).write_text(body, encoding="utf-8")
+    (PENDING / name).write_text(url + "\n", encoding="utf-8")
     with LEDGER.open("a", encoding="utf-8") as f:
         f.write(key + "\n")
     print(f"픽 적재: {name} ← {url}", file=sys.stderr)
