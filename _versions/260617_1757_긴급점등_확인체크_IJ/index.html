@@ -445,11 +445,6 @@
   .sc-tg.pass:hover { color:#ffce54; border-color:rgba(255,200,60,.55); }
   .sc-tg.pick { color:var(--accent); background:var(--accent-dim); border-color:rgba(15,253,2,.4); }
   .sc-tg.pick:hover { background:rgba(15,253,2,.2); }
-  /* 확인(ack) = '봤음' 수동 표시(신규와 구분 · 긴급이면 프로필 점등 끔). PICK 우측 컴팩트 체크. */
-  .sc-tg.ack { flex:0 0 38px; color:rgba(255,255,255,.5); }
-  .sc-tg.ack:hover { color:var(--accent); border-color:rgba(15,253,2,.45); }
-  .sc-tg.ack.on { color:var(--accent); border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); }
-  .sc-item.acked { opacity:.58; }   /* 확인함 = 흐릿(신규=선명과 구분) */
   /* PICK 완료 = 잔류 비활성 칩(못누르는 줄무늬 — 초록 빗금='득템+잠김', 노랑 빗금=실패와 구분) */
   .sc-got { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:var(--accent); border:1px solid rgba(15,253,2,.4); pointer-events:none; user-select:none;
@@ -2876,7 +2871,7 @@ const BKEY = 'nomute_brk_seen';
 const brkSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BKEY) || '[]')); } catch { return new Set(); } };
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 배지·핀·최신·토스트 공용 단일규칙 — 'grade1 경미인데 ⚡누적' 모순 차단(260617).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
-const breakingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return isBreaking(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=신선 속보만(<FAST_MAX_H=4h). 처리분(action/score/picked/dismissed)·확인(ack)·AI 경중<2 제외 → 확인✓ 누르면 점등 꺼짐.
+const breakingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return isBreaking(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked; });   // 토스트=신선 속보만(<FAST_MAX_H=4h). 오래된 속보가 계속 재알람하던 것 차단. + 처리분·AI 경중<2 제외(isBreaking)
 function detectBreaking() {
   const seen = brkSeen();
   const fresh = breakingNow().filter(c => !seen.has(candId(c)));
@@ -3042,7 +3037,7 @@ const SC_COLS_HTML =
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
-  el.className = 'sc-item' + (isBreaking(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pfailHas(c) ? ' pickfail' : '') + (st.acked ? ' acked' : '');
+  el.className = 'sc-item' + (isBreaking(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pfailHas(c) ? ' pickfail' : '');
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
   const catB = articleCat({ category: c.cat, title: c.title });
@@ -3056,7 +3051,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
            ? (pfailHas(c)
                ? `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">⚠ 분석 실패 · 다시</button>`
                : `<div class="sc-got" aria-label="픽 완료">PICKED</div>`)
-           : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분${isBreaking(c) ? ' · 긴급 점등 끔' : ''})">${CHECK_SVG}</button>`)
+           : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
@@ -3065,7 +3060,6 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
       el.querySelector('.sc-tg.down').onclick = () => askReason('down', c, el);
       el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
       el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
-      el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
     } else if (pfailHas(c)) {   // 픽했는데 분석 실패 = '다시'(전문 붙여넣기 복구) 배선
       const fb = el.querySelector('.sc-fail'); if (fb) fb.onclick = () => failRetry(c);
     }
@@ -3219,16 +3213,8 @@ function applyTriage(act, c, el, reason, text) {
   } else {
     collapseCard(el);   // down/pass = 접혀 사라짐
   }
-  detectBreaking();   // 리액션(픽/패스/관심없음) = 긴급이면 프로필 점등 재평가(처리분은 breakingNow서 빠짐)
 }
 function postRate(p) { fetch('api/rate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) }).catch(() => {}); }
-// 확인(ack) 토글 — '이 기사 봤음'을 수동 표시(신규와 구분 · 로컬 localStorage). 결정(PICK)은 아님. 긴급이면 프로필 점등 끔(=리액션).
-function toggleAck(c, el) {
-  const id = candId(c); const acked = !((ratingsAll()[id] || {}).acked);
-  saveRating(id, { acked });
-  if (el) { el.classList.toggle('acked', acked); const b = el.querySelector('.sc-tg.ack'); if (b) b.classList.toggle('on', acked); }
-  detectBreaking();   // 확인✓ = 긴급 점등 재평가(breakingNow서 acked 제외 → 다른 신선 긴급 없으면 꺼짐)
-}
 // ── 탭 전환 (피드 · 스크랩 · SNS) ── 기본=피드. FAB(제작도구)·X는 외부/팝업이라 여기서 안 다룸.
 // 탭별 공유 헤더바(주제+짧은 설명) — 펫이 그 위로 걷는 상단바. 설명은 임시(짧게 · 나중 수정).
 const VIEWHEAD = {
@@ -3256,7 +3242,7 @@ function showTab(tab) {
 
   setViewhead(tab);
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'scrap') { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); markPickFailSeen(); }   // ⚠️ 긴급 점등은 탭 진입으론 안 끔(운영자: 카드 확인✓·리액션해야 해제) — markBreakingSeen 제거
+  if (tab === 'scrap') { if (!SCRAP_LOADED) loadCandidates(); else renderScrap(); markBreakingSeen(); markPickFailSeen(); }
   else if (tab === 'sns') renderSns();
   else render();   // 피드: 현재 검색어 재적용
   window.scrollTo({ top: 0, behavior: 'smooth' });
