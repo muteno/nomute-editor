@@ -16,6 +16,7 @@
   input[type=text] { width:100%; padding:11px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
   .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
+  .divider { border:none; border-top:1px solid var(--line); margin:20px 0 6px; }
   .file { display:block; padding:12px; border:1px dashed var(--line); border-radius:9px; text-align:center; color:var(--mut); cursor:pointer; }
   .file.has { color:var(--grn); border-color:var(--grn); border-style:solid; }
   .go { width:100%; margin-top:14px; padding:13px; background:linear-gradient(135deg,#d8ff3d,var(--grn)); color:#07210a; border:none; border-radius:11px; font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 24px rgba(15,253,2,.26), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s, box-shadow .15s; }
@@ -55,18 +56,16 @@
   <p class="sub">영상 URL 또는 SRT/자막 텍스트 → 짧은 조각 + SNS 감성 의역 → 조각별 복사. 원샷.</p>
 
   <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
-  <input type="text" id="url" placeholder="https://…  (넣으면 파일·텍스트 무시)">
+  <input type="text" id="url" placeholder="https://…  (넣으면 파일 무시)">
   <div class="orsep">— 또는 —</div>
-  <label>📍 파일 <span class="paid">(영상·음성)</span></label>
-  <label class="file" id="fileLab"><span id="fileTxt">탭해서 영상·오디오 파일 선택</span>
-    <input type="file" accept="video/*,audio/*" id="file" style="display:none">
+  <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
+  <label class="file" id="fileLab"><span id="fileTxt">탭해서 파일 선택 (영상·음성·TXT·SRT)</span>
+    <input type="file" accept="video/*,audio/*,.txt,.srt,.vtt,text/plain" id="file" style="display:none">
   </label>
-  <div class="orsep">— 또는 —</div>
-  <label>📍 SRT <span class="paid">(자막·대사)</span></label>
-  <textarea id="subs" placeholder="1&#10;00:00:01,000 --> 00:00:03,200&#10;Hello, welcome back to my channel&#10;&#10;2&#10;..."></textarea>
   <button class="go" id="go">웹 자막 생성</button>
 
   <div class="status" id="status"></div>
+  <hr class="divider">
   <div class="out" id="out"></div>
 </div>
 
@@ -77,7 +76,7 @@ const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;'
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 
-let FILE_B64 = '', FILE_NAME = '';
+let FILE_B64 = '', FILE_NAME = '', SRT_TEXT = '';   // SRT_TEXT = TXT/SRT 파일 텍스트(STT 건너뜀)
 const FILE_MAX = 20 * 1024 * 1024;     // 이하 = 직접 업로드 / 초과 = 브라우저서 음성만 추출
 const FILE_HARD = 400 * 1024 * 1024;   // 이 이상은 브라우저 추출도 거부(URL로)
 
@@ -86,8 +85,8 @@ function readB64(blob, name) {   // Blob/File → data URL(base64) 저장
   return new Promise(res => { const r = new FileReader(); r.onload = () => { FILE_B64 = r.result; res(); }; r.readAsDataURL(blob); });
 }
 function clearFile(msg, isErr) {
-  FILE_B64 = ''; FILE_NAME = ''; $('#file').value = '';
-  $('#fileTxt').textContent = '탭해서 영상·오디오 파일 선택'; $('#fileLab').classList.remove('has');
+  FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = ''; $('#file').value = '';
+  $('#fileTxt').textContent = '탭해서 파일 선택 (영상·음성·TXT·SRT)'; $('#fileLab').classList.remove('has');
   if (msg) { const st = $('#status'); st.textContent = msg; st.classList.toggle('err', !!isErr); }
 }
 
@@ -115,7 +114,18 @@ async function ffExtractAudio(file, onMsg) {
 
 $('#file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
-  const st = $('#status'); st.classList.remove('err'); st.textContent = '';
+  FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = '';   // 새 선택 = 이전 입력 초기화
+  const st = $('#status'); st.classList.remove('err'); st.textContent = ''; $('#out').innerHTML = '';
+  // TXT/SRT/VTT = 텍스트로 읽어 자막 입력(STT 건너뜀) + 아래 내용 출력
+  if (/\.(txt|srt|vtt)$/i.test(f.name) || /^text\//.test(f.type)) {
+    if (f.size > 2 * 1024 * 1024) { clearFile('텍스트 파일이 너무 큼(2MB↑)', true); return; }
+    const text = await f.text();
+    SRT_TEXT = text.trim(); FILE_NAME = f.name;
+    $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has');
+    $('#out').innerHTML = '<h3>업로드 내용</h3><div class="code"><pre>' + esc(text) + '</pre></div>';
+    st.textContent = '✅ 텍스트(TXT/SRT) — 자막 생성 가능';
+    return;
+  }
   const isVideo = /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|3gp)$/i.test(f.name);
   if (!isVideo) {                                        // 오디오 = 그대로(이미 작음)
     if (f.size > FILE_MAX) { clearFile(`오디오가 커 — ${(f.size / 1048576).toFixed(1)}MB (최대 20MB). URL로.`, true); return; }
@@ -225,12 +235,11 @@ function poll(outPath, isUrl) {
 
 $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
-  const subs = $('#subs').value.trim();
   const url = $('#url').value.trim();
-  if (!subs && !url && !FILE_B64) { status.textContent = '영상 URL · 파일 · SRT 중 하나는 넣어줘'; status.classList.add('err'); return; }
+  if (!url && !FILE_B64 && !SRT_TEXT) { status.textContent = '📍 URL 또는 📍 파일(영상·음성·TXT·SRT) 중 하나는 넣어줘'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '생성 중…';
   try {
-    const payload = url ? { url } : FILE_B64 ? { fileB64: FILE_B64, name: FILE_NAME } : { subs };   // 우선순위 url > 파일 > 텍스트
+    const payload = url ? { url } : SRT_TEXT ? { subs: SRT_TEXT } : { fileB64: FILE_B64, name: FILE_NAME };   // 우선순위 url > 텍스트파일(SRT) > 영상·음성
     const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();
     if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); return; }
