@@ -214,10 +214,11 @@
     <div id="warnBox" class="none">
       <label>경고문 선택</label>
       <div class="seg wseg" id="warnPreset">
+        <button type="button" data-wp="ai" class="on">AI 생성</button>
         <button type="button" data-wp="caution" class="on">경고</button>
-        <button type="button" data-wp="ai">AI 생성</button>
       </div>
-      <textarea id="warnLines">민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
+      <textarea id="warnLines">본 이미지는 생성형 AI로 제작·합성되었습니다.
+민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
       <div class="hint"><b>*별표*</b>로 강조 · 최대 2줄 · <b>AI 생성</b>=AI기본법 §31② 표시의무(나머지는 자율 안내)</div>
     </div>
 
@@ -281,7 +282,7 @@
       <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
-    <label class="chk" id="abbrBox"><input type="checkbox" id="abbr" checked> 축약 <span class="abbrhint">이 → 李 · 윤 → 尹 · ... → ⋯</span></label>
+    <label class="chk"><input type="checkbox" id="abbr" checked> 축약 <span class="abbrhint">이,→李, · 윤,→尹, · ⋯ · ·</span></label>
     <button class="go" id="go">이미지 제작</button>
   </div>
 
@@ -351,9 +352,6 @@ function selApp(a) {
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
-  $('#abbrBox').classList.toggle('none', !(a === '1' || a === '2'));   // 축약 = 포스트·릴스만
-  if (a === '4') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                              // 경고문 = 포스트+릴스 둘 다 기본(멀티)
-  else if (a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.toggle('on', b.dataset.fmt === FMT));   // 저작권 = 단일(FMT)
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
   $('#linesMax').textContent = a === '1' ? '최대 3줄' : '';
   if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
@@ -409,22 +407,18 @@ function composeWarn() {
   $('#warnLines').value = ['ai', 'caution'].filter(k => lit.includes(k)).map(k => WARN_PRESETS[k]).join('\n');
   $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼·자간 트래커 갱신
 }
-// 단일선택(하나만) · 기본 경고. 클릭 = 그 프리셋만 점등(나머지 끔) → 텍스트 교체(직접 수정 가능).
+// 둘 다 기본 점등 · 멀티토글 · 마지막 1개는 못 끔(0 불가 — 다시 둘 다 켜기 가능).
 document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#warnPreset button').forEach(x => x.classList.toggle('on', x === b));
+  const litN = document.querySelectorAll('#warnPreset button.on').length;
+  if (b.classList.contains('on') && litN === 1) return;   // 마지막 점등은 유지(0 방지)
+  b.classList.toggle('on');
   composeWarn();
 });
 
-// ---- 포맷 세그 ---- (/4 경고문 = 포스트·릴스 멀티토글[최소1·둘 다 출력] / 그 외 = 단일선택 FMT)
+// ---- 포맷 세그 ----
 document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
-  if (APP === '4') {
-    const litN = document.querySelectorAll('#fmtSeg button.on').length;
-    if (b.classList.contains('on') && litN === 1) return;   // 마지막 1개는 못 끔(0 방지)
-    b.classList.toggle('on');
-  } else {
-    FMT = b.dataset.fmt;
-    document.querySelectorAll('#fmtSeg button').forEach(x => x.classList.toggle('on', x === b));
-  }
+  FMT = b.dataset.fmt;
+  document.querySelectorAll('#fmtSeg button').forEach(x => x.classList.toggle('on', x === b));
 });
 
 // ---- OPA 세그 (58 기본 / 30 / 직접입력 = 버튼 안 입력창 · 2자리 자동 이탈) ----
@@ -929,58 +923,43 @@ function jobLabel() {
 let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) — 큐잉 자체는 막지 않음
 // 축약 = 썸네일 정본 화이트리스트(apps/thumbnail 절대규칙5 · 화이트리스트 4종): ...→⋯ · •→· · 이,→李, · 윤,→尹,
 const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
-// 잡 1건 생성 → 로그 → 디스패치 → 폴링(비동기·독립). 동시 다발(경고문 듀얼포맷 등) 가능.
-function dispatchJob(endpoint, payload, label) {
-  const job = { n: ++JOBSEQ, label, t0: Date.now(), outs: [], done: [], status: 'run', msg: '' };
-  JOBS.unshift(job); renderJob(job);
-  (async () => {
-    try {
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-      const j = await res.json();
-      if (!res.ok || j.error) { job.status = 'err'; job.msg = (j.error || ('서버 ' + res.status)); renderJob(job); return; }
-      job.outs = j.outs || (j.out ? [{ path: j.out, label: '' }] : []);
-      job.done = job.outs.map(() => false);
-      if (!job.outs.length) { job.status = 'err'; job.msg = '출력 경로 없음'; renderJob(job); return; }
-      pollJob(job);
-    } catch (e) { job.status = 'err'; job.msg = '요청 실패: ' + e.message; renderJob(job); }
-  })();
-}
 $('#go').onclick = async () => {
   if (_goLock) return; _goLock = true; setTimeout(() => { _goLock = false; }, 350);
   const status = $('#status'); status.classList.remove('err'); status.textContent = '';
-  if (APP === '5') {   // 카드뉴스 = /api/compose (축약 미적용)
-    if (!IMG.b64) return errStatus('이미지를 선택해줘');
-    if (edAnyOver()) return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄');
-    const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
-    if (!clines.length) return errStatus('텍스트를 입력해줘');
-    dispatchJob('/api/compose', { imageB64: IMG.b64, name: IMG.name, lines: clines }, '카드뉴스');
-    return;
+  let endpoint, payload;
+  if (APP === '5') {   // 카드뉴스 = /api/compose
+    if (!IMG.b64) { return errStatus('이미지를 선택해줘'); }
+    if (edAnyOver()) { return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄'); }
+    let clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
+    if ($('#abbr').checked) clines = clines.map(abbr);   // 축약(정본 화이트리스트)
+    if (!clines.length) { return errStatus('텍스트를 입력해줘'); }
+    endpoint = '/api/compose'; payload = { imageB64: IMG.b64, name: IMG.name, lines: clines };
+  } else {            // /1·/2·/3·/4 = /api/thumb
+    const params = buildParams();
+    if ($('#abbr').checked) { if (Array.isArray(params.lines)) params.lines = params.lines.map(abbr); if (typeof params.sub === 'string') params.sub = abbr(params.sub); if (typeof params.title === 'string') params.title = abbr(params.title); }   // 축약(정본 화이트리스트)
+    if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { return errStatus('부제 또는 제목을 입력해줘'); }
+    if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { return errStatus('텍스트를 입력해줘'); }
+    if (APP === '4' && !params.lines.length) { return errStatus('경고문 텍스트를 입력해줘'); }
+    if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 빠뜨리면 확인
+      const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
+      if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) return;
+    }
+    endpoint = '/api/thumb'; payload = { app: APP, params };
+    if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }       // 포스트 배경 = 옵션
+    if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
   }
-  if (APP === '4') {   // 경고문 = 포맷(포스트/릴스) 점등분마다 한 건씩 동시 발사 → 둘 다 캐러셀로
-    const lines = ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
-    if (!lines.length) return errStatus('경고문 텍스트를 입력해줘');
-    const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
-    const FL = { post: '포스트', reels: '릴스' };
-    fmts.forEach(fmt => dispatchJob('/api/thumb', { app: '4', params: { fmt, lines } }, '경고문 (' + (FL[fmt] || fmt) + ')'));
-    return;
-  }
-  // /1·/2·/3 = /api/thumb
-  const params = buildParams();
-  if ((APP === '1' || APP === '2') && $('#abbr').checked) {   // 축약 = 포스트·릴스만(정본 화이트리스트)
-    if (Array.isArray(params.lines)) params.lines = params.lines.map(abbr);
-    if (typeof params.sub === 'string') params.sub = abbr(params.sub);
-    if (typeof params.title === 'string') params.title = abbr(params.title);
-  }
-  if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) return errStatus('부제 또는 제목을 입력해줘');
-  if (APP === '2' && params.mode === 'overlay' && !params.lines.length) return errStatus('텍스트를 입력해줘');
-  if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 빠뜨리면 확인
-    const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
-    if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) return;
-  }
-  const payload = { app: APP, params };
-  if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }       // 포스트 배경 = 옵션
-  if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
-  dispatchJob('/api/thumb', payload, jobLabel());
+  // 잡 생성 → 로그 → 디스패치 → 폴링(전부 비동기·독립)
+  const job = { n: ++JOBSEQ, label: jobLabel(), t0: Date.now(), outs: [], done: [], status: 'run', msg: '' };
+  JOBS.unshift(job); renderJob(job);
+  try {
+    const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const j = await res.json();
+    if (!res.ok || j.error) { job.status = 'err'; job.msg = (j.error || ('서버 ' + res.status)); renderJob(job); return; }
+    job.outs = j.outs || (j.out ? [{ path: j.out, label: '' }] : []);
+    job.done = job.outs.map(() => false);
+    if (!job.outs.length) { job.status = 'err'; job.msg = '출력 경로 없음'; renderJob(job); return; }
+    pollJob(job);
+  } catch (e) { job.status = 'err'; job.msg = '요청 실패: ' + e.message; renderJob(job); }
 };
 function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err'); }
 
