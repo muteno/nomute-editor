@@ -648,7 +648,7 @@
     border:1px solid rgba(255,255,255,.13); border-radius:22px;
     animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
   #tooldlg:not([open]) { display:none; }   /* 닫힘 시 display:flex가 dialog 기본 display:none 덮어 빈 껍데기로 깔리던 버그 차단(lbox 동일) */
-  @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — backdrop-filter(blur34)에 transform 애니 얹으면 블러 재계산으로 한 번 턱 걸림(스내그). 라이즈는 콘텐츠 wrapRise가 담당 */
+  @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — backdrop-filter(blur34)에 transform 애니 얹으면 블러 재계산으로 한 번 턱 걸림(스내그). 콘텐츠 스태거 라이즈(촤르륵)는 제거됨 */
   @media (prefers-reduced-motion:reduce) { #tooldlg { animation:none; } }
   .tool-h { flex:none; display:flex; align-items:center; justify-content:space-between; padding:10px 14px;
     background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2); -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2); }
@@ -3101,16 +3101,23 @@ function openAsk() { bpop.hidden = true; linkpop.hidden = true; $('#askStatus').
 $('#askmenu').addEventListener('click', e => { e.preventDefault(); openAsk(); });
 // 제작 도구(썸네일·릴스·영상) = + 메뉴 항목 클릭 → 새 페이지 대신 뷰어 위 모달(iframe)로 등장. href는 폴백.
 const tooldlg = $('#tooldlg');
+// 폰/브라우저 뒤로가기 = 도구 닫고 메인으로(앱 이탈 차단). 열 때 히스토리 1칸 푸시 → 백버튼이 그 칸을 pop.
+let toolPopHandled = false;   // popstate(백버튼)로 닫혔는지 — close 핸들러의 히스토리 정리 분기
+window.addEventListener('popstate', () => { if (tooldlg.open) { toolPopHandled = true; tooldlg.close(); } });
 // 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
 function openTool(src, title) {
+  const wasOpen = tooldlg.open;
   $('#toolTitle').textContent = title || '제작 도구';
   $('#toolframe').src = src;   // showModal 전에 로드 시작 → 모달 뜰 때 콘텐츠 준비(프레임 따로·콘텐츠 따로 2단 깜빡임 완화)
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   tooldlg.showModal(); setTimeout(() => $('#toolX').focus(), 0);
+  if (!wasOpen) history.pushState({ tool: true }, '');   // 백버튼 = 메인 복귀(앱 밖으로 안 나감)
 }
 $('#bpop').addEventListener('click', e => { const a = e.target.closest('a[data-tool]'); if (a) { e.preventDefault(); openTool(a.getAttribute('href'), a.textContent.trim()); } });
 $('#toolX').addEventListener('click', () => tooldlg.close());
-tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus(); });   // iframe 정지 + 스크롤락 해제(중첩 가드) + 트리거 포커스 복귀
+tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus();
+  if (toolPopHandled) toolPopHandled = false;                                   // 백버튼으로 닫힘 = 히스토리 이미 pop됨
+  else if (history.state && history.state.tool) history.back(); });             // X·백드롭·ESC로 닫힘 = 푸시한 칸 정리   // iframe 정지 + 스크롤락 해제(중첩 가드) + 트리거 포커스 복귀
 tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close(); });   // 백드롭 클릭 닫기
 $('#toolframe').addEventListener('load', () => { try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
 $('#askX').addEventListener('click', () => askdlg.close());
