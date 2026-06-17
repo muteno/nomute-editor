@@ -2857,16 +2857,22 @@ const gradeW = c => (c.grade == null ? 1 : (GRADE_W[c.grade] ?? 1));
 // 신속 정렬 = 긴급도(burst + breaking) × 시간 반감 decay × 연속보도 가점 × AI 경중. 옛·후속끊긴·비뉴스 자연 하강.
 const fastScore = c => ((c.burst || 0) + (c.breaking ? 5 : 0)) * Math.pow(0.5, Math.max(0, (Date.now() - scTs(c)) / 3600000) / FAST_HALF_H) * scFollow(c) * gradeW(c);
 const JUNK_HEAD = /^\s*[\[\(](알림|공고|부고|부음|동정|인사|사진|포토|표|그래픽|운세|날씨|증시)[\]\)]/;   // 머리표 junk(뉴스 아님) — 양 컬럼서 제외. 조정 가능.
-const DECAY_H = 6;   // 누적 시간 가중 반감기(시간) = N시간마다 점수 연속 절반(시간단위 부드러운 지수감쇠 — '1일전' 단어버킷 아님). 조정 가능.
-const CROSS_BIG = 10, CROSS_BIG_W = 0.6;   // 다수매체 가점: 10개 이상부터 추가 로그 가점 → 같은 +3개여도 9~12급이 5~8급보다 파워↑(고cross 더 세게). 조정 가능.
-// 다매체 가중 = log2(1+cross) + (10↑부터 추가 로그). cross 클수록 더 강조(운영자 요구: 9~12급 > 5~8급).
-const crossW = c => { const x = c.cross || 0; return Math.log2(1 + x) + (x >= CROSS_BIG ? CROSS_BIG_W * Math.log2(x - CROSS_BIG + 1) : 0); };
-// 활동시각 = 마지막 새 보도(last_report) — 발행 오래됐어도 계속 보도되면 신선(예: 발행22h·활동0.5h 사건 묻힘 해결). 끊긴 옛 보도자료는 last_report도 옛날→침몰. 미보유분 폴백=발행.
-const scReport = c => { const t = Date.parse(c.last_report || c.last_seen || c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
-// 누적(좌측) 정렬 = crossW[다수매체·고cross 강조] × 활동시각 시간감쇠 × 연속보도 가점 × AI 경중. 검증·계속보도·중요한 게 위로.
-const scScore = c => crossW(c)
-  * Math.pow(0.5, Math.max(0, (Date.now() - scReport(c)) / 3600000) / DECAY_H)
-  * scFollow(c) * gradeW(c);
+// ── 누적 점수 = 두 가속 곡선 (260617 운영자 재설계) ──────────────────
+// 구결함: 옛 누적은 ① cross가 concave(log)라 다매체 변별 약하고 ② 시간감쇠를 활동시각(last_report)
+//   기준으로 재는데 활성 사이클선 거의 모든 클러스터가 매 스크랩 새 기사 붙어 last_report가 0~2h로 *균일*
+//   → 시간축이 사실상 죽어 발행 20h·40h가 랭킹에 무영향("뒤죽박죽"). → 아래 두 곡선으로 재설계.
+// 1) cross 볼록 가점(가속): 매체수 늘수록 단계 가점 더 큼 — 5^1.6≈13·7≈23·9≈34·11≈48 (Δ 9.8·11.5·13.1).
+//    다수 동시보도일수록 가속 상단. (concave log 대체 · 운영자 "5→7→9→11 가속".) 잡음은 gradeW가 veto.
+const CROSS_POW = 1.6;   // cross^POW. 조정 가능(↑일수록 다매체 더 지배).
+const crossConvex = c => Math.pow(c.cross || 0, CROSS_POW);
+// 2) 시간 가속 감점(Hill): 발생(발행 pubAge=scTs, 화면 'N시간 전') 기준. 신선엔 거의 1, ~12h 넘으면 *가속* 침몰
+//    (8→10h보다 10→12h가 더 깎임 — 운영자 "12h 후 가속"). 활동시각(last_report)은 활성 사이클서 0~2h 균일이라
+//    시간축이 죽어 폐기 → 발행 기준 복원(계속보도 가치는 scFollow가 따로 가점 — 역할 분리).
+//    timeW=1/(1+(age/HALF)^POW): 6h=.94·12h=.73·18h=.50·24h=.33·36h=.15·48h=.08.
+const ACC_T_HALF = 18, ACC_T_POW = 2.5;   // 반값 나이(h)·가속지수. 조정 가능.
+const timeAcc = c => 1 / (1 + Math.pow(Math.max(0, (Date.now() - scTs(c)) / 3600000) / ACC_T_HALF, ACC_T_POW));
+// 누적(좌) 정렬 = cross 볼록가점 × 시간 가속감점(발행) × 연속보도(scFollow) × AI 경중(gradeW). 다수동시+최신+계속+양질=상단.
+const scScore = c => crossConvex(c) * timeAcc(c) * scFollow(c) * gradeW(c);
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // ⚡이슈(breaking) & 아직 안 픽 = 상단 고정. 픽한 건 고정 안 함(처리됨 → 정상 정렬).
 const pinB = c => (isBreaking(c) && !(scRT[candId(c)] || {}).picked) ? 1 : 0;
