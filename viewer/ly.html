@@ -59,7 +59,7 @@
   <div class="orsep">— 또는 —</div>
   <label>SRT / 자막·대사 텍스트 붙여넣기</label>
   <textarea id="subs" placeholder="1&#10;00:00:01,000 --> 00:00:03,200&#10;Hello, welcome back to my channel&#10;&#10;2&#10;..."></textarea>
-  <button class="go" id="go">웹 자막 발사</button>
+  <button class="go" id="go">웹 자막 생성</button>
 
   <div class="status" id="status"></div>
   <div class="out" id="out"></div>
@@ -121,7 +121,7 @@ $('#file').onchange = async e => {
     if (blob.size > FILE_MAX) { clearFile(`추출 음성도 커(${(blob.size / 1048576).toFixed(1)}MB) — URL로.`, true); return; }
     await readB64(blob, f.name.replace(/\.[^.]+$/, '') + '.mp3');
     $('#fileTxt').textContent = f.name + ' → 음성 ✓'; $('#fileLab').classList.add('has');
-    st.textContent = `✅ 음성 추출 완료 (${(blob.size / 1048576).toFixed(1)}MB) — 자막 발사 가능`;
+    st.textContent = `✅ 음성 추출 완료 (${(blob.size / 1048576).toFixed(1)}MB) — 자막 생성 가능`;
   } catch (err) {
     if (f.size <= FILE_MAX) {                            // 추출 실패 + 작은 영상 → 그대로 업로드(러너가 추출)
       await readB64(f, f.name); $('#fileTxt').textContent = f.name + ' ✓'; $('#fileLab').classList.add('has');
@@ -208,7 +208,7 @@ $('#go').onclick = async () => {
   const subs = $('#subs').value.trim();
   const url = $('#url').value.trim();
   if (!subs && !url && !FILE_B64) { status.textContent = '영상 URL · 파일 · SRT 중 하나는 넣어줘'; status.classList.add('err'); return; }
-  $('#go').disabled = true; status.textContent = '발사 중…';
+  $('#go').disabled = true; status.textContent = '생성 중…';
   try {
     const payload = url ? { url } : FILE_B64 ? { fileB64: FILE_B64, name: FILE_NAME } : { subs };   // 우선순위 url > 파일 > 텍스트
     const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
