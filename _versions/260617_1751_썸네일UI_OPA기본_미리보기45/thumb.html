@@ -34,7 +34,6 @@
   .seg { display:flex; gap:6px; }
   .seg button { flex:1; padding:8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--fg); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); transition:border-color .15s, background .15s; }
   .seg button.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1); }
-  .seg button.fixed { cursor:default; }   /* 60·30 = 항상 출력(고정 표시) — 누름 동작 없음 */
   /* 직접입력 = 버튼 자체가 입력창 (선택 시 라벨 숨고 안에 커서) */
   #rOpaCustom, #opaCustom { padding:0; overflow:hidden; }
   #rOpaCustom .lab, #opaCustom .lab { display:block; padding:8px 2px; }
@@ -55,12 +54,7 @@
   .trk.over { color:#ff7a7a; }
   .file { display:block; padding:12px; border:1px dashed rgba(15,253,2,.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
-  /* 미리보기 = 4:5 컴팩트(업로드 보통 1080×1350) · 파일명은 칸 안 차지 말고 우하단 50% 반투명 오버레이(우측정렬) */
-  .fileprev { position:relative; display:inline-block; margin-top:8px; max-width:100%; }
-  .fileprev img { display:block; aspect-ratio:4/5; height:230px; max-width:100%; width:auto; object-fit:cover; border-radius:7px; }
-  .fileprev .fn { position:absolute; right:0; bottom:0; max-width:100%; box-sizing:border-box; margin:0;
-    background:rgba(0,0,0,.5); color:#fff; font-size:10.5px; line-height:1.3; padding:3px 8px; border-radius:7px 0 7px 0;
-    text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  .file img { max-width:100%; max-height:200px; border-radius:7px; margin-top:8px; }
   .go { width:100%; margin-top:16px; padding:13px; background:linear-gradient(135deg,#d8ff3d,var(--accent)); color:var(--on-accent); border:none; border-radius:11px; font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 24px rgba(15,253,2,.26), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s, box-shadow .15s; }
   .go:hover { transform:translateY(-1px); box-shadow:0 12px 30px rgba(15,253,2,.34), inset 0 1px 0 rgba(255,255,255,.45); }
   .go:active { transform:translateY(0); }
@@ -219,8 +213,8 @@
         </label>
         <label>투명도 (OPA)</label>
         <div class="seg" id="rOpaSeg">
-          <button data-opa="60" class="on fixed" tabindex="-1">60</button>
-          <button data-opa="30" class="on fixed" tabindex="-1">30</button>
+          <button data-opa="60" class="on">60 (기본)</button>
+          <button data-opa="30">30</button>
           <button data-opa="custom" id="rOpaCustom"><span class="lab">직접입력</span><input type="text" id="rOpaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
         </div>
         <label>텍스트 (줄바꿈 = 여러 줄)</label>
@@ -404,12 +398,11 @@ function selRmode(m) {
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
 
-// ---- 릴스 오버레이 OPA 세그 (60·30 항상 렌더=고정 표시 / 직접입력=추가 opa(+1) 토글) ----
+// ---- 릴스 오버레이 OPA 세그 (60 기본 / 30 / 직접입력 = 버튼 안 입력창) ----
 const rOpaNum = $('#rOpaNum');
 document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
-  if (b.dataset.opa !== 'custom') return;   // 60·30 = 항상 출력(둘 다 기본 선택·고정) → 클릭 무반응
-  b.classList.toggle('on');                 // 직접입력 = 추가 opa(+1) 켜기/끄기
-  if (b.classList.contains('on')) { rOpaNum.focus(); rOpaNum.select(); }   // 켤 때 버튼 안 커서 활성
+  document.querySelectorAll('#rOpaSeg button').forEach(x => x.classList.toggle('on', x === b));
+  if (b.dataset.opa === 'custom') { rOpaNum.focus(); rOpaNum.select(); }   // 누른 그 순간 버튼 안에 커서 활성
 });
 rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 차면 바로 포커스 아웃(키보드 내려감)
   let v = rOpaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
@@ -417,9 +410,9 @@ rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 
   rOpaNum.value = v;
   if (v.length >= 2) rOpaNum.blur();
 });
-function getReelsExtraOpa() {   // 직접입력 토글 ON + 값 있을 때만 추가 opa(+1). 60·30은 항상 출력(고정).
-  const c = $('#rOpaCustom');
-  if (!c || !c.classList.contains('on')) return null;
+function getReelsExtraOpa() {   // 직접입력 + 값 있을 때만 추가 opa(+1). 빈 값/비선택이면 null (기본 60·30만)
+  const sel = document.querySelector('#rOpaSeg .on');
+  if (!sel || sel.dataset.opa !== 'custom') return null;
   const n = parseInt(rOpaNum.value, 10);
   return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
 }
@@ -432,7 +425,7 @@ function bindFile(inp, lab, store) {
     const r = new FileReader();
     r.onload = () => {
       store.b64 = r.result;
-      lab.innerHTML = '<div class="fileprev"><img src="' + r.result + '"><span class="fn">' + f.name + '</span></div>' +
+      lab.innerHTML = '<span>' + f.name + ' ✓</span><img src="' + r.result + '">' +
         '<input type="file" accept="image/*" style="display:none">';
       lab.classList.add('has');
       lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
