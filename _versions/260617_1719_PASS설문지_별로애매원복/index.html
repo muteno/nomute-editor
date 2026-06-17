@@ -2901,16 +2901,16 @@ function renderScrap() {
   host.innerHTML = SC_COLS_HTML;
   const CROSS_MIN = 8;   // 이슈 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 이슈칼럼). 소수 매체만 다룬 약한 건 노이즈 → 이슈서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK=잔류(맨 아래 PICKED 비활성)
-  // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
+  const _pk = c => ((rt[candId(c)] || {}).picked ? 1 : 0);   // 픽 완료 = 정렬 맨 아래(처리됨·안 가림)
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
     if (key === 'new') {   // 신속 = 신선분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신속서 빠져 이슈行(거기서 찾음). 정렬 = 핀 → fastScore → 최신.
       arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신속 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 이슈行(아래). 오래된 속보가 신속 톱 차지·이슈 중복하던 회귀 차단.
-      arr.sort((a, b) => (pinFresh(b) - pinFresh(a)) || (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));   // 신선 속보 핀 → fastScore decay 하강(톱 독차지 방지). 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시.
+      arr.sort((a, b) => (_pk(a) - _pk(b)) || (pinFresh(b) - pinFresh(a)) || (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));   // 픽완료=맨아래 → 신선 속보 핀 → decay 하강(톱 독차지 방지)
     } else {   // 이슈 = 9시뉴스감(좌측·넓은 이슈 누적). cross≥5 AND 발생 4h↑(신속서 졸업 = 시간 지나 좌측으로). 신속(우측 <4h)과 시간 배타 — 최근 건 이슈에 안 들어감. 중요도(scScore = cross 볼록 × 시간 가속감점 × 연속보도 × AI경중)순.
       arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
-      arr.sort((a, b) => (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 신선 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 신선 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·신속 pinFresh(신선속보 핀)는 별개 유지.
+      arr.sort((a, b) => (_pk(a) - _pk(b)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 픽완료=맨아래 → 순수 scScore 순. ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 신선 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 신선 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·신속 pinFresh(신선속보 핀)는 별개 유지.
     }
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
@@ -3088,8 +3088,9 @@ const TRIAGE = {
     { k: '가치없음', d: '콘텐츠화 할 가치가 없는 기사' },
     { k: '직접입력', input: true } ] },
   pass: { q: '패스 — 왜?', reasons: [
-    { k: '별로', d: '콘텐츠로 다루기에는 가치가 그닥 없다' },
-    { k: '애매함', d: '조금 이목은 끌 수 있으나 전혀 콘텐츠화 할 정도 아님' },
+    { k: '속보', d: '속보성(급발 사건)이나 지금 큐레이션은 보류' },
+    { k: '논란', d: '논란성 토픽이나 지금은 보류' },
+    { k: '유용함', d: '유용·정보성이나 지금은 보류' },
     { k: '기타', input: true } ] },
   pick: { q: 'PICK — 왜?', reasons: [
     { k: '속보/사건', d: '빠르게 전달하면 모두가 감정적 격동을 느낄 것이라 판단' },
