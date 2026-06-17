@@ -35,13 +35,6 @@ try {
   files = readdirSync(QUEUE).filter(f => f.endsWith('.md'));
 } catch { /* queue 없음 */ }
 
-// 수집함 cross 인덱스(이슈 판정용) — viewer/candidates.json url→cross 맵. 직접공유분(매칭 없음)은 cross 0 → issue false(운영자: 직접은 어쩔 수 없음).
-const CROSS = new Map();
-try {
-  const cj = JSON.parse(readFileSync('viewer/candidates.json', 'utf8'));
-  for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) CROSS.set(c.url, c.cross || 0);
-} catch { /* candidates 없음 — issue 전부 false */ }
-
 const articles = [];
 for (const f of files) {
   // 방어: 못 여는 파일(깨진 파일명·인코딩 등)은 빌드를 죽이지 말고 건너뛰며 경고만
@@ -58,9 +51,7 @@ for (const f of files) {
       bias: meta.bias || '',
       tags: meta.tags || '',
       category: meta.category || '',   // 옛 큐 frontmatter category(있으면) — 뷰어 UI 5버킷 매핑용(C). 새 기사엔 없음.
-      breaking: /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // index2: 속보여부 — 제목 [속보]/[긴급]/긴급속보 표식 → true.
-      cross: CROSS.get(meta.url || '') || 0,                    // 수집함 매칭 매체 수(직접공유=0)
-      issue: (CROSS.get(meta.url || '') || 0) >= 8,             // index3: 이슈여부 = cross≥8(8+매체=넓은 이슈, 운영자 5→8). 직접공유분은 매칭 없어 false.
+      breaking: /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // index2: 속보여부 — 제목 [속보]/[긴급]/긴급속보 표식 → true. articles.json 빌드타임 boolean 인덱스(뷰어 [속보] 토글·태그가 사용).
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
       body,
