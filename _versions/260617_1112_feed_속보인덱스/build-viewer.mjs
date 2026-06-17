@@ -51,7 +51,6 @@ for (const f of files) {
       bias: meta.bias || '',
       tags: meta.tags || '',
       category: meta.category || '',   // 옛 큐 frontmatter category(있으면) — 뷰어 UI 5버킷 매핑용(C). 새 기사엔 없음.
-      breaking: /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // index2: 속보여부 — 제목 [속보]/[긴급]/긴급속보 표식 → true. articles.json 빌드타임 boolean 인덱스(뷰어 [속보] 토글·태그가 사용).
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
       body,

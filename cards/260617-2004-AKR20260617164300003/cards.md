@@ -1,24 +1,23 @@
-# 🗳 당락은 그대로, 근데 득표가 뒤바뀌었다 — 또 선관위
+# ⚛️ 백지화됐던 영덕, 9년 만에 원전을 다시 품다
 
 ### [카드 1]
 **텍스트**
 ```text
-선관위, 이번엔 '입력 오류'
-경기교육감 개표에서
-두 후보의 득표가
-서로 뒤바뀌었다
+백지화됐던 그 땅
+영덕, 9년 만에
+원전을 다시 품다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, heavy oppressive atmosphere.
-Camera: close-up (CU) from a high angle looking straight down, shot on 100mm macro lens.
-Lighting/mood: single hard side-light raking across the desk, deep chiaroscuro shadows, cold dim interior tone, tense suffocating stillness.
-Scene: a single pair of bare hands at a wooden vote-counting desk in a Korean polling station, one hand frozen mid-keystroke over a counting terminal while the other rests on a paper tally sheet; two adjacent number columns on the sheet are visibly transposed, their positions crossed by a faint arc — the instant of the mistake caught in motion. No faces, only hands and the desk, anchored upper-center.
-monochrome desaturated base with a single neon green #0FFD02 accent glowing on the two crossed number positions to mark the swap, film-noir low-key lighting, deep shadows.
-Korean setting and props. Keep all figures and numbers abstract and unreadable — no readable digits, no garbled or fake script, no meaningless letters, no dense text; any character on the sheet stays a faint unreadable smudge.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+Camera: wide establishing shot from a high bird's-eye angle, shot on 20mm wide lens.
+Lighting/mood: cold blue overcast pre-dawn light over the land, flat muted tones, a desolate brooding stillness, the sense that something long dormant is about to stir.
+Scene: a vast Korean east-coast rural plain of terraced fields and a small fishing village beside the dark sea, seen from high above, empty and waiting; one single plot of bare farmland in the upper-center area glows faintly as if marked by an unseen force, while the rest of the land lies quiet and undisturbed — no power plant built yet, only the open ground itself.
+Accent: monochrome desaturated base with a single neon green #0FFD02 accent glowing on the one marked plot, film-noir low-key lighting, deep shadows.
+Korean rural landscape conventions; any signage or markers shown only as shapes, never readable text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wooden vote-counting desk) extending edge to edge from top to bottom of the frame. The main subject (the hands and the tally sheet) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the open farmland ground seen from above) extending edge to edge from top to bottom of the frame. The main subject — the single glowing plot — is anchored in the upper-center area on this same ground surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -30,21 +29,21 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-한 곳만이 아니었다
-다른 투표소는 번호를
-잘못 적어 표가 통째로 꼬였다
+6월 17일 한수원이
+15년 만의 신규 원전
+부지를 발표했다
+영덕과 기장이 뽑혔다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, heavy oppressive atmosphere.
-Camera: wide shot (WS) from eye-level, shot on 35mm documentary lens.
-Lighting/mood: overcast diffused fluorescent daylight, flat cold shadows, muted somber institutional mood.
-Scene: the interior of a Korean polling station counting hall, a lone clerk seen from behind among rows of folding tables and a hanging polling-station placard; the clerk hangs the wrong numbered sign on the wrong stand, the mismatch quietly throwing the room out of order. Figure and placard anchored upper-center, the empty hall stretching around them.
-monochrome desaturated base with a single neon green #0FFD02 accent glowing on the mislabeled polling-station number plate, film-noir low-key lighting, deep shadows.
-Korean setting and props. Keep the placard number abstract and unreadable — no readable digits, no garbled or fake script, no meaningless letters, no dense text; signage stays a faint unreadable mark.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+Camera: medium close-up from a high angle looking down, shot on 50mm standard lens.
+Lighting/mood: a single hard side-light cutting across the map, deep chiaroscuro shadows, tense top-down authority.
+Scene: an anonymous official's hand in a dark suit sleeve (no face, no logos) pressing one fingertip onto a large planning map laid flat on a table, pinning a spot on the eastern coastline as a glowing marker drops onto it; the map shows only abstract coastline shapes and small pictographic location pins and a tiny reactor-tower icon, with two other faint pin markers nearby dimmed and faded out, as if just eliminated. Decisive, official atmosphere.
+Accent: monochrome desaturated base with a single neon green #0FFD02 accent on the chosen pin and its glow, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the polling-station hall floor) extending edge to edge from top to bottom of the frame. The main subject (the clerk and the mislabeled placard) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the planning map on the table) extending edge to edge from top to bottom of the frame. The main subject — the hand and the glowing pin — is anchored in the upper-center area on this same map surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -56,21 +55,22 @@ NEGATIVE — strictly avoid:
 ### [카드 3]
 **텍스트**
 ```text
-전북에선 더 심했다
-한 투표소 1,104명이 사라지고
-다른 투표소는 두 번 세어졌다
+그런데 영덕은
+처음 불린 땅이 아니다
+천지원전 예정지였다가
+2018년 접혔던 곳이다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, heavy oppressive atmosphere.
-Camera: extreme long shot (EWS) from a bird's-eye overhead angle looking straight down, shot on 24mm wide lens.
-Lighting/mood: cold overcast top-down light, long flat shadows, desolate institutional emptiness.
-Scene: a top-down geometric view of a Korean polling place laid out as rows of identical voting booths; one cluster of booths stands utterly empty and dark — a swallowed void where a crowd should be — while an adjacent cluster shows the same line of figures doubled, ghosted over itself as if counted twice. The empty-void cluster and the doubled cluster anchored in the upper-center, the imbalance read at a glance.
-monochrome desaturated base with a single neon green #0FFD02 accent outlining the duplicated ghost figures and rimming the empty void, film-noir low-key lighting, deep shadows.
-Korean setting and props. No readable digits, no garbled or fake script, no meaningless letters, no dense text anywhere.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+Camera: extreme long shot from behind (back view), shot on 14mm ultra-wide lens.
+Lighting/mood: overcast diffused grey daylight, flat soft shadows, muted somber atmosphere of abandonment.
+Scene: a lone small figure seen from behind (generic, anonymous) stands at the edge of a cleared, half-abandoned construction site — a wide stretch of flattened ground with a few leaning surveyor stakes, a faded boundary ribbon, and weeds creeping back over the earth where a project once started and then stopped; the vast empty plot stretches out, started yet forsaken.
+Accent: monochrome desaturated base with a single neon green #0FFD02 accent on one surveyor ribbon fluttering on a stake, film-noir low-key lighting, deep shadows.
+Korean rural construction-site conventions; markers shown only as shapes, no readable text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the polling-place floor seen from above) extending edge to edge from top to bottom of the frame. The main subject (the empty void and the doubled booths) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the abandoned cleared construction ground) extending edge to edge from top to bottom of the frame. The main subject — the lone figure and the leaning stake — is anchored in the upper-center area on this same ground surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -82,21 +82,21 @@ NEGATIVE — strictly avoid:
 ### [카드 4]
 **텍스트**
 ```text
-다행히 당락은 안 바뀌었다
-표차가 워낙 컸던 덕분이다
-하지만 안심하긴 이르다
+그 영덕이 9년 만에
+유치 신청서를 들고
+스스로 돌아왔다
+이미 검증된 부지였다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, heavy oppressive atmosphere.
-Camera: medium shot (MS) from eye-level, shot on 50mm standard lens.
-Lighting/mood: single low desk-lamp glow against a darkening interior, quiet wistful tension, deep surrounding shadow.
-Scene: a sealed Korean ballot box standing solid and intact on a long counting table, its bulk reassuringly heavy — yet a single hairline fissure runs up one face, thin but unmistakable. The box anchored upper-center, dominant and apparently sound, the crack the only thing that betrays it.
-monochrome desaturated base with a single neon green #0FFD02 accent tracing the hairline crack up the ballot box, film-noir low-key lighting, deep shadows.
-Korean setting and props. No readable digits, no garbled or fake script, no meaningless letters, no dense text anywhere.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+Camera: extreme close-up from eye level, shot on 100mm macro lens.
+Lighting/mood: one warm low light grazing the hands against deep surrounding shadow, solemn determined resolve.
+Scene: a pair of weathered, work-worn hands (a rural resident, generic, no face) pressing a folded application document firmly down onto a desk, knuckles tense with deliberate resolve, as if setting it down by their own will; the document surface is clean and softly blurred with no readable body text, bearing only a single clear accent mark, conveying a self-willed, voluntary return rather than something imposed.
+Accent: monochrome desaturated base with a single neon green #0FFD02 accent line marked across the document, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long counting table) extending edge to edge from top to bottom of the frame. The main subject (the cracked ballot box) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk surface) extending edge to edge from top to bottom of the frame. The main subject — the resolute hands on the document — is anchored in the upper-center area on this same desk surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -108,21 +108,21 @@ NEGATIVE — strictly avoid:
 ### [카드 5]
 **텍스트**
 ```text
-처음이 아니기 때문이다
-2년 전 총선 땐 2,241표가 틀렸고
-그땐 정정조차 하지 않았다
+결정을 내린 건
+탈원전을 외치던 정부다
+AI 시대 전력 앞에서
+원전 카드를 다시 꺼냈다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, heavy oppressive atmosphere.
-Camera: wide shot (WS) from a worm's-eye angle near the ground looking steeply up, shot on 20mm wide lens.
-Lighting/mood: cold blue pre-dawn tone, lone overhead light, desolate stillness, exaggerated looming scale.
-Scene: looking up from the ground at a faceless, monolithic government administration building (no logo, no signage, anonymous concrete), towering and indifferent; up its grey façade the same fault-line repeats twice, identical, stacked — one old and weathered, one fresh — the recurrence of the same failure made literal. Building and the twin repeating fissures anchored upper-center, pressing down on the viewer.
-monochrome desaturated base with a single neon green #0FFD02 accent marking the two identical recurring fault-lines on the façade, film-noir low-key lighting, deep shadows.
-Korean setting, anonymous institutional architecture, no real emblem or logo. No readable digits, no garbled or fake script, no meaningless letters, no dense text anywhere.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+Camera: medium shot from a low angle looking up, shot on 50mm standard lens.
+Lighting/mood: cold deep-navy blue-hour twilight, low-key lighting, a looming sense of weight and reversal.
+Scene: an anonymous suited official figure (generic, no recognizable real-person likeness, no logos, no flag insignia) seen from below, pivoting to face a faint reactor cooling-tower silhouette and distant power-line pylons and server-rack shapes that loom on the same twilight skyline behind — the gesture of a turn, a reversal of stance, with the weight of energy demand pulling the decision forward.
+Accent: monochrome desaturated base with a single neon green #0FFD02 accent glowing from the reactor silhouette, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the looming institutional façade rising from the plaza ground) extending edge to edge from top to bottom of the frame. The main subject (the building and the repeating fault-lines) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the continuous twilight sky backdrop) extending edge to edge from top to bottom of the frame, with the reactor and pylon silhouettes set on this same sky. The main subject — the suited figure — is anchored in the upper-center area against this same sky surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -134,22 +134,22 @@ NEGATIVE — strictly avoid:
 ### [카드 6]
 **텍스트**
 ```text
-당락은 안 바뀌었어도
-'완벽한 투표함'이란 믿음은 깨졌다
-실수와 음모는 구분하되
-시스템은 반드시 손봐야 한다
+하지만 부지는
+끝이 아니라 시작이다
+준공까지 십수 년
+진짜 시험은 설득이다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, heavy yet resolute atmosphere.
-Camera: medium close-up (MCU) from eye-level, shot on 85mm portrait lens.
-Lighting/mood: warm low desk-lamp glow cutting through surrounding darkness, solemn and steady, a single source of light.
-Scene: a Korean ballot box at eye-level with a fine crack across its face, and a pair of careful bare hands reaching in to steady and seal it — not discarding it, mending it; quiet determination in the gesture. The box and the mending hands anchored upper-center, the crack still visible but held.
-monochrome desaturated base with a single neon green #0FFD02 accent — a thin line of light seeping through the crack and catching on the mending hands, film-noir low-key lighting, deep shadows.
-Korean setting and props. No readable digits, no garbled or fake script, no meaningless letters, no dense text anywhere.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+Camera: wide shot from behind (back view) at eye level, shot on 35mm lens.
+Lighting/mood: muted low evening light with long stretched shadows, a quiet unresolved weight, the long road ahead.
+Scene: a small group of ordinary coastal villagers seen from behind (generic, anonymous) standing together at the edge of a wide seaside field, gazing toward the high horizon where the faint line-sketch outline of a future reactor is drawn against the dusk sky — the long, uncertain stretch of permits and persuasion still ahead of them, the matter unsettled rather than reassured.
+Accent: monochrome desaturated base with a single neon green #0FFD02 accent tracing the faint future-reactor outline on the horizon, film-noir low-key lighting, deep shadows.
+Korean coastal rural landscape; any structures shown only as shapes, no readable text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the table surface holding the ballot box) extending edge to edge from top to bottom of the frame. The main subject (the cracked ballot box and the mending hands) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the coastal field ground) extending edge to edge from top to bottom of the frame. The main subject — the group seen from behind and the horizon outline — is anchored in the upper-center area on this same ground surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
