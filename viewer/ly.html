@@ -183,10 +183,22 @@ function wireCopy() {
 function poll(outPath, isUrl) {
   const t0 = Date.now(), status = $('#status'), out = $('#out');
   const budget = isUrl ? 1500 : 600;
+  const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = 워크플로 실패 메시지(있으면 즉시 표시)
   const tick = async () => {
     const sec = Math.round((Date.now() - t0) / 1000);
     if (sec > budget) { status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); return; }
     status.textContent = '⏳ 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)');
+    // 1) 실패 먼저 — error.log 뜨면 즉시 에러 표시(무한 폴링·'시간 초과' 방지). SPA 폴백(index.html) HTML은 무시.
+    try {
+      const er = await fetch(errPath + '?t=' + Date.now());
+      if (er.ok) {
+        const ect = (er.headers.get('content-type') || '').toLowerCase();
+        const em = await er.text();
+        const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
+        if (em && em.trim() && !eHtml) { status.textContent = '❌ ' + em.trim(); status.classList.add('err'); return; }
+      }
+    } catch (e) { /* 재시도 */ }
+    // 2) 결과(subs.md) 확인
     try {
       const r = await fetch(outPath + '?t=' + Date.now());
       if (r.ok) {
