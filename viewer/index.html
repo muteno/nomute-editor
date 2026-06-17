@@ -425,6 +425,10 @@
   .sc-tg.pass:hover { color:#ffce54; border-color:rgba(255,200,60,.55); }
   .sc-tg.pick { color:var(--accent); background:var(--accent-dim); border-color:rgba(15,253,2,.4); }
   .sc-tg.pick:hover { background:rgba(15,253,2,.2); }
+  /* PICK 완료 = 잔류 비활성 칩(못누르는 줄무늬 — 초록 빗금='득템+잠김', 노랑 빗금=실패와 구분) */
+  .sc-got { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+    color:var(--accent); border:1px solid rgba(15,253,2,.4); pointer-events:none; user-select:none;
+    background:repeating-linear-gradient(45deg, rgba(15,253,2,.20) 0 5px, rgba(15,253,2,.05) 5px 10px); }
   .sc-rsn { position:relative; }
   .sc-rsn-chips { display:flex; flex-wrap:wrap; gap:6px; padding-right:22px; }
   .sc-rsn-c { font:700 11.5px inherit; border-radius:999px; padding:5px 11px; cursor:pointer;
@@ -2832,16 +2836,17 @@ function renderScrap() {
   host.classList.add('scrap-cols');
   host.innerHTML = SC_COLS_HTML;
   const CROSS_MIN = 8;   // 이슈 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 이슈칼럼). 소수 매체만 다룬 약한 건 노이즈 → 이슈서 제외·DB엔 잔존. 조정 가능.
-  const _untri = c => { const r = rt[candId(c)] || {}; return !(r.action || r.passed || r.picked); };   // 트리아지 처리된 건 양 컬럼서 제외
+  const _untri = c => { const r = rt[candId(c)] || {}; return !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK=잔류(맨 아래 PICKED 비활성)
+  const _pk = c => ((rt[candId(c)] || {}).picked ? 1 : 0);   // 픽 완료 = 정렬 맨 아래(처리됨·안 가림)
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
     if (key === 'new') {   // 신속 = 신선분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신속서 빠져 이슈行(거기서 찾음). 정렬 = 핀 → fastScore → 최신.
       arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신속 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 이슈行(아래). 오래된 속보가 신속 톱 차지·이슈 중복하던 회귀 차단.
-      arr.sort((a, b) => (pinFresh(b) - pinFresh(a)) || (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));   // 신선 속보만 핀 → 오래된 속보는 decay로 하강(톱 독차지 방지)
+      arr.sort((a, b) => (_pk(a) - _pk(b)) || (pinFresh(b) - pinFresh(a)) || (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));   // 픽완료=맨아래 → 신선 속보 핀 → decay 하강(톱 독차지 방지)
     } else {   // 이슈 = 9시뉴스감(좌측·넓은 이슈 누적). cross≥5 AND 발생 4h↑(신속서 졸업 = 시간 지나 좌측으로). 신속(우측 <4h)과 시간 배타 — 최근 건 이슈에 안 들어감. 중요도(scScore = cross 볼록 × 시간 가속감점 × 연속보도 × AI경중)순.
       arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
-      arr.sort((a, b) => (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 순수 scScore 순. ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 신선 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 신선 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·신속 pinFresh(신선속보 핀)는 별개 유지.
+      arr.sort((a, b) => (_pk(a) - _pk(b)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 픽완료=맨아래 → 순수 scScore 순. ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 신선 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 신선 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·신속 pinFresh(신선속보 핀)는 별개 유지.
     }
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
@@ -2908,14 +2913,18 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
     `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < FAST_MAX_H * 3600000 ? '<span class="sc-brk brk-hot">🚨 속보</span>' : ((Date.now() - scTs(c)) < 24 * 3600000 ? '<span class="sc-brk">⚡ 이슈</span>' : '')) : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
-       ? `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`
+       ? (st.picked
+           ? `<div class="sc-got" aria-label="픽 완료">PICKED</div>`
+           : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
-  if (triage) {   // 신속 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 인박스서 접힘
-    el.querySelector('.sc-tg.down').onclick = () => askReason('down', c, el);
-    el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
-    el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
+  if (triage) {   // 신속 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 처리. PICK은 잔류(PICKED 비활성), down/pass는 접힘.
+    if (!st.picked) {
+      el.querySelector('.sc-tg.down').onclick = () => askReason('down', c, el);
+      el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
+      el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
+    }
   } else {   // 누적 = ★평점 + PICK 2단 확인게이지(기존)
     el.querySelectorAll('.sc-star').forEach(s => s.onclick = () => rateCard(c, +s.dataset.n));
     const _pk = el.querySelector('.sc-pick');
@@ -3062,7 +3071,11 @@ function applyTriage(act, c, el, reason, text) {
   if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '' }) }).catch(() => {});
   }
-  collapseCard(el);
+  if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 PICKED 비활성으로(다음 렌더 때 맨 아래로 정렬)
+    if (el) { el.classList.add('picked'); const rsn = el.querySelector('.sc-rsn'); if (rsn) rsn.remove(); const bot = el.querySelector('.sc-bot'); if (bot) bot.innerHTML = '<div class="sc-got" aria-label="픽 완료">PICKED</div>'; }
+  } else {
+    collapseCard(el);   // down/pass = 접혀 사라짐
+  }
 }
 function postRate(p) { fetch('api/rate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(p) }).catch(() => {}); }
 // ── 탭 전환 (피드 · 스크랩 · SNS) ── 기본=피드. FAB(제작도구)·X는 외부/팝업이라 여기서 안 다룸.
