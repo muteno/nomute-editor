@@ -83,32 +83,33 @@ const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 // 파일타입 색배지 색(카테고리 팔레트 계승: 테크 시안·경제 노랑·국제 보라·사회 초록)
 const FTYPE_COLOR = { '영상':'#7fc8d8', '음성':'#e7c977', 'SRT':'#b79be8', 'TXT':'#7fd0a0' };
-function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 중입니다…'
-  $('#fileTxt').textContent = msg || '업로드 중입니다…'; $('#fileLab').classList.remove('has'); $('#uprog').hidden = false;
+function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 중입니다…' + 생성버튼 잠금
+  $('#fileTxt').textContent = msg || '업로드 중입니다…'; $('#fileLab').classList.remove('has'); $('#uprog').hidden = false; $('#go').disabled = true;
 }
-function setBadge(type, name) {   // 업로드 완료 = 타입 색배지 + 파일명 ✓
-  $('#uprog').hidden = true;
+function setBadge(type, name) {   // 업로드 완료 = 타입 색배지 + 파일명 ✓ + 생성 잠금해제
+  $('#uprog').hidden = true; $('#go').disabled = false;
   $('#fileTxt').innerHTML = `<span class="ftype" style="color:${FTYPE_COLOR[type]}">${type}</span>${esc(name)} ✓`;
   $('#fileLab').classList.add('has');
 }
 
 let FILE_B64 = '', FILE_NAME = '', SRT_TEXT = '';   // SRT_TEXT = TXT/SRT 파일 텍스트(STT 건너뜀)
 const FILE_MAX = 20 * 1024 * 1024;     // 이하 = 직접 업로드 / 초과 = 브라우저서 음성만 추출
-const FILE_HARD = 400 * 1024 * 1024;   // 이 이상은 브라우저 추출도 거부(URL로)
+const FILE_HARD = 250 * 1024 * 1024;   // 이 이상 영상은 브라우저 추출도 거부(URL로) — 폰 wasm 힙(~1GB)서 OOM 위험이라 보수적
 
-function readB64(blob, name) {   // Blob/File → data URL(base64) 저장
+function readB64(blob, name) {   // Blob/File → data URL(base64) 저장. ⚠️ onerror 필수 — 없으면 리더 실패 시 Promise가 영영 settle 안 돼 await 행→#go 고착
   FILE_NAME = name;
-  return new Promise(res => { const r = new FileReader(); r.onload = () => { FILE_B64 = r.result; res(); }; r.readAsDataURL(blob); });
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => { FILE_B64 = r.result; res(); }; r.onerror = () => rej(r.error || new Error('파일 읽기 실패')); r.readAsDataURL(blob); });
 }
 function clearFile(msg, isErr) {
-  FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = ''; $('#file').value = ''; $('#uprog').hidden = true;
+  FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = ''; $('#file').value = ''; $('#uprog').hidden = true; $('#go').disabled = false;
   $('#fileTxt').textContent = '탭해서 파일 선택 (영상·음성·TXT·SRT)'; $('#fileLab').classList.remove('has');
   if (msg) { const st = $('#status'); st.textContent = msg; st.classList.toggle('err', !!isErr); }
 }
 
-// ffmpeg.wasm(싱글스레드) — 20MB↑ 영상에서 음성만 추출(압축). 첫 호출 시에만 CDN 로드. CSP/COEP 불필요.
-let FF = null;
+// ffmpeg.wasm(싱글스레드 코어 — ⚠️ -mt 금지: COEP 부재라 깨짐). 20MB↑ 영상에서 음성만 추출(압축). 첫 호출 시에만 CDN 로드. CSP/COEP 불필요.
+let FF = null, ffOnMsg = null;   // ffOnMsg = 현재 호출의 진행 콜백 — 리스너는 로드 시 1회만 등록(매 호출 등록 시 누적되던 것 방지)
 async function ffExtractAudio(file, onMsg) {
+  ffOnMsg = onMsg;
   if (!FF) {
     onMsg('🎧 ffmpeg 로딩 중… (첫 회 ~25MB · 잠시)');
     const ffBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
@@ -123,10 +124,10 @@ async function ffExtractAudio(file, onMsg) {
       coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
       wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
     });
+    ff.on('progress', ({ progress }) => ffOnMsg && ffOnMsg(`🎧 음성 추출 중… ${Math.max(0, Math.min(99, Math.round((progress || 0) * 100)))}%`));   // 1회만 등록·현재 onMsg로 위임
     FF = { ff, fetchFile };
   }
   const { ff, fetchFile } = FF;
-  ff.on('progress', ({ progress }) => onMsg(`🎧 음성 추출 중… ${Math.max(0, Math.min(99, Math.round((progress || 0) * 100)))}%`));
   const ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.mp4'])[0].toLowerCase();
   await ff.writeFile('in' + ext, await fetchFile(file));
   await ff.exec(['-i', 'in' + ext, '-vn', '-ac', '1', '-ar', '16000', '-b:a', '48k', '-y', 'out.mp3']);   // 모노 16k 48kbps mp3(Whisper용·작음)
@@ -139,38 +140,42 @@ $('#file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = '';   // 새 선택 = 이전 입력 초기화
   const st = $('#status'); st.classList.remove('err'); st.textContent = ''; $('#out').innerHTML = '';
-  setUploading();   // 게이지 + '업로드 중입니다…'
-  // TXT/SRT/VTT = 텍스트로 읽어 자막 입력(STT 건너뜀) + 아래 내용 출력
-  if (/\.(txt|srt|vtt)$/i.test(f.name) || /^text\//.test(f.type)) {
-    if (f.size > 2 * 1024 * 1024) { clearFile('텍스트 파일이 너무 큼(2MB↑)', true); return; }
-    const text = await f.text();
-    SRT_TEXT = text.trim(); FILE_NAME = f.name;
-    setBadge(/\.srt$/i.test(f.name) ? 'SRT' : 'TXT', f.name);
-    $('#out').innerHTML = '<h3>업로드 내용</h3><div class="code"><pre>' + esc(text) + '</pre></div>';
-    st.textContent = '✅ 텍스트(TXT/SRT) — 자막 생성 가능';
-    return;
-  }
-  const isVideo = /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|3gp)$/i.test(f.name);
-  if (!isVideo) {                                        // 오디오 = 그대로(이미 작음)
-    if (f.size > FILE_MAX) { clearFile(`오디오가 커 — ${(f.size / 1048576).toFixed(1)}MB (최대 20MB). URL로.`, true); return; }
-    await readB64(f, f.name); setBadge('음성', f.name); return;
-  }
-  if (f.size > FILE_HARD) { clearFile(`영상이 너무 큼 — ${(f.size / 1048576).toFixed(0)}MB (한계 ${Math.round(FILE_HARD / 1048576)}MB). URL로 시도해줘.`, true); return; }
-  // 영상 = 무조건 음성만 추출(길이·용량 무관)
-  setUploading('업로드 중입니다… (음성 추출)');
-  try {
-    const blob = await ffExtractAudio(f, m => { st.textContent = m; });
-    if (blob.size > FILE_MAX) { clearFile(`추출 음성도 커(${(blob.size / 1048576).toFixed(1)}MB) — URL로.`, true); return; }
-    await readB64(blob, f.name.replace(/\.[^.]+$/, '') + '.mp3');
-    setBadge('영상', f.name);
-    st.textContent = `✅ 음성 추출 완료 (${(blob.size / 1048576).toFixed(1)}MB) — 자막 생성 가능`;
-  } catch (err) {
-    if (f.size <= FILE_MAX) {                            // 추출 실패 + 작은 영상 → 그대로 업로드(러너가 추출)
-      await readB64(f, f.name); setBadge('영상', f.name);
-      st.textContent = '음성 추출 건너뜀 → 영상 그대로 업로드(러너가 추출).';
-    } else {
-      clearFile('음성 추출 실패 — 영상 URL로 시도해줘 (' + ((err && err.message) ? err.message.slice(0, 40) : 'error') + ')', true);
+  setUploading();   // 게이지 + '업로드 중입니다…' + #go 잠금
+  try {   // 바깥 try = f.text()·readB64 등 어떤 throw에도 #go·게이지 복구(잠금 고착 차단)
+    // TXT/SRT/VTT = 텍스트로 읽어 자막 입력(STT 건너뜀) + 아래 내용 출력
+    if (/\.(txt|srt|vtt)$/i.test(f.name) || /^text\//.test(f.type)) {
+      if (f.size > 2 * 1024 * 1024) { clearFile('텍스트 파일이 너무 큼(2MB↑)', true); return; }
+      const text = await f.text();
+      SRT_TEXT = text.trim(); FILE_NAME = f.name;
+      setBadge(/\.srt$/i.test(f.name) ? 'SRT' : 'TXT', f.name);
+      $('#out').innerHTML = '<h3>업로드 내용</h3><div class="code"><pre>' + esc(text) + '</pre></div>';
+      st.textContent = '✅ 텍스트(TXT/SRT) — 자막 생성 가능';
+      return;
     }
+    const isVideo = /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|3gp)$/i.test(f.name);
+    if (!isVideo) {                                        // 오디오 = 그대로(이미 작음)
+      if (f.size > FILE_MAX) { clearFile(`오디오가 커 — ${(f.size / 1048576).toFixed(1)}MB (최대 20MB). URL로.`, true); return; }
+      await readB64(f, f.name); setBadge('음성', f.name); return;
+    }
+    if (f.size > FILE_HARD) { clearFile(`영상이 너무 큼 — ${(f.size / 1048576).toFixed(0)}MB (한계 ${Math.round(FILE_HARD / 1048576)}MB). URL로 시도해줘.`, true); return; }
+    // 영상 = 무조건 음성만 추출(길이·용량 무관)
+    setUploading(f.size > 150 * 1048576 ? '업로드 중입니다… (큰 영상 — 폰서 실패 시 URL 권장)' : '업로드 중입니다… (음성 추출)');
+    try {
+      const blob = await ffExtractAudio(f, m => { st.textContent = m; });
+      if (blob.size > FILE_MAX) { clearFile(`추출 음성도 커(${(blob.size / 1048576).toFixed(1)}MB) — URL로.`, true); return; }
+      await readB64(blob, f.name.replace(/\.[^.]+$/, '') + '.mp3');
+      setBadge('영상', f.name);
+      st.textContent = `✅ 음성 추출 완료 (${(blob.size / 1048576).toFixed(1)}MB) — 자막 생성 가능`;
+    } catch (err) {
+      if (f.size <= FILE_MAX) {                            // 추출 실패 + 작은 영상 → 그대로 업로드(러너가 추출)
+        await readB64(f, f.name); setBadge('영상', f.name);
+        st.textContent = '음성 추출 건너뜀 → 영상 그대로 업로드(러너가 추출).';
+      } else {
+        clearFile('음성 추출 실패 — 영상 URL로 시도해줘 (' + ((err && err.message) ? err.message.slice(0, 160) : 'error') + ')', true);
+      }
+    }
+  } catch (err) {   // 파일 읽기 실패(f.text·FileReader 등) = 잠금·게이지 풀고 안내(고착 차단)
+    clearFile('파일 처리 실패 — 다시 선택해줘 (' + ((err && err.message) ? err.message.slice(0, 120) : 'error') + ')', true);
   }
 };
 
