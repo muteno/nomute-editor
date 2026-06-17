@@ -64,6 +64,9 @@
   .go:hover { transform:translateY(-1px); box-shadow:0 12px 30px rgba(15,253,2,.34), inset 0 1px 0 rgba(255,255,255,.45); }
   .go:active { transform:translateY(0); }
   .go:disabled { opacity:.5; cursor:default; box-shadow:none; transform:none; }
+  .chk { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
+  .chk input { width:18px; height:18px; accent-color:var(--accent); }
+  .chk .abbrhint { color:var(--mut); font-weight:400; font-size:11px; }
   .out { margin-top:18px; }
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
   .status.err { color:#ff8a8a; }
@@ -279,6 +282,7 @@
       <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
+    <label class="chk"><input type="checkbox" id="abbr" checked> 축약 <span class="abbrhint">이,→李, · 윤,→尹, · ⋯ · ·</span></label>
     <button class="go" id="go">이미지 제작</button>
   </div>
 
@@ -917,6 +921,8 @@ function jobLabel() {
 }
 // 제작 = 동시 가능. 누를 때마다 잡 생성 → 로그에 쌓고 각자 폴링(백엔드는 id별 동시처리 안전). #go 비활성 안 함.
 let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) — 큐잉 자체는 막지 않음
+// 축약 = 썸네일 정본 화이트리스트(apps/thumbnail 절대규칙5 · 화이트리스트 4종): ...→⋯ · •→· · 이,→李, · 윤,→尹,
+const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
 $('#go').onclick = async () => {
   if (_goLock) return; _goLock = true; setTimeout(() => { _goLock = false; }, 350);
   const status = $('#status'); status.classList.remove('err'); status.textContent = '';
@@ -924,11 +930,13 @@ $('#go').onclick = async () => {
   if (APP === '5') {   // 카드뉴스 = /api/compose
     if (!IMG.b64) { return errStatus('이미지를 선택해줘'); }
     if (edAnyOver()) { return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄'); }
-    const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
+    let clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
+    if ($('#abbr').checked) clines = clines.map(abbr);   // 축약(정본 화이트리스트)
     if (!clines.length) { return errStatus('텍스트를 입력해줘'); }
     endpoint = '/api/compose'; payload = { imageB64: IMG.b64, name: IMG.name, lines: clines };
   } else {            // /1·/2·/3·/4 = /api/thumb
     const params = buildParams();
+    if ($('#abbr').checked) { if (Array.isArray(params.lines)) params.lines = params.lines.map(abbr); if (typeof params.sub === 'string') params.sub = abbr(params.sub); if (typeof params.title === 'string') params.title = abbr(params.title); }   // 축약(정본 화이트리스트)
     if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { return errStatus('부제 또는 제목을 입력해줘'); }
     if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { return errStatus('텍스트를 입력해줘'); }
     if (APP === '4' && !params.lines.length) { return errStatus('경고문 텍스트를 입력해줘'); }
