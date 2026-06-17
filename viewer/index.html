@@ -2824,9 +2824,9 @@ function renderScrap() {
     if (key === 'new') {   // 신속 = 신선한 속보만. (breaking OR grade≥3) AND 발생 6h 내. 6h 지난 속보는 신속서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신.
       arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 6h 컷 = 모두 적용(breaking도). 오래된 속보가 신속 톱 차지·누적 중복하던 회귀 차단.
       arr.sort((a, b) => (pinFresh(b) - pinFresh(a)) || (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));   // 신선 속보만 핀 → 오래된 속보는 decay로 하강(톱 독차지 방지)
-    } else {   // 누적 = 9시뉴스감(좌측). cross≥5 AND 발생 6h↑(신속서 졸업 = 시간 지나 좌측으로). 신속(우측 <6h)과 시간 배타 — 최근 것은 누적에 안 들어감. 중요도(scScore = log2 cross × 후속신선 × 반복)순.
+    } else {   // 누적 = 9시뉴스감(좌측). cross≥5 AND 발생 6h↑(신속서 졸업 = 시간 지나 좌측으로). 신속(우측 <6h)과 시간 배타 — 최근 것은 누적에 안 들어감. 중요도(scScore = cross 볼록 × 시간 가속감점 × 연속보도 × AI경중)순.
       arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
-      arr.sort((a, b) => (pinB(b) - pinB(a)) || (scScore(b) - scScore(a)) || scTs(b) - scTs(a));
+      arr.sort((a, b) => (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 순수 scScore 순. ⚠️ 이슈 강제핀(pinB) 제거(260617): 오래된 breaking이 신선 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 신선 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·신속 pinFresh(신선속보 핀)는 별개 유지.
     }
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
