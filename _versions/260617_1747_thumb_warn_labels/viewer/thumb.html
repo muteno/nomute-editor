@@ -19,7 +19,8 @@
   .tab.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 0 16px rgba(15,253,2,.14); }
   .tab.on small { color:#bfeeb6; }
   .panel { background:linear-gradient(150deg, rgba(38,64,46,.42) 0%, rgba(14,26,18,.55) 58%, rgba(11,21,15,.62) 100%); backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:14px; box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.1); }
-  label { display:block; font-size:13px; color:var(--mut); margin:5px 0; }   /* 소제목 위아래 간격 통일 = 헤더('오버레이와 합성')와 동일(운영자 260617) */
+  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
+  label:first-of-type { margin-top:0; }
   input[type=text], input[type=number], textarea, select {
     width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit;
   }
@@ -152,7 +153,7 @@
 
     <!-- /1 배경 이미지 -->
     <div id="imgBox" class="none">
-      <label>이미지 삽입 시 오버레이와 합성</label>
+      <label style="margin:5px 0">이미지 삽입 시 오버레이와 합성</label>
       <label class="file" id="fileLab"><span>탭해서 이미지 선택</span>
         <input type="file" accept="image/*" id="file" style="display:none">
       </label>
@@ -177,13 +178,13 @@
 
     <!-- /4 경고문 — 프리셋 선택(법적 검토) + 직접입력. 선택 시 채워지고 수정 가능 -->
     <div id="warnBox" class="none">
-      <label>경고문 선택</label>
+      <label>경고문 선택 <span style="color:var(--mut);font-weight:400">(탭하면 채워짐 · 수정 가능 · 최대 2줄)</span></label>
       <div class="seg wseg" id="warnPreset">
-        <button type="button" data-wp="ai" class="on">AI 생성</button>
+        <button type="button" data-wp="ai">AI 생성</button>
         <button type="button" data-wp="caution" class="on">경고</button>
+        <button type="button" data-wp="custom">직접입력</button>
       </div>
-      <textarea id="warnLines">본 이미지는 생성형 AI로 제작·합성되었습니다.
-민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
+      <textarea id="warnLines">민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
       <div class="hint"><b>*별표*</b>로 강조 · 최대 2줄 · <b>AI 생성</b>=AI기본법 §31② 표시의무(나머지는 자율 안내)</div>
     </div>
 
@@ -206,7 +207,7 @@
 
       <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
       <div id="rOverlay" class="none">
-        <label>이미지 삽입 시 오버레이와 합성</label>
+        <label style="margin:5px 0">이미지 삽입 시 오버레이와 합성</label>
         <label class="file" id="rFileLab"><span>탭해서 이미지 선택</span>
           <input type="file" accept="image/*" id="rFile" style="display:none">
         </label>
@@ -354,19 +355,13 @@ document.querySelectorAll('#pseg button').forEach(b => b.onclick = () => {
 const WARN_PRESETS = {
   ai: '본 이미지는 생성형 AI로 제작·합성되었습니다.',
   caution: '민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.',
+  custom: '',
 };
-// 점등된 프리셋(AI·경고)을 순서대로 합성 → 제작은 이 텍스트(=점등분) 기준. 텍스트는 직접 수정 가능.
-function composeWarn() {
-  const lit = [...document.querySelectorAll('#warnPreset button.on')].map(b => b.dataset.wp);
-  $('#warnLines').value = ['ai', 'caution'].filter(k => lit.includes(k)).map(k => WARN_PRESETS[k]).join('\n');
-  $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼·자간 트래커 갱신
-}
-// 둘 다 기본 점등 · 멀티토글 · 마지막 1개는 못 끔(0 불가 — 다시 둘 다 켜기 가능).
 document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
-  const litN = document.querySelectorAll('#warnPreset button.on').length;
-  if (b.classList.contains('on') && litN === 1) return;   // 마지막 점등은 유지(0 방지)
-  b.classList.toggle('on');
-  composeWarn();
+  document.querySelectorAll('#warnPreset button').forEach(x => x.classList.toggle('on', x === b));
+  $('#warnLines').value = WARN_PRESETS[b.dataset.wp] || '';
+  $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼(복사/붙여넣기) 아이콘 갱신
+  if (b.dataset.wp === 'custom') $('#warnLines').focus();
 });
 
 // ---- 포맷 세그 ----
