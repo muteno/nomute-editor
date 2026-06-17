@@ -1,171 +1,176 @@
-# 범인을 잡아도, 고통은 조회수만큼 되살아난다
+# 범인을 잡아도, 조회수만큼 되살아나는 고통
 
 ### [카드 1]
 **텍스트**
 ```text
 범인을 잡아도
 고통은 끝나지 않는다
-지워도 되살아나니까
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: tight close-up from a high angle looking down, shot on a 100mm macro lens.
+Lighting/mood: cold dim interior lit only by a single screen's blue-white glow, a single hard light source with no fill, heavy suffocating stillness, deep surrounding darkness.
+Scene: On a dark desk surface filling the frame, a single smartphone lies face-up in the upper-center, its screen glowing cold blue-white like a cold eye opening in the dark. A neon-green #0FFD02 number — a view counter — glows on the screen and climbs upward without end. Faint trails of cold light bleed from the screen into the surrounding blackness, hinting at something that keeps spreading on its own. No readable text or imagery on the screen, only abstract glow. The phone and its glow anchor the upper and central area; the lower third dissolves into deep shadow.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the glowing phone screen) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium shot from eye-level, shot on 50mm standard lens. No people, indirect imagery only.
-Lighting/mood: cold blue-white screen glow 6500K from below, dim suffocating interior, deep shadows around, faint trembling tension.
-Scene: a single dark phone screen held upright in a dim room, one small video thumbnail at the center silently splitting and multiplying into an endless cascade of identical glowing rectangles climbing toward the top — no faces, no figures, only the cold proliferating light of replicated files.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated base with a single color accent (neon green #0FFD02 carried by the multiplying thumbnails), film-noir low-key lighting, deep shadows.
+Composition: ONE continuous surface (the dark desk surface) extending edge to edge from top to bottom of the frame. The main subject (the glowing phone) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
+지워도 조회수만큼 되살아났다
 하루에도 수십, 수백 번
-어디서 어떻게인지도
-모른 채 당했다
+어디서 당하는지도 몰랐다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: wide shot from a worm's-eye view near the ground looking steeply up, shot on a 14mm ultra-wide lens.
+Lighting/mood: cold dim interior, sickly cold-blue glints with no warm fill, oppressive and overwhelming, deep shadow at the base.
+Scene: Looking up at one vast, continuous dark wall that towers over the viewer and fills the entire frame. Across the wall, countless tiny cold-blue glints of light are scattered like an infestation that keeps spreading — too many to count, pressing in from every direction. Among them, a scatter of neon-green #0FFD02 points pulse, marking a number that never stops rising. The dense field of cold light gathers toward the upper-center and dominates the top of the frame; the base of the wall sinks into shadow. The feeling is of being surrounded and outnumbered by something that multiplies by itself.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the screen-covered dark wall) extending edge to edge from top to bottom of the frame. The focal mass is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: extreme long shot from a bird's-eye overhead angle, shot on 14mm ultra-wide lens. No people, indirect imagery only.
-Lighting/mood: cold blue pre-dawn tone, lone overwhelming screen-light from countless rectangles, desolate stillness, no warm fill.
-Scene: an overhead view of one tiny empty chair in a vast dark room entirely walled and floored by hundreds of identical cold-glowing screens pressing in from every side, the lone seat dwarfed and exposed — scale of helplessness, no figure present, no face anywhere.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated base with a single color accent (one screen glowing neon green #0FFD02 amid the cold blue), film-noir low-key lighting, deep shadows.
+Composition: ONE continuous surface (the towering dark wall) extending edge to edge from top to bottom of the frame. The main subject (the swarming field of cold light) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
 영상엔 이름과 번호까지
-"사회적으로 매장됐다"
-이름도 번호도 바꿨다
+고스란히 담겨 있었다
+"사회적으로 매장됐어요"
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: extreme close-up from a bird's-eye top-down view, shot on a 100mm macro lens.
+Lighting/mood: cold dim light, a single cold glow seeping from one edge, somber and isolating, deep shadow creeping inward.
+Scene: Top-down view of one continuous dark tabletop filling the entire frame. In the upper-center lies a single personal ID card, half-swallowed by creeping shadow as if it is being buried alive. Where a name and phone number would be, there are only blurred, redacted bars — no legible letters at all. A cold neon-green #0FFD02 notification glow seeps across the card from one edge, as if unseen strangers are reaching it. Thin broken lines, like severed connections, trail off into the dark around the card. The mood is exposure and social burial — a life sealed off from everyone. The card anchors the upper and central area; the foreground tabletop fades to deep shadow.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desktop) extending edge to edge from top to bottom of the frame. The main object is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: extreme close-up from a high angle looking down, shot on 100mm macro lens. No people, indirect imagery only.
-Lighting/mood: cold dim interior light, heavy and suffocating, single hard side-light raking across the texture, deep shadows.
-Scene: a worn paper name-tag and a half-torn personal ID card lying face-up on a dark desk, their printed fields deliberately smudged into illegible grey blurs, slowly being buried under drifting grey ash and dust — the identity smothered, no readable letters, no face, no figure.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated base with a single color accent (a faint neon green #0FFD02 glow seeping from the smudged data field), film-noir low-key lighting, deep shadows.
+Composition: ONE continuous surface (the dark tabletop) extending edge to edge from top to bottom of the frame. The main subject (the half-buried ID card) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-하나였던 영상은
-순식간에 수백 개로
-지워도 또 남는다
+하나였던 영상은 갑자기
+수백 개로 불어났다
+지워도 그 자체가 또 남았다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: extreme long shot from a high angle looking down, shot on a 20mm wide lens.
+Lighting/mood: cold dim light, scattered cold-blue light points with no warm fill, a futile and relentless mood, shadow swallowing the edges.
+Scene: High-angle view over one continuous dark floor-like surface that fills the entire frame. In the upper-center, a single shard of cold-blue light has shattered and scattered into many smaller embers of light spreading outward across the surface, multiplying as they travel — what was one has become countless and uncountable. A faint neon-green #0FFD02 delete-mark, a thin powerless X, hovers over the largest shard while the embers keep spreading past it, unstoppable. No readable text anywhere. The spreading light gathers in the upper and central area; the lower portion dissolves into shadow.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark screen) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium close-up from a Dutch tilted angle, shot on 70mm short telephoto lens. No people, indirect imagery only.
-Lighting/mood: cold dim interior light, unstable canted mood, deep chiaroscuro shadows, faint flickering tension.
-Scene: a single file icon at center marked with a glowing X as if just deleted, yet from the spot where it vanished dozens of identical copies instantly bloom outward and upward across the tilted dark screen — an unkillable spreading swarm, no people, no faces, no readable text.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated base with a single color accent (the regenerating copies edged in neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Composition: ONE continuous surface (the dark floor-like surface) extending edge to edge from top to bottom of the frame. The main subject (the shattering, multiplying light) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing as layout
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-"해외 서버라
-삭제할 수 없다"
-국가도 요청만 할 뿐
-강제하지 못한다
+"해외 서버라 못 지웁니다"
+국가조차 운영자에게
+요청할 뿐, 강제하지 못했다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: wide shot from a low angle looking up, shot on a 24mm wide lens.
+Lighting/mood: cold dim light with sickly green status-lights, bureaucratic and indifferent cold, an impassable barrier mood, shadow pooling at the base.
+Scene: Low-angle view looking up at one vast, continuous wall that towers over the viewer and fills the entire frame — a cold barrier of dark server racks studded with endless rows of tiny neon-green #0FFD02 status lights, impassable and indifferent. At the foot of the wall, a single official-looking document — a request, its writing only suggested as a few faint illegible strokes, no real letters — is pinned flat against the base, unable to pass beyond it, the reach of the state stopping dead at the wall. The towering barrier dominates the upper and central frame; its base sinks into deep shadow. The feeling is institutional powerlessness before an unreachable wall.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the cold floor of a vast server hall) extending edge to edge from top to bottom of the frame. The towering structures rise from this same surface, anchored upper-center. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: wide shot from a worm's-eye ground-level angle looking up, shot on 16mm wide lens. No people, indirect imagery only.
-Lighting/mood: cold blue pre-dawn tone, sickly machine light, oppressive scale, deep shadows, no warm fill.
-Scene: looking steeply up from the floor at colossal black server towers receding beyond reach, a single small red request-light blinking helplessly at their base while a heavy shutter overhead seals the way up — the state powerless before an unreachable foreign wall, no people, no faces, no readable text.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated base with a single color accent (one unanswered request light glowing neon green #0FFD02 against the cold towers), film-noir low-key lighting, deep shadows.
+Composition: ONE continuous surface (the towering server-rack wall) extending edge to edge from top to bottom of the frame. The main subject (the impassable wall) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
 가해자를 검거한 다음 날
-도착한 건
-피해자의 부고였다
+한 수사관에게 도착한 건
+피해자의 부고 문자였다
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+monochrome desaturated base with a single warm amber accent (the story's memorial color, a candle flame), film-noir low-key lighting, deep shadows.
+Camera: close-up from eye-level, shot on an 85mm portrait lens.
+Lighting/mood: warm candlelight glow against a soft dark background, solemn and tender, quiet grief, the single flame the only light.
+Scene: Eye-level close-up across one continuous dark tabletop filling the entire frame. In the upper-center, a single smartphone rests face-up, its screen dimmed to a faint, sorrowful glow — no readable message, only soft sorrowful light. Beside it lie one white chrysanthemum and a single lit candle, its small warm amber flame the only point of color in the desaturated dark. The candlelight falls gently across the flower and the phone. The quiet arrangement anchors the upper and central area; the foreground tabletop fades to deep shadow. The mood is hushed mourning — a life remembered, the news arriving too late.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the tabletop) extending edge to edge from top to bottom of the frame. The main objects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: close-up from eye-level, shot on 85mm portrait lens. No people, indirect imagery only — quiet memorial still life.
-Lighting/mood: warm candlelight glow against a soft dark background, solemn and tender, gentle falloff, deep shadows.
-Scene: a single white chrysanthemum laid beside a dark, powered-off phone on a quiet table, one small candle flame trembling nearby — only the trace of a life remembered, no figure, no face, no method, no readable text, only stillness and grief.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated base with a single color accent (a faint dimming neon green #0FFD02 reflection fading on the dark screen), film-noir low-key lighting, deep shadows.
+Composition: ONE continuous surface (the dark tabletop) extending edge to edge from top to bottom of the frame. The main subject (the candle, chrysanthemum, and dimmed phone) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
 
 ### [카드 7]
 **텍스트**
 ```text
-잡는 일과 지키는 일은
-같은 무게여야 한다
-"나는 잘 살아있으니
-당신들도 힘내요"
+처벌만큼 삭제와 지원이
+*같은 무게가* 되어야 한다
+그래도 한 피해자는 말했다
+"나는 잘 살아있어요"
 ```
 **이미지 프롬프트**
 ```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
+desaturated base easing into warm light, with a single living green #0FFD02 accent (a small sprout signifying survival), soft low-key lighting opening toward dawn.
+Camera: medium shot from a low angle looking up toward the light, shot on a 35mm lens.
+Lighting/mood: warm golden dawn light breaking into the dark, the first soft amber warmth after a long night, nostalgic and quietly hopeful.
+Scene: Low-angle view inside one continuous dim room, looking up toward a window in the upper-center where the first warm light of dawn breaks through, washing the desaturated darkness with soft amber. On the windowsill, catching the new light, a single small green #0FFD02 sprout pushes upward — fragile but alive, the one living point of color in the frame. The dark room eases toward the light above; the lower portion remains in shadow giving way to warmth. The mood is quiet survival and the first hope after a long night — a life that endures.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the floor by a window) extending edge to edge from top to bottom of the frame. The main object is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: wide shot from a low angle looking gently up toward the light, shot on 35mm lens. No people, indirect imagery only.
-Lighting/mood: warm golden-hour sunlight pouring through a window, long soft shadows, quiet hopeful warmth emerging from earlier darkness.
-Scene: morning light streaming through a tall window onto a bare floor where a single small green sprout pushes up through a crack toward the sun — survival and quiet resolve, no people, no faces, no readable text, the dark room finally letting in light.
-Style: korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents softened toward warmth, heavy atmosphere lifting. Monochrome desaturated base with a single color accent (the living sprout glowing neon green #0FFD02 in the sunlight), film-noir low-key lighting easing into warm light, soft shadows.
+Composition: ONE continuous surface (the dim room wall with its window) extending edge to edge from top to bottom of the frame. The main subject (the dawn-lit window and the green sprout) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no duplicate framing
-- no letterbox, no black bands at top or bottom, no padding, no UI overlay rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin, no painted picture frame, no matted edge
-- no main subject in the lower portion, no key element in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max); no human figures, no people, only objects and traces
 ```
