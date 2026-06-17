@@ -111,11 +111,18 @@ let FF = null;
 async function ffExtractAudio(file, onMsg) {
   if (!FF) {
     onMsg('🎧 ffmpeg 로딩 중… (첫 회 ~25MB · 잠시)');
-    const { FFmpeg } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
+    const ffBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';   // 모듈 워커는 importScripts 불가 → import() → ESM 코어 필요(UMD✗)
+    const { FFmpeg } = await import(`${ffBase}/index.js`);
     const { fetchFile, toBlobURL } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js');
     const ff = new FFmpeg();
-    const core = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
-    await ff.load({ coreURL: await toBlobURL(`${core}/ffmpeg-core.js`, 'text/javascript'), wasmURL: await toBlobURL(`${core}/ffmpeg-core.wasm`, 'application/wasm') });
+    // 교차출처(CDN) Worker 생성은 브라우저가 차단 → 같은-출처 blob 워커가 CDN worker.js를 import(그 안 상대 import는 CDN 기준 해석). classWorkerURL 미지정이 'Failed to construct Worker' 원인이었음.
+    const classWorkerURL = URL.createObjectURL(new Blob([`import ${JSON.stringify(ffBase + '/worker.js')};`], { type: 'text/javascript' }));
+    await ff.load({
+      classWorkerURL,
+      coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
     FF = { ff, fetchFile };
   }
   const { ff, fetchFile } = FF;
