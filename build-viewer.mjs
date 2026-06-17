@@ -128,6 +128,36 @@ articles.sort((a, b) => (a.file < b.file ? 1 : a.file > b.file ? -1 : 0));
 writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString(), count: articles.length, articles }, null, 2));
 console.log(`viewer/articles.json 생성 — ${articles.length}건`);
 
+// ── ⚠ 픽 분석 실패 목록: pending/failed/*.txt(+.log) → viewer/picks-failed.json ──
+// 수집함서 '분석 실패 · 다시'(전문 붙여넣기) 표시 + 속보급 알림용. fetch 막는 매체(chosun 등)로
+// 분석 실패한 픽이 'PICKED'로 남아 피드에 안 뜨는 걸 정직하게 알린다.
+// 이미 queue 에 든(=피드에 뜬·복구된) url 은 제외 → 실패 표시 자동 소거.
+const PF_OUT = 'viewer/picks-failed.json';
+const normUrl = u => String(u || '').trim().replace(/\/+$/, '');   // 끝슬래시만 제거(쿼리=ID인 매체 보호 위해 쿼리는 보존)
+const queuedUrls = new Set(articles.map(a => normUrl(a.url)).filter(Boolean));
+const picksFailed = [];
+try {
+  const fdir = 'pending/failed';
+  for (const f of readdirSync(fdir).filter(n => n.endsWith('.txt'))) {
+    let url = '';
+    try { url = (readFileSync(join(fdir, f), 'utf8').split('\n')[0] || '').trim(); } catch { /* 못 읽음 */ }
+    if (!/^https?:\/\//.test(url)) continue;
+    if (queuedUrls.has(normUrl(url))) continue;   // 이미 분석돼 피드에 있음(복구됨) → 제외
+    let reason = '';
+    try {
+      const log = readFileSync(join(fdir, f.replace(/\.txt$/, '.log')), 'utf8');
+      const m = log.match(/ANALYSIS_FAILED:\s*([^\n]+)/);
+      reason = (m ? m[1] : '').trim().slice(0, 160);
+    } catch { /* 로그 없음 */ }
+    picksFailed.push({ url, reason, ts: f.slice(0, 13) });   // ts = YYMMDD-HHMMSS 접두
+  }
+} catch { /* pending/failed 없음 */ }
+// 같은 url 중복 제거(ts 최신 우선)
+const pfDedup = []; const pfKeys = new Set();
+for (const p of picksFailed.sort((a, b) => (a.ts < b.ts ? 1 : -1))) { if (pfKeys.has(normUrl(p.url))) continue; pfKeys.add(normUrl(p.url)); pfDedup.push(p); }
+writeFileSync(PF_OUT, JSON.stringify(pfDedup, null, 2));
+console.log(`viewer/picks-failed.json 생성 — ${pfDedup.length}건`);
+
 // ── 알림·메시지: messages/*.md|json → viewer/messages.json (최신순 [{id, ts, text}]) ──
 // 저장은 git 누적(messages/ 에 파일로 쌓임). 비어 있으면 [] 로 둔다(뷰어가 조용히 배지·테두리 숨김).
 // .md = 프론트매터 text/ts/id(없으면 본문 전체가 text) · .json = {id,ts,text} 또는 그 배열.

@@ -19,8 +19,7 @@
   .tab.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 0 16px rgba(15,253,2,.14); }
   .tab.on small { color:#bfeeb6; }
   .panel { background:linear-gradient(150deg, rgba(38,64,46,.42) 0%, rgba(14,26,18,.55) 58%, rgba(11,21,15,.62) 100%); backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:14px; box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.1); }
-  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
-  label:first-of-type { margin-top:0; }
+  label { display:block; font-size:13px; color:var(--mut); margin:5px 0; }   /* 소제목 위아래 간격 통일 = 헤더('오버레이와 합성')와 동일(운영자 260617) */
   input[type=text], input[type=number], textarea, select {
     width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit;
   }
@@ -34,6 +33,7 @@
   .seg { display:flex; gap:6px; }
   .seg button { flex:1; padding:8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--fg); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); transition:border-color .15s, background .15s; }
   .seg button.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1); }
+  .seg button.fixed { cursor:default; }   /* 60·30 = 항상 출력(고정 표시) — 누름 동작 없음 */
   /* 직접입력 = 버튼 자체가 입력창 (선택 시 라벨 숨고 안에 커서) */
   #rOpaCustom, #opaCustom { padding:0; overflow:hidden; }
   #rOpaCustom .lab, #opaCustom .lab { display:block; padding:8px 2px; }
@@ -54,7 +54,12 @@
   .trk.over { color:#ff7a7a; }
   .file { display:block; padding:12px; border:1px dashed rgba(15,253,2,.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
-  .file img { max-width:100%; max-height:200px; border-radius:7px; margin-top:8px; }
+  /* 미리보기 = 4:5 컴팩트(업로드 보통 1080×1350) · 파일명은 칸 안 차지 말고 우하단 50% 반투명 오버레이(우측정렬) */
+  .fileprev { position:relative; display:inline-block; margin-top:8px; max-width:100%; }
+  .fileprev img { display:block; aspect-ratio:4/5; height:230px; max-width:100%; width:auto; object-fit:cover; border-radius:7px; }
+  .fileprev .fn { position:absolute; right:0; bottom:0; max-width:100%; box-sizing:border-box; margin:0;
+    background:rgba(0,0,0,.5); color:#fff; font-size:10.5px; line-height:1.3; padding:3px 8px; border-radius:7px 0 7px 0;
+    text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
   .go { width:100%; margin-top:16px; padding:13px; background:linear-gradient(135deg,#d8ff3d,var(--accent)); color:var(--on-accent); border:none; border-radius:11px; font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 24px rgba(15,253,2,.26), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s, box-shadow .15s; }
   .go:hover { transform:translateY(-1px); box-shadow:0 12px 30px rgba(15,253,2,.34), inset 0 1px 0 rgba(255,255,255,.45); }
   .go:active { transform:translateY(0); }
@@ -62,6 +67,32 @@
   .out { margin-top:18px; }
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
   .status.err { color:#ff8a8a; }
+  /* 대기열/로그 — 제작 건별 행(동시 처리) */
+  .jobs { display:flex; flex-direction:column; gap:6px; margin:10px 0 0; }
+  .job { display:flex; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:9px; background:rgba(8,15,11,.34); border:1px solid var(--line); }
+  .job .jlab { font-weight:800; color:var(--accent); }
+  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; }
+  .job.done .jst { color:var(--accent); }
+  .job.err { border-color:rgba(255,90,90,.4); } .job.err .jst { color:#ff9b9b; }
+  /* 완성 이미지 캐러셀 — 뷰어 카드 피드(.feedtrack) 계승: 스크롤 스냅 + 글래스 화살표 */
+  .carwrap { margin-top:14px; }
+  .cartrackwrap { position:relative; }
+  .cartrack { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:none; border-radius:10px; }
+  .cartrack::-webkit-scrollbar { display:none; }
+  .carslide { flex:0 0 100%; scroll-snap-align:center; scroll-snap-stop:always; position:relative; }
+  .carslide img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
+  .carslide .cap { position:absolute; left:8px; top:8px; background:rgba(0,0,0,.5); color:#fff; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  .carnav { position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; display:grid; place-items:center; border-radius:50%; cursor:pointer;
+    background:rgba(12,16,14,.5); color:#fff; border:1px solid rgba(255,255,255,.18); font-size:22px; line-height:1; padding-bottom:3px;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); opacity:.85; transition:opacity .15s, transform .1s; }
+  .carnav:hover { opacity:1; } .carnav:active { transform:translateY(-50%) scale(.9); }
+  .carnav.prev { left:8px; } .carnav.next { right:8px; }
+  .carnav:disabled { opacity:0; pointer-events:none; }
+  .carbar { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .carcount { font-size:11.5px; color:var(--mut); }
+  .saveall { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font:inherit; font-size:12px; font-weight:700; cursor:pointer;
+    color:var(--accent); background:var(--accent-dim, rgba(15,253,2,.13)); border:1px solid rgba(15,253,2,.35); border-radius:999px; padding:6px 13px; }
+  .saveall:active { transform:scale(.96); } .saveall svg { display:block; }
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
   .slot { margin-bottom:14px; }
   .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
@@ -153,7 +184,7 @@
 
     <!-- /1 배경 이미지 -->
     <div id="imgBox" class="none">
-      <label style="margin:5px 0">이미지 삽입 시 오버레이와 합성</label>
+      <label>이미지 삽입 시 오버레이와 합성</label>
       <label class="file" id="fileLab"><span>탭해서 이미지 선택</span>
         <input type="file" accept="image/*" id="file" style="display:none">
       </label>
@@ -178,13 +209,13 @@
 
     <!-- /4 경고문 — 프리셋 선택(법적 검토) + 직접입력. 선택 시 채워지고 수정 가능 -->
     <div id="warnBox" class="none">
-      <label>경고문 선택 <span style="color:var(--mut);font-weight:400">(탭하면 채워짐 · 수정 가능 · 최대 2줄)</span></label>
+      <label>경고문 선택</label>
       <div class="seg wseg" id="warnPreset">
-        <button type="button" data-wp="ai">AI 생성</button>
+        <button type="button" data-wp="ai" class="on">AI 생성</button>
         <button type="button" data-wp="caution" class="on">경고</button>
-        <button type="button" data-wp="custom">직접입력</button>
       </div>
-      <textarea id="warnLines">민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
+      <textarea id="warnLines">본 이미지는 생성형 AI로 제작·합성되었습니다.
+민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
       <div class="hint"><b>*별표*</b>로 강조 · 최대 2줄 · <b>AI 생성</b>=AI기본법 §31② 표시의무(나머지는 자율 안내)</div>
     </div>
 
@@ -207,14 +238,14 @@
 
       <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
       <div id="rOverlay" class="none">
-        <label style="margin:5px 0">이미지 삽입 시 오버레이와 합성</label>
+        <label>이미지 삽입 시 오버레이와 합성</label>
         <label class="file" id="rFileLab"><span>탭해서 이미지 선택</span>
           <input type="file" accept="image/*" id="rFile" style="display:none">
         </label>
         <label>투명도 (OPA)</label>
         <div class="seg" id="rOpaSeg">
-          <button data-opa="60" class="on">60 (기본)</button>
-          <button data-opa="30">30</button>
+          <button data-opa="60" class="on fixed" tabindex="-1">60</button>
+          <button data-opa="30" class="on fixed" tabindex="-1">30</button>
           <button data-opa="custom" id="rOpaCustom"><span class="lab">직접입력</span><input type="text" id="rOpaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
         </div>
         <label>텍스트 (줄바꿈 = 여러 줄)</label>
@@ -253,7 +284,17 @@
 
   <div class="out">
     <div class="status" id="status"></div>
-    <div class="result" id="result"></div>
+    <!-- 대기열/로그 — 제작 버튼 누른 게 다 여기 쌓이고 각자 상태 표시(동시 가능) -->
+    <div class="jobs" id="jobs"></div>
+    <!-- 완성 이미지 = 캐러셀(나온 순서대로 한 장씩 추가) -->
+    <div class="carwrap" id="carwrap" hidden>
+      <div class="cartrackwrap">
+        <div class="cartrack" id="cartrack"></div>
+        <button class="carnav prev" id="carPrev" type="button" aria-label="이전">‹</button>
+        <button class="carnav next" id="carNext" type="button" aria-label="다음">›</button>
+      </div>
+      <div class="carbar"><span class="carcount" id="carcount"></span><button class="saveall" id="carSaveAll" type="button"></button></div>
+    </div>
   </div>
 </div>
 
@@ -355,13 +396,19 @@ document.querySelectorAll('#pseg button').forEach(b => b.onclick = () => {
 const WARN_PRESETS = {
   ai: '본 이미지는 생성형 AI로 제작·합성되었습니다.',
   caution: '민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.',
-  custom: '',
 };
+// 점등된 프리셋(AI·경고)을 순서대로 합성 → 제작은 이 텍스트(=점등분) 기준. 텍스트는 직접 수정 가능.
+function composeWarn() {
+  const lit = [...document.querySelectorAll('#warnPreset button.on')].map(b => b.dataset.wp);
+  $('#warnLines').value = ['ai', 'caution'].filter(k => lit.includes(k)).map(k => WARN_PRESETS[k]).join('\n');
+  $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼·자간 트래커 갱신
+}
+// 둘 다 기본 점등 · 멀티토글 · 마지막 1개는 못 끔(0 불가 — 다시 둘 다 켜기 가능).
 document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#warnPreset button').forEach(x => x.classList.toggle('on', x === b));
-  $('#warnLines').value = WARN_PRESETS[b.dataset.wp] || '';
-  $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼(복사/붙여넣기) 아이콘 갱신
-  if (b.dataset.wp === 'custom') $('#warnLines').focus();
+  const litN = document.querySelectorAll('#warnPreset button.on').length;
+  if (b.classList.contains('on') && litN === 1) return;   // 마지막 점등은 유지(0 방지)
+  b.classList.toggle('on');
+  composeWarn();
 });
 
 // ---- 포맷 세그 ----
@@ -398,11 +445,12 @@ function selRmode(m) {
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
 
-// ---- 릴스 오버레이 OPA 세그 (60 기본 / 30 / 직접입력 = 버튼 안 입력창) ----
+// ---- 릴스 오버레이 OPA 세그 (60·30 항상 렌더=고정 표시 / 직접입력=추가 opa(+1) 토글) ----
 const rOpaNum = $('#rOpaNum');
 document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('#rOpaSeg button').forEach(x => x.classList.toggle('on', x === b));
-  if (b.dataset.opa === 'custom') { rOpaNum.focus(); rOpaNum.select(); }   // 누른 그 순간 버튼 안에 커서 활성
+  if (b.dataset.opa !== 'custom') return;   // 60·30 = 항상 출력(둘 다 기본 선택·고정) → 클릭 무반응
+  b.classList.toggle('on');                 // 직접입력 = 추가 opa(+1) 켜기/끄기
+  if (b.classList.contains('on')) { rOpaNum.focus(); rOpaNum.select(); }   // 켤 때 버튼 안 커서 활성
 });
 rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 차면 바로 포커스 아웃(키보드 내려감)
   let v = rOpaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
@@ -410,9 +458,9 @@ rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 
   rOpaNum.value = v;
   if (v.length >= 2) rOpaNum.blur();
 });
-function getReelsExtraOpa() {   // 직접입력 + 값 있을 때만 추가 opa(+1). 빈 값/비선택이면 null (기본 60·30만)
-  const sel = document.querySelector('#rOpaSeg .on');
-  if (!sel || sel.dataset.opa !== 'custom') return null;
+function getReelsExtraOpa() {   // 직접입력 토글 ON + 값 있을 때만 추가 opa(+1). 60·30은 항상 출력(고정).
+  const c = $('#rOpaCustom');
+  if (!c || !c.classList.contains('on')) return null;
   const n = parseInt(rOpaNum.value, 10);
   return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
 }
@@ -425,7 +473,7 @@ function bindFile(inp, lab, store) {
     const r = new FileReader();
     r.onload = () => {
       store.b64 = r.result;
-      lab.innerHTML = '<span>' + f.name + ' ✓</span><img src="' + r.result + '">' +
+      lab.innerHTML = '<div class="fileprev"><img src="' + r.result + '"><span class="fn">' + f.name + '</span></div>' +
         '<input type="file" accept="image/*" style="display:none">';
       lab.classList.add('has');
       lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
@@ -481,43 +529,41 @@ function buildParams() {
   if (APP === '3') return { fmt: FMT, year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: getPlatform() };
 }
 
-// ---- 폴링 (N장: 각 슬롯 독립 로드) ----
-function pollMany(outs) {
-  const result = $('#result'), status = $('#status');
-  if (!outs.length) { status.textContent = '출력 경로 없음'; status.classList.add('err'); return; }
-  result.innerHTML = (outs.length >= 2 ? '<div class="result-top" id="resultTop"></div>' : '') + outs.map((o, i) =>
-    '<div class="slot" data-i="' + i + '">' +
-    (o.label ? '<div class="slot-lab">' + o.label + '</div>' : '') +
-    '<div class="slot-img"><span class="slot-wait">⏳ 대기…</span></div></div>').join('');
-  const t0 = Date.now();
-  const done = outs.map(() => false);
+// ==== 대기열(JOBS) + 캐러셀 — 제작 동시 가능: 누른 게 다 로그에 쌓이고 각자 폴링, 완성분은 캐러셀에 한 장씩 ====
+const JOBS = [];           // 제작 건 누적
+let JOBSEQ = 0;
+const CARSLIDES = [];      // 완성 이미지(캐러셀 슬라이드)
+
+function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이 위)
+  let row = document.getElementById('job-' + job.n);
+  if (!row) { row = document.createElement('div'); row.id = 'job-' + job.n; row.className = 'job'; $('#jobs').prepend(row); }
+  row.className = 'job' + (job.status === 'done' ? ' done' : '') + (job.status === 'err' ? ' err' : '');
+  const sec = Math.round((Date.now() - job.t0) / 1000);
+  const tot = job.outs.length || '?';
+  const dn = job.done.filter(Boolean).length;
+  let st;
+  if (job.status === 'err') st = '⚠ ' + (job.msg || '실패');
+  else if (job.status === 'done') st = '✅ 완료 · ' + tot + '장 (' + sec + 's)';
+  else st = '⏳ 제작 중 ' + sec + 's · ' + dn + '/' + tot + '장';
+  row.innerHTML = '';
+  const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + ' #' + job.n;
+  const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
+  row.append(lab, stsp);
+}
+function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐러셀에 추가. 600s 타임아웃.
   const tick = () => {
-    const sec = Math.round((Date.now() - t0) / 1000);
-    if (done.every(Boolean)) {
-      status.textContent = '✅ 완료 (' + sec + 's) · ' + outs.length + '장';
-      const top = $('#resultTop');   // Save All = 개별 ↓ 유지 + 전체 일괄 저장(2장 이상)
-      if (top && !top.querySelector('.saveall')) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'saveall';
-        b.innerHTML = DOWNLOAD_SVG + '<span>Save All</span>';
-        b.onclick = () => outs.forEach((o, i) => setTimeout(() => {
-          const a = document.createElement('a'); a.href = o.path + '?t=' + Date.now();
-          a.download = o.path.split('/').pop() || ('nomute_' + (i + 1) + '.png');
-          document.body.appendChild(a); a.click(); a.remove();
-        }, i * 350));
-        top.appendChild(b);
-      }
-      return;
-    }
-    if (sec > 600) { status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); return; }
-    status.textContent = '⏳ 제작 중… ' + sec + 's (' + done.filter(Boolean).length + '/' + outs.length + '장 · 보통 1–2분)';
-    outs.forEach((o, i) => {
-      if (done[i]) return;
-      const img = new Image();
+    if (job.done.every(Boolean)) { job.status = 'done'; renderJob(job); return; }
+    if (Math.round((Date.now() - job.t0) / 1000) > 600) { job.status = 'err'; job.msg = '시간 초과'; renderJob(job); return; }
+    renderJob(job);
+    job.outs.forEach((o, i) => {
+      if (job.done[i]) return;
       const url = o.path + '?t=' + Date.now();
+      const img = new Image();
       img.onload = () => {
-        done[i] = true;
-        const slot = result.querySelector('.slot[data-i="' + i + '"] .slot-img');
-        if (slot) slot.innerHTML = '<a class="imgdl" href="' + url + '" download="' + (o.path.split('/').pop() || 'nomute.png') + '" aria-label="다운로드">' + DOWNLOAD_SVG + '</a><img src="' + url + '">';
+        if (job.done[i]) return; job.done[i] = true;
+        carAppend(url, o.path.split('/').pop() || ('nomute_' + job.n + '.png'), job.label + ' #' + job.n + (job.outs.length > 1 ? (' · ' + (o.label || (i + 1))) : ''));
+        if (job.done.every(Boolean)) job.status = 'done';   // 마지막 장 로드 즉시 완료 표시(5s tick 안 기다림)
+        renderJob(job);
       };
       img.src = url;   // 아직 없으면 무시 → 다음 tick 재시도
     });
@@ -525,6 +571,31 @@ function pollMany(outs) {
   };
   tick();
 }
+function carAppend(url, dlname, cap) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서)
+  CARSLIDES.push({ url, dlname });
+  $('#carwrap').hidden = false;
+  const track = $('#cartrack');
+  const slide = document.createElement('div'); slide.className = 'carslide';
+  slide.innerHTML = '<a class="imgdl" href="' + url + '" download="' + dlname + '" aria-label="다운로드">' + DOWNLOAD_SVG + '</a><img src="' + url + '"><span class="cap"></span>';
+  slide.querySelector('.cap').textContent = cap;
+  track.appendChild(slide);
+  carUpdate();
+  track.scrollTo({ left: track.scrollWidth, behavior: 'smooth' });   // 새로 나온 장으로 이동
+}
+function carUpdate() {
+  const track = $('#cartrack'), n = CARSLIDES.length;
+  const idx = Math.round(track.scrollLeft / (track.clientWidth || 1));
+  $('#carcount').textContent = n ? (Math.min(idx + 1, n) + ' / ' + n + '장') : '';
+  $('#carPrev').disabled = idx <= 0; $('#carNext').disabled = idx >= n - 1;
+}
+$('#carPrev').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: -t.clientWidth, behavior: 'smooth' }); };
+$('#carNext').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: t.clientWidth, behavior: 'smooth' }); };
+$('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
+$('#carSaveAll').innerHTML = DOWNLOAD_SVG + '<span>전체 저장</span>';
+$('#carSaveAll').onclick = () => CARSLIDES.forEach((s, i) => setTimeout(() => {
+  const a = document.createElement('a'); a.href = s.url; a.download = s.dlname;
+  document.body.appendChild(a); a.click(); a.remove();
+}, i * 350));
 
 // ==== 카드뉴스(/5) 칩 에디터 (인라인) — 어절칩·줄=행·강조·한도 빨강. 뷰어 카드편집기 포팅(입출력=칩↔compose) ====
 let edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false;
@@ -836,46 +907,53 @@ $('#sub').addEventListener('input', updateHdrTrk);
 $('#title').addEventListener('input', updateHdrTrk);
 
 // ---- 발사 ----
+function jobLabel() {
+  if (APP === '1') return '포스트';
+  if (APP === '2') return RMODE === 'header' ? '릴스 헤더' : '릴스 오버레이';
+  if (APP === '3') return '저작권';
+  if (APP === '4') return '경고문';
+  if (APP === '5') return '카드뉴스';
+  return '제작';
+}
+// 제작 = 동시 가능. 누를 때마다 잡 생성 → 로그에 쌓고 각자 폴링(백엔드는 id별 동시처리 안전). #go 비활성 안 함.
+let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) — 큐잉 자체는 막지 않음
 $('#go').onclick = async () => {
-  const status = $('#status'); status.classList.remove('err'); $('#result').innerHTML = '';
-  // 카드뉴스(5) = /api/compose (이미지 + 텍스트, 1080×1350)
-  if (APP === '5') {
-    if (!IMG.b64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
-    if (edAnyOver()) { status.textContent = '빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄'; status.classList.add('err'); return; }
-    const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);   // 인라인 칩 에디터 → *강조* 텍스트
-    if (!clines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
-    $('#go').disabled = true; status.textContent = '제작 중…';
-    try {
-      const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG.b64, name: IMG.name, lines: clines }) });
-      const j = await res.json();
-      if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); }
-      else pollMany([{ path: j.out, label: '' }]);
-    } catch (e) { status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err'); }
-    finally { $('#go').disabled = false; }
-    return;
-  }
-  const params = buildParams();
-  if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { status.textContent = '부제 또는 제목을 입력해줘'; status.classList.add('err'); return; }
-  if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
-  if (APP === '4' && !params.lines.length) { status.textContent = '경고문 텍스트를 입력해줘'; status.classList.add('err'); return; }
-  // 릴스/포스트 오버레이 = 강조(*별표*) 빠뜨리면 확인
-  if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {
-    const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
-    if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) { status.textContent = ''; return; }
-  }
-  $('#go').disabled = true; status.textContent = '생성 중…';
-  try {
-    const payload = { app: APP, params };
-    if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }   // 포스트 배경 = 옵션(없으면 오버레이만)
+  if (_goLock) return; _goLock = true; setTimeout(() => { _goLock = false; }, 350);
+  const status = $('#status'); status.classList.remove('err'); status.textContent = '';
+  let endpoint, payload;
+  if (APP === '5') {   // 카드뉴스 = /api/compose
+    if (!IMG.b64) { return errStatus('이미지를 선택해줘'); }
+    if (edAnyOver()) { return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄'); }
+    const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
+    if (!clines.length) { return errStatus('텍스트를 입력해줘'); }
+    endpoint = '/api/compose'; payload = { imageB64: IMG.b64, name: IMG.name, lines: clines };
+  } else {            // /1·/2·/3·/4 = /api/thumb
+    const params = buildParams();
+    if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) { return errStatus('부제 또는 제목을 입력해줘'); }
+    if (APP === '2' && params.mode === 'overlay' && !params.lines.length) { return errStatus('텍스트를 입력해줘'); }
+    if (APP === '4' && !params.lines.length) { return errStatus('경고문 텍스트를 입력해줘'); }
+    if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 빠뜨리면 확인
+      const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
+      if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) return;
+    }
+    endpoint = '/api/thumb'; payload = { app: APP, params };
+    if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }       // 포스트 배경 = 옵션
     if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
-    const res = await fetch('/api/thumb', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  }
+  // 잡 생성 → 로그 → 디스패치 → 폴링(전부 비동기·독립)
+  const job = { n: ++JOBSEQ, label: jobLabel(), t0: Date.now(), outs: [], done: [], status: 'run', msg: '' };
+  JOBS.unshift(job); renderJob(job);
+  try {
+    const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();
-    if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); $('#go').disabled = false; return; }
-    pollMany(j.outs || (j.out ? [{ path: j.out, label: '' }] : []));
-  } catch (e) {
-    status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
-  } finally { $('#go').disabled = false; }
+    if (!res.ok || j.error) { job.status = 'err'; job.msg = (j.error || ('서버 ' + res.status)); renderJob(job); return; }
+    job.outs = j.outs || (j.out ? [{ path: j.out, label: '' }] : []);
+    job.done = job.outs.map(() => false);
+    if (!job.outs.length) { job.status = 'err'; job.msg = '출력 경로 없음'; renderJob(job); return; }
+    pollJob(job);
+  } catch (e) { job.status = 'err'; job.msg = '요청 실패: ' + e.message; renderJob(job); }
 };
+function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err'); }
 
 selApp('1');
 </script>

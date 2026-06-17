@@ -1,0 +1,65 @@
+name: pick
+# 뷰어 '고르기'(픽) → pending/ 적재 → news-analyze 발동. 사람-게이트 큐레이션 진입.
+# scrape 의 analyze 경로(pending→analyze)를 재사용 = 기존 파이프라인·불변 무수정.
+# 트리거 = Pages Function /api/pick (GH_TOKEN dispatch). 발동 비용 = Opus(구독) 분석 1건.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: '고른 기사 원문 url'
+        type: string
+        required: true
+      title:
+        description: '제목(로그용)'
+        type: string
+        default: ''
+
+concurrency:
+  group: pick
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # pending/ · seen_urls.txt 커밋
+  actions: write    # news-analyze 디스패치(GITHUB_TOKEN push 는 못 깨움 → 명시 발동)
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet feedparser requests
+
+      - name: Pick → pending/ (중복 스킵)
+        env:
+          PICK_URL: ${{ inputs.url }}
+        run: python3 scraper/pick_pending.py | tee /tmp/pick.out
+
+      - name: Commit & trigger analyze
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEW="$(sed -n 's/^NEW=//p' /tmp/pick.out | tail -1)"
+          if [ "${NEW:-0}" = "0" ]; then echo "신규 없음(중복/무효) — 분석 생략"; exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pending scraper/seen_urls.txt
+          git commit -m "pick: 큐레이션 1건 적재"
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && break
+            git rebase --abort 2>/dev/null || true
+          done
+          # GITHUB_TOKEN 푸시는 news-analyze(push 트리거)를 재귀방지로 못 깨운다 → 명시 디스패치(scrape와 동일).
+          gh workflow run news-analyze.yml \
+            || echo "::warning::news-analyze 디스패치 실패 — Actions 탭에서 수동 실행"

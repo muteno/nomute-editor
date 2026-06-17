@@ -38,6 +38,9 @@ for f in "${files[@]}"; do
   base="$(basename "$f" .txt)"        # YYMMDD-HHMMSS
   stamp="${base:0:11}"                # YYMMDD-HHMM
   url="$(head -n1 "$f" | tr -d '\r\n')"
+  # 선택: 2번째 줄 '# title: …'(픽 경로가 심은 수집기 제목). fetch 차단 매체일 때
+  # 같은 사건의 접근 가능한 다른 매체를 WebSearch 로 찾는 단서. 폰공유/자동분엔 없음(빈값).
+  title_hint="$(grep -m1 '^# title: ' "$f" 2>/dev/null | sed 's/^# title: //' | tr -d '\r\n')"
   echo "::group::분석: $url"
 
   if [ -z "$url" ]; then
@@ -73,6 +76,11 @@ for f in "${files[@]}"; do
 ${GBLOCK}
 
 분석할 기사 URL: ${url}"
+  if [ -n "${title_hint// }" ]; then
+    prompt="${prompt}
+기사 제목(수집기 메타): ${title_hint}
+[원 매체 fetch 가 막히면(차단·빈 본문) 위 제목으로 WebSearch 해 같은 사건을 다룬 접근 가능한 다른 매체로 본문·사실을 확보·분석하라 — 원 매체 하나 막혔다고 포기하지 말 것.]"
+  fi
   if [ -n "${extracted// }" ]; then
     prompt="${prompt}
 
