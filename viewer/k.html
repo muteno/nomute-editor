@@ -32,8 +32,13 @@
   .out p { margin:6px 0; color:#cfd2d7; }
   .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 14px; }
   .code pre { margin:0; padding:13px 13px 13px; white-space:pre-wrap; word-break:break-word; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e9eaec; }
-  .code button { position:absolute; top:8px; right:8px; padding:5px 10px; background:linear-gradient(135deg,#d8ff3d,var(--grn)); color:#07210a; border:none; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; box-shadow:0 4px 12px rgba(15,253,2,.22); }
-  .code button.done { background:#2a2c31; color:var(--grn); }
+  .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:9px; cursor:pointer;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
+  .code button svg { display:block; }
+  .code button:hover { background:rgba(255,255,255,.16); }
+  .code button:active { transform:scale(.85); }
+  .code button.done { background:var(--grn); color:#07210a; border-color:var(--grn); }
   /* 신규 화면 진입 = 콘텐츠 촤르륵(스태거 라이즈) */
   @keyframes wrapRise { from { transform:translateY(16px); } to { transform:none; } }   /* iframe(닫힌 dialog) 안서 애니 안 돌아도 보이게 opacity는 게이트 안 씀 */
   .wrap > * { opacity:1; animation:wrapRise .5s cubic-bezier(.22,.61,.36,1) both; }
@@ -61,6 +66,8 @@
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 
 // 최소 마크다운 렌더: ``` 펜스 = 코드블록(복사 버튼), 그 외 #/##/### 헤딩 + 문단.
 function renderMd(md) {
@@ -74,7 +81,7 @@ function renderMd(md) {
       if (/^[a-zA-Z]+$/.test(first)) code = code.slice(nl + 1);   // 언어 태그 줄 제거(```text 등)
       code = code.replace(/\s+$/, '');
       const enc = encodeURIComponent(code);
-      html += `<div class="code"><button data-c="${enc}">복사</button><pre>${esc(code)}</pre></div>`;
+      html += `<div class="code"><button data-c="${enc}" aria-label="복사" title="복사">${COPY_SVG}</button><pre>${esc(code)}</pre></div>`;
     } else {
       part.split('\n').forEach(line => {
         const t = line.trim();
@@ -92,8 +99,8 @@ function renderMd(md) {
 function wireCopy() {
   document.querySelectorAll('.code button').forEach(b => b.onclick = () => {
     navigator.clipboard.writeText(decodeURIComponent(b.dataset.c)).then(() => {
-      b.textContent = '복사됨 ✓'; b.classList.add('done');
-      setTimeout(() => { b.textContent = '복사'; b.classList.remove('done'); }, 1500);
+      b.innerHTML = CHECK_SVG; b.classList.add('done');
+      setTimeout(() => { b.innerHTML = COPY_SVG; b.classList.remove('done'); }, 1500);
     });
   });
 }
