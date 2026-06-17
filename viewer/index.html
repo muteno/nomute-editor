@@ -2769,7 +2769,7 @@ const BKEY = 'nomute_brk_seen';
 const brkSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BKEY) || '[]')); } catch { return new Set(); } };
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 배지·누적핀·신속·토스트 공용 단일규칙 — 'grade1 경미인데 ⚡이슈' 모순 차단(260617).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
-const breakingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return isBreaking(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked; });   // 토스트=신선 속보만(6h 내). 오래된 속보가 계속 재알람하던 것 차단. + 처리분·AI 경중<2 제외(isBreaking)
+const breakingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return isBreaking(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked; });   // 토스트=신선 속보만(<FAST_MAX_H=3h). 오래된 속보가 계속 재알람하던 것 차단. + 처리분·AI 경중<2 제외(isBreaking)
 function detectBreaking() {
   if (CURTAB === 'scrap') { markBreakingSeen(); return; }   // 이미 수집함 보는 중 = 바로 본 것 처리
   const seen = brkSeen();
@@ -2822,7 +2822,7 @@ function renderScrap() {
     const key = col.dataset.col;
     let arr;
     if (key === 'new') {   // 신속 = 신선한 속보만. (breaking OR grade≥3) AND 발생 6h 내. 6h 지난 속보는 신속서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신.
-      arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 6h 컷 = 모두 적용(breaking도). 오래된 속보가 신속 톱 차지·누적 중복하던 회귀 차단.
+      arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 최신 = scFast AND 발생 <FAST_MAX_H(3h). 3h+ 는 누적行(아래). 오래된 속보가 신속 톱 차지·누적 중복하던 회귀 차단.
       arr.sort((a, b) => (pinFresh(b) - pinFresh(a)) || (fastScore(b) - fastScore(a)) || scTs(b) - scTs(a));   // 신선 속보만 핀 → 오래된 속보는 decay로 하강(톱 독차지 방지)
     } else {   // 누적 = 9시뉴스감(좌측). cross≥5 AND 발생 6h↑(신속서 졸업 = 시간 지나 좌측으로). 신속(우측 <6h)과 시간 배타 — 최근 것은 누적에 안 들어감. 중요도(scScore = cross 볼록 × 시간 가속감점 × 연속보도 × AI경중)순.
       arr = pool.filter(c => _untri(c) && (c.cross || 0) >= CROSS_MIN && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
@@ -2846,7 +2846,7 @@ function renderScrap() {
 // scTs = 발행시각(정렬·신선도 판정용).
 const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 // ── 신속 게이트(scFast): 신선한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
-const FAST_MAX_H = 6, FAST_HALF_H = 2;   // 신속 = scFast AND 발생 6h 내(오래되면 누적行). FAST_HALF_H = 하강 반감기. 조정 가능.
+const FAST_MAX_H = 3, FAST_HALF_H = 2;   // ⏱ 최신(신속)↔누적 경계 = 발생 3h(운영자 정본: 최신=3h미만=속보 / 3h+=누적=이슈). 이 한 상수가 최신진입·누적진입·속보핀·토스트·배지(🚨속보↔⚡이슈)를 전부 결정 = 단일출처(드리프트 차단 — 따로 못 샘). FAST_HALF_H=하강 반감기. 조정 가능.
 const scFast = c => isBreaking(c) || ((c.cross || 0) >= 2 && c.grade !== 0 && c.grade !== 1);
 const FOLLOW_W = 0.2;   // 연속보도 가점 가중 — 또 보도될수록↑. 조정 가능.
 // 연속보도 가점 = report_count(arts=기사 수 증가 사이클 = '또 보도됨', 같은 매체 1곳이여도 +1). seen_count(12h 윈도우 존재만으로도 올라 결함) 대체. 보도 끊기면 안 오름 → 시간 decay에 밀림(보도자료 자연 침몰).
@@ -2890,7 +2890,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const triage = true;   // 누적·신속 둘 다 트리아지([👎][PASS][PICK]+사유)로 통일(사용자 요청 — 판단 기준 일원화)
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   el.innerHTML =
-    `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < 10800000 ? '<span class="sc-brk brk-hot">🚨 속보</span>' : '<span class="sc-brk">⚡ 이슈</span>') : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+    `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < FAST_MAX_H * 3600000 ? '<span class="sc-brk brk-hot">🚨 속보</span>' : '<span class="sc-brk">⚡ 이슈</span>') : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button>`
