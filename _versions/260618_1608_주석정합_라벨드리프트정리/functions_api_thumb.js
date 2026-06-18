@@ -3,7 +3,7 @@
 //   1만 이미지 업로드(uploads/<id>/), 2·3·4는 텍스트 파라미터만 → dispatch.
 //   러너가 nomute_*.py 무수정 실행 → viewer/thumb_out/<id>/out.png 커밋 → 폼이 폴링해 표시.
 // env: GH_TOKEN = comp/make-cards와 동일 PAT(이 레포, Actions+contents: write).
-// ref = main(통합 완료 · 아래 L8). 무료 경로(유료 API 무관).
+// ⚠️ ref = 작업 브랜치. 통합 후 main 으로 교체. 무료 경로(유료 API 무관).
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';   // 통합 완료(PR #173 머지)
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {

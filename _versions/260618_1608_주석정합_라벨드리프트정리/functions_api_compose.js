@@ -2,7 +2,7 @@
 // 흐름: 브라우저가 이미지(base64)+텍스트 줄 POST → ① 이미지를 uploads/<id>/ 로 레포 커밋(contents API)
 //        → ② comp-make.yml 발사 → 러너가 card_news.py 합성 → viewer/comp_out/<id>/card.jpg 커밋 → 뷰어 폴링.
 // env: GH_TOKEN = make-cards와 동일 PAT 재사용(이 레포, Actions+contents: write).
-// ref = main(통합 완료 · 아래 L7). 무료 경로(유료 API 무관).
+// ⚠️ ref = 작업 브랜치. 통합 후 main 으로 교체(그때 라이브). 무료 경로(유료 API 무관).
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';   // 통합 완료(PR #173 머지)
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {

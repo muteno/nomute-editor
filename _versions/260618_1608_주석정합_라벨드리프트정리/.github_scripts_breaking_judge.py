@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # 속보 2차 판정 — viewer/candidates.json 의 속보후보(breaking_candidate)를 Claude(claude -p)
 # 1콜 배치로 '긴급 속보인가' 판정 → breaking=true/false 확정.
-# 사용자 확정 기준 = **급발(velocity) 사건만 push**(사고·화재·재난 등 / 개별 형사 선고·사법결과는 전국적 대형 아니면 컷 — RUBRIC 260618) / 행정·정책발표·의료정책 = 컷(수집함行).
+# 사용자 확정 기준 = **급발(velocity) 사건만 push**(사고·화재·선고 등) / 행정·정책발표·의료정책 = 컷(수집함行).
 #
 # 드리프트 차단(analyze.sh guidelines_version 철학과 동일): RUBRIC 내용 해시를 breaking_rubric 으로
 # 도장 → RUBRIC 한 바이트라도 바뀌면 같은 사건이 '미판정'으로 되살아나 재판정된다(조용한 stale 차단).
