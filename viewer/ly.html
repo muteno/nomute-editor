@@ -249,10 +249,16 @@ function poll(outPath, isUrl) {
   const t0 = Date.now(), status = $('#status'), out = $('#out');
   const budget = isUrl ? 1500 : 600;
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = 워크플로 실패 메시지(있으면 즉시 표시)
-  const tick = async () => {
+  let live = true; const stop = () => { live = false; clearInterval(disp); };
+  const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
+    if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
-    if (sec > budget) { status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); out.innerHTML = ''; return; }
+    if (sec > budget) { stop(); status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); out.innerHTML = ''; return; }
     status.textContent = '⏳ 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)');
+  };
+  const disp = setInterval(draw, 1000); draw();
+  const tick = async () => {
+    if (!live) return;
     // 1) 실패 먼저 — error.log 뜨면 즉시 에러 표시(무한 폴링·'시간 초과' 방지). SPA 폴백(index.html) HTML은 무시.
     try {
       const er = await fetch(errPath + '?t=' + Date.now());
@@ -260,7 +266,7 @@ function poll(outPath, isUrl) {
         const ect = (er.headers.get('content-type') || '').toLowerCase();
         const em = await er.text();
         const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
-        if (em && em.trim() && !eHtml) { status.textContent = '❌ ' + em.trim(); status.classList.add('err'); out.innerHTML = ''; return; }
+        if (em && em.trim() && !eHtml) { stop(); status.textContent = '❌ ' + em.trim(); status.classList.add('err'); out.innerHTML = ''; return; }
       }
     } catch (e) { /* 재시도 */ }
     // 2) 결과(subs.md) 확인
@@ -272,10 +278,10 @@ function poll(outPath, isUrl) {
         // 결과(subs.md)가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 준다 → 그걸 결과로 오인하면
         // '완료 (0s)'에 페이지 HTML이 통째로 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과시킨다.
         const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
-        if (md && md.trim() && !isHtml) { status.textContent = '✅ 완료 (' + sec + 's)'; out.innerHTML = renderMd(md); wireCopy(); return; }
+        if (md && md.trim() && !isHtml) { stop(); status.textContent = '✅ 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)'; out.innerHTML = renderMd(md); wireCopy(); return; }
       }
     } catch (e) { /* 재시도 */ }
-    setTimeout(tick, 5000);
+    if (live) setTimeout(tick, 5000);
   };
   tick();
 }

@@ -101,11 +101,11 @@
   .carbar { display:flex; align-items:center; gap:10px; margin-top:8px; }
   .carcount { font-size:11.5px; color:var(--mut); }
   .carsave { display:none; }   /* (구) 캐러셀 아래 배치 폐지 — 전체저장은 캐러셀 우상단 오버레이로 이동(아래 .saveall) */
-  /* 전체 저장 = 캐러셀(결과물) 영역 우상단 오버레이(운영자 260618). 뉴스 피드 .sbtn 글래스 계승(§📋). */
-  .saveall { position:absolute; top:8px; right:8px; z-index:3; display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:10.5px; line-height:1; color:#fff; cursor:pointer; white-space:nowrap;
-    background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:6px 11px;
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 10px rgba(0,0,0,.32); }
-  .saveall:active { transform:scale(.95); } .saveall svg { display:block; width:12px; height:12px; }
+  /* 전체 저장 = 잡(결과) 행 우측 인라인 버튼(운영자 260619 — 캐러셀 오버레이서 이동, index.html .fi-saveall 패턴 일치). 글래스 톤(§📋). */
+  .job .jsave { flex:none; display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:10.5px; line-height:1; color:#fff; cursor:pointer; white-space:nowrap;
+    background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:5px 10px;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 8px rgba(0,0,0,.28); }
+  .job .jsave:active { transform:scale(.95); } .job .jsave svg { display:block; width:12px; height:12px; }
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
   .slot { margin-bottom:14px; }
   .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
@@ -304,7 +304,6 @@
         <div class="cartrack" id="cartrack"></div>
         <button class="carnav prev" id="carPrev" type="button" aria-label="이전">‹</button>
         <button class="carnav next" id="carNext" type="button" aria-label="다음">›</button>
-        <button class="saveall" id="carSaveAll" type="button"></button>   <!-- 전체 저장 = 캐러셀 영역 우상단 오버레이 -->
       </div>
     </div>
   </div>
@@ -568,6 +567,15 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + ' #' + job.n;
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
   row.append(lab, stsp);
+  if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체 저장' 버튼(우측 인라인 · index .fi-saveall 패턴)
+    const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 저장';
+    sv.innerHTML = DOWNLOAD_SVG + '<span>전체 저장</span>';
+    sv.onclick = () => job.saves.forEach((s, i) => setTimeout(() => {
+      const a = document.createElement('a'); a.href = s.url; a.download = s.dlname;
+      document.body.appendChild(a); a.click(); a.remove();
+    }, i * 350));
+    row.append(sv);
+  }
 }
 function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐러셀에 추가. 180s(3분) 타임아웃(운영자 260618: 무한대기 차단).
   const JOB_TIMEOUT_S = 180;   // 정상 렌더+커밋 = ~70s. 3분 넘으면 렌더 워크플로 실패(PIL 에러·push 경합 유실·20분 행) 추정 → FAIL.
@@ -581,7 +589,7 @@ function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐�
       const img = new Image();
       img.onload = () => {
         if (job.done[i]) return; job.done[i] = true;
-        carAppend(url, dlStamp(job.t0) + '_' + (o.path.split('/').pop() || ('nomute_' + job.n + '.png')), job.label + ' #' + job.n + (job.outs.length > 1 ? (' · ' + (o.label || (i + 1))) : ''));
+        carAppend(url, dlStamp(job.t0) + '_' + (o.path.split('/').pop() || ('nomute_' + job.n + '.png')), job.label + ' #' + job.n + (job.outs.length > 1 ? (' · ' + (o.label || (i + 1))) : ''), job);
         if (job.done.every(Boolean)) job.status = 'done';   // 마지막 장 로드 즉시 완료 표시(5s tick 안 기다림)
         renderJob(job);
       };
@@ -595,8 +603,9 @@ function dlStamp(ts) {   // 다운로드 파일명 시각 프리픽스 yymmdd_hh
   const n = new Date(ts || Date.now()), p = x => String(x).padStart(2, '0');
   return `${String(n.getFullYear()).slice(2)}${p(n.getMonth() + 1)}${p(n.getDate())}_${p(n.getHours())}${p(n.getMinutes())}`;
 }
-function carAppend(url, dlname, cap) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서)
+function carAppend(url, dlname, cap, job) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서)
   CARSLIDES.push({ url, dlname });
+  if (job) (job.saves || (job.saves = [])).push({ url, dlname });   // 잡별 '전체 저장'용 목록(잡 행 버튼이 이걸 저장)
   $('#carwrap').hidden = false; $('#carbar').hidden = false;   // 바(전체저장·N/N장)는 대기열 위에 노출
   const track = $('#cartrack');
   const slide = document.createElement('div'); slide.className = 'carslide';
@@ -615,11 +624,9 @@ function carUpdate() {
 $('#carPrev').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: -t.clientWidth, behavior: 'smooth' }); };
 $('#carNext').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: t.clientWidth, behavior: 'smooth' }); };
 $('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
-$('#carSaveAll').innerHTML = DOWNLOAD_SVG + '<span>전체 저장</span>';
-$('#carSaveAll').onclick = () => CARSLIDES.forEach((s, i) => setTimeout(() => {
-  const a = document.createElement('a'); a.href = s.url; a.download = s.dlname;
-  document.body.appendChild(a); a.click(); a.remove();
-}, i * 350));
+// 전체 저장은 캐러셀 오버레이서 잡(결과) 행 우측 인라인으로 이동(renderJob의 .jsave · 잡별 = index .fi-saveall 패턴)
+// 1초 벽시계 티커 — 진행 중 잡의 표시 초를 실제 시간과 일치(5s 폴과 분리·260619)
+setInterval(() => { JOBS.forEach(j => { if (j.status !== 'done' && j.status !== 'err') renderJob(j); }); }, 1000);
 
 // ==== 카드뉴스(/5) 칩 에디터 (인라인) — 어절칩·줄=행·강조·한도 빨강. 뷰어 카드편집기 포팅(입출력=칩↔compose) ====
 let edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false;
