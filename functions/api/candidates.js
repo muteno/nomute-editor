@@ -1,7 +1,7 @@
 // Cloudflare Pages Function — candidates.json 라이브 서빙(빌드 우회).
 // scrape 가 main 에 커밋한 viewer/candidates.json 을 GitHub 에서 직접 읽어 반환 →
 // 페이지 재빌드(Cloudflare 500/월 한도) 없이 수집함이 최신. 15분 수집이 화면에 바로 반영됨.
-// env: GH_TOKEN(있으면 contents API=신선), 없으면 raw(공개·~5분 캐시) 폴백.
+// env: GH_TOKEN(있으면 contents API=최신), 없으면 raw(공개·~5분 캐시) 폴백.
 export async function onRequestGet({ env }) {
   const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' };
   const tries = [];

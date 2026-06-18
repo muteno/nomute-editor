@@ -13,7 +13,7 @@
 1. **소스 어댑터** — RSS가 가장 안정적(SSR·무인증). `RSS_SOURCES`(클리앙·뽐뿌·보배드림 등, env로 교체) → 게시물 `{title, source, url, ts}`.
    - 막히는 소스(403/430·RSS 없음)는 **어그리게이터**(이슈링크·핫링크·잼난다 — SSR)나 **네이버 검색 OpenAPI**(키 필요)로 대체. (라이브 실측 후 확정.)
 2. **클러스터** — `knews_scraper.tokenize·same_topic` 재사용(union-find). 같은 사건을 소스 넘어 한 덩어리로.
-3. **버스트 스코어** — `교차소스수×2 + 게시물수 + 신선도×3`(`FRESH_HOURS` 내 최신일수록↑).
+3. **버스트 스코어** — `교차소스수×2 + 게시물수 + 최신성×3`(`FRESH_HOURS` 내 최신일수록↑).
 4. **필터** — 정치 키워드(`POLITICS`) 컷 · 노이즈(`NOISE`) 컷 · **교차소스 ≥ `SOCIAL_MIN_SOURCES`(기본2)**.
 5. **출력** — `scraper/out/social_candidates.json`(랭킹). 콘솔에 상위 10건.
 
@@ -24,7 +24,7 @@
 | env | 기본 | 의미 |
 |---|---|---|
 | `SOCIAL_MIN_SOURCES` | 2 | 교차소스 최소(공론화 컷) |
-| `SOCIAL_FRESH_HOURS` | 24 | 신선도 만점 윈도우 |
+| `SOCIAL_FRESH_HOURS` | 24 | 최신성 만점 윈도우 |
 | `CLUSTER_MIN_OVERLAP` | 3 | 같은 사건 토큰 교집합(knews 공유) |
 | `RSS_CLIEN`·`RSS_PPOMPPU`·`RSS_BOBAE` | — | 소스 RSS URL 교체 |
 
@@ -34,6 +34,6 @@
 
 ## 다음 단계 (배선 전 결정)
 1. **소스 확정** — Actions에서 각 RSS/어그리게이터 실측(200·파싱 OK?) → `RSS_SOURCES` 채움. 네이버 OpenAPI 키 등록 여부.
-2. **임계 캘리** — 소셜용 `CLUSTER_MIN_OVERLAP`·`SOCIAL_MIN_SOURCES`·신선도 가중 실데이터로.
+2. **임계 캘리** — 소셜용 `CLUSTER_MIN_OVERLAP`·`SOCIAL_MIN_SOURCES`·최신성 가중 실데이터로.
 3. **뷰어 배선(선택)** — `social_candidates.json` → 뷰어에 *소셜 레인* 추가(또는 기존 수집함에 `source:social` 태그). 2차 판정(Claude)으로 "진짜 공론화 vs 떡밥" 거를지.
 4. **법적**: 공개 hot-post 목록 수집은 리스크 낮~중(리서치 결론). robots·rate 존중·캐시 최소.

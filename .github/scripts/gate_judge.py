@@ -118,7 +118,7 @@ def main():
         print("미채점 노출후보 없음 — 종료")
         return
     total = len(pending)
-    pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 신선(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
+    pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
     pending = pending[:MAX_PER_RUN]   # 이번 런 상한 — 나머지는 다음 디스패치(self-gate)가 이어 채점(점진 클리어)
     print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK})")
     grades = {}
