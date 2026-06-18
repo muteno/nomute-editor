@@ -19,28 +19,16 @@ cd ~/nomute-editor || { notify "큐 실패" "리포 폴더 없음"; log "NO_REPO
 if ! git fetch -q origin main; then
   notify "큐 실패 ❌" "git fetch 실패 — 네트워크/PAT 확인"; log "FETCH_FAIL"; exit 1
 fi
-# main은 자동 파이프라인(scrape·breaking·cards·social-scan…)이 분 단위로 커밋해 매우 분주하다.
-# fetch~push 사이에 원격이 또 앞서가면 push가 non-fast-forward로 거부된다(시작 시점 reset만으론
-# 못 막는 '경쟁' — 실패 빈번의 1순위 원인, 260618). 그래서 매 시도마다 최신 main에 다시 맞추고
-# pending 파일을 새로 찍어 올린 뒤 push를 재시도한다(2·4·6·8s 백오프, 5회).
-mkdir -p pending
-FNAME="pending/$(date +%y%m%d-%H%M%S)-$RANDOM.txt"
-OK=0
-for try in 1 2 3 4 5; do
-  if [ "$try" -gt 1 ] && ! git fetch -q origin main; then
-    notify "큐 실패 ❌" "git fetch 실패 — 네트워크/PAT 확인"; log "FETCH_FAIL"; exit 1
-  fi
-  git reset -q --hard origin/main          # 최신 원격에 맞춤(이때 FNAME도 지워짐)
-  echo "$URL" > "$FNAME"                    # reset 후 다시 기록
-  git add pending
-  git -c user.name=muteno-phone -c user.email=phone@nomute commit -qm "queue: $URL" \
-    || { notify "큐 실패 ❌" "commit 실패(중복/빈 변경?)"; log "COMMIT_FAIL"; exit 1; }
-  if git push -q origin HEAD:main; then OK=1; break; fi
-  sleep $((try * 2))                        # 백오프 후 재동기화·재시도
-done
+git reset -q --hard origin/main
 
-if [ "$OK" = 1 ]; then
+mkdir -p pending
+echo "$URL" > "pending/$(date +%y%m%d-%H%M%S)-$RANDOM.txt"
+git add pending
+git -c user.name=muteno-phone -c user.email=phone@nomute commit -qm "queue: $URL" \
+  || { notify "큐 실패 ❌" "commit 실패(중복/빈 변경?)"; log "COMMIT_FAIL"; exit 1; }
+
+if git push -q origin HEAD:main; then
   notify "큐 등록됨 ✅" "$URL"; log "OK"
 else
-  notify "큐 등록 실패 ❌" "5회 재시도 실패 — Termux 열어 git push 확인"; log "PUSH_FAIL"
+  notify "큐 등록 실패 ❌" "Termux 열어 git push 확인"; log "PUSH_FAIL"
 fi
