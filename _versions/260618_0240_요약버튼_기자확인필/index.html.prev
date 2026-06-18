@@ -732,8 +732,9 @@
   .dlg-h button svg { display:block; }
   .dlg-h a:hover, .dlg-h button:hover { color:var(--fg); background:rgba(255,255,255,.11); border-color:rgba(255,255,255,.2); }
   .dlg-h a:active, .dlg-h button:active { transform:scale(.94); }
-  /* 요약 ⬇ 버튼 — 원문↗과 동일한 다크 글래스 알약(강조색·별도 테두리 없이 글자만). margin-left:0 = 원문 좌측 배치. */
-  .dlg-pdf { width:auto !important; padding:0 14px !important; gap:4px; font-size:12px; font-weight:600; margin-left:0 !important; }
+  /* 요약 ⬇ 버튼 — 텍스트 강조색(글자만), 텍스트 알약(원문↗과 동급) */
+  .dlg-pdf { width:auto !important; padding:0 13px !important; gap:5px; font-size:12px; font-weight:700; color:var(--accent) !important; margin-left:0 !important; }   /* 원문↗ 좌측에 배치(auto 마진 해제) */
+  .dlg-pdf:hover { color:var(--accent) !important; background:rgba(15,253,2,.14) !important; border-color:rgba(15,253,2,.4) !important; }
   .md { padding:8px 18px 26px; }
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
@@ -980,19 +981,9 @@
   .rev-fab.revving { animation:rvRing 1.5s ease-out infinite; border-color:var(--rv-to); }
   .rev-fab.revving svg { animation:rvPulseC 1.6s ease-in-out infinite; }
   .rev-fab.locked { cursor:not-allowed; }   /* 진행 중 = 재수정 차단(클릭 가드는 JS) */
-  .rev-fab.revdone { color:rgb(var(--rv-solid,255,210,74)); border-color:rgb(var(--rv-solid,255,210,74)); background:rgba(var(--rv-solid,255,210,74),.14);
-    box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(var(--rv-solid,255,210,74),.18), 0 0 20px rgba(var(--rv-solid,255,210,74),.3); }   /* 수정됨 = 회차색 고정(물결 X·글로우도 회차색) */
+  .rev-fab.revdone { color:rgb(var(--rv-solid,255,210,74)); border-color:rgb(var(--rv-solid,255,210,74)); background:rgba(255,210,74,.14);
+    box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(255,210,74,.18), 0 0 20px rgba(255,210,74,.3); }   /* 수정됨 = 노랑 고정(물결 X) */
   .rev-fab.revdone svg { color:rgb(var(--rv-solid,255,210,74)); }
-  /* 진행 중 잠금 빗금 — 원 위 반투명 대각선 한 줄(재수정 불가 표식 · 살짝) */
-  .rev-fab.locked::after { content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
-    background:linear-gradient(46deg, transparent 0 45%, rgba(255,255,255,.22) 45% 53%, transparent 53% 100%); }
-  /* 잠금 FAB 클릭 → 은은한 '수정 중' 힌트(좌측·반투명·1.3s 페이드) */
-  .rev-fab .rev-hint { position:absolute; right:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(5px);
-    white-space:nowrap; padding:4px 10px; border-radius:9px; font-size:.72rem; font-weight:700; letter-spacing:-.2px;
-    color:rgba(255,255,255,.74); background:rgba(22,22,26,.5); border:1px solid rgba(255,255,255,.13);
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); opacity:0; pointer-events:none;
-    transition:opacity .3s ease, transform .3s ease; }
-  .rev-fab.hint .rev-hint { opacity:1; transform:translateY(-50%) translateX(0); }
   /* 피드카드 진행바 — 진행 중: 완료 세그(초록)가 from↔to 천천히 왕복 */
   .card.revving .prog .seg[data-j="n"] .bar { animation:rvPulseBg 1.9s ease-in-out infinite; box-shadow:none; }
   .card.revving .prog .seg[data-j="n"] .sl { animation:rvPulseC 1.9s ease-in-out infinite; }
@@ -1111,7 +1102,6 @@
        #dlg 직속(backdrop-filter 박스 기준 fixed) → 스크롤해도 모달 안에 고정. 옛 'rev-launch' 알약 대체. -->
   <button class="rev-fab" id="revFab" type="button" aria-label="요약 수정" title="요약 수정">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-    <span class="rev-hint">수정 중</span>
   </button>
 </dialog>
 
@@ -1464,9 +1454,9 @@ function open(a) {
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
   updateRevFab();   // 열릴 때 FAB 초기 상태(맨 위라 보통 숨김)
   document.documentElement.style.overflow = 'hidden';   // PC: 모달 밖(백드롭) 스크롤 시 배경 페이지 스크롤 차단(#5)
-  // 첫 focusable 버튼(요약/원문)이 showModal에 auto-focus되면 포커스 링(테두리)·상태바 URL 노출 →
-  // 닫기(X) 버튼으로 포커스를 옮겨 차단. (.dlg-x 명시 — 첫 버튼=요약 ⬇에 링 안 생기게.)
-  const cb = $('#dlg').querySelector('.dlg-x'); if (cb) cb.focus();
+  // #src(원문) 링크가 모달 첫 focusable이라 showModal이 auto-focus → 브라우저가 좌하단 상태바에
+  // 그 링크 URL을 노출함. 닫기 버튼으로 포커스를 옮겨 차단.
+  const cb = $('#dlg').querySelector('.dlg-h button'); if (cb) cb.focus();
 }
 
 // ── 카드별 채팅봇 — 이 요약(a.body)을 context로 질문/재구성. 백엔드=api/chat(claude-opus-4-8·노력 max·NDJSON 스트림). ──
@@ -3543,15 +3533,9 @@ function resetRevSend() {   // 발사 버튼 원복(재확인 해제)
   btn.classList.remove('confirm');
   const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = '수정 →';
 }
-let _revHintT;
-function showReviseHint() {   // 잠금 FAB 클릭 시 은은한 '수정 중' 표식(1.3s 페이드 — 침묵 대신 피드백)
-  const fab = $('#revFab'); if (!fab) return;
-  fab.classList.add('hint');
-  clearTimeout(_revHintT); _revHintT = setTimeout(() => fab.classList.remove('hint'), 1300);
-}
 function openRev() {
   if (!CUR) { return; }
-  if (isRevising(CUR)) { showReviseHint(); return; }   // 진행 중(물결) 재수정 차단 — 경로 1: 연필 FAB 클릭 + 은은한 '수정 중' 힌트
+  if (isRevising(CUR)) { return; }   // 진행 중(물결) 재수정 차단 — 경로 1: 연필 FAB 클릭(어떤 경로에서도 잠금)
   resetRevSend();
   $('#revStatus').textContent = ''; $('#revSend').classList.remove('firing'); $('#revSend').disabled = false;
   updateRevClip(); revdlg.showModal();
@@ -3632,8 +3616,6 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-media { color:#fff; font-weight:800; white-space:nowrap; }
   .nm-dotsep { width:3px; height:3px; border-radius:50%; background:#565656; flex:none; }
   .nm-date { color:#9a9a9a; font-weight:500; white-space:nowrap; }
-  .nm-reporter { color:#c4c4c4; font-weight:600; white-space:nowrap; }
-  .nm-verify { color:#e0a64e; font-weight:700; }
   .nm-title { font-size:23px; font-weight:900; line-height:1.34; margin:0; letter-spacing:-.6px; color:#fff; }
   .nm-allbtn { flex:none; align-self:flex-start; margin-top:9px; display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 11px; border:none; border-radius:999px; background:#1ED760; color:#000; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; transition:transform .12s, background .15s; }
   .nm-allbtn:hover { background:#1FE065; transform:scale(1.03); }
@@ -3769,12 +3751,8 @@ async function buildSummaryHtml() {
   const title = (CUR_A && CUR_A.title) || (mdh1 ? mdh1.textContent.trim() : '') || '뉴스 요약';
   const cat = catBucket(CUR_A && CUR_A.category);
   const dt = CUR_A ? repDateTime(CUR_A) : '';
-  const reporter = CUR_A && (CUR_A.reporter || CUR_A.byline);   // 파이프라인엔 기자 필드 없음 → 보통 미상
-  const repMeta = reporter ? '<span class="nm-reporter">' + esc(reporter) + '</span>' : '<span class="nm-reporter nm-verify">확인 必</span>';   // 미상이면 '확인 必'(운영자가 직접 확인)
-  const repPar = reporter ? esc(reporter) : '<span class="nm-verify">확인 必</span>';
   const mbits = [];
   if (CUR_A && CUR_A.media) mbits.push('<span class="nm-media">' + esc(CUR_A.media) + '</span>');
-  mbits.push(repMeta);   // 기자(미상=확인 必) — 항상 표기
   if (dt) mbits.push('<span class="nm-date">' + dt + '</span>');
   const mline = mbits.length ? '<span class="nm-mline">' + mbits.join('<span class="nm-dotsep"></span>') + '</span>' : '';
   const badge = cat ? '<span class="nm-badge">' + esc(cat) + '</span>' : '';
@@ -3782,7 +3760,7 @@ async function buildSummaryHtml() {
   let srcLi;
   if (CUR_A && (CUR_A.media || CUR_A.url)) {
     const mn = esc(CUR_A.media || '원문');
-    const par = ' <span class="meta">(' + repPar + (dt ? ' · ' + dt : '') + ')</span>';   // (기자 · 보도일)
+    const par = dt ? ' <span class="meta">(' + dt + ')</span>' : '';
     const link = CUR_A.url ? '<a class="nm-srclink" href="' + esc(CUR_A.url) + '" target="_blank" rel="noopener">' + mn + '</a>' : '<span class="nm-srclink">' + mn + '</span>';
     srcLi = '<li><span class="ic">🔗</span><span>' + link + par + '</span></li>';
   } else { srcLi = '<li><span class="meta">출처 정보 없음</span></li>'; }
