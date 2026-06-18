@@ -206,7 +206,7 @@
       <div class="seg" id="opaSeg">
         <button data-opa="58" class="on">58</button>
         <button data-opa="30" class="on">30</button>
-        <button data-opa="custom" id="opaCustom"><span class="lab">직접입력</span><input type="text" id="opaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="OPA"></button>
+        <button data-opa="custom" id="opaCustom"><span class="lab">직접입력</span><input type="text" id="opaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
       </div>
     </div>
 
@@ -439,25 +439,21 @@ const opaNum = $('#opaNum');
 // OPA = 다중선택 토글(기본 58·30 둘 다 ON → 둘 다 생성). 선택된 것들이 곧 생성 장수.
 // 최소 1개 유지 = 마지막 1개는 못 끔(0개 미선택 불가). custom = 추가 opa 토글.
 document.querySelectorAll('#opaSeg button').forEach(b => b.onclick = () => {
-  if (b.dataset.opa === 'custom') { b.classList.add('on'); opaNum.focus(); opaNum.select(); return; }   // 직접입력 = 값 기반: 펼쳐서 포커스만(끄지 않음)·끄기는 값 비우고 벗어남(/2와 통일)
   const onCnt = document.querySelectorAll('#opaSeg button.on').length;
   if (b.classList.contains('on') && onCnt <= 1) return;   // 마지막 1개 해제 금지(0개 불가)
   b.classList.toggle('on');
+  if (b.dataset.opa === 'custom' && b.classList.contains('on')) { opaNum.focus(); opaNum.select(); }
 });
-opaNum.addEventListener('input', () => {   // 숫자만·1~99(0 불가·2자리 상한), 2자리 차면 자동 blur
-  let v = opaNum.value.replace(/[^0-9]/g, '').slice(0, 2);   // 2자리 상한 — 3자리 키보드 퀴크 제거(최대 99)
-  if (v !== '') v = String(Math.min(99, parseInt(v, 10)));
-  if (v === '0') v = '';   // opa 값 0 차단
+opaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 2자리 차면 자동 blur(다음으로 이탈)
+  let v = opaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
+  if (v !== '') v = String(Math.min(100, parseInt(v, 10)));
   opaNum.value = v;
   if (v.length >= 2) opaNum.blur();
 });
-opaNum.addEventListener('blur', () => {   // 값 없이 벗어나면 직접입력 끔(라벨 복귀) = '끄려면 값 비우기'
-  if (!opaNum.value) $('#opaCustom').classList.remove('on');
-});
-function getOpas() {   // 선택된(.on) opa 전부 = 생성할 장수. custom은 값(1~99) 있을 때만 추가. 빈배열 폴백 [58].
+function getOpas() {   // 선택된(.on) opa 전부 = 생성할 장수. custom은 값 있을 때만 추가. 빈배열 폴백 [58].
   const out = [];
   document.querySelectorAll('#opaSeg button.on').forEach(b => {
-    if (b.dataset.opa === 'custom') { const n = parseInt(opaNum.value, 10); if (Number.isFinite(n) && n >= 1) out.push(Math.min(99, n)); }
+    if (b.dataset.opa === 'custom') { const n = parseInt(opaNum.value, 10); if (Number.isFinite(n)) out.push(Math.max(0, Math.min(100, n))); }
     else { const n = parseInt(b.dataset.opa, 10); if (Number.isFinite(n)) out.push(n); }
   });
   return out.length ? out : [58];
