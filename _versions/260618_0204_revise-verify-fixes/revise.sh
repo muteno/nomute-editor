@@ -135,25 +135,31 @@ def replace_section(lines, key, newblock):
 
 lines = replace_section(lines, 'IG', ig)
 lines = replace_section(lines, 'Thread', th)
-
-# 회차(rev) 프론트매터 증가 — IG/Thread 치환과 '같은 단일 write'로 원자 반영.
-# (분리 write면 치환만 성공·rev 실패 시 부분반영 → 완료감지 영영 실패. 한 write로 둘 다 or 둘 다 안 됨.)
-txt2 = ''.join(lines)
-fm_m = re.match(r'(.*?^---\s*\n)(.*?)(\n---\s*\n)(.*)$', txt2, re.S | re.M)
-if not fm_m:
-    sys.exit('::error::프론트매터 못 찾음 — rev 증가 실패(원본 미변경)')
-fhead, fmeta, fsep, frest = fm_m.groups()
-rev_m = re.search(r'^rev:\s*(\d+)\s*$', fmeta, re.M)
-if rev_m:
-    nrev = int(rev_m.group(1)) + 1
-    fmeta = re.sub(r'^rev:\s*\d+\s*$', 'rev: %d' % nrev, fmeta, count=1, flags=re.M)
-else:
-    nrev = 1
-    fmeta = fmeta.rstrip('\n') + '\nrev: 1'
-open(path, 'w', encoding='utf-8').write(fhead + fmeta + fsep + frest)   # 단일 write = 원자 반영
-print('치환+rev 완료:', path, '· rev =>', nrev)
+open(path, 'w', encoding='utf-8').write(''.join(lines))
+print('치환 완료:', path)
 PY
 prc=$?
-if [ $prc -ne 0 ]; then echo "::error::치환/rev 실패(원본 미변경)"; exit 1; fi
+if [ $prc -ne 0 ]; then echo "::error::치환 실패"; exit 1; fi
+
+# 수정 회차(rev) 프론트매터 증가 — 서버에 회차 영구 기록(뷰어 a.rev = 색·완료감지 정본·전 기기 일관).
+python3 - "$TARGET" <<'PY'
+import sys, re
+path = sys.argv[1]
+txt = open(path, encoding='utf-8').read()
+m = re.match(r'(.*?^---\s*\n)(.*?)(\n---\s*\n)(.*)$', txt, re.S | re.M)
+if not m:
+    sys.exit('::error::프론트매터 못 찾음 — rev 증가 실패')
+head, fm, sep, rest = m.groups()
+mr = re.search(r'^rev:\s*(\d+)\s*$', fm, re.M)
+if mr:
+    n = int(mr.group(1)) + 1
+    fm = re.sub(r'^rev:\s*\d+\s*$', 'rev: %d' % n, fm, count=1, flags=re.M)
+else:
+    n = 1
+    fm = fm.rstrip('\n') + '\nrev: 1'
+open(path, 'w', encoding='utf-8').write(head + fm + sep + rest)
+print('rev =>', n)
+PY
+if [ $? -ne 0 ]; then echo "::error::rev 증가 실패"; exit 1; fi
 
 echo "수정 반영 → $TARGET"
