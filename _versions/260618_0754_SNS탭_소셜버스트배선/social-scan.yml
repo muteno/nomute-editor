@@ -1,0 +1,40 @@
+name: social-scan
+
+# 소셜 버스트 PoC(뼈대) 수동 실행 — 커뮤니티 RSS 교차소스로 비정치 공론화 이슈 검출.
+# 무인·무료(RSS만이면 0원). 결과 = 아티팩트(레포 커밋 안 함 = 라이브 파이프라인 무간섭).
+# 정본 = scraper/social_burst.py · 설계 = docs/social-burst.md. (스케줄 없음 — dispatch 전용.)
+on:
+  workflow_dispatch:
+    inputs:
+      min_sources:
+        description: '교차소스 최소 수(공론화 컷)'
+        default: '2'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install feedparser requests
+      - name: Run social burst scan
+        env:
+          SOCIAL_MIN_SOURCES: ${{ inputs.min_sources || '2' }}
+        run: |
+          python3 scraper/social_burst.py || echo "::warning::라이브 소스 일부 막힘 — docs/social-burst.md 소스 교체 참고"
+          echo "---- sample(코어 검증) ----"
+          python3 scraper/social_burst.py --sample
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: social_candidates
+          path: scraper/out/social_candidates.json
+          if-no-files-found: warn
