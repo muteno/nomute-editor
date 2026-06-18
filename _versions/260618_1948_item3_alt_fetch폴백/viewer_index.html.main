@@ -948,7 +948,7 @@
   /* ── ✨ 요약 요청(멀티모달 입력) — ＋팝업 메뉴 항목 + 모달 ── */
   .bpop a.bpop-hl { color:var(--accent); font-weight:800; text-shadow:0 0 10px rgba(15,253,2,.35); }
   .askdlg { border:none; border-radius:22px; padding:0; max-width:600px; width:94vw; color:var(--fg);
-    position:fixed; inset:0; margin:auto; height:max-content; max-height:calc(100dvh - 28px); overflow:auto;   /* 가로/세로 확실 중앙(페이지 오버플로로 좌측 쏠림·우측 비던 버그 차단) */
+    position:fixed; inset:0; margin:30dvh auto auto; height:max-content; max-height:calc(70dvh - 28px); overflow:auto;   /* 가로 중앙 · 세로 상단 30% 지점(운영자 260619 — 중앙→상단 이동). max-height 70dvh로 하단 클립 방지 */
     background:linear-gradient(165deg, rgba(20,30,22,.98), rgba(10,15,11,.99));
     box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(15,253,2,.18);
     animation:modalRise .2s cubic-bezier(.22,.61,.36,1) both; }   /* 진입애니 통일 */
@@ -3375,10 +3375,7 @@ function applyTriage(act, c, el, reason, text) {
   const cur = ratingsAll()[id] || {};
   postRate({ id, url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo: cur.memo || memo, dismissed: !!cur.dismissed, action: act, reason });
   if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
-    // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체가 막힌 매체(403)면 분석기가 접근 가능한
-    // 대체매체로 본문 확보(item3). 원 url 제외·정규화 중복제거·최대 8개(dispatch 페이로드 절제).
-    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
-    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
+    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '' }) }).catch(() => {});
   }
   if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 'Picking…'(분석 중) → 피드 진입 시 PICKED
     if (el) { el.classList.add('picked'); const rsn = el.querySelector('.sc-rsn'); if (rsn) rsn.remove(); const bot = el.querySelector('.sc-bot'); if (bot) bot.innerHTML = '<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>'; }
