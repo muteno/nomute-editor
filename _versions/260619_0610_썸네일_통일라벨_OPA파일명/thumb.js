@@ -104,18 +104,21 @@ export async function onRequestPost({ request, env }) {
     let outs;
     if (app === '2' && params.mode === 'header') {
       outs = [
-        { path: `${dir}/nobg.png`, label: '기본' },
-        { path: `${dir}/box.png`, label: '흰칸' },
+        { path: `${dir}/nobg.png`, label: '기본 (흰칸 없음)' },
+        { path: `${dir}/box.png`, label: '흰칸 (영상자리)' },
       ];
     } else if (app === '2' && params.mode === 'overlay') {
-      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: 'OPA' + o }));   // variant 태그 = OPA{값}(통일)
+      const kind = imgPath ? '합성본' : '오버레이';
+      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
     } else if (app === '1') {
-      // 경로는 워크플로 dst 규칙 유지(1개=out.png·여러개=opa{o}.png). 라벨=OPA{값} 통일 — 단일·직접입력도 OPA 태그(옛 'out' 빈라벨 폴백 제거 = 캡션/파일명에 OPA 표시).
+      // 다중 투명도 = opa별 1장(워크플로 dst 규칙과 동일: 1개면 out.png, 여러개면 opa{o}.png)
       const opas = (params.opas && params.opas.length) ? params.opas : [params.opacity ?? 58];
-      outs = opas.map(o => ({ path: `${dir}/${opas.length === 1 ? 'out' : 'opa' + o}.png`, label: 'OPA' + o }));
+      const kind = imgPath ? '합성본' : '오버레이';
+      outs = opas.length === 1
+        ? [{ path: `${dir}/out.png`, label: '' }]
+        : opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
     } else {
-      // /3 저작권 = 이름(variant 태그) · /4 경고문 = variant 없음(잡 라벨 '경고문 (포맷)'로 구분)
-      outs = [{ path: `${dir}/out.png`, label: app === '3' ? (params.name || '') : '' }];
+      outs = [{ path: `${dir}/out.png`, label: '' }];
     }
     return json({ ok: true, id, out: outs[0].path, outs });
   }
