@@ -40,6 +40,15 @@ jobs:
         with:
           python-version: '3.12'
 
+      # site-packages 캐시 — setup.sh 의 pip install(mediapipe·opencv·numpy·pillow, 썸네일과 동일 세트) 재설치 회피.
+      # 썸네일 실측과 동일 병목(매 런 pip install 수십~수백초 · STAMP 러너간 비영속). 워밍런 = 복원 → setup.sh
+      # import 체크 통과 → pip 스킵 → setup 수초. 무해(미적중이면 setup.sh 가 기존대로 재설치 = 회귀 0). (정본 = thumb-make 동일 패턴)
+      - name: Restore python deps (site-packages 캐시)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-comp-pydeps-${{ runner.os }}-py312-pillow-numpy-cv2-mediapipe-v1
+
       - name: Setup comp env (setup.sh 단일출처 + 캐시)
         timeout-minutes: 8   # 백스톱 — 셋업 행(apt/pip/캐시)이 잡 한도까지 끌어 cancel 차단(260618)
         uses: ./.github/actions/runner-setup

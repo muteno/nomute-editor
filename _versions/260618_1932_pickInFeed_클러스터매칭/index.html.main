@@ -3058,7 +3058,7 @@ async function loadPickFails() {
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
 const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pickFailedShow(c); });   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
-const pickInFeed = c => { const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean)); return DATA.some(a => a && a.url && us.has(_normU(a.url))); };   // 픽 결과가 피드(3번 메뉴)에 등장했나 — 후보 url *또는 cluster_members*(같은 사건 타 매체) 매칭. 막힌 매체(403)는 분석기가 다른 클러스터 멤버 url로 분석해 정확 url 불일치 → 영구 Picking 갇히던 버그 차단(260619)
+const pickInFeed = c => DATA.some(a => a && a.url && _normU(a.url) === _normU(c.url));   // 픽 결과가 피드(3번 메뉴)에 등장했나
 const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 종결 = 피드 등장 OR 실패복구 해소 → 둘 다 'Picking' 탈출(해소된 픽이 영구 Picking에 갇히던 버그 차단·260618)
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
