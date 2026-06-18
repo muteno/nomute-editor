@@ -42,11 +42,8 @@ commit_push() {
 }
 
 status_json() {  # $1=dir $2=state [$3=버전 오버라이드(shoot=기존 버전 보존)]
-  # rev = 이 카드가 만들어진 시점의 요약(queue) 수정회차 — 뷰어 stale 감지용(요약이 더 revise되면 a.rev>cards.rev).
-  local sjstem; sjstem="$(basename "$1")"
-  local sjrev; sjrev="$(grep -m1 '^rev:' "queue/$sjstem.md" 2>/dev/null | grep -o '[0-9]\+' | head -1)"
-  printf '{"state":"%s","updated":"%s","guidelines_version":"%s","rev":%s}\n' \
-    "$2" "$(date -u +%FT%TZ)" "${3:-$GVER}" "${sjrev:-0}" > "$1/status.json"
+  printf '{"state":"%s","updated":"%s","guidelines_version":"%s"}\n' \
+    "$2" "$(date -u +%FT%TZ)" "${3:-$GVER}" > "$1/status.json"
 }
 
 # ── edit 모드: 단일 카드 변경(그 카드만 재렌더·제자리 교체) ──
@@ -110,15 +107,7 @@ if [ "$TARGET" = "all" ]; then
     if [ ! -d "cards/$stem" ]; then targets+=("$q"); continue; fi
     # 지침 게이트 — 카드의 지침 버전이 현재와 다르면(갱신됨) 재생성 대상에 포함.
     cv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
-    [ "$cv" = "$GVER" ] && continue   # 지침 동일 = 최신, 스킵
-    # ⛔ done 보호(운영자 승인 260618) — 이미 '슛'해 이미지까지 만든 카드(done/fired_partial/렌더이미지·scenes 보존본)는
-    #    지침이 바뀌어도 자동 재생성하지 않는다(이미지·운영자 편집 유실 방지). 반영은 운영자 재촬영(슛)으로.
-    cst="$(grep -o '"state":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
-    cimg="$(ls "cards/$stem"/*.jpg "cards/$stem"/*.png "cards/$stem"/scenes/*.jpg 2>/dev/null | head -1)"
-    if [ "$cst" = "done" ] || [ "$cst" = "fired_partial" ] || [ -n "$cimg" ]; then
-      echo "지침 변경됐으나 이미 촬영된 카드 — 보호·재생성 스킵: $stem (state=${cst:-?})"; continue
-    fi
-    echo "지침 변경 — 카드 재생성 대상: $stem (${cv:-없음}→${GVER})"; targets+=("$q")
+    [ "$cv" = "$GVER" ] || { echo "지침 변경 — 카드 재생성 대상: $stem (${cv:-없음}→${GVER})"; targets+=("$q"); }
   done
 else
   base="$(basename "$TARGET")"

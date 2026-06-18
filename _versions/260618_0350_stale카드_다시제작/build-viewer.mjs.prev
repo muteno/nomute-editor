@@ -37,14 +37,11 @@ try {
 } catch { /* queue 없음 */ }
 
 // 수집함 cross 인덱스(이슈 판정용) — viewer/candidates.json url→cross 맵. 직접공유분(매칭 없음)은 cross 0 → issue false(운영자: 직접은 어쩔 수 없음).
-const CROSS = new Map(), BRK = new Map();   // BRK = AI 긴급(breaking) 판정 전파 — 수집함 isBreaking과 동일 규칙
+const CROSS = new Map();
 try {
   const cj = JSON.parse(readFileSync('viewer/candidates.json', 'utf8'));
-  for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) {
-    CROSS.set(c.url, c.cross || 0);
-    BRK.set(c.url, !!c.breaking && (c.grade == null || c.grade >= 2));   // 긴급 = breaking_judge 확정 AND 경중 grade≥2(미채점 포함) — cross 무관
-  }
-} catch { /* candidates 없음 — issue/긴급 전부 false */ }
+  for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) CROSS.set(c.url, c.cross || 0);
+} catch { /* candidates 없음 — issue 전부 false */ }
 
 const articles = [];
 for (const f of files) {
@@ -62,7 +59,7 @@ for (const f of files) {
       bias: meta.bias || '',
       tags: meta.tags || '',
       category: meta.category || '',   // 옛 큐 frontmatter category(있으면) — 뷰어 UI 5버킷 매핑용(C). 새 기사엔 없음.
-      breaking: (BRK.get(meta.url || '') || false) || /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // 긴급 = AI breaking_judge 판정(cross 무관) OR 제목 [속보]/[긴급] 표식.
+      breaking: /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // index2: 속보여부 — 제목 [속보]/[긴급]/긴급속보 표식 → true.
       cross: CROSS.get(meta.url || '') || 0,                    // 수집함 매칭 매체 수(직접공유=0)
       issue: (CROSS.get(meta.url || '') || 0) >= 8,             // index3: 이슈여부 = cross≥8(8+매체=넓은 이슈, 운영자 5→8). 직접공유분은 매칭 없어 false.
       summary: meta.summary || '',
@@ -118,7 +115,6 @@ for (const a of articles) {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
-    rev: Number(status.rev) || 0,   // 카드가 만들어진 시점의 요약 회차 — a.rev > cards.rev면 요약이 더 수정됨(stale)
     error: cardErr,
     failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터
     md: cardsMd,

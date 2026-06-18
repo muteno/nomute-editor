@@ -799,10 +799,6 @@
     transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
   }
   .mkbtn:active { transform:scale(.955); filter:brightness(.92); box-shadow:0 2px 10px rgba(15,253,2,.18); }
-  /* stale = 요약이 카드 제작 후 또 수정됨 → '다시 제작' 권유. 기존(초록) 버튼과 색 구분(앰버)으로 한눈에 인지. */
-  .mkbtn.stale { background:linear-gradient(135deg,#ffd24a,#ff9d2e); color:#221a00; box-shadow:0 6px 24px rgba(255,170,40,.28); }
-  .mkbtn.stale:active { box-shadow:0 2px 10px rgba(255,170,40,.2); }
-  .cardnote.stale { border-color:rgba(255,170,40,.5); color:#ffcf7a; }
   .genstat { margin:14px 0 4px; padding:13px 15px; border:1px solid var(--line); border-radius:16px;
     color:var(--mut); font-size:13px; background:rgba(255,255,255,.04); text-align:center; }
   .genstat.live { color:var(--accent); border-color:rgba(15,253,2,.3); animation:pulse 1.6s ease-in-out infinite; }
@@ -1065,7 +1061,7 @@
       <img class="pmenu-logo" src="assets/brand/logo.png" alt="노뮤트">
       <button id="refresh" class="pmenu-rf" aria-label="새로고침" title="새로고침">↻</button>
     </div>
-    <button id="brkack" class="pmenu-brk" type="button">🚨 긴급 확인</button>
+    <button id="brkack" class="pmenu-brk" type="button">🚨 속보 확인</button>
     <div class="psub">News curation</div>
     <a href="https://nomute.kr" target="_blank" rel="noopener">Home ↗</a>
     <a href="https://instagram.com/no_mute" target="_blank" rel="noopener">Instagram ↗</a>
@@ -1235,8 +1231,8 @@ function renderChips() {
   const c = $('#chips'); if (!c) return;
   const none = !FILTERS.cats.size;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
-  h += `<button class="chip chip-brk${FILTERS.breaking ? ' on' : ''}" data-f="breaking">긴급</button>`;   // 긴급(breaking) 토글
-  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈(cross≥8) 토글
+  h += `<button class="chip chip-brk${FILTERS.breaking ? ' on' : ''}" data-f="breaking">속보</button>`;   // index2 속보 토글
+  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">누적</button>`;   // index3 누적(cross≥8) 토글
   h += CHIP_CATS.map(cat => `<button class="chip${FILTERS.cats.has(cat) ? ' on' : ''}" data-cat="${cat}">${cat}</button>`).join('');
   c.innerHTML = h;
 }
@@ -1448,9 +1444,10 @@ function articleAgeH(a) {
   return isNaN(t) ? 999 : Math.max(0, (Date.now() - t) / 3600000);
 }
 function brkIssueTag(a) {
-  const brk = a.breaking || /속보/.test(a.title || '');
-  if (brk) return '<span class="bitag brk">긴급</span>';      // 긴급(breaking) 우선 — 둘 다 만족이면 긴급
-  if (a.issue) return '<span class="bitag iss">이슈</span>';   // cross≥8 = 이슈
+  const brk = a.breaking || /속보/.test(a.title || ''), ageH = articleAgeH(a);
+  if (brk && ageH < 4) return '<span class="bitag brk">속보</span>';
+  if (a.issue) return '<span class="bitag iss">누적</span>';
+  if (brk) return '<span class="bitag brk">속보</span>';
   return '';
 }
 
@@ -1711,9 +1708,6 @@ function cardSec(a) {
   const sec = $('#cardsec'); sec.innerHTML = '';
   const c = a.cards || {}, st = c.state || '';
   CUR_STATE = st;
-  // stale = 카드 제작 후 요약을 또 revise함(a.rev > 카드가 만들어진 회차 c.rev). 이미지 있는 카드(done/fired_partial)만 —
-  // 이미지는 보존하고 '다시 제작'(앰버 버튼) 권유로 운영자가 새 요약 반영(text_done은 card_refresh가 자동 갱신하므로 제외).
-  const stale = (st === 'done' || st === 'fired_partial') && (Number(a.rev || 0) > Number(c.rev || 0));
   // 18분 초과 미완 = 멈춤(시간 기반 실패 감지) — 경고·재시도 버튼 노출용(progGauge와 동일 기준).
   const stuckMin = c.updated ? Math.floor((Date.now() - Date.parse(c.updated)) / 60000) : 0;
   const stuck = stuckMin > 18;
@@ -1769,17 +1763,6 @@ function cardSec(a) {
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
     if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
     sec.appendChild(div);
-  }
-  // stale = 요약이 카드 제작 후 또 수정됨 → 이미지는 보존하고 '다시 제작'(앰버) 권유. 기본 슛/재발사 버튼 대체.
-  if (stale) {
-    sec.insertAdjacentHTML('beforeend',
-      `<div class="cardnote stale">📝 카드 제작 뒤 요약이 수정됐어 — 이 카드는 옛 요약 기준이야. 이미지는 그대로 두고, 새 요약으로 <b>다시 제작</b>하려면 아래를 눌러(프롬프트·이미지 새로 생성).</div>`);
-    const b = document.createElement('button');
-    b.className = 'mkbtn stale';
-    b.textContent = '🔄 다시 제작 (요약 수정 반영)';
-    b.onclick = () => makeCards(a.file, b);   // full 모드 = 새 요약으로 프롬프트+이미지 재생성
-    sec.appendChild(b);
-    return;
   }
   // text_done = '슛'(이미지 발사) 버튼 — 이미지 나오면(done) 사라짐
   if (st === 'text_done') {
@@ -2852,7 +2835,7 @@ $('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loa
 // 🚨 속보 확인 — 현재 속보(들)를 '본 것'으로 건별 적재(BRK_SEEN) → 점등 off. Check 표시 후 메뉴 닫힘. 다음 새 속보 = 또 점등. 시간 over(>4h)면 자연 해제.
 $('#brkack').addEventListener('click', () => {
   const b = $('#brkack'); b.textContent = '✓ Check'; b.classList.add('done');
-  setTimeout(() => { markBreakingSeen(); pmenu.hidden = true; b.textContent = '🚨 긴급 확인'; b.classList.remove('done'); }, 650);
+  setTimeout(() => { markBreakingSeen(); pmenu.hidden = true; b.textContent = '🚨 속보 확인'; b.classList.remove('done'); }, 650);
 });
 // 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
 function placeMsgpop() {
@@ -3056,7 +3039,7 @@ function showToast(n, sample) {
     document.body.appendChild(t);
   }
   const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
-  t.innerHTML = `<span class="tg">🚨 긴급</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
+  t.innerHTML = `<span class="tg">🚨 속보</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 6500);
 }
@@ -3223,7 +3206,7 @@ const pinB = c => (isBreaking(c) && !(scRT[candId(c)] || {}).picked) ? 1 : 0;
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
-  '<div class="scrap-col black"><div class="scrap-coltitle ct-new">신규</div><div class="scrap-list" data-col="new"></div></div>';
+  '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
   el.className = 'sc-item' + (isBreaking(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pfailHas(c) ? ' pickfail' : '') + (st.acked ? ' acked' : '');
@@ -3234,7 +3217,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const triage = true;   // 누적·최신 둘 다 트리아지([👎][PASS][PICK]+사유)로 통일(사용자 요청 — 판단 기준 일원화)
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   el.innerHTML =
-    `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < FAST_MAX_H * 3600000 ? '<span class="sc-brk brk-hot">🚨 긴급</span>' : ((Date.now() - scTs(c)) < 24 * 3600000 ? '<span class="sc-brk">⚡ 이슈</span>' : '')) : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+    `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < FAST_MAX_H * 3600000 ? '<span class="sc-brk brk-hot">🚨 속보</span>' : ((Date.now() - scTs(c)) < 24 * 3600000 ? '<span class="sc-brk">⚡ 누적</span>' : '')) : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (st.picked
