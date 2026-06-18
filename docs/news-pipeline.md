@@ -156,7 +156,10 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 
 ### [~] H — 막힌 매체 = 403 우회 (운영자 핵심 아이디어 · analyze 기틀)
 **근본 원인(실측 260618)**: 조선·동아·한겨레·연합·중앙 등이 **클라우드 러너의 데이터센터 IP에 403**(WAF·IP기반 — 풀 브라우저 헤더로도 403). 폰(가정용 KR IP)은 200. 즉 콘텐츠가 아니라 *요청이 나가는 네트워크 위치* 문제(상세=`scraper/README.md` §1).
-- **✅ 폰 경로 = 해결(Termux 선-fetch · 260618 · §기틀 보호 승인 + §🧪 5인 검증)**: 폰이 공유 시점에 `fetch_article.sh`로 본문을 *폰 IP(200)*에서 미리 긁어 pending에 **`# body:` 동봉** → `analyze.sh`가 클라우드 fetch 없이 그대로 씀(403 근본 우회). 지배적 입력(폰 공유 = 바로 이 막힌 매체들)을 덮는다. **pending 포맷**: line1=URL(불변·dedup·`head -n1`), 선택 `# title:`, 선택 `# body:` *이후 전체*=폰 선-fetch 본문(가산·하위호환·`awk '/^# body:/{f=1;next}f'`로 소비). 정본 = 플레이북 §5-2 + `docs/termux-share.sh` + `analyze.sh`. ⚠️ 폰 전제 = `python libiconv` 설치(§3). JS렌더·페이월 매체는 폰서도 빈 본문 → 클라우드 폴백.
+- **✅ 폰 경로 = 해결 (§기틀 보호 승인 + §🧪 5인 검증 · 260618)**. 폰 공유 = 2가지 입력 모두 처리:
+  - **(1) 전문 붙여넣기 = 운영자 주 워크플로** (기사 페이지 '전체선택→공유'): 핸들러가 한글 200자+ 면 *전문 공유*로 판정 → 붙여넣은 텍스트를 `# body:`로 그대로 동봉(line1=`paste:<해시>` 합성 id). **fetch 아예 안 함 = 403·JS렌더·페이월 *전부* 우회**(가장 견고 — 본문이 이미 손에 있음). 분석기는 페이지 잡동사니(메뉴·랭킹·댓글·홍보링크)를 트림하고 기사만 분석, `url:`은 빈 문자열·매체/날짜/기자는 본문서 추론(`news-analysis.md` 입력처리 0).
+  - **(2) URL 선-fetch**: URL만 공유하면 폰이 `fetch_article.sh`로 *폰 IP(200)*에서 본문 미리 긁어 `# body:` 동봉.
+  - **pending 포맷**: line1=URL 또는 `paste:<해시>`(불변·dedup·`head -n1`), 선택 `# title:`, 선택 `# body:` *이후 전체*=본문(가산·하위호환·`awk '/^# body:/{f=1;next}f'`+`iconv -c`로 소비, 20KB 캡). 정본 = 플레이북 §5-2 + `docs/termux-share.sh` + `analyze.sh` + `prompts/news-analysis.md`. ⚠️ URL경로(선-fetch) 전제 = `python libiconv`(§3); **전문경로(주 워크플로)는 git·termux-api 만으로 동작**(fetch·iconv 안 함 — 분석기가 iconv -c로 정리). 한글량 판정은 로케일 무관 lead-byte 카운트.
 - **[ ] 잔존 = 자동/픽 경로**: RSS자동(`to_pending`)·뷰어픽(`pick_pending`)은 *클라우드 발원*이라 여전히 403(선-fetch 혜택 못 받음). 남은 선택지 = `cluster_members`(같은 사건 비블록 매체 url·candidates에 직렬화·509/2704 보유·예: "국민의힘 최고위" cross=9 비블록 대안 11개) 우회 또는 가정용 프록시(유료·보편). **이 경로 403을 SSOT에서 누락하지 않게 열어둠**(조용한 누락 방지 — §기틀 보호 정신). 구현 시 analyze 기틀이라 §기틀 보호 + §🧪 5인 검증 재적용.
 
 ### [ ] 좀비 sweep 자가치유 (D 서버측 근본)

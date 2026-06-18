@@ -41,6 +41,9 @@ for f in "${files[@]}"; do
   # 선택: 2번째 줄 '# title: …'(픽 경로가 심은 수집기 제목). fetch 차단 매체일 때
   # 같은 사건의 접근 가능한 다른 매체를 WebSearch 로 찾는 단서. 폰공유/자동분엔 없음(빈값).
   title_hint="$(grep -m1 '^# title: ' "$f" 2>/dev/null | sed 's/^# title: //' | tr -d '\r\n')"
+  # 전문 붙여넣기 경로 — 폰이 '전체선택 텍스트'를 보내면 line1 = 'paste:<해시>'(합성 id, dedup용)이고
+  # '# body:' 에 붙여넣은 전문이 실린다. 원문 URL 이 없으므로 프롬프트엔 빈 URL + 안내를 준다(403 무관).
+  if [[ "$url" == paste:* ]]; then art_url=""; else art_url="$url"; fi
   echo "::group::분석: $url"
 
   if [ -z "$url" ]; then
@@ -85,7 +88,7 @@ for f in "${files[@]}"; do
 
 ${GBLOCK}
 
-분석할 기사 URL: ${url}"
+분석할 기사 URL: ${art_url:-(없음 — 운영자 전문 붙여넣기. 아래 [사전 추출 본문]이 기사 전문이다. url frontmatter 는 빈 문자열, 매체·보도일·기자는 본문에서 추론하라)}"
   if [ -n "${title_hint// }" ]; then
     prompt="${prompt}
 기사 제목(수집기 메타): ${title_hint}
