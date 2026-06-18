@@ -147,22 +147,6 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 - Node 버전: 18+ (기본값으로 충분)
 → `queue/` 가 커밋될 때마다 Pages가 자동 재배포. (마크다운 렌더·DOMPurify는 CDN에서 로드 — 추가 의존성 없음.)
 
-## 🔧 개선 큐 — fetch 실패 회피 (260618 · 미구현·승인대기)
-> 운영자 "큐잉" — 압축돼도 안 날아가게 박음. A/B/E(뷰어)는 PR #454로 라이브, 아래는 *파이프라인 측* 잔여.
-
-### 진단 (picks-failed.json 11건 실측)
-- **Failed 주범 = 원 매체 fetch/인코딩 차단**: `news.nate.com` 6건 = WebFetch가 EUC-KR 본문을 못 풀어 깨진/환각 제목 → 교차검증 불가 → (날조 거부)실패. `chosun.com`·`newsis`·`세계일보`도 WebFetch 차단(**newsis는 tasker-termux 공유도 막힘** — 실측). 나머지 5건 = 비-기사 URL(연합 홈페이지·url.kr 제보폼·android.googlesource[LLVM git]·nate `/view/test`).
-- **카드 generating 동결**: card_plan 런이 죽으면(타임아웃/크래시) `status=generating` 잔류 → 좀비 sweep이 *card_plan 잡 안에만* 있어 후속 analyze 없으면 미작동(실측: cards/ 3건이 `updated=09:20:37Z`로 동결). 뷰어는 15분 타임아웃→실패 표시로 대응(PR #454).
-
-### [ ] H — 막힌 매체 = 동시보도 타 매체로 우회 (운영자 핵심 아이디어 · analyze 기틀)
-*막아서 못 들어오게가 아니라, 막힌 매체가 들어오면 같은 사건의 비블록 매체로 본문 확보.*
-- **데이터 준비됨**: candidates `cluster_members`(같은 사건 타 매체 url — dedup 때 직렬화). 블록매체(nate/newsis/chosun) 후보 1153건 중 **205건이 members 보유** → 비블록 대안(donga·SBS·etoday·hani) 多. 예: "국민의힘 최고위"(cross=9) 비블록 대안 11개.
-- **설계**: 픽→analyze 때 rep-url 호스트가 블록목록(nate·newsis·chosun·세계일보…)이면 → `cluster_members` 중 *비블록 호스트* url을 WebFetch 폴백 → 본문 확보·교차검증. 정본 후보 = `.github/scripts/analyze.sh`·`fetch_article.sh` + `prompts/news-analysis.md`(cluster_members 전달).
-- ⚠️ analyze 파이프라인 = 기틀 → **§기틀 보호 승인 + §🧪 5인 검증 후 구현**.
-
-### [ ] 좀비 sweep 자가치유 (D 서버측 근본)
-- generating 좀비 sweep을 `scrape`(15분 주기)에도 실행 → 후속 analyze 없어도 stuck `status.json`이 자가 failed화(현재 `card_plan` 잡 한정이라 방치 가능). 작은 워크플로 추가.
-
 **🛰 배포 좌표 (계정 ID·딥링크 — 260613 명시)**: Cloudflare가 신규 Pages 생성 UI를 숨기고 Workers로 유도할 때(→ 시행착오로그 사건 6), 아래 **딥링크**로 정상 Pages 생성 화면에 직접 진입한다:
 - `dash.cloudflare.com/{ACCOUNT_ID}/pages/new/provider/github`
 - **계정 ID = URL 가운데 32자리 해시**(이메일 아님·로그인해야 보임):
