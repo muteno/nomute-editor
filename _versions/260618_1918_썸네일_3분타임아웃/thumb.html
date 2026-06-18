@@ -568,11 +568,10 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
   row.append(lab, stsp);
 }
-function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐러셀에 추가. 180s(3분) 타임아웃(운영자 260618: 무한대기 차단).
-  const JOB_TIMEOUT_S = 180;   // 정상 렌더+커밋 = ~70s. 3분 넘으면 렌더 워크플로 실패(PIL 에러·push 경합 유실·20분 행) 추정 → FAIL.
+function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐러셀에 추가. 600s 타임아웃.
   const tick = () => {
     if (job.done.every(Boolean)) { job.status = 'done'; renderJob(job); return; }
-    if (Math.round((Date.now() - job.t0) / 1000) > JOB_TIMEOUT_S) { job.status = 'err'; job.msg = '시간 초과(3분) — 렌더 실패 추정, 다시 시도'; renderJob(job); return; }
+    if (Math.round((Date.now() - job.t0) / 1000) > 600) { job.status = 'err'; job.msg = '시간 초과'; renderJob(job); return; }
     renderJob(job);
     job.outs.forEach((o, i) => {
       if (job.done[i]) return;
