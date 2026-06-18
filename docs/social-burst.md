@@ -37,4 +37,4 @@
 2. 🟡 **임계 캘리** — `SOCIAL_OVERLAP=2`·`SOCIAL_JACCARD=0.4`·chatter stop 확장(과병합 방지)·`SOCIAL_MIN_SOURCES=2` 적용. 실데이터로 추가 튜닝 여지(env 손잡이).
 3. ✅ **뷰어 배선** — `social-scan.yml` → `viewer/social_candidates.json` 커밋 → SNS 탭 `renderSns`(시안 카드·🔥burst·⛓N소스·소스칩·클릭=원문). 2차 Claude '진짜 공론화 vs 떡밥' 판정 = 파킹(미적용).
 4. 🟡 **법적**: 공개 hot-post 수집 리스크 낮~중. robots·rate 존중·캐시 최소.
-5. 🟡 **자동화**: 현 dispatch 전용. 스케줄(cron) 추가 = 별도 결정.
+5. ✅ **자동화**: `social-scan.yml` 매시 정각 cron(`0 * * * *`) + 수동 dispatch. 무료(RSS만·LLM 0)·운영자 손 0(260618).
