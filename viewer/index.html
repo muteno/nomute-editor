@@ -262,9 +262,9 @@
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
-  /* index2·3 속보/누적 태그 = cardtop 좌측 고정 슬롯(IN 앞). 시간상 하나만 — <4h 속보(빨강)·≥4h 누적(노랑).
-     없으면 빈 슬롯(폭 예약 → IN 시작점이 카드마다 일정하게 우측 들여쓰기). */
-  .cardtop .bislot { flex:none; min-width:44px; display:flex; align-items:center; gap:4px; }   /* 0~1개는 44px 고정(IN 정렬 일정), 긴급+이슈 둘 다면 폭만 늘어남 */
+  /* 긴급/이슈 배지 = cardtop 좌측 고정 슬롯(IN 앞). 상호배타로 항상 0~1개 — IN<4h 긴급(빨강)·4~24h 이슈(노랑).
+     없으면 빈 슬롯(폭 예약 → IN 시작점이 카드마다 항상 동일하게 들여쓰기 = 자리 안 밀림). */
+  .cardtop .bislot { flex:none; width:44px; display:flex; align-items:center; }
   .cardtop .bitag { margin-left:0; font-weight:800; font-size:9.5px; padding:2px 8px; border-radius:999px; letter-spacing:0; align-self:center; white-space:nowrap; }
   .bitag.brk { color:#fff; background:linear-gradient(135deg,#ff5b4a,#e2231a); box-shadow:0 0 8px rgba(240,40,30,.4); }
   .bitag.iss { color:#1a1400; background:linear-gradient(135deg,#ffe14a,#ffc31f); box-shadow:0 0 8px rgba(255,200,40,.4); }
@@ -1454,12 +1454,18 @@ function articleAgeH(a) {
   const t = Date.parse(((a.date || '') + (a.time ? 'T' + a.time : 'T00:00')).replace(/\./g, '-'));
   return isNaN(t) ? 999 : Math.max(0, (Date.now() - t) / 3600000);
 }
+// 피드 신선도(긴급↔이슈 전이용) = IN 시각(파일명 YYMMDD-HHMM) 기준 — 항상 정확(보도시각 time은 빈 경우 多 → 폴백만).
+function feedAgeH(a) {
+  const m = /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(a.file || '');
+  if (m) return Math.max(0, (Date.now() - new Date(2000 + +m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime()) / 3600000);
+  return articleAgeH(a);
+}
+// 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 isBreaking과 동일): 긴급(breaking 신선<4h) → 이슈(cross≥8 또는 aged breaking 4~24h) → 1일↑·비이슈는 없음. 둘 다 만족이면 긴급 우선.
 function brkIssueTag(a) {
-  const brk = a.breaking || /속보/.test(a.title || '');
-  let h = '';
-  if (brk) h += '<span class="bitag brk">긴급</span>';        // 긴급(breaking)
-  if (a.issue) h += '<span class="bitag iss">이슈</span>';     // cross≥8 = 이슈
-  return h;   // 둘 다 만족이면 좌측 슬롯에 함께(운영자 260618). 없으면 '' → 빈 슬롯.
+  const brk = a.breaking || /속보/.test(a.title || ''), ageH = feedAgeH(a);
+  if (brk && ageH < FAST_MAX_H) return '<span class="bitag brk">긴급</span>';            // breaking 신선(<4h) → 긴급(이슈도 만족이면 긴급 우선)
+  if (a.issue || (brk && ageH < 24)) return '<span class="bitag iss">이슈</span>';        // cross≥8 이거나 aged breaking(4~24h) → 이슈
+  return '';                                                                              // breaking 1일↑ & 비이슈 = 배지 없음
 }
 
 function open(a) {
