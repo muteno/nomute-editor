@@ -354,6 +354,8 @@
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
   .soc-srcs { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
   .soc-chip { font-size:10.5px; font-weight:700; color:#9becff; background:rgba(12,208,247,.1); border:1px solid rgba(12,208,247,.28); border-radius:999px; padding:2px 8px; }
+  .soc-chip.lean-l { color:#8fb6ff; background:rgba(90,140,255,.13); border-color:rgba(90,140,255,.34); }   /* 진보 성향 = 파랑(통념·근사) */
+  .soc-chip.lean-r { color:#ff9a9a; background:rgba(255,90,90,.12); border-color:rgba(255,90,90,.34); }   /* 보수 성향 = 빨강(통념·근사) */
   .scrap-head { padding:6px 2px 12px; }
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
@@ -3413,6 +3415,10 @@ function showTab(tab) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// 소스(커뮤니티) 정치 성향 색 틴트 — 통념·근사(운영자 요청 '조금'). 진보=파랑·보수=빨강·중도/취미/미분류=중립(시안).
+// ⚠️ 성향은 논쟁적·근사치 → 조정 가능. 미등록 소스는 중립 유지.
+const SOC_LEAN_MAP = { '클리앙': 'l', '보배드림': 'l', '오유': 'l', '82쿡': 'l', '더쿠': 'l', '인스티즈': 'l', '네이트판': 'l', '루리웹': 'l', '에펨코리아': 'r', '디시': 'r', '일베': 'r' };
+const socLean = s => { const v = SOC_LEAN_MAP[s]; return v === 'l' ? 'lean-l' : v === 'r' ? 'lean-r' : ''; };
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
 function renderSns() {
@@ -3430,7 +3436,7 @@ function renderSns() {
     const ago = relAge(r.age_h);
     el.innerHTML = `<div class="soc-top"><span class="soc-burst">🔥 ${(+r.burst || 0).toFixed(1)}</span><span class="soc-src">⛓ ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
-      <div class="soc-srcs">${(r.sources || []).map(() => '<span class="soc-chip"></span>').join('')}</div>`;
+      <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + '"></span>').join('')}</div>`;
     el.querySelector('.soc-title').textContent = r.title || '';
     const chips = el.querySelectorAll('.soc-chip'); (r.sources || []).forEach((s, k) => { if (chips[k]) chips[k].textContent = s; });
     list.appendChild(el);
