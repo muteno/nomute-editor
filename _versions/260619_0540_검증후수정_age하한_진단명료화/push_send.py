@@ -84,7 +84,7 @@ def main():
             if (c.get("cross") or 0) < PUSH_MIN_CROSS:   # 다매체 검증 미달 = 오발송 가드(푸시는 회수 불가)
                 continue
             a = age_h(c)
-            if a is None or a < 0 or a >= FAST_MAX_H:   # a<0 = 미래발행(소스 TZ 오기록) → 음수나이가 4h창 통과해 비가역 오발송하던 구멍 차단(뷰어 scTs 미래가드와 짝)
+            if a is None or a >= FAST_MAX_H:
                 continue
             ks = dedup_keys(c)
             if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
