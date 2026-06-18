@@ -62,14 +62,16 @@ RSS_SOURCES = [
 
 # ── 어그리게이터(이슈링크) — 여러 커뮤니티 인기글을 한 페이지서 모아줌 = 교차소스(≥2)의 핵심 공급원. ──
 # 직접 커뮤니티 RSS가 대부분 차단(403/430)이라(실측 260618), 한 번 긁어 다중 소스를 얻는 이 경로가 사실상 정본.
-ISSUELINK_URL = os.environ.get("ISSUELINK_URL", "https://www.issuelink.co.kr/")
+ISSUELINK_URLS = [u.strip() for u in os.environ.get(
+    "ISSUELINK_URLS", "https://www.issuelink.co.kr/,https://www.issuelink.co.kr/community"
+).split(",") if u.strip()]   # 홈(인기 top10) + /community(100건·13커뮤) 둘 다 긁어 최대 수집(실측 260618)
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
 # rel='<코드>-<id>' 의 커뮤니티 코드 → 표시 이름. 미등록 코드는 코드 그대로(여전히 distinct 소스로 카운트).
 COMMUNITY_NAMES = {
     "fmkorea": "에펨코리아", "mlbpark": "엠팍", "theqoo": "더쿠", "clien": "클리앙", "bobae": "보배드림",
     "ppomppu": "뽐뿌", "ruliweb": "루리웹", "82cook": "82쿡", "instiz": "인스티즈", "dcinside": "디시",
     "todayhumor": "오유", "humoruniv": "웃대", "humorbest": "웃대", "natepann": "네이트판", "inven": "인벤",
-    "slrclub": "SLR", "slr": "SLR", "ygosu": "야구장스", "etoland": "이토랜드", "ppomppued": "뽐뿌",
+    "slrclub": "SLR", "slr": "SLR", "ygosu": "와이고수", "etoland": "이토랜드", "ppomppued": "뽐뿌",
 }
 
 # 정치 컷 — 사용자 요구: 비정치 공론화만. 제목에 아래 키워드 있으면 제외.
@@ -152,8 +154,9 @@ def _parse_reltime(s, now):
 
 
 def fetch_issuelink(now):
-    """어그리게이터(이슈링크) — 여러 커뮤니티 인기글을 한 페이지서 수집 = 교차소스 확보의 핵심.
-       각 행 <a rel='<community>-<id>' href=...>제목</a> + second_date '(N 시간, M 분전)'. source=원 커뮤니티."""
+    """어그리게이터(이슈링크) — 여러 커뮤니티 인기글을 모아줌 = 교차소스 확보의 핵심.
+       ISSUELINK_URLS의 페이지(홈+/community) 전부 긁어 합침. 각 행 <a rel='<community>-<id>' href=...>제목</a>
+       + second_date '(N 시간, M 분전)'. source=원 커뮤니티."""
     import re
     import html as _html
     try:
@@ -161,31 +164,32 @@ def fetch_issuelink(now):
     except Exception:
         print("::warning::requests 미설치 — 이슈링크 생략")
         return []
-    try:
-        r = requests.get(ISSUELINK_URL, headers={"User-Agent": UA, "Referer": "https://www.google.com/"}, timeout=20)
-        if r.status_code != 200 or not r.text:
-            print(f"::warning::이슈링크 status {r.status_code}")
-            return []
-        t = r.text
-    except Exception as ex:  # noqa: BLE001
-        print(f"::warning::이슈링크 fetch 실패: {ex}")
-        return []
     posts = []
-    for row in re.split(r"<tr[ >]", t):
-        am = re.search(r"<a\s+rel=['\"]([a-z0-9]+)-[^'\"]+['\"]\s+href=['\"]([^'\"]+)['\"][^>]*>(.*?)</a>", row, re.S | re.I)
-        if not am:
+    for page in ISSUELINK_URLS:
+        try:
+            r = requests.get(page, headers={"User-Agent": UA, "Referer": "https://www.google.com/"}, timeout=20)
+            if r.status_code != 200 or not r.text:
+                print(f"::warning::이슈링크 {page} status {r.status_code}")
+                continue
+            t = r.text
+        except Exception as ex:  # noqa: BLE001
+            print(f"::warning::이슈링크 {page} fetch 실패: {ex}")
             continue
-        src, url, inner = am.groups()
-        title = _html.unescape(re.sub(r"<[^>]+>", "", inner)).strip()
-        title = re.sub(r"\s*\[\d+\]\s*$", "", title).strip()   # 말미 댓글수 [11] 제거
-        if len(title) < 4:
-            continue
-        tm = re.search(r"\(([^)]*?(?:시간|분|일)[^)]*?)\)", row)
-        ts = _parse_reltime(tm.group(1), now) if tm else now
-        if not url.startswith("http"):
-            url = "https://www.issuelink.co.kr" + url
-        posts.append({"title": title, "source": COMMUNITY_NAMES.get(src, src), "url": url, "ts": ts})
-    print(f"이슈링크: {len(posts)}건 · {len({p['source'] for p in posts})}개 커뮤니티")
+        for row in re.split(r"<tr[ >]", t):
+            am = re.search(r"<a\s+rel=['\"]([a-z0-9]+)-[^'\"]+['\"]\s+href=['\"]([^'\"]+)['\"][^>]*>(.*?)</a>", row, re.S | re.I)
+            if not am:
+                continue
+            src, url, inner = am.groups()
+            title = _html.unescape(re.sub(r"<[^>]+>", "", inner)).strip()
+            title = re.sub(r"\s*\[\d+\]\s*$", "", title).strip()   # 말미 댓글수 [11] 제거
+            if len(title) < 4:
+                continue
+            tm = re.search(r"\(([^)]*?(?:시간|분|일)[^)]*?)\)", row)
+            ts = _parse_reltime(tm.group(1), now) if tm else now
+            if not url.startswith("http"):
+                url = "https://www.issuelink.co.kr" + url
+            posts.append({"title": title, "source": COMMUNITY_NAMES.get(src, src), "url": url, "ts": ts})
+    print(f"이슈링크: {len(posts)}건 · {len({p['source'] for p in posts})}개 커뮤니티 ({len(ISSUELINK_URLS)}p)")
     return posts
 
 
