@@ -135,7 +135,7 @@ def main():
             prev = existing.get(aliases[0], {})
         prev = prev or {}
         c["first_seen"] = prev.get("first_seen", nowiso)
-        # last_seen = 마지막 '후속'(cross 증가) 시각. 신규/성장=now, 아니면 유지(뷰어 신선도 감쇠용).
+        # last_seen = 마지막 '후속'(cross 증가) 시각. 신규/성장=now, 아니면 유지(뷰어 최신성 감쇠용).
         grew = (not prev) or ((c.get("cross") or 0) > (prev.get("cross") or 0))
         c["last_seen"] = nowiso if grew else (prev.get("last_seen") or c["first_seen"])
         c["seen_count"] = (prev.get("seen_count") or 0) + 1

@@ -4,7 +4,7 @@
 #   '급발 공론화 이슈'(비정치: 가정불화·갑질·이웃분쟁·학폭 등)를 검출한다.
 #
 # 구조: ① 소스 어댑터(RSS/네이버) → 게시물 수집 ② 클러스터(knews tokenize·same_topic 재사용·드리프트0)
-#       ③ 버스트 스코어(교차소스 폭 × 신선도) ④ 정치/노이즈 필터 → ⑤ 랭킹 JSON.
+#       ③ 버스트 스코어(교차소스 폭 × 최신성) ④ 정치/노이즈 필터 → ⑤ 랭킹 JSON.
 # 라이브 = Actions(열린 네트워크/키)에서. 로컬 코어 검증 = `python3 scraper/social_burst.py --sample`.
 #
 # ⚠️ 아직 뷰어 수집함에 미배선(PoC). 출력 = scraper/out/social_candidates.json (별개 레인).
@@ -106,7 +106,7 @@ def cluster_and_score(posts, now):
         newest = max(tss) if tss else None
         age = _age_h(newest, now)
         recency = max(0.0, 1.0 - age / FRESH_HOURS)               # 최근일수록 1.0 → 0
-        burst = len(srcs) * 2 + len(members) + recency * 3        # 교차소스 폭(가중2) + 게시물수 + 신선도(가중3)
+        burst = len(srcs) * 2 + len(members) + recency * 3        # 교차소스 폭(가중2) + 게시물수 + 최신성(가중3)
         rep = min(members, key=lambda m: posts[m].get("ts") or now)   # 최초 보도 = 대표
         rows.append({
             "title": posts[rep]["title"],
