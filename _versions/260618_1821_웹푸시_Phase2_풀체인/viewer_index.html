@@ -113,13 +113,6 @@
     font:inherit; font-size:14px; cursor:pointer; }
   .msgpop .mh .mx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   .msglist { max-height:46vh; overflow:auto; padding:2px; }
-  /* 긴급 속보 웹푸시 토글(메시지 팝업 상단) */
-  .pushrow { display:flex; align-items:center; gap:8px; padding:4px 12px 8px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
-  .pushrow .pl { font-size:12px; font-weight:700; color:var(--fg); }
-  .pushbtn { margin-left:auto; font:800 11.5px inherit; border-radius:999px; padding:5px 12px; cursor:pointer; border:1px solid var(--line2); background:rgba(255,255,255,.05); color:var(--mut); }
-  .pushbtn.on { background:rgba(255,90,90,.16); color:#ff9b9b; border-color:rgba(255,90,90,.35); }
-  .pushbtn:disabled { opacity:.55; cursor:default; }
-  .pushbtn:active { transform:scale(.95); }
   .msgitem { padding:9px 10px; border-radius:10px; }
   .msgitem + .msgitem { border-top:1px solid var(--line2); }
   .msgitem .mt { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -1092,7 +1085,6 @@
   </div>
   <div class="msgpop" id="msgpop" hidden>
     <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기">✕</button></div>
-    <div class="pushrow" id="pushrow" hidden><span class="pl">🚨 긴급 속보 알림</span><button class="pushbtn" id="pushbtn" type="button">켜기</button></div>
     <div class="msglist" id="msglist"></div>
   </div>
 </div>
@@ -2749,44 +2741,6 @@ function renderMsgList() {
   });
 }
 
-// ── 긴급 속보 웹푸시(구독) — service worker(sw.js) + PushManager. 발송 = push_send.py. VAPID 공개키 박음(비밀 아님). 정본 = CLAUDE.md §🚨 ──
-const VAPID_PUB = 'BORNTh3cNd05vsxi2fZ-BykxM0NwKGTvIETz81g757RVFL6cDu29aAv5I7uit0WbGOmiZ4hlyMOEvb8B2HptU-I';
-const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-const b64ToU8 = s => { const pad = '='.repeat((4 - s.length % 4) % 4); const b = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...b].map(c => c.charCodeAt(0))); };
-async function pushState() {   // 'on'|'off'|'denied'|'unsupported'
-  if (!pushOK()) return 'unsupported';
-  if (Notification.permission === 'denied') return 'denied';
-  try { const r = await navigator.serviceWorker.getRegistration(); const s = r && await r.pushManager.getSubscription(); return s ? 'on' : 'off'; } catch { return 'off'; }
-}
-async function pushRefresh() {
-  const row = $('#pushrow'), btn = $('#pushbtn'); if (!row || !btn) return;
-  const st = await pushState();
-  if (st === 'unsupported') { row.hidden = true; return; }   // iOS 미설치 등 = 숨김
-  row.hidden = false;
-  if (st === 'denied') { btn.textContent = '차단됨'; btn.classList.remove('on'); btn.disabled = true; return; }
-  btn.disabled = false; btn.textContent = st === 'on' ? '켜짐 ✓' : '켜기'; btn.classList.toggle('on', st === 'on');
-}
-async function pushToggle() {
-  const btn = $('#pushbtn'); if (!btn || !pushOK()) return;
-  btn.disabled = true; btn.textContent = '…';
-  try {
-    const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
-    const cur = await reg.pushManager.getSubscription();
-    if (cur) {   // 끄기
-      await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'unsubscribe', subscription: cur.toJSON() }) }).catch(() => {});
-      await cur.unsubscribe();
-    } else {     // 켜기 — 권한 요청 → 구독 → 서버 저장
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { await pushRefresh(); return; }
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
-      const r = await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
-      if (!r.ok) { await sub.unsubscribe().catch(() => {}); throw new Error('구독 저장 실패(' + r.status + ')'); }
-    }
-  } catch (e) { alert('알림 설정 실패: ' + (e.message || e)); }
-  finally { await pushRefresh(); }
-}
-const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click', pushToggle);
-
 // 프로필 메뉴
 const pmenu = $('#pmenu');
 const msgpop = $('#msgpop');
@@ -2819,7 +2773,7 @@ function placeMsgpop() {
   msgpop.style.maxHeight = (window.innerHeight - top - 12) + 'px';     // 하단 넘침 방지(내부 스크롤)
 }
 ['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!msgpop.hidden) placeMsgpop(); }, { passive: true }));
-$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); closeOverlays('msg'); renderMsgList(); pushRefresh(); placeMsgpop(); msgpop.hidden = false; });
+$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); closeOverlays('msg'); renderMsgList(); placeMsgpop(); msgpop.hidden = false; });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
