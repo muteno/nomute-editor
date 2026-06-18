@@ -111,8 +111,7 @@ function wireCopy() {
 
 function poll(outPath, refPath) {
   const t0 = Date.now(), status = $('#status'), out = $('#out');
-  const budget = refPath ? 1800 : 1020;   // 백엔드 정합: kmake claude 900s(15분)+오버헤드 → ref無 17분 / ref有=워크플로 캡 30분(claude+Drive이미지). 옛 600/1200은 느린 정상생성을 헛실패시킴(260619)
-  const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = kmake 실패 메시지(있으면 즉시 표시 — budget 다 안 기다림·260619)
+  const budget = refPath ? 1200 : 600;
   let live = true; const stop = () => { live = false; clearInterval(disp); };
   const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
     if (!live) return;
@@ -123,17 +122,6 @@ function poll(outPath, refPath) {
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {
     if (!live) return;
-    // 1) 실패 먼저 — error.log 뜨면 즉시 에러 표시(budget 다 안 기다림). SPA 폴백(index.html) HTML은 무시.
-    try {
-      const er = await fetch(errPath + '?t=' + Date.now());
-      if (er.ok) {
-        const ect = (er.headers.get('content-type') || '').toLowerCase();
-        const em = await er.text();
-        const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
-        if (em && em.trim() && !eHtml) { stop(); status.textContent = '❌ ' + em.trim(); status.classList.add('err'); out.innerHTML = ''; return; }
-      }
-    } catch (e) { /* 재시도 */ }
-    // 2) 결과 확인
     try {
       const r = await fetch(outPath + '?t=' + Date.now());
       if (r.ok) {
