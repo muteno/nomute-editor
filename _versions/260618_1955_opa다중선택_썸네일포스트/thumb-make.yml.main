@@ -147,28 +147,25 @@ jobs:
                   argv += [str(params['year']), params['name'], params['platform']]
               subprocess.run(argv, check=True)
               produced.append(out)
-          elif app == '1':          # 포스트 — opas별 1장씩(다중 출력). 오버레이 생성 후 배경에 합성(없으면 오버레이 그대로).
+          elif app == '1':          # 포스트 — 오버레이 생성 후 배경에 합성. 배경 없으면 오버레이만(옵션 — 릴스 오버레이와 동일)
               import shutil
               from nomute_overlay import generate
               fmt1 = params.get('fmt', 'post')
-              tr = fit_tracking(params['lines'], fmt1)   # 자간 sweep — opa 무관·1회 계산 후 재사용
-              opas1 = params.get('opas') or [params.get('opacity', 58)]   # 다중(58·30 등) · 하위호환(단일 opacity)
-              for o in opas1:
-                  ov = f'/tmp/_ov_{o}.png'
-                  generate(fmt1, params['lines'], ov, opacity=int(o), tracking=tr)
-                  dst = out if len(opas1) == 1 else f'{outdir}/opa{o}.png'
-                  if image and os.path.isfile(image):    # 배경 있으면 합성, 없으면 오버레이 그대로
-                      argv = ['python3', 'apps/thumbnail/nomute_compose.py', fmt1, ov, image, dst]
-                      for k, flag in (('offset_x', '--offset-x'), ('offset_y', '--offset-y'), ('scale', '--scale')):
-                          v = params.get(k)
-                          if v not in (None, ''):
-                              argv += [flag, str(v)]
-                      if params.get('blur'):
-                          argv += ['--blur']
-                      subprocess.run(argv, check=True)
-                  else:
-                      shutil.copyfile(ov, dst)
-                  produced.append(dst)
+              tr = fit_tracking(params['lines'], fmt1)   # 자간 sweep (마진 맞춤)
+              ov = '/tmp/_ov.png'
+              generate(fmt1, params['lines'], ov, opacity=params.get('opacity'), tracking=tr)
+              if image and os.path.isfile(image):        # 배경 있으면 합성, 없으면 오버레이 그대로
+                  argv = ['python3', 'apps/thumbnail/nomute_compose.py', fmt1, ov, image, out]
+                  for k, flag in (('offset_x', '--offset-x'), ('offset_y', '--offset-y'), ('scale', '--scale')):
+                      v = params.get(k)
+                      if v not in (None, ''):
+                          argv += [flag, str(v)]
+                  if params.get('blur'):
+                      argv += ['--blur']
+                  subprocess.run(argv, check=True)
+              else:
+                  shutil.copyfile(ov, out)
+              produced.append(out)
           else:
               sys.exit(f'::error::알 수 없는 app: {app}')
           from PIL import Image

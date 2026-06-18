@@ -43,11 +43,6 @@ export async function onRequestPost({ request, env }) {
     if (app === '1') {
       for (const k of ['offset_x', 'offset_y']) if (Number.isFinite(+p[k]) && p[k] !== '') params[k] = Math.trunc(+p[k]);
       if (Number.isFinite(+p.scale) && p.scale !== '') params.scale = Math.max(0.1, Math.min(5, +p.scale));
-      // opas[] = 다중 선택(투명도 토글) · 하위호환 단일 opacity 도 통과
-      if (Array.isArray(p.opas) && p.opas.length) {
-        const opas = p.opas.filter(o => Number.isFinite(+o) && o !== '').map(o => Math.max(0, Math.min(100, Math.trunc(+o))));
-        if (opas.length) params.opas = [...new Set(opas)];
-      }
       if (Number.isFinite(+p.opacity) && p.opacity !== '') params.opacity = Math.max(0, Math.min(100, Math.trunc(+p.opacity)));
       if (p.blur) params.blur = true;
     }
@@ -111,13 +106,6 @@ export async function onRequestPost({ request, env }) {
     } else if (app === '2' && params.mode === 'overlay') {
       const kind = imgPath ? '합성본' : '오버레이';
       outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
-    } else if (app === '1') {
-      // 다중 투명도 = opa별 1장(워크플로 dst 규칙과 동일: 1개면 out.png, 여러개면 opa{o}.png)
-      const opas = (params.opas && params.opas.length) ? params.opas : [params.opacity ?? 58];
-      const kind = imgPath ? '합성본' : '오버레이';
-      outs = opas.length === 1
-        ? [{ path: `${dir}/out.png`, label: '' }]
-        : opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
     } else {
       outs = [{ path: `${dir}/out.png`, label: '' }];
     }

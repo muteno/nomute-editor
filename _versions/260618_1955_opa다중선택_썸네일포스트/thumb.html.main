@@ -204,8 +204,8 @@
     <div id="opaBox" class="none">
       <label>투명도 (OPA)</label>
       <div class="seg" id="opaSeg">
-        <button data-opa="58" class="on">58</button>
-        <button data-opa="30" class="on">30</button>
+        <button data-opa="58" class="on">58 (기본)</button>
+        <button data-opa="30">30</button>
         <button data-opa="custom" id="opaCustom"><span class="lab">직접입력</span><input type="text" id="opaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
       </div>
     </div>
@@ -437,13 +437,9 @@ document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
 
 // ---- OPA 세그 (58 기본 / 30 / 직접입력 = 버튼 안 입력창 · 2자리 자동 이탈) ----
 const opaNum = $('#opaNum');
-// OPA = 다중선택 토글(기본 58·30 둘 다 ON → 둘 다 생성). 선택된 것들이 곧 생성 장수.
-// 최소 1개 유지 = 마지막 1개는 못 끔(0개 미선택 불가). custom = 추가 opa 토글.
 document.querySelectorAll('#opaSeg button').forEach(b => b.onclick = () => {
-  const onCnt = document.querySelectorAll('#opaSeg button.on').length;
-  if (b.classList.contains('on') && onCnt <= 1) return;   // 마지막 1개 해제 금지(0개 불가)
-  b.classList.toggle('on');
-  if (b.dataset.opa === 'custom' && b.classList.contains('on')) { opaNum.focus(); opaNum.select(); }
+  document.querySelectorAll('#opaSeg button').forEach(x => x.classList.toggle('on', x === b));
+  if (b.dataset.opa === 'custom') { opaNum.focus(); opaNum.select(); }
 });
 opaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 2자리 차면 자동 blur(다음으로 이탈)
   let v = opaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
@@ -451,13 +447,10 @@ opaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 2자리 차�
   opaNum.value = v;
   if (v.length >= 2) opaNum.blur();
 });
-function getOpas() {   // 선택된(.on) opa 전부 = 생성할 장수. custom은 값 있을 때만 추가. 빈배열 폴백 [58].
-  const out = [];
-  document.querySelectorAll('#opaSeg button.on').forEach(b => {
-    if (b.dataset.opa === 'custom') { const n = parseInt(opaNum.value, 10); if (Number.isFinite(n)) out.push(Math.max(0, Math.min(100, n))); }
-    else { const n = parseInt(b.dataset.opa, 10); if (Number.isFinite(n)) out.push(n); }
-  });
-  return out.length ? out : [58];
+function getOpa() {
+  const sel = document.querySelector('#opaSeg .on');
+  if (sel && sel.dataset.opa === 'custom') { const n = parseInt(opaNum.value, 10); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 58; }
+  return parseInt(sel && sel.dataset.opa) || 58;
 }
 
 // ---- 릴스 모드 세그 (헤더 기본 / 오버레이) ----
@@ -545,7 +538,7 @@ let cardIo = null;   // 카드 에디터 copy/paste 아이콘 갱신자 — 정�
 function buildParams() {
   const linesArr = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
   if (APP === '4') return { fmt: FMT, lines: ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean) };   // 경고문 = 프리필 텍스트
-  if (APP === '1') return { fmt: 'post', lines: linesArr, opas: getOpas() };   // /1 = post · 선택된 OPA들 각각 1장(다중)
+  if (APP === '1') return { fmt: 'post', lines: linesArr, opacity: getOpa() };   // /1 = post 고정 + OPA
   if (APP === '2') {
     if (RMODE === 'header') return { mode: 'header', sub: $('#sub').value.trim(), title: $('#title').value.trim() };
     const rlines = ($('#rLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);   // 오버레이 = lines + 이미지(옵션)
