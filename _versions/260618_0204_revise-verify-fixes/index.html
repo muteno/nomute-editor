@@ -992,13 +992,12 @@
   .card[data-gen="1"] .prog .seg[data-j="n"] .sl { color:#ffc31f; }
   .card[data-gen="2"] .prog .seg[data-j="n"] .bar { background:linear-gradient(90deg,#9becff,#0cd0f7); box-shadow:0 0 8px rgba(12,208,247,.4); }
   .card[data-gen="2"] .prog .seg[data-j="n"] .sl { color:#0cd0f7; }
-  .card.revving .prog .seg[data-j="n"] .bar { box-shadow:none; }   /* 물결 중엔 data-gen 완료 글로우 끔(data-gen 뒤에 둬 우선) */
   /* 본문 IG·Thread 소주제 — 진행 중: 소주제 헤더가 강조색(초록)↔이슈노랑 펄스 / (변경 중)은 효과 없이 흰색 */
   @keyframes rvChgC { 0%,100% { color:rgba(15,253,2,.85); } 50% { color:rgba(255,210,74,1); } }
   .revsec, .revsec .cnt { animation:rvChgC 1.7s ease-in-out infinite; }
   .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; color:#fff; }
   .revsec-done, .revsec-done .cnt { color:rgb(var(--rv-solid,255,210,74)) !important; }   /* 수정됨 = 소주제 노랑 고정(펄스 없음) */
-  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none; } .revsec, .revsec .cnt { color:rgba(255,210,74,.72) !important; } }
+  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none; } .revsec { color:rgba(255,210,74,.72) !important; } }
   /* ── 요약 수정 팝업(revdlg) — FAB(우·중하단)에서 좌측으로 촤르륵 펼침. askdlg 골격 계승 + 게이지(PICK) 발사 버튼. ── */
   /* 위치 = askdlg 중앙(inset:0·margin:auto) 상속 → PC·모바일 공통 가운데 출력(우측 구석 정렬 폐기). 컴팩트. */
   .revdlg { width:min(420px,92vw); max-width:420px; max-height:calc(100dvh - 40px); }
@@ -2293,24 +2292,13 @@ const rpKey = (file, card) => file + '#' + card;
 // 수정요청 전송 → 그 기사 '진행 중'(클라 임시: 연필 물결+잠금·피드바 펄스·소주제 펄스·(변경 중)).
 // articles.json 폴링으로 a.rev가 올라가면 완료 → 임시상태 해제. 색(노랑 등)은 a.rev로 결정 = 영구·전 기기 일관·물결 없음.
 const REVISING = new Map();   // file → { reqRev(요청시 서버 회차), ts } — 진행 중(물결·잠금) 클라 임시상태
-const REV_PEND_KEY = 'nomute_rev_pending';   // 진행 상태 영속 — 새로고침/앱종료에도 잠금·완료전환·reqRev 유지
 const RV_COLORS = ['15,253,2', '255,210,74', '12,208,247'];   // 0 원본 초록 · 1 노랑(이슈색) · 2 파랑(SNS) · 순환
 const revColor = g => RV_COLORS[(((g % 3) + 3) % 3)];
 const artRev = file => { const a = DATA.find(x => x.file === file); return a ? (Number(a.rev) || 0) : 0; };   // 서버 회차
 const isRevising = file => REVISING.has(file);
-const saveRevising = () => { try { localStorage.setItem(REV_PEND_KEY, JSON.stringify([...REVISING])); } catch {} };
-function loadRevising() {   // 부팅 복원 — 진행 중이던 수정(20분 내)만 되살려 폴 재개(reqRev 원값 보존 = 완료 오인 방지)
-  try {
-    const now = Date.now();
-    for (const [file, v] of JSON.parse(localStorage.getItem(REV_PEND_KEY) || '[]'))
-      if (v && typeof v.ts === 'number' && now - v.ts < 20 * 60000) REVISING.set(file, v);
-  } catch {}
-  if (REVISING.size) startRevisePoll();
-}
 function startRevising(file) {
   if (!file) return;
-  REVISING.set(file, { reqRev: artRev(file), ts: Date.now() });   // 요청 시점 서버 회차 스냅(완료 = a.rev가 이보다 ↑)
-  saveRevising();
+  REVISING.set(file, { reqRev: artRev(file), ts: Date.now() });   // 요청 시점 서버 회차 스냅
   render();                                                  // 피드 카드 물결·잠금 반영
   if ($('#dlg').open && CUR === file) applyReviseMarks();
   startRevisePoll();
@@ -2324,15 +2312,12 @@ function startRevisePoll() {
     for (const [file, v] of [...REVISING]) {
       if (artRev(file) > v.reqRev) {                         // 서버 회차 ↑ = 수정 반영 완료
         REVISING.delete(file); changed = true;
-        if ($('#dlg').open && CUR === file) {                // 열린 본문 자동 갱신(스크롤 위치 보존)
-          const a = DATA.find(x => x.file === file);
-          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a); if (dlg) dlg.scrollTop = st; }
-        }
+        if ($('#dlg').open && CUR === file) { const a = DATA.find(x => x.file === file); if (a) open(a); }
       } else if (Date.now() - v.ts > 20 * 60000) {           // 20분 폴백 — revise 최대 15분+빌드 여유(색은 a.rev로 추후 자동 반영)
         REVISING.delete(file); changed = true;
       }
     }
-    if (changed) { saveRevising(); render(); if ($('#dlg').open && CUR) applyReviseMarks(); }
+    if (changed) { render(); if ($('#dlg').open && CUR) applyReviseMarks(); }
     if (!REVISING.size) { clearInterval(_revPoll); _revPoll = null; }
   }, 20000);
 }
@@ -3826,7 +3811,6 @@ $('#revSend').addEventListener('click', async () => {
   btn.disabled = false;
 });
 load();
-loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 loadPickFails();    // eager — 픽 분석 실패(전문 필요) 감지로 앰버 링/토스트(수집함 밖에서도 알림)
