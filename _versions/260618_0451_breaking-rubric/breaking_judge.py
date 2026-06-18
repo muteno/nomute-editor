@@ -111,11 +111,7 @@ def main():
         c["breaking_rubric"] = RUBRIC_VER  # 판정 도장(이 rubric 버전으로 판정됨)
         if v:
             nbreak += 1
-    import tempfile, os                          # 원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)
-    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
-    with os.fdopen(_fd, "w", encoding="utf-8") as _f:
-        _f.write(json.dumps(cands, ensure_ascii=False))
-    os.replace(_tmp, CAND)
+    CAND.write_text(json.dumps(cands, ensure_ascii=False), encoding="utf-8")
     print(f"판정 완료: 🚨속보 {nbreak}건 / 후보 {len(pending)}건 (rubric {RUBRIC_VER})")
     for i, c in enumerate(pending):
         if verdicts.get(str(i)):
