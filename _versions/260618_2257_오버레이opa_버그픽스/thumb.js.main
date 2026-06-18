@@ -60,9 +60,9 @@ export async function onRequestPost({ request, env }) {
     } else {                                  // 오버레이 — 항상 opa60·30, 직접입력은 추가(+1)
       const lines = cleanLines(p.lines);
       if (!lines.length) return json({ error: '텍스트 줄(lines)이 필요해' }, 400);
-      // 선택된 opa(60·30·직접입력 멀티·최소1) — 프론트가 점등분만 보냄. 정리(정수·1~100만·중복제거·0 드롭).
+      // 선택된 opa(60·30·직접입력 멀티·최소1) — 프론트가 점등분만 보냄. 정리(0~100·정수·중복제거).
       let opas = [...new Set((Array.isArray(p.opas) ? p.opas : [])
-        .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n) && n >= 1 && n <= 100))];
+        .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n)).map(n => Math.max(0, Math.min(100, n))))];
       if (!opas.length) opas = [60, 30];   // 폴백 — 빈 입력/구 클라(extraOpa) 안전망
       params = { mode, lines, opas };
     }
@@ -104,21 +104,18 @@ export async function onRequestPost({ request, env }) {
     let outs;
     if (app === '2' && params.mode === 'header') {
       outs = [
-        { path: `${dir}/nobg.png`, label: '기본 (흰칸 없음)' },
-        { path: `${dir}/box.png`, label: '흰칸 (영상자리)' },
+        { path: `${dir}/nobg.png`, label: '기본' },
+        { path: `${dir}/box.png`, label: '흰칸' },
       ];
     } else if (app === '2' && params.mode === 'overlay') {
-      const kind = imgPath ? '합성본' : '오버레이';
-      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
+      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: 'OPA' + o }));   // variant 태그 = OPA{값}(통일)
     } else if (app === '1') {
-      // 다중 투명도 = opa별 1장(워크플로 dst 규칙과 동일: 1개면 out.png, 여러개면 opa{o}.png)
+      // 경로는 워크플로 dst 규칙 유지(1개=out.png·여러개=opa{o}.png). 라벨=OPA{값} 통일 — 단일·직접입력도 OPA 태그(옛 'out' 빈라벨 폴백 제거 = 캡션/파일명에 OPA 표시).
       const opas = (params.opas && params.opas.length) ? params.opas : [params.opacity ?? 58];
-      const kind = imgPath ? '합성본' : '오버레이';
-      outs = opas.length === 1
-        ? [{ path: `${dir}/out.png`, label: '' }]
-        : opas.map(o => ({ path: `${dir}/opa${o}.png`, label: `${kind} opa${o}` }));
+      outs = opas.map(o => ({ path: `${dir}/${opas.length === 1 ? 'out' : 'opa' + o}.png`, label: 'OPA' + o }));
     } else {
-      outs = [{ path: `${dir}/out.png`, label: '' }];
+      // /3 저작권 = 이름(variant 태그) · /4 경고문 = variant 없음(잡 라벨 '경고문 (포맷)'로 구분)
+      outs = [{ path: `${dir}/out.png`, label: app === '3' ? (params.name || '') : '' }];
     }
     return json({ ok: true, id, out: outs[0].path, outs });
   }
