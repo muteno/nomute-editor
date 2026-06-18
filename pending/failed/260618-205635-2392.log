@@ -1,0 +1,20 @@
+url: https://www.joongang.co.kr),
+exit_code: 0
+---- stderr ----
+Permission deny rule "MultiEdit" matches no known tool — check for typos.
+---- stdout(head) ----
+URL이 깨졌어. 분석할 게 없다.
+
+`https://www.joongang.co.kr),` — 중앙일보 **홈 도메인 + 꼬리 `),`**(마크다운 링크 붙여넣다 잘린 흔적)일 뿐, **기사 경로(`/article/...`)가 통째로 없음**. 게다가 이 입력엔 `기사 제목(수집기 메타)`도 안 들어와서 어떤 사건인지 식별할 단서가 0이야. 방금 WebFetch도 `ECONNREFUSED`로 튕겼고(이 URL 자체가 못 감). 제목이 없으니 WebSearch로 같은 사건을 되살릴 수도 없어 — 검색어가 없다. 없는 기사를 지어내는 건 금지(사실 무결성)라 여기서 멈춘다.
+
+헤드리스 파이프라인 기준 정답 출력은 이 한 줄이야(워크플로가 `failed/`로 격리 → 전문 붙여넣기로 복구하는 경로):
+
+```
+ANALYSIS_FAILED: URL이 기사 주소가 아니라 중앙일보 홈 도메인+깨진 꼬리('),')라 본문·제목·수집기 메타가 전혀 없음(fetch ECONNREFUSED). 식별할 사건이 없어 교차확인 불가 → 전문 붙여넣기로 복구 필요.
+```
+
+**고치는 법** — 둘 중 아무거나:
+- 진짜 기사 URL을 다시 줘(`https://www.joongang.co.kr/article/숫자` 꼴).
+- 아니면 기사 **전문을 그대로 붙여넣어** — 그럼 바로 다이제스트 뽑는다.
+
+참고로 큐 소스(`pending/`·`queue/`)에 이렇게 `),` 붙은 깨진 URL이 적재되고 있으면, 공유/적재 단계에서 마크다운 링크 꼬리가 같이 끌려온 거다 — 거기서 잘라주면 재발 안 해.

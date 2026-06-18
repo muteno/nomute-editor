@@ -73,7 +73,7 @@ for f in "${files[@]}"; do
   #   awk = 첫 '# body:' 마커 후 EOF까지(마커 줄 자체는 스킵). 방어 캡 = 20000바이트(폰 fetch_article
   #   의 6000자 캡 ≈ 한글 최대 18KB 를 안 자르면서 직접 조작된 거대 본문만 차단) + iconv -c 로
   #   바이트 경계서 깨진 꼬리 멀티바이트 제거(정상 본문은 캡 미달이라 무손실).
-  embedded="$(awk '/^# body:/{f=1;next} f' "$f" | head -c 20000 | iconv -f UTF-8 -t UTF-8 -c)"
+  embedded="$(awk '/^# body:/{f=1;next} f' "$f" | head -c 20000 | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null)"
   if [ -n "${embedded//[$' \t\r\n']/}" ]; then
     extracted="$embedded"
     echo "폰 선-fetch 본문 사용(${#embedded} 바이트) — 클라우드 fetch 스킵(403 우회)"
