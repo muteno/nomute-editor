@@ -12,15 +12,10 @@ SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
 STAMP="$HOME/.cache/nomute_th_env_ready"
 if [ ! -f "$STAMP" ]; then
   if ! fc-list 2>/dev/null | grep -qi "noto sans cjk"; then
-    # ⚠️ apt/pip 무한 행 차단 — 간헐 미러/네트워크 스톨 시 timeout 없으면 20분 잡 한도까지 행 → cancel(="되다 안되다"의 근인 · 실측 260618).
-    #    timeout으로 빠른 실패 + 1회 재시도. set -e라 최종 실패 시 즉시 종료(클라가 3분 실패 표시 → 재시도하면 보통 성공).
-    timeout 150 $SUDO apt-get update -qq || timeout 150 $SUDO apt-get update -qq || true
-    timeout 240 $SUDO apt-get install -y -qq fonts-noto-cjk \
-      || { sleep 3; timeout 240 $SUDO apt-get install -y -qq fonts-noto-cjk; }
+    $SUDO apt-get update -qq && $SUDO apt-get install -y -qq fonts-noto-cjk
   fi
-  python3 -c "import PIL,numpy,cv2,mediapipe" 2>/dev/null \
-    || timeout 300 pip3 install -q pillow numpy opencv-python-headless mediapipe \
-    || { sleep 3; timeout 300 pip3 install -q pillow numpy opencv-python-headless mediapipe; }
+  python3 -c "import PIL,numpy,cv2,mediapipe" 2>/dev/null || \
+    pip3 install -q pillow numpy opencv-python-headless mediapipe
   mkdir -p "$HOME/.cache" && touch "$STAMP"
 fi
 
