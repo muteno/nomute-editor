@@ -3166,13 +3166,8 @@ function renderScrap() {
   });
   pollPicking();   // 픽 후·새로고침 잔존 Picking… 분석완료 폴 시동(가드: 진행중·picking 없으면 즉시 반환)
 }
-// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 미래거나 수집보다 뒤면(=물리적 불가) first_seen 사용.
-const scTs = c => {
-  const p = Date.parse(c.published || ''), f = Date.parse(c.first_seen || '');
-  if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000)) return p;   // 발행 정상(미래 아님·수집보다 앞) → 발행 우선
-  if (!isNaN(f)) return f;                                                               // 발행 오기록(미래·수집보다 뒤) → 수집시각(존재 확인된 상한)
-  return isNaN(p) ? 0 : p;
-};
+// scTs = 발행시각(정렬·최신성 판정용).
+const scTs = c => { const t = Date.parse(c.published || c.first_seen || ''); return isNaN(t) ? 0 : t; };
 // ── 최신 게이트(scFast): 최신한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
 const FAST_MAX_H = 4, FAST_HALF_H = 2;   // ⏱ 신규↔누적 칼럼 경계 = 발생 4h(운영자 정본 260617: 최신=나이<4h=화면 '3시간 전'까지 / 누적=나이≥4h='4시간 전'부터). 자리(칼럼)=신규·누적 / 사건(배지)=긴급=속보[breaking] = 별개 축 — 긴급 사건은 나이 들면 *자리만* 신규→누적로 이동(개념 불변). 이 한 상수가 최신진입·누적진입·속보핀·토스트·배지(🚨긴급↔⚡이슈)를 전부 결정 = 단일출처(드리프트 차단). FAST_HALF_H=하강 반감기. 조정 가능.
 const scFast = c => isBreaking(c) || ((c.cross || 0) >= 2 && c.grade !== 0 && c.grade !== 1);
