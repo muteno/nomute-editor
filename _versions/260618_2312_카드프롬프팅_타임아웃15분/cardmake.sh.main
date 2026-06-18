@@ -158,15 +158,13 @@ for q in "${targets[@]}"; do
     # 고정부(프롬프트 + 강제 주입 지침) → 가변부(다이제스트). stdin 전달 = ARG_MAX 회피
     # (카드 지침 통째 주입이 커서 명령행 인자로는 'Argument list too long' 126 — stdin은 무제한).
     # --disallowedTools + --max-turns = 헤드리스 무중단(파일쓰기/권한대기/툴 무한루프 차단, analyze.sh와 동일).
-    # timeout 900(15분) = analyze 요약콜과 동일·뷰어 genStuck(15분 실패표시)와 정합(260619 1500→900↓:
-    #   백엔드가 25분까지 슬롯 붙들어 15~25분이 낭비였음 — 프론트는 이미 15분에 실패라 운영자 재시도. 단발 Opus콜이라 15분이면 충분).
     fp="$(cat "$PROMPT_FILE")
 
 ${GBLOCK}
 
 [큐레이션 다이제스트 — 이 기사로 카드뉴스 MD를 만든다]
 $(cat "$q")"
-    out="$(printf '%s' "$fp" | timeout 900 claude -p \
+    out="$(printf '%s' "$fp" | timeout 1500 claude -p \
           --model "$MODEL" \
           --effort max \
           --allowedTools "WebFetch,WebSearch" \
