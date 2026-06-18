@@ -1,8 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # 노뮤트 뉴스 큐 — Termux 공유 스크립트 (참고용 · 실전판은 폰재구축플레이북 §5)
 # 설치:
-#   1) Termux + Termux:API 설치, `pkg install git termux-api python libiconv`
-#      (python·libiconv = 폰 선-fetch 본문 추출용 — 없으면 본문 동봉이 조용히 빈값 됨)
+#   1) Termux + Termux:API 설치, `pkg install git termux-api`
+#      (전문 붙여넣기 경로는 추가 패키지 0개. URL 공유→폰 선-fetch 를 쓰려면 `python libiconv` 추가)
 #   2) git clone <레포> ~/nomute-editor (또는 이미 있으면 생략)
 #   3) 이 파일을 ~/bin/queue-news 로 복사하고 chmod +x
 #   4) Termux:Tasker/공유 시트에 "queue-news"를 등록(공유 → Termux)
@@ -12,7 +12,8 @@
 INPUT="$*"               # 공유된 전체(URL 또는 기사 '전체선택→공유' 전문)
 notify(){ termux-notification -t "$1" -c "$2" 2>/dev/null || true; }
 URL="$(printf '%s' "$INPUT" | grep -oE 'https?://[^ "'"'"'<>]+' | head -1)"
-HANGUL=$(printf '%s' "$INPUT" | grep -oE '[가-힣]' | wc -l)   # 200자+ = 전문 붙여넣기 판정
+# 한글 음절(가-힣)의 UTF-8 lead 바이트(0xEA~0xED) 수 ≈ 글자수 — LC_ALL=C 라 로케일 무관(폰 바이트모드여도 일관).
+HANGUL=$(printf '%s' "$INPUT" | LC_ALL=C grep -oE $'[\xea-\xed]' | wc -l)   # 200자+ = 전문 붙여넣기 판정
 logline(){ echo "$(date '+%y-%m-%d %H:%M:%S') | $1 | ${LINE1:-$URL}" >> ~/nomute-queue.log; }
 
 cd ~/nomute-editor || { notify "큐 실패" "리포 폴더 없음"; logline "NO_REPO"; exit 1; }
@@ -20,7 +21,7 @@ cd ~/nomute-editor || { notify "큐 실패" "리포 폴더 없음"; logline "NO_
 if [ "$HANGUL" -ge 200 ]; then
   # ── 전문 붙여넣기(전체선택→공유) — 403·JS·페이월 *전부* 우회, fetch 안 함. 안의 링크는 무시 ──
   LINE1="paste:$(printf '%s' "$INPUT" | sha1sum | cut -c1-12)"   # 합성 id(원문 URL 없음·dedup용)
-  BODY="$(printf '%s' "$INPUT" | head -c 20000 | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null)"
+  BODY="$(printf '%s' "$INPUT" | head -c 20000)"   # iconv 불필요 — 분석기가 iconv -c 로 정리(전문경로 = libiconv 의존 0)
 else
   # ── URL 경로 — 폰 선-fetch(403 우회). repo의 fetch_article.sh로 폰(200)에서 본문 선취득 ──
   [ -z "$URL" ] && { notify "큐 실패" "URL/전문 못 찾음"; logline "NO_URL"; exit 1; }
