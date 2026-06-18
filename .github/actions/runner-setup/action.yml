@@ -1,5 +1,5 @@
 name: runner-setup
-description: 앱 setup.sh로 deps 설치(단일출처·드리프트 0) + pip/whisper 모델 캐시(러너판 7일 캐시)
+description: 앱 setup.sh로 deps 설치(단일출처·드리프트 0) + pip/whisper/apt 7일 캐시(러너판). 합성기 무거운 deps 재다운·네트워크 행 차단.
 
 inputs:
   setup:
@@ -9,6 +9,10 @@ inputs:
     description: "'true'면 whisper 모델(~/.cache/huggingface)도 캐시"
     required: false
     default: 'false'
+  apt:
+    description: "apt 패키지(공백구분). .deb를 7일 캐시 후 오프라인 dpkg 설치 → 재다운·미러 스톨 행 차단(합성기 폰트/ffmpeg 공용). setup.sh apt는 타임아웃 폴백."
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -28,7 +32,34 @@ runs:
         path: ~/.cache/huggingface
         key: nomute-hf-whisper-large-v3-turbo-v1
 
-    # deps = 앱 setup.sh 단일출처(양쪽호환: 러너선 sudo·/mnt 스킵). dep 목록은 setup.sh에만.
+    # apt .deb 7일 캐시 — 폰트/ffmpeg 등 합성기 무거운 시스템 deps를 .deb로 보존(첫 런만 다운, 이후 오프라인).
+    - name: apt .deb 캐시
+      if: ${{ inputs.apt != '' }}
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/nomute-apt
+        key: nomute-apt-${{ runner.os }}-${{ inputs.apt }}-v1
+
+    # apt 설치 — 캐시 .deb 있으면 오프라인 dpkg(네트워크 0·행 0), 없으면 1회 다운로드 후 캐시.
+    # 모든 네트워크 op은 timeout(미러 스톨 → 잡 한도까지 무한 행 = '되다 안되다' 근인 차단). 실패해도 setup.sh apt가 타임아웃 폴백.
+    - name: apt 오프라인 설치(캐시 우선)
+      if: ${{ inputs.apt != '' }}
+      shell: bash
+      run: |
+        SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+        mkdir -p ~/.cache/nomute-apt
+        if ls ~/.cache/nomute-apt/*.deb >/dev/null 2>&1; then
+          echo "apt: 캐시 .deb 오프라인 설치 (${{ inputs.apt }})"
+          $SUDO dpkg -i ~/.cache/nomute-apt/*.deb 2>/dev/null || timeout 180 $SUDO apt-get -y -f -qq install || true
+        else
+          echo "apt: 최초 다운로드 → 캐시 (${{ inputs.apt }})"
+          timeout 150 $SUDO apt-get update -qq || true
+          timeout 300 $SUDO apt-get install -y -qq --download-only ${{ inputs.apt }} || true
+          cp /var/cache/apt/archives/*.deb ~/.cache/nomute-apt/ 2>/dev/null || true
+          timeout 300 $SUDO apt-get install -y -qq ${{ inputs.apt }} || true
+        fi
+
+    # deps = 앱 setup.sh 단일출처(양쪽호환: 러너선 sudo·/mnt 스킵). apt는 위서 선설치·캐시 → setup.sh apt는 타임아웃 폴백만.
     - name: deps (setup.sh)
       shell: bash
       run: bash "${{ inputs.setup }}"
