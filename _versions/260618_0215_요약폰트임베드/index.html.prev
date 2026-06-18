@@ -977,13 +977,9 @@
   @keyframes rvPulseBg { 0%,100% { background:var(--rv-from); } 50% { background:var(--rv-to); } }
   @keyframes rvPulseC  { 0%,100% { color:var(--rv-from); } 50% { color:var(--rv-to); } }
   @keyframes rvRing { from { box-shadow:0 0 0 0 var(--rv-ring,rgba(255,150,20,.5)); } to { box-shadow:0 0 0 15px transparent; } }
-  /* 수정 버튼(연필 FAB) — 진행 중: 물결(ring)+아이콘 색 왕복+잠금 / 완료: 회차색 고정(물결 없음) */
+  /* 수정 버튼(연필 FAB) — 진행 중: 물결(ring) + 아이콘 색 왕복 */
   .rev-fab.revving { animation:rvRing 1.5s ease-out infinite; border-color:var(--rv-to); }
   .rev-fab.revving svg { animation:rvPulseC 1.6s ease-in-out infinite; }
-  .rev-fab.locked { cursor:not-allowed; }   /* 진행 중 = 재수정 차단(클릭 가드는 JS) */
-  .rev-fab.revdone { color:rgb(var(--rv-solid,255,210,74)); border-color:rgb(var(--rv-solid,255,210,74)); background:rgba(255,210,74,.14);
-    box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(255,210,74,.18), 0 0 20px rgba(255,210,74,.3); }   /* 수정됨 = 노랑 고정(물결 X) */
-  .rev-fab.revdone svg { color:rgb(var(--rv-solid,255,210,74)); }
   /* 피드카드 진행바 — 진행 중: 완료 세그(초록)가 from↔to 천천히 왕복 */
   .card.revving .prog .seg[data-j="n"] .bar { animation:rvPulseBg 1.9s ease-in-out infinite; box-shadow:none; }
   .card.revving .prog .seg[data-j="n"] .sl { animation:rvPulseC 1.9s ease-in-out infinite; }
@@ -992,13 +988,11 @@
   .card[data-gen="1"] .prog .seg[data-j="n"] .sl { color:#ffc31f; }
   .card[data-gen="2"] .prog .seg[data-j="n"] .bar { background:linear-gradient(90deg,#9becff,#0cd0f7); box-shadow:0 0 8px rgba(12,208,247,.4); }
   .card[data-gen="2"] .prog .seg[data-j="n"] .sl { color:#0cd0f7; }
-  .card.revving .prog .seg[data-j="n"] .bar { box-shadow:none; }   /* 물결 중엔 data-gen 완료 글로우 끔(data-gen 뒤에 둬 우선) */
   /* 본문 IG·Thread 소주제 — 진행 중: 소주제 헤더가 강조색(초록)↔이슈노랑 펄스 / (변경 중)은 효과 없이 흰색 */
   @keyframes rvChgC { 0%,100% { color:rgba(15,253,2,.85); } 50% { color:rgba(255,210,74,1); } }
   .revsec, .revsec .cnt { animation:rvChgC 1.7s ease-in-out infinite; }
   .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; color:#fff; }
-  .revsec-done, .revsec-done .cnt { color:rgb(var(--rv-solid,255,210,74)) !important; }   /* 수정됨 = 소주제 노랑 고정(펄스 없음) */
-  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none; } .revsec, .revsec .cnt { color:rgba(255,210,74,.72) !important; } }
+  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none; } .revsec { color:rgba(255,210,74,.72) !important; } }
   /* ── 요약 수정 팝업(revdlg) — FAB(우·중하단)에서 좌측으로 촤르륵 펼침. askdlg 골격 계승 + 게이지(PICK) 발사 버튼. ── */
   /* 위치 = askdlg 중앙(inset:0·margin:auto) 상속 → PC·모바일 공통 가운데 출력(우측 구석 정렬 폐기). 컴팩트. */
   .revdlg { width:min(420px,92vw); max-width:420px; max-height:calc(100dvh - 40px); }
@@ -1269,15 +1263,15 @@ function render() {
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
   list.innerHTML = '';
+  const RG = revGenAll();   // 회차(색) 1회 조회
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
-    const g = Number(a.rev) || 0;                    // 서버 회차(완료색·정본) — 1=노랑·2=파랑·0=초록기본
-    if (g % 3) c.dataset.gen = (((g % 3) + 3) % 3);
-    if (isRevising(a.file)) {                         // 진행 중(클라 임시) = 진행바 물결(현재→다음 색)
-      c.classList.add('revving');
-      c.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
-      c.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
-    }
+    const _gm = (((RG[a.file] || 0) % 3) + 3) % 3;   // 완료 회차 색: 1=주황·2=파랑·0=초록(기본)
+    if (_gm) c.dataset.gen = _gm;
+    const _rv = REVISING.get(a.file);                // 변경 중 = 진행바 펄스(현재→다음 색)
+    if (_rv) { c.classList.add('revving');
+      c.style.setProperty('--rv-from', 'rgb(' + revColor(_rv.fromGen) + ')');
+      c.style.setProperty('--rv-to', 'rgb(' + revColor(_rv.fromGen + 1) + ')'); }
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
@@ -2289,29 +2283,20 @@ const REPENDING = new Map();   // key `${file}#${card}` → {file, card, oldImg,
 let _polling = false;
 const rpKey = (file, card) => file + '#' + card;
 
-// ── 요약 수정(revise) 진행 표시 — 회차(rev)는 서버 정본(queue 프론트매터 → articles.json a.rev) ──
-// 수정요청 전송 → 그 기사 '진행 중'(클라 임시: 연필 물결+잠금·피드바 펄스·소주제 펄스·(변경 중)).
-// articles.json 폴링으로 a.rev가 올라가면 완료 → 임시상태 해제. 색(노랑 등)은 a.rev로 결정 = 영구·전 기기 일관·물결 없음.
-const REVISING = new Map();   // file → { reqRev(요청시 서버 회차), ts } — 진행 중(물결·잠금) 클라 임시상태
-const REV_PEND_KEY = 'nomute_rev_pending';   // 진행 상태 영속 — 새로고침/앱종료에도 잠금·완료전환·reqRev 유지
-const RV_COLORS = ['15,253,2', '255,210,74', '12,208,247'];   // 0 원본 초록 · 1 노랑(이슈색) · 2 파랑(SNS) · 순환
+// ── 요약 수정(revise) 진행 표시 — 회차 색순환(초록→주황→파랑→루프) ──
+// 수정요청 전송 → 그 기사 '변경 중'(연필 버튼 물결·피드바 펄스·IG/Thread 소주제 '(변경 중)').
+// articles.json 폴링으로 본문이 실제 바뀌면 완료(회차+1·색 고정). 회차=기기별 localStorage.
+const REVISING = new Map();   // file → { snap(본문 스냅샷), ts, fromGen }
+const RVG_KEY = 'nomute_revgen';
+const RV_COLORS = ['15,253,2', '255,210,74', '12,208,247'];   // 1강조 초록(원본) · 2강조 노랑(메뉴1 이슈색·밝게) · 3강조 파랑(SNS)
+const revGenAll = () => { try { return JSON.parse(localStorage.getItem(RVG_KEY) || '{}'); } catch { return {}; } };
 const revColor = g => RV_COLORS[(((g % 3) + 3) % 3)];
-const artRev = file => { const a = DATA.find(x => x.file === file); return a ? (Number(a.rev) || 0) : 0; };   // 서버 회차
-const isRevising = file => REVISING.has(file);
-const saveRevising = () => { try { localStorage.setItem(REV_PEND_KEY, JSON.stringify([...REVISING])); } catch {} };
-function loadRevising() {   // 부팅 복원 — 진행 중이던 수정(20분 내)만 되살려 폴 재개(reqRev 원값 보존 = 완료 오인 방지)
-  try {
-    const now = Date.now();
-    for (const [file, v] of JSON.parse(localStorage.getItem(REV_PEND_KEY) || '[]'))
-      if (v && typeof v.ts === 'number' && now - v.ts < 20 * 60000) REVISING.set(file, v);
-  } catch {}
-  if (REVISING.size) startRevisePoll();
-}
+function bumpRevGen(file) { try { const m = revGenAll(); m[file] = (m[file] || 0) + 1; localStorage.setItem(RVG_KEY, JSON.stringify(m)); } catch {} }
 function startRevising(file) {
   if (!file) return;
-  REVISING.set(file, { reqRev: artRev(file), ts: Date.now() });   // 요청 시점 서버 회차 스냅(완료 = a.rev가 이보다 ↑)
-  saveRevising();
-  render();                                                  // 피드 카드 물결·잠금 반영
+  const a = DATA.find(x => x.file === file);
+  REVISING.set(file, { snap: (a && a.body) || '', ts: Date.now(), fromGen: (revGenAll()[file] || 0) });
+  render();                                                  // 피드 카드 물결 반영
   if ($('#dlg').open && CUR === file) applyReviseMarks();
   startRevisePoll();
 }
@@ -2319,55 +2304,53 @@ let _revPoll = null;
 function startRevisePoll() {
   if (_revPoll) return;
   _revPoll = setInterval(async () => {
-    await load();                                            // DATA 갱신(articles.json = a.rev 최신)
+    await load();                                            // DATA 갱신 + 피드 재렌더(변경 중 표시 유지)
     let changed = false;
     for (const [file, v] of [...REVISING]) {
-      if (artRev(file) > v.reqRev) {                         // 서버 회차 ↑ = 수정 반영 완료
-        REVISING.delete(file); changed = true;
-        if ($('#dlg').open && CUR === file) {                // 열린 본문 자동 갱신(스크롤 위치 보존)
-          const a = DATA.find(x => x.file === file);
-          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a); if (dlg) dlg.scrollTop = st; }
-        }
-      } else if (Date.now() - v.ts > 20 * 60000) {           // 20분 폴백 — revise 최대 15분+빌드 여유(색은 a.rev로 추후 자동 반영)
+      const a = DATA.find(x => x.file === file);
+      if (a && (a.body || '') !== v.snap) {                  // 본문 바뀜 = 수정 반영됨
+        bumpRevGen(file); REVISING.delete(file); changed = true;
+        if ($('#dlg').open && CUR === file) open(a);         // 갱신본 표시(소주제 마크 자동 해제)
+      } else if (Date.now() - v.ts > 8 * 60000) {            // 8분 폴백 — 미감지면 조용히 종료(색 안 올림)
         REVISING.delete(file); changed = true;
       }
     }
-    if (changed) { saveRevising(); render(); if ($('#dlg').open && CUR) applyReviseMarks(); }
+    if (changed) { render(); if ($('#dlg').open && CUR) applyReviseMarks(); }
     if (!REVISING.size) { clearInterval(_revPoll); _revPoll = null; }
   }, 20000);
 }
-// 연필 FAB — 진행 중: 현재→다음 색 왕복 물결+잠금 / 완료(a.rev>0): 회차색 고정(물결 X) / 원본: 평소.
+// 연필 FAB — 변경 중: 현재→다음 색 왕복 물결 / 수정 적용됨(이력 g>0): 그 회차색(노랑 등) 고정 + 물결 유지.
 function applyReviseFab() {
   const fab = $('#revFab'); if (!fab) return;
-  const pending = !!(CUR && isRevising(CUR));
-  const g = CUR ? artRev(CUR) : 0;
-  fab.classList.toggle('revving', pending);
-  fab.classList.toggle('locked', pending);
-  fab.classList.toggle('revdone', !pending && g > 0);
-  if (pending) {
-    fab.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
-    fab.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
-    fab.style.setProperty('--rv-ring', 'rgba(' + revColor(g + 1) + ',.5)');
-  } else if (g > 0) {
-    fab.style.setProperty('--rv-solid', revColor(g));
+  const v = CUR && REVISING.get(CUR);
+  const g = CUR ? (revGenAll()[CUR] || 0) : 0;   // 완료된 수정 회차(이력)
+  if (v) {                                        // 변경 중 = 현재→다음 색 왕복
+    fab.classList.add('revving');
+    fab.style.setProperty('--rv-from', 'rgb(' + revColor(v.fromGen) + ')');
+    fab.style.setProperty('--rv-to', 'rgb(' + revColor(v.fromGen + 1) + ')');
+    fab.style.setProperty('--rv-ring', 'rgba(' + revColor(v.fromGen + 1) + ',.5)');
+  } else if (g > 0) {                             // 수정 적용됨 = 회차색 고정 + 물결 유지
+    const col = revColor(g);
+    fab.classList.add('revving');
+    fab.style.setProperty('--rv-from', 'rgb(' + col + ')');
+    fab.style.setProperty('--rv-to', 'rgb(' + col + ')');
+    fab.style.setProperty('--rv-ring', 'rgba(' + col + ',.5)');
+  } else {
+    fab.classList.remove('revving');
   }
 }
-// 본문 IG·Thread 소주제 — 진행 중: 강조↔노랑 펄스 + (변경 중) 흰색 / 완료(a.rev>0): 노랑 고정.
+// 본문 IG·Thread 소주제 — 변경 중: 다음 강조색 50% + 기울임 (변경 중). (revise는 그 두 블록만 바꿈)
 function applyReviseMarks() {
   const root = $('#mdbody'); if (!root) { applyReviseFab(); return; }
-  const pending = !!(CUR && isRevising(CUR));
-  const g = CUR ? artRev(CUR) : 0;
+  const v = CUR && REVISING.get(CUR);
   root.querySelectorAll('h3').forEach(h => {
     const old = h.querySelector('.revchg'); if (old) old.remove();
-    h.classList.remove('revsec', 'revsec-done'); h.style.removeProperty('--rv-solid');
-    if (!/\[\s*(IG|Thread|인스타|스레드|쓰레드)/i.test(h.textContent)) return;
-    if (pending) {                                           // 진행 중 = 펄스 + (변경 중)
+    h.classList.remove('revsec'); h.style.removeProperty('--rv-tot');
+    if (v && /\[\s*(IG|Thread|인스타|스레드|쓰레드)/i.test(h.textContent)) {
       h.classList.add('revsec');
+      h.style.setProperty('--rv-tot', revColor(v.fromGen + 1));
       const s = document.createElement('i'); s.className = 'revchg'; s.textContent = ' (변경 중)';
       h.appendChild(s);
-    } else if (g > 0) {                                      // 완료 = 노랑 고정(펄스 없음)
-      h.classList.add('revsec-done');
-      h.style.setProperty('--rv-solid', revColor(g));
     }
   });
   applyReviseFab();
@@ -3535,7 +3518,6 @@ function resetRevSend() {   // 발사 버튼 원복(재확인 해제)
 }
 function openRev() {
   if (!CUR) { return; }
-  if (isRevising(CUR)) { return; }   // 진행 중(물결) 재수정 차단 — 경로 1: 연필 FAB 클릭(어떤 경로에서도 잠금)
   resetRevSend();
   $('#revStatus').textContent = ''; $('#revSend').classList.remove('firing'); $('#revSend').disabled = false;
   updateRevClip(); revdlg.showModal();
@@ -3598,7 +3580,8 @@ const SUMMARY_TPL = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>%TITLE% — 노뮤트 요약</title>
-%FONTFACE%
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.min.css">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { background:#0b0d0c; }
@@ -3698,20 +3681,7 @@ const SUMMARY_TPL = `<!doctype html>
 <script>%SCRIPT%<\/script>
 </body>
 </html>`;
-let _nmFontCss = null;   // Pretendard base64 캐시(세션 1회 fetch·재사용)
-async function nmFontFace() {   // woff2 → @font-face(base64) 임베드용 CSS. 실패 시 '' → CDN 폴백.
-  if (_nmFontCss !== null) return _nmFontCss;
-  try {
-    const r = await fetch('assets/fonts/pretendard.woff2', { cache: 'force-cache' });
-    if (!r.ok) throw 0;
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    let bin = ''; const CH = 0x8000;
-    for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-    _nmFontCss = "@font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url(data:font/woff2;base64," + btoa(bin) + ") format('woff2-variations')}";
-  } catch (e) { _nmFontCss = ''; }
-  return _nmFontCss;
-}
-async function buildSummaryHtml() {
+function buildSummaryHtml() {
   const src = document.createElement('div');
   src.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
   src.querySelectorAll('button, .copy, .gvchip').forEach(el => el.remove());   // 뷰어 복사·더보기·칩 버튼 제거
@@ -3765,11 +3735,7 @@ async function buildSummaryHtml() {
     srcLi = '<li><span class="ic">🔗</span><span>' + link + par + '</span></li>';
   } else { srcLi = '<li><span class="meta">출처 정보 없음</span></li>'; }
   const crLine = 'ⓒ ' + now.getFullYear() + '. 에디터 노뮤트(@no_mute, 인스타그램). all rights reserved. (' + ymd + ')';
-  const fontCss = await nmFontFace();
-  const fontHead = fontCss ? ('<style>' + fontCss + '</style>')
-    : '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.min.css">';
   return SUMMARY_TPL
-    .replace('%FONTFACE%', () => fontHead)
     .replace(/%TITLE%/g, () => esc(title))
     .replace('%LOGO%', () => NM_LOGO)
     .replace('%META%', () => meta)
@@ -3784,7 +3750,7 @@ async function downloadSummaryHtml() {
   const btn = $('#pdfBtn'), old = btn ? btn.textContent : '';
   if (btn) { btn.textContent = '만드는 중…'; btn.disabled = true; }
   try {
-    const html = await buildSummaryHtml();
+    const html = buildSummaryHtml();
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url;
@@ -3812,7 +3778,6 @@ $('#revClip').addEventListener('click', async () => {
   }
 });
 $('#revSend').addEventListener('click', async () => {
-  if (CUR && isRevising(CUR)) { $('#revStatus').textContent = '수정 반영 중 — 끝나면 다시'; return; }   // 진행 중 재전송 차단 — 경로 2: 전송 버튼
   const instruction = $('#revText').value.trim();
   if (!instruction) { $('#revStatus').textContent = '수정 지시를 한 줄 적어줘'; return; }
   if (!CUR) { $('#revStatus').textContent = '대상 카드를 못 찾음'; return; }
@@ -3842,7 +3807,6 @@ $('#revSend').addEventListener('click', async () => {
   btn.disabled = false;
 });
 load();
-loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 loadPickFails();    // eager — 픽 분석 실패(전문 필요) 감지로 앰버 링/토스트(수집함 밖에서도 알림)
