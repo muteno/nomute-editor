@@ -347,9 +347,8 @@ def score_crosspost(articles):
         }
         # 클러스터 멤버 url 직렬화(정렬=결정적·가산) — to_candidates 별칭승계의 입력.
         # rep url이 점프해도 멤버 교집합으로 '같은 사건' 추적(클러스터링 경계·cross 불변, 데이터만 추가).
-        # mega(over-merge 의심·별칭 비대상, >40)는 미직렬화 = 페이로드 절감 + 정합.
         articles[rep]["cluster_members"] = sorted(
-            {articles[m].get("link") for m in members if articles[m].get("link")}) if len(members) <= 40 else []
+            {articles[m].get("link") for m in members if articles[m].get("link")})
     return articles
 
 

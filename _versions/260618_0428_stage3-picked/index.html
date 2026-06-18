@@ -262,10 +262,8 @@
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
-  /* index2·3 속보/누적 태그 = cardtop 좌측 고정 슬롯(IN 앞). 시간상 하나만 — <4h 속보(빨강)·≥4h 누적(노랑).
-     없으면 빈 슬롯(폭 예약 → IN 시작점이 카드마다 일정하게 우측 들여쓰기). */
-  .cardtop .bislot { flex:none; width:44px; display:flex; align-items:center; }
-  .cardtop .bitag { margin-left:0; font-weight:800; font-size:9.5px; padding:2px 8px; border-radius:999px; letter-spacing:0; align-self:center; white-space:nowrap; }
+  /* index2·3 속보/누적 태그 = 카드 우상단(cardtop 오른쪽). 시간상 하나만 — <4h 속보(빨강)·≥4h 누적(노랑). */
+  .cardtop .bitag { margin-left:auto; font-weight:800; font-size:9.5px; padding:2px 8px; border-radius:999px; letter-spacing:0; align-self:center; }
   .bitag.brk { color:#fff; background:linear-gradient(135deg,#ff5b4a,#e2231a); box-shadow:0 0 8px rgba(240,40,30,.4); }
   .bitag.iss { color:#1a1400; background:linear-gradient(135deg,#ffe14a,#ffc31f); box-shadow:0 0 8px rgba(255,200,40,.4); }
   .card .t { flex:1; min-width:0; font-weight:700; font-size:15px; line-height:1.45; letter-spacing:-.3px; }
@@ -1221,7 +1219,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let DATA = [], DATA_LOADED = false;   // DATA_LOADED = 피드 1회 로드 완료 — 새로고침 시 DATA 전 picked가 Picking…으로 깜빡 방지
+let DATA = [];
 let CUR = '';
 let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로드에서 제목·출처 참조)
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
@@ -1252,9 +1250,7 @@ async function load() {
     DATA = j.articles || [];
     dateHead(j.count || DATA.length);
   } catch(e) { DATA = []; const d = $('#dhCnt'); if (d) d.textContent = 'articles.json 없음'; }
-  const _firstLoad = !DATA_LOADED; DATA_LOADED = true;   // 첫 로드 완료 표시
   render();
-  if (_firstLoad && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();   // 첫 DATA 도착 = 수집함 1회 재렌더(pickInFeed 정확·Picking 깜빡 보정)
   if ($('#dlg').open && CUR) {
     const a = DATA.find(x => x.file === CUR);
     // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
@@ -1305,11 +1301,10 @@ function render() {
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
-        <div class="cardtop"><span class="bislot">${brkIssueTag(a)}</span>${dateLine(a)}</div>
-        <div class="row1"><span class="t"></span></div>
+        <div class="cardtop">${dateLine(a)}${brkIssueTag(a)}</div>
+        <div class="row1">${catChip(articleCat(a))}<span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
-          <div><span>구분</span><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></div>
           ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
           ${a.bias?`<div><span>편향</span>${biasText(a.bias)}</div>`:''}
           <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
@@ -3101,7 +3096,7 @@ async function loadPickFails() {
 const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pfailHas(c); });
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
 const pickInFeed = c => DATA.some(a => a && a.url && _normU(a.url) === _normU(c.url));   // 픽 결과가 피드(3번 메뉴)에 등장했나
-const pickingNow = () => DATA_LOADED ? CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickInFeed(c) && !pfailHas(c); }) : [];   // 픽했는데 아직 피드 미등장·미실패 = 분석 중. DATA 로드 전엔 []  (깜빡 방지)
+const pickingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickInFeed(c) && !pfailHas(c); });   // 픽했는데 아직 피드 미등장·미실패 = 분석 중
 let _pickPolling = false;
 async function pollPicking() {   // 분석 완료까지 폴링 → Picking… 칩만 제자리 교체(전체 재렌더 X = 깜빡임 방지)
   if (_pickPolling || !pickingNow().length) return;
@@ -3259,7 +3254,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
        ? (st.picked
            ? (pfailHas(c)
                ? `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">Failed</button>`
-               : ((pickInFeed(c) || !DATA_LOADED)
+               : (pickInFeed(c)
                    ? `<div class="sc-got" aria-label="픽 완료">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
            : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분${isBreaking(c) ? ' · 긴급 점등 끔' : ''})">${CHECK_SVG}</button>`)

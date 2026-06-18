@@ -102,15 +102,14 @@ def main():
                   if _members(e) and not _is_mega(e)]
     claimed = set()
 
-    def find_aliases(c, self_url):
-        """c와 임계 통과하는 모든 기존(다른·미청구·비fresh) url 리스트(jac 내림·url 결정적). 전부 claim.
-           = merge 잔류중복 + 동시성 부활중복까지 흡수(self-heal)."""
+    def find_alias(c):
+        """새 url 후보 c와 멤버 교집합 최대인 기존(다른·미청구) url 반환 — 임계 통과·결정적. 없으면 None."""
         cm = _members(c)
         if not cm or _is_mega(c):
-            return []
-        hits = []
+            return None
+        best, best_url = (0.0, ""), None
         for u, e in alias_pool:
-            if u == self_url or u in fresh or u in claimed:   # 자기·살아있는 rep·이미 흡수 제외
+            if u in fresh or u in claimed:        # 이번에도 살아남은 url·이미 흡수된 건 제외
                 continue
             shared = len(cm & _members(e))
             if shared < ALIAS_MIN_SHARED:
@@ -118,21 +117,21 @@ def main():
             jac = shared / len(cm | _members(e))
             if jac < ALIAS_JACCARD:
                 continue
-            hits.append((jac, u))
-        hits.sort(key=lambda t: (-t[0], t[1]))    # jac 내림차·url 사전 = 결정적
-        for _, u in hits:
-            claimed.add(u)
-        return [u for _, u in hits]
+            if (jac, u) > best:                   # 결정적 tie-break(jac↑→url사전)
+                best, best_url = (jac, u), u
+        if best_url is not None:
+            claimed.add(best_url)
+        return best_url
 
     merged = dict(existing)
-    superseded = {}   # 흡수된 옛 url → 살아남는 url(회수 대상)
+    superseded = {}   # 흡수된 옛 url → 새 url(회수 대상)
     for url, c in sorted(fresh.items()):          # 결정적 순회
         prev = merged.get(url)
-        # 별칭은 새 url(rep 점프)에만 — 기존(활성) url엔 미적용 = 활성 distinct 후보 오회수 차단(§보수성).
-        aliases = find_aliases(c, url) if prev is None else []
-        is_alias = bool(aliases)
-        if is_alias:                              # 새 url = rep 점프 → best(jac최대)로 이력 승계
-            prev = existing.get(aliases[0], {})
+        if prev is None:                          # 새 url(rep 점프 가능) → 별칭 승계 시도
+            au = find_alias(c)
+            if au is not None:
+                prev = existing.get(au, {})
+                superseded[au] = url              # 옛 엔트리 이력을 c가 승계 → 옛것 회수
         prev = prev or {}
         c["first_seen"] = prev.get("first_seen", nowiso)
         # last_seen = 마지막 '후속'(cross 증가) 시각. 신규/성장=now, 아니면 유지(뷰어 신선도 감쇠용).
@@ -143,15 +142,9 @@ def main():
         grew_arts = (not prev) or ((c.get("arts") or 0) > (prev.get("arts") or 0))
         c["last_report"] = nowiso if grew_arts else (prev.get("last_report") or c["first_seen"])
         c["report_count"] = min(REPORT_CAP, (prev.get("report_count") or 0) + (1 if grew_arts else 0))
-        entry = {**prev, **c}                     # prev의 grade/breaking 도장 등 보존 + c가 최신 덮음
-        if is_alias:                              # 별칭=다른 url(제목 다를 수 있음) → AI rubric 비워 재판정 유도(stale 도장 전파 차단)
-            entry.pop("grade_rubric", None)
-            entry.pop("breaking_rubric", None)
-        merged[url] = entry
-        for au in aliases:                        # 임계 통과한 옛 엔트리 전부 회수(merge 잔류·부활 중복 제거)
-            superseded[au] = url
+        merged[url] = {**prev, **c}              # prev의 grade/breaking 도장 등 보존 + c가 최신 덮음
 
-    # 별칭으로 흡수된 옛 엔트리 회수 = 중복 카드 제거(이력은 살아남는 url이 승계). 살아있는 rep는 보존.
+    # 별칭으로 흡수된 옛 엔트리 회수 = 중복 카드 제거(이력은 새 url이 승계). 이번에 또 뜬 url은 보존.
     for old_url in superseded:
         if old_url not in fresh:
             merged.pop(old_url, None)
@@ -163,10 +156,9 @@ def main():
             c.pop("breaking", None)
             c.pop("breaking_rubric", None)
 
-    def age_h(c):   # TTL 기준 = last_report(마지막 실제 후속보도) — 별칭 상속한 '현재 보도 중' 카드가
-        try:        #   옛 first_seen 때문에 즉시 만료되던 버그 차단. 후속 끊긴 죽은 건만 N시간 후 폐기.
-            ref = c.get("last_report") or c.get("last_seen") or c.get("first_seen") or nowiso
-            return (now - datetime.fromisoformat(ref)).total_seconds() / 3600
+    def age_h(c):
+        try:
+            return (now - datetime.fromisoformat(c.get("first_seen") or nowiso)).total_seconds() / 3600
         except Exception:
             return 0.0
 
@@ -176,12 +168,7 @@ def main():
 
     nbreak = sum(1 for c in kept if c.get("breaking_candidate"))
     DST.parent.mkdir(parents=True, exist_ok=True)
-    # 원자 쓰기(temp→os.replace) — 쓰기 중 중단 시 candidates.json 절단=전체 이력 소실 방지(데이터 정합성 최우선).
-    import tempfile
-    _fd, _tmp = tempfile.mkstemp(dir=str(DST.parent), suffix=".tmp")
-    with os.fdopen(_fd, "w", encoding="utf-8") as _f:
-        _f.write(json.dumps(kept, ensure_ascii=False))
-    os.replace(_tmp, DST)
+    DST.write_text(json.dumps(kept, ensure_ascii=False), encoding="utf-8")
     print(f"수집함: 사건 {len(kept)}건 (신규 {len(fresh)} · 기존 {len(existing)}) · "
           f"보관한도 {CAP} · 보관기간 {TTL_HOURS}h(약 {TTL_HOURS // 24}일) · 교차≥{MIN_CROSS} · "
           f"🚨속보후보(burst≥{BREAKING_BURST}) {nbreak}건")
