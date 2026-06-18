@@ -471,30 +471,31 @@ document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => sel
 
 // ---- 릴스 오버레이 OPA 세그 (60·30 항상 렌더=고정 표시 / 직접입력=추가 opa(+1) 토글) ----
 const rOpaNum = $('#rOpaNum');
-// 60·30 = 토글(최소1·0개 방지). 직접입력 = 값 기반 — 클릭=입력칸 포커스만(라벨이든 입력칸이든
-// 탭해도 토글 안 됨 → 잘못 눌러 꺼지는 사고 차단). 끄려면 값을 비우고 벗어난다(blur 핸들러가 소등).
-document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
-  if (b.dataset.opa === 'custom') { b.classList.add('on'); rOpaNum.focus(); rOpaNum.select(); return; }   // 펼쳐서 입력칸 활성(CSS: .on=입력칸 표시)·끄지 않음
+// 60·30·직접입력 = 멀티토글(켠 만큼 출력·최소1·0불가 — /3·/4 패턴). 직접입력은 입력칸 포함.
+document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = (e) => {
+  const isCustom = b.dataset.opa === 'custom';
+  // 직접입력이 이미 켜진 상태에서 입력칸 자체를 탭 = 값 입력 의도(토글 아님) → 포커스만
+  if (isCustom && e.target === rOpaNum && b.classList.contains('on')) return;
   const litN = document.querySelectorAll('#rOpaSeg button.on').length;
-  if (b.classList.contains('on') && litN === 1) return;   // 마지막 1개는 못 끔(0개 방지)
+  if (b.classList.contains('on') && litN === 1) {   // 마지막 1개는 못 끔(0개 방지)
+    if (isCustom) { rOpaNum.focus(); rOpaNum.select(); }
+    return;
+  }
   b.classList.toggle('on');
+  if (isCustom && b.classList.contains('on')) { rOpaNum.focus(); rOpaNum.select(); }   // 켤 때 입력칸 활성
 });
-rOpaNum.addEventListener('input', () => {   // 숫자만·1~100(0 불가), 두 자리 차면 포커스 아웃(키보드 내려감)
+rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 차면 바로 포커스 아웃(키보드 내려감)
   let v = rOpaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
   if (v !== '') v = String(Math.min(100, parseInt(v, 10)));
-  if (v === '0') v = '';   // opa 값 0(완전투명) 차단 — 비움 처리(0개 선택 방지와 별개)
   rOpaNum.value = v;
-  if (v.length >= 2) rOpaNum.blur();   // 편집 중엔 .on 유지(CSS상 .on 빼면 입력칸이 사라짐) → 끄기는 blur에서
-});
-rOpaNum.addEventListener('blur', () => {   // 값 없이 벗어나면 직접입력 끔(라벨 복귀) = '끄려면 값 비우기'
-  if (!rOpaNum.value) $('#rOpaCustom').classList.remove('on');
+  if (v.length >= 2) rOpaNum.blur();
 });
 function getReelsOpas() {   // 점등된 버튼(60·30·직접입력)의 opa 배열 — 켠 만큼 출력. 직접입력은 값 있을 때만.
   const out = [];
   document.querySelectorAll('#rOpaSeg button.on').forEach(b => {
     if (b.dataset.opa === 'custom') {
       const n = parseInt(rOpaNum.value, 10);
-      if (Number.isFinite(n) && n >= 1) out.push(Math.min(100, n));   // 0 불가
+      if (Number.isFinite(n)) out.push(Math.max(0, Math.min(100, n)));
     } else {
       out.push(parseInt(b.dataset.opa, 10));
     }

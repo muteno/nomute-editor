@@ -60,9 +60,9 @@ export async function onRequestPost({ request, env }) {
     } else {                                  // 오버레이 — 항상 opa60·30, 직접입력은 추가(+1)
       const lines = cleanLines(p.lines);
       if (!lines.length) return json({ error: '텍스트 줄(lines)이 필요해' }, 400);
-      // 선택된 opa(60·30·직접입력 멀티·최소1) — 프론트가 점등분만 보냄. 정리(정수·1~100만·중복제거·0 드롭).
+      // 선택된 opa(60·30·직접입력 멀티·최소1) — 프론트가 점등분만 보냄. 정리(0~100·정수·중복제거).
       let opas = [...new Set((Array.isArray(p.opas) ? p.opas : [])
-        .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n) && n >= 1 && n <= 100))];
+        .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n)).map(n => Math.max(0, Math.min(100, n))))];
       if (!opas.length) opas = [60, 30];   // 폴백 — 빈 입력/구 클라(extraOpa) 안전망
       params = { mode, lines, opas };
     }
