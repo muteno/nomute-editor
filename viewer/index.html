@@ -736,7 +736,8 @@
   .dlg-h button svg { display:block; }
   .dlg-h a:hover, .dlg-h button:hover { color:var(--fg); background:rgba(255,255,255,.13); }
   .dlg-h a:active, .dlg-h button:active { transform:scale(.94); }
-  .dlg-h a:focus, .dlg-h button:focus, .dlg-h a:focus-visible, .dlg-h button:focus-visible { outline:none; box-shadow:none; }   /* 모달 오픈 auto-focus 시 테두리(링) 안 보이게 */
+  .dlg-h a:focus:not(:focus-visible), .dlg-h button:focus:not(:focus-visible) { outline:none; box-shadow:none; }   /* 마우스/모달 오토포커스 = 링 숨김 */
+  .dlg-h a:focus-visible, .dlg-h button:focus-visible { outline:none; box-shadow:0 0 0 2px rgba(15,253,2,.45); }   /* 키보드 포커스 = 초록 링 유지(WCAG 2.4.7 — 카드 .seg:focus-visible와 일관) */
   /* 요약 ⬇ 버튼 — 원문↗과 동일한 다크 글래스 알약(강조색·별도 테두리 없이 글자만). margin-left:0 = 원문 좌측 배치. */
   .dlg-pdf { width:auto !important; padding:0 14px !important; gap:4px; font-size:12px; font-weight:600; margin-left:0 !important; }
   .md { padding:8px 18px 26px; }
@@ -1310,8 +1311,8 @@ function render() {
         <div class="s"></div>
         <div class="kv">
           <div><span>구분</span><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></div>
-          ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
-          ${a.bias?`<div><span>편향</span>${biasText(a.bias)}</div>`:''}
+          <div><span>매체</span>${a.media ? `<b>${esc(a.media)}</b>` : '<b class="senshyphen">—</b>'}</div>
+          <div><span>편향</span>${a.bias ? biasText(a.bias) : '<b class="senshyphen">—</b>'}</div>
           <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
         </div>
         <div class="botrow">
@@ -1457,7 +1458,7 @@ function articleAgeH(a) {
 // 피드 신선도(긴급↔이슈 전이용) = IN 시각(파일명 YYMMDD-HHMM) 기준 — 항상 정확(보도시각 time은 빈 경우 多 → 폴백만).
 function feedAgeH(a) {
   const m = /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(a.file || '');
-  if (m) return Math.max(0, (Date.now() - new Date(2000 + +m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime()) / 3600000);
+  if (m) return Math.max(0, (Date.now() - Date.UTC(2000 + +m[1], +m[2] - 1, +m[3], +m[4] - 9, +m[5])) / 3600000);   // 파일명=KST wall-clock → UTC instant(−9h) = 브라우저 TZ 무관·KST 고정(수집함 scTs와 동일 절대시각 기준)
   return articleAgeH(a);
 }
 // 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 isBreaking과 동일): 긴급(breaking 신선<4h) → 이슈(cross≥8 또는 aged breaking 4~24h) → 1일↑·비이슈는 없음. 둘 다 만족이면 긴급 우선.
@@ -3666,7 +3667,7 @@ const SUMMARY_TPL = `<!doctype html>
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { background:#0b0d0c; }
   ::selection { background:rgba(30,215,96,.28); }
-  body { color:#e9e9e9; font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Segoe UI',Roboto,sans-serif; -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.72; }
+  body { color:#e9e9e9; font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic','Segoe UI',Roboto,sans-serif; -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.72; }   /* 임베드 woff2=흔한 한글 서브셋 / 한자·희귀한글·必·ⓒ는 OS 한국어 폰트(Apple SD/Noto/Malgun)로 per-glyph 폴백 */
   .nm-root { position:relative; min-height:100vh; padding:30px 16px 56px; overflow:hidden; }
   .nm-bg { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
   .nm-wrap { position:relative; z-index:1; max-width:720px; margin:0 auto; }
@@ -3704,7 +3705,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
-  .nm-pre { white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; max-height:280px; overflow-y:auto; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; line-height:1.65; color:#c8c8c8; overscroll-behavior:contain; }
+  .nm-pre { white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; max-height:280px; overflow-y:auto; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; overscroll-behavior:contain; }
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
@@ -3778,7 +3779,7 @@ async function nmFontFace() {   // woff2 → @font-face(base64) 임베드용 CSS
 async function buildSummaryHtml() {
   const src = document.createElement('div');
   src.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
-  src.querySelectorAll('button, .copy, .gvchip').forEach(el => el.remove());   // 뷰어 복사·더보기·칩 버튼 제거
+  src.querySelectorAll('button, .copy, .gvchip, .ovmeta').forEach(el => el.remove());   // 뷰어 복사·더보기·칩 + 개요칩(.ovmeta=매체·기자·IN 적재시각 등 내부 운영메타) 제거 — 공유 요약엔 불필요·출처줄과 중복·IN 유출 방지
   src.querySelectorAll('pre.clip').forEach(p => p.classList.remove('clip'));   // 클립 해제(전문 표시)
   src.querySelectorAll('img').forEach(el => el.remove());                      // 본문 이미지 제거(텍스트 요약)
   src.querySelectorAll('h1').forEach(el => el.remove());                       // 제목 h1은 헤더로 따로
@@ -3829,7 +3830,8 @@ async function buildSummaryHtml() {
   if (CUR_A && (CUR_A.media || CUR_A.url)) {
     const mn = esc(CUR_A.media || '원문');
     const par = ' <span class="meta">(' + repPar + (dt ? ' · ' + dt : '') + ')</span>';   // (기자 · 보도일)
-    const link = CUR_A.url ? '<a class="nm-srclink" href="' + esc(CUR_A.url) + '" target="_blank" rel="noopener">' + mn + '</a>' : '<span class="nm-srclink">' + mn + '</span>';
+    const safeUrl = /^https?:\/\//i.test(CUR_A.url || '') ? esc(CUR_A.url) : '#';   // 스킴 화이트리스트 — javascript:/data: 등 차단
+    const link = CUR_A.url ? '<a class="nm-srclink" href="' + safeUrl + '" target="_blank" rel="noopener">' + mn + '</a>' : '<span class="nm-srclink">' + mn + '</span>';
     srcLi = '<li><span class="ic">🔗</span><span>' + link + par + '</span></li>';
   } else { srcLi = '<li><span class="meta">출처 정보 없음</span></li>'; }
   const crLine = 'ⓒ ' + now.getFullYear() + '. 에디터 노뮤트(@no_mute, 인스타그램). all rights reserved. (' + ymd + ')';
