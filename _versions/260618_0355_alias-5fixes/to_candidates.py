@@ -128,9 +128,8 @@ def main():
     superseded = {}   # 흡수된 옛 url → 살아남는 url(회수 대상)
     for url, c in sorted(fresh.items()):          # 결정적 순회
         prev = merged.get(url)
-        # 별칭은 새 url(rep 점프)에만 — 기존(활성) url엔 미적용 = 활성 distinct 후보 오회수 차단(§보수성).
-        aliases = find_aliases(c, url) if prev is None else []
-        is_alias = bool(aliases)
+        aliases = find_aliases(c, url)            # 같은 사건의 옛 엔트리들(다른 url)
+        is_alias = prev is None and bool(aliases)
         if is_alias:                              # 새 url = rep 점프 → best(jac최대)로 이력 승계
             prev = existing.get(aliases[0], {})
         prev = prev or {}

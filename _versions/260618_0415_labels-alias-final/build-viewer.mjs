@@ -118,7 +118,6 @@ for (const a of articles) {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
-    rev: Number(status.rev) || 0,   // 카드가 만들어진 시점의 요약 회차 — a.rev > cards.rev면 요약이 더 수정됨(stale)
     error: cardErr,
     failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터
     md: cardsMd,
