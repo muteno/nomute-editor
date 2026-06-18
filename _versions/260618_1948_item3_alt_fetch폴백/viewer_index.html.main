@@ -3375,10 +3375,7 @@ function applyTriage(act, c, el, reason, text) {
   const cur = ratingsAll()[id] || {};
   postRate({ id, url: c.url || '', title: c.title || '', score: cur.score || 0, picked: !!cur.picked, memo: cur.memo || memo, dismissed: !!cur.dismissed, action: act, reason });
   if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
-    // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체가 막힌 매체(403)면 분석기가 접근 가능한
-    // 대체매체로 본문 확보(item3). 원 url 제외·정규화 중복제거·최대 8개(dispatch 페이로드 절제).
-    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
-    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
+    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '' }) }).catch(() => {});
   }
   if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 'Picking…'(분석 중) → 피드 진입 시 PICKED
     if (el) { el.classList.add('picked'); const rsn = el.querySelector('.sc-rsn'); if (rsn) rsn.remove(); const bot = el.querySelector('.sc-bot'); if (bot) bot.innerHTML = '<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>'; }
