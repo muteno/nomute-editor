@@ -9,7 +9,7 @@ argument-hint: "[문구 (+이미지 첨부=합성) / *강조*=오버레이 / 강
 
 **0) 환경 준비(세션 첫 진입 1회·멱등)**: `bash apps/thumbnail/setup.sh` — 환경 Setup script 캐시면 스탬프 단락으로 즉시 통과(미캐시면 이때 설치 폴백).
 
-**1) 운영 지침 로드**: `apps/thumbnail/00_지침_v22.25.md`(절대규칙·F01~F18·출력 분기·시그니처 캐시·오버플로·가드·릴스 헤더형 2종) + `apps/thumbnail/MEMORY.md`(고정 수치 — 충돌 시 지침 본문 우선). 그대로 실행.
+**1) 운영 지침 로드**: `apps/thumbnail/00_지침_썸네일과오버레이_v22.25.md`(절대규칙·F01~F18·출력 분기·시그니처 캐시·오버플로·가드·릴스 헤더형 2종) + `apps/thumbnail/MEMORY.md`(고정 수치 — 충돌 시 지침 본문 우선). 그대로 실행.
 
 **2) 스크립트**(절대규칙 1: **수정 금지·import/호출만**): `nomute_overlay.py`·`nomute_compose.py`·`nomute_reels2.py`(헤더형, 베이스 `assets/reels2_base.png` → `/home/claude/reels2_base.png` 링크) — setup.sh가 `/mnt/project` 심볼릭.
 
