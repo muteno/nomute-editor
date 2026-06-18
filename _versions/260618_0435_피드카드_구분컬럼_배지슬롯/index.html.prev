@@ -262,10 +262,8 @@
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
-  /* index2·3 속보/누적 태그 = cardtop 좌측 고정 슬롯(IN 앞). 시간상 하나만 — <4h 속보(빨강)·≥4h 누적(노랑).
-     없으면 빈 슬롯(폭 예약 → IN 시작점이 카드마다 일정하게 우측 들여쓰기). */
-  .cardtop .bislot { flex:none; width:44px; display:flex; align-items:center; }
-  .cardtop .bitag { margin-left:0; font-weight:800; font-size:9.5px; padding:2px 8px; border-radius:999px; letter-spacing:0; align-self:center; white-space:nowrap; }
+  /* index2·3 속보/누적 태그 = 카드 우상단(cardtop 오른쪽). 시간상 하나만 — <4h 속보(빨강)·≥4h 누적(노랑). */
+  .cardtop .bitag { margin-left:auto; font-weight:800; font-size:9.5px; padding:2px 8px; border-radius:999px; letter-spacing:0; align-self:center; }
   .bitag.brk { color:#fff; background:linear-gradient(135deg,#ff5b4a,#e2231a); box-shadow:0 0 8px rgba(240,40,30,.4); }
   .bitag.iss { color:#1a1400; background:linear-gradient(135deg,#ffe14a,#ffc31f); box-shadow:0 0 8px rgba(255,200,40,.4); }
   .card .t { flex:1; min-width:0; font-weight:700; font-size:15px; line-height:1.45; letter-spacing:-.3px; }
@@ -352,8 +350,6 @@
   .sc-cross { display:inline-flex; align-items:center; gap:3px; font-weight:800; color:var(--accent);
     background:var(--accent-dim); border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:1px 7px; font-size:10.5px; }
   .sc-cross.lo { color:var(--mut); background:rgba(255,255,255,.05); border-color:var(--line2); }
-  .sc-more { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px; letter-spacing:-.2px;
-    color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); }   /* 픽 후 +N 더 보도 — 증분 표시 */
   .sc-media { margin-left:auto; opacity:.85; }
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
@@ -1069,7 +1065,7 @@
       <img class="pmenu-logo" src="assets/brand/logo.png" alt="노뮤트">
       <button id="refresh" class="pmenu-rf" aria-label="새로고침" title="새로고침">↻</button>
     </div>
-    <button id="brkack" class="pmenu-brk" type="button">🚨 긴급 확인</button>
+    <button id="brkack" class="pmenu-brk" type="button">🚨 속보 확인</button>
     <div class="psub">News curation</div>
     <a href="https://nomute.kr" target="_blank" rel="noopener">Home ↗</a>
     <a href="https://instagram.com/no_mute" target="_blank" rel="noopener">Instagram ↗</a>
@@ -1221,7 +1217,7 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let DATA = [], DATA_LOADED = false;   // DATA_LOADED = 피드 1회 로드 완료 — 새로고침 시 DATA 전 picked가 Picking…으로 깜빡 방지
+let DATA = [];
 let CUR = '';
 let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로드에서 제목·출처 참조)
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
@@ -1239,8 +1235,8 @@ function renderChips() {
   const c = $('#chips'); if (!c) return;
   const none = !FILTERS.cats.size;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
-  h += `<button class="chip chip-brk${FILTERS.breaking ? ' on' : ''}" data-f="breaking">긴급</button>`;   // 긴급(breaking) 토글
-  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈(cross≥8) 토글
+  h += `<button class="chip chip-brk${FILTERS.breaking ? ' on' : ''}" data-f="breaking">속보</button>`;   // index2 속보 토글
+  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">누적</button>`;   // index3 누적(cross≥8) 토글
   h += CHIP_CATS.map(cat => `<button class="chip${FILTERS.cats.has(cat) ? ' on' : ''}" data-cat="${cat}">${cat}</button>`).join('');
   c.innerHTML = h;
 }
@@ -1252,9 +1248,7 @@ async function load() {
     DATA = j.articles || [];
     dateHead(j.count || DATA.length);
   } catch(e) { DATA = []; const d = $('#dhCnt'); if (d) d.textContent = 'articles.json 없음'; }
-  const _firstLoad = !DATA_LOADED; DATA_LOADED = true;   // 첫 로드 완료 표시
   render();
-  if (_firstLoad && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();   // 첫 DATA 도착 = 수집함 1회 재렌더(pickInFeed 정확·Picking 깜빡 보정)
   if ($('#dlg').open && CUR) {
     const a = DATA.find(x => x.file === CUR);
     // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
@@ -1305,11 +1299,10 @@ function render() {
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
-        <div class="cardtop"><span class="bislot">${brkIssueTag(a)}</span>${dateLine(a)}</div>
-        <div class="row1"><span class="t"></span></div>
+        <div class="cardtop">${dateLine(a)}${brkIssueTag(a)}</div>
+        <div class="row1">${catChip(articleCat(a))}<span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
-          <div><span>구분</span><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></div>
           ${a.media?`<div><span>매체</span><b>${esc(a.media)}</b></div>`:''}
           ${a.bias?`<div><span>편향</span>${biasText(a.bias)}</div>`:''}
           <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
@@ -1455,9 +1448,10 @@ function articleAgeH(a) {
   return isNaN(t) ? 999 : Math.max(0, (Date.now() - t) / 3600000);
 }
 function brkIssueTag(a) {
-  const brk = a.breaking || /속보/.test(a.title || '');
-  if (brk) return '<span class="bitag brk">긴급</span>';      // 긴급(breaking) 우선 — 둘 다 만족이면 긴급
-  if (a.issue) return '<span class="bitag iss">이슈</span>';   // cross≥8 = 이슈
+  const brk = a.breaking || /속보/.test(a.title || ''), ageH = articleAgeH(a);
+  if (brk && ageH < 4) return '<span class="bitag brk">속보</span>';
+  if (a.issue) return '<span class="bitag iss">누적</span>';
+  if (brk) return '<span class="bitag brk">속보</span>';
   return '';
 }
 
@@ -2859,7 +2853,7 @@ $('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loa
 // 🚨 속보 확인 — 현재 속보(들)를 '본 것'으로 건별 적재(BRK_SEEN) → 점등 off. Check 표시 후 메뉴 닫힘. 다음 새 속보 = 또 점등. 시간 over(>4h)면 자연 해제.
 $('#brkack').addEventListener('click', () => {
   const b = $('#brkack'); b.textContent = '✓ Check'; b.classList.add('done');
-  setTimeout(() => { markBreakingSeen(); pmenu.hidden = true; b.textContent = '🚨 긴급 확인'; b.classList.remove('done'); }, 650);
+  setTimeout(() => { markBreakingSeen(); pmenu.hidden = true; b.textContent = '🚨 속보 확인'; b.classList.remove('done'); }, 650);
 });
 // 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
 function placeMsgpop() {
@@ -3063,7 +3057,7 @@ function showToast(n, sample) {
     document.body.appendChild(t);
   }
   const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
-  t.innerHTML = `<span class="tg">🚨 긴급</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
+  t.innerHTML = `<span class="tg">🚨 속보</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 6500);
 }
@@ -3073,17 +3067,6 @@ function showToast(n, sample) {
 let PFAIL = new Map();   // 정규화url → {reason, ts}
 const PF_SKEY = 'nomute_pickfail_seen', PF_RKEY = 'nomute_pickfail_resolved';
 const _normU = u => String(u || '').trim().replace(/\/+$/, '');   // build-viewer normUrl 과 동일(끝슬래시만)
-// 멤버기반 picked 승계 — rep url이 점프(클러스터 split)해 candId가 바뀌어도, cluster_members 중
-// picked 찍힌 옛 url이 있으면 PICKED 유지(+pickCross 증분). 스크래퍼 별칭승계의 뷰어 짝.
-function ratingFor(c) {
-  const rt = ratingsAll(), own = rt[candId(c)] || {};
-  if (own.picked) return own;
-  for (const m of (c.cluster_members || [])) {
-    const rm = rt[m] || rt[_normU(m)];
-    if (rm && rm.picked) return { ...own, picked: true, pickCross: rm.pickCross };   // 멤버로 PICKED 승계
-  }
-  return own;
-}
 const pfSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(PF_SKEY) || '[]')); } catch { return new Set(); } };
 const pfResolved = () => { try { return new Set(JSON.parse(localStorage.getItem(PF_RKEY) || '[]')); } catch { return new Set(); } };
 const pfAddResolved = id => { try { const s = pfResolved(); s.add(id); localStorage.setItem(PF_RKEY, JSON.stringify([...s])); } catch {} };
@@ -3101,7 +3084,7 @@ async function loadPickFails() {
 const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pfailHas(c); });
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
 const pickInFeed = c => DATA.some(a => a && a.url && _normU(a.url) === _normU(c.url));   // 픽 결과가 피드(3번 메뉴)에 등장했나
-const pickingNow = () => DATA_LOADED ? CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickInFeed(c) && !pfailHas(c); }) : [];   // 픽했는데 아직 피드 미등장·미실패 = 분석 중. DATA 로드 전엔 []  (깜빡 방지)
+const pickingNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickInFeed(c) && !pfailHas(c); });   // 픽했는데 아직 피드 미등장·미실패 = 분석 중
 let _pickPolling = false;
 async function pollPicking() {   // 분석 완료까지 폴링 → Picking… 칩만 제자리 교체(전체 재렌더 X = 깜빡임 방지)
   if (_pickPolling || !pickingNow().length) return;
@@ -3190,7 +3173,7 @@ function renderScrap() {
     }
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
-      const el = makeScItem(arr[i], ratingFor(arr[i]), key);   // 멤버기반 picked 승계로 rep 점프해도 PICKED 유지
+      const el = makeScItem(arr[i], rt[candId(arr[i])] || {}, key);
       el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(펼쳐짐)
       col.appendChild(el);
     }
@@ -3241,7 +3224,7 @@ const pinB = c => (isBreaking(c) && !(scRT[candId(c)] || {}).picked) ? 1 : 0;
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
-  '<div class="scrap-col black"><div class="scrap-coltitle ct-new">신규</div><div class="scrap-list" data-col="new"></div></div>';
+  '<div class="scrap-col black"><div class="scrap-coltitle ct-new">최신</div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
   el.className = 'sc-item' + (isBreaking(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pfailHas(c) ? ' pickfail' : '') + (st.acked ? ' acked' : '');
@@ -3251,15 +3234,14 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const catB = articleCat({ category: c.cat, title: c.title });
   const triage = true;   // 누적·최신 둘 다 트리아지([👎][PASS][PICK]+사유)로 통일(사용자 요청 — 판단 기준 일원화)
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
-  const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < FAST_MAX_H * 3600000 ? '<span class="sc-brk brk-hot">🚨 긴급</span>' : ((Date.now() - scTs(c)) < 24 * 3600000 ? '<span class="sc-brk">⚡ 이슈</span>' : '')) : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
+    `<div class="sc-top">${isBreaking(c) ? ((Date.now() - scTs(c)) < FAST_MAX_H * 3600000 ? '<span class="sc-brk brk-hot">🚨 속보</span>' : ((Date.now() - scTs(c)) < 24 * 3600000 ? '<span class="sc-brk">⚡ 누적</span>' : '')) : ''}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span><span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (st.picked
            ? (pfailHas(c)
                ? `<button class="sc-fail" type="button" title="${esc('분석 실패 — 전문 붙여넣어 다시: ' + (pfReason(c) || 'fetch 차단'))}">Failed</button>`
-               : ((pickInFeed(c) || !DATA_LOADED)
+               : (pickInFeed(c)
                    ? `<div class="sc-got" aria-label="픽 완료">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
            : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분${isBreaking(c) ? ' · 긴급 점등 끔' : ''})">${CHECK_SVG}</button>`)
@@ -3320,7 +3302,7 @@ async function pickCard(c) {
   const id = candId(c); const cur = ratingsAll()[id] || {};
   if (cur.picked) return;                                  // 한 번만(중복 발사 방지)
   if (!c.url) { alert('원문 url이 없어 큐레이션 불가'); return; }
-  saveRating(id, { picked: true, pickCross: c.cross || 0 }); renderScrap();   // 낙관적 표시 + 픽 시점 cross 스냅(증분 표시용)
+  saveRating(id, { picked: true }); renderScrap();         // 낙관적 표시
   clearTimeout(_rateTimers[id]);
   postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: true });   // 관심도 원장(데이터)
   try {   // 큐레이션 발동 = pending 적재 → 분석 → 카드(피드에 등장). 실패 시 되돌려 재시도 가능.
