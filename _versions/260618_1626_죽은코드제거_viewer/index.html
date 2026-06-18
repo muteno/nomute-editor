@@ -119,6 +119,10 @@
   .msgitem .md8 { font-size:11px; color:var(--mut); margin-top:4px; }
   .msgempty { padding:18px 12px; text-align:center; color:var(--mut); font-size:12px; }
 
+  /* ── 지침 버전 칩(요약·카드 phase 헤더 옆) — 기사가 어떤 지침으로 갱신됐는지 표식 ── */
+  .gvchip { display:inline-block; font:700 10px/1 "Pretendard Variable", Pretendard, monospace;
+    color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2);
+    border-radius:999px; padding:3px 8px; letter-spacing:.02em; white-space:nowrap; flex:none; }
   .pmenu { position:absolute; right:24px; top:46px; z-index:20; min-width:170px;
     background:linear-gradient(165deg, rgba(24,40,29,.96), rgba(12,21,15,.97));
     backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
@@ -429,12 +433,15 @@
   /* 👎 관심없음 = 이유 한 줄 받는 인라인 패널(피드 의견 모달과 같은 취지) */
   .sc-rsn { margin-top:3px; display:flex; flex-direction:column; gap:6px; padding:8px; border-radius:10px;
     background:rgba(255,120,120,.06); border:1px solid rgba(255,120,120,.22); }
-  .sc-rsn-q { font-size:12px; font-weight:800; color:#fff; }
+  .sc-rsn-q { font-size:12px; font-weight:800; color:#fff; } .sc-rsn-sub { font-weight:600; color:var(--mut); font-size:10.5px; }
   .sc-rsn-in { width:100%; box-sizing:border-box; background:rgba(0,0,0,.28); border:1px solid var(--line2); border-radius:8px;
     padding:7px 9px; color:var(--fg); font-size:12.5px; font-family:inherit; }
   .sc-rsn-in::placeholder { color:var(--mut); } .sc-rsn-in:focus { outline:none; border-color:rgba(255,140,140,.6); }
+  .sc-rsn-act { display:flex; gap:7px; justify-content:flex-end; }
+  .sc-rsn-act button { font-size:12px; font-weight:800; border-radius:8px; padding:5px 12px; cursor:pointer; border:1px solid var(--line2); }
   .sc-rsn-x { background:rgba(255,255,255,.05); color:var(--mut); }
-  .sc-rsn-x:active { transform:scale(.95); }
+  .sc-rsn-go { background:rgba(255,120,120,.16); color:#ffb4b4; border-color:rgba(255,120,120,.3); }
+  .sc-rsn-go:active, .sc-rsn-x:active { transform:scale(.95); }
   /* ── 트리아지(신규·누적 공통): [👎][PASS][PICK] 버튼 + 사유 칩(객관식) ── */
   .sc-bot.triage { gap:6px; }
   .sc-tg { flex:1; display:grid; place-items:center; height:30px; padding:0 8px; font-size:12px; font-weight:800; cursor:pointer;
@@ -655,6 +662,17 @@
   @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
   @media (min-aspect-ratio:1/1) { #editdlg { max-height:66vh; } .ed-img { max-height:24vh; } .ed-body { max-height:calc(66vh - 114px); } }   /* PC(가로>세로) = 창 ~60%대 */
 
+  /* 카드 이미지 라이트박스(풀스크린 + 좌상단 뒤로 — 글래스) */
+  #lbox { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; padding:0; border:none;
+    background:rgba(4,8,5,.96); display:flex; align-items:center; justify-content:center; overflow:auto; }
+  #lbox:not([open]) { display:none; }   /* 🚨 닫혔을 땐 숨김 — display:flex가 dialog 기본 display:none을 덮어 빈 박스로 깔리는 버그 차단 */
+  #lbox::backdrop { background:rgba(0,0,0,.5); }
+  .lbox-img { display:block; max-width:100vw; max-height:100dvh; object-fit:contain; }
+  .lbox-back { position:fixed; top:calc(12px + env(safe-area-inset-top)); left:14px; z-index:2; display:inline-flex; align-items:center; gap:4px;
+    padding:9px 16px 9px 11px; font:800 13.5px inherit; color:#fff; cursor:pointer; border-radius:999px;
+    background:rgba(8,15,11,.42); border:1px solid rgba(255,255,255,.22); box-shadow:0 4px 16px rgba(0,0,0,.35);
+    backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2); }
+  .lbox-back:active { transform:scale(.95); } .lbox-back svg { display:block; }
 
   /* 피드 좌우 넘김 화살표(PC·반투명 글래스) */
   .feedwrap { position:relative; }
@@ -684,7 +702,7 @@
     background:rgba(12,18,14,.64); backdrop-filter:blur(34px) saturate(1.4); -webkit-backdrop-filter:blur(34px) saturate(1.4);
     border:1px solid rgba(255,255,255,.13); border-radius:22px; box-shadow:0 30px 80px rgba(0,0,0,.5);   /* 그림자 명시(베이스 의존 제거·타 모달과 통일) */
     animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
-  #tooldlg:not([open]) { display:none; }   /* 닫힘 시 display:flex가 dialog 기본 display:none 덮어 빈 껍데기로 깔리던 버그 차단(dialog 공통) */
+  #tooldlg:not([open]) { display:none; }   /* 닫힘 시 display:flex가 dialog 기본 display:none 덮어 빈 껍데기로 깔리던 버그 차단(lbox 동일) */
   @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — backdrop-filter(blur34)에 transform 애니 얹으면 블러 재계산으로 한 번 턱 걸림(스내그). 콘텐츠 스태거 라이즈(촤르륵)는 제거됨 */
   @media (prefers-reduced-motion:reduce) { #tooldlg { animation:none; } }
   .tool-h { flex:none; display:flex; align-items:center; justify-content:space-between; padding:11px 16px;
@@ -1145,6 +1163,11 @@
   <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><button class="ed-go" id="edGo" type="button">변경</button><div class="ed-confirm"><span class="ed-cmsg">이 카드만 다시 생성할까요?</span><button class="ed-cno" type="button">취소</button><button class="ed-cyes" type="button">확인</button></div></div>
 </dialog>
 
+<!-- 카드 이미지 라이트박스 — 풀스크린 + 좌상단 뒤로 -->
+<dialog id="lbox">
+  <button class="lbox-back" type="button" aria-label="뒤로" onclick="lbox.close()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>뒤로</button>
+  <img class="lbox-img" alt="">
+</dialog>
 
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
@@ -1365,6 +1388,12 @@ function progGauge(a) {
   return `<div class="prog">${html}</div>`;
 }
 // #1 보도일 — "M/D (요일)" + 시각(time:HH:MM이면 뒤에 붙임). 박스 없이 텍스트, 카드 맨 위.
+function isToday(date) {
+  if (!date) return false;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return false;
+  return `${m[1].slice(2)}${m[2]}${m[3]}` === todayYMD6();   // YYMMDD(로컬=KST) 비교
+}
 function repDate(date) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
   if (!m) return esc(date || '');
@@ -1887,6 +1916,7 @@ function buildFeedModel(a) {
     return { n: cd.n, ratio: '4/5', versions: [{ caption: cd.caption, prompt: cd.prompt, image: imgs[i] || null }], cur: 0 };
   });
 }
+function capHtml(s = '') { return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b class="kw">$1</b>'); }
 
 function feedSec(a, keepIdx = 0) {
   const ph = $('#ph-feed'), host = $('#feedsec'); if (!ph || !host) return;
@@ -2471,6 +2501,8 @@ async function pollWhilePending() {
   _polling = false;
 }
 
+// (미사용·호출처 없음) 카드 이미지 라이트박스 — 카드 탭 확대 비활성(스와이프/드래그만)이라 안 열림.
+function openLightbox(src) { const lb = $('#lbox'); lb.querySelector('.lbox-img').src = src || ''; lb.showModal(); }
 
 // ── 따봉/다운 피드백 누적 — 좋았던/아쉬운 카드의 (텍스트+프롬프트)를 측면(이미지/텍스트)·의견과 적재 → 품질개선 데이터 ──
 function openFeedback(card, vote, slideEl, file) {
@@ -2784,6 +2816,16 @@ function jumpTo(which) {
 }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));   // String() = 비문자열(숫자·객체) 입력도 안전(api/candidates 직독 등 빌드 우회 대비)
 
+// 지침 버전 칩 — phase summary 옆에 작은 칩. 기존 칩 제거 후, 값 있을 때만 단다.
+function gvChip(summary, ver) {
+  if (!summary) return;
+  const old = summary.querySelector('.gvchip'); if (old) old.remove();
+  if (!ver) return;
+  const sp = document.createElement('span');
+  sp.className = 'gvchip'; sp.textContent = '지침 ' + ver.slice(0, 7);
+  sp.title = '이 단계가 갱신된 지침 버전: ' + ver;
+  summary.appendChild(sp);   // summary는 flex(::after ▾가 margin-left:auto로 우측 고정) → 칩은 텍스트 뒤
+}
 
 // Z: 요약 헤더 아래 기본 개요 — 대분류·매체·기자명·WRITE·IN. 기존 데이터만(기자명=본문 Fact 출처 패턴).
 function overviewMeta(a) {
@@ -2932,6 +2974,9 @@ edBody.addEventListener('scroll', () => {
 }, { passive: true });
 // 화면 회전·리사이즈 시 어절칩 행 폭 재계산(팝업 열려 있을 때만)
 window.addEventListener('resize', () => { if ($('#editdlg').open) fitEditLines($('#edChips')); }, { passive: true });
+// 라이트박스 배선(1회) — 배경 클릭=닫기, 닫힘 시 src 정리(뒤로 버튼은 inline onclick).
+$('#lbox').addEventListener('click', e => { if (e.target.id === 'lbox') $('#lbox').close(); });
+$('#lbox').addEventListener('close', () => { const im = $('#lbox .lbox-img'); if (im) im.src = ''; });
 // 메인 모달 #dlg·편집팝업 #editdlg 백드롭(바깥) 클릭 = 닫기
 $('#dlg').addEventListener('click', e => { if (e.target.id === 'dlg') $('#dlg').close(); });
 $('#editdlg').addEventListener('click', e => { if (e.target.id === 'editdlg') $('#editdlg').close(); });
@@ -3322,6 +3367,24 @@ async function pickCard(c) {
     alert('큐레이션 발동 실패 — 다시 시도해줘\n' + (e.message || e));
   }
 }
+// ≤1·5점인데 이유(메모) 안 쓴 후보 = 주요도 컬럼서 숨김(최신엔 유지). 극단 평점은 근거 있어야 우선순위에 남김.
+const scHideFromCross = st => (st.score === 1 || st.score === 5) && !((st.memo || '').trim());
+// 👎 = 이유 한 줄 받고 숨김(기존 피드 의견 모달과 같은 취지 — 취향 기록). 취소(✕·Esc)하면 안 숨김.
+function askDismissReason(c, el) {
+  if (!el || el.querySelector('.sc-rsn')) return;
+  const p = document.createElement('div'); p.className = 'sc-rsn';
+  p.innerHTML =
+    `<div class="sc-rsn-q">👎 관심 없음 — 왜? <span class="sc-rsn-sub">취향 기록·선택</span></div>
+     <input class="sc-rsn-in" type="text" maxlength="200" placeholder="이유 한 줄 (예: 정치·관심 분야 아님)">
+     <div class="sc-rsn-act"><button type="button" class="sc-rsn-x">취소</button><button type="button" class="sc-rsn-go">숨기기</button></div>`;
+  el.appendChild(p);
+  const input = p.querySelector('.sc-rsn-in');
+  setTimeout(() => input.focus({ preventScroll: true }), 40);
+  p.querySelector('.sc-rsn-x').onclick = () => p.remove();
+  const go = () => dismissCard(c, el, input.value);
+  p.querySelector('.sc-rsn-go').onclick = go;
+  input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); p.remove(); } };
+}
 // 👎 관심없음 = 별점 1점 미만(취향 부정신호) → dismissed 기록(이유=메모) → 풀에서 제외. DB(ratings.jsonl)에 누적.
 // 카드 자연스럽게 접혀 사라짐(인박스 클리어 공용 — 👎·pass·pick 후).
 function collapseCard(el) {
@@ -3334,7 +3397,8 @@ function collapseCard(el) {
   let done = false; const fin = () => { if (done) return; done = true; el.remove(); };
   el.addEventListener('transitionend', fin, { once: true }); setTimeout(fin, 440);
 }
-// ── 트리아지(신규·누적) = [👎][PASS][PICK] + 무조건 사유(객관식) 선택 ──
+function dismissCard(c, el, reason) { applyTriage('down', c, el, '직접입력', reason); }   // 레거시 호출 호환
+// ── 최신 트리아지 = [👎][PASS][PICK] + 무조건 사유(객관식) 선택 ──
 // 사유 = 나중 알고리즘이 '왜 제꼈나'를 정량화할 지표. 의미 기준 정본 = docs/curation-rubric.md.
 const TRIAGE = {
   down: { q: '관심 없음 — 왜?', reasons: [
@@ -3740,7 +3804,7 @@ async function nmFontFace() {   // woff2 → @font-face(base64) 임베드용 CSS
 async function buildSummaryHtml() {
   const src = document.createElement('div');
   src.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
-  src.querySelectorAll('button, .copy, .ovmeta').forEach(el => el.remove());   // 뷰어 복사·더보기 + 개요칩(.ovmeta=매체·기자·IN 적재시각 등 내부 운영메타) 제거 — 공유 요약엔 불필요·출처줄과 중복·IN 유출 방지
+  src.querySelectorAll('button, .copy, .gvchip, .ovmeta').forEach(el => el.remove());   // 뷰어 복사·더보기·칩 + 개요칩(.ovmeta=매체·기자·IN 적재시각 등 내부 운영메타) 제거 — 공유 요약엔 불필요·출처줄과 중복·IN 유출 방지
   src.querySelectorAll('pre.clip').forEach(p => p.classList.remove('clip'));   // 클립 해제(전문 표시)
   src.querySelectorAll('img').forEach(el => el.remove());                      // 본문 이미지 제거(텍스트 요약)
   src.querySelectorAll('h1').forEach(el => el.remove());                       // 제목 h1은 헤더로 따로
