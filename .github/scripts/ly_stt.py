@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 오디오 파일 → faster-whisper large-v3-turbo STT(로컬·키 불필요) → 타임코드 트랜스크립트(stdout).
-# 그 트랜스크립트가 lymake.sh(claude -p)의 [입력]이 됨. 정본 STT 설정 = apps/ly/00_지침 STEP 0-2.
+# 그 트랜스크립트가 lymake.sh(claude -p)의 [입력]이 됨. 정본 STT 설정 = apps/ly/00_지침_자막기 STEP 0-2.
 import sys
 from faster_whisper import WhisperModel
 
