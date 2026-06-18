@@ -257,8 +257,10 @@
   /* #1 첫줄 = IN(적재)·WRITE(보도) 두 날짜. WRITE 항상 강조(accent), IN은 오늘일 때만 강조(B). */
   .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; gap:13px; flex-wrap:wrap; }
   .cardtop .dl { font-style:normal; opacity:.55; font-weight:700; margin-right:3px; letter-spacing:0; }
-  /* IN·WRITE = 오늘 여부 무관 동일 톤(흰색·굵게)으로 통일. 형광(accent) 강조 폐지(사용자 260618). */
-  .cardtop .d-in, .cardtop .d-wr { color:var(--fg); font-weight:800; }
+  .cardtop .d-in { color:var(--mut); }
+  .cardtop .d-in.today { color:var(--accent); font-weight:800; }   /* 오늘 적재 = 강조색(요청) */
+  .cardtop .d-wr { color:var(--fg); font-weight:800; }
+  .cardtop .d-wr.today { color:var(--accent); }   /* 오늘 보도 = 강조색 */
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
@@ -981,18 +983,20 @@
   .rev-fab.revving { animation:rvRing 1.5s ease-out infinite; border-color:var(--rv-to); }
   .rev-fab.revving svg { animation:rvPulseC 1.6s ease-in-out infinite; }
   /* 피드카드 진행바 — 진행 중: 완료 세그(초록)가 from↔to 천천히 왕복 */
-  .card.revving .prog .seg[data-j="n"] .bar { animation:rvPulseBg 1.9s ease-in-out infinite; box-shadow:none; }
-  .card.revving .prog .seg[data-j="n"] .sl { animation:rvPulseC 1.9s ease-in-out infinite; }
-  /* 완료 회차 색 고정 — revise가 바꾸는 '요약(n)' 세그에만(프롬프트·카드는 기본 초록 유지). 1=노랑 / 2=파랑 */
-  .card[data-gen="1"] .prog .seg[data-j="n"] .bar { background:linear-gradient(90deg,#ffe14a,#ffc31f); box-shadow:0 0 8px rgba(255,205,55,.45); }
-  .card[data-gen="1"] .prog .seg[data-j="n"] .sl { color:#ffc31f; }
-  .card[data-gen="2"] .prog .seg[data-j="n"] .bar { background:linear-gradient(90deg,#9becff,#0cd0f7); box-shadow:0 0 8px rgba(12,208,247,.4); }
-  .card[data-gen="2"] .prog .seg[data-j="n"] .sl { color:#0cd0f7; }
-  /* 본문 IG·Thread 소주제 — 진행 중: 소주제 헤더가 강조색(초록)↔이슈노랑 펄스 / (변경 중)은 효과 없이 흰색 */
-  @keyframes rvChgC { 0%,100% { color:rgba(15,253,2,.85); } 50% { color:rgba(255,210,74,1); } }
-  .revsec, .revsec .cnt { animation:rvChgC 1.7s ease-in-out infinite; }
-  .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; color:#fff; }
-  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none; } .revsec { color:rgba(255,210,74,.72) !important; } }
+  .card.revving .prog .seg.done .bar, .card.revving .prog .seg.cur .bar { animation:rvPulseBg 1.9s ease-in-out infinite; box-shadow:none; }
+  .card.revving .prog .seg.done .sl, .card.revving .prog .seg.cur .sl { animation:rvPulseC 1.9s ease-in-out infinite; }
+  /* 완료 회차 색 고정(피드카드 진행바) — 1=노랑(메뉴1 이슈색) / 2=파랑 (미설정·gen%3=0 = 초록 기본) */
+  .card[data-gen="1"] .prog .seg.done .bar { background:linear-gradient(90deg,#ffe14a,#ffc31f); box-shadow:0 0 8px rgba(255,205,55,.45); }
+  .card[data-gen="1"] .prog .seg.done .sl, .card[data-gen="1"] .prog .seg.cur .sl { color:#ffc31f; }
+  .card[data-gen="1"] .prog .seg.cur .bar { background:rgba(255,210,74,.18); }
+  .card[data-gen="2"] .prog .seg.done .bar { background:linear-gradient(90deg,#9becff,#0cd0f7); box-shadow:0 0 8px rgba(12,208,247,.4); }
+  .card[data-gen="2"] .prog .seg.done .sl, .card[data-gen="2"] .prog .seg.cur .sl { color:#0cd0f7; }
+  .card[data-gen="2"] .prog .seg.cur .bar { background:rgba(12,208,247,.16); }
+  /* 본문 IG·Thread 소주제 — 진행 중: 헤더 50% 틴트 + (변경 중)이 강조색(초록)↔이슈노랑 은은히 왕복 */
+  .revsec, .revsec .cnt { color:rgba(var(--rv-tot,255,210,74),.5) !important; }
+  @keyframes rvChgC { 0%,100% { color:rgba(15,253,2,.82); } 50% { color:rgba(255,210,74,.98); } }
+  .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; animation:rvChgC 1.7s ease-in-out infinite; }
+  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl { animation:none; } .revchg { animation:none; color:rgba(255,210,74,.85); } }
   /* ── 요약 수정 팝업(revdlg) — FAB(우·중하단)에서 좌측으로 촤르륵 펼침. askdlg 골격 계승 + 게이지(PICK) 발사 버튼. ── */
   /* 위치 = askdlg 중앙(inset:0·margin:auto) 상속 → PC·모바일 공통 가운데 출력(우측 구석 정렬 폐기). 컴팩트. */
   .revdlg { width:min(420px,92vw); max-width:420px; max-height:calc(100dvh - 40px); }
@@ -2319,24 +2323,15 @@ function startRevisePoll() {
     if (!REVISING.size) { clearInterval(_revPoll); _revPoll = null; }
   }, 20000);
 }
-// 연필 FAB — 변경 중: 현재→다음 색 왕복 물결 / 수정 적용됨(이력 g>0): 그 회차색(노랑 등) 고정 + 물결 유지.
+// 연필 FAB 물결 — 현재 보는 기사가 변경 중이면 점등(현재→다음 색).
 function applyReviseFab() {
   const fab = $('#revFab'); if (!fab) return;
   const v = CUR && REVISING.get(CUR);
-  const g = CUR ? (revGenAll()[CUR] || 0) : 0;   // 완료된 수정 회차(이력)
-  if (v) {                                        // 변경 중 = 현재→다음 색 왕복
-    fab.classList.add('revving');
+  fab.classList.toggle('revving', !!v);
+  if (v) {
     fab.style.setProperty('--rv-from', 'rgb(' + revColor(v.fromGen) + ')');
     fab.style.setProperty('--rv-to', 'rgb(' + revColor(v.fromGen + 1) + ')');
     fab.style.setProperty('--rv-ring', 'rgba(' + revColor(v.fromGen + 1) + ',.5)');
-  } else if (g > 0) {                             // 수정 적용됨 = 회차색 고정 + 물결 유지
-    const col = revColor(g);
-    fab.classList.add('revving');
-    fab.style.setProperty('--rv-from', 'rgb(' + col + ')');
-    fab.style.setProperty('--rv-to', 'rgb(' + col + ')');
-    fab.style.setProperty('--rv-ring', 'rgba(' + col + ',.5)');
-  } else {
-    fab.classList.remove('revving');
   }
 }
 // 본문 IG·Thread 소주제 — 변경 중: 다음 강조색 50% + 기울임 (변경 중). (revise는 그 두 블록만 바꿈)
