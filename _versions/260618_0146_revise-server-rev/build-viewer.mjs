@@ -12,7 +12,6 @@ const MSG_OUT = 'viewer/messages.json';
 // 브랜드 자산(정본 assets/brand/) → 뷰어 서빙 경로 복사(Pages output = viewer 한정)
 try { cpSync('assets/brand', 'viewer/assets/brand', { recursive: true }); } catch { /* 자산 없음 */ }
 try { cpSync('assets/media', 'viewer/assets/media', { recursive: true }); } catch { /* 미디어 없음 */ }   // 펫 영상 등
-try { cpSync('assets/fonts', 'viewer/assets/fonts', { recursive: true }); } catch { /* 폰트 없음 */ }   // Pretendard woff2 — 요약 HTML 다운로드에 임베드(로컬·인터넷 무관)
 
 function parseFrontmatter(raw) {
   // 첫 두 '---' 사이를 단순 key: "value" 파싱(중첩 없음).
@@ -64,7 +63,6 @@ for (const f of files) {
       issue: (CROSS.get(meta.url || '') || 0) >= 8,             // index3: 이슈여부 = cross≥8(8+매체=넓은 이슈, 운영자 5→8). 직접공유분은 매칭 없어 false.
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
-      rev: Number(meta.rev) || 0,   // 수정 회차(서버 정본) — revise.sh가 프론트매터 rev 증가. 뷰어 색·완료감지 기준.
       body,
     });
   } catch (e) {
