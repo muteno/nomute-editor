@@ -1640,13 +1640,6 @@ function todayYMD6() {
   const n = new Date(), p = x => String(x).padStart(2,'0');
   return `${String(n.getFullYear()).slice(2)}${p(n.getMonth()+1)}${p(n.getDate())}`;
 }
-// 다운로드 파일명 시각 프리픽스 = 기사 IN 시각(파일명 YYMMDD-HHMM) → yymmdd_hhmm. 시스템 파일규칙과 일치(모든 다운로드 일관). 없으면 다운로드 시각.
-function dlStamp(a) {
-  const m = a && /^(\d{6})-(\d{4})/.exec(a.file || '');
-  if (m) return `${m[1]}_${m[2]}`;
-  const n = new Date(), p = x => String(x).padStart(2, '0');
-  return `${String(n.getFullYear()).slice(2)}${p(n.getMonth() + 1)}${p(n.getDate())}_${p(n.getHours())}${p(n.getMinutes())}`;
-}
 // 날짜 헤더: yyyy-mm-dd 요일 │ Today {오늘} / {총합}
 function dateHead(total) {
   const W = ['일','월','화','수','목','금','토'];
@@ -2020,7 +2013,7 @@ function feedSec(a, keepIdx = 0) {
     const v = card.versions[card.cur] || {};
     uiNo.innerHTML = `<b>${card.n}</b>/${totalN}`;
     uiEdit.onclick = () => openEdit({ card, idx, file: a.file });
-    if (v.image) { uiSave.style.display = ''; uiSave.href = v.image; uiSave.setAttribute('download', `${dlStamp(CUR_A)}_${slug}_${String(idx + 1).padStart(2, '0')}.jpg`); }
+    if (v.image) { uiSave.style.display = ''; uiSave.href = v.image; uiSave.setAttribute('download', `${slug}_${String(idx + 1).padStart(2, '0')}.jpg`); }
     else uiSave.style.display = 'none';
     ui.querySelector('.ovl').onclick = () => exportOverlay(card, idx, slug);   // 오버레이만 투명 PNG
     ui.querySelector('.fbup').onclick = () => onThumb(card, 'up', ui, a.file);
@@ -2072,7 +2065,7 @@ async function saveAll(model, slug, btn) {
   const lbl = (btn && btn.querySelector('.lbl')) || btn, orig = lbl ? lbl.textContent : '';
   for (let i = 0; i < imgs.length; i++) {
     const a = document.createElement('a');
-    a.href = imgs[i]; a.download = `${dlStamp(CUR_A)}_${slug}_${String(i + 1).padStart(2, '0')}.jpg`;
+    a.href = imgs[i]; a.download = `${slug}_${String(i + 1).padStart(2, '0')}.jpg`;
     document.body.appendChild(a); a.click(); a.remove();
     if (lbl) lbl.textContent = `저장 중… ${i + 1}/${imgs.length}`;
     await new Promise(r => setTimeout(r, 250));
@@ -2731,7 +2724,7 @@ async function exportOverlay(card, idx, slug) {
     cv.toBlob(blob => {
       if (!blob) { alert('PNG 생성 실패'); return; }
       const url = URL.createObjectURL(blob), a = document.createElement('a');
-      a.href = url; a.download = `${dlStamp(CUR_A)}_${slug}_overlay_${String(idx + 1).padStart(2, '0')}.png`;
+      a.href = url; a.download = `${slug}_overlay_${String(idx + 1).padStart(2, '0')}.png`;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1500);
     }, 'image/png');
   } catch (e) { alert('오버레이 생성 실패: ' + e.message); }
@@ -3882,7 +3875,7 @@ async function downloadSummaryHtml() {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url;
-    a.download = dlStamp(CUR_A) + '_' + (((CUR_A && CUR_A.title) || '뉴스요약').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60).trim() || '뉴스요약') + ' — 노뮤트.html';
+    a.download = (((CUR_A && CUR_A.title) || '뉴스요약').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60).trim() || '뉴스요약') + ' — 노뮤트.html';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   } catch (e) {
