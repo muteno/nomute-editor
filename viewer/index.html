@@ -261,10 +261,14 @@
   .cardmain { min-width:0; }
   /* #1 첫줄 = IN(적재)·WRITE(보도) 두 날짜. WRITE 항상 강조(accent), IN은 오늘일 때만 강조(B). */
   .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; gap:13px; flex-wrap:wrap; }
-  .cardtop .dl { font-style:normal; opacity:.55; font-weight:700; margin-right:3px; letter-spacing:0; }
+  .cardtop .dl { font-style:normal; opacity:.55; font-weight:700; margin-right:4.5px; letter-spacing:0; }   /* 라벨(스크랩/보도)↔시간값 간격 50%↑(3→4.5px·운영자 260618) */
   /* IN·WRITE = 오늘 여부 무관 동일 톤(흰색·굵게)으로 통일. 형광(accent) 강조 폐지(사용자 260618). */
   .cardtop .d-in, .cardtop .d-wr { color:var(--fg); font-weight:800; }
-  .cardtop .ago { color:var(--accent); font-weight:800; }   /* IN·보도 'N시간 전' 값 = 강조색 */
+  .cardtop .ago { color:var(--accent); font-weight:800; }   /* 스크랩·보도 'N시간 전' 값 = 강조색 */
+  /* 우상단 긴급/이슈 = 좌상단 '사회'(catslot)의 우측정렬 대칭. 색글자(긴급 빨강·이슈 노랑). 테두리 점등과 같은 brkIssueKind(긴급 우선). */
+  .cardtop .urg { margin-left:auto; align-self:center; font-size:11px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; line-height:1; }
+  .cardtop .urg.brk { color:#ff5b4a; }
+  .cardtop .urg.iss { color:#ffc31f; }
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
   .cat { flex:none; align-self:center; font-size:11px; font-weight:800; line-height:1; letter-spacing:-.2px; white-space:nowrap; }
@@ -1299,7 +1303,7 @@ function render() {
   list.innerHTML = '';
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
-    { const _k = brkIssueKind(a); if (_k) c.classList.add(_k); }   // 긴급/이슈 → 카드 테두리 점등(.card.brk/.iss)
+    const kind = brkIssueKind(a); if (kind) c.classList.add(kind);   // 긴급/이슈 → 카드 테두리 점등(.card.brk/.iss) + 우상단 배지
     const g = Number(a.rev) || 0;                    // 서버 회차(완료색·정본) — 1=노랑·2=파랑·0=초록기본
     if (g % 3) c.dataset.gen = (((g % 3) + 3) % 3);
     if (isRevising(a.file)) {                         // 진행 중(클라 임시) = 진행바 물결(현재→다음 색)
@@ -1310,7 +1314,7 @@ function render() {
     c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
-        <div class="cardtop"><span class="catslot"><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></span>${dateLine(a)}</div>
+        <div class="cardtop"><span class="catslot"><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></span>${dateLine(a)}${kind ? `<span class="urg ${kind}">${kind === 'brk' ? '긴급' : '이슈'}</span>` : ''}</div>
         <div class="row1"><span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
@@ -1425,7 +1429,7 @@ function relAge(h) {
 // 첫줄 = IN(적재·파일명 KST) + 보도(발행). 둘 다 'N시간 전' 상대표기(시간값=강조색). 보도 상대 무효면 날짜 폴백.
 function dateLine(a) {
   const inR = relAge(feedAgeH(a));
-  const inHtml = inR ? `<span class="d-in"><i class="dl">IN</i><b class="ago">${inR}</b></span>` : '';
+  const inHtml = inR ? `<span class="d-in"><i class="dl">스크랩</i><b class="ago">${inR}</b></span>` : '';
   const wrR = relAge(articleAgeH(a)) || repDate(a.date);
   const wrHtml = `<span class="d-wr"><i class="dl">보도</i><b class="ago">${wrR}</b></span>`;
   return inHtml + wrHtml;
@@ -1463,7 +1467,7 @@ function articleCat(a) {
   for (const k in CAT_KW) { let n = 0; for (const w of CAT_KW[k]) if (t.includes(w)) n++; if (n > bn) { bn = n; best = k; } }
   return bn ? best : '사회';   // 운영자 260617: 미분류 0 — frontmatter category 없고 키워드도 0이면 사회(catch-all)로 강제 분류.
 }
-// (참고) 피드 배지 정본 = 아래 brkIssueKind. 신선도 기준 = feedAgeH(IN 시각).
+// (참고) 피드 배지 정본 = 아래 brkIssueKind. 최신 판정 기준 = feedAgeH(스크랩/IN 시각).
 function articleAgeH(a) {   // 보도(발행) 나이 — a.date(+a.time)=KST → Date.UTC(−9h)로 절대시각 고정(브라우저 TZ 무관·feedAgeH와 동일 기준). 무효=999.
   const dm = /^(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/.exec(a.date || '');
   if (!dm) return 999;
@@ -1471,17 +1475,17 @@ function articleAgeH(a) {   // 보도(발행) 나이 — a.date(+a.time)=KST →
   const t = Date.UTC(+dm[1], +dm[2] - 1, +dm[3], (tm ? +tm[1] : 0) - 9, tm ? +tm[2] : 0);
   return isNaN(t) ? 999 : Math.max(0, (Date.now() - t) / 3600000);
 }
-// 피드 신선도(긴급↔이슈 전이용) = IN 시각(파일명 YYMMDD-HHMM) 기준 — 항상 정확(보도시각 time은 빈 경우 多 → 폴백만).
+// 피드 최신 판정(긴급↔이슈 전이용) = 스크랩(IN) 시각(파일명 YYMMDD-HHMM) 기준 — 항상 정확(보도시각 time은 빈 경우 多 → 폴백만).
 function feedAgeH(a) {
   const m = /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(a.file || '');
   if (m) return Math.max(0, (Date.now() - Date.UTC(2000 + +m[1], +m[2] - 1, +m[3], +m[4] - 9, +m[5])) / 3600000);   // 파일명=KST wall-clock → UTC instant(−9h) = 브라우저 TZ 무관·KST 고정(수집함 scTs와 동일 절대시각 기준)
   return articleAgeH(a);
 }
-// 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 isBreaking과 동일): 긴급(breaking 신선<4h) → 이슈(cross≥8 또는 aged breaking 4~24h) → 1일↑·비이슈는 없음. 둘 다 만족이면 긴급 우선.
+// 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 isBreaking과 동일): 긴급(breaking 최신<4h) → 이슈(cross≥8 또는 aged breaking 4~24h) → 1일↑·비이슈는 없음. 둘 다 만족이면 긴급 우선.
 // 긴급/이슈 분류(상호배타·긴급우선) → 카드 테두리 점등 클래스. 'brk'(IN<4h breaking)·'iss'(cross≥8 또는 aged breaking 4~24h)·''(1일↑·비이슈).
 function brkIssueKind(a) {
   const brk = a.breaking || /속보/.test(a.title || ''), ageH = feedAgeH(a);
-  if (brk && ageH < FAST_MAX_H) return 'brk';            // breaking 신선(<4h) → 긴급(이슈도 만족이면 긴급 우선)
+  if (brk && ageH < FAST_MAX_H) return 'brk';            // breaking 최신(<4h) → 긴급(이슈도 만족이면 긴급 우선)
   if (a.issue || (brk && ageH < 24)) return 'iss';       // cross≥8 이거나 aged breaking(4~24h) → 이슈
   return '';
 }
