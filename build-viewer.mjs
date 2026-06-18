@@ -44,7 +44,7 @@ try {
     CROSS.set(c.url, c.cross || 0);
     BRK.set(c.url, !!c.breaking && (c.grade == null || c.grade >= 2));   // 긴급 = breaking_judge 확정 AND 경중 grade≥2(미채점 포함) — cross 무관
   }
-} catch { /* candidates 없음 — issue/긴급 전부 false */ }
+} catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
 
 const articles = [];
 for (const f of files) {
