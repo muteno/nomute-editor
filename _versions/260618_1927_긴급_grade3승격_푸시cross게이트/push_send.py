@@ -4,9 +4,7 @@
 # dedup = push/sent.json(이미 보낸 키). 죽은 구독(404/410) 자동 정리. 비치명(실패해도 파이프 안 깸).
 # env: VAPID_PRIVATE_KEY(raw base64url)·VAPID_PUBLIC_KEY·VAPID_SUBJECT. 인자 --test = 구독자 전원 테스트 1발.
 # 정본 설명 = CLAUDE.md §🚨. 긴급 기준 = isBreaking(breaking_judge AND grade≥2) AND 최신(<4h, 토스트와 동일).
-# ⚠️ 푸시는 되돌릴 수 없다(발송=회수 불가) → 뷰어 점등(가역)보다 *더* 보수적: grade 미채점(None)은 푸시 안 함
-#    (뷰어는 None도 점등=즉시·가역) · 다매체 검증 cross≥PUSH_MIN_CROSS 필수 · dedup=event_key+제목해시(중복발송 차단).
-import json, os, re, sys, time, base64, hashlib, tempfile, datetime as dt
+import json, os, sys, time, base64, tempfile, datetime as dt
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -14,26 +12,13 @@ SUBS = ROOT / "push" / "subscriptions.json"
 SENT = ROOT / "push" / "sent.json"
 CAND = ROOT / "viewer" / "candidates.json"
 FAST_MAX_H = 4   # 최신 긴급만 푸시(뷰어 토스트와 동일 단일상수 정신)
-PUSH_MIN_CROSS = int(os.environ.get("PUSH_MIN_CROSS", "2"))   # 푸시 최소 교차매체(다매체 검증 = 오발송 가드 · MIN_CROSS 바뀌어도 푸시 하한 고정)
 
 def jload(p, d):
     try: return json.loads(Path(p).read_text(encoding="utf-8"))
     except Exception: return d
 
 def is_breaking(c):
-    # 푸시용(가역 아님) = 뷰어 isBreaking보다 엄격: grade가 *채점되어* ≥2여야 함(None=미채점은 푸시 보류, 뷰어는 점등).
-    g = c.get("grade")
-    return bool(c.get("breaking")) and g is not None and (g or 0) >= 2
-
-def dedup_keys(c):
-    # 같은 사건 중복 발송 차단 — event_key(별칭 점프에도 안정) + 제목해시(event_key=url 디폴트라 url 점프 시
-    # 갈리는 구멍 보완: 같은 헤드라인이면 url 달라도 같은 키). 둘 중 하나라도 sent에 있으면 스킵.
-    ks = []
-    ek = c.get("event_key") or c.get("id") or c.get("url")
-    if ek: ks.append(str(ek))
-    t = re.sub(r"\s+", "", c.get("title") or "")
-    if t: ks.append("t:" + hashlib.md5(t.encode("utf-8")).hexdigest()[:16])
-    return ks
+    return bool(c.get("breaking")) and (c.get("grade") is None or (c.get("grade") or 0) >= 2)
 
 def age_h(c):
     s = c.get("published") or c.get("first_seen") or ""
@@ -72,7 +57,7 @@ def main():
         print("pywebpush 미설치 — 생략"); return
 
     if test:
-        msgs = [{"keys": [f"test-{int(time.time())}"], "title": "🔔 노뮤트 테스트",
+        msgs = [{"key": f"test-{int(time.time())}", "title": "🔔 노뮤트 테스트",
                  "body": "웹푸시 연결 정상! 긴급 속보가 이렇게 와.", "url": "/"}]
     else:
         cands = jload(CAND, [])
@@ -81,15 +66,13 @@ def main():
         for c in cands:
             if not is_breaking(c):
                 continue
-            if (c.get("cross") or 0) < PUSH_MIN_CROSS:   # 다매체 검증 미달 = 오발송 가드(푸시는 회수 불가)
-                continue
             a = age_h(c)
             if a is None or a >= FAST_MAX_H:
                 continue
-            ks = dedup_keys(c)
-            if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
+            k = c.get("event_key") or c.get("id") or c.get("url")
+            if not k or k in sent:
                 continue
-            msgs.append({"keys": ks, "title": "🚨 긴급 속보", "body": (c.get("title") or "")[:120], "url": "/"})
+            msgs.append({"key": k, "title": "🚨 긴급 속보", "body": (c.get("title") or "")[:120], "url": "/"})
         if not msgs:
             print("새 긴급 없음 — 발송 생략"); return
 
@@ -114,7 +97,7 @@ def main():
             except Exception as e:
                 print(f"push 오류: {e}", file=sys.stderr)
         if ok_any:
-            sent_keys.extend(m["keys"])   # event_key+제목해시 둘 다 기록 = 다음 런에 어느 쪽으로 와도 dedup
+            sent_keys.append(m["key"])
 
     if dead:   # 죽은 구독 정리
         subs2 = [s for s in subs if (s or {}).get("endpoint") not in dead]
