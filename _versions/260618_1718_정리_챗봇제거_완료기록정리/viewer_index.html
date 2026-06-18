@@ -1467,7 +1467,7 @@ function open(a) {
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   cardSec(a);
   feedSec(a);     // 섹션 3: 카드 피드(이미지 있을 때만 표시)
-  $('#revStatus').textContent = '';   // 수정 요청 상태 리셋(이전 카드 잔상 제거)
+  $('#revStatus').textContent = '';   // 수정 요청 상태 리셋(이전 카드 잔상 제거 — chat.js 봉인, 채팅 리셋 없음)
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
   setupScrub();   // 모달 헤더 = 스크롤 위치 스크러버(게이지 + 요약·프롬프트·카드 틱 + 클릭 점프)
   const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
@@ -1480,6 +1480,110 @@ function open(a) {
   const cb = $('#dlg').querySelector('.dlg-x'); if (cb) cb.focus();
 }
 
+// ── 카드별 채팅봇 — 이 요약(a.body)을 context로 질문/재구성. 백엔드=api/chat(claude-opus-4-8·노력 max·NDJSON 스트림). ──
+let CHAT = { key: '', gen: 0, abort: null, ctx: '', title: '', history: [], busy: false };
+// 카드별 채팅 영속(이탈=저장): localStorage에 카드 key(=a.file)별 history 보존 → 재진입 시 복원.
+const CHAT_LS = 'nm_chat';
+function chatStore() { try { return JSON.parse(localStorage.getItem(CHAT_LS) || '{}'); } catch { return {}; } }
+function chatLoad(key) { if (!key) return []; const s = chatStore()[key]; return Array.isArray(s) ? s : []; }
+function chatSave(key, history) { if (!key) return; try { const s = chatStore(); s[key] = (history || []).slice(-40); localStorage.setItem(CHAT_LS, JSON.stringify(s)); } catch {} }
+function renderChatHistory(history) {
+  (history || []).forEach(m => {
+    if (m.role === 'user') chatBubble('u', m.content);
+    else { const el = chatBubble('a', ''); el.classList.add('md-rich'); try { el.innerHTML = DOMPurify.sanitize(marked.parse(m.content || '')); } catch { el.textContent = m.content || ''; } }
+  });
+  scrollChat();
+}
+function resetChat(a) {
+  if (CHAT.abort) { try { CHAT.abort.abort(); } catch {} }   // 이전 카드 스트림 중단(다른 카드 thread로 새는 것 방지)
+  const key = a.file || a.url || a.title || '';
+  const saved = chatLoad(key);
+  CHAT = { key, gen: (CHAT.gen || 0) + 1, abort: null, ctx: a.body || a.summary || '', title: a.title || '', history: saved.slice(), busy: false };
+  const box = $('#chatbox'); if (box) box.classList.remove('open');
+  const panel = $('#chatPanel'); if (panel) panel.hidden = true;
+  const launch = $('#chatLaunch'); if (launch) launch.setAttribute('aria-expanded', 'false');
+  const thread = $('#chatThread');
+  if (thread) {
+    thread.innerHTML = '';
+    if (saved.length) renderChatHistory(saved);   // 저장된 대화 복원
+    else thread.innerHTML = '<div class="chat-empty">이 기사 요약에 대해 물어보거나,<br>"다시 요약해줘 / 더 짧게 / 카드용으로" 처럼 재구성을 요청해봐.</div>';
+  }
+  const input = $('#chatInput'); if (input) { input.value = ''; input.style.height = ''; }
+  setChatBusy(false);
+}
+function toggleChat() {
+  const box = $('#chatbox'), panel = $('#chatPanel'), launch = $('#chatLaunch');
+  if (!box || !panel) return;
+  const willOpen = !box.classList.contains('open');
+  box.classList.toggle('open', willOpen);
+  panel.hidden = !willOpen;
+  if (launch) launch.setAttribute('aria-expanded', String(willOpen));
+  if (willOpen) { const i = $('#chatInput'); if (i) i.focus(); scrollChat(); }
+}
+function scrollChat() { const t = $('#chatThread'); if (t) t.scrollTop = t.scrollHeight; }
+function setChatBusy(b) { const s = $('#chatSend'); if (s) s.disabled = b; }
+function autosizeChat(el) { el.style.height = 'auto'; el.style.height = Math.min(120, el.scrollHeight) + 'px'; }
+function chatBubble(role, text) {
+  const el = document.createElement('div'); el.className = 'chat-msg ' + role; el.textContent = text;
+  $('#chatThread').appendChild(el); scrollChat(); return el;
+}
+function chatErr(msg) {
+  const el = document.createElement('div'); el.className = 'chat-err'; el.textContent = '⚠ ' + msg;
+  $('#chatThread').appendChild(el); scrollChat();
+}
+async function sendChat() {
+  if (CHAT.busy) return;
+  const input = $('#chatInput'); if (!input) return;
+  const text = (input.value || '').trim(); if (!text) return;
+  const thread = $('#chatThread'); const empty = thread.querySelector('.chat-empty'); if (empty) empty.remove();
+  // 요청 메시지 = 확정 히스토리 + 이번 사용자 턴. 성공해야만 히스토리에 (user,assistant) 한 쌍 커밋(항상 교대 유지).
+  const reqMsgs = CHAT.history.concat([{ role: 'user', content: text }]);
+  const userEl = chatBubble('u', text);
+  input.value = ''; autosizeChat(input);
+  const aEl = chatBubble('a', '');
+  const think = document.createElement('div'); think.className = 'chat-think';
+  think.innerHTML = '<span class="dot"></span><span class="lbl">생각하는 중…</span>';
+  thread.appendChild(think); scrollChat();
+  CHAT.busy = true; setChatBusy(true);
+  const myGen = CHAT.gen, ac = (typeof AbortController !== 'undefined') ? new AbortController() : null; CHAT.abort = ac;
+  let answer = '', refused = false, errMsg = '';
+  try {
+    const r = await fetch('api/chat', { method: 'POST', headers: { 'content-type': 'application/json' },
+      signal: ac ? ac.signal : undefined,
+      body: JSON.stringify({ context: CHAT.ctx, title: CHAT.title, messages: reqMsgs }) });
+    if (!r.ok || !r.body) {
+      const d = await r.json().catch(() => ({}));
+      errMsg = d.error || `서버 ${r.status}`;
+    } else {
+      const reader = r.body.getReader(), dec = new TextDecoder(); let buf = '', gotText = false;
+      for (;;) {
+        const { done, value } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf('\n')) !== -1) {
+          const ln = buf.slice(0, idx).trim(); buf = buf.slice(idx + 1);
+          if (!ln) continue;
+          let o; try { o = JSON.parse(ln); } catch { continue; }
+          if (o.t) { if (!gotText) { gotText = true; const l = think.querySelector('.lbl'); if (l) l.textContent = '작성 중…'; } answer += o.t; aEl.textContent = answer; scrollChat(); }
+          else if (o.refusal) refused = true;
+          else if (o.err) errMsg = o.err;
+        }
+      }
+    }
+  } catch (e) { if (!(e && e.name === 'AbortError')) errMsg = '전송 실패 — 네트워크 또는 백엔드(ANTHROPIC_API_KEY) 미설정.'; }
+  finally { if (CHAT.gen === myGen) { CHAT.busy = false; setChatBusy(false); } }
+  if (CHAT.gen !== myGen) return;   // 카드 바뀜(이탈) → 이 응답 폐기(다른 카드 thread로 안 샘)
+  think.remove();
+  if (answer) {
+    aEl.classList.add('md-rich');
+    aEl.innerHTML = DOMPurify.sanitize(marked.parse(answer));
+    CHAT.history = reqMsgs.concat([{ role: 'assistant', content: answer }]); chatSave(CHAT.key, CHAT.history);   // 성공 → 한 쌍 커밋 + 카드별 저장(이탈해도 보존)
+    scrollChat();
+  } else {
+    aEl.remove(); userEl.classList.add('failed');   // 실패 → 히스토리 미커밋(다음 전송 시 교대 깨짐 방지). 버블은 흐리게 남김.
+    chatErr(refused ? '요청이 거부됐어(안전 분류). 표현을 바꿔 다시 시도해봐.' : (errMsg || '응답이 비었어. 다시 시도해봐.'));
+  }
+}
 function addCopyButtons(root) {
   root.querySelectorAll('pre').forEach(pre => {
     const code = pre.querySelector('code');
@@ -3450,6 +3554,7 @@ $('#askSend').addEventListener('click', async () => {
   btn.disabled = false;
 });
 // ── 요약 수정 배선 — FAB(콘텐츠 초안~시사점 구간 점등)→팝업(좌측 펼침·즉시 포커스) · 클립(.sbtn 캐러셀) · 전송(1차 재확인→2차 PICK 게이지 발사) ──
+// chat.js(직접-API 챗봇)는 봉인 — 뷰어는 더 이상 채팅 런처/패널을 쓰지 않음(함수는 dead, 배선만 제거).
 let revConfirmT = null;
 function resetRevSend() {   // 발사 버튼 원복(재확인 해제)
   clearTimeout(revConfirmT);
