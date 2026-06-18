@@ -112,10 +112,8 @@ def main():
     print(f"  D1={d1}  vs  D2={d2}")
     summarize(w1, f"D1 {d1} 낮")
     summarize(w2, f"D2 {d2} 낮")
-    print("\n[해석] ⬆️승격 = grade3인데 burst<3·태그없음(=정상 velocity 게이트 못 넘음)인데도 속보후보가 된 것 = 새 승격로직이 구제한 건.")
-    print("       ⚠️ ⬆️승격 0이어도 정상일 수 있음 — 승격은 first_seen<4h 신선건만 잡으니 묵은 풀엔 0. 또 burst≥3 grade3(예: 실제 황화수소 burst3)은")
-    print("          '정상 후보'라 ⬆️ 안 뜸(그건 승격 아닌 청크-판정이 구제) → ⬆️는 '저burst 구제분'만 셈, grade3 전체 표로 누락 여부 따로 보라.")
-    print("       긴급자격 = breaking 확정 & grade≥2 → 4시간 내였으면 🚨긴급 배지·푸시 대상(push_send 기준=보수). 오발/놓침 여기서 점검.")
+    print("\n[해석] ⬆️승격 = grade3 대형건이 저-burst(동시보도 적음)에도 속보후보로 올라간 것 = 새 로직이 구제한 건.")
+    print("       긴급자격 = breaking 확정 & grade≥2 → 4시간 내였으면 🚨긴급 배지·푸시 대상. 오발/놓침 여기서 점검.")
 
 
 if __name__ == "__main__":
