@@ -74,15 +74,6 @@
 - **롤백** = 사용자가 "그 버전으로" 한마디 → 해당 `_versions/` 폴더에서 복원.
 - **실행** = 폰/PC 어디서든 *이 레포를 열고 기사 던지기*(기사 던지면 라우터가 뉴스 에디터로 진입). 로컬 `,` 트리거는 폐지.
 
-## 🧠 기록 SSOT 지도 — 압축·컨텍스트 증발 대비 (정본 · 항상 로드 · 260618)
-> ⚠️ **컨텍스트는 못 믿는다.** Claude 윈도가 정책상 1M→256K로 줄면(트래픽 따라) **그 순간 대화가 싸그리 증발**하고, 압축(compaction)도 왜곡·누락이 잦다. **유일하게 검증된 방어 = 압축 *전에* 미리 레포에 박아두고, 새 세션이 그걸 *읽게* 하는 것**(운영자 실증). ∴ 결정·판단·측정결론·룰변경은 **채팅에 두지 말고 그때그때 해당 SSOT에 박는다**(코드만 고치고 문서 안 고치면 다음 세션이 방향 잃음 = 드리프트). 새 기록은 아래 지도대로 위치 선택:
-- **플랫폼 전역 불변·기틀·공용 UX·TODO 큐** → **이 라우터 `CLAUDE.md`**(매 세션 자동 로드 = 가장 안전). 예: 웹푸시 Phase2·리네임 TODO·명명표준.
-- **수집함 큐레이션**(신호·임계·랭킹·라벨·실험·판단·측정결론) → **`docs/curation-algorithm.md`**: §★ 방향 · §1 요구 · §5 누적 · §7 미해결/실험 큐 · §8 결정 로그 · §9 한계/로드맵.
-- **앱별 콘텐츠·파이프라인 룰** → **`apps/<앱>/`**(지침 · `MEMORY` · `CHANGELOG`).
-- **변경 백업(롤백)** → `_versions/{yymmdd_HHmm}_{라벨}/` (수정 모드 ①).
-- **최종 진실원본 = git `main`** — 화면·로컬 아닌 **`git show origin/main:<파일>`**이 정본(§수정 모드 ⑤).
-- ⚠️ **측정·진단도 "돌려보고 끝" 금지** — 결론을 1줄이라도 §7/§8(또는 해당 SSOT)에 박아 다음 세션이 재측정·재방황 안 하게.
-
 ## 🤖 모델
 - **Opus 권장(4.8 최대사고 디폴트).** "동일 수준"의 전제. 약한 모델이면 품질·일관성 보장 못 함.
 - 변수(우연성)는 남는다 — 폴더는 *지식·로직*을 고정할 뿐, 그 순간 편차는 못 없앤다. (알려진 한계, 감안.)
@@ -127,7 +118,7 @@
 - 🖥 **뷰어 캐시 = 항상 최신(주요 혼란 요인이라 박음 · 260615):** `viewer/_headers`가 HTML·JSON에 `Cache-Control: no-cache`(매 로드 재검증) → **새 배포가 하드새로고침 없이 바로 반영**(뷰어 자주 바뀌어 '옛 화면' 오해가 잦았음). 카드 이미지는 URL `?v=mtime` 버스트로 캐시 OK. 뷰어 화면이 안 바뀌어 보이면 코드부터 의심 말고 캐시·배포부터 확인.
 - 🎬 **뷰어 탑배너 탭 전환 = 크로스페이드 디졸브 (정본 · 260616):** 하단 네비로 탭 전환 시 **상단 배너가 바뀔 땐 즉시 교체·슬라이드 금지 → opacity 크로스페이드(디졸브)로 부드럽게**(앞 배너 위로 새 배너가 점차 떠오름 — 사용자 확정 "와우 완벽"). 구현 = `viewer/index.html` 배너 2겹(`bannerframe`[글로우·브리딩] › `bannerclip`[overflow hidden] › `.banner.layer-feed`/`.banner.layer-scrap`), `body.tab-scrap` 토글 하나로 `.banner.layer-scrap{opacity 0↔1, .6s ease}` + 글로우색(`--glow`)·프로필 링/배지 컬러 **동반 전환**. **새 탭/배너 추가해도 이 크로스페이드 패턴 유지**(슬라이드·즉시교체 X). `prefers-reduced-motion`이면 즉시 전환. GPU 컴포지트(opacity)라 60fps.
 - 🚨 **속보(breaking) 검출·알림 (라이브 · 260616):** 수집함 후보 중 *급발 사건*을 자동 검출·알림. ① **velocity** = `knews_scraper`가 클러스터별 burst(15분 내 동시 매체 최대) 계산 → burst≥3 = `breaking_candidate`(거대 over-merge 제외) + 보수메이저 픽(조선>동아…, 대표-동일토픽 한정). ② **판정** = `breaking-judge.yml`(scrape가 새 후보 뜰 때 디스패치·self-gate) → `breaking_judge.py`가 Claude 1콜 배치 급발 판정 → `breaking` 확정. **긴급=방금 터진+(대형·다수피해·전국주목): 사고·화재·재난·다수 인명피해·테러·대형 강력범죄=알림 / 행정공지·정책발표·의료정책·개별 형사사건 선고·판결 등 사법결과(전국 대형 아닌)=컷 (260618 엄선).** rubric 해시 도장(`breaking_rubric`) → rubric 바뀌면 자동 재판정(드리프트 차단). ③ **뷰어** = `breaking:true` 사건에 🚨배지·주요도 최상단 정렬·프로필 빨강 펄스 링·포그라운드 토스트(seen 누적 재알림X · 120s 라이브폴·visibilitychange). 임계 = `BURST_BREAKING`(env)·rubric(`breaking_judge.py`). 정본 코드 = `scraper/knews_scraper.py`·`scraper/to_candidates.py`·`.github/scripts/breaking_judge.py`·`viewer/index.html`.
-  - **속보 진짜 푸시(Phase 2) = 구축됨 (260618 · 앱 꺼도 오는 웹푸시):** 체인 = `viewer/sw.js`(서비스워커·push/notificationclick) → 구독 토글(`#msgpop` 프로필팝업 상단 "🚨 긴급 속보 알림" 버튼·`pushToggle`/`pushRefresh`·VAPID 공개키 박힘) → 구독 저장 `functions/api/push.js`(GH_TOKEN으로 `push/subscriptions.json` 커밋) → 발송 `.github/scripts/push_send.py`(pywebpush·VAPID 비밀키 PEM변환·isBreaking[breaking AND grade≥2] AND <4h만·dedup `push/sent.json`·죽은구독 자동정리) → `breaking-judge.yml`이 판정 후 발송 스텝 실행(+ `test_push` workflow_dispatch=구독자 전원 테스트 1발). **VAPID 3종 = GitHub Secrets**(`VAPID_PRIVATE_KEY`·`VAPID_PUBLIC_KEY`·`VAPID_SUBJECT`). ⚠️ **iOS는 홈화면 추가(PWA) 해야 수신**(애플 제약)·안드로이드 크롬 바로. 구독은 레포파일 저장(발송=VAPID 비밀키 필수라 노출돼도 제3자 발송 불가 가드 · 비공개 원하면 KV 이전). 포그라운드 토스트/링은 그대로 병행.
+  - **TODO(나중·큐) — 속보 진짜 푸시(Phase 2):** 앱 꺼도 오는 웹푸시. 필요 = **VAPID 키(사용자가 생성·시크릿 등록)** + service worker + 알림권한 UI + 구독 저장(Function/KV) + breaking-judge에서 발송. **지금은 포그라운드(앱 열렸을 때 토스트/링)까지만.**
 
 ## 🗺 파일 지도 (플랫폼)
 - `apps/news/` = **뉴스 에디터**: `00_뉴스에디터_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*` · `fact_guard.py`(수치 대조 소프트 게이트)
