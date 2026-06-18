@@ -253,13 +253,13 @@
         </label>
         <label>투명도 (OPA)</label>
         <div class="seg" id="rOpaSeg">
-          <button data-opa="60" class="on">60</button>
-          <button data-opa="30" class="on">30</button>
+          <button data-opa="60" class="on fixed" tabindex="-1">60</button>
+          <button data-opa="30" class="on fixed" tabindex="-1">30</button>
           <button data-opa="custom" id="rOpaCustom"><span class="lab">직접입력</span><input type="text" id="rOpaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
         </div>
         <label>텍스트 (줄바꿈 = 여러 줄)</label>
         <textarea id="rLines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
-        <div class="hint"><b>*별표*</b>로 강조 · <b>opa60·30·직접입력</b> 탭해 선택(최소1·켠 만큼 출력) <span id="rLinesTrk" class="trk"></span></div>
+        <div class="hint"><b>*별표*</b>로 강조 · 기본 <b>opa60+opa30</b>, 직접입력 +1 <span id="rLinesTrk" class="trk"></span></div>
       </div>
     </div>
 
@@ -471,18 +471,10 @@ document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => sel
 
 // ---- 릴스 오버레이 OPA 세그 (60·30 항상 렌더=고정 표시 / 직접입력=추가 opa(+1) 토글) ----
 const rOpaNum = $('#rOpaNum');
-// 60·30·직접입력 = 멀티토글(켠 만큼 출력·최소1·0불가 — /3·/4 패턴). 직접입력은 입력칸 포함.
-document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = (e) => {
-  const isCustom = b.dataset.opa === 'custom';
-  // 직접입력이 이미 켜진 상태에서 입력칸 자체를 탭 = 값 입력 의도(토글 아님) → 포커스만
-  if (isCustom && e.target === rOpaNum && b.classList.contains('on')) return;
-  const litN = document.querySelectorAll('#rOpaSeg button.on').length;
-  if (b.classList.contains('on') && litN === 1) {   // 마지막 1개는 못 끔(0개 방지)
-    if (isCustom) { rOpaNum.focus(); rOpaNum.select(); }
-    return;
-  }
-  b.classList.toggle('on');
-  if (isCustom && b.classList.contains('on')) { rOpaNum.focus(); rOpaNum.select(); }   // 켤 때 입력칸 활성
+document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
+  if (b.dataset.opa !== 'custom') return;   // 60·30 = 항상 출력(둘 다 기본 선택·고정) → 클릭 무반응
+  b.classList.toggle('on');                 // 직접입력 = 추가 opa(+1) 켜기/끄기
+  if (b.classList.contains('on')) { rOpaNum.focus(); rOpaNum.select(); }   // 켤 때 버튼 안 커서 활성
 });
 rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 차면 바로 포커스 아웃(키보드 내려감)
   let v = rOpaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
@@ -490,17 +482,11 @@ rOpaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 두 자리 
   rOpaNum.value = v;
   if (v.length >= 2) rOpaNum.blur();
 });
-function getReelsOpas() {   // 점등된 버튼(60·30·직접입력)의 opa 배열 — 켠 만큼 출력. 직접입력은 값 있을 때만.
-  const out = [];
-  document.querySelectorAll('#rOpaSeg button.on').forEach(b => {
-    if (b.dataset.opa === 'custom') {
-      const n = parseInt(rOpaNum.value, 10);
-      if (Number.isFinite(n)) out.push(Math.max(0, Math.min(100, n)));
-    } else {
-      out.push(parseInt(b.dataset.opa, 10));
-    }
-  });
-  return [...new Set(out)];   // 중복 제거(직접입력이 60·30과 겹칠 때)
+function getReelsExtraOpa() {   // 직접입력 토글 ON + 값 있을 때만 추가 opa(+1). 60·30은 항상 출력(고정).
+  const c = $('#rOpaCustom');
+  if (!c || !c.classList.contains('on')) return null;
+  const n = parseInt(rOpaNum.value, 10);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
 }
 
 // ---- 파일 (재사용 바인더 — #file=/1·/5, #rFile=/2 오버레이) ----
@@ -562,7 +548,7 @@ function buildParams() {
   if (APP === '2') {
     if (RMODE === 'header') return { mode: 'header', sub: $('#sub').value.trim(), title: $('#title').value.trim() };
     const rlines = ($('#rLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);   // 오버레이 = lines + 이미지(옵션)
-    return { mode: 'overlay', lines: rlines, opas: getReelsOpas() };
+    return { mode: 'overlay', lines: rlines, extraOpa: getReelsExtraOpa() };
   }
   if (APP === '3') return { fmt: FMT, year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: getPlatform() };
 }
@@ -1021,7 +1007,6 @@ $('#go').onclick = async () => {
   }
   if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) return errStatus('부제 또는 제목을 입력해줘');
   if (APP === '2' && params.mode === 'overlay' && !params.lines.length) return errStatus('텍스트를 입력해줘');
-  if (APP === '2' && params.mode === 'overlay' && !params.opas.length) return errStatus('투명도를 최소 1개 선택해줘 (직접입력은 값까지)');   // 직접입력만 켜고 값 비움 차단(0개 방지)
   if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 빠뜨리면 확인
     const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
     if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) return;
