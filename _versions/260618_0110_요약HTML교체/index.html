@@ -734,9 +734,26 @@
   .dlg-h button svg { display:block; }
   .dlg-h a:hover, .dlg-h button:hover { color:var(--fg); background:rgba(255,255,255,.11); border-color:rgba(255,255,255,.2); }
   .dlg-h a:active, .dlg-h button:active { transform:scale(.94); }
-  /* 요약 ⬇ 버튼 — 텍스트 강조색(글자만), 텍스트 알약(원문↗과 동급) */
+  /* 요약 PDF 버튼 — 텍스트 강조색(글자만), 텍스트 알약(원문↗과 동급) */
   .dlg-pdf { width:auto !important; padding:0 13px !important; gap:5px; font-size:12px; font-weight:700; color:var(--accent) !important; margin-left:0 !important; }   /* 원문↗ 좌측에 배치(auto 마진 해제) */
   .dlg-pdf:hover { color:var(--accent) !important; background:rgba(15,253,2,.14) !important; border-color:rgba(15,253,2,.4) !important; }
+  /* 요약 PDF 다운로드 — 오프스크린 밝은 레이아웃(html2pdf 렌더 대상). 강조색 빼고 가독 흑백 + 굵게만 강조. */
+  .pdfdoc { position:fixed; left:-9999px; top:0; width:794px; box-sizing:border-box; padding:34px 40px;
+    background:#fff; color:#222; font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  .pdfdoc .pdf-title { font-size:22px; font-weight:800; color:#0a0a0a; line-height:1.35; margin:0 0 4px; letter-spacing:-.4px; }
+  .pdfdoc .pdf-body { font-size:14.5px; }
+  .pdfdoc .pdf-body * { color:#262626 !important; background:transparent !important; box-shadow:none !important; border-color:#e3e3e3 !important; }
+  .pdfdoc .pdf-body h1, .pdfdoc .pdf-body h2 { font-size:16px !important; font-weight:800; color:#0a0a0a !important; border-top:1px solid #e3e3e3; border-bottom:none !important; padding:14px 0 0; margin:18px 0 6px; }
+  .pdfdoc .pdf-body h3, .pdfdoc .pdf-body h4 { font-size:14px !important; font-weight:700; color:#111 !important; margin:12px 0 4px; }
+  .pdfdoc .pdf-body strong, .pdfdoc .pdf-body b { color:#000 !important; font-weight:800; }
+  .pdfdoc .pdf-body p, .pdfdoc .pdf-body li { margin:5px 0; line-height:1.65; }
+  .pdfdoc .pdf-body pre { white-space:pre-wrap !important; word-break:break-word; background:#f5f5f5 !important; border:1px solid #e3e3e3 !important; border-radius:8px; padding:11px 13px !important; font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; max-height:none !important; }
+  .pdfdoc .pdf-body pre, .pdfdoc .pdf-body pre code { max-height:none !important; display:block; }
+  .pdfdoc .pdf-body img { display:none !important; }
+  .pdfdoc .pdf-foot { margin-top:26px; padding-top:14px; border-top:2px solid #222; }
+  .pdfdoc .pdf-src { font-weight:800; color:#111; font-size:13px; word-break:break-all; }
+  .pdfdoc .pdf-cr { color:#555; font-size:12px; margin-top:5px; }
+  @media print { body.pdf-printing > *:not(.pdfdoc) { display:none !important; } body.pdf-printing .pdfdoc { position:static !important; left:0 !important; width:auto !important; padding:0; } }
   .md { padding:8px 18px 26px; }
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
@@ -1082,7 +1099,7 @@
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <dialog id="dlg">
-  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 HTML 다운로드(항목별 복사 박스)">요약 ⬇</button><a id="src" target="_blank" rel="noopener">원문 ↗</a></div><button class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 PDF 다운로드">요약 ⬇</button><a id="src" target="_blank" rel="noopener">원문 ↗</a></div><button class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
@@ -3523,173 +3540,69 @@ function updateRevClip() {   // .sbtn 컨텍스트 1버튼: 비었으면 붙여�
   b.innerHTML = has ? COPY_SVG : PASTE_SVG;
   const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl;
 }
-// ── 요약 ⬇ HTML 다운로드 — 본문(#mdbody)을 항목별 복사 박스 단독 HTML로 저장(공유용·외부 의존성 0). 항목마다 복사 버튼, 맨 위 '전체' 복사. ──
-// 단독 HTML 안에서 돌아갈 복사 스크립트 — toString()으로 생성 파일에 그대로 박는다(문자열 이스케이프 회피). self-contained.
-function _expCopy() {
-  var COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
-  var CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-  function secText(box) {        // 박스 → 평문(불릿 •, 코드블록 줄바꿈 보존) — DOM에서 추출(드리프트 없음)
-    var out = [], h = box.querySelector('h1,h2,h3,h4,h5,h6');
-    if (h) out.push(h.textContent.trim());
-    Array.prototype.forEach.call(box.children, function (el) {
-      var tag = el.tagName;
-      if (/^H[1-6]$/.test(tag) || tag === 'BUTTON') return;
-      if (tag === 'UL' || tag === 'OL') {
-        Array.prototype.forEach.call(el.querySelectorAll('li'), function (li) { out.push('• ' + li.textContent.trim().replace(/\s+/g, ' ')); });
-      } else if (tag === 'PRE') {
-        out.push(el.textContent.replace(/\s+$/, ''));
-      } else {
-        var t = el.textContent.trim().replace(/\s+/g, ' '); if (t) out.push(t);
-      }
-    });
-    return out.join('\n');
-  }
-  function fullText() {
-    var ttl = document.querySelector('h1.t'), parts = [ttl ? ttl.textContent.trim() : '', ''];
-    Array.prototype.forEach.call(document.querySelectorAll('.box[data-sec]'), function (b) { parts.push(secText(b), ''); });
-    var s = document.querySelector('.src'), c = document.querySelector('.cr');
-    if (s) parts.push(s.textContent.trim());
-    if (c) parts.push(c.textContent.trim());
-    return parts.join('\n');
-  }
-  function legacy(text) {
-    var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
-    ta.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} ta.remove(); return ok;
-  }
-  function copyText(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText)
-      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return legacy(text); });
-    return Promise.resolve(legacy(text));
-  }
-  function flash(btn, label) {
-    var orig = btn.innerHTML; btn.classList.add('ok');
-    btn.innerHTML = CHECK + (label ? '<span>완료</span>' : '');
-    setTimeout(function () { btn.classList.remove('ok'); btn.innerHTML = orig; }, 1300);
-  }
-  Array.prototype.forEach.call(document.querySelectorAll('.box[data-sec]'), function (box) {
-    var btn = document.createElement('button'); btn.className = 'sbtn'; btn.type = 'button';
-    btn.title = '이 항목 복사'; btn.setAttribute('aria-label', '이 항목 복사'); btn.innerHTML = COPY;
-    btn.addEventListener('click', function () { copyText(secText(box)).then(function (ok) { if (ok) flash(btn, false); }); });
-    box.appendChild(btn);
+// ── 요약 PDF 다운로드(요약 ⬇) — 본문(#mdbody)을 밝은 레이아웃으로 클론 → 출처·저작권 붙여 html2pdf로 원클릭 저장. CDN 막히면 인쇄 폴백. ──
+function loadHtml2pdf() {
+  return new Promise((resolve, reject) => {
+    if (window.html2pdf) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js';
+    s.onload = () => window.html2pdf ? resolve() : reject(new Error('no html2pdf'));
+    s.onerror = () => reject(new Error('cdn fail'));
+    document.head.appendChild(s);
+    setTimeout(() => { window.html2pdf ? resolve() : reject(new Error('timeout')); }, 9000);
   });
-  var all = document.getElementById('copyAll');
-  if (all) all.addEventListener('click', function () { copyText(fullText()).then(function (ok) { if (ok) flash(all, true); }); });
 }
-const SUMMARY_TPL = `<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>%TITLE% — 노뮤트 요약</title>
-<style>
-  :root { --accent:#0a8a00; --ink:#1a1a1a; --mut:#666; --line:#e6e6e6; }
-  * { box-sizing:border-box; -webkit-text-size-adjust:100%; }
-  body { margin:0; background:#f0f1f3; color:var(--ink); padding:22px 14px 40px;
-    font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
-  .wrap { max-width:720px; margin:0 auto; }
-  .head { margin:0 4px 20px; }
-  .htop { display:flex; align-items:flex-start; gap:12px; }
-  h1.t { font-size:21px; font-weight:800; line-height:1.36; margin:0; letter-spacing:-.4px; color:#0a0a0a; flex:1; }
-  .grp { margin:20px 4px 10px; font-size:12.5px; font-weight:800; color:var(--mut); letter-spacing:.3px; }
-  .box { position:relative; background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin:0 0 16px; box-shadow:0 4px 18px rgba(0,0,0,.05); }
-  .box h1, .box h2, .box h3, .box h4 { font-size:15px; font-weight:800; color:var(--accent); margin:0 0 8px; }
-  .box p { margin:5px 0; }
-  .box ul, .box ol { margin:5px 0; padding-left:19px; }
-  .box li { margin:4px 0; line-height:1.62; }
-  .box strong, .box b { font-weight:800; color:#000; }
-  .box a { color:var(--accent); word-break:break-all; }
-  .box pre { white-space:pre-wrap; word-break:break-word; background:#f6f7f8; border:1px solid var(--line); border-radius:9px; padding:12px 14px; margin:6px 0 0; font:13px/1.62 ui-monospace,SFMono-Regular,Menlo,monospace; color:#222; }
-  .sbtn { position:absolute; top:-14px; right:14px; width:34px; height:34px; padding:0; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; border-radius:11px;
-    background:rgba(20,30,24,.82); color:#eafff0; border:1px solid rgba(255,255,255,.16); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 4px 13px rgba(0,0,0,.2); transition:transform .1s, background .15s; }
-  .sbtn:hover { background:rgba(26,40,32,.92); }
-  .sbtn:active { transform:scale(.9); }
-  .sbtn svg { display:block; width:16px; height:16px; }
-  .sbtn.ok { background:var(--accent); color:#fff; }
-  .sbtn.all { position:static; width:auto; height:34px; padding:0 13px; gap:5px; font-size:12px; font-weight:700; border-radius:999px; flex:none; }
-  .foot { margin:22px 4px 0; padding-top:14px; border-top:2px solid #222; }
-  .src { font-weight:800; font-size:13px; word-break:break-all; }
-  .src a { color:var(--accent); }
-  .cr { color:var(--mut); font-size:12px; margin-top:5px; }
-  .hint { text-align:center; color:#9a9a9a; font-size:11.5px; margin:16px 0 0; }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <div class="head"><div class="htop">
-    <h1 class="t">%TITLE%</h1>
-    <button class="sbtn all" id="copyAll" type="button" title="전체 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span>전체</span></button>
-  </div></div>
-  %BOXES%
-  <div class="foot">
-    <div class="src">%SRC%</div>
-    <div class="cr">%CR%</div>
-  </div>
-  <p class="hint">각 박스 우상단 버튼 = 그 항목만 복사 · 맨 위 ‘전체’ = 전체 복사 · 내용은 드래그로도 선택돼</p>
-</div>
-<script>%SCRIPT%<\/script>
-</body>
-</html>`;
-function buildSummaryHtml() {
-  const src = document.createElement('div');
-  src.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
-  src.querySelectorAll('button, .copy, .gvchip').forEach(el => el.remove());   // 뷰어 복사·더보기·칩 버튼 제거
-  src.querySelectorAll('pre.clip').forEach(p => p.classList.remove('clip'));   // 클립 해제(전문 표시)
-  src.querySelectorAll('img').forEach(el => el.remove());                      // 본문 이미지 제거(텍스트 요약)
-  src.querySelectorAll('h1').forEach(el => el.remove());                       // 제목 h1은 헤더로 따로
-  const kids = [...src.children], isH = el => /^H[2-6]$/.test(el.tagName);
-  let boxes = '', i = 0;
-  while (i < kids.length) {                                                    // 헤딩 경계로 항목 분할
-    if (isH(kids[i])) {
-      const head = kids[i].outerHTML; let body = '', j = i + 1;
-      while (j < kids.length && !isH(kids[j])) { body += kids[j].outerHTML; j += 1; }
-      boxes += body.trim() ? ('<div class="box" data-sec>' + head + body + '</div>\n')
-                           : ('<div class="grp">' + esc(kids[i].textContent.trim()) + '</div>\n');   // 본문 없는 그룹 헤더(예: 콘텐츠 초안)
-      i = j;
-    } else {
-      let body = '', j = i;
-      while (j < kids.length && !isH(kids[j])) { body += kids[j].outerHTML; j += 1; }
-      if (body.trim()) boxes += '<div class="box" data-sec>' + body + '</div>\n';
-      i = j;
-    }
-  }
+function buildPdfDoc() {
+  const wrap = document.createElement('div'); wrap.className = 'pdfdoc';
+  const t = document.createElement('div'); t.className = 'pdf-title';
+  t.textContent = (CUR_A && CUR_A.title) || '뉴스 요약'; wrap.appendChild(t);
+  const body = document.createElement('div'); body.className = 'pdf-body';
+  body.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
+  body.querySelectorAll('button, .copy, .gvchip').forEach(el => el.remove());      // 복사·더보기·칩 버튼 제거
+  body.querySelectorAll('pre.clip').forEach(p => p.classList.remove('clip'));      // 클립 해제(전문 표시)
+  wrap.appendChild(body);
   const now = new Date(), pz = n => String(n).padStart(2, '0');
   const ymd = now.getFullYear() + '-' + pz(now.getMonth() + 1) + '-' + pz(now.getDate());
   const hm = pz(now.getHours()) + ':' + pz(now.getMinutes());
-  const mdh1 = ($('#mdbody') ? $('#mdbody').querySelector('h1') : null);
-  const title = (CUR_A && CUR_A.title) || (mdh1 ? mdh1.textContent.trim() : '') || '뉴스 요약';
   const srcBits = [];
   if (CUR_A && CUR_A.media) srcBits.push(CUR_A.media);
   if (CUR_A && CUR_A.url) srcBits.push(CUR_A.url);
-  const srcLine = '출처:' + (srcBits.length ? ' ' + esc(srcBits.join(' · ')) : '');
-  const crLine = 'ⓒ ' + now.getFullYear() + '. 에디터 노뮤트(@no_mute, 인스타그램). all rights reserved. (' + ymd + '. ' + hm + ')';
-  const script = '(' + _expCopy.toString() + ')();';
-  return SUMMARY_TPL
-    .replace(/%TITLE%/g, () => esc(title))
-    .replace('%BOXES%', () => boxes)
-    .replace('%SRC%', () => srcLine)
-    .replace('%CR%', () => esc(crLine))
-    .replace('%SCRIPT%', () => script);
+  const f = document.createElement('div'); f.className = 'pdf-foot';
+  f.innerHTML = '<div class="pdf-src">출처:' + (srcBits.length ? ' ' + esc(srcBits.join(' · ')) : '') + '</div>'
+    + '<div class="pdf-cr">ⓒ ' + now.getFullYear() + '. 에디터 노뮤트(@no_mute, 인스타그램). all rights reserved. (' + ymd + '. ' + hm + ')</div>';
+  wrap.appendChild(f);
+  return wrap;
+}
+function printPdfDoc(doc) {   // CDN 실패 폴백 — 인쇄(브라우저 'PDF로 저장')
+  document.body.classList.add('pdf-printing');
+  const cleanup = () => { document.body.classList.remove('pdf-printing'); doc.remove(); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(() => window.print(), 80);
 }
 let _pdfBusy = false;
-async function downloadSummaryHtml() {
+async function downloadSummaryPdf() {
   if (_pdfBusy || !CUR_A) return; _pdfBusy = true;
   const btn = $('#pdfBtn'), old = btn ? btn.textContent : '';
   if (btn) { btn.textContent = '만드는 중…'; btn.disabled = true; }
+  const doc = buildPdfDoc(); document.body.appendChild(doc);
+  const fname = (((CUR_A && CUR_A.title) || '뉴스요약').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60).trim() || '뉴스요약') + ' — 노뮤트.pdf';
   try {
-    const html = buildSummaryHtml();
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob), a = document.createElement('a');
-    a.href = url;
-    a.download = (((CUR_A && CUR_A.title) || '뉴스요약').replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 60).trim() || '뉴스요약') + ' — 노뮤트.html';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    await loadHtml2pdf();
+    await window.html2pdf().set({
+      margin: [12, 12, 14, 12], filename: fname,
+      image: { type: 'jpeg', quality: 0.96 },
+      html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 794 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] },
+    }).from(doc).save();
+    doc.remove();
   } catch (e) {
-    alert('요약 HTML 생성 실패: ' + ((e && e.message) || e));
+    printPdfDoc(doc);   // CDN 막힘 → 인쇄로 우회
   } finally {
     if (btn) { btn.textContent = old; btn.disabled = false; } _pdfBusy = false;
   }
 }
-$('#pdfBtn').addEventListener('click', downloadSummaryHtml);
+$('#pdfBtn').addEventListener('click', downloadSummaryPdf);
 $('#revFab').addEventListener('click', openRev);
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
