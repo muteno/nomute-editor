@@ -42,6 +42,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      # site-packages 캐시 — setup.sh 의 pip install(mediapipe·opencv·numpy·pillow) 재설치 회피.
+      # 병목 실측(259s 런): 체크아웃 3s·렌더 0s 인데 setup 의 pip install 이 243s(편차 46~243s·간헐 20분 행).
+      # STAMP($HOME/.cache)는 러너간 비영속 → 매 런 재설치가 원인. 설치 산출(site-packages)을 캐시하면
+      # 워밍런은 복원 → setup.sh 의 `import PIL,numpy,cv2,mediapipe` 통과 → pip 스킵 → setup 수초.
+      # (mediapipe 는 nomute_compose.py 가 최상단 import — 절대규칙1 불변이라 제거 불가 → 캐시로 회피.)
+      - name: Restore python deps (site-packages 캐시)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-thumb-pydeps-${{ runner.os }}-py312-pillow-numpy-cv2-mediapipe-v1
+
       - name: Setup thumbnail env (setup.sh 단일출처 + 캐시)
         timeout-minutes: 8   # 백스톱 — 셋업(apt/pip/캐시) 행이 20분 잡 한도까지 끌어 cancel되던 것 차단(260618). setup.sh 내부 timeout과 이중 방어.
         uses: ./.github/actions/runner-setup
