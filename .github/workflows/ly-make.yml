@@ -54,10 +54,12 @@ jobs:
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
         if: ${{ inputs.url != '' || inputs.file != '' }}
+        timeout-minutes: 15   # 백스톱 — 첫 런 Whisper 1.6GB 다운 감안 여유(이후 캐시히트 즉시). 무한 행만 차단.
         uses: ./.github/actions/runner-setup
         with:
           setup: apps/ly/setup.sh
           whisper: 'true'
+          apt: ffmpeg   # ffmpeg .deb 7일 캐시 → 매 런 재다운·미러행 차단
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}

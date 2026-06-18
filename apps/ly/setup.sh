@@ -4,12 +4,15 @@ set -e
 # 양쪽 호환: Claude Code(root) / GitHub 러너(non-root → sudo)
 SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
 
-# ffmpeg (오디오 추출 STEP 0-1)
-command -v ffmpeg >/dev/null 2>&1 || { $SUDO apt-get update -qq && $SUDO apt-get install -y -qq ffmpeg; }
+# ffmpeg (오디오 추출 STEP 0-1) — 러너선 runner-setup이 .deb 캐시로 선설치(보통 스킵). 아래는 타임아웃 폴백(미러 스톨 무한행 차단).
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  timeout 150 $SUDO apt-get update -qq || true
+  timeout 300 $SUDO apt-get install -y -qq ffmpeg || { sleep 3; timeout 300 $SUDO apt-get install -y -qq ffmpeg; }
+fi
 
 # Whisper(로컬 STT — 키 불필요) / yt-dlp(영상 URL Case C)
-python3 -c "import faster_whisper" 2>/dev/null || pip3 install -q faster-whisper
-command -v yt-dlp >/dev/null 2>&1 || pip3 install -q yt-dlp
+python3 -c "import faster_whisper" 2>/dev/null || timeout 300 pip3 install -q faster-whisper
+command -v yt-dlp >/dev/null 2>&1 || timeout 180 pip3 install -q yt-dlp
 
 # 작업 경로 (Claude Code 임시 파일 — 러너선 /tmp 사용하므로 실패해도 무방)
 mkdir -p /home/claude 2>/dev/null || true
