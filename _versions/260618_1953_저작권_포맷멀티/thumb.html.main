@@ -360,7 +360,8 @@ function selApp(a) {
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
   $('#abbrBox').classList.toggle('none', !(a === '1' || a === '2'));   // 축약 = 포스트·릴스만
-  if (a === '4' || a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                  // 경고문·저작권 = 포스트+릴스 둘 다 기본(멀티·둘 다 출력·최소1)
+  if (a === '4') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                              // 경고문 = 포스트+릴스 둘 다 기본(멀티)
+  else if (a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.toggle('on', b.dataset.fmt === FMT));   // 저작권 = 단일(FMT)
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
   $('#linesMax').textContent = a === '1' ? '최대 3줄' : '';
   if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
@@ -422,9 +423,9 @@ document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
   composeWarn();
 });
 
-// ---- 포맷 세그 ---- (/4 경고문·/3 저작권 = 포스트·릴스 멀티토글[최소1·둘 다 출력] / 그 외 = 단일선택 FMT)
+// ---- 포맷 세그 ---- (/4 경고문 = 포스트·릴스 멀티토글[최소1·둘 다 출력] / 그 외 = 단일선택 FMT)
 document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
-  if (APP === '4' || APP === '3') {
+  if (APP === '4') {
     const litN = document.querySelectorAll('#fmtSeg button.on').length;
     if (b.classList.contains('on') && litN === 1) return;   // 마지막 1개는 못 끔(0 방지)
     b.classList.toggle('on');
@@ -982,13 +983,6 @@ $('#go').onclick = async () => {
     const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
     const FL = { post: '포스트', reels: '릴스' };
     fmts.forEach(fmt => dispatchJob('/api/thumb', { app: '4', params: { fmt, lines } }, '경고문 (' + (FL[fmt] || fmt) + ')'));
-    return;
-  }
-  if (APP === '3') {   // 저작권 = 포맷(포스트/릴스) 점등분마다 동시 발사 → 둘 다 캐러셀로(경고문과 동일)
-    const base = { year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: getPlatform() };
-    const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
-    const FL = { post: '포스트', reels: '릴스' };
-    fmts.forEach(fmt => dispatchJob('/api/thumb', { app: '3', params: { fmt, ...base } }, '저작권 (' + (FL[fmt] || fmt) + ')'));
     return;
   }
   // /1·/2·/3 = /api/thumb
