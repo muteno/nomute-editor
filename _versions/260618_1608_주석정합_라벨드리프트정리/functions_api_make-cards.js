@@ -1,7 +1,8 @@
 // Cloudflare Pages Function — 뷰어 '카드 생성' 버튼 → GitHub card-make 워크플로 발사.
-// 공개 페이지 유료 발사 게이트(PASSCODE)는 제거됨(아래 참조 · 260614) — 현재 GH_TOKEN 유무만 검증.
+// 공개 페이지에서 유료 발사를 막는 게이트: PASSCODE 일치 시에만 진행.
 // 환경변수(Cloudflare Pages 대시보드 → Settings → Variables, Production):
 //   GH_TOKEN  = GitHub fine-grained PAT (이 레포 한정, Actions: Read and write) — Secret으로
+//   PASSCODE  = 버튼 암호(운영자만 아는 문자열) — Secret으로
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
     new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });

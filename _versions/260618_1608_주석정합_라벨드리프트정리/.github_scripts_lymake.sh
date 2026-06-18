@@ -2,7 +2,7 @@
 # 입력(env SUBS = SRT/STT 텍스트) → claude -p(헤드리스, /ly 지침 런타임 Read) → 릴스 자막 md
 #   → viewer/ly_out/<id>/subs.md. 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료).
 # 워크플로가 커밋·push(thumb-make 가드 패턴). 실패 = error.log + exit 1.
-# 이 스크립트는 SUBS(텍스트/SRT 또는 Whisper STT 결과)만 처리. 영상 URL/파일→Whisper STT는 워크플로(ly-make.yml) 상위 스텝에서.
+# ⚠️ v1 = 텍스트/SRT 입력만. 영상 URL + Whisper STT는 v2(별도 스텝).
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/ly-make.md"
