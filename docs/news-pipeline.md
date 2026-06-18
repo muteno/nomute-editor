@@ -87,7 +87,7 @@
 | 입구 | `pending/` push | `/news` · 기사 붙여넣기 |
 | 요약 산출 종착 | `queue/` → Pages → 뷰어 자동 누적 | 화면 출력 (+`/q`로 `queue/` 합류) |
 | 카드(Step 4) | 텍스트·프롬프트까지 자동(`text_done`), 이미지는 '슛' 버튼 | 세션에서 `4`·`ㄱ`로 풀 진행 |
-| fetch 막힌 매체(nate 등) | 실패 → `pending/failed/` 격리 | 전문 붙여넣기로 처리 가능 |
+| fetch 막힌 매체(403) | 폰 공유=선-fetch 본문 동봉으로 처리 / 자동·픽=실패 격리(잔존) | 전문 붙여넣기로 처리 |
 | 즉시 피드백 | ❌ (async) | ✅ (인터랙티브) |
 
 **합류·통제점**
@@ -154,11 +154,10 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 - **Failed 주범 = 원 매체 fetch/인코딩 차단**: `news.nate.com` 6건 = WebFetch가 EUC-KR 본문을 못 풀어 깨진/환각 제목 → 교차검증 불가 → (날조 거부)실패. `chosun.com`·`newsis`·`세계일보`도 WebFetch 차단(**newsis는 tasker-termux 공유도 막힘** — 실측). 나머지 5건 = 비-기사 URL(연합 홈페이지·url.kr 제보폼·android.googlesource[LLVM git]·nate `/view/test`).
 - **카드 generating 동결**: card_plan 런이 죽으면(타임아웃/크래시) `status=generating` 잔류 → 좀비 sweep이 *card_plan 잡 안에만* 있어 후속 analyze 없으면 미작동(실측: cards/ 3건이 `updated=09:20:37Z`로 동결). 뷰어는 15분 타임아웃→실패 표시로 대응(PR #454).
 
-### [ ] H — 막힌 매체 = 동시보도 타 매체로 우회 (운영자 핵심 아이디어 · analyze 기틀)
-*막아서 못 들어오게가 아니라, 막힌 매체가 들어오면 같은 사건의 비블록 매체로 본문 확보.*
-- **데이터 준비됨**: candidates `cluster_members`(같은 사건 타 매체 url — dedup 때 직렬화). 블록매체(nate/newsis/chosun) 후보 1153건 중 **205건이 members 보유** → 비블록 대안(donga·SBS·etoday·hani) 多. 예: "국민의힘 최고위"(cross=9) 비블록 대안 11개.
-- **설계**: 픽→analyze 때 rep-url 호스트가 블록목록(nate·newsis·chosun·세계일보…)이면 → `cluster_members` 중 *비블록 호스트* url을 WebFetch 폴백 → 본문 확보·교차검증. 정본 후보 = `.github/scripts/analyze.sh`·`fetch_article.sh` + `prompts/news-analysis.md`(cluster_members 전달).
-- ⚠️ analyze 파이프라인 = 기틀 → **§기틀 보호 승인 + §🧪 5인 검증 후 구현**.
+### [~] H — 막힌 매체 = 403 우회 (운영자 핵심 아이디어 · analyze 기틀)
+**근본 원인(실측 260618)**: 조선·동아·한겨레·연합·중앙 등이 **클라우드 러너의 데이터센터 IP에 403**(WAF·IP기반 — 풀 브라우저 헤더로도 403). 폰(가정용 KR IP)은 200. 즉 콘텐츠가 아니라 *요청이 나가는 네트워크 위치* 문제(상세=`scraper/README.md` §1).
+- **✅ 폰 경로 = 해결(Termux 선-fetch · 260618 · §기틀 보호 승인 + §🧪 5인 검증)**: 폰이 공유 시점에 `fetch_article.sh`로 본문을 *폰 IP(200)*에서 미리 긁어 pending에 **`# body:` 동봉** → `analyze.sh`가 클라우드 fetch 없이 그대로 씀(403 근본 우회). 지배적 입력(폰 공유 = 바로 이 막힌 매체들)을 덮는다. **pending 포맷**: line1=URL(불변·dedup·`head -n1`), 선택 `# title:`, 선택 `# body:` *이후 전체*=폰 선-fetch 본문(가산·하위호환·`awk '/^# body:/{f=1;next}f'`로 소비). 정본 = 플레이북 §5-2 + `docs/termux-share.sh` + `analyze.sh`. ⚠️ 폰 전제 = `python libiconv` 설치(§3). JS렌더·페이월 매체는 폰서도 빈 본문 → 클라우드 폴백.
+- **[ ] 잔존 = 자동/픽 경로**: RSS자동(`to_pending`)·뷰어픽(`pick_pending`)은 *클라우드 발원*이라 여전히 403(선-fetch 혜택 못 받음). 남은 선택지 = `cluster_members`(같은 사건 비블록 매체 url·candidates에 직렬화·509/2704 보유·예: "국민의힘 최고위" cross=9 비블록 대안 11개) 우회 또는 가정용 프록시(유료·보편). **이 경로 403을 SSOT에서 누락하지 않게 열어둠**(조용한 누락 방지 — §기틀 보호 정신). 구현 시 analyze 기틀이라 §기틀 보호 + §🧪 5인 검증 재적용.
 
 ### [ ] 좀비 sweep 자가치유 (D 서버측 근본)
 - generating 좀비 sweep을 `scrape`(15분 주기)에도 실행 → 후속 analyze 없어도 stuck `status.json`이 자가 failed화(현재 `card_plan` 잡 한정이라 방치 가능). 작은 워크플로 추가.

@@ -27,8 +27,14 @@ python3 knews_scraper.py --categories all --hours 12 --min-cross 2 --top 30
 ## ⚠️ 알고 가야 할 것 (실측으로 드러난 것)
 
 ### 1. 죽은 피드 정리는 *배포처에서* 해라 — 이 레포 클라우드 환경 기준 금지
-이 환경 egress 정책이 **동아일보·조선일보·한겨레·연합뉴스**를 차단한다("Blocked by egress
-policy"). **폰(열린 egress)에서 실측한 결과 이 넷은 전부 살아있음** → 여기 "죽음"은 환경 탓.
+주요 매체(**동아·조선·한겨레·연합·중앙**)가 클라우드(이 레포 환경·Actions 러너 = 둘 다 데이터센터
+IP)에선 안 잡힌다. 일부는 환경 egress 정책 차단("Blocked by egress policy")으로도 나타나지만,
+**더 근본은(실측 260618) 매체 WAF 가 데이터센터 IP 에 403** — `curl`로 chosun·donga·hani·yna·joongang
+= 403, nate·khan·경향 = 200, **풀 브라우저 헤더(Accept-Language·sec-ch-ua·Referer 등)로도 403**(=
+fingerprint 아닌 **IP 기반**). **폰(가정용 KR IP)은 200** → 콘텐츠가 아니라 *요청 네트워크 위치* 문제.
+- **근본 해결 = "되는 데서 가져온다"**: 폰 공유 경로는 **Termux 선-fetch**(폰이 200으로 본문을 미리
+  긁어 pending `# body:` 동봉 → analyze 가 클라우드 fetch 없이 사용 · 260618 구현). 자동/픽(클라우드
+  발원) 경로는 여전히 403 → `cluster_members` 우회·가정용 프록시가 잔존 선택지(`docs/news-pipeline.md` §H).
 실제로 죽은 후보(이 환경 무관)는 좁다:
 - 국민일보(`rss.kmib.co.kr`): 연결불가 — 배포처서 재확인
 - 시사인 정치(`S1N6`): 진짜 403 (다른 시사인 섹션은 살아있음) → 솎기 후보
