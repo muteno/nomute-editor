@@ -51,6 +51,23 @@ jobs:
       - name: Install claude-code
         run: npm install -g @anthropic-ai/claude-code
 
+      # STT 경로(영상 URL/파일)에서만 — 파이썬 고정(site-packages 캐시 경로 안정화) + 설치분 캐시
+      - name: Setup Python (STT)
+        if: ${{ inputs.url != '' || inputs.file != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # site-packages 캐시 — setup.sh 의 faster-whisper(ctranslate2·onnxruntime 등) 재설치 회피.
+      # 실측(파일 런): STT 환경 318s 중 faster-whisper 설치가 큰 몫(Whisper 모델 1.6GB 복원은 별도·바닥).
+      # 워밍런 = 복원 → setup.sh `import faster_whisper` 통과 → pip 스킵. 무해(미적중이면 기존대로 재설치=회귀 0).
+      - name: Restore python deps (site-packages 캐시)
+        if: ${{ inputs.url != '' || inputs.file != '' }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-fasterwhisper-ytdlp-v1
+
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
         if: ${{ inputs.url != '' || inputs.file != '' }}
