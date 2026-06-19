@@ -27,7 +27,12 @@
 [운영자]  심화할 기사 선택 → 클라우드 세션에서 /news 풀 파이프라인(콘텐츠화)
 ```
 
-> 🕒 **대기열(관측) — 분석 지연 시 "들어왔나" 확인 (260619):** 뷰어 **뉴스요약 버튼 길게 누르면(480ms)** 대기열 팝업 = 지금 `pending/`에 있는(=아직 분석 안 끝난) 기사 개요(**들어온 시각 · 주요 내용 · 전달방식**[전문/URL]). `functions/api/pending.js`(GET·`GH_TOKEN`)가 `pending/`를 라이브 조회 — 분석 끝나면 pending 삭제(↑L17)되니 목록서 빠지고 피드에 뜸. **읽기 전용(파이프라인 0 변경)**. 실패건은 여기 안 뜸(`pending/failed/`로 격리 + CI 알림 별도). 정본 = `functions/api/pending.js` + `viewer/index.html`(`openQueue`·`renderQueue`·뉴스요약 롱프레스).
+> 🕒 **대기열(관측·상태판) — 제출 기사 처리 추적 (260619):** 뷰어 **뉴스요약 버튼 롱프레스(480ms)·PC 우클릭**으로 대기열 팝업. `functions/api/pending.js`(GET·`GH_TOKEN`)가 GitHub를 라이브 조회해 **세 상태**를 종합 반환(읽기 전용·파이프라인 0 변경):
+> - **처리중** = `pending/`에 있고 나이 `<20분` — 들어온 시각·주요 내용(폰공유=`# body:` 본문 / 픽=`# title:` 헤드라인)·전달방식(전문/URL).
+> - **FAIL** = `pending/` 잔류 `≥20분`(stuck) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달.
+> - **SUCC** = 최근(6h) `queue/*.md` 완료분(`-ask-` 제외). 초록 배지 + **바로가기** → `showTab('feed')` + 해당 기사 모달(`DATA.file` 매칭, 빌드 랙이면 `load()` 후 재매칭·토스트).
+>
+> 페이지당 5개 **페이지네이션**(슬라이딩 윈도우), **🗑 내역 지우기**(확인 후 `localStorage nomute_q_cleared` 컷오프로 현재 내역 숨김). 분석 끝나면 pending 삭제(↑L17)→FAIL/처리중서 빠지고 queue가 SUCC로. 정본 = `functions/api/pending.js` + `viewer/index.html`(`openQueue`·`loadQueue`·`renderQueuePage`·`qGo`·`qDownload`·`feedOpenBy`).
 
 ## 기사 요약 경로 (두 갈래)
 같은 "기사 → 요약"이라도 **요약 주체·방식**이 둘이다 — ① 폰에서 자동(헤드리스)으로 도는 무인 경로, ② 클로드 코드 세션에서 사람이 보며 도는 인터랙티브 경로. (여긴 *요약 방식* 관점 대비. 적재 *출처* 관점 분류는 ↓ §큐 적재 입구 3개.)

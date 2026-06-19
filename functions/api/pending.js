@@ -40,14 +40,14 @@ export async function onRequestGet({ env }) {
     .sort((a, b) => b.name.localeCompare(a.name)).slice(0, CAP_PEND);
   await Promise.all(pend.map(async f => {
     const t = fnameTime(f.name, 6);
-    const { line1, body } = parseTxt(await raw(`pending/${f.name}`));
+    const { line1, body, title } = parseTxt(await raw('pending/' + encodeURIComponent(f.name)));
     const paste = line1.startsWith('paste:');
     const ageMin = t ? (now - t) / 60000 : 0;
     const stuck = !!t && ageMin >= STUCK_MIN;
     items.push({
       id: f.name.replace(/\.txt$/i, ''), t, status: stuck ? 'fail' : 'processing',
       via: paste ? '전문' : 'URL', src: paste ? '' : prettyUrl(line1),
-      title: bodyTitle(body, paste, line1),
+      title: bodyTitle(body, paste, line1, title),
       diag: stuck ? { kind: 'stuck', mins: Math.round(ageMin), line1, hasBody: !!body, bodyHead: body.slice(0, 400) } : null,
     });
   }));
@@ -60,12 +60,12 @@ export async function onRequestGet({ env }) {
     .sort((a, b) => b.t - a.t).slice(0, CAP_FAIL);
   await Promise.all(failed.map(async ({ f, t }) => {
     const base = f.name.replace(/\.txt$/i, '');
-    const { line1, body } = parseTxt(await raw(`pending/failed/${f.name}`));
-    const log = await raw(`pending/failed/${base}.log`);
+    const { line1, body, title } = parseTxt(await raw('pending/failed/' + encodeURIComponent(f.name)));
+    const log = await raw('pending/failed/' + encodeURIComponent(base) + '.log');
     const paste = line1.startsWith('paste:');
     items.push({
       id: base, t, status: 'fail', via: paste ? '전문' : 'URL', src: paste ? '' : prettyUrl(line1),
-      title: bodyTitle(body, paste, line1),
+      title: bodyTitle(body, paste, line1, title),
       diag: { kind: 'failed', line1, hasBody: !!body, bodyHead: body.slice(0, 400), log: (log || '').slice(0, 2500) },
     });
   }));
@@ -91,12 +91,14 @@ function fnameTime(name, digits) {
   const ms = Date.parse(`20${yy}-${mo}-${dd}T${hh}:${mi}:${ss || '00'}+09:00`);
   return Number.isFinite(ms) ? ms : null;
 }
-function parseTxt(txt) {   // termux-share.sh: LINE1\n# body:\nBODY
+function parseTxt(txt) {   // 폰공유: LINE1\n# body:\nBODY / 픽(pick_pending.py): URL\n# title: 헤드라인\n# alt: …
   const bi = txt.indexOf('\n# body:');
-  return { line1: (bi >= 0 ? txt.slice(0, bi) : txt).split('\n')[0].trim(), body: bi >= 0 ? txt.slice(bi + 8).trim() : '' };
+  const head = bi >= 0 ? txt.slice(0, bi) : txt;
+  const tm = head.match(/^# title:\s*(.+)$/m);   // 픽 경로 헤드라인(analyze.sh의 grep '^# title: '과 동일)
+  return { line1: head.split('\n')[0].trim(), body: bi >= 0 ? txt.slice(bi + 8).trim() : '', title: tm ? tm[1].trim() : '' };
 }
-function bodyTitle(body, paste, line1) {
-  const t = body ? body.replace(/\s+/g, ' ').trim().slice(0, 90) : '';
+function bodyTitle(body, paste, line1, title) {
+  const t = ((title || '').trim() || (body ? body.replace(/\s+/g, ' ').trim() : '')).slice(0, 90);
   return t || (paste ? '(전문 — 분석 대기)' : prettyUrl(line1));
 }
 function prettyUrl(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return String(u || '').slice(0, 40); } }

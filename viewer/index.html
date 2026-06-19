@@ -572,7 +572,7 @@
   .bpop a:hover { color:var(--accent); background:rgba(255,255,255,.05); }
   /* 대기열(뉴스요약 롱프레스) — 분석 대기/중 기사 개요. .bpop 글래스 계승 + 넓은 폭·행 레이아웃. */
   /* 대기열 = 제출 기사 상태판(처리중/SUCC/FAIL). 글래스(.bpop 계승)·크게·위로. */
-  .qpop { min-width:min(94vw,440px); max-width:94vw; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+  .qpop { min-width:min(94vw,440px); max-width:94vw; overflow:hidden; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
   .qpop .qh { display:flex; align-items:center; gap:6px; padding-left:2px; }
   .qpop .qh svg { stroke:var(--accent); flex:none; }
   .qpop .qh b { margin-right:2px; }
@@ -593,10 +593,10 @@
   .qconfirm button { font-size:11.5px; font-weight:800; padding:4px 11px; border-radius:7px; cursor:pointer; border:1px solid var(--line); }
   #qcfYes { color:#fff; background:#e2463a; border-color:#e2463a; }
   #qcfNo { color:var(--mut); background:rgba(255,255,255,.05); }
-  .qpop .qlist { margin-top:8px; display:flex; flex-direction:column; max-height:58vh; overflow-y:auto; }
+  .qpop .qlist { margin-top:8px; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow-y:auto; }   /* 컨테이너 max-height 클램프 하에 리스트만 스크롤(헤더·페이지네이션 고정) */
   .qrow { display:flex; align-items:center; gap:9px; padding:8px 3px; border-top:1px solid var(--line2); }
   .qrow:first-child { border-top:none; }
-  .qrow .qt { flex:none; width:54px; font-size:11px; font-weight:800; color:var(--mut); }
+  .qrow .qt { flex:none; width:54px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }
   .qrow .qmain { flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .qrow .qvia { flex:none; font-size:10px; font-weight:800; padding:2px 6px; border-radius:6px; }
   .qrow .qvia.paste { color:#0cd0f7; background:rgba(12,208,247,.15); }
@@ -614,14 +614,20 @@
   .qdl svg { width:15px; height:15px; stroke:currentColor; fill:none; }
   .qpage { display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap; }
   .qpage:empty { display:none; }
-  .qpg, .qpg-nav { min-width:26px; height:26px; padding:0 6px; display:grid; place-items:center; font-size:12px; font-weight:800;
+  .qpg, .qpg-nav { min-width:30px; height:30px; padding:0 7px; display:grid; place-items:center; font-size:12px; font-weight:800;
     color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:7px; cursor:pointer; transition:color .15s, background .15s; }
   .qpg:hover, .qpg-nav:hover { color:var(--accent); }
   .qpg.on { color:#04140a; background:var(--accent); border-color:var(--accent); }
   .qpg-nav:disabled { opacity:.35; cursor:default; }
   .qempty { padding:16px 6px; text-align:center; color:var(--mut); font-size:12px; line-height:1.55; }
   .qempty small { display:block; font-size:11px; opacity:.7; margin-top:3px; }
-  #bnav .bnav-i[data-tab="feed"] { -webkit-touch-callout:none; }
+  #bnav .bnav-i[data-tab="feed"] { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+  .qflash { position:fixed; left:50%; bottom:96px; transform:translateX(-50%) translateY(8px); z-index:40;
+    max-width:80vw; padding:9px 16px; border-radius:12px; font-size:12.5px; font-weight:700; color:var(--fg);
+    background:linear-gradient(165deg, rgba(24,40,29,.97), rgba(12,21,15,.98)); border:1px solid var(--line);
+    box-shadow:0 14px 36px rgba(0,0,0,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
+  .qflash.show { opacity:1; transform:translateX(-50%) translateY(0); }
   @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .banner.layer-scrap, .banner.layer-sns { transition:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
@@ -3037,6 +3043,7 @@ function openQueue() {
   const r = qFeedBtn.getBoundingClientRect();
   qpop.style.left = '50%';
   qpop.style.bottom = (window.innerHeight - r.top + 12) + 'px';   // 네비 위로(크게·위로 띄움)
+  qpop.style.maxHeight = Math.max(220, r.top - 20) + 'px';   // 헤더/페이지네이션 잘림 차단 — 네비 위 가용높이로 클램프(작은 폰)
   qpop.hidden = false;
   loadQueue();
 }
@@ -3088,25 +3095,42 @@ function renderQueuePage() {
     pg.querySelectorAll('[data-pg]').forEach(b => b.onclick = (e) => { e.stopPropagation(); QPAGE = +b.dataset.pg; renderQueuePage(); });
   }
 }
+let qGen = 0;
 async function loadQueue() {
+  const g = ++qGen;   // 세대 토큰 — ↻ 연타 시 늦게 온 stale 응답 폐기(페이지 튕김 방지)
   const box = $('#qpopList'); if (!box) return;
   box.innerHTML = '<div class="qempty">불러오는 중…</div>'; const pg = $('#qpopPage'); if (pg) pg.innerHTML = '';
   let items;
   try {
     const r = await fetch('api/pending?_=' + Date.now());
+    if (g !== qGen) return;
     if (!r.ok) { box.innerHTML = '<div class="qempty">대기열 조회 실패 (' + r.status + ')</div>'; return; }
     const j = await r.json(); items = j.items || [];
-  } catch { box.innerHTML = '<div class="qempty">네트워크 오류 — 다시 시도</div>'; return; }
+  } catch { if (g === qGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시 시도</div>'; return; }
+  if (g !== qGen) return;
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
-  QITEMS = items.filter(it => !it.t || it.t > cut);   // '내역 지우기' 컷오프 이후만(가장 최신 먼저 = API 정렬 유지)
+  QITEMS = items.filter(it => !it.t || it.t > cut);   // '내역 지우기' 컷오프 이후만(API 최신순 유지)
   QPAGE = 0;
   renderQueuePage();
 }
-function qGo(id) {   // SUCC 바로가기 → 피드(메뉴3) 이동 + 해당 기사 모달
-  const a = DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id));
+// 피드(메뉴3) 이동 + 해당 기사 모달. 즉시 매칭되면 바로, 없으면(빌드 랙) load() 후 재매칭.
+async function feedOpenBy(match) {
   qpop.hidden = true;
   showTab('feed');
-  if (a) open(a);
+  let a = match();
+  if (a) { open(a); return; }   // 즉시(이미 피드에 있음 = 흔한 경우)
+  try { await load(); } catch {}   // 빌드 랙 — 기사 재요청 후 재매칭
+  a = match();
+  if (a) open(a); else qFlash('피드 반영 중 — 곧 표시돼');
+}
+function qGo(id) {   // SUCC 바로가기 — queue 파일명(id) ↔ DATA.file(.md 양쪽 허용) 매칭
+  feedOpenBy(() => DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id)));
+}
+function qFlash(msg) {   // 짧은 토스트(바로가기 빌드 랙 안내)
+  let t = document.getElementById('qFlash');
+  if (!t) { t = document.createElement('div'); t.id = 'qFlash'; t.className = 'qflash'; document.body.appendChild(t); }
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
 }
 function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 — 클로드 전달용) 생성·다운로드
   const enteredK = it.t ? new Date(it.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '?';
@@ -3123,15 +3147,15 @@ function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 
   L.push('- **어떻게(How)**: 전달방식 ' + (it.via || '?') + (/-pick-/.test(it.id) ? ' · 수집함 PICK' : ' · 폰 공유') + ' · pending 파일 `' + it.id + '.txt`');
   L.push('- **어디서(Where)**: ' + (failed ? '`pending/failed/`(분석 실패 격리)' : '`pending/`(미처리 잔류)'));
   L.push('- **누가(Who)**: 운영자 제출');
-  L.push('- **왜(Why·추정)**: ' + (failed ? '분석 단계 실패(아래 로그 참조)' : 'analyze 워크플로 미완 또는 Commit 실패(20분+ 미처리)'));
+  L.push('- **왜(Why·추정)**: ' + (failed ? '분석 단계 실패(아래 로그 참조)' : 'analyze 워크플로 미완/실패 또는 Commit 실패(20분+ 미처리). 단 직렬 배치면 분석이 아직 진행 중일 수도 있음 — Actions run 확인.'));
   L.push('', '## 입력 (Input)');
   L.push('- pending 파일: `' + it.id + '.txt`');
   L.push('- line1: `' + (d.line1 || (it.via === '전문' ? 'paste:…' : (it.src || '?'))) + '`');
   L.push('- 본문 동봉: ' + (d.hasBody ? '예' : '아니오'));
-  if (d.bodyHead) L.push('', '본문 일부:', '', '```', d.bodyHead, '```');
+  if (d.bodyHead) L.push('', '본문 일부:', '', '````', d.bodyHead, '````');   // 4백틱 펜스 = 본문 내 ``` 충돌 방지
   L.push('', '## 출력/현황 (Output)');
   L.push('- 상태: ' + (failed ? 'FAIL — 분석 단계 실패' : 'FAIL — stuck(pending 잔류·미완)'));
-  if (d.log) L.push('- 실패 로그:', '', '```', d.log, '```');
+  if (d.log) L.push('- 실패 로그:', '', '````', d.log, '````');
   else L.push('- queue 생성/피드 반영: 없음(미완)');
   L.push('', '## 진단 힌트 (클로드용)');
   L.push('- pending 잔류 = `news-analyze` 워크플로 미완 또는 `Commit results` 실패.');
@@ -3146,7 +3170,7 @@ function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 
 }
 function qClearConfirm(show) { const c = $('#qpopConfirm'); if (c) c.hidden = !show; }
 $('#qpopRf').addEventListener('click', e => { e.stopPropagation(); loadQueue(); });
-$('#qpopTrash').addEventListener('click', e => { e.stopPropagation(); qClearConfirm($('#qpopConfirm').hidden); });   // 토글
+$('#qpopTrash').addEventListener('click', e => { e.stopPropagation(); const cf = $('#qpopConfirm'); qClearConfirm(cf ? cf.hidden : true); });   // 토글(null 가드)
 $('#qcfNo').addEventListener('click', e => { e.stopPropagation(); qClearConfirm(false); });
 $('#qcfYes').addEventListener('click', e => { e.stopPropagation(); try { localStorage.setItem('nomute_q_cleared', String(Date.now())); } catch {} qClearConfirm(false); loadQueue(); });   // 컷오프 = now → 현재 내역 숨김
 $('#qpopX').addEventListener('click', e => { e.stopPropagation(); qpop.hidden = true; qClearConfirm(false); });   // 닫기(작은 ✕)
@@ -3323,11 +3347,9 @@ function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 
   document.body.appendChild(a); a.click(); a.remove();
 }
 // PICKED 클릭 → 피드(메뉴3) 이동 + 해당 기사 팝업. 픽 결과가 피드에 떴으니(pickInFeed) url/클러스터로 매칭해 open(a).
-function pickedOpen(c) {
+function pickedOpen(c) {   // PICKED → 피드 이동+모달. url/cluster 매칭, 없으면 load() 후 재매칭(feedOpenBy 공용)
   const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean));
-  const a = DATA.find(x => x && x.url && us.has(_normU(x.url)));
-  showTab('feed');
-  if (a) open(a);
+  feedOpenBy(() => DATA.find(x => x && x.url && us.has(_normU(x.url))));
 }
 // 보관한도(데이터)는 크게(10일·수천 건) 두되, 화면은 컬럼당 SC_PAGE장만 그려 가볍게 유지.
 // 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → '더 보기'로 청크 추가.
