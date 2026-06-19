@@ -1792,9 +1792,9 @@ function cardSec(a) {
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
     // 카드별 관련 이미지(샘플) — 각 이미지 프롬프트 아래 16:9 캐러셀 + 구글 이미지 검색(프롬프트 대체 사진 탐색)
-    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '', _foreign = articleCat(a) === '국제';   // 외국(국제) 기사 = 영문 키워드로 검색(소스 풍부)
+    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
     [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
-      .forEach((pre, i) => pre.insertAdjacentElement('afterend', cardRefCarousel(_refCards[i] && _refCards[i].caption, _refTtl, _foreign)));
+      .forEach((pre, i) => pre.insertAdjacentElement('afterend', cardRefCarousel(_refCards[i] && _refCards[i].caption, _refTtl)));
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
     if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
     sec.appendChild(div);
@@ -1828,51 +1828,16 @@ function cardSec(a) {
   }
 }
 
-// ── 카드별 관련 이미지(샘플) — Wikimedia Commons(무키·CORS) + 구글 이미지 검색. 외국(국제) 기사면 영문 키워드로 검색(외국 소스 풍부 · 운영자 260619). ──
-// 외국 엔티티 한→영(이미지 검색 앵커). CAT_KW.국제 기반 + 국가·인물·사건명사. 즉시·정확(번역 API보다 우선).
-const FOREIGN_EN = {
-  '트럼프':'Trump','바이든':'Biden','푸틴':'Putin','시진핑':'Xi Jinping','젤렌스키':'Zelensky','네타냐후':'Netanyahu',
-  '김정은':'Kim Jong Un','마크롱':'Macron','숄츠':'Scholz','기시다':'Kishida','이시바':'Ishiba','모디':'Modi','에르도안':'Erdogan',
-  '미국':'United States','중국':'China','일본':'Japan','러시아':'Russia','우크라이나':'Ukraine','우크라':'Ukraine',
-  '이란':'Iran','이스라엘':'Israel','가자지구':'Gaza','팔레스타인':'Palestine','하마스':'Hamas','헤즈볼라':'Hezbollah','후티':'Houthi',
-  '북한':'North Korea','대만':'Taiwan','홍콩':'Hong Kong','영국':'United Kingdom','프랑스':'France','독일':'Germany',
-  '파키스탄':'Pakistan','베트남':'Vietnam','태국':'Thailand','필리핀':'Philippines','사우디':'Saudi Arabia','튀르키예':'Turkey','터키':'Turkey',
-  '유럽':'Europe','나토':'NATO','유엔':'United Nations',
-  '백악관':'White House','펜타곤':'Pentagon','크렘린':'Kremlin','중동':'Middle East','지중해':'Mediterranean',
-  '전쟁':'war','종전':'ceasefire','휴전':'ceasefire','정상회담':'summit','회담':'talks','관세':'tariff','제재':'sanctions',
-  '미사일':'missile','공습':'airstrike','드론':'drone','지진':'earthquake','홍수':'flood','산불':'wildfire','허리케인':'hurricane','난민':'refugee',
-};
-function foreignEnglish(title, caption) {
-  const t = (title || '') + ' ' + (caption || ''), hits = [];
-  for (const k in FOREIGN_EN) { const en = FOREIGN_EN[k]; if (t.includes(k) && !hits.includes(en)) hits.push(en); }
-  return hits.slice(0, 5).join(' ');   // 엔티티·사건 영문(상위 5) — 이미지 검색 앵커
-}
-async function translateKoEn(text) {   // 무키·CORS 폴백(엔티티맵 0일 때만) — MyMemory ko→en
-  if (!text) return '';
-  try {
-    const r = await fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(String(text).slice(0, 120)) + '&langpair=ko|en');
-    const j = await r.json(); const t = (j && j.responseData && j.responseData.translatedText) || '';
-    return /MYMEMORY WARNING|QUERY LENGTH|INVALID/i.test(t) ? '' : t.trim();
-  } catch { return ''; }
-}
-function cardRefCarousel(caption, title, foreign) {
+// ── 카드별 관련 이미지(샘플) — Wikimedia Commons(무키·CORS) 실샘플 + 구글 이미지 검색 링크. 추후 다른 이미지 API로 교체 가능. ──
+function cardRefCarousel(caption, title) {
+  const gq = ((title || '') + ' ' + (caption || '')).replace(/\s+/g, ' ').trim().slice(0, 90) || '뉴스';   // 구글 = 이벤트+카드 내용
+  const wq = (title || caption || gq).replace(/\s+/g, ' ').trim().slice(0, 60);                            // 위키미디어 = 이벤트(제목) 위주가 매칭↑
   const wrap = document.createElement('div'); wrap.className = 'cref';
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">🔎 관련 이미지' + (foreign ? ' · 외국(영문 검색)' : ' (샘플)') + '</span>'
-    + '<a class="cref-btn" target="_blank" rel="noopener">구글 이미지 검색 ↗</a></div>'
+  wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">🔎 관련 이미지 (샘플)</span>'
+    + '<a class="cref-btn" href="https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(gq) + '" target="_blank" rel="noopener">구글 이미지 검색 ↗</a></div>'
     + '<div class="cref-track"><div class="cref-slot ld">불러오는 중…</div><div class="cref-slot ld"></div><div class="cref-slot ld"></div></div>';
-  refResolveAndLoad(wrap, caption, title, foreign);
+  loadRefImages(wq, wrap.querySelector('.cref-track'));
   return wrap;
-}
-// 쿼리 결정: 외국=영문(엔티티맵→번역 폴백)+구글 미국지역·영어 / 국내=국문. 그 뒤 구글버튼 href·Wikimedia 채움.
-async function refResolveAndLoad(wrap, caption, title, foreign) {
-  const btn = wrap.querySelector('.cref-btn'), track = wrap.querySelector('.cref-track');
-  const ko = ((title || '') + ' ' + (caption || '')).replace(/\s+/g, ' ').trim();
-  const setBtn = (q, ex) => { if (btn) btn.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((String(q).slice(0, 100) || '뉴스')) + (ex || ''); };
-  if (!foreign) { setBtn(ko); loadRefImages((title || caption || ko).slice(0, 60), track); return; }   // 국내 = 국문
-  let eq = foreignEnglish(title, caption);                   // 외국 1) 엔티티맵(즉시·정확)
-  setBtn(eq || ko, '&gl=us&hl=en');                          // 버튼 먼저 세팅(클릭 데드윈도 차단) · 미국 지역·영어
-  if (!eq) { eq = await translateKoEn(title || caption); if (eq) setBtn(eq, '&gl=us&hl=en'); }   // 2) 번역 폴백 → 갱신
-  loadRefImages((eq || ko).slice(0, 60), track);
 }
 async function loadRefImages(query, track) {
   if (!track) return;
