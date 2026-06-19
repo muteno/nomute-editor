@@ -3285,12 +3285,12 @@ const timeAcc = c => 1 / (1 + Math.pow(Math.max(0, (Date.now() - scTs(c)) / 3600
 const scScore = c => crossConvex(c) * timeAcc(c) * scFollow(c) * gradeW(c);
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // pinB = 확정 breaking & 아직 안 픽이면 1(픽하면 0). 누적칼럼 강제핀은 260617 제거 — 이 값은 pinFresh(신규칼럼 최신속보 핀)에서만 씀.
-const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r.picked && !r.acked) ? 1 : 0; };   // 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619)
+const pinB = c => (isBreaking(c) && !(scRT[candId(c)] || {}).picked) ? 1 : 0;
 // 최신 핀 = 확정 속보 AND 발생 4h 내(최신)만 상단 고정. 오래된 속보는 핀 안 함 → fastScore decay로 하강(findable but 톱 아님 — 16h 속보가 최신 톱 차지하던 문제 해결).
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
-// 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h·미확인) / ⚡이슈(4h~24h AND [cross≥8 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙. ✓확인(acked)하면 🚨 안 뜸 = 확인=긴급 해제(운영자 260619).
-const scBadge = c => { const ageH = (Date.now() - scTs(c)) / 3600000; const acked = !!(scRT[candId(c)] || {}).acked;
-  if (isBreaking(c) && ageH < FAST_MAX_H && !acked) return '<span class="sc-brk brk-hot">🚨 긴급</span>';
+// 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h) / ⚡이슈(4h~24h AND [cross≥8 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙.
+const scBadge = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
+  if (isBreaking(c) && ageH < FAST_MAX_H) return '<span class="sc-brk brk-hot">🚨 긴급</span>';
   if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return '<span class="sc-brk">⚡ 이슈</span>';
   return ''; };
 // 카드 테두리 점등(앰버 '이슈') = <12h AND cross≥16(=이슈배지 8×2). 긴급(빨강) 테두리 없음 — breaking=긴급이라 무조건 켜져 의미 없음(🚨배지+빨강 프로필링+토스트 3중으로 충분)·aged-breaking 노이즈 제거. 운영자 260619. (배지 scBadge는 그대로: ⚡이슈=cross≥8.)
@@ -3473,11 +3473,8 @@ function postRate(p) { fetch('api/rate', { method: 'POST', headers: { 'content-t
 function toggleAck(c, el) {
   const id = candId(c); const acked = !((ratingsAll()[id] || {}).acked);
   saveRating(id, { acked });
-  if (el) { el.classList.toggle('acked', acked); const b = el.querySelector('.sc-tg.ack'); if (b) b.classList.toggle('on', acked);
-    const brk = el.querySelector('.sc-brk.brk-hot'); if (brk) brk.style.display = acked ? 'none' : '';   // 확인 = 🚨 긴급 배지 즉시 숨김(재렌더 없이 즉반영 · 다음 렌더는 scBadge가 처리)
-    if (acked && scRT[id]) scRT[id].acked = true;   // 정렬 스냅샷도 갱신(다음 핀 재평가서 즉시 반영)
-  }
-  detectBreaking();   // 확인✓ = 긴급 알림(프로필 링·토스트) 재평가(breakingNow서 acked 제외 → 다른 최신 긴급 없으면 꺼짐)
+  if (el) { el.classList.toggle('acked', acked); const b = el.querySelector('.sc-tg.ack'); if (b) b.classList.toggle('on', acked); }
+  detectBreaking();   // 확인✓ = 긴급 점등 재평가(breakingNow서 acked 제외 → 다른 최신 긴급 없으면 꺼짐)
 }
 // ── 탭 전환 (피드 · 스크랩 · SNS) ── 기본=피드. FAB(제작도구)·X는 외부/팝업이라 여기서 안 다룸.
 // 탭별 공유 헤더바(주제+짧은 설명) — 펫이 그 위로 걷는 상단바. 설명은 임시(짧게 · 나중 수정).
