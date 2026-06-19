@@ -29,21 +29,9 @@ fi
 # 파일명 = ASCII-safe 한정 (타임스탬프 + URL 유래 기사ID). 한글 제목은 frontmatter title에만.
 # (구 슬러그 방식은 cut -c 바이트 절단이 UTF-8 멀티바이트를 깨뜨려 폐지 — run#2 ENOENT 원인)
 article_id() {
-  local u="$1" id base hash
-  base=$(printf '%s' "$u" | sed -E 's/[?#].*$//; s:/+$::; s:.*/::' | tr -cd 'A-Za-z0-9._-' | cut -c1-24)
-  hash=$(printf '%s' "$u" | sed -E 's|#.*$||; s|^https?://||; s|/+$||' | sha1sum | cut -c1-10)
-  # 비고유 basename 붕괴 보정 — ① 쿼리에 기사ID 담는 매체(seoul ?id=·SBS ?news_id=·*?idxno=·
-  #   ohmynews ?CNTN_CD=)는 basename 이 newsView.php·articleView.html 등으로 붕괴 → 서로 다른 기사가
-  #   같은 ID로 충돌(중복판정 스킵 또는 무관 카드 덮어쓰기). ② 쿼리 없이 path 끝이 페이지번호(donga
-  #   …/12345/1)면 basename 이 1·2 로 붕괴. 두 경우 정규화 url(host+path+query, fragment만 제거) 해시를
-  #   접미해 고유화(host 포함 → 교차매체 idxno 충돌도 차단). 그 외(path 에 고유 ID: 조선 ABCD.html·연합
-  #   AKR…)는 basename 유지 = 기존 queue 카드 호환·대량 캐시 버스트 방지. seen 의 normalize_link 와 같은
-  #   "식별자 보존" 정신(쿼리ID 매체가 정확히 403 차단·Failed 핫패스라 재제출 충돌이 치명적이었음).
-  case "$u" in
-    *\?*) id="${base:+${base}-}${hash}" ;;
-    *) if printf '%s' "$base" | grep -qE '^[0-9]{1,3}$'; then id="${base}-${hash}"; else id="$base"; fi ;;
-  esac
-  [ -n "$id" ] || id="$hash"
+  local u="$1" id
+  id=$(printf '%s' "$u" | sed -E 's/[?#].*$//; s:/+$::; s:.*/::' | tr -cd 'A-Za-z0-9._-' | cut -c1-24)
+  [ -n "$id" ] || id=$(printf '%s' "$u" | sha1sum | cut -c1-8)
   printf '%s' "$id"
 }
 
