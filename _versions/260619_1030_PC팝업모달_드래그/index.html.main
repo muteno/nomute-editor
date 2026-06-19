@@ -782,8 +782,6 @@
   .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; }   /* 투명 → tooldlg 반투명 글래스 비침 */
   @media (max-width:640px){ #tooldlg { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; border-radius:0; } .tool-h { padding-top:calc(10px + env(safe-area-inset-top)); } }
-  /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
-  .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
     padding:11px 16px; display:flex; flex-direction:column; gap:11px; }   /* 상하 대칭(11≠12 비대칭 교정) */
@@ -4115,36 +4113,6 @@ $('#revSend').addEventListener('click', async () => {
   } catch { $('#revStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.disabled = false;
 });
-// ── PC(마우스) 전용: 팝업 모달 헤더 잡고 드래그 이동(메뉴 아님 · 운영자 260619) ──
-function makeDraggable(dlg, handleSel) {
-  if (!dlg || !window.matchMedia('(pointer:fine)').matches) return;   // 정밀 포인터(마우스)만 — 터치 제외
-  const h = dlg.querySelector(handleSel); if (!h) return;
-  h.classList.add('drag-handle');
-  let dx = 0, dy = 0, sx = 0, sy = 0, bL = 0, bT = 0, W = 0, on = false;
-  h.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, label, .dlg-prog')) return;   // 헤더 내 컨트롤·스크러버 클릭은 드래그 아님
-    on = true; sx = e.clientX; sy = e.clientY;
-    const r = dlg.getBoundingClientRect();
-    bL = r.left - dx; bT = r.top - dy; W = r.width;   // 자연(translate 전) 위치 역산
-    try { h.setPointerCapture(e.pointerId); } catch {}
-    e.preventDefault();
-  });
-  h.addEventListener('pointermove', e => {
-    if (!on) return;
-    let nx = dx + (e.clientX - sx), ny = dy + (e.clientY - sy);
-    nx = Math.max((80 - W) - bL, Math.min((window.innerWidth - 80) - bL, nx));   // 좌우 최소 80px 노출
-    ny = Math.max(-bT, Math.min((window.innerHeight - 46) - bT, ny));            // 헤더 항상 보이게
-    dlg.style.transform = 'translate(' + nx + 'px,' + ny + 'px)';
-    dx = nx; dy = ny;
-  });
-  const end = e => { on = false; try { h.releasePointerCapture(e.pointerId); } catch {} };
-  h.addEventListener('pointerup', end);
-  h.addEventListener('pointercancel', end);
-  dlg.addEventListener('close', () => { dx = dy = 0; dlg.style.transform = ''; });   // 닫으면 중앙 복귀(다음 열기=재중앙·재애니)
-}
-[['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#tooldlg', '.tool-h']]
-  .forEach(([d, sel]) => makeDraggable($(d), sel));
-
 load();
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
