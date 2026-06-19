@@ -89,11 +89,7 @@ def parse_md(path):
     lm = re.search(r"한줄\s*요약\s*\n+(.+?)(?:\n\n|\n#|\Z)", body, re.S)
     if lm:
         lead = re.sub(r"\s+", " ", lm.group(1)).strip()
-    # 상단 검색이미지용 키워드(요약이 뽑은 entity 중심) — 없거나 플레이스홀더면 빈 문자열(→ head 폴백).
-    iq = fm.get("image_query", "").strip()
-    if iq in ("삼성전자 반도체 평택공장",):   # 프롬프트 예시값을 모델이 그대로 베끼면 무시(→ head 폴백)
-        iq = ""
-    return head, lead, iq
+    return head, lead
 
 def gemini_image(prompt):
     """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft)."""
@@ -133,10 +129,8 @@ def cse_search(query):
     if not (CSE_KEY and CSE_CX):
         return []
     import urllib.parse
-    # imgType=photo(클립아트·라인아트 제외, 실사진만) · imgSize=large(저화질 컷) → '가장 가까운' 실뉴스 사진.
     qs = urllib.parse.urlencode({"key": CSE_KEY, "cx": CSE_CX, "q": query[:120],
-                                 "searchType": "image", "imgType": "photo", "imgSize": "large",
-                                 "num": "3", "safe": "active"})
+                                 "searchType": "image", "num": "3", "safe": "active"})
     try:
         with urllib.request.urlopen("https://www.googleapis.com/customsearch/v1?" + qs, timeout=30) as r:
             j = json.loads(r.read().decode())
@@ -180,18 +174,15 @@ def _load_gen(tdir):
 
 def process_one(md, stem):
     """기사 1건 = 검색 후보(CSE) + AI 3화풍. 저장 = R2(설정 시·공개 URL) 또는 git 폴백. 완료 화풍은 재과금 안 함."""
-    head, lead, iq = parse_md(md)
+    head, lead = parse_md(md)
     if not head:
         print("· {} — 헤드라인 파싱 실패, skip".format(stem)); return False
     print("· {} — “{}”".format(stem, head[:40]), flush=True)
     tdir = os.path.join("cards", stem, "thumbs")
     os.makedirs(tdir, exist_ok=True)
-    # 검색 후보(Google CSE · 외부 hotlink URL) — 키 있고 아직 없을 때만.
-    # 쿼리 = 요약이 뽑은 entity 키워드(image_query) 우선, 없으면 헤드라인 폴백(구버전 digest 호환).
+    # 검색 후보(Google CSE · 외부 hotlink URL) — 키 있고 아직 없을 때만
     if CSE_KEY and CSE_CX and not os.path.exists(os.path.join(tdir, "search.json")):
-        query = iq or head
-        print("  🔎 검색어: “{}”{}".format(query[:60], " (요약 키워드)" if iq else " (헤드라인 폴백)"))
-        items = cse_search(query)
+        items = cse_search(head)
         if items:
             json.dump(items, open(os.path.join(tdir, "search.json"), "w", encoding="utf-8"),
                       ensure_ascii=False, indent=2)
