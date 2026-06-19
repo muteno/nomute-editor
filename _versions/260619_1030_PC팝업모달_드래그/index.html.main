@@ -782,8 +782,6 @@
   .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; }   /* 투명 → tooldlg 반투명 글래스 비침 */
   @media (max-width:640px){ #tooldlg { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; border-radius:0; } .tool-h { padding-top:calc(10px + env(safe-area-inset-top)); } }
-  /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
-  .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
     padding:11px 16px; display:flex; flex-direction:column; gap:11px; }   /* 상하 대칭(11≠12 비대칭 교정) */
@@ -999,23 +997,6 @@
   #cardsec h3 { color:var(--accent); font-size:14px; font-weight:800; letter-spacing:-.2px;
     margin:22px 0 8px; padding-top:14px; border-top:1px solid var(--line2); }
   #cardsec h3:first-of-type { border-top:none; padding-top:2px; margin-top:8px; }
-  /* ── 카드별 관련 이미지(샘플) — 프롬프트 아래 16:9 레터박스 캐러셀 + 구글 이미지 검색 (운영자 260619) ── */
-  .cref { margin:8px 0 16px; }
-  .cref-h { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
-  .cref-lbl { font-size:11.5px; font-weight:800; color:var(--mut); }
-  .cref-btn { flex:none; font-size:11.5px; font-weight:800; color:var(--accent); text-decoration:none; padding:4px 11px;
-    border-radius:8px; background:var(--accent-dim); border:1px solid rgba(15,253,2,.32); white-space:nowrap; transition:background .15s; }
-  .cref-btn:hover { background:rgba(15,253,2,.18); }
-  .cref-track { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:3px; }
-  .cref-track::-webkit-scrollbar { height:5px; }
-  .cref-track::-webkit-scrollbar-thumb { background:var(--line); border-radius:9px; }
-  .cref-slot { flex:0 0 78%; max-width:320px; aspect-ratio:16/9; scroll-snap-align:start; border-radius:11px; overflow:hidden;
-    background:#0a0c0b; border:1px solid var(--line); display:grid; place-items:center; text-decoration:none; }
-  .cref-slot img { width:100%; height:100%; object-fit:contain; display:block; }   /* 16:9 기준 커버 · 세로 길면 좌우 레터박스 */
-  .cref-slot.ld { color:var(--mut); font-size:11px; animation:crefpulse 1.2s ease-in-out infinite; }
-  .cref-empty { flex:1; min-height:60px; display:grid; place-items:center; text-align:center; color:var(--mut); font-size:11.5px;
-    padding:10px; border:1px dashed var(--line); border-radius:11px; line-height:1.5; }
-  @keyframes crefpulse { 0%,100%{opacity:.4} 50%{opacity:.85} }
 
   /* ── 모바일 ── */
   @media (max-width:640px) {
@@ -1791,10 +1772,6 @@ function cardSec(a) {
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
-    // 카드별 관련 이미지(샘플) — 각 이미지 프롬프트 아래 16:9 캐러셀 + 구글 이미지 검색(프롬프트 대체 사진 탐색)
-    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
-    [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
-      .forEach((pre, i) => pre.insertAdjacentElement('afterend', cardRefCarousel(_refCards[i] && _refCards[i].caption, _refTtl)));
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
     if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
     sec.appendChild(div);
@@ -1826,30 +1803,6 @@ function cardSec(a) {
     b.onclick = () => makeCards(a.file, b, 'shoot');
     sec.appendChild(b);
   }
-}
-
-// ── 카드별 관련 이미지(샘플) — Wikimedia Commons(무키·CORS) 실샘플 + 구글 이미지 검색 링크. 추후 다른 이미지 API로 교체 가능. ──
-function cardRefCarousel(caption, title) {
-  const gq = ((title || '') + ' ' + (caption || '')).replace(/\s+/g, ' ').trim().slice(0, 90) || '뉴스';   // 구글 = 이벤트+카드 내용
-  const wq = (title || caption || gq).replace(/\s+/g, ' ').trim().slice(0, 60);                            // 위키미디어 = 이벤트(제목) 위주가 매칭↑
-  const wrap = document.createElement('div'); wrap.className = 'cref';
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">🔎 관련 이미지 (샘플)</span>'
-    + '<a class="cref-btn" href="https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(gq) + '" target="_blank" rel="noopener">구글 이미지 검색 ↗</a></div>'
-    + '<div class="cref-track"><div class="cref-slot ld">불러오는 중…</div><div class="cref-slot ld"></div><div class="cref-slot ld"></div></div>';
-  loadRefImages(wq, wrap.querySelector('.cref-track'));
-  return wrap;
-}
-async function loadRefImages(query, track) {
-  if (!track) return;
-  try {
-    const u = 'https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='
-      + encodeURIComponent(query) + '&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url&iiurlwidth=640&format=json&origin=*';
-    const r = await fetch(u); const j = await r.json();
-    const pages = j && j.query && j.query.pages ? Object.values(j.query.pages) : [];
-    const imgs = pages.map(p => p.imageinfo && p.imageinfo[0]).filter(ii => ii && ii.thumburl && /\.(jpe?g|png|webp)$/i.test(ii.url || '')).slice(0, 3);
-    if (!imgs.length) { track.innerHTML = '<div class="cref-empty">관련 이미지 없음 — 위 ‘구글 이미지 검색’으로 찾아봐<br>(샘플 소스=위키미디어 · 추후 교체 가능)</div>'; return; }
-    track.innerHTML = imgs.map(ii => '<a class="cref-slot" href="' + esc(ii.descriptionurl || ii.url) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(ii.thumburl) + '" alt=""></a>').join('');
-  } catch { track.innerHTML = '<div class="cref-empty">이미지 조회 실패 — ‘구글 이미지 검색’ 이용</div>'; }
 }
 
 // ── 섹션 3: 카드 피드(인스타형 가로 스냅) — 이미지+캡션 1:1 · 개별/모두 저장 · 1b(수정·버전) 훅 ──
@@ -4160,36 +4113,6 @@ $('#revSend').addEventListener('click', async () => {
   } catch { $('#revStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.disabled = false;
 });
-// ── PC(마우스) 전용: 팝업 모달 헤더 잡고 드래그 이동(메뉴 아님 · 운영자 260619) ──
-function makeDraggable(dlg, handleSel) {
-  if (!dlg || !window.matchMedia('(pointer:fine)').matches) return;   // 정밀 포인터(마우스)만 — 터치 제외
-  const h = dlg.querySelector(handleSel); if (!h) return;
-  h.classList.add('drag-handle');
-  let dx = 0, dy = 0, sx = 0, sy = 0, bL = 0, bT = 0, W = 0, on = false;
-  h.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, label, .dlg-prog')) return;   // 헤더 내 컨트롤·스크러버 클릭은 드래그 아님
-    on = true; sx = e.clientX; sy = e.clientY;
-    const r = dlg.getBoundingClientRect();
-    bL = r.left - dx; bT = r.top - dy; W = r.width;   // 자연(translate 전) 위치 역산
-    try { h.setPointerCapture(e.pointerId); } catch {}
-    e.preventDefault();
-  });
-  h.addEventListener('pointermove', e => {
-    if (!on) return;
-    let nx = dx + (e.clientX - sx), ny = dy + (e.clientY - sy);
-    nx = Math.max((80 - W) - bL, Math.min((window.innerWidth - 80) - bL, nx));   // 좌우 최소 80px 노출
-    ny = Math.max(-bT, Math.min((window.innerHeight - 46) - bT, ny));            // 헤더 항상 보이게
-    dlg.style.transform = 'translate(' + nx + 'px,' + ny + 'px)';
-    dx = nx; dy = ny;
-  });
-  const end = e => { on = false; try { h.releasePointerCapture(e.pointerId); } catch {} };
-  h.addEventListener('pointerup', end);
-  h.addEventListener('pointercancel', end);
-  dlg.addEventListener('close', () => { dx = dy = 0; dlg.style.transform = ''; });   // 닫으면 중앙 복귀(다음 열기=재중앙·재애니)
-}
-[['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#tooldlg', '.tool-h']]
-  .forEach(([d, sel]) => makeDraggable($(d), sel));
-
 load();
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
