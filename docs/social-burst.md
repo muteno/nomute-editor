@@ -23,10 +23,14 @@
 ## env 튜닝 손잡이
 | env | 기본 | 의미 |
 |---|---|---|
-| `SOCIAL_MIN_SOURCES` | 2 | 교차소스 최소(공론화 컷) |
-| `SOCIAL_FRESH_HOURS` | 24 | 최신성 만점 윈도우 |
-| `CLUSTER_MIN_OVERLAP` | 3 | 같은 사건 토큰 교집합(knews 공유) |
+| `SOCIAL_MIN_SOURCES` | 2 | 교차소스 최소(공론화 컷) — **유지**(레인 성격) |
+| `SOCIAL_OVERLAP` | 2 | 소셜 전용 토큰 교집합 |
+| `SOCIAL_JACCARD` | **0.33** | 토큰 자카드 백업(260619 0.4→0.33 느슨화 = 교차 클러스터↑·수집량↑) |
+| `SOCIAL_FRESH_HOURS` | 24 | 최신성 만점 윈도우(랭킹만·컷 아님) |
+| `ISSUELINK_URLS` | 홈+/community+`?page=2` | 어그리게이터 페이지(260619 page2 추가·graceful skip) |
 | `RSS_CLIEN`·`RSS_PPOMPPU`·`RSS_BOBAE` | — | 소스 RSS URL 교체 |
+
+> 📈 **수집량 늘리기 (260619 · 운영자 요청 "더 많이"):** 병목 = `MIN_SOURCES≥2`(여러 커뮤 교차). 성격 유지하며 양↑ 방향 적용 = **① JACCARD 0.4→0.33**(같은 사건 변형표제가 더 잘 묶여 ≥2소스 도달↑) **② 이슈링크 `?page=2` 추가**(더 많은 후보) **③ RSS intake 40→60**. `--sample` 코어 무손상(공론화 2건 정상·별개 사건 과병합 X). **더 필요하면**: `SOCIAL_MIN_SOURCES=1`(한 커뮤 핫글도 노출=양 대폭↑·성격 약화) 또는 새 소스(네이버 OpenAPI 키·핫링크·잼난다 어댑터)·`SOCIAL_JACCARD` 더↓.
 
 ## PoC가 드러낸 것 (`--sample` 실측)
 - 코어 동작 ✅: 8게시물 → 정치/노이즈 컷 → **공론화 2건(층간소음 흉기·직장 갑질) 교차소스로 surface**, 단발·정치·노이즈 정확히 컷.
