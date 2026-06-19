@@ -577,9 +577,6 @@
     background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; color:var(--mut);
     font-size:14px; cursor:pointer; transition:color .15s, transform .35s; }
   .qpop .qh-rf:hover { color:var(--accent); transform:rotate(180deg); }
-  .qpop .qh-x { flex:none; width:20px; height:20px; margin-right:-3px; display:grid; place-items:center; padding:0;
-    background:none; border:none; color:var(--mut); font-size:11px; line-height:1; cursor:pointer; opacity:.55; transition:opacity .15s, color .15s; }   /* 아주 작게 — 은은한 ✕ */
-  .qpop .qh-x:hover { opacity:1; color:var(--fg); }
   .qpop .qlist { margin-top:6px; display:flex; flex-direction:column; max-height:46vh; overflow-y:auto; }
   .qrow { display:flex; align-items:center; gap:9px; padding:7px 3px; border-top:1px solid var(--line2); }
   .qrow:first-child { border-top:none; }
@@ -1257,7 +1254,7 @@
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
 <div class="bpop qpop" id="qpop" hidden>
-  <div class="qh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg><b>대기열</b><button class="qh-rf" id="qpopRf" type="button" aria-label="새로고침" title="새로고침">↻</button><button class="qh-x" id="qpopX" type="button" aria-label="닫기" title="닫기">✕</button></div>
+  <div class="qh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg><b>대기열</b><button class="qh-rf" id="qpopRf" type="button" aria-label="새로고침" title="새로고침">↻</button></div>
   <div class="qlist" id="qpopList"></div>
 </div>
 
@@ -2987,13 +2984,11 @@ document.addEventListener('click', e => {
 // ── 대기열(뉴스요약 롱프레스 480ms) — 분석 대기/중(pending/) 기사 개요. api/pending 라이브 조회(파이프라인 0 변경·읽기전용). ──
 const qFeedBtn = $('#bnav .bnav-i[data-tab="feed"]');
 let lpTimer = null, lpFired = false;
-function lpStart(e) { if (e && e.button) return;   // 1차 버튼(좌클릭/터치)만 롱프레스 — 우클릭은 contextmenu가 처리(중복 방지)
-  lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 480); }
+function lpStart() { lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 480); }
 function lpCancel() { clearTimeout(lpTimer); }
 if (qFeedBtn) {
   qFeedBtn.addEventListener('pointerdown', lpStart);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => qFeedBtn.addEventListener(ev, lpCancel));
-  qFeedBtn.addEventListener('contextmenu', e => { e.preventDefault(); openQueue(); });   // PC 우클릭 = 대기열(네이티브 메뉴 막고 즉시 열기)
 }
 function openQueue() {
   closeOverlays('qpop');
@@ -3031,7 +3026,6 @@ async function renderQueue() {
   }).join('');
 }
 $('#qpopRf').addEventListener('click', e => { e.stopPropagation(); renderQueue(); });
-$('#qpopX').addEventListener('click', e => { e.stopPropagation(); qpop.hidden = true; });   // 대기열 닫기(작은 ✕)
 
 
 // ── 스크랩(수집·큐레이션) 뷰 ─────────────────────────────────────
@@ -3413,12 +3407,12 @@ function collapseCard(el) {
 const TRIAGE = {
   down: { q: '관심 없음 — 왜?', reasons: [
     { k: '국지적', d: '국지적·개별·특정 회사 사안 = 범국민적 공감 어려움' },
-    { k: '기업·정책', d: '기업·문화계 영리목적·정부 정책 보도자료 / 특정 주식 보도 = 콘텐츠 부적합(전국민 관심↓)' },
+    { k: '기업·홍보', d: '기업·문화계 영리목적·정부 정책홍보 보도자료 / 특정 주식 보도 = 콘텐츠 부적합(전국민 관심↓)' },
     { k: '가치없음', d: '콘텐츠화 할 가치가 없는 기사' },
     { k: '직접입력', input: true } ] },
   pass: { q: '패스 — 왜?', reasons: [
-    { k: '애매함', d: '조금 이목은 끌 수 있어도 콘텐츠로 다룰 가치는 그닥·애매(옛 별로 통합)' },
-    { k: '늦은 보도', d: '이미 시간 지나 뒤늦게 올라온 보도 — 시의성·속보성 없어 콘텐츠 부적합' },
+    { k: '별로', d: '콘텐츠로 다루기에는 가치가 그닥 없다' },
+    { k: '애매함', d: '조금 이목은 끌 수 있으나 전혀 콘텐츠화 할 정도 아님' },
     { k: '기타', input: true } ] },
   pick: { q: 'PICK — 왜?', reasons: [
     { k: '속보/사건', d: '빠르게 전달하면 모두가 감정적 격동을 느낄 것이라 판단' },
@@ -3968,8 +3962,8 @@ loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 loadPickFails();    // eager — 픽 분석 실패(전문 필요) 감지로 앰버 링/토스트(수집함 밖에서도 알림)
 // 속보 라이브 감지 — 앱이 보일 때만 주기적으로 후보 재확인(데이터 ~15분 주기라 120s면 충분). quiet=목록 안 흔듦.
-setInterval(() => { if (document.visibilityState === 'visible') { loadCandidates(true); loadPickFails(); loadMessages(); } }, 120000);
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { loadCandidates(true); loadPickFails(); loadMessages(); } });
+setInterval(() => { if (document.visibilityState === 'visible') { loadCandidates(true); loadPickFails(); } }, 120000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { loadCandidates(true); loadPickFails(); } });
 setViewhead('feed');   // 기본 탭=뉴스요약 헤더 초기화
 try { const _lt = localStorage.getItem('nomute_tab'); if (_lt && _lt !== 'feed' && ['scrap', 'sns'].includes(_lt)) showTab(_lt); } catch {}   // 새로고침 시 마지막 탭 복원
 </script>
