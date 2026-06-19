@@ -27,38 +27,16 @@ export async function onRequestPost({ request, env }) {
     .filter(altOk)
     .slice(0, 8).join(' ').slice(0, 1500);
 
-  const H = {
-    authorization: `Bearer ${env.GH_TOKEN}`,
-    accept: 'application/vnd.github+json',
-    'user-agent': 'nomute-viewer',
-    'x-github-api-version': '2022-11-28',
-  };
-
-  // 전문 직접 입력(재제출) — 막힌 매체(403) Failed 픽에 운영자가 기사 전문을 붙여넣어 재분석.
-  //   pending 파일을 직접 커밋(Contents API) → PAT push가 news-analyze 발동. seen 무관(dedup 우회 = 의도적 재제출).
-  //   pick.yml/pick_pending.py 미경유(파이프라인 워크플로 불변) — analyze 가 '# body:' 를 본문으로 씀(403 무관).
-  const bodyText = String(body.body || '').trim().slice(0, 14000);
-  if (bodyText) {
-    const k = new Date(Date.now() + 9 * 3600e3).toISOString();   // KST(폰 date 와 동일 스탬프 규칙)
-    const stamp = k.slice(2, 4) + k.slice(5, 7) + k.slice(8, 10) + '-' + k.slice(11, 13) + k.slice(14, 16) + k.slice(17, 19);
-    const rnd = Math.random().toString(16).slice(2, 6);
-    const path = `pending/${stamp}-pick-${rnd}.txt`;
-    const fileContent = `${url}\n` + (title ? `# title: ${title}\n` : '') + (alt ? `# alt: ${alt}\n` : '') + `# body:\n${bodyText}\n`;
-    const bytes = new TextEncoder().encode(fileContent);
-    let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
-    const put = await fetch(`https://api.github.com/repos/muteno/nomute-editor/contents/${path}`, {
-      method: 'PUT', headers: H,
-      body: JSON.stringify({ message: 'pick: 전문 직접 입력(재분석)', content: btoa(bin), branch: 'main' }),
-    });
-    if (put.status === 201 || put.status === 200) return json({ ok: true, body: true });
-    return json({ error: `GitHub ${put.status}: ${(await put.text()).slice(0, 300)}` }, 502);
-  }
-
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/pick.yml/dispatches',
     {
       method: 'POST',
-      headers: H,
+      headers: {
+        authorization: `Bearer ${env.GH_TOKEN}`,
+        accept: 'application/vnd.github+json',
+        'user-agent': 'nomute-viewer',
+        'x-github-api-version': '2022-11-28',
+      },
       body: JSON.stringify({ ref: 'main', inputs: { url, title, alt } }),
     },
   );
