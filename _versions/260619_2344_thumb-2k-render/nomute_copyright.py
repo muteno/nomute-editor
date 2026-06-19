@@ -15,16 +15,14 @@ Usage:
 import sys
 from PIL import Image, ImageFont, ImageDraw
 
-SCALE = 2   # 2K 렌더(1080 기준 ×SCALE)
-
 SPECS = {
     "reels": {"w": 1080, "h": 1920},
     "post":  {"w": 1080, "h": 1350},
 }
 
 FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
-FONT_SIZE = 29 * SCALE
-TEXT_Y = 100 * SCALE
+FONT_SIZE = 29
+TEXT_Y = 100
 TEXT_COLOR = (255, 255, 255, 255)
 
 
@@ -60,8 +58,8 @@ def main():
         text = f"ⓒ {year}. {name}({platform}). all rights reserved."
 
     spec = SPECS[fmt]
-    canvas_w = spec["w"] * SCALE
-    canvas_h = spec["h"] * SCALE
+    canvas_w = spec["w"]
+    canvas_h = spec["h"]
 
     # ── 캔버스 생성 (완전 투명) ───────────────────────────
     canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))

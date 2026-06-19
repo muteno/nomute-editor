@@ -6,7 +6,7 @@
 
 ## 목적 & 맥락
 
-세웅은 한국어 SNS 콘텐츠 제작 워크플로우 운영 중. 뉴스형 썸네일 오버레이 그래픽 생성이 핵심 — Instagram post(1080×1350) / reels(1080×1920) 포맷.
+세웅은 한국어 SNS 콘텐츠 제작 워크플로우 운영 중. 뉴스형 썸네일 오버레이 그래픽 생성이 핵심 — Instagram post / reels 포맷. **출력 2K PNG(260619·SCALE=2): post 2160×2700 / reels 2160×3840** (좌표·폰트는 1080 설계기준 ×SCALE).
 커스텀 Python 파이프라인: `nomute_overlay.py`, `nomute_compose.py`, `nomute_copyright.py`, `nomute_reels2.py`(헤더형 F18). 버전 운영 지침 governance(현 v22.25).
 성공 기준: 빠르고 픽셀 정확한 오버레이 생성 — 타이포·합성·파일 전달 정확성. 프로덕션 지향 상시 운영.
 

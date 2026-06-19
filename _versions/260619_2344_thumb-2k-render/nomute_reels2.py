@@ -14,15 +14,14 @@ from PIL import Image, ImageDraw, ImageFont
 FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 GREEN = (15, 253, 2)
 WHITE = (255, 255, 255)
-SCALE = 2                 # 2K 렌더(1080 기준 ×SCALE). reels2_base.png(1080×1920)는 render()에서 ×SCALE 업스케일.
-W, H = 1080 * SCALE, 1920 * SCALE
-BAND = (590 * SCALE, 1431 * SCALE)   # 흰 영상영역 (top, bottom)
-MARGIN = 60 * SCALE       # 좌우 마진 (주황박스 실측 좌44/우60 → 안전 60 대칭, 양쪽 박스 안)
-AVAIL = W - 2 * MARGIN    # 가용폭
-TR_MIN = -45              # 자간 하한 = em-상대(스케일 무관 · 기존 /th post sweep과 동일)
+W, H = 1080, 1920
+BAND = (590, 1431)        # 흰 영상영역 (top, bottom)
+MARGIN = 60               # 좌우 마진 (주황박스 실측 좌44/우60 → 안전 60 대칭, 양쪽 박스 안)
+AVAIL = W - 2 * MARGIN    # 가용폭 960
+TR_MIN = -45              # 자간 하한 (기존 /th post sweep과 동일)
 
-SUB_FS, SUB_Y = 66 * SCALE, 270 * SCALE       # 부제 폰트크기 / draw y
-TITLE_FS, TITLE_Y = 90 * SCALE, 385 * SCALE   # 제목 폰트크기 / draw y
+SUB_FS, SUB_Y = 66, 270       # 부제 폰트크기 / draw y
+TITLE_FS, TITLE_Y = 90, 385   # 제목 폰트크기 / draw y
 
 
 def _line_width(text, font, tr, fs):
@@ -63,8 +62,6 @@ def _draw_line(d, text, y, font, color, fs):
 def render(sub, title, base_path, out,
            sub_fs=SUB_FS, sub_y=SUB_Y, title_fs=TITLE_FS, title_y=TITLE_Y):
     img = Image.open(base_path).convert('RGB')
-    if img.size != (W, H):
-        img = img.resize((W, H), Image.LANCZOS)   # 베이스(1080×1920) → 2K 업스케일
     d = ImageDraw.Draw(img)
     d.rectangle([0, BAND[0], W, BAND[1]], fill=WHITE)
     sub_tr = _draw_line(d, sub, sub_y,

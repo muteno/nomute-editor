@@ -22,8 +22,6 @@ from PIL import Image, ImageFilter
 
 
 # ── 포맷별 스펙 ───────────────────────────────────────────
-SCALE = 2   # 2K 렌더(1080 기준 ×SCALE). 오버레이(nomute_overlay)와 동일 SCALE 필수 = 합성 크기 일치.
-
 SPECS = {
     "reels": {"w": 1080, "h": 1920, "ty": 1119},
     "post":  {"w": 1080, "h": 1350, "ty": 822},
@@ -144,14 +142,14 @@ def prepare_background(img_path, target_w, target_h, fmt,
     off_x = cx - target_w // 2
 
     # 텍스트 충돌 검증
-    ty = SPECS[fmt]["ty"] * SCALE
+    ty = SPECS[fmt]["ty"]
     subject_in_text_zone = (cy - off_y) > ty
     if subject_in_text_zone:
         off_y = cy - int(ty * 0.8)
 
-    # 수동 오프셋 조정 적용 (×SCALE = 2K에서도 같은 수치=같은 시각이동 유지)
-    off_x += adj_offset_x * SCALE
-    off_y += adj_offset_y * SCALE
+    # 수동 오프셋 조정 적용
+    off_x += adj_offset_x
+    off_y += adj_offset_y
 
     # 클램프
     off_x = max(0, min(off_x, new_w - target_w))
@@ -173,7 +171,7 @@ def blur_background(img_path, target_w, target_h):
 
     # 블러 배경
     bg = img.resize((target_w, target_h), Image.LANCZOS)
-    bg = bg.filter(ImageFilter.GaussianBlur(radius=30 * SCALE))
+    bg = bg.filter(ImageFilter.GaussianBlur(radius=30))
 
     # 원본 비율 유지 리사이즈
     scale = min(target_w / src_w, target_h / src_h)
@@ -234,7 +232,7 @@ def main():
     args = parser.parse_args()
 
     spec = SPECS[args.fmt]
-    tw, th = spec["w"] * SCALE, spec["h"] * SCALE
+    tw, th = spec["w"], spec["h"]
 
     if args.blur:
         # 블러 배경 모드
