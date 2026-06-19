@@ -94,7 +94,7 @@ function fnameTime(name, digits) {
 function parseTxt(txt) {   // 폰공유: LINE1\n# body:\nBODY / 픽(pick_pending.py): URL\n# title: 헤드라인\n# alt: …
   const bi = txt.indexOf('\n# body:');
   const head = bi >= 0 ? txt.slice(0, bi) : txt;
-  const tm = head.match(/^# title:\s*(.+)$/m);   // 픽 경로 헤드라인(analyze.sh의 grep '^# title: '과 동일)
+  const tm = head.match(/^# title:[ \t]*([^\r\n]+)/m);   // 픽 경로 헤드라인 — 값은 한 줄만(빈 title일 때 다음 줄 오캡처 차단)
   return { line1: head.split('\n')[0].trim(), body: bi >= 0 ? txt.slice(bi + 8).trim() : '', title: tm ? tm[1].trim() : '' };
 }
 function bodyTitle(body, paste, line1, title) {
