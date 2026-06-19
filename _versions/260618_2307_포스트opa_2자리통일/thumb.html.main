@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노뮤트 썸네일 — 이미지 제작</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+          --accent:#0FFD02; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108; --line2:#2a2c31; }
+  * { box-sizing:border-box; }
+  /* 스크롤바 톤앤톤(초록 글래스) — 뉴스 요약기(viewer/index.html) 계승 · 전 페이지 공통 */
+  html { scrollbar-width:thin; scrollbar-color:rgba(15,253,2,.30) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(15,253,2,.26); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.45); background-clip:padding-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(15,253,2,.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
+  h1 { font-size:18px; margin:6px 0 18px; }
+  h1 b { color:var(--accent); }
+  .tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-bottom:16px; }
+  .tab { padding:11px 3px; text-align:center; background:linear-gradient(165deg, rgba(34,56,41,.5), rgba(14,26,18,.6)); backdrop-filter:blur(12px) saturate(1.2); -webkit-backdrop-filter:blur(12px) saturate(1.2); border:1px solid rgba(255,255,255,.1); border-radius:12px; cursor:pointer; font-weight:600; font-size:12.5px; box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:transform .12s, border-color .15s, box-shadow .15s; }
+  .tab:hover { transform:translateY(-1px); }
+  .tab small { display:block; color:var(--mut); font-weight:400; font-size:11px; margin-top:2px; }
+  .tab.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 0 16px rgba(15,253,2,.14); }
+  .tab.on small { color:#bfeeb6; }
+  .panel { background:linear-gradient(150deg, rgba(38,64,46,.42) 0%, rgba(14,26,18,.55) 58%, rgba(11,21,15,.62) 100%); backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:14px; box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.1); }
+  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 8px; }   /* 소제목 위아래 마진 통일·확보 = 각 칸 분리감(운영자 260617). first-of-type 예외·인라인 없음 → 전부 동일. */
+  input[type=text], input[type=number], textarea, select {
+    width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit;
+  }
+  input:focus, textarea:focus, select:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); outline:none; }
+  input::placeholder, textarea::placeholder { color:var(--mut); }
+  textarea { min-height:96px; resize:vertical; }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+  .hint { font-size:12px; color:var(--mut); margin-top:5px; }
+  .hint b { color:var(--accent); }
+  .seg { display:flex; gap:6px; }
+  .seg button { flex:1; padding:8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--fg); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); transition:border-color .15s, background .15s; }
+  .seg button.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1); }
+  .seg button.fixed { cursor:default; }   /* 60·30 = 항상 출력(고정 표시) — 누름 동작 없음 */
+  /* 직접입력 = 버튼 자체가 입력창 (선택 시 라벨 숨고 안에 커서) */
+  #rOpaCustom, #opaCustom { padding:0; overflow:hidden; }
+  #rOpaCustom .lab, #opaCustom .lab { display:block; padding:8px 2px; }
+  .opa-in { display:none; width:100%; padding:8px 2px; border:none; background:transparent; color:var(--accent); text-align:center; font:inherit; outline:none; }
+  #rOpaCustom.on .lab, #opaCustom.on .lab { display:none; }
+  #rOpaCustom.on .opa-in, #opaCustom.on .opa-in { display:block; }
+  /* 플랫폼 로고 선택 (2:1 박스 가로 한 줄) */
+  .pseg { display:flex; gap:6px; flex-wrap:nowrap; }
+  .pbtn { flex:1 1 0; min-width:0; aspect-ratio:2/1; display:flex; align-items:center; justify-content:center; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--mut); cursor:pointer; padding:0; font-weight:600; font-size:11px; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); }   /* 두글자 라벨 = 직접 칩과 동급(11px·600)으로 축소·볼드 완화 */
+  .pbtn.on { border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg, rgba(15,253,2,.16), rgba(15,253,2,.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1); }
+  .pbtn .plab { font-size:11px; font-weight:600; }
+  /* 경고문 프리셋 = 줄바꿈 허용 세그 */
+  .wseg { flex-wrap:wrap; }
+  .wseg button { min-width:62px; }
+  /* 실시간 자간(tracking) 표시 — 줄어들기 시작하면 노랑, 한도 초과 빨강 */
+  .trk { font-size:12px; font-weight:800; }
+  .trk.on { color:#ffd84d; }
+  .trk.over { color:#ff7a7a; }
+  .file { display:block; padding:12px; border:1px dashed rgba(15,253,2,.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
+  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
+  /* 미리보기 = 4:5 컴팩트(업로드 보통 1080×1350) · 파일명은 칸 안 차지 말고 우하단 50% 반투명 오버레이(우측정렬) */
+  .fileprev { position:relative; display:inline-block; margin-top:8px; max-width:100%; }
+  .fileprev img { display:block; aspect-ratio:4/5; height:230px; max-width:100%; width:auto; object-fit:cover; border-radius:7px; }
+  .fileprev .fn { position:absolute; right:0; bottom:0; max-width:100%; box-sizing:border-box; margin:0;
+    background:rgba(0,0,0,.5); color:#fff; font-size:10.5px; line-height:1.3; padding:3px 8px; border-radius:7px 0 7px 0;
+    text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); }
+  .go { width:100%; margin-top:16px; padding:13px; background:linear-gradient(135deg,#d8ff3d,var(--accent)); color:var(--on-accent); border:none; border-radius:11px; font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 24px rgba(15,253,2,.26), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s, box-shadow .15s; }
+  .go:hover { transform:translateY(-1px); box-shadow:0 12px 30px rgba(15,253,2,.34), inset 0 1px 0 rgba(255,255,255,.45); }
+  .go:active { transform:translateY(0); }
+  .go:disabled { opacity:.5; cursor:default; box-shadow:none; transform:none; }
+  .chk { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
+  .chk input { width:18px; height:18px; accent-color:var(--accent); }
+  .chk .abbrhint { color:var(--mut); font-weight:400; font-size:11px; }
+  .out { margin-top:18px; }
+  .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
+  .status.err { color:#ff8a8a; }
+  /* 대기열/로그 — 제작 건별 행(동시 처리) */
+  .jobs { display:flex; flex-direction:column; gap:6px; margin:10px 0 0; }
+  .job { display:flex; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:9px; background:rgba(8,15,11,.34); border:1px solid var(--line); }
+  .job .jlab { font-weight:800; color:var(--accent); }
+  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; }
+  .job.done .jst { color:var(--accent); }
+  .job.err { border-color:rgba(255,90,90,.4); } .job.err .jst { color:#ff9b9b; }
+  /* 완성 이미지 캐러셀 — 뷰어 카드 피드(.feedtrack) 계승: 스크롤 스냅 + 글래스 화살표 */
+  .carwrap { margin-top:14px; }
+  .cartrackwrap { position:relative; }
+  .cartrack { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:none; border-radius:10px; }
+  .cartrack::-webkit-scrollbar { display:none; }
+  .carslide { flex:0 0 100%; scroll-snap-align:center; scroll-snap-stop:always; position:relative; }
+  .carslide img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
+  .carslide .cap { position:absolute; left:8px; top:8px; background:rgba(0,0,0,.5); color:#fff; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  .carnav { position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; display:grid; place-items:center; border-radius:50%; cursor:pointer;
+    background:rgba(12,16,14,.5); color:#fff; border:1px solid rgba(255,255,255,.18); font-size:22px; line-height:1; padding-bottom:3px;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); opacity:.85; transition:opacity .15s, transform .1s; }
+  .carnav:hover { opacity:1; } .carnav:active { transform:translateY(-50%) scale(.9); }
+  .carnav.prev { left:8px; } .carnav.next { right:8px; }
+  .carnav:disabled { opacity:0; pointer-events:none; }
+  .carbar { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .carcount { font-size:11.5px; color:var(--mut); }
+  .carsave { display:none; }   /* (구) 캐러셀 아래 배치 폐지 — 전체저장은 캐러셀 우상단 오버레이로 이동(아래 .saveall) */
+  /* 전체 저장 = 잡(결과) 행 우측 인라인 버튼(운영자 260619 — 캐러셀 오버레이서 이동, index.html .fi-saveall 패턴 일치). 글래스 톤(§📋). */
+  .job .jsave { flex:none; display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:10.5px; line-height:1; color:#fff; cursor:pointer; white-space:nowrap;
+    background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:5px 10px;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 8px rgba(0,0,0,.28); }
+  .job .jsave:active { transform:scale(.95); } .job .jsave svg { display:block; width:12px; height:12px; }
+  .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
+  .slot { margin-bottom:14px; }
+  .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
+  .slot-img { min-height:40px; position:relative; }
+  .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
+  /* 결과 이미지 다운로드 (우상단) = 뉴스 피드 캐러셀 .sbtn 글래스 그대로 계승(§📋 · 34px·bg .3·border .14·hover·active .85) */
+  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; color:rgba(255,255,255,.92); background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; }
+  .imgdl:hover { background:rgba(255,255,255,.16); }
+  .imgdl:active { transform:scale(.85); } .imgdl svg { display:block; width:14px; height:14px; }
+  /* 텍스트칸 붙여넣기↔복사 (우상단 · 뷰어 .copy 계승) */
+  .iobtn { position:absolute; top:8px; right:8px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer; z-index:2; transition:transform .12s, background .15s, color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .iobtn:hover { background:rgba(255,255,255,.12); color:var(--fg); }
+  .iobtn:active { transform:scale(.85); }
+  .iobtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .iobtn svg { display:block; }
+  .cardhdr { display:flex; align-items:center; gap:8px; margin:12px 0 5px; }
+  .cardhdr .hdlbl { font-size:13px; color:var(--mut); }
+  .cardhdr .hdsub { font-size:11px; color:var(--mut); opacity:.7; flex:1; min-width:0; }
+  .slot-wait { font-size:13px; color:var(--mut); }
+  .none { display:none; }
+
+  /* ── 카드 텍스트 칩 에디터 (인라인 — /5 카드뉴스) ── */
+  .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
+  .ed-line { display:flex; flex-wrap:nowrap; align-items:center; gap:calc(6px * var(--eds,1)); min-height:calc(30px * var(--eds,1)); position:relative; padding-right:22px; }
+  .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(2px * var(--eds,1)) calc(3px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2); color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
+  .ed-chip:hover { border-color:rgba(15,253,2,.4); }
+  .ed-add { position:absolute; right:2px; top:50%; transform:translateY(-50%); flex:none; width:16px; height:calc(30px * var(--eds,1)); padding:0; border-radius:5px; display:inline-flex; align-items:center; justify-content:center; font:800 16px/1 inherit; color:var(--accent); background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.42); cursor:pointer; }
+  .ed-add:active { transform:translateY(-50%) scale(.9); }
+  .ed-add.cap { color:transparent; cursor:not-allowed; opacity:.55; border-color:rgba(255,77,77,.5); filter:brightness(.6); background:repeating-linear-gradient(45deg, rgba(255,77,77,.5) 0 3px, transparent 3px 6px), rgba(10,14,12,.6); }
+  .ed-empty { min-width:calc(46px * var(--eds,1)); min-height:calc(22px * var(--eds,1)); cursor:text; white-space:normal; }
+  .ed-empty:empty::before { content:'입력…'; color:var(--mut); opacity:.5; }
+  .ed-chip:empty { min-width:calc(15px * var(--eds,1)); }
+  .ed-addw { flex:none; display:inline-flex; align-items:center; justify-content:center; width:calc(22px * var(--eds,1)); height:calc(22px * var(--eds,1)); border-radius:50%; color:var(--accent); font:800 calc(15px * var(--eds,1))/1 inherit; cursor:pointer; user-select:none; align-self:center; background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.4); }
+  .ovc { color:#ff5d5d; font-weight:800; }
+  .emon { color:var(--accent); font-weight:800; }
+  .ed-chip.on { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); font-weight:800; box-shadow:0 0 8px rgba(15,253,2,.3); }
+  .ed-chip.warn { border-color:rgba(255,176,32,.55); }
+  .ed-chip.warn.on { border-color:var(--accent); }
+  .ed-chip.over { border-color:#ff5d5d; background:rgba(255,77,77,.14); }
+  .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(15,253,2,.08); color:var(--fg); cursor:text; white-space:normal; word-break:break-word; max-width:100%; }
+  .ed-chip.editing.over { outline-color:#ff5d5d; color:#ff7a7a; background:rgba(255,77,77,.12); }
+  .ed-chip.reject { border-color:#ff5d5d !important; color:#ff7a7a; background:rgba(255,77,77,.12); animation:edshake .42s; }
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  /* 확인 모달 — 네이티브 confirm 대체(뉴스 요약기 글래스 모달 느낌 계승: 반투명 글래스 blur30 + 뒤 dimmed·블러7 backdrop + 팝인) */
+  .cfm { border:none; border-radius:22px; padding:0; width:88vw; max-width:420px; color:var(--fg);
+    position:fixed; inset:0; margin:auto; height:max-content;
+    background:linear-gradient(165deg, rgba(27,44,32,.62), rgba(11,19,14,.74)); backdrop-filter:blur(30px) saturate(1.6); -webkit-backdrop-filter:blur(30px) saturate(1.6);
+    border:1px solid rgba(255,255,255,.13); box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
+    animation:cfmIn .2s cubic-bezier(.22,.61,.36,1) both; }
+  .cfm::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); animation:cfmBd .2s ease both; }   /* 뒤 화면 가려지고(블러) 새 창 뜨는 느낌 = 뉴스 모달과 동일(.46) */
+  @keyframes cfmIn { from { opacity:0; transform:scale(.93) translateY(10px); } to { opacity:1; transform:none; } }
+  @keyframes cfmBd { from { opacity:0; } to { opacity:1; } }
+  @media (prefers-reduced-motion:reduce) { .cfm, .cfm::backdrop { animation:none; } }
+  .cfm-in { padding:20px 20px 16px; }
+  .cfm-msg { font-size:15px; font-weight:600; line-height:1.55; color:var(--fg); }
+  .cfm-bot { display:flex; gap:10px; margin-top:18px; justify-content:flex-end; }
+  .cfm-btn { padding:9px 18px; border-radius:999px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); }
+  .cfm-btn:active { transform:scale(.97); }
+  .cfm-btn.go2 { border:none; background:linear-gradient(135deg,#d8ff3d,var(--accent)); color:var(--on-accent); box-shadow:0 6px 16px rgba(15,253,2,.3); }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <h1>노뮤트 <b>썸네일</b> · 이미지 제작</h1>
+
+  <div class="tabs" id="tabs">
+    <div class="tab" data-app="1">포스트</div>
+    <div class="tab" data-app="2">릴스</div>
+    <div class="tab" data-app="3">저작권</div>
+    <div class="tab" data-app="4">경고문</div>
+    <div class="tab" data-app="5">카드뉴스</div>
+  </div>
+
+  <div class="panel">
+    <!-- 포맷(2는 릴스 고정이라 숨김) -->
+    <div id="fmtBox">
+      <label>포맷</label>
+      <div class="seg" id="fmtSeg">
+        <button data-fmt="post" class="on">포스트 1080×1350</button>
+        <button data-fmt="reels">릴스 1080×1920</button>
+      </div>
+    </div>
+
+    <!-- /1 배경 이미지 -->
+    <div id="imgBox" class="none">
+      <label>이미지 삽입 시 오버레이와 합성</label>
+      <label class="file" id="fileLab"><span>탭해서 이미지 선택</span>
+        <input type="file" accept="image/*" id="file" style="display:none">
+      </label>
+    </div>
+
+    <!-- OPA (1 — 오버레이 투명도: 58 기본 / 30 / 직접입력) -->
+    <div id="opaBox" class="none">
+      <label>투명도 (OPA)</label>
+      <div class="seg" id="opaSeg">
+        <button data-opa="58" class="on">58</button>
+        <button data-opa="30" class="on">30</button>
+        <button data-opa="custom" id="opaCustom"><span class="lab">직접입력</span><input type="text" id="opaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="OPA"></button>
+      </div>
+    </div>
+
+    <!-- lines (1 포스트·5 카드뉴스) -->
+    <div id="linesBox" class="none">
+      <label>텍스트 (줄바꿈 = 여러 줄)</label>
+      <textarea id="lines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
+      <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · <span id="linesMax"></span> <span id="linesTrk" class="trk"></span></div>
+    </div>
+
+    <!-- /4 경고문 — 프리셋 선택(법적 검토) + 직접입력. 선택 시 채워지고 수정 가능 -->
+    <div id="warnBox" class="none">
+      <label>경고문 선택</label>
+      <div class="seg wseg" id="warnPreset">
+        <button type="button" data-wp="caution" class="on">경고</button>
+        <button type="button" data-wp="ai">AI 생성</button>
+      </div>
+      <textarea id="warnLines">민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
+      <div class="hint"><b>*별표*</b>로 강조 · 최대 2줄 · <b>AI 생성</b>=AI기본법 §31② 표시의무(나머지는 자율 안내)</div>
+    </div>
+
+    <!-- /2 릴스 — 헤더(기본) / 오버레이 모드 -->
+    <div id="reelsBox" class="none">
+      <label>모드</label>
+      <div class="seg" id="rmodeSeg">
+        <button data-rmode="header" class="on">헤더 (기본)</button>
+        <button data-rmode="overlay">오버레이</button>
+      </div>
+
+      <!-- 헤더 모드: 부제 + 제목 → 기본(흰칸無) + 흰칸 2장 -->
+      <div id="rHeader">
+        <label>부제 (흰색)</label>
+        <input type="text" id="sub" placeholder="부제 한 줄">
+        <label>제목 (초록)</label>
+        <input type="text" id="title" placeholder="제목 한 줄">
+        <div class="hint">출력 2장 — <b>기본</b>(흰칸 없음) + <b>흰칸</b>(영상자리) <span id="hdrTrk" class="trk"></span></div>
+      </div>
+
+      <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
+      <div id="rOverlay" class="none">
+        <label>이미지 삽입 시 오버레이와 합성</label>
+        <label class="file" id="rFileLab"><span>탭해서 이미지 선택</span>
+          <input type="file" accept="image/*" id="rFile" style="display:none">
+        </label>
+        <label>투명도 (OPA)</label>
+        <div class="seg" id="rOpaSeg">
+          <button data-opa="60" class="on">60</button>
+          <button data-opa="30" class="on">30</button>
+          <button data-opa="custom" id="rOpaCustom"><span class="lab">직접입력</span><input type="text" id="rOpaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="OPA"></button>
+        </div>
+        <label>텍스트 (줄바꿈 = 여러 줄)</label>
+        <textarea id="rLines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
+        <div class="hint"><b>*별표*</b>로 강조 · <b>opa60·30·직접입력</b> 탭해 선택(최소1·켠 만큼 출력) <span id="rLinesTrk" class="trk"></span></div>
+      </div>
+    </div>
+
+    <!-- /3 저작권 -->
+    <div id="copyBox" class="none">
+      <div class="row">
+        <div><label>연도</label><input type="text" id="cyear" value="2026"></div>
+        <div><label>이름</label><input type="text" id="cname" placeholder="nomute"></div>
+      </div>
+      <label>플랫폼 <span style="color:var(--mut);font-weight:400">(로고 탭 · 직접입력은 마지막)</span></label>
+      <div class="pseg" id="pseg">
+        <button type="button" class="pbtn" data-plat="youtube" title="유튜브">YT</button>
+        <button type="button" class="pbtn on" data-plat="instagram" title="인스타그램">IG</button>
+        <button type="button" class="pbtn" data-plat="threads" title="스레드">Th</button>
+        <button type="button" class="pbtn" data-plat="x" title="X">X</button>
+        <button type="button" class="pbtn" data-plat="facebook" title="페이스북">Fb</button>
+        <button type="button" class="pbtn" data-plat="custom" id="pCustom" title="직접입력"><span class="plab">직접</span></button>
+      </div>
+      <input type="text" id="cplat" class="none" placeholder="플랫폼 직접입력 (예: tiktok)" style="margin-top:6px">
+      <div class="hint" id="copyHint">→ ⓒ 2026. nomute(instagram). all rights reserved.</div>
+    </div>
+
+    <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
+    <div id="cardBox" class="none">
+      <div class="cardhdr"><span class="hdlbl">카드 텍스트</span><span class="hdsub">탭=강조 · 더블탭=수정 · + 줄추가 · 최대 4줄·한글18/줄</span></div>
+      <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
+    </div>
+
+    <label class="chk" id="abbrBox"><input type="checkbox" id="abbr" checked> 축약 <span class="abbrhint">이 → 李 · 윤 → 尹 · ... → ⋯</span></label>
+    <button class="go" id="go">이미지 제작</button>
+  </div>
+
+  <div class="out">
+    <div class="status" id="status"></div>
+    <!-- N/N장 카운터 = 대기열 위(요약 · 운영자) -->
+    <div class="carbar" id="carbar" hidden><span class="carcount" id="carcount"></span></div>
+    <!-- 대기열/로그 — 제작 버튼 누른 게 다 여기 쌓이고 각자 상태 표시(동시 가능) -->
+    <div class="jobs" id="jobs"></div>
+    <!-- 완성 이미지 = 캐러셀(나온 순서대로 한 장씩 추가) · 전체 저장은 결과물 아래(해당 부분) -->
+    <div class="carwrap" id="carwrap" hidden>
+      <div class="cartrackwrap">
+        <div class="cartrack" id="cartrack"></div>
+        <button class="carnav prev" id="carPrev" type="button" aria-label="이전">‹</button>
+        <button class="carnav next" id="carNext" type="button" aria-label="다음">›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 확인 모달 — 네이티브 confirm 대체(앱 UI 계승) -->
+<dialog id="cfmdlg" class="cfm">
+  <div class="cfm-in">
+    <div class="cfm-msg" id="cfmMsg"></div>
+    <div class="cfm-bot">
+      <button class="cfm-btn" id="cfmNo" type="button">취소</button>
+      <button class="cfm-btn go2" id="cfmYes" type="button">진행</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+// 네이티브 confirm 대체 — 앱 글래스 모달(뉴스 요약기 UI 계승). 진행=true / 취소·바깥·ESC=false.
+function askConfirm(msg) {
+  return new Promise(resolve => {
+    const dlg = $('#cfmdlg'); $('#cfmMsg').textContent = msg;
+    const done = v => { dlg.close(); cleanup(); resolve(v); };
+    const onYes = () => done(true), onNo = () => done(false);
+    const onBackdrop = e => { if (e.target === dlg) done(false); };   // 바깥 클릭 = 취소
+    const onCancel = e => { e.preventDefault(); done(false); };       // ESC(native)
+    // ⚠️ iframe(도구 모달) 안에서 뜰 때: 캡처단계로 ESC 자체처리 + stopPropagation → 부모 #tooldlg가 먼저 닫혀 프로미스 고아되는 레이스 차단
+    const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(false); } };
+    function cleanup() {
+      $('#cfmYes').removeEventListener('click', onYes); $('#cfmNo').removeEventListener('click', onNo);
+      dlg.removeEventListener('click', onBackdrop); dlg.removeEventListener('cancel', onCancel);
+      document.removeEventListener('keydown', onKey, true);
+    }
+    $('#cfmYes').addEventListener('click', onYes); $('#cfmNo').addEventListener('click', onNo);
+    dlg.addEventListener('click', onBackdrop); dlg.addEventListener('cancel', onCancel);
+    document.addEventListener('keydown', onKey, true);
+    dlg.showModal();
+  });
+}
+let APP = '1', FMT = 'post', RMODE = 'header';
+const IMG = { b64: '', name: '' };    // /1·/5 배경
+const RIMG = { b64: '', name: '' };   // /2 오버레이 배경(옵션)
+
+// ---- 탭 ----
+function selApp(a) {
+  APP = a;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.app === a));
+  // 표시 토글
+  $('#imgBox').classList.toggle('none', !(a === '1' || a === '5'));   // 이미지 = /1·/5
+  $('#linesBox').classList.toggle('none', a !== '1');   // 텍스트 = /1 포스트만 (/5는 칩 에디터)
+  $('#warnBox').classList.toggle('none', a !== '4');                    // 경고문 = /4 (프리셋)
+  $('#cardBox').classList.toggle('none', a !== '5');                    // 카드뉴스 = /5 인라인 칩 에디터
+  $('#reelsBox').classList.toggle('none', a !== '2');
+  $('#copyBox').classList.toggle('none', a !== '3');
+  $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
+  $('#abbrBox').classList.toggle('none', !(a === '1' || a === '2'));   // 축약 = 포스트·릴스만
+  if (a === '4' || a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                  // 경고문·저작권 = 포스트+릴스 둘 다 기본(멀티·둘 다 출력·최소1)
+  $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
+  $('#linesMax').textContent = a === '1' ? '최대 3줄' : '';
+  if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
+  if (a === '1') updateTrkHint('lines', 'linesTrk', 'post');                   // 실시간 자간
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => selApp(t.dataset.app));
+
+// ---- 줄 수 하드캡 (포스트3·카드뉴스4·릴스오버레이3·경고문2 — 넘는 줄 못 쓰게) ----
+function maxLinesFor(ta) {
+  if (ta.id === 'lines') return APP === '1' ? 3 : APP === '5' ? 4 : 0;
+  if (ta.id === 'rLines') return 3;
+  if (ta.id === 'warnLines') return 2;
+  return 0;
+}
+['lines', 'rLines', 'warnLines'].forEach(id => {
+  const ta = document.getElementById(id);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { const m = maxLinesFor(ta); if (m && ta.value.split('\n').length >= m) e.preventDefault(); }
+  });
+  ta.addEventListener('input', () => {
+    const m = maxLinesFor(ta); if (!m) return;
+    const ls = ta.value.split('\n'); if (ls.length > m) ta.value = ls.slice(0, m).join('\n');   // 붙여넣기 등 초과분 잘라냄
+  });
+});
+
+// ---- /3 플랫폼 로고 선택 (직접입력 = 하단 입력창 포커스) ----
+function getPlatform() {
+  const sel = document.querySelector('#pseg .on');
+  if (!sel) return '';
+  return sel.dataset.plat === 'custom' ? $('#cplat').value.trim() : sel.dataset.plat;
+}
+function updateCopyHint() {
+  const y = $('#cyear').value.trim() || '2026', n = $('#cname').value.trim() || 'nomute', p = getPlatform();
+  $('#copyHint').textContent = '→ ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';
+}
+document.querySelectorAll('#pseg button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#pseg button').forEach(x => x.classList.toggle('on', x === b));
+  const custom = b.dataset.plat === 'custom';
+  $('#cplat').classList.toggle('none', !custom);
+  if (custom) $('#cplat').focus();
+  updateCopyHint();
+});
+['cplat', 'cyear', 'cname'].forEach(id => $('#' + id).addEventListener('input', updateCopyHint));
+
+// ---- /4 경고문 프리셋 (Opus 5인 만장일치 검토 — AI=AI기본법 §31② 표시의무, 나머지=자율 안내) ----
+const WARN_PRESETS = {
+  ai: '본 이미지는 생성형 AI로 제작·합성되었습니다.',
+  caution: '민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.',
+};
+// 점등된 프리셋(AI·경고)을 순서대로 합성 → 제작은 이 텍스트(=점등분) 기준. 텍스트는 직접 수정 가능.
+function composeWarn() {
+  const lit = [...document.querySelectorAll('#warnPreset button.on')].map(b => b.dataset.wp);
+  $('#warnLines').value = ['ai', 'caution'].filter(k => lit.includes(k)).map(k => WARN_PRESETS[k]).join('\n');
+  $('#warnLines').dispatchEvent(new Event('input', { bubbles: true }));   // io 버튼·자간 트래커 갱신
+}
+// 단일선택(하나만) · 기본 경고. 클릭 = 그 프리셋만 점등(나머지 끔) → 텍스트 교체(직접 수정 가능).
+document.querySelectorAll('#warnPreset button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#warnPreset button').forEach(x => x.classList.toggle('on', x === b));
+  composeWarn();
+});
+
+// ---- 포맷 세그 ---- (/4 경고문·/3 저작권 = 포스트·릴스 멀티토글[최소1·둘 다 출력] / 그 외 = 단일선택 FMT)
+document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
+  if (APP === '4' || APP === '3') {
+    const litN = document.querySelectorAll('#fmtSeg button.on').length;
+    if (b.classList.contains('on') && litN === 1) return;   // 마지막 1개는 못 끔(0 방지)
+    b.classList.toggle('on');
+  } else {
+    FMT = b.dataset.fmt;
+    document.querySelectorAll('#fmtSeg button').forEach(x => x.classList.toggle('on', x === b));
+  }
+});
+
+// ---- OPA 세그 (58 기본 / 30 / 직접입력 = 버튼 안 입력창 · 2자리 자동 이탈) ----
+const opaNum = $('#opaNum');
+// OPA = 다중선택 토글(기본 58·30 둘 다 ON → 둘 다 생성). 선택된 것들이 곧 생성 장수.
+// 최소 1개 유지 = 마지막 1개는 못 끔(0개 미선택 불가). custom = 추가 opa 토글.
+document.querySelectorAll('#opaSeg button').forEach(b => b.onclick = () => {
+  const onCnt = document.querySelectorAll('#opaSeg button.on').length;
+  if (b.classList.contains('on') && onCnt <= 1) return;   // 마지막 1개 해제 금지(0개 불가)
+  b.classList.toggle('on');
+  if (b.dataset.opa === 'custom' && b.classList.contains('on')) { opaNum.focus(); opaNum.select(); }
+});
+opaNum.addEventListener('input', () => {   // 숫자·0~100 정리, 2자리 차면 자동 blur(다음으로 이탈)
+  let v = opaNum.value.replace(/[^0-9]/g, '').slice(0, 3);
+  if (v !== '') v = String(Math.min(100, parseInt(v, 10)));
+  opaNum.value = v;
+  if (v.length >= 2) opaNum.blur();
+});
+function getOpas() {   // 선택된(.on) opa 전부 = 생성할 장수. custom은 값 있을 때만 추가. 빈배열 폴백 [58].
+  const out = [];
+  document.querySelectorAll('#opaSeg button.on').forEach(b => {
+    if (b.dataset.opa === 'custom') { const n = parseInt(opaNum.value, 10); if (Number.isFinite(n)) out.push(Math.max(0, Math.min(100, n))); }
+    else { const n = parseInt(b.dataset.opa, 10); if (Number.isFinite(n)) out.push(n); }
+  });
+  return out.length ? out : [58];
+}
+
+// ---- 릴스 모드 세그 (헤더 기본 / 오버레이) ----
+function selRmode(m) {
+  RMODE = m;
+  document.querySelectorAll('#rmodeSeg button').forEach(b => b.classList.toggle('on', b.dataset.rmode === m));
+  $('#rHeader').classList.toggle('none', m !== 'header');
+  $('#rOverlay').classList.toggle('none', m !== 'overlay');
+  if (m === 'overlay') updateTrkHint('rLines', 'rLinesTrk', 'reels');   // 실시간 자간
+}
+document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
+
+// ---- 릴스 오버레이 OPA 세그 (60·30 항상 렌더=고정 표시 / 직접입력=추가 opa(+1) 토글) ----
+const rOpaNum = $('#rOpaNum');
+// 60·30 = 토글(최소1·0개 방지). 직접입력 = 값 기반 — 클릭=입력칸 포커스만(라벨이든 입력칸이든
+// 탭해도 토글 안 됨 → 잘못 눌러 꺼지는 사고 차단). 끄려면 값을 비우고 벗어난다(blur 핸들러가 소등).
+document.querySelectorAll('#rOpaSeg button').forEach(b => b.onclick = () => {
+  if (b.dataset.opa === 'custom') { b.classList.add('on'); rOpaNum.focus(); rOpaNum.select(); return; }   // 펼쳐서 입력칸 활성(CSS: .on=입력칸 표시)·끄지 않음
+  const litN = document.querySelectorAll('#rOpaSeg button.on').length;
+  if (b.classList.contains('on') && litN === 1) return;   // 마지막 1개는 못 끔(0개 방지)
+  b.classList.toggle('on');
+});
+rOpaNum.addEventListener('input', () => {   // 숫자만·1~99(0 불가·2자리 상한), 두 자리 차면 포커스 아웃(키보드 내려감)
+  let v = rOpaNum.value.replace(/[^0-9]/g, '').slice(0, 2);   // 2자리 상한 — 세 자리 입력 자체를 막아 '2자리서 키보드 내려가는' 동작 깔끔(최대 99)
+  if (v !== '') v = String(Math.min(99, parseInt(v, 10)));
+  if (v === '0') v = '';   // opa 값 0(완전투명) 차단 — 비움 처리(0개 선택 방지와 별개)
+  rOpaNum.value = v;
+  if (v.length >= 2) rOpaNum.blur();   // 편집 중엔 .on 유지(CSS상 .on 빼면 입력칸이 사라짐) → 끄기는 blur에서
+});
+rOpaNum.addEventListener('blur', () => {   // 값 없이 벗어나면 직접입력 끔(라벨 복귀) = '끄려면 값 비우기'
+  if (!rOpaNum.value) $('#rOpaCustom').classList.remove('on');
+});
+function getReelsOpas() {   // 점등된 버튼(60·30·직접입력)의 opa 배열 — 켠 만큼 출력. 직접입력은 값 있을 때만.
+  const out = [];
+  document.querySelectorAll('#rOpaSeg button.on').forEach(b => {
+    if (b.dataset.opa === 'custom') {
+      const n = parseInt(rOpaNum.value, 10);
+      if (Number.isFinite(n) && n >= 1) out.push(Math.min(100, n));   // 0 불가
+    } else {
+      out.push(parseInt(b.dataset.opa, 10));
+    }
+  });
+  return [...new Set(out)];   // 중복 제거(직접입력이 60·30과 겹칠 때)
+}
+
+// ---- 파일 (재사용 바인더 — #file=/1·/5, #rFile=/2 오버레이) ----
+function bindFile(inp, lab, store) {
+  const handler = e => {
+    const f = e.target.files[0]; if (!f) return;
+    store.name = f.name;
+    const r = new FileReader();
+    r.onload = () => {
+      store.b64 = r.result;
+      lab.innerHTML = '<div class="fileprev"><img src="' + r.result + '"><span class="fn">' + f.name + '</span></div>' +
+        '<input type="file" accept="image/*" style="display:none">';
+      lab.classList.add('has');
+      lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
+    };
+    r.readAsDataURL(f);
+  };
+  inp.onchange = handler;
+}
+bindFile($('#file'), $('#fileLab'), IMG);
+bindFile($('#rFile'), $('#rFileLab'), RIMG);
+
+// ==== 붙여넣기↔복사 + 다운로드 (뷰어 버튼 UIUX 계승) ====
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+const DOWNLOAD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
+const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
+  try { await navigator.clipboard.writeText(text || ''); } catch {}
+  btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
+  setTimeout(() => { btn.classList.remove('ok'); after(); }, 1200);
+}
+function attachCopyPaste(el) {   // 비었으면 붙여넣기, 차있으면 복사
+  const wrap = document.createElement('div'); wrap.style.position = 'relative';
+  el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
+  el.style.paddingRight = '42px';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn'; wrap.appendChild(btn);
+  const refresh = () => {
+    if (btn.classList.contains('ok')) return;
+    const filled = (el.value || '').trim().length > 0;
+    btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste';
+    btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기');
+  };
+  btn.onclick = async ev => {
+    ev.preventDefault();
+    if (btn.dataset.mode === 'copy') clipCopy(el.value, btn, refresh);
+    else { try { const t = await navigator.clipboard.readText(); if (t) { el.value = t; el.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} refresh(); }
+  };
+  el.addEventListener('input', refresh); refresh();
+}
+['lines', 'sub', 'title', 'rLines', 'warnLines'].forEach(id => { const el = $('#' + id); if (el) attachCopyPaste(el); });
+let cardIo = null;   // 카드 에디터 copy/paste 아이콘 갱신자 — 정의는 칩 에디터(edLines/buildEmphText) 뒤에서(TDZ 회피)
+
+// ---- 입력 → params ----
+function buildParams() {
+  const linesArr = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  if (APP === '4') return { fmt: FMT, lines: ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean) };   // 경고문 = 프리필 텍스트
+  if (APP === '1') return { fmt: 'post', lines: linesArr, opas: getOpas() };   // /1 = post · 선택된 OPA들 각각 1장(다중)
+  if (APP === '2') {
+    if (RMODE === 'header') return { mode: 'header', sub: $('#sub').value.trim(), title: $('#title').value.trim() };
+    const rlines = ($('#rLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);   // 오버레이 = lines + 이미지(옵션)
+    return { mode: 'overlay', lines: rlines, opas: getReelsOpas() };
+  }
+  if (APP === '3') return { fmt: FMT, year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: getPlatform() };
+}
+
+// ==== 대기열(JOBS) + 캐러셀 — 제작 동시 가능: 누른 게 다 로그에 쌓이고 각자 폴링, 완성분은 캐러셀에 한 장씩 ====
+const JOBS = [];           // 제작 건 누적
+let JOBSEQ = 0;
+const CARSLIDES = [];      // 완성 이미지(캐러셀 슬라이드)
+
+function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이 위)
+  let row = document.getElementById('job-' + job.n);
+  if (!row) { row = document.createElement('div'); row.id = 'job-' + job.n; row.className = 'job'; $('#jobs').prepend(row); }
+  row.className = 'job' + (job.status === 'done' ? ' done' : '') + (job.status === 'err' ? ' err' : '');
+  const sec = Math.round((Date.now() - job.t0) / 1000);
+  const tot = job.outs.length || '?';
+  const dn = job.done.filter(Boolean).length;
+  let st;
+  if (job.status === 'err') st = '⚠ ' + (job.msg || '실패');
+  else if (job.status === 'done') st = '✅ 완료 · ' + tot + '장 (' + sec + 's)';
+  else st = '⏳ 제작 중 ' + sec + 's · ' + dn + '/' + tot + '장';
+  row.innerHTML = '';
+  const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + ' #' + job.n + jobVars(job);
+  const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
+  row.append(lab, stsp);
+  if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체 저장' 버튼(우측 인라인 · index .fi-saveall 패턴)
+    const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 저장';
+    sv.innerHTML = DOWNLOAD_SVG + '<span>전체 저장</span>';
+    sv.onclick = () => job.saves.forEach((s, i) => setTimeout(() => {
+      const a = document.createElement('a'); a.href = s.url; a.download = s.dlname;
+      document.body.appendChild(a); a.click(); a.remove();
+    }, i * 350));
+    row.append(sv);
+  }
+}
+function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐러셀에 추가. 180s(3분) 타임아웃(운영자 260618: 무한대기 차단).
+  const JOB_TIMEOUT_S = 180;   // 정상 렌더+커밋 = ~70s. 3분 넘으면 렌더 워크플로 실패(PIL 에러·push 경합 유실·20분 행) 추정 → FAIL.
+  const tick = () => {
+    if (job.done.every(Boolean)) { job.status = 'done'; renderJob(job); return; }
+    if (Math.round((Date.now() - job.t0) / 1000) > JOB_TIMEOUT_S) { job.status = 'err'; job.msg = '시간 초과(3분) — 렌더 실패 추정, 다시 시도'; renderJob(job); return; }
+    renderJob(job);
+    job.outs.forEach((o, i) => {
+      if (job.done[i]) return;
+      const url = o.path + '?t=' + Date.now();
+      const img = new Image();
+      img.onload = () => {
+        if (job.done[i]) return; job.done[i] = true;
+        carAppend(url, dlStamp(job.t0) + '_' + dlSlug(job.label) + '_' + pad3(job.n) + (o.label ? '_' + o.label : '') + '.png', job.label + ' #' + job.n + (o.label ? ' · ' + o.label : ''), job);
+        if (job.done.every(Boolean)) job.status = 'done';   // 마지막 장 로드 즉시 완료 표시(5s tick 안 기다림)
+        renderJob(job);
+      };
+      img.src = url;   // 아직 없으면 무시 → 다음 tick 재시도
+    });
+    setTimeout(tick, 5000);
+  };
+  tick();
+}
+function dlStamp(ts) {   // 다운로드 파일명 시각 프리픽스 yymmdd_hhmm — 제작(job.t0) 기준. 시스템 전 다운로드 일관(index.html dlStamp과 동일 포맷).
+  const n = new Date(ts || Date.now()), p = x => String(x).padStart(2, '0');
+  return `${String(n.getFullYear()).slice(2)}${p(n.getMonth() + 1)}${p(n.getDate())}_${p(n.getHours())}${p(n.getMinutes())}`;
+}
+// ── 통일 라벨 (잡헤더·캐러셀 캡션·파일명 공용) ──
+const pad3 = n => String(n).padStart(3, '0');   // 잡번호 3자리(005) — 파일명 통일
+// 파일명용 라벨 슬러그 — 한글 유지, '#' 제거(파일시스템 인식 문제)·공백/괄호/·/금지문자 → '_' 정리
+const dlSlug = s => String(s || '').replace(/#/g, '').replace(/[·()/\\:*?"<>|]/g, ' ').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+// 잡 헤더 variant 나열 — 단일=' · 노뮤트' / 다중=' · [1] OPA58 · [2] OPA30 · [3] OPA80'(라벨 있는 출력만)
+function jobVars(job) {
+  const outs = job.outs || [];
+  const labs = outs.map(o => o && o.label).filter(Boolean);
+  if (!labs.length) return '';
+  if (outs.length === 1) return ' · ' + labs[0];
+  return ' · ' + outs.map((o, i) => o.label ? '[' + (i + 1) + '] ' + o.label : '').filter(Boolean).join(' · ');
+}
+function carAppend(url, dlname, cap, job) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서)
+  CARSLIDES.push({ url, dlname });
+  if (job) (job.saves || (job.saves = [])).push({ url, dlname });   // 잡별 '전체 저장'용 목록(잡 행 버튼이 이걸 저장)
+  $('#carwrap').hidden = false; $('#carbar').hidden = false;   // 바(전체저장·N/N장)는 대기열 위에 노출
+  const track = $('#cartrack');
+  const slide = document.createElement('div'); slide.className = 'carslide';
+  slide.innerHTML = '<a class="imgdl" href="' + url + '" download="' + dlname + '" aria-label="다운로드">' + DOWNLOAD_SVG + '</a><img src="' + url + '"><span class="cap"></span>';
+  slide.querySelector('.cap').textContent = cap;
+  track.appendChild(slide);
+  carUpdate();
+  track.scrollTo({ left: track.scrollWidth, behavior: 'smooth' });   // 새로 나온 장으로 이동
+}
+function carUpdate() {
+  const track = $('#cartrack'), n = CARSLIDES.length;
+  const idx = Math.round(track.scrollLeft / (track.clientWidth || 1));
+  $('#carcount').textContent = n ? (Math.min(idx + 1, n) + ' / ' + n + '장') : '';
+  $('#carPrev').disabled = idx <= 0; $('#carNext').disabled = idx >= n - 1;
+}
+$('#carPrev').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: -t.clientWidth, behavior: 'smooth' }); };
+$('#carNext').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: t.clientWidth, behavior: 'smooth' }); };
+$('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
+// 전체 저장은 캐러셀 오버레이서 잡(결과) 행 우측 인라인으로 이동(renderJob의 .jsave · 잡별 = index .fi-saveall 패턴)
+// 1초 벽시계 티커 — 진행 중 잡의 표시 초를 실제 시간과 일치(5s 폴과 분리·260619)
+setInterval(() => { JOBS.forEach(j => { if (j.status !== 'done' && j.status !== 'err') renderJob(j); }); }, 1000);
+
+// ==== 카드뉴스(/5) 칩 에디터 (인라인) — 어절칩·줄=행·강조·한도 빨강. 뷰어 카드편집기 포팅(입출력=칩↔compose) ====
+let edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false;
+const MAX_LINES = 4, EDLINE_HANGUL = 18, EDLINE_WIDTH = 19.5, EDLINE_SOFT = 14;
+const edHangul = s => (s.match(/[가-힣]/g) || []).length;
+const edWidth = s => { let w = 0; for (const ch of s) w += /[가-힣ㄱ-ㅎㅏ-ㅣ‘-‟…　-〿＀-￯]/.test(ch) ? 1 : 0.5; return w; };
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function parseEmphLines(s) {
+  const arr = [...s]; const plain = []; const ce = []; let on = false;
+  for (let p = 0; p < arr.length; p++) {
+    if (arr[p] === '*') { on = !on; continue; }
+    plain.push(arr[p]); ce.push(on);
+  }
+  const lines = [[]]; let cur = lines[0]; let i = 0;
+  while (i < plain.length) {
+    const ch = plain[i];
+    if (ch === '\n') { cur = []; lines.push(cur); i++; continue; }
+    if (ch === ' ' || ch === '\t') { i++; continue; }
+    let j = i, text = ''; const em = []; let allOn = true, allOff = true;
+    while (j < plain.length && plain[j] !== ' ' && plain[j] !== '\t' && plain[j] !== '\n') {
+      em.push(ce[j]); if (ce[j]) allOff = false; else allOn = false; text += plain[j]; j++;
+    }
+    if (allOn) cur.push({ text, on: true });
+    else if (allOff) cur.push({ text, on: false });
+    else cur.push({ text, on: false, em });
+    i = j;
+  }
+  return lines.slice(0, MAX_LINES);
+}
+function edMarkWarn() {
+  for (const line of edLines) {
+    let w = 0, hg = 0, over = false;
+    line.forEach((wd, k) => {
+      if (k) w += 0.5;
+      const wasOver = over; let from = -1;
+      const chars = [...wd.text];
+      for (let ci = 0; ci < chars.length; ci++) {
+        w += edWidth(chars[ci]); hg += edHangul(chars[ci]);
+        if (!over && (w > EDLINE_WIDTH || hg > EDLINE_HANGUL)) { over = true; from = ci; }
+      }
+      if (wasOver) { wd._over = true; wd._overFrom = 0; }
+      else if (over) { wd._over = true; wd._overFrom = from >= 0 ? from : 0; }
+      else { wd._over = false; wd._overFrom = -1; }
+    });
+    let tw = 0; line.forEach((wd, k) => { if (k) tw += 0.5; tw += edWidth(wd.text); });
+    const warn = tw > EDLINE_SOFT;
+    line.forEach(wd => { wd._warn = warn && !wd._over; });
+  }
+}
+function edAnyOver() {
+  for (const line of edLines) {
+    let w = 0, hg = 0;
+    for (let k = 0; k < line.length; k++) {
+      if (k) w += 0.5;
+      for (const ch of line[k].text) { w += edWidth(ch); hg += edHangul(ch); if (w > EDLINE_WIDTH || hg > EDLINE_HANGUL) return true; }
+    }
+  }
+  return false;
+}
+function lineWidthWith(li, wi, newText) {
+  let w = 0, hg = 0;
+  edLines[li].forEach((wd, k) => { if (k) w += 0.5; const t = k === wi ? newText : wd.text; w += edWidth(t); hg += edHangul(t); });
+  return { w, hg };
+}
+function lineFull(line) {
+  let w = 0, hg = 0;
+  line.forEach((wd, k) => { if (k) w += 0.5; w += edWidth(wd.text); hg += edHangul(wd.text); });
+  return w >= EDLINE_WIDTH || hg >= EDLINE_HANGUL;
+}
+function clipLineOver(li) {
+  const line = edLines[li]; if (!line) return;
+  let w = 0, hg = 0;
+  for (let k = 0; k < line.length; k++) {
+    if (k) w += 0.5;
+    const chars = [...line[k].text];
+    let cut = -1;
+    for (let ci = 0; ci < chars.length; ci++) {
+      w += edWidth(chars[ci]); hg += edHangul(chars[ci]);
+      if (w > EDLINE_WIDTH || hg > EDLINE_HANGUL) { cut = ci; break; }
+    }
+    if (cut < 0) continue;
+    const kept = chars.slice(0, cut).join('');
+    if (kept) { line[k].text = kept; line[k].em = null; line.length = k + 1; }
+    else { line.length = k; }
+    for (let j = line.length - 1; j >= 0; j--) if (line[j].text === '') line.splice(j, 1);
+    return;
+  }
+}
+function edReject(el) { el.classList.add('reject'); setTimeout(() => el.classList.remove('reject'), 600); }
+function renderEditChips() {
+  _edRendering = true;
+  const wrap = $('#edChips'); wrap.innerHTML = '';
+  edLines.forEach((line, li) => {
+    for (let j = line.length - 1; j >= 0; j--) {
+      const pending = PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi === j;
+      if (line[j].text === '' && !pending) {
+        line.splice(j, 1);
+        if (PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi > j) PENDING_EDIT.wi--;
+      }
+    }
+  });
+  edMarkWarn();
+  const full = edLines.length >= MAX_LINES;
+  edLines.forEach((line, li) => {
+    const row = document.createElement('div'); row.className = 'ed-line'; row.dataset.li = li;
+    if (line.length === 0) {
+      const e = document.createElement('span'); e.className = 'ed-chip ed-empty'; e.contentEditable = 'true'; e.spellcheck = true; e.lang = 'ko';
+      e.oninput = () => fitEditLines(wrap);
+      e.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); e.blur(); } };
+      e.onblur = () => {
+        if (_edRendering || !e.isConnected) return;
+        const nt = e.textContent.replace(/\s+/g, ' ').trim();
+        if (!nt) { dropLine(li); return; }
+        edLines[li] = nt.split(/\s+/).map(t => ({ text: t, on: false }));
+        clipLineOver(li);
+        renderEditChips();
+      };
+      row.appendChild(e);
+    } else {
+      line.forEach((wd, wi) => {
+        const chip = document.createElement('span');
+        chip.className = 'ed-chip' + (wd.on ? ' on' : '') + (wd._warn ? ' warn' : '') + (wd._over ? ' over' : '');
+        chip.dataset.li = li; chip.dataset.wi = wi;
+        if (wd._over && wd._overFrom > 0) {
+          const a = [...wd.text];
+          chip.innerHTML = esc(a.slice(0, wd._overFrom).join('')) + '<span class="ovc">' + esc(a.slice(wd._overFrom).join('')) + '</span>';
+        } else if (wd._over) { chip.innerHTML = '<span class="ovc">' + esc(wd.text) + '</span>'; }
+        else if (wd.em) {
+          const a = [...wd.text]; let h = '', run = null;
+          a.forEach((c, ci) => { const e = !!wd.em[ci]; if (e !== run) { if (run !== null) h += '</span>'; h += e ? '<span class="emon">' : '<span>'; run = e; } h += esc(c); });
+          if (run !== null) h += '</span>'; chip.innerHTML = h;
+        }
+        else { chip.textContent = wd.text; }
+        chip.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
+        chip.onclick = () => { if (chip.isContentEditable) return; if (wd.em) { wd.em = null; wd.on = true; renderEditChips(); return; } wd.on = !wd.on; chip.classList.toggle('on'); };
+        chip.ondblclick = () => { chip.textContent = wd.text; chip.contentEditable = 'true'; chip.spellcheck = true; chip.lang = 'ko'; chip.classList.add('editing'); chip.focus(); window.getSelection()?.selectAllChildren(chip); };
+        chip.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); chip.blur(); } };
+        chip.oninput = ev => {
+          const raw = chip.textContent, si = raw.search(/\s/);
+          if (si >= 0 && !ev.isComposing) {
+            const left = raw.slice(0, si).trim(), right = raw.slice(si + 1).trim();
+            if (left) { edLines[li].splice(wi, 1, { text: left, on: wd.on }, { text: right, on: wd.on }); PENDING_EDIT = { li, wi: wi + 1 }; renderEditChips(); return; }
+            chip.textContent = right;
+          }
+          fitEditLines(wrap);
+          const { w, hg } = lineWidthWith(li, wi, raw.replace(/\s+/g, ' ').trim());
+          chip.classList.toggle('over', w > EDLINE_WIDTH || hg > EDLINE_HANGUL);
+        };
+        chip.onblur = () => {
+          if (_edRendering || !chip.isConnected) return;
+          chip.contentEditable = 'false'; chip.classList.remove('editing');
+          const nt = chip.textContent.replace(/\s+/g, ' ').trim();
+          if (nt === wd.text) { clipLineOver(li); renderEditChips(); return; }
+          if (!nt) { edLines[li].splice(wi, 1); if (edLines[li].length === 0) { dropLine(li); return; } }
+          else if (/\s/.test(nt)) { edLines[li].splice(wi, 1, ...nt.split(/\s+/).map(t => ({ text: t, on: wd.on }))); }
+          else { wd.text = nt; wd.em = null; }
+          clipLineOver(li);
+          renderEditChips();
+        };
+        row.appendChild(chip);
+      });
+      if (!lineFull(line)) {
+        const addw = document.createElement('span'); addw.className = 'ed-addw'; addw.textContent = '+'; addw.title = '이 줄에 어절 추가';
+        addw.onclick = () => { edLines[li].push({ text: '', on: false }); PENDING_EDIT = { li, wi: edLines[li].length - 1 }; renderEditChips(); };
+        row.appendChild(addw);
+      }
+    }
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'ed-add' + (full ? ' cap' : ''); add.textContent = '+'; add.setAttribute('aria-label', '새 줄 추가'); add.title = full ? '최대 4줄' : '아래에 줄 추가';
+    add.onclick = () => { if (full) { edReject(add); return; } addLineAfter(li); };
+    row.appendChild(add);
+    wrap.appendChild(row);
+  });
+  if (PENDING_FOCUS != null) {
+    const e = wrap.querySelector(`.ed-line[data-li="${PENDING_FOCUS}"] .ed-empty`);
+    if (e) e.focus();
+    PENDING_FOCUS = null;
+  }
+  if (PENDING_EDIT) {
+    const { li: pl, wi: pw } = PENDING_EDIT; PENDING_EDIT = null;
+    const c = wrap.querySelector(`.ed-chip[data-li="${pl}"][data-wi="${pw}"]`), pwd = edLines[pl] && edLines[pl][pw];
+    if (c && pwd) {
+      c.textContent = pwd.text; c.contentEditable = 'true'; c.spellcheck = true; c.lang = 'ko'; c.classList.add('editing'); c.focus();
+      const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(c); r.collapse(false); sel.removeAllRanges(); sel.addRange(r);
+    }
+  }
+  _edRendering = false;
+  requestAnimationFrame(() => fitEditLines(wrap));
+  if (cardIo) cardIo();
+}
+function addLineAfter(li) {
+  if (edLines.length >= MAX_LINES) return;
+  edLines.splice(li + 1, 0, []);
+  PENDING_FOCUS = li + 1;
+  renderEditChips();
+}
+function dropLine(li) {
+  if (edLines.length <= 1) { edLines[0] = []; renderEditChips(); return; }
+  edLines.splice(li, 1);
+  renderEditChips();
+}
+function fitEditLines(wrap) {
+  if (!wrap) return;
+  const rows = wrap.querySelectorAll('.ed-line');
+  if (!rows.length) return;
+  const cs = getComputedStyle(wrap);
+  const avail = wrap.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0) - 2;
+  if (avail <= 0) return;
+  wrap.style.setProperty('--eds', '1');
+  const ref = document.createElement('div'); ref.className = 'ed-line';
+  ref.style.cssText = 'position:absolute; left:-9999px; top:0; visibility:hidden; width:max-content;';
+  ['뉴스종합', '정치경제', '국제사회', '심층분석속보'].forEach(t => {
+    const c = document.createElement('span'); c.className = 'ed-chip'; c.textContent = t; ref.appendChild(c);
+  });
+  { const aw = document.createElement('span'); aw.className = 'ed-addw'; aw.textContent = '+'; ref.appendChild(aw); }
+  wrap.appendChild(ref);
+  const refW = ref.getBoundingClientRect().width;
+  wrap.removeChild(ref);
+  let eds = refW > 0 ? Math.min(1.1, avail / refW) : 1;
+  eds = Math.max(0.45, eds);
+  wrap.style.setProperty('--eds', eds.toFixed(3));
+  for (let pass = 0; pass < 4; pass++) {
+    let maxw = 0; rows.forEach(r => { if (r.scrollWidth > maxw) maxw = r.scrollWidth; });
+    if (maxw <= avail) break;
+    eds = Math.max(0.4, eds * avail / maxw);
+    wrap.style.setProperty('--eds', eds.toFixed(3));
+  }
+}
+function buildEmphText() {
+  const charEm = (wd, ci) => wd.em ? !!wd.em[ci] : wd.on;
+  return edLines.map(line => {
+    const words = line.filter(wd => wd.text !== '');
+    const seq = [];
+    words.forEach((wd, k) => {
+      const chars = [...wd.text];
+      if (k) {
+        const prev = words[k - 1], pc = [...prev.text];
+        seq.push({ c: ' ', e: charEm(prev, pc.length - 1) && charEm(wd, 0) });
+      }
+      chars.forEach((c, ci) => seq.push({ c, e: charEm(wd, ci) }));
+    });
+    let out = '', on = false;
+    seq.forEach(s => { if (s.e && !on) { out += '*'; on = true; } else if (!s.e && on) { out += '*'; on = false; } out += s.c; });
+    if (on) out += '*';
+    return out;
+  }).filter(s => s !== '').join('\n');
+}
+// 카드 에디터 copy/paste (buildEmphText ↔ parseEmphLines) — edLines 정의 뒤에 둠(TDZ 회피). renderEditChips 끝에서 cardIo() 갱신
+(function () {
+  const hdr = $('#cardBox .cardhdr'); if (!hdr) return;
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn'; btn.style.position = 'static'; hdr.appendChild(btn);
+  cardIo = () => { if (btn.classList.contains('ok')) return; const filled = buildEmphText().trim().length > 0; btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste'; btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기'); };
+  btn.onclick = async ev => {
+    ev.preventDefault();
+    if (btn.dataset.mode === 'copy') clipCopy(buildEmphText(), btn, cardIo);
+    else { try { const t = await navigator.clipboard.readText(); if (t) { edLines = parseEmphLines(t); if (!edLines.length) edLines = [[]]; renderEditChips(); } } catch {} cardIo(); }
+  };
+  cardIo();
+})();
+// ---- 실시간 자간(tracking) 추정 — 워크플로 measure+sweep의 브라우저판 (글자폭 = PIL 실측 상수) ----
+const TRK = {
+  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
+  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30 },
+};
+function lineWidthPx(text, tr, cfg) {   // ΣbbW + tp*(len-1) + 5 (한글 monospace · 약간 보수적)
+  const plain = text.replace(/\*/g, '');
+  let s = 0; for (const ch of plain) s += /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N;
+  return s + (tr / 1000 * cfg.fs) * Math.max(plain.length - 1, 0) + 5;
+}
+function estTracking(lines, fmt) {   // 전 줄이 마진 안에 드는 전역 tr (워크플로 fit_tracking 동일 로직)
+  const cfg = TRK[fmt];
+  const widest = tr => Math.max(0, ...lines.map(l => lineWidthPx(l, tr, cfg)));
+  if (widest(cfg.start) <= cfg.limit) return { tr: cfg.start, swept: false, over: false };
+  for (let x = cfg.start; x >= cfg.floor; x--) if (widest(x) <= cfg.limit) return { tr: x, swept: true, over: false };
+  return { tr: cfg.floor, swept: true, over: true };
+}
+function updateTrkHint(taId, hintId, fmt) {   // 자간 줄어들기 시작하면 그때부터 '자간 -N' · 한도 초과 빨강
+  const el = $('#' + hintId); if (!el) return;
+  const lines = ($('#' + taId).value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const r = lines.length ? estTracking(lines, fmt) : null;
+  if (!r || (!r.swept && !r.over)) { el.textContent = ''; el.className = 'trk'; return; }   // 여유 = 숨김
+  if (r.over) { el.textContent = `⚠ 자간 ${TRK[fmt].floor}로도 초과 — 축약 필요`; el.className = 'trk over'; }
+  else { el.textContent = `· 자간 ${r.tr}`; el.className = 'trk on'; }
+}
+$('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', 'post'));
+$('#rLines').addEventListener('input', () => updateTrkHint('rLines', 'rLinesTrk', 'reels'));
+
+// ---- 릴스 헤더(부제/제목) 실시간 자간 — reels2 _fit_tr 추정(getlength 기준 · AVAIL 960) ----
+const HDR = {
+  sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45 },
+  title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45 },
+};
+function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정
+  if (!text) return { tr: 0, over: false };
+  const w = tr => { let s = 0; for (const ch of text) s += /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N; return s + (tr / 1000 * cfg.fs) * Math.max(text.length - 1, 0); };
+  if (w(0) <= cfg.avail) return { tr: 0, over: false };
+  for (let x = -1; x >= cfg.floor; x--) if (w(x) <= cfg.avail) return { tr: x, over: false };
+  return { tr: cfg.floor, over: true };
+}
+function updateHdrTrk() {
+  const el = $('#hdrTrk'); if (!el) return;
+  const s = estHeaderTr($('#sub').value.trim(), HDR.sub), t = estHeaderTr($('#title').value.trim(), HDR.title);
+  const parts = [];
+  if (s.over) parts.push('부제 축약필요'); else if (s.tr < 0) parts.push(`부제 자간${s.tr}`);
+  if (t.over) parts.push('제목 축약필요'); else if (t.tr < 0) parts.push(`제목 자간${t.tr}`);
+  el.textContent = parts.length ? '· ' + parts.join(' · ') : '';
+  el.className = 'trk' + ((s.over || t.over) ? ' over' : parts.length ? ' on' : '');
+}
+$('#sub').addEventListener('input', updateHdrTrk);
+$('#title').addEventListener('input', updateHdrTrk);
+
+// ---- 발사 ----
+function jobLabel() {
+  if (APP === '1') return '포스트';
+  if (APP === '2') return RMODE === 'header' ? '릴스 헤더' : '릴스 오버레이';
+  if (APP === '3') return '저작권';
+  if (APP === '4') return '경고문';
+  if (APP === '5') return '카드뉴스';
+  return '제작';
+}
+// 제작 = 동시 가능. 누를 때마다 잡 생성 → 로그에 쌓고 각자 폴링(백엔드는 id별 동시처리 안전). #go 비활성 안 함.
+let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) — 큐잉 자체는 막지 않음
+// 축약 = 썸네일 정본 화이트리스트(apps/thumbnail 절대규칙5 · 화이트리스트 4종): ...→⋯ · •→· · 이,→李, · 윤,→尹,
+const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
+// 잡 1건 생성 → 로그 → 디스패치 → 폴링(비동기·독립). 동시 다발(경고문 듀얼포맷 등) 가능.
+function dispatchJob(endpoint, payload, label) {
+  const job = { n: ++JOBSEQ, label, t0: Date.now(), outs: [], done: [], status: 'run', msg: '' };
+  JOBS.unshift(job); renderJob(job);
+  (async () => {
+    try {
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      const j = await res.json();
+      if (!res.ok || j.error) { job.status = 'err'; job.msg = (j.error || ('서버 ' + res.status)); renderJob(job); return; }
+      job.outs = j.outs || (j.out ? [{ path: j.out, label: '' }] : []);
+      job.done = job.outs.map(() => false);
+      if (!job.outs.length) { job.status = 'err'; job.msg = '출력 경로 없음'; renderJob(job); return; }
+      pollJob(job);
+    } catch (e) { job.status = 'err'; job.msg = '요청 실패: ' + e.message; renderJob(job); }
+  })();
+}
+$('#go').onclick = async () => {
+  if (_goLock) return; _goLock = true; setTimeout(() => { _goLock = false; }, 350);
+  const status = $('#status'); status.classList.remove('err'); status.textContent = '';
+  if (APP === '5') {   // 카드뉴스 = /api/compose (축약 미적용)
+    if (!IMG.b64) return errStatus('이미지를 선택해줘');
+    if (edAnyOver()) return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄');
+    const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
+    if (!clines.length) return errStatus('텍스트를 입력해줘');
+    dispatchJob('/api/compose', { imageB64: IMG.b64, name: IMG.name, lines: clines }, '카드뉴스');
+    return;
+  }
+  if (APP === '4') {   // 경고문 = 포맷(포스트/릴스) 점등분마다 한 건씩 동시 발사 → 둘 다 캐러셀로
+    const lines = ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (!lines.length) return errStatus('경고문 텍스트를 입력해줘');
+    const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
+    const FL = { post: '포스트', reels: '릴스' };
+    fmts.forEach(fmt => dispatchJob('/api/thumb', { app: '4', params: { fmt, lines } }, '경고문 (' + (FL[fmt] || fmt) + ')'));
+    return;
+  }
+  if (APP === '3') {   // 저작권 = 포맷(포스트/릴스) 점등분마다 동시 발사 → 둘 다 캐러셀로(경고문과 동일)
+    const base = { year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: getPlatform() };
+    const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
+    const FL = { post: '포스트', reels: '릴스' };
+    fmts.forEach(fmt => dispatchJob('/api/thumb', { app: '3', params: { fmt, ...base } }, '저작권 (' + (FL[fmt] || fmt) + ')'));
+    return;
+  }
+  // /1·/2·/3 = /api/thumb
+  const params = buildParams();
+  if ((APP === '1' || APP === '2') && $('#abbr').checked) {   // 축약 = 포스트·릴스만(정본 화이트리스트)
+    if (Array.isArray(params.lines)) params.lines = params.lines.map(abbr);
+    if (typeof params.sub === 'string') params.sub = abbr(params.sub);
+    if (typeof params.title === 'string') params.title = abbr(params.title);
+  }
+  if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) return errStatus('부제 또는 제목을 입력해줘');
+  if (APP === '2' && params.mode === 'overlay' && !params.lines.length) return errStatus('텍스트를 입력해줘');
+  if (APP === '2' && params.mode === 'overlay' && !params.opas.length) return errStatus('투명도를 최소 1개 선택해줘 (직접입력은 값까지)');   // 직접입력만 켜고 값 비움 차단(0개 방지)
+  if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 빠뜨리면 확인
+    const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
+    if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) return;
+  }
+  const payload = { app: APP, params };
+  if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }       // 포스트 배경 = 옵션
+  if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
+  dispatchJob('/api/thumb', payload, jobLabel());
+};
+function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err'); }
+
+selApp('1');
+</script>
+<script src="cscroll.js"></script>
+</body>
+</html>

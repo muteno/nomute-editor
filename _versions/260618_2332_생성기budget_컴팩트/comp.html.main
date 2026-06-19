@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노뮤트 카드뉴스 합성 — 웹</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108; }
+  * { box-sizing:border-box; }
+  /* 스크롤바 톤앤톤(초록 글래스) — 뉴스 요약기(viewer/index.html) 계승 · 전 페이지 공통 */
+  html { scrollbar-width:thin; scrollbar-color:rgba(15,253,2,.30) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(15,253,2,.26); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.45); background-clip:padding-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(15,253,2,.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
+  h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
+  label:first-of-type { margin-top:0; }
+  textarea { width:100%; min-height:96px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; resize:vertical; }
+  textarea:focus, input:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  .file { display:block; padding:12px; border:1px dashed rgba(15,253,2,.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
+  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
+  .file img { max-width:100%; max-height:200px; border-radius:7px; margin-top:8px; }
+  .hint { font-size:12px; color:var(--mut); margin-top:5px; } .hint b { color:var(--accent); }
+  .go { width:100%; margin-top:16px; padding:13px; background:linear-gradient(135deg,#d8ff3d,var(--accent)); color:var(--on-accent); border:none; border-radius:11px; font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 24px rgba(15,253,2,.26), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s, box-shadow .15s; }
+  .go:hover { transform:translateY(-1px); box-shadow:0 12px 30px rgba(15,253,2,.34), inset 0 1px 0 rgba(255,255,255,.45); }
+  .go:active { transform:translateY(0); }
+  .go:disabled { opacity:.5; cursor:default; box-shadow:none; transform:none; }
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; } .status.err { color:#ff8a8a; }
+  .result img { width:100%; border:1px solid var(--line); border-radius:10px; margin-top:16px; }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <h1>노뮤트 <b>카드뉴스 합성</b> · 웹</h1>
+  <p class="sub">이미지 + 텍스트 → 1080×1350 카드뉴스(스마트 크롭·하단 그라데이션·초록 강조).</p>
+
+  <label>배경 이미지</label>
+  <label class="file" id="fileLab"><span>탭해서 이미지 선택</span>
+    <input type="file" accept="image/*" id="file" style="display:none">
+  </label>
+
+  <label>텍스트 (줄바꿈 = 여러 줄)</label>
+  <textarea id="lines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
+  <div class="hint"><b>*별표*</b>로 감싸면 초록 강조</div>
+
+  <button class="go" id="go">웹 합성 생성</button>
+  <div class="status" id="status"></div>
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let IMG_B64 = '', IMG_NAME = '';
+
+function bindFile(input) {
+  input.onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    IMG_NAME = f.name;
+    const r = new FileReader();
+    r.onload = () => {
+      IMG_B64 = r.result;
+      $('#fileLab').innerHTML = '<span>' + f.name + ' ✓</span><img src="' + r.result + '">' +
+        '<input type="file" accept="image/*" id="file" style="display:none">';
+      $('#fileLab').classList.add('has');
+      bindFile($('#fileLab').querySelector('#file'));
+    };
+    r.readAsDataURL(f);
+  };
+}
+bindFile($('#file'));
+
+function poll(outPath) {
+  const t0 = Date.now(), status = $('#status'), result = $('#result');
+  let live = true; const stop = () => { live = false; clearInterval(disp); };
+  const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
+    if (!live) return;
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (sec > 600) { stop(); status.textContent = '시간 초과 — Actions 로그 확인 필요'; status.classList.add('err'); return; }
+    status.textContent = '⏳ 합성 중… ' + sec + 's (러너 + 배포, 보통 1–2분)';
+  };
+  const disp = setInterval(draw, 1000); draw();
+  const tick = () => {
+    if (!live) return;
+    const img = new Image();
+    const url = outPath + '?t=' + Date.now();
+    img.onload = () => { if (!live) return; stop(); status.textContent = '✅ 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)'; result.innerHTML = '<img src="' + url + '">'; };
+    img.onerror = () => { if (live) setTimeout(tick, 5000); };
+    img.src = url;
+  };
+  tick();
+}
+
+$('#go').onclick = async () => {
+  const status = $('#status'); status.classList.remove('err'); $('#result').innerHTML = '';
+  const lines = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  if (!IMG_B64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
+  if (!lines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
+  $('#go').disabled = true; status.textContent = '생성 중…';
+  try {
+    const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG_B64, name: IMG_NAME, lines }) });
+    const j = await res.json();
+    if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); return; }
+    poll(j.out);
+  } catch (e) {
+    status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
+  } finally { $('#go').disabled = false; }
+};
+</script>
+<script src="cscroll.js"></script>
+</body>
+</html>

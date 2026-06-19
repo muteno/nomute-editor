@@ -20,6 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
 CAND = ROOT / "viewer" / "candidates.json"
 MODEL = os.environ.get("BREAKING_MODEL", "claude-opus-4-8")
+CHUNK = int(os.environ.get("BREAKING_CHUNK", "40"))             # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — gate_judge와 동일·후보 풀 커져도 절단 0)
+MAX_PER_RUN = int(os.environ.get("BREAKING_MAX_PER_RUN", "80")) # 한 런당 판정 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
 
 RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건 제목들이 각각 '긴급 속보(breaking news)'인지 판정하라.
 
@@ -95,12 +97,22 @@ def main():
     if not pending:
         print("미판정 속보후보 없음 — 종료")
         return
-    print(f"판정 대상 {len(pending)}건 (모델 {MODEL} · rubric {RUBRIC_VER})")
-    items = [(str(i), c.get("title", "")) for i, c in enumerate(pending)]
-    verdicts, rc, err = judge(items)
-    if rc != 0 or not verdicts:
-        # 실패 = 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
-        print(f"::warning::속보 판정 실패(rc={rc}) — 다음 런 재시도. err={(err or '')[:300]}")
+    total = len(pending)
+    pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 판정 → 갓 뜬 속보 우선
+    pending = pending[:MAX_PER_RUN]   # 이번 런 상한 — 나머지는 다음 디스패치(self-gate)가 이어 판정(점진 클리어)
+    print(f"판정 대상 {len(pending)}건 (전체 미판정 {total} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK})")
+    verdicts = {}
+    for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
+        chunk = pending[start:start + CHUNK]
+        items = [(str(start + j), c.get("title", "")) for j, c in enumerate(chunk)]
+        v, rc, err = judge(items)
+        if rc != 0 or not v:
+            print(f"::warning::청크 {start}~ 속보 판정 실패(rc={rc}) — 미도장 유지(다음 런 재시도). err={(err or '')[:200]}")
+            continue
+        verdicts.update(v)
+    if not verdicts:
+        # 전 청크 실패 = 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
+        print("::warning::속보 판정 전 청크 실패 — 다음 런 재시도")
         sys.exit(0)
     nbreak = 0
     for i, c in enumerate(pending):

@@ -13,18 +13,53 @@ export async function onRequestPost({ request, env }) {
   const url = String(body.url || '').trim().slice(0, 400);
   const title = String(body.title || '').slice(0, 300);
   if (!/^https?:\/\/\S+$/.test(url)) return json({ error: '잘못된 url' }, 400);
+  // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체 차단(403) 시 분석기 대체 fetch 소스(item3).
+  // ⚠️ 공개 엔드포인트라 alt 를 그대로 믿으면 러너發 SSRF(메타데이터 169.254.x·내부망)·글로브 확장 위험.
+  // cluster_members 는 항상 정상 뉴스 *도메인* → host 가 IP리터럴·localhost·IPv6·비도메인(셸/글로브 메타
+  // 포함)이면 거부. 통과분만 공백조인 단일 문자열(dispatch input=문자열)·최대 8개·1500자 절제.
+  const altOk = u => {
+    let h; try { const x = new URL(u); if (x.protocol !== 'http:' && x.protocol !== 'https:') return false; h = x.hostname; } catch { return false; }
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h === 'localhost' || h.endsWith('.local') || h.startsWith('[')) return false;
+    return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(h);
+  };
+  const alt = (Array.isArray(body.alt) ? body.alt : [])
+    .map(u => String(u || '').trim())
+    .filter(altOk)
+    .slice(0, 8).join(' ').slice(0, 1500);
+
+  const H = {
+    authorization: `Bearer ${env.GH_TOKEN}`,
+    accept: 'application/vnd.github+json',
+    'user-agent': 'nomute-viewer',
+    'x-github-api-version': '2022-11-28',
+  };
+
+  // 전문 직접 입력(재제출) — 막힌 매체(403) Failed 픽에 운영자가 기사 전문을 붙여넣어 재분석.
+  //   pending 파일을 직접 커밋(Contents API) → PAT push가 news-analyze 발동. seen 무관(dedup 우회 = 의도적 재제출).
+  //   pick.yml/pick_pending.py 미경유(파이프라인 워크플로 불변) — analyze 가 '# body:' 를 본문으로 씀(403 무관).
+  const bodyText = String(body.body || '').trim().slice(0, 14000);
+  if (bodyText) {
+    const k = new Date(Date.now() + 9 * 3600e3).toISOString();   // KST(폰 date 와 동일 스탬프 규칙)
+    const stamp = k.slice(2, 4) + k.slice(5, 7) + k.slice(8, 10) + '-' + k.slice(11, 13) + k.slice(14, 16) + k.slice(17, 19);
+    const rnd = Math.random().toString(16).slice(2, 6);
+    const path = `pending/${stamp}-pick-${rnd}.txt`;
+    const fileContent = `${url}\n` + (title ? `# title: ${title}\n` : '') + (alt ? `# alt: ${alt}\n` : '') + `# body:\n${bodyText}\n`;
+    const bytes = new TextEncoder().encode(fileContent);
+    let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
+    const put = await fetch(`https://api.github.com/repos/muteno/nomute-editor/contents/${path}`, {
+      method: 'PUT', headers: H,
+      body: JSON.stringify({ message: 'pick: 전문 직접 입력(재분석)', content: btoa(bin), branch: 'main' }),
+    });
+    if (put.status === 201 || put.status === 200) return json({ ok: true, body: true });
+    return json({ error: `GitHub ${put.status}: ${(await put.text()).slice(0, 300)}` }, 502);
+  }
 
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/pick.yml/dispatches',
     {
       method: 'POST',
-      headers: {
-        authorization: `Bearer ${env.GH_TOKEN}`,
-        accept: 'application/vnd.github+json',
-        'user-agent': 'nomute-viewer',
-        'x-github-api-version': '2022-11-28',
-      },
-      body: JSON.stringify({ ref: 'main', inputs: { url, title } }),
+      headers: H,
+      body: JSON.stringify({ ref: 'main', inputs: { url, title, alt } }),
     },
   );
   if (r.status === 204) return json({ ok: true });

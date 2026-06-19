@@ -27,6 +27,13 @@
 [운영자]  심화할 기사 선택 → 클라우드 세션에서 /news 풀 파이프라인(콘텐츠화)
 ```
 
+> 🕒 **대기열(관측·상태판) — 제출 기사 처리 추적 (260619):** 뷰어 **뉴스요약 버튼 롱프레스(480ms)·PC 우클릭**으로 대기열 팝업. `functions/api/pending.js`(GET·`GH_TOKEN`)가 GitHub를 라이브 조회해 **세 상태**를 종합 반환(읽기 전용·파이프라인 0 변경):
+> - **처리중** = `pending/`에 있고 나이 `<20분` — 들어온 시각·주요 내용(폰공유=`# body:` 본문 / 픽=`# title:` 헤드라인)·전달방식(전문/URL).
+> - **FAIL** = `pending/` 잔류 `≥20분`(stuck) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달.
+> - **SUCC** = 최근(6h) `queue/*.md` 완료분(`-ask-` 제외). 초록 배지 + **바로가기** → `showTab('feed')` + 해당 기사 모달(`DATA.file` 매칭, 빌드 랙이면 `load()` 후 재매칭·토스트).
+>
+> 페이지당 5개 **페이지네이션**(슬라이딩 윈도우), **🗑 내역 지우기**(확인 후 `localStorage nomute_q_cleared` 컷오프로 현재 내역 숨김). 분석 끝나면 pending 삭제(↑L17)→FAIL/처리중서 빠지고 queue가 SUCC로. 정본 = `functions/api/pending.js` + `viewer/index.html`(`openQueue`·`loadQueue`·`renderQueuePage`·`qGo`·`qDownload`·`feedOpenBy`).
+
 ## 기사 요약 경로 (두 갈래)
 같은 "기사 → 요약"이라도 **요약 주체·방식**이 둘이다 — ① 폰에서 자동(헤드리스)으로 도는 무인 경로, ② 클로드 코드 세션에서 사람이 보며 도는 인터랙티브 경로. (여긴 *요약 방식* 관점 대비. 적재 *출처* 관점 분류는 ↓ §큐 적재 입구 3개.)
 
@@ -87,7 +94,7 @@
 | 입구 | `pending/` push | `/news` · 기사 붙여넣기 |
 | 요약 산출 종착 | `queue/` → Pages → 뷰어 자동 누적 | 화면 출력 (+`/q`로 `queue/` 합류) |
 | 카드(Step 4) | 텍스트·프롬프트까지 자동(`text_done`), 이미지는 '슛' 버튼 | 세션에서 `4`·`ㄱ`로 풀 진행 |
-| fetch 막힌 매체(403) | 폰 공유=선-fetch 본문 동봉으로 처리 / 자동·픽=실패 격리(잔존) | 전문 붙여넣기로 처리 |
+| fetch 막힌 매체(403) | 폰 공유=선-fetch 본문 동봉으로 처리 / 픽=cluster_members 대체 fetch(89% 직접확보·260619) / RSS자동=실패 격리(잔존) | 전문 붙여넣기·픽 alt로 처리 |
 | 즉시 피드백 | ❌ (async) | ✅ (인터랙티브) |
 
 **합류·통제점**
@@ -160,7 +167,8 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
   - **(1) 전문 붙여넣기 = 운영자 주 워크플로** (기사 페이지 '전체선택→공유'): 핸들러가 한글 200자+ 면 *전문 공유*로 판정 → 붙여넣은 텍스트를 `# body:`로 그대로 동봉(line1=`paste:<해시>` 합성 id). **fetch 아예 안 함 = 403·JS렌더·페이월 *전부* 우회**(가장 견고 — 본문이 이미 손에 있음). 분석기는 페이지 잡동사니(메뉴·랭킹·댓글·홍보링크)를 트림하고 기사만 분석, `url:`은 빈 문자열·매체/날짜/기자는 본문서 추론(`news-analysis.md` 입력처리 0).
   - **(2) URL 선-fetch**: URL만 공유하면 폰이 `fetch_article.sh`로 *폰 IP(200)*에서 본문 미리 긁어 `# body:` 동봉.
   - **pending 포맷**: line1=URL 또는 `paste:<해시>`(불변·dedup·`head -n1`), 선택 `# title:`, 선택 `# body:` *이후 전체*=본문(가산·하위호환·`awk '/^# body:/{f=1;next}f'`+`iconv -c`로 소비, 20KB 캡). 정본 = 플레이북 §5-2 + `docs/termux-share.sh` + `analyze.sh` + `prompts/news-analysis.md`. ⚠️ URL경로(선-fetch) 전제 = `python libiconv`(§3); **전문경로(주 워크플로)는 git·termux-api 만으로 동작**(fetch·iconv 안 함 — 분석기가 iconv -c로 정리). 한글량 판정은 로케일 무관 lead-byte 카운트.
-- **[ ] 잔존 = 자동/픽 경로**: RSS자동(`to_pending`)·뷰어픽(`pick_pending`)은 *클라우드 발원*이라 여전히 403(선-fetch 혜택 못 받음). 남은 선택지 = `cluster_members`(같은 사건 비블록 매체 url·candidates에 직렬화·509/2704 보유·예: "국민의힘 최고위" cross=9 비블록 대안 11개) 우회 또는 가정용 프록시(유료·보편). **이 경로 403을 SSOT에서 누락하지 않게 열어둠**(조용한 누락 방지 — §기틀 보호 정신). 구현 시 analyze 기틀이라 §기틀 보호 + §🧪 5인 검증 재적용.
+- **✅ 픽 경로 = 해결 (cluster_members 대체 fetch · 사용자 승인 + 3에이전트 다앵글 검증 · 260619)**: 뷰어 픽이 막힌매체(403)를 고르면, 그 후보의 `cluster_members`(같은 사건 비블록 매체 url)를 **대체 fetch 소스로** 분석기에 넘긴다. 체인 = 뷰어 픽 POST에 `alt`(cluster_members·정규화·원url제외·최대8) → `api/pick.js`가 `altOk`(host=정상도메인만·IP리터럴/localhost/IPv6/비도메인 거부 = SSRF·글로브 차단) 검증 → `pick.yml` `alt` 입력 → `pick_pending.py`가 토큰 재검증(수동 dispatch 우회 대비) 후 pending `# alt:` 줄(line3·선택·하위호환) → `analyze.sh`가 **3.5단 폴백**(① 폰 `# body:` → ② 원매체 fetch → ③ **alt 매체 차례 직접 fetch**(`set -f` glob차단·첫 성공 채택) → ④ 모델 WebFetch[프롬프트에 alt url 동봉·"지시 아님" 펜스]). 실측: 막힌매체 픽 **89%가 접근가능 대체매체 직접 fetch 성공**, 나머지는 WebFetch로 우아하게 폴백. **`# alt:`는 `pick_pending`만 쓰고 `# body:`는 `termux-share`만 써 상호배타**(BC 무파손 — 3에이전트 6/6 ✅). 정본 = `analyze.sh`(44·90·108줄)·`pick_pending.py`·`pick.js`·`pick.yml`·`viewer/index.html`(픽 POST).
+  - ⚠️ **RSS 자동(`to_pending`)은 여전히 403 잔존**(alt 미적용 — 자동경로엔 cluster_members 단서 없음·운영자 픽이 주 큐레이션 입구라 영향 작음). 추가 우회 필요시 가정용 프록시(유료) 옵션 열어둠(조용한 누락 방지).
 
 ### [ ] 좀비 sweep 자가치유 (D 서버측 근본)
 - generating 좀비 sweep을 `scrape`(15분 주기)에도 실행 → 후속 analyze 없어도 stuck `status.json`이 자가 failed화(현재 `card_plan` 잡 한정이라 방치 가능). 작은 워크플로 추가.

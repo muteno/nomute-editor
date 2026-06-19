@@ -23,7 +23,7 @@ import re
 # ⚠️ 소셜 전용 클러스터 임계(뉴스와 분리 · doc §33) — 짧은 커뮤 제목은 뉴스보다 토큰이 적어
 # overlap=3이 너무 빡셈(명백한 '하이닉스+삼성전자' 교차도 미형성). 소셜은 overlap 2 + jaccard 0.4로 느슨.
 SOCIAL_OVERLAP = int(os.environ.get("SOCIAL_OVERLAP", "2"))
-SOCIAL_JACCARD = float(os.environ.get("SOCIAL_JACCARD", "0.4"))
+SOCIAL_JACCARD = float(os.environ.get("SOCIAL_JACCARD", "0.4"))   # 0.33 시도→되돌림(260619): 적대적검증서 2토큰·1공유 별개사건 거짓병합("연예인 갑질"↔"식당 갑질") 재현 → 0.4 유지(volume은 소스 레버로). 더 느슨화 금지(짧은 제목 과병합).
 _STOP = {"속보", "단독", "종합", "전문", "공식", "오늘", "내일", "관련", "기자", "영상", "사진", "실시간", "현재", "근황", "ㄷㄷㄷ",
          "추가", "폭로", "증언", "위협", "확산", "출동", "충격", "경악", "레전드", "논란", "소식", "일파만파", "수준", "정도", "클라스"}
 
@@ -57,14 +57,15 @@ RSS_SOURCES = [
     ("클리앙",   os.environ.get("RSS_CLIEN",   "https://rss.clien.net/service/board/park")),
     ("뽐뿌",     os.environ.get("RSS_PPOMPPU", "https://www.ppomppu.co.kr/rss.php?id=freeboard")),
     ("보배드림", os.environ.get("RSS_BOBAE",   "https://www.bobaedream.co.kr/rss/best.php")),
+    ("디시",     os.environ.get("RSS_DC",      "https://gall.dcinside.com/board/rss/?id=dcbest")),   # 디시 실시간베스트(260619 추가·운영자 요청). ⚠️ 직접커뮤=데이터센터 IP 차단 가능(클리앙·보배처럼) → 0건이면 RSS_DC env로 교체/cookie 필요. 라이브 로그서 '디시 RSS' 건수 확인.
     # ⚠️ 실측(260618): 클리앙·보배 RSS는 차단/경로폐기(0건) — 직접 RSS는 뽐뿌만 생존. 교차소스는 어그리게이터로 확보(아래).
 ]
 
 # ── 어그리게이터(이슈링크) — 여러 커뮤니티 인기글을 한 페이지서 모아줌 = 교차소스(≥2)의 핵심 공급원. ──
 # 직접 커뮤니티 RSS가 대부분 차단(403/430)이라(실측 260618), 한 번 긁어 다중 소스를 얻는 이 경로가 사실상 정본.
 ISSUELINK_URLS = [u.strip() for u in os.environ.get(
-    "ISSUELINK_URLS", "https://www.issuelink.co.kr/,https://www.issuelink.co.kr/community"
-).split(",") if u.strip()]   # 홈(인기 top10) + /community(100건·13커뮤) 둘 다 긁어 최대 수집(실측 260618)
+    "ISSUELINK_URLS", "https://www.issuelink.co.kr/,https://www.issuelink.co.kr/community,https://www.issuelink.co.kr/community?page=2"
+).split(",") if u.strip()]   # 홈(인기 top10) + /community(100건·13커뮤) + page2(더 많은 교차 후보·260619 수집량↑). 막힌 페이지는 graceful skip(status≠200 continue)
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
 # rel='<코드>-<id>' 의 커뮤니티 코드 → 표시 이름. 미등록 코드는 코드 그대로(여전히 distinct 소스로 카운트).
 COMMUNITY_NAMES = {
@@ -204,9 +205,10 @@ def fetch_rss(now):
     for name, url in RSS_SOURCES:
         if not url:
             continue
+        before = len(posts)
         try:
-            d = feedparser.parse(url)
-            for e in d.entries[:40]:
+            d = feedparser.parse(url, agent=UA, referrer="https://www.google.com/")   # 브라우저 UA — DC 등 봇 UA 차단 회피 시도(260619)
+            for e in d.entries[:60]:   # 인테이크 상향(40→60·260619 수집량↑) — 뽐뿌 등 생존 RSS서 더 많이
                 title = (getattr(e, "title", "") or "").strip()
                 if not title:
                     continue
@@ -214,6 +216,7 @@ def fetch_rss(now):
                 if getattr(e, "published_parsed", None):
                     ts = datetime(*e.published_parsed[:6], tzinfo=timezone.utc).astimezone(KST)
                 posts.append({"title": title, "source": name, "url": getattr(e, "link", "") or "", "ts": ts})
+            print(f"{name} RSS: {len(posts) - before}건")   # 소스별 건수 — DC 등 차단여부 라이브 확인용(0건=차단/경로폐기)
         except Exception as ex:  # noqa: BLE001
             print(f"::warning::{name} RSS 실패: {ex}")
     return posts
