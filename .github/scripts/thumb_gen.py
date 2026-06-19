@@ -148,6 +148,14 @@ def cse_search(query):
     try:
         with urllib.request.urlopen("https://www.googleapis.com/customsearch/v1?" + qs, timeout=30) as r:
             j = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode()[:400]   # 구글 에러 본문(사유 정확: API 미사용/제한/리퍼러 등)
+        except Exception:
+            pass
+        print("  ⚠️ CSE 검색 실패: HTTP {} {} — {}".format(e.code, e.reason, body), flush=True)
+        return []
     except Exception as e:
         print("  ⚠️ CSE 검색 실패: {}".format(e), flush=True)
         return []
