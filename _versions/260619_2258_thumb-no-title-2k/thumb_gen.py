@@ -3,7 +3,7 @@
 #
 # 기존 카드 이미지 경로(외부 Apps Script + Drive + Cloud Run compose)와 완전 분리된 레포 내 경로:
 #   - GitHub Actions가 Gemini(gemini-3.1-flash-image-preview = Nanobanana 2 Pro·4:5)를 직접 호출
-#   - 기사 타이틀(헤드라인) 문구는 이미지에 안 박음 = 글자 없는 장면만(현장 간판 등 자연 글자는 무관). 고해상 2K.
+#   - 한국어 헤드라인 글자도 Gemini가 이미지 안에 직접 렌더(compose 단계 불필요 — 글자 명시 프롬프팅)
 #   - 산출 → Cloudflare R2 업로드(공개 URL) + gen.json([{sid,img,label}]) → build-viewer가 뷰어로 투영
 #     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.png 로컬 커밋·아무것도 안 깨짐)
 #
@@ -14,7 +14,7 @@
 
 import os, sys, re, json, base64, time, glob, subprocess, tempfile, urllib.request, urllib.error
 
-MODEL = "gemini-3.1-flash-image-preview"   # 카드와 동일 모델(03 레퍼런스). 4:5 · 썸네일 2K / 카드 1K.
+MODEL = "gemini-3.1-flash-image-preview"   # 카드와 동일 모델(03 레퍼런스). 4:5 / 1K.
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent".format(MODEL)
 
 def _int_env(name, default):
@@ -39,8 +39,8 @@ R2_SECRET = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
 R2_ON = all([R2_ACCOUNT, R2_BUCKET, R2_PUBLIC, R2_KEY, R2_SECRET])
 
 # ── 3화풍 (label = 뷰어 캡션) ─────────────────────────────────────────────
-# 공통: 세로 4:5 풀블리드 · 핵심 피사체 또렷하게(고해상 2K).
-# 글자: 기사 타이틀/헤드라인 오버레이 문구는 안 박음(타이틀 금지) — 현장에 자연스러운 간판·표지판 글자는 장면 일부로 허용.
+# 공통: 세로 4:5 · 핵심 피사체 상단 2/3 · 하단 밴드 = 한국어 헤드라인 텍스트 안전영역.
+# 글자: 헤드라인 문자열을 따옴표로 "정확히" 명시(왜곡·오타 금지) — Nano Banana 2 Pro 텍스트 렌더 활용.
 STYLES = [
     ("webtoon", "웹툰 극화",
      "한국 웹툰 극화체 일러스트레이션. 굵고 선명한 잉크 라인, 극적인 명암 대비, 강한 감정 표현, 역동적인 구도."),
@@ -51,22 +51,23 @@ STYLES = [
 ]
 
 COMPOSITION = (
-    "세로 4:5 비율, 화면 전체를 꽉 채우는 풀블리드 구도. 핵심 피사체(인물·사물·현장)를 또렷하게 배치. "
+    "세로 4:5 비율. 핵심 피사체(인물·사물·현장)는 화면 상단 2/3에 또렷하게 배치. "
+    "화면 하단 약 28%는 헤드라인 텍스트를 위한 안전영역으로 비우거나 어둡게/단색 밴드 처리. "
     "한국인·한국 배경을 기본값으로(국제 기사 등 명백히 외국이면 해당 지역). 자극적·선정적 묘사 금지, 미성년자 안전. 워터마크·로고 없음."
 )
 
-# 타이틀 금지: 기사 제목/헤드라인 같은 "오버레이 문구"만 안 박음(전면 텍스트 금지 아님 — 현장의 자연스러운 간판·표지판 글자는 장면 일부로 허용).
-NO_TITLE = (
-    "기사 제목·헤드라인·자막 같은 오버레이 텍스트는 이미지에 넣지 마라. 화면을 가로지르는 큰 제목 문구·텍스트 밴드 금지. "
-    "(촬영 현장에 자연스럽게 존재하는 간판·표지판·로고 글자는 장면의 일부로 무방.)"
-)
+def text_directive(headline):
+    return (
+        "화면 하단 안전영역 안에 다음 한국어 헤드라인을 정확히 렌더링하라(오타·글자 깨짐·왜곡 절대 금지, "
+        "굵고 가독성 높은 한국어 고딕 서체): “{}”. 이 문구 외의 다른 글자·캡션·자막은 넣지 마라."
+    ).format(headline)
 
-def build_prompt(art_dir, scene):
+def build_prompt(art_dir, scene, headline):
     parts = [art_dir]
     if scene:
         parts.append("장면: " + scene)
     parts.append(COMPOSITION)
-    parts.append(NO_TITLE)
+    parts.append(text_directive(headline))
     return " ".join(parts)
 
 # ── queue md 파싱: frontmatter title + 본문 h1(에디토리얼 헤드라인) + 한줄요약 ──
@@ -94,15 +95,11 @@ def parse_md(path):
         iq = ""
     return head, lead, iq
 
-def gemini_image(prompt, image_size="1K"):
-    """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft).
-
-    image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일은 2K 호출(고해상).
-    """
+def gemini_image(prompt):
+    """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft)."""
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseModalities": ["IMAGE"],
-                             "imageConfig": {"aspectRatio": "4:5", "imageSize": image_size}},
+        "generationConfig": {"responseModalities": ["IMAGE"], "imageConfig": {"aspectRatio": "4:5"}},
     }
     data = json.dumps(payload).encode()
     req = urllib.request.Request(API + "?key=" + KEY, data=data,
@@ -237,7 +234,7 @@ def process_one(md, stem):
     for sid, label, art_dir in STYLES:
         if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
             gen.append(existing[sid]); continue
-        png = gemini_image(build_prompt(art_dir, lead), "2K")
+        png = gemini_image(build_prompt(art_dir, lead, head))
         if not png:
             print("  ✗ {} 실패".format(label)); continue
         if R2_ON:                                # R2 = 공개 URL(레포 미저장)
