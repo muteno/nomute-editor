@@ -61,10 +61,6 @@ SPECS = {
 
 SA = int(255*0.8)
 
-# 2K 렌더: 모든 좌표/폰트 = 1080 기준 SPECS × SCALE (SPECS는 1080 유지 → 워크플로 fit_tracking 자간계산 호환).
-# 1=레거시 1080 · 2=2160폭(포스트 2160×2700·릴스 2160×3840). 자간(tr)은 em-상대라 스케일 무관.
-SCALE = 2
-
 
 def mk_grad(W,H,gd):
     g=np.zeros((H,W,4),dtype=np.uint8)
@@ -113,23 +109,21 @@ def parse(t):
     return sg
 
 
-def mk_shadow(cl,s_=1):
+def mk_shadow(cl):
     a=np.array(cl); s=Image.new('RGBA',cl.size,(0,0,0,0))
     sa=np.array(s);sa[:,:,3]=a[:,:,3];s=Image.fromarray(sa,'RGBA')
-    o=Image.new('RGBA',cl.size,(0,0,0,0));o.paste(s,(1*s_,2*s_))
-    r,g,b,aa=o.split();aa=aa.filter(ImageFilter.GaussianBlur(radius=2*s_))
+    o=Image.new('RGBA',cl.size,(0,0,0,0));o.paste(s,(1,2))
+    r,g,b,aa=o.split();aa=aa.filter(ImageFilter.GaussianBlur(radius=2))
     o=Image.merge('RGBA',(r,g,b,aa))
     f=np.array(o);f[:,:,3]=(f[:,:,3].astype(float)*int(255*0.70)/255).astype(np.uint8)
     return Image.fromarray(f,'RGBA')
 
 
 def generate(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None):
-    sp=SPECS[fmt]; S=SCALE
-    W=sp["w"]*S; H=sp["h"]*S
-    fs=sp["fs"]*S
-    fnt=ImageFont.truetype(FONT_PATH,fs,index=1)
-    tr_val=tracking if tracking is not None else sp["tr"]   # 자간 = em-상대(1/1000) → 스케일 무관
-    tp=tr_val/1000*fs
+    sp=SPECS[fmt]; W=sp["w"]; H=sp["h"]
+    fnt=ImageFont.truetype(FONT_PATH,sp["fs"],index=1)
+    tr_val=tracking if tracking is not None else sp["tr"]
+    tp=tr_val/1000*sp["fs"]
     c=Image.new('RGBA',(W,H),(0,0,0,0))
     gd=dict(sp["grad"])
     if opacity is not None:
@@ -139,17 +133,17 @@ def generate(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None):
             scale=(op/100*255)/max_a
             gd={k:max(0,min(255,255-int((255-v)*scale))) for k,v in gd.items()}
     c=Image.alpha_composite(c,mk_grad(W,H,gd))
-    ll=mk_logo(W, H, tuple(v*S for v in sp["logo_rect"]))
+    ll=mk_logo(W, H, sp["logo_rect"])
     tx=Image.new('RGBA',(W,H),(0,0,0,0))
-    dr=ImageDraw.Draw(tx); cy=sp["ty"]*S
+    dr=ImageDraw.Draw(tx); cy=sp["ty"]
     for i,ln in enumerate(lines):
-        cx=sp["lm"]*S+(lm_offsets[i]*S if lm_offsets and i<len(lm_offsets) else 0)
+        cx=sp["lm"]+(lm_offsets[i] if lm_offsets and i<len(lm_offsets) else 0)
         for st,stx in parse(ln):
             co=(15,253,2) if st=='h' else (255,255,255)
             cx=draw_t(dr,cx,cy,stx,fnt,co,tp,sp["stroke"])
-        cy+=sp["lh"]*S
+        cy+=sp["lh"]
     cb=Image.alpha_composite(ll,tx)
-    sh=mk_shadow(cb,S)
+    sh=mk_shadow(cb)
     c=Image.alpha_composite(c,sh)
     c=Image.alpha_composite(c,ll)
     c=Image.alpha_composite(c,tx)
