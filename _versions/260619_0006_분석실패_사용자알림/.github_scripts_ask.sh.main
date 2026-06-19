@@ -11,7 +11,6 @@ MODEL="claude-opus-4-8"
 
 # 지침 SSOT 강제 주입(analyze와 동일 summary 세트) — 출력 포맷·품질기준 일치, GVER 도장.
 source "$ROOT/shared/inject_guidelines.sh"
-source "$ROOT/shared/claude_health.sh"   # 시스템성(인증·쿼터) 실패 → 사용자 메시지(프로필 점등)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
@@ -77,7 +76,6 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
         --max-turns 50 \
         2> "/tmp/${base}.err")"
   rc=$?
-  claude_health_update "$out" "/tmp/${base}.err"   # 응답O=정상(경고해제) / 빈응답+인증·쿼터=경고(프로필 점등)
 
   if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^ANALYSIS_FAILED' <<<"$out" || ! grep -qm1 '^---' <<<"$out"; then
     mkdir -p asks/failed
