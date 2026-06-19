@@ -28,7 +28,9 @@
 | `SOCIAL_JACCARD` | **0.33** | 토큰 자카드 백업(260619 0.4→0.33 느슨화 = 교차 클러스터↑·수집량↑) |
 | `SOCIAL_FRESH_HOURS` | 24 | 최신성 만점 윈도우(랭킹만·컷 아님) |
 | `ISSUELINK_URLS` | 홈+/community+`?page=2` | 어그리게이터 페이지(260619 page2 추가·graceful skip) |
-| `RSS_CLIEN`·`RSS_PPOMPPU`·`RSS_BOBAE` | — | 소스 RSS URL 교체 |
+| `RSS_CLIEN`·`RSS_PPOMPPU`·`RSS_BOBAE`·`RSS_DC` | — | 소스 RSS URL 교체(`RSS_DC`=디시 실시간베스트·260619 추가) |
+
+> 🟣 **디시(DC) 추가 (260619 · 운영자 요청):** `RSS_SOURCES`에 디시 실시간베스트 RSS(`gall.dcinside.com/board/rss/?id=dcbest`) + `fetch_rss`에 브라우저 UA/referrer(봇 차단 회피 시도). ⚠️ **직접커뮤=데이터센터 IP 차단 가능**(클리앙·보배가 그래서 0건). 라이브 Actions 로그의 `디시 RSS: N건`으로 작동 확인 — 0건이면 `RSS_DC` env로 URL 교체하거나(다른 갤러리/엔드포인트) 어그리게이터(이슈링크) 의존. DC는 이미 이슈링크에 일부 포함(`dcinside`)이라 직접 RSS는 *더 깊은 DC 커버리지* 보너스(되면 이득·안 되면 0).
 
 > 📈 **수집량 늘리기 (260619 · 운영자 요청 "더 많이"):** 병목 = `MIN_SOURCES≥2`(여러 커뮤 교차). 성격 유지하며 양↑ 방향 적용 = **① JACCARD 0.4→0.33**(같은 사건 변형표제가 더 잘 묶여 ≥2소스 도달↑) **② 이슈링크 `?page=2` 추가**(더 많은 후보) **③ RSS intake 40→60**. `--sample` 코어 무손상(공론화 2건 정상·별개 사건 과병합 X). **더 필요하면**: `SOCIAL_MIN_SOURCES=1`(한 커뮤 핫글도 노출=양 대폭↑·성격 약화) 또는 새 소스(네이버 OpenAPI 키·핫링크·잼난다 어댑터)·`SOCIAL_JACCARD` 더↓.
 

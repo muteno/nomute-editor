@@ -57,7 +57,6 @@ RSS_SOURCES = [
     ("클리앙",   os.environ.get("RSS_CLIEN",   "https://rss.clien.net/service/board/park")),
     ("뽐뿌",     os.environ.get("RSS_PPOMPPU", "https://www.ppomppu.co.kr/rss.php?id=freeboard")),
     ("보배드림", os.environ.get("RSS_BOBAE",   "https://www.bobaedream.co.kr/rss/best.php")),
-    ("디시",     os.environ.get("RSS_DC",      "https://gall.dcinside.com/board/rss/?id=dcbest")),   # 디시 실시간베스트(260619 추가·운영자 요청). ⚠️ 직접커뮤=데이터센터 IP 차단 가능(클리앙·보배처럼) → 0건이면 RSS_DC env로 교체/cookie 필요. 라이브 로그서 '디시 RSS' 건수 확인.
     # ⚠️ 실측(260618): 클리앙·보배 RSS는 차단/경로폐기(0건) — 직접 RSS는 뽐뿌만 생존. 교차소스는 어그리게이터로 확보(아래).
 ]
 
@@ -205,9 +204,8 @@ def fetch_rss(now):
     for name, url in RSS_SOURCES:
         if not url:
             continue
-        before = len(posts)
         try:
-            d = feedparser.parse(url, agent=UA, referrer="https://www.google.com/")   # 브라우저 UA — DC 등 봇 UA 차단 회피 시도(260619)
+            d = feedparser.parse(url)
             for e in d.entries[:60]:   # 인테이크 상향(40→60·260619 수집량↑) — 뽐뿌 등 생존 RSS서 더 많이
                 title = (getattr(e, "title", "") or "").strip()
                 if not title:
@@ -216,7 +214,6 @@ def fetch_rss(now):
                 if getattr(e, "published_parsed", None):
                     ts = datetime(*e.published_parsed[:6], tzinfo=timezone.utc).astimezone(KST)
                 posts.append({"title": title, "source": name, "url": getattr(e, "link", "") or "", "ts": ts})
-            print(f"{name} RSS: {len(posts) - before}건")   # 소스별 건수 — DC 등 차단여부 라이브 확인용(0건=차단/경로폐기)
         except Exception as ex:  # noqa: BLE001
             print(f"::warning::{name} RSS 실패: {ex}")
     return posts
