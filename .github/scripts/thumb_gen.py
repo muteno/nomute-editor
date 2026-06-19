@@ -162,10 +162,10 @@ def cse_search(query):
         ratio = (w / h) if h else 1.0
         aspect = 1.0 / (1.0 + abs(ratio - 0.8))      # 4:5(0.8) 근접 최대
         size = min(w, 1600) / 1600.0                 # 클수록↑(상한)
-        rank = 1.0 - (i / max(len(items), 1))        # 관련도순(상징성 프록시)
-        gate = 1.0 if w >= 800 else 0.35             # 가로 800px↑ 강선호
-        extreme = 0.7 if (ratio > 2.2 or ratio < 0.45) else 1.0   # 초와이드/초세로 = 카드 크롭 망가짐(썸네일 부적합)
-        score = gate * extreme * (0.45 * rank + 0.30 * aspect + 0.25 * size)
+        rank = 1.0 - (i / max(len(items), 1))        # 관련도순(상징성 프록시) — 운영자 1순위 = 지배 가중
+        gate = 1.0 if w >= 800 else 0.4              # 가로 800px↑ 바닥선(미달=저해상 감점)
+        extreme = 0.85 if (ratio > 2.2 or ratio < 0.45) else 1.0   # 초와이드/초세로 가벼운 감점(나머진 운영자 처리)
+        score = gate * extreme * (0.65 * rank + 0.13 * aspect + 0.22 * size)
         ctx = im.get("contextLink") or url
         scored.append((score, w, {"url": url, "link": ctx}))
     scored.sort(key=lambda x: x[0], reverse=True)
