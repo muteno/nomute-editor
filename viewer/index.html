@@ -437,7 +437,8 @@
   @media (prefers-reduced-motion:reduce) { body.has-breaking .profile { animation:none; box-shadow:0 0 0 2px #ff3b3b; } .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
   .sc-fail { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
-    color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 */
+    color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer;
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 · 롱프레스 콜아웃/텍스트선택 차단(qFeedBtn L624 패턴 + touch-action — iOS 네이티브 콜아웃이 커스텀 메뉴 가리는 것 방지) */
   .sc-fail:hover { background:repeating-linear-gradient(45deg,rgba(255,206,64,.40) 0 4px,rgba(255,206,64,.16) 4px 8px); }
   .sc-fail:active { transform:scale(.97); }
   .sc-item.pickfail { border-color:rgba(255,176,46,.5); }
@@ -629,7 +630,7 @@
     opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
   .qflash.show { opacity:1; transform:translateX(-50%) translateY(0); }
   /* Failed 칩 컨텍스트 메뉴(길게/우클릭) — .bpop 글래스 계승, 칩 옆 고정 위치(JS). 항목 2개: 실패 사유·내용 입력. */
-  .failmenu { position:fixed; z-index:38; min-width:152px; padding:6px; display:flex; flex-direction:column; gap:2px;
+  .failmenu { position:fixed; z-index:41; min-width:152px; padding:6px; display:flex; flex-direction:column; gap:2px; transform-origin:top center;
     background:linear-gradient(165deg, rgba(24,40,29,.98), rgba(12,21,15,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
     border:1px solid var(--line); border-radius:13px; box-shadow:0 18px 46px rgba(0,0,0,.62); animation:popIn .14s cubic-bezier(.22,.61,.36,1) both; }
   .failmenu[hidden] { display:none; }
@@ -3415,7 +3416,7 @@ const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
 const PICK_TIMEOUT_MS = 10 * 60000;
-const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
+const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
 const pickingNow = () => DATA_LOADED ? CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickSettled(c) && !pickFailedShow(c); }) : [];   // 픽했는데 아직 피드 미등장·미실패·미해소·미타임아웃 = 분석 중. DATA 로드 전엔 [](깜빡 방지)
@@ -3480,6 +3481,7 @@ function wireFailChip(fb, c) {
   fb.addEventListener('pointerdown', e => { if (e.button) return; lp = false; clearTimeout(t); t = setTimeout(() => { lp = true; openFailMenu(c, fb); }, 480); });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fb.addEventListener(ev, () => clearTimeout(t)));
   fb.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); clearTimeout(t); openFailMenu(c, fb); });   // 우클릭은 click 미발생 → lp 안 건드림
+  fb.addEventListener('blur', () => { lp = false; });   // 메뉴를 ESC/외부클릭으로 닫아 lp 가 true로 남았을 때 다음 키보드 Enter 1회 삼킴 방지(pointerup 리셋은 합성 click 억제를 깨므로 금지)
 }
 let _failMenuC = null;
 function openFailMenu(c, anchor) {
@@ -3847,6 +3849,7 @@ function setViewhead(tab) {
 }
 function showTab(tab) {
   CURTAB = tab;
+  closeFailMenu();   // 탭 전환 시 Failed 칩 컨텍스트 메뉴도 닫음(토스트→showTab 직행 경로는 closeOverlays 안 거침)
   const fb = $('.filterbar'), wp = $('.wrap'), sv = $('#scrapview'), snv = $('#snsview');
   if (fb) fb.hidden = (tab !== 'feed');
   if (wp) wp.hidden = (tab !== 'feed');
@@ -3991,7 +3994,7 @@ $('#failmenu').addEventListener('click', e => {
   else if (it.dataset.act === 'paste') openPaste(c);
 });
 document.addEventListener('click', e => { const m = $('#failmenu'); if (m && !m.hidden && !m.contains(e.target)) closeFailMenu(); });
-window.addEventListener('scroll', closeFailMenu, true);   // 스크롤=위치 stale → 닫기(캡처 단계로 스크롤 컨테이너 포함)
+window.addEventListener('scroll', closeFailMenu, { capture: true, passive: true });   // 스크롤=위치 stale → 닫기(캡처=스크롤 컨테이너 포함·passive=메인 스크롤 성능 유지)
 window.addEventListener('resize', closeFailMenu);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFailMenu(); });
 // 전문 직접 입력 모달 — askdlg UIUX 계승(.sbtn 클립 컨텍스트 1버튼·X·전송). 전송=api/pick body 경로(재분석) → Failed→Picking.

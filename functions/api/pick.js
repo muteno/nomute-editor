@@ -43,7 +43,7 @@ export async function onRequestPost({ request, env }) {
     const stamp = k.slice(2, 4) + k.slice(5, 7) + k.slice(8, 10) + '-' + k.slice(11, 13) + k.slice(14, 16) + k.slice(17, 19);
     const rnd = Math.random().toString(16).slice(2, 6);
     const path = `pending/${stamp}-pick-${rnd}.txt`;
-    const fileContent = `${url}\n# title: ${title}\n` + (alt ? `# alt: ${alt}\n` : '') + `# body:\n${bodyText}\n`;
+    const fileContent = `${url}\n` + (title ? `# title: ${title}\n` : '') + (alt ? `# alt: ${alt}\n` : '') + `# body:\n${bodyText}\n`;
     const bytes = new TextEncoder().encode(fileContent);
     let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
     const put = await fetch(`https://api.github.com/repos/muteno/nomute-editor/contents/${path}`, {
