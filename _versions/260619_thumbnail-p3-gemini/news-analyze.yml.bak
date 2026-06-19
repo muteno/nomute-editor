@@ -134,10 +134,10 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
-          # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON·GEMINI_API_KEY env 자체가 없음(유료 생성 발사 불가). + cardmake text모드 unset(Lock B).
+          # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON env 자체가 없음(제미나이 발사 불가). + cardmake text모드 unset(Lock B).
         run: |
           [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "토큰 없음 — 카드플랜 생략"; exit 0; }
-          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON
           # text 모드 = cards/ 미존재·지침 stale 큐만 골라 카드 MD까지(제미나이 0, state=text_done).
           bash .github/scripts/cardmake.sh all text || echo "::warning::카드플랜 일부 실패(다이제스트는 보존됨)"
 
@@ -192,7 +192,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
-      group: thumb-make       # card-make와 분리(card_plan과 강제 직렬·pending 취소 방지). cards/ 쓰기 경합은 각 잡 rebase -X theirs가 흡수(파일 비중첩).
+      group: card-make        # cards/ 직렬화(card_plan·card-make.yml과 같은 그룹)
       cancel-in-progress: false
     permissions:
       contents: write
@@ -202,19 +202,10 @@ jobs:
         with:
           fetch-depth: 0
           ref: main           # analyze가 push한 최신 queue 포함
-      - name: Gemini 썸네일 3화풍 + CSE 검색 (신규 픽만 · 키 없으면 no-op)
+      - name: Gemini 썸네일 3화풍 (픽한 기사만 · 키 없으면 no-op)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_CSE_KEY: ${{ secrets.GOOGLE_CSE_KEY }}
-          GOOGLE_CSE_CX: ${{ secrets.GOOGLE_CSE_CX }}
-          # 저장소 = Cloudflare R2(설정 시 공개 URL 서빙·레포 비대 회피). 5개 다 있어야 R2, 아니면 git 폴백.
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           THUMB_MAX_BATCH: '3'
-          THUMB_SINCE: '260619'   # 활성화 기준일 — 이 날짜(YYMMDD) 이후 픽만 생성(기존 백로그 제외). 백로그도 원하면 비우면 됨.
         run: |
           [ -n "${GEMINI_API_KEY}" ] || { echo "GEMINI_API_KEY 미설정 — 썸네일 생성 생략(스캐폴드)"; exit 0; }
           python3 .github/scripts/thumb_gen.py || echo "::warning::썸네일 생성 일부 실패(다이제스트·카드는 보존됨)"

@@ -153,8 +153,6 @@
   .pmenu .pmenu-brk:hover { color:#fff; background:linear-gradient(135deg,#ff6b5a,#e2231a); filter:brightness(1.06); }
   .pmenu .pmenu-brk.done { background:linear-gradient(135deg,#2ec16b,#16a34a); box-shadow:none; }
   @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
-  /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
-  @keyframes popInCx { from { opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to { opacity:1; transform:translateX(-50%);} }
 
   /* ── 필터바(배너 아래·스티키) ── */
   .filterbar { position:relative; z-index:5; margin-top:2px; padding:2px 0 4px; }   /* 하단 패딩 축소 → 카테고리↔내용 더 붙임 */
@@ -439,8 +437,7 @@
   @media (prefers-reduced-motion:reduce) { body.has-breaking .profile { animation:none; box-shadow:0 0 0 2px #ff3b3b; } .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
   .sc-fail { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
-    color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer;
-    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 · 롱프레스 콜아웃/텍스트선택 차단(qFeedBtn 동일 패턴 + touch-action — iOS 네이티브 콜아웃이 커스텀 메뉴 가리는 것 방지) */
+    color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 */
   .sc-fail:hover { background:repeating-linear-gradient(45deg,rgba(255,206,64,.40) 0 4px,rgba(255,206,64,.16) 4px 8px); }
   .sc-fail:active { transform:scale(.97); }
   .sc-item.pickfail { border-color:rgba(255,176,46,.5); }
@@ -566,7 +563,7 @@
   .bpop { position:fixed; z-index:36; transform:translateX(-50%); min-width:140px; max-width:230px;
     background:linear-gradient(165deg, rgba(24,40,29,.97), rgba(12,21,15,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
     border:1px solid var(--line); border-radius:15px; padding:11px 15px; box-shadow:0 18px 46px rgba(0,0,0,.6);
-    display:flex; flex-direction:column; gap:3px; animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both; }   /* popInCx = 중앙정렬 translateX(-50%) 보존(qpop 우측 오버플로우 수정) */
+    display:flex; flex-direction:column; gap:3px; animation:popIn .16s cubic-bezier(.22,.61,.36,1) both; }
   .bpop[hidden] { display:none; }
   .bpop b { font-size:13px; font-weight:800; color:var(--accent); padding-left:2px; }   /* 아래 a(padding 8px 4px)와 거의 정렬(살짝 좌측) */
   .bpop b svg { vertical-align:-2px; margin-right:4px; }   /* 피드 탐색 앞 돋보기 — 초록 accent 상속(currentColor) */
@@ -631,17 +628,7 @@
     box-shadow:0 14px 36px rgba(0,0,0,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
   .qflash.show { opacity:1; transform:translateX(-50%) translateY(0); }
-  /* Failed 칩 컨텍스트 메뉴(길게/우클릭) — .bpop 글래스 계승, 칩 옆 고정 위치(JS). 항목 2개: 실패 사유·내용 입력. */
-  .failmenu { position:fixed; z-index:41; min-width:152px; padding:6px; display:flex; flex-direction:column; gap:2px; transform-origin:top center;
-    background:linear-gradient(165deg, rgba(24,40,29,.98), rgba(12,21,15,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-    border:1px solid var(--line); border-radius:13px; box-shadow:0 18px 46px rgba(0,0,0,.62); animation:popIn .14s cubic-bezier(.22,.61,.36,1) both; }
-  .failmenu[hidden] { display:none; }
-  .failmenu-it { display:flex; align-items:center; gap:9px; width:100%; padding:9px 11px; border-radius:9px; border:none; cursor:pointer;
-    background:none; color:var(--fg); font-family:inherit; font-size:13px; font-weight:700; text-align:left; transition:color .14s, background .14s; }
-  .failmenu-it svg { flex:none; opacity:.85; }
-  .failmenu-it:hover { color:var(--accent); background:rgba(255,255,255,.06); }
-  .failmenu-it:active { transform:scale(.98); }
-  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .banner.layer-scrap, .banner.layer-sns { transition:none; } .failmenu { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .banner.layer-scrap, .banner.layer-sns { transition:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
   .totop { position:fixed; right:18px; bottom:calc(104px + env(safe-area-inset-bottom)); z-index:34;   /* 하단 네비바와 충분히 띄움 */
@@ -1091,11 +1078,6 @@
     font:inherit; font-size:13px; font-weight:800; padding:9px 18px; cursor:pointer; box-shadow:0 6px 16px rgba(15,253,2,.32); }
   .asksend:disabled { opacity:.5; cursor:default; }
   .asksend:active { transform:scale(.97); }
-  /* 전문 직접 입력 모달 — .askdlg 글래스·.askclip·.asksend·.askx 전부 계승. 대상 부제 + 약간 큰 입력칸만 추가. */
-  .pastedlg .pastesub { font-size:12px; color:var(--mut); margin:-6px 0 12px; line-height:1.45;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .pastedlg .pastesub:empty { display:none; margin:0; }
-  .pasteta { min-height:150px; }
   /* ── 요약 수정 FAB — 콘텐츠 초안~시사점 스크롤 구간에만 뜨는 펜 모양 플로팅 원(우측·중하단). 클릭 → revdlg 팝업.
        #dlg가 backdrop-filter라 그 박스 기준 fixed(모달 뷰포트 안 고정·스크롤해도 안 흔들림 = sticky 헤더와 동일 안전 패턴). ── */
   .rev-fab { position:absolute; right:16px; z-index:7; width:52px; height:52px; padding:0; display:none; place-items:center;   /* top = updateRevFab가 스크롤 보정해 뷰포트 중하단 고정(#dlg backdrop-filter 박스 기준 → 콘텐츠 따라 스크롤되는 것 상쇄) */
@@ -1314,22 +1296,6 @@
   </div>
 </dialog>
 
-<!-- 전문 직접 입력 — 막힌 매체(403) Failed 픽에 기사 전문을 붙여넣어 재분석(api/pick body 경로). askdlg UIUX 계승(.sbtn 클립·X·전송). -->
-<dialog id="pastedlg" class="askdlg pastedlg">
-  <div class="askwrap">
-    <div class="askhead"><b>📝 내용 직접 입력</b><button class="askx" id="pasteX" type="button" aria-label="닫기">✕</button></div>
-    <div class="pastesub" id="pasteSub"></div>
-    <div class="asktawrap">
-      <textarea id="pasteText" class="askta pasteta" rows="7" placeholder="막힌 매체라 자동 수집이 안 됐어 — 기사 페이지에서 본문을 전체 선택·복사해 여기 붙여넣고 전송하면 그 내용으로 재분석해(403 우회)."></textarea>
-      <button class="sbtn askclip" id="pasteClip" type="button" aria-label="붙여넣기"></button>
-    </div>
-    <div class="askbot">
-      <span class="askstatus" id="pasteStatus"></span>
-      <button class="asksend" id="pasteSend" type="button">재분석 보내기 →</button>
-    </div>
-  </div>
-</dialog>
-
 <!-- 제작 도구 모달(iframe) — + 메뉴 항목(썸네일·릴스·영상) 클릭 시 새 페이지 대신 뷰어 위에 모달로 등장(뉴스 요약 모달과 동일 결). -->
 <dialog id="tooldlg" aria-labelledby="toolTitle">
   <div class="tool-h"><b id="toolTitle">제작 도구</b><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
@@ -1365,11 +1331,6 @@
   <div class="qconfirm" id="qpopConfirm" hidden><span>내역을 정말 지우시겠습니까?</span><span class="qcf-btns"><button id="qcfYes" type="button">지우기</button><button id="qcfNo" type="button">취소</button></span></div>
   <div class="qlist" id="qpopList"></div>
   <div class="qpage" id="qpopPage"></div>
-</div>
-<!-- Failed 칩 컨텍스트 메뉴 — 길게 누르거나(480ms) 우클릭. 실패 사유(진단 MD 다운로드) · 내용 입력(전문 붙여넣기 재분석). .bpop 글래스 계승. -->
-<div class="failmenu" id="failmenu" hidden role="menu" aria-label="실패 처리">
-  <button class="failmenu-it" data-act="diag" type="button" role="menuitem"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>실패 사유</button>
-  <button class="failmenu-it" data-act="paste" type="button" role="menuitem"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>내용 입력</button>
 </div>
 
 <script>
@@ -1815,13 +1776,13 @@ function thumbSec(a) {
 // 정적 캐러셀(백엔드가 채운 thumb_search/thumb_gen) — items=[{img, link?, label?}]
 function thumbStatic(label, items, kind, href) {
   const wrap = document.createElement('div'); wrap.className = 'cref';
-  const btn = href ? '<a class="cref-btn" href="' + escUrl(href) + '" target="_blank" rel="noopener">구글 이미지 검색 ↗</a>' : '';
+  const btn = href ? '<a class="cref-btn" href="' + esc(href) + '" target="_blank" rel="noopener">구글 이미지 검색 ↗</a>' : '';
   wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">' + esc(label) + '</span>' + btn + '</div>'
     + '<div class="cref-track">' + (items.slice(0, 3).map(it => {
         const cap = it.label ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';
-        const img = '<img loading="lazy" src="' + escUrl(it.img) + '" alt="">' + cap;
+        const img = '<img loading="lazy" src="' + esc(it.img) + '" alt="">' + cap;
         return it.link
-          ? '<a class="cref-slot ' + kind + '" href="' + escUrl(it.link) + '" target="_blank" rel="noopener">' + img + '</a>'
+          ? '<a class="cref-slot ' + kind + '" href="' + esc(it.link) + '" target="_blank" rel="noopener">' + img + '</a>'
           : '<div class="cref-slot ' + kind + '">' + img + '</div>';
       }).join('') || '<div class="cref-empty">이미지 없음</div>') + '</div>';
   return wrap;
@@ -1869,7 +1830,7 @@ function cardSec(a) {
     return;
   }
   let note = {
-    fired_partial: '🚀 일부만 생성됨 — 아래 재생성 버튼으로 나머지 채우기',
+    fired_partial: '🚀 생성됨 — 이미지 일부/대기 중(Drive에서 계속 생성, 다음 갱신 때 반영)',
   }[st];
   if (st === 'fired_partial' && stuck)   // 발사 후 18분째 이미지 미완 = 인증 만료/렌더 실패 가능 → 재시도 유도
     note = `⚠️ 생성됐지만 ${stuckMin}분째 이미지 미완 — 인증 만료·렌더 실패일 수 있어. 아래로 다시 시도해줘.`;
@@ -2957,8 +2918,6 @@ function jumpTo(which) {
   });
 }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));   // String() = 비문자열(숫자·객체) 입력도 안전(api/candidates 직독 등 빌드 우회 대비)
-// URL 속성 전용 — 위험 스킴(javascript:·data:·vbscript:) 차단 후 esc. 외부 출처(CSE 검색 link/img) href·src 하드닝.
-const escUrl = u => { const s = String(u ?? '').trim(); return /^(javascript|data|vbscript):/i.test(s) ? '#' : esc(s); };
 
 
 // Z: 요약 헤더 아래 기본 개요 — 대분류·매체·기자명·WRITE·IN. 기존 데이터만(기자명=본문 Fact 출처 패턴).
@@ -3055,7 +3014,6 @@ function closeOverlays(keep) {
   if (keep !== 'linkpop') linkpop.hidden = true;
   if (keep !== 'qpop') qpop.hidden = true;
   if (keep !== 'search') closeSearch();
-  closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
 $('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden; closeOverlays('pmenu'); pmenu.hidden = !willOpen; });
 document.addEventListener('click', e => {
@@ -3453,15 +3411,8 @@ function ratingFor(c) {
 const pfSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(PF_SKEY) || '[]')); } catch { return new Set(); } };
 const pfResolved = () => { try { return new Set(JSON.parse(localStorage.getItem(PF_RKEY) || '[]')); } catch { return new Set(); } };
 const pfAddResolved = id => { try { const s = pfResolved(); s.add(id); localStorage.setItem(PF_RKEY, JSON.stringify([...s])); } catch {} };
-// 전문 직접 입력(재제출) 진행창 — Failed 칩 메뉴 '내용 입력'으로 전문을 보낸 직후 candId→타임스탬프 기록.
-//   활성 동안(폴 상한과 동일) pfailHas 억제 → Failed가 Picking…으로 전환. 성공하면 pickInFeed로 PICKED(영구),
-//   창 지나도 미성공이면 다시 Failed(재실패 인지·또 시도 가능). pfResolved(영구해소·api/submit 경로)와 달리 *임시*.
-const PF_USKEY = 'nomute_pickfail_resub';
-const pfResub = () => { try { return JSON.parse(localStorage.getItem(PF_USKEY) || '{}'); } catch { return {}; } };
-const pfAddResub = id => { try { const m = pfResub(); m[id] = Date.now(); localStorage.setItem(PF_USKEY, JSON.stringify(m)); } catch {} };
-const pfResubActive = id => { const t = pfResub()[id]; return !!t && (Date.now() - t < PICK_TIMEOUT_MS + 60000); };
-// 실패 표시 대상 = picks-failed 에 있음 + 복구표시 안 함(api/submit) + 재제출창 아님(전문 직접입력 진행 중) + 피드 미등장(늦은 성공이면 PICKED 우선·stale 실패기록 무시).
-const pfailHas = c => PFAIL.has(_normU(c.url)) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
+// 실패 표시 대상 = picks-failed 에 있음 + 로컬 복구표시 안 함(전문 붙여넣기 보낸 건 소거).
+const pfailHas = c => PFAIL.has(_normU(c.url)) && !pfResolved().has(candId(c));
 const pfReason = c => (PFAIL.get(_normU(c.url)) || {}).reason || '';
 async function loadPickFails() {
   try {
@@ -3478,9 +3429,9 @@ const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
 const PICK_TIMEOUT_MS = 10 * 60000;
-const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
+const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
-const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
+const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭하면 원문 열림: ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
 const pickingNow = () => DATA_LOADED ? CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && !pickSettled(c) && !pickFailedShow(c); }) : [];   // 픽했는데 아직 피드 미등장·미실패·미해소·미타임아웃 = 분석 중. DATA 로드 전엔 [](깜빡 방지)
 let _pickPolling = false;
 async function pollPicking() {   // 분석 완료까지 폴링 → Picking… 칩만 제자리 교체(전체 재렌더 X = 깜빡임 방지)
@@ -3497,7 +3448,7 @@ async function pollPicking() {   // 분석 완료까지 폴링 → Picking… �
       const c = CANDS.find(x => candId(x) === el.dataset.cid), bot = el.querySelector('.sc-bot');
       if (!c || !bot) return;
       if (pickSettled(c)) { bot.innerHTML = '<div class="sc-got" aria-label="픽 완료" title="탭하면 피드에서 이 기사 열기">PICKED</div>'; el.classList.remove('pickfail'); const g = bot.querySelector('.sc-got'); if (g) g.onclick = () => pickedOpen(c); return; }   // 피드 등장 OR 해소 → PICKED(클릭=피드 이동+팝업)
-      if (pickFailedShow(c)) { bot.innerHTML = failChipHtml(c); wireFailChip(bot.querySelector('.sc-fail'), c); el.classList.add('pickfail'); return; }   // Failed 표시(remaining 미가산 → 전건 PICKED/Failed면 즉시 break, 헛폴 차단). 늦은 성공은 pickInFeed·다음 render로 자동복구.
+      if (pickFailedShow(c)) { bot.innerHTML = failChipHtml(c); const fb = bot.querySelector('.sc-fail'); if (fb) fb.onclick = (e) => { e.stopPropagation(); failOpen(c); }; el.classList.add('pickfail'); return; }   // Failed 표시(remaining 미가산 → 전건 PICKED/Failed면 즉시 break, 헛폴 차단). 늦은 성공은 line 3083 pickInFeed·다음 render로 자동복구.
       remaining++;
     });
     if (!remaining) break;
@@ -3535,83 +3486,6 @@ function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 
   const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
   document.body.appendChild(a); a.click(); a.remove();
 }
-// Failed 칩 배선 — 탭=원문 열기 / 길게(480ms)·우클릭=컨텍스트 메뉴(실패 사유·내용 입력). 대기열(qFeedBtn) 롱프레스 패턴 계승.
-function wireFailChip(fb, c) {
-  if (!fb) return;
-  let t = null, lp = false;   // lp = 롱프레스 발화 — 직후 합성 click 억제(원문 안 열림)
-  fb.onclick = e => { e.stopPropagation(); if (lp || Date.now() - _failMenuAt < 500) { lp = false; return; } failOpen(c); };   // lp=롱프레스 / 타임스탬프=메뉴 첫항목 focus→칩 blur→lp 리셋이 데스크톱 마우스 홀드의 trailing click 억제를 깨던 것 봉합(둘 중 하나면 원문 안 엶)
-  fb.addEventListener('pointerdown', e => { if (e.button) return; lp = false; clearTimeout(t); t = setTimeout(() => { lp = true; openFailMenu(c, fb); }, 480); });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fb.addEventListener(ev, () => clearTimeout(t)));
-  fb.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); clearTimeout(t); openFailMenu(c, fb); });   // 우클릭은 click 미발생 → lp 안 건드림
-  fb.addEventListener('blur', () => { lp = false; });   // 메뉴를 ESC/외부클릭으로 닫아 lp 가 true로 남았을 때 다음 키보드 Enter 1회 삼킴 방지(pointerup 리셋은 합성 click 억제를 깨므로 금지)
-  fb.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(t); });   // 칩이 스크롤 리스트(수집함) 안 — 드래그 스크롤로 손가락 이동하면 롱프레스 타이머 취소(스크롤 중 메뉴 오발 차단)
-}
-let _failMenuC = null, _failMenuAt = 0;   // _failMenuAt = 메뉴 오픈 시각 — 직후 합성 click 억제(아래 onclick)
-function openFailMenu(c, anchor) {
-  const m = $('#failmenu'); if (!m || !anchor) return;
-  closeOverlays(); _failMenuC = c;
-  m.hidden = false;   // 먼저 표시해야 offset 측정 가능
-  const r = anchor.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth;
-  let top = r.bottom + 6;
-  if (top + mh > window.innerHeight - 8) top = r.top - mh - 6;   // 아래 공간 부족 → 칩 위로
-  top = Math.max(8, top);
-  let left = r.left + r.width / 2 - mw / 2;
-  left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
-  m.style.top = top + 'px'; m.style.left = left + 'px';
-  _failMenuAt = Date.now();   // focus()가 칩 blur→lp 리셋을 유발해도 직후 click 은 위 onclick 의 타임스탬프 가드로 억제
-  const f0 = m.querySelector('.failmenu-it'); if (f0) f0.focus();   // 키보드 접근성 — 첫 항목 포커스(Tab/Enter 도달)
-}
-function closeFailMenu() { const m = $('#failmenu'); if (m && !m.hidden) m.hidden = true; }
-// 실패 사유 = 왜 실패했는지 다음에 조치할 수 있게 육하원칙으로 정리한 진단 MD(대기열 qDownload 와 동일 결) — 클릭 시 바로 다운로드(표시 X).
-function failDownload(c) {
-  if (!c) return;
-  const nowK = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-  const rt = ratingsAll()[candId(c)] || {};
-  const pickedK = rt.pickedAt ? new Date(rt.pickedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '?';
-  const reason = pfReason(c) || (pickTimedOut(c) ? '무응답(10분+ 미반영) — 서버 실패기록 없음(analyze 미완/지연 추정)' : 'fetch 차단(403 추정)');
-  const onServer = PFAIL.has(_normU(c.url));   // 서버 실패목록(picks-failed) 등재 = 분석단계 실패 / 아니면 클라 타임아웃
-  const mems = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url));
-  const L = [];
-  L.push('# 픽 분석 실패 진단 — ' + (c.title || '(제목 없음)'));
-  L.push('', '> 자동 생성(수집함 Failed 칩). 이 파일을 클로드에게 전달하면 원인 분석·복구에 사용합니다. 또는 같은 메뉴의 「내용 입력」으로 기사 전문을 붙여넣어 재분석할 수 있습니다.', '');
-  L.push('## 요약 (5W1H)');
-  L.push('- **언제(When)**: 픽 ' + pickedK + ' (KST) · 진단 ' + nowK);
-  L.push('- **무엇(What)**: ' + (c.title || '(제목 없음)') + (c.media ? ' · 매체 ' + c.media : ''));
-  L.push('- **어디서(Where)**: ' + (onServer ? '`pending/failed/`(분석 단계 실패로 격리) + `picks-failed.json` 등재' : '서버 실패기록 없음 — 클라이언트 무응답 타임아웃(10분 초과)'));
-  L.push('- **어떻게(How)**: 수집함 PICK → api/pick → pending → news-analyze. 원매체 fetch 가 데이터센터 IP 403 으로 막히면 본문 확보 실패.');
-  L.push('- **누가(Who)**: 운영자 픽');
-  L.push('- **왜(Why·추정)**: ' + reason);
-  L.push('', '## 입력 (Input)');
-  L.push('- 원문 URL: ' + (c.url || '(없음)'));
-  L.push('- 식별자(candId): `' + candId(c) + '`');
-  L.push('- 교차보도(cross): ' + (c.cross != null ? c.cross : '?') + ' 매체');
-  if (mems.length) { L.push('- 같은 사건 다른 매체(cluster_members · 대체 fetch 후보):'); mems.slice(0, 12).forEach(u => L.push('  - ' + u)); }
-  L.push('', '## 진단·복구 힌트 (클로드용)');
-  L.push('- 데이터센터 IP 403 = 매체 WAF(조선·동아·연합·중앙 등)가 러너 IP 차단. 헤더로 못 뚫음 → **기사 전문 직접 입력**이 정공법.');
-  L.push('- 복구 A(웹앱): 이 메뉴의 「내용 입력」 → 기사 본문 붙여넣기 → 전송. body 동봉 pending 으로 재분석(403 무관).');
-  L.push('- 복구 B(폰): Termux 공유로 전문 전달(가정용 IP=200).');
-  L.push('- 대체: 위 cluster_members 중 접근 가능한 매체를 alt 로 줘 본문 확보.');
-  L.push('- 확인: GitHub Actions `news-analyze` 최근 run → `Analyze pending articles` 스텝 로그(`pending/failed/*.log`).');
-  try {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/markdown;charset=utf-8' }));
-    a.download = '픽실패_' + candId(c).replace(/[^\w.-]+/g, '_').slice(0, 40) + '.md';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 1500);
-  } catch (e) { console.warn('진단 MD 다운로드 실패', e); }   // Blob/ObjectURL 극한 실패(모바일 WebView 등) — 미처리 예외 차단(손상 없음·재시도 가능)
-}
-// 내용 입력 = 기사 전문을 직접 붙여넣어 재분석(막힌 매체 403 우회). askdlg UIUX 계승(.sbtn 클립·X·전송).
-let _pasteC = null;
-function openPaste(c) {
-  if (!c) return;
-  if (pastedlg.open) return;   // 전송 중(1.3s)·이미 열림 = 재진입 차단(_pasteC 덮어쓰기·중복 커밋 방지)
-  _pasteC = c;
-  $('#pasteStatus').textContent = ''; $('#pasteText').value = '';
-  $('#pasteSub').textContent = (c.title || '').slice(0, 80) || (c.url || '');
-  updatePasteClip();
-  pastedlg.showModal();
-  setTimeout(() => $('#pasteText').focus(), 60);
-}
 // PICKED 클릭 → 피드(메뉴3) 이동 + 해당 기사 팝업. 픽 결과가 피드에 떴으니(pickInFeed) url/클러스터로 매칭해 open(a).
 function pickedOpen(c) {   // PICKED → 피드 이동+모달. url/cluster 매칭, 없으면 load() 후 재매칭(feedOpenBy 공용)
   const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean));
@@ -3623,7 +3497,6 @@ const SC_PAGE = 150;
 const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
 function renderScrap() {
-  closeFailMenu();   // 전체 재렌더 = Failed 칩 노드 교체 → 열린 컨텍스트 메뉴 앵커가 stale → 닫음
   const host = $('#scrapList'); if (!host) return;
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rt = ratingsAll(); scRT = rt;   // scRT = 정렬에서 픽 상태(누적 고정 제외) 참조
@@ -3722,7 +3595,7 @@ const SC_COLS_HTML =
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">신규</div><div class="scrap-list" data-col="new"></div></div>';
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
-  el.className = 'sc-item' + (scLit(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pickFailedShow(c) ? ' pickfail' : '') + (st.acked ? ' acked' : '');
+  el.className = 'sc-item' + (scLit(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (st.picked ? ' picked' : '') + (st.picked && pfailHas(c) ? ' pickfail' : '') + (st.acked ? ' acked' : '');
   el.dataset.cid = candId(c);   // Picking…→PICKED 제자리 갱신 매칭용
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
@@ -3750,8 +3623,8 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
       el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
       el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
       el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
-    } else if (pickFailedShow(c)) {   // 픽했는데 분석 실패/무응답 = Failed 칩(탭→원문 / 길게·우클릭→메뉴) 배선
-      wireFailChip(el.querySelector('.sc-fail'), c);
+    } else if (pickFailedShow(c)) {   // 픽했는데 분석 실패/무응답 = Failed 칩(탭→원문 열림) 배선
+      const fb = el.querySelector('.sc-fail'); if (fb) fb.onclick = (e) => { e.stopPropagation(); failOpen(c); };
     } else {   // PICKED(완료) = 탭하면 피드(메뉴3)로 이동 + 해당 기사 팝업
       const g = el.querySelector('.sc-got:not(.picking)'); if (g) g.onclick = () => pickedOpen(c);
     }
@@ -3918,7 +3791,6 @@ function setViewhead(tab) {
 }
 function showTab(tab) {
   CURTAB = tab;
-  closeFailMenu();   // 탭 전환 시 Failed 칩 컨텍스트 메뉴도 닫음(토스트→showTab 직행 경로는 closeOverlays 안 거침)
   const fb = $('.filterbar'), wp = $('.wrap'), sv = $('#scrapview'), snv = $('#snsview');
   if (fb) fb.hidden = (tab !== 'feed');
   if (wp) wp.hidden = (tab !== 'feed');
@@ -4051,54 +3923,6 @@ $('#askSend').addEventListener('click', async () => {
       setTimeout(() => { askdlg.close(); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
     else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); }
   } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
-  btn.disabled = false;
-});
-// ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
-$('#failmenu').addEventListener('click', e => {
-  const it = e.target.closest('.failmenu-it'); if (!it) return;
-  e.stopPropagation();
-  const c = _failMenuC; closeFailMenu();
-  if (!c) return;
-  if (it.dataset.act === 'diag') failDownload(c);
-  else if (it.dataset.act === 'paste') openPaste(c);
-});
-document.addEventListener('click', e => { const m = $('#failmenu'); if (m && !m.hidden && !m.contains(e.target)) closeFailMenu(); });
-window.addEventListener('scroll', closeFailMenu, { capture: true, passive: true });   // 스크롤=위치 stale → 닫기(캡처=스크롤 컨테이너 포함·passive=메인 스크롤 성능 유지)
-window.addEventListener('resize', closeFailMenu);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFailMenu(); });
-// 전문 직접 입력 모달 — askdlg UIUX 계승(.sbtn 클립 컨텍스트 1버튼·X·전송). 전송=api/pick body 경로(재분석) → Failed→Picking.
-$('#pasteX').addEventListener('click', () => pastedlg.close());
-pastedlg.addEventListener('click', e => { if (e.target === pastedlg) pastedlg.close(); });   // 백드롭 닫기
-function updatePasteClip() { const b = $('#pasteClip'); if (!b) return; const has = $('#pasteText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; }
-$('#pasteText').addEventListener('input', updatePasteClip);
-$('#pasteClip').addEventListener('click', async () => {
-  const ta = $('#pasteText'), b = $('#pasteClip');
-  if (ta.value.trim()) {
-    try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); $('#pasteStatus').textContent = '복사됨'; setTimeout(() => { b.classList.remove('ok'); updatePasteClip(); }, 1200); } catch { $('#pasteStatus').textContent = '복사 실패'; }
-  } else {
-    try { const t = await navigator.clipboard.readText(); ta.value = t; ta.focus(); updatePasteClip(); } catch { $('#pasteStatus').textContent = '클립보드 권한 막힘 — 입력칸 길게눌러 붙여넣기'; }
-  }
-});
-$('#pasteSend').addEventListener('click', async () => {
-  const c = _pasteC; if (!c || !c.url) { $('#pasteStatus').textContent = '대상 정보 없음 — 메뉴를 다시 열어줘'; return; }
-  const text = $('#pasteText').value.trim();
-  if (text.length < 30) { $('#pasteStatus').textContent = '기사 전문을 붙여넣어줘 (너무 짧음)'; return; }
-  const btn = $('#pasteSend'); btn.disabled = true; $('#pasteStatus').textContent = '보내는 중…';
-  const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);   // 대체 fetch 후보(원매체 403 우회 보조)
-  try {
-    const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, body: text }) });
-    const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) {
-      $('#pasteStatus').textContent = '✅ 재분석 시작 — 곧 Picking…으로, 완료되면 PICKED';
-      const id = candId(c);
-      saveRating(id, { picked: true, pickedAt: Date.now() });   // pickedAt 리셋 → pickTimedOut 해제(새 분석창)
-      pfAddResub(id);                                            // pfailHas 억제 → Failed→Picking(임시창)
-      markPickFailSeen();                                        // 실패 알림 링/토스트 소거
-      setTimeout(() => { pastedlg.close(); btn.disabled = false; if (CURTAB === 'scrap') renderScrap(); pollPicking(); }, 1300);
-      return;
-    }
-    $('#pasteStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`);
-  } catch { $('#pasteStatus').textContent = '❌ 전송 실패'; }
   btn.disabled = false;
 });
 // ── 요약 수정 배선 — FAB(콘텐츠 초안~시사점 구간 점등)→팝업(좌측 펼침·즉시 포커스) · 클립(.sbtn 캐러셀) · 전송(1차 재확인→2차 PICK 게이지 발사) ──
@@ -4456,7 +4280,7 @@ function makeDraggable(dlg, handleSel) {
   h.addEventListener('pointercancel', end);
   dlg.addEventListener('close', () => { dx = dy = 0; dlg.style.transform = ''; });   // 닫으면 중앙 복귀(다음 열기=재중앙·재애니)
 }
-[['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#pastedlg', '.askhead'], ['#tooldlg', '.tool-h']]
+[['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#tooldlg', '.tool-h']]
   .forEach(([d, sel]) => makeDraggable($(d), sel));
 
 load();
