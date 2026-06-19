@@ -129,27 +129,50 @@ def gemini_image(prompt):
     return None
 
 def cse_search(query):
-    """Google CSE 이미지 검색 → [{url, link}] 상위 3장(키 없거나 실패 시 [], fail-soft)."""
+    """Google CSE 이미지 검색 → '베스트 3장' 선별(키 없거나 실패 시 [], fail-soft).
+
+    품질 우선(운영자 방침: 비용보다 좋은 썸네일). CSE는 쿼리당 과금이라 num=10 과대수집해도
+    비용 동일 → 10장 모아 점수화 후 상위 3:
+      · 가로 800px↑ 강선호(첫 후킹 자료라 저해상 금지·미달은 강한 감점, 완전배제는 아님=폴백)
+      · 4:5(=0.8) 근접 보너스(카드 비율에 맞는 세로형/정방형 우대)
+      · CSE 관련도순 = 상징성 프록시(검색어가 entity 키워드라 상위일수록 대표성↑)
+      · 크기 클수록 가점 · 워터마크 무관(필터 안 함).
+    imgType=photo(클립아트·라인아트 제외, 실사진만).
+    """
     if not (CSE_KEY and CSE_CX):
         return []
     import urllib.parse
-    # imgType=photo(클립아트·라인아트 제외, 실사진만) · imgSize=large(저화질 컷) → '가장 가까운' 실뉴스 사진.
     qs = urllib.parse.urlencode({"key": CSE_KEY, "cx": CSE_CX, "q": query[:120],
-                                 "searchType": "image", "imgType": "photo", "imgSize": "large",
-                                 "num": "3", "safe": "active"})
+                                 "searchType": "image", "imgType": "photo",
+                                 "num": "10", "safe": "active"})
     try:
         with urllib.request.urlopen("https://www.googleapis.com/customsearch/v1?" + qs, timeout=30) as r:
             j = json.loads(r.read().decode())
-        out = []
-        for it in j.get("items", [])[:3]:
-            url = it.get("link")
-            ctx = (it.get("image") or {}).get("contextLink") or url
-            if url:
-                out.append({"url": url, "link": ctx})
-        return out
     except Exception as e:
         print("  ⚠️ CSE 검색 실패: {}".format(e), flush=True)
         return []
+    items = j.get("items", [])
+    scored = []
+    for i, it in enumerate(items):
+        url = it.get("link")
+        if not url:
+            continue
+        im = it.get("image") or {}
+        w, h = int(im.get("width") or 0), int(im.get("height") or 0)
+        ratio = (w / h) if h else 1.0
+        aspect = 1.0 / (1.0 + abs(ratio - 0.8))      # 4:5(0.8) 근접 최대
+        size = min(w, 1600) / 1600.0                 # 클수록↑(상한)
+        rank = 1.0 - (i / max(len(items), 1))        # 관련도순(상징성 프록시)
+        gate = 1.0 if w >= 800 else 0.35             # 가로 800px↑ 강선호
+        extreme = 0.7 if (ratio > 2.2 or ratio < 0.45) else 1.0   # 초와이드/초세로 = 카드 크롭 망가짐(썸네일 부적합)
+        score = gate * extreme * (0.45 * rank + 0.30 * aspect + 0.25 * size)
+        ctx = im.get("contextLink") or url
+        scored.append((score, w, {"url": url, "link": ctx}))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:3]
+    if top:
+        print("  🏆 후보 {}장 → 베스트 3 (선두 가로 {}px)".format(len(items), top[0][1]))
+    return [t[2] for t in top]
 
 def r2_upload(png_bytes, key, content_type="image/png"):
     """바이트 → R2 업로드(aws cli S3호환·러너 기본설치) → 공개 URL. 실패 시 None(fail-soft → 로컬 폴백)."""
