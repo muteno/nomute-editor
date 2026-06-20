@@ -79,10 +79,9 @@
   .status.err { color:#ff8a8a; }
   /* 대기열/로그 — 제작 건별 행(동시 처리) */
   .jobs { display:flex; flex-direction:column; gap:6px; margin:10px 0 0; }
-  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:9px; background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* flex-wrap = 다중 변형(.jvars)이 아래 줄 전체폭으로 떨어짐 */
+  .job { display:flex; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:9px; background:rgba(8,15,11,.34); border:1px solid var(--line); }
   .job .jlab { font-weight:800; color:var(--accent); }
   .job .jvar { color:#fff; font-weight:400; }   /* OPA·변형 라벨 = 흰색·일반체(초록 제목과 구분 · 운영자 260619) */
-  .job .jvars { flex-basis:100%; display:flex; flex-direction:column; align-items:flex-start; gap:3px; margin-top:3px; padding-left:11px; }   /* 다중 변형([1]·[2]…) = 줄바꿈·좌측정렬 + 들여쓰기(라벨 종속 계층 · 운영자 260620) */
   .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; }
   .job.done .jst { color:var(--accent); }
   .job.err { border-color:rgba(255,90,90,.4); } .job.err .jst { color:#ff9b9b; }
@@ -103,10 +102,10 @@
   .carnav:disabled { opacity:0; pointer-events:none; }
   .carbar { display:flex; align-items:center; gap:10px; margin-top:8px; }
   .carcount { font-size:11.5px; color:var(--mut); }
-  .carsave { display:none; }   /* (구) 캐러셀 아래 배치 폐지 — 전체 다운로드은 캐러셀 우상단 오버레이로 이동(아래 .saveall) */
-  /* 전체(전체 다운로드) = 잡(결과) 행 우측 인라인 버튼(운영자 260619 — 캐러셀 오버레이서 이동, index.html .fi-saveall 패턴 일치). 글래스 톤(§📋). */
+  .carsave { display:none; }   /* (구) 캐러셀 아래 배치 폐지 — 전체저장은 캐러셀 우상단 오버레이로 이동(아래 .saveall) */
+  /* 전체 저장 = 잡(결과) 행 우측 인라인 버튼(운영자 260619 — 캐러셀 오버레이서 이동, index.html .fi-saveall 패턴 일치). 글래스 톤(§📋). */
   .job .jsave { flex:none; display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:10.5px; line-height:1; color:#fff; cursor:pointer; white-space:nowrap;
-    background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:6px 11px;
+    background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:5px 10px;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 8px rgba(0,0,0,.28); }
   .job .jsave:active { transform:scale(.95); } .job .jsave svg { display:block; width:12px; height:12px; }
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
@@ -300,7 +299,7 @@
     <div class="carbar" id="carbar" hidden><span class="carcount" id="carcount"></span></div>
     <!-- 대기열/로그 — 제작 버튼 누른 게 다 여기 쌓이고 각자 상태 표시(동시 가능) -->
     <div class="jobs" id="jobs"></div>
-    <!-- 완성 이미지 = 캐러셀(나온 순서대로 한 장씩 추가) · 전체 다운로드은 결과물 아래(해당 부분) -->
+    <!-- 완성 이미지 = 캐러셀(나온 순서대로 한 장씩 추가) · 전체 저장은 결과물 아래(해당 부분) -->
     <div class="carwrap" id="carwrap" hidden>
       <div class="cartrackwrap">
         <div class="cartrack" id="cartrack"></div>
@@ -590,23 +589,17 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   else st = '⏳ 제작 중 ' + sec + 's · ' + dn + '/' + tot + '장';
   row.innerHTML = '';
   const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + ' #' + job.n;
-  const labs = (job.outs || []).map(o => o && o.label).filter(Boolean);
-  if (labs.length === 1) { const v = document.createElement('span'); v.className = 'jvar'; v.textContent = ' · ' + labs[0]; lab.appendChild(v); }   // 단일 변형(OPA 등) = 라벨 옆 인라인(기존)
+  const vr = jobVars(job); if (vr) { const v = document.createElement('span'); v.className = 'jvar'; v.textContent = vr; lab.appendChild(v); }   // OPA·변형 = 흰색·일반체(제목과 분리)
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
   row.append(lab, stsp);
-  if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
-    const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 다운로드';
-    sv.innerHTML = DOWNLOAD_SVG + '<span>전체</span>';
+  if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체 저장' 버튼(우측 인라인 · index .fi-saveall 패턴)
+    const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 저장';
+    sv.innerHTML = DOWNLOAD_SVG + '<span>전체 저장</span>';
     sv.onclick = () => job.saves.forEach((s, i) => setTimeout(() => {
       const a = document.createElement('a'); a.href = s.url; a.download = s.dlname;
       document.body.appendChild(a); a.click(); a.remove();
     }, i * 350));
     row.append(sv);
-  }
-  if (labs.length > 1) {   // 다중 변형 = 라벨 아래 줄바꿈·좌측정렬(가로 어중간 래핑 방지 · 운영자 260620)
-    const vs = document.createElement('div'); vs.className = 'jvars'; vs.setAttribute('aria-label', '출력 변형');   // 스크린리더 — 변형 목록 맥락 부여
-    (job.outs || []).forEach((o, i) => { if (o && o.label) { const d = document.createElement('span'); d.className = 'jvar'; d.textContent = '[' + (i + 1) + '] ' + o.label; vs.appendChild(d); } });
-    row.append(vs);
   }
 }
 function pollJob(job) {   // 각 잡 독립 폴링(5s) — 완성 슬롯은 캐러셀에 추가. 180s(3분) 타임아웃(운영자 260618: 무한대기 차단).
@@ -639,10 +632,18 @@ function dlStamp(ts) {   // 다운로드 파일명 시각 프리픽스 yymmdd_hh
 const pad3 = n => String(n).padStart(3, '0');   // 잡번호 3자리(005) — 파일명 통일
 // 파일명용 라벨 슬러그 — 한글 유지, '#' 제거(파일시스템 인식 문제)·공백/괄호/·/금지문자 → '_' 정리
 const dlSlug = s => String(s || '').replace(/#/g, '').replace(/[·()/\\:*?"<>|]/g, ' ').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+// 잡 헤더 variant 나열 — 단일=' · {라벨}'(예: ' · OPA58') / 다중=' · [1] OPA58 · [2] OPA30 · [3] OPA80'(라벨 있는 출력만)
+function jobVars(job) {
+  const outs = job.outs || [];
+  const labs = outs.map(o => o && o.label).filter(Boolean);
+  if (!labs.length) return '';
+  if (outs.length === 1) return ' · ' + labs[0];
+  return ' · ' + outs.map((o, i) => o.label ? '[' + (i + 1) + '] ' + o.label : '').filter(Boolean).join(' · ');
+}
 function carAppend(url, dlname, cap, job, varStr) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서)
   CARSLIDES.push({ url, dlname });
-  if (job) (job.saves || (job.saves = [])).push({ url, dlname });   // 잡별 '전체 다운로드'용 목록(잡 행 버튼이 이걸 저장)
-  $('#carwrap').hidden = false; $('#carbar').hidden = false;   // 바(전체 다운로드·N/N장)는 대기열 위에 노출
+  if (job) (job.saves || (job.saves = [])).push({ url, dlname });   // 잡별 '전체 저장'용 목록(잡 행 버튼이 이걸 저장)
+  $('#carwrap').hidden = false; $('#carbar').hidden = false;   // 바(전체저장·N/N장)는 대기열 위에 노출
   const track = $('#cartrack');
   const slide = document.createElement('div'); slide.className = 'carslide';
   slide.innerHTML = '<a class="imgdl" href="' + url + '" download="' + dlname + '" aria-label="다운로드">' + DOWNLOAD_SVG + '</a><img src="' + url + '"><span class="cap"></span>';
@@ -661,7 +662,7 @@ function carUpdate() {
 $('#carPrev').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: -t.clientWidth, behavior: 'smooth' }); };
 $('#carNext').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: t.clientWidth, behavior: 'smooth' }); };
 $('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
-// 전체 다운로드은 캐러셀 오버레이서 잡(결과) 행 우측 인라인으로 이동(renderJob의 .jsave · 잡별 = index .fi-saveall 패턴)
+// 전체 저장은 캐러셀 오버레이서 잡(결과) 행 우측 인라인으로 이동(renderJob의 .jsave · 잡별 = index .fi-saveall 패턴)
 // 1초 벽시계 티커 — 진행 중 잡의 표시 초를 실제 시간과 일치(5s 폴과 분리·260619)
 setInterval(() => { JOBS.forEach(j => { if (j.status !== 'done' && j.status !== 'err') renderJob(j); }); }, 1000);
 
