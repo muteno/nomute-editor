@@ -3276,8 +3276,11 @@ async function pushRefresh() {
 }
 async function pushToggle() {
   const btn = $('#pushbtn'); if (!btn || !pushOK()) return;
-  if (Notification.permission === 'denied') {   // 브라우저가 차단 = JS로 못 풂 → 설정에서 푸는 법 안내
-    alert('알림이 브라우저에서 차단돼 있어 버튼으론 못 켜요.\n\n켜는 법(안드로이드 크롬):\n① 주소창 왼쪽 🔒(자물쇠) 탭 → 사이트 설정(권한) → 알림 → "허용"\n② 또는 안드로이드 설정 → 앱 → Chrome → 알림 → 이 사이트 허용\n→ 그 다음 페이지 새로고침하고 "켜기" 누르세요.');
+  if (Notification.permission === 'denied') {   // denied는 JS로 못 풂(웹 표준·PWA도 동일·설정 deeplink API 없음) → 환경별 설정 안내
+    const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    alert(pwa
+      ? '알림이 꺼져 있어요(설치된 앱). 버튼으론 못 켜요(보안 제약).\n\n켜는 법:\n① 홈 화면 노뮤트 아이콘 꾹 누르기 → 앱 정보(ⓘ) → 알림 → 허용\n② 또는 폰 설정 → 앱 → 노뮤트(없으면 Chrome) → 알림 → 허용\n→ 앱 다시 열고 "켜기"\n\n그래도 안 되면: 아이콘 삭제 후 다시 "홈 화면에 추가"로 재설치 = 권한 초기화(가장 확실).'
+      : '알림이 브라우저에서 차단돼 있어요. 켜는 법:\n주소창 왼쪽 🔒 → 사이트 설정 → 알림 → "허용" → 새로고침.');
     return;
   }
   btn.disabled = true; btn.textContent = '…';
