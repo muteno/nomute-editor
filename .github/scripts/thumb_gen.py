@@ -502,19 +502,30 @@ def process_one(md, stem):
     if changed:
         json.dump(gen, open(os.path.join(tdir, "gen.json"), "w", encoding="utf-8"),
                   ensure_ascii=False, indent=2)
-    # 제미나이 토큰 사용량 — 이 기사 호출분(이미지·비전 등)을 usage.json에 기록 + 로그(누적 합산 포함)
+    # 제미나이 토큰 사용량 — 이 기사 호출분을 usage.json에 기록 + 로그(누적 합산 포함).
+    # 태그별 분리: gen=이미지 생성(tag"img") / search=검색·비전(tag"vision") — 뷰어가 각 라벨(🍌 AI 생성·🔎 검색) 옆에 따로 표기.
+    # (현재 검색=og:image 스크래핑이라 vision 호출 0 → search 버킷 0; THUMB_VISION 점화 시 _rec_usage(tag="vision")로 자동 채워짐.)
     calls = _USAGE[_u0:]
     if calls:
-        tot = _usage_total(calls)
         up = os.path.join(tdir, "usage.json")
         try:
-            prev = int(json.load(open(up, encoding="utf-8")).get("cumulative_total_tokens") or 0)
+            prevj = json.load(open(up, encoding="utf-8"))
         except Exception:
-            prev = 0
-        tot["cumulative_total_tokens"] = prev + tot["total_tokens"]
+            prevj = {}
+        def _prev_cum(bucket):
+            try: return int((prevj.get(bucket) or {}).get("cumulative") or 0)
+            except Exception: return 0
+        tot = _usage_total(calls)
+        tot["cumulative_total_tokens"] = int((prevj or {}).get("cumulative_total_tokens") or 0) + tot["total_tokens"]
+        # 버킷별(누적 포함) — 미래 비전 점화 대비 분리 집계
+        gen_calls    = [c for c in calls if c.get("tag") == "img"]
+        search_calls = [c for c in calls if c.get("tag") in ("vision", "search")]
+        gt, st = _usage_total(gen_calls), _usage_total(search_calls)
+        tot["gen"]    = {"calls": gt["calls"], "total": gt["total_tokens"], "cumulative": _prev_cum("gen")    + gt["total_tokens"]}
+        tot["search"] = {"calls": st["calls"], "total": st["total_tokens"], "cumulative": _prev_cum("search") + st["total_tokens"]}
         json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-        print("  📊 제미나이 토큰: {}콜·합계 {:,} (prompt {:,}+출력 {:,})·누적 {:,}".format(
-            tot["calls"], tot["total_tokens"], tot["prompt_tokens"], tot["output_tokens"], tot["cumulative_total_tokens"]), flush=True)
+        print("  📊 제미나이 토큰: {}콜·합계 {:,} (생성 {:,}·검색 {:,})·누적 {:,}".format(
+            tot["calls"], tot["total_tokens"], tot["gen"]["total"], tot["search"]["total"], tot["cumulative_total_tokens"]), flush=True)
     return changed or search_written
 
 def main():

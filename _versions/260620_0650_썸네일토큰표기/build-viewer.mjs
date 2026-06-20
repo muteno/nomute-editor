@@ -120,7 +120,7 @@ for (const a of articles) {
   // 썸네일 후보: cards/<stem>/thumbs/{search.json, gen.json + gen-*.png}
   //  search.json = [{url, link, label}] (url=R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사' = 기사 og:image 추출)
   //  gen.json    = [{file, label}] (gen-*.png 로컬 생성물 → viewer/cards/<stem>/thumbs/ 복사)
-  let thumbSearch = [], thumbGen = [], thumbUsage = null;
+  let thumbSearch = [], thumbGen = [];
   const tdir = join(dir, 'thumbs');
   if (existsSync(tdir)) {
     try {
@@ -141,22 +141,11 @@ for (const a of articles) {
         }).filter(Boolean);
       }
     } catch { /* 생성 없음 */ }
-    // 제미나이 토큰 사용량 — thumb_gen.py가 남긴 usage.json. 뷰어 '🍌 AI 생성'·'🔎 검색' 라벨 우측에 각 비용 표기.
-    //  usage.json = {…, gen:{calls,total,cumulative}, search:{…}} (구 데이터=버킷 없음 → gen은 top-level로 폴백, search=0)
-    try {
-      const u = JSON.parse(readFileSync(join(tdir, 'usage.json'), 'utf8'));
-      if (u && (u.total_tokens || u.cumulative_total_tokens || u.gen)) {
-        const gen = u.gen || { calls: u.calls || 0, total: u.total_tokens || 0, cumulative: u.cumulative_total_tokens || u.total_tokens || 0 };
-        const search = u.search || { calls: 0, total: 0, cumulative: 0 };   // 검색=og 스크래핑(비전 OFF)이라 0 — 점화 시 채워짐
-        thumbUsage = { gen, search };
-      }
-    } catch { /* 사용량 없음 */ }
   }
   a.cards = {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     thumb_search: thumbSearch,   // 검색이미지(기사 og:image+유사) — R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사'
     thumb_gen: thumbGen,         // AI 생성 3화풍(P3 Gemini)
-    thumb_usage: thumbUsage,     // 제미나이 토큰(이 기사 AI 생성) — {calls,prompt,output,total,cumulative} · 없으면 null
 
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
