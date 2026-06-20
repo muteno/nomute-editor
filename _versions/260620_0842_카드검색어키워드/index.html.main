@@ -2174,37 +2174,12 @@ function cardRefCarousel(caption, title, foreign) {
   refResolveAndLoad(wrap, caption, title, foreign);
   return wrap;
 }
-// 카드 캡션 → 구글 이미지 검색용 키워드(명사형 · '+' 연결). 한국어 형태소분석기 없이 휴리스틱(운영자 260620 · 일단판).
-//  풀문장을 그대로 검색하면 너무 구체적이라 안 맞음 → 핵심 명사만 추출(조사·불용어·숫자단위 제거, 한자어 서술어 X했다/됐다→명사, native 동사 제거).
-//  한계(인정): 의미판단(비핵심 명사 탈락·들이받았다→사고)·1글자 명사·동사많은 짧은 캡션은 못 따라감 → 카드 텍스트 품질 좋아지면 같이 개선. '+'는 encodeURIComponent로 %2B가 돼 구글 박스에 +로 그대로 들어감(운영자 검증 포맷).
-const _KW_STOP = new Set('이 그 저 것 등 및 수 때 더 또 좀 약 총 중 데 점 곳 곳곳 관련 위해 통해 대한 따라 함께 모든 여러 어떤 무슨 이런 그런 저런 가장 매우 너무 다시 계속 아직 이미 거의 바로 결국 주요 상태 경우 부분 사람 사람들 우리 자신 서로 만에 처음 이번 당시 최근 오늘 내일 어제 모두 일부 대부분 가운데 사이 이후 이전 동안 무렵 정도 가량 까지 안'.split(/\s+/));
-const _KW_JOSA = /(으로서|으로써|이라고|라는|라고|에서|에게|한테|께서|처럼|보다|까지|부터|마다|조차|만큼|이라|이며|이고|에도|에는|으론|으로|로서|로써|은|는|이|가|을|를|에|의|와|과|도|로|만|나|며|란|랑)$/;
-const _KW_VERB = /(았다|었다|였다|겠다|졌다|났다|왔다|갔다|쳤다|혔다|뒀다|는다|ㄴ다|린다|운다|진다|긴다|다고|다는|다며|다면|라고|라는|자고|냐고|느냐|나요|까요|세요|어요|아요|여요|군요|거든|잖아|는데|지만|면서|으며|었던|았던|였던|지지|졌|쳐|져|혀|와서|봐|줘|아서|어서|여서|시며|되며|하며)$/;
-function captionKeywords(s, max = 5) {
-  const words = String(s || '').replace(/[""''「」『』（）()\[\]<>{}"']/g, ' ').replace(/[.,!?…∼~\/:;]+/g, ' ').split(/\s+/).filter(Boolean);
-  const out = [];
-  for (let w of words) {
-    w = w.replace(/(했다|했고|했지만|한다|하는|하고|하며|하면|해서|됐다|됐고|된다|되는|되고|되며|되면|됨|함)$/, '');   // 한자어 서술어 → 명사
-    if (_KW_VERB.test(w)) continue;                              // native 동사·연결형·인용형
-    if (/다$/.test(w)) continue;                                 // 남은 서술어
-    const m = w.match(_KW_JOSA);
-    if (m && w.length - m[0].length >= 2) w = w.slice(0, -m[0].length);   // 조사(2글자+ 남을 때만 = 단어 깨짐 방지)
-    if (/^\d+[가-힣]{0,2}$/.test(w)) continue;                   // 숫자+단위(5명·22일·27년·3시) — 5·18 등은 통과
-    w = w.replace(/^[·\-'']+|[·\-'']+$/g, '');
-    if (w.length < 2) continue;
-    if (_KW_STOP.has(w)) continue;
-    if (/(나요|까요|세요|어요|아요|으며|면서|는데)$/.test(w)) continue;
-    if (!out.includes(w)) out.push(w);
-    if (out.length >= max) break;
-  }
-  return out.join('+');
-}
-// 쿼리 결정: 외국=영문(엔티티맵→번역 폴백)+구글 미국지역·영어 / 국내=캡션 명사형 키워드(풀문장 X). 그 뒤 구글버튼 href·Wikimedia 채움.
+// 쿼리 결정: 외국=영문(엔티티맵→번역 폴백)+구글 미국지역·영어 / 국내=국문. 그 뒤 구글버튼 href·Wikimedia 채움.
 async function refResolveAndLoad(wrap, caption, title, foreign) {
   const btn = wrap.querySelector('.cref-srch'), track = wrap.querySelector('.cref-track');
   const ko = ((title || '') + ' ' + (caption || '')).replace(/\s+/g, ' ').trim();
   const setBtn = (q, ex) => { if (btn) btn.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((String(q).slice(0, 100) || '뉴스')) + (ex || ''); };
-  if (!foreign) { setBtn(captionKeywords(caption) || captionKeywords(title) || ko); loadRefImages((title || caption || ko).slice(0, 60), track); return; }   // 국내 = 캡션 키워드(명사형+)
+  if (!foreign) { setBtn(ko); loadRefImages((title || caption || ko).slice(0, 60), track); return; }   // 국내 = 국문
   let eq = foreignEnglish(title, caption);                   // 외국 1) 엔티티맵(즉시·정확)
   setBtn(eq || ko, '&gl=us&hl=en');                          // 버튼 먼저 세팅(클릭 데드윈도 차단) · 미국 지역·영어
   if (!eq) { eq = await translateKoEn(title || caption); if (eq) setBtn(eq, '&gl=us&hl=en'); }   // 2) 번역 폴백 → 갱신
