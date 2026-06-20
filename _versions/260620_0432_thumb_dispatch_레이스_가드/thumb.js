@@ -79,7 +79,7 @@ export async function onRequestPost({ request, env }) {
   const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS-rand(동초 충돌 방지)
 
   // 배경 이미지 업로드(uploads/<id>/src.*) — /1·/2 오버레이 모두 옵션(이미지 있을 때만 업로드)
-  let imgPath = '', imgSha = '';
+  let imgPath = '';
   const wantImg = (app === '1' || (app === '2' && params.mode === 'overlay')) && body.imageB64;
   if (wantImg) {
     let b64 = String(body.imageB64 || '');
@@ -94,11 +94,10 @@ export async function onRequestPost({ request, env }) {
     if (put.status !== 201 && put.status !== 200) {
       return json({ error: `업로드 실패 GitHub ${put.status}: ${(await put.text()).slice(0, 200)}` }, 502);
     }
-    try { imgSha = ((await put.json()) || {}).commit?.sha || ''; } catch { imgSha = ''; }   // src 커밋 SHA — 워크플로가 dispatch 레이스(옛 HEAD 체크아웃)일 때 이 SHA로 배경 직접 확보
   }
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/thumb-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { app, id, image: imgPath, image_sha: imgSha, params: JSON.stringify(params) },
+    ref: REF, inputs: { app, id, image: imgPath, params: JSON.stringify(params) },
   });
   if (r.status === 204) {
     const dir = `thumb_out/${id}`;
