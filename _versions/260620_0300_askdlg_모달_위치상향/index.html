@@ -1053,7 +1053,7 @@
   .bpop a.bpop-hl-y { color:#ffce54; font-weight:800; text-shadow:0 0 10px rgba(255,206,84,.35); }   /* 썸네일 생성기 = 노란 강조(요약요청 초록과 구분 · 운영자 260619) */
   .bpop a.bpop-hl-y:hover { color:#ffe07a; background:rgba(255,206,84,.08); }   /* 호버도 노랑 유지(초록 .bpop a:hover 덮어씀) */
   .askdlg { border:none; border-radius:22px; padding:0; max-width:600px; width:94vw; color:var(--fg);
-    position:fixed; inset:0; margin:30dvh auto auto; height:max-content; max-height:calc(70dvh - 28px); overflow:auto;   /* 가로 중앙 · 세로 상단 30% 지점(운영자 260620 — 16%→30% 원복). max-height 70dvh로 하단 클립 방지 */
+    position:fixed; inset:0; margin:30dvh auto auto; height:max-content; max-height:calc(70dvh - 28px); overflow:auto;   /* 가로 중앙 · 세로 상단 30% 지점(운영자 260619 — 중앙→상단 이동). max-height 70dvh로 하단 클립 방지 */
     background:linear-gradient(165deg, rgba(20,30,22,.98), rgba(10,15,11,.99));
     box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(15,253,2,.18);
     animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }   /* 진입애니 통일 */
@@ -1087,9 +1087,6 @@
     font:inherit; font-size:13px; font-weight:800; padding:9px 18px; cursor:pointer; box-shadow:0 6px 16px rgba(15,253,2,.32); }
   .asksend:disabled { opacity:.5; cursor:default; }
   .asksend:active { transform:scale(.97); }
-  /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
-  .askbot .askclip { position:static; top:auto; right:auto; flex:none; opacity:.85; }
-  .askbot .askclip:hover { opacity:1; }
   /* 전문 직접 입력 모달 — .askdlg 글래스·.askclip·.asksend·.askx 전부 계승. 대상 부제 + 약간 큰 입력칸만 추가. */
   .pastedlg .pastesub { font-size:12px; color:var(--mut); margin:-6px 0 12px; line-height:1.45;
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -1289,13 +1286,13 @@
     <div class="askhead"><b>✨ 요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기">✕</button></div>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder="예) 요즘 층간소음 사건 관련 기사 정리해줘 — 또는 캡처만 첨부"></textarea>
+      <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
     </div>
     <div class="askimgs" id="askImgs"></div>
     <div class="askbot">
+      <label class="askattach" id="askAttach">이미지 첨부<input id="askFile" type="file" accept="image/*" multiple hidden></label>
       <span class="askstatus" id="askStatus"></span>
-      <label class="askattach" id="askAttach">첨부<input id="askFile" type="file" accept="image/*" multiple hidden></label>
-      <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
-      <button class="asksend" id="askSend" type="button">전송</button>
+      <button class="asksend" id="askSend" type="button">요청 보내기 →</button>
     </div>
   </div>
 </dialog>
@@ -4199,7 +4196,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-tip .nm-h { color:#1ED760; }
   .nm-dot { width:7px; height:7px; border-radius:50%; background:#1ED760; display:inline-block; flex:none; }
   .nm-tip .nm-dot { box-shadow:0 0 8px rgba(30,215,96,.7); }
-  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; word-break:break-word; overflow-wrap:anywhere; }   /* 내부 스크롤 제거 = 펼침(화면 스크롤 우선) + 긴 URL·연속문자 박스 안에서 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) */
+  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; }   /* 내부 스크롤 제거 = 내용 전체 높이로 펼침 → 박스 위에서도 화면(페이지) 스크롤 우선(도형에 안 갇힘 · 운영자 260620) */
   .nm-tip .nm-body { background:rgba(0,0,0,.28); border:1px solid rgba(30,215,96,.22); }
   .nm-body > :first-child { margin-top:0; }
   .nm-body > :last-child { margin-bottom:0; }
@@ -4209,7 +4206,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
-  .nm-pre { white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; }   /* 내부 스크롤 제거 = 펼침 → 화면 스크롤 우선 + 긴 문자열 박스 안 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) */
+  .nm-pre { white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; }   /* 내부 스크롤 제거 = 펼침 → 화면 스크롤 우선(복사 구간이 페이지 스크롤 안 가로챔 · 운영자 260620) */
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
@@ -4290,7 +4287,6 @@ async function buildSummaryHtml() {
   src.querySelectorAll('[style]').forEach(el => el.removeAttribute('style'));  // 뷰어 인라인 스타일 제거(서식 CSS만 적용)
   const SECBTN = '<button type="button" class="nm-secbtn" title="이 항목 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button>';
   const tipRe = /시사점|💡/;
-  const snsRe = /^\s*\[?\s*(IG|Thread|인스타|스레드|쓰레드)/i;   // 인스타·스레드(SNS) 소주제 = 다운로드 HTML서 배제 — [자유요약]은 유지(운영자 260620)
   const card = (name, inner, tip) => '<div class="nm-sec' + (tip ? ' nm-tip' : '') + '" data-sec>'
     + (name ? '<h2 class="nm-h"><span class="nm-dot"></span>' + esc(name) + '</h2>' : '')
     + inner + SECBTN + '</div>\n';
@@ -4301,7 +4297,6 @@ async function buildSummaryHtml() {
       const name = kids[i].textContent.trim();
       const parts = []; let j = i + 1;
       while (j < kids.length && !isH(kids[j])) { parts.push(kids[j]); j += 1; }
-      if (snsRe.test(name)) { i = j; continue; }   // 인스타·스레드 섹션(헤딩+본문) 통째 제외 — 다운로드 HTML 불필요(운영자 260620)
       if (!parts.length) boxes += '<div class="nm-grp">' + esc(name) + '</div>\n';   // 본문 없는 그룹 헤더(예: 콘텐츠 초안)
       else if (parts.length === 1 && parts[0].tagName === 'PRE')
         boxes += card(name, '<pre class="nm-pre draft-scroll" data-body>' + parts[0].innerHTML + '</pre>', tipRe.test(name));
