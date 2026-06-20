@@ -1525,7 +1525,6 @@ async function load() {
   reapplyReshooting();   // 재렌더(상태변화·교체)로 사라진 대기 카드 잠금 배지 재적용
 }
 
-let _feedSig = '';   // 피드 렌더 시그니처(행·상태·필터) — 직전과 동일하면 재애니 생략(미세 깜빡임 방지)
 function render() {
   const q = $('#q').value.trim().toLowerCase();
   const cardonly = $('#cardonly').checked;
@@ -1536,10 +1535,7 @@ function render() {
     (!FILTERS.breaking || a.breaking || /속보/.test(a.title || '')) &&
     (!FILTERS.issue || a.issue));
   const list = $('#list');
-  if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; _feedSig = ''; return; }
-  // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
-  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.breaking ? 'b' : '') + (FILTERS.issue ? 'i' : '');
-  const _anim = sig !== _feedSig; _feedSig = sig;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더는 즉시(깜빡임 0)
+  if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
   list.innerHTML = '';
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
@@ -1551,8 +1547,7 @@ function render() {
       c.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
       c.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
     }
-    if (_anim) c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(내용·필터 바뀐 렌더만)
-    else c.style.animation = 'none';   // 동일 재렌더(탭전환·폴) = 즉시 표시 = 깜빡임 0
+    c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
         <div class="cardtop"><span class="catslot"><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></span>${dateLine(a)}${kind ? `<span class="urg ${kind}">${kind === 'brk' ? '긴급' : '이슈'}</span>` : ''}</div>
@@ -3799,10 +3794,8 @@ const pfResub = () => { try { return JSON.parse(localStorage.getItem(PF_USKEY) |
 const pfAddResub = id => { try { const m = pfResub(); m[id] = Date.now(); localStorage.setItem(PF_USKEY, JSON.stringify(m)); } catch {} };
 const pfResubActive = id => { const t = pfResub()[id]; return !!t && (Date.now() - t < PICK_TIMEOUT_MS + 60000); };
 // 실패 표시 대상 = picks-failed 에 있음 + 복구표시 안 함(api/submit) + 재제출창 아님(전문 직접입력 진행 중) + 피드 미등장(늦은 성공이면 PICKED 우선·stale 실패기록 무시).
-// 실패 키 = c.url 또는 클러스터 멤버 url 중 picks-failed에 있는 첫 키(pendStatus·srvTriage와 동일 패턴 — rep-url 점프 시 형제 url로 기록된 실패도 매칭·운영자 260620).
-const pfKeyOf = c => [_normU(c.url), ...((c.cluster_members || []).map(_normU))].find(u => u && PFAIL.has(u)) || '';
-const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
-const pfReason = c => (PFAIL.get(pfKeyOf(c)) || {}).reason || '';
+const pfailHas = c => PFAIL.has(_normU(c.url)) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
+const pfReason = c => (PFAIL.get(_normU(c.url)) || {}).reason || '';
 async function loadPickFails() {
   try {
     const r = await fetch('picks-failed.json?_=' + Date.now());
