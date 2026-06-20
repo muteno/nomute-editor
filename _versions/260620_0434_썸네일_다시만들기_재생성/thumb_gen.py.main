@@ -473,7 +473,7 @@ def process_one(md, stem):
         if R2_ON:                                # R2 = 공개 URL(레포 미저장)
             url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid))
             if url:
-                gen.append({"sid": sid, "img": url + "?v=" + str(int(time.time())), "label": label}); changed = True   # ?v=캐시버스트(재생성 시 같은 R2 키 덮어써도 새 이미지 반영)
+                gen.append({"sid": sid, "img": url, "label": label}); changed = True
                 print("  ✓ {} → R2".format(label)); continue
             # R2 업로드 실패 → 로컬 폴백(아래로 떨어짐)
         fp = os.path.join(tdir, "gen-{}.png".format(sid))   # git 폴백 = 로컬 PNG
@@ -490,22 +490,6 @@ def main():
         print("GEMINI_API_KEY 없음 — 썸네일 생성 생략(스캐폴드 no-op)")
         return 0
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
-    # ── 단일 기사 강제 재생성 (뷰어 '다시 만들기' → thumb-redo.yml · THUMB_ONLY=stem) ──
-    # gen.json만 비워 4화풍 전부 재생성(검색 search.json=기사 og:image는 보존). SINCE/MAX_BATCH 무관.
-    only = os.environ.get("THUMB_ONLY", "").strip()
-    if only:
-        md = os.path.join("queue", only + ".md")
-        if not os.path.exists(md):
-            print("THUMB_ONLY 대상 없음:", md); return 0
-        gp = os.path.join("cards", only, "thumbs", "gen.json")
-        try:
-            if os.path.exists(gp):
-                os.remove(gp); print("  ↻ gen.json 비움 → 4화풍 재생성:", only)
-        except Exception as e:
-            print("  ⚠️ gen.json 제거 실패:", e)
-        process_one(md, only)
-        print("THUMB_ONLY 재생성 완료:", only)
-        return 0
     # 미완성 기사만(최신 우선) = gen.json에 4화풍(sid) 다 있으면 완성으로 보고 skip(부분이면 보완).
     target_sids = {s[0] for s in STYLES}
     todo = []
