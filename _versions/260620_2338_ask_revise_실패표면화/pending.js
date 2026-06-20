@@ -72,25 +72,6 @@ export async function onRequestGet({ env }) {
     });
   }));
 
-  // ── 2b) asks/failed/ 최근 = ✨요약요청(ask) 처리 실패(FAIL + 로그). ask 실패가 그동안 뷰어에 안 떴음 → 대기열에 표면화(운영자 260620). ──
-  // ⚠️ ask 파일명 ts = submit.js의 toISOString(UTC) `YYYYMMDD-HHMMSS` → askTime(UTC) 파싱(폰 KST의 fnameTime과 다름).
-  const askFailed = (await listDir('asks/failed'))
-    .filter(f => f && f.type === 'file' && /\.json$/i.test(f.name))
-    .map(f => ({ f, t: askTime(f.name) }))
-    .filter(x => x.t && (now - x.t) < RECENT_MS)
-    .sort((a, b) => b.t - a.t).slice(0, CAP_FAIL);
-  await Promise.all(askFailed.map(async ({ f, t }) => {
-    const base = f.name.replace(/\.json$/i, '');
-    let reqText = '';
-    try { const j = JSON.parse(await raw('asks/failed/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); } catch {}
-    const log = await raw('asks/failed/' + encodeURIComponent(base) + '.log');
-    items.push({
-      id: base, t, status: 'fail', via: '요약요청', src: '',
-      title: (reqText || '✨ 요약 요청').slice(0, 90),
-      diag: { kind: 'ask-failed', reqText: reqText.slice(0, 400), log: (log || '').slice(0, 2500) },
-    });
-  }));
-
   // ── 3) queue/ 최근 = 완료(SUCC). 내용 fetch 없이 파일명만(클라가 DATA.file로 매칭·바로가기). -ask-(요약요청)는 제외. ──
   const seen = new Set(items.map(i => i.id));
   (await listDir('queue'))
@@ -104,14 +85,6 @@ export async function onRequestGet({ env }) {
   return json({ items, now });
 }
 
-// ask 파일명 YYYYMMDD-HHMMSS(submit.js toISOString=UTC) → epoch ms. ⚠️ UTC 파싱(폰 KST의 fnameTime과 다름).
-function askTime(name) {
-  const m = name.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
-  if (!m) return null;
-  const [, y, mo, dd, hh, mi, ss] = m;
-  const ms = Date.parse(`${y}-${mo}-${dd}T${hh}:${mi}:${ss}Z`);
-  return Number.isFinite(ms) ? ms : null;
-}
 // pending YYMMDD-HHMMSS(digits=6) / queue YYMMDD-HHMM(digits=4) → epoch ms(KST·폰 date 기준).
 function fnameTime(name, digits) {
   const m = name.match(digits === 4 ? /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/ : /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
