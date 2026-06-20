@@ -1716,7 +1716,7 @@ function open(a) {
   $('#revStatus').textContent = '';   // 수정 요청 상태 리셋(이전 카드 잔상 제거)
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
   setupScrub();   // 모달 헤더 = 스크롤 위치 스크러버(게이지 + 요약·프롬프트·카드 틱 + 클릭 점프)
-  const src = $('#src'); if (a.url){ src.href=hrefOk(a.url); src.style.display=''; } else src.style.display='none';
+  const src = $('#src'); if (a.url){ src.href=a.url; src.style.display=''; } else src.style.display='none';
   const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
   updateRevFab();   // 열릴 때 FAB 초기 상태(맨 위라 보통 숨김)
@@ -2230,7 +2230,7 @@ async function loadRefImages(query, track) {
     const pages = j && j.query && j.query.pages ? Object.values(j.query.pages) : [];
     const imgs = pages.map(p => p.imageinfo && p.imageinfo[0]).filter(ii => ii && ii.thumburl && /\.(jpe?g|png|webp)$/i.test(ii.url || '')).slice(0, 3);
     if (!imgs.length) { track.innerHTML = '<div class="cref-empty">관련 이미지 없음 — 위 ‘구글 이미지 검색’으로 찾아봐<br>(샘플 소스=위키미디어 · 추후 교체 가능)</div>'; return; }
-    track.innerHTML = imgs.map(ii => '<a class="cref-slot" href="' + escUrl(ii.descriptionurl || ii.url) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + escUrl(ii.thumburl) + '" alt=""></a>').join('');
+    track.innerHTML = imgs.map(ii => '<a class="cref-slot" href="' + esc(ii.descriptionurl || ii.url) + '" target="_blank" rel="noopener"><img loading="lazy" src="' + esc(ii.thumburl) + '" alt=""></a>').join('');
   } catch { track.innerHTML = '<div class="cref-empty">이미지 조회 실패 — ‘구글 이미지 검색’ 이용</div>'; }
 }
 
@@ -3210,7 +3210,6 @@ function jumpTo(which) {
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));   // String() = 비문자열(숫자·객체) 입력도 안전(api/candidates 직독 등 빌드 우회 대비)
 // URL 속성 전용 — 위험 스킴(javascript:·data:·vbscript:) 차단 후 esc. 외부 출처(CSE 검색 link/img) href·src 하드닝.
 const escUrl = u => { const s = String(u ?? '').trim(); return /^(javascript|data|vbscript):/i.test(s) ? '#' : esc(s); };
-const hrefOk = u => { const s = String(u ?? '').trim(); return /^(javascript|data|vbscript):/i.test(s) ? '#' : s; };   // DOM .href 프로퍼티 대입용(HTML 이스케이프 X·스킴만 차단 — 앵글9)
 
 
 // Z: 요약 헤더 아래 기본 개요 — 대분류·매체·기자명·WRITE·IN. 기존 데이터만(기자명=본문 Fact 출처 패턴).
@@ -3666,7 +3665,7 @@ const BKEY = 'nomute_brk_seen';
 const brkSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BKEY) || '[]')); } catch { return new Set(); } };
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 배지·핀·최신·토스트 공용 단일규칙 — 'grade1 경미인데 ⚡이슈' 모순 차단(260617).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isBreaking(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 속보만(<FAST_MAX_H=4h). JUNK_HEAD(머리표junk)·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<2 제외 → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단·앵글10 B2) · 확인✓ 누르면 점등 꺼짐.
+const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isBreaking(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 속보만(<FAST_MAX_H=4h). 처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<2 제외 → 확인✓ 누르면 점등 꺼짐.
 function detectBreaking() {
   const seen = brkSeen();
   const fresh = breakingNow().filter(c => !seen.has(candId(c)));
@@ -3840,7 +3839,7 @@ function showFailToast(n, sample) {
 // Failed 탭 = 묻지 말고 그냥 원문으로 이동(요약요청 모달 안 띄움 · 운영자 요청 260618). 제목 <a>와 동일 동작.
 function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 가려져 빈 모달이 뜨던 버그 → 앵커 클릭으로 원문 새 탭
   if (!c || !c.url) return;
-  const a = document.createElement('a'); a.href = hrefOk(c.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
+  const a = document.createElement('a'); a.href = c.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
   document.body.appendChild(a); a.click(); a.remove();
 }
 // Failed 칩 배선 — 탭=원문 열기 / 길게(480ms)·우클릭=컨텍스트 메뉴(실패 사유·내용 입력). 대기열(qFeedBtn) 롱프레스 패턴 계승.
@@ -4043,7 +4042,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
     `<div class="sc-top">${scBadge(c)}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
-     <div class="sc-title"><a href="${escUrl(c.url || '#')}" target="_blank" rel="noopener"></a></div>
+     <div class="sc-title"><a href="${esc(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
            ? (pstate === 'failed'

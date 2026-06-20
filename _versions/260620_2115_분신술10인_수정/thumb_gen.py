@@ -115,15 +115,6 @@ def _md_url(path):
     except Exception:
         return ""
 
-def _md_has_imgsrc(path):
-    """프런트매터 image_sources(AI WebSearch 관련소스)가 비어있지 않은지 가볍게 판정(백필 게이트용).
-    paste(전문 붙여넣기)는 url이 없어도 image_sources로 검색이미지를 채우므로 이 경로도 백필 대상에 포함해야 한다(앵글3·J ISSUE-1)."""
-    try:
-        m = re.search(r'^\s*image_sources\s*:\s*(.+)', open(path, encoding="utf-8").read(2000), re.M)
-        return bool(m and m.group(1).strip())
-    except Exception:
-        return False
-
 # ── 제미나이 토큰 사용량 기록 (운영자 260620) — 모든 Gemini 호출의 usageMetadata를 한곳에 누적.
 # 기사별은 process_one이 슬라이스해 cards/<stem>/thumbs/usage.json + Actions 로그로 남긴다.
 # (이미지 생성이 현재 유일한 Gemini 호출 · 카드 슛도 같은 gemini_image라 자동 포함.
@@ -615,10 +606,9 @@ def main():
             continue   # 활성화 기준일 이전(백로그) 제외 = 신규 픽 한정
         tdir = os.path.join("cards", stem, "thumbs")
         ai_done = {g.get("sid") for g in _load_gen(tdir)} >= target_sids
-        # url 또는 image_sources(AI 관련소스) 있는데 search.json 없으면 검색이미지 백필 대상에 포함.
-        # ⚠️ process_one 게이트가 `(art_url or image_sources)`이므로 여기 백필 판정도 동일해야 paste 기사(url無·image_sources有)가 누락 안 됨(앵글3·J ISSUE-1).
+        # url 있는데 search.json 없으면 검색이미지(og:image) 백필 대상에 포함.
         # AI 완료분은 process_one이 기존 sid 보존 → Gemini 0회, 검색이미지만 채움(추가 과금 없음).
-        search_pending = (bool(_md_url(md)) or _md_has_imgsrc(md)) and not os.path.exists(os.path.join(tdir, "search.json"))
+        search_pending = bool(_md_url(md)) and not os.path.exists(os.path.join(tdir, "search.json"))
         if ai_done and not search_pending:
             continue
         todo.append((md, stem))
