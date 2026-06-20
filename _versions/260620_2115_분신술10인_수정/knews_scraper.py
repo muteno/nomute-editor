@@ -107,8 +107,6 @@ def normalize_link(url):
     """링크 정규화 — 추적 파라미터·프래그먼트만 제거(식별자 쿼리는 보존)해 중복 판정 정확도↑."""
     url = (url or "").strip()
     parts = urlsplit(url)
-    if parts.scheme and parts.scheme.lower() not in ("http", "https"):
-        return ""    # http(s)만 허용 — 오염 RSS의 javascript:/data: 링크가 candidates.json→뷰어 <a href>로 흐르는 DOM-XSS 차단(앵글9·근본방벽)
     q = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True)
          if k.lower() not in _TRACKING_PARAMS]
     url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(q), ""))
