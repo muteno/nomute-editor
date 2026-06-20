@@ -3453,8 +3453,6 @@ if (qFeedBtn) {
   qFeedBtn.addEventListener('pointerdown', lpStart);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => qFeedBtn.addEventListener(ev, lpCancel));
   qFeedBtn.addEventListener('contextmenu', e => { e.preventDefault(); openQueue(); });   // PC 우클릭 = 대기열(네이티브 메뉴 막고 즉시 열기)
-  qFeedBtn.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(lpTimer); });   // 스와이프 제스처 중 롱프레스 오발 취소(Failed칩 패턴 계승·260620)
-  qFeedBtn.addEventListener('blur', () => { lpFired = false; });   // 대기열 열려 포커스 이동 후 lpFired 고착 → 다음 탭전환 1회 삼킴 방지(Failed칩 blur 리셋 계승)
 }
 function openQueue() {
   closeOverlays('qpop');
@@ -4037,7 +4035,7 @@ async function pickCard(c) {
   const id = candId(c); const cur = ratingsAll()[id] || {};
   if (cur.picked) return;                                  // 한 번만(중복 발사 방지)
   if (!c.url) { alert('원문 url이 없어 큐레이션 불가'); return; }
-  saveRating(id, { picked: true, pickedAt: Date.now(), pickCross: c.cross || 0 }); renderScrap();   // 낙관적 표시 + 픽 시점 cross 스냅 · pickedAt=타임아웃 기준(없으면 즉시 거짓-Failed, applyTriage와 대칭·260620 분신술)
+  saveRating(id, { picked: true, pickCross: c.cross || 0 }); renderScrap();   // 낙관적 표시 + 픽 시점 cross 스냅(증분 표시용)
   clearTimeout(_rateTimers[id]);
   postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: true });   // 관심도 원장(데이터)
   try {   // 큐레이션 발동 = pending 적재 → 분석 → 카드(피드에 등장). 실패 시 되돌려 재시도 가능.

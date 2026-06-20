@@ -6,7 +6,7 @@
 // env: GH_TOKEN(contents:read · push/thumb와 동일 PAT).
 const REPO = 'muteno/nomute-editor';
 const STUCK_MIN = 20;            // pending 잔류 이 분 이상 = FAIL(stuck) 표시(운영자 260619)
-const RECENT_MS = 24 * 3600e3;  // failed/queue 최근 창(24h — 폰 밤샘 실패도 대기열에 잔존·표면화, 운영자 260620 분신술)
+const RECENT_MS = 6 * 3600e3;   // failed/queue 최근 창(6h)
 const CAP_PEND = 25, CAP_FAIL = 12, CAP_QUEUE = 20;
 
 export async function onRequestGet({ env }) {

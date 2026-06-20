@@ -198,17 +198,7 @@ try {
     try {
       const log = readFileSync(join(fdir, f.replace(/\.txt$/, '.log')), 'utf8');
       const m = log.match(/ANALYSIS_FAILED:\s*([^\n]+)/);
-      if (m) reason = m[1].trim();
-      else {                                   // 마커 없는 실패(권한대기·타임아웃·빈응답·크래시) — 거짓 'fetch 차단' 방지로 로그서 사유 유추(260620 분신술)
-        const ec = (log.match(/exit_code:\s*(\d+)/) || [])[1];
-        if (ec && ec !== '0') reason = `비정상 종료(exit ${ec})`;
-        else {
-          const tail = log.split(/---- std(?:err|out\(head\)) ----/).slice(1).join('\n');
-          const line = tail.split('\n').map(s => s.trim()).find(s => s.length > 4 && !/^----/.test(s));
-          reason = line || '분석 미완(빈 응답·형식 오류)';
-        }
-      }
-      reason = reason.slice(0, 160);
+      reason = (m ? m[1] : '').trim().slice(0, 160);
     } catch { /* 로그 없음 */ }
     picksFailed.push({ url, reason, ts: f.slice(0, 13) });   // ts = YYMMDD-HHMMSS 접두
   }
