@@ -133,10 +133,9 @@
   .msglist { max-height:46vh; overflow:auto; padding:2px; }
   /* 긴급 속보 웹푸시 토글(메시지 팝업 상단) */
   .pushrow { display:flex; align-items:center; gap:8px; padding:4px 12px 8px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
-  .pushrow .pl { font-size:12px; font-weight:700; color:var(--fg); white-space:nowrap; }
-  .pushbtn { margin-left:auto; font:800 13px inherit; line-height:1; padding:4px 4px; cursor:pointer; border:none; background:none; color:var(--mut); }   /* 박스·체크 없이 색으로만 OFF(회색)/ON(초록) 구분 · 운영자 260621 */
-  .pushbtn.on { color:var(--accent); }                 /* ON = 초록 */
-  .pushbtn.denied { color:var(--amber); }              /* 차단됨 = 앰버(탭→해제 안내) */
+  .pushrow .pl { font-size:12px; font-weight:700; color:var(--fg); }
+  .pushbtn { margin-left:auto; font:800 11.5px inherit; border-radius:999px; padding:5px 12px; cursor:pointer; border:1px solid var(--line2); background:rgba(255,255,255,.05); color:var(--mut); }
+  .pushbtn.on { background:rgba(255,90,90,.16); color:#ff9b9b; border-color:rgba(255,90,90,.35); }
   .pushbtn:disabled { opacity:.55; cursor:default; }
   .pushbtn:active { transform:scale(.95); }
   .msgitem { padding:9px 10px; border-radius:10px; }
@@ -182,7 +181,7 @@
   .bar input:focus, .bar select:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
   /* 상단 검색바 = 프로필 원 기준 세로중앙·배너 위 은근히 걸침. 검정 반투명(배너 비침), 키워드 텍스트만 또렷(불투명). 모든 탭 항상 표시. */
   /* 접이식 검색: 기본=아이콘만(프로필 옆·테두리색·박스 없음), 클릭 시 좌측으로 입력바 펼침. */
-  .topsearch { position:absolute; right:94px; bottom:-22px; height:60px; z-index:6; display:flex; align-items:center; gap:4px; }   /* 검색·새로고침 = 프로필과 *동일 box*(같은 bottom·height) + align-items:center → 세로중앙 무조건 일치(높이추측 X) · 운영자 260620 */
+  .topsearch { position:absolute; right:94px; bottom:-10px; z-index:6; display:flex; align-items:center; gap:4px; }   /* 검색·새로고침 = 프로필 세로중앙 라인 정합(cluster 36px·center +8 = profile center) · 운영자 260620 */
   .ts-toggle { width:36px; height:36px; flex:none; background:none; border:none; padding:0; cursor:pointer; display:grid; place-items:center; }
   .ts-toggle:active { transform:scale(.92); }
   .topsearch .ts-ico { width:20px; height:20px; flex:none; stroke:var(--accent); fill:none; stroke-width:2.2; stroke-linecap:round;
@@ -1106,7 +1105,7 @@
     .wrap { padding:0 12px 48px; }
     .topbanner { padding:8px 12px 0; }
     .profile { width:54px; height:54px; right:22px; bottom:-20px; }
-    .topsearch { bottom:-20px; height:54px; }   /* 모바일 프로필과 동일 box(bottom·height) = 세로중앙 정확 정합 */
+    .topsearch { bottom:-11px; }   /* 모바일 프로필 center(+7) 정합 — 검색·새로고침 같은 라인 */
     .bar { padding:0 12px; }
     dialog { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
     .md { padding:6px 14px 44px; }
@@ -1267,11 +1266,11 @@
     <a href="https://www.threads.com/?hl=ko" target="_blank" rel="noopener">Thread ↗</a>
     <a href="https://x.com/NOMUTE" target="_blank" rel="noopener">X ↗</a>
     <a href="https://www.facebook.com/" target="_blank" rel="noopener">Facebook ↗</a>
-    <div class="pushrow" id="pushrow" hidden><span class="pl">🚨 알림</span><button class="pushbtn" id="pushbtn" type="button">켜기</button></div>
     <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
   </div>
   <div class="msgpop" id="msgpop" hidden>
     <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기">✕</button></div>
+    <div class="pushrow" id="pushrow" hidden><span class="pl">🚨 긴급 속보 알림</span><button class="pushbtn" id="pushbtn" type="button">켜기</button></div>
     <div class="msglist" id="msglist"></div>
   </div>
 </div>
@@ -3273,18 +3272,11 @@ async function pushRefresh() {
   const st = await pushState();
   if (st === 'unsupported') { row.hidden = true; return; }   // iOS 미설치 등 = 숨김
   row.hidden = false;
-  if (st === 'denied') { btn.textContent = '차단됨'; btn.classList.remove('on'); btn.classList.add('denied'); btn.disabled = false; return; }   // 앰버·클릭 가능 — pushToggle이 해제 안내(denied는 JS로 못 풂)
-  btn.disabled = false; btn.classList.remove('denied'); btn.textContent = st === 'on' ? 'ON' : 'OFF'; btn.classList.toggle('on', st === 'on');
+  if (st === 'denied') { btn.textContent = '차단됨'; btn.classList.remove('on'); btn.disabled = true; return; }
+  btn.disabled = false; btn.textContent = st === 'on' ? '켜짐 ✓' : '켜기'; btn.classList.toggle('on', st === 'on');
 }
 async function pushToggle() {
   const btn = $('#pushbtn'); if (!btn || !pushOK()) return;
-  if (Notification.permission === 'denied') {   // denied는 JS로 못 풂(웹 표준·PWA도 동일·설정 deeplink API 없음) → 환경별 설정 안내
-    const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    alert(pwa
-      ? '알림이 꺼져 있어요(설치된 앱). 버튼으론 못 켜요(보안 제약).\n\n켜는 법:\n① 홈 화면 노뮤트 아이콘 꾹 누르기 → 앱 정보(ⓘ) → 알림 → 허용\n② 또는 폰 설정 → 앱 → 노뮤트(없으면 Chrome) → 알림 → 허용\n→ 앱 다시 열고 "켜기"\n\n그래도 안 되면: 아이콘 삭제 후 다시 "홈 화면에 추가"로 재설치 = 권한 초기화(가장 확실).'
-      : '알림이 브라우저에서 차단돼 있어요. 켜는 법:\n주소창 왼쪽 🔒 → 사이트 설정 → 알림 → "허용" → 새로고침.');
-    return;
-  }
   btn.disabled = true; btn.textContent = '…';
   try {
     const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
@@ -3317,7 +3309,7 @@ function closeOverlays(keep) {
   if (keep !== 'search') closeSearch();
   closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
-$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden; closeOverlays('pmenu'); pmenu.hidden = !willOpen; if (!pmenu.hidden) pushRefresh(); });
+$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden; closeOverlays('pmenu'); pmenu.hidden = !willOpen; });
 document.addEventListener('click', e => {
   if (!pmenu.hidden && !pmenu.contains(e.target) && !$('#profile').contains(e.target)) pmenu.hidden = true;
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
@@ -4779,16 +4771,9 @@ loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완
 loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 loadPickFails();    // eager — 픽 분석 실패(전문 필요) 감지로 앰버 링/토스트(수집함 밖에서도 알림)
-// 라이브 자동 갱신 — 보일 때만 60초마다 피드(load)+수집함+메시지 재확인. location.reload 아님(보던 화면·탭 유지) ·
-// quiet=수집함 목록 안 흔듦 · 다이얼로그 열림은 load() 가드가 펼친 기사 보존 · 피드 위로 튕기면 스크롤 복원. (운영자 260620)
-function livePoll() {
-  if (document.visibilityState !== 'visible') return;   // 안 보이면 폴 안 함(배터리·쿼터)
-  const y = window.scrollY;
-  load().finally(() => { if (!$('#dlg').open && y > 80 && window.scrollY < y - 40) window.scrollTo(0, y); });   // 재렌더가 위로 튕기면 보던 위치 복원
-  loadCandidates(true); loadPickFails(); loadMessages();
-}
-setInterval(livePoll, 60000);   // 1분 자동 갱신
-document.addEventListener('visibilitychange', livePoll);   // 탭 복귀 시 즉시 갱신
+// 속보 라이브 감지 — 앱이 보일 때만 주기적으로 후보 재확인(데이터 ~15분 주기라 120s면 충분). quiet=목록 안 흔듦.
+setInterval(() => { if (document.visibilityState === 'visible') { loadCandidates(true); loadPickFails(); loadMessages(); } }, 120000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { loadCandidates(true); loadPickFails(); loadMessages(); } });
 setViewhead('feed');   // 기본 탭=뉴스요약 헤더 초기화
 try { const _lt = localStorage.getItem('nomute_tab'); if (_lt && _lt !== 'feed' && ['scrap', 'sns'].includes(_lt)) showTab(_lt); } catch {}   // 새로고침 시 마지막 탭 복원
 </script>
