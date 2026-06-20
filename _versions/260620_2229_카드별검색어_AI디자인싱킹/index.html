@@ -2094,9 +2094,7 @@ function cardSec(a) {
     const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
     [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
       .forEach((pre, i) => {
-        // 검색 쿼리 = ① card-make가 뽑은 카드 씬별 AI 키워드(최소 명사) → ② 없으면 캡션 명사추출 폴백 → ③ 제목 (260620 AI 디자인싱킹)
-        const rc = _refCards[i];
-        const q = (rc && (rc.keyword || captionKeywords(rc.caption))) || _refTtl;
+        const q = (_refCards[i] && _refCards[i].caption) || _refTtl;   // 검색 쿼리 = 카드 캡션(없으면 제목)
         if (!q) return;
         const row = document.createElement('div'); row.className = 'srchrow';
         const note = document.createElement('span'); note.className = 'qnote';
@@ -2226,12 +2224,11 @@ async function loadRefImages(query, track) {
 }
 
 // ── 섹션 3: 카드 피드(인스타형 가로 스냅) — 이미지+캡션 1:1 · 개별/전체 다운로드 · 1b(수정·버전) 훅 ──
-// cards.md = '### [카드 N]' 단위 → **텍스트**(캡션)·**이미지 프롬프트**·**검색어**(선택·260620) 코드블록. images[i]와 1:1.
-//  keyword = card-make가 카드 씬별로 뽑은 구글 이미지검색 최소 명사(없는 옛 카드는 ''→ srchrow가 captionKeywords로 폴백). 검색어 갭은 다음 카드 헤더를 못 넘게 가둠(인덱스 시프트 방지).
+// cards.md = '### [카드 N]' 단위 → **텍스트**(캡션)·**이미지 프롬프트** 코드블록. images[i]와 1:1.
 function parseCards(md = '') {
   const out = [];
-  const re = /###\s*\[카드\s*(\d+)\][\s\S]*?\*\*텍스트\*\*\s*```(?:text)?\s*([\s\S]*?)```(?:[\s\S]*?\*\*이미지\s*프롬프트\*\*\s*```(?:text)?\s*([\s\S]*?)```)?(?:(?:(?!###\s*\[카드)[\s\S])*?\*\*검색어\*\*\s*```(?:text)?\s*([\s\S]*?)```)?/g;
-  let m; while ((m = re.exec(md))) out.push({ n: +m[1], caption: (m[2] || '').trim(), prompt: (m[3] || '').trim(), keyword: (m[4] || '').trim() });
+  const re = /###\s*\[카드\s*(\d+)\][\s\S]*?\*\*텍스트\*\*\s*```(?:text)?\s*([\s\S]*?)```(?:[\s\S]*?\*\*이미지\s*프롬프트\*\*\s*```(?:text)?\s*([\s\S]*?)```)?/g;
+  let m; while ((m = re.exec(md))) out.push({ n: +m[1], caption: (m[2] || '').trim(), prompt: (m[3] || '').trim() });
   return out;
 }
 function feedTitle(md = '') { const m = md.match(/^#\s+(.+)$/m); return m ? m[1].trim() : ''; }
