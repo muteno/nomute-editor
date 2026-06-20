@@ -4423,26 +4423,26 @@ function makeDraggable(dlg, handleSel) {
   const h = dlg.querySelector(handleSel); if (!h) return;
   h.classList.add('drag-handle');
   let dx = 0, dy = 0, sx = 0, sy = 0, bL = 0, bT = 0, W = 0, on = false;
-  h.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, label, .dlg-prog')) return;   // 헤더 내 컨트롤·스크러버 클릭은 드래그 아님
-    on = true; sx = e.clientX; sy = e.clientY;
-    const r = dlg.getBoundingClientRect();
-    bL = r.left - dx; bT = r.top - dy; W = r.width;   // 자연(translate 전) 위치 역산
-    try { h.setPointerCapture(e.pointerId); } catch {}
-    e.preventDefault();
-  });
-  h.addEventListener('pointermove', e => {
+  const move = e => {
     if (!on) return;
     let nx = dx + (e.clientX - sx), ny = dy + (e.clientY - sy);
     nx = Math.max((80 - W) - bL, Math.min((window.innerWidth - 80) - bL, nx));   // 좌우 최소 80px 노출
     ny = Math.max(-bT, Math.min((window.innerHeight - 46) - bT, ny));            // 헤더 항상 보이게
-    dlg.style.transform = 'translate(' + nx + 'px,' + ny + 'px)';
+    dlg.style.setProperty('transform', 'translate(' + nx + 'px,' + ny + 'px)', 'important');   // 진입애니/CSS 어떤 transform보다 우선
     dx = nx; dy = ny;
+  };
+  const end = () => { on = false; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); };
+  h.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, label, .dlg-prog')) return;   // 헤더 내 컨트롤 클릭은 드래그 아님
+    on = true; sx = e.clientX; sy = e.clientY;
+    dlg.style.animation = 'none';   // 진입 애니가 transform 고정하는 것 확실 차단(fill-mode 무관)
+    const r = dlg.getBoundingClientRect();
+    bL = r.left - dx; bT = r.top - dy; W = r.width;   // 자연(translate 전) 위치 역산
+    window.addEventListener('pointermove', move);     // document 레벨 = 포인터가 헤더 밖으로 나가도 끊김 없이 추적(setPointerCapture 실패 무관)
+    window.addEventListener('pointerup', end);
+    e.preventDefault();
   });
-  const end = e => { on = false; try { h.releasePointerCapture(e.pointerId); } catch {} };
-  h.addEventListener('pointerup', end);
-  h.addEventListener('pointercancel', end);
-  dlg.addEventListener('close', () => { dx = dy = 0; dlg.style.transform = ''; });   // 닫으면 중앙 복귀(다음 열기=재중앙·재애니)
+  dlg.addEventListener('close', () => { dx = dy = 0; dlg.style.transform = ''; dlg.style.animation = ''; on = false; });   // 닫으면 중앙 복귀 + 애니 복원(다음 열기 재생)
 }
 [['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#pastedlg', '.askhead'], ['#tooldlg', '.tool-h']]
   .forEach(([d, sel]) => makeDraggable($(d), sel));
