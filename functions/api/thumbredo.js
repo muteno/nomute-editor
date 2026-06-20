@@ -1,0 +1,34 @@
+// Cloudflare Pages Function — 뷰어 썸네일 '다시 만들기' → GitHub thumb-redo 워크플로 발사.
+// 단일 기사 AI 4화풍 재생성(gen.json 비우고 새로 생성·검색 og:image 보존).
+// ⚠️ 게이트 없음(운영자 260620 — 암호게이트는 추후 앱 전체 일괄). 유료(Gemini 4장). make-cards.js 패턴 계승.
+// env: GH_TOKEN = GitHub fine-grained PAT(이 레포·Actions Read/write).
+export async function onRequestPost({ request, env }) {
+  const json = (o, s = 200) =>
+    new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
+
+  if (!env.GH_TOKEN)
+    return json({ error: '서버 미설정 — Cloudflare Pages 환경변수 GH_TOKEN 필요' }, 500);
+
+  // 대상 = queue stem(.md 유무 무관 · ASCII). 워크플로가 .md 떼고 THUMB_ONLY로 처리.
+  const article = /^[A-Za-z0-9._-]+$/.test(body.article || '') ? body.article : '';
+  if (!article) return json({ error: '대상(article) 오류' }, 400);
+
+  const r = await fetch(
+    'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/thumb-redo.yml/dispatches',
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${env.GH_TOKEN}`,
+        accept: 'application/vnd.github+json',
+        'user-agent': 'nomute-viewer',
+        'x-github-api-version': '2022-11-28',
+      },
+      body: JSON.stringify({ ref: 'main', inputs: { article } }),
+    },
+  );
+  if (r.status === 204) return json({ ok: true, article });
+  return json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 300)}` }, 502);
+}
