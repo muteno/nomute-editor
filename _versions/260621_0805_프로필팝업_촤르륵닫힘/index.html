@@ -167,9 +167,6 @@
   .pmenu a:hover, .pmenu button:hover { background:rgba(255,255,255,.06); color:var(--accent); }
   /* (긴급 확인 버튼·프로필 긴급 점등 폐지 — 운영자 260620: 긴급 배지는 사건속성으로 계속 표시, 프로필 확인 루틴만 제거) */
   @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
-  @keyframes popOut { from { opacity:1; transform:none;} to { opacity:0; transform:scale(.92) translateY(-4px);} }   /* popIn 역재생 = 아바타(top-right)로 촤르륵 접힘 */
-  .pmenu.closing { animation:popOut .18s cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
-  @media (prefers-reduced-motion: reduce) { .pmenu { animation:none; } }   /* 열림도 즉시 — 닫힘(hidePmenu JS 가드)과 대칭 */
   /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
   @keyframes popInCx { from { opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to { opacity:1; transform:translateX(-50%);} }
 
@@ -397,7 +394,6 @@
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
   .sc-item.rated { border-color:rgba(15,253,2,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(15,253,2,.06); }
-  .sc-item.sc-clickable { cursor:pointer; }   /* 카드 본문 탭 = 대표 URL(버튼·링크 제외) */
   .sc-item.sc-flash { animation:scFlash 1.5s ease; }   /* 토스트→해당 후보로 이동 시 점멸(운영자 260620) */
   @keyframes scFlash { 0%,100% { box-shadow:none; } 25% { box-shadow:0 0 0 2px var(--accent), 0 0 16px rgba(var(--accent-rgb),.55); } }
   @media (prefers-reduced-motion:reduce) { .sc-item.sc-flash { animation:none; outline:2px solid var(--accent); } }
@@ -3312,18 +3308,9 @@ const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click',
 // 프로필 메뉴
 const pmenu = $('#pmenu');
 const msgpop = $('#msgpop');
-// 프로필 메뉴 = 다른 부분 활성화 시 popOut(촤르륵)으로 닫힘 — hidden 즉시 대신 애니 후 hidden(reduced-motion이면 즉시).
-let pmTimer = null;
-function showPmenu(){ clearTimeout(pmTimer); pmenu.classList.remove('closing'); pmenu.hidden = false; }
-function hidePmenu(){
-  if (pmenu.hidden || pmenu.classList.contains('closing')) return;
-  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { pmenu.hidden = true; return; }
-  pmenu.classList.add('closing'); clearTimeout(pmTimer);
-  pmTimer = setTimeout(() => { pmenu.hidden = true; pmenu.classList.remove('closing'); }, 190);   // .18s 애니 + 버퍼
-}
 // 오버레이 상호배타 — 하나 열 때 나머지(프로필·메시지·제작도구·링크·검색) 닫기(겹침 방지)
 function closeOverlays(keep) {
-  if (keep !== 'pmenu') hidePmenu();
+  if (keep !== 'pmenu') pmenu.hidden = true;
   if (keep !== 'msg') msgpop.hidden = true;
   if (keep !== 'bpop') bpop.hidden = true;
   if (keep !== 'linkpop') linkpop.hidden = true;
@@ -3331,17 +3318,12 @@ function closeOverlays(keep) {
   if (keep !== 'search') closeSearch();
   closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
-$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden || pmenu.classList.contains('closing'); closeOverlays('pmenu'); if (willOpen) { showPmenu(); pushRefresh(); } else { hidePmenu(); } });
+$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden; closeOverlays('pmenu'); pmenu.hidden = !willOpen; if (!pmenu.hidden) pushRefresh(); });
 document.addEventListener('click', e => {
+  if (!pmenu.hidden && !pmenu.contains(e.target) && !$('#profile').contains(e.target)) pmenu.hidden = true;
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
 });
-// 프로필 메뉴는 캡처단계로 닫음 — 다른 부분이 stopPropagation 해도 촤르륵 닫힘 보장(바깥 어디든 탭하면).
-document.addEventListener('click', e => {
-  if (pmenu.hidden || pmenu.classList.contains('closing')) return;
-  if (pmenu.contains(e.target) || $('#profile').contains(e.target)) return;
-  hidePmenu();
-}, true);
-$('#refresh').addEventListener('click', () => { hidePmenu(); load(); loadMessages(); loadCandidates(); loadPickFails(); });
+$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); loadCandidates(); loadPickFails(); });
 $('#topRefresh').addEventListener('click', () => location.reload());   // 강제 하드 새로고침(코드+데이터 · 탭은 localStorage 복원). 운영자 260619.
 // (🚨 긴급 확인 버튼 핸들러 폐지 — 운영자 260620: 프로필 긴급 점등·확인 루틴 제거. 토스트 재알림 de-dup은 수집함 진입(showTab scrap)으로 이전.)
 // 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
@@ -3958,7 +3940,7 @@ function renderScrap() {
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
   const pool = base.filter(c => {
     const r = rt[candId(c)] || {};
-    if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
+    if (r.dismissed) return false;                                  // 👎 관심없음 = 영구 제외
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
@@ -3967,7 +3949,7 @@ function renderScrap() {
   host.classList.add('scrap-cols');
   host.innerHTML = SC_COLS_HTML;
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
-  const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
+  const _untri = c => { const r = rt[candId(c)] || {}; return !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK=잔류(맨 아래 PICKED 비활성)
   // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
@@ -4110,14 +4092,6 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
     };
     mi.onblur = saveMemo;
     mi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); mi.blur(); } };
-  }
-  // 카드 본문 탭 = 대표 URL 새 탭(운영자 260620). 버튼(👎/PASS/PICK/✓)·타이틀 링크·칩·메모는 각자 동작 유지(가드).
-  if (c.url && /^https?:\/\//i.test(c.url)) {
-    el.classList.add('sc-clickable');
-    el.addEventListener('click', e => {
-      if (e.target.closest('a, button, input, textarea, .sc-bot, .sc-memo')) return;   // 인터랙션 요소는 제외 = 본문 여백만 이동
-      window.open(c.url, '_blank', 'noopener,noreferrer');
-    });
   }
   return el;
 }
