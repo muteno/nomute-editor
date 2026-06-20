@@ -525,13 +525,6 @@
   .sc-rsn-x:hover { color:#fff; }
   /* ── 수집함 2열 (좌=누적/기존 초록 · 우=신규/스포티 블랙). 색은 둘만 — 다른 색 안 섞음 ── */
   .scrap-cols { display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:start; }
-  /* ── 실패 트레이 = 픽 분석실패를 카드(칼럼) 종속서 분리해 상단 전폭에 모음(cross<8·4h 솎여 미렌더돼도 실패 silent-drop 차단·운영자 260620 분신술) ── */
-  .scrap-cols .sc-failtray { grid-column:1 / -1; border-radius:14px; padding:9px 10px 11px;
-    background:linear-gradient(180deg, rgba(255,176,46,.12), rgba(12,9,5,.34)); border:1px solid rgba(255,176,46,.34);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
-  .sc-failtray-hd { font-size:11.5px; font-weight:800; color:#ffb02e; letter-spacing:-.2px; padding:2px 2px 9px; }
-  .sc-failtray-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; }
-  .sc-failtray .sc-item { background:linear-gradient(165deg, rgba(40,28,12,.6), rgba(11,9,6,.74)); border-color:rgba(255,176,46,.34); }
   /* 칼럼 = 글래스모피즘(스포티 블랙·블러+틴트+미세 하이라이트) + 컬럼별 네온: 누적=오렌지 / 신규=강조색(네온그린). */
   .scrap-col { min-width:0; border-radius:16px; padding:8px 8px 14px;
     backdrop-filter:blur(13px) saturate(1.25); -webkit-backdrop-filter:blur(13px) saturate(1.25);
@@ -3946,25 +3939,16 @@ function renderScrap() {
   CANDS.forEach(c => { const s = srvTriage(c); if (s) { const id = candId(c); rt[id] = { ...s, ...(rt[id] || {}) }; } });   // 서버 트리아지(전 기기 ledger) 아래에 로컬 오버레이 = PASS/👎/확인 cross-device(운영자 260620)
   scRT = rt;   // scRT = 정렬에서 픽 상태(누적 고정 제외) 참조
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
-  // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
-  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || ''));
-  const failSet = new Set(failed.map(c => candId(c)));
   const pool = base.filter(c => {
     const r = rt[candId(c)] || {};
-    if (failSet.has(candId(c))) return false;                       // 실패 = 트레이로(칼럼서 제외 = 카드 종속분리)
     if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
   });
-  if (!pool.length && !failed.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; return; }
+  if (!pool.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; return; }
   host.classList.add('scrap-cols');
-  host.innerHTML = (failed.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">⚠ 분석 실패 ${failed.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
-  if (failed.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
-    const tray = host.querySelector('.sc-failtray-list');
-    failed.sort((a, b) => scTs(b) - scTs(a));
-    failed.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); });
-  }
+  host.innerHTML = SC_COLS_HTML;
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
   // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
