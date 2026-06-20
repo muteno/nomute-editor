@@ -197,7 +197,7 @@ def _img_candidates(html, base):
         return _dom_core(urllib.parse.urlparse(u).hostname or "")
     def seg0(u):
         return ([s for s in urllib.parse.urlparse(u).path.split("/") if s] or [""])[0].lower()
-    def add(u, body=False):
+    def add(u, body=False, junk=False):
         if not u:
             return
         u = _html.unescape(u.strip())
@@ -210,13 +210,15 @@ def _img_candidates(html, base):
             return
         if _PLACEHOLDER.search(u):
             return
-        if body:   # 본문 <img> = 비신뢰 → 엄격: 잡것·같은매체(대표 호스트)·같은 디렉터리·작은썸네일 컷
-            if _BODY_SKIP.search(u):
-                return
+        if (body or junk) and _BODY_SKIP.search(u):         # 본문·JSON-LD = 로고/아바타/광고/동영상 컷
+            return
+        if body:   # 본문 <img> = 비신뢰 → 추가 엄격: 같은매체(대표 호스트)·같은 디렉터리·작은썸네일 컷
             ref = out[0] if out else base                   # 대표(og) 호스트 기준 = 네이버/다음(기사≠CDN) 구제
             if core_of(u) != core_of(ref):
                 return
-            if out and seg0(u) != seg0(out[0]):             # 대표와 같은 사진 디렉터리(프로모·배너 컷)
+            # 같은 사진 디렉터리 컷(프로모·배너) — 대표와 정확히 같은 호스트일 때만(리사이저=다른 host면 면제: nate·daum)
+            if (out and urllib.parse.urlparse(u).hostname == urllib.parse.urlparse(out[0]).hostname
+                    and seg0(u) != seg0(out[0])):
                 return
             if _small_dim(u):
                 return
@@ -230,10 +232,11 @@ def _img_candidates(html, base):
             cm = re.search(r'content\s*=\s*["\']([^"\']+)', tag, re.I)
             if cm:
                 add(cm.group(1))
-    # 2) JSON-LD "image" (발행사 선언=신뢰) — "image": 뒤 윈도에서 이미지 URL 추출(중첩 ImageObject 대응)
-    for m in re.finditer(r'"image"\s*:', html):
-        for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 600]):
-            add(u)
+    # 2) JSON-LD "image" — og/twitter 못 찾았을 때만(fallback) · 윈도 400자·앞 2개·로고/아바타/동영상 컷(bleed 방지)
+    if not out:
+        for m in re.finditer(r'"image"\s*:', html):
+            for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 400])[:2]:
+                add(u, junk=True)
     # 3) 본문 <img>(lazy-load 포함) — 엄격 필터
     for tag in re.findall(r"<img\b[^>]*>", html, re.I):
         cm = re.search(r'(?:data-original|data-src|data-lazy-src|src)\s*=\s*["\']([^"\']+)', tag, re.I)
