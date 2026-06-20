@@ -862,10 +862,7 @@
   #mdbody h3.subtop { border-top:none; padding-top:0; margin-top:4px; }   /* 섹션(h2) 바로 밑 서브헤더 = 위 구분선·빈 줄 제거(콘텐츠 초안→자유요약) */
   /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
   /* 소머리(•) — 카드 텍스트·이미지프롬프트 라벨 */
-  #cardsec p.lbl { margin:14px 0 4px; display:flex; align-items:center; gap:8px; }   /* 소머리 라벨 + (이미지프롬프트) 구글검색 버튼 우측 */
-  .cref-srch { margin-left:auto; flex:none; font-size:11px; font-weight:700; font-family:inherit; color:var(--mut); text-decoration:none;
-    padding:3px 10px; border-radius:8px; background:rgba(255,255,255,.04); border:1px solid var(--line2); white-space:nowrap; transition:color .15s, border-color .15s; }   /* 일반 톤 — .morebtn 계승(돋보임 X) */
-  .cref-srch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
+  #cardsec p.lbl { margin:14px 0 4px; }
   #cardsec p.lbl::before { content:'• '; color:var(--mut); font-weight:700; }
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
@@ -2069,19 +2066,10 @@ function cardSec(a) {
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
-    // 카드별 '구글 이미지 검색' 버튼 — 이미지 프롬프트 라벨 줄 우측(일반 톤). 관련이미지 캐러셀(🔎샘플·폴백)은 제거(운영자 260620).
-    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
+    // 카드별 관련 이미지(샘플) — 각 이미지 프롬프트 아래 16:9 캐러셀 + 구글 이미지 검색(프롬프트 대체 사진 탐색)
+    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '', _foreign = articleCat(a) === '국제';   // 외국(국제) 기사 = 영문 키워드로 검색(소스 풍부)
     [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
-      .forEach((pre, i) => {
-        const lbl = pre.previousElementSibling;   // '• 이미지 프롬프트' 라벨 줄(p.lbl)
-        const q = (_refCards[i] && _refCards[i].caption) || _refTtl;   // 검색 쿼리 = 카드 캡션(없으면 제목)
-        if (lbl && q) {
-          const s = document.createElement('a'); s.className = 'cref-srch';
-          s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
-          s.target = '_blank'; s.rel = 'noopener'; s.textContent = '구글 이미지 검색 ↗';
-          lbl.appendChild(s);
-        }
-      });
+      .forEach((pre, i) => pre.insertAdjacentElement('afterend', cardRefCarousel(_refCards[i] && _refCards[i].caption, _refTtl, _foreign)));
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
     if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
     sec.appendChild(div);
