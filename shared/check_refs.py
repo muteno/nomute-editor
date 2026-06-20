@@ -87,6 +87,38 @@ def check_versions():
     return fails
 
 
+# ── 디자인시스템 토큰 게이트 (분신술 D5 · 260620) ──────────────────────────────
+# 값 SSOT = viewer/index.html :root. 신규/수정 CSS는 raw hex/blur/accent-rgba 대신 var() 토큰을 써야 한다(§🎨).
+# WARN-only(커밋 차단 안 함) = 점진 강제: 기존은 봐주되 raw가 *늘면* 커밋 전(수정 모드 ③)에 눈에 띈다.
+# raw를 토큰으로 줄였으면 baseline도 그만큼 낮춰 재발 방지(드리프트는 늘 때만 잡힘).
+# baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
+_DESIGN_BASELINE = {
+    'viewer/index.html': {'accent_raw': 105, 'blur': 88, 'hex': 168},
+    'viewer/thumb.html': {'accent_raw': 27, 'blur': 30, 'hex': 23},
+}
+_ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
+
+def check_design():
+    warns = []
+    for rel, base in _DESIGN_BASELINE.items():
+        try:
+            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        s = _ROOT_BLOCK.sub('', s, count=1)   # :root = 토큰 SSOT 정의 자리 → 카운트 제외(D5 화이트리스트)
+        cnt = {'accent_raw': s.count('rgba(15,253,2'), 'blur': s.count('blur('),
+               'hex': len(re.findall(r'#[0-9a-fA-F]{3,8}\b', s))}
+        for k, b in base.items():
+            if cnt[k] > b:
+                warns.append('%s: raw %s %d > baseline %d → var() 토큰으로(§🎨)' % (rel, k, cnt[k], b))
+    if warns:
+        print('⚠️ 디자인 토큰 게이트(비차단): raw 값 증가 감지 —')
+        for w in warns:
+            print('  -', w)
+    else:
+        print('✅ 디자인 토큰 게이트 — raw 값 baseline 이내(신규 미토큰 없음).')
+    return 0   # WARN-only
+
 def main():
     fails = check_paths() + check_versions()
     rc = 0
@@ -104,6 +136,10 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ build_library check 스킵:', e)
+    try:
+        check_design()          # 디자인 토큰 게이트(비차단 경고)
+    except Exception as e:
+        print('⚠️ check_design 스킵:', e)
     return rc
 
 
