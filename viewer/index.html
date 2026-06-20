@@ -26,7 +26,7 @@
     --accent-bright:#d8ff3d; --accent-2:#ff9614;
     --fg:#eef7f0; --mut:#8fa697;
     /* 의미색(semantic) — 현 라이브 대표값 추출(빨강·노랑·앰버·시안) */
-    --danger:#ff5b4a; --danger-rgb:255,91,74; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7;
+    --danger:#ff5b4a; --danger-rgb:255,91,74; --warn:#ffd24a; --amber:#ff9614; --amber-rgb:255,150,20; --info:#0cd0f7;
     --on-amber:#1a1205; --on-danger:#fff;    /* 의미색 위 글자(앰버/빨강 플래시) */
     /* 반지름 스케일 */
     --r:24px; --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
@@ -965,7 +965,7 @@
   .sbtn.busy { opacity:.5; pointer-events:none; }   /* 오버레이 PNG 생성 중 */
   .sbtn:disabled { opacity:.5; cursor:default; }
   .sbtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
-  .sbtn.confirm { background:var(--amber); color:var(--on-amber); border-color:var(--amber); }   /* 재확인(한 번 더=실행) — .ok/.busy와 같은 .sbtn 상태 한 벌 */
+  .sbtn.confirm { background:rgba(var(--amber-rgb),.2); color:var(--amber); border-color:rgba(var(--amber-rgb),.5); }   /* 재확인(한 번 더=실행) — 반투명 앰버 · .ok/.busy와 같은 .sbtn 상태 한 벌(운영자 260620) */
   /* 버전 네비 = '전'/'후' 텍스트(하단중앙·바 없음). 여러 판일 때만(.show). 그 방향 판 있으면 흰색+그림자, 없으면 25% 비활성 느낌. */
   .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:none; align-items:center; gap:22px; }
   .slide-ver.show { display:flex; }
@@ -1053,12 +1053,15 @@
     background:linear-gradient(transparent,rgba(0,0,0,.72)); padding:14px 8px 5px; text-align:center; pointer-events:none; }
   .thumbsec .cref-slot { position:relative; cursor:zoom-in; }   /* 캡션 기준 + 탭=확대(라이트박스) */
   .thumbsec .cref-slot.search .tgen-cap { top:6px; left:6px; right:auto; bottom:auto; padding:2px 8px;
-    background:rgba(20,20,28,.78); border-radius:999px; font-size:9px; color:#ffd; }   /* 검색 '유사' = 좌상단(우상단=복사·저장 버튼) */
+    max-width:calc(100% - 46px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;   /* 라벨 길어져도 우상단 저장버튼 안 침범(회귀 방어) */
+    background:rgba(20,20,28,.78); border-radius:999px; font-size:9px; color:#ffd; }   /* 검색 '유사' = 좌상단(우상단=저장 버튼) */
   /* 썸네일 후보 슬롯 액션 — 카드뉴스 캐러셀 .slide-acts(우상단 .sbtn 행) 그대로 계승(운영자 260620 · 한 앱 한 벌).
      생성 슬롯 = [재생성 .sbtn][저장 .sbtn] · 검색 슬롯 = [저장 .sbtn] · 우상단(검색 '유사' 캡션은 좌상단=비충돌) · --btn-sm(30px) */
-  .timg-acts { position:absolute; top:6px; right:6px; z-index:2; display:flex; gap:6px; }
-  .timg-acts .sbtn { width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
+  .timg-acts { position:absolute; top:6px; right:6px; z-index:2; display:flex; gap:8px; }
+  .timg-acts .sbtn { position:relative; width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
   .timg-acts .sbtn svg { width:15px; height:15px; }
+  /* 터치타깃 확장(시각 30px 유지·실효 ↑) — 세로 넉넉·가로는 인접 버튼과 안 겹치게 작게(저장↔재생성 오탭=과금 방지·운영자 260620) */
+  .timg-acts .sbtn::before { content:''; position:absolute; top:-6px; bottom:-6px; left:-2px; right:-2px; }
   /* 검색 헤더의 '구글 이미지 검색' = 글래스 .sbtn 아이콘으로 통일(기존 초록 알약 텍스트 = 투박 → 폐기 · 운영자 260620) */
   .cref-srch { width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
   .cref-srch svg { width:15px; height:15px; }
@@ -1081,7 +1084,7 @@
   /* 라벨 우측 — 제미나이 토큰/추정$ 간단 '표기'(버튼 아님·새 컴포넌트 X). 라벨과 같은 줄 중앙정렬·plain muted 텍스트.
      형식 "$ 0.0, T 0" · 볼드/돈아이콘/pill 없음 · 간격만 넉넉히(운영자 260620). */
   .cref-lblrow { display:inline-flex; align-items:center; gap:10px; min-width:0; }
-  .cref-usage { flex:none; font-size:11.5px; font-weight:600; color:var(--mut);
+  .cref-usage { flex:none; font-size:11.5px; font-weight:500; color:var(--mut);   /* 볼드 아님(라벨 800과 위계 분리·운영자 "볼드 없음") */
     font-variant-numeric:tabular-nums; white-space:nowrap; cursor:default; letter-spacing:0; }
 
   /* ── 모바일 ── */
@@ -1862,7 +1865,7 @@ function thumbSec(a) {
 }
 // 제미나이 토큰/추정$ 표기(plain 텍스트 · 버튼 아님) — 라벨(🍌 AI 생성·🔎 검색) 우측. 형식 "$ 0.0, T 0".
 // bucket={calls,total,cumulative}. 토큰=정확(API) · $=추정(이미지 토큰 단가). 운영자 260620: 돈아이콘·볼드·pill 제거.
-const GEM_RATE = 0.00003;   // 이미지 토큰 추정단가(≈$30/1M·$0.039/장 기준)
+const GEM_RATE = 0.00003;   // 이미지 토큰 추정단가(≈$30/1M·$0.039/장 기준). $=추정·T=정확. ⚠️ 실측 usage.json 들어오면 1콜 totalTokenCount로 재캘리브레이션(이미지 과금은 장당 고정이라 토큰선형은 근사)
 function usageText(bucket, kind) {
   if (!bucket) return '';
   const tok = bucket.cumulative || 0;
@@ -1913,9 +1916,10 @@ function thumbRedoSbtn(sid) {
   const reset = () => { stage = 0; clearTimeout(t); b.classList.remove('confirm', 'busy'); b.innerHTML = REFRESH_SVG; b.title = '이 화풍 다시 만들기'; };
   b.addEventListener('click', async e => {
     e.stopPropagation();
-    if (stage === 0) { stage = 1; b.classList.add('confirm'); b.title = '한 번 더 누르면 재생성'; clearTimeout(t); t = setTimeout(reset, 3000); return; }
+    // 1차 = 재확인: 앰버 + 아이콘 ✓로 교체(폰은 hover title 안 떠서 색만으론 부족 → 아이콘 변화로 "한 번 더=실행" 가시화 · 오탭 과금 방지)
+    if (stage === 0) { stage = 1; b.classList.add('confirm'); b.innerHTML = CHECK_SVG; b.title = '한 번 더 누르면 재생성'; clearTimeout(t); t = setTimeout(reset, 3000); return; }
     if (stage !== 1) return;
-    clearTimeout(t); stage = 2; b.classList.remove('confirm'); b.classList.add('busy');   // 전송 = busy(재생성 중 · 카드 reshooting dim 계승)
+    clearTimeout(t); stage = 2; b.classList.remove('confirm'); b.classList.add('busy'); b.innerHTML = REFRESH_SVG;   // 전송 = busy(재생성 중 · 카드 reshooting dim 계승)
     try {
       const r = await fetch('/api/thumbredo', { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ article: CUR, sid }) });

@@ -156,7 +156,7 @@ for (const a of articles) {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     thumb_search: thumbSearch,   // 검색이미지(기사 og:image+유사) — R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사'
     thumb_gen: thumbGen,         // AI 생성 3화풍(P3 Gemini)
-    thumb_usage: thumbUsage,     // 제미나이 토큰(이 기사 AI 생성) — {calls,prompt,output,total,cumulative} · 없으면 null
+    thumb_usage: thumbUsage,     // 제미나이 토큰 — {gen:{calls,total,cumulative}, search:{…}} · 없으면 null
 
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
