@@ -141,10 +141,10 @@ def gemini_image(prompt, image_size="1K"):
     return None
 
 # ── 검색이미지 = 기사 본인 대표사진(og:image)+유사 추출 — Google CSE JSON API 대체(2025 신규차단 死) ──
-# 구글 검색 대신 "기사 URL의 og:image(대표) + 본문/관련 사진"을 끌어와 검색이미지 칸을 채운다.
+# 구글 검색 대신 "기사 URL의 og:image(대표) + 발행사 선언 보조이미지(유사)"를 끌어와 검색이미지 칸을 채운다.
 # 대표=라벨'' / 그 외='유사'. R2 설정 시 재호스팅(핫링크·리퍼러 차단 0)·미설정이면 외부 핫링크. 차단매체(403)·paste(url無)면 [].
-# 🔑 신뢰 분리: og:image/twitter/JSON-LD = 발행사 선언 → 최소필터(대표 보존, 크기/크롭 면제) /
-#    본문 <img> = 비신뢰 → 엄격필터(대표 호스트·디렉터리·잡것·작은썸네일 컷). 분신술 10인 감사 반영.
+# 🔑 신뢰원: og:image/twitter/JSON-LD = 발행사 선언만 사용(대표 보존·크기/크롭 면제). 본문 <img>는
+#    '속보' 배너 등 그래픽 오염으로 폐지(260620) — body=True 분기·필터는 phase2 대비 보존(미호출). 분신술 10인 감사 반영.
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 # 대표·본문 공통 컷 = 명백한 비콘텐츠(플레이스홀더·스페이서·파비콘)
@@ -237,11 +237,8 @@ def _img_candidates(html, base):
         for m in re.finditer(r'"image"\s*:', html):
             for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 400])[:2]:
                 add(u, junk=True)
-    # 3) 본문 <img>(lazy-load 포함) — 엄격 필터
-    for tag in re.findall(r"<img\b[^>]*>", html, re.I):
-        cm = re.search(r'(?:data-original|data-src|data-lazy-src|src)\s*=\s*["\']([^"\']+)', tag, re.I)
-        if cm:
-            add(cm.group(1), body=True)
+    # 3) (본문 <img> 긁기 폐지 — 운영자 260620: 매체 '속보' 배너 등 본문 그래픽이 '유사'로 새어 차단.
+    #    유사도 발행사 선언 이미지[og/twitter/JSON-LD]만 쓴다 = 관계없는 템플릿 컷. 깨끗한 다장 유사는 phase2[교차매체 og].)
     return out
 
 def _url_ok(u):
