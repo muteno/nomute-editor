@@ -140,13 +140,11 @@ def gemini_image(prompt, image_size="1K"):
             return None
     return None
 
-# ── 검색이미지 = 기사 본인 대표사진(og:image) + 관련기사 유사사진 추출 — Google CSE JSON API 대체(2025 신규차단 死) ──
-# 구글 검색 대신 "원기사 URL의 og:image(대표) + 관련기사 og:image(유사·대표와 다른 사진)"를 끌어와 검색이미지 칸을 채운다.
-# 대표=라벨'' / 유사=라벨'유사'. R2 설정 시 재호스팅(핫링크·리퍼러 차단 0)·미설정이면 외부 핫링크. 차단매체(403)·paste(url無)면 [].
+# ── 검색이미지 = 기사 본인 대표사진(og:image)+유사 추출 — Google CSE JSON API 대체(2025 신규차단 死) ──
+# 구글 검색 대신 "기사 URL의 og:image(대표) + 발행사 선언 보조이미지(유사)"를 끌어와 검색이미지 칸을 채운다.
+# 대표=라벨'' / 그 외='유사'. R2 설정 시 재호스팅(핫링크·리퍼러 차단 0)·미설정이면 외부 핫링크. 차단매체(403)·paste(url無)면 [].
 # 🔑 신뢰원: og:image/twitter/JSON-LD = 발행사 선언만 사용(대표 보존·크기/크롭 면제). 본문 <img>는
-#    '속보' 배너 등 그래픽 오염으로 폐지(260620) — body=True 분기·필터는 보존(미호출). 분신술 10인 감사 반영.
-# 🔗 phase2(260620): 대표 1장 + 자리 남으면 관련기사 og를 '유사'로 보강 — '이 기사의 관련'임을 보증하는
-#    마커 매체(SBS oaid·이투데이 trc=view_joinnews)만(무관 차단 우선). 비전 게이트는 OFF 훅(THUMB_VISION). 분신술 5인 합의.
+#    '속보' 배너 등 그래픽 오염으로 폐지(260620) — body=True 분기·필터는 phase2 대비 보존(미호출). 분신술 10인 감사 반영.
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 # 대표·본문 공통 컷 = 명백한 비콘텐츠(플레이스홀더·스페이서·파비콘)
@@ -186,9 +184,6 @@ def _small_dim(u):
         return True
     m = re.search(r"[_/-](\d{2,4})x(\d{2,4})(?=[._/]|$)", u)
     if m and int(m.group(1)) < 400 and int(m.group(2)) < 400:
-        return True
-    mh = re.search(r"[_-](\d{2,4})[_-](\d{2,4})\.(?:jpe?g|png|webp|gif)(?:[?#]|$)", u, re.I)   # etoday류 _W_H.jpg 트레일링 치수
-    if mh and int(mh.group(1)) < 400 and int(mh.group(2)) < 400:
         return True
     m2 = re.search(r"[?&]type=w(\d{1,4})", u, re.I)          # 네이버 mblogthumb type=w80
     return bool(m2 and int(m2.group(1)) < 400)
@@ -243,8 +238,7 @@ def _img_candidates(html, base):
             for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 400])[:2]:
                 add(u, junk=True)
     # 3) (본문 <img> 긁기 폐지 — 운영자 260620: 매체 '속보' 배너 등 본문 그래픽이 '유사'로 새어 차단.
-    #    이 함수는 한 기사당 og/twitter/JSON-LD 1장만 = 발행사 선언만. 다장 '유사'는 관련기사 og로 채운다
-    #    [phase2 = fetch_article_images._related_urls, 마커 신뢰 매체만].)
+    #    유사도 발행사 선언 이미지[og/twitter/JSON-LD]만 쓴다 = 관계없는 템플릿 컷. 깨끗한 다장 유사는 phase2[교차매체 og].)
     return out
 
 def _url_ok(u):
@@ -303,77 +297,25 @@ def _img_type(b):
             return ct, ext
     return None, None
 
-def _fetch_html(u):
-    """기사 URL → 디코드 HTML 또는 None(실패·비허용 url). 대표·관련기사 fetch 공용(SSRF·리다이렉트 게이트)."""
-    if not (u and _url_ok(u)):
-        return None
+def fetch_article_images(art_url, want=3):
+    """기사 URL → [{src,link,label}] 최대 want장(대표=라벨'' · 나머지='유사'). 실패·빈url·비허용url이면 [] (fail-soft)."""
+    if not (art_url and _url_ok(art_url)):
+        return []
     try:
-        req = urllib.request.Request(u, headers={"User-Agent": UA, "Accept": "text/html,*/*"})
+        req = urllib.request.Request(art_url, headers={"User-Agent": UA, "Accept": "text/html,*/*"})
         with _OPENER.open(req, timeout=20) as r:
             raw = r.read(1500000)
             charset = r.headers.get_content_charset() or "utf-8"
         try:
-            return raw.decode(charset, "replace")
-        except LookupError:                                 # 알 수 없는 charset 라벨 → utf-8 폴백(fail-soft)
-            return raw.decode("utf-8", "replace")
+            text = raw.decode(charset, "replace")
+        except LookupError:                                 # 알 수 없는 charset 라벨 → utf-8 폴백(fail-soft 보장)
+            text = raw.decode("utf-8", "replace")
     except Exception as e:
-        print("  ⚠️ fetch 실패({}…): {}".format(u[:45], e), flush=True)
-        return None
-
-# phase2 = 관련기사 og:image를 '유사'로(대표와 다른 사진). '이 기사의 관련'임을 보증하는 마커 있는 매체만
-# (오염·무관 차단 — 운영자 "무관 금지" 우선). 도메인코어 → 관련링크 정규식. 마커 없는 매체·차단매체·paste면 [].
-_RELATED_RULES = {
-    "sbs":    re.compile(r'href\s*=\s*["\']([^"\']*?endPage\.do\?[^"\']*?oaid=[^"\']+)', re.I),                 # oaid=원기사id 백레프
-    "etoday": re.compile(r'href\s*=\s*["\']([^"\']*?/news/view/\d{5,}[^"\']*?trc=view_joinnews[^"\']*)', re.I),  # trc=조인뉴스(관련)
-}
-def _related_urls(html, base):
-    """기사 HTML → 관련기사 URL(마커 신뢰 매체만·중복제거·최대 6). 화이트리스트 규칙만(범용 추출=오염 위험이라 금지)."""
-    import html as _h
-    pat = _RELATED_RULES.get(_dom_core(urllib.parse.urlparse(base).hostname or ""))
-    if not pat:
+        print("  ⚠️ 기사 fetch 실패({}…): {}".format(art_url[:45], e), flush=True)
         return []
-    out, seen = [], set()
-    for m in pat.findall(html):
-        u = urllib.parse.urljoin(base, _h.unescape(m).replace("&amp;", "&"))
-        if u != base and u not in seen and _url_ok(u):
-            seen.add(u); out.append(u)
-    return out[:6]
-
-def _vision_keep(rep_src, cand_src):
-    """비전 훅(기본 OFF=pass-through). THUMB_VISION=1일 때만 Gemini로 '대표와 같은 인물/장면이면 컷' 판정.
-    기본(미설정)은 cand 그대로 반환 = 과금 0. 점화는 후속(운영자 승인 시 여기에 Gemini 1콜 배선)."""
-    if os.environ.get("THUMB_VISION", "") != "1":
-        return cand_src
-    return cand_src   # (점화 시: 대표와 동일 인물/장면이면 None 반환해 컷)
-
-def fetch_article_images(art_url, want=3):
-    """기사 URL → [{src,link,label}] 최대 want장. 대표=원기사 og(라벨'') · 유사=관련기사 og(라벨'유사').
-    유사는 마커 신뢰 매체(SBS·이투데이)의 관련기사 og만 — 대표와 다른 사진(중복·소형·잡것 컷). 실패·빈url이면 [] (fail-soft)."""
-    if not (art_url and _url_ok(art_url)):
-        return []
-    text = _fetch_html(art_url)
-    if text is None:
-        return []
-    out = []
-    for u in _img_candidates(text, art_url)[:want]:
-        out.append({"src": u, "link": art_url, "label": "" if not out else "유사"})
-    # phase2: 대표 확보 & 자리 남으면 관련기사 og로 유사 보강(마커 매체만 · 대표와 중복 아닌 사진)
-    if out and len(out) < want:
-        seen = {_norm_key(it["src"]) for it in out}
-        rep = out[0]["src"]
-        for ru in _related_urls(text, art_url):
-            if len(out) >= want:
-                break
-            rc = _img_candidates(_fetch_html(ru) or "", ru)
-            rog = rc[0] if rc else None
-            if not rog or _norm_key(rog) in seen or _small_dim(rog) or _BODY_SKIP.search(rog):
-                continue
-            if not _vision_keep(rep, rog):
-                continue
-            seen.add(_norm_key(rog))
-            out.append({"src": rog, "link": ru, "label": "유사"})
-            print("  🔗 관련기사 유사 +1 ({}…)".format(ru[:42]))
-    return out
+    urls = _img_candidates(text, art_url)[:want]
+    return [{"src": u, "link": art_url, "label": "" if i == 0 else "유사"}
+            for i, u in enumerate(urls)]
 
 def http_image(url):
     """이미지 URL → (bytes, 안전 content-type, ext) 또는 (None,None,None). 매직바이트로 실제 이미지만 통과."""
