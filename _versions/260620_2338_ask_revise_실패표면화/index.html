@@ -1525,7 +1525,6 @@ async function load() {
   reapplyReshooting();   // 재렌더(상태변화·교체)로 사라진 대기 카드 잠금 배지 재적용
 }
 
-let _feedSig = '';   // 피드 렌더 시그니처(행·상태·필터) — 직전과 동일하면 재애니 생략(미세 깜빡임 방지)
 function render() {
   const q = $('#q').value.trim().toLowerCase();
   const cardonly = $('#cardonly').checked;
@@ -1536,10 +1535,7 @@ function render() {
     (!FILTERS.breaking || a.breaking || /속보/.test(a.title || '')) &&
     (!FILTERS.issue || a.issue));
   const list = $('#list');
-  if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; _feedSig = ''; return; }
-  // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
-  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.breaking ? 'b' : '') + (FILTERS.issue ? 'i' : '');
-  const _anim = sig !== _feedSig; _feedSig = sig;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더는 즉시(깜빡임 0)
+  if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; return; }
   list.innerHTML = '';
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
@@ -1551,8 +1547,7 @@ function render() {
       c.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
       c.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
     }
-    if (_anim) c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(내용·필터 바뀐 렌더만)
-    else c.style.animation = 'none';   // 동일 재렌더(탭전환·폴) = 즉시 표시 = 깜빡임 0
+    c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거
     c.innerHTML = `
       <div class="cardmain">
         <div class="cardtop"><span class="catslot"><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></span>${dateLine(a)}${kind ? `<span class="urg ${kind}">${kind === 'brk' ? '긴급' : '이슈'}</span>` : ''}</div>
@@ -2818,8 +2813,6 @@ function startRevisePoll() {
         }
       } else if (Date.now() - v.ts > 20 * 60000) {           // 20분 폴백 — revise 최대 15분+빌드 여유(색은 a.rev로 추후 자동 반영)
         REVISING.delete(file); changed = true;
-        const ra = DATA.find(x => x.file === file);           // 조용히 사라지지 말고 표면화(운영자 260620): 20분 내 회차 안 오름 = 지연이거나 실패 → 다시 시도 안내(정직 = 단정 안 함)
-        qFlash('⚠ 수정요청 20분째 반영 안 됨 — 지연이거나 실패. 색 안 바뀌면 다시 시도해' + (ra && ra.title ? ' (' + ra.title.slice(0, 16) + '…)' : ''));
       }
     }
     if (changed) { saveRevising(); render(); if ($('#dlg').open && CUR) applyReviseMarks(); }
@@ -3620,28 +3613,6 @@ function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 
   const enteredK = it.t ? new Date(it.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '?';
   const nowK = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
   const d = it.diag || {};
-  if (d.kind === 'ask-failed') {   // ✨요약요청(ask) 실패 = pending(.txt) 아닌 asks/failed/ 경로 → 전용 진단(운영자 260620)
-    const A = [];
-    A.push('# ✨요약 요청 처리 실패 진단 — ' + qTitle(it));
-    A.push('', '> 자동 생성(뷰어 대기열). 이 파일을 클로드에게 전달하면 원인 분석·복구에 사용합니다.', '');
-    A.push('## 요약 (5W1H)');
-    A.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK);
-    A.push('- **무엇(What)**: ✨요약 요청(자연어' + (d.reqText ? '+캡처 가능' : '') + ') — `news-ask` 트랙(`pending/` analyze와 별개).');
-    A.push('- **어디서(Where)**: `asks/failed/' + it.id + '.json`(+`.log`)로 격리.');
-    A.push('- **왜(Why·추정)**: ask.sh 처리 실패(빈 요청/Claude 해석 실패/커밋 실패 — 아래 로그).');
-    A.push('', '## 입력 (요청문)', '', '````', d.reqText || '(텍스트 없음 — 캡처만일 수 있음)', '````');
-    if (d.log) A.push('', '## 실패 로그', '', '````', d.log, '````');
-    A.push('', '## 진단 힌트 (클로드용)');
-    A.push('- 확인: GitHub Actions `news-ask` 최근 run → `Run ask` / `Surface failures` 스텝 로그.');
-    A.push('- 복구: `news-ask` workflow_dispatch 재실행(account 선택) — 단 `asks/failed/`의 json을 `asks/`로 되돌려야 재처리.');
-    A.push('- 입력 식별자(grep용): `' + it.id + '`');
-    const aa = document.createElement('a');
-    aa.href = URL.createObjectURL(new Blob([A.join('\n')], { type: 'text/markdown;charset=utf-8' }));
-    aa.download = '요약요청실패_' + it.id + '.md';
-    document.body.appendChild(aa); aa.click(); aa.remove();
-    setTimeout(() => { try { URL.revokeObjectURL(aa.href); } catch {} }, 1500);
-    return;
-  }
   const mins = d.mins != null ? d.mins : (it.t ? Math.round((Date.now() - it.t) / 60000) : '?');
   const failed = d.kind === 'failed';
   const L = [];

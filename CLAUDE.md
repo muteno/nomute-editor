@@ -98,8 +98,9 @@
 ### ⏳ TODO — 입력→큐→실패표면 라인 후속 (260620 분신술 10인 · 정본 상세 = `docs/curation-algorithm.md` §7)
 6종 즉시수정 머지됨(PR#563: 좀비 sweep grep 부활·대기열 24h·pickedAt·롱프레스가드·reason폴백·dispatch 재시도+빨강). **남은 후속**:
 - ⓐ **파이프라인 기틀(§기틀 보호 + 분신술 재검 필수 — 맘대로 X)**: ① **폰 push 5회 소진 시 증거보존**(`docs/termux-share.sh`가 `git reset --hard`로 *로컬 커밋까지 증발* = 가장 무서운 silent-drop · 최우선) ② orphan pending self-redispatch(`actions:write` 신설 — 트리거 구멍 근본) ③ failed-URL 재픽 dedup 제외(`pick_pending.py` load_seen · 무한재시도 가드 필요).
-- ⓑ **표면 추가(뷰어·저~중위험)**: Failed칩 수집함-카드 종속분리(cross<8·4h 솎여 미렌더 → 별도 실패트레이) · 대기열 발견성 배지(숨은 롱프레스 의존 제거) · ask/revise 실패 뷰어 표면화 · news-ask stale-red(누적 `asks/failed/` per-run화) · build-viewer `paste:` 칩 매칭(candId 키).
-- 우선순위: **ⓐ① 폰증거보존 > ⓑ Failed칩 분리·발견성배지 > 나머지**. (완료분마다 이 줄에서 지움.)
+- ⓑ **표면 추가(뷰어·저~중위험)**: ✅~~Failed칩 수집함-카드 종속분리(별도 실패트레이)~~(260620 머지 — `pickState==='failed'` 후보를 칼럼서 빼고 상단 전폭 `.sc-failtray`에 모음·makeScItem 재사용) · ✅~~대기열 발견성 배지(숨은 롱프레스 의존 제거)~~(260620 머지 — 피드 bnav 우상단 `#qbadge`=처리중 건수·탭하면 openQueue·롱프레스/우클릭은 추가 유지·livePoll 60s 갱신) · ✅~~ask/revise 실패 뷰어 표면화~~(260620 머지 — ask 실패=`api/pending`에 `asks/failed/` 소스 추가→대기열 팝업 FAIL+전용 진단 / revise 실패=20분 폴백이 조용삭제 대신 소프트 토스트) · news-ask stale-red(누적 `asks/failed/` per-run화) · build-viewer `paste:` 칩 매칭(candId 키).
+- 우선순위: **ⓐ① 폰증거보존 > ~~ⓑ Failed칩 분리·발견성배지·ask/revise 표면화~~(완료) > 나머지(news-ask stale-red·build-viewer paste칩)**. (완료분마다 이 줄에서 지움.)
+- ✅ **부가 완료(260620)**: 수집함 카드 본문 탭 = 대표 URL 새 탭(`.sc-clickable`·버튼/링크 가드).
 
 ## 🤖 모델
 - **Opus 권장(4.8 최대사고 디폴트).** "동일 수준"의 전제. 약한 모델이면 품질·일관성 보장 못 함.
