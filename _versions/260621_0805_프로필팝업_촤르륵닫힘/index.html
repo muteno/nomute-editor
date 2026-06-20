@@ -167,9 +167,6 @@
   .pmenu a:hover, .pmenu button:hover { background:rgba(255,255,255,.06); color:var(--accent); }
   /* (긴급 확인 버튼·프로필 긴급 점등 폐지 — 운영자 260620: 긴급 배지는 사건속성으로 계속 표시, 프로필 확인 루틴만 제거) */
   @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
-  @keyframes popOut { from { opacity:1; transform:none;} to { opacity:0; transform:scale(.92) translateY(-4px);} }   /* popIn 역재생 = 아바타(top-right)로 촤르륵 접힘 */
-  .pmenu.closing { animation:popOut .18s cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
-  @media (prefers-reduced-motion: reduce) { .pmenu { animation:none; } }   /* 열림도 즉시 — 닫힘(hidePmenu JS 가드)과 대칭 */
   /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
   @keyframes popInCx { from { opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to { opacity:1; transform:translateX(-50%);} }
 
@@ -3311,18 +3308,9 @@ const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click',
 // 프로필 메뉴
 const pmenu = $('#pmenu');
 const msgpop = $('#msgpop');
-// 프로필 메뉴 = 다른 부분 활성화 시 popOut(촤르륵)으로 닫힘 — hidden 즉시 대신 애니 후 hidden(reduced-motion이면 즉시).
-let pmTimer = null;
-function showPmenu(){ clearTimeout(pmTimer); pmenu.classList.remove('closing'); pmenu.hidden = false; }
-function hidePmenu(){
-  if (pmenu.hidden || pmenu.classList.contains('closing')) return;
-  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { pmenu.hidden = true; return; }
-  pmenu.classList.add('closing'); clearTimeout(pmTimer);
-  pmTimer = setTimeout(() => { pmenu.hidden = true; pmenu.classList.remove('closing'); }, 190);   // .18s 애니 + 버퍼
-}
 // 오버레이 상호배타 — 하나 열 때 나머지(프로필·메시지·제작도구·링크·검색) 닫기(겹침 방지)
 function closeOverlays(keep) {
-  if (keep !== 'pmenu') hidePmenu();
+  if (keep !== 'pmenu') pmenu.hidden = true;
   if (keep !== 'msg') msgpop.hidden = true;
   if (keep !== 'bpop') bpop.hidden = true;
   if (keep !== 'linkpop') linkpop.hidden = true;
@@ -3330,17 +3318,12 @@ function closeOverlays(keep) {
   if (keep !== 'search') closeSearch();
   closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
-$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden || pmenu.classList.contains('closing'); closeOverlays('pmenu'); if (willOpen) { showPmenu(); pushRefresh(); } else { hidePmenu(); } });
+$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden; closeOverlays('pmenu'); pmenu.hidden = !willOpen; if (!pmenu.hidden) pushRefresh(); });
 document.addEventListener('click', e => {
+  if (!pmenu.hidden && !pmenu.contains(e.target) && !$('#profile').contains(e.target)) pmenu.hidden = true;
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
 });
-// 프로필 메뉴는 캡처단계로 닫음 — 다른 부분이 stopPropagation 해도 촤르륵 닫힘 보장(바깥 어디든 탭하면).
-document.addEventListener('click', e => {
-  if (pmenu.hidden || pmenu.classList.contains('closing')) return;
-  if (pmenu.contains(e.target) || $('#profile').contains(e.target)) return;
-  hidePmenu();
-}, true);
-$('#refresh').addEventListener('click', () => { hidePmenu(); load(); loadMessages(); loadCandidates(); loadPickFails(); });
+$('#refresh').addEventListener('click', () => { pmenu.hidden = true; load(); loadMessages(); loadCandidates(); loadPickFails(); });
 $('#topRefresh').addEventListener('click', () => location.reload());   // 강제 하드 새로고침(코드+데이터 · 탭은 localStorage 복원). 운영자 260619.
 // (🚨 긴급 확인 버튼 핸들러 폐지 — 운영자 260620: 프로필 긴급 점등·확인 루틴 제거. 토스트 재알림 de-dup은 수집함 진입(showTab scrap)으로 이전.)
 // 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
