@@ -115,8 +115,22 @@ def _md_url(path):
     except Exception:
         return ""
 
-def gemini_image(prompt, image_size="1K"):
-    """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft).
+# ── 제미나이 토큰 사용량 기록 (운영자 260620) — 모든 Gemini 호출의 usageMetadata를 한곳에 누적.
+# 기사별은 process_one이 슬라이스해 cards/<stem>/thumbs/usage.json + Actions 로그로 남긴다.
+# (이미지 생성이 현재 유일한 Gemini 호출 · 카드 슛도 같은 gemini_image라 자동 포함.
+#  비전훅 _vision_keep은 현재 OFF=호출 0 · 점화 시 그 Gemini 호출을 _rec_usage(tag="vision")로 기록하면 합산됨.)
+_USAGE = []
+def _rec_usage(um, tag):
+    if not isinstance(um, dict):
+        return
+    _USAGE.append({"tag": tag, "prompt": int(um.get("promptTokenCount") or 0),
+                   "output": int(um.get("candidatesTokenCount") or 0), "total": int(um.get("totalTokenCount") or 0)})
+def _usage_total(calls):
+    s = lambda k: sum(int(c.get(k) or 0) for c in calls)
+    return {"calls": len(calls), "prompt_tokens": s("prompt"), "output_tokens": s("output"), "total_tokens": s("total")}
+
+def gemini_image(prompt, image_size="1K", tag="img"):
+    """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft). usageMetadata는 _USAGE에 기록.
 
     image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일은 2K 호출(고해상).
     """
@@ -132,6 +146,7 @@ def gemini_image(prompt, image_size="1K"):
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
                 j = json.loads(r.read().decode())
+            _rec_usage(j.get("usageMetadata") or {}, tag)   # 토큰 사용량 기록(이미지 파트 유무 무관 = 실제 호출 과금 반영)
             for cand in j.get("candidates", []):
                 for p in cand.get("content", {}).get("parts", []):
                     inl = p.get("inlineData") or p.get("inline_data")
@@ -464,6 +479,7 @@ def process_one(md, stem):
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
     # AI 생성 4화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor sid는 STYLES에 없어 자동 드롭)
+    _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
     existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
     gen = []
     changed = False
@@ -486,6 +502,19 @@ def process_one(md, stem):
     if changed:
         json.dump(gen, open(os.path.join(tdir, "gen.json"), "w", encoding="utf-8"),
                   ensure_ascii=False, indent=2)
+    # 제미나이 토큰 사용량 — 이 기사 호출분(이미지·비전 등)을 usage.json에 기록 + 로그(누적 합산 포함)
+    calls = _USAGE[_u0:]
+    if calls:
+        tot = _usage_total(calls)
+        up = os.path.join(tdir, "usage.json")
+        try:
+            prev = int(json.load(open(up, encoding="utf-8")).get("cumulative_total_tokens") or 0)
+        except Exception:
+            prev = 0
+        tot["cumulative_total_tokens"] = prev + tot["total_tokens"]
+        json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        print("  📊 제미나이 토큰: {}콜·합계 {:,} (prompt {:,}+출력 {:,})·누적 {:,}".format(
+            tot["calls"], tot["total_tokens"], tot["prompt_tokens"], tot["output_tokens"], tot["cumulative_total_tokens"]), flush=True)
     return changed or search_written
 
 def main():
@@ -494,18 +523,20 @@ def main():
         return 0
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
     # ── 단일 기사 강제 재생성 (뷰어 '다시 만들기' → thumb-redo.yml · THUMB_ONLY=stem) ──
-    # gen.json만 비워 4화풍 전부 재생성(검색 search.json=기사 og:image는 보존). SINCE/MAX_BATCH 무관.
+    # gen.json(4화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
+    # (검색은 md frontmatter alt_urls 있으면 유사까지 채움·없으면 대표 og 재fetch). SINCE/MAX_BATCH 무관.
     only = os.environ.get("THUMB_ONLY", "").strip()
     if only:
         md = os.path.join("queue", only + ".md")
         if not os.path.exists(md):
             print("THUMB_ONLY 대상 없음:", md); return 0
-        gp = os.path.join("cards", only, "thumbs", "gen.json")
-        try:
-            if os.path.exists(gp):
-                os.remove(gp); print("  ↻ gen.json 비움 → 4화풍 재생성:", only)
-        except Exception as e:
-            print("  ⚠️ gen.json 제거 실패:", e)
+        for jf, lbl in (("gen.json", "4화풍"), ("search.json", "검색이미지")):
+            p = os.path.join("cards", only, "thumbs", jf)
+            try:
+                if os.path.exists(p):
+                    os.remove(p); print("  ↻ {} 비움 → {} 재생성: {}".format(jf, lbl, only))
+            except Exception as e:
+                print("  ⚠️ {} 제거 실패: {}".format(jf, e))
         process_one(md, only)
         print("THUMB_ONLY 재생성 완료:", only)
         return 0

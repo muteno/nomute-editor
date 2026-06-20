@@ -3978,8 +3978,10 @@ async function pickCard(c) {
   clearTimeout(_rateTimers[id]);
   postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: true });   // 관심도 원장(데이터)
   try {   // 큐레이션 발동 = pending 적재 → 분석 → 카드(피드에 등장). 실패 시 되돌려 재시도 가능.
+    // alt = 같은 사건 타매체(cluster_members) — 분석기 대체fetch + 썸네일 검색이미지 '유사' 보강 소스(applyTriage와 동일·주 픽 경로 누락 복구)
+    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url: c.url, title: c.title || '' }) });
+      body: JSON.stringify({ url: c.url, title: c.title || '', alt }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
   } catch (e) {
