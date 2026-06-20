@@ -1807,7 +1807,7 @@ function thumbStatic(label, items, kind, href) {
   const wrap = document.createElement('div'); wrap.className = 'cref';
   const btn = href ? '<a class="cref-btn" href="' + escUrl(href) + '" target="_blank" rel="noopener">구글 이미지 검색 ↗</a>' : '';
   wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">' + esc(label) + '</span>' + btn + '</div>'
-    + '<div class="cref-track">' + (items.slice(0, 4).map(it => {
+    + '<div class="cref-track">' + (items.slice(0, 3).map(it => {
         const cap = it.label ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';
         const img = '<img loading="lazy" referrerpolicy="no-referrer" src="' + escUrl(it.img) + '" alt=""'
           + ' onerror="this.closest(\'.cref-slot\').style.display=\'none\'">' + cap;
@@ -4422,19 +4422,19 @@ function makeDraggable(dlg, handleSel) {
   if (!dlg || !window.matchMedia('(pointer:fine)').matches) return;   // 정밀 포인터(마우스)만 — 터치 제외
   const h = dlg.querySelector(handleSel); if (!h) return;
   h.classList.add('drag-handle');
-  let dx = 0, dy = 0, sx = 0, sy = 0, bx = 0, by = 0, bL = 0, bT = 0, W = 0, on = false;   // dx/dy=현재 오프셋 · bx/by=드래그 시작 오프셋(고정)
+  let dx = 0, dy = 0, sx = 0, sy = 0, bL = 0, bT = 0, W = 0, on = false;
   const move = e => {
     if (!on) return;
-    let nx = bx + (e.clientX - sx), ny = by + (e.clientY - sy);   // 시작오프셋 + 시작마우스 기준 이동량 = 선형 1:1(누적 폭주 차단)
+    let nx = dx + (e.clientX - sx), ny = dy + (e.clientY - sy);
     nx = Math.max((80 - W) - bL, Math.min((window.innerWidth - 80) - bL, nx));   // 좌우 최소 80px 노출
     ny = Math.max(-bT, Math.min((window.innerHeight - 46) - bT, ny));            // 헤더 항상 보이게
     dlg.style.setProperty('transform', 'translate(' + nx + 'px,' + ny + 'px)', 'important');   // 진입애니/CSS 어떤 transform보다 우선
-    dx = nx; dy = ny;   // 현재 오프셋 갱신(클램프 base·다음 드래그용 — move 계산엔 안 씀)
+    dx = nx; dy = ny;
   };
   const end = () => { on = false; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); };
   h.addEventListener('pointerdown', e => {
     if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, label, .dlg-prog')) return;   // 헤더 내 컨트롤 클릭은 드래그 아님
-    on = true; sx = e.clientX; sy = e.clientY; bx = dx; by = dy;   // 시작마우스 + 시작오프셋 스냅샷(드래그 동안 고정)
+    on = true; sx = e.clientX; sy = e.clientY;
     dlg.style.animation = 'none';   // 진입 애니가 transform 고정하는 것 확실 차단(fill-mode 무관)
     const r = dlg.getBoundingClientRect();
     bL = r.left - dx; bT = r.top - dy; W = r.width;   // 자연(translate 전) 위치 역산

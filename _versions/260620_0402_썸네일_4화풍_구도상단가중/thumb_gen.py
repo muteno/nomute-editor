@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# thumb_gen.py — 픽한 기사(queue/*.md)별 썸네일 후보: 검색이미지(기사 og:image+유사) + AI 4화풍(Gemini).
+# thumb_gen.py — 픽한 기사(queue/*.md)별 썸네일 후보: 검색이미지(기사 og:image+유사) + AI 3화풍(Gemini).
 #
 # 기존 카드 이미지 경로(외부 Apps Script + Drive + Cloud Run compose)와 완전 분리된 레포 내 경로:
 #   - GitHub Actions가 Gemini(gemini-3.1-flash-image-preview = Nanobanana 2 Pro·4:5)를 직접 호출
@@ -8,7 +8,7 @@
 #     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.png 로컬 커밋·아무것도 안 깨짐)
 #
 # 안전: GEMINI_API_KEY 없으면 즉시 no-op(스캐폴드). 어떤 기사/화풍 실패도 fail-soft(파이프라인 안 깸).
-# 비용: 픽한 기사당 이미지 4장(유료·4화풍). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
+# 비용: 픽한 기사당 이미지 3장(유료). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
 #
 # 정본 = 이 파일(썸네일 프롬프트 SSOT). 참조 = apps/news/03_자동화_레퍼런스.md §썸네일 후보.
 
@@ -39,39 +39,27 @@ R2_KEY = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
 R2_SECRET = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
 R2_ON = all([R2_ACCOUNT, R2_BUCKET, R2_PUBLIC, R2_KEY, R2_SECRET])
 
-# ── 4화풍 (label = 뷰어 캡션) ─────────────────────────────────────────────
-# 구도/카메라 어휘 = apps/k 라이브러리(카메라·거리·앵글·조명) 증류 인라인(빌드주입 X = 재과금 폭탄 회피).
-# 글자: NO_TITLE이 타이틀 오버레이 전면금지 + 현장 자연글자도 최소만(아래).
-# ⚠️ sid 리네임 금지 = 기존 카드 재과금 0(process_one이 sid로 보존). 추가만 허용(웹툰/포토 sid 유지).
+# ── 3화풍 (label = 뷰어 캡션) ─────────────────────────────────────────────
+# 공통: 세로 4:5 풀블리드 · 핵심 피사체 또렷하게(고해상 2K).
+# 글자: 기사 타이틀/헤드라인 오버레이 문구는 안 박음(타이틀 금지) — 현장에 자연스러운 간판·표지판 글자는 장면 일부로 허용.
 STYLES = [
     ("webtoon", "웹툰 극화",
-     "한국 웹툰 극화체 일러스트레이션. 굵고 선명한 잉크 라인, 극적인 명암 대비, 강한 감정 표현. "
-     "인물 상반신 중심의 타이트한 프레이밍, 살짝 로우앵글로 긴장감, 단일 하드 측광."),
-    ("photo", "포토 에디토리얼 — 와이드",
-     "사실적인 보도/에디토리얼 사진 스타일. 자연광, 저널리즘적 현장감, 고급 잡지 표지 톤. "
-     "와이드 설정샷(롱샷)으로 현장 전체와 맥락을 넓게 담고, 깊은 심도로 배경까지 또렷, 아이레벨."),
-    ("photo_close", "포토 에디토리얼 — 클로즈업",
-     "사실적인 보도/에디토리얼 사진 스타일. 자연광, 저널리즘적 현장감, 고급 잡지 표지 톤. "
-     "핵심 인물·사물의 타이트한 클로즈업, 얕은 심도 보케로 배경 흐림, 표정·눈빛·디테일 강조, 살짝 로우앵글."),
-    ("cartoon", "시사만평",
-     "한국 신문 시사만평(편집 카툰) 스타일. 펜·잉크 캐리커처 선화에 담백한 단색/수채 채색, "
-     "은유와 풍자가 담긴 단일 장면 구성. 특정 실존 인물의 얼굴을 닮게 그리지 말고 역할·직군을 상징하는 "
-     "익명 캐리커처로(예: 양복 입은 관료, 헬멧 쓴 노동자). 모욕적·혐오적 묘사 금지, 사안에 대한 점잖은 풍자만."),
+     "한국 웹툰 극화체 일러스트레이션. 굵고 선명한 잉크 라인, 극적인 명암 대비, 강한 감정 표현, 역동적인 구도."),
+    ("watercolor", "수채화",
+     "부드러운 수채화 일러스트레이션. 번지는 채색, 따뜻하고 서정적인 톤, 종이 질감, 섬세한 분위기."),
+    ("photo", "포토 에디토리얼",
+     "사실적인 보도/에디토리얼 사진 스타일. 자연광, 얕은 심도, 저널리즘적 현장감, 고급 잡지 표지 톤."),
 ]
 
 COMPOSITION = (
-    "세로 4:5 비율. 핵심 피사체와 주요 요소(인물의 눈·눈빛·표정·손짓, 핵심 사물·증거·간판 글귀 등 시선이 머무는 부분)는 "
-    "화면 상단 2/3 안에 또렷하게 모이도록 배치한다. 화면 하단 약 1/3은 인물의 몸통·바닥·배경 등 단순하고 비교적 어두운 영역으로 "
-    "두어 비교적 비운다 — 중요한 디테일을 화면 맨 아래에 두지 말 것(이 하단 여백은 추후 기사 타이틀 자막이 얹히는 자리다). "
-    "한 장면 = 하나의 명확한 주인공(과밀 금지). "
+    "세로 4:5 비율, 화면 전체를 꽉 채우는 풀블리드 구도. 핵심 피사체(인물·사물·현장)를 또렷하게 배치. "
     "한국인·한국 배경을 기본값으로(국제 기사 등 명백히 외국이면 해당 지역). 자극적·선정적 묘사 금지, 미성년자 안전. 워터마크·로고 없음."
 )
 
-# 글자 = 양방향 정의: 오버레이/타이틀 전면금지 + 현장 자연글자도 "최소·작게·흐릿"까지만(읽히게 그리지 말 것 = 한글 깨짐 방지).
+# 타이틀 금지: 기사 제목/헤드라인 같은 "오버레이 문구"만 안 박음(전면 텍스트 금지 아님 — 현장의 자연스러운 간판·표지판 글자는 장면 일부로 허용).
 NO_TITLE = (
-    "이미지 속 글자는 최소화한다. 기사 제목·헤드라인·자막·설명 문장 등 오버레이/텍스트 밴드는 전면 금지. "
-    "현장에 자연스러운 글자(간판·표지판·도로명 등)는 화면 구석에 작게 1~2개까지만 허용하고, 화면 중앙·다수·또렷한 글자판은 금지. "
-    "글자를 읽을 수 있게 또렷이 렌더링하지 말 것(읽히는 한글은 깨질 위험이 크다)."
+    "기사 제목·헤드라인·자막 같은 오버레이 텍스트는 이미지에 넣지 마라. 화면을 가로지르는 큰 제목 문구·텍스트 밴드 금지. "
+    "(촬영 현장에 자연스럽게 존재하는 간판·표지판·로고 글자는 장면의 일부로 무방.)"
 )
 
 def build_prompt(art_dir, scene):
@@ -152,13 +140,11 @@ def gemini_image(prompt, image_size="1K"):
             return None
     return None
 
-# ── 검색이미지 = 기사 본인 대표사진(og:image) + 관련기사 유사사진 추출 — Google CSE JSON API 대체(2025 신규차단 死) ──
-# 구글 검색 대신 "원기사 URL의 og:image(대표) + 관련기사 og:image(유사·대표와 다른 사진)"를 끌어와 검색이미지 칸을 채운다.
-# 대표=라벨'' / 유사=라벨'유사'. R2 설정 시 재호스팅(핫링크·리퍼러 차단 0)·미설정이면 외부 핫링크. 차단매체(403)·paste(url無)면 [].
+# ── 검색이미지 = 기사 본인 대표사진(og:image)+유사 추출 — Google CSE JSON API 대체(2025 신규차단 死) ──
+# 구글 검색 대신 "기사 URL의 og:image(대표) + 발행사 선언 보조이미지(유사)"를 끌어와 검색이미지 칸을 채운다.
+# 대표=라벨'' / 그 외='유사'. R2 설정 시 재호스팅(핫링크·리퍼러 차단 0)·미설정이면 외부 핫링크. 차단매체(403)·paste(url無)면 [].
 # 🔑 신뢰원: og:image/twitter/JSON-LD = 발행사 선언만 사용(대표 보존·크기/크롭 면제). 본문 <img>는
-#    '속보' 배너 등 그래픽 오염으로 폐지(260620) — body=True 분기·필터는 보존(미호출). 분신술 10인 감사 반영.
-# 🔗 phase2(260620): 대표 1장 + 자리 남으면 관련기사 og를 '유사'로 보강 — '이 기사의 관련'임을 보증하는
-#    마커 매체(SBS oaid·이투데이 trc=view_joinnews)만(무관 차단 우선). 비전 게이트는 OFF 훅(THUMB_VISION). 분신술 5인 합의.
+#    '속보' 배너 등 그래픽 오염으로 폐지(260620) — body=True 분기·필터는 phase2 대비 보존(미호출). 분신술 10인 감사 반영.
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 # 대표·본문 공통 컷 = 명백한 비콘텐츠(플레이스홀더·스페이서·파비콘)
@@ -198,9 +184,6 @@ def _small_dim(u):
         return True
     m = re.search(r"[_/-](\d{2,4})x(\d{2,4})(?=[._/]|$)", u)
     if m and int(m.group(1)) < 400 and int(m.group(2)) < 400:
-        return True
-    mh = re.search(r"[_-](\d{2,4})[_-](\d{2,4})\.(?:jpe?g|png|webp|gif)(?:[?#]|$)", u, re.I)   # etoday류 _W_H.jpg 트레일링 치수
-    if mh and int(mh.group(1)) < 400 and int(mh.group(2)) < 400:
         return True
     m2 = re.search(r"[?&]type=w(\d{1,4})", u, re.I)          # 네이버 mblogthumb type=w80
     return bool(m2 and int(m2.group(1)) < 400)
@@ -255,8 +238,7 @@ def _img_candidates(html, base):
             for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 400])[:2]:
                 add(u, junk=True)
     # 3) (본문 <img> 긁기 폐지 — 운영자 260620: 매체 '속보' 배너 등 본문 그래픽이 '유사'로 새어 차단.
-    #    이 함수는 한 기사당 og/twitter/JSON-LD 1장만 = 발행사 선언만. 다장 '유사'는 관련기사 og로 채운다
-    #    [phase2 = fetch_article_images._related_urls, 마커 신뢰 매체만].)
+    #    유사도 발행사 선언 이미지[og/twitter/JSON-LD]만 쓴다 = 관계없는 템플릿 컷. 깨끗한 다장 유사는 phase2[교차매체 og].)
     return out
 
 def _url_ok(u):
@@ -315,77 +297,25 @@ def _img_type(b):
             return ct, ext
     return None, None
 
-def _fetch_html(u):
-    """기사 URL → 디코드 HTML 또는 None(실패·비허용 url). 대표·관련기사 fetch 공용(SSRF·리다이렉트 게이트)."""
-    if not (u and _url_ok(u)):
-        return None
+def fetch_article_images(art_url, want=3):
+    """기사 URL → [{src,link,label}] 최대 want장(대표=라벨'' · 나머지='유사'). 실패·빈url·비허용url이면 [] (fail-soft)."""
+    if not (art_url and _url_ok(art_url)):
+        return []
     try:
-        req = urllib.request.Request(u, headers={"User-Agent": UA, "Accept": "text/html,*/*"})
+        req = urllib.request.Request(art_url, headers={"User-Agent": UA, "Accept": "text/html,*/*"})
         with _OPENER.open(req, timeout=20) as r:
             raw = r.read(1500000)
             charset = r.headers.get_content_charset() or "utf-8"
         try:
-            return raw.decode(charset, "replace")
-        except LookupError:                                 # 알 수 없는 charset 라벨 → utf-8 폴백(fail-soft)
-            return raw.decode("utf-8", "replace")
+            text = raw.decode(charset, "replace")
+        except LookupError:                                 # 알 수 없는 charset 라벨 → utf-8 폴백(fail-soft 보장)
+            text = raw.decode("utf-8", "replace")
     except Exception as e:
-        print("  ⚠️ fetch 실패({}…): {}".format(u[:45], e), flush=True)
-        return None
-
-# phase2 = 관련기사 og:image를 '유사'로(대표와 다른 사진). '이 기사의 관련'임을 보증하는 마커 있는 매체만
-# (오염·무관 차단 — 운영자 "무관 금지" 우선). 도메인코어 → 관련링크 정규식. 마커 없는 매체·차단매체·paste면 [].
-_RELATED_RULES = {
-    "sbs":    re.compile(r'href\s*=\s*["\']([^"\']*?endPage\.do\?[^"\']*?oaid=[^"\']+)', re.I),                 # oaid=원기사id 백레프
-    "etoday": re.compile(r'href\s*=\s*["\']([^"\']*?/news/view/\d{5,}[^"\']*?trc=view_joinnews[^"\']*)', re.I),  # trc=조인뉴스(관련)
-}
-def _related_urls(html, base):
-    """기사 HTML → 관련기사 URL(마커 신뢰 매체만·중복제거·최대 6). 화이트리스트 규칙만(범용 추출=오염 위험이라 금지)."""
-    import html as _h
-    pat = _RELATED_RULES.get(_dom_core(urllib.parse.urlparse(base).hostname or ""))
-    if not pat:
+        print("  ⚠️ 기사 fetch 실패({}…): {}".format(art_url[:45], e), flush=True)
         return []
-    out, seen = [], set()
-    for m in pat.findall(html):
-        u = urllib.parse.urljoin(base, _h.unescape(m).replace("&amp;", "&"))
-        if u != base and u not in seen and _url_ok(u):
-            seen.add(u); out.append(u)
-    return out[:6]
-
-def _vision_keep(rep_src, cand_src):
-    """비전 훅(기본 OFF=pass-through). THUMB_VISION=1일 때만 Gemini로 '대표와 같은 인물/장면이면 컷' 판정.
-    기본(미설정)은 cand 그대로 반환 = 과금 0. 점화는 후속(운영자 승인 시 여기에 Gemini 1콜 배선)."""
-    if os.environ.get("THUMB_VISION", "") != "1":
-        return cand_src
-    return cand_src   # (점화 시: 대표와 동일 인물/장면이면 None 반환해 컷)
-
-def fetch_article_images(art_url, want=3):
-    """기사 URL → [{src,link,label}] 최대 want장. 대표=원기사 og(라벨'') · 유사=관련기사 og(라벨'유사').
-    유사는 마커 신뢰 매체(SBS·이투데이)의 관련기사 og만 — 대표와 다른 사진(중복·소형·잡것 컷). 실패·빈url이면 [] (fail-soft)."""
-    if not (art_url and _url_ok(art_url)):
-        return []
-    text = _fetch_html(art_url)
-    if text is None:
-        return []
-    out = []
-    for u in _img_candidates(text, art_url)[:want]:
-        out.append({"src": u, "link": art_url, "label": "" if not out else "유사"})
-    # phase2: 대표 확보 & 자리 남으면 관련기사 og로 유사 보강(마커 매체만 · 대표와 중복 아닌 사진)
-    if out and len(out) < want:
-        seen = {_norm_key(it["src"]) for it in out}
-        rep = out[0]["src"]
-        for ru in _related_urls(text, art_url):
-            if len(out) >= want:
-                break
-            rc = _img_candidates(_fetch_html(ru) or "", ru)
-            rog = rc[0] if rc else None
-            if not rog or _norm_key(rog) in seen or _small_dim(rog) or _BODY_SKIP.search(rog):
-                continue
-            if not _vision_keep(rep, rog):
-                continue
-            seen.add(_norm_key(rog))
-            out.append({"src": rog, "link": ru, "label": "유사"})
-            print("  🔗 관련기사 유사 +1 ({}…)".format(ru[:42]))
-    return out
+    urls = _img_candidates(text, art_url)[:want]
+    return [{"src": u, "link": art_url, "label": "" if i == 0 else "유사"}
+            for i, u in enumerate(urls)]
 
 def http_image(url):
     """이미지 URL → (bytes, 안전 content-type, ext) 또는 (None,None,None). 매직바이트로 실제 이미지만 통과."""
@@ -432,7 +362,7 @@ def _load_gen(tdir):
         return []
 
 def process_one(md, stem):
-    """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 4화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
+    """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 3화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
     head, lead, iq, art_url = parse_md(md)
     if not head:
         print("· {} — 헤드라인 파싱 실패, skip".format(stem)); return False
@@ -460,14 +390,14 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
-    # AI 생성 4화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor sid는 STYLES에 없어 자동 드롭)
+    # AI 생성 3화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완
     existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
     gen = []
     changed = False
     for sid, label, art_dir in STYLES:
         if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
             gen.append(existing[sid]); continue
-        png = gemini_image(build_prompt(art_dir, iq or lead), "2K")   # 장면 = entity(iq) 우선·없으면 한줄요약(글자 환각↓·일관성↑)
+        png = gemini_image(build_prompt(art_dir, lead), "2K")
         if not png:
             print("  ✗ {} 실패".format(label)); continue
         if R2_ON:                                # R2 = 공개 URL(레포 미저장)
@@ -490,7 +420,7 @@ def main():
         print("GEMINI_API_KEY 없음 — 썸네일 생성 생략(스캐폴드 no-op)")
         return 0
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
-    # 미완성 기사만(최신 우선) = gen.json에 4화풍(sid) 다 있으면 완성으로 보고 skip(부분이면 보완).
+    # 미완성 기사만(최신 우선) = gen.json에 3화풍(sid) 다 있으면 완성으로 보고 skip(부분이면 보완).
     target_sids = {s[0] for s in STYLES}
     todo = []
     for md in sorted(glob.glob("queue/*.md"), reverse=True):
