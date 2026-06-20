@@ -12,7 +12,7 @@
 #
 # 정본 = 이 파일(썸네일 프롬프트 SSOT). 참조 = apps/news/03_자동화_레퍼런스.md §썸네일 후보.
 
-import os, sys, re, json, base64, time, glob, subprocess, tempfile, ipaddress
+import os, sys, re, json, base64, time, glob, subprocess, tempfile, ipaddress, socket
 import urllib.request, urllib.error, urllib.parse
 
 MODEL = "gemini-3.1-flash-image-preview"   # 카드와 동일 모델(03 레퍼런스). 4:5 · 썸네일 2K / 카드 1K.
@@ -245,7 +245,12 @@ def _img_candidates(html, base):
     return out
 
 def _url_ok(u):
-    """fetch 허용 = http(s) + 호스트가 명백한 사설/로컬/메타데이터 IP literal이 아님(SSRF 1차 게이트)."""
+    """fetch 허용 = http(s) + 호스트가 (DNS resolve 후) 전역 공인 IP만. SSRF 게이트.
+
+    ⚠️ 문자열만 보면 8진수/정수(2130706433)/16진수/단축(127.1)/nip.io 난독화에 우회됨
+    (ipaddress는 거부하지만 OS 리졸버는 사설로 풂) → 실제 resolve해 모든 A/AAAA가 is_global인지 검사
+    (사설·루프백·링크로컬169.254·CGNAT100.64·예약·멀티캐스트 전부 차단). 동적 리바인딩은 잔여(수용).
+    """
     try:
         p = urllib.parse.urlparse(u)
     except Exception:
@@ -255,13 +260,24 @@ def _url_ok(u):
     host = (p.hostname or "").lower()
     if not host or host == "localhost" or host.endswith(".localhost"):
         return False
-    try:                                                    # IP literal이면 사설/루프백/링크로컬(169.254.*)/예약 차단
-        ip = ipaddress.ip_address(host)
-        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
-                or ip.is_multicast or ip.is_unspecified):
-            return False
+    ips = set()
+    try:
+        ips.add(str(ipaddress.ip_address(host)))            # 정규형 IP literal
     except ValueError:
-        pass                                                # 도메인명 = 통과(리바인딩 완전방어는 아니나 명백 케이스 차단)
+        pass
+    try:                                                    # 도메인·난독화 literal을 OS 리졸버로 실제 해석
+        ips |= {ai[4][0] for ai in socket.getaddrinfo(host, None)}
+    except Exception:
+        pass
+    if not ips:
+        return False                                        # resolve 실패 = fail-closed
+    for s in ips:
+        try:
+            ip = ipaddress.ip_address(s.split("%")[0])      # IPv6 zone id 제거
+        except ValueError:
+            return False
+        if not ip.is_global or ip.is_reserved:              # 비전역(사설/루프백/링크로컬/CGNAT)·예약 = 거부
+            return False
     return True
 
 class _NoPrivateRedirect(urllib.request.HTTPRedirectHandler):
