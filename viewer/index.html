@@ -26,7 +26,7 @@
     --accent-bright:#d8ff3d; --accent-2:#ff9614;
     --fg:#eef7f0; --mut:#8fa697;
     /* 의미색(semantic) — 현 라이브 대표값 추출(빨강·노랑·앰버·시안) */
-    --danger:#ff5b4a; --danger-rgb:255,91,74; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7;
+    --danger:#ff5b4a; --danger-rgb:255,91,74; --warn:#ffd24a; --amber:#ff9614; --amber-rgb:255,150,20; --info:#0cd0f7;
     --on-amber:#1a1205; --on-danger:#fff;    /* 의미색 위 글자(앰버/빨강 플래시) */
     /* 반지름 스케일 */
     --r:24px; --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
@@ -863,6 +863,14 @@
   /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
   /* 소머리(•) — 카드 텍스트·이미지프롬프트 라벨 */
   #cardsec p.lbl { margin:14px 0 4px; }
+  /* 카드 이미지프롬프트 박스 아래 '검색어 줄' = [현재 검색어(좌·1줄 …)] + [G+돋보기 구글검색 버튼](운영자 260620) */
+  .srchrow { display:flex; align-items:center; gap:8px; margin:6px 1px 14px; }
+  .srchrow .qnote { flex:1; min-width:0; font-size:11px; color:var(--mut); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .srchrow .qnote b { color:var(--fg); font-weight:700; opacity:.82; }
+  .gsrch { flex:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:24px; padding:0 9px;
+    border-radius:8px; color:var(--mut); text-decoration:none; background:rgba(255,255,255,.04); border:1px solid var(--line2); transition:color .15s, border-color .15s; }
+  .gsrch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
+  .gsrch svg { display:block; width:13px; height:13px; }
   #cardsec p.lbl::before { content:'• '; color:var(--mut); font-weight:700; }
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
@@ -965,6 +973,7 @@
   .sbtn.busy { opacity:.5; pointer-events:none; }   /* 오버레이 PNG 생성 중 */
   .sbtn:disabled { opacity:.5; cursor:default; }
   .sbtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .sbtn.confirm { background:rgba(var(--amber-rgb),.2); color:var(--amber); border-color:rgba(var(--amber-rgb),.5); }   /* 재확인(한 번 더=실행) — 반투명 앰버 · .ok/.busy와 같은 .sbtn 상태 한 벌(운영자 260620) */
   /* 버전 네비 = '전'/'후' 텍스트(하단중앙·바 없음). 여러 판일 때만(.show). 그 방향 판 있으면 흰색+그림자, 없으면 25% 비활성 느낌. */
   .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:none; align-items:center; gap:22px; }
   .slide-ver.show { display:flex; }
@@ -1028,9 +1037,7 @@
   .cref { margin:8px 0 16px; }
   .cref-h { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
   .cref-lbl { font-size:11.5px; font-weight:800; color:var(--mut); }
-  .cref-btn { flex:none; font-size:11.5px; font-weight:800; color:var(--accent); text-decoration:none; padding:4px 11px;
-    border-radius:8px; background:var(--accent-dim); border:1px solid rgba(15,253,2,.32); white-space:nowrap; transition:background .15s; }
-  .cref-btn:hover { background:rgba(15,253,2,.18); }
+  /* (구) .cref-btn 초록 알약 = 폐기 → 헤더 검색버튼은 .cref-srch(.sbtn 아이콘) 한 벌로 통일(운영자 260620) */
   .cref-track { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:3px; }
   .cref-track::-webkit-scrollbar { height:5px; }
   .cref-track::-webkit-scrollbar-thumb { background:var(--line); border-radius:9px; }
@@ -1054,12 +1061,18 @@
     background:linear-gradient(transparent,rgba(0,0,0,.72)); padding:14px 8px 5px; text-align:center; pointer-events:none; }
   .thumbsec .cref-slot { position:relative; cursor:zoom-in; }   /* 캡션 기준 + 탭=확대(라이트박스) */
   .thumbsec .cref-slot.search .tgen-cap { top:6px; left:6px; right:auto; bottom:auto; padding:2px 8px;
-    background:rgba(20,20,28,.78); border-radius:999px; font-size:9px; color:#ffd; }   /* 검색 '유사' = 좌상단(우상단=복사·저장 버튼) */
-  /* 썸네일 후보 슬롯 액션(복사·저장) — .sbtn 글래스 계승·축소(§🎨 --btn-xs) */
-  /* 슬롯 액션 = 저장(다운로드)만 · 하단 우측(피사체=상단 2/3 안 가림) · 터치타깃 --btn-sm(30px) */
-  .timg-acts { position:absolute; bottom:6px; right:6px; z-index:2; display:flex; gap:5px; }
-  .timg-acts .sbtn { width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
+    max-width:calc(100% - 46px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;   /* 라벨 길어져도 우상단 저장버튼 안 침범(회귀 방어) */
+    background:rgba(20,20,28,.78); border-radius:999px; font-size:9px; color:#ffd; }   /* 검색 '유사' = 좌상단(우상단=저장 버튼) */
+  /* 썸네일 후보 슬롯 액션 — 카드뉴스 캐러셀 .slide-acts(우상단 .sbtn 행) 그대로 계승(운영자 260620 · 한 앱 한 벌).
+     생성 슬롯 = [재생성 .sbtn][저장 .sbtn] · 검색 슬롯 = [저장 .sbtn] · 우상단(검색 '유사' 캡션은 좌상단=비충돌) · --btn-sm(30px) */
+  .timg-acts { position:absolute; top:6px; right:6px; z-index:2; display:flex; gap:8px; }
+  .timg-acts .sbtn { position:relative; width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
   .timg-acts .sbtn svg { width:15px; height:15px; }
+  /* 터치타깃 확장(시각 30px 유지·실효 ↑) — 세로 넉넉·가로는 인접 버튼과 안 겹치게 작게(저장↔재생성 오탭=과금 방지·운영자 260620) */
+  .timg-acts .sbtn::before { content:''; position:absolute; top:-6px; bottom:-6px; left:-2px; right:-2px; }
+  /* 검색 헤더의 '구글 이미지 검색' = 글래스 .sbtn 아이콘으로 통일(기존 초록 알약 텍스트 = 투박 → 폐기 · 운영자 260620) */
+  .cref-srch { width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
+  .cref-srch svg { width:15px; height:15px; }
   /* 복사/저장 정직표시 — ok(초록 체크) / warn(부분·앰버: URL만 복사·새탭저장) / err(실패·빨강) */
   .sbtn.warnflash { background:var(--amber); color:var(--on-amber); border-color:var(--amber); }
   .sbtn.errflash { background:var(--danger); color:var(--on-danger); border-color:var(--danger); }
@@ -1075,16 +1088,12 @@
   .lbox-track::-webkit-scrollbar { display:none; }
   .lbox-slide { flex:0 0 100%; scroll-snap-align:center; display:grid; place-items:center; padding:72px 14px 28px; }
   .lbox-slide img { max-width:100%; max-height:100%; object-fit:contain; }
-  /* AI 생성 '다시 만들기'(4화풍 재생성) — 새로고침 픽토 → Go? → 게이지(카드 슛 패턴 계승·§🎨) */
-  .cref-redo { margin-left:8px; display:inline-grid; place-items:center; min-width:var(--btn-xs); height:var(--btn-xs);
-    padding:0 7px; border-radius:var(--r-s); background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14);
-    color:rgba(255,255,255,.92); cursor:pointer; font-size:var(--fs-xs); font-weight:var(--fw-x); line-height:1; }
-  .cref-redo svg { display:block; }
-  .cref-redo:active { transform:scale(.9); }
-  .cref-redo.go { background:rgba(255,150,20,.22); border-color:rgba(255,150,20,.5); color:var(--amber); }
-  .cref-redo.busy { pointer-events:none; }
-  .cref-gauge { display:block; width:44px; height:7px; border-radius:var(--r-pill); background:rgba(255,255,255,.12); overflow:hidden; }
-  .cref-gauge i { display:block; height:100%; width:0; border-radius:var(--r-pill); background:linear-gradient(90deg,var(--accent-bright),var(--accent)); transition:width 1.1s ease; }
+  /* (구) .cref-redo/.cref-gauge 전용 알약·게이지 = 폐기 → 슬롯별 재생성은 .sbtn(+.confirm/.busy/.ok) 한 벌로 통일(운영자 260620) */
+  /* 라벨 우측 — 제미나이 토큰/추정$ 간단 '표기'(버튼 아님·새 컴포넌트 X). 라벨과 같은 줄 중앙정렬·plain muted 텍스트.
+     형식 "$ 0.0, T 0" · 볼드/돈아이콘/pill 없음 · 간격만 넉넉히(운영자 260620). */
+  .cref-lblrow { display:inline-flex; align-items:center; gap:10px; min-width:0; }
+  .cref-usage { flex:none; font-size:11.5px; font-weight:500; color:var(--mut);   /* 볼드 아님(라벨 800과 위계 분리·운영자 "볼드 없음") */
+    font-variant-numeric:tabular-nums; white-space:nowrap; cursor:default; letter-spacing:0; }
 
   /* ── 모바일 ── */
   @media (max-width:640px) {
@@ -1853,21 +1862,39 @@ function thumbSec(a) {
   if (!search.length && !gen.length) return null;
   const wrap = document.createElement('div'); wrap.className = 'thumbsec';
   wrap.innerHTML = '<div class="thumbsec-h">🖼 썸네일 후보 — 검색 · AI 생성</div>';
-  // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만
+  // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
     wrap.appendChild(thumbStatic('🔎 검색 이미지', search, 'search',
-      'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100))));
+      'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100)), c.thumb_usage));
   }
-  // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만
-  if (gen.length) wrap.appendChild(thumbStatic('🍌 AI 생성', gen, 'gen'));
+  // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(4화풍+재생성 누적)
+  if (gen.length) wrap.appendChild(thumbStatic('🍌 AI 생성', gen, 'gen', null, c.thumb_usage));
   return wrap;
 }
-// 정적 캐러셀(thumb_search/thumb_gen) — items=[{img, link?, label?}]. 탭=확대(라이트박스)·우상단 복사/저장(§🎨 계승)
-function thumbStatic(label, items, kind, href) {
+// 제미나이 토큰/추정$ 표기(plain 텍스트 · 버튼 아님) — 라벨(🍌 AI 생성·🔎 검색) 우측. 형식 "$ 0.0, T 0".
+// bucket={calls,total,cumulative}. 토큰=정확(API) · $=추정(이미지 토큰 단가). 운영자 260620: 돈아이콘·볼드·pill 제거.
+const GEM_RATE = 0.00003;   // 이미지 토큰 추정단가(≈$30/1M·$0.039/장 기준). $=추정·T=정확. ⚠️ 실측 usage.json 들어오면 1콜 totalTokenCount로 재캘리브레이션(이미지 과금은 장당 고정이라 토큰선형은 근사)
+function usageText(bucket, kind) {
+  if (!bucket) return '';
+  const tok = bucket.cumulative || 0;
+  const usd = (tok * GEM_RATE).toFixed(1);
+  const title = kind === 'search'
+    ? (tok ? '검색·비전 제미나이 누적 ' + tok.toLocaleString() + '토큰 · 추정 $' + usd
+           : '검색 = og:image 스크래핑(AI 비전 미사용) · 제미나이 0')
+    : '제미나이 — 4화풍+재생성 누적 ' + tok.toLocaleString() + '토큰 · 추정 $' + usd
+      + (bucket.calls ? ' (최근 ' + bucket.calls + '콜)' : '');
+  return '<span class="cref-usage" title="' + esc(title) + '">$ ' + usd + ', T ' + tok.toLocaleString() + '</span>';
+}
+const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>';
+const SEARCH_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
+// 정적 캐러셀(thumb_search/thumb_gen) — items=[{img,label?,sid?}]. 탭=확대 · 우상단 액션행 .sbtn(저장 · 생성슬롯=재생성+저장 · §🎨 .slide-acts 계승). usage={gen,search}.
+function thumbStatic(label, items, kind, href, usage) {
   const list = items.slice(0, 4);
   const wrap = document.createElement('div'); wrap.className = 'cref';
-  const hbtn = href ? '<a class="cref-btn" href="' + escUrl(href) + '" target="_blank" rel="noopener">구글 이미지 검색 ↗</a>' : '';
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">' + esc(label) + '</span>' + hbtn + '</div>'
+  // 검색 헤더 우측 = 글래스 .sbtn 아이콘(구글 이미지 검색) — 기존 초록 알약 텍스트 폐기(투박·운영자 260620)
+  const hbtn = href ? '<a class="sbtn cref-srch" href="' + escUrl(href) + '" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a>' : '';
+  const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
+  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + hbtn + '</div>'
     + '<div class="cref-track">' + (list.map((it, i) => {
         const cap = it.label ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';
         return '<div class="cref-slot ' + kind + '" data-i="' + i + '" role="button" tabindex="0" aria-label="확대">'
@@ -1879,41 +1906,37 @@ function thumbStatic(label, items, kind, href) {
       }).join('') || '<div class="cref-empty">이미지 없음</div>') + '</div>';
   wrap.querySelectorAll('.cref-slot').forEach(slot => {
     const i = +slot.dataset.i, it = list[i]; if (!it) return;
+    const acts = slot.querySelector('.timg-acts');
+    if (kind === 'gen' && it.sid) acts.insertBefore(thumbRedoSbtn(it.sid), acts.firstChild);   // 생성 슬롯마다 재생성 .sbtn(저장 앞)
     slot.querySelector('.timg-dl').addEventListener('click', e => { e.stopPropagation(); downloadImg(it.img, thumbDlName(label, it, i), e.currentTarget); });
     slot.addEventListener('click', e => { if (!e.target.closest('.timg-acts')) openLightbox(list, i, label); });   // 탭=확대(복사는 확대뷰에서)
     slot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(list, i, label); } });
   });
-  if (kind === 'gen') { const h = wrap.querySelector('.cref-h'); if (h) h.appendChild(thumbRedoBtn()); }   // AI 4화풍 '다시 만들기'
   return wrap;
 }
-const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>';
-// AI 4화풍 '다시 만들기' 버튼 — 새로고침 픽토 → 1차 클릭 'Go?'(앰버 재확인) → 2차 클릭 게이지 채우며 전송(/api/thumbredo).
-// 전송 후 '생성 중…' — thumb-redo 워크플로(Gemini 4장 재생성)→커밋→재빌드 후 라이브 폴이 새 이미지로 교체. (게이트 없음·유료)
-function thumbRedoBtn() {
+// 슬롯별 '다시 만들기'(.sbtn 한 벌 계승 — 카드 캐러셀과 동일 컴포넌트) — 1차 탭=재확인(.confirm 앰버) · 2차 탭=전송(.busy '재생성 중').
+// /api/thumbredo {article,sid} → 그 화풍 1개만 재생성(검색·타화풍 보존). 라이브 폴(load)이 새 이미지(?v=) 오면 섹션 통째 교체. 유료(Gemini 1장)·게이트 없음.
+function thumbRedoSbtn(sid) {
   const b = document.createElement('button');
-  b.type = 'button'; b.className = 'cref-redo'; b.title = '4화풍 다시 만들기(재생성)'; b.setAttribute('aria-label', '4화풍 다시 만들기');
+  b.type = 'button'; b.className = 'sbtn'; b.title = '이 화풍 다시 만들기'; b.setAttribute('aria-label', '이 화풍 다시 만들기');
   b.innerHTML = REFRESH_SVG;
   let stage = 0, t;
-  const reset = () => { stage = 0; clearTimeout(t); b.className = 'cref-redo'; b.disabled = false; b.innerHTML = REFRESH_SVG; };
-  b.addEventListener('click', async () => {
-    if (stage === 0) {                                  // 1차 = 재확인
-      stage = 1; b.classList.add('go'); b.innerHTML = '<span>Go?</span>';
-      clearTimeout(t); t = setTimeout(reset, 3000); return;
-    }
+  const reset = () => { stage = 0; clearTimeout(t); b.classList.remove('confirm', 'busy'); b.innerHTML = REFRESH_SVG; b.title = '이 화풍 다시 만들기'; };
+  b.addEventListener('click', async e => {
+    e.stopPropagation();
+    // 1차 = 재확인: 앰버 + 아이콘 ✓로 교체(폰은 hover title 안 떠서 색만으론 부족 → 아이콘 변화로 "한 번 더=실행" 가시화 · 오탭 과금 방지)
+    if (stage === 0) { stage = 1; b.classList.add('confirm'); b.innerHTML = CHECK_SVG; b.title = '한 번 더 누르면 재생성'; clearTimeout(t); t = setTimeout(reset, 3000); return; }
     if (stage !== 1) return;
-    clearTimeout(t); stage = 2; b.classList.remove('go'); b.classList.add('busy');   // 2차 = 게이지 채우며 전송
-    b.innerHTML = '<span class="cref-gauge"><i></i></span>';
-    requestAnimationFrame(() => { const i = b.querySelector('i'); if (i) i.style.width = '100%'; });
+    clearTimeout(t); stage = 2; b.classList.remove('confirm'); b.classList.add('busy'); b.innerHTML = REFRESH_SVG;   // 전송 = busy(재생성 중 · 카드 reshooting dim 계승)
     try {
       const r = await fetch('/api/thumbredo', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ article: CUR }) });
+        body: JSON.stringify({ article: CUR, sid }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
-      b.innerHTML = '<span>생성 중…</span>';            // 재생성→재빌드 후 라이브 폴이 새 이미지로 교체
-      THUMB_REDO.set(CUR, { oldSig: thumbGenSig(CUR_A), t0: Date.now() });   // load 폴이 새 gen 이미지(?v=) 오면 썸네일섹션 교체
-    } catch (e) {
-      b.classList.remove('busy'); b.innerHTML = '<span>실패</span>'; b.title = String(e.message || e);
-      setTimeout(reset, 2800);
+      THUMB_REDO.set(CUR, { oldSig: thumbGenSig(CUR_A), t0: Date.now() });   // load 폴이 새 이미지(?v=) 오면 썸네일 섹션 교체(busy 유지=재생성 중)
+    } catch (err) {
+      b.classList.remove('busy'); b.classList.add('errflash'); b.title = String(err.message || err);
+      setTimeout(reset, 2600);
     }
   });
   return b;
@@ -2066,10 +2089,23 @@ function cardSec(a) {
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
-    // 카드별 관련 이미지(샘플) — 각 이미지 프롬프트 아래 16:9 캐러셀 + 구글 이미지 검색(프롬프트 대체 사진 탐색)
-    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '', _foreign = articleCat(a) === '국제';   // 외국(국제) 기사 = 영문 키워드로 검색(소스 풍부)
+    // 카드별 검색어 줄 — 이미지 프롬프트 박스 아래 [현재 검색어(좌·1줄)] + [G+돋보기 구글 이미지 검색 버튼](운영자 260620).
+    const G_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 10.96v2.32h3.84c-.16 1-1.15 2.9-3.84 2.9-2.31 0-4.2-1.91-4.2-4.27s1.89-4.27 4.2-4.27c1.32 0 2.2.56 2.7 1.05l1.84-1.77c-1.18-1.1-2.68-1.77-4.54-1.77-3.74 0-6.74 3-6.74 6.76s3 6.76 6.74 6.76c3.89 0 6.47-2.74 6.47-6.59 0-.44-.05-.78-.11-1.12l-6.36.04z"/></svg>';
+    const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
     [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
-      .forEach((pre, i) => pre.insertAdjacentElement('afterend', cardRefCarousel(_refCards[i] && _refCards[i].caption, _refTtl, _foreign)));
+      .forEach((pre, i) => {
+        const q = (_refCards[i] && _refCards[i].caption) || _refTtl;   // 검색 쿼리 = 카드 캡션(없으면 제목)
+        if (!q) return;
+        const row = document.createElement('div'); row.className = 'srchrow';
+        const note = document.createElement('span'); note.className = 'qnote';
+        note.innerHTML = '현재 검색어 = <b>' + esc('"' + q + '"') + '</b>';
+        const s = document.createElement('a'); s.className = 'gsrch';
+        s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
+        s.target = '_blank'; s.rel = 'noopener'; s.title = '구글 이미지 검색'; s.setAttribute('aria-label', '구글 이미지 검색');
+        s.innerHTML = G_SVG + SEARCH_SVG;
+        row.append(note, s);
+        pre.insertAdjacentElement('afterend', row);   // 프롬프트 박스 바로 아래
+      });
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
     if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
     sec.appendChild(div);
@@ -2133,17 +2169,42 @@ async function translateKoEn(text) {   // 무키·CORS 폴백(엔티티맵 0일 
 function cardRefCarousel(caption, title, foreign) {
   const wrap = document.createElement('div'); wrap.className = 'cref';
   wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">🔎 관련 이미지' + (foreign ? ' · 외국(영문 검색)' : ' (샘플)') + '</span>'
-    + '<a class="cref-btn" target="_blank" rel="noopener">구글 이미지 검색 ↗</a></div>'
+    + '<a class="sbtn cref-srch" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a></div>'   // §🎨 .sbtn 아이콘 통일(초록 알약 폐기)
     + '<div class="cref-track"><div class="cref-slot ld">불러오는 중…</div><div class="cref-slot ld"></div><div class="cref-slot ld"></div></div>';
   refResolveAndLoad(wrap, caption, title, foreign);
   return wrap;
 }
-// 쿼리 결정: 외국=영문(엔티티맵→번역 폴백)+구글 미국지역·영어 / 국내=국문. 그 뒤 구글버튼 href·Wikimedia 채움.
+// 카드 캡션 → 구글 이미지 검색용 키워드(명사형 · '+' 연결). 한국어 형태소분석기 없이 휴리스틱(운영자 260620 · 일단판).
+//  풀문장을 그대로 검색하면 너무 구체적이라 안 맞음 → 핵심 명사만 추출(조사·불용어·숫자단위 제거, 한자어 서술어 X했다/됐다→명사, native 동사 제거).
+//  한계(인정): 의미판단(비핵심 명사 탈락·들이받았다→사고)·1글자 명사·동사많은 짧은 캡션은 못 따라감 → 카드 텍스트 품질 좋아지면 같이 개선. '+'는 encodeURIComponent로 %2B가 돼 구글 박스에 +로 그대로 들어감(운영자 검증 포맷).
+const _KW_STOP = new Set('이 그 저 것 등 및 수 때 더 또 좀 약 총 중 데 점 곳 곳곳 관련 위해 통해 대한 따라 함께 모든 여러 어떤 무슨 이런 그런 저런 가장 매우 너무 다시 계속 아직 이미 거의 바로 결국 주요 상태 경우 부분 사람 사람들 우리 자신 서로 만에 처음 이번 당시 최근 오늘 내일 어제 모두 일부 대부분 가운데 사이 이후 이전 동안 무렵 정도 가량 까지 안'.split(/\s+/));
+const _KW_JOSA = /(으로서|으로써|이라고|라는|라고|에서|에게|한테|께서|처럼|보다|까지|부터|마다|조차|만큼|이라|이며|이고|에도|에는|으론|으로|로서|로써|은|는|이|가|을|를|에|의|와|과|도|로|만|나|며|란|랑)$/;
+const _KW_VERB = /(았다|었다|였다|겠다|졌다|났다|왔다|갔다|쳤다|혔다|뒀다|는다|ㄴ다|린다|운다|진다|긴다|다고|다는|다며|다면|라고|라는|자고|냐고|느냐|나요|까요|세요|어요|아요|여요|군요|거든|잖아|는데|지만|면서|으며|었던|았던|였던|지지|졌|쳐|져|혀|와서|봐|줘|아서|어서|여서|시며|되며|하며)$/;
+function captionKeywords(s, max = 5) {
+  const words = String(s || '').replace(/[""''「」『』（）()\[\]<>{}"']/g, ' ').replace(/[.,!?…∼~\/:;]+/g, ' ').split(/\s+/).filter(Boolean);
+  const out = [];
+  for (let w of words) {
+    w = w.replace(/(했다|했고|했지만|한다|하는|하고|하며|하면|해서|됐다|됐고|된다|되는|되고|되며|되면|됨|함)$/, '');   // 한자어 서술어 → 명사
+    if (_KW_VERB.test(w)) continue;                              // native 동사·연결형·인용형
+    if (/다$/.test(w)) continue;                                 // 남은 서술어
+    const m = w.match(_KW_JOSA);
+    if (m && w.length - m[0].length >= 2) w = w.slice(0, -m[0].length);   // 조사(2글자+ 남을 때만 = 단어 깨짐 방지)
+    if (/^\d+[가-힣]{0,2}$/.test(w)) continue;                   // 숫자+단위(5명·22일·27년·3시) — 5·18 등은 통과
+    w = w.replace(/^[·\-'']+|[·\-'']+$/g, '');
+    if (w.length < 2) continue;
+    if (_KW_STOP.has(w)) continue;
+    if (/(나요|까요|세요|어요|아요|으며|면서|는데)$/.test(w)) continue;
+    if (!out.includes(w)) out.push(w);
+    if (out.length >= max) break;
+  }
+  return out.join('+');
+}
+// 쿼리 결정: 외국=영문(엔티티맵→번역 폴백)+구글 미국지역·영어 / 국내=캡션 명사형 키워드(풀문장 X). 그 뒤 구글버튼 href·Wikimedia 채움.
 async function refResolveAndLoad(wrap, caption, title, foreign) {
-  const btn = wrap.querySelector('.cref-btn'), track = wrap.querySelector('.cref-track');
+  const btn = wrap.querySelector('.cref-srch'), track = wrap.querySelector('.cref-track');
   const ko = ((title || '') + ' ' + (caption || '')).replace(/\s+/g, ' ').trim();
   const setBtn = (q, ex) => { if (btn) btn.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((String(q).slice(0, 100) || '뉴스')) + (ex || ''); };
-  if (!foreign) { setBtn(ko); loadRefImages((title || caption || ko).slice(0, 60), track); return; }   // 국내 = 국문
+  if (!foreign) { setBtn(captionKeywords(caption) || captionKeywords(title) || ko); loadRefImages((title || caption || ko).slice(0, 60), track); return; }   // 국내 = 캡션 키워드(명사형+)
   let eq = foreignEnglish(title, caption);                   // 외국 1) 엔티티맵(즉시·정확)
   setBtn(eq || ko, '&gl=us&hl=en');                          // 버튼 먼저 세팅(클릭 데드윈도 차단) · 미국 지역·영어
   if (!eq) { eq = await translateKoEn(title || caption); if (eq) setBtn(eq, '&gl=us&hl=en'); }   // 2) 번역 폴백 → 갱신
