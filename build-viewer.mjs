@@ -131,11 +131,11 @@ for (const a of articles) {
       const g = JSON.parse(readFileSync(join(tdir, 'gen.json'), 'utf8'));
       if (Array.isArray(g)) {
         thumbGen = g.map(x => {
-          if (x && x.img) return { img: x.img, label: x.label || '' };            // R2 공개 URL(외부) — 복사 불필요
+          if (x && x.img) return { img: x.img, label: x.label || '', sid: x.sid || '' };   // R2 공개 URL(외부) · sid=per-image 재생성 타깃
           if (x && x.file && existsSync(join(tdir, x.file))) {                     // git 폴백 — 로컬 복사
             mkdirSync(join('viewer/cards', stem, 'thumbs'), { recursive: true });
             copyFileSync(join(tdir, x.file), join('viewer/cards', stem, 'thumbs', x.file));
-            return { img: `cards/${stem}/thumbs/${x.file}${bust(join(tdir, x.file))}`, label: x.label || '' };
+            return { img: `cards/${stem}/thumbs/${x.file}${bust(join(tdir, x.file))}`, label: x.label || '', sid: x.sid || '' };
           }
           return null;
         }).filter(Boolean);

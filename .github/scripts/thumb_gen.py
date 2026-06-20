@@ -537,19 +537,38 @@ def main():
     # gen.json(4화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
     # (검색은 md frontmatter alt_urls 있으면 유사까지 채움·없으면 대표 og 재fetch). SINCE/MAX_BATCH 무관.
     only = os.environ.get("THUMB_ONLY", "").strip()
+    redo_sid = os.environ.get("THUMB_REDO_SID", "").strip()   # 지정 시 = 그 화풍 1개만 재생성(per-image · 검색·타화풍 보존)
     if only:
         md = os.path.join("queue", only + ".md")
         if not os.path.exists(md):
             print("THUMB_ONLY 대상 없음:", md); return 0
-        for jf, lbl in (("gen.json", "4화풍"), ("search.json", "검색이미지")):
-            p = os.path.join("cards", only, "thumbs", jf)
+        tdir = os.path.join("cards", only, "thumbs")
+        if redo_sid:
+            # 단일 화풍만 — gen.json에서 그 sid만 제거(나머지·search 보존) → process_one이 그 sid만 재생성
+            gp = os.path.join(tdir, "gen.json")
             try:
-                if os.path.exists(p):
-                    os.remove(p); print("  ↻ {} 비움 → {} 재생성: {}".format(jf, lbl, only))
+                g = json.load(open(gp, encoding="utf-8"))
+                g2 = [x for x in g if x.get("sid") != redo_sid]
+                if len(g2) != len(g):
+                    json.dump(g2, open(gp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+                    print("  ↻ gen.json '{}' 화풍만 제거 → 재생성: {}".format(redo_sid, only))
+                else:
+                    print("  ℹ️ '{}' 화풍이 gen.json에 없음 — 미존재분 보완으로 진행".format(redo_sid))
+                fp = os.path.join(tdir, "gen-{}.png".format(redo_sid))   # 로컬 폴백 PNG도 제거(있으면)
+                if os.path.exists(fp):
+                    os.remove(fp)
             except Exception as e:
-                print("  ⚠️ {} 제거 실패: {}".format(jf, e))
+                print("  ⚠️ 단일 화풍 제거 실패: {}".format(e))
+        else:
+            for jf, lbl in (("gen.json", "4화풍"), ("search.json", "검색이미지")):
+                p = os.path.join(tdir, jf)
+                try:
+                    if os.path.exists(p):
+                        os.remove(p); print("  ↻ {} 비움 → {} 재생성: {}".format(jf, lbl, only))
+                except Exception as e:
+                    print("  ⚠️ {} 제거 실패: {}".format(jf, e))
         process_one(md, only)
-        print("THUMB_ONLY 재생성 완료:", only)
+        print("THUMB_ONLY 재생성 완료:", only, ("(화풍 " + redo_sid + ")") if redo_sid else "")
         return 0
     # 미완성 기사만(최신 우선) = gen.json에 4화풍(sid) 다 있으면 완성으로 보고 skip(부분이면 보완).
     target_sids = {s[0] for s in STYLES}
