@@ -177,6 +177,7 @@ ${extracted}"
   if [ -n "${alt_urls// }" ]; then
     out="$(printf '%s\n' "$out" | awk -v a="$alt_urls" \
           '!ad && /^---[[:space:]]*$/{print; print "alt_urls: \"" a "\""; ad=1; next} {print}')"
+    echo "  검색 유사 보강 — alt_urls 주입($(printf '%s' "$alt_urls" | wc -w)개 매체)"   # 가시성(Actions 로그)
   fi
 
   # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.

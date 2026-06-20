@@ -494,20 +494,18 @@ def main():
         return 0
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
     # ── 단일 기사 강제 재생성 (뷰어 '다시 만들기' → thumb-redo.yml · THUMB_ONLY=stem) ──
-    # gen.json(4화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
-    # (검색은 md frontmatter alt_urls 있으면 유사까지 채움·없으면 대표 og 재fetch). SINCE/MAX_BATCH 무관.
+    # gen.json만 비워 4화풍 전부 재생성(검색 search.json=기사 og:image는 보존). SINCE/MAX_BATCH 무관.
     only = os.environ.get("THUMB_ONLY", "").strip()
     if only:
         md = os.path.join("queue", only + ".md")
         if not os.path.exists(md):
             print("THUMB_ONLY 대상 없음:", md); return 0
-        for jf, lbl in (("gen.json", "4화풍"), ("search.json", "검색이미지")):
-            p = os.path.join("cards", only, "thumbs", jf)
-            try:
-                if os.path.exists(p):
-                    os.remove(p); print("  ↻ {} 비움 → {} 재생성: {}".format(jf, lbl, only))
-            except Exception as e:
-                print("  ⚠️ {} 제거 실패: {}".format(jf, e))
+        gp = os.path.join("cards", only, "thumbs", "gen.json")
+        try:
+            if os.path.exists(gp):
+                os.remove(gp); print("  ↻ gen.json 비움 → 4화풍 재생성:", only)
+        except Exception as e:
+            print("  ⚠️ gen.json 제거 실패:", e)
         process_one(md, only)
         print("THUMB_ONLY 재생성 완료:", only)
         return 0
