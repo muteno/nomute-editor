@@ -862,15 +862,10 @@
   #mdbody h3.subtop { border-top:none; padding-top:0; margin-top:4px; }   /* 섹션(h2) 바로 밑 서브헤더 = 위 구분선·빈 줄 제거(콘텐츠 초안→자유요약) */
   /* 카드 섹션 — 카드뉴스 제목을 부제로 격상 */
   /* 소머리(•) — 카드 텍스트·이미지프롬프트 라벨 */
-  #cardsec p.lbl { margin:14px 0 4px; }
-  /* 카드 이미지프롬프트 박스 아래 '검색어 줄' = [현재 검색어(좌·1줄 …)] + [G+돋보기 구글검색 버튼](운영자 260620) */
-  .srchrow { display:flex; align-items:center; gap:8px; margin:6px 1px 14px; }
-  .srchrow .qnote { flex:1; min-width:0; font-size:11px; color:var(--mut); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .srchrow .qnote b { color:var(--fg); font-weight:700; opacity:.82; }
-  .gsrch { flex:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:24px; padding:0 9px;
-    border-radius:8px; color:var(--mut); text-decoration:none; background:rgba(255,255,255,.04); border:1px solid var(--line2); transition:color .15s, border-color .15s; }
-  .gsrch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
-  .gsrch svg { display:block; width:13px; height:13px; }
+  #cardsec p.lbl { margin:14px 0 4px; display:flex; align-items:center; gap:8px; }   /* 소머리 라벨 + (이미지프롬프트) 구글검색 버튼 우측 */
+  .cref-srch { margin-left:auto; flex:none; font-size:11px; font-weight:700; font-family:inherit; color:var(--mut); text-decoration:none;
+    padding:3px 10px; border-radius:8px; background:rgba(255,255,255,.04); border:1px solid var(--line2); white-space:nowrap; transition:color .15s, border-color .15s; }   /* 일반 톤 — .morebtn 계승(돋보임 X) */
+  .cref-srch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
   #cardsec p.lbl::before { content:'• '; color:var(--mut); font-weight:700; }
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
@@ -2089,22 +2084,18 @@ function cardSec(a) {
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
-    // 카드별 검색어 줄 — 이미지 프롬프트 박스 아래 [현재 검색어(좌·1줄)] + [G+돋보기 구글 이미지 검색 버튼](운영자 260620).
-    const G_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 10.96v2.32h3.84c-.16 1-1.15 2.9-3.84 2.9-2.31 0-4.2-1.91-4.2-4.27s1.89-4.27 4.2-4.27c1.32 0 2.2.56 2.7 1.05l1.84-1.77c-1.18-1.1-2.68-1.77-4.54-1.77-3.74 0-6.74 3-6.74 6.76s3 6.76 6.74 6.76c3.89 0 6.47-2.74 6.47-6.59 0-.44-.05-.78-.11-1.12l-6.36.04z"/></svg>';
+    // 카드별 '구글 이미지 검색' 버튼 — 이미지 프롬프트 라벨 줄 우측(일반 톤). 관련이미지 캐러셀(🔎샘플·폴백)은 제거(운영자 260620).
     const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
     [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
       .forEach((pre, i) => {
+        const lbl = pre.previousElementSibling;   // '• 이미지 프롬프트' 라벨 줄(p.lbl)
         const q = (_refCards[i] && _refCards[i].caption) || _refTtl;   // 검색 쿼리 = 카드 캡션(없으면 제목)
-        if (!q) return;
-        const row = document.createElement('div'); row.className = 'srchrow';
-        const note = document.createElement('span'); note.className = 'qnote';
-        note.innerHTML = '현재 검색어 = <b>' + esc('"' + q + '"') + '</b>';
-        const s = document.createElement('a'); s.className = 'gsrch';
-        s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
-        s.target = '_blank'; s.rel = 'noopener'; s.title = '구글 이미지 검색'; s.setAttribute('aria-label', '구글 이미지 검색');
-        s.innerHTML = G_SVG + SEARCH_SVG;
-        row.append(note, s);
-        pre.insertAdjacentElement('afterend', row);   // 프롬프트 박스 바로 아래
+        if (lbl && q) {
+          const s = document.createElement('a'); s.className = 'cref-srch';
+          s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
+          s.target = '_blank'; s.rel = 'noopener'; s.textContent = '구글 이미지 검색 ↗';
+          lbl.appendChild(s);
+        }
       });
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
     if (ch1) { const t = ch1.textContent; ch1.appendChild(copyBtn(() => t, '제목 복사')); }
