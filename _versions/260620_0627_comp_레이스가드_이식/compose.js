@@ -46,12 +46,10 @@ export async function onRequestPost({ request, env }) {
   if (put.status !== 201 && put.status !== 200) {
     return json({ error: `업로드 실패 GitHub ${put.status}: ${(await put.text()).slice(0, 200)}` }, 502);
   }
-  let imgSha = '';
-  try { imgSha = ((await put.json()) || {}).commit?.sha || ''; } catch { imgSha = ''; }   // src 커밋 SHA — comp-make가 dispatch 레이스(옛 HEAD 체크아웃)일 때 이 커밋 직접 체크아웃(thumb.js와 동일 가드 · 260620)
 
   // ② 워크플로 발사
   const r = await GH(env.GH_TOKEN, 'actions/workflows/comp-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, image: imgPath, image_sha: imgSha, lines: JSON.stringify(lines) },
+    ref: REF, inputs: { id, image: imgPath, lines: JSON.stringify(lines) },
   });
   if (r.status === 204) return json({ ok: true, id, out: `comp_out/${id}/card.jpg` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
