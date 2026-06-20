@@ -172,13 +172,6 @@ ${extracted}"
   out="$(printf '%s\n' "$out" | awk -v v="$GVER" \
         '!done && /^---[[:space:]]*$/{print; print "guidelines_version: \"" v "\""; done=1; next} {print}')"
 
-  # 검색이미지 유사 보강 — 픽이 심은 cluster_members(같은 사건 타매체 url)를 frontmatter alt_urls 로 보존
-  # → thumb_gen 이 그 og:image 를 '유사'로 fetch(검색 캐러셀 채움). alt_urls 비면 생략(스크립트가 박음=정확).
-  if [ -n "${alt_urls// }" ]; then
-    out="$(printf '%s\n' "$out" | awk -v a="$alt_urls" \
-          '!ad && /^---[[:space:]]*$/{print; print "alt_urls: \"" a "\""; ad=1; next} {print}')"
-  fi
-
   # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
   if [ -n "$REGEN_TARGET" ]; then

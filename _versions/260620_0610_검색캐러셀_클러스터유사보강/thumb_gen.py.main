@@ -105,7 +105,7 @@ def parse_md(path):
     iq = fm.get("image_query", "").strip()
     if iq in ("삼성전자 반도체 평택공장",):   # 프롬프트 예시값을 모델이 그대로 베끼면 무시(→ head 폴백)
         iq = ""
-    return head, lead, iq, fm.get("url", "").strip(), fm.get("alt_urls", "").split()
+    return head, lead, iq, fm.get("url", "").strip()
 
 def _md_url(path):
     """프런트매터 url만 가볍게 추출(main의 백필 판정용 · 파일 앞부분만 읽음)."""
@@ -157,9 +157,8 @@ def gemini_image(prompt, image_size="1K"):
 # 대표=라벨'' / 유사=라벨'유사'. R2 설정 시 재호스팅(핫링크·리퍼러 차단 0)·미설정이면 외부 핫링크. 차단매체(403)·paste(url無)면 [].
 # 🔑 신뢰원: og:image/twitter/JSON-LD = 발행사 선언만 사용(대표 보존·크기/크롭 면제). 본문 <img>는
 #    '속보' 배너 등 그래픽 오염으로 폐지(260620) — body=True 분기·필터는 보존(미호출). 분신술 10인 감사 반영.
-# 🔗 유사 보강(260620): 대표 1장 + 자리 남으면 '유사' 채움 — ① 클러스터 멤버(픽이 심은 같은 사건 타매체
-#    url = frontmatter `alt_urls`, analyze.sh가 보존) og:image **우선**(신뢰·다른 앵글) ② 마커 매체(SBS oaid·
-#    이투데이 trc=view_joinnews) 관련기사 og 폴백. 대표와 중복/소형/잡것 컷. 비전 게이트 OFF 훅(THUMB_VISION).
+# 🔗 phase2(260620): 대표 1장 + 자리 남으면 관련기사 og를 '유사'로 보강 — '이 기사의 관련'임을 보증하는
+#    마커 매체(SBS oaid·이투데이 trc=view_joinnews)만(무관 차단 우선). 비전 게이트는 OFF 훅(THUMB_VISION). 분신술 5인 합의.
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 # 대표·본문 공통 컷 = 명백한 비콘텐츠(플레이스홀더·스페이서·파비콘)
@@ -359,9 +358,9 @@ def _vision_keep(rep_src, cand_src):
         return cand_src
     return cand_src   # (점화 시: 대표와 동일 인물/장면이면 None 반환해 컷)
 
-def fetch_article_images(art_url, alt_urls=None, want=3):
-    """기사 URL → [{src,link,label}] 최대 want장. 대표=원기사 og(라벨'') ·
-    유사=클러스터 멤버(같은 사건 타매체 alt_urls) og + 마커매체 관련기사 og(라벨'유사', 대표와 다른 사진). 실패·빈url이면 [] (fail-soft)."""
+def fetch_article_images(art_url, want=3):
+    """기사 URL → [{src,link,label}] 최대 want장. 대표=원기사 og(라벨'') · 유사=관련기사 og(라벨'유사').
+    유사는 마커 신뢰 매체(SBS·이투데이)의 관련기사 og만 — 대표와 다른 사진(중복·소형·잡것 컷). 실패·빈url이면 [] (fail-soft)."""
     if not (art_url and _url_ok(art_url)):
         return []
     text = _fetch_html(art_url)
@@ -370,13 +369,11 @@ def fetch_article_images(art_url, alt_urls=None, want=3):
     out = []
     for u in _img_candidates(text, art_url)[:want]:
         out.append({"src": u, "link": art_url, "label": "" if not out else "유사"})
-    # 유사 보강: 클러스터 멤버(픽이 심은 같은 사건 타매체 = 신뢰·다른 앵글) 우선 + 마커매체 관련기사 폴백.
+    # phase2: 대표 확보 & 자리 남으면 관련기사 og로 유사 보강(마커 매체만 · 대표와 중복 아닌 사진)
     if out and len(out) < want:
         seen = {_norm_key(it["src"]) for it in out}
         rep = out[0]["src"]
-        related = [u for u in (alt_urls or []) if _url_ok(u) and u != art_url]
-        related += _related_urls(text, art_url)
-        for ru in related[:8]:
+        for ru in _related_urls(text, art_url):
             if len(out) >= want:
                 break
             rc = _img_candidates(_fetch_html(ru) or "", ru)
@@ -387,7 +384,7 @@ def fetch_article_images(art_url, alt_urls=None, want=3):
                 continue
             seen.add(_norm_key(rog))
             out.append({"src": rog, "link": ru, "label": "유사"})
-            print("  🔗 유사 +1 ({}…)".format(ru[:42]))
+            print("  🔗 관련기사 유사 +1 ({}…)".format(ru[:42]))
     return out
 
 def http_image(url):
@@ -436,7 +433,7 @@ def _load_gen(tdir):
 
 def process_one(md, stem):
     """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 4화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
-    head, lead, iq, art_url, alt_urls = parse_md(md)
+    head, lead, iq, art_url = parse_md(md)
     if not head:
         print("· {} — 헤드라인 파싱 실패, skip".format(stem)); return False
     print("· {} — “{}”".format(stem, head[:40]), flush=True)
@@ -446,7 +443,7 @@ def process_one(md, stem):
     # 검색이미지 = 기사 본인 대표사진(og:image) + 유사 — Google CSE JSON API 대체(2025 신규차단 死).
     # url 있고 아직 없을 때만. 대표=라벨'' / 유사='유사'. R2 재호스팅(핫링크 0), 실패 시 외부 핫링크 폴백.
     if art_url and not os.path.exists(os.path.join(tdir, "search.json")):
-        cand = fetch_article_images(art_url, alt_urls=alt_urls, want=3)
+        cand = fetch_article_images(art_url, want=3)
         items = []
         for i, c in enumerate(cand):
             final = None
