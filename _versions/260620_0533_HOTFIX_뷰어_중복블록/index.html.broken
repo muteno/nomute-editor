@@ -27,7 +27,6 @@
     --fg:#eef7f0; --mut:#8fa697;
     /* 의미색(semantic) — 현 라이브 대표값 추출(빨강·노랑·앰버·시안) */
     --danger:#ff5b4a; --danger-rgb:255,91,74; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7;
-    --on-amber:#1a1205; --on-danger:#fff;    /* 의미색 위 글자(앰버/빨강 플래시) */
     /* 반지름 스케일 */
     --r:24px; --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
     /* 간격 스케일(4px 그리드 근사) */
@@ -1056,13 +1055,9 @@
   .thumbsec .cref-slot.search .tgen-cap { top:6px; left:6px; right:auto; bottom:auto; padding:2px 8px;
     background:rgba(20,20,28,.78); border-radius:999px; font-size:9px; color:#ffd; }   /* 검색 '유사' = 좌상단(우상단=복사·저장 버튼) */
   /* 썸네일 후보 슬롯 액션(복사·저장) — .sbtn 글래스 계승·축소(§🎨 --btn-xs) */
-  /* 슬롯 액션 = 저장(다운로드)만 · 하단 우측(피사체=상단 2/3 안 가림) · 터치타깃 --btn-sm(30px) */
-  .timg-acts { position:absolute; bottom:6px; right:6px; z-index:2; display:flex; gap:5px; }
-  .timg-acts .sbtn { width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
-  .timg-acts .sbtn svg { width:15px; height:15px; }
-  /* 복사/저장 정직표시 — ok(초록 체크) / warn(부분·앰버: URL만 복사·새탭저장) / err(실패·빨강) */
-  .sbtn.warnflash { background:var(--amber); color:var(--on-amber); border-color:var(--amber); }
-  .sbtn.errflash { background:var(--danger); color:var(--on-danger); border-color:var(--danger); }
+  .timg-acts { position:absolute; top:6px; right:6px; z-index:2; display:flex; gap:5px; }
+  .timg-acts .sbtn { width:var(--btn-xs); height:var(--btn-xs); border-radius:var(--r-s); }
+  .timg-acts .sbtn svg { width:12px; height:12px; }
   /* 라이트박스(확대) — <dialog> + .sbtn/.tool-x 계승 · 좌우 스와이프(scroll-snap) · 폰 뒤로가기=닫기 */
   .lbox { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; padding:0; border:0; background:rgba(4,8,5,.94); }
   .lbox::backdrop { background:rgba(0,0,0,.6); }
@@ -1477,18 +1472,6 @@ async function load() {
       }
     }
   }
-  // 썸네일 '다시 만들기' 완료 감지 — gen 이미지 시그니처(?v=) 바뀌면 썸네일섹션 교체(버튼도 idle 복귀)·6분 타임아웃
-  if (THUMB_REDO.size && $('#dlg').open && CUR && THUMB_REDO.has(CUR)) {
-    const a = DATA.find(x => x.file === CUR);
-    if (a) {
-      const rec = THUMB_REDO.get(CUR), sig = thumbGenSig(a);
-      if ((sig && sig !== rec.oldSig) || Date.now() - rec.t0 > 360000) {
-        THUMB_REDO.delete(CUR);
-        const old = $('#mdbody .thumbsec'), fresh = thumbSec(a);
-        if (old && fresh) old.replaceWith(fresh); else if (old) old.remove();
-      }
-    }
-  }
   reapplyReshooting();   // 재렌더(상태변화·교체)로 사라진 대기 카드 잠금 배지 재적용
 }
 
@@ -1874,13 +1857,15 @@ function thumbStatic(label, items, kind, href) {
           + '<img loading="lazy" referrerpolicy="no-referrer" src="' + escUrl(it.img) + '" alt=""'
           + ' onerror="this.closest(\'.cref-slot\').style.display=\'none\'">' + cap
           + '<div class="timg-acts">'
+          +   '<button type="button" class="sbtn timg-copy" aria-label="이미지 복사">' + COPY_SVG + '</button>'
           +   '<button type="button" class="sbtn timg-dl" aria-label="이미지 저장">' + DOWNLOAD_SVG + '</button>'
           + '</div></div>';
       }).join('') || '<div class="cref-empty">이미지 없음</div>') + '</div>';
   wrap.querySelectorAll('.cref-slot').forEach(slot => {
     const i = +slot.dataset.i, it = list[i]; if (!it) return;
+    slot.querySelector('.timg-copy').addEventListener('click', e => { e.stopPropagation(); copyImg(it.img, e.currentTarget); });
     slot.querySelector('.timg-dl').addEventListener('click', e => { e.stopPropagation(); downloadImg(it.img, thumbDlName(label, it, i), e.currentTarget); });
-    slot.addEventListener('click', e => { if (!e.target.closest('.timg-acts')) openLightbox(list, i, label); });   // 탭=확대(복사는 확대뷰에서)
+    slot.addEventListener('click', e => { if (!e.target.closest('.timg-acts')) openLightbox(list, i, label); });
     slot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(list, i, label); } });
   });
   if (kind === 'gen') { const h = wrap.querySelector('.cref-h'); if (h) h.appendChild(thumbRedoBtn()); }   // AI 4화풍 '다시 만들기'
@@ -1910,7 +1895,6 @@ function thumbRedoBtn() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
       b.innerHTML = '<span>생성 중…</span>';            // 재생성→재빌드 후 라이브 폴이 새 이미지로 교체
-      THUMB_REDO.set(CUR, { oldSig: thumbGenSig(CUR_A), t0: Date.now() });   // load 폴이 새 gen 이미지(?v=) 오면 썸네일섹션 교체
     } catch (e) {
       b.classList.remove('busy'); b.innerHTML = '<span>실패</span>'; b.title = String(e.message || e);
       setTimeout(reset, 2800);
@@ -1920,14 +1904,11 @@ function thumbRedoBtn() {
 }
 
 // ── 썸네일 이미지: 복사·저장·확대(라이트박스) — §🎨 .sbtn/.tool-x/<dialog>+popstate 계승 ──
-function _flashBtn(btn, mode) {   // mode: true|'ok'=초록체크 · 'warn'=부분(앰버·URL만/새탭) · 'err'=실패(빨강)
+function _flashBtn(btn, ok) {
   if (!btn) return;
   if (!btn.dataset.icon) btn.dataset.icon = btn.innerHTML;
-  const m = mode === true ? 'ok' : mode;
-  if (m === 'ok') { btn.innerHTML = CHECK_SVG; btn.classList.add('ok'); }
-  else if (m === 'warn') { btn.innerHTML = CHECK_SVG; btn.classList.add('warnflash'); }
-  else { btn.classList.add('errflash'); }
-  setTimeout(() => { btn.innerHTML = btn.dataset.icon; btn.classList.remove('ok', 'warnflash', 'errflash'); }, 1500);
+  btn.innerHTML = ok ? CHECK_SVG : btn.dataset.icon; if (ok) btn.classList.add('ok');
+  setTimeout(() => { btn.innerHTML = btn.dataset.icon; btn.classList.remove('ok'); }, 1400);
 }
 async function _blobToPng(blob) {   // 클립보드는 png가 가장 호환 — fetch blob(미오염)을 캔버스로 png 변환
   const bmp = await createImageBitmap(blob);
@@ -1941,10 +1922,9 @@ async function copyImg(url, btn) {
     const blob = await (await fetch(url)).blob();
     const png = blob.type === 'image/png' ? blob : await _blobToPng(blob);
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-    _flashBtn(btn, 'ok');
-  } catch (e) {                                            // 이미지 복사 불가(CORS·권한) → URL 텍스트라도(정직: warn 표시)
-    try { await navigator.clipboard.writeText(url); if (btn) btn.title = '이미지 복사 불가(외부) — URL을 복사함'; _flashBtn(btn, 'warn'); }
-    catch { _flashBtn(btn, 'err'); }
+    _flashBtn(btn, true);
+  } catch (e) {                                            // CORS·권한 실패 → URL 텍스트라도 복사
+    try { await navigator.clipboard.writeText(url); _flashBtn(btn, true); } catch { _flashBtn(btn, false); }
   }
 }
 async function downloadImg(url, name, btn) {
@@ -1953,10 +1933,8 @@ async function downloadImg(url, name, btn) {
     const blob = await (await fetch(url)).blob();
     const u = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(u), 4000); _flashBtn(btn, 'ok');
-  } catch (e) {                                            // 직접 저장 불가(CORS) → 새 탭(정직: warn 표시·폰 길게눌러 저장)
-    window.open(url, '_blank', 'noopener'); if (btn) btn.title = '직접 저장 불가(외부) — 새 탭에서 길게눌러 저장'; _flashBtn(btn, 'warn');
-  }
+    setTimeout(() => URL.revokeObjectURL(u), 4000); _flashBtn(btn, true);
+  } catch (e) { window.open(url, '_blank', 'noopener'); }  // CORS 실패 → 새 탭(폰 길게눌러 저장)
 }
 function thumbDlName(label, it, i) {
   const stamp = (typeof CUR_A !== 'undefined' && CUR_A) ? dlStamp(CUR_A) : '';
@@ -1965,8 +1943,84 @@ function thumbDlName(label, it, i) {
   return (stamp ? stamp + '_' : '') + slug + '_' + (i + 1) + '.' + ext;
 }
 let LBOX = null, LBOX_ITEMS = [], LBOX_LABEL = '', _lboxPop = false;
-function thumbGenSig(a) { return ((a && a.cards && a.cards.thumb_gen) || []).map(g => g && g.img).join('|'); }
-const THUMB_REDO = new Map();   // file → {oldSig,t0} : '다시 만들기' 후 새 gen 이미지 도착 감지(load 폴이 썸네일섹션 교체·타임아웃 6분)
+function _ensureLbox() {
+  if (LBOX) return LBOX;
+  const d = document.createElement('dialog'); d.className = 'lbox'; d.id = 'lbox';
+  d.innerHTML =
+    '<div class="lbox-bar">'
+    + '<button type="button" class="sbtn lbox-copy" aria-label="이미지 복사">' + COPY_SVG + '</button>'
+    + '<button type="button" class="sbtn lbox-dl" aria-label="이미지 저장">' + DOWNLOAD_SVG + '</button>'
+    + '<span class="lbox-no"></span>'
+    + '<a class="lbox-src" target="_blank" rel="noopener" hidden>출처 ↗</a>'
+    + '<button type="button" class="tool-x lbox-x" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>'
+    + '</div><div class="lbox-track"></div>';
+  document.body.appendChild(d);
+  const track = d.querySelector('.lbox-track');
+  const idx = () => Math.round(track.scrollLeft / (track.clientWidth || 1));
+  const cur = () => LBOX_ITEMS[idx()] || LBOX_ITEMS[0] || {};
+  const sync = () => {
+    d.querySelector('.lbox-no').textContent = LBOX_ITEMS.length ? (idx() + 1) + ' / ' + LBOX_ITEMS.length : '';
+    const it = cur(), src = d.querySelector('.lbox-src');
+    if (it.link) { src.href = it.link; src.hidden = false; } else src.hidden = true;
+  };
+  track.addEventListener('scroll', () => { clearTimeout(track._t); track._t = setTimeout(sync, 90); });
+  d.querySelector('.lbox-copy').addEventListener('click', e => copyImg(cur().img, e.currentTarget));
+  d.querySelector('.lbox-dl').addEventListener('click', e => downloadImg(cur().img, thumbDlName(LBOX_LABEL, cur(), idx()), e.currentTarget));
+  d.querySelector('.lbox-x').addEventListener('click', () => d.close());
+  d.addEventListener('click', e => { if (e.target === d) d.close(); });   // 백드롭 탭=닫기
+  d.addEventListener('cancel', e => { e.preventDefault(); d.close(); });   // ESC=닫기
+  d.addEventListener('close', () => { if (_lboxPop) { _lboxPop = false; } else if (history.state && history.state.lbox) history.back(); });
+  d._track = track; d._sync = sync; LBOX = d; return d;
+}
+function openLightbox(items, i, label) {
+  LBOX_ITEMS = items; LBOX_LABEL = label;
+  const d = _ensureLbox(), track = d._track;
+  track.innerHTML = items.map(it => '<div class="lbox-slide"><img referrerpolicy="no-referrer" src="' + escUrl(it.img) + '" alt=""></div>').join('');
+  if (!d.open) { d.showModal(); history.pushState({ lbox: true }, ''); }   // 폰 뒤로가기=닫고 직전 화면 복귀
+  requestAnimationFrame(() => { track.scrollLeft = i * track.clientWidth; d._sync(); });
+}
+window.addEventListener('popstate', () => { if (LBOX && LBOX.open) { _lboxPop = true; LBOX.close(); } });
+
+// ── 썸네일 이미지: 복사·저장·확대(라이트박스) — §🎨 .sbtn/.tool-x/<dialog>+popstate 계승 ──
+function _flashBtn(btn, ok) {
+  if (!btn) return;
+  if (!btn.dataset.icon) btn.dataset.icon = btn.innerHTML;
+  btn.innerHTML = ok ? CHECK_SVG : btn.dataset.icon; if (ok) btn.classList.add('ok');
+  setTimeout(() => { btn.innerHTML = btn.dataset.icon; btn.classList.remove('ok'); }, 1400);
+}
+async function _blobToPng(blob) {   // 클립보드는 png가 가장 호환 — fetch blob(미오염)을 캔버스로 png 변환
+  const bmp = await createImageBitmap(blob);
+  const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+  cv.getContext('2d').drawImage(bmp, 0, 0);
+  return await new Promise(res => cv.toBlob(res, 'image/png'));
+}
+async function copyImg(url, btn) {
+  if (!url) return;
+  try {
+    const blob = await (await fetch(url)).blob();
+    const png = blob.type === 'image/png' ? blob : await _blobToPng(blob);
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    _flashBtn(btn, true);
+  } catch (e) {                                            // CORS·권한 실패 → URL 텍스트라도 복사
+    try { await navigator.clipboard.writeText(url); _flashBtn(btn, true); } catch { _flashBtn(btn, false); }
+  }
+}
+async function downloadImg(url, name, btn) {
+  if (!url) return;
+  try {
+    const blob = await (await fetch(url)).blob();
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000); _flashBtn(btn, true);
+  } catch (e) { window.open(url, '_blank', 'noopener'); }  // CORS 실패 → 새 탭(폰 길게눌러 저장)
+}
+function thumbDlName(label, it, i) {
+  const stamp = (typeof CUR_A !== 'undefined' && CUR_A) ? dlStamp(CUR_A) : '';
+  const ext = ((/\.(png|jpe?g|webp)(?:\?|$)/i.exec(it.img || '') || [, 'png'])[1] || 'png').toLowerCase().replace('jpeg', 'jpg');
+  const slug = dlSlug(it.label || label || 'thumb');
+  return (stamp ? stamp + '_' : '') + slug + '_' + (i + 1) + '.' + ext;
+}
+let LBOX = null, LBOX_ITEMS = [], LBOX_LABEL = '', _lboxPop = false;
 function _ensureLbox() {
   if (LBOX) return LBOX;
   const d = document.createElement('dialog'); d.className = 'lbox'; d.id = 'lbox';
