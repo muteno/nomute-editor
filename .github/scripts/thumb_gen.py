@@ -261,6 +261,15 @@ def _url_ok(u):
         pass                                                # 도메인명 = 통과(리바인딩 완전방어는 아니나 명백 케이스 차단)
     return True
 
+class _NoPrivateRedirect(urllib.request.HTTPRedirectHandler):
+    """리다이렉트 매 hop 재검증 — 공개 URL → 302 내부IP/file 우회(SSRF) 차단."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _url_ok(newurl):
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+_OPENER = urllib.request.build_opener(_NoPrivateRedirect)   # urlopen 대신 사용(리다이렉트 게이트 적용)
+
 _MAGIC = ((b"\xff\xd8\xff", "image/jpeg", "jpg"), (b"\x89PNG\r\n\x1a\n", "image/png", "png"),
           (b"GIF87a", "image/gif", "gif"), (b"GIF89a", "image/gif", "gif"))
 def _img_type(b):
@@ -278,7 +287,7 @@ def fetch_article_images(art_url, want=3):
         return []
     try:
         req = urllib.request.Request(art_url, headers={"User-Agent": UA, "Accept": "text/html,*/*"})
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with _OPENER.open(req, timeout=20) as r:
             raw = r.read(1500000)
             charset = r.headers.get_content_charset() or "utf-8"
         try:
@@ -298,7 +307,7 @@ def http_image(url):
         return None, None, None
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with _OPENER.open(req, timeout=20) as r:
             b = r.read(8000000)
     except Exception as e:
         print("  ⚠️ 이미지 다운로드 실패({}…): {}".format(url[:45], e), flush=True)
