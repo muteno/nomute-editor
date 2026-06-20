@@ -19,6 +19,9 @@ import os
 import re
 import sys
 import glob
+import shutil
+import subprocess
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -98,6 +101,41 @@ _DESIGN_BASELINE = {
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
 
+# ── viewer 인라인 JS 구문 게이트 (분신술 V2/V4 · 260620) ──────────────────────────
+# 머지 가산·복붙 중복 등으로 viewer 인라인 <script>에 SyntaxError(예: let 재선언)가 들어가면
+# 브라우저가 스크립트 전체를 평가 안 함 = 뷰어 전면 사망. node로 *구문만* 검사해 커밋 전 차단(하드 게이트).
+# node 없으면 스킵(로컬·CI 환경차 흡수).
+_SCRIPT_RE = re.compile(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', re.S)
+
+def check_viewer_js():
+    node = shutil.which('node')
+    if not node:
+        print('⚠️ viewer JS 구문검사 스킵(node 없음)'); return 0
+    rc = 0
+    for rel in ('viewer/index.html', 'viewer/thumb.html'):
+        try:
+            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        js = '\n;\n'.join(_SCRIPT_RE.findall(html))
+        if not js.strip():
+            continue
+        tmp = None
+        try:
+            with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False, encoding='utf-8') as f:
+                f.write(js); tmp = f.name
+            r = subprocess.run([node, '--check', tmp], capture_output=True, text=True, timeout=30)
+        finally:
+            if tmp and os.path.exists(tmp):
+                os.remove(tmp)
+        if r.returncode != 0:
+            errs = [x for x in (r.stderr or '').splitlines() if 'Error' in x]
+            print('❌ viewer JS 구문 오류 — %s: %s' % (rel, errs[0] if errs else 'syntax error'))
+            rc = 1
+        else:
+            print('✅ viewer JS 구문 OK — %s' % rel)
+    return rc
+
 def check_design():
     warns = []
     for rel, base in _DESIGN_BASELINE.items():
@@ -136,6 +174,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ build_library check 스킵:', e)
+    try:
+        if check_viewer_js() != 0:   # viewer 인라인 JS 구문(하드 게이트 — SyntaxError=뷰어 전면 사망)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_viewer_js 스킵:', e)
     try:
         check_design()          # 디자인 토큰 게이트(비차단 경고)
     except Exception as e:
