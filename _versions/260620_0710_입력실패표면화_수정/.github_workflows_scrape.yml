@@ -122,8 +122,5 @@ jobs:
             git rebase --abort 2>/dev/null || true
           done
           # GITHUB_TOKEN 푸시는 news-analyze(push 트리거)를 재귀방지로 못 깨운다 → 명시 디스패치.
-          ok=0; for i in 1 2 3; do
-            gh workflow run news-analyze.yml && { ok=1; break; }
-            echo "::warning::news-analyze 디스패치 실패 — 재시도 $i"; sleep $((i*3))
-          done
-          [ "$ok" = 1 ] || { echo "::error::news-analyze 디스패치 3회 실패 — pending 적재됐으나 분석 미발동(수동 실행 필요)"; exit 1; }
+          gh workflow run news-analyze.yml \
+            || echo "::warning::news-analyze 디스패치 실패 — Actions 탭에서 수동 실행"
