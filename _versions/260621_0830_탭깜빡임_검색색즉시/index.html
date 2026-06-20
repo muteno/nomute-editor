@@ -189,7 +189,7 @@
   .ts-toggle { width:36px; height:36px; flex:none; background:none; border:none; padding:0; cursor:pointer; display:grid; place-items:center; }
   .ts-toggle:active { transform:scale(.92); }
   .topsearch .ts-ico { width:20px; height:20px; flex:none; stroke:var(--accent); fill:none; stroke-width:2.2; stroke-linecap:round;
-    filter:drop-shadow(0 0 5px rgba(15,253,2,.4)); }   /* 프로필 테두리색(피드=그린) · 탭 전환 시 색 즉시 = transition:stroke 제거(운영자 260621: 0.3s 페이드가 늦게 느껴짐) */
+    filter:drop-shadow(0 0 5px rgba(15,253,2,.4)); transition:stroke .3s; }   /* 프로필 테두리색(피드=그린) */
   body.tab-scrap .topsearch .ts-ico { stroke:#ff9614; filter:drop-shadow(0 0 5px rgba(255,150,20,.4)); }   /* 스크랩 탭=앰버(프로필 테두리 따라) */
   body[data-tab="sns"] .topsearch .ts-ico { stroke:#0cd0f7; filter:drop-shadow(0 0 5px rgba(12,208,247,.45)); }   /* SNS 탭=시안 */
   .topsearch .ts-rf .ts-ico { transition:transform .45s cubic-bezier(.4,0,.2,1); }
@@ -397,6 +397,7 @@
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
   .sc-item.rated { border-color:rgba(15,253,2,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(15,253,2,.06); }
+  .sc-item.sc-clickable { cursor:pointer; }   /* 카드 본문 탭 = 대표 URL(버튼·링크 제외) */
   .sc-item.sc-flash { animation:scFlash 1.5s ease; }   /* 토스트→해당 후보로 이동 시 점멸(운영자 260620) */
   @keyframes scFlash { 0%,100% { box-shadow:none; } 25% { box-shadow:0 0 0 2px var(--accent), 0 0 16px rgba(var(--accent-rgb),.55); } }
   @media (prefers-reduced-motion:reduce) { .sc-item.sc-flash { animation:none; outline:2px solid var(--accent); } }
@@ -3957,7 +3958,7 @@ function renderScrap() {
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
   const pool = base.filter(c => {
     const r = rt[candId(c)] || {};
-    if (r.dismissed) return false;                                  // 👎 관심없음 = 영구 제외
+    if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
@@ -3966,7 +3967,7 @@ function renderScrap() {
   host.classList.add('scrap-cols');
   host.innerHTML = SC_COLS_HTML;
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
-  const _untri = c => { const r = rt[candId(c)] || {}; return !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK=잔류(맨 아래 PICKED 비활성)
+  const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
   // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
@@ -4109,6 +4110,14 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
     };
     mi.onblur = saveMemo;
     mi.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); mi.blur(); } };
+  }
+  // 카드 본문 탭 = 대표 URL 새 탭(운영자 260620). 버튼(👎/PASS/PICK/✓)·타이틀 링크·칩·메모는 각자 동작 유지(가드).
+  if (c.url && /^https?:\/\//i.test(c.url)) {
+    el.classList.add('sc-clickable');
+    el.addEventListener('click', e => {
+      if (e.target.closest('a, button, input, textarea, .sc-bot, .sc-memo')) return;   // 인터랙션 요소는 제외 = 본문 여백만 이동
+      window.open(c.url, '_blank', 'noopener,noreferrer');
+    });
   }
   return el;
 }
@@ -4262,21 +4271,10 @@ function showTab(tab) {
 
   setViewhead(tab);
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'scrap') enterScrap();   // 탭 진입 = 4소스 병렬 로드 후 renderScrap 1회(깜빡임 다수 방지 · 아래 enterScrap). 강제 재요청·cross-device·토스트 de-dup 전부 보존.
+  if (tab === 'scrap') { loadCandidates(); loadPickFails(); loadPending(true); loadTriage(true); markPickFailSeen(); markBreakingSeen(); }   // 탭 진입 = 매번 강제 재요청(최신·픽상태·트리아지 cross-device 포함). 수집함 열면 현재 긴급 = 본 것 처리 → 토스트 재알림 차단(프로필 확인 루틴 폐지 후 de-dup은 여기 · 운영자 260620).
   else if (tab === 'sns') loadSocial();
   else load();   // 피드 = 기사 재요청(load 내부서 render)
   window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// 수집함 탭 진입 = 4소스(후보·픽실패·pending·트리아지) 병렬 로드 후 renderScrap **1회**.
-// 기존엔 각 로드 완료마다 renderScrap → 스태거 애니가 2~3회 재생 = 깜빡임 다수(운영자 260621). 병렬+단일렌더로 제거.
-// loadCandidates(true)=quiet(데이터만·렌더X), loadPending/Triage(false)=render 보류 → 데이터 다 모인 뒤 한 번만 렌더(스태거 1회).
-// allSettled = 한 소스가 실패해도 렌더는 보장(각 load는 자체 try/catch라 reject 안 하지만 방어적).
-async function enterScrap() {
-  ratedKeep.clear();                         // 탭 진입 갱신 = 별점 매긴 카드 리스트서 비움(원래 loadCandidates(!quiet)가 하던 것 — 단일렌더 위해 여기로 이관)
-  markPickFailSeen(); markBreakingSeen();    // 토스트 de-dup·픽실패 본 것 처리(기존과 동일·순서 무관)
-  await Promise.allSettled([ loadCandidates(true), loadPickFails(), loadPending(false), loadTriage(false) ]);
-  if (CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();   // 모든 데이터 확보 후 1회만 렌더 = 깜빡임 0(탭 이탈했으면 스킵)
 }
 
 // 소스(커뮤니티) 정치 성향 색 틴트 — 통념·근사(운영자 요청 '조금'). 진보=파랑·보수=빨강·중도/취미/미분류=중립(시안).
