@@ -1784,19 +1784,27 @@ function decorate(root) {
 function thumbSec(a) {
   const c = a.cards || {};
   if (!a.body && !c.state) return null;   // 픽(분석)된 기사에만
-  // 실제 이미지(검색 og:image / AI 생성)가 하나라도 있을 때만 표시 — 빈 안내·레거시 폴백(구글검색 링크·위키미디어·'곧 반영' placeholder)은 띄우지 않음(요약 위 잡음 제거 · 운영자 260620)
-  const search = Array.isArray(c.thumb_search) ? c.thumb_search : [];
-  const gen = Array.isArray(c.thumb_gen) ? c.thumb_gen : [];
-  if (!search.length && !gen.length) return null;
   const wrap = document.createElement('div'); wrap.className = 'thumbsec';
   wrap.innerHTML = '<div class="thumbsec-h">🖼 썸네일 후보 — 검색 · AI 생성</div>';
-  // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만
+  // 1) 검색 이미지(4:5 × 3)
+  const search = Array.isArray(c.thumb_search) ? c.thumb_search : [];
   if (search.length) {
     wrap.appendChild(thumbStatic('🔎 검색 이미지', search, 'search',
       'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100))));
+  } else {   // P2 전 — 라이브 검색 폴백(구글 링크는 작동, 이미지는 Wikimedia 임시)
+    const car = cardRefCarousel('', a.title || '', articleCat(a) === '국제');
+    const lbl = car.querySelector('.cref-lbl'); if (lbl) lbl.textContent = '🔎 검색 이미지';
+    wrap.appendChild(car);
   }
-  // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만
+  // 2) AI 생성(4:5 × 3)
+  const gen = Array.isArray(c.thumb_gen) ? c.thumb_gen : [];
   if (gen.length) wrap.appendChild(thumbStatic('🍌 AI 생성', gen, 'gen'));
+  else {
+    const g = document.createElement('div'); g.className = 'cref';
+    g.innerHTML = '<div class="cref-h"><span class="cref-lbl">🍌 AI 생성</span></div>'
+      + '<div class="cref-track"><div class="cref-empty">픽한 기사는 AI가 3종 화풍(웹툰 극화·수채화·포토에디토리얼)으로 자동 생성해 — 곧 여기 반영</div></div>';
+    wrap.appendChild(g);
+  }
   return wrap;
 }
 // 정적 캐러셀(백엔드가 채운 thumb_search/thumb_gen) — items=[{img, link?, label?}]
@@ -4196,7 +4204,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-tip .nm-h { color:#1ED760; }
   .nm-dot { width:7px; height:7px; border-radius:50%; background:#1ED760; display:inline-block; flex:none; }
   .nm-tip .nm-dot { box-shadow:0 0 8px rgba(30,215,96,.7); }
-  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; }   /* 내부 스크롤 제거 = 내용 전체 높이로 펼침 → 박스 위에서도 화면(페이지) 스크롤 우선(도형에 안 갇힘 · 운영자 260620) */
+  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; max-height:280px; overflow-y:auto; overscroll-behavior:contain; }
   .nm-tip .nm-body { background:rgba(0,0,0,.28); border:1px solid rgba(30,215,96,.22); }
   .nm-body > :first-child { margin-top:0; }
   .nm-body > :last-child { margin-bottom:0; }
@@ -4206,7 +4214,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
-  .nm-pre { white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; }   /* 내부 스크롤 제거 = 펼침 → 화면 스크롤 우선(복사 구간이 페이지 스크롤 안 가로챔 · 운영자 260620) */
+  .nm-pre { white-space:pre-wrap; word-break:break-word; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; max-height:280px; overflow-y:auto; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; overscroll-behavior:contain; }
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
