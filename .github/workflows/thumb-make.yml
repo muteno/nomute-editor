@@ -105,23 +105,24 @@ jobs:
               print(f'::warning::{fmt} 자간 {floor}로도 마진 초과 — 축약 권장(B안). 최대압축 렌더'); return floor
           if app == '4':            # 경고문 — copyright.py 29px(작은 글씨=마진 안 넘침). 2줄=줄별 센터 렌더 후 세로 스택
               from PIL import Image as _I
+              from nomute_copyright import SCALE as _CS   # 2K 스케일(스크립트와 동기 = 캔버스·줄간 ×SCALE)
               fmt4 = params.get('fmt', 'post'); lines4 = params['lines']
-              canvas = _I.new('RGBA', (1080, 1920 if fmt4 == 'reels' else 1350), (0, 0, 0, 0))
+              canvas = _I.new('RGBA', (1080 * _CS, (1920 if fmt4 == 'reels' else 1350) * _CS), (0, 0, 0, 0))
               for i, ln in enumerate(lines4):
                   tmp = f'/tmp/_warn{i}.png'
                   subprocess.run(['python3', 'apps/thumbnail/nomute_copyright.py', tmp, fmt4, '--raw', ln], check=True)
                   part = _I.open(tmp).convert('RGBA')
-                  canvas.paste(part, (0, i * 46), part)   # copyright Y=100 기준 줄간 46px
+                  canvas.paste(part, (0, i * 46 * _CS), part)   # copyright Y=100 기준 줄간 46px × SCALE
               canvas.save(out); produced.append(out)
           elif app == '2':          # 릴스 — 헤더(흰칸+nobg 2장) | 오버레이(opa별 2~3장)
               mode = params.get('mode', 'header')
               if mode == 'header':  # 부제+제목 → 흰칸(render) + nobg(흰칸 없이 텍스트만). import 재사용(스크립트 코드 불변)
-                  from nomute_reels2 import render, _draw_line, FONT, WHITE, GREEN, SUB_FS, SUB_Y, TITLE_FS, TITLE_Y
+                  from nomute_reels2 import render, _draw_line, FONT, WHITE, GREEN, SUB_FS, SUB_Y, TITLE_FS, TITLE_Y, W, H
                   from PIL import Image, ImageDraw, ImageFont
                   sub, title = params.get('sub', ''), params.get('title', '')
                   box, nobg = f'{outdir}/box.png', f'{outdir}/nobg.png'
-                  render(sub, title, BASE, box)                                  # 흰칸(영상자리)
-                  im = Image.open(BASE).convert('RGB'); d = ImageDraw.Draw(im)   # nobg(흰칸 없음)
+                  render(sub, title, BASE, box)                                  # 흰칸(영상자리) — render가 BASE를 2K 업스케일
+                  im = Image.open(BASE).convert('RGB').resize((W, H), Image.LANCZOS); d = ImageDraw.Draw(im)   # nobg(흰칸 없음) — 2K
                   _draw_line(d, sub,   SUB_Y,   ImageFont.truetype(FONT, SUB_FS,   index=1), WHITE, SUB_FS)
                   _draw_line(d, title, TITLE_Y, ImageFont.truetype(FONT, TITLE_FS, index=1), GREEN, TITLE_FS)
                   im.save(nobg)

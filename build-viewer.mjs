@@ -91,7 +91,9 @@ for (const a of articles) {
   if ((status.state || '') === 'failed') {
     try { cardErr = readFileSync(join(dir, 'error.log'), 'utf8'); } catch { /* 로그 없음 */ }
   }
-  const images = readdirSync(dir).filter(n => /\.(jpe?g|png)$/i.test(n)).sort();
+  // 카드 이미지: status.images 가 http URL(=gen_cards R2 직접서빙)이면 그걸 쓰고, 아니면 로컬 파일(드라이브/git폴백) 복사.
+  const r2Imgs = (Array.isArray(status.images) ? status.images : []).filter(u => typeof u === 'string' && /^https?:\/\//.test(u));
+  const images = r2Imgs.length ? [] : readdirSync(dir).filter(n => /\.(jpe?g|png)$/i.test(n)).sort();
   if (images.length) {
     mkdirSync(join('viewer/cards', stem), { recursive: true });
     for (const n of images) copyFileSync(join(dir, n), join('viewer/cards', stem, n));
@@ -115,8 +117,36 @@ for (const a of articles) {
       });
     }
   }
+  // 썸네일 후보: cards/<stem>/thumbs/{search.json, gen.json + gen-*.png}
+  //  search.json = [{url, link, label}] (url=R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사' = 기사 og:image 추출)
+  //  gen.json    = [{file, label}] (gen-*.png 로컬 생성물 → viewer/cards/<stem>/thumbs/ 복사)
+  let thumbSearch = [], thumbGen = [];
+  const tdir = join(dir, 'thumbs');
+  if (existsSync(tdir)) {
+    try {
+      const s = JSON.parse(readFileSync(join(tdir, 'search.json'), 'utf8'));
+      if (Array.isArray(s)) thumbSearch = s.filter(x => x && x.url).map(x => ({ img: x.url, link: x.link || x.url, label: x.label || '' }));
+    } catch { /* 검색 없음 */ }
+    try {
+      const g = JSON.parse(readFileSync(join(tdir, 'gen.json'), 'utf8'));
+      if (Array.isArray(g)) {
+        thumbGen = g.map(x => {
+          if (x && x.img) return { img: x.img, label: x.label || '' };            // R2 공개 URL(외부) — 복사 불필요
+          if (x && x.file && existsSync(join(tdir, x.file))) {                     // git 폴백 — 로컬 복사
+            mkdirSync(join('viewer/cards', stem, 'thumbs'), { recursive: true });
+            copyFileSync(join(tdir, x.file), join('viewer/cards', stem, 'thumbs', x.file));
+            return { img: `cards/${stem}/thumbs/${x.file}${bust(join(tdir, x.file))}`, label: x.label || '' };
+          }
+          return null;
+        }).filter(Boolean);
+      }
+    } catch { /* 생성 없음 */ }
+  }
   a.cards = {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
+    thumb_search: thumbSearch,   // 검색이미지(기사 og:image+유사) — R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사'
+    thumb_gen: thumbGen,         // AI 생성 3화풍(P3 Gemini)
+
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
     rev: Number(status.rev) || 0,   // 카드가 만들어진 시점의 요약 회차 — a.rev > cards.rev면 요약이 더 수정됨(stale)
@@ -124,7 +154,10 @@ for (const a of articles) {
     failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터
     md: cardsMd,
     // ?v=mtime = 캐시버스트: 재발사로 같은 파일명·새 내용일 때 브라우저가 새 이미지를 받게.
-    images: images.map(n => `cards/${stem}/${n}${bust(join(dir, n))}`),
+    // R2(gen_cards) = status.images의 공개 URL 직접(고정키 덮어쓰기라 ?v=updated로 재슛 캐시 버스트) / 로컬 = 복사본+mtime.
+    images: r2Imgs.length
+      ? r2Imgs.map(u => u + (status.updated ? `?v=${Date.parse(status.updated) || 0}` : ''))
+      : images.map(n => `cards/${stem}/${n}${bust(join(dir, n))}`),
     versions,   // 버전 히스토리(앞뒤축) — 비어있으면 {}
   };
 }

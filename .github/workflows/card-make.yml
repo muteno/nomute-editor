@@ -2,8 +2,9 @@ name: card-make
 
 # 뷰어 버튼(Pages Function /api/make-cards) 또는 수동 Run workflow → 카드뉴스 일괄 제작.
 # 흐름: queue md → Claude 헤드리스 Step 4(카드 MD) → cards/<기사>/ 커밋(뷰어 ⏳→완료)
-#       → GDRIVE_SA_JSON 시크릿 있으면 Drive 발사(기존 Apps Script→Gemini→Cloud Run) + _final_*.jpg 회수.
-# ⚠️ 유료 발사: Opus 토큰 + (Drive 경로 시) Gemini·Cloud Run 과금 — 트리거는 암호 게이트 뒤에만.
+#       → 슛(렌더): GEMINI_API_KEY 있으면 직영 gen_cards(Actions서 Gemini 직접생성 + card_news 로컬합성
+#         + R2 저장/없으면 git 폴백) 1차 · 없고 GDRIVE_SA_JSON 있으면 레거시 drive_cards(Apps Script→Cloud Run) 폴백.
+# ⚠️ 유료 발사: Opus 토큰 + (gen_cards=Gemini / 레거시=Gemini·Cloud Run) 과금 — 트리거는 뷰어 게이트 뒤 수동만.
 on:
   workflow_dispatch:
     inputs:
@@ -65,13 +66,27 @@ jobs:
       - name: Install deps
         run: |
           npm install -g @anthropic-ai/claude-code
-          # pillow=장면 보존(png→jpg)·로컬 재합성 / numpy=재합성 그라데이션(card_news.py)
+          # pillow=장면 보존(png→jpg)·로컬 합성 / numpy=card_news 그라데이션
           pip install --quiet google-auth requests pillow numpy
+          # card_news.py 합성 폰트(Noto CJK) — 직영(gen_cards)·edit 모드 로컬합성 필수. timeout 폴백(미러 행 차단·§🧰).
+          if [ ! -f /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc ]; then
+            (timeout 180 sudo apt-get update -qq && timeout 180 sudo apt-get install -y -qq fonts-noto-cjk) \
+              || { sleep 3; timeout 180 sudo apt-get install -y -qq fonts-noto-cjk; } \
+              || echo "::warning::fonts-noto-cjk 설치 실패 — 합성 단계서 폰트 폴백"
+          fi
 
       - name: Make cards
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          # 직영(gen_cards) 우선 — GEMINI 직접생성 + card_news 로컬합성 + R2 저장. GDRIVE는 레거시 폴백.
+          # ⚠️ 슛(수동·암호게이트) 워크플로만 GEMINI/R2 주입 — 자동 card_plan(text)은 cardmake Lock B가 unset(제미나이 0 유지).
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
           TARGET: ${{ inputs.article }}
           MODE: ${{ inputs.mode || 'full' }}
@@ -83,6 +98,8 @@ jobs:
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
             echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음"; exit 1
           fi
-          [ -z "${GDRIVE_SA_JSON}" ] && echo "::warning::GDRIVE_SA_JSON 미등록 — 카드 MD까지만(이미지 발사 생략)"
+          if [ -z "${GEMINI_API_KEY}" ] && [ -z "${GDRIVE_SA_JSON}" ]; then
+            echo "::warning::GEMINI_API_KEY·GDRIVE_SA_JSON 둘 다 미등록 — 카드 MD까지만(이미지 발사 생략)"
+          fi
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/cardmake.sh "${TARGET}" "${MODE}"

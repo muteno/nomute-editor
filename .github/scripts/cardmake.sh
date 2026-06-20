@@ -11,9 +11,10 @@ TARGET="${1:-all}"
 MODE="${2:-full}"            # full=클로드+렌더 / text=텍스트만(자동 카드플랜·제미나이0) / shoot=렌더만(텍스트 재사용)
 MAX_BATCH="${MAX_BATCH:-3}"  # all 배치 상한 — 무상한 Opus 폭증 차단(나머지는 다음 회차가 처리·중복skip이 페이징)
 
-# 🔒 제미나이 이중잠금 Lock B — text(자동 카드플랜) 모드는 GDRIVE에 절대 안 닿는다.
-# (Lock A = 자동 워크플로 YAML에 GDRIVE_SA_JSON env 부재. 둘 다라야 실수로도 제미나이 미발사.)
-[ "$MODE" = text ] && unset GDRIVE_SA_JSON
+# 🔒 제미나이 이중잠금 Lock B — text(자동 카드플랜) 모드는 유료 생성경로에 절대 안 닿는다.
+#   GDRIVE_SA_JSON(레거시 Drive 발사) + GEMINI_API_KEY(직영 gen_cards 발사) 둘 다 unset → 자동 카드 = 제미나이 0.
+#   (Lock A = 자동 워크플로 YAML에 두 env 부재. 둘 다라야 실수로도 제미나이 미발사.)
+[ "$MODE" = text ] && unset GDRIVE_SA_JSON GEMINI_API_KEY
 
 # 지침 SSOT 강제 주입 — 요약과 동일한 단일 헬퍼(주입 로직 갈라짐 방지). card 프로필.
 source "$ROOT/shared/inject_guidelines.sh"
@@ -36,7 +37,10 @@ push_main() {
 }
 
 commit_push() {
-  git add cards viewer/messages.json   # messages.json = claude 시스템성 실패/복구 알림(프로필 점등)
+  git add cards
+  # messages.json = claude 시스템성 실패/복구 알림(프로필 점등) — gitignore·미추적이라 shoot 모드선 부재.
+  # 한 줄에 묶으면 부재 시 git add 전체가 fatal(=커밋 통째 누락) → 있을 때만 따로 add(슛 경로 커밋 보장).
+  [ -f viewer/messages.json ] && git add viewer/messages.json
   git diff --cached --quiet && return 0
   git commit -m "$1"
   push_main || { echo "::error::push 실패: $1"; return 1; }
@@ -44,10 +48,26 @@ commit_push() {
 
 status_json() {  # $1=dir $2=state [$3=버전 오버라이드(shoot=기존 버전 보존)]
   # rev = 이 카드가 만들어진 시점의 요약(queue) 수정회차 — 뷰어 stale 감지용(요약이 더 revise되면 a.rev>cards.rev).
+  # gen_cards가 남긴 .r2_images.json(R2 공개URL 배열) 있으면 "images"로 합쳐 박는다(뷰어가 R2 직접서빙).
   local sjstem; sjstem="$(basename "$1")"
   local sjrev; sjrev="$(grep -m1 '^rev:' "queue/$sjstem.md" 2>/dev/null | grep -o '[0-9]\+' | head -1)"
-  printf '{"state":"%s","updated":"%s","guidelines_version":"%s","rev":%s}\n' \
-    "$2" "$(date -u +%FT%TZ)" "${3:-$GVER}" "${sjrev:-0}" > "$1/status.json"
+  SJ_DIR="$1" SJ_STATE="$2" SJ_GVER="${3:-$GVER}" SJ_REV="${sjrev:-0}" python3 - <<'PY'
+import os, json, datetime
+d = os.environ["SJ_DIR"]
+st = {"state": os.environ["SJ_STATE"],
+      "updated": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+      "guidelines_version": os.environ["SJ_GVER"],
+      "rev": int(os.environ["SJ_REV"] or 0)}
+side = os.path.join(d, ".r2_images.json")
+if os.path.isfile(side):
+    try:
+        imgs = json.load(open(side, encoding="utf-8"))
+        if isinstance(imgs, list) and imgs:
+            st["images"] = imgs
+    except Exception:
+        pass
+json.dump(st, open(os.path.join(d, "status.json"), "w", encoding="utf-8"), ensure_ascii=False)
+PY
 }
 
 # ── edit 모드: 단일 카드 변경(그 카드만 재렌더·제자리 교체) ──
@@ -196,8 +216,16 @@ $(cat "$q")"
   fi
 
   state="text_done"
-  if [ -n "${GDRIVE_SA_JSON:-}" ]; then
-    # Drive 폴더 주제명: 제목에서 문자 단위 16자(바이트 절단 금지 — run#2 교훈)
+  # ── 슛(렌더) 경로 — 직영(gen_cards) 우선, 없으면 레거시 Drive(drive_cards) 폴백 ──
+  #   gen_cards = Actions 러너 안에서 Gemini 직접생성 + card_news 로컬합성 + R2(or git) — 외부 Drive/Cloud Run 0.
+  #   exit코드 둘 다 동일: 0=done · 2=fired_partial(일부) · 그 외=failed.
+  if [ -n "${GEMINI_API_KEY:-}" ]; then
+    python3 .github/scripts/gen_cards.py --stem "$stem"; rc=$?
+    if   [ "$rc" -eq 0 ]; then state="done"
+    elif [ "$rc" -eq 2 ]; then state="fired_partial"
+    else state="failed"; fi
+  elif [ -n "${GDRIVE_SA_JSON:-}" ]; then
+    # 레거시 폴백 — Drive 폴더 주제명: 제목에서 문자 단위 16자(바이트 절단 금지 — run#2 교훈)
     topic="$(grep -m1 '^title:' "$q" | python3 -c "
 import re, sys
 t = re.sub(r'^title:\s*\"?|\"\s*$', '', sys.stdin.read().strip())
