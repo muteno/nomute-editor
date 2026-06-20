@@ -39,6 +39,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ inputs.image_sha || 'main' }}   # 배경 src 커밋을 직접 체크아웃 = dispatch 레이스 원천 차단(head_sha 추측 안 함·src 항상 워킹트리에). 이미지 없는 앱/미지정이면 main.
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -69,7 +70,6 @@ jobs:
           APP: ${{ inputs.app }}
           IN_ID: ${{ inputs.id }}
           IMAGE: ${{ inputs.image }}
-          IMG_SHA: ${{ inputs.image_sha }}
           PARAMS: ${{ inputs.params }}
         run: |
           import os, sys, json, subprocess
@@ -78,27 +78,7 @@ jobs:
           in_id = (os.environ.get('IN_ID') or '').strip()
           params = json.loads(os.environ.get('PARAMS') or '{}')
           image = (os.environ.get('IMAGE') or '').strip()
-          img_sha = (os.environ.get('IMG_SHA') or '').strip()
-          # workflow_dispatch 레이스 가드: dispatch가 src PUT 직전 HEAD를 체크아웃하면(GitHub HEAD 전파 지연)
-          # 배경 파일이 워킹트리에 없어 '배경 없이 오버레이만' 나옴 → src 커밋 SHA(없으면 main)로 직접 확보.
-          # GitHub read-after-write 비보장(복제 지연·보통 수초) 대비 백오프 재시도; 끝내 실패면 차라리 워크플로 중단
-          # = 조용한 '오버레이-only 퇴화' 방지(운영자 재시도하면 전파 완료돼 성공 · 5인 검증 반영 260620).
-          if image and not os.path.isfile(image):
-              import time
-              for attempt in range(4):   # 복제 지연(보통 sub-second~수초) 흡수 · 2s·4s·6s 백오프
-                  print(f'::warning::배경 {image} 미체크아웃 — dispatch 레이스. SHA={img_sha[:8] or "—"} 복구 {attempt + 1}/4')
-                  if img_sha:
-                      subprocess.run(['git', 'fetch', '--depth=1', 'origin', img_sha], check=False)
-                      subprocess.run(['git', 'checkout', 'FETCH_HEAD', '--', image], check=False)
-                  if not os.path.isfile(image):   # SHA 미적중 → 최신 main에서(src는 dispatch 전 이미 main에 있음)
-                      subprocess.run(['git', 'fetch', '--depth=1', 'origin', 'main'], check=False)
-                      subprocess.run(['git', 'checkout', 'FETCH_HEAD', '--', image], check=False)
-                  if os.path.isfile(image):
-                      print(f'배경 복구 성공(시도 {attempt + 1})'); break
-                  if attempt < 3:
-                      time.sleep(2 * (attempt + 1))
-              if not os.path.isfile(image):
-                  sys.exit(f'::error::배경 {image} 복구 실패(sha={img_sha[:8] or "—"}+main 미적중·복제지연 지속) — 오버레이-only 무성 퇴화 방지 위해 중단. 잠시 후 재시도 권장.')
+          # 배경 src는 Checkout(ref=image_sha)이 이미 워킹트리에 보장 — 레이스 가드/복구 불필요(원천 차단 · 260620).
           if not app or not in_id:
               sys.exit('::error::app/id 누락')
           outdir = f'viewer/thumb_out/{in_id}'
