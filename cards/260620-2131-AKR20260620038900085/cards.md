@@ -1,24 +1,20 @@
-# 💊 에볼라가 의료진부터 덮쳤다…콩고 확진 896명·사망 232명
+# 💊 에볼라, 환자 살릴 의료진부터 덮쳤다
 
 ### [카드 1]
 **텍스트**
 ```text
-환자를 살려야 할 의료진이
+환자를 살릴 의료진이
 먼저 쓰러지고 있다
-에볼라에 75명이 감염됐고
-그중 17명이 숨졌다
+이건 시작에 불과했다
 ```
 **이미지 프롬프트**
 ```text
-Korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting.
-Camera: medium close-up from eye-level, shot on 85mm portrait lens.
-Lighting/mood: warm soft dim interior light with a faint, heavy melancholy, gentle shadows.
-Scene: a weary adult health worker wearing a protective gown and a clear face shield is anchored in the upper-center of the frame, leaning against a clinic wall, head bowed low in exhaustion, deep tiredness and quiet grief in the eyes, one gloved hand pressed flat to the wall to keep from sinking — the human being behind the protective gear, dignified, no illness or wounds shown.
-Accent: keep the watercolor warm but softly desaturated and let a single warm amber accent — the story's memorial color — carry the eye to the worker's face and gloved hand, soft low-key light with gentle deep shadows.
-Text: no readable text in the image; minimal Korean only if essential, a few characters max.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, hand-drawn loose ink contours, emotive character expression, muted desaturated palette of dusty blue and pale ash tones, a single soft accent of neon green #0FFD02 on the visor rim and nitrile gloves, otherwise subdued somber wash. Scene: a Central African (Congolese) healthcare worker in protective gear inside a dim isolation ward, framed chest-up and anchored in the upper-center, exhausted eyes behind a fogged plastic visor, one gloved hand pressed to the ward wall to steady themselves — the carer who is themselves faltering. Dignified, no graphic illness, no blood. Key emotion (the tired eyes and the trembling hand) kept in the upper two-thirds, fully visible.
+Camera: MCU (medium close-up) from Eye-level, shot on 85mm portrait lens.
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the clinic wall and floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the isolation ward interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -30,22 +26,18 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-하지만 이게 전부가 아니다
-누적 확진은 896명
-사망은 232명에 이르렀다
-전문가들은 더 많다고 본다
+누적 확진 896명, 사망 232명
+WHO "유행은 여전히 심각하다"
+실제 규모는 더 클 거란 분석도 있다
 ```
 **이미지 프롬프트**
 ```text
-Korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting.
-Camera: wide establishing shot from a high bird's-eye angle, shot on 24mm wide lens.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, hand-drawn loose ink contours, muted desaturated palette of grey-blue and pale clay tones, a single soft accent of neon green #0FFD02 on scattered biohazard tape and marker bands across the floor, otherwise somber subdued wash. Scene: a high overhead view of an Ebola treatment center — rows of isolation cots and tarpaulin tents laid out across one continuous floor, masked healthcare workers in protective gear moving among them, conveying the overwhelming scale of the outbreak. Solemn and orderly, no graphic suffering, no bodies in distress. The tents, figures and layout fill the upper two-thirds of the frame, fully visible. Central African (Congolese) field-clinic setting, not Korean.
+Camera: WS (wide shot) from Bird's-eye overhead angle, shot on 20mm wide lens.
 Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood.
-Scene: a high overhead bird's-eye view of an Ebola treatment center anchored in the upper-center — rows of white isolation tents and cots stretching across the ground, a few tiny figures in protective gear moving between them, the quiet enormity of the rows conveying scale; no bodies, no distress, only sobering vastness.
-Accent: keep the watercolor warm but softly desaturated and let a single warm amber accent — the story's memorial color — rest on one lit tent amid the muted rows, soft low-key light with gentle shadows.
-Text: no readable text in the image; minimal Korean only if essential, a few characters max.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the treatment-center ground) extending edge to edge from top to bottom of the frame. The rows are anchored across the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the treatment-center floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -57,22 +49,18 @@ NEGATIVE — strictly avoid:
 ### [카드 3]
 **텍스트**
 ```text
-의료진이 무더기로 감염된 건
-병을 늦게 알아챈 탓이다
-공식 확인은 지난달이었지만
-이미 몇 주가 지나 있었다
+의료진이 무더기로 쓰러진 건
+발생을 너무 늦게 알아챈 탓이다
+하지만 진짜 문제는 따로 있다
 ```
 **이미지 프롬프트**
 ```text
-Korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting.
-Camera: over-the-shoulder shot from eye-level, shot on 35mm lens.
-Lighting/mood: warm lamp-lit clinic glow, quiet wistful tone, with a faint cold blue shadow creeping in at the edges.
-Scene: over the shoulder of an adult health worker — bare-faced, the early unknowing days before anyone realized the danger — gently holding a patient's hand on a clinic cot, the warm light resting on the joined caregiving hands anchored in the upper-center, while a cold shadow seeps quietly from the frame edges, hinting at the unseen exposure; dignified, no wounds or illness depicted.
-Accent: keep the watercolor warm but softly desaturated and let a single warm amber accent — the story's memorial color — carry the eye to the joined hands, soft low-key light with gentle deep shadows.
-Text: no readable text in the image; minimal Korean only if essential, a few characters max.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, hand-drawn loose ink contours, emotive character expression, muted desaturated palette with low warm-amber undertone, a single soft accent of neon green #0FFD02 on a glove and a faint monitor glow, otherwise subdued wash. Scene: a lone Central African (Congolese) health worker shown in profile, framed mid-shot in the upper-center, pausing in a quiet clinic corner and lowering their gaze as an uneasy realization settles in — they may have been exposed for weeks without knowing. One hand half-raised toward a worn surgical mask. The face in profile and the hand kept in the upper two-thirds, fully visible.
+Camera: MS (medium shot) from Eye-level, profile (side) angle, shot on 70mm short telephoto lens.
+Lighting/mood: warm soft desk-lamp glow, quiet wistful tone, faint dread.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the clinic interior) extending edge to edge from top to bottom of the frame. The joined hands are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the clinic corridor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -84,22 +72,18 @@ NEGATIVE — strictly avoid:
 ### [카드 4]
 **텍스트**
 ```text
-더 깊은 문제는 따로 있다
-콩고의 의료 인력은
-1만 명당 11명꼴
-세계에서 가장 얇다
+인구 1만 명당 의료진 11명
+세계에서 가장 적은 나라다
+그 얇은 인력에서 17명을 잃었다
 ```
 **이미지 프롬프트**
 ```text
-Korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting.
-Camera: extreme long shot from a low angle, shot on 16mm ultra-wide lens.
-Lighting/mood: cold overcast diffused light, desolate stillness, muted and flat.
-Scene: a single small adult health worker standing alone in a vast, sparsely-equipped clinic ward lined with rows of empty beds, dwarfed by the emptiness and the towering bare walls anchored in the upper-center; the low ultra-wide angle makes the under-resourced space loom overwhelmingly, quiet and desolate, visualizing how few workers remain.
-Accent: keep the watercolor softly desaturated and let a single warm amber accent — the story's memorial color — carry the eye to the lone worker, soft low-key light with gentle deep shadows.
-Text: no readable text in the image; minimal Korean only if essential, a few characters max.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, hand-drawn loose ink contours, muted desaturated cold palette of pale blue-grey, a single soft accent of neon green #0FFD02 on the ID-clip lanyards of the empty coats, otherwise desolate subdued wash. Scene: a sparse, under-staffed ward corridor seen from a low angle — too few work stations for too many empty cots, and a row of empty white medical coats hanging still on the wall, marking the workers who are gone. One small masked figure stands alone among them, anchored in the upper-center. The hanging coats and the lone figure fill the upper two-thirds, fully visible — scarcity and absence in one breath. Central African (Congolese) clinic, not Korean.
+Camera: WS (wide shot) from Low angle, shot on 14mm ultra-wide lens.
+Lighting/mood: cold blue pre-dawn tone, desolate stillness.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the ward floor) extending edge to edge from top to bottom of the frame. The lone worker is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the ward corridor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -111,22 +95,19 @@ NEGATIVE — strictly avoid:
 ### [카드 5]
 **텍스트**
 ```text
-병의 성질도 확산을 키웠다
-환자 90%는 초기에
-출혈 증상이 없다
-모른 채 집에서 앓다 퍼뜨렸다
+에볼라 환자 90%는
+초기엔 출혈 증상이 없다
+그래서 감염도 모른 채
+집에서 앓다 병을 키웠다
 ```
 **이미지 프롬프트**
 ```text
-Korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting.
-Camera: medium shot from a high angle, shot on 35mm lens.
-Lighting/mood: warm soft morning window light, gentle and quiet, faint melancholy.
-Scene: a lone adult patient sitting on the floor of a modest home, a blanket around the shoulders, beside a small window with warm morning light, unaware and isolated, anchored in the upper-center; the high angle makes the figure look small and vulnerable; a faint cool shadow spreads quietly across the floor at the edges, hinting at the unseen illness; dignified, no symptoms or distress shown.
-Accent: keep the watercolor warm but softly desaturated and let a single warm amber accent — the story's memorial color — carry the eye to the patient and the window light, soft low-key light with gentle shadows.
-Text: no readable text in the image; minimal Korean only if essential, a few characters max.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, hand-drawn loose ink contours, emotive character expression, warm pastel palette of peach and cream leaning gently muted, a single soft almost-hidden accent of neon green #0FFD02 as a faint tint in the shadow near the figure (the unseen virus), otherwise warm subdued wash. Scene: a Central African (Congolese) adult sitting on a floor mat inside a modest home, framed mid-shot in three-quarter view, anchored in the upper-center — visibly unwell but calm, unaware they carry the virus, a cup of home remedy held in both hands. The deceptive warmth and safety of home. Dignified, no graphic illness, no blood. The face and the cradled cup kept in the upper two-thirds, fully visible.
+Camera: MS (medium shot) from Eye-level, three-quarter angle, shot on 35mm documentary lens.
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy, quietly ominous.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the home floor) extending edge to edge from top to bottom of the frame. The patient is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the home interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -138,22 +119,19 @@ NEGATIVE — strictly avoid:
 ### [카드 6]
 **텍스트**
 ```text
-결국 평소의 의료 체계가
-위기의 순간 누가 살고
-누가 죽는지를 가른다
-콩고가 다시 보여주고 있다
+"보건의료 체계가 정말
+큰 대가를 치르고 있다"
+한 사회의 의료 인프라가
+누가 사는지를 가른다
 ```
 **이미지 프롬프트**
 ```text
-Korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting.
-Camera: close-up from eye-level, shot on 85mm portrait lens.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, hand-drawn loose ink contours, solemn warm-amber palette, the neon green #0FFD02 reduced to one faint fading touch on a folded nitrile glove tucked beside the coat (the virus's mark fading against the warmth), otherwise tender muted wash. Scene: a quiet memorial corner — a single white medical coat neatly folded with a stethoscope laid on top, a few lit candles beside it, anchored in the upper-center, honoring the fallen healthcare workers and widening from one loss to a society's cost. The folded coat, stethoscope and candle flames kept in the upper two-thirds, fully visible. Still, reverent, no figures, no graphic content.
+Camera: MCU (medium close-up) from Eye-level, shot on 85mm portrait lens.
 Lighting/mood: warm candlelight glow against a soft dark background, solemn and tender.
-Scene: a health worker's set-down protective gear — a clear face shield, a neatly folded gown, and gloves — resting on a simple wooden table beside a single lit candle, anchored in the upper-center, the warm candle glow holding against the surrounding soft darkness; a quiet memorial for the fallen, the warmth of human care persisting; no people, no logos, no insignia.
-Accent: let the candle's warm amber — the story's memorial color — be the single accent carrying the eye against the desaturated dark surroundings, film-noir-soft low light with deep tender shadows.
-Text: no readable text in the image; minimal Korean only if essential, a few characters max.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wooden table) extending edge to edge from top to bottom of the frame. The gear and candle are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the memorial tabletop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
