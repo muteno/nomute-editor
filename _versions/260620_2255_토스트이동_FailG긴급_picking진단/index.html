@@ -393,9 +393,6 @@
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
   .sc-item.rated { border-color:rgba(15,253,2,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(15,253,2,.06); }
-  .sc-item.sc-flash { animation:scFlash 1.5s ease; }   /* 토스트→해당 후보로 이동 시 점멸(운영자 260620) */
-  @keyframes scFlash { 0%,100% { box-shadow:none; } 25% { box-shadow:0 0 0 2px var(--accent), 0 0 16px rgba(var(--accent-rgb),.55); } }
-  @media (prefers-reduced-motion:reduce) { .sc-item.sc-flash { animation:none; outline:2px solid var(--accent); } }
   .sc-top { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--mut); }
   .sc-cross { display:inline-flex; align-items:center; gap:3px; font-weight:800; color:var(--accent);
     background:var(--accent-dim); border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:1px 7px; font-size:10.5px; }
@@ -3669,28 +3666,14 @@ function markBreakingSeen() {
   try { localStorage.setItem(BKEY, JSON.stringify([...seen])); } catch {}
   document.body.classList.remove('has-breaking');
 }
-// 토스트/알림 → 수집함 진입 후 해당 후보 카드로 스크롤+점멸. 렌더(loadCandidates)가 비동기라 짧게 재시도. 운영자 260620.
-function scGoTo(c) {
-  showTab('scrap');
-  const cid = c && candId(c); if (!cid) return;
-  const sel = '.sc-item[data-cid="' + (window.CSS && CSS.escape ? CSS.escape(cid) : String(cid).replace(/["\\]/g, '\\$&')) + '"]';
-  let tries = 0;
-  const find = () => {
-    const el = document.querySelector(sel);
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('sc-flash'); setTimeout(() => el.classList.remove('sc-flash'), 1600); return; }
-    if (++tries < 20) setTimeout(find, 150);
-  };
-  setTimeout(find, 140);
-}
-let _toastT, _toastC = null;
+let _toastT;
 function showToast(n, sample) {
   let t = document.getElementById('nmToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast';
-    t.onclick = () => { t.classList.remove('show'); if (_toastC) scGoTo(_toastC); else showTab('scrap'); };   // 탭 → 수집함 + 해당 긴급건으로 이동(액션X·이동만 · 운영자 260620)
+    t.onclick = () => { t.classList.remove('show'); showTab('scrap'); };   // 탭 → 수집함(거기서 markBreakingSeen)
     document.body.appendChild(t);
   }
-  _toastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
   t.innerHTML = `<span class="tg">🚨 긴급</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
   requestAnimationFrame(() => t.classList.add('show'));
@@ -3779,15 +3762,14 @@ function markPickFailSeen() {
   try { localStorage.setItem(PF_SKEY, JSON.stringify([...seen])); } catch {}
   document.body.classList.remove('has-pickfail');
 }
-let _failToastT, _failToastC = null;
+let _failToastT;
 function showFailToast(n, sample) {
   let t = document.getElementById('nmFailToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmFailToast'; t.className = 'nm-toast fail';
-    t.onclick = () => { t.classList.remove('show'); if (_failToastC && _failToastC.url) failOpen(_failToastC); else showTab('scrap'); };   // 탭 → 실패기사 원문 바로 열기(FAILED칩 또 누를 필요 없이 · 운영자 260620)
+    t.onclick = () => { t.classList.remove('show'); showTab('scrap'); };   // 탭 → 수집함(거기서 '다시' 복구)
     document.body.appendChild(t);
   }
-  _failToastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 34)) : '';
   t.innerHTML = `<span class="tg">⚠ 분석 실패</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>전문 붙여넣어 복구</b></span>`;
   requestAnimationFrame(() => t.classList.add('show'));

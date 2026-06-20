@@ -393,9 +393,6 @@
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
   .sc-item.rated { border-color:rgba(15,253,2,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(15,253,2,.06); }
-  .sc-item.sc-flash { animation:scFlash 1.5s ease; }   /* 토스트→해당 후보로 이동 시 점멸(운영자 260620) */
-  @keyframes scFlash { 0%,100% { box-shadow:none; } 25% { box-shadow:0 0 0 2px var(--accent), 0 0 16px rgba(var(--accent-rgb),.55); } }
-  @media (prefers-reduced-motion:reduce) { .sc-item.sc-flash { animation:none; outline:2px solid var(--accent); } }
   .sc-top { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--mut); }
   .sc-cross { display:inline-flex; align-items:center; gap:3px; font-weight:800; color:var(--accent);
     background:var(--accent-dim); border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:1px 7px; font-size:10.5px; }
@@ -853,8 +850,7 @@
   /* 다이제스트(요약) — 기사 제목 강조 + 섹션마다 구분선·상하 간격·강조색(아래 카드처럼) */
   /* 대주제 = 상단 기사 제목(썸네일) = 카드뉴스 제목 동일 + 복사 가능 */
   /* 상단 기사 제목(요약) = 평범한 제목 — 복사 버튼 없음(#3) */
-  #mdbody h1 { font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; display:flex; align-items:center; gap:10px; }
-  #mdbody h1 .titlecopy { position:static; flex:none; margin-left:auto; }   /* 타이틀 복사(우측정렬·높이중앙) — .copy 룩 계승, 절대배치만 인플로우로 (운영자 260620) */
+  #mdbody h1 { font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; }
   /* 카드뉴스 제목 = 드래프트 박스처럼 테두리·배경 있는 복사 블록(한눈에 '복사 영역') */
   #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px;
     margin:6px 0 14px; padding:13px 46px 13px 15px;
@@ -889,7 +885,6 @@
   .ovmeta .ov-cat { font-weight:800; }
   .ovmeta .ov-d { color:var(--accent); font-weight:700; }
   .ovmeta .ov-media { color:var(--fg); font-weight:700; }
-  .ovmeta .ov-nl { flex-basis:100%; height:0; }   /* 기자명 다음 줄바꿈 — WRITE·IN을 다음 줄로(flex-wrap 강제개행 · 운영자 260620) */
   /* H 섹션 부제 괄호 → #연회색 해시태그 */
   .hashsub { color:rgba(255,255,255,.4); font-weight:600; font-size:.9em; letter-spacing:-.2px; }
   /* M 편향 줄 • 말머리 */
@@ -1705,8 +1700,6 @@ function open(a) {
   decorate(md);
   addCopyButtons(md);
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
-  const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 타이틀 그대로 복사 (운영자 260620)
-  if (_h1c) { const _ttl = a.title || _h1c.textContent.trim(); if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }
   const tsec = thumbSec(a);   // 썸네일 후보(검색 3 + AI생성 3) — 기사 제목 바로 아래
   if (tsec) { const h1 = md.querySelector('h1'); (h1 ? h1.insertAdjacentElement('afterend', tsec) : md.insertAdjacentElement('afterbegin', tsec)); }
   cardSec(a);
@@ -2101,9 +2094,7 @@ function cardSec(a) {
     const _refCards = parseCards(c.md), _refTtl = a.title || feedTitle(c.md) || '';
     [...div.querySelectorAll('pre')].filter(p => { const pv = p.previousElementSibling; return pv && /이미지\s*프롬프트/.test(pv.textContent || ''); })
       .forEach((pre, i) => {
-        // 검색 쿼리 = ① card-make가 뽑은 카드 씬별 AI 키워드(최소 명사) → ② 없으면 캡션 명사추출 폴백 → ③ 제목 (260620 AI 디자인싱킹)
-        const rc = _refCards[i];
-        const q = (rc && (rc.keyword || captionKeywords(rc.caption))) || _refTtl;
+        const q = (_refCards[i] && _refCards[i].caption) || _refTtl;   // 검색 쿼리 = 카드 캡션(없으면 제목)
         if (!q) return;
         const row = document.createElement('div'); row.className = 'srchrow';
         const note = document.createElement('span'); note.className = 'qnote';
@@ -2233,12 +2224,11 @@ async function loadRefImages(query, track) {
 }
 
 // ── 섹션 3: 카드 피드(인스타형 가로 스냅) — 이미지+캡션 1:1 · 개별/전체 다운로드 · 1b(수정·버전) 훅 ──
-// cards.md = '### [카드 N]' 단위 → **텍스트**(캡션)·**이미지 프롬프트**·**검색어**(선택·260620) 코드블록. images[i]와 1:1.
-//  keyword = card-make가 카드 씬별로 뽑은 구글 이미지검색 최소 명사(없는 옛 카드는 ''→ srchrow가 captionKeywords로 폴백). 검색어 갭은 다음 카드 헤더를 못 넘게 가둠(인덱스 시프트 방지).
+// cards.md = '### [카드 N]' 단위 → **텍스트**(캡션)·**이미지 프롬프트** 코드블록. images[i]와 1:1.
 function parseCards(md = '') {
   const out = [];
-  const re = /###\s*\[카드\s*(\d+)\][\s\S]*?\*\*텍스트\*\*\s*```(?:text)?\s*([\s\S]*?)```(?:[\s\S]*?\*\*이미지\s*프롬프트\*\*\s*```(?:text)?\s*([\s\S]*?)```)?(?:(?:(?!###\s*\[카드)[\s\S])*?\*\*검색어\*\*\s*```(?:text)?\s*([\s\S]*?)```)?/g;
-  let m; while ((m = re.exec(md))) out.push({ n: +m[1], caption: (m[2] || '').trim(), prompt: (m[3] || '').trim(), keyword: (m[4] || '').trim() });
+  const re = /###\s*\[카드\s*(\d+)\][\s\S]*?\*\*텍스트\*\*\s*```(?:text)?\s*([\s\S]*?)```(?:[\s\S]*?\*\*이미지\s*프롬프트\*\*\s*```(?:text)?\s*([\s\S]*?)```)?/g;
+  let m; while ((m = re.exec(md))) out.push({ n: +m[1], caption: (m[2] || '').trim(), prompt: (m[3] || '').trim() });
   return out;
 }
 function feedTitle(md = '') { const m = md.match(/^#\s+(.+)$/m); return m ? m[1].trim() : ''; }
@@ -3215,15 +3205,13 @@ function overviewMeta(a) {
   const cat = catBucket(a.category);
   const rp = ((a.body || '').match(/출처[:：]\s*[^()\n]*\(([^)]+)\)/) || [, ''])[1].trim();
   const inn = inDateTime(a);
-  const sep = '<span class="ov-sep">·</span>';
-  const line1 = [];   // 1줄 = 대분류·매체·기자명
-  if (cat) line1.push(`<span class="ov-cat" style="color:${CAT_COLOR[cat]}">${esc(cat)}</span>`);
-  if (a.media) line1.push(`<span class="ov-media">${esc(a.media)}</span>`);
-  line1.push(esc(rp || '-'));   // 기자명 항상 표기, 없으면 '-'(사용자 결정)
-  const line2 = [];   // 2줄 = WRITE·IN (기자명 다음 줄바꿈 · 운영자 260620)
-  line2.push(`<span class="ov-l">WRITE</span><span class="ov-d">${esc(repDateTime(a))}</span>`);
-  if (inn.txt) line2.push(`<span class="ov-l">IN</span><span class="ov-d">${esc(inn.txt)}</span>`);
-  return `<div class="ovmeta">${line1.join(sep)}<span class="ov-nl"></span>${line2.join(sep)}</div>`;
+  const p = [];
+  if (cat) p.push(`<span class="ov-cat" style="color:${CAT_COLOR[cat]}">${esc(cat)}</span>`);
+  if (a.media) p.push(`<span class="ov-media">${esc(a.media)}</span>`);
+  p.push(esc(rp || '-'));   // 기자명 항상 표기, 없으면 '-'(사용자 결정)
+  p.push(`<span class="ov-l">WRITE</span><span class="ov-d">${esc(repDateTime(a))}</span>`);
+  if (inn.txt) p.push(`<span class="ov-l">IN</span><span class="ov-d">${esc(inn.txt)}</span>`);
+  return `<div class="ovmeta">${p.join('<span class="ov-sep">·</span>')}</div>`;
 }
 
 // ── 알림·메시지 ──
@@ -3669,28 +3657,14 @@ function markBreakingSeen() {
   try { localStorage.setItem(BKEY, JSON.stringify([...seen])); } catch {}
   document.body.classList.remove('has-breaking');
 }
-// 토스트/알림 → 수집함 진입 후 해당 후보 카드로 스크롤+점멸. 렌더(loadCandidates)가 비동기라 짧게 재시도. 운영자 260620.
-function scGoTo(c) {
-  showTab('scrap');
-  const cid = c && candId(c); if (!cid) return;
-  const sel = '.sc-item[data-cid="' + (window.CSS && CSS.escape ? CSS.escape(cid) : String(cid).replace(/["\\]/g, '\\$&')) + '"]';
-  let tries = 0;
-  const find = () => {
-    const el = document.querySelector(sel);
-    if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('sc-flash'); setTimeout(() => el.classList.remove('sc-flash'), 1600); return; }
-    if (++tries < 20) setTimeout(find, 150);
-  };
-  setTimeout(find, 140);
-}
-let _toastT, _toastC = null;
+let _toastT;
 function showToast(n, sample) {
   let t = document.getElementById('nmToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast';
-    t.onclick = () => { t.classList.remove('show'); if (_toastC) scGoTo(_toastC); else showTab('scrap'); };   // 탭 → 수집함 + 해당 긴급건으로 이동(액션X·이동만 · 운영자 260620)
+    t.onclick = () => { t.classList.remove('show'); showTab('scrap'); };   // 탭 → 수집함(거기서 markBreakingSeen)
     document.body.appendChild(t);
   }
-  _toastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
   t.innerHTML = `<span class="tg">🚨 긴급</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
   requestAnimationFrame(() => t.classList.add('show'));
@@ -3779,15 +3753,14 @@ function markPickFailSeen() {
   try { localStorage.setItem(PF_SKEY, JSON.stringify([...seen])); } catch {}
   document.body.classList.remove('has-pickfail');
 }
-let _failToastT, _failToastC = null;
+let _failToastT;
 function showFailToast(n, sample) {
   let t = document.getElementById('nmFailToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmFailToast'; t.className = 'nm-toast fail';
-    t.onclick = () => { t.classList.remove('show'); if (_failToastC && _failToastC.url) failOpen(_failToastC); else showTab('scrap'); };   // 탭 → 실패기사 원문 바로 열기(FAILED칩 또 누를 필요 없이 · 운영자 260620)
+    t.onclick = () => { t.classList.remove('show'); showTab('scrap'); };   // 탭 → 수집함(거기서 '다시' 복구)
     document.body.appendChild(t);
   }
-  _failToastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 34)) : '';
   t.innerHTML = `<span class="tg">⚠ 분석 실패</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>전문 붙여넣어 복구</b></span>`;
   requestAnimationFrame(() => t.classList.add('show'));
