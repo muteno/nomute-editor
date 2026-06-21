@@ -83,7 +83,33 @@ if [ "$MODE" = edit ]; then
   echo "::group::카드 변경: $stem 카드$CARD_N"
   # 합성 폰트(Noto CJK) — card_news 로컬 합성 필수. 캐시 미적중 시만 설치(§🧰).
   fc-list 2>/dev/null | grep -qi "noto sans cjk" || { sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk; }
-  EDIT_TEXT="$EDIT_TEXT" EDIT_WISH="${EDIT_WISH:-}" \
+  # 이미지 재생성(체크 EDIT_SYNC=1 또는 수동 EDIT_WISH) = Claude가 지침대로 이미지 프롬프트 작성 → gen_cards가 그걸로 Gemini 재생성.
+  #   (체크=캡션+맥락 / wish=캡션+맥락+수정희망. 둘 다 아니면 EDIT_PROMPT 빈 채 = gen_cards가 장면 보존·문구만 = 제미나이 0)
+  #   ⚠️ 임의 프롬프팅 금지 — GBLOCK(card 지침)을 떠먹여 규약(텍스트-free·구도·GOVERNING·안전) 준수(운영자 요구 260621).
+  EDIT_PROMPT=""
+  if { [ "${EDIT_SYNC:-0}" = "1" ] || [ -n "${EDIT_WISH:-}" ]; } && [ -n "${GEMINI_API_KEY:-}" ]; then
+    echo "이미지 프롬프트 작성(claude · 지침 준수)…"
+    ap="${GBLOCK}
+
+[작업] 아래 카드뉴스 카드 1장의 **이미지 프롬프트**만 다시 작성하라. 위 지침의 이미지 프롬프트 규약(텍스트-free 장면·구도·GOVERNING·안전 등)을 엄격히 따른다. 임의로 벗어나지 말 것.
+[카드 캡션(장면이 이 내용을 표현 — 이미지에 글자로 넣지 않음)]: ${EDIT_TEXT}
+[이미지 수정 희망(있으면 반영)]: ${EDIT_WISH:-(없음)}
+[기사 맥락 다이제스트]:
+$(cat "queue/$stem.md" 2>/dev/null)
+
+[출력] 이미지 프롬프트 한 단락만(머리말·설명·따옴표·코드블록 없이). 장면 묘사 텍스트만."
+    EDIT_PROMPT="$(printf '%s' "$ap" | timeout 900 claude -p \
+          --model "$MODEL" --effort max \
+          --allowedTools "WebFetch,WebSearch" \
+          --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
+          --max-turns 20 2>"/tmp/editprompt_${stem}.err")"
+    if [ -z "${EDIT_PROMPT// }" ]; then
+      echo "::warning::이미지 프롬프트 작성 실패 — 기존 카드 프롬프트로 폴백"; EDIT_PROMPT=""
+    else
+      echo "이미지 프롬프트 작성 완료(${#EDIT_PROMPT}자)"
+    fi
+  fi
+  EDIT_TEXT="$EDIT_TEXT" EDIT_WISH="${EDIT_WISH:-}" EDIT_SYNC="${EDIT_SYNC:-0}" EDIT_PROMPT="$EDIT_PROMPT" \
     python3 .github/scripts/gen_cards.py --stem "$stem" --edit-card "$CARD_N" \
     || { echo "::error::카드 변경 실패"; exit 1; }
   pv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
