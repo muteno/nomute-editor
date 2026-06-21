@@ -11,27 +11,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from knews_scraper import normalize_link              # 정규화 단일 원천(수집기와 동일 판정)
-from to_pending import load_active, PENDING, LEDGER    # 재픽 차단셋(in-flight∪완료)·경로 재사용(DRY)
+from to_pending import load_seen, PENDING, LEDGER      # dedup·경로 재사용(DRY)
 
 KST = timezone(timedelta(hours=9))
-
-
-def _clear_stale_failed(key):
-    """이 url의 옛 실패 격리(pending/failed/<base>.txt + .log)를 제거 — 재픽 성공 시 대기열에 FAIL·SUCC 중복표시 방지(분신술 ⓐ③)."""
-    fdir = PENDING / "failed"
-    if not fdir.exists():
-        return
-    for p in list(fdir.glob("*.txt")):
-        try:
-            lines = p.read_text(encoding="utf-8").splitlines()
-            if lines and normalize_link(lines[0].strip()) == key:
-                p.unlink()
-                log = p.with_suffix(".log")
-                if log.exists():
-                    log.unlink()
-                print(f"  스테일 실패 격리 정리: {p.name}", file=sys.stderr)
-        except OSError:
-            pass
 
 
 def main():
@@ -50,14 +32,10 @@ def main():
         print("NEW=0")
         return
     key = normalize_link(url)
-    # ⚠️ 재픽 정책(분신술 ⓐ③): 차단 = 현재 처리중(pending in-flight) 또는 이미 완료(queue)뿐.
-    #    한 번 *실패*한 url(pending/failed·원장)은 재픽 허용 — 영구 dedup이 실패건 재시도를 영영 막던 구멍 해소.
-    #    in-flight 차단이 중복발사 가드 역할(분석 끝나 실패로 떨어져야 재픽 가능).
-    if key in load_active():
-        print(f"이미 처리중/완료 — 스킵: {url}", file=sys.stderr)
+    if key in load_seen():
+        print(f"이미 처리됨(중복) — 스킵: {url}", file=sys.stderr)
         print("NEW=0")
         return
-    _clear_stale_failed(key)   # 실패 재픽이면 옛 실패 격리 정리(대기열 FAIL/SUCC 중복 방지)
     PENDING.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(KST).strftime("%y%m%d-%H%M%S")
     name = f"{stamp}-pick-{os.urandom(2).hex()}.txt"   # 동시 픽 충돌 방지 random 접미

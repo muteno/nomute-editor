@@ -62,30 +62,6 @@ def load_seen():
     return seen
 
 
-def load_active():
-    """재픽(수동 PICK) 차단용 = 현재 처리중(pending 비-failed) ∪ 완료(queue)만.
-    ⚠️ 실패(pending/failed)·원장(ledger)은 제외 → 한 번 실패한 url을 운영자가 다시 픽 가능(영구차단 해제·운영자 260620 분신술 ⓐ③).
-    in-flight면 막아 중복발사 가드 / 실패하면 재픽 허용. 스크래퍼 자동경로의 영구 dedup(load_seen)은 불변(별개)."""
-    active = set()
-    for p in glob.glob(str(PENDING / "*.txt")):   # PENDING/*.txt = top-level만(failed/ 하위는 glob 미포함 = 자동 제외)
-        try:
-            lines = Path(p).read_text(encoding="utf-8").splitlines()
-            if lines and lines[0].strip():
-                active.add(normalize_link(lines[0].strip()))
-        except OSError:
-            pass
-    for p in glob.glob(str(QUEUE / "*.md")):
-        try:
-            for line in Path(p).read_text(encoding="utf-8").splitlines()[:12]:
-                m = re.match(r'\s*url:\s*"?([^"\s]+)"?', line)
-                if m:
-                    active.add(normalize_link(m.group(1)))
-                    break
-        except OSError:
-            pass
-    return active
-
-
 def main():
     if not TOP.exists():
         print("top_urls.txt 없음 — 수집 결과 없음", file=sys.stderr)
