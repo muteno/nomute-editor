@@ -71,11 +71,6 @@ jobs:
           IN_ID: ${{ inputs.id }}
           IMAGE: ${{ inputs.image }}
           PARAMS: ${{ inputs.params }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           import os, sys, json, subprocess
           sys.path.insert(0, 'apps/thumbnail')
@@ -198,28 +193,6 @@ jobs:
           for f in produced:
               im = Image.open(f)
               print(f'RENDERED app={app} {im.size} {im.mode} -> {f}')
-          # ── R2 업로드 = 썸네일 출력 저장(git 미커밋 → 즉시 서빙·배포지연 0·비대 0). 실패 시 잡 실패(git 폴백 안 함 = API가 R2 URL 예측).
-          sys.path.insert(0, '.github/scripts')
-          import thumb_gen as tg, time
-          if not tg.R2_ON:
-              sys.exit('::error::R2 미설정 — 썸네일은 R2 저장 필수(R2 5시크릿 확인)')
-          meta = []
-          for f in produced:
-              fn = os.path.basename(f)
-              ctype = 'image/jpeg' if fn.endswith('.jpg') else 'image/png'
-              data = open(f, 'rb').read()
-              url = None
-              for _t in range(3):
-                  url = tg.r2_upload(data, f'thumb_out/{in_id}/{fn}', ctype)
-                  if url:
-                      break
-                  if _t < 2:
-                      time.sleep(2 * (_t + 1))   # 2s·4s 백오프(즉시 재시도는 같은 일시장애에 무의미)
-              if not url:
-                  sys.exit(f'::error::R2 업로드 실패(3회): {fn}')
-              meta.append([fn, url])
-          json.dump(meta, open(f'{outdir}/_meta.json', 'w'), ensure_ascii=False)
-          print(f'R2 UPLOADED {len(meta)} → {outdir}/_meta.json')
 
       - name: Commit output
         if: always()
@@ -229,9 +202,9 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
-          git add "viewer/thumb_out/${IN_ID}/_meta.json" 2>/dev/null || true   # 이미지는 R2(git 미저장) — _meta.json(수KB)만 커밋해 이전제작 cross-device 유지
+          git add "viewer/thumb_out/${IN_ID}" 2>/dev/null || true
           git add "uploads/${IN_ID}" 2>/dev/null || true
-          git commit -m "thumb: ${IN_ID} R2 메타" || { echo "커밋할 것 없음"; exit 0; }
+          git commit -m "thumb: ${IN_ID} 렌더 출력" || { echo "커밋할 것 없음"; exit 0; }
           # 동시 렌더 push 레이스 대비 — 매 시도 origin 흡수 후 push(naive 재push는 non-ff로 무한실패)
           pushed=0
           for i in 1 2 3 4 5; do
