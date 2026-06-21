@@ -200,9 +200,29 @@ PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM
 
 ---
 
+## 9. 컴포넌트 인벤토리 (계승 = 디폴트 · 정본 = CLAUDE.md §🎨)
+신규/이식 시 **그대로 계승**(다시 그리지 말 것). 값·마크업 정본 = `viewer/index.html` + CLAUDE.md §🎨.
+- **글래스 아이콘 버튼** `.sbtn` — `--btn` 34px·blur·둥근사각·`:active` scale .85·`.ok`(초록 플래시)·`.busy`/`:disabled`. 아이콘 = SVG만(이모지 금지).
+- **닫기(X)** `.tool-x`/`.dlg-x` — `--btn-sm` 30px·우상단·SVG X-path 단일(`M6 6 18 18M18 6 6 18`·stroke 1.8). `.dlg-x`=absolute 우상단.
+- **모달/팝업 + 폰 뒤로가기** `<dialog>` + `history.pushState`(열 때)·`popstate`로 닫기 → 백버튼=직전 화면.
+- **캐러셀/스와이프** scroll-snap 트랙 + 드래그 넘김.
+- **복사/붙여넣기 1버튼** `.askclip` — 비면 PASTE·차면 COPY·성공 CHECK 플래시.
+- **아이콘 SVG 상수** `COPY/PASTE/CHECK/DOWNLOAD/EDIT/LAYERS/THUMBUP/THUMBDOWN` 등(24뷰박스·stroke 2·round).
+
+## 10. 시각 시스템 — 풀페이지 배경 · 배너 (viewer 정본)
+- **풀페이지 네온 배경** `.bgfx` = radial **3겹**(좌상 420×300·우상 720×460·하단 640×720) + 탭별 색 전환(`--bgfx`): **피드=라임**(15,253,2) / **스크랩=앰버**(255,150,20) / **SNS=시안**(12,208,247). (구성도 1겹 데모는 단순화 — 라이브는 3겹.)
+- **배너** `.bannerframe` = radius **20px** + 글로우 + **호흡 애니** `bannerbreath 5.5s` ease-in-out 무한(밝기·드롭섀도 맥동). 탭 전환 = **2겹 크로스페이드 디졸브**(`.banner.layer-*` opacity .6s) — 즉시교체·슬라이드 금지. `prefers-reduced-motion`이면 즉시.
+
+## 11. 부속 설명 · 정렬 (viewer #mdbody/#cardsec 정본)
+- **상태문구** `.genstat` = 14px 마진·박스(border+radius16)·`.live`(라임·pulse 1.6s). 생성/진행 상태 표시.
+- **소머리(•)** `#cardsec p.lbl`·`.cref-lbl` = `::before content:'• '`(mut·700) — 카드 텍스트/이미지프롬프트 라벨. 이모지 금지(§📐 머리표 = `📍` 말머리 → `•` 소머리).
+- **상대시간** 사다리(피드 메타) = <30분 방금·NEW → 30분 전 → N시간 전(1h·복합없음) → N일(1~6) → N주일(1~4) → N달. 색=보도(≤6h 라임/7~11h 흰/12h 회)·스크랩(NEW 라임/≤6h 흰/7h 회).
+- **배지 정렬** 긴급/이슈(`.tagrow` 절대배치) = **좌측**(모바일·PC 공통·운영자 260621).
+- **내어쓰기**(따옴표·블록) = 카드뉴스 합성(`card_news.py`·`ovlOffsets`) 도메인 — 여는 따옴표가 줄 넘어 닫힐 때 그 사이 줄 들여쓰기. 뉴스요약 본문은 좌측정렬 기본.
+
 ## 적용 순서 (라우터)
 1. 도구 페이지(comp·ly·k) `:root`를 §0 정본으로 교체 → 중립 회색·매직넘버 제거.
 2. 생성/전송 버튼을 §1 상태머신으로 교체(라벨·색·재확인 게이트·소진).
 3. §2 배치·§3 위계·§4 표면 규칙으로 마크업 정리.
-4. §5 메뉴색·§6 픽토그램·§7 Orbitron·§8 모션 적용.
+4. §5 메뉴색·§6 픽토그램·§7 Orbitron·§8 모션·§9 컴포넌트·§10 시각시스템·§11 부속설명 적용.
 5. 게이트 = `shared/check_refs.py check_design()` 통과 확인.
