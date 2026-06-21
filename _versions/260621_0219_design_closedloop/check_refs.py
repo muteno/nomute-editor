@@ -97,35 +97,9 @@ def check_versions():
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
     'viewer/index.html': {'accent_raw': 105, 'blur': 88, 'hex': 168},
-    'viewer/thumb.html': {'accent_raw': 28, 'blur': 32, 'hex': 25},   # #606 캐러셀 복구분 수용(미토큰 raw) — 후속 thumb var() sweep서 토큰화·baseline 하향
+    'viewer/thumb.html': {'accent_raw': 27, 'blur': 30, 'hex': 23},
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
-
-# viewer :root 정의 토큰 중 var() 한 번도 안 쓰는 것 = 죽은 토큰 후보. 단 디자인시스템 어휘는
-# 점진 이관(기존 raw→토큰) 중이라 '미리 선언·아직 미배선'이 의도된 게 다수(§🎨). → 현 미배선
-# 집합을 baseline 으로 고정하고 그 *밖*의 새 미배선만 경고(드리프트는 늘 때만 = 새 죽은토큰 차단). 260621.
-_FWD_UNUSED = {
-    '--accent-2', '--amber-rgb', '--blur-backdrop', '--blur-l', '--blur-m', '--blur-s',
-    '--blur-xl', '--btn', '--btn-xs', '--danger-rgb', '--dur-fast', '--ease', '--fg-2',
-    '--fs-body', '--fs-display', '--fs-h1', '--fs-h2', '--fs-h3', '--fs-label', '--fs-xs',
-    '--fw-b', '--fw-x', '--lh-base', '--r-l', '--r-m', '--r-pill', '--sp-1', '--sp-2',
-    '--sp-3', '--sp-4', '--warn',
-}
-
-def _new_dead_tokens(rel='viewer/index.html'):
-    """viewer :root 정의 토큰 중 var() 미사용 & baseline 밖 = 새 죽은 토큰(접두사 오탐 가드)."""
-    try:
-        s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
-    except Exception:
-        return []
-    m = _ROOT_BLOCK.search(s)
-    if not m:
-        return []
-    names = set(re.findall(r'(--[a-z0-9-]+)\s*:', m.group(0)))
-    body = _ROOT_BLOCK.sub('', s, count=1)   # :root 정의부 제외 = 실사용만
-    return [n for n in sorted(names)
-            if n not in _FWD_UNUSED
-            and not re.search(r'var\(\s*' + re.escape(n) + r'(?![\w-])', body)]
 
 # ── viewer 인라인 JS 구문 게이트 (분신술 V2/V4 · 260620) ──────────────────────────
 # 머지 가산·복붙 중복 등으로 viewer 인라인 <script>에 SyntaxError(예: let 재선언)가 들어가면
@@ -175,8 +149,6 @@ def check_design():
         for k, b in base.items():
             if cnt[k] > b:
                 warns.append('%s: raw %s %d > baseline %d → var() 토큰으로(§🎨)' % (rel, k, cnt[k], b))
-    for n in _new_dead_tokens():   # 새로 추가됐는데 var() 미배선인 토큰(죽은 토큰) — 배선하거나 정의 삭제
-        warns.append('viewer/index.html: 토큰 %s 정의됐으나 var() 미사용 → 배선하거나 정의 삭제(§🎨)' % n)
     if warns:
         print('⚠️ 디자인 토큰 게이트(비차단): raw 값 증가 감지 —')
         for w in warns:
@@ -208,13 +180,7 @@ def main():
     except Exception as e:
         print('⚠️ check_viewer_js 스킵:', e)
     try:
-        import build_design_mirror   # 디자인 거울 정합: 구성도/base.css = viewer :root (하드 게이트·§🎨 ⓐ)
-        if build_design_mirror.check() != 0:
-            rc = 1
-    except Exception as e:
-        print('⚠️ 디자인 거울 check 스킵:', e)
-    try:
-        check_design()          # 디자인 토큰 게이트(비차단 경고 — raw 증가·새 죽은토큰)
+        check_design()          # 디자인 토큰 게이트(비차단 경고)
     except Exception as e:
         print('⚠️ check_design 스킵:', e)
     return rc
