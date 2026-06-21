@@ -105,8 +105,8 @@ export async function onRequestPost({ request, env }) {
     let outs;
     if (app === '2' && params.mode === 'header') {
       outs = [
-        { path: `${dir}/nobg.jpg`, label: '기본' },   // 헤더 = 2K JPG q95 (워크플로 box/nobg.jpg와 확장자 일치)
-        { path: `${dir}/box.jpg`, label: '흰칸' },
+        { path: `${dir}/nobg.png`, label: '기본' },
+        { path: `${dir}/box.png`, label: '흰칸' },
       ];
     } else if (app === '2' && params.mode === 'overlay') {
       const ext = wantImg ? 'jpg' : 'png';   // 배경합성=JPG(2K)·투명오버레이=PNG(FHD) — 워크플로 emit()와 확장자 일치(불일치 시 폴링 실패)
