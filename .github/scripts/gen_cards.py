@@ -13,7 +13,7 @@ fail-soft(카드 1장 실패가 나머지 안 끊음) · 완료 카드(이미 _f
 재사용: thumb_gen(gemini_image·r2_upload·R2_ON) · recompose_card(card_news 로컬합성) — 드리프트 0.
 정본 = 이 파일.
 """
-import os, sys, re, json, argparse, shutil, urllib.request
+import os, sys, re, json, argparse, shutil, tempfile, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import thumb_gen as tg   # gemini_image · r2_upload · R2_ON · KEY (모듈 import = main 미실행)
@@ -58,8 +58,8 @@ def _record_card_usage(cdir, calls):
     print("  📊 카드 제미나이 토큰: {}콜·이번 {:,}·누적 {:,}".format(tot["calls"], tot["total"], tot["cumulative"]), flush=True)
 
 
-def _fetch_old_image(cdir, nn):
-    """카드 NN의 '현재' 이미지 바이트(버전 v0 보존용). R2면 사이드카 URL 다운로드 · 아니면 로컬 _final. 실패=None(비치명)."""
+def _fetch_old_image(cdir, nn, local_slot=None):
+    """카드 NN의 '현재' 이미지 바이트(버전 v0 보존용). R2면 사이드카 URL 다운로드 · 아니면 로컬 슬롯파일(local_slot, 레거시 비표준명 포함). 실패=None(비치명)."""
     side = os.path.join(cdir, ".r2_images.json")
     if os.path.isfile(side):
         try:
@@ -68,7 +68,7 @@ def _fetch_old_image(cdir, nn):
                     return urllib.request.urlopen(u, timeout=30).read()
         except Exception as e:
             print("  ⚠️ 기존 R2 이미지 회수 실패(v0 생략): {}".format(e)); return None
-    fp = os.path.join(cdir, "_final_{}.jpg".format(nn))
+    fp = os.path.join(cdir, local_slot or "_final_{}.jpg".format(nn))
     if os.path.isfile(fp):
         try: return open(fp, "rb").read()
         except Exception: return None
@@ -128,7 +128,22 @@ def edit_one(stem, n):
     sdir = os.path.join(cdir, "scenes"); os.makedirs(sdir, exist_ok=True)
     scene_local = os.path.join(sdir, "장면{}.jpg".format(nn))
     old_text = card.get("text") or ""
-    old_bytes = _fetch_old_image(cdir, nn)   # 버전 v0 보존용(현재본) — 새로 쓰기 전에 회수
+
+    # 배치 대상 결정 — R2 카드(사이드카) vs 로컬 카드.
+    # ⚠️ 로컬은 *기존 슬롯 파일명*을 보존해야 build-viewer 정렬/페어링이 안 깨짐(레거시 카드는 `_final_NN.jpg`가
+    #    아닌 비표준 파일명일 수 있음 — 새 `_final_NN.jpg`를 추가하면 이미지 중복·슬롯 밀림 회귀 = 분신술 5번 발견).
+    side = os.path.join(cdir, ".r2_images.json")
+    is_r2 = tg.R2_ON and os.path.isfile(side)
+    slot_name = "_final_{}.jpg".format(nn)
+    if not is_r2:
+        md_full = open(md_path, encoding="utf-8").read()
+        nums = [int(x) for x in re.findall(r'###\s*\[카드\s*(\d+)\]', md_full)]
+        imgs = sorted(f for f in os.listdir(cdir) if re.search(r'\.(jpe?g|png)$', f, re.I))
+        pos = nums.index(int(n)) if int(n) in nums else (int(n) - 1)
+        if imgs and 0 <= pos < len(imgs):
+            slot_name = imgs[pos]   # 기존 슬롯 파일명(레거시 비표준명 포함) 제자리 보존
+
+    old_bytes = _fetch_old_image(cdir, nn, None if is_r2 else slot_name)   # v0 보존용(현재본) — 새로 쓰기 전에 회수
 
     _u0 = len(tg._USAGE)
     regen = bool(wish) or not os.path.isfile(scene_local)
@@ -146,24 +161,24 @@ def edit_one(stem, n):
     else:
         print("  ✓ 카드 {} 텍스트만 변경 — 장면 보존(제미나이 0)".format(n))
 
-    final_local = os.path.join(cdir, "_final_{}.jpg".format(nn))
+    # 합성은 임시파일로 (배치 전 디렉터리 오염 방지 = 슬롯 계산 정확)
+    tmp_final = os.path.join(tempfile.mkdtemp(), "final_{}.jpg".format(nn))
     os.environ.pop("EDIT_TEXT", None)   # recompose는 text 인자로 받음(env 잔여 제거)
-    if not rc.recompose(scene_local, final_local, new_text):
+    if not rc.recompose(scene_local, tmp_final, new_text):
         print("::error::카드 {} 합성 실패".format(n)); return 1
 
-    _save_versions(cdir, n, old_bytes, old_text, final_local, new_text)
+    _save_versions(cdir, n, old_bytes, old_text, tmp_final, new_text)
 
-    # 배치: R2 카드(사이드카 존재 + R2 켜짐)면 같은 키 덮어쓰기(.r2_images.json·URL 불변) / 아니면 로컬 _final 유지.
-    side = os.path.join(cdir, ".r2_images.json")
-    if tg.R2_ON and os.path.isfile(side):
-        with open(final_local, "rb") as f:
+    # 배치: R2면 같은 키 덮어쓰기(.r2_images.json·URL 불변·?v= 캐시버스트) / 로컬이면 기존 슬롯 파일명 제자리 덮어쓰기.
+    if is_r2:
+        with open(tmp_final, "rb") as f:
             url = tg.r2_upload(f.read(), "cards/{}/_final_{}.jpg".format(stem, nn), "image/jpeg")
         if not url:
             print("::error::카드 {} R2 업로드 실패".format(n)); return 1
-        os.remove(final_local)   # R2 서빙 → 로컬 제거(다른 카드와 일관·레포 비대 0)
         print("  ✓ 카드 {} R2 재업로드(같은 키 덮어쓰기 · ?v=로 캐시버스트)".format(n))
     else:
-        print("  ✓ 카드 {} 로컬 _final 갱신".format(n))
+        shutil.copy2(tmp_final, os.path.join(cdir, slot_name))   # 기존 파일명 보존 = 슬롯/정렬 불변
+        print("  ✓ 카드 {} 로컬 슬롯 제자리 갱신: {}".format(n, slot_name))
 
     _update_cards_md_text(md_path, n, new_text)
     _record_card_usage(cdir, tg._USAGE[_u0:])
@@ -242,21 +257,11 @@ def main():
             os.remove(side)   # 로컬 폴백 → 옛 사이드카 제거(뷰어가 로컬 _final 스캔·표시)
         print("저장: git 로컬 {}장".format(ok))
     print("완료 — {}/{}장".format(ok, len(cards)))
-    # ── 제미나이 토큰 사용량(카드 장면 생성) — cards/<stem>/usage.json 에 누적 기록(썸네일 thumbs/usage.json 패턴).
-    #    뷰어가 카드 개요 '비용'으로 표기. 재슛/이미지 재생성마다 누적(완료 장면 재사용분은 호출 0 → 누적 불변).
-    #    버킷 키 {calls,total,cumulative} = 뷰어 usageText 가 그대로 읽음.
-    calls = tg._USAGE[_u0:]
-    if calls:
-        up = os.path.join(cdir, "usage.json")
-        try:
-            prevj = json.load(open(up, encoding="utf-8"))
-        except Exception:
-            prevj = {}
-        agg = tg._usage_total(calls)   # {calls, prompt_tokens, output_tokens, total_tokens}
-        tot = {"calls": agg["calls"], "total": agg["total_tokens"],
-               "cumulative": int((prevj or {}).get("cumulative") or 0) + agg["total_tokens"]}
-        json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-        print("  📊 카드 제미나이 토큰: {}콜·이번 {:,}·누적 {:,}".format(tot["calls"], tot["total"], tot["cumulative"]), flush=True)
+    # 제미나이 토큰 사용량 누적(카드 개요 '비용') — edit_one과 공용 헬퍼(_record_card_usage = 내부 try, 실패해도 산출 영향 0).
+    try:
+        _record_card_usage(cdir, tg._USAGE[_u0:])
+    except Exception as e:
+        print("  ⚠️ usage 기록 실패(무시·비치명): {}".format(e))
     # exit코드 = drive_cards.py 호환: 0=전건 done · 2=일부만(partial) · 1=전건 실패
     return 0 if ok == len(cards) else (1 if ok == 0 else 2)
 
