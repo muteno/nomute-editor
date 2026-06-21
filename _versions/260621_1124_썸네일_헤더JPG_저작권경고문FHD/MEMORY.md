@@ -6,40 +6,9 @@
 
 ## 목적 & 맥락
 
-세웅은 한국어 SNS 콘텐츠 제작 워크플로우 운영 중. 뉴스형 썸네일 오버레이 그래픽 생성이 핵심 — Instagram post / reels 포맷. 좌표·폰트는 1080 설계기준 ×SCALE(=2). **출력 포맷·해상도 정본 = 아래 §📐 표**(260621 갱신 — 배경합성=JPG q95·2K / 투명오버레이=FHD PNG 등 케이스별로 다름. 옛 "전부 2K PNG"는 폐기).
+세웅은 한국어 SNS 콘텐츠 제작 워크플로우 운영 중. 뉴스형 썸네일 오버레이 그래픽 생성이 핵심 — Instagram post / reels 포맷. **출력 2K PNG(260619·SCALE=2): post 2160×2700 / reels 2160×3840** (좌표·폰트는 1080 설계기준 ×SCALE).
 커스텀 Python 파이프라인: `nomute_overlay.py`, `nomute_compose.py`, `nomute_copyright.py`, `nomute_reels2.py`(헤더형 F18). 버전 운영 지침 governance(현 v22.25).
 성공 기준: 빠르고 픽셀 정확한 오버레이 생성 — 타이포·합성·파일 전달 정확성. 프로덕션 지향 상시 운영.
-
----
-
-## 📐 썸네일 생성기 스펙·프로세스 (단일 정본 · 260621)
-
-> **이 표 하나만 보면** 각 메뉴가 [입력→스크립트→처리→출력 포맷/해상도→저장] 어떻게 만들어지는지 안다(다른 섹션 안 뒤져도 됨). 수정 시 ⚠️ **API(`thumb.js`) 예측 확장자 == 워크플로(`thumb-make.yml`) 출력 확장자** 필수(불일치 = 뷰어 "제작중 무한").
-
-| 메뉴 | 입력 | 렌더 스크립트(불변·import) | 워크플로 처리 | 출력 포맷·해상도 | 저장 |
-|---|---|---|---|---|---|
-| `/1` 포스트 배경O | 텍스트+이미지 | overlay+compose | `emit`→`save_jpg` | **2K JPG q95** | git thumb_out |
-| `/1` 포스트 배경X | 텍스트 | overlay | `emit`→copy | **2K PNG**(투명) | git |
-| `/2` 릴스 오버레이 배경O | 텍스트+이미지 | overlay+compose | `emit`→`save_jpg` | **2K JPG q95** | git |
-| `/2` 릴스 오버레이 배경X | 텍스트 | overlay | `emit`→copy | **2K PNG**(투명) | git |
-| `/2` 릴스 헤더 | 부제+제목 | reels2 | `save_jpg` | **2K JPG q95** | git |
-| `/3` 저작권 | 연도/이름/플랫폼 | copyright | `save_fhd_png` | **FHD PNG**(투명) | git |
-| `/4` 경고문 | 프리셋 텍스트 | copyright(스택) | `save_fhd_png` | **FHD PNG**(투명) | git |
-| `/comp` 카드뉴스 | 이미지+텍스트 | card_news | (자체 save) | **FHD JPG q95** | api/compose |
-| 뉴스카드 `gen_cards` | 기사 | gen_cards+card_news | recompose | **FHD JPG** | **R2** |
-
-해상도: **2K** = post 2160×2700·reels 2160×3840 / **FHD** = post 1080×1350·reels 1080×1920 (1080 설계기준 ×SCALE2).
-
-**규칙 근거 (운영자 260621 — 의도까지 박음)**:
-- **합성본(배경 있는 것·헤더) = 2K JPG q95**: PNG↔JPG95 체감차 미미 · 2K↔1K는 차이 큼 · 용량은 JPG가 압도(실측 사진합성 5.47MB PNG→1.13MB JPG ×4.8, 포스트 1건 11MB→2.3MB). PNG·2K 7MB가 포스트 안 뜨던 원인이었음.
-- **영상용 투명 오버레이(`/1`·`/2` 배경X) = 2K PNG**: 2K~4K 영상 위에 얹히니 선명해야 함(다운스케일 금지) · 투명 필요라 JPG 불가.
-- **면책 오버레이(`/3`·`/4`) = FHD PNG**: 화질 비중요(있기만 하면 됨·면책 목적) → 1K로 충분.
-- 원칙: **빠르게·저비용·확실하게**(요구 기능 누락 0이 기준).
-
-**최소 부품(`thumb-make.yml` Render 내 모듈 — 포맷 규칙이 여기 모임·수정은 여기서만)**: `save_jpg(img,dst)`=JPG q95 / `save_fhd_png(img,dst,scale)`=2K→FHD PNG / `emit(ov,image,fmt,base)`=배경O→JPG·배경X→2K PNG copy.
-**`.jpg` 배관(전 경로)**: `thumb.js`(경로 ext=`wantImg?jpg:png`) · `viewer/thumb.html`(다운로드 ext=`o.path`) · `build-viewer.mjs`(스캔 `.png|.jpg`).
-**저장**: `/1`~`/4`·헤더 = git `viewer/thumb_out/<id>/`(Pages 서빙) / **카드뉴스·뉴스카드 = R2**(Cloudflare 오브젝트 저장소·공개 URL `pub-xxx.r2.dev`·git 비대 회피·배포 무관 즉시 서빙). "R2 이미지" = git 아닌 R2의 카드/AI썸네일.
-**스크립트 불변**: `nomute_*.py`는 절대규칙1(불변·import/subprocess만) — 포맷은 워크플로 부품에서만 바꿈.
 
 ---
 

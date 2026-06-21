@@ -86,13 +86,6 @@ jobs:
           out = f'{outdir}/out.png'
           BASE = 'apps/thumbnail/assets/reels2_base.png'
           produced = []             # 출력 파일 목록 (앱 1·3·4 = 1장, 2 = 2~3장)
-          # ── 출력 포맷 최소 부품(정본 = apps/thumbnail/MEMORY.md §📐) ──
-          from PIL import Image as _PIM
-          JPGQ = 95                                   # 합성본·헤더 JPG 품질(운영자 260621)
-          def save_jpg(img, dst):                     # 합성본·헤더 = JPG q95 (해상도 유지=2K)
-              img.convert('RGB').save(dst, 'JPEG', quality=JPGQ)
-          def save_fhd_png(img, dst, scale=2):        # 면책 오버레이(/3·/4) = 2K→FHD PNG (투명 보존·화질 비중요)
-              img.resize((img.width // scale, img.height // scale), _PIM.LANCZOS).save(dst, optimize=True)
           def fit_tracking(lines, fmt):   # §오버플로우(F06): measure(알파 실측)→자간 sweep → generate에 넘길 tr(없으면 None=기본)
               from nomute_overlay import draw_t, SPECS, FONT_PATH
               from PIL import Image as _I, ImageDraw as _D, ImageFont as _F
@@ -116,15 +109,20 @@ jobs:
                       print(f'OVERFLOW-FIT {fmt}: tr={x} (limit {limit})'); return x
               print(f'::warning::{fmt} 자간 {floor}로도 마진 초과 — 축약 권장(B안). 최대압축 렌더'); return floor
           def emit(ov, image, fmt, dst_noext, compose_flags=None):
-              # 배경 있으면 합성→2K JPG q95 / 없으면 영상용 투명 오버레이→2K PNG 유지(2K~4K 영상 위 선명·투명필요라 JPG 불가). 반환=실제 경로.
-              import shutil
+              # 통일 규칙: 배경 있으면 합성→JPG 품질95(2K) / 없으면 오버레이(투명)→FHD(1x) PNG. 반환=실제 산출 경로.
+              from nomute_overlay import SCALE as _S
+              from PIL import Image as _IM
               if image:   # 배경 의도 = API wantImg와 동치(image 경로 비어있지 않음) → 확장자(.jpg) 계약 일치. 파일 부재면 compose가 명확히 실패(조용한 불일치 방지).
                   tmp = dst_noext + '.cmp.png'
                   argv = ['python3', 'apps/thumbnail/nomute_compose.py', fmt, ov, image, tmp] + list(compose_flags or [])
                   subprocess.run(argv, check=True)
-                  dst = dst_noext + '.jpg'; save_jpg(_PIM.open(tmp), dst); os.remove(tmp)
+                  dst = dst_noext + '.jpg'
+                  _IM.open(tmp).convert('RGB').save(dst, 'JPEG', quality=95)   # 합성 = JPG 품질95 · 2K(SCALE 유지)
+                  os.remove(tmp)
               else:
-                  dst = dst_noext + '.png'; shutil.copyfile(ov, dst)           # 2K 투명 PNG 그대로(다운스케일 안 함)
+                  dst = dst_noext + '.png'
+                  im = _IM.open(ov)                                            # 오버레이(투명) = FHD PNG (2K→1x 다운스케일, 알파 보존)
+                  im.resize((im.width // _S, im.height // _S), _IM.LANCZOS).save(dst, optimize=True)
               return dst
           if app == '4':            # 경고문 — copyright.py 29px(작은 글씨=마진 안 넘침). 2줄=줄별 센터 렌더 후 세로 스택
               from PIL import Image as _I
@@ -136,22 +134,19 @@ jobs:
                   subprocess.run(['python3', 'apps/thumbnail/nomute_copyright.py', tmp, fmt4, '--raw', ln], check=True)
                   part = _I.open(tmp).convert('RGBA')
                   canvas.paste(part, (0, i * 46 * _CS), part)   # copyright Y=100 기준 줄간 46px × SCALE
-              save_fhd_png(canvas, out, _CS)   # 2K→FHD(post 1080×1350/reels 1080×1920) PNG·투명 보존
-              produced.append(out)
+              canvas.save(out); produced.append(out)
           elif app == '2':          # 릴스 — 헤더(흰칸+nobg 2장) | 오버레이(opa별 2~3장)
               mode = params.get('mode', 'header')
               if mode == 'header':  # 부제+제목 → 흰칸(render) + nobg(흰칸 없이 텍스트만). import 재사용(스크립트 코드 불변)
                   from nomute_reels2 import render, _draw_line, FONT, WHITE, GREEN, SUB_FS, SUB_Y, TITLE_FS, TITLE_Y, W, H
                   from PIL import Image, ImageDraw, ImageFont
                   sub, title = params.get('sub', ''), params.get('title', '')
-                  box, nobg = f'{outdir}/box.jpg', f'{outdir}/nobg.jpg'   # 헤더 = 2K JPG q95(불투명 베이스+텍스트)
-                  box_tmp = '/tmp/_box.png'
-                  render(sub, title, BASE, box_tmp)                             # 흰칸(영상자리) — render가 BASE를 2K 업스케일(PNG)
-                  save_jpg(Image.open(box_tmp), box)
+                  box, nobg = f'{outdir}/box.png', f'{outdir}/nobg.png'
+                  render(sub, title, BASE, box)                                  # 흰칸(영상자리) — render가 BASE를 2K 업스케일
                   im = Image.open(BASE).convert('RGB').resize((W, H), Image.LANCZOS); d = ImageDraw.Draw(im)   # nobg(흰칸 없음) — 2K
                   _draw_line(d, sub,   SUB_Y,   ImageFont.truetype(FONT, SUB_FS,   index=1), WHITE, SUB_FS)
                   _draw_line(d, title, TITLE_Y, ImageFont.truetype(FONT, TITLE_FS, index=1), GREEN, TITLE_FS)
-                  save_jpg(im, nobg)
+                  im.save(nobg)
                   produced += [nobg, box]
               else:                 # 오버레이 — opa별. 배경 있으면 JPG합성(2K)·없으면 FHD PNG (포스트와 통일)
                   from nomute_overlay import generate
@@ -160,15 +155,13 @@ jobs:
                       ov = f'/tmp/_ov_{o}.png'
                       generate('reels', params['lines'], ov, opacity=int(o), tracking=tr)
                       produced.append(emit(ov, image, 'reels', f'{outdir}/opa{o}'))
-          elif app == '3':          # 저작권 — 투명 오버레이 (CLI subprocess). 출력 = FHD PNG.
+          elif app == '3':          # 저작권 — 투명 오버레이 (CLI subprocess)
               argv = ['python3', 'apps/thumbnail/nomute_copyright.py', out, params.get('fmt', 'post')]
               if params.get('raw'):
                   argv += ['--raw', params['raw']]
               else:
                   argv += [str(params['year']), params['name'], params['platform']]
               subprocess.run(argv, check=True)
-              from nomute_copyright import SCALE as _CS3
-              save_fhd_png(_PIM.open(out), out, _CS3)   # 2K→FHD PNG·투명 보존
               produced.append(out)
           elif app == '1':          # 포스트 — opas별 1장. 배경 있으면 JPG합성(2K)·없으면 FHD PNG (릴스와 통일).
               from nomute_overlay import generate
