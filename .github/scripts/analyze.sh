@@ -9,6 +9,7 @@ cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
 MODEL="claude-opus-4-8"
 : > /tmp/analyzed_titles.txt
+: > /tmp/analyzed_files.txt      # 생성된 queue 파일명(베이스) 적재 → 완료 푸시가 ?a=<파일>로 요약 딥링크(titles와 같은 순서)
 : > /tmp/analyzed_failures.txt   # 실패 URL 적재 → 워크플로가 잡을 빨갛게(조용한 실패 차단)
 
 # 지침 SSOT 강제 주입 — live 에디터 지침을 프롬프트 고정부에 떠먹인다(읽기 의존 X = 강제).
@@ -191,6 +192,7 @@ ${extracted}"
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
   echo "${title:-$id}" >> /tmp/analyzed_titles.txt
+  basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   echo "성공 → $outfile (지침 ${GVER})"
   echo "::endgroup::"
 done

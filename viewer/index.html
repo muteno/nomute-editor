@@ -2458,8 +2458,14 @@ function feedSec(a, keepIdx = 0) {
   // 개요 = 제목(부제·박스 밖) + 한줄요약 + 표현기법 1줄(총 N장 | 화풍 | 분위기 | 민감 키워드). 전부 기존 데이터 유도.
   const summary = oneLineSummary(a.body);
   const stags = sensitiveTags(`${title} ${summary}`);   // 최대 2개·유관도순
+  // 비용 = 카드 제미나이 생성 누적 토큰/추정$(c.card_usage) — 슛·재생성마다 갱신(썸네일 usageText와 동일 단가). 없으면 '—'.
+  const _cu = c.card_usage;
+  const _ctok = (_cu && _cu.cumulative) || 0;
+  const _costStr = _ctok ? '$ ' + (_ctok * GEM_RATE).toFixed(1) + ', T ' + _ctok.toLocaleString() : '—';
+  const _costTitle = _ctok ? '제미나이 카드 생성 누적 ' + _ctok.toLocaleString() + '토큰 · 추정 $' + (_ctok * GEM_RATE).toFixed(1) + (_cu.calls ? ' (최근 ' + _cu.calls + '콜)' : '') : '아직 슛 안 함(카드 이미지 미생성)';
   const tech = `총 <b>${totalN}</b>장${partial ? ` (${totalN - doneN} 대기)` : ''}<span class="fi-sep">|</span>`
     + `화풍 : <b>${esc(styles[0] || '—')}</b><span class="fi-sep">|</span>분위기 : <b>${esc(moodLabel(c.md))}</b>`
+    + `<span class="fi-sep">|</span>비용 : <b title="${esc(_costTitle)}">${_costStr}</b>`
     + (stags.length ? `<span class="fi-sep">|</span>주의 : ${stags.map(s => `<b class="acc">#${esc(s)}</b>`).join(' ')}` : '');
 
   const intro = document.createElement('div'); intro.className = 'feedhead';
@@ -5066,7 +5072,26 @@ function makeDraggable(dlg, handleSel) {
 [['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#pastedlg', '.askhead'], ['#tooldlg', '.tool-h']]
   .forEach(([d, sel]) => makeDraggable($(d), sel));
 
-load();
+// 분석/요약 완료 푸시 탭 → URL ?a=<기사파일> 진입이면 그 요약 창을 자동으로 연다.
+// 빌드 랙(분석 커밋 직후 articles.json 재빌드 전)이면 잠깐 재시도(≈18s) 후 못 찾으면 피드만.
+async function openDeepLink(tries = 0) {
+  let key = null;
+  try { key = new URLSearchParams(location.search).get('a'); } catch (_) {}
+  if (!key) return;
+  const a = DATA.find(x => x.file === key || x.file === key + '.md');
+  if (a) {
+    try { const u = new URL(location.href); u.searchParams.delete('a'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (_) {}   // 새로고침 시 재오픈·재요청 방지
+    if ($('#dlg').open && CUR === a.file) return;   // 이미 그 요약이 열려있으면 그대로
+    showTab('feed'); open(a);                       // 요약은 뉴스요약 탭
+    return;
+  }
+  if (tries >= 10) return;                          // 빌드 랙 한계(≈30s) 초과 — 못 찾으면 피드만(요약은 곧 떠도 자동오픈은 포기)
+  await new Promise(r => setTimeout(r, 3000));
+  try { await load(); } catch (_) {}
+  return openDeepLink(tries + 1);
+}
+
+load().then(openDeepLink);   // 첫 로드 후 딥링크(?a=) 있으면 해당 요약 자동 오픈
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)

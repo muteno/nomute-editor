@@ -92,9 +92,14 @@ jobs:
           done
           echo "push 실패"; exit 1
 
-      # 분석 실패가 있으면 잡을 빨갛게 → GitHub가 푸시 알림(앱·메일) 발송 = '조용한 실패' 차단.
-      # Commit 스텝(always) 다음이라 성공 카드는 이미 저장된 뒤 실패만 시끄럽게 만든다.
-      - name: Surface failures (실패 시 잡 빨갛게 → 알림)
+      # 분석 완료 푸시 — 요약이 준비되면 구독자(프로필 알림 ON)에게 통지. 탭하면 그 요약 창이 열림(/?a=<파일>).
+      # 비치명(실패해도 파이프 안 깸). 새 요약(analyzed_files) 있을 때만. 1건=해당 요약 딥링크 / 다건=피드.
+      - name: 분석 완료 푸시 (요약 열기)
+        if: success()
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: bash .github/scripts/notify_summary.sh
         if: always()
         run: |
           if [ -s /tmp/analyzed_failures.txt ]; then

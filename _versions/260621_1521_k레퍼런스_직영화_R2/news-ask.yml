@@ -1,0 +1,94 @@
+name: news-ask
+
+# 뷰어 ✨요약 요청(asks/*.json = 자연어 + 캡처) → Claude 헤드리스가 해석·기사검색(WebSearch)·캡처판독(Read)
+# → 큐레이션 다이제스트를 queue/ 에 커밋(= 뉴스요약에 뜸). Termux 대체 멀티모달 입구.
+# news-analyze(pending/** = URL)와 별개 트랙 — analyze 불변 안 건드림. 출력 포맷·지침주입은 analyze 재사용.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'asks/**'
+  workflow_dispatch:
+    inputs:
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: news-ask
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ask:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 최신 main 기준(순차 큐에서 옛 커밋 체크아웃 방지)
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치 — analyze와 동일하게 설치(없으면 exit 127)
+
+      - name: Process asks
+        env:
+          # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/ask.sh
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add queue asks
+          git add viewer/messages.json 2>/dev/null || true   # messages.json = gitignore된 빌드산출물(러너 부재) → 있을 때만·없어도 set -e로 커밋 안 죽게(analyze:77 가드 미러 · 260619 회귀복구 260621 분신술)
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "ask: 요약 요청 큐레이션"
+          for i in 1 2 3 4; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((2**i))
+          done
+          echo "push 실패"; exit 1
+
+      # 요약 요청 완료 푸시 — 요약이 준비되면 통지. 탭하면 그 요약 창이 열림(/?a=<파일>). 비치명(analyze와 공용 스크립트).
+      - name: 요약 완료 푸시 (요약 열기)
+        if: success()
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: bash .github/scripts/notify_summary.sh
+
+      - name: Surface failures
+        if: always()
+        run: |
+          # ⚠️ 이번 런에서 새로 실패한 것만 빨강(asks/failed/ 누적 전체 아님 — stale-red 차단·260620).
+          # 옛 실패는 asks/failed/에 남아도 뷰어 대기열(api/pending)이 24h 표면화 → CI는 깨끗.
+          RUNLIST="${RUNNER_TEMP:-/tmp}/ask_fail_run"
+          if [ -s "$RUNLIST" ]; then
+            echo "::error::요약 요청 처리 실패(이번 런 $(wc -l < "$RUNLIST")건) — asks/failed/ 로그 확인"
+            while read -r b; do echo "── $b ──"; cat "asks/failed/$b.log" 2>/dev/null | head -40; done < "$RUNLIST"
+            exit 1
+          fi
+          echo "이번 런 실패 없음"
