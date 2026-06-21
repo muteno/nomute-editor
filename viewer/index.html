@@ -4711,6 +4711,8 @@ const SUMMARY_TPL = `<!doctype html>
   .src .meta { color:#9a9a9a; font-weight:500; }
   .nm-srclink { color:#fff; font-weight:800; text-decoration:none; border-bottom:1px solid rgba(30,215,96,.5); }
   .nm-srclink:hover { color:#1ED760; border-color:#1ED760; }
+  .nm-iglink { color:#1ED760; font-weight:700; text-decoration:none; border-bottom:1px solid rgba(30,215,96,.45); }   /* ⓒ 노뮤트 = 인스타 링크·강조색(운영자 260621) */
+  .nm-iglink:hover { border-color:#1ED760; }
   .cr { text-align:center; color:#7d7d7d; font-size:12px; margin-top:18px; }
   .nm-top { position:fixed; right:18px; bottom:20px; z-index:30; width:44px; height:44px; display:none; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.62); -webkit-backdrop-filter:blur(14px) saturate(120%); backdrop-filter:blur(14px) saturate(120%); color:#1ED760; border:1px solid rgba(30,215,96,.4); cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,.5); transition:transform .14s, background .15s, color .15s; }
   .nm-top:hover { background:#1ED760; color:#000; border-color:#1ED760; transform:translateY(-2px); }
@@ -4740,8 +4742,6 @@ const SUMMARY_TPL = `<!doctype html>
     </div>
     %BOXES%
     <div class="nm-foot">
-      <div class="nm-foot-h">출처</div>
-      <ul class="src">%SRC%</ul>
       <div class="cr">%CR%</div>
     </div>
   </div>
@@ -4817,7 +4817,10 @@ async function buildSummaryHtml() {
   const repMeta = '<span class="nm-reporter">' + (rpFmt || '확인 必') + '</span>';   // 미상이면 '확인 必'(일반 글자 — 강조 없음)
   const repPar = rpFmt || '확인 必';
   const mbits = [];
-  if (CUR_A && CUR_A.media) mbits.push('<span class="nm-media">' + esc(CUR_A.media) + '</span>');
+  if (CUR_A && CUR_A.media) {
+    const _su = /^https?:\/\//i.test(CUR_A.url || '') ? esc(CUR_A.url) : '';   // 기사 원문 URL(스킴 가드)
+    mbits.push(_su ? '<a class="nm-media nm-srclink" href="' + _su + '" target="_blank" rel="noopener">🔗 ' + esc(CUR_A.media) + '</a>' : '<span class="nm-media">' + esc(CUR_A.media) + '</span>');   // 매체명 = 출처 하이퍼링크(🔗+밑줄 강조색 → 원문 · 출처를 상단으로 · 운영자 260621)
+  }
   mbits.push(repMeta);   // 기자(미상=확인 必) — 항상 표기
   if (dt) mbits.push('<span class="nm-date">' + dt + '</span>');
   const mline = mbits.length ? '<span class="nm-mline">' + mbits.join('<span class="nm-dotsep"></span>') + '</span>' : '';
@@ -4831,7 +4834,7 @@ async function buildSummaryHtml() {
     const link = CUR_A.url ? '<a class="nm-srclink" href="' + safeUrl + '" target="_blank" rel="noopener">' + mn + '</a>' : '<span class="nm-srclink">' + mn + '</span>';
     srcLi = '<li><span class="ic">🔗</span><span>' + link + par + '</span></li>';
   } else { srcLi = '<li><span class="meta">출처 정보 없음</span></li>'; }
-  const crLine = 'ⓒ ' + now.getFullYear() + '. 에디터 노뮤트(@no_mute, 인스타그램). all rights reserved. (' + ymd + ')';
+  const crLine = 'ⓒ ' + now.getFullYear() + '. <a class="nm-iglink" href="https://www.instagram.com/no_mute/" target="_blank" rel="noopener">에디터 노뮤트(@no_mute, 인스타그램)</a>. all rights reserved. (' + ymd + ')';   // @no_mute = 인스타 하이퍼링크·강조색(운영자 260621)
   const fontCss = await nmFontFace();
   const fontHead = fontCss ? ('<style>' + fontCss + '</style>')
     : '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.min.css">';
@@ -4842,7 +4845,7 @@ async function buildSummaryHtml() {
     .replace('%META%', () => meta)
     .replace('%BOXES%', () => boxes)
     .replace('%SRC%', () => srcLi)
-    .replace('%CR%', () => esc(crLine))
+    .replace('%CR%', () => crLine)
     .replace('%SCRIPT%', () => '(' + _expCopy.toString() + ')();');
 }
 let _pdfBusy = false;
