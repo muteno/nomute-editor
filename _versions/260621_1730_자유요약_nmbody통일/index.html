@@ -4692,6 +4692,8 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
+  /* 자유요약 등 단일 코드블록 = 다른 박스(.nm-body)와 동일 양식으로 통일(운영자 260621: 쟤만 다른 박스 쓰지 말 것). 모노스페이스·가로잘림 폐기 → 본문 폰트·pre-line(문단 줄바꿈 보존+자동 줄바꿈)·일반 색. */
+  .nm-pre { white-space:pre-line !important; word-break:break-word; overflow-wrap:anywhere !important; max-width:100%; background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:inherit; font-size:15px; line-height:1.72; color:#e6e6e6; }
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
@@ -4787,11 +4789,8 @@ async function buildSummaryHtml() {
       while (j < kids.length && !isH(kids[j])) { parts.push(kids[j]); j += 1; }
       if (snsRe.test(name)) { i = j; continue; }   // 인스타·스레드 섹션(헤딩+본문) 통째 제외 — 다운로드 HTML 불필요(운영자 260620)
       if (!parts.length) { i = j; continue; }   // 본문 없는 그룹 헤더(예: 콘텐츠 초안) = 표기 안 함 — 잡음(운영자 260621)
-      else if (parts.length === 1 && parts[0].tagName === 'PRE') {   // 자유요약 등 단일 코드블록 = 별도 박스 폐기, 다른 칸(.nm-body)과 100% 동일 CSS 사용(운영자 260621). 텍스트→<p>문단(빈 줄 기준)·단일 줄바꿈→<br>. 공백 정규화(nbsp·전각공백·탭→일반).
-        const _t = parts[0].textContent.replace(/[ 　\t]/g, ' ').replace(/ +\n/g, '\n').trim();
-        const _ps = _t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean).map(s => '<p>' + esc(s).replace(/\n/g, '<br>') + '</p>').join('') || ('<p>' + esc(_t) + '</p>');
-        boxes += card(name, '<div class="nm-body draft-scroll" data-body>' + _ps + '</div>', tipRe.test(name));
-      }
+      else if (parts.length === 1 && parts[0].tagName === 'PRE')   // 자유요약 등 단일 코드블록 → 다른 박스와 동일 양식(.nm-pre=본문폰트·pre-line) + 공백 정규화(nbsp·전각공백→일반 = 모노폭 잘림/가로넘침 방지 · 운영자 260621)
+        boxes += card(name, '<pre class="nm-pre" data-body>' + esc(parts[0].textContent.replace(/[ 　\t]/g, ' ')) + '</pre>', tipRe.test(name));
       else
         boxes += card(name, '<div class="nm-body draft-scroll" data-body>' + parts.map(p => p.outerHTML).join('') + '</div>', tipRe.test(name));
       i = j;
