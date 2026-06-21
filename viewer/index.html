@@ -241,7 +241,7 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.12);
     box-shadow:inset 0 1px 2px rgba(0,0,0,.35); transition:background .22s var(--ease), border-color .22s, box-shadow .22s; flex:none; }   /* 정제 스위치(개선 A·원안 tk2 정합) = 검정→초록틴트 글래스·inset 깊이(운영자 260621) */
   .tk::after { content:''; position:absolute; top:50%; left:2px; width:15px; height:15px; border-radius:50%;
-    background:var(--mut); opacity:.55; transform:translateY(-50%); transition:transform .26s var(--ease), background .22s, opacity .22s; box-shadow:0 1px 3px rgba(0,0,0,.5); }   /* 노브 = OFF 무채(mut)·반투명(꺼짐 시 흐릿 — 운영자 260621)·작고 부드럽게 */
+    background:var(--mut); opacity:.65; transform:translateY(-50%); transition:transform .26s var(--ease), background .22s, opacity .22s; box-shadow:0 1px 3px rgba(0,0,0,.5); }   /* 노브 = OFF 무채(mut)·반투명(꺼짐 시 흐릿 — 운영자 260621)·대비 3:1 위해 .65(검증4)·작고 부드럽게 */
   .toggle input:checked + .tk { background:linear-gradient(90deg,var(--accent-bright),var(--accent)); border-color:rgba(var(--accent-rgb),.5); box-shadow:0 0 10px rgba(var(--accent-rgb),.4), inset 0 1px 1px rgba(255,255,255,.3); }   /* ON = accent 그라데 + 글로우 + 내부 하이라이트 */
   .toggle input:checked + .tk::after { transform:translate(14px,-50%); background:var(--on-accent); opacity:1; }   /* ON = 노브 불투명 복원 */
   .toggle input:checked ~ .tlbl { color:var(--accent); font-weight:700; }
@@ -638,6 +638,7 @@
   .qpop .qh-rf { margin-left:auto; font-size:14px; }
   .qpop .qh-rf:hover { color:var(--accent); transform:rotate(180deg); }
   .qpop .qh-tr svg { width:14px; height:14px; stroke:currentColor; }
+  .qpop .qh-rf svg, .qpop .qh-x svg { stroke:currentColor; }   /* 새 SVG가 .qpop .qh svg{stroke:accent}에 잡혀 강제 초록되던 회귀 차단 — 닫기/새로고침=회색 currentColor(검증1 · 260621) */
   .qpop .qh-tr:hover { color:#ff6b5b; border-color:rgba(255,107,91,.45); background:rgba(255,107,91,.12); }
   .qpop .qh-x { flex:none; width:20px; height:20px; margin-right:-3px; display:grid; place-items:center; padding:0;
     background:none; border:none; color:var(--mut); font-size:11px; line-height:1; cursor:pointer; opacity:.55; transition:opacity .15s, color .15s; }
@@ -939,6 +940,7 @@
   @media (prefers-reduced-motion:reduce) { .ic-spin, .ic-bounce { animation:none; } }
   /* 눌림(press) 일관 — :active 없던 닫기/새로고침/유틸 아이콘 버튼 보강(운영자 260621 · 모든 곳) */
   .tool-x:active, .mx:active, .ed-x:active, .askx:active, .qh-x:active, .qh-tr:active, .qh-rf:active, .pmenu-rf:active, .fb-x:active, .askimg-x:active, .gsrch:active { transform:scale(.9); }
+  .pmenu .pmenu-rf:active, .qpop .qh-rf:active { transform:rotate(180deg) scale(.9); }   /* 새로고침 = hover 회전 유지 + 눌림(specificity로 위 plain scale 묻힘 보정·검증7) */
   .md { padding:8px 18px 26px; }
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
@@ -1245,7 +1247,7 @@
   .askimg { position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; border:1px solid var(--line2); }
   .askimg img { width:100%; height:100%; object-fit:cover; display:block; }
   .askimg-x { position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%; border:none; cursor:pointer;
-    background:rgba(0,0,0,.62); color:#fff; font-size:11px; line-height:1; padding:0; }
+    background:rgba(0,0,0,.62); color:#fff; font-size:11px; line-height:1; padding:0; display:grid; place-items:center; }   /* SVG X 양축 중앙(검증1 · 260621) */
   .askimg-kb { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#cdd; font-size:8.5px; text-align:center; padding:1px 0; }
   .askbot { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
   .askattach { flex:none; display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:999px; color:var(--fg);
@@ -1460,7 +1462,7 @@
 
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder="예) 요즘 층간소음 사건 관련 기사 정리해줘 — 또는 캡처만 첨부"></textarea>
     </div>
@@ -1489,7 +1491,7 @@
 <!-- 전문 직접 입력 — 막힌 매체(403) Failed 픽에 기사 전문을 붙여넣어 재분석(api/pick body 경로). askdlg UIUX 계승(.sbtn 클립·X·전송). -->
 <dialog id="pastedlg" class="askdlg pastedlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>내용 직접 입력</b><button class="askx" id="pasteX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>내용 직접 입력</b><button class="askx" id="pasteX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="pastesub" id="pasteSub"></div>
     <div class="asktawrap">
       <textarea id="pasteText" class="askta pasteta" rows="7" placeholder="막힌 매체라 자동 수집이 안 됐어 — 기사 페이지에서 본문을 전체 선택·복사해 여기 붙여넣고 전송하면 그 내용으로 재분석해(403 우회)."></textarea>
@@ -1518,8 +1520,8 @@
 </nav>
 <div class="bpop" id="bpop" hidden>
   <b>제작 도구</b>
-  <a href="#" id="askmenu" class="bpop-hl"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</a>
-  <a href="/thumb.html" data-tool class="bpop-hl-y"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>썸네일 생성</a>
+  <a href="#" id="askmenu" class="bpop-hl"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</a>
+  <a href="/thumb.html" data-tool class="bpop-hl-y"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>썸네일 생성</a>
   <a href="/ly.html" data-tool>영상 자막 생성기</a>
   <a href="/k.html" data-tool>영상 프롬프트</a>
   <a href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener">지면 뉴스 ↗</a>
@@ -5085,10 +5087,11 @@ $('#pdfBtn').addEventListener('click', downloadSummaryHtml);
 })();
 // 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·ts-rf·rev-fab 등)는 셀렉터서 제외.
 document.addEventListener('click', e => {
-  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.qh-tr,.qh-rf,.pmenu-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.sc-more,.dlgtop,.bnav-fab,.fi-saveall');
+  if (e.defaultPrevented) return;   // 드래그/취소된 클릭(캐러셀 스와이프 등)엔 헛모션 방지
+  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.qh-tr,.qh-rf,.pmenu-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall');
   if (!b) return;
   const svg = b.querySelector('svg'); if (!svg) return;
-  const m = b.matches('.save,[aria-label*="저장"],[aria-label*="다운로드"]') ? 'ic-bounce' : 'ic-spin';
+  const m = b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin';
   svg.classList.remove('ic-spin', 'ic-bounce'); void svg.offsetWidth; svg.classList.add(m);
 }, true);
 $('#revFab').addEventListener('click', openRev);
