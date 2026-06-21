@@ -1858,7 +1858,7 @@ function addClip(pre) {
 
 // 다이제스트 후처리: [썸네일] 섹션 제거 · 헤더 이모지 strip(💡 시사점 유지) · 편향 색도형 strip · 키워드 강조 · 드래프트 더보기
 const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅]/gu;
-const KW_RE = /(앵글(?:\s*후보)?\s*[①-⑳0-9]+|약보수 보정|[가-힣A-Za-z0-9]{1,8} ?관점)/g;   // 앵글 후보 ① / 앵글 ① 둘 다 매치(운영자 260621)
+const KW_RE = /(앵글 후보\s*[①-⑳0-9]*|약보수 보정|[가-힣A-Za-z0-9]{1,8} ?관점)/g;
 function decorate(root) {
   // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
   root.querySelectorAll('h3').forEach(h => {
@@ -1904,7 +1904,7 @@ function decorate(root) {
     const frag = document.createDocumentFragment();
     parts.forEach((p, i) => { if (!p) return;
       if (i % 2) {
-        if (/^앵글/.test(p)) {                                                       // 앵글 ①② / 앵글 후보 ①② = [] 감쌈 + 강조색 볼드(관점 키워드와 통일·운영자 260621)
+        if (/^앵글 후보/.test(p)) {                                                  // 앵글 후보 ①② = [] 감쌈 + 강조색 볼드(관점 키워드와 통일·운영자 260621)
           const sp = document.createElement('span'); sp.className = 'angle'; sp.textContent = '[' + p.trim() + ']'; frag.append(sp);
         } else if (/관점\s*$/.test(p)) {                                              // 관점 키워드(…관점) = [] 감쌈 + 강조색 볼드(운영자 260621)
           const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = '[' + p.trim() + ']'; frag.append(sp);
@@ -1913,16 +1913,6 @@ function decorate(root) {
         }
       } else frag.append(document.createTextNode(p)); });
     n.replaceWith(frag);
-  });
-  // 다각도 '이렇게 볼 수도' 불릿 맨 앞 (관점 라벨) → [관점 라벨] 강조색 볼드(운영자 260621). 라벨=괄호 1~16자(문장 아님)만 — Fact/Inference/활용옵션 불릿은 (로 시작 안 해 미적용.
-  root.querySelectorAll('li').forEach(li => {
-    const tn = li.firstChild;
-    if (!tn || tn.nodeType !== 3) return;
-    const m = tn.data.match(/^\s*\(([^)]{1,16})\)\s*/);
-    if (!m) return;
-    const sp = document.createElement('span'); sp.className = 'kw'; sp.textContent = '[' + m[1].trim() + ']';
-    tn.data = ' ' + tn.data.slice(m[0].length);
-    li.insertBefore(sp, tn);
   });
   // G: 앵글 후보 배지 뒤 ' : ' 콜론 제거
   root.querySelectorAll('.angle').forEach(ag => {
