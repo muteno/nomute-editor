@@ -3241,18 +3241,17 @@ const hrefOk = u => { const s = String(u ?? '').trim(); return /^(javascript|dat
 // Z: 요약 헤더 아래 기본 개요 — 대분류·매체·기자명·WRITE·IN. 기존 데이터만(기자명=본문 Fact 출처 패턴).
 // 해외 매체(국제 발) = '기자' 호칭 스킵(국내 바이라인 관례). 국제부 거친 국내 매체는 매체명이 국내라 국내 취급. (목록 조정 가능 · 운영자 260621)
 const FOREIGN_MEDIA = new Set(['BBC', 'BBC뉴스', '가디언', '더가디언', '알자지라', '블룸버그', '로이터', '로이터통신', 'AP', 'AP통신', 'AFP', 'CNN', '뉴욕타임스', 'NYT', '월스트리트저널', 'WSJ', '워싱턴포스트', '니혼게이자이', '요미우리', '아사히', 'NHK', '신화통신', '타스', '폴리티코', '악시오스']);
-// 기자명 포맷(운영자 260621): 단독=「000 기자」 · 해외=「000」(기자 생략) · 2명+=「000 기자 외 N명」(해외=「000 외 N명」) · 빈값=생략.
+// 기자명 포맷(운영자 260621): 단독=「000 기자」 · 해외=「000」(기자 생략) · 2명+=「000 외 N명」 · 빈값=생략.
 function fmtReporter(rp, media) {
   rp = (rp || '').trim();
   if (!rp || rp === '-') return '';
   const foreign = FOREIGN_MEDIA.has((media || '').trim());
-  const sfx = foreign ? '' : ' 기자';                                  // 국내=「기자」 호칭 / 해외=생략(관례)
   const ex = rp.match(/^(.+?)\s*외\s*(\d+)\s*명/);                      // 이미 '외 N명' 형식이면 보존
-  if (ex) return esc(ex[1].replace(/\s*기자\s*$/, '').trim()) + sfx + ' 외 ' + ex[2] + '명';
+  if (ex) return esc(ex[1].replace(/\s*기자\s*$/, '').trim()) + ' 외 ' + ex[2] + '명';
   rp = rp.replace(/\s*기자\s*$/, '').trim();                            // 끝 '기자' 제거(중복 방지)
   const names = rp.split(/\s*[,·、\/]\s*/).map(s => s.trim()).filter(Boolean);
-  if (names.length >= 2) return esc(names[0]) + sfx + ' 외 ' + (names.length - 1) + '명';   // 2명+ = 000 기자 외 N명(운영자 260621)
-  return esc(names[0] || rp) + sfx;                                    // 단독: 국내=000 기자 / 해외=000
+  if (names.length >= 2) return esc(names[0]) + ' 외 ' + (names.length - 1) + '명';   // 2명+ = 000 외 N명
+  return esc(names[0] || rp) + (foreign ? '' : ' 기자');               // 단독: 국내=000 기자 / 해외=000
 }
 function overviewMeta(a) {
   const cat = catBucket(a.category);
@@ -4650,7 +4649,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-dotsep { width:3px; height:3px; border-radius:50%; background:#565656; flex:none; }
   .nm-date { color:#9a9a9a; font-weight:500; white-space:nowrap; }
   .nm-reporter { color:#c4c4c4; font-weight:600; white-space:nowrap; }
-  .nm-title { font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:12px; letter-spacing:-.6px; color:#fff; }   /* 우측 아주 약간 여백 — 글자가 가장자리에 안 붙게(운영자 260621) */
+  .nm-title { font-size:23px; font-weight:900; line-height:1.34; margin:0; letter-spacing:-.6px; color:#fff; }
   .nm-allbtn { position:absolute; top:0; right:0; z-index:2; display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 11px; border:none; border-radius:999px; background:#1ED760; color:#000; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; transition:transform .12s, background .15s; }
   .nm-allbtn:hover { background:#1FE065; transform:scale(1.03); }
   .nm-allbtn:active { transform:scale(.95); }
@@ -4664,7 +4663,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-tip .nm-h { color:#1ED760; }
   .nm-dot { width:7px; height:7px; border-radius:50%; background:#1ED760; display:inline-block; flex:none; }
   .nm-tip .nm-dot { box-shadow:0 0 8px rgba(30,215,96,.7); }
-  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; max-width:100%; word-break:break-word; overflow-wrap:anywhere !important; }   /* 긴 URL·연속문자 박스 안에서 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) — overflow:hidden 제거(잘림 유발 · 줄바꿈으로 해결 · 260621) */
+  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; max-width:100%; overflow:hidden; word-break:break-word; overflow-wrap:anywhere !important; }   /* 내부 스크롤 제거 = 펼침(화면 스크롤 우선) + 긴 URL·연속문자 박스 안에서 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620 · 260621 max-width·overflow-hidden 강제) — pre-wrap은 안 씀(HTML 블록자식이라 빈줄 유발) */
   .nm-tip .nm-body { background:rgba(0,0,0,.28); border:1px solid rgba(30,215,96,.22); }
   .nm-body > :first-child { margin-top:0; }
   .nm-body > :last-child { margin-bottom:0; }
@@ -4674,8 +4673,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
-  /* 자유요약 등 단일 코드블록 = 다른 박스(.nm-body)와 동일 양식으로 통일(운영자 260621: 쟤만 다른 박스 쓰지 말 것). 모노스페이스·가로잘림 폐기 → 본문 폰트·pre-line(문단 줄바꿈 보존+자동 줄바꿈)·일반 색. */
-  .nm-pre { white-space:pre-line !important; word-break:break-word; overflow-wrap:anywhere !important; max-width:100%; background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:inherit; font-size:15px; line-height:1.72; color:#e6e6e6; }
+  .nm-pre { white-space:pre-wrap !important; word-break:break-word; overflow-wrap:anywhere !important; max-width:100%; overflow:hidden; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; }   /* 내부 스크롤 제거 = 펼침 → 화면 스크롤 우선 + 긴 문자열 박스 안 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) */
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
@@ -4751,8 +4749,6 @@ async function buildSummaryHtml() {
   src.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
   src.querySelectorAll('button, .copy, .ovmeta').forEach(el => el.remove());   // 뷰어 복사·더보기 + 개요칩(.ovmeta=매체·기자·IN 적재시각 등 내부 운영메타) 제거 — 공유 요약엔 불필요·출처줄과 중복·IN 유출 방지
   src.querySelectorAll('pre.clip').forEach(p => p.classList.remove('clip'));   // 클립 해제(전문 표시)
-  src.querySelectorAll('.thumbsec').forEach(el => el.remove());                // 썸네일 후보 박스(검색·AI생성) 제거 — 다운로드 요약엔 잡음(운영자 260621)
-  src.querySelectorAll('pre').forEach(p => { p.textContent = p.textContent.replace(/ /g, ' '); });   // nbsp→일반공백 = 자유요약 줄바꿈 막던 비분리공백 제거(가로 잘림 방지 · 운영자 260621)
   src.querySelectorAll('img').forEach(el => el.remove());                      // 본문 이미지 제거(텍스트 요약)
   src.querySelectorAll('h1').forEach(el => el.remove());                       // 제목 h1은 헤더로 따로
   src.querySelectorAll('[style]').forEach(el => el.removeAttribute('style'));  // 뷰어 인라인 스타일 제거(서식 CSS만 적용)
@@ -4770,9 +4766,9 @@ async function buildSummaryHtml() {
       const parts = []; let j = i + 1;
       while (j < kids.length && !isH(kids[j])) { parts.push(kids[j]); j += 1; }
       if (snsRe.test(name)) { i = j; continue; }   // 인스타·스레드 섹션(헤딩+본문) 통째 제외 — 다운로드 HTML 불필요(운영자 260620)
-      if (!parts.length) { i = j; continue; }   // 본문 없는 그룹 헤더(예: 콘텐츠 초안) = 표기 안 함 — 잡음(운영자 260621)
-      else if (parts.length === 1 && parts[0].tagName === 'PRE')   // 자유요약 등 단일 코드블록 → 다른 박스와 동일 양식(.nm-pre=본문폰트·pre-line) + 공백 정규화(nbsp·전각공백→일반 = 모노폭 잘림/가로넘침 방지 · 운영자 260621)
-        boxes += card(name, '<pre class="nm-pre" data-body>' + esc(parts[0].textContent.replace(/[ 　\t]/g, ' ')) + '</pre>', tipRe.test(name));
+      if (!parts.length) boxes += '<div class="nm-grp">' + esc(name) + '</div>\n';   // 본문 없는 그룹 헤더(예: 콘텐츠 초안)
+      else if (parts.length === 1 && parts[0].tagName === 'PRE')
+        boxes += card(name, '<pre class="nm-pre draft-scroll" data-body>' + parts[0].innerHTML + '</pre>', tipRe.test(name));
       else
         boxes += card(name, '<div class="nm-body draft-scroll" data-body>' + parts.map(p => p.outerHTML).join('') + '</div>', tipRe.test(name));
       i = j;
@@ -4791,11 +4787,9 @@ async function buildSummaryHtml() {
   const cat = catBucket(CUR_A && CUR_A.category);
   let dt = CUR_A ? repDateTime(CUR_A) : '';
   if (!dt && CUR_A) dt = (inDateTime(CUR_A).txt || '');   // 보도일(a.date) 없으면 적재(스크랩) 일시로 폴백 — 일시 항상 표기(운영자 260621)
-  // 기자명 = frontmatter(reporter/byline) 우선, 없으면 본문 '출처: 매체 (기자)' 패턴 추출 → fmtReporter로 「000 기자 / 000 기자 외 N명」 통일(개요칩과 동일 · 운영자 260621)
-  const rpRaw = (CUR_A && (CUR_A.reporter || CUR_A.byline)) || (((CUR_A && CUR_A.body) || '').match(/출처[:：]\s*[^()\n]*\(([^)]+)\)/) || [, ''])[1].trim();
-  const rpFmt = CUR_A ? fmtReporter(rpRaw, CUR_A.media) : '';
-  const repMeta = '<span class="nm-reporter">' + (rpFmt || '확인 必') + '</span>';   // 미상이면 '확인 必'(일반 글자 — 강조 없음)
-  const repPar = rpFmt || '확인 必';
+  const reporter = CUR_A && (CUR_A.reporter || CUR_A.byline);   // 파이프라인엔 기자 필드 없음 → 보통 미상
+  const repMeta = '<span class="nm-reporter">' + (reporter ? esc(reporter) : '확인 必') + '</span>';   // 미상이면 '확인 必'(일반 글자 — 강조 없음)
+  const repPar = reporter ? esc(reporter) : '확인 必';
   const mbits = [];
   if (CUR_A && CUR_A.media) mbits.push('<span class="nm-media">' + esc(CUR_A.media) + '</span>');
   mbits.push(repMeta);   // 기자(미상=확인 必) — 항상 표기
