@@ -179,7 +179,7 @@
   /* (긴급 확인 버튼·프로필 긴급 점등 폐지 — 운영자 260620: 긴급 배지는 사건속성으로 계속 표시, 프로필 확인 루틴만 제거) */
   @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
   @keyframes popOut { from { opacity:1; transform:none;} to { opacity:0; transform:scale(.92) translateY(-4px);} }   /* popIn 역재생 = 아바타(top-right)로 촤르륵 접힘 */
-  .pmenu.closing { animation:popOut var(--dur) cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
+  .pmenu.closing { animation:popOut .18s cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
   @media (prefers-reduced-motion: reduce) { .pmenu { animation:none; } }   /* 열림도 즉시 — 닫힘(hidePmenu JS 가드)과 대칭 */
   /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
   @keyframes popInCx { from { opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to { opacity:1; transform:translateX(-50%);} }
@@ -420,7 +420,7 @@
   .sc-cross.lo { color:var(--mut); background:rgba(255,255,255,.05); border-color:var(--line2); }
   .sc-more { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px; letter-spacing:-.2px;
     color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); }   /* 픽 후 +N 더 보도 — 증분 표시 */
-  .sc-media { margin-left:auto; color:var(--fg); }   /* 매체 숨기고 상대시간만·흰색(운영자 260621) */
+  .sc-media { margin-left:auto; opacity:.85; }
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
   .sc-bot { display:flex; align-items:center; gap:10px; margin-top:1px; }
@@ -590,7 +590,7 @@
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
     padding:11px 4px 6px; background:none; border:none; color:var(--mut); font:inherit; font-size:10.5px; font-weight:700;
     letter-spacing:-.2px; cursor:pointer; text-decoration:none; }   /* color transition 제거 = 탭 누르자마자 색 즉시 전환(운영자 260621) */
-  .bnav-i svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform var(--dur); }
+  .bnav-i svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform .18s; }
   .bnav-i::before { content:''; position:absolute; top:0; left:50%; width:30px; height:3.5px; border-radius:0 0 4px 4px;
     background:linear-gradient(90deg,var(--accent-bright),var(--accent)); box-shadow:0 0 9px var(--accent), 0 0 18px rgba(15,253,2,.65);
     transform:translateX(-50%) scaleX(0); transition:transform .25s cubic-bezier(.22,.61,.36,1); }
@@ -4177,7 +4177,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top">${scBadge(c)}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top">${scBadge(c)}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
@@ -4692,6 +4692,8 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
+  /* 자유요약 등 단일 코드블록 = 다른 박스(.nm-body)와 동일 양식으로 통일(운영자 260621: 쟤만 다른 박스 쓰지 말 것). 모노스페이스·가로잘림 폐기 → 본문 폰트·pre-line(문단 줄바꿈 보존+자동 줄바꿈)·일반 색. */
+  .nm-pre { white-space:pre-line !important; word-break:break-word; overflow-wrap:anywhere !important; max-width:100%; background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:inherit; font-size:15px; line-height:1.72; color:#e6e6e6; }
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
@@ -4787,11 +4789,8 @@ async function buildSummaryHtml() {
       while (j < kids.length && !isH(kids[j])) { parts.push(kids[j]); j += 1; }
       if (snsRe.test(name)) { i = j; continue; }   // 인스타·스레드 섹션(헤딩+본문) 통째 제외 — 다운로드 HTML 불필요(운영자 260620)
       if (!parts.length) { i = j; continue; }   // 본문 없는 그룹 헤더(예: 콘텐츠 초안) = 표기 안 함 — 잡음(운영자 260621)
-      else if (parts.length === 1 && parts[0].tagName === 'PRE') {   // 자유요약 등 단일 코드블록 = 별도 박스 폐기, 다른 칸(.nm-body)과 100% 동일 CSS 사용(운영자 260621). 텍스트→<p>문단(빈 줄 기준)·단일 줄바꿈→<br>. 공백 정규화(nbsp·전각공백·탭→일반).
-        const _t = parts[0].textContent.replace(/[ 　\t]/g, ' ').replace(/ +\n/g, '\n').trim();
-        const _ps = _t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean).map(s => '<p>' + esc(s).replace(/\n/g, '<br>') + '</p>').join('') || ('<p>' + esc(_t) + '</p>');
-        boxes += card(name, '<div class="nm-body draft-scroll" data-body>' + _ps + '</div>', tipRe.test(name));
-      }
+      else if (parts.length === 1 && parts[0].tagName === 'PRE')   // 자유요약 등 단일 코드블록 → 다른 박스와 동일 양식(.nm-pre=본문폰트·pre-line) + 공백 정규화(nbsp·전각공백→일반 = 모노폭 잘림/가로넘침 방지 · 운영자 260621)
+        boxes += card(name, '<pre class="nm-pre" data-body>' + esc(parts[0].textContent.replace(/[ 　\t]/g, ' ')) + '</pre>', tipRe.test(name));
       else
         boxes += card(name, '<div class="nm-body draft-scroll" data-body>' + parts.map(p => p.outerHTML).join('') + '</div>', tipRe.test(name));
       i = j;
