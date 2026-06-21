@@ -117,13 +117,7 @@ def parse_md(path):
     iq = fm.get("image_query", "").strip()
     if iq in ("삼성전자 반도체 평택공장",):   # 프롬프트 예시값을 모델이 그대로 베끼면 무시(→ head 폴백)
         iq = ""
-    # AI 썸네일이 '무엇을 그릴지' = 분석(시사점까지)을 끝낸 시점에 정한 충돌/분노 장면(명사 아님·장면 묘사).
-    # 검색용 image_query와 분리 — 있으면 thumb scene 1순위(없으면 iq→lead 폴백). 미기입 템플릿(<…>)이면 무시.
-    ts = fm.get("thumb_scene", "").strip()
-    # 미기입 템플릿(<…>) 또는 프롬프트 예시문을 그대로 베낀 것 무시 → iq/lead 폴백(image_query 예시 가드와 대칭).
-    if ts.startswith("<") or ts == "화재로 그을린 건물 앞 가족 잃은 주민이 오열하는데 뒤편 관계자들은 서류만 들여다보는 순간":
-        ts = ""
-    return head, lead, iq, ts, fm.get("url", "").strip(), fm.get("alt_urls", "").split(), fm.get("image_sources", "").split()
+    return head, lead, iq, fm.get("url", "").strip(), fm.get("alt_urls", "").split(), fm.get("image_sources", "").split()
 
 def _md_url(path):
     """프런트매터 url만 가볍게 추출(main의 백필 판정용 · 파일 앞부분만 읽음)."""
@@ -504,7 +498,7 @@ def _load_gen(tdir):
 
 def process_one(md, stem):
     """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 4화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
-    head, lead, iq, thumb_scene, art_url, alt_urls, image_sources = parse_md(md)
+    head, lead, iq, art_url, alt_urls, image_sources = parse_md(md)
     if not head:
         print("· {} — 헤드라인 파싱 실패, skip".format(stem)); return False
     print("· {} — “{}”".format(stem, head[:40]), flush=True)
@@ -540,7 +534,7 @@ def process_one(md, stem):
     for sid, label, art_dir in STYLES:
         if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
             gen.append(existing[sid]); continue
-        png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead), "2K")   # 장면 = 분석이 정한 충돌장면(thumb_scene) 1순위 → 없으면 entity(iq) → 한줄요약. '주제 일러스트(밥 먹는 그림)'화 방지·사건의 분노 순간을 그림.
+        png = gemini_image(build_prompt(art_dir, iq or lead), "2K")   # 장면 = entity(iq) 우선·없으면 한줄요약(글자 환각↓·일관성↑)
         if not png:
             print("  ✗ {} 실패".format(label)); continue
         if R2_ON:                                # R2 = 공개 URL(레포 미저장)
