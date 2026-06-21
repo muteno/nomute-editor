@@ -1813,8 +1813,8 @@ function dateHead(total) {
 // 긴 박스(카드 프롬프트·요약 드래프트) 3줄 클립 + 더보기/접기
 function addClip(pre) {
   pre.classList.add('clip');
-  // 강제 줄바꿈 — CSS(!important 포함)·인라인 어떤 오버라이드든 이기게 JS 인라인 important로 박음(운영자 260621: 자유요약이 박스 우측 넘치던 것, CSS로 안 잡혀 직접 강제).
-  const _wrapForce = el => { if (!el) return; el.style.setProperty('white-space', 'pre-wrap', 'important'); el.style.setProperty('word-break', 'break-word', 'important'); el.style.setProperty('overflow-wrap', 'anywhere', 'important'); el.style.setProperty('max-width', '100%', 'important'); };
+  // 강제 줄바꿈(뷰어 모달용) — 컨테이너 shrink-to-fit 대비 뷰포트 기준 폭 못박기(운영자 260621). ⚠️ 운영자 실측 = 진짜 오버플로는 '전체 복사' HTML(.nm-body pre)이었음 → 그건 아래 .nm-body pre 규칙으로 별도 해결.
+  const _wrapForce = el => { if (!el) return; el.style.setProperty('white-space', 'pre-wrap', 'important'); el.style.setProperty('word-break', 'break-word', 'important'); el.style.setProperty('overflow-wrap', 'anywhere', 'important'); el.style.setProperty('max-width', 'calc(100vw - 44px)', 'important'); el.style.setProperty('box-sizing', 'border-box', 'important'); };
   _wrapForce(pre); _wrapForce(pre.querySelector('code'));
   const mb = document.createElement('button');
   mb.className = 'morebtn'; mb.textContent = '더 보기 ▾';
@@ -1944,7 +1944,7 @@ function thumbStatic(label, items, kind, href, usage) {
   // 검색 헤더 우측 = 글래스 .sbtn 아이콘(구글 이미지 검색) — 기존 초록 알약 텍스트 폐기(투박·운영자 260620)
   const hbtn = href ? '<a class="sbtn cref-srch" href="' + escUrl(href) + '" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a>' : '';
   const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span></span>' + hbtn + '</div>'   /* 토큰/비용($ X,T Y) 표기 제거 — 캐러셀(이미지)은 유지(운영자 260621: 토큰만 빼고 이미지 살림) */
+  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + hbtn + '</div>'
     + '<div class="cref-track">' + (list.map((it, i) => {
         const cap = it.label ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';
         return '<div class="cref-slot ' + kind + '" data-i="' + i + '" role="button" tabindex="0" aria-label="확대">'
@@ -4692,6 +4692,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
+  .nm-body pre { font-family:inherit; font-size:inherit; line-height:1.64; color:#e6e6e6; margin:0; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; max-width:100%; }   /* ★ 자유요약(pre) 가로 오버플로 수정 — pre 기본 white-space:pre라 줄바꿈 안 되던 것 pre-wrap로(운영자 260621 · Claude Code 제공) */
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
