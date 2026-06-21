@@ -38,7 +38,8 @@ def extract_root():
     html = open(VIEWER, encoding="utf-8").read()
     m = _ROOT.search(html)
     if not m:
-        raise SystemExit("❌ viewer :root 블록을 못 찾음")
+        # RuntimeError(SystemExit 아님) — check_refs의 except Exception이 graceful-skip 하도록(감사1·9).
+        raise RuntimeError("viewer :root 블록을 못 찾음")
     # viewer 원본 들여쓰기(2/4/2)를 그대로 보존 — 거울이 정본의 바이트를 그대로 비춤.
     return m.group(0).strip("\n")
 
@@ -47,7 +48,7 @@ def render():
     """현재 viewer :root를 박은 base.css 전체 텍스트를 반환(파일 안 씀)."""
     root = extract_root()
     block = START + "\n" + root + "\n" + END
-    base = open(BASECSS, encoding="utf-8").read()
+    base = open(BASECSS, encoding="utf-8").read() if os.path.exists(BASECSS) else ""   # 부재 시 빈 베이스→삽입경로 도달(감사9)
     if _BLOCK.search(base):
         return _BLOCK.sub(lambda _: block, base)
     # 최초 1회: 마지막 @import 줄 뒤(없으면 맨 앞)에 삽입.

@@ -34,11 +34,7 @@
 title: "기사 제목(원문 그대로, 따옴표 안)"
 url: "<원본 URL>"
 date: "YYYY-MM-DD"        # 보도일(불명이면 오늘)
-time: "HH:MM"             # 보도/업로드 시각(24h·KST). 시·분만(초 버림). date는 기존대로 필수.
-                         #  1) 1차 = 기사 메타 확정값: article:published_time / og:published_time(<meta>) / datePublished(JSON-LD) / 본문 발행시각 표기 → 이건 time_est: "" (확정).
-                         #  2) 메타에 없으면 = 추가 WebSearch로 이 기사의 발행/업로드 시각을 찾아라(같은 기사를 실은 다른 매체·아카이브·검색 스니펫의 시각). 정황으로 추정한 값이면 time_est: "true" 로 표시.
-                         #  ⚠️ 1·2 모두 도무지 불명이면 빈 문자열 time: "" (이때만 비움) — 확정도 추정도 없는 시각을 숫자로 지어내지 마라(사실 무결성). 추정은 반드시 time_est:"true"로 꼬리표 달 것.
-time_est: ""             # 위 time이 추정값이면 "true", 메타 확정값이거나 빈값이면 "" — 뷰어가 "true"면 시각 뒤 "(추정)" 표기.
+time: "HH:MM"             # 보도 시각(24h·KST). 기사 메타에서 추출: article:published_time / og:published_time(<meta>) / datePublished(JSON-LD) / 본문 발행시각 표기. 시·분만(초 버림). ⚠️ 불명·없으면 빈 문자열 time: "" — 절대 지어내지 마라(사실 무결성). date는 기존대로 필수.
 media: "매체명"
 reporter: "{기자명}"      # 기자명(바이라인·⚡ 출처에서, "홍길동 기자"→"홍길동"). ⚠️ 불명·없으면 빈 문자열 reporter: "" — 절대 지어내지 마라(사실 무결성). 입력의 '기자/이메일:' 줄 우선 활용.
 bias: "5/10 🟩 중립"      # [편향 게이지] 좌1~우10·색 / 좌우 무관 소재면 "좌우 무관(N/A)"
