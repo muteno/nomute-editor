@@ -256,8 +256,8 @@
     padding:4px 3px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:color .15s, text-shadow .15s; }
   .chip:hover { color:var(--fg); }
   .chip.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(15,253,2,.55); }
-  .chip-iss { margin-left:0; font-weight:700; }   /* 이슈 칩(긴급+이슈 통합·카테고리와 별개 인덱스·운영자 260621) */
-  .chip-iss.on { color:#ffd24a; font-weight:800; text-shadow:0 0 11px rgba(255,200,40,.6); }   /* 이슈 선택 시 = 노랑 */
+  .chip-brk, .chip-iss { margin-left:0; font-weight:700; }   /* 긴급·이슈 칩(카테고리와 별개 인덱스) */
+  .chip-brk.on, .chip-iss.on { color:#ffd24a; font-weight:800; text-shadow:0 0 11px rgba(255,200,40,.6); }   /* 긴급·이슈 선택 시 = 노랑(운영자 260617) */
   /* 날짜 헤더(검색 위) — 날짜 강조 · 세로 구분선 · Today 강조 */
   .dhead { display:flex; align-items:center; gap:14px; max-width:860px; margin:0 auto; padding:0 16px 11px; font-size:13px; }
   .dh-date { color:var(--fg); font-weight:700; letter-spacing:-.1px; }   /* 날짜 = 차분 흰색(첨부 톤 — 강조는 '오늘 N'만) */
@@ -406,28 +406,22 @@
   .sc-item { background:var(--glass2); border:1px solid var(--line2); border-radius:14px; padding:11px 13px; position:relative;
     display:flex; flex-direction:column; gap:7px; transition:border-color .15s, background .15s;
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
+  .sc-item.has-tag { padding-top:36px; }   /* 긴급/이슈 배지(.tagrow 절대배치·좌상단)가 상단 차지 → 메타라인 확실히 아래로(겹침 0·모바일·PC 공통·운영자 260621) */
   .sc-item.rated { border-color:rgba(15,253,2,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(15,253,2,.06); }
   .sc-item.sc-clickable { cursor:pointer; }   /* 카드 본문 탭 = 대표 URL(버튼·링크 제외) */
   .sc-item.sc-flash { animation:scFlash 1.5s ease; }   /* 토스트→해당 후보로 이동 시 점멸(운영자 260620) */
   @keyframes scFlash { 0%,100% { box-shadow:none; } 25% { box-shadow:0 0 0 2px var(--accent), 0 0 16px rgba(var(--accent-rgb),.55); } }
   @media (prefers-reduced-motion:reduce) { .sc-item.sc-flash { animation:none; outline:2px solid var(--accent); } }
-  .sc-top { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--mut); justify-content:space-between; }
-  .sc-metal { display:flex; align-items:center; gap:5px; min-width:0; flex-wrap:wrap; }   /* 좌측 메타군(카테고리·매체N·배지) — 시간과 분리해 wrap돼도 시간은 항상 우측·점 표류 차단(분신술5·260621) */
-  /* 메타/버튼 타이포 = 전부 Pretendard(body 상속) · 자간 0 · Orbitron(--font-status) 미사용. 강조색 = 카테고리(고유색 유지)·매체수 N=라임 숫자만('매체' 글자 제거)·이슈=노랑·긴급=빨강 / 구분점 = 뮤트·시간 = 흰 · 버튼=원톤 600(운영자 260621). */
-  .sc-got, .sc-got span, .sc-fail, .sc-tg, .sc-pick span, .sc-cross { letter-spacing:0; }
-  #qbadge, .qb { font-family:var(--font-status); letter-spacing:.03em; }   /* 큐 배지 = Orbitron 유지(수집함 카드 밖) */
-  .sc-top .cat { font-weight:600; }   /* 카테고리 = 고유색 유지(catChip CAT_COLOR·운영자 "기존 거 건들지마" 260621) */
-  .sc-sep { color:var(--mut); }   /* 메타 구분점 · = 뮤트 */
-  .sc-cross { display:inline-flex; align-items:center; gap:4px; font-weight:600; }   /* 평면 텍스트(칩 폐지·운영자 260621) */
-  .sc-cross .cn { color:var(--accent); font-weight:800; }   /* 매체 수 = 라임 숫자만('매체' 글자 제거·운영자 260621) */
-  .sc-cross.lo .cn { color:var(--mut); font-weight:600; }   /* 매체 0~1 = 무강조 */
-  .sc-badge { font-weight:700; }
-  .sc-badge.iss { color:var(--warn); }      /* 이슈 = 노랑 */
-  .sc-badge.brk { color:var(--danger); }    /* 긴급 = 빨강 */
+  .sc-top { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--mut); }
+  /* 상태 타이포 = Orbitron(영문 상태어 PICK·Picking…·PICKED·PASS·Failed + 배지 숫자). 한글은 Orbitron에 없어 자동 Pretendard 폴백(혼용 안전)·운영자 260621. */
+  .sc-got, .sc-got span, .sc-fail, .sc-tg, .sc-pick span, .sc-cross, #qbadge, .qb { font-family:var(--font-status); letter-spacing:.03em; }   /* .sc-tg = PASS·PICK 텍스트 둘 다(아이콘 .down/.ack는 SVG라 무관)·260621 */
+  .sc-cross { display:inline-flex; align-items:center; gap:3px; font-weight:800; color:var(--accent);
+    background:var(--accent-dim); border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:1px 7px; font-size:10.5px; }
+  .sc-cross.lo { color:var(--mut); background:rgba(255,255,255,.05); border-color:var(--line2); }
   .sc-more { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px; letter-spacing:-.2px;
     color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); }   /* 픽 후 +N 더 보도 — 증분 표시 */
-  .sc-media { flex:none; white-space:nowrap; color:var(--fg); font-weight:800; }   /* 상대시간 = 우측(sc-top space-between)·흰·800·외톨이행 방지(운영자 260621) */
+  .sc-media { margin-left:auto; color:var(--fg); }   /* 매체 숨기고 상대시간만·흰색(운영자 260621) */
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
   .sc-bot { display:flex; align-items:center; gap:10px; margin-top:1px; }
@@ -460,7 +454,12 @@
   .sc-item.removing { opacity:0; transform:scale(.96) translateX(16px); pointer-events:none; overflow:hidden;
     transition:height .32s ease, opacity .3s ease, transform .3s ease, margin .32s ease, padding .32s ease; }
   @media (prefers-reduced-motion:reduce) { .sc-item.removing { transition:opacity .12s; } }
-  /* 배지(=사건 속성) = 메타라인 인라인 텍스트(이슈=노랑·긴급=빨강 · 글래스 칩 폐지 → 카테고리 · 매체 N · 배지 한 줄 · 운영자 260621). 🚨긴급(breaking AND <4h) / ⚡이슈(cross≥8 또는 aged-breaking 4~24h · 1일↑ 없음). 점등(테두리·글로우)은 별개 조건 유지. */
+  /* 배지(=사건 속성) = 카드 상단 절대배치 글래스 칩(메타라인서 분리 → 메타 항상 1줄 · 모바일=좌/PC=중앙 · 운영자 260621). 🚨긴급(빨강=breaking AND <4h) / ⚡이슈(노랑=cross≥8 또는 aged-breaking 4~24h · 1일↑ 없음). 점등(테두리·글로우)은 별개 조건 유지. */
+  .tagrow { position:absolute; top:9px; left:13px; z-index:2; }   /* 긴급/이슈 배지 = 좌측정렬(모바일·PC 공통 · 운영자 260621: PC도 좌측). 구성도 문서화도 좌측. */
+  .t-glass { display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:9.5px; line-height:1; letter-spacing:.04em; padding:3px 9px; border-radius:999px;
+    backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); }
+  .t-glass.iss { color:var(--warn); background:rgba(var(--warn-rgb),.12); border:1px solid rgba(var(--warn-rgb),.5); box-shadow:0 0 10px rgba(var(--warn-rgb),.22); }
+  .t-glass.brk { color:var(--danger); background:rgba(var(--danger-rgb),.12); border:1px solid rgba(var(--danger-rgb),.55); box-shadow:0 0 10px rgba(var(--danger-rgb),.28); }
   /* 테두리 우선순위(디자인안02·운영자 260621) = 긴급(빨강) > 이슈(노랑) > PICK(초록) > 실패(앰버) > 평점 > 기본. JS가 배지에 b-brk/b-iss 단일부여 · !important로 .picked·scrap 베이스 테두리 위(라벨 있으면 테두리=라벨색·PICK 초록 안 뺏김). ⚠️ 260619 '긴급 빨강 테두리 없음' → 디자인안02로 복원. */
   .sc-item.b-brk { border-color:rgba(var(--danger-rgb),.6) !important; }
   .sc-item.b-iss { border-color:rgba(var(--warn-rgb),.55) !important; }
@@ -478,7 +477,7 @@
   .nm-toast b { color:#ffd9cf; }
   @media (prefers-reduced-motion:reduce) { .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
-  .sc-fail { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+  .sc-fail { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer;
     -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 · 롱프레스 콜아웃/텍스트선택 차단(qFeedBtn 동일 패턴 + touch-action — iOS 네이티브 콜아웃이 커스텀 메뉴 가리는 것 방지) */
   .sc-fail:hover { background:repeating-linear-gradient(45deg,rgba(255,206,64,.40) 0 4px,rgba(255,206,64,.16) 4px 8px); }
@@ -508,7 +507,7 @@
   .sc-rsn-x:active { transform:scale(.95); }
   /* ── 트리아지(신규·누적 공통): [👎][PASS][PICK] 버튼 + 사유 칩(객관식) ── */
   .sc-bot.triage { gap:6px; }
-  .sc-tg { flex:1; min-width:0; display:grid; place-items:center; height:24px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
+  .sc-tg { flex:1; display:grid; place-items:center; height:30px; padding:0 8px; font-size:12px; font-weight:800; cursor:pointer;
     border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
   .sc-tg svg { display:block; }
@@ -522,7 +521,7 @@
   .sc-tg.ack.on { color:var(--accent); border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); }
   .sc-item.acked { opacity:.58; }   /* 확인함 = 흐릿(신규=선명과 구분) */
   /* PICK 완료 = 잔류 비활성 칩(못누르는 줄무늬 — 초록 빗금='득템+잠김', 노랑 빗금=실패와 구분) */
-  .sc-got { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+  .sc-got { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:var(--accent); border:1px solid rgba(15,253,2,.4); pointer-events:none; user-select:none;
     background:repeating-linear-gradient(45deg, rgba(15,253,2,.20) 0 5px, rgba(15,253,2,.05) 5px 10px); }
   .sc-got.picking { position:relative; overflow:hidden; background:rgba(15,253,2,.10); }   /* 분석 진행(피드 진입 전) = 움직이는 shine */
@@ -566,19 +565,18 @@
   .ct-new { color:var(--accent); text-shadow:0 0 11px rgba(15,253,2,.45); }  /* 신규 = 강조색(네온그린) */
   .scrap-cols .scrap-list { gap:8px; }
   .scrap-cols .sc-item { padding:9px 11px; gap:6px; border-radius:13px; }
+  .scrap-cols .sc-item.has-tag { padding-top:36px; }   /* 컴팩트 단축 padding이 has-tag(0,2,0)를 덮어 배지↔메타 겹치던 것 차단 — 0,3,0 승격 + 36px로 확실 분리(분신술·운영자 260621) */
   .scrap-col.green .sc-item { background:linear-gradient(165deg, rgba(38,27,17,.58), rgba(11,9,7,.74)); border-color:rgba(255,140,45,.14); }
   .scrap-col.black .sc-item { background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border-color:rgba(15,253,2,.13); }
   .scrap-col.green .sc-item.rated { border-color:rgba(255,140,45,.5); }
   .scrap-col.black .sc-item.rated { border-color:rgba(15,253,2,.45); }
   .scrap-col.green .sc-item.picked, .scrap-col.black .sc-item.picked { background:rgba(15,253,2,.06); border-color:var(--accent); }   /* 픽=양쪽 동일(초록 테두리) */
-  .scrap-cols .sc-top { font-size:10px; gap:5px; }   /* wrap은 .sc-metal이 처리(시간 분리) */
-  .scrap-cols .sc-cross { font-size:9.5px; }
+  .scrap-cols .sc-top { font-size:10px; gap:5px; flex-wrap:wrap; }
+  .scrap-cols .sc-cross { font-size:9.5px; padding:1px 6px; }
   .scrap-cols .sc-media { font-size:9.5px; }
   .scrap-cols .sc-title { font-size:12.5px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .scrap-cols .sc-title a { display:block; }
-  .scrap-cols .sc-bot { gap:4px; flex-wrap:nowrap; }   /* 2열 모바일도 PASS·PICK·✓ 한 줄(nowrap·min-width:0로 축소·운영자 260621) */
-  .scrap-cols .sc-tg { padding:0 5px; font-size:11px; }   /* 좁은 2열 = 패딩·폰트 축소해 한 줄 수용 */
-  .scrap-cols .sc-tg.ack { flex:0 0 32px; }
+  .scrap-cols .sc-bot { gap:5px; flex-wrap:wrap; }
   .scrap-cols .sc-down { width:26px; height:26px; border-radius:9px; }
   .scrap-cols .sc-star { width:20px; height:20px; font-size:14px; }
   .scrap-cols .sc-pick { font-size:11px; padding:4px 10px; }
@@ -1490,13 +1488,14 @@ const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참�
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 // R 필터 칩 상태 — 카테고리(OR)
-const FILTERS = { cats: new Set(), issue: false };   // issue = 긴급+이슈 통합 필터(breaking·issue 합침·운영자 260621)
+const FILTERS = { cats: new Set(), breaking: false, issue: false };
 const CHIP_CATS = ['사회','경제','문화','국제','테크'];
 function renderChips() {
   const c = $('#chips'); if (!c) return;
-  const none = !FILTERS.cats.size && !FILTERS.issue;
+  const none = !FILTERS.cats.size;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
-  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈 = 긴급+이슈 통합 토글(켜면 breaking·issue 둘 다 표시·운영자 260621)
+  h += `<button class="chip chip-brk${FILTERS.breaking ? ' on' : ''}" data-f="breaking">긴급</button>`;   // 긴급(breaking) 토글
+  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈(cross≥8) 토글
   h += CHIP_CATS.map(cat => `<button class="chip${FILTERS.cats.has(cat) ? ' on' : ''}" data-cat="${cat}">${cat}</button>`).join('');
   c.innerHTML = h;
 }
@@ -1557,11 +1556,12 @@ function render() {
     (!cardonly || hasCardImage(a)) &&
     (!q || (a.title+a.media).toLowerCase().includes(q)) &&
     (!FILTERS.cats.size || FILTERS.cats.has(articleCat(a))) &&
-    (!FILTERS.issue || a.breaking || a.issue || /속보/.test(a.title || '')));   // 이슈 필터 = 긴급(breaking·속보)+이슈(cross≥8) 통합
+    (!FILTERS.breaking || a.breaking || /속보/.test(a.title || '')) &&
+    (!FILTERS.issue || a.issue));
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; _feedSig = ''; return; }
   // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
-  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
+  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.breaking ? 'b' : '') + (FILTERS.issue ? 'i' : '');
   const _anim = sig !== _feedSig; _feedSig = sig;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더는 즉시(깜빡임 0)
   list.innerHTML = '';
   rows.forEach((a, i) => {
@@ -3521,7 +3521,8 @@ $('#cardonly').addEventListener('change', render);
 // R 필터 칩 토글
 $('#chips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.f === 'all') { FILTERS.cats.clear(); FILTERS.issue = false; }
+  if (b.dataset.f === 'all') { FILTERS.cats.clear(); }
+  else if (b.dataset.f === 'breaking') { FILTERS.breaking = !FILTERS.breaking; }
   else if (b.dataset.f === 'issue') { FILTERS.issue = !FILTERS.issue; }
   else if (b.dataset.cat) { const k = b.dataset.cat; FILTERS.cats.has(k) ? FILTERS.cats.delete(k) : FILTERS.cats.add(k); }
   renderChips(); render();
@@ -3563,13 +3564,11 @@ const qFeedBtn = $('#bnav .bnav-i[data-tab="feed"]');
 let lpTimer = null, lpFired = false;
 let QITEMS = [], QPAGE = 0; const QPER = 5;   // 대기열 = 페이지당 5개 페이지네이션
 function lpStart(e) { if (e && e.button) return;   // 1차 버튼(좌클릭/터치)만 롱프레스 — 우클릭은 contextmenu가 처리(중복 방지)
-  lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 600); }   // 600ms — 일반 탭(살짝 눌러도)은 이동, 의도적 길게눌림만 대기열(480ms는 일반 탭에도 오발·운영자 260621)
+  lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 480); }
 function lpCancel() { clearTimeout(lpTimer); }
 if (qFeedBtn) {
   qFeedBtn.addEventListener('pointerdown', lpStart);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => qFeedBtn.addEventListener(ev, lpCancel));
-  // ⚠️ 손가락 뗌(release)을 버튼에서 못 잡는 기기·합성이벤트 순서 어긋남 대비 — window 레벨에서도 취소(빠른 탭인데 pointerup이 버튼에 안 잡혀 600ms 뒤 대기열 여는 오발 차단·운영자 260621)
-  ['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, lpCancel));
   qFeedBtn.addEventListener('contextmenu', e => { e.preventDefault(); openQueue(); });   // PC 우클릭 = 대기열(네이티브 메뉴 막고 즉시 열기)
   qFeedBtn.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(lpTimer); });   // 스와이프 제스처 중 롱프레스 오발 취소(Failed칩 패턴 계승·260620)
   qFeedBtn.addEventListener('blur', () => { lpFired = false; });   // 대기열 열려 포커스 이동 후 lpFired 고착 → 다음 탭전환 1회 삼킴 방지(Failed칩 blur 리셋 계승)
@@ -4181,7 +4180,7 @@ const scBadgeType = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
   if (isBreaking(c) && ageH < FAST_MAX_H) return 'brk';
   if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';
   return ''; };
-const BADGE_HTML = { brk: '<span class="sc-badge brk">긴급</span>', iss: '<span class="sc-badge iss">이슈</span>' };   // 인라인 메타 텍스트(긴급=빨강·이슈=노랑 · 글래스 칩 폐지·운영자 260621)
+const BADGE_HTML = { brk: '<span class="t-glass brk">🚨 긴급</span>', iss: '<span class="t-glass iss">⚡ 이슈</span>' };
 // scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16(=이슈배지 8×2). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
 const scLit = c => ((Date.now() - scTs(c)) / 3600000) < 12 && (c.cross || 0) >= 16;
 const SC_COLS_HTML =
@@ -4191,10 +4190,10 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const el = document.createElement('div');
   const pstate = pickState(c);   // 픽 상태(로컬 r.picked + 서버 api/pending·picks-failed·피드) 통합 = cross-device(운영자 260620)
   const bt = scBadgeType(c);   // ''|'brk'|'iss' — 배지·테두리·글로우 공용
-  const badge = BADGE_HTML[bt] || '';   // 긴급/이슈 = 메타라인 인라인(카테고리 · 매체 N · 배지)
+  const badge = BADGE_HTML[bt] || '';   // 긴급/이슈 칩 = .tagrow 절대배치 상단(메타라인서 분리 → 메타 항상 1줄)
   const bCls = bt === 'brk' ? ' b-brk' : bt === 'iss' ? ' b-iss' : '';   // 테두리 우선순위(긴급>이슈, !important로 PICK/베이스 위)
   const litCls = bt === 'brk' ? ' lit-brk' : scLit(c) ? ' lit-iss' : '';   // 점등(독립): 긴급<4h 빨강 / scLit 노랑(brk 우선)
-  el.className = 'sc-item' + bCls + litCls + (st.score ? ' rated' : '') + (pstate ? ' picked' : '') + (pstate === 'failed' ? ' pickfail' : '') + (st.acked ? ' acked' : '');
+  el.className = 'sc-item' + (badge ? ' has-tag' : '') + bCls + litCls + (st.score ? ' rated' : '') + (pstate ? ' picked' : '') + (pstate === 'failed' ? ' pickfail' : '') + (st.acked ? ' acked' : '');
   el.dataset.cid = candId(c);   // Picking…→PICKED 제자리 갱신 매칭용
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
@@ -4203,7 +4202,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}"><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `${badge ? `<span class="tagrow">${badge}</span>` : ''}<div class="sc-top">${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${tm ? esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
@@ -4311,12 +4310,12 @@ function collapseCard(el) {
 // ── 트리아지(신규·누적) = [👎][PASS][PICK] + 무조건 사유(객관식) 선택 ──
 // 사유 = 나중 알고리즘이 '왜 제꼈나'를 정량화할 지표. 의미 기준 정본 = docs/curation-rubric.md.
 const TRIAGE = {
-  pass: { q: '이유는?', reasons: [
+  pass: { q: '패스 — 왜? (점수 0~2는 기록만 · 나중 알고리즘 반영)', reasons: [
     { k: '스팸', d: '(0점) 기사로서 가치가 가장 없음 · 애초에 수집 필요 없는 기사' },
     { k: '홍보성', d: '(1점) 지방·지자체·기업·주가 띄우기·산하 행정단체 홍보성 보도자료' },
     { k: '가치없음', d: '(2점) 화제성은 있지만 콘텐츠화 시 다수 유의미한 반응 이끌기 어려움' },
     { k: '직접입력', input: true } ] },
-  pick: { q: '이유는?', reasons: [
+  pick: { q: 'PICK — 왜?', reasons: [
     { k: '속보/사건', d: '빠르게 전달하면 모두가 감정적 격동을 느낄 것이라 판단' },
     { k: '토픽/논란', d: '범국민적 토픽·주제라고 판단' },
     { k: '대세픽', d: '국민적 인기 — 지금 다수가 주목하는 대세 흐름(트렌드·화제성)' },
