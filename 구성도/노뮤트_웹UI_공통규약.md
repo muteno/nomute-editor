@@ -31,8 +31,8 @@
   --danger:#ff5b4a; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7;
   /* 재확인(arm) */
   --arm:#ffd93d; --arm-rgb:255,217,61; --on-arm:#1a1205;
-  /* radius — 3단만 (7·9·10·11 난립 금지) */
-  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  /* radius — 4단 (그 외 7·10·20·22 난립 금지). --r:24=배너·큰 패널(viewer 정본 :root에 생존). */
+  --r-s:9px; --r-m:11px; --r-l:16px; --r:24px; --r-pill:999px;
   /* 간격 4배수 */
   --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
   /* 모션 */
