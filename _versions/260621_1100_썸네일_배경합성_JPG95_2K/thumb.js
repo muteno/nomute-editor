@@ -109,13 +109,11 @@ export async function onRequestPost({ request, env }) {
         { path: `${dir}/box.png`, label: '흰칸' },
       ];
     } else if (app === '2' && params.mode === 'overlay') {
-      const ext = wantImg ? 'jpg' : 'png';   // 배경합성=JPG(2K)·투명오버레이=PNG(FHD) — 워크플로 emit()와 확장자 일치(불일치 시 폴링 실패)
-      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.${ext}`, label: 'OPA' + o }));   // variant 태그 = OPA{값}(통일)
+      outs = params.opas.map(o => ({ path: `${dir}/opa${o}.png`, label: 'OPA' + o }));   // variant 태그 = OPA{값}(통일)
     } else if (app === '1') {
-      // 경로 = 워크플로 emit() dst 규칙(1개=out·여러개=opa{o}, 확장자=배경有 jpg / 無 png). 라벨=OPA{값} 통일.
-      const ext = wantImg ? 'jpg' : 'png';
+      // 경로는 워크플로 dst 규칙 유지(1개=out.png·여러개=opa{o}.png). 라벨=OPA{값} 통일 — 단일·직접입력도 OPA 태그(옛 'out' 빈라벨 폴백 제거 = 캡션/파일명에 OPA 표시).
       const opas = (params.opas && params.opas.length) ? params.opas : [params.opacity ?? 58];
-      outs = opas.map(o => ({ path: `${dir}/${opas.length === 1 ? 'out' : 'opa' + o}.${ext}`, label: 'OPA' + o }));
+      outs = opas.map(o => ({ path: `${dir}/${opas.length === 1 ? 'out' : 'opa' + o}.png`, label: 'OPA' + o }));
     } else {
       // /3 저작권 = 이름(variant 태그) · /4 경고문 = variant 없음(잡 라벨 '경고문 (포맷)'로 구분)
       outs = [{ path: `${dir}/out.png`, label: app === '3' ? (params.name || '') : '' }];

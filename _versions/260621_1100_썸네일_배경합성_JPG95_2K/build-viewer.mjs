@@ -246,14 +246,14 @@ console.log(`viewer/triage-state.json 생성 — ${triage.length}건`);
 // 썸네일 생성기 '이전 제작'을 기기 간 공유(localStorage=내 기기 / 이 파일=전 기기 제작분). 이미지는 이미 repo에 있어 URL만 모음(운영자 260621).
 const THH_OUT = 'viewer/thumb-hist.json';
 const thIdTs = (id) => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); if (!m) return 0; const t = Date.parse(`20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00`); return Number.isFinite(t) ? t : 0; };
-const thLabel = (f) => { const b = f.replace(/\.(png|jpe?g)$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // api/thumb.js 라벨 규칙과 맞춤
+const thLabel = (f) => { const b = f.replace(/\.png$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // api/thumb.js 라벨 규칙과 맞춤
 const thHist = [];
 try {
   const troot = 'viewer/thumb_out';
   const cut = Date.now() - 48 * 3600e3;   // 48h 보관(뷰어가 12h로 필터 · 여유분)
   for (const id of readdirSync(troot)) {
     const ts = thIdTs(id); if (!ts || ts < cut) continue;
-    let files; try { files = readdirSync(join(troot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)); } catch { continue; }
+    let files; try { files = readdirSync(join(troot, id)).filter(n => /\.png$/i.test(n)); } catch { continue; }
     for (const f of files.sort()) thHist.push({ url: `thumb_out/${id}/${f}`, dlname: `${id}_${f}`, cap: thLabel(f), varStr: '', ts });
   }
 } catch { /* thumb_out 없음 */ }
