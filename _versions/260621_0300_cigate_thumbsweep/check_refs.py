@@ -97,7 +97,7 @@ def check_versions():
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
     'viewer/index.html': {'accent_raw': 105, 'blur': 88, 'hex': 168},
-    'viewer/thumb.html': {'accent_raw': 0, 'blur': 32, 'hex': 25},   # accent rgba 토큰화 완료(--accent-rgb·260621). blur/hex는 thumb 독자팔레트라 잔존(후속).
+    'viewer/thumb.html': {'accent_raw': 28, 'blur': 32, 'hex': 25},   # #606 캐러셀 복구분 수용(미토큰 raw) — 후속 thumb var() sweep서 토큰화·baseline 하향
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
 
