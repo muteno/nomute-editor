@@ -28,14 +28,8 @@ if [ ${#files[@]} -eq 0 ]; then
 fi
 
 for f in "${files[@]}"; do
-  base="$(basename "$f" .json)"          # YYYYMMDD-HHMMSS-xxxxx (ts=submit.js toISOString·UTC)
-  # 스크랩(IN) 시각 = 운영자가 '요청을 전송한 시점' = 파일명 ts(UTC) → KST 변환해 큐 파일명 YYMMDD-HHMM 으로.
-  # ⚠️ 처리 시점 runner date(UTC)를 쓰면 9h 틀어져 feedAgeH(KST 가정) 정렬·대기열 '몇분 전'이 어긋남(운영자 260621 "스크랩=내가 요청한 시점, 안 박히니 못 찾음").
-  bts="${base:0:15}"; stamp=""           # YYYYMMDD-HHMMSS (UTC)
-  if [[ "$bts" =~ ^([0-9]{4})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$ ]]; then
-    stamp="$(TZ=Asia/Seoul date -d "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}Z" +%y%m%d-%H%M 2>/dev/null)" || stamp=""
-  fi
-  [ -z "$stamp" ] && stamp="$(TZ=Asia/Seoul date +%y%m%d-%H%M)"   # 폴백: 파싱 실패 시 현재 KST
+  base="$(basename "$f" .json)"          # YYYYMMDD-HHMMSS-xxxxx
+  stamp="$(date +%y%m%d-%H%M)"
   echo "::group::요약 요청: $base"
 
   # JSON 파싱: 텍스트 추출 + 이미지(data URL) → 파일 디코드(Claude Read 가 볼 수 있게)
@@ -69,8 +63,7 @@ ${GBLOCK}
  1) 본문에 URL이 있으면 그 기사를, 토픽/캡처만 있으면 WebSearch 로 '제일 메이저' 기사 1건(여럿이면 합쳐서 핵심)을 찾는다.
  2) 첨부 캡처 파일이 있으면 Read 로 열어 단서로 활용한다.
  3) 찾은 기사로 위 지침·출력 포맷 그대로 큐레이션 다이제스트를 생성한다.
- 4) ⭐ 찾은 '제일 메이저' 기사의 **원본 URL(WebFetch/WebSearch로 실제 접근·확인한 것만)을 frontmatter `url:` 에 넣어라**(뷰어 상단 '원문' 링크로 노출된다). ⚠️ 스니펫에서 본 듯한 URL을 추측·조립하지 마라(사실 무결성) — 실제 확인한 기사 URL이 하나도 없을 때만 url: "". 그리고 **그 기사에서 기자(reporter)·게시일시(date·time)·매체(media)를 추출해 frontmatter + 본문 '출처:' 줄 양쪽에 정확히 반영**하라(토픽/캡처 요청이라도 네가 찾아 확인한 그 기사가 곧 원문이다). ⚠️ §입력 처리 0의 'URL 없으면 url:""' 규칙은 **운영자 전문 붙여넣기**(전문이 곧 원문) 경우에만 적용 — 요약 요청 모드에선 네가 찾아 확인한 기사 URL을 넣는다.
- 5) 내용이 모호해도 절대 실패(ANALYSIS_FAILED)하지 말고 best-effort 로 큐레이션한다 — 이 건은 운영자가 직접 고른 것이다.
+ 4) 내용이 모호해도 절대 실패(ANALYSIS_FAILED)하지 말고 best-effort 로 큐레이션한다 — 이 건은 운영자가 직접 고른 것이다.
  ⛔ Write/Edit/Bash 금지(스크립트가 저장한다). frontmatter '---' 로 시작하는 다이제스트만 출력.]
 
 사용자 요청(자연어):

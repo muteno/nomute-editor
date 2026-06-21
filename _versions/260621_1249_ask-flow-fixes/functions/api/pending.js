@@ -91,10 +91,10 @@ export async function onRequestGet({ env }) {
     });
   }));
 
-  // ── 3) queue/ 최근 = 완료(SUCC). 내용 fetch 없이 파일명만(클라가 DATA.file로 매칭·바로가기). ✨요약요청(-ask-)도 완료되면 표면화(운영자 260621 — "여긴 있는데 저기에 없음"). ──
+  // ── 3) queue/ 최근 = 완료(SUCC). 내용 fetch 없이 파일명만(클라가 DATA.file로 매칭·바로가기). -ask-(요약요청)는 제외. ──
   const seen = new Set(items.map(i => i.id));
   (await listDir('queue'))
-    .filter(f => f && f.type === 'file' && /\.md$/i.test(f.name))
+    .filter(f => f && f.type === 'file' && /\.md$/i.test(f.name) && !/-ask-/.test(f.name))
     .map(f => ({ id: f.name.replace(/\.md$/i, ''), t: fnameTime(f.name, 4) }))
     .filter(x => x.t && (now - x.t) < RECENT_MS && !seen.has(x.id))
     .sort((a, b) => b.t - a.t).slice(0, CAP_QUEUE)
