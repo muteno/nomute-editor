@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>수집함 카드 — 개선 시안 5</title>
+<style>
+  :root{
+    --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --fg-2:#cfd8d0;
+    --accent:#0FFD02; --on-accent:#062108; --accent-2:#ff9614; --amber:#ff9614; --info:#0cd0f7; --danger:#ff5b4a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 70px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 10% -4%, rgba(15,253,2,.09), transparent 60%),
+    radial-gradient(720px 460px at 108% 6%, rgba(15,253,2,.07), transparent 62%),
+    radial-gradient(640px 720px at 46% 116%, rgba(15,253,2,.05), transparent 60%);}
+  .wrap{max-width:480px; margin:0 auto;}
+  h1{font-size:20px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 22px; line-height:1.55;}
+  .sub b{color:var(--fg-2); font-weight:700;}
+
+  .blk{margin:0 0 24px;}
+  .lab{display:flex; align-items:center; gap:8px; margin:0 0 8px; flex-wrap:wrap;}
+  .num{flex:0 0 auto; width:23px; height:23px; border-radius:7px; display:grid; place-items:center; font-size:12px; font-weight:800; color:var(--bg); background:var(--accent);}
+  .num.old{background:#3a443d; color:var(--mut);}
+  .lab h2{font-size:14px; font-weight:800; margin:0;}
+  .tag{font-size:10px; font-weight:700; color:var(--accent); border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:1px 7px;}
+  .tag.mid{color:var(--amber); border-color:rgba(255,150,20,.4);}
+  .desc{color:var(--mut); font-size:11.5px; line-height:1.55; margin:0 0 11px; padding-left:31px;}
+  .desc b{color:var(--fg-2);}
+
+  /* 통합 패널(이미 적용된 안4 = 소프트 글로우 시임) */
+  .panel{border-radius:16px; padding:10px 9px 14px; position:relative;
+    background:rgba(255,255,255,.018); border:1px solid rgba(255,255,255,.07);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 26px rgba(0,0,0,.28);
+    -webkit-backdrop-filter:blur(13px) saturate(1.15); backdrop-filter:blur(13px) saturate(1.15);}
+  .grid{display:grid; grid-template-columns:1fr 1fr; position:relative;}
+  .col{min-width:0;} .col.l{padding-right:11px;} .col.r{padding-left:11px; position:relative;}
+  .col.r::before{content:''; position:absolute; top:4px; bottom:4px; left:0; width:1px; pointer-events:none;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.18) 20%, rgba(255,255,255,.18) 80%, transparent);
+    box-shadow:0 0 12px 1.5px rgba(255,255,255,.07);}
+  .coltitle{font-size:12.5px; font-weight:800; padding:2px 2px 9px;}
+  .ct-acc{color:#ff9638; text-shadow:0 0 11px rgba(255,140,45,.45);}
+  .ct-new{color:var(--accent); text-shadow:0 0 11px rgba(15,253,2,.45);}
+
+  /* ── 카드(현재 기준) ── */
+  .sc{border-radius:13px; padding:9px 11px; display:flex; flex-direction:column; gap:6px; border:1px solid; position:relative;}
+  .sc.acc{background:linear-gradient(165deg, rgba(38,27,17,.58), rgba(11,9,7,.74)); border-color:rgba(255,140,45,.14);}
+  .sc.new{background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border-color:rgba(15,253,2,.13);}
+  .top{display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700;}
+  .top .x{color:#ffb45c;}
+  .top .badge{font-size:9px; font-weight:800; color:var(--amber); border:1px solid rgba(255,150,20,.4); border-radius:999px; padding:0 5px; line-height:14px;}
+  .top .time{margin-left:auto; color:var(--mut); font-weight:600; font-size:9.5px;}
+  .cat-soc{color:var(--accent);} .cat-int{color:var(--info);}
+  .tt{font-size:12.5px; line-height:1.35; font-weight:700; color:var(--fg);
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .bot{display:flex; gap:5px; margin-top:4px;}
+  .b{height:29px; border-radius:9px; display:grid; place-items:center; font-size:11px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);}
+  .b.pass{flex:1; color:var(--mut);} .b.pick{flex:1; color:var(--accent);}
+  .b.ok{flex:0 0 32px; color:var(--accent); background:rgba(15,253,2,.14); border-color:rgba(15,253,2,.5);}
+
+  /* ════ 시안1 — 위계 정리(제목 히어로) ════ */
+  .q1 .tt{font-size:13.5px; font-weight:800; line-height:1.3;}
+  .q1 .top{opacity:.78; font-size:9.5px;}
+
+  /* ════ 시안2 — 좌측 컬러 레일(누적=오렌지/신규=그린) ════ */
+  .q2 .sc{padding-left:13px; border-color:rgba(255,255,255,.07); background:rgba(255,255,255,.022);}
+  .q2 .sc::after{content:''; position:absolute; left:0; top:9px; bottom:9px; width:3px; border-radius:3px;}
+  .q2 .sc.acc::after{background:#ff9638; box-shadow:0 0 8px rgba(255,140,45,.5);}
+  .q2 .sc.new::after{background:var(--accent); box-shadow:0 0 8px rgba(15,253,2,.5);}
+
+  /* ════ 시안3 — PICK 우선(결정 명확) ════ */
+  .q3 .b.pick{flex:1.3; background:var(--accent); color:var(--on-accent); border-color:transparent; box-shadow:0 0 12px rgba(15,253,2,.3);}
+  .q3 .b.pass{flex:1; background:transparent; border-color:rgba(255,255,255,.1); color:var(--mut);}
+  .q3 .b.ok{flex:0 0 30px; background:transparent; border-color:rgba(15,253,2,.4);}
+
+  /* ════ 시안4 — 칩 메타 + 밀도 ════ */
+  .q4 .sc{padding:8px 10px; gap:5px;}
+  .q4 .top{gap:4px;}
+  .q4 .chip{font-size:9px; font-weight:800; border-radius:999px; padding:1px 6px; line-height:14px;}
+  .q4 .chip.soc{color:var(--accent); background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.25);}
+  .q4 .chip.int{color:var(--info); background:rgba(12,208,247,.1); border:1px solid rgba(12,208,247,.28);}
+  .q4 .xx{font-size:9px; font-weight:800; color:#ffb45c; background:rgba(255,150,20,.1); border-radius:999px; padding:1px 6px; line-height:14px;}
+  .q4 .b{height:27px;}
+
+  /* ════ 시안5 — 리스트 로우(카드리스) ════ */
+  .q5 .lst{display:flex; flex-direction:column;}
+  .q5 .row{padding:10px 2px; display:flex; flex-direction:column; gap:6px; border-bottom:1px solid rgba(255,255,255,.06); position:relative;}
+  .q5 .row:last-child{border-bottom:none;}
+  .q5 .row .dot{position:absolute; left:-2px; top:14px; width:6px; height:6px; border-radius:50%;}
+  .q5 .row.acc .dot{background:#ff9638; box-shadow:0 0 7px rgba(255,140,45,.6);}
+  .q5 .row.new .dot{background:var(--accent); box-shadow:0 0 7px rgba(15,253,2,.6);}
+  .q5 .row .tt{padding-left:11px;} .q5 .row .top{padding-left:11px;}
+
+  .rec{margin-top:6px; border-radius:12px; padding:12px 14px; font-size:12px; line-height:1.65; background:rgba(15,253,2,.06); border:1px solid rgba(15,253,2,.22);}
+  .rec b{color:var(--accent);} .rec .mut{color:var(--mut);}
+  .foot{color:var(--mut); font-size:11px; line-height:1.6; margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>수집함 카드 — 개선 시안 5</h1>
+  <p class="sub">네가 칠한 <b>카드(메타·제목·PASS/PICK/✓)</b> 개선안. 솔직히 이미 꽤 압축돼 있어 큰 변화는 어렵고,
+  <b>위계·결정 명확성·밀도</b>를 건드리는 쪽이 실익. 컨테이너는 방금 적용한 <b>안4 시임선</b> 그대로 두고 카드만 비교.</p>
+
+  <!-- 현재 -->
+  <div class="blk">
+    <div class="lab"><span class="num old">전</span><h2>현재</h2></div>
+    <div class="panel"><div class="grid">
+      <div class="col l"><div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span>·<span class="x">9</span>·<span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+      <div class="col r"><div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span>·<span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+    </div></div>
+  </div>
+
+  <!-- 시안1 -->
+  <div class="blk q1">
+    <div class="lab"><span class="num">1</span><h2>위계 정리</h2><span class="tag">제목 히어로</span></div>
+    <p class="desc">제목을 <b>살짝 키우고 굵게</b>(히어로), 메타 줄은 더 <b>조용하게</b>. 좁은 카드에서 제목이 먼저 읽힘 — 가장 안전한 개선.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l"><div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span>·<span class="x">9</span>·<span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+      <div class="col r"><div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span>·<span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+    </div></div>
+  </div>
+
+  <!-- 시안2 -->
+  <div class="blk q2">
+    <div class="lab"><span class="num">2</span><h2>좌측 컬러 레일</h2><span class="tag">정체성 한 줄</span></div>
+    <p class="desc">카드 왼쪽에 <b>3px 컬러 띠</b>(누적=오렌지·신규=그린). 카드 배경은 더 중립적으로 — 색이 칼럼 글로우 없이도 어디 소속인지 즉시 표시.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l"><div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span>·<span class="x">9</span>·<span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+      <div class="col r"><div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span>·<span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+    </div></div>
+  </div>
+
+  <!-- 시안3 -->
+  <div class="blk q3">
+    <div class="lab"><span class="num">3</span><h2>PICK 우선</h2><span class="tag">결정 명확</span></div>
+    <p class="desc">수집함은 결국 <b>고르거나 넘기거나</b>. <b>PICK을 채운 초록 버튼</b>(주동작)으로, PASS는 고스트, ✓는 슬림하게. 한 손 트리아지가 빨라짐.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l"><div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span>·<span class="x">9</span>·<span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+      <div class="col r"><div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span>·<span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+    </div></div>
+  </div>
+
+  <!-- 시안4 -->
+  <div class="blk q4">
+    <div class="lab"><span class="num">4</span><h2>칩 메타 + 밀도</h2><span class="tag mid">호불호</span></div>
+    <p class="desc">카테고리·매체수를 <b>작은 칩</b>으로 묶고 카드 패딩을 한 끗 줄임 → 한 화면에 더 많이. 스캔은 빨라지나 <b>살짝 더 빽빽</b>(취향).</p>
+    <div class="panel"><div class="grid">
+      <div class="col l"><div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="chip soc">사회</span><span class="xx">매체 9</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+      <div class="col r"><div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="chip int">국제</span><span class="xx">매체 2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div></div>
+    </div></div>
+  </div>
+
+  <!-- 시안5 -->
+  <div class="blk q5">
+    <div class="lab"><span class="num">5</span><h2>리스트 로우</h2><span class="tag mid">큰 변화</span></div>
+    <p class="desc">카드 박스를 <b>없애고</b> 항목을 <b>헤어라인으로 구분한 줄</b>로 — 왼쪽 컬러 점만 소속 표시. 제일 가볍고 앱 피드 느낌. 단 카드 톤과 결이 달라 <b>큰 변경</b>.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l"><div class="coltitle ct-acc">누적</div>
+        <div class="lst">
+          <div class="row acc"><span class="dot"></span><div class="top"><span class="cat-soc">사회</span>·<span class="x">9</span>·<span class="badge">이슈</span><span class="time">9시간 전</span></div>
+            <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+            <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        </div></div>
+      <div class="col r"><div class="coltitle ct-new">신규</div>
+        <div class="lst">
+          <div class="row new"><span class="dot"></span><div class="top"><span class="cat-int">국제</span>·<span class="x">2</span><span class="time">1시간 전</span></div>
+            <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+            <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        </div></div>
+    </div></div>
+  </div>
+
+  <div class="rec">
+    💡 <b>추천 = 3번(PICK 우선)</b>이 실익이 제일 큼 — 수집함의 본질이 트리아지라 주동작이 또렷해지면 손이 빨라짐.
+    <b>+1번(위계)</b>은 거의 공짜로 가독성↑이라 같이 적용 추천. <b>2번(레일)</b>은 취향이면 얹기 좋음.<br>
+    <span class="mut">4번은 밀도 vs 빽빽 트레이드오프, 5번은 결이 크게 바뀌어 신중히. 네 말대로 큰 개선은 어렵지만 1+3은 분명한 플러스.</span>
+  </div>
+  <p class="foot">※ 전부 토큰·기존 컴포넌트 계승. 고른 시안(들) 조합해 <code>viewer/index.html</code> <code>.scrap-cols .sc-item</code> 계열에 적용함.
+  여러 개 섞어도 됨(예: 1+3).</p>
+</div>
+</body>
+</html>
