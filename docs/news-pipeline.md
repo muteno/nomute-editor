@@ -30,7 +30,7 @@
 > 🕒 **대기열(관측·상태판) — 제출 기사 처리 추적 (260619):** 뷰어 **뉴스요약 버튼 롱프레스(480ms)·PC 우클릭**으로 대기열 팝업. `functions/api/pending.js`(GET·`GH_TOKEN`)가 GitHub를 라이브 조회해 **세 상태**를 종합 반환(읽기 전용·파이프라인 0 변경):
 > - **처리중** = `pending/`에 있고 나이 `<20분` — 들어온 시각·주요 내용(폰공유=`# body:` 본문 / 픽=`# title:` 헤드라인)·전달방식(전문/URL).
 > - **FAIL** = `pending/` 잔류 `≥20분`(stuck) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달.
-> - **SUCC** = 최근(6h) `queue/*.md` 완료분(`-ask-` 제외). 초록 배지 + **바로가기** → `showTab('feed')` + 해당 기사 모달(`DATA.file` 매칭, 빌드 랙이면 `load()` 후 재매칭·토스트).
+> - **SUCC** = 최근(24h) `queue/*.md` 완료분(✨요약요청 `-ask-` 포함 — 운영자 260621 "여긴 있는데 저기에 없음"). 초록 배지 + **바로가기** → `showTab('feed')` + 해당 기사 모달(`DATA.file` 매칭, 빌드 랙이면 `load()` 후 재매칭·토스트).
 >
 > 페이지당 5개 **페이지네이션**(슬라이딩 윈도우), **🗑 내역 지우기**(확인 후 `localStorage nomute_q_cleared` 컷오프로 현재 내역 숨김). 분석 끝나면 pending 삭제(↑L17)→FAIL/처리중서 빠지고 queue가 SUCC로. 정본 = `functions/api/pending.js` + `viewer/index.html`(`openQueue`·`loadQueue`·`renderQueuePage`·`qGo`·`qDownload`·`feedOpenBy`).
 
