@@ -1860,6 +1860,14 @@ function addClip(pre) {
 const BIAS_RE = /[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅]/gu;
 const KW_RE = /(앵글(?:\s*후보)?\s*[①-⑳0-9]+|약보수 보정|[가-힣A-Za-z0-9]{1,8} ?관점)/g;   // 앵글 후보 ① / 앵글 ① 둘 다 매치(운영자 260621)
 function decorate(root) {
+  // 0) 다각도 '이렇게 볼 수도' 래퍼 li 제거 + 중첩된 관점 불릿을 한 단계 끌어올림(들여쓰기 삭제 · 운영자 260621)
+  root.querySelectorAll('li').forEach(li => {
+    if (!/^\s*이렇게\s*볼\s*수도/.test(li.textContent)) return;
+    const inner = li.querySelector('ul, ol'); if (!inner) return;
+    const parent = li.parentElement;
+    while (inner.firstElementChild) parent.insertBefore(inner.firstElementChild, li);
+    li.remove();
+  });
   // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
   root.querySelectorAll('h3').forEach(h => {
     if (!/썸네일/.test(h.textContent)) return;
