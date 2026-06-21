@@ -61,15 +61,10 @@ def main():
     test = "--test" in sys.argv
     notify = None
     notify_url = "/"
-    notify_tag = "nomute-make"
     if "--url" in sys.argv:                           # 알림 탭 시 이동할 경로(제작완료=제작 화면으로) · 미지정이면 "/"
         j = sys.argv.index("--url")
         if len(sys.argv) > j + 1:
             notify_url = sys.argv[j + 1] or "/"
-    if "--tag" in sys.argv:                            # 알림 tag — 같은 tag=교체. 건별 고유 tag면 여러 알림 쌓임(요약완료=건별 누적)
-        k = sys.argv.index("--tag")
-        if len(sys.argv) > k + 1 and sys.argv[k + 1]:
-            notify_tag = sys.argv[k + 1]
     if "--notify" in sys.argv:                       # 임의 알림(제작완료 등) — 구독자 전원(=프로필 ON) · dedup 미기록
         i = sys.argv.index("--notify")
         notify = (sys.argv[i + 1] if len(sys.argv) > i + 1 else "🖼 News",
@@ -90,8 +85,8 @@ def main():
         msgs = [{"keys": [f"test-{int(time.time())}"], "title": "🔔 노뮤트 테스트",
                  "body": "웹푸시 연결 정상! 긴급 속보가 이렇게 와.", "url": "/", "tag": "nomute-breaking"}]
     elif notify:
-        # 제작완료/요약완료 등 = 전용 tag(긴급 속보와 안 덮어씀) · url=대상 화면(notify_url) · tag=notify_tag(건별 고유면 누적)
-        msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": notify_url, "tag": notify_tag}]
+        # 제작완료 등 = 전용 tag(긴급 속보 알림과 안 덮어씀) · url=제작 화면(notify_url)
+        msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": notify_url, "tag": "nomute-make"}]
     else:
         cands = jload(CAND, [])
         sent = set(jload(SENT, []))

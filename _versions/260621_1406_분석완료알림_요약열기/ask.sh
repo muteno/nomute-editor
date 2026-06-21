@@ -19,8 +19,6 @@ echo "지침 버전(summary): ${GVER}"
 # 이번 런에서 *새로* 실패한 base만 기록(누적 asks/failed 전체 아님) → Surface 스텝이 이것만 보고 빨강 판정.
 # (옛 실패가 asks/failed/에 남아도 매 런 빨강 뜨던 stale-red 차단 · 옛 실패는 뷰어 대기열이 24h 표면화. 운영자 260620.)
 ASK_FAIL_RUN="${RUNNER_TEMP:-/tmp}/ask_fail_run"; : > "$ASK_FAIL_RUN"
-: > /tmp/analyzed_titles.txt   # 완료 푸시용 — 생성된 요약 제목(analyze.sh와 같은 경로 = 워크플로 푸시 스텝 공용)
-: > /tmp/analyzed_files.txt    # 완료 푸시용 — 생성된 queue 파일명(베이스) → ?a=<파일> 딥링크(titles와 같은 순서)
 
 shopt -s nullglob
 files=(asks/*.json)
@@ -111,8 +109,6 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
-  echo "${title:-$id}" >> /tmp/analyzed_titles.txt
-  basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   echo "성공 → $outfile (${title:-$id})"
   echo "::endgroup::"
 done

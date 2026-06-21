@@ -5040,26 +5040,7 @@ function makeDraggable(dlg, handleSel) {
 [['#dlg', '.dlg-h'], ['#editdlg', '.ed-h'], ['#askdlg', '.askhead'], ['#revdlg', '.askhead'], ['#pastedlg', '.askhead'], ['#tooldlg', '.tool-h']]
   .forEach(([d, sel]) => makeDraggable($(d), sel));
 
-// 분석/요약 완료 푸시 탭 → URL ?a=<기사파일> 진입이면 그 요약 창을 자동으로 연다.
-// 빌드 랙(분석 커밋 직후 articles.json 재빌드 전)이면 잠깐 재시도(≈18s) 후 못 찾으면 피드만.
-async function openDeepLink(tries = 0) {
-  let key = null;
-  try { key = new URLSearchParams(location.search).get('a'); } catch (_) {}
-  if (!key) return;
-  const a = DATA.find(x => x.file === key || x.file === key + '.md');
-  if (a) {
-    try { const u = new URL(location.href); u.searchParams.delete('a'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (_) {}   // 새로고침 시 재오픈·재요청 방지
-    if ($('#dlg').open && CUR === a.file) return;   // 이미 그 요약이 열려있으면 그대로
-    showTab('feed'); open(a);                       // 요약은 뉴스요약 탭
-    return;
-  }
-  if (tries >= 10) return;                          // 빌드 랙 한계(≈30s) 초과 — 못 찾으면 피드만(요약은 곧 떠도 자동오픈은 포기)
-  await new Promise(r => setTimeout(r, 3000));
-  try { await load(); } catch (_) {}
-  return openDeepLink(tries + 1);
-}
-
-load().then(openDeepLink);   // 첫 로드 후 딥링크(?a=) 있으면 해당 요약 자동 오픈
+load();
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
