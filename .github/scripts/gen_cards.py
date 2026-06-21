@@ -119,6 +119,8 @@ def edit_one(stem, n):
     nn = "%02d" % int(n)
     new_text = os.environ.get("EDIT_TEXT", "").strip()
     wish = os.environ.get("EDIT_WISH", "").strip()
+    sync = os.environ.get("EDIT_SYNC", "").strip() in ("1", "true", "True")   # 체크 = 텍스트 반영 이미지 재생성
+    authored = os.environ.get("EDIT_PROMPT", "").strip()   # cardmake.sh가 Claude로 지침대로 작성한 이미지 프롬프트(체크/wish 시)
     if not new_text:
         print("::error::EDIT_TEXT 없음"); return 1
     card = next((c for c in parse_cards(open(md_path, encoding="utf-8").read()) if c["n"] == int(n)), None)
@@ -146,18 +148,26 @@ def edit_one(stem, n):
     old_bytes = _fetch_old_image(cdir, nn, None if is_r2 else slot_name)   # v0 보존용(현재본) — 새로 쓰기 전에 회수
 
     _u0 = len(tg._USAGE)
-    regen = bool(wish) or not os.path.isfile(scene_local)
+    has_scene = os.path.isfile(scene_local)
+    regen = bool(wish) or sync or not has_scene   # 재생성 = 수동 wish · 체크(텍스트 반영) · 보존본 없음
+    if regen and not tg.KEY:   # 키 없으면 재생성 불가 → 장면 있으면 문구만 폴백, 없으면 합성 불가
+        if has_scene:
+            print("::warning::GEMINI_API_KEY 없음 — 이미지 재생성 생략, 장면 보존·문구만"); regen = False
+        else:
+            print("::error::GEMINI_API_KEY 없음 — 장면 보존본도 없어 합성 불가"); return 1
     if regen:
-        if not tg.KEY:
-            print("::error::GEMINI_API_KEY 없음 — 이미지 재생성 불가"); return 1
-        prompt = card["prompt"].rstrip()
-        if wish:
-            prompt += "\n\n[EDIT REQUEST — 다음 수정 희망을 반영해 다시 그릴 것]: " + wish
+        if authored:
+            prompt = authored   # Claude가 캡션+맥락(+wish)으로 지침대로 새로 쓴 프롬프트(임의 프롬프팅 아님 = 운영자 요구)
+        else:
+            prompt = card["prompt"].rstrip()   # 폴백: 기존 카드 이미지 프롬프트(Claude 작성 실패·미발동 시)
+            if wish:
+                prompt += "\n\n[EDIT REQUEST — 다음 수정 희망을 반영해 다시 그릴 것]: " + wish
         png = tg.gemini_image(prompt + " " + CARD_STYLE)
         if not png:
             print("::error::카드 {} 장면 생성 실패".format(n)); return 1
         open(scene_local, "wb").write(png)
-        print("  ✓ 카드 {} 장면 재생성{}".format(n, " (이미지 수정 반영)" if wish else ""))
+        tag = " (Claude 지침 프롬프트)" if authored else (" (이미지 수정 반영)" if wish else (" (텍스트 반영)" if sync else ""))
+        print("  ✓ 카드 {} 장면 재생성{}".format(n, tag))
     else:
         print("  ✓ 카드 {} 텍스트만 변경 — 장면 보존(제미나이 0)".format(n))
 

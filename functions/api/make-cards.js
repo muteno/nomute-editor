@@ -26,6 +26,7 @@ export async function onRequestPost({ request, env }) {
     inputs.card = card;
     inputs.text = String(body.text || '').slice(0, 2000);
     inputs.wish = String(body.wish || '').slice(0, 1000);
+    inputs.sync = body.sync ? '1' : '0';   // 1 = 체크('텍스트 반영 이미지 변경') → 백엔드서 Claude가 캡션+맥락으로 이미지 프롬프트 작성 → Gemini 재생성
   }
 
   const r = await fetch(
