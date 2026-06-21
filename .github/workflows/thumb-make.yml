@@ -200,7 +200,7 @@ jobs:
               print(f'RENDERED app={app} {im.size} {im.mode} -> {f}')
           # ── R2 업로드 = 썸네일 출력 저장(git 미커밋 → 즉시 서빙·배포지연 0·비대 0). 실패 시 잡 실패(git 폴백 안 함 = API가 R2 URL 예측).
           sys.path.insert(0, '.github/scripts')
-          import thumb_gen as tg
+          import thumb_gen as tg, time
           if not tg.R2_ON:
               sys.exit('::error::R2 미설정 — 썸네일은 R2 저장 필수(R2 5시크릿 확인)')
           meta = []
@@ -213,6 +213,8 @@ jobs:
                   url = tg.r2_upload(data, f'thumb_out/{in_id}/{fn}', ctype)
                   if url:
                       break
+                  if _t < 2:
+                      time.sleep(2 * (_t + 1))   # 2s·4s 백오프(즉시 재시도는 같은 일시장애에 무의미)
               if not url:
                   sys.exit(f'::error::R2 업로드 실패(3회): {fn}')
               meta.append([fn, url])
