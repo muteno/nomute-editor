@@ -413,7 +413,7 @@
   .sc-metal { display:flex; align-items:center; gap:5px; min-width:0; flex-wrap:wrap; }   /* 좌측 메타군(카테고리·매체N·배지) — 시간과 분리해 wrap돼도 시간은 항상 우측·점 표류 차단(분신술5·260621) */
   /* 메타/버튼 타이포 = 전부 Pretendard(body 상속) · 자간 0 · Orbitron(--font-status) 미사용. 강조색 = 카테고리(고유색 유지)·매체수 N=라임 숫자만('매체' 글자 제거)·이슈=노랑·긴급=빨강 / 구분점 = 뮤트·시간 = 흰 · 버튼=원톤 600(운영자 260621). */
   .sc-got, .sc-got span, .sc-fail, .sc-tg, .sc-pick span, .sc-cross { letter-spacing:0; }
-  #qbadge, .qb { font-family:var(--font-status); letter-spacing:.03em; }   /* 큐 배지 = Orbitron 유지(수집함 카드 밖) */
+  #qbadge, .qb { font-family:var(--font-status); letter-spacing:.03em; }   /* 큐 배지·상태(SUCC·처리중·FAIL) = --font-status(이제 Pretendard·Orbitron 폐지 260621) */
   .sc-top .cat { font-weight:600; }   /* 카테고리 = 고유색 유지(catChip CAT_COLOR·운영자 "기존 거 건들지마" 260621) */
   .sc-sep { color:var(--mut); }   /* 메타 구분점 · = 뮤트 */
   .sc-cross { display:inline-flex; align-items:center; gap:4px; font-weight:600; }   /* 평면 텍스트(칩 폐지·운영자 260621) */
@@ -662,6 +662,8 @@
   .qgo { flex:none; font-size:11px; font-weight:800; color:var(--accent); background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.35);
     border-radius:7px; padding:4px 10px; cursor:pointer; transition:background .15s; }
   .qgo:hover { background:rgba(15,253,2,.2); }
+  .qgo[disabled], .qgo.qgo-off { color:var(--mut); background:rgba(255,255,255,.04); border-color:var(--line); cursor:default; opacity:.55; }   /* 처리중 = 비활성 바로가기(전문 분석 전엔 이동 불가) — SUCC=초록 활성과 명확히 구분(운영자 260621) */
+  .qgo[disabled]:hover, .qgo.qgo-off:hover { background:rgba(255,255,255,.04); }
   .qdl { flex:none; width:28px; height:26px; display:grid; place-items:center; padding:0; cursor:pointer;
     color:#ff9b8f; background:rgba(255,107,91,.1); border:1px solid rgba(255,107,91,.32); border-radius:7px; transition:background .15s; }
   .qdl:hover { background:rgba(255,107,91,.22); }
@@ -3658,7 +3660,7 @@ function qRowHtml(it) {
   let right;
   if (it.status === 'succ') right = '<span class="qb qb-succ">SUCC</span><button class="qgo" type="button">바로가기</button>';
   else if (it.status === 'fail') right = '<span class="qb qb-fail">FAIL</span><button class="qdl" type="button" aria-label="진단 다운로드" title="실패 원인 진단 MD 다운로드">' + DL_SVG + '</button>';
-  else right = '<span class="qb qb-proc">처리중</span><span class="qvia ' + cls + '">' + qEsc(it.via || '') + '</span>';
+  else right = '<span class="qb qb-proc">처리중</span><span class="qvia ' + cls + '">' + qEsc(it.via || '') + '</span><button class="qgo qgo-off" type="button" disabled title="전문 수집·분석 중 — 완료되면 이동 가능">바로가기</button>';   // 처리중 = 비활성 바로가기(전문 찾기 전 이동 불가 · 완료 SUCC면 활성 초록 · 운영자 260621)
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위 — 이모지 서로게이트 안 쪼갬 · 좁은 화면은 CSS 생략부호 병행 · 운영자 260621)
   return '<div class="qrow q-' + it.status + '"><span class="qt">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span>' + right + '</div>';
 }
