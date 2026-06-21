@@ -12,7 +12,7 @@
 #
 # 정본 = 이 파일(썸네일 프롬프트 SSOT). 참조 = apps/news/03_자동화_레퍼런스.md §썸네일 후보.
 
-import os, sys, re, json, base64, time, glob, subprocess, tempfile, ipaddress, socket
+import os, sys, re, json, base64, time, glob, subprocess, tempfile, ipaddress, socket, csv
 import urllib.request, urllib.error, urllib.parse
 
 MODEL = "gemini-3.1-flash-image-preview"   # 카드와 동일 모델(03 레퍼런스). 4:5 · 썸네일 2K / 카드 1K.
@@ -86,10 +86,61 @@ NO_TITLE = (
     "글자를 읽을 수 있게 또렷이 렌더링하지 말 것(읽히는 한글은 깨질 위험이 크다)."
 )
 
-def build_prompt(art_dir, scene):
+# ── 라이브러리(apps/k/library) 코드 → Gemini 키워드 조회 (P1·운영자 260621) ──
+# analyze가 사건 보고 고른 thumb_dispatch 코드(AG 앵글·LGT 조명·SG 연출)를 *실제 라이브러리 TSV*에서 조회해
+# 프롬프트에 삽입(인라인 복붙 아님 = SSOT 단일출처·기틀 OK). 미존재 코드·파일부재는 드롭·fail-soft(현 동작 유지).
+_LIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "apps", "k", "library")
+_LIB_FILES = ["38_cardnews_distance_crop", "39_cardnews_angle_height", "40_cardnews_staging",
+              "13_style_news_canon", "12_lighting_emotion",
+              "01a_camera_lens_focal_length", "01b_camera_shot_size"]
+_LIB = None
+def _load_lib():
+    """코드ID → Gemini 키워드 문자열 dict(1회 캐시). 헤더에 'Gemini' 들어간 칼럼을 키워드로 잡음(파일마다 위치 달라도)."""
+    global _LIB
+    if _LIB is not None:
+        return _LIB
+    _LIB = {}
+    for name in _LIB_FILES:
+        path = os.path.join(_LIB_DIR, name + ".tsv")
+        try:
+            with open(path, encoding="utf-8") as f:
+                rows = list(csv.reader(f, delimiter="\t"))
+        except Exception:
+            continue
+        if not rows:
+            continue
+        hdr = [h.lstrip("﻿").strip() for h in rows[0]]
+        gi = next((i for i, h in enumerate(hdr) if "Gemini" in h), None)
+        if gi is None:
+            continue
+        for r in rows[1:]:
+            if len(r) <= gi:
+                continue
+            code = (r[0] or "").lstrip("﻿").strip()
+            kw = (r[gi] or "").strip()
+            if code and kw and code not in _LIB:
+                _LIB[code] = kw
+    return _LIB
+
+def lib_lookup(dispatch):
+    """thumb_dispatch 코드열 → 라이브러리 Gemini 키워드 콤마 합성. 미존재 코드 드롭(화이트리스트=실존 코드만)."""
+    if not dispatch:
+        return ""
+    lib = _load_lib()
+    out = []
+    for code in dispatch.replace(",", " ").split():
+        kw = lib.get(code.strip())
+        if kw and kw not in out:
+            out.append(kw)
+    return ", ".join(out)
+
+def build_prompt(art_dir, scene, dispatch=""):
     parts = [GOVERNING, art_dir]   # 지배조건 맨 앞 = 화풍/구도보다 우선(위계 선언)
     if scene:
         parts.append("장면: " + scene)
+    cam = lib_lookup(dispatch)     # 사건별 앵글·조명·연출(라이브러리 DB 조회) — 화풍/장면과 구도 사이(앞 토큰 가중)
+    if cam:
+        parts.append("앵글·조명·연출(이 장면에 적용): " + cam)
     parts.append(COMPOSITION)
     parts.append(NO_TITLE)
     return " ".join(parts)
@@ -123,7 +174,7 @@ def parse_md(path):
     # 미기입 템플릿(<…>) 또는 프롬프트 예시문을 그대로 베낀 것 무시 → iq/lead 폴백(image_query 예시 가드와 대칭).
     if ts.startswith("<") or ts == "화재로 그을린 건물 앞 가족 잃은 주민이 오열하는데 뒤편 관계자들은 서류만 들여다보는 순간":
         ts = ""
-    return head, lead, iq, ts, fm.get("url", "").strip(), fm.get("alt_urls", "").split(), fm.get("image_sources", "").split()
+    return head, lead, iq, ts, fm.get("url", "").strip(), fm.get("alt_urls", "").split(), fm.get("image_sources", "").split(), fm.get("thumb_dispatch", "").strip()
 
 def _md_url(path):
     """프런트매터 url만 가볍게 추출(main의 백필 판정용 · 파일 앞부분만 읽음)."""
@@ -504,7 +555,7 @@ def _load_gen(tdir):
 
 def process_one(md, stem):
     """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 4화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
-    head, lead, iq, thumb_scene, art_url, alt_urls, image_sources = parse_md(md)
+    head, lead, iq, thumb_scene, art_url, alt_urls, image_sources, dispatch = parse_md(md)
     if not head:
         print("· {} — 헤드라인 파싱 실패, skip".format(stem)); return False
     print("· {} — “{}”".format(stem, head[:40]), flush=True)
@@ -540,7 +591,7 @@ def process_one(md, stem):
     for sid, label, art_dir in STYLES:
         if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
             gen.append(existing[sid]); continue
-        png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead), "2K")   # 장면 = 분석이 정한 충돌장면(thumb_scene) 1순위 → 없으면 entity(iq) → 한줄요약. '주제 일러스트(밥 먹는 그림)'화 방지·사건의 분노 순간을 그림.
+        png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch), "2K")   # 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch). '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
         if not png:
             print("  ✗ {} 실패".format(label)); continue
         if R2_ON:                                # R2 = 공개 URL(레포 미저장)
