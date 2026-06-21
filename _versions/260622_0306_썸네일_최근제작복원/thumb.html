@@ -631,16 +631,15 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   let row = document.getElementById('job-' + job.n);
   if (!row) { row = document.createElement('div'); row.id = 'job-' + job.n; row.className = 'job'; $('#jobs').prepend(row); }
   row.className = 'job' + (job.status === 'done' ? ' done' : '') + (job.status === 'err' ? ' err' : '');
-  if (job.status === 'done' && !job._restored && !job._saved && (job.saves || []).length) { job._saved = true; saveLastResult(job); }   // 완료 = 최근 제작 스냅샷 저장(다음에 열면 맨 위 복원·운영자 260622)
   const sec = Math.round((Date.now() - job.t0) / 1000);
   const tot = job.outs.length || '?';
   const dn = job.done.filter(Boolean).length;
   let st;
   if (job.status === 'err') st = '⚠ ' + (job.msg || '실패');
-  else if (job.status === 'done') st = '✅ 완료 · ' + tot + '장' + (job._restored ? ' · ' + histTime(job.t0) : ' (' + sec + 's)');   // 복원 결과 = 경과초 대신 제작시각(운영자 260622)
+  else if (job.status === 'done') st = '✅ 완료 · ' + tot + '장 (' + sec + 's)';
   else st = '⏳ 제작 중 ' + sec + 's · ' + dn + '/' + tot + '장';
   row.innerHTML = '';
-  const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + (job._restored ? '' : ' #' + job.n);
+  const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + ' #' + job.n;
   const labs = (job.outs || []).map(o => o && o.label).filter(Boolean);
   if (labs.length === 1) { const v = document.createElement('span'); v.className = 'jvar'; v.textContent = ' · ' + labs[0]; lab.appendChild(v); }   // 단일 변형(OPA 등) = 라벨 옆 인라인(기존)
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
@@ -714,12 +713,12 @@ async function dlBlob(url, name) {   // R2(교차출처) 다운로드 — a[down
   try { const b = await (await fetch(url)).blob(); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
   catch (e) { window.open(url, '_blank'); }
 }
-function carAppend(url, dlname, cap, job, varStr, o, restore) {   // 완성 이미지 1장 캐러셀 추가(나온 순서). o=변형 객체. restore=true=복원(이전제작 재기록 안 함·운영자 260622)
+function carAppend(url, dlname, cap, job, varStr, o) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서). o=변형 객체(있으면 점프·개별다운로드 매핑 기록)
   const slideIdx = CARSLIDES.length;   // push 전 = 이 슬라이드의 전역 인덱스(변형줄 클릭 점프용)
   CARSLIDES.push({ url, dlname });
-  if (!restore) histAdd({ url, dlname, cap, varStr: varStr || '', ts: Date.now() });   // 12h 보관(창 닫아도 '이전 제작'서 다시 보기 · 운영자 260621) · 복원 시엔 재기록 X(중복 방지)
+  histAdd({ url, dlname, cap, varStr: varStr || '', ts: Date.now() });   // 12h 보관(창 닫아도 '이전 제작'서 다시 보기 · 운영자 260621)
   if (o) { o._slide = slideIdx; o._url = url; o._dlname = dlname; }   // 변형 i ↔ 슬라이드·다운로드 매핑(로드 순서 무관 = o 객체에 직접 박음 · 운영자 260620)
-  if (job) (job.saves || (job.saves = [])).push({ url, dlname, cap, varStr: varStr || '' });   // 잡별 '전체 다운로드'용 + 최근제작 복원용(cap/varStr 포함)
+  if (job) (job.saves || (job.saves = [])).push({ url, dlname });   // 잡별 '전체 다운로드'용 목록(잡 행 버튼이 이걸 저장)
   $('#carwrap').hidden = false; $('#carbar').hidden = false;   // 바(전체 다운로드·N/N장)는 대기열 위에 노출
   const track = $('#cartrack');
   const slide = document.createElement('div'); slide.className = 'carslide'; slide.dataset.slide = slideIdx;
@@ -747,7 +746,6 @@ $('#carNext').onclick = () => { const t = $('#cartrack'); t.scrollBy({ left: t.c
 
 // ── 이전 제작 보관(12시간) — 완성 이미지(원격 URL·가벼움)를 localStorage에 쌓아 창 닫아도 다시 보기. 이 기기 한정. ──
 const THUMB_HKEY = 'nomute_thumb_hist', THUMB_HMS = 12 * 3600e3, THUMB_HMAX = 240;   // 12시간 보관 · 최대 240장(초과 시 오래된 것 제거)
-const THUMB_LAST_KEY = 'nomute_thumb_last';   // 가장 최근 제작 1건 = 창 닫아도 맨 위 '결과'로 복원(전체 다운+캐러셀 · 이 기기 · 운영자 260622)
 // 기기간 공유: build-viewer가 thumb_out/(전 기기 커밋 이미지) 스캔해 만든 thumb-hist.json을 읽어 로컬과 병합(운영자 260621).
 const baseUrl = u => String(u || '').split('?')[0];   // ?t= 캐시버스트 제거 = 중복판정 키
 let SRV_HIST = [];
@@ -777,8 +775,7 @@ function renderHist() {
   const seen = new Set(local.map(e => baseUrl(e.url)));
   const cut = Date.now() - THUMB_HMS;
   const srv = (SRV_HIST || []).filter(e => e && e.url && e.ts >= cut && !seen.has(baseUrl(e.url)));   // 타 기기 제작분(로컬 중복 제외)
-  let a = local.concat(srv).sort((x, y) => (y.ts || 0) - (x.ts || 0));   // 로컬+서버 병합 · 최신 먼저
-  if (RESTORED_URLS.size) a = a.filter(e => !RESTORED_URLS.has(baseUrl(e.url)));   // 맨 위로 복원된 최근 제작은 '이전(previous) 제작'서 제외 = 위에만(운영자 260622)
+  const a = local.concat(srv).sort((x, y) => (y.ts || 0) - (x.ts || 0));   // 로컬+서버 병합 · 최신 먼저
   const hist = $('#hist'); if (!hist) return;
   if (!a.length) { hist.hidden = true; return; }
   hist.hidden = false; $('#histCnt').textContent = '(' + a.length + ')';
@@ -796,32 +793,9 @@ function renderHist() {
     it.append(hd, th); grid.appendChild(it);
   });
 }
-// ── 가장 최근 제작 1건 = 창 닫아도 맨 위 '결과'로 복원 (전체 다운+캐러셀 · 이 기기 · 운영자 260622) ──
-let RESTORED = false; const RESTORED_URLS = new Set();   // 맨 위에 복원된 최근 제작 url(이전 제작서 제외용)
-function saveLastResult(job) {   // 잡 완료 시 최근 제작 스냅샷 저장(URL은 캐시버스트 제거)
-  try { if (!job || !(job.saves || []).length) return;
-    localStorage.setItem(THUMB_LAST_KEY, JSON.stringify({ label: job.label, ts: job.t0,
-      items: job.saves.map(s => ({ url: baseUrl(s.url), dlname: s.dlname, cap: s.cap || '', varStr: s.varStr || '' })) })); } catch {}
-}
-function clearRestored() {   // 새 제작 발사 = 복원 고스트 치우고 새 결과로(복원분은 '이전 제작'으로 되돌림)
-  if (!RESTORED) return; RESTORED = false; RESTORED_URLS.clear();
-  const r = document.getElementById('job-R'); if (r) r.remove();
-  CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) tr.innerHTML = '';
-  $('#carwrap').hidden = true; $('#carbar').hidden = true; carUpdate(); renderHist();
-}
-function restoreLastResult() {   // 로드 시 최근 제작 1건을 맨 위 결과(전체 다운+캐러셀)로 복원. 실제 잡 있으면 생략.
-  if (JOBS.length || RESTORED) return;
-  let rec; try { rec = JSON.parse(localStorage.getItem(THUMB_LAST_KEY) || 'null'); } catch {}
-  if (!rec || !Array.isArray(rec.items) || !rec.items.length) return;
-  if (Date.now() - (rec.ts || 0) > THUMB_HMS) { try { localStorage.removeItem(THUMB_LAST_KEY); } catch {} return; }   // 12h 만료(이전 제작과 동일 보관)
-  const rjob = { n: 'R', label: rec.label || '제작', t0: rec.ts, status: 'done', _restored: true, _saved: true,
-    outs: rec.items.map(it => ({ label: (it.varStr || '').replace(/^\s*·\s*/, '') })), done: rec.items.map(() => true), saves: [] };
-  rec.items.forEach((it, i) => { RESTORED_URLS.add(baseUrl(it.url)); carAppend(it.url, it.dlname, it.cap || rec.label || '', rjob, it.varStr || '', rjob.outs[i], true); });
-  RESTORED = true; renderJob(rjob); renderHist();   // 맨 위 결과 + 이전 제작서 제외
-}
 $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden; b.hidden = !open; $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open); });
 window.addEventListener('hashchange', maybeOpenHist);   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀌어 새로고침 안 됨) 펼치게
-$('#histClr').addEventListener('click', async () => { if (await askConfirm('이전 제작 기록을 지울까요? (이미지 파일은 백엔드에 남아있음)')) { localStorage.removeItem(THUMB_HKEY); try { localStorage.removeItem(THUMB_LAST_KEY); } catch {} clearRestored(); renderHist(); } });
+$('#histClr').addEventListener('click', async () => { if (await askConfirm('이전 제작 기록을 지울까요? (이미지 파일은 백엔드에 남아있음)')) { localStorage.removeItem(THUMB_HKEY); renderHist(); } });
 $('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
 // PC: 마우스로 잡아끌어 좌우 넘김(터치는 네이티브 스와이프) — 뉴스 카드피드(.feedtrack) 패턴 계승. 드래그 후 클릭(다운로드) 억제.
 (() => {
@@ -1168,7 +1142,6 @@ let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) —
 const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
 // 잡 1건 생성 → 로그 → 디스패치 → 폴링(비동기·독립). 동시 다발(경고문 듀얼포맷 등) 가능.
 function dispatchJob(endpoint, payload, label) {
-  clearRestored();   // 새 제작 = 복원된 최근 결과 고스트 치움(새 결과가 맨 위·운영자 260622)
   const job = { n: ++JOBSEQ, label, t0: Date.now(), outs: [], done: [], status: 'run', msg: '', endpoint, payload };   // endpoint·payload 보관 = 실패 시 같은 설정 재발사(운영자 260620)
   JOBS.unshift(job); renderJob(job);
   (async () => {
@@ -1233,7 +1206,6 @@ function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.a
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
 maybeOpenHist();     // #done(제작완료 알림) 진입이면 로컬 기준으로 먼저 펼침(서버 병합 후 loadServerHist서 재확인)
-restoreLastResult();   // 최근 제작 1건 맨 위 '결과'로 복원(RESTORED_URLS 먼저 셋 = 이전제작 제외 정합 · 운영자 260622)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
 </script>
 <script src="cscroll.js"></script>
