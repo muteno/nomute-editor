@@ -253,8 +253,8 @@ try {
   const cut = Date.now() - 48 * 3600e3;   // 48h 보관(뷰어가 12h로 필터 · 여유분)
   for (const id of readdirSync(troot)) {
     const ts = thIdTs(id); if (!ts || ts < cut) continue;
-    let meta; try { meta = JSON.parse(readFileSync(join(troot, id, '_meta.json'), 'utf8')); } catch { continue; }   // [[file, R2url], ...] — 이미지는 R2(git 미저장)·_meta.json만 git
-    for (const [f, url] of meta) thHist.push({ url, dlname: `${id}_${f}`, cap: thLabel(f), varStr: '', ts });
+    let files; try { files = readdirSync(join(troot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)); } catch { continue; }
+    for (const f of files.sort()) thHist.push({ url: `thumb_out/${id}/${f}`, dlname: `${id}_${f}`, cap: thLabel(f), varStr: '', ts });
   }
 } catch { /* thumb_out 없음 */ }
 thHist.sort((a, b) => b.ts - a.ts);

@@ -18,13 +18,13 @@
 
 | 메뉴 | 입력 | 렌더 스크립트(불변·import) | 워크플로 처리 | 출력 포맷·해상도 | 저장 |
 |---|---|---|---|---|---|
-| `/1` 포스트 배경O | 텍스트+이미지 | overlay+compose | `emit`→`save_jpg` | **2K JPG q95** | git thumb_out |
-| `/1` 포스트 배경X | 텍스트 | overlay | `emit`→copy | **2K PNG**(투명) | git |
-| `/2` 릴스 오버레이 배경O | 텍스트+이미지 | overlay+compose | `emit`→`save_jpg` | **2K JPG q95** | git |
-| `/2` 릴스 오버레이 배경X | 텍스트 | overlay | `emit`→copy | **2K PNG**(투명) | git |
-| `/2` 릴스 헤더 | 부제+제목 | reels2 | `save_jpg` | **2K JPG q95** | git |
-| `/3` 저작권 | 연도/이름/플랫폼 | copyright | `save_fhd_png` | **FHD PNG**(투명) | git |
-| `/4` 경고문 | 프리셋 텍스트 | copyright(스택) | `save_fhd_png` | **FHD PNG**(투명) | git |
+| `/1` 포스트 배경O | 텍스트+이미지 | overlay+compose | `emit`→`save_jpg` | **2K JPG q95** | **R2** |
+| `/1` 포스트 배경X | 텍스트 | overlay | `emit`→copy | **2K PNG**(투명) | **R2** |
+| `/2` 릴스 오버레이 배경O | 텍스트+이미지 | overlay+compose | `emit`→`save_jpg` | **2K JPG q95** | **R2** |
+| `/2` 릴스 오버레이 배경X | 텍스트 | overlay | `emit`→copy | **2K PNG**(투명) | **R2** |
+| `/2` 릴스 헤더 | 부제+제목 | reels2 | `save_jpg` | **2K JPG q95** | **R2** |
+| `/3` 저작권 | 연도/이름/플랫폼 | copyright | `save_fhd_png` | **FHD PNG**(투명) | **R2** |
+| `/4` 경고문 | 프리셋 텍스트 | copyright(스택) | `save_fhd_png` | **FHD PNG**(투명) | **R2** |
 | `/comp` 카드뉴스 | 이미지+텍스트 | card_news | (자체 save) | **FHD JPG q95** | api/compose |
 | 뉴스카드 `gen_cards` | 기사 | gen_cards+card_news | recompose | **FHD JPG** | **R2** |
 
@@ -37,8 +37,8 @@
 - 원칙: **빠르게·저비용·확실하게**(요구 기능 누락 0이 기준).
 
 **최소 부품(`thumb-make.yml` Render 내 모듈 — 포맷 규칙이 여기 모임·수정은 여기서만)**: `save_jpg(img,dst)`=JPG q95 / `save_fhd_png(img,dst,scale)`=2K→FHD PNG / `emit(ov,image,fmt,base)`=배경O→JPG·배경X→2K PNG copy.
-**`.jpg` 배관(전 경로)**: `thumb.js`(경로 ext=`wantImg?jpg:png`) · `viewer/thumb.html`(다운로드 ext=`o.path`) · `build-viewer.mjs`(스캔 `.png|.jpg`).
-**저장**: `/1`~`/4`·헤더 = git `viewer/thumb_out/<id>/`(Pages 서빙) / **카드뉴스·뉴스카드 = R2**(Cloudflare 오브젝트 저장소·공개 URL `pub-xxx.r2.dev`·git 비대 회피·배포 무관 즉시 서빙). "R2 이미지" = git 아닌 R2의 카드/AI썸네일.
+**`.jpg` 배관(전 경로)**: `thumb.js`(경로 ext=`wantImg?jpg:png`·R2 절대 URL) · `viewer/thumb.html`(다운로드 ext=`o.path`·R2 교차출처라 **blob 다운로드** `dlBlob`) · `build-viewer.mjs`(이전제작 = `_meta.json` 읽음).
+**저장 = R2 (260621 이전·기틀)**: `/1`~`/4`·헤더 출력 = **Cloudflare R2** 직접 업로드(`thumb-make.yml` `r2_upload`·키 `thumb_out/<id>/<file>`·베이스 `R2_BASE`=`thumb.js` 상수와 일치). **git 미커밋**(비대 0) · 업로드 **즉시 전세계 서빙**(Pages 배포 대기 0 = 포스트 "안 뜸" 근본 소멸·raw 폴백 불요). ⚠️ R2 업로드 실패 = **잡 실패**(git 폴백 안 함 — API가 R2 예측). 이전제작(전 기기) = 워크플로가 `viewer/thumb_out/<id>/_meta.json`(`[[file,R2url]]`·수KB git)만 커밋 → build-viewer가 읽어 `thumb-hist.json` 생성. 카드뉴스·뉴스카드도 R2. "R2 이미지" = git 아닌 R2의 이미지.
 **스크립트 불변**: `nomute_*.py`는 절대규칙1(불변·import/subprocess만) — 포맷은 워크플로 부품에서만 바꿈.
 
 ---
