@@ -871,8 +871,8 @@
   /* 다이제스트(요약) — 기사 제목 강조 + 섹션마다 구분선·상하 간격·강조색(아래 카드처럼) */
   /* 대주제 = 상단 기사 제목(썸네일) = 카드뉴스 제목 동일 + 복사 가능 */
   /* 상단 기사 제목(요약) = 평범한 제목 — 복사 버튼 없음(#3) */
-  #mdbody h1 { font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; }   /* block = 제목이 우측 공간까지 꽉 채워 줄바꿈(운영자 260621: flex가 폭 제한해 일찍 줄바꿈하던 것 제거) */
-  #mdbody h1 .titlecopy { display:inline-block; vertical-align:middle; margin-left:6px; }   /* 타이틀 복사 = 제목 끝에 인라인(폭 점유 0) */
+  #mdbody h1 { font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; display:flex; align-items:center; gap:10px; }
+  #mdbody h1 .titlecopy { position:static; flex:none; margin-left:auto; }   /* 타이틀 복사(우측정렬·높이중앙) — .copy 룩 계승, 절대배치만 인플로우로 (운영자 260620) */
   /* 카드뉴스 제목 = 드래프트 박스처럼 테두리·배경 있는 복사 블록(한눈에 '복사 영역') */
   #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px;
     margin:6px 0 14px; padding:13px 46px 13px 15px;
@@ -1885,7 +1885,6 @@ function decorate(root) {
 // 데이터: a.cards.thumb_search[]={img,link,label} (기사 og:image+유사 · label=''(대표)/'유사') · a.cards.thumb_gen[]={img,label} (Gemini 3화풍).
 // 백엔드 채워지기 전(P1): 검색=라이브 폴백(Wikimedia 이미지 + 구글 검색 링크) / 생성=대기 플레이스홀더.
 function thumbSec(a) {
-  return null;   // 썸네일 후보 박스(검색·AI생성·비용/토큰) 폐지 — 요약 reading 뷰서 잡음(운영자 260621: 요약에 별 도움 안 됨). 되살리려면 이 줄 제거. 갱신경로(1522)는 fresh=null이면 old 제거로 null-safe.
   const c = a.cards || {};
   if (!a.body && !c.state) return null;   // 픽(분석)된 기사에만
   // 실제 이미지(검색 og:image / AI 생성)가 하나라도 있을 때만 표시 — 빈 안내·레거시 폴백(구글검색 링크·위키미디어·'곧 반영' placeholder)은 띄우지 않음(요약 위 잡음 제거 · 운영자 260620)
@@ -3239,20 +3238,6 @@ const hrefOk = u => { const s = String(u ?? '').trim(); return /^(javascript|dat
 
 
 // Z: 요약 헤더 아래 기본 개요 — 대분류·매체·기자명·WRITE·IN. 기존 데이터만(기자명=본문 Fact 출처 패턴).
-// 해외 매체(국제 발) = '기자' 호칭 스킵(국내 바이라인 관례). 국제부 거친 국내 매체는 매체명이 국내라 국내 취급. (목록 조정 가능 · 운영자 260621)
-const FOREIGN_MEDIA = new Set(['BBC', 'BBC뉴스', '가디언', '더가디언', '알자지라', '블룸버그', '로이터', '로이터통신', 'AP', 'AP통신', 'AFP', 'CNN', '뉴욕타임스', 'NYT', '월스트리트저널', 'WSJ', '워싱턴포스트', '니혼게이자이', '요미우리', '아사히', 'NHK', '신화통신', '타스', '폴리티코', '악시오스']);
-// 기자명 포맷(운영자 260621): 단독=「000 기자」 · 해외=「000」(기자 생략) · 2명+=「000 외 N명」 · 빈값=생략.
-function fmtReporter(rp, media) {
-  rp = (rp || '').trim();
-  if (!rp || rp === '-') return '';
-  const foreign = FOREIGN_MEDIA.has((media || '').trim());
-  const ex = rp.match(/^(.+?)\s*외\s*(\d+)\s*명/);                      // 이미 '외 N명' 형식이면 보존
-  if (ex) return esc(ex[1].replace(/\s*기자\s*$/, '').trim()) + ' 외 ' + ex[2] + '명';
-  rp = rp.replace(/\s*기자\s*$/, '').trim();                            // 끝 '기자' 제거(중복 방지)
-  const names = rp.split(/\s*[,·、\/]\s*/).map(s => s.trim()).filter(Boolean);
-  if (names.length >= 2) return esc(names[0]) + ' 외 ' + (names.length - 1) + '명';   // 2명+ = 000 외 N명
-  return esc(names[0] || rp) + (foreign ? '' : ' 기자');               // 단독: 국내=000 기자 / 해외=000
-}
 function overviewMeta(a) {
   const cat = catBucket(a.category);
   const rp = ((a.body || '').match(/출처[:：]\s*[^()\n]*\(([^)]+)\)/) || [, ''])[1].trim();
@@ -3261,9 +3246,9 @@ function overviewMeta(a) {
   const line1 = [];   // 1줄 = 대분류·매체·기자명
   if (cat) line1.push(`<span class="ov-cat" style="color:${CAT_COLOR[cat]}">${esc(cat)}</span>`);
   if (a.media) line1.push(`<span class="ov-media">${esc(a.media)}</span>`);
-  const rpf = fmtReporter(rp, a.media); if (rpf) line1.push(rpf);   // 000 기자 / 해외=생략 / 2명+=외 N명 · 빈값=생략(운영자 260621)
-  const line2 = [];   // 2줄 = WRITE(보도일시)·IN(적재)
-  const _wd = repDateTime(a); if (_wd && _wd.trim() && _wd.trim() !== '-') line2.push(`<span class="ov-l">WRITE</span><span class="ov-d">${esc(_wd)}</span>`);   // 보도일시 확인 어려우면(빈값) 스킵(운영자 260621)
+  line1.push(esc(rp || '-'));   // 기자명 항상 표기, 없으면 '-'(사용자 결정)
+  const line2 = [];   // 2줄 = WRITE·IN (기자명 다음 줄바꿈 · 운영자 260620)
+  line2.push(`<span class="ov-l">WRITE</span><span class="ov-d">${esc(repDateTime(a))}</span>`);
   if (inn.txt) line2.push(`<span class="ov-l">IN</span><span class="ov-d">${esc(inn.txt)}</span>`);
   return `<div class="ovmeta">${line1.join(sep)}<span class="ov-nl"></span>${line2.join(sep)}</div>`;
 }
@@ -3841,17 +3826,6 @@ const PICK_TIMEOUT_MS = 10 * 60000;
 const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
-// 실패 트레이 '체크 = 숨김'(운영자 260621): 체크하면 그 실패 후보를 트레이·칼럼 어디에도 안 뜨게(로컬 누적·기기락). 되돌리려면 localStorage nm_failhide 삭제.
-const FAILHIDE_KEY = 'nm_failhide';
-const failHiddenSet = () => { try { return new Set(JSON.parse(localStorage.getItem(FAILHIDE_KEY) || '[]')); } catch { return new Set(); } };
-const failHidden = c => failHiddenSet().has(candId(c));
-function toggleFailHide(c) {
-  const s = failHiddenSet(), id = candId(c);
-  s.has(id) ? s.delete(id) : s.add(id);
-  try { localStorage.setItem(FAILHIDE_KEY, JSON.stringify([...s])); } catch {}
-  if (CURTAB === 'scrap') renderScrap();   // 즉시 반영 = 체크한 항목 사라짐
-}
-const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" aria-label="실패 숨김" title="체크 = 실패 트레이에서 숨김(처리 확인)">${CHECK_SVG}</button>`;
 // ── 픽 상태 cross-device 동기화 (B안 · 운영자 260620): 픽 표시는 로컬 nm_ratings(기기락)이라 폰↔PC 미동기였다.
 //    이미 전역인 pending/(픽하면 생김)·queue(피드 DATA)·picks-failed 를 진실원본으로 *유도* → 어느 기기서 픽해도 같은 상태.
 //    localStorage(r.picked)는 발사 직후 깜빡임 가리는 낙관적 오버레이로 유지. (정본 설계 = docs/_세션_작업큐_260620.md §D)
@@ -4045,13 +4019,12 @@ function renderScrap() {
   scRT = rt;   // scRT = 정렬에서 픽 상태(누적 고정 제외) 참조
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
   // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
-  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || '') && !failHidden(c));   // 체크(숨김)한 실패는 트레이서 제외(운영자 260621)
+  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || ''));
   const failSet = new Set(failed.map(c => candId(c)));
   const pool = base.filter(c => {
     const r = rt[candId(c)] || {};
     if (failSet.has(candId(c))) return false;                       // 실패 = 트레이로(칼럼서 제외 = 카드 종속분리)
     if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
-    if (failHidden(c)) return false;                                // 실패 체크-숨김 = 칼럼에도 안 뜸(트레이서 빠진 게 칼럼으로 새지 않게 · 운영자 260621)
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
@@ -4163,7 +4136,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
            ? (pstate === 'failed'
-               ? (failChipHtml(c) + (col === 'fail' ? failHideChk() : ''))
+               ? failChipHtml(c)
                : ((pstate === 'settled' || !DATA_LOADED)
                    ? `<div class="sc-got" aria-label="픽 완료" title="탭하면 피드에서 이 기사 열기">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
@@ -4179,7 +4152,6 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
       el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
     } else if (pstate === 'failed') {   // 픽했는데 분석 실패/무응답 = Failed 칩(탭→원문 / 길게·우클릭→메뉴) 배선
       wireFailChip(el.querySelector('.sc-fail'), c);
-      const _fh = el.querySelector('.sc-failhide'); if (_fh) _fh.onclick = e => { e.stopPropagation(); toggleFailHide(c); };   // 체크 = 트레이서 숨김(운영자 260621)
     } else {   // PICKED(완료) = 탭하면 피드(메뉴3)로 이동 + 해당 기사 팝업
       const g = el.querySelector('.sc-got:not(.picking)'); if (g) g.onclick = () => pickedOpen(c);
     }
