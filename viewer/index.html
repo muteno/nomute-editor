@@ -406,22 +406,29 @@
   .sc-item { background:var(--glass2); border:1px solid var(--line2); border-radius:14px; padding:11px 13px; position:relative;
     display:flex; flex-direction:column; gap:7px; transition:border-color .15s, background .15s;
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
-  .sc-item.has-tag { padding-top:36px; }   /* 긴급/이슈 배지(.tagrow 절대배치·좌상단)가 상단 차지 → 메타라인 확실히 아래로(겹침 0·모바일·PC 공통·운영자 260621) */
   .sc-item.rated { border-color:rgba(15,253,2,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(15,253,2,.06); }
   .sc-item.sc-clickable { cursor:pointer; }   /* 카드 본문 탭 = 대표 URL(버튼·링크 제외) */
   .sc-item.sc-flash { animation:scFlash 1.5s ease; }   /* 토스트→해당 후보로 이동 시 점멸(운영자 260620) */
   @keyframes scFlash { 0%,100% { box-shadow:none; } 25% { box-shadow:0 0 0 2px var(--accent), 0 0 16px rgba(var(--accent-rgb),.55); } }
   @media (prefers-reduced-motion:reduce) { .sc-item.sc-flash { animation:none; outline:2px solid var(--accent); } }
-  .sc-top { display:flex; align-items:center; gap:7px; font-size:11px; color:var(--mut); }
-  /* 상태 타이포 = Orbitron(영문 상태어 PICK·Picking…·PICKED·PASS·Failed + 배지 숫자). 한글은 Orbitron에 없어 자동 Pretendard 폴백(혼용 안전)·운영자 260621. */
-  .sc-got, .sc-got span, .sc-fail, .sc-tg, .sc-pick span, .sc-cross, #qbadge, .qb { font-family:var(--font-status); letter-spacing:.03em; }   /* .sc-tg = PASS·PICK 텍스트 둘 다(아이콘 .down/.ack는 SVG라 무관)·260621 */
-  .sc-cross { display:inline-flex; align-items:center; gap:3px; font-weight:800; color:var(--accent);
-    background:var(--accent-dim); border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:1px 7px; font-size:10.5px; }
-  .sc-cross.lo { color:var(--mut); background:rgba(255,255,255,.05); border-color:var(--line2); }
+  .sc-top { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--mut); justify-content:space-between; }
+  .sc-metal { display:flex; align-items:center; gap:5px; min-width:0; flex-wrap:wrap; }   /* 좌측 메타군(카테고리·매체N·배지) — 시간과 분리해 wrap돼도 시간은 항상 우측·점 표류 차단(분신술5·260621) */
+  /* 메타/버튼 타이포 = 전부 Pretendard(body 상속) · 자간 0 · Orbitron(--font-status) 미사용. 강조는 색만 — 매체 N=라임·이슈=노랑·긴급=빨강 / 카테고리·구분점·시간 = 뮤트·흰(무강조) · 버튼=원톤 600(운영자 260621). */
+  .sc-got, .sc-got span, .sc-fail, .sc-tg, .sc-pick span, .sc-cross { letter-spacing:0; }
+  #qbadge, .qb { font-family:var(--font-status); letter-spacing:.03em; }   /* 큐 배지 = Orbitron 유지(수집함 카드 밖) */
+  .sc-top .cat { color:var(--mut) !important; font-weight:600; }   /* 카테고리 = 무강조(뮤트·카테고리색 제거) */
+  .sc-sep { color:var(--mut); }   /* 메타 구분점 · = 뮤트 */
+  .sc-cross { display:inline-flex; align-items:center; gap:4px; font-weight:600; }   /* 평면 텍스트(칩 폐지·운영자 260621) */
+  .sc-cross .cl { color:var(--mut); }       /* "매체" 라벨 = 뮤트 */
+  .sc-cross .cn { color:var(--accent); font-weight:800; }   /* N = 라임 강조 */
+  .sc-cross.lo .cn { color:var(--mut); font-weight:600; }   /* 매체 0~1 = 무강조 */
+  .sc-badge { font-weight:700; }
+  .sc-badge.iss { color:var(--warn); }      /* 이슈 = 노랑 */
+  .sc-badge.brk { color:var(--danger); }    /* 긴급 = 빨강 */
   .sc-more { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px; letter-spacing:-.2px;
     color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); }   /* 픽 후 +N 더 보도 — 증분 표시 */
-  .sc-media { margin-left:auto; color:var(--fg); }   /* 매체 숨기고 상대시간만·흰색(운영자 260621) */
+  .sc-media { flex:none; white-space:nowrap; color:var(--fg); font-weight:800; }   /* 상대시간 = 우측(sc-top space-between)·흰·800·외톨이행 방지(운영자 260621) */
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
   .sc-bot { display:flex; align-items:center; gap:10px; margin-top:1px; }
@@ -454,12 +461,7 @@
   .sc-item.removing { opacity:0; transform:scale(.96) translateX(16px); pointer-events:none; overflow:hidden;
     transition:height .32s ease, opacity .3s ease, transform .3s ease, margin .32s ease, padding .32s ease; }
   @media (prefers-reduced-motion:reduce) { .sc-item.removing { transition:opacity .12s; } }
-  /* 배지(=사건 속성) = 카드 상단 절대배치 글래스 칩(메타라인서 분리 → 메타 항상 1줄 · 모바일=좌/PC=중앙 · 운영자 260621). 🚨긴급(빨강=breaking AND <4h) / ⚡이슈(노랑=cross≥8 또는 aged-breaking 4~24h · 1일↑ 없음). 점등(테두리·글로우)은 별개 조건 유지. */
-  .tagrow { position:absolute; top:9px; left:13px; z-index:2; }   /* 긴급/이슈 배지 = 좌측정렬(모바일·PC 공통 · 운영자 260621: PC도 좌측). 구성도 문서화도 좌측. */
-  .t-glass { display:inline-flex; align-items:center; gap:4px; font-weight:800; font-size:9.5px; line-height:1; letter-spacing:.04em; padding:3px 9px; border-radius:999px;
-    backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); }
-  .t-glass.iss { color:var(--warn); background:rgba(var(--warn-rgb),.12); border:1px solid rgba(var(--warn-rgb),.5); box-shadow:0 0 10px rgba(var(--warn-rgb),.22); }
-  .t-glass.brk { color:var(--danger); background:rgba(var(--danger-rgb),.12); border:1px solid rgba(var(--danger-rgb),.55); box-shadow:0 0 10px rgba(var(--danger-rgb),.28); }
+  /* 배지(=사건 속성) = 메타라인 인라인 텍스트(이슈=노랑·긴급=빨강 · 글래스 칩 폐지 → 카테고리 · 매체 N · 배지 한 줄 · 운영자 260621). 🚨긴급(breaking AND <4h) / ⚡이슈(cross≥8 또는 aged-breaking 4~24h · 1일↑ 없음). 점등(테두리·글로우)은 별개 조건 유지. */
   /* 테두리 우선순위(디자인안02·운영자 260621) = 긴급(빨강) > 이슈(노랑) > PICK(초록) > 실패(앰버) > 평점 > 기본. JS가 배지에 b-brk/b-iss 단일부여 · !important로 .picked·scrap 베이스 테두리 위(라벨 있으면 테두리=라벨색·PICK 초록 안 뺏김). ⚠️ 260619 '긴급 빨강 테두리 없음' → 디자인안02로 복원. */
   .sc-item.b-brk { border-color:rgba(var(--danger-rgb),.6) !important; }
   .sc-item.b-iss { border-color:rgba(var(--warn-rgb),.55) !important; }
@@ -507,7 +509,7 @@
   .sc-rsn-x:active { transform:scale(.95); }
   /* ── 트리아지(신규·누적 공통): [👎][PASS][PICK] 버튼 + 사유 칩(객관식) ── */
   .sc-bot.triage { gap:6px; }
-  .sc-tg { flex:1; display:grid; place-items:center; height:30px; padding:0 8px; font-size:12px; font-weight:800; cursor:pointer;
+  .sc-tg { flex:1; min-width:0; display:grid; place-items:center; height:36px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
     border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
   .sc-tg svg { display:block; }
@@ -565,18 +567,19 @@
   .ct-new { color:var(--accent); text-shadow:0 0 11px rgba(15,253,2,.45); }  /* 신규 = 강조색(네온그린) */
   .scrap-cols .scrap-list { gap:8px; }
   .scrap-cols .sc-item { padding:9px 11px; gap:6px; border-radius:13px; }
-  .scrap-cols .sc-item.has-tag { padding-top:36px; }   /* 컴팩트 단축 padding이 has-tag(0,2,0)를 덮어 배지↔메타 겹치던 것 차단 — 0,3,0 승격 + 36px로 확실 분리(분신술·운영자 260621) */
   .scrap-col.green .sc-item { background:linear-gradient(165deg, rgba(38,27,17,.58), rgba(11,9,7,.74)); border-color:rgba(255,140,45,.14); }
   .scrap-col.black .sc-item { background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border-color:rgba(15,253,2,.13); }
   .scrap-col.green .sc-item.rated { border-color:rgba(255,140,45,.5); }
   .scrap-col.black .sc-item.rated { border-color:rgba(15,253,2,.45); }
   .scrap-col.green .sc-item.picked, .scrap-col.black .sc-item.picked { background:rgba(15,253,2,.06); border-color:var(--accent); }   /* 픽=양쪽 동일(초록 테두리) */
-  .scrap-cols .sc-top { font-size:10px; gap:5px; flex-wrap:wrap; }
-  .scrap-cols .sc-cross { font-size:9.5px; padding:1px 6px; }
+  .scrap-cols .sc-top { font-size:10px; gap:5px; }   /* wrap은 .sc-metal이 처리(시간 분리) */
+  .scrap-cols .sc-cross { font-size:9.5px; }
   .scrap-cols .sc-media { font-size:9.5px; }
   .scrap-cols .sc-title { font-size:12.5px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .scrap-cols .sc-title a { display:block; }
-  .scrap-cols .sc-bot { gap:5px; flex-wrap:wrap; }
+  .scrap-cols .sc-bot { gap:4px; flex-wrap:nowrap; }   /* 2열 모바일도 PASS·PICK·✓ 한 줄(nowrap·min-width:0로 축소·운영자 260621) */
+  .scrap-cols .sc-tg { padding:0 5px; font-size:11px; }   /* 좁은 2열 = 패딩·폰트 축소해 한 줄 수용 */
+  .scrap-cols .sc-tg.ack { flex:0 0 32px; }
   .scrap-cols .sc-down { width:26px; height:26px; border-radius:9px; }
   .scrap-cols .sc-star { width:20px; height:20px; font-size:14px; }
   .scrap-cols .sc-pick { font-size:11px; padding:4px 10px; }
@@ -4180,7 +4183,7 @@ const scBadgeType = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
   if (isBreaking(c) && ageH < FAST_MAX_H) return 'brk';
   if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';
   return ''; };
-const BADGE_HTML = { brk: '<span class="t-glass brk">🚨 긴급</span>', iss: '<span class="t-glass iss">⚡ 이슈</span>' };
+const BADGE_HTML = { brk: '<span class="sc-badge brk">긴급</span>', iss: '<span class="sc-badge iss">이슈</span>' };   // 인라인 메타 텍스트(긴급=빨강·이슈=노랑 · 글래스 칩 폐지·운영자 260621)
 // scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16(=이슈배지 8×2). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
 const scLit = c => ((Date.now() - scTs(c)) / 3600000) < 12 && (c.cross || 0) >= 16;
 const SC_COLS_HTML =
@@ -4190,10 +4193,10 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const el = document.createElement('div');
   const pstate = pickState(c);   // 픽 상태(로컬 r.picked + 서버 api/pending·picks-failed·피드) 통합 = cross-device(운영자 260620)
   const bt = scBadgeType(c);   // ''|'brk'|'iss' — 배지·테두리·글로우 공용
-  const badge = BADGE_HTML[bt] || '';   // 긴급/이슈 칩 = .tagrow 절대배치 상단(메타라인서 분리 → 메타 항상 1줄)
+  const badge = BADGE_HTML[bt] || '';   // 긴급/이슈 = 메타라인 인라인(카테고리 · 매체 N · 배지)
   const bCls = bt === 'brk' ? ' b-brk' : bt === 'iss' ? ' b-iss' : '';   // 테두리 우선순위(긴급>이슈, !important로 PICK/베이스 위)
   const litCls = bt === 'brk' ? ' lit-brk' : scLit(c) ? ' lit-iss' : '';   // 점등(독립): 긴급<4h 빨강 / scLit 노랑(brk 우선)
-  el.className = 'sc-item' + (badge ? ' has-tag' : '') + bCls + litCls + (st.score ? ' rated' : '') + (pstate ? ' picked' : '') + (pstate === 'failed' ? ' pickfail' : '') + (st.acked ? ' acked' : '');
+  el.className = 'sc-item' + bCls + litCls + (st.score ? ' rated' : '') + (pstate ? ' picked' : '') + (pstate === 'failed' ? ' pickfail' : '') + (st.acked ? ' acked' : '');
   el.dataset.cid = candId(c);   // Picking…→PICKED 제자리 갱신 매칭용
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
@@ -4202,7 +4205,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `${badge ? `<span class="tagrow">${badge}</span>` : ''}<div class="sc-top">${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}"><span class="cl">매체</span><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
