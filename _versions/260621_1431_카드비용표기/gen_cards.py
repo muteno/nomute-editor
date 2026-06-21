@@ -59,7 +59,6 @@ def main():
     import recompose_card as rc   # card_news 로컬합성(PIL·폰트 필요 — lazy import로 파싱 단독테스트 허용)
 
     sdir = os.path.join(cdir, "scenes"); os.makedirs(sdir, exist_ok=True)
-    _u0 = len(tg._USAGE)   # 이 슛의 제미나이 호출 사용량 슬라이스 시작점(usage.json 누적용)
     composed, ok = [], 0   # composed = [(카드번호, final_local 경로)] — 합성 성공분(번호 오름차순)
     for c in cards:
         nn = "%02d" % c["n"]
@@ -110,21 +109,6 @@ def main():
             os.remove(side)   # 로컬 폴백 → 옛 사이드카 제거(뷰어가 로컬 _final 스캔·표시)
         print("저장: git 로컬 {}장".format(ok))
     print("완료 — {}/{}장".format(ok, len(cards)))
-    # ── 제미나이 토큰 사용량(카드 장면 생성) — cards/<stem>/usage.json 에 누적 기록(썸네일 thumbs/usage.json 패턴).
-    #    뷰어가 카드 개요 '비용'으로 표기. 재슛/이미지 재생성마다 누적(완료 장면 재사용분은 호출 0 → 누적 불변).
-    #    버킷 키 {calls,total,cumulative} = 뷰어 usageText 가 그대로 읽음.
-    calls = tg._USAGE[_u0:]
-    if calls:
-        up = os.path.join(cdir, "usage.json")
-        try:
-            prevj = json.load(open(up, encoding="utf-8"))
-        except Exception:
-            prevj = {}
-        agg = tg._usage_total(calls)   # {calls, prompt_tokens, output_tokens, total_tokens}
-        tot = {"calls": agg["calls"], "total": agg["total_tokens"],
-               "cumulative": int((prevj or {}).get("cumulative") or 0) + agg["total_tokens"]}
-        json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-        print("  📊 카드 제미나이 토큰: {}콜·이번 {:,}·누적 {:,}".format(tot["calls"], tot["total"], tot["cumulative"]), flush=True)
     # exit코드 = drive_cards.py 호환: 0=전건 done · 2=일부만(partial) · 1=전건 실패
     return 0 if ok == len(cards) else (1 if ok == 0 else 2)
 
