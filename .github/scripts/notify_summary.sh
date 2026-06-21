@@ -8,7 +8,7 @@ set -uo pipefail
 FL=/tmp/analyzed_files.txt
 TL=/tmp/analyzed_titles.txt
 if [ ! -s "$FL" ]; then echo "새 요약 없음 — 푸시 생략"; exit 0; fi
-N="$(grep -c . "$FL" 2>/dev/null || echo 0)"
+N="$(grep -c . "$FL" 2>/dev/null)"; N="${N:-0}"   # 매칭0이면 grep rc=1+빈출력 → 기본 0(이중 0 방지)
 
 python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null \
   || { echo "::warning::pywebpush 미설치 — 푸시 생략(비치명)"; exit 0; }
