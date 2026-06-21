@@ -1283,12 +1283,6 @@
   .asksend.firing { pointer-events:none; }   /* 전송 누르면 = PICK과 동일한 초록 게이지 좌→우 채움(운영자 260621) */
   .asksend.firing::before { content:''; position:absolute; inset:0; background:#06140d; transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }
   @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
-  /* 전송 실패 = 흔들림 / 완료 = settle 펄스 (전송 상태머신 fail·done · 운영자 260622) */
-  .asksend.shake { animation:asksh .4s ease; }
-  @keyframes asksh { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
-  .asksend.done { animation:askdn .34s var(--ease); }
-  @keyframes askdn { 0%{transform:scale(1)} 40%{transform:scale(1.04)} 100%{transform:scale(1)} }
-  @media (prefers-reduced-motion:reduce) { .asksend.shake, .asksend.done { animation:none; } }
   /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
   .askbot .askclip { position:static; top:auto; right:auto; flex:none; opacity:.85; }
   .askbot .askclip:hover { opacity:1; }
@@ -4762,11 +4756,11 @@ $('#askSend').addEventListener('click', async () => {
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.add('done');
+    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
-    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
-  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
+    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); }
+  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.classList.remove('firing'); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
