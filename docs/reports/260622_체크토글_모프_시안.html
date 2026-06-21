@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>✓ 체크 토글 −→✓ 모프 시안 7</title>
+<style>
+  :root{
+    --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --fg-2:#cfd8d0;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 70px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 10% -4%, rgba(15,253,2,.09), transparent 60%),
+    radial-gradient(720px 460px at 108% 6%, rgba(15,253,2,.07), transparent 62%);}
+  .wrap{max-width:480px; margin:0 auto;}
+  h1{font-size:20px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 14px; line-height:1.55;}
+  .sub b{color:var(--fg-2);}
+  .hint{font-size:11.5px; color:var(--accent); background:rgba(15,253,2,.07); border:1px solid rgba(15,253,2,.22);
+    border-radius:10px; padding:9px 12px; margin:0 0 20px;}
+  .allbtn{margin-left:8px; font:inherit; font-size:11px; font-weight:700; color:var(--accent); background:rgba(15,253,2,.1);
+    border:1px solid rgba(15,253,2,.3); border-radius:999px; padding:3px 10px; cursor:pointer;}
+
+  .row{display:flex; align-items:center; gap:13px; padding:14px 4px; border-bottom:1px solid rgba(255,255,255,.06);}
+  .num{flex:0 0 auto; width:22px; height:22px; border-radius:7px; display:grid; place-items:center; font-size:11px; font-weight:800; color:var(--bg); background:var(--accent);}
+  .meta{flex:1; min-width:0;}
+  .meta .nm{font-size:13.5px; font-weight:800;}
+  .meta .ds{font-size:11px; color:var(--mut); line-height:1.45; margin-top:2px;}
+  .stage{flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:5px;}
+  .stt{font-size:9px; font-weight:800; letter-spacing:.04em; color:var(--mut);}
+  .ack.on ~ .stt, .stage:has(.on) .stt{color:var(--accent);}
+
+  /* 실제 카드 버튼 톤 계승(.sc-tg.ack) */
+  .ack{ width:40px; height:36px; border-radius:10px; display:grid; place-items:center; position:relative; overflow:hidden;
+    border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); cursor:pointer;
+    transition:border-color .3s, background .3s; }
+  .ack:active{ transform:scale(.9); }
+  .ack.on{ border-color:rgba(15,253,2,.5); }
+  .gx{ width:23px; height:23px; display:block; }
+  .gx path{ fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; transform-box:fill-box; transform-origin:center; }
+  .dash{ stroke:var(--mut); }
+  .chk{ stroke:var(--accent); }
+
+  /* 컨텍스트 행(실제 PASS·PICK·✓) */
+  .ctx{display:flex; gap:6px; align-items:center; margin:6px 0 22px; padding:10px 11px; border-radius:13px;
+    background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border:1px solid rgba(15,253,2,.13);}
+  .ctx .b{height:30px; border-radius:9px; display:grid; place-items:center; font-size:11px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);}
+  .ctx .b.pass{flex:1; color:var(--mut);} .ctx .b.pick{flex:1; color:var(--accent);}
+  .ctx .ack{height:30px; width:34px;}
+  .ctx .gx{width:19px; height:19px;}
+  .clab{font-size:10px; color:var(--mut); margin:-14px 0 22px; padding-left:2px;}
+
+  /* ════════ 시안별 모션 ════════ */
+  /* 공통: off=dash 보임, on=dash 숨고 chk 등장 */
+  .ack .chk{opacity:0;}
+  .ack.on .dash{opacity:0;}
+  .ack.on .chk{opacity:1;}
+
+  /* 1 — 드로우-인: 체크가 한 획으로 그려지며 색이 켜짐 */
+  .v1 .dash{transition:opacity .18s;}
+  .v1 .chk{stroke-dasharray:20; stroke-dashoffset:20; transition:opacity .04s .12s, stroke-dashoffset .42s .12s cubic-bezier(.6,0,.2,1);}
+  .v1.on .chk{stroke-dashoffset:0;}
+
+  /* 2 — 팝 크로스페이드: −가 사라지고 ✓가 톡 튀어나옴(오버슈트) */
+  .v2 .dash{transition:opacity .15s;}
+  .v2 .chk{transform:scale(.4); transition:opacity .16s, transform .34s cubic-bezier(.34,1.6,.5,1);}
+  .v2.on .chk{transform:scale(1);}
+
+  /* 3 — 스핀 모프: 아이콘이 한 바퀴 돌며 −에서 ✓로 */
+  .v3 .gx{transition:transform .45s cubic-bezier(.5,0,.2,1);}
+  .v3.on .gx{transform:rotate(360deg);}
+  .v3 .dash{transition:opacity .2s;}
+  .v3 .chk{transition:opacity .2s .14s;}
+
+  /* 4 — 필 스윕: 초록 빛이 가운데서 번지며 점등 + ✓ */
+  .v4::before{content:''; position:absolute; inset:0; border-radius:inherit; transform:scale(0); transition:transform .38s cubic-bezier(.4,0,.2,1);
+    background:radial-gradient(circle, rgba(var(--accent-rgb),.28), rgba(var(--accent-rgb),.04) 70%);}
+  .v4.on::before{transform:scale(1.5);}
+  .v4 .gx{position:relative; z-index:1;}
+  .v4 .dash{transition:opacity .16s;}
+  .v4 .chk{transition:opacity .22s .12s;}
+
+  /* 5 — 바운스 드롭: ✓가 통 떨어지며 글로우 펄스 */
+  .v5 .dash{transition:opacity .12s;}
+  .v5 .chk{transform:translateY(-7px) scale(.8); transition:opacity .1s, transform .42s cubic-bezier(.3,1.7,.5,1);}
+  .v5.on .chk{transform:translateY(0) scale(1);}
+  .v5.on{animation:pulse .55s ease;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.45);}100%{box-shadow:0 0 0 11px rgba(var(--accent-rgb),0);}}
+
+  /* 6 — 대시→체크 꺾임: 가로선이 접혀 체크로(순수 CSS 보더 모프) */
+  .v6 .ck{width:15px; height:8px; border:solid var(--mut); border-width:0 0 2.6px 0; border-radius:1px;
+    transition:width .34s cubic-bezier(.5,0,.2,1), height .34s cubic-bezier(.5,0,.2,1), border-color .3s, transform .34s cubic-bezier(.5,0,.2,1);}
+  .v6.on .ck{width:7px; height:12px; border-width:0 2.6px 2.6px 0; border-color:var(--accent); transform:rotate(45deg) translate(-1px,-1px);}
+
+  /* 7 — 글로우 점등: 스위치 켜듯 색 점등 + 링 확산 */
+  .v7 .dash{transition:opacity .2s;}
+  .v7 .chk{transition:opacity .22s;}
+  .v7.on{background:rgba(var(--accent-rgb),.12);}
+  .v7.on{animation:ignite .6s ease;}
+  @keyframes ignite{0%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.55);}100%{box-shadow:0 0 10px 1px rgba(var(--accent-rgb),.35), 0 0 0 9px rgba(var(--accent-rgb),0);}}
+
+  .rec{margin-top:18px; border-radius:12px; padding:12px 14px; font-size:12px; line-height:1.65; background:rgba(15,253,2,.06); border:1px solid rgba(15,253,2,.22);}
+  .rec b{color:var(--accent);} .rec .m{color:var(--mut);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>✓ 체크 토글 — −→✓ 모프 시안 7</h1>
+  <p class="sub">현재 ✓가 <b>항상 초록</b>이라 누른 건지(확인함) 안 누른 건지 헷갈림.
+  → <b>안 누름 = −(회색) · 누름 = ✓(초록·색이 살아남)</b>로 두 상태를 또렷하게. 모션만 7가지.</p>
+  <p class="hint">👆 각 버튼을 <b>탭</b>하면 실제로 토글돼 — 모션을 직접 느껴봐. <button class="allbtn" id="all">전부 토글</button></p>
+
+  <!-- 컨텍스트: 실제 PASS·PICK·✓ 줄 -->
+  <div class="ctx">
+    <span class="b pass">PASS</span><span class="b pick">PICK</span>
+    <button class="ack v1" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button>
+  </div>
+  <p class="clab">↑ 실제 카드 줄에서 본 모습(1번 적용 예). 아래는 7가지 비교.</p>
+
+  <!-- 1 -->
+  <div class="stage-wrap"><div class="row">
+    <span class="num">1</span>
+    <div class="meta"><div class="nm">드로우-인</div><div class="ds">체크가 한 획으로 그려지며 색이 켜짐. 가장 정석·깔끔.</div></div>
+    <div class="stage"><button class="ack v1" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button><span class="stt">탭</span></div>
+  </div></div>
+
+  <!-- 2 -->
+  <div class="row">
+    <span class="num">2</span>
+    <div class="meta"><div class="nm">팝 크로스페이드</div><div class="ds">−가 사라지고 ✓가 톡 튀어나옴(살짝 오버슈트). 경쾌.</div></div>
+    <div class="stage"><button class="ack v2" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button><span class="stt">탭</span></div>
+  </div>
+
+  <!-- 3 -->
+  <div class="row">
+    <span class="num">3</span>
+    <div class="meta"><div class="nm">스핀 모프</div><div class="ds">아이콘이 한 바퀴 돌며 −에서 ✓로. 장난기·생동감.</div></div>
+    <div class="stage"><button class="ack v3" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button><span class="stt">탭</span></div>
+  </div>
+
+  <!-- 4 -->
+  <div class="row">
+    <span class="num">4</span>
+    <div class="meta"><div class="nm">필 스윕 (점등)</div><div class="ds">초록 빛이 가운데서 번지며 ✓ 등장. 색이 "살아나는" 느낌 최고.</div></div>
+    <div class="stage"><button class="ack v4" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button><span class="stt">탭</span></div>
+  </div>
+
+  <!-- 5 -->
+  <div class="row">
+    <span class="num">5</span>
+    <div class="meta"><div class="nm">바운스 드롭</div><div class="ds">✓가 통 떨어지며 자리잡고 초록 글로우 펄스. 탄성·촉각.</div></div>
+    <div class="stage"><button class="ack v5" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button><span class="stt">탭</span></div>
+  </div>
+
+  <!-- 6 -->
+  <div class="row">
+    <span class="num">6</span>
+    <div class="meta"><div class="nm">대시→체크 꺾임</div><div class="ds">가로선(−)이 그대로 접혀 체크가 됨. 순수 CSS 보더 모프 — "모티브가 변하는" 정수.</div></div>
+    <div class="stage"><button class="ack v6" aria-label="확인"><span class="ck"></span></button><span class="stt">탭</span></div>
+  </div>
+
+  <!-- 7 -->
+  <div class="row">
+    <span class="num">7</span>
+    <div class="meta"><div class="nm">글로우 점등 (스위치)</div><div class="ds">스위치 켜듯 색이 점등되며 링이 퍼짐. 미니멀한데 확실.</div></div>
+    <div class="stage"><button class="ack v7" aria-label="확인"><svg class="gx" viewBox="0 0 24 24"><path class="dash" d="M6 12h12"/><path class="chk" d="M5 12.5l4 4L19 8"/></svg></button><span class="stt">탭</span></div>
+  </div>
+
+  <div class="rec">
+    💡 <b>추천 = 4번(필 스윕)</b> 또는 <b>1번(드로우-인)</b>. 4번은 "색이 살아나면서"에 가장 부합(빛 번짐), 1번은 정석·안 질림.
+    <b>6번</b>은 −가 그대로 ✓로 접혀 의미가 직관적(가장 "모티브 변환"다움).<br>
+    <span class="m">2·3·5는 더 활기차고(취향), 7은 가장 절제됨. 고른 거 실제 ✓(.sc-tg.ack)에 적용함 — 안 누름=−/누름=✓로 상태도 또렷해져.</span>
+  </div>
+</div>
+<script>
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.ack');
+    if (b) { b.classList.toggle('on'); const s = b.parentElement.querySelector('.stt'); if (s) s.textContent = b.classList.contains('on') ? '확인함' : '탭'; }
+  });
+  document.getElementById('all').addEventListener('click', () => {
+    document.querySelectorAll('.ack').forEach(b => { b.classList.toggle('on'); const s = b.parentElement.querySelector('.stt'); if (s) s.textContent = b.classList.contains('on') ? '확인함' : '탭'; });
+  });
+</script>
+</body>
+</html>
