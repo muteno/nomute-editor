@@ -241,9 +241,9 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.12);
     box-shadow:inset 0 1px 2px rgba(0,0,0,.35); transition:background .22s var(--ease), border-color .22s, box-shadow .22s; flex:none; }   /* 정제 스위치(개선 A·원안 tk2 정합) = 검정→초록틴트 글래스·inset 깊이(운영자 260621) */
   .tk::after { content:''; position:absolute; top:50%; left:2px; width:15px; height:15px; border-radius:50%;
-    background:var(--mut); opacity:.55; transform:translateY(-50%); transition:transform .26s var(--ease), background .22s, opacity .22s; box-shadow:0 1px 3px rgba(0,0,0,.5); }   /* 노브 = OFF 무채(mut)·반투명(꺼짐 시 흐릿 — 운영자 260621)·작고 부드럽게 */
+    background:var(--mut); transform:translateY(-50%); transition:transform .26s var(--ease), background .22s; box-shadow:0 1px 3px rgba(0,0,0,.5); }   /* 노브 = OFF 무채(mut)·작고 부드럽게 */
   .toggle input:checked + .tk { background:linear-gradient(90deg,var(--accent-bright),var(--accent)); border-color:rgba(var(--accent-rgb),.5); box-shadow:0 0 10px rgba(var(--accent-rgb),.4), inset 0 1px 1px rgba(255,255,255,.3); }   /* ON = accent 그라데 + 글로우 + 내부 하이라이트 */
-  .toggle input:checked + .tk::after { transform:translate(14px,-50%); background:var(--on-accent); opacity:1; }   /* ON = 노브 불투명 복원 */
+  .toggle input:checked + .tk::after { transform:translate(14px,-50%); background:var(--on-accent); }
   .toggle input:checked ~ .tlbl { color:var(--accent); font-weight:700; }
   .meta { color:var(--mut); font-size:12px; flex:1 0 100%; text-align:right; padding-top:2px; }
   /* R 필터 칩(검색바 아래·연회색 단색) */
@@ -931,14 +931,6 @@
   .dlg-h a.openflash .arr { animation:arrnudge .42s ease; }
   @keyframes arrnudge { 0% { transform:translate(0,0); } 45% { transform:translate(2px,-2px); } 100% { transform:translate(0,0); } }
   @media (prefers-reduced-motion:reduce) { .dlbox.rip::after, .dlg-pdf.okflash .dl-ico, .dlg-h a.openflash .arr { animation:none; } .dlbox.press { transform:none; } }
-  /* 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 핸들러 · 운영자 260621). 다운로드/저장=↓바운스, 그 외=회전. */
-  @keyframes ic-spin { to { transform:rotate(360deg); } }
-  @keyframes ic-bounce { 0% { transform:translateY(0); } 45% { transform:translateY(2.5px); } 100% { transform:translateY(0); } }
-  .ic-spin { animation:ic-spin .5s cubic-bezier(.2,.7,.3,1); }
-  .ic-bounce { animation:ic-bounce .42s ease; }
-  @media (prefers-reduced-motion:reduce) { .ic-spin, .ic-bounce { animation:none; } }
-  /* 눌림(press) 일관 — :active 없던 닫기/새로고침/유틸 아이콘 버튼 보강(운영자 260621 · 모든 곳) */
-  .tool-x:active, .mx:active, .ed-x:active, .askx:active, .qh-x:active, .qh-tr:active, .qh-rf:active, .pmenu-rf:active, .fb-x:active, .askimg-x:active, .gsrch:active { transform:scale(.9); }
   .md { padding:8px 18px 26px; }
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
@@ -1369,7 +1361,7 @@
   <div class="pmenu" id="pmenu" hidden>
     <div class="pmenu-h">
       <img class="pmenu-logo" src="assets/brand/logo.png" alt="노뮤트">
-      <button id="refresh" class="pmenu-rf" aria-label="새로고침" title="새로고침"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button>
+      <button id="refresh" class="pmenu-rf" aria-label="새로고침" title="새로고침">↻</button>
     </div>
     <div class="psub">News curation</div>
     <a href="https://nomute.kr" target="_blank" rel="noopener">Home ↗</a>
@@ -1381,7 +1373,7 @@
     <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
   </div>
   <div class="msgpop" id="msgpop" hidden>
-    <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기">✕</button></div>
     <div class="msglist" id="msglist"></div>
   </div>
 </div>
@@ -1408,7 +1400,7 @@
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <dialog id="dlg">
-  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><span class="dlbox" id="dlbox"><label class="dl-full" title="체크 = IG·스레드·카드뉴스 본문까지 포함(전체) · 미체크 = 기본 요약"><input type="checkbox" id="dlFull" aria-label="전체 포함(IG·스레드·카드뉴스 본문)"><span class="dl-cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span></label><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 HTML 다운로드 — 체크 시 전체 포함"><span class="dl-lbl">요약</span><svg class="dl-ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button></span><a id="src" target="_blank" rel="noopener">원문 <span class="arr">↗</span></a></div><button class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><span class="dlbox" id="dlbox"><label class="dl-full" title="체크 = IG·스레드·카드뉴스 본문까지 포함(전체) · 미체크 = 기본 요약"><input type="checkbox" id="dlFull" aria-label="전체 포함(IG·스레드·카드뉴스 본문)"><span class="dl-cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span></label><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 HTML 다운로드 — 체크 시 전체 포함"><span class="dl-lbl">요약</span><svg class="dl-ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button></span><a id="src" target="_blank" rel="noopener">원문 <span class="arr">↗</span></a></div><button class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
@@ -1445,7 +1437,7 @@
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
 <dialog id="editdlg">
-  <div class="ed-h"><b class="ed-title">카드 변경</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="ed-h"><b class="ed-title">카드 변경</b><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()">✕</button></div>
   <div class="ed-body">
     <img class="ed-img" alt="">
     <label class="ed-lbl">텍스트 <span class="ed-hint">— 탭=강조 · 더블탭=수정 · + 줄추가 · 비우면 줄삭제</span></label>
@@ -1460,7 +1452,7 @@
 
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="askhead"><b>✨ 요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기">✕</button></div>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder="예) 요즘 층간소음 사건 관련 기사 정리해줘 — 또는 캡처만 첨부"></textarea>
     </div>
@@ -1477,7 +1469,7 @@
 <!-- 요약 수정 팝업 — FAB(우·중하단)에서 좌측으로 펼침. 지시대로 재작성(재요약 X·api/revise). askdlg 클론·.sbtn 클립 계승. 1차 클릭=재확인→2차=전송 -->
 <dialog id="revdlg" class="askdlg revdlg">
   <div class="askwrap">
-    <div class="askhead"><b>수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정 →</span></button><button class="askx" id="revX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+    <div class="askhead"><b>수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정 →</span></button><button class="askx" id="revX" type="button" aria-label="닫기">✕</button></div></div>
     <div class="asktawrap">
       <textarea id="revText" class="askta" rows="2" placeholder="예) 편향 빼고 중립적으로 / 더 담백하게 / 단정 표현 톤다운"></textarea>
       <button class="sbtn askclip" id="revClip" type="button" aria-label="붙여넣기"></button>
@@ -1489,7 +1481,7 @@
 <!-- 전문 직접 입력 — 막힌 매체(403) Failed 픽에 기사 전문을 붙여넣어 재분석(api/pick body 경로). askdlg UIUX 계승(.sbtn 클립·X·전송). -->
 <dialog id="pastedlg" class="askdlg pastedlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>내용 직접 입력</b><button class="askx" id="pasteX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="askhead"><b>📝 내용 직접 입력</b><button class="askx" id="pasteX" type="button" aria-label="닫기">✕</button></div>
     <div class="pastesub" id="pasteSub"></div>
     <div class="asktawrap">
       <textarea id="pasteText" class="askta pasteta" rows="7" placeholder="막힌 매체라 자동 수집이 안 됐어 — 기사 페이지에서 본문을 전체 선택·복사해 여기 붙여넣고 전송하면 그 내용으로 재분석해(403 우회)."></textarea>
@@ -1504,7 +1496,7 @@
 
 <!-- 제작 도구 모달(iframe) — + 메뉴 항목(썸네일·릴스·영상) 클릭 시 새 페이지 대신 뷰어 위에 모달로 등장(뉴스 요약 모달과 동일 결). -->
 <dialog id="tooldlg" aria-labelledby="toolTitle">
-  <div class="tool-h"><b id="toolTitle">제작 도구</b><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="tool-h"><b id="toolTitle">제작 도구</b><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <iframe id="toolframe" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
 </dialog>
 
@@ -1518,8 +1510,8 @@
 </nav>
 <div class="bpop" id="bpop" hidden>
   <b>제작 도구</b>
-  <a href="#" id="askmenu" class="bpop-hl"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</a>
-  <a href="/thumb.html" data-tool class="bpop-hl-y"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>썸네일 생성</a>
+  <a href="#" id="askmenu" class="bpop-hl">✨ 요약 요청</a>
+  <a href="/thumb.html" data-tool class="bpop-hl-y">🖌️ 썸네일 생성기</a>
   <a href="/ly.html" data-tool>영상 자막 생성기</a>
   <a href="/k.html" data-tool>영상 프롬프트</a>
   <a href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener">지면 뉴스 ↗</a>
@@ -1533,7 +1525,7 @@
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
 <div class="bpop qpop" id="qpop" hidden>
-  <div class="qh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg><b>대기열</b><button class="qh-rf" id="qpopRf" type="button" aria-label="새로고침" title="새로고침"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="qh-tr" id="qpopTrash" type="button" aria-label="내역 지우기" title="내역 지우기"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button><button class="qh-x" id="qpopX" type="button" aria-label="닫기" title="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="qh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg><b>대기열</b><button class="qh-rf" id="qpopRf" type="button" aria-label="새로고침" title="새로고침">↻</button><button class="qh-tr" id="qpopTrash" type="button" aria-label="내역 지우기" title="내역 지우기"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg></button><button class="qh-x" id="qpopX" type="button" aria-label="닫기" title="닫기">✕</button></div>
   <div class="qconfirm" id="qpopConfirm" hidden><span>내역을 정말 지우시겠습니까?</span><span class="qcf-btns"><button id="qcfYes" type="button">지우기</button><button id="qcfNo" type="button">취소</button></span></div>
   <div class="qlist" id="qpopList"></div>
   <div class="qpage" id="qpopPage"></div>
@@ -2175,7 +2167,7 @@ function _ensureLbox() {
     + '<button type="button" class="sbtn lbox-dl" aria-label="이미지 저장">' + DOWNLOAD_SVG + '</button>'
     + '<span class="lbox-no"></span>'
     + '<a class="lbox-src" target="_blank" rel="noopener" hidden>출처 ↗</a>'
-    + '<button type="button" class="tool-x lbox-x" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>'
+    + '<button type="button" class="tool-x lbox-x" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>'
     + '</div><div class="lbox-track"></div>';
   document.body.appendChild(d);
   const track = d.querySelector('.lbox-track');
@@ -3103,7 +3095,7 @@ function openFeedback(card, vote, slideEl, file) {
   const up = vote === 'up';
   const fb = document.createElement('div'); fb.className = 'slide-fb';
   fb.innerHTML =
-    `<button type="button" class="fb-x" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    `<button type="button" class="fb-x" aria-label="닫기">✕</button>
      <div class="fb-vote">${up ? '👍 좋았던 점' : '👎 아쉬운 점'} <span class="fb-sub">— 무엇에 대해?</span></div>
      <div class="fb-aspect"><button type="button" data-a="image" class="on">이미지</button><button type="button" data-a="text">텍스트</button></div>
      <input class="fb-comment" maxlength="300" placeholder="의견">
@@ -3155,7 +3147,7 @@ function confirmCancelVote(card, vote, fig, file) {
   const host = fig.querySelector('.slide-img') || fig; if (!host) return;   // 오버레이(.feed-ui)면 자신이 host
   const ex = host.querySelector('.slide-fb'); if (ex) ex.remove();
   const fb = document.createElement('div'); fb.className = 'slide-fb';
-  fb.innerHTML = `<button type="button" class="fb-x" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  fb.innerHTML = `<button type="button" class="fb-x" aria-label="닫기">✕</button>
      <div class="fb-vote">${vote === 'up' ? '👍 좋아요' : '👎 아쉬워요'} 취소할까요? <span class="fb-sub">— 기록도 삭제돼</span></div>
      <div class="fb-act"><button type="button" class="fb-save">취소(삭제)</button></div>`;
   fb.querySelector('.fb-x').onclick = () => fb.remove();
@@ -4477,7 +4469,7 @@ function askReason(act, c, el) {
   p.innerHTML = `<div class="sc-rsn-q">${A.q}</div>
     <div class="sc-rsn-chips">${A.reasons.map(r => `<button type="button" class="sc-rsn-c${r.input ? ' inp' : ''}" data-k="${esc(r.k)}"${r.d ? ` title="${esc(r.d)}"` : ''}>${esc(r.k)}</button>`).join('')}</div>
     <div class="sc-rsn-iw" hidden><input class="sc-rsn-in" type="text" maxlength="200" placeholder="이유 한 줄"></div>
-    <button type="button" class="sc-rsn-x" aria-label="취소"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+    <button type="button" class="sc-rsn-x" aria-label="취소">✕</button>`;
   el.appendChild(p);
   const iw = p.querySelector('.sc-rsn-iw'), input = p.querySelector('.sc-rsn-in');
   p.querySelector('.sc-rsn-x').onclick = () => p.remove();
@@ -4671,7 +4663,7 @@ async function compressImg(file, max = 1280, q = 0.6) {   // 토큰 절약: 긴 
 }
 function renderAskImgs() {
   const host = $('#askImgs');
-  host.innerHTML = askImages.map((im, i) => `<div class="askimg"><img src="${im.dataUrl}" alt=""><button class="askimg-x" type="button" data-i="${i}" aria-label="제거"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button><span class="askimg-kb">${im.kb}KB</span></div>`).join('');
+  host.innerHTML = askImages.map((im, i) => `<div class="askimg"><img src="${im.dataUrl}" alt=""><button class="askimg-x" type="button" data-i="${i}" aria-label="제거">✕</button><span class="askimg-kb">${im.kb}KB</span></div>`).join('');
   host.querySelectorAll('.askimg-x').forEach(b => b.onclick = () => { askImages.splice(+b.dataset.i, 1); renderAskImgs(); });
 }
 $('#askSend').addEventListener('click', async () => {
@@ -4916,7 +4908,7 @@ const SUMMARY_TPL = `<!doctype html>
       <div class="nm-head-l">
         <img class="nm-logo" src="%LOGO%" alt="NO mute">
         %META%
-        <h1 class="nm-title">%TITLE%<button type="button" class="nm-titlecopy" title="제목 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button></h1>
+        <h1 class="nm-title">%TITLE%<button type="button" class="nm-titlecopy" title="제목 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button></h1>
       </div>
       <button type="button" class="nm-allbtn" title="전체 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;display:block"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg><span>전체 복사</span></button>
     </div>
@@ -4953,7 +4945,7 @@ async function buildSummaryHtml(full) {   // full=true('전체' 체크): IG·스
   src.querySelectorAll('img').forEach(el => el.remove());                      // 본문 이미지 제거(텍스트 요약)
   src.querySelectorAll('h1').forEach(el => el.remove());                       // 제목 h1은 헤더로 따로
   src.querySelectorAll('[style]').forEach(el => el.removeAttribute('style'));  // 뷰어 인라인 스타일 제거(서식 CSS만 적용)
-  const SECBTN = '<button type="button" class="nm-secbtn" title="이 항목 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button>';
+  const SECBTN = '<button type="button" class="nm-secbtn" title="이 항목 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;display:block"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button>';
   const tipRe = /시사점|💡/;
   const snsRe = /^\s*\[?\s*(IG|Thread|인스타|스레드|쓰레드)/i;   // 인스타·스레드(SNS) 소주제 = 다운로드 HTML서 배제 — [자유요약]은 유지(운영자 260620)
   const card = (name, inner, tip) => '<div class="nm-sec' + (tip ? ' nm-tip' : '') + '" data-sec>'
@@ -5083,14 +5075,6 @@ $('#pdfBtn').addEventListener('click', downloadSummaryHtml);
   if (pdf) pdf.addEventListener('click', () => { pdf.classList.add('okflash'); setTimeout(() => pdf.classList.remove('okflash'), 520); });
   if (src) src.addEventListener('click', () => { src.classList.add('openflash'); setTimeout(() => src.classList.remove('openflash'), 520); });
 })();
-// 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·ts-rf·rev-fab 등)는 셀렉터서 제외.
-document.addEventListener('click', e => {
-  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.qh-tr,.qh-rf,.pmenu-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.sc-more,.dlgtop,.bnav-fab,.fi-saveall');
-  if (!b) return;
-  const svg = b.querySelector('svg'); if (!svg) return;
-  const m = b.matches('.save,[aria-label*="저장"],[aria-label*="다운로드"]') ? 'ic-bounce' : 'ic-spin';
-  svg.classList.remove('ic-spin', 'ic-bounce'); void svg.offsetWidth; svg.classList.add(m);
-}, true);
 $('#revFab').addEventListener('click', openRev);
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
