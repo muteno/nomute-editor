@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>요약 버튼 B · 최종 조합 (260621)</title>
+<style>
+  /* ⚠️ viewer/index.html :root 토큰 복사본(보고서 = 일회성 스냅샷 · §🎯②). */
+  :root{
+    --bg:#0a120d;
+    --glass-btn:rgba(255,255,255,.06); --glass-btn-h:rgba(255,255,255,.13);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --on-accent:#062108;
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --r-m:11px; --blur-m:14px;
+    --sys:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sys);letter-spacing:-.2px;
+    -webkit-font-smoothing:antialiased;padding:0 16px 64px;position:relative}
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+    radial-gradient(420px 300px at 10% -4%,rgba(var(--accent-rgb),.09),transparent 60%),
+    radial-gradient(720px 460px at 108% 6%,rgba(var(--accent-rgb),.08),transparent 62%),
+    radial-gradient(640px 720px at 46% 116%,rgba(var(--accent-rgb),.06),transparent 60%)}
+  .wrap{max-width:680px;margin:0 auto}
+  header{padding:34px 4px 8px}
+  h1{font-size:21px;font-weight:800;margin:0 0 6px;letter-spacing:-.4px}
+  .sub{color:var(--mut);font-size:13px;line-height:1.7;margin:0}
+  .sub b{color:var(--fg-2);font-weight:700}
+  code{color:var(--accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+  .note{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-m);background:rgba(255,255,255,.03);color:var(--fg-2);font-size:12.5px;line-height:1.7}
+  .grid{display:grid;gap:16px;margin-top:22px}
+  .card{border:1px solid var(--line);border-radius:18px;background:rgba(8,16,11,.5);padding:18px;box-shadow:0 14px 34px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04)}
+  .card.pick{border-color:rgba(var(--accent-rgb),.4);box-shadow:0 14px 34px rgba(0,0,0,.35),0 0 0 1px rgba(var(--accent-rgb),.2),inset 0 1px 0 rgba(255,255,255,.04)}
+  .ctag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.3px;color:var(--on-accent);background:linear-gradient(135deg,var(--accent-bright),var(--accent));padding:3px 10px;border-radius:999px}
+  .ctag.alt{background:rgba(255,255,255,.07);color:var(--mut)}
+  .cname{font-size:15px;font-weight:800;margin:11px 0 3px}
+  .cdesc{font-size:12.5px;color:var(--mut);line-height:1.7;margin:0 0 14px}
+  .stage{display:flex;gap:10px;align-items:center;padding:18px 16px;border-radius:14px;background:rgba(14,26,18,.55);border:1px solid var(--line2);min-height:70px;position:relative}
+  .stagecap{font-size:11px;color:var(--mut);margin:10px 2px 0;line-height:1.6}
+
+  /* ════ 글래스 알약 34px ════ */
+  .pill{height:34px;display:inline-flex;align-items:center;justify-content:center;line-height:1;
+    background:var(--glass-btn);color:var(--mut);border:1px solid transparent;border-radius:999px;
+    backdrop-filter:blur(var(--blur-m));-webkit-backdrop-filter:blur(var(--blur-m));
+    font:600 12px/1 var(--sys);text-decoration:none;cursor:pointer;position:relative;
+    transition:transform .1s ease,filter .1s ease,color .15s,background .15s,border-color .15s,box-shadow .15s;user-select:none}
+  .pill.press,.pill:active{transform:scale(.92);filter:brightness(.9)}
+  .src{padding:0 14px;gap:4px}
+  .src:hover{color:var(--fg);background:var(--glass-btn-h)}
+  .arr{display:inline-block}
+  .dl-ico{width:13px;height:13px;flex:none;display:block}
+
+  /* 탭 반응 */
+  .pill.okflash{color:var(--accent)!important;border-color:rgba(var(--accent-rgb),.5)!important;box-shadow:0 0 0 2px rgba(var(--accent-rgb),.25)!important}
+  @keyframes dlbounce{0%{transform:translateY(0)}40%{transform:translateY(3px)}70%{transform:translateY(-1px)}100%{transform:translateY(0)}}
+  .dl-ico.bounce{animation:dlbounce .42s ease}
+  .pill.openflash{color:var(--fg)!important;background:var(--glass-btn-h)!important;box-shadow:0 0 0 2px rgba(255,255,255,.14)!important}
+  @keyframes arrnudge{0%{transform:translate(0,0)}45%{transform:translate(2px,-2px)}100%{transform:translate(0,0)}}
+  .arr.nudge{animation:arrnudge .42s ease}
+
+  /* ════ B 베이스 — 수직중앙·34px·원형 체크박스 ════ */
+  .sumctl{padding:0 13px;gap:0}
+  .sumctl .txt{display:inline-flex;align-items:center;gap:4px;line-height:1}
+  .cbox{width:16px;height:16px;flex:none;border-radius:50%;            /* 원형 */
+    border:1.5px solid rgba(255,255,255,.28);background:rgba(255,255,255,.04);
+    display:inline-flex;align-items:center;justify-content:center;margin-right:9px;
+    transition:background .15s,border-color .15s,box-shadow .15s}
+  .cbox svg{width:11px;height:11px;display:block;opacity:0;transform:scale(.5);transition:opacity .15s,transform .15s;stroke:var(--on-accent)}
+  .on .cbox{background:linear-gradient(135deg,var(--accent-bright),var(--accent));border-color:transparent}
+  .on .cbox svg{opacity:1;transform:scale(1)}
+  .sumctl:hover{color:var(--fg);background:var(--glass-btn-h)}
+
+  /* ════ 최종 액티브 = E3(테두리+채움) + 글로우 링 ════ */
+  /* 강한 링 */
+  .fin.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.10);
+    box-shadow:0 0 16px rgba(var(--accent-rgb),.30),0 0 0 1px rgba(var(--accent-rgb),.25)}
+  /* 은은한 링 */
+  .finsoft.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.45);background:rgba(var(--accent-rgb),.10);
+    box-shadow:0 0 9px rgba(var(--accent-rgb),.20)}
+  /* 켤 때 펄스 리플(E7) — 공통 */
+  .fin.on::after,.finsoft.on::after{content:'';position:absolute;inset:0;border-radius:999px;
+    border:1.5px solid rgba(var(--accent-rgb),.6);animation:ringpulse .6s ease-out forwards;pointer-events:none}
+  @keyframes ringpulse{from{transform:scale(1);opacity:.9}to{transform:scale(1.3);opacity:0}}
+
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>요약 버튼 B · 최종 조합</h1>
+  <p class="sub"><b>원형 체크박스 + E3(테두리+은은한 채움) + 글로우 링 + 켤 때 펄스 리플.</b> 눌림·요약(초록)·원문(흰빛) 탭반응 포함.</p>
+  <p class="note">📍 <b>체크 영역 탭</b> → 켜짐(링 + 펄스 리플 1회) · <b>꾹 누름</b> → 눌림 · <b>요약 탭</b> → 초록 플래시+화살표 바운스 · <b>원문 탭</b> → 흰빛 펄스+↗튐.</p>
+</header>
+
+<div class="grid">
+
+  <!-- 강한 링 -->
+  <section class="card pick">
+    <span class="ctag">최종안 · 강한 링</span>
+    <div class="cname">원형 + E3 + 글로우 링 + 펄스</div>
+    <p class="cdesc">켜지면 테두리·은은한 채움 + 바깥 네온 글로우, 켜는 순간 라임 링이 한 번 퍼짐(리플). 켜짐 상태가 또렷.</p>
+    <div class="stage">
+      <span class="pill sumctl fin" data-toggle>
+        <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span>
+        <span class="txt" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" data-open onclick="return false">원문 <span class="arr">↗</span></a>
+    </div>
+    <p class="stagecap">탭해서 켜봐 — 글로우 링 + 리플 1회.</p>
+  </section>
+
+  <!-- 은은한 링 -->
+  <section class="card">
+    <span class="ctag alt">대안 · 은은한 링</span>
+    <div class="cname">글로우를 한 단계 죽인 버전</div>
+    <p class="cdesc">글로우 세기를 낮춰(<code>9px·.20</code>) 헤더에서 덜 튀게. 펄스 리플은 동일.</p>
+    <div class="stage">
+      <span class="pill sumctl finsoft" data-toggle>
+        <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span>
+        <span class="txt" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" data-open onclick="return false">원문 <span class="arr">↗</span></a>
+    </div>
+    <p class="stagecap">글로우만 약함 — 나머지 동일.</p>
+  </section>
+
+</div>
+
+<p class="note" style="margin-top:24px">💡 둘 중 <b>링 세기</b>만 골라줘(강/약). 그대로 <code>viewer/index.html</code> <code>.dlbox/.dl-full/.dlg-pdf</code>에 반영(수직정렬·34px·원형·E3+링+펄스·눌림·요약/원문 반응) → 수정 모드+검증 → main. <code>prefers-reduced-motion</code>이면 펄스·바운스 자동 생략(접근성).</p>
+<footer>노뮤트 디자인시스템 · §🎨 토큰 계승 · 일회성 시안 스냅샷 · 260621</footer>
+</div>
+
+<script>
+  function fireRipple(el){ el.style.animation='none'; void el.offsetWidth; el.style.animation=''; }
+  document.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click',e=>{ if(e.target.closest('[data-dl]')) return;
+      const wasOn=el.classList.contains('on'); el.classList.toggle('on');
+      if(!wasOn) fireRipple(el);   // 켤 때만 펄스 리플 재생
+    });
+  });
+  document.querySelectorAll('[data-dl]').forEach(el=>{
+    el.addEventListener('click',e=>{ e.stopPropagation();
+      const p=el.closest('.pill'); p.classList.add('okflash'); setTimeout(()=>p.classList.remove('okflash'),520);
+      const ic=el.querySelector('.dl-ico'); if(ic){ ic.classList.remove('bounce'); void ic.offsetWidth; ic.classList.add('bounce'); }
+    });
+  });
+  document.querySelectorAll('[data-open]').forEach(el=>{
+    el.addEventListener('click',e=>{ el.classList.add('openflash'); setTimeout(()=>el.classList.remove('openflash'),520);
+      const a=el.querySelector('.arr'); if(a){ a.classList.remove('nudge'); void a.offsetWidth; a.classList.add('nudge'); }
+    });
+  });
+  document.querySelectorAll('.pill').forEach(p=>{
+    const on=()=>p.classList.add('press'), off=()=>p.classList.remove('press');
+    p.addEventListener('pointerdown',on);
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>p.addEventListener(ev,off));
+  });
+</script>
+</body>
+</html>

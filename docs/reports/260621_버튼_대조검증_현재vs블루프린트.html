@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>버튼 대조검증 · 현재 vs 블루프린트 (260621)</title>
+<style>
+  /* ⚠️ viewer/index.html :root 토큰 복사본(보고서=일회성 스냅샷·§🎯②). */
+  :root{
+    --bg:#0a120d; --glass-btn:rgba(255,255,255,.06); --glass-btn-h:rgba(255,255,255,.13);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --on-accent:#062108;
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697; --thumb:#ffce54; --danger:#ff5b4a;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --r-s:9px; --r-m:11px; --blur-m:14px;
+    --sys:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sys);letter-spacing:-.2px;
+    -webkit-font-smoothing:antialiased;padding:0 16px 64px;position:relative}
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+    radial-gradient(420px 300px at 10% -4%,rgba(var(--accent-rgb),.09),transparent 60%),
+    radial-gradient(720px 460px at 108% 6%,rgba(var(--accent-rgb),.08),transparent 62%)}
+  .wrap{max-width:820px;margin:0 auto}
+  header{padding:34px 4px 8px}
+  h1{font-size:21px;font-weight:800;margin:0 0 6px;letter-spacing:-.4px}
+  .sub{color:var(--mut);font-size:13px;line-height:1.7;margin:0}
+  .sub b{color:var(--fg-2)}
+  code{color:var(--accent);font-family:var(--mono);font-size:11.5px}
+  .note{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-m);background:rgba(255,255,255,.03);color:var(--fg-2);font-size:12.5px;line-height:1.7}
+
+  .d{margin-top:22px;border:1px solid var(--line);border-radius:16px;background:rgba(8,16,11,.5);overflow:hidden;
+    box-shadow:0 14px 30px rgba(0,0,0,.3)}
+  .dh{padding:14px 16px 12px;border-bottom:1px solid var(--line2)}
+  .dh .tag{font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.4px}
+  .dh .ti{font-size:15px;font-weight:800;margin:4px 0 2px}
+  .dh .ds{font-size:12px;color:var(--mut);line-height:1.6;margin:0}
+  .dh .ds b{color:var(--fg-2)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line2)}
+  @media(max-width:540px){.two{grid-template-columns:1fr}}
+  .col{background:rgba(10,18,13,.6);padding:18px 16px 16px}
+  .col .ch{font-size:11px;font-weight:800;letter-spacing:.4px;margin:0 0 13px;display:flex;align-items:center;gap:7px}
+  .col.cur .ch{color:var(--mut)} .col.bp .ch{color:var(--accent)}
+  .col .ch .pick{margin-left:auto;font:700 10px/1 var(--mono);padding:3px 7px;border-radius:6px;border:1px solid var(--line)}
+  .col.cur .ch .pick{color:var(--mut)} .col.bp .ch .pick{color:var(--accent);border-color:rgba(var(--accent-rgb),.35)}
+  .demo{display:flex;flex-wrap:wrap;gap:12px;align-items:center;min-height:46px}
+  .cap{font-size:11px;color:var(--mut);margin:11px 0 0;line-height:1.6}
+  .cap b{color:var(--fg-2)}
+
+  /* ── 실제 버튼 컴포넌트 근사(viewer 계승) ── */
+  .sbtn{display:grid;place-items:center;width:34px;height:34px;padding:0;color:rgba(255,255,255,.92);
+    background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:var(--r-s);cursor:pointer;
+    transition:transform .1s,background .15s}
+  .sbtn:active{transform:scale(.85)} .sbtn:hover{background:rgba(255,255,255,.13)}
+  .sbtn svg{display:block}
+  .xbtn{width:30px;height:30px;display:grid;place-items:center;background:rgba(255,255,255,.06);
+    border:1px solid var(--line);border-radius:8px;color:var(--mut);cursor:pointer;font-size:15px;transition:transform .1s,color .15s}
+  .xbtn:active{transform:scale(.85)} .xbtn:hover{color:var(--accent)}
+  .menuitem{display:inline-flex;align-items:center;gap:9px;font-size:13px;color:var(--fg-2);
+    padding:8px 12px;border:1px solid var(--line2);border-radius:var(--r-s);background:rgba(255,255,255,.02)}
+  .menuitem .ic{width:18px;height:18px;display:grid;place-items:center;flex:none}
+  .menuitem .emo{font-size:16px;width:18px;text-align:center}
+  .pillbtn{height:34px;display:inline-flex;align-items:center;gap:5px;padding:0 13px;border-radius:999px;
+    background:rgba(255,255,255,.06);border:1px solid transparent;color:var(--mut);font:600 12px var(--sys);
+    backdrop-filter:blur(var(--blur-m));cursor:pointer}
+
+  /* 요약 헤더 비교용 */
+  .dlbox-old{display:inline-flex;align-items:center;gap:0}
+  .dlbox-old .ck{display:inline-flex;align-items:center;height:34px;padding:0 5px 0 2px}
+  .dlbox-old .ck input{accent-color:var(--accent);width:14px;height:14px;margin:0}
+  .dlbox-new{height:34px;display:inline-flex;align-items:center;padding:0 13px;border-radius:999px;position:relative;
+    background:rgba(255,255,255,.06);border:1px solid transparent;color:var(--mut);font:600 12px var(--sys);
+    backdrop-filter:blur(var(--blur-m));cursor:pointer;transition:all .15s}
+  .dlbox-new.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.10);
+    box-shadow:0 0 16px rgba(var(--accent-rgb),.30),0 0 0 1px rgba(var(--accent-rgb),.25)}
+  .cbox{width:16px;height:16px;flex:none;border-radius:50%;border:1.5px solid rgba(255,255,255,.28);
+    background:rgba(255,255,255,.04);display:inline-flex;align-items:center;justify-content:center;margin-right:9px;transition:all .15s}
+  .cbox svg{width:11px;height:11px;opacity:0;transform:scale(.5);transition:all .15s;stroke:var(--on-accent)}
+  .dlbox-new.on .cbox{background:linear-gradient(135deg,var(--accent-bright),var(--accent));border-color:transparent}
+  .dlbox-new.on .cbox svg{opacity:1;transform:scale(1)}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:2px 0}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line2)}
+  th{font-size:10.5px;letter-spacing:.4px;color:var(--mut);text-transform:uppercase}
+  td b{color:var(--fg)} .simple{color:var(--accent);font-weight:700} .cost{color:var(--thumb);font-weight:700}
+  footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>버튼 대조검증 — 현재 vs 블루프린트</h1>
+  <p class="sub">네가 준 <b>전송버튼·픽토그램 구성도</b>와 <b>라이브 viewer</b>가 충돌하는 지점만 골랐어. 항목마다 <b>현재(A)</b> / <b>블루프린트(B)</b> 나란히 — <b>A/B로 골라줘</b>. (업로드본은 인라인 <code>:root</code>가 다시 들어간 옛 버전이라 블루프린트 파일 자체는 안 덮어씀 — 스펙만 적용.)</p>
+  <p class="note">🚦 대부분 <b>객관 정정(B 권장)</b> — 블루프린트가 너의 정본이라. 다만 손맛/취향 갈리는 건 직접 골라.</p>
+</header>
+
+<!-- D1 -->
+<section class="d">
+  <div class="dh"><div class="tag">D1 · 픽토그램</div><div class="ti">아이콘 선 굵기 통일</div>
+    <p class="ds">현재 stroke가 <b>1.6·1.8·2.4·2.6 혼재</b>. 블루프린트 = <b>전부 2.0</b>(라인 SVG·round). 같은 화면에서 굵기 들쭉날쭉이 어색함의 한 원인.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (혼재)<span class="pick">A</span></div>
+      <div class="demo">
+        <span class="sbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span>
+        <span class="sbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+        <span class="sbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+      </div><p class="cap">닫기 1.6 · 다운로드 1.8 · 체크 2.4 — 굵기 제각각</p></div>
+    <div class="col bp"><div class="ch">블루프린트 (2.0)<span class="pick">B</span></div>
+      <div class="demo">
+        <span class="sbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+        <span class="sbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span>
+        <span class="sbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+      </div><p class="cap">전부 2.0 = 균일·또렷 <b>(권장)</b></p></div>
+  </div>
+</section>
+
+<!-- D2 -->
+<section class="d">
+  <div class="dh"><div class="tag">D2 · 픽토그램</div><div class="ti">닫기(X) = 문자 ✕ → 라인 SVG</div>
+    <p class="ds">현재 닫기 다수가 <b>✕ 텍스트 문자</b>(<code>.askx·.ed-x·.qh-x·.mx</code>) → 폰트마다 모양·크기 제각각. 블루프린트·§🎨 인벤토리 = <b>라인 SVG X</b>(stroke 2.0). dlg-x도 1.6→2.0.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (✕ 문자)<span class="pick">A</span></div>
+      <div class="demo"><span class="xbtn">✕</span><span class="xbtn">✕</span></div>
+      <p class="cap">텍스트 글리프 — OS 의존·정렬 불안</p></div>
+    <div class="col bp"><div class="ch">블루프린트 (SVG X)<span class="pick">B</span></div>
+      <div class="demo"><span class="xbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+      <p class="cap">단일 SVG·2.0·정중앙 <b>(권장)</b></p></div>
+  </div>
+</section>
+
+<!-- D3 -->
+<section class="d">
+  <div class="dh"><div class="tag">D3 · 픽토그램</div><div class="ti">새로고침 = 문자 ↻ → refresh SVG</div>
+    <p class="ds">현재 <code>.pmenu-rf·.qh-rf</code>가 <b>↻ 문자</b>. 블루프린트 refresh 아이콘으로.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (↻)<span class="pick">A</span></div>
+      <div class="demo"><span class="xbtn">↻</span></div></div>
+    <div class="col bp"><div class="ch">블루프린트 (SVG)<span class="pick">B</span></div>
+      <div class="demo"><span class="xbtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></span></div>
+      <p class="cap">강제 새로고침 회전 피드백도 자연스럽게 <b>(권장)</b></p></div>
+  </div>
+</section>
+
+<!-- D4 -->
+<section class="d">
+  <div class="dh"><div class="tag">D4 · 이모지</div><div class="ti">"요약 요청" = ✨ → spark SVG</div>
+    <p class="ds">메뉴 <code>✨ 요약 요청</code>(askmenu) — 조작 항목이라 블루프린트는 라인 SVG. ✨ 자리에 spark.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (✨)<span class="pick">A</span></div>
+      <div class="demo"><span class="menuitem"><span class="emo">✨</span>요약 요청</span></div></div>
+    <div class="col bp"><div class="ch">블루프린트 (spark)<span class="pick">B</span></div>
+      <div class="demo"><span class="menuitem"><span class="ic" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></span>요약 요청</span></div>
+      <p class="cap">라인 SVG·강조색 상속 <b>(권장)</b></p></div>
+  </div>
+</section>
+
+<!-- D5 -->
+<section class="d">
+  <div class="dh"><div class="tag">D5 · 이모지</div><div class="ti">"썸네일 생성기" = 🖌️ → image SVG</div>
+    <p class="ds">메뉴 <code>🖌️ 썸네일 생성기</code> → 블루프린트 메뉴 픽토그램 = image 라인 SVG(썸네일 노랑색).</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (🖌️)<span class="pick">A</span></div>
+      <div class="demo"><span class="menuitem"><span class="emo">🖌️</span>썸네일 생성기</span></div></div>
+    <div class="col bp"><div class="ch">블루프린트 (image)<span class="pick">B</span></div>
+      <div class="demo"><span class="menuitem"><span class="ic" style="color:var(--thumb)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg></span>썸네일 생성기</span></div>
+      <p class="cap">노랑 강조 유지·SVG <b>(권장)</b></p></div>
+  </div>
+</section>
+
+<!-- D6 -->
+<section class="d">
+  <div class="dh"><div class="tag">D6 · 이모지</div><div class="ti">"내용 직접 입력" = 📝 → file SVG</div>
+    <p class="ds">붙여넣기 모달 헤더 <code>📝 내용 직접 입력</code> → file/문서 라인 SVG.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (📝)<span class="pick">A</span></div>
+      <div class="demo"><span class="menuitem"><span class="emo">📝</span>내용 직접 입력</span></div></div>
+    <div class="col bp"><div class="ch">블루프린트 (file)<span class="pick">B</span></div>
+      <div class="demo"><span class="menuitem"><span class="ic" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></span>내용 직접 입력</span></div>
+      <p class="cap"><b>(권장)</b></p></div>
+  </div>
+</section>
+
+<!-- D7 -->
+<section class="d">
+  <div class="dh"><div class="tag">D7 · 이모지(미묘)</div><div class="ti">"🚨 알림" 버튼 라벨 — 유지 vs bell SVG</div>
+    <p class="ds">프로필 팝업 <code>🚨 알림</code> 행. 🚨는 <b>긴급 표식</b>이라 블루프린트도 <b>콘텐츠 이모지는 허용</b>(💡📊🚨). 알림은 경계라 <b>너가 골라</b> — 유지(A)도 명분 있음.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재 (🚨 유지)<span class="pick">A</span></div>
+      <div class="demo"><span class="menuitem"><span class="emo">🚨</span>알림</span></div>
+      <p class="cap">긴급 상징성 유지(콘텐츠 표식 논리)</p></div>
+    <div class="col bp"><div class="ch">통일 (bell SVG)<span class="pick">B</span></div>
+      <div class="demo"><span class="menuitem"><span class="ic" style="color:var(--danger)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>알림</span></div>
+      <p class="cap">조작버튼 SVG 일관(신설 bell — 채택 시 추가)</p></div>
+  </div>
+</section>
+
+<!-- D8 -->
+<section class="d">
+  <div class="dh"><div class="tag">D8 · 요약 헤더 (기결정)</div><div class="ti">체크박스 인셋 + 강한 링</div>
+    <p class="ds">네가 가리킨 그 화면. 현재 = 체크가 알약 밖 raw 네모. 결정 = <b>원형 인셋 + E3 + 강한 링 + 펄스</b>. 확인용으로 다시 나란히.</p></div>
+  <div class="two">
+    <div class="col cur"><div class="ch">현재<span class="pick">A</span></div>
+      <div class="demo"><span class="dlbox-old"><label class="ck"><input type="checkbox"></label><span class="pillbtn" style="border-radius:999px">요약 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span></span></div></div>
+    <div class="col bp"><div class="ch">결정안<span class="pick">B ✓</span></div>
+      <div class="demo"><span class="dlbox-new on" onclick="this.classList.toggle('on')"><span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span>요약 <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span></div>
+      <p class="cap">탭=토글 · 다운로드 아이콘도 2.0으로(D1 정합) <b>(확정)</b></p></div>
+  </div>
+</section>
+
+<!-- D9 참고표 -->
+<section class="d">
+  <div class="dh"><div class="tag">D9 · 전송버튼 (참고)</div><div class="ti">단순 액션 vs 비용 액션 — 피드백 분류</div>
+    <p class="ds">블루프린트 §5 = 비용/되돌리기 어려운 것만 <b>재확인→게이지→완료</b>, 공짜·즉시는 <b>탭→즉시 ✓</b>. 어느 버튼이 뭔지 정리(이 분류대로 적용).</p></div>
+  <div class="col" style="background:rgba(10,18,13,.6)">
+    <table>
+      <tr><th>버튼</th><th>분류</th><th>피드백</th></tr>
+      <tr><td><b>요약 다운로드 · 원문 · 복사 · 미리보기</b></td><td class="simple">단순</td><td>눌림 + 즉시 ✓(초록 플래시) · 재확인 없음</td></tr>
+      <tr><td><b>카드 슛 · 재발사 · 요약요청 · 수정요청</b></td><td class="cost">비용</td><td>재확인(앰버) → 게이지/Picking… → 완료/PICKED</td></tr>
+      <tr><td><b>PICK(수집함)</b></td><td class="cost">비용·일회</td><td>재확인 → 발사 → <b>소진 잠금</b>(원복 X·탭=피드)</td></tr>
+    </table>
+    <p class="cap" style="margin-top:10px">대부분 이미 <code>.sc-pick</code>·<code>.asksend.firing</code>로 부분 구현됨 — 라벨·색만 블루프린트에 맞춰 통일. <b>이 표 자체는 확인용(고를 것 없음)</b>.</p>
+  </div>
+</section>
+
+<p class="note" style="margin-top:24px">📌 <b>답 형식 예</b>: "D1 B · D2 B · D3 B · D4 B · D5 B · D6 B · D7 A · D8 확정" 처럼 한 줄로. 전부 B면 "다 B"라고만 해도 돼. 고르면 <code>viewer/index.html</code>에 수정 모드(백업→check_refs→PR→main) + §✅ 검증으로 반영.</p>
+<footer>노뮤트 디자인시스템 · §🎨 대조검증 · 일회성 스냅샷 · 260621 · 블루프린트 정본 = 구성도/전송 버튼 상태머신·픽토그램.html</footer>
+</div>
+</body>
+</html>

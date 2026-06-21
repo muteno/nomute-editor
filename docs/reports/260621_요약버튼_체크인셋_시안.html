@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>요약 버튼 · 체크 인셋 시안 (260621)</title>
+<style>
+  /* ⚠️ viewer/index.html :root 토큰 복사본(보고서 = 일회성 스냅샷 · §🎯②). 라이브 동기화 의무 없음. */
+  :root{
+    --bg:#0a120d;
+    --glass-btn:rgba(255,255,255,.06); --glass-btn-h:rgba(255,255,255,.13);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --on-accent:#062108;
+    --accent-dim:rgba(15,253,2,.13);
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --r-s:9px; --r-m:11px; --r-pill:999px;
+    --blur-m:14px;
+    --sys:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sys);letter-spacing:-.2px;
+    -webkit-font-smoothing:antialiased;padding:0 16px 64px;position:relative}
+  /* 배경 네온 글로우 — 글래스가 '유리'로 읽히게(뷰어 .bgfx 동일 결) */
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+    radial-gradient(420px 300px at 10% -4%,rgba(var(--accent-rgb),.09),transparent 60%),
+    radial-gradient(720px 460px at 108% 6%,rgba(var(--accent-rgb),.08),transparent 62%),
+    radial-gradient(640px 720px at 46% 116%,rgba(var(--accent-rgb),.06),transparent 60%)}
+  .wrap{max-width:760px;margin:0 auto}
+  header{padding:34px 4px 8px}
+  h1{font-size:21px;font-weight:800;margin:0 0 6px;letter-spacing:-.4px}
+  .sub{color:var(--mut);font-size:13px;line-height:1.7;margin:0}
+  .sub b{color:var(--fg-2);font-weight:700}
+  .note{margin:14px 0 0;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-m);
+    background:rgba(255,255,255,.03);color:var(--fg-2);font-size:12.5px;line-height:1.7}
+  .note code{color:var(--accent);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+
+  /* ── 시안 카드 ── */
+  .grid{display:grid;gap:16px;margin-top:24px}
+  .card{border:1px solid var(--line);border-radius:18px;background:rgba(8,16,11,.5);
+    padding:18px 18px 16px;box-shadow:0 14px 34px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04)}
+  .card.before{border-style:dashed;border-color:rgba(255,255,255,.14);background:rgba(8,16,11,.32)}
+  .ctag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.3px;
+    color:var(--on-accent);background:linear-gradient(135deg,var(--accent-bright),var(--accent));
+    padding:3px 10px;border-radius:999px}
+  .card.before .ctag{color:var(--mut);background:rgba(255,255,255,.07)}
+  .cname{font-size:15px;font-weight:800;margin:11px 0 3px}
+  .cdesc{font-size:12.5px;color:var(--mut);line-height:1.7;margin:0 0 14px}
+  /* 데모 무대 — 모달 헤더(.dlg-top) 미니어처: 요약컨트롤 + 원문 */
+  .stage{display:flex;gap:10px;align-items:center;padding:14px 14px;border-radius:14px;
+    background:rgba(14,26,18,.55);border:1px solid var(--line2);min-height:62px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;font-size:11.5px;line-height:1.6}
+  .meta div{flex:1;min-width:150px}
+  .meta .k{color:var(--accent);font-weight:700;display:block;margin-bottom:1px}
+  .meta .pro::before{content:'＋ ';color:var(--accent)}
+  .meta .con::before{content:'－ ';color:var(--mut)}
+
+  /* ════ 공통: 뷰어 글래스 알약 계승(.dlg-h a / .dlg-pdf) ════ */
+  .pill{height:34px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+    background:var(--glass-btn);color:var(--mut);border:1px solid transparent;border-radius:999px;
+    backdrop-filter:blur(var(--blur-m));-webkit-backdrop-filter:blur(var(--blur-m));
+    font:600 12px/1 var(--sys);text-decoration:none;cursor:pointer;
+    transition:color .15s,background .15s,transform .1s,border-color .15s,box-shadow .15s;user-select:none}
+  .pill:active{transform:scale(.94)}
+  .src{padding:0 14px;gap:4px}              /* 원문 ↗ */
+  .src:hover{color:var(--fg);background:var(--glass-btn-h)}
+  .dl-ico{width:13px;height:13px;flex:none}
+  /* 'ok' 플래시(다운로드 시늉) — 뷰어 .sbtn.ok 계승 */
+  .pill.okflash{color:var(--accent)!important;border-color:rgba(var(--accent-rgb),.5)!important;
+    box-shadow:0 0 0 2px rgba(var(--accent-rgb),.25)}
+
+  /* ─────────────────────────────────────────────
+     [현재] 분리형 — 체크가 알약 밖 raw 사각 (스크린샷)
+  ───────────────────────────────────────────────*/
+  .v0{display:inline-flex;align-items:center;gap:0}
+  .v0 .chk{display:inline-flex;align-items:center;height:34px;padding:0 5px 0 2px;cursor:pointer}
+  .v0 .chk input{accent-color:var(--accent);width:14px;height:14px;margin:0;cursor:pointer}
+  .v0 .sum{padding:0 14px;gap:4px}
+
+  /* ─────────────────────────────────────────────
+     공통 인셋 알약 — 체크 + 요약↓이 한 글래스 안
+  ───────────────────────────────────────────────*/
+  .sumctl{gap:0;padding:0 12px 0 9px}        /* 좌(체크) 여백 < 우(텍스트) */
+  .sumctl .txt{display:inline-flex;align-items:center;gap:4px}
+  .sumctl:hover{color:var(--fg);background:var(--glass-btn-h)}
+
+  /* A. 네이티브 체크 + 헤어라인 디바이더 */
+  .vA .nat{accent-color:var(--accent);width:14px;height:14px;margin:0 9px 0 0;cursor:pointer}
+  .vA .div{width:1px;height:16px;background:rgba(255,255,255,.14);margin:0 10px 0 0}
+
+  /* B. 커스텀 글래스 체크박스 (권장) */
+  .cbox{width:16px;height:16px;flex:none;border-radius:5px;border:1.5px solid rgba(255,255,255,.28);
+    background:rgba(255,255,255,.04);display:inline-flex;align-items:center;justify-content:center;
+    margin-right:9px;transition:background .15s,border-color .15s}
+  .cbox svg{width:11px;height:11px;opacity:0;transform:scale(.5);transition:opacity .15s,transform .15s;
+    stroke:var(--on-accent)}
+  .on .cbox{background:linear-gradient(135deg,var(--accent-bright),var(--accent));border-color:transparent}
+  .on .cbox svg{opacity:1;transform:scale(1)}
+
+  /* C. 세그먼트 2존 알약 — 안쪽 헤어라인으로 분할, 체크존 탭=토글 */
+  .vC{padding:0}
+  .vC .zone{display:inline-flex;align-items:center;height:100%;cursor:pointer;transition:background .15s}
+  .vC .zL{padding:0 11px;border-radius:999px 0 0 999px}
+  .vC .zR{padding:0 13px;gap:4px;border-left:1px solid rgba(255,255,255,.12);border-radius:0 999px 999px 0}
+  .vC .zone:hover{background:rgba(255,255,255,.07)}
+  .vC.on .zL{background:var(--accent-dim)}
+  .vC .cbox{margin-right:0}
+
+  /* D. '전체' 라벨 복원형 — 체크 + '전체' 글자가 켜지면 형광 */
+  .vD .lbl{font-weight:700;color:var(--mut);margin-right:2px;transition:color .15s}
+  .vD.on .lbl{color:var(--accent)}
+  .vD .dot{margin:0 9px 0 7px;color:rgba(255,255,255,.22)}
+
+  /* E. 액티브=알약 전체 강조 (전체 모드 ON 한눈에) */
+  .vE.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.45);
+    background:rgba(var(--accent-rgb),.10);box-shadow:0 0 14px rgba(var(--accent-rgb),.18)}
+  .vE.on .cbox{box-shadow:0 0 8px rgba(var(--accent-rgb),.45)}
+
+  .hint{font-size:11px;color:var(--mut);margin-top:11px;opacity:.8}
+  .hint b{color:var(--fg-2)}
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
+    color:var(--mut);font-size:11.5px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>요약 버튼 · 체크박스 인셋 시안</h1>
+  <p class="sub">현재는 <b>체크박스가 글래스 알약 밖</b>에 raw 사각으로 떠 있어(스크린샷). 이걸 <b>요약 ↓ 글래스 알약 안</b>으로 접어넣는 5가지 톤앤톤 시안. 라임 accent <code>#0FFD02</code>·글래스 <code>rgba(255,255,255,.06)</code>·blur 14px·34px 알약 = 뷰어 토큰 그대로 계승.</p>
+  <p class="note">📍 <b>탭해서 직접 만져봐</b> — 체크 영역을 누르면 토글, <b>요약</b> 글자를 누르면 다운로드 플래시(초록)가 떠. 폰에서 손맛까지 확인용.</p>
+</header>
+
+<div class="grid">
+
+  <!-- 현재(Before) -->
+  <section class="card before">
+    <span class="ctag">현재 (Before)</span>
+    <div class="cname">분리형 — 체크가 알약 밖</div>
+    <p class="cdesc">raw 사각 체크박스가 글래스 알약과 따로 놀아 '한 컨트롤'로 안 읽힘. 작은 사각이 톤에서 튄다.</p>
+    <div class="stage">
+      <span class="v0">
+        <label class="chk"><input type="checkbox"></label>
+        <span class="pill sum" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" onclick="return false">원문 ↗</a>
+    </div>
+  </section>
+
+  <!-- A -->
+  <section class="card">
+    <span class="ctag">시안 A</span>
+    <div class="cname">인셋 네이티브 체크 + 헤어라인</div>
+    <p class="cdesc">알약 안 왼쪽에 네이티브 체크(accent색)를 넣고 1px 디바이더로 구분. <b>구조 변경 최소</b> — 가장 안전한 한 수.</p>
+    <div class="stage">
+      <span class="pill sumctl vA" data-toggle>
+        <input type="checkbox" class="nat" onclick="event.stopPropagation()">
+        <span class="div"></span>
+        <span class="txt" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" onclick="return false">원문 ↗</a>
+    </div>
+    <div class="meta">
+      <div><span class="k">전/후</span> 체크가 알약 안으로 들어와 한 컨트롤로 읽힘.</div>
+      <div><span class="con">네이티브 체크는 OS마다 모양 편차(iOS/안드로이드).</span></div>
+    </div>
+  </section>
+
+  <!-- B (권장) -->
+  <section class="card">
+    <span class="ctag">시안 B · 추천</span>
+    <div class="cname">커스텀 글래스 체크박스</div>
+    <p class="cdesc">알약 안 왼쪽에 둥근 사각 커스텀 체크 — 끄면 은은한 테두리, 켜면 <b>라임 그라데 채움 + 다크 체크마크 + 글로우</b>. 뷰어 <code>.sbtn.ok</code>·토글칩과 가장 정합.</p>
+    <div class="stage">
+      <span class="pill sumctl vB" data-toggle>
+        <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span>
+        <span class="txt" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" onclick="return false">원문 ↗</a>
+    </div>
+    <div class="meta">
+      <div><span class="pro">OS 무관 동일 모양 · 톤앤톤 완벽 · 켜짐 상태가 명확.</span></div>
+      <div><span class="con">커스텀이라 CSS 몇 줄 추가(접근성 위해 숨김 input 유지).</span></div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="card">
+    <span class="ctag">시안 C</span>
+    <div class="cname">세그먼트 2존 알약</div>
+    <p class="cdesc">알약을 안쪽 헤어라인으로 둘로 — 왼쪽 존 탭=전체 토글(켜지면 존 배경 형광 틴트), 오른쪽 존 탭=다운로드. 탭 타깃이 큼.</p>
+    <div class="stage">
+      <span class="pill vC">
+        <span class="zone zL" data-toggle><span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span></span>
+        <span class="zone zR" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" onclick="return false">원문 ↗</a>
+    </div>
+    <div class="meta">
+      <div><span class="pro">탭 타깃 큼(폰 친화) · 토글/다운로드 영역 분리 명확.</span></div>
+      <div><span class="con">알약이 약간 넓어짐 · 두 액션이 한 알약이라 첫 학습 필요.</span></div>
+    </div>
+  </section>
+
+  <!-- D -->
+  <section class="card">
+    <span class="ctag">시안 D</span>
+    <div class="cname">'전체' 라벨 복원형</div>
+    <p class="cdesc">체크 옆에 '전체' 글자를 되살림(현재 코드 주석: <code>'전체' 글자 폐기</code>). 켜지면 라벨이 형광 → <b>지금 뭘 받는지 글자로 설명</b>. 폭은 늘지만 자기설명적.</p>
+    <div class="stage">
+      <span class="pill sumctl vD" data-toggle>
+        <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span>
+        <span class="lbl">전체</span><span class="dot">·</span>
+        <span class="txt" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" onclick="return false">원문 ↗</a>
+    </div>
+    <div class="meta">
+      <div><span class="pro">자기설명적('전체'를 받는다는 뜻이 글자로).</span></div>
+      <div><span class="con">폭이 가장 넓음 · 모달 헤더 공간 부담.</span></div>
+    </div>
+  </section>
+
+  <!-- E -->
+  <section class="card">
+    <span class="ctag">시안 E</span>
+    <div class="cname">액티브 = 알약 전체 강조</div>
+    <p class="cdesc">B의 커스텀 체크 + 켜지면 <b>알약 전체</b>가 형광 테두리·은은한 채움·글로우로 전환 → '전체 모드 ON'을 한눈에. 상태 신호가 가장 강함.</p>
+    <div class="stage">
+      <span class="pill sumctl vE" data-toggle>
+        <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span>
+        <span class="txt" data-dl>요약 <svg class="dl-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></span>
+      </span>
+      <a class="pill src" href="#" onclick="return false">원문 ↗</a>
+    </div>
+    <div class="meta">
+      <div><span class="pro">켜짐 상태가 가장 또렷(멀리서도 보임).</span></div>
+      <div><span class="con">초록이 강해 다운로드 'ok' 플래시와 색이 겹칠 수 있음(시각 충돌 주의).</span></div>
+    </div>
+  </section>
+
+</div>
+
+<p class="hint">※ 전부 <b>실제 뷰어 토큰</b>으로 그렸지만 이건 <b>시안(스냅샷)</b>이라 라이브엔 아직 안 들어감. 고르면 <code>viewer/index.html</code> <code>.dlbox</code>/<code>.dl-full</code>에 반영(수정 모드 + 검증) → main 머지.</p>
+
+<footer>
+  노뮤트 디자인시스템 · §🎨 토큰 계승 · 일회성 시안 스냅샷 · 260621
+</footer>
+</div>
+
+<script>
+  // 체크 토글
+  document.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      if(e.target.closest('[data-dl]')) return;        // 다운로드 영역은 토글 제외
+      const host = el.classList.contains('zone') ? el.closest('.pill') : el;
+      host.classList.toggle('on');
+      const nat = host.querySelector('.nat'); if(nat) nat.checked = host.classList.contains('on');
+    });
+  });
+  // 다운로드 플래시(시늉)
+  document.querySelectorAll('[data-dl]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const pill = el.closest('.pill') || el.closest('.v0').querySelector('.pill');
+      pill.classList.add('okflash');
+      setTimeout(()=>pill.classList.remove('okflash'),520);
+    });
+  });
+</script>
+</body>
+</html>
