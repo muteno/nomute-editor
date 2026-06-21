@@ -378,6 +378,7 @@
     background:linear-gradient(135deg,rgba(18,30,34,.72),rgba(11,19,23,.72)); border:1px solid rgba(12,208,247,.22);
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }
+  #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
   .soc-item:hover { border-color:rgba(12,208,247,.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(12,208,247,.2); }
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
   .soc-burst { color:#0cd0f7; }
@@ -4671,8 +4672,10 @@ const SOC_LEAN_MAP = { '클리앙': 'l', '보배드림': 'l', '오유': 'l', '82
 const socLean = s => { const v = SOC_LEAN_MAP[s]; return v === 'l' ? 'lean-l' : v === 'r' ? 'lean-r' : ''; };
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
+let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
+  let _ss = '';   // 이번 렌더 구성(행 ID·순서+검색어) 누적
   if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">불러오는 중…</div>`; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rows = q ? SOCIAL.filter(r => ((r.title || '') + ' ' + (r.sources || []).join(' ')).toLowerCase().includes(q)) : SOCIAL;
@@ -4690,7 +4693,11 @@ function renderSns() {
     el.querySelector('.soc-title').textContent = r.title || '';
     const chips = el.querySelectorAll('.soc-chip'); (r.sources || []).forEach((s, k) => { if (chips[k]) chips[k].textContent = s; });
     list.appendChild(el);
+    _ss += (r.url || r.title || '') + ',';   // 시그니처 누적(행 ID·순서)
   });
+  _ss += '|' + q;
+  list.classList.toggle('no-anim', _ss === _snsSig);   // 직전과 동일 구성(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0
+  _snsSig = _ss;
 }
 
 // ── ✨ 요약 요청(멀티모달 입력) — 자연어+캡처 → 큐레이션 요청 ──
