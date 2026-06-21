@@ -752,6 +752,15 @@ let SRV_HIST = [];
 async function loadServerHist() {
   try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch { /* 없으면 로컬만 */ }
   renderHist();
+  maybeOpenHist();   // 제작완료 알림(#done)로 들어왔으면 서버 병합 후 '이전 제작' 자동 펼침
+}
+// 제작완료 푸시 탭 → /thumb.html#done 진입 시 '이전 제작'을 펼치고 그 위치로 스크롤(완성 결과가 바로 보이게).
+function maybeOpenHist() {
+  if (!/\bdone\b/.test(location.hash)) return;
+  const hist = $('#hist'); if (!hist || hist.hidden) return;   // 표시할 제작 건 없으면 그대로
+  const b = $('#histBody');
+  if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); }
+  try { hist.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) { hist.scrollIntoView(); }
 }
 function histLoad() { try { const a = JSON.parse(localStorage.getItem(THUMB_HKEY) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function histSave(a) { try { localStorage.setItem(THUMB_HKEY, JSON.stringify(a)); } catch {} }
@@ -785,6 +794,7 @@ function renderHist() {
   });
 }
 $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden; b.hidden = !open; $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open); });
+window.addEventListener('hashchange', maybeOpenHist);   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀌어 새로고침 안 됨) 펼치게
 $('#histClr').addEventListener('click', async () => { if (await askConfirm('이전 제작 기록을 지울까요? (이미지 파일은 백엔드에 남아있음)')) { localStorage.removeItem(THUMB_HKEY); renderHist(); } });
 $('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
 // PC: 마우스로 잡아끌어 좌우 넘김(터치는 네이티브 스와이프) — 뉴스 카드피드(.feedtrack) 패턴 계승. 드래그 후 클릭(다운로드) 억제.
@@ -1195,6 +1205,7 @@ function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.a
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
+maybeOpenHist();     // #done(제작완료 알림) 진입이면 로컬 기준으로 먼저 펼침(서버 병합 후 loadServerHist서 재확인)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
 </script>
 <script src="cscroll.js"></script>

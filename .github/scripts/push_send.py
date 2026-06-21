@@ -60,6 +60,16 @@ def vapid_pem(raw_b64url):
 def main():
     test = "--test" in sys.argv
     notify = None
+    notify_url = "/"
+    notify_tag = "nomute-make"
+    if "--url" in sys.argv:                           # 알림 탭 시 이동할 경로(제작완료=제작 화면으로) · 미지정이면 "/"
+        j = sys.argv.index("--url")
+        if len(sys.argv) > j + 1:
+            notify_url = sys.argv[j + 1] or "/"
+    if "--tag" in sys.argv:                            # 알림 tag — 같은 tag=교체. 건별 고유 tag면 여러 알림 쌓임(요약완료=건별 누적)
+        k = sys.argv.index("--tag")
+        if len(sys.argv) > k + 1 and sys.argv[k + 1]:
+            notify_tag = sys.argv[k + 1]
     if "--notify" in sys.argv:                       # 임의 알림(제작완료 등) — 구독자 전원(=프로필 ON) · dedup 미기록
         i = sys.argv.index("--notify")
         notify = (sys.argv[i + 1] if len(sys.argv) > i + 1 else "🖼 News",
@@ -78,9 +88,10 @@ def main():
 
     if test:
         msgs = [{"keys": [f"test-{int(time.time())}"], "title": "🔔 노뮤트 테스트",
-                 "body": "웹푸시 연결 정상! 긴급 속보가 이렇게 와.", "url": "/"}]
+                 "body": "웹푸시 연결 정상! 긴급 속보가 이렇게 와.", "url": "/", "tag": "nomute-breaking"}]
     elif notify:
-        msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": "/"}]
+        # 제작완료/요약완료 등 = 전용 tag(긴급 속보와 안 덮어씀) · url=대상 화면(notify_url) · tag=notify_tag(건별 고유면 누적)
+        msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": notify_url, "tag": notify_tag}]
     else:
         cands = jload(CAND, [])
         sent = set(jload(SENT, []))
@@ -96,14 +107,14 @@ def main():
             ks = dedup_keys(c)
             if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
                 continue
-            msgs.append({"keys": ks, "title": "News", "body": ("(긴급) " + (c.get("title") or ""))[:120], "url": "/"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(운영자 260621)
+            msgs.append({"keys": ks, "title": "News", "body": ("(긴급) " + (c.get("title") or ""))[:120], "url": "/", "tag": "nomute-breaking"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(운영자 260621)
         if not msgs:
             print("새 긴급 없음 — 발송 생략"); return
 
     pem_path = vapid_pem(priv)
     dead, sent_keys = set(), []
     for m in msgs:
-        payload = json.dumps({"title": m["title"], "body": m["body"], "url": m["url"], "tag": "nomute-breaking"},
+        payload = json.dumps({"title": m["title"], "body": m["body"], "url": m["url"], "tag": m.get("tag", "nomute-breaking")},
                              ensure_ascii=False)
         ok_any = False
         for s in subs:

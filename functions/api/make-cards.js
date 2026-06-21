@@ -15,8 +15,8 @@ export async function onRequestPost({ request, env }) {
 
   // 대상 검증: queue 파일명(ASCII) 1개 또는 all
   const article = /^[A-Za-z0-9._-]+\.md$/.test(body.article || '') ? body.article : 'all';
-  // 모드: shoot = 렌더만 / full = 클로드+렌더(기본) / edit = 단일 카드 재발사(텍스트·이미지 희망)
-  const mode = ['shoot', 'edit'].includes(body.mode) ? body.mode : 'full';
+  // 모드: text = 프롬프트(2단계)만·이미지 0 / shoot = 렌더만 / edit = 단일 카드 재발사 / full = 클로드+렌더(기본)
+  const mode = ['text', 'shoot', 'edit'].includes(body.mode) ? body.mode : 'full';
 
   const inputs = { article, mode };
   if (mode === 'edit') {
