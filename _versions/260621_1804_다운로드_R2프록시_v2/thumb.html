@@ -713,11 +713,9 @@ function dlStamp(ts) {   // 다운로드 파일명 시각 프리픽스 yymmdd_hh
 const pad3 = n => String(n).padStart(3, '0');   // 잡번호 3자리(005) — 파일명 통일
 // 파일명용 라벨 슬러그 — 한글 유지, '#' 제거(파일시스템 인식 문제)·공백/괄호/·/금지문자 → '_' 정리
 const dlSlug = s => String(s || '').replace(/#/g, '').replace(/[·()/\\:*?"<>|]/g, ' ').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-function dlBlob(url, name) {   // 다운로드 — R2(교차출처)는 같은-출처 프록시(api/dl)가 Content-Disposition: attachment로 강제 저장(전 플랫폼·CORS 무관·iOS 인라인 회피·?t= 캐시버스트 보존). 비R2(같은출처)는 download 속성으로 직접.
-  const a = document.createElement('a');
-  a.href = /\/\/pub-[0-9a-fA-F]+\.r2\.dev\//.test(url) ? ('api/dl?u=' + encodeURIComponent(url) + '&n=' + encodeURIComponent(name || 'thumb.png')) : url;
-  a.download = name || 'thumb.png';
-  document.body.appendChild(a); a.click(); a.remove();
+async function dlBlob(url, name) {   // R2(교차출처) 다운로드 — a[download]는 교차출처서 무시됨 → blob fetch(카드 downloadImg 패턴·R2 CORS 허용). 실패 시 새 탭 폴백.
+  try { const b = await (await fetch(url)).blob(); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+  catch (e) { window.open(url, '_blank'); }
 }
 function carAppend(url, dlname, cap, job, varStr, o) {   // 완성 이미지 1장을 캐러셀에 추가(나온 순서). o=변형 객체(있으면 점프·개별다운로드 매핑 기록)
   const slideIdx = CARSLIDES.length;   // push 전 = 이 슬라이드의 전역 인덱스(변형줄 클릭 점프용)
