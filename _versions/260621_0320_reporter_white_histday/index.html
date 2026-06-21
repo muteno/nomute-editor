@@ -920,7 +920,6 @@
   .ovmeta .ov-cat { font-weight:800; }
   .ovmeta .ov-d { color:var(--accent); font-weight:700; }
   .ovmeta .ov-media { color:var(--fg); font-weight:700; }
-  .ovmeta .ov-rp { color:var(--fg); font-weight:700; }   /* 기자명(첫 어절)=흰색 · 직함(특파원 등)·'기자'는 기본 muted(운영자 260621) */
   .ovmeta .ov-nl { flex-basis:100%; height:0; }   /* 기자명 다음 줄바꿈 — WRITE·IN을 다음 줄로(flex-wrap 강제개행 · 운영자 260620) */
   /* H 섹션 부제 괄호 → #연회색 해시태그 */
   .hashsub { color:rgba(255,255,255,.4); font-weight:600; font-size:.9em; letter-spacing:-.2px; }
@@ -3267,13 +3266,12 @@ function fmtReporter(rp, media) {
   if (!rp || rp === '-') return '';
   const foreign = FOREIGN_MEDIA.has((media || '').trim());
   const sfx = foreign ? '' : ' 기자';                                  // 국내=「기자」 호칭 / 해외=생략(관례)
-  const nm = s => { s = s.trim(); const i = s.indexOf(' '); return i < 0 ? '<b class="ov-rp">' + esc(s) + '</b>' : '<b class="ov-rp">' + esc(s.slice(0, i)) + '</b>' + esc(s.slice(i)); };   // 이름(첫 어절)=흰색 · 직함(특파원 등)=기본(운영자 260621)
   const ex = rp.match(/^(.+?)\s*외\s*(\d+)\s*명/);                      // 이미 '외 N명' 형식이면 보존
-  if (ex) return nm(ex[1].replace(/\s*기자\s*$/, '').trim()) + sfx + ' 외 ' + ex[2] + '명';
+  if (ex) return esc(ex[1].replace(/\s*기자\s*$/, '').trim()) + sfx + ' 외 ' + ex[2] + '명';
   rp = rp.replace(/\s*기자\s*$/, '').trim();                            // 끝 '기자' 제거(중복 방지)
   const names = rp.split(/\s*[,·、\/]\s*/).map(s => s.trim()).filter(Boolean);
-  if (names.length >= 2) return nm(names[0]) + sfx + ' 외 ' + (names.length - 1) + '명';   // 2명+ = 000 기자 외 N명(운영자 260621)
-  return nm(names[0] || rp) + sfx;                                    // 단독: 국내=000 기자 / 해외=000
+  if (names.length >= 2) return esc(names[0]) + sfx + ' 외 ' + (names.length - 1) + '명';   // 2명+ = 000 기자 외 N명(운영자 260621)
+  return esc(names[0] || rp) + sfx;                                    // 단독: 국내=000 기자 / 해외=000
 }
 function overviewMeta(a) {
   const cat = catBucket(a.category);
