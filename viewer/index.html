@@ -256,8 +256,8 @@
     padding:4px 3px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:color .15s, text-shadow .15s; }
   .chip:hover { color:var(--fg); }
   .chip.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(15,253,2,.55); }
-  .chip-brk, .chip-iss { margin-left:0; font-weight:700; }   /* 긴급·이슈 칩(카테고리와 별개 인덱스) */
-  .chip-brk.on, .chip-iss.on { color:#ffd24a; font-weight:800; text-shadow:0 0 11px rgba(255,200,40,.6); }   /* 긴급·이슈 선택 시 = 노랑(운영자 260617) */
+  .chip-iss { margin-left:0; font-weight:700; }   /* 이슈 칩(긴급+이슈 통합·카테고리와 별개 인덱스·운영자 260621) */
+  .chip-iss.on { color:#ffd24a; font-weight:800; text-shadow:0 0 11px rgba(255,200,40,.6); }   /* 이슈 선택 시 = 노랑 */
   /* 날짜 헤더(검색 위) — 날짜 강조 · 세로 구분선 · Today 강조 */
   .dhead { display:flex; align-items:center; gap:14px; max-width:860px; margin:0 auto; padding:0 16px 11px; font-size:13px; }
   .dh-date { color:var(--fg); font-weight:700; letter-spacing:-.1px; }   /* 날짜 = 차분 흰색(첨부 톤 — 강조는 '오늘 N'만) */
@@ -478,7 +478,7 @@
   .nm-toast b { color:#ffd9cf; }
   @media (prefers-reduced-motion:reduce) { .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
-  .sc-fail { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+  .sc-fail { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer;
     -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 · 롱프레스 콜아웃/텍스트선택 차단(qFeedBtn 동일 패턴 + touch-action — iOS 네이티브 콜아웃이 커스텀 메뉴 가리는 것 방지) */
   .sc-fail:hover { background:repeating-linear-gradient(45deg,rgba(255,206,64,.40) 0 4px,rgba(255,206,64,.16) 4px 8px); }
@@ -522,7 +522,7 @@
   .sc-tg.ack.on { color:var(--accent); border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); }
   .sc-item.acked { opacity:.58; }   /* 확인함 = 흐릿(신규=선명과 구분) */
   /* PICK 완료 = 잔류 비활성 칩(못누르는 줄무늬 — 초록 빗금='득템+잠김', 노랑 빗금=실패와 구분) */
-  .sc-got { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+  .sc-got { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:var(--accent); border:1px solid rgba(15,253,2,.4); pointer-events:none; user-select:none;
     background:repeating-linear-gradient(45deg, rgba(15,253,2,.20) 0 5px, rgba(15,253,2,.05) 5px 10px); }
   .sc-got.picking { position:relative; overflow:hidden; background:rgba(15,253,2,.10); }   /* 분석 진행(피드 진입 전) = 움직이는 shine */
@@ -1490,14 +1490,13 @@ const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참�
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 // R 필터 칩 상태 — 카테고리(OR)
-const FILTERS = { cats: new Set(), breaking: false, issue: false };
+const FILTERS = { cats: new Set(), issue: false };   // issue = 긴급+이슈 통합 필터(breaking·issue 합침·운영자 260621)
 const CHIP_CATS = ['사회','경제','문화','국제','테크'];
 function renderChips() {
   const c = $('#chips'); if (!c) return;
-  const none = !FILTERS.cats.size;
+  const none = !FILTERS.cats.size && !FILTERS.issue;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
-  h += `<button class="chip chip-brk${FILTERS.breaking ? ' on' : ''}" data-f="breaking">긴급</button>`;   // 긴급(breaking) 토글
-  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈(cross≥8) 토글
+  h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈 = 긴급+이슈 통합 토글(켜면 breaking·issue 둘 다 표시·운영자 260621)
   h += CHIP_CATS.map(cat => `<button class="chip${FILTERS.cats.has(cat) ? ' on' : ''}" data-cat="${cat}">${cat}</button>`).join('');
   c.innerHTML = h;
 }
@@ -1558,12 +1557,11 @@ function render() {
     (!cardonly || hasCardImage(a)) &&
     (!q || (a.title+a.media).toLowerCase().includes(q)) &&
     (!FILTERS.cats.size || FILTERS.cats.has(articleCat(a))) &&
-    (!FILTERS.breaking || a.breaking || /속보/.test(a.title || '')) &&
-    (!FILTERS.issue || a.issue));
+    (!FILTERS.issue || a.breaking || a.issue || /속보/.test(a.title || '')));   // 이슈 필터 = 긴급(breaking·속보)+이슈(cross≥8) 통합
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; _feedSig = ''; return; }
   // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
-  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.breaking ? 'b' : '') + (FILTERS.issue ? 'i' : '');
+  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
   const _anim = sig !== _feedSig; _feedSig = sig;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더는 즉시(깜빡임 0)
   list.innerHTML = '';
   rows.forEach((a, i) => {
@@ -3523,8 +3521,7 @@ $('#cardonly').addEventListener('change', render);
 // R 필터 칩 토글
 $('#chips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.f === 'all') { FILTERS.cats.clear(); }
-  else if (b.dataset.f === 'breaking') { FILTERS.breaking = !FILTERS.breaking; }
+  if (b.dataset.f === 'all') { FILTERS.cats.clear(); FILTERS.issue = false; }
   else if (b.dataset.f === 'issue') { FILTERS.issue = !FILTERS.issue; }
   else if (b.dataset.cat) { const k = b.dataset.cat; FILTERS.cats.has(k) ? FILTERS.cats.delete(k) : FILTERS.cats.add(k); }
   renderChips(); render();
