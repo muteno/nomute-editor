@@ -5,8 +5,6 @@
 > **값 SSOT** = `viewer/index.html` `:root` 토큰 블록 (규칙 정본 = `CLAUDE.md §🎨`·`§📐`). 도구 페이지(comp·ly·k)는 이 토큰을 따르는 것이 곧 "통일".
 >
 > **사람이 보는 사인오프 버전** = `구성도/*.html` (인터랙티브). 이 MD는 그 확정값을 코드 적용용으로 옮긴 것.
->
-> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` = 그 거울** → ③ **이 MD·구성도 HTML = 규칙·시각화(값 아님)**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). 이 MD에 적힌 hex/px은 *viewer 추출본*일 뿐이며, 어긋나면 viewer 실값이 정본. 상세 = `CLAUDE.md §🎨`.
 
 ---
 
@@ -46,7 +44,7 @@
 `glow .06` · `soft .12` · `ring .08` · `line .26` · `focus .35` · `edge .45` · `shine .85`.
 ※ 기존에 정의만 하고 안 쓰던 `--accent-dim(.13)` 토큰을 실제로 참조해 살릴 것. 인라인 매직넘버 금지.
 
-**토큰 밖 매직 색 → 토큰화**: `#cfd2d7→--fg-2`, `#ff8a8a→--danger(#ff5b4a)`, `#d8ff3d→--accent-bright`(밝은 그린·그라데 끝 — ⚠️ `--accent-2`는 viewer에서 **앰버 #ff9614**(스크랩 테마)라 다름·260621 정정).
+**토큰 밖 매직 색 → 토큰화**: `#cfd2d7→--fg-2`, `#ff8a8a→--danger(#ff5b4a)`, `#d8ff3d→--accent-2`(CTA 2번째 그린).
 
 ---
 
@@ -69,11 +67,11 @@
 | 진행 Picking | 미결정 shine / 결정형 세그 | **`PICKING…`** | aria-busy=true |
 | 완료 PICKED | 솔리드 초록 + 체크 pop | **`PICKED`** | 소진 잠금, 탭=피드 |
 | 부분 partial | 앰버 세그 | "일부만 생성됨" | 재발사 버튼 노출 |
-| 실패 Failed | 노랑 빗금 + 빨강 라벨 | **`Failed`** | 풀폭 칩, 롱프레스→진단/전문입력 |
+| 실패 Failed | 노랑 빗금 + 빨강 라벨 | **`FAILED`** | 풀폭 칩, 롱프레스→진단/전문입력 |
 
 ### 규칙
 - 전송 버튼은 **메뉴 대표색을 따르지 않는다** — 비용·위험 신호(초록↔앰버)는 전 메뉴 공통이라야 손이 기억함. 메뉴색은 헤더·아이콘에만.
-- **버튼 안 라벨**: 대기 라벨만 메뉴 동사로 가변. **재확인·전송 중·Picking…·PICKED·Failed는 전 메뉴 고정**(viewer 실문자열 = `Picking…`·`Failed` 대소문자 정합·260621).
+- **버튼 안 라벨**: 대기 라벨만 메뉴 동사로 가변. **재확인·전송 중·PICKING…·PICKED·FAILED는 전 메뉴 고정.**
 - **흉터(scar)**: 한 번이라도 깨진 단계는 성공·재시도 후에도 세그에 빨강 표식 영속(`failedOnce`). "과거에 깨진 적 있음" 신뢰 신호.
 - 재확인 게이트는 **비용·되돌리기 어려운** 액션에만. 복사·파일선택·미리보기 등 공짜·즉시·되돌리기 쉬운 액션엔 붙이지 말 것(`클릭→즉시 ✓→1.5s 원복`).
 
@@ -112,8 +110,8 @@
 | 계단 | 크기/굵기 | 색 | 비고 |
 |---|---|---|---|
 | 부제/대주제 | 19~18px / 800 | 흰색 | ls −.4, 강조색 X. 복사 영역이면 카드(박스). |
-| 섹션 h2 | 15px / 800 | `--accent` | 위 구분선 + pt14 (viewer `--fs-h2`) |
-| 소제목 h3 | 14px / 800 | `--accent` | 구분선 없음 (viewer `--fs-h3`) |
+| 섹션 h2 | 14px / 800 | `--accent` | 위 구분선 + pt14 |
+| 소제목 h3 | 13.5px / 800 | `--accent` | 구분선 없음 |
 | 문단 p | 15px / 400 | `--fg` | line-height 1.65, 완결 산문 |
 | 항목 • | 14px | 머리 `--accent` | 들여 16px, 본문보다 1단 작게 |
 | 메타/부연 | 11px | `--mut` | 괄호 부연 = 흰색 400 |
@@ -180,7 +178,7 @@ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-lin
 :root { --font-status:'Orbitron','Pretendard Variable',sans-serif; }
 /* 적용 대상: PICK·PICKING·PICKED·PASS·FAILED·thumb 상태어, 라벨사전 영문, 버튼 안 숫자(OPA 등) */
 .stat,.ind-bar span,.fail-chip,.picked-chip,.pickbtn,
-.sc-got,.sc-tg { font-family:var(--font-status); letter-spacing:.04em; }   /* viewer 실클래스 = .sc-tg(.pass/.down) — 옛 .sc-pass/.sc-down 오기 정정(260621) */
+.sc-got,.sc-pass,.sc-down { font-family:var(--font-status); letter-spacing:.04em; }
 .statnum { font-family:var(--font-status); font-weight:700; letter-spacing:.02em; } /* 얇아 보이는 숫자 교정 */
 ```
 - 버튼 볼드 역할 고정: 1차(`.go·.send·.pickbtn·.mkbtn`) 800 · 보조(`.ctrl·.reset·.sbtn`) 700.
