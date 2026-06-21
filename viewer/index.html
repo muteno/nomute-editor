@@ -2992,9 +2992,10 @@ function applyReviseMarks() {
   });
   applyReviseFab();
 }
+const edReduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches);
 function edDisarm() {   // 재확인(arm)·발사 상태 해제 — 의도(텍스트·체크·wish) 바뀌면 stale arm 발사 방지
   _edArmed = false; clearTimeout(_edArmT);
-  const g = $('#edGo'); if (g) { g.classList.remove('arm', 'firing'); if (g.textContent === '재확인' || g.textContent === '전송 중…') g.textContent = '변경'; }
+  const g = $('#edGo'); if (g) { g.classList.remove('arm', 'firing'); g.removeAttribute('aria-busy'); if (g.textContent === '재확인' || g.textContent === '전송 중…') g.textContent = '변경'; }
 }
 function resetEditFoot() {   // 변경 푸터 초기화 — 확인 게이트·arm 해제·#edGo 재활성·라벨·발사잠금·체크박스/wish 초기화(open·close 공통 choke point)
   _edFiring = false; edDisarm();
@@ -3021,12 +3022,12 @@ function submitEdit() {
   if (!_edArmed) {
     if (!validateEdit()) return;
     _edArmed = true; g.classList.add('arm'); g.textContent = '재확인';
-    clearTimeout(_edArmT); _edArmT = setTimeout(edDisarm, 3500);   // 3.5s 무동작 → 자동 해제
+    clearTimeout(_edArmT); _edArmT = setTimeout(edDisarm, edReduced() ? 12000 : 3500);   // 무동작 자동 해제(reduced-motion=연장 = 접근성 spec 준수)
     return;
   }
   clearTimeout(_edArmT); _edArmed = false; g.classList.remove('arm');
-  g.classList.add('firing'); g.textContent = '전송 중…';
-  setTimeout(() => { g.classList.remove('firing'); fireEdit(); }, 720);   // 게이지 .72s 채운 뒤 발사
+  g.classList.add('firing'); g.textContent = '전송 중…'; g.setAttribute('aria-busy', 'true');
+  setTimeout(() => { g.classList.remove('firing'); fireEdit(); }, edReduced() ? 200 : 720);   // 게이지 채운 뒤 발사(reduced-motion=짧게 = CSS .2s와 일치)
 }
 function fireEdit() {
   if (!EDIT_CTX || _edFiring) return;   // 재진입 잠금(더블탭·중복 발사 → 유료 제미나이 2발 차단)
@@ -3037,7 +3038,7 @@ function fireEdit() {
   const text = buildEmphText().trim(), wish = sync ? '' : $('#edWish').value.trim();   // 체크면 wish 무시(이미지=텍스트 따라감)
   const regen = sync || !!wish;
   const btn = $('#edGo'); btn.disabled = true; btn.textContent = '변경 중…';
-  const reset = () => { _edFiring = false; btn.classList.remove('firing', 'arm'); btn.disabled = false; btn.textContent = '변경'; };
+  const reset = () => { _edFiring = false; btn.classList.remove('firing', 'arm'); btn.removeAttribute('aria-busy'); btn.disabled = false; btn.textContent = '변경'; };
   fetch('api/make-cards', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ article: ctx.file, mode: 'edit', card: String(ctx.card.n), text, wish, sync: sync ? 1 : 0 }),
