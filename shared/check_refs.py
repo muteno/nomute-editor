@@ -96,7 +96,7 @@ def check_versions():
 # raw를 토큰으로 줄였으면 baseline도 그만큼 낮춰 재발 방지(드리프트는 늘 때만 잡힘).
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
-    'viewer/index.html': {'accent_raw': 124, 'blur': 90, 'hex': 168},   # accent_raw 105→123 = 요약본 export 스포티파이→노뮤트 / +1·blur+2 = 메인버튼(.mkbtn) 솔리드→글래스(blur+accent 필수·운영자 260621)
+    'viewer/index.html': {'accent_raw': 124, 'blur': 92, 'hex': 168},   # accent_raw 105→123 요약본 스포티파이→노뮤트 / mkbtn 글래스 +1·blur90 / blur90→92 = 요약본 제목복사 버튼 글래스(운영자 260621)
     'viewer/thumb.html': {'accent_raw': 0, 'blur': 32, 'hex': 25},   # accent rgba 토큰화 완료(--accent-rgb·260621). blur/hex는 thumb 독자팔레트라 잔존(후속).
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)

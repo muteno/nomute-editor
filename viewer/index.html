@@ -1731,7 +1731,7 @@ function biasText(bias) {
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621)
-const CAT_COLOR = { '정치':'#ec8a8a','사회':'#7fd0a0','경제':'#e7c977','국제':'#97a8e6','문화':'#ea90c6','테크':'#7fc8d8' };   // 정치=파스텔 빨강 · 국제=더 블루(보라서 분리) · 문화=살짝 더 색채 — 인접색 구분↑(운영자 260621)
+const CAT_COLOR = { '정치':'#f06a6a','사회':'#7fd0a0','경제':'#e7c977','국제':'#97a8e6','문화':'#ea90c6','테크':'#7fc8d8' };   // 정치=더 붉은 빨강(문화 핑크와 확실히 구분·다크서 잘 보임) · 국제=블루 · 문화=마젠타핑크(운영자 260621)
 function catBucket(cat) { const c = (cat || '').trim(); return CAT_MAP[c] || (['정치','사회','경제','문화','국제','테크'].includes(c) ? c : ''); }
 function catChip(cat) {
   const b = catBucket(cat); if (!b) return '';
@@ -4714,6 +4714,8 @@ function _expCopy() {
   });
   var all = document.querySelector('.nm-allbtn');
   if (all) all.addEventListener('click', function () { copyText(fullText()).then(function (ok) { if (ok) flash(all, true); }); });
+  var tcp = document.querySelector('.nm-titlecopy'), th1 = document.querySelector('.nm-title');   // 제목만 복사(운영자 260621)
+  if (tcp && th1) tcp.addEventListener('click', function () { var t = ''; Array.prototype.forEach.call(th1.childNodes, function (n) { if (n.nodeType === 3) t += n.textContent; }); copyText(t.trim()).then(function (ok) { if (ok) flash(tcp, false); }); });
   var top = document.querySelector('.nm-top');
   if (top) {
     var onScroll = function () { top.style.display = (window.scrollY || document.documentElement.scrollTop || 0) > 320 ? 'inline-flex' : 'none'; };
@@ -4748,7 +4750,12 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-date { color:#fff; font-weight:700; white-space:nowrap; }       /* 보도 날짜값 = 흰색(운영자 260621) */
   .nm-dlabel { color:#8fa697; font-weight:600; }                      /* "보도:" 라벨 = mut */
   .nm-reporter { color:#8fa697; font-weight:600; white-space:nowrap; }   /* 기자 = mut(영문이면 빌더서 스킵) */
-  .nm-title { font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:12px; letter-spacing:-.6px; color:#fff; }   /* 우측 아주 약간 여백 — 글자가 가장자리에 안 붙게(운영자 260621) */
+  .nm-title { position:relative; font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:40px; letter-spacing:-.6px; color:#fff; }   /* 우측 40px = 제목 복사 버튼 자리(절대배치·제목행 안 침해·글자 안 겹침·운영자 260621) */
+  .nm-titlecopy { position:absolute; top:2px; right:0; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }   /* 제목 우상단 = 전체복사·섹션복사와 같은 우측 정렬(틀어짐 X) */
+  .nm-titlecopy svg { width:14px; height:14px; display:block; }
+  .nm-titlecopy:hover { background:#0FFD02; color:#000; border-color:#0FFD02; }
+  .nm-titlecopy:active { transform:scale(.88); }
+  .nm-titlecopy.ok { background:#0FFD02; color:#000; border-color:#0FFD02; }
   .nm-allbtn { position:absolute; top:0; right:0; z-index:2; display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 11px; border:none; border-radius:999px; background:#0FFD02; color:#000; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; transition:transform .12s, background .15s; }
   .nm-allbtn:hover { background:#38ff2e; transform:scale(1.03); }
   .nm-allbtn:active { transform:scale(.95); }
@@ -4821,7 +4828,7 @@ const SUMMARY_TPL = `<!doctype html>
       <div class="nm-head-l">
         <img class="nm-logo" src="%LOGO%" alt="NO mute">
         %META%
-        <h1 class="nm-title">%TITLE%</h1>
+        <h1 class="nm-title">%TITLE%<button type="button" class="nm-titlecopy" title="제목 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button></h1>
       </div>
       <button type="button" class="nm-allbtn" title="전체 복사"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;display:block"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg><span>전체 복사</span></button>
     </div>
