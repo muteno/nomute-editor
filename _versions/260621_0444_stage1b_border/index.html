@@ -461,12 +461,9 @@
     backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); }
   .t-glass.iss { color:var(--warn); background:rgba(255,210,74,.12); border:1px solid rgba(255,210,74,.5); box-shadow:0 0 10px rgba(255,210,74,.22); }
   .t-glass.brk { color:var(--danger); background:rgba(var(--danger-rgb),.12); border:1px solid rgba(var(--danger-rgb),.55); box-shadow:0 0 10px rgba(var(--danger-rgb),.28); }
-  /* 테두리 우선순위(디자인안02·운영자 260621) = 긴급(빨강) > 이슈(노랑) > PICK(초록) > 실패(앰버) > 평점 > 기본. JS가 배지에 b-brk/b-iss 단일부여 · !important로 .picked·scrap 베이스 테두리 위(라벨 있으면 테두리=라벨색·PICK 초록 안 뺏김). ⚠️ 260619 '긴급 빨강 테두리 없음' → 디자인안02로 복원. */
-  .sc-item.b-brk { border-color:rgba(var(--danger-rgb),.6) !important; }
-  .sc-item.b-iss { border-color:rgba(255,210,74,.55) !important; }
-  /* 점등(글로우) = 테두리와 독립. 긴급<4h=빨강(260619 무빨강→디자인안02 복원) / scLit(<12h·cross≥16)=노랑(옛 .breaking 글로우값 그대로 계승). brk가 iss보다 우선(box-shadow 단일). */
-  .sc-item.lit-brk { box-shadow:0 0 0 1px rgba(var(--danger-rgb),.22), 0 0 16px rgba(240,40,30,.18), inset 0 1px 0 rgba(255,255,255,.05); }
-  .sc-item.lit-iss { box-shadow:0 0 0 1px rgba(255,200,50,.28), 0 0 15px rgba(255,195,40,.16), inset 0 1px 0 rgba(255,255,255,.05); }
+  /* 카드 테두리 점등(앰버 '이슈') = <12h AND cross≥16(=이슈배지 8×2). 긴급(빨강) 테두리 없음 — breaking=긴급이라 무조건 켜져 무의미(🚨배지+빨강 프로필링+토스트 3중 신호로 충분)·aged-breaking 노이즈 제거. 클래스명 .breaking은 레거시(실조건=JS scLit). 운영자 260619. */
+  .sc-item.breaking { border-color:rgba(255,200,50,.5); box-shadow:0 0 0 1px rgba(255,200,50,.28), 0 0 15px rgba(255,195,40,.16); }
+  .scrap-col.green .sc-item.breaking, .scrap-col.black .sc-item.breaking { border-color:rgba(255,200,55,.5); }
   /* 프로필 긴급 점등(profBrk) 폐지 — 운영자 260620. 긴급 알림 = 🚨배지 + 토스트로 충분(프로필 확인 루틴 제거). */
   .nm-toast { position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(18px);
     z-index:60; max-width:min(92vw,430px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
@@ -4168,13 +4165,11 @@ const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r
 // 최신 핀 = 확정 속보 AND 발생 4h 내(최신)만 상단 고정. 오래된 속보는 핀 안 함 → fastScore decay로 하강(findable but 톱 아님 — 16h 속보가 최신 톱 차지하던 문제 해결).
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
 // 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h·미확인) / ⚡이슈(4h~24h AND [cross≥8 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙. ⚠️ ✓확인(acked)해도 🚨 유지 = 긴급은 사건속성·계속 표시(운영자 260620 · 4h 지나면 자연히 ⚡이슈).
-// 배지 타입 = 배지칩·테두리(b-)·글로우(lit-) 공용 단일출처. 긴급(breaking 신규<4h) > 이슈(4~24h·cross≥8 또는 aged-breaking) · 둘다면 긴급. (✓확인해도 유지=긴급은 사건속성·운영자 260620)
-const scBadgeType = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
-  if (isBreaking(c) && ageH < FAST_MAX_H) return 'brk';
-  if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';
+const scBadge = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
+  if (isBreaking(c) && ageH < FAST_MAX_H) return '<span class="t-glass brk">🚨 긴급</span>';   // ✓확인해도 유지(운영자 260620: 긴급=사건속성) · 4h후 ⚡이슈
+  if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return '<span class="t-glass iss">⚡ 이슈</span>';
   return ''; };
-const BADGE_HTML = { brk: '<span class="t-glass brk">🚨 긴급</span>', iss: '<span class="t-glass iss">⚡ 이슈</span>' };
-// scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16(=이슈배지 8×2). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
+// 카드 테두리 점등(앰버 '이슈') = <12h AND cross≥16(=이슈배지 8×2). 긴급(빨강) 테두리 없음 — breaking=긴급이라 무조건 켜져 의미 없음(🚨배지+빨강 프로필링+토스트 3중으로 충분)·aged-breaking 노이즈 제거. 운영자 260619. (배지 scBadge는 그대로: ⚡이슈=cross≥8.)
 const scLit = c => ((Date.now() - scTs(c)) / 3600000) < 12 && (c.cross || 0) >= 16;
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
@@ -4182,11 +4177,8 @@ const SC_COLS_HTML =
 function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cross'(누적/주요도)면 👎 없음 — 다매체 누적=검증된 메이저.
   const el = document.createElement('div');
   const pstate = pickState(c);   // 픽 상태(로컬 r.picked + 서버 api/pending·picks-failed·피드) 통합 = cross-device(운영자 260620)
-  const bt = scBadgeType(c);   // ''|'brk'|'iss' — 배지·테두리·글로우 공용
-  const badge = BADGE_HTML[bt] || '';   // 긴급/이슈 칩 = .tagrow 절대배치 상단(메타라인서 분리 → 메타 항상 1줄)
-  const bCls = bt === 'brk' ? ' b-brk' : bt === 'iss' ? ' b-iss' : '';   // 테두리 우선순위(긴급>이슈, !important로 PICK/베이스 위)
-  const litCls = bt === 'brk' ? ' lit-brk' : scLit(c) ? ' lit-iss' : '';   // 점등(독립): 긴급<4h 빨강 / scLit 노랑(brk 우선)
-  el.className = 'sc-item' + (badge ? ' has-tag' : '') + bCls + litCls + (st.score ? ' rated' : '') + (pstate ? ' picked' : '') + (pstate === 'failed' ? ' pickfail' : '') + (st.acked ? ' acked' : '');
+  const badge = scBadge(c);   // 긴급/이슈 배지 = .tagrow 절대배치 상단(메타라인서 분리 → 메타 항상 1줄)
+  el.className = 'sc-item' + (badge ? ' has-tag' : '') + (scLit(c) ? ' breaking' : '') + (st.score ? ' rated' : '') + (pstate ? ' picked' : '') + (pstate === 'failed' ? ' pickfail' : '') + (st.acked ? ' acked' : '');
   el.dataset.cid = candId(c);   // Picking…→PICKED 제자리 갱신 매칭용
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
