@@ -205,6 +205,8 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 2. **Cloudflare Pages 환경변수**: Pages 프로젝트 → Settings → **Variables and Secrets** (Production) → `GH_TOKEN` = 위 PAT (Secret). *(PASSCODE 게이트는 260614 제거.)*
 3. **이미지(슛) 시크릿** = `GEMINI_API_KEY`(장면 생성) + R2 5종(`R2_ACCOUNT_ID`·`R2_BUCKET`·`R2_PUBLIC_BASE`·`R2_ACCESS_KEY_ID`·`R2_SECRET_ACCESS_KEY`) — GitHub 레포 Secrets. GEMINI 없으면 슛해도 `text_done` 유지(이미지 미발사). R2 5개 다 없으면 git 폴백(로컬 PNG 커밋). *(레거시 GDRIVE_SA_JSON·Drive·Cloud Run = 호출자 0 · 260621 제거.)*
 
+> 🔽 **이미지 다운로드 = 같은-출처 프록시 `functions/api/dl.js` (260622)**: R2 공개 URL(`pub-*.r2.dev`)은 교차출처라 뷰어가 직접 `<a download>`/`fetch`하면 CORS로 막혀 '브라우저로 열림'으로 떨어짐(R2 CORS 미설정). → 뷰어(`index.html`·`thumb.html`)의 다운로드/복사는 `api/dl?u=<R2url>&n=<name>`로 보내고, 프록시가 R2 객체를 서버에서 받아 `Content-Disposition: attachment`로 되돌려줌 = 안드로이드·데스크탑·iOS 전부 파일 저장(다운로드=직접 `<a href=api/dl>` 내비게이션·복사=프록시 fetch→clipboard). SSRF 가드(R2 호스트락·https·redirect:manual·image/*·nosniff·no-store). R2 호스트는 `thumb.js:9`·`dl.js:8`·뷰어 정규식 3곳 정합(베이스 변경 시 동반 갱신).
+
 ## 동작·안전장치
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).
 - **동시 실행**: `concurrency: news-analyze` 로 순차 처리.
