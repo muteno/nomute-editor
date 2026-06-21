@@ -203,16 +203,15 @@ def _usage_total(calls):
     s = lambda k: sum(int(c.get(k) or 0) for c in calls)
     return {"calls": len(calls), "prompt_tokens": s("prompt"), "output_tokens": s("output"), "total_tokens": s("total")}
 
-def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5"):
+def gemini_image(prompt, image_size="1K", tag="img"):
     """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft). usageMetadata는 _USAGE에 기록.
 
     image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일·카드 모두 1K 호출(토큰 절감).
-    aspect: 화면비("4:5" 기본=카드/썸네일 · "16:9"/"9:16"=영상 레퍼런스 등).
     """
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseModalities": ["IMAGE"],
-                             "imageConfig": {"aspectRatio": aspect, "imageSize": image_size}},
+                             "imageConfig": {"aspectRatio": "4:5", "imageSize": image_size}},
     }
     data = json.dumps(payload).encode()
     req = urllib.request.Request(API + "?key=" + KEY, data=data,

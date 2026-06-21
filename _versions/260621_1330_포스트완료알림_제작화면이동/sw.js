@@ -17,23 +17,13 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const raw = (event.notification.data && event.notification.data.url) || '/';
-  const target = new URL(raw, self.location.origin);   // 알림이 가리키는 화면(제작완료=/thumb.html#done · 긴급=/)
-  event.waitUntil((async () => {
-    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    // 1) 이미 타깃 화면(경로+해시 일치)에 있는 탭이면 그냥 포커스(불필요한 새로고침 방지)
-    for (const c of list) {
-      try { const u = new URL(c.url); if (u.pathname === target.pathname && u.hash === target.hash && 'focus' in c) return c.focus(); } catch (_) {}
-    }
-    // 2) 열린 탭이 있으면 그 탭을 타깃으로 *이동*시켜 제작 화면을 보여줌(과거: 무조건 포커스만 → 옛 화면/모달에 머묾)
-    for (const c of list) {
-      if ('navigate' in c && 'focus' in c) {
-        try { const nc = await c.navigate(target.href); return (nc || c).focus(); } catch (_) { /* navigate 불가 → 새 창 폴백 */ }
-      }
-    }
-    // 3) 열린 탭 없음 → 새 창
-    if (self.clients.openWindow) return self.clients.openWindow(target.href);
-  })());
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) { if ('focus' in c) return c.focus(); }   // 이미 열린 탭 포커스
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
 });
 
 self.addEventListener('install', () => self.skipWaiting());           // 새 sw 즉시 활성

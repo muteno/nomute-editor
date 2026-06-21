@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 카드뉴스 일괄 제작: 대상 queue/*.md → Claude 헤드리스 Step 4(카드 MD) → cards/<기사>/cards.md
-# → 슛/edit 렌더 = 직영 gen_cards(Actions서 Gemini 장면 직접생성 + card_news 로컬 합성 + R2/git) — 외부 Drive/Apps Script/Cloud Run 0(260621 운영자).
+# → (GDRIVE_SA_JSON 있으면) Drive 발사(기존 Apps Script→Gemini→Cloud Run 자동화) + _final_*.jpg 회수
 # → 기사별 즉시 커밋·push(분석물 보존 최우선 — Pages가 그때그때 뷰어 갱신).
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
@@ -70,22 +70,50 @@ json.dump(st, open(os.path.join(d, "status.json"), "w", encoding="utf-8"), ensur
 PY
 }
 
-# ── edit 모드: 단일 카드 변경(직영 gen_cards · Cloud Run/Drive/Apps Script 0) ──
-# CARD_N(1-base)·EDIT_TEXT(*강조*)·EDIT_WISH = env. gen_cards가 내부 분기:
-#  • 이미지 수정 희망 없음 + 장면 보존본 있음 → 로컬 합성(card_news · 제미나이 0 · 좋아한 장면 100% 보존)
-#  • 이미지 수정 희망 있음 OR 장면 보존본 없음 → Gemini 장면 1장 재생성 + 로컬 합성
-#  → R2 카드면 같은 키 덮어쓰기(.r2_images.json 불변·?v= 캐시버스트) / 아니면 로컬 _final · 버전(versions/card-NN) 보존 · cards.md 텍스트 갱신
+# ── edit 모드: 단일 카드 변경(그 카드만 재렌더·제자리 교체) ──
+# CARD_N(1-base)·EDIT_TEXT(*강조*)·EDIT_WISH = env. 옛 버전은 versions/card-NN 보존.
+#  • 이미지 수정 희망 없음 + 장면 보존본 있음 → 로컬 합성(제미나이/Cloud Run 0 · 좋아한 이미지 100% 보존)
+#  • 이미지 수정 희망 있음 OR 장면 보존본 없음(구 카드) → Drive 풀 재생성(유료) + 새 장면 보존
 if [ "$MODE" = edit ]; then
   stem="$(basename "$TARGET" .md)"
-  [ -s "cards/$stem/cards.md" ] || { echo "::error::cards.md 없음: $stem"; exit 1; }
-  [ -n "${CARD_N:-}" ]    || { echo "::error::CARD_N(카드 번호) 없음"; exit 1; }
-  [ -n "${EDIT_TEXT:-}" ] || { echo "::error::EDIT_TEXT 없음"; exit 1; }
+  cardsmd="cards/$stem/cards.md"
+  [ -s "$cardsmd" ]    || { echo "::error::cards.md 없음: $stem"; exit 1; }
+  [ -n "${CARD_N:-}" ] || { echo "::error::CARD_N(카드 번호) 없음"; exit 1; }
   echo "::group::카드 변경: $stem 카드$CARD_N"
-  # 합성 폰트(Noto CJK) — card_news 로컬 합성 필수. 캐시 미적중 시만 설치(§🧰).
-  fc-list 2>/dev/null | grep -qi "noto sans cjk" || { sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk; }
-  EDIT_TEXT="$EDIT_TEXT" EDIT_WISH="${EDIT_WISH:-}" \
-    python3 .github/scripts/gen_cards.py --stem "$stem" --edit-card "$CARD_N" \
-    || { echo "::error::카드 변경 실패"; exit 1; }
+  rm -rf /tmp/reshoot; mkdir -p /tmp/reshoot
+  scene="cards/$stem/scenes/장면$(printf '%02d' "$CARD_N").jpg"
+  wish="${EDIT_WISH:-}"
+
+  if [ -z "${wish// }" ] && [ -s "$scene" ]; then
+    # ── 텍스트만 변경 → 로컬 합성(장면 보존 · 과금 0) ──
+    echo "텍스트만 변경 → 로컬 합성(장면 보존, 제미나이/Cloud Run 0): $scene"
+    [ -n "${EDIT_TEXT:-}" ] || { echo "::error::EDIT_TEXT 없음"; exit 1; }
+    fc-list 2>/dev/null | grep -qi "noto sans cjk" || { sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk; }
+    EDIT_TEXT="$EDIT_TEXT" python3 .github/scripts/recompose_card.py "$scene" /tmp/reshoot/scene_final_recompose.jpg \
+      || { echo "::error::로컬 합성 실패"; exit 1; }
+  else
+    # ── 이미지 수정 희망 있음 OR 장면 보존본 없음 → Drive 풀 재생성(유료) ──
+    [ -n "${GDRIVE_SA_JSON:-}" ] || { echo "::error::GDRIVE_SA_JSON 없음 — 재발사(유료) 불가"; exit 1; }
+    [ -z "${wish// }" ] && echo "::warning::장면 보존본 없음(구 카드) — 이번 1회만 Drive 재생성(이후엔 장면 보존돼 로컬 합성)"
+    # 1) 원래 카드번호 유지한 1장짜리 md (장면번호=카드번호 → 정렬 슬롯 일치)
+    python3 .github/scripts/reshoot_card.py build "$cardsmd" "$CARD_N" /tmp/onecard.md || { echo "::error::md 빌드 실패"; exit 1; }
+    # 2) Drive 폴더 주제명(메인 루프와 동일 — 제목 16자)
+    topic="news"
+    if [ -f "queue/$stem.md" ]; then
+      topic="$(grep -m1 '^title:' "queue/$stem.md" | python3 -c "
+import re, sys
+t = re.sub(r'^title:\s*\"?|\"\s*\$', '', sys.stdin.read().strip())
+t = re.sub(r'[^0-9A-Za-z가-힣]+', '_', t)[:16].strip('_')
+print(t or 'news')" 2>/dev/null)"
+    fi
+    # 3) 그 1장만 렌더(--out 임시) + 새 장면 보존(--scenes-out) — drive_cards 그대로(Apps Script→Gemini→합성)
+    python3 .github/scripts/drive_cards.py --md /tmp/onecard.md --topic "${topic}_c${CARD_N}" \
+      --out /tmp/reshoot --scenes-out "cards/$stem/scenes"; rc=$?
+    [ "$rc" -eq 0 ] || { echo "::error::재발사 렌더 실패(rc=$rc)"; exit 1; }
+  fi
+
+  # 새 이미지 → 카드N 자리 제자리 덮어쓰기 + versions 보존 + cards.md 텍스트 갱신
+  python3 .github/scripts/reshoot_card.py finalize "cards/$stem" "$CARD_N" /tmp/reshoot || { echo "::error::스왑 실패"; exit 1; }
   pv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
   status_json "cards/$stem" "done" "${pv:-$GVER}"
   commit_push "cards: $stem 카드$CARD_N 변경"
@@ -188,16 +216,28 @@ $(cat "$q")"
   fi
 
   state="text_done"
-  # ── 슛(렌더) 경로 = 직영(gen_cards)만 ── (레거시 Drive/Apps Script/Cloud Run 폴백 제거 · 운영자 260621)
+  # ── 슛(렌더) 경로 — 직영(gen_cards) 우선, 없으면 레거시 Drive(drive_cards) 폴백 ──
   #   gen_cards = Actions 러너 안에서 Gemini 직접생성 + card_news 로컬합성 + R2(or git) — 외부 Drive/Cloud Run 0.
-  #   exit코드: 0=done · 2=fired_partial(일부) · 그 외=failed. GEMINI_API_KEY 없으면 text_done 유지(이미지 미발사).
+  #   exit코드 둘 다 동일: 0=done · 2=fired_partial(일부) · 그 외=failed.
   if [ -n "${GEMINI_API_KEY:-}" ]; then
     python3 .github/scripts/gen_cards.py --stem "$stem"; rc=$?
     if   [ "$rc" -eq 0 ]; then state="done"
     elif [ "$rc" -eq 2 ]; then state="fired_partial"
     else state="failed"; fi
-  else
-    echo "GEMINI_API_KEY 없음 — 이미지 발사 생략(text_done 유지)"
+  elif [ -n "${GDRIVE_SA_JSON:-}" ]; then
+    # 레거시 폴백 — Drive 폴더 주제명: 제목에서 문자 단위 16자(바이트 절단 금지 — run#2 교훈)
+    topic="$(grep -m1 '^title:' "$q" | python3 -c "
+import re, sys
+t = re.sub(r'^title:\s*\"?|\"\s*$', '', sys.stdin.read().strip())
+t = re.sub(r'[^0-9A-Za-z가-힣]+', '_', t)[:16].strip('_')
+print(t or 'news')")"
+    # 실패 로직 — drive_cards.py exit코드 분기:
+    #   0=done · 2=fired_partial(발사 OK·시간 내 미완, Drive엔 계속 생성→나중 재회수) · 그 외(1/크래시)=failed(하드 에러: 인증·403·업로드 실패→재시도)
+    # --scenes-out: 텍스트-free 장면(장면NN.jpg) 보존 → 이후 '텍스트만 변경'은 로컬 합성(제미나이 0·이미지 보존)
+    python3 .github/scripts/drive_cards.py --md "cards/$stem/cards.md" --topic "$topic" --out "cards/$stem" --scenes-out "cards/$stem/scenes"; rc=$?
+    if   [ "$rc" -eq 0 ]; then state="done"
+    elif [ "$rc" -eq 2 ]; then state="fired_partial"
+    else state="failed"; fi
   fi
   status_json "cards/$stem" "$state" "$pv"
   commit_push "cards: $stem ($state)"
