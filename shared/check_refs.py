@@ -96,7 +96,7 @@ def check_versions():
 # raw를 토큰으로 줄였으면 baseline도 그만큼 낮춰 재발 방지(드리프트는 늘 때만 잡힘).
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
-    'viewer/index.html': {'accent_raw': 105, 'blur': 88, 'hex': 168},
+    'viewer/index.html': {'accent_raw': 105, 'blur': 90, 'hex': 168},   # blur 88→90 = .t-glass 글래스칩 blur(var(--blur-s)) 2곳(토큰화·raw 아님·분신술 260621)
     'viewer/thumb.html': {'accent_raw': 0, 'blur': 32, 'hex': 25},   # accent rgba 토큰화 완료(--accent-rgb·260621). blur/hex는 thumb 독자팔레트라 잔존(후속).
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
