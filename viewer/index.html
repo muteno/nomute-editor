@@ -1677,8 +1677,7 @@ function inDateTime(a) {
   const d = new Date(2000 + +m[1], +m[2] - 1, +m[3]);
   return { txt: `${+m[2]}/${+m[3]} (${W[d.getDay()]}) ${m[4]}:${m[5]}`, today: `${m[1]}${m[2]}${m[3]}` === todayYMD6() };
 }
-// 상대시간: <1h 방금 / <24h N시간 전 / ≥24h N일 N시간 전. 무효(파싱실패 999 등)는 ''.
-// 상대시간 사다리(운영자 260621·디자인안04): <30분=방금 / 30분 전 / N시간 전(1h·분 생략·복합표기 없음) / N일(1~6) / N주일(1~4) / N달.
+// 상대시간 사다리(운영자 260621·디자인안04): <30분=방금 / 30분 전 / N시간 전(1h·분 생략·복합표기 없음) / N일(1~6) / N주일(1~4) / N달. 무효(파싱실패=1e7 sentinel·9000 가드 밖)는 ''→발행일 폴백.
 function relAge(h) {
   if (!isFinite(h) || h < 0 || h >= 9000) return '';
   const min = h * 60;
@@ -1736,13 +1735,13 @@ function articleCat(a) {
   return bn ? best : '사회';   // 운영자 260617: 미분류 0 — frontmatter category 없고 키워드도 0이면 사회(catch-all)로 강제 분류.
 }
 // (참고) 피드 배지 정본 = 아래 brkIssueKind. 최신 판정 기준 = feedAgeH(스크랩/IN 시각).
-function articleAgeH(a) {   // 보도(발행) 나이 — a.date(+a.time)=KST → Date.UTC(−9h)로 절대시각 고정(브라우저 TZ 무관·feedAgeH와 동일 기준). 무효=999.
+function articleAgeH(a) {   // 보도(발행) 나이 — a.date(+a.time)=KST → Date.UTC(−9h)로 절대시각 고정(브라우저 TZ 무관·feedAgeH와 동일 기준). 무효=1e7(relAge 9000 가드 밖 → 폴백 · 옛 999는 사다리 '달' 티어에 걸려 가짜 "1달 전" 회귀라 상향·260621).
   a = a || {};   // null 방어
   const dm = /^(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/.exec(String(a.date || ''));
-  if (!dm) return 999;
+  if (!dm) return 1e7;
   const tm = /^(\d{1,2}):(\d{2})/.exec(String(a.time || '').trim());
   const t = Date.UTC(+dm[1], +dm[2] - 1, +dm[3], (tm ? +tm[1] : 0) - 9, tm ? +tm[2] : 0);
-  return isNaN(t) ? 999 : Math.max(0, (Date.now() - t) / 3600000);
+  return isNaN(t) ? 1e7 : Math.max(0, (Date.now() - t) / 3600000);
 }
 // 피드 최신 판정(긴급↔이슈 전이용) = 스크랩(IN) 시각(파일명 YYMMDD-HHMM) 기준 — 항상 정확(보도시각 time은 빈 경우 多 → 폴백만).
 function feedAgeH(a) {
