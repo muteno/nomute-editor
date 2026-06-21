@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-# thumb_gen.py — 픽한 기사(queue/*.md)별 썸네일 후보: 검색이미지(기사 og:image+유사) + AI 3화풍(Gemini).
+# thumb_gen.py — 픽한 기사(queue/*.md)별 썸네일 후보: 검색이미지(기사 og:image+유사) + AI 4화풍(Gemini).
 #
 # 기존 카드 이미지 경로(외부 Apps Script + Drive + Cloud Run compose)와 완전 분리된 레포 내 경로:
 #   - GitHub Actions가 Gemini(gemini-3.1-flash-image-preview = Nanobanana 2 Pro·4:5)를 직접 호출
-#   - 기사 타이틀(헤드라인) 문구는 이미지에 안 박음 = 글자 없는 장면만(현장 간판 등 자연 글자는 무관). 1K(토큰 절감).
+#   - 기사 타이틀(헤드라인) 문구는 이미지에 안 박음 = 글자 없는 장면만(현장 간판 등 자연 글자는 무관). 고해상 2K.
 #   - 산출 → Cloudflare R2 업로드(공개 URL) + gen.json([{sid,img,label}]) → build-viewer가 뷰어로 투영
 #     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.png 로컬 커밋·아무것도 안 깨짐)
 #
 # 안전: GEMINI_API_KEY 없으면 즉시 no-op(스캐폴드). 어떤 기사/화풍 실패도 fail-soft(파이프라인 안 깸).
-# 비용: 픽한 기사당 이미지 3장(유료·3화풍). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
+# 비용: 픽한 기사당 이미지 4장(유료·4화풍). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
 #
 # 정본 = 이 파일(썸네일 프롬프트 SSOT). 참조 = apps/news/03_자동화_레퍼런스.md §썸네일 후보.
 
 import os, sys, re, json, base64, time, glob, subprocess, tempfile, ipaddress, socket, csv
 import urllib.request, urllib.error, urllib.parse
 
-MODEL = "gemini-3.1-flash-image-preview"   # 카드와 동일 모델(03 레퍼런스). 4:5 · 썸네일·카드 1K.
+MODEL = "gemini-3.1-flash-image-preview"   # 카드와 동일 모델(03 레퍼런스). 4:5 · 썸네일 2K / 카드 1K.
 API = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent".format(MODEL)
 
 def _int_env(name, default):
@@ -39,18 +39,22 @@ R2_KEY = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
 R2_SECRET = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
 R2_ON = all([R2_ACCOUNT, R2_BUCKET, R2_PUBLIC, R2_KEY, R2_SECRET])
 
-# ── 3화풍 (포토에디토리얼·극화·만평 · label = 뷰어 캡션) ─────────────────────────────────────────────
+# ── 4화풍 (label = 뷰어 캡션) ─────────────────────────────────────────────
 # 구도/카메라 어휘 = apps/k 라이브러리(카메라·거리·앵글·조명) 증류 인라인(빌드주입 X = 재과금 폭탄 회피).
 # 글자: NO_TITLE이 타이틀 오버레이 전면금지 + 현장 자연글자도 최소만(아래).
 # ⚠️ sid 리네임 금지 = 기존 카드 재과금 0(process_one이 sid로 보존). 추가만 허용(웹툰/포토 sid 유지).
 STYLES = [
-    ("photo", "포토 에디토리얼",
-     "보도/르포르타주 사진 스타일. 자연광, 현장 다큐멘터리 사실감, 신문 1면 보도사진의 즉발성. "
-     "연출된 스튜디오·잡지 화보·정적 인물 포트레이트가 아니라 실제 사건 현장을 포착한 듯한 보도사진. "
-     "와이드 설정샷(롱샷)으로 현장 전체와 맥락을 넓게 담고, 깊은 심도로 배경까지 또렷, 아이레벨."),
     ("webtoon", "웹툰 극화",
      "한국 웹툰 극화체 일러스트레이션. 굵고 선명한 잉크 라인, 극적인 명암 대비, 강한 감정 표현. "
      "인물 상반신 중심의 타이트한 프레이밍, 살짝 로우앵글로 긴장감, 단일 하드 측광."),
+    ("photo", "포토 에디토리얼 — 와이드",
+     "보도/르포르타주 사진 스타일. 자연광, 현장 다큐멘터리 사실감, 신문 1면 보도사진의 즉발성. "
+     "연출된 스튜디오·잡지 화보·정적 인물 포트레이트가 아니라 실제 사건 현장을 포착한 듯한 보도사진. "
+     "와이드 설정샷(롱샷)으로 현장 전체와 맥락을 넓게 담고, 깊은 심도로 배경까지 또렷, 아이레벨."),
+    ("photo_close", "포토 에디토리얼 — 클로즈업",
+     "보도/르포르타주 사진 스타일. 자연광, 현장 다큐멘터리 사실감. "
+     "스튜디오 인물사진·잡지 화보가 아니라 현장에서 포착된 보도사진의 클로즈업. "
+     "핵심 인물·사물의 타이트한 클로즈업, 얕은 심도 보케로 배경 흐림, 표정·눈빛·디테일의 결정적 순간, 살짝 로우앵글."),
     ("cartoon", "시사만평",
      "한국 신문 시사만평(편집 카툰) 스타일. 펜·잉크 캐리커처 선화에 담백한 단색/수채 채색, "
      "은유와 풍자가 담긴 단일 장면 구성. 특정 실존 인물의 얼굴을 닮게 그리지 말고 역할·직군을 상징하는 "
@@ -206,7 +210,7 @@ def _usage_total(calls):
 def gemini_image(prompt, image_size="1K", tag="img"):
     """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft). usageMetadata는 _USAGE에 기록.
 
-    image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일·카드 모두 1K 호출(토큰 절감).
+    image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일은 2K 호출(고해상).
     """
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -550,7 +554,7 @@ def _load_gen(tdir):
         return []
 
 def process_one(md, stem):
-    """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 3화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
+    """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 4화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
     head, lead, iq, thumb_scene, art_url, alt_urls, image_sources, dispatch = parse_md(md)
     if not head:
         print("· {} — 헤드라인 파싱 실패, skip".format(stem)); return False
@@ -579,7 +583,7 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
-    # AI 생성 3화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor·photo_close sid는 STYLES에 없어 자동 드롭)
+    # AI 생성 4화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor sid는 STYLES에 없어 자동 드롭)
     _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
     existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
     gen = []
@@ -587,7 +591,7 @@ def process_one(md, stem):
     for sid, label, art_dir in STYLES:
         if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
             gen.append(existing[sid]); continue
-        png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch), "1K")   # 1K(토큰 절감 · 운영자 260621 · 폰 피드용 충분). 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch). '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
+        png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch), "2K")   # 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch). '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
         if not png:
             print("  ✗ {} 실패".format(label)); continue
         if R2_ON:                                # R2 = 공개 URL(레포 미저장)
@@ -635,7 +639,7 @@ def main():
         return 0
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
     # ── 단일 기사 강제 재생성 (뷰어 '다시 만들기' → thumb-redo.yml · THUMB_ONLY=stem) ──
-    # gen.json(3화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
+    # gen.json(4화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
     # (검색은 md frontmatter alt_urls 있으면 유사까지 채움·없으면 대표 og 재fetch). SINCE/MAX_BATCH 무관.
     only = os.environ.get("THUMB_ONLY", "").strip()
     redo_sid = os.environ.get("THUMB_REDO_SID", "").strip()   # 지정 시 = 그 화풍 1개만 재생성(per-image · 검색·타화풍 보존)
@@ -661,7 +665,7 @@ def main():
             except Exception as e:
                 print("  ⚠️ 단일 화풍 제거 실패: {}".format(e))
         else:
-            for jf, lbl in (("gen.json", "3화풍"), ("search.json", "검색이미지")):
+            for jf, lbl in (("gen.json", "4화풍"), ("search.json", "검색이미지")):
                 p = os.path.join(tdir, jf)
                 try:
                     if os.path.exists(p):
@@ -671,7 +675,7 @@ def main():
         process_one(md, only)
         print("THUMB_ONLY 재생성 완료:", only, ("(화풍 " + redo_sid + ")") if redo_sid else "")
         return 0
-    # 미완성 기사만(최신 우선) = gen.json에 3화풍(sid) 다 있으면 완성으로 보고 skip(부분이면 보완).
+    # 미완성 기사만(최신 우선) = gen.json에 4화풍(sid) 다 있으면 완성으로 보고 skip(부분이면 보완).
     target_sids = {s[0] for s in STYLES}
     todo = []
     for md in sorted(glob.glob("queue/*.md"), reverse=True):
