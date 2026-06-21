@@ -2177,8 +2177,8 @@ function cardSec(a) {
       `<div class="genstat">⚠️ 직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
     const b = document.createElement('button');
     b.className = 'mkbtn';
-    b.textContent = st === 'failed' ? '카드뉴스 프롬프트 다시 생성' : '카드뉴스 프롬프트 생성';
-    b.onclick = () => makeCards(a.file, b, 'text');   // 2단계(텍스트·프롬프트)만 — 이미지(3단계·유료)는 text_done 후 아래 '🚀 이미지 생성' 슛 버튼에서만
+    b.textContent = st === 'failed' ? '카드뉴스 다시 생성' : '카드뉴스 생성';
+    b.onclick = () => makeCards(a.file, b);
     sec.appendChild(b);
     return;
   }
@@ -2188,8 +2188,8 @@ function cardSec(a) {
         `<div class="genstat">⚠️ 카드 프롬프팅 실패 — ${stuckMin === 999 ? '' : stuckMin + '분째 '}멈춰 있어(워크플로 중단/타임아웃 추정). 아래로 다시 시도해줘.</div>`);
       const b = document.createElement('button');
       b.className = 'mkbtn';
-      b.textContent = '🔄 프롬프트 다시 만들기';
-      b.onclick = () => makeCards(a.file, b, 'text');   // 프롬프팅 재시도 = 2단계만(이미지는 슛 버튼)
+      b.textContent = '🔄 카드 다시 만들기';
+      b.onclick = () => makeCards(a.file, b);
       sec.appendChild(b);
     } else {
       sec.innerHTML = `<div class="genstat live">🍌 카드뉴스 프롬프팅 중입니다… 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
@@ -2249,11 +2249,11 @@ function cardSec(a) {
   // stale = 요약이 카드 제작 후 또 수정됨 → 이미지는 보존하고 '다시 제작'(앰버) 권유. 기본 슛/재발사 버튼 대체.
   if (stale) {
     sec.insertAdjacentHTML('beforeend',
-      `<div class="cardnote stale">📝 카드 제작 뒤 요약이 수정됐어 — 이 카드는 옛 요약 기준이야. 아래를 누르면 <b>프롬프트만</b> 새 요약으로 다시 만들어(기존 이미지는 그대로 보존). 이미지를 새로 뽑으려면 그 뒤 '🚀 이미지 생성' 슛 버튼을 눌러(유료).</div>`);
+      `<div class="cardnote stale">📝 카드 제작 뒤 요약이 수정됐어 — 이 카드는 옛 요약 기준이야. 이미지는 그대로 두고, 새 요약으로 <b>다시 제작</b>하려면 아래를 눌러(프롬프트·이미지 새로 생성).</div>`);
     const b = document.createElement('button');
     b.className = 'mkbtn stale';
-    b.textContent = '🔄 프롬프트 다시 만들기 (요약 수정 반영)';
-    b.onclick = () => makeCards(a.file, b, 'text');   // 2단계만 — 새 요약으로 프롬프트 갱신·이미지 보존. 새 이미지(유료)는 text_done 후 슛 버튼에서만
+    b.textContent = '🔄 다시 제작 (요약 수정 반영)';
+    b.onclick = () => makeCards(a.file, b);   // full 모드 = 새 요약으로 프롬프트+이미지 재생성
     sec.appendChild(b);
     return;
   }
@@ -3176,9 +3176,7 @@ function askPin(err) {
 }
 
 async function makeCards(target, btn, mode) {
-  // mode: 'text'=프롬프트(2단계)만 생성·이미지 0 / 'shoot'=이미지(3단계·유료)만 / 그 외=full(프롬프트+이미지 한방)
-  const reqMode = (mode === 'shoot' || mode === 'text') ? mode : 'full';
-  const isText = reqMode === 'text';
+  const shoot = mode === 'shoot';
   // L: PIN 게이트 제거 — 바로 발사(사용자 요청 260614·지출 직접 모니터링·내일 재설정 예정).
   // (PIN UI/askPin/#pindlg는 dead로 남겨둠 — 재게이트 시 makeCards만 되돌리면 됨.)
   if (btn) { btn.classList.add('firing'); btn.style.pointerEvents = 'none'; }   // 누르면 하단 게이지바 발동(전송 상태머신·운영자 260621)
@@ -3186,12 +3184,12 @@ async function makeCards(target, btn, mode) {
   try {
     const r = await fetch('api/make-cards', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ article: target, mode: reqMode }),
+      body: JSON.stringify({ article: target, mode: shoot ? 'shoot' : 'full' }),
     });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.ok) {
       await minGauge;   // 게이지 모션 끝까지 보장
-      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? '📝 프롬프트 생성 시작 — 1~2분 내 ⏳로 바뀜(이미지는 그 뒤 슛 버튼)' : '🚀 생성됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜'}</div>`;
+      if (btn) btn.outerHTML = `<div class="genstat live">🚀 생성됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
       return;
     }
     if (btn) { btn.classList.remove('firing'); btn.style.pointerEvents = ''; }
