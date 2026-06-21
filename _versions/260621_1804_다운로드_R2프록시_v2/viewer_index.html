@@ -378,7 +378,6 @@
     background:linear-gradient(135deg,rgba(18,30,34,.72),rgba(11,19,23,.72)); border:1px solid rgba(12,208,247,.22);
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }
-  #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
   .soc-item:hover { border-color:rgba(12,208,247,.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(12,208,247,.2); }
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
   .soc-burst { color:#0cd0f7; }
@@ -521,16 +520,6 @@
   .sc-tg.ack { flex:0 0 38px; color:rgba(255,255,255,.5); }
   .sc-tg.ack:hover { color:var(--accent); border-color:rgba(15,253,2,.45); }
   .sc-tg.ack.on { color:var(--accent); border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); }
-  /* ✓ 확인 토글 = 안 누름 −(회색) → 누름 ✓(초록·한 획 드로우-인) · 모프 시안1(운영자 260622) */
-  .sc-tg.ack .ackm { width:14px; height:14px; }
-  .sc-tg.ack .ackm path { transition:opacity .16s ease, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
-  .sc-tg.ack .sc-dash { stroke:var(--mut); opacity:1; }
-  .sc-tg.ack .sc-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }
-  .sc-tg.ack.on .sc-dash { opacity:0; }
-  .sc-tg.ack.on .sc-chk { opacity:1; stroke-dashoffset:0; }
-  .sc-tg.ack.sc-failhide { color:var(--accent); }   /* 실패 숨김 체크 = 초록 유지(일방향 확정 액션·CHECK_SVG) */
-  /* PICK 누르는 순간 = 초록 점등 플로리시(운영자 260622) */
-  .sc-tg.pick:active { background:rgba(var(--accent-rgb),.22); border-color:rgba(var(--accent-rgb),.6); box-shadow:0 0 14px rgba(var(--accent-rgb),.45); }
   .sc-item.acked { opacity:.58; }   /* 확인함 = 흐릿(신규=선명과 구분) */
   /* PICK 완료 = 잔류 비활성 칩(못누르는 줄무늬 — 초록 빗금='득템+잠김', 노랑 빗금=실패와 구분) */
   .sc-got { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
@@ -597,7 +586,7 @@
   .scrap-cols .sc-title a { display:block; }
   .scrap-cols .sc-bot { gap:4px; flex-wrap:nowrap; margin-top:8px; }   /* 2열 모바일도 PASS·PICK·✓ 한 줄(nowrap·min-width:0로 축소) · 제목↔버튼 간격 더 벌림(운영자 260621) */
   .scrap-cols .sc-tg { padding:0 5px; font-size:11px; }   /* 좁은 2열 = 패딩·폰트 축소해 한 줄 수용 */
-  .scrap-cols .sc-tg.ack { flex:0 0 32px; }   /* ✓ off=−(회색)/on=✓(초록) 모프로 상태 구분(시안1·운영자 260622) · acked 카드 디밍(.acked)도 병행 */
+  .scrap-cols .sc-tg.ack { flex:0 0 32px; color:var(--accent); border-color:rgba(15,253,2,.4); }   /* ✓ = 기본부터 초록 체크+초록 테두리(시안3 픽체크 채택·운영자 260621) · acked 구분은 카드 디밍(.acked opacity)이 유지 */
   .scrap-cols .sc-down { width:26px; height:26px; border-radius:9px; }
   .scrap-cols .sc-star { width:20px; height:20px; font-size:14px; }
   .scrap-cols .sc-pick { font-size:11px; padding:4px 10px; }
@@ -1294,12 +1283,6 @@
   .asksend.firing { pointer-events:none; }   /* 전송 누르면 = PICK과 동일한 초록 게이지 좌→우 채움(운영자 260621) */
   .asksend.firing::before { content:''; position:absolute; inset:0; background:#06140d; transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }
   @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
-  /* 전송 실패 = 흔들림 / 완료 = settle 펄스 (전송 상태머신 fail·done · 운영자 260622) */
-  .asksend.shake { animation:asksh .4s ease; }
-  @keyframes asksh { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
-  .asksend.done { animation:askdn .34s var(--ease); }
-  @keyframes askdn { 0%{transform:scale(1)} 40%{transform:scale(1.04)} 100%{transform:scale(1)} }
-  @media (prefers-reduced-motion:reduce) { .asksend.shake, .asksend.done { animation:none; } }
   /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
   .askbot .askclip { position:static; top:auto; right:auto; flex:none; opacity:.85; }
   .askbot .askclip:hover { opacity:1; }
@@ -2174,8 +2157,7 @@ async function _blobToPng(blob) {   // 클립보드는 png가 가장 호환 — 
 async function copyImg(url, btn) {
   if (!url) return;
   try {
-    const r = await fetch(dlSrc(url)); if (!r.ok) throw new Error('proxy ' + r.status);   // R2는 같은-출처 프록시 경유 → 이미지 복사도 CORS 무관 성공
-    const blob = await r.blob();
+    const blob = await (await fetch(url)).blob();
     const png = blob.type === 'image/png' ? blob : await _blobToPng(blob);
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
     _flashBtn(btn, 'ok');
@@ -2184,18 +2166,16 @@ async function copyImg(url, btn) {
     catch { _flashBtn(btn, 'err'); }
   }
 }
-// R2(교차출처) url이면 같은-출처 다운로드 프록시(api/dl) 경유 src 반환(CORS 우회·?v= 캐시버스트 보존 = 덮어쓴 뒤 옛 이미지 방지). 그 외(같은출처)는 원본.
-function dlSrc(url, name) {
-  return /\/\/pub-[0-9a-fA-F]+\.r2\.dev\//.test(url) ? ('api/dl?u=' + encodeURIComponent(url) + (name != null ? '&n=' + encodeURIComponent(name) : '')) : url;
-}
-function downloadImg(url, name, btn) {
+async function downloadImg(url, name, btn) {
   if (!url) return;
-  // 같은-출처 프록시(api/dl)가 Content-Disposition: attachment 로 강제 다운로드 → 안드로이드·데스크탑·iOS 전부 '파일 저장'.
-  // blob 안 거침 = iOS Safari가 이미지 blob을 인라인으로 열어버리는 회귀 회피 · CORS 무관 · ?v= 캐시버스트는 dlSrc가 보존.
-  const a = document.createElement('a');
-  a.href = dlSrc(url, name); a.download = name || '';
-  document.body.appendChild(a); a.click(); a.remove();
-  _flashBtn(btn, 'ok');
+  try {
+    const blob = await (await fetch(url)).blob();
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000); _flashBtn(btn, 'ok');
+  } catch (e) {                                            // 직접 저장 불가(CORS) → 새 탭(정직: warn 표시·폰 길게눌러 저장)
+    window.open(url, '_blank', 'noopener'); if (btn) btn.title = '직접 저장 불가(외부) — 새 탭에서 길게눌러 저장'; _flashBtn(btn, 'warn');
+  }
 }
 function thumbDlName(label, it, i) {
   const stamp = (typeof CUR_A !== 'undefined' && CUR_A) ? dlStamp(CUR_A) : '';
@@ -2638,8 +2618,8 @@ function feedSec(a, keepIdx = 0) {
     const v = card.versions[card.cur] || {};
     uiNo.innerHTML = `<b>${card.n}</b>/${totalN}`;
     uiEdit.onclick = () => openEdit({ card, idx, file: a.file });
-    if (v.image) { uiSave.style.display = ''; const dn = `${dlStamp(CUR_A)}_${slug}_${String(idx + 1).padStart(2, '0')}.jpg`; uiSave.href = v.image; uiSave.setAttribute('download', dn); uiSave.onclick = e => { e.preventDefault(); downloadImg(v.image, dn, uiSave); }; }   // R2=프록시 경유(교차출처 a[download] 무시 문제 해소)·href는 폴백
-    else { uiSave.style.display = 'none'; uiSave.onclick = null; }
+    if (v.image) { uiSave.style.display = ''; uiSave.href = v.image; uiSave.setAttribute('download', `${dlStamp(CUR_A)}_${slug}_${String(idx + 1).padStart(2, '0')}.jpg`); }
+    else uiSave.style.display = 'none';
     ui.querySelector('.ovl').onclick = () => exportOverlay(card, idx, slug);   // 오버레이만 투명 PNG
     ui.querySelector('.fbup').onclick = () => onThumb(card, 'up', ui, a.file);
     ui.querySelector('.fbdown').onclick = () => onThumb(card, 'down', ui, a.file);
@@ -2689,7 +2669,9 @@ async function saveAll(model, slug, btn) {
   if (!imgs.length) return;
   const lbl = (btn && btn.querySelector('.lbl')) || btn, orig = lbl ? lbl.textContent : '';
   for (let i = 0; i < imgs.length; i++) {
-    downloadImg(imgs[i], `${dlStamp(CUR_A)}_${slug}_${String(i + 1).padStart(2, '0')}.jpg`);   // R2=프록시 경유(교차출처 a[download] 무시 → 탭 폭발 방지)
+    const a = document.createElement('a');
+    a.href = imgs[i]; a.download = `${dlStamp(CUR_A)}_${slug}_${String(i + 1).padStart(2, '0')}.jpg`;
+    document.body.appendChild(a); a.click(); a.remove();
     if (lbl) lbl.textContent = `저장 중… ${i + 1}/${imgs.length}`;
     await new Promise(r => setTimeout(r, 250));
   }
@@ -3401,7 +3383,6 @@ const EDIT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const THUMBUP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3z"/><path d="M7 10l4.5-7.5a2 2 0 0 1 2.5 2V8h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.6 20H7"/></svg>';
 const THUMBDOWN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3z"/><path d="M17 14l-4.5 7.5a2 2 0 0 1-2.5-2V16H5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 6.4 4H17"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-const ACK_MORPH = '<svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg>';   // 확인 토글 −→✓ 드로우-인(시안1·운영자 260622)
 async function copyText(text, btn) {
   text = (text || '').replace(/\n+$/, '');
   let ok = false;
@@ -4447,7 +4428,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
                : ((pstate === 'settled' || !DATA_LOADED)
                    ? `<div class="sc-got" aria-label="픽 완료" title="탭하면 피드에서 이 기사 열기">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
-           : `<button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분·흐려짐)">${ACK_MORPH}</button>`)
+           : `<button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분·흐려짐)">${CHECK_SVG}</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
@@ -4672,10 +4653,8 @@ const SOC_LEAN_MAP = { '클리앙': 'l', '보배드림': 'l', '오유': 'l', '82
 const socLean = s => { const v = SOC_LEAN_MAP[s]; return v === 'l' ? 'lean-l' : v === 'r' ? 'lean-r' : ''; };
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
-let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
-  let _ss = '';   // 이번 렌더 구성(행 ID·순서+검색어) 누적
   if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">불러오는 중…</div>`; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rows = q ? SOCIAL.filter(r => ((r.title || '') + ' ' + (r.sources || []).join(' ')).toLowerCase().includes(q)) : SOCIAL;
@@ -4693,11 +4672,7 @@ function renderSns() {
     el.querySelector('.soc-title').textContent = r.title || '';
     const chips = el.querySelectorAll('.soc-chip'); (r.sources || []).forEach((s, k) => { if (chips[k]) chips[k].textContent = s; });
     list.appendChild(el);
-    _ss += (r.url || r.title || '') + ',';   // 시그니처 누적(행 ID·순서)
   });
-  _ss += '|' + q;
-  list.classList.toggle('no-anim', _ss === _snsSig);   // 직전과 동일 구성(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0
-  _snsSig = _ss;
 }
 
 // ── ✨ 요약 요청(멀티모달 입력) — 자연어+캡처 → 큐레이션 요청 ──
@@ -4781,11 +4756,11 @@ $('#askSend').addEventListener('click', async () => {
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // reflow-reset = 매 성공 settle 재생
+    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
-    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
-  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
+    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); }
+  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.classList.remove('firing'); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
