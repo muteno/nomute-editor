@@ -3567,13 +3567,11 @@ const qFeedBtn = $('#bnav .bnav-i[data-tab="feed"]');
 let lpTimer = null, lpFired = false;
 let QITEMS = [], QPAGE = 0; const QPER = 5;   // 대기열 = 페이지당 5개 페이지네이션
 function lpStart(e) { if (e && e.button) return;   // 1차 버튼(좌클릭/터치)만 롱프레스 — 우클릭은 contextmenu가 처리(중복 방지)
-  lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 600); }   // 600ms — 일반 탭(살짝 눌러도)은 이동, 의도적 길게눌림만 대기열(480ms는 일반 탭에도 오발·운영자 260621)
+  lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 480); }
 function lpCancel() { clearTimeout(lpTimer); }
 if (qFeedBtn) {
   qFeedBtn.addEventListener('pointerdown', lpStart);
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => qFeedBtn.addEventListener(ev, lpCancel));
-  // ⚠️ 손가락 뗌(release)을 버튼에서 못 잡는 기기·합성이벤트 순서 어긋남 대비 — window 레벨에서도 취소(빠른 탭인데 pointerup이 버튼에 안 잡혀 600ms 뒤 대기열 여는 오발 차단·운영자 260621)
-  ['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, lpCancel));
   qFeedBtn.addEventListener('contextmenu', e => { e.preventDefault(); openQueue(); });   // PC 우클릭 = 대기열(네이티브 메뉴 막고 즉시 열기)
   qFeedBtn.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(lpTimer); });   // 스와이프 제스처 중 롱프레스 오발 취소(Failed칩 패턴 계승·260620)
   qFeedBtn.addEventListener('blur', () => { lpFired = false; });   // 대기열 열려 포커스 이동 후 lpFired 고착 → 다음 탭전환 1회 삼킴 방지(Failed칩 blur 리셋 계승)
