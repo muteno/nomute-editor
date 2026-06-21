@@ -8,6 +8,10 @@
 #   4) Termux:Tasker/공유 시트에 "queue-news"를 등록(공유 → Termux)
 # 사용: 폰에서 기사 '공유 → Termux(queue-news)' → URL이 pending/ 에 push됨
 # 로그: 매 시도가 ~/nomute-queue.log 에 남는다(알람 꺼도 성공/실패 확인 가능).
+#
+# ⚠️ 증거보존(260620 분신술 ⓐ①): 공유분은 *먼저* 레포 밖 ~/nomute-pending-failed/ 에 저장한 뒤 push 한다.
+#    push 가 5회 실패해도 그 백업은 git reset --hard 에 *증발하지 않고* 남아, 다음 공유 때 자동 재시도로 합류한다.
+#    (옛 버전은 실패 시 미푸시 로컬커밋만 남았다가 다음 공유의 reset 에 통째 사라지는 silent-drop 이 있었음.)
 
 INPUT="$*"               # 공유된 전체(URL 또는 기사 '전체선택→공유' 전문)
 notify(){ termux-notification -t "$1" -c "$2" 2>/dev/null || true; }
@@ -18,43 +22,64 @@ logline(){ echo "$(date '+%y-%m-%d %H:%M:%S') | $1 | ${LINE1:-$URL}" >> ~/nomute
 
 cd ~/nomute-editor || { notify "큐 실패" "리포 폴더 없음"; logline "NO_REPO"; exit 1; }
 
+FAILDIR="$HOME/nomute-pending-failed"   # 레포 밖 = git reset --hard 면역(미전송분 보존·다음 공유 때 자동 재시도)
+mkdir -p "$FAILDIR"
+
+# 백업파일 1건을 최신 origin/main 위에 올려 5회 백오프 push. 0=성공 / 1=네트워크·push 실패 / 2=commit 실패.
+push_file(){
+  local src="$1" name; name="$(basename "$src")"
+  local try
+  for try in 1 2 3 4 5; do
+    git fetch -q origin main || return 1
+    git reset -q --hard origin/main          # 최신 원격에 맞춤(레포 안만 영향 — FAILDIR 백업은 무사)
+    mkdir -p pending
+    cp "$src" "pending/$name"
+    git add pending
+    git -c user.name=muteno-phone -c user.email=phone@nomute commit -qm "queue: $(head -n1 "$src")" 2>/dev/null || return 2
+    if git push -q origin HEAD:main; then return 0; fi
+    sleep $((try * 2))                        # 백오프 후 재동기화·재시도(non-ff 경쟁 흡수)
+  done
+  return 1
+}
+
+# ── 본문 준비(URL 선-fetch / 전문 붙여넣기) ──
 if [ "$HANGUL" -ge 200 ]; then
-  # ── 전문 붙여넣기(전체선택→공유) — 403·JS·페이월 *전부* 우회, fetch 안 함. 안의 링크는 무시 ──
+  # 전문 붙여넣기(전체선택→공유) — 403·JS·페이월 *전부* 우회, fetch 안 함. 안의 링크는 무시.
   LINE1="paste:$(printf '%s' "$INPUT" | sha1sum | cut -c1-12)"   # 합성 id(원문 URL 없음·dedup용)
-  BODY="$(printf '%s' "$INPUT" | head -c 20000)"   # iconv 불필요 — 분석기가 iconv -c 로 정리(전문경로 = libiconv 의존 0)
+  BODY="$(printf '%s' "$INPUT" | head -c 20000)"   # iconv 불필요 — 분석기가 iconv -c 로 정리
 else
-  # ── URL 경로 — 폰 선-fetch(403 우회). repo의 fetch_article.sh로 폰(200)에서 본문 선취득 ──
+  # URL 경로 — 폰 선-fetch(403 우회). repo의 fetch_article.sh로 폰(200)에서 본문 선취득.
   [ -z "$URL" ] && { notify "큐 실패" "URL/전문 못 찾음"; logline "NO_URL"; exit 1; }
   LINE1="$URL"
-  # ⚠️ 전제: `pkg install python libiconv`(없으면 추출 빈값 → 클라우드 폴백).
-  git fetch -q origin main && git reset -q --hard origin/main   # repo의 fetch_article.sh 최신화
+  git fetch -q origin main && git reset -q --hard origin/main   # fetch_article.sh 최신화(아직 백업 전 = 잃을 것 없음)
   BODY="$(timeout 20 bash .github/scripts/fetch_article.sh "$URL" 2>/dev/null || true)"
 fi
-# main은 자동 파이프라인(분 단위 커밋)으로 분주 → push non-ff 거부가 실패 1순위. 매 시도 reset 후
-# pending 새로 찍어 push 재시도(2·4·6·8s 백오프, 5회)로 흡수.
-mkdir -p pending
-FNAME="pending/$(date +%y%m%d-%H%M%S)-$RANDOM.txt"
-OK=0
-for try in 1 2 3 4 5; do
-  if ! git fetch -q origin main; then
-    notify "큐 실패 ❌" "git fetch 실패 — 네트워크/PAT 확인"; logline "FETCH_FAIL"; exit 1
-  fi
-  git reset -q --hard origin/main          # 최신 원격에 맞춤(이때 FNAME도 지워짐)
-  # reset 후 재기록 — 본문(URL경로=선-fetch / 전문경로=붙여넣은 텍스트)이 있으면 '# body:' 동봉.
-  if [ -n "${BODY//[$' \t\r\n']/}" ]; then
-    printf '%s\n# body:\n%s\n' "$LINE1" "$BODY" > "$FNAME"
-  else
-    echo "$LINE1" > "$FNAME"                # 본문 없음(JS렌더·페이월) → line1만(클라우드 폴백)
-  fi
-  git add pending
-  git -c user.name=muteno-phone -c user.email=phone@nomute commit -qm "queue: $LINE1" \
-    || { notify "큐 실패 ❌" "commit 실패(중복/빈 변경?)"; logline "COMMIT_FAIL"; exit 1; }
-  if git push -q origin HEAD:main; then OK=1; break; fi
-  sleep $((try * 2))                        # 백오프 후 재동기화·재시도
-done
 
-if [ "$OK" = 1 ]; then
-  notify "큐 등록됨 ✅" "$LINE1"; logline "OK"
+# ── 새 공유분을 *먼저* 백업파일로 저장(레포 밖 = 절대 안 잃음) ──
+NEWF="$FAILDIR/$(date +%y%m%d-%H%M%S)-$RANDOM.txt"
+if [ -n "${BODY//[$' \t\r\n']/}" ]; then
+  printf '%s\n# body:\n%s\n' "$LINE1" "$BODY" > "$NEWF"
 else
-  notify "큐 등록 실패 ❌" "5회 재시도 실패 — Termux 열어 git push 확인"; logline "PUSH_FAIL"
+  echo "$LINE1" > "$NEWF"                # 본문 없음(JS렌더·페이월) → line1만(클라우드 폴백)
+fi
+
+# ── 백업디렉터리 전체(이전 미전송분 + 방금 것)를 오래된 순으로 push → 성공분만 삭제 ──
+shopt -s nullglob
+new_ok=0; left=0; net_fail=0
+for src in "$FAILDIR"/*.txt; do            # glob = 파일명 사전순(YYMMDD 접두) = 오래된 순(FIFO)
+  push_file "$src"; rc=$?
+  if [ "$rc" = 0 ]; then
+    rm -f "$src"; [ "$src" = "$NEWF" ] && new_ok=1
+  else
+    left=$((left + 1)); [ "$rc" = 1 ] && net_fail=1
+  fi
+done
+shopt -u nullglob
+
+if [ "$new_ok" = 1 ] && [ "$left" = 0 ]; then
+  notify "큐 등록됨 ✅" "$LINE1"; logline "OK"
+elif [ "$new_ok" = 1 ]; then
+  notify "큐 등록됨 ✅ (이전 ${left}건 보류)" "$LINE1"; logline "OK_LEFT:$left"
+else
+  notify "큐 보류 ⏳ ${left}건" "네트워크 실패 — 보존됨, 다음 공유 때 자동 재시도(데이터 안 잃음)"; logline "DEFERRED:$left"
 fi
