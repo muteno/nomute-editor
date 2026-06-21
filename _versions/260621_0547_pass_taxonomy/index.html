@@ -514,7 +514,7 @@
   .sc-tg:active { transform:scale(.9); }
   .sc-tg.down:hover { color:#ff9b9b; border-color:rgba(255,90,90,.5); }
   .sc-tg.pass:hover { color:var(--thumb); border-color:rgba(255,200,60,.55); }
-  .sc-tg.pick { flex:1.5; color:var(--accent); background:var(--accent-dim); border-color:rgba(15,253,2,.4); }   /* PICK = 1차 액션 = 더 넓게(3버튼 · 운영자 260621) */
+  .sc-tg.pick { color:var(--accent); background:var(--accent-dim); border-color:rgba(15,253,2,.4); }
   .sc-tg.pick:hover { background:rgba(15,253,2,.2); }
   /* 확인(ack) = '봤음' 수동 표시(신규와 구분 · 긴급이면 프로필 점등 끔). PICK 우측 컴팩트 체크. */
   .sc-tg.ack { flex:0 0 38px; color:rgba(255,255,255,.5); }
@@ -4212,12 +4212,13 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
                : ((pstate === 'settled' || !DATA_LOADED)
                    ? `<div class="sc-got" aria-label="픽 완료" title="탭하면 피드에서 이 기사 열기">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
-           : `<button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분·흐려짐)">${CHECK_SVG}</button>`)
+           : `<button class="sc-tg down" type="button" aria-label="관심 없음">${THUMBDOWN_SVG}</button><button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분·흐려짐)">${CHECK_SVG}</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">★</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ✓' : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = c.title || '(제목 없음)';
   if (triage) {   // 최신 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 처리. PICK은 잔류(PICKED 비활성), down/pass는 접힘.
     if (!pstate) {
+      el.querySelector('.sc-tg.down').onclick = () => askReason('down', c, el);
       el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
       el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
       el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
@@ -4311,11 +4312,15 @@ function collapseCard(el) {
 // ── 트리아지(신규·누적) = [👎][PASS][PICK] + 무조건 사유(객관식) 선택 ──
 // 사유 = 나중 알고리즘이 '왜 제꼈나'를 정량화할 지표. 의미 기준 정본 = docs/curation-rubric.md.
 const TRIAGE = {
-  pass: { q: '패스 — 왜? (점수 0~2는 기록만 · 나중 알고리즘 반영)', reasons: [
-    { k: '스팸', d: '(0점) 기사로서 가치가 가장 없음 · 애초에 수집 필요 없는 기사' },
-    { k: '홍보성', d: '(1점) 지방·지자체·기업·주가 띄우기·산하 행정단체 홍보성 보도자료' },
-    { k: '가치없음', d: '(2점) 화제성은 있지만 콘텐츠화 시 다수 유의미한 반응 이끌기 어려움' },
+  down: { q: '관심 없음 — 왜?', reasons: [
+    { k: '국지적', d: '국지적·개별·특정 회사 사안 = 범국민적 공감 어려움' },
+    { k: '기업·정책', d: '기업·문화계 영리목적·정부 정책 보도자료 / 특정 주식 보도 = 콘텐츠 부적합(전국민 관심↓)' },
+    { k: '가치없음', d: '콘텐츠화 할 가치가 없는 기사' },
     { k: '직접입력', input: true } ] },
+  pass: { q: '패스 — 왜?', reasons: [
+    { k: '애매함', d: '조금 이목은 끌 수 있어도 콘텐츠로 다룰 가치는 그닥·애매(옛 별로 통합)' },
+    { k: '늦은 보도', d: '이미 시간 지나 뒤늦게 올라온 보도 — 시의성·속보성 없어 콘텐츠 부적합' },
+    { k: '기타', input: true } ] },
   pick: { q: 'PICK — 왜?', reasons: [
     { k: '속보/사건', d: '빠르게 전달하면 모두가 감정적 격동을 느낄 것이라 판단' },
     { k: '토픽/논란', d: '범국민적 토픽·주제라고 판단' },
@@ -4351,7 +4356,7 @@ function applyTriage(act, c, el, reason, text) {
   if (el) { if (el.dataset.fired) return; el.dataset.fired = '1'; }   // 사유칩 연타 = 중복 발사(api/pick 2건·중복 적재) 차단
   const id = candId(c); const memo = (text || '').trim();
   const patch = { action: act, reason }; if (memo) patch.memo = memo;
-  if (act === 'pass') patch.dismissed = true;   // PASS = 👎 통합 = 제외(부정 취향신호) · 사유=스팸(0)/홍보성(1)/가치없음(2) · 점수는 reason명에 내재(나중 알고리즘 반영)
+  if (act === 'down') patch.dismissed = true;
   if (act === 'pick') { patch.picked = true; patch.pickedAt = Date.now(); }
   saveRating(id, patch);
   const cur = ratingsAll()[id] || {};
