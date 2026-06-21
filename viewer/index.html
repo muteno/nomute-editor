@@ -4936,6 +4936,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body > :first-child { margin-top:0; }
   .nm-body > :last-child { margin-bottom:0; }
   .nm-body p { margin:7px 0; color:#e6e6e6; }
+  .nm-body .nm-sublbl { margin:12px 0 3px; color:#8fa697; font-size:11px; font-weight:800; letter-spacing:.06em; }   /* 카드 프롬프트 소라벨(이미지 프롬프트) = mut 톤 */
   .nm-body ul { margin:7px 0; padding-left:0; list-style:none; color:#e6e6e6; }   /* 불릿 = 커스텀 •(아래) — 기본 ul 들여쓰기(19px) 제거해 말머리를 본문 좌측에 맞춤(운영자 260621) */
   .nm-body ol { margin:7px 0; padding-left:17px; color:#e6e6e6; }
   .nm-body li { margin:4px 0; line-height:1.64; }
@@ -5066,18 +5067,19 @@ async function buildSummaryHtml(full) {   // full=true('전체' 체크): IG·스
       i = j;
     }
   }
-  if (full) {   // '전체' 체크 = 카드뉴스 본문(카드별 텍스트)도 한 섹션으로 추가 — 이미지 프롬프트·검색·버튼 제외(본문만)
-    const csrc = $('#cardsec'); let chtml = '', cn = 0;
-    if (csrc) {
-      const ct = csrc.querySelector('h1');
-      const ctTxt = ct ? [...ct.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() : '';
-      if (ctTxt) chtml += '<p><strong>' + esc(ctTxt) + '</strong></p>';
-      csrc.querySelectorAll('pre').forEach(pre => {   // 직전 라벨이 '텍스트'인 pre = 카드 본문(이미지 프롬프트 pre는 라벨이 '이미지 프롬프트'라 제외)
-        const pv = pre.previousElementSibling;
-        if (pv && (pv.textContent || '').trim() === '텍스트') { cn += 1; chtml += '<p><strong>[카드 ' + cn + ']</strong></p><pre>' + esc(pre.textContent.trim()) + '</pre>'; }
+  if (full) {   // '전체' 체크 = 카드 프롬프트(카드별 텍스트 + 이미지 프롬프트)도 한 섹션으로 추가(운영자 260621 — 톤만 바꿔 그대로 옮김). 기본(미체크)=없음.
+    const cmd = (CUR_A && CUR_A.cards && CUR_A.cards.md) || '';   // cards.md = SSOT(파싱이 DOM 스크랩보다 깨끗 — 클립/버튼 오염 없음)
+    let chtml = '';
+    if (cmd) {
+      const ctitle = feedTitle(cmd);
+      if (ctitle) chtml += '<p><strong>' + esc(ctitle) + '</strong></p>';
+      parseCards(cmd).forEach(cd => {
+        chtml += '<p><strong>[카드 ' + cd.n + ']</strong></p>';
+        if (cd.caption) chtml += '<pre>' + esc(cd.caption).replace(/\*([^*\n]+)\*/g, '<span class="cem">$1</span>') + '</pre>';   // *강조* → 형광(카드와 동일 톤)
+        if (cd.prompt) chtml += '<p class="nm-sublbl">이미지 프롬프트</p><pre>' + esc(cd.prompt) + '</pre>';
       });
     }
-    if (chtml) boxes += card('카드뉴스 본문', '<div class="nm-body draft-scroll" data-body>' + chtml + '</div>', false);
+    if (chtml) boxes += card('카드 프롬프트', '<div class="nm-body draft-scroll" data-body>' + chtml + '</div>', false);
   }
   const now = new Date(), pz = n => String(n).padStart(2, '0');
   const ymd = now.getFullYear() + '-' + pz(now.getMonth() + 1) + '-' + pz(now.getDate());
