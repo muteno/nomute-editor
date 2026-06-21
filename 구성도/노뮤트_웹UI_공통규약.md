@@ -6,7 +6,7 @@
 >
 > **사람이 보는 사인오프 버전** = `구성도/*.html` (인터랙티브). 이 MD는 그 확정값을 코드 적용용으로 옮긴 것.
 >
-> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` = 그 거울** → ③ **이 MD·구성도 HTML = 규칙·시각화(값 아님)**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). 이 MD에 적힌 hex/px은 *viewer 추출본*일 뿐이며, 어긋나면 viewer 실값이 정본. 상세 = `CLAUDE.md §🎨`.
+> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` = 구성도 데모가 쓰는 토큰만 발췌한 *부분거울***(전체 거울 아님 — 나머지 토큰은 아직 각 HTML 인라인 `:root`에 잔존·점진 통일 후속) → ③ **이 MD·구성도 HTML = 규칙·시각화**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). ⚠️ 이 MD의 hex/px은 대부분 *viewer 추출본(descriptive)*이나, §0 opacity 스케일·일부 §6~8은 *목표(prescriptive)*라 viewer 현 raw값과 다를 수 있음(그건 지향점). 상세 = `CLAUDE.md §🎨`.
 
 ---
 
@@ -66,7 +66,7 @@
 | 대기 idle | `--accent-dim` 글래스, border .4 | "전송"(대기 라벨만 메뉴 동사 가변: 발사/합성/생성) | — |
 | 재확인 arm | `--arm` 앰버 | **"재확인"** | 3s 무동작 시 대기 복귀(타임아웃) |
 | 전송 firing | 초록 게이지 좌→우 | "전송 중…" | .72s, 클릭 잠금 |
-| 진행 Picking | 미결정 shine / 결정형 세그 | **`PICKING…`** | aria-busy=true |
+| 진행 Picking | 미결정 shine / 결정형 세그 | **`Picking…`** | aria-busy=true |
 | 완료 PICKED | 솔리드 초록 + 체크 pop | **`PICKED`** | 소진 잠금, 탭=피드 |
 | 부분 partial | 앰버 세그 | "일부만 생성됨" | 재발사 버튼 노출 |
 | 실패 Failed | 노랑 빗금 + 빨강 라벨 | **`Failed`** | 풀폭 칩, 롱프레스→진단/전문입력 |
@@ -178,7 +178,7 @@ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-lin
 ```css
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&display=swap');
 :root { --font-status:'Orbitron','Pretendard Variable',sans-serif; }
-/* 적용 대상: PICK·PICKING·PICKED·PASS·FAILED·thumb 상태어, 라벨사전 영문, 버튼 안 숫자(OPA 등) */
+/* 적용 대상: PICK·Picking…·PICKED·PASS·Failed·thumb 상태어, 라벨사전 영문, 버튼 안 숫자(OPA 등) · viewer 실셀렉터 = .sc-got/.sc-fail/.sc-tg/.sc-pick span/.sc-cross/#qbadge/.qb (아래 .stat 등은 구성도 데모 클래스) */
 .stat,.ind-bar span,.fail-chip,.picked-chip,.pickbtn,
 .sc-got,.sc-tg { font-family:var(--font-status); letter-spacing:.04em; }   /* viewer 실클래스 = .sc-tg(.pass/.down) — 옛 .sc-pass/.sc-down 오기 정정(260621) */
 .statnum { font-family:var(--font-status); font-weight:700; letter-spacing:.02em; } /* 얇아 보이는 숫자 교정 */
