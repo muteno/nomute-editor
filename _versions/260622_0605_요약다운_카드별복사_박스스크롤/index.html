@@ -4897,19 +4897,6 @@ function _expCopy() {
     window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
     top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
   }
-  // 카드 박스 = 외부(페이지) 스크롤 우선: 평소 내부 스크롤 끔(스와이프=페이지 넘어감). 넘치는 카드는 하단 페이드, 탭하면 그 박스만 내부 스크롤 활성(운영자 260622).
-  var cbs = document.querySelectorAll('.nm-cardbody');
-  function _markOf() { Array.prototype.forEach.call(cbs, function (b) { if (!b.classList.contains('nm-sactive')) b.classList.toggle('nm-of', b.scrollHeight - b.clientHeight > 4); }); }
-  function _deact(except) { Array.prototype.forEach.call(cbs, function (b) { if (b !== except && b.classList.contains('nm-sactive')) { b.classList.remove('nm-sactive'); b.scrollTop = 0; } }); _markOf(); }
-  Array.prototype.forEach.call(cbs, function (b) {
-    b.addEventListener('click', function () {
-      if (b.classList.contains('nm-sactive') || b.scrollHeight - b.clientHeight <= 4) return;   // 이미 활성·안 넘치면 무시
-      _deact(b); b.classList.add('nm-sactive'); b.classList.remove('nm-of');
-    });
-  });
-  document.addEventListener('click', function (e) { if (!e.target.closest('.nm-cardbody, .nm-secbtn')) _deact(null); }, true);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(_markOf);   // 폰트 로드 후 높이 재측정
-  _markOf();
 }
 const SUMMARY_TPL = `<!doctype html>
 <html lang="ko">
@@ -4986,9 +4973,6 @@ const SUMMARY_TPL = `<!doctype html>
   .draft-scroll::-webkit-scrollbar-track { background:rgba(255,255,255,.04); border-radius:9px; margin:4px 0; }
   .draft-scroll::-webkit-scrollbar-thumb { background:rgba(15,253,2,.42); border-radius:9px; border:2px solid transparent; background-clip:padding-box; }
   .draft-scroll::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.72); background-clip:padding-box; }
-  .nm-cardbody { max-height:18em; overflow:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }   /* 카드 = 고정높이 박스 · 평소 overflow:hidden = 스와이프가 페이지로(외부 스크롤 우선) · 운영자 260622 */
-  .nm-cardbody.nm-of { -webkit-mask-image:linear-gradient(180deg,#000 84%,transparent); mask-image:linear-gradient(180deg,#000 84%,transparent); cursor:pointer; }   /* 넘침 = 하단 페이드(더 있음 신호) + 탭하면 그 박스 스크롤 가능(커서 힌트) */
-  .nm-cardbody.nm-sactive { overflow-y:auto; -webkit-mask-image:none; mask-image:none; box-shadow:0 0 0 2px rgba(15,253,2,.5) inset; }   /* 탭 활성 = 그 박스만 내부 스크롤 ON(외부 우선의 예외) + 라임 링 */
   .nm-foot { margin:24px 2px 0; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); }
   .nm-foot-h { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#7d7d7d; margin:0 0 10px; }
   .src { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px; font-size:13px; }
@@ -5095,21 +5079,19 @@ async function buildSummaryHtml(full) {   // full=true('전체' 체크): IG·스
       i = j;
     }
   }
-  if (full) {   // '전체' 체크 = 카드뉴스 = 카드마다 별도 박스(각자 복사 버튼 · 고정높이 내부스크롤 · 외부 페이지 스크롤 우선 · 운영자 260622). 기본(미체크)=없음.
+  if (full) {   // '전체' 체크 = 카드 프롬프트(카드별 텍스트 + 이미지 프롬프트)도 한 섹션으로 추가(운영자 260621 — 톤만 바꿔 그대로 옮김). 기본(미체크)=없음.
     const cmd = (CUR_A && CUR_A.cards && CUR_A.cards.md) || '';   // cards.md = SSOT(파싱이 DOM 스크랩보다 깨끗 — 클립/버튼 오염 없음)
+    let chtml = '';
     if (cmd) {
-      const cds = parseCards(cmd);
-      if (cds.length) {
-        const ctitle = feedTitle(cmd);
-        boxes += '<div class="nm-grp">카드뉴스' + (ctitle ? ' · ' + esc(ctitle) : '') + '</div>';   // 카드뉴스 그룹 헤더(제목)
-        cds.forEach(cd => {
-          let inner = '';
-          if (cd.caption) inner += '<pre>' + esc(cd.caption).replace(/\*([^*\n]+)\*/g, '<span class="cem">$1</span>') + '</pre>';   // *강조* → 형광(카드와 동일 톤)
-          if (cd.prompt) inner += '<p class="nm-sublbl">이미지 프롬프트</p><pre>' + esc(cd.prompt) + '</pre>';
-          if (inner) boxes += card('카드 ' + cd.n, '<div class="nm-body draft-scroll nm-cardbody" data-body>' + inner + '</div>', false);   // 카드별 = data-sec → _expCopy가 카드마다 복사 버튼
-        });
-      }
+      const ctitle = feedTitle(cmd);
+      if (ctitle) chtml += '<p><strong>' + esc(ctitle) + '</strong></p>';
+      parseCards(cmd).forEach(cd => {
+        chtml += '<p><strong>[카드 ' + cd.n + ']</strong></p>';
+        if (cd.caption) chtml += '<pre>' + esc(cd.caption).replace(/\*([^*\n]+)\*/g, '<span class="cem">$1</span>') + '</pre>';   // *강조* → 형광(카드와 동일 톤)
+        if (cd.prompt) chtml += '<p class="nm-sublbl">이미지 프롬프트</p><pre>' + esc(cd.prompt) + '</pre>';
+      });
     }
+    if (chtml) boxes += card('카드 프롬프트', '<div class="nm-body draft-scroll" data-body>' + chtml + '</div>', false);
   }
   const now = new Date(), pz = n => String(n).padStart(2, '0');
   const ymd = now.getFullYear() + '-' + pz(now.getMonth() + 1) + '-' + pz(now.getDate());
