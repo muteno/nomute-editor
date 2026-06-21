@@ -183,25 +183,27 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 ### 3) Termux (폰)
 `docs/termux-share.sh` 참고 — `~/bin/queue-news`로 두고 Termux 공유 시트에 등록. 기사 공유 → URL이 `pending/`에 push → Actions 발동.
 
-## 🎴 카드 제작 (뷰어 버튼 → 카드뉴스까지 · 260613)
-뷰어에서 기사 열고 **"🎴 카드뉴스 일괄 생성"**(또는 헤더 **🎴 일괄** = 미제작 전체) → 암호 입력 → `card-make` 워크플로 발사:
+## 🎴 카드 제작 (2단계 분리: 프롬프트 자동 → 이미지 수동 슛 · 260621 갱신)
+⚠️ **핵심 불변 = 카드는 "프롬프트(2단계)까지만 자동/버튼, 이미지(3단계·유료)는 운영자 수동 슛".** 어떤 버튼도 한 클릭에 이미지를 자동 발사하지 않는다(운영자 비용 통제). 흐름:
 ```
-[버튼] → functions/api/make-cards (PASSCODE 검증, GH_TOKEN으로 dispatch)
-  → [card-make] status "generating" 커밋(뷰어 ⏳) → Claude 헤드리스 Step 4(prompts/card-make.md
-     — apps/news 지침 종속, 🍌만·STOP 없음) → cards/<기사>/cards.md 커밋
-  → GDRIVE_SA_JSON 있으면: Drive Prompt 폴더 업로드 = 기존 Apps Script→Gemini→Cloud Run 발사
-     → .gen_complete 적응형 폴링(첫 ~5분·1~2분 간격·상한 15분, 정본 apps/news/03) → _final_*.jpg 회수·커밋 → 뷰어 갤러리+⬇저장
+[1·2단계 = 무료·제미나이0]
+  자동: 폰/요약 → news-analyze·ask 의 card_plan = cardmake.sh all text → cards/<기사>/cards.md (state=text_done)
+  버튼: 카드가 비었/실패/멈춤이면 뷰어 "카드뉴스 프롬프트 (다시) 생성" → functions/api/make-cards (mode='text')
+        → card-make.yml(mode=text) → cardmake.sh "<기사>.md" text → text_done. ⚠️ text 모드는 Lock B로 GEMINI unset = 이미지 0.
+[3단계 = 유료·운영자 수동]
+  text_done 카드의 "🚀 이미지 생성 & 카드 합성"(슛) → make-cards(mode='shoot') → card-make.yml(shoot)
+    → 직영 gen_cards.py: Gemini 장면 직접생성(텍스트-free 4:5) + apps/comp/card_news.py 로컬합성(1080×1350)
+    → Cloudflare R2 저장(없으면 git 폴백) → 뷰어 갤러리 + ⬇저장. (외부 Drive/Apps Script/Cloud Run = 0 · 260621 제거)
 ```
-- ⚠️ **버튼 = 유료 발사**(Opus 토큰 + Gemini·Cloud Run). 그래서 암호 게이트 + 뷰어 확인창. 세션 파이프라인의 🚦STOP은 그대로(이 버튼 경로는 운영자가 누른 것 자체가 GO).
-- 뷰어는 60초마다 자동 갱신 — ⏳ → 🚀 → 🎴 전환이 새로고침 없이 반영(커밋→Pages 재배포 단위라 1~2분 지연).
-- 상태: `generating`(생성중) / `text_done`(MD까지 — Drive 시크릿 없을 때) / `fired_partial`(발사됐으나 대기시간 내 미완 — Drive에선 계속 생성) / `done` / `failed`(cards/<기사>/error.log).
+- **버튼 = 프롬프트만(무료)**: "카드뉴스 프롬프트 생성"·"다시 생성"·"🔄 프롬프트 다시 만들기"·stale "🔄 프롬프트 다시 만들기(요약 수정 반영)" 전부 `mode='text'`(제미나이 0). *과거엔 이 버튼이 `full`(프롬프트+이미지 한방)이라 "프롬프트만" 의도로 눌러도 유료 이미지가 나갔음 → 260621 분리.*
+- **슛 = 유료 발사**(Opus 토큰 + Gemini): `text_done`/`fired_partial` 상태의 🚀/🔄 슛 버튼 + 카드 edit(이미지 희망 시)에서만. 암호 게이트는 제거됨(260614 · 운영자 지출 직접 모니터링).
+- 뷰어는 60초마다 자동 갱신 — ⏳ → text_done → (슛) → 🎴 전환이 새로고침 없이 반영(`viewer/_headers` no-cache).
+- 상태: `generating`(프롬프팅 중) / `text_done`(프롬프트·텍스트까지·이미지 0) / `fired_partial`(슛했으나 대기 내 일부 미완) / `done`(이미지 완성) / `failed`(cards/<기사>/error.log).
 
 ### 설정 (1회 — 이거 안 하면 버튼이 동작 안 함)
 1. **GitHub PAT** (버튼→워크플로 발사용): GitHub → Settings → Developer settings → **Fine-grained tokens** → 이 레포만, **Actions: Read and write** 권한으로 생성.
-2. **Cloudflare Pages 환경변수**: Pages 프로젝트 → Settings → **Variables and Secrets** (Production)
-   - `GH_TOKEN` = 위 PAT (Secret)
-   - `PASSCODE` = 버튼 암호(원하는 문자열, Secret) — 뷰어가 공개 URL이라 이게 과금 게이트.
-3. **GDRIVE_SA_JSON** (이미지 발사·회수용): GitHub 레포 → Settings → Secrets → Actions 에 운영자 보유 서비스계정 키 JSON **본문** 등록 + Drive **Prompt 폴더**(`1jQBoDqnDk5-fw51tCdDLD_cuDBAJp3kf`)를 SA 이메일에 **편집자 공유**. 미등록이면 카드 MD(`text_done`)까지만 — 이미지 없이도 텍스트·프롬프트는 뷰어에서 복사 가능.
+2. **Cloudflare Pages 환경변수**: Pages 프로젝트 → Settings → **Variables and Secrets** (Production) → `GH_TOKEN` = 위 PAT (Secret). *(PASSCODE 게이트는 260614 제거.)*
+3. **이미지(슛) 시크릿** = `GEMINI_API_KEY`(장면 생성) + R2 5종(`R2_ACCOUNT_ID`·`R2_BUCKET`·`R2_PUBLIC_BASE`·`R2_ACCESS_KEY_ID`·`R2_SECRET_ACCESS_KEY`) — GitHub 레포 Secrets. GEMINI 없으면 슛해도 `text_done` 유지(이미지 미발사). R2 5개 다 없으면 git 폴백(로컬 PNG 커밋). *(레거시 GDRIVE_SA_JSON·Drive·Cloud Run = 호출자 0 · 260621 제거.)*
 
 ## 동작·안전장치
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).

@@ -400,7 +400,7 @@
   @keyframes vhGlow { 0%,100% { text-shadow:0 0 0 rgba(15,253,2,0); } 50% { text-shadow:0 0 11px rgba(15,253,2,.3); } }
   .vh-sub { font-size:12.5px; color:var(--mut); line-height:1.5; margin:0; }
   @media (prefers-reduced-motion:reduce) { .vh-title { animation:none; } }
-  .scrap-list { display:flex; flex-direction:column; gap:var(--sp-2); }   /* 카드 세로 간격 9→12(--sp-2) 확보(운영자 260622) */
+  .scrap-list { display:flex; flex-direction:column; gap:9px; }
   .scrap-empty { color:var(--mut); text-align:center; padding:48px 0; font-size:13px; }
   .sc-item { background:var(--glass2); border:1px solid var(--line2); border-radius:14px; padding:11px 13px; position:relative;
     display:flex; flex-direction:column; gap:7px; transition:border-color .15s, background .15s;
@@ -563,7 +563,7 @@
   .scrap-coltitle small { font-weight:600; font-size:10px; opacity:.55; }
   .ct-cross { color:#ff9638; text-shadow:0 0 11px rgba(255,140,45,.45); }   /* 누적 = 오렌지 네온 */
   .ct-new { color:var(--accent); text-shadow:0 0 11px rgba(15,253,2,.45); }  /* 신규 = 강조색(네온그린) */
-  .scrap-cols .scrap-list { gap:var(--sp-2); }   /* 2열 모바일도 카드 세로 간격 8→12(--sp-2) 확보(운영자 260622) */
+  .scrap-cols .scrap-list { gap:8px; }
   .scrap-cols .sc-item { padding:9px 11px; gap:6px; border-radius:13px; }
   .scrap-col.green .sc-item { background:linear-gradient(165deg, rgba(38,27,17,.58), rgba(11,9,7,.74)); border-color:rgba(255,140,45,.14); }
   .scrap-col.black .sc-item { background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border-color:rgba(15,253,2,.13); }
@@ -739,7 +739,7 @@
 
   /* ── 카드 변경 2차 팝업(글래스) ── */
   #editdlg { width:min(460px,94vw); max-width:460px; max-height:94vh; height:auto; margin:auto; padding:0; color:var(--fg);
-    background:linear-gradient(165deg, rgba(27,44,32,.93), rgba(11,19,14,.96));   /* backdrop-filter(blur30) 제거 = 내부 .ed-body 스크롤마다 30px 블러 전면 재합성 = 스크롤 잼 주범. bg 불투명(.93~.96)+::backdrop 블러로 글래스 유지(효과는 84%+ 불투명이라 거의 안 보였음·운영자 260621) */
+    background:linear-gradient(165deg, rgba(27,44,32,.84), rgba(11,19,14,.93)); backdrop-filter:blur(30px) saturate(1.5); -webkit-backdrop-filter:blur(30px) saturate(1.5);
     border:1px solid rgba(255,255,255,.13); border-radius:22px; box-shadow:0 30px 80px rgba(0,0,0,.5); animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }   /* 보더.13·그림자.5·진입애니 통일 */
   #editdlg::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }   /* 기본 backdrop과 통일 */
   .ed-h { display:flex; align-items:center; padding:11px 16px; border-bottom:1px solid var(--line2); }   /* 헤더 세로패딩 11 통일(=ed-foot 대칭) */
@@ -747,8 +747,7 @@
   .ed-x { margin-left:auto; width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:9px; font-size:13px; color:var(--fg);
     background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }   /* 닫기 ✕ 통일 = .tool-x 글래스 사각 */
   .ed-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
-  .ed-body { padding:12px 16px 16px; overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }   /* touch=iOS 관성스크롤 · contain=스크롤 체이닝 잼 차단 */
-  .ed-body > * { flex-shrink:0; }   /* flex column이 max-height 넘으면 자식(특히 .ed-chips min-height:34px)을 짜부 → 칩 행이 아래 라벨·textarea 위로 새던 버그 차단(대신 .ed-body 스크롤·운영자 260621) */
+  .ed-body { padding:12px 16px 16px; overflow-x:hidden; overflow-y:auto; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }
   .ed-img { display:block; max-width:100%; max-height:30vh; width:auto; height:auto; margin:2px auto 4px; border-radius:14px; border:1px solid var(--line); background:var(--glass2); }
   .ed-lbl { font-size:12px; font-weight:800; color:var(--mut); margin-top:9px; }
   .ed-hint { font-weight:600; opacity:.6; }
@@ -2178,8 +2177,8 @@ function cardSec(a) {
       `<div class="genstat">⚠️ 직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
     const b = document.createElement('button');
     b.className = 'mkbtn';
-    b.textContent = st === 'failed' ? '카드뉴스 프롬프트 다시 생성' : '카드뉴스 프롬프트 생성';
-    b.onclick = () => makeCards(a.file, b, 'text');   // 2단계(텍스트·프롬프트)만 — 이미지(3단계·유료)는 text_done 후 아래 '🚀 이미지 생성' 슛 버튼에서만
+    b.textContent = st === 'failed' ? '카드뉴스 다시 생성' : '카드뉴스 생성';
+    b.onclick = () => makeCards(a.file, b);
     sec.appendChild(b);
     return;
   }
@@ -2189,8 +2188,8 @@ function cardSec(a) {
         `<div class="genstat">⚠️ 카드 프롬프팅 실패 — ${stuckMin === 999 ? '' : stuckMin + '분째 '}멈춰 있어(워크플로 중단/타임아웃 추정). 아래로 다시 시도해줘.</div>`);
       const b = document.createElement('button');
       b.className = 'mkbtn';
-      b.textContent = '🔄 프롬프트 다시 만들기';
-      b.onclick = () => makeCards(a.file, b, 'text');   // 프롬프팅 재시도 = 2단계만(이미지는 슛 버튼)
+      b.textContent = '🔄 카드 다시 만들기';
+      b.onclick = () => makeCards(a.file, b);
       sec.appendChild(b);
     } else {
       sec.innerHTML = `<div class="genstat live">🍌 카드뉴스 프롬프팅 중입니다… 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
@@ -2250,11 +2249,11 @@ function cardSec(a) {
   // stale = 요약이 카드 제작 후 또 수정됨 → 이미지는 보존하고 '다시 제작'(앰버) 권유. 기본 슛/재발사 버튼 대체.
   if (stale) {
     sec.insertAdjacentHTML('beforeend',
-      `<div class="cardnote stale">📝 카드 제작 뒤 요약이 수정됐어 — 이 카드는 옛 요약 기준이야. 아래를 누르면 <b>프롬프트만</b> 새 요약으로 다시 만들어(기존 이미지는 그대로 보존). 이미지를 새로 뽑으려면 그 뒤 '🚀 이미지 생성' 슛 버튼을 눌러(유료).</div>`);
+      `<div class="cardnote stale">📝 카드 제작 뒤 요약이 수정됐어 — 이 카드는 옛 요약 기준이야. 이미지는 그대로 두고, 새 요약으로 <b>다시 제작</b>하려면 아래를 눌러(프롬프트·이미지 새로 생성).</div>`);
     const b = document.createElement('button');
     b.className = 'mkbtn stale';
-    b.textContent = '🔄 프롬프트 다시 만들기 (요약 수정 반영)';
-    b.onclick = () => makeCards(a.file, b, 'text');   // 2단계만 — 새 요약으로 프롬프트 갱신·이미지 보존. 새 이미지(유료)는 text_done 후 슛 버튼에서만
+    b.textContent = '🔄 다시 제작 (요약 수정 반영)';
+    b.onclick = () => makeCards(a.file, b);   // full 모드 = 새 요약으로 프롬프트+이미지 재생성
     sec.appendChild(b);
     return;
   }
@@ -3177,9 +3176,7 @@ function askPin(err) {
 }
 
 async function makeCards(target, btn, mode) {
-  // mode: 'text'=프롬프트(2단계)만 생성·이미지 0 / 'shoot'=이미지(3단계·유료)만 / 그 외=full(프롬프트+이미지 한방)
-  const reqMode = (mode === 'shoot' || mode === 'text') ? mode : 'full';
-  const isText = reqMode === 'text';
+  const shoot = mode === 'shoot';
   // L: PIN 게이트 제거 — 바로 발사(사용자 요청 260614·지출 직접 모니터링·내일 재설정 예정).
   // (PIN UI/askPin/#pindlg는 dead로 남겨둠 — 재게이트 시 makeCards만 되돌리면 됨.)
   if (btn) { btn.classList.add('firing'); btn.style.pointerEvents = 'none'; }   // 누르면 하단 게이지바 발동(전송 상태머신·운영자 260621)
@@ -3187,12 +3184,12 @@ async function makeCards(target, btn, mode) {
   try {
     const r = await fetch('api/make-cards', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ article: target, mode: reqMode }),
+      body: JSON.stringify({ article: target, mode: shoot ? 'shoot' : 'full' }),
     });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.ok) {
       await minGauge;   // 게이지 모션 끝까지 보장
-      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? '📝 프롬프트 생성 시작 — 1~2분 내 ⏳로 바뀜(이미지는 그 뒤 슛 버튼)' : '🚀 생성됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜'}</div>`;
+      if (btn) btn.outerHTML = `<div class="genstat live">🚀 생성됨 — 워크플로 시작, 1~2분 내 ⏳로 바뀜</div>`;
       return;
     }
     if (btn) { btn.classList.remove('firing'); btn.style.pointerEvents = ''; }
