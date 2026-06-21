@@ -194,8 +194,9 @@
   /* 상단 검색바 = 프로필 원 기준 세로중앙·배너 위 은근히 걸침. 검정 반투명(배너 비침), 키워드 텍스트만 또렷(불투명). 모든 탭 항상 표시. */
   /* 접이식 검색: 기본=아이콘만(프로필 옆·테두리색·박스 없음), 클릭 시 좌측으로 입력바 펼침. */
   .topsearch { position:absolute; right:94px; bottom:-28px; height:60px; z-index:6; display:flex; align-items:center; gap:4px; }   /* 검색·새로고침 = 프로필 동일 box + 추가로 ~6px 더 아래(운영자 260621: 아직 높음) */
-  .ts-toggle { width:36px; height:36px; flex:none; background:none; border:none; padding:0; cursor:pointer; display:grid; place-items:center; }
+  .ts-toggle { width:36px; height:36px; flex:none; background:none; border:none; padding:0; cursor:pointer; display:grid; place-items:center; transition:transform .18s cubic-bezier(.2,.7,.3,1); }
   .ts-toggle:active { transform:scale(.92); }
+  @media (hover:hover) { .ts-toggle:hover { transform:scale(1.18); } }   /* 마우스 호버 = 살짝 커짐(돋보기·새로고침 · 운영자 260621) */
   .topsearch .ts-ico { width:20px; height:20px; flex:none; stroke:var(--accent); fill:none; stroke-width:2.2; stroke-linecap:round;
     filter:drop-shadow(0 0 5px rgba(15,253,2,.4)); }   /* 프로필 테두리색(피드=그린) · 탭 전환 시 색 즉시 = transition:stroke 제거(운영자 260621: 0.3s 페이드가 늦게 느껴짐) */
   body.tab-scrap .topsearch .ts-ico { stroke:#ff9614; filter:drop-shadow(0 0 5px rgba(255,150,20,.4)); }   /* 스크랩 탭=앰버(프로필 테두리 따라) */
@@ -545,7 +546,12 @@
     display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--mut); border:1px solid var(--line2); cursor:pointer; }
   .sc-rsn-x:hover { color:#fff; }
   /* ── 수집함 2열 (좌=누적/기존 초록 · 우=신규/스포티 블랙). 색은 둘만 — 다른 색 안 섞음 ── */
-  .scrap-cols { display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:start; }
+  /* 수집함 = 단일 글래스 패널 하나(디밍·개별 박스2개 제거 → 가운데 시임선으로 통합 · 운영자 260621) */
+  .scrap-cols { display:grid; grid-template-columns:1fr 1fr; align-items:stretch; position:relative;
+    border-radius:16px; padding:10px 9px 14px;
+    background:rgba(255,255,255,.018); border:1px solid rgba(255,255,255,.07);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 26px rgba(0,0,0,.28);
+    backdrop-filter:blur(13px) saturate(1.15); -webkit-backdrop-filter:blur(13px) saturate(1.15); }
   /* ── 실패 트레이 = 픽 분석실패를 카드(칼럼) 종속서 분리해 상단 전폭에 모음(cross<8·4h 솎여 미렌더돼도 실패 silent-drop 차단·운영자 260620 분신술) ── */
   .scrap-cols .sc-failtray { grid-column:1 / -1; border-radius:14px; padding:9px 10px 11px;
     background:linear-gradient(180deg, rgba(255,176,46,.12), rgba(12,9,5,.34)); border:1px solid rgba(255,176,46,.34);
@@ -553,12 +559,14 @@
   .sc-failtray-hd { font-size:11.5px; font-weight:800; color:#ffb02e; letter-spacing:-.2px; padding:2px 2px 9px; }
   .sc-failtray-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; }
   .sc-failtray .sc-item { background:linear-gradient(165deg, rgba(40,28,12,.6), rgba(11,9,6,.74)); border-color:rgba(255,176,46,.34); }
-  /* 칼럼 = 글래스모피즘(스포티 블랙·블러+틴트+미세 하이라이트) + 컬럼별 네온: 누적=오렌지 / 신규=강조색(네온그린). */
-  .scrap-col { min-width:0; border-radius:16px; padding:8px 8px 14px;
-    backdrop-filter:blur(13px) saturate(1.25); -webkit-backdrop-filter:blur(13px) saturate(1.25);
-    border:1px solid rgba(255,255,255,.06); box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 26px rgba(0,0,0,.3); }
-  .scrap-col.green { background:linear-gradient(180deg, rgba(20,24,22,.5), rgba(8,10,9,.42)); border-color:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.32), 0 0 24px rgba(15,253,2,.14); }   /* 누적 = 스포티파이 블랙 글래스 통일 + 글로우 강화(운영자 260621) */
-  .scrap-col.black { background:linear-gradient(180deg, rgba(20,24,22,.5), rgba(8,10,9,.42)); border-color:rgba(255,255,255,.08); box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.32), 0 0 16px rgba(15,253,2,.09); }   /* 신규 = 동일 블랙 글래스 + 글로우(누적보다 약) */
+  /* 칼럼 = 투명(개별 박스·디밍·글로우 제거). 좌우 패딩으로 가운데 시임선과 간격만 둠. */
+  .scrap-col { min-width:0; padding:0; }
+  .scrap-col.green { padding-right:11px; }   /* 누적(좌) — 카드가 시임선과 11px 띄움 */
+  .scrap-col.black { padding-left:11px; position:relative; }   /* 신규(우) */
+  /* 가운데 구분선 = 소프트 글로우 시임(안4): 1px 흰 선 + 흐릿한 빛무리 — 신규 칼럼 좌측 = 두 칼럼 경계(50%) */
+  .scrap-col.black::before { content:''; position:absolute; top:4px; bottom:4px; left:0; width:1px; pointer-events:none;
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.18) 20%, rgba(255,255,255,.18) 80%, transparent);
+    box-shadow:0 0 12px 1.5px rgba(255,255,255,.07); }
   .scrap-coltitle { font-size:12.5px; font-weight:800; letter-spacing:-.2px; padding:4px 4px 10px; }
   .scrap-coltitle small { font-weight:600; font-size:10px; opacity:.55; }
   .ct-cross { color:#ff9638; text-shadow:0 0 11px rgba(255,140,45,.45); }   /* 누적 = 오렌지 네온 */
@@ -575,9 +583,9 @@
   .scrap-cols .sc-media { font-size:9.5px; }
   .scrap-cols .sc-title { font-size:12.5px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
   .scrap-cols .sc-title a { display:block; }
-  .scrap-cols .sc-bot { gap:4px; flex-wrap:nowrap; }   /* 2열 모바일도 PASS·PICK·✓ 한 줄(nowrap·min-width:0로 축소·운영자 260621) */
+  .scrap-cols .sc-bot { gap:4px; flex-wrap:nowrap; margin-top:8px; }   /* 2열 모바일도 PASS·PICK·✓ 한 줄(nowrap·min-width:0로 축소) · 제목↔버튼 간격 더 벌림(운영자 260621) */
   .scrap-cols .sc-tg { padding:0 5px; font-size:11px; }   /* 좁은 2열 = 패딩·폰트 축소해 한 줄 수용 */
-  .scrap-cols .sc-tg.ack { flex:0 0 32px; }
+  .scrap-cols .sc-tg.ack { flex:0 0 32px; color:var(--accent); border-color:rgba(15,253,2,.4); }   /* ✓ = 기본부터 초록 체크+초록 테두리(시안3 픽체크 채택·운영자 260621) · acked 구분은 카드 디밍(.acked opacity)이 유지 */
   .scrap-cols .sc-down { width:26px; height:26px; border-radius:9px; }
   .scrap-cols .sc-star { width:20px; height:20px; font-size:14px; }
   .scrap-cols .sc-pick { font-size:11px; padding:4px 10px; }
@@ -3730,7 +3738,9 @@ $('#bnav').addEventListener('click', e => {
       if (e.detail && Date.now() - lastFeedTap < 400) { lastFeedTap = 0; openQueue(); return; }   // 연달아 두번 탭(포인터·<400ms) = 대기열 열기 (키보드 Enter는 detail=0 → 평범한 탭전환·오발 차단)
       lastFeedTap = Date.now();   // 첫 탭 = 평소대로 피드 탭 전환(아래) + 더블탭 후보 기록
     } else { lastFeedTap = 0; }   // 다른 탭 누르면 더블탭 후보 리셋(피드→타탭→피드 <400ms 오발 차단)
-    closeOverlays(); showTab(b.dataset.tab); return;   // 일반 탭전환 = 열린 팝업 자동 닫힘
+    closeOverlays();
+    if (b.dataset.tab !== 'feed' && b.dataset.tab === CURTAB) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }   // 스크랩·SNS 활성 탭 재탭 = 재렌더·스태거 재생 없이 맨 위로만(깜빡임 차단·운영자 260621) · 피드는 위 더블탭 로직이 처리
+    showTab(b.dataset.tab); return;   // 일반 탭전환 = 열린 팝업 자동 닫힘
   }
   const f = e.target.closest('#toolfab');
   if (f) { e.preventDefault(); const wasOpen = !bpop.hidden; closeOverlays('bpop'); if (!wasOpen) { popAt(bpop, f); bpop.hidden = false; } else bpop.hidden = true; return; }
