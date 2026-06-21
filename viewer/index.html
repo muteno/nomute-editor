@@ -1731,7 +1731,7 @@ function biasText(bias) {
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621)
-const CAT_COLOR = { '정치':'#7e9ae8','사회':'#7fd0a0','경제':'#e7c977','국제':'#b79be8','문화':'#e89bc4','테크':'#7fc8d8' };   // 정치 = 코른플라워 블루(긴급 빨강과 비충돌·제도적 톤)
+const CAT_COLOR = { '정치':'#ec8a8a','사회':'#7fd0a0','경제':'#e7c977','국제':'#97a8e6','문화':'#ea90c6','테크':'#7fc8d8' };   // 정치=파스텔 빨강 · 국제=더 블루(보라서 분리) · 문화=살짝 더 색채 — 인접색 구분↑(운영자 260621)
 function catBucket(cat) { const c = (cat || '').trim(); return CAT_MAP[c] || (['정치','사회','경제','문화','국제','테크'].includes(c) ? c : ''); }
 function catChip(cat) {
   const b = catBucket(cat); if (!b) return '';
@@ -2206,6 +2206,13 @@ function cardSec(a) {
       const prev = pre.previousElementSibling;
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
+    div.querySelectorAll('pre').forEach(pre => {   // 검색어 박스 = 키워드 공백 → 쉼표 구분(구분 명확·운영자 260621)
+      const pv = pre.previousElementSibling;
+      if (pv && /^검색어$/.test((pv.textContent || '').trim())) {
+        const t = (pre.textContent || '').trim();
+        if (t && !t.includes(',')) pre.textContent = t.split(/\s+/).filter(Boolean).join(', ');
+      }
+    });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
     // 카드별 검색어 줄 — 이미지 프롬프트 박스 아래 [현재 검색어(좌·1줄)] + [G+돋보기 구글 이미지 검색 버튼](운영자 260620).
     const G_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 10.96v2.32h3.84c-.16 1-1.15 2.9-3.84 2.9-2.31 0-4.2-1.91-4.2-4.27s1.89-4.27 4.2-4.27c1.32 0 2.2.56 2.7 1.05l1.84-1.77c-1.18-1.1-2.68-1.77-4.54-1.77-3.74 0-6.74 3-6.74 6.76s3 6.76 6.74 6.76c3.89 0 6.47-2.74 6.47-6.59 0-.44-.05-.78-.11-1.12l-6.36.04z"/></svg>';
@@ -2218,7 +2225,7 @@ function cardSec(a) {
         if (!q) return;
         const row = document.createElement('div'); row.className = 'srchrow';
         const note = document.createElement('span'); note.className = 'qnote';
-        note.innerHTML = '현재 검색어 = <b>' + esc('"' + q + '"') + '</b>';
+        note.innerHTML = '현재 검색어 = <b>' + esc('"' + String(q).trim().split(/\s+/).filter(Boolean).join(', ') + '"') + '</b>';   // 키워드 쉼표 구분 표시(검색 URL은 원본 공백 유지·운영자 260621)
         const s = document.createElement('a'); s.className = 'gsrch';
         s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
         s.target = '_blank'; s.rel = 'noopener'; s.title = '구글 이미지 검색'; s.setAttribute('aria-label', '구글 이미지 검색');
