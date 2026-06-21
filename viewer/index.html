@@ -238,12 +238,12 @@
     user-select:none; padding:4px 4px 4px 2px; white-space:nowrap; }
   .toggle input { display:none; }
   .tk { width:34px; height:20px; border-radius:999px; background:rgba(var(--accent-rgb),.08); position:relative;
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(var(--accent-rgb),.25);
-    transition:background .2s, border-color .2s, box-shadow .2s; flex:none; }   /* 정제 스위치 = 검정→초록틴트 글래스(개선 A·운영자 260621) */
-  .tk::after { content:''; position:absolute; top:50%; left:2.5px; width:15px; height:15px; border-radius:50%;
-    background:var(--fg); transform:translateY(-50%); transition:transform .22s cubic-bezier(.4,1.4,.6,1); box-shadow:0 1px 3px rgba(0,0,0,.4); }
-  .toggle input:checked + .tk { background:linear-gradient(90deg,var(--accent-bright),var(--accent)); border-color:transparent; box-shadow:0 0 8px rgba(var(--accent-rgb),.45); }
-  .toggle input:checked + .tk::after { transform:translate(14px,-50%); background:#fff; }
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.12);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.35); transition:background .22s var(--ease), border-color .22s, box-shadow .22s; flex:none; }   /* 정제 스위치(개선 A·원안 tk2 정합) = 검정→초록틴트 글래스·inset 깊이(운영자 260621) */
+  .tk::after { content:''; position:absolute; top:50%; left:2px; width:15px; height:15px; border-radius:50%;
+    background:var(--mut); transform:translateY(-50%); transition:transform .26s var(--ease), background .22s; box-shadow:0 1px 3px rgba(0,0,0,.5); }   /* 노브 = OFF 무채(mut)·작고 부드럽게 */
+  .toggle input:checked + .tk { background:linear-gradient(90deg,var(--accent-bright),var(--accent)); border-color:rgba(var(--accent-rgb),.5); box-shadow:0 0 10px rgba(var(--accent-rgb),.4), inset 0 1px 1px rgba(255,255,255,.3); }   /* ON = accent 그라데 + 글로우 + 내부 하이라이트 */
+  .toggle input:checked + .tk::after { transform:translate(14px,-50%); background:var(--on-accent); }
   .toggle input:checked ~ .tlbl { color:var(--accent); font-weight:700; }
   .meta { color:var(--mut); font-size:12px; flex:1 0 100%; text-align:right; padding-top:2px; }
   /* R 필터 칩(검색바 아래·연회색 단색) */
@@ -1195,14 +1195,19 @@
     background:rgba(0,0,0,.62); color:#fff; font-size:11px; line-height:1; padding:0; }
   .askimg-kb { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#cdd; font-size:8.5px; text-align:center; padding:1px 0; }
   .askbot { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
-  .askattach { flex:none; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:999px; color:var(--fg);
+  .askattach { flex:none; display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:999px; color:var(--fg);
     font:inherit; font-size:12.5px; font-weight:600; padding:8px 13px; cursor:pointer; }
+  .askattach svg { width:14px; height:14px; }   /* 첨부 픽토그램(이미지·운영자 260621) */
   .askattach:hover { border-color:rgba(15,253,2,.3); }
   .askstatus { flex:1; min-width:90px; font-size:12px; color:var(--mut); }
-  .asksend { flex:none; background:linear-gradient(135deg,var(--accent-bright),var(--accent)); color:var(--on-accent); border:none; border-radius:999px;
+  .asksend { flex:none; position:relative; overflow:hidden; background:linear-gradient(135deg,var(--accent-bright),var(--accent)); color:var(--on-accent); border:none; border-radius:999px;
     font:inherit; font-size:13px; font-weight:800; padding:9px 18px; cursor:pointer; box-shadow:0 6px 16px rgba(15,253,2,.32); }
+  .asksend > span { position:relative; z-index:1; }
   .asksend:disabled { opacity:.5; cursor:default; }
   .asksend:active { transform:scale(.97); }
+  .asksend.firing { pointer-events:none; }   /* 전송 누르면 = PICK과 동일한 초록 게이지 좌→우 채움(운영자 260621) */
+  .asksend.firing::before { content:''; position:absolute; inset:0; background:#06140d; transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }
+  @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
   /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
   .askbot .askclip { position:static; top:auto; right:auto; flex:none; opacity:.85; }
   .askbot .askclip:hover { opacity:1; }
@@ -1409,9 +1414,9 @@
     <div class="askimgs" id="askImgs"></div>
     <div class="askbot">
       <span class="askstatus" id="askStatus"></span>
-      <label class="askattach" id="askAttach">첨부<input id="askFile" type="file" accept="image/*" multiple hidden></label>
       <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
-      <button class="asksend" id="askSend" type="button">전송</button>
+      <label class="askattach" id="askAttach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>첨부<input id="askFile" type="file" accept="image/*" multiple hidden></label>
+      <button class="asksend" id="askSend" type="button"><span>전송</span></button>
     </div>
   </div>
 </dialog>
@@ -1507,7 +1512,7 @@ function renderChips() {
   const none = !FILTERS.cats.size && !FILTERS.issue;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
   h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈 = 긴급+이슈 통합 토글(켜면 breaking·issue 둘 다 표시·운영자 260621)
-  h += CHIP_CATS.map(cat => `<button class="chip${FILTERS.cats.has(cat) ? ' on' : ''}" data-cat="${cat}">${cat}</button>`).join('');
+  h += CHIP_CATS.map(cat => { const on = FILTERS.cats.has(cat), col = CAT_COLOR[cat] || 'var(--accent)'; return `<button class="chip${on ? ' on' : ''}" data-cat="${cat}"${on ? ` style="color:${col};text-shadow:0 0 11px ${col}99"` : ''}>${cat}</button>`; }).join('');   // 활성 칩 = 카테고리 고유색(정치 빨강·테크 시안 등 각각·운영자 260621)
   c.innerHTML = h;
 }
 
@@ -3580,8 +3585,8 @@ $('#cardonly').addEventListener('change', render);
 $('#chips').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.f === 'all') { FILTERS.cats.clear(); FILTERS.issue = false; }
-  else if (b.dataset.f === 'issue') { FILTERS.issue = !FILTERS.issue; }
-  else if (b.dataset.cat) { const k = b.dataset.cat; FILTERS.cats.has(k) ? FILTERS.cats.delete(k) : FILTERS.cats.add(k); }
+  else if (b.dataset.f === 'issue') { FILTERS.issue = !FILTERS.issue; }   // 이슈만 다중 가능(카테고리와 조합)
+  else if (b.dataset.cat) { const k = b.dataset.cat; (FILTERS.cats.has(k) && FILTERS.cats.size === 1) ? FILTERS.cats.clear() : (FILTERS.cats.clear(), FILTERS.cats.add(k)); }   // 카테고리 = 단일 선택(하나만·다시 누르면 해제 · 전체 OR [이슈+카테고리1] · 운영자 260621)
   renderChips(); render();
 });
 renderChips();
@@ -4589,16 +4594,16 @@ function renderAskImgs() {
 $('#askSend').addEventListener('click', async () => {
   const text = $('#askText').value.trim();
   if (!text && !askImages.length) { $('#askStatus').textContent = '내용이나 캡처를 넣어줘'; return; }
-  const btn = $('#askSend'); btn.disabled = true; $('#askStatus').textContent = '보내는 중…';
+  const btn = $('#askSend'); btn.disabled = true; btn.classList.add('firing'); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
-      setTimeout(() => { askdlg.close(); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
+      setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
     else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); }
   } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
-  btn.disabled = false;
+  btn.classList.remove('firing'); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
 $('#failmenu').addEventListener('click', e => {
@@ -4750,7 +4755,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-date { color:#fff; font-weight:700; white-space:nowrap; }       /* 보도 날짜값 = 흰색(운영자 260621) */
   .nm-dlabel { color:#8fa697; font-weight:600; }                      /* "보도:" 라벨 = mut */
   .nm-reporter { color:#8fa697; font-weight:600; white-space:nowrap; }   /* 기자 = mut(영문이면 빌더서 스킵) */
-  .nm-title { position:relative; font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:40px; letter-spacing:-.6px; color:#fff; }   /* 우측 40px = 제목 복사 버튼 자리(절대배치·제목행 안 침해·글자 안 겹침·운영자 260621) */
+  .nm-title { position:relative; font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:56px; letter-spacing:-.6px; color:#fff; }   /* 우측 56px = 제목 복사 버튼 자리 + 여유 간격(긴 제목도 버튼과 안 겹치게 캡·운영자 260621) */
   .nm-titlecopy { position:absolute; top:2px; right:0; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }   /* 제목 우상단 = 전체복사·섹션복사와 같은 우측 정렬(틀어짐 X) */
   .nm-titlecopy svg { width:14px; height:14px; display:block; }
   .nm-titlecopy:hover { background:#0FFD02; color:#000; border-color:#0FFD02; }
