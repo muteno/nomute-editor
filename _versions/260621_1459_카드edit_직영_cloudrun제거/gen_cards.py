@@ -13,7 +13,7 @@ fail-soft(카드 1장 실패가 나머지 안 끊음) · 완료 카드(이미 _f
 재사용: thumb_gen(gemini_image·r2_upload·R2_ON) · recompose_card(card_news 로컬합성) — 드리프트 0.
 정본 = 이 파일.
 """
-import os, sys, re, json, argparse, shutil, urllib.request
+import os, sys, re, json, argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import thumb_gen as tg   # gemini_image · r2_upload · R2_ON · KEY (모듈 import = main 미실행)
@@ -42,142 +42,10 @@ def parse_cards(md):
     return out
 
 
-def _record_card_usage(cdir, calls):
-    """카드 제미나이 토큰을 cards/<stem>/usage.json 에 누적({calls,total,cumulative})."""
-    if not calls:
-        return
-    up = os.path.join(cdir, "usage.json")
-    try:
-        prevj = json.load(open(up, encoding="utf-8"))
-    except Exception:
-        prevj = {}
-    agg = tg._usage_total(calls)
-    tot = {"calls": agg["calls"], "total": agg["total_tokens"],
-           "cumulative": int((prevj or {}).get("cumulative") or 0) + agg["total_tokens"]}
-    json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-    print("  📊 카드 제미나이 토큰: {}콜·이번 {:,}·누적 {:,}".format(tot["calls"], tot["total"], tot["cumulative"]), flush=True)
-
-
-def _fetch_old_image(cdir, nn):
-    """카드 NN의 '현재' 이미지 바이트(버전 v0 보존용). R2면 사이드카 URL 다운로드 · 아니면 로컬 _final. 실패=None(비치명)."""
-    side = os.path.join(cdir, ".r2_images.json")
-    if os.path.isfile(side):
-        try:
-            for u in json.load(open(side, encoding="utf-8")):
-                if u.split("?")[0].endswith("_final_{}.jpg".format(nn)):
-                    return urllib.request.urlopen(u, timeout=30).read()
-        except Exception as e:
-            print("  ⚠️ 기존 R2 이미지 회수 실패(v0 생략): {}".format(e)); return None
-    fp = os.path.join(cdir, "_final_{}.jpg".format(nn))
-    if os.path.isfile(fp):
-        try: return open(fp, "rb").read()
-        except Exception: return None
-    return None
-
-
-def _save_versions(cdir, n, old_bytes, old_text, new_final, new_text):
-    """앞뒤 히스토리 보존 — versions/card-NN/v0(원본)..vK(최신). 최초 edit 때만 v0 기록(reshoot_card 규약 계승)."""
-    nn = int(n)
-    vdir = os.path.join(cdir, "versions", "card-{:02d}".format(nn))
-    os.makedirs(vdir, exist_ok=True)
-    nums = [int(m.group(1)) for f in os.listdir(vdir) for m in [re.match(r"v(\d+)\.jpg$", f)] if m]
-    if not nums:
-        if old_bytes:
-            open(os.path.join(vdir, "v0.jpg"), "wb").write(old_bytes)
-            if old_text:
-                open(os.path.join(vdir, "v0.txt"), "w", encoding="utf-8").write(old_text)
-        k = 1
-    else:
-        k = max(nums) + 1
-    shutil.copy2(new_final, os.path.join(vdir, "v{}.jpg".format(k)))
-    if new_text:
-        open(os.path.join(vdir, "v{}.txt".format(k)), "w", encoding="utf-8").write(new_text)
-    print("  ✓ 버전 보존: versions/card-{:02d} (현재 v{})".format(nn, k))
-
-
-def _update_cards_md_text(md_path, n, new_text):
-    """cards.md 카드 N의 **텍스트** 블록을 new_text로 교체(reshoot_card 규약 계승)."""
-    if not new_text or not os.path.isfile(md_path):
-        return
-    md = open(md_path, encoding="utf-8").read()
-    def repl(m):
-        return re.sub(r'(\*\*텍스트\*\*\s*```(?:text)?\s*)([\s\S]*?)(```)',
-                      lambda mm: mm.group(1) + new_text + '\n' + mm.group(3), m.group(1), count=1)
-    md2 = re.sub(r'(###\s*\[카드\s*{}\][\s\S]*?)(?=\n###\s*\[카드|\Z)'.format(int(n)), repl, md, count=1)
-    open(md_path, "w", encoding="utf-8").write(md2)
-
-
-def edit_one(stem, n):
-    """단일 카드 직영 edit(Cloud Run/Drive/Apps Script 0) — env EDIT_TEXT(새 문구)·EDIT_WISH(이미지 수정 희망).
-       wish 있음 또는 장면 보존본 없음 → Gemini 장면 재생성 / 그 외 → 장면 보존(텍스트만·제미나이 0).
-       그 후 card_news 로컬 합성 → R2면 같은 키 덮어쓰기(없으면 로컬) + 버전 보존 + cards.md 텍스트 갱신."""
-    import recompose_card as rc   # 로컬 합성(card_news SSOT)
-    cdir = os.path.join("cards", stem)
-    md_path = os.path.join(cdir, "cards.md")
-    if not os.path.isfile(md_path):
-        print("cards.md 없음: " + stem); return 1
-    nn = "%02d" % int(n)
-    new_text = os.environ.get("EDIT_TEXT", "").strip()
-    wish = os.environ.get("EDIT_WISH", "").strip()
-    if not new_text:
-        print("::error::EDIT_TEXT 없음"); return 1
-    card = next((c for c in parse_cards(open(md_path, encoding="utf-8").read()) if c["n"] == int(n)), None)
-    if not card:
-        print("::error::카드 {} 블록/프롬프트 없음".format(n)); return 1
-
-    sdir = os.path.join(cdir, "scenes"); os.makedirs(sdir, exist_ok=True)
-    scene_local = os.path.join(sdir, "장면{}.jpg".format(nn))
-    old_text = card.get("text") or ""
-    old_bytes = _fetch_old_image(cdir, nn)   # 버전 v0 보존용(현재본) — 새로 쓰기 전에 회수
-
-    _u0 = len(tg._USAGE)
-    regen = bool(wish) or not os.path.isfile(scene_local)
-    if regen:
-        if not tg.KEY:
-            print("::error::GEMINI_API_KEY 없음 — 이미지 재생성 불가"); return 1
-        prompt = card["prompt"].rstrip()
-        if wish:
-            prompt += "\n\n[EDIT REQUEST — 다음 수정 희망을 반영해 다시 그릴 것]: " + wish
-        png = tg.gemini_image(prompt + " " + CARD_STYLE)
-        if not png:
-            print("::error::카드 {} 장면 생성 실패".format(n)); return 1
-        open(scene_local, "wb").write(png)
-        print("  ✓ 카드 {} 장면 재생성{}".format(n, " (이미지 수정 반영)" if wish else ""))
-    else:
-        print("  ✓ 카드 {} 텍스트만 변경 — 장면 보존(제미나이 0)".format(n))
-
-    final_local = os.path.join(cdir, "_final_{}.jpg".format(nn))
-    os.environ.pop("EDIT_TEXT", None)   # recompose는 text 인자로 받음(env 잔여 제거)
-    if not rc.recompose(scene_local, final_local, new_text):
-        print("::error::카드 {} 합성 실패".format(n)); return 1
-
-    _save_versions(cdir, n, old_bytes, old_text, final_local, new_text)
-
-    # 배치: R2 카드(사이드카 존재 + R2 켜짐)면 같은 키 덮어쓰기(.r2_images.json·URL 불변) / 아니면 로컬 _final 유지.
-    side = os.path.join(cdir, ".r2_images.json")
-    if tg.R2_ON and os.path.isfile(side):
-        with open(final_local, "rb") as f:
-            url = tg.r2_upload(f.read(), "cards/{}/_final_{}.jpg".format(stem, nn), "image/jpeg")
-        if not url:
-            print("::error::카드 {} R2 업로드 실패".format(n)); return 1
-        os.remove(final_local)   # R2 서빙 → 로컬 제거(다른 카드와 일관·레포 비대 0)
-        print("  ✓ 카드 {} R2 재업로드(같은 키 덮어쓰기 · ?v=로 캐시버스트)".format(n))
-    else:
-        print("  ✓ 카드 {} 로컬 _final 갱신".format(n))
-
-    _update_cards_md_text(md_path, n, new_text)
-    _record_card_usage(cdir, tg._USAGE[_u0:])
-    print("카드 {} 변경 완료(직영 · Cloud Run/Drive/Apps Script 0)".format(n))
-    return 0
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stem", required=True)
-    ap.add_argument("--edit-card", type=int, default=0, help="단일 카드 edit(env EDIT_TEXT 새문구·EDIT_WISH 이미지수정희망)")
     a = ap.parse_args()
-    if a.edit_card:
-        return edit_one(a.stem, a.edit_card)
     if not tg.KEY:
         print("GEMINI_API_KEY 없음 — 카드 생성 생략(스캐폴드 no-op)"); return 0
     cdir = os.path.join("cards", a.stem)
