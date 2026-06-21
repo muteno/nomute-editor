@@ -25,7 +25,7 @@ export async function onRequestPost({ request, env }) {
   const scene = String(body.scene || '').slice(0, 8000);
   if (!scene.trim()) return json({ error: '장면/기사 입력이 필요해' }, 400);
 
-  const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
+  const id = new Date().toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);
   const refimage = (body.refimage === true || body.refimage === 'true') ? 'true' : 'false';
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/k-make.yml/dispatches', 'POST', {
