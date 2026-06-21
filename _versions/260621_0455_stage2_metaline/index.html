@@ -296,13 +296,13 @@
   .card { display:block; }
   .cardmain { min-width:0; }
   /* #1 첫줄 = IN(적재)·WRITE(보도) 두 날짜. WRITE 항상 강조(accent), IN은 오늘일 때만 강조(B). */
-  .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; align-items:center; gap:9px; flex-wrap:nowrap; min-width:0; }   /* [카테고리] 보도(좌) ··· 스크랩+긴급/이슈(우) = 항상 1줄(운영자 260621·디자인안04). 라벨 폐지. */
-  .cardtop .wr { font-weight:700; white-space:nowrap; }   /* 보도시간(좌) — 색=페이드(≤6h 라임/7~11h 흰/12h↑ 회) 인라인 */
-  .cardtop .ctop-r { margin-left:auto; flex:none; display:inline-flex; align-items:center; gap:8px; }   /* 우측 그룹 = 스크랩 + 긴급/이슈 */
-  .cardtop .scrap { font-weight:700; white-space:nowrap; }   /* 스크랩시간(우) — 색=흰(≤6h)/회(7h↑) 인라인 · NEW 빼곤 중요도 낮아 무채색 */
-  .cardtop .scrap.nw { color:var(--accent); font:900 9.5px/1 var(--font-status); letter-spacing:.12em; text-shadow:0 0 9px rgba(var(--accent-rgb),.55); }   /* NEW(<30분) = 라임 플랫(디자인안03) */
-  /* 우상단 긴급/이슈 = catslot 대칭. 색글자(긴급 빨강·이슈 노랑). 테두리 점등과 같은 brkIssueKind(긴급 우선). */
-  .cardtop .urg { align-self:center; font-size:11px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; line-height:1; }
+  .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; gap:13px; flex-wrap:wrap; }
+  .cardtop .dl { font-style:normal; opacity:.55; font-weight:700; margin-right:4.5px; letter-spacing:0; }   /* 라벨(스크랩/보도)↔시간값 간격 50%↑(3→4.5px·운영자 260618) */
+  /* IN·WRITE = 오늘 여부 무관 동일 톤(흰색·굵게)으로 통일. 형광(accent) 강조 폐지(사용자 260618). */
+  .cardtop .d-in, .cardtop .d-wr { color:var(--fg); font-weight:800; }
+  .cardtop .ago { color:var(--accent); font-weight:800; }   /* 스크랩·보도 'N시간 전' 값 = 강조색 */
+  /* 우상단 긴급/이슈 = 좌상단 '사회'(catslot)의 우측정렬 대칭. 색글자(긴급 빨강·이슈 노랑). 테두리 점등과 같은 brkIssueKind(긴급 우선). */
+  .cardtop .urg { margin-left:auto; align-self:center; font-size:11px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; line-height:1; }
   .cardtop .urg.brk { color:#ff5b4a; }
   .cardtop .urg.iss { color:#ffc31f; }
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
@@ -1580,7 +1580,7 @@ function render() {
     else c.style.animation = 'none';   // 동일 재렌더(탭전환·폴) = 즉시 표시 = 깜빡임 0
     c.innerHTML = `
       <div class="cardmain">
-        <div class="cardtop"><span class="catslot"><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></span>${dlReport(a)}<span class="ctop-r">${dlScrap(a)}${kind ? `<span class="urg ${kind}">${kind === 'brk' ? '긴급' : '이슈'}</span>` : ''}</span></div>
+        <div class="cardtop"><span class="catslot"><b style="color:${CAT_COLOR[articleCat(a)] || 'var(--fg)'}">${esc(articleCat(a))}</b></span>${dateLine(a)}${kind ? `<span class="urg ${kind}">${kind === 'brk' ? '긴급' : '이슈'}</span>` : ''}</div>
         <div class="row1"><span class="t"></span></div>
         <div class="s"></div>
         <div class="kv">
@@ -1678,29 +1678,19 @@ function inDateTime(a) {
   return { txt: `${+m[2]}/${+m[3]} (${W[d.getDay()]}) ${m[4]}:${m[5]}`, today: `${m[1]}${m[2]}${m[3]}` === todayYMD6() };
 }
 // 상대시간: <1h 방금 / <24h N시간 전 / ≥24h N일 N시간 전. 무효(파싱실패 999 등)는 ''.
-// 상대시간 사다리(운영자 260621·디자인안04): <30분=방금 / 30분 전 / N시간 전(1h·분 생략·복합표기 없음) / N일(1~6) / N주일(1~4) / N달.
 function relAge(h) {
-  if (!isFinite(h) || h < 0 || h >= 9000) return '';
-  const min = h * 60;
-  if (min < 30) return '방금';
-  if (min < 60) return '30분 전';
+  if (!isFinite(h) || h < 0 || h >= 900) return '';
+  if (h < 1) return '방금';
   if (h < 24) return Math.floor(h) + '시간 전';
-  const d = Math.floor(h / 24);
-  if (d < 7) return d + '일 전';
-  if (d < 30) return Math.floor(d / 7) + '주일 전';
-  return Math.floor(d / 30) + '달 전';
+  return Math.floor(h / 24) + '일 ' + Math.floor(h % 24) + '시간 전';
 }
-// 피드 메타라인 = [카테고리] 보도시간(좌·페이드) ··· 스크랩(우·NEW<30분/흰/회). "보도/스크랩" 라벨 없이 시간만(디자인안04).
-function dlReport(a) {   // 보도(좌): ≤6h 라임 / 7~11h 흰 / 12h↑ 회 · 무효=발행일 폴백
-  const h = articleAgeH(a), s = relAge(h);
-  if (!s) return a && a.date ? `<b class="wr" style="color:var(--mut)">${repDate(a.date)}</b>` : '';
-  return `<b class="wr" style="color:${h < 7 ? 'var(--accent)' : h < 12 ? 'var(--fg)' : 'var(--mut)'}">${s}</b>`;
-}
-function dlScrap(a) {    // 스크랩(우): <30분 NEW(라임 강조) / 30분~6h 흰 / 7h↑ 회
-  const h = feedAgeH(a);
-  if (!isFinite(h) || h < 0 || h >= 9000) return '';
-  if (h * 60 < 30) return '<b class="scrap nw">NEW</b>';
-  return `<b class="scrap" style="color:${h < 7 ? 'var(--fg)' : 'var(--mut)'}">${relAge(h)}</b>`;
+// 첫줄 = IN(적재·파일명 KST) + 보도(발행). 둘 다 'N시간 전' 상대표기(시간값=강조색). 보도 상대 무효면 날짜 폴백.
+function dateLine(a) {
+  const inR = relAge(feedAgeH(a));
+  const inHtml = inR ? `<span class="d-in"><i class="dl">스크랩</i><b class="ago">${inR}</b></span>` : '';
+  const wrR = relAge(articleAgeH(a)) || repDate(a.date);
+  const wrHtml = `<span class="d-wr"><i class="dl">보도</i><b class="ago">${wrR}</b></span>`;
+  return inHtml + wrHtml;
 }
 // 편향 색(D) — 약우=연파랑·우=파랑·약좌=연빨강·좌=빨강·중립=연강조. 좌우무관 → "무관".
 const BIAS_COLOR = { '약우':'#8fb4ff', '우':'#5b8fff', '약좌':'#ff9d9d', '좌':'#ff6b6b', '중립':'#74e89a' };
