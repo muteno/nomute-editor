@@ -114,7 +114,7 @@ for f in "${files[@]}"; do
 
 ${GBLOCK}
 
-분석할 기사 URL: ${art_url:-(없음 — 운영자 전문 붙여넣기. 아래 [사전 추출 본문]이 기사 전문이다. 매체·보도일·기자는 본문에서 추론하고, 이 기사의 원문 URL은 WebSearch로 찾아 frontmatter url 에 채워라 — 추론한 매체+제목으로 바로 그 기사를 검색(같은 매체 1순위·없으면 같은 사건 주요매체), 못 찾을 때만 빈 문자열·URL 을 지어내지 말 것)}"
+분석할 기사 URL: ${art_url:-(없음 — 운영자 전문 붙여넣기. 아래 [사전 추출 본문]이 기사 전문이다. url frontmatter 는 빈 문자열, 매체·보도일·기자는 본문에서 추론하라)}"
   if [ -n "${title_hint// }" ]; then
     prompt="${prompt}
 기사 제목(수집기 메타): ${title_hint}
