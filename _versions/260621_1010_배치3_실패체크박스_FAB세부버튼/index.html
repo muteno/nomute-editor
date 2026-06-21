@@ -3841,17 +3841,6 @@ const PICK_TIMEOUT_MS = 10 * 60000;
 const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
-// 실패 트레이 '체크 = 숨김'(운영자 260621): 체크하면 그 실패 후보를 트레이·칼럼 어디에도 안 뜨게(로컬 누적·기기락). 되돌리려면 localStorage nm_failhide 삭제.
-const FAILHIDE_KEY = 'nm_failhide';
-const failHiddenSet = () => { try { return new Set(JSON.parse(localStorage.getItem(FAILHIDE_KEY) || '[]')); } catch { return new Set(); } };
-const failHidden = c => failHiddenSet().has(candId(c));
-function toggleFailHide(c) {
-  const s = failHiddenSet(), id = candId(c);
-  s.has(id) ? s.delete(id) : s.add(id);
-  try { localStorage.setItem(FAILHIDE_KEY, JSON.stringify([...s])); } catch {}
-  if (CURTAB === 'scrap') renderScrap();   // 즉시 반영 = 체크한 항목 사라짐
-}
-const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" aria-label="실패 숨김" title="체크 = 실패 트레이에서 숨김(처리 확인)">${CHECK_SVG}</button>`;
 // ── 픽 상태 cross-device 동기화 (B안 · 운영자 260620): 픽 표시는 로컬 nm_ratings(기기락)이라 폰↔PC 미동기였다.
 //    이미 전역인 pending/(픽하면 생김)·queue(피드 DATA)·picks-failed 를 진실원본으로 *유도* → 어느 기기서 픽해도 같은 상태.
 //    localStorage(r.picked)는 발사 직후 깜빡임 가리는 낙관적 오버레이로 유지. (정본 설계 = docs/_세션_작업큐_260620.md §D)
@@ -4045,13 +4034,12 @@ function renderScrap() {
   scRT = rt;   // scRT = 정렬에서 픽 상태(누적 고정 제외) 참조
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
   // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
-  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || '') && !failHidden(c));   // 체크(숨김)한 실패는 트레이서 제외(운영자 260621)
+  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || ''));
   const failSet = new Set(failed.map(c => candId(c)));
   const pool = base.filter(c => {
     const r = rt[candId(c)] || {};
     if (failSet.has(candId(c))) return false;                       // 실패 = 트레이로(칼럼서 제외 = 카드 종속분리)
     if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
-    if (failHidden(c)) return false;                                // 실패 체크-숨김 = 칼럼에도 안 뜸(트레이서 빠진 게 칼럼으로 새지 않게 · 운영자 260621)
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
@@ -4163,7 +4151,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
            ? (pstate === 'failed'
-               ? (failChipHtml(c) + (col === 'fail' ? failHideChk() : ''))
+               ? failChipHtml(c)
                : ((pstate === 'settled' || !DATA_LOADED)
                    ? `<div class="sc-got" aria-label="픽 완료" title="탭하면 피드에서 이 기사 열기">PICKED</div>`
                    : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
@@ -4179,7 +4167,6 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
       el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
     } else if (pstate === 'failed') {   // 픽했는데 분석 실패/무응답 = Failed 칩(탭→원문 / 길게·우클릭→메뉴) 배선
       wireFailChip(el.querySelector('.sc-fail'), c);
-      const _fh = el.querySelector('.sc-failhide'); if (_fh) _fh.onclick = e => { e.stopPropagation(); toggleFailHide(c); };   // 체크 = 트레이서 숨김(운영자 260621)
     } else {   // PICKED(완료) = 탭하면 피드(메뉴3)로 이동 + 해당 기사 팝업
       const g = el.querySelector('.sc-got:not(.picking)'); if (g) g.onclick = () => pickedOpen(c);
     }
