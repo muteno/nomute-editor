@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>수집함 가운데 구분선 — 변경안 5</title>
+<style>
+  /* 값은 viewer :root 토큰을 복사해 인라인(보고서=일회성 스냅샷 · §🎯②) */
+  :root{
+    --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --fg-2:#cfd8d0;
+    --accent:#0FFD02; --accent-2:#ff9614; --amber:#ff9614; --info:#0cd0f7;
+    --r-l:16px; --r-m:11px; --r-s:9px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 70px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 10% -4%, rgba(15,253,2,.09), transparent 60%),
+    radial-gradient(720px 460px at 108% 6%, rgba(15,253,2,.07), transparent 62%),
+    radial-gradient(640px 720px at 46% 116%, rgba(15,253,2,.05), transparent 60%);}
+  .wrap{max-width:480px; margin:0 auto;}
+
+  h1{font-size:20px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 20px; line-height:1.5;}
+  .sub b{color:var(--fg-2); font-weight:700;}
+
+  .blk{margin:0 0 26px;}
+  .lab{display:flex; align-items:center; gap:8px; margin:0 0 9px;}
+  .num{flex:0 0 auto; width:23px; height:23px; border-radius:7px; display:grid; place-items:center;
+    font-size:12px; font-weight:800; color:var(--bg); background:var(--accent);}
+  .num.old{background:#3a443d; color:var(--mut);}
+  .lab h2{font-size:14px; font-weight:800; margin:0;}
+  .desc{color:var(--mut); font-size:11.5px; line-height:1.5; margin:0 0 11px; padding-left:31px;}
+  .desc b{color:var(--fg-2);}
+  .tag{display:inline-block; font-size:10px; font-weight:700; color:var(--accent); border:1px solid rgba(15,253,2,.3);
+    border-radius:999px; padding:1px 7px; margin-left:2px;}
+
+  /* 섹션 머리(viewer 재현) */
+  .head{margin:0 0 12px;}
+  .head .t{font-size:16px; font-weight:800;}
+  .head .s{color:var(--mut); font-size:11px; margin-top:2px;}
+
+  /* ── 카드(viewer .sc-item 재현) ── */
+  .sc{border-radius:13px; padding:9px 11px; display:flex; flex-direction:column; gap:6px; border:1px solid;}
+  .sc.acc{background:linear-gradient(165deg, rgba(38,27,17,.58), rgba(11,9,7,.74)); border-color:rgba(255,140,45,.14);}
+  .sc.new{background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border-color:rgba(15,253,2,.13);}
+  .sc + .sc{margin-top:11px;}
+  .top{display:flex; align-items:center; gap:5px; font-size:10px; font-weight:700;}
+  .top .x{color:#ffb45c;}
+  .top .badge{font-size:9px; font-weight:800; color:var(--amber); border:1px solid rgba(255,150,20,.4); border-radius:999px; padding:0 5px; line-height:14px;}
+  .top .time{margin-left:auto; color:var(--mut); font-weight:600; font-size:9.5px;}
+  .cat-soc{color:var(--accent);} .cat-int{color:var(--info);}
+  .tt{font-size:12.5px; line-height:1.35; font-weight:700; color:var(--fg);
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .bot{display:flex; gap:5px; margin-top:1px;}
+  .b{height:29px; border-radius:9px; display:grid; place-items:center; font-size:11px; font-weight:800;
+    border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.03);}
+  .b.pass{flex:1; color:var(--mut);} .b.pick{flex:1; color:var(--accent);}
+  .b.ok{flex:0 0 32px; color:var(--accent); background:rgba(15,253,2,.14); border-color:rgba(15,253,2,.5);}
+
+  .coltitle{font-size:12.5px; font-weight:800; padding:2px 2px 9px;}
+  .ct-acc{color:#ff9638; text-shadow:0 0 11px rgba(255,140,45,.45);}
+  .ct-new{color:var(--accent); text-shadow:0 0 11px rgba(15,253,2,.45);}
+
+  /* ════ 현재(전): 두 박스가 각자 디밍+글로우 ════ */
+  .before{display:grid; grid-template-columns:1fr 1fr; gap:9px; align-items:start;}
+  .bcol{min-width:0; border-radius:16px; padding:8px 8px 14px; border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(180deg, rgba(20,24,22,.5), rgba(8,10,9,.42));}
+  .bcol.l{box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.32), 0 0 24px rgba(15,253,2,.14);}
+  .bcol.r{box-shadow:inset 0 1px 0 rgba(255,255,255,.07), 0 10px 26px rgba(0,0,0,.32), 0 0 16px rgba(15,253,2,.09);}
+
+  /* ════ 변경안 공통: 하나의 얇은 프레임(디밍 제거) + 가운데 구분선 ════ */
+  .panel{border-radius:16px; padding:10px 9px 14px; position:relative;
+    background:rgba(255,255,255,.018);
+    border:1px solid rgba(255,255,255,.07);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 26px rgba(0,0,0,.28);
+    -webkit-backdrop-filter:blur(13px) saturate(1.15); backdrop-filter:blur(13px) saturate(1.15);}
+  .grid{display:grid; grid-template-columns:1fr 1fr; position:relative;}
+  .col{min-width:0;}
+  .col.l{padding-right:11px;} .col.r{padding-left:11px;}
+
+  /* 안1 — 헤어라인 페이드: 위아래로 사라지는 1px 흰 선(가장 미니멀) */
+  .v1 .grid::after{content:''; position:absolute; top:6px; bottom:6px; left:50%; width:1px; transform:translateX(-50%);
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.13) 20%, rgba(255,255,255,.13) 80%, transparent);}
+
+  /* 안2 — 듀오톤 글로우: 1px 선 + 왼쪽 오렌지·오른쪽 그린이 은은히 번짐(테마 계승) */
+  .v2 .grid::after{content:''; position:absolute; top:6px; bottom:6px; left:50%; width:1px; transform:translateX(-50%);
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.07) 16%, rgba(255,255,255,.11) 50%, rgba(255,255,255,.07) 84%, transparent);
+    box-shadow:-1px 0 8px rgba(255,150,20,.22), 1px 0 8px rgba(15,253,2,.20);}
+
+  /* 안3 — 음각 그루브: 어두운 선+밝은 하이라이트 = 파인 이음새(촉각·고급감) */
+  .v3 .grid::after{content:''; position:absolute; top:5px; bottom:5px; left:50%; width:2px; transform:translateX(-50%);
+    border-radius:2px; background:linear-gradient(90deg, rgba(0,0,0,.5), rgba(255,255,255,.13));}
+
+  /* 안4 — 소프트 글로우 시임: 1px 선 + 뒤로 퍼지는 흐릿한 빛무리(유리 느낌) */
+  .v4 .grid::after{content:''; position:absolute; top:6px; bottom:6px; left:50%; width:1px; transform:translateX(-50%);
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.18) 22%, rgba(255,255,255,.18) 78%, transparent);
+    box-shadow:0 0 12px 1.5px rgba(255,255,255,.07);}
+
+  /* 안5 — 헤어라인 + 센터 노드: 옅은 선 가운데 작은 점 하나(초점) */
+  .v5 .grid::after{content:''; position:absolute; top:6px; bottom:6px; left:50%; width:1px; transform:translateX(-50%);
+    background:linear-gradient(180deg, transparent, rgba(255,255,255,.09) 22%, rgba(255,255,255,.09) 78%, transparent);}
+  .v5 .grid::before{content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1;
+    width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.85); box-shadow:0 0 9px 1px rgba(255,255,255,.4);}
+
+  .rec{margin-top:8px; border-radius:12px; padding:12px 14px; font-size:12px; line-height:1.6;
+    background:rgba(15,253,2,.06); border:1px solid rgba(15,253,2,.22);}
+  .rec b{color:var(--accent);}
+  .foot{color:var(--mut); font-size:11px; line-height:1.6; margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>수집함 가운데 구분선 — 변경안 5</h1>
+  <p class="sub">현재 <b>누적·신규가 각자 디밍+글로우 박스 2개</b>라 뒤가 두 갈래로 갈려 보임.
+  → <b>디밍 제거 · 얇은 프레임 하나로 통합 · 가운데 구분선</b>(첨부3 느낌)으로. 글래스는 섞되 <b>심플</b> 우선.</p>
+
+  <!-- 현재(전) -->
+  <div class="blk">
+    <div class="lab"><span class="num old">전</span><h2>현재 — 박스 2개 각자 디밍·글로우 (난해)</h2></div>
+    <div class="head"><div class="t">스크랩 큐레이션 - 레거시</div><div class="s">RSS로 모은 후보 — 관심도 ★로 큐레이션.</div></div>
+    <div class="before">
+      <div class="bcol l">
+        <div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span><span>·</span><span class="x">9</span><span>·</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+      <div class="bcol r">
+        <div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 안1 -->
+  <div class="blk v1">
+    <div class="lab"><span class="num">1</span><h2>헤어라인 페이드 <span class="tag">가장 미니멀</span></h2></div>
+    <p class="desc">위·아래로 사라지는 <b>1px 흰 선</b>. 군더더기 0 — 제일 깔끔하고 안 질림.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l">
+        <div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span><span>·</span><span class="x">9</span><span>·</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc acc"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">16</span><span>·</span><span class="badge">이슈</span><span class="time">22시간 전</span></div>
+          <div class="tt">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+      <div class="col r">
+        <div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">3시간 전</span></div>
+          <div class="tt">밴스 "이란 핵무장 포기시 美-이란 관계 근본적으로 바꿀 것"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 안2 -->
+  <div class="blk v2">
+    <div class="lab"><span class="num">2</span><h2>듀오톤 글로우 <span class="tag">테마 계승</span></h2></div>
+    <p class="desc">선 왼쪽엔 <b>오렌지</b>(누적)·오른쪽엔 <b>그린</b>(신규)이 은은히 번짐. 두 칼럼 정체성을 선 하나로 잇기.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l">
+        <div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span><span>·</span><span class="x">9</span><span>·</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc acc"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">16</span><span>·</span><span class="badge">이슈</span><span class="time">22시간 전</span></div>
+          <div class="tt">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+      <div class="col r">
+        <div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">3시간 전</span></div>
+          <div class="tt">밴스 "이란 핵무장 포기시 美-이란 관계 근본적으로 바꿀 것"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 안3 -->
+  <div class="blk v3">
+    <div class="lab"><span class="num">3</span><h2>음각 그루브 <span class="tag">촉각·고급감</span></h2></div>
+    <p class="desc">어두운 선+밝은 하이라이트 = <b>파인 이음새</b>(베벨). 패널이 한 판으로 접힌 듯한 물성감. 심플하지만 디테일.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l">
+        <div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span><span>·</span><span class="x">9</span><span>·</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc acc"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">16</span><span>·</span><span class="badge">이슈</span><span class="time">22시간 전</span></div>
+          <div class="tt">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+      <div class="col r">
+        <div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">3시간 전</span></div>
+          <div class="tt">밴스 "이란 핵무장 포기시 美-이란 관계 근본적으로 바꿀 것"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 안4 -->
+  <div class="blk v4">
+    <div class="lab"><span class="num">4</span><h2>소프트 글로우 시임 <span class="tag">유리 느낌</span></h2></div>
+    <p class="desc">1px 선 뒤로 <b>흐릿한 빛무리</b>가 살짝 퍼짐. 네온 실 한 가닥 — 글래스모피즘 톤과 가장 잘 맞음.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l">
+        <div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span><span>·</span><span class="x">9</span><span>·</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc acc"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">16</span><span>·</span><span class="badge">이슈</span><span class="time">22시간 전</span></div>
+          <div class="tt">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+      <div class="col r">
+        <div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">3시간 전</span></div>
+          <div class="tt">밴스 "이란 핵무장 포기시 美-이란 관계 근본적으로 바꿀 것"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 안5 -->
+  <div class="blk v5">
+    <div class="lab"><span class="num">5</span><h2>헤어라인 + 센터 노드 <span class="tag">초점 한 점</span></h2></div>
+    <p class="desc">옅은 선 가운데 <b>작은 점 하나</b>. 미니멀한데 시선이 살짝 머무는 포인트 — 1번의 변주.</p>
+    <div class="panel"><div class="grid">
+      <div class="col l">
+        <div class="coltitle ct-acc">누적</div>
+        <div class="sc acc"><div class="top"><span class="cat-soc">사회</span><span>·</span><span class="x">9</span><span>·</span><span class="badge">이슈</span><span class="time">9시간 전</span></div>
+          <div class="tt">개장 앞둔 곡성 물놀이장서 초등생 형제 물에 빠져 숨져</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc acc"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">16</span><span>·</span><span class="badge">이슈</span><span class="time">22시간 전</span></div>
+          <div class="tt">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+      <div class="col r">
+        <div class="coltitle ct-new">신규</div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">1시간 전</span></div>
+          <div class="tt">트럼프 "영국 총리 사임할 것…이민·에너지서 큰 실패"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+        <div class="sc new"><div class="top"><span class="cat-int">국제</span><span>·</span><span class="x">2</span><span class="time">3시간 전</span></div>
+          <div class="tt">밴스 "이란 핵무장 포기시 美-이란 관계 근본적으로 바꿀 것"</div>
+          <div class="bot"><span class="b pass">PASS</span><span class="b pick">PICK</span><span class="b ok">✓</span></div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <div class="rec">
+    💡 <b>추천 = 1번(헤어라인 페이드)</b> 또는 <b>4번(소프트 글로우)</b>.
+    1번은 안 질리고 제일 심플, 4번은 이 뷰어의 글래스/네온 톤에 가장 자연스럽게 녹음.
+    테마색을 살리고 싶으면 2번. 셋 다 "디밍 제거 + 프레임 하나 + 가운데 선" 골격은 동일.
+  </div>
+  <p class="foot">※ 프레임은 5개 공통(얇은 1px 테두리·디밍 거의 0)이고 <b>가운데 선만</b> 다름.
+  고른 안으로 <code>viewer/index.html</code>의 2박스(<code>.scrap-col.green/.black</code>)를 단일 패널+구분선으로 교체 적용함.</p>
+
+</div>
+</body>
+</html>

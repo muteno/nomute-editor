@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="color-scheme" content="dark">
+<title>카드만 토글 노브 시안 (260621)</title>
+<style>
+  :root{--bg:#0a120d;--accent:#0FFD02;--accent-rgb:15,253,2;--accent-bright:#d8ff3d;--on-accent:#062108;
+    --fg:#eef7f0;--fg-2:#cfd8d0;--mut:#8fa697;--line:rgba(255,255,255,.08);--ease:cubic-bezier(.2,.7,.3,1);
+    --sys:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Noto Sans KR",Segoe UI,Roboto,sans-serif;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sys);letter-spacing:-.2px;padding:0 16px 50px;position:relative}
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(440px 320px at 12% -4%,rgba(var(--accent-rgb),.09),transparent 60%)}
+  .wrap{max-width:560px;margin:0 auto}header{padding:30px 4px 6px}h1{font-size:19px;font-weight:800;margin:0 0 6px}
+  .sub{color:var(--mut);font-size:12.5px;line-height:1.7;margin:0}.sub b{color:var(--fg-2)}
+  code{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:11px}
+  .card{margin-top:16px;border:1px solid var(--line);border-radius:14px;background:rgba(8,16,11,.55);padding:16px;box-shadow:0 12px 26px rgba(0,0,0,.3)}
+  .card.pick{border-color:rgba(var(--accent-rgb),.4)}
+  .tag{font-size:11px;font-weight:800;color:var(--accent)}.card.cur .tag{color:var(--mut)}
+  .ti{font-size:14px;font-weight:800;margin:5px 0 3px}.cd{font-size:12px;color:var(--mut);line-height:1.6;margin:0 0 14px}
+  .row{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .demo{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--mut)}
+  .cap{font-size:11px;color:var(--mut);margin-top:11px}.cap b{color:var(--fg-2)}
+  /* 토글 베이스(viewer .toggle/.tk 계승) */
+  .tg{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+  .tg input{display:none}
+  .tk{width:34px;height:20px;border-radius:999px;background:rgba(var(--accent-rgb),.08);position:relative;
+    backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 1px 2px rgba(0,0,0,.35);transition:background .22s var(--ease),border-color .22s,box-shadow .22s;flex:none}
+  .tk::after{content:'';position:absolute;top:50%;left:2px;width:15px;height:15px;border-radius:50%;transform:translateY(-50%);transition:transform .26s var(--ease),background .22s,box-shadow .22s}
+  .tg input:checked+.tk{background:linear-gradient(90deg,var(--accent-bright),var(--accent));border-color:rgba(var(--accent-rgb),.5);box-shadow:0 0 10px rgba(var(--accent-rgb),.4),inset 0 1px 1px rgba(255,255,255,.3)}
+  .tg input:checked+.tk::after{transform:translate(14px,-50%)}
+  .tlbl{font-size:12px;color:var(--mut)}.tg input:checked~.tlbl{color:var(--accent);font-weight:700}
+  /* 현재 = 회색 노브 */
+  .cur0 .tk::after{background:var(--mut);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .cur0 input:checked+.tk::after{background:var(--on-accent)}
+  /* A = 먹색 검정 불투명 */
+  .vA .tk::after{background:#0a120d;box-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .vA input:checked+.tk::after{background:#0a120d}
+  /* B = 먹색 + 상단 림라이트(입체) — 추천 */
+  .vB .tk::after{background:radial-gradient(120% 120% at 50% 18%,#1c2a22 0%,#0a120d 60%);box-shadow:0 1px 3px rgba(0,0,0,.6),inset 0 1px .5px rgba(255,255,255,.18)}
+  .vB input:checked+.tk::after{background:radial-gradient(120% 120% at 50% 18%,#13241a 0%,#070d09 60%);box-shadow:0 1px 4px rgba(0,0,0,.55),inset 0 1px .5px rgba(255,255,255,.22)}
+  /* C = 먹색 + 살짝 작고 정제(14px) */
+  .vC .tk::after{width:14px;height:14px;left:3px;background:#0a120d;box-shadow:0 1px 2px rgba(0,0,0,.55)}
+  .vC input:checked+.tk::after{transform:translate(13px,-50%);background:#0a120d}
+</style></head>
+<body><div class="wrap">
+<header><h1>카드만 토글 — 노브(동그라미) 시안</h1>
+<p class="sub">현재 노브가 <b>회색(--mut)</b>이라 옅은 초록 트랙 위에서 탁해 투박. <b>먹색 검정 불투명</b>으로 대비를 살림. 탭해서 ON/OFF 둘 다 봐.</p></header>
+
+<section class="card cur"><div class="tag">현재</div><div class="ti">회색 노브 (--mut)</div><p class="cd">OFF=회색·ON=짙은초록. 트랙과 명도 비슷해 뭉개짐.</p>
+  <div class="row"><label class="tg cur0"><input type="checkbox"><span class="tk"></span><span class="tlbl">카드만</span></label>
+    <label class="tg cur0"><input type="checkbox" checked><span class="tk"></span><span class="tlbl">카드만</span></label></div></section>
+
+<section class="card"><div class="tag">A</div><div class="ti">먹색 검정 불투명</div><p class="cd">네 아이디어. 노브=페이지 먹색(<code>#0a120d</code>) 불투명. 트랙 대비 또렷·미니멀.</p>
+  <div class="row"><label class="tg vA"><input type="checkbox"><span class="tk"></span><span class="tlbl">카드만</span></label>
+    <label class="tg vA"><input type="checkbox" checked><span class="tk"></span><span class="tlbl">카드만</span></label></div>
+  <p class="cap"><b>OFF/ON 모두 먹색</b> = 일관(현재는 ON만 짙은초록).</p></section>
+
+<section class="card pick"><div class="tag">B · 추천</div><div class="ti">먹색 + 상단 림라이트(입체)</div><p class="cd">A에 미세한 상단 하이라이트(<code>inset</code>)를 줘 평평하지 않고 살짝 도드라짐 — 글래스 톤과 정합.</p>
+  <div class="row"><label class="tg vB"><input type="checkbox"><span class="tk"></span><span class="tlbl">카드만</span></label>
+    <label class="tg vB"><input type="checkbox" checked><span class="tk"></span><span class="tlbl">카드만</span></label></div>
+  <p class="cap">먹색 불투명 + 입체감 = 투박함 해소.</p></section>
+
+<section class="card"><div class="tag">C</div><div class="ti">먹색 + 살짝 작게(14px) 정제</div><p class="cd">노브를 1px 줄이고 그림자 정제 = 더 단정·여백 ↑.</p>
+  <div class="row"><label class="tg vC"><input type="checkbox"><span class="tk"></span><span class="tlbl">카드만</span></label>
+    <label class="tg vC"><input type="checkbox" checked><span class="tk"></span><span class="tlbl">카드만</span></label></div></section>
+
+<p class="card" style="background:rgba(255,255,255,.03);color:var(--fg-2);font-size:12px">💡 추천 = <b>B</b>(먹색 + 림라이트). 미니멀 원하면 A. <b>A/B/C</b>로 골라줘 — 픽토그램 통일(진행 중)이랑 같이 라이브 반영할게.</p>
+</div></body></html>
