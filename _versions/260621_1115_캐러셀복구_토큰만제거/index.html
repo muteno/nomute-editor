@@ -1886,6 +1886,7 @@ function decorate(root) {
 // 데이터: a.cards.thumb_search[]={img,link,label} (기사 og:image+유사 · label=''(대표)/'유사') · a.cards.thumb_gen[]={img,label} (Gemini 3화풍).
 // 백엔드 채워지기 전(P1): 검색=라이브 폴백(Wikimedia 이미지 + 구글 검색 링크) / 생성=대기 플레이스홀더.
 function thumbSec(a) {
+  return null;   // 썸네일 후보 박스(검색·AI생성·비용/토큰) 폐지 — 요약 reading 뷰서 잡음(운영자 260621: 요약에 별 도움 안 됨). 되살리려면 이 줄 제거. 갱신경로(1522)는 fresh=null이면 old 제거로 null-safe.
   const c = a.cards || {};
   if (!a.body && !c.state) return null;   // 픽(분석)된 기사에만
   // 실제 이미지(검색 og:image / AI 생성)가 하나라도 있을 때만 표시 — 빈 안내·레거시 폴백(구글검색 링크·위키미디어·'곧 반영' placeholder)은 띄우지 않음(요약 위 잡음 제거 · 운영자 260620)
@@ -1926,7 +1927,7 @@ function thumbStatic(label, items, kind, href, usage) {
   // 검색 헤더 우측 = 글래스 .sbtn 아이콘(구글 이미지 검색) — 기존 초록 알약 텍스트 폐기(투박·운영자 260620)
   const hbtn = href ? '<a class="sbtn cref-srch" href="' + escUrl(href) + '" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a>' : '';
   const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span></span>' + hbtn + '</div>'   /* 토큰/비용($ X,T Y) 표기 제거 — 캐러셀(이미지)은 유지(운영자 260621: 토큰만 빼고 이미지 살림) */
+  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + hbtn + '</div>'
     + '<div class="cref-track">' + (list.map((it, i) => {
         const cap = it.label ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';
         return '<div class="cref-slot ' + kind + '" data-i="' + i + '" role="button" tabindex="0" aria-label="확대">'
