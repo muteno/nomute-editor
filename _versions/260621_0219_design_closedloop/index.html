@@ -179,7 +179,7 @@
   /* (긴급 확인 버튼·프로필 긴급 점등 폐지 — 운영자 260620: 긴급 배지는 사건속성으로 계속 표시, 프로필 확인 루틴만 제거) */
   @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
   @keyframes popOut { from { opacity:1; transform:none;} to { opacity:0; transform:scale(.92) translateY(-4px);} }   /* popIn 역재생 = 아바타(top-right)로 촤르륵 접힘 */
-  .pmenu.closing { animation:popOut var(--dur) cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
+  .pmenu.closing { animation:popOut .18s cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
   @media (prefers-reduced-motion: reduce) { .pmenu { animation:none; } }   /* 열림도 즉시 — 닫힘(hidePmenu JS 가드)과 대칭 */
   /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
   @keyframes popInCx { from { opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to { opacity:1; transform:translateX(-50%);} }
@@ -420,7 +420,7 @@
   .sc-cross.lo { color:var(--mut); background:rgba(255,255,255,.05); border-color:var(--line2); }
   .sc-more { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px; letter-spacing:-.2px;
     color:var(--accent); background:rgba(15,253,2,.10); border:1px solid rgba(15,253,2,.28); }   /* 픽 후 +N 더 보도 — 증분 표시 */
-  .sc-media { margin-left:auto; color:var(--fg); }   /* 매체 숨기고 상대시간만·흰색(운영자 260621) */
+  .sc-media { margin-left:auto; opacity:.85; }
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
   .sc-bot { display:flex; align-items:center; gap:10px; margin-top:1px; }
@@ -590,7 +590,7 @@
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
     padding:11px 4px 6px; background:none; border:none; color:var(--mut); font:inherit; font-size:10.5px; font-weight:700;
     letter-spacing:-.2px; cursor:pointer; text-decoration:none; }   /* color transition 제거 = 탭 누르자마자 색 즉시 전환(운영자 260621) */
-  .bnav-i svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform var(--dur); }
+  .bnav-i svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform .18s; }
   .bnav-i::before { content:''; position:absolute; top:0; left:50%; width:30px; height:3.5px; border-radius:0 0 4px 4px;
     background:linear-gradient(90deg,var(--accent-bright),var(--accent)); box-shadow:0 0 9px var(--accent), 0 0 18px rgba(15,253,2,.65);
     transform:translateX(-50%) scaleX(0); transition:transform .25s cubic-bezier(.22,.61,.36,1); }
@@ -4171,7 +4171,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top">${scBadge(c)}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top">${scBadge(c)}${catB ? catChip(catB) : ''}<span class="sc-cross${lo}">⛓ ${c.cross || 0}</span>${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}<span class="sc-media">${esc(c.media || '')}${tm ? ' · ' + esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
@@ -4652,8 +4652,8 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-root { position:relative; min-height:100vh; padding:30px 16px 56px; overflow:hidden; }
   .nm-bg { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
   .nm-wrap { position:relative; z-index:1; max-width:720px; margin:0 auto; }
-  .nm-head { display:flex; align-items:flex-start; gap:14px; margin:0 2px 26px; }
-  .nm-head-l { flex:1; min-width:0; }
+  .nm-head { position:relative; margin:0 2px 26px; }   /* 복사버튼=absolute → 제목칼럼이 폭 안 뺏김(제목 전체폭 사용 · 운영자 260621) */
+  .nm-head-l { min-width:0; }                           /* 전체폭 — 로고는 좌상단·버튼은 우상단(top:0)이라 가로충돌 0, 메타/제목은 로고 아래라 버튼 무관 */
   .nm-logo { display:block; width:78px; height:78px; object-fit:contain; margin:-8px 0 10px -8px; }
   .nm-meta { display:flex; flex-wrap:wrap; align-items:center; gap:9px 16px; margin:0 0 14px; font-size:12.5px; }
   .nm-badge { display:inline-flex; align-items:center; height:25px; padding:0 12px; border-radius:999px; background:rgba(30,215,96,.16); border:1px solid rgba(30,215,96,.42); color:#1ED760; font-weight:800; font-size:11.5px; letter-spacing:.02em; flex:none; white-space:nowrap; }
@@ -4663,7 +4663,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-date { color:#9a9a9a; font-weight:500; white-space:nowrap; }
   .nm-reporter { color:#c4c4c4; font-weight:600; white-space:nowrap; }
   .nm-title { font-size:23px; font-weight:900; line-height:1.34; margin:0; letter-spacing:-.6px; color:#fff; }
-  .nm-allbtn { flex:none; align-self:flex-start; margin-top:9px; display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 11px; border:none; border-radius:999px; background:#1ED760; color:#000; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; transition:transform .12s, background .15s; }
+  .nm-allbtn { position:absolute; top:0; right:0; z-index:2; display:inline-flex; align-items:center; gap:4px; height:26px; padding:0 11px; border:none; border-radius:999px; background:#1ED760; color:#000; font-family:inherit; font-size:11px; font-weight:600; cursor:pointer; transition:transform .12s, background .15s; }
   .nm-allbtn:hover { background:#1FE065; transform:scale(1.03); }
   .nm-allbtn:active { transform:scale(.95); }
   .nm-allbtn.ok { background:#1ED760; }
@@ -4676,7 +4676,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-tip .nm-h { color:#1ED760; }
   .nm-dot { width:7px; height:7px; border-radius:50%; background:#1ED760; display:inline-block; flex:none; }
   .nm-tip .nm-dot { box-shadow:0 0 8px rgba(30,215,96,.7); }
-  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; word-break:break-word; overflow-wrap:anywhere; }   /* 내부 스크롤 제거 = 펼침(화면 스크롤 우선) + 긴 URL·연속문자 박스 안에서 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) */
+  .nm-body { background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; max-width:100%; overflow:hidden; word-break:break-word; overflow-wrap:anywhere !important; }   /* 내부 스크롤 제거 = 펼침(화면 스크롤 우선) + 긴 URL·연속문자 박스 안에서 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620 · 260621 max-width·overflow-hidden 강제) — pre-wrap은 안 씀(HTML 블록자식이라 빈줄 유발) */
   .nm-tip .nm-body { background:rgba(0,0,0,.28); border:1px solid rgba(30,215,96,.22); }
   .nm-body > :first-child { margin-top:0; }
   .nm-body > :last-child { margin-bottom:0; }
@@ -4686,7 +4686,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
   .nm-body a { color:#1ED760; word-break:break-all; }
   .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
-  .nm-pre { white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; }   /* 내부 스크롤 제거 = 펼침 → 화면 스크롤 우선 + 긴 문자열 박스 안 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) */
+  .nm-pre { white-space:pre-wrap !important; word-break:break-word; overflow-wrap:anywhere !important; max-width:100%; overflow:hidden; background:rgba(0,0,0,.32); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1); border-radius:9px; padding:13px 15px; margin:0; font-family:ui-monospace,SFMono-Regular,Menlo,'Apple SD Gothic Neo','Noto Sans KR',monospace; font-size:13px; line-height:1.65; color:#c8c8c8; }   /* 내부 스크롤 제거 = 펼침 → 화면 스크롤 우선 + 긴 문자열 박스 안 줄바꿈(복사 칸 벗어남 방지 · 운영자 260620) */
   .nm-secbtn { position:absolute; top:-13px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(30,215,96,.5); }
   .nm-secbtn:hover { background:#1ED760; color:#000; border-color:#1ED760; }
@@ -4798,7 +4798,8 @@ async function buildSummaryHtml() {
   const mdh1 = ($('#mdbody') ? $('#mdbody').querySelector('h1') : null);
   const title = (CUR_A && CUR_A.title) || (mdh1 ? mdh1.textContent.trim() : '') || '뉴스 요약';
   const cat = catBucket(CUR_A && CUR_A.category);
-  const dt = CUR_A ? repDateTime(CUR_A) : '';
+  let dt = CUR_A ? repDateTime(CUR_A) : '';
+  if (!dt && CUR_A) dt = (inDateTime(CUR_A).txt || '');   // 보도일(a.date) 없으면 적재(스크랩) 일시로 폴백 — 일시 항상 표기(운영자 260621)
   const reporter = CUR_A && (CUR_A.reporter || CUR_A.byline);   // 파이프라인엔 기자 필드 없음 → 보통 미상
   const repMeta = '<span class="nm-reporter">' + (reporter ? esc(reporter) : '확인 必') + '</span>';   // 미상이면 '확인 必'(일반 글자 — 강조 없음)
   const repPar = reporter ? esc(reporter) : '확인 必';
