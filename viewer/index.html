@@ -573,6 +573,7 @@
   .ct-new { color:var(--accent); text-shadow:0 0 11px rgba(15,253,2,.45); }  /* 신규 = 강조색(네온그린) */
   .scrap-cols .scrap-list { gap:var(--sp-2); }   /* 2열 모바일도 카드 세로 간격 8→12(--sp-2) 확보(운영자 260622) */
   .scrap-cols .sc-item { padding:9px 11px; gap:6px; border-radius:13px; }
+  .scrap-cols.no-anim .sc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·폴·픽/확인) = 스태거(cardIn) 생략 = 깜빡임 0 (피드 _anim 패턴 이식·운영자 260621) */
   .scrap-col.green .sc-item { background:linear-gradient(165deg, rgba(38,27,17,.58), rgba(11,9,7,.74)); border-color:rgba(255,140,45,.14); }
   .scrap-col.black .sc-item { background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); border-color:rgba(15,253,2,.13); }
   .scrap-col.green .sc-item.rated { border-color:rgba(255,140,45,.5); }
@@ -4274,7 +4275,9 @@ function scFeedArticle(c) {   // 이 후보가 요약돼 피드(DATA=articles.js
 const SC_PAGE = 150;
 const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
+let _scrapSig = '';   // 직전 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · 피드 _feedSig 대응 · 운영자 260621)
 function renderScrap() {
+  let _scSig = '';   // 이번 렌더 카드 구성(트레이+양 칼럼 ID·검색어) 누적 — 끝에서 _scrapSig와 비교
   closeFailMenu();   // 전체 재렌더 = Failed 칩 노드 교체 → 열린 컨텍스트 메뉴 앵커가 stale → 닫음
   const host = $('#scrapList'); if (!host) return;
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
@@ -4300,7 +4303,7 @@ function renderScrap() {
   if (failed.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
     const tray = host.querySelector('.sc-failtray-list');
     failed.sort((a, b) => scTs(b) - scTs(a));
-    failed.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); });
+    failed.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); _scSig += 'f' + candId(c) + ','; });
   }
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
@@ -4320,6 +4323,7 @@ function renderScrap() {
       const el = makeScItem(arr[i], { ...(srvTriage(arr[i]) || {}), ...ratingFor(arr[i]) }, key);   // 멤버기반 picked 승계 + 서버 트리아지(확인 등) 오버레이(cross-device)
       el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(펼쳐짐)
       col.appendChild(el);
+      _scSig += key[0] + candId(arr[i]) + ',';   // 시그니처 누적(칼럼 첫글자+카드ID·순서)
     }
     if (arr.length > lim) {                                             // 나머지는 보관만 — 탭하면 추가 렌더
       const more = document.createElement('button');
@@ -4329,6 +4333,9 @@ function renderScrap() {
       col.appendChild(more);
     }
   });
+  _scSig += '|' + q;
+  host.classList.toggle('no-anim', _scSig === _scrapSig);   // 직전과 동일 구성(탭 재진입·픽/확인·동일데이터) = 스태거 생략 = 깜빡임 0 · 새 카드·삭제·검색변경만 촤르륵
+  _scrapSig = _scSig;
   pollPicking();   // 픽 후·새로고침 잔존 Picking… 분석완료 폴 시동(가드: 진행중·picking 없으면 즉시 반환)
 }
 // scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 미래거나 수집보다 뒤면(=물리적 불가) first_seen 사용.
