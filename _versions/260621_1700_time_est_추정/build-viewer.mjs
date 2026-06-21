@@ -58,7 +58,6 @@ for (const f of files) {
       url: meta.url || '',
       date: meta.date || '',
       time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.
-      time_est: meta.time_est || '',   // 시각이 추정값이면 "true"(메타 확정 아님) — 뷰어가 "(추정)" 꼬리표(운영자 260621).
       media: meta.media || '',
       reporter: meta.reporter || '',   // 기자명(요약 frontmatter reporter) — 미상이면 빈칸. 요약 PDF·개요 표시용(바이라인 보존의 출구).
       bias: meta.bias || '',
