@@ -37,10 +37,6 @@
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
   @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
-  .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(thumb.html 통일·운영자 260622) */
-  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
-  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
-  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb.html .go.err 통일·운영자 260622) */
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; } .status.err { color:#ff8a8a; }
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; margin-top:16px; }
   html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
@@ -110,22 +106,12 @@ function poll(outPath) {
   tick();
 }
 
-function compErr(m) {   // 전송 막힘(미입력 등) = 메시지를 버튼 *안에* 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(thumb.html errStatus 통일·운영자 260622)
-  const s = $('#status'); s.textContent = ''; s.classList.remove('err');   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
-  const g = document.getElementById('go'); if (!g) return;
-  if (!g.dataset.label) g.dataset.label = g.textContent;        // 원래 라벨 보존
-  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
-  g.textContent = m; g.setAttribute('aria-live', 'assertive');  // 메시지 = 버튼 안에
-  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label || '웹 합성 생성'; }, 1700);
-}
 $('#go').onclick = async () => {
-  const gb = document.getElementById('go');
-  const status = $('#status'); status.classList.remove('err'); status.textContent = ''; $('#result').innerHTML = '';
+  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지(생성 버튼 통일·260622)
+  const status = $('#status'); status.classList.remove('err'); $('#result').innerHTML = '';
   const lines = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
-  if (!IMG_B64) return compErr('이미지를 선택해줘');
-  if (!lines.length) return compErr('텍스트를 입력해줘');
-  clearTimeout(gb._errT); gb.classList.remove('err', 'shake', 'firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760);   // 검증 통과 후에만 누름 게이지(헛발사 방지·260622)
+  if (!IMG_B64) { status.textContent = '이미지를 선택해줘'; status.classList.add('err'); return; }
+  if (!lines.length) { status.textContent = '텍스트를 입력해줘'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '생성 중…';
   try {
     const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG_B64, name: IMG_NAME, lines }) });

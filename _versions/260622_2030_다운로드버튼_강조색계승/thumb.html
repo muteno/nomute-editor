@@ -6,8 +6,7 @@
 <title>썸네일 생성기</title>
 <style>
   :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
-          --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --line2:#2a2c31;
-          --amber:#ff9614; --amber-rgb:255,150,20; }   /* 의미색 앰버 = 강조 누락 경고(빨강 미입력과 구분) · index.html SSOT 값 복사(§🎨) */
+          --accent:#0FFD02; --accent-bright:#d8ff3d; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --line2:#2a2c31; }
   * { box-sizing:border-box; }
   /* 스크롤바 톤앤톤(초록 글래스) — 뉴스 요약기(viewer/index.html) 계승 · 전 페이지 공통 */
   html { scrollbar-width:thin; scrollbar-color:rgba(var(--accent-rgb),.30) transparent; }
@@ -77,7 +76,6 @@
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(edshake 재사용·운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
   .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(.ed-chip.reject 빨강 계승 · 운영자 260622) */
-  .go.warn { background:rgba(var(--amber-rgb),.16); color:var(--amber); border-color:var(--amber); }   /* 강조(*별표*) 누락 = 앰버 액티브(빨강 미입력과 색만 구분 · 진행 불가 · 운영자 260622) */
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
@@ -90,21 +88,16 @@
   @keyframes goTick { to { stroke-dashoffset:0; } }
   @media (prefers-reduced-motion:reduce) { .go .gck path { animation:none; stroke-dashoffset:0; } }
   .chk { display:flex; align-items:center; gap:9px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
-  /* 축약 체크 = 수집함 확인 토글(.sc-tg.ack) 체크표시 그대로 계승 — 안 누름 −(회색) → 누름 ✓(초록·한 획 드로우-인) + 글래스 박스 초록 틴트 + 눌림 scale(운영자 260622) */
+  /* 축약 체크 = 앱 기존 커스텀 체크박스 픽토그램(.dl-cbox '전체 포함' 다운로드 체크) 그대로 계승 — 원형·accent 그라데 채움·체크 scale-in. 새 디자인 X(운영자 260622) */
   .chk input { position:absolute; left:0; width:18px; height:18px; margin:0; opacity:0; cursor:pointer; }
-  .chk .cbox { flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:9px;
-    border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.5);
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
-  .chk .cbox .ackm { width:15px; height:15px; display:block; }
-  .chk .cbox .ackm path { transition:opacity .16s ease, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
-  .chk .cbox .sc-dash { stroke:var(--mut); opacity:1; }
-  .chk .cbox .sc-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }
-  .chk input:checked + .cbox { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); color:var(--accent); }
-  .chk input:checked + .cbox .sc-dash { opacity:0; }
-  .chk input:checked + .cbox .sc-chk { opacity:1; stroke-dashoffset:0; }
-  .chk:active .cbox { transform:scale(.9); }
+  .chk .cbox { width:18px; height:18px; flex:none; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.28); background:rgba(255,255,255,.04);
+    display:inline-flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s, box-shadow .15s; }
+  .chk .cbox svg { width:12px; height:12px; display:block; fill:none; stroke:var(--on-accent); stroke-width:3; stroke-linecap:round; stroke-linejoin:round;
+    opacity:0; transform:scale(.5); transition:opacity .15s, transform .15s; }
+  .chk input:checked + .cbox { background:linear-gradient(135deg,var(--accent-bright),var(--accent)); border-color:transparent; }
+  .chk input:checked + .cbox svg { opacity:1; transform:scale(1); }
   .chk input:focus-visible + .cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
-  @media (prefers-reduced-motion:reduce) { .chk .cbox .ackm path { transition:none; } }
   .chk .abbrhint { color:var(--mut); font-weight:400; font-size:11px; }
   /* 복사칩 = 뉴스 요약 키워드칩(.cref-kw) 표기방식·복사 액티브 그대로 계승(검정 글래스 칩 + 탭 복사 + 초록 눌림 플래시 · 운영자 260622) */
   .kwline { margin-top:7px; }
@@ -182,8 +175,8 @@
   .slot-img { min-height:40px; position:relative; }
   .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
   /* 결과 이미지 다운로드 (우상단) = 뉴스 피드 캐러셀 .sbtn 글래스 그대로 계승(§📋 · 34px·bg .3·border .14·hover·active .85) */
-  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; color:var(--accent); background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.36); border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 다운로드 = 뉴스 요약부 강조색 글래스 버튼 계승(흰 글래스→accent · 운영자 260622) */
-  .imgdl:hover { background:rgba(var(--accent-rgb),.2); border-color:rgba(var(--accent-rgb),.5); }
+  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; color:rgba(255,255,255,.92); background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; }
+  .imgdl:hover { background:rgba(255,255,255,.16); }
   .imgdl:active { transform:scale(.85); } .imgdl svg { display:block; width:14px; height:14px; }
   /* 이전 제작(12h) 접힘 섹션 */
   .hist { margin-top:20px; border-top:1px solid var(--line); padding-top:6px; }
@@ -379,7 +372,7 @@
       <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
-    <label class="chk" id="abbrBox"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 축약 <span class="abbrhint">이 → 李 · 윤 → 尹 · ... → ⋯</span></label>
+    <label class="chk" id="abbrBox"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span> 축약 <span class="abbrhint">이 → 李 · 윤 → 尹 · ... → ⋯</span></label>
     <button class="go" id="go">이미지 제작</button>
   </div>
 
@@ -1259,7 +1252,7 @@ function goFire() {
   const gb = document.getElementById('go'); if (!gb) return;
   if (!gb.dataset.label) gb.dataset.label = gb.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
   clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); clearTimeout(gb._errT);
-  gb.classList.remove('firing', 'okdone', 'checking', 'err', 'warn', 'shake'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
+  gb.classList.remove('firing', 'okdone', 'checking', 'err', 'shake'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
   gb.classList.add('firing'); gb.textContent = '전송 중…'; gb.setAttribute('aria-busy', 'true');
   gb._fT1 = setTimeout(() => {                                     // 게이지 완료 → ✓ 체크가 그려짐(시안1)
     gb.classList.remove('firing'); gb.classList.add('okdone', 'checking');
@@ -1326,25 +1319,24 @@ $('#go').onclick = async () => {
   if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) return errStatus('부제 또는 제목을 입력해줘');
   if (APP === '2' && params.mode === 'overlay' && !params.lines.length) return errStatus('텍스트를 입력해줘');
   if (APP === '2' && params.mode === 'overlay' && !params.opas.length) return errStatus('투명도를 최소 1개 선택해줘 (직접입력은 값까지)');   // 직접입력만 켜고 값 비움 차단(0개 방지)
-  if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 필수 — 없으면 진행 불가(팝업 폐지 → 앰버 버튼 흔들림 · 운영자 260622)
+  if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 빠뜨리면 확인
     const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
-    if (!/\*[^*\n]+\*/.test(_t)) return errStatus('*별표*로 강조를 넣어줘 (예: *중요*)', 'warn');
+    if (!/\*[^*\n]+\*/.test(_t) && !(await askConfirm('강조를 안 넣었는데, 진행할까요?'))) return;
   }
   const payload = { app: APP, params };
   if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }       // 포스트 배경 = 옵션
   if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
   dispatchJob('/api/thumb', payload, jobLabel());
 };
-function errStatus(m, cls) {   // 전송 막힘 = 메시지를 버튼 *안에* 액티브로 띄우며 흔들고 1.7s 뒤 원복(운영자 260622). cls 기본 'err'(빨강·미입력) / 'warn'(앰버·강조 누락)
-  cls = cls || 'err';
+function errStatus(m) {   // 전송 막힘(내용 미입력 등) = 메시지를 버튼 *안에* 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(운영자 260622)
   const s = $('#status'); s.textContent = ''; s.classList.remove('err');   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
   const g = document.getElementById('go'); if (!g) return;
   if (!g.dataset.label) g.dataset.label = g.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
   clearTimeout(g._fT1); clearTimeout(g._fT2); clearTimeout(g._fT3); clearTimeout(g._errT);
-  g.classList.remove('firing', 'okdone', 'checking', 'err', 'warn'); g.removeAttribute('aria-busy');
+  g.classList.remove('firing', 'okdone', 'checking'); g.removeAttribute('aria-busy');
   g.textContent = m; g.setAttribute('aria-live', 'assertive');  // 메시지 = 버튼 안에
-  g.classList.add(cls); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'warn', 'shake'); g.textContent = g.dataset.label || '이미지 제작'; }, 1700); }
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label || '이미지 제작'; }, 1700); }
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
