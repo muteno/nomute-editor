@@ -807,25 +807,35 @@ async function loadServerHist() {
   maybeOpenHist();   // 제작완료 알림(#done)로 들어왔으면 서버 병합 후 '이전 제작' 자동 펼침
 }
 // 제작완료 푸시 탭 → /thumb.html#done 진입 시 '이전 제작'을 펼치고 그 위치로 스크롤(완성 결과가 바로 보이게).
+let _histRetry = false, _histTimer = 0;   // 단일 재시도 사다리 가드 — 진입점 다중(init·loadServerHist·hashchange)이라도 중복 fetch 0(평의회 FIX-1)
 function maybeOpenHist(tries = 0) {
   if (!/\bdone\b/.test(location.hash)) return;
   const wantId = (location.hash.match(/done=([\w-]+)/) || [])[1] || '';   // #done=<id> = 그 작업 핀포인트(없으면 레거시 = 결과 블록)
   const hist = $('#hist');
   if (hist && !hist.hidden) { const b = $('#histBody'); if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); } }   // 이력 펼침(타깃이 이력 항목일 수 있어 노출)
-  const land = el => { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} scrollMid(el); };   // 착지하며 #done 제거 = 재호출·새로고침 시 재스크롤 방지(?a= 정리 패턴)
+  const land = el => { _histRetry = false; if (_histTimer) { clearTimeout(_histTimer); _histTimer = 0; } try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} scrollMid(el); };   // 착지 = #done 제거 + 재시도 종료(재호출·새로고침 시 재스크롤·고아타이머 방지)
   if (wantId) {   // ── 그 작업으로 정확히: 잡 로그행(#job-n) 또는 이력 그리드 항목(둘 다 data-thid=id) ──
     const tgt = document.querySelector('[data-thid="' + wantId + '"]');   // wantId=[\w-]+ (정규식 캡처)라 선택자 안전
     if (tgt) { land(tgt); flashEl(tgt); return; }
-    if (tries < 12) {   // 콜드스타트 = 이력(thumb-hist.json) 빌드·배포 랙(~30~90s) → 재fetch+재렌더 후 재시도(요약 ?a= 백오프 패턴)
-      setTimeout(async () => {
-        try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch (_) {}
-        renderHist(); maybeOpenHist(tries + 1);
-      }, Math.min(2500 + tries * 1200, 8000));
-      return;   // 아직 미발견 — #done 유지(다음 시도까지)
+    if (tries < 15) {   // 콜드스타트 = 이력(thumb-hist.json) 빌드·배포 랙(~30~90s) → 재fetch+재렌더 후 재시도(요약 ?a= 백오프 · 15회≈104s로 90s 꼬리 커버 · 평의회 FIX-3)
+      if (!_histRetry) {   // 단일 사다리만 가동(다른 진입점은 즉시 querySelector만 · 재시도는 한 줄로)
+        _histRetry = true;
+        _histTimer = setTimeout(async () => {
+          _histTimer = 0; _histRetry = false;
+          try {
+            const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(6000) : null;   // 멈춘 요청 영구대기 차단(미지원 브라우저는 타임아웃 없이 정상 fetch · 평의회 FIX-2)
+            const r = await fetch('thumb-hist.json?_=' + Date.now(), sig ? { signal: sig } : undefined);
+            if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; }
+          } catch (_) {}
+          renderHist(); maybeOpenHist(tries + 1);
+        }, Math.min(2500 + tries * 1200, 8000));
+      }
+      return;   // 사다리 가동/대기 중 — 폴백 안 감(#done 유지)
     }
-    // 끝내 못 찾음(배포 지연 초과) → 결과 블록 폴백
+    // 끝내 못 찾음(배포 지연 초과) → 안내 + 폴백(평의회 FIX-4)
+    const s = $('#status'); if (s) { s.classList.remove('err'); s.textContent = '결과 준비 중 — 잠시 후 새로고침'; }
   }
-  // 레거시 #done(id 없음) 또는 끝내 미발견 → 방금 만든 결과 블록 중상단
+  // 레거시 #done(id 없음) 또는 끝내 미발견 → 방금 만든 결과 블록(없으면 이력) 중상단
   const cb = $('#carbar');
   const fb = (cb && !cb.hidden) ? cb : (($('#jobs') && $('#jobs').firstElementChild) || (hist && !hist.hidden ? hist : null));
   land(fb);
@@ -886,7 +896,7 @@ function restoreLastResult() {   // 로드 시 최근 제작 1건을 맨 위 결
   RESTORED = true; renderJob(rjob); renderHist();   // 맨 위 결과 + 이전 제작서 제외
 }
 $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden; b.hidden = !open; $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open); });
-window.addEventListener('hashchange', maybeOpenHist);   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀌어 새로고침 안 됨) 펼치게
+window.addEventListener('hashchange', () => maybeOpenHist());   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀜) 펼치게 · ()=래핑 = Event가 tries 인자로 새 안 들어가게(재시도 무력화 차단)
 $('#histClr').addEventListener('click', async () => { if (await askConfirm('이전 제작 기록을 지울까요? (이미지 파일은 백엔드에 남아있음)')) { localStorage.removeItem(THUMB_HKEY); try { localStorage.removeItem(THUMB_LAST_KEY); } catch {} clearRestored(); renderHist(); } });
 $('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
 // PC: 마우스로 잡아끌어 좌우 넘김(터치는 네이티브 스와이프) — 뉴스 카드피드(.feedtrack) 패턴 계승. 드래그 후 클릭(다운로드) 억제.
