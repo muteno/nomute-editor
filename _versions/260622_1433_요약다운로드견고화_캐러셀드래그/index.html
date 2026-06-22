@@ -1181,7 +1181,6 @@
   .cref-track { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:3px; }
   .cref-track::-webkit-scrollbar { height:5px; }
   .cref-track::-webkit-scrollbar-thumb { background:var(--line); border-radius:9px; }
-  @media (hover:hover) and (pointer:fine) { .cref-track { cursor:grab; } .cref-track.dragging { cursor:grabbing; scroll-behavior:auto; scroll-snap-type:none; user-select:none; } }   /* PC = 마우스로 잡아끌어 좌우 슬라이드(터치는 네이티브 스와이프·운영자 260622) */
   .cref-slot { flex:0 0 78%; max-width:320px; aspect-ratio:16/9; scroll-snap-align:start; border-radius:11px; overflow:hidden;
     background:#0a0c0b; border:1px solid var(--line); display:grid; place-items:center; text-decoration:none; }
   .cref-slot img { width:100%; height:100%; object-fit:contain; display:block; }   /* 16:9 기준 커버 · 세로 길면 좌우 레터박스 */
@@ -2145,26 +2144,7 @@ function thumbStatic(label, items, kind, href, usage, href2) {
     slot.addEventListener('click', e => { if (!e.target.closest('.timg-acts')) openLightbox(list, i, label); });   // 탭=확대(복사는 확대뷰에서)
     slot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(list, i, label); } });
   });
-  attachCarouselDrag(wrap.querySelector('.cref-track'));   // PC 마우스 드래그 좌우 슬라이드(feedtrack 패턴 계승·운영자 260622)
   return wrap;
-}
-// 캐러셀 PC 드래그 — 마우스로 잡아끌어 좌우 슬라이드(터치는 overflow-x 네이티브 스와이프 유지). feedtrack 드래그와 동일 패턴.
-function attachCarouselDrag(track) {
-  if (!track || track._dragInit) return; track._dragInit = true;
-  track.addEventListener('mousedown', e => {
-    if (e.button !== 0 || (e.target.closest && e.target.closest('.sbtn,.timg-acts,a,button'))) return;   // 버튼 위에선 드래그 안 함(저장/재생성/검색)
-    const sl = track.scrollLeft, x0 = e.clientX; let moved = false;
-    track.classList.add('dragging');
-    const mv = ev => { track.scrollLeft = sl - (ev.clientX - x0); if (Math.abs(ev.clientX - x0) > 4) moved = true; };
-    const up = () => {
-      window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up);
-      track.classList.remove('dragging'); track._dragged = moved;
-      const ss = track.querySelectorAll('.cref-slot');   // 놓으면 가장 가까운 슬롯으로 스냅
-      if (ss.length > 1) { const stride = ss[1].offsetLeft - ss[0].offsetLeft; if (stride > 0) track.scrollTo({ left: Math.round(track.scrollLeft / stride) * stride, behavior: 'smooth' }); }
-    };
-    window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up); e.preventDefault();
-  });
-  track.addEventListener('click', e => { if (track._dragged) { e.stopPropagation(); e.preventDefault(); track._dragged = false; } }, true);   // 드래그 직후 클릭(확대) 억제
 }
 // 슬롯별 '다시 만들기'(.sbtn 한 벌 계승 — 카드 캐러셀과 동일 컴포넌트) — 1차 탭=재확인(.confirm 앰버) · 2차 탭=전송(.busy '재생성 중').
 // /api/thumbredo {article,sid} → 그 화풍 1개만 재생성(검색·타화풍 보존). 라이브 폴(load)이 새 이미지(?v=) 오면 섹션 통째 교체. 유료(Gemini 1장)·게이트 없음.
@@ -2233,38 +2213,14 @@ function dlSrc(url, name) {
   } catch (e) { /* 상대/비정상 url → 원본 */ }
   return url;
 }
-// 이미지 저장 — 같은-출처 프록시(api/dl=attachment)로 CORS 우회. 데스크탑·안드로이드 = blob 받아 강제 저장(가장 확실),
-// iOS = 공유시트(사진 저장)/새탭(blob 인라인 열림 회귀 회피), 모달이면 열린 dialog에 부착(showModal 시 body가 inert라 거기 붙이면 동작 안 함).
-// (운영자 260622 — 요약 모달 다운로드 무동작 개선. dlSrc가 ?v= 캐시버스트 보존.)
-async function downloadImg(url, name, btn) {
+function downloadImg(url, name, btn) {
   if (!url) return;
-  const proxied = dlSrc(url, name);
-  const host = document.querySelector('dialog[open]') || document.body;
-  const ua = navigator.userAgent || '';
-  const isIOS = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
-  if (isIOS) {   // iOS = a[download] 무시 + blob 인라인 → Web Share(파일)로 '사진 저장', 없으면 attachment 새 내비
-    try {
-      const res = await fetch(proxied, { cache: 'no-store' });
-      if (res.ok && navigator.canShare) {
-        const file = new File([await res.blob()], name || 'image.jpg', { type: res.headers.get('content-type') || 'image/jpeg' });
-        if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); _flashBtn(btn, 'ok'); return; }
-      }
-    } catch (e) { if (e && e.name === 'AbortError') { _flashBtn(btn, 'ok'); return; } }   // 공유 취소 = 정상
-    const a = document.createElement('a'); a.href = proxied; a.target = '_blank'; a.rel = 'noopener';
-    host.appendChild(a); a.click(); a.remove(); _flashBtn(btn, 'warn'); return;
-  }
-  try {   // 데스크탑·안드로이드 = blob 강제 저장(같은-출처 프록시라 fetch CORS 무관)
-    const res = await fetch(proxied, { cache: 'no-store' });
-    if (!res.ok) throw new Error('http ' + res.status);
-    const burl = URL.createObjectURL(await res.blob());
-    const a = document.createElement('a'); a.href = burl; a.download = name || 'image';
-    host.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(burl), 6000);
-    _flashBtn(btn, 'ok');
-  } catch (e) {   // 폴백 = 프록시 attachment 직접(같은-출처라 a[download] 동작)
-    const a = document.createElement('a'); a.href = proxied; a.download = name || '';
-    host.appendChild(a); a.click(); a.remove(); _flashBtn(btn, 'ok');
-  }
+  // 같은-출처 프록시(api/dl)가 Content-Disposition: attachment 로 강제 다운로드 → 안드로이드·데스크탑·iOS 전부 '파일 저장'.
+  // blob 안 거침 = iOS Safari가 이미지 blob을 인라인으로 열어버리는 회귀 회피 · CORS 무관 · ?v= 캐시버스트는 dlSrc가 보존.
+  const a = document.createElement('a');
+  a.href = dlSrc(url, name); a.download = name || '';
+  document.body.appendChild(a); a.click(); a.remove();
+  _flashBtn(btn, 'ok');
 }
 function thumbDlName(label, it, i) {
   const stamp = (typeof CUR_A !== 'undefined' && CUR_A) ? dlStamp(CUR_A) : '';
