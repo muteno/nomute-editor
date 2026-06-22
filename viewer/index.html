@@ -3409,6 +3409,7 @@ const THUMBUP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"
 const THUMBDOWN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3z"/><path d="M17 14l-4.5 7.5a2 2 0 0 1-2.5-2V16H5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 6.4 4H17"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 const ACK_MORPH = '<svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg>';   // 확인 토글 −→✓ 드로우-인(시안1·운영자 260622)
+const EXT_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>';   // 원문 새 탭(external-link 픽토그램 · 긴급 토스트 ↗버튼·운영자 260622)
 async function copyText(text, btn) {
   text = (text || '').replace(/\n+$/, '');
   let ok = false;
@@ -4066,7 +4067,13 @@ function showToast(n, sample) {
   }
   _toastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
-  t.innerHTML = `<span class="tg">🚨 긴급</span><span>${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`;
+  t.innerHTML = `<span class="tg">🚨 긴급</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`
+    + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 알림 끄기" title="확인 — 봤음(알림 끄기)">${CHECK_SVG}</button>`
+    + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 새 탭" title="원문 새 탭(확인 처리됨)">${EXT_SVG}</button>`;
+  // ✓ = 확인(markBreakingSeen=알림 끔)+초록 플래시 후 사라짐 / ↗ = 원문 새 탭 + 확인 처리(원문 봤으니 ack) · 둘 다 본문탭(수집함 이동)과 stopPropagation 분리
+  const _ak = t.querySelector('[data-bt="ack"]'), _sr = t.querySelector('[data-bt="src"]');
+  if (_ak) _ak.onclick = ev => { ev.stopPropagation(); _ak.classList.add('ok'); markBreakingSeen(); clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 340); };
+  if (_sr) _sr.onclick = ev => { ev.stopPropagation(); markBreakingSeen(); clearTimeout(_toastT); t.classList.remove('show'); if (_toastC && _toastC.url) failOpen(_toastC); };
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 6500);
 }
@@ -4225,7 +4232,7 @@ function showFailToast(n, sample) {
   // ✓ 확인 = 알림 끔(seen·링/토스트 소거) + 초록 .ok 플래시 후 사라짐 / ↻ 재시도 = 전문 붙여넣기 복구 모달(openPaste) · 둘 다 본문탭(원문)과 분리(stopPropagation)
   const _ack = t.querySelector('[data-fa="ack"]'), _rt = t.querySelector('[data-fa="retry"]');
   if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeen(); clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 340); };
-  if (_rt) _rt.onclick = e => { e.stopPropagation(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) openPaste(_failToastC); };
+  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) openPaste(_failToastC); };   // ↻ 재시도 = 확인(ack)도 겸함 — 재시도=확인했다는 의미(운영자 260622)
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 7000);
 }
