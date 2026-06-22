@@ -222,11 +222,8 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           THUMB_MAX_BATCH: '3'
           THUMB_SINCE: '260619'   # 활성화 기준일 — 이 날짜(YYMMDD) 이후 픽만 생성(기존 백로그 제외). 백로그도 원하면 비우면 됨.
-          # 🔌 임시 — AI 썸네일 생성만 끔(검색이미지는 유지). 되돌리려면 이 줄을 '0'으로 바꾸거나 삭제.
-          THUMB_AI_OFF: '1'
         run: |
-          # AI_OFF면 GEMINI 키 없어도 검색이미지는 채운다(키 가드는 AI 생성이 켜졌을 때만 적용).
-          if [ -z "${GEMINI_API_KEY}" ] && [ "${THUMB_AI_OFF}" != "1" ]; then echo "GEMINI_API_KEY 미설정 — 썸네일 생성 생략(스캐폴드)"; exit 0; fi
+          [ -n "${GEMINI_API_KEY}" ] || { echo "GEMINI_API_KEY 미설정 — 썸네일 생성 생략(스캐폴드)"; exit 0; }
           python3 .github/scripts/thumb_gen.py || echo "::warning::썸네일 생성 일부 실패(다이제스트·카드는 보존됨)"
       - name: Commit thumbnails
         if: always()

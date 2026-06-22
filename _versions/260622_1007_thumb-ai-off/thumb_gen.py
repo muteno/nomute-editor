@@ -29,9 +29,6 @@ MAX_BATCH = _int_env("THUMB_MAX_BATCH", 3)   # 1런당 기사 수 상한(비용 
 # 빈값이면 전체(백로그 포함). 워크플로가 활성화 날짜를 박는다.
 SINCE = os.environ.get("THUMB_SINCE", "").strip()
 KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-# 🔌 임시 토글 — AI 썸네일 생성만 끔(검색이미지는 그대로 유지). THUMB_AI_OFF=1/true면 STYLES(Gemini) 호출 0.
-#    되돌리기 = 이 env를 떼거나 0으로(워크플로 news-analyze.yml). 검색(og:image·image_sources)은 KEY/이 토글과 무관히 계속 채움.
-AI_OFF = os.environ.get("THUMB_AI_OFF", "").strip().lower() in ("1", "true", "yes", "on")
 # ⚠️ 검색이미지는 더 이상 Google CSE JSON API를 안 씀(2025 신규고객 차단 死 → "this project does not have
 #    access" 403 PERMISSION_DENIED). 대체 = 기사 본인 og:image 추출(fetch_article_images). CSE 시크릿 미사용.
 # ── 저장소 = Cloudflare R2 (설정 시) → 공개 URL 직접 서빙(레포 비대 회피·egress 0). 미설정이면 git 폴백. ──
@@ -583,11 +580,6 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
-    # 🔌 AI_OFF(임시 토글) — AI 생성 전면 생략·기존 gen.json 보존(건드리지 않음). 검색이미지만 채우고 반환.
-    if AI_OFF:
-        if search_written:
-            print("  🔌 THUMB_AI_OFF — AI 3화풍 생성 생략(검색이미지만 채움)")
-        return search_written
     # AI 생성 3화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor·photo_close sid는 STYLES에 없어 자동 드롭)
     _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
     existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
@@ -639,11 +631,9 @@ def process_one(md, stem):
     return changed or search_written
 
 def main():
-    if not KEY and not AI_OFF:
+    if not KEY:
         print("GEMINI_API_KEY 없음 — 썸네일 생성 생략(스캐폴드 no-op)")
         return 0
-    if AI_OFF:
-        print("🔌 THUMB_AI_OFF — AI 썸네일 생성 비활성(검색이미지만 채움 · 되돌리려면 env 제거)")
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
     # ── 단일 기사 강제 재생성 (뷰어 '다시 만들기' → thumb-redo.yml · THUMB_ONLY=stem) ──
     # gen.json(3화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
@@ -690,8 +680,7 @@ def main():
         if SINCE and stem[:6] < SINCE:
             continue   # 활성화 기준일 이전(백로그) 제외 = 신규 픽 한정
         tdir = os.path.join("cards", stem, "thumbs")
-        # AI_OFF면 AI 완료 여부는 따지지 않음(생성 안 하므로) → 검색 백필만 기준이 됨.
-        ai_done = True if AI_OFF else ({g.get("sid") for g in _load_gen(tdir)} >= target_sids)
+        ai_done = {g.get("sid") for g in _load_gen(tdir)} >= target_sids
         # url 또는 image_sources(AI 관련소스) 있는데 search.json 없으면 검색이미지 백필 대상에 포함.
         # ⚠️ process_one 게이트가 `(art_url or image_sources)`이므로 여기 백필 판정도 동일해야 paste 기사(url無·image_sources有)가 누락 안 됨(앵글3·J ISSUE-1).
         # AI 완료분은 process_one이 기존 sid 보존 → Gemini 0회, 검색이미지만 채움(추가 과금 없음).
