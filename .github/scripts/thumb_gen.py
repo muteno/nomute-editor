@@ -469,7 +469,7 @@ def _vision_keep(rep_src, cand_src):
         return cand_src
     return cand_src   # (점화 시: 대표와 동일 인물/장면이면 None 반환해 컷)
 
-def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=3):
+def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=7):
     """기사 관련 대표·유사 이미지 [{src,link,label}] 최대 want장.
     소스 우선순위: 원기사 og(대표) → AI 관련소스(image_sources, 분석단계 WebSearch 유추) → 클러스터(alt_urls) → 마커매체 관련.
     ⚠️ 원기사 URL이 없거나(전문 붙여넣기) 막혀도(403) image_sources로 채운다 = 소스 무관(운영자 260620).
@@ -568,7 +568,7 @@ def process_one(md, stem):
     # ⚠️ 소스 무관(운영자 260620): art_url 또는 image_sources 있고 아직 없을 때 채움 → paste·차단매체도 관련이미지 확보.
     # 대표=라벨'' / 유사='유사'. R2 재호스팅(핫링크 0)·매직바이트 검증, 실패 시 외부 핫링크 폴백.
     if (art_url or image_sources) and not os.path.exists(os.path.join(tdir, "search.json")):
-        cand = fetch_article_images(art_url, alt_urls=alt_urls, image_sources=image_sources, want=3)
+        cand = fetch_article_images(art_url, alt_urls=alt_urls, image_sources=image_sources, want=7)   # 3→7장(og:image fetch는 과금0 · dedup·필터 그대로 = 유사 컷 동일 · 한·외신 공통 · 운영자 260622)
         items = []
         for i, c in enumerate(cand):
             final = None
