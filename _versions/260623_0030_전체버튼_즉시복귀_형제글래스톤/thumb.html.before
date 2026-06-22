@@ -205,8 +205,8 @@
   @keyframes dlRing { from{transform:scale(1);opacity:.85} to{transform:scale(1.5);opacity:0} }
   @media (prefers-reduced-motion:reduce){ .dlbtn .dl-ack, .dlbtn .dl-ack .dl-ring { animation:none; } .dlbtn .dl-ack { opacity:0; } }
   /* ▼ 전체저장(.jsave) = 다운로드 시퀀스 버튼 — 프로스티드 글래스 + 좌→우 강조색 채움(진행 i/N·검정 글자 드러남) + ✓ 팝 + 우측 드레인 풀림. index .cref-dlall과 시각·연출 통일. 정본 패턴 = 구성도/버튼인터랙션_기틀북.css §9 · 운영자 260622 */
-  .jsave.dlbtn { position:relative; overflow:hidden; background:rgba(8,15,11,.3) !important; border-color:rgba(255,255,255,.14) !important; backdrop-filter:blur(8px) !important; -webkit-backdrop-filter:blur(8px) !important; }   /* 글래스 = 형제 .sbtn 톤 통일(운영자 260622) */
-  .jsave.dlbtn:hover { background:rgba(255,255,255,.16) !important; border-color:rgba(255,255,255,.22) !important; }
+  .jsave.dlbtn { position:relative; overflow:hidden; background:rgba(10,16,12,.30) !important; border-color:rgba(var(--accent-rgb),.22) !important; backdrop-filter:blur(13px) saturate(1.3); -webkit-backdrop-filter:blur(13px) saturate(1.3); }
+  .jsave.dlbtn:hover { background:rgba(10,16,12,.42) !important; border-color:rgba(var(--accent-rgb),.34) !important; }
   .jsave.dlbtn .dl-ack { display:none !important; }   /* 기본 .dlbtn 누름 ✓팝·링 제거 — 시퀀스 연출이 대체 */
   .jsave > svg, .jsave .dlseq-ic, .jsave .jslbl { position:relative; z-index:1; }
   .jsave .jslbl { transition:color .18s; }
@@ -216,8 +216,8 @@
   .jsave.dlbtn::before { content:''; position:absolute; inset:0; z-index:0; background:var(--accent); transform:scaleX(0); transform-origin:left center; transition:transform .28s linear; pointer-events:none; }
   .jsave.dlbtn.dlseq-busy::before { transform:scaleX(var(--p,0)); }
   .jsave.dlbtn.dlseq-done::before { transform:scaleX(1); transition:transform .22s cubic-bezier(.22,.61,.36,1); }
-  .jsave.dlbtn.dlseq-snap, .jsave.dlbtn.dlseq-snap *, .jsave.dlbtn.dlseq-snap::before { transition:none !important; }   /* 완료 후 즉시 복귀(드레인 없음·운영자 260622) */
-  .jsave.dlbtn.dlseq-busy, .jsave.dlbtn.dlseq-done { color:var(--on-accent) !important; }
+  .jsave.dlbtn.dlseq-release::before { transform-origin:right center; transform:scaleX(0); transition:transform .46s cubic-bezier(.22,.61,.36,1); }
+  .jsave.dlbtn.dlseq-busy, .jsave.dlbtn.dlseq-done, .jsave.dlbtn.dlseq-release { color:var(--on-accent) !important; }
   .jsave.dlbtn.dlseq-done { border-color:rgba(var(--accent-rgb),.6) !important; box-shadow:0 0 18px rgba(var(--accent-rgb),.42); }
   .jsave.dlbtn.dlseq-done .dlseq-ic .dn { opacity:0; }
   .jsave.dlbtn.dlseq-done .dlseq-ic .chk { opacity:1; animation:dlChkPop .42s cubic-bezier(.22,.61,.36,1); }
@@ -723,13 +723,15 @@ async function jSaveSeq(btn, saves) {
   }
   if (lbl) lbl.textContent = '완료';
   btn.classList.remove('dlseq-busy'); btn.classList.add('dlseq-done');
-  setTimeout(() => {   // ✓ 잠깐 보여준 뒤 즉시 복귀(드레인 없음·운영자 260622)
-    btn.classList.add('dlseq-snap'); btn.classList.remove('dlseq-done');
-    if (lbl) lbl.textContent = orig || '전체';
-    btn.style.setProperty('--p', '0');
-    requestAnimationFrame(() => btn.classList.remove('dlseq-snap'));
-    btn._dlbusy = 0; btn.style.pointerEvents = '';
-  }, 1050);
+  setTimeout(() => {
+    btn.classList.add('dlseq-release');
+    setTimeout(() => {
+      btn.classList.remove('dlseq-done', 'dlseq-release');
+      if (lbl) lbl.textContent = orig || '전체';
+      btn.style.setProperty('--p', '0');
+      btn._dlbusy = 0; btn.style.pointerEvents = '';
+    }, 520);
+  }, 950);
 }
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
