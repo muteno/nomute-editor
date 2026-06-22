@@ -12,8 +12,6 @@ MODEL="claude-opus-4-8"
 # 지침 SSOT 강제 주입(analyze와 동일 summary 세트) — 출력 포맷·품질기준 일치, GVER 도장.
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_health.sh"   # 시스템성(인증·쿼터) 실패 → 사용자 메시지(프로필 점등)
-source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과부하(5xx/Overloaded) 인라인 재시도용(analyze와 공용)
-INLINE_TRIES=3   # claude -p 일시 과부하(529/5xx) 인라인 재시도(15s·30s 백오프) — 버스트 ✨요약요청 유실 차단(analyze와 동일·260622)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
@@ -85,27 +83,14 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
 
   # 허용 도구 = WebFetch·WebSearch(기사 찾기·사실확보) + Read(캡처 판독·지침 읽기) + Glob·Grep.
   # Write/Edit/Bash 불허 → 헤드리스가 권한대기로 멈추지 않음(analyze와 동일 방어).
-  # 인라인 재시도 — Anthropic API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(analyze와 동일·260622).
-  #   성공·ANALYSIS_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0). 과부하 신호일 때만 재시도(is_transient).
-  inline_delay=15
-  for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | timeout 900 claude -p \
-          --model "$MODEL" \
-          --effort max \
-          --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
-          --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
-          --max-turns 50 \
-          2> "/tmp/${base}.err")"
-    rc=$?
-    if { [ $rc -eq 0 ] && [ -n "${out// }" ] && grep -qm1 '^---' <<<"$out"; } || grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then
-      break
-    fi
-    if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
-      echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
-      sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
-    fi
-    break
-  done
+  out="$(printf '%s' "$prompt" | timeout 900 claude -p \
+        --model "$MODEL" \
+        --effort max \
+        --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
+        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
+        --max-turns 50 \
+        2> "/tmp/${base}.err")"
+  rc=$?
   claude_health_update "$out" "/tmp/${base}.err"   # 응답O=정상(경고해제) / 빈응답+인증·쿼터=경고(프로필 점등)
 
   if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^ANALYSIS_FAILED' <<<"$out" || ! grep -qm1 '^---' <<<"$out"; then
