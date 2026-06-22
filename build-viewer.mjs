@@ -64,6 +64,7 @@ for (const f of files) {
       bias: meta.bias || '',
       tags: meta.tags || '',
       image_query_en: meta.image_query_en || '',   // 🌍해외사건 영문 검색쿼리(돋보기·검색이미지 영문화) — 분석 frontmatter 패스스루·국내=빈값(운영자 260622)
+      image_query: meta.image_query || '',   // 상징 검색 키워드(AI 추출) — 돋보기 초록버튼=키워드 검색(회색=제목·기존)·운영자 260622
       category: meta.category || '',   // 옛 큐 frontmatter category(있으면) — 뷰어 UI 5버킷 매핑용(C). 새 기사엔 없음.
       breaking: BRK.has(meta.url || '') ? BRK.get(meta.url || '') : /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // 긴급 = 매칭되면 AI breaking_judge 판정 따름(AI가 NO면 제목 [속보]여도 X) · 미매칭(직접공유)만 제목 표식 폴백.
       cross: CROSS.get(meta.url || '') || 0,                    // 수집함 매칭 매체 수(직접공유=0)

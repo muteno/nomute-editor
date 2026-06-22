@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>포그라운드 토스트 2종 (긴급·실패) — v2</title>
+<style>
+  :root{ --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --accent:#0FFD02; --on-accent:#062108; --r-s:10px; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 70px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 10% -4%, rgba(255,60,50,.06), transparent 60%),
+    radial-gradient(720px 460px at 108% 6%, rgba(255,176,46,.06), transparent 62%);}
+  .wrap{max-width:440px; margin:0 auto;}
+  h1{font-size:20px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 12px; line-height:1.55;}
+  .hint{font-size:11.5px; color:var(--accent); background:rgba(15,253,2,.07); border:1px solid rgba(15,253,2,.22); border-radius:10px; padding:9px 12px; margin:0 0 22px;}
+  .blk{margin:0 0 26px;}
+  .lab{display:flex; align-items:center; gap:8px; margin:0 0 10px;}
+  .lab h2{font-size:14px; font-weight:800; margin:0;}
+  .tagk{font-size:10px; font-weight:800; color:#fff; border-radius:999px; padding:2px 8px;}
+  .tagk.b{background:linear-gradient(135deg,#ff3b3b,#ff7a2f);} .tagk.f{background:linear-gradient(135deg,#ffae34,#ff7a2f);}
+
+  /* viewer .nm-toast 그대로 */
+  .nm-toast{ max-width:100%; display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
+    background:linear-gradient(135deg, rgba(42,13,11,.95), rgba(20,9,9,.95)); border:1px solid rgba(255,85,60,.5); border-radius:14px;
+    box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#fff; font-size:13px; font-weight:700; line-height:1.35;
+    -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2);}
+  .nm-toast.fail{ background:linear-gradient(135deg, rgba(42,30,11,.95), rgba(20,15,9,.95)); border-color:rgba(255,176,46,.55); box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,176,46,.22);}
+  .nm-toast .tg{ flex:none; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:2px 8px; box-shadow:0 0 8px rgba(255,60,50,.5);}
+  .nm-toast.fail .tg{ background:linear-gradient(135deg,#ffae34,#ff7a2f); box-shadow:0 0 8px rgba(255,176,46,.5);}
+  .nm-toast b{ color:#ffd9cf; } .nm-toast.fail b{ color:#ffe9cf; }
+  .nm-toast .ft-msg{ flex:1; min-width:0; }
+
+  /* viewer .sbtn + .ft-act 그대로 */
+  .sbtn{ display:grid; place-items:center; padding:0; color:rgba(255,255,255,.92); background:rgba(8,15,11,.3);
+    border:1px solid rgba(255,255,255,.14); border-radius:10px; cursor:pointer;
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s;}
+  .sbtn:hover{ background:rgba(255,255,255,.16); } .sbtn:active{ transform:scale(.85); }
+  .sbtn.ok{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .ft-act{ flex:none; width:32px; height:32px; }
+  .sbtn svg{ display:block; }
+  @keyframes ic-spin{ to{ transform:rotate(360deg); } } .ic-spin{ animation:ic-spin .5s cubic-bezier(.2,.7,.3,1); }
+
+  .ds{ font-size:11.5px; color:var(--mut); line-height:1.6; margin:11px 2px 0; }
+  .ds b{ color:#cfd8d0; } .ds .g{ color:var(--accent); }
+  .stt{ font-size:11px; font-weight:700; color:var(--accent); min-height:16px; margin:8px 2px 0; }
+  .note{ margin-top:8px; border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.6; color:var(--mut); background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.07); }
+  .note b{ color:#cfd8d0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>포그라운드 토스트 2종 — v2</h1>
+  <p class="sub">버튼 형태 바뀌어서 다시. 둘 다 라이브 <b>.sbtn 기틀</b> 계승(눌림 scale·✓초록 플래시·↗↻ 회전).</p>
+  <p class="hint">👆 버튼 <b>탭</b>해봐 — 실제 눌림·플래시·회전 그대로. 아래 상태줄에 동작 표시.</p>
+
+  <!-- 긴급 -->
+  <div class="blk">
+    <div class="lab"><span class="tagk b">🚨 긴급</span><h2>속보 토스트</h2></div>
+    <div class="nm-toast" id="t-brk">
+      <span class="tg">🚨 긴급</span>
+      <span class="ft-msg">2건 · [속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습… <b>탭해서 보기</b></span>
+      <button class="sbtn ft-act" data-act="ack-b" aria-label="확인" title="확인 — 알림 끄기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></button>
+      <button class="sbtn ft-act" data-act="src-b" aria-label="원문" title="원문 새 탭(확인 처리)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg></button>
+    </div>
+    <div class="stt" id="s-brk"></div>
+    <p class="ds">• <b>✓ 확인</b> = 알림 끔(<span class="g">재알림 안 옴</span>) + 초록 플래시 후 사라짐<br>
+    • <b>↗ 원문</b> = 원문 새 탭 + <span class="g">자동 확인 처리</span>(원문 봤으니까)<br>
+    • 본문(글씨) 탭 = 수집함으로 이동(기존 유지)</p>
+  </div>
+
+  <!-- 실패 -->
+  <div class="blk">
+    <div class="lab"><span class="tagk f">⚠ 분석 실패</span><h2>실패 토스트</h2></div>
+    <div class="nm-toast fail" id="t-fail">
+      <span class="tg">⚠ 분석 실패</span>
+      <span class="ft-msg">1건 · 빌라 옥상서 놀던 여중생, 옆 건물로 뛰어넘다 추락… <b>전문 붙여넣어 복구</b></span>
+      <button class="sbtn ft-act" data-act="ack-f" aria-label="확인" title="확인 — 알림 끄기"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></button>
+      <button class="sbtn ft-act" data-act="retry-f" aria-label="재시도" title="재시도 — 전문 붙여넣어 복구(확인 겸함)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg></button>
+    </div>
+    <div class="stt" id="s-fail"></div>
+    <p class="ds">• <b>✓ 확인</b> = 알림 끔 + 초록 플래시 후 사라짐<br>
+    • <b>↻ 재시도</b> = 전문 붙여넣기 복구 모달 + <span class="g">확인도 겸함</span>(재시도=확인했단 의미)</p>
+  </div>
+
+  <div class="note">
+    ⚠️ 지난 mockup의 <b>피드/수집함 카드</b>는 모양이 틀렸었어(미안) — 실제는 <b>사회·3·긴급 / 제목 / PASS·PICK·−</b>(수집함), <b>경제·1시간전·긴급 / 제목 / 매체·편향·민감 / 요약·프롬프트·카드 진행바</b>(피드)인 거 확인했어. 이번엔 요청대로 <b>토스트 2개만</b> 담음.
+  </div>
+</div>
+<script>
+  function flashOk(btn){ btn.classList.add('ok'); setTimeout(()=>btn.classList.remove('ok'), 700); }
+  function spin(btn){ const s=btn.querySelector('svg'); s.classList.remove('ic-spin'); void s.offsetWidth; s.classList.add('ic-spin'); }
+  function fade(id){ const t=document.getElementById(id); t.style.transition='opacity .35s'; t.style.opacity=.25; setTimeout(()=>t.style.opacity=1, 1400); }
+  function say(id,msg){ document.getElementById(id).textContent=msg; }
+  document.addEventListener('click', e=>{
+    const b=e.target.closest('.sbtn'); if(!b) return; const a=b.dataset.act;
+    if(a==='ack-b'){ flashOk(b); say('s-brk','✓ 확인됨 — 알림 끔(재알림 X)'); fade('t-brk'); }
+    if(a==='src-b'){ spin(b); say('s-brk','↗ 원문 새 탭 열기 + 자동 확인 처리'); fade('t-brk'); }
+    if(a==='ack-f'){ flashOk(b); say('s-fail','✓ 확인됨 — 알림 끔'); fade('t-fail'); }
+    if(a==='retry-f'){ spin(b); say('s-fail','↻ 복구 모달 열기 + 확인 겸함'); fade('t-fail'); }
+  });
+</script>
+</body>
+</html>
