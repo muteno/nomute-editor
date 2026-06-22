@@ -28,7 +28,7 @@ permissions:
 jobs:
   ask:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120   # ✨요약요청 + 529 과부하 재시도 백오프 여유(버스트 유실 0 · 260622)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -97,7 +97,7 @@ jobs:
     needs: ask
     if: always()              # 분석 일부 실패해도 성공 큐는 카드 프롬프트 생성
     runs-on: ubuntu-latest
-    timeout-minutes: 120      # 텍스트 카드 MAX_BATCH(3)건 × Opus
+    timeout-minutes: 180      # 텍스트 카드 MAX_BATCH × Opus + 529 재시도(카드 양보 백오프) 여유(260622)
     concurrency:
       group: card-make        # 버튼 렌더(card-make.yml)와 같은 그룹 = 같은 cards/ 직렬화(-X theirs 무경고 덮어쓰기 방지)
       cancel-in-progress: false

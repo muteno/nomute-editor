@@ -16,7 +16,6 @@ MODEL="claude-opus-4-8"
 # GVER(지침 버전 도장)는 산출물 frontmatter에 박혀, 지침이 바뀌면 같은 기사 재공유 시 재생성된다.
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_health.sh"   # 시스템성(인증·쿼터) 실패 → 사용자 메시지(프로필 점등)
-source "$ROOT/shared/claude_retry.sh"    # 일시적 API 과부하(529 등) 재시도 — 버스트 입력에도 요약 유실 0(운영자 260622)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
@@ -142,13 +141,13 @@ ${extracted}"
   # --max-turns = 도구 무한루프(레포 탐색 등) 차단. 둘 다 "제약없이=막힘없이"의 핵심.
   # 프롬프트는 stdin으로 전달 — 지침 강제주입이 커서 명령행 인자로는 ARG_MAX('Argument list too long')
   # 위험(stdin은 무제한). claude -p 는 인자 없으면 stdin을 프롬프트로 읽는다.
-  # 일시적 API 과부하(529 등)면 끈질기게 재시도(요약 우선순위 = 끈질긴 기본 정책) — 단발 실패로 안 떨굼.
-  out="$(printf '%s' "$prompt" | claude_retry "/tmp/${base}.err" -- timeout 900 claude -p \
+  out="$(printf '%s' "$prompt" | timeout 900 claude -p \
         --model "$MODEL" \
         --effort max \
         --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
         --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
-        --max-turns 40)"
+        --max-turns 40 \
+        2> "/tmp/${base}.err")"
   rc=$?
   claude_health_update "$out" "/tmp/${base}.err"   # 응답O=정상(경고해제) / 빈응답+인증·쿼터=경고(프로필 점등)
 
