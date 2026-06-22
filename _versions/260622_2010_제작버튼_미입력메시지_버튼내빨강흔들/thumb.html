@@ -6,7 +6,7 @@
 <title>썸네일 생성기</title>
 <style>
   :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
-          --accent:#0FFD02; --accent-bright:#d8ff3d; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --line2:#2a2c31; }
+          --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --line2:#2a2c31; }
   * { box-sizing:border-box; }
   /* 스크롤바 톤앤톤(초록 글래스) — 뉴스 요약기(viewer/index.html) 계승 · 전 페이지 공통 */
   html { scrollbar-width:thin; scrollbar-color:rgba(var(--accent-rgb),.30) transparent; }
@@ -75,7 +75,6 @@
   .go:disabled { opacity:.5; cursor:default; transform:none; }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(edshake 재사용·운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
-  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(.ed-chip.reject 빨강 계승 · 운영자 260622) */
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
@@ -88,16 +87,17 @@
   @keyframes goTick { to { stroke-dashoffset:0; } }
   @media (prefers-reduced-motion:reduce) { .go .gck path { animation:none; stroke-dashoffset:0; } }
   .chk { display:flex; align-items:center; gap:9px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
-  /* 축약 체크 = 앱 기존 커스텀 체크박스 픽토그램(.dl-cbox '전체 포함' 다운로드 체크) 그대로 계승 — 원형·accent 그라데 채움·체크 scale-in. 새 디자인 X(운영자 260622) */
-  .chk input { position:absolute; left:0; width:18px; height:18px; margin:0; opacity:0; cursor:pointer; }
-  .chk .cbox { width:18px; height:18px; flex:none; border-radius:50%;
-    border:1.5px solid rgba(255,255,255,.28); background:rgba(255,255,255,.04);
-    display:inline-flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s, box-shadow .15s; }
-  .chk .cbox svg { width:12px; height:12px; display:block; fill:none; stroke:var(--on-accent); stroke-width:3; stroke-linecap:round; stroke-linejoin:round;
-    opacity:0; transform:scale(.5); transition:opacity .15s, transform .15s; }
-  .chk input:checked + .cbox { background:linear-gradient(135deg,var(--accent-bright),var(--accent)); border-color:transparent; }
-  .chk input:checked + .cbox svg { opacity:1; transform:scale(1); }
-  .chk input:focus-visible + .cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
+  /* 축약 체크 = 커스텀 초록 픽토그램(OS accent-color 의존 폐지 = 플랫폼 일관 · 운영자 260622) — 네이티브 input은 숨김(기능·접근성 유지) */
+  .chk input { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  .chk .cbox { flex:0 0 auto; width:24px; height:24px; border-radius:7px; display:grid; place-items:center;
+    background:rgba(255,255,255,.045); border:1.5px solid var(--line); transition:background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .12s ease; }
+  .chk .cbox svg { width:15px; height:15px; fill:none; stroke:#fff; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:24; stroke-dashoffset:24; opacity:0; transition:stroke-dashoffset .22s ease .02s, opacity .12s ease; }
+  .chk input:checked + .cbox { background:var(--accent); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 3px 12px rgba(var(--accent-rgb),.42); }
+  .chk input:checked + .cbox svg { stroke-dashoffset:0; opacity:1; }
+  .chk input:focus-visible + .cbox { outline:2px solid var(--accent); outline-offset:2px; }
+  .chk:active .cbox { transform:scale(.9); }
+  @media (prefers-reduced-motion:reduce) { .chk .cbox svg { transition:none; } }
   .chk .abbrhint { color:var(--mut); font-weight:400; font-size:11px; }
   /* 복사칩 = 뉴스 요약 키워드칩(.cref-kw) 표기방식·복사 액티브 그대로 계승(검정 글래스 칩 + 탭 복사 + 초록 눌림 플래시 · 운영자 260622) */
   .kwline { margin-top:7px; }
@@ -372,7 +372,7 @@
       <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
-    <label class="chk" id="abbrBox"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span> 축약 <span class="abbrhint">이 → 李 · 윤 → 尹 · ... → ⋯</span></label>
+    <label class="chk" id="abbrBox"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span> 축약 <span class="abbrhint">이 → 李 · 윤 → 尹 · ... → ⋯</span></label>
     <button class="go" id="go">이미지 제작</button>
   </div>
 
@@ -1251,8 +1251,8 @@ const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').repl
 function goFire() {
   const gb = document.getElementById('go'); if (!gb) return;
   if (!gb.dataset.label) gb.dataset.label = gb.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
-  clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); clearTimeout(gb._errT);
-  gb.classList.remove('firing', 'okdone', 'checking', 'err', 'shake'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
+  clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3);
+  gb.classList.remove('firing', 'okdone', 'checking'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
   gb.classList.add('firing'); gb.textContent = '전송 중…'; gb.setAttribute('aria-busy', 'true');
   gb._fT1 = setTimeout(() => {                                     // 게이지 완료 → ✓ 체크가 그려짐(시안1)
     gb.classList.remove('firing'); gb.classList.add('okdone', 'checking');
@@ -1328,15 +1328,8 @@ $('#go').onclick = async () => {
   if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
   dispatchJob('/api/thumb', payload, jobLabel());
 };
-function errStatus(m) {   // 전송 막힘(내용 미입력 등) = 메시지를 버튼 *안에* 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(운영자 260622)
-  const s = $('#status'); s.textContent = ''; s.classList.remove('err');   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
-  const g = document.getElementById('go'); if (!g) return;
-  if (!g.dataset.label) g.dataset.label = g.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
-  clearTimeout(g._fT1); clearTimeout(g._fT2); clearTimeout(g._fT3); clearTimeout(g._errT);
-  g.classList.remove('firing', 'okdone', 'checking'); g.removeAttribute('aria-busy');
-  g.textContent = m; g.setAttribute('aria-live', 'assertive');  // 메시지 = 버튼 안에
-  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label || '이미지 제작'; }, 1700); }
+function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err');
+  const g = document.getElementById('go'); if (g) { g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); setTimeout(() => g.classList.remove('shake'), 460); } }   // 전송 막힘(내용 미입력 등) = 제작 버튼 흔들기(운영자 260622)
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
