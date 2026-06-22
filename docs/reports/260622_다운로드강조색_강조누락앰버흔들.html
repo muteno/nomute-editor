@@ -1,0 +1,89 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>다운로드 버튼 강조색 + 강조누락 앰버 흔들림</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+          --accent:#0FFD02; --accent-bright:#d8ff3d; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108;
+          --amber:#ff9614; --amber-rgb:255,150,20; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.6; padding:24px 16px 60px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:21px; margin:0 0 4px; color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 24px; }
+  h2 { font-size:15px; margin:30px 0 12px; border-left:3px solid var(--accent); padding-left:10px; }
+  .card { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .col { background:#101113; border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .col h3 { font-size:13px; margin:0 0 12px; color:var(--mut); font-weight:600; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .old { background:rgba(255,255,255,.1); color:#cfd2d7; } .new { background:var(--accent-dim); color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:13px; } th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--mut); font-weight:600; width:120px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media(max-width:560px){ .grid2{ grid-template-columns:1fr; } }
+  /* === 1) 다운로드 버튼(.imgdl) — 이미지 위 미니 데모 === */
+  .imgbox { position:relative; height:150px; border-radius:10px; overflow:hidden;
+    background:linear-gradient(135deg,#3a1535,#7a1f4a 60%,#c2356a); display:grid; place-items:center; }
+  .imgbox .lbl { color:rgba(255,255,255,.85); font-size:12px; font-weight:700; }
+  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; cursor:pointer; }
+  .imgdl svg { display:block; width:14px; height:14px; }
+  .imgdl:active { transform:scale(.85); }
+  .imgdl.before { color:rgba(255,255,255,.92); background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); }
+  .imgdl.before:hover { background:rgba(255,255,255,.16); }
+  .imgdl.after { color:var(--accent); background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.36); }
+  .imgdl.after:hover { background:rgba(var(--accent-rgb),.2); border-color:rgba(var(--accent-rgb),.5); }
+  /* === 2) 제작 버튼(.go) — 빨강 미입력 vs 앰버 강조누락 === */
+  .go { width:100%; margin-top:6px; padding:14px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.36); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }
+  .go:active { transform:scale(.955); }
+  .go.shake { animation:edshake .42s; }
+  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }
+  .go.warn { background:rgba(var(--amber-rgb),.16); color:var(--amber); border-color:var(--amber); }
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  @media (prefers-reduced-motion:reduce){ .go.shake{ animation:none; } }
+  .tip { font-size:12px; color:var(--mut); margin-top:10px; }
+</style></head>
+<body><div class="wrap">
+  <h1>다운로드 버튼 강조색 계승 + 강조누락 = 앰버 흔들림</h1>
+  <p class="sub">① 결과카드 우상단 다운로드 버튼을 뉴스 요약부 강조색(초록 글래스)으로 통일 · ② *별표* 강조 안 넣으면 팝업 대신 앰버 버튼 흔들림(빨강 미입력과 색만 구분·진행 불가)</p>
+
+  <h2>① 다운로드 버튼 — 강조색 계승 (탭해보기)</h2>
+  <div class="card grid2">
+    <div class="col"><h3><span class="pill old">전</span> 흰색 글래스</h3>
+      <div class="imgbox"><span class="lbl">결과 이미지</span>
+        <a class="imgdl before" title="다운로드"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></a>
+      </div>
+    </div>
+    <div class="col"><h3><span class="pill new">후</span> 강조색(초록) 글래스 — 요약부 계승</h3>
+      <div class="imgbox"><span class="lbl">결과 이미지</span>
+        <a class="imgdl after" title="다운로드"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></a>
+      </div>
+    </div>
+  </div>
+
+  <h2>② 강조 누락 — 앰버 흔들림 (탭해서 비교)</h2>
+  <div class="card grid2">
+    <div class="col"><h3>텍스트 미입력 = <b style="color:#ff7a7a">빨강</b> (기존)</h3>
+      <button class="go" id="goErr">이미지 제작</button>
+      <div class="tip">탭 → "텍스트를 입력해줘" 빨강+흔들림</div>
+    </div>
+    <div class="col"><h3>강조(*별표*) 누락 = <b style="color:var(--amber)">앰버</b> (신규·팝업 대체)</h3>
+      <button class="go" id="goWarn">이미지 제작</button>
+      <div class="tip">탭 → "*별표*로 강조를 넣어줘" 앰버+흔들림 · 진행 불가</div>
+    </div>
+  </div>
+
+  <h2>전 / 후 · 효율 · 리스크</h2>
+  <div class="card"><table>
+    <tr><th>다운로드 버튼</th><td><b>전</b> 흰 글래스(이미지 위에서 눈에 덜 띔) → <b>후</b> 강조색 초록 글래스 = 뉴스 요약부 버튼과 통일(일관성·발견성↑). 크기·위치·블러·눌림 모션 동일.</td></tr>
+    <tr><th>강조 누락 동작</th><td><b>전</b> "강조를 안 넣었는데 진행할까요?" 확인 팝업(진행 가능) → <b>후</b> 팝업 폐지, 앰버 버튼 흔들림 + 안내, <b>진행 불가</b>(강조 필수화).</td></tr>
+    <tr><th>색 구분</th><td>빨강(#ff7a7a) = 필수값 미입력 / 앰버(--amber #ff9614) = 강조 누락. 같은 흔들림·같은 위치, 색만 달라 한눈에 원인 구분.</td></tr>
+    <tr><th>효율</th><td>errStatus에 색 인자 1개 추가(중복 0) + .go.warn 1줄 + --amber 토큰(index.html SSOT 값 복사). 팝업 await 제거 = 탭 한 번에 즉시 피드백.</td></tr>
+    <tr><th>리스크</th><td>낮음. 강조가 정말 필수가 되므로(이전엔 우회 가능) 의도와 일치 확인 필요 — 운영자 요구가 "진행 불가"라 반영. reduced-motion이면 흔들림 생략·색은 유지.</td></tr>
+  </table></div>
+</div>
+<script>
+  function flash(id,m,cls){ var g=document.getElementById(id);
+    if(!g.dataset.label) g.dataset.label=g.textContent; clearTimeout(g._t);
+    g.classList.remove('err','warn','shake'); g.textContent=m;
+    g.classList.add(cls); void g.offsetWidth; g.classList.add('shake');
+    g._t=setTimeout(function(){ g.classList.remove('err','warn','shake'); g.textContent=g.dataset.label; },1700); }
+  document.getElementById('goErr').onclick=function(){ flash('goErr','텍스트를 입력해줘','err'); };
+  document.getElementById('goWarn').onclick=function(){ flash('goWarn','*별표*로 강조를 넣어줘 (예: *중요*)','warn'); };
+</script>
+</body></html>

@@ -97,7 +97,7 @@ def check_versions():
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
     'viewer/index.html': {'accent_raw': 122, 'blur': 92, 'hex': 168},   # accent_raw 105→123 요약본 스포티파이→노뮤트 / mkbtn 글래스 +1 / blur90→92 요약본 제목복사 글래스 / 92→90 #editdlg backdrop 제거(main 260621) / +2 요약헤더 .dlbox 글래스 알약 var(--blur-m)(260621) / 124→122 대기열 .qgo·.qb-succ accent rgba→var(--accent-rgb) 토큰화(260622)
-    'viewer/thumb.html': {'accent_raw': 0, 'blur': 32, 'hex': 24},   # accent rgba 토큰화 완료(--accent-rgb·260621). blur/hex는 thumb 독자팔레트라 잔존(후속). hex 25→24 = .go solid #d8ff3d 제거(.mkbtn 고스트 통일·260621).
+    'viewer/thumb.html': {'accent_raw': 0, 'blur': 36, 'hex': 27},   # accent rgba 토큰화 완료(--accent-rgb·260621). blur/hex는 thumb 독자팔레트라 잔존(후속). hex…→28 = .go.err 미입력 빨강(#ff7a7a·#ff5d5d) · hex28→27 = 흰 체크 #fff 제거. blur32→34 = 저작권 복사칩(.cref-kw 글래스) · blur34→36 = 축약 체크 = 수집함 확인토글(.sc-tg.ack) 글래스 박스 계승(backdrop blur·−→✓ 모프·accent는 var(--accent-rgb) 토큰·260622).
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
 
@@ -108,9 +108,11 @@ _FWD_UNUSED = {
     '--accent-2', '--amber-rgb', '--blur-backdrop', '--blur-l', '--blur-m', '--blur-s',
     '--blur-xl', '--btn', '--btn-xs', '--danger-rgb', '--dur-fast', '--ease', '--fg-2',
     '--fs-body', '--fs-display', '--fs-h1', '--fs-h2', '--fs-h3', '--fs-label', '--fs-xs',
-    '--fw-b', '--fw-x', '--lh-base', '--r-l', '--r-m', '--r-pill', '--sp-1', '--sp-2',
+    '--fw-b', '--fw-x', '--lh-base', '--on-arm', '--r-l', '--r-m', '--r-pill', '--sp-1', '--sp-2',
     '--sp-3', '--sp-4', '--warn',
 }
+# --on-arm(arm 채움 위 글자색) = .revsend.confirm 채움 그라데 → 표준 플랫 arm 전환(260622)으로 현재 미배선.
+# 정의는 보존(--arm/--arm-rgb 짝 · 향후 채움형 arm 컴포넌트용 어휘) → forward-unused 처리(§🎨).
 
 def _new_dead_tokens(rel='viewer/index.html'):
     """viewer :root 정의 토큰 중 var() 미사용 & baseline 밖 = 새 죽은 토큰(접두사 오탐 가드)."""
