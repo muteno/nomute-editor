@@ -1,0 +1,68 @@
+name: feedback
+
+# 뷰어 따봉/다운(👍/👎) → 카드 (텍스트+프롬프트) + 측면/의견을 feedback/<ts>.json 으로 누적·커밋.
+# 트리거 = Pages Function /api/feedback (GH_TOKEN dispatch). 과금 0(러너 ~10s, Gemini·Drive 무관).
+on:
+  workflow_dispatch:
+    inputs:
+      article:
+        description: 'queue/cards 기사 파일명(*.md)'
+        type: string
+        required: true
+      card:
+        description: '카드 번호(1-base)'
+        type: string
+        required: true
+      vote:
+        description: 'up | down'
+        type: string
+        required: true
+      aspect:
+        description: 'image | text'
+        type: string
+        default: 'image'
+      comment:
+        description: '주관 의견(선택)'
+        type: string
+        default: ''
+      action:
+        description: 'record(적재) | delete(취소·파일삭제)'
+        type: string
+        default: 'record'
+
+concurrency:
+  group: feedback
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Record feedback
+        env:
+          FB_ARTICLE: ${{ inputs.article }}
+          FB_CARD: ${{ inputs.card }}
+          FB_VOTE: ${{ inputs.vote }}
+          FB_ASPECT: ${{ inputs.aspect }}
+          FB_COMMENT: ${{ inputs.comment }}
+          FB_ACTION: ${{ inputs.action }}
+        run: |
+          python3 .github/scripts/feedback_record.py
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add feedback
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "feedback: ${FB_ACTION:-record} ${FB_ARTICLE%.md} 카드${FB_CARD} ${FB_VOTE}"
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+          done
+          echo "::error::feedback push 실패"; exit 1
