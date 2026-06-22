@@ -4166,17 +4166,23 @@ async function loadQueue() {
   renderQueuePage();
 }
 // 피드(메뉴3) 이동 + 해당 기사 모달. 즉시 매칭되면 바로, 없으면(빌드 랙) load() 후 재매칭.
-async function feedOpenBy(match) {
-  closeQueueUser();   // ↗ 이동도 정식 닫기 경유 → 푸시한 뒤로가기 칸 정리(dangling 방지 · 운영자 260622)
+async function feedOpenBy(match, reopenQ) {
+  if (reopenQ) qpop.hidden = true;   // 큐 ↗: 숨기되 재오픈 플래그 유지 → 요약 닫으면 대기열 복원(운영자 260622)
+  else closeQueueUser();   // 그 외(PICKED 등): 정식 닫기(플래그 해제) → 푸시한 뒤로가기 칸 정리(dangling 방지)
   showTab('feed');
   let a = match();
-  if (a) { open(a); return; }   // 즉시(이미 피드에 있음 = 흔한 경우)
+  if (a) { open(a); if (reopenQ) armQueueReopen(); return; }   // 즉시(이미 피드에 있음 = 흔한 경우)
   try { await load(); } catch {}   // 빌드 랙 — 기사 재요청 후 재매칭
   a = match();
-  if (a) open(a); else qFlash('피드 반영 중 — 곧 표시돼');
+  if (a) { open(a); if (reopenQ) armQueueReopen(); } else qFlash('피드 반영 중 — 곧 표시돼');
+}
+function armQueueReopen() {   // 대기열에서 연 요약 모달이 닫히면(✕·ESC·뒤로가기·백드롭) 대기열 다시 펼침 — 1회성·열어둔 채 갔을 때만(운영자 260622)
+  const dlg = $('#dlg'); if (!dlg) return;
+  const onClose = () => { dlg.removeEventListener('close', onClose); if (qpop.hidden && sessionStorage.getItem('nomute_q_open') === '1') openQueue(); };
+  dlg.addEventListener('close', onClose);
 }
 function qGo(id) {   // SUCC 링크 — queue 파일명(id) ↔ DATA.file(.md 양쪽 허용) 매칭
-  feedOpenBy(() => DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id)));
+  feedOpenBy(() => DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id)), true);   // true = 요약 모달 닫으면 대기열 복원(운영자 260622)
 }
 function qFlash(msg) {   // 짧은 토스트(링크 빌드 랙 안내)
   let t = document.getElementById('qFlash');
