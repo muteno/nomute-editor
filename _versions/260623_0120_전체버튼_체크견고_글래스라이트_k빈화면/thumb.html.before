@@ -205,8 +205,8 @@
   @keyframes dlRing { from{transform:scale(1);opacity:.85} to{transform:scale(1.5);opacity:0} }
   @media (prefers-reduced-motion:reduce){ .dlbtn .dl-ack, .dlbtn .dl-ack .dl-ring { animation:none; } .dlbtn .dl-ack { opacity:0; } }
   /* ▼ 전체저장(.jsave) = 다운로드 시퀀스 버튼 — 프로스티드 글래스 + 좌→우 강조색 채움(진행 i/N·검정 글자 드러남) + ✓ 팝 + 우측 드레인 풀림. index .cref-dlall과 시각·연출 통일. 정본 패턴 = 구성도/버튼인터랙션_기틀북.css §9 · 운영자 260622 */
-  .jsave.dlbtn { position:relative; overflow:hidden; background:linear-gradient(165deg, rgba(34,56,41,.55), rgba(14,26,18,.62)) !important; border-color:rgba(255,255,255,.13) !important; backdrop-filter:blur(12px) saturate(1.2) !important; -webkit-backdrop-filter:blur(12px) saturate(1.2) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); }   /* 글래스 = thumb 탭/세그 그린 글래스 톤 계승 — 평평한 대기열 배경서도 또렷(near-black은 안 떠 검정으로 보임·운영자 260623) */
-  .jsave.dlbtn:hover { background:linear-gradient(165deg, rgba(44,72,52,.6), rgba(18,32,22,.66)) !important; border-color:rgba(255,255,255,.2) !important; }
+  .jsave.dlbtn { position:relative; overflow:hidden; background:rgba(8,15,11,.3) !important; border-color:rgba(255,255,255,.14) !important; backdrop-filter:blur(8px) !important; -webkit-backdrop-filter:blur(8px) !important; }   /* 글래스 = 형제 .sbtn 톤 통일(운영자 260622) */
+  .jsave.dlbtn:hover { background:rgba(255,255,255,.16) !important; border-color:rgba(255,255,255,.22) !important; }
   .jsave.dlbtn .dl-ack { display:none !important; }   /* 기본 .dlbtn 누름 ✓팝·링 제거 — 시퀀스 연출이 대체 */
   .jsave > svg, .jsave .dlseq-ic, .jsave .jslbl { position:relative; z-index:1; }
   .jsave .jslbl { transition:color .18s; }
@@ -707,29 +707,29 @@ const DOWNLOAD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none
 // 전체저장(.jsave) 다운로드 시퀀스 버튼 = 다운↔체크 스왑 한 벌 (완료 시 ✓ 팝 · 정본 패턴 구성도 §9)
 const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
 // 전체저장 시퀀스 — 순차 저장(진행 i/N·좌→우 채움) → ✓ 팝 → 우측 드레인 풀림(index dlAllSeq와 동일 연출·운영자 260622)
-// job 기반 — renderJob이 다운 도중 잡 행을 재렌더해 .jsave를 새로 그려도(innerHTML 교체) job._dlSt로 상태를 복원,
-// 매 스텝 live() 로 *현재* 버튼에 적용 → ✓가 확실히 뜸(운영자 260623 버그픽스). 완료 hold 1.5s로 또렷.
-async function jSaveSeq(job) {
-  if (!job || job._dlbusy) return;
-  const saves = (job.saves || []).filter(s => s && s.url);
+async function jSaveSeq(btn, saves) {
+  if (!btn || btn._dlbusy) return;
+  saves = (saves || []).filter(s => s && s.url);
   if (!saves.length) return;
-  job._dlbusy = 1;
-  const live = () => document.querySelector('#job-' + job.n + ' .jsave');
-  const apply = st => { const b = live(); if (!b) return; b.classList.remove('dlseq-busy', 'dlseq-done', 'dlseq-snap'); if (st && st.cls) b.classList.add(st.cls); b.style.setProperty('--p', st ? st.p : '0'); const l = b.querySelector('.jslbl'); if (l) l.textContent = st ? st.txt : '전체'; b.style.pointerEvents = (st && st.cls === 'dlseq-busy') ? 'none' : ''; };
+  btn._dlbusy = 1; btn.style.pointerEvents = 'none';
+  const lbl = btn.querySelector('.jslbl'); const orig = lbl ? lbl.textContent : '';
+  btn.classList.remove('dlseq-done', 'dlseq-release'); btn.classList.add('dlseq-busy');
+  btn.style.setProperty('--p', '0');
   for (let i = 0; i < saves.length; i++) {
     dlBlob(saves[i].url, saves[i].dlname);
-    job._dlSt = { cls: 'dlseq-busy', p: String((i + 1) / saves.length), txt: `저장 중… ${i + 1}/${saves.length}` };
-    apply(job._dlSt);
+    if (lbl) lbl.textContent = `저장 중… ${i + 1}/${saves.length}`;
+    btn.style.setProperty('--p', String((i + 1) / saves.length));
     await new Promise(r => setTimeout(r, 300));
   }
-  job._dlSt = { cls: 'dlseq-done', p: '1', txt: '완료' };
-  apply(job._dlSt);   // 꽉 채움 + ✓ 팝
-  setTimeout(() => {   // ✓ 1.5s 보여준 뒤 즉시 복귀(드레인 없음)
-    job._dlSt = null;
-    const b = live();
-    if (b) { b.classList.add('dlseq-snap'); b.classList.remove('dlseq-done', 'dlseq-busy'); b.style.setProperty('--p', '0'); const l = b.querySelector('.jslbl'); if (l) l.textContent = '전체'; requestAnimationFrame(() => { const bb = live(); if (bb) bb.classList.remove('dlseq-snap'); }); b.style.pointerEvents = ''; }
-    job._dlbusy = 0;
-  }, 1500);
+  if (lbl) lbl.textContent = '완료';
+  btn.classList.remove('dlseq-busy'); btn.classList.add('dlseq-done');
+  setTimeout(() => {   // ✓ 잠깐 보여준 뒤 즉시 복귀(드레인 없음·운영자 260622)
+    btn.classList.add('dlseq-snap'); btn.classList.remove('dlseq-done');
+    if (lbl) lbl.textContent = orig || '전체';
+    btn.style.setProperty('--p', '0');
+    requestAnimationFrame(() => btn.classList.remove('dlseq-snap'));
+    btn._dlbusy = 0; btn.style.pointerEvents = '';
+  }, 1050);
 }
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
@@ -801,8 +801,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     const svRow = document.createElement('div'); svRow.className = 'jsave-row';   // 전체 = 완료 시각줄 아래로 내려 우측정렬(썸네일 5종 공용 · 운영자 260622)
     const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave dlbtn'; sv.title = '이 결과 전체 다운로드';
     sv.innerHTML = DLSEQ_IC + '<span class="jslbl">전체</span>';
-    sv.onclick = () => jSaveSeq(job);
-    if (job._dlSt) { sv.classList.add(job._dlSt.cls); sv.style.setProperty('--p', job._dlSt.p); const _l = sv.querySelector('.jslbl'); if (_l) _l.textContent = job._dlSt.txt; if (job._dlSt.cls === 'dlseq-busy') sv.style.pointerEvents = 'none'; }   // 다운 진행 중 재렌더돼도 상태 복원(✓ 유지·운영자 260623)
+    sv.onclick = () => jSaveSeq(sv, job.saves);
     svRow.appendChild(sv); row.append(svRow);
   }
   if (job.status === 'err' && job.payload && job.endpoint) {   // 실패 = 같은 설정으로 재시도 재발사(운영자 260620 아이디어 3)
