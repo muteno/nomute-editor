@@ -469,12 +469,14 @@
   .sc-item.lit-brk { box-shadow:0 0 0 1px rgba(var(--danger-rgb),.22), 0 0 16px rgba(240,40,30,.18), inset 0 1px 0 rgba(255,255,255,.05); }
   .sc-item.lit-iss { box-shadow:0 0 0 1px rgba(255,200,50,.28), 0 0 15px rgba(255,195,40,.16), inset 0 1px 0 rgba(255,255,255,.05); }
   /* 프로필 긴급 점등(profBrk) 폐지 — 운영자 260620. 긴급 알림 = 🚨배지 + 토스트로 충분(프로필 확인 루틴 제거). */
-  .nm-toast { position:fixed; left:50%; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateX(-50%) translateY(18px);
+  /* 가운데 정렬 = left:0/right:0 + margin:auto (translateX 안 씀). ⚠️ position:fixed + transform:translateX(-50%) 조합은
+     iOS/웹뷰서 히트테스트를 '변형 전' 위치로 잡아 탭이 보이는 위치 밖으로 새어 뒤 요소(기사 카드)가 눌리던 버그 → translateX 제거로 차단(운영자 260622). 슬라이드는 translateY만. */
+  .nm-toast { position:fixed; left:0; right:0; margin-inline:auto; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateY(18px);
     z-index:60; width:min(92vw,430px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
     background:linear-gradient(135deg, rgba(42,13,11,.95), rgba(20,9,9,.95)); border:1px solid rgba(255,85,60,.5); border-radius:14px;
     box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#fff; font-size:13px; font-weight:700; line-height:1.35;
     backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2); opacity:0; transition:opacity .3s, transform .3s; }
-  .nm-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .nm-toast.show { opacity:1; transform:translateY(0); }
   .nm-toast .tg { flex:none; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:2px 8px; box-shadow:0 0 8px rgba(255,60,50,.5); }
   .nm-toast b { color:#ffd9cf; }
   .nm-toast .ft-msg { flex:1; min-width:0; }   /* 본문이 남는 폭 채움 → ✓·↻ 버튼 우측 정렬(운영자 260622) */
@@ -654,11 +656,8 @@
   .qpop .qh { display:flex; align-items:center; gap:6px; padding:0 3px; flex:none; }   /* padding-right 3px = .qrow 우측 패딩과 동일 → X셀·링크열 우측 기준선 일치 */
   .qpop .qh svg { stroke:var(--accent); flex:none; }
   .qpop .qh b { margin-right:2px; }
-  .qpop .qh-xcell { margin-left:auto; width:44px; flex:none; display:flex; align-items:center; justify-content:flex-start; }   /* X = 우측 고정폭 셀(=.qact 폭) 좌단 → 행 링크 버튼(.qgo) 좌변과 X 좌변 정렬(운영자 260622) */
-  .qpop .qh-x { flex:none; width:20px; height:20px; display:grid; place-items:center; padding:0;
-    background:none; border:none; color:var(--mut); font-size:11px; line-height:1; cursor:pointer; opacity:.55; transition:opacity .15s, color .15s; }
-  .qpop .qh-x svg { stroke:currentColor; }   /* 새 SVG가 .qpop .qh svg{stroke:accent}에 잡혀 강제 초록되던 회귀 차단 — 닫기=회색 currentColor */
-  .qpop .qh-x:hover { opacity:1; color:var(--fg); }
+  .qpop .qh-xcell { margin-left:auto; width:44px; flex:none; display:flex; align-items:center; justify-content:flex-start; }   /* X = 우측 고정폭 셀(=.qact 폭) 좌단 → 행 ↗ 버튼(.qgo) 좌변과 X 좌변 정렬(운영자 260622) */
+  .qpop .qh .tool-x svg { stroke:currentColor; }   /* 디자인시스템 표준 닫기(.tool-x 글래스) 그대로 계승 — 헤더 svg{stroke:accent} 강제초록만 차단(운영자 260622) */
   .qpop .qlist { margin-top:8px; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow-y:auto; }   /* 컨테이너 max-height 클램프 하에 리스트만 스크롤(헤더·페이지네이션 고정) */
   .qrow { display:flex; align-items:center; gap:9px; padding:8px 3px; border-top:1px solid var(--line2); }
   .qrow:first-child { border-top:none; }
@@ -1585,7 +1584,7 @@
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
 <div class="bpop qpop" id="qpop" hidden>
-  <div class="qh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg><b>대기열</b><span class="qh-xcell"><button class="qh-x" id="qpopX" type="button" aria-label="닫기" title="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span></div>
+  <div class="qh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg><b>대기열</b><span class="qh-xcell"><button class="tool-x" id="qpopX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div>
   <div class="qlist" id="qpopList"></div>
   <div class="qpage" id="qpopPage"></div>
 </div>
@@ -3803,7 +3802,15 @@ $('#bnav').addEventListener('click', e => {
   const lk = e.target.closest('#linkfab');
   if (lk) { e.preventDefault(); const wasOpen = !linkpop.hidden; closeOverlays('linkpop'); if (!wasOpen) { popAt(linkpop, lk); linkpop.hidden = false; } else linkpop.hidden = true; return; }
 });
+// 팝업(bpop·linkpop·qpop) 바깥클릭 닫기 — 단 '포인터가 팝업 안에서 눌린' 클릭은 제외.
+//   페이저(2페이지) 클릭 시 renderQueuePage 가 innerHTML 로 누른 버튼을 DOM서 떼어내 qpop.contains(target)=false 가 되며
+//   팝업이 오발 닫히던 버그 차단(폰 웹뷰선 타깃 탈락 시 stopPropagation 도 불안정). pointerdown 은 재렌더 전이라 타깃이 붙어있어 판정 정확(운영자 260622).
+let _popDownInside = false;
+['pointerdown', 'mousedown'].forEach(ev => document.addEventListener(ev, e => {
+  _popDownInside = !!(e.target && e.target.closest && e.target.closest('#bpop, #linkpop, #qpop'));
+}, true));
 document.addEventListener('click', e => {
+  if (_popDownInside) return;   // 팝업 내부에서 시작한 클릭 = 안 닫음(타깃 탈락 무관)
   if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) bpop.hidden = true;
   if (!linkpop.hidden && !linkpop.contains(e.target) && !$('#bnav').contains(e.target)) linkpop.hidden = true;
   if (!qpop.hidden && !qpop.contains(e.target) && !$('#bnav').contains(e.target)) qpop.hidden = true;
