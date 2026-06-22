@@ -179,7 +179,7 @@
   .pmenu.closing { animation:popOut var(--dur) cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
   @media (prefers-reduced-motion: reduce) { .pmenu { animation:none; } }   /* 열림도 즉시 — 닫힘(hidePmenu JS 가드)과 대칭 */
   /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
-  @keyframes popInCx { from { opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to { opacity:1; transform:translateX(-50%);} }
+  @keyframes popInCx { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }   /* translateX 뺌 — 정렬은 JS 좌변지정(fixed+translateX 히트테스트 누수 차단·운영자 260622) */
 
   /* ── 필터바(배너 아래·스티키) ── */
   .filterbar { position:relative; z-index:5; margin-top:2px; padding:2px 0 4px; }   /* 하단 패딩 축소 → 카테고리↔내용 더 붙임 */
@@ -640,10 +640,10 @@
     box-shadow:0 8px 22px rgba(15,253,2,.42), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s; text-decoration:none; }
   .bnav-fab svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; stroke-linejoin:round; }
   .bnav-fab:active { transform:scale(.92); }
-  .bpop { position:fixed; z-index:36; transform:translateX(-50%); min-width:140px; max-width:230px;
+  .bpop { position:fixed; z-index:36; min-width:140px; max-width:230px;   /* translateX(-50%) 제거 = fixed+translateX iOS 히트테스트 누수(탭이 뒤 요소로 샘) 차단 → 가운데정렬은 JS(popAt/openQueue)가 좌변 직접 지정(운영자 260622) */
     background:linear-gradient(165deg, rgba(24,40,29,.97), rgba(12,21,15,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
     border:1px solid var(--line); border-radius:15px; padding:11px 15px; box-shadow:0 18px 46px rgba(0,0,0,.6);
-    display:flex; flex-direction:column; gap:3px; animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both; }   /* popInCx = 중앙정렬 translateX(-50%) 보존(qpop 우측 오버플로우 수정) */
+    display:flex; flex-direction:column; gap:3px; animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both; }   /* 가운데정렬 = JS(popAt/openQueue) 좌변 직접 지정 · popInCx = scale/translateY 팝인만(translateX 없음 = 히트테스트 누수 차단) */
   .bpop[hidden] { display:none; }
   .bpop b { font-size:13px; font-weight:800; color:var(--accent); padding-left:2px; }   /* 아래 a(padding 8px 4px)와 거의 정렬(살짝 좌측) */
   .bpop b svg { vertical-align:-2px; margin-right:4px; }   /* 피드 탐색 앞 돋보기 — 초록 accent 상속(currentColor) */
@@ -3827,10 +3827,11 @@ setInterval(tickClock, 1000); tickClock();
 
 // S(개정) 하단 네비 — 스크랩/피드=인앱 탭 전환 / SNS=<a> 직접 이동 / FAB(+)=제작도구 팝업.
 const bpop = $('#bpop'), linkpop = $('#linkpop'), qpop = $('#qpop');
-function popAt(pop, btn) {        // 팝업을 버튼 위에 띄움(좌우 화면 밖 안 나가게 클램프)
+function popAt(pop, btn) {        // 팝업을 버튼 위에 띄움(좌우 화면 밖 안 나가게 클램프). ⚠️ translateX 안 씀(fixed+translateX 히트테스트 누수 차단·운영자 260622) → 폭 재서 좌변 직접 지정. 호출부서 hidden 해제 후 호출(폭 측정).
   const r = btn.getBoundingClientRect();
-  pop.style.left = Math.max(120, Math.min(r.left + r.width / 2, window.innerWidth - 120)) + 'px';
   pop.style.bottom = (window.innerHeight - r.top + 8) + 'px';
+  const w = pop.offsetWidth || 200, cx = r.left + r.width / 2;
+  pop.style.left = Math.round(Math.max(8, Math.min(cx - w / 2, window.innerWidth - w - 8))) + 'px';
 }
 $('#bnav').addEventListener('click', e => {
   // 레거시/SNS/뉴스요약 = 탭 전환(showTab). ＋=제작도구 팝업 / 링크=피드 탐색 팝업(둘은 상호 배타).
@@ -3848,9 +3849,9 @@ $('#bnav').addEventListener('click', e => {
     showTab(b.dataset.tab); return;   // 일반 탭전환 = 열린 팝업 자동 닫힘
   }
   const f = e.target.closest('#toolfab');
-  if (f) { e.preventDefault(); const wasOpen = !bpop.hidden; closeOverlays('bpop'); if (!wasOpen) { popAt(bpop, f); bpop.hidden = false; } else bpop.hidden = true; return; }
+  if (f) { e.preventDefault(); const wasOpen = !bpop.hidden; closeOverlays('bpop'); if (!wasOpen) { bpop.hidden = false; popAt(bpop, f); } else bpop.hidden = true; return; }
   const lk = e.target.closest('#linkfab');
-  if (lk) { e.preventDefault(); const wasOpen = !linkpop.hidden; closeOverlays('linkpop'); if (!wasOpen) { popAt(linkpop, lk); linkpop.hidden = false; } else linkpop.hidden = true; return; }
+  if (lk) { e.preventDefault(); const wasOpen = !linkpop.hidden; closeOverlays('linkpop'); if (!wasOpen) { linkpop.hidden = false; popAt(linkpop, lk); } else linkpop.hidden = true; return; }
 });
 // 팝업(bpop·linkpop·qpop) 바깥클릭 닫기 — 단 '포인터가 팝업 안에서 눌린' 클릭은 제외.
 //   페이저(2페이지) 클릭 시 renderQueuePage 가 innerHTML 로 누른 버튼을 DOM서 떼어내 qpop.contains(target)=false 가 되며
@@ -3890,10 +3891,10 @@ if (qFeedBtn) {
 function openQueue() {
   closeOverlays('qpop');
   const r = qFeedBtn.getBoundingClientRect();
-  qpop.style.left = '50%';
   qpop.style.bottom = (window.innerHeight - r.top + 12) + 'px';   // 네비 위로(크게·위로 띄움)
   qpop.style.maxHeight = (r.top - 16) + 'px';   // 네비 위 가용높이로만 캡(하한 없음 → 박스 top=4px 항상 ≥0, 짧은 뷰포트서도 헤더 안 잘림). 헤더·페이지=flex:none, 리스트만 압축.
   qpop.hidden = false;
+  qpop.style.left = Math.round((window.innerWidth - qpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단) → 폭 재서 뷰포트 좌변 중앙(운영자 260622)
   loadQueue();
 }
 const qEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
