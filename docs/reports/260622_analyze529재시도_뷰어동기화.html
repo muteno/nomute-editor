@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>529 일시 과부하 재시도 + 뷰어 동기화 — 변경 보고서 (260622)</title>
+<style>
+  :root{
+    --bg:#0a120d; --panel:#101a14; --card:#13201a;
+    --fg:#eef7f0; --fg2:#cfd8d0; --mut:#8fa697;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2;
+    --amber:#ff9614; --amber-rgb:255,150,20;
+    --danger:#ff5b4a; --arm:#ffd93d; --info:#0cd0f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    line-height:1.6;font-size:15px;-webkit-text-size-adjust:100%}
+  .wrap{max-width:920px;margin:0 auto;padding:26px 18px 60px}
+  h1{font-size:23px;line-height:1.3;margin:.2em 0 .1em}
+  h2{font-size:18px;margin:1.8em 0 .5em;padding-bottom:.3em;border-bottom:1px solid var(--line);color:var(--accent)}
+  h3{font-size:15px;margin:1.3em 0 .4em;color:var(--amber)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 1.2em}
+  .lead{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:10px;padding:13px 15px;margin:1em 0}
+  p{margin:.5em 0}
+  code{background:rgba(255,255,255,.06);border:1px solid var(--line2);border-radius:5px;
+    padding:.08em .38em;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:.88em}
+  table{width:100%;border-collapse:collapse;margin:.8em 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 11px;border:1px solid var(--line);vertical-align:top}
+  th{background:rgba(255,255,255,.04);color:var(--fg2);font-weight:700}
+  td.before{color:#ffb3ab}
+  td.after{color:#bdf2b0}
+  .chip{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;letter-spacing:.03em}
+  .c-fail{color:#fff;background:linear-gradient(135deg,#ff5b4a,#e2231a)}
+  .c-retry{color:var(--amber);background:rgba(var(--amber-rgb),.16);box-shadow:0 0 7px rgba(var(--amber-rgb),.3)}
+  .c-proc{color:#ffce54;background:rgba(255,200,60,.14)}
+  .c-succ{color:#7dffa0;background:rgba(15,253,2,.16)}
+  ul{margin:.4em 0;padding-left:1.25em}
+  li{margin:.25em 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:.8em 0}
+  @media(max-width:620px){.grid{grid-template-columns:1fr}}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px}
+  .box.good{border-left:3px solid var(--accent)}
+  .box.warn{border-left:3px solid var(--amber)}
+  .box.risk{border-left:3px solid var(--danger)}
+  .box h4{margin:.1em 0 .5em;font-size:14px}
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto}
+  .v{color:var(--accent);font-weight:700}
+  .files li b{color:var(--info)}
+  .verdict{display:flex;gap:10px;flex-wrap:wrap;margin:.6em 0}
+  .vc{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 13px;text-align:center}
+  .vc .n{font-size:26px;font-weight:800;line-height:1}
+  .vc .l{font-size:12px;color:var(--mut);margin-top:3px}
+  .ok{color:var(--accent)} .wn{color:var(--amber)} .bd{color:var(--danger)}
+  small{color:var(--mut)}
+  hr{border:0;border-top:1px solid var(--line);margin:1.6em 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>📰 529 일시 과부하 재시도 + 대기열 동기화</h1>
+<p class="sub">뉴스 파이프라인 견고성 변경 보고서 · 2026-06-22 KST · 브랜치 <code>claude/pensive-mendel-3c2rt4</code></p>
+
+<div class="lead">
+<b>한 줄 요약 —</b> 오늘 09:11~09:46 뉴스 분석 4건이 <b>전부 같은 에러</b>(<code>API Error: 529 Overloaded</code> = Claude API 서버측 일시 과부하)로 실패했다. 레포 버그가 아니라 ~35분짜리 서버 과부하 윈도에 걸린 것. 다만 기존 <code>analyze.sh</code>는 <b>재시도가 0</b>이라 깜빡임 한 번에 멀쩡한 기사를 영구 실패함(<code>failed/</code>)에 처박고, 뷰어엔 빨강 <span class="chip c-fail">FAIL</span>로 떠 오해를 줬다. → <b>일시 과부하면 재시도</b>하고, 그 상태를 대기열에 <span class="chip c-retry">재시도</span>로 <b>동기화</b>하도록 고침.
+</div>
+
+<h2>1. 무엇이 일어났나 (실측)</h2>
+<table>
+<tr><th>시각(KST)</th><th>기사</th><th>입력</th><th>결과</th></tr>
+<tr><td>08:59</td><td>(mk 12079541)</td><td>—</td><td class="after">✅ 성공</td></tr>
+<tr><td>09:11</td><td>中央 北철책 남하</td><td>전문(정상)</td><td class="before">❌ 529 Overloaded</td></tr>
+<tr><td>09:32</td><td>韓經 李지지율</td><td>URL+alt(정상)</td><td class="before">❌ 529 Overloaded</td></tr>
+<tr><td>09:36</td><td>聯合 카타르 LNG 폭발</td><td>URL+alt(정상)</td><td class="before">❌ 529 Overloaded</td></tr>
+<tr><td>09:46</td><td>EDAILY 李지지율</td><td>전문(정상)</td><td class="before">❌ 529 Overloaded</td></tr>
+</table>
+<p>입력은 전부 멀쩡했다(전문 통째·URL+alt 정상). <b>09:11~09:46 약 35분 Anthropic 서버 과부하 윈도</b> 하나에 걸렸을 뿐이고, 직전(08:59)·직후 재시도는 안 죽었다. 화면의 "× X menu / 구독 공유하기" 같은 건 폰 공유가 UI까지 긁어온 흔적일 뿐 본문은 정상 수신.</p>
+
+<h2>2. 기존 → 변경 (핵심 비교)</h2>
+<table>
+<tr><th>상황</th><th>전 (기존)</th><th>후 (이번)</th></tr>
+<tr><td>API 529 일시 과부하</td><td class="before">재시도 0 → 즉시 <code>failed/</code> 격리, 자동복구 없음</td><td class="after">인라인 재시도(3회·백오프 15→30s) → 안 풀리면 <code>pending/</code> 잔류 + <code>.retry</code> 마커 → <code>pending-sweep</code>(≤20분)이 회복 시 자동 재분석</td></tr>
+<tr><td>게이트웨이 5xx (502·504·520)</td><td class="before">즉시 격리</td><td class="after">일시 과부하로 분류·재시도</td></tr>
+<tr><td>대기열(뷰어) 표시</td><td class="before"><span class="chip c-fail">FAIL</span> 빨강 (오해)</td><td class="after"><span class="chip c-retry">재시도 N</span> 앰버 펄스 (자가치유 진행)</td></tr>
+<tr><td>수집함 픽 표시(같은 기기)</td><td class="before">10분 후 거짓 FAIL — 빨강 링·실패 토스트·Failed칩</td><td class="after">'분석 중' 유지 (거짓 FAIL 차단)</td></tr>
+<tr><td>GitHub Actions 잡 색</td><td class="before">실패 = 빨강</td><td class="after">재시도 대기 = 초록(자가치유 정상) · 최종 실패만 빨강</td></tr>
+<tr><td>입력 막다른길(홈도메인·<code>ANALYSIS_FAILED</code>)</td><td>즉시 FAIL</td><td class="after">즉시 FAIL <b>(불변 — 재시도 무의미)</b></td></tr>
+<tr><td>429·쿼터·인증 오류</td><td>즉시 FAIL</td><td class="after">즉시 FAIL <b>(불변 — 재시도해도 그대로)</b></td></tr>
+<tr><td>재시도 5회 초과</td><td>—</td><td class="after"><code>failed/</code> 격리 → <span class="chip c-fail">FAIL</span> (무한루프 차단)</td></tr>
+</table>
+
+<h2>3. 새 상태 흐름</h2>
+<div class="flow">
+<p style="margin:0 0 .5em"><b>한 기사의 분석 실패 처리:</b></p>
+<p style="margin:.2em 0">claude 호출 실패 →
+<span class="v">is_transient?</span>
+(서버 5xx·Overloaded·게이트웨이만, 앞 8줄 검사)</p>
+<ul style="margin:.3em 0">
+<li><b>아니오</b>(입력 막다른길·429·인증·timeout) → <span class="chip c-fail">FAIL</span> <code>failed/</code> 격리 <small>(= 기존과 100% 동일)</small></li>
+<li><b>예</b> → 인라인 3회 재시도 → 그래도 과부하면 → <code>.retry</code> 마커(attempts+1), <code>pending/</code> 잔류
+  <ul>
+  <li>attempts &lt; 5 → <span class="chip c-retry">재시도</span> · <code>pending-sweep</code>가 회복 시 자동 재분석 → 성공하면 <span class="chip c-succ">SUCC</span>(마커 정리)</li>
+  <li>attempts ≥ 5 → <span class="chip c-fail">FAIL</span> <code>failed/</code> 격리(최종)</li>
+  </ul>
+</li>
+</ul>
+</div>
+
+<h2>4. 바뀐 파일 (4개 · +84/−19)</h2>
+<ul class="files">
+<li><b>.github/scripts/analyze.sh</b> — <code>is_transient()</code> 신설(5xx/Overloaded/게이트웨이만·앞 8줄) · 인라인 재시도 루프(<code>INLINE_TRIES=3</code>) · 과부하 시 <code>.retry</code> 마커로 pending 잔류(<code>RETRY_CAP=5</code>) · 성공/격리 시 마커 정리</li>
+<li><b>functions/api/pending.js</b> — <code>.retry</code> 마커 감지 → <code>status:'retry'</code> + <code>tries</code> 방출(기존 processing/fail/succ에 <b>추가</b>)</li>
+<li><b>viewer/index.html</b> — <span class="chip c-retry">재시도 N</span> 앰버 펄스 칩(<code>--amber</code> 토큰·<code>@keyframes pulse</code> 재사용·reduced-motion 가드) · 발견성 배지에 retry 포함 · <b>수집함 <code>pickState</code>·<code>pickTimedOut</code> 둘 다 retry-인지</b>(거짓 FAIL·빨강 링·토스트 차단)</li>
+<li><b>docs/news-pipeline.md</b> — 대기열 '네 상태(+재시도)' · 실패격리 예외 명문화 (SSOT 드리프트 차단)</li>
+</ul>
+
+<h2>5. 장단점 · 효율 · 리스크</h2>
+<div class="grid">
+<div class="box good"><h4>✅ 장점</h4><ul>
+<li>일시 과부하에 기사를 안 잃음 — 짧은 깜빡임은 인라인서 즉시 흡수, 35분 윈도는 sweep로 자가치유</li>
+<li>뷰어가 진실과 동기화 — 재시도는 앰버, 진짜 실패만 빨강(오해 제거)</li>
+<li>게이트웨이 5xx 변종까지 커버</li>
+<li>추가형(additive) — 3단계 파이프라인 기틀·제미나이0 잠금 불변</li>
+</ul></div>
+<div class="box warn"><h4>⚙️ 효율</h4><ul>
+<li>529 = <b>토큰 과금 0</b>(서버가 생성 전 거부) → 쿼터 영향 무시 가능</li>
+<li>인라인 백오프 ~45s/건 · 잡 타임아웃 90분에 한참 못 미침</li>
+<li>최악 호출 = 1기사 15회(전부 0토큰 fast-fail) · 캡 5로 유한</li>
+</ul></div>
+</div>
+<div class="box risk"><h4>⚠️ 품질저하 리스크 (전부 비차단·수용)</h4><ul>
+<li>장기 과부하 시 자동 재시도가 "즉시"가 아니라 <b>최대 ~20분</b>(sweep 주기) — 단 인라인 3회가 짧은 깜빡임은 즉시 흡수. 칩 툴팁이 '자동 재시도 대기'로 기대치 동기화.</li>
+<li>1시간+ 지속 과부하는 캡(5회) 도달 전까지 GitHub 알림엔 안 뜸(뷰어 칩으로만) — 자가치유 노이즈 억제와의 의도된 트레이드오프.</li>
+<li>드문 FP: 기사 본문 앞 8줄에 영어 "Service Unavailable" 등을 그대로 인용 시 1회 헛재시도(무해·곧 수렴). 숫자 '500명·503호'는 앵커로 차단됨.</li>
+</ul></div>
+<p><small>※ 후속(범위 밖·TODO 등록): ① <code>ask.sh</code>(수정요청)도 동일 529 취약 → 같은 재시도 대칭화 · ② <code>pending-sweep</code> 마커-인지 백오프(현재 20분 고정) · ③ 동시런 attempts 언더카운트(저빈도·캡으로 bound).</small></p>
+
+<h2>6. 검증 — 적대적 Opus 4.8 평의회</h2>
+<p>실질 코드·파이프라인·뷰어 변경 → §✅ 표준대로 <b>Opus 4.8·effort max READ-ONLY 에이전트를 실제 병렬 소환</b>(묘사 아님). 1라운드 10인(서로 다른 앵글: Bash·is_transient·상태기계·git스테이징·sweep·api·viewer·수집함·다운스트림·총괄) → 발견 반영 → 재검증 루프.</p>
+<div class="verdict">
+<div class="vc"><div class="n ok">6</div><div class="l">1R ✅ 통과</div></div>
+<div class="vc"><div class="n wn">4</div><div class="l">1R ⚠️ 수정요</div></div>
+<div class="vc"><div class="n bd">0</div><div class="l">❌ 차단</div></div>
+</div>
+<h3>반영한 수정 (⚠️ → 해소)</h3>
+<ul>
+<li><b>수집함 거짓 FAIL</b>(앵글8) — 같은 기기 retry 픽이 10분 타임아웃으로 빨강 FAIL 재발 → <code>pickState</code> + <code>pickTimedOut</code> 둘 다 retry 가드(재검증서 빨강 링/토스트 경로 추가 발견 → 2차 수정으로 완전 차단)</li>
+<li><b>is_transient FN/FP</b>(앵글2) — 게이트웨이 5xx(502/504/520) 누락 → 5xx 전체 확장 / 산문 오탐 → 앞 8줄만 검사. 재검증 31/31 케이스 통과</li>
+<li><b>SSOT 문서 드리프트</b>(앵글10) — <code>news-pipeline.md</code>·<code>pending.js</code> 주석·작업이력 보강</li>
+</ul>
+<h3>기계 검증</h3>
+<ul>
+<li><code>bash -n analyze.sh</code> ✓ · <code>node --check pending.js</code> ✓ · <code>check_refs.py</code> rc=0(viewer JS 구문·디자인 거울·토큰 게이트)</li>
+<li><code>is_transient</code> 단위 31/31 ✓(529·502·504·520·overloaded_error 잡고 / 429·인증·ANALYSIS_FAILED·'500명·503호' 제외)</li>
+<li>마커 JSON 유효·KST(+09:00)·재파싱 증분 ✓</li>
+</ul>
+
+<hr>
+<p><small>정본 코드 = <code>.github/scripts/analyze.sh</code> · <code>functions/api/pending.js</code> · <code>viewer/index.html</code>. 이 보고서는 일회성 스냅샷(viewer 동기화 의무 없음). 백업 = <code>_versions/260622_1016_analyze529_retry_뷰어동기화/</code>.</small></p>
+
+</div>
+</body>
+</html>

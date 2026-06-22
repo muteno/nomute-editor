@@ -679,8 +679,6 @@
   .qb-succ { color:#7dffa0; background:rgba(15,253,2,.16); }
   .qb-fail { color:#fff; background:linear-gradient(135deg,#ff5b4a,#e2231a); box-shadow:0 0 9px rgba(240,40,30,.45); }
   .qb-proc { color:var(--thumb); background:rgba(255,200,60,.14); }
-  .qb-retry { color:var(--amber); background:rgba(var(--amber-rgb),.16); box-shadow:0 0 7px rgba(var(--amber-rgb),.30); animation:pulse 1.6s ease-in-out infinite; }   /* 재시도 중 = 앰버 펄스(빨강 FAIL 아님·자가치유 진행 · 운영자 260622) */
-  @media (prefers-reduced-motion:reduce){ .qb-retry { animation:none; } }
   .qgo { flex:none; font-size:11px; font-weight:800; color:var(--accent); background:rgba(15,253,2,.1); border:1px solid rgba(15,253,2,.35);
     border-radius:7px; padding:4px 10px; cursor:pointer; transition:background .15s; }
   .qgo:hover { background:rgba(15,253,2,.2); }
@@ -3833,10 +3831,6 @@ function qRowHtml(it) {
   let right;
   if (it.status === 'succ') right = '<span class="qb qb-succ">SUCC</span><button class="qgo" type="button">바로가기</button>';
   else if (it.status === 'fail') right = '<span class="qb qb-fail">FAIL</span><button class="qdl" type="button" aria-label="진단 다운로드" title="실패 원인 진단 MD 다운로드">' + DL_SVG + '</button>';
-  else if (it.status === 'retry') { const qurl = it.key && /^https?:\/\//i.test(it.key);   // 재시도 중: API 일시 과부하로 자동 재분석 대기(FAIL 아님). 원문 URL 있으면 바로가기로 미리 읽기.
-    right = '<span class="qb qb-retry" title="API 일시 과부하로 자동 재시도 대기 중 — 회복되면 자동 분석돼(' + (it.tries ? '재시도 ' + it.tries + '회' : '대기') + ')">재시도' + (it.tries ? ' ' + it.tries : '') + '</span>' + (qurl
-      ? '<button class="qgo qgo-url" type="button" title="원문 새 탭 — 분석 끝나면 뉴스요약 이동으로 바뀜">바로가기</button>'
-      : '<button class="qgo qgo-off" type="button" disabled title="전문 재시도 중 — 원문 링크 없음(끝나면 뉴스요약 이동)">바로가기</button>'); }
   else { const qurl = it.key && /^https?:\/\//i.test(it.key);   // 처리중: 원문 URL 있으면 바로가기가 URL을 대신(앰버=URL색 흡수) · 없으면(전문) 비활성. 분석 끝나면 SUCC=초록 바로가기→뉴스요약(운영자 260622).
     right = '<span class="qb qb-proc">처리중</span>' + (qurl
       ? '<button class="qgo qgo-url" type="button" title="원문 새 탭 — 분석 끝나면 뉴스요약 이동으로 바뀜">바로가기</button>'
@@ -4111,7 +4105,7 @@ const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
 const PICK_TIMEOUT_MS = 10 * 60000;
-const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pendStatus(c) === 'retry' || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622)
+const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
 // 실패 트레이 '체크 = 숨김'(운영자 260621): 체크하면 그 실패 후보를 트레이·칼럼 어디에도 안 뜨게(로컬 누적·기기락). 되돌리려면 localStorage nm_failhide 삭제.
@@ -4128,7 +4122,7 @@ const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" a
 // ── 픽 상태 cross-device 동기화 (B안 · 운영자 260620): 픽 표시는 로컬 nm_ratings(기기락)이라 폰↔PC 미동기였다.
 //    이미 전역인 pending/(픽하면 생김)·queue(피드 DATA)·picks-failed 를 진실원본으로 *유도* → 어느 기기서 픽해도 같은 상태.
 //    localStorage(r.picked)는 발사 직후 깜빡임 가리는 낙관적 오버레이로 유지. (정본 설계 = docs/_세션_작업큐_260620.md §D)
-let PEND = new Map();   // normUrl → 'processing'|'retry'|'fail'|'succ' (api/pending 라이브 · retry=일시 과부하 자동 재시도 대기)
+let PEND = new Map();   // normUrl → 'processing'|'fail'|'succ' (api/pending 라이브)
 let PEND_PROC = 0;      // 처리중(processing) 대기열 건수 = 피드버튼 발견성 배지(숨은 롱프레스 의존 제거·운영자 260620)
 async function loadPending(render) {
   try {
@@ -4136,7 +4130,7 @@ async function loadPending(render) {
     if (r.ok) { const d = await r.json(); const m = new Map();
       (d.items || []).forEach(it => { if (it && it.key) m.set(_normU(it.key), it.status); });
       PEND = m;
-      PEND_PROC = (d.items || []).filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
+      PEND_PROC = (d.items || []).filter(it => it && it.status === 'processing').length;   // 발견성 배지 = 처리중 건수
       updateQBadge(); }
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
   if (render && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
@@ -4151,7 +4145,6 @@ function pickState(c) {   // 픽 상태 통합 = 로컬(r.picked) + 전역(api/p
   const r = ratingsAll()[candId(c)] || {};
   const ps = pendStatus(c);
   if (!r.picked && !ps && !pickInFeed(c)) return null;        // 픽·파이프라인·피드 전부 무관 → 트리아지 버튼
-  if (ps === 'retry') return 'picking';                        // 일시 과부하 자동 재시도 중 = 분석 진행(클라 10분 타임아웃의 거짓 FAIL 차단 · 서버 진실원본 우선 · 운영자 260622)
   if (pickFailedShow(c) || ps === 'fail') return 'failed';     // 서버 분석실패(picks-failed/pending failed) OR 무응답 타임아웃
   if (pickSettled(c) || ps === 'succ') return 'settled';       // 피드 등장(전역) OR 실패복구 해소 → PICKED
   return 'picking';                                            // 픽됨/pending인데 아직 미완 = 분석 중

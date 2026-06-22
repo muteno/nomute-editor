@@ -8,8 +8,6 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
 MODEL="claude-opus-4-8"
-INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
-RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
 : > /tmp/analyzed_titles.txt
 : > /tmp/analyzed_files.txt      # 생성된 queue 파일명(베이스) 적재 → 완료 푸시가 ?a=<파일>로 요약 딥링크(titles와 같은 순서)
 : > /tmp/analyzed_failures.txt   # 실패 URL 적재 → 워크플로가 잡을 빨갛게(조용한 실패 차단)
@@ -48,16 +46,6 @@ article_id() {
   esac
   [ -n "$id" ] || id="$hash"
   printf '%s' "$id"
-}
-
-# claude -p 출력/에러가 '서버측 일시 과부하(5xx·Overloaded·게이트웨이)'인지 — 재시도할 가치가 있는 신호.
-# ⚠️ 좁게 잡음 = 오직 서버 과부하(공짜·일시)만. 429/쿼터/인증은 제외(재시도해도 그대로라 격리·프로필 점등이 맞음).
-#   ANALYSIS_FAILED(입력 막다른길)·정상출력도 여기 안 걸림(호출부에서 따로 즉시 탈출).
-#   ① 5xx 전체(502 Bad Gateway·504 Gateway Timeout·520 등 게이트웨이 포함 — Anthropic 앞단 일시장애) 커버.
-#   ② 출력 '앞부분(8줄)'만 검사 = CLI 에러는 맨 앞 줄 → 기사 본문 산문의 '503호'·'Service Unavailable' 인용 오탐 억제(평의회 260622).
-is_transient() {
-  local s; s="$(printf '%s\n' "${1:-}" | head -n 8)"
-  grep -qiE 'API Error: 5[0-9][0-9]|overloaded_error|Overloaded|"status": ?5[0-9][0-9]|Service (Unavailable|Temporarily Unavailable)|Bad Gateway|Gateway Time-?out' <<<"$s"
 }
 
 for f in "${files[@]}"; do
@@ -153,51 +141,18 @@ ${extracted}"
   # --max-turns = 도구 무한루프(레포 탐색 등) 차단. 둘 다 "제약없이=막힘없이"의 핵심.
   # 프롬프트는 stdin으로 전달 — 지침 강제주입이 커서 명령행 인자로는 ARG_MAX('Argument list too long')
   # 위험(stdin은 무제한). claude -p 는 인자 없으면 stdin을 프롬프트로 읽는다.
-  # 인라인 재시도 — Anthropic API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(260622).
-  #   529는 거의 항상 일시적(usually temporary)이라 몇 초~분 깜빡임은 여기서 흡수 → 뷰어에 안 보이고 바로 성공.
-  #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 과부하 아닌 실패(빈출력·timeout)도 재시도 안 함.
-  inline_delay=15
-  for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | timeout 900 claude -p \
-          --model "$MODEL" \
-          --effort max \
-          --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
-          --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
-          --max-turns 40 \
-          2> "/tmp/${base}.err")"
-    rc=$?
-    # 성공(정상종료+비어있지않음+frontmatter) 또는 모델의 명시적 실패신호 → 재시도 무의미·탈출
-    if { [ $rc -eq 0 ] && [ -n "${out// }" ] && grep -qm1 '^---' <<<"$out"; } || grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then
-      break
-    fi
-    # 일시 과부하면 백오프 후 재시도(마지막 시도면 그대로 탈출 → 아래 격리/재시도마커 분기)
-    if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
-      echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
-      sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
-    fi
-    break
-  done
+  out="$(printf '%s' "$prompt" | timeout 900 claude -p \
+        --model "$MODEL" \
+        --effort max \
+        --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
+        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
+        --max-turns 40 \
+        2> "/tmp/${base}.err")"
+  rc=$?
   claude_health_update "$out" "/tmp/${base}.err"   # 응답O=정상(경고해제) / 빈응답+인증·쿼터=경고(프로필 점등)
 
   # 실패 판정: 비정상 종료 / 빈 출력 / 모델이 실패 신호 / frontmatter 없음
   if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^ANALYSIS_FAILED' <<<"$out" || ! grep -qm1 '^---' <<<"$out"; then
-    # ── 일시 과부하(5xx/Overloaded) = failed로 즉시 묻지 말고 pending에 남겨 재시도(260622) ──
-    # 입력 막다른길(ANALYSIS_FAILED)·과부하 아닌 실패는 재시도 무의미 → 기존대로 격리. 과부하 신호만 재시도.
-    if is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)" && ! grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then
-      prev=0; [ -f "pending/${base}.retry" ] && prev="$(grep -oE '"attempts":[0-9]+' "pending/${base}.retry" | grep -oE '[0-9]+' | head -1)"
-      tries=$(( ${prev:-0} + 1 ))
-      if [ "$tries" -lt "$RETRY_CAP" ]; then
-        # pending 유지 + 재시도 마커(시도횟수·사유·KST) → 기존 pending-sweep(≤20분)이 회복 시 자동 재분석.
-        # 뷰어 api/pending 이 이 마커를 보고 'FAIL'(빨강) 대신 '재시도 중'(앰버)으로 표시 = 상태 동기화(운영자 260622).
-        # analyzed_failures.txt 엔 안 적음 → 재시도 대기는 잡을 빨갛게 안 함(자가치유 정상상태).
-        printf '{"attempts":%d,"error":"API 일시 과부하(5xx/Overloaded) — 자동 재시도 대기","last":"%s","kind":"transient"}\n' \
-          "$tries" "$(TZ='Asia/Seoul' date +%FT%T%:z)" > "pending/${base}.retry"
-        echo "  🔁 API 일시 과부하 — pending 유지·재시도 대기(${tries}/${RETRY_CAP}); sweep 가 회복 시 재분석"
-        echo "::endgroup::"; continue
-      fi
-      echo "  ⚠️ 일시 과부하 재시도 ${RETRY_CAP}회 초과 — failed/ 격리로 전환"
-    fi
-    rm -f "pending/${base}.retry"   # 격리로 가면 재시도 마커 정리(있었으면)
     mkdir -p pending/failed
     {
       echo "url: $url"
@@ -236,7 +191,6 @@ ${extracted}"
   fi
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
-  rm -f "pending/${base}.retry"   # 과부하 후 회복 성공 = 재시도 마커 정리(뷰어 '재시도 중' 해제)
   echo "${title:-$id}" >> /tmp/analyzed_titles.txt
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   echo "성공 → $outfile (지침 ${GVER})"
