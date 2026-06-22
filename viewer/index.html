@@ -4132,9 +4132,11 @@ function qAgo(t) {
   return relAge(m / 60);   // 1시간 이상 = 공통 사다리(N시간/N일/N주일/N개월) — 복합표기('5시간 17분') 폐지·열 정렬 일정·기틀(운영자 260621)
 }
 const DL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg>';
+// 큐 항목 id ↔ 피드(DATA=articles.json) 기사 매칭 — file은 .md 유무 양쪽 허용(제목·준비여부·이동 공용 단일출처)
+const qMatch = id => DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id));
 // SUCC 제목 = 피드(DATA)서 file 매칭 우선(없으면 API title). file은 .md 유무 양쪽 허용.
 function qTitle(it) {
-  if (it.status === 'succ') { const a = DATA.find(x => x && x.file && (x.file === it.id || String(x.file).replace(/\.md$/, '') === it.id)); if (a && a.title) return a.title; return it.title || '분석 완료'; }
+  if (it.status === 'succ') { const a = qMatch(it.id); if (a && a.title) return a.title; return it.title || '분석 완료'; }
   return it.title || '(내용 없음)';
 }
 // 대기열 행 = 시간 | 제목 | 상태(픽토그램) | 바로가기(↗·목적지 색). 전부 좌측정렬·30px·테두리 색맞춤(시안 확정 260622).
@@ -4147,23 +4149,26 @@ function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | 
 }
 function qRowHtml(it) {
   const url = it.key && /^https?:\/\//i.test(it.key);
+  // 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면(Pages 빌드 랙) 사실상 미준비 →
+  // 조기 '완료/초록 뉴스요약 이동' 금지, 준비될 때까지 처리중처럼 주황 ↗(원문) 유지(운영자 260622).
+  const eff = (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;
   let status, action;
-  if (it.status === 'succ') {
+  if (eff === 'succ') {
     status = '<span class="qb-done">완료</span>';
     action = qGoBtn('green', '뉴스요약 열기');
-  } else if (it.status === 'fail') {
+  } else if (eff === 'fail') {
     status = '<span class="qb-failt">실패</span>';
     action = url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에 자동저장(다운로드 버튼 없음)
-  } else if (it.status === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
+  } else if (eff === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
     status = '<span class="qico s-retry spin" title="API 일시 과부하 — 자동 재시도 중' + (it.tries ? ' (' + it.tries + '회)' : '') + '">' + Q_REFR + '</span>' + (it.tries ? '<span class="qcnt">' + it.tries + '</span>' : '');
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 — 원문 링크 없음');
-  } else {   // 처리중 = 스피너(재시도와 동색 앰버)
+  } else {   // 처리중(또는 succ인데 피드 미반영=빌드 랙) = 스피너 + 주황 원문(재시도와 동색 앰버)
     status = '<span class="qico s-proc spin" title="분석 처리 중">' + Q_SPIN + '</span>';
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 분석 중 — 원문 링크 없음');
   }
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위)
   const tnew = it.t && (Date.now() - it.t) / 60000 <= 30 ? ' qt-new' : '';   // 30분 이내 = 강조색
-  return '<div class="qrow q-' + it.status + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
+  return '<div class="qrow q-' + eff + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
 }
 function pagerHtml(pages, cur) {   // 5개/페이지 · 페이지번호 슬라이딩 윈도우(최대 5개)
   if (pages <= 1) return '';
@@ -4182,7 +4187,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (it.status === 'succ') qGo(it.id); else if (it.key) failOpen({ url: it.key }); };   // ↗ SUCC=뉴스요약(준비됨) / 그 외(처리중·재시도·실패)=기사 원문 새 탭 · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled라 onclick 미배선=완전 비활(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('go-green')) qGo(it.id); else if (it.key) failOpen({ url: it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
@@ -4218,8 +4223,8 @@ async function feedOpenBy(match, keepQ) {
   a = match();
   if (a) open(a); else qFlash('피드 반영 중 — 곧 표시돼');
 }
-function qGo(id) {   // SUCC 링크 — queue 파일명(id) ↔ DATA.file(.md 양쪽 허용) 매칭
-  feedOpenBy(() => DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id)), true);   // true = 대기열 안 닫음(요약 모달이 위를 덮음)
+function qGo(id) {   // SUCC 링크 — queue 파일명(id) ↔ 피드 기사 매칭(qMatch 공용). 초록 버튼만 호출되므로 항상 매칭됨
+  feedOpenBy(() => qMatch(id), true);   // true = 대기열 안 닫음(요약 모달이 위를 덮음)
 }
 function qFlash(msg) {   // 짧은 토스트(링크 빌드 랙 안내)
   let t = document.getElementById('qFlash');
@@ -5772,7 +5777,7 @@ loadPending();      // eager — 대기열 처리중 건수 배지 초기 표시
 function livePoll() {
   if (document.visibilityState !== 'visible') return;   // 안 보이면 폴 안 함(배터리·쿼터)
   const y = window.scrollY;
-  load().finally(() => { if (!$('#dlg').open && y > 80 && window.scrollY < y - 40) window.scrollTo(0, y); });   // 재렌더가 위로 튕기면 보던 위치 복원
+  load().finally(() => { if (!$('#dlg').open && y > 80 && window.scrollY < y - 40) window.scrollTo(0, y); if (!qpop.hidden) renderQueuePage(); });   // 재렌더가 위로 튕기면 보던 위치 복원 + 대기열 열려있으면 새 DATA 반영 재렌더(succ가 피드에 뜨면 주황→초록 라이브 전환·운영자 260622)
   loadCandidates(true); loadPickFails(); loadMessages(); loadPending();   // loadPending = 대기열 발견성 배지 갱신(탭 무관)
 }
 setInterval(livePoll, 60000);   // 1분 자동 갱신
