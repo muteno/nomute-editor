@@ -1653,9 +1653,10 @@ let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
-// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 5개. 전부 보호성 → 앰버 경고 틴트(.warn).
-// (대분류·정치민감 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
-const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모'];
+// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 6개 → 앰버 경고 틴트(.warn).
+// 앞 5개=콘텐츠 보호(선정성·피해자 안전·장면 검열) · #북·중외교=사실 무결성↑(날조 금지·오전달 중죄급)·표현/창작 제약 아님·좌우 부여(정부정책 두둔 좌/비판 우·현 정부 기준)·운영자 260622.
+// (기타 대분류·정치 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모','#북·중외교'];
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 // R 필터 칩 상태 — 카테고리(OR)
@@ -4098,7 +4099,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (it.status === 'succ') qGo(it.id); else if (it.key) window.open(it.key, '_blank', 'noopener'); };   // ↗ 진행방향 톡 이동 + SUCC=뉴스요약 / 그 외=원문 새 탭(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (it.status === 'succ') qGo(it.id); else if (it.key) failOpen({ url: it.key }); };   // ↗ SUCC=뉴스요약(준비됨) / 그 외(처리중·재시도·실패)=기사 원문 새 탭 · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled라 onclick 미배선=완전 비활(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
