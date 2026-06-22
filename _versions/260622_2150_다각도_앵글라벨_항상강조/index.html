@@ -2083,24 +2083,6 @@ function decorate(root) {
     while (inner.firstElementChild) parent.insertBefore(inner.firstElementChild, li);
     li.remove();
   });
-  // 0b) 다각도 해석: '라벨: 설명'의 라벨(콜론 앞)을 항상 강조(굵게)로 통일 — AI가 **굵게** 안 달아도(라벨은 창의·고정 아님) 앵글 요약 라벨이면 항상 강조(운영자 260622)
-  const _dh2 = [...root.querySelectorAll('h2')].find(h => /다각도/.test(h.textContent || ''));
-  if (_dh2) {
-    const _lis = [];
-    for (let el = _dh2.nextElementSibling; el && el.tagName !== 'H2' && el.tagName !== 'H1'; el = el.nextElementSibling) {
-      if (el.tagName === 'UL' || el.tagName === 'OL') _lis.push(...el.querySelectorAll(':scope > li'));
-    }
-    _lis.forEach(li => {
-      const f = li.firstChild; if (!f) return;
-      if (f.nodeType === 1 && /^(STRONG|B)$/.test(f.tagName)) { f.classList.add('angle-lbl'); return; }   // AI가 이미 **굵게** → 표식만(키워드 데코 제외 → 초록 [] 안 붙고 통일)
-      if (f.nodeType !== 3) return;
-      const m = f.data.match(/^(\s*)([^:：\n(][^:：\n]{0,23}?)(\s*[:：]\s)/);   // 라벨: (1~24자 · 괄호시작/문장 제외)
-      if (!m || /[.!?。…]/.test(m[2])) return;
-      const sp = document.createElement('strong'); sp.className = 'angle-lbl'; sp.textContent = m[2].trim();
-      f.data = m[3] + f.data.slice(m[0].length);
-      li.insertBefore(sp, f);
-    });
-  }
   // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
   root.querySelectorAll('h3').forEach(h => {
     if (!/썸네일/.test(h.textContent)) return;
@@ -2135,7 +2117,7 @@ function decorate(root) {
   // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
   const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n; (n = tw.nextNode());) {
-    if (!n.parentElement || n.parentElement.closest('pre, code, h1, h2, h3, .angle-lbl')) continue;   // .angle-lbl(다각도 앵글 라벨) = 통일 강조 유지(키워드 [] 중복 데코 차단)
+    if (!n.parentElement || n.parentElement.closest('pre, code, h1, h2, h3')) continue;
     nodes.push(n);
   }
   nodes.forEach(n => {
