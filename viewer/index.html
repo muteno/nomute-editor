@@ -1232,6 +1232,12 @@
   .cref-dlall { width:auto; height:var(--btn-sm); border-radius:var(--r-s); display:inline-flex; align-items:center; gap:5px; padding:0 11px; }
   .cref-dlall svg { width:15px; height:15px; }
   .cref-dlall .cref-dllbl { font-size:11px; font-weight:700; color:inherit; white-space:nowrap; }
+  .cref-more { color:var(--accent); }   /* '+5장 더'(AI 재검색) = 초록 강조 + 버튼(운영자 260622) */
+  .thumbsec .cref-slot.cref-loading { display:grid; place-items:center; background:rgba(8,15,11,.5); border:1px dashed rgba(var(--accent-rgb),.45); opacity:.82; cursor:default; }   /* 반투명 로딩 슬라이드 = N장 추가 예정(맨 좌측) */
+  .cref-loading .cref-ld { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--mut); font-size:11px; font-weight:700; text-align:center; padding:6px; }
+  .cref-loading .cref-ld-sp { width:22px; height:22px; border:2.5px solid rgba(var(--accent-rgb),.25); border-top-color:var(--accent); border-radius:50%; animation:crefspin .9s linear infinite; }
+  @keyframes crefspin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .cref-loading .cref-ld-sp { animation:none; } }
   /* 키워드 분절 박스 = [ K 돋보기(검색) | 한/영(토글) ] 한 덩어리 · 박스 색이 한(초록)/영(파랑) 따라 즉시 전환(운영자 260622) */
   .cref-kwbox { display:inline-flex; align-items:center; height:var(--btn-sm); border-radius:var(--r-s); border:1px solid; overflow:hidden;
     background:rgba(255,255,255,.04); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
@@ -2145,6 +2151,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
   const list = items.slice(0, 7);   // 검색이미지 최대 7장(과금0·운영자 260622) · AI 생성은 3화풍이라 영향 없음
   const wrap = document.createElement('div'); wrap.className = 'cref';
   const kd = kwData || {};
+  const _moreFile = (kind === 'search' && CUR_A) ? CUR_A.file : '';   // '+5장 더' = 현재 모달 기사(CUR_A)에 관련 뉴스이미지 더 검색(api/moreimg · 운영자 260622)
   const hasKw = kind === 'search' && (kd.ko || kd.en);
   let _lang = kd.en ? 'en' : 'ko';   // 🌍해외(en 有)=영문 우선 기본 / 국내=한
   const _gis = (q, en) => 'https://www.google.com/search?tbm=isch&' + (en ? 'hl=en&gl=us&' : '') + 'tbs=qdr:d&q=' + encodeURIComponent((q || '').slice(0, 100));
@@ -2160,7 +2167,8 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
       + '</span>'
     : '';
   const dlAll = list.length ? '<button type="button" class="sbtn cref-dlall" title="이미지 전체 저장" aria-label="이미지 전체 저장">' + DOWNLOAD_SVG + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 아이콘 + '전체' 한 버튼 안(운영자 260622)
-  const acts = (dlAll || hbtn || kwbox) ? '<span class="cref-acts">' + hbtn + kwbox + dlAll + '</span>' : '';
+  const moreBtn = _moreFile ? '<button type="button" class="sbtn cref-more" title="관련 뉴스이미지 5장 더 — AI(Opus 4.8)가 요약·시사점 읽고 오버레이 뒤 후킹 배경으로 검색(1~2분·기존과 중복없이)" aria-label="이미지 더 가져오기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' : '';   // +5장 더(AI 재검색)
+  const acts = (dlAll || hbtn || kwbox || moreBtn) ? '<span class="cref-acts">' + moreBtn + hbtn + kwbox + dlAll + '</span>' : '';
   const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
   const kwHtml = hasKw ? '<span class="cref-kw"></span>' : '';   // 키워드 칩(검정 글래스) — 텍스트·색은 언어따라 JS가 채움
   wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + kwHtml + usageText(bucket, kind) + '</span>' + acts + '</div>'
@@ -2205,8 +2213,45 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     for (let i = 0; i < list.length; i++) { downloadImg(list[i].img, thumbDlName(label, list[i], i)); await new Promise(r => setTimeout(r, 280)); }
     _flashBtn(dlAllBtn, 'ok');
   });
+  const moreEl = wrap.querySelector('.cref-more');   // +5장 더 = api/moreimg 발사 + 반투명 로딩 + articles.json 폴링(운영자 260622)
+  if (moreEl && _moreFile) moreEl.addEventListener('click', e => { e.stopPropagation(); moreImgGo(_moreFile, wrap, moreEl); });
   attachCarouselDrag(wrap.querySelector('.cref-track'));   // PC 마우스 드래그 좌우 슬라이드(feedtrack 패턴 계승·운영자 260622)
   return wrap;
+}
+// '+5장 더' — api/moreimg 발사(Claude Opus 4.8가 요약·시사점 읽고 관련 뉴스이미지 소스 더 검색 → og:image) ·
+// 맨 좌측 반투명 로딩 슬라이드 · articles.json 폴링(~25s×10=최대 ~4분)으로 thumb_search 늘면 thumbsec 재렌더(새 이미지 좌측·번호 갱신).
+async function moreImgGo(file, wrap, btn) {
+  const track = wrap.querySelector('.cref-track'); if (!track) return;
+  if (track.querySelector('.cref-loading')) return;   // 이미 진행 중(중복 발사 가드)
+  const a0 = DATA.find(x => x && x.file === file);
+  const before = ((a0 && a0.cards && a0.cards.thumb_search) || []).length;   // 기준 = 현재 검색이미지 수
+  // 로딩 슬라이드를 await 전에 먼저(동기) 꽂는다 = .cref-loading 가드 즉시 작동 → 연타 레이스 차단(평의회 검증·260622)
+  const ph = document.createElement('div'); ph.className = 'cref-slot cref-loading';   // 맨 좌측 반투명 로딩(N장 추가 예정 의미)
+  ph.innerHTML = '<div class="cref-ld"><span class="cref-ld-sp"></span><span class="cref-ld-tx">5장 받아오는 중…</span></div>';
+  track.insertBefore(ph, track.firstChild);
+  track.scrollTo({ left: 0, behavior: 'smooth' });
+  if (btn) { btn.classList.add('busy'); btn.disabled = true; }
+  let ok = false;
+  try { const r = await fetch('api/moreimg', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file }) }); ok = !!((await r.json().catch(() => ({})) || {}).ok); } catch {}
+  if (btn) setTimeout(() => { btn.classList.remove('busy'); btn.disabled = false; }, 2500);   // 버튼은 곧 풀어줌(중복은 .cref-loading 가드)
+  if (!ok) { ph.remove(); if (btn && typeof _flashBtn === 'function') _flashBtn(btn, 'err'); return; }   // 실패 = 로딩 제거(가드 해제)
+  let n = 0;
+  const tick = async () => {
+    n++;
+    try {
+      const rr = await fetch('articles.json?_=' + Date.now()); const j = await rr.json();
+      const a = (j.articles || []).find(x => x && x.file === file);
+      const now = ((a && a.cards && a.cards.thumb_search) || []).length;
+      if (a && now > before) {   // 새 이미지 도착 → DATA 갱신 + 열린 모달이면 thumbsec 통째 재렌더(로딩 슬라이드 자동 소거·새 이미지 좌측·번호 갱신)
+        const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) DATA[idx] = a;
+        if (CUR_A && CUR_A.file === file) { CUR_A = a; const old = $('#mdbody .thumbsec'), fresh = thumbSec(a); if (old && fresh) old.replaceWith(fresh); }
+        return;   // 완료
+      }
+    } catch {}
+    if (n < 10) setTimeout(tick, 25000);
+    else { const tx = ph.querySelector('.cref-ld-tx'); if (tx) tx.textContent = '곧 반영 — 새로고침'; }   // 타임아웃(빌드 지연/0장) = 소프트 안내
+  };
+  setTimeout(tick, 25000);
 }
 // 캐러셀 PC 드래그 — 마우스로 잡아끌어 좌우 슬라이드(터치는 overflow-x 네이티브 스와이프 유지). feedtrack 드래그와 동일 패턴.
 function attachCarouselDrag(track) {
