@@ -77,12 +77,7 @@
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
   @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
-  .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }   /* 전송됨 = 초록 채움(.iobtn.ok 계승 · 완료비트) */
-  .go.checking { display:grid; place-items:center; }   /* 체크 그리는 동안 SVG 중앙정렬 */
-  .go .gck { width:26px; height:26px; }
-  .go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }   /* 시안1 = 스트로크 드로우(완료 체크) */
-  @keyframes goTick { to { stroke-dashoffset:0; } }
-  @media (prefers-reduced-motion:reduce) { .go .gck path { animation:none; stroke-dashoffset:0; } }
+  .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }   /* 전송됨 = 초록 채움 플래시(.iobtn.ok 계승 · 상태머신 완료비트) */
   .chk { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
   .chk input { width:18px; height:18px; accent-color:var(--accent); }
   .chk .abbrhint { color:var(--mut); font-weight:400; font-size:11px; }
@@ -1181,21 +1176,18 @@ let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) —
 // 축약 = 썸네일 정본 화이트리스트(apps/thumbnail 절대규칙5 · 화이트리스트 4종): ...→⋯ · •→· · 이,→李, · 윤,→尹,
 const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
 // 잡 1건 생성 → 로그 → 디스패치 → 폴링(비동기·독립). 동시 다발(경고문 듀얼포맷 등) 가능.
-// 전송 상태머신: 누르면 '전송 중…'+초록 풀필 → ✓ 체크 그려짐(시안1 스트로크) → '전송됨' → 원복.
+// 전송 상태머신(가이드북 정본 계승): 누르면 '전송 중…'+게이지 → '전송됨 ✓' 초록플래시 → 원복.
+// 게이지 0.72s 1회만으론 안 보임(라벨 무변화·reduced-motion 0.2s 섬광) → 라벨 변화가 핵심 표시(모션 무관).
 function goFire() {
   const gb = document.getElementById('go'); if (!gb) return;
-  if (!gb.dataset.label) gb.dataset.label = gb.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
-  clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3);
-  gb.classList.remove('firing', 'okdone', 'checking'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
+  if (!gb.dataset.label) gb.dataset.label = gb.textContent;        // 원래 라벨 보존(재진입 시 '전송 중…' 덮어쓰기 방지)
+  clearTimeout(gb._fT1); clearTimeout(gb._fT2);
+  gb.classList.remove('firing', 'okdone'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작(연속 전송도 한 흐름)
   gb.classList.add('firing'); gb.textContent = '전송 중…'; gb.setAttribute('aria-busy', 'true');
-  gb._fT1 = setTimeout(() => {                                     // 게이지 완료 → ✓ 체크가 그려짐(시안1)
-    gb.classList.remove('firing'); gb.classList.add('okdone', 'checking');
-    gb.innerHTML = '<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
-    gb.removeAttribute('aria-busy');
-    gb._fT2 = setTimeout(() => {                                   // 체크 후 → '전송됨'(이미지 완료 아님 = 진행은 작업카드가 표시)
-      gb.classList.remove('checking'); gb.textContent = '전송됨';
-      gb._fT3 = setTimeout(() => { gb.classList.remove('okdone'); gb.textContent = gb.dataset.label || '이미지 제작'; }, 850);
-    }, 560);
+  gb._fT1 = setTimeout(() => {                                     // 전송 구간 종료 → '전송됨 ✓'(이미지 완료 아님 = 진행은 작업카드가 표시)
+    gb.classList.remove('firing'); gb.classList.add('okdone');
+    gb.textContent = '전송됨 ✓'; gb.removeAttribute('aria-busy');
+    gb._fT2 = setTimeout(() => { gb.classList.remove('okdone'); gb.textContent = gb.dataset.label || '이미지 제작'; }, 850);
   }, 900);
 }
 function dispatchJob(endpoint, payload, label) {

@@ -1304,14 +1304,6 @@
   .asksend.done { animation:askdn .34s var(--ease); }
   @keyframes askdn { 0%{transform:scale(1)} 40%{transform:scale(1.04)} 100%{transform:scale(1)} }
   @media (prefers-reduced-motion:reduce) { .asksend.shake, .asksend.done { animation:none; } }
-  /* 완료 체크(시안2 팝 스프링) — 게이지 다 차면 글자→✓ 팝으로 그려짐(asksend·revsend 공용·260622) */
-  .asksend .ack { position:absolute; inset:0; z-index:2; display:grid; place-items:center; transform:scale(0); animation:ackPop .44s cubic-bezier(.18,1.5,.4,1) forwards; }
-  .asksend .ack svg { width:19px; height:19px; }
-  .asksend .ack path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:ackTick .26s .12s ease forwards; }
-  .asksend.checked > span:not(.ack) { opacity:0; }   /* 글자만 숨김(체크 .ack 스팬은 제외) */
-  @keyframes ackPop { 0%{transform:scale(0)} 60%{transform:scale(1.28)} 100%{transform:scale(1)} }
-  @keyframes ackTick { to { stroke-dashoffset:0; } }
-  @media (prefers-reduced-motion:reduce) { .asksend .ack { animation:none; transform:scale(1); } .asksend .ack path { animation:none; stroke-dashoffset:0; } }
   /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
   .askbot .askclip { position:static; top:auto; right:auto; flex:none; opacity:.85; }
   .askbot .askclip:hover { opacity:1; }
@@ -4812,22 +4804,16 @@ function renderAskImgs() {
   host.innerHTML = askImages.map((im, i) => `<div class="askimg"><img src="${im.dataUrl}" alt=""><button class="askimg-x" type="button" data-i="${i}" aria-label="제거"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M18 6 6 18M6 6l12 12"/></svg></button><span class="askimg-kb">${im.kb}KB</span></div>`).join('');
   host.querySelectorAll('.askimg-x').forEach(b => b.onclick = () => { askImages.splice(+b.dataset.i, 1); renderAskImgs(); });
 }
-// 전송 완료 체크(시안2 팝 스프링) — 게이지 후 글자 위에 ✓ 팝으로 그림(asksend·revsend 공용·260622)
-function askShowCheck(btn){ if (!btn || btn.querySelector('.ack')) return; btn.classList.add('checked');
-  const d = document.createElement('span'); d.className = 'ack';
-  d.innerHTML = '<svg viewBox="0 0 24 24" role="img" aria-label="완료"><path d="M5 13l4 4L19 7"/></svg>'; btn.appendChild(d); }
-function askHideCheck(btn){ if (!btn) return; btn.classList.remove('checked'); const d = btn.querySelector('.ack'); if (d) d.remove(); }
 $('#askSend').addEventListener('click', async () => {
   const text = $('#askText').value.trim();
   if (!text && !askImages.length) { $('#askStatus').textContent = '내용이나 캡처를 넣어줘'; return; }
-  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
+  const btn = $('#askSend'); btn.disabled = true; btn.classList.add('firing'); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // reflow-reset = 매 성공 settle 재생
-      setTimeout(() => askShowCheck(btn), Math.max(0, 740 - (Date.now() - (+btn.dataset.ft || 0))));   // 게이지 다 찬 뒤 ✓ 팝(시안2)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
-      setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
+      setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
     else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
   } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
   btn.classList.remove('firing'); btn.disabled = false;
@@ -5283,17 +5269,16 @@ $('#revSend').addEventListener('click', async () => {
   }
   clearTimeout(revConfirmT);                   // 2차 클릭 = 실제 전송
   btn.classList.remove('confirm'); if (lbl) lbl.textContent = '수정 →';
-  btn.disabled = true; askHideCheck(btn); $('#revStatus').textContent = '보내는 중…';
+  btn.disabled = true; $('#revStatus').textContent = '보내는 중…';
   try {
     const r = await fetch('api/revise', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, instruction }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
-      btn.classList.add('firing');   // 초록 게이지 채움(.firing → pickGauge)
-      setTimeout(() => askShowCheck(btn), 740);   // 게이지 다 찬 뒤 ✓ 팝(시안2)
+      btn.classList.add('firing');   // PICK과 동일한 초록 게이지 모션(.firing → pickGauge)
       $('#revStatus').textContent = '✅ 수정 요청됨 — 잠시 후 반영돼';
       $('#revText').value = ''; updateRevClip();
       startRevising(CUR);   // '변경 중' 표시 시작 — 버튼 물결·피드바 펄스·IG/Thread 소주제 + 완료 폴링
-      setTimeout(() => { revdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false; }, 1600);   // 닫힐 때까지 disabled(중복전송 차단)
+      setTimeout(() => { revdlg.close(); btn.classList.remove('firing'); btn.disabled = false; }, 1600);   // 닫힐 때까지 disabled(중복전송 차단)
       return;
     }
     $('#revStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`);
