@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드 변경 버튼 · 체크박스 시안</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13); --accent-bright:#d8ff3d; --on-accent:#062108;
+    --arm:#ffd93d; --arm-rgb:255,217,61; --on-arm:#1a1205;
+    --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --bg:#0a0f0b; --panel:linear-gradient(165deg,rgba(27,44,32,.93),rgba(11,19,14,.96));
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 80% at 50% 0,#11201600,#070b08),var(--bg);color:var(--fg);
+    font-family:"Pretendard Variable",Pretendard,-apple-system,system-ui,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    -webkit-font-smoothing:antialiased; padding:22px 16px 60px; line-height:1.5;}
+  h1{font-size:17px;margin:0 0 4px;color:var(--accent);letter-spacing:-.2px}
+  .sub{font-size:12.5px;color:var(--mut);margin:0 0 20px}
+  .wrap{max-width:560px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px;
+    box-shadow:0 16px 40px rgba(0,0,0,.4)}
+  .card h2{font-size:13px;font-weight:800;margin:0 0 3px;color:var(--fg)}
+  .card .h2sub{font-size:11.5px;color:var(--mut);margin:0 0 13px}
+
+  /* ── 무료/유료 토글 데모 ── */
+  .ctl{display:flex;flex-direction:column;gap:11px;padding:13px;border:1px dashed var(--line2);border-radius:13px;background:rgba(5,12,8,.4);margin-bottom:14px}
+  .lblrow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .lblrow .lbl{font-size:12px;font-weight:800;color:var(--mut)}
+
+  /* 체크박스 = 메뉴1(수집함 확인 토글) ACK_MORPH 계승 = 박스 안 −→✓ 드로우(초록) */
+  .match{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-size:11.5px;font-weight:700;color:var(--mut);user-select:none}
+  .match:has(input:checked){color:var(--accent)}
+  .match input{position:absolute;opacity:0;width:0;height:0}
+  .cbx{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:7px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);transition:border-color .15s,background .15s}
+  .match:has(input:checked) .cbx{border-color:rgba(var(--accent-rgb),.6);background:rgba(var(--accent-rgb),.14)}
+  .cbx svg{width:14px;height:14px}
+  .cbx .ackm path{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;
+    transition:opacity .16s ease, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1)}
+  .cbx .sc-dash{stroke:var(--mut);opacity:1}
+  .cbx .sc-chk{stroke:var(--accent);opacity:0;stroke-dasharray:24;stroke-dashoffset:24}
+  .match:has(input:checked) .cbx .sc-dash{opacity:0}
+  .match:has(input:checked) .cbx .sc-chk{opacity:1;stroke-dashoffset:0}
+
+  .wish{width:100%;box-sizing:border-box;font:inherit;font-size:14px;color:var(--fg);
+    background:rgba(5,12,8,.6);border:1px solid var(--line);border-radius:11px;padding:10px 12px;resize:none;min-height:54px}
+  .wish::placeholder{color:var(--mut);opacity:.7}
+  .wish:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.16)}
+
+  .state{font-size:11.5px;font-weight:800;margin-top:2px}
+  .state.free{color:var(--accent)} .state.paid{color:var(--arm)}
+
+  /* ── 변경 버튼 베이스 = .mkbtn 글래스 고스트 계승 ── */
+  .footrow{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:6px}
+  .cancel{padding:10px 18px;font:700 12.5px inherit;color:var(--mut);background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:999px;cursor:pointer}
+  .edgo{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    min-width:104px;padding:11px 22px;font:800 13px inherit;border-radius:999px;cursor:pointer;
+    color:var(--accent);background:var(--accent-dim);border:1px solid rgba(var(--accent-rgb),.36);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    transition:transform .12s ease,background .15s ease,border-color .15s ease,color .15s ease}
+  .edgo:active{transform:scale(.955)}
+  .edgo .ic{width:14px;height:14px;flex:none;display:none}
+  .edgo .ic svg{width:14px;height:14px;display:block}
+  .edgo .tx{display:inline}
+  /* 유료 신호 = ↻ 재생성 아이콘 노출 */
+  .edgo.paid .ic{display:inline-flex}
+  /* 재확인(arm) = 앰버 (전송 버튼 상태머신 계승) */
+  .edgo.arm{color:var(--arm);background:rgba(var(--arm-rgb),.16);border-color:rgba(var(--arm-rgb),.55)}
+  .edgo.arm:active{background:rgba(var(--arm-rgb),.26)}
+  /* 발사 게이지 = 좌→우 초록 풀필 (.mkbtn goFill 계승) */
+  .edgo.firing{color:var(--on-accent);pointer-events:none;border-color:var(--accent);
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s linear forwards}
+  @keyframes goFill{from{background-size:0% 100%,100% 100%}to{background-size:100% 100%,100% 100%}}
+  /* 완료 = 초록 풀 + ✓ 스트로크 드로우 (.mkbtn gck 계승) */
+  .edgo.okdone{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .edgo.checking .tx,.edgo.checking .ic{display:none}
+  .edgo .gck{width:22px;height:22px;display:none}
+  .edgo.checking .gck{display:block}
+  .edgo .gck path{fill:none;stroke:var(--on-accent);stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:24;stroke-dashoffset:24;animation:goTick .38s .04s ease forwards}
+  @keyframes goTick{to{stroke-dashoffset:0}}
+  /* 시안 C = 유료면 버튼 자체가 앰버 톤(색으로 유료 상시 신호) */
+  .edgo.tone.paid:not(.firing):not(.okdone){color:var(--arm);background:rgba(var(--arm-rgb),.12);border-color:rgba(var(--arm-rgb),.4)}
+
+  .opt{border:1px solid var(--line2);border-radius:13px;padding:13px;margin-bottom:11px;background:rgba(255,255,255,.015)}
+  .opt .ot{font-size:12px;font-weight:800;color:var(--accent);margin:0 0 3px}
+  .opt .od{font-size:11px;color:var(--mut);margin:0 0 11px;line-height:1.55}
+  .hintp{font-size:11px;color:var(--mut);margin-top:9px;text-align:center;opacity:.75}
+  .legend{font-size:11.5px;color:var(--mut);line-height:1.7;margin:0}
+  .legend b{color:var(--fg)} .legend .g{color:var(--accent);font-weight:800} .legend .a{color:var(--arm);font-weight:800}
+  kbd{font:inherit;background:rgba(255,255,255,.07);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:11px;color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>카드 변경 — 버튼 · 체크박스 시안</h1>
+  <p class="sub">디자인 시스템(<b>.mkbtn 글래스 고스트</b> + <b>게이지→체크</b> + <b>↻ 재생성</b> + <b>앰버 재확인</b>) 계승 · 실제 CSS/모션 그대로 · 탭해서 동작 확인</p>
+
+  <!-- 동작 데모 컨트롤 -->
+  <div class="card">
+    <h2>1) 무료 / 유료 토글 — 여기를 바꾸면 아래 버튼들이 같이 반응</h2>
+    <p class="h2sub">유료 = ⓐ 체크박스 ON <b>또는</b> ⓑ 이미지 수정 희망 입력. 둘 중 하나라도면 제미나이 재생성(유료).</p>
+    <div class="ctl">
+      <div class="lblrow">
+        <span class="lbl">텍스트</span>
+        <label class="match"><input type="checkbox" id="sync"><span class="cbx"><svg class="ackm" viewBox="0 0 24 24"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span><span>체크 내용과 동일하게 이미지 변경</span></label>
+      </div>
+      <textarea class="wish" id="wish" placeholder="내용을 입력해주세요"></textarea>
+      <div class="state free" id="state">현재: 무료(텍스트만) — 변경 = 게이지 → ✓ 바로 완료</div>
+    </div>
+    <p class="legend" id="legend"></p>
+  </div>
+
+  <!-- 시안 A -->
+  <div class="card">
+    <h2>시안 A — 라벨 유지 + ↻ 아이콘(추천)</h2>
+    <p class="h2sub">버튼은 늘 “변경”. 유료면 라벨 앞에 ↻만 붙어 “이건 재생성(유료)”를 알림. 색은 초록 유지(누르기 전엔 평온).</p>
+    <div class="opt">
+      <p class="ot">동작</p>
+      <p class="od">무료: 탭 → 게이지 채움 → ✓.<br>유료: 탭 → <span style="color:var(--arm)">앰버 “재확인”</span> → 한 번 더 탭 → 게이지 → ✓.</p>
+      <div class="footrow">
+        <button class="cancel" type="button">취소</button>
+        <button class="edgo demo" data-variant="A" type="button"><span class="ic"></span><span class="tx">변경</span><svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></button>
+      </div>
+      <p class="hintp">유료일 때 한 번 탭 → 재확인 / 두 번째 탭 → 발사</p>
+    </div>
+  </div>
+
+  <!-- 시안 B -->
+  <div class="card">
+    <h2>시안 B — 유료면 라벨도 “재생성”으로</h2>
+    <p class="h2sub">유료 조건이면 라벨이 “변경”→“재생성 ↻”로 바뀜(가장 명시적). 무료면 “변경”.</p>
+    <div class="opt">
+      <p class="ot">동작</p>
+      <p class="od">유료 라벨 = <b>재생성</b> + ↻. 탭 → <span style="color:var(--arm)">재확인</span> → 탭 → 게이지 → ✓.</p>
+      <div class="footrow">
+        <button class="cancel" type="button">취소</button>
+        <button class="edgo demo" data-variant="B" type="button"><span class="ic"></span><span class="tx">변경</span><svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></button>
+      </div>
+      <p class="hintp">유료일 때 라벨이 바뀌는지 확인</p>
+    </div>
+  </div>
+
+  <!-- 시안 C -->
+  <div class="card">
+    <h2>시안 C — 유료면 버튼 전체가 앰버 톤(상시)</h2>
+    <p class="h2sub">유료 조건이 켜진 순간부터 버튼이 앰버 글래스로(누르기 전에도 “돈 든다”를 색으로 경고). 누르면 재확인 → 발사.</p>
+    <div class="opt">
+      <p class="ot">동작</p>
+      <p class="od">유료 = 버튼 앰버+↻ 상시. 탭 → 진한 앰버 “재확인” → 탭 → 게이지 → ✓. 무료 = 초록.</p>
+      <div class="footrow">
+        <button class="cancel" type="button">취소</button>
+        <button class="edgo demo tone" data-variant="C" type="button"><span class="ic"></span><span class="tx">변경</span><svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></button>
+      </div>
+      <p class="hintp">색만으로 유료를 먼저 경고하는 안</p>
+    </div>
+  </div>
+
+  <!-- 체크박스 통일 -->
+  <div class="card">
+    <h2>2) 체크박스 통일 — 메뉴1(수집함 확인) 스타일</h2>
+    <p class="h2sub">현재 = OS 기본 네모 체크. 제안 = 수집함 확인 토글의 <b>−→✓ 드로우</b>(초록) 박스 계승. ↑ 위 토글 박스가 그 스타일이야. 이게 “메뉴1 체크박스” 맞아?</p>
+    <p class="legend">box 안에서 <span class="g">✓</span>가 그려지고, 체크 시 라벨도 초록으로. (디자인 시스템 <kbd>ACK_MORPH</kbd> 계승)</p>
+  </div>
+</div>
+
+<script>
+  const REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>';
+  const sync = document.getElementById('sync'), wish = document.getElementById('wish'), stateEl = document.getElementById('state'), legend = document.getElementById('legend');
+  const isPaid = () => sync.checked || wish.value.trim() !== '';
+  function refresh(){
+    const paid = isPaid();
+    stateEl.className = 'state ' + (paid?'paid':'free');
+    stateEl.textContent = paid ? '현재: 유료(제미나이 재생성) — 변경 = 재확인 거쳐 발사' : '현재: 무료(텍스트만) — 변경 = 게이지 → ✓ 바로 완료';
+    legend.innerHTML = paid
+      ? '발사 흐름: 탭 → <span class="a">재확인(앰버)</span> → 탭 → <span class="g">게이지→✓</span> · 오발 과금 방지(.ed-go.arm 계승)'
+      : '발사 흐름: 탭 → <span class="g">게이지→✓</span> (재확인 없음 · 과금 0)';
+    document.querySelectorAll('.edgo.demo').forEach(b=>{
+      if(b.classList.contains('firing')||b.classList.contains('okdone')||b.classList.contains('arm')) return;
+      b.classList.toggle('paid', paid);
+      const ic = b.querySelector('.ic'); ic.innerHTML = paid ? REFRESH : '';
+      const tx = b.querySelector('.tx');
+      if(b.dataset.variant==='B') tx.textContent = paid ? '재생성' : '변경';
+      else tx.textContent = '변경';
+    });
+  }
+  sync.addEventListener('change', refresh);
+  wish.addEventListener('input', refresh);
+
+  const reduced = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  document.querySelectorAll('.edgo.demo').forEach(b=>{
+    let armed=false, armT=null;
+    function disarm(){armed=false;clearTimeout(armT);b.classList.remove('arm');refresh();}
+    function fire(){
+      b.classList.remove('arm'); b.classList.add('firing');
+      setTimeout(()=>{
+        b.classList.remove('firing'); b.classList.add('okdone','checking');
+        // 체크 드로우 재생
+        const p=b.querySelector('.gck path'); p.style.animation='none'; void p.offsetWidth; p.style.animation='';
+        setTimeout(()=>{b.classList.remove('okdone','checking','paid');armed=false;refresh();}, 1100);
+      }, reduced?180:740);
+    }
+    b.addEventListener('click', ()=>{
+      if(b.classList.contains('firing')||b.classList.contains('checking')) return;
+      if(isPaid() && !armed){ armed=true; b.classList.add('arm'); b.querySelector('.tx').textContent='재확인';
+        clearTimeout(armT); armT=setTimeout(disarm, 3000); return; }
+      clearTimeout(armT); fire();
+    });
+  });
+  refresh();
+</script>
+</body>
+</html>
