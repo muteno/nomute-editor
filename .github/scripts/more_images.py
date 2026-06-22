@@ -108,6 +108,8 @@ for i, c in enumerate(cand):
     final = None
     if tg.R2_ON:
         b, ctype, ext = tg.http_image(c["src"])
+        if b and tg._is_logo_card(b):   # 매체 로고/브랜딩 카드(솔리드+텍스트) = 픽셀 직접 검사 컷(운영자 260622)
+            print("  ⏭ 매체 로고/브랜딩 컷 ({}…)".format((c.get("link") or c["src"])[:42])); continue
         if b:
             h = hashlib.sha1((c["src"] or "").encode("utf-8")).hexdigest()[:10]   # src 해시 = 키 고유(런 반복·같은 len 덮어쓰기 방지·평의회 검증). 같은 이미지=같은 키=동일내용 덮어씀(무해)
             final = tg.r2_upload(b, "thumbs/{}/more-{}.{}".format(STEM, h, ext), ctype)

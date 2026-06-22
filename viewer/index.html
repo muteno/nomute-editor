@@ -998,14 +998,23 @@
   #cardsec p.lbl { margin:14px 0 4px; }
   /* 카드 이미지프롬프트 박스 아래 '검색어 줄' = [현재 검색어(좌·1줄 …)] + [G+돋보기 구글검색 버튼](운영자 260620) */
   .srchrow { display:flex; align-items:center; gap:8px; margin:6px 1px 14px; }
-  .srchrow .qnote { flex:1; min-width:0; font-size:11px; color:var(--mut); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .srchrow .qnote b { color:var(--fg); font-weight:700; opacity:.82; }
+  /* 카드 키워드 칩 = 검색이미지 칩(.cref-kw) 형태 계승 · 강조색 제거(mut) · 탭 복사 + 눌림 플래시(운영자 260622) */
+  .srchrow .cardkw { flex:0 1 auto; min-width:0; max-width:100%; font-size:11px; font-weight:600; line-height:1.4; font-family:inherit;
+    color:var(--mut); text-align:left; white-space:normal; word-break:break-word; padding:2px 10px; border-radius:8px;
+    background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.08); box-shadow:0 1px 4px rgba(0,0,0,.35);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .srchrow .cardkw:active { transform:scale(.98); }
+  .srchrow .gsrch { margin-left:auto; }   /* 키워드 칩=좌측 hug · 검색버튼=우측 고정(복사버튼 제거 후) */
+  @keyframes cardkwcopy {   /* B안 눌림+채움 · 강조색 제거 = 중립(흰) 필 */
+    0%   { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); }
+    32%  { transform:scale(.93); background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.24); }
+    100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
+  .cardkw.copied { animation:cardkwcopy .42s var(--ease); }
+  @media (prefers-reduced-motion:reduce) { .cardkw.copied { animation:none; } }
   .gsrch { flex:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:24px; padding:0 9px;
     border-radius:8px; color:var(--mut); text-decoration:none; background:rgba(255,255,255,.04); border:1px solid var(--line2); transition:color .15s, border-color .15s; }
   .gsrch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
   .gsrch svg { display:block; width:13px; height:13px; }
-  .gsrch-cp { cursor:pointer; }   /* 검색어 복사 = 구글검색과 동일 크기·바로 좌편(운영자 260622) */
-  .gsrch-cp.ok { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }   /* 복사 성공 = 초록 플래시(체크 아이콘 + 색) */
   #cardsec p.lbl::before { content:'• '; color:var(--accent); font-weight:700; }   /* 블릿 = 형광(운영자 260621) */
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
@@ -1189,7 +1198,13 @@
   .cref-kwline { margin:0 0 8px; }
   .cref-kwline .cref-kw { max-width:100%; white-space:normal; border-radius:8px; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background .15s, color .15s, border-color .15s; }
   .cref-kwline .cref-kw:active { transform:scale(.98); }
-  .cref-kw.copied { color:var(--accent) !important; border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); }   /* 탭 복사 플래시 */
+  /* 탭 복사 피드백 = 잠깐 눌림 + 초록 채움(글자 스왑 없음 · 운영자 260622 안 B) */
+  @keyframes cref-kwcopy {
+    0%   { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); }
+    32%  { transform:scale(.93); background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.55); }
+    100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
+  .cref-kw.copied { animation:cref-kwcopy .42s var(--ease); }
+  @media (prefers-reduced-motion:reduce) { .cref-kw.copied { animation:none; } }
   /* (구) .cref-btn 초록 알약 = 폐기 → 헤더 검색버튼은 .cref-srch(.sbtn 아이콘) 한 벌로 통일(운영자 260620) */
   .cref-track { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; padding-bottom:3px; }   /* scroll-behavior:smooth = 스냅 부드럽게(피드 패턴·운영자 260622) */
   .cref-track::-webkit-scrollbar { height:5px; }
@@ -1647,9 +1662,10 @@ let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
-// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 5개. 전부 보호성 → 앰버 경고 틴트(.warn).
-// (대분류·정치민감 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
-const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모'];
+// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 6개 → 앰버 경고 틴트(.warn).
+// 앞 5개=콘텐츠 보호(선정성·피해자 안전·장면 검열) · #북·중외교=사실 무결성↑(날조 금지·오전달 중죄급)·표현/창작 제약 아님·좌우 부여(정부정책 두둔 좌/비판 우·현 정부 기준)·운영자 260622.
+// (기타 대분류·정치 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모','#북·중외교'];
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 // R 필터 칩 상태 — 카테고리(OR)
@@ -2163,7 +2179,7 @@ const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none"
 const SEARCH_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
 // 정적 캐러셀(thumb_search/thumb_gen) — items=[{img,label?,sid?}]. 탭=확대 · 우상단 액션행 .sbtn(저장 · 생성슬롯=재생성+저장 · §🎨 .slide-acts 계승). usage={gen,search}.
 function thumbStatic(label, items, kind, href, usage, kwData) {
-  const list = items.slice(0, 7);   // 검색이미지 최대 7장(과금0·운영자 260622) · AI 생성은 3화풍이라 영향 없음
+  const list = items.slice(0, kind === 'search' ? 60 : 7);   // 검색이미지 = '+5장 더'로 누적되니 cap 해제(7→60, 12장↑ 표시) · AI 생성은 3화풍(영향 0) · 운영자 260622
   const wrap = document.createElement('div'); wrap.className = 'cref';
   const kd = kwData || {};
   const _moreFile = (kind === 'search' && CUR_A) ? CUR_A.file : '';   // '+5장 더' = 현재 모달 기사(CUR_A)에 관련 뉴스이미지 더 검색(api/moreimg · 운영자 260622)
@@ -2224,12 +2240,14 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     apply();
     if (tog && !tog.classList.contains('cref-kwtog-static'))
       tog.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); _lang = _lang === 'en' ? 'ko' : 'en'; apply(); });
-    if (kwEl) kwEl.addEventListener('click', async e => {   // 키워드 칩 탭 = 복사 + 플래시(운영자 260622)
-      e.stopPropagation();
-      await copyText(_curChip);
-      kwEl.textContent = '복사됨 ✓'; kwEl.classList.add('copied');
-      setTimeout(() => { kwEl.textContent = _curChip; kwEl.classList.remove('copied'); }, 950);
-    });
+    if (kwEl) {   // 키워드 칩 탭 = 복사 + 눌림 플래시(글자 스왑 없음 · 안 B · 운영자 260622)
+      kwEl.addEventListener('animationend', () => kwEl.classList.remove('copied'));   // 끝나면 클래스 제거 = 반복 탭 재생
+      kwEl.addEventListener('click', async e => {
+        e.stopPropagation();
+        await copyText(_curChip);
+        kwEl.classList.remove('copied'); void kwEl.offsetWidth; kwEl.classList.add('copied');   // reflow로 애니 재시작
+      });
+    }
   }
   const dlAllBtn = wrap.querySelector('.cref-dlall');   // 우상단 전체 저장 — 이 카러셀 이미지 전부 순차 다운로드
   if (dlAllBtn) dlAllBtn.addEventListener('click', async e => {
@@ -2520,16 +2538,16 @@ function cardSec(a) {
         if (!q) return;
         const row = document.createElement('div'); row.className = 'srchrow';
         const qCsv = String(q).trim().split(/\s+/).filter(Boolean).join(', ');   // 표시·복사 공통(쉼표 구분)
-        const note = document.createElement('span'); note.className = 'qnote';
-        note.innerHTML = 'Keyword = <b>' + esc('"' + qCsv + '"') + '</b>';   // 키워드 쉼표 구분 표시(검색 URL은 원본 공백 유지 · 라벨 'Keyword =' 운영자 260622)
-        const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'gsrch gsrch-cp';   // 검색어 복사 = 구글검색과 동일 크기·바로 좌편(중복 검색어 박스 대체·운영자 260622)
-        cp.title = '검색어 복사'; cp.setAttribute('aria-label', '검색어 복사'); cp.innerHTML = COPY_SVG;
-        cp.onclick = ev => { ev.stopPropagation(); copyText(qCsv, cp); };
+        // 키워드 = 검색이미지 칩(.cref-kw) 형태 계승 · 강조색 제거(mut) · 탭 복사 + 눌림 플래시(라벨 'Keyword ='·복사버튼 제거 · 운영자 260622)
+        const note = document.createElement('button'); note.type = 'button'; note.className = 'cardkw';
+        note.textContent = qCsv; note.title = '탭하면 키워드 복사';
+        note.addEventListener('animationend', () => note.classList.remove('copied'));
+        note.onclick = async ev => { ev.stopPropagation(); await copyText(qCsv); note.classList.remove('copied'); void note.offsetWidth; note.classList.add('copied'); };
         const s = document.createElement('a'); s.className = 'gsrch';
         s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
         s.target = '_blank'; s.rel = 'noopener'; s.title = '구글 이미지 검색'; s.setAttribute('aria-label', '구글 이미지 검색');
         s.innerHTML = G_SVG + SEARCH_SVG;
-        row.append(note, cp, s);   // [현재 검색어 ……] [복사] [구글검색] — 복사는 구글검색 바로 좌편(나란히·중앙정렬)
+        row.append(note, s);   // [키워드 칩(탭 복사·눌림)] … [구글검색] — 복사 버튼 제거(칩이 복사)
         pre.insertAdjacentElement('afterend', row);   // 프롬프트 박스 바로 아래
       });
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
@@ -4013,6 +4031,7 @@ if (qFeedBtn) {
     qb.addEventListener('click', e => { e.stopPropagation(); openQueue(); });
   }
 }
+let _qPushed = false, _qPop = false;   // 대기열 폰 뒤로가기 = 먼저 닫기(§🎨 pushState/popstate · 라이트박스 패턴 계승 · 운영자 260622)
 function openQueue() {
   closeOverlays('qpop');
   const r = qFeedBtn.getBoundingClientRect();
@@ -4021,12 +4040,15 @@ function openQueue() {
   qpop.hidden = false;
   qpop.style.left = Math.round((window.innerWidth - qpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단) → 폭 재서 뷰포트 좌변 중앙(운영자 260622)
   try { sessionStorage.setItem('nomute_q_open', '1'); } catch {}   // 열림 기억 → 외부 링크(↗) 갔다 돌아오면(pageshow) 자동 재오픈
+  if (!_qPushed) { history.pushState({ qpop: true }, ''); _qPushed = true; }   // 폰 뒤로가기 한 번 = 대기열 먼저 닫기(딴 화면 안 벗어남)
   loadQueue();
 }
 function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른 오버레이·더블탭) → 재오픈 플래그 해제(↗ 네비게이션 닫힘과 구분 · 운영자 260622)
   qpop.hidden = true;
   try { sessionStorage.removeItem('nomute_q_open'); } catch {}
+  if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
+window.addEventListener('popstate', () => { if (!qpop.hidden) { _qPop = true; closeQueueUser(); } });   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기(라이트박스와 별개 리스너 · 각자 자기 상태만)
 const qEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function qAgo(t) {
   if (!t) return '?';
@@ -4086,7 +4108,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (it.status === 'succ') qGo(it.id); else if (it.key) window.open(it.key, '_blank', 'noopener'); };   // ↗ 진행방향 톡 이동 + SUCC=뉴스요약 / 그 외=원문 새 탭(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (it.status === 'succ') qGo(it.id); else if (it.key) failOpen({ url: it.key }); };   // ↗ SUCC=뉴스요약(준비됨) / 그 외(처리중·재시도·실패)=기사 원문 새 탭 · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled라 onclick 미배선=완전 비활(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
@@ -4114,7 +4136,7 @@ async function loadQueue() {
 }
 // 피드(메뉴3) 이동 + 해당 기사 모달. 즉시 매칭되면 바로, 없으면(빌드 랙) load() 후 재매칭.
 async function feedOpenBy(match) {
-  qpop.hidden = true;
+  closeQueueUser();   // ↗ 이동도 정식 닫기 경유 → 푸시한 뒤로가기 칸 정리(dangling 방지 · 운영자 260622)
   showTab('feed');
   let a = match();
   if (a) { open(a); return; }   // 즉시(이미 피드에 있음 = 흔한 경우)
@@ -4318,6 +4340,14 @@ const pfAddResub = id => { try { const m = pfResub(); m[id] = Date.now(); localS
 const pfResubActive = id => { const t = pfResub()[id]; return !!t && (Date.now() - t < PICK_TIMEOUT_MS + 60000); };
 // 실패 표시 대상 = picks-failed 에 있음 + 복구표시 안 함(api/submit) + 재제출창 아님(전문 직접입력 진행 중) + 피드 미등장(늦은 성공이면 PICKED 우선·stale 실패기록 무시).
 // 실패 키 = c.url 또는 클러스터 멤버 url 중 picks-failed에 있는 첫 키(pendStatus·srvTriage와 동일 패턴 — rep-url 점프 시 형제 url로 기록된 실패도 매칭·운영자 260620).
+// 픽 alt(대체 fetch 후보) = breaking_pick(본문 풍부한 메이저·PICK_PRIORITY 조선>…) 우선 + cluster_members. rep url 제외·중복제거.
+//   analyze 가 alt 를 본문 폴백/모델 제시로 쓰는데, 대표(rep)가 '최초보도=통신사'면 본문이 빈약 → 시스템이 이미 고른
+//   메이저 신문을 맨 앞에 둬 더 완전한 본문을 먼저 시도하게 한다(통신사 rep 실패 근본해결 · 운영자 260622). mega 클러스터(cluster_members=[])도 breaking_pick는 살아있어 보강됨.
+function pickAlt(c) {
+  const rep = _normU(c.url);
+  const major = (c && c.breaking_pick && c.breaking_pick.url) ? _normU(c.breaking_pick.url) : '';
+  return [...new Set([major, ...((c.cluster_members || []).map(_normU))])].filter(u => u && u !== rep);
+}
 const pfKeyOf = c => [_normU(c.url), ...((c.cluster_members || []).map(_normU))].find(u => u && PFAIL.has(u)) || '';
 const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
 const pfReason = c => (PFAIL.get(pfKeyOf(c)) || {}).reason || '';
@@ -4456,7 +4486,7 @@ function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 
 }
 function failRetry(c) {   // ↻ 재시도 — ① 자동 재분석 재발사(전문 없이 = fetch 재시도 · alt=cluster_members로 원매체 403 우회 = '재시도 한바퀴') ② 가까운 관련기사 원문 새 탭(원기사 막혔어도 타매체는 읽힘 · 운영자 260622)
   if (!c) return;
-  const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url));   // 같은 사건 타매체(가까운 관련기사)
+  const alt = pickAlt(c);   // 같은 사건 타매체(메이저 우선·가까운 관련기사)
   if (c.url) {   // ① 재분석 재발사(body 없이 → fetch 재시도 · alt 동반) + Failed→Picking 표시(pasteSend body-less판)
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
     const id = candId(c); saveRating(id, { picked: true, pickedAt: Date.now() }); pfAddResub(id);
@@ -4777,7 +4807,7 @@ async function pickCard(c) {
   postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: true });   // 관심도 원장(데이터)
   try {   // 큐레이션 발동 = pending 적재 → 분석 → 카드(피드에 등장). 실패 시 되돌려 재시도 가능.
     // alt = 같은 사건 타매체(cluster_members) — 분석기 대체fetch + 썸네일 검색이미지 '유사' 보강 소스(applyTriage와 동일·주 픽 경로 누락 복구)
-    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
+    const alt = pickAlt(c).slice(0, 8);
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: c.url, title: c.title || '', alt }) });
     const j = await r.json().catch(() => ({}));
@@ -4851,7 +4881,7 @@ function applyTriage(act, c, el, reason, text) {
   if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
     // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체가 막힌 매체(403)면 분석기가 접근 가능한
     // 대체매체로 본문 확보(item3). 원 url 제외·정규화 중복제거·최대 8개(dispatch 페이로드 절제).
-    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
+    const alt = pickAlt(c).slice(0, 8);
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
   }
   if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 'Picking…'(분석 중) → 피드 진입 시 PICKED
@@ -5080,7 +5110,7 @@ $('#pasteSend').addEventListener('click', async () => {
   const text = $('#pasteText').value.trim();
   if (text.length < 30) { $('#pasteStatus').textContent = '기사 전문을 붙여넣어줘 (너무 짧음)'; return; }
   const btn = $('#pasteSend'); btn.disabled = true; $('#pasteStatus').textContent = '보내는 중…';
-  const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);   // 대체 fetch 후보(원매체 403 우회 보조)
+  const alt = pickAlt(c).slice(0, 8);   // 대체 fetch 후보(메이저 우선·원매체 403 우회 보조)
   try {
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, body: text }) });
     const d = await r.json().catch(() => ({}));
