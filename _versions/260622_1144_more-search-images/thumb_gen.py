@@ -365,18 +365,9 @@ def _img_candidates(html, base):
         for m in re.finditer(r'"image"\s*:', html):
             for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 400])[:2]:
                 add(u, junk=True)
-    # 3) 본문 <img> = 추가 사진(유사) 채움 — 엄격필터(같은매체·같은디렉터리·소형/로고/광고/동영상/플레이스홀더 컷 = add body=True).
-    #    260620 폐지했다가 260622 운영자("검색하면 많이 나오는데 많이 가져와") 재활성. 속보 배너 누출은
-    #    이제 _is_breaking_article(페이지 전체 컷) + _BODY_SKIP의 'banner' 로 이중 차단되어 안전.
-    #    src / data-src(지연로딩) / srcset(첫 후보)에서 추출 — 페이지당 og 1장 → 본문 다장으로 확장.
-    for tag in re.findall(r"<img\b[^>]*>", html, re.I):
-        sm = re.search(r'\b(?:data-(?:src|original|lazy(?:-src)?)|src)\s*=\s*["\']([^"\']+)', tag, re.I)
-        if sm:
-            add(sm.group(1), body=True)
-        ssm = re.search(r'\bsrcset\s*=\s*["\']([^"\']+)', tag, re.I)
-        if ssm:
-            cand = ssm.group(1).split(",")[0].strip().split(" ")[0]   # 첫 후보(대개 기본 해상도)
-            add(cand, body=True)
+    # 3) (본문 <img> 긁기 폐지 — 운영자 260620: 매체 '속보' 배너 등 본문 그래픽이 '유사'로 새어 차단.
+    #    이 함수는 한 기사당 og/twitter/JSON-LD 1장만 = 발행사 선언만. 다장 '유사'는 관련기사 og로 채운다
+    #    [phase2 = fetch_article_images._related_urls, 마커 신뢰 매체만].)
     return out
 
 def _url_ok(u):
@@ -502,23 +493,22 @@ def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=7):
         for u in (list(image_sources or []) + list(alt_urls or []) + (_related_urls(text, art_url) if text is not None else [])):
             if u and _url_ok(u) and u != art_url and u not in seen_u:
                 seen_u.add(u); related.append(u)
-        for ru in related[:15]:                             # 관련소스 상한 10→15(운영자 260622 — 더 많이)
+        for ru in related[:10]:
             if len(out) >= want:
                 break
             rhtml = _fetch_html(ru) or ""
             if _is_breaking_article(rhtml):                 # 속보 플래시 og = '[속보]' 배너 위험 → 컷(기사단위 일반화)
                 print("  ⏭ 관련 컷: 속보기사 og=배너 위험 ({}…)".format(ru[:42]))
                 continue
-            for rog in _img_candidates(rhtml, ru):          # 페이지당 og 1장 → og+본문 다장 채움(운영자 260622)
-                if len(out) >= want:
-                    break
-                if not rog or _norm_key(rog) in seen or _small_dim(rog) or _BODY_SKIP.search(rog):
-                    continue
-                if rep and not _vision_keep(rep, rog):
-                    continue
-                seen.add(_norm_key(rog))
-                out.append({"src": rog, "link": ru, "label": "" if not out else "유사"})
-                print("  🔗 관련이미지 +1 ({}…)".format(ru[:42]))
+            rc = _img_candidates(rhtml, ru)
+            rog = rc[0] if rc else None
+            if not rog or _norm_key(rog) in seen or _small_dim(rog) or _BODY_SKIP.search(rog):
+                continue
+            if rep and not _vision_keep(rep, rog):
+                continue
+            seen.add(_norm_key(rog))
+            out.append({"src": rog, "link": ru, "label": "" if not out else "유사"})
+            print("  🔗 관련이미지 +1 ({}…)".format(ru[:42]))
     return out
 
 def http_image(url):
