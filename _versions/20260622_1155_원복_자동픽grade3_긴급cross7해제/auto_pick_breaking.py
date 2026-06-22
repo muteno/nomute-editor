@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# 긴급 grade≥3 자동 픽 — candidates.json 의 새 isBreaking(breaking·grade≥3·cross≥2·<4h) 사건을
+# 긴급 자동 픽 — candidates.json 의 새 긴급(breaking·grade≥2·cross≥2·<4h = 푸시 게이트와 동일) 사건을
 # 자동으로 pending/ 적재(분석 입구) → news-analyze 발동(요약·카드 자동 생성). breaking-judge.yml 이 판정 직후 호출.
 # ⚠️⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독 쿼터) + Gemini 썸네일 3장($). 보수적 다중 가드:
-#   ① grade≥3 (대형·다수피해만 · 운영자 260622 — push 의 grade≥2 보다 엄격 = 자동픽 ⊆ push 의도)
-#   ② cross≥2(다매체 검증) ③ <4h (first_seen=갓 감지 기준 · published 는 syndication 지연으로 stale)
+#   ① grade≥2 (운영자 260622 — push 게이트와 동일 통일 · "비가역 2경로[푸시·과금]를 한 조건으로". 회수불가 과금이라
+#      미채점[None]·grade≤1 보류 · 뷰어 표시[배지/핀/점등]의 isUrgent[breaking OR cross≥7]와는 별개 = cross만으론 과금 안 함 §🚨)
+#   ② cross≥2(다매체 검증 · push PUSH_MIN_CROSS=2 와 동일) ③ <4h (first_seen=갓 감지 기준 · published 는 syndication 지연으로 stale)
 #   ④ 사건당 1회 영구 dedup(push/autopick.json — event_key/url **+ 제목해시** 다중키 = url 점프에도 안정 ·
 #      실패해도 재픽 안 함 · push_send.dedup_keys 와 동일 키셋) ⑤ 런/일 상한
 #   ⑥ pick_pending 의 load_active dedup(이미 처리중/완료면 스킵 = 수동픽과 충돌 0 · PICK_URL=c.url 로 수동픽과 동일 키).
@@ -27,8 +28,8 @@ PICK = ROOT / "scraper" / "pick_pending.py"
 KST = dt.timezone(dt.timedelta(hours=9))
 
 FAST_MAX_H = 4                                                        # 최신만(푸시·토스트와 동일 단일상수 정신)
-MIN_GRADE = int(os.environ.get("AUTOPICK_MIN_GRADE", "3"))           # grade≥3 (운영자 260622 — 대형 긴급만)
-MIN_CROSS = int(os.environ.get("AUTOPICK_MIN_CROSS", "2"))           # 다매체 검증(오발 가드 · push 정신)
+MIN_GRADE = int(os.environ.get("AUTOPICK_MIN_GRADE", "2"))           # grade≥2 = 푸시 게이트와 동일(운영자 260622 통일 · push_send.is_breaking 하한과 일치)
+MIN_CROSS = int(os.environ.get("AUTOPICK_MIN_CROSS", "2"))           # 다매체 검증(오발 가드 · push PUSH_MIN_CROSS=2 와 동일)
 MAX_PER_RUN = int(os.environ.get("AUTOPICK_MAX_PER_RUN", "2"))       # 런당 상한(버스트 캡)
 MAX_PER_DAY = int(os.environ.get("AUTOPICK_MAX_PER_DAY", "8"))       # 일 상한(안전밸브 · KST 기준)
 DRY = "--dry-run" in sys.argv
@@ -74,7 +75,7 @@ def eligible(c):
     if not c.get("breaking"):
         return False
     g = c.get("grade")
-    if g is None or (g or 0) < MIN_GRADE:               # 미채점(None)은 보류 — push 와 동일(가역 아닌 자동 과금이라 보수적)
+    if g is None or (g or 0) < MIN_GRADE:               # 미채점(None)은 보류 — push 게이트와 동일(회수 불가 과금이라 보수)
         return False
     if (c.get("cross") or 0) < MIN_CROSS:
         return False
