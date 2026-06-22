@@ -1234,7 +1234,7 @@
     backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }   /* 키워드(image_query) = 검정 글래스 음영 칩 + 쉼표 구분(라벨 옆·운영자 260622) */
   .cref-kw.en { color:var(--info); }   /* 영문 키워드(image_query_en)일 때 = 파랑(운영자 260622) */
   /* 키워드 = 라벨(• 검색 이미지) 아래 별도 줄로 분리(좌측 세로압축 해소) + 탭하면 복사(운영자 260622) */
-  .cref-kwline { margin:0 0 8px; text-align:right; }   /* 키워드 칩 = 우측정렬(위 전체 다운로드 버튼 아래로 · 운영자 260622) */
+  .cref-kwline { margin:0 0 8px; }   /* 키워드 칩 = 좌측(기본) */
   .cref-kwline .cref-kw { max-width:100%; white-space:normal; border-radius:8px; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background .15s, color .15s, border-color .15s; }
   .cref-kwline .cref-kw:active { transform:scale(.98); }
   /* 탭 복사 피드백 = 잠깐 눌림 + 초록 채움(글자 스왑 없음 · 운영자 260622 안 B) */
@@ -1259,7 +1259,8 @@
 
   /* ── 썸네일 후보 섹션(기사 제목 바로 아래) — 검색 3 + AI생성 3 · 각 4:5 캐러셀 ── */
   .thumbsec { margin:14px 0 18px; padding-top:14px; border-top:1px solid var(--line2); }
-  .thumbsec-h { font-size:14px; font-weight:800; color:var(--accent); margin:0 0 10px; letter-spacing:-.2px; }   /* 본문 섹션머리(#mdbody h2=한줄요약·Fact) 단위 통일 — 이모지 없음(운영자 260621) */
+  .thumbsec-h { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:800; color:var(--accent); margin:0 0 10px; letter-spacing:-.2px; }   /* 본문 섹션머리(#mdbody h2=한줄요약·Fact) 단위 통일 — 이모지 없음(운영자 260621) · 제목 좌 + 전체버튼 우(운영자 260622) */
+  .thumbsec-h .thsec-t { flex:1; min-width:0; }   /* 제목 = 좌측 차지 → 전체버튼 우측 밀착 */
   /* 썸네일 생성 중 자리표시 — 픽 직후 thumb_gen(별도 잡·~십몇 분) 도착 전. 준비되면 폴링이 실제 썸네일로 교체(운영자 260621) */
   .thumb-pending { display:flex; align-items:center; gap:8px; margin:0 0 4px; padding:13px 14px;
     border:1px dashed var(--line2); border-radius:12px; background:rgba(255,255,255,.02); color:var(--mut); font-size:12.5px; font-weight:700; }
@@ -2223,7 +2224,8 @@ function thumbSec(a) {
     return null;
   }
   const wrap = document.createElement('div'); wrap.className = 'thumbsec'; wrap.dataset.sig = thumbSecSig(a);
-  wrap.innerHTML = '<div class="thumbsec-h">썸네일 후보 — 검색 · AI 생성</div>';
+  const dlAllH = (search.length + gen.length) ? '<button type="button" class="sbtn cref-dlall dlbtn thsec-dlall" title="썸네일 후보 전체 저장" aria-label="썸네일 후보 전체 저장">' + DOWNLOAD_SVG + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 제목 라인 우측(검색+AI생성 통합 · .dlbtn 표준 · 운영자 260622)
+  wrap.innerHTML = '<div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — 검색 · AI 생성</span>' + dlAllH + '</div>';
   // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
     // 좌측(회색 돋보기) = 기사 제목 검색(불변) · 키워드(한/영 + 토글)는 thumbStatic이 kwData로 처리(운영자 260622)
@@ -2233,6 +2235,11 @@ function thumbSec(a) {
   }
   // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(4화풍+재생성 누적)
   if (gen.length) wrap.appendChild(thumbStatic('AI 생성', gen, 'gen', null, c.thumb_usage));
+  const dlH = wrap.querySelector('.thsec-dlall');   // 제목 라인 전체저장 = 검색+AI생성 전 이미지 통합 순차 다운로드(.dlbtn 표준 dlAllSeq)
+  if (dlH) {
+    const meta = search.map((it, i) => ['검색 이미지', it, i]).concat(gen.map((it, i) => ['AI 생성', it, i]));
+    dlH.addEventListener('click', e => { e.stopPropagation(); dlAllSeq(dlH, meta.map(m => m[1].img), k => thumbDlName(meta[k][0], meta[k][1], meta[k][2])); });
+  }
   return wrap;
 }
 // 제미나이 토큰/추정$ 표기(plain 텍스트 · 버튼 아님) — 라벨(AI 생성·검색 이미지) 우측. 형식 "$ 0.0, T 0".
@@ -2271,7 +2278,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
           : '<span class="cref-kwtog cref-kwtog-static"></span>')
       + '</span>'
     : '';
-  const dlAll = list.length ? '<button type="button" class="sbtn cref-dlall dlbtn" title="이미지 전체 저장" aria-label="이미지 전체 저장">' + DOWNLOAD_SVG + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 아이콘 + '전체' 한 버튼 안(운영자 260622)
+  const dlAll = '';   // 전체저장 = 섹션 제목 라인(.thumbsec-h)으로 이관 = 검색+AI생성 통합 1버튼(운영자 260622)
   const moreBtn = _moreFile ? '<button type="button" class="sbtn cref-more" title="관련 뉴스이미지 5장 더 — AI(Opus 4.8)가 요약·시사점 읽고 오버레이 뒤 후킹 배경으로 검색(1~2분·기존과 중복없이)" aria-label="이미지 더 가져오기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' : '';   // +5장 더(AI 재검색)
   const acts = (hbtn || kwbox || moreBtn) ? '<span class="cref-acts">' + moreBtn + hbtn + kwbox + '</span>' : '';   // 전체(dlAll)는 한 칸 아래 cref-dlrow로 분리(우측정렬 · 운영자 260622)
   const dlRow = dlAll ? '<div class="cref-dlrow">' + dlAll + '</div>' : '';
