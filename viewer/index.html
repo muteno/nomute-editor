@@ -1101,6 +1101,15 @@
     background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 10px; cursor:pointer; white-space:nowrap;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .fi-saveall svg { display:block; width:12px; height:12px; } .fi-saveall:active { transform:scale(.95); } .fi-saveall[disabled] { opacity:.6; }
+  /* ▼ 다운로드 버튼 표준(전 앱 공통 · 강조색 + 10% 반투명 + 클릭 ✓팝+링 · 정본=여기 · 운영자 260622) — 새 다운로드 버튼은 .dlbtn 한 클래스만 추가, 색·효과 재설계 금지 */
+  .dlbtn { color:var(--accent) !important; background:rgba(var(--accent-rgb),.10) !important; border-color:rgba(var(--accent-rgb),.22) !important; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  .dlbtn:hover { background:rgba(var(--accent-rgb),.16) !important; }
+  .dlbtn .dl-ack { position:absolute; inset:0; border-radius:inherit; display:grid; place-items:center; pointer-events:none; z-index:6; color:var(--accent); animation:dlAckPop .7s cubic-bezier(.18,1.5,.4,1) forwards; }
+  .dlbtn .dl-ack > svg { width:18px; height:18px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+  .dlbtn .dl-ack .dl-ring { position:absolute; inset:0; border-radius:inherit; border:1.5px solid rgba(var(--accent-rgb),.7); animation:dlRing .55s ease-out forwards; }
+  @keyframes dlAckPop { 0%{opacity:0;transform:scale(0)} 30%{opacity:1;transform:scale(1.15)} 55%{transform:scale(1)} 80%{opacity:1} 100%{opacity:0;transform:scale(1)} }
+  @keyframes dlRing { from{transform:scale(1);opacity:.85} to{transform:scale(1.5);opacity:0} }
+  @media (prefers-reduced-motion:reduce){ .dlbtn .dl-ack, .dlbtn .dl-ack .dl-ring { animation:none; } .dlbtn .dl-ack { opacity:0; } }
   .feedcount { font-size:13px; font-weight:600; color:var(--mut); }   /* (미사용) */
   .fi-card { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:16px; padding:13px 15px; }
   .fi-summary { font-size:13.5px; line-height:1.65; color:var(--fg); }
@@ -2224,7 +2233,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
           : '<span class="cref-kwtog cref-kwtog-static"></span>')
       + '</span>'
     : '';
-  const dlAll = list.length ? '<button type="button" class="sbtn cref-dlall" title="이미지 전체 저장" aria-label="이미지 전체 저장">' + DOWNLOAD_SVG + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 아이콘 + '전체' 한 버튼 안(운영자 260622)
+  const dlAll = list.length ? '<button type="button" class="sbtn cref-dlall dlbtn" title="이미지 전체 저장" aria-label="이미지 전체 저장">' + DOWNLOAD_SVG + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 아이콘 + '전체' 한 버튼 안(운영자 260622)
   const moreBtn = _moreFile ? '<button type="button" class="sbtn cref-more" title="관련 뉴스이미지 5장 더 — AI(Opus 4.8)가 요약·시사점 읽고 오버레이 뒤 후킹 배경으로 검색(1~2분·기존과 중복없이)" aria-label="이미지 더 가져오기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' : '';   // +5장 더(AI 재검색)
   const acts = (hbtn || kwbox || moreBtn) ? '<span class="cref-acts">' + moreBtn + hbtn + kwbox + '</span>' : '';   // 전체(dlAll)는 한 칸 아래 cref-dlrow로 분리(우측정렬 · 운영자 260622)
   const dlRow = dlAll ? '<div class="cref-dlrow">' + dlAll + '</div>' : '';
@@ -2242,7 +2251,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
           + '<img loading="lazy" referrerpolicy="no-referrer" src="' + escUrl(it.img) + '" alt=""'
           + ' onerror="this.closest(\'.cref-slot\').style.display=\'none\'">' + no + cap
           + '<div class="timg-acts">'
-          +   '<a class="sbtn timg-dl" href="' + escUrl(dlSrc(it.img, dname)) + '" download="' + esc(dname) + '" aria-label="이미지 저장" title="이미지 저장">' + DOWNLOAD_SVG + '</a>'
+          +   '<a class="sbtn timg-dl dlbtn" href="' + escUrl(dlSrc(it.img, dname)) + '" download="' + esc(dname) + '" aria-label="이미지 저장" title="이미지 저장">' + DOWNLOAD_SVG + '</a>'
           + '</div></div>';
       }).join('') || '<div class="cref-empty">이미지 없음</div>') + '</div>';
   wrap.querySelectorAll('.cref-slot').forEach(slot => {
@@ -2472,7 +2481,7 @@ function _ensureLbox() {
   d.innerHTML =
     '<div class="lbox-bar">'
     + '<button type="button" class="sbtn lbox-copy" aria-label="이미지 복사">' + COPY_SVG + '</button>'
-    + '<a class="sbtn lbox-dl" download aria-label="이미지 저장" title="이미지 저장">' + DOWNLOAD_SVG + '</a>'
+    + '<a class="sbtn lbox-dl dlbtn" download aria-label="이미지 저장" title="이미지 저장">' + DOWNLOAD_SVG + '</a>'
     + '<span class="lbox-no"></span>'
     + '<a class="lbox-src" target="_blank" rel="noopener" hidden>출처 ↗</a>'
     + '<button type="button" class="tool-x lbox-x" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>'
@@ -2821,7 +2830,7 @@ function feedSec(a, keepIdx = 0) {
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =
     `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3>
-       <button class="sbtn cref-dlall" type="button" title="전체 다운로드" aria-label="전체 다운로드">${DOWNLOAD_SVG}<span class="cref-dllbl">전체</span></button></div>
+       <button class="sbtn cref-dlall dlbtn" type="button" title="전체 다운로드" aria-label="전체 다운로드">${DOWNLOAD_SVG}<span class="cref-dllbl">전체</span></button></div>
      <div class="fi-card">
        ${summary ? `<div class="fi-summary">${esc(summary)}</div>` : ''}
        <div class="fi-tech">${tech}</div>
@@ -2876,7 +2885,7 @@ function feedSec(a, keepIdx = 0) {
        <button class="sbtn fbdown" type="button" aria-label="아쉬운 카드">${THUMBDOWN_SVG}</button>
        <button class="sbtn edit" type="button" aria-label="이 카드 수정" title="이 카드 수정">${EDIT_SVG}</button>
        <button class="sbtn ovl" type="button" aria-label="오버레이만 투명 PNG" title="오버레이만 투명 PNG(글자+그라데이션)">${LAYERS_SVG}</button>
-       <a class="sbtn save" aria-label="이 사진 저장">${DOWNLOAD_SVG}</a>
+       <a class="sbtn save dlbtn" aria-label="이 사진 저장">${DOWNLOAD_SVG}</a>
      </div>
      <div class="slide-ver">
        <button class="vbtn vprev" type="button" aria-label="이전 판">전</button>
@@ -5614,6 +5623,14 @@ document.addEventListener('click', e => {
   const svg = b.querySelector('svg'); if (!svg) return;
   const m = b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin';
   svg.classList.remove('ic-spin', 'ic-bounce'); void svg.offsetWidth; svg.classList.add(m);
+}, true);
+// 다운로드 버튼 표준 클릭효과 = ✓ 팝 + 링 리플(.dlbtn 전 앱 공통 · 위임·캡처 · 운영자 260622)
+document.addEventListener('click', e => {
+  const b = e.target.closest('.dlbtn'); if (!b) return;
+  const o = document.createElement('span'); o.className = 'dl-ack';
+  o.innerHTML = '<span class="dl-ring"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+  b.appendChild(o); setTimeout(() => o.remove(), 700);
 }, true);
 $('#revFab').addEventListener('click', openRev);
 $('#revX').addEventListener('click', () => revdlg.close());
