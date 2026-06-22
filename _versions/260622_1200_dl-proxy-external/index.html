@@ -2206,15 +2206,9 @@ async function copyImg(url, btn) {
     catch { _flashBtn(btn, 'err'); }
   }
 }
-// 교차출처(R2·외부 매체 CDN) http(s) url이면 같은-출처 다운로드 프록시(api/dl) 경유 = CORS 우회·강제 저장(외부 이미지도 다운로드·복사 됨 · 운영자 260622).
-// 같은 출처(로컬 git폴백 cards/*.png 등)·비 http(s)는 원본 그대로(직접 다운로드 됨). ?v= 캐시버스트 보존(덮어쓴 뒤 옛 이미지 방지).
+// R2(교차출처) url이면 같은-출처 다운로드 프록시(api/dl) 경유 src 반환(CORS 우회·?v= 캐시버스트 보존 = 덮어쓴 뒤 옛 이미지 방지). 그 외(같은출처)는 원본.
 function dlSrc(url, name) {
-  try {
-    const u = new URL(url, location.href);
-    if (/^https?:$/.test(u.protocol) && u.origin !== location.origin)
-      return 'api/dl?u=' + encodeURIComponent(url) + (name != null ? '&n=' + encodeURIComponent(name) : '');
-  } catch (e) { /* 상대/비정상 url → 원본 */ }
-  return url;
+  return /\/\/pub-[0-9a-fA-F]+\.r2\.dev\//.test(url) ? ('api/dl?u=' + encodeURIComponent(url) + (name != null ? '&n=' + encodeURIComponent(name) : '')) : url;
 }
 function downloadImg(url, name, btn) {
   if (!url) return;
