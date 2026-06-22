@@ -73,6 +73,8 @@
   .go:hover { background:rgba(var(--accent-rgb),.18); border-color:rgba(var(--accent-rgb),.5); }
   .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.2); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(edshake 재사용·운영자 260622) */
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
@@ -1295,7 +1297,8 @@ $('#go').onclick = async () => {
   if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
   dispatchJob('/api/thumb', payload, jobLabel());
 };
-function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err'); }
+function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err');
+  const g = document.getElementById('go'); if (g) { g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); setTimeout(() => g.classList.remove('shake'), 460); } }   // 전송 막힘(내용 미입력 등) = 제작 버튼 흔들기(운영자 260622)
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
