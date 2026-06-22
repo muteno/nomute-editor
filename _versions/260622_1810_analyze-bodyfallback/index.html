@@ -4340,14 +4340,6 @@ const pfAddResub = id => { try { const m = pfResub(); m[id] = Date.now(); localS
 const pfResubActive = id => { const t = pfResub()[id]; return !!t && (Date.now() - t < PICK_TIMEOUT_MS + 60000); };
 // 실패 표시 대상 = picks-failed 에 있음 + 복구표시 안 함(api/submit) + 재제출창 아님(전문 직접입력 진행 중) + 피드 미등장(늦은 성공이면 PICKED 우선·stale 실패기록 무시).
 // 실패 키 = c.url 또는 클러스터 멤버 url 중 picks-failed에 있는 첫 키(pendStatus·srvTriage와 동일 패턴 — rep-url 점프 시 형제 url로 기록된 실패도 매칭·운영자 260620).
-// 픽 alt(대체 fetch 후보) = breaking_pick(본문 풍부한 메이저·PICK_PRIORITY 조선>…) 우선 + cluster_members. rep url 제외·중복제거.
-//   analyze 가 alt 를 본문 폴백/모델 제시로 쓰는데, 대표(rep)가 '최초보도=통신사'면 본문이 빈약 → 시스템이 이미 고른
-//   메이저 신문을 맨 앞에 둬 더 완전한 본문을 먼저 시도하게 한다(통신사 rep 실패 근본해결 · 운영자 260622). mega 클러스터(cluster_members=[])도 breaking_pick는 살아있어 보강됨.
-function pickAlt(c) {
-  const rep = _normU(c.url);
-  const major = (c && c.breaking_pick && c.breaking_pick.url) ? _normU(c.breaking_pick.url) : '';
-  return [...new Set([major, ...((c.cluster_members || []).map(_normU))])].filter(u => u && u !== rep);
-}
 const pfKeyOf = c => [_normU(c.url), ...((c.cluster_members || []).map(_normU))].find(u => u && PFAIL.has(u)) || '';
 const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
 const pfReason = c => (PFAIL.get(pfKeyOf(c)) || {}).reason || '';
@@ -4486,7 +4478,7 @@ function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 
 }
 function failRetry(c) {   // ↻ 재시도 — ① 자동 재분석 재발사(전문 없이 = fetch 재시도 · alt=cluster_members로 원매체 403 우회 = '재시도 한바퀴') ② 가까운 관련기사 원문 새 탭(원기사 막혔어도 타매체는 읽힘 · 운영자 260622)
   if (!c) return;
-  const alt = pickAlt(c);   // 같은 사건 타매체(메이저 우선·가까운 관련기사)
+  const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url));   // 같은 사건 타매체(가까운 관련기사)
   if (c.url) {   // ① 재분석 재발사(body 없이 → fetch 재시도 · alt 동반) + Failed→Picking 표시(pasteSend body-less판)
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
     const id = candId(c); saveRating(id, { picked: true, pickedAt: Date.now() }); pfAddResub(id);
@@ -4807,7 +4799,7 @@ async function pickCard(c) {
   postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: true });   // 관심도 원장(데이터)
   try {   // 큐레이션 발동 = pending 적재 → 분석 → 카드(피드에 등장). 실패 시 되돌려 재시도 가능.
     // alt = 같은 사건 타매체(cluster_members) — 분석기 대체fetch + 썸네일 검색이미지 '유사' 보강 소스(applyTriage와 동일·주 픽 경로 누락 복구)
-    const alt = pickAlt(c).slice(0, 8);
+    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: c.url, title: c.title || '', alt }) });
     const j = await r.json().catch(() => ({}));
@@ -4881,7 +4873,7 @@ function applyTriage(act, c, el, reason, text) {
   if (act === 'pick' && c.url) {   // PICK = 큐레이션 발동(pending→분석→카드)
     // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체가 막힌 매체(403)면 분석기가 접근 가능한
     // 대체매체로 본문 확보(item3). 원 url 제외·정규화 중복제거·최대 8개(dispatch 페이로드 절제).
-    const alt = pickAlt(c).slice(0, 8);
+    const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
   }
   if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 'Picking…'(분석 중) → 피드 진입 시 PICKED
@@ -5110,7 +5102,7 @@ $('#pasteSend').addEventListener('click', async () => {
   const text = $('#pasteText').value.trim();
   if (text.length < 30) { $('#pasteStatus').textContent = '기사 전문을 붙여넣어줘 (너무 짧음)'; return; }
   const btn = $('#pasteSend'); btn.disabled = true; $('#pasteStatus').textContent = '보내는 중…';
-  const alt = pickAlt(c).slice(0, 8);   // 대체 fetch 후보(메이저 우선·원매체 403 우회 보조)
+  const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url)).slice(0, 8);   // 대체 fetch 후보(원매체 403 우회 보조)
   try {
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, body: text }) });
     const d = await r.json().catch(() => ({}));
