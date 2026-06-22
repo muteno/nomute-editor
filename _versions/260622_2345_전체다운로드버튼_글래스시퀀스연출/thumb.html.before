@@ -204,25 +204,10 @@
   @keyframes dlAckPop { 0%{opacity:0;transform:scale(0)} 30%{opacity:1;transform:scale(1.15)} 55%{transform:scale(1)} 80%{opacity:1} 100%{opacity:0;transform:scale(1)} }
   @keyframes dlRing { from{transform:scale(1);opacity:.85} to{transform:scale(1.5);opacity:0} }
   @media (prefers-reduced-motion:reduce){ .dlbtn .dl-ack, .dlbtn .dl-ack .dl-ring { animation:none; } .dlbtn .dl-ack { opacity:0; } }
-  /* ▼ 전체저장(.jsave) = 다운로드 시퀀스 버튼 — 프로스티드 글래스 + 좌→우 강조색 채움(진행 i/N·검정 글자 드러남) + ✓ 팝 + 우측 드레인 풀림. index .cref-dlall과 시각·연출 통일. 정본 패턴 = 구성도/버튼인터랙션_기틀북.css §9 · 운영자 260622 */
-  .jsave.dlbtn { position:relative; overflow:hidden; background:rgba(10,16,12,.30) !important; border-color:rgba(var(--accent-rgb),.22) !important; backdrop-filter:blur(13px) saturate(1.3); -webkit-backdrop-filter:blur(13px) saturate(1.3); }
-  .jsave.dlbtn:hover { background:rgba(10,16,12,.42) !important; border-color:rgba(var(--accent-rgb),.34) !important; }
-  .jsave.dlbtn .dl-ack { display:none !important; }   /* 기본 .dlbtn 누름 ✓팝·링 제거 — 시퀀스 연출이 대체 */
-  .jsave > svg, .jsave .dlseq-ic, .jsave .jslbl { position:relative; z-index:1; }
-  .jsave .jslbl { transition:color .18s; }
-  .jsave .dlseq-ic { width:12px; height:12px; display:inline-grid; }
-  .jsave .dlseq-ic svg { grid-area:1/1; width:12px; height:12px; }
-  .jsave .dlseq-ic .chk { opacity:0; }
-  .jsave.dlbtn::before { content:''; position:absolute; inset:0; z-index:0; background:var(--accent); transform:scaleX(0); transform-origin:left center; transition:transform .28s linear; pointer-events:none; }
-  .jsave.dlbtn.dlseq-busy::before { transform:scaleX(var(--p,0)); }
-  .jsave.dlbtn.dlseq-done::before { transform:scaleX(1); transition:transform .22s cubic-bezier(.22,.61,.36,1); }
-  .jsave.dlbtn.dlseq-release::before { transform-origin:right center; transform:scaleX(0); transition:transform .46s cubic-bezier(.22,.61,.36,1); }
-  .jsave.dlbtn.dlseq-busy, .jsave.dlbtn.dlseq-done, .jsave.dlbtn.dlseq-release { color:var(--on-accent) !important; }
-  .jsave.dlbtn.dlseq-done { border-color:rgba(var(--accent-rgb),.6) !important; box-shadow:0 0 18px rgba(var(--accent-rgb),.42); }
-  .jsave.dlbtn.dlseq-done .dlseq-ic .dn { opacity:0; }
-  .jsave.dlbtn.dlseq-done .dlseq-ic .chk { opacity:1; animation:dlChkPop .42s cubic-bezier(.22,.61,.36,1); }
-  @keyframes dlChkPop { 0%{transform:scale(.3)} 58%{transform:scale(1.3)} 100%{transform:scale(1)} }
-  @media (prefers-reduced-motion:reduce){ .jsave.dlbtn::before { transition:none; } .jsave.dlbtn.dlseq-done .dlseq-ic .chk { animation:none; } }
+  /* 전체저장(.jsave)만 = 검정 반투명 글래스 + 누름 퍼짐(✓팝·링) 제거 — index 전체버튼과 시각 통일(운영자 260622). 개별(.imgdl)·변형(.jvar-dl)은 .dlbtn 표준 초록 유지. */
+  .jsave.dlbtn { background:rgba(0,0,0,.42) !important; border-color:rgba(255,255,255,.08) !important; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .jsave.dlbtn:hover { background:rgba(0,0,0,.55) !important; }
+  .jsave.dlbtn .dl-ack { display:none !important; }
   /* 이전 제작(12h) 접힘 섹션 */
   .hist { margin-top:20px; border-top:1px solid var(--line); padding-top:6px; }
   .hist-h { width:100%; display:flex; align-items:center; gap:8px; background:none; border:none; color:var(--fg); cursor:pointer; padding:10px 2px; font:inherit; font-size:13px; font-weight:700; }
@@ -698,35 +683,6 @@ const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 const WARN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
 const SPIN_SVG = '<svg class="jspin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>';
 const DOWNLOAD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
-// 전체저장(.jsave) 다운로드 시퀀스 버튼 = 다운↔체크 스왑 한 벌 (완료 시 ✓ 팝 · 정본 패턴 구성도 §9)
-const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
-// 전체저장 시퀀스 — 순차 저장(진행 i/N·좌→우 채움) → ✓ 팝 → 우측 드레인 풀림(index dlAllSeq와 동일 연출·운영자 260622)
-async function jSaveSeq(btn, saves) {
-  if (!btn || btn._dlbusy) return;
-  saves = (saves || []).filter(s => s && s.url);
-  if (!saves.length) return;
-  btn._dlbusy = 1; btn.style.pointerEvents = 'none';
-  const lbl = btn.querySelector('.jslbl'); const orig = lbl ? lbl.textContent : '';
-  btn.classList.remove('dlseq-done', 'dlseq-release'); btn.classList.add('dlseq-busy');
-  btn.style.setProperty('--p', '0');
-  for (let i = 0; i < saves.length; i++) {
-    dlBlob(saves[i].url, saves[i].dlname);
-    if (lbl) lbl.textContent = `저장 중… ${i + 1}/${saves.length}`;
-    btn.style.setProperty('--p', String((i + 1) / saves.length));
-    await new Promise(r => setTimeout(r, 300));
-  }
-  if (lbl) lbl.textContent = '완료';
-  btn.classList.remove('dlseq-busy'); btn.classList.add('dlseq-done');
-  setTimeout(() => {
-    btn.classList.add('dlseq-release');
-    setTimeout(() => {
-      btn.classList.remove('dlseq-done', 'dlseq-release');
-      if (lbl) lbl.textContent = orig || '전체';
-      btn.style.setProperty('--p', '0');
-      btn._dlbusy = 0; btn.style.pointerEvents = '';
-    }, 520);
-  }, 950);
-}
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
@@ -796,8 +752,8 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
     const svRow = document.createElement('div'); svRow.className = 'jsave-row';   // 전체 = 완료 시각줄 아래로 내려 우측정렬(썸네일 5종 공용 · 운영자 260622)
     const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave dlbtn'; sv.title = '이 결과 전체 다운로드';
-    sv.innerHTML = DLSEQ_IC + '<span class="jslbl">전체</span>';
-    sv.onclick = () => jSaveSeq(sv, job.saves);
+    sv.innerHTML = DOWNLOAD_SVG + '<span>전체</span>';
+    sv.onclick = () => job.saves.forEach((s, i) => setTimeout(() => dlBlob(s.url, s.dlname), i * 350));
     svRow.appendChild(sv); row.append(svRow);
   }
   if (job.status === 'err' && job.payload && job.endpoint) {   // 실패 = 같은 설정으로 재시도 재발사(운영자 260620 아이디어 3)
