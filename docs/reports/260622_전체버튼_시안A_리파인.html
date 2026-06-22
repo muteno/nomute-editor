@@ -1,0 +1,92 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>전체 버튼 — 시안 A 리파인</title>
+<style>
+  :root{ --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108; --bg:#0b0f0c; --fg:#e9eaec; --mut:#8b8f98;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    /* 더 투명한 글래스 */
+    --glass-bg:rgba(var(--accent-rgb),.05); --glass-bd:rgba(var(--accent-rgb),.26); }
+  *{box-sizing:border-box}
+  body{ margin:0; padding:28px 16px 70px; background:
+      radial-gradient(120% 60% at 70% -10%, rgba(var(--accent-rgb),.10), transparent 60%), var(--bg);
+    color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  h1{ font-size:17px; margin:0 0 4px; color:var(--accent); letter-spacing:-.3px; }
+  .lead{ font-size:12.5px; color:var(--mut); margin:0 0 24px; line-height:1.6; } .lead b{ color:#cfd2d6; }
+  /* 실제 모달 배경 흉내(글래스 투명도 확인용) */
+  .ctx{ background:linear-gradient(155deg,rgba(30,46,34,.5),rgba(11,18,13,.62)); border:1px solid rgba(255,255,255,.08);
+    border-radius:16px; padding:22px 16px; margin:0 0 16px; box-shadow:0 14px 34px rgba(0,0,0,.3);
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .ctx.dark{ background:#0b0f0c; }
+  .ctx.img{ background:linear-gradient(120deg,#3a4d3f,#1a2a1e 60%,#2b3a2f); }
+  .tag{ font-size:10.5px; color:var(--mut); flex-basis:100%; margin-bottom:-6px; }
+  .replay{ font:700 11px/1 inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:8px 11px; cursor:pointer; }
+
+  .dl{ position:relative; overflow:hidden; isolation:isolate; display:inline-flex; align-items:center; gap:6px;
+    height:34px; padding:0 14px; border-radius:10px; border:1px solid var(--glass-bd);
+    font:700 12px/1 inherit; color:var(--accent); cursor:pointer; -webkit-tap-highlight-color:transparent;
+    background:var(--glass-bg); backdrop-filter:blur(13px) saturate(1.4); -webkit-backdrop-filter:blur(13px) saturate(1.4);
+    box-shadow:0 6px 18px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.06);
+    transition:transform .12s var(--ease), border-color .2s, box-shadow .2s; user-select:none; }
+  .dl:active{ transform:scale(.95); }
+  .dl .ico,.dl .lbl{ position:relative; z-index:2; display:inline-flex; align-items:center; transition:color .18s; }
+  .dl .lbl{ white-space:nowrap; }
+  .swap{ position:relative; width:15px; height:15px; }
+  .swap svg{ position:absolute; inset:0; width:15px; height:15px; }
+  .swap .chk{ opacity:0; }
+
+  /* 좌→우 와이프 채움 */
+  .dl .fill{ position:absolute; inset:0; z-index:1; background:var(--accent);
+    transform:scaleX(0); transform-origin:left center; transition:transform .28s linear; }
+  .dl.busy .fill{ transform:scaleX(var(--p,0)); }
+  .dl.done .fill{ transform:scaleX(1); transition:transform .22s var(--ease); }
+  .dl.release .fill{ transform-origin:right center; transform:scaleX(0); transition:transform .46s var(--ease); }
+  /* 진행 시작~완료~풀림 = 글자·아이콘 검정(차오르며 드러남) */
+  .dl.busy .ico,.dl.busy .lbl,.dl.done .ico,.dl.done .lbl,.dl.release .ico,.dl.release .lbl{ color:var(--on-accent); }
+  .dl.done{ border-color:rgba(var(--accent-rgb),.6); box-shadow:0 6px 18px rgba(0,0,0,.38), 0 0 22px rgba(var(--accent-rgb),.42); }
+
+  /* 아이콘 스왑 + 체크 팝(커졌다 작아짐) */
+  .dl.done .swap .dn{ opacity:0; }
+  .dl.done .swap .chk{ opacity:1; animation:chkpop .42s var(--ease); }
+  @keyframes chkpop{ 0%{transform:scale(.3)} 58%{transform:scale(1.3)} 100%{transform:scale(1)} }
+  @media (prefers-reduced-motion:reduce){ .dl *{ transition:none!important; animation:none!important; } }
+</style></head><body>
+<h1>시안 A 리파인 — 검정 글자·더 투명·✓ 팝</h1>
+<p class="lead">좌→우로 강조색이 차오르며 <b>검정 글자가 드러나고</b>, 완료 시 ✓가 <b>커졌다 작아지며</b> 뜸 → 오른쪽으로 빠지며 풀림. 베이스는 <b>더 투명한 글래스</b>. 배경 3종에서 투명도 확인 — 버튼/‘다시’ 탭하면 재생.</p>
+
+<div class="ctx"><span class="tag">기본 패널 배경</span>
+  <button class="dl" id="b1"><span class="fill"></span><span class="ico"><span class="swap"></span></span><span class="lbl">전체</span></button>
+  <button class="replay" data-r="b1">다시</button></div>
+
+<div class="ctx img"><span class="tag">이미지 위(썸네일 후보 자리)</span>
+  <button class="dl" id="b2"><span class="fill"></span><span class="ico"><span class="swap"></span></span><span class="lbl">전체</span></button>
+  <button class="replay" data-r="b2">다시</button></div>
+
+<div class="ctx dark"><span class="tag">어두운 배경</span>
+  <button class="dl" id="b3"><span class="fill"></span><span class="ico"><span class="swap"></span></span><span class="lbl">전체</span></button>
+  <button class="replay" data-r="b3">다시</button></div>
+
+<script>
+  var DN='<svg class="dn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 4 5-4M5 21h14"/></svg>';
+  var CHK='<svg class="chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  document.querySelectorAll('.swap').forEach(function(s){ s.innerHTML=DN+CHK; });
+  var N=4;
+  function run(btn){
+    if(btn._busy) return; btn._busy=1;
+    btn.classList.remove('done','release'); btn.classList.add('busy');
+    var lbl=btn.querySelector('.lbl'), orig=lbl.textContent, i=0;
+    btn.style.setProperty('--p',0);
+    (function step(){
+      i++; lbl.textContent='저장 중… '+i+'/'+N; btn.style.setProperty('--p', i/N);
+      if(i<N) setTimeout(step,300);
+      else setTimeout(function(){
+        lbl.textContent='완료'; btn.classList.remove('busy'); btn.classList.add('done');
+        setTimeout(function(){ btn.classList.add('release');
+          setTimeout(function(){ btn.classList.remove('done','release'); lbl.textContent=orig; btn.style.setProperty('--p',0); btn._busy=0; },520);
+        },950);
+      },300);
+    })();
+  }
+  document.querySelectorAll('.dl').forEach(function(b){ b.addEventListener('click',function(){run(b);}); });
+  document.querySelectorAll('[data-r]').forEach(function(r){ r.addEventListener('click',function(){ run(document.getElementById(this.dataset.r)); }); });
+  setTimeout(function(){ run(document.getElementById('b1')); },500);
+</script>
+</body></html>
