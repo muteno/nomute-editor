@@ -1326,13 +1326,7 @@
     font:inherit; font-size:12.5px; font-weight:600; padding:8px 13px; cursor:pointer; }
   .askattach svg { width:14px; height:14px; }   /* 첨부 픽토그램(이미지·운영자 260621) */
   .askattach:hover { border-color:rgba(15,253,2,.3); }
-  .askattach:active { transform:scale(.95); }   /* 첨부도 눌림 active(전송·복붙과 통일·운영자 260622) */
   .askstatus { flex:1; min-width:90px; font-size:12px; color:var(--mut); }
-  /* 빈 입력 안내 = 전송 버튼 바로 위 작은 mut 메시지(좌측 status 대신·입력 있으면 사라짐·운영자 260622) */
-  .askhint { display:none; text-align:right; font-size:11px; color:var(--mut); margin:7px 3px -3px; }
-  .askhint.show { display:block; }
-  .askhint.flash { animation:askHintFlash .55s ease; }
-  @keyframes askHintFlash { 0%,100%{ color:var(--mut); } 30%{ color:var(--accent); } }
   .asksend { flex:none; position:relative; overflow:hidden; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.4); border-radius:999px;
     font:inherit; font-size:13px; font-weight:800; padding:9px 18px; cursor:pointer; transition:background .18s ease, border-color .18s ease, color .18s ease; }   /* 글래스 = 구성도 .send 정본(밝은초록 솔리드→dim 바탕이라야 초록 채움이 보임·260622) */
   .asksend > span { position:relative; z-index:1; }
@@ -1557,10 +1551,9 @@
   <div class="askwrap">
     <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
     <div class="asktawrap">
-      <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
+      <textarea id="askText" class="askta" rows="5" placeholder="예) 요즘 층간소음 사건 관련 기사 정리해줘 — 또는 캡처만 첨부"></textarea>
     </div>
     <div class="askimgs" id="askImgs"></div>
-    <div class="askhint" id="askHint">내용을 입력해주세요</div>
     <div class="askbot">
       <span class="askstatus" id="askStatus"></span>
       <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
@@ -4963,7 +4956,7 @@ function openAsk(opts) {
   bpop.hidden = true; linkpop.hidden = true; $('#askStatus').textContent = '';
   _askResolveId = opts.resolveId || null;
   if (opts.prefill != null) $('#askText').value = opts.prefill;   // 실패 복구 = 제목·URL 프리필(전문은 사용자가 붙임)
-  updateAskClip(); updateAskHint(); askdlg.showModal();
+  updateAskClip(); askdlg.showModal();
   setTimeout(() => { const ta = $('#askText'); ta.focus(); if (opts.prefill != null) { const i = ta.value.length; try { ta.setSelectionRange(i, i); } catch {} } }, 60);
 }
 $('#askmenu').addEventListener('click', e => { e.preventDefault(); openAsk(); });
@@ -4992,8 +4985,7 @@ $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 // 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
 function updateAskClip() { const b = $('#askClip'); if (!b) return; const has = $('#askText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; }
-function updateAskHint() { const h = $('#askHint'); if (!h) return; const empty = !$('#askText').value.trim() && !askImages.length; h.classList.toggle('show', empty); }   // 빈 입력 안내 = 전송 위 mut 메시지(입력/이미지 있으면 숨김)
-$('#askText').addEventListener('input', () => { updateAskClip(); updateAskHint(); });
+$('#askText').addEventListener('input', updateAskClip);
 $('#askClip').addEventListener('click', async () => {
   const ta = $('#askText'), b = $('#askClip');
   if (ta.value.trim()) {                                  // 문자열 있음 = 복사(체크 플래시)
@@ -5027,7 +5019,6 @@ function renderAskImgs() {
   const host = $('#askImgs');
   host.innerHTML = askImages.map((im, i) => `<div class="askimg"><img src="${im.dataUrl}" alt=""><button class="askimg-x" type="button" data-i="${i}" aria-label="제거"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button><span class="askimg-kb">${im.kb}KB</span></div>`).join('');
   host.querySelectorAll('.askimg-x').forEach(b => b.onclick = () => { askImages.splice(+b.dataset.i, 1); renderAskImgs(); });
-  updateAskHint();   // 이미지 추가/제거 시 빈 입력 안내 토글
 }
 // 전송 완료 체크(시안2 팝 스프링) — 게이지 후 글자 위에 ✓ 팝으로 그림(asksend·revsend 공용·260622)
 function askShowCheck(btn){ if (!btn || btn.querySelector('.ack')) return; btn.classList.add('checked');
@@ -5036,7 +5027,7 @@ function askShowCheck(btn){ if (!btn || btn.querySelector('.ack')) return; btn.c
 function askHideCheck(btn){ if (!btn) return; btn.classList.remove('checked'); const d = btn.querySelector('.ack'); if (d) d.remove(); }
 $('#askSend').addEventListener('click', async () => {
   const text = $('#askText').value.trim();
-  if (!text && !askImages.length) { updateAskHint(); const h = $('#askHint'); if (h) { h.classList.remove('flash'); void h.offsetWidth; h.classList.add('flash'); } return; }   // 빈 입력 = 좌측 status 대신 버튼 위 mut 힌트 flash(운영자 260622)
+  if (!text && !askImages.length) { $('#askStatus').textContent = '내용이나 캡처를 넣어줘'; return; }
   const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
