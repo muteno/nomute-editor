@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>긴급(속보) 알림 — 현재 화면</title>
+<style>
+  :root{
+    --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --fg-2:#cfd8d0;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --danger:#ff5b4a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 70px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 10% -4%, rgba(15,253,2,.08), transparent 60%),
+    radial-gradient(720px 460px at 108% 6%, rgba(255,60,50,.06), transparent 62%);}
+  .wrap{max-width:430px; margin:0 auto;}
+  h1{font-size:20px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 22px; line-height:1.55;}
+  .sub b{color:var(--fg-2);}
+  .blk{margin:0 0 30px;}
+  .lab{display:flex; align-items:center; gap:8px; margin:0 0 5px;}
+  .num{flex:0 0 auto; width:22px; height:22px; border-radius:7px; display:grid; place-items:center; font-size:11px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f);}
+  .lab h2{font-size:14px; font-weight:800; margin:0;}
+  .ds{color:var(--mut); font-size:11.5px; line-height:1.5; margin:0 0 13px; padding-left:30px;}
+  .ds b{color:var(--fg-2);}
+  .stage{position:relative; border-radius:16px; padding:18px 12px; background:rgba(255,255,255,.015); border:1px solid rgba(255,255,255,.06); display:flex; justify-content:center;}
+
+  /* ── ① 포그라운드 토스트 (viewer .nm-toast 그대로) ── */
+  .nm-toast{ max-width:min(92vw,400px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
+    background:linear-gradient(135deg, rgba(42,13,11,.95), rgba(20,9,9,.95)); border:1px solid rgba(255,85,60,.5); border-radius:14px;
+    box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#fff; font-size:13px; font-weight:700; line-height:1.35;
+    -webkit-backdrop-filter:blur(14px) saturate(1.2); backdrop-filter:blur(14px) saturate(1.2);}
+  .nm-toast .tg{ flex:none; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:2px 8px; box-shadow:0 0 8px rgba(255,60,50,.5);}
+  .nm-toast b{ color:#ffd9cf; }
+
+  /* ── ② 피드 카드(.card.brk) ── */
+  .card{ display:block; border-radius:18px; padding:14px 15px; background:linear-gradient(165deg, rgba(20,30,23,.66), rgba(10,16,12,.8));
+    border:1px solid rgba(226,35,26,.5); box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.10), 0 0 14px rgba(240,40,30,.17); width:100%;}
+  .cardtop{ font-size:11px; color:var(--mut); margin-bottom:9px; display:flex; align-items:center; gap:9px;}
+  .cardtop .cat{ font-weight:800; color:var(--accent); }
+  .cardtop .wr{ font-weight:700; }
+  .cardtop .ctop-r{ margin-left:auto; display:inline-flex; align-items:center; gap:8px; }
+  .cardtop .scrap.nw{ color:var(--accent); font-weight:900; font-size:9.5px; letter-spacing:.12em; text-shadow:0 0 9px rgba(15,253,2,.55); }
+  .cardtop .urg.brk{ font-size:11px; font-weight:800; color:#ff5b4a; }
+  .ctitle{ font-size:16px; font-weight:800; line-height:1.38; }
+  .cmeta{ margin-top:8px; font-size:11.5px; color:var(--mut); }
+  .cmeta .n{ color:var(--accent); font-weight:800; }
+
+  /* ── ③ 웹푸시(시스템 알림 표현) ── */
+  .push{ width:100%; border-radius:16px; padding:12px 13px; background:#1c1f24; border:1px solid rgba(255,255,255,.1); display:flex; gap:11px; box-shadow:0 10px 26px rgba(0,0,0,.4); }
+  .push .ic{ flex:none; width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); display:grid; place-items:center; font-size:19px; box-shadow:0 0 10px rgba(255,60,50,.4); }
+  .push .pb{ flex:1; min-width:0; }
+  .push .ph{ display:flex; align-items:center; gap:6px; font-size:11px; color:#9aa0a6; }
+  .push .ph .ap{ font-weight:700; color:#cfd4da; }
+  .push .pt{ font-size:13.5px; font-weight:800; color:#fff; margin-top:2px; }
+  .push .px{ font-size:12.5px; color:#c3c8cf; margin-top:2px; line-height:1.4; }
+  .ph-cap{ font-size:10px; color:var(--mut); margin:0 0 7px 2px; }
+
+  .note{ margin-top:6px; border-radius:12px; padding:13px 15px; font-size:12px; line-height:1.65; background:rgba(255,150,20,.07); border:1px solid rgba(255,150,20,.28); }
+  .note b{ color:#ff9614; } .note .g{ color:var(--accent); } .note .m{ color:var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>긴급(속보) 알림 — 지금 화면</h1>
+  <p class="sub">backend가 <b>긴급=속보(breaking AND grade≥2)</b>로 확정한 사건이 뜨는 3군데. 실제 viewer 스타일·문구 그대로 재현.</p>
+
+  <!-- ① 토스트 -->
+  <div class="blk">
+    <div class="lab"><span class="num">①</span><h2>포그라운드 토스트</h2></div>
+    <p class="ds">앱을 보고 있을 때 화면 <b>하단(네비 위)</b>에 뜸. <b>6.5초 후 자동으로 사라짐</b> · 탭하면 <b>수집함으로 이동 + 해당 건 깜빡</b>. <b>버튼은 없음</b>(탭만).</p>
+    <div class="stage">
+      <div class="nm-toast"><span class="tg">🚨 긴급</span><span>2건 · [속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습… <b>탭해서 보기</b></span></div>
+    </div>
+  </div>
+
+  <!-- ② 피드 카드 -->
+  <div class="blk">
+    <div class="lab"><span class="num">②</span><h2>피드/수집함 카드</h2></div>
+    <p class="ds">긴급 사건 카드 = <b>빨강 테두리 + 은은한 빨강 글로우</b> + 우상단 <b>"긴급"</b> 빨강 글자. (4시간 지나면 자동으로 "이슈"[노랑]로 전이)</p>
+    <div class="stage">
+      <div class="card">
+        <div class="cardtop"><span class="cat">국제</span><span class="wr">방금</span><span class="ctop-r"><span class="scrap nw">NEW</span><span class="urg brk">긴급</span></span></div>
+        <div class="ctitle">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습으로 최소 5명 사망</div>
+        <div class="cmeta">국제 · <span class="n">16</span> · 1시간 전</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 웹푸시 -->
+  <div class="blk">
+    <div class="lab"><span class="num">③</span><h2>웹푸시 (앱 꺼져 있어도)</h2></div>
+    <p class="ds">구독 켜두면 <b>앱을 안 보고 있어도</b> 폰 시스템 알림으로 옴(잠금화면·알림창). 탭하면 뷰어 열림. ⚠️ iOS는 홈화면 추가(PWA) 필요.</p>
+    <div class="stage" style="flex-direction:column; align-items:stretch; gap:8px;">
+      <div class="ph-cap">▾ 잠금화면/알림창 표시 예</div>
+      <div class="push">
+        <div class="ic">🚨</div>
+        <div class="pb">
+          <div class="ph"><span class="ap">노뮤트</span> · 지금</div>
+          <div class="pt">🚨 긴급 속보</div>
+          <div class="px">[속보] '종전 합의' 몇 시간 만에 이스라엘, 레바논 재공습으로 최소 5명 사망</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>지금 동작 정리</b><br>
+    • 토스트 = <span class="g">탭→수집함 이동</span>만 · 버튼 없음 · 6.5초 자동소멸 · 같은 건 다시 안 울림(seen)<br>
+    • 프로필 빨강 펄스 링은 <b>긴급엔 없음</b>(260620 제거 — 분석 실패에만 남김). 긴급 = 배지+토스트로만 표시.<br>
+    <span class="m">🤔 "난감"한 지점 알려주면 거기 맞춰 손볼게 — 예: 토스트에 ✓확인(끄기)·바로가기 버튼 추가(분석실패 토스트처럼) / 문구·색·지속시간 조정 / 프로필 링 부활 등.</span>
+  </div>
+</div>
+</body>
+</html>
