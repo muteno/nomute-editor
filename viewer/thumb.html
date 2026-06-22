@@ -355,6 +355,7 @@
         <div class="cartrack" id="cartrack"></div>
         <button class="carnav prev" id="carPrev" type="button" aria-label="이전">‹</button>
         <button class="carnav next" id="carNext" type="button" aria-label="다음">›</button>
+        <a class="imgdl" id="carDl" href="#" aria-label="다운로드" hidden></a>
       </div>
     </div>
     <!-- 이전 제작(12시간) — 창 닫아도 localStorage 보관·맨아래 접힘 토글(운영자 260621) -->
@@ -737,8 +738,7 @@ function carAppend(url, dlname, cap, job, varStr, o, restore) {   // 완성 이�
   $('#carwrap').hidden = false; $('#carbar').hidden = false;   // 바(전체 다운로드·N/N장)는 대기열 위에 노출
   const track = $('#cartrack');
   const slide = document.createElement('div'); slide.className = 'carslide'; slide.dataset.slide = slideIdx;
-  slide.innerHTML = '<a class="imgdl" href="' + url + '" aria-label="다운로드">' + DOWNLOAD_SVG + '</a><img src="' + url + '"><span class="cap"></span>';
-  slide.querySelector('.imgdl').addEventListener('click', e => { e.preventDefault(); dlBlob(url, dlname); });   // R2(교차출처)=blob 다운로드
+  slide.innerHTML = '<img src="' + url + '"><span class="cap"></span>';   // 다운로드 = 슬라이드 밖 고정 오버레이(#carDl)로 이관 → 스와이프해도 안 흔들림(뷰어 .feed-ui 패턴·마진 통일 · 운영자 260622)
   const capEl = slide.querySelector('.cap'); capEl.textContent = cap;
   if (varStr) { const v = document.createElement('span'); v.className = 'cap-var'; v.textContent = varStr; capEl.appendChild(v); }   // OPA 변형 = 일반체(제목과 분리)
   track.appendChild(slide);
@@ -750,6 +750,8 @@ function carUpdate() {
   const idx = Math.round(track.scrollLeft / (track.clientWidth || 1));
   $('#carcount').textContent = n ? (Math.min(idx + 1, n) + ' / ' + n + '장') : '';
   $('#carPrev').disabled = idx <= 0; $('#carNext').disabled = idx >= n - 1;
+  const dl = $('#carDl'), cur = n ? CARSLIDES[Math.min(Math.max(idx, 0), n - 1)] : null;   // 고정 다운로드 = 현재 슬라이드 타겟(스와이프 추적 · 뷰어 오버레이 패턴)
+  if (dl) { dl.hidden = !n; if (cur) { if (!dl.innerHTML) dl.innerHTML = DOWNLOAD_SVG; dl.href = cur.url; dl.onclick = e => { e.preventDefault(); dlBlob(cur.url, cur.dlname); }; } }
 }
 function carJump(slideIdx) {   // 변형줄 클릭 → 해당 변형 슬라이드로 캐러셀 이동(운영자 260620 아이디어 1)
   const track = $('#cartrack');
