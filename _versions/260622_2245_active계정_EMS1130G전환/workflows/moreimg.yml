@@ -1,0 +1,88 @@
+name: moreimg
+
+# 뷰어 '검색 이미지 +N장 더'(functions/api/moreimg.js 디스패치) → Claude(Opus 4.8·effort max)가
+# 기사 요약·시사점을 읽고 오버레이 뒤 후킹용 카드뉴스 배경에 효과적인 관련 뉴스이미지 소스를
+# *기존과 중복없이* 더 찾아(WebSearch) og:image 추출(thumb_gen 재사용·R2) →
+# cards/<stem>/thumbs/search.json 앞쪽 append. Cloudflare가 push마다 build-viewer 재실행 → 뷰어 반영.
+# 카드 제미나이 0 불변(GEMINI env 부재). CSE 死 대체 — 위키미디어보다 관련도 높은 뉴스소스 직접 검색.
+on:
+  workflow_dispatch:
+    inputs:
+      stem:
+        description: '기사 file 베이스(queue/<stem>.md · cards/<stem>)'
+        required: true
+        type: string
+      want:
+        description: '추가 장수(기본 5)'
+        default: '5'
+        type: string
+      account:
+        description: '구독 OAuth 계정'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: moreimg-${{ github.event.inputs.stem }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  more:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 최신 main 기준
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치(없으면 exit 127)
+
+      - name: Find more images
+        env:
+          # 인증 = 구독 OAuth(API 키 미사용) — analyze/ask와 동일 동적 계정 선택
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', github.event.inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ github.event.inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          # R2 = 이미지 재호스팅(핫링크 0). 5개 다 없으면 외부 핫링크 폴백(thumb_gen 동작).
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          MOREIMG_STEM: ${{ github.event.inputs.stem }}
+          MOREIMG_WANT: ${{ github.event.inputs.want || '5' }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT} · stem=${MOREIMG_STEM} · want=${MOREIMG_WANT}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GEMINI_API_KEY GDRIVE_SA_JSON
+          pip install --quiet Pillow 2>/dev/null || pip3 install --quiet Pillow 2>/dev/null || echo "Pillow 설치 실패 — 로고필터 no-op(무회귀)"
+          python3 .github/scripts/more_images.py
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add cards/ 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "변경 없음(새 이미지 0)"; exit 0
+          fi
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git commit -m "moreimg: 검색이미지 추가(Claude 관련소스)" 2>/dev/null || true
+            git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::push 실패(재시도 소진)"

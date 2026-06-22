@@ -8,6 +8,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 MODEL="claude-opus-4-8"
+source "$ROOT/shared/claude_transient.sh"   # is_quota/claude_failover — 계정 사용량 한도 시 대체 계정 1회 전환(account failover)
 
 FILE="${FILE:-}"                 # 큐 항목 id(확장자 없이) — 워크플로 input
 INSTRUCTION="${INSTRUCTION:-}"   # 재작성 지시(자연어)
@@ -87,14 +88,20 @@ ${TH_OLD}
 <<<NOMUTE_THREAD_END>>>"
 
 # 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단(권한대기 차단).
-out="$(printf '%s' "$prompt" | timeout 900 claude -p \
-      --model "$MODEL" \
-      --effort max \
-      --allowedTools "Read,Glob,Grep" \
-      --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
-      --max-turns 12 \
-      2> "/tmp/revise-${FILE}.err")"
-rc=$?
+# 단발 호출이라 쿼터 한도면 대체 계정으로 1회 전환 후 재시도(account failover · SSOT).
+for _try in 1 2; do
+  out="$(printf '%s' "$prompt" | timeout 900 claude -p \
+        --model "$MODEL" \
+        --effort max \
+        --allowedTools "Read,Glob,Grep" \
+        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
+        --max-turns 12 \
+        2> "/tmp/revise-${FILE}.err")"
+  rc=$?
+  { [ $rc -eq 0 ] && [ -n "${out// }" ]; } && break
+  claude_failover "$out$(cat "/tmp/revise-${FILE}.err" 2>/dev/null)" && continue   # 쿼터 → 대체 계정 전환·재시도
+  break
+done
 
 if [ $rc -ne 0 ] || [ -z "${out// }" ]; then
   echo "::error::claude 실패(rc=$rc)"; cat "/tmp/revise-${FILE}.err" 2>/dev/null | head -40; exit 1
