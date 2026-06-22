@@ -378,7 +378,6 @@
     background:linear-gradient(135deg,rgba(18,30,34,.72),rgba(11,19,23,.72)); border:1px solid rgba(12,208,247,.22);
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }
-  #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
   .soc-item:hover { border-color:rgba(12,208,247,.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(12,208,247,.2); }
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
   .soc-burst { color:#0cd0f7; }
@@ -687,8 +686,6 @@
   .qgo:hover { background:rgba(15,253,2,.2); }
   .qgo[disabled], .qgo.qgo-off { color:var(--mut); background:rgba(255,255,255,.04); border-color:var(--line); cursor:default; opacity:.55; }   /* 처리중 = 비활성 바로가기(전문 분석 전엔 이동 불가) — SUCC=초록 활성과 명확히 구분(운영자 260621) */
   .qgo[disabled]:hover, .qgo.qgo-off:hover { background:rgba(255,255,255,.04); }
-  .qgo.qgo-url { color:var(--amber); background:rgba(var(--amber-rgb),.12); border-color:rgba(var(--amber-rgb),.4); }   /* 처리중 = 원문 URL 대신(앰버 = URL 칩색 흡수) · SUCC는 초록=뉴스요약(운영자 260622) */
-  .qgo.qgo-url:hover { background:rgba(var(--amber-rgb),.22); }
   .qdl { flex:none; width:28px; height:26px; display:grid; place-items:center; padding:0; cursor:pointer;
     color:#ff9b8f; background:rgba(255,107,91,.1); border:1px solid rgba(255,107,91,.32); border-radius:7px; transition:background .15s; }
   .qdl:hover { background:rgba(255,107,91,.22); }
@@ -1296,12 +1293,6 @@
   .asksend.firing { pointer-events:none; }   /* 전송 누르면 = PICK과 동일한 초록 게이지 좌→우 채움(운영자 260621) */
   .asksend.firing::before { content:''; position:absolute; inset:0; background:#06140d; transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }
   @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
-  /* 전송 실패 = 흔들림 / 완료 = settle 펄스 (전송 상태머신 fail·done · 운영자 260622) */
-  .asksend.shake { animation:asksh .4s ease; }
-  @keyframes asksh { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
-  .asksend.done { animation:askdn .34s var(--ease); }
-  @keyframes askdn { 0%{transform:scale(1)} 40%{transform:scale(1.04)} 100%{transform:scale(1)} }
-  @media (prefers-reduced-motion:reduce) { .asksend.shake, .asksend.done { animation:none; } }
   /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
   .askbot .askclip { position:static; top:auto; right:auto; flex:none; opacity:.85; }
   .askbot .askclip:hover { opacity:1; }
@@ -3831,13 +3822,11 @@ function qTitle(it) {
   return it.title || '(내용 없음)';
 }
 function qRowHtml(it) {
+  const cls = it.via === '전문' ? 'paste' : 'url';
   let right;
   if (it.status === 'succ') right = '<span class="qb qb-succ">SUCC</span><button class="qgo" type="button">바로가기</button>';
   else if (it.status === 'fail') right = '<span class="qb qb-fail">FAIL</span><button class="qdl" type="button" aria-label="진단 다운로드" title="실패 원인 진단 MD 다운로드">' + DL_SVG + '</button>';
-  else { const qurl = it.key && /^https?:\/\//i.test(it.key);   // 처리중: 원문 URL 있으면 바로가기가 URL을 대신(앰버=URL색 흡수) · 없으면(전문) 비활성. 분석 끝나면 SUCC=초록 바로가기→뉴스요약(운영자 260622).
-    right = '<span class="qb qb-proc">처리중</span>' + (qurl
-      ? '<button class="qgo qgo-url" type="button" title="원문 새 탭 — 분석 끝나면 뉴스요약 이동으로 바뀜">바로가기</button>'
-      : '<button class="qgo qgo-off" type="button" disabled title="전문 분석 중 — 원문 링크 없음(끝나면 뉴스요약 이동)">바로가기</button>'); }
+  else right = '<span class="qb qb-proc">처리중</span><span class="qvia ' + cls + '">' + qEsc(it.via || '') + '</span><button class="qgo qgo-off" type="button" disabled title="전문 수집·분석 중 — 완료되면 이동 가능">바로가기</button>';   // 처리중 = 비활성 바로가기(전문 찾기 전 이동 불가 · 완료 SUCC면 활성 초록 · 운영자 260621)
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위 — 이모지 서로게이트 안 쪼갬 · 좁은 화면은 CSS 생략부호 병행 · 운영자 260621)
   return '<div class="qrow q-' + it.status + '"><span class="qt">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span>' + right + '</div>';
 }
@@ -3858,7 +3847,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); if (it.status === 'succ') qGo(it.id); else if (it.key) window.open(it.key, '_blank', 'noopener'); };   // SUCC=뉴스요약 / 처리중=원문 URL 새 탭(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go) go.onclick = (e) => { e.stopPropagation(); qGo(it.id); };
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
@@ -4676,10 +4665,8 @@ const SOC_LEAN_MAP = { '클리앙': 'l', '보배드림': 'l', '오유': 'l', '82
 const socLean = s => { const v = SOC_LEAN_MAP[s]; return v === 'l' ? 'lean-l' : v === 'r' ? 'lean-r' : ''; };
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
-let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
-  let _ss = '';   // 이번 렌더 구성(행 ID·순서+검색어) 누적
   if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">불러오는 중…</div>`; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rows = q ? SOCIAL.filter(r => ((r.title || '') + ' ' + (r.sources || []).join(' ')).toLowerCase().includes(q)) : SOCIAL;
@@ -4697,11 +4684,7 @@ function renderSns() {
     el.querySelector('.soc-title').textContent = r.title || '';
     const chips = el.querySelectorAll('.soc-chip'); (r.sources || []).forEach((s, k) => { if (chips[k]) chips[k].textContent = s; });
     list.appendChild(el);
-    _ss += (r.url || r.title || '') + ',';   // 시그니처 누적(행 ID·순서)
   });
-  _ss += '|' + q;
-  list.classList.toggle('no-anim', _ss === _snsSig);   // 직전과 동일 구성(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0
-  _snsSig = _ss;
 }
 
 // ── ✨ 요약 요청(멀티모달 입력) — 자연어+캡처 → 큐레이션 요청 ──
@@ -4785,11 +4768,11 @@ $('#askSend').addEventListener('click', async () => {
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // reflow-reset = 매 성공 settle 재생
+    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨 — 큐레이션해서 뉴스요약에 올라와'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
-    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
-  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
+    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); }
+  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.classList.remove('firing'); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
@@ -4914,19 +4897,6 @@ function _expCopy() {
     window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
     top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
   }
-  // 카드 박스 = 외부(페이지) 스크롤 우선: 평소 내부 스크롤 끔(스와이프=페이지 넘어감). 넘치는 카드는 하단 페이드, 탭하면 그 박스만 내부 스크롤 활성(운영자 260622).
-  var cbs = document.querySelectorAll('.nm-cardbody');
-  function _markOf() { Array.prototype.forEach.call(cbs, function (b) { if (!b.classList.contains('nm-sactive')) b.classList.toggle('nm-of', b.scrollHeight - b.clientHeight > 4); }); }
-  function _deact(except) { Array.prototype.forEach.call(cbs, function (b) { if (b !== except && b.classList.contains('nm-sactive')) { b.classList.remove('nm-sactive'); b.scrollTop = 0; } }); _markOf(); }
-  Array.prototype.forEach.call(cbs, function (b) {
-    b.addEventListener('click', function () {
-      if (b.classList.contains('nm-sactive') || b.scrollHeight - b.clientHeight <= 4) return;   // 이미 활성·안 넘치면 무시
-      _deact(b); b.classList.add('nm-sactive'); b.classList.remove('nm-of');
-    });
-  });
-  document.addEventListener('click', function (e) { if (!e.target.closest('.nm-cardbody, .nm-secbtn')) _deact(null); }, true);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(_markOf);   // 폰트 로드 후 높이 재측정
-  _markOf();
 }
 const SUMMARY_TPL = `<!doctype html>
 <html lang="ko">
@@ -5003,9 +4973,6 @@ const SUMMARY_TPL = `<!doctype html>
   .draft-scroll::-webkit-scrollbar-track { background:rgba(255,255,255,.04); border-radius:9px; margin:4px 0; }
   .draft-scroll::-webkit-scrollbar-thumb { background:rgba(15,253,2,.42); border-radius:9px; border:2px solid transparent; background-clip:padding-box; }
   .draft-scroll::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.72); background-clip:padding-box; }
-  .nm-cardbody { max-height:18em; overflow:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }   /* 카드 = 고정높이 박스 · 평소 overflow:hidden = 스와이프가 페이지로(외부 스크롤 우선) · 운영자 260622 */
-  .nm-cardbody.nm-of { -webkit-mask-image:linear-gradient(180deg,#000 84%,transparent); mask-image:linear-gradient(180deg,#000 84%,transparent); cursor:pointer; }   /* 넘침 = 하단 페이드(더 있음 신호) + 탭하면 그 박스 스크롤 가능(커서 힌트) */
-  .nm-cardbody.nm-sactive { overflow-y:auto; -webkit-mask-image:none; mask-image:none; box-shadow:0 0 0 2px rgba(15,253,2,.5) inset; }   /* 탭 활성 = 그 박스만 내부 스크롤 ON(외부 우선의 예외) + 라임 링 */
   .nm-foot { margin:24px 2px 0; padding-top:16px; border-top:1px solid rgba(255,255,255,.12); }
   .nm-foot-h { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#7d7d7d; margin:0 0 10px; }
   .src { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px; font-size:13px; }
@@ -5112,21 +5079,19 @@ async function buildSummaryHtml(full) {   // full=true('전체' 체크): IG·스
       i = j;
     }
   }
-  if (full) {   // '전체' 체크 = 카드뉴스 = 카드마다 별도 박스(각자 복사 버튼 · 고정높이 내부스크롤 · 외부 페이지 스크롤 우선 · 운영자 260622). 기본(미체크)=없음.
+  if (full) {   // '전체' 체크 = 카드 프롬프트(카드별 텍스트 + 이미지 프롬프트)도 한 섹션으로 추가(운영자 260621 — 톤만 바꿔 그대로 옮김). 기본(미체크)=없음.
     const cmd = (CUR_A && CUR_A.cards && CUR_A.cards.md) || '';   // cards.md = SSOT(파싱이 DOM 스크랩보다 깨끗 — 클립/버튼 오염 없음)
+    let chtml = '';
     if (cmd) {
-      const cds = parseCards(cmd);
-      if (cds.length) {
-        const ctitle = feedTitle(cmd);
-        boxes += '<div class="nm-grp">카드뉴스' + (ctitle ? ' · ' + esc(ctitle) : '') + '</div>';   // 카드뉴스 그룹 헤더(제목)
-        cds.forEach(cd => {
-          let inner = '';
-          if (cd.caption) inner += '<pre>' + esc(cd.caption).replace(/\*([^*\n]+)\*/g, '<span class="cem">$1</span>') + '</pre>';   // *강조* → 형광(카드와 동일 톤)
-          if (cd.prompt) inner += '<p class="nm-sublbl">이미지 프롬프트</p><pre>' + esc(cd.prompt) + '</pre>';
-          if (inner) boxes += card('카드 ' + cd.n, '<div class="nm-body draft-scroll nm-cardbody" data-body>' + inner + '</div>', false);   // 카드별 = data-sec → _expCopy가 카드마다 복사 버튼
-        });
-      }
+      const ctitle = feedTitle(cmd);
+      if (ctitle) chtml += '<p><strong>' + esc(ctitle) + '</strong></p>';
+      parseCards(cmd).forEach(cd => {
+        chtml += '<p><strong>[카드 ' + cd.n + ']</strong></p>';
+        if (cd.caption) chtml += '<pre>' + esc(cd.caption).replace(/\*([^*\n]+)\*/g, '<span class="cem">$1</span>') + '</pre>';   // *강조* → 형광(카드와 동일 톤)
+        if (cd.prompt) chtml += '<p class="nm-sublbl">이미지 프롬프트</p><pre>' + esc(cd.prompt) + '</pre>';
+      });
     }
+    if (chtml) boxes += card('카드 프롬프트', '<div class="nm-body draft-scroll" data-body>' + chtml + '</div>', false);
   }
   const now = new Date(), pz = n => String(n).padStart(2, '0');
   const ymd = now.getFullYear() + '-' + pz(now.getMonth() + 1) + '-' + pz(now.getDate());
