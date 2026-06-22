@@ -75,7 +75,6 @@
   .go:disabled { opacity:.5; cursor:default; transform:none; }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(edshake 재사용·운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
-  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(.ed-chip.reject 빨강 계승 · 운영자 260622) */
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
@@ -1252,8 +1251,8 @@ const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').repl
 function goFire() {
   const gb = document.getElementById('go'); if (!gb) return;
   if (!gb.dataset.label) gb.dataset.label = gb.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
-  clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); clearTimeout(gb._errT);
-  gb.classList.remove('firing', 'okdone', 'checking', 'err', 'shake'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
+  clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3);
+  gb.classList.remove('firing', 'okdone', 'checking'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작
   gb.classList.add('firing'); gb.textContent = '전송 중…'; gb.setAttribute('aria-busy', 'true');
   gb._fT1 = setTimeout(() => {                                     // 게이지 완료 → ✓ 체크가 그려짐(시안1)
     gb.classList.remove('firing'); gb.classList.add('okdone', 'checking');
@@ -1329,15 +1328,8 @@ $('#go').onclick = async () => {
   if (APP === '2' && params.mode === 'overlay' && RIMG.b64) { payload.imageB64 = RIMG.b64; payload.name = RIMG.name; }   // 오버레이 배경 = 옵션
   dispatchJob('/api/thumb', payload, jobLabel());
 };
-function errStatus(m) {   // 전송 막힘(내용 미입력 등) = 메시지를 버튼 *안에* 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(운영자 260622)
-  const s = $('#status'); s.textContent = ''; s.classList.remove('err');   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
-  const g = document.getElementById('go'); if (!g) return;
-  if (!g.dataset.label) g.dataset.label = g.textContent;        // 원래 라벨 보존(재진입 시 덮어쓰기 방지)
-  clearTimeout(g._fT1); clearTimeout(g._fT2); clearTimeout(g._fT3); clearTimeout(g._errT);
-  g.classList.remove('firing', 'okdone', 'checking'); g.removeAttribute('aria-busy');
-  g.textContent = m; g.setAttribute('aria-live', 'assertive');  // 메시지 = 버튼 안에
-  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label || '이미지 제작'; }, 1700); }
+function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.add('err');
+  const g = document.getElementById('go'); if (g) { g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); setTimeout(() => g.classList.remove('shake'), 460); } }   // 전송 막힘(내용 미입력 등) = 제작 버튼 흔들기(운영자 260622)
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시

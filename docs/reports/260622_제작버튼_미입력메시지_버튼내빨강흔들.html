@@ -1,0 +1,82 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>이미지 제작 버튼 — 미입력 피드백 개선</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+          --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.6; padding:24px 16px 60px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:21px; margin:0 0 4px; color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 24px; }
+  h2 { font-size:15px; margin:30px 0 12px; border-left:3px solid var(--accent); padding-left:10px; }
+  .card { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; width:120px; }
+  .demo { display:flex; flex-direction:column; gap:18px; }
+  .col { background:#101113; border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .col h3 { font-size:13px; margin:0 0 10px; color:var(--mut); font-weight:600; }
+  .status { font-size:13px; color:var(--mut); white-space:pre-wrap; min-height:18px; margin-top:8px; }
+  .status.err { color:#ff8a8a; }
+  /* === 라이브 .go 버튼 CSS 복제(viewer/thumb.html) === */
+  .go { width:100%; margin-top:6px; padding:14px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.36); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }
+  .go:hover { background:rgba(var(--accent-rgb),.18); border-color:rgba(var(--accent-rgb),.5); }
+  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.2); }
+  .go.shake { animation:edshake .42s; }
+  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  @media (prefers-reduced-motion:reduce){ .go.shake{ animation:none; } }
+  .tip { font-size:12px; color:var(--mut); margin-top:8px; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .old { background:rgba(255,77,77,.14); color:#ff7a7a; }
+  .new { background:var(--accent-dim); color:var(--accent); }
+</style></head>
+<body><div class="wrap">
+  <h1>이미지 제작 버튼 — 미입력 피드백 개선</h1>
+  <p class="sub">텍스트 미입력 채로 「이미지 제작」 누르면 → 메시지를 <b>버튼 안</b>에 빨강 액티브로 띄우며 흔들고 1.7초 뒤 원복</p>
+
+  <h2>한눈 비교 (탭/클릭해서 직접 확인)</h2>
+  <div class="card demo">
+    <div class="col">
+      <h3><span class="pill old">전</span> 메시지가 버튼 <u>밑</u>에 별도로 뜸 + 버튼만 흔들림</h3>
+      <button class="go" id="goOld">이미지 제작</button>
+      <div class="status" id="stOld"></div>
+    </div>
+    <div class="col">
+      <h3><span class="pill new">후</span> 메시지가 버튼 <u>안</u>에 빨강 액티브로 뜸 + 흔들림</h3>
+      <button class="go" id="goNew">이미지 제작</button>
+      <div class="tip">버튼을 누르면 빨강으로 바뀌며 메시지 표시·흔들림 → 1.7초 뒤 원래대로</div>
+    </div>
+  </div>
+
+  <h2>전 / 후</h2>
+  <div class="card"><table>
+    <tr><th>메시지 위치</th><td><b>전</b> 버튼 아래 별도 줄(#status) · 작아서 놓치기 쉬움<br><b>후</b> 버튼 텍스트 자리에 직접 표시 — 시선이 버튼에 모임</td></tr>
+    <tr><th>색</th><td><b>전</b> 버튼은 초록 그대로, 밑 글자만 빨강<br><b>후</b> 버튼 전체가 빨강 액티브(배경·테두리·글자) → 막혔다는 신호가 강함</td></tr>
+    <tr><th>흔들림</th><td><b>전·후</b> 동일(edshake 0.42s 좌우 흔들림 재사용)</td></tr>
+    <tr><th>복귀</th><td><b>후</b> 1.7초 뒤 「이미지 제작」 라벨·초록으로 자동 원복(다시 누르거나 정상 전송 시 즉시 원복)</td></tr>
+  </table></div>
+
+  <h2>장점 · 효율 · 품질저하 리스크</h2>
+  <div class="card"><table>
+    <tr><th>장점</th><td>피드백이 버튼 한 곳에 집중 → 폰에서 메시지 놓침↓. 빨강 액티브로 "지금 못 보낸다"가 즉각 전달.</td></tr>
+    <tr><th>효율</th><td>CSS 1줄(.go.err) + errStatus 재작성만. 새 DOM·라이브러리 0. 기존 edshake·dataset.label 상태머신 재사용.</td></tr>
+    <tr><th>리스크</th><td>낮음. 연타·정상 전송과의 타이머 경합은 goFire에서 _errT·err/shake 클래스 클리어로 차단. 접근성=aria-live assertive로 스크린리더 읽힘. reduced-motion이면 흔들림 생략·빨강은 유지.</td></tr>
+    <tr><th>적용 범위</th><td>/1 포스트·/2 릴스·/3 저작권·/4 경고문·/5 카드뉴스 전 제작 버튼 공통(errStatus 단일 경로).</td></tr>
+  </table></div>
+</div>
+<script>
+  // 라이브 동작 복제 — 전(밑 메시지) vs 후(버튼 안)
+  document.getElementById('goOld').onclick = function(){
+    var s=document.getElementById('stOld'); s.textContent='텍스트를 입력해줘'; s.classList.add('err');
+    var g=this; g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake'); setTimeout(function(){g.classList.remove('shake');},460);
+  };
+  document.getElementById('goNew').onclick = function(){
+    var g=this; if(!g.dataset.label) g.dataset.label=g.textContent;
+    clearTimeout(g._errT);
+    g.textContent='텍스트를 입력해줘'; g.setAttribute('aria-live','assertive');
+    g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+    g._errT=setTimeout(function(){ g.classList.remove('err','shake'); g.textContent=g.dataset.label||'이미지 제작'; },1700);
+  };
+</script>
+</body></html>
