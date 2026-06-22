@@ -1220,6 +1220,9 @@
   /* 검색 헤더의 '구글 이미지 검색' = 글래스 .sbtn 아이콘으로 통일(기존 초록 알약 텍스트 = 투박 → 폐기 · 운영자 260620) */
   .cref-srch { width:var(--btn-sm); height:var(--btn-sm); border-radius:var(--r-s); }
   .cref-srch svg { width:15px; height:15px; }
+  .cref-acts { display:inline-flex; align-items:center; gap:6px; flex:none; }   /* 돋보기 2개(회색=제목·초록=추출키워드) 묶음(운영자 260622) */
+  .cref-srch.iq { color:var(--accent); border-color:rgba(15,253,2,.4); }   /* 초록 = AI 추출 키워드(image_query) 검색 · 회색(제목·기존)과 구분 */
+  .cref-srch.iq:hover { background:rgba(15,253,2,.12); border-color:rgba(15,253,2,.55); }
   /* 복사/저장 정직표시 — ok(초록 체크) / warn(부분·앰버: URL만 복사·새탭저장) / err(실패·빨강) */
   .sbtn.warnflash { background:var(--amber); color:var(--on-amber); border-color:var(--amber); }
   .sbtn.errflash { background:var(--danger); color:var(--on-danger); border-color:var(--danger); }
@@ -2085,7 +2088,9 @@ function thumbSec(a) {
     const _srchHref = _qen
       ? 'https://www.google.com/search?tbm=isch&hl=en&gl=us&tbs=qdr:d&q=' + encodeURIComponent(_qen.slice(0, 100))
       : 'https://www.google.com/search?tbm=isch&tbs=qdr:d&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100));
-    wrap.appendChild(thumbStatic('검색 이미지', search, 'search', _srchHref, c.thumb_usage));
+    const _qiq = (a.image_query || '').trim();   // 초록 돋보기 = AI 추출 키워드(image_query) 검색 · 회색(제목·기존)과 구분(운영자 260622)
+    const _iqHref = _qiq ? 'https://www.google.com/search?tbm=isch&tbs=qdr:d&q=' + encodeURIComponent(_qiq.slice(0, 100)) : '';
+    wrap.appendChild(thumbStatic('검색 이미지', search, 'search', _srchHref, c.thumb_usage, _iqHref));
   }
   // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(4화풍+재생성 누적)
   if (gen.length) wrap.appendChild(thumbStatic('AI 생성', gen, 'gen', null, c.thumb_usage));
@@ -2108,13 +2113,15 @@ function usageText(bucket, kind) {
 const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>';
 const SEARCH_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
 // 정적 캐러셀(thumb_search/thumb_gen) — items=[{img,label?,sid?}]. 탭=확대 · 우상단 액션행 .sbtn(저장 · 생성슬롯=재생성+저장 · §🎨 .slide-acts 계승). usage={gen,search}.
-function thumbStatic(label, items, kind, href, usage) {
+function thumbStatic(label, items, kind, href, usage, href2) {
   const list = items.slice(0, 7);   // 검색이미지 최대 7장(과금0·운영자 260622) · AI 생성은 3화풍이라 영향 없음
   const wrap = document.createElement('div'); wrap.className = 'cref';
   // 검색 헤더 우측 = 글래스 .sbtn 아이콘(구글 이미지 검색) — 기존 초록 알약 텍스트 폐기(투박·운영자 260620)
-  const hbtn = href ? '<a class="sbtn cref-srch" href="' + escUrl(href) + '" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a>' : '';
+  const hbtn = href ? '<a class="sbtn cref-srch" href="' + escUrl(href) + '" target="_blank" rel="noopener" title="구글 이미지 검색 — 제목(기존)" aria-label="구글 이미지 검색(제목)">' + SEARCH_SVG + '</a>' : '';
+  const hbtn2 = href2 ? '<a class="sbtn cref-srch iq" href="' + escUrl(href2) + '" target="_blank" rel="noopener" title="구글 이미지 검색 — 추출 키워드" aria-label="구글 이미지 검색(추출 키워드)">' + SEARCH_SVG + '</a>' : '';
+  const acts = (hbtn || hbtn2) ? '<span class="cref-acts">' + hbtn + hbtn2 + '</span>' : '';   // 회색(제목)+초록(키워드) 묶음
   const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + hbtn + '</div>'
+  wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + acts + '</div>'
     + '<div class="cref-track">' + (list.map((it, i) => {
         const cap = it.label ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';
         return '<div class="cref-slot ' + kind + '" data-i="' + i + '" role="button" tabindex="0" aria-label="확대">'
@@ -4067,7 +4074,7 @@ function showToast(n, sample) {
   }
   _toastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 38)) : '';
-  t.innerHTML = `<span class="tg">🚨 긴급</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''} <b>탭해서 보기</b></span>`
+  t.innerHTML = `<span class="tg">🚨 긴급</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''}</span>`
     + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 알림 끄기" title="확인 — 봤음(알림 끄기)">${CHECK_SVG}</button>`
     + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 새 탭" title="원문 새 탭(확인 처리됨)">${EXT_SVG}</button>`;
   // ✓ = 확인(markBreakingSeen=알림 끔)+초록 플래시 후 사라짐 / ↗ = 원문 새 탭 + 확인 처리(원문 봤으니 ack) · 둘 다 본문탭(수집함 이동)과 stopPropagation 분리
@@ -4226,13 +4233,13 @@ function showFailToast(n, sample) {
   }
   _failToastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 34)) : '';
-  t.innerHTML = `<span class="tg">⚠ 분석 실패</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''} <b>전문 붙여넣어 복구</b></span>`
+  t.innerHTML = `<span class="tg">⚠ FAIL</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''}</span>`
     + `<button class="sbtn ft-act" type="button" data-fa="ack" aria-label="확인 — 알림 끄기" title="확인 — 봤음(알림 끄기)">${CHECK_SVG}</button>`
     + `<button class="sbtn ft-act" type="button" data-fa="retry" aria-label="재시도 — 전문 붙여넣어 복구" title="재시도 — 전문 붙여넣어 복구">${REFRESH_SVG}</button>`;
   // ✓ 확인 = 알림 끔(seen·링/토스트 소거) + 초록 .ok 플래시 후 사라짐 / ↻ 재시도 = 전문 붙여넣기 복구 모달(openPaste) · 둘 다 본문탭(원문)과 분리(stopPropagation)
   const _ack = t.querySelector('[data-fa="ack"]'), _rt = t.querySelector('[data-fa="retry"]');
   if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeen(); clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 340); };
-  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) openPaste(_failToastC); };   // ↻ 재시도 = 확인(ack)도 겸함 — 재시도=확인했다는 의미(운영자 260622)
+  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) failRetry(_failToastC); };   // ↻ 재시도 = 확인(ack) + 자동 재분석(api/pick·cluster alt 재시도 한바퀴) + 가까운 관련기사 원문 새 탭(운영자 260622)
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 7000);
 }
@@ -4241,6 +4248,17 @@ function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 
   if (!c || !c.url) return;
   const a = document.createElement('a'); a.href = hrefOk(c.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
   document.body.appendChild(a); a.click(); a.remove();
+}
+function failRetry(c) {   // ↻ 재시도 — ① 자동 재분석 재발사(전문 없이 = fetch 재시도 · alt=cluster_members로 원매체 403 우회 = '재시도 한바퀴') ② 가까운 관련기사 원문 새 탭(원기사 막혔어도 타매체는 읽힘 · 운영자 260622)
+  if (!c) return;
+  const alt = [...new Set((c.cluster_members || []).map(_normU))].filter(u => u && u !== _normU(c.url));   // 같은 사건 타매체(가까운 관련기사)
+  if (c.url) {   // ① 재분석 재발사(body 없이 → fetch 재시도 · alt 동반) + Failed→Picking 표시(pasteSend body-less판)
+    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
+    const id = candId(c); saveRating(id, { picked: true, pickedAt: Date.now() }); pfAddResub(id);
+  }
+  const go = alt[0] || c.url;   // ② 가까운 관련기사 원문(없으면 원기사) 새 탭 — 앵커 클릭(전역 open 셰도잉 회피·failOpen 패턴)
+  if (go) { const a = document.createElement('a'); a.href = hrefOk(go); a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); a.remove(); }
+  if (CURTAB === 'scrap') renderScrap();
 }
 // Failed 칩 배선 — 탭=원문 열기 / 길게(480ms)·우클릭=컨텍스트 메뉴(실패 사유·내용 입력). 대기열(qFeedBtn) 롱프레스 패턴 계승.
 function wireFailChip(fb, c) {
