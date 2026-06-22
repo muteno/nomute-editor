@@ -103,10 +103,7 @@
   .job .jvar-dl:hover { background:rgba(255,255,255,.15); color:#fff; }
   .job .jvar-dl:active { transform:scale(.82); }
   .job .jvar-dl svg { display:block; width:12px; height:12px; }
-  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }   /* 상태 아이콘(SVG)+글자 수직중앙(운영자 260622) */
-  .job .jst svg { display:block; width:14px; height:14px; flex:none; }
-  .job .jst .jspin { animation:thspin .9s linear infinite; }
-  @keyframes thspin { to { transform:rotate(360deg); } }
+  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; }
   .job.done .jst { color:var(--accent); }
   .job.err { border-color:rgba(255,90,90,.4); } .job.err .jst { color:#ff9b9b; }
   /* 실패 잡 재시도 = 같은 설정으로 재발사(운영자 260620 아이디어 3) */
@@ -596,9 +593,6 @@ bindFile($('#rFile'), $('#rFileLab'), RIMG);
 // ==== 붙여넣기↔복사 + 다운로드 (뷰어 버튼 UIUX 계승) ====
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-// 잡 상태 픽토그램(이모지 ✅⚠⏳ 폐지 → SVG 통일·글자와 수직중앙 · 운영자 260622)
-const WARN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
-const SPIN_SVG = '<svg class="jspin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>';
 const DOWNLOAD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
 const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
@@ -654,15 +648,15 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const sec = Math.round((Date.now() - job.t0) / 1000);
   const tot = job.outs.length || '?';
   const dn = job.done.filter(Boolean).length;
-  let ic, tx;   // 상태 = SVG 픽토그램 + 글자(이모지 폐지·수직중앙 · 운영자 260622)
-  if (job.status === 'err') { ic = WARN_SVG; tx = (job.msg || '실패'); }
-  else if (job.status === 'done') { ic = CHECK_SVG; tx = '완료 · ' + tot + '장' + (job._restored ? ' · ' + histTime(job.t0) : ' (' + sec + 's)'); }   // 복원 결과 = 경과초 대신 제작시각(운영자 260622)
-  else { ic = SPIN_SVG; tx = '제작 중 ' + sec + 's · ' + dn + '/' + tot + '장'; }
+  let st;
+  if (job.status === 'err') st = '⚠ ' + (job.msg || '실패');
+  else if (job.status === 'done') st = '✅ 완료 · ' + tot + '장' + (job._restored ? ' · ' + histTime(job.t0) : ' (' + sec + 's)');   // 복원 결과 = 경과초 대신 제작시각(운영자 260622)
+  else st = '⏳ 제작 중 ' + sec + 's · ' + dn + '/' + tot + '장';
   row.innerHTML = '';
   const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + (job._restored ? '' : ' #' + job.n);
   const labs = (job.outs || []).map(o => o && o.label).filter(Boolean);
   if (labs.length === 1) { const v = document.createElement('span'); v.className = 'jvar'; v.textContent = ' · ' + labs[0]; lab.appendChild(v); }   // 단일 변형(OPA 등) = 라벨 옆 인라인(기존)
-  const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.innerHTML = ic + '<span>' + esc(tx) + '</span>';
+  const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.textContent = st;
   row.append(lab, stsp);
   if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
     const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 다운로드';
