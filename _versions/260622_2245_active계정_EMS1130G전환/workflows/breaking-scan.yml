@@ -1,0 +1,41 @@
+name: breaking-scan
+# 진단 전용(속보 기준 캘리브레이션): RSS 수집 → 사건별 burst(N분 내 동시 매체 수) 분석을 로그에 출력.
+# 읽기 전용 — 아무것도 커밋/푸시 안 함. 수동 실행(workflow_dispatch)만. 과금 0(public Actions).
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: '최근 N시간 기사 수집'
+        default: '24'
+      window:
+        description: 'burst 판정 윈도우(분)'
+        default: '15'
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet feedparser requests
+
+      - name: Collect (RSS → articles.json)
+        run: python3 scraper/knews_scraper.py --out scraper/out --hours "${{ inputs.hours || '24' }}"
+
+      - name: Burst scan
+        env:
+          BURST_WINDOW_MIN: "${{ inputs.window || '15' }}"
+        run: python3 scraper/breaking_scan.py scraper/out/articles.json
