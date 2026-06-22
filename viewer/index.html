@@ -667,7 +667,14 @@
   .qrow .qst { flex:none; width:58px; display:flex; align-items:center; justify-content:flex-start; }   /* 상태 = 고정폭 셀 좌측정렬 → 행마다 상태/링크 시작 x 일정·상태 라벨 좌변 일치(운영자 260622) */
   .qrow .qact { flex:none; width:44px; display:flex; align-items:center; justify-content:flex-start; }   /* 액션(링크/진단) = 고정폭 셀(=헤더 X셀 폭) 좌측정렬 → 링크 버튼 좌변 일정 + 헤더 X 좌변과 정렬 */
   /* 상태 = 모두 도형없이 좌측정렬: 재시도 ↻·처리중 스피너 = 앰버 아이콘만(도형 제거) · 완료(초록)·실패(빨강) 한글 (운영자 260622) */
-  .qrow .qt.qt-new { color:var(--accent); }   /* 30분 이내 = 강조색 */
+  .qrow .qt.qt-new { color:var(--accent); }   /* 1시간 이내 = 메인 강조색(운영자 260622) */
+  .qrow .qt.qt-mid { color:var(--warn); }      /* 1~4시간 = 노란 강조색(운영자 260622) */
+  /* 대기열 행 등장 = 촤르르 스태거(열림·페이지전환 공용 · cardIn 키프레임 + msglist 지연 패턴 계승) */
+  .qpop .qlist .qrow { animation:cardIn .32s cubic-bezier(.22,.61,.36,1) both; }
+  .qpop .qlist .qrow:nth-child(2){ animation-delay:.05s } .qpop .qlist .qrow:nth-child(3){ animation-delay:.1s }
+  .qpop .qlist .qrow:nth-child(4){ animation-delay:.15s } .qpop .qlist .qrow:nth-child(n+5){ animation-delay:.2s }
+  .qpop.closing { animation:popOut var(--dur) cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 닫힘 = 촤르륵 접힘(pmenu.closing 패턴 계승 · hidden 즉시 대신 애니 후) */
+  @media (prefers-reduced-motion:reduce){ .qpop .qlist .qrow, .qpop.closing { animation:none; } }
   .qico { display:grid; place-items:center; flex:none; }   /* 도형 제거 — 스피너 아이콘만(완료/실패 텍스트처럼 좌측정렬 · 운영자 260622) */
   .qico svg { width:16px; height:16px; }
   .qico.s-retry, .qico.s-proc { color:var(--amber); }   /* 박스(테두리·배경) 제거 = 앰버 색만 — 완료/실패와 동급 무도형 */
@@ -4151,7 +4158,7 @@ document.addEventListener('click', e => {
 // ── 대기열(뉴스요약 = 롱프레스 600ms · 연달아 두번 탭 · 우클릭 · 배지 → 열기 / 떠있을 때 한번 더 탭 → 닫기) — 분석 대기/중(pending/) 기사 개요. api/pending 라이브 조회(파이프라인 0 변경·읽기전용). ──
 const qFeedBtn = $('#bnav .bnav-i[data-tab="feed"]');
 let lpTimer = null, lpFired = false, lastFeedTap = 0;   // lastFeedTap = 직전 뉴스요약 탭 시각(연달아 두번 = 대기열 열기 판정)
-let QITEMS = [], QPAGE = 0; const QPER = 5;   // 대기열 = 페이지당 5개 페이지네이션
+let QITEMS = [], QPAGE = 0, _qCloseTimer = 0; const QPER = 5;   // 대기열 = 페이지당 5개 페이지네이션
 function lpStart(e) { if (e && e.button) return;   // 1차 버튼(좌클릭/터치)만 롱프레스 — 우클릭은 contextmenu가 처리(중복 방지)
   lpFired = false; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpFired = true; openQueue(); }, 600); }   // 600ms — 일반 탭(살짝 눌러도)은 이동, 의도적 길게눌림만 대기열(480ms는 일반 탭에도 오발·운영자 260621)
 function lpCancel() { clearTimeout(lpTimer); }
@@ -4172,6 +4179,7 @@ if (qFeedBtn) {
 let _qPushed = false, _qPop = false;   // 대기열 폰 뒤로가기 = 먼저 닫기(§🎨 pushState/popstate · 라이트박스 패턴 계승 · 운영자 260622)
 function openQueue() {
   closeOverlays('qpop');
+  clearTimeout(_qCloseTimer); qpop.classList.remove('closing');   // 닫힘 애니 중 재오픈 = 취소(다시 촤르륵 열림)
   const r = qFeedBtn.getBoundingClientRect();
   qpop.style.bottom = (window.innerHeight - r.top + 12) + 'px';   // 네비 위로(크게·위로 띄움)
   qpop.style.maxHeight = (r.top - 16) + 'px';   // 네비 위 가용높이로만 캡(하한 없음 → 박스 top=4px 항상 ≥0, 짧은 뷰포트서도 헤더 안 잘림). 헤더·페이지=flex:none, 리스트만 압축.
@@ -4182,11 +4190,15 @@ function openQueue() {
   loadQueue();
 }
 function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른 오버레이·더블탭) → 재오픈 플래그 해제(↗ 네비게이션 닫힘과 구분 · 운영자 260622)
-  qpop.hidden = true;
+  if (qpop.hidden) return;
+  if (!qpop.classList.contains('closing')) {   // 시각 닫힘 = popOut(촤르륵 접힘) 후 hidden · 1회만(재진입 중복 차단) · pmenu hidePmenu 패턴
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) { qpop.hidden = true; }
+    else { qpop.classList.add('closing'); clearTimeout(_qCloseTimer); _qCloseTimer = setTimeout(() => { qpop.hidden = true; qpop.classList.remove('closing'); }, 190); }   // .18s 애니 + 버퍼
+  }
   try { sessionStorage.removeItem('nomute_q_open'); } catch {}
   if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
-window.addEventListener('popstate', () => { if (!qpop.hidden) { _qPop = true; closeQueueUser(); } });   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기(라이트박스와 별개 리스너 · 각자 자기 상태만)
+window.addEventListener('popstate', () => { if (!qpop.hidden && !qpop.classList.contains('closing')) { _qPop = true; closeQueueUser(); } });   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기 · 닫는 중(closing)이면 재진입 안 함(deferred-hide 가드)
 const qEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function qAgo(t) {
   if (!t) return '?';
@@ -4231,7 +4243,8 @@ function qRowHtml(it) {
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 분석 중 — 원문 링크 없음');
   }
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위)
-  const tnew = it.t && (Date.now() - it.t) / 60000 <= 30 ? ' qt-new' : '';   // 30분 이내 = 강조색
+  const _am = it.t ? (Date.now() - it.t) / 60000 : 1e9;   // 경과(분)
+  const tnew = _am <= 60 ? ' qt-new' : _am <= 240 ? ' qt-mid' : '';   // ≤1h 메인 강조 / 1~4h 노랑 / 그외 기본(운영자 260622)
   return '<div class="qrow q-' + eff + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
 }
 function pagerHtml(pages, cur) {   // 5개/페이지 · 페이지번호 슬라이딩 윈도우(최대 5개)

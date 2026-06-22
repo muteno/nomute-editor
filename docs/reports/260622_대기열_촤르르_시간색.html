@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>대기열 촤르르(열림·닫힘·페이지전환) + 시간 강조색 — 미리보기</title>
+<style>
+  /* viewer :root 값 복사(일회성 스냅샷 · §🎨) */
+  :root{ --bg:#0a120d; --card:#101a13; --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.10); --line2:#2a2c31;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --warn:#ffd24a; --dur:.18s; --ease:cubic-bezier(.22,.61,.36,1); }
+  *{ box-sizing:border-box; }
+  body{ margin:0; padding:22px 16px 60px; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; line-height:1.6; font-size:15px; }
+  .wrap{ max-width:560px; margin:0 auto; }
+  h1{ font-size:20px; margin:0 0 4px; letter-spacing:-.3px; } h1 .em{ color:var(--accent); }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 18px; }
+  h2{ font-size:14px; color:var(--mut); margin:24px 0 8px; font-weight:600; }
+  .stage{ position:relative; min-height:360px; background:#0c140e; border:1px solid var(--line); border-radius:16px; padding:14px; overflow:hidden; }
+  .ctrls{ display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 4px; }
+  .ctrls button{ font:inherit; font-size:13px; font-weight:700; color:var(--fg); background:rgba(255,255,255,.06);
+    border:1px solid var(--line); border-radius:10px; padding:9px 14px; cursor:pointer; transition:transform var(--dur) var(--ease), background var(--dur); }
+  .ctrls button:active{ transform:scale(.92); } .ctrls button:hover{ background:rgba(255,255,255,.1); }
+  .ctrls .pri{ background:rgba(15,253,2,.14); border-color:rgba(15,253,2,.4); color:var(--accent); }
+
+  /* ── 실제 viewer CSS 복제 ── */
+  .qpop{ width:min(92%,420px); background:rgba(16,26,19,.86); border:1px solid var(--line); border-radius:16px;
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); padding:12px 13px; box-shadow:0 18px 50px rgba(0,0,0,.5);
+    position:absolute; left:50%; transform:translateX(-50%); bottom:14px; animation:popInCx .16s var(--ease) both; }
+  .qpop.closing{ animation:popOut var(--dur) cubic-bezier(.4,0,1,1) both; pointer-events:none; }
+  @keyframes popInCx{ from{ opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} to{ opacity:1; transform:translateX(-50%);} }
+  @keyframes popOut{ from{ opacity:1; transform:translateX(-50%);} to{ opacity:0; transform:translateX(-50%) scale(.92) translateY(-4px);} }
+  .qh{ display:flex; align-items:center; gap:6px; padding:0 3px 6px; }
+  .qh b{ font-size:14px; } .qh svg{ stroke:var(--accent); }
+  .qh .x{ margin-left:auto; width:30px; height:30px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.05);
+    color:var(--fg); display:grid; place-items:center; cursor:pointer; }
+  .qlist{ margin-top:6px; display:flex; flex-direction:column; }
+  .qrow{ display:flex; align-items:center; gap:9px; padding:8px 3px; border-top:1px solid var(--line2); }
+  .qrow:first-child{ border-top:none; }
+  .qt{ flex:none; width:64px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }
+  .qt.qt-new{ color:var(--accent); }   /* ≤1시간 = 메인 강조색 */
+  .qt.qt-mid{ color:var(--warn); }      /* 1~4시간 = 노란 강조색 */
+  .qmain{ flex:1; min-width:0; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qb-done{ flex:none; font-size:11px; font-weight:700; color:var(--accent); }
+  .qgo{ flex:none; width:30px; height:30px; border-radius:9px; display:grid; place-items:center;
+    color:var(--accent); border:1px solid rgba(15,253,2,.4); background:rgba(15,253,2,.1); }
+  /* 행 촤르르 스태거(cardIn 키프레임 + msglist 지연 패턴) */
+  .qlist .qrow{ animation:cardIn .32s var(--ease) both; }
+  .qlist .qrow:nth-child(2){ animation-delay:.05s } .qlist .qrow:nth-child(3){ animation-delay:.1s }
+  .qlist .qrow:nth-child(4){ animation-delay:.15s } .qlist .qrow:nth-child(n+5){ animation-delay:.2s }
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(12px) scale(.985);} to{ opacity:1; transform:none;} }
+  .qpage{ display:flex; justify-content:center; gap:4px; margin-top:10px; }
+  .qpage button{ width:30px; height:30px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.04);
+    color:var(--fg); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .qpage button.on{ background:var(--accent); color:#062108; border-color:var(--accent); }
+  @media (prefers-reduced-motion:reduce){ .qpop,.qpop.closing,.qlist .qrow{ animation:none; } }
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--mut); margin-top:10px; }
+  .legend b{ font-weight:800; } .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:4px; }
+  table{ width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; } th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); } th{ color:var(--mut); font-size:11.5px; }
+  code{ background:rgba(255,255,255,.07); padding:1px 5px; border-radius:5px; font-size:12px; color:#e7ffd9; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>대기열 <span class="em">촤르르</span> + 시간 강조색 <span style="font-size:13px;color:var(--mut)">미리보기 (실제 CSS·애니)</span></h1>
+  <p class="sub">260622 · 아래 버튼으로 직접 열고/닫고/페이지 넘겨봐 — 라이브와 동일 동작</p>
+
+  <div class="stage" id="stage"></div>
+  <div class="ctrls">
+    <button class="pri" id="bOpen">열기 (촤르르)</button>
+    <button id="bClose">닫기 (촤르르 접힘)</button>
+    <button id="bNext">다음 페이지 →</button>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--accent)"></span><b style="color:var(--accent)">≤1시간</b> 메인 강조</span>
+    <span><span class="dot" style="background:var(--warn)"></span><b style="color:var(--warn)">1~4시간</b> 노란 강조</span>
+    <span><span class="dot" style="background:var(--mut)"></span><b>4시간+</b> 기본(회색)</span>
+  </div>
+
+  <h2>무엇이 바뀌나</h2>
+  <table>
+    <thead><tr><th>항목</th><th>전</th><th>후</th></tr></thead>
+    <tbody>
+      <tr><td>페이지(1·2·3…) 전환</td><td>즉시 교체</td><td><b style="color:var(--accent)">행 촤르르 스태거</b>(cardIn 계승)</td></tr>
+      <tr><td>팝업 열림</td><td>컨테이너만 팝</td><td>컨테이너 팝 <b>+ 행 촤르르</b></td></tr>
+      <tr><td>팝업 닫힘</td><td>즉시 사라짐</td><td><b style="color:var(--accent)">popOut 촤르륵 접힘</b>(pmenu 패턴)</td></tr>
+      <tr><td>시간 색</td><td>30분만 초록</td><td><b style="color:var(--accent)">≤1h 초록</b> · <b style="color:var(--warn)">≤4h 노랑</b> · 그외 회색</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12.5px;color:var(--mut)">전부 <b>기존 토큰·키프레임 계승</b>(<code>cardIn</code>·<code>popOut</code>·<code>--warn</code>·<code>--dur</code>) = 새 값 0. <code>prefers-reduced-motion</code>이면 즉시. 닫힘은 뒤로가기/히스토리 정리 그대로(시각만 .18s 지연·재진입 가드).</p>
+</div>
+
+<script>
+  const ITEMS = [
+    [['1분 전','new'],'LIVE: UK's Starmer resigns as prime minister'],
+    [['2시간 전','mid'],"27년 만에 '왕좌' 교체… SK하이닉스, 삼성전자 제치고"],
+    [['2시간 전','mid'],'민주콩고서 에볼라 감염 1000건 넘어…의료'],
+    [['3시간 전','mid'],"'여고생 살해' 장윤기, 계획범행 시인…'성'"],
+    [['4시간 전','mid'],'북, MDL 100m 안까지 철책 설치…합참'],
+    [['5시간 전','old'],'드론 59대 격추했다는데…모스크바 공항'],
+    [['8시간 전','old'],'카타르 LNG 심장부서 폭발… 세계 에너지'],
+  ];
+  const GO = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>';
+  const X = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
+  const CLK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg>';
+  const PER = 5, stage = document.getElementById('stage'); let page = 0, pop = null, closeT = 0;
+  const tcls = k => k==='new'?' qt-new':k==='mid'?' qt-mid':'';
+  function rows(){
+    const s = ITEMS.slice(page*PER, page*PER+PER);
+    const pages = Math.ceil(ITEMS.length/PER);
+    let pg=''; for(let i=0;i<pages;i++) pg+=`<button class="${i===page?'on':''}" data-pg="${i}">${i+1}</button>`;
+    return `<div class="qh">${CLK}<b>대기열</b><button class="x" id="qx">${X}</button></div>`
+      + `<div class="qlist">` + s.map(([t,ttl])=>`<div class="qrow"><span class="qt${tcls(t[1])}">${t[0]}</span><span class="qmain">${ttl}</span><span class="qb-done">완료</span><span class="qgo">${GO}</span></div>`).join('') + `</div>`
+      + `<div class="qpage">${pg}</div>`;
+  }
+  function render(){ pop.innerHTML = rows();
+    pop.querySelector('#qx').onclick = close;
+    pop.querySelectorAll('[data-pg]').forEach(b=> b.onclick=()=>{ page=+b.dataset.pg; setTimeout(render,0); }); }
+  function open(){ clearTimeout(closeT); page=0;
+    if(!pop){ pop=document.createElement('div'); pop.className='qpop'; stage.appendChild(pop); }
+    pop.classList.remove('closing'); pop.style.animation='none'; void pop.offsetWidth; pop.style.animation=''; render(); }
+  function close(){ if(!pop) return;
+    if(matchMedia('(prefers-reduced-motion:reduce)').matches){ pop.remove(); pop=null; return; }
+    pop.classList.add('closing'); clearTimeout(closeT); closeT=setTimeout(()=>{ if(pop){pop.remove(); pop=null;} },190); }
+  function next(){ if(!pop){ open(); return; } page=(page+1)%Math.ceil(ITEMS.length/PER); render(); }
+  document.getElementById('bOpen').onclick=open;
+  document.getElementById('bClose').onclick=close;
+  document.getElementById('bNext').onclick=next;
+  open();
+</script>
+</body>
+</html>
