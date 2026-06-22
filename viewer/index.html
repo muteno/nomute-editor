@@ -666,19 +666,28 @@
   .qrow .qmain { flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .qrow .qst { flex:none; width:58px; display:flex; align-items:center; justify-content:flex-start; }   /* 상태 = 고정폭 셀 좌측정렬 → 행마다 상태/링크 시작 x 일정·상태 라벨 좌변 일치(운영자 260622) */
   .qrow .qact { flex:none; width:44px; display:flex; align-items:center; justify-content:flex-start; }   /* 액션(링크/진단) = 고정폭 셀(=헤더 X셀 폭) 좌측정렬 → 링크 버튼 좌변 일정 + 헤더 X 좌변과 정렬 */
-  .qb { flex:none; font-size:10px; font-weight:900; letter-spacing:.04em; padding:2px 7px; border-radius:6px; white-space:nowrap; }
-  .qb-succ { color:#7dffa0; background:rgba(var(--accent-rgb),.16); }
-  .qb-fail { color:#fff; background:linear-gradient(135deg,#ff5b4a,#e2231a); box-shadow:0 0 9px rgba(240,40,30,.45); }
-  .qb-proc { color:var(--thumb); }   /* 처리중 = 도형 없이 텍스트만(padding 유지 → SUCC/FAIL 박스 라벨과 시작 x 일치 · 운영자 260622) */
-  .qb-retry { color:var(--amber); animation:pulse 1.6s ease-in-out infinite; }   /* 재시도 = 도형 없이 텍스트만 + 앰버 펄스(자가치유 진행 · 운영자 260622) */
-  @media (prefers-reduced-motion:reduce){ .qb-retry { animation:none; } }
-  .qgo { flex:none; max-width:100%; font-size:11px; font-weight:800; color:var(--accent); background:rgba(var(--accent-rgb),.1); border:1px solid rgba(var(--accent-rgb),.35);
-    border-radius:7px; padding:4px 9px; cursor:pointer; transition:background .15s; text-align:left; }   /* 44px .qact 셀에 들어맞게(좌변 정렬) · max-width:100%=폰트폴백 worst-case 폭 넘침 방지(행 우변 정렬 보장) */
-  .qgo:hover { background:rgba(var(--accent-rgb),.2); }
-  .qgo[disabled], .qgo.qgo-off { color:var(--mut); background:rgba(255,255,255,.04); border-color:var(--line); cursor:default; opacity:.55; }   /* 처리중 = 비활성 링크(전문 분석 전엔 이동 불가) — SUCC=초록 활성과 명확히 구분(운영자 260621) */
-  .qgo[disabled]:hover, .qgo.qgo-off:hover { background:rgba(255,255,255,.04); }
-  .qgo.qgo-url { color:var(--amber); background:rgba(var(--amber-rgb),.12); border-color:rgba(var(--amber-rgb),.4); }   /* 처리중 = 원문 URL 대신(앰버 = URL 칩색 흡수) · SUCC는 초록=뉴스요약(운영자 260622) */
-  .qgo.qgo-url:hover { background:rgba(var(--amber-rgb),.22); }
+  /* 상태 = 픽토그램 도형(재시도 ↻·처리중 스피너 = 30px·테두리 색맞춤·높이중앙) / 완료·실패 = 도형없이 한글 (운영자 260622) */
+  .qrow .qt.qt-new { color:var(--accent); }   /* 30분 이내 = 강조색 */
+  .qico { width:30px; height:30px; display:grid; place-items:center; border-radius:8px; border:1px solid; flex:none; }
+  .qico svg { width:16px; height:16px; }
+  .qico.s-retry, .qico.s-proc { color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.12); }
+  .qico.spin svg { animation:qspin 1.05s linear infinite; transform-origin:50% 50%; }
+  @keyframes qspin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .qico.spin svg { animation:none; } }
+  .qcnt { font-size:13px; font-weight:900; color:var(--amber); margin-left:4px; }
+  .qb-done { color:var(--accent); font-size:12.5px; font-weight:800; }    /* 완료 = 도형없이 초록 한글 */
+  .qb-failt { color:var(--danger); font-size:12.5px; font-weight:800; }   /* 실패 = 도형없이 빨강 한글 */
+  /* 바로가기 ↗ = 30px 도형·테두리 색맞춤(초록=요약완료 / 노랑=원문 / 회색=갈 곳 없음) · 클릭=진행방향 톡 이동 */
+  .qgo { flex:none; width:30px; height:30px; display:grid; place-items:center; border-radius:8px; border:1px solid var(--line);
+    background:transparent; cursor:pointer; transition:transform .1s var(--ease,cubic-bezier(.22,.61,.36,1)); -webkit-tap-highlight-color:transparent; }
+  .qgo svg { width:17px; height:17px; }
+  .qgo.go-green { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
+  .qgo.go-amber { color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
+  .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:default; }
+  .qgo:not(.go-gray):active { transform:scale(.9); }
+  .qgo.fly svg { animation:qfly .42s var(--ease,cubic-bezier(.22,.61,.36,1)); }
+  @keyframes qfly { 0%{transform:translate(0,0)} 45%{transform:translate(4px,-4px)} 100%{transform:translate(0,0)} }
+  @media (prefers-reduced-motion:reduce){ .qgo.fly svg { animation:none; } }
   .qdl { flex:none; width:28px; height:26px; display:grid; place-items:center; padding:0; cursor:pointer;
     color:#ff9b8f; background:rgba(255,107,91,.1); border:1px solid rgba(255,107,91,.32); border-radius:7px; transition:background .15s; }
   .qdl:hover { background:rgba(255,107,91,.22); }
@@ -3844,22 +3853,33 @@ function qTitle(it) {
   if (it.status === 'succ') { const a = DATA.find(x => x && x.file && (x.file === it.id || String(x.file).replace(/\.md$/, '') === it.id)); if (a && a.title) return a.title; return it.title || '분석 완료'; }
   return it.title || '(내용 없음)';
 }
+// 대기열 행 = 시간 | 제목 | 상태(픽토그램) | 바로가기(↗·목적지 색). 전부 좌측정렬·30px·테두리 색맞춤(시안 확정 260622).
+const Q_REFR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>';   // ↻ 새로고침
+const Q_SPIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>';   // 스피너(열린 호)
+const Q_ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8.5 7H17v8.5"/></svg>';   // ↗ 1시방향
+function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | gray(갈 곳 없음)
+  const dis = kind === 'gray' ? ' disabled' : '';
+  return '<button class="qgo go-' + kind + '" type="button"' + dis + ' title="' + title + '">' + Q_ARR + '</button>';
+}
 function qRowHtml(it) {
+  const url = it.key && /^https?:\/\//i.test(it.key);
   let status, action;
-  if (it.status === 'succ') { status = '<span class="qb qb-succ">완료</span>'; action = '<button class="qgo" type="button">링크</button>'; }
-  else if (it.status === 'fail') { status = '<span class="qb qb-fail">실패</span>'; action = '<button class="qdl" type="button" aria-label="진단 다운로드" title="실패 원인 진단 MD 다운로드">' + DL_SVG + '</button>'; }
-  else if (it.status === 'retry') { const qurl = it.key && /^https?:\/\//i.test(it.key);   // 재시도 중: API 일시 과부하로 자동 재분석 대기(FAIL 아님). 원문 URL 있으면 링크로 미리 읽기.
-    status = '<span class="qb qb-retry" title="API 일시 과부하로 자동 재시도 대기 중 — 회복되면 자동 분석돼(' + (it.tries ? '재시도 ' + it.tries + '회' : '대기') + ')">재시도' + (it.tries ? ' ' + it.tries : '') + '</span>';
-    action = qurl
-      ? '<button class="qgo qgo-url" type="button" title="원문 새 탭 — 분석 끝나면 뉴스요약 이동으로 바뀜">링크</button>'
-      : '<button class="qgo qgo-off" type="button" disabled title="전문 재시도 중 — 원문 링크 없음(끝나면 뉴스요약 이동)">링크</button>'; }
-  else { const qurl = it.key && /^https?:\/\//i.test(it.key);   // 처리중: 원문 URL 있으면 링크가 URL을 대신(앰버=URL색 흡수) · 없으면(전문) 비활성. 분석 끝나면 SUCC=초록 링크→뉴스요약(운영자 260622).
-    status = '<span class="qb qb-proc">처리중</span>';
-    action = qurl
-      ? '<button class="qgo qgo-url" type="button" title="원문 새 탭 — 분석 끝나면 뉴스요약 이동으로 바뀜">링크</button>'
-      : '<button class="qgo qgo-off" type="button" disabled title="전문 분석 중 — 원문 링크 없음(끝나면 뉴스요약 이동)">링크</button>'; }
-  const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위 — 이모지 서로게이트 안 쪼갬 · 좁은 화면은 CSS 생략부호 병행 · 운영자 260621)
-  return '<div class="qrow q-' + it.status + '"><span class="qt">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
+  if (it.status === 'succ') {
+    status = '<span class="qb-done">완료</span>';
+    action = qGoBtn('green', '뉴스요약 열기');
+  } else if (it.status === 'fail') {
+    status = '<span class="qb-failt">실패</span>';
+    action = url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에 자동저장(다운로드 버튼 없음)
+  } else if (it.status === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
+    status = '<span class="qico s-retry spin" title="API 일시 과부하 — 자동 재시도 중' + (it.tries ? ' (' + it.tries + '회)' : '') + '">' + Q_REFR + '</span>' + (it.tries ? '<span class="qcnt">' + it.tries + '</span>' : '');
+    action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 — 원문 링크 없음');
+  } else {   // 처리중 = 스피너(재시도와 동색 앰버)
+    status = '<span class="qico s-proc spin" title="분석 처리 중">' + Q_SPIN + '</span>';
+    action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 분석 중 — 원문 링크 없음');
+  }
+  const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위)
+  const tnew = it.t && (Date.now() - it.t) / 60000 <= 30 ? ' qt-new' : '';   // 30분 이내 = 강조색
+  return '<div class="qrow q-' + it.status + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
 }
 function pagerHtml(pages, cur) {   // 5개/페이지 · 페이지번호 슬라이딩 윈도우(최대 5개)
   if (pages <= 1) return '';
@@ -3878,7 +3898,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); if (it.status === 'succ') qGo(it.id); else if (it.key) window.open(it.key, '_blank', 'noopener'); };   // SUCC=뉴스요약 / 처리중=원문 URL 새 탭(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (it.status === 'succ') qGo(it.id); else if (it.key) window.open(it.key, '_blank', 'noopener'); };   // ↗ 진행방향 톡 이동 + SUCC=뉴스요약 / 그 외=원문 새 탭(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
