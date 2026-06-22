@@ -3737,7 +3737,7 @@ function closeOverlays(keep) {
   if (keep !== 'msg') msgpop.hidden = true;
   if (keep !== 'bpop') bpop.hidden = true;
   if (keep !== 'linkpop') linkpop.hidden = true;
-  if (keep !== 'qpop') qpop.hidden = true;
+  if (keep !== 'qpop') closeQueueUser();
   if (keep !== 'search') closeSearch();
   closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
@@ -3896,7 +3896,7 @@ $('#bnav').addEventListener('click', e => {
     e.preventDefault();
     if (lpFired) { lpFired = false; return; }   // 롱프레스(대기열) 후 click이면 탭전환 스킵
     if (b.dataset.tab === 'feed') {   // 뉴스요약 버튼 = 대기열 토글(롱프레스/우클릭/배지는 그대로 + 더블탭·닫기 추가)
-      if (!qpop.hidden) { qpop.hidden = true; lastFeedTap = 0; return; }   // 떠있는 상태 한번 더 탭 = 닫기
+      if (!qpop.hidden) { closeQueueUser(); lastFeedTap = 0; return; }   // 떠있는 상태 한번 더 탭 = 닫기(직접 닫기 → 재오픈 플래그 해제)
       if (e.detail && Date.now() - lastFeedTap < 400) { lastFeedTap = 0; openQueue(); return; }   // 연달아 두번 탭(포인터·<400ms) = 대기열 열기 (키보드 Enter는 detail=0 → 평범한 탭전환·오발 차단)
       lastFeedTap = Date.now();   // 첫 탭 = 평소대로 피드 탭 전환(아래) + 더블탭 후보 기록
     } else { lastFeedTap = 0; }   // 다른 탭 누르면 더블탭 후보 리셋(피드→타탭→피드 <400ms 오발 차단)
@@ -3920,7 +3920,7 @@ document.addEventListener('click', e => {
   if (_popDownInside) return;   // 팝업 내부에서 시작한 클릭 = 안 닫음(타깃 탈락 무관)
   if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) bpop.hidden = true;
   if (!linkpop.hidden && !linkpop.contains(e.target) && !$('#bnav').contains(e.target)) linkpop.hidden = true;
-  if (!qpop.hidden && !qpop.contains(e.target) && !$('#bnav').contains(e.target)) qpop.hidden = true;
+  if (!qpop.hidden && !qpop.contains(e.target) && !$('#bnav').contains(e.target)) closeQueueUser();
 });
 
 // ── 대기열(뉴스요약 = 롱프레스 600ms · 연달아 두번 탭 · 우클릭 · 배지 → 열기 / 떠있을 때 한번 더 탭 → 닫기) — 분석 대기/중(pending/) 기사 개요. api/pending 라이브 조회(파이프라인 0 변경·읽기전용). ──
@@ -3951,7 +3951,12 @@ function openQueue() {
   qpop.style.maxHeight = (r.top - 16) + 'px';   // 네비 위 가용높이로만 캡(하한 없음 → 박스 top=4px 항상 ≥0, 짧은 뷰포트서도 헤더 안 잘림). 헤더·페이지=flex:none, 리스트만 압축.
   qpop.hidden = false;
   qpop.style.left = Math.round((window.innerWidth - qpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단) → 폭 재서 뷰포트 좌변 중앙(운영자 260622)
+  try { sessionStorage.setItem('nomute_q_open', '1'); } catch {}   // 열림 기억 → 외부 링크(↗) 갔다 돌아오면(pageshow) 자동 재오픈
   loadQueue();
+}
+function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른 오버레이·더블탭) → 재오픈 플래그 해제(↗ 네비게이션 닫힘과 구분 · 운영자 260622)
+  qpop.hidden = true;
+  try { sessionStorage.removeItem('nomute_q_open'); } catch {}
 }
 const qEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function qAgo(t) {
@@ -4115,7 +4120,8 @@ function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 1500);
 }
-$('#qpopX').addEventListener('click', e => { e.stopPropagation(); qpop.hidden = true; });   // 닫기(작은 ✕)
+$('#qpopX').addEventListener('click', e => { e.stopPropagation(); closeQueueUser(); });   // 닫기(작은 ✕ → 직접 닫기, 재오픈 플래그 해제)
+window.addEventListener('pageshow', () => { try { if (sessionStorage.getItem('nomute_q_open') === '1' && qpop.hidden) openQueue(); } catch {} });   // 외부 링크(↗) 갔다 뒤로가기로 복귀 시 대기열 자동 재오픈 — 열어둔 채 떠났을 때만(직접 닫으면 플래그 해제됨) · 운영자 260622
 
 
 // ── 스크랩(수집·큐레이션) 뷰 ─────────────────────────────────────
