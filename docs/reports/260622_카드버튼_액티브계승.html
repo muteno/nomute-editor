@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>카드 버튼 액티브 = 합성기 계승 + 유료 재확인</title>
+<style>
+  :root{ --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+    --amber:#ff9614; --arm:#ffd93d; --arm-rgb:255,217,61;
+    --font:-apple-system,BlinkMacSystemFont,'Pretendard Variable','Segoe UI',Roboto,'Noto Sans KR',sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#10140f,var(--bg) 60%);color:var(--fg);font-family:var(--font);padding:22px 16px 60px;-webkit-tap-highlight-color:transparent}
+  h1{font-size:18px;margin:0 0 3px;color:var(--accent)}
+  .sub{font-size:12.5px;color:var(--mut);margin:0 0 20px;line-height:1.6}
+  .wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:15px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 6px 22px rgba(0,0,0,.35)}
+  .card h2{font-size:14.5px;margin:0 0 4px}
+  .desc{font-size:11.5px;color:var(--mut);line-height:1.6;margin:0 0 13px}
+  .desc b{color:var(--fg)}
+  .tap{font-size:10.5px;color:var(--accent);opacity:.85;margin:9px 0 0}
+  /* ── 라이브 .mkbtn 그대로 ── */
+  .mkbtn{display:block;width:100%;margin:6px 0 4px;padding:14px;font-size:14px;font-weight:800;font-family:inherit;
+    background:rgba(15,253,2,.12);color:var(--accent);border:1px solid rgba(15,253,2,.36);border-radius:999px;cursor:pointer;
+    position:relative;overflow:hidden;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    transition:transform .12s ease,background .15s ease,border-color .15s ease}
+  .mkbtn:active{transform:scale(.955);background:rgba(15,253,2,.2)}
+  .mkbtn.firing{color:var(--on-accent);pointer-events:none;opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat,linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s linear forwards}
+  @keyframes goFill{from{background-size:0% 100%,100% 100%}to{background-size:100% 100%,100% 100%}}
+  .mkbtn.okdone{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .mkbtn.checking{display:grid;place-items:center}
+  .mkbtn .gck{width:24px;height:24px}
+  .mkbtn .gck path{fill:none;stroke:var(--on-accent);stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;animation:goTick .38s .04s ease forwards}
+  @keyframes goTick{to{stroke-dashoffset:0}}
+  .mkbtn.arm{background:rgba(var(--arm-rgb),.16);color:var(--arm);border-color:rgba(var(--arm-rgb),.55)}
+  .mkbtn.arm:active{background:rgba(var(--arm-rgb),.26)}
+  .genstat{font-size:11.5px;color:var(--accent);opacity:.9;padding:10px 2px;text-align:center}
+  /* ── 옛 게이지바(전) 비교용 ── */
+  .old{background:rgba(15,253,2,.12);color:var(--accent);border:1px solid rgba(15,253,2,.36)}
+  .old.firing{animation:none;background:rgba(15,253,2,.12)}
+  .old.firing::after{content:'';position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent-bright);transform:scaleX(0);transform-origin:left;animation:pickGauge .72s linear forwards;box-shadow:0 0 7px var(--accent)}
+  @keyframes pickGauge{to{transform:scaleX(1)}}
+  /* 합성기 .go 참조(원본) */
+  .go{width:100%;margin:6px 0 0;padding:14px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(15,253,2,.36);border-radius:999px;font-weight:800;font-size:14px;cursor:pointer;position:relative;overflow:hidden;transition:transform .12s ease}
+  .go.firing{color:var(--on-accent);pointer-events:none;background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat,linear-gradient(var(--accent-dim),var(--accent-dim));animation:goFill .72s linear forwards}
+  .go.okdone{background:var(--accent);color:var(--on-accent)}
+  .go.checking{display:grid;place-items:center}
+  .go .gck{width:24px;height:24px}
+  .go .gck path{fill:none;stroke:var(--on-accent);stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;animation:goTick .38s .04s ease forwards}
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:rgba(255,255,255,.03);color:var(--mut);font-weight:700;white-space:nowrap}
+  .ok{color:var(--accent)} .warn{color:var(--amber)}
+</style>
+</head>
+<body>
+  <h1>카드 버튼 액티브 = 합성기(이미지 제작) 계승 + 유료 재확인</h1>
+  <p class="sub">뉴스 요약 <b style="color:var(--fg)">2단계(카드 프롬프트)</b>·<b style="color:var(--fg)">3단계(카드 이미지=유료 슛)</b> 버튼의 누름 액티브를
+  합성기 '이미지 제작'(.go) 전송 상태머신(<b style="color:var(--fg)">초록 풀필 → ✓ 체크</b>)으로 통일. <b style="color:var(--fg)">문구는 그대로.</b> 각 버튼을 탭해봐.</p>
+  <div class="wrap">
+
+    <div class="card">
+      <h2>① 2단계 — 카드 프롬프트 「프롬프트 다시 생성」</h2>
+      <p class="desc">전(前): 하단 가느다란 게이지바만. <b>후(後): 합성기처럼 초록이 좌→우로 꽉 채우고 ✓ 체크가 그려진 뒤</b> '생성 시작' 상태로 넘어감.</p>
+      <button class="mkbtn" data-demo="text">프롬프트 다시 생성</button>
+      <p class="tap">↑ 탭 = 새 액티브(풀필 → ✓)</p>
+    </div>
+
+    <div class="card">
+      <h2>② 3단계 — 카드 이미지 「카드 이미지 생성」 <span class="warn" style="font-size:11px">· 유료</span></h2>
+      <p class="desc"><b>유료라 재확인 절차가 중간에 들어감.</b> 1번째 탭 = <b class="warn">노랑 '유료 결제 — 한 번 더 누르면 생성'</b>으로 무장(3.5초 뒤 자동 해제). 2번째 탭 = 합성기 풀필 → ✓ 체크로 실제 발사. (오발 과금 방지)</p>
+      <button class="mkbtn" data-demo="shoot">카드 이미지 생성</button>
+      <p class="tap">↑ 두 번 탭해야 발사(1탭=재확인·2탭=발사)</p>
+    </div>
+
+    <div class="card">
+      <h2>③ 기준 — 합성기 '이미지 제작'(.go) <span class="ok" style="font-size:11px">· 원본</span></h2>
+      <p class="desc">계승의 원본. 위 ①② 가 이것과 동일한 풀필+✓ 모션이 됐는지 비교용.</p>
+      <button class="go" data-demo="go">이미지 제작</button>
+      <p class="tap">↑ 탭 = 원본 모션</p>
+    </div>
+
+    <div class="card">
+      <h2>④ 전/후·장단점·리스크</h2>
+      <table>
+        <tr><th>항목</th><th>전(前)</th><th>후(後)</th></tr>
+        <tr><td>2단계 액티브</td><td>하단 3px 게이지바</td><td class="ok">초록 풀필 → ✓ 체크(합성기 동일)</td></tr>
+        <tr><td>3단계(유료)</td><td>한 번 탭 = 즉시 발사</td><td class="ok">재확인 무장 → 두 번째 탭 발사</td></tr>
+        <tr><td>문구</td><td>—</td><td class="ok">그대로(라벨 불변)</td></tr>
+        <tr><td>장점</td><td colspan="2">앱 전반 버튼과 시각 통일 · 유료 오발 과금 방지 · 완료 ✓ 피드백 명확</td></tr>
+        <tr><td>효율</td><td colspan="2">기존 토큰·키프레임 계승(재설계 0) · 추가 네트워크/모델 비용 0</td></tr>
+        <tr><td class="warn">리스크</td><td colspan="2">발사까지 ~1.3s(풀필.72+체크.52) 체감 약간 길어짐 · 3단계 두 번 탭 필요(의도된 게이트) · prefers-reduced-motion 시 모션 단축</td></tr>
+      </table>
+    </div>
+
+  </div>
+<script>
+  function run(btn){
+    const isGo = btn.dataset.demo === 'go';
+    const orig = btn.dataset.lbl || btn.textContent;
+    btn.dataset.lbl = orig;
+    // 유료 슛 = 재확인 무장(2탭)
+    if (btn.dataset.demo === 'shoot' && !btn.dataset.armed){
+      btn.dataset.armed='1'; btn.classList.add('arm'); btn.textContent='유료 결제 — 한 번 더 누르면 생성';
+      clearTimeout(btn._t); btn._t=setTimeout(()=>{delete btn.dataset.armed;btn.classList.remove('arm');btn.textContent=orig;},3500);
+      return;
+    }
+    clearTimeout(btn._t); delete btn.dataset.armed; btn.classList.remove('arm');
+    btn.classList.add('firing'); btn.style.pointerEvents='none';
+    setTimeout(()=>{
+      btn.classList.add('okdone','checking');
+      btn.innerHTML='<svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+      setTimeout(()=>{
+        if(isGo){ btn.className='go'; btn.textContent=orig; btn.style.pointerEvents=''; }
+        else {
+          const g=document.createElement('div'); g.className='genstat';
+          g.textContent = btn.dataset.demo==='text' ? '프롬프트 생성 시작 — 1~2분 내 ⏳로' : '카드 이미지 생성 시작 — 워크플로 시작';
+          const p=btn.parentNode; const restore=()=>{ g.replaceWith(btn); btn.className='mkbtn'; btn.textContent=orig; btn.style.pointerEvents=''; btn.innerHTML=orig; };
+          btn.replaceWith(g); setTimeout(restore,1600);   // 데모라 1.6s 뒤 버튼 복원(실제론 폴링으로 ⏳ 전환)
+        }
+      },520);
+    },740);
+  }
+  document.querySelectorAll('[data-demo]').forEach(b=>b.addEventListener('click',()=>run(b)));
+</script>
+</body>
+</html>
