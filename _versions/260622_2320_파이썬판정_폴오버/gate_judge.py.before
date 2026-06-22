@@ -27,8 +27,6 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
-sys.path.insert(0, str(ROOT / "shared"))
-from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
 MODEL = os.environ.get("GATE_MODEL", "claude-opus-4-8")
 GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # 채점 대상: cross 이 값 이상(노출권)
@@ -90,14 +88,15 @@ def judge(items):
     """items=[(idx_str, title)] → ({idx_str: int 0~3}, rc, stderr)."""
     listing = "\n".join(f"{i}\t{_clean(t)}" for i, t in items)
     prompt = f"{RUBRIC}\n\n[기사 목록]\n{listing}\n\n[채점 출력]"
-    p, rc, err = run_claude(
-        ["claude", "-p", "--model", MODEL, "--effort", "max",
-         "--disallowedTools",
-         "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
-         "--max-turns", "1"],
-        prompt, timeout=300)   # 쿼터 한도면 대체 계정 1회 전환·재시도(account failover)
-    if p is None:
-        return {}, rc, err
+    try:
+        p = subprocess.run(
+            ["claude", "-p", "--model", MODEL, "--effort", "max",
+             "--disallowedTools",
+             "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
+             "--max-turns", "1"],
+            input=prompt, capture_output=True, text=True, timeout=300)
+    except Exception as e:  # noqa: BLE001
+        return {}, 1, f"{type(e).__name__}: {e}"
     grades = {}
     for line in (p.stdout or "").splitlines():
         if "\t" not in line:
