@@ -1265,7 +1265,6 @@
   .cref-srch svg { width:15px; height:15px; }
   .cref-srch { color:var(--mut); }   /* 기사 제목 검색 돋보기 = 회색(강조색 제거 · 키워드 검색과 위계 구분 · 운영자 260622) */
   .cref-acts { display:inline-flex; align-items:center; gap:6px; flex:none; }
-  .cref-dlrow { display:flex; justify-content:flex-end; margin:-2px 0 6px; }   /* 전체 다운로드 = 헤더 아래 한 칸·우측정렬(운영자 260622) */
   /* 전체저장 = 아이콘 + '전체' 텍스트 한 버튼 안(썸네일 생성기 .fi-saveall 톤 · 운영자 260622) */
   .cref-dlall { width:auto; height:var(--btn-sm); border-radius:var(--r-s); display:inline-flex; align-items:center; gap:5px; padding:0 11px; }
   .cref-dlall svg { width:15px; height:15px; }
@@ -1366,13 +1365,9 @@
   /* 빈 입력 안내 = 입력창 안 placeholder처럼 보이는 반짝 오버레이(내용 있으면 숨김·운영자 260622) */
   .askph { position:absolute; top:12px; left:14px; right:42px; font-size:14px; line-height:1.6; color:var(--mut); pointer-events:none; }   /* 정적 placeholder = 열자마자 반짝이며 재촉 안 함 · 빈 채 전송 시에만 .attn 반짝(운영자 260622) */
   .askph.hide { display:none; }
+  .askph.attn { animation:askPhBlink .9s ease-in-out 2; }
   @keyframes askPhBlink { 0%,100%{ opacity:1; } 50%{ opacity:.32; } }
-  @media (prefers-reduced-motion:reduce) { .askph { animation:none; } }
-  /* 빈 전송(텍스트·이미지 없음) = 입력창 흔들림 + placeholder 강조색 1회 점등(전송버튼 흔들림과 동시 · 운영자 260622) */
-  .asktawrap.shake { animation:asksh .4s ease; }
-  .askph.flash { animation:askPhFlash .6s ease; }
-  @keyframes askPhFlash { 0%,100% { color:var(--mut); text-shadow:none; } 30% { color:var(--accent); text-shadow:0 0 8px rgba(var(--accent-rgb),.55); } }
-  @media (prefers-reduced-motion:reduce) { .asktawrap.shake, .askph.flash { animation:none; } }
+  @media (prefers-reduced-motion:reduce) { .askph.attn { animation:none; } }
   .asksend { flex:none; position:relative; overflow:hidden; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.4); border-radius:999px;
     font:inherit; font-size:13px; font-weight:800; padding:9px 18px; cursor:pointer; transition:background .18s ease, border-color .18s ease, color .18s ease; }   /* 글래스 = 구성도 .send 정본(밝은초록 솔리드→dim 바탕이라야 초록 채움이 보임·260622) */
   .asksend > span { position:relative; z-index:1; }
@@ -2226,12 +2221,10 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     : '';
   const dlAll = list.length ? '<button type="button" class="sbtn cref-dlall" title="이미지 전체 저장" aria-label="이미지 전체 저장">' + DOWNLOAD_SVG + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 아이콘 + '전체' 한 버튼 안(운영자 260622)
   const moreBtn = _moreFile ? '<button type="button" class="sbtn cref-more" title="관련 뉴스이미지 5장 더 — AI(Opus 4.8)가 요약·시사점 읽고 오버레이 뒤 후킹 배경으로 검색(1~2분·기존과 중복없이)" aria-label="이미지 더 가져오기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' : '';   // +5장 더(AI 재검색)
-  const acts = (hbtn || kwbox || moreBtn) ? '<span class="cref-acts">' + moreBtn + hbtn + kwbox + '</span>' : '';   // 전체(dlAll)는 한 칸 아래 cref-dlrow로 분리(우측정렬 · 운영자 260622)
-  const dlRow = dlAll ? '<div class="cref-dlrow">' + dlAll + '</div>' : '';
+  const acts = (dlAll || hbtn || kwbox || moreBtn) ? '<span class="cref-acts">' + moreBtn + hbtn + kwbox + dlAll + '</span>' : '';
   const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
   const kwHtml = hasKw ? '<span class="cref-kw"></span>' : '';   // 키워드 칩(검정 글래스) — 텍스트·색은 언어따라 JS가 채움
   wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + acts + '</div>'
-    + dlRow   // 전체 다운로드 = 헤더 한 칸 아래 우측정렬(운영자 260622)
     + (kwHtml ? '<div class="cref-kwline">' + kwHtml + '</div>' : '')   // 키워드 = 라벨 아래 별도 줄(탭 복사 · 운영자 260622)
     + '<div class="cref-track">' + (list.map((it, i) => {
         const cap = (kind === 'gen' && it.label) ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';   // gen=화풍명 유지 · search '유사' 라벨 제거(의미없음·운영자 260622)
@@ -2279,7 +2272,11 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     }
   }
   const dlAllBtn = wrap.querySelector('.cref-dlall');   // 우상단 전체 저장 — 이 카러셀 이미지 전부 순차 다운로드
-  if (dlAllBtn) dlAllBtn.addEventListener('click', e => { e.stopPropagation(); dlAllSeq(dlAllBtn, list.map(it => it.img), i => thumbDlName(label, list[i], i)); });   // 통합: 진행 i/N → 초록 ✓
+  if (dlAllBtn) dlAllBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    for (let i = 0; i < list.length; i++) { downloadImg(list[i].img, thumbDlName(label, list[i], i)); await new Promise(r => setTimeout(r, 280)); }
+    _flashBtn(dlAllBtn, 'ok');
+  });
   const moreEl = wrap.querySelector('.cref-more');   // +5장 더 = api/moreimg 발사 + 반투명 로딩 + articles.json 폴링(운영자 260622)
   if (moreEl && _moreFile) moreEl.addEventListener('click', e => { e.stopPropagation(); moreImgGo(_moreFile, wrap, moreEl); });
   attachCarouselDrag(wrap.querySelector('.cref-track'));   // PC 마우스 드래그 좌우 슬라이드(feedtrack 패턴 계승·운영자 260622)
@@ -2367,23 +2364,6 @@ function thumbRedoSbtn(sid) {
 }
 
 // ── 썸네일 이미지: 복사·저장·확대(라이트박스) — §🎨 .sbtn/.tool-x/<dialog>+popstate 계승 ──
-// 전체 다운로드 통합 — 순차 저장(진행 i/N 라벨) → 초록 ✓ 완료(첨부2식). 검색이미지·카드피드 두 자리 공용(운영자 260622).
-async function dlAllSeq(btn, urls, namer) {
-  if (!btn || btn._dlbusy) return;
-  urls = (urls || []).filter(Boolean);
-  if (!urls.length) return;
-  btn._dlbusy = 1; btn.style.pointerEvents = 'none';
-  const lbl = btn.querySelector('.cref-dllbl');
-  const orig = lbl ? lbl.textContent : '';
-  for (let i = 0; i < urls.length; i++) {
-    downloadImg(urls[i], namer(i));
-    if (lbl) lbl.textContent = `저장 중… ${i + 1}/${urls.length}`;
-    await new Promise(r => setTimeout(r, 280));
-  }
-  if (lbl) lbl.textContent = orig || '전체';
-  _flashBtn(btn, 'ok');   // 초록 채움 + ✓ 체크(1.5s 후 복원)
-  btn._dlbusy = 0; btn.style.pointerEvents = '';
-}
 function _flashBtn(btn, mode) {   // mode: true|'ok'=초록체크 · 'warn'=부분(앰버·URL만/새탭) · 'err'=실패(빨강)
   if (!btn) return;
   if (!btn.dataset.icon) btn.dataset.icon = btn.innerHTML;
@@ -2821,13 +2801,13 @@ function feedSec(a, keepIdx = 0) {
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =
     `<div class="fi-top"><h3 class="fi-title">${esc(title)}</h3>
-       <button class="sbtn cref-dlall" type="button" title="전체 다운로드" aria-label="전체 다운로드">${DOWNLOAD_SVG}<span class="cref-dllbl">전체</span></button></div>
+       <button class="fi-saveall" type="button" title="전체 다운로드">${DOWNLOAD_SVG}<span class="lbl">전체</span></button></div>
      <div class="fi-card">
        ${summary ? `<div class="fi-summary">${esc(summary)}</div>` : ''}
        <div class="fi-tech">${tech}</div>
      </div>`;
   host.appendChild(intro);
-  intro.querySelector('.cref-dlall').onclick = e => { e.stopPropagation(); dlAllSeq(e.currentTarget, model.map(m => m.versions[m.cur].image), i => `${dlStamp(CUR_A)}_${slug}_${String(i + 1).padStart(2, '0')}.jpg`); };   // 통합: 진행 i/N → 초록 ✓(검색이미지 전체와 동일)
+  intro.querySelector('.fi-saveall').onclick = e => saveAll(model, slug, e.currentTarget);   // 전체 다운로드(우측 정렬)
 
   const track = document.createElement('div'); track.className = 'feedtrack'; track.tabIndex = 0;
   track.setAttribute('aria-label', '카드 뉴스 피드 — 좌우로 한 장씩 넘겨보기');
@@ -5172,12 +5152,11 @@ function askShowCheck(btn){ if (!btn || btn.querySelector('.ack')) return; btn.c
 function askHideCheck(btn){ if (!btn) return; btn.classList.remove('checked'); const d = btn.querySelector('.ack'); if (d) d.remove(); }
 $('#askSend').addEventListener('click', async () => {
   const text = $('#askText').value.trim();
-  if (!text && !askImages.length) {   // 빈 입력(텍스트·이미지 없음) = 입력창 흔들림 + placeholder 강조 1회 점등 + 전송버튼 흔들림(동시 · 운영자 260622)
+  if (!text && !askImages.length) {   // 빈 입력 = 전송 누른 시점에만 버튼 흔들림 + placeholder 1회 반짝(열자마자 재촉 안 함·운영자 260622)
     updateAskPh();
-    const wrap = $('#askText').closest('.asktawrap'), ph = $('#askPh'), sb = $('#askSend');
-    [[wrap, 'shake'], [ph, 'flash'], [sb, 'shake']].forEach(([el, c]) => { if (el) { el.classList.remove(c); void el.offsetWidth; el.classList.add(c); setTimeout(() => el.classList.remove(c), 620); } });
-    $('#askText').focus();
-    return;
+    const b = $('#askSend'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); setTimeout(() => b.classList.remove('shake'), 420);
+    const ph = $('#askPh'); if (ph && !ph.classList.contains('hide')) { ph.classList.remove('attn'); void ph.offsetWidth; ph.classList.add('attn'); setTimeout(() => ph.classList.remove('attn'), 1900); }
+    $('#askText').focus(); return;
   }
   const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
   try {
