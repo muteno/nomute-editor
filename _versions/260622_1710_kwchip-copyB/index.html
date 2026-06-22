@@ -1189,13 +1189,7 @@
   .cref-kwline { margin:0 0 8px; }
   .cref-kwline .cref-kw { max-width:100%; white-space:normal; border-radius:8px; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background .15s, color .15s, border-color .15s; }
   .cref-kwline .cref-kw:active { transform:scale(.98); }
-  /* 탭 복사 피드백 = 잠깐 눌림 + 초록 채움(글자 스왑 없음 · 운영자 260622 안 B) */
-  @keyframes cref-kwcopy {
-    0%   { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); }
-    32%  { transform:scale(.93); background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.55); }
-    100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
-  .cref-kw.copied { animation:cref-kwcopy .42s var(--ease); }
-  @media (prefers-reduced-motion:reduce) { .cref-kw.copied { animation:none; } }
+  .cref-kw.copied { color:var(--accent) !important; border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); }   /* 탭 복사 플래시 */
   /* (구) .cref-btn 초록 알약 = 폐기 → 헤더 검색버튼은 .cref-srch(.sbtn 아이콘) 한 벌로 통일(운영자 260620) */
   .cref-track { display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; padding-bottom:3px; }   /* scroll-behavior:smooth = 스냅 부드럽게(피드 패턴·운영자 260622) */
   .cref-track::-webkit-scrollbar { height:5px; }
@@ -1653,10 +1647,9 @@ let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
-// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 6개 → 앰버 경고 틴트(.warn).
-// 앞 5개=콘텐츠 보호(선정성·피해자 안전) · #북·중외교=사실 엄격(공식 발언만·의견 금지·좌우무관·오전달 고위험·운영자 260622).
-// (기타 대분류·정치 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
-const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모','#북·중외교'];
+// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 5개. 전부 보호성 → 앰버 경고 틴트(.warn).
+// (대분류·정치민감 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모'];
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 // R 필터 칩 상태 — 카테고리(OR)
@@ -2231,14 +2224,12 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     apply();
     if (tog && !tog.classList.contains('cref-kwtog-static'))
       tog.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); _lang = _lang === 'en' ? 'ko' : 'en'; apply(); });
-    if (kwEl) {   // 키워드 칩 탭 = 복사 + 눌림 플래시(글자 스왑 없음 · 안 B · 운영자 260622)
-      kwEl.addEventListener('animationend', () => kwEl.classList.remove('copied'));   // 끝나면 클래스 제거 = 반복 탭 재생
-      kwEl.addEventListener('click', async e => {
-        e.stopPropagation();
-        await copyText(_curChip);
-        kwEl.classList.remove('copied'); void kwEl.offsetWidth; kwEl.classList.add('copied');   // reflow로 애니 재시작
-      });
-    }
+    if (kwEl) kwEl.addEventListener('click', async e => {   // 키워드 칩 탭 = 복사 + 플래시(운영자 260622)
+      e.stopPropagation();
+      await copyText(_curChip);
+      kwEl.textContent = '복사됨 ✓'; kwEl.classList.add('copied');
+      setTimeout(() => { kwEl.textContent = _curChip; kwEl.classList.remove('copied'); }, 950);
+    });
   }
   const dlAllBtn = wrap.querySelector('.cref-dlall');   // 우상단 전체 저장 — 이 카러셀 이미지 전부 순차 다운로드
   if (dlAllBtn) dlAllBtn.addEventListener('click', async e => {
