@@ -1293,7 +1293,8 @@
   .cref-kwsrch svg { width:15px; height:15px; }   /* 제목검색(.cref-srch) 돋보기와 동일 크기(운영자 260622) */
   .cref-kwbox .cref-klbl { font:800 13px/1 'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif; }   /* 'K' = 키워드 검색 강조 */
   .cref-kwtog { display:inline-flex; align-items:center; justify-content:center; height:100%; padding:0 10px; font:800 13px/1 'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif; color:inherit; background:none; border:none; cursor:pointer; }   /* 한/영 토글 — inline-flex 중앙정렬(span/button 둘 다 박스 안 수직중앙·운영자 260622) */
-  .cref-kwtog:not(.cref-kwtog-static) { color:var(--accent); }   /* 한/영 전환 가능 = 글자 강조색(초록) — 언어 토글 강조·운영자 260622 */
+  .cref-kwtog:not(.cref-kwtog-static) { color:var(--accent); }   /* 한 = 글자 강조색(초록) — 언어 토글 강조·운영자 260622 */
+  .cref-kwbox.en .cref-kwtog { color:var(--info); }   /* 영문 선택 시 '영' = 시안(--info·영문 키워드 칩과 동색) — 한=초록/영=시안·운영자 260622 */
   .cref-kwtog.cref-kwtog-static { cursor:default; opacity:.78;
     background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.14) 0 1.5px, transparent 1.5px 5px); }   /* 국내(영문 없음) = 전환 불가 read-only → 살짝 불투명 빗금(운영자 260622) */
   .cref-kwsrch:hover, .cref-kwtog:not(.cref-kwtog-static):hover { background:rgba(255,255,255,.09); }
@@ -1710,7 +1711,7 @@ function renderChips() {
   const none = !FILTERS.cats.size && !FILTERS.issue;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
   h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈 = 긴급+이슈 통합 토글(켜면 breaking·issue 둘 다 표시·운영자 260621)
-  h += CHIP_CATS.map(cat => { const on = FILTERS.cats.has(cat), col = CAT_COLOR[cat] || 'var(--accent)'; return `<button class="chip${on ? ' on' : ''}" data-cat="${cat}"${on ? ` style="color:${col};text-shadow:0 0 11px ${col}99"` : ''}>${cat}</button>`; }).join('');   // 활성 칩 = 카테고리 고유색(정치 빨강·테크 시안 등 각각·운영자 260621)
+  h += CHIP_CATS.map(cat => { const on = FILTERS.cats.has(cat), col = CAT_COLOR[cat] || 'var(--accent)'; return `<button class="chip${on ? ' on' : ''}" data-cat="${cat}"${on ? ` style="color:${col};text-shadow:0 0 11px ${col}99"` : ''}>${cat}</button>`; }).join('');   // 활성 칩 = 카테고리 고유색(정치 빨강·국제 시안·테크 바이올렛 등 각각·운영자 260622)
   c.innerHTML = h;
 }
 
@@ -1934,7 +1935,7 @@ function biasText(bias) {
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621)
-const CAT_COLOR = { '정치':'#f06a6a','사회':'#7fd0a0','경제':'#e7c977','국제':'#97a8e6','문화':'#ea90c6','테크':'#7fc8d8' };   // 정치=더 붉은 빨강(문화 핑크와 확실히 구분·다크서 잘 보임) · 국제=블루 · 문화=마젠타핑크(운영자 260621)
+const CAT_COLOR = { '정치':'#f06a6a','사회':'#7fd0a0','경제':'#e7c977','국제':'#0cd0f7','문화':'#ea90c6','테크':'#a78bfa' };   // 정치=빨강·사회=민트·경제=골드·국제=시안(--info 동색=영문키워드 색)·문화=마젠타핑크·테크=바이올렛(거의 안 쓰여 국제에 시안 양보·시안과 확실히 구분·운영자 260622)
 function catBucket(cat) { const c = (cat || '').trim(); return CAT_MAP[c] || (['정치','사회','경제','문화','국제','테크'].includes(c) ? c : ''); }
 function catChip(cat) {
   const b = catBucket(cat); if (!b) return '';
