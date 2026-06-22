@@ -152,7 +152,7 @@
 - **닫기(X)** = `.tool-x`/`.dlg-x` 글래스(`--btn-sm` 30px·우상단). **SVG X-path 단일 권장**(`M6 6 18 18M18 6 6 18`·stroke 1.8) — 잔존 `✕` 문자/제각각 크기는 드리프트(점진 통일). `.dlg-x`=`position:absolute` 우상단(스크롤해도 보임).
 - **모달/팝업 + 폰 뒤로가기** = `<dialog>` + `history.pushState`(열 때)·`popstate`로 닫기(`tooldlg` 패턴) → 백버튼=직전 화면 복귀(앱 안 벗어남)·X/백드롭/ESC로 닫으면 푸시 칸 정리.
 - **캐러셀/스와이프** = scroll-snap 트랙 + 드래그 넘김(`cardRefCarousel`/`feed-ui`).
-- **이미지 저장** = `.sbtn.save`+`DOWNLOAD_SVG` · 다중저장 `saveAll`.
+- **다운로드 버튼 = `.dlbtn` 단일 표준 (전 앱 공통 · 정본 · 운영자 260622)**: 모든 다운로드/저장 버튼은 **`.dlbtn` 한 클래스만 추가**한다(아이콘=`DOWNLOAD_SVG`). 표준 = **강조색(`--accent`) + 10% 반투명(`rgba(var(--accent-rgb),.10)`) + 클릭 시 ✓ 팝+링 리플**(위임·캡처 핸들러가 `.dl-ack` 오버레이 주입). 색·효과·배경은 `viewer/index.html`·`viewer/thumb.html` 의 `.dlbtn` 블록이 정본(`!important`로 모든 베이스 위에 적용) — **새 다운로드 버튼을 색/효과 따로 만들지 말 것**(`.dlbtn`만 붙이면 끝). 위치·크기는 컨텍스트 클래스(`.imgdl`·`.timg-dl`·`.jvar-dl`·`.cref-dlall`·`.fi-saveall`·`.lbox-dl`·`.save` 등)가 담당.
 - **복사/붙여넣기** = 컨텍스트 1버튼(`.askclip`+`updateAskClip`: 비면 PASTE·차면 COPY·성공 CHECK 플래시 · `COPY_SVG`/`PASTE_SVG`/`CHECK_SVG`). 입력칸 우상단·도형폭 절반(≈17px) 아래.
 - **아이콘 SVG 상수** = `COPY/PASTE/CHECK/DOWNLOAD/EDIT/LAYERS/THUMBUP/THUMBDOWN_SVG` 등(필요 아이콘 없으면 24뷰박스·stroke 2·round 규격으로 추가).
 - **간격·마진** = 기존 값/`--sp-*` 재사용. 임의 px 새로 정하지 말 것.

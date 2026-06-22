@@ -1,0 +1,113 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>다운로드 클릭 = 체크 완료 액티브 (3안)</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:rgba(255,255,255,.08); --fg:#e9eaec; --mut:#8b8f98;
+          --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.6; padding:24px 16px 70px; }
+  .wrap { max-width:820px; margin:0 auto; }
+  h1 { font-size:20px; margin:0 0 4px; color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 24px; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; } @media(max-width:680px){ .grid{ grid-template-columns:1fr; } }
+  .col { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .col h3 { font-size:14px; margin:0 0 4px; color:var(--accent); }
+  .col p { font-size:12px; color:var(--mut); margin:0 0 14px; min-height:48px; }
+  .stage { position:relative; height:140px; border-radius:10px; overflow:hidden; display:grid; place-items:center;
+    background:linear-gradient(135deg,#3a1535,#7a1f4a 60%,#c2356a); }
+  .stage .lbl { color:rgba(255,255,255,.8); font-size:11px; font-weight:700; }
+  .tapnote { text-align:center; font-size:11px; color:var(--mut); margin-top:10px; }
+  /* 공통 다운로드 버튼 */
+  .dl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; z-index:2; cursor:pointer;
+    color:var(--accent); background:rgba(var(--accent-rgb),.10); border:0; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));
+    transition:transform .12s, background .15s, color .15s; -webkit-tap-highlight-color:transparent; }
+  .dl svg { display:block; width:15px; height:15px; }
+  .dl .ic-dl, .dl .ic-ck { grid-area:1/1; }
+  .dl .ic-ck { opacity:0; }
+  .dl:active { transform:scale(.82); }
+
+  /* ===== A안 : 모프(↓→✓ 드로우-인) + 초록 채움 ===== */
+  .dl.A.done { background:var(--accent); color:var(--on-accent); }
+  .dl.A.done .ic-dl { opacity:0; }
+  .dl.A.done .ic-ck { opacity:1; }
+  .dl.A.done .ic-ck path { stroke-dasharray:24; stroke-dashoffset:24; animation:drawck .4s .02s ease forwards; }
+  @keyframes drawck { to { stroke-dashoffset:0; } }
+
+  /* ===== B안 : 아이콘 유지 + ✓ 팝(스프링) 오버레이 + 링 리플 ===== */
+  .dl.B .pop { position:absolute; inset:0; display:grid; place-items:center; opacity:0; transform:scale(0); z-index:3; color:var(--accent); }
+  .dl.B .pop svg { width:18px; height:18px; }
+  .dl.B.done .pop { animation:popck .7s cubic-bezier(.18,1.5,.4,1) forwards; }
+  .dl.B.done .ic-dl { animation:dimdl .7s ease; }
+  @keyframes popck { 0%{opacity:0;transform:scale(0)} 30%{opacity:1;transform:scale(1.15)} 55%{transform:scale(1)} 80%{opacity:1} 100%{opacity:0;transform:scale(1)} }
+  @keyframes dimdl { 0%,100%{opacity:1} 30%,80%{opacity:.15} }
+  .dl.B.done::after { content:''; position:absolute; inset:0; border-radius:10px; border:1.5px solid rgba(var(--accent-rgb),.7); animation:ripple .6s ease-out forwards; pointer-events:none; }
+  @keyframes ripple { from{transform:scale(1);opacity:.9} to{transform:scale(1.5);opacity:0} }
+
+  /* ===== C안 : 초록 게이지 채움(L→R) → ✓ 드로우 → settle ===== */
+  .dl.C { overflow:hidden; }
+  .dl.C .fill { position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left; z-index:0; }
+  .dl.C .ic-dl, .dl.C .ic-ck, .dl.C .pop { position:relative; z-index:1; }
+  .dl.C.done .fill { animation:gauge .42s linear forwards; }
+  .dl.C.done .ic-dl { opacity:0; }
+  .dl.C.done .ic-ck { opacity:1; color:var(--on-accent); }
+  .dl.C.done .ic-ck path { stroke-dasharray:24; stroke-dashoffset:24; animation:drawck .34s .34s ease forwards; }
+  .dl.C.done { animation:settle .34s .7s var(--ease,ease); }
+  @keyframes gauge { to { transform:scaleX(1); } }
+  @keyframes settle { 0%{transform:scale(1)} 40%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+  @media (prefers-reduced-motion:reduce){ .dl *{ animation:none !important; } }
+  .foot { margin-top:26px; background:var(--pan); border:1px solid var(--line); border-radius:12px; padding:16px; font-size:13px; }
+  .foot b { color:var(--accent); }
+  .foot ul { margin:8px 0 0; padding-left:18px; color:var(--mut); } .foot li { margin:4px 0; }
+</style></head>
+<body><div class="wrap">
+  <h1>다운로드 클릭 = 체크 완료 액티브 — 3안</h1>
+  <p class="sub">지금은 클릭하면 다운로드만 되고 끝 → 클릭 시 ✓ 완료 피드백 추가. 각 버튼을 <b>여러 번 탭</b>해서 비교하고, 마음에 드는 안(A/B/C)을 알려줘 → 모든 다운로드 버튼에 적용할게. (실제 다운로드는 그대로 동작)</p>
+
+  <div class="grid">
+    <div class="col">
+      <h3>A안 — 모프</h3>
+      <p>↓ 아이콘이 ✓로 드로우-인 + 버튼이 초록으로 꽉 참. 0.9초 뒤 ↓로 복귀. (가장 명확·심플)</p>
+      <div class="stage"><span class="lbl">결과 이미지</span>
+        <a class="dl A" tabindex="0" role="button" aria-label="다운로드"><svg class="ic-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg><svg class="ic-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></a>
+      </div>
+      <div class="tapnote">탭해보기 ↑</div>
+    </div>
+
+    <div class="col">
+      <h3>B안 — 팝 + 링</h3>
+      <p>아이콘은 그대로 두고 ✓가 스프링으로 팝업 + 초록 링이 퍼지며 사라짐. (가볍고 통통 튀는 느낌)</p>
+      <div class="stage"><span class="lbl">결과 이미지</span>
+        <a class="dl B" tabindex="0" role="button" aria-label="다운로드"><svg class="ic-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg><span class="pop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span></a>
+      </div>
+      <div class="tapnote">탭해보기 ↑</div>
+    </div>
+
+    <div class="col">
+      <h3>C안 — 게이지 채움</h3>
+      <p>초록이 좌→우로 차오르고 ✓가 그려진 뒤 살짝 팝(settle). 전송 버튼(asksend)과 동일 계열. (가장 묵직·고급)</p>
+      <div class="stage"><span class="lbl">결과 이미지</span>
+        <a class="dl C" tabindex="0" role="button" aria-label="다운로드"><span class="fill"></span><svg class="ic-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg><svg class="ic-ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></a>
+      </div>
+      <div class="tapnote">탭해보기 ↑</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>적용 범위</b> — 고른 안을 다음 모든 다운로드 버튼에 공통 적용:
+    <ul>
+      <li>썸네일 결과카드 캐러셀 다운로드(<code>.imgdl</code>) · 이전 제작 썸네일 다운로드</li>
+      <li>뉴스 요약부 썸네일 후보 저장(<code>.timg-dl</code>) · 확대뷰 저장(<code>.lbox-dl</code>) · 전체저장(<code>.cref-dlall</code>·<code>.fi-saveall</code>)</li>
+    </ul>
+    A / B / C 중 하나 알려주면 바로 반영할게. (세부 톤·속도도 조정 가능)
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.dl').forEach(b => {
+    b.addEventListener('click', e => { e.preventDefault();
+      b.classList.remove('done'); void b.offsetWidth; b.classList.add('done');
+      setTimeout(() => b.classList.remove('done'), 1000);
+    });
+    b.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); b.click(); } });
+  });
+</script>
+</body></html>

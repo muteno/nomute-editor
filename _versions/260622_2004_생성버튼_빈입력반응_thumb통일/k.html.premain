@@ -18,7 +18,6 @@
   .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
   h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
   .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
-  .sub b { color:var(--accent); font-weight:700; }   /* 비디오 엔진명 = 강조색 */
   label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
   label:first-of-type { margin-top:0; }
   textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; resize:vertical; }
@@ -29,10 +28,6 @@
   .go:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
   .go:active { transform:scale(.955); background:rgba(15,253,2,.2); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
-  .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
-  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
-  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb .go.err 통일·운영자 260622) */
-  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
@@ -46,10 +41,11 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
   .chk .cbox .ackm { width:15px; height:15px; display:block; }
   .chk .cbox .ackm path { transition:opacity .16s ease, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
-  .chk .cbox .sc-chk { stroke:var(--on-accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }   /* ✓ = 강조색 채움 위 어두운색(.dl-cbox 계승) */
-  .chk input:checked + .cbox { border-color:transparent; background:var(--accent); }   /* 체크 = 강조색 채움(.dl-cbox 계승·운영자 260622) */
+  .chk .cbox .sc-dash { stroke:var(--mut); opacity:1; }
+  .chk .cbox .sc-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }
+  .chk input:checked + .cbox { border-color:rgba(15,253,2,.5); background:rgba(15,253,2,.14); color:var(--accent); }
+  .chk input:checked + .cbox .sc-dash { opacity:0; }
   .chk input:checked + .cbox .sc-chk { opacity:1; stroke-dashoffset:0; }
-  .chk:has(input:checked) { color:var(--accent); }   /* 체크 시 라벨도 강조색 */
   .chk:active .cbox { transform:scale(.9); }
   .chk input:focus-visible + .cbox { box-shadow:0 0 0 2px rgba(15,253,2,.45); }
   @media (prefers-reduced-motion:reduce) { .chk .cbox .ackm path { transition:none; } }
@@ -79,11 +75,11 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="sub">📍 비디오 엔진: <b>Kling 3.0 Omni</b></p>
+  <p class="sub">장면·기사 넣으면 → Kling 복붙 프롬프트(샷별 복사). 영상 생성은 Kling 웹앱에서 붙여넣어. ※ 원샷(대화형 /k는 Claude Code).</p>
 
-  <label>📍 스토리 구성</label>
-  <textarea id="scene" placeholder="내용을 입력해주세요"></textarea>
-  <label class="chk"><input type="checkbox" id="refimage"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 레퍼런스 이미지 동시 생성 <span class="paid">· Gemini (최대 15분)</span></label>
+  <label>장면 / 기사 입력</label>
+  <textarea id="scene" placeholder="예) 폭우 속 한강 다리 위, 우산 쓴 사람이 카메라를 향해 천천히 걸어온다. 네온 반사, 시네마틱..."></textarea>
+  <label class="chk"><input type="checkbox" id="refimage"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 레퍼런스 이미지도 생성 <span class="paid">유료 Gemini · 최대 ~15분</span></label>
   <button class="go" id="go">웹 렌더 생성</button>
 
   <div class="status" id="status"></div>
@@ -189,20 +185,11 @@ function poll(outPath, refPath) {
   tick();
 }
 
-function errStatus(m) {   // 전송 막힘 = 메시지를 버튼 안에 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(thumb errStatus 통일·운영자 260622)
-  const s = $('#status'); if (s) { s.textContent = ''; s.classList.remove('err'); }   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
-  const g = document.getElementById('go'); if (!g) return;
-  if (!g.dataset.label) g.dataset.label = g.textContent;   // 원래 라벨 보존
-  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
-  g.textContent = m; g.setAttribute('aria-live', 'assertive');   // 메시지 = 버튼 안에
-  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label; }, 1700);
-}
 $('#go').onclick = async () => {
+  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지(생성 버튼 통일·260622)
   const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
   const scene = $('#scene').value.trim();
-  if (!scene) return errStatus('내용을 입력해주세요');   // 빈 입력 = 버튼 안 빨강+흔들림(thumb 통일·운영자 문구)
-  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
+  if (!scene) { status.textContent = '장면을 입력해줘'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '생성 중…';
   try {
     const refimage = $('#refimage').checked;
