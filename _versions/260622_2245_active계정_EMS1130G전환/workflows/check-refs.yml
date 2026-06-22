@@ -1,0 +1,29 @@
+name: check-refs
+
+# 수정 모드 ③ 게이트(참조·버전·디자인거울·viewer JS 구문 정합)를 CI로 자동화 = "진짜 기계강제"(§🎨).
+# 누가 손으로 check_refs 돌리는 걸 깜빡해도 PR마다 자동 검사 → 실패면 PR 빨강.
+# (머지 하드차단까지 원하면 브랜치 보호에서 이 체크를 required 로 지정.)
+# 과금 0 — 러너 ~20s, stdlib만(pip 0) + node(viewer 인라인 JS 구문검사용).
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: check-refs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: check_refs (경로·버전·디자인거울·JS 구문)
+        run: python3 shared/check_refs.py
