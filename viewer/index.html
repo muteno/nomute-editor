@@ -675,9 +675,6 @@
   .qrow:first-child { border-top:none; }
   .qrow .qt { flex:none; width:64px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }   /* 고정폭 = 시간 열 공간 일정 → 제목 시작 x 정렬(2열↓ 삐뚤어짐 해소·운영자 260621). 단순 사다리(복합표기 폐지)라 64px면 '23시간 전'·'11개월 전' 다 들어감 */
   .qrow .qmain { flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .qrow .qvia { flex:none; font-size:10px; font-weight:800; padding:2px 6px; border-radius:6px; }
-  .qrow .qvia.paste { color:#0cd0f7; background:rgba(12,208,247,.15); }
-  .qrow .qvia.url { color:#ff9614; background:rgba(255,150,20,.15); }
   .qb { flex:none; font-size:10px; font-weight:900; letter-spacing:.04em; padding:2px 7px; border-radius:6px; }
   .qb-succ { color:#7dffa0; background:rgba(15,253,2,.16); }
   .qb-fail { color:#fff; background:linear-gradient(135deg,#ff5b4a,#e2231a); box-shadow:0 0 9px rgba(240,40,30,.45); }
@@ -4330,7 +4327,7 @@ function renderScrap() {
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
   });
-  if (!pool.length && !failed.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; return; }
+  if (!pool.length && !failed.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = ''; return; }
   host.classList.add('scrap-cols');
   host.innerHTML = (failed.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">⚠ 분석 실패 ${failed.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
   if (failed.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
@@ -4680,10 +4677,10 @@ let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
   let _ss = '';   // 이번 렌더 구성(행 ID·순서+검색어) 누적
-  if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">불러오는 중…</div>`; return; }
+  if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">불러오는 중…</div>`; _snsSig = ''; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rows = q ? SOCIAL.filter(r => ((r.title || '') + ' ' + (r.sources || []).join(' ')).toLowerCase().includes(q)) : SOCIAL;
-  if (!rows.length) { list.innerHTML = `<div class="empty">${q ? '검색 결과 없음' : '소셜 스캔 대기 — 커뮤니티 공론화 이슈(갑질·학폭·이웃분쟁·황당사건 등 비정치)가 교차소스로 잡히면 여기 떠.'}</div>`; return; }
+  if (!rows.length) { list.innerHTML = `<div class="empty">${q ? '검색 결과 없음' : '소셜 스캔 대기 — 커뮤니티 공론화 이슈(갑질·학폭·이웃분쟁·황당사건 등 비정치)가 교차소스로 잡히면 여기 떠.'}</div>`; _snsSig = ''; return; }
   list.innerHTML = '';
   rows.forEach((r, i) => {
     const el = document.createElement('a');
