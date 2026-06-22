@@ -29,11 +29,6 @@ MAX_BATCH = _int_env("THUMB_MAX_BATCH", 3)   # 1런당 기사 수 상한(비용 
 # 빈값이면 전체(백로그 포함). 워크플로가 활성화 날짜를 박는다.
 SINCE = os.environ.get("THUMB_SINCE", "").strip()
 KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-# ⏸ AI 썸네일 생성 임시 OFF 스위치(운영자 260622) — 켜면 Gemini 3화풍 생성만 건너뛰고
-#    검색이미지(og:image·관련사진 fetch = 망만 필요·키 무관)는 그대로 채운다. 복구 = env 제거(또는 '0').
-#    (자동 뉴스요약 경로 둘 다[news-analyze.yml = URL/전문 픽 · news-ask.yml = ✨요약요청]에서 세팅 ·
-#     수동 '다시 만들기'[thumb-redo.yml]는 미세팅 = AI 정상.)
-AI_OFF = os.environ.get("THUMB_AI_OFF", "").strip().lower() in ("1", "true", "yes", "on")
 # ⚠️ 검색이미지는 더 이상 Google CSE JSON API를 안 씀(2025 신규고객 차단 死 → "this project does not have
 #    access" 403 PERMISSION_DENIED). 대체 = 기사 본인 og:image 추출(fetch_article_images). CSE 시크릿 미사용.
 # ── 저장소 = Cloudflare R2 (설정 시) → 공개 URL 직접 서빙(레포 비대 회피·egress 0). 미설정이면 git 폴백. ──
@@ -585,66 +580,60 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
-    # AI 생성 3화풍 — THUMB_AI_OFF면 통째 생략(검색이미지만 채움 · 임시 비용차단 260622).
-    # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor·photo_close sid는 STYLES에 없어 자동 드롭).
+    # AI 생성 3화풍 — 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor·photo_close sid는 STYLES에 없어 자동 드롭)
+    _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
+    existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
+    gen = []
     changed = False
-    if AI_OFF:
-        print("  ⏸ AI 썸네일 생성 OFF(THUMB_AI_OFF) — 검색이미지만 처리(기존 썸네일·gen.json·토큰 영향 0)")
-    else:
-        _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
-        existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
-        gen = []
-        for sid, label, art_dir in STYLES:
-            if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
-                gen.append(existing[sid]); continue
-            png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch), "1K")   # 1K(토큰 절감 · 운영자 260621 · 폰 피드용 충분). 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch). '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
-            if not png:
-                print("  ✗ {} 실패".format(label)); continue
-            if R2_ON:                                # R2 = 공개 URL(레포 미저장)
-                url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid))
-                if url:
-                    gen.append({"sid": sid, "img": url + "?v=" + str(int(time.time())), "label": label}); changed = True   # ?v=캐시버스트(재생성 시 같은 R2 키 덮어써도 새 이미지 반영)
-                    print("  ✓ {} → R2".format(label)); continue
-                # R2 업로드 실패 → 로컬 폴백(아래로 떨어짐)
-            fp = os.path.join(tdir, "gen-{}.png".format(sid))   # git 폴백 = 로컬 PNG
-            open(fp, "wb").write(png)
-            gen.append({"sid": sid, "file": "gen-{}.png".format(sid), "label": label}); changed = True
-            print("  ✓ {} ({:.0f}KB, 로컬)".format(label, len(png) / 1024))
-        if changed:
-            json.dump(gen, open(os.path.join(tdir, "gen.json"), "w", encoding="utf-8"),
-                      ensure_ascii=False, indent=2)
-        # 제미나이 토큰 사용량 — 이 기사 호출분을 usage.json에 기록 + 로그(누적 합산 포함).
-        # 태그별 분리: gen=이미지 생성(tag"img") / search=검색·비전(tag"vision") — 뷰어가 각 라벨(🍌 AI 생성·🔎 검색) 옆에 따로 표기.
-        # (현재 검색=og:image 스크래핑이라 vision 호출 0 → search 버킷 0; THUMB_VISION 점화 시 _rec_usage(tag="vision")로 자동 채워짐.)
-        calls = _USAGE[_u0:]
-        if calls:
-            up = os.path.join(tdir, "usage.json")
-            try:
-                prevj = json.load(open(up, encoding="utf-8"))
-            except Exception:
-                prevj = {}
-            def _prev_cum(bucket):
-                try: return int((prevj.get(bucket) or {}).get("cumulative") or 0)
-                except Exception: return 0
-            tot = _usage_total(calls)
-            tot["cumulative_total_tokens"] = int((prevj or {}).get("cumulative_total_tokens") or 0) + tot["total_tokens"]
-            # 버킷별(누적 포함) — 미래 비전 점화 대비 분리 집계
-            gen_calls    = [c for c in calls if c.get("tag") == "img"]
-            search_calls = [c for c in calls if c.get("tag") in ("vision", "search")]
-            gt, st = _usage_total(gen_calls), _usage_total(search_calls)
-            tot["gen"]    = {"calls": gt["calls"], "total": gt["total_tokens"], "cumulative": _prev_cum("gen")    + gt["total_tokens"]}
-            tot["search"] = {"calls": st["calls"], "total": st["total_tokens"], "cumulative": _prev_cum("search") + st["total_tokens"]}
-            json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-            print("  📊 제미나이 토큰: {}콜·합계 {:,} (생성 {:,}·검색 {:,})·누적 {:,}".format(
-                tot["calls"], tot["total_tokens"], tot["gen"]["total"], tot["search"]["total"], tot["cumulative_total_tokens"]), flush=True)
+    for sid, label, art_dir in STYLES:
+        if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
+            gen.append(existing[sid]); continue
+        png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch), "1K")   # 1K(토큰 절감 · 운영자 260621 · 폰 피드용 충분). 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch). '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
+        if not png:
+            print("  ✗ {} 실패".format(label)); continue
+        if R2_ON:                                # R2 = 공개 URL(레포 미저장)
+            url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid))
+            if url:
+                gen.append({"sid": sid, "img": url + "?v=" + str(int(time.time())), "label": label}); changed = True   # ?v=캐시버스트(재생성 시 같은 R2 키 덮어써도 새 이미지 반영)
+                print("  ✓ {} → R2".format(label)); continue
+            # R2 업로드 실패 → 로컬 폴백(아래로 떨어짐)
+        fp = os.path.join(tdir, "gen-{}.png".format(sid))   # git 폴백 = 로컬 PNG
+        open(fp, "wb").write(png)
+        gen.append({"sid": sid, "file": "gen-{}.png".format(sid), "label": label}); changed = True
+        print("  ✓ {} ({:.0f}KB, 로컬)".format(label, len(png) / 1024))
+    if changed:
+        json.dump(gen, open(os.path.join(tdir, "gen.json"), "w", encoding="utf-8"),
+                  ensure_ascii=False, indent=2)
+    # 제미나이 토큰 사용량 — 이 기사 호출분을 usage.json에 기록 + 로그(누적 합산 포함).
+    # 태그별 분리: gen=이미지 생성(tag"img") / search=검색·비전(tag"vision") — 뷰어가 각 라벨(🍌 AI 생성·🔎 검색) 옆에 따로 표기.
+    # (현재 검색=og:image 스크래핑이라 vision 호출 0 → search 버킷 0; THUMB_VISION 점화 시 _rec_usage(tag="vision")로 자동 채워짐.)
+    calls = _USAGE[_u0:]
+    if calls:
+        up = os.path.join(tdir, "usage.json")
+        try:
+            prevj = json.load(open(up, encoding="utf-8"))
+        except Exception:
+            prevj = {}
+        def _prev_cum(bucket):
+            try: return int((prevj.get(bucket) or {}).get("cumulative") or 0)
+            except Exception: return 0
+        tot = _usage_total(calls)
+        tot["cumulative_total_tokens"] = int((prevj or {}).get("cumulative_total_tokens") or 0) + tot["total_tokens"]
+        # 버킷별(누적 포함) — 미래 비전 점화 대비 분리 집계
+        gen_calls    = [c for c in calls if c.get("tag") == "img"]
+        search_calls = [c for c in calls if c.get("tag") in ("vision", "search")]
+        gt, st = _usage_total(gen_calls), _usage_total(search_calls)
+        tot["gen"]    = {"calls": gt["calls"], "total": gt["total_tokens"], "cumulative": _prev_cum("gen")    + gt["total_tokens"]}
+        tot["search"] = {"calls": st["calls"], "total": st["total_tokens"], "cumulative": _prev_cum("search") + st["total_tokens"]}
+        json.dump(tot, open(up, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        print("  📊 제미나이 토큰: {}콜·합계 {:,} (생성 {:,}·검색 {:,})·누적 {:,}".format(
+            tot["calls"], tot["total_tokens"], tot["gen"]["total"], tot["search"]["total"], tot["cumulative_total_tokens"]), flush=True)
     return changed or search_written
 
 def main():
-    if not KEY and not AI_OFF:                # AI_OFF면 키 없어도 검색이미지는 채운다(검색=망 fetch·키 무관)
+    if not KEY:
         print("GEMINI_API_KEY 없음 — 썸네일 생성 생략(스캐폴드 no-op)")
         return 0
-    if AI_OFF:
-        print("⏸ THUMB_AI_OFF — AI 썸네일 생성 OFF(검색이미지만 처리 · 임시 · 복구=env 제거)")
     print("저장소: {}".format("Cloudflare R2" if R2_ON else "git 폴백(R2 미설정)"))
     # ── 단일 기사 강제 재생성 (뷰어 '다시 만들기' → thumb-redo.yml · THUMB_ONLY=stem) ──
     # gen.json(3화풍) + search.json(검색이미지) 둘 다 비워 전부 재생성 = '다시 만들기' = 전체 새로고침.
@@ -691,8 +680,7 @@ def main():
         if SINCE and stem[:6] < SINCE:
             continue   # 활성화 기준일 이전(백로그) 제외 = 신규 픽 한정
         tdir = os.path.join("cards", stem, "thumbs")
-        # AI_OFF면 AI는 '완료'로 간주(생성 안 함) → 검색만 끝나면 skip(매 런 불필요 재순회·신규픽 슬롯잠식 방지).
-        ai_done = AI_OFF or ({g.get("sid") for g in _load_gen(tdir)} >= target_sids)
+        ai_done = {g.get("sid") for g in _load_gen(tdir)} >= target_sids
         # url 또는 image_sources(AI 관련소스) 있는데 search.json 없으면 검색이미지 백필 대상에 포함.
         # ⚠️ process_one 게이트가 `(art_url or image_sources)`이므로 여기 백필 판정도 동일해야 paste 기사(url無·image_sources有)가 누락 안 됨(앵글3·J ISSUE-1).
         # AI 완료분은 process_one이 기존 sid 보존 → Gemini 0회, 검색이미지만 채움(추가 과금 없음).
