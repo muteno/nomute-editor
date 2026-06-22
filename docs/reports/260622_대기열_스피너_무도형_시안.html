@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>대기열 — 스피너 무도형 좌측정렬 시안</title>
+<style>
+  :root{
+    --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --danger:#ff5b4a; --amber:#ff9614; --amber-rgb:255,150,20; --r-m:11px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 60px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(460px 320px at 8% -4%, rgba(15,253,2,.06), transparent 60%),
+    radial-gradient(720px 460px at 108% 4%, rgba(255,150,20,.06), transparent 62%);}
+  .wrap{max-width:460px; margin:0 auto;}
+  h1{font-size:19px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 18px; line-height:1.55;}
+  .sub b{color:var(--fg);} .sub .g{color:var(--accent);} .sub .a{color:var(--amber);}
+  h2{font-size:13px; font-weight:800; margin:22px 2px 9px; color:#cfe3d5;}
+
+  /* ── 비교: 전(박스) → 후(무도형) ── */
+  .cmp{ display:flex; align-items:stretch; gap:10px; }
+  .cmp .col{ flex:1; border:1px solid var(--line); border-radius:12px; padding:13px 14px; background:rgba(255,255,255,.018); }
+  .cmp .cl{ font-size:11px; font-weight:800; letter-spacing:.04em; margin-bottom:10px; }
+  .cmp .col.before .cl{ color:var(--mut); } .cmp .col.after .cl{ color:var(--accent); }
+  .cmp .demorow{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--fg); }
+  .ico-box{ width:30px; height:30px; display:grid; place-items:center; border-radius:8px; border:1px solid rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.12); color:var(--amber); flex:none; }
+  .ico-bare{ display:grid; place-items:center; color:var(--amber); flex:none; }
+  .ico-box svg,.ico-bare svg{ width:16px; height:16px; }
+
+  /* ── 대기열 팝업 (실제 viewer 스타일 복제) ── */
+  .qpop{ margin-top:4px; border-radius:18px; padding:13px 15px; border:1px solid var(--line);
+    background:linear-gradient(168deg, rgba(20,30,23,.92), rgba(10,16,12,.96));
+    box-shadow:0 18px 44px rgba(0,0,0,.5); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); }
+  .qh{ display:flex; align-items:center; gap:6px; padding:0 3px; }
+  .qh svg{ stroke:var(--accent); flex:none; } .qh b{ font-size:13.5px; }
+  .qh .x{ margin-left:auto; width:44px; display:flex; justify-content:flex-start; color:var(--mut); opacity:.55; }
+  .qlist{ margin-top:8px; }
+  .qrow{ display:flex; align-items:center; gap:9px; padding:8px 3px; border-top:1px solid var(--line2); }
+  .qrow:first-child{ border-top:none; }
+  .qt{ flex:none; width:64px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }
+  .qt.qt-new{ color:var(--accent); }
+  .qmain{ flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qst{ flex:none; width:58px; display:flex; align-items:center; justify-content:flex-start; }
+  .qact{ flex:none; width:44px; display:flex; align-items:center; justify-content:flex-start; }
+  /* 상태 — 무도형 좌측정렬 */
+  .qico{ display:grid; place-items:center; flex:none; color:var(--amber); }
+  .qico svg{ width:16px; height:16px; }
+  .qico.spin svg{ animation:qspin 1.05s linear infinite; transform-origin:50% 50%; }
+  @keyframes qspin{ to{ transform:rotate(360deg); } }
+  .qcnt{ font-size:13px; font-weight:900; color:var(--amber); margin-left:4px; }   /* 횟수 = 스피너와 동색 앰버 */
+  .qb-done{ color:var(--accent); font-size:12.5px; font-weight:800; }
+  .qb-failt{ color:var(--danger); font-size:12.5px; font-weight:800; }
+  /* 액션 ↗ */
+  .qgo{ flex:none; width:30px; height:30px; display:grid; place-items:center; border-radius:8px; border:1px solid var(--line); background:transparent; }
+  .qgo svg{ width:17px; height:17px; }
+  .qgo.go-green{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
+  .qgo.go-amber{ color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
+
+  .gl{ font-size:11.5px; color:var(--mut); line-height:1.7; margin:14px 2px 0; }
+  .gl b{ color:#cfd8d0; } .gl .g{ color:var(--accent); } .gl .a{ color:var(--amber); } .gl .r{ color:var(--danger); }
+  .chip{ display:inline-flex; align-items:center; gap:4px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>대기열 — 처리중/재시도 스피너 <span style="color:var(--accent)">무도형 좌측정렬</span></h1>
+  <p class="sub">요청대로 <b>반영 완료</b>(라이브 main). 스피너를 <b>도형(박스) 밖으로</b> 빼서 <span class="g">완료</span>·<span style="color:var(--danger)">실패</span> 한글처럼 <b>좌측정렬</b>로 통일했어. 재시도 횟수 숫자는 <span class="a">재시도 스피너와 같은 앰버색</span>이라 박스가 사라지니 자연히 한 묶음으로 맞음. 스피너는 실제로 돌아가(아래 미리보기 라이브).</p>
+
+  <h2>① 바뀐 점 — 전(박스) → 후(무도형)</h2>
+  <div class="cmp">
+    <div class="col before">
+      <div class="cl">전 (박스 안)</div>
+      <div class="demorow"><span class="ico-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg></span>처리중</div>
+    </div>
+    <div class="col after">
+      <div class="cl">후 (도형 제거)</div>
+      <div class="demorow"><span class="ico-bare spin-wrap"><svg class="sp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="width:16px;height:16px;animation:qspin 1.05s linear infinite;transform-origin:50% 50%"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg></span>처리중</div>
+    </div>
+  </div>
+
+  <h2>② 실제 대기열 — 4개 상태 (실패 시안 포함)</h2>
+  <div class="qpop">
+    <div class="qh">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg>
+      <b>대기열</b>
+      <span class="x"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span>
+    </div>
+    <div class="qlist">
+      <!-- 진행중 -->
+      <div class="qrow">
+        <span class="qt qt-new">4분 전</span>
+        <span class="qmain">[속보] 법원 "박성재, 국헌문란 목적·위법성 인식 있었다"</span>
+        <span class="qst"><span class="qico spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg></span></span>
+        <span class="qact"><span class="qgo go-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span></span>
+      </div>
+      <!-- 재시도 2회 -->
+      <div class="qrow">
+        <span class="qt qt-new">4분 전</span>
+        <span class="qmain">"모스크바 향하던 드론 59대 격추"…러, 공항 4곳 한때 운영 중단</span>
+        <span class="qst"><span class="qico spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></span><span class="qcnt">2</span></span>
+        <span class="qact"><span class="qgo go-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span></span>
+      </div>
+      <!-- 완료 -->
+      <div class="qrow">
+        <span class="qt">1시간 전</span>
+        <span class="qmain">[속보]정교유착 합수본, 이만희 신천지 총회장 구속영장 청구</span>
+        <span class="qst"><span class="qb-done">완료</span></span>
+        <span class="qact"><span class="qgo go-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span></span>
+      </div>
+      <!-- 완료 -->
+      <div class="qrow">
+        <span class="qt">2시간 전</span>
+        <span class="qmain">중국, 美기업 10곳 수출통제…록히드마틴 등 46곳 정부조달 금지</span>
+        <span class="qst"><span class="qb-done">완료</span></span>
+        <span class="qact"><span class="qgo go-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span></span>
+      </div>
+      <!-- 실패 (시안) -->
+      <div class="qrow">
+        <span class="qt">2시간 전</span>
+        <span class="qmain">딸과 걷던 인도에서, 엄마는 집에 돌아오지 못했다</span>
+        <span class="qst"><span class="qb-failt">실패</span></span>
+        <span class="qact"><span class="qgo go-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span></span>
+      </div>
+    </div>
+  </div>
+
+  <p class="gl">
+    <b>상태 4종 정리</b><br>
+    • <span class="chip" style="color:var(--amber)"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg> 처리중</span> = 앰버 스피너만(도형X) · 분석 진행 중<br>
+    • <span class="a">↻ 재시도 + 숫자</span> = 앰버 스피너 + <b class="a">앰버 횟수(2)</b> — <b>숫자색 = 스피너색(앰버) 동일</b>(요청2 충족)<br>
+    • <span class="g">완료</span> = 초록 한글 + 초록 ↗(뉴스요약 열기)<br>
+    • <span class="r">실패</span> = 빨강 한글 + 앰버 ↗(원문은 열림) ← <b>실패 시안</b><br>
+    <br>
+    <b>핵심</b>: 이제 <b>완료·실패 한글</b>과 <b>처리중·재시도 스피너</b>가 모두 <b>같은 좌변</b>에서 시작(↗ 화살표 위치도 행마다 일정). 혹시 스피너가 글자보다 커 보이거나 숫자색을 더 진하게/연하게 원하면 말해 — 바로 미세조정할게.
+  </p>
+</div>
+</body>
+</html>
