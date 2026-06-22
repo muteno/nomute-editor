@@ -19,9 +19,15 @@ import knews_scraper as K  # noqa: E402  (tokenize·same_topic 재사용)
 WINDOW_MIN = int(os.environ.get("BURST_WINDOW_MIN", "15"))   # burst 판정 윈도우(분)
 BREAKING = int(os.environ.get("BURST_BREAKING", "3"))        # 속보 판정 = burst 이 값 이상(1차 규칙: ≥3)
 MEMBER_CAP = 30                                              # 사건당 동시매체 출력 상한
-# 속보 픽: 가장 메이저한 '보수매체' 우선(조선>동아) → 그다음 메이저/통신 → 없으면 최초보도.
-PICK_PRIORITY = ["조선일보", "동아일보", "세계일보", "한국경제", "매일경제",
-                 "연합뉴스", "국민일보", "서울신문", "이데일리", "뉴시스"]
+# 대표 매체 픽 순위 = knews_scraper.PICK_PRIORITY 와 동기(진단툴). 보수 메이저 → 중진보 메이저 → 경제 →
+# 지상파 → 통신사 → (미등재 최하). 운영자 260622.
+PICK_PRIORITY = [
+    "조선일보", "동아일보", "중앙일보", "세계일보", "국민일보",   # 보수 메이저(종합·풀텍스트)
+    "한국일보", "서울신문", "한겨레신문", "경향신문",            # 중도·중진보 메이저(종합·풀텍스트)
+    "한국경제", "매일경제", "이데일리",                          # 경제 메이저
+    "SBS", "MBC", "노컷뉴스",                                   # 지상파·방송
+    "연합뉴스", "뉴시스",                                       # 통신사(종합지·지상파 다음)
+]
 
 
 def conservative_pick(members, arts):

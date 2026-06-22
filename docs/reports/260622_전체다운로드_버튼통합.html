@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>전체 다운로드 버튼 통합 — 첨부1·2·3</title>
+<style>
+  :root{ --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108; --r-s:9px; --btn-sm:30px;
+    --font:-apple-system,BlinkMacSystemFont,'Pretendard Variable','Segoe UI',Roboto,'Noto Sans KR',sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 80% at 50% -10%,#10140f,var(--bg) 60%);color:var(--fg);font-family:var(--font);padding:22px 16px 60px;-webkit-tap-highlight-color:transparent}
+  h1{font-size:18px;margin:0 0 3px;color:var(--accent)}
+  .sub{font-size:12.5px;color:var(--mut);margin:0 0 20px;line-height:1.6}
+  .wrap{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 6px 22px rgba(0,0,0,.35)}
+  .card h2{font-size:14px;margin:0 0 4px;display:flex;align-items:center;gap:7px}
+  .tag{display:inline-grid;place-items:center;min-width:21px;height:21px;padding:0 6px;border-radius:7px;background:rgba(var(--accent-rgb),.16);color:var(--accent);font-size:11px;font-weight:800}
+  .desc{font-size:11.5px;color:var(--mut);line-height:1.6;margin:0 0 13px}
+  .desc b{color:var(--fg)}
+  .stage{display:flex;align-items:center;gap:10px;padding:14px 6px 4px;min-height:54px}
+  .tap{font-size:10.5px;color:var(--accent);opacity:.85;margin:10px 0 0}
+
+  /* ===== 첨부1 = .fi-saveall (카드 피드 섹션 '전체') 라이브 그대로 ===== */
+  .fi-saveall{flex:none;display:inline-flex;align-items:center;gap:4px;font:800 10.5px/1 inherit;color:#fff;
+    background:rgba(8,15,11,.34);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 10px;cursor:pointer;white-space:nowrap;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .fi-saveall svg{display:block;width:12px;height:12px}
+  .fi-saveall:active{transform:scale(.95)}
+
+  /* ===== 첨부2 = .sbtn.cref-dlall (검색이미지 캐러셀 '전체') 라이브 그대로 ===== */
+  .sbtn{display:grid;place-items:center;width:34px;height:34px;padding:0;color:rgba(255,255,255,.92);text-decoration:none;
+    background:rgba(8,15,11,.3);border:1px solid rgba(255,255,255,.14);border-radius:10px;cursor:pointer;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:transform .12s,background .15s,color .15s,border-color .15s}
+  .sbtn:active{transform:scale(.85)}
+  .sbtn.ok{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .cref-dlall{width:auto;height:var(--btn-sm);border-radius:var(--r-s);display:inline-flex;align-items:center;gap:5px;padding:0 11px}
+  .cref-dlall svg{width:15px;height:15px}
+  .cref-dllbl{font-size:11px;font-weight:700;color:inherit;white-space:nowrap}
+
+  /* ===== 첨부3 = 통합안: .sbtn 글래스 알약 + 진행(저장중 i/N) + 첨부2식 초록 ✓ 완료 ===== */
+  .uni{width:auto;height:var(--btn-sm);border-radius:var(--r-s);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;
+    background:rgba(8,15,11,.3);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.92);cursor:pointer;font:700 11px/1 inherit;white-space:nowrap;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:transform .12s,background .15s,color .15s,border-color .15s}
+  .uni svg{display:block;width:14px;height:14px}
+  .uni:active{transform:scale(.9)}
+  .uni.ok{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}   /* 첨부2식 완료 체크-액티브 계승 */
+
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+  th,td{border:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+  th{background:rgba(255,255,255,.03);color:var(--mut);font-weight:700;white-space:nowrap}
+  .ok{color:var(--accent)}
+</style>
+</head>
+<body>
+  <h1>전체 다운로드 버튼 — 첨부1 · 첨부2 · 통합안(첨부3)</h1>
+  <p class="sub">같은 카드뉴스 요약 안의 두 '전체' 버튼이 디자인·완료동작이 서로 달라.
+  각 버튼을 <b style="color:var(--accent)">탭</b>하면 실제 동작(순차 저장 → 완료)이 재생돼. 통합 판단용.</p>
+  <div class="wrap">
+
+    <div class="card">
+      <h2><span class="tag">첨부1</span> 카드 피드 섹션 「전체」 <span style="font-size:10.5px;color:var(--mut);font-weight:400">· .fi-saveall</span></h2>
+      <p class="desc">작은 흰 글래스 알약(10.5px). 진행 = <b>「저장 중… i/N」</b> 글자. 완료 = <b>텍스트 "✓"</b>(스타일 없는 글자 체크) 1.8초 뒤 원복.</p>
+      <div class="stage"><button class="fi-saveall" data-demo="a" type="button"></button></div>
+      <p class="tap">↑ 탭 = 현재 동작</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="tag">첨부2</span> 검색이미지 캐러셀 「전체」 <span style="font-size:10.5px;color:var(--mut);font-weight:400">· .sbtn.cref-dlall</span></h2>
+      <p class="desc">글래스 둥근사각(11px). 진행 표시 <b>없음</b>(바로 순차 저장). 완료 = <b class="ok">초록 채움 + ✓ 체크(CHECK_SVG)</b> 1.5초 뒤 원복. ← 이 완료 체크-액티브가 더 또렷.</p>
+      <div class="stage"><button class="sbtn cref-dlall" data-demo="b" type="button"></button></div>
+      <p class="tap">↑ 탭 = 현재 동작</p>
+    </div>
+
+    <div class="card" style="border-color:rgba(var(--accent-rgb),.4)">
+      <h2><span class="tag" style="background:var(--accent);color:var(--on-accent)">통합</span> 첨부3 — 한 디자인 + 첨부2식 ✓ 완료</h2>
+      <p class="desc">두 버튼을 하나로: <b>글래스 알약(.sbtn 톤)</b> + 진행 <b>「저장 중… i/N」</b>(첨부1) + 완료 <b class="ok">초록 채움 + ✓ 체크</b>(첨부2). 두 자리(섹션·캐러셀) 모두 이 한 벌로 통일.</p>
+      <div class="stage"><button class="uni" data-demo="c" type="button"></button></div>
+      <p class="tap">↑ 탭 = 통합안 동작(진행 → 초록 ✓)</p>
+    </div>
+
+    <div class="card">
+      <h2>차이 한눈에</h2>
+      <table>
+        <tr><th></th><th>첨부1 (.fi-saveall)</th><th>첨부2 (.sbtn.cref-dlall)</th><th class="ok">통합안</th></tr>
+        <tr><td>크기·톤</td><td>10.5px 흰 알약</td><td>11px 글래스 둥근사각</td><td class="ok">11px 글래스 알약(통일)</td></tr>
+        <tr><td>진행</td><td>저장 중 i/N</td><td>없음</td><td class="ok">저장 중 i/N</td></tr>
+        <tr><td>완료 체크</td><td>텍스트 "✓"</td><td class="ok">초록 채움+✓</td><td class="ok">초록 채움+✓</td></tr>
+      </table>
+      <p class="desc" style="margin:10px 0 0">통합안으로 정하면 두 자리(.fi-saveall · .cref-dlall) 모두 이 한 컴포넌트로 교체해서 적용할게. 어느 걸로 갈지(또는 크기·라벨 조정) 말해줘.</p>
+    </div>
+
+  </div>
+<script>
+  const DL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
+  const CK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  const N=4;
+  function setA(b){ b.innerHTML = DL+'<span class="lbl">전체</span>'; }
+  function setB(b){ b.innerHTML = DL+'<span class="cref-dllbl">전체</span>'; b.dataset.icon=b.innerHTML; }
+  function setC(b){ b.innerHTML = DL+'<span class="lbl">전체</span>'; }
+  document.querySelectorAll('[data-demo]').forEach(b=>{
+    const k=b.dataset.demo; (k==='a'?setA:k==='b'?setB:setC)(b);
+    b.addEventListener('click', async ()=>{
+      if(b._busy) return; b._busy=1; b.style.pointerEvents='none';
+      if(k==='a'){ // 첨부1: 진행 글자 → 텍스트 ✓
+        const l=b.querySelector('.lbl');
+        for(let i=1;i<=N;i++){ l.textContent='저장 중… '+i+'/'+N; await wait(250); }
+        l.textContent='✓'; await wait(1800); setA(b);
+      } else if(k==='b'){ // 첨부2: 진행없음 → 초록 채움+✓
+        for(let i=1;i<=N;i++){ await wait(250); }
+        b.dataset.icon=b.innerHTML; b.innerHTML=CK; b.classList.add('ok'); await wait(1500);
+        b.classList.remove('ok'); setB(b);
+      } else { // 통합: 진행 글자 → 초록 채움+✓
+        const l=b.querySelector('.lbl');
+        for(let i=1;i<=N;i++){ l.textContent='저장 중… '+i+'/'+N; await wait(250); }
+        b.innerHTML=CK; b.classList.add('ok'); await wait(1500);
+        b.classList.remove('ok'); setC(b);
+      }
+      b._busy=0; b.style.pointerEvents='';
+    });
+  });
+  function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>검색 버튼 · 다운로드 버튼 · 복사 화살표</title>
+<style>
+  :root { --bg:#0b0b0c; --pan:#16171a; --line:rgba(255,255,255,.08); --fg:#e9eaec; --mut:#8b8f98;
+          --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --r-s:9px; --btn-sm:30px; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.6; padding:24px 16px 60px; }
+  .wrap { max-width:780px; margin:0 auto; }
+  h1 { font-size:20px; margin:0 0 4px; color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 22px; }
+  h2 { font-size:15px; margin:30px 0 12px; border-left:3px solid var(--accent); padding-left:10px; }
+  .card { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .col { background:#101113; border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .col h3 { font-size:12px; margin:0 0 12px; color:var(--mut); font-weight:600; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+  .old { background:rgba(255,255,255,.1); color:#cfd2d7; } .new { background:var(--accent-dim); color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:13px; } th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--mut); font-weight:600; width:130px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media(max-width:600px){ .grid2{ grid-template-columns:1fr; } }
+  svg { display:block; }
+  /* ===== 검색 컨트롤 행 ===== */
+  .ctrls { display:inline-flex; align-items:center; gap:8px; }
+  .sbtn { width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center; border-radius:var(--r-s); color:rgba(255,255,255,.92); background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); cursor:pointer; }
+  .sbtn.more { color:var(--accent); }
+  .sbtn svg { width:15px; height:15px; }
+  /* 제목검색 — 전(흰) vs 후(회색) */
+  .srch-before { color:rgba(255,255,255,.92); } .srch-after { color:var(--mut); }
+  /* 키워드 박스 — 전(반투명 박스) vs 후(투명+초록 한/영) */
+  .kwbox-before { display:inline-flex; align-items:center; height:var(--btn-sm); border-radius:var(--r-s); border:1px solid var(--line); overflow:hidden; background:rgba(255,255,255,.04); }
+  .kwbox-before .ksrch { display:inline-flex; align-items:center; gap:5px; height:100%; padding:0 8px; color:rgba(255,255,255,.92); border-right:1px solid rgba(255,255,255,.2); }
+  .kwbox-before .ktog { padding:0 10px; font-weight:800; font-size:13px; color:rgba(255,255,255,.92); }
+  .kwbox-after { display:inline-flex; align-items:center; height:var(--btn-sm); border:0; background:transparent; }
+  .kwbox-after .ksrch { display:inline-flex; align-items:center; gap:5px; height:100%; padding:0 8px; color:rgba(255,255,255,.92); }
+  .kwbox-after .ktog { padding:0 10px; font-weight:800; font-size:13px; color:var(--accent); }
+  .klbl { font-weight:800; font-size:13px; }
+  /* ===== 다운로드 버튼 over image ===== */
+  .imgbox { position:relative; height:150px; border-radius:10px; overflow:hidden; display:grid; place-items:center; }
+  .imgbox.dark { background:linear-gradient(135deg,#3a1535,#7a1f4a 60%,#c2356a); }
+  .imgbox.light { background:linear-gradient(135deg,#e8edf2,#cdd6df 60%,#aeb9c4); }
+  .imgbox .lbl { font-size:12px; font-weight:700; }
+  .imgbox.dark .lbl { color:rgba(255,255,255,.8); } .imgbox.light .lbl { color:rgba(0,0,0,.5); }
+  .dl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; z-index:2; cursor:pointer; transition:transform .12s, background .15s; }
+  .dl svg { width:14px; height:14px; }
+  .dl.before { color:var(--accent); background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.36); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .dl.after { color:var(--accent); background:transparent; border:0; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
+  .dl.after:active { transform:scale(.82); background:rgba(var(--accent-rgb),.32); }
+  .dl.after:hover { background:rgba(var(--accent-rgb),.16); }
+  .tip { font-size:12px; color:var(--mut); margin-top:8px; }
+</style></head>
+<body><div class="wrap">
+  <h1>검색 버튼 · 다운로드 버튼 · 복사 화살표 (3건)</h1>
+  <p class="sub">①키워드 한/영 토글=초록글자+박스 반투명 배경 제거 · 제목검색 돋보기=회색 / ②다운로드 버튼=배경 투명(이미지 안 가림)+클릭 액티브 / ③저작권 복사=화살표(→) 복사 제외(pseudo 분리)</p>
+
+  <h2>① 검색 컨트롤 행</h2>
+  <div class="card grid2">
+    <div class="col"><h3><span class="pill old">전</span> 제목검색=흰 · 키워드박스=반투명 배경</h3>
+      <div class="ctrls">
+        <button class="sbtn more" title="+더검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="sbtn srch-before"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></button>
+        <span class="kwbox-before"><span class="ksrch"><span class="klbl">K</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></span><span class="ktog">영</span></span>
+      </div>
+    </div>
+    <div class="col"><h3><span class="pill new">후</span> 제목검색=회색 · 한/영=초록글자 · 박스배경 제거</h3>
+      <div class="ctrls">
+        <button class="sbtn more" title="+더검색"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="sbtn srch-after"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></button>
+        <span class="kwbox-after"><span class="ksrch"><span class="klbl">K</span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></span><span class="ktog">영</span></span>
+      </div>
+    </div>
+  </div>
+
+  <h2>② 다운로드 버튼 — 배경 투명 + 클릭 액티브 (탭해보기)</h2>
+  <div class="card grid2">
+    <div class="col"><h3><span class="pill old">전</span> 강조색 글래스(반투명 채움) — 이미지 가림</h3>
+      <div class="imgbox dark"><span class="lbl">결과 이미지(어두움)</span>
+        <a class="dl before"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></a>
+      </div>
+    </div>
+    <div class="col"><h3><span class="pill new">후</span> 배경 투명 + 그림자 · 탭=초록 채움 액티브</h3>
+      <div class="imgbox dark"><span class="lbl">결과 이미지(어두움)</span>
+        <a class="dl after"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></a>
+      </div>
+    </div>
+  </div>
+  <div class="card"><h3 style="font-size:12px;color:var(--mut);margin:0 0 12px">밝은 이미지에서도 가독(그림자 덕) — 탭해보기</h3>
+    <div class="imgbox light" style="max-width:340px"><span class="lbl">결과 이미지(밝음)</span>
+      <a class="dl after"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></a>
+    </div>
+  </div>
+
+  <h2>③ 저작권 복사 — 화살표(→) 제외</h2>
+  <div class="card"><table>
+    <tr><th>문제</th><td>미리보기 <code>→ ⓒ 2026. nomute(instagram)...</code> 에서 <code>→</code> 가 복사에 끼어들 수 있던 것(탭복사는 정규식으로 제거됐지만, 네이티브 길게-눌러 선택 복사 시 따라옴).</td></tr>
+    <tr><th>해결</th><td><code>→</code> 를 텍스트가 아닌 <b>CSS <code>::before</code>(선택 불가)</b>로 분리 → 텍스트엔 <code>→</code> 가 아예 없음 = <b>탭복사·드래그선택 어느 경로로도 복사 불포함</b>. 화면 표시는 그대로.</td></tr>
+    <tr><th>복사 결과</th><td><code>ⓒ 2026. nomute(instagram). all rights reserved.</code> (화살표 없음)</td></tr>
+  </table></div>
+
+  <h2>요약</h2>
+  <div class="card"><table>
+    <tr><th>키워드 한/영</th><td>전환 가능할 때 한/영 글자 = 초록(강조) · 박스 반투명 배경·blur·테두리 제거(깔끔)</td></tr>
+    <tr><th>제목검색 돋보기</th><td>흰색 → 회색(--mut) = 키워드 검색과 위계 구분(강조 제거)</td></tr>
+    <tr><th>다운로드 버튼</th><td>강조색 유지 · 배경 완전 투명(이미지 안 가림) + 그림자로 가독 · 클릭 시 초록 채움 액티브</td></tr>
+    <tr><th>저작권 복사</th><td>→ 화살표는 표시만, 복사엔 절대 미포함</td></tr>
+    <tr><th>리스크</th><td>낮음 — 전부 순수 시각/표기. 다운로드 버튼 투명화로 밝은 배경 위 가독은 drop-shadow로 보강.</td></tr>
+  </table></div>
+  <p class="tip">⚠️ 다운로드 버튼은 썸네일 제작 결과카드(thumb.html .imgdl)의 강조색 버전에 적용했어. 뉴스 요약부 썸네일 후보 카드의 다운로드(흰 글래스)는 별개 버튼이라 그대로야 — 그것도 투명/통일 원하면 말해줘.</p>
+</div>
+</body></html>

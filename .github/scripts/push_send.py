@@ -3,11 +3,12 @@
 # 긴급(breaking) 속보 웹푸시 발송 — candidates.json의 새 isBreaking 사건을 구독자에게 pywebpush로.
 # dedup = push/sent.json(이미 보낸 키). 죽은 구독(404/410) 자동 정리. 비치명(실패해도 파이프 안 깸).
 # env: VAPID_PRIVATE_KEY(raw base64url)·VAPID_PUBLIC_KEY·VAPID_SUBJECT. 인자 --test = 구독자 전원 테스트 1발.
-# 정본 설명 = CLAUDE.md §🚨. 긴급 기준 = isBreaking(breaking_judge AND grade≥2) AND 최신(<4h, 토스트와 동일).
+# 정본 설명 = CLAUDE.md §🚨. 푸시 기준(앱푸시긴급) = breaking_judge AND grade≥3(운영자 260622) AND cross≥PUSH_MIN AND 최신(<4h · 뷰어 화면알림 isAlert과 동일 tier · 🚨배지 grade≥2는 별개).
 # ⚠️ 푸시는 되돌릴 수 없다(발송=회수 불가) → 뷰어 점등(가역)보다 *더* 보수적: grade 미채점(None)은 푸시 안 함
 #    (뷰어는 None도 점등=즉시·가역) · 다매체 검증 cross≥PUSH_MIN_CROSS 필수 · dedup=event_key+제목해시(중복발송 차단).
 import json, os, re, sys, time, base64, hashlib, tempfile, datetime as dt
 from pathlib import Path
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 SUBS = ROOT / "push" / "subscriptions.json"
@@ -21,9 +22,24 @@ def jload(p, d):
     except Exception: return d
 
 def is_breaking(c):
-    # 푸시용(가역 아님) = 뷰어 isBreaking보다 엄격: grade가 *채점되어* ≥2여야 함(None=미채점은 푸시 보류, 뷰어는 점등).
+    # 푸시용(가역 아님·앱푸시긴급) = grade가 *채점되어* ≥3여야 함(운영자 260622 = 뷰어 화면알림 isAlert[grade≥3]과 동일선상 · None=미채점은 푸시 보류 · 🚨배지[grade≥2]보다 엄격).
     g = c.get("grade")
-    return bool(c.get("breaking")) and g is not None and (g or 0) >= 2
+    return bool(c.get("breaking")) and g is not None and (g or 0) >= 3
+
+def brk_url(c):
+    # 긴급 알림 탭 → 루트가 아니라 *해당 건*으로 딥링크(/?brk=키&bl=메이저링크). 뷰어가 탭 *시점*에 '요약 완료?'를
+    # 보고 분기: 완료=요약창 / 미완료=스크랩 기사 중 가장 메이저(breaking_pick)로 이동(웹앱 경유). 운영자 260622.
+    #  · key = event_key 우선(별칭 점프에도 안정)·url 폴백 → 뷰어가 candidates 에서 해당 후보를 찾는 매칭키.
+    #  · bl  = 대표 매체 픽 url(없으면 최초보도) → 후보 조회 실패(랙·만료) 시에도 메이저 원문 보장(client scLinkUrl 의 서버판).
+    key = (c.get("event_key") or c.get("url") or "").strip()
+    if not key:
+        return "/"
+    bp = c.get("breaking_pick") or {}
+    bl = (bp.get("url") or c.get("url") or "").strip()
+    u = "/?brk=" + quote(key, safe="")
+    if bl:
+        u += "&bl=" + quote(bl, safe="")
+    return u
 
 def dedup_keys(c):
     # 같은 사건 중복 발송 차단 — event_key(별칭 점프에도 안정) + 제목해시(event_key=url 디폴트라 url 점프 시
@@ -107,7 +123,7 @@ def main():
             ks = dedup_keys(c)
             if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
                 continue
-            msgs.append({"keys": ks, "title": "News", "body": ("(긴급) " + (c.get("title") or ""))[:120], "url": "/", "tag": "nomute-breaking"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(운영자 260621)
+            msgs.append({"keys": ks, "title": "News", "body": ("(긴급) " + (c.get("title") or ""))[:120], "url": brk_url(c), "tag": "nomute-breaking"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인" · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
         if not msgs:
             print("새 긴급 없음 — 발송 생략"); return
 

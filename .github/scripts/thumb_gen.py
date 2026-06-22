@@ -471,6 +471,27 @@ def _vision_keep(rep_src, cand_src):
         return cand_src
     return cand_src   # (점화 시: 대표와 동일 인물/장면이면 None 반환해 컷)
 
+
+def _is_logo_card(img_bytes):
+    """솔리드 배경 + 텍스트 = 매체 로고/브랜딩 카드(예: '아시아경제' 빨강 og:image) 추정 → True(컷).
+    이미지를 픽셀로 *직접 본다*(운영자 '일일이 안 봤다' 지적). PIL 없거나 판독 실패면 False(통과=무회귀).
+    보수적 임계(실사진 오컷 최소): 지배색 70%↑ AND 색 단순(≤80 양자화색) — 실사진은 노이즈/그라데로 dom<0.7·색多."""
+    try:
+        import io
+        from PIL import Image
+        from collections import Counter
+        im = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        im.thumbnail((48, 48))
+        px = [(r >> 5, g >> 5, b >> 5) for (r, g, b) in im.getdata()]   # 3비트/채널 양자화(512색)
+    except Exception:
+        return False
+    n = len(px)
+    if n < 64:
+        return False
+    c = Counter(px)
+    dom = c.most_common(1)[0][1] / n   # 지배색 픽셀 비율
+    return dom >= 0.70 and len(c) <= 80
+
 def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=7):
     """기사 관련 대표·유사 이미지 [{src,link,label}] 최대 want장.
     소스 우선순위: 원기사 og(대표) → AI 관련소스(image_sources, 분석단계 WebSearch 유추) → 클러스터(alt_urls) → 마커매체 관련.
@@ -577,6 +598,8 @@ def process_one(md, stem):
             final = None
             if R2_ON:
                 b, ctype, ext = http_image(c["src"])        # 매직바이트 검증된 안전 ctype·ext
+                if b and _is_logo_card(b):                  # 매체 로고/브랜딩 카드(솔리드+텍스트) = 픽셀 직접 검사 컷(운영자 260622)
+                    print("  ⏭ 매체 로고/브랜딩 컷 ({}…)".format((c.get("link") or c["src"])[:42])); continue
                 if b:
                     final = r2_upload(b, "thumbs/{}/search-{}.{}".format(stem, i, ext), ctype)
             items.append({"url": final or c["src"], "link": c["link"], "label": c["label"]})
