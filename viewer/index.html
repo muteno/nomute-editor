@@ -658,7 +658,7 @@
   .qpop .qh b { margin-right:2px; }
   .qpop .qh-xcell { margin-left:auto; width:44px; flex:none; display:flex; align-items:center; justify-content:flex-start; }   /* X = 우측 고정폭 셀(=.qact 폭) 좌단 → 행 ↗ 버튼(.qgo) 좌변과 X 좌변 정렬(운영자 260622) */
   .qpop .qh .tool-x svg { stroke:currentColor; }   /* 디자인시스템 표준 닫기(.tool-x 글래스) 그대로 계승 — 헤더 svg{stroke:accent} 강제초록만 차단(운영자 260622) */
-  .qpop .qlist { margin-top:8px; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; overflow-y:auto; }   /* 컨테이너 max-height 클램프 하에 리스트만 스크롤(헤더·페이지네이션 고정) */
+  .qpop .qlist { margin-top:8px; display:flex; flex-direction:column; flex:0 1 calc(5 * 47px); min-height:0; overflow-y:auto; }   /* 높이=5행 고정(flex-basis 235px·grow0) → 모든 페이지 동일 크기(1페이지 기준·행 적으면 아래 빈공간). shrink1=좁은 뷰포트선 줄며 스크롤. 행=47px(아이콘30+패딩16+보더1)·제목 nowrap이라 행높이 불변 · 운영자 260622 */
   .qrow { display:flex; align-items:center; gap:9px; padding:8px 3px; border-top:1px solid var(--line2); }
   .qrow:first-child { border-top:none; }
   .qrow .qt { flex:none; width:64px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }   /* 고정폭 = 시간 열 공간 일정 → 제목 시작 x 정렬(2열↓ 삐뚤어짐 해소·운영자 260621). 단순 사다리(복합표기 폐지)라 64px면 '23시간 전'·'11개월 전' 다 들어감 */
@@ -1001,6 +1001,8 @@
     border-radius:8px; color:var(--mut); text-decoration:none; background:rgba(255,255,255,.04); border:1px solid var(--line2); transition:color .15s, border-color .15s; }
   .gsrch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
   .gsrch svg { display:block; width:13px; height:13px; }
+  .gsrch-cp { cursor:pointer; }   /* 검색어 복사 = 구글검색과 동일 크기·바로 좌편(운영자 260622) */
+  .gsrch-cp.ok { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }   /* 복사 성공 = 초록 플래시(체크 아이콘 + 색) */
   #cardsec p.lbl::before { content:'• '; color:var(--accent); font-weight:700; }   /* 블릿 = 형광(운영자 260621) */
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
@@ -2390,12 +2392,9 @@ function cardSec(a) {
       const prev = pre.previousElementSibling;
       if (prev && /이미지\s*프롬프트/.test(prev.textContent || '')) addClip(pre);
     });
-    div.querySelectorAll('pre').forEach(pre => {   // 검색어 박스 = 키워드 공백 → 쉼표 구분(구분 명확·운영자 260621)
+    div.querySelectorAll('pre').forEach(pre => {   // 검색어 박스 = 별도 표기 제거(카드마다 중복) → 검색어 줄의 복사 버튼으로 대체(운영자 260622)
       const pv = pre.previousElementSibling;
-      if (pv && /^검색어$/.test((pv.textContent || '').trim())) {
-        const t = (pre.textContent || '').trim();
-        if (t && !t.includes(',')) pre.textContent = t.split(/\s+/).filter(Boolean).join(', ');
-      }
+      if (pv && /^검색어$/.test((pv.textContent || '').trim())) { pv.remove(); pre.remove(); }
     });
     addCopyButtons(div);   // 텍스트·프롬프트 각 블록 개별 복사
     // 카드별 검색어 줄 — 이미지 프롬프트 박스 아래 [현재 검색어(좌·1줄)] + [G+돋보기 구글 이미지 검색 버튼](운영자 260620).
@@ -2408,13 +2407,17 @@ function cardSec(a) {
         const q = (rc && (rc.keyword || captionKeywords(rc.caption))) || _refTtl;
         if (!q) return;
         const row = document.createElement('div'); row.className = 'srchrow';
+        const qCsv = String(q).trim().split(/\s+/).filter(Boolean).join(', ');   // 표시·복사 공통(쉼표 구분)
         const note = document.createElement('span'); note.className = 'qnote';
-        note.innerHTML = '현재 검색어 = <b>' + esc('"' + String(q).trim().split(/\s+/).filter(Boolean).join(', ') + '"') + '</b>';   // 키워드 쉼표 구분 표시(검색 URL은 원본 공백 유지·운영자 260621)
+        note.innerHTML = '현재 검색어 = <b>' + esc('"' + qCsv + '"') + '</b>';   // 키워드 쉼표 구분 표시(검색 URL은 원본 공백 유지·운영자 260621)
+        const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'gsrch gsrch-cp';   // 검색어 복사 = 구글검색과 동일 크기·바로 좌편(중복 검색어 박스 대체·운영자 260622)
+        cp.title = '검색어 복사'; cp.setAttribute('aria-label', '검색어 복사'); cp.innerHTML = COPY_SVG;
+        cp.onclick = ev => { ev.stopPropagation(); copyText(qCsv, cp); };
         const s = document.createElement('a'); s.className = 'gsrch';
         s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
         s.target = '_blank'; s.rel = 'noopener'; s.title = '구글 이미지 검색'; s.setAttribute('aria-label', '구글 이미지 검색');
         s.innerHTML = G_SVG + SEARCH_SVG;
-        row.append(note, s);
+        row.append(note, cp, s);   // [현재 검색어 ……] [복사] [구글검색] — 복사는 구글검색 바로 좌편(나란히·중앙정렬)
         pre.insertAdjacentElement('afterend', row);   // 프롬프트 박스 바로 아래
       });
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
