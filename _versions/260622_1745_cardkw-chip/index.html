@@ -998,23 +998,14 @@
   #cardsec p.lbl { margin:14px 0 4px; }
   /* 카드 이미지프롬프트 박스 아래 '검색어 줄' = [현재 검색어(좌·1줄 …)] + [G+돋보기 구글검색 버튼](운영자 260620) */
   .srchrow { display:flex; align-items:center; gap:8px; margin:6px 1px 14px; }
-  /* 카드 키워드 칩 = 검색이미지 칩(.cref-kw) 형태 계승 · 강조색 제거(mut) · 탭 복사 + 눌림 플래시(운영자 260622) */
-  .srchrow .cardkw { flex:0 1 auto; min-width:0; max-width:100%; font-size:11px; font-weight:600; line-height:1.4; font-family:inherit;
-    color:var(--mut); text-align:left; white-space:normal; word-break:break-word; padding:2px 10px; border-radius:8px;
-    background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.08); box-shadow:0 1px 4px rgba(0,0,0,.35);
-    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .srchrow .cardkw:active { transform:scale(.98); }
-  .srchrow .gsrch { margin-left:auto; }   /* 키워드 칩=좌측 hug · 검색버튼=우측 고정(복사버튼 제거 후) */
-  @keyframes cardkwcopy {   /* B안 눌림+채움 · 강조색 제거 = 중립(흰) 필 */
-    0%   { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); }
-    32%  { transform:scale(.93); background:rgba(255,255,255,.10); border-color:rgba(255,255,255,.24); }
-    100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
-  .cardkw.copied { animation:cardkwcopy .42s var(--ease); }
-  @media (prefers-reduced-motion:reduce) { .cardkw.copied { animation:none; } }
+  .srchrow .qnote { flex:1; min-width:0; font-size:11px; color:var(--mut); text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .srchrow .qnote b { color:var(--fg); font-weight:700; opacity:.82; }
   .gsrch { flex:none; display:inline-flex; align-items:center; justify-content:center; gap:5px; height:24px; padding:0 9px;
     border-radius:8px; color:var(--mut); text-decoration:none; background:rgba(255,255,255,.04); border:1px solid var(--line2); transition:color .15s, border-color .15s; }
   .gsrch:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.3); }
   .gsrch svg { display:block; width:13px; height:13px; }
+  .gsrch-cp { cursor:pointer; }   /* 검색어 복사 = 구글검색과 동일 크기·바로 좌편(운영자 260622) */
+  .gsrch-cp.ok { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }   /* 복사 성공 = 초록 플래시(체크 아이콘 + 색) */
   #cardsec p.lbl::before { content:'• '; color:var(--accent); font-weight:700; }   /* 블릿 = 형광(운영자 260621) */
   /* 강조 키워드(약보수 보정·앵글 후보·○○ 관점) */
   .kw { color:var(--accent); font-weight:700; }
@@ -2538,16 +2529,16 @@ function cardSec(a) {
         if (!q) return;
         const row = document.createElement('div'); row.className = 'srchrow';
         const qCsv = String(q).trim().split(/\s+/).filter(Boolean).join(', ');   // 표시·복사 공통(쉼표 구분)
-        // 키워드 = 검색이미지 칩(.cref-kw) 형태 계승 · 강조색 제거(mut) · 탭 복사 + 눌림 플래시(라벨 'Keyword ='·복사버튼 제거 · 운영자 260622)
-        const note = document.createElement('button'); note.type = 'button'; note.className = 'cardkw';
-        note.textContent = qCsv; note.title = '탭하면 키워드 복사';
-        note.addEventListener('animationend', () => note.classList.remove('copied'));
-        note.onclick = async ev => { ev.stopPropagation(); await copyText(qCsv); note.classList.remove('copied'); void note.offsetWidth; note.classList.add('copied'); };
+        const note = document.createElement('span'); note.className = 'qnote';
+        note.innerHTML = 'Keyword = <b>' + esc('"' + qCsv + '"') + '</b>';   // 키워드 쉼표 구분 표시(검색 URL은 원본 공백 유지 · 라벨 'Keyword =' 운영자 260622)
+        const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'gsrch gsrch-cp';   // 검색어 복사 = 구글검색과 동일 크기·바로 좌편(중복 검색어 박스 대체·운영자 260622)
+        cp.title = '검색어 복사'; cp.setAttribute('aria-label', '검색어 복사'); cp.innerHTML = COPY_SVG;
+        cp.onclick = ev => { ev.stopPropagation(); copyText(qCsv, cp); };
         const s = document.createElement('a'); s.className = 'gsrch';
         s.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(String(q).slice(0, 80));
         s.target = '_blank'; s.rel = 'noopener'; s.title = '구글 이미지 검색'; s.setAttribute('aria-label', '구글 이미지 검색');
         s.innerHTML = G_SVG + SEARCH_SVG;
-        row.append(note, s);   // [키워드 칩(탭 복사·눌림)] … [구글검색] — 복사 버튼 제거(칩이 복사)
+        row.append(note, cp, s);   // [현재 검색어 ……] [복사] [구글검색] — 복사는 구글검색 바로 좌편(나란히·중앙정렬)
         pre.insertAdjacentElement('afterend', row);   // 프롬프트 박스 바로 아래
       });
     const ch1 = div.querySelector('h1');   // 카드뉴스 제목(=썸네일)도 복사 가능 영역으로
