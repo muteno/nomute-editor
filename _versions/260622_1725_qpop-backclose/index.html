@@ -1653,10 +1653,9 @@ let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
 marked.setOptions({ breaks:true });
 
-// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 6개 → 앰버 경고 틴트(.warn).
-// 앞 5개=콘텐츠 보호(선정성·피해자 안전·장면 검열) · #북·중외교=사실 무결성↑(날조 금지·오전달 중죄급)·표현/창작 제약 아님·좌우 부여(정부정책 두둔 좌/비판 우·현 정부 기준)·운영자 260622.
-// (기타 대분류·정치 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
-const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모','#북·중외교'];
+// 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 5개. 전부 보호성 → 앰버 경고 틴트(.warn).
+// (대분류·정치민감 태그는 본체에 없어 정합 위해 폐기 — 옛 큐 잔여 태그는 sensChips가 muted로 흘림.)
+const SENS_PROTECT = ['#성범죄','#자살자해','#아동피해','#재난참사','#추모'];
 // '카드만' 토글 = 이미지까지 실제 렌더된 기사만(text_done=프롬프트만은 제외 — 자동 생성이라 거의 전건이 포함돼버림)
 const hasCardImage = a => a.cards && a.cards.state === 'done';
 // R 필터 칩 상태 — 카테고리(OR)
@@ -4022,7 +4021,6 @@ if (qFeedBtn) {
     qb.addEventListener('click', e => { e.stopPropagation(); openQueue(); });
   }
 }
-let _qPushed = false, _qPop = false;   // 대기열 폰 뒤로가기 = 먼저 닫기(§🎨 pushState/popstate · 라이트박스 패턴 계승 · 운영자 260622)
 function openQueue() {
   closeOverlays('qpop');
   const r = qFeedBtn.getBoundingClientRect();
@@ -4031,15 +4029,12 @@ function openQueue() {
   qpop.hidden = false;
   qpop.style.left = Math.round((window.innerWidth - qpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단) → 폭 재서 뷰포트 좌변 중앙(운영자 260622)
   try { sessionStorage.setItem('nomute_q_open', '1'); } catch {}   // 열림 기억 → 외부 링크(↗) 갔다 돌아오면(pageshow) 자동 재오픈
-  if (!_qPushed) { history.pushState({ qpop: true }, ''); _qPushed = true; }   // 폰 뒤로가기 한 번 = 대기열 먼저 닫기(딴 화면 안 벗어남)
   loadQueue();
 }
 function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른 오버레이·더블탭) → 재오픈 플래그 해제(↗ 네비게이션 닫힘과 구분 · 운영자 260622)
   qpop.hidden = true;
   try { sessionStorage.removeItem('nomute_q_open'); } catch {}
-  if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
-window.addEventListener('popstate', () => { if (!qpop.hidden) { _qPop = true; closeQueueUser(); } });   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기(라이트박스와 별개 리스너 · 각자 자기 상태만)
 const qEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function qAgo(t) {
   if (!t) return '?';
@@ -4127,7 +4122,7 @@ async function loadQueue() {
 }
 // 피드(메뉴3) 이동 + 해당 기사 모달. 즉시 매칭되면 바로, 없으면(빌드 랙) load() 후 재매칭.
 async function feedOpenBy(match) {
-  closeQueueUser();   // ↗ 이동도 정식 닫기 경유 → 푸시한 뒤로가기 칸 정리(dangling 방지 · 운영자 260622)
+  qpop.hidden = true;
   showTab('feed');
   let a = match();
   if (a) { open(a); return; }   // 즉시(이미 피드에 있음 = 흔한 경우)
