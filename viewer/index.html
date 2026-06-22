@@ -2076,8 +2076,11 @@ function thumbSec(a) {
   wrap.innerHTML = '<div class="thumbsec-h">썸네일 후보 — 검색 · AI 생성</div>';
   // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
-    wrap.appendChild(thumbStatic('검색 이미지', search, 'search',
-      'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100)), c.thumb_usage));
+    const _qen = (a.image_query_en || '').trim();   // 🌍해외사건이면 영문 쿼리 → 외신·현지 사진(미국지역·영어·1일) / 국내면 한국어+1일(운영자 260622)
+    const _srchHref = _qen
+      ? 'https://www.google.com/search?tbm=isch&hl=en&gl=us&tbs=qdr:d&q=' + encodeURIComponent(_qen.slice(0, 100))
+      : 'https://www.google.com/search?tbm=isch&tbs=qdr:d&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100));
+    wrap.appendChild(thumbStatic('검색 이미지', search, 'search', _srchHref, c.thumb_usage));
   }
   // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(4화풍+재생성 누적)
   if (gen.length) wrap.appendChild(thumbStatic('AI 생성', gen, 'gen', null, c.thumb_usage));
