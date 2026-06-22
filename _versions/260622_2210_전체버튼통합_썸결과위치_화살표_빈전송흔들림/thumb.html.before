@@ -122,6 +122,7 @@
     32%  { transform:scale(.93); background:rgba(var(--accent-rgb),.18); border-color:rgba(var(--accent-rgb),.55); }
     100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
   .kwchip.copied { animation:kwcopy .42s ease; }
+  #copyHint::before { content:'→ '; -webkit-user-select:none; user-select:none; }   /* '→' = UI 표식 → 텍스트가 아닌 pseudo로 분리 = 탭복사·네이티브 드래그선택 어느 경로로도 복사 불포함(운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .kwchip.copied { animation:none; } }
   .out { margin-top:18px; }
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
@@ -184,7 +185,6 @@
     background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:6px 11px;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 8px rgba(0,0,0,.28); }
   .job .jsave:active { transform:scale(.95); } .job .jsave svg { display:block; width:12px; height:12px; }
-  .job .jsave-row { flex-basis:100%; display:flex; justify-content:flex-end; margin-top:4px; }   /* 전체 = 완료 시각줄 아래·우측정렬(운영자 260622) */
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
   .slot { margin-bottom:14px; }
   .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
@@ -508,7 +508,7 @@ function getPlatform() {
 }
 function updateCopyHint() {
   const y = $('#cyear').value.trim() || '2026', n = $('#cname').value.trim() || 'nomute', p = getPlatform();
-  $('#copyHint').textContent = 'ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';   // '→' 화살표 완전 제거(운영자 260622) — 순수 저작권 문구만(복사도 깨끗)
+  $('#copyHint').textContent = 'ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';   // '→' 표식은 #copyHint::before(비선택) — 텍스트엔 없음 = 복사 깨끗
 }
 // 저작권 미리보기 = 탭하면 복사(뉴스 요약 키워드칩 .cref-kw 의 복사-액티브 계승: 초록 눌림 플래시 · '→ ' 화살표는 UI 표식이라 복사 제외)
 (function () {
@@ -737,11 +737,10 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.innerHTML = ic + '<span>' + esc(tx) + '</span>';
   row.append(lab, stsp);
   if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
-    const svRow = document.createElement('div'); svRow.className = 'jsave-row';   // 전체 = 완료 시각줄 아래로 내려 우측정렬(썸네일 5종 공용 · 운영자 260622)
     const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 다운로드';
     sv.innerHTML = DOWNLOAD_SVG + '<span>전체</span>';
     sv.onclick = () => job.saves.forEach((s, i) => setTimeout(() => dlBlob(s.url, s.dlname), i * 350));
-    svRow.appendChild(sv); row.append(svRow);
+    row.append(sv);
   }
   if (job.status === 'err' && job.payload && job.endpoint) {   // 실패 = 같은 설정으로 재시도 재발사(운영자 260620 아이디어 3)
     const rt = document.createElement('button'); rt.type = 'button'; rt.className = 'jretry'; rt.title = '같은 설정으로 다시 제작';
