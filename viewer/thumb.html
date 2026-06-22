@@ -59,8 +59,9 @@
   .trk { font-size:12px; font-weight:800; }
   .trk.on { color:#ffd84d; }
   .trk.over { color:#ff7a7a; }
-  .file { display:block; padding:12px; border:1px dashed rgba(var(--accent-rgb),.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
+  .file { display:block; padding:12px; border:1px dashed rgba(var(--accent-rgb),.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; transition:color .18s, border-color .18s, background .18s; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
+  .file.picking { color:var(--accent); border-color:var(--accent); background:rgba(var(--accent-rgb),.09); }   /* 누름→업로드창 열린 동안 강조(자연 전환) · 창 닫히면 해제(운영자 260622) */
   /* 미리보기 = 4:5 컴팩트(업로드 보통 1080×1350) · 파일명은 칸 안 차지 말고 우하단 50% 반투명 오버레이(우측정렬) */
   .fileprev { position:relative; display:inline-block; margin-top:8px; max-width:100%; }
   .fileprev img { display:block; aspect-ratio:4/5; height:230px; max-width:100%; width:auto; object-fit:cover; border-radius:7px; }
@@ -575,7 +576,14 @@ function getReelsOpas() {   // 점등된 버튼(60·30·직접입력)의 opa 배
 
 // ---- 파일 (재사용 바인더 — #file=/1·/5, #rFile=/2 오버레이) ----
 function bindFile(inp, lab, store) {
+  // 파일 선택 박스 = 누르면 강조(.picking) → 업로드 창 닫히면(선택/취소 무관·포커스 복귀) 해제(운영자 260622).
+  // 라벨에 바인드(=innerHTML 교체돼도 라벨 엘리먼트는 유지) · once 포커스 = 다이얼로그 닫힘 감지(선택=change도 해제).
+  lab.addEventListener('click', () => {
+    lab.classList.add('picking');
+    window.addEventListener('focus', () => lab.classList.remove('picking'), { once: true });
+  });
   const handler = e => {
+    lab.classList.remove('picking');
     const f = e.target.files[0]; if (!f) return;
     store.name = f.name;
     const r = new FileReader();
