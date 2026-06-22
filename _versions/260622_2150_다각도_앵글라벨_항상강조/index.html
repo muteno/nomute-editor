@@ -1369,7 +1369,6 @@
   .askattach:active { transform:scale(.9); }
   .askattach.has { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); }   /* 첨부됨 = 아이콘 라임 강조(3안·운영자 260622) */
   .askattach-badge { position:absolute; top:-6px; right:-6px; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--accent); color:var(--on-accent); border:1.5px solid var(--bg); font:800 9px/1 ui-monospace,monospace; display:inline-flex; align-items:center; justify-content:center; gap:1px; }   /* 코너 ✓·장수 배지(3안) */
-  .askattach-badge[hidden] { display:none; }   /* ⚠️ display:inline-flex가 [hidden] 속성(display:none)을 덮어써 이미지 0장에도 ✓가 떠있던 버그 차단 — 첨부 있을 때만 표시(운영자 260622) */
   .askattach-badge svg { width:9px; height:9px; }
   .askattach-badge.pop { animation:askAttachPop .3s ease; }
   @keyframes askAttachPop { 0%{ transform:scale(0); } 60%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
@@ -2084,24 +2083,6 @@ function decorate(root) {
     while (inner.firstElementChild) parent.insertBefore(inner.firstElementChild, li);
     li.remove();
   });
-  // 0b) 다각도 해석: '라벨: 설명'의 라벨(콜론 앞)을 항상 강조(굵게)로 통일 — AI가 **굵게** 안 달아도(라벨은 창의·고정 아님) 앵글 요약 라벨이면 항상 강조(운영자 260622)
-  const _dh2 = [...root.querySelectorAll('h2')].find(h => /다각도/.test(h.textContent || ''));
-  if (_dh2) {
-    const _lis = [];
-    for (let el = _dh2.nextElementSibling; el && el.tagName !== 'H2' && el.tagName !== 'H1'; el = el.nextElementSibling) {
-      if (el.tagName === 'UL' || el.tagName === 'OL') _lis.push(...el.querySelectorAll(':scope > li'));
-    }
-    _lis.forEach(li => {
-      const f = li.firstChild; if (!f) return;
-      if (f.nodeType === 1 && /^(STRONG|B)$/.test(f.tagName)) { f.classList.add('angle-lbl'); return; }   // AI가 이미 **굵게** → 표식만(키워드 데코 제외 → 초록 [] 안 붙고 통일)
-      if (f.nodeType !== 3) return;
-      const m = f.data.match(/^(\s*)([^:：\n(][^:：\n]{0,23}?)(\s*[:：]\s)/);   // 라벨: (1~24자 · 괄호시작/문장 제외)
-      if (!m || /[.!?。…]/.test(m[2])) return;
-      const sp = document.createElement('strong'); sp.className = 'angle-lbl'; sp.textContent = m[2].trim();
-      f.data = m[3] + f.data.slice(m[0].length);
-      li.insertBefore(sp, f);
-    });
-  }
   // 1) [썸네일 타이틀] 섹션 제거(h3 + 다음 heading 전까지) — 맨 위 기사 제목이 곧 썸네일
   root.querySelectorAll('h3').forEach(h => {
     if (!/썸네일/.test(h.textContent)) return;
@@ -2136,7 +2117,7 @@ function decorate(root) {
   // 3) 본문 텍스트노드: 편향 색도형 strip + 키워드 강조 (pre/code/헤더 제외 — 복사 draft 보존)
   const nodes = [], tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let n; (n = tw.nextNode());) {
-    if (!n.parentElement || n.parentElement.closest('pre, code, h1, h2, h3, .angle-lbl')) continue;   // .angle-lbl(다각도 앵글 라벨) = 통일 강조 유지(키워드 [] 중복 데코 차단)
+    if (!n.parentElement || n.parentElement.closest('pre, code, h1, h2, h3')) continue;
     nodes.push(n);
   }
   nodes.forEach(n => {
@@ -5207,11 +5188,11 @@ $('#askSend').addEventListener('click', async () => {
     $('#askText').focus();
     return;
   }
-  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now();   // 게이지 모션만(상태텍스트 '보내는 중/요청됨' 폐지 = 버튼 firing→done ✓로 충분·운영자 260622)
+  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // 성공 = 버튼 done+✓ 체크로 표시(상태텍스트 폐지·운영자 260622) · reflow-reset = 매 성공 settle 재생
+    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // reflow-reset = 매 성공 settle 재생
       setTimeout(() => askShowCheck(btn), Math.max(0, 740 - (Date.now() - (+btn.dataset.ft || 0))));   // 게이지 다 찬 뒤 ✓ 팝(시안2)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
