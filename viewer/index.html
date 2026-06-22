@@ -687,6 +687,8 @@
   .qgo:hover { background:rgba(15,253,2,.2); }
   .qgo[disabled], .qgo.qgo-off { color:var(--mut); background:rgba(255,255,255,.04); border-color:var(--line); cursor:default; opacity:.55; }   /* 처리중 = 비활성 바로가기(전문 분석 전엔 이동 불가) — SUCC=초록 활성과 명확히 구분(운영자 260621) */
   .qgo[disabled]:hover, .qgo.qgo-off:hover { background:rgba(255,255,255,.04); }
+  .qgo.qgo-url { color:var(--amber); background:rgba(var(--amber-rgb),.12); border-color:rgba(var(--amber-rgb),.4); }   /* 처리중 = 원문 URL 대신(앰버 = URL 칩색 흡수) · SUCC는 초록=뉴스요약(운영자 260622) */
+  .qgo.qgo-url:hover { background:rgba(var(--amber-rgb),.22); }
   .qdl { flex:none; width:28px; height:26px; display:grid; place-items:center; padding:0; cursor:pointer;
     color:#ff9b8f; background:rgba(255,107,91,.1); border:1px solid rgba(255,107,91,.32); border-radius:7px; transition:background .15s; }
   .qdl:hover { background:rgba(255,107,91,.22); }
@@ -3829,11 +3831,13 @@ function qTitle(it) {
   return it.title || '(내용 없음)';
 }
 function qRowHtml(it) {
-  const cls = it.via === '전문' ? 'paste' : 'url';
   let right;
   if (it.status === 'succ') right = '<span class="qb qb-succ">SUCC</span><button class="qgo" type="button">바로가기</button>';
   else if (it.status === 'fail') right = '<span class="qb qb-fail">FAIL</span><button class="qdl" type="button" aria-label="진단 다운로드" title="실패 원인 진단 MD 다운로드">' + DL_SVG + '</button>';
-  else right = '<span class="qb qb-proc">처리중</span><span class="qvia ' + cls + '">' + qEsc(it.via || '') + '</span><button class="qgo qgo-off" type="button" disabled title="전문 수집·분석 중 — 완료되면 이동 가능">바로가기</button>';   // 처리중 = 비활성 바로가기(전문 찾기 전 이동 불가 · 완료 SUCC면 활성 초록 · 운영자 260621)
+  else { const qurl = it.key && /^https?:\/\//i.test(it.key);   // 처리중: 원문 URL 있으면 바로가기가 URL을 대신(앰버=URL색 흡수) · 없으면(전문) 비활성. 분석 끝나면 SUCC=초록 바로가기→뉴스요약(운영자 260622).
+    right = '<span class="qb qb-proc">처리중</span>' + (qurl
+      ? '<button class="qgo qgo-url" type="button" title="원문 새 탭 — 분석 끝나면 뉴스요약 이동으로 바뀜">바로가기</button>'
+      : '<button class="qgo qgo-off" type="button" disabled title="전문 분석 중 — 원문 링크 없음(끝나면 뉴스요약 이동)">바로가기</button>'); }
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위 — 이모지 서로게이트 안 쪼갬 · 좁은 화면은 CSS 생략부호 병행 · 운영자 260621)
   return '<div class="qrow q-' + it.status + '"><span class="qt">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span>' + right + '</div>';
 }
@@ -3854,7 +3858,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go) go.onclick = (e) => { e.stopPropagation(); qGo(it.id); };
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); if (it.status === 'succ') qGo(it.id); else if (it.key) window.open(it.key, '_blank', 'noopener'); };   // SUCC=뉴스요약 / 처리중=원문 URL 새 탭(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
