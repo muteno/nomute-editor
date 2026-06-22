@@ -116,11 +116,6 @@
   .job .jretry:active { transform:scale(.95); }
   .job .jretry svg { display:block; width:12px; height:12px; }
   .job .jretry[disabled] { opacity:.5; pointer-events:none; }
-  /* 실패 잡 삭제(휴지통) = 우측·세로중앙 글래스 아이콘(운영자 260622) */
-  .job .jdel { flex:none; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; color:rgba(255,255,255,.6); cursor:pointer; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; transition:transform .12s, background .15s, color .15s, border-color .15s; }
-  .job .jdel:hover { background:rgba(255,90,90,.18); color:#ff9b9b; border-color:rgba(255,120,120,.5); }
-  .job .jdel:active { transform:scale(.85); }
-  .job .jdel svg { display:block; width:14px; height:14px; }
   /* 완성 이미지 캐러셀 — 뷰어 카드 피드(.feedtrack) 계승: 스크롤 스냅 + 글래스 화살표 */
   .carwrap { margin-top:14px; }
   .cartrackwrap { position:relative; }
@@ -614,7 +609,6 @@ const WARN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const SPIN_SVG = '<svg class="jspin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>';
 const DOWNLOAD_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>';
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
-const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
 async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
   try { await navigator.clipboard.writeText(text || ''); } catch {}
@@ -669,7 +663,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const tot = job.outs.length || '?';
   const dn = job.done.filter(Boolean).length;
   let ic, tx;   // 상태 = SVG 픽토그램 + 글자(이모지 폐지·수직중앙 · 운영자 260622)
-  if (job.status === 'err') { ic = WARN_SVG; tx = '실패'; }   // 실패 = 간결히 '실패'만(부가 설명[사유]은 행 tooltip으로 · 운영자 260622)
+  if (job.status === 'err') { ic = WARN_SVG; tx = (job.msg || '실패'); }
   else if (job.status === 'done') { ic = CHECK_SVG; tx = '완료 · ' + tot + '장' + (job._restored ? ' · ' + histTime(job.t0) : ' (' + sec + 's)'); }   // 복원 결과 = 경과초 대신 제작시각(운영자 260622)
   else { ic = SPIN_SVG; tx = '제작 중 ' + sec + 's · ' + dn + '/' + tot + '장'; }
   row.innerHTML = '';
@@ -689,13 +683,6 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     rt.innerHTML = RETRY_SVG + '<span>재시도</span>';
     rt.onclick = () => { rt.disabled = true; dispatchJob(job.endpoint, job.payload, job.label); };
     row.append(rt);
-  }
-  if (job.status === 'err') {   // 실패 = 우측 휴지통(삭제) · 세로중앙(.job align-items:center) · 사유는 행 tooltip
-    row.title = job.msg || '';
-    const del = document.createElement('button'); del.type = 'button'; del.className = 'jdel'; del.title = '이 실패 기록 삭제'; del.setAttribute('aria-label', '삭제');
-    del.innerHTML = TRASH_SVG;
-    del.onclick = () => { const i = JOBS.indexOf(job); if (i >= 0) JOBS.splice(i, 1); row.remove(); };
-    row.append(del);
   }
   if (labs.length > 1) {   // 다중 변형 = 라벨 아래 줄바꿈·좌측정렬(가로 어중간 래핑 방지 · 운영자 260620)
     const vs = document.createElement('div'); vs.className = 'jvars'; vs.setAttribute('aria-label', '출력 변형');   // 스크린리더 — 변형 목록 맥락 부여
@@ -802,12 +789,10 @@ async function loadServerHist() {
 // 제작완료 푸시 탭 → /thumb.html#done 진입 시 '이전 제작'을 펼치고 그 위치로 스크롤(완성 결과가 바로 보이게).
 function maybeOpenHist() {
   if (!/\bdone\b/.test(location.hash)) return;
-  const hist = $('#hist');
-  if (hist && !hist.hidden) { const b = $('#histBody'); if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); } }   // 이전 제작은 펼쳐두되 스크롤은 결과로
-  // 랜딩 = 방금 만든 '결과' 블록(카운터+잡+캐러셀) 맨 위 = 첨부1 기준(이전 제작 아님 · 운영자 260622)
-  const cb = $('#carbar');
-  const tgt = (cb && !cb.hidden) ? cb : (($('#jobs') && $('#jobs').firstElementChild) || (hist && !hist.hidden ? hist : null));
-  if (tgt) { try { tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) { tgt.scrollIntoView(); } }
+  const hist = $('#hist'); if (!hist || hist.hidden) return;   // 표시할 제작 건 없으면 그대로
+  const b = $('#histBody');
+  if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); }
+  try { hist.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) { hist.scrollIntoView(); }
 }
 function histLoad() { try { const a = JSON.parse(localStorage.getItem(THUMB_HKEY) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function histSave(a) { try { localStorage.setItem(THUMB_HKEY, JSON.stringify(a)); } catch {} }
@@ -888,9 +873,6 @@ $('#cartrack').addEventListener('scroll', carUpdate, { passive: true });
 // 전체 다운로드은 캐러셀 오버레이서 잡(결과) 행 우측 인라인으로 이동(renderJob의 .jsave · 잡별 = index .fi-saveall 패턴)
 // 1초 벽시계 티커 — 진행 중 잡의 표시 초를 실제 시간과 일치(5s 폴과 분리·260619)
 setInterval(() => { JOBS.forEach(j => { if (j.status !== 'done' && j.status !== 'err') renderJob(j); }); }, 1000);
-// 실패 기록 12h 자동 정리 — 오래된 실패 잡은 목록에서 제거(이전 제작 12h 보관과 동일·운영자 260622)
-function pruneOldFails() { const cut = Date.now() - THUMB_HMS; for (let i = JOBS.length - 1; i >= 0; i--) { const j = JOBS[i]; if (j.status === 'err' && (j.t0 || 0) < cut) { const r = document.getElementById('job-' + j.n); if (r) r.remove(); JOBS.splice(i, 1); } } }
-pruneOldFails(); setInterval(pruneOldFails, 60000);
 
 // ==== 카드뉴스(/5) 칩 에디터 (인라인) — 어절칩·줄=행·강조·한도 빨강. 뷰어 카드편집기 포팅(입출력=칩↔compose) ====
 let edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false;
@@ -1299,8 +1281,8 @@ function errStatus(m) { const s = $('#status'); s.textContent = m; s.classList.a
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
-restoreLastResult();   // 최근 제작 1건 맨 위 '결과'로 복원(RESTORED_URLS 먼저 셋 = 이전제작 제외 정합 · 운영자 260622) — maybeOpenHist 전에 결과 블록 생성
-maybeOpenHist();     // #done(제작완료 알림) 진입이면 결과 블록(카운터/캐러셀)으로 스크롤(서버 병합 후 loadServerHist서 재확인)
+maybeOpenHist();     // #done(제작완료 알림) 진입이면 로컬 기준으로 먼저 펼침(서버 병합 후 loadServerHist서 재확인)
+restoreLastResult();   // 최근 제작 1건 맨 위 '결과'로 복원(RESTORED_URLS 먼저 셋 = 이전제작 제외 정합 · 운영자 260622)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
 </script>
 <script src="cscroll.js"></script>

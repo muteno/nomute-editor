@@ -3,7 +3,7 @@
 # 긴급(breaking) 속보 웹푸시 발송 — candidates.json의 새 isBreaking 사건을 구독자에게 pywebpush로.
 # dedup = push/sent.json(이미 보낸 키). 죽은 구독(404/410) 자동 정리. 비치명(실패해도 파이프 안 깸).
 # env: VAPID_PRIVATE_KEY(raw base64url)·VAPID_PUBLIC_KEY·VAPID_SUBJECT. 인자 --test = 구독자 전원 테스트 1발.
-# 정본 설명 = CLAUDE.md §🚨. 푸시 기준(앱푸시긴급) = breaking_judge AND grade≥3(운영자 260622) AND cross≥PUSH_MIN AND 최신(<4h · 뷰어 화면알림 isAlert과 동일 tier · 🚨배지 grade≥2는 별개).
+# 정본 설명 = CLAUDE.md §🚨. 긴급 기준 = isBreaking(breaking_judge AND grade≥2) AND 최신(<4h, 토스트와 동일).
 # ⚠️ 푸시는 되돌릴 수 없다(발송=회수 불가) → 뷰어 점등(가역)보다 *더* 보수적: grade 미채점(None)은 푸시 안 함
 #    (뷰어는 None도 점등=즉시·가역) · 다매체 검증 cross≥PUSH_MIN_CROSS 필수 · dedup=event_key+제목해시(중복발송 차단).
 import json, os, re, sys, time, base64, hashlib, tempfile, datetime as dt
@@ -21,9 +21,9 @@ def jload(p, d):
     except Exception: return d
 
 def is_breaking(c):
-    # 푸시용(가역 아님·앱푸시긴급) = grade가 *채점되어* ≥3여야 함(운영자 260622 = 뷰어 화면알림 isAlert[grade≥3]과 동일선상 · None=미채점은 푸시 보류 · 🚨배지[grade≥2]보다 엄격).
+    # 푸시용(가역 아님) = 뷰어 isBreaking보다 엄격: grade가 *채점되어* ≥2여야 함(None=미채점은 푸시 보류, 뷰어는 점등).
     g = c.get("grade")
-    return bool(c.get("breaking")) and g is not None and (g or 0) >= 3
+    return bool(c.get("breaking")) and g is not None and (g or 0) >= 2
 
 def dedup_keys(c):
     # 같은 사건 중복 발송 차단 — event_key(별칭 점프에도 안정) + 제목해시(event_key=url 디폴트라 url 점프 시
