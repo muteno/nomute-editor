@@ -117,6 +117,7 @@
     32%  { transform:scale(.93); background:rgba(var(--accent-rgb),.18); border-color:rgba(var(--accent-rgb),.55); }
     100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
   .kwchip.copied { animation:kwcopy .42s ease; }
+  #copyHint::before { content:'→ '; -webkit-user-select:none; user-select:none; }   /* '→' = UI 표식 → 텍스트가 아닌 pseudo로 분리 = 탭복사·네이티브 드래그선택 어느 경로로도 복사 불포함(운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .kwchip.copied { animation:none; } }
   .out { margin-top:18px; }
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
@@ -182,9 +183,10 @@
   .slot-img { min-height:40px; position:relative; }
   .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
   /* 결과 이미지 다운로드 (우상단) = 뉴스 피드 캐러셀 .sbtn 글래스 그대로 계승(§📋 · 34px·bg .3·border .14·hover·active .85) */
-  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; color:var(--accent); background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.36); border-radius:10px; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); text-decoration:none; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 다운로드 = 뉴스 요약부 강조색 글래스 버튼 계승(흰 글래스→accent · 운영자 260622) */
-  .imgdl:hover { background:rgba(var(--accent-rgb),.2); border-color:rgba(var(--accent-rgb),.5); }
-  .imgdl:active { transform:scale(.85); } .imgdl svg { display:block; width:14px; height:14px; }
+  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; color:var(--accent); background:transparent; border:0; border-radius:10px; text-decoration:none; z-index:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); transition:transform .12s, background .15s, color .15s; }   /* 다운로드 = 배경 투명(이미지 안 가림) + 강조색 아이콘만 · 그림자로 밝은 이미지 위 가독(운영자 260622) */
+  .imgdl:hover { background:rgba(var(--accent-rgb),.16); }
+  .imgdl:active { transform:scale(.82); background:rgba(var(--accent-rgb),.32); }   /* 클릭 액티브 = 순간 강조색 채움 + 눌림 피드백(운영자 260622) */
+  .imgdl svg { display:block; width:14px; height:14px; }
   /* 이전 제작(12h) 접힘 섹션 */
   .hist { margin-top:20px; border-top:1px solid var(--line); padding-top:6px; }
   .hist-h { width:100%; display:flex; align-items:center; gap:8px; background:none; border:none; color:var(--fg); cursor:pointer; padding:10px 2px; font:inherit; font-size:13px; font-weight:700; }
@@ -370,7 +372,7 @@
         <button type="button" class="pbtn" data-plat="custom" id="pCustom" title="직접입력"><span class="plab">직접</span></button>
       </div>
       <input type="text" id="cplat" class="none" placeholder="플랫폼 직접입력 (예: tiktok)" style="margin-top:6px">
-      <div class="kwline"><span class="kwchip" id="copyHint" role="button" tabindex="0" title="탭하면 복사">→ ⓒ 2026. nomute(instagram). all rights reserved.</span></div>
+      <div class="kwline"><span class="kwchip" id="copyHint" role="button" tabindex="0" title="탭하면 복사">ⓒ 2026. nomute(instagram). all rights reserved.</span></div>
     </div>
 
     <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
@@ -498,7 +500,7 @@ function getPlatform() {
 }
 function updateCopyHint() {
   const y = $('#cyear').value.trim() || '2026', n = $('#cname').value.trim() || 'nomute', p = getPlatform();
-  $('#copyHint').textContent = '→ ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';
+  $('#copyHint').textContent = 'ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';   // '→' 표식은 #copyHint::before(비선택) — 텍스트엔 없음 = 복사 깨끗
 }
 // 저작권 미리보기 = 탭하면 복사(뉴스 요약 키워드칩 .cref-kw 의 복사-액티브 계승: 초록 눌림 플래시 · '→ ' 화살표는 UI 표식이라 복사 제외)
 (function () {
