@@ -108,6 +108,9 @@
   .job .jst svg { display:block; width:14px; height:14px; flex:none; }
   .job .jst .jspin { animation:thspin .9s linear infinite; }
   @keyframes thspin { to { transform:rotate(360deg); } }
+  .thfocus { animation:thfocus 2.2s ease both; border-radius:10px; }   /* 알림 #done=<id> 착지 항목 강조 = '해당 작업' 식별(잡 행/이력 항목 공용) */
+  @keyframes thfocus { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 18%,46%{ box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55); } }
+  @media (prefers-reduced-motion:reduce){ .thfocus { animation:none; } }
   .job.done .jst { color:var(--accent); }
   .job.err { border-color:rgba(255,90,90,.4); } .job.err .jst { color:#ff9b9b; }
   /* 실패 잡 재시도 = 같은 설정으로 재발사(운영자 260620 아이디어 3) */
@@ -663,6 +666,7 @@ const CARSLIDES = [];      // 완성 이미지(캐러셀 슬라이드)
 function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이 위)
   let row = document.getElementById('job-' + job.n);
   if (!row) { row = document.createElement('div'); row.id = 'job-' + job.n; row.className = 'job'; $('#jobs').prepend(row); }
+  if (job.thid) row.dataset.thid = job.thid;   // 알림 #done=<id> → 이 잡 행으로 핀포인트 랜딩(세션 내 미리로드 시)
   row.className = 'job' + (job.status === 'done' ? ' done' : '') + (job.status === 'err' ? ' err' : '');
   if (job.status === 'done' && !job._restored && !job._saved && (job.saves || []).length) { job._saved = true; saveLastResult(job); }   // 완료 = 최근 제작 스냅샷 저장(다음에 열면 맨 위 복원·운영자 260622)
   const sec = Math.round((Date.now() - job.t0) / 1000);
@@ -793,6 +797,9 @@ const THUMB_HKEY = 'nomute_thumb_hist', THUMB_HMS = 12 * 3600e3, THUMB_HMAX = 24
 const THUMB_LAST_KEY = 'nomute_thumb_last';   // 가장 최근 제작 1건 = 창 닫아도 맨 위 '결과'로 복원(전체 다운+캐러셀 · 이 기기 · 운영자 260622)
 // 기기간 공유: build-viewer가 thumb_out/(전 기기 커밋 이미지) 스캔해 만든 thumb-hist.json을 읽어 로컬과 병합(운영자 260621).
 const baseUrl = u => String(u || '').split('?')[0];   // ?t= 캐시버스트 제거 = 중복판정 키
+const thIdOf = u => { const m = String(u || '').match(/thumb_out\/([^/?#]+)/); return m ? m[1] : ''; };   // 결과/이력 url(thumb_out/<id>/file)서 작업 id 추출 = 알림 #done=<id> 매칭키
+const scrollMid = el => { if (!el) return; requestAnimationFrame(() => { try { const y = el.getBoundingClientRect().top + window.pageYOffset - Math.round((window.innerHeight || 700) * 0.18); window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 중상단(상단서 18%) 랜딩 · rAF=레이아웃 정착 후 측정(이미지 리플로우 뒤 정확)
+const flashEl = el => { if (!el) return; el.classList.add('thfocus'); setTimeout(() => el.classList.remove('thfocus'), 2200); };   // 착지 항목 잠깐 강조 = '해당 작업' 식별
 let SRV_HIST = [];
 async function loadServerHist() {
   try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch { /* 없으면 로컬만 */ }
@@ -800,21 +807,28 @@ async function loadServerHist() {
   maybeOpenHist();   // 제작완료 알림(#done)로 들어왔으면 서버 병합 후 '이전 제작' 자동 펼침
 }
 // 제작완료 푸시 탭 → /thumb.html#done 진입 시 '이전 제작'을 펼치고 그 위치로 스크롤(완성 결과가 바로 보이게).
-function maybeOpenHist() {
+function maybeOpenHist(tries = 0) {
   if (!/\bdone\b/.test(location.hash)) return;
+  const wantId = (location.hash.match(/done=([\w-]+)/) || [])[1] || '';   // #done=<id> = 그 작업 핀포인트(없으면 레거시 = 결과 블록)
   const hist = $('#hist');
-  if (hist && !hist.hidden) { const b = $('#histBody'); if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); } }   // 이전 제작은 펼쳐두되 스크롤은 결과로
-  // 랜딩 = 방금 만든 '결과' 블록(카운터+잡+캐러셀) 맨 위 = 첨부1 기준(이전 제작 아님 · 운영자 260622)
-  const cb = $('#carbar');
-  const tgt = (cb && !cb.hidden) ? cb : (($('#jobs') && $('#jobs').firstElementChild) || (hist && !hist.hidden ? hist : null));
-  if (tgt) {   // 중상단 랜딩 = 상단서 ~18% 내려 위치(block:'start'는 뷰포트 최상단에 딱 붙어 갑갑·결과가 눈에 덜 듦 · 운영자 260622)
-    requestAnimationFrame(() => {   // 레이아웃 정착 후 측정 = 복원 결과/이미지 리플로우 뒤 정확한 위치(분신술6)
-      try {
-        const y = tgt.getBoundingClientRect().top + window.pageYOffset - Math.round((window.innerHeight || 700) * 0.18);
-        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-      } catch (_) { try { tgt.scrollIntoView(); } catch (_) {} }
-    });
+  if (hist && !hist.hidden) { const b = $('#histBody'); if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); } }   // 이력 펼침(타깃이 이력 항목일 수 있어 노출)
+  const land = el => { try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} scrollMid(el); };   // 착지하며 #done 제거 = 재호출·새로고침 시 재스크롤 방지(?a= 정리 패턴)
+  if (wantId) {   // ── 그 작업으로 정확히: 잡 로그행(#job-n) 또는 이력 그리드 항목(둘 다 data-thid=id) ──
+    const tgt = document.querySelector('[data-thid="' + wantId + '"]');   // wantId=[\w-]+ (정규식 캡처)라 선택자 안전
+    if (tgt) { land(tgt); flashEl(tgt); return; }
+    if (tries < 12) {   // 콜드스타트 = 이력(thumb-hist.json) 빌드·배포 랙(~30~90s) → 재fetch+재렌더 후 재시도(요약 ?a= 백오프 패턴)
+      setTimeout(async () => {
+        try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch (_) {}
+        renderHist(); maybeOpenHist(tries + 1);
+      }, Math.min(2500 + tries * 1200, 8000));
+      return;   // 아직 미발견 — #done 유지(다음 시도까지)
+    }
+    // 끝내 못 찾음(배포 지연 초과) → 결과 블록 폴백
   }
+  // 레거시 #done(id 없음) 또는 끝내 미발견 → 방금 만든 결과 블록 중상단
+  const cb = $('#carbar');
+  const fb = (cb && !cb.hidden) ? cb : (($('#jobs') && $('#jobs').firstElementChild) || (hist && !hist.hidden ? hist : null));
+  land(fb);
 }
 function histLoad() { try { const a = JSON.parse(localStorage.getItem(THUMB_HKEY) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function histSave(a) { try { localStorage.setItem(THUMB_HKEY, JSON.stringify(a)); } catch {} }
@@ -836,7 +850,7 @@ function renderHist() {
   hist.hidden = false; $('#histCnt').textContent = '(' + a.length + ')';
   const grid = $('#histGrid'); grid.innerHTML = '';
   a.forEach(e => {   // 최신 먼저(이미 정렬됨)
-    const it = document.createElement('div'); it.className = 'hist-it';
+    const it = document.createElement('div'); it.className = 'hist-it'; it.dataset.thid = thIdOf(e.url);   // 작업 id 태그 = 알림 #done=<id> → 이 이력 항목으로 핀포인트(콜드스타트 주경로)
     const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);   // 제작 시각(오전/오후 H:MM·흰색·이미지 위)
     const th = document.createElement('div'); th.className = 'hist-thumb';
     const dl = document.createElement('a'); dl.className = 'imgdl'; dl.href = e.url;
@@ -1250,6 +1264,7 @@ function dispatchJob(endpoint, payload, label) {
       const j = await res.json();
       if (!res.ok || j.error) { job.status = 'err'; job.msg = (j.error || ('서버 ' + res.status)); renderJob(job); return; }
       job.outs = j.outs || (j.out ? [{ path: j.out, label: '' }] : []);
+      job.thid = j.id || thIdOf((job.outs[0] || {}).path) || '';   // 작업 id = 알림 #done=<id> 랜딩 매칭키(api/thumb 반환 id, 없으면 출력경로서 추출)
       job.done = job.outs.map(() => false);
       if (!job.outs.length) { job.status = 'err'; job.msg = '출력 경로 없음'; renderJob(job); return; }
       pollJob(job);
