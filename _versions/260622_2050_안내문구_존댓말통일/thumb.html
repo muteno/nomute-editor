@@ -1293,16 +1293,16 @@ $('#go').onclick = async () => {
   // firing(전송 상태머신)은 실제 전송 시점(dispatchJob)에서만 — 검증 실패 시 헛발사 방지
   const status = $('#status'); status.classList.remove('err'); status.textContent = '';
   if (APP === '5') {   // 카드뉴스 = /api/compose (축약 미적용)
-    if (!IMG.b64) return errStatus('이미지를 선택해주세요');
+    if (!IMG.b64) return errStatus('이미지를 선택해줘');
     if (edAnyOver()) return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄');
     const clines = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
-    if (!clines.length) return errStatus('텍스트를 넣어주세요');
+    if (!clines.length) return errStatus('텍스트를 입력해줘');
     dispatchJob('/api/compose', { imageB64: IMG.b64, name: IMG.name, lines: clines }, '카드뉴스');
     return;
   }
   if (APP === '4') {   // 경고문 = 포맷(포스트/릴스) 점등분마다 한 건씩 동시 발사 → 둘 다 캐러셀로
     const lines = ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
-    if (!lines.length) return errStatus('경고문 텍스트를 넣어주세요');
+    if (!lines.length) return errStatus('경고문 텍스트를 입력해줘');
     const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
     const FL = { post: '포스트', reels: '릴스' };
     fmts.forEach(fmt => dispatchJob('/api/thumb', { app: '4', params: { fmt, lines } }, '경고문 (' + (FL[fmt] || fmt) + ')'));
@@ -1317,18 +1317,18 @@ $('#go').onclick = async () => {
   }
   // /1·/2·/3 = /api/thumb
   const params = buildParams();
-  if (APP === '1' && !(Array.isArray(params.lines) && params.lines.length)) return errStatus('텍스트를 넣어주세요');   // 포스트 = 텍스트 필수 — 빈 채 발사 차단 + 제작 버튼 흔들림(/2·/4·/5와 동일·운영자 260622)
+  if (APP === '1' && !(Array.isArray(params.lines) && params.lines.length)) return errStatus('텍스트를 입력해줘');   // 포스트 = 텍스트 필수 — 빈 채 발사 차단 + 제작 버튼 흔들림(/2·/4·/5와 동일·운영자 260622)
   if ((APP === '1' || APP === '2') && $('#abbr').checked) {   // 축약 = 포스트·릴스만(정본 화이트리스트)
     if (Array.isArray(params.lines)) params.lines = params.lines.map(abbr);
     if (typeof params.sub === 'string') params.sub = abbr(params.sub);
     if (typeof params.title === 'string') params.title = abbr(params.title);
   }
-  if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) return errStatus('부제 또는 제목을 넣어주세요');
-  if (APP === '2' && params.mode === 'overlay' && !params.lines.length) return errStatus('텍스트를 넣어주세요');
-  if (APP === '2' && params.mode === 'overlay' && !params.opas.length) return errStatus('투명도를 최소 1개 선택해주세요 (직접입력은 값까지)');   // 직접입력만 켜고 값 비움 차단(0개 방지)
+  if (APP === '2' && params.mode === 'header' && !params.sub && !params.title) return errStatus('부제 또는 제목을 입력해줘');
+  if (APP === '2' && params.mode === 'overlay' && !params.lines.length) return errStatus('텍스트를 입력해줘');
+  if (APP === '2' && params.mode === 'overlay' && !params.opas.length) return errStatus('투명도를 최소 1개 선택해줘 (직접입력은 값까지)');   // 직접입력만 켜고 값 비움 차단(0개 방지)
   if (APP === '1' || (APP === '2' && params.mode === 'overlay')) {   // 강조(*별표*) 필수 — 없으면 진행 불가(팝업 폐지 → 앰버 버튼 흔들림 · 운영자 260622)
     const _t = (APP === '1' ? $('#lines') : $('#rLines')).value;
-    if (!/\*[^*\n]+\*/.test(_t)) return errStatus('강조를 넣어주세요', 'warn');
+    if (!/\*[^*\n]+\*/.test(_t)) return errStatus('*별표*로 강조를 넣어줘 (예: *중요*)', 'warn');
   }
   const payload = { app: APP, params };
   if (APP === '1' && IMG.b64) { payload.imageB64 = IMG.b64; payload.name = IMG.name; }       // 포스트 배경 = 옵션
