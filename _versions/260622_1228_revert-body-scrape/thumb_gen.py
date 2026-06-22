@@ -365,11 +365,18 @@ def _img_candidates(html, base):
         for m in re.finditer(r'"image"\s*:', html):
             for u in re.findall(r'"(https?:[^"]+?\.(?:jpe?g|png|webp|gif)[^"#?]*)', html[m.end():m.end() + 400])[:2]:
                 add(u, junk=True)
-    # 3) 본문 <img> 긁기 = 비활성(운영자 260622 재폐지). 같은-호스트라도 사이드바·'많이 본 뉴스'·추천기사
-    #    썸네일(골프·축구 등 무관)이 '유사'로 새는 문제(부산 교통사고 기사에 스포츠 사진 실측). 본문 사진과
-    #    사이드바 썸네일은 HTML상 구별이 안 됨 → 한 기사당 og/twitter/JSON-LD(발행사 선언) 1장만 = 대표.
-    #    다장 '유사'는 관련기사(image_sources = 분석단계 AI가 *이 사건* 키워드로 찾은 소스 · alt_urls)의 og 로
-    #    채운다(fetch_article_images 2단계) = 우측 검색버튼(AI 키워드) 로직과 정합 = 관련성 보장.
+    # 3) 본문 <img> = 추가 사진(유사) 채움 — 엄격필터(같은매체·같은디렉터리·소형/로고/광고/동영상/플레이스홀더 컷 = add body=True).
+    #    260620 폐지했다가 260622 운영자("검색하면 많이 나오는데 많이 가져와") 재활성. 속보 배너 누출은
+    #    이제 _is_breaking_article(페이지 전체 컷) + _BODY_SKIP의 'banner' 로 이중 차단되어 안전.
+    #    src / data-src(지연로딩) / srcset(첫 후보)에서 추출 — 페이지당 og 1장 → 본문 다장으로 확장.
+    for tag in re.findall(r"<img\b[^>]*>", html, re.I):
+        sm = re.search(r'\b(?:data-(?:src|original|lazy(?:-src)?)|src)\s*=\s*["\']([^"\']+)', tag, re.I)
+        if sm:
+            add(sm.group(1), body=True)
+        ssm = re.search(r'\bsrcset\s*=\s*["\']([^"\']+)', tag, re.I)
+        if ssm:
+            cand = ssm.group(1).split(",")[0].strip().split(" ")[0]   # 첫 후보(대개 기본 해상도)
+            add(cand, body=True)
     return out
 
 def _url_ok(u):
