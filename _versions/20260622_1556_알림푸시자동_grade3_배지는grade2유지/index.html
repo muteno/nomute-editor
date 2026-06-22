@@ -4165,10 +4165,9 @@ async function loadSocial() {
 // 본 것(candId)은 BRK_SEEN에 누적 → 재알림 안 함. 수집함 열면 현재 속보 = 본 것 처리(링 끔).
 const BKEY = 'nomute_brk_seen';
 const brkSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BKEY) || '[]')); } catch { return new Set(); } };
-// ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 🚨배지·핀·최신 공용(grade≥2) — 'grade1 경미인데 ⚡이슈' 모순 차단(260617). ⚠️ 토스트·점등은 isAlert(grade≥3)로 분리(운영자 260622).
+// ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 배지·핀·최신·토스트 공용 단일규칙 — 'grade1 경미인데 ⚡이슈' 모순 차단(260617).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
-const isAlert = c => !!c.breaking && c.grade != null && c.grade >= 3;   // 📢 화면알림(점등·토스트)·앱푸시·자동요약 공용 = breaking AND grade≥3(대형/엄중) · 운영자 260622 3단위계: 앱푸시긴급(grade≥3·알림류)⊂긴급(grade≥2·🚨배지·핀)⊂일반 · 이슈(⚡)는 별개 개념 · 미채점(null)=제외.
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD(머리표junk)·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<3 제외 → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단·앵글10 B2) · 확인✓ 누르면 점등 꺼짐.
+const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isBreaking(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 속보만(<FAST_MAX_H=4h). JUNK_HEAD(머리표junk)·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<2 제외 → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단·앵글10 B2) · 확인✓ 누르면 점등 꺼짐.
 function detectBreaking() {
   const seen = brkSeen();
   const fresh = breakingNow().filter(c => !seen.has(candId(c)));
