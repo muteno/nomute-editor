@@ -4267,7 +4267,7 @@ function showToast(n, sample) {
   let t = document.getElementById('nmToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast';
-    t.onclick = () => { t.classList.remove('show'); if (_toastC) scGoTo(_toastC); else showTab('scrap'); };   // 탭 → 수집함 + 해당 긴급건으로 이동(액션X·이동만 · 운영자 260620)
+    t.onclick = () => { t.classList.remove('show'); if (_toastC) goBreaking(_toastC); else showTab('scrap'); };   // 탭 → 해당 긴급건: 요약 완료=요약창 / 미완료=가장 메이저 원문 = 백그라운드 푸시 딥링크와 동일 경로(분신술9·10·운영자 260622)
     document.body.appendChild(t);
   }
   _toastC = sample || null;
@@ -4278,7 +4278,7 @@ function showToast(n, sample) {
   // ✓ = 확인(markBreakingSeen=알림 끔)+초록 플래시 후 사라짐 / ↗ = 원문 새 탭 + 확인 처리(원문 봤으니 ack) · 둘 다 본문탭(수집함 이동)과 stopPropagation 분리
   const _ak = t.querySelector('[data-bt="ack"]'), _sr = t.querySelector('[data-bt="src"]');
   if (_ak) _ak.onclick = ev => { ev.stopPropagation(); _ak.classList.add('ok'); markBreakingSeen(); clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 340); };
-  if (_sr) _sr.onclick = ev => { ev.stopPropagation(); markBreakingSeen(); clearTimeout(_toastT); t.classList.remove('show'); if (_toastC && _toastC.url) failOpen(_toastC); };
+  if (_sr) _sr.onclick = ev => { ev.stopPropagation(); markBreakingSeen(); clearTimeout(_toastT); t.classList.remove('show'); if (_toastC) openExt(scLinkUrl(_toastC) || _toastC.url); };   // ↗ = 가장 메이저 원문 새 탭(failOpen의 c.url=통신사·군소 아님 · 분신술9)
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 6500);
 }
@@ -4297,6 +4297,24 @@ const scLinkUrl = c => {
   if (/^https?:\/\//i.test(bp)) return bp;
   return /^https?:\/\//i.test((c && c.url) || '') ? c.url : '';
 };
+// 외부 원문 새 탭 — *앵커 클릭* 패턴(failOpen과 동일). window.open 안 씀 = ① 전역 open(피드 모달)에 셰도잉
+//   안 됨 ② iOS 스탠드얼론 PWA서 location.href면 외부 사이트에 갇힘(뒤로 못 옴) → target=_blank는 사파리로 빠져
+//   앱 보존(분신술9·10). hrefOk로 javascript:/data: 차단. 앱을 *안* 떠나므로 BACK 무한루프도 원천 없음(분신술1·4).
+function openExt(url) {
+  const u = hrefOk(url); if (!u || u === '#') return false;
+  try { const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); a.remove(); }
+  catch (_) { try { location.href = u; } catch (__) {} }
+  return true;
+}
+// 긴급(breaking) 건 공용 랜딩 — 백그라운드 푸시 딥링크·포그라운드 토스트가 *같은* 경로 = '해당 건에 정확히' 일관(분신술9·10):
+//   누른 시점에 요약 완료면 그 요약창(pickedOpen) / 아니면 스크랩 기사 중 가장 메이저(breaking_pick) 원문 새 탭. bl=서버 폴백 메이저 url.
+function goBreaking(c, bl) {
+  if (!c) { if (/^https?:\/\//i.test(bl || '')) openExt(bl); else showTab('scrap'); return; }
+  if (scFeedArticle(c)) { showTab('feed'); pickedOpen(c); return; }   // ← 요약 완료? YES → 그 요약 페이지
+  const link = scLinkUrl(c) || (/^https?:\/\//i.test(bl || '') ? bl : '');   // NO → 가장 메이저 기사(대표 매체 픽) 원문
+  if (link) { openExt(link); return; }
+  showTab('scrap');
+}
 // 멤버기반 picked 승계 — rep url이 점프(클러스터 split)해 candId가 바뀌어도, cluster_members 중
 // picked 찍힌 옛 url이 있으면 PICKED 유지(+pickCross 증분). 스크래퍼 별칭승계의 뷰어 짝.
 function ratingFor(c) {
@@ -5573,7 +5591,36 @@ async function openDeepLink(tries = 0) {
   return openDeepLink(tries + 1);
 }
 
-load().then(openDeepLink);   // 첫 로드 후 딥링크(?a=) 있으면 해당 요약 자동 오픈
+// 긴급(breaking) 알림 탭 → /?brk=<키>&bl=<메이저링크> 진입. 탭 *시점*에 그 사건이 요약 완료됐나로 분기(운영자 260622):
+//   요약 완료 = 그 요약창 / 미완료 = 스크랩 기사 중 가장 메이저 링크(breaking_pick)로 이동(웹앱 먼저 뜬 뒤 이동).
+//   ⚠️ 요약을 *기다리지 않음* = 누른 그 순간 기준(요약 안 됐으면 즉시 메이저 원문). 후보(candidates) 못 찾을 때만
+//   짧게 재시도(스크랩 랙) 후 bl 폴백→수집함. ?a=(요약완료 알림)와 별개 핸들러(그건 요약 전용·장기 재시도).
+async function openBreakingDeepLink(tries = 0, key = null, bl = null) {
+  if (tries === 0) {
+    try { const sp = new URLSearchParams(location.search); key = sp.get('brk'); bl = sp.get('bl'); } catch (_) {}
+    if (!key && !bl) return;
+    if (bl && !/^https?:\/\//i.test(bl)) bl = null;   // bl 스킴 가드 — URL 쿼리서 raw로 들어오므로 javascript:/data: 차단(분신술3·10)
+    // 딥링크 파라미터를 *먼저* URL서 제거(replaceState) = 새로고침 재진입 방지(+동일탭 폴백 시 BACK 무한루프 차단).
+    //   key/bl은 지역변수로 잡아 재시도 재귀에 인자로 넘김(URL 비워도 유지 · 분신술1·4).
+    try { const u = new URL(location.href); u.searchParams.delete('brk'); u.searchParams.delete('bl'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (_) {}
+  }
+  if (!key && !bl) return;
+  // 후보(candidates.json) 적재 대기 — eager loadCandidates()가 in-flight면 SCRAP_LOADING 가드로 즉시 반환되므로
+  //   SCRAP_LOADED 플립까지 짧게 폴(분신술2·3·7 = 첫 탭 ~1.2s 헛 백오프 제거).
+  for (let i = 0; i < 12 && !SCRAP_LOADED; i++) { try { await loadCandidates(true); } catch (_) {} if (!SCRAP_LOADED) await new Promise(r => setTimeout(r, 200)); }
+  const nk = key ? _normU(key) : '';
+  const c = key ? CANDS.find(x => x && (x.event_key === key || x.url === key || (x.url && _normU(x.url) === nk) || (x.event_key && _normU(x.event_key) === nk))) : null;
+  if (c) { goBreaking(c, bl); return; }   // 요약 완료?→요약창 / 미완료→가장 메이저 원문(새 탭·앱 보존)
+  if (tries >= 8) {   // 후보 못 찾음(스크랩 랙·만료) — bl(서버 계산 메이저링크) 폴백, 없으면 수집함
+    if (bl) { openExt(bl); return; }
+    showTab('scrap'); if (typeof qFlash === 'function') qFlash('긴급 기사 불러오는 중…'); return;
+  }
+  await new Promise(r => setTimeout(r, Math.min(1200 + tries * 600, 4500)));   // 후보 적재 짧은 백오프(요약을 기다리는 게 아님)
+  try { await loadCandidates(true); } catch (_) {}
+  return openBreakingDeepLink(tries + 1, key, bl);
+}
+
+load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages();
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)

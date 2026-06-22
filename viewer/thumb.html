@@ -807,7 +807,14 @@ function maybeOpenHist() {
   // 랜딩 = 방금 만든 '결과' 블록(카운터+잡+캐러셀) 맨 위 = 첨부1 기준(이전 제작 아님 · 운영자 260622)
   const cb = $('#carbar');
   const tgt = (cb && !cb.hidden) ? cb : (($('#jobs') && $('#jobs').firstElementChild) || (hist && !hist.hidden ? hist : null));
-  if (tgt) { try { tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) { tgt.scrollIntoView(); } }
+  if (tgt) {   // 중상단 랜딩 = 상단서 ~18% 내려 위치(block:'start'는 뷰포트 최상단에 딱 붙어 갑갑·결과가 눈에 덜 듦 · 운영자 260622)
+    requestAnimationFrame(() => {   // 레이아웃 정착 후 측정 = 복원 결과/이미지 리플로우 뒤 정확한 위치(분신술6)
+      try {
+        const y = tgt.getBoundingClientRect().top + window.pageYOffset - Math.round((window.innerHeight || 700) * 0.18);
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      } catch (_) { try { tgt.scrollIntoView(); } catch (_) {} }
+    });
+  }
 }
 function histLoad() { try { const a = JSON.parse(localStorage.getItem(THUMB_HKEY) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function histSave(a) { try { localStorage.setItem(THUMB_HKEY, JSON.stringify(a)); } catch {} }
