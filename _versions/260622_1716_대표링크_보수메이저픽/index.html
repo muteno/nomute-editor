@@ -4288,15 +4288,6 @@ function showToast(n, sample) {
 let PFAIL = new Map();   // 정규화url → {reason, ts}
 const PF_SKEY = 'nomute_pickfail_seen', PF_RKEY = 'nomute_pickfail_resolved';
 const _normU = u => String(u || '').trim().replace(/\/+$/, '');   // build-viewer normUrl 과 동일(끝슬래시만)
-// 수집함 카드 '원문 링크' = 클러스터 대표 매체 픽(breaking_pick) 우선. c.url 은 최초보도(흔히 통신사·군소)라
-// 다매체 이슈에서 내용 빈약/외딴 매체로 튐(운영자 260622). 제목·매체는 이미 픽 기준(breaking_pick)이라 링크까지
-// 일치시킴 = 조선/동아 보수메이저 → 중진보 메이저(scraper PICK_PRIORITY) url 로 이동. 픽 url 비거나 비-http 면
-// c.url 폴백. dedup·픽·api 호출은 그대로 c.url(1차 키 불변) — 이 함수는 *읽기(링크 이동)* 전용.
-const scLinkUrl = c => {
-  const bp = (c && c.breaking_pick && c.breaking_pick.url) || '';
-  if (/^https?:\/\//i.test(bp)) return bp;
-  return /^https?:\/\//i.test((c && c.url) || '') ? c.url : '';
-};
 // 멤버기반 picked 승계 — rep url이 점프(클러스터 split)해 candId가 바뀌어도, cluster_members 중
 // picked 찍힌 옛 url이 있으면 PICKED 유지(+pickCross 증분). 스크래퍼 별칭승계의 뷰어 짝.
 function ratingFor(c) {
@@ -4694,7 +4685,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
     `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}"><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
-     <div class="sc-title"><a href="${escUrl(scLinkUrl(c) || '#')}" target="_blank" rel="noopener"></a></div>
+     <div class="sc-title"><a href="${escUrl(c.url || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
            ? (pstate === 'failed'
@@ -4748,13 +4739,12 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   }
   // 카드 본문 탭 라우팅(운영자 260621): 요약돼 피드에 있으면 → 뉴스 요약(pickedOpen) / 아니면 → 기사 전문(원문 새 탭).
   //   (옛날엔 무조건 한 쪽이라 요약 안된 후보 탭 시 빈 요약 목업이 뜨던 버그 → DATA 매칭으로 분기.)
-  if (scFeedArticle(c) || scLinkUrl(c)) {
+  if (scFeedArticle(c) || (c.url && /^https?:\/\//i.test(c.url))) {
     el.classList.add('sc-clickable');
     el.addEventListener('click', e => {
       if (e.target.closest('a, button, input, textarea, .sc-bot, .sc-memo')) return;   // 버튼·타이틀 링크·칩·메모는 각자 핸들러(가드)
-      if (scFeedArticle(c)) { pickedOpen(c); return; }   // 요약됨 = 뉴스 요약
-      const u = scLinkUrl(c);   // 안됨 = 기사 전문 → 대표 매체 픽(breaking_pick) url 우선(통신사·군소 회피)
-      if (u) window.open(u, '_blank', 'noopener,noreferrer');
+      if (scFeedArticle(c)) pickedOpen(c);   // 요약됨 = 뉴스 요약
+      else if (c.url && /^https?:\/\//i.test(c.url)) window.open(c.url, '_blank', 'noopener,noreferrer');   // 안됨 = 기사 전문
     });
   }
   return el;
