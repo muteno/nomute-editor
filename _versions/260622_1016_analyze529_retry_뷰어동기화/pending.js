@@ -2,8 +2,7 @@
 // 흐름(CLAUDE.md §뉴스 큐 · docs/news-pipeline.md §대기열): 폰공유/픽 → pending/<YYMMDD-HHMMSS-rand>.txt
 //   → news-analyze → 성공 시 queue/<YYMMDD-HHMM-id>.md 생성 + pending 삭제 / 실패 시 pending/failed/(+.log).
 // ∴ 상태 = pending 잔류(처리중<20m / stuck-FAIL≥20m) · pending/failed(FAIL+로그) · queue 최근(SUCC).
-// GET → { items:[{ id, t(epochMs·KST), title, via, src, status:'processing'|'retry'|'fail'|'succ', tries?, diag? }], now } 최신 먼저.
-//   retry = analyze.sh 가 API 일시 과부하(5xx/Overloaded) 시 남긴 pending/<base>.retry 마커 = 자동 재시도 대기(FAIL 아님 · 260622).
+// GET → { items:[{ id, t(epochMs·KST), title, via, src, status:'processing'|'fail'|'succ', diag? }], now } 최신 먼저.
 // env: GH_TOKEN(contents:read · push/thumb와 동일 PAT).
 const REPO = 'muteno/nomute-editor';
 const STUCK_MIN = 20;            // pending 잔류 이 분 이상 = FAIL(stuck) 표시(운영자 260619)
@@ -35,32 +34,22 @@ export async function onRequestGet({ env }) {
 
   const items = [];
 
-  // ── 1) pending/ top-level (.txt) = 처리중(<20m) / 재시도 중(.retry 마커) / stuck-FAIL(≥20m) ──
-  // .retry 마커 = analyze.sh 가 API 일시 과부하(5xx/Overloaded) 시 기록 → pending 유지·sweep 가 회복 시 자동 재분석.
-  //   이 마커가 있으면 'FAIL'(빨강)도 '처리중'도 아닌 '재시도 중'으로 노출 = 상태 동기화(운영자 260622).
-  const pdir = await listDir('pending');
-  const retryBase = new Set(pdir.filter(f => f && f.type === 'file' && /\.retry$/i.test(f.name)).map(f => f.name.replace(/\.retry$/i, '')));
-  const pend = pdir
+  // ── 1) pending/ top-level (.txt) = 처리중(<20m) 또는 stuck-FAIL(≥20m) ──
+  const pend = (await listDir('pending'))
     .filter(f => f && f.type === 'file' && /\.txt$/i.test(f.name))
     .sort((a, b) => b.name.localeCompare(a.name)).slice(0, CAP_PEND);
   await Promise.all(pend.map(async f => {
-    const base = f.name.replace(/\.txt$/i, '');
     const t = fnameTime(f.name, 6);
     const { line1, body, title } = parseTxt(await raw('pending/' + encodeURIComponent(f.name)));
     const paste = line1.startsWith('paste:');
     const ageMin = t ? (now - t) / 60000 : 0;
-    const retry = retryBase.has(base);
-    let rmark = null;
-    if (retry) { try { rmark = JSON.parse(await raw('pending/' + encodeURIComponent(base) + '.retry') || '{}'); } catch {} }
-    const stuck = !retry && !!t && ageMin >= STUCK_MIN;   // 재시도 중이면 stuck-FAIL 로 안 봄(자가치유 정상상태)
+    const stuck = !!t && ageMin >= STUCK_MIN;
     items.push({
-      id: base, t, status: retry ? 'retry' : (stuck ? 'fail' : 'processing'),
+      id: f.name.replace(/\.txt$/i, ''), t, status: stuck ? 'fail' : 'processing',
       via: paste ? '전문' : 'URL', src: paste ? '' : prettyUrl(line1),
       key: paste ? '' : normU(line1),   // 후보 url 매칭키(뷰어 cross-device 픽 표시 · paste는 url無→매칭 제외)
-      tries: retry ? ((rmark && rmark.attempts) || 0) : 0,   // 뷰어 '재시도 N' 칩
       title: bodyTitle(body, paste, line1, title),
-      diag: retry ? { kind: 'retry', attempts: (rmark && rmark.attempts) || 0, error: (rmark && rmark.error) || '', last: (rmark && rmark.last) || '', line1, hasBody: !!body }
-          : stuck ? { kind: 'stuck', mins: Math.round(ageMin), line1, hasBody: !!body, bodyHead: body.slice(0, 400) } : null,
+      diag: stuck ? { kind: 'stuck', mins: Math.round(ageMin), line1, hasBody: !!body, bodyHead: body.slice(0, 400) } : null,
     });
   }));
 
