@@ -122,6 +122,7 @@
     32%  { transform:scale(.93); background:rgba(var(--accent-rgb),.18); border-color:rgba(var(--accent-rgb),.55); }
     100% { transform:scale(1);   background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08); } }
   .kwchip.copied { animation:kwcopy .42s ease; }
+  #copyHint::before { content:'→ '; -webkit-user-select:none; user-select:none; }   /* '→' = UI 표식 → 텍스트가 아닌 pseudo로 분리 = 탭복사·네이티브 드래그선택 어느 경로로도 복사 불포함(운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .kwchip.copied { animation:none; } }
   .out { margin-top:18px; }
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
@@ -184,25 +185,16 @@
     background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:6px 11px;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 8px rgba(0,0,0,.28); }
   .job .jsave:active { transform:scale(.95); } .job .jsave svg { display:block; width:12px; height:12px; }
-  .job .jsave-row { flex-basis:100%; display:flex; justify-content:flex-end; margin-top:4px; }   /* 전체 = 완료 시각줄 아래·우측정렬(운영자 260622) */
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
   .slot { margin-bottom:14px; }
   .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
   .slot-img { min-height:40px; position:relative; }
   .slot-img img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
   /* 결과 이미지 다운로드 (우상단) = 뉴스 피드 캐러셀 .sbtn 글래스 그대로 계승(§📋 · 34px·bg .3·border .14·hover·active .85) */
-  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; border:0; border-radius:10px; text-decoration:none; z-index:2; transition:transform .12s, background .15s, color .15s; }   /* 다운로드 = .dlbtn 표준(강조색 10%·그림자·✓팝링)에서 색/효과 상속 · 여긴 위치/크기만(운영자 260622) */
-  .imgdl:active { transform:scale(.82); }   /* 눌림(색 채움·✓팝링은 .dlbtn 표준) */
+  .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; color:var(--accent); background:rgba(var(--accent-rgb),.10); border:0; border-radius:10px; text-decoration:none; z-index:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); transition:transform .12s, background .15s, color .15s; }   /* 다운로드 = 강조색 10% 반투명(이미지 거의 안 가림) + 아이콘 · 그림자로 밝은 이미지 위 가독(운영자 260622) */
+  .imgdl:hover { background:rgba(var(--accent-rgb),.16); }
+  .imgdl:active { transform:scale(.82); background:rgba(var(--accent-rgb),.32); }   /* 클릭 액티브 = 순간 강조색 채움 + 눌림 피드백(운영자 260622) */
   .imgdl svg { display:block; width:14px; height:14px; }
-  /* ▼ 다운로드 버튼 표준(전 앱 공통 · 강조색 + 10% 반투명 + 클릭 ✓팝+링 · 정본=여기 · 운영자 260622) — 새 다운로드 버튼은 .dlbtn 한 클래스만 추가, 색·효과 재설계 금지 */
-  .dlbtn { color:var(--accent) !important; background:rgba(var(--accent-rgb),.10) !important; border-color:rgba(var(--accent-rgb),.22) !important; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
-  .dlbtn:hover { background:rgba(var(--accent-rgb),.16) !important; }
-  .dlbtn .dl-ack { position:absolute; inset:0; border-radius:inherit; display:grid; place-items:center; pointer-events:none; z-index:6; color:var(--accent); animation:dlAckPop .7s cubic-bezier(.18,1.5,.4,1) forwards; }
-  .dlbtn .dl-ack > svg { width:18px; height:18px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
-  .dlbtn .dl-ack .dl-ring { position:absolute; inset:0; border-radius:inherit; border:1.5px solid rgba(var(--accent-rgb),.7); animation:dlRing .55s ease-out forwards; }
-  @keyframes dlAckPop { 0%{opacity:0;transform:scale(0)} 30%{opacity:1;transform:scale(1.15)} 55%{transform:scale(1)} 80%{opacity:1} 100%{opacity:0;transform:scale(1)} }
-  @keyframes dlRing { from{transform:scale(1);opacity:.85} to{transform:scale(1.5);opacity:0} }
-  @media (prefers-reduced-motion:reduce){ .dlbtn .dl-ack, .dlbtn .dl-ack .dl-ring { animation:none; } .dlbtn .dl-ack { opacity:0; } }
   /* 이전 제작(12h) 접힘 섹션 */
   .hist { margin-top:20px; border-top:1px solid var(--line); padding-top:6px; }
   .hist-h { width:100%; display:flex; align-items:center; gap:8px; background:none; border:none; color:var(--fg); cursor:pointer; padding:10px 2px; font:inherit; font-size:13px; font-weight:700; }
@@ -413,7 +405,7 @@
         <div class="cartrack" id="cartrack"></div>
         <button class="carnav prev" id="carPrev" type="button" aria-label="이전">‹</button>
         <button class="carnav next" id="carNext" type="button" aria-label="다음">›</button>
-        <a class="imgdl dlbtn" id="carDl" href="#" aria-label="다운로드" hidden></a>
+        <a class="imgdl" id="carDl" href="#" aria-label="다운로드" hidden></a>
       </div>
     </div>
     <!-- 이전 제작(12시간) — 창 닫아도 localStorage 보관·맨아래 접힘 토글(운영자 260621) -->
@@ -516,7 +508,7 @@ function getPlatform() {
 }
 function updateCopyHint() {
   const y = $('#cyear').value.trim() || '2026', n = $('#cname').value.trim() || 'nomute', p = getPlatform();
-  $('#copyHint').textContent = 'ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';   // '→' 화살표 완전 제거(운영자 260622) — 순수 저작권 문구만(복사도 깨끗)
+  $('#copyHint').textContent = 'ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';   // '→' 표식은 #copyHint::before(비선택) — 텍스트엔 없음 = 복사 깨끗
 }
 // 저작권 미리보기 = 탭하면 복사(뉴스 요약 키워드칩 .cref-kw 의 복사-액티브 계승: 초록 눌림 플래시 · '→ ' 화살표는 UI 표식이라 복사 제외)
 (function () {
@@ -745,11 +737,10 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.innerHTML = ic + '<span>' + esc(tx) + '</span>';
   row.append(lab, stsp);
   if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
-    const svRow = document.createElement('div'); svRow.className = 'jsave-row';   // 전체 = 완료 시각줄 아래로 내려 우측정렬(썸네일 5종 공용 · 운영자 260622)
-    const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave dlbtn'; sv.title = '이 결과 전체 다운로드';
+    const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave'; sv.title = '이 결과 전체 다운로드';
     sv.innerHTML = DOWNLOAD_SVG + '<span>전체</span>';
     sv.onclick = () => job.saves.forEach((s, i) => setTimeout(() => dlBlob(s.url, s.dlname), i * 350));
-    svRow.appendChild(sv); row.append(svRow);
+    row.append(sv);
   }
   if (job.status === 'err' && job.payload && job.endpoint) {   // 실패 = 같은 설정으로 재시도 재발사(운영자 260620 아이디어 3)
     const rt = document.createElement('button'); rt.type = 'button'; rt.className = 'jretry'; rt.title = '같은 설정으로 다시 제작';
@@ -774,7 +765,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
       if (o._slide != null) {   // 이미지 도착한 변형만 활성(점프·개별 다운로드)
         d.classList.add('on');
         tx.title = '이 변형으로 이동'; tx.onclick = () => carJump(o._slide);
-        const dl = document.createElement('a'); dl.className = 'jvar-dl dlbtn'; dl.href = o._url;
+        const dl = document.createElement('a'); dl.className = 'jvar-dl'; dl.href = o._url;
         dl.setAttribute('aria-label', '이 변형 다운로드'); dl.title = '이 변형만 다운로드'; dl.innerHTML = DOWNLOAD_SVG;
         dl.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); dlBlob(o._url, o._dlname); });   // R2=blob 다운로드·점프와 분리
         d.appendChild(dl);
@@ -926,7 +917,7 @@ function renderHist() {
     const it = document.createElement('div'); it.className = 'hist-it'; it.dataset.thid = thIdOf(e.url);   // 작업 id 태그 = 알림 #done=<id> → 이 이력 항목으로 핀포인트(콜드스타트 주경로)
     const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);   // 제작 시각(오전/오후 H:MM·흰색·이미지 위)
     const th = document.createElement('div'); th.className = 'hist-thumb';
-    const dl = document.createElement('a'); dl.className = 'imgdl dlbtn'; dl.href = e.url;
+    const dl = document.createElement('a'); dl.className = 'imgdl'; dl.href = e.url;
     dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DOWNLOAD_SVG; dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'thumb.png'); });
     const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.url; img.onerror = () => it.remove();   // 백엔드서 사라진 이미지는 슬롯 자동 제거
     const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
@@ -1365,7 +1356,6 @@ $('#go').onclick = async () => {
     return;
   }
   if (APP === '3') {   // 저작권 = 포맷(포스트/릴스) 점등분마다 동시 발사 → 둘 다 캐러셀로(경고문과 동일)
-    if (!$('#cname').value.trim()) return errStatus('이름을 넣어주세요');   // 이름 필수 — 빈 채 발사 차단(백엔드 실패 방지·제작 버튼에 메시지+흔들림 · 운영자 260622)
     const base = { year: $('#cyear').value.trim(), name: $('#cname').value.trim(), platform: getPlatform() };
     const fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
     const FL = { post: '포스트', reels: '릴스' };
@@ -1405,15 +1395,6 @@ function errStatus(m, cls) {   // 전송 막힘 = 메시지를 버튼 *안에* �
   g.textContent = m; g.setAttribute('aria-live', 'assertive');  // 메시지 = 버튼 안에
   g.classList.add(cls); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
   g._errT = setTimeout(() => { g.classList.remove('err', 'warn', 'shake'); g.textContent = g.dataset.label || '이미지 제작'; }, 1700); }
-
-// 다운로드 버튼 표준 클릭효과 = ✓ 팝 + 링 리플(.dlbtn 전 앱 공통 · 위임·캡처 · 운영자 260622)
-document.addEventListener('click', e => {
-  const b = e.target.closest('.dlbtn'); if (!b) return;
-  const o = document.createElement('span'); o.className = 'dl-ack';
-  o.innerHTML = '<span class="dl-ring"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-  if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
-  b.appendChild(o); setTimeout(() => o.remove(), 700);
-}, true);
 
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
