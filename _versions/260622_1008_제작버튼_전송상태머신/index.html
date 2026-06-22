@@ -1290,7 +1290,7 @@
   .asksend > span { position:relative; z-index:1; }
   .asksend:disabled { opacity:.5; cursor:default; }
   .asksend:active { transform:scale(.97); }
-  .asksend.firing { color:var(--accent); opacity:1; pointer-events:none; }   /* 전송 중 = 어두운 와이프(밝은초록 버튼 위 고대비)가 좌→우 채움 → 글자도 초록으로 뒤집어 가독·dim 해제(260622 글자소멸 픽스) */
+  .asksend.firing { pointer-events:none; }   /* 전송 누르면 = PICK과 동일한 초록 게이지 좌→우 채움(운영자 260621) */
   .asksend.firing::before { content:''; position:absolute; inset:0; background:#06140d; transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }
   @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
   /* 전송 실패 = 흔들림 / 완료 = settle 펄스 (전송 상태머신 fail·done · 운영자 260622) */
@@ -1378,8 +1378,8 @@
   .revsend span { position:relative; z-index:1; }
   /* 1차 클릭=재확인(주황 톤) → 2차 클릭=전송 */
   .revsend.confirm { background:linear-gradient(155deg, color-mix(in srgb, var(--arm) 80%, white), var(--arm)); color:var(--on-arm); box-shadow:0 6px 16px rgba(var(--arm-rgb),.34); }   /* 재확인 = arm 통일(앰버 잔재 제거·--on-arm 소비·260621 분신술) */
-  /* 성공 시 어두운 와이프 좌→우 채움(.firing) 후 닫힘 — 글자 초록(어두운 와이프 위 가독·260622 글자소멸 픽스) */
-  .revsend.firing { color:var(--accent); pointer-events:none; }
+  /* 성공 시 PICK과 동일한 초록 게이지 좌→우 채움(.firing) 후 닫힘 */
+  .revsend.firing { color:var(--on-accent); pointer-events:none; }
   .revsend.firing::before { content:''; position:absolute; inset:0; background:#06140d; transform:scaleX(0); transform-origin:left;
     animation:pickGauge .72s linear forwards; z-index:0; }
   @media (prefers-reduced-motion:reduce) { .revsend.firing::before { animation-duration:.2s; } }
@@ -2076,11 +2076,8 @@ function thumbSec(a) {
   wrap.innerHTML = '<div class="thumbsec-h">썸네일 후보 — 검색 · AI 생성</div>';
   // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
-    const _qen = (a.image_query_en || '').trim();   // 🌍해외사건이면 영문 쿼리 → 외신·현지 사진(미국지역·영어·1일) / 국내면 한국어+1일(운영자 260622)
-    const _srchHref = _qen
-      ? 'https://www.google.com/search?tbm=isch&hl=en&gl=us&tbs=qdr:d&q=' + encodeURIComponent(_qen.slice(0, 100))
-      : 'https://www.google.com/search?tbm=isch&tbs=qdr:d&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100));
-    wrap.appendChild(thumbStatic('검색 이미지', search, 'search', _srchHref, c.thumb_usage));
+    wrap.appendChild(thumbStatic('검색 이미지', search, 'search',
+      'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100)), c.thumb_usage));
   }
   // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(4화풍+재생성 누적)
   if (gen.length) wrap.appendChild(thumbStatic('AI 생성', gen, 'gen', null, c.thumb_usage));
@@ -2104,7 +2101,7 @@ const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none"
 const SEARCH_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
 // 정적 캐러셀(thumb_search/thumb_gen) — items=[{img,label?,sid?}]. 탭=확대 · 우상단 액션행 .sbtn(저장 · 생성슬롯=재생성+저장 · §🎨 .slide-acts 계승). usage={gen,search}.
 function thumbStatic(label, items, kind, href, usage) {
-  const list = items.slice(0, 7);   // 검색이미지 최대 7장(과금0·운영자 260622) · AI 생성은 3화풍이라 영향 없음
+  const list = items.slice(0, 4);
   const wrap = document.createElement('div'); wrap.className = 'cref';
   // 검색 헤더 우측 = 글래스 .sbtn 아이콘(구글 이미지 검색) — 기존 초록 알약 텍스트 폐기(투박·운영자 260620)
   const hbtn = href ? '<a class="sbtn cref-srch" href="' + escUrl(href) + '" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a>' : '';
@@ -4018,10 +4015,7 @@ const BKEY = 'nomute_brk_seen';
 const brkSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BKEY) || '[]')); } catch { return new Set(); } };
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 배지·핀·최신·토스트 공용 단일규칙 — 'grade1 경미인데 ⚡이슈' 모순 차단(260617).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
-// ⚡ 긴급 격상(신규 전용) = AI 급발판정(breaking) OR 다매체 cross≥URGENT_CROSS. 운영자 260622 "동시 N매체+ = 긴급으로 띄워라"(2안=AI 무시·cross 임계만 · "일단 해보자"). ⚠️ 나이게이트(<FAST_MAX_H=4h)는 *각 소비처*에서 적용 = 신규(<4h)만 격상(누적/이슈엔 미사용) → 4h 내 N매체면 진짜 빠른 확산이라 순수 보도자료 확률↓(<4h 게이트가 89% 오발(§7.5) 위험 완화). cross≥8 누적 진입(CROSS_MIN)·⚡이슈(cross≥8)는 불변(§★ 방향 유지). 웹푸시(push_send.py)는 서버측 AI 게이트 그대로 = cross만으론 푸시 안 됨(가역=뷰어표시만 격상·비가역=푸시 보수). 임계=URGENT_CROSS만 조정.
-const URGENT_CROSS = 7, MEGA_CROSS = 18;   // cross≥7 격상 + over-merge 상한(cross>18 = 무관 사건 과병합으로 부풀린 distinct-매체수 의심 = to_candidates MEGA_CROSS 동일 · 대표 신뢰불가)면 자동격상 제외. ⚠️ to_candidates의 arts>40(기사수) 기준은 cross 격상엔 *안 씀* — 진짜 대형(미·이란 종전 cross16·기사 40+)도 arts>40이라 정상 다매체를 잘못 배제(실측 221/427 과배제)했음. cross 인플레만 막으면 됨(검증4·8 수렴·실측 정정). isBreaking은 mega가 애초 breaking_candidate 안 돼 이미 안전 → cross 경로만 가드. cross>18 진짜 사건은 isBreaking(AI) 경로로 잡힘.
-const isUrgent = c => isBreaking(c) || ((c.cross || 0) >= URGENT_CROSS && (c.cross || 0) <= MEGA_CROSS);
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isUrgent(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 긴급만(<FAST_MAX_H=4h · isUrgent=breaking OR cross≥7). JUNK_HEAD(머리표junk)·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<2 제외 → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단·앵글10 B2) · 확인✓ 누르면 점등 꺼짐.
+const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isBreaking(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 속보만(<FAST_MAX_H=4h). JUNK_HEAD(머리표junk)·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<2 제외 → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단·앵글10 B2) · 확인✓ 누르면 점등 꺼짐.
 function detectBreaking() {
   const seen = brkSeen();
   const fresh = breakingNow().filter(c => !seen.has(candId(c)));
@@ -4383,7 +4377,7 @@ const scTs = c => {
 };
 // ── 최신 게이트(scFast): 최신한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
 const FAST_MAX_H = 4, FAST_HALF_H = 2;   // ⏱ 신규↔누적 칼럼 경계 = 발생 4h(운영자 정본 260617: 최신=나이<4h=화면 '3시간 전'까지 / 누적=나이≥4h='4시간 전'부터). 자리(칼럼)=신규·누적 / 사건(배지)=긴급=속보[breaking] = 별개 축 — 긴급 사건은 나이 들면 *자리만* 신규→누적로 이동(개념 불변). 이 한 상수가 최신진입·누적진입·속보핀·토스트·배지(🚨긴급↔⚡이슈)를 전부 결정 = 단일출처(드리프트 차단). FAST_HALF_H=하강 반감기. 조정 가능.
-const scFast = c => isUrgent(c) || ((c.cross || 0) >= 2 && c.grade !== 0 && c.grade !== 1);   // isUrgent(=breaking OR cross≥7) 포함 → cross≥7 격상건은 grade0/1(보도자료·경미)이어도 신규 진입(운영자 260622 AI무시 격상). 칼럼 필터가 <4h로 게이트.
+const scFast = c => isBreaking(c) || ((c.cross || 0) >= 2 && c.grade !== 0 && c.grade !== 1);
 const FOLLOW_W = 0.2;   // 연속보도 가점 가중 — 또 보도될수록↑. 조정 가능.
 // 연속보도 가점 = report_count(arts=기사 수 증가 사이클 = '또 보도됨', 같은 매체 1곳이여도 +1). seen_count(12h 윈도우 존재만으로도 올라 결함) 대체. 보도 끊기면 안 오름 → 시간 decay에 밀림(보도자료 자연 침몰).
 const scFollow = c => 1 + FOLLOW_W * Math.log2(1 + (c.report_count || 0));
@@ -4414,14 +4408,14 @@ const timeAcc = c => 1 / (1 + Math.pow(Math.max(0, (Date.now() - scTs(c)) / 3600
 const scScore = c => crossConvex(c) * timeAcc(c) * scFollow(c) * gradeW(c);
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // pinB = 확정 breaking & 아직 안 픽이면 1(픽하면 0). 누적칼럼 강제핀은 260617 제거 — 이 값은 pinFresh(신규칼럼 최신속보 핀)에서만 씀.
-const pinB = c => { const r = scRT[candId(c)] || {}; return (isUrgent(c) && !r.picked && !r.acked) ? 1 : 0; };   // isUrgent(breaking OR cross≥7) · 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619). pinFresh(<4h 게이트)에서만 소비 → 신규 격상건만 핀.
+const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r.picked && !r.acked) ? 1 : 0; };   // 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619)
 // 최신 핀 = 확정 속보 AND 발생 4h 내(최신)만 상단 고정. 오래된 속보는 핀 안 함 → fastScore decay로 하강(findable but 톱 아님 — 16h 속보가 최신 톱 차지하던 문제 해결).
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
 // 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h·미확인) / ⚡이슈(4h~24h AND [cross≥8 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙. ⚠️ ✓확인(acked)해도 🚨 유지 = 긴급은 사건속성·계속 표시(운영자 260620 · 4h 지나면 자연히 ⚡이슈).
 // 배지 타입 = 배지칩·테두리(b-)·글로우(lit-) 공용 단일출처. 긴급(breaking 신규<4h) > 이슈(4~24h·cross≥8 또는 aged-breaking) · 둘다면 긴급. (✓확인해도 유지=긴급은 사건속성·운영자 260620)
 const scBadgeType = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
-  if (isUrgent(c) && ageH < FAST_MAX_H) return 'brk';   // 🚨긴급 = breaking OR cross≥7, 신규(<4h)만(운영자 260622). 테두리(b-brk)·글로우(lit-brk) 동반.
-  if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';   // ⚡이슈(4h~24h)는 cross≥8·breaking 불변(cross≥7 격상 미적용 = 신규 전용·§★ 누적 방향 유지)
+  if (isBreaking(c) && ageH < FAST_MAX_H) return 'brk';
+  if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';
   return ''; };
 const BADGE_HTML = { brk: '<span class="sc-badge brk">긴급</span>', iss: '<span class="sc-badge iss">이슈</span>' };   // 인라인 메타 텍스트(긴급=빨강·이슈=노랑 · 글래스 칩 폐지·운영자 260621)
 // scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16(=이슈배지 8×2). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
@@ -5293,10 +5287,7 @@ function makeDraggable(dlg, handleSel) {
   .forEach(([d, sel]) => makeDraggable($(d), sel));
 
 // 분석/요약 완료 푸시 탭 → URL ?a=<기사파일> 진입이면 그 요약 창을 자동으로 연다.
-// ⚠️ 빌드/배포 랙: Cloudflare Pages가 push마다 build-viewer를 재실행·배포하는데, 완료 알림은 analyze 커밋 *직후*
-//    떠서 알림을 빨리 누르면 articles.json 이 아직 옛 버전(그 요약 미포함)이라 못 찾는다. 30s만 재시도하면
-//    배포(보통 30~90s, 길면 ~2분)가 안 끝나 '못 찾음→피드(메뉴)만'으로 떨어졌었음 → 재시도창을 ~2분으로 넓혀
-//    배포가 끝나는 대로 자동 오픈. 끝내 못 찾으면 조용한 메뉴착지 대신 토스트로 '곧 표시' 안내(운영자 260622).
+// 빌드 랙(분석 커밋 직후 articles.json 재빌드 전)이면 잠깐 재시도(≈18s) 후 못 찾으면 피드만.
 async function openDeepLink(tries = 0) {
   let key = null;
   try { key = new URLSearchParams(location.search).get('a'); } catch (_) {}
@@ -5308,11 +5299,8 @@ async function openDeepLink(tries = 0) {
     showTab('feed'); open(a);                       // 요약은 뉴스요약 탭
     return;
   }
-  if (tries >= 18) {                                // 배포 랙 한계(≈2분) 초과 — 못 찾으면 피드 + 안내 토스트(조용한 메뉴착지 방지)
-    if (typeof qFlash === 'function') qFlash('요약 반영 중 — 곧 표시돼');
-    return;
-  }
-  await new Promise(r => setTimeout(r, Math.min(2000 + tries * 1000, 8000)));   // 2s→8s 점증 백오프(과도 재요청 없이 ~2분 창 확보)
+  if (tries >= 10) return;                          // 빌드 랙 한계(≈30s) 초과 — 못 찾으면 피드만(요약은 곧 떠도 자동오픈은 포기)
+  await new Promise(r => setTimeout(r, 3000));
   try { await load(); } catch (_) {}
   return openDeepLink(tries + 1);
 }
