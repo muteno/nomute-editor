@@ -1369,6 +1369,7 @@
   .askattach:active { transform:scale(.9); }
   .askattach.has { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); }   /* 첨부됨 = 아이콘 라임 강조(3안·운영자 260622) */
   .askattach-badge { position:absolute; top:-6px; right:-6px; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--accent); color:var(--on-accent); border:1.5px solid var(--bg); font:800 9px/1 ui-monospace,monospace; display:inline-flex; align-items:center; justify-content:center; gap:1px; }   /* 코너 ✓·장수 배지(3안) */
+  .askattach-badge[hidden] { display:none; }   /* ⚠️ display:inline-flex가 [hidden] 속성(display:none)을 덮어써 이미지 0장에도 ✓가 떠있던 버그 차단 — 첨부 있을 때만 표시(운영자 260622) */
   .askattach-badge svg { width:9px; height:9px; }
   .askattach-badge.pop { animation:askAttachPop .3s ease; }
   @keyframes askAttachPop { 0%{ transform:scale(0); } 60%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
@@ -5206,11 +5207,11 @@ $('#askSend').addEventListener('click', async () => {
     $('#askText').focus();
     return;
   }
-  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); $('#askStatus').textContent = '보내는 중…';   // 게이지 모션(운영자 260621)
+  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now();   // 게이지 모션만(상태텍스트 '보내는 중/요청됨' 폐지 = 버튼 firing→done ✓로 충분·운영자 260622)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl) }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { $('#askStatus').textContent = '✅ 요청됨'; $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // reflow-reset = 매 성공 settle 재생
+    if (r.ok && d.ok) { $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // 성공 = 버튼 done+✓ 체크로 표시(상태텍스트 폐지·운영자 260622) · reflow-reset = 매 성공 settle 재생
       setTimeout(() => askShowCheck(btn), Math.max(0, 740 - (Date.now() - (+btn.dataset.ft || 0))));   // 게이지 다 찬 뒤 ✓ 팝(시안2)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false; }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
