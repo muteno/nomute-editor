@@ -28,8 +28,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write   # candidates.json·pending·seen·push 원장 커밋
-  actions: write    # 긴급 자동픽 → news-analyze 디스패치(GITHUB_TOKEN push 는 재귀방지로 못 깨움 → 명시 발동 · pick.yml 동일)
+  contents: write
 
 jobs:
   judge:
@@ -131,44 +130,3 @@ jobs:
             sleep $((2**i))
           done
           echo "::error::push 원장 커밋 실패"; exit 1
-
-      # ── 긴급 grade≥3 자동 픽 → pending 적재 + news-analyze 발동(자동 요약·카드). 운영자 260622. ──
-      # ⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독) + Gemini 썸네일 3장($). 보수적 다중 가드는
-      #    scraper/auto_pick_breaking.py 안(grade≥3·cross≥2·<4h[first_seen 기준]·사건당1회 다중키 영구dedup·런2/일8 상한 · PICK_URL=c.url 로 수동픽과 dedup 정합).
-      - name: 긴급 grade≥3 자동 픽
-        if: steps.chk.outputs.pending != '0'
-        id: autopick
-        run: |
-          python3 -m pip install --quiet --break-system-packages feedparser requests || { echo "::warning::deps 설치 실패 — 자동픽 생략"; echo "picked=0" >> "$GITHUB_OUTPUT"; exit 0; }   # 24.04 PEP-668 = --break-system-packages 필수(push 스텝과 동일 · 없으면 자동픽 무성과 green)
-          python3 scraper/auto_pick_breaking.py | tee /tmp/autopick.out
-          echo "picked=$(sed -n 's/^PICKED=//p' /tmp/autopick.out | tail -1)" >> "$GITHUB_OUTPUT"
-
-      - name: 자동픽 커밋 & 분석 발동
-        if: steps.chk.outputs.pending != '0'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt push/autopick.json)" ]; then
-            echo "자동픽 변동 없음 — 커밋 생략"; exit 0
-          fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pending scraper/seen_urls.txt push/autopick.json
-          git commit -m "auto-pick: 긴급 grade≥3 자동 분석 (픽 ${{ steps.autopick.outputs.picked }}건)"
-          pushed=0
-          for i in 0 1 2 3; do
-            [ "$i" -gt 0 ] && sleep $((2**i))
-            git pull --rebase -X ours origin main && git push origin HEAD:main && { pushed=1; break; }
-            git rebase --abort 2>/dev/null || true
-          done
-          # ⚠️ pending·seen·ledger = 한 커밋(원자) → push 실패면 셋 다 main 미반영 = 분석 발동해도 news-analyze가 pending 못 봄(무과금)
-          #    + 다음 런 재평가(self-heal·로컬 커밋은 runner 종료 시 폐기). ∴ push 성공했을 때만 발동(무의미 no-op 디스패치 회피).
-          if [ "$pushed" != 1 ]; then echo "::warning::자동픽 커밋 push 실패 — 분석 미발동(pending 미반영·다음 런 재평가)"; exit 0; fi
-          # 실제 픽이 있을 때만 분석 발동(GITHUB_TOKEN push 는 재귀방지로 news-analyze 못 깨움 → 명시 디스패치 · pick.yml 패턴)
-          if [ "${{ steps.autopick.outputs.picked }}" != "0" ] && [ -n "${{ steps.autopick.outputs.picked }}" ]; then
-            ok=0; for i in 1 2 3; do
-              gh workflow run news-analyze.yml && { ok=1; break; }
-              echo "::warning::news-analyze 디스패치 실패 — 재시도 $i"; sleep $((i*3))
-            done
-            [ "$ok" = 1 ] || echo "::warning::news-analyze 디스패치 3회 실패 — pending 적재됨(다음 흡수)"
-          fi
