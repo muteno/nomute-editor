@@ -51,10 +51,6 @@
   .go:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
   .go:active { transform:scale(.955); background:rgba(15,253,2,.2); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
-  .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
-  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
-  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb .go.err 통일·운영자 260622) */
-  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
@@ -297,20 +293,11 @@ function poll(outPath, isUrl) {
   tick();
 }
 
-function errStatus(m) {   // 전송 막힘 = 메시지를 버튼 안에 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(thumb errStatus 통일·운영자 260622)
-  const s = $('#status'); if (s) { s.textContent = ''; s.classList.remove('err'); }   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
-  const g = document.getElementById('go'); if (!g) return;
-  if (!g.dataset.label) g.dataset.label = g.textContent;   // 원래 라벨 보존
-  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
-  g.textContent = m; g.setAttribute('aria-live', 'assertive');   // 메시지 = 버튼 안에
-  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label; }, 1700);
-}
 $('#go').onclick = async () => {
+  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지(생성 버튼 통일·260622)
   const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
   const url = $('#url').value.trim();
-  if (!url && !FILE_B64 && !SRT_TEXT) return errStatus('내용 삽입 필수');   // 빈 입력 = 버튼 안 빨강+흔들림(thumb 통일·반쪽폭 버튼이라 짧게·운영자 문구)
-  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
+  if (!url && !FILE_B64 && !SRT_TEXT) { status.textContent = 'URL 또는 파일을 삽입해주세요.'; status.classList.add('err'); return; }
   $('#go').disabled = true; status.textContent = '생성 중…'; $('#out').innerHTML = '<div class="lybar"></div>';   // 생성 중에도 같은 움직이는 게이지
   try {
     const payload = url ? { url } : SRT_TEXT ? { subs: SRT_TEXT } : { fileB64: FILE_B64, name: FILE_NAME };   // 우선순위 url > 텍스트파일(SRT) > 영상·음성
