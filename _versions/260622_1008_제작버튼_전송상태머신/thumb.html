@@ -75,7 +75,6 @@
   .go.firing::after { content:''; position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--accent); transform:scaleX(0); transform-origin:left; animation:goGauge .72s linear forwards; box-shadow:0 0 7px var(--accent); }   /* 누르면 하단 게이지 좌→우(전송 상태머신 정합) */
   @keyframes goGauge { to { transform:scaleX(1); } }
   @media (prefers-reduced-motion:reduce) { .go.firing::after { animation-duration:.2s; } }
-  .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }   /* 전송됨 = 초록 채움 플래시(.iobtn.ok 계승 · 상태머신 완료비트) */
   .chk { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
   .chk input { width:18px; height:18px; accent-color:var(--accent); }
   .chk .abbrhint { color:var(--mut); font-weight:400; font-size:11px; }
@@ -1174,22 +1173,7 @@ let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) —
 // 축약 = 썸네일 정본 화이트리스트(apps/thumbnail 절대규칙5 · 화이트리스트 4종): ...→⋯ · •→· · 이,→李, · 윤,→尹,
 const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
 // 잡 1건 생성 → 로그 → 디스패치 → 폴링(비동기·독립). 동시 다발(경고문 듀얼포맷 등) 가능.
-// 전송 상태머신(가이드북 정본 계승): 누르면 '전송 중…'+게이지 → '전송됨 ✓' 초록플래시 → 원복.
-// 게이지 0.72s 1회만으론 안 보임(라벨 무변화·reduced-motion 0.2s 섬광) → 라벨 변화가 핵심 표시(모션 무관).
-function goFire() {
-  const gb = document.getElementById('go'); if (!gb) return;
-  if (!gb.dataset.label) gb.dataset.label = gb.textContent;        // 원래 라벨 보존(재진입 시 '전송 중…' 덮어쓰기 방지)
-  clearTimeout(gb._fT1); clearTimeout(gb._fT2);
-  gb.classList.remove('firing', 'okdone'); void gb.offsetWidth;    // 리플로우 = 게이지 재시작(연속 전송도 한 흐름)
-  gb.classList.add('firing'); gb.textContent = '전송 중…'; gb.setAttribute('aria-busy', 'true');
-  gb._fT1 = setTimeout(() => {                                     // 전송 구간 종료 → '전송됨 ✓'(이미지 완료 아님 = 진행은 작업카드가 표시)
-    gb.classList.remove('firing'); gb.classList.add('okdone');
-    gb.textContent = '전송됨 ✓'; gb.removeAttribute('aria-busy');
-    gb._fT2 = setTimeout(() => { gb.classList.remove('okdone'); gb.textContent = gb.dataset.label || '이미지 제작'; }, 850);
-  }, 900);
-}
 function dispatchJob(endpoint, payload, label) {
-  goFire();          // 전송 피드백 = 실제 전송 시점에만(검증 통과·재발사 포함)
   clearRestored();   // 새 제작 = 복원된 최근 결과 고스트 치움(새 결과가 맨 위·운영자 260622)
   const job = { n: ++JOBSEQ, label, t0: Date.now(), outs: [], done: [], status: 'run', msg: '', endpoint, payload };   // endpoint·payload 보관 = 실패 시 같은 설정 재발사(운영자 260620)
   JOBS.unshift(job); renderJob(job);
@@ -1207,7 +1191,7 @@ function dispatchJob(endpoint, payload, label) {
 }
 $('#go').onclick = async () => {
   if (_goLock) return; _goLock = true; setTimeout(() => { _goLock = false; }, 350);
-  // firing(전송 상태머신)은 실제 전송 시점(dispatchJob)에서만 — 검증 실패 시 헛발사 방지
+  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지(카드 .mkbtn.firing 통일)
   const status = $('#status'); status.classList.remove('err'); status.textContent = '';
   if (APP === '5') {   // 카드뉴스 = /api/compose (축약 미적용)
     if (!IMG.b64) return errStatus('이미지를 선택해줘');
