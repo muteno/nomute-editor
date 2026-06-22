@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>키워드 칩 — 복사 누름 피드백 목업</title>
+<style>
+  /* viewer :root 토큰 값 복사(인라인 · 보고서 자기완결 — §🎯②) */
+  :root{
+    --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --info:#0cd0f7;
+    --line:rgba(255,255,255,.08);
+    --ease:cubic-bezier(.2,.7,.3,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:
+      radial-gradient(120% 80% at 50% -10%, rgba(15,253,2,.06), transparent 60%), var(--bg);
+    color:var(--fg); font:14px/1.5 'Pretendard Variable',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; padding:22px 16px 56px; }
+  h1{font-size:17px; font-weight:800; letter-spacing:-.3px; margin:0 0 4px; color:var(--accent)}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 22px; line-height:1.6}
+  .sub b{color:var(--fg); font-weight:700}
+  .opt{margin:0 0 26px; padding:16px 14px 18px; border:1px solid var(--line); border-radius:14px;
+    background:rgba(255,255,255,.025);}
+  .opt-h{display:flex; align-items:baseline; gap:8px; margin:0 0 4px}
+  .opt-n{font:800 13px/1 sans-serif; color:var(--accent); background:rgba(15,253,2,.12);
+    border:1px solid rgba(15,253,2,.32); border-radius:7px; padding:4px 8px; flex:none}
+  .opt-t{font-size:14px; font-weight:700}
+  .opt-d{color:var(--mut); font-size:12px; margin:0 0 14px; line-height:1.55}
+  .ctx{font:600 11px/1 var(--mut); color:var(--mut); margin:0 0 8px; letter-spacing:.02em}
+  .ctx::before{content:"• "; color:var(--accent)}
+
+  /* === 라이브 키워드 칩 스타일(viewer .cref-kw / .cref-kwline 복제) === */
+  .kw{display:inline-block; font-size:11px; font-weight:600; color:var(--accent);
+    max-width:100%; white-space:normal; padding:2px 10px; border-radius:8px;
+    background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 1px 4px rgba(0,0,0,.35); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none;
+    transition:background .15s, color .15s, border-color .15s;}
+
+  /* ── A · 눌림만(스케일 다운→스프링백) ── */
+  @keyframes pA{0%{transform:scale(1)} 38%{transform:scale(.9)} 100%{transform:scale(1)}}
+  .kw.A.go{animation:pA .24s var(--ease)}
+
+  /* ── B · 눌림 + 초록 채움(복사됨 색만, 글자 없이) ── */
+  @keyframes pB{
+    0%{transform:scale(1); background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08)}
+    32%{transform:scale(.93); background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.55)}
+    100%{transform:scale(1); background:rgba(0,0,0,.42); border-color:rgba(255,255,255,.08)}}
+  .kw.B.go{animation:pB .42s var(--ease)}
+
+  /* ── C · 인셋 그림자(눌려 들어간 입체감) ── */
+  @keyframes pC{
+    0%{transform:scale(1); box-shadow:0 1px 4px rgba(0,0,0,.35)}
+    42%{transform:scale(.96); box-shadow:inset 0 2px 7px rgba(0,0,0,.6)}
+    100%{transform:scale(1); box-shadow:0 1px 4px rgba(0,0,0,.35)}}
+  .kw.C.go{animation:pC .3s var(--ease)}
+
+  /* ── D · 초록 링 펄스 + 살짝 눌림 ── */
+  @keyframes pD{
+    0%{transform:scale(1); box-shadow:0 1px 4px rgba(0,0,0,.35), 0 0 0 0 rgba(15,253,2,0)}
+    40%{transform:scale(.96); box-shadow:0 1px 4px rgba(0,0,0,.35), 0 0 0 4px rgba(15,253,2,.34)}
+    100%{transform:scale(1); box-shadow:0 1px 4px rgba(0,0,0,.35), 0 0 0 0 rgba(15,253,2,0)}}
+  .kw.D.go{animation:pD .42s var(--ease)}
+
+  /* ── E · 밝기 플래시(번쩍 → 복귀) ── */
+  @keyframes pE{
+    0%{transform:scale(1); filter:brightness(1)}
+    26%{transform:scale(.95); filter:brightness(1.9) saturate(1.3)}
+    100%{transform:scale(1); filter:brightness(1)}}
+  .kw.E.go{animation:pE .4s var(--ease)}
+
+  @media (prefers-reduced-motion:reduce){ .kw.go{animation:none !important} }
+  .hint{margin-top:8px; font-size:11px; color:var(--mut)}
+  .foot{margin-top:30px; padding-top:16px; border-top:1px solid var(--line); color:var(--mut); font-size:12px; line-height:1.6}
+  .foot b{color:var(--fg)}
+</style>
+</head>
+<body>
+  <h1>키워드 칩 — 복사 누름 피드백 (목업)</h1>
+  <p class="sub">지금은 탭하면 <b>"복사됨 ✓"</b> 글자로 바뀌었다 돌아옴. 대신 <b>잠깐 눌린 것처럼</b> 표현했다 복귀하는 5안.
+    각 칩을 <b>실제로 탭</b>해봐 (실기기 권장 · 반복 탭 가능). 마음에 드는 번호 알려주면 그걸로 반영할게.</p>
+
+  <div class="opt">
+    <div class="opt-h"><span class="opt-n">A</span><span class="opt-t">눌림만 (스케일)</span></div>
+    <p class="opt-d">제일 담백 — 살짝 쑥 들어갔다 스프링백. 색 변화 0.</p>
+    <div class="ctx">검색 이미지</div>
+    <span class="kw A" data-v="A">곡성, 물놀이, 테마파크, 합동감식, 감전</span>
+  </div>
+
+  <div class="opt">
+    <div class="opt-h"><span class="opt-n">B</span><span class="opt-t">눌림 + 초록 채움</span></div>
+    <p class="opt-d">누르며 초록(복사됨 색)으로 잠깐 차올랐다 빠짐. 글자는 그대로 — "복사됐다"가 색으로 전달.</p>
+    <div class="ctx">검색 이미지</div>
+    <span class="kw B" data-v="B">곡성, 물놀이, 테마파크, 합동감식, 감전</span>
+  </div>
+
+  <div class="opt">
+    <div class="opt-h"><span class="opt-n">C</span><span class="opt-t">인셋 그림자 (눌려 들어감)</span></div>
+    <p class="opt-d">물리 버튼처럼 안으로 쑥 — 그림자가 안쪽으로 들어갔다 복귀. 촉감 강조.</p>
+    <div class="ctx">검색 이미지</div>
+    <span class="kw C" data-v="C">곡성, 물놀이, 테마파크, 합동감식, 감전</span>
+  </div>
+
+  <div class="opt">
+    <div class="opt-h"><span class="opt-n">D</span><span class="opt-t">초록 링 펄스 + 눌림</span></div>
+    <p class="opt-d">누름과 동시에 초록 테두리 링이 한 번 퍼졌다 사라짐. 가장 "반응했다" 느낌 강함.</p>
+    <div class="ctx">검색 이미지</div>
+    <span class="kw D" data-v="D">곡성, 물놀이, 테마파크, 합동감식, 감전</span>
+  </div>
+
+  <div class="opt">
+    <div class="opt-h"><span class="opt-n">E</span><span class="opt-t">밝기 플래시</span></div>
+    <p class="opt-d">탭 순간 칩이 번쩍 밝아졌다 복귀 + 살짝 눌림. 화사한 피드백.</p>
+    <div class="ctx">검색 이미지</div>
+    <span class="kw E" data-v="E">곡성, 물놀이, 테마파크, 합동감식, 감전</span>
+  </div>
+
+  <p class="foot"><b>참고</b> — 실제 반영 시엔 탭하면 클립보드에 키워드가 복사되고(지금과 동일), 화면 피드백만 위 모션으로 교체돼.
+    글자 스왑("복사됨 ✓")은 제거. 모션 끄기 설정이면 즉시(애니 없음).</p>
+
+<script>
+  // 데모: 칩 탭 → 누름 애니 1회 재생(반복 탭되게 animationend에 클래스 제거)
+  document.querySelectorAll('.kw').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    });
+    el.addEventListener('animationend', ()=> el.classList.remove('go'));
+  });
+</script>
+</body>
+</html>
