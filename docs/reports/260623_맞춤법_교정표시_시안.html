@@ -1,0 +1,100 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>맞춤법 교정 표시 — 입력창 UX 시안</title>
+<style>
+  :root{
+    --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+    --warn:#ffd24a; --warn-rgb:255,210,74; --amber:#ff9614; --danger:#ff5b4a;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; padding:22px 16px 70px; background:radial-gradient(125% 70% at 50% -8%,rgba(15,253,2,.05),transparent 55%) fixed,var(--bg);
+    color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.5; }
+  h1{ font-size:17px; margin:0 0 4px; color:var(--accent); }
+  .lead{ font-size:12.5px; color:var(--mut); margin:0 0 20px; } .lead b{ color:#cfd2d6; }
+  .card{ border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:15px; margin:0 0 18px;
+    background:linear-gradient(150deg,rgba(38,64,46,.4),rgba(14,26,18,.55)); }
+  .tag{ display:inline-block; font-size:11px; font-weight:800; padding:3px 9px; border-radius:8px; margin-bottom:10px; }
+  .tag.rec{ color:var(--accent); background:rgba(15,253,2,.13); border:1px solid rgba(15,253,2,.4); }
+  .tag.cur{ color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line); }
+  .tag.alt{ color:var(--warn); background:rgba(var(--warn-rgb),.12); border:1px solid rgba(var(--warn-rgb),.4); }
+  h2{ font-size:14px; margin:0 0 3px; } .desc{ font-size:11.5px; color:var(--mut); margin:0 0 12px; }
+  textarea{ width:100%; padding:11px 12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; font-size:13px; resize:none; height:62px; transition:box-shadow .3s,border-color .3s; }
+  textarea.flash{ border-color:rgba(var(--warn-rgb),.7); box-shadow:0 0 0 3px rgba(var(--warn-rgb),.18); }
+  .go{ width:100%; margin-top:11px; padding:13px; border-radius:999px; border:1px solid rgba(15,253,2,.36); background:var(--accent-dim); color:var(--accent); font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; }
+  .go:active{ transform:scale(.99); }
+  /* A: 토스트 */
+  .status{ font-size:12.5px; margin-top:9px; min-height:17px; }
+  .status.ok{ color:var(--accent); }
+  /* B: 변경 칩 */
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .chip{ font-size:12px; padding:5px 10px; border-radius:8px; background:rgba(var(--warn-rgb),.1); border:1px solid rgba(var(--warn-rgb),.35); }
+  .chip s{ color:var(--danger); text-decoration:line-through; opacity:.85; } .chip b{ color:var(--warn); }
+  .chip .arr{ color:var(--mut); margin:0 4px; }
+  .chiphead{ font-size:11.5px; color:var(--warn); font-weight:700; margin-top:11px; }
+  /* C: 확인 패널 */
+  .panel{ margin-top:11px; border:1px solid rgba(var(--warn-rgb),.4); border-radius:11px; padding:11px; background:rgba(var(--warn-rgb),.07); }
+  .panel .ph{ font-size:12px; font-weight:700; color:var(--warn); margin-bottom:7px; }
+  .panel .pacts{ display:flex; gap:7px; margin-top:10px; }
+  .panel button{ flex:1; padding:9px; border-radius:9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); }
+  .panel button.prim{ border-color:rgba(15,253,2,.45); color:var(--accent); background:rgba(15,253,2,.12); }
+  .hidden{ display:none; }
+  .note{ font-size:11px; color:var(--mut); margin-top:9px; }
+</style></head><body>
+<h1>맞춤법 틀렸을 때 — 입력창에서 어떻게 보여줄까</h1>
+<p class="lead">셋 다 <b>자동 교정(즉시)</b>은 그대로. 차이는 <b>"뭘 고쳤는지"를 얼마나 보여주냐</b>. 각 카드의 <b>이미지 제작</b>을 눌러봐 (샘플 = <code>속보 됬어요 함니다</code>).</p>
+
+<!-- A 현재 -->
+<div class="card">
+  <span class="tag cur">A · 현재 라이브</span>
+  <h2>토스트만</h2>
+  <p class="desc">텍스트가 슥 바뀌고 "N곳 교정함"만 잠깐. 뭐가 바뀐진 안 보임 = 놓치기 쉬움.</p>
+  <textarea id="taA">속보 됬어요 함니다</textarea>
+  <button class="go" onclick="runA()">이미지 제작</button>
+  <div class="status ok" id="stA"></div>
+</div>
+
+<!-- B 추천 -->
+<div class="card">
+  <span class="tag rec">B · 추천</span>
+  <h2>변경 칩 + 입력창 노란 글로우</h2>
+  <p class="desc">교정 후 텍스트 바뀌고, <b>입력창이 노랗게 깜빡</b> + 아래에 <b>바뀐 것만 칩으로</b>(됬어요→됐어요). 한눈에 보이고, 그대로 제작 진행(안 막음).</p>
+  <textarea id="taB">속보 됬어요 함니다</textarea>
+  <button class="go" onclick="runB()">이미지 제작</button>
+  <div class="chiphead hidden" id="chA">맞춤법 2곳 자동 교정함</div>
+  <div class="chips" id="chB"></div>
+</div>
+
+<!-- C 확인 -->
+<div class="card">
+  <span class="tag alt">C · 확인형</span>
+  <h2>제작 전 미리보기 → 적용/그대로</h2>
+  <p class="desc">제작 누르면 먼저 <b>"이렇게 고칠게"</b> 패널이 떠서 고를 수 있음. 통제력 ↑, 대신 한 번 더 누름(제작이 1탭 늦어짐).</p>
+  <textarea id="taC">속보 됬어요 함니다</textarea>
+  <button class="go" id="goC" onclick="runC()">이미지 제작</button>
+  <div class="panel hidden" id="pnlC">
+    <div class="ph">⚠ 맞춤법 2곳 — 이렇게 고칠게</div>
+    <div class="chips">
+      <span class="chip"><s>됬어요</s><span class="arr">→</span><b>됐어요</b></span>
+      <span class="chip"><s>함니다</s><span class="arr">→</span><b>합니다</b></span>
+    </div>
+    <div class="pacts">
+      <button class="prim" onclick="applyC(true)">적용하고 제작</button>
+      <button onclick="applyC(false)">그대로 제작</button>
+    </div>
+  </div>
+</div>
+
+<p class="note">* 모든 안에서 <b>*별표* 강조는 보존</b>되고, 검사기 죽으면 무보정 진행(제작은 안 막힘). 실시간 빨간 밑줄(타이핑 중)은 입력창(textarea)이 네이티브로 지원 안 해서 제외 — 위 방식이 현실적.</p>
+
+<script>
+  var FIX = '속보 됐어요 합니다';
+  function runA(){ document.getElementById('taA').value=FIX; var s=document.getElementById('stA'); s.textContent='맞춤법 2곳 자동 교정함'; setTimeout(function(){ s.textContent=''; },2500); }
+  function runB(){
+    var ta=document.getElementById('taB'); ta.value=FIX; ta.classList.add('flash'); setTimeout(function(){ ta.classList.remove('flash'); },1400);
+    document.getElementById('chA').classList.remove('hidden');
+    document.getElementById('chB').innerHTML='<span class="chip"><s>됬어요</s><span class="arr">→</span><b>됐어요</b></span><span class="chip"><s>함니다</s><span class="arr">→</span><b>합니다</b></span>';
+  }
+  function runC(){ document.getElementById('pnlC').classList.remove('hidden'); document.getElementById('goC').textContent='맞춤법 확인 중…'; }
+  function applyC(apply){ if(apply) document.getElementById('taC').value=FIX; document.getElementById('pnlC').classList.add('hidden'); document.getElementById('goC').textContent=apply?'✓ 적용 후 제작됨':'그대로 제작됨'; setTimeout(function(){ document.getElementById('goC').textContent='이미지 제작'; },1800); }
+</script>
+</body></html>
