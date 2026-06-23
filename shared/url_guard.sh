@@ -17,7 +17,7 @@ is_article_url() {
   u="$1"
   u="${u#"${u%%[![:space:]]*}"}"      # 앞쪽 공백 트림
   u="${u%"${u##*[![:space:]]}"}"      # 뒤쪽 공백 트림
-  case "$u" in
+  case "${u,,}" in                    # 스킴은 대소문자 무관 매칭(HTTPS:// 누수 방어) — rest 는 원본 u 에서 떼므로 무손실
     http://*|https://*) ;;
     *) return 0 ;;                     # http(s) 아니면 이 가드 소관 아님(통과)
   esac
