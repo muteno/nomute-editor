@@ -128,22 +128,27 @@ export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   if (!url.searchParams.has('selftest')) return json({ ok: false, error: 'POST only (or GET ?selftest)' }, 405);
   const sample = '됬어요 함니다 외않되';
-  const probes = await Promise.all([
-    probe('busan_https', async (signal) => {
-      const b = new URLSearchParams(); b.set('text1', sample);
-      const r = await fetch('https://speller.cs.pusan.ac.kr/results', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'Mozilla/5.0' }, body: b.toString(), signal });
-      const t = await r.text(); return { status: r.status, len: t.length, hasData: /data\s*=\s*\[/.test(t), head: t.slice(0, 160) };
-    }),
-    probe('busan_http', async (signal) => {
-      const b = new URLSearchParams(); b.set('text1', sample);
-      const r = await fetch('http://speller.cs.pusan.ac.kr/results', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'Mozilla/5.0' }, body: b.toString(), signal });
-      const t = await r.text(); return { status: r.status, len: t.length, hasData: /data\s*=\s*\[/.test(t), head: t.slice(0, 160) };
-    }),
-    probe('naver', async (signal) => {
-      const q = encodeURIComponent(sample);
-      const r = await fetch('https://m.search.naver.com/p/csearch/ocontent/util/SpellerProxy?_callback=cb&q=' + q + '&where=nexearch&color_blindness=0', { headers: { 'user-agent': 'Mozilla/5.0', 'referer': 'https://search.naver.com/' }, signal });
-      const t = await r.text(); return { status: r.status, len: t.length, hasNotag: /notag_html/.test(t), head: t.slice(0, 400) };
-    }),
-  ]);
-  return json({ sample, probes });
+  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+  const out = await probe('naver_full', async (signal) => {
+    // 1) 검색 페이지에서 passportKey 추출
+    const sr = await fetch('https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=1&ie=utf8&query=' + encodeURIComponent('맞춤법검사기'), { headers: { 'user-agent': UA, 'accept-language': 'ko-KR,ko;q=0.9' }, signal });
+    const sh = await sr.text();
+    const km = sh.match(/passportKey=([0-9a-zA-Z]+)/) || sh.match(/"passportKey"\s*:\s*"([^"]+)"/);
+    const key = km ? km[1] : null;
+    if (!key) return { searchStatus: sr.status, keyFound: false, searchSnip: sh.slice(0, 200) };
+    // 2) passportKey로 SpellerProxy 호출
+    const u = 'https://m.search.naver.com/p/csearch/ocontent/util/SpellerProxy?_callback=cb&q=' + encodeURIComponent(sample)
+      + '&where=nexearch&color_blindness=0&passportKey=' + encodeURIComponent(key);
+    const r = await fetch(u, { headers: { 'user-agent': UA, 'referer': 'https://search.naver.com/' }, signal });
+    const t = await r.text();
+    let notag = null, count = null, perr = null;
+    try {
+      const j = JSON.parse(t.replace(/^[^(]*\(/, '').replace(/\);?\s*$/, ''));
+      const res = j && j.message && j.message.result;
+      if (res) { notag = res.notag_html; count = res.errata_count; }
+      else perr = (j && j.message && j.message.error) || 'no result';
+    } catch (e) { perr = 'parse: ' + String((e && e.message) || e); }
+    return { keyFound: true, proxyStatus: r.status, count, notag, perr, raw: t.slice(0, 200) };
+  });
+  return json({ sample, naver: out });
 }
