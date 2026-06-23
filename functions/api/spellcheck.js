@@ -1,76 +1,84 @@
-// Cloudflare Pages Function — 부산대 한국어 맞춤법/문법 검사기 프록시 (썸네일 자동교정용).
-//   입력 { texts:[원문, ...] }(필드별 · 줄바꿈 포함) → 줄 단위로 speller.cs.pusan.ac.kr 검사 →
-//   errInfo orgStr→candWord 자동교정(*별표 강조* 보존) → { ok, corrected:[...], counts:[...] }.
+// Cloudflare Pages Function — 네이버 한국어 맞춤법 검사기 프록시 (썸네일 자동교정용).
+//   입력 { texts:[원문, ...] }(필드별 · 줄바꿈 포함) → 줄 단위로 네이버 SpellerProxy 검사 →
+//   notag_html(교정 평문)으로 줄 치환(*별표 강조* 개수 보존) → { ok, corrected:[...], counts:[...] }.
 //   비-LLM · 무료 · 모델 토큰 0 (썸네일 '토큰 0' 불변 유지 · CLAUDE.md §🗺). LLM 호출 없음.
-//   ⚠️ 비차단: 검사기 미도달·형식 변경·파싱 실패 = ok:false(또는 줄별 원문 유지) → 클라가 무보정으로 제작 진행.
-//   외부 호출처 = 고정 호스트(부산대)뿐 → SSRF 무관. 동일 출처(Pages) 전용(Origin 가드).
-const SPELLER = 'https://speller.cs.pusan.ac.kr/results';
+//   ⚠️ 비차단: 검사기 미도달·키 만료·형식 변경·파싱 실패 = ok:false(또는 줄별 원문 유지) → 클라가 무보정으로 제작 진행.
+//   ⚠️ 부산대(speller.cs.pusan.ac.kr)는 Cloudflare 엣지에서 530/1016(미도달)이라 폐기 → 네이버로 확정(260623 실측).
+//   외부 호출처 = 고정 호스트(네이버)뿐 → SSRF 무관. 동일 출처(Pages) 전용(Origin 가드).
+const NAVER_SEARCH = 'https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=1&ie=utf8&query=' + encodeURIComponent('맞춤법검사기');
+const NAVER_PROXY = 'https://m.search.naver.com/p/csearch/ocontent/util/SpellerProxy';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 const MAX_TEXTS = 6;        // 필드 수 상한
-const MAX_CALLS = 8;        // 요청당 부산대 호출 총량 상한(호출 폭주·지연 방지 — 썸네일은 보통 1~3줄)
+const MAX_CALLS = 8;        // 요청당 SpellerProxy 호출 총량 상한(폭주·지연 방지 — 썸네일은 보통 1~3줄)
 const MAX_LINES = 40;       // 필드당 줄 수 상한(거대 페이로드 순회 방지)
 const MAX_FIELD_LEN = 4000; // 필드 길이 상한
-const MAX_LEN = 500;        // 줄당 길이 상한(검사기 제약)
-const MAX_RESP = 2_000_000; // 부산대 응답 본문 상한(메모리 보호)
+const MAX_LEN = 480;        // 줄당 길이 상한(검사기 제약)
+const MAX_RESP = 2_000_000; // 응답 본문 상한(메모리 보호)
 const TIMEOUT_MS = 8000;
+const KEY_TTL = 10 * 60000; // passportKey 캐시 수명(10분)
 
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
 const starCount = x => (String(x).match(/\*/g) || []).length;
-// candWord HTML 엔티티 디코드(부산대 계약 = split 전 decodeEntity). &amp;는 이중디코드 방지 위해 마지막.
-const decodeEnt = s => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&');
+// HTML 엔티티 디코드(notag_html에 &lt; &amp; 등이 올 수 있음). &amp;는 이중디코드 방지 위해 마지막.
+const decodeEnt = s => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+const withTimeout = () => { const c = new AbortController(); const t = setTimeout(() => c.abort(), TIMEOUT_MS); return { signal: c.signal, done: () => clearTimeout(t) }; };
 
-// 한 줄 검사 → 교정된 줄 반환. 실패 시 throw(상위에서 원문 유지).
-async function checkLine(line) {
-  if (!line.trim()) return line;
-  const body = new URLSearchParams();
-  let head = line.slice(0, MAX_LEN);
-  if (head.length === MAX_LEN) { const c = head.charCodeAt(MAX_LEN - 1); if (c >= 0xD800 && c <= 0xDBFF) head = head.slice(0, -1); }   // 경계 서로게이트 반토막 방지
-  body.set('text1', head);
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  let html;
+// passportKey 캐시 — 모듈 스코프(엣지 isolate 내 재사용). 만료/키오류 시 force로 재발급.
+let _key = null, _keyTs = 0;
+async function naverKey(force) {
+  const now = Date.now();
+  if (!force && _key && now - _keyTs < KEY_TTL) return _key;
+  const w = withTimeout();
   try {
-    const r = await fetch(SPELLER, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'nomute-thumb' },
-      body: body.toString(),
-      signal: ctrl.signal,
-    });
-    if (!r.ok) throw new Error('http ' + r.status);
-    html = await r.text();
-  } finally { clearTimeout(timer); }
-  if (html.length > MAX_RESP) throw new Error('response too large');
-  // 응답 HTML 안 JS 배열 추출: `data = [ {str, errInfo:[{start,end,orgStr,candWord}]} ... ];`
-  //   정규식 = 공백 변형 허용(`data=[`·`data  = [`) + 비탐욕 종단(`];`). 실패 시 throw → 원문 유지.
-  const m = html.match(/data\s*=\s*(\[[\s\S]*?\])\s*;/);
-  if (!m) throw new Error('no data block');
-  const arr = JSON.parse(m[1]);   // [{str, errInfo:[...]}...] — JSON.parse(=eval 아님)
-  const list = Array.isArray(arr) ? arr : [];
-  // 교정할 errInfo가 하나도 없으면 원문 그대로(다문장 재조립 공백 손실·무의미 덮어쓰기 방지).
-  if (!list.some(s => Array.isArray(s.errInfo) && s.errInfo.length)) return line;
-  let out = '';
-  for (const sent of list) {
-    let str = String(sent.str ?? '');
-    const errs = (Array.isArray(sent.errInfo) ? sent.errInfo : []).slice()
-      .sort((a, b) => b.start - a.start);   // 뒤에서부터 치환 = start/end 인덱스 보존
-    for (const er of errs) {
-      const cand = decodeEnt(String(er.candWord || '')).split('|')[0].trim();   // 첫 후보만(없으면 교정 안 함)
-      if (!cand) continue;
-      const start = Number(er.start), end = Number(er.end);
-      if (!(Number.isInteger(start) && Number.isInteger(end) && start >= 0 && end <= str.length && start < end)) continue;
-      const sliced = str.slice(start, end);
-      if (er.orgStr != null && String(er.orgStr) !== sliced) continue;   // 앵커 검증 — 인덱스 단위 불일치(이모지·non-BMP 등)면 안전 스킵
-      const org = String(er.orgStr ?? sliced);
-      if (org.includes('*') || cand.includes('*')) continue;   // *강조* 토큰 = 교정 안 함(범위·개수 깨짐 원천 차단)
-      str = str.slice(0, start) + cand + str.slice(end);
-    }
-    out += str;
+    const r = await fetch(NAVER_SEARCH, { headers: { 'user-agent': UA, 'accept-language': 'ko-KR,ko;q=0.9' }, signal: w.signal });
+    if (!r.ok) throw new Error('search ' + r.status);
+    const h = await r.text();
+    if (h.length > MAX_RESP) throw new Error('search too large');
+    const m = h.match(/passportKey=([0-9a-zA-Z]+)/) || h.match(/"passportKey"\s*:\s*"([^"]+)"/);
+    if (!m) throw new Error('no passportKey');
+    _key = m[1]; _keyTs = now; return _key;
+  } finally { w.done(); }
+}
+
+// 한 줄 검사 → 교정 평문(notag_html). 실패 시 throw(상위에서 원문 유지). keyErr=true면 키 재발급 신호.
+async function naverCheck(line, key) {
+  const u = NAVER_PROXY + '?_callback=cb&where=nexearch&color_blindness=0&passportKey=' + encodeURIComponent(key)
+    + '&q=' + encodeURIComponent(line.slice(0, MAX_LEN));
+  const w = withTimeout();
+  let t;
+  try {
+    const r = await fetch(u, { headers: { 'user-agent': UA, 'referer': 'https://search.naver.com/' }, signal: w.signal });
+    if (!r.ok) throw new Error('proxy ' + r.status);
+    t = await r.text();
+  } finally { w.done(); }
+  if (t.length > MAX_RESP) throw new Error('proxy resp too large');
+  const j = JSON.parse(t.replace(/^[^(]*\(/, '').replace(/\);?\s*$/, ''));   // JSONP 껍데기 제거 → JSON
+  const res = j && j.message && j.message.result;
+  if (!res) {
+    const err = new Error((j && j.message && j.message.error) || 'no result');
+    err.keyErr = /키|key/i.test(err.message);   // "유효한 키가 아닙니다" 류 = 키 재발급 필요
+    throw err;
   }
-  if (starCount(out) !== starCount(line)) return line;   // 최종 가드 — 별표 개수 변하면(str 정규화 등) 원문 유지
-  return out;
+  return String(res.notag_html ?? '');
+}
+
+// 한 줄 = 교정본 반환(별표 개수 보존). key 만료 시 1회 재발급 후 재시도.
+async function checkLine(line, keyRef) {
+  if (!line.trim()) return line;
+  let notag;
+  try { notag = await naverCheck(line, keyRef.key); }
+  catch (e) {
+    if (e && e.keyErr) { keyRef.key = await naverKey(true); notag = await naverCheck(line, keyRef.key); }   // 키 재발급 후 1회 재시도
+    else throw e;
+  }
+  notag = decodeEnt(notag).trim();
+  if (!notag) return line;
+  if (starCount(notag) !== starCount(line)) return line;   // *강조* 별표 개수 변하면 원문 유지(강조 보존)
+  return notag;
 }
 
 // 한 필드(여러 줄) 검사 → { text(교정본), count(교정 줄 수) }. budget = 남은 호출 예산(공유).
-async function checkText(text, budget) {
+async function checkText(text, keyRef, budget) {
   const lines = String(text).split('\n').slice(0, MAX_LINES);
   const corrected = [];
   let count = 0;
@@ -78,7 +86,7 @@ async function checkText(text, budget) {
     if (budget.left <= 0 || !ln.trim()) { corrected.push(ln); continue; }
     budget.left--;
     let fixed;
-    try { fixed = await checkLine(ln); } catch { fixed = ln; }   // 줄 단위 실패 = 원문 유지(부분 성공 허용)
+    try { fixed = await checkLine(ln, keyRef); } catch { fixed = ln; }   // 줄 단위 실패 = 원문 유지(부분 성공 허용)
     if (typeof fixed !== 'string') fixed = ln;
     if (fixed !== ln) count++;
     corrected.push(fixed);
@@ -104,11 +112,14 @@ export async function onRequestPost({ request }) {
   let texts = body && body.texts;
   if (!Array.isArray(texts)) return json({ ok: false, error: 'texts[] 필요' }, 400);
   texts = texts.slice(0, MAX_TEXTS).map(t => String(t ?? '').slice(0, MAX_FIELD_LEN));
+  let keyRef;
+  try { keyRef = { key: await naverKey(false) }; }
+  catch (e) { return json({ ok: false, error: 'key: ' + String((e && e.message) || e) }); }   // 키 못 받으면 무보정(비차단)
   const budget = { left: MAX_CALLS };
   try {
     const corrected = [], counts = [];
     for (const t of texts) {
-      const r = await checkText(t, budget);
+      const r = await checkText(t, keyRef, budget);
       corrected.push(r.text); counts.push(r.count);
     }
     return json({ ok: true, corrected, counts });
@@ -117,38 +128,18 @@ export async function onRequestPost({ request }) {
   }
 }
 
-// 진단 — GET ?selftest : 여러 맞춤법 소스를 엣지에서 찔러 어느 게 도달·교정되는지 실측(임시).
-async function probe(name, fn) {
-  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try { const r = await fn(ctrl.signal); return { name, ...r }; }
-  catch (e) { return { name, err: String((e && e.message) || e) }; }
-  finally { clearTimeout(timer); }
-}
+// 헬스체크 — GET ?selftest : 알려진 오타가 실제 교정되는지 yes/no(+ 진단). cron·뷰어 노란링 장치의 토대.
 export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   if (!url.searchParams.has('selftest')) return json({ ok: false, error: 'POST only (or GET ?selftest)' }, 405);
   const sample = '됬어요 함니다 외않되';
-  const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
-  const out = await probe('naver_full', async (signal) => {
-    // 1) 검색 페이지에서 passportKey 추출
-    const sr = await fetch('https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=1&ie=utf8&query=' + encodeURIComponent('맞춤법검사기'), { headers: { 'user-agent': UA, 'accept-language': 'ko-KR,ko;q=0.9' }, signal });
-    const sh = await sr.text();
-    const km = sh.match(/passportKey=([0-9a-zA-Z]+)/) || sh.match(/"passportKey"\s*:\s*"([^"]+)"/);
-    const key = km ? km[1] : null;
-    if (!key) return { searchStatus: sr.status, keyFound: false, searchSnip: sh.slice(0, 200) };
-    // 2) passportKey로 SpellerProxy 호출
-    const u = 'https://m.search.naver.com/p/csearch/ocontent/util/SpellerProxy?_callback=cb&q=' + encodeURIComponent(sample)
-      + '&where=nexearch&color_blindness=0&passportKey=' + encodeURIComponent(key);
-    const r = await fetch(u, { headers: { 'user-agent': UA, 'referer': 'https://search.naver.com/' }, signal });
-    const t = await r.text();
-    let notag = null, count = null, perr = null;
-    try {
-      const j = JSON.parse(t.replace(/^[^(]*\(/, '').replace(/\);?\s*$/, ''));
-      const res = j && j.message && j.message.result;
-      if (res) { notag = res.notag_html; count = res.errata_count; }
-      else perr = (j && j.message && j.message.error) || 'no result';
-    } catch (e) { perr = 'parse: ' + String((e && e.message) || e); }
-    return { keyFound: true, proxyStatus: r.status, count, notag, perr, raw: t.slice(0, 200) };
-  });
-  return json({ sample, naver: out });
+  const expect = '됐어요';   // 최소 한 군데라도 교정되면 healthy
+  try {
+    const keyRef = { key: await naverKey(false) };
+    const fixed = await checkLine(sample, keyRef);
+    const healthy = fixed !== sample && fixed.includes(expect);
+    return json({ healthy, source: 'naver', sample, corrected: fixed, ts: new Date(Date.now() + 9 * 3600e3).toISOString().replace('Z', '+09:00') });
+  } catch (e) {
+    return json({ healthy: false, source: 'naver', sample, error: String((e && e.message) || e), ts: new Date(Date.now() + 9 * 3600e3).toISOString().replace('Z', '+09:00') });
+  }
 }
