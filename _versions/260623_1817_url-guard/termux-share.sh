@@ -21,7 +21,6 @@ HANGUL=$(printf '%s' "$INPUT" | LC_ALL=C grep -oE $'[\xea-\xed]' | wc -l)   # 20
 logline(){ echo "$(date '+%y-%m-%d %H:%M:%S') | $1 | ${LINE1:-$URL}" >> ~/nomute-queue.log; }
 
 cd ~/nomute-editor || { notify "큐 실패" "리포 폴더 없음"; logline "NO_REPO"; exit 1; }
-source shared/url_guard.sh 2>/dev/null || is_article_url(){ return 0; }   # 포털 루트 가드 SSOT(없으면 통과)
 
 FAILDIR="$HOME/nomute-pending-failed"   # 레포 밖 = git reset --hard 면역(미전송분 보존·다음 공유 때 자동 재시도)
 mkdir -p "$FAILDIR"
@@ -52,9 +51,6 @@ if [ "$HANGUL" -ge 200 ]; then
 else
   # URL 경로 — 폰 선-fetch(403 우회). repo의 fetch_article.sh로 폰(200)에서 본문 선취득.
   [ -z "$URL" ] && { notify "큐 실패" "URL/전문 못 찾음"; logline "NO_URL"; exit 1; }
-  # 포털/도메인 루트 가드 — 기사 경로 없는 'https://m.daum.net/' 류(공유 중 경로 잘림)는 큐에 넣어봤자
-  #   분석기가 failed 격리 → 여기서 막고 즉시 알림(재공유·전문붙여넣기 유도). 전문 붙여넣기 경로는 무관.
-  is_article_url "$URL" || { notify "큐 거부 ⚠️" "기사 주소가 아니라 포털 홈($URL) 같아요 — 기사 페이지에서 다시 공유하거나 전체선택→전문 공유"; logline "ROOT_URL"; exit 1; }
   LINE1="$URL"
   git fetch -q origin main && git reset -q --hard origin/main   # fetch_article.sh 최신화(아직 백업 전 = 잃을 것 없음)
   BODY="$(timeout 20 bash .github/scripts/fetch_article.sh "$URL" 2>/dev/null || true)"
