@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>릴스 기본(통합) 모드 신설 + 헤더 배경체크 버그픽스 — 260624</title>
+<style>
+  :root{
+    --bg:#0b0b0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13);
+    --on-accent:#062108; --accent-bright:#d8ff3d; --danger:#ff5b5b; --amber:#ffaa28;
+    --info:#49b6ff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    padding:28px 18px 80px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  h1{font-size:22px;font-weight:800;margin:0 0 4px;}
+  h1 b{color:var(--accent);}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 26px;}
+  h2{font-size:17px;font-weight:800;margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line);}
+  h2 .pin{color:var(--accent);}
+  h3{font-size:14px;font-weight:700;color:var(--fg);margin:18px 0 8px;}
+  p{margin:8px 0;}
+  .mut{color:var(--mut);}
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:18px;margin:14px 0;}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:620px){ .ba{grid-template-columns:1fr;} }
+  .col{background:#101114;border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .col .tag{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;display:inline-block;
+    padding:3px 9px;border-radius:999px;margin-bottom:14px;}
+  .tag.bad{background:rgba(255,91,91,.14);color:var(--danger);border:1px solid rgba(255,91,91,.4);}
+  .tag.good{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(15,253,2,.4);}
+  .note{font-size:13px;color:var(--mut);margin-top:10px;}
+  ul{margin:8px 0;padding-left:20px;} li{margin:5px 0;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:700;font-size:12px;}
+  .ok{color:var(--accent);font-weight:700;}
+  .ng{color:var(--danger);font-weight:700;}
+  .fixed{color:var(--accent-bright);font-weight:700;}
+  code{background:#1c1d21;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe;}
+  .gate{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.9;
+    background:#0e0f12;border:1px solid var(--line);border-radius:10px;padding:13px 14px;margin:8px 0;}
+  .lbl{display:inline-block;min-width:62px;color:var(--mut);}
+  .chip{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;margin:2px 4px 2px 0;}
+  .chip.box{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);}
+  .chip.ov{background:rgba(73,182,255,.16);color:var(--info);border:1px solid rgba(73,182,255,.4);}
+  .chip.base{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(15,253,2,.4);}
+  .five{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:620px){ .five{grid-template-columns:1fr;} }
+  .five .b{background:#101114;border:1px solid var(--line);border-radius:10px;padding:13px;font-size:13px;}
+  .five .b b{color:var(--accent);font-size:13px;}
+  .risk{background:rgba(255,170,40,.08);border:1px solid rgba(255,170,40,.32);border-radius:10px;padding:13px;font-size:13px;}
+  .risk b{color:var(--amber);}
+  .chg{color:var(--accent-bright);font-weight:800;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>릴스 <b>기본(통합)</b> 모드 신설 <span class="mut">+ 헤더 배경체크 버그픽스</span></h1>
+  <p class="sub">260624 · 대상 <code>viewer/thumb.html</code> · <code>functions/api/thumb.js</code> · 이 보고서는 일회성 스냅샷</p>
+
+  <div class="card">
+    <h3 style="margin-top:0">🔎 한눈에</h3>
+    <p>썸네일 제작기 <b>릴스(/2)</b>의 모드 버튼이 <b>2개 → 3개</b>로 늘었다. 새로 생긴 <b>"기본"</b>은 누르기만 하면 <b>헤더와 자막을 한 번에</b> 만들어주는 모드다.</p>
+    <ul>
+      <li>전엔 <b>헤더</b>(흰칸+제목)와 <b>오버레이</b>(자막)를 <b>따로따로 두 번</b> 만들어야 했음.</li>
+      <li>이제 <b>기본 모드</b>에서 부제·제목·자막을 한 화면에 넣고 누르면 → <b>흰헤더 1장 + 자막(투명도60) 1장</b>이 동시에 나옴(2장).</li>
+      <li>"배경" 체크하면 흰칸 없는 헤더가 한 장 더(총 3장).</li>
+      <li>기존 <b>헤더 → 2번 / 오버레이 → 3번</b>으로 그대로 살아있음.</li>
+    </ul>
+    <p class="note">💡 한 줄 멘탈모델 = <b>"릴스 기본 = 흰헤더 + 자막60 한 방에."</b> 따로 만들던 두 작업을 한 버튼으로.</p>
+  </div>
+
+  <h2><span class="pin">📍</span> 1. 모드 버튼 — 전/후</h2>
+  <div class="card">
+    <div class="ba">
+      <div class="col">
+        <span class="tag bad">전 (2개)</span>
+        <div class="gate">
+          <div><span class="lbl">1번</span>헤더 (기본)</div>
+          <div><span class="lbl">2번</span>오버레이</div>
+        </div>
+        <p class="note">헤더와 자막을 각각 만들려면 모드 바꿔가며 두 번 작업.</p>
+      </div>
+      <div class="col">
+        <span class="tag good">후 (3개)</span>
+        <div class="gate">
+          <div><span class="lbl">1번</span><span class="chg">기본</span> ← 신설·디폴트</div>
+          <div><span class="lbl">2번</span>헤더</div>
+          <div><span class="lbl">3번</span>오버레이</div>
+        </div>
+        <p class="note">기본 = 헤더+자막 동시. 헤더·오버레이는 단독으로 쓸 때.</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="pin">📍</span> 2. 기본 모드 = 어떻게 동작</h2>
+  <div class="card">
+    <table>
+      <tr><th>구분</th><th>내용</th></tr>
+      <tr><td><b>입력 (한 화면)</b></td><td>부제(흰색) · 제목(초록) · <b>배경</b> 체크 · 자막(줄바꿈=여러 줄)</td></tr>
+      <tr><td>자막 투명도</td><td><b>60 고정</b> (오버레이의 60·30·직접입력 → 60 하나로 간소화)</td></tr>
+      <tr><td>이미지 삽입</td><td>없음 (빠른 기본 생성용 · 이미지 합성이 필요하면 3번 오버레이로)</td></tr>
+      <tr><td>강조 <code>*별표*</code></td><td>선택 (없어도 제작됨 · 기존 오버레이는 필수)</td></tr>
+      <tr><td><b>출력 (기본)</b></td><td><span class="chip box">흰헤더</span> + <span class="chip ov">자막 OPA60</span> = <b>2장 동시</b></td></tr>
+      <tr><td><b>출력 (배경 체크)</b></td><td><span class="chip base">기본(흰칸없음)</span> + <span class="chip box">흰헤더</span> + <span class="chip ov">자막 OPA60</span> = <b>3장</b></td></tr>
+    </table>
+    <p class="note">구현 = 헤더 1건 + 자막 오버레이 1건을 <b>동시 발사</b>(경고문·저작권이 포스트+릴스 동시 발사하던 패턴 그대로). ∴ <b>백엔드·렌더 스크립트는 한 줄도 안 건드림</b> — 기존 헤더/오버레이 처리를 그대로 두 번 부른 것.</p>
+  </div>
+
+  <h2><span class="pin">📍</span> 3. 덤 — 헤더 "배경" 체크 버그픽스</h2>
+  <div class="card">
+    <p>기본 모드를 만들다가 <b>기존 헤더 모드의 "배경" 체크가 그동안 작동 안 하던 버그</b>를 발견해 같이 고쳤다.</p>
+    <div class="ba">
+      <div class="col">
+        <span class="tag bad">전 (버그)</span>
+        <div class="gate"><span class="lbl">증상</span>배경 체크해도 <span class="ng">흰칸 1장만</span></div>
+        <p class="note">프론트는 체크값(<code>bothBg</code>)을 보냈지만 <code>thumb.js</code>가 그 값을 백엔드로 안 넘겨서(L60 누락) → 워크플로·출력 분기가 항상 꺼져 있었음. = <b>영구 no-op</b>.</p>
+      </div>
+      <div class="col">
+        <span class="tag good">후 (정상)</span>
+        <div class="gate"><span class="lbl">결과</span>체크 시 <span class="fixed">흰칸없는 버전도 추가(2장)</span></div>
+        <p class="note"><code>thumb.js:60</code>에 <code>bothBg:!!p.bothBg</code> 한 줄 추가 → 워크플로(<code>params.get('bothBg')</code>)·출력 분기와 1:1로 맞물림. 미체크는 동작 동일(무회귀).</p>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="pin">📍</span> 4. 분석 (전후·장단점·효율·리스크)</h2>
+  <div class="five">
+    <div class="b"><b>전 → 후</b><br>릴스 모드 <span class="ng">2개</span> → <span class="ok">3개</span>.<br>헤더·자막을 따로 두 번 → <b>기본 한 버튼으로 동시</b>. 헤더 배경체크 정상화.</div>
+    <div class="b"><b>장점</b><br>· 가장 흔한 조합(흰헤더+자막60)을 <b>한 번에</b>.<br>· 기존 2·3번 모드 <b>무회귀</b>(그대로 단독 사용 가능).<br>· 백엔드·렌더 무변경 = 검증면 좁음.</div>
+    <div class="b"><b>단점/트레이드오프</b><br>· 기본 모드는 자막 투명도 60 고정·이미지 없음(빠른 생성에 초점 — 세밀 조정은 3번 오버레이).<br>· 한 번에 2~3개 잡이 떠 캐러셀에 누적(의도된 동작).</div>
+    <div class="b"><b>효율·안전장치</b><br>· 듀얼발사는 검증된 기존 패턴(경고문·저작권) 재사용.<br>· 두 잡은 각자 독립 id·R2 경로·폴링(충돌 0).<br>· <b>비-LLM·과금 0</b>(순수 PIL 렌더 · GitHub Actions 무료분만).</div>
+  </div>
+  <div class="risk" style="margin-top:12px">
+    <b>⚠ 품질저하 리스크 — 낮음.</b> ① 적대적 <b>Opus 4.8 10인 평의회</b> 실제 병렬 소환(READ-ONLY) → <b>발사 계약·bothBg 정합·UI 상태머신·맞춤법 게이트·기존모드 회귀·모바일FAB·백엔드 출력경로·입력 배선·캐러셀·총괄</b> 10앵글 → <b>만장일치 ✅</b>(머지 차단 ❌ 0). 공통 지적(jobLabel combo 라벨·stale 주석)은 반영 완료. ② <code>check_refs</code> rc=0(참조·JS구문·디자인토큰·거울 정합) + 머지 후 <code>origin/main</code> 읽기검증 완료. ③ <b>롤백</b> = <code>_versions/260624_0815_릴스기본모드/</code> 백업본 복원(1파일씩) 또는 PR #869 revert.
+  </div>
+
+  <p class="sub" style="margin-top:30px">생성: Claude Code · 검증: Opus 4.8 10인 평의회(실제 소환) + check_refs + origin/main 읽기검증 · 머지 = PR #869 → main(<code>e04e4b7</code>) · 정본 = <code>viewer/thumb.html</code> · <code>functions/api/thumb.js</code> · CLAUDE.md §📰(썸네일).</p>
+</div>
+</body>
+</html>
