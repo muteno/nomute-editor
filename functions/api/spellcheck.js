@@ -116,3 +116,39 @@ export async function onRequestPost({ request }) {
     return json({ ok: false, error: String((e && e.message) || e) });   // 비차단 — 클라가 무보정 진행
   }
 }
+
+// 진단/헬스체크 — GET ?selftest : 알려진 오타를 부산대에 보내 실제 교정되는지 + 응답 형식 진단.
+//   라이브 계약(POST 토큰·charset·data 블록·passportKey 여부)을 엣지에서 실측. (임시 debug snippet 포함 — 진단 후 정리.)
+export async function onRequestGet({ request }) {
+  const url = new URL(request.url);
+  if (!url.searchParams.has('selftest')) return json({ ok: false, error: 'POST only (or GET ?selftest)' }, 405);
+  const sample = '됬어요 함니다 외않되';
+  const diag = {};
+  try {
+    const body = new URLSearchParams(); body.set('text1', sample);
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    let html;
+    try {
+      const r = await fetch(SPELLER, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'nomute-thumb' },
+        body: body.toString(), signal: ctrl.signal,
+      });
+      diag.busanStatus = r.status;
+      diag.busanCT = r.headers.get('content-type') || '';
+      html = await r.text();
+    } finally { clearTimeout(timer); }
+    diag.respLen = html.length;
+    diag.hasDataBlock = /data\s*=\s*\[/.test(html);
+    diag.hasPassportKey = /passportKey/i.test(html);
+    diag.hasResultForm = /id=['"]?(text_to_check|text1)['"]?/i.test(html);
+    const di = html.search(/data\s*=\s*\[/);
+    diag.aroundData = di >= 0 ? html.slice(di, di + 400) : null;
+    diag.head = html.slice(0, 400);
+    let corrected = null;
+    try { corrected = await checkLine(sample); } catch (e) { diag.checkLineErr = String((e && e.message) || e); }
+    return json({ healthy: !!(corrected && corrected !== sample), sample, corrected, diag });
+  } catch (e) {
+    return json({ healthy: false, error: String((e && e.message) || e), diag });
+  }
+}
