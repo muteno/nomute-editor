@@ -86,7 +86,7 @@ async function checkLine(line, keyRef) {
   const notag = (r.notag || '').trim();
   if (!notag) return { text: line, corrections: [] };
   if (starCount(notag) !== starCount(line)) return { text: line, corrections: [] };   // *강조* 별표 개수 변하면 원문 유지(강조 보존)
-  const corrections = (r.corrections || []).filter(c => !c.from.includes('*') && !c.to.includes('*'));   // 별표 낀 교정 제외(강조 보존)
+  const corrections = (r.corrections || []).filter(c => starCount(c.from) === starCount(c.to));   // 별표 개수 보존되는 교정만(강조 안 깨짐 · 별표 인접 교정도 허용)
   return { text: notag, corrections };
 }
 
