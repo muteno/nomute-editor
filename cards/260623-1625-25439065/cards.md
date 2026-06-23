@@ -1,181 +1,164 @@
-# 모자랐던 투표용지, 그 증거가 하루 만에 녹아 사라졌다
+# 모자란 투표용지 1900매, 그 증거가 녹아 사라졌다
 
 ### [카드 1]
 **텍스트**
 ```text
-투표용지가 모자랐다
-그런데 그걸 증명할
-증거가 하루 만에
-녹아 사라졌다
+선거인 3,856명,
+투표용지는 1,900매뿐이었다
+이 부족을 증명할 단 하나의 물증
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Accent: monochrome desaturated base with a single neon green #0FFD02 color accent, film-noir low-key lighting, deep shadows.
+korean manhwa serious drama (gekiga) illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with one selective accent, heavy oppressive atmosphere; monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: close-up (S08) from a high angle looking down (H02), shot on a 100mm macro lens. Lighting/mood: a single hard cold side-light raking across a dim evidence archive room, deep black shadows, suffocating still tension.
+Scene: one lone cardboard ballot-storage box resting on a cold steel evidence shelf, a small handwritten paper label on its side marked "1900" glowing faint neon green, and immediately beside it a single empty shelf slot where another box should be — the one piece of proof, isolated. The box and its glowing label anchored in the upper-center, sharply in focus.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the evidence storage shelf) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium shot from eye-level, shot on 50mm standard lens.
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension.
-Scene: a metal evidence storage shelf in a dim records room, rows of sealed cardboard evidence boxes with handwritten paper tags, but one slot in the upper-center is conspicuously empty — only a faint rectangular dust outline marks where a box used to sit, and a single severed evidence tag glows neon green #0FFD02, left dangling over the void; the surrounding boxes are desaturated and still, the empty gap pulling the eye; the unmistakable sense that one item was deliberately removed.
+Composition: ONE continuous surface (the steel evidence shelf and dim archive room) extending edge to edge from top to bottom of the frame. The main subject (the labeled box) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no main subject in the lower portion, no key figure in the bottom area, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no English text, no garbled letters, no fake script, no dense text; minimal Korean only if essential (just the short "1900" label)
 ```
 **검색어**
 ```text
-선관위 1900매 투표용지 상자
+잠실7동 투표소 투표용지
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-잠실7동 제2투표소
-선거인 3,856명에
-투표용지는 1,900매
-절반에도 못 미쳤다
+그 증거 상자가 사라졌다
+개혁신당은 선관위가 녹였다고 했다
+법원 절차가 끝나기도 전에
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Accent: monochrome desaturated base with a single neon green #0FFD02 color accent, film-noir low-key lighting, deep shadows.
+korean manhwa serious drama (gekiga) illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with one selective accent, heavy oppressive atmosphere; monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: wide shot (S03) from a low angle looking up (H03), shot on a 24mm wide lens. Lighting/mood: harsh overexposed industrial work-light against deep machine shadow, oppressive heat haze, dread.
+Scene: gloved hands pushing a sealed ballot box along a steel conveyor toward the gaping mouth of a looming industrial paper-pulping machine, faint neon green steam rising as the box edge starts to dissolve, a court document fluttering forgotten on the floor — the evidence about to vanish. The box and the machine mouth anchored in the upper-center.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the polling station floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: wide establishing shot from a high bird's-eye angle, shot on 24mm wide lens.
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood.
-Scene: a school-gymnasium polling station seen from a high overhead angle, a long winding line of generic Korean voters in plain clothing snaking across the hall floor toward the upper-center, where the officials' table holds only a single thin, clearly insufficient stack of ballots; the stark disproportion between the large waiting crowd and the tiny ballot stack is the focus; the meager stack is marked in neon green #0FFD02; tense atmosphere of scarcity and an under-supplied table.
+Composition: ONE continuous surface (the industrial conveyor and factory hall) extending edge to edge from top to bottom of the frame. The main subject (the box at the machine mouth) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no main subject in the lower portion, no key figure in the bottom area, no central focal point in the bottom third
+- no rendered text of any kind, no Korean text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-잠실7동 제2투표소 투표용지
+투표용지 제지업체 용해
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-개혁신당의 주장은 이렇다
-8일 증거보전을 신청했는데
-다음 날 선관위가 상자를
-제지업체로 보내 녹였다
+오후 1시 51분, 법원의 보전 연락
+48분 뒤 용해가 시작됐다
+멈추라는 지시는 없었다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Accent: monochrome desaturated base with a single neon green #0FFD02 color accent, film-noir low-key lighting, deep shadows.
+korean manhwa serious drama (gekiga) illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with one selective accent, heavy oppressive atmosphere; monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: extreme close-up (S10) from a Dutch tilted angle (H06), shot on a 100mm macro lens. Lighting/mood: cold dim interior glow with a faint neon green light bleeding in from off-frame, trembling claustrophobic tension.
+Scene: an extreme tilted close-up of an old analog wall clock, its hands frozen near 2:39 (hands and tick marks only), and just below a desk telephone receiver left lying off its cradle — the call that came and was never acted on. A faint neon green reflection, the distant melting glow, flickers across the clock glass. The clock face anchored upper-center, canted and tense.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the factory floor of a paper mill) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium shot from a low angle, shot on 35mm lens.
-Lighting/mood: single hard side-light cutting across the scene, deep chiaroscuro shadows, tense atmosphere, thick industrial steam.
-Scene: inside an industrial paper-recycling mill, a conveyor carries a single cardboard ballot-storage box toward the mouth of a huge pulping vat of near-boiling water; thick hot steam rises and swallows the box as its edges begin to dissolve and sag; the towering machine is seen from below to feel ominous and irreversible; the vanishing box is edged in neon green #0FFD02 as the disappearing evidence; gloved factory hands guide it in; heavy, point-of-no-return mood.
+Composition: ONE continuous surface (the office wall and desk edge) extending edge to edge from top to bottom of the frame. The main subject (the tilted clock) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no main subject in the lower portion, no key figure in the bottom area, no central focal point in the bottom third
+- no rendered numerals on the clock, no rendered text of any kind, no Korean text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-선관위 투표용지 제지업체 폐기
+천하람 개혁신당 기자회견
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-9일 오후 1시 51분
-법원이 '증거 보전'을 알렸다
-그러나 *48분* 뒤
-용해가 시작됐다고 했다
+7.4톤을 폐기하며
+인계서 한 장 남기지 않았다
+법원이 자료를 묻자 "부존재"
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Accent: monochrome desaturated base with a single neon green #0FFD02 color accent, film-noir low-key lighting, deep shadows.
+korean manhwa serious drama (gekiga) illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with one selective accent, heavy oppressive atmosphere; monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: close-up (S08) from a bird's-eye overhead angle (H04), shot on a 35mm lens. Lighting/mood: flat overcast diffused light, muted cold grey, somber and clinical.
+Scene: an overhead view of a vast heap of shredded and pulped ballot paper filling the floor, and resting on top a single blank official handover form with every ruled field empty and unsigned, one thin neon green line marking the void where an entry should be — the absence is the subject. The blank form anchored upper-center on the paper heap.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the office desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: extreme close-up from a high angle, shot on 100mm macro lens.
-Lighting/mood: warm soft desk-lamp light cooling to cold at the edges, quiet wistful tone turning tense.
-Scene: a top-down extreme close-up of an office desk; an analog clock with its hands frozen in place, a telephone receiver just set back down with the coiled cord still swinging, and beside them a blank waste-transfer form whose fields are entirely empty, stamped only with a small pictographic void mark; a single neon green #0FFD02 sticky note sits on the desk marking the ignored warning; the quiet, damning tension of a call received while the clock kept ticking; only shapes and marks, no readable numbers or letters.
+Composition: ONE continuous surface (the concrete factory floor covered in pulped paper) extending edge to edge from top to bottom of the frame. The main subject (the blank form) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no main subject in the lower portion, no key figure in the bottom area, no central focal point in the bottom third
+- the form fields stay empty, no rendered text of any kind, no Korean text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-선관위 증거보전 증거인멸 폐기
+폐기물 인계서 선관위
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-7.4t를 폐기하며
-인계서도 남기지 않았다
-선관위는 규정대로였다며
-인멸 의도를 부인한다
+선관위는 부인한다
+정식 통보는 폐기 뒤였고
+처리는 규정대로였다고
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Accent: monochrome desaturated base with a single neon green #0FFD02 color accent, film-noir low-key lighting, deep shadows.
+korean manhwa serious drama (gekiga) illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with one selective accent, heavy oppressive atmosphere; monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: medium shot (S06) from a low angle looking up (H03), shot on a 50mm lens. Lighting/mood: single hard side-light, deep chiaroscuro, institutional and defensive.
+Scene: a generic anonymous official figure standing at a plain briefing podium, one hand raised mid-explanation, composed and guarded posture, lit hard from the side; a microphone on the podium catches a single neon green highlight. The figure has no resemblance to any real person and a plain abstract seal sits on the podium instead of any real emblem. The raised hand and face anchored upper-center.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the concrete ground of a waste yard) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: medium shot from a profile side angle, shot on 70mm short telephoto lens.
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber and ambivalent mood.
-Scene: an outdoor waste-disposal yard piled with tons of baled and shredded election printed material rising behind the upper-center; seen in profile, a single generic public official in a plain dark suit (no logos, no identifiable real-person likeness) stands holding an empty clipboard, one hand raised in a measured "we followed the rules" gesture, composed but defensive; an empty document folder at the official's side glows neon green #0FFD02 to mark the absent record; the mood hangs between cold procedure and quiet suspicion.
+Composition: ONE continuous surface (the briefing room wall and podium) extending edge to edge from top to bottom of the frame. The main subject (the official at the podium) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no main subject in the lower portion, no key figure in the bottom area, no central focal point in the bottom third
+- no real institutional logo, no real emblem or insignia, no recognizable real individual, generic features only
+- no rendered text of any kind, no Korean text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-중앙선관위 압수수색
+선관위 압수수색 경찰
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-부족은 실수일 수 있다
-하지만 그걸 증명할 증거가
-가장 먼저 사라졌다
-선거의 신뢰는 거기서 흔들린다
+고의인지 무능인지는 수사의 몫
+하지만 선거의 정당성은
+검증 가능성에서 나온다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Accent: monochrome desaturated base with a single neon green #0FFD02 color accent, film-noir low-key lighting, deep shadows.
+korean manhwa serious drama (gekiga) illustration, sharp black ink outlines with varying line weight, precise rendering, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with one selective accent, heavy solemn atmosphere; monochrome desaturated base with a single neon green #0FFD02 accent, film-noir low-key lighting, deep shadows.
+Camera: wide shot (S03) from a worm's-eye low angle (H05), shot on a 35mm lens. Lighting/mood: cold blue pre-dawn desolation, one lone overhead light, long shadow, solemn stillness.
+Scene: a single transparent ballot box standing alone on a bare empty floor under one cold overhead light, the box empty inside, its edges traced by a thin neon green outline — a quiet symbol of verifiability and shaken trust. The ballot box anchored upper-center, isolated, casting a long shadow across the empty hall.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the floor of an empty vote-counting hall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-Camera: wide establishing shot from a worm's-eye low angle, shot on 28mm lens.
-Lighting/mood: cold blue pre-dawn tone, desolate stillness, a single thin shaft of pale light.
-Scene: a vast empty vote-counting hall after hours, long rows of folded tables receding into shadow; in the upper-center a lone transparent ballot box sits under a thin shaft of pale light, a single folded ballot inside it glowing faintly neon green #0FFD02 as the fragile symbol of electoral trust; the surrounding emptiness conveys what is at stake — verifiability and trust; solemn, civic, unresolved; the worm's-eye angle makes the silent institution loom above.
+Composition: ONE continuous surface (the bare concrete floor and empty hall) extending edge to edge from top to bottom of the frame. The main subject (the transparent ballot box) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no main subject in the lower portion, no key figure in the bottom area, no central focal point in the bottom third
+- no rendered text of any kind, no Korean text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-투표함 개표소 선거
+선거 투표함
 ```
