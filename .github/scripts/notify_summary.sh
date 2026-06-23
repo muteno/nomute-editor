@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 # 분석/요약 요청 완료 → 구독자(프로필 알림 ON)에게 웹푸시. 탭하면 그 요약 창이 바로 열린다(뷰어 /?a=<파일> 딥링크).
 # news-analyze(픽·폰공유)·news-ask(요약 요청) 공용 — analyze.sh/ask.sh 가 /tmp/analyzed_{files,titles}.txt 적재(같은 순서).
-# ⭐ 건별 딥링크(260622): 완료된 요약 *하나하나*에 알림 1개(고유 tag=교체 안 됨·누적) → 탭하면 곧장 그 요약 창.
-#    과거엔 다건(N>1)이면 알림 1개·url="/"(=뉴스요약 메뉴까지만 이동)였음 → 운영자 요구로 건별 직행으로 교체.
+# ⭐ 건별 딥링크: 완료된 요약 *하나하나*에 알림 1개(고유 tag=교체 안 됨·누적) → 탭하면 곧장 그 요약 창.
 #    스팸 방지: PUSH_SUM_MAX(기본 6)개까지 건별, 초과분은 1개 묶음 알림(피드로). 1건이면 그대로 1개.
-# ⏳ 배포 반영 대기(260623): 알림을 analyze 커밋 *직후* 쏘면 Cloudflare Pages 가 articles.json 을 아직 재빌드
-#    안 한 상태라 탭해도 요약이 없다("준비 직전 알림" 문제 — 뷰어가 못 찾고 피드로 떨어짐). ∴ 발송 전에 라이브
-#    articles.json(=Pages 빌드 산출)에 그 요약이 *실제로 뜰 때까지* 폴(최대 PUSH_DEPLOY_WAIT초)한 뒤 쏜다.
-#    → 알림이 오는 순간 = 탭 즉시 열리는 순간. 타임아웃이어도 발송(뷰어 ~2분 재시도 폴백에 의존·비치명).
+#
+# ⏳ 배포 반영 대기(260623) — "준비 직전 알림" 차단의 핵심:
+#    알림을 analyze 커밋 *직후* 쏘면 Cloudflare Pages 가 articles.json 을 아직 재빌드 안 한 상태라 탭해도 요약이 없다
+#    (뷰어가 못 찾고 피드로 떨어짐). ∴ 발송 전에 *라이브 배포가 이번 분석을 실제로 반영했는지* 확인하고 쏜다.
+#    판정 = articles.json 의 `commit`(그 빌드가 만들어진 SHA)이 **이번 분석 커밋(EXPECT_SHA)을 조상으로 포함**하는가.
+#      · 파일명(stem) 존재만 보던 옛 방식은 동일기사 재공유/재분석 시 *옛 배포*에 같은 stem 이 이미 있어 즉시 통과 →
+#        "탭하면 옛 요약"이 뜨는 사각지대가 있었음(분신술 260623). commit 조상검사는 신규·재공유 둘 다 정확.
+#    → 알림이 오는 순간 = 탭하면 즉시 *이번* 요약이 열리는 순간. 타임아웃이어도 발송(뷰어 ~2분 재시도 폴백·비치명).
 # 비치명: 무엇이 실패해도 exit 0(파이프라인 안 깸). 새 요약(파일) 없으면 조용히 생략.
-# env: VAPID_PRIVATE_KEY·VAPID_SUBJECT(없으면 push_send 가 알아서 생략)·VIEWER_BASE(라이브 도메인)·PUSH_DEPLOY_WAIT/POLL.
+# env: VAPID_PRIVATE_KEY·VAPID_SUBJECT(없으면 push_send 가 알아서 생략)·VIEWER_BASE(라이브 도메인)·
+#      EXPECT_SHA(이번 분석 커밋 · 미지정이면 git HEAD 자동)·PUSH_DEPLOY_WAIT/POLL.
 set -uo pipefail
 
 FL=/tmp/analyzed_files.txt
@@ -31,37 +35,41 @@ python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null \
 
 MAX="${PUSH_SUM_MAX:-6}"   # 건별 딥링크 알림 상한(스팸 방지). 초과분은 아래에서 1개 묶음(피드)으로.
 
-# ── ⏳ 라이브 배포 반영 대기 — articles.json 에 새 요약 stem 이 뜰 때까지 폴 ──
-# articles.json 은 build-viewer.mjs 가 queue/*.md 로 생성(file="<stem>.md") → Pages 가 push마다 재빌드·배포.
-# 알림은 건별 딥링크로 쏠 앞 MAX개 stem 의 반영을 확인한다(묶음 폴백 url="/"은 readiness 불요).
+# ── ⏳ 라이브 배포가 *이번 분석*을 반영할 때까지 폴(commit 조상검사) ──
 VIEWER_BASE="${VIEWER_BASE:-https://nomute-editor.pages.dev}"
 AJSON="${VIEWER_BASE%/}/articles.json"
 DEPLOY_WAIT="${PUSH_DEPLOY_WAIT:-240}"   # 배포 반영 최대 대기(초). 타임아웃이면 그래도 발송(뷰어 재시도에 폴백).
 DEPLOY_POLL="${PUSH_DEPLOY_POLL:-8}"     # 폴 간격(초).
+# 이번 분석 커밋 = 이 잡 워크스페이스 HEAD(analyze/ask가 방금 만든 커밋). 워크플로가 EXPECT_SHA 를 주면 그걸 우선.
+# ⚠️ 이 획득은 *반드시* 위 빈-파일 가드(FL) 뒤여야 함 — 변경없음 push로 HEAD가 옛 트리거 커밋일 때, FL 비어
+#    조기종료(:17)되므로 옛 HEAD 가 EXPECT 로 새지 않는다(분신술 260623 ③ 순서의존 명시).
+EXPECT_SHA="${EXPECT_SHA:-}"
+[ -n "$EXPECT_SHA" ] || EXPECT_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
 
-live_has() {   # $1 = stem(.md 제거) — 라이브 articles.json 에 그 요약이 떴으면 0
-  local stem="$1" body
-  body=$(curl -fsS --max-time 12 "${AJSON}?_=$(date +%s)" 2>/dev/null) || return 1
-  printf '%s' "$body" | grep -qF "\"file\": \"${stem}.md\""
+live_commit() {   # 라이브 articles.json 의 빌드 커밋 SHA(없으면 빈문자열)
+  curl -fsS --max-time 12 "${AJSON}?_=$(date +%s)" 2>/dev/null \
+    | python3 -c "import json,sys;print((json.load(sys.stdin).get('commit') or '').strip())" 2>/dev/null
+}
+deployed() {   # 라이브 빌드가 이번 분석(EXPECT_SHA)을 포함하면 0
+  local live; live="$(live_commit)" || return 1
+  [ -n "$live" ] || return 1                       # commit 필드 없는 옛 배포(전환기) → 미반영 취급(타임아웃 후 발송)
+  case "$live" in *[!0-9a-f]* | "") return 1;; esac # 라이브 JSON은 비신뢰 입력 — SHA(hex)가 아니면 거부(fetch·merge-base 헛호출 차단)
+  [ -n "$EXPECT_SHA" ] || return 0                 # 내 커밋을 모르면(git 부재) commit 떴다는 것만으로 통과(폴백)
+  git cat-file -e "${live}^{commit}" 2>/dev/null || git fetch -q origin main 2>/dev/null || true   # 라이브 커밋 로컬 확보(봇 커밋이 추월했으면 fetch)
+  git merge-base --is-ancestor "$EXPECT_SHA" "$live" 2>/dev/null   # EXPECT 가 live 의 조상 = 이번 분석이 그 빌드에 들어감
 }
 
-PENDING_STEMS=()
-for ((i = 0; i < N && i < MAX; i++)); do s="${FILES[$i]%.md}"; [ -n "$s" ] && PENDING_STEMS+=("$s"); done
-if [ ${#PENDING_STEMS[@]} -gt 0 ]; then
-  echo "배포 반영 대기 — ${#PENDING_STEMS[@]}건 / 최대 ${DEPLOY_WAIT}s (${AJSON})"
-  DEADLINE=$(( $(date +%s) + DEPLOY_WAIT ))
-  while [ ${#PENDING_STEMS[@]} -gt 0 ] && [ "$(date +%s)" -lt "$DEADLINE" ]; do
-    remaining=()
-    for s in "${PENDING_STEMS[@]}"; do live_has "$s" || remaining+=("$s"); done
-    PENDING_STEMS=("${remaining[@]}")
-    [ ${#PENDING_STEMS[@]} -eq 0 ] && break
-    sleep "$DEPLOY_POLL"
-  done
-  if [ ${#PENDING_STEMS[@]} -eq 0 ]; then
-    echo "배포 반영 확인 — 발송 진행"
-  else
-    echo "::warning::배포 반영 대기 타임아웃(${#PENDING_STEMS[@]}건 미반영) — 그래도 발송(뷰어 재시도 폴백 의존)"
-  fi
+if [ -n "$EXPECT_SHA" ]; then
+  echo "배포 반영 대기 — EXPECT=${EXPECT_SHA:0:12} / 최대 ${DEPLOY_WAIT}s (${AJSON})"
+else
+  echo "::warning::EXPECT_SHA 미상(git 부재) — commit 존재만으로 폴백 판정"
+fi
+DEADLINE=$(( $(date +%s) + DEPLOY_WAIT ))
+while ! deployed && [ "$(date +%s)" -lt "$DEADLINE" ]; do sleep "$DEPLOY_POLL"; done
+if deployed; then
+  echo "배포 반영 확인(이번 분석 포함) — 발송 진행"
+else
+  echo "::warning::배포 반영 대기 타임아웃 — 그래도 발송(뷰어 재시도 폴백 의존)"
 fi
 
 sent=0
