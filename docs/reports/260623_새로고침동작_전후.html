@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>새로고침 동작 개선 — 전후 비교</title>
+<style>
+  :root{ --bg:#0a120d; --fg:#eef7f0; --mut:#8fa697; --accent:#0FFD02; --on-accent:#062108;
+    --feed:#0FFD02; --scrap:#ff9614; --sns:#0cd0f7; --bad:#ff5a4d; --r-s:10px; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px; -webkit-font-smoothing:antialiased; padding:22px 14px 70px;}
+  body::before{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background:
+    radial-gradient(420px 300px at 8% -4%, rgba(15,253,2,.05), transparent 60%),
+    radial-gradient(720px 460px at 108% 4%, rgba(255,150,20,.05), transparent 62%);}
+  .wrap{max-width:460px; margin:0 auto;}
+  h1{font-size:20px; font-weight:800; margin:0 0 4px;}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 18px; line-height:1.6;}
+  h2{font-size:14.5px; font-weight:800; margin:30px 0 12px; display:flex; align-items:center; gap:7px;}
+  h2 .pin{color:var(--accent);}
+  .card{background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px 15px; margin:0 0 14px;}
+
+  /* 전/후 2열 */
+  .ba{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .ba .col{border-radius:12px; padding:12px 13px; font-size:12px; line-height:1.6;}
+  .col.before{background:rgba(255,90,77,.06); border:1px solid rgba(255,90,77,.25);}
+  .col.after{background:rgba(15,253,2,.06); border:1px solid rgba(15,253,2,.25);}
+  .col .h{font-size:10.5px; font-weight:800; letter-spacing:.06em; margin:0 0 7px;}
+  .col.before .h{color:#ff8c80;} .col.after .h{color:var(--accent);}
+  .col b{color:#dfe9e1;}
+
+  /* 폰 목업 — 상단 theme-color 바 + 탭 라벨 */
+  .phones{display:flex; gap:9px; margin:4px 0 2px;}
+  .ph{flex:1; border-radius:13px; overflow:hidden; border:1px solid rgba(255,255,255,.12); background:#121212;}
+  .ph .bar{height:34px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:10px; font-weight:800; color:rgba(0,0,0,.72);}
+  .ph .bar .spin{width:13px; height:13px; border-radius:50%; border:2px solid rgba(0,0,0,.3); border-top-color:rgba(0,0,0,.75); animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .ph .body{padding:11px 10px 14px; min-height:74px;}
+  .ph .ttl{font-size:11px; font-weight:800; margin:0 0 3px;}
+  .ph .ds{font-size:10px; color:var(--mut); line-height:1.5;}
+  .ph.feed .bar{background:var(--feed);} .ph.feed .ttl{color:var(--feed);}
+  .ph.scrap .bar{background:var(--scrap);} .ph.scrap .ttl{color:var(--scrap);}
+  .ph.sns .bar{background:var(--sns);} .ph.sns .ttl{color:var(--sns);}
+  .ph.gray .bar{background:#0a120d; color:rgba(255,255,255,.5);}
+  .ph.gray .bar .spin{border-color:rgba(255,255,255,.25); border-top-color:rgba(255,255,255,.7);}
+  .cap{font-size:10.5px; color:var(--mut); margin:8px 2px 0; line-height:1.55;}
+  .cap b{color:#cfd8d0;}
+
+  /* 리스트 */
+  ul{margin:6px 0 0; padding:0 0 0 2px; list-style:none;}
+  li{font-size:12px; line-height:1.65; color:var(--mut); padding:0 0 0 18px; position:relative; margin:0 0 5px;}
+  li::before{content:''; position:absolute; left:4px; top:8px; width:5px; height:5px; border-radius:50%; background:var(--accent);}
+  li.bad::before{background:var(--bad);} li.warn::before{background:var(--scrap);}
+  li b{color:#dfe9e1;}
+
+  /* 표 */
+  table{width:100%; border-collapse:collapse; font-size:11.5px; margin-top:4px;}
+  th,td{text-align:left; padding:8px 9px; border-bottom:1px solid rgba(255,255,255,.07); vertical-align:top;}
+  th{color:#cfd8d0; font-weight:800; font-size:10.5px; letter-spacing:.04em;}
+  td{color:var(--mut); line-height:1.55;} td b{color:#dfe9e1;}
+  .chip{display:inline-block; font-size:9.5px; font-weight:800; border-radius:999px; padding:2px 7px; color:#000;}
+  .chip.f{background:var(--feed);} .chip.s{background:var(--scrap);} .chip.n{background:var(--sns);}
+  code{font:11.5px ui-monospace,Menlo,monospace; color:#cfe7d2; background:rgba(15,253,2,.08); border-radius:5px; padding:1px 5px;}
+  .ok{color:var(--accent); font-weight:800;}
+  .risk{color:var(--scrap); font-weight:800;}
+  .foot{font-size:10.5px; color:var(--mut); margin-top:24px; text-align:center; line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>새로고침 동작 개선 — 전후 비교</h1>
+  <p class="sub">웹앱 새로고침 2가지 고침 (<b>① 보던 탭 유지 · ② 상단 로딩색 = 탭 고유색</b>). 단일파일 <code>viewer/index.html</code>만 손봄. PR #853 머지·라이브 반영 완료.</p>
+
+  <!-- ① 탭 유지 -->
+  <h2><span class="pin">📍</span> ① 새로고침 = 보던 탭 그대로</h2>
+  <div class="card">
+    <div class="ba">
+      <div class="col before">
+        <div class="h">BEFORE</div>
+        <b>뉴스요약(feed)</b>에서 새로고침하면 <b>무조건 수집함(scrap)으로 튕김.</b> 복원 화이트리스트에 <code>scrap·sns</code>만 있어 feed가 빠져 있었음.
+      </div>
+      <div class="col after">
+        <div class="h">AFTER</div>
+        보던 탭(<b>feed·scrap·sns</b>) 그대로 복원. 저장값 없으면 기본 홈=수집함 유지(기존 디폴트 보존).
+      </div>
+    </div>
+    <p class="cap"><b>코드 한 줄:</b> <code>['scrap','sns']</code> → <code>['feed','scrap','sns']</code> (복원 게이트에 feed 추가).</p>
+  </div>
+
+  <!-- ② 로딩색 -->
+  <h2><span class="pin">📍</span> ② 새로고침 상단 로딩색 = 탭 고유색</h2>
+  <div class="card">
+    <div class="ba" style="margin-bottom:12px;">
+      <div class="col before">
+        <div class="h">BEFORE</div>
+        <code>&lt;meta theme-color&gt;</code>가 정적 <b>#0a120d</b>(고정 다크). 어느 탭이든 당겨서새로고침·주소창 로딩색이 똑같음.
+      </div>
+      <div class="col after">
+        <div class="h">AFTER</div>
+        <code>showTab()</code>이 탭별 theme-color 갱신 → 로딩 영역이 <b>보던 탭 고유색</b>으로. 배너 글로우색과 매칭.
+      </div>
+    </div>
+
+    <div class="phones">
+      <div class="ph gray">
+        <div class="bar"><span class="spin"></span>새로고침…</div>
+        <div class="body"><div class="ttl" style="color:rgba(255,255,255,.6)">BEFORE</div><div class="ds">탭 무관 — 항상 다크 고정색</div></div>
+      </div>
+      <div class="ph feed">
+        <div class="bar"><span class="spin"></span>새로고침…</div>
+        <div class="body"><div class="ttl">뉴스요약</div><div class="ds">라임 #0FFD02</div></div>
+      </div>
+    </div>
+    <div class="phones" style="margin-top:9px;">
+      <div class="ph scrap">
+        <div class="bar"><span class="spin"></span>새로고침…</div>
+        <div class="body"><div class="ttl">수집함</div><div class="ds">앰버 #ff9614</div></div>
+      </div>
+      <div class="ph sns">
+        <div class="bar"><span class="spin"></span>새로고침…</div>
+        <div class="body"><div class="ttl">SNS</div><div class="ds">시안 #0cd0f7</div></div>
+      </div>
+    </div>
+    <p class="cap">👆 폰 상단 바가 <b>theme-color</b> = 당겨서새로고침 로딩 영역·주소창색. AFTER는 보던 탭 색으로 뜸(스피너는 색 대비로 자동).</p>
+
+    <table>
+      <tr><th>탭</th><th>고유색</th><th>매칭</th></tr>
+      <tr><td><span class="chip f">뉴스요약</span></td><td><b>#0FFD02</b> 라임</td><td>피드 배너 글로우</td></tr>
+      <tr><td><span class="chip s">수집함</span></td><td><b>#ff9614</b> 앰버</td><td>스크랩 배너 글로우</td></tr>
+      <tr><td><span class="chip n">SNS</span></td><td><b>#0cd0f7</b> 시안</td><td>SNS 배너 글로우</td></tr>
+    </table>
+  </div>
+
+  <!-- 장단점 -->
+  <h2><span class="pin">📍</span> 장단점</h2>
+  <div class="card">
+    <ul>
+      <li><b>장점 ·</b> 보던 화면이 유지돼 새로고침 후 길 잃지 않음(특히 뉴스요약 읽다 새로고침해도 그대로).</li>
+      <li><b>장점 ·</b> 로딩색이 탭 정체성과 일치 = 어느 탭에 있는지 로딩 중에도 직관적. 일관성↑.</li>
+      <li><b>장점 ·</b> 두 변경이 한 쌍 — showTab이 색 저장 + 탭 저장을 같이 하니 복원 시 색·탭이 항상 동기.</li>
+      <li class="warn"><b>유의 ·</b> 기본 홈 디폴트(수집함)는 그대로 — 처음 방문·저장값 없을 때만 적용(의도 보존).</li>
+      <li class="warn"><b>유의 ·</b> theme-color 바 적용은 모바일 크롬 등 지원 브라우저 한정(데스크탑 일부 무시) — <b>graceful</b>, 미적용 시 기존 다크색.</li>
+    </ul>
+  </div>
+
+  <!-- 효율성 -->
+  <h2><span class="pin">📍</span> 효율성</h2>
+  <div class="card">
+    <ul>
+      <li><b>경량 ·</b> 순수 클라이언트 JS(메타태그 1개 갱신 + 배열 1원소 추가). 네트워크·빌드·파이프라인 영향 0.</li>
+      <li><b>비용 0 ·</b> LLM·렌더·워크플로 무관. <code>no-cache</code> 헤더라 하드새로고침 없이 즉시 라이브.</li>
+      <li><b>재사용 ·</b> 색은 기존 배너 글로우 토큰값을 그대로 차용 — 새 색 창작 0, 드리프트 0.</li>
+    </ul>
+  </div>
+
+  <!-- 품질저하 리스크 -->
+  <h2><span class="pin">📍</span> 품질저하 리스크</h2>
+  <div class="card">
+    <table>
+      <tr><th>항목</th><th>판정</th></tr>
+      <tr><td>기존 디폴트(수집함 홈) 깨짐</td><td class="ok">없음 — 저장값 없을 때 fallback 그대로</td></tr>
+      <tr><td>탭 전환 애니/배너 크로스페이드 영향</td><td class="ok">없음 — showTab 흐름 미변경, 색 setter만 선두 추가</td></tr>
+      <tr><td>잘못된 저장값 주입</td><td class="ok">방어 — 화이트리스트 검증, 미일치 시 scrap</td></tr>
+      <tr><td>theme-color 미지원 브라우저</td><td class="risk">저 — try/catch·옵셔널, 미적용 시 기존색 유지</td></tr>
+      <tr><td>파이프라인·데이터·구조</td><td class="ok">무관 — 국소 뷰어 UI만</td></tr>
+    </table>
+    <p class="cap">검증: <code>shared/check_refs.py</code> 통과(참조·디자인 거울·JS 구문 OK) · <code>git show origin/main</code> 실측 반영 확인 · Cloudflare 배포 성공.</p>
+  </div>
+
+  <p class="foot">260623 · viewer/index.html · PR #853 머지 완료 · 일회성 스냅샷(viewer 동기화 의무 없음)</p>
+</div>
+</body>
+</html>
