@@ -41,6 +41,9 @@ async function naverKey(force) {
 }
 
 // 한 줄 검사 → 교정 평문(notag_html). 실패 시 throw(상위에서 원문 유지). keyErr=true면 키 재발급 신호.
+const stripTags = s => String(s).replace(/<[^>]*>/g, '');
+
+// 네이버 검사 → { notag(교정 평문), corrections:[{from,to}] }. corrections = origin_html(오타)·html(교정) 마킹 쌍.
 async function naverCheck(line, key) {
   const u = NAVER_PROXY + '?_callback=cb&where=nexearch&color_blindness=0&passportKey=' + encodeURIComponent(key)
     + '&q=' + encodeURIComponent(line.slice(0, MAX_LEN));
@@ -59,39 +62,48 @@ async function naverCheck(line, key) {
     err.keyErr = /키|key/i.test(err.message);   // "유효한 키가 아닙니다" 류 = 키 재발급 필요
     throw err;
   }
-  return String(res.notag_html ?? '');
+  const notag = decodeEnt(String(res.notag_html ?? ''));
+  let corrections = [];
+  try {   // origin_html = <span class=result_underline>오타</span> · html = <em ...>교정</em> → 순서쌍
+    const froms = [...String(res.origin_html || '').matchAll(/<span[^>]*result_underline[^>]*>([\s\S]*?)<\/span>/gi)].map(m => decodeEnt(stripTags(m[1])).trim());
+    const tos = [...String(res.html || '').matchAll(/<em[^>]*>([\s\S]*?)<\/em>/gi)].map(m => decodeEnt(stripTags(m[1])).trim());
+    if (froms.length && froms.length === tos.length) {   // 1:1 정렬될 때만(아니면 통째 교정으로 폴백)
+      corrections = froms.map((f, i) => ({ from: f, to: tos[i] })).filter(c => c.from && c.to && c.from !== c.to);
+    }
+  } catch {}
+  return { notag, corrections };
 }
 
-// 한 줄 = 교정본 반환(별표 개수 보존). key 만료 시 1회 재발급 후 재시도.
+// 한 줄 = { text(교정본), corrections:[{from,to}] }. 별표(*강조*) 보존·key 만료 시 1회 재발급 재시도.
 async function checkLine(line, keyRef) {
-  if (!line.trim()) return line;
-  let notag;
-  try { notag = await naverCheck(line, keyRef.key); }
+  if (!line.trim()) return { text: line, corrections: [] };
+  let r;
+  try { r = await naverCheck(line, keyRef.key); }
   catch (e) {
-    if (e && e.keyErr) { keyRef.key = await naverKey(true); notag = await naverCheck(line, keyRef.key); }   // 키 재발급 후 1회 재시도
+    if (e && e.keyErr) { keyRef.key = await naverKey(true); r = await naverCheck(line, keyRef.key); }   // 키 재발급 후 1회 재시도
     else throw e;
   }
-  notag = decodeEnt(notag).trim();
-  if (!notag) return line;
-  if (starCount(notag) !== starCount(line)) return line;   // *강조* 별표 개수 변하면 원문 유지(강조 보존)
-  return notag;
+  const notag = (r.notag || '').trim();
+  if (!notag) return { text: line, corrections: [] };
+  if (starCount(notag) !== starCount(line)) return { text: line, corrections: [] };   // *강조* 별표 개수 변하면 원문 유지(강조 보존)
+  const corrections = (r.corrections || []).filter(c => starCount(c.from) === starCount(c.to));   // 별표 개수 보존되는 교정만(강조 안 깨짐 · 별표 인접 교정도 허용)
+  return { text: notag, corrections };
 }
 
-// 한 필드(여러 줄) 검사 → { text(교정본), count(교정 줄 수) }. budget = 남은 호출 예산(공유).
+// 한 필드(여러 줄) 검사 → { text(전부 교정본), corrections:[{from,to}] }. budget = 남은 호출 예산(공유).
 async function checkText(text, keyRef, budget) {
   const lines = String(text).split('\n').slice(0, MAX_LINES);
-  const corrected = [];
-  let count = 0;
+  const outLines = [];
+  let corrs = [];
   for (const ln of lines) {
-    if (budget.left <= 0 || !ln.trim()) { corrected.push(ln); continue; }
+    if (budget.left <= 0 || !ln.trim()) { outLines.push(ln); continue; }
     budget.left--;
-    let fixed;
-    try { fixed = await checkLine(ln, keyRef); } catch { fixed = ln; }   // 줄 단위 실패 = 원문 유지(부분 성공 허용)
-    if (typeof fixed !== 'string') fixed = ln;
-    if (fixed !== ln) count++;
-    corrected.push(fixed);
+    let r;
+    try { r = await checkLine(ln, keyRef); } catch { r = { text: ln, corrections: [] }; }   // 줄 단위 실패 = 원문 유지
+    outLines.push(typeof r.text === 'string' ? r.text : ln);
+    corrs = corrs.concat(Array.isArray(r.corrections) ? r.corrections : []);
   }
-  return { text: corrected.join('\n'), count };
+  return { text: outLines.join('\n'), corrections: corrs };
 }
 
 // 동일 출처(Pages) 전용 — 오픈 프록시 남용 차단. Origin 없으면(비-브라우저) 통과(관대), 있으면 화이트리스트만.
@@ -117,12 +129,12 @@ export async function onRequestPost({ request }) {
   catch (e) { return json({ ok: false, error: 'key: ' + String((e && e.message) || e) }); }   // 키 못 받으면 무보정(비차단)
   const budget = { left: MAX_CALLS };
   try {
-    const corrected = [], counts = [];
+    const corrected = [], corrections = [], counts = [];
     for (const t of texts) {
       const r = await checkText(t, keyRef, budget);
-      corrected.push(r.text); counts.push(r.count);
+      corrected.push(r.text); corrections.push(r.corrections); counts.push(r.corrections.length);
     }
-    return json({ ok: true, corrected, counts });
+    return json({ ok: true, corrected, corrections, counts });   // corrections[필드] = [{from,to}] (칩 개별선택용)
   } catch (e) {
     return json({ ok: false, error: String((e && e.message) || e) });   // 비차단 — 클라가 무보정 진행
   }
@@ -136,9 +148,10 @@ export async function onRequestGet({ request }) {
   const expect = '됐어요';   // 최소 한 군데라도 교정되면 healthy
   try {
     const keyRef = { key: await naverKey(false) };
-    const fixed = await checkLine(sample, keyRef);
+    const r = await checkLine(sample, keyRef);
+    const fixed = r.text;
     const healthy = fixed !== sample && fixed.includes(expect);
-    return json({ healthy, source: 'naver', sample, corrected: fixed, ts: new Date(Date.now() + 9 * 3600e3).toISOString().replace('Z', '+09:00') });
+    return json({ healthy, source: 'naver', sample, corrected: fixed, corrections: r.corrections, ts: new Date(Date.now() + 9 * 3600e3).toISOString().replace('Z', '+09:00') });
   } catch (e) {
     return json({ healthy: false, source: 'naver', sample, error: String((e && e.message) || e), ts: new Date(Date.now() + 9 * 3600e3).toISOString().replace('Z', '+09:00') });
   }

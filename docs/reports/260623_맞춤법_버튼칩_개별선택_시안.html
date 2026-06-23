@@ -1,0 +1,111 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>맞춤법 교정 — 버튼+칩 개별선택 시안</title>
+<style>
+  :root{
+    --bg:#121212; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+    --warn:#ffd24a; --warn-rgb:255,210,74; --arm:#ffd93d; --arm-rgb:255,217,61; --on-arm:#1a1205; --danger:#ff5b4a;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; padding:22px 16px 70px; background:radial-gradient(125% 70% at 50% -8%,rgba(15,253,2,.05),transparent 55%) fixed,var(--bg);
+    color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.5; }
+  h1{ font-size:16px; margin:0 0 4px; color:var(--accent); }
+  .lead{ font-size:12px; color:var(--mut); margin:0 0 18px; } .lead b{ color:#cfd2d6; }
+  .demo{ max-width:380px; margin:0 auto; border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:16px;
+    background:linear-gradient(150deg,rgba(38,64,46,.4),rgba(14,26,18,.55)); }
+  label.l{ font-size:12px; color:var(--mut); display:block; margin-bottom:6px; }
+  textarea{ width:100%; padding:11px 12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; font-size:13px; resize:none; height:60px; transition:box-shadow .3s,border-color .3s; }
+  textarea.flash{ border-color:rgba(var(--warn-rgb),.7); box-shadow:0 0 0 3px rgba(var(--warn-rgb),.18); }
+
+  /* 칩 = 변경 항목(도형). 점등=적용예정(노랑), 해제=그대로(회색) */
+  .chips{ display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; min-height:4px; }
+  .chip{ font-size:12px; padding:6px 11px; border-radius:9px; cursor:pointer; user-select:none; transition:.15s;
+    border:1px solid var(--line); background:rgba(255,255,255,.04); display:inline-flex; align-items:center; gap:6px; }
+  .chip .dot{ width:7px; height:7px; border-radius:50%; background:var(--mut); transition:.15s; }
+  .chip .from{ color:var(--mut); } .chip .arr{ color:var(--mut); } .chip .to{ color:var(--fg); }
+  .chip.on{ border-color:rgba(var(--warn-rgb),.55); background:rgba(var(--warn-rgb),.12); }
+  .chip.on .dot{ background:var(--warn); box-shadow:0 0 7px rgba(var(--warn-rgb),.8); }
+  .chip.on .to{ color:var(--warn); font-weight:700; }
+  .chip.on .from{ text-decoration:line-through; color:var(--danger); opacity:.8; }
+  .chip:not(.on) .arr,.chip:not(.on) .to{ display:none; }
+  .chip:not(.on) .from{ color:var(--mut); }
+  .chip .keep{ display:none; font-size:10.5px; color:var(--mut); } .chip:not(.on) .keep{ display:inline; }
+
+  /* 버튼 = 초록(기본/맞춤법0) ↔ 노랑(교정 점등 있음·재확인) ↔ 체크 */
+  .go{ width:100%; margin-top:13px; padding:14px; border-radius:999px; border:1px solid rgba(15,253,2,.36);
+    background:var(--accent-dim); color:var(--accent); font-weight:800; font-size:14px; font-family:inherit; cursor:pointer;
+    transition:.18s; position:relative; overflow:hidden; }
+  .go.arm{ background:rgba(var(--arm-rgb),.16); color:var(--arm); border-color:rgba(var(--arm-rgb),.55); }
+  .go.doneY{ background:var(--warn); color:var(--on-arm); border-color:var(--warn); }
+  .go.doneG{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .sub{ font-size:11px; color:var(--mut); text-align:center; margin-top:8px; min-height:14px; }
+
+  .reset{ display:block; margin:14px auto 0; font-size:11px; color:var(--mut); background:none; border:1px solid var(--line); border-radius:8px; padding:6px 12px; cursor:pointer; }
+  .guide{ max-width:380px; margin:18px auto 0; font-size:11.5px; color:var(--mut); }
+  .guide b{ color:#cfd2d6; } .guide .y{ color:var(--warn); } .guide .g{ color:var(--accent); }
+  .guide li{ margin:5px 0; }
+</style></head><body>
+<h1>맞춤법 교정 — 버튼 + 칩 개별선택</h1>
+<p class="lead">샘플 = <code>속보 됬어요 함니다 외않되</code>(오타 3). <b>이미지 제작 및 맞춤법 교정</b>을 눌러봐 → 칩이 뜸. <b>칩을 탭해 점등을 켜고 끄며</b> 버튼 색이 바뀌는 걸 봐. 한 번 더 누르면 적용+생성.</p>
+
+<div class="demo">
+  <label class="l">텍스트 (줄바꿈 = 여러 줄)</label>
+  <textarea id="ta">속보 됬어요 함니다 외않되</textarea>
+  <div class="chips" id="chips"></div>
+  <button class="go" id="go" onclick="press()">이미지 제작 및 맞춤법 교정</button>
+  <div class="sub" id="sub"></div>
+  <button class="reset" onclick="reset()">↺ 처음으로</button>
+</div>
+
+<ul class="guide">
+  <li><b>1번째 누름</b> → 맞춤법 검사 → 바뀔 부분이 <span class="y">노란 칩(점등)</span>으로 버튼 아래 뜸. 버튼은 <span class="y">노랑(재확인)</span>.</li>
+  <li><b>칩 탭</b> → 점등 해제(그대로 둠) ↔ 다시 탭하면 점등. <b>개별 선택.</b></li>
+  <li><b>다 점등</b> = 전부 교정 → <span class="y">노란 체크</span> 생성 · <b>일부만 점등</b> = 그것만 교정 · <b>다 해제</b> = 맞춤법 0 → <span class="g">초록 진행</span>.</li>
+  <li><b>2번째 누름</b> → 점등된 것만 텍스트에 적용 + 생성. 적용 있으면 <span class="y">노란 체크</span>, 없으면 <span class="g">초록 체크</span>.</li>
+</ul>
+
+<script>
+  var CORR=[{f:'됬어요',t:'됐어요'},{f:'함니다',t:'합니다'},{f:'외않되',t:'왜 안 돼'}];
+  var phase='idle';   // idle → review → done
+  var lit=[];         // 칩별 점등
+  var go=document.getElementById('go'), sub=document.getElementById('sub'), chips=document.getElementById('chips'), ta=document.getElementById('ta');
+
+  function renderChips(){
+    chips.innerHTML='';
+    if(phase!=='review'){ return; }
+    CORR.forEach(function(c,i){
+      var el=document.createElement('div'); el.className='chip'+(lit[i]?' on':'');
+      el.innerHTML='<span class="dot"></span><span class="from">'+c.f+'</span><span class="arr">→</span><span class="to">'+c.t+'</span><span class="keep">(그대로)</span>';
+      el.onclick=function(){ lit[i]=!lit[i]; renderChips(); paintBtn(); };
+      chips.appendChild(el);
+    });
+  }
+  function litCount(){ return lit.filter(Boolean).length; }
+  function paintBtn(){
+    go.className='go';
+    if(phase==='review'){
+      var n=litCount();
+      if(n>0){ go.classList.add('arm'); go.textContent='재확인 → 제작'; sub.textContent='맞춤법 '+n+'곳 적용 예정 · 칩 눌러 개별 해제 · 다시 눌러 제작'; }
+      else { go.textContent='이미지 제작 (맞춤법 안 함)'; sub.textContent='교정 전부 해제됨 — 그대로 초록 진행'; }
+    }
+  }
+  function press(){
+    if(phase==='idle'){
+      phase='review'; lit=CORR.map(function(){return true;});   // 검사 → 전부 점등
+      renderChips(); paintBtn();
+      ta.classList.add('flash'); setTimeout(function(){ta.classList.remove('flash');},1200);
+      return;
+    }
+    if(phase==='review'){
+      var any=litCount()>0, t=ta.value;
+      CORR.forEach(function(c,i){ if(lit[i]) t=t.replace(c.f,c.t); });
+      ta.value=t; phase='done'; chips.innerHTML='';
+      go.className='go '+(any?'doneY':'doneG'); go.textContent=any?'✓ 교정 후 제작됨':'✓ 제작됨';
+      sub.textContent=any?('맞춤법 '+litCount()+'곳 적용 + 생성'):'맞춤법 미적용 + 생성';
+      setTimeout(reset, 2600);
+    }
+  }
+  function reset(){ phase='idle'; lit=[]; ta.value='속보 됬어요 함니다 외않되'; chips.innerHTML=''; go.className='go'; go.textContent='이미지 제작 및 맞춤법 교정'; sub.textContent=''; }
+  reset();
+</script>
+</body></html>
