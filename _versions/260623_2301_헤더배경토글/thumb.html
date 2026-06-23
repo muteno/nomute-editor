@@ -354,7 +354,7 @@
       <label>투명도 (OPA)</label>
       <div class="seg" id="opaSeg">
         <button data-opa="58" class="on">58</button>
-        <button data-opa="30">30</button>
+        <button data-opa="30" class="on">30</button>
         <button data-opa="custom" id="opaCustom"><span class="lab">직접입력</span><input type="text" id="opaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="OPA"></button>
       </div>
     </div>
@@ -385,14 +385,13 @@
         <button data-rmode="overlay">오버레이</button>
       </div>
 
-      <!-- 헤더 모드: 부제 + 제목 → 흰칸(기본 1장) · 배경 체크 시 흰칸 없는(nobg) 버전 추가(2장) -->
+      <!-- 헤더 모드: 부제 + 제목 → 기본(흰칸無) + 흰칸 2장 -->
       <div id="rHeader">
         <label>부제 (흰색)</label>
         <input type="text" id="sub" placeholder="부제 한 줄">
         <label>제목 (초록)</label>
         <input type="text" id="title" placeholder="제목 한 줄">
-        <label class="chk" id="rBgBox"><input type="checkbox" id="rBg"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 배경 <span class="abbrhint">체크 시 흰칸 없는 버전도 함께(2장)</span></label>
-        <div class="hint"><span id="hdrCnt">출력 1장 — <b>흰칸</b>(영상자리)</span> <span id="hdrTrk" class="trk"></span></div>
+        <div class="hint">출력 2장 — <b>기본</b>(흰칸 없음) + <b>흰칸</b>(영상자리) <span id="hdrTrk" class="trk"></span></div>
       </div>
 
       <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
@@ -613,7 +612,7 @@ document.querySelectorAll('#fmtSeg button').forEach(b => b.onclick = () => {
 
 // ---- OPA 세그 (58 기본 / 30 / 직접입력 = 버튼 안 입력창 · 2자리 자동 이탈) ----
 const opaNum = $('#opaNum');
-// OPA = 다중선택 토글(기본 58만 ON → 1장 · 30은 탭하면 추가 = 둘 다 생성). 선택된 것들이 곧 생성 장수.
+// OPA = 다중선택 토글(기본 58·30 둘 다 ON → 둘 다 생성). 선택된 것들이 곧 생성 장수.
 // 최소 1개 유지 = 마지막 1개는 못 끔(0개 미선택 불가). custom = 추가 opa 토글.
 document.querySelectorAll('#opaSeg button').forEach(b => b.onclick = () => {
   if (b.dataset.opa === 'custom') { b.classList.add('on'); opaNum.focus(); opaNum.select(); return; }   // 직접입력 = 값 기반: 펼쳐서 포커스만(끄지 않음)·끄기는 값 비우고 벗어남(/2와 통일)
@@ -649,10 +648,6 @@ function selRmode(m) {
   if (m === 'overlay') updateTrkHint('rLines', 'rLinesTrk', 'reels');   // 실시간 자간
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
-// 배경 체크 → 출력 장수 힌트 갱신(기본 1장=흰칸 / 체크 2장=흰칸+배경)
-$('#rBg').addEventListener('change', () => {
-  $('#hdrCnt').innerHTML = $('#rBg').checked ? '출력 2장 — <b>흰칸</b>(영상자리) + <b>배경</b>(흰칸 없음)' : '출력 1장 — <b>흰칸</b>(영상자리)';
-});
 
 // ---- 릴스 오버레이 OPA 세그 (60·30 항상 렌더=고정 표시 / 직접입력=추가 opa(+1) 토글) ----
 const rOpaNum = $('#rOpaNum');
@@ -791,7 +786,7 @@ function buildParams() {
   if (APP === '4') return { fmt: FMT, lines: ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean) };   // 경고문 = 프리필 텍스트
   if (APP === '1') return { fmt: 'post', lines: linesArr, opas: getOpas() };   // /1 = post · 선택된 OPA들 각각 1장(다중)
   if (APP === '2') {
-    if (RMODE === 'header') return { mode: 'header', sub: $('#sub').value.trim(), title: $('#title').value.trim(), bothBg: $('#rBg').checked };   // bothBg = 흰칸 없는(nobg) 버전도(체크 시 2장)
+    if (RMODE === 'header') return { mode: 'header', sub: $('#sub').value.trim(), title: $('#title').value.trim() };
     const rlines = ($('#rLines').value || '').split('\n').map(s => s.trim()).filter(Boolean);   // 오버레이 = lines + 이미지(옵션)
     return { mode: 'overlay', lines: rlines, opas: getReelsOpas() };
   }

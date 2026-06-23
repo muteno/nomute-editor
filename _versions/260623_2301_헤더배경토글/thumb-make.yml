@@ -145,22 +145,19 @@ jobs:
               produced.append(out)
           elif app == '2':          # 릴스 — 헤더(흰칸+nobg 2장) | 오버레이(opa별 2~3장)
               mode = params.get('mode', 'header')
-              if mode == 'header':  # 부제+제목 → 흰칸(render·기본 1장). bothBg=True 면 nobg(흰칸 없이 텍스트만)도(2장). import 재사용(스크립트 코드 불변)
+              if mode == 'header':  # 부제+제목 → 흰칸(render) + nobg(흰칸 없이 텍스트만). import 재사용(스크립트 코드 불변)
                   from nomute_reels2 import render, _draw_line, FONT, WHITE, GREEN, SUB_FS, SUB_Y, TITLE_FS, TITLE_Y, W, H
                   from PIL import Image, ImageDraw, ImageFont
                   sub, title = params.get('sub', ''), params.get('title', '')
-                  both = bool(params.get('bothBg'))   # 배경 체크 = 흰칸 없는 버전도(2장) · 기본(미체크) = 흰칸만 1장(운영자 260623)
                   box, nobg = f'{outdir}/box.jpg', f'{outdir}/nobg.jpg'   # 헤더 = 2K JPG q95(불투명 베이스+텍스트)
                   box_tmp = '/tmp/_box.png'
                   render(sub, title, BASE, box_tmp)                             # 흰칸(영상자리) — render가 BASE를 2K 업스케일(PNG)
                   save_jpg(Image.open(box_tmp), box)
-                  produced.append(box)
-                  if both:                                                      # 배경 체크 시에만 nobg(흰칸 없음) — 2K
-                      im = Image.open(BASE).convert('RGB').resize((W, H), Image.LANCZOS); d = ImageDraw.Draw(im)
-                      _draw_line(d, sub,   SUB_Y,   ImageFont.truetype(FONT, SUB_FS,   index=1), WHITE, SUB_FS)
-                      _draw_line(d, title, TITLE_Y, ImageFont.truetype(FONT, TITLE_FS, index=1), GREEN, TITLE_FS)
-                      save_jpg(im, nobg)
-                      produced.append(nobg)
+                  im = Image.open(BASE).convert('RGB').resize((W, H), Image.LANCZOS); d = ImageDraw.Draw(im)   # nobg(흰칸 없음) — 2K
+                  _draw_line(d, sub,   SUB_Y,   ImageFont.truetype(FONT, SUB_FS,   index=1), WHITE, SUB_FS)
+                  _draw_line(d, title, TITLE_Y, ImageFont.truetype(FONT, TITLE_FS, index=1), GREEN, TITLE_FS)
+                  save_jpg(im, nobg)
+                  produced += [nobg, box]
               else:                 # 오버레이 — opa별. 배경 있으면 JPG합성(2K)·없으면 FHD PNG (포스트와 통일)
                   from nomute_overlay import generate
                   tr = fit_tracking(params['lines'], 'reels')
