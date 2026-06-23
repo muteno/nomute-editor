@@ -38,11 +38,7 @@ def main():
     d = [m for m in before if not (isinstance(m, dict) and m.get("id") == mid)]
     if cmd == "set":
         text = sys.argv[3] if len(sys.argv) > 3 else ""
-        level = sys.argv[4] if len(sys.argv) > 4 else ""   # 선택: "warn"=노란 점등·노란 제목(수집 실패 등) / 빈값=기본
-        m = {"id": mid, "text": text, "ts": datetime.now(KST).strftime("%m/%d %H:%M")}
-        if level:
-            m["level"] = level
-        d.insert(0, m)
+        d.insert(0, {"id": mid, "text": text, "ts": datetime.now(KST).strftime("%m/%d %H:%M")})
     elif cmd == "clear":
         if len(d) == len(before):
             return 0  # 없던 거 — 파일 무변경(불필요 커밋 방지)

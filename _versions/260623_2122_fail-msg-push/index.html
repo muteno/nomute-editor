@@ -117,12 +117,7 @@
   /* 맞춤법 검사기 고장 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·정상화되면 자동 소멸 · 운영자 260623) */
   .profile.shc-bad { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
   .profile.shc-bad .pbadge { display:flex; background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
-  /* 수집 실패(대기열 미등록) 메시지 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·메시지 지우면 소멸 · 운영자 260623) */
-  .profile.hasmsg.haswarn { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
-  .profile.hasmsg.haswarn .pbadge { background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
-  .msgitem.msg-health .mt, .msgitem.msg-warn .mt { color:var(--warn); font-weight:700; }
-  .msgitem.flash { animation:msgFlash 1.6s ease; }          /* 푸시 딥링크(/?msg=)로 들어왔을 때 해당 메시지 잠깐 노랗게 강조 */
-  @keyframes msgFlash { 0%,100%{ background:transparent; } 18%{ background:rgba(var(--warn-rgb),.18); } }
+  .msgitem.msg-health .mt { color:var(--warn); font-weight:700; }
 
   /* ── 메시지 팝업(프로필 근처) ── */
   .msgpop { position:fixed; z-index:21; width:min(300px,82vw); overflow:hidden;
@@ -3870,11 +3865,9 @@ async function loadMessages() {
   renderMsgBadge();
 }
 function renderMsgBadge() {
-  const all = allMsgs();
-  const n = all.length;
-  const warn = all.some(m => m && m.level === 'warn');   // 수집 실패 등 = 노란 점등(haswarn)
+  const n = allMsgs().length;
   const prof = $('#profile'), badge = $('#pbadge');
-  if (prof) { prof.classList.toggle('hasmsg', n > 0); prof.classList.toggle('haswarn', warn); prof.classList.toggle('shc-bad', shcBad()); }
+  if (prof) { prof.classList.toggle('hasmsg', n > 0); prof.classList.toggle('shc-bad', shcBad()); }
   if (badge) badge.textContent = n > 99 ? '99+' : String(n);
   const bc = $('#msgbtncnt'); if (bc) bc.textContent = n ? `(${n})` : '';
 }
@@ -3885,20 +3878,11 @@ function renderMsgList() {
   if (!msgs.length) { list.innerHTML = '<div class="msgempty">새 메시지 없음</div>'; return; }
   list.innerHTML = '';
   msgs.forEach(m => {
-    const it = document.createElement('div'); it.className = 'msgitem' + (m._health ? ' msg-health' : '') + (m.level === 'warn' ? ' msg-warn' : '');
-    if (m.id) it.dataset.id = m.id;   // 푸시 딥링크(/?msg=<id>) 강조 매칭용
+    const it = document.createElement('div'); it.className = 'msgitem' + (m._health ? ' msg-health' : '');
     const t = document.createElement('div'); t.className = 'mt'; t.textContent = m.text || '';
     it.appendChild(t);
     if (m.ts) { const d = document.createElement('div'); d.className = 'md8'; d.textContent = m.ts; it.appendChild(d); }
     list.appendChild(it);
-  });
-}
-// 메시지함 열고(필요시) 특정 메시지로 스크롤·강조 — 푸시 알림 탭(/?msg=<id>) 진입점.
-function openMsgbox(highlightId) {
-  closeOverlays('msg'); renderMsgList(); pushRefresh(); placeMsgpop(); msgpop.hidden = false;
-  if (highlightId) requestAnimationFrame(() => {
-    const el = $('#msglist .msgitem[data-id="' + (window.CSS && CSS.escape ? CSS.escape(highlightId) : highlightId) + '"]');
-    if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('flash'); }
   });
 }
 
@@ -3969,13 +3953,7 @@ function closeOverlays(keep) {
   if (keep !== 'search') closeSearch();
   closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
-$('#profile').addEventListener('click', e => {
-  e.stopPropagation();
-  // 점등(메시지 있음) + 메시지함 닫힘 = 프로필 탭하면 곧장 메시지함(운영자 260623). 메시지 없으면 기존대로 프로필 메뉴.
-  if (allMsgs().length && msgpop.hidden) { openMsgbox(); return; }
-  const willOpen = pmenu.hidden || pmenu.classList.contains('closing');
-  closeOverlays('pmenu'); if (willOpen) { showPmenu(); pushRefresh(); } else { hidePmenu(); }
-});
+$('#profile').addEventListener('click', e => { e.stopPropagation(); const willOpen = pmenu.hidden || pmenu.classList.contains('closing'); closeOverlays('pmenu'); if (willOpen) { showPmenu(); pushRefresh(); } else { hidePmenu(); } });
 document.addEventListener('click', e => {
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
 });
@@ -4003,7 +3981,7 @@ function placeMsgpop() {
   msgpop.style.maxHeight = (window.innerHeight - top - 12) + 'px';     // 하단 넘침 방지(내부 스크롤)
 }
 ['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!msgpop.hidden) placeMsgpop(); }, { passive: true }));
-$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); openMsgbox(); });
+$('#msgbtn').addEventListener('click', e => { e.stopPropagation(); closeOverlays('msg'); renderMsgList(); pushRefresh(); placeMsgpop(); msgpop.hidden = false; });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
@@ -5842,19 +5820,9 @@ async function openBreakingDeepLink(tries = 0, key = null, bl = null) {
   return openBreakingDeepLink(tries + 1, key, bl);
 }
 
-// 수집 실패 알림 딥링크 — 푸시(/?msg=fail-…) 탭 시 메시지함 열고 해당 메시지 강조(운영자 260623).
-function openMsgDeepLink() {
-  try {
-    const id = new URLSearchParams(location.search).get('msg');
-    if (!id) return;
-    openMsgbox(id);
-    history.replaceState(null, '', location.pathname);   // 쿼리 제거(새로고침·공유 시 재발동 방지)
-  } catch (_) {}
-}
-
 load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
-loadMessages().then(() => openMsgDeepLink());   // ?msg=fail-… (수집 실패 푸시 탭) → 메시지함 열고 강조
+loadMessages();
 loadHealth();       // eager — 맞춤법 검사기 건강(불건강이면 프로필 노란 링 + 메시지)
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 loadPickFails();    // eager — 픽 분석 실패(전문 필요) 감지로 앰버 링/토스트(수집함 밖에서도 알림)
