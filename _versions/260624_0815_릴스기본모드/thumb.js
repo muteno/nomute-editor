@@ -57,7 +57,7 @@ export async function onRequestPost({ request, env }) {
     if (mode === 'header') {
       const sub = clip(p.sub, 200), title = clip(p.title, 200);
       if (!sub && !title) return json({ error: '부제(sub) 또는 제목(title)이 필요해' }, 400);
-      params = { mode, sub, title, bothBg: !!p.bothBg };   // bothBg = 배경 체크 시 nobg(기본·흰칸없음)도 추가(2장) — 워크플로 params.get('bothBg')·outs unshift와 1:1(누락 시 체크 무효 버그)
+      params = { mode, sub, title };
     } else {                                  // 오버레이 — 항상 opa60·30, 직접입력은 추가(+1)
       const lines = cleanLines(p.lines);
       if (!lines.length) return json({ error: '텍스트 줄(lines)이 필요해' }, 400);
