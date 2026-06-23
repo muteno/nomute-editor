@@ -117,38 +117,33 @@ export async function onRequestPost({ request }) {
   }
 }
 
-// 진단/헬스체크 — GET ?selftest : 알려진 오타를 부산대에 보내 실제 교정되는지 + 응답 형식 진단.
-//   라이브 계약(POST 토큰·charset·data 블록·passportKey 여부)을 엣지에서 실측. (임시 debug snippet 포함 — 진단 후 정리.)
+// 진단 — GET ?selftest : 여러 맞춤법 소스를 엣지에서 찔러 어느 게 도달·교정되는지 실측(임시).
+async function probe(name, fn) {
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try { const r = await fn(ctrl.signal); return { name, ...r }; }
+  catch (e) { return { name, err: String((e && e.message) || e) }; }
+  finally { clearTimeout(timer); }
+}
 export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   if (!url.searchParams.has('selftest')) return json({ ok: false, error: 'POST only (or GET ?selftest)' }, 405);
   const sample = '됬어요 함니다 외않되';
-  const diag = {};
-  try {
-    const body = new URLSearchParams(); body.set('text1', sample);
-    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-    let html;
-    try {
-      const r = await fetch(SPELLER, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'nomute-thumb' },
-        body: body.toString(), signal: ctrl.signal,
-      });
-      diag.busanStatus = r.status;
-      diag.busanCT = r.headers.get('content-type') || '';
-      html = await r.text();
-    } finally { clearTimeout(timer); }
-    diag.respLen = html.length;
-    diag.hasDataBlock = /data\s*=\s*\[/.test(html);
-    diag.hasPassportKey = /passportKey/i.test(html);
-    diag.hasResultForm = /id=['"]?(text_to_check|text1)['"]?/i.test(html);
-    const di = html.search(/data\s*=\s*\[/);
-    diag.aroundData = di >= 0 ? html.slice(di, di + 400) : null;
-    diag.head = html.slice(0, 400);
-    let corrected = null;
-    try { corrected = await checkLine(sample); } catch (e) { diag.checkLineErr = String((e && e.message) || e); }
-    return json({ healthy: !!(corrected && corrected !== sample), sample, corrected, diag });
-  } catch (e) {
-    return json({ healthy: false, error: String((e && e.message) || e), diag });
-  }
+  const probes = await Promise.all([
+    probe('busan_https', async (signal) => {
+      const b = new URLSearchParams(); b.set('text1', sample);
+      const r = await fetch('https://speller.cs.pusan.ac.kr/results', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'Mozilla/5.0' }, body: b.toString(), signal });
+      const t = await r.text(); return { status: r.status, len: t.length, hasData: /data\s*=\s*\[/.test(t), head: t.slice(0, 160) };
+    }),
+    probe('busan_http', async (signal) => {
+      const b = new URLSearchParams(); b.set('text1', sample);
+      const r = await fetch('http://speller.cs.pusan.ac.kr/results', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded; charset=UTF-8', 'user-agent': 'Mozilla/5.0' }, body: b.toString(), signal });
+      const t = await r.text(); return { status: r.status, len: t.length, hasData: /data\s*=\s*\[/.test(t), head: t.slice(0, 160) };
+    }),
+    probe('naver', async (signal) => {
+      const q = encodeURIComponent(sample);
+      const r = await fetch('https://m.search.naver.com/p/csearch/ocontent/util/SpellerProxy?_callback=cb&q=' + q + '&where=nexearch&color_blindness=0', { headers: { 'user-agent': 'Mozilla/5.0', 'referer': 'https://search.naver.com/' }, signal });
+      const t = await r.text(); return { status: r.status, len: t.length, hasNotag: /notag_html/.test(t), head: t.slice(0, 400) };
+    }),
+  ]);
+  return json({ sample, probes });
 }
