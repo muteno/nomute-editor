@@ -2,21 +2,10 @@
 // 카드 이미지(_final 등)는 viewer/cards/ 로 복사해 Pages가 서빙 (zero-dependency, Node 18+).
 // Cloudflare Pages 빌드 명령으로 실행: `node build-viewer.mjs` / 출력 디렉터리: viewer
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const QUEUE = 'queue';
 const OUT = 'viewer/articles.json';
-
-// 이 빌드가 만들어진 커밋 SHA — articles.json 에 박아 "요약 완료 푸시"가 *내 분석 커밋이 실제로 배포 반영됐는지*를
-// 정확히 판정하게 한다(notify_summary.sh 가 ancestor 검사). Cloudflare Pages 빌드는 CF_PAGES_COMMIT_SHA 제공,
-// 없으면 git HEAD 폴백. 못 구하면 빈 문자열(폴링은 stem 존재로 폴백). 파일명(stem)만 보던 옛 방식은 동일기사
-// 재공유/재분석 시 *옛 배포*를 즉시 통과시켜 "탭하면 옛 요약"이 뜨는 사각지대가 있었음 — commit 으로 닫음.
-let BUILD_COMMIT = (process.env.CF_PAGES_COMMIT_SHA || '').trim();
-if (!BUILD_COMMIT) {
-  try { BUILD_COMMIT = execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
-  catch { BUILD_COMMIT = ''; }
-}
 const MSG_DIR = 'messages';
 const MSG_OUT = 'viewer/messages.json';
 
@@ -199,7 +188,7 @@ for (const a of articles) {
 // 파일명(앞에 YYMMDD-HHMM) 기준 최신순
 articles.sort((a, b) => (a.file < b.file ? 1 : a.file > b.file ? -1 : 0));
 
-writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString(), commit: BUILD_COMMIT, count: articles.length, articles }, null, 2));
+writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString(), count: articles.length, articles }, null, 2));
 console.log(`viewer/articles.json 생성 — ${articles.length}건`);
 
 // ── ⚠ 픽 분석 실패 목록: pending/failed/*.txt(+.log) → viewer/picks-failed.json ──
