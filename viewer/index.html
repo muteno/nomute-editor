@@ -1487,9 +1487,44 @@
   .rev-fab svg { display:block; }
   @keyframes revFabIn { from { opacity:0; transform:scale(.55) translateX(14px); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce) { .rev-fab.show { animation:none; } }
-  /* ── 요약 수정(revise) 진행/회차 표기 = 전면 제거(운영자 260623) ──
-     "1차든 2차든 n차든 안 떠야 함" → FAB 물결/빗금/완료색·'수정 중' 힌트·피드바 펄스·회차색·
-     IG/Thread '(변경 중)'·소주제 노랑 일체 삭제. revise 자체는 그대로 동작(상태머신·완료 폴링·자동 갱신은 보이지 않게 유지). */
+  /* ── 요약 수정(revise) 진행 표시 (복원 260623 — 운영자 재요청) — 회차 색순환: 초록(원본)→노랑(이슈색)→파랑(SNS)→루프 ── */
+  @keyframes rvPulseBg { 0%,100% { background:var(--rv-from); } 50% { background:var(--rv-to); } }
+  @keyframes rvPulseC  { 0%,100% { color:var(--rv-from); } 50% { color:var(--rv-to); } }
+  @keyframes rvRing { from { box-shadow:0 0 0 0 var(--rv-ring,rgba(255,150,20,.5)); } to { box-shadow:0 0 0 15px transparent; } }
+  /* 수정 버튼(연필 FAB) — 진행 중: 물결(ring)+아이콘 색 왕복+빗금 / 완료: 회차색 고정(물결 없음) */
+  .rev-fab.revving { animation:rvRing 1.5s ease-out infinite; border-color:var(--rv-to); }
+  .rev-fab.revving svg { animation:rvPulseC 1.6s ease-in-out infinite; }
+  .rev-fab.locked { cursor:not-allowed; }
+  .rev-fab.revdone { color:rgb(var(--rv-solid,255,210,74)); border-color:rgb(var(--rv-solid,255,210,74)); background:rgba(var(--rv-solid,255,210,74),.14);
+    box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(var(--rv-solid,255,210,74),.18), 0 0 20px rgba(var(--rv-solid,255,210,74),.3); }   /* 수정됨 = 회차색 고정(물결 X·글로우도 회차색) */
+  .rev-fab.revdone svg { color:rgb(var(--rv-solid,255,210,74)); }
+  /* 진행 중 빗금 — 원 위 반투명 대각선 한 줄(수정 중 표식) */
+  .rev-fab.locked::after { content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background:linear-gradient(46deg, transparent 0 45%, rgba(255,255,255,.22) 45% 53%, transparent 53% 100%); }
+  /* 잠금 FAB 위 '수정 중' 힌트(좌측·반투명·페이드) */
+  .rev-fab .rev-hint { position:absolute; right:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(5px);
+    white-space:nowrap; padding:4px 10px; border-radius:9px; font-size:.72rem; font-weight:700; letter-spacing:-.2px;
+    color:rgba(255,255,255,.74); background:rgba(22,22,26,.5); border:1px solid rgba(255,255,255,.13);
+    backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); opacity:0; pointer-events:none;
+    transition:opacity .3s ease, transform .3s ease; }
+  .rev-fab.revving .rev-hint { opacity:1; transform:translateY(-50%) translateX(0); }   /* 진행 중엔 '수정 중' 힌트 상시 노출(복원) */
+  /* 피드카드 진행바 — revise 진행 중: 바뀌는 세그(요약 n + 프롬프트 m)에 물결 펄스 */
+  .card.revving .prog .seg[data-j="n"] .bar,
+  .card.revving .prog .seg[data-j="m"] .bar { animation:rvPulseBg 1.9s ease-in-out infinite; box-shadow:none; }
+  .card.revving .prog .seg[data-j="n"] .sl,
+  .card.revving .prog .seg[data-j="m"] .sl { animation:rvPulseC 1.9s ease-in-out infinite; }
+  /* 완료 회차 색 고정 — '요약(n)' 세그에만. 1=노랑 / 2=파랑 */
+  .card[data-gen="1"] .prog .seg[data-j="n"] .bar { background:linear-gradient(90deg,#ffe14a,#ffc31f); box-shadow:0 0 8px rgba(255,205,55,.45); }
+  .card[data-gen="1"] .prog .seg[data-j="n"] .sl { color:#ffc31f; }
+  .card[data-gen="2"] .prog .seg[data-j="n"] .bar { background:linear-gradient(90deg,#9becff,#0cd0f7); box-shadow:0 0 8px rgba(12,208,247,.4); }
+  .card[data-gen="2"] .prog .seg[data-j="n"] .sl { color:#0cd0f7; }
+  .card.revving .prog .seg[data-j="n"] .bar { box-shadow:none; }   /* 물결 중엔 data-gen 완료 글로우 끔(우선순위) */
+  /* 본문 IG·Thread 소주제 — 진행 중: 강조↔노랑 펄스 + (변경 중) / 완료: 노랑 고정 */
+  @keyframes rvChgC { 0%,100% { color:rgba(15,253,2,.85); } 50% { color:rgba(var(--warn-rgb),1); } }
+  .revsec, .revsec .cnt { animation:rvChgC 1.7s ease-in-out infinite; }
+  .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; color:#fff; }
+  .revsec-done, .revsec-done .cnt { color:rgb(var(--rv-solid,255,210,74)) !important; }   /* 수정됨 = 소주제 노랑 고정(펄스 없음) */
+  @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none !important; } .revsec, .revsec .cnt { color:rgba(var(--warn-rgb),.72) !important; } }
   /* ── 요약 수정 팝업(revdlg) — FAB(우·중하단)에서 좌측으로 촤르륵 펼침. askdlg 골격 계승 + 게이지(PICK) 발사 버튼. ── */
   /* 위치 = askdlg 중앙(inset:0·margin:auto) 상속 → PC·모바일 공통 가운데 출력(우측 구석 정렬 폐기). 컴팩트. */
   .revdlg { width:min(420px,92vw); max-width:420px; max-height:calc(100dvh - 40px); }
@@ -1594,6 +1629,7 @@
        #dlg 직속(backdrop-filter 박스 기준 fixed) → 스크롤해도 모달 안에 고정. 옛 'rev-launch' 알약 대체. -->
   <button class="rev-fab" id="revFab" type="button" aria-label="요약 수정" title="요약 수정">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+    <span class="rev-hint">수정 중</span>
   </button>
 </dialog>
 
@@ -1648,7 +1684,7 @@
   <div class="askwrap">
     <div class="askhead"><b>수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정 →</span></button><button class="askx" id="revX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="asktawrap">
-      <textarea id="revText" class="askta" rows="2" placeholder="고칠 점을 적어줘 (요약 일부만 재작성 · 재요약 아님)"></textarea>
+      <textarea id="revText" class="askta" rows="2" placeholder=""></textarea>
       <button class="sbtn askclip" id="revClip" type="button" aria-label="붙여넣기"></button>
     </div>
     <span class="askstatus revstatus" id="revStatus"></span>
@@ -1814,7 +1850,13 @@ function render() {
   rows.forEach((a, i) => {
     const c = document.createElement('div'); c.className='card';
     const kind = brkIssueKind(a); if (kind) c.classList.add(kind);   // 긴급/이슈 → 카드 테두리 점등(.card.brk/.iss) + 우상단 배지
-    // 회차(rev) 시각 표기 제거(운영자 260623) — 피드 카드에 회차색/물결 안 표시(revise는 보이지 않게 동작).
+    const g = Number(a.rev) || 0;                    // 서버 회차(완료색·정본) — 1=노랑·2=파랑·0=초록기본
+    if (g % 3) c.dataset.gen = (((g % 3) + 3) % 3);
+    if (isRevising(a.file)) {                         // 진행 중(클라 임시) = 진행바 물결(현재→다음 색)
+      c.classList.add('revving');
+      c.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
+      c.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
+    }
     if (_anim) c.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(내용·필터 바뀐 렌더만)
     else c.style.animation = 'none';   // 동일 재렌더(탭전환·폴) = 즉시 표시 = 깜빡임 0
     c.innerHTML = `
@@ -3307,6 +3349,8 @@ const rpKey = (file, card) => file + '#' + card;
 // (옛 연필 물결/빗금/완료색·피드바 펄스·소주제 노랑·(변경 중) 표기 일체 삭제 — 1차든 n차든 안 뜸.)
 const REVISING = new Map();   // file → { reqRev(요청시 서버 회차), ts } — 진행 중 추적(시각 표기 없음)
 const REV_PEND_KEY = 'nomute_rev_pending';   // 진행 상태 영속 — 새로고침/앱종료에도 완료전환·reqRev 유지
+const RV_COLORS = ['15,253,2', '255,210,74', '12,208,247'];   // 0 원본 초록 · 1 노랑(이슈색) · 2 파랑(SNS) · 순환 (복원 260623)
+const revColor = g => RV_COLORS[(((g % 3) + 3) % 3)];
 const artRev = file => { const a = DATA.find(x => x.file === file); return a ? (Number(a.rev) || 0) : 0; };   // 서버 회차
 const isRevising = file => REVISING.has(file);
 const saveRevising = () => { try { localStorage.setItem(REV_PEND_KEY, JSON.stringify([...REVISING])); } catch {} };
@@ -3322,7 +3366,8 @@ function startRevising(file) {
   if (!file) return;
   REVISING.set(file, { reqRev: artRev(file), ts: Date.now() });   // 요청 시점 서버 회차 스냅(완료 = a.rev가 이보다 ↑)
   saveRevising();
-  if ($('#dlg').open && CUR === file) applyReviseMarks();   // 잔류 마크 정리(표기 없음)
+  render();                                                  // 피드 카드 물결·잠금 반영(복원 260623)
+  if ($('#dlg').open && CUR === file) applyReviseMarks();
   startRevisePoll();
 }
 let _revPoll = null;
@@ -3349,16 +3394,40 @@ function startRevisePoll() {
   }, 20000);
 }
 // 연필 FAB 표기 = 제거(운영자 260623) — 진행/완료 회차색·물결·빗금 안 표시. 잔류 클래스만 방어적으로 정리.
+// 연필 FAB — 진행 중: 현재→다음 색 왕복 물결+빗금+'수정 중' / 완료(a.rev>0): 회차색 고정(물결 X) / 원본: 평소. (복원 260623)
 function applyReviseFab() {
   const fab = $('#revFab'); if (!fab) return;
-  fab.classList.remove('revving', 'locked', 'revdone', 'hint');
+  const pending = !!(CUR && isRevising(CUR));
+  const g = CUR ? artRev(CUR) : 0;
+  fab.classList.toggle('revving', pending);
+  fab.classList.toggle('locked', pending);
+  fab.classList.toggle('revdone', !pending && g > 0);
+  if (pending) {
+    fab.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
+    fab.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
+    fab.style.setProperty('--rv-ring', 'rgba(' + revColor(g + 1) + ',.5)');
+  } else if (g > 0) {
+    fab.style.setProperty('--rv-solid', revColor(g));
+  }
 }
 // 본문 IG·Thread 소주제 표기 = 제거(운영자 260623) — '(변경 중)'·소주제 노랑 안 붙임. 잔류 마크만 정리.
+// 본문 IG·Thread 소주제 — 진행 중: 강조↔노랑 펄스 + (변경 중) / 완료(a.rev>0): 노랑 고정. (복원 260623)
 function applyReviseMarks() {
-  const root = $('#mdbody');
-  if (root) root.querySelectorAll('h3').forEach(h => {
+  const root = $('#mdbody'); if (!root) { applyReviseFab(); return; }
+  const pending = !!(CUR && isRevising(CUR));
+  const g = CUR ? artRev(CUR) : 0;
+  root.querySelectorAll('h3').forEach(h => {
     const old = h.querySelector('.revchg'); if (old) old.remove();
     h.classList.remove('revsec', 'revsec-done'); h.style.removeProperty('--rv-solid');
+    if (!/\[\s*(IG|Thread|인스타|스레드|쓰레드)/i.test(h.textContent)) return;
+    if (pending) {                                           // 진행 중 = 펄스 + (변경 중)
+      h.classList.add('revsec');
+      const s = document.createElement('i'); s.className = 'revchg'; s.textContent = ' (변경 중)';
+      h.appendChild(s);
+    } else if (g > 0) {                                      // 완료 = 노랑 고정(펄스 없음)
+      h.classList.add('revsec-done');
+      h.style.setProperty('--rv-solid', revColor(g));
+    }
   });
   applyReviseFab();
 }
