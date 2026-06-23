@@ -105,9 +105,10 @@ export async function onRequestPost({ request, env }) {
     const dir = `${R2_BASE}/thumb_out/${id}`;   // outs path = R2 절대 URL(워크플로 r2_upload 키 `thumb_out/<id>/<file>`와 일치 → 뷰어가 R2 직접 폴링=즉시·배포지연 0)
     let outs;
     if (app === '2' && params.mode === 'header') {
-      // 헤더 = 2K JPG q95 (워크플로 box/nobg.jpg와 확장자 일치). 기본(미체크)=흰칸 1장만 / bothBg=흰칸 없는 nobg(기본)도 추가(2장) — 워크플로 produced와 1:1(운영자 260623)
-      outs = [{ path: `${dir}/box.jpg`, label: '흰칸' }];
-      if (params.bothBg) outs.unshift({ path: `${dir}/nobg.jpg`, label: '기본' });
+      outs = [
+        { path: `${dir}/nobg.jpg`, label: '기본' },   // 헤더 = 2K JPG q95 (워크플로 box/nobg.jpg와 확장자 일치)
+        { path: `${dir}/box.jpg`, label: '흰칸' },
+      ];
     } else if (app === '2' && params.mode === 'overlay') {
       const ext = wantImg ? 'jpg' : 'png';   // 배경합성=JPG(2K)·투명오버레이=PNG(FHD) — 워크플로 emit()와 확장자 일치(불일치 시 폴링 실패)
       outs = params.opas.map(o => ({ path: `${dir}/opa${o}.${ext}`, label: 'OPA' + o }));   // variant 태그 = OPA{값}(통일)
