@@ -1,0 +1,109 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>맞춤법 검사기 고장 알림 — 프로필 노란 링 + 메시지 (데모)</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#e9eaec; --mut:#8b8f98; --line:#2a2c31;
+    --accent:#0FFD02; --warn:#ffd24a; --warn-rgb:255,210,74; --amber:#ff9614;
+  }
+  *{box-sizing:border-box}
+  body{ margin:0; padding:24px 16px 60px; background:radial-gradient(125% 70% at 50% -8%,rgba(15,253,2,.05),transparent 55%) fixed,var(--bg);
+    color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.55; }
+  h1{ font-size:17px; margin:0 0 4px; color:var(--warn); }
+  .lead{ font-size:12.5px; color:var(--mut); margin:0 0 18px; } .lead b{ color:#cfd2d6; }
+
+  /* 토글 */
+  .toggle{ display:flex; gap:8px; margin:0 0 22px; }
+  .toggle button{ flex:1; padding:11px; border-radius:11px; border:1px solid var(--line); cursor:pointer; font:inherit; font-weight:700; font-size:13px;
+    background:linear-gradient(165deg,rgba(34,56,41,.4),rgba(14,26,18,.5)); color:var(--fg); transition:.15s; }
+  .toggle button.on[data-s="ok"]{ border-color:rgba(15,253,2,.5); color:var(--accent); background:linear-gradient(165deg,rgba(15,253,2,.14),rgba(15,253,2,.04)); }
+  .toggle button.on[data-s="bad"]{ border-color:rgba(var(--warn-rgb),.6); color:var(--warn); background:linear-gradient(165deg,rgba(var(--warn-rgb),.15),rgba(var(--warn-rgb),.04)); }
+
+  /* 모의 탑바 = 뷰어 상단(프로필은 우상단) */
+  .stage{ position:relative; border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden;
+    background:linear-gradient(160deg,rgba(30,46,34,.35),rgba(11,18,13,.5)); padding:14px; min-height:120px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; }
+  .brand{ font-size:13px; color:var(--mut); }
+  .brand b{ color:var(--fg); }
+  /* 프로필 = 정방형 아바타(원). 실제 = main_profile.jpg — 여기선 색 원으로 대체 */
+  .profile{ position:relative; width:46px; height:46px; border-radius:50%; border:none; cursor:pointer; padding:0;
+    background:linear-gradient(135deg,#1c3b25,#0f2417); box-shadow:0 8px 18px rgba(0,0,0,.45); transition:box-shadow .35s ease; }
+  .profile .face{ position:absolute; inset:0; display:grid; place-items:center; font-size:18px; }
+  /* 고장 상태 = 노란 링 (실제 .profile.shc-bad CSS 그대로) */
+  .profile.bad{ box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55); animation:pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ filter:none } 50%{ filter:drop-shadow(0 0 6px rgba(var(--warn-rgb),.5)) } }
+  /* 배지 = 우상단 카운트 (실제 .pbadge) */
+  .pbadge{ position:absolute; top:-5px; right:-5px; min-width:18px; height:18px; padding:0 5px; display:none;
+    align-items:center; justify-content:center; border-radius:9px; font-size:11px; font-weight:800; color:#1a1205;
+    background:linear-gradient(135deg,var(--warn),var(--amber)); box-shadow:0 2px 6px rgba(0,0,0,.4); }
+  .profile.bad .pbadge{ display:flex; }
+  .hint{ position:absolute; right:14px; top:64px; font-size:11px; color:var(--mut); }
+
+  /* 메시지 팝업 (프로필 탭 시) */
+  .msgpop{ margin:16px 0 0; width:100%; max-width:320px; border:1px solid rgba(255,255,255,.1); border-radius:14px; overflow:hidden;
+    background:linear-gradient(165deg,rgba(22,36,27,.7),rgba(11,19,14,.78)); box-shadow:0 16px 36px rgba(0,0,0,.4); }
+  .mh{ display:flex; align-items:center; gap:8px; padding:11px 13px; border-bottom:1px solid rgba(255,255,255,.07); font-size:13px; }
+  .mh b{ font-weight:800; } .mc{ font-size:11px; color:var(--mut); }
+  .msglist{ padding:8px; display:flex; flex-direction:column; gap:7px; }
+  .msgitem{ padding:9px 11px; border-radius:10px; background:rgba(8,15,11,.4); border:1px solid var(--line); }
+  .msgitem.health{ border-color:rgba(var(--warn-rgb),.4); background:rgba(var(--warn-rgb),.07); }
+  .mt{ font-size:12.5px; }
+  .msgitem.health .mt{ color:var(--warn); font-weight:700; }
+  .md8{ font-size:10.5px; color:var(--mut); margin-top:4px; }
+  .empty{ padding:18px; text-align:center; color:var(--mut); font-size:12px; }
+
+  .note{ margin:20px 2px 0; font-size:11.5px; color:var(--mut); }
+  .note b{ color:#cfd2d6; } .note code{ color:var(--warn); }
+  .steps{ margin:10px 0 0; padding-left:18px; } .steps li{ margin:4px 0; font-size:12px; }
+</style></head><body>
+<h1>맞춤법 검사기 고장 알림 — 어떻게 보이나</h1>
+<p class="lead">검사기(네이버)가 <b>죽으면</b> 뷰어 <b>프로필에 노란 링 + 배지</b>가 뜨고, 프로필을 탭하면 <b>메시지</b>에 점검 안내가 떠. <b>고쳐서 정상화되면 자동으로 사라져.</b> 아래 버튼으로 두 상태를 직접 토글해봐 (실제 적용된 CSS·문구 그대로).</p>
+
+<div class="toggle">
+  <button data-s="ok" class="on" onclick="setState('ok')">🟢 정상 (지금 상태 — 링 없음)</button>
+  <button data-s="bad" onclick="setState('bad')">🟡 고장 (노란 링 + 메시지)</button>
+</div>
+
+<div class="stage">
+  <div class="topbar">
+    <div class="brand"><b>노뮤트</b> · 뉴스 요약</div>
+    <button class="profile" id="prof" onclick="toggleMsg()">
+      <span class="face">🐾</span>
+      <span class="pbadge" id="badge">1</span>
+    </button>
+  </div>
+  <div class="hint" id="hint">← 평소엔 링 없음(정상)</div>
+</div>
+
+<div id="popwrap"></div>
+
+<div class="note" id="note"></div>
+
+<script>
+  var state='ok', popOpen=false;
+  function setState(s){
+    state=s; popOpen=false;
+    document.querySelectorAll('.toggle button').forEach(function(b){ b.classList.toggle('on', b.dataset.s===s); });
+    var prof=document.getElementById('prof'), badge=document.getElementById('badge'), hint=document.getElementById('hint');
+    prof.classList.toggle('bad', s==='bad');
+    hint.textContent = s==='bad' ? '← 노란 링! 탭하면 메시지' : '← 평소엔 링 없음(정상)';
+    render();
+  }
+  function toggleMsg(){ popOpen=!popOpen; render(); }
+  function render(){
+    var wrap=document.getElementById('popwrap'), note=document.getElementById('note');
+    if(popOpen){
+      var item = state==='bad'
+        ? '<div class="msgitem health"><div class="mt">⚠ 맞춤법 검사기 점검 필요 — 자동 교정이 멈췄어. 고치면 사라져.</div><div class="md8">2026. 6. 23. 18:03:23</div></div>'
+        : '';
+      var body = item || '<div class="empty">새 메시지 없음</div>';
+      wrap.innerHTML = '<div class="msgpop"><div class="mh"><b>메시지</b><span class="mc">'+(state==='bad'?'1건':'')+'</span></div><div class="msglist">'+body+'</div></div>';
+    } else {
+      wrap.innerHTML = '';
+    }
+    note.innerHTML = state==='bad'
+      ? '<b>🟡 고장일 때:</b> 프로필에 <b style="color:var(--warn)">노란 링</b>+배지(1)가 떠 있어 한눈에 보여. 탭 → 메시지에 점검 안내. 이 상태는 <b>검사기가 실제로 다시 될 때까지</b> 유지돼.<ul class="steps"><li>언제 켜지나: 썸네일 제작 시 검사기가 명시적으로 실패하거나, 3시간마다 자동 점검에서 고장 확인 시</li><li>어떻게 꺼지나: 검사기 정상화 후 썸네일을 다시 만들거나, 새로고침하면 즉시 재확인 → 링 소멸</li><li>거짓경보 방지: 네 네트워크 문제 같은 모호한 경우엔 안 띄움(검사기 *명시* 고장만)</li></ul>'
+      : '<b>🟢 정상일 때:</b> 링 없음. 지금 라이브가 이 상태야(<code>healthy:true</code>). 그래서 평소엔 아무것도 안 보이는 게 정상이고, <b>고장났을 때만</b> 위 노란 링이 떠.';
+  }
+  render();
+</script>
+</body></html>
