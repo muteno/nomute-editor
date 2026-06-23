@@ -2038,10 +2038,8 @@ function feedAgeH(a) {
 // 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 scBadge와 동일): 긴급(breaking 신규<4h) → 이슈(4h~24h AND [cross≥8 또는 aged breaking]) → 1일↑·신규(<4h)·비이슈는 없음. 둘 다 만족이면 긴급 우선.
 // 긴급/이슈 분류(상호배타·긴급우선) → 카드 테두리 점등 클래스. 'brk'(IN<4h breaking)·'iss'(4h~24h AND [cross≥8 또는 aged breaking])·''(1일↑·신규<4h·비이슈).
 function brkIssueKind(a) {
-  const brk = a.breaking || /속보/.test(a.title || '');
-  // 긴급/이슈 나이 = IN(수집)나이·발행나이 中 *큰 값* → 둘 다 <4h여야 긴급(운영자 260623). 발행 16h 지난 syndication-지연 건을 방금 수집(IN<4h)했다고 IN만 보고 긴급 뜨던 버그 차단 — 화면 'N시간 전'(발행)과 배지 일치. 발행 무효(1e7)면 IN만(time 빈 매체 폴백 유지 = 옛 동작).
-  const inAge = feedAgeH(a), pubAge = articleAgeH(a), ageH = Math.max(inAge, pubAge < 9e6 ? pubAge : 0);
-  if (brk && ageH < FAST_MAX_H) return 'brk';            // breaking AND IN·발행 둘 다 <4h → 긴급(이슈도 만족이면 긴급 우선)
+  const brk = a.breaking || /속보/.test(a.title || ''), ageH = feedAgeH(a);
+  if (brk && ageH < FAST_MAX_H) return 'brk';            // breaking 신규(<4h) → 긴급(이슈도 만족이면 긴급 우선)
   if (ageH >= FAST_MAX_H && ageH < 24 && (a.issue || brk)) return 'iss';   // 4h~24h AND (cross≥8 OR aged breaking) → 이슈 · 신규(<4h)엔 안 뜸·1일↑ 없음(260618)
   return '';
 }
@@ -4968,10 +4966,7 @@ const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
 // 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h·미확인) / ⚡이슈(4h~24h AND [cross≥8 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙. ⚠️ ✓확인(acked)해도 🚨 유지 = 긴급은 사건속성·계속 표시(운영자 260620 · 4h 지나면 자연히 ⚡이슈).
 // 배지 타입 = 배지칩·테두리(b-)·글로우(lit-) 공용 단일출처. 긴급(breaking 신규<4h) > 이슈(4~24h·cross≥8 또는 aged-breaking) · 둘다면 긴급. (✓확인해도 유지=긴급은 사건속성·운영자 260620)
-const scBadgeType = c => {
-  // 긴급/이슈 나이 = 발행나이·수집(first_seen)나이 中 *큰 값* → 둘 다 <4h여야 긴급(피드 brkIssueKind와 동일 원칙·운영자 260623). scTs는 이미 발행우선이라 통상 발행기준 유지, 발행<수집 오기록 엣지만 추가 방어.
-  const pubAge = (Date.now() - scTs(c)) / 3600000, fsT = Date.parse(c.first_seen || ''),
-    ageH = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);
+const scBadgeType = c => { const ageH = (Date.now() - scTs(c)) / 3600000;
   if (isBreaking(c) && ageH < FAST_MAX_H) return 'brk';
   if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';
   return ''; };
