@@ -68,13 +68,13 @@
   body.tab-scrap .bgfx { --bgfx:255,150,20; }        /* 스크랩 = 앰버 네온 배경 */
   body[data-tab="sns"] .bgfx { --bgfx:12,208,247; }   /* SNS = 시안 네온 배경 */
   /* ── 당겨서 새로고침 = 커스텀 링(탭색) ── 네이티브(theme-color 링)를 끄고 직접 그림 → '원'만 메뉴색·주소창/상태바 불변(운영자 260623). 스피너는 .cref-ld-sp 패턴 계승. */
-  html { overscroll-behavior-y:contain; }   /* 네이티브 당겨서새로고침 차단(아래 커스텀이 대체) */
+  html.ptr-on { overscroll-behavior-y:contain; }   /* 네이티브 당겨서새로고침 차단 — 터치기기(JS가 .ptr-on 부여)에서만 = CSS차단·JS핸들러 생사 단일게이트(데스크탑 네이티브 새로고침/바운스 보존) */
   #ptr { position:fixed; top:max(8px,env(safe-area-inset-top)); left:50%; z-index:90;
     width:36px; height:36px; border-radius:50%; display:grid; place-items:center;
     background:var(--glass2); border:1px solid var(--line);
     -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s));
     box-shadow:0 6px 18px rgba(0,0,0,.45);
-    transform:translate(-50%,-54px) scale(.9); opacity:0; pointer-events:none; will-change:transform,opacity; }
+    transform:translate(-50%,-54px) scale(.9); opacity:0; pointer-events:none; }   /* will-change는 제스처 중에만 JS가 토글(idle 레이어 0) */
   #ptr.show { opacity:1; }
   #ptr.armed { box-shadow:0 6px 22px rgba(0,0,0,.5), 0 0 16px rgba(var(--ptr-rgb,15,253,2),.45); }
   #ptr .ptr-ring { width:20px; height:20px; border-radius:50%;
@@ -5857,29 +5857,33 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
 
 // ── 당겨서 새로고침(커스텀 링) — 네이티브 끄고 현재 탭색 링을 직접 그림. '원'만 메뉴색 = 주소창/상태바 불변(운영자 260623). 새로고침은 location.reload() = 탭은 localStorage로 복원(현재 페이지 유지).
 (function () {
-  if (!('ontouchstart' in window)) return;            // 터치 기기 전용(데스크탑은 네이티브 새로고침 사용)
-  const ptr = document.createElement('div'); ptr.id = 'ptr'; ptr.innerHTML = '<div class="ptr-ring"></div>';
+  if (!('ontouchstart' in window)) return;            // 터치 기기 전용(데스크탑은 네이티브 새로고침/바운스 보존)
+  document.documentElement.classList.add('ptr-on');   // CSS 네이티브차단(html.ptr-on)을 JS와 동일 게이트로 묶음 — 비대칭 제거(분신술10)
+  const ptr = document.createElement('div'); ptr.id = 'ptr'; ptr.setAttribute('aria-hidden', 'true'); ptr.innerHTML = '<div class="ptr-ring"></div>';
   document.body.appendChild(ptr);
   const ring = ptr.querySelector('.ptr-ring');
   const COL = { feed: ['var(--accent)', 'var(--accent-rgb)'], scrap: ['var(--amber)', 'var(--amber-rgb)'], sns: ['var(--info)', 'var(--info-rgb)'] };   // 탭→[색, rgb] 토큰(§🎨 SSOT 계승)
   const TRIG = 70, MAXP = 130;                         // 발동 임계 · 최대 당김(px)
   let sy = 0, sx = 0, active = false, engaged = false, dist = 0, armed = false, firing = false;
   const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
-  const blocked = () => firing || !!document.querySelector('dialog[open]');   // 모달 열림·발동중엔 비활성
+  // 비활성 조건: 발동중 · <dialog> 열림 · 비-dialog 팝업(hidden 토글) 열림(상단 앵커 msgpop 위 오발동 차단 — 분신술3·10)
+  const blocked = () => firing || !!document.querySelector('dialog[open]') ||
+    !msgpop.hidden || !bpop.hidden || !linkpop.hidden || !qpop.hidden;
   function reset(soft) {
     active = false; engaged = false; dist = 0; armed = false;
     ptr.style.transition = soft ? 'transform .24s var(--ease), opacity .24s var(--ease)' : 'none';
     ptr.classList.remove('show', 'spin', 'armed');
-    ptr.style.transform = 'translate(-50%,-54px) scale(.9)'; ring.style.transform = '';
+    ptr.style.transform = 'translate(-50%,-54px) scale(.9)'; ring.style.transform = ''; ptr.style.willChange = 'auto';
   }
   addEventListener('touchstart', e => {
     if (active || blocked() || !atTop() || e.touches.length !== 1) return;
     sy = e.touches[0].clientY; sx = e.touches[0].clientX; active = true; engaged = false; dist = 0; armed = false;
     const [c, rgb] = COL[CURTAB] || COL.scrap; ptr.style.setProperty('--ptr-c', c); ptr.style.setProperty('--ptr-rgb', rgb);
-    ptr.style.transition = 'none';
+    ptr.style.transition = 'none'; ptr.style.willChange = 'transform, opacity';   // 제스처 중에만 합성 레이어 승격
   }, { passive: true });
   addEventListener('touchmove', e => {
     if (!active) return;
+    if (e.touches.length !== 1) { reset(true); return; }                        // 둘째 손가락(핀치) = 양보(이중점화 차단 — 분신술1)
     const dy = e.touches[0].clientY - sy, dx = e.touches[0].clientX - sx;
     if (!engaged) {
       if (dy > 8 && dy > Math.abs(dx) * 1.3 && atTop()) engaged = true;        // 세로 당김 우세 + 최상단일 때만 점화
@@ -5907,6 +5911,8 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
   }
   addEventListener('touchend', end, { passive: true });
   addEventListener('touchcancel', () => { if (!firing) reset(true); }, { passive: true });
+  // bfcache 복귀(뒤로가기 등)면 firing/spin 잔존 상태 해제 — 영구 먹통 방지(분신술1·3·7·10)
+  addEventListener('pageshow', e => { if (e.persisted) { firing = false; reset(false); } });
 })();
 </script>
 </body>
