@@ -942,7 +942,7 @@
   /* 요약 다운로드 컨트롤 = 체크(전체)+요약을 한 글래스 알약으로 통합(원형 체크 인셋·강한 링·펄스·눌림 · 260621).
      .dlbox 자체가 알약(글래스), 안의 #pdfBtn은 자체 글래스 제거(투명). 체크 ON = E3 테두리+은은한 채움+강한 글로우 링. */
   .dlbox { position:relative; top:-1.5px; display:inline-flex; align-items:center; height:34px; box-sizing:border-box;
-    padding:0 9px 0 8px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid transparent;
+    padding:0 9px 0 5px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid transparent;
     backdrop-filter:blur(var(--blur-m)); -webkit-backdrop-filter:blur(var(--blur-m)); touch-action:manipulation;
     transition:color .15s, background .15s, border-color .15s, box-shadow .15s, transform .1s, filter .1s; }
   .dlbox:hover { background:rgba(255,255,255,.13); }
@@ -959,15 +959,13 @@
   /* 커스텀 원형 체크박스(네이티브 input 시각 숨김·포커스 유지) */
   .dl-full { position:relative; display:inline-flex; align-items:center; height:34px; padding-left:4px; cursor:pointer; touch-action:manipulation; }   /* padding-left=탭타깃 확장(.dlbox 좌패딩 5+4=시각 9px 동일) */
   .dl-full input { position:absolute; left:0; top:50%; transform:translateY(-50%); width:16px; height:16px; margin:0; opacity:0; cursor:pointer; }
-  .dl-cbox { width:13px; height:13px; flex:none; border-radius:5px; margin-right:9px; position:relative;   /* 체크3(둥근 사각 −/✓·트리아지 .sc-tg.ack 통일)·80% 크기(운영자 260623) */
+  .dl-cbox { width:16px; height:16px; flex:none; border-radius:50%; margin-right:9px;
     border:1.5px solid rgba(255,255,255,.28); background:rgba(255,255,255,.04);
     display:inline-flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s, box-shadow .15s; }
-  .dl-cbox svg { position:absolute; width:9px; height:9px; display:block; transition:opacity .15s, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
-  .dl-cbox .dl-dash { stroke:var(--mut); opacity:1; }                                          /* 미체크 = −(회색) */
-  .dl-cbox .dl-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }   /* 체크 = ✓ 강조 드로우-인 */
-  .dl-full input:checked + .dl-cbox { background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.5); }   /* 틴트(솔리드 X) */
-  .dl-full input:checked + .dl-cbox .dl-dash { opacity:0; }
-  .dl-full input:checked + .dl-cbox .dl-chk { opacity:1; stroke-dashoffset:0; }
+  .dl-cbox svg { width:11px; height:11px; display:block; stroke:var(--on-accent);
+    opacity:0; transform:scale(.5); transition:opacity .15s, transform .15s; }
+  .dl-full input:checked + .dl-cbox { background:linear-gradient(135deg,var(--accent-bright),var(--accent)); border-color:transparent; }
+  .dl-full input:checked + .dl-cbox svg { opacity:1; transform:scale(1); }
   .dl-full input:focus-visible + .dl-cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
   /* 요약 = 알약 안 라벨+아이콘(자체 글래스 제거 → .dlbox가 알약). .dlg-h button 글래스 무력화. */
   .dlg-pdf { background:transparent !important; border:0 !important; box-shadow:none !important;
@@ -1306,19 +1304,28 @@
   .cref-dlall { position:relative; overflow:hidden; width:auto; height:var(--btn-sm); border-radius:var(--r-s); display:inline-flex; align-items:center; gap:5px; padding:0 11px; }
   .cref-dlall > svg, .cref-dlall .dlseq-ic, .cref-dlall .cref-dllbl { position:relative; z-index:1; }
   .cref-dlall .cref-dllbl { font-size:11px; font-weight:700; color:inherit; white-space:nowrap; transition:color .18s; }
-  /* ▼ 다운로드 시퀀스 버튼(전체저장 — 썸네일 후보·카드뉴스·썸네일 생성기 공용) = 미니멀 텍스트(시안 9번·운영자 260623): 글래스/테두리/채움 없이 아이콘+라벨만, 완료 시 ✓ 팝(채움 없음·글자 강조색 유지). 정본 = 구성도/버튼인터랙션_기틀북.css §9 · JS=dlAllSeq. */
-  .cref-dlall.dlbtn { background:transparent !important; border-color:transparent !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow:none !important; padding:0 6px; }
-  .cref-dlall.dlbtn:hover { background:rgba(255,255,255,.06) !important; }
-  .cref-dlall.dlbtn .dl-ack { display:none !important; }
+  /* ▼ 다운로드 시퀀스 버튼(전체저장 — 썸네일 후보·카드뉴스 공용) = 프로스티드 글래스 + 좌→우 강조색 채움(진행 i/N·검정 글자 드러남) + ✓ 팝 + 우측 드레인 풀림. 정본 패턴 = 구성도/버튼인터랙션_기틀북.css §9 · JS=dlAllSeq · 운영자 260622 */
+  /* 프로스티드 글래스 = 형제 .sbtn(검색버튼)과 어우러지되 '완전 불투명'으로 안 보이게: 알파 ↓(.22)·blur·채도 + 상단 inset 하이라이트(유리 모서리 윤기)로 또렷한 반투명 = 평평한 배경 위에서도 글래스로 읽힘. 다른 버튼에 이식할 레시피(운영자 260623). */
+  .cref-dlall.dlbtn { background:rgba(8,15,11,.22) !important; border-color:rgba(255,255,255,.16) !important; backdrop-filter:blur(12px) saturate(1.25) !important; -webkit-backdrop-filter:blur(12px) saturate(1.25) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.1); }
+  .cref-dlall.dlbtn:hover { background:rgba(255,255,255,.16) !important; border-color:rgba(255,255,255,.24) !important; }
+  .cref-dlall.dlbtn .dl-ack { display:none !important; }   /* 기본 .dlbtn 누름 ✓팝·링 제거 — 시퀀스 연출이 대체 */
+  /* 아이콘 스왑(다운↔체크) */
   .cref-dlall .dlseq-ic { width:15px; height:15px; display:inline-grid; }
   .cref-dlall .dlseq-ic svg { grid-area:1/1; width:15px; height:15px; }
   .cref-dlall .dlseq-ic .chk { opacity:0; }
-  .cref-dlall.dlbtn::before { display:none; }   /* 미니멀 = 좌→우 채움 없음 */
-  .cref-dlall.dlbtn.dlseq-busy, .cref-dlall.dlbtn.dlseq-done { color:var(--accent) !important; }   /* 채움 없으니 글자 강조색 유지(검정 전환 X) */
+  /* 좌→우 채움 와이프(::before) — 진행률 --p(0~1) */
+  .cref-dlall.dlbtn::before { content:''; position:absolute; inset:0; z-index:0; background:var(--accent); transform:scaleX(0); transform-origin:left center; transition:transform .28s linear; pointer-events:none; }
+  .cref-dlall.dlbtn.dlseq-busy::before { transform:scaleX(var(--p,0)); }
+  .cref-dlall.dlbtn.dlseq-done::before { transform:scaleX(1); transition:transform .22s var(--ease); }
+  .cref-dlall.dlbtn.dlseq-snap, .cref-dlall.dlbtn.dlseq-snap *, .cref-dlall.dlbtn.dlseq-snap::before { transition:none !important; }   /* 완료 후 즉시 복귀(드레인 게이지 없음·글자 안 가려짐 · 운영자 260622) */
+  /* 채움 위 = 검정 글자·아이콘(차오르며 드러남) */
+  .cref-dlall.dlbtn.dlseq-busy, .cref-dlall.dlbtn.dlseq-done { color:var(--on-accent) !important; }
+  /* 완료 = ✓ 커졌다 작아지는 팝 + 글로우 */
+  .cref-dlall.dlbtn.dlseq-done { border-color:rgba(var(--accent-rgb),.6) !important; box-shadow:0 0 22px rgba(var(--accent-rgb),.42); }
   .cref-dlall.dlbtn.dlseq-done .dlseq-ic .dn { opacity:0; }
   .cref-dlall.dlbtn.dlseq-done .dlseq-ic .chk { opacity:1; animation:dlChkPop .42s var(--ease); }
   @keyframes dlChkPop { 0%{transform:scale(.3)} 58%{transform:scale(1.3)} 100%{transform:scale(1)} }
-  @media (prefers-reduced-motion:reduce){ .cref-dlall.dlbtn.dlseq-done .dlseq-ic .chk { animation:none; } }
+  @media (prefers-reduced-motion:reduce){ .cref-dlall.dlbtn::before { transition:none; } .cref-dlall.dlbtn.dlseq-done .dlseq-ic .chk { animation:none; } }
   .cref-more { color:var(--accent); }   /* '+5장 더'(AI 재검색) = 초록 강조 + 버튼(운영자 260622) */
   .thumbsec .cref-slot.cref-loading { display:grid; place-items:center; background:rgba(8,15,11,.5); border:1px dashed rgba(var(--accent-rgb),.45); opacity:.82; cursor:default; }   /* 반투명 로딩 슬라이드 = N장 추가 예정(맨 좌측) */
   .cref-loading .cref-ld { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--mut); font-size:11px; font-weight:700; text-align:center; padding:6px; }
@@ -1594,7 +1601,7 @@
 <button class="totop" id="totop" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <dialog id="dlg">
-  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><span class="dlbox" id="dlbox"><label class="dl-full" title="체크 = IG·스레드·카드뉴스 본문까지 포함(전체) · 미체크 = 기본 요약"><input type="checkbox" id="dlFull" aria-label="전체 포함(IG·스레드·카드뉴스 본문)"><span class="dl-cbox"><svg class="dl-dash" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg><svg class="dl-chk" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span></label><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 HTML 다운로드 — 체크 시 전체 포함"><span class="dl-lbl">요약</span><svg class="dl-ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button></span><a id="src" target="_blank" rel="noopener">원문 <span class="arr">↗</span></a></div><button class="tool-x dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><span class="dlbox" id="dlbox"><label class="dl-full" title="체크 = IG·스레드·카드뉴스 본문까지 포함(전체) · 미체크 = 기본 요약"><input type="checkbox" id="dlFull" aria-label="전체 포함(IG·스레드·카드뉴스 본문)"><span class="dl-cbox"><svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 9-10"/></svg></span></label><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 HTML 다운로드 — 체크 시 전체 포함"><span class="dl-lbl">요약</span><svg class="dl-ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button></span><a id="src" target="_blank" rel="noopener">원문 <span class="arr">↗</span></a></div><button class="tool-x dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
