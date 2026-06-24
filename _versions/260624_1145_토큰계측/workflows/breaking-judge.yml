@@ -89,11 +89,12 @@ jobs:
       - name: Commit (breaking 확정)
         if: steps.chk.outputs.pending != '0'
         run: |
+          if [ -z "$(git status --porcelain viewer/candidates.json)" ]; then
+            echo "변동 없음 — 커밋 생략"; exit 0
+          fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add viewer/candidates.json 2>/dev/null || true
-          git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter·gate/breaking) 동반 커밋 — 있을 때만
-          if git diff --cached --quiet; then echo "변동 없음 — 커밋 생략"; exit 0; fi
+          git add viewer/candidates.json
           git commit -m "AI 판정: 속보 breaking · 경중 grade 갱신"
           for i in 1 2 3 4; do
             git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0

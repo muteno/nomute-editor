@@ -33,7 +33,6 @@ emit_fail_msg() {
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_health.sh"   # 시스템성(인증·쿼터) 실패 → 사용자 메시지(프로필 점등)
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — analyze·ask·cardmake 공용(재시도 판정 드리프트 차단)
-source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 source "$ROOT/shared/url_guard.sh"          # is_article_url() SSOT — 포털·도메인 루트(기사경로 없는 URL) 차단(폰·분석 공용)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
@@ -224,7 +223,7 @@ ${extracted}"
   #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 과부하 아닌 실패(빈출력·timeout)도 재시도 안 함.
   inline_delay=15
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+    out="$(printf '%s' "$prompt" | timeout 900 claude -p \
           --model "$MODEL" \
           --effort max \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \

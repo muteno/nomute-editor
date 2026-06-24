@@ -6,7 +6,6 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/k-make.md"
 MODEL="claude-opus-4-8"
-source "$ROOT/shared/claude_meter.sh"   # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 ID="${1:?usage: kmake.sh <id> (SCENE=env)}"
 OUTDIR="viewer/k_out/${ID}"; mkdir -p "$OUTDIR"
 
@@ -18,7 +17,7 @@ ${SCENE}"
 
 # 허용 도구 = Read/Glob/Grep(apps/k 지침·라이브러리 런타임 로드) + WebFetch/WebSearch(리서치).
 # Write/Edit/Bash/Task 불허 = 헤드리스 무중단(권한 대기로 멈춤 차단, analyze.sh와 동일).
-out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+out="$(printf '%s' "$prompt" | timeout 900 claude -p \
       --model "$MODEL" \
       --effort max \
       --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \

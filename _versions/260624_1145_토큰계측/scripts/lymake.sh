@@ -7,7 +7,6 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/ly-make.md"
 MODEL="claude-opus-4-8"
-source "$ROOT/shared/claude_meter.sh"   # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 ID="${1:?usage: lymake.sh <id> (SUBS=env)}"
 OUTDIR="viewer/ly_out/${ID}"; mkdir -p "$OUTDIR"
 
@@ -16,7 +15,7 @@ OUTDIR="viewer/ly_out/${ID}"; mkdir -p "$OUTDIR"
 prompt="$(cat "$PROMPT_FILE")
 ${SUBS}"
 
-out="$(printf '%s' "$prompt" | METER_SRC=ly METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+out="$(printf '%s' "$prompt" | timeout 900 claude -p \
       --model "$MODEL" \
       --effort max \
       --allowedTools "Read,Glob,Grep" \
