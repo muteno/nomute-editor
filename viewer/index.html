@@ -343,6 +343,8 @@
   .kv span { display:block; font-size:11px; color:var(--mut); margin-bottom:3px; }
   .kv b { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; line-height:1.45; }
   .kv .typecol b { overflow:visible; } /* 태그칩 줄바꿈 허용(typewrap이 흐름 관리) */
+  .kv .bias { overflow:visible; }   /* 편향 라벨 = 짧음·가로 한 줄(클립 불필요) */
+  .kv .bias span { display:inline; font-size:inherit; margin:0; line-height:inherit; }   /* 내부 색 토큰이 위 '.kv span{display:block·11px}'(라벨용)에 걸려 세로로 쪼개지던 것 차단 — '좌 보정(4+1)' 한 줄(운영자 260624) */
   .kv .sensgrp { display:flex; align-items:start; gap:18px; }   /* #4 민감·편향 인접 한 묶음 */
   /* #5 편향 게이지 2배(120→240px) */
   .gauge { height:9px; max-width:240px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:7px;
@@ -2051,8 +2053,8 @@ function biasLabel(a) {
   const d = M - N;
   if (!d)   // 보정 0 = 단일값
     return `<b class="bias" style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b>`;
-  const zc = biasZoneCol(N);   // 원문방향 '좌'=방향색 · N=방향색 · 보정델타 '+1'=흰색(--fg) · '보정()' 래퍼=mut(운영자 260624)
-  return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--mut)">보정(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
+  const zc = biasZoneCol(N);   // 원문방향 '좌'=방향색 · N=방향색 · '보정' 단어+보정델타 '+1'=흰색(--fg) · 괄호=mut(운영자 260624)
+  return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--fg)">보정</span><span style="color:var(--mut)">(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621)
