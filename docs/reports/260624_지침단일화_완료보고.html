@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>토큰 추적 + 지침 단일화 — 완료 보고</title>
+<style>
+:root{
+  --bg:#0a120d;--glass:rgba(38,64,46,.42);--glass2:rgba(14,26,18,.55);
+  --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.05);
+  --fg:#eef7f0;--mut:#8fa697;
+  --accent:#0FFD02;--accent-rgb:15,253,2;--accent-bright:#d8ff3d;
+  --amber:#ff9614;--warn:#ffd24a;--danger:#f87171;--info:#0cd0f7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);padding:0 0 60px;
+  font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.2px;-webkit-font-smoothing:antialiased}
+.bgfx{position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(560px 380px at 10% -6%,rgba(var(--accent-rgb),.08),transparent 60%),
+  radial-gradient(620px 520px at 100% 6%,rgba(12,208,247,.05),transparent 62%)}
+.wrap{max-width:880px;margin:0 auto;padding:22px 16px}
+h1{font-size:21px;margin:6px 0 3px;font-weight:800;letter-spacing:-.6px}h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:12px;margin:0 0 6px}
+.meta{color:var(--mut);font-size:11px;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+.done{display:inline-block;background:rgba(var(--accent-rgb),.16);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.45);border-radius:999px;padding:3px 12px;font-size:12px;font-weight:800}
+h2.sec{font-size:16px;font-weight:800;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2.sec .e{color:var(--accent)}
+.kpi{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.kpi .k{flex:1;min-width:135px;background:linear-gradient(135deg,rgba(var(--accent-rgb),.10),var(--glass));border:1px solid rgba(var(--accent-rgb),.25);border-radius:13px;padding:13px 14px}
+.kpi .k .n{font-size:25px;font-weight:800;color:var(--accent);line-height:1.05;letter-spacing:-1px}
+.kpi .k .n small{font-size:13px;color:var(--mut)}
+.kpi .k .l{font-size:11px;color:var(--mut);margin-top:4px;line-height:1.5}
+/* 전/후 바 */
+.bars{background:var(--glass2);border:1px solid var(--line);border-radius:13px;padding:15px 16px;margin:12px 0}
+.barrow{margin:11px 0}
+.barrow .lab{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.barrow .lab b{color:var(--fg);font-variant-numeric:tabular-nums}
+.track{height:22px;border-radius:7px;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
+.track .before{position:absolute;left:0;top:0;height:100%;background:rgba(248,113,113,.32);border-right:2px solid var(--danger)}
+.track .after{position:absolute;left:0;top:0;height:100%;background:rgba(var(--accent-rgb),.42);border-right:2px solid var(--accent)}
+.track .tag{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:800;padding:0 6px;white-space:nowrap}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin:11px 0}
+.card h3{margin:0 0 8px;font-size:14px}.card h3 .n{color:var(--accent);font-weight:800}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+.ba>div{border-radius:10px;padding:11px 12px;font-size:12px}
+.before2{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22)}
+.after2{background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.25)}
+.ba h4{margin:0 0 6px;font-size:10.5px;letter-spacing:.3px;text-transform:uppercase}
+.before2 h4{color:var(--danger)}.after2 h4{color:var(--accent)}
+.ba b{color:var(--accent-bright)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{color:var(--mut);font-size:11px;font-weight:700;background:var(--glass2)}
+td code,.ic{font-size:11px;color:#cfe}
+.rk{font-size:10.5px;font-weight:800;border-radius:5px;padding:1px 7px;white-space:nowrap}
+.rk0{background:rgba(var(--accent-rgb),.16);color:var(--accent)}
+.rk1{background:rgba(255,210,74,.14);color:var(--warn)}
+.note{margin-top:8px;color:var(--mut);font-size:11.5px;line-height:1.7}
+.guard{background:linear-gradient(135deg,rgba(var(--accent-rgb),.10),var(--glass));border:1px solid rgba(var(--accent-rgb),.3);border-radius:14px;padding:15px 18px;margin:18px 0}
+.guard h3{margin:0 0 7px;color:var(--accent);font-size:14px}
+.warn{background:linear-gradient(135deg,rgba(255,210,74,.09),var(--glass));border:1px solid rgba(255,210,74,.3);border-radius:13px;padding:13px 16px;margin:12px 0}
+.warn h3{margin:0 0 6px;color:var(--warn);font-size:13px}
+.q{background:var(--glass2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:7px 11px;margin:7px 0;font-size:11.5px;color:var(--mut)}
+.q b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="bgfx"></div>
+<div class="wrap">
+
+  <h1>📦 토큰 추적 + 지침 단일화 — <b>완료 보고</b></h1>
+  <p class="sub">muteno 구독 토큰 낭비 추적 → 품질 0으로 주입 프리픽스 슬림화</p>
+  <div class="meta"><span class="done">✅ 전부 완료·main 반영</span> · 260624 · 분신술 Opus 4.8 25인(누적) 검증 · 절대전제 = <b style="color:var(--warn)">뉴스 요약 품질 저하 0</b></div>
+
+  <!-- 한눈에 -->
+  <h2 class="sec"><span class="e">0.</span> 한눈에</h2>
+  <div class="kpi">
+    <div class="k"><div class="n">43%<small>↓</small></div><div class="l">요약 지침 주입<br>126.8KB → 72.9KB</div></div>
+    <div class="k"><div class="n">33%<small>↓</small></div><div class="l">카드 지침 주입<br>161.3KB → 107.4KB</div></div>
+    <div class="k"><div class="n">0</div><div class="l">요약 품질 손실<br>(7인 만장일치)</div></div>
+    <div class="k"><div class="n">∞→측정</div><div class="l">토큰 추적<br>이전 0 → 라이브</div></div>
+  </div>
+  <p class="note">매 뉴스 픽마다 거대한 지침을 통째로 다시 보내던 걸(픽당 ~244K 토큰, 캐시 안 걸려 매번 cold) — <b>요약 규칙은 한 줄도 안 건드리고</b> "이력·아카이브"만 빼서 주입량을 약 <b>1/3 줄였어.</b></p>
+
+  <!-- 무엇이 바뀌었나 -->
+  <h2 class="sec"><span class="e">1.</span> 무엇이 바뀌었나 (3가지)</h2>
+
+  <div class="card">
+    <h3><span class="n">①</span> 토큰 추적 계측 <span class="rk rk0" style="margin-left:6px">신규·위험0</span></h3>
+    <div class="ba">
+      <div class="before2"><h4>전</h4>모든 <code>claude -p</code>가 답만 받고 <b>토큰을 버림</b> → "어디서 얼마"를 알 길 없음</div>
+      <div class="after2"><h4>후</h4>호출 10곳을 계측 래퍼로 감싸 <b>입력·출력·캐시 토큰을 기록</b> → <code>tokens.html</code> 10분 버킷</div>
+    </div>
+    <p class="note">출력은 예전과 동일(<code>.result</code>만 흘림), 토큰만 따로 기록. jq없음·에러·끄기 시 옛 동작 폴백 = 파이프라인 안 깨짐.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">②</span> 지침 다이어트 — 이력 주입 제외 <span class="rk rk0" style="margin-left:6px">품질0</span></h3>
+    <div class="ba">
+      <div class="before2"><h4>전</h4>PROJECT_MEMORY <b>결정 로그·원천 백업</b>(변경 이력) + 01_지침 <b>[변경 이력] 아카이브</b>까지 매 호출 통째 전송</div>
+      <div class="after2"><h4>후</h4>파일이 스스로 <b>"운영 룰 아님"</b>이라 라벨한 이력만 <code>&lt;!-- INJECT-SKIP --&gt;</code>로 주입 제외. <b>파일엔 그대로 보존</b></div>
+    </div>
+    <p class="note">제외된 건 전부 "언제 뭘 왜 바꿨다"는 역사. 실제 룰·임계값·근거는 01_지침 본문 + §검증 룰에 독립 존재(분신술 grep 대조 = 이력에만 있는 룰 0건). <b>덤</b>: 이력에 남은 폐기 옛 수치(Thread 500 등)가 안 보여 오히려 혼선 ↓.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="n">③</span> R6 — 버전 해시 의미화 <span class="rk rk0" style="margin-left:6px">품질0</span></h3>
+    <div class="ba">
+      <div class="before2"><h4>전</h4>지침 파일 <b>이름·공백</b>만 바뀌어도 "지침 바뀜"으로 보고 같은 기사·카드 <b>전수 재생성</b>(캐시버스트)</div>
+      <div class="after2"><h4>후</h4>버전 해시를 <b>의미 내용</b>만 본다(경로·공백 제외). 겉모양 변경엔 재생성 안 함. <b>실제 문장 바뀌면 여전히 탐지</b></div>
+    </div>
+    <p class="note">주입되는 지침 내용은 <b>byte 단위로 불변</b> = 모델이 보는 지침 100% 동일(출력 영향 0). 해시 입력만 정규화.</p>
+  </div>
+
+  <!-- 효율성 -->
+  <h2 class="sec"><span class="e">2.</span> 효율성 — 전/후 (주입 프리픽스)</h2>
+  <p class="sub" style="margin:-4px 0 8px">매 claude 호출이 답 만들기 *전에* 고정으로 싣는 지침 덩어리. 픽이 1건씩 들어와 캐시가 안 걸려(5분 TTL) <b>매 픽 그대로 재청구</b>되던 부분.</p>
+  <div class="bars">
+    <div class="barrow">
+      <div class="lab"><span>요약(analyze) 지침 주입</span><b>126.8KB → <span style="color:var(--accent)">72.9KB</span> (−43%)</b></div>
+      <div class="track"><i class="before" style="width:100%"><span class="tag" style="right:6px;color:var(--danger)">전 126.8KB</span></i><i class="after" style="width:57.5%"><span class="tag" style="right:6px;color:var(--accent)">후 72.9KB</span></i></div>
+    </div>
+    <div class="barrow">
+      <div class="lab"><span>카드(card) 지침 주입</span><b>161.3KB → <span style="color:var(--accent)">107.4KB</span> (−33%)</b></div>
+      <div class="track"><i class="before" style="width:100%"><span class="tag" style="right:6px;color:var(--danger)">전 161.3KB</span></i><i class="after" style="width:66.6%"><span class="tag" style="right:6px;color:var(--accent)">후 107.4KB</span></i></div>
+    </div>
+  </div>
+  <p class="note">실측(claude CLI A/B): 요약 1콜 cold = 지침 ~12만 토큰·≈$1.33, 캐시 적중 시 ≈$0.14(90%↓). 단일 픽은 cold라 매번 풀청구 → <b>이번 단일화로 그 풀청구분 자체를 ~1/3 줄임.</b> 채점(gate/breaking)은 프리픽스가 작아 대상 아님(effort max 유지). 실제 일일 절감폭은 <code>tokens.html</code>에 누적되는 숫자로 확정.</p>
+
+  <!-- 건드린 파일 -->
+  <h2 class="sec"><span class="e">3.</span> 건드린 파일 (특히 HTML)</h2>
+  <table>
+    <tr><th>파일</th><th>무엇</th><th>위험</th></tr>
+    <tr><td><code>viewer/tokens.html</code> <b>(신규 HTML)</b></td><td>토큰 대시보드 — <b>독립 새 페이지</b>. <code>/tokens.html</code>로 접속, token-usage.json fetch해 10분 버킷 렌더</td><td><span class="rk rk0">0 (추가만)</span></td></tr>
+    <tr><td><code>viewer/index.html</code> · <code>viewer/thumb.html</code></td><td><b>안 건드림</b> — 메인 앱·썸네일 앱 UI 전혀 손 안 댐</td><td><span class="rk rk0">해당없음</span></td></tr>
+    <tr><td><code>shared/claude_meter.sh</code> <b>(신규)</b> · <code>token_report.py</code> <b>(신규)</b> · <code>metrics-rollup.yml</code> <b>(신규)</b></td><td>계측 래퍼 · 집계기 · 2h 롤업 cron</td><td><span class="rk rk0">0 (추가·폴백안전)</span></td></tr>
+    <tr><td><code>shared/inject_guidelines.sh</code></td><td>R6 해시 의미화 + 이력 주입 제외 awk (주입 내용 불변)</td><td><span class="rk rk1">검증됨</span></td></tr>
+    <tr><td><code>PROJECT_MEMORY.md</code> · <code>apps/news/01_지침_…md</code></td><td>이력 섹션에 <code>INJECT-SKIP</code> 마커(파일 보존·주입만 제외) + #27 수치 정합</td><td><span class="rk rk1">검증됨</span></td></tr>
+    <tr><td><code>shared/claude_py.py</code> · 스크립트 8개(analyze·ask·card·revise·k·ly·gate·breaking) · 워크플로 6개</td><td>계측 배선 + 커밋스텝 <code>git add metrics</code></td><td><span class="rk rk0">폴백안전</span></td></tr>
+    <tr><td><code>shared/check_refs.py</code></td><td>가드 2종 추가(이력형 divider 금지 · 마커 짝 균형)</td><td><span class="rk rk0">방어강화</span></td></tr>
+    <tr><td><code>docs/reports/*.html</code></td><td>보고서(이 문서 등) — 일회성 스냅샷</td><td><span class="rk rk0">0</span></td></tr>
+  </table>
+  <div class="q">👉 <b>HTML은 새 대시보드 <code>viewer/tokens.html</code> 하나만 추가</b>했고, <b>메인 앱(index.html)·썸네일 앱(thumb.html)은 한 줄도 안 건드렸어</b> = 앱 화면 위험 0.</div>
+
+  <!-- 위험성 -->
+  <h2 class="sec"><span class="e">4.</span> 위험성</h2>
+  <table>
+    <tr><th>항목</th><th>평가</th></tr>
+    <tr><td><b>뉴스 요약 품질</b>(핵심)</td><td><span class="rk rk0">none</span> 요약 엔진(의도해석·Step 0.5/1/2·자유요약·Thread·서사비트·편향게이지·RECOMMENDED) <b>전량 주입 유지</b>. 제외분은 전부 자가라벨 "운영 룰 아님" 이력. 분신술 7인 "실수로 빠진 요약룰" = <b>0건(만장일치)</b>. <span style="color:var(--mut)">단 품질은 정성적이라 수학적 0 증명은 불가 → 네가 실사용 판정 + 롤백 대기.</span></td></tr>
+    <tr><td><b>앱 UI</b></td><td><span class="rk rk0">0</span> 기존 화면 미수정(tokens.html 신규 추가뿐).</td></tr>
+    <tr><td><b>파이프라인</b></td><td><span class="rk rk0">low</span> 계측은 jq없음·에러·끄기(<code>METER_OFF=1</code>) 시 옛 동작 폴백. 라이브 claude CLI로 end-to-end 검증.</td></tr>
+    <tr><td><b>1회성 비용</b></td><td><span class="rk rk1">예고</span> 버전 해시가 바뀌어 <b>미촬영 카드 텍스트가 1회 재생성</b>(촬영완료 카드는 보호·제미나이 0·OAuth 쿼터 소량). 의도된 일회성.</td></tr>
+  </table>
+
+  <!-- 안전망 -->
+  <div class="guard">
+    <h3>🔄 롤백 안전망 (2지점)</h3>
+    <p style="margin:0 0 5px"><b>(1) R6-only 안전지점</b> = <code>checkpoint/guidelines-r6-safe</code> 브랜치 — 다이어트·단일화 <b>미적용</b>, 전 지침 그대로 + R6만 = 품질 확실히 0.</p>
+    <p style="margin:0 0 5px"><b>(2) 현재 main</b> = 계측 + R6 + 다이어트 + 단일화(전체 개선).</p>
+    <p style="margin:0"><b>쓰다 요약 품질 떨어졌다 싶으면 → "롤백" 한마디</b>면 main 지침을 (1) 상태로 되돌림. 백업 <code>_versions/260624_1330_*</code>도 있음.</p>
+  </div>
+
+  <div class="warn">
+    <h3>📊 효과·품질 확인은 데이터로</h3>
+    <p style="margin:0"><code>https://nomute-editor.pages.dev/tokens.html</code> — 며칠 쌓이면 <b>픽당 토큰이 실제로 줄었는지</b> 숫자로 뜸. 그동안 <b>요약 결과물 품질이 그대로인지</b>만 봐줘. 한 톨이라도 떨어진다 싶으면 즉시 롤백.</p>
+  </div>
+
+  <p class="meta">검증 = 분신술 적대 Opus 4.8 평의회(계측 10인 + R6/다이어트 8인 + 단일화 7인 = 누적 25인·약 3.9M 토큰·라이브 실측) 만장일치 SAFE. 토큰 = claude -p 실측 · 비용($)은 CLI 추정(구독은 쿼터 청구라 참고용·실제는 쿼터 압박 완화) · 이미지(제미나이)는 별도. PR #881·#887·#892·#893.</p>
+
+</div>
+</body>
+</html>
