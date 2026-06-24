@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>카드뉴스 품질 진단 + 시안 4</title>
+<style>
+:root{
+  --bg:#0a120d;--glass:rgba(38,64,46,.42);--glass2:rgba(14,26,18,.55);
+  --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.05);
+  --fg:#eef7f0;--mut:#8fa697;
+  --accent:#0FFD02;--accent-rgb:15,253,2;--accent-bright:#d8ff3d;
+  --amber:#ff9614;--warn:#ffd24a;--danger:#f87171;--info:#0cd0f7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);padding:0 0 60px;
+  font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.2px;-webkit-font-smoothing:antialiased}
+.bgfx{position:fixed;inset:0;z-index:-1;pointer-events:none;background:
+  radial-gradient(560px 380px at 10% -6%,rgba(var(--accent-rgb),.08),transparent 60%),
+  radial-gradient(620px 520px at 100% 6%,rgba(12,208,247,.05),transparent 62%)}
+.wrap{max-width:920px;margin:0 auto;padding:22px 16px}
+h1{font-size:21px;margin:6px 0 3px;font-weight:800;letter-spacing:-.6px}h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:12px;margin:0 0 6px}
+.meta{color:var(--mut);font-size:11px;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px}
+h2.sec{font-size:16px;font-weight:800;margin:28px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2.sec .e{color:var(--accent)}
+.lead{background:linear-gradient(135deg,rgba(var(--accent-rgb),.10),var(--glass));border:1px solid rgba(var(--accent-rgb),.28);border-radius:14px;padding:15px 18px;margin:14px 0}
+.lead b{color:var(--accent-bright)}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin:11px 0}
+.card h3{margin:0 0 8px;font-size:14.5px}
+.proof{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.proof>div{border-radius:11px;padding:11px 13px;font-size:12px}
+.bad{background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.22)}
+.good{background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.25)}
+.proof h4{margin:0 0 6px;font-size:10.5px;letter-spacing:.3px;text-transform:uppercase}
+.bad h4{color:var(--danger)}.good h4{color:var(--accent)}
+.cause{display:flex;gap:9px;align-items:flex-start;margin:7px 0;font-size:12.5px}
+.cause .t{flex:none;font-size:10px;font-weight:800;border-radius:5px;padding:2px 7px;margin-top:2px}
+.t-h{background:rgba(248,113,113,.16);color:var(--danger)}
+.t-a{background:rgba(255,210,74,.14);color:var(--warn)}
+.ba{margin:9px 0;font-size:12px}
+.ba .row{display:grid;grid-template-columns:48px 1fr;gap:8px;align-items:start;margin:4px 0}
+.ba .tag{font-size:10px;font-weight:800;border-radius:5px;padding:2px 0;text-align:center}
+.ba .b4{background:rgba(248,113,113,.12);color:var(--danger)}
+.ba .af{background:rgba(var(--accent-rgb),.13);color:var(--accent)}
+.ba code{font-size:11.5px;color:#d6f5e0;background:rgba(5,12,8,.5);padding:2px 6px;border-radius:6px;display:block;line-height:1.5;white-space:pre-wrap}
+.shian{border:1px solid var(--line);border-radius:14px;padding:0;margin:13px 0;overflow:hidden}
+.shian.rec{border-color:rgba(var(--accent-rgb),.5)}
+.shian .hd{padding:12px 16px;background:var(--glass2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.shian .hd .nm{font-weight:800;font-size:14.5px}
+.shian.rec .hd{background:linear-gradient(135deg,rgba(var(--accent-rgb),.12),var(--glass2))}
+.shian .tagrec{font-size:10px;font-weight:800;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.5);border-radius:999px;padding:2px 9px}
+.shian .bd{padding:13px 16px}
+.shian .bd p{margin:6px 0;font-size:12.5px}
+.shian .lbl{color:var(--mut);font-size:11px;font-weight:700}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+.pc>div{border-radius:10px;padding:9px 11px;font-size:11.5px}
+.pc .pro{background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.2)}
+.pc .con{background:rgba(255,150,20,.06);border:1px solid rgba(255,150,20,.22)}
+.pc h5{margin:0 0 4px;font-size:10px;letter-spacing:.3px}
+.pc .pro h5{color:var(--accent)}.pc .con h5{color:var(--amber)}
+.note{color:var(--mut);font-size:11.5px;line-height:1.7;margin-top:8px}
+code.k{font-size:11px;color:#cfe;background:rgba(5,12,8,.5);padding:1px 5px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="bgfx"></div>
+<div class="wrap">
+
+  <h1>🃏 카드뉴스 품질 진단 + <b>시안 4</b></h1>
+  <p class="sub">요약(좋음) vs 카드(약함) — 분신술 11인(진단 10 + 종합 1) · 같은 기사 6쌍 실측</p>
+
+  <!-- 진단 -->
+  <h2 class="sec"><span class="e">1.</span> 진단 — 한 뿌리</h2>
+  <div class="lead">
+    카드가 약한 건 <b>포맷 탓이 아니라, "아주 좋다"고 한 자유요약의 서사 척추를 카드가 구조적으로 안 물려받기</b> 때문.
+    지침이 <code class="k">01_지침 L342 "자유요약은 입력 아님"</code>이라 못 박아서, 카드는 좋은 요약을 옆에 두고도 못 쓰고 <b>원문에서 0부터 재파생</b> → 인과·연결·전환·착지가 매번 얇게 다시 만들어진다.
+  </div>
+  <p class="lbl" style="margin:14px 0 5px;color:var(--mut)">결정적 증거 — 같은 룰·같은 압축캡인데:</p>
+  <div class="proof">
+    <div class="bad"><h4>✗ 상속 안 한 카드</h4>올다르크: <code style="font-size:11px">합의는 이미 끝나 있었는데</code> → 왜 충돌인지 설명 없이 매달린 채 다음 카드로. 6장이 "제목 6개 나열".</div>
+    <div class="good"><h4>✓ 요약 상속한 카드</h4>ACC·부동산: 요약 줄기를 이어받아 起承轉結이 삶. <code style="font-size:11px">운전대 책임은 사람의 몫</code> = 이 기사 고유 착지.</div>
+  </div>
+  <p class="note">→ 갈림길은 <b>포맷이 아니라 "요약을 상속하느냐".</b> 같은 .md 안에 좋은 자산이 이미 있는데 카드만 못 쓴다.</p>
+
+  <h2 class="sec"><span class="e">2.</span> 왜 끊기나 (증폭 원인)</h2>
+  <div class="cause"><span class="t t-h">H1·주범</span><div><b>요약 비상속</b>(L342) — 카드가 요약의 줄기·서사비트·시사점을 입력에서 배제, 원문 재파생.</div></div>
+  <div class="cause"><span class="t t-a">H2</span><div><b>물리 압축캡</b>(L355·361: 4줄·18자≈카드 72자) — 요약 한 문단(150~250자)의 인과 종속절("~지만/~사이/~데도")이 안 들어가 <b>접속어만 남고 인과절은 삭제</b>.</div></div>
+  <div class="cause"><span class="t t-a">증폭</span><div><b>넘김훅 절단 기준</b>(L356) — "긴장 지점에서 자르라"가 <b>의미(인과)가 아니라 긴장 단위로 절단</b> → 비트 중간이 끊김.</div></div>
+  <div class="cause"><span class="t t-h">메타</span><div><b>티어 비대칭</b>(L406·407) — 조각화 룰(가중폭·글자수)은 강한 <code class="k">KILLER</code> 티어, 흐름·서사·공감 룰은 약한 <code class="k">RECOMMENDED</code> 티어 → <b>충돌 시 조각이 흐름을 항상 이김.</b></div></div>
+  <div class="cause"><span class="t t-a">H3</span><div><b>마지막 카드</b>(L340 원칙3) — "사회 메시지"가 <b>일반 격언으로 빠져</b>("법이 보는 건 행위다") 요약 💡의 기사 고유 시사점이 증발.</div></div>
+
+  <!-- 시안 -->
+  <h2 class="sec"><span class="e">3.</span> 고를 시안 4개</h2>
+
+  <div class="shian">
+    <div class="hd"><span class="nm">A. 자유요약 상속형</span><span class="lbl">최소수술·최대효과</span></div>
+    <div class="bd">
+      <p><span class="lbl">핵심 변경 —</span> <code class="k">L342</code> "자유요약은 입력 아님" 폐기 → <b>요약의 서사 척추(🔎줄기·📍서사비트·💡시사점)를 카드 골격 1차 입력으로 상속</b>(원문은 사실 교차검증용). IG 📍비트 ↔ 카드 N장 1:1 매핑.</p>
+      <div class="ba">
+        <span class="lbl">올다르크 카드1·2</span>
+        <div class="row"><span class="tag b4">전</span><code>합의는 이미 끝나 있었는데  (왜 충돌인지 설명 없이 매달림)</code></div>
+        <div class="row"><span class="tag af">후</span><code>합의는 이미 끝났는데 / 그가 문을 막아섰다 → (카드2) 2명씩 들어가기로 / 모두 뜻을 모았지만 / 그를 못 돌려세웠다  (모순을 그 카드 안에서 닫고, 다음 카드가 이어받음)</code></div>
+      </div>
+      <div class="pc">
+        <div class="pro"><h5>장점</h5>이미 검증된 자산 재사용 → 품질 상한이 요약 수준으로. 변경점 적음. 잘 된 카드가 이미 이 방식이라 회귀 최소.</div>
+        <div class="con"><h5>단점</h5>기틀 변경(설계 위계) = 승인+분신술 필수. 요약 편향까지 상속 위험(원문 사실가드로 상쇄).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shian">
+    <div class="hd"><span class="nm">B. 기승전결 템플릿 강제형</span><span class="lbl">편차·하한 잡기</span></div>
+    <div class="bd">
+      <p><span class="lbl">핵심 변경 —</span> 4-A에 <b>起承轉結 슬롯 의무</b>(轉=요약의 꺾임 문장 "그러나/문제는"이 든 카드 1개 지정). 흐름룰(#5·#30)을 <code class="k">RECOMMENDED→KILLER</code> 승격(티어 비대칭 해소).</p>
+      <div class="ba">
+        <span class="lbl">정점식 카드3·4</span>
+        <div class="row"><span class="tag b4">전</span><code>결국 사퇴가 아니다 / 방점이 찍혔다 → (카드4) 그사이 회동은 계속됐다 / 결론은, 없었다  (제자리 맴돌이)</code></div>
+        <div class="row"><span class="tag af">후</span><code>결론도 시점도 비워둔 채로 → (카드4·轉) 그러는 사이, 회동만 늘었다 / 매듭은 없었다 / 책임은 누가 지나  (공전을 轉으로 터뜨려 착지로)</code></div>
+      </div>
+      <div class="pc">
+        <div class="pro"><h5>장점</h5>편차를 게이트로 잡아 하한 ↑(같은 룰서 통과/실패 갈리던 분산 해소). 동화책 기승전결 구조 보장.</div>
+        <div class="con"><h5>단점</h5>템플릿이 사건 결을 평탄화할 위험. KILLER 승격 = 카드 캐시 버스트(미촬영 재생성). 억지 轉은 신파.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shian">
+    <div class="hd"><span class="nm">C. 시사점 역설계형</span><span class="lbl">착지 정조준</span></div>
+    <div class="bd">
+      <p><span class="lbl">핵심 변경 —</span> 마지막 카드 = <b>요약 💡의 이 사건 고유 논리(고유명사·수치·핵심명제)를 압축</b>, 일반 격언 금지. 자가테스트: "다른 기사에 붙여도 말 되면 일반론=실패".</p>
+      <div class="ba">
+        <span class="lbl">올다르크 카드6</span>
+        <div class="row"><span class="tag b4">전</span><code>법이 보는 건 동기가 아니라 행위다  (아무 기사에나 붙는 법언)</code></div>
+        <div class="row"><span class="tag af">후</span><code>제도를 지키자며 / 제도를 멈춰 세운 두 시간 / 같은 행동에 진영은 / 영웅과 범법자를 붙였다  (이 사건만 성립)</code></div>
+      </div>
+      <div class="pc">
+        <div class="pro"><h5>장점</h5>불만 ③(시사점 애매) 정조준. 변경 범위 국소(마지막 카드+💡 입력). 💡는 이미 잘 뽑혀 재사용 효율 ↑.</div>
+        <div class="con"><h5>단점</h5>착지만 고치면 본문 끊김(①⑤)은 그대로 = 불만 절반만 해결. A 없이 단독이면 본문 약한데 결말만 묵직 = 부조화.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shian rec">
+    <div class="hd"><span class="nm">D. 통합 단계형</span><span class="tagrec">★ 권장</span><span class="lbl">A뿌리 + B흐름게이트 + C착지</span></div>
+    <div class="bd">
+      <p><span class="lbl">핵심 변경 —</span> <b>A(요약 상속)를 뿌리로</b> → B의 흐름 게이트(#30 카드 대칭 적용)만 채택(轉 슬롯은 '권장'으로 완화=평탄화 방지) → C(고유 시사점 착지). 4-C STOP 직전 <b>"요약↔카드 비트 커버리지 자가표"</b> 1회 의무(추가 호출 0).</p>
+      <div class="ba">
+        <span class="lbl">안락사 카드3·4·6</span>
+        <div class="row"><span class="tag b4">전</span><code>벨기에는 나이 제한을 없앴다 → 캐나다는 더 무거웠다 / 가난과 돌봄 부족이 죽음의 이유로  (왜 무거운지 인과 비약)</code></div>
+        <div class="row"><span class="tag af">후</span><code>경계는 한 방향으로만 넓어져 왔다 / 벨기에는 나이 제한을 없앴고 → (카드4) 같은 문이 더 열린 캐나다선 / *가난*이 죽음의 이유로 → (카드6) 문은 약자에게 먼저 닿는다  (줄기가 꿰고, 이어받고, 고유 착지)</code></div>
+      </div>
+      <div class="pc">
+        <div class="pro"><h5>장점</h5>불만 ①~⑤ 전부 커버(맥락·기승전결·시사점·사실력). A효과를 B·C가 하한 보강. 자가표로 드리프트 차단.</div>
+        <div class="con"><h5>단점</h5>변경 범위 최대 = 기틀+분신술 10인+캐시 버스트 동시. A→C→B 단계 롤아웃 권장(한 번에 다 X). 검토 부담 ↑.</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="meta">검증 = 분신술 적대 Opus 4.8 11인(진단 10 + 종합 1)·약 1.44M 토큰·요약↔카드 6쌍 실측·실제 문장 인용 근거. 어느 시안이든 카드 텍스트 *룰* 변경 = 카드 캐시 버스트(미촬영 카드 텍스트 1회 재생성·제미나이 0·촬영완료 보호). 기틀(설계 위계 L342) 변경이면 §기틀 보호 승인 + 분신술 10인 후 머지. 정본 대상 = apps/news/01_지침_에디터_뉴스 Step 4.</p>
+
+</div>
+</body>
+</html>
