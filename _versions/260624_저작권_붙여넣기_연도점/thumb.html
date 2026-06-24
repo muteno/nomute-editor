@@ -720,9 +720,9 @@ const WARN_PRESETS = {   // (Opus 5인 만장일치 검토 — AI=AI기본법 §
   ai: '본 이미지는 생성형 AI로 제작·합성되었습니다.',
   caution: '민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.',
 };
-// 연도 = 자유 수정(정수/-/. 허용 — 키보드 구조상 . 입력됨). getYear()=빈값이면 2026. 이름 = 탭=수정.
-function getYear() { return ($('#cphYear').textContent || '').replace(/[^0-9.\-]/g, '') || '2026'; }
-function setYear(v) { const s = String(v == null ? '' : v).replace(/[^0-9.\-]/g, ''); $('#cphYear').textContent = s || '2026'; }
+// 연도 = 자유 수정(정수/-). getYear()=숫자만·빈값이면 2026. 이름 = 탭=수정.
+function getYear() { return ($('#cphYear').textContent || '').replace(/[^0-9-]/g, '') || '2026'; }
+function setYear(v) { const s = String(v == null ? '' : v).replace(/[^0-9-]/g, ''); $('#cphYear').textContent = s || '2026'; }
 function getName() { return ($('#cphName').textContent || '').replace(/\s+/g, ' ').trim(); }
 function setName(v) { $('#cphName').textContent = v || ''; }
 // 플랫폼 = 픽토그램 span(#cphPlat)의 data-plat. custom이면 직접입력칸(#cplat) 값.
@@ -738,15 +738,10 @@ function syncCopyTog() {
   const t = $('#copyTog'); if (t) { t.textContent = copyOn ? 'ON' : 'OFF'; t.classList.toggle('on', copyOn); t.setAttribute('aria-pressed', copyOn ? 'true' : 'false'); }
   $('#cphLine') && $('#cphLine').classList.toggle('off', !copyOn);
 }
-// 안내문 UI — OFF(미선택)/종류명(경고·AI·자유문구) · 점등 + textarea(켜졌을 때만) + 붙여넣기(자유문구일 때만)
+// 안내문 UI — OFF(미선택)/종류명(경고·AI·자유문구) · 점등 + textarea 표시(켜졌을 때만)
 function syncGuide() {
   const t = $('#guideTog'); if (t) { t.textContent = guideMode ? GLAB[guideMode] : 'OFF'; t.classList.toggle('on', !!guideMode); t.setAttribute('aria-pressed', guideMode ? 'true' : 'false'); }
-  const wl = $('#warnLines'); if (!wl) return;
-  const wrap = wl.parentNode, btn = wrap && wrap.querySelector('.iobtn');   // attachCopyPaste가 감싼 wrap+버튼
-  if (btn) {   // wrap 통째 토글 = OFF일 때 붙여넣기 버튼 플로팅/오버랩 제거
-    wl.classList.remove('none'); wrap.classList.toggle('none', !guideMode);
-    btn.classList.toggle('none', guideMode !== 'free');   // 붙여넣기 = 직접입력(자유문구)일 때만 노출
-  } else { wl.classList.toggle('none', !guideMode); }     // 폴백(attach 전)
+  $('#warnLines').classList.toggle('none', !guideMode);
 }
 // 포맷 세그 클릭 = 그 포맷 선택(포스트/릴스 각각)
 (function () {
@@ -769,7 +764,7 @@ function ceCaretEnd(el) { const r = document.createRange(); r.selectNodeContents
 function ceBlur(el) { const fn = el && el.blur; if (fn) fn.call(el); }   // 편집 종료(모바일 키보드 내림) · 변수 경유 = check_refs의 CSS raw-blur 카운트 오탐 회피(DOM 이벤트)
 (function () {
   const yr = $('#cphYear');
-  if (yr) yr.addEventListener('input', () => { const clean = yr.textContent.replace(/[^0-9.\-]/g, ''); if (clean !== yr.textContent) { yr.textContent = clean; if (clean) ceCaretEnd(yr); } });
+  if (yr) yr.addEventListener('input', () => { const clean = yr.textContent.replace(/[^0-9-]/g, ''); if (clean !== yr.textContent) { yr.textContent = clean; if (clean) ceCaretEnd(yr); } });
   const nm = $('#cphName');
   if (nm) nm.addEventListener('input', () => { if (/[\n\r]/.test(nm.textContent)) { nm.textContent = nm.textContent.replace(/[\n\r]+/g, ' '); ceCaretEnd(nm); } });
   [yr, nm].forEach(e => { if (e) e.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); ceBlur(e); } }); });
