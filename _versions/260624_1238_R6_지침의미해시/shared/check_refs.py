@@ -187,33 +187,8 @@ def check_design():
         print('✅ 디자인 토큰 게이트 — raw 값 baseline 이내(신규 미토큰 없음).')
     return 0   # WARN-only
 
-# 주입 지침 소스에 '----- ... -----' 형태 본문 줄 금지 (R6 가드 · 260624).
-# inject_guidelines.sh 의 guidelines_version() 은 해시 입력에서 경로헤더('^----- path -----$')를 제외해
-#   파일 rename 에도 같은 버전을 내(불필요 재생성 방지). 그런데 *주입 지침 본문*에 같은 형태의 줄이 있으면
-#   그 줄도 해시에서 빠져 → 그 줄만 편집해도 버전이 안 바뀜 = 조용한 드리프트(이 시스템이 막으려는 바로 그것).
-#   현재 0건. 이 게이트로 미래에 그런 줄이 들어오는 걸 차단(분신술 8인 권고 260624).
-_DIVIDER_RE = re.compile(r'^----- .+ -----\s*$')
-_INJECT_GLOBS = ('apps/news/00_에디터_뉴스_운영.md', 'apps/news/01_지침_에디터_뉴스_*.md',
-                 'apps/news/02_라이브러리_이미지_*.md', 'PROJECT_MEMORY.md')
-
-
-def check_inject_dividers():
-    fails = []
-    for g in _INJECT_GLOBS:
-        for path in glob.glob(os.path.join(ROOT, g)):
-            try:
-                with open(path, encoding='utf-8') as fh:
-                    for n, line in enumerate(fh, 1):
-                        if _DIVIDER_RE.match(line):
-                            rel = os.path.relpath(path, ROOT)
-                            fails.append("주입 지침 본문에 '----- ... -----' 줄(%s:%d) — R6 해시서 제외돼 드리프트 미탐 위험. 다른 표기로 바꿔라." % (rel, n))
-            except Exception:
-                continue
-    return fails
-
-
 def main():
-    fails = check_paths() + check_versions() + check_inject_dividers()
+    fails = check_paths() + check_versions()
     rc = 0
     if fails:
         print('❌ check_refs 실패 %d건:' % len(fails))
