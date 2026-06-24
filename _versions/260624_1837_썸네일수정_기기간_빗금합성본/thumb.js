@@ -98,12 +98,8 @@ export async function onRequestPost({ request, env }) {
     try { imgSha = ((await put.json()) || {}).commit?.sha || ''; } catch { imgSha = ''; }   // src 커밋 SHA — 워크플로가 dispatch 레이스(옛 HEAD 체크아웃)일 때 이 SHA로 배경 직접 확보
   }
 
-  // 제작 조건 스냅샷(문구·설정 = snapForm) — 기기 간 '수정' 복원용으로 서버에도 보존(워크플로가 _src.json 커밋 → build-viewer가 thumb-hist.json에 src 동봉). 이미지 b64는 미포함(로컬 IDB만)·텍스트라 작음. 6KB 캡(워크플로 input 안전).
-  let srcJson = '';
-  if (body.src && typeof body.src === 'object') { try { const sj = JSON.stringify(body.src); if (sj.length <= 6000) srcJson = sj; } catch {} }
-
   const r = await GH(env.GH_TOKEN, 'actions/workflows/thumb-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { app, id, image: imgPath, image_sha: imgSha, params: JSON.stringify(params), src_json: srcJson },
+    ref: REF, inputs: { app, id, image: imgPath, image_sha: imgSha, params: JSON.stringify(params) },
   });
   if (r.status === 204) {
     const dir = `${R2_BASE}/thumb_out/${id}`;   // outs path = R2 절대 URL(워크플로 r2_upload 키 `thumb_out/<id>/<file>`와 일치 → 뷰어가 R2 직접 폴링=즉시·배포지연 0)

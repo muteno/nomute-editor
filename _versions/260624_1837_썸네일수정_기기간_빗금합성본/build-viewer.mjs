@@ -279,10 +279,8 @@ try {
     try { meta = JSON.parse(readFileSync(join(troot, id, '_meta.json'), 'utf8')); }   // 신규: [[file, R2url], ...] — 이미지 R2(git 미저장)·_meta.json만 git
     catch { try { meta = readdirSync(join(troot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort().map(f => [f, `thumb_out/${id}/${f}`]); } catch { continue; } }   // 레거시(R2 이전·_meta 없음): 옛 git 이미지 상대경로 폴백(여전히 Pages 서빙) = 기기간 이력 회귀 0
     if (!meta.length) continue;
-    let src = null;   // 제작 조건 스냅샷(문구·설정) — 있으면 기기 간 '수정' 복원 가능(연필 버튼·thumb.html). 없으면(구버전·미전달) 생략.
-    try { src = JSON.parse(readFileSync(join(troot, id, '_src.json'), 'utf8')); } catch {}
     const isPost = meta.some(([f]) => /^(opa\d+|box|nobg)\.(png|jpe?g)$/i.test(f));   // 포스트(/1) = opa/box/nobg 산출 → '포스트' 타입 라벨(로컬 cap='포스트 #N'과 통일). 릴스/저작권/경고문=out.png은 파일명으론 구분 불가 → 백엔드 마커 후속(운영자 260622)
-    for (const [f, url] of meta) { const e = { url, dlname: `${id}_${f}`, cap: isPost ? '포스트' : thLabel(f), varStr: isPost ? ' · ' + thLabel(f) : '', ts }; if (src && src.app) e.src = src; thHist.push(e); }
+    for (const [f, url] of meta) thHist.push({ url, dlname: `${id}_${f}`, cap: isPost ? '포스트' : thLabel(f), varStr: isPost ? ' · ' + thLabel(f) : '', ts });
   }
 } catch { /* thumb_out 없음 */ }
 thHist.sort((a, b) => b.ts - a.ts);
