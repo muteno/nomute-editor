@@ -153,7 +153,6 @@
   #goSpec { font-size:11.25px; white-space:nowrap; }   /* 기본(combo) 명세 = 현재의 90% + 한 줄(모바일 · []·/ 제거 · 운영자 260624) */
   .cmtrk { display:block; margin:6px 2px 0; }            /* 통합 모드 자간 안내(부제/제목·자막) = 입력 아래 별도 줄 */
   .cmtrk:empty { display:none; }                          /* 초과 없으면 숨김(빈 줄 방지) */
-  .cph-eg { color:var(--mut); }                           /* 저작권 미리보기 예시(이름 미입력=nomute) = 옅은 회색(운영자 260624) */
   /* 교정 칩 = 버튼 아래·바뀐 단어만·탭으로 점등 토글(노랑=적용 / 회색=그대로) */
   .spellchips { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
   .spellchips[hidden] { display:none; }
@@ -466,20 +465,19 @@
         <div class="gospec" id="hdrSpec"><span class="gs-bul">•</span> <span class="gs-lbl">출력</span>: [ <span class="gs-v on">흰칸</span> | <span class="gs-v gs-tog" id="hsBg" role="button" tabindex="0" title="탭=배경(흰칸 없음) 추가">배경</span> ] &nbsp;/&nbsp; <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="hsAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span> <span id="hdrTrk" class="trk"></span></div>
       </div>
 
-      <!-- 오버레이 모드: OPA + 텍스트(2/3) + 이미지 슬롯(1/3·옵션) — 기본 탭과 동일 레이아웃(한 행 절약 · 운영자 260624) -->
+      <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
       <div id="rOverlay" class="none">
+        <label class="file" id="rFileLab"><span>탭해서 이미지 선택</span>
+          <input type="file" accept="image/*" id="rFile" style="display:none">
+        </label>
         <label>투명도 (OPA)</label>
         <div class="seg" id="rOpaSeg">
           <button data-opa="60" class="on">60</button>
-          <button data-opa="30">30</button>
+          <button data-opa="30" class="on">30</button>
           <button data-opa="custom" id="rOpaCustom"><span class="lab">직접입력</span><input type="text" id="rOpaNum" class="opa-in" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="OPA"></button>
         </div>
         <label>텍스트</label>
-        <div class="covrow">
-          <textarea id="rLines" class="covta" placeholder=""></textarea>
-          <div class="covimg" id="rImgSlot" role="button" tabindex="0" aria-label="오버레이 이미지 첨부"></div>
-          <input type="file" accept="image/*" id="rFile" hidden>
-        </div>
+        <textarea id="rLines" placeholder=""></textarea>
         <div class="gospec" id="ovSpec"><span class="gs-bul">•</span> <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="osAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span> <span id="rLinesTrk" class="trk"></span></div>
       </div>
     </div>
@@ -500,7 +498,7 @@
         <button type="button" class="pbtn" data-plat="custom" id="pCustom" title="직접입력"><span class="plab">직접</span></button>
       </div>
       <input type="text" id="cplat" class="none" placeholder="플랫폼 직접입력 (예: tiktok)" style="margin-top:6px">
-      <div class="kwline"><span class="kwchip" id="copyHint" role="button" tabindex="0" title="탭하면 복사">ⓒ 2026. <span class="cph-eg">nomute</span>(instagram). all rights reserved.</span></div>
+      <div class="kwline"><span class="kwchip" id="copyHint" role="button" tabindex="0" title="탭하면 복사">ⓒ 2026. nomute(instagram). all rights reserved.</span></div>
     </div>
 
     <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
@@ -608,7 +606,6 @@ function selApp(a) {
   // (linesMax 폐지 — 포스트 설명줄을 postSpec 축약 명세로 대체)
   if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
   if (a === '1') updateTrkHint('lines', 'linesTrk', 'post');                   // 실시간 자간
-  if (a === '3') updateCopyHint();                                             // 저작권 미리보기 즉시 갱신(예시 nomute 회색 반영)
   clearSpellReview();                                                          // 앱 바뀌면 진행 중이던 교정 리뷰 폐기
   const gb = $('#go');                                                         // 버튼 문구 = 맞춤법 대상 앱(1·2·4)만 '및 맞춤법 교정'
   if (gb) { const lbl = (a === '1' || a === '2' || a === '4') ? '이미지 제작 및 맞춤법 교정' : '이미지 제작'; gb.dataset.label = lbl;
@@ -642,9 +639,8 @@ function getPlatform() {
   return sel.dataset.plat === 'custom' ? $('#cplat').value.trim() : sel.dataset.plat;
 }
 function updateCopyHint() {
-  const y = $('#cyear').value.trim() || '2026', nRaw = $('#cname').value.trim(), p = getPlatform();
-  const n = nRaw ? esc(nRaw) : '<span class="cph-eg">nomute</span>';   // 이름 미입력 = 예시(옅은 회색) · 입력하면 일반색(운영자 260624)
-  $('#copyHint').innerHTML = 'ⓒ ' + esc(y) + '. ' + n + (p ? '(' + esc(p) + ')' : '') + '. all rights reserved.';   // 사용자 입력은 esc(저장형 XSS 방지)·예시만 raw span
+  const y = $('#cyear').value.trim() || '2026', n = $('#cname').value.trim() || 'nomute', p = getPlatform();
+  $('#copyHint').textContent = 'ⓒ ' + y + '. ' + n + (p ? '(' + p + ')' : '') + '. all rights reserved.';   // '→' 화살표 완전 제거(운영자 260622) — 순수 저작권 문구만(복사도 깨끗)
 }
 // 저작권 미리보기 = 탭하면 복사(뉴스 요약 키워드칩 .cref-kw 의 복사-액티브 계승: 초록 눌림 플래시 · '→ ' 화살표는 UI 표식이라 복사 제외)
 (function () {
@@ -871,30 +867,30 @@ function bindFile(inp, lab, store) {
   lab._set = applyImg;   // 수정 복원 시 원본 이미지 주입(외부 호출용)
 }
 bindFile($('#file'), $('#fileLab'), IMG);
-// 이미지 슬롯(텍스트 2/3 우측 1/3) — 기본(자막)·오버레이 공용 바인더. 미선택=사진 픽토그램 / 선택=썸네일+X. input은 슬롯 밖(innerHTML 교체에 안전)·rfab b3도 직접 click.
-function bindSlotImg(slotSel, inputSel, store) {
-  const slot = $(slotSel), inp = $(inputSel); if (!slot || !inp) return;
+bindFile($('#rFile'), $('#rFileLab'), RIMG);
+// 통합(기본) 모드 자막 이미지 슬롯 — 요약요청 .askattach 픽토그램 패턴(단일·자막칸 우측 1/3). 미선택=사진 픽토그램 / 선택=썸네일+X. input #cFile은 슬롯 밖(innerHTML 교체에 안전)·rfab b3도 직접 click.
+function bindComboImg() {
+  const slot = $('#cImgSlot'), inp = $('#cFile');
   const PHOTO = '<span class="covimg-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></span><span class="covimg-t">이미지</span>';
   const XS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
   const empty = () => { slot.classList.remove('has'); slot.innerHTML = PHOTO; updateGoSpec(); };
   const filled = (url, kb) => { slot.classList.add('has'); slot.innerHTML = '<img src="' + url + '" alt=""><button type="button" class="covimg-x" aria-label="이미지 삭제">' + XS + '</button>' + (kb ? '<span class="covimg-kb">' + kb + 'KB</span>' : ''); updateGoSpec(); };
   slot.addEventListener('click', e => {
-    if (e.target.closest('.covimg-x')) { e.preventDefault(); e.stopPropagation(); store.b64 = ''; store.name = ''; inp.value = ''; empty(); return; }   // X = 삭제 → 빈 슬롯
+    if (e.target.closest('.covimg-x')) { e.preventDefault(); e.stopPropagation(); CIMG.b64 = ''; CIMG.name = ''; inp.value = ''; empty(); return; }   // X = 삭제 → 빈 슬롯
     if (!slot.classList.contains('has')) inp.click();   // 빈 슬롯 = 파일 선택(채운 상태는 X로만 비우고 재선택)
   });
   slot.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !slot.classList.contains('has')) { e.preventDefault(); inp.click(); } });
   inp.onchange = e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => { store.b64 = r.result; store.name = f.name; filled(r.result, Math.round(f.size / 1024)); };
+    r.onload = () => { CIMG.b64 = r.result; CIMG.name = f.name; filled(r.result, Math.round(f.size / 1024)); };
     r.readAsDataURL(f);
   };
-  slot._reset = () => { store.b64 = ''; store.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
-  slot._set = (b64, name) => { store.b64 = b64; store.name = name || ''; filled(b64); };   // 수정 복원 시 원본 이미지 주입(외부 호출용)
+  slot._reset = () => { CIMG.b64 = ''; CIMG.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
+  slot._set = (b64, name) => { CIMG.b64 = b64; CIMG.name = name || ''; filled(b64); };   // 수정 복원 시 원본 이미지 주입(외부 호출용)
   empty();
 }
-bindSlotImg('#cImgSlot', '#cFile', CIMG);   // 기본(자막) 슬롯
-bindSlotImg('#rImgSlot', '#rFile', RIMG);   // 오버레이 슬롯(전 full-width #rFileLab → 슬롯으로 통일·운영자 260624)
+bindComboImg();
 
 // ==== 붙여넣기↔복사 + 다운로드 (뷰어 버튼 UIUX 계승) ====
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -1030,7 +1026,7 @@ function importToEditor(src) {
     selRmode(src.rmode || 'combo');
     if (src.rmode === 'combo') { $('#cSub').value = src.cSub || ''; $('#cTitle').value = src.cTitle || ''; $('#cLines').value = src.cLines || ''; COMBO_OPA = src.comboOpa || 60; $('#cBg').checked = !!src.cBg; if ($('#cImgSlot')._reset) $('#cImgSlot')._reset(); updateComboTrk(); }
     else if (src.rmode === 'header') { $('#sub').value = src.sub || ''; $('#title').value = src.title || ''; $('#rBg').checked = !!src.rBg; updateHdrTrk(); }
-    else { $('#rLines').value = src.rLines || ''; if (src.reelsOpas && src.reelsOpas.length) restoreOpaSeg('#rOpaSeg', $('#rOpaNum'), $('#rOpaCustom'), src.reelsOpas); if ($('#rImgSlot')._reset) $('#rImgSlot')._reset(); updateTrkHint('rLines', 'rLinesTrk', 'reels'); }
+    else { $('#rLines').value = src.rLines || ''; if (src.reelsOpas && src.reelsOpas.length) restoreOpaSeg('#rOpaSeg', $('#rOpaNum'), $('#rOpaCustom'), src.reelsOpas); if ($('#rFileLab')._reset) $('#rFileLab')._reset(); updateTrkHint('rLines', 'rLinesTrk', 'reels'); }
   } else if (src.app === '3') {
     $('#cyear').value = src.cyear || ''; $('#cname').value = src.cname || '';
     if (src.platSel) { document.querySelectorAll('#pseg button').forEach(b => b.classList.toggle('on', b.dataset.plat === src.platSel)); const custom = src.platSel === 'custom'; $('#cplat').classList.toggle('none', !custom); if (custom) $('#cplat').value = src.cplat || ''; }
@@ -1055,7 +1051,7 @@ function importToEditor(src) {
 function setImportImg(src, b64, name) {   // 복원 이미지 → 앱·모드별 위젯에 주입(파일선택과 동일 렌더)
   if (src.app === '1' || src.app === '5') { if ($('#fileLab')._set) $('#fileLab')._set(b64, name); }
   else if (src.app === '2' && src.rmode === 'combo') { if ($('#cImgSlot')._set) $('#cImgSlot')._set(b64, name); }
-  else if (src.app === '2' && src.rmode === 'overlay') { if ($('#rImgSlot')._set) $('#rImgSlot')._set(b64, name); }
+  else if (src.app === '2' && src.rmode === 'overlay') { if ($('#rFileLab')._set) $('#rFileLab')._set(b64, name); }
 }
 
 // ==== 대기열(JOBS) + 캐러셀 — 제작 동시 가능: 누른 게 다 로그에 쌓이고 각자 폴링, 완성분은 캐러셀에 한 장씩 ====
