@@ -151,14 +151,6 @@
   .go-abbr .ackm { width:10px; height:10px; }
   /* 제작 직전 결과물 명세(통합 모드 — 체크 많아 한눈 요약) · 블릿 말머리·좌측정렬 · 활성=노랑/비활성=회색 */
   .gospec { margin:16px 2px 0; font-size:12.5px; color:var(--mut); text-align:left; line-height:1.8; }
-  /* 옵션줄 = 검정 배경 패널로 돋보이게(운영자 260624) */
-  #goSpec { margin:14px 0 0; padding:10px 13px; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:11px; }
-  /* • 오버레이 포맷 토글 — 포스트=시안 / 릴스=레몬(운영자 260624) */
-  .csec .ovsep { color:var(--mut); font-weight:400; margin:0 5px; }
-  .csec .ovfmt { cursor:pointer; font-weight:800; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:0 3px; transition:color .15s; }
-  .csec .ovfmt.post { color:#1fd6ee; }    /* 포스트 = 시안 */
-  .csec .ovfmt.reels { color:#e7ff2e; }   /* 릴스 = 레몬 */
-  .csec .ovfmt.forced { opacity:.65; cursor:default; }   /* 헤더 입력 중 = 릴스 고정 */
   .gospec .gs-bul { color:var(--mut); font-weight:700; margin-right:4px; }
   .gospec .gs-lbl { color:var(--mut); font-weight:700; }   /* 라벨(헤더/오버레이/축약) = mut 통일(운영자 260624) */
   .gospec .gs-v { color:var(--mut); }
@@ -436,7 +428,8 @@
 <div class="wrap">
 
   <div class="tabs" id="tabs">
-    <div class="tab" data-app="2">썸네일</div>
+    <div class="tab" data-app="1">포스트</div>
+    <div class="tab" data-app="2">릴스</div>
     <div class="tab" data-app="3">저작권</div>
     <div class="tab" data-app="4">경고문</div>
     <div class="tab" data-app="5">카드뉴스</div>
@@ -498,7 +491,7 @@
         <input type="text" id="cSub" class="cf cf-sub" placeholder="부제">
         <input type="text" id="cTitle" class="cf cf-title" placeholder="제목">
         <span id="cHdrTrk" class="trk cmtrk"></span>   <!-- 부제/제목 자간 초과 안내(헤더 탭과 동일) -->
-        <div class="csec">• 오버레이 <span class="ovsep">|</span> <span id="ovFmtTog" class="ovfmt post" role="button" tabindex="0" title="탭=포스트(4:5)↔릴스(9:16) · 자간 한도 다름(−45/−30) · 헤더 입력 중엔 릴스 고정">포스트</span></div>   <!-- 포맷=텍스트 시작 전 선택(자간 한도 분기) · OPA 등은 옵션줄 -->
+        <div class="csec">• 오버레이</div>   <!-- OPA 조절 = goSpec 'OPA : 60'으로 이동 -->
         <div class="covrow">
           <textarea id="cLines" class="covta" placeholder="강조는 별표로, 최대 3줄 가능"></textarea>
           <div class="covimg" id="cImgSlot" role="button" tabindex="0" aria-label="자막 이미지 첨부"></div>
@@ -622,8 +615,7 @@ function askConfirm(msg) {
   });
 }
 let APP = '1', FMT = 'post';
-let cOpa1on = true, cOpa2on = false, cOpa2val = 30;   // 자막 OPA: 60(고정값·토글) + 보조(기본30·스크롤 조절·토글) · 최소 1개 (운영자 260624)
-let ovFmt = 'post';   // 썸네일 통합: 오버레이 포맷 'post'(4:5·기본·시안) | 'reels'(9:16·레몬). 헤더 입력 중엔 'reels' 강제(effOvFmt). 자간 한도 분기(−45/−30) · 운영자 260624
+let cOpa1on = true, cOpa2on = false, cOpa2val = 30;   // 릴스 자막 OPA: 60(고정값·토글) + 보조(기본30·스크롤 조절·토글) · 최소 1개 (운영자 260624)
 let _spellReview = null, _spellApplied = false, _applyingSpell = false;   // 맞춤법 교정 리뷰 상태(칩 개별선택)
 const IMG = { b64: '', name: '' };    // /1·/5 배경
 const CIMG = { b64: '', name: '' };   // /2 릴스 자막 배경(옵션)
@@ -1060,7 +1052,7 @@ function snapForm() {
   const s = { app: APP, fmt: FMT, abbr: $('#abbr').checked, cBg: $('#cBg').checked, opa1: cOpa1on, opa2: cOpa2on, opa2v: cOpa2val };
   let img = null;   // 이 제작에 쓰인 원본 이미지(b64·name) — 있으면 IDB 보관 후 스냅샷엔 키만
   if (APP === '1') { s.lines = $('#lines').value; s.opas = getOpas(); if (PIMG.b64) img = { b64: PIMG.b64, name: PIMG.name }; }
-  else if (APP === '2') { s.cSub = $('#cSub').value; s.cTitle = $('#cTitle').value; s.cLines = $('#cLines').value; s.ovFmt = ovFmt; if (CIMG.b64) img = { b64: CIMG.b64, name: CIMG.name }; }
+  else if (APP === '2') { s.cSub = $('#cSub').value; s.cTitle = $('#cTitle').value; s.cLines = $('#cLines').value; if (CIMG.b64) img = { b64: CIMG.b64, name: CIMG.name }; }
   else if (APP === '3') {
     s.cyear = $('#cyear').value; s.cname = $('#cname').value;
     const sel = document.querySelector('#pseg .on'); s.platSel = sel ? sel.dataset.plat : ''; s.cplat = $('#cplat').value;
@@ -1087,7 +1079,6 @@ function importHint(msg, ok) {   // 복원 알림 = 버튼 아래 #status에 잠
 }
 function importToEditor(src, compUrl) {   // compUrl = 이 제작의 합성본 URL(이미지 원본 없을 때 빗금 참고본으로 슬롯에 표시)
   if (!src) return;
-  if (src.app === '1') src = Object.assign({}, src, { app: '2', cLines: src.lines || '', ovFmt: 'post' });   // 레거시 포스트 → 썸네일 텍스트(포스트 포맷)로 복원(260624 통합)
   selApp(src.app);                                           // 탭 전환(핵심) + 박스 토글
   if (src.app === '3' || src.app === '4') { if (src.fmts && src.fmts.length) { document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.toggle('on', src.fmts.includes(b.dataset.fmt))); } }
   else if (src.fmt) { FMT = src.fmt; document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.toggle('on', b.dataset.fmt === src.fmt)); }
@@ -1105,7 +1096,6 @@ function importToEditor(src, compUrl) {   // compUrl = 이 제작의 합성본 U
     $('#cBg').checked = !!(src.cBg || src.rBg);
     if (typeof src.opa1 === 'boolean') { cOpa1on = src.opa1; cOpa2on = !!src.opa2; cOpa2val = src.opa2v || 30; }
     else { cOpa1on = true; cOpa2on = !!src.cOpa30 || (Array.isArray(src.reelsOpas) && src.reelsOpas.includes(30)); cOpa2val = 30; }   // 레거시(전 cOpa30/reelsOpas)
-    ovFmt = (src.ovFmt === 'reels') ? 'reels' : 'post';   // 오버레이 포맷 복원(없으면 포스트)
     if ($('#cImgSlot')._reset) $('#cImgSlot')._reset();
     updateComboTrk();
   } else if (src.app === '3') {
@@ -1769,28 +1759,13 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
   el.classList.remove('on', 'over');
   if (s.over || t.over) el.classList.add('over'); else if (parts.length) el.classList.add('on');
 }
-function headerActive() { return !!(($('#cSub') && $('#cSub').value.trim()) || ($('#cTitle') && $('#cTitle').value.trim())); }
-function effOvFmt() { return headerActive() ? 'reels' : ovFmt; }   // 헤더 입력 중 = 흰칸(9:16)과 짝 → 오버레이 릴스 강제
-function renderOvFmt() {   // • 오버레이 포맷 토글 표시(포스트=시안 / 릴스=레몬 · 헤더 중엔 릴스 고정·dim)
-  const t = $('#ovFmtTog'); if (!t) return; const f = effOvFmt(), hl = headerActive();
-  t.textContent = f === 'post' ? '포스트' : '릴스';
-  t.classList.toggle('post', f === 'post'); t.classList.toggle('reels', f === 'reels'); t.classList.toggle('forced', hl);
-}
-function updateComboTrk() {   // 썸네일 단일 폼 = 헤더(부제/제목) 자간 + 오버레이 자간(포맷별 한도: 포스트 −45 / 릴스 −30) (운영자 260624)
+function updateComboTrk() {   // 릴스 단일 폼 = 헤더(부제/제목) + 자막 자간 안내 둘 다(운영자 260624)
   renderHdrTrk('#cHdrTrk', '#cSub', '#cTitle');
-  renderOvFmt();
-  updateTrkHint('cLines', 'cLinesTrk', effOvFmt());   // 포맷에 맞는 자간 한도 실시간 적용(전환 시 초과구간 빨강)
+  updateTrkHint('cLines', 'cLinesTrk', 'reels');
 }
 $('#cSub').addEventListener('input', updateComboTrk);
 $('#cTitle').addEventListener('input', updateComboTrk);
 $('#cLines').addEventListener('input', updateComboTrk);
-// • 오버레이 포맷 토글(포스트↔릴스) — 헤더 입력 중엔 릴스 강제라 토글 무시. 클릭 시 자간 한도 즉시 전환(전환 = 가능해야 하므로 초과구간 빨강 표시).
-(function () {
-  const t = $('#ovFmtTog'); if (!t) return;
-  const tog = () => { if (headerActive()) return; ovFmt = (ovFmt === 'post') ? 'reels' : 'post'; updateComboTrk(); };
-  t.addEventListener('click', tog);
-  t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
-})();
 
 // ---- 발사 ----
 function jobLabel() {
@@ -1979,13 +1954,9 @@ $('#go').onclick = async () => {
     if ($('#abbr').checked) { csub = abbr(csub); ctitle = abbr(ctitle); clines = clines.map(abbr); }   // 축약 = 포스트·릴스 공통
     if (hasHeader) dispatchJob('/api/thumb', { app: '2', params: { mode: 'header', sub: csub, title: ctitle, bothBg: $('#cBg').checked } }, '릴스 헤더', SRC);   // 흰칸(배경 ON = +nobg)
     if (hasOverlay) {
-      // 오버레이 포맷 = effOvFmt(헤더 있으면 릴스 강제 / 없으면 토글값). 포스트=4:5(app1/fmt:post) · 릴스=9:16(app2/overlay). 이미지·OPA·축약 공용.
-      const f = effOvFmt();
-      const ovp = f === 'post'
-        ? { app: '1', params: { fmt: 'post', lines: clines, opas: getComboOpas() } }
-        : { app: '2', params: { mode: 'overlay', lines: clines, opas: getComboOpas() } };
+      const ovp = { app: '2', params: { mode: 'overlay', lines: clines, opas: getComboOpas() } };   // 자막 = 오버레이(OPA 60[+30]) · 이미지 있으면 합성(JPG)·없으면 투명 PNG
       if (CIMG.b64) { ovp.imageB64 = CIMG.b64; ovp.name = CIMG.name; }
-      dispatchJob('/api/thumb', ovp, f === 'post' ? '포스트' : '릴스 자막', SRC);
+      dispatchJob('/api/thumb', ovp, '릴스 자막', SRC);
     }
     return;
   }
@@ -2021,7 +1992,7 @@ document.addEventListener('click', e => {
 
 // 맞춤법 대상 입력 편집 시 진행 중이던 리뷰 폐기(stale 교정 적용 방지) — 프로그램 적용(applySpellReview) 중엔 무시
 ['#lines', '#warnLines', '#cSub', '#cTitle', '#cLines'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', () => { if (!_applyingSpell && _spellReview) clearSpellReview(); }); });
-selApp('2');   // 기본 탭 = 썸네일(포스트 통합·260624)
+selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
 // 자동 맨 위 복원 폐지(운영자 260624) — 평소엔 결과 비움(폼+이력만), 완성 알림 #done=<id> 탭 때만 그 결과를 맨 위로(maybeOpenHist→restoreById)
 idbPrune(Date.now() - THUMB_HMS);   // 보관 이미지(IDB) 12h 경과분 정리(이력 보관과 동기 · 운영자 260624)
