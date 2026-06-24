@@ -452,8 +452,8 @@
         <input type="text" id="sub" placeholder="부제 한 줄">
         <label>제목 (초록)</label>
         <input type="text" id="title" placeholder="제목 한 줄">
-        <label class="chk" id="rBgBox"><input type="checkbox" id="rBg"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 배경 <span class="abbrhint">체크 시 흰칸 없는 버전도 함께(2장)</span></label>
-        <div class="hint"><span id="hdrCnt">출력 1장 — <b>흰칸</b>(영상자리)</span> <span id="hdrTrk" class="trk"></span></div>
+        <input type="checkbox" id="rBg" hidden>
+        <div class="gospec" id="hdrSpec"><span class="gs-bul">•</span> <span class="gs-lbl">출력</span>: [ <span class="gs-v on">흰칸</span> | <span class="gs-v gs-tog" id="hsBg" role="button" tabindex="0" title="탭=배경(흰칸 없음) 추가">배경</span> ] &nbsp;/&nbsp; <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="hsAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span> <span id="hdrTrk" class="trk"></span></div>
       </div>
 
       <!-- 오버레이 모드: 이미지(옵션) + OPA + 텍스트 -->
@@ -470,7 +470,7 @@
         </div>
         <label>텍스트 (줄바꿈 = 여러 줄)</label>
         <textarea id="rLines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
-        <div class="hint"><b>*별표*</b>로 강조 · <b>opa60·30·직접입력</b> 탭해 선택(최소1·켠 만큼 출력) <span id="rLinesTrk" class="trk"></span></div>
+        <div class="gospec" id="ovSpec"><span class="gs-bul">•</span> <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="osAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span> <span id="rLinesTrk" class="trk"></span></div>
       </div>
     </div>
 
@@ -592,7 +592,7 @@ function selApp(a) {
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
-  const showAbbr = (a === '1' || (a === '2' && RMODE !== 'combo'));      // 축약 체크 = 포스트·헤더/오버레이만(통합 모드는 goSpec ON 토글)
+  const showAbbr = (a === '1');      // 축약 체크박스 = 포스트만(릴스 전 모드는 goSpec ON 토글로 이동)
   $('#abbrBox').classList.toggle('none', !showAbbr);
   if (a === '4' || a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                  // 경고문·저작권 = 포스트+릴스 둘 다 기본(멀티·둘 다 출력·최소1)
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
@@ -718,21 +718,39 @@ function selRmode(m) {
   $('#rHeader').classList.toggle('none', m !== 'header');
   $('#rOverlay').classList.toggle('none', m !== 'overlay');
   if (m === 'overlay') updateTrkHint('rLines', 'rLinesTrk', 'reels');   // 실시간 자간
-  $('#abbrBox').classList.toggle('none', m === 'combo');   // 통합 모드 = 축약을 goSpec ON으로(버튼 안 체크 숨김)
+  $('#abbrBox').classList.toggle('none', APP === '2');   // 릴스 전 모드(기본/헤더/오버레이) = 축약을 goSpec ON으로(버튼 안 체크 숨김)
   updateGoSpec();
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
 // 제작 직전 결과물 명세(통합 모드) — 배경/이미지/축약 상태 실시간 반영(활성=노랑·비활성=회색). show=combo만.
+function syncAbbrSpec(id) { const a = $('#abbr').checked, e = $(id); if (e) { e.textContent = a ? 'ON' : 'OFF'; e.classList.toggle('on', a); } }
 function updateGoSpec() {
-  const spec = $('#goSpec'); if (!spec) return;
-  const show = (APP === '2' && RMODE === 'combo');
-  spec.classList.toggle('none', !show);
-  if (!show) return;
-  $('#gsBg').classList.toggle('on', $('#cBg').checked);       // 배경 체크 → '기본'(nobg) 추가 출력
-  $('#gsImg').classList.toggle('on', !!CIMG.b64);             // 이미지 있음 → '합성본'
-  const ab = $('#abbr').checked, ga = $('#gsAbbr');
-  ga.textContent = ab ? 'ON' : 'OFF'; ga.classList.toggle('on', ab);   // ON(OFF) = 둘 중 하나
-  const go = $('#gsOpa'); if (go) go.textContent = COMBO_OPA;           // 롤러 조절값 반영
+  // 통합(기본) 모드 명세
+  const spec = $('#goSpec');
+  if (spec) {
+    const show2 = (APP === '2' && RMODE === 'combo');
+    spec.classList.toggle('none', !show2);
+    if (show2) {
+      $('#gsBg').classList.toggle('on', $('#cBg').checked);     // 기본(nobg) 토글
+      $('#gsImg').classList.toggle('on', !!CIMG.b64);           // 이미지 → 합성본 자동
+      syncAbbrSpec('#gsAbbr');
+      const go = $('#gsOpa'); if (go) go.textContent = COMBO_OPA;
+    }
+  }
+  // 릴스 헤더 모드 명세 (흰칸 고정 + 배경 토글 + 축약)
+  const hs = $('#hdrSpec');
+  if (hs) {
+    const showH = (APP === '2' && RMODE === 'header');
+    hs.classList.toggle('none', !showH);
+    if (showH) { $('#hsBg').classList.toggle('on', $('#rBg').checked); syncAbbrSpec('#hsAbbr'); }
+  }
+  // 릴스 오버레이 모드 명세 (축약 — OPA 세그는 다중이라 유지)
+  const os = $('#ovSpec');
+  if (os) {
+    const showO = (APP === '2' && RMODE === 'overlay');
+    os.classList.toggle('none', !showO);
+    if (showO) syncAbbrSpec('#osAbbr');
+  }
 }
 $('#abbr').addEventListener('change', updateGoSpec);
 // ── goSpec 컨트롤 — OPA(휠/드래그 1단위·조절 중 mut/픽스 강조) + 기본·축약 클릭 토글(체크박스 대체). ──
@@ -763,11 +781,10 @@ function setOpa(v) {
   const tog = cb => { if (cb) { cb.checked = !cb.checked; updateGoSpec(); } };
   const bind = (id, cb) => { const t = $(id); if (!t) return; t.addEventListener('click', () => tog(cb)); t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(cb); } }); };
   bind('#gsBg', $('#cBg')); bind('#gsAbbr', $('#abbr'));
+  bind('#hsBg', $('#rBg')); bind('#hsAbbr', $('#abbr')); bind('#osAbbr', $('#abbr'));   // 릴스 헤더/오버레이 명세 토글
 })();
 // 배경 체크 → 출력 장수 힌트 갱신(기본 1장=흰칸 / 체크 2장=흰칸+배경)
-$('#rBg').addEventListener('change', () => {
-  $('#hdrCnt').innerHTML = $('#rBg').checked ? '출력 2장 — <b>흰칸</b>(영상자리) + <b>배경</b>(흰칸 없음)' : '출력 1장 — <b>흰칸</b>(영상자리)';
-});
+$('#rBg').addEventListener('change', updateGoSpec);   // 배경 → hdrSpec '배경' 토글(hdrCnt 폐지)
 // 기본(통합) 배경 체크 → 출력 장수 힌트(2장 → 3장 · 헤더 nobg 추가)
 $('#cBg').addEventListener('change', updateGoSpec);   // 배경 → 명세 '기본' 토글(cCnt 폐지·goSpec이 출력 안내)
 
