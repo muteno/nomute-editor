@@ -212,8 +212,25 @@ def check_inject_dividers():
     return fails
 
 
+def check_inject_markers():
+    """주입 지침 파일의 <!-- INJECT-SKIP-START/END --> 마커 짝 균형(260624 단일화 가드).
+    START 가 END 없이 열리면 awk 가 EOF까지 통째로 주입에서 누락 = 조용한 드리프트(이 시스템이 막는 것).
+    파일별 START 수 == END 수 가 아니면 실패."""
+    fails = []
+    for g in _INJECT_GLOBS:
+        for path in glob.glob(os.path.join(ROOT, g)):
+            try:
+                txt = open(path, encoding='utf-8').read()
+            except Exception:
+                continue
+            s, e = txt.count('INJECT-SKIP-START'), txt.count('INJECT-SKIP-END')
+            if s != e:
+                fails.append("INJECT-SKIP 마커 불균형(%s: START %d ≠ END %d) — 미종결 마커는 그 뒤 주입 내용을 통째 누락시킴." % (os.path.relpath(path, ROOT), s, e))
+    return fails
+
+
 def main():
-    fails = check_paths() + check_versions() + check_inject_dividers()
+    fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
     if fails:
         print('❌ check_refs 실패 %d건:' % len(fails))
