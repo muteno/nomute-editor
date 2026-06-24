@@ -57,15 +57,6 @@ try {
   }
 } catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
 
-// 원문 편향 N 추출 — 분석 본문 '📊 편향: 원문 N/10 색(라벨) → 요약 M/10…'의 원문값.
-// AI가 이미 본문에 계산(요약 알고리즘 0 변경) → 옛 기사도 빌드 때 소급 적용. 못 찾으면 ''(게이지가 요약만 표시).
-function biasSrcOf(body) {
-  const m = (body || '').match(/편향\s*[:：]\s*원문\s*(\d+)\s*[\/／]\s*10([^→\n|]*)/);
-  if (!m) return '';
-  const label = m[2].replace(/[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅()]/gu, ' ').replace(/\s+/g, ' ').trim();
-  return (m[1] + '/10' + (label ? ' ' + label : '')).trim();
-}
-
 const articles = [];
 for (const f of files) {
   // 방어: 못 여는 파일(깨진 파일명·인코딩 등)은 빌드를 죽이지 말고 건너뛰며 경고만
@@ -82,7 +73,6 @@ for (const f of files) {
       media: meta.media || '',
       reporter: meta.reporter || '',   // 기자명(요약 frontmatter reporter) — 미상이면 빈칸. 요약 PDF·개요 표시용(바이라인 보존의 출구).
       bias: meta.bias || '',
-      bias_src: biasSrcOf(body),   // 원문 편향 N(본문 '편향: 원문 N/10…'서 파싱) — 게이지 보정 시각화용. 분석 본문에 이미 있음=요약 알고리즘 무변경·옛 기사 소급. 없으면 ''.
       tags: meta.tags || '',
       image_query_en: meta.image_query_en || '',   // 🌍해외사건 영문 검색쿼리(돋보기·검색이미지 영문화) — 분석 frontmatter 패스스루·국내=빈값(운영자 260622)
       image_query: meta.image_query || '',   // 상징 검색 키워드(AI 추출) — 돋보기 초록버튼=키워드 검색(회색=제목·기존)·운영자 260622
