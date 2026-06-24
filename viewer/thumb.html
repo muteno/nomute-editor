@@ -1127,8 +1127,7 @@ let SRV_HIST = [];
 async function loadServerHist() {
   try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch { /* 없으면 로컬만 */ }
   renderHist();
-  maybeUpgradeRestore();   // 타 기기 결과가 더 최신이면 맨 위 결과 교체(cross-device 동기화·운영자 260624)
-  maybeOpenHist();   // 제작완료 알림(#done)로 들어왔으면 서버 병합 후 '이전 제작' 자동 펼침
+  maybeOpenHist();   // 제작완료 알림(#done=<id>)로 들어왔으면 서버 병합 후 그 결과를 맨 위로(restoreById)
 }
 // 제작완료 푸시 탭 → /thumb.html#done 진입 시 '이전 제작'을 펼치고 그 위치로 스크롤(완성 결과가 바로 보이게).
 let _histRetry = false, _histTimer = 0;   // 단일 재시도 사다리 가드 — 진입점 다중(init·loadServerHist·hashchange)이라도 중복 fetch 0(평의회 FIX-1)
@@ -1138,8 +1137,9 @@ function maybeOpenHist(tries = 0) {
   const hist = $('#hist');
   if (hist && !hist.hidden) { const b = $('#histBody'); if (b && b.hidden) { b.hidden = false; $('#histH').setAttribute('aria-expanded', 'true'); hist.classList.add('open'); } }   // 이력 펼침(타깃이 이력 항목일 수 있어 노출)
   const land = el => { _histRetry = false; if (_histTimer) { clearTimeout(_histTimer); _histTimer = 0; } try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {} scrollMid(el); };   // 착지 = #done 제거 + 재시도 종료(재호출·새로고침 시 재스크롤·고아타이머 방지)
-  if (wantId) {   // ── 그 작업으로 정확히: 잡 로그행(#job-n) 또는 이력 그리드 항목(둘 다 data-thid=id) ──
-    const tgt = document.querySelector('[data-thid="' + wantId + '"]');   // wantId=[\w-]+ (정규식 캡처)라 선택자 안전
+  if (wantId) {   // 완성 알림(#done=<id>) → 그 결과를 맨 위 큰 결과(캐러셀)로 띄우고 거기로 랜딩(바로 보이게)
+    if (restoreById(wantId)) { const cw = $('#carwrap'); land(cw); flashEl(cw); return; }   // 그 id 결과를 맨 위에 복원
+    const tgt = document.querySelector('[data-thid="' + wantId + '"]');   // 폴백 = 진행 중 잡 로그행 등(wantId=[\w-]+ 캡처라 선택자 안전)
     if (tgt) { land(tgt); flashEl(tgt); return; }
     if (tries < 15) {   // 콜드스타트 = 이력(thumb-hist.json) 빌드·배포 랙(~30~90s) → 재fetch+재렌더 후 재시도(요약 ?a= 백오프 · 15회≈104s로 90s 꼬리 커버 · 평의회 FIX-3)
       if (!_histRetry) {   // 단일 사다리만 가동(다른 진입점은 즉시 querySelector만 · 재시도는 한 줄로)
@@ -1151,7 +1151,7 @@ function maybeOpenHist(tries = 0) {
             const r = await fetch('thumb-hist.json?_=' + Date.now(), sig ? { signal: sig } : undefined);
             if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; }
           } catch (_) {}
-          renderHist(); maybeUpgradeRestore(); maybeOpenHist(tries + 1);
+          renderHist(); maybeOpenHist(tries + 1);
         }, Math.min(2500 + tries * 1200, 8000));
       }
       return;   // 사다리 가동/대기 중 — 폴백 안 감(#done 유지)
@@ -1223,26 +1223,6 @@ function localLastResult() {
   if (Date.now() - (rec.ts || 0) > THUMB_HMS) { try { localStorage.removeItem(THUMB_LAST_KEY); } catch {} return null; }   // 12h 만료
   return rec;
 }
-// 서버(타 기기) 최신 '결과' = 같은 id(한 제작의 출력들) 그룹 중 ts 최신 그룹. src 없음(타 기기 = 수정 불가).
-function srvLatestResult() {
-  if (!Array.isArray(SRV_HIST) || !SRV_HIST.length) return null;
-  const cut = Date.now() - THUMB_HMS, clr = histClearedCut();
-  const valid = SRV_HIST.filter(e => e && e.url && (e.ts || 0) >= cut && (e.ts || 0) > clr);   // 12h·지운시점 이후
-  if (!valid.length) return null;
-  const byId = new Map();
-  for (const e of valid) { const id = thIdOf(e.url) || e.url; if (!byId.has(id)) byId.set(id, []); byId.get(id).push(e); }
-  let best = null, bestTs = -1;
-  for (const arr of byId.values()) { const ts = Math.max(...arr.map(e => e.ts || 0)); if (ts > bestTs) { bestTs = ts; best = arr; } }
-  if (!best) return null;
-  best = best.slice().sort((a, b) => String(a.dlname || '').localeCompare(String(b.dlname || '')));   // 출력 안정 정렬
-  return { ts: bestTs, label: best[0].cap || '제작', items: best.map(e => ({ url: e.url, dlname: e.dlname, cap: e.cap || '', varStr: e.varStr || '' })) };
-}
-// 전체(로컬+서버) 최신 1건 = ts 큰 쪽 (운영자 260624 — 맨 위 결과 PC↔모바일 동기화)
-function pickLatestResult() {
-  const loc = localLastResult(), srv = srvLatestResult();
-  if (srv && (!loc || (srv.ts || 0) > (loc.ts || 0))) return srv;
-  return loc;
-}
 function doRestore(pick) {   // pick(items/ts/label[/src])을 맨 위 결과(캐러셀)로 복원
   if (!pick || !Array.isArray(pick.items) || !pick.items.length) return false;
   const rjob = { n: 'R', label: pick.label || '제작', t0: pick.ts, status: 'done', _restored: true, _saved: true, src: pick.src,
@@ -1251,21 +1231,31 @@ function doRestore(pick) {   // pick(items/ts/label[/src])을 맨 위 결과(캐
   RESTORED = true; RESTORED_TS = pick.ts || 0; renderJob(rjob); renderHist();   // 맨 위 결과 + 이전 제작서 제외
   return true;
 }
-function restoreLastResult() {   // 로드 시 전체(로컬+서버) 최신 1건을 맨 위 결과로 복원. 실제 잡 있으면 생략.
-  if (JOBS.length || RESTORED) return;
-  doRestore(pickLatestResult());
+// 특정 작업 id(완성 알림 #done=<id>)의 결과 찾기 — 로컬 마지막이 그 id면 그걸로(src 보유=수정가능), 아니면 서버(thumb-hist.json) 같은 id 그룹.
+function findResultById(id) {
+  const loc = localLastResult();
+  if (loc && Array.isArray(loc.items) && loc.items.some(it => thIdOf(it.url) === id)) return loc;   // 이 기기서 만든 거면 src까지
+  if (Array.isArray(SRV_HIST)) {
+    const arr = SRV_HIST.filter(e => e && e.url && thIdOf(e.url) === id);
+    if (arr.length) {
+      const sorted = arr.slice().sort((a, b) => String(a.dlname || '').localeCompare(String(b.dlname || '')));
+      return { ts: Math.max(...arr.map(e => e.ts || 0)), label: sorted[0].cap || '제작', items: sorted.map(e => ({ url: e.url, dlname: e.dlname, cap: e.cap || '', varStr: e.varStr || '' })) };
+    }
+  }
+  return null;
 }
-function maybeUpgradeRestore() {   // 서버 이력 로드 후 — 타 기기 결과가 더 최신이면 맨 위를 그걸로 교체(운영자 260624 · 한번만 호출되는 loadServerHist 경로라 보던 결과 교체 안 됨)
-  if (JOBS.length) return;                                      // 실제 제작 중이면 손대지 않음
-  const pick = pickLatestResult();
-  if (!pick) return;
-  if (RESTORED && (pick.ts || 0) <= RESTORED_TS) return;        // 이미 같은/더 최신 = 그대로
-  if (RESTORED) {                                               // 더 최신 → 기존 복원 치우고 새로
+// 완성 알림 탭(#done=<id>) → 그 결과를 맨 위 큰 결과(캐러셀)로 띄워 바로 보이게 (운영자 260624). 성공 시 true.
+function restoreById(id) {
+  if (!id) return false;
+  if (RESTORED && [...RESTORED_URLS].some(u => thIdOf(u) === id)) return true;   // 이미 그 id 복원됨(재진입) = 그대로
+  const pick = findResultById(id);
+  if (!pick) return false;                                      // 아직 없음(빌드·배포 랙) → 호출측이 재시도
+  if (RESTORED) {                                               // 다른 게 복원돼 있으면 치우고 교체
     RESTORED = false; RESTORED_URLS.clear();
     const r = document.getElementById('job-R'); if (r) r.remove();
     CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) tr.innerHTML = '';
   }
-  doRestore(pick);
+  return doRestore(pick);
 }
 $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden; b.hidden = !open; $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open); });
 window.addEventListener('hashchange', () => maybeOpenHist());   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀜) 펼치게 · ()=래핑 = Event가 tries 인자로 새 안 들어가게(재시도 무력화 차단)
@@ -1839,9 +1829,9 @@ document.addEventListener('click', e => {
 ['#lines', '#warnLines', '#cSub', '#cTitle', '#cLines'].forEach(id => { const el = $(id); if (el) el.addEventListener('input', () => { if (!_applyingSpell && _spellReview) clearSpellReview(); }); });
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
-restoreLastResult();   // 최근 제작 1건 맨 위 '결과'로 복원(RESTORED_URLS 먼저 셋 = 이전제작 제외 정합 · 운영자 260622) — maybeOpenHist 전에 결과 블록 생성
+// 자동 맨 위 복원 폐지(운영자 260624) — 평소엔 결과 비움(폼+이력만), 완성 알림 #done=<id> 탭 때만 그 결과를 맨 위로(maybeOpenHist→restoreById)
 idbPrune(Date.now() - THUMB_HMS);   // 보관 이미지(IDB) 12h 경과분 정리(이력 보관과 동기 · 운영자 260624)
-maybeOpenHist();     // #done(제작완료 알림) 진입이면 결과 블록(카운터/캐러셀)으로 스크롤(서버 병합 후 loadServerHist서 재확인)
+maybeOpenHist();     // #done=<id>(제작완료 알림) 진입이면 그 결과를 맨 위 큰 결과로 복원·랜딩(서버 병합 후 loadServerHist서 재확인)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
 </script>
 <script src="cscroll.js"></script>
