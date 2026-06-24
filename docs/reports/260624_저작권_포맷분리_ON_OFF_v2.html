@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>저작권 v2 — 포맷 분리 · ON/OFF · 안내문 팝업 (보고서)</title>
+<style>
+  :root { --bg:#121212; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-rgb:15,253,2; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:680px; margin:0 auto; padding:26px 18px 80px; }
+  h1 { font-size:21px; margin:4px 0 6px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13.5px; margin:0 0 22px; }
+  h2 { font-size:15px; margin:28px 0 12px; padding-bottom:7px; border-bottom:1px solid var(--line); }
+  .panel { border:1px solid var(--line); border-radius:14px; padding:16px; background:rgba(8,15,11,.34); }
+  .note { font-size:12px; color:var(--mut); margin-top:11px; line-height:1.7; }
+  ul { margin:8px 0; padding-left:19px; } li { margin:6px 0; font-size:13.5px; }
+  code { background:rgba(255,255,255,.06); padding:1px 6px; border-radius:5px; font-size:12px; }
+  b.g { color:var(--accent); }
+
+  /* 실제 코드 CSS 복사 */
+  .csec { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:13px; font-weight:600; color:var(--fg); margin:16px 0 9px; }
+  .csec.gsec { position:relative; }
+  .csec .cpseg { display:inline-flex; align-items:center; gap:7px; padding:3px 11px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.03); }
+  .csec .cpsep { color:var(--mut); font-weight:400; }
+  .csec .cpfmt { cursor:pointer; font-weight:800; opacity:.4; user-select:none; padding:0 2px; font-variant-numeric:tabular-nums; transition:opacity .15s; }
+  .csec .cpfmt.post { color:#1fd6ee; } .csec .cpfmt.reels { color:#e7ff2e; }
+  .csec .cpfmt.on { opacity:1; } .csec .cpfmt:active { transform:scale(.92); }
+  .csec .onoff { cursor:pointer; font-weight:800; font-size:12px; letter-spacing:.03em; padding:3px 13px; border-radius:999px; border:1px solid var(--line); color:var(--mut); background:rgba(255,255,255,.03); user-select:none; transition:.15s; }
+  .csec .onoff.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.12); }
+  .csec .onoff:active { transform:scale(.92); }
+  .cphline { position:relative; display:flex; flex-wrap:wrap; align-items:baseline; margin-top:11px; font-size:14px; color:var(--fg); line-height:2; transition:opacity .15s; }
+  .cphline.off { opacity:.4; }
+  .cphline .cph-st { color:var(--fg); white-space:pre; }
+  .cph-br { flex-basis:100%; height:0; }
+  .cph-ed { color:var(--accent); font-weight:600; cursor:text; padding:0 3px; min-width:1.1em; outline:none; border-bottom:1px dashed rgba(var(--accent-rgb),.45); transition:.15s; }
+  .cph-ed:hover { border-bottom-color:var(--accent); }
+  .cph-ed:focus { border-bottom-style:solid; border-bottom-color:var(--accent); background:rgba(var(--accent-rgb),.08); border-radius:4px; }
+  .cph-ed:empty::before { content:attr(data-ph); color:var(--mut); font-style:italic; font-weight:400; }
+  .cph-yr { font-variant-numeric:tabular-nums; min-width:1.6em; }
+  .cph-plat { cursor:pointer; color:var(--accent); font-weight:600; padding:1px 4px; border-bottom:1px dashed rgba(var(--accent-rgb),.45); user-select:none; transition:.15s; }
+  .cph-plat:hover { border-bottom-color:var(--accent); }
+  .platpop { position:absolute; top:100%; left:0; margin-top:6px; z-index:9; display:flex; gap:6px; padding:7px; background:linear-gradient(150deg, rgba(38,64,46,.7), rgba(11,21,15,.82)); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.12); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.4); }
+  .platpop.none { display:none; }
+  .platpop:not(.none) { transform-origin:top left; animation:platpop-in .2s cubic-bezier(.2,.7,.3,1); }
+  @keyframes platpop-in { from { opacity:0; transform:translateY(-5px) scale(.9); } to { opacity:1; transform:none; } }
+  .platpop:not(.none) .ppbtn { animation:ppbtn-in .26s both cubic-bezier(.2,.8,.3,1); }
+  .platpop:not(.none) .ppbtn:nth-child(1){animation-delay:.02s}.platpop:not(.none) .ppbtn:nth-child(2){animation-delay:.05s}
+  .platpop:not(.none) .ppbtn:nth-child(3){animation-delay:.08s}.platpop:not(.none) .ppbtn:nth-child(4){animation-delay:.11s}
+  .platpop:not(.none) .ppbtn:nth-child(5){animation-delay:.14s}.platpop:not(.none) .ppbtn:nth-child(6){animation-delay:.17s}
+  @keyframes ppbtn-in { from { opacity:0; transform:translateX(-9px) scale(.78); } to { opacity:1; transform:none; } }
+  .ppbtn { min-width:38px; height:34px; display:grid; place-items:center; padding:0 8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--mut); cursor:pointer; font:inherit; font-weight:600; font-size:11px; transition:.15s; }
+  .ppbtn:hover { color:var(--fg); border-color:rgba(255,255,255,.2); }
+  .ppbtn.on { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); }
+  .ppbtn:active { transform:scale(.9); } .ppbtn svg { width:15px; height:15px; }
+  .gpbtn { min-width:auto; height:32px; padding:0 13px; font-size:12px; }
+  textarea { width:100%; margin-top:9px; min-height:60px; padding:11px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; resize:vertical; }
+  textarea.none { display:none; }
+  input.cplat { width:100%; margin-top:8px; padding:10px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
+  input.cplat.none { display:none; }
+  .go { width:100%; margin-top:16px; padding:14px; border-radius:13px; border:1px solid rgba(var(--accent-rgb),.5); background:linear-gradient(165deg, rgba(var(--accent-rgb),.18), rgba(var(--accent-rgb),.06)); color:var(--accent); font:inherit; font-weight:800; font-size:15px; cursor:pointer; }
+  .go:active { transform:scale(.99); }
+  .live { margin-top:13px; font-size:12.5px; color:var(--mut); line-height:1.7; } .live b { color:var(--accent); font-weight:700; } .live .x { color:#ff9b9b; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>저작권 v2 — <b>포맷 분리 · ON/OFF · 안내문 팝업</b></h1>
+  <p class="sub">/3 저작권 탭 · 실제 동작(아래는 그림 아님, 코드 그대로) · 260624</p>
+
+  <div class="panel">
+    <!-- · 포맷 -->
+    <div class="csec">• 포맷 <span class="cpseg" id="cpFmtSeg" role="group">
+      <span class="cpfmt post" data-fmt="post" role="button" tabindex="0">포스트</span><span class="cpsep">|</span><span class="cpfmt reels on" data-fmt="reels" role="button" tabindex="0">릴스</span>
+    </span></div>
+    <!-- · 저작권 ON/OFF -->
+    <div class="csec">• 저작권 <span class="onoff on" id="copyTog" role="button" tabindex="0">ON</span></div>
+    <div class="cphline" id="cphLine">
+      <span class="cph-st">ⓒ&nbsp;</span><span class="cph-ed cph-yr" id="cphYear" contenteditable="true" inputmode="numeric" spellcheck="false" data-ph="2026">2026</span><span class="cph-st">.&nbsp;</span><span class="cph-ed cph-nm" id="cphName" contenteditable="true" spellcheck="false" data-ph="nomute"></span><span class="cph-st">(</span><span id="cphPlat" class="cph-plat" data-plat="instagram" role="button" tabindex="0">instagram</span><span class="cph-st">).</span><span class="cph-br"></span><span class="cph-st">all rights reserved.</span>
+      <div class="platpop none" id="platPop" role="menu">
+        <button type="button" class="ppbtn" data-plat="youtube">YT</button>
+        <button type="button" class="ppbtn" data-plat="instagram">IG</button>
+        <button type="button" class="ppbtn" data-plat="threads">Th</button>
+        <button type="button" class="ppbtn" data-plat="X">X</button>
+        <button type="button" class="ppbtn" data-plat="facebook">Fb</button>
+        <button type="button" class="ppbtn" data-plat="custom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+      </div>
+    </div>
+    <input type="text" id="cplat" class="cplat none" placeholder="플랫폼 직접입력 (예: tiktok)">
+    <!-- · 안내문 팝업 -->
+    <div class="csec gsec" id="guideSec">• 안내문 <span class="onoff" id="guideTog" role="button" tabindex="0">OFF</span>
+      <div class="platpop gpop none" id="guidePop" role="menu">
+        <button type="button" class="ppbtn gpbtn" data-gm="caution">경고</button>
+        <button type="button" class="ppbtn gpbtn" data-gm="ai">AI</button>
+        <button type="button" class="ppbtn gpbtn" data-gm="free">자유문구</button>
+      </div>
+    </div>
+    <textarea id="warnLines" class="none" placeholder="안내문 텍스트"></textarea>
+    <button class="go" id="go">이미지 제작</button>
+    <div class="live" id="live"></div>
+  </div>
+  <p class="note">탭해서 직접 확인: 포맷(포스트/릴스 기본 릴스) · 저작권 ON↔OFF(끄면 문구 흐려지고 제작서 빠짐) · 2026/이름/플랫폼 수정 · 안내문 OFF 탭→팝업 촤르륵→경고/AI/자유문구. 제작 누르면 발사값이 아래 찍힘.</p>
+
+  <h2>이번 라운드 변경</h2>
+  <ul>
+    <li><b class="g">· 포맷 [ 포스트 | 릴스 ]</b> 를 맨 위 독립 줄로 분리(기본 <b class="g">릴스</b>) — 저작권·안내문 공유.</li>
+    <li><b class="g">· 저작권 ON</b> 토글(기본 ON, 누르면 OFF → 저작권 안 만듦·문구 흐려짐).</li>
+    <li><b class="g">2026 자유 수정</b> — 202 고정 해제, 정수/<code>-</code> 자유(2025-26도).</li>
+    <li><b class="g">all rights reserved.</b> 편집화면에선 다음 줄(수정 시 안 흔들림) — 출력은 이어서 한 줄(발사는 year/name/platform 파라미터라 영향 0).</li>
+    <li><b class="g">· 안내문 OFF</b> → 탭하면 플랫폼처럼 팝업(경고/AI/자유문구) → 고르면 ON·출력. 자유문구는 입력칸 커서.</li>
+    <li><b>제작 버튼 공용</b>: 저작권 ON이면 저작권 발사 + 안내문 고르면 같이. 둘 다 꺼져 있으면 "켜거나 골라줘" 안내(아무것도 안 나감).</li>
+  </ul>
+  <p class="note">순수 프론트(LLM·과금 0) · 백엔드(<code>/api/thumb</code> year/name/platform)·흰=고정 불변 → 렌더 회귀 0. 검증 = <code>check_refs</code> ✅ + JS 파싱 ✅(자가검증, §✅ⓒ 국소 뷰어 손질).</p>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let cpFmt='reels', copyOn=true, guideMode='';
+const GLAB={caution:'경고',ai:'AI',free:'자유문구'};
+const WARN_PRESETS={ai:'본 이미지는 생성형 AI로 제작·합성되었습니다.',caution:'민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.'};
+function getYear(){ return ($('#cphYear').textContent||'').replace(/[^0-9-]/g,'')||'2026'; }
+function getName(){ return ($('#cphName').textContent||'').replace(/\s+/g,' ').trim(); }
+function getPlatform(){ return $('#cphPlat').dataset.plat==='custom'?$('#cplat').value.trim():$('#cphPlat').dataset.plat; }
+function syncCpFmt(){ $('#cpFmtSeg').querySelectorAll('.cpfmt').forEach(o=>o.classList.toggle('on',o.dataset.fmt===cpFmt)); }
+function syncCopyTog(){ const t=$('#copyTog'); t.textContent=copyOn?'ON':'OFF'; t.classList.toggle('on',copyOn); $('#cphLine').classList.toggle('off',!copyOn); }
+function syncGuide(){ const t=$('#guideTog'); t.textContent=guideMode?GLAB[guideMode]:'OFF'; t.classList.toggle('on',!!guideMode); $('#warnLines').classList.toggle('none',!guideMode); }
+$('#cpFmtSeg').querySelectorAll('.cpfmt').forEach(o=>{ const pick=()=>{cpFmt=o.dataset.fmt;syncCpFmt();up();}; o.addEventListener('click',pick); o.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}}); });
+$('#copyTog').addEventListener('click',()=>{copyOn=!copyOn;syncCopyTog();up();});
+function ceCaretEnd(el){ const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }
+function ceBlur(el){ const fn=el&&el.blur; if(fn)fn.call(el); }
+(function(){ const yr=$('#cphYear'); yr.addEventListener('input',()=>{ const c=yr.textContent.replace(/[^0-9-]/g,''); if(c!==yr.textContent){yr.textContent=c; if(c)ceCaretEnd(yr);} up(); });
+  const nm=$('#cphName'); nm.addEventListener('input',()=>{ if(/[\n\r]/.test(nm.textContent)){nm.textContent=nm.textContent.replace(/[\n\r]+/g,' ');ceCaretEnd(nm);} up(); });
+  [yr,nm].forEach(e=>e.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();ceBlur(e);}})); })();
+function setGuide(gm){ guideMode=(guideMode===gm)?'':gm;
+  if(guideMode==='caution')$('#warnLines').value=WARN_PRESETS.caution; else if(guideMode==='ai')$('#warnLines').value=WARN_PRESETS.ai; else if(guideMode==='free')$('#warnLines').value='';
+  syncGuide(); if(guideMode)$('#warnLines').focus(); up(); }
+(function(){ const trig=$('#guideTog'),pop=$('#guidePop');
+  const open=()=>{ pop.querySelectorAll('.gpbtn').forEach(b=>b.classList.toggle('on',b.dataset.gm===guideMode)); pop.classList.remove('none'); };
+  const close=()=>pop.classList.add('none');
+  trig.addEventListener('click',e=>{ e.stopPropagation(); pop.classList.contains('none')?open():close(); });
+  pop.querySelectorAll('.gpbtn').forEach(b=>b.onclick=()=>{ setGuide(b.dataset.gm); close(); });
+  document.addEventListener('click',e=>{ if(!pop.contains(e.target)&&e.target!==trig) close(); }); })();
+(function(){ const trig=$('#cphPlat'),pop=$('#platPop');
+  const open=()=>{ pop.querySelectorAll('.ppbtn').forEach(b=>b.classList.toggle('on',b.dataset.plat===trig.dataset.plat)); pop.classList.remove('none'); };
+  const close=()=>pop.classList.add('none');
+  trig.addEventListener('click',e=>{ e.stopPropagation(); pop.classList.contains('none')?open():close(); });
+  pop.querySelectorAll('.ppbtn').forEach(b=>b.onclick=()=>{ const plat=b.dataset.plat,custom=plat==='custom'; trig.dataset.plat=plat; trig.textContent=custom?'직접':plat; $('#cplat').classList.toggle('none',!custom); close(); if(custom)$('#cplat').focus(); up(); });
+  document.addEventListener('click',e=>{ if(!pop.contains(e.target)&&e.target!==trig) close(); }); })();
+$('#cplat').addEventListener('input',up);
+function up(){ const fmt=cpFmt==='post'?'포스트(4:5)':'릴스(9:16)'; const g=guideMode?($('#warnLines').value||'').split('\n').map(s=>s.trim()).filter(Boolean):[];
+  let t=[];
+  if(copyOn) t.push('저작권('+fmt+'): <b>ⓒ '+getYear()+'. '+(getName()||'<span class=x>(이름 비어 차단)</span>')+'('+getPlatform()+'). all rights reserved.</b>');
+  if(g.length) t.push('안내문('+fmt+'): <b>'+g.join(' / ')+'</b>');
+  if(!t.length) t.push('<span class="x">저작권을 켜거나 안내문을 골라줘</span>');
+  $('#live').innerHTML='발사 → '+t.join('<br>'); }
+syncCpFmt(); syncCopyTog(); syncGuide(); up();
+$('#go').addEventListener('click',()=>{ if(copyOn&&!getName()){ $('#live').innerHTML='<span class="x">이름을 넣어주세요</span>'; return;} up(); });
+</script>
+</body>
+</html>
