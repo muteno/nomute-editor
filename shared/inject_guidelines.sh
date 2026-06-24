@@ -35,10 +35,6 @@ _ig_files() {
 }
 
 # 주입 블록(프롬프트 고정부) — 존재하는 파일만 경로 헤더와 함께 이어붙임.
-# 다이어트(260624): `<!-- INJECT-SKIP-START -->` ~ `<!-- INJECT-SKIP-END -->` 로 감싼 구간은 주입에서 제외한다
-#   (현재 = PROJECT_MEMORY 의 결정 로그·원천 백업 = 변경 이력/역사 메모 = 다이제스트 생성에 안 쓰이는 audit-trail).
-#   ⚠️ 파일 자체엔 그대로 보존(사람·다음 세션 SSOT) — *프롬프트에 보내는 사본*만 슬림. 현행 룰·임계값(01_지침+§검증 룰)은 유지.
-#   분신술 8인 검증: 결정 로그는 load-bearing 아님(모든 룰·근거가 01_지침에 독립 존재·grep '결정로그 참조'=0) → 출력 품질 영향 0.
 guidelines_block() {
   local profile="$1" f
   echo "===== [강제 주입: 노뮤트 에디터 지침 — 아래를 그대로 따른다. 이 블록이 품질 기준의 정본이다] ====="
@@ -46,8 +42,7 @@ guidelines_block() {
     [ -n "$f" ] && [ -f "$f" ] || continue
     echo ""
     echo "----- ${f#"$_IG_ROOT"/} -----"
-    # INJECT-SKIP 구간 제외(파일엔 보존·주입분만 슬림). 마커 없는 파일은 전량 그대로.
-    awk '/<!-- *INJECT-SKIP-START *:?/{skip=1} skip!=1; /<!-- *INJECT-SKIP-END *-->/{skip=0}' "$f"
+    cat "$f"
   done < <(_ig_files "$profile")
   echo ""
   echo "===== [지침 끝 — 위 내용 외 별도 파일을 읽을 필요 없다] ====="
