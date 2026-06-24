@@ -5008,21 +5008,6 @@ const SC_PAGE = 150;
 const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
 let _scrapSig = '';   // 직전 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · 피드 _feedSig 대응 · 운영자 260621)
-// 같은 사건 중복 대표 접기 — 정규화 제목 동일(=같은 헤드라인=같은 기사)이면 정렬 상위 1장만 남김(운영자 260625).
-//   원인: 한 사건의 클러스터 대표 2개가 동시에 살아있을 때(to_candidates alias-merge는 *세션간* rep점프만 흡수·co-fresh는 §보수성으로 미병합) 카테고리/매체만 다르게 2장 뜸(실측: 동아 '정치' + 뉴시스 '사회' = 자카드 .79).
-//   ⚠️ 멤버겹침(자카드) dedup은 클러스터 노이즈로 *다른* 기사를 오접음(실측: '선관위 압수수색'이 '개표소 올다르크'로 접힘) → **제목 완전일치만** = 보수(특정 헤드라인 충돌 사실상 불가·일반머리표는 JUNK_HEAD가 선제거). 근사 제목(다른 헤드라인 같은 사건)은 안 접음 = 진짜 distinct 보호 우선.
-//   픽 상태는 makeScItem의 cluster_members 멤버승계(ratingFor)로 접힌 대표가 픽이어도 생존 카드에 PICKED 유지 → 픽 고아 0.
-const scTitleKey = c => (c.title || '').replace(/\s+/g, '').toLowerCase();
-function scDedup(arr) {   // arr = 이미 정렬됨(상위=대표) → 첫 등장만 보존
-  const seen = new Set(), out = [];
-  for (const c of arr) {
-    const k = scTitleKey(c);
-    if (k && seen.has(k)) continue;
-    if (k) seen.add(k);
-    out.push(c);
-  }
-  return out;
-}
 function renderScrap() {
   let _scSig = '';   // 이번 렌더 카드 구성(트레이+양 칼럼 ID·검색어) 누적 — 끝에서 _scrapSig와 비교
   closeFailMenu();   // 전체 재렌더 = Failed 칩 노드 교체 → 열린 컨텍스트 메뉴 앵커가 stale → 닫음
@@ -5065,7 +5050,6 @@ function renderScrap() {
       arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
       arr.sort((a, b) => (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 최신 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 최신 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·최신 pinFresh(최신속보 핀)는 별개 유지.
     }
-    arr = scDedup(arr);   // 동일 제목(같은 기사·구분만 다른 중복 대표) 접기 — 정렬 상위만(픽은 멤버승계로 유지)
     const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
       const el = makeScItem(arr[i], { ...(srvTriage(arr[i]) || {}), ...ratingFor(arr[i]) }, key);   // 멤버기반 picked 승계 + 서버 트리아지(확인 등) 오버레이(cross-device)
