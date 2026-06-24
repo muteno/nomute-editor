@@ -199,8 +199,24 @@ for (const a of articles) {
 // 파일명(앞에 YYMMDD-HHMM) 기준 최신순
 articles.sort((a, b) => (a.file < b.file ? 1 : a.file > b.file ? -1 : 0));
 
+// ── 상세 분리(렉 해소 · 운영자 260624) ──────────────────────────────────────
+// 무거운 body(요약 32%)·cards.md(카드 프롬프트 62%)를 per-article detail 파일로 빼고
+// 인덱스(articles.json)는 경량화(존재 플래그만). 뷰어는 기사 '열 때'만 detail/<file>.json
+// 을 lazy-load(ensureDetail). 피드 목록은 light 필드만 쓰므로 무영향. 4.5MB→~0.3MB.
+const DETAIL_DIR = 'viewer/detail';
+rmSync(DETAIL_DIR, { recursive: true, force: true });
+mkdirSync(DETAIL_DIR, { recursive: true });
+for (const a of articles) {
+  const body = a.body || '';
+  const cardsMd = (a.cards && a.cards.md) || '';
+  writeFileSync(join(DETAIL_DIR, a.file + '.json'), JSON.stringify({ body, cards_md: cardsMd }));
+  a.has_body = !!body;          // 인덱스 = 존재 플래그(요약 게이트·썸네일 판정용)
+  a.body = '';                  // 무거운 본문 제거 — detail로 이동
+  if (a.cards) { a.cards.has_md = !!cardsMd; a.cards.md = ''; }   // 카드 프롬프트도 detail로
+}
+
 writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString(), commit: BUILD_COMMIT, count: articles.length, articles }, null, 2));
-console.log(`viewer/articles.json 생성 — ${articles.length}건`);
+console.log(`viewer/articles.json 생성 — ${articles.length}건 (경량 인덱스) · detail/ ${articles.length}개`);
 
 // ── ⚠ 픽 분석 실패 목록: pending/failed/*.txt(+.log) → viewer/picks-failed.json ──
 // 수집함서 '분석 실패 · 다시'(전문 붙여넣기) 표시 + 속보급 알림용. fetch 막는 매체(chosun 등)로
