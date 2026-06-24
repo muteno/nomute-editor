@@ -410,7 +410,7 @@
     <div id="linesBox" class="none">
       <label>텍스트 (줄바꿈 = 여러 줄)</label>
       <textarea id="lines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
-      <div class="hint"><b>*별표*</b>로 감싸면 초록 강조 · <span id="linesMax"></span> <span id="linesTrk" class="trk"></span></div>
+      <div class="gospec" id="postSpec"><span class="gs-bul">•</span> <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="psAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span> <span id="linesTrk" class="trk"></span></div>
     </div>
 
     <!-- /4 경고문 — 프리셋 선택(법적 검토) + 직접입력. 선택 시 채워지고 수정 가능 -->
@@ -421,7 +421,6 @@
         <button type="button" data-wp="ai">AI 생성</button>
       </div>
       <textarea id="warnLines">민감하거나 충격적인 내용이 포함될 수 있으니 시청에 주의 바랍니다.</textarea>
-      <div class="hint"><b>*별표*</b>로 강조 · 최대 2줄 · <b>AI 생성</b>=AI기본법 §31② 표시의무(나머지는 자율 안내)</div>
     </div>
 
     <!-- /2 릴스 — 기본(헤더+자막 동시) / 헤더 / 오버레이 모드 -->
@@ -592,11 +591,10 @@ function selApp(a) {
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
-  const showAbbr = (a === '1');      // 축약 체크박스 = 포스트만(릴스 전 모드는 goSpec ON 토글로 이동)
-  $('#abbrBox').classList.toggle('none', !showAbbr);
+  $('#abbrBox').classList.add('none');   // 축약 = 전 탭 goSpec 명세 ON 토글로 이동(버튼 안 체크박스 폐지)
   if (a === '4' || a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                  // 경고문·저작권 = 포스트+릴스 둘 다 기본(멀티·둘 다 출력·최소1)
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
-  $('#linesMax').textContent = a === '1' ? '최대 3줄' : '';
+  // (linesMax 폐지 — 포스트 설명줄을 postSpec 축약 명세로 대체)
   if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
   if (a === '1') updateTrkHint('lines', 'linesTrk', 'post');                   // 실시간 자간
   clearSpellReview();                                                          // 앱 바뀌면 진행 중이던 교정 리뷰 폐기
@@ -751,6 +749,8 @@ function updateGoSpec() {
     os.classList.toggle('none', !showO);
     if (showO) syncAbbrSpec('#osAbbr');
   }
+  // 포스트(/1) 명세 — 축약만(OPA 세그·이미지·텍스트는 유지). postSpec은 linesBox 안이라 show는 linesBox 종속.
+  if (APP === '1') syncAbbrSpec('#psAbbr');
 }
 $('#abbr').addEventListener('change', updateGoSpec);
 // ── goSpec 컨트롤 — OPA(휠/드래그 1단위·조절 중 mut/픽스 강조) + 기본·축약 클릭 토글(체크박스 대체). ──
@@ -782,6 +782,7 @@ function setOpa(v) {
   const bind = (id, cb) => { const t = $(id); if (!t) return; t.addEventListener('click', () => tog(cb)); t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(cb); } }); };
   bind('#gsBg', $('#cBg')); bind('#gsAbbr', $('#abbr'));
   bind('#hsBg', $('#rBg')); bind('#hsAbbr', $('#abbr')); bind('#osAbbr', $('#abbr'));   // 릴스 헤더/오버레이 명세 토글
+  bind('#psAbbr', $('#abbr'));   // 포스트 축약 명세 토글
 })();
 // 배경 체크 → 출력 장수 힌트 갱신(기본 1장=흰칸 / 체크 2장=흰칸+배경)
 $('#rBg').addEventListener('change', updateGoSpec);   // 배경 → hdrSpec '배경' 토글(hdrCnt 폐지)
