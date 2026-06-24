@@ -171,10 +171,17 @@
   .cmtrk { display:block; margin:6px 2px 0; }            /* 통합 모드 자간 안내(부제/제목·자막) = 입력 아래 별도 줄 */
   .cmtrk:empty { display:none; }                          /* 초과 없으면 숨김(빈 줄 방지) */
   /* ── /3 저작권+안내문 통합 (260624) ── */
-  /* 포맷 = 단일 토글(포스트↔릴스 · 한 번에 하나만 · 썸네일 #ovFmtTog와 동일 패턴 · 도형 없음 · 운영자 260624) → .csec .ovfmt 계승(시안/레몬) */
-  /* ON/OFF 토글 — 도형(알약) 없이 텍스트만(운영자 260624) · 저작권(기본 ON) · 안내문(기본 OFF, 켜지면 종류명 표시) · ON=네온그린 */
-  .csec .onoff { cursor:pointer; font-weight:800; font-size:12px; letter-spacing:.03em; color:var(--mut); -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:color .15s, transform .1s; }
-  .csec .onoff.on { color:var(--accent); }
+  /* 포맷 = [ 포스트 | 릴스 ] 세그(둘 다 보이고 선택만 점등 · 포스트=시안/릴스=레몬 · 기본 릴스) */
+  .csec .cpseg { display:inline-flex; align-items:center; gap:7px; padding:3px 11px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.03); }
+  .csec .cpsep { color:var(--mut); font-weight:400; }
+  .csec .cpfmt { cursor:pointer; font-weight:800; opacity:.4; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:0 2px; font-variant-numeric:tabular-nums; transition:opacity .15s, color .15s; }
+  .csec .cpfmt.post { color:#1fd6ee; }    /* 포스트 = 시안(.csec .ovfmt.post와 동일 톤) */
+  .csec .cpfmt.reels { color:#e7ff2e; }   /* 릴스 = 레몬(.csec .ovfmt.reels와 동일 톤) */
+  .csec .cpfmt.on { opacity:1; }          /* 선택된 포맷만 점등(나머지는 흐림) */
+  .csec .cpfmt:active { transform:scale(.92); }
+  /* ON/OFF 알약 토글 — 저작권(기본 ON) · 안내문(기본 OFF, 켜지면 종류명 표시) · ON=네온그린 */
+  .csec .onoff { cursor:pointer; font-weight:800; font-size:12px; letter-spacing:.03em; padding:3px 13px; border-radius:999px; border:1px solid var(--line); color:var(--mut); background:rgba(255,255,255,.03); -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:color .15s, border-color .15s, background .15s, transform .1s; }
+  .csec .onoff.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.12); }
   .csec .onoff:active { transform:scale(.92); }
   .csec.gsec { position:relative; }   /* 안내문 팝업(.gpop) 기준 */
   /* 저작권 = 자연스러운 한 문장. 정적(.cph-st) + 탭 수정(연도·이름=.cph-ed) + 플랫폼(.cph-plat) · 'all rights…'는 편집화면만 줄바꿈 */
@@ -525,8 +532,10 @@
 
     <!-- /3 저작권 — · 포맷 + · 저작권(ON/OFF·자연 문구 탭수정) + · 안내문(팝업 선택) · 제작버튼 공유 (운영자 260624) -->
     <div id="copyBox" class="none">
-      <!-- · 포맷 = 단일 토글(한 번에 하나만 · 탭=포스트↔릴스 · 썸네일 #ovFmtTog 패턴) · 기본 릴스 · 저작권·안내문 공유 -->
-      <div class="csec">• 포맷 <span id="cpFmtTog" class="ovfmt reels" role="button" tabindex="0" aria-label="포맷 — 탭=포스트↔릴스" title="탭=포스트(4:5)↔릴스(9:16)">릴스</span></div>
+      <!-- · 포맷 [ 포스트 | 릴스 ] · 기본 릴스 · 저작권·안내문 공유 -->
+      <div class="csec">• 포맷 <span class="cpseg" id="cpFmtSeg" role="group" aria-label="포맷 선택">
+        <span class="cpfmt post" data-fmt="post" role="button" tabindex="0" title="포스트 (4:5)">포스트</span><span class="cpsep">|</span><span class="cpfmt reels on" data-fmt="reels" role="button" tabindex="0" title="릴스 (9:16)">릴스</span>
+      </span></div>
 
       <!-- · 저작권 [ON] · 기본 ON · 탭=켜기/끄기 -->
       <div class="csec">• 저작권 <span class="onoff on" id="copyTog" role="button" tabindex="0" aria-pressed="true" title="탭=저작권 켜기/끄기">ON</span></div>
@@ -719,11 +728,9 @@ function setName(v) { $('#cphName').textContent = v || ''; }
 function getPlatform() {
   return $('#cphPlat').dataset.plat === 'custom' ? $('#cplat').value.trim() : $('#cphPlat').dataset.plat;
 }
-// 포맷 단일 토글 UI — 한 번에 하나만 표시(썸네일 #ovFmtTog 패턴) · 포스트=시안/릴스=레몬
+// 포맷 세그 UI — [ 포스트 | 릴스 ] 중 선택만 점등(.on)
 function syncCpFmt() {
-  const t = $('#cpFmtTog'); if (!t) return;
-  t.textContent = cpFmt === 'post' ? '포스트' : '릴스';
-  t.classList.toggle('post', cpFmt === 'post'); t.classList.toggle('reels', cpFmt === 'reels');
+  $('#cpFmtSeg') && $('#cpFmtSeg').querySelectorAll('.cpfmt').forEach(o => o.classList.toggle('on', o.dataset.fmt === cpFmt));
 }
 // 저작권 ON/OFF UI — 토글 라벨·점등 + 문구 dim(OFF=제작서 빠짐 신호)
 function syncCopyTog() {
@@ -740,12 +747,14 @@ function syncGuide() {
     btn.classList.toggle('none', guideMode !== 'free');   // 붙여넣기 = 직접입력(자유문구)일 때만 노출
   } else { wl.classList.toggle('none', !guideMode); }     // 폴백(attach 전)
 }
-// 포맷 단일 토글 클릭 = 포스트↔릴스 전환(썸네일 #ovFmtTog와 동일 로직)
+// 포맷 세그 클릭 = 그 포맷 선택(포스트/릴스 각각)
 (function () {
-  const t = $('#cpFmtTog'); if (!t) return;
-  const tog = () => { cpFmt = (cpFmt === 'post') ? 'reels' : 'post'; syncCpFmt(); };
-  t.addEventListener('click', tog);
-  t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+  const seg = $('#cpFmtSeg'); if (!seg) return;
+  seg.querySelectorAll('.cpfmt').forEach(o => {
+    const pick = () => { cpFmt = o.dataset.fmt; syncCpFmt(); };
+    o.addEventListener('click', pick);
+    o.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+  });
 })();
 // 저작권 ON/OFF 클릭
 (function () {
