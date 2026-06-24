@@ -36,7 +36,7 @@ China commerce ministry export control
 같은 날 칼은 둘이었다.
 방산 거인 46곳은
 조달에서 빠졌고,
-실탄은 *신예 10곳*에 박혔다.
+실탄은 *신예 10곳에* 박혔다.
 ```
 **이미지 프롬프트**
 ```text
@@ -67,7 +67,7 @@ China sanctions Lockheed Martin Raytheon
 그 10곳이 핵심이다.
 드론 업체 레드캣,
 희토류 MP머티리얼스.
-미국의 *'탈중국' 선봉*들이다.
+미국의 *'탈중국' 선봉들이다*.
 ```
 **이미지 프롬프트**
 ```text
