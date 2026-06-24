@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>저작권 컨트롤 도형 제거 + 포맷 단일 토글 — 보고서</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2;
+    --cyan:#1fd6ee; --lemon:#e7ff2e;
+    --ok:#0FFD02; --warn:#e7ff2e; --bad:#ff5d5d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    padding:28px 18px 60px;}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px;color:var(--accent);font-weight:800}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 26px}
+  h2{font-size:15px;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);font-weight:700}
+  .mini{color:var(--mut);font-size:12.5px;margin:-6px 0 14px}
+  /* 전/후 데모 패널 — 실제 thumb.html 톤 재현 */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:18px 16px}
+  .ptag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin:0 0 14px}
+  .ptag.before{color:var(--bad)}
+  .ptag.after{color:var(--accent)}
+  .csec{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--fg);margin:14px 0 6px}
+  .csec:first-of-type{margin-top:0}
+  /* BEFORE: 알약(도형) */
+  .cpseg{display:inline-flex;align-items:center;gap:7px;padding:3px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03)}
+  .cpsep{color:var(--mut);font-weight:400}
+  .cpfmt{font-weight:800;opacity:.4;padding:0 2px}
+  .cpfmt.post{color:var(--cyan)} .cpfmt.reels{color:var(--lemon)} .cpfmt.on{opacity:1}
+  .onoff-b{font-weight:800;font-size:12px;letter-spacing:.03em;padding:3px 13px;border-radius:999px;border:1px solid var(--line);color:var(--mut);background:rgba(255,255,255,.03)}
+  .onoff-b.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12)}
+  /* AFTER: 도형 없이 텍스트만 */
+  .ovfmt{cursor:pointer;font-weight:800;padding:0 3px;user-select:none}
+  .ovfmt.post{color:var(--cyan)} .ovfmt.reels{color:var(--lemon)}
+  .ovfmt:active{transform:scale(.92)}
+  .onoff{cursor:pointer;font-weight:800;font-size:12px;letter-spacing:.03em;color:var(--mut);user-select:none}
+  .onoff.on{color:var(--accent)}
+  .hint{display:block;margin-top:14px;color:var(--mut);font-size:11.5px}
+  .hint b{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;margin:6px 0 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:12px}
+  td.b{color:var(--bad)} td.a{color:var(--accent)}
+  ul{margin:8px 0 0;padding-left:20px} li{margin:5px 0}
+  .sig{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .sig.ok{background:var(--ok)} .sig.warn{background:var(--warn)} .sig.bad{background:var(--bad)}
+  code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>저작권 메뉴 — 도형 제거 + 포맷 단일 토글</h1>
+  <p class="sub">오버레이 생성기 › 저작권 탭 · 260625 · PR #936(머지·라이브 반영)</p>
+
+  <h2>한눈에</h2>
+  <p class="mini">컨트롤이 다 <b>알약(도형)</b> 안에 있던 걸 <b>도형 없이 글자만</b>으로. 포스트·릴스는 <b>한 번에 하나만</b> 보이고 탭하면 바뀜(썸네일 메뉴와 똑같은 방식). 기능·결과물은 그대로.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <p class="ptag before">전 (BEFORE)</p>
+      <div class="csec">• 포맷 <span class="cpseg"><span class="cpfmt post">포스트</span><span class="cpsep">|</span><span class="cpfmt reels on">릴스</span></span></div>
+      <div class="csec">• 저작권 <span class="onoff-b on">ON</span></div>
+      <div class="csec">• 안내문 <span class="onoff-b">OFF</span></div>
+      <span class="hint">포스트·릴스 <b>둘 다</b> 보임 · 모두 <b>알약 박스</b> 안</span>
+    </div>
+    <div class="panel">
+      <p class="ptag after">후 (AFTER)</p>
+      <div class="csec">• 포맷 <span class="ovfmt reels" id="demoFmt" title="탭해봐 — 포스트↔릴스">릴스</span></div>
+      <div class="csec">• 저작권 <span class="onoff on" id="demoCopy">ON</span></div>
+      <div class="csec">• 안내문 <span class="onoff" id="demoGuide">OFF</span></div>
+      <span class="hint"><b>릴스 하나만</b> 보임(탭→포스트) · 박스 없이 <b>글자만</b> · 탭해서 직접 확인 ↑</span>
+    </div>
+  </div>
+
+  <h2>동작 전→후</h2>
+  <table>
+    <tr><th>컨트롤</th><th>전</th><th>후</th></tr>
+    <tr><td>포맷</td><td class="b">[ 포스트 | 릴스 ] 둘 다 보임(알약)</td><td class="a">릴스 하나만 → 탭하면 포스트</td></tr>
+    <tr><td>저작권</td><td class="b">[ ON ] 알약</td><td class="a">ON 글자만(초록)</td></tr>
+    <tr><td>안내문</td><td class="b">[ OFF ] 알약</td><td class="a">OFF 글자만 → 탭하면 팝업(경고/AI/자유문구)</td></tr>
+  </table>
+
+  <h2>장단점 · 효율성 · 품질 리스크</h2>
+  <ul>
+    <li><span class="sig ok"></span><b>일관성↑</b> — 포맷 토글이 옆 <b>썸네일 메뉴</b>의 토글(<code>#ovFmtTog</code>)과 똑같은 컴포넌트(<code>.ovfmt</code>)를 그대로 계승. 화면마다 다르게 생기던 것 통일.</li>
+    <li><span class="sig ok"></span><b>군더더기 제거</b> — 알약 테두리·배경이 빠져 글자만 남으니 노뮤트 다른 화면(평면·검정)과 톤 맞음.</li>
+    <li><span class="sig ok"></span><b>효율</b> — 기존 토글 패턴 재사용 = 새 디자인 0 · 코드 라인·CSS(raw hex 2줄) 오히려 감소.</li>
+    <li><span class="sig ok"></span><b>품질저하 리스크 ≈ 0</b> — 발사 로직·백엔드(<code>/api/thumb</code>)·상태값(<code>cpFmt</code>·<code>copyOn</code>·<code>guideMode</code>) 전부 그대로. 흰칸=고정 불변 → <b>렌더 결과 회귀 없음</b>.</li>
+    <li><span class="sig warn"></span><b>학습 포인트(소소)</b> — 포맷이 한 번에 하나만 보이니, 처음엔 "다른 포맷은 어디?" 할 수 있음. → 탭하면 바뀌는 건 썸네일 메뉴에서 이미 쓰던 방식이라 금방 익숙(타이틀 툴팁도 안내).</li>
+  </ul>
+
+  <h2>검증</h2>
+  <ul>
+    <li><span class="sig ok"></span>인라인 <code>&lt;script&gt;</code> 3개 파싱 OK · 옛 참조(<code>cpFmtSeg</code>/<code>cpfmt</code>) 잔존 0</li>
+    <li><span class="sig ok"></span><code>check_refs</code> 통과(JS 구문·디자인 거울·토큰 게이트)</li>
+    <li><span class="sig ok"></span><code>origin/main</code> 실내용 read-back 확인 · 정본 문서(<code>01_지침_뷰어폼</code>) 동기화</li>
+    <li><span class="mini" style="margin:0">국소 뷰어 손질(§✅ⓒ) + 순수 외형 변경(§✅ⓔ) = 자가 시각확인으로 갈음 · 평의회 면제</li>
+  </ul>
+</div>
+<script>
+  (function(){
+    var f=document.getElementById('demoFmt');
+    f.addEventListener('click',function(){
+      var reels=f.classList.contains('reels');
+      f.classList.toggle('reels',!reels); f.classList.toggle('post',reels);
+      f.textContent=reels?'포스트':'릴스';
+    });
+    var c=document.getElementById('demoCopy');
+    c.addEventListener('click',function(){var on=c.classList.toggle('on');c.textContent=on?'ON':'OFF';});
+    var g=document.getElementById('demoGuide');
+    var gs=['OFF','경고','AI','자유문구'],gi=0;
+    g.addEventListener('click',function(){gi=(gi+1)%gs.length;g.textContent=gs[gi];g.classList.toggle('on',gi!==0);});
+  })();
+</script>
+</body>
+</html>
