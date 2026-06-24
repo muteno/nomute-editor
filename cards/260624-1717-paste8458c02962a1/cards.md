@@ -1,22 +1,22 @@
-# 개표소 홀로 막은 2시간, 진영은 '잔다르크'라 불렀다
+# 💊 역대 최대 마약 압수 뒤, 셋 중 하나는 10·20대
 
 ### [카드 1]
 **텍스트**
 ```text
-개표소 문을 막은 2시간
-홀로 버틴 그 손을 두고
-누군가는 '잔다르크'라 불렀다
-*그는 누구였나*
+정부가 마약과의 전쟁에서
+'역대 최대'를 외쳤다
+5337명 적발, 895명 구속
+압권은 그다음이었다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated gray base with a single color accent of flag red (the Stars-and-Stripes she wears), film-noir low-key lighting, deep shadows.
-Camera: wide shot from eye-level, shot on a 20mm wide lens.
-Lighting/mood: single hard side-light cutting across the scene with deep chiaroscuro shadows, tense standoff atmosphere.
-Scene: inside a Korean indoor sports arena, at its large glass entrance, one lone figure with a Stars-and-Stripes flag wrapped around the waist grips a tall glass door with both hands and stands firm, anchored in the upper-center; a few anonymous figures in dark suits step forward with open hands, persuading, held back at the door line. One person blocking many. The flag red is the only saturated color across an otherwise gray desaturated frame. Anonymous faces, no real-person likeness, no organization logos, no readable signage.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere, monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Scene: A Korean government official in a dark suit stands at a press-briefing podium, chin slightly raised in self-satisfied pride, one hand gesturing toward a long table heaped with confiscated, sealed evidence bags of seized narcotics. No legible logos, no emblem text — a plain unmarked podium and a neutral abstract banner. The official's confident face and gesturing hand sit in the upper-center, lit hard; a cold shadow pools below the triumphant pose. Korean indoor government-hall setting.
+Camera: medium shot (MS) from a low angle, shot on a 35mm documentary lens.
+Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense self-congratulatory atmosphere; the neon green #0FFD02 accent glints only on the seized evidence bags.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the arena lobby floor and glass entrance wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the press briefing hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -26,26 +26,26 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-핸드볼경기장 개표소 봉쇄
+마약류 대책 협의회 정부서울청사
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-지난 16일, 잠실 개표소
-성조기를 몸에 두른 30대 여성이
-경기장 문을 두 손으로 붙잡았다
-체육단체 직원들의 진입을 막았다
+압권은 대마초 636㎏
+국정원 첩보로 인천항에서 잡았다
+954억 원어치, 127만 명분
+역대 최대 압수는 곧 역대 최대 유입
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated gray base with a single color accent of flag red (the Stars-and-Stripes she wears), film-noir low-key lighting, deep shadows.
-Camera: medium close-up from a Dutch tilt angle, shot on an 85mm portrait lens.
-Lighting/mood: single hard side-light, deep chiaroscuro, tense pressured atmosphere.
-Scene: chest-up of the determined figure, a Stars-and-Stripes flag wrapped over the shoulder and waist, both hands clenched white-knuckled on a glass door handle, jaw set, resolute forward gaze, anchored in the upper-center; the Dutch-tilted frame adds instability; behind her the glass entrance of a Korean indoor arena, desaturated. The flag red is the only saturated color. Anonymous face, no real-person likeness, no logos, no readable signage.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere, monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Scene: A bird's-eye view down onto a harbor dock at night — an overwhelming mountain of confiscated cannabis bricks wrapped in plastic, stacked in a vast grid beside a cargo ship hull and shipping containers. Two tiny customs investigators in dark jackets stand at the edge of the colossal pile, dwarfed by its scale, anchored in the upper-center of the frame. Korean port setting, cold steel dock. The sheer volume reads as staggering.
+Camera: extreme long shot (EWS) from a bird's-eye overhead angle, shot on a 14mm ultra-wide lens.
+Lighting/mood: cold blue dim dockside light, hard shadows, oppressive scale; the neon green #0FFD02 accent picks out the seal tape on the bricks like a poison glow.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the glass entrance wall and door surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the harbor dock ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -55,26 +55,26 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-성조기 개표소 시위
+인천항 대마초 압수
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-시위대와 장동혁 대표가 합의한 뒤에도
-그는 문을 놓지 않았다
-'투표함 보전이 먼저'라는 이유였다
-유승민 회장 설득에도 진입은 무산됐다
+잡는 사이 통로는 더 숨었다
+온라인 마약사범 2158명
+1년 전보다 29.8% 늘었다
+판매 광고 748건이 차단됐다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated gray base with a single color accent of flag red (the Stars-and-Stripes she wears), film-noir low-key lighting, deep shadows.
-Camera: over-the-shoulder shot from eye-level, shot on a 70mm short telephoto lens.
-Lighting/mood: single hard side-light cutting between the two, deep shadows, charged confrontation.
-Scene: over-the-shoulder view from behind an anonymous suited official (their shoulder soft in the foreground) toward the lone flag-wrapped figure in the upper-center who still grips the door and refuses with a shake of her head; the official's hand raised mid-persuasion. A tense standoff at the Korean arena entrance, desaturated, the flag red the only accent. Anonymous faces, no real-person likeness, no logos, no readable signage.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere, monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Scene: A tight close-up of an anonymous hand gripping a smartphone in total darkness, the screen's cold glow lighting the fingers and a tense face from below. The phone screen shows only an abstract green messaging glow and a faceless silhouette avatar — no readable text. The lit hand and the cold-glowing face are anchored in the upper-center; the surrounding void is pitch black, conveying secrecy and untraceable trade. Korean setting.
+Camera: tight close-up (S09) from eye-level, shot on a 100mm macro lens.
+Lighting/mood: single cold blue-white 6500K phone light from below (under-lighting), no fill, background plunged into black; the neon green #0FFD02 accent is the messaging-app glow itself.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the arena entrance corridor floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark tabletop around the glowing phone) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -84,26 +84,26 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-장동혁 유승민 개표소
+텔레그램 마약 거래 스마트폰
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-이 장면이 알려지자
-강성 보수 커뮤니티가 그를 떠받들었다
-올림픽공원의 잔다르크, '올다르크'였다
-*위법한 점거가 진영의 신화가 됐다*
+합법의 외피를 쓴 구멍도 드러났다
+의료기관 31곳이 법을 어기고
+의료용 마약을 빼돌렸다
+그런데 가장 무거운 건 따로 있었다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated gray base with a single color accent of flag red (the Stars-and-Stripes she wears), film-noir low-key lighting, deep shadows.
-Camera: full shot from a low angle, shot on a 35mm lens.
-Lighting/mood: single hard light from below-front with a faint cold screen-glow in the deep background, deep shadows, mythologizing tone.
-Scene: low-angle full shot of the flag-wrapped figure standing monumental and resolute in the upper-center, the Stars-and-Stripes flowing, rendered almost like a heroic statue towering over the viewer; deep in the desaturated background, faint cold-glowing rectangular phone and monitor screens float like an unseen online crowd lifting her up (glowing rectangles only, no readable text). The low angle mythologizes her. The flag red is a strong accent against the gray. Anonymous face, no real-person likeness, no logos, no readable text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere, monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Scene: A high-angle close-up looking down onto a clinic desk — a white-coated hand quietly slips a small medical-narcotics vial off the desk and into a coat pocket, beside a stethoscope and a blank unmarked prescription pad (no readable text). The furtive hand and the vial are anchored in the upper-center, sharply lit; the desk falls into shadow. The gesture of concealment reads as betrayal of trust. Korean clinic setting.
+Camera: close-up (CU) from a high angle, shot on a 100mm macro lens.
+Lighting/mood: single hard side-light over a cold desaturated desk, deep chiaroscuro shadows, clinical unease; the neon green #0FFD02 accent glows in the liquid of the vial.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the arena plaza ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the clinic desk surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -113,26 +113,26 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-잔다르크 회화
+의료용 마약류 프로포폴 단속
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그러나 24일, 현실은 달랐다
-경찰이 그의 신원을 확인하고
-*업무방해 혐의로 출석을 요구했다*
-함께 막아선 이들도 입건되고 있다
+검거된 마약사범 7178명
+그중 10·20대가 2274명
+*셋 중 하나가 10·20대였다*
+압수 신기록보다 무거운 숫자
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated gray base with a single muted color accent of flag red (the Stars-and-Stripes she wears), film-noir low-key lighting, deep shadows.
-Camera: medium shot, back view, from eye-level, shot on a 35mm lens.
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood.
-Scene: seen from behind, the same figure now small and diminished, the flag dropped and folded low and dulled, shoulders lowered, walking toward the cold gray entrance of a Korean official building (a police station conveyed by plain institutional architecture, not by text or logo), anchored in the upper-center; the heroic glow is gone; flat overcast light; the flag red now dull and reduced. Anonymous, no real-person likeness, no logos, no readable signage.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere, monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Scene: A single young person seen from behind — a backlit, anonymous, slender silhouette with hood and slumped shoulders — standing alone in a narrow Korean night alley, dwarfed by towering dark walls. Face fully unidentifiable, identifiable only by silhouette and posture. No drug use depicted, no paraphernalia, no needles — only isolation and a swallowed-up loneliness. The lone figure's head and shoulders are anchored in the upper-center against a faint glow ahead. Korean alley, signboards as abstract shapes only.
+Camera: wide shot (WS) from eye-level, rear back view (back shot), shot on a 35mm lens.
+Lighting/mood: backlit rim-light silhouette, face in shadow with no facial features visible, cold desolate stillness; a single neon green #0FFD02 sign glow bleeds down the wet alley as the only accent.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the pavement leading to the building) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the night alley ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -142,34 +142,34 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-송파경찰서 업무방해
+청년 마약 중독 확산
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-누군가에겐 영웅담, 누군가에겐 조서
-같은 2시간을 두고 이름이 갈렸다
-하지만 명분이 무엇이든
-*법이 보는 건 동기가 아니라 행위였다*
+정부는 인터폴 마약 센터를
+서울에 유치하기로 했다
+국경을 넘는 마약, 혼자선 못 막는다
+*신기록은 성적표가 아니라 과제표다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Monochrome desaturated gray base with a single color accent of flag red (a discarded fragment of the Stars-and-Stripes and a thin red seal-stripe), film-noir low-key lighting, deep shadows.
-Camera: close-up from a high angle looking down, shot on a 100mm macro lens.
-Lighting/mood: single hard shaft of light on the object, deep chiaroscuro shadows, solemn emptied atmosphere.
-Scene: in a dim, emptied Korean indoor arena, a single sealed ballot box (a paper seal strip across it, no readable text) sits on the floor in the upper-center under one hard shaft of light; nearby on the floor lies a small discarded fragment of a Stars-and-Stripes flag. No people — only the institution and a left-behind trace remain. Deep shadows fill the rest of the frame. The flag red on the discarded fabric and the thin red seal-stripe are the single accent. Heavy and contemplative. No logos, no readable text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere, monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows.
+Scene: A vast low-angle view of a Korean port inspection yard at dawn — an endless line of incoming shipping containers stretching to the horizon, while a row of small customs and international-cooperation officers in dark uniforms stand resolute at a checkpoint barrier, looking outward at the oncoming tide. The officers and the raised barrier are anchored in the upper-center, silhouetted against a pale sky; the scale conveys a task that never ends. No legible logos or emblem text — abstract insignia only.
+Camera: extreme long shot (EWS) from a low angle, shot on a 24mm wide lens.
+Lighting/mood: cold blue pre-dawn tone, long hard shadows, somber resolve; the neon green #0FFD02 accent runs along the checkpoint barrier line like a thin warning seam.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the empty arena floor) extending edge to edge from top to bottom of the frame. The main subject (the sealed ballot box) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the port inspection ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key object in the bottom area, no central focal point in the bottom third
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
 ```text
-개표소 투표함 봉인
+인터폴 마약 국제공조 총회
 ```
