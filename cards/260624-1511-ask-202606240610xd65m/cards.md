@@ -3,23 +3,22 @@
 ### [카드 1]
 **텍스트**
 ```text
-성조기를 두른 손
-개표소 문을 잡았다
-홀로 버틴 두 시간
-합의는 이미 끝나 있었는데
+성조기를 두른 한 사람이
+개표소 문을 홀로 막았다
+체육단체도 정치인도
+그 문을 끝내 열지 못했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Scene: an extreme close-up of one tense human hand gripping the metal frame of a large glass stadium entrance door, a small fabric national flag wrapped around the wrist, knuckles white with strain, holding the door shut alone. The entire frame is the glass-and-metal door; the gripping hand is anchored in the upper-center.
-Camera: extreme close-up (ECU) from Eye-level, shot on 100mm macro lens, fine detail and shallow depth of field on the knuckles and the flag fabric.
-Lighting/mood: single hard side-light cutting across the hand with deep chiaroscuro shadows, a tense and suffocating atmosphere.
-Accent: monochrome desaturated base with a single neon green (#0FFD02) accent glinting along the metal door handle, film-noir low-key lighting, deep shadows.
-Korean setting: a Korean sports-arena glass entrance with Korean-style door hardware.
-Text minimization: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: a lone protester draped in an American flag stands with both hands pressed against the tall glass entrance doors of an indoor sports arena being used as a vote-counting site, body braced and unmoving; a cluster of suited officials and staff is held back just outside, their backs and shoulders crowding the lower foreground, none able to pass. Korean setting, Korean signage shapes, evening.
+Camera: wide establishing shot from eye-level, shot on 24mm wide lens.
+Lighting/mood: single hard side-light cutting across the scene, deep chiaroscuro shadows, cold tense atmosphere.
+Accent: monochrome desaturated base with a single symbolic crimson-red accent carried by the flag, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the glass stadium door) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the glass entrance wall of the arena) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,23 +34,22 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-체육단체 2명씩 들어가
-물품만 챙기기로 한 합의
-장동혁도, 유승민도 설득했지만
-그는 문을 놓지 않았다
+지난 16일 잠실 개표소
+핸드볼경기장 앞이었다
+성조기를 두른 30대 여성이
+두 손으로 유리문을 붙잡았다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Scene: a tense standoff inside a stadium lobby — one lone figure braces their back and outstretched arms against a large glass door, blocking it, while a small group of anonymous men in dark suits stand close facing the figure with open hands raised mid-persuasion. Generic faces, no recognizable real individuals. The figures stand on one continuous lobby floor, anchored in the upper-center.
-Camera: medium shot (MS) two-shot from a Dutch tilt (canted horizon), shot on 50mm standard lens, both the blocking figure and the persuading group in frame to show the relationship and distance.
-Lighting/mood: single hard side-light with deep chiaroscuro shadows, unstable and confrontational atmosphere.
-Accent: monochrome desaturated base with a single neon green (#0FFD02) accent on a lanyard edge, film-noir low-key lighting, deep shadows.
-Korean setting: a Korean arena interior lobby, Korean-style suits and signage shapes (no readable text, no logos).
-Text minimization: no garbled or fake script, no meaningless letters, no random characters, no dense text, no brand or institution logos.
+Scene: a woman in her thirties draped in an American flag, seen at a three-quarter angle, grips the long vertical handle of a tall glass arena door with both hands, knuckles tight and white, jaw set, eyes fixed forward with grim resolve; faint reflections of an empty concourse ripple on the glass. Korean setting, evening.
+Camera: medium close-up from a three-quarter angle, shot on 85mm portrait lens.
+Lighting/mood: cold dim interior light, heavy and suffocating, faint trembling tension.
+Accent: monochrome desaturated base with a single symbolic crimson-red accent carried by the flag, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the stadium lobby floor and wall) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the glass entrance door) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -61,29 +59,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-장동혁 유승민 개표소
+성조기 개표소 시위
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-투표지와 투표함
-보전이 먼저라며 버텼다
-진입은 끝내 무산됐다
-누가 그에게 이름을 붙였나
+시위대도 장동혁 대표도
+진입에 합의한 뒤였다
+그래도 그는 두 시간을 버텼다
+"투표함 보전이 먼저다"
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Scene: a determined anonymous woman in her thirties seen in profile, jaw set, eyes fixed forward, one arm shielding a sealed official ballot box behind her in a dim interior; a small national-flag cloth at her shoulder. Generic features, not a specific real person. The wall behind is one continuous surface; her face and the ballot box are anchored in the upper-center.
-Camera: tight close-up (big close-up, S09) from Eye-level in profile (O03), shot on 85mm portrait lens, soft background separation.
-Lighting/mood: cold dim interior light, heavy and resolute, faint trembling tension.
-Accent: monochrome desaturated base with a single neon green (#0FFD02) accent on the paper seal of the ballot box, film-noir low-key lighting, deep shadows.
-Korean setting: a Korean polling/counting interior, Korean-style sealed ballot box with no legible text on it.
-Text minimization: no garbled or fake script, no meaningless letters, no readable text on the ballot box, no dense text.
+Scene: over the shoulder of a generic suited man (no real-person likeness) whose open hand reaches out in appeal, the flag-draped woman stands immovable at the doorway in the upper-center, one hand still flat on the glass, refusing to step aside; a second suited figure waits tensely beside him. A standoff of one against many. Korean setting, evening.
+Camera: over-the-shoulder shot from eye-level, shot on 50mm standard lens.
+Lighting/mood: single hard side-light cutting across the subjects, deep chiaroscuro shadows, tense atmosphere.
+Accent: monochrome desaturated base with a single symbolic crimson-red accent carried by the flag, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dim interior wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the arena entrance doorway) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -93,29 +90,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-투표함 봉인 보전
+장동혁 유승민 핸드볼경기장
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-강성 보수 커뮤니티가
+강성 보수 커뮤니티는 그를
+올림픽공원의 잔다르크,
 '올다르크'라 불렀다
-올림픽공원의 잔다르크
-하지만 24일, 다른 이름이 왔다
+그러나 신화는 오래가지 않았다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Scene: one lone figure stands elevated as if on a low pedestal, lit from below into a heroic silhouette, while beneath them a faceless crowd of raised arms and glowing phone screens looks up, turning a single individual into an icon. No recognizable real person, no readable text on the screens. The plaza ground rises continuously to the figure, who is anchored in the upper-center.
-Camera: wide shot (S03) group composition (R04) from a worm's-eye view (H05) low to the ground, shot on 20mm wide lens, exaggerated upward scale.
-Lighting/mood: cold blue pre-dawn tone with hard under-lighting, a desolate yet feverish atmosphere of idolization.
-Accent: monochrome desaturated base with a single neon green (#0FFD02) accent in the cold glow of the raised phone screens, film-noir low-key lighting, deep shadows.
-Korean setting: a Korean outdoor plaza at night, Korean crowd.
-Text minimization: no garbled or fake script, no meaningless letters, no readable text on phone screens, no dense text, no logos.
+Scene: seen from far below, the flag-draped figure stands raised and central in the upper third, ringed by a cold rim-light halo against a dark sky like a constructed idol; beneath her a dark crowd of faceless silhouettes lifts countless small cold-glowing phone screens up toward her like votive candles — an online myth being built. Uncanny, manufactured reverence, not warmth. Korean setting, night. Phone screens are blank glows with no readable content.
+Camera: wide shot from a worm's-eye low angle, shot on 20mm wide lens.
+Lighting/mood: cold backlit rim halo around the figure, a field of small cold phone-screen glows in the darkness below, eerie and constructed.
+Accent: monochrome desaturated base with a single symbolic crimson-red accent carried by the flag, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the plaza ground rising to the figure) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark night plaza ground rising into open sky) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+no garbled or fake script, no meaningless letters, no random characters, no dense text, no readable text on the phone screens; minimal Korean text only if essential.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -125,69 +121,67 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-올다르크 잔다르크 시위
+올다르크 성조기
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-서울 송파경찰서가
-신원을 확인하고
-업무방해 혐의로
-출석을 요구했다
+24일 송파경찰서는
+그의 신원을 확인했다
+업무방해 혐의로 출석을 요구했다
+함께 막아선 이들도 입건되고 있다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Scene: a close-up looking down on a pair of hands resting on a desk beside a partly cropped, slightly blurred official summons envelope, the long hard-edged shadow of a standing police officer falling across the desk. The document is cut off by the frame edge and out of focus so no body text is legible. The desk is one continuous surface; the hands and envelope are anchored in the upper-center.
-Camera: close-up (CU) from a High angle (H02) looking down, shot on 100mm macro lens, shallow depth of field.
-Lighting/mood: cold dim interior light with a single hard source, heavy and observed, the weight of the law pressing down.
-Accent: monochrome desaturated base with a single neon green (#0FFD02) accent on an official stamp mark, film-noir low-key lighting, deep shadows.
-Korean setting: a Korean police office desk, Korean-style document (text blurred and cropped, not legible).
-Text minimization: render no legible document body text, no garbled or fake script, no meaningless letters, no dense text; the paper is blurred and cropped.
+Scene: a strict top-down view of an investigator's desk — a printed black-and-white surveillance still showing the flag-draped figure pressed against the glass door, paper-clipped to a blank official document stamped with a single round red seal, a pen laid diagonally across it. Cold, clinical, bureaucratic; the heroic myth reduced to evidence. Korean setting. Document and photo carry no readable text, surfaces blank or softly blurred.
+Camera: extreme close-up from an overhead bird's-eye angle, shot on 100mm macro lens.
+Lighting/mood: cold desk-lamp light, clinical and flat, no warmth, hard precise edges.
+Accent: monochrome desaturated base with a single symbolic crimson-red accent carried by the official seal, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the investigator's desk surface) extending edge to edge from top to bottom of the frame. The main focal object is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+no garbled or fake script, no meaningless letters, no random characters, no dense text, no readable text on the document or photo; minimal Korean text only if essential.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no main subject in the lower portion, no key object in the bottom area, no central focal point in the bottom third
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
 ```text
-송파경찰서 개표소 업무방해
+송파경찰서 업무방해 입건
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-같은 두 시간이
-한쪽엔 영웅담으로
-다른 쪽엔 혐의로 남았다
+같은 두 시간이었다
+한쪽에선 영웅담이 되고
+다른 쪽에선 조서가 됐다
 법이 보는 건 동기가 아니라 행위다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere.
-Scene: the now-empty closed glass stadium entrance door, a small national-flag cloth left hanging alone on the handle, a long shadow stretching across one continuous floor. The space is deserted, conveying absence and aftermath; warm light bleeds from one side and cold light from the other across the same single surface (no panel split). The door and flag are anchored in the upper-center.
-Camera: wide shot (S03) from Eye-level (H01), shot on 35mm lens, natural documentary perspective.
-Lighting/mood: ambiguous mixed lighting, one warm edge and one cold edge on the same wall, a hollow and somber stillness.
-Accent: monochrome desaturated base with a single neon green (#0FFD02) accent glinting on the door handle and the flag edge, film-noir low-key lighting, deep shadows.
-Korean setting: a Korean sports-arena glass entrance, Korean-style hardware, no readable signage.
-Text minimization: no garbled or fake script, no meaningless letters, no random characters, no dense text, no logos.
+Scene: the now-empty glass doorway of the arena, no people remaining; a single American flag lies crumpled on the floor before the threshold in the upper-center. The same continuous space is washed half in cold blue investigative light and half in a faint fading warm glow — one doorway, two meanings — hollow stillness, the question left behind. Korean setting, late evening.
+Camera: wide shot from eye-level, shot on 35mm lens.
+Lighting/mood: one side cold blue light, the other a faint fading warm glow blended across one continuous surface, quiet and hollow, deep soft shadows.
+Accent: monochrome desaturated base with a single symbolic crimson-red accent carried by the fallen flag, film-noir low-key lighting, deep shadows.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the stadium entrance floor and door) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge. The two lighting tones blend on the same single surface and must NOT form a panel split or divider line.
+Composition: ONE continuous surface (the empty doorway and floor) extending edge to edge from top to bottom of the frame. The main focal object (the fallen flag at the threshold) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
 NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no vertical divider line splitting the two tones, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no main subject in the lower portion, no key object in the bottom area, no central focal point in the bottom third
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
 ```text
-개표소 봉쇄 시위 잠실
+개표소 봉쇄 투표함
 ```
