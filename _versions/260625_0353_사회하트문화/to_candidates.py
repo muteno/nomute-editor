@@ -60,19 +60,11 @@ CAT_KW = {
 }
 
 
-# 하트(♥♡❤ 등) — 제목에 들어가면 연예인 열애/결혼·2세 = 100% 문화(운영자 260624). 사회 오분류·미분류 구제.
-HEART_RE = re.compile("[♡♥❣❤\U0001F493-\U0001F49F\U0001F9E1\U0001FA77]")
-
-
 def cat_of(category, title):
     c = cat_ko(category)
+    if c:
+        return c
     t = title or ""
-    if c and c != "사회":
-        return c
-    if HEART_RE.search(t):   # 하트 = 100% 문화(사회·빈칸 위로)
-        return "문화"
-    if c:   # 사회(하트 없음)
-        return c
     best, bn = "", 0
     for k, ws in CAT_KW.items():
         n = sum(1 for w in ws if w in t)
