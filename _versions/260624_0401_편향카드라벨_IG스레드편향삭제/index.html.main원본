@@ -1918,9 +1918,9 @@ function render() {
         <div class="s"></div>
         <div class="kv">
           <div><span>매체</span>${a.media ? `<b>${esc(a.media)}</b>` : '<b class="senshyphen">—</b>'}</div>
-          <div><span>편향</span>${a.bias ? biasLabel(a) : '<b class="senshyphen">—</b>'}</div>
           <div class="typecol"><span>민감</span><div class="typewrap">${sensChips(a.tags)}</div></div>
         </div>
+        ${a.bias ? biasBlock(a) : ''}
         <div class="botrow">
           ${progGauge(a)}
         </div>
@@ -2034,25 +2034,25 @@ function dlScrap(a) {    // 스크랩(우): <30분 NEW(라임 강조) / 30분~6h
   if (h * 60 < 30) return '<b class="scrap nw">NEW</b>';
   return `<b class="scrap" style="color:${h < 7 ? 'var(--fg)' : 'var(--mut)'}">${relAge(h)}</b>`;
 }
-// (옛 biasText/BIAS_COLOR 제거 260624 — 카드가 biasLabel 텍스트 라벨로 바뀌어 유일 호출부 사라진 죽은코드 + 옛 색맵은 좌우 반전[약우=파랑]이라 미래 재호출 시 위험. 평의회 검증5·6·10 권고.) · 게이지바 CSS(.bgauge·.biasrow)·--bias-*-rgb 토큰은 #922 카드 게이지 롤백으로 호출부 0 = 도먼트(후속 정리 가능).
-// ── 편향 텍스트 라벨(카드 kv 줄) — 게이지바(#922) 롤백, 텍스트 라벨로 복귀(운영자 260624). 본문 자유요약은 게이지흐름 유지(decorate M).
-//    형식: 원문→요약 보정 있으면 '좌 보정(4+1)'(원문방향+N±델타), 보정0이면 '좌 4', 원문값 부재면 '중립 5'(요약값만). 좌우무관(N/A)→'무관'.
-//    라벨은 숫자에서 도출(1~2강좌·3~4좌·5~6중립·7~8우·9~10강우) = 같은 숫자에 다른 라벨 뜨던 드리프트 차단. 색은 원문방향(보정 전) 기준.
+// (옛 biasText/BIAS_COLOR 제거 260624 — 카드가 biasBlock 게이지로 바뀌어 유일 호출부 사라진 죽은코드 + 옛 색맵은 좌우 반전[약우=파랑]이라 미래 재호출 시 위험. 평의회 검증5·6·10 권고.)
+// ── 편향 게이지(보정 시각화) — 1~10 다이버징(좌파랑↔우빨강·중앙중립) 위에 보정분(원문 N→요약 M)을 accent 오버레이.
+//    라벨은 숫자에서 도출(1~2강좌·3~4좌·5~6중립·7~8우·9~10강우 = 지침 약좌/약우를 운영자 예시 '좌 3'대로 좌/우 단순화) = 같은 숫자에 다른 라벨 뜨던 드리프트 근본 차단. 좌우무관(N/A)→빗금.
 const biasNum = s => { const m = /(\d+)\s*[\/／]\s*10/.exec(s || ''); return m ? +m[1] : null; };
 const biasZone = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? '강좌' : v <= 4 ? '좌' : v <= 6 ? '중립' : v <= 8 ? '우' : '강우'; };
 const biasZoneCol = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? 'var(--bias-l2)' : v <= 4 ? 'var(--bias-l1)' : v <= 6 ? 'var(--fg-2)' : v <= 8 ? 'var(--bias-r1)' : 'var(--bias-r2)'; };
-function biasLabel(a) {
+const biasPos = v => (Math.min(10, Math.max(1, v)) - 1) / 9 * 100;
+function biasBlock(a) {
   const M = biasNum(a.bias);
   if (M == null || /무관|N\s*\/?\s*A/i.test(a.bias || ''))
-    return `<b class="bias" style="color:var(--mut)">무관</b>`;
-  const N = biasNum(a.bias_src);
-  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략)
-    return `<b class="bias" style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>`;
-  const d = M - N;
-  if (!d)   // 보정 0 = 단일값
-    return `<b class="bias" style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b>`;
-  const zc = biasZoneCol(N);   // 원문방향 '좌'=방향색 · N=방향색 · 보정델타 '+1'=흰색(--fg) · '보정()' 래퍼=mut(운영자 260624)
-  return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--mut)">보정(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
+    return `<div class="biasrow"><span class="bl">편향</span><div class="bgauge na"></div><span class="bcap"><b style="color:var(--mut)">무관</b></span></div>`;
+  const pm = biasPos(M), N = biasNum(a.bias_src);
+  if (N == null)   // 원문 없음(옛 기사·폴백) = 요약 위치만(보정 흐름 생략)
+    return `<div class="biasrow"><span class="bl">편향</span><div class="bgauge"><i class="bg-out" style="left:${pm}%"></i></div><span class="bcap"><b style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b></span></div>`;
+  const pn = biasPos(N), lo = Math.min(pn, pm), hi = Math.max(pn, pm), d = M - N;
+  const corr = `${d > 0 ? '＋' : d < 0 ? '－' : '±'}${Math.abs(d)}`;   // 부호 델타만(네 포맷 '좌3→＋2→중립5') — '보정'어 제거: 지침 약보수보정(✅/—)과 충돌·면제 기사 오독 차단(평의회6). 방향은 숫자·바가 보여줌.
+  const bar = (d ? `<i class="bg-corr" style="left:${lo}%;width:${hi - lo}%"></i>` : '') + `<i class="bg-src" style="left:${pn}%"></i><i class="bg-out" style="left:${pm}%"></i>`;   // 보정0이면 bg-corr 생략(width:0 글로우 아티팩트 차단·평의회3)
+  const cap = `<b style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b><span class="barw">→</span><em class="bcorr">${corr}</em><span class="barw">→</span><b style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>`;
+  return `<div class="biasrow"><span class="bl">편향</span><div class="bgauge">${bar}</div><span class="bcap">${cap}</span></div>`;
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621)
@@ -2317,12 +2317,9 @@ function decorate(root) {
     const nx = ag.nextSibling;
     if (nx && nx.nodeType === 3) nx.data = nx.data.replace(/^\s*:\s*/, ' ');
   });
-  // M: 편향 줄(단독 p) — 자유요약은 원문→요약 보정 흐름으로 재구성(라벨은 숫자 도출=드리프트 차단). IG·Thread 섹션 편향줄은 위(자유요약·활용옵션)에 이미 나오므로 삭제(운영자 260624). 무관/N/A=축약.
+  // M: 편향 줄(단독 p) — 원문→요약 보정 흐름으로 재구성(카드 게이지와 동일 로직·라벨은 숫자 도출=드리프트 차단·시안①). 무관/N/A=축약.
   root.querySelectorAll('p').forEach(p => {
     if (!/^\s*편향\s*[:：]/.test(p.textContent)) return;
-    let _h = p.previousElementSibling;   // 섹션 헤더 역추적 — IG·Thread면 중복이라 줄 통째 제거(클립 로직과 동일 워크)
-    while (_h && !/^H[1-3]$/.test(_h.tagName)) _h = _h.previousElementSibling;
-    if (_h && /\b(IG|Thread)\b/.test(_h.textContent)) { p.remove(); return; }
     const t = p.textContent;
     if (/무관|N\s*\/?\s*A/i.test(t)) { p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>'; p.classList.add('bullet'); return; }
     const why = (t.match(/보정[^()]*\(([^)]*)\)/) || [])[1] || '';   // 약보수 보정 사유(↳ 회색)
