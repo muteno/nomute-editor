@@ -1,0 +1,103 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>편향 게이지 부분 롤백 — 전/후 비교</title>
+<style>
+:root{
+  --bg:#0c100d; --card:#141a16; --fg:#eef7f0; --mut:#8fa697; --accent:#0ffd02; --accent-rgb:15,253,2;
+  --fg-2:#aeb9c2; --bias-l2:#3a6ddb; --bias-l1:#5a8cff; --bias-r1:#ff7a6b; --bias-r2:#e23b2a;
+  --warn:#ffd24a; --danger:#ff5b4a;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;line-height:1.6;font-size:15px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px} .sub{color:var(--mut);font-size:13px;margin:0 0 24px}
+h2{font-size:16px;margin:30px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px}
+.panel h3{margin:0 0 12px;font-size:13px;color:var(--mut);font-weight:700;letter-spacing:.02em}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.tag.old{background:rgba(255,91,74,.15);color:var(--danger)} .tag.new{background:rgba(15,253,2,.13);color:var(--accent)}
+/* 미니 카드 모사 */
+.mc{background:#10160f;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px;margin-bottom:10px}
+.mc .ti{font-size:14px;font-weight:700;margin-bottom:10px;line-height:1.4}
+.kv{display:flex;flex-wrap:wrap;column-gap:40px;row-gap:8px}
+.kv span{display:block;font-size:11px;color:var(--mut);margin-bottom:3px}
+.kv b{font-size:13px;font-weight:700;display:block}
+.bias{font-size:13px;font-weight:700}
+/* 옛 게이지바 모사 */
+.bgauge{position:relative;width:170px;height:9px;border-radius:999px;margin-top:6px;
+  background:linear-gradient(90deg,rgba(58,109,219,.5),rgba(90,140,255,.34) 28%,rgba(174,185,194,.3) 50%,rgba(255,122,107,.34) 72%,rgba(226,59,42,.5))}
+.bgauge .src{position:absolute;top:-3px;width:2px;height:15px;border-radius:2px;background:var(--fg-2);transform:translateX(-50%)}
+.bgauge .corr{position:absolute;top:0;bottom:0;border-radius:999px;background:rgba(15,253,2,.85);box-shadow:0 0 7px rgba(15,253,2,.5)}
+.bgauge .out{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);transform:translate(-50%,-50%)}
+.bcap{font-size:12px;font-weight:700;margin-top:8px} .bcap .ar{color:var(--mut);font-weight:400} .bcap em{font-style:normal;color:var(--accent);font-weight:800}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+th,td{border:1px solid rgba(255,255,255,.1);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:rgba(255,255,255,.04);color:var(--mut);font-weight:700}
+code{background:rgba(255,255,255,.06);padding:1px 6px;border-radius:5px;font-size:12px}
+ul{margin:8px 0;padding-left:20px} li{margin:4px 0}
+.note{color:var(--mut);font-size:12px;margin-top:6px}
+.l1{color:var(--bias-l1)} .l2{color:var(--bias-l2)} .r1{color:var(--bias-r1)} .r2{color:var(--bias-r2)} .mid{color:var(--fg-2)} .mut{color:var(--mut)}
+</style></head><body><div class="wrap">
+
+<h1>편향 게이지 → 부분 롤백</h1>
+<p class="sub">260624 · #922(편향 게이지 시각화) 중 카드 게이지바 + 본문 보정흐름만 되돌림 · 데이터(bias_src 파싱)는 유지</p>
+
+<h2>① 메인 메뉴(카드) — 게이지바 <span class="tag old">이전</span> → 텍스트 라벨 <span class="tag new">변경</span></h2>
+<div class="grid">
+  <div class="panel"><h3>이전 (#922 게이지바)</h3>
+    <div class="mc"><div class="ti">모스 탄에게 '데프콘 발령' 요구…</div>
+      <div class="kv">
+        <div><span>매체</span><b>경향신문</b></div>
+        <div><span>편향</span>
+          <div class="bgauge"><i class="corr" style="left:33.3%;width:11.1%"></i><i class="src" style="left:33.3%"></i><i class="out" style="left:44.4%"></i></div>
+          <div class="bcap"><b class="l1">좌 4</b> <span class="ar">→</span> <em>＋1</em> <span class="ar">→</span> <b class="mid">중립 5</b></div>
+        </div>
+        <div><span>민감</span><b>—</b></div>
+      </div></div>
+  </div>
+  <div class="panel"><h3>변경 (텍스트 라벨)</h3>
+    <div class="mc"><div class="ti">모스 탄에게 '데프콘 발령' 요구…</div>
+      <div class="kv">
+        <div><span>매체</span><b>경향신문</b></div>
+        <div><span>편향</span><b class="bias l1">좌 보정(4+1)</b></div>
+        <div><span>민감</span><b>—</b></div>
+      </div></div>
+    <p class="note">기존 "약우/중립" 같은 <b>kv 줄 텍스트 형식</b> 그대로 · 글자만 <code>좌 보정(4+1)</code>. 색=원문방향(좌=파랑).</p>
+  </div>
+</div>
+
+<h3 style="margin-top:18px;font-size:13px;color:var(--mut)">케이스별 텍스트 (실데이터 156건 검증)</h3>
+<table>
+<tr><th>상황</th><th>원문→요약</th><th>표시</th></tr>
+<tr><td>좌편향 기사 보정</td><td>4 → 5</td><td><b class="l1">좌 보정(4+1)</b></td></tr>
+<tr><td>우편향 기사 보정</td><td>8 → 6</td><td><b class="r1">우 보정(8−2)</b></td></tr>
+<tr><td>강좌 기사 보정</td><td>2 → 5</td><td><b class="l2">강좌 보정(2+3)</b></td></tr>
+<tr><td>보정 없음(중립 원문)</td><td>5 → 5</td><td><b class="mid">중립 5</b></td></tr>
+<tr><td>원문값 부재(옛 기사·IG·Thread)</td><td>— → 7</td><td><b class="r1">우 7</b></td></tr>
+<tr><td>좌우무관 / N/A / 면제</td><td>—</td><td><b class="mut">무관</b></td></tr>
+</table>
+
+<h2>② 뉴스 요약(상세) — 보정흐름 재구성 <span class="tag old">이전</span> → 원문 텍스트 <span class="tag new">롤백</span></h2>
+<div class="grid">
+  <div class="panel"><h3>이전 (#922 재구성)</h3>
+    <p style="font-size:13px">📍 편향: <b class="l1">좌 4</b> <span class="mut">─→</span> <em style="color:var(--accent);font-weight:800">＋1</em> <span class="mut">─→</span> <b class="mid">중립 5</b><br><span class="mut" style="font-size:11.5px">↳ 약보수 보정 사유…</span></p>
+  </div>
+  <div class="panel"><h3>롤백 (원문 텍스트 + • 말머리)</h3>
+    <p style="font-size:13px">📍 편향: 원문 4/10 🟦(약좌 …) → 큐레이션 5/10 🟩(중립) | 약보수 보정 ✅(…)</p>
+    <p class="note">AI가 쓴 원문 텍스트 그대로 표시(읽기전용 글래스 참고영역) · 무관/N/A만 "무관" 축약 유지.</p>
+  </div>
+</div>
+
+<h2>③ 요약 — 장단점·효율·리스크</h2>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td><b>전 → 후</b></td><td>카드: 다이버징 게이지바 → kv 줄 <b>텍스트 라벨</b>("좌 보정(4+1)") · 상세: 보정흐름 재구성 → <b>원문 텍스트 그대로</b></td></tr>
+<tr><td><b>유지</b></td><td>build-viewer의 <code>bias_src</code>(원문 N) 파싱 — 카드 "보정(4+1)" 계산에 필요 · 색 토큰 4종(<code>--bias-l2/l1/r1/r2</code>) · 요약/큐레이션 알고리즘 0 변경</td></tr>
+<tr><td><b>제거</b></td><td>게이지바 CSS(.biasrow·.bgauge·.bg-*) · 본문 보정 CSS(.biasar·.biascorr·.biaswhy) · 죽은 :root 토큰 5종(게이지 그라디언트용 <code>-rgb</code>)</td></tr>
+<tr><td><b>장점</b></td><td>한 줄 텍스트로 간결·매체/민감과 같은 줄 정렬 복귀 · 원문방향+보정량 한눈 · 드리프트(같은 숫자 다른 라벨)는 숫자도출로 여전히 차단</td></tr>
+<tr><td><b>단점</b></td><td>게이지바의 시각적 "위치감"(스펙트럼상 어디인지)은 사라짐 — 숫자로만 전달</td></tr>
+<tr><td><b>효율</b></td><td>DOM 노드↓(바 5요소 → 텍스트 1개) · CSS·토큰 정리로 코드량↓</td></tr>
+<tr><td><b>품질저하 리스크</b></td><td>낮음 — 상세는 #922 이전 라이브본으로 복귀(검증済) · 카드 라벨은 실데이터 156건(원문값 84건) 회귀 정상 · check_refs·디자인거울 통과</td></tr>
+</table>
+
+</div></body></html>
