@@ -152,7 +152,7 @@
   #gsOpa2 { font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent; }
   #gsOpa2.on { cursor:ns-resize; touch-action:none; }
   #gsOpa2.opa-adjusting { color:var(--mut); }
-  .gospec .gs-tog { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .2s ease; padding:0 1px; }
+  .gospec .gs-tog { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .2s ease; padding:0 1px; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }   /* user-select:none = 축약 롱프레스 시 텍스트 선택/콜아웃 방지 */
   .gospec .gs-tog:active { opacity:.65; }
   #goSpec { font-size:11.25px; white-space:nowrap; }   /* 기본(combo) 명세 = 현재의 90% + 한 줄(모바일 · []·/ 제거 · 운영자 260624) */
   .cmtrk { display:block; margin:6px 2px 0; }            /* 통합 모드 자간 안내(부제/제목·자막) = 입력 아래 별도 줄 */
@@ -380,6 +380,29 @@
   .cfm-btn:active { transform:scale(.97); }
   .cfm-btn.go2 { border:none; background:linear-gradient(135deg,#d8ff3d,var(--accent)); color:var(--on-accent); box-shadow:0 6px 16px rgba(var(--accent-rgb),.3); }
   html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+  /* 축약어 등록 다이얼로그 (cfm 글래스 계승) */
+  .abdlg { border:none; border-radius:20px; padding:0; width:92vw; max-width:460px; color:var(--fg);
+    position:fixed; inset:0; margin:auto; height:max-content; max-height:84vh; overflow:auto;
+    background:linear-gradient(165deg, rgba(27,44,32,.62), rgba(11,19,14,.74)); backdrop-filter:blur(30px) saturate(1.6); -webkit-backdrop-filter:blur(30px) saturate(1.6);
+    border:1px solid rgba(255,255,255,.13); box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
+    animation:cfmIn .2s cubic-bezier(.22,.61,.36,1) both; }
+  .abdlg::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); animation:cfmBd .2s ease both; }
+  .abdlg-in { padding:18px 18px 16px; position:relative; }
+  .abdlg-h { font-size:15px; font-weight:700; color:var(--accent); margin:0 0 8px; }
+  .abdlg-note { font-size:11.5px; color:var(--mut); line-height:1.55; margin:0 0 14px; }
+  .abdlg-note code { color:var(--fg); background:rgba(255,255,255,.07); border-radius:5px; padding:1px 5px; font-size:11px; }
+  .abdlg-tbl { display:flex; flex-direction:column; gap:7px; }
+  .abrow { display:grid; grid-template-columns:28px 1fr 1fr 34px; gap:8px; align-items:center; }
+  .abrow.abhd { font-size:11.5px; color:var(--mut); font-weight:600; padding:0 2px; }
+  .abrow .abno { text-align:center; color:var(--mut); font-size:12px; font-variant-numeric:tabular-nums; }
+  .abrow input { padding:9px 10px; border-radius:8px; font-size:14px; }   /* bg·border·focus = 전역 input[type=text] 상속(중복 raw 제거) */
+  .abdel { width:30px; height:30px; display:grid; place-items:center; border-radius:8px; cursor:pointer; font-size:17px; line-height:1; padding:0;
+    background:rgba(255,90,98,.10); border:1px solid rgba(255,90,98,.28); color:#ff9aa0; }
+  .abdel:active { transform:scale(.9); }
+  .abdelh { text-align:center; }
+  .abadd { margin-top:12px; width:100%; padding:11px; border-radius:10px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
+    color:var(--accent); background:rgba(var(--accent-rgb),.10); border:1px dashed rgba(var(--accent-rgb),.45); }
+  .abadd:active { transform:scale(.99); }
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
@@ -532,6 +555,19 @@
       <button class="cfm-btn" id="cfmNo" type="button">취소</button>
       <button class="cfm-btn go2" id="cfmYes" type="button">진행</button>
     </div>
+  </div>
+</dialog>
+
+<!-- 축약어 등록 = '축약' 토글 롱프레스 → 사용자 커스텀 치환쌍(축약 전→후) 추가/삭제. 기본 4종은 불변(항상 적용). -->
+<dialog id="abbrDlg" class="abdlg">
+  <div class="abdlg-in">
+    <button class="dlg-x" id="abbrX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+    <div class="abdlg-h">축약어 등록</div>
+    <div class="abdlg-note">기본 4종(<code>...→⋯ · •→· · 이,→李, · 윤,→尹,</code>)은 항상 적용. 아래는 직접 추가 — <b>축약 전</b>에 <u>앞뒤 글자까지</u> 넣어 범위를 정함(예: <code>군 </code>→<code>軍 </code>, 또는 <code>군,</code>→<code>軍,</code>).</div>
+    <div class="abdlg-tbl" id="abbrTbl">
+      <div class="abrow abhd"><span class="abno">no</span><span>축약 전</span><span>축약 후</span><span class="abdelh">삭제</span></div>
+    </div>
+    <button class="abadd" id="abbrAdd" type="button">+ 추가</button>
   </div>
 </dialog>
 
@@ -726,8 +762,63 @@ $('#abbr').addEventListener('change', updateGoSpec);
 (function () {
   const tog = cb => { if (cb) { cb.checked = !cb.checked; updateGoSpec(); } };
   const bind = (id, cb) => { const t = $(id); if (!t) return; t.addEventListener('click', () => tog(cb)); t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(cb); } }); };
-  bind('#gsBg', $('#cBg')); bind('#gsAbbr', $('#abbr'));   // 릴스 옵션줄 토글(배경·축약)
-  bind('#psAbbr', $('#abbr'));   // 포스트 축약 명세 토글
+  // 축약 토글 = 짧게=ON/OFF · 길게(550ms)=축약어 등록 다이얼로그(운영자 260624)
+  const bindAbbr = id => {
+    const t = $(id); if (!t) return;
+    let lpT = null, longed = false;
+    const clr = () => { clearTimeout(lpT); lpT = null; };
+    t.addEventListener('pointerdown', () => { longed = false; clr(); lpT = setTimeout(() => { longed = true; openAbbrDlg(); }, 550); });
+    t.addEventListener('pointerup', clr); t.addEventListener('pointercancel', clr); t.addEventListener('pointerleave', clr);
+    t.addEventListener('click', e => { if (longed) { e.preventDefault(); e.stopPropagation(); longed = false; return; } tog($('#abbr')); });
+    t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog($('#abbr')); } });
+    t.title = '탭=ON/OFF · 길게=축약어 등록';
+  };
+  bind('#gsBg', $('#cBg')); bindAbbr('#gsAbbr');   // 릴스 옵션줄(배경 / 축약=짧게토글·길게등록)
+  bindAbbr('#psAbbr');   // 포스트 축약(짧게토글·길게등록)
+})();
+
+// ── 축약어 등록 다이얼로그 — 사용자 커스텀 치환쌍(축약 전→후) CRUD. 기본 4종은 불변(항상 적용). ──
+function abbrRenumber() { document.querySelectorAll('#abbrTbl .abrow:not(.abhd)').forEach((r, i) => { const n = r.querySelector('.abno'); if (n) n.textContent = i + 1; }); }
+function abbrSaveRows() {
+  const pairs = [];
+  document.querySelectorAll('#abbrTbl .abrow:not(.abhd)').forEach(r => { const f = r.querySelector('.abfrom').value, to = r.querySelector('.abto').value; if (f) pairs.push({ from: f, to: to }); });   // from 있어야 저장(to 빈값=삭제치환 허용)
+  try { localStorage.setItem(ABBR_KEY, JSON.stringify(pairs)); } catch {}
+}
+function abbrAddRow(from, to) {
+  const tbl = $('#abbrTbl'); if (!tbl) return null;
+  const row = document.createElement('div'); row.className = 'abrow';
+  row.innerHTML = '<span class="abno"></span><input class="abfrom" type="text" placeholder="군 " autocapitalize="off" autocomplete="off"><input class="abto" type="text" placeholder="軍 " autocapitalize="off" autocomplete="off"><button class="abdel" type="button" aria-label="삭제">×</button>';
+  row.querySelector('.abfrom').value = from || ''; row.querySelector('.abto').value = to || '';
+  row.querySelector('.abfrom').addEventListener('input', abbrSaveRows);
+  row.querySelector('.abto').addEventListener('input', abbrSaveRows);
+  row.querySelector('.abdel').addEventListener('click', () => { row.remove(); abbrRenumber(); abbrSaveRows(); });
+  tbl.appendChild(row); abbrRenumber(); return row;
+}
+function abbrRenderRows() {
+  const tbl = $('#abbrTbl'); if (!tbl) return;
+  tbl.querySelectorAll('.abrow:not(.abhd)').forEach(r => r.remove());
+  const cur = abbrCustom();
+  if (cur.length) cur.forEach(p => abbrAddRow(p.from, p.to)); else abbrAddRow('', '');   // 최소 1행
+}
+let _abbrPushed = false;
+function closeAbbrDlg(viaBack) {
+  abbrSaveRows();
+  const dlg = $('#abbrDlg'); if (dlg && dlg.open) dlg.close();
+  if (_abbrPushed && !viaBack) { _abbrPushed = false; try { history.back(); } catch {} } else _abbrPushed = false;
+}
+function openAbbrDlg() {
+  const dlg = $('#abbrDlg'); if (!dlg) return;
+  abbrRenderRows();
+  try { history.pushState({ abbrDlg: 1 }, ''); _abbrPushed = true; } catch { _abbrPushed = false; }
+  dlg.showModal();
+}
+(function () {
+  const dlg = $('#abbrDlg'); if (!dlg) return;
+  const x = $('#abbrX'); if (x) x.addEventListener('click', () => closeAbbrDlg(false));
+  const add = $('#abbrAdd'); if (add) add.addEventListener('click', () => { const r = abbrAddRow('', ''); const inp = r && r.querySelector('.abfrom'); if (inp) inp.focus(); });
+  dlg.addEventListener('cancel', e => { e.preventDefault(); closeAbbrDlg(false); });   // ESC
+  dlg.addEventListener('click', e => { if (e.target === dlg) closeAbbrDlg(false); });   // 백드롭
+  window.addEventListener('popstate', () => { if (dlg.open) closeAbbrDlg(true); });     // 폰 뒤로가기
 })();
 $('#cBg').addEventListener('change', updateGoSpec);     // 배경 → 헤더 nobg 추가(흰칸 + nobg = 2장)
 
@@ -1624,8 +1715,16 @@ function jobLabel() {
 }
 // 제작 = 동시 가능. 누를 때마다 잡 생성 → 로그에 쌓고 각자 폴링(백엔드는 id별 동시처리 안전). #go 비활성 안 함.
 let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) — 큐잉 자체는 막지 않음
-// 축약 = 썸네일 정본 화이트리스트(apps/thumbnail 절대규칙5 · 화이트리스트 4종): ...→⋯ · •→· · 이,→李, · 윤,→尹,
-const abbr = s => String(s).replace(/\.\.\./g, '⋯').replace(/•/g, '·').replace(/이,/g, '李,').replace(/윤,/g, '尹,');
+// 축약 = 기본 4종(정본·절대규칙5·불변) + 사용자 커스텀 쌍(축약 토글 롱프레스 등록·localStorage). 리터럴 치환(split/join = 정규식 이스케이프 불요).
+const ABBR_BUILTIN = [['...', '⋯'], ['•', '·'], ['이,', '李,'], ['윤,', '尹,']];   // 정본 4종 — 절대규칙(불변)
+const ABBR_KEY = 'nomute_thumb_abbr';   // 사용자 커스텀 [{from,to},…]
+function abbrCustom() { try { const a = JSON.parse(localStorage.getItem(ABBR_KEY) || '[]'); return Array.isArray(a) ? a.filter(p => p && p.from) : []; } catch { return []; } }
+function abbr(s) {
+  let out = String(s);
+  for (const [from, to] of ABBR_BUILTIN) out = out.split(from).join(to);            // 기본 4종 먼저
+  for (const p of abbrCustom()) out = out.split(String(p.from)).join(String(p.to == null ? '' : p.to));   // 커스텀(앞뒤 글자까지 from에 넣어 스코프)
+  return out;
+}
 // 잡 1건 생성 → 로그 → 디스패치 → 폴링(비동기·독립). 동시 다발(경고문 듀얼포맷 등) 가능.
 // 전송 상태머신: 누르면 '전송 중…'+초록 풀필 → ✓ 체크 그려짐(시안1 스트로크) → '전송됨' → 원복.
 function goFire(yellow) {   // yellow=맞춤법 교정 적용 생성 → 게이지·체크 노랑(게이지바 동작은 동일)
