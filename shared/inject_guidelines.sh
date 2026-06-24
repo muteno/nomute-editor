@@ -46,8 +46,15 @@ guidelines_block() {
     [ -n "$f" ] && [ -f "$f" ] || continue
     echo ""
     echo "----- ${f#"$_IG_ROOT"/} -----"
-    # INJECT-SKIP 구간 제외(파일엔 보존·주입분만 슬림). 마커 없는 파일은 전량 그대로.
-    awk '/<!-- *INJECT-SKIP-START *:?/{skip=1} skip!=1; /<!-- *INJECT-SKIP-END *-->/{skip=0}' "$f"
+    # 🔄 롤백 토글: IG_DIET=1(기본·다이어트 ON=아카이브/이력 주입 제외=현재) / IG_DIET=0(OFF=전량 주입=R6 지점).
+    #   왕복 = 아래 :-1 ↔ :-0 한 줄 플립(또는 호출 시 env IG_DIET=0). 다른 작업·새 룰은 누적된 채 유지(마커/awk만 토글).
+    if [ "${IG_DIET:-1}" = "1" ]; then
+      # 다이어트 ON: INJECT-SKIP 구간 제외(파일엔 보존·주입분만 슬림). 마커 없는 파일은 전량 그대로.
+      awk '/<!-- *INJECT-SKIP-START *:?/{skip=1} skip!=1; /<!-- *INJECT-SKIP-END *-->/{skip=0}' "$f"
+    else
+      # 다이어트 OFF(롤백·R6 지점): 아카이브/이력 포함 전량 주입(R6 의미해시는 별개라 유지).
+      cat "$f"
+    fi
   done < <(_ig_files "$profile")
   echo ""
   echo "===== [지침 끝 — 위 내용 외 별도 파일을 읽을 필요 없다] ====="
