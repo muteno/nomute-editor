@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>붙여넣기 버튼 시안 10 — 라인에 걸치는 동그라미</title>
+<style>
+  /* 값은 viewer/thumb.html :root SSOT 복사(보고서=일회성 스냅샷·§🎨) */
+  :root{
+    --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108;
+    --infield:#0e0f11;   /* 입력칸 배경 */
+    --r:9px;             /* 입력칸 반지름 */
+  }
+  *{box-sizing:border-box;}
+  html{scrollbar-width:thin; scrollbar-color:rgba(var(--accent-rgb),.30) transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:760px; margin:0 auto; padding:26px 16px 90px;}
+  h1{font-size:20px; margin:4px 0 6px; text-wrap:balance;}
+  h1 b{color:var(--accent);}
+  .lead{color:var(--mut); font-size:13.5px; margin:0 0 4px; text-wrap:pretty;}
+  .lead b{color:var(--fg); font-weight:600;}
+  .note{color:var(--mut); font-size:12px; margin:14px 0 22px; padding:10px 13px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:11px;}
+  .note b{color:var(--accent);}
+
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+  @media (max-width:620px){ .grid{grid-template-columns:1fr;} }
+
+  /* 시안 카드 */
+  .card{position:relative; background:linear-gradient(150deg, rgba(38,64,46,.22), rgba(11,21,15,.5));
+    border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:30px 18px 18px;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);}
+  .num{position:absolute; top:11px; left:14px; font-size:11px; font-weight:800;
+    color:var(--accent); letter-spacing:.04em; font-variant-numeric:tabular-nums;}
+  .tag{position:absolute; top:10px; right:14px; font-size:11px; color:var(--mut);}
+  .cap{font-size:12.5px; color:var(--mut); margin:18px 2px 0; line-height:1.5;}
+  .cap b{color:var(--fg); font-weight:600;}
+
+  /* 데모용 입력칸 — 실제 thumb.html input 계승. 라벨은 바깥, 버튼은 입력칸(.inwrap)에만 걸침 */
+  .field{margin-top:6px;}
+  .flab{display:block; font-size:12px; color:var(--mut); margin:0 0 9px 2px;}
+  .inwrap{position:relative;}   /* ← 버튼의 기준 = 입력칸 자체(라벨 제외) */
+  .fin{width:100%; padding:12px; background:var(--infield); border:1px solid var(--line);
+    border-radius:var(--r); color:var(--fg); font:inherit; outline:none;}
+  .fin::placeholder{color:var(--mut);}
+  .fin:focus{border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08);}
+
+  /* ── 공통 버튼 베이스 (= .iobtn 계승) ── */
+  .cb{position:absolute; display:grid; place-items:center; padding:0; cursor:pointer; z-index:3;
+    color:var(--mut); border:1px solid var(--line); background:rgba(255,255,255,.06);
+    width:30px; height:30px; border-radius:9px; top:8px; right:8px;
+    transition:transform .12s, background .15s, color .15s, border-color .15s, box-shadow .15s;
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+  .cb svg{display:block; width:13px; height:13px;}
+  .cb:active{transform:scale(.85);}
+  /* 히트영역 확장(≥40px) — 보이는 건 26~30 */
+  .cb::before{content:""; position:absolute; inset:-7px;}
+
+  /* ── 라인 걸침 공통 위치(입력칸 위 테두리에 수직 중앙정렬) ── */
+  .edge{top:0; right:14px; transform:translateY(-50%); width:26px; height:26px; border-radius:50%;}
+  .edge:active{transform:translateY(-50%) scale(.85);}
+
+  /* ===== 시안 1 · 고스트 글래스(현행) ===== */
+  .v1{background:rgba(18,18,18,.35); border-color:rgba(255,255,255,.08);}
+  .v1:hover{background:rgba(18,18,18,.72); color:var(--fg); border-color:rgba(255,255,255,.2);}
+  .v1.ok{background:rgba(var(--accent-rgb),.16); color:var(--accent); border-color:rgba(var(--accent-rgb),.5);}
+
+  /* ===== 시안 2 · 강조 링(속 비움·라인 관통) ===== */
+  .v2{background:var(--bg); border-color:rgba(var(--accent-rgb),.45); color:var(--accent);}
+  .v2:hover{background:rgba(var(--accent-rgb),.10); box-shadow:0 0 12px rgba(var(--accent-rgb),.2);}
+  .v2.ok{background:var(--accent); color:var(--on-accent); border-color:var(--accent);}
+
+  /* ===== 시안 3 · 라인 관통(유리·중앙 가로선) ===== */
+  .v3{background:rgba(14,15,17,.55); border-color:rgba(255,255,255,.14); color:var(--mut);
+    -webkit-backdrop-filter:none; backdrop-filter:none;}
+  .v3::after{content:""; position:absolute; left:-9px; right:-9px; top:50%; height:1px;
+    background:var(--line); transform:translateY(-.5px); z-index:-1;}
+  .v3:hover{color:var(--fg); border-color:rgba(255,255,255,.28);}
+  .v3.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.55);}
+
+  /* ===== 시안 4 · 노치 컷아웃(라인이 끊기고 동그라미가 메움) ===== */
+  .v4{background:var(--infield); border-color:var(--line); color:var(--mut);
+    box-shadow:0 0 0 4px var(--bg);}   /* 둘레 bg 링 = 라인 끊김 효과 */
+  .v4:hover{color:var(--fg); border-color:rgba(255,255,255,.25);}
+  .v4.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.55); box-shadow:0 0 0 4px var(--bg);}
+
+  /* ===== 시안 5 · 솔리드 강조 필 ===== */
+  .v5{width:24px; height:24px; background:var(--accent); color:var(--on-accent);
+    border-color:var(--accent); box-shadow:0 2px 8px rgba(var(--accent-rgb),.28);}
+  .v5 svg{width:12px; height:12px;}
+  .v5:hover{box-shadow:0 2px 14px rgba(var(--accent-rgb),.45);}
+  .v5.ok{background:var(--on-accent); color:var(--accent); border-color:var(--accent);}
+
+  /* ===== 시안 6 · 탭 풀다운(라인에서 내려온 책갈피) ===== */
+  .v6{top:0; right:14px; transform:translateY(0); width:28px; height:24px;
+    border-radius:0 0 13px 13px; border-top:none; background:rgba(18,18,18,.6);
+    border-color:rgba(255,255,255,.12); color:var(--mut);}
+  .v6 svg{margin-top:3px;}
+  .v6:active{transform:translateY(2px) scale(.94);}
+  .v6:hover{background:rgba(18,18,18,.85); color:var(--fg);}
+  .v6.ok{background:rgba(var(--accent-rgb),.16); color:var(--accent); border-color:rgba(var(--accent-rgb),.5);}
+
+  /* ===== 시안 7 · 동심원 이중 링 ===== */
+  .v7{background:rgba(14,15,17,.6); border-color:rgba(255,255,255,.1); color:var(--mut);}
+  .v7::after{content:""; position:absolute; inset:-4px; border-radius:50%;
+    border:1px solid rgba(255,255,255,.06); transition:border-color .15s;}
+  .v7:hover{color:var(--fg);} .v7:hover::after{border-color:rgba(var(--accent-rgb),.25);}
+  .v7.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.5);}
+  .v7.ok::after{border-color:rgba(var(--accent-rgb),.2);}
+
+  /* ===== 시안 8 · 강조 점(미니멀 도트) ===== */
+  .v8{width:24px; height:24px; background:rgba(18,18,18,.5); border-color:rgba(255,255,255,.1); color:var(--mut);}
+  .v8 svg{width:12px; height:12px;}
+  .v8::after{content:""; position:absolute; top:-1px; right:-1px; width:6px; height:6px;
+    border-radius:50%; background:var(--accent); box-shadow:0 0 6px rgba(var(--accent-rgb),.6);
+    transition:opacity .15s; }
+  .v8:hover{color:var(--fg); border-color:rgba(255,255,255,.22);}
+  .v8.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.5);} .v8.ok::after{opacity:0;}
+
+  /* ===== 시안 9 · 글로우 글래스(호버 발광) ===== */
+  .v9{background:rgba(14,15,17,.5); border-color:rgba(255,255,255,.1); color:var(--mut);}
+  .v9:hover{color:var(--accent); border-color:rgba(var(--accent-rgb),.4);
+    background:rgba(var(--accent-rgb),.08); box-shadow:0 0 16px rgba(var(--accent-rgb),.25);}
+  .v9.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.55);
+    box-shadow:0 0 14px rgba(var(--accent-rgb),.3);}
+
+  /* ===== 시안 10 · 라인 디바이더(중앙에 강조선 명시) ===== */
+  .v10{background:var(--infield); border-color:rgba(255,255,255,.12); color:var(--mut); overflow:hidden;}
+  .v10::after{content:""; position:absolute; left:0; right:0; top:50%; height:1.5px;
+    background:rgba(var(--accent-rgb),.4); transform:translateY(-.75px); transition:background .15s;}
+  .v10:hover{color:var(--fg);} .v10:hover::after{background:rgba(var(--accent-rgb),.7);}
+  .v10.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.55);}
+  .v10 svg{position:relative; z-index:1;}
+
+  /* 비교: 현행 라이브(우상단 둥근사각) */
+  .legacy{top:8px; right:8px; transform:none; width:30px; height:30px; border-radius:9px;
+    background:rgba(255,255,255,.06); border-color:var(--line); color:var(--mut);}
+  .legacy:hover{background:rgba(255,255,255,.12); color:var(--fg);}
+  .legacy:active{transform:scale(.85);}
+
+  .foot{margin-top:30px; font-size:12px; color:var(--mut); line-height:1.7;}
+  .foot b{color:var(--fg);}
+  .pick{display:inline-block; margin-top:4px; padding:2px 9px; border-radius:999px;
+    background:rgba(var(--accent-rgb),.14); color:var(--accent); font-size:11px; font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><b>붙여넣기 버튼</b> 시안 10 — 라인에 걸치는 동그라미</h1>
+  <p class="lead">입력칸 <b>위쪽 테두리 라인 위에 동그라미를 수직 중앙정렬</b>로 걸쳐서, 라인이 동그라미를 가로지르는 느낌. 칸마다 위치가 제각각이던 현행 우상단 둥근사각을 <b>전부 같은 위치(라인 우측 걸침)로 통일</b>.</p>
+  <div class="note">👆 <b>각 버튼을 눌러봐</b> — 비었으면 붙여넣기(클립보드), 누르면 복사(차있는 모양) → ✓ 성공 플래시까지 실제 상태 전환을 그대로 재현했어. SVG·색·토큰은 라이브 코드 계승.</div>
+
+  <!-- 현행 비교 -->
+  <div class="card" style="margin-bottom:16px;">
+    <span class="num">현행</span>
+    <span class="tag">라이브 (.iobtn)</span>
+    <div class="field" style="margin-top:14px;">
+      <label class="flab">부제</label>
+      <div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb legacy" data-clip aria-label="붙여넣기"></button></div>
+    </div>
+    <p class="cap"><b>문제</b> · 우상단 안쪽 둥근사각. 칸 높이·여백마다 떠 보이고 라인 중앙정렬이 안 됨 → 통일감 부족.</p>
+  </div>
+
+  <div class="grid" id="grid">
+    <!-- 1 -->
+    <div class="card"><span class="num">01</span><span class="tag">고스트 글래스</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v1" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>현행 시안3</b> · 어두운 반투명 유리 동그라미. 라인이 뒤로 지나감. 무난·차분.</p></div>
+    <!-- 2 -->
+    <div class="card"><span class="num">02</span><span class="tag">강조 링</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v2" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>강조색 테두리</b> · 속은 비고 외곽만 형광. 눈에 잘 띔. 액션 강조형.</p></div>
+    <!-- 3 -->
+    <div class="card"><span class="num">03</span><span class="tag">라인 관통</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v3" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>라인이 중앙 관통</b> · 동그라미 뒤로 테두리선이 좌우로 그대로 이어짐 = "걸친" 느낌 가장 직설적.</p></div>
+    <!-- 4 -->
+    <div class="card"><span class="num">04</span><span class="tag">노치 컷아웃</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v4" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>라인이 끊기고</b> 동그라미가 그 자리를 메움(둘레 배경 링). 박혀 있는 느낌·정돈됨.</p></div>
+    <!-- 5 -->
+    <div class="card"><span class="num">05</span><span class="tag">솔리드 강조</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v5" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>형광 채움</b> 미니 동그라미. 가장 강한 시선. CTA처럼 분명하나 화면에 점이 많아질 수 있음.</p></div>
+    <!-- 6 -->
+    <div class="card"><span class="num">06</span><span class="tag">탭 풀다운</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v6" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>책갈피 탭</b> · 라인에서 아래로 매달린 반원 탭. 라인과 물리적으로 붙음·재치 있음.</p></div>
+    <!-- 7 -->
+    <div class="card"><span class="num">07</span><span class="tag">동심원 이중링</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v7" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>이중 링</b> · 바깥 옅은 링 + 안쪽 유리. 호버 시 외곽 링만 형광. 디테일·고급감.</p></div>
+    <!-- 8 -->
+    <div class="card"><span class="num">08</span><span class="tag">강조 도트</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v8" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>미니멀</b> · 회색 유리 + 우상단 작은 형광 점(붙여넣을 게 있다는 신호). 복사되면 점 사라짐.</p></div>
+    <!-- 9 -->
+    <div class="card"><span class="num">09</span><span class="tag">글로우 글래스</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v9" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>호버 발광</b> · 평소 차분 유리, 만지면 형광 글로우. 01의 화사한 버전.</p></div>
+    <!-- 10 -->
+    <div class="card"><span class="num">10</span><span class="tag">라인 디바이더</span>
+      <div class="field"><label class="flab">부제</label><div class="inwrap"><input class="fin" placeholder="제목 입력…"><button class="cb edge v10" data-clip aria-label="붙여넣기"></button></div></div>
+      <p class="cap"><b>중앙에 형광선 명시</b> · 동그라미 한가운데로 강조색 선이 가로지름. "라인에 걸침"을 디자인 요소로 못박음.</p></div>
+  </div>
+
+  <p class="foot">
+    <b>추천</b> — 통일감·차분함이면 <span class="pick">03 라인 관통</span> 또는 <span class="pick">01 고스트(현행)</span>,
+    "라인에 걸침"을 또렷이 보여주려면 <span class="pick">04 노치</span>·<span class="pick">10 디바이더</span>,
+    붙여넣기 액션을 강조하려면 <span class="pick">02 강조 링</span>.<br>
+    번호만 알려주면 그 시안으로 <b>thumb.html 전 입력칸(부제·제목·오버레이·카드 등)에 일괄 적용</b>할게. 1·2개 골라 섞어도 됨.
+  </p>
+</div>
+
+<script>
+  const PASTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+  const COPY  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  document.querySelectorAll('[data-clip]').forEach(btn=>{
+    btn.innerHTML = PASTE; btn.dataset.mode='paste';
+    btn.addEventListener('click', e=>{
+      e.preventDefault();
+      if(btn.classList.contains('ok')) return;
+      if(btn.dataset.mode==='paste'){ btn.innerHTML=COPY; btn.dataset.mode='copy'; }
+      else { // copy → check flash → reset to paste
+        btn.classList.add('ok'); btn.innerHTML=CHECK; btn.dataset.mode='ok';
+        setTimeout(()=>{ btn.classList.remove('ok'); btn.innerHTML=PASTE; btn.dataset.mode='paste'; }, 1100);
+      }
+    });
+  });
+</script>
+</body>
+</html>
