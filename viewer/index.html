@@ -1696,6 +1696,18 @@
   </div>
 </dialog>
 
+<!-- 🃏카드 수정 팝업 — 요약 수정(#revdlg)과 동일 CSS·동작, 범위만 카드 프롬프트 전체 재기획(api/revise-cards). 제미나이 0(이미지 재슛 안 함). 1차 클릭=재확인→2차=전송 -->
+<dialog id="crevdlg" class="askdlg revdlg">
+  <div class="askwrap">
+    <div class="askhead"><b>카드 수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="crevSend" type="button"><span>수정 →</span></button><button class="askx" id="crevX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+    <div class="asktawrap">
+      <textarea id="crevText" class="askta" rows="2" placeholder="카드 진행방식·맥락을 어떻게 바꿀지 (예: 도입 강화·시사점 더 또렷이·차분한 톤). 프롬프트만 재작성·이미지는 그대로(원하면 슛으로 재촬영)."></textarea>
+      <button class="sbtn askclip" id="crevClip" type="button" aria-label="붙여넣기"></button>
+    </div>
+    <span class="askstatus revstatus" id="crevStatus"></span>
+  </div>
+</dialog>
+
 <!-- 전문 직접 입력 — 막힌 매체(403) Failed 픽에 기사 전문을 붙여넣어 재분석(api/pick body 경로). askdlg UIUX 계승(.sbtn 클립·X·전송). -->
 <dialog id="pastedlg" class="askdlg pastedlg">
   <div class="askwrap">
@@ -2081,6 +2093,7 @@ async function open(a) {
   feedSec(a);     // 섹션 3: 카드 피드(이미지 있을 때만 표시)
   $('#revStatus').textContent = '';   // 수정 요청 상태 리셋(이전 카드 잔상 제거)
   const _rt = $('#revText'); if (_rt) _rt.value = '';   // 기사로 이동 시 = 수정 요청 입력칸도 비움(이전 기사에 적던 지시 안 넘어오게 · 체크박스 리셋과 마찬가지 · 운영자 260622)
+  const _crt = $('#crevText'); if (_crt) _crt.value = ''; if (typeof resetCrevSend === 'function') resetCrevSend();   // 카드 수정 입력칸도 동일 리셋(이전 기사 지시 누수 차단)
   resetRevSend(); updateRevClip();   // 버튼 재확인(arm) 상태·클립(붙여넣기/복사) 아이콘도 원복
   const _dlf = $('#dlFull'); if (_dlf) { _dlf.checked = false; const _dlb = $('#dlbox'); if (_dlb) _dlb.classList.remove('full'); }   // 새 기사 = 요약 '전체 포함' 체크 기본 해제(이전 기사 체크 잔상 제거 · 운영자 260622)
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
@@ -2687,6 +2700,9 @@ function cardSec(a) {
   if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   // 카드 이미지는 섹션 3 '카드 피드'(feedSec)에서 렌더. #cardsec은 텍스트·프롬프트·복사·슛 정본 유지.
   if (c.md) {
+    // 🃏 카드 수정 요청 — 요약 수정과 동일 동작·CSS, 범위만 카드 프롬프트 전체 재기획(맥락·진행방식). 카드 있을 때만(운영자 260624).
+    sec.insertAdjacentHTML('beforeend', '<button class="mkbtn crevbtn" type="button">🃏 카드 수정 요청 — 맥락·진행방식 재기획</button>');
+    const _crb = sec.querySelector('.crevbtn'); if (_crb) _crb.onclick = () => openCrev();
     const div = document.createElement('div');
     div.innerHTML = DOMPurify.sanitize(marked.parse(c.md));
     // [카드 N] 헤더 = 📍 말머리 폐지(운영자 260621: 핀 제거)
@@ -5832,6 +5848,113 @@ document.addEventListener('click', e => {
   b.appendChild(o); setTimeout(() => o.remove(), 700);
 }, true);
 $('#revFab').addEventListener('click', openRev);
+
+// ── 🃏 카드 수정 요청 — 요약 수정(revise)의 카드판 미러. 동작 동일, 범위=카드 프롬프트 전체(api/revise-cards). 제미나이 0(이미지 재슛 X). ──
+// 완료 감지 = a.cards.updated 변화(revise-cards.sh가 status.json updated 갱신 → lag split ensureDetail ver도 무효화 = 새 cards.md 자동 재로드).
+const CARD_REVISING = new Map();   // file → { reqUpdated(요청 시 cards.updated 스냅), ts }
+const CREV_PEND_KEY = 'nomute_crev_pending';
+const cardUpdated = file => { const a = DATA.find(x => x.file === file); return (a && a.cards && a.cards.updated) || ''; };
+const isCardRevising = file => CARD_REVISING.has(file);
+const saveCardRevising = () => { try { localStorage.setItem(CREV_PEND_KEY, JSON.stringify([...CARD_REVISING])); } catch {} };
+function loadCardRevising() {
+  try {
+    const now = Date.now();
+    for (const [file, v] of JSON.parse(localStorage.getItem(CREV_PEND_KEY) || '[]'))
+      if (v && typeof v.ts === 'number' && now - v.ts < 20 * 60000) CARD_REVISING.set(file, v);
+  } catch {}
+  if (CARD_REVISING.size) startCardRevisePoll();
+}
+function startCardRevising(file) {
+  if (!file) return;
+  CARD_REVISING.set(file, { reqUpdated: cardUpdated(file), ts: Date.now() });
+  saveCardRevising();
+  startCardRevisePoll();
+}
+let _crevPoll = null;
+function startCardRevisePoll() {
+  if (_crevPoll) return;
+  _crevPoll = setInterval(async () => {
+    await load();
+    let changed = false;
+    for (const [file, v] of [...CARD_REVISING]) {
+      if (cardUpdated(file) !== v.reqUpdated) {           // cards.updated 변경 = 카드 재기획 반영 완료
+        CARD_REVISING.delete(file); changed = true;
+        if ($('#dlg').open && CUR === file) {              // 열린 카드 자동 갱신(스크롤 보존) — open이 ensureDetail로 새 cards.md 재로드
+          const a = DATA.find(x => x.file === file);
+          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a).then(() => { if (dlg) dlg.scrollTop = st; }); }
+        }
+      } else if (Date.now() - v.ts > 20 * 60000) {        // 20분 폴백 — 조용히 사라지지 말고 표면화
+        CARD_REVISING.delete(file); changed = true;
+        const ra = DATA.find(x => x.file === file);
+        qFlash('⚠ 카드 수정요청 20분째 반영 안 됨 — 지연이거나 실패. 안 바뀌면 다시 시도해' + (ra && ra.title ? ' (' + ra.title.slice(0, 16) + '…)' : ''));
+      }
+    }
+    if (changed) saveCardRevising();
+    if (!CARD_REVISING.size) { clearInterval(_crevPoll); _crevPoll = null; }
+  }, 20000);
+}
+let crevConfirmT = null;
+function resetCrevSend() {
+  clearTimeout(crevConfirmT);
+  const btn = $('#crevSend'); if (!btn) return;
+  btn.classList.remove('confirm');
+  const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = '수정 →';
+}
+function openCrev() {
+  if (!CUR) return;
+  resetCrevSend();
+  $('#crevStatus').textContent = ''; $('#crevSend').classList.remove('firing'); $('#crevSend').disabled = false;
+  updateCrevClip(); $('#crevdlg').showModal();
+  setTimeout(() => $('#crevText').focus(), 60);
+}
+function updateCrevClip() {
+  const b = $('#crevClip'); if (!b) return;
+  const has = $('#crevText').value.trim().length > 0;
+  b.innerHTML = has ? COPY_SVG : PASTE_SVG;
+  const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl;
+}
+$('#crevX').addEventListener('click', () => $('#crevdlg').close());
+$('#crevdlg').addEventListener('click', e => { if (e.target === $('#crevdlg')) $('#crevdlg').close(); });
+$('#crevdlg').addEventListener('close', resetCrevSend);
+$('#crevText').addEventListener('input', () => { updateCrevClip(); resetCrevSend(); });
+$('#crevClip').addEventListener('click', async () => {
+  const ta = $('#crevText'), b = $('#crevClip');
+  if (ta.value.trim()) {
+    try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); $('#crevStatus').textContent = '복사됨'; setTimeout(() => { b.classList.remove('ok'); updateCrevClip(); }, 1200); } catch { $('#crevStatus').textContent = '복사 실패'; }
+  } else {
+    try { const t = await navigator.clipboard.readText(); ta.value = t; ta.focus(); updateCrevClip(); } catch { $('#crevStatus').textContent = '클립보드 권한 막힘 — 직접 붙여넣어'; }
+  }
+});
+$('#crevSend').addEventListener('click', async () => {
+  if (CUR && isCardRevising(CUR)) return;   // 진행 중 재전송 차단(silent)
+  const instruction = $('#crevText').value.trim();
+  if (!instruction) { $('#crevStatus').textContent = '카드 수정 지시를 한 줄 적어줘'; return; }
+  if (!CUR) { $('#crevStatus').textContent = '대상 카드를 못 찾음'; return; }
+  const btn = $('#crevSend'), lbl = btn.querySelector('span');
+  if (!btn.classList.contains('confirm')) {   // 1차 = 재확인
+    btn.classList.add('confirm'); if (lbl) lbl.textContent = '재확인 →';
+    clearTimeout(crevConfirmT); crevConfirmT = setTimeout(resetCrevSend, 4000);
+    return;
+  }
+  clearTimeout(crevConfirmT);                  // 2차 = 전송
+  btn.classList.remove('confirm'); if (lbl) lbl.textContent = '수정 →';
+  btn.disabled = true; askHideCheck(btn);
+  try {
+    const r = await fetch('api/revise-cards', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, instruction }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) {
+      btn.classList.add('firing');
+      setTimeout(() => askShowCheck(btn), 740);
+      startCardRevising(CUR);
+      setTimeout(() => { $('#crevdlg').close(); $('#crevText').value = ''; btn.disabled = false; btn.classList.remove('firing'); updateCrevClip(); }, 1400);
+    } else {
+      btn.disabled = false; $('#crevStatus').textContent = (d && d.error) ? String(d.error).slice(0, 80) : '전송 실패 — 다시';
+    }
+  } catch {
+    btn.disabled = false; $('#crevStatus').textContent = '네트워크 오류 — 다시';
+  }
+});
+loadCardRevising();
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 revdlg.addEventListener('close', () => { resetRevSend(); updateRevFab(); });            // 닫히면 재확인 해제 + FAB 구간 재평가(복원)
