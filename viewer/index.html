@@ -1095,7 +1095,7 @@
   #mdbody pre, #mdbody pre code { white-space:pre-wrap !important; overflow-wrap:anywhere !important; word-break:break-word; }   /* 고-우선순위 강제(어떤 cascade·clip 상태든 박스 안 줄바꿈 보장 · 운영자 260621) */
   .md pre > .copy.boxcopy { position:static; float:right; top:auto; right:auto; margin:0 0 4px 10px; }   /* 복사박스 버튼 = float:right(첫 자식) → 텍스트가 버튼 위만 비켜 감기고 아래는 박스 full폭 사용(우측 컬럼 안 놀게 · 옛 padding-right:44px 빈 기둥 제거·운영자 260621) */
   /* 복사박스 강조점 — *문구*/**문구** 마커: 문구만 강조색(별표는 미표시). 복사는 data-mk로 *…* 복원(합성기 포맷 보존). */
-  .md pre code .cem { color:var(--accent); font-style:normal; font-weight:700; }
+  .md pre code .cem, .md pre code em, .md pre code strong { color:var(--accent); font-style:normal; font-weight:700; }   /* 강조 = 강조색(이탤릭 X) · em/strong 폴백 = 마커가 .cem 변환 전이라도 초록 보장(운영자 260624) */
   /* 복사 = 아이콘 버튼(진회색 일괄·I). 누르면 ✓ 잠깐 초록 피드백. */
   .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
     color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer;
@@ -2081,8 +2081,12 @@ function addCopyButtons(root) {
     // 강조 마커 *문구*/**문구** → 문구만 강조색 <i>(별표 미표시). 복사는 codeCopyText가 data-mk로 *…* 복원.
     if (code && !code.dataset.hl) {
       code.dataset.hl = '1';
-      code.innerHTML = code.innerHTML.replace(/(\*{1,2})([^*\n<>]+?)\*{1,2}/g,
-        (m, mk, t) => `<i class="cem" data-mk="${mk}">${t}</i>`);
+      // marked가 *문구*를 <em>/<strong>로 먼저 바꿨어도(코드펜스 밖 등) .cem으로 흡수 → 색·복사 일관(별표 복원)
+      code.innerHTML = code.innerHTML
+        .replace(/<em>([^<>]*)<\/em>/g, '<i class="cem" data-mk="*">$1</i>')
+        .replace(/<strong>([^<>]*)<\/strong>/g, '<i class="cem" data-mk="**">$1</i>')
+        .replace(/(\*{1,2})([^*\n<>]+?)\*{1,2}/g,
+          (m, mk, t) => `<i class="cem" data-mk="${mk}">${t}</i>`);
     }
     const _cb = copyBtn(() => code ? codeCopyText(code) : pre.innerText, '복사'); _cb.classList.add('boxcopy'); pre.insertBefore(_cb, pre.firstChild);   // float:right 첫 자식 = 텍스트가 버튼 위만 비켜 감기고 나머지 폭 활용(우측 컬럼 안 놀게)
   });
