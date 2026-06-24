@@ -405,8 +405,9 @@
   .iobtn-edge:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }   /* 누름 = 형광 플래시 */
   .iobtn-edge.ok { background:rgba(18,18,18,.4); color:var(--accent); border-color:rgba(255,255,255,.14); }   /* 성공 = 링 중립 유지·체크(✓)만 형광(2A) */
   .iobtn-edge svg { width:13px; height:13px; }
-  #cardBox { margin-top:9px; }                 /* 카드 텍스트 = '텍스트' 라벨 제거·간격 축소(헤더/오버레이와 동일 9px · 운영자 260624) */
-  #cardBox .edwrap { position:relative; }       /* 칩 에디터 클립버튼(2A) 기준 — 재렌더(#edChips innerHTML 교체)에도 버튼 보존 위해 바깥 래퍼 */
+  .cardhdr { display:flex; align-items:center; gap:8px; margin:12px 0 5px; }
+  .cardhdr .hdlbl { font-size:13px; color:var(--mut); }
+  .cardhdr .hdsub { font-size:11px; color:var(--mut); opacity:.7; flex:1; min-width:0; }
   .slot-wait { font-size:13px; color:var(--mut); }
   .none { display:none; }
 
@@ -569,7 +570,8 @@
 
     <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
     <div id="cardBox" class="none">
-      <div class="edwrap"><div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div></div>
+      <div class="cardhdr"><span class="hdlbl">텍스트</span></div>
+      <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
     <div class="csec none" id="rOptHead">• 옵션</div>
@@ -1794,8 +1796,8 @@ function buildEmphText() {
 }
 // 카드 에디터 copy/paste (buildEmphText ↔ parseEmphLines) — edLines 정의 뒤에 둠(TDZ 회피). renderEditChips 끝에서 cardIo() 갱신
 (function () {
-  const wrap = $('#cardBox .edwrap'); if (!wrap) return;
-  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn iobtn-edge'; wrap.appendChild(btn);   // 카드 클립 = 2A 라인 걸친 동그라미(다른 입력칸과 통일 · #edChips 바깥 래퍼라 재렌더에도 보존)
+  const hdr = $('#cardBox .cardhdr'); if (!hdr) return;
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn'; btn.style.position = 'static'; hdr.appendChild(btn);
   cardIo = () => { if (btn.classList.contains('ok')) return; const filled = buildEmphText().trim().length > 0; btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste'; btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기'); };
   btn.onclick = async ev => {
     ev.preventDefault();
