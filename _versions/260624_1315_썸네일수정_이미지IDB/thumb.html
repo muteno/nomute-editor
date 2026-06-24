@@ -840,25 +840,24 @@ function bindFile(inp, lab, store) {
     lab.innerHTML = '<span>탭해서 이미지 선택</span><input type="file" accept="image/*" style="display:none">';
     lab.querySelector('input').onchange = handler;
   };
-  const applyImg = (b64, name) => {   // b64+이름 → 미리보기 렌더(파일선택·수정복원 공용)
-    store.b64 = b64; store.name = name || '';
-    lab.innerHTML = '<div class="fileprev"><img src="' + b64 + '"><button type="button" class="filerm" aria-label="이미지 삭제" title="이미지 삭제">' + TRASH_SVG + '</button><span class="fn">' + (name || '') + '</span></div>' +
-      '<input type="file" accept="image/*" style="display:none">';
-    lab.classList.add('has');
-    lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
-    const rm = lab.querySelector('.filerm');   // 휴지통 = 라벨 클릭(파일창 열림) 안 타게 차단 후 삭제
-    if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
-  };
   const handler = e => {
     lab.classList.remove('picking');
     const f = e.target.files[0]; if (!f) return;
+    store.name = f.name;
     const r = new FileReader();
-    r.onload = () => applyImg(r.result, f.name);
+    r.onload = () => {
+      store.b64 = r.result;
+      lab.innerHTML = '<div class="fileprev"><img src="' + r.result + '"><button type="button" class="filerm" aria-label="이미지 삭제" title="이미지 삭제">' + TRASH_SVG + '</button><span class="fn">' + f.name + '</span></div>' +
+        '<input type="file" accept="image/*" style="display:none">';
+      lab.classList.add('has');
+      lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
+      const rm = lab.querySelector('.filerm');   // 휴지통 = 라벨 클릭(파일창 열림) 안 타게 차단 후 삭제
+      if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
+    };
     r.readAsDataURL(f);
   };
   inp.onchange = handler;
   lab._reset = reset;   // 수정 복원 시 이미지 위젯 비우기(외부 호출용)
-  lab._set = applyImg;   // 수정 복원 시 원본 이미지 주입(외부 호출용)
 }
 bindFile($('#file'), $('#fileLab'), IMG);
 bindFile($('#rFile'), $('#rFileLab'), RIMG);
@@ -881,7 +880,6 @@ function bindComboImg() {
     r.readAsDataURL(f);
   };
   slot._reset = () => { CIMG.b64 = ''; CIMG.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
-  slot._set = (b64, name) => { CIMG.b64 = b64; CIMG.name = name || ''; filled(b64); };   // 수정 복원 시 원본 이미지 주입(외부 호출용)
   empty();
 }
 bindComboImg();
@@ -965,22 +963,14 @@ function buildParams() {
 
 // ==== 수정(편집) = 제작 조건 보존 → 이전 제작에서 작성기로 복원 (운영자 260624) ====
 // 발사 시점의 폼 설정(탭·모드·포맷·텍스트·OPA·토글·프리셋)을 압축 스냅샷으로 떠서 이력 항목에 동봉(localStorage 가벼움).
-// 이미지 b64는 localStorage 쿼터 못 담아 IndexedDB(이 기기 대용량)에 보관 → 수정 시 원본 이미지 그대로 복원(운영자 260624).
-// (업로드 원본 uploads/는 Pages 미서빙[viewer/만] → URL 재호출 불가 = IDB가 정답 · 타 기기 이력은 이 기기 IDB에 없어 이미지 제외.)
-const IDB_NAME = 'nomute_thumb_img', IDB_STORE = 'imgs';
-function idbOpen() { return new Promise((res, rej) => { let r; try { r = indexedDB.open(IDB_NAME, 1); } catch (e) { return rej(e); } r.onupgradeneeded = () => { const db = r.result; if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
-async function idbPut(key, b64) { try { const db = await idbOpen(); await new Promise((res, rej) => { const tx = db.transaction(IDB_STORE, 'readwrite'); tx.objectStore(IDB_STORE).put({ b64, ts: Date.now() }, key); tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); }); return true; } catch { return false; } }
-async function idbGet(key) { try { const db = await idbOpen(); return await new Promise(res => { const tx = db.transaction(IDB_STORE, 'readonly'); const rq = tx.objectStore(IDB_STORE).get(key); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); }); } catch { return null; } }
-function idbPrune(cut) { idbOpen().then(db => { const tx = db.transaction(IDB_STORE, 'readwrite'); const st = tx.objectStore(IDB_STORE); const rq = st.openCursor(); rq.onsuccess = e => { const c = e.target.result; if (!c) return; if (!c.value || (c.value.ts || 0) < cut) st.delete(c.key); c.continue(); }; }).catch(() => {}); }   // 12h 경과분 정리(이력 보관과 동기)
-function idbClear() { idbOpen().then(db => { db.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).clear(); }).catch(() => {}); }
+// ⚠️ 이미지 바이트(b64)는 비저장 = localStorage 쿼터 한계 + 업로드 원본(uploads/)은 Pages 미서빙(viewer/만 서빙) → 재선택 안내.
 function snapForm() {
   const s = { app: APP, fmt: FMT, rmode: RMODE, abbr: $('#abbr').checked, comboOpa: COMBO_OPA, cBg: $('#cBg').checked, rBg: $('#rBg').checked };
-  let img = null;   // 이 제작에 쓰인 원본 이미지(b64·name) — 있으면 IDB 보관 후 스냅샷엔 키만
-  if (APP === '1') { s.lines = $('#lines').value; s.opas = getOpas(); if (IMG.b64) img = { b64: IMG.b64, name: IMG.name }; }
+  if (APP === '1') { s.lines = $('#lines').value; s.opas = getOpas(); s.imgUsed = !!IMG.b64; }
   else if (APP === '2') {
-    if (RMODE === 'combo') { s.cSub = $('#cSub').value; s.cTitle = $('#cTitle').value; s.cLines = $('#cLines').value; if (CIMG.b64) img = { b64: CIMG.b64, name: CIMG.name }; }
+    if (RMODE === 'combo') { s.cSub = $('#cSub').value; s.cTitle = $('#cTitle').value; s.cLines = $('#cLines').value; s.imgUsed = !!CIMG.b64; }
     else if (RMODE === 'header') { s.sub = $('#sub').value; s.title = $('#title').value; }
-    else { s.rLines = $('#rLines').value; s.reelsOpas = getReelsOpas(); if (RIMG.b64) img = { b64: RIMG.b64, name: RIMG.name }; }
+    else { s.rLines = $('#rLines').value; s.reelsOpas = getReelsOpas(); s.imgUsed = !!RIMG.b64; }
   } else if (APP === '3') {
     s.cyear = $('#cyear').value; s.cname = $('#cname').value;
     const sel = document.querySelector('#pseg .on'); s.platSel = sel ? sel.dataset.plat : ''; s.cplat = $('#cplat').value;
@@ -988,8 +978,7 @@ function snapForm() {
   } else if (APP === '4') {
     s.warnLit = [...document.querySelectorAll('#warnPreset button.on')].map(b => b.dataset.wp); s.warnLines = $('#warnLines').value;
     s.fmts = [...document.querySelectorAll('#fmtSeg button.on')].map(b => b.dataset.fmt);
-  } else if (APP === '5') { try { s.edLines = JSON.parse(JSON.stringify(edLines)); } catch {} if (IMG.b64) img = { b64: IMG.b64, name: IMG.name }; }
-  if (img) { s.imgUsed = true; s.imgName = img.name || ''; s.imgKey = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); idbPut(s.imgKey, img.b64); }   // b64=IDB, 스냅샷엔 키만(localStorage 가벼움 유지)
+  } else if (APP === '5') { try { s.edLines = JSON.parse(JSON.stringify(edLines)); } catch {} s.imgUsed = !!IMG.b64; }
   return s;
 }
 function restoreOpaSeg(segSel, numEl, customBtn, vals) {   // 점등 OPA 복원 — 프리셋 버튼은 vals에 든 값만 켜고, 프리셋에 없는 값은 직접입력칸으로
@@ -1033,19 +1022,8 @@ function importToEditor(src) {
     if ($('#fileLab')._reset) $('#fileLab')._reset();
   }
   updateGoSpec();
+  importHint(src.imgUsed ? '설정 복원됨 · 이미지/배경만 다시 선택해주세요' : '설정 복원됨');
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  // 이미지 복원 — IDB(이 기기)에서 원본 b64 꺼내 해당 위젯에 그대로. 키 없거나(타 기기·구버전)·만료면 재선택 안내.
-  if (src.imgKey) {
-    idbGet(src.imgKey).then(rec => {
-      if (rec && rec.b64) { setImportImg(src, rec.b64, src.imgName); importHint('설정·이미지 복원됨'); }
-      else importHint('설정 복원됨 · 이미지/배경만 다시 선택해주세요');
-    });
-  } else importHint(src.imgUsed ? '설정 복원됨 · 이미지/배경만 다시 선택해주세요' : '설정 복원됨');
-}
-function setImportImg(src, b64, name) {   // 복원 이미지 → 앱·모드별 위젯에 주입(파일선택과 동일 렌더)
-  if (src.app === '1' || src.app === '5') { if ($('#fileLab')._set) $('#fileLab')._set(b64, name); }
-  else if (src.app === '2' && src.rmode === 'combo') { if ($('#cImgSlot')._set) $('#cImgSlot')._set(b64, name); }
-  else if (src.app === '2' && src.rmode === 'overlay') { if ($('#rFileLab')._set) $('#rFileLab')._set(b64, name); }
 }
 
 // ==== 대기열(JOBS) + 캐러셀 — 제작 동시 가능: 누른 게 다 로그에 쌓이고 각자 폴링, 완성분은 캐러셀에 한 장씩 ====
@@ -1308,7 +1286,6 @@ $('#histClr').addEventListener('click', () => {
   setTimeout(() => {   // 게이지(.46s) 다 찬 뒤 실제 삭제 + 렌더(섹션 비워짐)
     try { localStorage.setItem(THUMB_HCLEAR_KEY, String(Date.now())); } catch {}   // 서버(전 기기) 병합분도 이 시점 이전 숨김 = '지워도 남던' 버그 해소
     localStorage.removeItem(THUMB_HKEY); try { localStorage.removeItem(THUMB_LAST_KEY); } catch {}
-    idbClear();   // 보관 이미지(IDB)도 함께 비움
     resetHistClr(); clearRestored(); renderHist();
   }, 480);
 });
@@ -1876,7 +1853,6 @@ document.addEventListener('click', e => {
 selApp('1');
 renderHist();        // 로컬(이 기기) 즉시 표시
 restoreLastResult();   // 최근 제작 1건 맨 위 '결과'로 복원(RESTORED_URLS 먼저 셋 = 이전제작 제외 정합 · 운영자 260622) — maybeOpenHist 전에 결과 블록 생성
-idbPrune(Date.now() - THUMB_HMS);   // 보관 이미지(IDB) 12h 경과분 정리(이력 보관과 동기 · 운영자 260624)
 maybeOpenHist();     // #done(제작완료 알림) 진입이면 결과 블록(카운터/캐러셀)으로 스크롤(서버 병합 후 loadServerHist서 재확인)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
 </script>
