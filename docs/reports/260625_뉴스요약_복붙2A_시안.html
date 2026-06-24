@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>복붙 버튼 2A 일괄 통일 시안 — 뉴스요약·k·ly</title>
+<style>
+  :root{ --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --line2:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108; --amber:#ff9614; }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  .wrap{max-width:440px; margin:0 auto; padding:18px 14px 80px;}
+  h1.t{font-size:18px; margin:2px 2px 4px;} h1.t b{color:var(--accent);}
+  .lead{color:var(--mut); font-size:13px; margin:0 2px 6px; text-wrap:pretty;}
+  .lead b{color:var(--fg);}
+  .rule{font-size:12px; color:var(--mut); margin:10px 2px 22px; padding:11px 13px; line-height:1.7;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:12px;}
+  .rule b{color:var(--accent);} .rule code{color:var(--fg);}
+
+  .sech{font-size:12.5px; font-weight:800; color:var(--accent); margin:26px 4px 4px; letter-spacing:.02em;}
+  .secd{font-size:11.5px; color:var(--mut); margin:0 4px 11px;}
+  .secd b{color:var(--fg);}
+
+  /* ===== 공통 2A 복붙 버튼 (thumb .iobtn-edge 계승) ===== */
+  .cb{position:absolute; display:grid; place-items:center; padding:0; cursor:pointer; z-index:5;
+    width:26px; height:26px; border-radius:50%; border:1px solid rgba(255,255,255,.14);
+    background:rgba(18,18,18,.45); color:var(--mut);
+    transition:transform .12s, color .15s, border-color .15s; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+  .cb svg{display:block; width:13px; height:13px;}
+  .cb::before{content:""; position:absolute; inset:-8px;}
+  .cb:hover{color:var(--fg); border-color:rgba(255,255,255,.24);}
+  .cb.ok{color:var(--accent); border-color:rgba(255,255,255,.14);}
+  /* 상단 우측 라인 걸침 = 읽기 박스(복사) */
+  .edge-t{top:0; right:14px; transform:translateY(-50%);}
+  .edge-t:active{transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6);}
+  /* 하단 우측 라인 걸침 = 수정/입력 박스(붙여넣기·복사) */
+  .edge-b{bottom:0; right:14px; transform:translateY(50%);}
+  .edge-b:active{transform:translateY(50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6);}
+
+  /* 박스 종류 */
+  .rbox{position:relative; background:rgba(0,0,0,.3); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; margin-bottom:4px;}
+  .rbox.code{font-size:13px; line-height:1.7; white-space:pre-wrap; color:var(--fg);}
+  .rbox .pin{color:var(--accent); font-weight:700;}
+  .iglbl{display:inline-block; font-size:12px; font-weight:800; color:var(--amber); margin:18px 4px 8px;
+    font-variant-numeric:tabular-nums;}
+
+  /* 수정/입력 카드(헤더 + 입력칸) */
+  .editcard{position:relative; border:1px solid rgba(var(--accent-rgb),.4); border-radius:16px; padding:13px;
+    background:rgba(var(--accent-rgb),.04); margin-bottom:4px;}
+  .ehd{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+  .ehd .et{font-size:15px; font-weight:800; color:var(--accent); margin-right:auto;}
+  .ehd .ego{font-size:13px; font-weight:700; color:var(--accent); border:1px solid rgba(var(--accent-rgb),.5);
+    border-radius:999px; padding:5px 13px; background:rgba(var(--accent-rgb),.08);}
+  .ehd .ex{width:30px; height:30px; display:grid; place-items:center; border-radius:9px;
+    background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--mut);}
+  .ehd .ex svg{width:14px; height:14px;}
+  .tawrap{position:relative;}
+  .ta{width:100%; min-height:74px; resize:vertical; border-radius:12px; padding:11px 13px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(var(--accent-rgb),.3); color:var(--fg);
+    font:inherit; font-size:14px; outline:none;}
+  .ta::placeholder{color:var(--mut);}
+
+  /* 단순 입력칸(label 위 + input) — k/ly */
+  .field{margin-bottom:4px;}
+  .flab{display:flex; align-items:center; gap:5px; font-size:14px; color:var(--fg); margin:0 2px 9px;}
+  .flab .pin{color:#ff5a5a;}
+  .inwrap{position:relative;}
+  .fin{width:100%; padding:13px 14px; background:#0e0f11; border:1px solid var(--line); border-radius:12px;
+    color:var(--fg); font:inherit; outline:none;}
+  .fin::placeholder{color:var(--mut);}
+
+  .note{margin:13px 4px 0; font-size:11.5px; color:var(--mut); line-height:1.6;}
+  .note b{color:var(--fg);}
+  .del{color:#ff8e8e; text-decoration:line-through; opacity:.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="t"><b>복붙 버튼 2A</b> 일괄 통일 시안</h1>
+  <p class="lead">뉴스요약·영상프롬프트(k)·자막(ly) 전반의 복사/붙여넣기 버튼을 <b>썸네일 2A 동그라미</b>로 균일 통일. 각 버튼 눌러봐.</p>
+  <div class="rule">
+    <b>균일 규칙</b> — 모두 <code>26px 동그라미 · right:14px · 라인 중앙정렬 걸침 · 평소 중립/누름 형광/✓만 형광</code><br>
+    • <b>읽기 박스</b>(요약·출처·프롬프트·인용) 복사 = <b>상단</b> 우측 라인 걸침<br>
+    • <b>수정·입력 박스</b>(수정요청·카드수정·요약요청) 복붙 = <b>하단</b> 우측 라인 걸침<br>
+    • <b>신규 입력칸</b>(영상 스토리·자막 URL) = 붙여넣기 버튼 추가(상단 걸침)
+  </div>
+
+  <!-- A. 읽기 박스 — 상단 걸침 -->
+  <div class="sech">A · 읽기 박스 복사 — 상단 우측 라인 걸침</div>
+  <p class="secd">요약·출처·이미지 프롬프트·인용 박스. 칸 <b>안</b>에 박혀 있던 둥근사각 복사 → 테두리 걸친 동그라미.</p>
+  <span class="iglbl">[IG — 약 700/800자]</span>
+  <div class="rbox">
+    <button class="cb edge-t" data-c aria-label="복사"></button>
+    🏛 <span class="pin">NATO 수장</span>의 '트럼프 1조' 차트, 칭찬 뒤에 숨은 균열<br><br>
+    🔍 NATO 사무총장이 백악관에 '트럼프 1조'라 적힌 도표를 들고 왔다. 칭찬처럼 보이지만, 실은 갈라진 동맹을 봉합하려는 외교였다.
+  </div>
+  <div class="rbox code" style="margin-top:14px;">
+    <button class="cb edge-t" data-c aria-label="복사"></button>
+korean manhwa style serious
+drama illustration, sharp black
+ink outlines with varying line</div>
+
+  <!-- B. 수정/입력 박스 — 하단 걸침 -->
+  <div class="sech">B · 수정·입력 박스 복붙 — 하단 우측 라인 걸침</div>
+  <p class="secd">수정 요청 · 카드 수정 요청 · 요약 요청. 클립을 <b>입력칸 하단</b> 테두리에 걸침. <span class="del">기본 예시문구</span>는 placeholder로(삭제).</p>
+  <div class="editcard">
+    <div class="ehd"><span class="et">카드 수정 요청</span><span class="ego">수정 →</span><span class="ex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+    <div class="tawrap">
+      <textarea class="ta" placeholder="카드 진행방식·맥락을 어떻게 바꿀지 (프롬프트만 재작성·이미지는 그대로)"></textarea>
+      <button class="cb edge-b" data-c data-paste aria-label="붙여넣기"></button>
+    </div>
+  </div>
+  <div class="editcard" style="margin-top:14px;">
+    <div class="ehd"><span class="et">수정 요청</span><span class="ego">수정 →</span><span class="ex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+    <div class="tawrap">
+      <textarea class="ta" placeholder="어디를 어떻게 고칠지"></textarea>
+      <button class="cb edge-b" data-c data-paste aria-label="붙여넣기"></button>
+    </div>
+  </div>
+
+  <!-- C. 신규 입력칸 — 상단 걸침(붙여넣기 추가) -->
+  <div class="sech">C · 신규 붙여넣기 추가 — 상단 우측 라인 걸침</div>
+  <p class="secd">영상 프롬프트 '스토리 구성' · 자막 'URL' 입력칸. 지금 없는 붙여넣기 버튼 신설.</p>
+  <div class="field">
+    <div class="flab"><span class="pin">📍</span> 스토리 구성</div>
+    <div class="inwrap">
+      <textarea class="fin" style="min-height:74px; resize:vertical;" placeholder="내용을 입력해주세요"></textarea>
+      <button class="cb edge-t" data-c data-paste aria-label="붙여넣기"></button>
+    </div>
+  </div>
+  <div class="field" style="margin-top:16px;">
+    <div class="flab"><span class="pin">📍</span> URL <span style="color:var(--mut); font-size:12px;">(인스타·틱톡)</span></div>
+    <div class="inwrap">
+      <input class="fin" placeholder="https://…">
+      <button class="cb edge-t" data-c data-paste aria-label="붙여넣기"></button>
+    </div>
+  </div>
+
+  <p class="note"><b>이대로 진행할까?</b> 확정하면 index.html(요약·수정요청·카드수정)·k.html(스토리)·ly.html(URL)에 균일 적용·main 반영할게. 상단/하단 걸침 방향이나 마진값 바꾸고 싶으면 말해줘.</p>
+</div>
+<script>
+  const PASTE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+  const COPY='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+  const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  document.querySelectorAll('[data-c]').forEach(b=>{
+    const paste=b.hasAttribute('data-paste');
+    b.innerHTML=paste?PASTE:COPY; b.dataset.mode=paste?'paste':'copy';
+    b.addEventListener('click',e=>{ e.preventDefault();
+      if(b.classList.contains('ok'))return;
+      if(b.dataset.mode==='paste'){ b.innerHTML=COPY; b.dataset.mode='copy'; return; }
+      b.classList.add('ok'); b.innerHTML=CHECK;
+      setTimeout(()=>{ b.classList.remove('ok'); b.innerHTML=paste?PASTE:COPY; b.dataset.mode=paste?'paste':'copy'; },1100);
+    });
+  });
+</script>
+</body>
+</html>
