@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>토큰 사용량 — 10분 버킷</title>
+<!-- muteno 구독(claude -p) 토큰이 "어디서 얼마나" — 데이터: viewer/token-usage.json (metrics-rollup.yml 이 2h마다 집계). -->
+<style>
+:root{--bg:#0a120d;--glass:rgba(38,64,46,.42);--glass2:rgba(14,26,18,.55);--line:rgba(255,255,255,.08);
+--fg:#eef7f0;--mut:#8fa697;--accent:#0FFD02;--accent-rgb:15,253,2;--accent-bright:#d8ff3d;--amber:#ff9614;--info:#0cd0f7;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);padding:0 0 50px;
+font:15px/1.6 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.2px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:880px;margin:0 auto;padding:20px 16px}
+h1{font-size:19px;margin:6px 0 2px;font-weight:800}h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:12px;margin:0 0 18px}.sub code{background:var(--glass2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:11px}
+.tot{display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:linear-gradient(135deg,rgba(var(--accent-rgb),.10),var(--glass));
+border:1px solid rgba(var(--accent-rgb),.28);border-radius:16px;padding:16px;margin-bottom:16px}
+.tot .big{font-size:28px;font-weight:800;color:var(--accent);line-height:1;letter-spacing:-1px}.tot .big small{font-size:13px;color:var(--mut);margin-left:4px;font-weight:700}
+.tot .as{margin-left:auto;color:var(--mut);font-size:11px;text-align:right}
+.sech{font-size:13px;font-weight:800;color:var(--accent);margin:18px 2px 9px}
+.srcrow{display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:7px}
+.srcrow .nm{font-weight:700;font-size:13px;min-width:150px}
+.srcrow .bar{flex:1;height:9px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}.srcrow .bar i{display:block;height:100%}
+.srcrow .v{font-variant-numeric:tabular-nums;color:var(--accent-bright);font-weight:700;min-width:92px;text-align:right;font-size:12px}
+.srcrow .c{color:var(--mut);font-size:11px;min-width:50px;text-align:right}
+.bk{display:flex;align-items:flex-end;gap:2px;height:150px;padding:10px 4px;background:var(--glass2);border:1px solid var(--line);border-radius:11px;overflow-x:auto}
+.bk .col{flex:0 0 auto;width:13px;display:flex;flex-direction:column-reverse;height:100%;border-radius:3px 3px 0 0;overflow:hidden}
+.bk .col i{display:block;width:100%}.bk .col:hover{outline:1px solid var(--accent)}
+.lg{display:flex;flex-wrap:wrap;gap:12px;margin:8px 2px;color:var(--mut);font-size:11px}.lg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.ctl{display:flex;gap:8px;margin:0 0 14px}
+.ctl button{background:var(--glass);border:1px solid var(--line);color:var(--mut);border-radius:999px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.ctl button.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.10)}
+.note{margin-top:16px;color:var(--mut);font-size:11px;line-height:1.7;background:var(--glass2);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+.empty{color:var(--mut);text-align:center;padding:46px 16px;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📊 <b>토큰</b> 사용량 — 10분 버킷</h1>
+  <p class="sub">muteno 구독(claude&nbsp;-p) 토큰이 <b>어디서 얼마나</b> — 데이터 <code>token-usage.json</code> (2시간마다 자동 집계)</p>
+  <div class="ctl" id="ctl"></div>
+  <div id="app"><div class="empty">불러오는 중…</div></div>
+  <div class="note">토큰 = claude&nbsp;-p 호출당 실측(input/output/cache). 비용($)은 CLI 추정치(구독은 쿼터 청구라 참고용). 이미지(제미나이) 토큰은 별도 집계.</div>
+</div>
+<script>
+const PAL=['#0FFD02','#0cd0f7','#ff9614','#d8ff3d','#c084fc','#f87171','#34d399','#fbbf24','#60a5fa'];
+const fn=n=>Number(n||0).toLocaleString();
+let HOURS=24, AGG=null;
+const app=document.getElementById('app'), ctl=document.getElementById('ctl');
+
+[6,24,48].forEach(h=>{const b=document.createElement('button');b.textContent=h+'h';b.onclick=()=>{HOURS=h;draw();paintCtl();};b.dataset.h=h;ctl.appendChild(b);});
+function paintCtl(){[...ctl.children].forEach(b=>b.classList.toggle('on',+b.dataset.h===HOURS));}
+
+async function load(){
+  try{
+    const r=await fetch('./token-usage.json?_='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw 0;
+    AGG=await r.json();
+  }catch(e){ AGG=null; }
+  paintCtl(); draw();
+}
+function withinWindow(agg){
+  // token-usage.json 은 롤업 시 window_h(기본 24)로 구워짐 — 더 짧은 창은 클라이언트에서 버킷 자른다.
+  if(!agg||!agg.buckets) return agg;
+  if(HOURS>=(agg.window_h||24)) return agg;
+  const keep=Math.ceil(HOURS*6); // 10분 버킷 = 시간당 6
+  const buckets=agg.buckets.slice(-keep);
+  // 소비처 합계 재계산(창 범위)
+  const by={}, all={calls:0,in:0,out:0,cache_r:0,cache_w:0,cost:0,dur_ms:0};
+  for(const b of buckets)for(const [s,a] of Object.entries(b.by_src)){
+    by[s]=by[s]||{calls:0,in:0,out:0,cache_r:0,cache_w:0,cost:0,dur_ms:0};
+    for(const k of ['calls','in','out','cache_r','cache_w','dur_ms']){by[s][k]+=a[k]||0;all[k]+=a[k]||0;}
+    by[s].cost+=a.cost||0;all.cost+=a.cost||0;
+  }
+  return {...agg,window_h:HOURS,buckets,totals:{all,by_src:by}};
+}
+function draw(){
+  if(!AGG){app.innerHTML='<div class="empty">토큰 데이터 파일이 아직 없어.<br>계측 머지 후 첫 파이프라인 실행 + 롤업(≤2h)부터 채워져.</div>';return;}
+  const agg=withinWindow(AGG);
+  if(!agg.buckets||!agg.buckets.length){app.innerHTML='<div class="empty">최근 '+HOURS+'h 토큰 사용 없음.</div>';return;}
+  const g=agg.totals.all, srcs=Object.entries(agg.totals.by_src).sort((a,b)=>(b[1].in+b[1].out)-(a[1].in+a[1].out));
+  const LAB=AGG.labels||{};
+  const cmap={}; srcs.forEach((s,i)=>cmap[s[0]]=PAL[i%PAL.length]);
+  const max=Math.max(1,...srcs.map(s=>s[1].in+s[1].out));
+  let h=`<div class="tot"><div><div class="big">${fn(g.in+g.out)}<small>토큰 · 최근 ${agg.window_h}h</small></div>
+    <div style="color:var(--mut);font-size:11px;margin-top:3px">호출 ${fn(g.calls)} · in ${fn(g.in)} · out ${fn(g.out)} · cache_r ${fn(g.cache_r)} · ~$${(g.cost||0).toFixed(2)}</div></div>
+    <div class="as">as of<br>${(AGG.as_of||'').replace('T',' ')}</div></div>`;
+  h+=`<div class="sech">소비처별 (큰 순)</div>`;
+  for(const [s,a] of srcs){const tot=a.in+a.out;
+    h+=`<div class="srcrow"><span class="nm" style="color:${cmap[s]}">${lab(s)}</span>
+      <span class="bar"><i style="width:${(tot/max*100).toFixed(1)}%;background:${cmap[s]}"></i></span>
+      <span class="v">${fn(tot)}</span><span class="c">${fn(a.calls)}콜</span></div>`;}
+  const bmax=Math.max(1,...agg.buckets.map(b=>b.tok||0));
+  h+=`<div class="sech">10분 버킷 (${agg.buckets.length}개 · 색=소비처)</div><div class="bk">`;
+  for(const b of agg.buckets){const parts=Object.entries(b.by_src).sort((a,c)=>(c[1].in+c[1].out)-(a[1].in+a[1].out));
+    let col=`<div class="col" title="${b.t} · ${fn(b.tok)}토큰 · ${fn(b.calls)}콜">`;
+    for(const [s,a] of parts){const tk=a.in+a.out;col+=`<i style="height:${(tk/bmax*100).toFixed(1)}%;background:${cmap[s]||'#888'}"></i>`;}
+    col+=`</div>`;h+=col;}
+  h+=`</div><div class="lg">`+srcs.map(s=>`<span><i style="background:${cmap[s[0]]}"></i>${lab(s[0])}</span>`).join('')+`</div>`;
+  app.innerHTML=h;
+}
+const LABELS={analyze:'기사 큐레이션',card:'카드 텍스트','card-edit':'카드 수정',ask:'요약 요청',revise:'요약 수정',gate:'경중 채점',breaking:'속보 판정',k:'영상 프롬프트',ly:'릴스 자막'};
+function lab(s){return LABELS[s]||s;}
+load();
+setInterval(load,300000); // 5분마다 새로고침
+</script>
+</body>
+</html>

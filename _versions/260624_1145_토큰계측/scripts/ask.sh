@@ -13,7 +13,6 @@ MODEL="claude-opus-4-8"
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_health.sh"   # 시스템성(인증·쿼터) 실패 → 사용자 메시지(프로필 점등)
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과부하(5xx/Overloaded) 인라인 재시도용(analyze와 공용)
-source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 INLINE_TRIES=3   # claude -p 일시 과부하(529/5xx) 인라인 재시도(15s·30s 백오프) — 버스트 ✨요약요청 유실 차단(analyze와 동일·260622)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
@@ -90,7 +89,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   #   성공·ANALYSIS_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0). 과부하 신호일 때만 재시도(is_transient).
   inline_delay=15
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+    out="$(printf '%s' "$prompt" | timeout 900 claude -p \
           --model "$MODEL" \
           --effort max \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \

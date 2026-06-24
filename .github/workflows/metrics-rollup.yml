@@ -1,0 +1,53 @@
+name: metrics-rollup
+
+# 토큰 사용량 롤업 — claude_meter 가 잡마다 남긴 shard(metrics/usage/*.jsonl)를 10분 버킷으로 집계해
+#   viewer/token-usage.json(뷰어 tokens.html 이 fetch)로 굽고, 오래된 shard(>3h)는 원장(metrics/token-usage.jsonl)으로 접어 삭제(레포 비대 방지).
+# LLM·제미나이 0(파이썬만) = 토큰 과금 0·무료. 변동 없으면 커밋 생략(불필요 Pages 재빌드 차단).
+# ⚠️ 빈도는 2시간(추적용엔 충분). 더 자주 필요하면 수동(workflow_dispatch) 또는 cron 조정.
+on:
+  schedule:
+    - cron: '7 */2 * * *'   # 2시간마다(분 7 = 정시 혼잡 회피)
+  workflow_dispatch:
+
+concurrency:
+  group: metrics-rollup
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Roll up token usage (10분 버킷 집계 + 오래된 shard 접기)
+        run: |
+          mkdir -p metrics/usage
+          python3 shared/token_report.py --prune 3 --write viewer/token-usage.json --quiet
+          echo "--- 최근 표 ---"
+          python3 shared/token_report.py --hours 24 || true
+
+      - name: Commit (변동 시만)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add viewer/token-usage.json metrics 2>/dev/null || true
+          if git diff --cached --quiet; then echo "변동 없음 — 커밋 생략"; exit 0; fi
+          git commit -m "metrics: 토큰 사용량 롤업(10분 버킷)"
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true; sleep $((2**i))
+          done
+          echo "::warning::롤업 push 실패(다음 회차 재시도)"
