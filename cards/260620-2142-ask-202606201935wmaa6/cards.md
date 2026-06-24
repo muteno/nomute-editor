@@ -156,7 +156,7 @@ Dominican resort fire drone water debris
 가장 아름답던 지붕이
 가장 위험한 곳이 됐다
 이제 숙소를 고를 때
-예쁨보다 *출구*를 봐야 한다
+예쁨보다 *출구를* 봐야 한다
 ```
 **이미지 프롬프트**
 ```text
