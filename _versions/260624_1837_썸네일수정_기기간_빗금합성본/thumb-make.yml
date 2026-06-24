@@ -22,9 +22,6 @@ on:
       params:
         description: '앱별 파라미터 JSON 문자열'
         type: string
-      src_json:
-        description: '제작 조건 스냅샷(snapForm) JSON — 기기 간 수정 복원용(_src.json). 빈 문자열=미보존(구버전 호환)'
-        type: string
 
 concurrency:
   group: thumb-make-${{ inputs.id }}
@@ -74,7 +71,6 @@ jobs:
           IN_ID: ${{ inputs.id }}
           IMAGE: ${{ inputs.image }}
           PARAMS: ${{ inputs.params }}
-          SRC_JSON: ${{ inputs.src_json }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
@@ -227,15 +223,6 @@ jobs:
               meta.append([fn, url])
           json.dump(meta, open(f'{outdir}/_meta.json', 'w'), ensure_ascii=False)
           print(f'R2 UPLOADED {len(meta)} → {outdir}/_meta.json')
-          # ── 제작 조건 스냅샷 보존(_src.json) = 기기 간 '수정' 복원용(문구·설정). 빈/깨진 JSON이면 생략(구버전·미전달 호환). ──
-          src_raw = (os.environ.get('SRC_JSON') or '').strip()
-          if src_raw:
-              try:
-                  src_obj = json.loads(src_raw)
-                  json.dump(src_obj, open(f'{outdir}/_src.json', 'w'), ensure_ascii=False)
-                  print(f'SRC SNAPSHOT → {outdir}/_src.json')
-              except Exception as e:
-                  print(f'::warning::_src.json 생략(파싱 실패): {e}')
 
       - name: Commit output
         if: always()
@@ -246,7 +233,6 @@ jobs:
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
           git add "viewer/thumb_out/${IN_ID}/_meta.json" 2>/dev/null || true   # 이미지는 R2(git 미저장) — _meta.json(수KB)만 커밋해 이전제작 cross-device 유지
-          git add "viewer/thumb_out/${IN_ID}/_src.json" 2>/dev/null || true     # 제작 조건 스냅샷(문구·설정) = 기기 간 '수정' 복원용
           git add "uploads/${IN_ID}" 2>/dev/null || true
           git commit -m "thumb: ${IN_ID} R2 메타" || { echo "커밋할 것 없음"; exit 0; }
           # 동시 렌더 push 레이스 대비 — 매 시도 origin 흡수 후 push(naive 재push는 non-ff로 무한실패)
