@@ -144,9 +144,11 @@
   .gospec .gs-lbl { color:var(--mut); font-weight:700; }   /* 라벨(헤더/오버레이/축약) = mut 통일(운영자 260624) */
   .gospec .gs-v { color:var(--mut); }
   .gospec .gs-v.on { color:var(--accent); font-weight:700; }   /* 활성값 = 네온그린 강조(노랑→accent 통일·운영자 260624) */
-  /* 오버레이 OPA 인라인 조절 — 섹션 헤더 '60'에 휠(PC)·드래그(터치). 팝업 없음. 조절 중 mut·픽스 강조색 */
-  .opa-edit { cursor:ns-resize; color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums; padding:0 3px; touch-action:none; -webkit-tap-highlight-color:transparent; transition:color .25s ease; }
-  .opa-edit.opa-adjusting { color:var(--mut); }
+  /* goSpec 컨트롤 — OPA(휠/드래그)·기본/축약(클릭 토글). 조절 중 mut·픽스 강조 */
+  .gospec .gs-opa { cursor:ns-resize; color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums; padding:0 2px; touch-action:none; -webkit-tap-highlight-color:transparent; transition:color .25s ease; }
+  .gospec .gs-opa.opa-adjusting { color:var(--mut); }
+  .gospec .gs-tog { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .2s ease; padding:0 1px; }
+  .gospec .gs-tog:active { opacity:.65; }
   /* 교정 칩 = 버튼 아래·바뀐 단어만·탭으로 점등 토글(노랑=적용 / 회색=그대로) */
   .spellchips { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
   .spellchips[hidden] { display:none; }
@@ -433,10 +435,10 @@
 
       <!-- 기본(통합) 모드: • 헤더(부제/제목 placeholder·배경) + • 오버레이(자막 2/3 + 우측 이미지 슬롯 1/3·OPA60·강조필수) → 동시 2장(흰헤더+자막60)·배경 체크 시 3장 -->
       <div id="rCombo">
-        <div class="csec">• 헤더 <label class="chk csec-chk" id="cBgBox" title="체크 시 흰칸 없는 버전도 함께"><input type="checkbox" id="cBg"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 배경</label></div>
+        <div class="csec">• 헤더<input type="checkbox" id="cBg" hidden></div>   <!-- 배경(nobg)=goSpec '기본' 토글로 제어(#cBg hidden=발사 상태 유지) -->
         <input type="text" id="cSub" class="cf cf-sub" placeholder="부제">
         <input type="text" id="cTitle" class="cf cf-title" placeholder="제목">
-        <div class="csec">• 오버레이 <span class="csec-d">(OPA <span class="opa-edit" id="opaVal" role="spinbutton" aria-label="자막 투명도" aria-valuenow="60" tabindex="0">60</span>)</span></div>
+        <div class="csec">• 오버레이</div>   <!-- OPA 조절 = goSpec 'OPA : 60'으로 이동 -->
         <div class="covrow">
           <textarea id="cLines" class="covta" placeholder="강조는 별표로, 최대 3줄 가능"></textarea>
           <div class="covimg" id="cImgSlot" role="button" tabindex="0" aria-label="자막 이미지 첨부"></div>
@@ -497,7 +499,7 @@
       <div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div>
     </div>
 
-    <div class="gospec none" id="goSpec"><span class="gs-bul">•</span> ① <span class="gs-lbl">헤더</span>: [ <span class="gs-v" id="gsBg">기본</span> | <span class="gs-v on">흰</span> ] &nbsp;/&nbsp; ② <span class="gs-lbl">오버레이</span>: [ <span class="gs-v on">OPA : <span id="gsOpa">60</span></span> | <span class="gs-v" id="gsImg">합성본</span> ] &nbsp;/&nbsp; ③ <span class="gs-lbl">축약</span>: <span class="gs-v on" id="gsAbbr">ON</span></div>
+    <div class="gospec none" id="goSpec"><span class="gs-bul">•</span> ① <span class="gs-lbl">헤더</span>: [ <span class="gs-v gs-tog" id="gsBg" role="button" tabindex="0" title="탭=기본(배경없음) 추가">기본</span> | <span class="gs-v on">흰</span> ] &nbsp;/&nbsp; ② <span class="gs-lbl">오버레이</span>: [ <span class="gs-v on">OPA : <span class="gs-opa" id="gsOpa" role="spinbutton" tabindex="0" title="휠·드래그로 조절">60</span></span> | <span class="gs-v" id="gsImg">합성본</span> ] &nbsp;/&nbsp; ③ <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="gsAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span></div>
     <div class="gowrap">
       <button class="go" id="go">이미지 제작</button>
       <label class="chk go-abbr" id="abbrBox" title="이 → 李 · 윤 → 尹 · ... → ⋯"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 축약</label>
@@ -590,7 +592,7 @@ function selApp(a) {
   $('#reelsBox').classList.toggle('none', a !== '2');
   $('#copyBox').classList.toggle('none', a !== '3');
   $('#fmtBox').classList.toggle('none', a === '1' || a === '2' || a === '5');   // 1·2·5 포맷 고정
-  const showAbbr = (a === '1' || a === '2');                            // 축약 = 포스트·릴스만(버튼 안 오버레이)
+  const showAbbr = (a === '1' || (a === '2' && RMODE !== 'combo'));      // 축약 체크 = 포스트·헤더/오버레이만(통합 모드는 goSpec ON 토글)
   $('#abbrBox').classList.toggle('none', !showAbbr);
   if (a === '4' || a === '3') document.querySelectorAll('#fmtSeg button').forEach(b => b.classList.add('on'));                  // 경고문·저작권 = 포스트+릴스 둘 다 기본(멀티·둘 다 출력·최소1)
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
@@ -716,6 +718,7 @@ function selRmode(m) {
   $('#rHeader').classList.toggle('none', m !== 'header');
   $('#rOverlay').classList.toggle('none', m !== 'overlay');
   if (m === 'overlay') updateTrkHint('rLines', 'rLinesTrk', 'reels');   // 실시간 자간
+  $('#abbrBox').classList.toggle('none', m === 'combo');   // 통합 모드 = 축약을 goSpec ON으로(버튼 안 체크 숨김)
   updateGoSpec();
 }
 document.querySelectorAll('#rmodeSeg button').forEach(b => b.onclick = () => selRmode(b.dataset.rmode));
@@ -732,29 +735,34 @@ function updateGoSpec() {
   const go = $('#gsOpa'); if (go) go.textContent = COMBO_OPA;           // 롤러 조절값 반영
 }
 $('#abbr').addEventListener('change', updateGoSpec);
-// ── 오버레이 OPA 인라인 조절 — 섹션 헤더 '60'에 휠(PC)·드래그(터치) 1단위. 팝업 없음. 조절 중 mut·픽스(멈춤) 강조색. ──
+// ── goSpec 컨트롤 — OPA(휠/드래그 1단위·조절 중 mut/픽스 강조) + 기본·축약 클릭 토글(체크박스 대체). ──
 let _opaFixT = null;
 function setOpa(v) {
   COMBO_OPA = Math.max(1, Math.min(100, v | 0));
-  const el = $('#opaVal');
-  if (el) { el.textContent = COMBO_OPA; el.setAttribute('aria-valuenow', COMBO_OPA); }
-  const go = $('#gsOpa'); if (go) go.textContent = COMBO_OPA;   // goSpec(결과 명세) 동기화
-  if (el) { el.classList.add('opa-adjusting'); clearTimeout(_opaFixT); _opaFixT = setTimeout(() => el.classList.remove('opa-adjusting'), 420); }   // 조절 중 mut → 멈추면 강조색
+  const el = $('#gsOpa'); if (!el) return;
+  el.textContent = COMBO_OPA;
+  el.classList.add('opa-adjusting'); clearTimeout(_opaFixT); _opaFixT = setTimeout(() => el.classList.remove('opa-adjusting'), 420);   // 조절 중 mut → 멈추면 강조색
 }
 (function () {
-  const el = $('#opaVal'); if (!el) return;
-  el.addEventListener('wheel', e => { e.preventDefault(); setOpa(COMBO_OPA + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
-  let py = null, acc = 0;
-  el.addEventListener('pointerdown', e => { py = e.clientY; acc = 0; try { el.setPointerCapture(e.pointerId); } catch (_) {} });
-  el.addEventListener('pointermove', e => {
-    if (py === null) return;
-    acc += (py - e.clientY); py = e.clientY;            // 위로 끌면 값 증가
-    while (acc >= 12) { setOpa(COMBO_OPA + 1); acc -= 12; }
-    while (acc <= -12) { setOpa(COMBO_OPA - 1); acc += 12; }
-  });
-  const end = () => { py = null; };
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
-  el.addEventListener('keydown', e => { if (e.key === 'ArrowUp') { e.preventDefault(); setOpa(COMBO_OPA + 1); } else if (e.key === 'ArrowDown') { e.preventDefault(); setOpa(COMBO_OPA - 1); } });
+  const el = $('#gsOpa');
+  if (el) {
+    el.addEventListener('wheel', e => { e.preventDefault(); setOpa(COMBO_OPA + (e.deltaY < 0 ? 1 : -1)); }, { passive: false });
+    let py = null, acc = 0;
+    el.addEventListener('pointerdown', e => { py = e.clientY; acc = 0; try { el.setPointerCapture(e.pointerId); } catch (_) {} });
+    el.addEventListener('pointermove', e => {
+      if (py === null) return;
+      acc += (py - e.clientY); py = e.clientY;            // 위로 끌면 값 증가
+      while (acc >= 12) { setOpa(COMBO_OPA + 1); acc -= 12; }
+      while (acc <= -12) { setOpa(COMBO_OPA - 1); acc += 12; }
+    });
+    const end = () => { py = null; };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    el.addEventListener('keydown', e => { if (e.key === 'ArrowUp') { e.preventDefault(); setOpa(COMBO_OPA + 1); } else if (e.key === 'ArrowDown') { e.preventDefault(); setOpa(COMBO_OPA - 1); } });
+  }
+  // 기본(nobg)·축약 = goSpec 클릭 토글(hidden #cBg·#abbr 연동 → 발사 로직 그대로)
+  const tog = cb => { if (cb) { cb.checked = !cb.checked; updateGoSpec(); } };
+  const bind = (id, cb) => { const t = $(id); if (!t) return; t.addEventListener('click', () => tog(cb)); t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(cb); } }); };
+  bind('#gsBg', $('#cBg')); bind('#gsAbbr', $('#abbr'));
 })();
 // 배경 체크 → 출력 장수 힌트 갱신(기본 1장=흰칸 / 체크 2장=흰칸+배경)
 $('#rBg').addEventListener('change', () => {
