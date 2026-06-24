@@ -1791,6 +1791,7 @@ async function load() {
   if (_firstLoad && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();   // 첫 DATA 도착 = 수집함 1회 재렌더(pickInFeed 정확·Picking 깜빡 보정)
   if ($('#dlg').open && CUR) {
     const a = DATA.find(x => x.file === CUR);
+    if (a) await ensureDetail(a);   // 폴링이 DATA를 통째 교체 → 열린 기사의 lazy body/md 재로드(없으면 재렌더가 빈 카드로 깨짐)
     // 상태 안 바뀌면 재렌더 생략 — 60초 폴링이 펼쳐둔 프롬프트를 도로 접는 것 방지
     if (a && ((a.cards && a.cards.state) || '') !== CUR_STATE) { cardSec(a); feedSec(a); }
     // 썸네일 섹션 라이브 동기화 — 픽 직후 '생성 중' 자리표시를 thumb_gen 도착 시 실제 썸네일로 자동 교체(폴링). 수동 '다시 만들기'(THUMB_REDO)는 아래 전용 경로가 처리하므로 제외.
@@ -1883,7 +1884,7 @@ function render() {
     c.onclick = () => open(a);
     // 진행바 세그먼트 = N/M/T 모달 점프(nav 통합·A5). 본문 클릭(open)과 충돌 방지 stopPropagation.
     c.querySelectorAll('.prog .seg[data-j]').forEach(seg => {
-      const go = e => { e.stopPropagation(); open(a); requestAnimationFrame(() => jumpTo(seg.dataset.j)); };
+      const go = async e => { e.stopPropagation(); await open(a); requestAnimationFrame(() => jumpTo(seg.dataset.j)); };
       seg.onclick = go;
       seg.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } };
     });
@@ -1918,7 +1919,7 @@ function progGauge(a) {
   // 18분 초과 미완 = 멈춤 → 펄스 정지(무한 회전 방지·시간 기반 실패 로직).
   const up = a.cards && a.cards.updated;
   const stuck = up && (Date.now() - Date.parse(up)) / 60000 > 18;
-  const hasMd = !!(a.cards && a.cards.md);   // 프롬프트(텍스트)까지 갔는지 → 실패 표식 위치 판정
+  const hasMd = !!(a.cards && (a.cards.md || a.cards.has_md));   // 프롬프트(텍스트)까지 갔는지 → 실패 표식 위치 판정 (has_md = 경량 인덱스 플래그·md는 detail lazy)
   let done = 1, busy = false, fail = false;   // done=완료 세그먼트 수(요약은 큐 전건 완료)
   if (st === 'done') done = 3;
   // 멈춤(stuck)이면 '진행되다 깨짐' → 펄스 대신 그 세그먼트에 실패 표식(노랑 빗금·빨강 라벨), 재시도는 cardSec 버튼.
@@ -2046,8 +2047,27 @@ function brkIssueKind(a) {
   return '';
 }
 
-function open(a) {
+// 상세 lazy-load(렉 해소 260624) — body·cards.md는 인덱스에 없고 detail/<file>.json 에 있음.
+// 기사 열 때/폴링 재렌더 직전에 1회 받아 메모리 객체에 채움(같은 버전이면 재요청 X).
+// ver = rev·cards.rev·cards.updated 조합 → 수정(revise)·재슛으로 내용 바뀌면 자동 무효화.
+async function ensureDetail(a) {
+  if (!a || !a.file) return;
+  const ver = (a.rev || 0) + '.' + ((a.cards && a.cards.rev) || 0) + '.' + ((a.cards && a.cards.updated) || '');
+  if (a._detVer === ver && a.body != null) return;   // 이 버전 이미 로드됨
+  try {
+    const r = await fetch('detail/' + encodeURIComponent(a.file) + '.json?v=' + encodeURIComponent(ver));
+    const d = await r.json();
+    a.body = d.body || '';
+    if (!a.cards) a.cards = {};
+    a.cards.md = d.cards_md || '';
+    a._detVer = ver;
+  } catch { if (a.body == null) a.body = ''; }   // 실패해도 렌더는 진행(빈 상태)
+}
+
+async function open(a) {
   CUR = a.file; CUR_A = a;
+  await ensureDetail(a);
+  if (CUR !== a.file) return;   // 로딩 중 다른 기사로 이동했으면 이 렌더 폐기(레이스 가드)
   const md = $('#mdbody');
   md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
   decorate(md);
@@ -2259,13 +2279,13 @@ function decorate(root) {
 // 백엔드 채워지기 전(P1): 검색=라이브 폴백(Wikimedia 이미지 + 구글 검색 링크) / 생성=대기 플레이스홀더.
 function thumbSec(a) {
   const c = a.cards || {};
-  if (!a.body && !c.state) return null;   // 픽(분석)된 기사에만
+  if (!a.has_body && !a.body && !c.state) return null;   // 픽(분석)된 기사에만 (has_body=경량 인덱스 플래그·body는 detail lazy → 게이트는 플래그 우선)
   // 실제 이미지(검색 og:image / AI 생성)가 하나라도 있을 때만 표시 — 빈 안내·레거시 폴백(구글검색 링크·위키미디어·'곧 반영' placeholder)은 띄우지 않음(요약 위 잡음 제거 · 운영자 260620)
   const search = Array.isArray(c.thumb_search) ? c.thumb_search : [];
   const gen = Array.isArray(c.thumb_gen) ? c.thumb_gen : [];
   if (!search.length && !gen.length) {
     // 픽됐는데 썸네일 아직 = thumb_gen은 분석과 별도 잡(픽 후 ~십몇 분) — 신규(30분 내)면 '생성 중' 자리표시(폴링이 준비 시 실제 썸네일로 자동 교체). 오래된 기사(생성 안 옴)는 종전대로 미표시(잡음 0·운영자 260621).
-    if (a.body && feedAgeH(a) < 0.5) {
+    if ((a.has_body || a.body) && feedAgeH(a) < 0.5) {
       const ph = document.createElement('div'); ph.className = 'thumbsec'; ph.dataset.sig = thumbSecSig(a);
       ph.innerHTML = '<div class="thumbsec-h">썸네일 후보 — 검색 · AI 생성</div>'
         + '<div class="thumb-pending"><span class="tp-dot"></span>썸네일 생성 중… <small>준비되면 자동 표시</small></div>';
@@ -2414,6 +2434,7 @@ async function moreImgGo(file, wrap, btn) {
       const a = (j.articles || []).find(x => x && x.file === file);
       const now = ((a && a.cards && a.cards.thumb_search) || []).length;
       if (a && now > before) {   // 새 이미지 도착 → DATA 갱신 + 열린 모달이면 thumbsec 통째 재렌더(로딩 슬라이드 자동 소거·새 이미지 좌측·번호 갱신)
+        await ensureDetail(a);   // 경량 인덱스라 body/md 빈 채 → CUR_A/DATA 교체 전 detail 복원(다운로드 카드·출처 유실 방지 · 평의회 260624)
         const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) DATA[idx] = a;
         if (CUR_A && CUR_A.file === file) { CUR_A = a; const old = $('#mdbody .thumbsec'), fresh = thumbSec(a); if (old && fresh) old.replaceWith(fresh); }
         return;   // 완료
@@ -2577,7 +2598,7 @@ function thumbDlName(label, it, i) {
 let LBOX = null, LBOX_ITEMS = [], LBOX_LABEL = '', _lboxPop = false;
 function thumbGenSig(a) { return ((a && a.cards && a.cards.thumb_gen) || []).map(g => g && g.img).join('|'); }
 // 썸네일 섹션 상태 시그니처 — 'r|…'=실제 이미지 / 'p'=생성 중 자리표시(신규<30분) / ''=없음. thumbSec 산출과 일치(모달 라이브 교체 게이트).
-function thumbSecSig(a) { const c = (a && a.cards) || {}; const j = arr => (Array.isArray(arr) ? arr : []).map(x => x && x.img).join(','); const s = j(c.thumb_search), g = j(c.thumb_gen); if (s || g) return 'r|' + s + '|' + g; return (a && a.body && feedAgeH(a) < 0.5) ? 'p' : ''; }
+function thumbSecSig(a) { const c = (a && a.cards) || {}; const j = arr => (Array.isArray(arr) ? arr : []).map(x => x && x.img).join(','); const s = j(c.thumb_search), g = j(c.thumb_gen); if (s || g) return 'r|' + s + '|' + g; return (a && (a.has_body || a.body) && feedAgeH(a) < 0.5) ? 'p' : ''; }
 const THUMB_REDO = new Map();   // file → {oldSig,t0} : '다시 만들기' 후 새 gen 이미지 도착 감지(load 폴이 썸네일섹션 교체·타임아웃 6분)
 function _ensureLbox() {
   if (LBOX) return LBOX;
@@ -3392,7 +3413,7 @@ function startRevisePoll() {
         REVISING.delete(file); changed = true;
         if ($('#dlg').open && CUR === file) {                // 열린 본문 자동 갱신(스크롤 위치 보존)
           const a = DATA.find(x => x.file === file);
-          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a); if (dlg) dlg.scrollTop = st; }
+          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a).then(() => { if (dlg) dlg.scrollTop = st; }); }
         }
       } else if (Date.now() - v.ts > 20 * 60000) {           // 20분 폴백 — revise 최대 15분+빌드 여유(색은 a.rev로 추후 자동 반영)
         REVISING.delete(file); changed = true;
