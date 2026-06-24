@@ -91,6 +91,11 @@
   .covimg .covimg-x:active { transform:scale(.82); background:rgba(var(--accent-rgb),.32); }
   .covimg .covimg-x svg { width:15px; height:15px; display:block; }
   .covimg .covimg-kb { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:var(--fg); font-size:9px; text-align:center; padding:1px 0; z-index:2; }   /* .askimg-kb 계승 */
+  /* 모바일 = 입력칸 글자 85%(15→12.75px) + 이미지 슬롯 너비 75%(33%→25%·확보분 텍스트로) → 이미지 옆 둘 때 우측 넘침 방지(운영자 260624). 데스크톱은 불변. */
+  @media (max-width:480px) {
+    input[type=text], input[type=number], textarea, select { font-size:12.75px; }   /* 입력 *안의 글자*만(결과물 무관) · .abrow input(0,1,1)은 14px 유지 */
+    .covta { flex:3 1 0; }   /* 텍스트 67%→75% · 이미지 슬롯(.covimg flex:1) 33%→25% = 현 너비의 75% */
+  }
   .file { display:block; padding:12px; border:1px dashed rgba(var(--accent-rgb),.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; transition:color .18s, border-color .18s, background .18s; }   /* 이미지 선택칸 통일 = ly 초록 강조 */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
   .file.picking { color:var(--accent); border-color:var(--accent); background:rgba(var(--accent-rgb),.09); }   /* 누름→업로드창 열린 동안 강조(자연 전환) · 창 닫히면 해제(운영자 260622) */
@@ -400,6 +405,8 @@
     background:rgba(255,90,98,.10); border:1px solid rgba(255,90,98,.28); color:#ff9aa0; }
   .abdel:active { transform:scale(.9); }
   .abdelh { text-align:center; }
+  .abrow.abfix input { opacity:.5; color:var(--mut); cursor:default; }   /* 기본 4종 = 잠금(읽기전용) */
+  .abfixtag { font-size:9.5px; color:var(--mut); text-align:center; align-self:center; letter-spacing:-.3px; }
   .abadd { margin-top:12px; width:100%; padding:11px; border-radius:10px; font:inherit; font-size:13.5px; font-weight:700; cursor:pointer;
     color:var(--accent); background:rgba(var(--accent-rgb),.10); border:1px dashed rgba(var(--accent-rgb),.45); }
   .abadd:active { transform:scale(.99); }
@@ -563,7 +570,7 @@
   <div class="abdlg-in">
     <button class="dlg-x" id="abbrX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
     <div class="abdlg-h">축약어 등록</div>
-    <div class="abdlg-note">기본 4종(<code>...→⋯ · •→· · 이,→李, · 윤,→尹,</code>)은 항상 적용. 아래는 직접 추가 — <b>축약 전</b>에 <u>앞뒤 글자까지</u> 넣어 범위를 정함(예: <code>군 </code>→<code>軍 </code>, 또는 <code>군,</code>→<code>軍,</code>).</div>
+    <div class="abdlg-note"><b>기본</b> 표시 4종은 항상 적용(수정·삭제 불가). 그 아래 <b>+ 추가</b>로 직접 등록 — <b>축약 전</b>에 <u>앞뒤 글자까지</u> 넣어 범위를 정함(예: <code>군 </code>→<code>軍 </code>, 또는 <code>군,</code>→<code>軍,</code>).</div>
     <div class="abdlg-tbl" id="abbrTbl">
       <div class="abrow abhd"><span class="abno">no</span><span>축약 전</span><span>축약 후</span><span class="abdelh">삭제</span></div>
     </div>
@@ -771,7 +778,8 @@ $('#abbr').addEventListener('change', updateGoSpec);
     t.addEventListener('pointerup', clr); t.addEventListener('pointercancel', clr); t.addEventListener('pointerleave', clr);
     t.addEventListener('click', e => { if (longed) { e.preventDefault(); e.stopPropagation(); longed = false; return; } tog($('#abbr')); });
     t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog($('#abbr')); } });
-    t.title = '탭=ON/OFF · 길게=축약어 등록';
+    t.addEventListener('contextmenu', e => { e.preventDefault(); openAbbrDlg(); });   // PC 우클릭 = 등록 리스트(모바일=롱프레스)
+    t.title = '탭=ON/OFF · 길게/우클릭=축약어 등록';
   };
   bind('#gsBg', $('#cBg')); bindAbbr('#gsAbbr');   // 릴스 옵션줄(배경 / 축약=짧게토글·길게등록)
   bindAbbr('#psAbbr');   // 포스트 축약(짧게토글·길게등록)
@@ -781,24 +789,30 @@ $('#abbr').addEventListener('change', updateGoSpec);
 function abbrRenumber() { document.querySelectorAll('#abbrTbl .abrow:not(.abhd)').forEach((r, i) => { const n = r.querySelector('.abno'); if (n) n.textContent = i + 1; }); }
 function abbrSaveRows() {
   const pairs = [];
-  document.querySelectorAll('#abbrTbl .abrow:not(.abhd)').forEach(r => { const f = r.querySelector('.abfrom').value, to = r.querySelector('.abto').value; if (f) pairs.push({ from: f, to: to }); });   // from 있어야 저장(to 빈값=삭제치환 허용)
+  document.querySelectorAll('#abbrTbl .abrow:not(.abhd):not(.abfix)').forEach(r => { const f = r.querySelector('.abfrom').value, to = r.querySelector('.abto').value; if (f) pairs.push({ from: f, to: to }); });   // 잠금(기본4종) 제외 · from 있어야 저장(to 빈값=삭제치환 허용)
   try { localStorage.setItem(ABBR_KEY, JSON.stringify(pairs)); } catch {}
 }
-function abbrAddRow(from, to) {
+function abbrAddRow(from, to, fixed) {   // fixed=true → 기본 4종(읽기전용·삭제불가·저장제외) / false → 사용자 커스텀
   const tbl = $('#abbrTbl'); if (!tbl) return null;
-  const row = document.createElement('div'); row.className = 'abrow';
-  row.innerHTML = '<span class="abno"></span><input class="abfrom" type="text" placeholder="군 " autocapitalize="off" autocomplete="off"><input class="abto" type="text" placeholder="軍 " autocapitalize="off" autocomplete="off"><button class="abdel" type="button" aria-label="삭제">×</button>';
-  row.querySelector('.abfrom').value = from || ''; row.querySelector('.abto').value = to || '';
-  row.querySelector('.abfrom').addEventListener('input', abbrSaveRows);
-  row.querySelector('.abto').addEventListener('input', abbrSaveRows);
-  row.querySelector('.abdel').addEventListener('click', () => { row.remove(); abbrRenumber(); abbrSaveRows(); });
+  const row = document.createElement('div'); row.className = 'abrow' + (fixed ? ' abfix' : '');
+  if (fixed) {
+    row.innerHTML = '<span class="abno"></span><input class="abfrom" type="text" readonly tabindex="-1"><input class="abto" type="text" readonly tabindex="-1"><span class="abfixtag">기본</span>';
+    row.querySelector('.abfrom').value = from; row.querySelector('.abto').value = to;
+  } else {
+    row.innerHTML = '<span class="abno"></span><input class="abfrom" type="text" placeholder="군 " autocapitalize="off" autocomplete="off"><input class="abto" type="text" placeholder="軍 " autocapitalize="off" autocomplete="off"><button class="abdel" type="button" aria-label="삭제">×</button>';
+    row.querySelector('.abfrom').value = from || ''; row.querySelector('.abto').value = to || '';
+    row.querySelector('.abfrom').addEventListener('input', abbrSaveRows);
+    row.querySelector('.abto').addEventListener('input', abbrSaveRows);
+    row.querySelector('.abdel').addEventListener('click', () => { row.remove(); abbrRenumber(); abbrSaveRows(); });
+  }
   tbl.appendChild(row); abbrRenumber(); return row;
 }
 function abbrRenderRows() {
   const tbl = $('#abbrTbl'); if (!tbl) return;
   tbl.querySelectorAll('.abrow:not(.abhd)').forEach(r => r.remove());
+  ABBR_BUILTIN.forEach(([f, t]) => abbrAddRow(f, t, true));   // 기본 4종 = 잠금 행(리스트에 보이되 수정/삭제 불가·항상 적용)
   const cur = abbrCustom();
-  if (cur.length) cur.forEach(p => abbrAddRow(p.from, p.to)); else abbrAddRow('', '');   // 최소 1행
+  if (cur.length) cur.forEach(p => abbrAddRow(p.from, p.to)); else abbrAddRow('', '');   // 사용자 커스텀(없으면 빈 1행)
 }
 let _abbrPushed = false;
 function closeAbbrDlg(viaBack) {
