@@ -1055,7 +1055,7 @@
   /* 대주제 = 상단 기사 제목(썸네일) = 카드뉴스 제목 동일 + 복사 가능 */
   /* 상단 기사 제목(요약) = 평범한 제목 — 복사 버튼 없음(#3) */
   #mdbody h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; display:block; width:100%; padding-right:36px; text-wrap:wrap; }   /* block+full-width+greedy = 제목이 우측 공간 채워 줄바꿈(운영자 260621). padding-right=복사버튼 우측고정 자리(제목과 안 겹침) */
-  #mdbody h1 .titlecopy { top:0; right:0; transform:none; margin:0; }   /* 타이틀 복사 = 제목 우상단 2A 동그라미(제목은 박스 아니라 걸침 시프트 없음·우측라인 고정 · 운영자 260625) */
+  #mdbody h1 .titlecopy { position:absolute; top:-1px; right:0; margin:0; }   /* 타이틀 복사 = 우측라인 고정(검색버튼 .cref-srch처럼 — .copy의 top/right만 우측끝으로 재지정·인라인 폐기·운영자 260621) */
   /* 카드뉴스 제목 = 드래프트 박스처럼 테두리·배경 있는 복사 블록(한눈에 '복사 영역') */
   #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px;
     margin:6px 0 14px; padding:13px 46px 13px 15px;
@@ -1117,19 +1117,17 @@
   .md pre code { background:none; padding:0; display:block; white-space:pre-wrap !important; word-break:break-word; overflow-wrap:anywhere !important;
     font-family:inherit; font-size:14px; line-height:1.7; }
   #mdbody pre, #mdbody pre code { white-space:pre-wrap !important; overflow-wrap:anywhere !important; word-break:break-word; }   /* 고-우선순위 강제(어떤 cascade·clip 상태든 박스 안 줄바꿈 보장 · 운영자 260621) */
-  .md pre > .copy.boxcopy { float:none; margin:0; }   /* 복사박스 버튼 = .copy 베이스의 상단 우측 테두리 걸침(2A) 계승 — 박스 줄에 걸침(운영자 260625, 옛 float:right 폐지) */
+  .md pre > .copy.boxcopy { position:static; float:right; top:auto; right:auto; margin:0 0 4px 10px; }   /* 복사박스 버튼 = float:right(첫 자식) → 텍스트가 버튼 위만 비켜 감기고 아래는 박스 full폭 사용(우측 컬럼 안 놀게 · 옛 padding-right:44px 빈 기둥 제거·운영자 260621) */
   /* 복사박스 강조점 — 별표마커(한겹·두겹) → 문구만 강조색(별표 미표시). 복사는 data-mk로 별표 복원(합성기 포맷 보존). ⚠️ 이 주석에 별표+슬래시 연속 금지 = 주석 조기종료로 아래 .cem 규칙 깨짐(260624 버그) */
   .md pre code .cem, .md pre code em, .md pre code strong { color:var(--accent); font-style:normal; font-weight:700; }   /* 강조 = 강조색(이탤릭 X) · em/strong 폴백 = 마커가 .cem 변환 전이라도 초록 보장(운영자 260624) */
   /* 복사 = 아이콘 버튼(진회색 일괄·I). 누르면 ✓ 잠깐 초록 피드백. */
-  /* 복사 = 2A 동그라미(중립 글래스·누름 형광·✓만 형광). 박스 상단 우측 테두리에 중앙정렬 걸침 — 전 영역 통일(운영자 260625). */
-  .copy { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5;
-    color:var(--mut); background:rgba(18,18,18,.4); border:1px solid rgba(255,255,255,.14); border-radius:50%; cursor:pointer;
-    transition:transform .12s, background .15s, border-color .15s, color .15s; backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); -webkit-tap-highlight-color:transparent; }
-  .copy svg { display:block; width:13px; height:13px; }
-  .copy::before { content:""; position:absolute; inset:-8px; }   /* 히트영역 ≥40 */
-  .copy:hover { color:var(--fg); border-color:rgba(255,255,255,.24); }
-  .copy:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }   /* 누름 = 형광 */
-  .copy.ok { color:var(--accent); border-color:rgba(255,255,255,.14); background:rgba(18,18,18,.4); }   /* 성공 = ✓ 체크만 형광(도형 안 채움) */
+  .copy { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer;
+    transition:transform .12s, background .15s, border-color .15s, color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  .copy svg { display:block; }
+  .copy:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.2); color:var(--fg); }
+  .copy:active { transform:scale(.85); }
+  .copy.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 
   /* ── 카드뉴스 섹션 ── */
   .mkbtn {
@@ -1277,7 +1275,7 @@
   .phase .md { padding:2px 18px 22px; }
   /* 긴 박스(카드 이미지 프롬프트·요약 드래프트) = 기본 3줄 클립 + 더보기/접기, 펼치면 전문.
      내부 스크롤 X — 모바일에서 작은 박스가 페이지 스크롤 뺏는 문제 차단(접힘=스크롤영역 없음). */
-  .md pre.clip { overflow:visible; }   /* code 자체 overflow:hidden가 클리핑 — pre는 visible이라야 상단 걸친 복사 동그라미 안 잘림(운영자 260625) */
+  .md pre.clip { overflow:hidden; }
   .md pre.clip code { max-height:5.2em; overflow:hidden; display:block; }
   .md pre.clip::after { content:''; position:absolute; left:1px; right:1px; bottom:1px; height:30px;
     background:linear-gradient(transparent, rgba(5,12,8,.95)); pointer-events:none; border-radius:0 0 15px 15px; }
@@ -1444,22 +1442,14 @@
   .askx { width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:9px; font-size:14px; line-height:1; color:var(--fg);
     background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }   /* 닫기 ✕ 통일 = .tool-x 글래스 사각(맨텍스트→박스) */
   .askx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
-  .askta { display:block; width:100%; box-sizing:border-box; min-height:96px; resize:vertical; border-radius:14px; padding:12px 14px;
+  .askta { width:100%; box-sizing:border-box; min-height:96px; resize:vertical; border-radius:14px; padding:12px 14px;
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
   .askta:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
   .askta::placeholder { color:var(--mut); }
   .asktawrap { position:relative; }
   /* 복사·붙여넣기 = 캐러셀 .sbtn 글래스 아이콘 계승(이모지 X). 입력칸 우상단·도형 너비 절반(17px)만큼 아래. */
-  /* 복/붙 = 2A 동그라미, 입력칸 하단 우측 테두리에 중앙정렬 걸침(요약요청·수정요청·카드수정 공통 · 운영자 260625) */
-  .askclip { position:absolute; bottom:0; right:14px; top:auto; transform:translateY(50%); width:26px; height:26px; border-radius:50%; opacity:1; z-index:5;
-    background:rgba(18,18,18,.4); border:1px solid rgba(255,255,255,.14); color:var(--mut);
-    -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); -webkit-tap-highlight-color:transparent;
-    transition:transform .12s, color .15s, border-color .15s; }
-  .askclip svg { width:13px; height:13px; }
-  .askclip::before { content:""; position:absolute; inset:-8px; }
-  .askclip:hover { color:var(--fg); border-color:rgba(255,255,255,.24); }
-  .askclip:active { transform:translateY(50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
-  .askclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
+  .askclip { position:absolute; top:17px; right:11px; opacity:.75; }   /* 복/붙 버튼 75% — 요약·수정 요청 두 메뉴 공통(.askclip) */
+  .askclip:hover { opacity:1; }
   .askimgs { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
   .askimg { position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; border:1px solid var(--line2); }
   .askimg img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -1583,7 +1573,7 @@
   .revhead-act { display:flex; align-items:center; gap:8px; flex:none; }
   .revdlg .asksend { padding:6px 12px; font-size:12px; box-shadow:0 4px 12px rgba(15,253,2,.28); }
   .revdlg .askta { min-height:0; height:56px; max-height:108px; overflow-y:auto; resize:none; line-height:1.5; padding:8px 12px; }   /* 2줄 높이 + 넘으면 내부 스크롤 */
-  /* .revdlg .askclip = 베이스 하단걸침 사용(옛 top/right 오버라이드 폐지 · 260625) */
+  .revdlg .askclip { top:9px; right:9px; }
   .revstatus { display:block; flex:none; margin-top:6px; font-size:11.5px; line-height:1.4; }
   .revstatus:empty { display:none; }   /* 메시지 없을 땐 0높이(컴팩트 유지) */
   .revsend { position:relative; overflow:hidden; }
@@ -1719,11 +1709,11 @@
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
       <span class="askph" id="askPh">내용을 입력해주세요</span>
-      <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
     </div>
     <div class="askimgs" id="askImgs"></div>
     <div class="askbot">
       <span class="askstatus" id="askStatus"></span>
+      <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
       <label class="askattach" id="askAttach" title="이미지 첨부" aria-label="이미지 첨부"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg><span class="askattach-badge" id="askAttachBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span id="askAttachCnt"></span></span><input id="askFile" type="file" accept="image/*" multiple hidden></label>
       <button class="asksend" id="askSend" type="button"><span>전송</span></button>
     </div>
@@ -1747,7 +1737,7 @@
   <div class="askwrap">
     <div class="askhead"><b>카드 수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="crevSend" type="button"><span>수정 →</span></button><button class="askx" id="crevX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="asktawrap">
-      <textarea id="crevText" class="askta" rows="2" placeholder=""></textarea>
+      <textarea id="crevText" class="askta" rows="2" placeholder="카드 진행방식·맥락을 어떻게 바꿀지. 프롬프트만 재작성·이미지는 그대로(원하면 슛으로 재촬영)."></textarea>
       <button class="sbtn askclip" id="crevClip" type="button" aria-label="붙여넣기"></button>
     </div>
     <span class="askstatus revstatus" id="crevStatus"></span>
@@ -5018,27 +5008,18 @@ const SC_PAGE = 150;
 const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
 let _scrapSig = '';   // 직전 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · 피드 _feedSig 대응 · 운영자 260621)
-// 같은 사건 중복 대표 접기 — 정규화 제목 동일(=같은 헤드라인=같은 기사)이면 우세한 1장만 남김(운영자 260625 · 분신술 10인 보강).
+// 같은 사건 중복 대표 접기 — 정규화 제목 동일(=같은 헤드라인=같은 기사)이면 정렬 상위 1장만 남김(운영자 260625).
 //   원인: 한 사건의 클러스터 대표 2개가 동시에 살아있을 때(to_candidates alias-merge는 *세션간* rep점프만 흡수·co-fresh는 §보수성으로 미병합) 카테고리/매체만 다르게 2장 뜸(실측: 동아 '정치' + 뉴시스 '사회' = 자카드 .79).
 //   ⚠️ 멤버겹침(자카드) dedup은 클러스터 노이즈로 *다른* 기사를 오접음(실측: '선관위 압수수색'이 '개표소 올다르크'로 접힘) → **제목 완전일치만** = 보수(특정 헤드라인 충돌 사실상 불가·일반머리표는 JUNK_HEAD가 선제거). 근사 제목(다른 헤드라인 같은 사건)은 안 접음 = 진짜 distinct 보호 우선.
-//   ⏱ 시간창(SC_DUP_WINDOW): 같은 제목이라도 scTs가 12h 넘게 벌어지면 = 다른 날 동일 헤드라인(날씨 '낮 최고 32도'·환율 '10.3원 오른…출발' 등 보일러플레이트) = 다른 사건 → 안 접음(분신술1 false-merge 실측 차단).
-//   📍 전역(칼럼 분배 *전*) 1회 적용 — 같은 제목 대표가 신규(<4h)/누적(≥4h) 경계로 갈려 둘 다 뜨던 누설 차단(분신술2). 우세도(cross→report_count→최신)로 대표 1개 선택 = 순서 무관 결정적.
-//   픽 상태는 makeScItem의 cluster_members 멤버승계(ratingFor)로 접힌 대표가 픽이어도 생존 카드에 PICKED 유지 → 픽 고아 0(분신술3 확인).
+//   픽 상태는 makeScItem의 cluster_members 멤버승계(ratingFor)로 접힌 대표가 픽이어도 생존 카드에 PICKED 유지 → 픽 고아 0.
 const scTitleKey = c => (c.title || '').replace(/\s+/g, '').toLowerCase();
-const SC_DUP_WINDOW = 12 * 3600000;   // 12h — 이 안의 동일제목만 같은 기사로 접음(밖 = 다른 날 보일러플레이트로 보존)
-const scMoreDom = (a, b) => (a.cross || 0) !== (b.cross || 0) ? (a.cross || 0) > (b.cross || 0)   // 우세 = cross↑ → 연속보도↑ → 최신↑ (접힐 때 더 대표성 큰 쪽 보존)
-  : (a.report_count || 0) !== (b.report_count || 0) ? (a.report_count || 0) > (b.report_count || 0) : scTs(a) > scTs(b);
-function scDedup(arr) {   // 같은 제목 + 시간근접(<12h) = 같은 기사 → 우세한 1장. 무제목(title 없음)·시간상 먼 동명은 보존.
-  const rep = new Map(), out = [];   // titleKey → {c, idx}
+function scDedup(arr) {   // arr = 이미 정렬됨(상위=대표) → 첫 등장만 보존
+  const seen = new Set(), out = [];
   for (const c of arr) {
     const k = scTitleKey(c);
-    if (!k) { out.push(c); continue; }   // 무제목 = 안 접음(distinct 보호)
-    const prev = rep.get(k);
-    if (prev && Math.abs(scTs(c) - scTs(prev.c)) < SC_DUP_WINDOW) {   // 같은 기사 중복 대표
-      if (scMoreDom(c, prev.c)) { out[prev.idx] = c; rep.set(k, { c, idx: prev.idx }); }   // 우세한 쪽으로 교체(제자리)
-      continue;   // 약한 쪽 접음
-    }
-    rep.set(k, { c, idx: out.length }); out.push(c);   // 첫 등장 또는 시간상 다른 사건 → 유지
+    if (k && seen.has(k)) continue;
+    if (k) seen.add(k);
+    out.push(c);
   }
   return out;
 }
@@ -5053,10 +5034,8 @@ function renderScrap() {
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
   // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
   const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || '') && !failHidden(c));   // 체크(숨김)한 실패는 트레이서 제외(운영자 260621)
-  const failSet = new Set(failed.map(c => candId(c)));   // 전체 실패 candId = 칼럼서 제외(누설 방지 — dedup 전 집합)
-  failed.sort((a, b) => scTs(b) - scTs(a));   // 최신 실패 먼저
-  const failedShown = scDedup(failed);   // 트레이 표시도 동일제목 중복 접기(분신술2 — 트레이 미적용 보강)
-  const pool = scDedup(base.filter(c => {   // 📍 전역 dedup(칼럼 분배 *전* 1회) = 같은 제목 대표가 신규/누적 경계로 갈려 둘 다 뜨던 누설 차단(분신술2)
+  const failSet = new Set(failed.map(c => candId(c)));
+  const pool = base.filter(c => {
     const r = rt[candId(c)] || {};
     if (failSet.has(candId(c))) return false;                       // 실패 = 트레이로(칼럼서 제외 = 카드 종속분리)
     if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
@@ -5064,13 +5043,14 @@ function renderScrap() {
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
-  }));
-  if (!pool.length && !failedShown.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = ''; return; }
+  });
+  if (!pool.length && !failed.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = ''; return; }
   host.classList.add('scrap-cols');
-  host.innerHTML = (failedShown.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">⚠ 분석 실패 ${failedShown.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
-  if (failedShown.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
+  host.innerHTML = (failed.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">⚠ 분석 실패 ${failed.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
+  if (failed.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
     const tray = host.querySelector('.sc-failtray-list');
-    failedShown.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); _scSig += 'f' + candId(c) + ','; });
+    failed.sort((a, b) => scTs(b) - scTs(a));
+    failed.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); _scSig += 'f' + candId(c) + ','; });
   }
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
@@ -5085,7 +5065,8 @@ function renderScrap() {
       arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
       arr.sort((a, b) => (scScore(b) - scScore(a)) || scTs(b) - scTs(a));   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 최신 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 최신 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·최신 pinFresh(최신속보 핀)는 별개 유지.
     }
-    const lim = Math.min(scShown[key], arr.length);   // dedup은 pool 단계서 전역 1회(위) — 칼럼별 중복 접기 불요
+    arr = scDedup(arr);   // 동일 제목(같은 기사·구분만 다른 중복 대표) 접기 — 정렬 상위만(픽은 멤버승계로 유지)
+    const lim = Math.min(scShown[key], arr.length);
     for (let i = 0; i < lim; i++) {
       const el = makeScItem(arr[i], { ...(srvTriage(arr[i]) || {}), ...ratingFor(arr[i]) }, key);   // 멤버기반 picked 승계 + 서버 트리아지(확인 등) 오버레이(cross-device)
       el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(펼쳐짐)

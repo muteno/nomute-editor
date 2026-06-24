@@ -24,16 +24,6 @@
   textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; resize:vertical; }
   textarea:focus, input:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); outline:none; }
   textarea::placeholder, input::placeholder { color:var(--mut); }
-  /* 붙여넣기 = 2A 동그라미, 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
-  .scnwrap { position:relative; }
-  .scnclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5;
-    border-radius:50%; border:1px solid rgba(255,255,255,.14); background:rgba(18,18,18,.4); color:var(--mut); cursor:pointer;
-    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); -webkit-tap-highlight-color:transparent; transition:transform .12s, color .15s, border-color .15s; }
-  .scnclip svg { display:block; width:13px; height:13px; }
-  .scnclip::before { content:""; position:absolute; inset:-8px; }
-  .scnclip:hover { color:var(--fg); border-color:rgba(255,255,255,.24); }
-  .scnclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(15,253,2,.6); }
-  .scnclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
   /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
   .go { width:100%; margin-top:16px; padding:14px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(15,253,2,.36); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
   .go:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
@@ -94,7 +84,7 @@
   <p class="sub">📍 비디오 엔진: <b>Kling 3.0 Omni</b></p>
 
   <label>📍 스토리 구성</label>
-  <div class="scnwrap"><textarea id="scene" placeholder="내용을 입력해주세요"></textarea><button class="scnclip" id="sceneClip" type="button" aria-label="붙여넣기"></button></div>
+  <textarea id="scene" placeholder="내용을 입력해주세요"></textarea>
   <label class="chk"><input type="checkbox" id="refimage"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 레퍼런스 이미지 동시 생성 <span class="paid">· Gemini (최대 15분)</span></label>
   <button class="go" id="go">웹 렌더 생성</button>
 
@@ -107,17 +97,6 @@ const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
-// 스토리 구성 칸 붙여넣기↔복사 (2A 상단걸침 · 뉴스요약/썸네일 통일 · 운영자 260625)
-(function () {
-  const ta = $('#scene'), b = $('#sceneClip'); if (!ta || !b) return;
-  const upd = () => { if (b.classList.contains('ok')) return; const f = ta.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); };
-  b.addEventListener('click', async e => { e.preventDefault();
-    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
-    else { try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
-  });
-  ta.addEventListener('input', upd); upd();
-})();
 
 // 최소 마크다운 렌더: ``` 펜스 = 코드블록(복사 버튼), 그 외 #/##/### 헤딩 + 문단.
 function renderMd(md) {
