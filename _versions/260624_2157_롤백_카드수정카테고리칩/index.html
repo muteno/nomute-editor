@@ -1486,6 +1486,12 @@
     display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .pastedlg .pastesub:empty { display:none; margin:0; }
   .pasteta { min-height:150px; }
+  /* 🃏 카드 수정 = 카테고리 구조화 입력(객관화 · 운영자 260624). 토글=피드 필터 .chip 계승(색 무신규). 백엔드는 라벨 조립 자유텍스트로 받음. */
+  .crevcats { display:flex; flex-direction:column; gap:7px; margin:2px 0 9px; }
+  .crevcat { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 9px; }
+  .crevcat-l { font-size:var(--fs-xs); font-weight:700; color:var(--mut); min-width:52px; flex:none; }
+  .crevcat .chip { padding:3px 2px; }
+  .crevhint { font-size:var(--fs-xs); color:var(--mut); margin:8px 2px 0; line-height:1.4; }
   /* ── 요약 수정 FAB — 콘텐츠 초안~시사점 스크롤 구간에만 뜨는 펜 모양 플로팅 원(우측·중하단). 클릭 → revdlg 팝업.
        #dlg가 backdrop-filter라 그 박스 기준 fixed(모달 뷰포트 안 고정·스크롤해도 안 흔들림 = sticky 헤더와 동일 안전 패턴). ── */
   .rev-fab { position:absolute; right:16px; z-index:7; width:52px; height:52px; padding:0; display:none; place-items:center;   /* top = updateRevFab가 스크롤 보정해 뷰포트 중하단 고정(#dlg backdrop-filter 박스 기준 → 콘텐츠 따라 스크롤되는 것 상쇄) */
@@ -1712,10 +1718,15 @@
 <dialog id="crevdlg" class="askdlg revdlg">
   <div class="askwrap">
     <div class="askhead"><b>카드 수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="crevSend" type="button"><span>수정 →</span></button><button class="askx" id="crevX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+    <div class="crevcats" id="crevChips">
+      <div class="crevcat"><span class="crevcat-l">톤</span><button type="button" class="chip" data-cat="tone" data-v="차분하게">차분</button><button type="button" class="chip" data-cat="tone" data-v="단호하게">단호</button><button type="button" class="chip" data-cat="tone" data-v="객관적으로">객관</button><button type="button" class="chip" data-cat="tone" data-v="감정을 살려">감정</button></div>
+      <div class="crevcat"><span class="crevcat-l">흐름·구조</span><button type="button" class="chip" data-cat="flow" data-v="도입(承)을 강화">도입 강화</button><button type="button" class="chip" data-cat="flow" data-v="시사점(結)을 더 또렷이">시사점 강조</button><button type="button" class="chip" data-cat="flow" data-v="카드 순서·장수를 조정">순서·장수</button><button type="button" class="chip" data-cat="flow" data-v="起承轉結 흐름을 재배치">흐름 재배치</button></div>
+    </div>
     <div class="asktawrap">
-      <textarea id="crevText" class="askta" rows="2" placeholder="카드 진행방식·맥락을 어떻게 바꿀지. 프롬프트만 재작성·이미지는 그대로(원하면 슛으로 재촬영)."></textarea>
+      <textarea id="crevText" class="askta" rows="2" placeholder="세부·특정 카드 지시 (예: 3번 카드 통계 빼고 사례로) — 선택"></textarea>
       <button class="sbtn askclip" id="crevClip" type="button" aria-label="붙여넣기"></button>
     </div>
+    <div class="crevhint">프롬프트만 재작성 · 이미지는 유지(원하면 '슛'으로 재촬영)</div>
     <span class="askstatus revstatus" id="crevStatus"></span>
   </div>
 </dialog>
@@ -2105,7 +2116,7 @@ async function open(a) {
   feedSec(a);     // 섹션 3: 카드 피드(이미지 있을 때만 표시)
   $('#revStatus').textContent = '';   // 수정 요청 상태 리셋(이전 카드 잔상 제거)
   const _rt = $('#revText'); if (_rt) _rt.value = '';   // 기사로 이동 시 = 수정 요청 입력칸도 비움(이전 기사에 적던 지시 안 넘어오게 · 체크박스 리셋과 마찬가지 · 운영자 260622)
-  const _crt = $('#crevText'); if (_crt) _crt.value = ''; if (typeof resetCrevSend === 'function') resetCrevSend();   // 카드 수정 입력칸도 동일 리셋(이전 기사 지시 누수 차단)
+  const _crt = $('#crevText'); if (_crt) _crt.value = ''; if (typeof clearCrevChips === 'function') clearCrevChips(); if (typeof resetCrevSend === 'function') resetCrevSend();   // 카드 수정 입력칸·칩도 동일 리셋(이전 기사 지시 누수 차단)
   resetRevSend(); updateRevClip();   // 버튼 재확인(arm) 상태·클립(붙여넣기/복사) 아이콘도 원복
   const _dlf = $('#dlFull'); if (_dlf) { _dlf.checked = false; const _dlb = $('#dlbox'); if (_dlb) _dlb.classList.remove('full'); }   // 새 기사 = 요약 '전체 포함' 체크 기본 해제(이전 기사 체크 잔상 제거 · 운영자 260622)
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
@@ -5965,6 +5976,22 @@ function updateCrevClip() {
   b.innerHTML = has ? COPY_SVG : PASTE_SVG;
   const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl;
 }
+// 카테고리 칩(톤·흐름) + 세부 자유텍스트 → 라벨 붙은 자연어 지시로 조립(백엔드는 자유텍스트로 받음 = 라벨이 LLM 적중↑).
+function composeCrevInstruction() {
+  const wrap = $('#crevChips');
+  const pick = cat => wrap ? [...wrap.querySelectorAll('.chip.on[data-cat="' + cat + '"]')].map(c => c.dataset.v) : [];
+  const tone = pick('tone'), flow = pick('flow'), free = $('#crevText').value.trim();
+  const parts = [];
+  if (tone.length) parts.push('[톤] ' + tone.join(', '));
+  if (flow.length) parts.push('[흐름·구조] ' + flow.join(', '));
+  if (free) parts.push('[세부] ' + free);
+  return parts.join('\n');
+}
+function clearCrevChips() { const w = $('#crevChips'); if (w) w.querySelectorAll('.chip.on').forEach(c => c.classList.remove('on')); }
+$('#crevChips').addEventListener('click', e => {   // 칩 토글(다중 선택) + 재확인 취소(오발사 방지)
+  const c = e.target.closest('.chip'); if (!c) return;
+  c.classList.toggle('on'); resetCrevSend();
+});
 $('#crevX').addEventListener('click', () => $('#crevdlg').close());
 $('#crevdlg').addEventListener('click', e => { if (e.target === $('#crevdlg')) $('#crevdlg').close(); });
 $('#crevdlg').addEventListener('close', resetCrevSend);
@@ -5979,8 +6006,8 @@ $('#crevClip').addEventListener('click', async () => {
 });
 $('#crevSend').addEventListener('click', async () => {
   if (CUR && isCardRevising(CUR)) return;   // 진행 중 재전송 차단(silent)
-  const instruction = $('#crevText').value.trim();
-  if (!instruction) { $('#crevStatus').textContent = '카드 수정 지시를 한 줄 적어줘'; return; }
+  const instruction = composeCrevInstruction();
+  if (!instruction) { $('#crevStatus').textContent = '톤·흐름을 고르거나 세부 지시를 적어줘'; return; }
   if (!CUR) { $('#crevStatus').textContent = '대상 카드를 못 찾음'; return; }
   const btn = $('#crevSend'), lbl = btn.querySelector('span');
   if (!btn.classList.contains('confirm')) {   // 1차 = 재확인
@@ -5998,7 +6025,7 @@ $('#crevSend').addEventListener('click', async () => {
       btn.classList.add('firing');
       setTimeout(() => askShowCheck(btn), 740);
       startCardRevising(CUR);
-      setTimeout(() => { $('#crevdlg').close(); $('#crevText').value = ''; btn.disabled = false; btn.classList.remove('firing'); updateCrevClip(); }, 1400);
+      setTimeout(() => { $('#crevdlg').close(); $('#crevText').value = ''; clearCrevChips(); btn.disabled = false; btn.classList.remove('firing'); updateCrevClip(); }, 1400);
     } else {
       btn.disabled = false; $('#crevStatus').textContent = (d && d.error) ? String(d.error).slice(0, 80) : '전송 실패 — 다시';
     }
