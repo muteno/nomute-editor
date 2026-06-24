@@ -4,8 +4,7 @@
 # 자동으로 pending/ 적재(분석 입구) → news-analyze 발동(요약·카드 자동 생성). breaking-judge.yml 이 판정 직후 호출.
 # ⚠️⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독 쿼터) + Gemini 썸네일 3장($). 보수적 다중 가드:
 #   ① grade≥3 (대형·다수피해만 · 운영자 260622 — push 의 grade≥2 보다 엄격 = 자동픽 ⊆ push 의도)
-#   ② cross≥2(다매체 검증) ③ first_seen·published *둘 다* <4h (운영자 260623 — first_seen=갓 감지 + 발행도 신선해야:
-#      발행 16h stale 건이 방금 수집됐다고 자동분석 들어가던 것 차단 · published 없는 매체는 first_seen 만으로 폴백)
+#   ② cross≥2(다매체 검증) ③ <4h (first_seen=갓 감지 기준 · published 는 syndication 지연으로 stale)
 #   ④ 사건당 1회 영구 dedup(push/autopick.json — event_key/url **+ 제목해시** 다중키 = url 점프에도 안정 ·
 #      실패해도 재픽 안 함 · push_send.dedup_keys 와 동일 키셋) ⑤ 런/일 상한
 #   ⑥ pick_pending 의 load_active dedup(이미 처리중/완료면 스킵 = 수동픽과 충돌 0 · PICK_URL=c.url 로 수동픽과 동일 키).
@@ -58,21 +57,6 @@ def age_h(c):
     return None
 
 
-def pub_age_h(c):
-    # 발행나이(published·KST) — 자동픽 '둘 다 4h내' 게이트용(운영자 260623). 발행 16h stale 건이 first_seen 방금이라
-    # 자동분석(요약+썸네일) 진입하던 것 차단. published 없으면 None → first_seen 만으로(발행시각 없는 매체 = 기존 폴백 유지).
-    s = c.get("published") or ""
-    for f in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"):
-        try:
-            t = dt.datetime.strptime(s.replace("Z", "+0000")[:25 if "+" in s else 19], f)
-            if t.tzinfo is None:
-                t = t.replace(tzinfo=dt.timezone.utc)
-            return (time.time() - t.timestamp()) / 3600
-        except Exception:
-            pass
-    return None
-
-
 def ekeys(c):
     # 자동픽 원장 다중키 = 대표(event_key/id/url) + 제목해시(t:…). push_send.dedup_keys 와 동일 키셋.
     # 제목해시가 'event_key=url 디폴트 → 대표 url 점프 → 키 갈림' 구멍을 메움(같은 헤드라인이면 url 달라도 같은 키 → 재픽 차단).
@@ -95,10 +79,7 @@ def eligible(c):
     if (c.get("cross") or 0) < MIN_CROSS:
         return False
     a = age_h(c)
-    if a is None or a < 0 or a >= FAST_MAX_H:           # 미래(오기록)·4h+ 제외 (first_seen=갓 감지)
-        return False
-    pa = pub_age_h(c)                                   # 발행도 4h내여야(운영자 260623): 발행 16h stale 건이 first_seen 방금이라 긴급 자동분석 진입하던 것 차단. 발행 무효(None)=first_seen 만으로(폴백)
-    if pa is not None and pa >= FAST_MAX_H:
+    if a is None or a < 0 or a >= FAST_MAX_H:           # 미래(오기록)·4h+ 제외
         return False
     return True
 
