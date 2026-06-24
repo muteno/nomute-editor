@@ -23,16 +23,6 @@
   textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; }
   input[type=text] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
   textarea:focus, input:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); outline:none; }
-  /* 붙여넣기 = 2A 동그라미, URL 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
-  .urlwrap { position:relative; }
-  .urlclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5;
-    border-radius:50%; border:1px solid rgba(255,255,255,.14); background:rgba(18,18,18,.4); color:var(--mut); cursor:pointer;
-    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); -webkit-tap-highlight-color:transparent; transition:transform .12s, color .15s, border-color .15s; }
-  .urlclip svg { display:block; width:13px; height:13px; }
-  .urlclip::before { content:""; position:absolute; inset:-8px; }
-  .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.24); }
-  .urlclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(15,253,2,.6); }
-  .urlclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
   textarea::placeholder, input::placeholder { color:var(--mut); }
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
   .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
@@ -96,7 +86,7 @@
   <p class="sub">영상 소스를 통해 복사 가능한 텍스트 자막 생성</p>
 
   <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
-  <div class="urlwrap"><input type="text" id="url" placeholder="https://…"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
+  <input type="text" id="url" placeholder="https://…">
   <div class="orsep">— 또는 —</div>
   <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
   <div class="filerow">
@@ -118,17 +108,6 @@ const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;'
 // 복사 버튼 = 캐러셀 .sbtn 글래스 아이콘 계승(§📋 · 이모지 X · SVG만)
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
-// URL 칸 붙여넣기↔복사 (2A 상단걸침 · 뉴스요약/썸네일 통일 · 운영자 260625)
-(function () {
-  const inp = $('#url'), b = $('#urlClip'); if (!inp || !b) return;
-  const upd = () => { if (b.classList.contains('ok')) return; const f = inp.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); };
-  b.addEventListener('click', async e => { e.preventDefault();
-    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
-    else { try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
-  });
-  inp.addEventListener('input', upd); upd();
-})();
 // 파일타입 색배지 색(카테고리 팔레트 계승: 테크 시안·경제 노랑·국제 보라·사회 초록)
 const FTYPE_COLOR = { '영상':'#7fc8d8', '음성':'#e7c977', 'SRT':'#b79be8', 'TXT':'#7fd0a0' };
 function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 중입니다…' + 생성버튼 잠금
