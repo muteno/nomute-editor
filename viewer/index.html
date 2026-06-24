@@ -1643,6 +1643,11 @@
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
     <span class="rev-hint">수정 중</span>
   </button>
+  <!-- 🃏 카드 수정 FAB — 요약 수정 FAB(#revFab) 미러. 카드 프롬프트 구간(#ph-card~#ph-feed 직전)에만 점등. 색=cards.crev(요약 rev과 독립). 클릭 → crevdlg. 아이콘=카드스택(펜과 구분). -->
+  <button class="rev-fab crev-fab" id="crevFab" type="button" aria-label="카드 수정" title="카드 수정">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>
+    <span class="rev-hint">카드 수정 중</span>
+  </button>
 </dialog>
 
 <!-- 슛(유료 발사) PIN 입력 — confirm/안내 다이얼로그·prompt 대체. 4칸 자동이동·자동인증 -->
@@ -2109,6 +2114,7 @@ async function open(a) {
   const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
   updateRevFab();   // 열릴 때 FAB 초기 상태(맨 위라 보통 숨김)
+  updateCrevFab();   // 🃏 카드 수정 FAB도 동일 초기화
   document.documentElement.style.overflow = 'hidden';   // PC: 모달 밖(백드롭) 스크롤 시 배경 페이지 스크롤 차단(#5)
   // 첫 focusable 버튼(요약/원문)이 showModal에 auto-focus되면 포커스 링(테두리)·상태바 URL 노출 →
   // 닫기(X) 버튼으로 포커스를 옮겨 차단. (.dlg-x 명시 — 첫 버튼=요약 ⬇에 링 안 생기게.)
@@ -2707,9 +2713,7 @@ function cardSec(a) {
   if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   // 카드 이미지는 섹션 3 '카드 피드'(feedSec)에서 렌더. #cardsec은 텍스트·프롬프트·복사·슛 정본 유지.
   if (c.md) {
-    // 🃏 카드 수정 요청 — 요약 수정과 동일 동작·CSS, 범위만 카드 프롬프트 전체 재기획(맥락·진행방식). 카드 있을 때만(운영자 260624).
-    sec.insertAdjacentHTML('beforeend', '<button class="mkbtn crevbtn" type="button">🃏 카드 수정 요청 — 맥락·진행방식 재기획</button>');
-    const _crb = sec.querySelector('.crevbtn'); if (_crb) _crb.onclick = () => openCrev();
+    // 🃏 카드 수정 = 우측 반투명 FAB(#crevFab)로만 노출(요약 수정 FAB 미러 · 큰 mkbtn 폐지 · 운영자 260624). 색=cards.crev 독립.
     const div = document.createElement('div');
     div.innerHTML = DOMPurify.sanitize(marked.parse(c.md));
     // [카드 N] 헤더 = 📍 말머리 폐지(운영자 260621: 핀 제거)
@@ -3911,12 +3915,50 @@ function revFabVisible() {
 function updateRevFab() {
   const fab = $('#revFab'); if (!fab) return;
   const dlg = $('#dlg');
-  const show = !!(dlg && dlg.open && !revdlg.open && revFabVisible());   // 팝업 열려 있으면 FAB 숨김(겹침 방지)
+  const show = !!(dlg && dlg.open && !revdlg.open && !$('#crevdlg').open && revFabVisible());   // 팝업(요약·카드) 열려 있으면 FAB 숨김(겹침 방지)
   fab.classList.toggle('show', show);
   // #dlg가 backdrop-filter라 그 박스가 fixed/absolute 컨테이닝블록 → 내부 absolute는 콘텐츠와 함께 스크롤됨.
   // top을 scrollTop만큼 보정해 뷰포트 70%(중하단) 라인에 고정(스크롤해도 화면 같은 자리).
   if (show) fab.style.top = Math.round(dlg.scrollTop + dlg.clientHeight * 0.7 - 26) + 'px';
   applyReviseFab();   // FAB 재노출 시 잔류 표기 클래스 정리(표기 자체는 제거됨)
+}
+// ── 🃏 카드 수정 FAB — 위 요약 수정 FAB의 카드판 미러. 노출=카드 프롬프트 구간(#ph-card~#ph-feed 직전 = 이미지 생성 직전), 색=cards.crev(요약 a.rev과 독립 = 따로 돎). ──
+function crevFabVisible() {
+  const dlg = $('#dlg'); if (!dlg || !dlg.open) return false;
+  const a = CUR ? DATA.find(x => x.file === CUR) : null;
+  const st = a && a.cards ? (a.cards.state || '') : '';
+  if (st !== 'text_done' && st !== 'done' && st !== 'fired_partial') return false;   // 카드 프롬프트 있을 때만(수정 대상)
+  const card = $('#ph-card'); if (!card) return false;
+  const centerY = window.innerHeight / 2;
+  if (card.getBoundingClientRect().top > centerY) return false;             // 아직 카드 프롬프트 구간 전(중앙 밑) → 숨김
+  const feed = $('#ph-feed');
+  if (feed && !feed.hidden) return feed.getBoundingClientRect().top > centerY;   // 이미지(피드) 넘어가면 숨김 = '이미지 생성 직전'까지만
+  const sec = $('#cardsec');
+  return sec ? sec.getBoundingClientRect().bottom > centerY : true;         // 피드 없으면(text_done) 카드섹션 끝 기준
+}
+function applyCrevFab() {
+  const fab = $('#crevFab'); if (!fab) return;
+  const pending = !!(CUR && isCardRevising(CUR));
+  const a = CUR ? DATA.find(x => x.file === CUR) : null;
+  const g = a && a.cards ? (Number(a.cards.crev) || 0) : 0;   // 카드 수정 회차 — 요약 a.rev과 독립(0 초록·1 노랑·2 파랑 순환)
+  fab.classList.toggle('revving', pending);
+  fab.classList.toggle('locked', pending);
+  fab.classList.toggle('revdone', !pending && g > 0);
+  if (pending) {
+    fab.style.setProperty('--rv-from', 'rgb(' + revColor(g) + ')');
+    fab.style.setProperty('--rv-to', 'rgb(' + revColor(g + 1) + ')');
+    fab.style.setProperty('--rv-ring', 'rgba(' + revColor(g + 1) + ',.5)');
+  } else if (g > 0) {
+    fab.style.setProperty('--rv-solid', revColor(g));
+  }
+}
+function updateCrevFab() {
+  const fab = $('#crevFab'); if (!fab) return;
+  const dlg = $('#dlg');
+  const show = !!(dlg && dlg.open && !$('#crevdlg').open && !$('#revdlg').open && crevFabVisible());   // 팝업 열렸으면 숨김(겹침 방지)
+  fab.classList.toggle('show', show);
+  if (show) fab.style.top = Math.round(dlg.scrollTop + dlg.clientHeight * 0.7 - 26) + 'px';   // 요약 FAB과 동일 = 뷰포트 70% 라인 고정(구간 안 겹쳐 동시 노출 없음)
+  applyCrevFab();
 }
 function jumpTo(which) {
   const sec = $('#cardsec');
@@ -4186,6 +4228,7 @@ function updateScrub() {
   dp.querySelectorAll('.scrub-lb').forEach(lb => lb.classList.toggle('cur', lb.dataset.j === cur && !lb.classList.contains('off')));
   const hd = $('.dlg-h'); if (hd) hd.classList.toggle('scrolled', st > 60);
   updateRevFab();   // 요약 수정 FAB 점멸 구간 갱신(콘텐츠 초안~시사점)
+  updateCrevFab();   // 🃏 카드 수정 FAB 점멸 구간 갱신(카드 프롬프트~이미지 직전)
 }
 
 // (모달 플로팅 N/M/T 네비는 카드 셀 .nmt 버튼으로 이관 — render()에서 배선)
@@ -5855,6 +5898,7 @@ document.addEventListener('click', e => {
   b.appendChild(o); setTimeout(() => o.remove(), 700);
 }, true);
 $('#revFab').addEventListener('click', openRev);
+$('#crevFab').addEventListener('click', openCrev);   // 🃏 카드 수정 FAB → 카드 수정 팝업(요약 FAB↔revdlg 미러)
 
 // ── 🃏 카드 수정 요청 — 요약 수정(revise)의 카드판 미러. 동작 동일, 범위=카드 프롬프트 전체(api/revise-cards). 제미나이 0(이미지 재슛 X). ──
 // 완료 감지 = a.cards.updated 변화(revise-cards.sh가 status.json updated 갱신 → lag split ensureDetail ver도 무효화 = 새 cards.md 자동 재로드).
@@ -5876,6 +5920,7 @@ function startCardRevising(file) {
   CARD_REVISING.set(file, { reqUpdated: cardUpdated(file), ts: Date.now() });
   saveCardRevising();
   startCardRevisePoll();
+  updateCrevFab();   // 즉시 revving(물결) 반영
 }
 let _crevPoll = null;
 function startCardRevisePoll() {
@@ -5896,7 +5941,7 @@ function startCardRevisePoll() {
         qFlash('⚠ 카드 수정요청 20분째 반영 안 됨 — 지연이거나 실패. 안 바뀌면 다시 시도해' + (ra && ra.title ? ' (' + ra.title.slice(0, 16) + '…)' : ''));
       }
     }
-    if (changed) saveCardRevising();
+    if (changed) { saveCardRevising(); updateCrevFab(); }   // 완료 → revving 해제·회차색(crev) 반영
     if (!CARD_REVISING.size) { clearInterval(_crevPoll); _crevPoll = null; }
   }, 20000);
 }
