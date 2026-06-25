@@ -62,17 +62,13 @@ CAT_KW = {
 
 # 하트(♥♡❤ 등) — 제목에 들어가면 연예인 열애/결혼·2세 = 100% 문화(운영자 260624). 사회 오분류·미분류 구제.
 HEART_RE = re.compile("[♡♥❣❤\U0001F493-\U0001F49F\U0001F9E1\U0001FA77]")
-# OSEN(오!쎈) — 조선일보 문화부 스포츠·연예 브랜드 → 100% 문화(운영자 260625). 제목·매체명 어디든 잡히면 사회·미분류 구제.
-OSEN_RE = re.compile(r"오\s*!?\s*쎈|OSEN", re.I)
 
 
-def cat_of(category, title, media=""):
+def cat_of(category, title):
     c = cat_ko(category)
     t = title or ""
     if c and c != "사회":
         return c
-    if OSEN_RE.search(t) or OSEN_RE.search(media or ""):   # OSEN = 100% 문화(사회·빈칸 위로)
-        return "문화"
     if HEART_RE.search(t):   # 하트 = 100% 문화(사회·빈칸 위로)
         return "문화"
     if c:   # 사회(하트 없음)
@@ -120,7 +116,7 @@ def main():
             "id": url, "url": url,
             "title": bp.get("title") or a.get("title") or "",
             "media": bp.get("media") or a.get("publisher") or "",
-            "cat": cat_of(a.get("category"), bp.get("title") or a.get("title") or "", bp.get("media") or a.get("publisher") or ""),
+            "cat": cat_of(a.get("category"), bp.get("title") or a.get("title") or ""),
             "cross": cross,
             "published": a.get("published") or "",
             "burst": burst,
