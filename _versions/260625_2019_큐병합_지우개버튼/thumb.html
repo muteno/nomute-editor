@@ -73,9 +73,8 @@
   #rCombo .cf-title::placeholder { color:var(--accent); opacity:.5; }   /* 제목 예시도 강조색(부제 예시는 전역 mut) */
   .covrow { display:flex; gap:8px; align-items:stretch; margin-top:8px; }
   .covta { flex:2 1 0; min-width:0; }                      /* 자막 = 2/3(텍스트 짧음) */
-  .covrow textarea { min-height:104px; }                   /* 자막 텍스트칸 = 3줄(콘텐츠 96px) 스크롤 없이 들어가게 +헤드룸(전역 96 → 104·운영자 260625). 슬롯도 ResizeObserver로 동기 */
   .covimg { flex:1 1 0; min-width:0; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-    min-height:104px; border:1px dashed rgba(var(--accent-rgb),.5); border-radius:9px; color:var(--mut); cursor:pointer; overflow:hidden;
+    min-height:96px; border:1px dashed rgba(var(--accent-rgb),.5); border-radius:9px; color:var(--mut); cursor:pointer; overflow:hidden;
     background:rgba(var(--accent-rgb),.04); transition:border-color .15s, background .15s, color .15s; -webkit-tap-highlight-color:transparent; }   /* 이미지 슬롯 = 1/3(.file 점선 계승) */
   .covimg:hover { border-color:var(--accent); color:var(--accent); background:rgba(var(--accent-rgb),.08); }
   .covimg:active { transform:scale(.97); }                 /* 큰 면 = 1에 근접(§🎨 누름 scale 계승) */
@@ -407,10 +406,6 @@
   .iobtn-edge:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }   /* 누름 = 형광 플래시 */
   .iobtn-edge.ok { background:rgba(26,28,26,.3); color:var(--accent); border-color:rgba(255,255,255,.17); }   /* 성공 = 링 중립 유지·체크(✓)만 형광(2A) */
   .iobtn-edge svg { width:13px; height:13px; }
-  /* 붙여넣기 우측에 지우개 동반(부제·제목·자막) = 동일 크기 2버튼: [붙여넣기/복사 | 지우개] (운영자 260625) */
-  .iobtn-pp { right:46px; }                          /* 붙여넣기/복사 = 지우개 좌측으로 이동 */
-  .iobtn-erase { right:14px; }                       /* 지우개 = 최우측(붙여넣기 우측) · 누르면 입력 비움 */
-  .iobtn-off { opacity:.3; pointer-events:none; }    /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
   #cardBox { margin-top:9px; }                 /* 카드 텍스트 = '텍스트' 라벨 제거·간격 축소(헤더/오버레이와 동일 9px · 운영자 260624) */
   #cardBox .edwrap { position:relative; }       /* 칩 에디터 클립버튼(2A) 기준 — 재렌더(#edChips innerHTML 교체)에도 버튼 보존 위해 바깥 래퍼 */
   #cardBox .iobtn-edge { right:44px; }           /* 카드만 클립을 좌측으로 — 칩 줄 우측 +(단어추가, 박스우측 9~25px 점유) 버튼과 19px 간격 확실 분리(운영자 260624) */
@@ -1089,31 +1084,22 @@ async function jSaveSeq(job) {
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
-const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';   // 지우개(입력 비움) — Lucide eraser·24뷰박스·stroke2·round
 async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
   try { await navigator.clipboard.writeText(text || ''); } catch {}
   btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
   setTimeout(() => { btn.classList.remove('ok'); after(); }, 1200);
 }
-function attachCopyPaste(el, withErase) {   // 비었으면 붙여넣기, 차있으면 복사 · withErase=붙여넣기 우측에 지우개(입력 비움) 동반(운영자 260625)
+function attachCopyPaste(el) {   // 비었으면 붙여넣기, 차있으면 복사
   const wrap = document.createElement('div'); wrap.style.position = 'relative'; wrap.classList.add('iowrap');   // iowrap = 머리↔첫칸 간격 단일소스(#rCombo > .iowrap margin-top) 타겟 + 입력칸 밀착(클립 라인정렬)
   if (el.classList.contains('covta')) { wrap.classList.add('covta'); el.classList.remove('covta'); }   // covrow flex(2/3)를 wrap이 승계 = 클립 부착해도 슬롯 안 찌부(운영자 260624)
   el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
-  el.style.paddingRight = (withErase && el.tagName !== 'TEXTAREA') ? '74px' : '42px';   // 입력칸(단일행)=2버튼 폭(74) 확보(글자 세로중앙=버튼과 겹침) · 텍스트칸=버튼이 1행 위 테두리로 떠 글자와 안 겹침 → 42 유지(폭 보존 = 좁은 폰 줄바꿈 방지·운영자 260625)
-  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn iobtn-edge' + (withErase ? ' iobtn-pp' : ''); wrap.appendChild(btn);   // 붙여넣기/복사 = 테두리 걸친 동그라미(시안 2A·260624) · 지우개 동반 시 좌측(iobtn-pp)
-  let eraser = null;
-  if (withErase) {   // 지우개 = 붙여넣기 우측(최우측)·동일 크기 · 누르면 입력 비움(운영자 260625)
-    eraser = document.createElement('button'); eraser.type = 'button'; eraser.className = 'iobtn iobtn-edge iobtn-erase';
-    eraser.innerHTML = ERASE_SVG; eraser.setAttribute('aria-label', '입력 지우기'); eraser.title = '입력 지우기';
-    eraser.onclick = ev => { ev.preventDefault(); if (!(el.value || '').length) return; el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); try { el.focus(); } catch {} };   // 비움 → input 이벤트(자간/맞춤법 리뷰 동반 갱신·refresh가 리스너로 호출)
-    wrap.appendChild(eraser);
-  }
+  el.style.paddingRight = '42px';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn iobtn-edge'; wrap.appendChild(btn);   // 입력·textarea 모두 테두리 걸친 동그라미(시안 2A·260624)
   const refresh = () => {
     if (btn.classList.contains('ok')) return;
     const filled = (el.value || '').trim().length > 0;
     btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste';
     btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기');
-    if (eraser) eraser.classList.toggle('iobtn-off', !filled);   // 빈칸 = 지울 것 없음 → 흐리게·비활성
   };
   btn.onclick = async ev => {
     ev.preventDefault();
@@ -1122,7 +1108,7 @@ function attachCopyPaste(el, withErase) {   // 비었으면 붙여넣기, 차있
   };
   el.addEventListener('input', refresh); refresh();
 }
-['lines', 'warnLines', 'cSub', 'cTitle', 'cLines'].forEach(id => { const el = $('#' + id); if (el) attachCopyPaste(el, id === 'cSub' || id === 'cTitle' || id === 'cLines'); });   // covrow textarea(lines·cLines)도 클립 부착 — wrap이 covta 승계로 flex 유지(슬롯 호환·260624) · 부제·제목·자막만 지우개 동반(운영자 260625 · warnLines는 syncGuide 토글 호환 위해 단일 버튼 유지)
+['lines', 'warnLines', 'cSub', 'cTitle', 'cLines'].forEach(id => { const el = $('#' + id); if (el) attachCopyPaste(el); });   // covrow textarea(lines·cLines)도 클립 부착 — wrap이 covta 승계로 flex 유지(슬롯 호환·260624)
 // covrow: 이미지 슬롯(.covimg) 높이 = 텍스트칸(textarea) 높이로 동기화 — 수동 리사이즈 포함(stretch만으론 어긋난다는 운영자 실측 · 260624). textarea(클립 wrap 안)를 ResizeObserver로 추적해 형제 .covimg에 명시 height 부여.
 (function () {
   if (typeof ResizeObserver === 'undefined') return;
@@ -1272,7 +1258,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   const dn = job.done.filter(Boolean).length;
   let ic, tx;   // 상태 = SVG 픽토그램 + 글자(이모지 폐지·수직중앙 · 운영자 260622)
   if (job.status === 'err') { ic = WARN_SVG; tx = '실패'; }   // 실패 = 간결히 '실패'만(부가 설명[사유]은 행 tooltip으로 · 운영자 260622)
-  else if (job.status === 'done') { ic = CHECK_SVG; tx = '완료 · ' + tot + '장' + (job._restored ? ' · ' + histTime(job.t0) : ' (' + sec + 's)') + (job.partErr ? ' · 일부 실패' : ''); }   // 복원 결과 = 경과초 대신 제작시각(운영자 260622) · 배치 일부 실패면 표식(사유=행 tooltip)
+  else if (job.status === 'done') { ic = CHECK_SVG; tx = '완료 · ' + tot + '장' + (job._restored ? ' · ' + histTime(job.t0) : ' (' + sec + 's)'); }   // 복원 결과 = 경과초 대신 제작시각(운영자 260622)
   else { ic = SPIN_SVG; tx = '제작 중 ' + sec + 's · ' + dn + '/' + tot + '장'; }
   row.innerHTML = '';
   const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + (job._restored ? '' : ' #' + job.n);
@@ -1280,7 +1266,6 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   if (labs.length === 1) { const v = document.createElement('span'); v.className = 'jvar'; v.textContent = ' · ' + labs[0]; lab.appendChild(v); }   // 단일 변형(OPA 등) = 라벨 옆 인라인(기존)
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.innerHTML = ic + '<span>' + esc(tx) + '</span>';
   row.append(lab, stsp);
-  if (job.partErr && job.status === 'done') row.title = job.partErr;   // 배치 일부 실패 = 사유 tooltip(성공분은 정상 표시)
   if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
     const svRow = document.createElement('div'); svRow.className = 'jsave-row';   // 전체 = 완료 시각줄 아래로 내려 우측정렬(썸네일 5종 공용 · 운영자 260622)
     const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave dlbtn'; sv.title = '이 결과 전체 다운로드';
@@ -1289,10 +1274,10 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     if (job._dlSt) { sv.classList.add(job._dlSt.cls); sv.style.setProperty('--p', job._dlSt.p); const _l = sv.querySelector('.jslbl'); if (_l) _l.textContent = job._dlSt.txt; if (job._dlSt.cls === 'dlseq-busy') sv.style.pointerEvents = 'none'; }   // 다운 진행 중 재렌더돼도 상태 복원(✓ 유지·운영자 260623)
     svRow.appendChild(sv); row.append(svRow);
   }
-  if (job.status === 'err' && ((job.payload && job.endpoint) || (job.batch && job.batch.length))) {   // 실패 = 같은 설정 재발사(단일=payload·배치=batch · 운영자 260620 아이디어 3·260625)
+  if (job.status === 'err' && job.payload && job.endpoint) {   // 실패 = 같은 설정으로 재시도 재발사(운영자 260620 아이디어 3)
     const rt = document.createElement('button'); rt.type = 'button'; rt.className = 'jretry'; rt.title = '같은 설정으로 다시 제작';
     rt.innerHTML = RETRY_SVG + '<span>재시도</span>';
-    rt.onclick = () => { rt.disabled = true; if (job.batch && job.batch.length) dispatchBatch(job.batch, job.label, job.src); else dispatchJob(job.endpoint, job.payload, job.label, job.src); };
+    rt.onclick = () => { rt.disabled = true; dispatchJob(job.endpoint, job.payload, job.label, job.src); };
     row.append(rt);
   }
   if (job.status === 'err') {   // 실패 = 우측 휴지통(삭제) · 세로중앙(.job align-items:center) · 사유는 행 tooltip
@@ -1968,36 +1953,6 @@ function dispatchJob(endpoint, payload, label, src) {
     } catch (e) { job.status = 'err'; job.msg = '요청 실패: ' + e.message; renderJob(job); }
   })();
 }
-// 한 번의 '제작'이 여러 발사(헤더+자막 · 저작권+안내문)면 → 하나의 잡으로 병합 = 같은 큐 카드에 변형별 개별 다운로드(.jvar-dl) + 전체 다운로드(.jsave) 동시(운영자 260625). 단일 발사면 dispatchJob 그대로(라벨·변형·전체 불변 = 회귀 0).
-function dispatchBatch(items, batchLabel, src) {
-  if (!items || !items.length) return;
-  if (items.length === 1) { dispatchJob(items[0].endpoint, items[0].payload, items[0].label, src); return; }   // 단일 = 기존 경로(원래 라벨·변형·전체 그대로)
-  goFire(_spellApplied); clearRestored();
-  const job = { n: ++JOBSEQ, label: batchLabel, t0: Date.now(), outs: [], done: [], status: 'run', msg: '', batch: items, src };   // batch = 실패 시 같은 묶음 재발사용
-  JOBS.unshift(job); renderJob(job);
-  (async () => {
-    const groups = await Promise.all(items.map(async it => {
-      const payload = it.payload;
-      if (it.endpoint === '/api/thumb' && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = rest; }   // dispatchJob과 동일 src 주입(기기간 '수정' 복원)
-      try {
-        const res = await fetch(it.endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-        const j = await res.json();
-        if (!res.ok || j.error) return { err: (it.tag || it.label) + ': ' + (j.error || ('서버 ' + res.status)) };
-        const outs = j.outs || (j.out ? [{ path: j.out, label: '' }] : []);
-        if (!outs.length) return { err: (it.tag || it.label) + ': 출력 경로 없음' };
-        return { id: j.id, outs: outs.map(o => ({ path: o.path, label: it.tag + (o.label ? ' ' + o.label : '') })) };   // 변형 라벨에 역할 태그(헤더/자막/저작권/안내문) 접두 = 한 카드서 구분(헤더 흰칸·자막 OPA60 …)
-      } catch (e) { return { err: (it.tag || it.label) + ': 요청 실패 ' + e.message }; }
-    }));
-    const okGroups = groups.filter(g => g && g.outs);
-    const errs = groups.filter(g => g && g.err).map(g => g.err);
-    job.outs = okGroups.flatMap(g => g.outs);
-    job.thid = (groups.find(g => g && g.id) || {}).id || thIdOf((job.outs[0] || {}).path) || '';
-    job.done = job.outs.map(() => false);
-    if (!job.outs.length) { job.status = 'err'; job.msg = errs.join(' · ') || '출력 경로 없음'; renderJob(job); return; }   // 전부 실패 = 잡 실패(재시도 버튼=배치 재발사)
-    if (errs.length) job.partErr = errs.join(' · ');   // 일부만 실패 = 성공분은 폴링·진행, 행에 '일부 실패' 표식
-    pollJob(job);   // 전 변형 outs 확정 후 1회 폴링(인덱스 고정 = 도착순 무관 1번부터 노출)
-  })();
-}
 // ── 맞춤법 자동교정 — 제작(글자 카운트/검증) 전에 부산대 검사기로 자유 텍스트 교정(비-LLM·토큰 0) ──
 // 대상 = 자유 입력 텍스트 필드만(이름·연도·프리셋·카드 토큰에디터 제외). *별표 강조*는 프록시에서 개수 보존.
 function spellTargets() {
@@ -2103,12 +2058,11 @@ $('#go').onclick = async () => {
     const fmt = cpFmt, FL = { post: '포스트', reels: '릴스' };
     const guideLines = guideMode ? ($('#warnLines').value || '').split('\n').map(s => s.trim()).filter(Boolean) : [];
     if (!copyOn && !guideLines.length) return errStatus('저작권을 켜거나 안내문을 골라줘');   // 둘 다 OFF = 만들 게 없음
-    if (copyOn && !getName()) return errStatus('이름을 넣어주세요');   // 이름 필수 — 빈 채 발사 차단(백엔드 실패 방지·제작 버튼에 메시지+흔들림 · 운영자 260622)
-    const items = [];
-    if (copyOn) items.push({ endpoint: '/api/thumb', payload: { app: '3', params: { fmt, year: getYear(), name: getName(), platform: getPlatform() } }, label: '저작권 (' + FL[fmt] + ')', tag: '저작권' });
-    if (guideLines.length) items.push({ endpoint: '/api/thumb', payload: { app: '4', params: { fmt, lines: guideLines } }, label: '안내문 (' + FL[fmt] + ')', tag: '안내문' });
-    // 저작권+안내문 둘 다면 한 잡으로 병합 · 하나면 기존 단일 경로(운영자 260625)
-    dispatchBatch(items, '저작권·안내문 (' + FL[fmt] + ')', SRC);
+    if (copyOn) {
+      if (!getName()) return errStatus('이름을 넣어주세요');   // 이름 필수 — 빈 채 발사 차단(백엔드 실패 방지·제작 버튼에 메시지+흔들림 · 운영자 260622)
+      dispatchJob('/api/thumb', { app: '3', params: { fmt, year: getYear(), name: getName(), platform: getPlatform() } }, '저작권 (' + FL[fmt] + ')', SRC);
+    }
+    if (guideLines.length) dispatchJob('/api/thumb', { app: '4', params: { fmt, lines: guideLines } }, '안내문 (' + FL[fmt] + ')', SRC);
     return;
   }
   if (APP === '2') {   // 릴스 단일 폼 — 채운 섹션만 발사(B·운영자 260624): 헤더(부제+제목)→흰칸 / 자막→오버레이(OPA60[+30]) / 둘 다→동시. 백엔드(흰칸/오버레이 모드) 불변.
@@ -2119,8 +2073,7 @@ $('#go').onclick = async () => {
     if (!hasHeader && !hasOverlay) return errStatus('헤더(부제·제목) 또는 자막을 넣어주세요');
     if (hasOverlay && !clines.some(l => /\*[^*]+\*/.test(l))) return errStatus('강조를 넣어주세요', 'warn');   // 자막 강조(*별표*) 필수 — 정규화 후 줄별 검사(**·줄걸침 인식·260625)
     if ($('#abbr').checked) { csub = abbr(csub); ctitle = abbr(ctitle); clines = clines.map(abbr); }   // 축약 = 포스트·릴스 공통
-    const items = [];
-    if (hasHeader) items.push({ endpoint: '/api/thumb', payload: { app: '2', params: { mode: 'header', sub: csub, title: ctitle, bothBg: $('#cBg').checked } }, label: '릴스 헤더', tag: '헤더' });   // 흰칸(배경 ON = +nobg)
+    if (hasHeader) dispatchJob('/api/thumb', { app: '2', params: { mode: 'header', sub: csub, title: ctitle, bothBg: $('#cBg').checked } }, '릴스 헤더', SRC);   // 흰칸(배경 ON = +nobg)
     if (hasOverlay) {
       // 오버레이 포맷 = effOvFmt(헤더 있으면 릴스 강제 / 없으면 토글값). 포스트=4:5(app1/fmt:post) · 릴스=9:16(app2/overlay). 이미지·OPA·축약 공용.
       const f = effOvFmt();
@@ -2128,10 +2081,8 @@ $('#go').onclick = async () => {
         ? { app: '1', params: { fmt: 'post', lines: clines, opas: getComboOpas() } }
         : { app: '2', params: { mode: 'overlay', lines: clines, opas: getComboOpas() } };
       if (CIMG.b64) { ovp.imageB64 = CIMG.b64; ovp.name = CIMG.name; }
-      items.push({ endpoint: '/api/thumb', payload: ovp, label: f === 'post' ? '포스트' : '릴스 자막', tag: '자막' });
+      dispatchJob('/api/thumb', ovp, f === 'post' ? '포스트' : '릴스 자막', SRC);
     }
-    // 헤더+자막 둘 다면 한 잡으로 병합(같은 큐 카드 · 변형별 개별 + 전체 다운로드) · 하나면 기존 단일 경로(운영자 260625)
-    dispatchBatch(items, hasHeader && hasOverlay ? '릴스 헤더·자막' : '릴스', SRC);
     return;
   }
   // /1 포스트 = /api/thumb (릴스·저작권·경고문·카드는 위에서 처리·return)
