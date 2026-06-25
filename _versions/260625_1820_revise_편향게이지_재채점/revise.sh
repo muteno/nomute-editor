@@ -66,9 +66,7 @@ prompt="${GBLOCK}
 
 [★ 요약 수정 요청 모드 — 운영자가 이미 만들어진 요약의 IG·Thread 초안이 편향·오류라며 재작성을 요청했다.
  ⛔ 기사 재수집·재요약·새 사실 추가 금지. 아래 '원본 IG/Thread 블록'에 이미 있는 내용만으로 재작성한다(WebSearch·Read로 기사 다시 안 봄).
- ✅ 운영자 지시대로 두 블록을 다시 써라(방향 무관 — 편향 제거·중립화·톤다운, *또는 더 보수·우편향·비판 강화* 등 운영자가 요구한 방향 그대로). 위 지침의 포맷·구조·머리표(🔎/📍/⚡)·코드펜스(text 코드블록)·길이 감각은 그대로 유지.
- 📊 **편향 게이지는 재작성 결과 기준으로 다시 채점한다(stale 금지·운영자 260625)**: 말미 '📊 편향:' 줄에서 — 원문 N값(있으면)은 그대로(기사 원문은 안 변함), **요약/큐레이션 M값·색 네모·라벨은 재작성된 텍스트의 실제 편향으로 갱신**(운영자가 우/좌 방향을 줬으면 그 방향으로 움직인 결과를 반영 — 예: 중립 5 → 우편향 주문이면 8/10 🟥 강우). 척도 = 위 지침 [📊 편향 게이지](1=강좌 ~ 10=강우 · 5~6 중립).
- ⚠️ 단 운영자 지시가 절대 우선 룰(사실 무결성·원문 왜곡·강도 증폭 금지)을 넘는 '말도 안 되는 범위'(없는 사실 날조·의미 왜곡)면 거기까진 따르지 말고 가능한 선까지만 반영(게이지도 실제 반영된 만큼만).
+ ✅ 운영자 지시대로 두 블록을 다시 써라(예: 편향 제거·중립화·톤다운). 위 지침의 포맷·구조·머리표(🔎/📍/⚡)·코드펜스(text 코드블록)·길이 감각·말미 '📊 편향:' 줄은 그대로 유지.
  ✅ 헤더 '### [IG …]' · '### [Thread …]' 줄도 포함해 섹션 통째로 출력(길이 토큰은 자연스럽게 갱신 가능).
  ⚠️ 길이 하드 상한 절대 준수(재작성·중립화·톤다운으로 *늘리지 마라*): **Thread 본문 500자 초과 절대 금지**(\`⚡\` 출처 포함·면책 줄 제외 — 플랫폼이 500자 초과를 게시 못 함 · 목표 400~470) · **IG 800자 초과 금지**. 길어지면 어미·조사를 깎지 말고 문장/📍 단위로 통째 덜어 상한 이내로 맞춰라(위 지침 [Thread 상한 압박]·[글자수 측정]·[본문 종결] 기준 그대로). 출력 전 Thread 글자수를 스스로 세어 500 이하인지 확인하라.
  출력 형식 — 아래 센티넬을 정확히 그대로, 그 사이에만 재작성된 블록을 넣는다. 사족·설명 금지.]
@@ -88,10 +86,7 @@ ${TH_OLD}
 <<<NOMUTE_IG_END>>>
 <<<NOMUTE_THREAD_START>>>
 (재작성된 ### [Thread …] 섹션 전체)
-<<<NOMUTE_THREAD_END>>>
-<<<NOMUTE_BIAS_START>>>
-(재작성 결과의 최종 편향 = 프론트매터용 한 줄 'M/10 색네모 라벨' · 예: 8/10 🟥 강우 — 원문 아닌 *요약/큐레이션 M* 기준)
-<<<NOMUTE_BIAS_END>>>"
+<<<NOMUTE_THREAD_END>>>"
 
 # 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단(권한대기 차단).
 # 단발 호출이라 쿼터 한도면 대체 계정으로 1회 전환 후 재시도(account failover · SSOT).
@@ -124,7 +119,6 @@ def between(s, a, b):
 
 ig = between(out, '<<<NOMUTE_IG_START>>>', '<<<NOMUTE_IG_END>>>')
 th = between(out, '<<<NOMUTE_THREAD_START>>>', '<<<NOMUTE_THREAD_END>>>')
-bias_new = between(out, '<<<NOMUTE_BIAS_START>>>', '<<<NOMUTE_BIAS_END>>>')   # 재채점된 요약 M(프론트매터 형식) — 없거나 형식 깨지면 아래서 갱신 생략
 if not ig or not th:
     sys.exit('::error::센티넬 누락 — 재작성 출력 파싱 실패')
 if not ig.lstrip().startswith('### [IG') or not th.lstrip().startswith('### [Thread'):
@@ -165,19 +159,8 @@ if rev_m:
 else:
     nrev = 1
     fmeta = fmeta.rstrip('\n') + '\nrev: 1'
-
-# 편향 게이지 재채점 반영 — 재작성된 요약 M을 프론트매터 bias 로 갱신(stale 차단·운영자 260625).
-# 원문 N(자유요약 줄)·자유요약 본문은 안 건드림 = 기사 원문 편향 고정. 센티넬 없거나 'N/10' 형식 아니면 갱신 생략(원본 bias 유지 = 하위호환·안전).
-bset = ''
-if bias_new and re.match(r'^\s*\d{1,2}\s*/\s*10\b', bias_new):
-    bnew = re.sub(r'\s+', ' ', bias_new.strip().replace('"', '')).strip()
-    if re.search(r'^bias:\s*.*$', fmeta, re.M):
-        fmeta = re.sub(r'^bias:\s*.*$', 'bias: "%s"' % bnew, fmeta, count=1, flags=re.M)
-    else:
-        fmeta = fmeta.rstrip('\n') + '\nbias: "%s"' % bnew
-    bset = ' · bias => ' + bnew
-open(path, 'w', encoding='utf-8').write(fhead + fmeta + fsep + frest)   # 단일 write = 원자 반영(블록+rev+bias)
-print('치환+rev 완료:', path, '· rev =>', nrev, bset)
+open(path, 'w', encoding='utf-8').write(fhead + fmeta + fsep + frest)   # 단일 write = 원자 반영
+print('치환+rev 완료:', path, '· rev =>', nrev)
 PY
 prc=$?
 if [ $prc -ne 0 ]; then echo "::error::치환/rev 실패(원본 미변경)"; exit 1; fi
