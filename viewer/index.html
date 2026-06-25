@@ -470,8 +470,6 @@
   .sc-cross { display:inline-flex; align-items:center; gap:4px; font-weight:600; }   /* 평면 텍스트(칩 폐지·운영자 260621) */
   .sc-cross .cn { color:var(--accent); font-weight:800; }   /* 매체 수 = 라임 숫자만('매체' 글자 제거·운영자 260621) */
   .sc-cross.lo .cn { color:var(--mut); font-weight:600; }   /* 매체 0~1 = 무강조 */
-  .sc-cross.merged { cursor:pointer; }   /* 병합 앵커 = '합' 배지 폐지, 매체수 숫자 자체를 앰버로(합산 표시) + 탭=해제(운영자 260625) */
-  .sc-cross.merged .cn { color:var(--accent-2); }   /* 합산 매체수 = 앰버(스크랩 테마·합쳐진 클러스터 신호) */
   .sc-badge { font-weight:700; }
   .sc-badge.iss { color:var(--warn); }      /* 이슈 = 노랑 */
   .sc-badge.brk { color:var(--danger); }    /* 긴급 = 빨강 */
@@ -702,7 +700,10 @@
     -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); transition:transform .12s, color .15s, border-color .15s; }
   .mb-x:active { transform:scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
   .mb-x svg { width:13px; height:13px; stroke:currentColor; stroke-width:2.1; fill:none; stroke-linecap:round; display:block; }
-  /* (옛 "·합" 배지 .sc-mergetag 폐지 260625 — 병합 앵커는 매체수 숫자를 앰버[.sc-cross.merged .cn]로 표현·탭=해제) */
+  /* "＋N 병합" 배지(병합된 앵커 카드 · 일반모드 · 탭=해제 메뉴) = 앰버(스크랩 테마·픽 초록과 구분) */
+  .sc-mergetag { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px;
+    letter-spacing:-.2px; color:var(--accent-2); background:rgba(var(--amber-rgb),.14); border:1px solid rgba(var(--amber-rgb),.4); cursor:pointer; }
+  .sc-mergetag:active { transform:scale(.92); }
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
     padding:30px 16px calc(92px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 */
@@ -2136,7 +2137,7 @@ function biasLabel(a) {
   return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--fg)">보정</span><span style="color:var(--mut)">(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
-const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621)
+const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크','스포츠':'문화','연예':'문화' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621) · 스포츠·연예 = 문화(260625)
 const CAT_COLOR = { '정치':'#f5807f','사회':'#5fdfa3','경제':'#f3c95a','국제':'#45cdf2','문화':'#ef93cb','테크':'#a78bfa' };   // 6색 명도 일관(밝기·채도 통일 — 사회·경제가 처져 보이던 것 ↑) · 정치=코랄·사회=민트·경제=골드·국제=시안·문화=마젠타핑크·테크=바이올렛(운영자 260623)
 function catBucket(cat) { const c = (cat || '').trim(); return CAT_MAP[c] || (['정치','사회','경제','문화','국제','테크'].includes(c) ? c : ''); }
 function catChip(cat) {
@@ -2147,18 +2148,23 @@ function catChip(cat) {
 const CAT_KW = {
   국제: ['트럼프','바이든','미국','중국','일본','러시아','우크라','이란','이스라엘','가자','전쟁','외교','정상','종전','협상','백악관','관세','푸틴','시진핑','나토','중동','북한','김정은','파병'],
   경제: ['경제','금융','증시','주가','코스피','코스닥','환율','부동산','집값','금리','채무','부도','파산','매출','영업','실적','투자','수출','무역','물가','부채','임금','실업','고용','세금','연봉','상장','회장','은행','경영','독점','인수','합병'],
-  문화: ['영화','드라마','음악','가수','배우','공연','전시','예술','연예','아이돌','스포츠','축구','야구','올림픽','월드컵','중계','게임','웹툰','콘서트','앨범','예능','감독','넷플릭스','OTT','시즌','출연','데뷔','컴백','신곡','개봉','관객','흥행','박스오피스','빌보드','그래미','뮤지컬','박물관','미술관','축제','만화','문학','소설','작가','OST','뮤직비디오','방탄','BTS','블랙핑크','뉴진스','아이브','세븐틴','에스파','르세라핌','MLB','KBO','프로야구','홈런','손흥민','이정후','류현진','메달','우승','결승','관람','상영','연주','전시회','갤러리','패션','뷰티'],
+  문화: ['영화','드라마','음악','가수','배우','공연','전시','예술','연예','아이돌','스포츠','축구','야구','올림픽','월드컵','중계','게임','웹툰','콘서트','앨범','예능','감독','넷플릭스','OTT','시즌','출연','데뷔','컴백','신곡','개봉','관객','흥행','박스오피스','빌보드','그래미','뮤지컬','박물관','미술관','축제','만화','문학','소설','작가','OST','뮤직비디오','방탄','BTS','블랙핑크','뉴진스','아이브','세븐틴','에스파','르세라핌','MLB','KBO','프로야구','홈런','손흥민','이정후','류현진','메달','우승','결승','관람','상영','연주','전시회','갤러리','패션','뷰티',
+        // 야구/스포츠 전문용어 — 비유적·폭력적으로 들려 사회로 오독되기 쉬운 것 위주(운영자 260625·to_candidates.py와 동기)
+        '삼진','사구','빈볼','병살','끝내기','도루','폭투','강판','완봉','완투','보크','만루','볼넷','출루','타점','방어율','타율','평균자책','자책점','선발투수','불펜','마무리투수','연타석','벤치클리어링','이닝','타석','투구','결승타','세이브','노히트','퍼펙트게임','호수비','역전승','한국시리즈','포스트시즌','플레이오프','와일드카드','골든글러브','선취점',
+        '해트트릭','페널티킥','코너킥','자책골','선제골','결승골','승점','강등','승격','어시스트','득점왕','구단','프로농구','프로배구','K리그','챔스','챔피언스리그','포메이션','원클럽맨','이적료'],   // 부분매칭·비유 오염어(안타[안타까운]·타격·등판·방출·실책·리그·FA) 제외
   사회: ['사건','사고','경찰','검찰','법원','재판','판결','구속','파업','교육','학교','복지','의료','병원','범죄','화재','시위','노조','국회','대통령','여당','야당','선거','의원','장관','수사','고소','논란','갑질','마약'],
   테크: ['AI','인공지능','반도체','스타트업','플랫폼','과학','우주','로봇','데이터','클라우드','전기차','배터리','네이버','카카오','구글','애플','갤럭시','아이폰'],
 };
 // 하트(♥♡❤ 등) — 제목에 들어가면 연예인 열애/결혼·2세 = 100% 문화(운영자 260624). 사회 오분류·미분류 구제.
 const HEART_RE = /[♡♥❣❤\u{1F493}-\u{1F49F}\u{1F9E1}\u{1FA77}]/u;
-// OSEN(오!쎈) — 조선일보 문화부 스포츠·연예 브랜드 → 100% 문화(운영자 260625). 제목·매체명 어디든 잡히면 사회·미분류 구제.
+// OSEN(오!쎈) — 조선일보 문화부 스포츠·연예 브랜드 → 100% 문화(운영자 260625). 제목 [오!쎈]/[OSEN=] 태그로 잡힘.
 const OSEN_RE = /오\s*!?\s*쎈|OSEN/i;
+// 스포츠·연예 전문 매체 — 매체명만으로 100% 문화(운영자 260625). 선수·팀명 아님(선수 사회면 논란 오분류 방지)·연예도 문화라 안전. to_candidates.py와 동기.
+const SPORTS_MEDIA_RE = /스포츠|스포탈|스포티비|SPOTV|OSEN|오\s*!?\s*쎈|마이데일리|엑스포츠|인터풋볼|풋볼리스트|베스트일레븐|점프볼|데일리스포츠/i;
 function articleCat(a) {
   const b = catBucket(a.category);
   if (b && b !== '사회') return b;   // 큐 category 있으면 정본(단 사회는 하트 재분류 여지)
-  if (OSEN_RE.test(`${a.title || ''} ${a.media || ''}`)) return '문화';   // OSEN = 100% 문화(사회·미분류 위로)
+  if (OSEN_RE.test(a.title || '') || SPORTS_MEDIA_RE.test(a.media || '')) return '문화';   // OSEN 태그·스포츠 전문매체 = 100% 문화(사회·미분류 위로)
   if (HEART_RE.test(a.title || '')) return '문화';   // 하트 = 100% 문화(사회·미분류 위로)
   if (b) return b;   // 사회(하트 없음)
   const t = `${a.title || ''} ${a.summary || ''}`;
@@ -5452,12 +5458,12 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   el.dataset.cid = candId(c);   // Picking…→PICKED 제자리 갱신 매칭용
   const lo = (c.cross || 0) < 2 ? ' lo' : '';
   const tm = scRelTime(c.published) || c.time || '';
-  const catB = articleCat({ category: c.cat, title: c.title });
+  const catB = articleCat({ category: c.cat, title: c.title, media: c.media });
   const triage = true;   // 누적·최신 둘 다 트리아지([👎][PASS][PICK]+사유)로 통일(사용자 요청 — 판단 기준 일원화)
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}${c._mergeCount ? ' merged' : ''}"${c._mergeCount ? ` title="병합 ${c._mergeCount}건 합산 매체수 — 탭하면 해제"` : ''}><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}"><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}${c._mergeCount ? `<span class="sc-mergetag" title="병합된 기사 ${c._mergeCount}건 — 탭 = 해제">·합</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(scLinkUrl(c) || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
@@ -5529,7 +5535,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
     el.addEventListener('pointermove', e => { if (_mergeLpT && Math.abs(e.clientX - _mergeLpX) + Math.abs(e.clientY - _mergeLpY) > 10) { clearTimeout(_mergeLpT); _mergeLpT = null; } });   // 스와이프/스크롤 중 오발 취소(clientX = iOS movementX 0버그 회피)
     el.addEventListener('contextmenu', e => { if (MERGE_MODE) return; e.preventDefault(); enterMerge(c); });   // PC 우클릭 = 병합모드
   }
-  const _mtag = el.querySelector('.sc-cross.merged');   // '합' 배지 폐지 → 앰버 합산 매체수 탭 = 병합 해제(운영자 260625)
+  const _mtag = el.querySelector('.sc-mergetag');
   if (_mtag) _mtag.addEventListener('click', e => { e.stopPropagation(); if (!MERGE_MODE) unmergeAnchor(c); });
   return el;
 }
