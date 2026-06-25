@@ -30,7 +30,6 @@ if mkdir -p /mnt/project /home/claude /mnt/user-data/outputs /mnt/user-data/uplo
   ln -sf "$DIR/nomute_compose.py"   /mnt/project/nomute_compose.py
   ln -sf "$DIR/nomute_copyright.py" /mnt/project/nomute_copyright.py
   ln -sf "$DIR/nomute_reels2.py"    /mnt/project/nomute_reels2.py
-  ln -sf "$DIR/quote_indent.py"     /mnt/project/quote_indent.py   # 따옴표 자동 들여쓰기 헬퍼(절대규칙1 4파일 아님 — generate에 넘길 lm_offsets만 산출)
   ln -sf "$DIR/assets/reels2_base.png" /mnt/project/reels2_base.png
   ln -sf "$DIR/assets/reels2_base.png" /home/claude/reels2_base.png
   ln -sf "$DIR/../../shared/attach.py" /mnt/project/attach.py   # BG 첨부 해석(라우터 §미디어 첨부)
