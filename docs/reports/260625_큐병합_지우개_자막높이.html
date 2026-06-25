@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>오버레이 생성기 — 큐 병합 · 지우개 버튼 · 자막 3줄 높이</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --panel:#0d0d0d; --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108; --amber:#e7ff2e; --danger:#ff5b4a; --warn:#ffb02e;
+    --fg:#eef7f0; --mut:#8fa697;
+    --r-s:9px; --r-m:11px; --r-l:16px; --blur-s:8px; --sp-1:6px; --sp-2:12px; --ease:cubic-bezier(.2,.7,.3,1);
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  .wrap{ max-width:480px; margin:0 auto; padding:18px 14px 70px; }
+  h1{ font-size:18px; margin:0 2px 6px; } h1 b{ color:var(--accent); }
+  .lead{ color:var(--mut); font-size:12px; line-height:1.7; margin:0 2px 18px; } .lead b{ color:var(--fg); }
+  .card{ background:var(--panel); border:1px solid var(--line2); border-radius:var(--r-l); padding:14px 14px 6px; margin:0 0 16px; }
+  .tag{ display:inline-block; font-size:11px; font-weight:800; color:var(--on-accent); background:var(--accent); border-radius:999px; padding:2px 9px; margin-bottom:8px; }
+  .tag.req{ color:#fff; background:rgba(var(--accent-rgb),.16); border:1px solid rgba(var(--accent-rgb),.4); }
+  h2{ font-size:15px; margin:2px 0 10px; } h2 b{ color:var(--accent); }
+  .row{ display:flex; gap:8px; margin:0 0 8px; }
+  .ba{ flex:1; border-radius:var(--r-m); padding:9px 10px; font-size:12px; line-height:1.55; }
+  .ba.b{ background:rgba(255,91,74,.07); border:1px solid rgba(255,91,74,.22); }
+  .ba.a{ background:rgba(var(--accent-rgb),.07); border:1px solid rgba(var(--accent-rgb),.28); }
+  .ba .h{ font-size:10.5px; font-weight:800; letter-spacing:.3px; margin-bottom:3px; }
+  .ba.b .h{ color:var(--danger); } .ba.a .h{ color:var(--accent); }
+  ul{ margin:6px 0 10px; padding-left:17px; } li{ font-size:12.5px; line-height:1.65; margin-bottom:3px; }
+  li b{ color:var(--fg); } .mut{ color:var(--mut); }
+  .kv{ font-size:12px; line-height:1.7; margin:8px 0 4px; } .kv .k{ color:var(--accent); font-weight:800; }
+  .ok{ color:var(--accent); } .warn{ color:var(--warn); }
+  .vbar{ margin:18px 2px 4px; padding:12px 13px; background:rgba(var(--accent-rgb),.06); border:1px solid rgba(var(--accent-rgb),.26); border-radius:var(--r-m); font-size:12.5px; line-height:1.7; }
+  .vbar b{ color:var(--accent); }
+  code{ background:rgba(255,255,255,.06); border-radius:5px; padding:1px 5px; font-size:11.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .mini{ font-size:11px; color:var(--mut); margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>오버레이 생성기 — <b>큐 병합 · 지우개 · 자막 3줄 높이</b></h1>
+  <p class="lead">운영자 요청 3건(같은 폼) 한 PR. <b>전부 viewer/thumb.html</b> 단일 파일 · 흰=고정/백엔드/파이프라인 불변 = 렌더 회귀 0. 실제 헤드리스 브라우저 E2E 23개 통과.</p>
+
+  <!-- 1 -->
+  <div class="card">
+    <span class="tag req">요청 1</span>
+    <h2><b>한 번에 만든 게 같은 큐 카드로</b> — 개별 + 전체 다운로드</h2>
+    <div class="row">
+      <div class="ba b"><div class="h">전</div>헤더+자막(또는 저작권+안내문)을 한 번에 제작하면 <b>큐 카드가 2개로 쪼개짐</b>. 각 카드에 「전체」만.</div>
+      <div class="ba a"><div class="h">후</div>한 번의 제작 = <b>한 큐 카드</b>. 그 안에 <b>변형별 개별 다운로드</b>(헤더 흰칸·자막 OPA60·OPA30 …) + <b>「전체」</b> 동시.</div>
+    </div>
+    <ul>
+      <li><b>원인</b>: 헤더·자막이 각각 <code>dispatchJob</code> 호출 → 별도 잡. 근데 <code>renderJob</code>은 <span class="mut">이미</span> 한 잡 안 다중 변형(개별+전체)을 렌더함.</li>
+      <li><b>방식</b>: 여러 발사를 <code>dispatchBatch</code>가 <b>한 잡으로 병합</b>(변형 라벨에 역할 태그 접두) → 기존 검증된 멀티변형 카드를 그대로 재사용.</li>
+      <li class="mut">단일 발사(헤더만/자막만)는 기존 경로 그대로 = 라벨·동작 회귀 0. 일부만 실패 시 성공분 표시 + 「일부 실패」 표식 · 재시도는 묶음째 재발사.</li>
+    </ul>
+    <div class="kv"><span class="k">효율</span> 새 렌더/컴포넌트 0(기존 <code>.jvar-dl</code>+<code>.jsave</code> 재사용) · <span class="k">품질저하</span> 위험 낮음 — 폴링/복원/#done 착지 영향 실측 무해(오히려 푸시 착지가 배치 전체 표시로 일관).</div>
+  </div>
+
+  <!-- 2 -->
+  <div class="card">
+    <span class="tag req">요청 2</span>
+    <h2><b>지우개 버튼</b> — 부제·제목·자막 입력 비우기</h2>
+    <div class="row">
+      <div class="ba b"><div class="h">전</div>붙여넣기 버튼만. 입력 지우려면 전체 선택→삭제.</div>
+      <div class="ba a"><div class="h">후</div>붙여넣기 <b>우측에 동일 크기 지우개</b>(Lucide eraser) · 탭 = 즉시 비움 · <b>빈칸이면 흐리게·비활성</b>.</div>
+    </div>
+    <ul>
+      <li><b>대상</b>: 부제·제목·자막 3칸(운영자 지정). <span class="mut">안내문·포스트칸은 기존 단일 버튼 유지(syncGuide 토글 호환).</span></li>
+      <li><b>배치</b>: 지우개=최우측(우측 14px), 붙여넣기=좌측(46px)·6px 간격 · 비움 시 자간/맞춤법 리뷰도 동반 갱신(<code>input</code> 이벤트).</li>
+    </ul>
+    <div class="kv"><span class="k">효율</span> 공용 <code>attachCopyPaste</code>에 옵션 1개 · <span class="k">품질저하</span> 0 — 순수 UI 추가(동작 무해·아이콘 SVG 토큰 규격).</div>
+  </div>
+
+  <!-- 3 -->
+  <div class="card">
+    <span class="tag req">요청 3</span>
+    <h2><b>자막 3줄 스크롤 제거</b> + 이미지 슬롯 높이 동기</h2>
+    <div class="row">
+      <div class="ba b"><div class="h">전</div>3줄 콘텐츠(96px) &gt; 칸 안높이(94px) = <b>2px 초과로 스크롤바</b>. 게다가 요청2 지우개가 칸을 좁혀 좁은 폰선 4번째 줄로 줄바꿈.</div>
+      <div class="ba a"><div class="h">후</div>칸 높이 <code>96→104px</code>(조금만 ↑) → <b>3줄 무스크롤</b> · 이미지 슬롯도 104px 동기.</div>
+    </div>
+    <ul>
+      <li><b>줄바꿈 회귀 차단</b>: 자막 텍스트칸은 버튼이 <b>1행 위 테두리로 떠</b> 글자와 안 겹침 → 우측 여백 <code>42px</code> 유지(2버튼이어도 폭 안 먹음) = 360·390·412·480px 전부 3줄.</li>
+      <li class="mut">단일행 입력(부제·제목)만 74px(글자 세로중앙=버튼과 겹침) · 슬롯은 ResizeObserver가 텍스트칸 높이로 자동 추적(폼 §4).</li>
+    </ul>
+    <div class="kv"><span class="k">효율</span> CSS 2값(min-height) · <span class="k">품질저하</span> 0 — 4폭 실측 무스크롤+높이일치.</div>
+  </div>
+
+  <div class="vbar">
+    <b>검증(자가 · §✅ⓒ 국소 뷰어)</b> — 실제 Chromium 헤드리스 <b>E2E 23/23 통과·페이지 에러 0</b>: 지우개 동작/위치·빈칸 dim·warnLines 단일유지 / 병합 카드(개별 3 + 전체 1)·<code>dispatchBatch</code> 실-fetch 병합·단일 위임 / 자막 무스크롤(360~480px)·슬롯 높이동기·padR 분기. + <code>check_refs</code> rc=0(JS구문·디자인 토큰 게이트)·인라인 스크립트 구문 0에러.
+    <div class="mini">필요 시 분신술 10인 적대 검증으로 격상 가능(말만 하면).</div>
+  </div>
+</div>
+</body>
+</html>
