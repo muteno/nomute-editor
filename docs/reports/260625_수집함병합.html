@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>수집함 병합 기능 — 작업 보고</title>
+<style>
+  :root{ --bg:#121212; --card:rgba(255,255,255,.03); --line:rgba(255,255,255,.09);
+    --accent:#0FFD02; --accent-2:#ff9614; --danger:#ff5b4a; --warn:#ffd24a;
+    --fg:#eef7f0; --mut:#8fa697; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--fg);padding:26px 16px 60px;
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.2px;
+    background-image:radial-gradient(120% 60% at 50% -8%, rgba(255,150,20,.07), transparent 55%);}
+  .wrap{max-width:780px;margin:0 auto;}
+  h1{font-size:23px;font-weight:800;margin:0 0 3px;letter-spacing:-.5px;}
+  .date{color:var(--mut);font-size:12.5px;margin:0 0 22px;}
+  h2{font-size:15px;font-weight:800;margin:26px 0 10px;padding-left:9px;border-left:3px solid var(--accent);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin:0 0 12px;}
+  p{margin:0 0 9px;} b{color:#fff;} code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:12.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:560px){.ba{grid-template-columns:1fr;}}
+  .ba .b{border-radius:11px;padding:12px 13px;font-size:13.5px;}
+  .before{background:rgba(255,91,74,.08);border:1px solid rgba(255,91,74,.28);}
+  .after{background:rgba(15,253,2,.07);border:1px solid rgba(15,253,2,.3);}
+  .b h3{margin:0 0 7px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
+  .before h3{color:var(--danger);} .after h3{color:var(--accent);}
+  ul{margin:5px 0 0;padding-left:19px;} li{margin:3px 0;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{color:var(--mut);font-weight:700;font-size:11.5px;}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:5px;}
+  .tg-g{color:#062108;background:linear-gradient(135deg,#d8ff3d,var(--accent));}
+  .tg-a{color:#1a1205;background:var(--accent-2);}
+  .step{display:flex;gap:10px;align-items:flex-start;margin:7px 0;}
+  .step .n{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px;
+    color:#062108;background:linear-gradient(135deg,#d8ff3d,var(--accent));}
+  .ok{color:var(--accent);font-weight:700;} .risk{color:var(--warn);}
+  .foot{color:var(--mut);font-size:11.5px;margin-top:26px;text-align:center;opacity:.7;}
+</style></head><body><div class="wrap">
+
+<h1>수집함 병합 기능</h1>
+<p class="date">2026-06-25 · viewer/index.html · PR #953 · 운영자 요청(B 디자인)</p>
+
+<div class="card"><p><b>한 줄</b> — 토큰 클러스터링에서 갈라진 <b>같은 사건</b>을 운영자가 길게 눌러 수동으로 묶고, 픽하면 <b>하나로 종합 요약</b>되게 한다.</p></div>
+
+<h2>왜 — 같은 사건이 갈라진다</h2>
+<div class="card">
+<p>수집함 클러스터링은 <b>제목 토큰 교집합</b>(겹침 3개+ 또는 자카드 0.5+)으로만 묶는다. 거대블록 방지로 임계를 일부러 보수화(2→3)했더니, 같은 사건이 <b>측면 단어·조사·약어</b>로 토큰이 안 겹쳐 따로 뜬다.</p>
+<table>
+<tr><th>같은 베네수엘라 지진</th><th>안 묶인 이유</th></tr>
+<tr><td>① 강진·카라카스 시민대피<br>② USGS 사망 가능성<br>③ 주택·건물 붕괴</td><td>①↔③ 겹침 2개(<code>베네수엘라</code>·<code>강진</code>)뿐 → 임계 3 미달<br>② <code>베네수</code>≠<code>베네수엘라</code>, <code>강진에</code>≠<code>강진</code>(조사) → 겹침 0</td></tr>
+</table>
+<p style="margin-top:9px">임계를 낮추면 무관 기사가 줄줄이 엮여 거대블록이 재발 → <b>알고리즘은 못 건드린다</b>. 그래서 <b>운영자 수동 병합</b>(2차 큐레이터 판단)으로 해결.</p>
+</div>
+
+<h2>전 / 후</h2>
+<div class="ba">
+<div class="b before"><h3>전</h3>
+<ul><li>같은 사건이 카드 3장으로 분리</li><li>각각 픽 = <b>요약 3회 + 썸네일 9장</b>(구독 쿼터·Gemini 3배)</li><li>피드에 같은 사건 중복 요약</li><li>합칠 방법 없음</li></ul></div>
+<div class="b after"><h3>후</h3>
+<ul><li>길게 눌러 3장 → 1장으로 묶음</li><li>한 번 픽 = <b>요약 1회</b>(멤버 종합)</li><li>매체 보도수 <b>합산</b>(union)</li><li>"＋N 병합" 배지 탭 = 해제</li></ul></div>
+</div>
+
+<h2>어떻게 쓰나</h2>
+<div class="card">
+<div class="step"><span class="n">1</span><div>카드 <b>길게 누름(600ms)</b> → 병합모드 진입. 그 카드 = <span class="tag tg-g">⚓ 기준</span>(앵커)</div></div>
+<div class="step"><span class="n">2</span><div>나머지 합칠 카드 <b>탭 = 체크</b>(카드 전체가 선택면 = 시안 B · 초록 틴트+접힌 코너 ✓)</div></div>
+<div class="step"><span class="n">3</span><div>우상단 <b>병합 박스</b>("병합 N") 누름 → 묶임</div></div>
+<div class="step"><span class="n">4</span><div>해제 = 묶인 카드의 <span class="tag tg-a">＋N 병합</span> 배지 탭 · 취소 = X·ESC·뒤로가기·빈곳 탭</div></div>
+</div>
+
+<h2>구현 — 핵심은 "기존 메커니즘 재사용"</h2>
+<div class="card">
+<p>병합의 본질 = 앵커 카드의 <code>cluster_members</code>(같은 사건 타매체 url 목록)에 멤버 url들을 <b>합치는 것 하나</b>. 그러면:</p>
+<ul>
+<li><b>종합 요약</b> = 픽 파이프라인이 이미 <code>cluster_members</code>를 <code>alt</code>로 분석기에 넘겨 종합 fetch·요약함 → 자동으로 멤버들 종합</li>
+<li><b>매체 보도수</b> = 합쳐진 url의 union 크기로 표시</li>
+<li><b>픽 상태</b>(PICKED 등) = 멤버 url 매칭도 기존 코드가 처리</li>
+</ul>
+<p class="ok">→ 파이프라인·큐레이션 알고리즘 <b>0 변경</b>. 뷰어가 fold해서 소비만. 원본 데이터는 복제라 불변.</p>
+<table>
+<tr><th>조각</th><th>위치</th></tr>
+<tr><td>저장(이 기기)</td><td><code>localStorage</code> <code>nm_merges</code> (앵커→멤버들)</td></tr>
+<tr><td>fold</td><td><code>renderScrap</code>의 <code>applyMerges</code> — 멤버 접고 앵커에 합산(복제)</td></tr>
+<tr><td>UI</td><td>롱프레스 진입 + 풀카드 토글 + <code>position:fixed</code> 병합박스</td></tr>
+</table>
+</div>
+
+<h2>장 · 단점</h2>
+<div class="card">
+<table>
+<tr><th>장점</th><th>단점 / 한계</th></tr>
+<tr><td><ul><li>알고리즘 불변 = <b>거대블록 위험 0</b></li><li>운영자 직접 선택 = <b>오병합 0</b></li><li>요약·썸네일 3배→1배 = <b>구독 쿼터·Gemini 절감</b></li><li>기존 요소 위치 0 이동</li></ul></td>
+<td><ul><li>저장이 <b>이 기기만</b>(localStorage) — 폰↔PC 미동기 <span class="risk">(v1 의도 · 필요 시 후속 cross-device)</span></li><li>수동이라 매번 손으로 묶어야</li><li>모바일 롱프레스 = 600ms 학습 필요</li></ul></td></tr>
+</table>
+</div>
+
+<h2>효율성</h2>
+<div class="card"><ul>
+<li><b>런타임</b> — <code>applyMerges</code>는 병합 0이면 즉시 반환(대부분). 있어도 pool 1회 순회 = 무시할 비용.</li>
+<li><b>비용 절감</b> — 같은 사건 N장을 1픽으로 = 요약 N→1, 썸네일 3N→3장. 운영자 핵심 페인(3배 픽) 해소.</li>
+<li><b>코드</b> — 신규 메커니즘 0, 기존 <code>cluster_members</code>·<code>pickAlt</code> 재사용 = 추가 표면적 최소.</li>
+</ul></div>
+
+<h2>품질 저하 리스크 — 점검</h2>
+<div class="card"><ul>
+<li><span class="ok">✓</span> <b>알고리즘 오염 0</b> — 클러스터링·신호·랭킹 *코드·임계* 무변경(뷰어 소비만). 큐레이션 방향 불변.</li>
+<li><span class="risk">△</span> <b>cross union 전이</b> — 병합 시 cross·breaking·grade를 멤버 max로 union 승계 → 앵커가 누적칼럼·🚨긴급/⚡이슈 배지로 전이 가능. 단 신호식·임계는 불변이고 운영자가 손수 고른 실제 매체 합산이라 허위 아님(의도된 부수효과 · 분신술 정직성 보강).</li>
+<li><span class="ok">✓</span> <b>원본 불변</b> — 앵커는 복제본에 합산(<code>{...anchor}</code>), CANDS·다음 렌더 오염 0(유닛테스트 확인).</li>
+<li><span class="ok">✓</span> <b>그룹 실종 방지</b> — 앵커가 별점·PASS로 pool서 빠지면 멤버를 접지 않음(통째 사라짐 차단).</li>
+<li><span class="ok">✓</span> <b>기존 동작 보존</b> — 평소 탭(본문→url)·픽·스와이프 그대로. 병합모드일 때만 탭=선택(위임 capture로 가드).</li>
+<li><span class="risk">△</span> <b>실기기 롱프레스</b> — 표준 패턴(기존 대기열 롱프레스 600ms) 계승했으나, 다기종 터치는 운영자 라이브 확인 권장.</li>
+</ul></div>
+
+<h2>검증</h2>
+<div class="card"><ul>
+<li><b>핵심 fold 로직 유닛테스트 22/0</b> — cross union·종합 alt 순서·복제 불변·앵커 부재/폴백/자기참조 + (분신술 후) breaking·grade 승계·GC·A↔B 사이클·손상데이터 방어</li>
+<li><b>분신술 10인 적대검증 → ⚠️ 11건 수정 → 재검 만장일치</b> — 외부 트리거(푸시·자동픽) 0·기틀 미저촉 실측 확인</li>
+<li><b>check_refs 그린</b> — JS 구문·참조 정합·디자인 거울(blur baseline 104→106 갱신)</li>
+<li>실기기 인터랙션 = 머지 후 라이브(pages.dev)에서 운영자 확인 권장</li>
+</ul></div>
+
+<p class="foot">노뮤트 · 수집함 병합 기능 작업 보고 · 토큰 = viewer :root 복제(일회성 스냅샷)</p>
+</div></body></html>
