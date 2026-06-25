@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>병합 UI v5 — 수직중앙·radius 일치</title>
+<style>
+  :root{
+    --bg:#121212; --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108; --accent-bright:#d8ff3d;
+    --fg:#eef7f0; --mut:#8fa697; --danger:#ff5b4a;
+    --r-s:9px; --r-l:16px; --blur-s:8px; --sp-1:6px; --sp-2:12px; --ease:cubic-bezier(.2,.7,.3,1);
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  .wrap{ max-width:460px; margin:0 auto; padding:18px 14px 80px; }
+  h1{ font-size:17px; margin:0 2px 6px; } h1 b{ color:var(--accent); }
+  .lead{ color:var(--mut); font-size:12px; line-height:1.7; margin:0 2px 16px; } .lead b{ color:var(--fg); }
+  .seclabel{ font-size:12.5px; font-weight:800; color:var(--accent); margin:20px 2px 3px; letter-spacing:-.2px; }
+  .seclabel small{ display:block; color:var(--mut); font-weight:600; font-size:11px; margin-top:2px; }
+
+  .col{ position:relative; background:#0d0d0d; border:1px solid var(--line2); border-radius:var(--r-l); padding:8px 11px 4px; }
+  .colhead{ position:relative; height:34px; margin-bottom:var(--sp-1); }
+  .newhdr{ color:var(--accent); font-size:15px; font-weight:800; text-shadow:0 0 11px rgba(15,253,2,.45); line-height:34px; }
+  .mbwrap{ position:absolute; top:1px; right:0; display:inline-flex; align-items:center; gap:var(--sp-1); }
+
+  /* 병합 칩 = 둥근사각(X와 radius 일치) · 글자 line-height:1 로 수직중앙 */
+  .chip{ display:inline-flex; align-items:center; height:32px; padding:0 13px; cursor:pointer; font-size:13px; font-weight:800; letter-spacing:-.2px;
+    line-height:1; border-radius:var(--r-s); background:rgba(26,28,26,.42); border:1px solid rgba(255,255,255,.17);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 4px 14px rgba(0,0,0,.4);
+    -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); transition:transform .12s var(--ease), border-color .15s; }
+  .chip:hover{ border-color:rgba(255,255,255,.27); } .chip:active{ transform:scale(.95); }
+  .chip .mico{ width:15px; height:15px; stroke:var(--fg); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; margin-right:7px; display:block; }
+  .chip .lbl{ color:var(--accent); line-height:1; } .chip .cnt{ color:var(--fg); font-variant-numeric:tabular-nums; margin-left:6px; line-height:1; }
+  .col.empty .chip{ opacity:.5; } .col.empty .chip .lbl{ color:var(--mut); } .col.empty .chip .mico{ stroke:var(--mut); }
+
+  .sbtnX{ display:grid; place-items:center; width:32px; height:32px; padding:0; cursor:pointer; color:var(--mut);
+    background:rgba(26,28,26,.42); border:1px solid rgba(255,255,255,.17); border-radius:var(--r-s);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18); -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s));
+    transition:transform .12s, color .15s, border-color .15s; }
+  .sbtnX:hover{ color:var(--fg); border-color:rgba(255,255,255,.27); } .sbtnX:active{ transform:scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .sbtnX svg{ width:13px; height:13px; stroke:currentColor; stroke-width:2.1; fill:none; stroke-linecap:round; display:block; }
+
+  .sc-item{ position:relative; padding:10px 11px; border-radius:13px; border:1px solid rgba(15,253,2,.13);
+    background:linear-gradient(165deg, rgba(17,28,19,.6), rgba(8,11,9,.76)); margin-bottom:var(--sp-2); }
+  .sc-item.member{ cursor:pointer; -webkit-user-select:none; user-select:none; } .sc-item.member:active{ transform:scale(.99); }
+  .meta{ display:flex; align-items:center; gap:5px; font-size:10px; margin-bottom:5px; }
+  .meta .cat{ color:#9ec2a6; font-weight:700; } .meta .dot{ color:var(--mut); } .meta .cross{ color:var(--accent); font-weight:700; }
+  .meta .urg{ color:var(--danger); font-weight:800; } .meta .time{ margin-left:auto; color:var(--mut); font-size:9.5px; }
+  .sc-title{ font-size:12.5px; line-height:1.4; color:var(--fg); font-weight:600; }
+  .sc-bot{ display:flex; gap:5px; margin-top:9px; pointer-events:none; }
+  .sc-bot button{ font:inherit; font-weight:800; font-size:11px; border-radius:9px; }
+  .pass{ flex:1; padding:6px 0; color:var(--mut); background:rgba(255,255,255,.03); border:1px solid var(--line2); }
+  .pick{ flex:1; padding:6px 0; color:var(--accent); background:rgba(15,253,2,.06); border:1px solid rgba(var(--accent-rgb),.4); }
+  .minus{ width:32px; color:var(--mut); background:rgba(255,255,255,.03); border:1px solid var(--line2); }
+  .member:not(.sel){ opacity:.55; }
+
+  .anchor{ border-color:var(--accent) !important; box-shadow:0 0 0 1px rgba(var(--accent-rgb),.4), 0 0 16px rgba(var(--accent-rgb),.22); }
+  /* 기준 칩 = 중립 글래스 + 강조 글자 · line-height:1 수직중앙 */
+  .reflabel{ position:absolute; top:-8px; left:11px; z-index:4; display:inline-flex; align-items:center; height:18px; padding:0 9px; line-height:1;
+    border-radius:999px; color:var(--accent); font-size:9.5px; font-weight:800; letter-spacing:-.2px;
+    background:rgba(20,24,21,.72); border:1px solid rgba(var(--accent-rgb),.4);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 2px 7px rgba(0,0,0,.45); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .member.sel{ border:2px dotted rgba(var(--accent-rgb),.65); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><b>병합 UI v5</b> — 수직중앙 · radius 일치</h1>
+  <p class="lead">v4 + ① 글자 <b>line-height:1</b>로 수직중앙(아래쏠림 해소) ② 병합 칩을 <b>둥근사각(var(--r-s))</b>으로 = 옆 X 네모와 radius 일치. 아래는 확대 비교.</p>
+
+  <div class="seclabel">제안 (최종)<small>병합 [↳ 병합 2] 둥근사각칩 + 같은 radius X · 글자 수직중앙 · 기준 유지 · 점선 선택</small></div>
+  <div class="col empty" data-v="new">
+    <div class="colhead"><span class="newhdr">신규</span>
+      <div class="mbwrap">
+        <button class="chip"><svg class="mico" viewBox="0 0 24 24"><path d="M7 4v6a5 5 0 0 0 5 5h5M17 12l3 3-3 3"/></svg><span class="lbl">병합</span><span class="cnt">2</span></button>
+        <button class="sbtnX" aria-label="병합 취소"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+      </div>
+    </div>
+    <div class="cards" data-cards></div>
+  </div>
+
+  <div class="seclabel">버튼 확대 (수직중앙·radius 체크)</div>
+  <div id="zoom" style="transform:scale(2.6); transform-origin:left center; margin:34px 0 60px 24px; display:inline-flex; align-items:center; gap:6px;">
+    <button class="chip"><svg class="mico" viewBox="0 0 24 24"><path d="M7 4v6a5 5 0 0 0 5 5h5M17 12l3 3-3 3"/></svg><span class="lbl">병합</span><span class="cnt">2</span></button>
+    <button class="sbtnX"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+  </div>
+</div>
+<script>
+  const DATA=[
+    {role:'anchor', cat:'경제', cross:7, urg:'긴급', title:"코스피, 장중 6% 급등하며 '9천피' 탈환…기관 3.9조 순매수"},
+    {role:'member', cat:'사회', cross:12, title:'金총리 "檢 보완수사권 폐지, 정부 입장으로 최종 정리"'},
+    {role:'member', cat:'경제', cross:11, title:'李, 내달 1일 문재인 전 대통령과 청와대 오찬'},
+  ];
+  function esc(s){ return s.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+  const host=document.querySelector('[data-cards]');
+  DATA.forEach(d=>{ const el=document.createElement('div'); el.className='sc-item '+d.role;
+    if(d.role==='member') el.classList.add('sel');
+    let h = d.role==='anchor' ? '<span class="reflabel">기준</span>' : '';
+    h+='<div class="meta"><span class="cat">'+d.cat+'</span><span class="dot">·</span><span class="cross">'+d.cross+'</span>'
+      +(d.urg?'<span class="dot">·</span><span class="urg">'+d.urg+'</span>':'')+'<span class="time">1시간 전</span></div>';
+    h+='<div class="sc-title">'+esc(d.title)+'</div>';
+    h+='<div class="sc-bot"><button class="pass">PASS</button><button class="pick">PICK</button><button class="minus">−</button></div>';
+    el.innerHTML=h;
+    if(d.role==='member') el.addEventListener('click', ()=>{ el.classList.toggle('sel'); recount(); });
+    host.appendChild(el); });
+  function recount(){ const n=document.querySelectorAll('.cards .member.sel').length;
+    document.querySelector('.col .cnt').textContent=n; document.querySelector('.col').classList.toggle('empty', n===0); }
+  recount();
+  document.querySelectorAll('button').forEach(b=> b.addEventListener('click', e=> e.preventDefault()));
+</script>
+</body>
+</html>
