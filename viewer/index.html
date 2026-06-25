@@ -5770,7 +5770,8 @@ function openTool(src, title) {
   const wasOpen = tooldlg.open;
   $('#toolTitle').textContent = title || '제작 도구';
   // ⚠️ iframe은 .src= 대신 location.replace = 세션 히스토리에 항목 안 쌓음. (.src면 about:blank→도구 네비가 백버튼용 항목을 만들어, 폰 뒤로가기 한 번에 모달이 닫히는 대신 iframe만 about:blank로 되돌아가 빈 화면이 됨 — 운영자 260623 버그픽스.) showModal 전 로드 시작 = 2단 깜빡임 완화.
-  { const _fr = $('#toolframe'); try { _fr.contentWindow.location.replace(src); } catch { _fr.src = src; } }
+  const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();   // 도구 페이지 캐시버스트 = 매 열림 최신(stale thumb/ly/k 방지 · _headers no-cache와 한 쌍 · 운영자 260625)
+  { const _fr = $('#toolframe'); try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; } }
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   tooldlg.showModal(); setTimeout(() => $('#toolX').focus(), 0);
   if (!wasOpen) history.pushState({ tool: true }, '');   // 백버튼 = 메인 복귀(앱 밖으로 안 나감)
