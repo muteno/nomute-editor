@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>영상 자막 생성기</title>
+<style>
+  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108; }
+  * { box-sizing:border-box; }
+  /* 스크롤바 톤앤톤(초록 글래스) — 뉴스 요약기(viewer/index.html) 계승 · 전 페이지 공통 */
+  html { scrollbar-width:thin; scrollbar-color:rgba(15,253,2,.30) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(15,253,2,.26); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.45); background-clip:padding-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(15,253,2,.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
+  h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
+  label:first-of-type { margin-top:0; }
+  textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; }
+  input[type=text] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
+  textarea:focus, input:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); outline:none; }
+  /* 붙여넣기 = 2A 동그라미, URL 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
+  .urlwrap { position:relative; }
+  .urlclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); -webkit-tap-highlight-color:transparent; transition:transform .12s, color .15s, border-color .15s; }   /* G1 글래스모피즘(260625) */
+  .urlclip svg { display:block; width:13px; height:13px; }
+  .urlclip::before { content:""; position:absolute; inset:-8px; }
+  .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .urlclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(15,253,2,.6); }
+  .urlclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  .paid { color:var(--mut); font-size:11px; font-weight:400; }
+  .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
+  .divider { border:none; border-top:1px solid var(--line); margin:20px 0 6px; }
+  .file { display:block; padding:12px; border:1px dashed rgba(15,253,2,.5); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; }   /* 글자 또렷 + 테두리 강조색 50% */
+  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
+  /* 파일 업로드(좌·넓게) + 생성(우·짧게) 한 줄 가로 분할 — 풀폭 스택 대신 */
+  .filerow { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
+  .filerow .file { flex:1.4 1 0; min-width:0; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; }
+  .filerow .go { flex:1 1 0; width:auto; margin-top:0; white-space:nowrap; }
+  #fileTxt { display:flex; align-items:center; justify-content:center; min-width:0; max-width:100%; }   /* 배지↔파일명 세로중앙 정렬(flex) */
+  #fileTxt .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  /* 파일타입 색배지 = 카테고리(경제·사회) 칩 계승: 검정 반투명 글래스 + 타입별 글 색만 바꿈 */
+  .ftype { display:inline-block; flex:none; font-size:11px; font-weight:800; letter-spacing:-.2px; line-height:1;
+    padding:4px 9px; border-radius:999px; margin-right:7px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  /* 업로드 게이지 = 뉴스요약 진행바(.prog .seg.cur)의 움직이는 shine 계승(실패 빗금 X) */
+  .lybar { height:7px; border-radius:999px; background:rgba(15,253,2,.16); position:relative; overflow:hidden; margin:10px 0 2px; }
+  .lybar::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%; border-radius:999px;
+    background:linear-gradient(90deg,transparent,rgba(15,253,2,.85),transparent);
+    transform:translateX(-120%); animation:lyshine 1.35s linear infinite; will-change:transform; }
+  @keyframes lyshine { to { transform:translateX(360%); } }
+  @media (prefers-reduced-motion:reduce){ .lybar::after { animation:none; } }
+  /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
+  .go { width:100%; margin-top:16px; padding:14px; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(15,253,2,.36); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
+  .go:hover { background:rgba(15,253,2,.18); border-color:rgba(15,253,2,.5); }
+  .go:active { transform:scale(.955); background:rgba(15,253,2,.2); }
+  .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
+  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb .go.err 통일·운영자 260622) */
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
+  @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; } .status.err { color:#ff8a8a; }
+  .out { margin-top:18px; }
+  .out h1.t { font-size:20px; color:var(--fg); margin:18px 0 6px; }
+  .out h2 { font-size:16px; color:var(--accent); margin:18px 0 6px; }
+  .out h3 { font-size:14px; color:var(--fg); margin:16px 0 6px; }
+  .out p { margin:5px 0; color:#cfd2d7; word-break:break-word; }
+  .out table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
+  .out td, .out th { border:1px solid var(--line); padding:6px 8px; text-align:left; color:#cfd2d7; }
+  .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 12px; }
+  .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e9eaec; }
+  .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:9px; cursor:pointer;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
+  .code button svg { display:block; }
+  .code button:hover { background:rgba(255,255,255,.16); }
+  .code button:active { transform:scale(.85); }
+  .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <p class="sub">영상 소스를 통해 복사 가능한 텍스트 자막 생성</p>
+
+  <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
+  <div class="urlwrap"><input type="text" id="url" placeholder="https://…"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
+  <div class="orsep">— 또는 —</div>
+  <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
+  <div class="filerow">
+    <label class="file" id="fileLab"><span id="fileTxt">파일 선택</span>
+      <input type="file" accept="video/*,audio/*,.txt,.srt,.vtt,text/plain" id="file" style="display:none">
+    </label>
+    <button class="go" id="go">자막 생성</button>
+  </div>
+  <div class="lybar" id="uprog" hidden></div>
+
+  <div class="status" id="status"></div>
+  <hr class="divider">
+  <div class="out" id="out"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+// 복사 버튼 = 캐러셀 .sbtn 글래스 아이콘 계승(§📋 · 이모지 X · SVG만)
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+// URL 칸 붙여넣기↔복사 (2A 상단걸침 · 뉴스요약/썸네일 통일 · 운영자 260625)
+(function () {
+  const inp = $('#url'), b = $('#urlClip'); if (!inp || !b) return;
+  const upd = () => { if (b.classList.contains('ok')) return; const f = inp.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); };
+  b.addEventListener('click', async e => { e.preventDefault();
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    else { try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
+  });
+  inp.addEventListener('input', upd); upd();
+})();
+// 파일타입 색배지 색(카테고리 팔레트 계승: 테크 시안·경제 노랑·국제 보라·사회 초록)
+const FTYPE_COLOR = { '영상':'#7fc8d8', '음성':'#e7c977', 'SRT':'#b79be8', 'TXT':'#7fd0a0' };
+function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 중입니다…' + 생성버튼 잠금
+  $('#fileTxt').textContent = msg || '업로드 중입니다…'; $('#fileLab').classList.remove('has'); $('#uprog').hidden = false; $('#go').disabled = true;
+}
+function setBadge(type, name) {   // 업로드 완료 = 타입 색배지 + 파일명 ✓ + 생성 잠금해제
+  $('#uprog').hidden = true; $('#go').disabled = false;
+  $('#fileTxt').innerHTML = `<span class="ftype" style="color:${FTYPE_COLOR[type]}">${type}</span><span class="fname">${esc(name)} ✓</span>`;
+  $('#fileLab').classList.add('has');
+}
+
+let FILE_B64 = '', FILE_NAME = '', SRT_TEXT = '';   // SRT_TEXT = TXT/SRT 파일 텍스트(STT 건너뜀)
+const FILE_MAX = 20 * 1024 * 1024;     // 이하 = 직접 업로드 / 초과 = 브라우저서 음성만 추출
+const FILE_HARD = 250 * 1024 * 1024;   // 이 이상 영상은 브라우저 추출도 거부(URL로) — 폰 wasm 힙(~1GB)서 OOM 위험이라 보수적
+
+function readB64(blob, name) {   // Blob/File → data URL(base64) 저장. ⚠️ onerror 필수 — 없으면 리더 실패 시 Promise가 영영 settle 안 돼 await 행→#go 고착
+  FILE_NAME = name;
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => { FILE_B64 = r.result; res(); }; r.onerror = () => rej(r.error || new Error('파일 읽기 실패')); r.readAsDataURL(blob); });
+}
+function clearFile(msg, isErr) {
+  FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = ''; $('#file').value = ''; $('#uprog').hidden = true; $('#go').disabled = false;
+  $('#fileTxt').textContent = '파일 선택'; $('#fileLab').classList.remove('has');
+  if (msg) { const st = $('#status'); st.textContent = msg; st.classList.toggle('err', !!isErr); }
+}
+
+// ffmpeg.wasm(싱글스레드 코어 — ⚠️ -mt 금지: COEP 부재라 깨짐). 20MB↑ 영상에서 음성만 추출(압축). 첫 호출 시에만 CDN 로드. CSP/COEP 불필요.
+let FF = null, ffOnMsg = null;   // ffOnMsg = 현재 호출의 진행 콜백 — 리스너는 로드 시 1회만 등록(매 호출 등록 시 누적되던 것 방지)
+async function ffExtractAudio(file, onMsg) {
+  ffOnMsg = onMsg;
+  if (!FF) {
+    onMsg('🎧 ffmpeg 로딩 중… (첫 회 ~25MB · 잠시)');
+    const ffBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+    const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';   // 모듈 워커는 importScripts 불가 → import() → ESM 코어 필요(UMD✗)
+    const { FFmpeg } = await import(`${ffBase}/index.js`);
+    const { fetchFile, toBlobURL } = await import('https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const ff = new FFmpeg();
+    // 교차출처(CDN) Worker 생성은 브라우저가 차단 → 같은-출처 blob 워커가 CDN worker.js를 import(그 안 상대 import는 CDN 기준 해석). classWorkerURL 미지정이 'Failed to construct Worker' 원인이었음.
+    const classWorkerURL = URL.createObjectURL(new Blob([`import ${JSON.stringify(ffBase + '/worker.js')};`], { type: 'text/javascript' }));
+    await ff.load({
+      classWorkerURL,
+      coreURL: await toBlobURL(`${coreBase}/ffmpeg-core.js`, 'text/javascript'),
+      wasmURL: await toBlobURL(`${coreBase}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
+    ff.on('progress', ({ progress }) => ffOnMsg && ffOnMsg(`🎧 음성 추출 중… ${Math.max(0, Math.min(99, Math.round((progress || 0) * 100)))}%`));   // 1회만 등록·현재 onMsg로 위임
+    FF = { ff, fetchFile };
+  }
+  const { ff, fetchFile } = FF;
+  const ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.mp4'])[0].toLowerCase();
+  await ff.writeFile('in' + ext, await fetchFile(file));
+  await ff.exec(['-i', 'in' + ext, '-vn', '-ac', '1', '-ar', '16000', '-b:a', '48k', '-y', 'out.mp3']);   // 모노 16k 48kbps mp3(Whisper용·작음)
+  const data = await ff.readFile('out.mp3');
+  ff.deleteFile('in' + ext).catch(() => {});
+  return new Blob([data.buffer], { type: 'audio/mpeg' });
+}
+
+$('#file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = '';   // 새 선택 = 이전 입력 초기화
+  const st = $('#status'); st.classList.remove('err'); st.textContent = ''; $('#out').innerHTML = '';
+  setUploading();   // 게이지 + '업로드 중입니다…' + #go 잠금
+  try {   // 바깥 try = f.text()·readB64 등 어떤 throw에도 #go·게이지 복구(잠금 고착 차단)
+    // TXT/SRT/VTT = 텍스트로 읽어 자막 입력(STT 건너뜀) + 아래 내용 출력
+    if (/\.(txt|srt|vtt)$/i.test(f.name) || /^text\//.test(f.type)) {
+      if (f.size > 2 * 1024 * 1024) { clearFile('텍스트 파일이 너무 큼(2MB↑)', true); return; }
+      const text = await f.text();
+      SRT_TEXT = text.trim(); FILE_NAME = f.name;
+      setBadge(/\.srt$/i.test(f.name) ? 'SRT' : 'TXT', f.name);
+      $('#out').innerHTML = '<h3>업로드 내용</h3><div class="code"><pre>' + esc(text) + '</pre></div>';
+      st.textContent = '✅ 텍스트(TXT/SRT) — 자막 생성 가능';
+      return;
+    }
+    const isVideo = /^video\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|3gp)$/i.test(f.name);
+    if (!isVideo) {                                        // 오디오 = 그대로(이미 작음)
+      if (f.size > FILE_MAX) { clearFile(`오디오가 커 — ${(f.size / 1048576).toFixed(1)}MB (최대 20MB). URL로.`, true); return; }
+      await readB64(f, f.name); setBadge('음성', f.name); return;
+    }
+    if (f.size > FILE_HARD) { clearFile(`영상이 너무 큼 — ${(f.size / 1048576).toFixed(0)}MB (한계 ${Math.round(FILE_HARD / 1048576)}MB). URL로 시도해줘.`, true); return; }
+    // 영상 = 무조건 음성만 추출(길이·용량 무관)
+    setUploading(f.size > 150 * 1048576 ? '업로드 중입니다… (큰 영상 — 폰서 실패 시 URL 권장)' : '업로드 중입니다… (음성 추출)');
+    try {
+      const blob = await ffExtractAudio(f, m => { st.textContent = m; });
+      if (blob.size > FILE_MAX) { clearFile(`추출 음성도 커(${(blob.size / 1048576).toFixed(1)}MB) — URL로.`, true); return; }
+      await readB64(blob, f.name.replace(/\.[^.]+$/, '') + '.mp3');
+      setBadge('영상', f.name);
+      st.textContent = `✅ 음성 추출 완료 (${(blob.size / 1048576).toFixed(1)}MB) — 자막 생성 가능`;
+    } catch (err) {
+      if (f.size <= FILE_MAX) {                            // 추출 실패 + 작은 영상 → 그대로 업로드(러너가 추출)
+        await readB64(f, f.name); setBadge('영상', f.name);
+        st.textContent = '음성 추출 건너뜀 → 영상 그대로 업로드(러너가 추출).';
+      } else {
+        clearFile('음성 추출 실패 — 영상 URL로 시도해줘 (' + ((err && err.message) ? err.message.slice(0, 160) : 'error') + ')', true);
+      }
+    }
+  } catch (err) {   // 파일 읽기 실패(f.text·FileReader 등) = 잠금·게이지 풀고 안내(고착 차단)
+    clearFile('파일 처리 실패 — 다시 선택해줘 (' + ((err && err.message) ? err.message.slice(0, 120) : 'error') + ')', true);
+  }
+};
+
+// 최소 마크다운: ``` 코드블록(복사 버튼) · #/##/### 헤딩 · | 표 · 문단.
+function renderMd(md) {
+  const parts = md.split('```');
+  let html = '';
+  parts.forEach((part, i) => {
+    if (i % 2 === 1) {
+      let code = part; const nl = code.indexOf('\n');
+      const first = nl >= 0 ? code.slice(0, nl).trim() : '';
+      if (/^[a-zA-Z]+$/.test(first)) code = code.slice(nl + 1);
+      code = code.replace(/\s+$/, '');
+      html += `<div class="code"><button data-c="${encodeURIComponent(code)}" aria-label="복사" title="복사">${COPY_SVG}</button><pre>${esc(code)}</pre></div>`;
+    } else {
+      const lines = part.split('\n'); let tbl = [];
+      const flush = () => {
+        if (!tbl.length) return;
+        const rows = tbl.filter(r => !/^\s*\|?\s*[-:|\s]+\|?\s*$/.test(r));   // 구분줄 제거
+        html += '<table>' + rows.map(r => {
+          const cells = r.replace(/^\s*\||\|\s*$/g, '').split('|').map(c => c.trim());
+          return '<tr>' + cells.map(c => `<td>${esc(c)}</td>`).join('') + '</tr>';
+        }).join('') + '</table>';
+        tbl = [];
+      };
+      lines.forEach(line => {
+        const t = line.trim();
+        if (t.startsWith('|')) { tbl.push(t); return; }
+        flush();
+        if (!t) return;
+        if (t.startsWith('### ')) html += `<h3>${esc(t.slice(4))}</h3>`;
+        else if (t.startsWith('## ')) html += `<h2>${esc(t.slice(3))}</h2>`;
+        else if (t.startsWith('# ')) html += `<h1 class="t">${esc(t.slice(2))}</h1>`;
+        else if (t === '---') html += '<hr style="border-color:#2a2c31">';
+        else html += `<p>${esc(t)}</p>`;
+      });
+      flush();
+    }
+  });
+  return html;
+}
+
+function wireCopy() {
+  document.querySelectorAll('.code button').forEach(b => b.onclick = () => {
+    navigator.clipboard.writeText(decodeURIComponent(b.dataset.c)).then(() => {
+      b.innerHTML = CHECK_SVG; b.classList.add('done');
+      setTimeout(() => { b.innerHTML = COPY_SVG; b.classList.remove('done'); }, 1500);
+    });
+  });
+}
+
+let _curStop = null;   // 현재 진행 폴 중단 핸들 — 재시도(재클릭)로 새 폴 시작 시 옛 폴 멈춰 상태표시 충돌·중복 폴 차단
+function poll(outPath, isUrl) {
+  if (_curStop) _curStop();   // 재시도: 이전 폴 중단
+  const t0 = Date.now(), status = $('#status'), out = $('#out');
+  const budget = isUrl ? 1200 : 720;   // 컴팩트 백스톱 — 생성 보통 1~5분, 실패는 error.log로 즉시(아래) → budget은 백스톱. URL/파일=Whisper 첫다운+STT 여유(GH 빠른망 1~3분), SRT=짧음(260619)
+  const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = 워크플로 실패 메시지(있으면 즉시 표시)
+  let live = true; const stop = () => { live = false; clearInterval(disp); }; _curStop = stop;
+  const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
+    if (!live) return;
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (sec > budget) { stop(); status.textContent = '시간 초과 — 위 버튼으로 다시 시도해줘(또는 Actions 로그 확인)'; status.classList.add('err'); out.innerHTML = ''; return; }
+    status.textContent = '⏳ 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)');
+  };
+  const disp = setInterval(draw, 1000); draw();
+  const tick = async () => {
+    if (!live) return;
+    // 1) 실패 먼저 — error.log 뜨면 즉시 에러 표시(무한 폴링·'시간 초과' 방지). SPA 폴백(index.html) HTML은 무시.
+    try {
+      const er = await fetch(errPath + '?t=' + Date.now());
+      if (er.ok) {
+        const ect = (er.headers.get('content-type') || '').toLowerCase();
+        const em = await er.text();
+        const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
+        if (em && em.trim() && !eHtml) { stop(); status.textContent = '❌ ' + em.trim(); status.classList.add('err'); out.innerHTML = ''; return; }
+      }
+    } catch (e) { /* 재시도 */ }
+    // 2) 결과(subs.md) 확인
+    try {
+      const r = await fetch(outPath + '?t=' + Date.now());
+      if (r.ok) {
+        const ct = (r.headers.get('content-type') || '').toLowerCase();
+        const md = await r.text();
+        // 결과(subs.md)가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 준다 → 그걸 결과로 오인하면
+        // '완료 (0s)'에 페이지 HTML이 통째로 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과시킨다.
+        const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
+        if (md && md.trim() && !isHtml) { stop(); status.textContent = '✅ 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)'; out.innerHTML = renderMd(md); wireCopy(); return; }
+      }
+    } catch (e) { /* 재시도 */ }
+    if (live) setTimeout(tick, 5000);
+  };
+  tick();
+}
+
+function errStatus(m) {   // 전송 막힘 = 메시지를 버튼 안에 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(thumb errStatus 통일·운영자 260622)
+  const s = $('#status'); if (s) { s.textContent = ''; s.classList.remove('err'); }   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
+  const g = document.getElementById('go'); if (!g) return;
+  if (!g.dataset.label) g.dataset.label = g.textContent;   // 원래 라벨 보존
+  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
+  g.textContent = m; g.setAttribute('aria-live', 'assertive');   // 메시지 = 버튼 안에
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label; }, 1700);
+}
+$('#go').onclick = async () => {
+  const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
+  const url = $('#url').value.trim();
+  if (!url && !FILE_B64 && !SRT_TEXT) return errStatus('내용 삽입 필수');   // 빈 입력 = 버튼 안 빨강+흔들림(thumb 통일·반쪽폭 버튼이라 짧게·운영자 문구)
+  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
+  $('#go').disabled = true; status.textContent = '생성 중…'; $('#out').innerHTML = '<div class="lybar"></div>';   // 생성 중에도 같은 움직이는 게이지
+  try {
+    const payload = url ? { url } : SRT_TEXT ? { subs: SRT_TEXT } : { fileB64: FILE_B64, name: FILE_NAME };   // 우선순위 url > 텍스트파일(SRT) > 영상·음성
+    const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const j = await res.json();
+    if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); $('#out').innerHTML = ''; return; }
+    poll(j.out, j.url || j.file);
+  } catch (e) {
+    status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err'); $('#out').innerHTML = '';
+  } finally { $('#go').disabled = false; }
+};
+</script>
+<script src="cscroll.js"></script>
+</body>
+</html>
