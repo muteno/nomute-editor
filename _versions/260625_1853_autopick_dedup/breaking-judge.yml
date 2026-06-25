@@ -139,11 +139,7 @@ jobs:
       - name: 긴급 grade≥3 자동 픽
         if: steps.chk.outputs.pending != '0'
         id: autopick
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 사건중복 AI dedup(지진형)용 — 토큰 없으면 렉시컬만(픽 진행=false-merge 회피)
         run: |
-          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN   # 구독 OAuth만 사용(api-key 충돌 차단 · 판정 스텝과 동일)
           python3 -m pip install --quiet --break-system-packages feedparser requests || { echo "::warning::deps 설치 실패 — 자동픽 생략"; echo "picked=0" >> "$GITHUB_OUTPUT"; exit 0; }   # 24.04 PEP-668 = --break-system-packages 필수(push 스텝과 동일 · 없으면 자동픽 무성과 green)
           python3 scraper/auto_pick_breaking.py | tee /tmp/autopick.out
           echo "picked=$(sed -n 's/^PICKED=//p' /tmp/autopick.out | tail -1)" >> "$GITHUB_OUTPUT"
@@ -153,12 +149,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json)" ]; then
+          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt push/autopick.json)" ]; then
             echo "자동픽 변동 없음 — 커밋 생략"; exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json
+          git add pending scraper/seen_urls.txt push/autopick.json
           git commit -m "auto-pick: 긴급 grade≥3 자동 분석 (픽 ${{ steps.autopick.outputs.picked }}건)"
           pushed=0
           for i in 0 1 2 3; do
