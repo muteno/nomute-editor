@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260625 — 요약 편향·다각도 표기 + 카드뉴스 [프롬프트 설계]</title>
+<style>
+  :root{--bg:#0b0d0c;--card:#11150f;--fg:#e8ece9;--mut:#8fa697;--accent:#0FFD02;--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.06);--amber:#ffb84d;--danger:#ff5a5a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;line-height:1.6;padding:24px 16px 80px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 26px}
+  h2{font-size:16px;font-weight:800;margin:34px 0 10px;padding-top:16px;border-top:1px solid var(--line);color:var(--accent)}
+  h3{font-size:13px;font-weight:800;color:var(--mut);letter-spacing:.04em;margin:18px 0 7px;text-transform:uppercase}
+  p{margin:6px 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .box{background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:13px 15px}
+  .box.before{border-color:rgba(255,90,90,.25)}
+  .box.after{border-color:rgba(15,253,2,.30)}
+  .tag{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;display:inline-block;margin-bottom:8px;padding:2px 7px;border-radius:6px}
+  .tag.b{color:var(--danger);background:rgba(255,90,90,.10)}
+  .tag.a{color:var(--accent);background:rgba(15,253,2,.10)}
+  .mock{font-size:13px;line-height:1.7}
+  .mut{color:var(--mut)} .acc{color:var(--accent);font-weight:800} .fg{color:var(--fg)}
+  .ar{color:var(--mut)} .corr{color:var(--accent);font-weight:800;font-style:normal}
+  .why-old{display:block;color:var(--mut);font-size:11.5px;margin-top:3px}
+  .why-new{display:block;color:var(--fg);font-size:11.5px;margin-top:3px}
+  .why-new b{color:var(--accent);font-weight:800}
+  .bullet{margin:3px 0;padding-left:14px;position:relative}
+  .bullet:before{content:'•';color:var(--accent);position:absolute;left:0;font-weight:800}
+  .pd{border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:11px 0;margin:8px 0}
+  .pd-h{color:var(--accent);font-size:14px;font-weight:800;letter-spacing:-.2px;margin:0 0 5px}
+  .pd .bullet b{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  td.ok{color:var(--accent)} td.warn{color:var(--amber)}
+  .pill{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(15,253,2,.12);color:var(--accent)}
+  .note{font-size:12px;color:var(--mut);margin-top:4px}
+  ul.clean{margin:6px 0;padding-left:18px} ul.clean li{margin:3px 0}
+  code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:5px;font-size:12px}
+</style></head>
+<body><div class="wrap">
+
+<h1>뉴스 요약 편향·다각도 표기 정리 + 카드뉴스 [프롬프트 설계] 개요</h1>
+<p class="sub">260625 · 운영자 요청 3건 · 10인 적대 평의회 아이데이션(만장일치 GO·조건부) → 구현 · PR #955</p>
+
+<h2>① 약보수 보정 — 자유요약 편향줄로 (회색 → 흰 라벨)</h2>
+<div class="grid">
+  <div class="box before"><span class="tag b">전</span>
+    <div class="mock">
+      <p class="mut" style="font-size:11px">활용 옵션</p>
+      <div class="bullet">편향: 원문 5/10 (중립) → 큐레이션 6/10 (중립) <span class="acc">| 약보수 보정</span> (좌편향 프레이밍 '허위 유포자 면죄' 회피, 공직자 검증 원칙 중립 제시)</div>
+      <p class="mut" style="font-size:11px;margin-top:12px">콘텐츠 초안 · 자유요약</p>
+      <div class="bullet">편향: <b>중립 5</b> <span class="ar">─→</span> <span class="corr">＋1</span> <span class="ar">─→</span> <b>중립 6</b>
+      <span class="why-old">↳ 좌편향 프레이밍 회피·공직자 검증 원칙 중립 제시</span></div>
+    </div>
+  </div>
+  <div class="box after"><span class="tag a">후</span>
+    <div class="mock">
+      <p class="mut" style="font-size:11px">활용 옵션</p>
+      <div class="bullet">편향: 원문 5/10 (중립) → 큐레이션 6/10 (중립) <span class="mut">(약보수보정 이동 →)</span></div>
+      <p class="mut" style="font-size:11px;margin-top:12px">콘텐츠 초안 · 자유요약</p>
+      <div class="bullet">편향: <b>중립 5</b> <span class="ar">─→</span> <span class="corr">＋1</span> <span class="ar">─→</span> <b>중립 6</b>
+      <span class="why-new"><b>약보수 보정</b> : 좌편향 프레이밍 회피·공직자 검증 원칙 중립 제시</span></div>
+    </div>
+  </div>
+</div>
+<p class="note">· <code>↳</code> 회색 → <code>약보수 보정 :</code> 흰색(라벨=강조색) · 화살표 줄 바로 아래 · 활용옵션의 중복 사유 제거(이동) · 무관/면제 케이스도 동일 표기.</p>
+
+<h2>② 다각도 해석 — '이렇게 볼 수도' 제거 · 틀 고정</h2>
+<p class="note">원인 = <code>prompts/news-analysis.md</code> 다각도 템플릿이 한 줄로 모호 → AI가 두 갈래로 해석(들쭉날쭉). 템플릿을 관점별 독립 불릿으로 못박고, 뷰어가 기존 분석건의 인라인 접두도 제거.</p>
+<div class="grid">
+  <div class="box before"><span class="tag b">전 (최근·김남국)</span>
+    <div class="mock">
+      <div class="bullet"><span class="mut">이렇게 볼 수도 ①</span> <span class="acc">(표현의 자유)</span>: 공직자 검증은 거칠어도 보호받아야…</div>
+      <div class="bullet"><span class="mut">이렇게 볼 수도 ②</span> <span class="acc">(명예 보호)</span>: 사실과 어긋날 단정까지 면책 주면…</div>
+      <div class="bullet"><span class="mut">이렇게 볼 수도 ③</span> <span class="acc">(정치적 맥락)</span>: 양 진영 해석이 갈리지만…</div>
+    </div>
+  </div>
+  <div class="box after"><span class="tag a">후 (고정 틀)</span>
+    <div class="mock">
+      <div class="bullet"><span class="acc">표현의 자유</span>: 공직자 검증은 거칠어도 보호받아야…</div>
+      <div class="bullet"><span class="acc">명예 보호</span>: 사실과 어긋날 단정까지 면책 주면…</div>
+      <div class="bullet"><span class="acc">정치적 맥락</span>: 양 진영 해석이 갈리지만…</div>
+    </div>
+  </div>
+</div>
+<p class="note">· 직전 선박 기사(이미 정상)와 동일 포맷으로 통일 — 머리말·번호 금지, 관점 라벨로 바로.</p>
+
+<h2>③ 카드뉴스 [프롬프트 설계] 개요 (신설)</h2>
+<p class="note">card-make가 제목과 [카드 1] 사이에 <b>디자인사고 브리프</b>를 작성 → 뷰어가 <b>구분선 2개 사이</b>로 렌더. 목적 = 딱딱한 뉴스를 한국웹툰식 극화/수채화로 SNS 이용자에게 친숙하게(시각적 재미 + 감정 공감).</p>
+<div class="grid">
+  <div class="box before"><span class="tag b">전</span>
+    <div class="mock">
+      <p style="font-weight:800">📰 부산 앞바다 992톤 가스선-79톤 어선 충돌</p>
+      <p class="mut" style="font-size:12px">[카드 1] 바로 시작 — 설계 의도 표면화 없음</p>
+      <p class="acc bullet" style="font-weight:800">텍스트</p>
+      <p class="mut" style="font-size:12px">부산 앞바다에서 / 992톤이 79톤을 덮쳤다…</p>
+    </div>
+  </div>
+  <div class="box after"><span class="tag a">후</span>
+    <div class="mock">
+      <p style="font-weight:800">📰 부산 앞바다 992톤 가스선-79톤 어선 충돌</p>
+      <div class="pd">
+        <div class="pd-h">[프롬프트 설계]</div>
+        <div class="bullet"><b>화풍</b> : B극화 — 한국웹툰식으로 친숙하게</div>
+        <div class="bullet"><b>분위기</b> : 긴장·비장 (정적 속 압박감)</div>
+        <div class="bullet"><b>연출 방향</b> : 덩치 차이를 한 프레임에 — 작은 배가 사라지는 결정적 순간에 시선을 머물게</div>
+      </div>
+      <p class="acc bullet" style="font-weight:800">텍스트</p>
+      <p class="mut" style="font-size:12px">부산 앞바다에서 / 992톤이 79톤을 덮쳤다…</p>
+    </div>
+  </div>
+</div>
+<p class="note">· '왜(독자훅)/무엇(시사점 관점)/어떻게(한국웹툰식·강조점)'의 디자인 사고를 심되, 구체 묘사는 모델 영역(예시 강제 아님). · <code>thumb_dispatch</code>(analyze가 고른 카드뉴스 라이브러리 연출코드)를 비주얼 키노트로 계승(새 주입 0).</p>
+
+<h2>장단점 · 효율성 · 품질저하 리스크 (5요소)</h2>
+<table>
+  <tr><th>항목</th><th>내용</th></tr>
+  <tr><td>전→후</td><td>① 약보수보정: 회색 각주 → 흰 라벨 한 줄(활용옵션 중복 제거) ② 다각도: 들쭉날쭉 → 고정 틀 ③ 카드: 설계의도 비표면 → [프롬프트 설계] 개요 표면화</td></tr>
+  <tr><td>장점</td><td>표기 일관성↑(들쭉날쭉 차단)·약보수보정 가독성↑·카드 설계의도가 화풍/분위기/연출로 한눈에·SNS 타겟 정합(한국웹툰식·재미+공감)·라이브러리 카드뉴스 파트 자동 계승</td></tr>
+  <tr><td>단점</td><td>[프롬프트 설계]는 신규/재생성 cards.md부터 점진 적용(기존 카드는 다음 card_plan/재요약 때) · '연출 방향' 문구 품질은 소프트(모델 의존·런 검증 대상)</td></tr>
+  <tr><td>효율성</td><td><span class="pill">GVER 캐시버스트 0</span> 01지침·PROJECT_MEMORY 무수정 → 기존 카드 재생성 없음 · 뷰어는 기존 토큰·함수 계승(신규 CSS 토큰 0·check_design baseline 무증가) · 추가 토큰 ≈ 3줄(미미)</td></tr>
+  <tr><td>품질저하 리스크</td><td><b>≈0</b> — 카드 생성 규칙 무변경(6중 안전망·Camera·NEGATIVE 유지) · 제미나이0 잠금(Lock A/B) 불간섭 · 파서 3종 바이트 동등 · 코드펜스/`###` 미사용 · 사실무결성 절대우선 유지</td></tr>
+</table>
+
+<h2>안전성 — 10인 평의회 실측 + 자가검증</h2>
+<table>
+  <tr><th>검증</th><th>결과</th></tr>
+  <tr><td>파서 호환 (gen_cards·parseCards·cardmake 게이트)</td><td class="ok">✅ 바이트 동등 — 블록이 [카드1] 앞·앵커 무영향 (단위테스트 통과)</td></tr>
+  <tr><td>카드 GVER 캐시버스트</td><td class="ok">✅ 0 — card-make.md는 주입블록 밖 (A7 해시범위 실측)</td></tr>
+  <tr><td>제미나이0 잠금 (Lock A/B)</td><td class="ok">✅ 불간섭 — env 무변경 (A1)</td></tr>
+  <tr><td>생성 조건 안정성</td><td class="ok">✅ 3가드(카드앞1회·무드/why만·본프롬프트 규칙 유지)</td></tr>
+  <tr><td>뷰어 렌더 (디자인 토큰)</td><td class="ok">✅ 기존 토큰·컴포넌트 계승·신규 미토큰 0 (A8)</td></tr>
+  <tr><td>신규 정규식 (0a 접두·0c 이동·M why)</td><td class="ok">✅ 단위테스트 전건 통과</td></tr>
+  <tr><td>check_refs (JS구문·디자인거울·민감어휘)</td><td class="ok">✅ rc=0</td></tr>
+</table>
+<p class="note">10인 앵글: 생성조건·카드품질·파서호환·라이브러리계승·카드뉴스목적·내용형식·GVER롤아웃·뷰어렌더·digest정합·총괄. 만장일치 GO(조건부) — 모든 조건 구현 반영.</p>
+
+</div></body></html>
