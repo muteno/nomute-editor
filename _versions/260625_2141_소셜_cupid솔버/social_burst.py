@@ -154,46 +154,10 @@ def _parse_reltime(s, now):
     return now - timedelta(hours=age)
 
 
-# ── cupid.js(SlowAES JS 쿠키) 챌린지 우회 (260625) ──
-# 이슈링크가 06-22부터 cupid.js 봇월로 전환 → 평문 GET은 767B 챌린지 페이지만 받아 0건.
-# 챌린지는 결정론적 SlowAES: a=키·b=IV·c=암호문(1블록) → 쿠키 CUPID=hex(AES-128-CBC-decrypt(c, a, b)) → ?ckattempt=1 재요청.
-# 무료·무키. pycryptodome 미설치면 graceful 0건(옛 동작과 동일).
-_CUPID_RE = re.compile(
-    r'a\s*=\s*toNumbers\("([0-9a-fA-F]+)"\)\s*,\s*'
-    r'b\s*=\s*toNumbers\("([0-9a-fA-F]+)"\)\s*,\s*'
-    r'c\s*=\s*toNumbers\("([0-9a-fA-F]+)"\)')
-
-
-def _get_cupid(session, url, _depth=0):
-    """이슈링크 GET — cupid 챌린지면 AES-CBC 복호로 CUPID 쿠키 발급 후 재요청(통과 페이지 반환)."""
-    r = session.get(url, timeout=20)
-    if _depth < 2 and "toNumbers(" in r.text and "ckattempt" not in url:
-        m = _CUPID_RE.search(r.text)
-        if not m:
-            print("::warning::cupid 챌린지 파싱 실패 — 포맷 변경 가능(이슈링크 0건)")
-            return r
-        try:
-            from Crypto.Cipher import AES
-        except Exception:
-            print("::warning::pycryptodome 미설치 — cupid 우회 불가(이슈링크 0건)")
-            return r
-        try:
-            from urllib.parse import urlparse
-            a, b, c = (bytes.fromhex(x) for x in m.groups())
-            cookie = AES.new(a, AES.MODE_CBC, b).decrypt(c).hex()   # 1블록 CBC = AES-ECB-dec(c,a) XOR b
-            session.cookies.set("CUPID", cookie, domain=urlparse(url).netloc)
-        except Exception as ex:  # noqa: BLE001
-            print(f"::warning::cupid 복호 실패: {ex} (이슈링크 0건)")
-            return r
-        sep = "&" if "?" in url else "?"
-        return _get_cupid(session, url + sep + "ckattempt=1", _depth + 1)
-    return r
-
-
 def fetch_issuelink(now):
     """어그리게이터(이슈링크) — 여러 커뮤니티 인기글을 모아줌 = 교차소스 확보의 핵심.
        ISSUELINK_URLS의 페이지(홈+/community) 전부 긁어 합침. 각 행 <a rel='<community>-<id>' href=...>제목</a>
-       + second_date '(N 시간, M 분전)'. source=원 커뮤니티. cupid.js 봇월은 _get_cupid가 통과(260625)."""
+       + second_date '(N 시간, M 분전)'. source=원 커뮤니티."""
     import re
     import html as _html
     try:
@@ -201,12 +165,10 @@ def fetch_issuelink(now):
     except Exception:
         print("::warning::requests 미설치 — 이슈링크 생략")
         return []
-    sess = requests.Session()
-    sess.headers.update({"User-Agent": UA, "Referer": "https://www.google.com/"})
     posts = []
     for page in ISSUELINK_URLS:
         try:
-            r = _get_cupid(sess, page)
+            r = requests.get(page, headers={"User-Agent": UA, "Referer": "https://www.google.com/"}, timeout=20)
             if r.status_code != 200 or not r.text:
                 print(f"::warning::이슈링크 {page} status {r.status_code}")
                 continue
