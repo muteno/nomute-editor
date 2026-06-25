@@ -5163,8 +5163,8 @@ function renderScrap() {
   scRT = rt;   // scRT = 정렬에서 픽 상태(누적 고정 제외) 참조
   const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상
   // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
-  const _mm = mergesAll(), _mergedMembers = new Set();   // 병합 멤버 = 실패트레이서도 제외(앵커에 흡수되니 이중표면 방지·분신술8 F1)
-  for (const a of Object.keys(_mm)) (Array.isArray(_mm[a] && _mm[a].members) ? _mm[a].members : []).forEach(m => _mergedMembers.add(m));
+  const _mm = mergesAll(), _mergedMembers = new Set(), _liveIds = new Set(CANDS.map(candId));   // 병합 멤버 = 실패트레이서도 제외(앵커에 흡수=이중표면 방지·분신술8 F1) — ⚠️ 단 앵커가 *살아있을 때만*(앵커 탈락[GC·rep점프·별점] 시 흡수처 사라져 멤버 증발 silent-loss 방지·재검4)
+  for (const a of Object.keys(_mm)) { if (!_liveIds.has(a)) continue; (Array.isArray(_mm[a] && _mm[a].members) ? _mm[a].members : []).forEach(m => _mergedMembers.add(m)); }
   const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || '') && !failHidden(c) && !_mergedMembers.has(candId(c)));   // 체크(숨김)한 실패·병합 멤버는 트레이서 제외(운영자 260621·260625)
   const failSet = new Set(failed.map(c => candId(c)));   // 전체 실패 candId = 칼럼서 제외(누설 방지 — dedup 전 집합)
   failed.sort((a, b) => scTs(b) - scTs(a));   // 최신 실패 먼저
@@ -5289,7 +5289,7 @@ function miniToast(msg) {   // 범용 미니 토스트(nm-toast 계승·초록·
 function unmergeAnchor(c) {
   const M = mergesAll(), id = candId(c);
   if (!M[id]) return;
-  const n = (M[id].members || []).length;
+  const n = (Array.isArray(M[id].members) ? M[id].members : []).length;   // _mems와 동일 배열가드(손상 표시 글리치 방지·재검1)
   if (!confirm(`병합 해제? 기준 + 합쳐진 ${n}건이 다시 따로 떠.`)) return;
   delete M[id]; saveMerges(M); renderScrap();
 }
