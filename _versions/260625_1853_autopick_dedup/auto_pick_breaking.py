@@ -9,8 +9,6 @@
 #   ④ 사건당 1회 영구 dedup(push/autopick.json — event_key/url **+ 제목해시** 다중키 = url 점프에도 안정 ·
 #      실패해도 재픽 안 함 · push_send.dedup_keys 와 동일 키셋) ⑤ 런/일 상한
 #   ⑥ pick_pending 의 load_active dedup(이미 처리중/완료면 스킵 = 수동픽과 충돌 0 · PICK_URL=c.url 로 수동픽과 동일 키).
-#   ⑦ 사건중복 dedup(같은 실제 사건의 다른 기사 2픽 차단 · 카드 평의회 260625) — push/autopick_events.json 에 픽 사건 시그니처(제목·members)
-#      기록 → 싼 렉시컬 프리필터(제목 char-bigram Jaccard≥0.30 OR members 겹침 = 어선형) → 안 걸리면 AI 1콜(지진형=의미만 같음) · 실패=다른사건(픽=false-merge 회피).
 # 픽 경로(pick_pending.py)를 그대로 재사용 — pending 작성·seen_urls 적재·dedup 단일 원천(DRY).
 # 출력: stderr 요약 + stdout 마지막 줄 'PICKED=<n>'(워크플로가 커밋·분석발동 판단). 정본 = CLAUDE.md §🚨 + docs/curation-algorithm §8.
 import datetime as dt
@@ -35,10 +33,6 @@ MIN_CROSS = int(os.environ.get("AUTOPICK_MIN_CROSS", "2"))           # 다매체
 MAX_PER_RUN = int(os.environ.get("AUTOPICK_MAX_PER_RUN", "2"))       # 런당 상한(버스트 캡)
 MAX_PER_DAY = int(os.environ.get("AUTOPICK_MAX_PER_DAY", "8"))       # 일 상한(안전밸브 · KST 기준)
 DRY = "--dry-run" in sys.argv
-EVENTS = ROOT / "push" / "autopick_events.json"   # 픽한 사건 시그니처(제목·members·ts) — 의미중복(같은 사건 다른 기사) dedup. autopick.json(키 dedup)과 분리 = 기존 로직 무손상
-EVENT_WINDOW_H = float(os.environ.get("AUTOPICK_EVENT_WINDOW_H", "24"))   # 이 시간 내 픽 사건만 중복비교 대상
-TITLE_JAC_MIN = float(os.environ.get("AUTOPICK_TITLE_JAC", "0.30"))       # 제목 char-bigram Jaccard 프리필터(어선형=거의 동일 헤드라인 차단 · 실측 컨트롤 최대 0.23 < 0.30 = false-merge 0)
-MAX_AI_DEDUP = int(os.environ.get("AUTOPICK_MAX_AI", "8"))                # 런당 AI 중복판정 콜 상한(폭주 가드)
 
 
 def jload(p, d):
@@ -116,76 +110,6 @@ def pick_url(c):
     return u if u.startswith(("http://", "https://")) else ""
 
 
-def _norm(t):
-    t = re.sub(r"\[[^\]]*\]", "", t or "")              # [속보]/[단독] 태그 제거
-    return re.sub(r"[^0-9A-Za-z가-힣]", "", t).lower()   # 한글·영숫자만(기호·공백 제거)
-
-
-def _bigrams(t):
-    t = _norm(t)
-    return set(t[i:i + 2] for i in range(len(t) - 1))
-
-
-def _title_jac(a, b):
-    A, B = _bigrams(a), _bigrams(b)
-    return len(A & B) / len(A | B) if (A | B) else 0.0
-
-
-def _evt_members(c):
-    s = set(u for u in (c.get("cluster_members") or c.get("alt_urls") or []) if isinstance(u, str) and u)
-    for k in ("url", "id"):
-        v = c.get(k)
-        if isinstance(v, str) and v:
-            s.add(v)
-    return s
-
-
-def _cheap_same(c, ev):
-    """싼 프리필터(AI 0): cluster_members url 겹침 OR 제목 char-bigram Jaccard≥임계 = 같은 사건(어선형=거의 동일 헤드라인)."""
-    if _evt_members(c) & set(ev.get("members") or []):
-        return True
-    return _title_jac(c.get("title") or "", ev.get("title") or "") >= TITLE_JAC_MIN
-
-
-def _ai_same(title, recent_titles):
-    """AI 의미중복(지진형) — title 이 recent_titles 중 *같은 실제 사건*이면 그 index, 아니면 None.
-    토큰없음·실패 = None(=다른 사건=픽 진행 = false-merge보다 중복 1건이 안전)."""
-    if not recent_titles:
-        return None
-    try:
-        sys.path.insert(0, str(ROOT / "shared"))
-        from claude_py import run_claude
-    except Exception:
-        return None
-    listing = "\n".join(f"{i}\t{(t or '').replace(chr(9), ' ').replace(chr(10), ' ')}" for i, t in enumerate(recent_titles))
-    prompt = (
-        "너는 한국 뉴스 속보 중복 판정자다. '대상 사건'이 아래 '이미 다룬 사건들' 중 하나와 "
-        "**동일한 실제 사건**(같은 사고·재난·사건의 다른 기사/후속/속보)인지 판정하라.\n"
-        "- 같은 실제 사건 = 그 번호 (예: 같은 지진의 다른 기사, 같은 충돌사고 속보+후속)\n"
-        "- 다른 사건 = NONE (장소·주체·일시가 다르면 유형[화재·지진·사고]이 같아도 다른 사건)\n"
-        "- 애매하면 NONE(중복 아님으로 = 진짜 긴급 누락 방지).\n"
-        f"대상: {(title or '').replace(chr(10), ' ')}\n이미 다룬 사건들:\n{listing}\n\n"
-        "출력: 동일하면 그 번호 하나만, 없으면 NONE. (설명·머리말 금지)"
-    )
-    p, rc, err = run_claude(
-        ["claude", "-p", "--model", os.environ.get("AUTOPICK_MODEL", "claude-opus-4-8"), "--effort", "medium",
-         "--disallowedTools", "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
-         "--max-turns", "1"],
-        prompt, timeout=120, source="autopick")
-    if p is None or rc != 0:
-        print(f"  ⚠ AI 중복판정 실패(rc={rc}) — 다른 사건 간주(픽 진행·false-merge 회피)", file=sys.stderr)
-        return None
-    out = (p.stdout or "").strip().upper()
-    if "NONE" in out:
-        return None
-    m = re.search(r"\d+", out)
-    if m:
-        idx = int(m.group())
-        if 0 <= idx < len(recent_titles):
-            return idx
-    return None
-
-
 def main():
     cands = jload(CAND, [])
     items = cands if isinstance(cands, list) else (cands.get("items", cands.get("candidates", [])) if isinstance(cands, dict) else [])
@@ -202,18 +126,6 @@ def main():
             return 0
 
     led = {k: v for k, v in led.items() if _age_days(v) < 2}      # 48h+ 원장 정리(비대 방지)
-    # 의미중복 dedup용 최근 픽 사건(같은 사건 다른 기사 2픽 차단 · 카드 평의회 260625)
-    evs = jload(EVENTS, [])
-    if not isinstance(evs, list):
-        evs = []
-
-    def _ev_age_h(e):
-        try:
-            return (now - dt.datetime.fromisoformat(str(e.get("ts", "")))).total_seconds() / 3600
-        except Exception:
-            return 1e9
-    seen_events = [e for e in evs if isinstance(e, dict) and _ev_age_h(e) < EVENT_WINDOW_H]
-    ai_dedup_calls = 0
     today = now.strftime("%Y-%m-%d")
     # 일 카운트 = 사건당 1건(대표키만 셈 · 제목해시 t: 키 제외 = 사건당 2키여도 1로 카운트).
     today_n = sum(1 for k, v in led.items() if not str(k).startswith("t:") and str(v).startswith(today))
@@ -234,17 +146,6 @@ def main():
         if not url.startswith(("http://", "https://")):
             continue
         title = c.get("title") or ""
-        # 사건중복 검사(같은 실제 사건 2픽 차단) — 싼 렉시컬 프리필터(어선형) → AI(지진형=의미만 같음)
-        dup = next((e for e in seen_events if _cheap_same(c, e)), None)
-        how = "렉시컬" if dup is not None else ""
-        if dup is None and seen_events and ai_dedup_calls < MAX_AI_DEDUP:
-            ai_dedup_calls += 1
-            ai_idx = _ai_same(title, [e.get("title", "") for e in seen_events])
-            if ai_idx is not None:
-                dup, how = seen_events[ai_idx], "AI"
-        if dup is not None:
-            print(f"  ⊘ 사건중복 스킵({how}): {title[:34]} ≈ {str(dup.get('title', ''))[:28]}", file=sys.stderr)
-            continue
         bp = (c.get("breaking_pick") or {}).get("url")
         alts = ([bp] if isinstance(bp, str) else []) + [u for u in (c.get("cluster_members") or c.get("alt_urls") or []) if isinstance(u, str)]
         alt = " ".join(u for u in alts if u and u != url)[:1500]   # breaking_pick(메이저·접근성↑) + 클러스터 — PICK_URL(c.url) 자신 제외
@@ -252,7 +153,6 @@ def main():
             print(f"  [dry] 자동픽 후보: grade{c.get('grade')} cross{c.get('cross')} age{age_h(c):.1f}h | {title[:40]} | {url}", file=sys.stderr)
             for k in ekeys(c):
                 led[k] = stamp
-            seen_events.append({"ts": stamp, "title": title, "members": sorted(_evt_members(c))[:12], "key": (ekeys(c) or [url])[0]})
             n += 1
             continue
         env = dict(os.environ, PICK_URL=url, PICK_TITLE=title, PICK_ALT=alt)
@@ -263,7 +163,6 @@ def main():
             continue
         for k in ekeys(c):   # 정상 종료(픽=NEW=1 또는 이미처리=NEW=0)만 다중키 기록 = 재픽·재평가 차단(url 점프 포함)
             led[k] = stamp
-        seen_events.append({"ts": stamp, "title": title, "members": sorted(_evt_members(c))[:12], "key": (ekeys(c) or [url])[0]})
         if "NEW=1" in (out.stdout or ""):
             n += 1
             print(f"  ✅ 자동픽: grade{c.get('grade')} {title[:40]}", file=sys.stderr)
@@ -273,7 +172,6 @@ def main():
     if not DRY:
         LEDGER.parent.mkdir(parents=True, exist_ok=True)
         LEDGER.write_text(json.dumps(led, ensure_ascii=False, indent=0) + "\n", encoding="utf-8")
-        EVENTS.write_text(json.dumps([e for e in seen_events if _ev_age_h(e) < EVENT_WINDOW_H], ensure_ascii=False, indent=0) + "\n", encoding="utf-8")
     print(f"PICKED={n}")
 
 
