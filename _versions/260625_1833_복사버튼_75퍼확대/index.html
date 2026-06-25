@@ -370,7 +370,8 @@
   /* 본문(요약 상세) 편향 줄 = 카드와 동일 흐름 표현(시안 ①). */
   .biasar { color:var(--mut); font-weight:400; }
   .biascorr { font-style:normal; color:var(--accent); font-weight:800; }
-  .biaswhy { display:block; color:var(--mut); font-size:11.5px; margin-top:3px; line-height:1.5; }
+  .biaswhy { display:block; color:var(--fg); font-size:11.5px; margin-top:3px; line-height:1.5; }   /* 약보수 보정 사유 = 흰색(운영자 260625 · 옛 ↳ 회색→'약보수 보정 :' 흰색) */
+  .biaswhy b { font-weight:800; color:var(--accent); }   /* '약보수 보정' 라벨 = 강조색 */
   /* 민감 키워드 = 박스 없이 흰 글자만(E). */
   .tagchip { font-size:13px; color:var(--fg); white-space:nowrap; line-height:1.45; font-weight:600; }
   .tagchip.warn { color:var(--amber); }   /* 통제어휘 민감 태그 = 앰버 경고 틴트(흰 글자와 구별 = 한눈에 민감·운영자 260625) */
@@ -1141,6 +1142,12 @@
   /* 앵글 후보 ①② = [키워드] 강조색 볼드 텍스트(관점 키워드와 통일·알약 폐지·운영자 260621) */
   .angle { color:var(--accent); font-weight:800; white-space:nowrap; }
   .angle-lbl { color:var(--accent); font-weight:800; }   /* 다각도 앵글 라벨(콜론 앞) = 강조색(초록) 굵게로 통일(관점 라벨과 동일 톤 · 운영자 260622) */
+  /* [프롬프트 설계] 개요(카드뉴스 제목↔[카드1] 사이) = 구분선 2개(上下 border) 사이 · 기존 토큰 계승(운영자 260625) */
+  #cardsec .pdesign { border-top:1px solid var(--line2); border-bottom:1px solid var(--line2); padding:var(--sp-2) 0; margin:var(--sp-1) 0 var(--sp-3); }
+  #cardsec .pdesign .pd-h { color:var(--accent); font-size:var(--fs-h3); font-weight:var(--fw-x); letter-spacing:-.2px; margin:0 0 var(--sp-1); }
+  #cardsec .pdesign ul { margin:0; padding-left:18px; }
+  #cardsec .pdesign li { margin:2px 0; line-height:1.5; }
+  #cardsec .pd-lbl { color:var(--accent); font-weight:800; }
   .md a { color:var(--accent); } .md ul { padding-left:18px; }
   .md ul li::marker, .md ol li::marker { color:var(--accent); }   /* 블릿 = 형광 통일(운영자 260621) */
   /* Z 기본 개요 메타(요약 헤더 아래) */
@@ -1174,8 +1181,6 @@
     color:var(--mut); background:rgba(26,28,26,.3); border:1px solid rgba(255,255,255,.17); border-radius:50%; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
     transition:transform .12s, background .15s, border-color .15s, color .15s; backdrop-filter:blur(var(--blur-m)) saturate(1.3); -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.3); -webkit-tap-highlight-color:transparent; }   /* G1 글래스모피즘(260625) */
   .copy svg { display:block; width:13px; height:13px; }
-  .copy.boxcopy { width:46px; height:46px; }   /* IG·스레드 등 초안 박스 복사 = 자주 써서 크게(26→46·약 +75% · 운영자 260625). 위치·중앙정렬(translateY −50%)은 크기 무관 = 박스 상단 선 중앙 유지 */
-  .copy.boxcopy svg { width:23px; height:23px; }   /* 아이콘도 비례 확대(13→23) */
   .copy::before { content:""; position:absolute; inset:-8px; }   /* 히트영역 ≥40 */
   .copy:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .copy:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }   /* 누름 = 형광 */
@@ -2306,6 +2311,18 @@ function decorate(root) {
     while (inner.firstElementChild) parent.insertBefore(inner.firstElementChild, li);
     li.remove();
   });
+  // 0a) 다각도 '이렇게 볼 수도 ①' 인라인 접두 제거 → 관점 라벨로 바로(템플릿 고정 보강 · 기존 분석건·LLM 일탈 대비 · 운영자 260625)
+  root.querySelectorAll('li').forEach(li => {
+    const tn = li.firstChild;
+    if (!tn || tn.nodeType !== 3 || !/^\s*이렇게\s*볼\s*수도/.test(tn.data)) return;
+    tn.data = tn.data.replace(/^\s*이렇게\s*볼\s*수도\s*[①-⑳0-9]*\s*[)）.·]?\s*/, '');
+  });
+  // 0c) 활용옵션 편향 불릿(li)의 '| 약보수 보정 (…)' 제거 → 사유는 자유요약 편향줄로 이동(중복 차단 · 운영자 260625)
+  root.querySelectorAll('li').forEach(li => {
+    const tn = li.firstChild;
+    if (!tn || tn.nodeType !== 3 || !/편향\s*[:：]/.test(tn.data)) return;
+    tn.data = tn.data.replace(/\s*[|｜]\s*약보수\s*보정.*$/, '');
+  });
   // 0b) 다각도 해석: '라벨: 설명'의 라벨(콜론 앞)을 항상 강조(굵게)로 통일 — AI가 **굵게** 안 달아도(라벨은 창의·고정 아님) 앵글 요약 라벨이면 항상 강조(운영자 260622)
   const _dh2 = [...root.querySelectorAll('h2')].find(h => /다각도/.test(h.textContent || ''));
   if (_dh2) {
@@ -2400,18 +2417,19 @@ function decorate(root) {
     while (_h && !/^H[1-3]$/.test(_h.tagName)) _h = _h.previousElementSibling;
     if (_h && /\b(IG|Thread)\b/.test(_h.textContent)) { p.remove(); return; }
     const t = p.textContent;
-    if (/무관|N\s*\/?\s*A/i.test(t)) { p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>'; p.classList.add('bullet'); return; }
-    const why = (t.match(/보정[^()]*\(([^)]*)\)/) || [])[1] || '';   // 약보수 보정 사유(↳ 회색)
+    const why = (t.match(/보정[^()]*\(([^)]*)\)/) || [])[1] || '';   // 약보수 보정 사유 — 화살표 줄 아래 '약보수 보정 :' 흰색 줄로(운영자 260625 · 옛 ↳ 회색 폐지)
+    const whyHtml = why ? ` <span class="biaswhy"><b>약보수 보정</b> : ${esc(why)}</span>` : '';
+    if (/무관|N\s*\/?\s*A/i.test(t)) { p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>' + whyHtml; p.classList.add('bullet'); return; }
     const flow = t.match(/원문\s*(\d+)\s*[\/／]\s*10[^\n]*?(?:요약|큐레이션)\s*(\d+)\s*[\/／]\s*10/);   // 자유요약 = 원문→요약 (전각슬래시·줄경계 강건화·평의회1)
     if (flow) {
       const N = +flow[1], M = +flow[2], d = M - N;
       const corr = `${d > 0 ? '＋' : d < 0 ? '－' : '±'}${Math.abs(d)}`;   // 부호 델타만(카드와 동일·'보정'어 제거·평의회6)
       p.innerHTML = `편향: <b style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b> <span class="biasar">─→</span> <em class="biascorr">${corr}</em> <span class="biasar">─→</span> <b style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>`
-        + (why ? ` <span class="biaswhy">↳ ${esc(why)}</span>` : '');
+        + whyHtml;
     } else {
       const one = t.match(/(\d+)\s*[\/／]\s*10/);   // IG·Thread = 단일값(원문 없음) → 숫자 도출 라벨로 정리
       if (one) { const M = +one[1];
-        p.innerHTML = `편향: <b style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>` + (why ? ` <span class="biaswhy">↳ ${esc(why)}</span>` : '');
+        p.innerHTML = `편향: <b style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>` + whyHtml;
       }
     }
     p.classList.add('bullet');
@@ -2845,6 +2863,28 @@ function cardSec(a) {
     div.querySelectorAll('p > strong').forEach(s => {                                        // 텍스트·이미지프롬프트 = 소머리(•)
       if (/^(텍스트|이미지\s*프롬프트)$/.test((s.textContent || '').trim())) s.parentElement.classList.add('lbl');
     });
+    // [프롬프트 설계] 개요 = 제목과 [카드 1] 사이 · 구분선 2개(.pdesign border 上下) 사이로 렌더(화풍·분위기·연출 = card-make가 디자인사고로 작성 · 운영자 260625)
+    const pdHead = [...div.querySelectorAll('p')].find(p => /^\s*\[?\s*프롬프트\s*설계\s*\]?\s*$/.test((p.textContent || '').trim()));
+    if (pdHead) {
+      const wrap = document.createElement('div'); wrap.className = 'pdesign';
+      pdHead.classList.add('pd-h');
+      const ul = pdHead.nextElementSibling;
+      pdHead.parentNode.insertBefore(wrap, pdHead);
+      wrap.appendChild(pdHead);
+      if (ul && ul.tagName === 'UL') {
+        ul.querySelectorAll(':scope > li').forEach(li => {                                   // 화풍/분위기/연출 방향 라벨(콜론 앞) = 강조색(다각도 angle-lbl 패턴 계승)
+          const f = li.firstChild; if (!f) return;
+          if (f.nodeType === 1 && /^(STRONG|B)$/.test(f.tagName)) { f.classList.add('pd-lbl'); return; }
+          if (f.nodeType !== 3) return;
+          const m = f.data.match(/^\s*([^:：\n]{1,12})\s*[:：]\s/);
+          if (!m) return;
+          const sp = document.createElement('strong'); sp.className = 'pd-lbl'; sp.textContent = m[1].trim();
+          f.data = ' : ' + f.data.slice(m[0].length);
+          li.insertBefore(sp, f);
+        });
+        wrap.appendChild(ul);
+      }
+    }
     // 이미지 프롬프트 박스 = 기본 3줄 클립 + 더보기/접기(내부 스크롤 X). 직전 라벨에 '이미지 프롬프트' 있는 pre.
     div.querySelectorAll('pre').forEach(pre => {
       const prev = pre.previousElementSibling;
