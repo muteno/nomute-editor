@@ -401,7 +401,7 @@
   .iobtn svg { display:block; }
   /* 클립 버튼(입력칸용) = 입력칸 위 우측 테두리에 중앙정렬로 걸친 동그라미 (시안 2A·운영자 260624)
      평소=중립 회색 / 누름(:active)=형광 플래시 / 성공(.ok)=도형 채움 없이 ✓ 체크만 형광(링 중립 유지) */
-  .iobtn-edge { top:0; right:14px; transform:translateY(-50%); width:26px; height:26px; border-radius:50%; opacity:.6;   /* 입력칸 복사/붙여넣기·지우개 = opacity 60%(은은하게 · 운영자 260625) */
+  .iobtn-edge { top:0; right:14px; transform:translateY(-50%); width:26px; height:26px; border-radius:50%;
     background:rgba(26,28,26,.3); border-color:rgba(255,255,255,.17); color:var(--mut); box-shadow:inset 0 1px 0 rgba(255,255,255,.2); -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); }   /* G1 글래스모피즘(상단 inset 광택·blur13·saturate · 운영자 260625) */
   .iobtn-edge:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .iobtn-edge:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }   /* 누름 = 형광 플래시 */
@@ -411,7 +411,6 @@
   .iobtn-pp { right:46px; }                          /* 붙여넣기/복사 = 지우개 좌측으로 이동 */
   .iobtn-erase { right:14px; }                       /* 지우개 = 최우측(붙여넣기 우측) · 누르면 입력 비움 */
   .iobtn-off { opacity:.3; pointer-events:none; }    /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
-  .iobtn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·평소보다 또렷한 링 · 운영자 260626) */
   #cardBox { margin-top:9px; }                 /* 카드 텍스트 = '텍스트' 라벨 제거·간격 축소(헤더/오버레이와 동일 9px · 운영자 260624) */
   #cardBox .edwrap { position:relative; }       /* 칩 에디터 클립버튼(2A) 기준 — 재렌더(#edChips innerHTML 교체)에도 버튼 보존 위해 바깥 래퍼 */
   #cardBox .iobtn-edge { right:44px; }           /* 카드만 클립을 좌측으로 — 칩 줄 우측 +(단어추가, 박스우측 9~25px 점유) 버튼과 19px 간격 확실 분리(운영자 260624) */
@@ -1091,8 +1090,6 @@ const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
 const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';   // 지우개(입력 비움) — Lucide eraser·24뷰박스·stroke2·round
-const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg>';   // 되돌리기(직전 입력 복원) — 지움 직후 ~10초간 지우개 자리에 표시
-const ERASE_UNDO_MS = 10000;   // 지움 후 되돌리기 노출 시간(~10초) → 지나면 원래 지우개로
 async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
   try { await navigator.clipboard.writeText(text || ''); } catch {}
   btn.innerHTML = CHECK_SVG; btn.classList.add('ok');
@@ -1104,39 +1101,20 @@ function attachCopyPaste(el, withErase) {   // 비었으면 붙여넣기, 차있
   el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
   el.style.paddingRight = (withErase && el.tagName !== 'TEXTAREA') ? '74px' : '42px';   // 입력칸(단일행)=2버튼 폭(74) 확보(글자 세로중앙=버튼과 겹침) · 텍스트칸=버튼이 1행 위 테두리로 떠 글자와 안 겹침 → 42 유지(폭 보존 = 좁은 폰 줄바꿈 방지·운영자 260625)
   const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'iobtn iobtn-edge' + (withErase ? ' iobtn-pp' : ''); wrap.appendChild(btn);   // 붙여넣기/복사 = 테두리 걸친 동그라미(시안 2A·260624) · 지우개 동반 시 좌측(iobtn-pp)
-  let eraser = null, undoTimer = null, undoVal = '', prog = false;   // prog = 프로그램적 변경(지움/복원) 표시 → 그때의 input은 되돌리기창 종료 트리거 아님
+  let eraser = null;
+  if (withErase) {   // 지우개 = 붙여넣기 우측(최우측)·동일 크기 · 누르면 입력 비움(운영자 260625)
+    eraser = document.createElement('button'); eraser.type = 'button'; eraser.className = 'iobtn iobtn-edge iobtn-erase';
+    eraser.innerHTML = ERASE_SVG; eraser.setAttribute('aria-label', '입력 지우기'); eraser.title = '입력 지우기';
+    eraser.onclick = ev => { ev.preventDefault(); if (!(el.value || '').length) return; el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); try { el.focus(); } catch {} };   // 비움 → input 이벤트(자간/맞춤법 리뷰 동반 갱신·refresh가 리스너로 호출)
+    wrap.appendChild(eraser);
+  }
   const refresh = () => {
     if (btn.classList.contains('ok')) return;
     const filled = (el.value || '').trim().length > 0;
     btn.innerHTML = filled ? COPY_SVG : PASTE_SVG; btn.dataset.mode = filled ? 'copy' : 'paste';
     btn.setAttribute('aria-label', filled ? '복사' : '붙여넣기');
-    if (eraser) eraser.classList.toggle('iobtn-off', !filled && !eraser.classList.contains('iobtn-undo'));   // 빈칸=흐리게·비활성 / 되돌리기 모드면 유지(흰 픽토그램·내용 무관 노출)
+    if (eraser) eraser.classList.toggle('iobtn-off', !filled);   // 빈칸 = 지울 것 없음 → 흐리게·비활성
   };
-  if (withErase) {   // 지우개 = 붙여넣기 우측(최우측)·동일 크기 · 누르면 입력 비움 → 직후 ~10초 되돌리기(운영자 260625·260626)
-    eraser = document.createElement('button'); eraser.type = 'button'; eraser.className = 'iobtn iobtn-edge iobtn-erase';
-    eraser.innerHTML = ERASE_SVG; eraser.setAttribute('aria-label', '입력 지우기'); eraser.title = '입력 지우기';
-    const exitUndo = () => {   // 되돌리기 창 종료 → 원래 지우개로 복귀(투명도는 내용 유무로)
-      if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
-      eraser.classList.remove('iobtn-undo'); eraser.innerHTML = ERASE_SVG;
-      eraser.setAttribute('aria-label', '입력 지우기'); eraser.title = '입력 지우기'; refresh();
-    };
-    eraser.onclick = ev => {
-      ev.preventDefault();
-      if (eraser.classList.contains('iobtn-undo')) {   // 되돌리기 모드 = 직전 입력 복원
-        prog = true; el.value = undoVal; el.dispatchEvent(new Event('input', { bubbles: true })); prog = false;
-        try { el.focus(); } catch {} exitUndo(); return;
-      }
-      if (!(el.value || '').length) return;   // 빈칸 = 지울 것 없음(평소 dim·무동작)
-      undoVal = el.value;   // 지운 내용 보관(복원용)
-      prog = true; el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); prog = false;   // 비움 → input(자간/맞춤법 동반 갱신)
-      try { el.focus(); } catch {}
-      eraser.classList.remove('iobtn-off'); eraser.classList.add('iobtn-undo');   // 지움 직후 ~10초 = 되돌리기(흰 픽토그램·내용 없어도 노출)
-      eraser.innerHTML = UNDO_SVG; eraser.setAttribute('aria-label', '되돌리기'); eraser.title = '되돌리기 (직전 입력 복원)';
-      if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, ERASE_UNDO_MS);
-    };
-    el.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); });   // 사용자가 직접 입력/붙여넣기 = 새 내용 우선 → 되돌리기 창 즉시 종료
-    wrap.appendChild(eraser);
-  }
   btn.onclick = async ev => {
     ev.preventDefault();
     if (btn.dataset.mode === 'copy') clipCopy(el.value, btn, refresh);
