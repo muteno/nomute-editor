@@ -327,10 +327,7 @@
     background:rgba(8,15,11,.46); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:6px 11px;
     backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 2px 8px rgba(0,0,0,.28); }
   .job .jsave:active { transform:scale(.95); } .job .jsave svg { display:block; width:12px; height:12px; }
-  .job .jsave-row { flex-basis:100%; display:flex; justify-content:flex-end; margin-top:4px; }   /* 전체 = 완료 시각줄 아래·우측정렬(운영자 260622) · 변형 없을 때만 단독 행 */
-  .job .jgrid { flex-basis:100%; display:flex; align-items:flex-start; gap:8px; margin-top:2px; }   /* 변형목록(좌) + 전체(우) 한 띠 = 전체 줄 좌측 공백 활용 · 1개/n개 동일(운영자 260626) */
-  .job .jgrid .jvars { flex:1 1 auto; margin-top:0; }     /* 좌측 = 변형 [1]…[n] 채움 */
-  .job .jgrid .jsave-row { flex:0 0 auto; margin-top:1px; }   /* 우측 = 전체(변형 [1]과 상단 정렬·광학 1px) */
+  .job .jsave-row { flex-basis:100%; display:flex; justify-content:flex-end; margin-top:4px; }   /* 전체 = 완료 시각줄 아래·우측정렬(운영자 260622) */
   .result img { width:100%; border:1px solid var(--line); border-radius:10px; }
   .slot { margin-bottom:14px; }
   .slot-lab { font-size:12.5px; color:var(--mut); margin-bottom:5px; font-weight:600; }
@@ -1309,18 +1306,17 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   row.innerHTML = '';
   const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = job.label + (job._restored ? '' : ' #' + job.n);
   const labs = (job.outs || []).map(o => o && o.label).filter(Boolean);
-  // 단일 변형도 인라인(· OPA60)이 아니라 아래 [1] 행으로 = n개와 동일 포맷(운영자 260626)
+  if (labs.length === 1) { const v = document.createElement('span'); v.className = 'jvar'; v.textContent = ' · ' + labs[0]; lab.appendChild(v); }   // 단일 변형(OPA 등) = 라벨 옆 인라인(기존)
   const stsp = document.createElement('span'); stsp.className = 'jst'; stsp.innerHTML = ic + '<span>' + esc(tx) + '</span>';
   row.append(lab, stsp);
   if (job.partErr && job.status === 'done') row.title = job.partErr;   // 배치 일부 실패 = 사유 tooltip(성공분은 정상 표시)
-  let svRow = null;   // 전체 다운로드 버튼 — 변형목록과 같은 띠(우측)에 둘지 아래 배치에서 결정(운영자 260626)
-  if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼
-    svRow = document.createElement('div'); svRow.className = 'jsave-row';
+  if (job.status === 'done' && (job.saves || []).length) {   // 완료 = 이 잡 결과 '전체'(전체 다운로드) 버튼(우측 인라인 · index .fi-saveall 패턴)
+    const svRow = document.createElement('div'); svRow.className = 'jsave-row';   // 전체 = 완료 시각줄 아래로 내려 우측정렬(썸네일 5종 공용 · 운영자 260622)
     const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'jsave dlbtn'; sv.title = '이 결과 전체 다운로드';
     sv.innerHTML = DLSEQ_IC + '<span class="jslbl">전체</span>';
     sv.onclick = () => jSaveSeq(job);
     if (job._dlSt) { sv.classList.add(job._dlSt.cls); sv.style.setProperty('--p', job._dlSt.p); const _l = sv.querySelector('.jslbl'); if (_l) _l.textContent = job._dlSt.txt; if (job._dlSt.cls === 'dlseq-busy') sv.style.pointerEvents = 'none'; }   // 다운 진행 중 재렌더돼도 상태 복원(✓ 유지·운영자 260623)
-    svRow.appendChild(sv);   // append는 아래 배치에서(변형 있으면 같은 띠 우측·없으면 단독 우측)
+    svRow.appendChild(sv); row.append(svRow);
   }
   if (job.status === 'err' && ((job.payload && job.endpoint) || (job.batch && job.batch.length))) {   // 실패 = 같은 설정 재발사(단일=payload·배치=batch · 운영자 260620 아이디어 3·260625)
     const rt = document.createElement('button'); rt.type = 'button'; rt.className = 'jretry'; rt.title = '같은 설정으로 다시 제작';
@@ -1335,10 +1331,8 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     del.onclick = () => { const i = JOBS.indexOf(job); if (i >= 0) JOBS.splice(i, 1); row.remove(); };
     row.append(del);
   }
-  // 출력 변형 목록 = [i] 라벨 + 개별 다운로드 (1개도 줄바꿔 [1]로 = n개와 동일 포맷·운영자 260626)
-  let vs = null;
-  if (labs.length >= 1) {
-    vs = document.createElement('div'); vs.className = 'jvars'; vs.setAttribute('aria-label', '출력 변형');   // 스크린리더 — 변형 목록 맥락 부여
+  if (labs.length > 1) {   // 다중 변형 = 라벨 아래 줄바꿈·좌측정렬(가로 어중간 래핑 방지 · 운영자 260620)
+    const vs = document.createElement('div'); vs.className = 'jvars'; vs.setAttribute('aria-label', '출력 변형');   // 스크린리더 — 변형 목록 맥락 부여
     (job.outs || []).forEach((o, i) => {   // 각 변형 = 클릭(그 변형 캐러셀로 점프) + 개별 다운로드(이미지 나온 변형만 · 운영자 260620 아이디어 1·2)
       if (!(o && o.label)) return;
       const d = document.createElement('span'); d.className = 'jvar';
@@ -1354,10 +1348,8 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
       }
       vs.appendChild(d);
     });
+    row.append(vs);
   }
-  // 배치: 변형(좌) + 전체(우)를 한 띠에 = 전체 줄 좌측 공백 활용(1개/n개 동일 · 운영자 260626) · 변형 없으면 전체만 단독(우)
-  if (vs && svRow) { const grid = document.createElement('div'); grid.className = 'jgrid'; grid.append(vs, svRow); row.append(grid); }
-  else { if (svRow) row.append(svRow); if (vs) row.append(vs); }
 }
 function pollJob(job) {   // 각 잡 독립 폴링 — 완성 슬롯은 캐러셀에 추가. 2단 타임아웃(150s='큐 대기' 안내·720s=실패) + 포그라운드 복귀 재킥(아래 visibilitychange/focus). 운영자 260618·260625(옛 180s 단일은 러너 큐 지연·모바일 백그라운드 정지를 '실패'로 오판→릴스 막힘).
   const SOFT_S = 150, HARD_S = 720;   // 2단 타임아웃 — GitHub Actions 러너 큐 대기(실측 ~6분)를 견딤: 150s 후 '큐 대기' 안내(폴 느리게)·720s(12분)에야 실패. 옛 180s는 큐 지연을 렌더실패로 오판→릴스 막힘(운영자 260625).
