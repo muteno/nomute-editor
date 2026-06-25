@@ -73,12 +73,6 @@ function biasSrcOf(body) {
   const label = m[2].replace(/[🟥🟦🟩🟨🟧🟪🟫🔴🟠🟡🟢🔵🟣⬛⬜📊✅()]/gu, ' ').replace(/\s+/g, ' ').trim();
   return (m[1] + '/10' + (label ? ' ' + label : '')).trim();
 }
-// 타이틀 선두 토픽 이모지 스트립 — frontmatter title:은 '기사 제목 원문 그대로'(이모지 없음)가 정본인데
-// LLM이 간혹(~4%) H1 주제 이모지(🌊/🏛/📉 등)를 title 까지 복사 → 카드에 노출. 선두 이모지·변형선택자(FE0F)·
-// ZWJ·키캡·뒤따르는 공백만 결정적 제거(본문/H1 헤드라인 이모지는 불변 · 기존 저장분도 빌드 때 즉시 구제 · 운영자 260625).
-function stripLeadEmoji(s) {
-  return String(s || '').replace(/^[\p{Extended_Pictographic}\p{Emoji_Modifier}\u{FE0F}\u{200D}\u{20E3}\s]+/u, '').trimStart();
-}
 
 const articles = [];
 for (const f of files) {
@@ -88,7 +82,7 @@ for (const f of files) {
     const { meta, body } = parseFrontmatter(raw);
     articles.push({
       file: f,
-      title: stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
+      title: meta.title || f.replace(/\.md$/, ''),
       url: meta.url || '',
       date: meta.date || '',
       time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.
