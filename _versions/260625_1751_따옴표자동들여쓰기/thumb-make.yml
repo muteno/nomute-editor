@@ -102,7 +102,7 @@ jobs:
               img.convert('RGB').save(dst, 'JPEG', quality=JPGQ)
           def save_fhd_png(img, dst, scale=2):        # 면책 오버레이(/3·/4) = 2K→FHD PNG (투명 보존·화질 비중요)
               img.resize((img.width // scale, img.height // scale), _PIM.LANCZOS).save(dst, optimize=True)
-          def fit_tracking(lines, fmt, lm_offsets=None):   # §오버플로우(F06): measure(알파 실측)→자간 sweep → generate에 넘길 tr(없으면 None=기본)
+          def fit_tracking(lines, fmt):   # §오버플로우(F06): measure(알파 실측)→자간 sweep → generate에 넘길 tr(없으면 None=기본)
               from nomute_overlay import draw_t, SPECS, FONT_PATH
               from PIL import Image as _I, ImageDraw as _D, ImageFont as _F
               spec = SPECS[fmt]
@@ -115,9 +115,8 @@ jobs:
                   draw_t(_D.Draw(im), 100, 100, plain, font, (255, 255, 255), tr / 1000 * spec['fs'], spec['stroke'])
                   bb = im.getchannel('A').getbbox()
                   return (bb[2] - 100 + 5) if bb else 0
-              def widest(tr):                            # 따옴표 들여쓰기(lm_offset)도 우측 한도 침범 — 합산해 sweep(들여쓴 줄이 마진 안 넘게)
-                  return max((measure(l, tr) + (lm_offsets[i] if lm_offsets and i < len(lm_offsets) else 0)
-                              for i, l in enumerate(lines)), default=0)
+              def widest(tr):
+                  return max((measure(l, tr) for l in lines), default=0)
               start = spec['tr']
               if widest(start) <= limit:
                   return None                            # 안 넘침 → 기본 자간(스크립트 default)
@@ -168,12 +167,10 @@ jobs:
                       produced.append(nobg)
               else:                 # 오버레이 — opa별. 배경 있으면 JPG합성(2K)·없으면 FHD PNG (포스트와 통일)
                   from nomute_overlay import generate
-                  from quote_indent import quote_indent_offsets
-                  lmoff = quote_indent_offsets(params['lines'], 'reels')   # 줄시작 따옴표가 다음 줄로 이어지면 연속줄 자동 들여쓰기
-                  tr = fit_tracking(params['lines'], 'reels', lm_offsets=lmoff)
+                  tr = fit_tracking(params['lines'], 'reels')
                   for o in params.get('opas', [60, 30]):
                       ov = f'/tmp/_ov_{o}.png'
-                      generate('reels', params['lines'], ov, opacity=int(o), tracking=tr, lm_offsets=lmoff)
+                      generate('reels', params['lines'], ov, opacity=int(o), tracking=tr)
                       produced.append(emit(ov, image, 'reels', f'{outdir}/opa{o}'))
           elif app == '3':          # 저작권 — 투명 오버레이 (CLI subprocess). 출력 = FHD PNG.
               argv = ['python3', 'apps/thumbnail/nomute_copyright.py', out, params.get('fmt', 'post')]
@@ -187,10 +184,8 @@ jobs:
               produced.append(out)
           elif app == '1':          # 포스트 — opas별 1장. 배경 있으면 JPG합성(2K)·없으면 FHD PNG (릴스와 통일).
               from nomute_overlay import generate
-              from quote_indent import quote_indent_offsets
               fmt1 = params.get('fmt', 'post')
-              lmoff = quote_indent_offsets(params['lines'], fmt1)   # 줄시작 따옴표가 다음 줄로 이어지면 연속줄 자동 들여쓰기
-              tr = fit_tracking(params['lines'], fmt1, lm_offsets=lmoff)   # 자간 sweep(들여쓰기 폭 합산) — opa 무관·1회 계산 후 재사용
+              tr = fit_tracking(params['lines'], fmt1)   # 자간 sweep — opa 무관·1회 계산 후 재사용
               opas1 = params.get('opas') or [params.get('opacity', 58)]   # 다중(58·30 등) · 하위호환(단일 opacity)
               flags = []
               for k, flag in (('offset_x', '--offset-x'), ('offset_y', '--offset-y'), ('scale', '--scale')):
@@ -201,7 +196,7 @@ jobs:
                   flags += ['--blur']
               for o in opas1:
                   ov = f'/tmp/_ov_{o}.png'
-                  generate(fmt1, params['lines'], ov, opacity=int(o), tracking=tr, lm_offsets=lmoff)
+                  generate(fmt1, params['lines'], ov, opacity=int(o), tracking=tr)
                   base = f'{outdir}/out' if len(opas1) == 1 else f'{outdir}/opa{o}'
                   produced.append(emit(ov, image, fmt1, base, flags))
           else:
