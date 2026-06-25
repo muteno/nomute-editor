@@ -470,8 +470,6 @@
   .sc-cross { display:inline-flex; align-items:center; gap:4px; font-weight:600; }   /* 평면 텍스트(칩 폐지·운영자 260621) */
   .sc-cross .cn { color:var(--accent); font-weight:800; }   /* 매체 수 = 라임 숫자만('매체' 글자 제거·운영자 260621) */
   .sc-cross.lo .cn { color:var(--mut); font-weight:600; }   /* 매체 0~1 = 무강조 */
-  .sc-cross.merged { cursor:pointer; }   /* 병합 앵커 = '합' 배지 폐지, 매체수 숫자 자체를 앰버로(합산 표시) + 탭=해제(운영자 260625) */
-  .sc-cross.merged .cn { color:var(--accent-2); }   /* 합산 매체수 = 앰버(스크랩 테마·합쳐진 클러스터 신호) */
   .sc-badge { font-weight:700; }
   .sc-badge.iss { color:var(--warn); }      /* 이슈 = 노랑 */
   .sc-badge.brk { color:var(--danger); }    /* 긴급 = 빨강 */
@@ -702,7 +700,10 @@
     -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); transition:transform .12s, color .15s, border-color .15s; }
   .mb-x:active { transform:scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
   .mb-x svg { width:13px; height:13px; stroke:currentColor; stroke-width:2.1; fill:none; stroke-linecap:round; display:block; }
-  /* (옛 "·합" 배지 .sc-mergetag 폐지 260625 — 병합 앵커는 매체수 숫자를 앰버[.sc-cross.merged .cn]로 표현·탭=해제) */
+  /* "＋N 병합" 배지(병합된 앵커 카드 · 일반모드 · 탭=해제 메뉴) = 앰버(스크랩 테마·픽 초록과 구분) */
+  .sc-mergetag { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px;
+    letter-spacing:-.2px; color:var(--accent-2); background:rgba(var(--amber-rgb),.14); border:1px solid rgba(var(--amber-rgb),.4); cursor:pointer; }
+  .sc-mergetag:active { transform:scale(.92); }
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
     padding:30px 16px calc(92px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 */
@@ -5454,7 +5455,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}${c._mergeCount ? ' merged' : ''}"${c._mergeCount ? ` title="병합 ${c._mergeCount}건 합산 매체수 — 탭하면 해제"` : ''}><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}"><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}${c._mergeCount ? `<span class="sc-mergetag" title="병합된 기사 ${c._mergeCount}건 — 탭 = 해제">·합</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(scLinkUrl(c) || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
@@ -5526,7 +5527,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
     el.addEventListener('pointermove', e => { if (_mergeLpT && Math.abs(e.clientX - _mergeLpX) + Math.abs(e.clientY - _mergeLpY) > 10) { clearTimeout(_mergeLpT); _mergeLpT = null; } });   // 스와이프/스크롤 중 오발 취소(clientX = iOS movementX 0버그 회피)
     el.addEventListener('contextmenu', e => { if (MERGE_MODE) return; e.preventDefault(); enterMerge(c); });   // PC 우클릭 = 병합모드
   }
-  const _mtag = el.querySelector('.sc-cross.merged');   // '합' 배지 폐지 → 앰버 합산 매체수 탭 = 병합 해제(운영자 260625)
+  const _mtag = el.querySelector('.sc-mergetag');
   if (_mtag) _mtag.addEventListener('click', e => { e.stopPropagation(); if (!MERGE_MODE) unmergeAnchor(c); });
   return el;
 }
