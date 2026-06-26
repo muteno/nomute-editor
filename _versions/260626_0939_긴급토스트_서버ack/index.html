@@ -430,7 +430,7 @@
   /* SNS 탭 = 소셜 버스트(커뮤니티 비정치 공론화) 레인 — 시안 테마 카드. social_candidates.json 렌더(renderSns). 정본 설계 = docs/social-burst.md */
   #snsList { display:flex; flex-direction:column; gap:11px; }
   .soc-item { display:block; text-decoration:none; color:var(--fg); padding:12px 14px; border-radius:14px;
-    background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20)); border:1px solid var(--line);   /* 글래스 = 실크 비침 · 테두리 = 피드 .card와 동일 var(--line)(거의 borderless) 통일 → 전 카드 일관(SNS 시안 정체성은 hover·burst·src 텍스트로) · 운영자 260626 */
+    background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20)); border:1px solid rgba(12,208,247,.30);   /* 글래스 = 실크 비침(피드 동일 톤)·시안 테두리로 카드 구분 유지(SNS 색)·운영자 260626 */
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }
   #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
@@ -4842,15 +4842,6 @@ function markBreakingSeen() {
   try { localStorage.setItem(BKEY, JSON.stringify([...seen])); } catch {}
   document.body.classList.remove('has-breaking');
 }
-// 토스트 ✓/↗ = 명시적 '확인' → 서버 ledger(api/rate)에도 ack 기록 → triage-state.json = cross-device 동기화(카드 ack toggleAck와 동일 경로). ⚠️ enterScrap(단순 열람)의 markBreakingSeen에는 안 붙임 = 열람만으로 전 기기 ack 방지. (운영자 260626 — 토스트 ✓가 localStorage만 써 기기별 재알림되던 버그.)
-function ackBreakingServer() {
-  breakingNow().forEach(c => {
-    const id = candId(c), cur = ratingsAll()[id] || {};
-    if (cur.acked) return;                       // 이미 확인 = 중복 post 생략
-    saveRating(id, { acked: true });             // 로컬 즉시 반영(같은 기기 재알림 즉시 차단)
-    postRate({ id, url: c.url || '', title: c.title || '', acked: true, score: cur.score || 0, picked: !!cur.picked, dismissed: !!cur.dismissed, action: cur.action || '', reason: cur.reason || '' });   // 서버 ledger → triage-state.json (srvTriage가 url+cluster_members로 매칭 = candId 드리프트에도 견고)
-  });
-}
 // 토스트/알림 → 수집함 진입 후 해당 후보 카드로 스크롤+점멸. 렌더(loadCandidates)가 비동기라 짧게 재시도. 운영자 260620.
 function scGoTo(c) {
   showTab('scrap');
@@ -4879,8 +4870,8 @@ function showToast(n, sample) {
     + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 새 탭" title="원문 새 탭(확인 처리됨)">${EXT_SVG}</button>`;
   // ✓ = 확인(markBreakingSeen=알림 끔)+초록 플래시 후 사라짐 / ↗ = 원문 새 탭 + 확인 처리(원문 봤으니 ack) · 둘 다 본문탭(수집함 이동)과 stopPropagation 분리
   const _ak = t.querySelector('[data-bt="ack"]'), _sr = t.querySelector('[data-bt="src"]');
-  if (_ak) _ak.onclick = ev => { ev.stopPropagation(); _ak.classList.add('ok'); markBreakingSeen(); ackBreakingServer(); clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 340); };
-  if (_sr) _sr.onclick = ev => { ev.stopPropagation(); markBreakingSeen(); ackBreakingServer(); clearTimeout(_toastT); t.classList.remove('show'); if (_toastC) openExt(scLinkUrl(_toastC) || _toastC.url); };   // ↗ = 가장 메이저 원문 새 탭(failOpen의 c.url=통신사·군소 아님 · 분신술9) · 원문 봤으니 서버 ack도(cross-device)
+  if (_ak) _ak.onclick = ev => { ev.stopPropagation(); _ak.classList.add('ok'); markBreakingSeen(); clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 340); };
+  if (_sr) _sr.onclick = ev => { ev.stopPropagation(); markBreakingSeen(); clearTimeout(_toastT); t.classList.remove('show'); if (_toastC) openExt(scLinkUrl(_toastC) || _toastC.url); };   // ↗ = 가장 메이저 원문 새 탭(failOpen의 c.url=통신사·군소 아님 · 분신술9)
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_toastT); _toastT = setTimeout(() => t.classList.remove('show'), 6500);
 }
