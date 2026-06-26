@@ -1836,7 +1836,7 @@
 
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>뉴스요약</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
       <span class="askph" id="askPh">내용을 입력해주세요</span>
@@ -5868,8 +5868,8 @@ function openTool(src, title, tabs) {
   if (tabs && tabs.length) {
     tooldlg.classList.add('has-tabs');
     tt.style.gridTemplateColumns = 'repeat(' + tabs.length + ',1fr)';
-    tt.innerHTML = tabs.map((t, i) => '<button type="button" class="tooltab' + (i === 0 ? ' on' : '') + '" data-src="' + t.src + '" data-title="' + (t.title || '') + '">' + t.label + '</button>').join('');
-    src = tabs[0].src; title = tabs[0].title || title;
+    tt.innerHTML = tabs.map((t, i) => '<button type="button" class="tooltab' + (i === 0 ? ' on' : '') + '" data-src="' + t.src + '">' + t.label + '</button>').join('');
+    src = tabs[0].src;   // 타이틀은 호출부가 준 묶음명 고정(탭 따라 안 바뀜 · 운영자 260626)
   } else { tooldlg.classList.remove('has-tabs'); tt.innerHTML = ''; }
   $('#toolTitle').textContent = title || '제작 도구';
   loadToolFrame(src);
@@ -5880,16 +5880,15 @@ function openTool(src, title, tabs) {
 // 도구 탭 클릭 = iframe 스왑(모달 유지 · 히스토리 칸 안 늘림)
 $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
   $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x === b));
-  if (b.dataset.title) $('#toolTitle').textContent = b.dataset.title;
-  loadToolFrame(b.dataset.src); });
-// 라디얼 제작 메뉴 라우팅 — 뉴스요약=요약 요청 / 썸네일=오버레이 생성기 / 자막생성=자막 생성기↔영상 프롬프트 탭 도구
-const CAP_TABS = [{ src: '/ly.html', title: '자막 생성기', label: '자막 생성기' }, { src: '/k.html', title: '영상 프롬프트', label: '영상 프롬프트' }];
+  loadToolFrame(b.dataset.src); });   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
+// 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스요약·썸네일·자막생성 고정 · 세부는 탭) · 운영자 260626
+const CAP_TABS = [{ src: '/ly.html', label: '자막 생성기' }, { src: '/k.html', label: '영상 프롬프트' }];
 $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem[data-act]'); if (!b) return; e.preventDefault();
   bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open');   // 라디얼 닫고
   const a = b.dataset.act;
   if (a === 'ask') openAsk();
-  else if (a === 'thumb') openTool('/thumb.html', '오버레이 생성기');
-  else if (a === 'cap') openTool(null, '자막 생성기', CAP_TABS); });
+  else if (a === 'thumb') openTool('/thumb.html', '썸네일');
+  else if (a === 'cap') openTool(null, '자막생성', CAP_TABS); });
 $('#toolX').addEventListener('click', () => tooldlg.close());
 tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = ''; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus();
   if (toolPopHandled) toolPopHandled = false;                                   // 백버튼으로 닫힘 = 히스토리 이미 pop됨
