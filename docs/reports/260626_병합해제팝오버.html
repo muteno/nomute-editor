@@ -1,0 +1,75 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark">
+<title>병합 해제 팝오버 — 시안 확인</title>
+<style>
+  :root{ --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+    --accent-2:#ff9614; --amber-rgb:255,150,20; --fg:#eef7f0; --mut:#8fa697; --r-s:9px; --blur-s:8px; --ease:cubic-bezier(.22,.61,.36,1); }
+  body{ background:#0a120d; color:var(--fg); font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; margin:0; padding:34px 18px 90px; }
+  h1{ font-size:18px; } p{ color:var(--mut); font-size:13px; line-height:1.7; }
+  .card{ position:relative; max-width:320px; margin:30px 0; padding:9px 11px; border-radius:13px; background:rgba(38,64,46,.42); border:1px solid rgba(255,255,255,.08); }
+  .sc-top{ display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:11px; }
+  .sc-metal{ display:inline-flex; align-items:center; gap:5px; }
+  .cat{ color:#7fe; font-weight:700; } .sep{ color:var(--mut); }
+  .sc-cross{ display:inline-flex; align-items:center; font-weight:600; }
+  .sc-cross .cn{ color:var(--accent); font-weight:800; }
+  .sc-cross.merged{ cursor:pointer; } .sc-cross.merged .cn{ color:var(--accent-2); }
+  .title{ margin-top:7px; font-size:14px; font-weight:700; }
+  .media{ color:var(--mut); }
+  /* === 실제 뷰어서 복사한 팝오버 CSS === */
+  .unmerge-pop { position:absolute; z-index:60; transform:translate(-50%,-100%); margin-top:-9px; animation:umPop .16s var(--ease); }
+  @keyframes umPop { 0% { transform:translate(-50%,-100%) translateY(6px) scale(.9); opacity:0; } 100% { opacity:1; } }
+  .unmerge-go { display:inline-flex; align-items:center; justify-content:center; height:28px; padding:0 12px; border-radius:var(--r-s); cursor:pointer; line-height:1;
+    font-size:11px; font-weight:800; letter-spacing:-.2px; color:var(--accent-2); white-space:nowrap;
+    background:rgba(26,28,26,.42); border:1px solid rgba(var(--amber-rgb),.42);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 4px 14px rgba(0,0,0,.45);
+    -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); transition:transform .12s var(--ease); }
+  .unmerge-go:active { transform:scale(.93); }
+  .unmerge-go.firing { color:var(--on-accent); pointer-events:none; border-color:var(--accent);
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s linear forwards; }
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
+  .unmerge-go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .unmerge-go.checking { width:28px; padding:0; }
+  .unmerge-go .gck { width:18px; height:18px; }
+  .unmerge-go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
+  @keyframes goTick { to { stroke-dashoffset:0; } }
+</style></head><body>
+<h1>병합 해제 — 인터랙션 확인</h1>
+<p>주황 숫자(병합된 카드의 매체 수)를 <b>탭</b>하면 바로 위에 「병합 해제 실행」 글래스 버튼이 뜸. 그 버튼을 누르면 게이지가 차고 ✓ 체크 후 해제(여기선 데모라 다시 합쳐짐). 한 번 더 눌러야 풀리니 오발 안 됨.</p>
+
+<div class="card" id="card">
+  <div class="sc-top">
+    <span class="sc-metal"><span class="cat">국제</span><span class="sep">·</span>
+      <span class="sc-cross merged" id="num" title="병합된 기사 2건 — 탭 = 해제"><span class="cn">24</span></span>
+    </span>
+    <span class="media">1시간 전</span>
+  </div>
+  <div class="title">일본 북동부서 규모 6.9 강진…긴급지진경보 발령</div>
+</div>
+
+<script>
+let pop=null, outside=null;
+function close(){ if(!pop) return; pop.remove(); pop=null; if(outside){document.removeEventListener('click',outside,true);outside=null;} }
+function open(numEl){
+  close();
+  pop=document.createElement('div'); pop.className='unmerge-pop';
+  pop.innerHTML='<button type="button" class="unmerge-go">병합 해제 실행</button>';
+  document.body.appendChild(pop);
+  const r=numEl.getBoundingClientRect();
+  pop.style.left=(scrollX+r.left+r.width/2)+'px';
+  pop.style.top=(scrollY+r.top)+'px';
+  const btn=pop.querySelector('.unmerge-go');
+  btn.addEventListener('click', async e=>{
+    e.stopPropagation();
+    btn.classList.add('firing'); btn.style.pointerEvents='none';
+    await new Promise(res=>setTimeout(res,740));
+    btn.classList.add('okdone','checking');
+    btn.innerHTML='<svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+    await new Promise(res=>setTimeout(res,460));
+    close();
+  });
+  outside=ev=>{ if(pop && !pop.contains(ev.target)) close(); };
+  setTimeout(()=>document.addEventListener('click',outside,true),0);
+}
+document.getElementById('num').addEventListener('click',e=>{ e.stopPropagation(); open(e.currentTarget); });
+</script></body></html>
