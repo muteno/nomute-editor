@@ -26,20 +26,6 @@ MODEL = os.environ.get("BREAKING_MODEL", "claude-opus-4-8")
 CHUNK = int(os.environ.get("BREAKING_CHUNK", "40"))             # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — gate_judge와 동일·후보 풀 커져도 절단 0)
 MAX_PER_RUN = int(os.environ.get("BREAKING_MAX_PER_RUN", "80")) # 한 런당 판정 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
 
-# 운영자 제외 키워드 (260626) — 제목에 아래 인물명이 있으면 breaking=false 강제.
-# 김건희 관련 사법·수사 정국(특검·기소·구속·선고·압수수색 등)이 '고위공직자급 수사절차'로
-# 긴급 오발하는 것을 차단(수집함엔 일반 기사로 남음). RUBRIC 명시(AI 판정) + 이 하드가드(결정적) 이중.
-# 키워드는 EXCLUDE_BREAKING_KEYWORDS env(쉼표구분)로 덮어쓰기 가능.
-EXCLUDE_BREAKING_KEYWORDS = [
-    k.strip() for k in os.environ.get("EXCLUDE_BREAKING_KEYWORDS", "김건희").split(",") if k.strip()
-]
-
-
-def is_excluded(title):
-    """제목에 운영자 제외 키워드가 있으면 True(=긴급 강제 제외)."""
-    t = title or ""
-    return any(kw in t for kw in EXCLUDE_BREAKING_KEYWORDS)
-
 RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건 제목들이 각각 '긴급 속보(breaking news)'인지 판정하라.
 
 [속보 O — 긴급·돌발 사건]
@@ -90,9 +76,6 @@ RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건
 급발이므로 O(위 '사건 본질 우선' 예시). **전국적 대형 사건**(대형 참사·연쇄·무차별·고위공직자급)의
 수사 절차는 O 유지.
   예) "신안산선 추락사 ○○건설 압수수색"(사고 지남·압수수색이 핵심) → X · "방금 폭발…경찰 수사 착수"(폭발 방금) → O
-
-🚫 **운영자 제외 (260626):** 제목에 **'김건희'**가 들어간 사건은 (특검·기소·구속·선고·압수수색 등
-사법·수사 정국 후속이 연일 보도돼도) **급발 돌발사건이 아니므로 긴급 X**. 무조건 NO로 판정한다.
 
 [속보 X — 긴급하지 않음(보도가치 있어도 '속보'는 아님 → 수집함에서 따로 봄)]
 - 순수 행정 공지·보도자료·정책/제도 발표·개정 예고 (사건 발생 없음)
@@ -174,8 +157,6 @@ def main():
         v = verdicts.get(str(i))
         if v is None:
             continue  # 누락분 = 미도장 유지(다음 런 재시도)
-        if is_excluded(c.get("title", "")):
-            v = False                      # 운영자 제외 키워드(김건희 등) → AI가 YES여도 긴급 강제 차단
         c["breaking"] = bool(v)            # pending 은 cands 원소 참조 → 직접 반영
         c["breaking_rubric"] = RUBRIC_VER  # 판정 도장(이 rubric 버전으로 판정됨)
         if v:
