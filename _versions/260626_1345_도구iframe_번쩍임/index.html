@@ -65,10 +65,6 @@
     "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; letter-spacing:-.2px;
     -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom);
   }
-  /* 부팅 reveal 게이트 — 새로고침 시 시계만 먼저 뜨고 배너·피드가 뒤따르는 FOUC 차단. 첫 피드 렌더 + 배너 로드 완료 후 .booted로 한 번에 노출(html/body 배경 #0b0d0c 다크 유지 = 흰 플래시 0). 안전망 setTimeout으로 영구 블랙 방지 · 운영자 260626 */
-  body:not(.booted) { opacity:0; }
-  body.booted { opacity:1; transition:opacity .2s ease; }
-  @media (prefers-reduced-motion:reduce) { body.booted { transition:none; } }
   /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림(.58) + 메뉴별 색 점등(--bgfx 라디얼·유지). 3탭 공통 · 글로우 없음 · 운영자 260625(롤백=이 배경 블록 복원). */
   .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none; --bgfx:15,253,2;
     filter:brightness(1.2) saturate(1.05);   /* 실크 밝힘 = 글래스 카드/패널 뒤로 실크가 보여 '진짜 투명'해 보임(딥블랙이라 안 보이던 것 해소·전 화면 톤 통일·운영자 260626) */
@@ -1033,29 +1029,28 @@
   dialog::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
   /* 제작 도구 모달(iframe) — 도구 페이지를 뷰어 위 모달로(클릭→등장). backdrop은 dialog 공통(뒤 dimmed·블러7) 상속 */
   #tooldlg { width:min(600px,94vw); height:90dvh; max-height:90dvh; padding:0; overflow:hidden; display:flex; flex-direction:column;
-    background:rgba(17,18,20,.64); backdrop-filter:blur(34px) saturate(1.4); -webkit-backdrop-filter:blur(34px) saturate(1.4);   /* 중립 무채색 글래스(녹색 틴트 제거 · 운영자 260626) */
+    background:rgba(12,18,14,.64); backdrop-filter:blur(34px) saturate(1.4); -webkit-backdrop-filter:blur(34px) saturate(1.4);
     border:1px solid rgba(255,255,255,.13); border-radius:22px; box-shadow:0 30px 80px rgba(0,0,0,.5);   /* 그림자 명시(베이스 의존 제거·타 모달과 통일) */
     animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
   #tooldlg:not([open]) { display:none; }   /* 닫힘 시 display:flex가 dialog 기본 display:none 덮어 빈 껍데기로 깔리던 버그 차단(dialog 공통) */
   @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — backdrop-filter(blur34)에 transform 애니 얹으면 블러 재계산으로 한 번 턱 걸림(스내그). 콘텐츠 스태거 라이즈(촤르륵)는 제거됨 */
   @media (prefers-reduced-motion:reduce) { #tooldlg { animation:none; } }
   .tool-h { flex:none; display:flex; align-items:center; justify-content:space-between; padding:11px 16px;
-    background:rgba(24,25,28,.5); backdrop-filter:blur(22px) saturate(1.2); -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2); }   /* 타이틀 바 50% 투명(글자 .tool-h b는 불투명 유지) · 중립 무채색(녹색 틴트 제거·운영자 260626) */
+    background:rgba(13,23,16,.5); backdrop-filter:blur(22px) saturate(1.2); -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2); }   /* 타이틀 바 50% 투명(글자 .tool-h b는 불투명 유지) · 운영자 260625 */
   .tool-h b { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-.2px; }   /* 모달 타이틀 통일(15·800·-.2) */
   .tool-x { width:30px; height:30px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.06);
     color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
   .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
-  #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; opacity:0; transition:opacity .2s var(--ease); }   /* 투명 → tooldlg 반투명 글래스 비침 · opacity 0→1(load 후) = thumb 로드 전 흰 프레임 번쩍임 차단 */
-  #tooldlg.frame-ready #toolframe { opacity:1; }   /* iframe load 완료 = 페이드인(로드 중엔 tooldlg 다크 글래스만 보임) */
+  #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; }   /* 투명 → tooldlg 반투명 글래스 비침 */
   /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
-  .tool-tabs { flex:none; display:none; gap:6px; padding:9px 13px; background:rgba(24,25,28,.4); border-bottom:1px solid var(--line2); }   /* 중립 무채색(녹색 틴트 제거·운영자 260626) */
+  .tool-tabs { flex:none; display:none; gap:6px; padding:9px 13px; background:rgba(13,23,16,.4); border-bottom:1px solid var(--line2); }
   #tooldlg.has-tabs .tool-tabs { display:grid; }
   .tooltab { padding:9px 4px; text-align:center; color:var(--fg); cursor:pointer; font-weight:600; font-size:12.5px; border-radius:12px;
-    background:linear-gradient(165deg, rgba(40,42,46,.5), rgba(20,21,24,.6)); backdrop-filter:blur(var(--blur-m)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.2);   /* 비선택 탭 = 중립 무채색(녹색 틴트 제거 · 선택 .on은 accent 그린 유지 · 운영자 260626) */
+    background:linear-gradient(165deg, rgba(34,56,41,.5), rgba(14,26,18,.6)); backdrop-filter:blur(var(--blur-m)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.2);
     border:1px solid rgba(255,255,255,.1); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:transform .12s, border-color .15s, box-shadow .15s; }
   .tooltab:active { transform:scale(.96); }
   .tooltab.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 0 16px rgba(var(--accent-rgb),.14); }
-  @media (max-width:640px){ #tooldlg { width:94vw; max-width:94vw; height:88dvh; max-height:88dvh; margin:auto; } }   /* 폰 = 풀스크린 폐지 → 여백 팝업 모달(뒤 피드 비침·border-radius 22 상속·중앙정렬 88dvh가 노치 비킴 = safe-area 패딩 불요). margin:auto = 전역 dialog{margin:0}(모바일) 덮어 가로·세로 중앙(없으면 좌상단 쏠림) · 운영자 260626 */
+  @media (max-width:640px){ #tooldlg { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; border-radius:0; } .tool-h { padding-top:calc(10px + env(safe-area-inset-top)); } }
   /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
   .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
@@ -1717,7 +1712,6 @@
 </style>
 </head>
 <body data-tab="feed">
-<script>setTimeout(function(){document.body.classList.add('booted');},2500);</script><!-- 최종 안전망(독립 스크립트) — 메인 앱 스크립트가 통째로 죽어도 2.5s 후 반드시 노출(영구 블랙 차단·운영자 260626). 정상 경로는 메인의 allSettled가 ~0.3s에 먼저 노출. -->
 <div class="bgfx"></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
@@ -1841,7 +1835,7 @@
 
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>뉴스 요약</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
       <span class="askph" id="askPh">내용을 입력해주세요</span>
@@ -1911,19 +1905,19 @@
   <button class="bnav-i active" data-tab="feed" aria-label="뉴스 요약"><span class="qbadge" id="qbadge" title="분석 대기열 — 탭하면 열림" hidden></span><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="3.6" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.6" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg><span>뉴스 요약</span></button>
   <button class="bnav-i" id="linkfab" type="button" aria-label="링크(피드 탐색)"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1.1-1.1"/></svg><span>링크</span></button>
 </nav>
-<!-- 제작 도구 = FAB(+) 위로 3버튼 반원 펼침(라디얼). 좌상 뉴스 요약 · 12시 이미지 · 우상 영상. 버튼=.sbtn 투명 글래스 계승. 세부 분기는 도구 안 탭(이미지=오버레이 생성기 탭 / 영상=자막↔영상프롬프트 탭). -->
+<!-- 제작 도구 = FAB(+) 위로 3버튼 반원 펼침(라디얼). 좌상 뉴스요약 · 12시 썸네일 · 우상 자막생성. 버튼=.sbtn 투명 글래스 계승. 세부 분기는 도구 안 탭(썸네일=오버레이 생성기 탭 / 자막생성=자막↔영상프롬프트 탭). -->
 <div class="radmenu" id="bpop" hidden>
-  <button class="raditem" type="button" data-act="ask" data-ang="left" aria-label="뉴스 요약(요약 요청)">
+  <button class="raditem" type="button" data-act="ask" data-ang="left" aria-label="뉴스요약(요약 요청)">
     <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></span>
-    <span class="radlab">뉴스 요약</span>
+    <span class="radlab">뉴스요약</span>
   </button>
-  <button class="raditem" type="button" data-act="thumb" data-ang="up" aria-label="이미지(오버레이 생성기)">
+  <button class="raditem" type="button" data-act="thumb" data-ang="up" aria-label="썸네일(오버레이 생성기)">
     <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg></span>
-    <span class="radlab">이미지</span>
+    <span class="radlab">썸네일</span>
   </button>
-  <button class="raditem" type="button" data-act="cap" data-ang="right" aria-label="영상(자막 생성기·영상 프롬프트)">
+  <button class="raditem" type="button" data-act="cap" data-ang="right" aria-label="자막생성(자막 생성기·영상 프롬프트)">
     <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h6M7 11h10"/></svg></span>
-    <span class="radlab">영상</span>
+    <span class="radlab">자막생성</span>
   </button>
 </div>
 <div class="bpop" id="linkpop" hidden>
@@ -5863,7 +5857,6 @@ window.addEventListener('popstate', () => { if (tooldlg.open) { toolPopHandled =
 // 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
 // iframe 로드 = location.replace(.src 대신 = 세션 히스토리에 항목 안 쌓음 · 폰 백버튼 빈화면 차단 · 운영자 260623) + 캐시버스트(stale 방지 · _headers no-cache 한 쌍)
 function loadToolFrame(src) {
-  tooldlg.classList.remove('frame-ready');   // 로드 시작 = iframe 숨김(흰 프레임 차단) → 아래 load 리스너가 페이드인
   const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   const _fr = $('#toolframe'); try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
 }
@@ -5873,8 +5866,8 @@ function openTool(src, title, tabs) {
   if (tabs && tabs.length) {
     tooldlg.classList.add('has-tabs');
     tt.style.gridTemplateColumns = 'repeat(' + tabs.length + ',1fr)';
-    tt.innerHTML = tabs.map((t, i) => '<button type="button" class="tooltab' + (i === 0 ? ' on' : '') + '" data-src="' + t.src + '">' + t.label + '</button>').join('');
-    src = tabs[0].src;   // 타이틀은 호출부가 준 묶음명 고정(탭 따라 안 바뀜 · 운영자 260626)
+    tt.innerHTML = tabs.map((t, i) => '<button type="button" class="tooltab' + (i === 0 ? ' on' : '') + '" data-src="' + t.src + '" data-title="' + (t.title || '') + '">' + t.label + '</button>').join('');
+    src = tabs[0].src; title = tabs[0].title || title;
   } else { tooldlg.classList.remove('has-tabs'); tt.innerHTML = ''; }
   $('#toolTitle').textContent = title || '제작 도구';
   loadToolFrame(src);
@@ -5885,22 +5878,22 @@ function openTool(src, title, tabs) {
 // 도구 탭 클릭 = iframe 스왑(모달 유지 · 히스토리 칸 안 늘림)
 $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
   $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x === b));
-  loadToolFrame(b.dataset.src); });   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
-// 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스 요약·이미지·영상 고정 · 세부는 탭) · 운영자 260626
-const CAP_TABS = [{ src: '/ly.html', label: '자막 생성기' }, { src: '/k.html', label: '영상 프롬프트' }];
+  if (b.dataset.title) $('#toolTitle').textContent = b.dataset.title;
+  loadToolFrame(b.dataset.src); });
+// 라디얼 제작 메뉴 라우팅 — 뉴스요약=요약 요청 / 썸네일=오버레이 생성기 / 자막생성=자막 생성기↔영상 프롬프트 탭 도구
+const CAP_TABS = [{ src: '/ly.html', title: '자막 생성기', label: '자막 생성기' }, { src: '/k.html', title: '영상 프롬프트', label: '영상 프롬프트' }];
 $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem[data-act]'); if (!b) return; e.preventDefault();
   bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open');   // 라디얼 닫고
   const a = b.dataset.act;
   if (a === 'ask') openAsk();
-  else if (a === 'thumb') openTool('/thumb.html', '이미지');
-  else if (a === 'cap') openTool(null, '영상', CAP_TABS); });
+  else if (a === 'thumb') openTool('/thumb.html', '오버레이 생성기');
+  else if (a === 'cap') openTool(null, '자막 생성기', CAP_TABS); });
 $('#toolX').addEventListener('click', () => tooldlg.close());
 tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = ''; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus();
   if (toolPopHandled) toolPopHandled = false;                                   // 백버튼으로 닫힘 = 히스토리 이미 pop됨
   else if (history.state && history.state.tool) history.back(); });             // X·백드롭·ESC로 닫힘 = 푸시한 칸 정리   // iframe 정지 + 스크롤락 해제(중첩 가드) + 트리거 포커스 복귀
 tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close(); });   // 백드롭 클릭 닫기
-$('#toolframe').addEventListener('load', () => { tooldlg.classList.add('frame-ready');   // 로드 완료 = iframe 페이드인(번쩍임 차단)
-  try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
+$('#toolframe').addEventListener('load', () => { try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
 $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 askdlg.addEventListener('close', () => { if (askImages.length) { askImages = []; renderAskImgs(); } });   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
@@ -6659,16 +6652,7 @@ function openMsgDeepLink() {
   } catch (_) {}
 }
 
-// 부팅 reveal — 첫 피드 렌더 + 배너 이미지 로드 둘 다 끝난 뒤 한 번에 노출(시계만 먼저 뜨는 FOUC 차단·운영자 260626). idempotent.
-const _bootReveal = () => document.body.classList.add('booted');
-const _bannerReady = new Promise(res => {
-  const im = document.querySelector('.banner.layer-feed');
-  if (!im || im.complete) { res(); return; }
-  im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true });
-});
-const _firstLoad = load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
-Promise.allSettled([_firstLoad, _bannerReady]).then(_bootReveal);   // 피드·배너 준비되면 즉시 노출(실패해도 allSettled로 진행 · render는 load 안에서 동기 완료라 rAF 불필요·백그라운드 탭서 rAF 멈춰도 안전)
-setTimeout(_bootReveal, 1800);   // 안전망 — load/배너가 지연·실패해도 화면 반드시 노출(영구 블랙 방지)
+load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages().then(() => openMsgDeepLink());   // ?msg=fail-… (수집 실패 푸시 탭) → 메시지함 열고 강조
 loadHealth();       // eager — 맞춤법 검사기 건강(불건강이면 프로필 노란 링 + 메시지)
