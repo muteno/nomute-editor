@@ -14,10 +14,10 @@
     'html::-webkit-scrollbar,body::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}' +
     '.cscroll{position:fixed;top:0;right:2px;width:10px;height:100%;z-index:99999;pointer-events:none;opacity:0;transition:opacity .3s;}' +
     '.cscroll.on{opacity:1;}' +
-    '.cscroll i{position:absolute;right:2px;top:0;width:6px;min-height:28px;border-radius:999px;' +
+    '.cscroll i{position:absolute;right:2px;top:0;width:4px;min-height:24px;border-radius:999px;' +
     'background:#23252b;' +
     'transition:background .25s,width .15s;will-change:transform;}' +
-    '.cscroll.act i{background:#3a3d44;width:7px;}' +
+    '.cscroll.act i{background:#3a3d44;width:5px;}' +
     '@media (prefers-reduced-motion:reduce){.cscroll{transition:none;}}';
   (doc.head || root).appendChild(st);
 
@@ -30,7 +30,7 @@
         sp = window.scrollY != null ? window.scrollY : root.scrollTop;
     if (sh <= ch + 2) { bar.classList.remove('on'); return; }   // 스크롤 불필요 = 숨김
     bar.classList.add('on');
-    var th = Math.max(28, ch * ch / sh);                        // thumb 높이 = 화면비
+    var th = Math.max(24, Math.min(64, ch * ch / sh));          // thumb 높이 = 화면비, 단 상한 64px 캡 = 짧은 알약(뉴스 요약처럼 · 운영자 260626)
     var top = (sp / (sh - ch)) * (ch - th);                     // thumb 위치 = 스크롤 진행
     thumb.style.height = th + 'px';
     thumb.style.transform = 'translateY(' + Math.round(top) + 'px)';
