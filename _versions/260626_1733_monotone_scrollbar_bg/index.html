@@ -69,12 +69,15 @@
   body:not(.booted) { opacity:0; }
   body.booted { opacity:1; transition:opacity .2s ease; }
   @media (prefers-reduced-motion:reduce) { body.booted { transition:none; } }
-  /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림 — 색 워시 제거(전 탭 공통 중립 실크 · 요약 리더와 통일 · 운영자 260626 "원톤 전역"). 탭색은 배너 글로우·강조에만 남김(§🎬 크로스페이드 불변). */
-  .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none;
+  /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림(.58) + 메뉴별 색 점등(--bgfx 라디얼·유지). 3탭 공통 · 글로우 없음 · 운영자 260625(롤백=이 배경 블록 복원). */
+  .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none; --bgfx:15,253,2;
     filter:brightness(1.2) saturate(1.05);   /* 실크 밝힘 = 글래스 카드/패널 뒤로 실크가 보여 '진짜 투명'해 보임(딥블랙이라 안 보이던 것 해소·전 화면 톤 통일·운영자 260626) */
     background:
+      radial-gradient(125% 70% at 50% -8%, rgba(var(--bgfx),.10), transparent 55%),
       linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4)),
       url(assets/brand/feed_bg.png) center/cover no-repeat, #000; }
+  body.tab-scrap .bgfx { --bgfx:255,150,20; }        /* 스크랩 = 앰버 네온 배경 */
+  body[data-tab="sns"] .bgfx { --bgfx:12,208,247; }   /* SNS = 시안 네온 배경 */
   /* (피드 전용 글로우 배경 제거 — 글로우 OFF·배경은 위 .bgfx로 3탭 공통 통합 · 운영자 260625) */
   /* ── 당겨서 새로고침 = 커스텀 링(탭색) ── 네이티브(theme-color 링)를 끄고 직접 그림 → '원'만 메뉴색·주소창/상태바 불변(운영자 260623). 스피너는 .cref-ld-sp 패턴 계승. */
   html.ptr-on { overscroll-behavior-y:contain; }   /* 네이티브 당겨서새로고침 차단 — 터치기기(JS가 .ptr-on 부여)에서만 = CSS차단·JS핸들러 생사 단일게이트(데스크탑 네이티브 새로고침/바운스 보존) */
@@ -982,7 +985,7 @@
   .ed-foot { display:flex; gap:10px; justify-content:flex-end; align-items:center; padding:11px 16px; border-top:1px solid var(--line2); }
   .ed-cancel { padding:9px 18px; font:700 12.5px inherit; color:var(--mut); background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
   .ed-cancel:hover { color:var(--fg); }
-  .ed-go { position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:96px; padding:9px 22px; font:800 13px inherit; color:var(--accent); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; cursor:pointer; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 글래스 고스트 = .mkbtn 계승(투명+테두리+네온 글자) */
+  .ed-go { position:relative; overflow:hidden; display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:96px; padding:9px 22px; font:800 13px inherit; color:var(--accent); background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.36); border-radius:999px; cursor:pointer; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 글래스 고스트 = .mkbtn 계승(투명+테두리+네온 글자) */
   .ed-go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.2); } .ed-go[disabled] { opacity:.5; cursor:default; }
   /* 확인 게이트 — 부드러운 글래스(강조 최소) */
   .ed-confirm { display:none; align-items:center; gap:9px; width:100%; }
@@ -1051,11 +1054,11 @@
   /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
   .tool-tabs { flex:none; display:none; gap:6px; padding:9px 13px; background:rgba(24,25,28,.4); border-bottom:1px solid var(--line2); }   /* 중립 무채색(녹색 틴트 제거·운영자 260626) */
   #tooldlg.has-tabs .tool-tabs { display:grid; }
-  .tooltab { padding:9px 4px; text-align:center; color:var(--mut); cursor:pointer; font-weight:600; font-size:13px;
-    background:none; border:none; box-shadow:none; border-radius:0; transition:color .15s, transform .12s; -webkit-tap-highlight-color:transparent; }   /* 글자 탭 = thumb .tab 계승(이미지 썸네일/저작권/카드뉴스와 동일 레벨·버튼 알약 아님·운영자 260626) */
-  .tooltab:hover { color:var(--fg); }
+  .tooltab { padding:9px 4px; text-align:center; color:var(--fg); cursor:pointer; font-weight:600; font-size:12.5px; border-radius:12px;
+    background:linear-gradient(165deg, rgba(40,42,46,.5), rgba(20,21,24,.6)); backdrop-filter:blur(var(--blur-m)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.2);   /* 비선택 탭 = 중립 무채색(녹색 틴트 제거 · 선택 .on은 accent 그린 유지 · 운영자 260626) */
+    border:1px solid rgba(255,255,255,.1); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:transform .12s, border-color .15s, box-shadow .15s; }
   .tooltab:active { transform:scale(.96); }
-  .tooltab.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
+  .tooltab.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 0 16px rgba(var(--accent-rgb),.14); }
   @media (max-width:640px){ #tooldlg { width:94vw; max-width:94vw; height:88dvh; max-height:88dvh; margin:auto; } }   /* 폰 = 풀스크린 폐지 → 여백 팝업 모달(뒤 피드 비침·border-radius 22 상속·중앙정렬 88dvh가 노치 비킴 = safe-area 패딩 불요). margin:auto = 전역 dialog{margin:0}(모바일) 덮어 가로·세로 중앙(없으면 좌상단 쏠림) · 운영자 260626 */
   /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
   .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
@@ -1250,12 +1253,12 @@
   /* ── 카드뉴스 섹션 ── */
   .mkbtn {
     display:block; width:100%; margin:14px 0 4px; padding:14px; font-size:14px; font-weight:800; font-family:inherit;
-    background:rgba(0,0,0,.34); color:var(--accent);
+    background:rgba(15,253,2,.12); color:var(--accent);
     border:1px solid rgba(15,253,2,.36); border-radius:999px; cursor:pointer; position:relative; overflow:hidden;
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
     transition:transform .12s ease, background .15s ease, border-color .15s ease;
   }   /* 메인 버튼 = 글래스 강조(투명+테두리+네온 글자 · 운영자 260621 · 구성도 버튼배치 .go.glass) */
-  .mkbtn:active { transform:scale(.955); background:rgba(0,0,0,.44); }
+  .mkbtn:active { transform:scale(.955); background:rgba(15,253,2,.2); }
   /* 카드 버튼 = 합성기(썸네일 카드뉴스) '이미지 제작'(.go) 전송 상태머신 계승 — 누르면 초록 풀필 → ✓ 체크 그려짐(문구 유지·운영자 260622) */
   .mkbtn.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
@@ -1550,8 +1553,8 @@
   .bpop a.bpop-hl-y:hover { color:#ffe07a; background:rgba(255,206,84,.08); }   /* 호버도 노랑 유지(초록 .bpop a:hover 덮어씀) */
   .askdlg { border:none; border-radius:22px; padding:0; max-width:600px; width:94vw; color:var(--fg);
     position:fixed; inset:0; margin:30dvh auto auto; height:max-content; max-height:calc(70dvh - 28px); overflow:auto;   /* 가로 중앙 · 세로 상단 30% 지점(운영자 260620 — 16%→30% 원복). max-height 70dvh로 하단 클립 방지 */
-    background:linear-gradient(165deg, rgba(24,25,28,.98), rgba(12,13,15,.99));
-    box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(255,255,255,.1);
+    background:linear-gradient(165deg, rgba(20,30,22,.98), rgba(10,15,11,.99));
+    box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(15,253,2,.18);
     animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }   /* 진입애니 통일 */
   .askdlg::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }   /* 기본 dialog backdrop과 통일 */
   .askwrap { padding:18px 18px 24px; }   /* 하단 마진 확보 — 버튼이 바닥에 너무 붙던 거 띄움 */
@@ -1562,7 +1565,7 @@
   .askx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   .askta { display:block; width:100%; box-sizing:border-box; min-height:96px; resize:vertical; border-radius:14px; padding:12px 14px;
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
-  .askta:focus { border-color:rgba(255,255,255,.28); box-shadow:0 0 0 3px rgba(255,255,255,.05); }
+  .askta:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); }
   .askta::placeholder { color:var(--mut); }
   .asktawrap { position:relative; }
   /* 복사·붙여넣기 = 캐러셀 .sbtn 글래스 아이콘 계승(이모지 X). 입력칸 우상단·도형 너비 절반(17px)만큼 아래. */
@@ -1605,10 +1608,10 @@
   .askph.flash { animation:askPhFlash .6s ease; }
   @keyframes askPhFlash { 0%,100% { color:var(--mut); text-shadow:none; } 30% { color:var(--accent); text-shadow:0 0 8px rgba(var(--accent-rgb),.55); } }
   @media (prefers-reduced-motion:reduce) { .asktawrap.shake, .askph.flash { animation:none; } }
-  .asksend { flex:none; position:relative; overflow:hidden; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px;
+  .asksend { flex:none; position:relative; overflow:hidden; background:var(--accent-dim); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.4); border-radius:999px;
     font:inherit; font-size:13px; font-weight:800; padding:9px 18px; cursor:pointer; transition:background .18s ease, border-color .18s ease, color .18s ease; }   /* 글래스 = 구성도 .send 정본(밝은초록 솔리드→dim 바탕이라야 초록 채움이 보임·260622) */
   .asksend > span { position:relative; z-index:1; }
-  .asksend:hover { background:rgba(255,255,255,.08); border-color:rgba(var(--accent-rgb),.3); }
+  .asksend:hover { background:rgba(var(--accent-rgb),.2); }
   .asksend:disabled { opacity:.5; cursor:default; }
   .asksend:active { transform:scale(.97); }
   .asksend.firing { color:var(--on-accent); opacity:1; border-color:var(--accent); pointer-events:none; }   /* 전송 중 = 초록 게이지 위 어두운 글자(구성도 .send.is-fire 정본) */
@@ -6189,11 +6192,11 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-secbtn:hover { background:#0FFD02; color:#000; border-color:#0FFD02; }
   .nm-secbtn:active { transform:scale(.88); }
   .nm-secbtn.ok { background:#0FFD02; color:#000; border-color:#0FFD02; }
-  .draft-scroll { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) rgba(255,255,255,.05); }
+  .draft-scroll { scrollbar-width:thin; scrollbar-color:rgba(15,253,2,.5) rgba(255,255,255,.05); }
   .draft-scroll::-webkit-scrollbar { width:9px; }
   .draft-scroll::-webkit-scrollbar-track { background:rgba(255,255,255,.04); border-radius:9px; margin:4px 0; }
-  .draft-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:9px; border:2px solid transparent; background-clip:padding-box; }
-  .draft-scroll::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
+  .draft-scroll::-webkit-scrollbar-thumb { background:rgba(15,253,2,.42); border-radius:9px; border:2px solid transparent; background-clip:padding-box; }
+  .draft-scroll::-webkit-scrollbar-thumb:hover { background:rgba(15,253,2,.72); background-clip:padding-box; }
   .nm-cardbody { max-height:18em; overflow:hidden; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }   /* 카드 = 고정높이 박스 · 평소 overflow:hidden = 스와이프가 페이지로(외부 스크롤 우선) · 운영자 260622 */
   .nm-cardbody.nm-of { -webkit-mask-image:linear-gradient(180deg,#000 84%,transparent); mask-image:linear-gradient(180deg,#000 84%,transparent); cursor:pointer; }   /* 넘침 = 하단 페이드(더 있음 신호) + 탭하면 그 박스 스크롤 가능(커서 힌트) */
   .nm-cardbody.nm-sactive { overflow-y:auto; -webkit-mask-image:none; mask-image:none; box-shadow:0 0 0 2px rgba(15,253,2,.5) inset; }   /* 탭 활성 = 그 박스만 내부 스크롤 ON(외부 우선의 예외) + 라임 링 */
