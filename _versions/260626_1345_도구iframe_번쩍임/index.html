@@ -1041,8 +1041,7 @@
   .tool-x { width:30px; height:30px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.06);
     color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
   .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
-  #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; opacity:0; transition:opacity .2s var(--ease); }   /* 투명 → tooldlg 반투명 글래스 비침 · opacity 0→1(load 후) = thumb 로드 전 흰 프레임 번쩍임 차단 */
-  #tooldlg.frame-ready #toolframe { opacity:1; }   /* iframe load 완료 = 페이드인(로드 중엔 tooldlg 다크 글래스만 보임) */
+  #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; }   /* 투명 → tooldlg 반투명 글래스 비침 */
   /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
   .tool-tabs { flex:none; display:none; gap:6px; padding:9px 13px; background:rgba(13,23,16,.4); border-bottom:1px solid var(--line2); }
   #tooldlg.has-tabs .tool-tabs { display:grid; }
@@ -5858,7 +5857,6 @@ window.addEventListener('popstate', () => { if (tooldlg.open) { toolPopHandled =
 // 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
 // iframe 로드 = location.replace(.src 대신 = 세션 히스토리에 항목 안 쌓음 · 폰 백버튼 빈화면 차단 · 운영자 260623) + 캐시버스트(stale 방지 · _headers no-cache 한 쌍)
 function loadToolFrame(src) {
-  tooldlg.classList.remove('frame-ready');   // 로드 시작 = iframe 숨김(흰 프레임 차단) → 아래 load 리스너가 페이드인
   const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   const _fr = $('#toolframe'); try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
 }
@@ -5895,8 +5893,7 @@ tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; t
   if (toolPopHandled) toolPopHandled = false;                                   // 백버튼으로 닫힘 = 히스토리 이미 pop됨
   else if (history.state && history.state.tool) history.back(); });             // X·백드롭·ESC로 닫힘 = 푸시한 칸 정리   // iframe 정지 + 스크롤락 해제(중첩 가드) + 트리거 포커스 복귀
 tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close(); });   // 백드롭 클릭 닫기
-$('#toolframe').addEventListener('load', () => { tooldlg.classList.add('frame-ready');   // 로드 완료 = iframe 페이드인(번쩍임 차단)
-  try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
+$('#toolframe').addEventListener('load', () => { try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
 $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 askdlg.addEventListener('close', () => { if (askImages.length) { askImages = []; renderAskImgs(); } });   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
