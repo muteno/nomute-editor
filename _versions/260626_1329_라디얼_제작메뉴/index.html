@@ -65,10 +65,6 @@
     "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; letter-spacing:-.2px;
     -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom);
   }
-  /* 부팅 reveal 게이트 — 새로고침 시 시계만 먼저 뜨고 배너·피드가 뒤따르는 FOUC 차단. 첫 피드 렌더 + 배너 로드 완료 후 .booted로 한 번에 노출(html/body 배경 #0b0d0c 다크 유지 = 흰 플래시 0). 안전망 setTimeout으로 영구 블랙 방지 · 운영자 260626 */
-  body:not(.booted) { opacity:0; }
-  body.booted { opacity:1; transition:opacity .2s ease; }
-  @media (prefers-reduced-motion:reduce) { body.booted { transition:none; } }
   /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림(.58) + 메뉴별 색 점등(--bgfx 라디얼·유지). 3탭 공통 · 글로우 없음 · 운영자 260625(롤백=이 배경 블록 복원). */
   .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none; --bgfx:15,253,2;
     filter:brightness(1.2) saturate(1.05);   /* 실크 밝힘 = 글래스 카드/패널 뒤로 실크가 보여 '진짜 투명'해 보임(딥블랙이라 안 보이던 것 해소·전 화면 톤 통일·운영자 260626) */
@@ -761,25 +757,8 @@
   .bnav-fab { flex:none; width:52px; height:52px; margin:0 6px 16px; border-radius:50%; border:none; cursor:pointer;
     background:linear-gradient(155deg,var(--accent-bright), var(--accent)); color:var(--on-accent); display:grid; place-items:center;
     box-shadow:0 8px 22px rgba(15,253,2,.42), inset 0 1px 0 rgba(255,255,255,.45); transition:transform .12s; text-decoration:none; }
-  .bnav-fab svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; stroke-linejoin:round; transition:transform .3s var(--ease); }
+  .bnav-fab svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; stroke-linejoin:round; }
   .bnav-fab:active { transform:scale(.92); }
-  .bnav-fab.open { box-shadow:0 8px 22px rgba(var(--accent-rgb),.42), inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 4px rgba(var(--accent-rgb),.2); }   /* + 메뉴 열림 = 네비 액티브처럼 점등 링 */
-  .bnav-fab.open svg { transform:rotate(135deg); }   /* + → × */
-  /* 라디얼 제작 메뉴 — FAB 위로 3버튼 반원 펼침. 버튼=.sbtn 투명 글래스 계승(rgba(8,15,11,.3)·blur8 → 뒤 비침). 위치=left/top(fixed+transform 히트테스트 누수 회피)·등장=scale/opacity. */
-  .radmenu { position:fixed; left:50%; bottom:calc(54px + env(safe-area-inset-bottom)); width:0; height:0; z-index:36; --rad-r:106px; }
-  .radmenu[hidden] { display:none; }
-  .raditem { position:absolute; left:-35px; top:-26px; width:70px; background:none; border:0; padding:0; cursor:pointer; font:inherit;
-    display:flex; flex-direction:column; align-items:center; gap:7px; opacity:0; transform:scale(.3); pointer-events:none;
-    transition:left .34s var(--ease), top .34s var(--ease), transform .22s var(--ease), opacity .2s var(--ease); }
-  .radmenu.open .raditem { opacity:1; transform:scale(1); pointer-events:auto; }
-  .radmenu.open .raditem[data-ang="up"]    { left:-35px; top:calc(-1 * var(--rad-r) - 26px); transition-delay:.07s; }
-  .radmenu.open .raditem[data-ang="left"]  { left:calc(-1 * var(--rad-r) * .707 - 35px); top:calc(-1 * var(--rad-r) * .707 - 26px); transition-delay:.03s; }
-  .radmenu.open .raditem[data-ang="right"] { left:calc(var(--rad-r) * .707 - 35px); top:calc(-1 * var(--rad-r) * .707 - 26px); transition-delay:.11s; }
-  .raditem .radbtn { width:52px; height:52px; border-radius:50%; }   /* .sbtn 글래스 그대로 + 원형·크게(specificity로 .sbtn 34px 덮음) */
-  .raditem[data-act="ask"] .radbtn { color:var(--accent); }
-  .raditem[data-act="thumb"] .radbtn { color:var(--thumb); }
-  .raditem[data-act="cap"] .radbtn { color:var(--fg); }
-  .radlab { font-size:11px; font-weight:800; color:var(--fg-2); letter-spacing:-.2px; text-shadow:0 1px 5px rgba(0,0,0,.85); white-space:nowrap; }
   .bpop { position:fixed; z-index:36; min-width:140px; max-width:230px;   /* translateX(-50%) 제거 = fixed+translateX iOS 히트테스트 누수(탭이 뒤 요소로 샘) 차단 → 가운데정렬은 JS(popAt/openQueue)가 좌변 직접 지정(운영자 260622) */
     background:linear-gradient(165deg, rgba(22,23,25,.34), rgba(12,13,14,.42)); backdrop-filter:blur(24px) saturate(1.3); -webkit-backdrop-filter:blur(24px) saturate(1.3);   /* 글래스 = 중립(무채색) 프로스트 · 초록 틴트 제거(24,40,29→22,23,25) + 더 반투명(.44→.34) · blur 24로 가독 보존 · 운영자 260626 */
     border:1px solid var(--line); border-radius:15px; padding:11px 15px; box-shadow:0 18px 46px rgba(0,0,0,.6);
@@ -1046,14 +1025,6 @@
     color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
   .tool-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   #toolframe { flex:1; width:100%; border:0; background:transparent; display:block; }   /* 투명 → tooldlg 반투명 글래스 비침 */
-  /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
-  .tool-tabs { flex:none; display:none; gap:6px; padding:9px 13px; background:rgba(13,23,16,.4); border-bottom:1px solid var(--line2); }
-  #tooldlg.has-tabs .tool-tabs { display:grid; }
-  .tooltab { padding:9px 4px; text-align:center; color:var(--fg); cursor:pointer; font-weight:600; font-size:12.5px; border-radius:12px;
-    background:linear-gradient(165deg, rgba(34,56,41,.5), rgba(14,26,18,.6)); backdrop-filter:blur(var(--blur-m)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.2);
-    border:1px solid rgba(255,255,255,.1); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); transition:transform .12s, border-color .15s, box-shadow .15s; }
-  .tooltab:active { transform:scale(.96); }
-  .tooltab.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1), 0 0 16px rgba(var(--accent-rgb),.14); }
   @media (max-width:640px){ #tooldlg { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; border-radius:0; } .tool-h { padding-top:calc(10px + env(safe-area-inset-top)); } }
   /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
   .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
@@ -1716,7 +1687,6 @@
 </style>
 </head>
 <body data-tab="feed">
-<script>setTimeout(function(){document.body.classList.add('booted');},2500);</script><!-- 최종 안전망(독립 스크립트) — 메인 앱 스크립트가 통째로 죽어도 2.5s 후 반드시 노출(영구 블랙 차단·운영자 260626). 정상 경로는 메인의 allSettled가 ~0.3s에 먼저 노출. -->
 <div class="bgfx"></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
@@ -1898,7 +1868,6 @@
 <!-- 제작 도구 모달(iframe) — + 메뉴 항목(썸네일·릴스·영상) 클릭 시 새 페이지 대신 뷰어 위에 모달로 등장(뉴스 요약 모달과 동일 결). -->
 <dialog id="tooldlg" aria-labelledby="toolTitle">
   <div class="tool-h"><b id="toolTitle">제작 도구</b><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-  <div class="tool-tabs" id="toolTabs"></div>
   <iframe id="toolframe" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
 </dialog>
 
@@ -1910,20 +1879,13 @@
   <button class="bnav-i active" data-tab="feed" aria-label="뉴스 요약"><span class="qbadge" id="qbadge" title="분석 대기열 — 탭하면 열림" hidden></span><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="3.6" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.6" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg><span>뉴스 요약</span></button>
   <button class="bnav-i" id="linkfab" type="button" aria-label="링크(피드 탐색)"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1.1-1.1"/></svg><span>링크</span></button>
 </nav>
-<!-- 제작 도구 = FAB(+) 위로 3버튼 반원 펼침(라디얼). 좌상 뉴스요약 · 12시 썸네일 · 우상 자막생성. 버튼=.sbtn 투명 글래스 계승. 세부 분기는 도구 안 탭(썸네일=오버레이 생성기 탭 / 자막생성=자막↔영상프롬프트 탭). -->
-<div class="radmenu" id="bpop" hidden>
-  <button class="raditem" type="button" data-act="ask" data-ang="left" aria-label="뉴스요약(요약 요청)">
-    <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></span>
-    <span class="radlab">뉴스요약</span>
-  </button>
-  <button class="raditem" type="button" data-act="thumb" data-ang="up" aria-label="썸네일(오버레이 생성기)">
-    <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg></span>
-    <span class="radlab">썸네일</span>
-  </button>
-  <button class="raditem" type="button" data-act="cap" data-ang="right" aria-label="자막생성(자막 생성기·영상 프롬프트)">
-    <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h6M7 11h10"/></svg></span>
-    <span class="radlab">자막생성</span>
-  </button>
+<div class="bpop" id="bpop" hidden>
+  <b>제작 도구</b>
+  <a href="#" id="askmenu" class="bpop-hl"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>요약 요청</a>
+  <a href="/thumb.html" data-tool class="bpop-hl-y"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg>오버레이 생성기</a>
+  <a href="/ly.html" data-tool>영상 자막 생성기</a>
+  <a href="/k.html" data-tool>영상 프롬프트</a>
+  <a href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener">지면 뉴스 ↗</a>
 </div>
 <div class="bpop" id="linkpop" hidden>
   <b><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-3.8-3.8"/></svg>피드 탐색</b>
@@ -4405,7 +4367,7 @@ function hidePmenu(){
 function closeOverlays(keep) {
   if (keep !== 'pmenu') hidePmenu();
   if (keep !== 'msg') msgpop.hidden = true;
-  if (keep !== 'bpop') { bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open'); }   // 라디얼 닫힘 = .open 제거(다음 열림 애니 복원) + FAB ×→+ 복귀
+  if (keep !== 'bpop') bpop.hidden = true;
   if (keep !== 'linkpop') linkpop.hidden = true;
   if (keep !== 'qpop') closeQueueUser();
   if (keep !== 'search') closeSearch();
@@ -4583,9 +4545,7 @@ $('#bnav').addEventListener('click', e => {
     showTab(b.dataset.tab); return;   // 일반 탭전환 = 열린 팝업 자동 닫힘
   }
   const f = e.target.closest('#toolfab');
-  if (f) { e.preventDefault(); const wasOpen = !bpop.hidden; closeOverlays('bpop');
-    if (!wasOpen) { bpop.hidden = false; void bpop.offsetWidth; bpop.classList.add('open'); f.classList.add('open'); }   // 반원 펼침 = .open(reflow 후 add → 트랜지션 발동) + FAB 액티브(+→×)
-    else { bpop.hidden = true; bpop.classList.remove('open'); f.classList.remove('open'); } return; }
+  if (f) { e.preventDefault(); const wasOpen = !bpop.hidden; closeOverlays('bpop'); if (!wasOpen) { bpop.hidden = false; popAt(bpop, f); } else bpop.hidden = true; return; }
   const lk = e.target.closest('#linkfab');
   if (lk) { e.preventDefault(); const wasOpen = !linkpop.hidden; closeOverlays('linkpop'); if (!wasOpen) { linkpop.hidden = false; popAt(linkpop, lk); } else linkpop.hidden = true; return; }
 });
@@ -4598,7 +4558,7 @@ let _popDownInside = false;
 }, true));
 document.addEventListener('click', e => {
   if (_popDownInside) return;   // 팝업 내부에서 시작한 클릭 = 안 닫음(타깃 탈락 무관)
-  if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) { bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open'); }
+  if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) bpop.hidden = true;
   if (!linkpop.hidden && !linkpop.contains(e.target) && !$('#bnav').contains(e.target)) linkpop.hidden = true;
   if (!qpop.hidden && !qpop.contains(e.target) && !$('#bnav').contains(e.target)) closeQueueUser();
 });
@@ -5854,47 +5814,26 @@ function openAsk(opts) {
   updateAskClip(); updateAskPh(); askdlg.showModal();
   setTimeout(() => { const ta = $('#askText'); ta.focus(); if (opts.prefill != null) { const i = ta.value.length; try { ta.setSelectionRange(i, i); } catch {} } }, 60);
 }
-// 제작 도구(썸네일·자막) = 라디얼 항목 클릭 → 새 페이지 대신 뷰어 위 모달(iframe)로 등장.
+$('#askmenu').addEventListener('click', e => { e.preventDefault(); openAsk(); });
+// 제작 도구(썸네일·릴스·영상) = + 메뉴 항목 클릭 → 새 페이지 대신 뷰어 위 모달(iframe)로 등장. href는 폴백.
 const tooldlg = $('#tooldlg');
 // 폰/브라우저 뒤로가기 = 도구 닫고 메인으로(앱 이탈 차단). 열 때 히스토리 1칸 푸시 → 백버튼이 그 칸을 pop.
 let toolPopHandled = false;   // popstate(백버튼)로 닫혔는지 — close 핸들러의 히스토리 정리 분기
 window.addEventListener('popstate', () => { if (tooldlg.open) { toolPopHandled = true; tooldlg.close(); } });
 // 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
-// iframe 로드 = location.replace(.src 대신 = 세션 히스토리에 항목 안 쌓음 · 폰 백버튼 빈화면 차단 · 운영자 260623) + 캐시버스트(stale 방지 · _headers no-cache 한 쌍)
-function loadToolFrame(src) {
-  const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
-  const _fr = $('#toolframe'); try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
-}
-// 제작 도구 모달 — src 단일 또는 tabs([{src,title,label}…]) = 자막생성처럼 한 도구 안 탭 분기(thumb 탭 계승). showModal 전 로드 시작 = 깜빡임 완화.
-function openTool(src, title, tabs) {
-  const wasOpen = tooldlg.open, tt = $('#toolTabs');
-  if (tabs && tabs.length) {
-    tooldlg.classList.add('has-tabs');
-    tt.style.gridTemplateColumns = 'repeat(' + tabs.length + ',1fr)';
-    tt.innerHTML = tabs.map((t, i) => '<button type="button" class="tooltab' + (i === 0 ? ' on' : '') + '" data-src="' + t.src + '" data-title="' + (t.title || '') + '">' + t.label + '</button>').join('');
-    src = tabs[0].src; title = tabs[0].title || title;
-  } else { tooldlg.classList.remove('has-tabs'); tt.innerHTML = ''; }
+function openTool(src, title) {
+  const wasOpen = tooldlg.open;
   $('#toolTitle').textContent = title || '제작 도구';
-  loadToolFrame(src);
+  // ⚠️ iframe은 .src= 대신 location.replace = 세션 히스토리에 항목 안 쌓음. (.src면 about:blank→도구 네비가 백버튼용 항목을 만들어, 폰 뒤로가기 한 번에 모달이 닫히는 대신 iframe만 about:blank로 되돌아가 빈 화면이 됨 — 운영자 260623 버그픽스.) showModal 전 로드 시작 = 2단 깜빡임 완화.
+  const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();   // 도구 페이지 캐시버스트 = 매 열림 최신(stale thumb/ly/k 방지 · _headers no-cache와 한 쌍 · 운영자 260625)
+  { const _fr = $('#toolframe'); try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; } }
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   tooldlg.showModal(); setTimeout(() => $('#toolX').focus(), 0);
   if (!wasOpen) history.pushState({ tool: true }, '');   // 백버튼 = 메인 복귀(앱 밖으로 안 나감)
 }
-// 도구 탭 클릭 = iframe 스왑(모달 유지 · 히스토리 칸 안 늘림)
-$('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
-  $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x === b));
-  if (b.dataset.title) $('#toolTitle').textContent = b.dataset.title;
-  loadToolFrame(b.dataset.src); });
-// 라디얼 제작 메뉴 라우팅 — 뉴스요약=요약 요청 / 썸네일=오버레이 생성기 / 자막생성=자막 생성기↔영상 프롬프트 탭 도구
-const CAP_TABS = [{ src: '/ly.html', title: '자막 생성기', label: '자막 생성기' }, { src: '/k.html', title: '영상 프롬프트', label: '영상 프롬프트' }];
-$('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem[data-act]'); if (!b) return; e.preventDefault();
-  bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open');   // 라디얼 닫고
-  const a = b.dataset.act;
-  if (a === 'ask') openAsk();
-  else if (a === 'thumb') openTool('/thumb.html', '오버레이 생성기');
-  else if (a === 'cap') openTool(null, '자막 생성기', CAP_TABS); });
+$('#bpop').addEventListener('click', e => { const a = e.target.closest('a[data-tool]'); if (a) { e.preventDefault(); openTool(a.getAttribute('href'), a.textContent.trim()); } });
 $('#toolX').addEventListener('click', () => tooldlg.close());
-tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = ''; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus();
+tooldlg.addEventListener('close', () => { $('#toolframe').src = 'about:blank'; if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; const f = $('#toolfab'); if (f) f.focus();
   if (toolPopHandled) toolPopHandled = false;                                   // 백버튼으로 닫힘 = 히스토리 이미 pop됨
   else if (history.state && history.state.tool) history.back(); });             // X·백드롭·ESC로 닫힘 = 푸시한 칸 정리   // iframe 정지 + 스크롤락 해제(중첩 가드) + 트리거 포커스 복귀
 tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close(); });   // 백드롭 클릭 닫기
@@ -6040,8 +5979,7 @@ function resetRevSend() {   // 발사 버튼 원복(재확인 해제)
   const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = '수정 →';
 }
 function openRev() {
-  if (!CUR) { return; }
-  if (isRevising(CUR)) { return; }   // 수정 중 = FAB 눌러도 입력 팝업 안 열림(무반응) · 시각 표식(revving/locked·'수정 중' 힌트)은 그대로 유지 — 운영자 260626(옛 260623 '그냥 팝업 열기' 폐기: 팝업이 떠 전송 가능해 보이는 게 문제)
+  if (!CUR) { return; }   // 진행 중이어도 표기·차단 없음(운영자 260623) — 그냥 팝업 열기(재전송 가드는 revSend가 silent 처리)
   resetRevSend();
   $('#revStatus').textContent = ''; $('#revSend').classList.remove('firing'); $('#revSend').disabled = false;
   updateRevClip(); revdlg.showModal();
@@ -6467,7 +6405,6 @@ function resetCrevSend() {
 }
 function openCrev() {
   if (!CUR) return;
-  if (isCardRevising(CUR)) return;   // 카드 수정 중 = FAB 눌러도 입력 팝업 안 열림(무반응) · 시각 표식(카드 수정 중)은 유지 — 운영자 260626(요약 openRev 미러)
   resetCrevSend();
   $('#crevStatus').textContent = ''; $('#crevSend').classList.remove('firing'); $('#crevSend').disabled = false;
   updateCrevClip(); $('#crevdlg').showModal();
@@ -6657,16 +6594,7 @@ function openMsgDeepLink() {
   } catch (_) {}
 }
 
-// 부팅 reveal — 첫 피드 렌더 + 배너 이미지 로드 둘 다 끝난 뒤 한 번에 노출(시계만 먼저 뜨는 FOUC 차단·운영자 260626). idempotent.
-const _bootReveal = () => document.body.classList.add('booted');
-const _bannerReady = new Promise(res => {
-  const im = document.querySelector('.banner.layer-feed');
-  if (!im || im.complete) { res(); return; }
-  im.addEventListener('load', res, { once: true }); im.addEventListener('error', res, { once: true });
-});
-const _firstLoad = load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
-Promise.allSettled([_firstLoad, _bannerReady]).then(_bootReveal);   // 피드·배너 준비되면 즉시 노출(실패해도 allSettled로 진행 · render는 load 안에서 동기 완료라 rAF 불필요·백그라운드 탭서 rAF 멈춰도 안전)
-setTimeout(_bootReveal, 1800);   // 안전망 — load/배너가 지연·실패해도 화면 반드시 노출(영구 블랙 방지)
+load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages().then(() => openMsgDeepLink());   // ?msg=fail-… (수집 실패 푸시 탭) → 메시지함 열고 강조
 loadHealth();       // eager — 맞춤법 검사기 건강(불건강이면 프로필 노란 링 + 메시지)
