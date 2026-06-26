@@ -585,12 +585,9 @@
   .sc-rsn { margin-top:3px; display:flex; flex-direction:column; gap:6px; padding:8px; border-radius:10px;
     background:rgba(255,120,120,.06); border:1px solid rgba(255,120,120,.22); }
   .sc-rsn-q { font-size:12px; font-weight:800; color:#fff; }
-  .sc-rsn-iw:not([hidden]) { display:flex; gap:6px; align-items:center; }   /* 입력칸 + 적용 버튼 한 줄(운영자 260626) */
-  .sc-rsn-in { flex:1 1 auto; min-width:0; box-sizing:border-box; background:rgba(0,0,0,.28); border:1px solid var(--line2); border-radius:8px;
+  .sc-rsn-in { width:100%; box-sizing:border-box; background:rgba(0,0,0,.28); border:1px solid var(--line2); border-radius:8px;
     padding:7px 9px; color:var(--fg); font-size:12.5px; font-family:inherit; }
   .sc-rsn-in::placeholder { color:var(--mut); } .sc-rsn-in:focus { outline:none; border-color:rgba(255,140,140,.6); }
-  .sc-rsn-go { flex:none; background:rgba(var(--accent-rgb),.14); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.42); border-radius:8px; padding:7px 13px; font:800 12px inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:background .15s, transform .12s; }   /* 직접입력 적용(탭=IME 무관·운영자 260626) */
-  .sc-rsn-go:active { transform:scale(.92); } .sc-rsn-go:hover { background:rgba(var(--accent-rgb),.22); }
   .sc-rsn-x { background:rgba(255,255,255,.05); color:var(--mut); }
   .sc-rsn-x:active { transform:scale(.95); }
   /* ── 트리아지(신규·누적 공통): [👎][PASS][PICK] 버튼 + 사유 칩(객관식) ── */
@@ -5723,19 +5720,16 @@ function askReason(act, c, el) {
   const p = document.createElement('div'); p.className = 'sc-rsn rsn-' + act; p.dataset.act = act;
   p.innerHTML = `<div class="sc-rsn-q">${A.q}</div>
     <div class="sc-rsn-chips">${A.reasons.map(r => `<button type="button" class="sc-rsn-c${r.input ? ' inp' : ''}" data-k="${esc(r.k)}"${r.d ? ` title="${esc(r.d)}"` : ''}>${esc(r.k)}</button>`).join('')}</div>
-    <div class="sc-rsn-iw" hidden><input class="sc-rsn-in" type="text" maxlength="200" enterkeyhint="done" placeholder="이유 한 줄"><button type="button" class="sc-rsn-go">적용</button></div>
+    <div class="sc-rsn-iw" hidden><input class="sc-rsn-in" type="text" maxlength="200" placeholder="이유 한 줄"></div>
     <button type="button" class="sc-rsn-x" aria-label="취소"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button>`;
   el.appendChild(p);
-  const iw = p.querySelector('.sc-rsn-iw'), input = p.querySelector('.sc-rsn-in'), goBtn = p.querySelector('.sc-rsn-go');
-  const inpK = (A.reasons.find(r => r.input) || {}).k || '직접입력';
-  const applyInput = () => { if (el && el.dataset.fired) return; applyTriage(act, c, el, inpK, input.value); };   // 직접입력 적용 = 적용 버튼 탭 OR Enter(IME 조합 제외) — 모바일 한글조합이 Enter 삼키던 버그 수정(운영자 260626)
-  if (goBtn) goBtn.onclick = applyInput;
-  if (input) input.onkeydown = e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); applyInput(); } else if (e.key === 'Escape') { e.preventDefault(); p.remove(); } };
+  const iw = p.querySelector('.sc-rsn-iw'), input = p.querySelector('.sc-rsn-in');
   p.querySelector('.sc-rsn-x').onclick = () => p.remove();
   p.querySelectorAll('.sc-rsn-c').forEach(b => b.onclick = () => {
     const k = b.dataset.k;
     if (b.classList.contains('inp')) {
       iw.hidden = false; setTimeout(() => input.focus({ preventScroll: true }), 30);
+      input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); applyTriage(act, c, el, k, input.value); } else if (e.key === 'Escape') { e.preventDefault(); p.remove(); } };
       return;
     }
     applyTriage(act, c, el, k, '');
