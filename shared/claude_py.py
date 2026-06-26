@@ -83,7 +83,7 @@ def _parse_metered(stdout):
 
 
 def run_claude(args, prompt, timeout=300, source=None):
-    """claude -p 실행 → (CompletedProcess|None, returncode, stderr). 쿼터면 대체 계정 1회 전환·재시도.
+    """claude -p 실행 → (CompletedProcess|None, returncode, stderr). 쿼터면 대체 계정 1단계씩 전환·재시도(서브1→서브2).
     source 지정 시 토큰 계측(--output-format json · metrics shard). p.stdout 은 항상 *텍스트*(=.result)."""
     global _swap_n
     metered = bool(source) and os.environ.get("METER_OFF", "0") != "1"

@@ -136,16 +136,17 @@
 ## 설정 (1회)
 
 ### 1) 구독 OAuth 토큰 시크릿 (API 키 아님)
-GitHub 레포 → **Settings → Secrets and variables → Actions → Secrets** 에 Max 계정별 토큰 2개:
-- `CLAUDE_CODE_OAUTH_TOKEN_MUTENO` ← 기본 계정
-- `CLAUDE_CODE_OAUTH_TOKEN_EMS1130G` ← 스위칭용
+GitHub 레포 → **Settings → Secrets and variables → Actions → Secrets** 에 Max 계정별 토큰 3개:
+- `CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB` ← 기본 계정
+- `CLAUDE_CODE_OAUTH_TOKEN_EMS1130G` ← 서브1(폴오버)
+- `CLAUDE_CODE_OAUTH_TOKEN_MUTENO` ← 서브2(폴오버)
 - 토큰 생성: 로컬에서 `claude setup-token`(구독 로그인) → 출력 토큰을 시크릿 값으로.
 - ⚠️ 토큰은 코드·로그에 절대 노출 금지(워크플로는 `secrets[...]` 동적 참조만, CLI는 `CLAUDE_CODE_OAUTH_TOKEN` env로 받음).
 
 #### 계정 전환
-- **상시 전환**: Settings → Secrets and variables → Actions → **Variables** 탭에서 `ACTIVE_ACCOUNT` 값을 `MUTENO` ↔ `EMS1130G`로 변경 → **다음 분석부터 적용**. (변수 없으면 `MUTENO` 기본.)
+- **상시 전환**: Settings → Secrets and variables → Actions → **Variables** 탭에서 `ACTIVE_ACCOUNT` 값을 `NOMUTEFB`·`EMS1130G`·`MUTENO`(대문자) 중 하나로 변경 → **다음 분석부터 적용**. (변수 없으면 `NOMUTEFB` 기본.) ⚠️ 소문자/오타면 빈 토큰 폴백되니 정확히 대문자로.
 - **1회성**: Actions → news-analyze → **Run workflow** 의 `account` 드롭다운에서 선택(변수 안 건드림).
-- 선택 로직: `수동 inputs.account → vars.ACTIVE_ACCOUNT → MUTENO`. 동적 참조 `secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', …)]`는 GitHub Actions 공식 지원 문법(검증 완료).
+- 선택 로직: `수동 inputs.account → vars.ACTIVE_ACCOUNT → NOMUTEFB`. 폴오버 체인(쿼터 한도 시) = 활성 다음 우선순위 2개 = 기본일 때 `NOMUTEFB→EMS1130G→MUTENO`. 동적 참조 `secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', …)]` 및 `_ALT`/`_ALT2` = GitHub Actions 공식 지원 문법(검증 완료).
 
 ### 2) Cloudflare Pages 연결
 Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택 후:
@@ -212,7 +213,7 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).
 - **동시 실행**: `concurrency: news-analyze` 로 순차 처리.
 - **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속. ⚠️ **단 Claude API 일시 과부하(5xx/Overloaded)는 예외(260622)**: 인라인 백오프 재시도(`INLINE_TRIES=3`) 후에도 과부하면 `failed/`로 즉시 안 묻고 **pending 잔류 + `<base>.retry` 마커** → `pending-sweep`(≤20분 cron)가 회복 시 자동 재분석. `RETRY_CAP=5`회 초과 시에만 격리. 입력 막다른길(`ANALYSIS_FAILED`)·429/인증은 기존대로 즉시 격리(재시도 무의미). 정본 = `.github/scripts/analyze.sh`(`is_transient`).
-- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 MUTENO)로 동적 선택 — 위 [계정 전환].
+- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 NOMUTEFB)로 동적 선택, 쿼터 한도 시 서브1→서브2 2단 폴오버 — 위 [계정 전환].
 - **모델**: `claude-opus-4-8` 고정. 분석 도구는 `WebFetch,WebSearch`만 허용.
 - **품질 추종**: 분석 프롬프트가 워크플로에 하드코딩돼 있지 않고 `apps/news/`의 최신 에디터 지침을 읽어 쓰므로, 에디터가 개선되면 큐레이션 품질도 따라간다.
 

@@ -236,7 +236,7 @@ ${extracted}"
     if { [ $rc -eq 0 ] && [ -n "${out// }" ] && grep -qm1 '^---' <<<"$out"; } || grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then
       break
     fi
-    # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1회 전환 후 즉시 재시도(account failover · SSOT claude_transient.sh)
+    # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2 · 3계정 체인 · SSOT claude_transient.sh)
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi
     # 일시 과부하면 백오프 후 재시도(마지막 시도면 그대로 탈출 → 아래 격리/재시도마커 분기)
     if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then

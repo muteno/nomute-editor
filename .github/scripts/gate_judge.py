@@ -95,7 +95,7 @@ def judge(items):
          "--disallowedTools",
          "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
          "--max-turns", "1"],
-        prompt, timeout=300, source="gate")   # 쿼터 한도면 대체 계정 1회 전환·재시도(account failover) · source=토큰 계측
+        prompt, timeout=300, source="gate")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2) · source=토큰 계측
     if p is None:
         return {}, rc, err
     grades = {}

@@ -8,7 +8,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 MODEL="claude-opus-4-8"
-source "$ROOT/shared/claude_transient.sh"   # is_quota/claude_failover — 계정 사용량 한도 시 대체 계정 1회 전환(account failover)
+source "$ROOT/shared/claude_transient.sh"   # is_quota/claude_failover — 계정 사용량 한도 시 대체 계정 1단계씩 전환(서브1→서브2 · 3계정 체인)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 
 FILE="${FILE:-}"                 # 큐 항목 id(확장자 없이) — 워크플로 input
