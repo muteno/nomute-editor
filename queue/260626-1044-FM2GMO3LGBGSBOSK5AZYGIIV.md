@@ -15,6 +15,7 @@ image_query_en: ""
 image_sources: "https://www.hani.co.kr/arti/society/society_general/1265468.html https://www.segye.com/newsView/20260626505442 https://news.sbs.co.kr/news/endPage.do?news_id=N1008628840 https://www.seoul.co.kr/news/newsView.php?id=20260626500073 https://www.newsis.com/view/NISX20260626_0003684778 https://www.hankyung.com/article/202606269602i https://www.yna.co.kr/view/AKR20260626051700004 https://www.chosun.com/national/national_general/2026/06/26/FM2GMO3LGBGSBOSK5AZYGIIVLI"
 thumb_scene: "이른 아침 출근 인파가 오가는 광화문 일민미술관 건물 앞에서 직장인들이 굳은 얼굴로 4층을 올려다보는 가운데, 흉기를 휘두르고 사라진 용의자의 빈자리가 도심의 평범한 아침을 깨뜨린 긴장의 순간."
 thumb_dispatch: "AG-01 LGT08 SG-09"
+rev: 1
 ---
 
 # 광화문 출근길 덮친 흉기, 70대 용의자는 아직 거리에
