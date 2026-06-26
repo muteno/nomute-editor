@@ -16,9 +16,8 @@ on:
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
-        default: NOMUTEFB
+        default: MUTENO
         options:
-          - NOMUTEFB
           - MUTENO
           - EMS1130G
 
@@ -50,10 +49,9 @@ jobs:
       - name: Revise IG/Thread
         env:
           # 인증 = 구독 OAuth(API 키 미사용) — news-ask와 동일 동적 계정 선택
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           FILE: ${{ inputs.file }}
           INSTRUCTION: ${{ inputs.instruction }}
         run: |
@@ -109,10 +107,9 @@ jobs:
         run: npm install -g @anthropic-ai/claude-code
       - name: Refresh card prompt (done/이미지 카드는 보호)
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           FILE: ${{ inputs.file }}
           # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON env 자체가 없음(제미나이 발사 불가).
         run: |

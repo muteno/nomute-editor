@@ -18,22 +18,14 @@ is_quota() {
   grep -qiE 'usage limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|resets? (at|in)' <<<"$s"
 }
 
-# claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*으로 1단계씩 전환(3계정 체인).
-#   1차 = CLAUDE_CODE_OAUTH_TOKEN_ALT(서브1) · 2차 = CLAUDE_CODE_OAUTH_TOKEN_ALT2(서브2).
-#   전환함=0(호출부가 같은 프롬프트로 재시도) / 못 함(쿼터 아님·다음 대체 없음·체인 소진)=1.
-#   _CLAUDE_SWAPPED = 지금까지 전환 횟수(0→1→2). ⚠️ ALT2 미설정이면 n=1에서 멈춤 = 옛 1단 동작(하위호환).
+# claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*(CLAUDE_CODE_OAUTH_TOKEN_ALT)으로 1회 전환.
+#   전환함=0(호출부가 같은 프롬프트로 재시도) / 못 함(쿼터 아님·ALT 없음·이미 전환)=1.
+#   2계정 한 쌍이라 1회 스왑이면 충분(둘 다 한도면 더 못 피함 → 기존 격리/대기로).
 claude_failover() {
   is_quota "${1:-}" || return 1
-  local n="${_CLAUDE_SWAPPED:-0}"
-  if [ "$n" = "0" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT"; _CLAUDE_SWAPPED=1
-    echo "  🔄 계정 사용량 한도 — 서브1 계정으로 전환 후 재시도(account failover 1/2)"
-    return 0
-  fi
-  if [ "$n" = "1" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT2"; _CLAUDE_SWAPPED=2
-    echo "  🔄 서브1도 한도 — 서브2 계정으로 전환 후 재시도(account failover 2/2)"
-    return 0
-  fi
-  return 1
+  [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}" ] || return 1
+  [ "${_CLAUDE_SWAPPED:-0}" = "1" ] && return 1
+  export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT"; _CLAUDE_SWAPPED=1
+  echo "  🔄 계정 사용량 한도 감지 — 대체 계정 토큰으로 전환 후 재시도(account failover)"
+  return 0
 }

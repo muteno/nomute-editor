@@ -94,8 +94,8 @@ ${TH_OLD}
 <<<NOMUTE_BIAS_END>>>"
 
 # 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단(권한대기 차단).
-# 단발 호출이라 쿼터 한도면 대체 계정으로 1단계씩 전환 후 재시도(서브1→서브2 · 3계정 체인 · SSOT claude_transient.sh).
-for _try in 1 2 3; do
+# 단발 호출이라 쿼터 한도면 대체 계정으로 1회 전환 후 재시도(account failover · SSOT).
+for _try in 1 2; do
   out="$(printf '%s' "$prompt" | METER_SRC=revise METER_REF="$FILE" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
         --model "$MODEL" \
         --effort max \

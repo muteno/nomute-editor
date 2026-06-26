@@ -68,8 +68,8 @@ ${CARDS_OLD}
 (재작성된 cards.md 전체 — '# 제목'부터 마지막 카드까지)
 <<<NOMUTE_CARDS_END>>>"
 
-# 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단. 쿼터 한도면 대체 계정 1단계씩 폴오버(서브1→서브2 · 3계정 체인).
-for _try in 1 2 3; do
+# 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단. 쿼터 한도면 대체 계정 1회 폴오버.
+for _try in 1 2; do
   out="$(printf '%s' "$prompt" | METER_SRC=revise-cards METER_REF="$FILE" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
         --model "$MODEL" \
         --effort max \
