@@ -37,6 +37,7 @@ on:
         description: 'edit 모드: 텍스트 반영 이미지 재생성(1=체크 / 0)'
         type: string
         default: '0'
+      # ⚠️ workflow_dispatch inputs 최대 10개 한계 — 한계 근접. 추가 시 일부를 JSON 1개 input으로 묶어라(compose.js lines 패턴 · 분신술 A7).
       scene:
         description: 'edit 모드: 첨부 4:5 사진 경로(uploads/<id>/src.jpg · 비면 미사용·순수 합성)'
         type: string
@@ -79,7 +80,7 @@ jobs:
         run: |
           if [ ! -f "${{ inputs.scene }}" ] && [ -n "${{ inputs.scene_sha }}" ]; then
             echo "첨부 사진 미발견 — SHA ${{ inputs.scene_sha }} fetch 시도(dispatch 레이스 가드)"
-            git fetch --depth 1 origin "${{ inputs.scene_sha }}" 2>/dev/null || git fetch origin main
+            git fetch --depth 1 origin "${{ inputs.scene_sha }}" 2>/dev/null || git fetch origin main || true   # 둘 다 실패해도 아래 if로 깔끔히 ::error(set -e가 fetch 줄에서 죽지 않게 · 분신술 A2)
             git checkout "${{ inputs.scene_sha }}" -- "${{ inputs.scene }}" 2>/dev/null || true
           fi
           if [ -f "${{ inputs.scene }}" ]; then echo "scene OK: ${{ inputs.scene }}"; else echo "::error::첨부 사진을 찾지 못함: ${{ inputs.scene }}"; exit 1; fi

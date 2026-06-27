@@ -959,11 +959,10 @@
   .ed-go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }   /* 완료 ✓ 드로우(.mkbtn gck 계승) */
   @media (prefers-reduced-motion:reduce) { .ed-go.firing { animation-duration:.2s; } .ed-go .gck path { animation:none; stroke-dashoffset:0; } }
   /* 카드 변경 모달 첨부 버튼 = .askattach 계승 + 2단(첨부→합성 게이지). 신규 게이지 CSS 없이 .ed-go goFill 패턴 재사용. */
-  .edattach { overflow:hidden; }   /* 게이지 풀필이 둥근사각 밖으로 안 새게 */
-  .edattach.has .askattach-badge { border-color:var(--bg); }   /* editdlg 배경 위 ✓ 배지 테두리 */
+  /* overflow:hidden은 발사(게이지) 때만 — 평소 상시면 코너 ✓ 배지(top/right -6px)가 잘려 .askattach 계승이 깨짐(분신술 A8). */
   .edattach.armed { animation:edAttachArm 1.3s ease-in-out infinite; }   /* 첨부완료 = '한 번 더' 유도 펄스 */
   @keyframes edAttachArm { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 50%{ box-shadow:0 0 0 4px rgba(var(--accent-rgb),.18); } }
-  .edattach.firing { color:var(--on-accent); border-color:var(--accent); pointer-events:none;
+  .edattach.firing { overflow:hidden; color:var(--on-accent); border-color:var(--accent); pointer-events:none;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
     animation:goFill .72s linear forwards; }   /* 합성 발사 게이지 = .ed-go.firing 계승(goFill 좌→우 풀필) */
   .edattach.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
@@ -1873,7 +1872,7 @@
     <textarea class="ed-wish" id="edWish" placeholder="내용을 입력해주세요"></textarea>
   </div>
   <button class="dlgtop ed-top" id="edtop" type="button" aria-label="맨 위로" title="맨 위로"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>
-  <div class="ed-status" id="edStatus"></div>
+  <div class="ed-status" id="edStatus" aria-live="polite"></div>
   <div class="ed-foot"><button class="ed-cancel" type="button" onclick="editdlg.close()">취소</button><label class="askattach edattach" id="edAttach" title="이미지 첨부 → 한 번 더 눌러 합성" aria-label="이미지 첨부 → 한 번 더 눌러 합성"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg><span class="askattach-badge" id="edAttachBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span><input id="edFile" type="file" accept="image/*" hidden></label><button class="ed-go" id="edGo" type="button"><span class="ed-ic"></span><span class="ed-tx">변경</span><svg class="gck" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7"/></svg></button><div class="ed-confirm"><span class="ed-cmsg">이 카드만 다시 생성할까요?</span><button class="ed-cno" type="button">취소</button><button class="ed-cyes" type="button">확인</button></div></div>
 </dialog>
 
@@ -3855,6 +3854,7 @@ function submitEdit() {
   if (!EDIT_CTX) return;
   const g = $('#edGo');
   if (g.classList.contains('firing') || g.classList.contains('checking')) return;   // 발사 중 재진입 차단
+  if (editScene && _edSceneArmed) { edLaunchScene(); return; }   // 첨부 상태 = #edGo도 첨부버튼 게이지로 위임(2단 UX 일관·이중발사 비주얼 차단·분신술 A5/A7/A10)
   const regen = edSync() || !!$('#edWish').value.trim();   // 유료(제미나이 재생성) = 체크(텍스트 반영) 또는 수동 이미지수정희망
   if (!regen) { if (validateEdit()) edLaunch(); return; }   // 무료(과금 0) = 재확인 없이 바로 게이지→✓
   // 유료 = 재확인(arm) 1회 거쳐 발사(오발 과금 방지). 체크든 수동 wish든 동일 게이트.
@@ -4226,19 +4226,20 @@ async function renderEditPreview() {   // editScene 있으면 .ed-img를 합성 
 function schedEditPreview() { if (!editScene) return; clearTimeout(_edPrevT); _edPrevT = setTimeout(renderEditPreview, 120); }   // 칩 편집 디바운스
 async function addEditScene(file) {   // 파일 1장 — 4:5 검증 후 editScene 세팅·미리보기(검증 실패=거부+가드)
   if (!file || !file.type || !file.type.startsWith('image/')) { edStatus('이미지 파일만 첨부돼 (JPG·PNG).', 'err'); return; }
-  let w = 0, h = 0;
+  let w = 0, h = 0, _u = null;
   try {
-    const url = URL.createObjectURL(file);
-    const i = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
-    w = i.naturalWidth; h = i.naturalHeight; URL.revokeObjectURL(url);
+    _u = URL.createObjectURL(file);
+    const i = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = _u; });
+    w = i.naturalWidth; h = i.naturalHeight;
   } catch { edStatus('이미지를 읽지 못했어 (HEIC면 JPG·PNG로 변환해줘).', 'err'); return; }
+  finally { if (_u) URL.revokeObjectURL(_u); }   // onerror reject 경로 objectURL 누수 차단(분신술 A9)
   if (!w || !h) { edStatus('이미지 크기를 못 읽었어.', 'err'); return; }
   if (Math.abs(w / h - ED_RATIO) / ED_RATIO > ED_TOL) {   // 4:5 아님 → 거부 + shake/멘트(빈입력 가드 계승)
     const lab = $('#edAttach'); if (lab) { lab.classList.remove('shake'); void lab.offsetWidth; lab.classList.add('shake'); setTimeout(() => lab.classList.remove('shake'), 460); }
     edStatus(`비율이 4:5가 아닙니다 (현재 ${w}:${h})`, 'err');
     return;
   }
-  try { editScene = await compressImg(file, 1080, 0.85); }   // 카드 배경 = 합성폭 1080·고화질(LLM용 1280/0.6과 분리)
+  try { editScene = await compressImg(file, 1350, 0.85); }   // 카드 배경 = 4:5 긴변 1350(=합성 캔버스 높이) → 가로 1080 보장·고화질(LLM용 1280/0.6과 분리·분신술 A10)
   catch { edStatus('이미지 처리 실패.', 'err'); return; }
   _edSceneArmed = true;
   const sy = $('#edSync'); if (sy) { sy.checked = false; sy.disabled = true; }   // 첨부=장면 직접지정 → 체크/희망 비활성(제미나이 0)
