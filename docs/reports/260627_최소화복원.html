@@ -68,22 +68,19 @@
     background:rgba(14,15,17,.6); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px;}
   .d-hint{margin-top:14px; font-size:12.5px; color:var(--mut); line-height:1.6;}
 
-  .demo-restore{position:fixed; left:50%; bottom:64px; transform:translateX(-50%); z-index:200;
-    width:48px; height:48px; display:none; place-items:center; cursor:pointer; overflow:visible;
-    border-radius:50%; border:1px solid rgba(var(--accent-rgb),.5); color:var(--on-accent); -webkit-tap-highlight-color:transparent;
-    background:linear-gradient(165deg,var(--accent-bright),var(--accent));
-    box-shadow:0 10px 28px rgba(0,0,0,.45), 0 0 0 4px rgba(var(--accent-rgb),.18), inset 0 1px 0 rgba(255,255,255,.4);}
-  .demo-restore.show{display:grid;} .demo-restore.in-modal{bottom:auto;}
-  .demo-restore svg{stroke:var(--on-accent);}
-  .demo-restore:active{transform:translateX(-50%) scale(.9);}
-  .demo-restore.pulsing{animation:dPulse 2.2s var(--ease) infinite;}
-  .demo-restore .hint{position:absolute; bottom:calc(100% + 9px); left:50%; transform:translateX(-50%);
-    font-size:11px; font-weight:800; color:#fff; background:var(--danger); padding:3px 11px; border-radius:999px;
+  .demo-restore{position:fixed; right:18px; bottom:64px; z-index:200;
+    width:34px; height:34px; display:none; place-items:center; cursor:pointer; overflow:visible;
+    border:none; background:none; color:var(--accent); -webkit-tap-highlight-color:transparent;}   /* 도형만 = 플레이트/링 없음 */
+  .demo-restore.show{display:grid;}
+  .demo-restore svg{display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5));}
+  .demo-restore:active{transform:scale(.82);}
+  .demo-restore.pulsing{animation:dBob 1.8s var(--ease) infinite;}
+  .demo-restore.confirm-close{color:var(--danger);}
+  .demo-restore .hint{position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+    font-size:10.5px; font-weight:800; color:#fff; background:var(--danger); padding:2px 9px; border-radius:999px;
     white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,.45); opacity:0; pointer-events:none; transition:opacity .12s var(--ease);}
   .demo-restore.confirm-close .hint{opacity:1;}
-  .demo-restore.confirm-close{box-shadow:0 10px 28px rgba(0,0,0,.45), 0 0 0 3px rgba(var(--danger-rgb),.6); border-color:rgba(var(--danger-rgb),.7);}
-  @keyframes dPulse{0%,100%{box-shadow:0 10px 28px rgba(0,0,0,.45), 0 0 0 4px rgba(var(--accent-rgb),.18), inset 0 1px 0 rgba(255,255,255,.4);}
-    50%{box-shadow:0 10px 28px rgba(0,0,0,.45), 0 0 0 10px rgba(var(--accent-rgb),0), inset 0 1px 0 rgba(255,255,255,.4);}}
+  @keyframes dBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
   .demo-ghost{position:fixed; z-index:199; border-radius:18px; pointer-events:none; transform-origin:center; will-change:transform,opacity;
     background:rgba(17,18,20,.92); border:1px solid rgba(255,255,255,.13); box-shadow:0 30px 80px rgba(0,0,0,.5);}
   @media (prefers-reduced-motion:reduce){.demo-restore.pulsing{animation:none;} .demo dialog{animation:none;}}
@@ -123,7 +120,7 @@
         <div class="d-hint">① 우상단 <b>─</b> 누르면 → 촤르륵 접혀 ▲로 수렴<br>② ▲ 탭 = 다시 펼침 (입력 그대로)<br>③ ▲ <b>길게 누르면</b> "닫기" 떠서 → 한 번 더 탭 = 완전 종료</div>
       </div>
     </dialog>
-    <button class="demo-restore" id="dRestore" aria-label="펼치기"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg><span class="hint">닫기</span></button>
+    <button class="demo-restore" id="dRestore" aria-label="펼치기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg><span class="hint">닫기</span></button>
   </div>
 
   <h2>전 / 후</h2>
@@ -188,9 +185,7 @@
     var seq=dir==='in'?[full,small]:[small,full], fin=false, end=function(){if(fin)return;fin=true;if(done)done();g.remove();};
     try{var a=g.animate(seq,{duration:340,easing:'cubic-bezier(.2,.7,.3,1)',fill:'forwards'});a.onfinish=end;a.oncancel=function(){fin=true;g.remove();};}catch(e){end();}}
   function show(){ isMin=true; restore.classList.remove('confirm-close'); restore.classList.add('show');
-    var hr=demo.getBoundingClientRect(); // 데모는 항상 demo 컨테이너 기준 핀
-    restore.style.position='fixed';
-    try{restore.animate([{transform:'translateX(-50%) scale(.4)',opacity:0},{transform:'translateX(-50%) scale(1)',opacity:1}],{duration:300,easing:'cubic-bezier(.2,.7,.3,1)'});}catch(e){}
+    try{restore.animate([{transform:'scale(.3)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:300,easing:'cubic-bezier(.2,.7,.3,1)'});}catch(e){}
     clearTimeout(show._p); show._p=setTimeout(function(){if(isMin)restore.classList.add('pulsing');},420);}
   function hide(){ isMin=false; clearTimeout(show._p); restore.classList.remove('confirm-close','pulsing','show'); restore.style.top=restore.style.left=''; }
   function minimize(){ if(!dlg.open||minimizing)return; lastRect=dlg.getBoundingClientRect(); show(); minimizing=true; fly('in'); dlg.close(); }
