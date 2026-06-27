@@ -1631,11 +1631,6 @@
   .askclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .askclip:active { transform:translateY(50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
   .askclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
-  /* 지우개(되돌리기) 동반 = 복/붙 좌측(46)·지우개 최우측(14)·빈칸 dim·지움 직후 흰 되돌리기(thumb 입력칸 [붙여넣기/복사 | 지우개] 패턴 계승 · 운영자 260627) */
-  .askclip.ask-pp { right:46px; }
-  .ask-erase { right:14px; }
-  .ask-erase.ask-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
-  .ask-erase.ask-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
   .askimgs { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
   .askimg { position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; border:1px solid var(--line2); }
   .askimg img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -1907,8 +1902,7 @@
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
       <span class="askph" id="askPh">내용을 입력해주세요</span>
-      <button class="sbtn askclip ask-pp" id="askClip" type="button" aria-label="붙여넣기"></button>
-      <button class="sbtn askclip ask-erase" id="askErase" type="button" aria-label="입력 지우기"></button>
+      <button class="sbtn askclip" id="askClip" type="button" aria-label="붙여넣기"></button>
     </div>
     <div class="askimgs" id="askImgs"></div>
     <div class="askbot">
@@ -4203,8 +4197,6 @@ const EDIT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const THUMBUP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3z"/><path d="M7 10l4.5-7.5a2 2 0 0 1 2.5 2V8h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.6 20H7"/></svg>';
 const THUMBDOWN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3z"/><path d="M17 14l-4.5 7.5a2 2 0 0 1-2.5-2V16H5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 6.4 4H17"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';   // 지우개(입력 비움) — Lucide eraser (thumb 입력칸 패턴 계승)
-const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg>';   // 되돌리기(직전 입력 복원) — 지움 직후 ~10초간 지우개 자리에 표시
 // 다운로드 시퀀스 버튼(.cref-dlall) 아이콘 = 다운(dn)↔체크(chk) 스왑 한 벌(완료 시 체크 팝 · 정본 패턴 구성도 §9)
 const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
 const ACK_MORPH = '<svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg>';   // 확인 토글 −→✓ 드로우-인(시안1·운영자 260622)
@@ -6161,28 +6153,7 @@ $('#askX').addEventListener('click', () => askdlg.close());
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 askdlg.addEventListener('close', () => { if (askImages.length) { askImages = []; renderAskImgs(); } });   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
 // 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
-function updateAskClip() { const b = $('#askClip'); if (!b) return; const has = $('#askText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; if (window.__syncAskErase) window.__syncAskErase(); }
-// 지우개(되돌리기) = thumb 입력칸 패턴 계승(운영자 260627): 비면 dim·비활성 / 누르면 입력 비움 → 직후 ~10초 되돌리기(직전 입력 복원) / 직접 입력하면 되돌리기 창 즉시 종료
-(function(){
-  const ta = $('#askText'), er = $('#askErase'); if (!ta || !er) return;
-  const ERASE_UNDO_MS = 10000; let undoTimer = null, undoVal = '', prog = false;   // prog = 프로그램적 변경(지움/복원) = 되돌리기창 종료 트리거 아님
-  er.innerHTML = ERASE_SVG;
-  const sync = () => { const filled = (ta.value || '').trim().length > 0; if (!er.classList.contains('ask-undo')) er.classList.toggle('ask-off', !filled); };
-  const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('ask-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; sync(); };
-  er.addEventListener('click', e => {
-    e.preventDefault();
-    if (er.classList.contains('ask-undo')) {   // 되돌리기 모드 = 직전 입력 복원
-      prog = true; ta.value = undoVal; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {} exitUndo(); return;
-    }
-    if (!(ta.value || '').length) return;       // 빈칸 = 지울 것 없음(평소 dim·무동작)
-    undoVal = ta.value;                          // 지운 내용 보관(복원용)
-    prog = true; ta.value = ''; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {}
-    er.classList.remove('ask-off'); er.classList.add('ask-undo'); er.innerHTML = UNDO_SVG; er.setAttribute('aria-label', '되돌리기'); er.title = '되돌리기 (직전 입력 복원)';
-    if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, ERASE_UNDO_MS);
-  });
-  ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); });   // 직접 입력/붙여넣기 = 새 내용 우선 → 되돌리기 창 즉시 종료
-  window.__syncAskErase = sync; sync();
-})();
+function updateAskClip() { const b = $('#askClip'); if (!b) return; const has = $('#askText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; }
 function updateAskPh() { const h = $('#askPh'); if (!h) return; const empty = !$('#askText').value.trim() && !askImages.length; h.classList.toggle('hide', !empty); }   // 빈 입력 안내 = 입력창 안 반짝 placeholder(내용/이미지 있으면 숨김)
 $('#askText').addEventListener('input', () => { updateAskClip(); updateAskPh(); });
 $('#askClip').addEventListener('click', async () => {
