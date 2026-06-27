@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>인터랙션 제안 — 최소화 눌림 · ▲→X 닫기</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+    --hist-accent:#c24bf5; --hist-rgb:194,75,245;
+    --danger:#ff5b4a; --danger-rgb:255,91,74;
+    --bg:#0b0d0c; --fg:#e9eaec; --fg2:#cfd8d0; --mut:#8b8f98; --line:#2a2c31;
+    --ease:cubic-bezier(.2,.7,.3,1);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    background-image:radial-gradient(120% 60% at 50% -10%, rgba(var(--accent-rgb),.06), transparent 60%);}
+  .wrap{max-width:720px; margin:0 auto; padding:24px 16px 70px;}
+  h1{font-size:20px; margin:2px 0 4px;} h1 b{color:var(--hist-accent);}
+  .sub{color:var(--mut); font-size:13px; margin-bottom:8px;}
+  h2{font-size:15px; margin:30px 0 6px; color:var(--accent); display:flex; align-items:center; gap:8px;}
+  h2::before{content:''; width:4px; height:15px; border-radius:2px; background:var(--accent);}
+  .hint{color:var(--mut); font-size:12.5px; margin:2px 0 14px;}
+  .grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+  @media (max-width:560px){ .grid{grid-template-columns:1fr;} }
+  .variant{background:linear-gradient(165deg,rgba(22,23,26,.7),rgba(12,13,14,.85)); border:1px solid var(--line); border-radius:14px; padding:14px; text-align:center;}
+  .vlabel{font-size:12px; font-weight:800; color:var(--fg2); margin-bottom:3px;} .vlabel b{color:var(--hist-accent);}
+  .vdesc{font-size:11px; color:var(--mut); line-height:1.45; min-height:30px;}
+  .stage{position:relative; height:120px; border-radius:10px; margin:8px 0; display:grid; place-items:center; overflow:hidden;
+    background:linear-gradient(180deg,#0d130f,#0a0b0a); border:1px solid rgba(255,255,255,.05);}
+
+  /* 최소화 헤더 목업 */
+  .mh{display:flex; align-items:center; gap:8px; padding:8px 10px; background:rgba(24,25,28,.6); border-radius:9px; width:88%;}
+  .mh b{color:var(--accent); font-size:12px; font-weight:800; margin-right:auto;}
+  .tx{width:28px; height:28px; display:grid; place-items:center; background:rgba(255,255,255,.06);
+    color:var(--fg); border:1px solid var(--line); border-radius:8px; cursor:pointer;}
+  .tx svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;}
+  /* M1 스냅 축소 */
+  .m1{transition:transform .1s var(--ease), background .12s;}
+  .m1.press{transform:scale(.78); background:rgba(255,255,255,.22);}
+  /* M2 초록 점등 */
+  .m2{transition:transform .12s var(--ease), background .15s, color .15s, border-color .15s;}
+  .m2.press{transform:scale(.9); color:var(--accent); background:var(--accent-dim); border-color:rgba(var(--accent-rgb),.45);}
+  /* M3 리플 + 축소 */
+  .m3{transition:transform .1s var(--ease);} .m3.press{transform:scale(.86);}
+  .m3 .rip{position:absolute; inset:0; border-radius:8px; pointer-events:none;}
+  .m3.press .rip{animation:rip .45s var(--ease);}
+  @keyframes rip{from{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.5);}to{box-shadow:0 0 0 16px rgba(var(--accent-rgb),0);}}
+
+  /* ▲→X 복원 도형 목업 */
+  .feedmock{position:absolute; inset:0; padding:10px; display:flex; flex-direction:column; gap:6px; opacity:.5;}
+  .fm-row{height:14px; border-radius:4px; background:rgba(255,255,255,.06);}
+  .fm-row:nth-child(2){width:70%;} .fm-row:nth-child(4){width:55%;}
+  .tri{position:absolute; right:14px; bottom:14px; width:34px; height:34px; display:grid; place-items:center; cursor:pointer; border:none; background:none; padding:0; -webkit-tap-highlight-color:transparent;}
+  .tri svg{position:absolute; display:block; transition:opacity .22s var(--ease), transform .22s var(--ease);}
+  .tri .ic-tri{color:var(--hist-accent); filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));}
+  .tri .ic-x{color:var(--danger); opacity:0; transform:rotate(-90deg) scale(.5);}
+  .tri.armed .ic-tri{opacity:0; transform:rotate(90deg) scale(.5);}
+  .tri.armed .ic-x{opacity:1; transform:rotate(0) scale(1);}
+  .tri.closing .ic-x{transform:scale(1.4); opacity:0; transition:.25s var(--ease);}
+  /* C1 = 강한 그림자(플레이트 없음) */
+  .c1 .ic-x{filter:drop-shadow(0 2px 6px rgba(0,0,0,.85)) drop-shadow(0 0 3px rgba(0,0,0,.7));}
+  /* C2 = 라디얼 라벨식 어두운 플레이트(가독) */
+  .c2 .plate{position:absolute; inset:1px; border-radius:9px; background:rgba(18,18,18,0); transition:background .2s, box-shadow .2s; pointer-events:none;}
+  .c2.armed .plate{background:rgba(18,18,18,.62); box-shadow:0 4px 12px rgba(0,0,0,.5);}
+  /* C3 = 빨강 글로우 */
+  .c3 .ic-x{filter:drop-shadow(0 2px 5px rgba(0,0,0,.7)) drop-shadow(0 0 7px rgba(var(--danger-rgb),.9));}
+  .toast{position:absolute; left:50%; top:10px; transform:translateX(-50%) translateY(-6px); opacity:0; transition:.18s var(--ease);
+    font-size:11px; font-weight:800; color:#fff; background:rgba(18,18,18,.85); padding:3px 10px; border-radius:999px; pointer-events:none; white-space:nowrap;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.ok{background:var(--danger);}
+  .stage small{position:absolute; left:8px; bottom:8px; color:var(--mut); font-size:10px;}
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important;} }
+  .pick{margin-top:26px; padding:14px 16px; background:rgba(var(--hist-rgb),.08); border:1px solid rgba(var(--hist-rgb),.3); border-radius:12px; font-size:13px; color:var(--fg2);}
+  .pick b{color:var(--hist-accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>인터랙션 <b>제안</b> — 최소화 눌림 · ▲→X 닫기</h1>
+  <div class="sub">폰에서 직접 눌러/길게눌러 비교해봐. 번호로 골라주면 실제 뷰어에 박을게.</div>
+
+  <h2>A. 최소화 버튼 눌림 (탭해봐)</h2>
+  <div class="hint">최소화 버튼은 누르면 모달이 촤르륵 접혀 — 그 직전 “눌렸다” 피드백 3안.</div>
+  <div class="grid">
+    <div class="variant">
+      <div class="vlabel">M1 · <b>스냅 축소</b></div>
+      <div class="stage"><div class="mh"><b>이미지</b>
+        <button class="tx m1" data-press><svg viewBox="0 0 24 24"><path d="M6 13h12"/></svg></button>
+        <button class="tx"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+      <div class="vdesc">콱 작아지며 흰 플래시. 가장 또렷·즉각적.</div>
+    </div>
+    <div class="variant">
+      <div class="vlabel">M2 · <b>초록 점등</b></div>
+      <div class="stage"><div class="mh"><b>이미지</b>
+        <button class="tx m2" data-press><svg viewBox="0 0 24 24"><path d="M6 13h12"/></svg></button>
+        <button class="tx"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+      <div class="vdesc">살짝 줄며 accent 그린으로 점등. 접힘색과 연결.</div>
+    </div>
+    <div class="variant">
+      <div class="vlabel">M3 · <b>리플 + 축소</b></div>
+      <div class="stage"><div class="mh"><b>이미지</b>
+        <button class="tx m3" data-press><span class="rip"></span><svg viewBox="0 0 24 24"><path d="M6 13h12"/></svg></button>
+        <button class="tx"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+      <div class="vdesc">축소 + 초록 링이 퍼짐(물결). 가장 화려.</div>
+    </div>
+  </div>
+
+  <h2>B. 복원 ▲ 길게눌러 X 닫기 (꾹 눌러봐)</h2>
+  <div class="hint">▲ <b>길게(0.5s)</b> → X로 모핑(겉둘레 없음). <b>X를 정확히 탭=닫힘</b>(액티브 후 사라짐) · <b>다른 곳 탭=취소</b>(X→▲ 복귀). 3안은 X 가독 처리만 다름.</div>
+  <div class="grid">
+    <div class="variant">
+      <div class="vlabel">C1 · <b>강한 그림자</b></div>
+      <div class="stage" data-stage>
+        <div class="feedmock"><div class="fm-row"></div><div class="fm-row"></div><div class="fm-row"></div><div class="fm-row"></div></div>
+        <div class="toast">닫힘 ✕</div>
+        <button class="tri c1" data-tri><span class="plate"></span>
+          <svg class="ic-tri" viewBox="0 0 24 24" width="20" height="20"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg>
+          <svg class="ic-x" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+        <small>꾹 → X / X탭=닫힘 / 밖탭=취소</small>
+      </div>
+      <div class="vdesc">X에 진한 그림자만(플레이트 없이 깔끔). 빨강 X.</div>
+    </div>
+    <div class="variant">
+      <div class="vlabel">C2 · <b>어두운 플레이트</b></div>
+      <div class="stage" data-stage>
+        <div class="feedmock"><div class="fm-row"></div><div class="fm-row"></div><div class="fm-row"></div><div class="fm-row"></div></div>
+        <div class="toast">닫힘 ✕</div>
+        <button class="tri c2" data-tri><span class="plate"></span>
+          <svg class="ic-tri" viewBox="0 0 24 24" width="20" height="20"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg>
+          <svg class="ic-x" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+        <small>꾹 → X / X탭=닫힘 / 밖탭=취소</small>
+      </div>
+      <div class="vdesc">X 뒤에 라디얼 라벨식 어두운 판(가독↑·이미지 그 느낌).</div>
+    </div>
+    <div class="variant">
+      <div class="vlabel">C3 · <b>빨강 글로우</b></div>
+      <div class="stage" data-stage>
+        <div class="feedmock"><div class="fm-row"></div><div class="fm-row"></div><div class="fm-row"></div><div class="fm-row"></div></div>
+        <div class="toast">닫힘 ✕</div>
+        <button class="tri c3" data-tri><span class="plate"></span>
+          <svg class="ic-tri" viewBox="0 0 24 24" width="20" height="20"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg>
+          <svg class="ic-x" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+        <small>꾹 → X / X탭=닫힘 / 밖탭=취소</small>
+      </div>
+      <div class="vdesc">X가 빨강 글로우로 떠오름(경고감 강조).</div>
+    </div>
+  </div>
+
+  <div class="pick">고르는 법 — <b>최소화 = M1/M2/M3</b> 중 하나, <b>닫기 = C1/C2/C3</b> 중 하나 (예: “M1 + C2”). 색·크기 등 더 손볼 것도 같이 말해줘.<br>※ 공통 동작(길게→X 모핑·X정확탭만 닫힘·밖탭취소·닫기 액티브)은 셋 다 동일. X 색(빨강/보라)·강조도 바꿀 수 있어.</div>
+</div>
+
+<script>
+  // 최소화 눌림 데모 — pointerdown=press 클래스(빠른 탭도 보이게)
+  document.querySelectorAll('[data-press]').forEach(function(b){
+    var on=function(){b.classList.add('press');}, off=function(){setTimeout(function(){b.classList.remove('press');},120);};
+    b.addEventListener('pointerdown',on); ['pointerup','pointerleave','pointercancel'].forEach(function(e){b.addEventListener(e,off);});
+  });
+  // ▲→X 길게눌러 닫기 데모
+  document.querySelectorAll('[data-stage]').forEach(function(stage){
+    var tri=stage.querySelector('[data-tri]'), toast=stage.querySelector('.toast');
+    var t=null, armed=false, moved=false, sx=0, sy=0;
+    function arm(){ armed=true; tri.classList.add('armed'); if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){} }
+    function disarm(){ armed=false; tri.classList.remove('armed'); }
+    function doClose(){ tri.classList.add('closing'); toast.classList.add('show','ok');
+      setTimeout(function(){ tri.classList.remove('armed','closing'); armed=false; },300);
+      setTimeout(function(){ toast.classList.remove('show','ok'); },1100); }
+    tri.addEventListener('pointerdown',function(e){ e.stopPropagation(); moved=false; sx=e.clientX; sy=e.clientY; clearTimeout(t); t=setTimeout(function(){t=null; arm();},500); });
+    tri.addEventListener('pointermove',function(e){ if(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10){moved=true; if(t){clearTimeout(t);t=null;}} },{passive:true});
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){ tri.addEventListener(ev,function(){ if(t){clearTimeout(t);t=null;} }); });
+    tri.addEventListener('click',function(e){ e.stopPropagation(); if(moved){moved=false;return;}
+      if(armed){ doClose(); } else { /* 평소 탭=펼침 */ toast.textContent='펼침 ▲'; toast.classList.remove('ok'); toast.classList.add('show'); setTimeout(function(){toast.classList.remove('show'); toast.textContent='닫힘 ✕';},800); } });
+    // 다른 곳 탭 = 취소
+    stage.addEventListener('click',function(){ if(armed){ disarm(); } });
+  });
+</script>
+</body>
+</html>
