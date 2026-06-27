@@ -37,14 +37,6 @@ on:
         description: 'edit 모드: 텍스트 반영 이미지 재생성(1=체크 / 0)'
         type: string
         default: '0'
-      scene:
-        description: 'edit 모드: 첨부 4:5 사진 경로(uploads/<id>/src.jpg · 비면 미사용·순수 합성)'
-        type: string
-        default: ''
-      scene_sha:
-        description: 'edit 모드: 첨부 사진 커밋 SHA(dispatch 레이스 가드)'
-        type: string
-        default: ''
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -71,18 +63,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: main   # 최신 main 기준(news-analyze와 동일 — 옛 커밋 체크아웃 금지)
-
-      # edit 첨부 사진(uploads/<id>/src) — make-cards.js가 main에 선커밋한 직후 dispatch라 보통 체크아웃에 포함되나,
-      # dispatch 레이스로 옛 HEAD를 받았으면 scene_sha로 직접 회수(compose.js/thumb.js image_sha 가드 계승). 못 찾으면 명시 실패.
-      - name: Ensure attached scene (dispatch-race guard)
-        if: ${{ inputs.mode == 'edit' && inputs.scene != '' }}
-        run: |
-          if [ ! -f "${{ inputs.scene }}" ] && [ -n "${{ inputs.scene_sha }}" ]; then
-            echo "첨부 사진 미발견 — SHA ${{ inputs.scene_sha }} fetch 시도(dispatch 레이스 가드)"
-            git fetch --depth 1 origin "${{ inputs.scene_sha }}" 2>/dev/null || git fetch origin main
-            git checkout "${{ inputs.scene_sha }}" -- "${{ inputs.scene }}" 2>/dev/null || true
-          fi
-          if [ -f "${{ inputs.scene }}" ]; then echo "scene OK: ${{ inputs.scene }}"; else echo "::error::첨부 사진을 찾지 못함: ${{ inputs.scene }}"; exit 1; fi
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -121,7 +101,6 @@ jobs:
           EDIT_TEXT: ${{ inputs.text }}
           EDIT_WISH: ${{ inputs.wish }}
           EDIT_SYNC: ${{ inputs.sync }}
-          EDIT_SCENE_PATH: ${{ inputs.scene }}   # edit 첨부 사진(4:5) 경로 — 있으면 cardmake.sh가 EDIT_SCENE로 → 순수 합성(제미나이 0)
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET} / 모드: ${MODE}${CARD_N:+ / 카드: ${CARD_N}}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then

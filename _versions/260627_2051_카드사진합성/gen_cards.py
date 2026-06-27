@@ -149,15 +149,6 @@ def edit_one(stem, n):
 
     _u0 = len(tg._USAGE)
     has_scene = os.path.isfile(scene_local)
-    # 첨부 사진(EDIT_SCENE) 우선 — 운영자가 4:5 사진을 직접 첨부 = 그 사진이 곧 텍스트-free 장면.
-    # scene_local로 흡수 + regen=False 강제 → Gemini 미호출(제미나이 0·과금 0). wish/sync는 첨부 우선이라 클리어.
-    edit_scene = os.environ.get("EDIT_SCENE", "").strip()
-    if edit_scene and os.path.isfile(edit_scene):
-        shutil.copy2(edit_scene, scene_local)
-        has_scene = True
-        wish = ""
-        sync = False
-        print("  ✓ 카드 {} 첨부 4:5 사진을 장면으로 사용(제미나이 0)".format(n))
     regen = bool(wish) or sync or not has_scene   # 재생성 = 수동 wish · 체크(텍스트 반영) · 보존본 없음
     if regen and not tg.KEY:   # 키 없으면 재생성 불가 → 장면 있으면 문구만 폴백, 없으면 합성 불가
         if has_scene:

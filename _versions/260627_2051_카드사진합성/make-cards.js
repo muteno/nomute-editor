@@ -27,39 +27,6 @@ export async function onRequestPost({ request, env }) {
     inputs.text = String(body.text || '').slice(0, 2000);
     inputs.wish = String(body.wish || '').slice(0, 1000);
     inputs.sync = body.sync ? '1' : '0';   // 1 = 체크('텍스트 반영 이미지 변경') → 백엔드서 Claude가 캡션+맥락으로 이미지 프롬프트 작성 → Gemini 재생성
-
-    // 첨부 4:5 사진(선택) — compose.js 패턴: base64를 uploads/<id>/src 커밋 후 scene 경로·SHA를 dispatch에.
-    // (workflow_dispatch는 이미지 페이로드 못 실음 → 선커밋 우회. 매직바이트·≤9MB 가드 = R2/git 저장형 XSS·비이미지 차단.)
-    let sb64 = String(body.sceneB64 || '');
-    if (sb64) {
-      const dm = sb64.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/);
-      const ext = dm ? (dm[1].charAt(0) === 'j' ? '.jpg' : '.' + dm[1]) : '.jpg';
-      if (dm) sb64 = dm[2];
-      if (sb64.length > 12_000_000) return json({ error: '첨부 사진이 너무 큼(≤9MB)' }, 400);
-      let head = '';
-      try { head = atob(sb64.slice(0, 24)); } catch { return json({ error: '첨부 사진 디코드 실패' }, 400); }
-      const isJpg = head.charCodeAt(0) === 0xff && head.charCodeAt(1) === 0xd8;
-      const isPng = head.charCodeAt(0) === 0x89 && head.slice(1, 4) === 'PNG';
-      const isWebp = head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WEBP';
-      if (!isJpg && !isPng && !isWebp) return json({ error: '이미지 형식 오류(JPG/PNG/WEBP만)' }, 400);
-      const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙) · -rand=동초 충돌 방지
-      const scenePath = `uploads/${id}/src${ext}`;
-      const put = await fetch(`https://api.github.com/repos/muteno/nomute-editor/contents/${scenePath}`, {
-        method: 'PUT',
-        headers: {
-          authorization: `Bearer ${env.GH_TOKEN}`,
-          accept: 'application/vnd.github+json',
-          'user-agent': 'nomute-viewer',
-          'x-github-api-version': '2022-11-28',
-        },
-        body: JSON.stringify({ message: `card edit scene ${id}`, content: sb64, branch: 'main' }),
-      });
-      if (put.status !== 201 && put.status !== 200) return json({ error: `사진 업로드 실패 GitHub ${put.status}: ${(await put.text()).slice(0, 200)}` }, 502);
-      let sha = '';
-      try { sha = ((await put.json()) || {}).commit?.sha || ''; } catch { sha = ''; }   // 커밋 SHA — card-make.yml dispatch 레이스(옛 HEAD) 가드용
-      inputs.scene = scenePath;
-      inputs.scene_sha = sha;
-    }
   }
 
   const r = await fetch(

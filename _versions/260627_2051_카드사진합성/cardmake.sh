@@ -87,19 +87,11 @@ if [ "$MODE" = edit ]; then
   echo "::group::카드 변경: $stem 카드$CARD_N"
   # 합성 폰트(Noto CJK) — card_news 로컬 합성 필수. 캐시 미적중 시만 설치(§🧰).
   fc-list 2>/dev/null | grep -qi "noto sans cjk" || { sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk; }
-  # 첨부 사진(4:5) 경로 — card-make.yml inputs.scene → EDIT_SCENE_PATH. 있으면 검증 후 EDIT_SCENE로(=장면 직접지정·제미나이 0).
-  #   누락(dispatch 레이스)이면 silent text-only 폴백을 막고 명시 실패(::error·exit) — 운영자가 사진 유실을 즉시 알게.
-  EDIT_SCENE=""
-  if [ -n "${EDIT_SCENE_PATH:-}" ]; then
-    if [ -f "${EDIT_SCENE_PATH}" ]; then EDIT_SCENE="${EDIT_SCENE_PATH}"; echo "첨부 사진 장면 사용: ${EDIT_SCENE_PATH}";
-    else echo "::error::첨부 사진 경로 없음(dispatch 레이스 추정): ${EDIT_SCENE_PATH}"; exit 1; fi
-  fi
   # 이미지 재생성(체크 EDIT_SYNC=1 또는 수동 EDIT_WISH) = Claude가 지침대로 이미지 프롬프트 작성 → gen_cards가 그걸로 Gemini 재생성.
   #   (체크=캡션+맥락 / wish=캡션+맥락+수정희망. 둘 다 아니면 EDIT_PROMPT 빈 채 = gen_cards가 장면 보존·문구만 = 제미나이 0)
-  #   ⚠️ 첨부 사진이 있으면(EDIT_SCENE) 사진이 곧 장면 → Claude 프롬프트·Gemini 둘 다 건너뜀(순수 합성·제미나이 0).
   #   ⚠️ 임의 프롬프팅 금지 — GBLOCK(card 지침)을 떠먹여 규약(텍스트-free·구도·GOVERNING·안전) 준수(운영자 요구 260621).
   EDIT_PROMPT=""
-  if { [ "${EDIT_SYNC:-0}" = "1" ] || [ -n "${EDIT_WISH:-}" ]; } && [ -n "${GEMINI_API_KEY:-}" ] && [ -z "${EDIT_SCENE}" ]; then
+  if { [ "${EDIT_SYNC:-0}" = "1" ] || [ -n "${EDIT_WISH:-}" ]; } && [ -n "${GEMINI_API_KEY:-}" ]; then
     echo "이미지 프롬프트 작성(claude · 지침 준수)…"
     ap="${GBLOCK}
 
@@ -121,7 +113,7 @@ $(cat "queue/$stem.md" 2>/dev/null)
       echo "이미지 프롬프트 작성 완료(${#EDIT_PROMPT}자)"
     fi
   fi
-  EDIT_TEXT="$EDIT_TEXT" EDIT_WISH="${EDIT_WISH:-}" EDIT_SYNC="${EDIT_SYNC:-0}" EDIT_PROMPT="$EDIT_PROMPT" EDIT_SCENE="$EDIT_SCENE" \
+  EDIT_TEXT="$EDIT_TEXT" EDIT_WISH="${EDIT_WISH:-}" EDIT_SYNC="${EDIT_SYNC:-0}" EDIT_PROMPT="$EDIT_PROMPT" \
     python3 .github/scripts/gen_cards.py --stem "$stem" --edit-card "$CARD_N" \
     || { echo "::error::카드 변경 실패"; exit 1; }
   pv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
