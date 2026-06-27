@@ -35,12 +35,6 @@ python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null \
 
 MAX="${PUSH_SUM_MAX:-6}"   # 건별 딥링크 알림 상한(스팸 방지). 초과분은 아래에서 1개 묶음(피드)으로.
 
-# 메시지 파라미터(기본 = 요약 완료 알림 · revise 워크플로가 "수정 완료"로 재사용 · 운영자 260627).
-# 미지정이면 현행 analyze/ask 동작과 100% 동일(회귀 0).
-NTITLE="${NOTIFY_TITLE:-요약 완료}"                      # 푸시 제목
-NSUFFIX="${NOTIFY_BODY_SUFFIX:- — 탭해서 요약 보기}"     # 본문 꼬리(제목 뒤에 붙음)
-NTAG="${NOTIFY_TAG_PREFIX:-nomute-sum}"                  # tag 프리픽스(건별 딥링크 알림 누적 · 종류별 분리 = 요약↔수정 알림 교체 안 됨)
-
 # ── ⏳ 라이브 배포가 *이번 분석*을 반영할 때까지 폴(commit 조상검사) ──
 VIEWER_BASE="${VIEWER_BASE:-https://nomute-editor.pages.dev}"
 AJSON="${VIEWER_BASE%/}/articles.json"
@@ -83,16 +77,16 @@ for ((idx = 0; idx < N && sent < MAX; idx++)); do
   FILE="${FILES[$idx]}"; [ -z "$FILE" ] && continue
   STEM="${FILE%.md}"   # 파일명 = ASCII-safe(analyze/ask id 규칙) → URL 인코딩 불필요
   TITLE="${TITLES[$idx]:-요약}"   # 같은 순서(파일↔제목). 없거나 빈칸이면 "요약".
-  python3 .github/scripts/push_send.py --notify "$NTITLE" "${TITLE}${NSUFFIX}" \
-    --url "/?a=${STEM}" --tag "${NTAG}-${STEM}" \
+  python3 .github/scripts/push_send.py --notify "요약 완료" "${TITLE} — 탭해서 요약 보기" \
+    --url "/?a=${STEM}" --tag "nomute-sum-${STEM}" \
     || echo "::warning::완료 푸시 실패(비치명: ${STEM})"
   sent=$((sent + 1))
 done
 
 REST=$((N - sent))
 if [ "$REST" -gt 0 ]; then   # 상한 초과분 = 건별 딥링크 대신 1개 묶음(피드로). 정상 사용(1~6건)에선 안 뜸.
-  python3 .github/scripts/push_send.py --notify "$NTITLE" "외 ${REST}건 더 완료 — 탭해서 확인" \
-    --url "/" --tag "${NTAG}-batch" \
+  python3 .github/scripts/push_send.py --notify "요약 완료" "외 ${REST}건 더 완료 — 탭해서 확인" \
+    --url "/" --tag "nomute-sum-batch" \
     || echo "::warning::완료 푸시 실패(비치명: batch)"
 fi
 exit 0
