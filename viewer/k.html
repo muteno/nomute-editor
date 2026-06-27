@@ -34,6 +34,10 @@
   .scnclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .scnclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(15,253,2,.6); }
   .scnclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
+  .scnclip.scn-pp { right:46px; }                       /* 클립 = 지우개 좌측(붙여넣기/복사) · 운영자 260627 */
+  .scn-erase { right:14px; }                            /* 지우개 = 최우측 · 누르면 입력 비움→~10초 되돌리기 */
+  .scn-erase.scn-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 흐리게·비활성 */
+  .scn-erase.scn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
   /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
   .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
   .go:hover { background:rgba(255,255,255,.08); border-color:rgba(15,253,2,.3); }
@@ -108,15 +112,32 @@ const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;'
 const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
 const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
-// 스토리 구성 칸 붙여넣기↔복사 (2A 상단걸침 · 뉴스요약/썸네일 통일 · 운영자 260625)
+// 스토리 구성 칸 붙여넣기↔복사 + 지우개/되돌리기 (뉴스요약/썸네일 통일·운영자 260625·260627)
+const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';
+const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg>';
 (function () {
   const ta = $('#scene'), b = $('#sceneClip'); if (!ta || !b) return;
-  const upd = () => { if (b.classList.contains('ok')) return; const f = ta.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); };
+  b.classList.add('scn-pp');   // 클립 = 지우개 좌측(46)으로
+  const er = document.createElement('button'); er.type = 'button'; er.className = 'scnclip scn-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
+  b.parentNode.appendChild(er);
+  let undoTimer = null, undoVal = '', prog = false;   // prog = 프로그램적 변경(지움/복원) = 되돌리기창 종료 트리거 아님
+  const upd = () => {
+    if (!b.classList.contains('ok')) { const f = ta.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('scn-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('scn-off', !(ta.value || '').trim().length); }
+  };
+  const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('scn-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
+  er.addEventListener('click', e => { e.preventDefault();
+    if (er.classList.contains('scn-undo')) { prog = true; ta.value = undoVal; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {} exitUndo(); return; }
+    if (!(ta.value || '').length) return;
+    undoVal = ta.value; prog = true; ta.value = ''; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {}
+    er.classList.remove('scn-off'); er.classList.add('scn-undo'); er.innerHTML = UNDO_SVG; er.setAttribute('aria-label', '되돌리기'); er.title = '되돌리기 (직전 입력 복원)';
+    if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
+  });
   b.addEventListener('click', async e => { e.preventDefault();
     if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
     else { try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
   });
-  ta.addEventListener('input', upd); upd();
+  ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
 })();
 
 // 최소 마크다운 렌더: ``` 펜스 = 코드블록(복사 버튼), 그 외 #/##/### 헤딩 + 문단.
