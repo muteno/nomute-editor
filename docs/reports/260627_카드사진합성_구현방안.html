@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드뉴스 글자수정 — 4:5 사진 첨부→합성 · 구현방안</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108;
+    --fg:#fff; --fg-2:rgba(255,255,255,.82); --mut:rgba(255,255,255,.55);
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.06);
+    --glass:rgba(255,255,255,.06); --glass2:rgba(255,255,255,.035);
+    --danger:#ff5d5d; --amber:#ffb84d;
+    --r-s:10px; --r-m:14px; --r-l:18px;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI","Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#070b08;color:var(--fg);font-family:var(--font);line-height:1.6;
+    -webkit-font-smoothing:antialiased;padding:0 0 80px}
+  .wrap{max-width:880px;margin:0 auto;padding:24px 18px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:6px 0 2px}
+  h1 .em{color:var(--accent)}
+  h2{font-size:16.5px;font-weight:800;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:8px}
+  h2 .pin{color:var(--accent)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 4px}
+  p{font-size:14px;color:var(--fg-2);margin:8px 0}
+  code{background:var(--glass);padding:1px 6px;border-radius:6px;font-size:12.5px;
+    font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#bfeec0}
+  .lead{background:linear-gradient(165deg,rgba(27,44,32,.5),rgba(11,19,14,.6));border:1px solid var(--line);
+    border-radius:var(--r-l);padding:16px 18px;margin:14px 0}
+  .lead b{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  td b{color:var(--fg)}
+  .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-right:4px}
+  .tag.ok{background:rgba(var(--accent-rgb),.14);color:var(--accent)}
+  .tag.warn{background:rgba(255,184,77,.14);color:var(--amber)}
+  .tag.dng{background:rgba(255,93,93,.14);color:var(--danger)}
+  ul{margin:8px 0;padding-left:20px}
+  li{font-size:13.5px;color:var(--fg-2);margin:5px 0}
+  li b{color:var(--fg)}
+  .rec{color:var(--accent);font-weight:700}
+
+  /* ── 인터랙티브 목업 (editdlg 복제) ── */
+  .demo{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;margin:14px 0 6px}
+  .editdlg{width:340px;max-width:100%;border-radius:22px;overflow:hidden;
+    background:linear-gradient(165deg,rgba(27,44,32,.96),rgba(11,19,14,.98));
+    border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .ed-h{display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--line2)}
+  .ed-title{font-size:15px;font-weight:800;color:var(--accent);letter-spacing:-.2px;flex:1}
+  .ed-x{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line);
+    background:var(--glass);color:var(--fg);cursor:default}
+  .ed-x svg{width:14px;height:14px}
+  .ed-body{padding:12px 16px 14px;display:flex;flex-direction:column;gap:8px}
+  .ed-img{position:relative;width:100%;aspect-ratio:4/5;border-radius:14px;overflow:hidden;
+    border:1px solid var(--line);background:#0d1410;display:block}
+  .ed-img .scene{position:absolute;inset:0;transition:opacity .45s ease}
+  .scene.illu{background:
+    radial-gradient(120% 80% at 60% 18%,#2a3b50,#0f1722 70%),
+    linear-gradient(180deg,#243447,#0b1018)}
+  .scene.photo{background:
+    radial-gradient(90% 60% at 30% 30%,#3a4d3a,#1a241a 65%),
+    linear-gradient(180deg,#2c3a2a,#0e140d);opacity:0}
+  .scene .lab{position:absolute;top:8px;left:8px;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.7);
+    background:rgba(0,0,0,.45);padding:2px 8px;border-radius:999px;letter-spacing:.2px}
+  .ovl{position:absolute;left:0;right:0;bottom:0;height:46%;
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.86) 62%)}
+  .ovl-txt{position:absolute;left:9%;right:7%;bottom:7%;font-weight:800;line-height:1.32;
+    font-size:13.5px;letter-spacing:-.3px;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .ovl-txt .hl{color:var(--accent)}
+  .ed-lbl{font-size:11.5px;color:var(--mut);font-weight:700;margin-top:2px}
+  .ed-chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{font-size:12px;padding:4px 9px;border-radius:8px;background:var(--glass);border:1px solid var(--line);color:var(--fg-2)}
+  .chip.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.10)}
+  .ed-wish{width:100%;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--glass2);
+    color:var(--fg);padding:8px 10px;font:inherit;font-size:12.5px;resize:none}
+  .ed-wish.dim{opacity:.4;pointer-events:none}
+  .ed-foot{display:flex;gap:10px;align-items:center;padding:11px 16px;border-top:1px solid var(--line2)}
+  .ed-cancel{padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--glass);
+    color:var(--fg-2);font:inherit;font-size:13px;font-weight:600;cursor:default}
+  .spacer{flex:1}
+  /* 첨부 버튼 = .askattach 계승 */
+  .ed-attach{position:relative;display:grid;place-items:center;width:38px;height:38px;border-radius:10px;
+    background:var(--glass);border:1px solid var(--line);color:var(--fg);cursor:pointer;
+    transition:transform .12s,background .15s,border-color .15s,color .15s;overflow:hidden}
+  .ed-attach:active{transform:scale(.9)}
+  .ed-attach svg{width:20px;height:20px}
+  .ed-attach.has{border-color:rgba(var(--accent-rgb),.5);color:var(--accent)}
+  .ed-attach .gauge{position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;
+    transition:transform .72s cubic-bezier(.2,.7,.2,1);z-index:0}
+  .ed-attach.firing .gauge{transform:scaleX(1)}
+  .ed-attach .ico,.ed-attach .badge{position:relative;z-index:1}
+  .ed-attach.firing{color:var(--on-accent);border-color:var(--accent)}
+  .ed-attach .badge{position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 3px;border-radius:999px;
+    background:var(--accent);color:var(--on-accent);display:none;align-items:center;justify-content:center;
+    gap:1px;font-size:10px;font-weight:800;z-index:2;border:1.5px solid #0d1410}
+  .ed-attach.has .badge{display:inline-flex}
+  .ed-attach .badge svg{width:9px;height:9px;stroke:var(--on-accent)}
+  .ed-attach.armed{animation:armpulse 1.3s ease-in-out infinite}
+  @keyframes armpulse{0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.0)}50%{box-shadow:0 0 0 4px rgba(var(--accent-rgb),.18)}}
+  .ed-go{padding:8px 16px;border-radius:10px;border:1px solid rgba(var(--accent-rgb),.5);
+    background:rgba(var(--accent-rgb),.10);color:var(--accent);font:inherit;font-size:13px;font-weight:700;cursor:default}
+  @keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  .shake{animation:shk .42s}
+  .ed-status{font-size:12px;font-weight:600;min-height:18px;margin:2px 16px 0;padding:0 0 8px}
+  .ed-status.err{color:var(--danger)}
+  .ed-status.ok{color:var(--accent)}
+  /* 전/후 토글 */
+  .verbar{display:none;gap:6px;margin:6px 16px 12px}
+  .verbar.show{display:flex}
+  .vbtn{flex:1;padding:7px;border-radius:9px;border:1px solid var(--line);background:var(--glass);
+    color:var(--fg-2);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .vbtn.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.10)}
+
+  .panel{flex:1;min-width:240px}
+  .ctl{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .ctl .cb{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--glass);
+    color:var(--fg);font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left}
+  .ctl .cb:hover{border-color:rgba(var(--accent-rgb),.4)}
+  .ctl .cb small{display:block;color:var(--mut);font-weight:500;font-size:11.5px;margin-top:1px}
+  .flow{margin-top:14px;font-size:12.5px;color:var(--mut)}
+  .flow b{color:var(--fg-2)}
+  .step{display:flex;gap:8px;margin:4px 0}
+  .step .n{flex:none;width:18px;height:18px;border-radius:999px;background:rgba(var(--accent-rgb),.15);
+    color:var(--accent);font-size:11px;font-weight:800;display:grid;place-items:center;margin-top:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="sub">노뮤트 · 뉴스요약 뷰어 · 카드뉴스 이미지 제작(phase 3)</p>
+  <h1>카드 <span class="em">글자수정 모달</span>에 4:5 사진 첨부 → 합성</h1>
+  <p class="sub">3인 적대적 아이데이션 + 종합으로 확립한 구현방안 · 260627</p>
+
+  <div class="lead">
+    <b>한 줄 요약 —</b> 카드 글자수정(연필) 모달에 <b>뉴스요약의 사진 첨부 버튼을 그대로 이식</b>한다.
+    4:5 사진을 첨부하면 일러스트 대신 그 사진이 깔리고 글자 오버레이가 위에 얹힌 <b>미리보기</b>가 즉시 뜨고,
+    <b>그 버튼을 한 번 더 누르면 게이지가 차며 합성</b>된다. 합성은 이미 있는 정본 엔진
+    (<code>recompose_card.py</code> → <code>card_news.py</code>)이 처리 → <b>제미나이 호출 0 · 과금 0</b>,
+    전/후 비교는 기존 버전 네비로 <b>공짜로</b> 따라온다.
+  </div>
+
+  <h2><span class="pin">📍</span> 인터랙티브 목업 — 직접 눌러봐</h2>
+  <p>아래는 제안 UX를 실제 토큰·컴포넌트로 재현한 거야. 우측 버튼으로 시나리오를 시뮬레이션해봐.</p>
+
+  <div class="demo">
+    <div>
+      <div class="editdlg" id="dlg">
+        <div class="ed-h">
+          <span class="ed-title">카드 6 변경</span>
+          <span class="ed-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span>
+        </div>
+        <div class="ed-body">
+          <div class="ed-img" id="edImg">
+            <div class="scene illu"><span class="lab" id="labBefore">일러스트 (현재)</span></div>
+            <div class="scene photo"><span class="lab">첨부 사진 4:5</span></div>
+            <div class="ovl"></div>
+            <div class="ovl-txt">어선이 뒤집힌 건 처음이 아니다<br>지난해부터 같은 지시만 되풀이됐다<br>정작 막아야 할 건 충돌이었다<br><span class="hl">두 사람은 지금도 바다에 있다</span></div>
+          </div>
+          <span class="ed-lbl">텍스트</span>
+          <div class="ed-chips">
+            <span class="chip">어선이</span><span class="chip">뒤집힌</span><span class="chip">건</span>
+            <span class="chip on">충돌이었다</span><span class="chip on">바다에</span>
+          </div>
+          <span class="ed-lbl">이미지 수정 희망</span>
+          <textarea class="ed-wish" id="edWish" placeholder="내용을 입력해주세요"></textarea>
+        </div>
+        <div class="ed-status" id="edStatus"></div>
+        <div class="verbar" id="verbar">
+          <button class="vbtn" id="vBefore">전 (일러스트)</button>
+          <button class="vbtn on" id="vAfter">후 (사진 합성)</button>
+        </div>
+        <div class="ed-foot">
+          <button class="ed-cancel">취소</button>
+          <span class="spacer"></span>
+          <button class="ed-attach" id="edAttach" title="이미지 첨부 → 한 번 더 눌러 합성">
+            <span class="gauge"></span>
+            <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></span>
+            <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span id="badgeCnt">1</span></span>
+          </button>
+          <button class="ed-go">변경</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ctl">
+        <button class="cb" id="btnOk">📎 4:5 사진 첨부 (정상)<small>→ 일러스트 위에 사진 미리보기 · ✓ 배지</small></button>
+        <button class="cb" id="btnBad">📎 3:4 사진 첨부 (비율 오류)<small>→ "비율이 4:5가 아닙니다" 가드</small></button>
+        <button class="cb" id="btnReset">↺ 리셋</button>
+      </div>
+      <div class="flow">
+        <div class="step"><span class="n">1</span><span><b>1차 클릭(첨부)</b> — 파일 선택 → 4:5 검증 통과 시 사진이 배경으로 깔리고 글자 오버레이가 위에. 버튼은 <b>✓ 배지(첨부됨)</b>로.</span></div>
+        <div class="step"><span class="n">2</span><span><b>비율 오류면</b> — 버튼이 흔들리고(shake) "비율이 4:5가 아닙니다(현재 N:M)" 멘트 → 첨부 거부.</span></div>
+        <div class="step"><span class="n">3</span><span><b>2차 클릭(합성)</b> — 같은 버튼을 한 번 더 → <b>게이지바 풀필</b> → 백엔드 정본 합성 발사.</span></div>
+        <div class="step"><span class="n">4</span><span><b>전/후</b> — 합성 후 기존 버전 네비로 일러스트↔사진 왕복 확인.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="pin">📍</span> 확정 설계 (3안 만장일치)</h2>
+  <ul>
+    <li><b>합성 위치 = 백엔드 정본 단일</b> (<code>recompose_card.py</code>가 이미 "임의 4:5 씬+텍스트" 합성용). 클라 캔버스는 <b>미리보기 근사 전용 · 절대 업로드 안 함</b> — 웹폰트가 백엔드 NotoSansCJK와 미세히 달라 정본화하면 거짓 픽셀이 R2에 영구 저장되는 회귀.</li>
+    <li><b>전송 = <code>make-cards.js</code>를 <code>compose.js</code> 패턴으로 흡수</b> (단일 엔드포인트). 사진 base64 → <code>uploads/&lt;id&gt;/src.jpg</code> 커밋 → dispatch에 <code>scene</code>·<code>scene_sha</code> 추가. 신규 함수·comp-make 직접호출 기각.</li>
+    <li><b>edit_one 주입 = <code>regen</code> 계산 직전 1지점</b> — <code>EDIT_SCENE</code> 있으면 그 사진을 <code>scene_local</code>로 복사 + <code>regen=False</code> 강제 → <code>gemini_image</code> 블록 스킵 = <b class="rec">제미나이 0</b>.</li>
+    <li><b>2단 버튼 = 첨부버튼 자체</b> (운영자 원문 직역). 게이지는 신규 CSS 창작 없이 기존 <code>edLaunch</code> firing→✓ 시퀀스를 첨부버튼에 재적용 → <b>컴포넌트 중복 0</b>.</li>
+    <li><b>4:5 검증 = 클라 ±2% tolerance</b> + 어긋나면 기존 빈입력 shake/flash 가드 계승. 백엔드 <code>ImageOps.fit(중앙 0.4)</code>이 미세오차 흡수.</li>
+    <li><b>전/후 = 코드 추가 0</b> — <code>_save_versions</code>가 v0=원본 일러스트·v1=사진 합성본 보존 → 기존 <code>.slide-ver</code> 전/후 네비 자동.</li>
+  </ul>
+
+  <h2><span class="pin">📍</span> 빌드 순서 (백엔드 먼저 → 프론트)</h2>
+  <table>
+    <tr><th>#</th><th>파일</th><th>변경 요지</th><th>규모</th></tr>
+    <tr><td>1</td><td><b>gen_cards.py</b><br><code>edit_one</code></td><td><code>EDIT_SCENE</code> 읽어 유효파일이면 <code>scene_local</code>로 복사 + <code>regen=False</code> + <code>wish=''/sync=False</code> 클리어. 나머지(recompose→_save_versions→R2/로컬→cards.md) 무변경.</td><td><span class="tag ok">~6줄</span></td></tr>
+    <tr><td>2</td><td><b>cardmake.sh</b><br>edit 분기</td><td>gen_cards 호출에 <code>EDIT_SCENE</code> 패스스루. 첨부 있으면 Claude 이미지프롬프트 작성 블록 스킵. scene 누락 가드.</td><td><span class="tag ok">~4줄</span></td></tr>
+    <tr><td>3</td><td><b>card-make.yml</b></td><td><code>inputs.scene</code>·<code>scene_sha</code> 추가 + env <code>EDIT_SCENE_PATH</code> + scene_sha 직접 체크아웃(dispatch 레이스 가드).</td><td><span class="tag ok">~10줄</span></td></tr>
+    <tr><td>4</td><td><b>make-cards.js</b></td><td><code>mode==='edit'</code>에서 <code>sceneB64</code> 있으면 compose.js의 GH헬퍼·≤9MB·매직바이트·KST id·uploads 커밋·image_sha 회수 이식 → scene 입력 추가.</td><td><span class="tag warn">~30줄</span></td></tr>
+    <tr><td>5</td><td><b>viewer</b> 마크업</td><td><code>#editdlg</code> 푸터에 <code>.askattach</code> 통째 복제(id만 ed*) + <code>#edStatus</code>. input <code>multiple</code> 제거(1장).</td><td><span class="tag ok">~6줄</span></td></tr>
+    <tr><td>6</td><td><b>viewer</b> 미리보기</td><td><code>ovlPreviewTo()</code> = <code>exportOverlay</code> 복제 + 맨앞 <code>drawImage(bg)</code> 1줄. 칩 편집 시 재호출 동기화.</td><td><span class="tag warn">~25줄</span></td></tr>
+    <tr><td>7</td><td><b>viewer</b> 4:5 가드</td><td><code>addEditScene</code>: <code>w/h</code> 측정 → ±2% 통과만 압축. 실패=shake+멘트+거부.</td><td><span class="tag ok">~15줄</span></td></tr>
+    <tr><td>8</td><td><b>viewer</b> 상태머신</td><td><code>edScene/edSceneArmed</code> · 2차클릭=edLaunch 시퀀스→fireEdit에 <code>sceneB64</code> 동반 · <code>_edFiring</code> 잠금 공유 · openEdit 리셋.</td><td><span class="tag warn">~30줄</span></td></tr>
+  </table>
+
+  <h2><span class="pin">📍</span> 리스크 TOP + 완화</h2>
+  <table>
+    <tr><th>리스크</th><th>완화책</th></tr>
+    <tr><td><span class="tag dng">최악</span> <b>4단 배선 누락 → silent text-only 폴백</b> (scene_sha가 한 곳만 빠져도 사진 유실)</td><td>1~4를 한 PR로 묶고 cardmake.sh에 <code>scene 경로 존재 검증·없으면 ::error exit</code> 가드.</td></tr>
+    <tr><td><b>dispatch 레이스</b> — 방금 커밋한 src를 러너가 옛 HEAD로 체크아웃</td><td><code>scene_sha</code> 전달 → 그 SHA 직접 fetch/checkout(compose.js·thumb.js 가드 계승).</td></tr>
+    <tr><td><b>중복 dispatch</b> — 첨부 게이지 + #edGo 별도 발사 → R2 덮어쓰기 레이스</td><td><code>fireEdit</code> 단일 진입 + <code>_edFiring</code> 잠금 공유.</td></tr>
+    <tr><td><b>미리보기 ≠ 결과</b> — 웹폰트 자간차</td><td>"미리보기는 근사" 라벨, 확정은 합성 후 versions로.</td></tr>
+    <tr><td><b>화질·HEIC</b> — 1280/q0.6은 LLM용 / iOS HEIC</td><td>카드 배경 전용 1080/q0.85 호출 · onerror 시 "JPG/PNG로" 멘트.</td></tr>
+  </table>
+
+  <h2><span class="pin">📍</span> 기틀 판정 + 다음 단계</h2>
+  <ul>
+    <li><span class="tag ok">불변</span> <b>카드 자동경로 제미나이-0(Lock A/B)</b> 무간섭 — 수동 edit 경로뿐이고 첨부 시 <code>regen=False</code>로 오히려 제미나이 0 <b>강화</b>. 큐레이션 알고리즘·3단계 파이프라인 골격 0변경.</li>
+    <li><span class="tag warn">검증</span> <code>edit_one</code>·<code>make-cards.js</code>·<code>card-make.yml</code> 동시 손댐 = <b>실질 코드/구조 변경</b> → 머지 전 <b>10인 적대 검증</b>(make-cards 보안·페이로드·4단 배선 관통·제미나이0·R2 레이스·전후 versions·미리보기 정직성·HEIC). §🧪 5-Opus는 <b>불요</b>(기틀 해체 아님).</li>
+    <li><span class="tag warn">확인</span> 워크플로 입력 스키마 확장 + 전송함수 구조 변경이라 <b>착수 전 사용자 확인</b>(아래 분기 확정 후 구현).</li>
+  </ul>
+
+  <div class="lead">
+    <b>결정 필요 (채팅 버튼으로 받음):</b>
+    <ul>
+      <li><b>Q1 합성 발사</b> — <span class="rec">첨부버튼 2차클릭=게이지(권장·운영자 원문)</span> / 별도 '사진 합성' 버튼</li>
+      <li><b>Q2 첨부 시 AI</b> — <span class="rec">순수합성·제미나이0·과금0(권장)</span> / 수정희망 반영 AI 재가공(과금)</li>
+      <li>Q3 4:5 허용오차 <span class="rec">±2%(권장)</span> · 전송 <span class="rec">git 커밋(compose.js 패턴·권장)</span> — 기본값으로 진행, 원하면 조정</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var dlg=document.getElementById('dlg'),
+      attach=document.getElementById('edAttach'),
+      img=document.getElementById('edImg'),
+      photo=img.querySelector('.scene.photo'),
+      labBefore=document.getElementById('labBefore'),
+      status=document.getElementById('edStatus'),
+      verbar=document.getElementById('verbar'),
+      wish=document.getElementById('edWish'),
+      vB=document.getElementById('vBefore'),
+      vA=document.getElementById('vAfter');
+  var state='idle'; // idle | attached | composited
+
+  function setStatus(t,cls){status.textContent=t||'';status.className='ed-status'+(cls?' '+cls:'');}
+  function reset(){
+    state='idle';
+    attach.classList.remove('has','armed','firing');
+    photo.style.opacity=0; labBefore.textContent='일러스트 (현재)';
+    verbar.classList.remove('show'); wish.classList.remove('dim');
+    setStatus('');
+  }
+  function attachOk(){
+    if(state==='composited') return;
+    state='attached';
+    photo.style.opacity=1;
+    attach.classList.add('has','armed');
+    wish.classList.add('dim'); // 첨부 시 이미지수정희망/체크 비활성(제미나이0 고정)
+    setStatus('✓ 4:5 사진 첨부됨 — 한 번 더 누르면 합성','ok');
+  }
+  function attachBad(){
+    if(state==='composited') return;
+    attach.classList.remove('shake'); void attach.offsetWidth; attach.classList.add('shake');
+    setTimeout(function(){attach.classList.remove('shake');},450);
+    setStatus('비율이 4:5가 아닙니다 (현재 3:4)','err');
+  }
+  function composite(){
+    if(state!=='attached') return;
+    attach.classList.remove('armed');
+    attach.classList.add('firing');
+    setStatus('합성 발사 — 백엔드 정본 합성 중…','ok');
+    setTimeout(function(){
+      state='composited';
+      attach.classList.remove('firing');
+      labBefore.textContent='일러스트 (원본)';
+      verbar.classList.add('show');
+      setStatus('✓ 합성 완료 — 전/후로 비교','ok');
+    },900);
+  }
+
+  // 첨부 버튼: idle/attached 상태에 따라 분기 (목업에선 우측 버튼이 파일선택 대행)
+  attach.addEventListener('click',function(){
+    if(state==='attached') composite();
+    else setStatus('우측 "📎 4:5 사진 첨부"로 파일 선택을 시뮬레이션해줘','');
+  });
+  document.getElementById('btnOk').addEventListener('click',attachOk);
+  document.getElementById('btnBad').addEventListener('click',attachBad);
+  document.getElementById('btnReset').addEventListener('click',reset);
+  // 전/후 토글
+  vB.addEventListener('click',function(){photo.style.opacity=0;vB.classList.add('on');vA.classList.remove('on');});
+  vA.addEventListener('click',function(){photo.style.opacity=1;vA.classList.add('on');vB.classList.remove('on');});
+})();
+</script>
+</body>
+</html>
