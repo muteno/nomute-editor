@@ -1999,18 +1999,11 @@ function jobLabel() {
 let _goLock = false;   // 더블탭 오발사만 방지(짧은 디바운스) — 큐잉 자체는 막지 않음
 // 축약 = 기본 4종(정본·절대규칙5·불변) + 사용자 커스텀 쌍(축약 토글 롱프레스 등록·localStorage). 리터럴 치환(split/join = 정규식 이스케이프 불요).
 const ABBR_BUILTIN = [['...', '⋯'], ['•', '·'], ['이,', '李,'], ['윤,', '尹,']];   // 정본 4종 — 절대규칙(불변)
-const ABBR_STANDALONE = new Set(['이,', '윤,']);   // 성씨(이/윤) = '단독'일 때만 변환 — 앞 글자가 한글 음절이면 이름 일부라 보존(예 "윤가이,"→李 변환 안 함 · 260627)
 const ABBR_KEY = 'nomute_thumb_abbr';   // 사용자 커스텀 [{from,to},…]
 function abbrCustom() { try { const a = JSON.parse(localStorage.getItem(ABBR_KEY) || '[]'); return Array.isArray(a) ? a.filter(p => p && p.from) : []; } catch { return []; } }
-const _abbrEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-function abbrStandalone(s, from, to) {   // 앞이 문장 시작·공백·기호(=한글 음절 아님)일 때만 치환. lookbehind 미사용(구형 사파리 호환) → 경계 1글자 보존+안정화 루프(연속 "이,이," 대응)
-  const re = new RegExp('(^|[^가-힣])' + _abbrEsc(from), 'g'), rep = '$1' + to;
-  let prev; do { prev = s; s = s.replace(re, rep); } while (s !== prev);
-  return s;
-}
 function abbr(s) {
   let out = String(s);
-  for (const [from, to] of ABBR_BUILTIN) out = ABBR_STANDALONE.has(from) ? abbrStandalone(out, from, to) : out.split(from).join(to);   // 성씨는 단독만·나머지(…·•)는 리터럴
+  for (const [from, to] of ABBR_BUILTIN) out = out.split(from).join(to);            // 기본 4종 먼저
   for (const p of abbrCustom()) out = out.split(String(p.from)).join(String(p.to == null ? '' : p.to));   // 커스텀(앞뒤 글자까지 from에 넣어 스코프)
   return out;
 }
