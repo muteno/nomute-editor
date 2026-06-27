@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>제작 도구 모달 최소화/복원 — 작업 보고</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --on-accent:#062108;
+    --hist-accent:#c24bf5; --hist-rgb:194,75,245;
+    --danger:#ff5b4a; --danger-rgb:255,91,74; --warn:#ffd24a; --info:#0cd0f7;
+    --bg:#0b0d0c; --pan:#16171a; --fg:#e9eaec; --fg2:#cfd8d0; --mut:#8b8f98; --line:#2a2c31;
+    --r:16px; --r-pill:999px; --ease:cubic-bezier(.2,.7,.3,1);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    background-image:radial-gradient(120% 60% at 50% -10%, rgba(var(--accent-rgb),.07), transparent 60%);}
+  .wrap{max-width:760px; margin:0 auto; padding:26px 18px 80px;}
+  h1{font-size:21px; margin:4px 0 4px; letter-spacing:-.4px;}
+  h1 b{color:var(--accent);}
+  .sub{color:var(--mut); font-size:13px; margin-bottom:22px;}
+  h2{font-size:15px; margin:30px 0 12px; color:var(--accent); letter-spacing:-.2px; display:flex; align-items:center; gap:8px;}
+  h2::before{content:''; width:4px; height:15px; border-radius:2px; background:var(--accent);}
+  p{margin:9px 0; color:var(--fg2);}
+  ul{margin:8px 0; padding-left:20px;} li{margin:5px 0; color:var(--fg2);}
+  code{background:rgba(255,255,255,.06); padding:1px 6px; border-radius:6px; font-size:12.5px; color:#bfeeb6;}
+  .card{background:linear-gradient(165deg,rgba(22,23,26,.7),rgba(12,13,14,.8)); border:1px solid var(--line);
+    border-radius:var(--r); padding:16px 18px; margin:14px 0;}
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:13.5px;}
+  th,td{text-align:left; padding:9px 11px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{color:var(--mut); font-weight:700; font-size:12px;}
+  .ok{color:var(--accent);} .no{color:var(--danger);} .mid{color:var(--warn);}
+  .tag{display:inline-block; font-size:11px; font-weight:800; padding:2px 9px; border-radius:999px; margin-right:6px;}
+  .t-new{background:rgba(var(--accent-rgb),.15); color:var(--accent);}
+  .t-risk{background:rgba(var(--danger-rgb),.15); color:var(--danger);}
+  .demo-note{font-size:12.5px; color:var(--warn); margin:6px 0 14px;}
+
+  /* ── 라이브 데모 (실제 구현 로직 이식) ── */
+  .demo{position:relative; height:520px; border:1px solid var(--line); border-radius:18px; overflow:hidden;
+    background:linear-gradient(180deg,#0d130f,#0b0d0c);}
+  .demo-feed{position:absolute; inset:0; padding:16px; overflow:auto;}
+  .demo-feed h3{margin:4px 0 12px; font-size:15px; color:#fff;}
+  .dfi{background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin:9px 0;}
+  .dfi b{color:var(--accent); font-size:11px;} .dfi p{margin:5px 0 0; font-size:13px; color:var(--fg);}
+  .demo-launch{position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:5;
+    height:40px; padding:0 18px; border-radius:999px; border:none; cursor:pointer; font:inherit; font-weight:800; font-size:13px;
+    color:var(--on-accent); background:linear-gradient(155deg,var(--accent-bright),var(--accent));
+    box-shadow:0 8px 20px rgba(var(--accent-rgb),.4);}
+  .demo dialog{width:86%; max-width:380px; height:74%; padding:0; border:0; border-radius:18px; overflow:hidden;
+    display:flex; flex-direction:column; color:var(--fg);
+    background:rgba(17,18,20,.9); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    box-shadow:0 30px 80px rgba(0,0,0,.5); animation:dIn .24s var(--ease);}
+  .demo dialog:not([open]){display:none;}
+  @keyframes dIn{from{opacity:0;}to{opacity:1;}}
+  .demo dialog::backdrop{background:rgba(4,8,5,.5); backdrop-filter:blur(6px);}
+  .d-h{display:flex; align-items:center; justify-content:space-between; padding:11px 14px; border-bottom:1px solid var(--line);
+    background:rgba(24,25,28,.5);}
+  .d-h b{color:var(--accent); font-size:14px; font-weight:800;}
+  .d-hb{display:flex; gap:8px;}
+  .d-x{width:30px; height:30px; display:grid; place-items:center; background:rgba(255,255,255,.06);
+    color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer;}
+  .d-x:hover{color:var(--accent); border-color:rgba(var(--accent-rgb),.4);}
+  .d-x:active{transform:scale(.85);}
+  .d-body{flex:1; padding:16px; overflow:auto;}
+  .d-body label{display:block; font-size:12px; color:var(--mut); margin:2px 0 7px;}
+  .d-body textarea{width:100%; height:120px; padding:11px; border-radius:9px; resize:none;
+    background:rgba(14,15,17,.6); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px;}
+  .d-hint{margin-top:14px; font-size:12.5px; color:var(--mut); line-height:1.6;}
+
+  .demo-restore{position:fixed; right:18px; bottom:64px; z-index:200;
+    width:34px; height:34px; display:none; place-items:center; cursor:pointer; overflow:visible;
+    border:none; background:none; color:var(--hist-accent); -webkit-tap-highlight-color:transparent;}   /* 도형만 = 플레이트/링 없음 · 보라(이전 제작 접힘색) */
+  .demo-restore.show{display:grid;}
+  .demo-restore svg{display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5));}
+  .demo-restore:active{transform:scale(.82);}
+  .demo-restore.pulsing svg{animation:dGlow 1.8s var(--ease) infinite;}
+  .demo-restore.arming svg{transform:scale(1.08);}
+  @keyframes dGlow{0%,100%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 1px rgba(var(--hist-rgb),0));} 50%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 7px rgba(var(--hist-rgb),.85));}}
+  .d-shield{position:fixed; inset:0; z-index:205; background:transparent;}
+  .d-closebtn{position:fixed; z-index:206; transform:translate(-50%,-100%); margin:0; cursor:pointer; white-space:nowrap;
+    font-size:11px; font-weight:800; letter-spacing:-.2px; color:var(--fg2);
+    background:rgba(18,18,18,.5); border:0; border-radius:6px; padding:4px 10px;
+    text-shadow:0 1px 5px rgba(0,0,0,.85); box-shadow:0 6px 18px rgba(0,0,0,.5); animation:dChipIn .16s var(--ease); -webkit-tap-highlight-color:transparent;}
+  .d-closebtn:active{transform:translate(-50%,-100%) scale(.9);}
+  .d-closebtn.closing{animation:dChipOut .19s var(--ease) forwards;}
+  @keyframes dChipIn{from{opacity:0; transform:translate(-50%,-100%) translateY(5px) scale(.92);}}
+  @keyframes dChipOut{to{opacity:0; transform:translate(-50%,-100%) scale(.8);}}
+  .demo-ghost{position:fixed; z-index:199; border-radius:18px; pointer-events:none; transform-origin:center; will-change:transform,opacity;
+    background:rgba(17,18,20,.92); border:1px solid rgba(255,255,255,.13); box-shadow:0 30px 80px rgba(0,0,0,.5);}
+  @media (prefers-reduced-motion:reduce){.demo-restore.pulsing svg{animation:none;} .d-closebtn{animation:none;} .demo dialog{animation:none;}}
+  .foot{margin-top:36px; padding-top:16px; border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>제작 도구 모달 <b>최소화 / 복원</b> 기능</h1>
+  <div class="sub">viewer/index.html · 260627 · 썸네일 편집 ↔ 기사 요약 왕복(편집 보존)</div>
+
+  <h2>한 줄 요약</h2>
+  <p>썸네일/이미지를 편집하다 <b>적절한 썸네일을 찾으러 기사 요약을 다시 읽으러 갈 때</b>, 모달을 닫지 않고 <b>최소화</b>해 편집 내용을 그대로 둔 채 화면을 오갈 수 있게 했다. 윈도우 패널처럼 접고(▲로 수렴) 펴는 왕복.</p>
+
+  <h2>실제로 만져보기 (라이브 데모)</h2>
+  <div class="demo-note">⬇ 아래는 실제 구현 로직을 그대로 이식한 데모다. <b>폰에서 직접 탭</b>해 촤르륵 접힘/펼침·롱프레스 닫기를 느껴봐. (텍스트를 입력하고 최소화→복원하면 그대로 남아있음 = 편집 보존)</div>
+  <div class="demo" id="demo">
+    <div class="demo-feed">
+      <h3>📰 뉴스 요약 (뒤 화면)</h3>
+      <div class="dfi"><b>국제 · 9시간 전</b><p>[속보] 美 부통령, 이란에 보복공습 후 "폭력엔 폭력으로"</p></div>
+      <div class="dfi"><b>사회 · 2시간 전</b><p>합참 "중·러 군용기 10여대 KADIZ 진입…영공침범 없어"</p></div>
+      <div class="dfi"><b>문화 · 1시간 전</b><p>고경표, 시속 180㎞ 놀이기구 도전</p></div>
+      <p style="color:var(--mut); font-size:12.5px; margin-top:16px;">최소화 상태에선 이 피드(또는 기사 요약 화면)를 자유롭게 스크롤·조작할 수 있고, ▲ 복원 키가 항상 떠 있어.</p>
+    </div>
+    <button class="demo-launch" id="dLaunch">＋ "이미지" 편집기 열기</button>
+
+    <dialog id="dDlg">
+      <div class="d-h"><b>이미지</b>
+        <span class="d-hb">
+          <button class="d-x" id="dMin" aria-label="최소화" title="최소화"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 13h12"/></svg></button>
+          <button class="d-x" id="dX" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+        </span>
+      </div>
+      <div class="d-body">
+        <label>오버레이 문구 (편집 보존 테스트 — 여기 입력하고 최소화해봐)</label>
+        <textarea id="dTa" placeholder="강조는 별표로, 최대 3줄 가능"></textarea>
+        <div class="d-hint">① 우상단 <b>─</b> 누르면 → 촤르륵 접혀 ▲로 수렴<br>② ▲ 탭 = 다시 펼침 (입력 그대로)<br>③ ▲ <b>길게 누르면</b> "닫기" 떠서 → 한 번 더 탭 = 완전 종료</div>
+      </div>
+    </dialog>
+    <button class="demo-restore" id="dRestore" aria-label="펼치기"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg></button>
+  </div>
+
+  <h2>전 / 후</h2>
+  <table>
+    <tr><th>상황</th><th>전</th><th>후</th></tr>
+    <tr><td>편집 중 기사 다시 읽기</td><td class="no">모달 닫아야 함 → 편집 내용 소실</td><td class="ok">최소화 → 편집 보존한 채 왕복</td></tr>
+    <tr><td>접기/펴기 동작</td><td class="no">없음</td><td class="ok">▲로 촤르륵 수렴/역재생 (60fps GPU 합성)</td></tr>
+    <tr><td>다른 화면 이동 시</td><td class="no">—</td><td class="ok">▲ 복원 키 항상 유지(요약리더 위에도 부유·닫기 전까지)</td></tr>
+    <tr><td>닫기</td><td>X 버튼</td><td class="ok">X 그대로 + ▲ 길게눌러 "닫기"(2단 확인=실수 종료 방지)</td></tr>
+  </table>
+
+  <h2>장점</h2>
+  <ul>
+    <li><b>편집 무손실 왕복</b> — iframe(thumb 폼)을 파괴하지 않고 숨김만 → 입력값·상태 100% 보존(실측 검증).</li>
+    <li><b>기존 UI 계승</b> — 최소화 버튼 = <code>.tool-x</code>(X와 동일 글래스·눌림), 복원 ▲ = accent 그린(우하단 특수버튼 색).</li>
+    <li><b>레이어 충돌 0</b> — 복원 키가 요약리더(모달) 위에도 뜨도록 처리, 하단 nav/FAB/totop/토스트와 좌표·층 분리.</li>
+    <li><b>발견성</b> — 접힌 직후 펄스 링 호흡 + 중앙 배치로 "여기 있다" 신호.</li>
+  </ul>
+
+  <h2>효율성</h2>
+  <ul>
+    <li>애니메이션 = <code>transform</code>/<code>opacity</code>만(레이아웃·블러 트리거 0) → GPU 컴포지트 60fps.</li>
+    <li>모달 본체(<code>backdrop-filter blur34</code>)엔 변형 안 줌 = 블러 재계산 '턱' 스내그 회피 → 블러 없는 가벼운 고스트가 모션 담당.</li>
+    <li>추가 비용 = 순수 프론트(LLM·과금 0). 새 의존성 0. 코드 +156줄(단일 파일).</li>
+  </ul>
+
+  <h2>품질저하 리스크 & 완화</h2>
+  <table>
+    <tr><th>리스크</th><th>완화</th></tr>
+    <tr><td>요약리더(모달) 위 부유 = 브라우저 top-layer 규칙상 까다로움</td><td class="ok">실측 후 "열린 모달 안으로 재부모(reparent)" 방식 채택 → 모든 엔진에서 동작(Playwright 검증)</td></tr>
+    <tr><td>접힘 중 모달 본체 변형 시 블러 스내그</td><td class="ok">고스트 클론으로 모션 분리(본체는 opacity만)</td></tr>
+    <tr><td>롱프레스 닫기 오발화</td><td class="ok">550ms + 2단 확인(arm→재탭) + 드래그/스크롤 무시 + 2.6s 자동 해제</td></tr>
+    <tr><td>history(백버튼) 꼬임</td><td class="ok">{tool} 칸 보존·재사용, 백버튼=재펼침, 완전종료서만 칸 회수</td></tr>
+    <tr><td>구형 브라우저</td><td class="mid">WAAPI/pointer 미지원 시 애니 생략·즉시 동작(기능은 유지)</td></tr>
+  </table>
+
+  <h2>검증</h2>
+  <ul>
+    <li>실제 뷰어를 Playwright(Chromium)로 띄워 <b>17개 행동 테스트 전부 통과</b> — 최소화·폼보존·요약리더 위 부유·복원·롱프레스 2단·완전종료.</li>
+    <li><code>shared/check_refs.py</code> 통과(디자인 토큰 baseline 이내).</li>
+    <li>설계 = 3인 적대적 아이데이션 + 1인 종합 → 1인 구현 → 3인 적대적 diff 리뷰.</li>
+  </ul>
+
+  <div class="foot">노뮤트 · 작업 보고 · 일회성 스냅샷</div>
+</div>
+
+<script>
+(function(){
+  var demo=document.getElementById('demo'), dlg=document.getElementById('dDlg'),
+      restore=document.getElementById('dRestore'), launch=document.getElementById('dLaunch');
+  var minimizing=false, isMin=false, lastRect=null;
+  function rm(){try{return matchMedia('(prefers-reduced-motion:reduce)').matches;}catch(e){return false;}}
+  function navCenter(){ if(isMin){var r=restore.getBoundingClientRect(); if(r.width)return{cx:r.left+r.width/2,cy:r.top+r.height/2};}
+    var dr=demo.getBoundingClientRect(); return{cx:dr.left+dr.width/2, cy:dr.bottom-64-24};}
+  function fly(dir,done,np){ var m=lastRect; if(rm()||!m||!m.width){if(done)done();return;}
+    var g=document.createElement('div'); g.className='demo-ghost';
+    g.style.left=m.left+'px'; g.style.top=m.top+'px'; g.style.width=m.width+'px'; g.style.height=m.height+'px';
+    document.body.appendChild(g); var n=np||navCenter(), W=48, sx=W/m.width, sy=W/m.height;
+    var tx=n.cx-(m.left+m.width/2), ty=n.cy-(m.top+m.height/2);
+    var small={transform:'translate('+tx+'px,'+ty+'px) scale('+sx+','+sy+')',opacity:0,borderRadius:'50%'};
+    var full={transform:'translate(0,0) scale(1)',opacity:.92,borderRadius:'18px'};
+    var seq=dir==='in'?[full,small]:[small,full], fin=false, end=function(){if(fin)return;fin=true;if(done)done();g.remove();};
+    try{var a=g.animate(seq,{duration:340,easing:'cubic-bezier(.2,.7,.3,1)',fill:'forwards'});a.onfinish=end;a.oncancel=function(){fin=true;g.remove();};}catch(e){end();}}
+  function show(){ isMin=true; restore.classList.remove('arming'); restore.classList.add('show');
+    try{restore.animate([{transform:'scale(.3)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:300,easing:'cubic-bezier(.2,.7,.3,1)'});}catch(e){}
+    clearTimeout(show._p); show._p=setTimeout(function(){if(isMin)restore.classList.add('pulsing');},420);}
+  function hide(){ isMin=false; clearTimeout(show._p); restore.classList.remove('pulsing','show','arming'); document.querySelectorAll('.d-shield,.d-closebtn').forEach(function(el){el.remove();}); restore.style.top=restore.style.left=''; }
+  function minimize(){ if(!dlg.open||minimizing)return; lastRect=dlg.getBoundingClientRect(); show(); minimizing=true; fly('in'); dlg.close(); }
+  function restoreFn(){ if(dlg.open||!isMin)return; var n=navCenter(); hide(); fly('out',function(){dlg.showModal();},n); }
+  function closeFull(){ hide(); if(dlg.open)dlg.close(); }
+  launch.onclick=function(){ dlg.showModal(); };
+  document.getElementById('dMin').onclick=minimize;
+  document.getElementById('dX').onclick=function(){dlg.close();};
+  dlg.addEventListener('close',function(){ if(minimizing){minimizing=false; show(); return;} hide(); });
+  dlg.addEventListener('click',function(e){if(e.target===dlg)dlg.close();});
+  // 롱프레스 상태머신(실구현 이식)
+  (function(){ var t=null,armed=false,moved=false,at=null,guard=false,sx=0,sy=0,chip=null,shield=null;
+    function posChip(){if(!chip)return;var r=restore.getBoundingClientRect();chip.style.left=(r.left+r.width/2)+'px';chip.style.top=(r.top-7)+'px';}
+    function teardown(){if(chip){chip.remove();chip=null;}if(shield){shield.remove();shield=null;}}
+    function arm(){if(armed)return;armed=true;restore.classList.remove('pulsing');restore.classList.add('arming');if(navigator.vibrate)try{navigator.vibrate(15);}catch(e){}
+      shield=document.createElement('div');shield.className='d-shield';shield.addEventListener('click',function(e){e.stopPropagation();if(guard)return;disarm();});
+      chip=document.createElement('button');chip.type='button';chip.className='d-closebtn';chip.textContent='닫기';chip.addEventListener('click',function(e){e.stopPropagation();closeNow();});
+      document.body.appendChild(shield);document.body.appendChild(chip);posChip();
+      guard=true;clearTimeout(arm._g);arm._g=setTimeout(function(){guard=false;},350);clearTimeout(at);at=setTimeout(disarm,4000);}
+    function disarm(){if(!armed)return;armed=false;restore.classList.remove('arming');teardown();clearTimeout(at);if(isMin)restore.classList.add('pulsing');}
+    function closeNow(){clearTimeout(at);armed=false;restore.classList.remove('arming');if(chip)chip.classList.add('closing');setTimeout(function(){teardown();closeFull();},190);}
+    restore.addEventListener('pointerdown',function(e){if(e.button&&e.button!==0)return;moved=false;sx=e.clientX;sy=e.clientY;clearTimeout(t);t=setTimeout(function(){t=null;arm();},550);});
+    restore.addEventListener('pointermove',function(e){if(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10){moved=true;if(t){clearTimeout(t);t=null;}}},{passive:true});
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){restore.addEventListener(ev,function(){if(t){clearTimeout(t);t=null;}});});
+    restore.addEventListener('click',function(e){e.preventDefault();if(armed||guard){return;}if(moved){moved=false;return;}restoreFn();});
+    restore.addEventListener('contextmenu',function(e){e.preventDefault();arm();});
+  })();
+})();
+</script>
+</body>
+</html>

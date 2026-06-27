@@ -1079,6 +1079,17 @@
   #toolMin { transition:transform .1s var(--ease); }
   #toolMin:active { transform:scale(.8); }   /* 최소화 누름 = 스냅 축소(M1 · 색 플래시 없이 도형만 = 운영자 260627 '같은 색상 논외') · 공통 .tool-x rotate는 가로줄선 안 보여 ID로 덮음(X는 표준 유지) */
   .tool-x:focus-visible { outline:none; box-shadow:0 0 0 2px rgba(var(--accent-rgb),.5); }   /* 키보드 포커스 링 */
+  /* 모달 하단 중앙 글래스 '-' = 엄지존 최소화(상단 #toolMin이 손 안 닿을 때 대체 · 모달 안이라 편집 중 항상 탭 가능 · 라디얼 버튼 50%=26·.sbtn 글래스 계승 · 운영자 260627) */
+  .tool-minbtm { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:4;
+    width:26px; height:26px; display:grid; place-items:center; padding:0; cursor:pointer; color:var(--accent);
+    background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:50%;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14);
+    transition:transform .12s var(--ease), background .15s; -webkit-tap-highlight-color:transparent; animation:minbtmIn .3s var(--ease) both; }
+  .tool-minbtm svg { display:block; }
+  .tool-minbtm:hover { background:rgba(8,15,11,.5); }
+  .tool-minbtm:active { transform:translateX(-50%) scale(.85); }
+  @keyframes minbtmIn { from{ opacity:0; transform:translateX(-50%) translateY(8px) scale(.6); } }
+  @media (prefers-reduced-motion:reduce){ .tool-minbtm{ animation:none; } .tool-minbtm:active{ transform:translateX(-50%); } }
   /* ▲ 복원 = 컴팩트 보라 삼각형 유지(모핑 없음)·우하단 고z. 길게누름 → 삼각형 위쪽에 "닫기" 칩(첨부1 라디얼 네비 라벨 .radlab 도형 계승) + 풀스크린 실드(아래 내용 클릭 차단). 칩 탭=닫기 / 실드 탭=취소 · 운영자 260627 */
   .tool-restore { position:fixed; right:16px; bottom:calc(132px + env(safe-area-inset-bottom)); z-index:200;
     margin:0; width:34px; height:34px; padding:0; overflow:visible; display:none; place-items:center; cursor:pointer;
@@ -1957,6 +1968,7 @@
   <div class="tool-h"><b id="toolTitle">제작 도구</b><span class="tool-hbtns"><button class="tool-x" id="toolMin" type="button" aria-label="최소화" title="최소화"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 13h12"/></svg></button><button class="tool-x" id="toolX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div>
   <div class="tool-tabs" id="toolTabs"></div>
   <iframe id="toolframe" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
+  <button class="tool-minbtm" id="toolMinBtm" type="button" aria-label="최소화" title="최소화"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg></button>
 </dialog>
 <!-- 제작 도구 최소화 복원 ▲ — fixed 고z 버튼(JS reparentNav가 열린 풀스크린 모달[요약리더#dlg·라이트박스] 안으로 옮겨 그 위에도 부유). 평시 탭=펼침 / 길게 눌러 "닫기" 뜨면 한 번 더 탭=완전종료. accent 그린(첨부1 우하단 특수버튼색 계승). -->
 <button id="toolRestore" class="tool-restore" type="button" aria-label="제작 도구 펼치기 (길게 누르면 닫기)" title="탭하면 펼치기 · 길게 누르면 닫기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg></button>
@@ -2357,8 +2369,8 @@ async function open(a) {
   decorate(md);
   addCopyButtons(md);
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
-  const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 화면에 보이는 그 제목(AI 헤드라인) 그대로 복사 (운영자 260620·260627 표시값 우선 정정)
-  if (_h1c) { const _ttl = _h1c.textContent.trim() || a.title || ''; if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }   // ⚠️ 표시값(h1=AI 헤드) 우선 — a.title(원본 스크랩 제목)이 아니라 화면에 보이는 제목을 복사(불일치 버그 봉합 · _ttl은 버튼 append 前 계산이라 버튼텍스트 미포함)
+  const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 타이틀 그대로 복사 (운영자 260620)
+  if (_h1c) { const _ttl = a.title || _h1c.textContent.trim(); if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }
   const tsec = thumbSec(a);   // 썸네일 후보(검색 3 + AI생성 3) — 기사 제목 바로 아래
   if (tsec) { const h1 = md.querySelector('h1'); (h1 ? h1.insertAdjacentElement('afterend', tsec) : md.insertAdjacentElement('afterbegin', tsec)); }
   cardSec(a);
@@ -6008,6 +6020,7 @@ $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem
   else if (a === 'cap') openTool(null, '영상', CAP_TABS); });
 $('#toolX').addEventListener('click', () => tooldlg.close());
 if ($('#toolMin')) $('#toolMin').addEventListener('click', () => minimizeTool());
+if ($('#toolMinBtm')) $('#toolMinBtm').addEventListener('click', () => minimizeTool());   // 모달 하단 중앙 엄지존 최소화(상단 버튼 대체 · 운영자 260627)
 tooldlg.addEventListener('close', () => {
   if (toolMinimizing) {                                                          // ★ 최소화 경로 = iframe·탭·{tool}칸 보존(파괴·history.back 스킵)
     toolMinimizing = false;
