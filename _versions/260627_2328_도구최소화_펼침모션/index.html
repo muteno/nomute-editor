@@ -1069,7 +1069,6 @@
     animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
   #tooldlg:not([open]) { display:none; }   /* 닫힘 시 display:flex가 dialog 기본 display:none 덮어 빈 껍데기로 깔리던 버그 차단(dialog 공통) */
   @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — backdrop-filter(blur34)에 transform 애니 얹으면 블러 재계산으로 한 번 턱 걸림(스내그). 콘텐츠 스태거 라이즈(촤르륵)는 제거됨 */
-  #tooldlg.no-tin { animation:none; }   /* 최소화 복원 = 고스트가 펼침 모션 담당 → 모달 재페이드(toolIn) 생략(이중 페이드 dip 제거 · 즉시 풀불투명 등장 · 운영자 260627). close 시 해제 */
   @media (prefers-reduced-motion:reduce) { #tooldlg { animation:none; } }
   .tool-h { flex:none; display:flex; align-items:center; justify-content:space-between; padding:11px 16px;
     background:rgba(24,25,28,.5); backdrop-filter:blur(22px) saturate(1.2); -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2); }   /* 타이틀 바 50% 투명(글자 .tool-h b는 불투명 유지) · 중립 무채색(녹색 틴트 제거·운영자 260626) */
@@ -6139,7 +6138,6 @@ $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem
 $('#toolX').addEventListener('click', () => tooldlg.close());
 if ($('#toolMin')) $('#toolMin').addEventListener('click', () => minimizeTool());
 tooldlg.addEventListener('close', () => {
-  tooldlg.classList.remove('no-tin');                                           // 복원-생략 플래그 해제 → 다음 정규 오픈은 toolIn 페이드 정상(운영자 260627)
   if (toolMinimizing) {                                                          // ★ 최소화 경로 = iframe·탭·{tool}칸 보존(파괴·history.back 스킵)
     toolMinimizing = false;
     showRestoreNav();                                                            // ▲ 복원 버튼 등장
@@ -6173,7 +6171,7 @@ function flyGhost(dir, done, navPt) {                                           
   const full  = { transform: 'translate(0px,0px) scale(1)', opacity: 0.92, borderRadius: '22px' };
   const seq = dir === 'in' ? [full, small] : [small, full];
   let fin = false; const end = () => { if (fin) return; fin = true; if (done) done(); g.remove(); };
-  try { const a = g.animate(seq, { duration: 230, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }); a.onfinish = end; a.oncancel = () => { fin = true; g.remove(); }; }   // 230ms = 더 빠르고 자연(운영자 260627 · 옛 340 느림) · easing=표준 --ease
+  try { const a = g.animate(seq, { duration: 340, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }); a.onfinish = end; a.oncancel = () => { fin = true; g.remove(); }; }
   catch (_) { end(); }                                                          // WAAPI 미지원 = 즉시 완료
 }
 function minimizeTool() {
@@ -6189,9 +6187,8 @@ function restoreTool() {
   const n = navCenter();                                                        // ▲ 위치 먼저 캡처(숨기기 전)
   hideRestoreNav();
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
-  flyGhost('out', () => {                                                       // 고스트가 이미 모달 크기로 펼침 → 모달은 그 자리에 즉시 등장(toolIn 재페이드 생략 = 이중 페이드 dip 제거 · 운영자 260627)
+  flyGhost('out', () => {                                                       // 고스트 펼친 뒤 모달 등장(toolIn opacity로 자연 스왑)
     if (!(history.state && history.state.tool)) history.pushState({ tool: true }, '');   // 최소화 중 백버튼이 {tool}칸 소비했으면 복원, 보존됐으면 재사용
-    tooldlg.classList.add('no-tin');                                           // 복원 = toolIn 생략(고스트가 등장 모션 담당) → close 핸들러가 해제(다음 정규 오픈 toolIn 복귀)
     try { tooldlg.showModal(); } catch (_) {}                                   // 이미 열렸으면 무시(연타 방어)
     setTimeout(() => { try { $('#toolX').focus(); } catch (_) {} }, 0);
   }, n);
