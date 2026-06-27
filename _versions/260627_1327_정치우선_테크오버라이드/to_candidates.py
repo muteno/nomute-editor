@@ -70,19 +70,12 @@ HEART_RE = re.compile("[♡♥❣❤\U0001F493-\U0001F49F\U0001F9E1\U0001FA77]")
 OSEN_RE = re.compile(r"오\s*!?\s*쎈|OSEN", re.I)
 # 스포츠·연예 전문 매체 — 매체명만으로 100% 문화(운영자 260625). 선수·팀명 아님(선수 사회면 논란 오분류 방지) + 연예도 문화라 마이데일리류 안전.
 SPORTS_MEDIA_RE = re.compile(r"스포츠|스포탈|스포티비|SPOTV|OSEN|오\s*!?\s*쎈|마이데일리|엑스포츠|인터풋볼|풋볼리스트|베스트일레븐|점프볼|데일리스포츠", re.I)
-# 정치 우선 마커 — 대통령·정부·정책 주체가 주어/화자면 주제(반도체 등 테크)보다 정치다(운영자 260627).
-# "李대통령 '호남반도체 물부족' 비판에…" 식 정부발화·정책 기사가 반도체 키워드로 테크에 새던 것 봉합.
-# ⚠️ 테크만 정치로 뒤집는다(경제·국제·문화·사회 등 다른 주제는 주제 유지 — 정부정책이 테크로 오분류되는 케이스만 좁게 교정).
-POL_OVERRIDE_RE = re.compile(r"대통령|대통령실|청와대|국무총리|총리|장관|차관|내각|국무회의|국회|여당|야당|여야|정부|정책")
 
 
 def cat_of(category, title, media=""):
     c = cat_ko(category)
     t = title or ""
-    pol = bool(POL_OVERRIDE_RE.search(t))   # 정치 주체 마커 — 테크 오버라이드용
     if c and c != "사회":
-        if c == "테크" and pol:   # 테크 피드라도 대통령·정부정책이면 정치(운영자 260627)
-            return "정치"
         return c
     if OSEN_RE.search(t) or SPORTS_MEDIA_RE.search(media or ""):   # OSEN 태그·스포츠 전문매체 = 100% 문화(사회·빈칸 위로)
         return "문화"
@@ -95,8 +88,6 @@ def cat_of(category, title, media=""):
         n = sum(1 for w in ws if w in t)
         if n > bn:
             bn, best = n, k
-    if best == "테크" and pol:   # 키워드 매칭서 테크 1등이어도 정부·대통령 마커 있으면 정치(반도체+대통령 동시 = 정치)
-        return "정치"
     return best   # 0매칭이면 "" (빈칸 허용)
 
 

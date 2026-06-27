@@ -2248,19 +2248,15 @@ const HEART_RE = /[♡♥❣❤\u{1F493}-\u{1F49F}\u{1F9E1}\u{1FA77}]/u;
 const OSEN_RE = /오\s*!?\s*쎈|OSEN/i;
 // 스포츠·연예 전문 매체 — 매체명만으로 100% 문화(운영자 260625). 선수·팀명 아님(선수 사회면 논란 오분류 방지)·연예도 문화라 안전. to_candidates.py와 동기.
 const SPORTS_MEDIA_RE = /스포츠|스포탈|스포티비|SPOTV|OSEN|오\s*!?\s*쎈|마이데일리|엑스포츠|인터풋볼|풋볼리스트|베스트일레븐|점프볼|데일리스포츠/i;
-// 정치 우선 마커 — 대통령·정부·정책 주체면 소재(반도체 등 테크)보다 정치다(운영자 260627·to_candidates.py POL_OVERRIDE_RE와 동기). '李대통령 호남반도체…'식 정부발화가 테크로 새던 것 봉합. 테크만 뒤집음.
-const POL_OVERRIDE_RE = /대통령|대통령실|청와대|국무총리|총리|장관|차관|내각|국무회의|국회|여당|야당|여야|정부|정책/;
 function articleCat(a) {
   const b = catBucket(a.category);
-  const pol = POL_OVERRIDE_RE.test(a.title || '');   // 정치 주체 마커 — 테크 오버라이드용
-  if (b && b !== '사회') { if (b === '테크' && pol) return '정치'; return b; }   // 큐 category 있으면 정본(단 테크라도 대통령·정부정책이면 정치=즉시 재분류 · 사회는 하트 재분류 여지)
+  if (b && b !== '사회') return b;   // 큐 category 있으면 정본(단 사회는 하트 재분류 여지)
   if (OSEN_RE.test(a.title || '') || SPORTS_MEDIA_RE.test(a.media || '')) return '문화';   // OSEN 태그·스포츠 전문매체 = 100% 문화(사회·미분류 위로)
   if (HEART_RE.test(a.title || '')) return '문화';   // 하트 = 100% 문화(사회·미분류 위로)
   if (b) return b;   // 사회(하트 없음)
   const t = `${a.title || ''} ${a.summary || ''}`;
   let best = '', bn = 0;
   for (const k in CAT_KW) { let n = 0; for (const w of CAT_KW[k]) if (t.includes(w)) n++; if (n > bn) { bn = n; best = k; } }
-  if (best === '테크' && pol) return '정치';   // 키워드 매칭서 테크 1등이어도 정부·대통령 마커 있으면 정치(반도체+대통령 동시 = 정치)
   return bn ? best : '사회';   // 운영자 260617: 미분류 0 — frontmatter category 없고 키워드도 0이면 사회(catch-all)로 강제 분류.
 }
 // (참고) 피드 배지 정본 = 아래 brkIssueKind. 최신 판정 기준 = feedAgeH(스크랩/IN 시각).
