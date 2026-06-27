@@ -73,20 +73,23 @@
     width:34px; height:34px; display:none; place-items:center; cursor:pointer; overflow:visible;
     border:none; background:none; color:var(--hist-accent); -webkit-tap-highlight-color:transparent;}   /* 도형만 = 플레이트/링 없음 · 보라(이전 제작 접힘색) */
   .demo-restore.show{display:grid;}
-  .demo-restore .d-plate{position:absolute; inset:-1px; border-radius:9px; pointer-events:none; background:rgba(18,18,18,0); transition:background .2s var(--ease), box-shadow .2s;}
-  .demo-restore.confirm-close .d-plate{background:rgba(18,18,18,.66); box-shadow:0 4px 12px rgba(0,0,0,.5);}
-  .demo-restore .d-tri,.demo-restore .d-x{grid-area:1/1; display:block; transition:opacity .22s var(--ease), transform .22s var(--ease);}
-  .demo-restore .d-tri{color:var(--hist-accent); filter:drop-shadow(0 2px 5px rgba(0,0,0,.55));}
-  .demo-restore .d-x{color:var(--danger); opacity:0; transform:rotate(-90deg) scale(.5); filter:drop-shadow(0 2px 5px rgba(0,0,0,.6));}
-  .demo-restore.confirm-close .d-tri{opacity:0; transform:rotate(90deg) scale(.5);}
-  .demo-restore.confirm-close .d-x{opacity:1; transform:none;}
-  .demo-restore.closing .d-x{transform:scale(1.5); opacity:0; transition:.24s var(--ease);}
+  .demo-restore svg{display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5));}
   .demo-restore:active{transform:scale(.82);}
-  .demo-restore.pulsing .d-tri{animation:dGlow 1.8s var(--ease) infinite;}
+  .demo-restore.pulsing svg{animation:dGlow 1.8s var(--ease) infinite;}
+  .demo-restore.arming svg{transform:scale(1.08);}
   @keyframes dGlow{0%,100%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 1px rgba(var(--hist-rgb),0));} 50%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 7px rgba(var(--hist-rgb),.85));}}
+  .d-shield{position:fixed; inset:0; z-index:205; background:transparent;}
+  .d-closebtn{position:fixed; z-index:206; transform:translate(-50%,-100%); margin:0; cursor:pointer; white-space:nowrap;
+    font-size:11px; font-weight:800; letter-spacing:-.2px; color:var(--fg2);
+    background:rgba(18,18,18,.5); border:0; border-radius:6px; padding:4px 10px;
+    text-shadow:0 1px 5px rgba(0,0,0,.85); box-shadow:0 6px 18px rgba(0,0,0,.5); animation:dChipIn .16s var(--ease); -webkit-tap-highlight-color:transparent;}
+  .d-closebtn:active{transform:translate(-50%,-100%) scale(.9);}
+  .d-closebtn.closing{animation:dChipOut .19s var(--ease) forwards;}
+  @keyframes dChipIn{from{opacity:0; transform:translate(-50%,-100%) translateY(5px) scale(.92);}}
+  @keyframes dChipOut{to{opacity:0; transform:translate(-50%,-100%) scale(.8);}}
   .demo-ghost{position:fixed; z-index:199; border-radius:18px; pointer-events:none; transform-origin:center; will-change:transform,opacity;
     background:rgba(17,18,20,.92); border:1px solid rgba(255,255,255,.13); box-shadow:0 30px 80px rgba(0,0,0,.5);}
-  @media (prefers-reduced-motion:reduce){.demo-restore.pulsing .d-tri{animation:none;} .demo-restore .d-tri,.demo-restore .d-x{transition:none;} .demo dialog{animation:none;}}
+  @media (prefers-reduced-motion:reduce){.demo-restore.pulsing svg{animation:none;} .d-closebtn{animation:none;} .demo dialog{animation:none;}}
   .foot{margin-top:36px; padding-top:16px; border-top:1px solid var(--line); color:var(--mut); font-size:12px; text-align:center;}
 </style>
 </head>
@@ -123,7 +126,7 @@
         <div class="d-hint">① 우상단 <b>─</b> 누르면 → 촤르륵 접혀 ▲로 수렴<br>② ▲ 탭 = 다시 펼침 (입력 그대로)<br>③ ▲ <b>길게 누르면</b> "닫기" 떠서 → 한 번 더 탭 = 완전 종료</div>
       </div>
     </dialog>
-    <button class="demo-restore" id="dRestore" aria-label="펼치기"><span class="d-plate"></span><svg class="d-tri" viewBox="0 0 24 24" width="20" height="20"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg><svg class="d-x" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+    <button class="demo-restore" id="dRestore" aria-label="펼치기"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg></button>
   </div>
 
   <h2>전 / 후</h2>
@@ -187,10 +190,10 @@
     var full={transform:'translate(0,0) scale(1)',opacity:.92,borderRadius:'18px'};
     var seq=dir==='in'?[full,small]:[small,full], fin=false, end=function(){if(fin)return;fin=true;if(done)done();g.remove();};
     try{var a=g.animate(seq,{duration:340,easing:'cubic-bezier(.2,.7,.3,1)',fill:'forwards'});a.onfinish=end;a.oncancel=function(){fin=true;g.remove();};}catch(e){end();}}
-  function show(){ isMin=true; restore.classList.remove('confirm-close'); restore.classList.add('show');
+  function show(){ isMin=true; restore.classList.remove('arming'); restore.classList.add('show');
     try{restore.animate([{transform:'scale(.3)',opacity:0},{transform:'scale(1)',opacity:1}],{duration:300,easing:'cubic-bezier(.2,.7,.3,1)'});}catch(e){}
     clearTimeout(show._p); show._p=setTimeout(function(){if(isMin)restore.classList.add('pulsing');},420);}
-  function hide(){ isMin=false; clearTimeout(show._p); restore.classList.remove('confirm-close','pulsing','show','closing'); restore.style.top=restore.style.left=''; }
+  function hide(){ isMin=false; clearTimeout(show._p); restore.classList.remove('pulsing','show','arming'); document.querySelectorAll('.d-shield,.d-closebtn').forEach(function(el){el.remove();}); restore.style.top=restore.style.left=''; }
   function minimize(){ if(!dlg.open||minimizing)return; lastRect=dlg.getBoundingClientRect(); show(); minimizing=true; fly('in'); dlg.close(); }
   function restoreFn(){ if(dlg.open||!isMin)return; var n=navCenter(); hide(); fly('out',function(){dlg.showModal();},n); }
   function closeFull(){ hide(); if(dlg.open)dlg.close(); }
@@ -200,15 +203,20 @@
   dlg.addEventListener('close',function(){ if(minimizing){minimizing=false; show(); return;} hide(); });
   dlg.addEventListener('click',function(e){if(e.target===dlg)dlg.close();});
   // 롱프레스 상태머신(실구현 이식)
-  (function(){ var t=null,armed=false,sup=false,moved=false,at=null,sx=0,sy=0,away=null;
-    function arm(){if(armed)return;armed=true;sup=true;restore.classList.add('confirm-close');restore.classList.remove('pulsing');if(navigator.vibrate)try{navigator.vibrate(15);}catch(e){}
-      away=function(ev){if(!ev.target.closest('#dRestore'))disarm();};document.addEventListener('pointerdown',away,true);clearTimeout(at);at=setTimeout(disarm,4000);}
-    function disarm(){if(!armed)return;armed=false;sup=false;restore.classList.remove('confirm-close');if(away){document.removeEventListener('pointerdown',away,true);away=null;}clearTimeout(at);if(isMin)restore.classList.add('pulsing');}
-    function closeNow(){clearTimeout(at);if(away){document.removeEventListener('pointerdown',away,true);away=null;}armed=false;restore.classList.add('closing');setTimeout(function(){closeFull();},230);}
-    restore.addEventListener('pointerdown',function(e){if(e.button&&e.button!==0)return;moved=false;sup=false;sx=e.clientX;sy=e.clientY;clearTimeout(t);t=setTimeout(function(){t=null;arm();},550);});
+  (function(){ var t=null,armed=false,moved=false,at=null,guard=false,sx=0,sy=0,chip=null,shield=null;
+    function posChip(){if(!chip)return;var r=restore.getBoundingClientRect();chip.style.left=(r.left+r.width/2)+'px';chip.style.top=(r.top-7)+'px';}
+    function teardown(){if(chip){chip.remove();chip=null;}if(shield){shield.remove();shield=null;}}
+    function arm(){if(armed)return;armed=true;restore.classList.remove('pulsing');restore.classList.add('arming');if(navigator.vibrate)try{navigator.vibrate(15);}catch(e){}
+      shield=document.createElement('div');shield.className='d-shield';shield.addEventListener('click',function(e){e.stopPropagation();if(guard)return;disarm();});
+      chip=document.createElement('button');chip.type='button';chip.className='d-closebtn';chip.textContent='닫기';chip.addEventListener('click',function(e){e.stopPropagation();closeNow();});
+      document.body.appendChild(shield);document.body.appendChild(chip);posChip();
+      guard=true;clearTimeout(arm._g);arm._g=setTimeout(function(){guard=false;},350);clearTimeout(at);at=setTimeout(disarm,4000);}
+    function disarm(){if(!armed)return;armed=false;restore.classList.remove('arming');teardown();clearTimeout(at);if(isMin)restore.classList.add('pulsing');}
+    function closeNow(){clearTimeout(at);armed=false;restore.classList.remove('arming');if(chip)chip.classList.add('closing');setTimeout(function(){teardown();closeFull();},190);}
+    restore.addEventListener('pointerdown',function(e){if(e.button&&e.button!==0)return;moved=false;sx=e.clientX;sy=e.clientY;clearTimeout(t);t=setTimeout(function(){t=null;arm();},550);});
     restore.addEventListener('pointermove',function(e){if(Math.abs(e.clientX-sx)>10||Math.abs(e.clientY-sy)>10){moved=true;if(t){clearTimeout(t);t=null;}}},{passive:true});
     ['pointerup','pointercancel','pointerleave'].forEach(function(ev){restore.addEventListener(ev,function(){if(t){clearTimeout(t);t=null;}});});
-    restore.addEventListener('click',function(e){e.preventDefault();if(sup){sup=false;return;}if(moved){moved=false;return;}if(armed){closeNow();}else restoreFn();});
+    restore.addEventListener('click',function(e){e.preventDefault();if(armed||guard){return;}if(moved){moved=false;return;}restoreFn();});
     restore.addEventListener('contextmenu',function(e){e.preventDefault();arm();});
   })();
 })();

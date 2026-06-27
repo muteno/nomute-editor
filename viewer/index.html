@@ -1079,28 +1079,33 @@
   #toolMin { transition:transform .1s var(--ease); }
   #toolMin:active { transform:scale(.8); }   /* 최소화 누름 = 스냅 축소(M1 · 색 플래시 없이 도형만 = 운영자 260627 '같은 색상 논외') · 공통 .tool-x rotate는 가로줄선 안 보여 ID로 덮음(X는 표준 유지) */
   .tool-x:focus-visible { outline:none; box-shadow:0 0 0 2px rgba(var(--accent-rgb),.5); }   /* 키보드 포커스 링 */
-  /* ▲ 복원 = 컴팩트 도형·우하단 고z(팝오버/일반z 모두 모달 위로 못 올림 = 실측 → 요약리더 위는 JS reparentNav가 열린 풀스크린 모달 안으로 옮김). 평시=보라 ▲ / 길게누름=빨강 X로 모핑(C2·어두운 플레이트) · 운영자 260627 */
+  /* ▲ 복원 = 컴팩트 보라 삼각형 유지(모핑 없음)·우하단 고z. 길게누름 → 삼각형 위쪽에 "닫기" 칩(첨부1 라디얼 네비 라벨 .radlab 도형 계승) + 풀스크린 실드(아래 내용 클릭 차단). 칩 탭=닫기 / 실드 탭=취소 · 운영자 260627 */
   .tool-restore { position:fixed; right:16px; bottom:calc(132px + env(safe-area-inset-bottom)); z-index:200;
     margin:0; width:34px; height:34px; padding:0; overflow:visible; display:none; place-items:center; cursor:pointer;
     border:none; background:none; color:var(--hist-accent); -webkit-tap-highlight-color:transparent; }
   .tool-restore.show { display:grid; }
-  .tool-restore .tr-plate { position:absolute; inset:-1px; border-radius:9px; pointer-events:none; background:rgba(18,18,18,0); transition:background .2s var(--ease), box-shadow .2s; }   /* 길게누름 시 X 뒤 어두운 플레이트(라디얼 라벨식 가독 · C2) */
-  .tool-restore.confirm-close .tr-plate { background:rgba(18,18,18,.66); box-shadow:0 4px 12px rgba(0,0,0,.5); }
-  .tool-restore .ic-tri, .tool-restore .ic-x { grid-area:1/1; display:block; transition:opacity .22s var(--ease), transform .22s var(--ease); }
-  .tool-restore .ic-tri { color:var(--hist-accent); filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)); }   /* 평시 = 보라 ▲ */
-  .tool-restore .ic-x { color:var(--danger); opacity:0; transform:rotate(-90deg) scale(.5); filter:drop-shadow(0 2px 5px rgba(0,0,0,.6)); }   /* X = 빨강(닫기 경고) */
-  .tool-restore.confirm-close .ic-tri { opacity:0; transform:rotate(90deg) scale(.5); }   /* 길게누름 = ▲→X 모핑(겉둘레 없이 도형만) */
-  .tool-restore.confirm-close .ic-x { opacity:1; transform:none; }
-  .tool-restore.closing .ic-x { transform:scale(1.5); opacity:0; transition:.24s var(--ease); }   /* 닫기 액티브 = X 펑 사라짐 */
+  .tool-restore svg { display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5)); }   /* 다양한 배경 위 대비 */
   .tool-restore:active { transform:scale(.82); }
   .tool-restore:focus-visible { outline:2px solid #fff; outline-offset:3px; border-radius:5px; }
-  .tool-restore.pulsing .ic-tri { animation:triGlow 1.8s var(--ease) infinite; }   /* 발견성 = 보라 글로우 호흡(평시 ▲만·위치 안정) */
+  .tool-restore.pulsing svg { animation:triGlow 1.8s var(--ease) infinite; }   /* 발견성 = 보라 글로우 호흡(위치 안정) */
+  .tool-restore.arming svg { transform:scale(1.08); }   /* 길게누름 시 살짝 강조(칩이 위에 뜸) */
   @keyframes triGlow { 0%,100%{ filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 1px rgba(var(--hist-rgb),0)); }
     50%{ filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 7px rgba(var(--hist-rgb),.85)); } }
+  /* 길게누름 닫기 UI — "닫기" 칩(라디얼 라벨 .radlab 계승: 무채 어두운 판·둥근·텍스트섀도) + 실드(아래 내용 클릭 차단) */
+  .tr-shield { position:fixed; inset:0; z-index:205; background:transparent; }
+  .tr-closebtn { position:fixed; z-index:206; transform:translate(-50%,-100%); margin:0; cursor:pointer; white-space:nowrap;
+    font-size:11px; font-weight:800; letter-spacing:-.2px; color:var(--fg-2);
+    background:rgba(18,18,18,.5); border:0; border-radius:6px; padding:4px 10px;
+    text-shadow:0 1px 5px rgba(0,0,0,.85); box-shadow:0 6px 18px rgba(0,0,0,.5);
+    animation:trChipIn .16s var(--ease); -webkit-tap-highlight-color:transparent; }
+  .tr-closebtn:active { transform:translate(-50%,-100%) scale(.9); }
+  .tr-closebtn.closing { animation:trChipOut .19s var(--ease) forwards; }
+  @keyframes trChipIn { from{ opacity:0; transform:translate(-50%,-100%) translateY(5px) scale(.92); } }
+  @keyframes trChipOut { to{ opacity:0; transform:translate(-50%,-100%) scale(.8); } }
   .tool-ghost { position:fixed; z-index:199; border-radius:22px; pointer-events:none; transform-origin:center center; will-change:transform,opacity;
     background:rgba(17,18,20,.92);   /* #tooldlg(1051) 배경색(17,18,20) 근사 미러·불투명도↑ · blur 없음 = transform 애니 시 backdrop-filter 블러 재계산 스내그(1055 경고) 회피 */
     border:1px solid rgba(255,255,255,.13); box-shadow:0 30px 80px rgba(0,0,0,.5); }
-  @media (prefers-reduced-motion:reduce){ #toolMin:active{ transform:none; } .tool-restore:active{ transform:none; } .tool-restore.pulsing .ic-tri{ animation:none; } .tool-restore .ic-tri, .tool-restore .ic-x{ transition:none; } }
+  @media (prefers-reduced-motion:reduce){ #toolMin:active{ transform:none; } .tool-restore:active{ transform:none; } .tool-restore.pulsing svg{ animation:none; } .tr-closebtn{ animation:none; } }
   /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
   .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
   .dlg-h { position:sticky; top:0; z-index:2; background:rgba(13,23,16,.74); backdrop-filter:blur(22px) saturate(1.2);
@@ -1954,7 +1959,7 @@
   <iframe id="toolframe" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write"></iframe>
 </dialog>
 <!-- 제작 도구 최소화 복원 ▲ — fixed 고z 버튼(JS reparentNav가 열린 풀스크린 모달[요약리더#dlg·라이트박스] 안으로 옮겨 그 위에도 부유). 평시 탭=펼침 / 길게 눌러 "닫기" 뜨면 한 번 더 탭=완전종료. accent 그린(첨부1 우하단 특수버튼색 계승). -->
-<button id="toolRestore" class="tool-restore" type="button" aria-label="제작 도구 펼치기 (길게 누르면 X 닫기)" title="탭하면 펼치기 · 길게 누르면 X(닫기)"><span class="tr-plate" aria-hidden="true"></span><svg class="ic-tri" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg><svg class="ic-x" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+<button id="toolRestore" class="tool-restore" type="button" aria-label="제작 도구 펼치기 (길게 누르면 닫기)" title="탭하면 펼치기 · 길게 누르면 닫기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg></button>
 
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
 <nav class="bnav" id="bnav">
@@ -6078,8 +6083,8 @@ function reparentNav() {                                                        
 }
 function showRestoreNav() {
   const b = $('#toolRestore'); if (!b) return;
-  toolMin = true; b.classList.remove('confirm-close', 'closing'); b.classList.add('show');
-  b.setAttribute('aria-label', '제작 도구 펼치기 (길게 누르면 X 닫기)');
+  toolMin = true; b.classList.remove('arming'); b.classList.add('show');
+  b.setAttribute('aria-label', '제작 도구 펼치기 (길게 누르면 닫기)');
   reparentNav();                                                                // 열린 모달 있으면 그 위로(없으면 body 유지)
   if (!reduceMotion()) { try { b.animate([{ transform: 'scale(.3)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.2,.7,.3,1)' }); } catch (_) {} }   // 등장 팝(reduced-motion이면 생략)
   clearTimeout(showRestoreNav._p); clearTimeout(showRestoreNav._s);
@@ -6089,49 +6094,48 @@ function showRestoreNav() {
 function hideRestoreNav() {
   const b = $('#toolRestore'); if (!b) return;
   toolMin = false; clearTimeout(showRestoreNav._p); clearTimeout(showRestoreNav._s);
-  b.classList.remove('confirm-close', 'pulsing', 'show', 'closing');
+  if (b._disarm) b._disarm();                                                    // armed면 "닫기" 칩/실드 정리 + armed 리셋
+  b.classList.remove('pulsing', 'show', 'arming');
   if (b.parentElement !== document.body) document.body.appendChild(b);           // 모달서 꺼내 body로 복귀
 }
-// ▲ 롱프레스(550ms) → 보라 ▲가 빨강 X로 모핑(어두운 플레이트·C2) → X 정확히 탭=닫기(액티브 후 사라짐) / 다른 곳 탭=취소(X→▲) · 평시 탭 = 펼침 (운영자 260627)
+// ▲ 롱프레스(550ms) → 삼각형 유지 + 위쪽에 "닫기" 칩(첨부1 라디얼 라벨 .radlab 도형 계승) + 풀스크린 실드(아래 내용 클릭 차단) · 칩 탭=닫기(액티브) / 다른 곳 탭=취소 · 평시 탭=펼침 (운영자 260627)
 (function () {
   const tr = $('#toolRestore'); if (!tr) return;
-  const LBL = '제작 도구 펼치기 (길게 누르면 X 닫기)';
-  let lpTimer = null, armed = false, suppressClick = false, moved = false, autoT = null, sx = 0, sy = 0, outAway = null;
+  const LBL = '제작 도구 펼치기 (길게 누르면 닫기)';
+  let lpTimer = null, armed = false, moved = false, autoT = null, armGuard = false, sx = 0, sy = 0, chip = null, shield = null;
+  function positionChip() { if (!chip) return; const r = tr.getBoundingClientRect(); chip.style.left = (r.left + r.width / 2) + 'px'; chip.style.top = (r.top - 7) + 'px'; }   // 삼각형 실제 위쪽 중앙
+  function teardown() { if (chip) { chip.remove(); chip = null; } if (shield) { shield.remove(); shield = null; } }
   function arm() {
-    if (armed) return;
-    armed = true; suppressClick = true;                                         // arm을 띄운 그 press의 click은 무시(다음 탭이 진짜 닫기)
-    tr.classList.add('confirm-close'); tr.classList.remove('pulsing');          // ▲→X 모핑 + 어두운 플레이트
-    tr.setAttribute('aria-label', '닫기(X) — 탭하면 종료 · 다른 곳 탭하면 취소');
+    if (armed) return; armed = true;
+    tr.classList.remove('pulsing'); tr.classList.add('arming');
+    tr.setAttribute('aria-label', '위 "닫기"를 탭하면 종료 · 다른 곳 탭하면 취소');
     if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
-    outAway = ev => { if (!ev.target.closest('#toolRestore')) disarm(); };       // 다른 곳 탭 = 취소(X→▲)
-    document.addEventListener('pointerdown', outAway, true);
-    clearTimeout(autoT); autoT = setTimeout(disarm, 4000);                       // 안전 자동 취소(4s)
+    const host = tr.parentElement || document.body;                             // ▲와 같은 레이어(모달 reparent 시 그 안 = 위에 보임)
+    shield = document.createElement('div'); shield.className = 'tr-shield';
+    shield.addEventListener('click', e => { e.stopPropagation(); if (armGuard) return; disarm(); });   // 아래 내용 클릭 차단 + 다른 곳 탭=취소
+    chip = document.createElement('button'); chip.type = 'button'; chip.className = 'tr-closebtn'; chip.textContent = '닫기';
+    chip.addEventListener('click', e => { e.stopPropagation(); closeNow(); });  // 칩 탭 = 닫기
+    host.appendChild(shield); host.appendChild(chip);
+    positionChip();
+    armGuard = true; clearTimeout(arm._g); arm._g = setTimeout(() => { armGuard = false; }, 350);   // arm 띄운 그 press의 release-click 무시(오발 차단)
+    clearTimeout(autoT); autoT = setTimeout(disarm, 4000);                      // 안전 자동 취소(4s)
   }
   function disarm() {
-    if (!armed) return;
-    armed = false; suppressClick = false; tr.classList.remove('confirm-close');
-    tr.setAttribute('aria-label', LBL);
-    if (outAway) { document.removeEventListener('pointerdown', outAway, true); outAway = null; }
-    clearTimeout(autoT);
+    if (!armed) return; armed = false; tr.classList.remove('arming');
+    tr.setAttribute('aria-label', LBL); teardown(); clearTimeout(autoT);
     if (toolMin) tr.classList.add('pulsing');
   }
-  function closeNow() {                                                          // X 탭 = 닫기 액티브(X 펑) → 완전종료
-    clearTimeout(autoT);
-    if (outAway) { document.removeEventListener('pointerdown', outAway, true); outAway = null; }
-    armed = false; tr.classList.add('closing');
-    setTimeout(() => { closeToolFully(); }, 230);                                // closeToolFully가 hideRestoreNav로 closing/confirm-close 정리
+  function closeNow() {                                                          // 칩 탭 = 닫기 액티브(칩 팝) → 완전종료
+    clearTimeout(autoT); armed = false; tr.classList.remove('arming');
+    if (chip) chip.classList.add('closing');
+    setTimeout(() => { teardown(); closeToolFully(); }, 190);
   }
-  tr.addEventListener('pointerdown', e => { if (e.button && e.button !== 0) return; moved = false; suppressClick = false; sx = e.clientX; sy = e.clientY; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpTimer = null; arm(); }, 550); });   // suppressClick 새 제스처마다 리셋
+  tr._disarm = disarm;                                                          // hideRestoreNav가 armed 잔재(칩/실드) 정리용
+  tr.addEventListener('pointerdown', e => { if (e.button && e.button !== 0) return; moved = false; sx = e.clientX; sy = e.clientY; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpTimer = null; arm(); }, 550); });
   tr.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) { moved = true; if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } } }, { passive: true });   // 10px 임계 — 미세 떨림 무시
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => tr.addEventListener(ev, () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } }));
-  tr.addEventListener('click', e => {
-    e.preventDefault();
-    if (suppressClick) { suppressClick = false; return; }                       // arm을 띄운 그 press의 click = 무시
-    if (moved) { moved = false; return; }                                       // 드래그/스크롤 = 무시
-    if (armed) { closeNow(); }                                                  // armed에서 X 정확히 탭 = 닫기(액티브)
-    else restoreTool();                                                         // 평시 탭 = 펼침
-  });
-  tr.addEventListener('contextmenu', e => { e.preventDefault(); arm(); });       // PC 우클릭 = arm
+  tr.addEventListener('click', e => { e.preventDefault(); if (armed || armGuard) return; if (moved) { moved = false; return; } restoreTool(); });   // 평시 탭=펼침 (armed/arming 중엔 칩·실드가 처리)
+  tr.addEventListener('contextmenu', e => { e.preventDefault(); arm(); });
 })();
 // 재부모 옵저버 = 모달 dialog가 열리고/닫힐 때마다 ▲를 최상위 열린 모달(없으면 body)로 옮겨 항상 보이게. [open] 토글 1개로 #dlg·#lbox·#askdlg 등 커버.
 try {
