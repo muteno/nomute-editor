@@ -37,10 +37,9 @@
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
   .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
   .divider { border:none; border-top:1px solid var(--line); margin:20px 0 6px; }
-  .file { display:block; padding:12px; border:1px dashed transparent; border-radius:9px; text-align:center; color:var(--accent); cursor:pointer; background:transparent; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 빈 상태 = 플레이트 없는 픽토그램만(강조색·.covimg 참조·운영자 260627) */
-  .file svg { width:26px; height:26px; display:block; }   /* 파일 픽토그램(빈 상태) */
+  .file { display:block; padding:12px; border:1px dashed var(--line); border-radius:9px; text-align:center; color:#cfd2d7; cursor:pointer; background:rgba(255,255,255,.05); transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 글자 또렷 + 테두리 강조색 50% */
   .file:active { transform:scale(.955); background:rgba(15,253,2,.06); border-color:rgba(15,253,2,.3); }   /* 누름 = 형제 .go(자막 생성) 모션 그대로 계승(운영자 260626) */
-  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; animation:fileIn .42s ease; }   /* 파일 들어옴 = 솔리드 강조 테두리로 프레임 + 팝+글로우 확인 모션(파일명 표시·가독) */
+  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; animation:fileIn .42s ease; }   /* 파일 들어옴 = 팝+글로우 확인 모션(액티브) */
   @keyframes fileIn { 0% { transform:scale(.965); box-shadow:0 0 0 0 rgba(15,253,2,.45); } 45% { transform:scale(1.025); box-shadow:0 0 0 6px rgba(15,253,2,.10); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(15,253,2,0); } }
   @media (prefers-reduced-motion:reduce) { .file.has { animation:none; } }
   /* 파일 업로드(좌·넓게) + 생성(우·짧게) 한 줄 가로 분할 — 풀폭 스택 대신 */
@@ -104,7 +103,7 @@
   <div class="orsep">— 또는 —</div>
   <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
   <div class="filerow">
-    <label class="file" id="fileLab" aria-label="파일 선택" title="파일 선택 (영상·음성·TXT·SRT)"><span id="fileTxt"></span>
+    <label class="file" id="fileLab"><span id="fileTxt">파일 선택</span>
       <input type="file" accept="video/*,audio/*,.txt,.srt,.vtt,text/plain" id="file" style="display:none">
     </label>
     <button class="go" id="go">자막 생성</button>
@@ -133,9 +132,6 @@ const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
   });
   inp.addEventListener('input', upd); upd();
 })();
-// 파일 선택 = 빈 상태 픽토그램(텍스트 '파일 선택' 대체 · 강조색 파일 아이콘 · .covimg 참조 · 운영자 260627)
-const FILE_PICTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg>';   // 파일(업로드↑) — 문서+위화살표 = '파일 선택/올리기'
-$('#fileTxt').innerHTML = FILE_PICTO;   // 초기 = 픽토그램
 // 파일타입 색배지 색(카테고리 팔레트 계승: 테크 시안·경제 노랑·국제 보라·사회 초록)
 const FTYPE_COLOR = { '영상':'#7fc8d8', '음성':'#e7c977', 'SRT':'#b79be8', 'TXT':'#7fd0a0' };
 function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 중입니다…' + 생성버튼 잠금
@@ -157,7 +153,7 @@ function readB64(blob, name) {   // Blob/File → data URL(base64) 저장. ⚠�
 }
 function clearFile(msg, isErr) {
   FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = ''; $('#file').value = ''; $('#uprog').hidden = true; $('#go').disabled = false;
-  $('#fileTxt').innerHTML = FILE_PICTO; $('#fileLab').classList.remove('has');
+  $('#fileTxt').textContent = '파일 선택'; $('#fileLab').classList.remove('has');
   if (msg) { const st = $('#status'); st.textContent = msg; st.classList.toggle('err', !!isErr); }
 }
 
