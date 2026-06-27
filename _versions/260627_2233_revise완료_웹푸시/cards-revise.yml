@@ -83,22 +83,3 @@ jobs:
             git rebase --abort 2>/dev/null || true; sleep $((i*3))
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패"; exit 1; }
-
-      # 사용자 요청 카드 프롬프트 수정 완료 → 구독자에게 웹푸시(앱 꺼도 옴). 탭하면 그 기사(카드 포함) 딥링크.
-      # notify_summary.sh 재사용(배포 반영 대기 + 딥링크) · 메시지만 "카드 수정 완료"로 override · 비치명. (운영자 260627)
-      - name: 카드 수정 완료 웹푸시 (pywebpush · 배포 반영 후)
-        if: success()   # revise·commit 성공 시에만 — 실제 반영 뒤 알림(실패는 별도 표면화)
-        env:
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
-          VIEWER_BASE: https://nomute-editor.pages.dev
-          FILE: ${{ inputs.file }}
-          NOTIFY_TITLE: 카드 수정 완료
-          NOTIFY_BODY_SUFFIX: ' — 탭해서 확인'
-          NOTIFY_TAG_PREFIX: nomute-crev
-        run: |
-          stem="${FILE}"; [ -n "$stem" ] || { echo "file 없음 — 알림 생략"; exit 0; }
-          title="$(grep -m1 '^title:' "queue/${stem}.md" 2>/dev/null | sed -E 's/^title:[[:space:]]*"?//; s/"[[:space:]]*$//')"
-          printf '%s\n' "${stem}.md" > /tmp/analyzed_files.txt
-          printf '%s\n' "${title:-카드}" > /tmp/analyzed_titles.txt
-          bash .github/scripts/notify_summary.sh

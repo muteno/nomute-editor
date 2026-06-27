@@ -83,26 +83,6 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패"; exit 1; }
 
-      # 사용자 요청 IG/Thread 수정 완료 → 구독자에게 웹푸시(앱 꺼도 옴). 탭하면 그 요약 창 딥링크.
-      # notify_summary.sh 재사용(배포 반영 대기 + 건별 딥링크) · 메시지만 "수정 완료"로 override · 비치명. (운영자 260627)
-      - name: 수정 완료 웹푸시 (pywebpush · 배포 반영 후)
-        if: success()   # revise·commit 성공 시에만 — 실제 반영 뒤 알림(실패는 별도 표면화·notify 안 함)
-        env:
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
-          VIEWER_BASE: https://nomute-editor.pages.dev
-          FILE: ${{ inputs.file }}
-          NOTIFY_TITLE: 수정 완료
-          NOTIFY_BODY_SUFFIX: ' — 탭해서 확인'
-          NOTIFY_TAG_PREFIX: nomute-rev
-        run: |
-          stem="${FILE}"; [ -n "$stem" ] || { echo "file 없음 — 알림 생략"; exit 0; }
-          [ -f "queue/${stem}.md" ] || { echo "queue/${stem}.md 없음 — 알림 생략"; exit 0; }
-          title="$(grep -m1 '^title:' "queue/${stem}.md" | sed -E 's/^title:[[:space:]]*"?//; s/"[[:space:]]*$//')"
-          printf '%s\n' "${stem}.md" > /tmp/analyzed_files.txt
-          printf '%s\n' "${title:-요약}" > /tmp/analyzed_titles.txt
-          bash .github/scripts/notify_summary.sh
-
   # revise로 요약(IG/Thread)이 바뀌면 그 기사 '카드 프롬프트'도 갱신해 요약과 일치시킨다(운영자 선택 260618).
   # 텍스트만·제미나이 0(card_plan과 동일 잠금): GDRIVE_SA_JSON env 부재(Lock A) + cardmake text모드 unset(Lock B).
   # ⛔ 이미 '슛'한 done/fired_partial(이미지 있는) 카드는 보호 — 자동 덮어쓰기 안 함(이미지·편집 유실 방지).
