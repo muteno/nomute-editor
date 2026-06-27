@@ -1630,6 +1630,18 @@
   .askx { width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:9px; font-size:14px; line-height:1; color:var(--fg);
     background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }   /* 닫기 ✕ 통일 = .tool-x 글래스 사각(맨텍스트→박스) */
   .askx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .askhead-act { display:flex; align-items:center; gap:8px; }   /* 최소화 + X 묶음(헤더 우측 그룹 · tool-hbtns 패턴 · 운영자 260627) */
+  .askmin:active { transform:scale(.8); }   /* 최소화 누름 = 스냅 축소(가로줄선) */
+  /* ── 다중 최소화: ▲ 개수 배지 + 선택 picker (운영자 260627) ── */
+  .tr-count { position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--accent); color:var(--on-accent);
+    font:800 10px/16px ui-monospace,monospace; text-align:center; box-shadow:0 0 0 2px var(--bg); pointer-events:none; }
+  .min-pick { position:fixed; transform:translateX(-50%); z-index:201; display:flex; flex-direction:column; gap:4px; padding:6px; border-radius:13px;
+    background:linear-gradient(165deg,rgba(22,23,25,.94),rgba(12,13,14,.96)); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); backdrop-filter:blur(var(--blur-l)) saturate(1.2);
+    border:1px solid var(--line); box-shadow:0 16px 44px rgba(0,0,0,.62); animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both; }
+  .min-pick-it { font:inherit; font-size:13px; font-weight:700; color:var(--fg); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px;
+    padding:9px 16px; cursor:pointer; white-space:nowrap; text-align:left; -webkit-tap-highlight-color:transparent; transition:transform .1s, background .15s, color .15s, border-color .15s; }
+  .min-pick-it:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); }
+  .min-pick-it:active { transform:scale(.96); }
   .askta { display:block; width:100%; box-sizing:border-box; min-height:96px; resize:vertical; border-radius:14px; padding:12px 14px;
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
   .askta:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18); }   /* 포커스 = 강조색 테두리+글로우(타이핑 활성 신호 · .ed-wish:focus 등 전 입력칸 정본 통일 · 흰색 이탈 교정 260627) */
@@ -1939,7 +1951,7 @@
 
 <dialog id="askdlg" class="askdlg">
   <div class="askwrap">
-    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>뉴스 요약</b><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+    <div class="askhead"><b><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px" aria-hidden="true"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg>뉴스 요약</b><div class="askhead-act"><button class="askx askmin" id="askMin" type="button" aria-label="최소화"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 12h12"/></svg></button><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
       <span class="askph" id="askPh">내용을 입력해주세요</span>
@@ -6266,14 +6278,16 @@ function minimizeTool() {
   if (!tooldlg.open || toolMinimizing) return;
   lastToolRect = tooldlg.getBoundingClientRect();                               // ★ close() 전 캡처(닫으면 display:none → rect 0)
   showRestoreNav();                                                             // ▲ 먼저 띄워 정확한 수렴 좌표 확보
+  MIN_REG.set('tooldlg', { label: ($('#toolTitle') || {}).textContent || '제작 도구', restore: restoreTool }); minRegRefresh();   // 다중 최소화 레지스트리 등록(운영자 260627)
   toolMinimizing = true;
   flyGhost('in');                                                              // 모달 위치서 ▲로 수렴
   try { tooldlg.close(); } catch (_) { toolMinimizing = false; }                // 가드 close = 폼 보존(close 핸들러의 showRestoreNav는 이미 떠서 스킵) · throw 시 가드 stuck 방지
 }
 function restoreTool() {
-  if (tooldlg.open || !toolMin) return;
+  if (tooldlg.open || !MIN_REG.has('tooldlg')) return;
   const n = navCenter();                                                        // ▲ 위치 먼저 캡처(숨기기 전)
-  hideRestoreNav();
+  MIN_REG.delete('tooldlg');
+  if (MIN_REG.size) minRegRefresh(); else hideRestoreNav();                     // 남은 최소화 있으면 ▲ 유지(없으면 숨김)
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   flyGhost('out', () => {                                                       // 고스트 펼친 뒤 모달 등장(toolIn opacity로 자연 스왑)
     if (!(history.state && history.state.tool)) history.pushState({ tool: true }, '');   // 최소화 중 백버튼이 {tool}칸 소비했으면 복원, 보존됐으면 재사용
@@ -6286,6 +6300,62 @@ function closeToolFully() {                                                     
   if (tooldlg.open) { tooldlg.close(); return; }                                // (드문) 모달 열린 채면 정규 닫기
   $('#toolframe').src = 'about:blank'; tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = '';   // 최소화 상태 = 보존했던 iframe·{tool}칸 회수
   if (history.state && history.state.tool) history.back();
+  const f = $('#toolfab'); if (f) { try { f.focus(); } catch (_) {} }
+}
+// ── 다중 최소화 레지스트리 + 뉴스요약 최소화 + 선택 picker (운영자 260627) ──────────────────
+// ▲ 복원 버튼은 공유. 최소화된 게 1개면 ▲ 탭=바로 복원 / 2개+면 ▲ 탭=어느 걸 펼칠지 선택 picker.
+const MIN_REG = new Map();   // id → { label, restore } · 최소화된 모달 추적
+function minRegRefresh() {    // ▲ 위 개수 배지(2개+ 일 때만)
+  const b = $('#toolRestore'); if (!b) return;
+  let badge = b.querySelector('.tr-count');
+  if (MIN_REG.size > 1) { if (!badge) { badge = document.createElement('span'); badge.className = 'tr-count'; b.appendChild(badge); } badge.textContent = String(MIN_REG.size); }
+  else if (badge) badge.remove();
+}
+function restoreDispatch() {  // ▲ 탭 = 1개면 바로 복원 / 2개+면 선택 picker
+  closeMinPicker();
+  if (MIN_REG.size > 1) { showMinPicker(); return; }
+  const first = MIN_REG.values().next().value;
+  if (first && first.restore) first.restore(); else restoreTool();
+}
+function showMinPicker() {    // 2개+ 최소화 = 어느 걸 펼칠지 고르는 작은 메뉴(▲ 바로 위)
+  closeMinPicker();
+  const b = $('#toolRestore'); if (!b) return;
+  const host = b.parentElement || document.body;
+  const pop = document.createElement('div'); pop.className = 'min-pick'; pop.id = 'minPick';
+  for (const [, e] of MIN_REG) {
+    const it = document.createElement('button'); it.type = 'button'; it.className = 'min-pick-it'; it.textContent = '⤢ ' + e.label;
+    it.addEventListener('click', ev => { ev.stopPropagation(); const r = e.restore; closeMinPicker(); if (r) r(); });
+    pop.appendChild(it);
+  }
+  host.appendChild(pop);
+  const r = b.getBoundingClientRect();
+  pop.style.left = (r.left + r.width / 2) + 'px'; pop.style.bottom = (window.innerHeight - r.top + 10) + 'px';   // ▲ 바로 위
+  setTimeout(() => document.addEventListener('pointerdown', closeMinPicker, { capture: true, once: true }), 0);   // 바깥 탭 = 닫기
+}
+function closeMinPicker() { const p = $('#minPick'); if (p) p.remove(); }
+// 뉴스 요약 최소화 — askMinimizing 가드로 close()를 타되 첨부·입력 보존(close 핸들러가 이미지 비움 스킵). 복원 = openComposeDlg 재호출(입력·이미지 그대로).
+let askMinimizing = false;
+function minimizeAsk() {
+  if (!askdlg.open || askMinimizing) return;
+  lastToolRect = askdlg.getBoundingClientRect();                                // ★ close() 전 rect 캡처(고스트 수렴)
+  showRestoreNav();
+  MIN_REG.set('askdlg', { label: '뉴스 요약', restore: restoreAsk }); minRegRefresh();
+  askMinimizing = true;
+  flyGhost('in');
+  try { askdlg.close(); } catch (_) { askMinimizing = false; }
+}
+function restoreAsk() {
+  if (askdlg.open || !MIN_REG.has('askdlg')) return;
+  const n = navCenter();
+  MIN_REG.delete('askdlg');
+  if (MIN_REG.size) minRegRefresh(); else hideRestoreNav();                     // 남은 게 있으면 ▲ 유지
+  closeOverlays(); document.documentElement.style.overflow = 'hidden';
+  flyGhost('out', () => { openComposeDlg(askdlg); setTimeout(() => { try { $('#askText').focus(); } catch (_) {} }, 0); }, n);
+}
+function closeAllMinimized() {                                                  // ▲ 롱프레스 닫기 = 최소화된 것 전부 종료
+  if (MIN_REG.has('tooldlg')) { $('#toolframe').src = 'about:blank'; tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = ''; if (history.state && history.state.tool) history.back(); }
+  if (MIN_REG.has('askdlg')) { askMinimizing = false; askImages = []; renderAskImgs(); if (history.state && history.state.composeDlg) history.back(); }
+  MIN_REG.clear(); hideRestoreNav();
   const f = $('#toolfab'); if (f) { try { f.focus(); } catch (_) {} }
 }
 function hostForNav() {                                                          // ▲가 들어갈 곳 = 최상위 열린 모달 dialog(tooldlg 제외) 없으면 body.
@@ -6345,13 +6415,13 @@ function hideRestoreNav() {
   function closeNow() {                                                          // 칩 탭 = 닫기 액티브(칩 팝) → 완전종료
     clearTimeout(autoT); armed = false; tr.classList.remove('arming');
     if (chip) chip.classList.add('closing');
-    setTimeout(() => { teardown(); closeToolFully(); }, 190);
+    setTimeout(() => { teardown(); closeAllMinimized(); }, 190);   // 롱프레스 닫기 = 최소화된 것 전부 종료(운영자 260627)
   }
   tr._disarm = disarm;                                                          // hideRestoreNav가 armed 잔재(칩/실드) 정리용
   tr.addEventListener('pointerdown', e => { if (e.button && e.button !== 0) return; moved = false; sx = e.clientX; sy = e.clientY; clearTimeout(lpTimer); lpTimer = setTimeout(() => { lpTimer = null; arm(); }, 550); });
   tr.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) { moved = true; if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } } }, { passive: true });   // 10px 임계 — 미세 떨림 무시
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => tr.addEventListener(ev, () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } }));
-  tr.addEventListener('click', e => { e.preventDefault(); if (armed || armGuard) return; if (moved) { moved = false; return; } restoreTool(); });   // 평시 탭=펼침 (armed/arming 중엔 칩·실드가 처리)
+  tr.addEventListener('click', e => { e.preventDefault(); if (armed || armGuard) return; if (moved) { moved = false; return; } restoreDispatch(); });   // 평시 탭=펼침(1개 바로 복원·2개+ 선택 picker · 운영자 260627)
   tr.addEventListener('contextmenu', e => { e.preventDefault(); arm(); });
 })();
 // 재부모 옵저버 = 모달 dialog가 열리고/닫힐 때마다 ▲를 최상위 열린 모달(없으면 body)로 옮겨 항상 보이게. [open] 토글 1개로 #dlg·#lbox·#askdlg 등 커버.
@@ -6363,8 +6433,12 @@ tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close
 $('#toolframe').addEventListener('load', () => { tooldlg.classList.add('frame-ready');   // 로드 완료 = iframe 페이드인(번쩍임 차단)
   try { const d = $('#toolframe').contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });   // iframe 포커스 시 ESC 안 먹는 문제 → 같은 출처 contentDocument에 ESC 브릿지
 $('#askX').addEventListener('click', () => askdlg.close());
+if ($('#askMin')) $('#askMin').addEventListener('click', () => minimizeAsk());   // 뉴스요약 최소화(영상/tooldlg와 동일 ▲ 복원·운영자 260627)
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
-askdlg.addEventListener('close', () => { if (askImages.length) { askImages = []; renderAskImgs(); } });   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
+askdlg.addEventListener('close', () => {
+  if (askMinimizing) { askMinimizing = false; showRestoreNav(); if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 경로 = 첨부·입력 보존(이미지 비움 스킵·운영자 260627)
+  if (askImages.length) { askImages = []; renderAskImgs(); }   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
+});
 // 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
 function updateAskClip() { const b = $('#askClip'); if (!b) return; const has = $('#askText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; if (window.__syncAskErase) window.__syncAskErase(); }
 // 지우개(되돌리기) = thumb 입력칸 패턴 계승(운영자 260627): 비면 dim·비활성 / 누르면 입력 비움 → 직후 ~10초 되돌리기(직전 입력 복원) / 직접 입력하면 되돌리기 창 즉시 종료
