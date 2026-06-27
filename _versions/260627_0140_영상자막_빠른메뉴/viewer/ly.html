@@ -96,32 +96,6 @@
   .code button:active { transform:scale(.85); }
   .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
-  /* 빠른메뉴 = 이미지 도구(thumb.html #rfab) 계승 — 영상 자막생성기에도: 코어(+) 펼치면 파일선택 · 코어 위 '-' 최소화(엄지존·iframe→부모 minimizeTool) · 화면 인터페이스(파일)에 맞춘 선택 버튼 · 운영자 260627 */
-  #rfab { position:fixed; right:18px; bottom:34%; z-index:70; width:0; height:0; }
-  #rfab .rc { position:absolute; right:0; bottom:0; width:54px; height:54px; border-radius:50%; cursor:pointer;
-    background:rgba(0,0,0,.34); color:var(--accent); border:1px solid rgba(15,253,2,.4); display:grid; place-items:center;
-    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
-    box-shadow:0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
-    transition:transform .25s; -webkit-tap-highlight-color:transparent; }
-  #rfab.open .rc { transform:rotate(135deg); }
-  #rfab .rc svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
-  #rfab .ro { position:absolute; right:7px; bottom:7px; width:46px; height:46px; border-radius:50%; cursor:pointer; color:var(--accent);
-    background:rgba(0,0,0,.34); border:1px solid rgba(15,253,2,.4); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
-    display:grid; place-items:center; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
-    opacity:0; transform:translate(0,0) scale(.3); pointer-events:none;
-    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
-  #rfab .ro svg { width:20px; height:20px; stroke:currentColor; stroke-width:1.9; fill:none; stroke-linecap:round; stroke-linejoin:round; }
-  #rfab.open .ro { opacity:1; pointer-events:auto; transform:translate(0,-80px) scale(1); }
-  #rfab .ro:active { transform:translate(0,-80px) scale(.9); }
-  #rfab .rmin { position:absolute; right:13px; bottom:62px; width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--accent);
-    background:rgba(0,0,0,.34); border:1px solid rgba(15,253,2,.4); display:grid; place-items:center;
-    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3); box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
-    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
-  #rfab .rmin svg { width:15px; height:15px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
-  #rfab .rmin:active { transform:scale(.85); transition:transform .09s; }
-  #rfab.open .rmin { opacity:0; transform:translateY(8px) scale(.3); pointer-events:none; }
-  @media (prefers-reduced-motion:reduce){ #rfab .rc,#rfab .ro,#rfab .rmin { transition:opacity .15s; } #rfab.open .ro{ transform:translate(0,-80px); } #rfab.open .rmin{ transform:none; } #rfab .rmin:active{ transition:transform .09s; } }
-  @media (hover:hover) and (pointer:fine) { #rfab { display:none; } }   /* PC(마우스) = 엄지 빠른메뉴 불필요 → 숨김(thumb 컨벤션 계승) */
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
@@ -144,13 +118,6 @@
   <div class="status" id="status"></div>
   <hr class="divider">
   <div class="out" id="out"></div>
-</div>
-
-<!-- 빠른메뉴(이미지 도구 #rfab 계승) — 코어(+) 펼치면 파일선택 · 코어 위 '-' 최소화 -->
-<div id="rfab" aria-label="빠른 메뉴">
-  <button class="ro" id="lyFileFab" type="button" title="파일 선택"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg></button>
-  <button class="rc" id="rfabCore" type="button" aria-label="빠른 메뉴 열기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-  <button class="rmin" id="rfabMin" type="button" aria-label="최소화" title="최소화 (창 접기)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
 </div>
 
 <script>
@@ -190,16 +157,6 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
 // 파일 선택 = 빈 상태 픽토그램(텍스트 '파일 선택' 대체 · 강조색 파일 아이콘 · .covimg 참조 · 운영자 260627)
 const FILE_PICTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg>';   // 파일(업로드↑) — 문서+위화살표 = '파일 선택/올리기'
 $('#fileTxt').innerHTML = FILE_PICTO;   // 초기 = 픽토그램
-// 빠른메뉴(thumb #rfab 계승): 코어(+) 토글 · 파일선택 = 화면 인터페이스(#file 피커) · '-' = iframe→부모 minimizeTool(동일출처)
-(function(){
-  const rfab = $('#rfab'), core = $('#rfabCore'), ffab = $('#lyFileFab'), rmin = $('#rfabMin');
-  if (!rfab || !core) return;
-  core.addEventListener('click', e => { e.stopPropagation(); rfab.classList.toggle('open'); });
-  document.addEventListener('click', e => { if (!rfab.contains(e.target)) rfab.classList.remove('open'); });
-  if (ffab) ffab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); $('#file').click(); });   // 선택 = 파일 피커(화면 인터페이스에 맞춤)
-  if (rmin) { if (window.parent === window) { rmin.style.display = 'none'; }   // 단독(모달 아님) = 최소화 무의미 → 숨김
-    else rmin.addEventListener('click', e => { e.stopPropagation(); try { if (parent.minimizeTool) parent.minimizeTool(); } catch (_) {} }); }
-})();
 // 파일타입 색배지 색(카테고리 팔레트 계승: 테크 시안·경제 노랑·국제 보라·사회 초록)
 const FTYPE_COLOR = { '영상':'#7fc8d8', '음성':'#e7c977', 'SRT':'#b79be8', 'TXT':'#7fd0a0' };
 function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 중입니다…' + 생성버튼 잠금
