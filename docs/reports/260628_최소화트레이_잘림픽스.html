@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>최소화 복원 트레이 — 우측 잘림 픽스</title>
+<style>
+  :root{
+    --bg:#121212; --line:rgba(255,255,255,.08); --accent:#0FFD02; --accent-rgb:15,253,2;
+    --on-accent:#062108; --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697;
+    --hist-accent:#c24bf5; --hist-rgb:194,75,245; --blur-l:22px;
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:radial-gradient(120% 60% at 50% -8%,rgba(15,253,2,.05),transparent 55%),var(--bg);
+    color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif; padding:22px 14px 60px;}
+  h1{font-size:19px; margin:2px 0 4px} h1 b{color:var(--accent)}
+  .lead{color:var(--mut); font-size:13px; margin:0 0 18px}
+  .wrap{max-width:460px; margin:0 auto}
+  .ctl{display:flex; gap:8px; justify-content:center; margin:0 0 14px}
+  .ctl button{flex:1; max-width:180px; font:inherit; font-size:13px; font-weight:800; padding:10px 12px; border-radius:999px; cursor:pointer;
+    color:var(--fg); background:rgba(255,255,255,.05); border:1px solid var(--line); transition:transform .1s,background .15s,border-color .15s,color .15s; -webkit-tap-highlight-color:transparent}
+  .ctl button:active{transform:scale(.96)}
+  .ctl button.on{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.1)}
+  .ctl button.bad.on{color:#ff8a8a; border-color:rgba(255,120,120,.5); background:rgba(255,90,90,.1)}
+  .note{text-align:center; font-size:12px; color:var(--mut); margin:0 0 16px; min-height:18px}
+  .note b{color:var(--fg)}
+
+  /* ── 폰 목업 (실제 412px 폭 가정 · overflow:hidden 으로 잘림 그대로 재현) ── */
+  .phone{position:relative; width:412px; max-width:100%; height:560px; margin:0 auto; border-radius:30px; overflow:hidden;
+    background:linear-gradient(180deg,#0e0f0e,#0b0d0c); border:1px solid rgba(255,255,255,.07); box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .phone .scr{position:absolute; inset:0; padding:16px 14px}
+  .ph-h{display:flex; justify-content:space-between; font-size:12px; color:var(--mut); margin-bottom:14px}
+  .ph-title{font-size:16px; font-weight:800; margin:0 0 12px}
+  .col2{display:flex; gap:10px}
+  .col{flex:1; display:flex; flex-direction:column; gap:9px}
+  .col h4{margin:0 0 2px; font-size:12px; font-weight:800; color:var(--mut)}
+  .card{border:1px solid var(--line); border-radius:13px; background:rgba(255,255,255,.018); padding:10px 11px}
+  .card.pk{border-color:rgba(var(--accent-rgb),.45); box-shadow:0 0 0 1px rgba(var(--accent-rgb),.12) inset}
+  .card .m{font-size:10.5px; color:var(--mut); margin-bottom:6px}
+  .card .m em{color:var(--accent); font-style:normal; font-weight:800}
+  .card .t{font-size:12.5px; font-weight:700; line-height:1.4; color:var(--fg-2)}
+  .card .acts{display:flex; gap:7px; margin-top:9px}
+  .card .acts span{font-size:11px; font-weight:800; color:var(--mut); border:1px solid var(--line); border-radius:999px; padding:4px 11px}
+  .card .acts .pk{color:var(--accent)}
+
+  /* ── 실제 viewer 컴포넌트 (복제) ── */
+  .tool-restore{position:absolute; right:16px; bottom:96px; z-index:200; margin:0; width:34px; height:34px; padding:0; overflow:visible;
+    display:grid; place-items:center; cursor:pointer; border:none; background:none; color:var(--hist-accent); -webkit-tap-highlight-color:transparent}
+  .tool-restore svg{display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5))}
+  .tool-restore:active{transform:scale(.82)}
+  .tool-restore.pulsing svg{animation:triGlow 1.8s var(--ease) infinite}
+  @keyframes triGlow{0%,100%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 1px rgba(var(--hist-rgb),.5))}50%{filter:drop-shadow(0 2px 7px rgba(0,0,0,.55)) drop-shadow(0 0 9px rgba(var(--hist-rgb),.85))}}
+  .tr-count{position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--accent); color:var(--on-accent);
+    font:800 10px/16px ui-monospace,monospace; text-align:center; box-shadow:0 0 0 2px var(--bg); pointer-events:none}
+  .min-pick{position:absolute; z-index:201; display:flex; flex-direction:column; gap:4px; padding:6px; border-radius:13px;
+    background:linear-gradient(165deg,rgba(22,23,25,.94),rgba(12,13,14,.96)); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); backdrop-filter:blur(var(--blur-l)) saturate(1.2);
+    border:1px solid var(--line); box-shadow:0 16px 44px rgba(0,0,0,.62); animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both}
+  .min-pick-it{font:inherit; font-size:13px; font-weight:700; color:var(--fg); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px;
+    padding:9px 16px; cursor:pointer; white-space:nowrap; text-align:left; -webkit-tap-highlight-color:transparent; transition:transform .1s,background .15s,color .15s,border-color .15s}
+  .min-pick-it:hover{color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08)}
+  .min-pick-it:active{transform:scale(.96)}
+  @keyframes popInCx{from{opacity:0; transform:scale(.92) translateY(-4px)} to{opacity:1; transform:none}}
+  /* 잘림 가시화 — 화면 우측 경계선 */
+  .edge{position:absolute; top:0; bottom:0; right:0; width:0; border-right:2px dashed rgba(255,120,120,.45); z-index:202; pointer-events:none}
+  .hint{position:absolute; left:14px; bottom:14px; font-size:11px; color:var(--mut); z-index:203}
+  .hint b{color:var(--hist-accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>최소화 복원 트레이 — <b>우측 잘림 픽스</b></h1>
+  <p class="lead">최소화 2개+일 때 ▲ 누르면 뜨는 복원 선택 트레이. 아래에서 <b>전(잘림)/후(픽스)</b>를 토글하고, 폰 우하단의 <b style="color:var(--hist-accent)">▲</b>를 탭해봐.</p>
+
+  <div class="ctl">
+    <button id="mBad" class="bad" type="button">전 — 중앙정렬(잘림)</button>
+    <button id="mFix" class="on" type="button">후 — 좌변 클램프(픽스)</button>
+  </div>
+  <p class="note" id="note"></p>
+
+  <div class="phone" id="phone">
+    <div class="scr">
+      <div class="ph-h"><span>11:28 KST</span><span>오늘 2 / 189</span></div>
+      <div class="ph-title">스크랩 큐레이션 · 레거시</div>
+      <div class="col2">
+        <div class="col">
+          <h4>누적</h4>
+          <div class="card"><div class="m">국제 · <em>14</em> · 이슈</div><div class="t">[속보] 이란, 쿠웨이트·바레인 미군기지 공격…</div><div class="acts"><span>PASS</span><span class="pk">PICK</span><span>−</span></div></div>
+          <div class="card"><div class="m">국제 · <em>15</em></div><div class="t">미군, 호르무즈 인근서 이란 공습… 종전 합의 위태</div><div class="acts"><span>PASS</span><span class="pk">PICK</span><span>−</span></div></div>
+        </div>
+        <div class="col">
+          <h4>신규</h4>
+          <div class="card pk"><div class="m">국제 · <em>10</em></div><div class="t">트럼프 "군사적 마무리할 시점 올 수도… 이란 존재하지 않게 될 것"</div><div class="acts"><span>PASS</span><span class="pk">PICK</span><span>−</span></div></div>
+          <div class="card"><div class="m">국제 · <em>5</em></div><div class="t">[속보] 이란 혁수대 "휴전 합의 위반, 외교 완전중단"</div><div class="acts"><span>PASS</span><span class="pk">PICK</span><span>−</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="edge"></div>
+    <div class="hint">↑ 빨간 점선 = 화면 우측 끝 · <b>▲</b> 탭 = 트레이</div>
+    <button class="tool-restore pulsing" id="restore" type="button" aria-label="복원">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg>
+      <span class="tr-count">2</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  var MODE='fix';   // 'fix' | 'bad'
+  var ITEMS=['이미지','뉴스 요약'];
+  var phone=document.getElementById('phone'), btn=document.getElementById('restore'), note=document.getElementById('note');
+  var mBad=document.getElementById('mBad'), mFix=document.getElementById('mFix');
+
+  function closePick(){ var p=document.getElementById('mp'); if(p) p.remove(); }
+  function openPick(){
+    closePick();
+    var pop=document.createElement('div'); pop.className='min-pick'; pop.id='mp';
+    ITEMS.forEach(function(lab){
+      var it=document.createElement('button'); it.type='button'; it.className='min-pick-it'; it.textContent='⤢ '+lab;
+      it.addEventListener('click',function(e){ e.stopPropagation(); closePick(); flash(lab); });
+      pop.appendChild(it);
+    });
+    phone.appendChild(pop);
+    var pr=phone.getBoundingClientRect(), br=btn.getBoundingClientRect();
+    var cx=(br.left-pr.left)+br.width/2;          // ▲ 중심 (폰 내부 좌표)
+    var pw=pop.offsetWidth, M=8, W=pr.width;
+    var left;
+    if(MODE==='bad'){ left=cx; }                  // 옛 버그: 중앙정렬 transform 가정인데 popInCx가 덮어 left=좌변 → 우측 잘림
+    else{ left=cx-pw/2; left=Math.min(left,W-M-pw); left=Math.max(left,M); }   // 픽스: 좌변 직접 클램프
+    pop.style.left=left+'px';
+    pop.style.bottom=(pr.height-(br.top-pr.top)+10)+'px';
+    var over=Math.round(left+pw-W);
+    note.innerHTML = MODE==='bad'
+      ? '전: 트레이 우측이 화면 밖으로 <b style="color:#ff8a8a">'+(over>0?'+'+over+'px 잘림':'안 잘림')+'</b> — 라벨 끝이 가려짐'
+      : '후: 우측 끝이 화면 안 <b style="color:var(--accent)">'+Math.max(0,W-(left+pw))+'px 여백</b> — 완전히 보임';
+  }
+  function flash(lab){ note.innerHTML='탭함 → <b>'+lab+'</b> 창 복원(데모)'; setTimeout(function(){ if(MODE) openMaybe(); },900); }
+  function openMaybe(){ /* keep note */ }
+
+  btn.addEventListener('click', function(e){ e.stopPropagation(); if(document.getElementById('mp')) closePick(); else openPick(); });
+  document.addEventListener('click', function(e){ if(!phone.contains(e.target)||(!e.target.closest('.tool-restore')&&!e.target.closest('.min-pick'))) closePick(); });
+  function setMode(m){ MODE=m; mBad.classList.toggle('on',m==='bad'); mFix.classList.toggle('on',m==='fix'); openPick(); }
+  mBad.addEventListener('click',function(){ setMode('bad'); });
+  mFix.addEventListener('click',function(){ setMode('fix'); });
+  // 초기 = 픽스 모드로 트레이 펼친 상태
+  setTimeout(function(){ openPick(); },200);
+</script>
+</body>
+</html>
