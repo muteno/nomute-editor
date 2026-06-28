@@ -127,25 +127,15 @@ for f in "${files[@]}"; do
   #   · 다르면(지침이 그새 갱신됨) → 재생성(덮어쓰기). 잘못된 1개보다 제대로 된 1개를 2× 비용으로.
   id="$(article_id "$url")"
   REGEN_TARGET=""
-  # 운영자 명시 재제출(pick.js 전문 직접 입력 = '# force: 1')이면 GVER 일치해도 재분석(덮어쓰기) — 기존 빈약/오분석 카드를
-  #   전문 붙여넣기로 고치려는데 중복게이트가 무음 차단하던 것 해소(운영자 260628). ⚠️ '# body:' 이전 헤더만 검사
-  #   = 붙여넣은 본문이 우연히 '# force:' 줄을 가져도 오인 안 함. 자동 수집·body-less 재시도엔 마커 없음 → 게이트 불변.
-  #   ⚠️ 범위 = **요약(queue)** 재분석까지. 이미 생성된 카드/썸네일은 GVER 게이트(cardmake.sh·thumb_gen.py)라 force로 자동
-  #   갱신 안 됨 → 운영자 '슛'/'다시 만들기'로 갱신(Failed 픽 복구는 다운스트림 미생성이라 새로 정상 생성 = 무영향). 5인 검증3 ⚠️.
-  FORCE=""; if sed -n '/^# body:/q;p' "$f" 2>/dev/null | grep -qm1 '^# force:[[:space:]]*1[[:space:]]*$'; then FORCE=1; fi   # 후행 앵커 = '# force: 11' 류 오매치 차단(검증1 방어심층)
   existing="$(compgen -G "queue/*-${id}.md" 2>/dev/null | head -n1 || true)"
   if [ -n "$existing" ]; then
     ev="$(grep -m1 '^guidelines_version:' "$existing" | sed -E 's/^guidelines_version:[[:space:]]*"?([^"]*)"?.*/\1/')"
-    if [ "$ev" = "$GVER" ] && [ -z "$FORCE" ]; then
+    if [ "$ev" = "$GVER" ]; then
       echo "중복 — 같은 지침 버전 카드 있음(${id} / ${GVER}) → 분석 생략"
       rm -f "$f"
       echo "::endgroup::"; continue
     fi
-    if [ -n "$FORCE" ] && [ "$ev" = "$GVER" ]; then
-      echo "강제 재분석(force·운영자 전문 직접 입력) — 같은 지침이지만 덮어쓰기: $existing"
-    else
-      echo "지침 변경 감지(${ev:-없음}→${GVER}) — 재생성(덮어쓰기): $existing"
-    fi
+    echo "지침 변경 감지(${ev:-없음}→${GVER}) — 재생성(덮어쓰기): $existing"
     REGEN_TARGET="$existing"
   fi
 
