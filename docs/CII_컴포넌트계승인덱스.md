@@ -44,7 +44,8 @@
 
 ## 강제·후속 로드맵
 - ✅ `check_design` 5파일 커버(ly/k/comp 편입·260628) · ✅ ly/k 토큰화 · ✅ 도구앱 focus-visible.
-- ⏳ P1 = `nm-svg.js` SVG 공유(1벌) + "4벌 동일" 미러 게이트(`cscroll.js`·`check_sens_vocab` 패턴) · 이모지→SVG.
+- ✅ **이모지→SVG 전면**(4뷰어 UI 이모지 픽토그램화 · PR #1119·1120·1121·1125 · 핀·블릿·💡 외 전부 · 운영자 "전부 무조건").
+- ✅ **P1 = `nm-svg.js` 아이콘 SSOT**(260628) — 공유 아이콘 10종(CHECK·COPY·PASTE·ERASE·UNDO·WAIT·ERR·OK·DOWNLOAD·WARN) 단일정본·4뷰어 `<script src="nm-svg.js">` 로드(`cscroll.js` 패턴)·인라인 복제 제거. 발산본 통일=정본(DOWNLOAD=14px[thumb CSS 12px 재지정 무관]·WARN=index/ly/k 다수본). **하드 게이트** = `check_refs.check_icon_ssot()`(인라인 재선언=섀도잉·미로드=ReferenceError 차단 → "하나 바꾸면 다 바뀜" 보장). ⏳ 잔여 = :active 효과 통일(중첩버그 가드)·이모지 SVG도 nm-svg 편입 검토.
 - ⏳ P2 = `tokens.css` 공유 `<link>` + `build_design_mirror` 확장(thumb/ly/k에 `--r/sp/blur/btn/z` 주입).
 - ⏳ P3 = `구성도/00_컴포넌트_인덱스.html` 시각본 + (선택) `build_components_index.py`로 표↔코드 diff 하드게이트(`build_library` 패턴).
 - ⏳ 잔여 = 닫기 X 13클래스 단일화 · 토스트 토큰화+`role=alert` · z충돌(`.totop`/`.nm-top`) · radius/gap 토큰화.

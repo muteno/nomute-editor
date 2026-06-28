@@ -168,36 +168,6 @@ def check_viewer_js():
             print('✅ viewer JS 구문 OK — %s' % rel)
     return rc
 
-_ICON_DECL_RE = re.compile(r'^const ([A-Z0-9_]+_SVG) = ', re.M)
-def check_icon_ssot():
-    """공유 아이콘 SSOT 하드 게이트(운영자 260628 '하나 바꾸면 다 바뀜').
-    nm-svg.js가 정의한 공유 아이콘을 뷰어가 다시 인라인 const로 선언하면(=섀도잉·드리프트 부활) rc=1.
-    각 뷰어가 공유 아이콘을 *쓰면서* nm-svg.js를 로드 안 하면(런타임 ReferenceError) rc=1."""
-    nm = os.path.join(ROOT, 'viewer/nm-svg.js')
-    if not os.path.exists(nm):
-        print('⚠️ nm-svg.js 없음 — 아이콘 SSOT 게이트 스킵'); return 0
-    shared = set(_ICON_DECL_RE.findall(open(nm, encoding='utf-8').read()))
-    if not shared:
-        print('⚠️ nm-svg.js에 공유 상수 0 — 게이트 스킵'); return 0
-    rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html'):
-        try:
-            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
-        except Exception:
-            continue
-        loads = 'nm-svg.js' in html
-        inlined = set(_ICON_DECL_RE.findall(html)) & shared
-        if inlined:
-            print('❌ 아이콘 SSOT 위반 — %s가 공유 아이콘을 인라인 재선언(섀도잉): %s → nm-svg.js만 두고 제거'
-                  % (rel, ', '.join(sorted(inlined)))); rc = 1
-        used = {c for c in shared if (c in html) and not loads}
-        if used and not loads:
-            print('❌ 아이콘 SSOT 위반 — %s가 공유 아이콘(%s)을 쓰는데 nm-svg.js 미로드 → <script src="nm-svg.js"> 추가'
-                  % (rel, ', '.join(sorted(used))[:60])); rc = 1
-    if rc == 0:
-        print('✅ 아이콘 SSOT 정합 — 공유 아이콘 %d개 단일정본(nm-svg.js)·인라인 재선언 0' % len(shared))
-    return rc
-
 def check_design():
     warns = []
     for rel, base in _DESIGN_BASELINE.items():
@@ -323,11 +293,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_viewer_js 스킵:', e)
-    try:
-        if check_icon_ssot() != 0:   # 공유 아이콘 SSOT(하드 게이트 — 인라인 재선언·미로드=드리프트 부활 차단·260628)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_icon_ssot 스킵:', e)
     try:
         import build_design_mirror   # 디자인 거울 정합: 구성도/base.css = viewer :root (하드 게이트·§🎨 ⓐ)
         if build_design_mirror.check() != 0:
