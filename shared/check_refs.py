@@ -411,6 +411,27 @@ def check_x_char():
     return 0   # WARN-only(병렬작업 파일 비차단)
 
 
+def check_tokens_link():
+    """공유 구조토큰 tokens.css 배선 하드게이트(§🎨 STAGE3·분신술7·260628).
+    4뷰어(thumb/ly/k/comp)가 viewer/tokens.css를 <link>로 로드하는지 검증 — 미링크면 신규 컴포넌트가
+    var(--r-m 등) 구조토큰을 못 써 raw로 새거나(드리프트), 옛 링크가 깨지면 침묵(check_paths가 HTML <link>
+    미검증)이라 여기서 잡는다. tokens.css 파일 부재면 게이트 무력(아직 미생성=스킵)."""
+    if not os.path.exists(os.path.join(ROOT, 'viewer', 'tokens.css')):
+        print('⚠️ tokens.css 없음 — 구조토큰 링크 게이트 스킵'); return 0
+    rc = 0
+    for rel in ('viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
+        try:
+            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        if not re.search(r'<link[^>]+href=["\']tokens\.css["\']', html):
+            print('❌ 구조토큰 링크 누락 — %s가 tokens.css를 <link> 안 함 → <head>에 <link rel=stylesheet href=tokens.css> 추가(§🎨 STAGE3)' % rel)
+            rc = 1
+    if rc == 0:
+        print('✅ 구조토큰 링크 — 4뷰어 전부 tokens.css 로드.')
+    return rc
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -468,6 +489,11 @@ def main():
         check_x_char()   # 닫기/삭제 × 문자 → SVG 권장(WARN-only·병렬작업 파일 비차단)
     except Exception as e:
         print('⚠️ check_x_char 스킵:', e)
+    try:
+        if check_tokens_link() != 0:   # 공유 구조토큰 tokens.css 4뷰어 링크(하드 게이트·§🎨 STAGE3·260628)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_tokens_link 스킵:', e)
     return rc
 
 
