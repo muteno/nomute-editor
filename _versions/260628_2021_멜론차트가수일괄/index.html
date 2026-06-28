@@ -947,10 +947,9 @@
   #editdlg::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }   /* 기본 backdrop과 통일 */
   .ed-h { display:flex; align-items:center; padding:11px 16px; border-bottom:1px solid var(--line2); }   /* 헤더 세로패딩 11 통일(=ed-foot 대칭) */
   .ed-title { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-.2px; }
-  .ed-x { width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:9px; font-size:13px; color:var(--fg);
+  .ed-x { margin-left:auto; width:30px; height:30px; flex:none; display:grid; place-items:center; border-radius:9px; font-size:13px; color:var(--fg);
     background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer; }   /* 닫기 ✕ 통일 = .tool-x 글래스 사각 */
   .ed-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
-  .ed-h .askhead-act { margin-left:auto; }   /* −·X 묶음을 헤더 우측으로(운영자 260628 — 옛 .ed-x margin-left:auto가 askhead-act 래퍼에 갇혀 좌측에 붙던 것 교정 · tool-hbtns 패턴) */
   .ed-body { padding:12px 16px 16px; overflow-x:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; max-height:calc(94vh - 114px); display:flex; flex-direction:column; gap:6px; }   /* touch=iOS 관성스크롤 · contain=스크롤 체이닝 잼 차단 */
   .ed-body > * { flex-shrink:0; }   /* flex column이 max-height 넘으면 자식(특히 .ed-chips min-height:34px)을 짜부 → 칩 행이 아래 라벨·textarea 위로 새던 버그 차단(대신 .ed-body 스크롤·운영자 260621) */
   .ed-img { display:block; max-width:100%; max-height:30vh; width:auto; height:auto; margin:2px auto 4px; border-radius:14px; border:1px solid var(--line); background:var(--glass2); }
@@ -4962,16 +4961,9 @@ function syncCardBtn() { cardonlyBtn.classList.toggle('on', cardonlyChk.checked)
 function closeFilterPop() { if (!filterpop || filterpop.hidden) return; filterpop.hidden = true; syncFilterBtn(); }
 filterBtn.addEventListener('click', e => {
   e.stopPropagation();
-  const willOpen = filterpop.hidden;   // 닫혀있으면(=열려는 동작) true
-  const hasFilter = FILTERS.cats.size > 0 || FILTERS.issue;   // 전체 아닌 특정 지정 상태?
+  const willOpen = filterpop.hidden;
   closeOverlays('filterpop');     // 다른 오버레이(프로필 메뉴·메시지함·검색·라디얼 등) 자동 닫힘 = 상호배타
-  if (willOpen && hasFilter) {     // 닫힌 상태 + 필터 적용 중 = 창 안 열고 필터 해제(전체로)·창은 닫힌 채 유지(운영자 260628)
-    FILTERS.cats.clear(); FILTERS.issue = false;   // '전체' 칩과 동일 리셋(4943)
-    renderChips(); render();
-    filterpop.hidden = true; syncFilterBtn();
-    return;
-  }
-  filterpop.hidden = !willOpen;   // 그 외 = 기존 열기/닫기 토글(필터 미적용=열기 · 열려있으면 닫기·필터 유지)
+  filterpop.hidden = !willOpen;
   syncFilterBtn();
 });
 cardonlyBtn.addEventListener('click', () => { cardonlyChk.checked = !cardonlyChk.checked; syncCardBtn(); render(); });   // 카드만 = 직접 토글(off 무채색→on 네온그린) + 재렌더
@@ -6690,7 +6682,7 @@ if ($('#askMin')) $('#askMin').addEventListener('click', () => minimizeAsk());  
 if ($('#revMin')) $('#revMin').addEventListener('click', () => minimizeComposeDlg(revdlg, 'revdlg', '요약 수정'));
 if ($('#crevMin')) $('#crevMin').addEventListener('click', () => minimizeComposeDlg($('#crevdlg'), 'crevdlg', '카드 수정'));
 if ($('#pasteMin')) $('#pasteMin').addEventListener('click', () => minimizeComposeDlg(pastedlg, 'pastedlg', '전문 입력'));
-if ($('#edMin')) $('#edMin').addEventListener('click', () => minimizeComposeDlg($('#editdlg'), 'editdlg', '카드뉴스 - 이미지 - 수정'));   // 계층 표기(운영자 260628)
+if ($('#edMin')) $('#edMin').addEventListener('click', () => minimizeComposeDlg($('#editdlg'), 'editdlg', '카드 변경'));
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 askdlg.addEventListener('close', () => {
   if (askMinimizing) { askMinimizing = false; showRestoreNav(); if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 경로 = 첨부·입력 보존(이미지 비움 스킵·운영자 260627)
