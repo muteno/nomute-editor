@@ -126,6 +126,8 @@ for (const a of articles) {
   try { status = JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8')); } catch { /* 상태 없음 */ }
   let cardsMd = '';
   try { cardsMd = readFileSync(join(dir, 'cards.md'), 'utf8'); } catch { /* 텍스트 없음 */ }
+  // 렌더 방어(운영자 260629): 카드 텍스트 블록 내 빈 줄 제거 — 생성 로직이 막지만 이중(합성기가 빈 줄을 중간 공백으로 렌더·뷰어 pre-wrap 노출).
+  if (cardsMd) cardsMd = cardsMd.replace(/(\*\*텍스트\*\*\n```text\n)([\s\S]*?)(\n```)/g, (_m, a, b, c) => a + b.split('\n').filter(l => l.trim()).join('\n') + c);
   let cardErr = '';
   if ((status.state || '') === 'failed') {
     try { cardErr = readFileSync(join(dir, 'error.log'), 'utf8'); } catch { /* 로그 없음 */ }
