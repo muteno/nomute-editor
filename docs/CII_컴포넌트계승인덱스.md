@@ -44,7 +44,9 @@
 
 ## 강제·후속 로드맵
 - ✅ `check_design` 5파일 커버(ly/k/comp 편입·260628) · ✅ ly/k 토큰화 · ✅ 도구앱 focus-visible.
-- ⏳ P1 = `nm-svg.js` SVG 공유(1벌) + "4벌 동일" 미러 게이트(`cscroll.js`·`check_sens_vocab` 패턴) · 이모지→SVG.
+- ✅ **이모지→SVG 전면**(4뷰어 UI 이모지 픽토그램화 · PR #1119·1120·1121·1125 · 핀·블릿·💡 외 전부 · 운영자 "전부 무조건").
+- ✅ **P1 = `nm-svg.js` 아이콘 SSOT**(260628) — 공유 아이콘 10종(CHECK·COPY·PASTE·ERASE·UNDO·WAIT·ERR·OK·DOWNLOAD·WARN) 단일정본·4뷰어 `<script src="nm-svg.js">` 로드(`cscroll.js` 패턴)·인라인 복제 제거. 발산본 통일=정본(DOWNLOAD=14px[thumb CSS 12px 재지정 무관]·WARN=index/ly/k 다수본). **하드 게이트** = `check_refs.check_icon_ssot()`(인라인 재선언=섀도잉·미로드=ReferenceError 차단 → "하나 바꾸면 다 바뀜" 보장).
+- ✅ **:active 눌림 효과 토큰화**(260628 · PR #1133·1135 · 분신술 10인) — 14개 임의 scale → 4뷰어 `:root` 5토큰 사다리(`--press-pico/xs/s/m/l` = `.55/.82/.85/.9/.95`, 기존 우세값 스냅·델타 ≤.03) + `scale(var(--press-*,fallback))` + reduced-motion 무효화 블록(`--press-*:1`). **픽토온리 = `:active svg{scale}`로 강제**(배경 plate 안 따라움직임 — `.vh-fbtn`·`.jvar-dl` 버그픽스). **제외=셀렉터 화이트리스트**(값 기반 금지 — `.mergebox(.95)`·`.rev-fab(.9)` 충돌): 게이지(`.go/.mkbtn/.ed-go/.edattach/.sc-pick/.unmerge-go/.hist-clr`)·보라(`.mergebox/.mb-x/#histRemote/.rev-fab`)·카드(`.card/.abadd .99`). 색플래시(복사 형광) 보존. ⚠️ 4뷰어 `:root` 독립(상속 0) → 토큰 4곳 각각·index만 거울 대상. ⏳ 잔여 = 이모지 SVG도 nm-svg 편입 검토 · `check_press_tokens` 게이트(raw scale 재등장 차단).
 - ⏳ P2 = `tokens.css` 공유 `<link>` + `build_design_mirror` 확장(thumb/ly/k에 `--r/sp/blur/btn/z` 주입).
 - ⏳ P3 = `구성도/00_컴포넌트_인덱스.html` 시각본 + (선택) `build_components_index.py`로 표↔코드 diff 하드게이트(`build_library` 패턴).
 - ⏳ 잔여 = 닫기 X 13클래스 단일화 · 토스트 토큰화+`role=alert` · z충돌(`.totop`/`.nm-top`) · radius/gap 토큰화.
