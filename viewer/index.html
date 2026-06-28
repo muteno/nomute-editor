@@ -5065,7 +5065,11 @@ function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른
   try { sessionStorage.removeItem('nomute_q_open'); } catch {}
   if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
-window.addEventListener('popstate', () => { if (!qpop.hidden && !qpop.classList.contains('closing')) { _qPop = true; closeQueueUser(); } });   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기 · 닫는 중(closing)이면 재진입 안 함(deferred-hide 가드)
+window.addEventListener('popstate', () => {   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기 · 닫는 중(closing)이면 재진입 안 함(deferred-hide 가드)
+  const _td = $('#tooldlg');
+  if ((LBOX && LBOX.open) || isComposingModalOpen() || (_td && _td.open)) return;   // ⚠️ 상위 모달(라이트박스·작성·도구)이 떠 있으면 이 뒤로가기는 그 모달 몫 → 대기열까지 같이 닫히던 over-close 차단(평의회 G4 · 260628)
+  if (!qpop.hidden && !qpop.classList.contains('closing')) { _qPop = true; closeQueueUser(); }
+});
 const qEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function qAgo(t) {
   if (!t) return '?';
@@ -5905,7 +5909,7 @@ function openUnmergePop(numEl, c) {
   if (box) box.addEventListener('click', e => { if (e.target.closest('#mergeboxX')) return; doMerge(); });
   if (boxX) boxX.addEventListener('click', e => { e.stopPropagation(); exitMerge(); });
   ['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, () => { clearTimeout(_mergeLpT); _mergeLpT = null; }));   // 손가락 뗌을 카드서 못 잡는 기기 대비(qFeedBtn 패턴·분신술3) = 빠른 탭이 600ms 뒤 오발 진입하는 것 차단
-  window.addEventListener('popstate', () => { if (MERGE_MODE) exitMerge(true); });   // 폰 뒤로가기 = 취소(이미 pop됨 → back 안 함)
+  window.addEventListener('popstate', () => { const _td = $('#tooldlg'); if ((LBOX && LBOX.open) || isComposingModalOpen() || (_td && _td.open) || !qpop.hidden) return; if (MERGE_MODE) exitMerge(true); });   // 폰 뒤로가기 = 취소(이미 pop됨 → back 안 함) · ⚠️ 상위 오버레이(모달·대기열) 떠 있으면 그 몫 → 병합 over-close 차단(평의회 G4 · 260628)
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && MERGE_MODE) exitMerge(); });
   document.addEventListener('click', e => {   // 빈 곳(카드·박스 밖) 탭 = 취소(카드 위는 host capture가 stopPropagation으로 선점)
     if (!MERGE_MODE) return;
@@ -7383,25 +7387,28 @@ function isComposingModalOpen() {
 // ── 작성 모달 폰 뒤로가기 = 모달 먼저 닫기(입력 손실 방지 · §🎨 "모달+폰뒤로가기 = pushState/popstate" lbox/tooldlg 패턴 계승 · 분신술6 발견 · 260627) ──
 // 작성 모달(ask·rev·crev·paste·edit)을 openComposeDlg로 열면 history 칸 1개 push → 폰 뒤로가기 1번 = 그 모달만 닫고 앱 안 벗어남(입력 유지).
 // 다른 경로(X·백드롭·ESC·전송완료 close())로 닫히면 push한 칸을 history.back()으로 회수(잔류 칸 = 다음 뒤로가기 2번 눌러야 하는 것 방지).
-let _composeDlgPushed = null, _composeDlgPopping = false;   // 현재 칸 push한 모달 · popstate로 닫는 중(close 핸들러가 back 중복 안 하게)
+// ⚠️ 단일 추적자(_composeDlgPushed) → 스택 배열로 교체 (평의회 5인 260628): 최소화로 컴포즈 모달이 *겹치면*(editdlg 최소화 → revdlg 열기 → editdlg 복원 = 둘 다 open) 단일 변수가 마지막 것으로 덮어써져, 가려진 모달이 자기 history 칸을 회수 못 하던 orphan 버그(X·뒤로가기가 부모 레벨로 안 감). 스택은 *열린 컴포즈 모달 전부*를 추적 → 각자 자기 칸을 정확히 1회 회수. 닫기는 항상 LIFO(showModal inert로 최상위만 상호작용 = top부터 닫힘)라 history.back()이 top 칸을 정확히 pop. popping 표식은 per-modal(dlg._composePopping).
+let _composeDlgStack = [], _composeRecovering = false;   // 스택 = history 칸을 가진(열려있는) 컴포즈 모달들(push 순서·맨 뒤=최상위) · _composeRecovering = 닫힌 모달이 자기 칸 회수로 부른 back인지(그 popstate는 다음 모달을 닫으면 안 됨)
 function openComposeDlg(dlg) {
   if (!dlg) return;
   if (!dlg._composeHistBound) {   // close 시 칸 회수 = 모달당 1회만 바인딩(showModal 사이트 5곳 외 close 사이트 안 건드림)
     dlg._composeHistBound = true;
     dlg.addEventListener('close', () => {   // ⚠️ <dialog>.close()의 close 이벤트는 비동기(queued) → popping 리셋은 *여기서*(동기 리셋하면 이 핸들러가 볼 땐 이미 false라 back 중복)
-      if (_composeDlgPushed !== dlg) return;
-      _composeDlgPushed = null;
-      const wasPopping = _composeDlgPopping; _composeDlgPopping = false;
-      if (!wasPopping) { try { history.back(); } catch {} }   // X·ESC·백드롭·전송완료 = push한 칸 회수(popstate 경로면 이미 소비 → 생략)
+      const i = _composeDlgStack.indexOf(dlg); if (i < 0) return;   // 이 모달이 칸을 안 가졌으면(이미 회수·composeDlg 외 경로) 무시
+      _composeDlgStack.splice(i, 1);                                // 자기 칸 제거(겹쳐 있어도 자기 것만)
+      const wasPopping = dlg._composePopping; dlg._composePopping = false;
+      if (!wasPopping) { _composeRecovering = true; try { history.back(); } catch { _composeRecovering = false; } }   // X·ESC·백드롭·전송완료·최소화 = push한 칸 회수(popstate 경로면 이미 소비 → 생략). ⚠️ 이 back의 popstate가 *아래 모달까지* 닫는 cascade 차단 = _composeRecovering 표식(겹침 시 핵심). 닫기 LIFO라 back이 top 칸을 정확히 pop
     });
   }
   dlg.showModal();
-  try { history.pushState({ composeDlg: true }, ''); _composeDlgPushed = dlg; } catch {}
+  try { history.pushState({ composeDlg: true }, ''); if (_composeDlgStack.indexOf(dlg) < 0) _composeDlgStack.push(dlg); } catch {}   // includes 가드 = 같은 모달 이중 push 방지(정상 흐름엔 닫힐 때 pop돼 없음)
 }
-window.addEventListener('popstate', () => {   // 폰 뒤로가기 = 떠 있는 작성 모달부터 닫기(다른 모달 popstate 핸들러는 자기 모달 open일 때만 동작 = 무충돌)
-  if (_composeDlgPushed && _composeDlgPushed.open) {
-    _composeDlgPopping = true;     // close 이벤트(비동기)가 이 플래그를 보고 back 생략 후 스스로 리셋
-    _composeDlgPushed.close();
+window.addEventListener('popstate', () => {   // 폰 뒤로가기 = 최상위 열린 컴포즈 모달부터 닫기(스택 top · 다른 모달 popstate 핸들러는 자기 모달 open일 때만 동작 = 무충돌)
+  if (_composeRecovering) { _composeRecovering = false; return; }   // 자기 칸 회수용 back = 무시(겹친 아래 모달 닫지 않음 = 한 번에 한 레벨만)
+  const top = _composeDlgStack[_composeDlgStack.length - 1];
+  if (top && top.open) {
+    top._composePopping = true;     // close 이벤트(비동기)가 이 플래그를 보고 back 생략 후 스스로 리셋
+    top.close();
   }
 });
 function livePoll() {
