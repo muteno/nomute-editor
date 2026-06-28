@@ -57,8 +57,8 @@
        ④ 최소화(minimize) 시스템 = 복원 ▲·picker·실드·칩 — *최우선*(②③ 위. 열린 모달 top-layer만은 z로 못 이겨 reparentNav가 ▲를 그 모달 안으로 옮겨 처리). */
     --z-nav:35;          /* ② 하단 네비바(bnav) */
     --z-remote:36;       /* ② 리모컨 = 라디얼 제작 FAB(#bpop radmenu) */
-    --z-remote-pop:41;   /* ③ 리모컨 파생 팝(실패메뉴·큐플래시·linkpop) */
-    --z-float:60;        /* ③ 플로팅 보조 팝(병합 해제 등) */
+    --z-remote-pop:41;   /* ③ 리모컨 파생 팝(실패메뉴·큐플래시) */
+    --z-float:60;        /* ③ 플로팅 보조 팝(병합 해제·긴급속보 토스트 .nm-toast — 의도적으로 60층, --z-toast 90 아님) */
     --z-toast:90;        /* ③ 전역 토스트/포인터 배너(#ptr) */
     --z-reason:130;      /* ③ 사유 선택 메뉴(.sc-rsn) */
     --z-min-ghost:199;   /* ④ 최소화 고스트(수렴 애니) */
@@ -571,7 +571,7 @@
   /* 가운데 정렬 = left:0/right:0 + margin:auto (translateX 안 씀). ⚠️ position:fixed + transform:translateX(-50%) 조합은
      iOS/웹뷰서 히트테스트를 '변형 전' 위치로 잡아 탭이 보이는 위치 밖으로 새어 뒤 요소(기사 카드)가 눌리던 버그 → translateX 제거로 차단(운영자 260622). 슬라이드는 translateY만. */
   .nm-toast { position:fixed; left:0; right:0; margin-inline:auto; bottom:calc(78px + env(safe-area-inset-bottom)); transform:translateY(18px);
-    z-index:60; width:min(92vw,430px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
+    z-index:var(--z-float); width:min(92vw,430px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
     background:linear-gradient(135deg, rgba(42,13,11,.95), rgba(20,9,9,.95)); border:1px solid rgba(255,85,60,.5); border-radius:14px;
     box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#fff; font-size:13px; font-weight:700; line-height:1.35;
     backdrop-filter:blur(14px) saturate(1.2); -webkit-backdrop-filter:blur(14px) saturate(1.2); opacity:0; transition:opacity .3s, transform .3s; }
@@ -6507,7 +6507,7 @@ function hostForNav() {                                                         
 function reparentNav() {                                                         // 열린 모달(실경로 #dlg/#lbox = 모바일 풀스크린)이 있으면 ▲를 그 자식으로 = 그 inert 모달의 비inert 자식이라 위에 보임. 풀스크린이라 CSS bottom:150이 viewport와 일치(좌표 보정 불요).
   const b = $('#toolRestore'); if (!b || !toolMin) return;
   const host = hostForNav();
-  if (b.parentElement !== host) host.appendChild(b);
+  if (b.parentElement !== host) { closeMinPicker(); host.appendChild(b); }       // 모달 open/close로 ▲ 이동 시 열린 picker는 닫음 — picker는 옛 부모(닫힌 모달)에 안 따라와 고아됨(폰 뒤로가기·ESC 닫힘서 #minPick·리스너 잔존) → 컨텍스트 바뀌면 transient 메뉴 정리(평의회 A3 · 260628)
 }
 function showRestoreNav() {
   const b = $('#toolRestore'); if (!b) return;
@@ -6521,6 +6521,7 @@ function showRestoreNav() {
 }
 function hideRestoreNav() {
   const b = $('#toolRestore'); if (!b) return;
+  closeMinPicker();                                                              // ▲ 숨김 = 열린 picker도 동반 정리 — 롱프레스 닫기·다른 도구 열기 경로서 #minPick·바깥탭 리스너가 고아로 남던 것 차단(평의회 A4/A7/A10 · 260628)
   toolMin = false; clearTimeout(showRestoreNav._p); clearTimeout(showRestoreNav._s);
   if (b._disarm) b._disarm();                                                    // armed면 "닫기" 칩/실드 정리 + armed 리셋
   b.classList.remove('pulsing', 'show', 'arming');
@@ -6535,6 +6536,7 @@ function hideRestoreNav() {
   function teardown() { if (chip) { chip.remove(); chip = null; } if (shield) { shield.remove(); shield = null; } }
   function arm() {
     if (armed) return; armed = true;
+    closeMinPicker();                                                            // 롱프레스 닫기 진입 = 열린 picker 먼저 정리(shield가 picker 위 덮는 시각 겹침 제거 · 평의회 A2 · 260628)
     tr.classList.remove('pulsing'); tr.classList.add('arming');
     tr.setAttribute('aria-label', '위 "닫기"를 탭하면 종료 · 다른 곳 탭하면 취소');
     if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
