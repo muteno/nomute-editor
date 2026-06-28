@@ -331,12 +331,7 @@ def check_curation_constants():
         ('CROSS_POW',           vcode(r'const CROSS_POW\s*=\s*([\d.]+)'),           vdoc(r'cross\^([\d.]+)')),
         ('FOLLOW_W',            vcode(r'const FOLLOW_W\s*=\s*([\d.]+)'),            vdoc(r'FW([\d.]+)')),
         ('BREAKING_RANK_BOOST', vcode(r'const BREAKING_RANK_BOOST\s*=\s*([\d.]+)'), vdoc(r'isBreaking\?([\d.]+)')),
-        ('ACC_T_HALF',          vcode(r'const ACC_T_HALF\s*=\s*([\d.]+)'),          vdoc(r'timeAcc\((\d+(?:\.\d+)?)·')),
-        ('ACC_T_POW',           vcode(r'ACC_T_POW\s*=\s*([\d.]+)'),                 vdoc(r'timeAcc\([\d.]+·([\d.]+)\)')),
-        ('GRADE_W.grade0',      vcode(r'GRADE_W\s*=\s*\{\s*0:\s*([\d.]+)'),         vdoc(r'gradeW\{0:([\d.]+)')),
-        ('GRADE_W.grade1',      vcode(r'GRADE_W\s*=\s*\{[^}]*?1:\s*([\d.]+)'),      vdoc(r'gradeW\{[^}]*?1:([\d.]+)')),
-        ('GRADE_W.grade2',      vcode(r'GRADE_W\s*=\s*\{[^}]*?2:\s*([\d.]+)'),      vdoc(r'gradeW\{[^}]*?2:([\d.]+)')),
-        ('GRADE_W.grade3',      vcode(r'GRADE_W\s*=\s*\{[^}]*?3:\s*([\d.]+)'),      vdoc(r'gradeW\{[^}]*?3:([\d.]+)')),
+        ('GRADE_W.grade0',      vcode(r'GRADE_W\s*=\s*\{\s*0:\s*([\d.]+)'),         vdoc(r'floor 0\.05→\*\*([\d.]+)')),
     ]
     bad = []
     for name, code_v, doc_v in checks:
@@ -349,58 +344,7 @@ def check_curation_constants():
         for b in bad: print('  -', b)
         rc = 1
     else:
-        print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·ACC_T·GRADE_W 전체 = §★ 일치.')
-    return rc
-
-
-_CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
-
-
-def _parse_cat_kw(text):
-    """CAT_KW={...} 블록 → 버킷별 토큰집합 (py 큰따옴표·js 작은따옴표 공용·//·# 주석 제거)."""
-    m = re.search(r'CAT_KW\s*=\s*\{(.*?)\n\s*\}\s*;?', text, re.S)
-    if not m:
-        return None
-    body = re.sub(r'//[^\n]*', '', m.group(1))
-    body = re.sub(r'#[^\n]*', '', body)
-    out = {}
-    for b in _CATKW_BUCKETS:
-        bm = re.search(r'(?:"%s"|%s)\s*:\s*\[(.*?)\]' % (b, b), body, re.S)
-        out[b] = set(re.findall(r"""['"]([^'"]+)['"]""", bm.group(1))) if bm else set()
-    return out
-
-
-def check_cat_kw():
-    """CAT_KW 카테고리 키워드사전 py(to_candidates.py) ↔ js(viewer/index.html) 정합 하드게이트.
-    수동 미러라 매 세션 드리프트(같은 단어가 두 엔진서 다른/없는 버킷)가 누적 — 분류 오분류 재발의
-    근본(260628 C9 분신술 10인). 버킷별 토큰집합 일치 + 버킷충돌(같은 토큰·다른 버킷) 둘 다 검사."""
-    rc = 0
-    try:
-        py = open(os.path.join(ROOT, 'scraper', 'to_candidates.py'), encoding='utf-8').read()
-        js = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
-    except Exception as e:
-        print('⚠️ check_cat_kw 스킵(파일):', e); return 0
-    P = _parse_cat_kw(py); J = _parse_cat_kw(js)
-    if P is None or J is None:
-        print('⚠️ check_cat_kw 스킵(CAT_KW 블록 못 찾음 — py=%s·js=%s)' % (P is not None, J is not None)); return 0
-    bad = []
-    for b in _CATKW_BUCKETS:
-        onlyP, onlyJ = P[b] - J[b], J[b] - P[b]
-        if onlyP: bad.append('[%s] py에만: %s' % (b, ', '.join(sorted(onlyP))))
-        if onlyJ: bad.append('[%s] js에만: %s' % (b, ', '.join(sorted(onlyJ))))
-    pmap, jmap = {}, {}
-    for b in _CATKW_BUCKETS:
-        for t in P[b]: pmap.setdefault(t, set()).add(b)
-        for t in J[b]: jmap.setdefault(t, set()).add(b)
-    for t in set(pmap) & set(jmap):
-        if pmap[t] != jmap[t]:
-            bad.append("버킷충돌 '%s': py=%s js=%s" % (t, sorted(pmap[t]), sorted(jmap[t])))
-    if bad:
-        print('❌ CAT_KW py↔js 드리프트(C9 게이트 — 키워드 한쪽만 고침=분류 오분류 근본):')
-        for b in bad: print('  -', b)
-        rc = 1
-    else:
-        print('✅ CAT_KW py↔js 정합 — 6버킷 토큰집합 일치·버킷충돌 0.')
+        print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·GRADE_W floor = §★ 일치.')
     return rc
 
 
@@ -536,11 +480,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_curation_constants 스킵:', e)
-    try:
-        if check_cat_kw() != 0:   # CAT_KW 카테고리 키워드사전 py↔js 정합(하드 게이트 — 키워드 한쪽만 고침=분류 오분류 근본·260628 C9)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_cat_kw 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1
