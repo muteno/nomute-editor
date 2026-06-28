@@ -33,10 +33,7 @@
   .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .urlclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(15,253,2,.6); }
   .urlclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
-  .urlclip.url-pp { right:46px; }                       /* 붙여넣기 = 지우개 좌측(46)·항상 노출 · 운영자 260627 */
-  .urlclip.url-copy { right:78px; }                     /* 복사 = 붙여넣기 좌측(78)·내용 있을 때만(분리 3단·운영자 260627) */
-  .urlclip.url-hide { display:none; }                   /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
-  .urlwrap input { padding-right:100px; }               /* 복사·붙여넣기·지우개 3버튼 폭 확보(텍스트 겹침 방지) */
+  .urlclip.url-pp { right:46px; }                       /* 클립 = 지우개 좌측(붙여넣기/복사) · 운영자 260627 */
   .url-erase { right:14px; }                            /* 지우개 = 최우측 · 누르면 입력 비움→~10초 되돌리기 */
   .url-erase.url-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 흐리게·비활성 */
   .url-erase.url-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
@@ -46,9 +43,9 @@
   .divider { border:none; border-top:1px solid var(--line); margin:20px 0 6px; }
   .file { display:block; padding:12px; border:1px dashed transparent; border-radius:9px; text-align:center; color:var(--accent); cursor:pointer; background:transparent; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 빈 상태 = 플레이트 없는 픽토그램만(강조색·.covimg 참조·운영자 260627) */
   .file svg { width:26px; height:26px; display:block; }   /* 파일 픽토그램(빈 상태) */
-  .file:active { transform:scale(.88); }   /* 누름 = 픽토그램만 살짝 축소(.sbtn 계승) — 빈 상태 박스/배경 플래시 제거 = 투박함 해소(운영자 260627) */
+  .file:active { transform:scale(.955); background:rgba(15,253,2,.06); border-color:rgba(15,253,2,.3); }   /* 누름 = 형제 .go(자막 생성) 모션 그대로 계승(운영자 260626) */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; animation:fileIn .42s ease; }   /* 파일 들어옴 = 솔리드 강조 테두리로 프레임 + 팝+글로우 확인 모션(파일명 표시·가독) */
-  @keyframes fileIn { 0% { transform:scale(.97); box-shadow:0 0 0 0 rgba(15,253,2,.35); } 45% { transform:scale(1.012); box-shadow:0 0 0 4px rgba(15,253,2,.08); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(15,253,2,0); } }   /* 선택 확인 팝 — 오버슈트·링 완화(부드럽게·운영자 260627) */
+  @keyframes fileIn { 0% { transform:scale(.965); box-shadow:0 0 0 0 rgba(15,253,2,.45); } 45% { transform:scale(1.025); box-shadow:0 0 0 6px rgba(15,253,2,.10); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(15,253,2,0); } }
   @media (prefers-reduced-motion:reduce) { .file.has { animation:none; } }
   /* 파일 업로드(좌·넓게) + 생성(우·짧게) 한 줄 가로 분할 — 풀폭 스택 대신 */
   .filerow { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
@@ -168,17 +165,13 @@ const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
 const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg>';
 (function () {
   const inp = $('#url'), b = $('#urlClip'); if (!inp || !b) return;
-  b.classList.add('url-pp');   // 붙여넣기 = 지우개 좌측(46) · 항상 붙여넣기(복사로 안 바뀜 · 분리·운영자 260627)
-  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'urlclip url-copy url-hide'; cp.setAttribute('aria-label', '복사'); cp.title = '복사'; cp.innerHTML = COPY_SVG;   // 복사 = 별도 버튼(붙여넣기 좌측 78)·내용 있을 때만 노출(thumb 3단 분리 통일)
-  b.parentNode.appendChild(cp);
+  b.classList.add('url-pp');   // 클립 = 지우개 좌측(46)으로
   const er = document.createElement('button'); er.type = 'button'; er.className = 'urlclip url-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
   b.parentNode.appendChild(er);
   let undoTimer = null, undoVal = '', prog = false;
   const upd = () => {
-    const filled = inp.value.trim().length > 0;
-    if (!b.classList.contains('ok')) { b.innerHTML = PASTE_SVG; b.dataset.mode = 'paste'; b.setAttribute('aria-label', '붙여넣기'); }   // 붙여넣기 항상 유지
-    if (!cp.classList.contains('ok')) cp.classList.toggle('url-hide', !filled);   // 복사 = 내용 있을 때만 좌측 노출
-    if (!er.classList.contains('url-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('url-off', !filled); }
+    if (!b.classList.contains('ok')) { const f = inp.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('url-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('url-off', !(inp.value || '').trim().length); }
   };
   const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('url-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
   er.addEventListener('click', e => { e.preventDefault();
@@ -188,11 +181,9 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
     er.classList.remove('url-off'); er.classList.add('url-undo'); er.innerHTML = UNDO_SVG; er.setAttribute('aria-label', '되돌리기'); er.title = '되돌리기 (직전 입력 복원)';
     if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
   });
-  cp.addEventListener('click', async e => { e.preventDefault();   // 복사 전용(붙여넣기 안 건드림)
-    try { await navigator.clipboard.writeText(inp.value); cp.innerHTML = CHECK_SVG; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); cp.innerHTML = COPY_SVG; upd(); }, 1200); } catch {}
-  });
-  b.addEventListener('click', async e => { e.preventDefault();   // 붙여넣기만(기존: 교체)
-    try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd();
+  b.addEventListener('click', async e => { e.preventDefault();
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    else { try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
   });
   inp.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
 })();
