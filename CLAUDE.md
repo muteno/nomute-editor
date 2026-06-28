@@ -160,6 +160,7 @@
 - **평문 텍스트 입력칸 = OS 자동완성 끔이 디폴트 (정본 · 운영자 260628)**: 모든 자유입력 `<input type="text">`(부제·제목·플랫폼·OPA 등 — 결과물에 들어갈 평범한 텍스트)는 **반드시 `autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"` 4종 세트**를 단다. 왜: 안 달면 모바일 OS가 휴리스틱으로 **🔑비번·💳카드·📍주소 자동완성 바**를 입력칸(특히 폼 첫 칸·numeric 칸)에 붙여 키보드 위가 번잡·오입력 유발(운영자 실측 = 썸네일 '부제' 칸). 입력칸 *종류*는 평범한 `<input>` 그대로 — 속성으로만 OS 크롬 차단(복붙·지우개 `.iobtn`·자간 안내 기능 전부 불변). 맞춤법은 브라우저(`spellcheck`) 아닌 **제작 시점 커스텀 `functions/api/spellcheck.js`**가 처리하므로 브라우저 spellcheck off가 정상(이중교정 노이즈 차단). ⚠️ 신규 텍스트 입력칸 = 이 4종 세트 필수(빠뜨리면 자동완성 바 재발). `<textarea>`는 비번/카드 바는 면제(=single-line input 한정)지만 예측·자동대문자·교정 바는 동일하게 뜨므로 `autocapitalize/autocorrect/spellcheck` 3종은 권장(`autocomplete`는 textarea 무효라 생략 가능). 정본 패턴 = `viewer/thumb.html`(`#cSub`/`#cTitle`/`#cplat`/`#opaNum`·군/軍 매핑칸)·`viewer/index.html`(`#q` 검색[type=search라 1순위 위험]·`.fb-comment`·`.sc-memo-in`·`.sc-rsn-in`)·`viewer/ly.html`(`#url`).
 - **아이콘 SVG 상수** = `COPY/PASTE/CHECK/DOWNLOAD/EDIT/LAYERS/THUMBUP/THUMBDOWN_SVG` 등(필요 아이콘 없으면 24뷰박스·stroke 2·round 규격으로 추가).
 - **간격·마진** = 기존 값/`--sp-*` 재사용. 임의 px 새로 정하지 말 것.
+- **이미지/파일 첨부행 = 첨부 픽토그램 + 제작·생성 버튼 1행 (정본=`viewer/ly.html .filerow`)**: 단독 첨부 화면(썸네일 카드뉴스·합성·자막생성·카드변경)은 **[빈 슬롯=배경 없는 픽토그램 flex1.4][버튼 flex1]·gap10·align-items:stretch 한 행**(전폭 슬롯+전폭 버튼 2행 금지). 빈 슬롯=텍스트 라벨 폐지·픽토만(`.file svg` 26px·active 축소). **버튼 안 화살표(→)·픽토(↻) 금지 = 텍스트만.** 상세·정본 = `apps/thumbnail/01_지침_뷰어폼_v1 §4`.
 - **머리표 계층** = §📐(대주제→부제→📍→•) + 타이포 토큰 정합.
 
 ⚠️ **이 절·`:root` 토큰 구조 변경 = 기틀**(§기틀 보호·§🧪) → 사용자 확인 + (기틀이면) 분신술 10인. 단 *기존 라이브 값 추출(토큰화)*은 픽셀 회귀 0.
