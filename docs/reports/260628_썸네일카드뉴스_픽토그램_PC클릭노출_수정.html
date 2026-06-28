@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>썸네일·카드뉴스 픽토그램 버튼 — PC 클릭 노출 수정 보고</title>
+<style>
+  /* §🎨 토큰값 인라인 복사(thumb.html :root, 260628 스냅샷) — 보고서는 일회성, viewer 동기화 의무 없음 */
+  :root{ --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+         --accent:#0FFD02; --accent-rgb:15,253,2; --press-xs:.82;
+         --danger:#ff6b6b; --ok:#0FFD02; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg);
+        font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+        padding:28px 18px 60px; }
+  .wrap{ max-width:860px; margin:0 auto; }
+  h1{ font-size:21px; font-weight:800; margin:0 0 4px; letter-spacing:-.01em; }
+  h1 b{ color:var(--accent); }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 26px; }
+  h2{ font-size:15px; font-weight:800; margin:30px 0 12px; padding-bottom:7px;
+      border-bottom:1px solid var(--line); }
+  h2 .n{ color:var(--accent); margin-right:7px; }
+  p{ margin:8px 0; } .mut{ color:var(--mut); }
+  code{ background:var(--pan); border:1px solid var(--line); border-radius:5px;
+        padding:1px 6px; font:12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfe9c4; }
+
+  /* === 데모 버튼 = thumb.html .file 픽토그램 재현 === */
+  .demos{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:6px 0 4px; }
+  @media (max-width:560px){ .demos{ grid-template-columns:1fr; } }
+  .demo{ background:var(--pan); border:1px solid var(--line); border-radius:13px; padding:16px; }
+  .demo h3{ margin:0 0 3px; font-size:13px; font-weight:800; display:flex; align-items:center; gap:7px; }
+  .badge{ font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; }
+  .badge.bad{ color:var(--danger); background:rgba(255,107,107,.13); border:1px solid rgba(255,107,107,.4); }
+  .badge.good{ color:var(--ok); background:rgba(var(--accent-rgb),.13); border:1px solid rgba(var(--accent-rgb),.4); }
+  .demo .cap{ color:var(--mut); font-size:12px; margin:0 0 13px; min-height:32px; }
+
+  /* 픽토그램 버튼(빈 상태) = thumb.html .file 그대로 */
+  .file{ display:flex; align-items:center; justify-content:center; padding:18px 12px;
+         border:1px dashed transparent; border-radius:9px; color:var(--accent);
+         cursor:pointer; background:transparent; user-select:none;
+         transition:color .18s, border-color .18s, background .18s, transform .12s ease; }
+  .file svg{ width:30px; height:30px; display:block;
+             transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
+  .file:active svg{ transform:scale(var(--press-xs)); }
+  /* OLD: .picking 강조(=PC 파일창 열림 동안 노출되던 상태) */
+  .demo.old.dlg .file{ color:var(--accent); border-color:rgba(var(--accent-rgb),.35);
+                       border-style:dashed; background:rgba(var(--accent-rgb),.08); }
+  /* NEW: 파일창 열려도 변화 없음(투명 유지) */
+  .demo.new.dlg .file{ background:transparent; border-color:transparent; }
+
+  .sim{ display:flex; align-items:center; gap:9px; margin-top:14px; }
+  .sim button{ font:inherit; font-size:12.5px; font-weight:700; cursor:pointer;
+               background:rgba(255,255,255,.05); color:var(--fg); border:1px solid var(--line);
+               border-radius:8px; padding:7px 12px; transition:background .15s, border-color .15s; }
+  .sim button:hover{ background:rgba(255,255,255,.09); border-color:rgba(var(--accent-rgb),.3); }
+  .sim .st{ font-size:11.5px; color:var(--mut); }
+  .sim .st b{ color:var(--accent); }
+
+  table{ border-collapse:collapse; width:100%; margin:6px 0; font-size:13.5px; }
+  th,td{ text-align:left; padding:9px 11px; border:1px solid var(--line); vertical-align:top; }
+  th{ background:var(--pan); font-weight:800; color:var(--mut); width:120px; white-space:nowrap; }
+  .ok{ color:var(--ok); } .bad{ color:var(--danger); }
+  ul{ margin:8px 0; padding-left:20px; } li{ margin:4px 0; }
+  .note{ background:var(--pan); border:1px solid var(--line); border-left:3px solid var(--accent);
+         border-radius:8px; padding:12px 14px; margin:14px 0; font-size:13.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>썸네일·카드뉴스 <b>이미지 픽토그램 버튼</b> — PC 클릭 시 윤곽/전경색 노출 수정</h1>
+  <p class="sub">대상 = <code>viewer/thumb.html</code> (썸네일 /1·/2 + 카드뉴스 /5 공용 <code>.file</code> 버튼) · 260628</p>
+
+  <div class="note">
+    <b>한 줄 요약 —</b> 픽토그램 버튼을 누르면 붙던 <code>.picking</code> 강조(accent 배경 + 테두리)가 범인.
+    모바일은 파일창이 <b>전체화면</b>이라 그 강조가 안 보였지만, PC는 파일 대화상자가 <b>별창</b>이라
+    페이지 뒤로 강조가 그대로 노출됐다. <b>자막생성기(ly.html)</b>엔 이 강조가 아예 없어서 멀쩡했고 —
+    그 정본에 맞춰 <code>.picking</code>을 폐지했다. 파일 선택 기능은 그대로.
+  </div>
+
+  <h2><span class="n">1</span>전 / 후 — 직접 눌러보기</h2>
+  <p class="mut" style="font-size:12.5px;margin-top:0">아래 「PC 파일창 열림」 버튼 = PC에서 파일 대화상자가 떠 있는 순간을 흉내냄(그 동안 버튼이 어떻게 보이는지).</p>
+  <div class="demos">
+
+    <div class="demo old" id="dOld">
+      <h3>BEFORE <span class="badge bad">PC에서 노출</span></h3>
+      <p class="cap">파일창이 뜬 동안 accent 배경 + 점선 테두리가 <b style="color:var(--danger)">버튼에 그대로 보임</b>.</p>
+      <label class="file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg>
+      </label>
+      <div class="sim">
+        <button onclick="tog('dOld')">PC 파일창 열림 ▶</button>
+        <span class="st">상태: <b id="sOld">닫힘(평소)</b></span>
+      </div>
+    </div>
+
+    <div class="demo new dlg-default" id="dNew">
+      <h3>AFTER <span class="badge good">자막생성기와 동일</span></h3>
+      <p class="cap">파일창이 떠도 <b style="color:var(--ok)">변화 없음</b> — 투명 픽토그램만. 누름 순간만 살짝 축소(피드백).</p>
+      <label class="file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg>
+      </label>
+      <div class="sim">
+        <button onclick="tog('dNew')">PC 파일창 열림 ▶</button>
+        <span class="st">상태: <b id="sNew">닫힘(평소)</b></span>
+      </div>
+    </div>
+
+  </div>
+
+  <h2><span class="n">2</span>무엇을 고쳤나</h2>
+  <table>
+    <tr><th>증상</th><td>PC에서 픽토그램 버튼 클릭 시 버튼 윤곽(테두리)이 보이거나 전경색(배경)이 노출됨. 모바일은 정상.</td></tr>
+    <tr><th>원인</th><td><code>.file.picking</code> — JS가 클릭 시 라벨에 붙이던 강조 클래스(<code>border-color:rgba(accent,.35)</code> + <code>background:rgba(accent,.08)</code>). 파일창 닫힐 때(focus 복귀) 제거. PC는 별창이라 그 사이 페이지 뒤로 노출.</td></tr>
+    <tr><th>수정</th><td>① CSS <code>.file.picking</code> 규칙 삭제 → 대신 ly 정본과 동일한 <code>.file:active{background:transparent}</code> 추가. ② <code>.picking</code>을 붙이고 떼던 JS(클릭 리스너 + focus 리스너 + handler 제거줄) 삭제.</td></tr>
+    <tr><th>정본 일치</th><td>자막생성기 <code>viewer/ly.html</code>의 <code>.file</code> 동작과 100% 동일하게 통일(<code>.picking</code> 없음 · 누름 피드백 = <code>:active svg</code> 축소뿐).</td></tr>
+    <tr><th>diff</th><td class="ok">4줄 추가 · 9줄 삭제 (thumb.html 한 파일)</td></tr>
+  </table>
+
+  <h2><span class="n">3</span>장점 · 효율성 · 품질저하 리스크</h2>
+  <table>
+    <tr><th>장점</th><td>
+      <ul>
+        <li>PC에서 클릭 시 버튼 외형 변화 0 = 깔끔(증상 해결).</li>
+        <li>썸네일(/1·/2)·카드뉴스(/5)·자막생성기 픽토그램 동작이 한 기준으로 통일(드리프트 해소).</li>
+        <li>죽은 코드(클릭·focus 리스너) 제거로 <code>bindFile</code> 더 단순.</li>
+      </ul>
+    </td></tr>
+    <tr><th>효율성</th><td>순수 CSS/표식 변경 + 리스너 1쌍 제거 → 런타임 부담 미세 감소. 빌드·파이프라인·토큰 SSOT 무관(<code>check_refs</code> 통과).</td></tr>
+    <tr><th>기능 영향</th><td class="ok">없음 — 파일 선택은 네이티브 <code>&lt;label&gt;→&lt;input type=file&gt;</code> 동작이라 그대로. <code>.picking</code>은 시각 강조 전용이었음(로직·상태·데이터 무관).</td></tr>
+    <tr><th>품질저하 리스크</th><td>
+      <ul>
+        <li class="mut">파일창 열린 동안의 "강조 표시"가 사라짐 — 단, 모바일에선 원래 안 보였고(전체화면), PC에선 그게 바로 문제였던 표시라 손실 아님.</li>
+        <li>누름 즉시 피드백(<code>:active svg</code> 축소)은 유지 → 눌렀다는 감각은 그대로.</li>
+        <li class="ok">회귀 위험 낮음: 단일 뷰어 파일·순수 시각 변경·정본(ly) 기준 통일.</li>
+      </ul>
+    </td></tr>
+  </table>
+
+  <h2><span class="n">4</span>검증</h2>
+  <ul>
+    <li><code>python3 shared/check_refs.py</code> → <b class="ok">통과(rc=0)</b> · viewer JS 구문 OK · 디자인 토큰 게이트 정상.</li>
+    <li>잔존 <code>.picking</code> 클래스 사용 0(주석만 남김) 확인.</li>
+    <li>단일 뷰어 UI 손질 = 자가검증(§✅ⓒ/ⓔ 순수 시각 = 평의회 면제).</li>
+  </ul>
+
+</div>
+<script>
+  function tog(id){
+    var d=document.getElementById(id);
+    var on=d.classList.toggle('dlg');
+    var lbl=id==='dOld'?'sOld':'sNew';
+    document.getElementById(lbl).textContent = on ? '파일창 열림 ▶ (이 동안의 모습)' : '닫힘(평소)';
+  }
+</script>
+</body>
+</html>
