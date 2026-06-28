@@ -484,7 +484,6 @@
   .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
   .ed-line { display:flex; flex-wrap:nowrap; align-items:center; gap:calc(6px * var(--eds,1)); min-height:calc(30px * var(--eds,1)); position:relative; padding-right:22px; }
   .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(2px * var(--eds,1)) calc(3px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2); color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
-  .ed-chips.ed-building .ed-chip { transition:none; }   /* 재빌드 프레임 = 갓 생성 칩 전환 억제(툭 튐 0) · 다음 프레임 복원(분신술 A5·운영자 260628) */
   .ed-chip:hover { border-color:rgba(var(--accent-rgb),.4); }
   .ed-add { position:absolute; right:2px; top:50%; transform:translateY(-50%); flex:none; width:16px; height:calc(30px * var(--eds,1)); padding:0; border-radius:5px; display:inline-flex; align-items:center; justify-content:center; font:800 16px/1 inherit; color:var(--accent); background:rgba(var(--accent-rgb),.1); border:1px solid rgba(var(--accent-rgb),.42); cursor:pointer; }
   .ed-add:active { transform:translateY(-50%) scale(.9); }
@@ -1817,7 +1816,7 @@ function clipLineOver(li) {
 function edReject(el) { el.classList.add('reject'); setTimeout(() => el.classList.remove('reject'), 600); }
 function renderEditChips() {
   _edRendering = true;
-  const wrap = $('#edChips'); wrap.innerHTML = ''; wrap.classList.add('ed-building');   // 재빌드 동안 전환 억제(아래 rAF서 해제)
+  const wrap = $('#edChips'); wrap.innerHTML = '';
   edLines.forEach((line, li) => {
     for (let j = line.length - 1; j >= 0; j--) {
       const pending = PENDING_EDIT && PENDING_EDIT.li === li && PENDING_EDIT.wi === j;
@@ -1912,7 +1911,7 @@ function renderEditChips() {
     }
   }
   _edRendering = false;
-  requestAnimationFrame(() => { wrap.classList.remove('ed-building'); fitEditLines(wrap); });   // 다음 프레임 = 전환 복원 + 폭 맞춤
+  requestAnimationFrame(() => fitEditLines(wrap));
   if (cardIo) cardIo();
 }
 function addLineAfter(li) {
