@@ -1701,8 +1701,6 @@
   .iobtn-hide { display:none; }                      /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
   /* #askText(요약요청) 지우개·되돌리기 = main #1056의 askclip 확장 방식(별 셀렉터 = .iobtn과 무충돌·병존) */
   .askclip.ask-pp { right:46px; }
-  .askclip.ask-cp { right:78px; }   /* 복사 = 붙여넣기 좌측 별도 버튼([복사][붙여넣기][지우개] = attachCopyPaste 정본과 동일 분리·운영자 260628) */
-  .askclip.ask-cp.ask-cphide { opacity:0; pointer-events:none; transform:translateY(50%) scale(.6); }   /* 빈칸 = 복사할 것 없음 → 숨김 */
   .ask-erase { right:14px; }
   .ask-erase.ask-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
   .ask-erase.ask-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
@@ -1981,7 +1979,6 @@
     <div class="asktawrap">
       <textarea id="askText" class="askta" rows="5" placeholder=""></textarea>
       <span class="askph" id="askPh">내용을 입력해주세요</span>
-      <button class="sbtn askclip ask-cp" id="askCopy" type="button" aria-label="복사"></button>
       <button class="sbtn askclip ask-pp" id="askClip" type="button" aria-label="붙여넣기"></button>
       <button class="sbtn askclip ask-erase" id="askErase" type="button" aria-label="입력 지우기"></button>
     </div>
@@ -6563,14 +6560,8 @@ askdlg.addEventListener('close', () => {
   if (askMinimizing) { askMinimizing = false; showRestoreNav(); if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 경로 = 첨부·입력 보존(이미지 비움 스킵·운영자 260627)
   if (askImages.length) { askImages = []; renderAskImgs(); }   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
 });
-// 복사·붙여넣기 = [복사][붙여넣기] 별도 2버튼(attachCopyPaste 정본과 동일 분리 · 운영자 260628): 붙여넣기 항상 / 복사는 내용 있을 때만.
-function updateAskClip() {
-  const b = $('#askClip'); if (!b) return;
-  if (!b.classList.contains('ok')) { b.innerHTML = PASTE_SVG; b.setAttribute('aria-label', '붙여넣기'); b.title = '붙여넣기'; }   // 붙여넣기 전용(고정)
-  const cp = $('#askCopy'); const has = $('#askText').value.trim().length > 0;
-  if (cp && !cp.classList.contains('ok')) { cp.innerHTML = COPY_SVG; cp.classList.toggle('ask-cphide', !has); }   // 복사 = 내용 있을 때만 노출
-  if (window.__syncAskErase) window.__syncAskErase();
-}
+// 복사·붙여넣기 = 캐러셀 .sbtn 계승 컨텍스트 1버튼: 비었으면 붙여넣기 / 문자열 있으면 복사. (CLAUDE.md 플랫폼 공통)
+function updateAskClip() { const b = $('#askClip'); if (!b) return; const has = $('#askText').value.trim().length > 0; b.innerHTML = has ? COPY_SVG : PASTE_SVG; const lbl = has ? '복사' : '붙여넣기'; b.setAttribute('aria-label', lbl); b.title = lbl; if (window.__syncAskErase) window.__syncAskErase(); }
 // 지우개(되돌리기) = thumb 입력칸 패턴 계승(운영자 260627): 비면 dim·비활성 / 누르면 입력 비움 → 직후 ~10초 되돌리기(직전 입력 복원) / 직접 입력하면 되돌리기 창 즉시 종료
 (function(){
   const ta = $('#askText'), er = $('#askErase'); if (!ta || !er) return;
@@ -6594,13 +6585,13 @@ function updateAskClip() {
 })();
 function updateAskPh() { const h = $('#askPh'); if (!h) return; const empty = !$('#askText').value.trim() && !askImages.length; h.classList.toggle('hide', !empty); }   // 빈 입력 안내 = 입력창 안 반짝 placeholder(내용/이미지 있으면 숨김)
 $('#askText').addEventListener('input', () => { updateAskClip(); updateAskPh(); });
-$('#askClip').addEventListener('click', async () => {        // 붙여넣기 전용(교체)
-  const ta = $('#askText');
-  try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.focus(); updateAskClip(); updateAskPh(); } } catch { $('#askStatus').textContent = '클립보드 권한 막힘 — 직접 붙여넣어'; }
-});
-$('#askCopy').addEventListener('click', async () => {        // 복사 전용(체크 플래시)
-  const ta = $('#askText'), cp = $('#askCopy'); if (!ta.value.trim()) return;
-  try { await navigator.clipboard.writeText(ta.value); cp.innerHTML = CHECK_SVG; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); updateAskClip(); }, 1200); } catch { /* 버튼 ✓ 플래시로 충분(상태문구 생략·운영자 260627) */ }
+$('#askClip').addEventListener('click', async () => {
+  const ta = $('#askText'), b = $('#askClip');
+  if (ta.value.trim()) {                                  // 문자열 있음 = 복사(체크 플래시)
+    try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); updateAskClip(); }, 1200); } catch { /* 실패해도 좌하단 상태문구 안 띄움 — 버튼 ✓ 플래시로 충분(운영자 260627·쓸모없는 '복사됨' 문구 제거) */ }
+  } else {                                                 // 비었음 = 붙여넣기
+    try { const t = await navigator.clipboard.readText(); ta.value = t; ta.focus(); updateAskClip(); } catch { $('#askStatus').textContent = '클립보드 권한 막힘 — 직접 붙여넣어'; }
+  }
 });
 $('#askFile').addEventListener('change', e => { addAskImages(e.target.files); e.target.value = ''; });
 $('#askText').addEventListener('paste', e => { const imgs = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean); if (imgs.length) { e.preventDefault(); addAskImages(imgs); } });
