@@ -137,7 +137,7 @@
   <p class="sub">영상 소스를 통해 복사 가능한 텍스트 자막 생성</p>
 
   <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
-  <div class="urlwrap"><input type="text" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
+  <div class="urlwrap"><input type="text" id="url" placeholder="https://…"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
   <div class="orsep">— 또는 —</div>
   <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
   <div class="filerow">
@@ -178,10 +178,9 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
   const er = document.createElement('button'); er.type = 'button'; er.className = 'urlclip url-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
   b.parentNode.appendChild(er);
   let undoTimer = null, undoVal = '', prog = false;
-  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 동일 아이콘 재대입 안 함 = 타이핑마다 SVG 재생성(번쩍) 차단(분신술 A4·운영자 260628)
   const upd = () => {
-    if (!b.classList.contains('ok')) { const f = inp.value.trim().length > 0; setIcon(b, f ? COPY_SVG : PASTE_SVG, f ? 'copy' : 'paste'); b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
-    if (!er.classList.contains('url-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('url-off', !(inp.value || '').trim().length); }
+    if (!b.classList.contains('ok')) { const f = inp.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('url-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('url-off', !(inp.value || '').trim().length); }
   };
   const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('url-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
   er.addEventListener('click', e => { e.preventDefault();
@@ -192,7 +191,7 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
     if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
   });
   b.addEventListener('click', async e => { e.preventDefault();
-    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b._icon = 'check'; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
     else { try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
   });
   inp.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();

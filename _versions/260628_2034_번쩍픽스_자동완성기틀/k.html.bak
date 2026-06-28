@@ -166,12 +166,11 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
   const er = document.createElement('button'); er.type = 'button'; er.className = 'scnclip scn-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
   b.parentNode.appendChild(er);
   let undoTimer = null, undoVal = '', prog = false;   // prog = 프로그램적 변경(지움/복원) = 되돌리기창 종료 트리거 아님
-  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 동일 아이콘 재대입 안 함 = 타이핑마다 SVG 재생성(번쩍) 차단(분신술 A4·운영자 260628)
   const upd = () => {
     const f = (ta.value || '').trim().length > 0;
-    if (!b.classList.contains('ok')) { setIcon(b, PASTE_SVG, 'paste'); b.setAttribute('aria-label', '붙여넣기'); b.title = '붙여넣기'; }   // 붙여넣기 항상
-    if (!cp.classList.contains('ok')) { setIcon(cp, COPY_SVG, 'copy'); cp.classList.toggle('scn-hide', !f); }   // 복사 = 내용 있을 때만 노출
-    if (!er.classList.contains('scn-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('scn-off', !f); }
+    if (!b.classList.contains('ok')) { b.innerHTML = PASTE_SVG; b.setAttribute('aria-label', '붙여넣기'); b.title = '붙여넣기'; }   // 붙여넣기 항상
+    if (!cp.classList.contains('ok')) { cp.innerHTML = COPY_SVG; cp.classList.toggle('scn-hide', !f); }   // 복사 = 내용 있을 때만 노출
+    if (!er.classList.contains('scn-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('scn-off', !f); }
   };
   const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('scn-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
   er.addEventListener('click', e => { e.preventDefault();
@@ -182,7 +181,7 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
     if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
   });
   cp.addEventListener('click', async e => { e.preventDefault();   // 복사 전용(붙여넣기 안 건드림)
-    try { await navigator.clipboard.writeText(ta.value); cp.innerHTML = CHECK_SVG; cp._icon = 'check'; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); upd(); }, 1200); } catch {}
+    try { await navigator.clipboard.writeText(ta.value); cp.innerHTML = CHECK_SVG; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); upd(); }, 1200); } catch {}
   });
   b.addEventListener('click', async e => { e.preventDefault();   // 붙여넣기 전용(기존: 교체)
     try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd();
