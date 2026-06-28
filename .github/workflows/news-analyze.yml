@@ -31,6 +31,8 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 90   # 6건 직렬 분석 대비(건당 timeout 900s — 콘텐츠 초안 포함이라 상향)
+    outputs:
+      force_stems: ${{ steps.force.outputs.stems }}   # force 재분석(전문 직접 입력)으로 덮어쓴 카드 stem(공백 구분) → card_plan 이 단일 프롬프트 갱신(운영자 260628)
     steps:
       - name: Checkout
         uses: actions/checkout@v5   # Node24 (6/16 러너 디폴트 전환 대응)
@@ -68,6 +70,15 @@ jobs:
           # OAuth를 조용히 덮어쓰는 변수 방어적 제거(anthropics/claude-code#34826)
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/analyze.sh
+
+      # force 재분석(전문 직접 입력)으로 덮어쓴 카드 stem 을 잡 output 으로 노출 → card_plan 이 그 카드 프롬프트만 갱신.
+      # always = 위 분석이 일부 실패해도 성공한 force 건은 갱신 신호 전달. 비면 빈 문자열(card_plan 가드).
+      - name: Force-refresh stems output
+        id: force
+        if: always()
+        run: |
+          s="$(tr '\n' ' ' < /tmp/force_regen_files.txt 2>/dev/null || true)"
+          echo "stems=${s}" >> "$GITHUB_OUTPUT"
 
       # viewer 빌드 스텝 없음(의도) — Cloudflare Pages가 push마다 `node build-viewer.mjs`를 직접 실행.
       # 커밋이 분석 직후·무조건이라 빌드류 실패가 Opus 분석물을 증발시킬 수 없다(run#2 교훈).
@@ -163,6 +174,33 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
           # text 모드 = cards/ 미존재·지침 stale 큐만 골라 카드 MD까지(제미나이 0, state=text_done).
           bash .github/scripts/cardmake.sh all text || echo "::warning::카드플랜 일부 실패(다이제스트는 보존됨)"
+
+      # force 재분석(전문 직접 입력)으로 요약이 바뀐 카드 = all 게이트가 GVER 동일이라 스킵 → 그 카드 프롬프트만 단일 갱신.
+      # done/이미지(슛) 카드는 보호(슛 이미지·편집 보존 → 요약만 반영, 카드는 운영자 재촬영). news-revise.yml card_refresh 패턴 계승.
+      - name: Force card refresh (전문 재제출로 바뀐 요약의 카드 프롬프트 갱신 — done/이미지 보호)
+        if: ${{ needs.analyze.outputs.force_stems != '' }}
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
+          FORCE_STEMS: ${{ needs.analyze.outputs.force_stems }}   # env 경유 = run 스크립트 직접 인터폴레이션(주입) 회피
+          # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON·GEMINI_API_KEY env 없음(유료 발사 불가) + 아래 unset(Lock B) = 제미나이 0
+        run: |
+          [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "토큰 없음 — force 카드 갱신 생략"; exit 0; }
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
+          for stem in ${FORCE_STEMS}; do
+            stem="${stem%.md}"
+            [ -n "${stem}" ] || continue
+            [ -f "queue/${stem}.md" ] || { echo "queue/${stem}.md 없음 — 생략"; continue; }
+            st="$(grep -o '"state":"[^"]*"' "cards/${stem}/status.json" 2>/dev/null | cut -d'"' -f4)"
+            imgs="$(ls cards/${stem}/*.jpg cards/${stem}/*.png cards/${stem}/scenes/*.jpg 2>/dev/null | head -1)"
+            if [ "${st}" = "done" ] || [ "${st}" = "fired_partial" ] || [ -n "${imgs}" ]; then
+              echo "force 카드 보호(state='${st:-?}', 이미지=${imgs:-없음}) — 자동 재생성 생략(요약은 반영됨·카드는 운영자 재촬영)"; continue
+            fi
+            echo "force 카드 프롬프트 갱신: ${stem}"
+            bash .github/scripts/cardmake.sh "${stem}.md" text || echo "::warning::force 카드 갱신 실패(요약은 반영됨): ${stem}"
+          done
 
       # 좀비 generating 차단 — 위 스텝이 크래시/중단되면 status가 영영 'generating'(모달 '프롬프팅 중' 영구).
       # always로 잔류 generating 을 failed 로 스윕·커밋해 모달이 멈추지 않게 한다.
