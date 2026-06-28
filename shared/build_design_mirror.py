@@ -25,6 +25,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VIEWER = os.path.join(ROOT, "viewer", "index.html")
 BASECSS = os.path.join(ROOT, "구성도", "base.css")
+TOKENSCSS = os.path.join(ROOT, "viewer", "tokens.css")   # STAGE3: 4뷰어 공유 구조토큰(색 제외) — index :root 파생
 
 START = "/* === AUTO-MIRROR:START — viewer/index.html :root 자동투영. 직접수정 금지(shared/build_design_mirror.py build) === */"
 END = "/* === AUTO-MIRROR:END === */"
@@ -42,6 +43,80 @@ def extract_root():
         raise RuntimeError("viewer :root 블록을 못 찾음")
     # viewer 원본 들여쓰기(2/4/2)를 그대로 보존 — 거울이 정본의 바이트를 그대로 비춤.
     return m.group(0).strip("\n")
+
+
+# ── STAGE3: 공유 구조토큰 tokens.css (색 제외·index :root 파생) ──────────────────
+# 분신술 10인(260628) 수렴: 원안 '전체 :root 상속'은 4뷰어 재색칠 회귀 → 폐기. 안전형 =
+# 구조 토큰(반지름·간격·blur·버튼·타이포·모션·z·눌림)만 index에서 파생해 4뷰어가 link.
+# 색·팔레트(--bg/--fg/--mut/--line/--accent/의미색…)는 *뷰어별 정체성*이라 inline 유지(제외).
+# 픽셀0: 4뷰어는 구조값을 raw px로 쓰고 var(구조토큰) 미참조 → link해도 렌더 불변, 신규 컴포넌트만 어휘 획득.
+# SSOT는 여전히 index :root. tokens.css는 base.css처럼 build 파생물(직접수정 금지·게이트 정합).
+_TOKENS_HEADER = (
+    "/* ⚠️ 자동생성 — 직접수정 금지. 값 SSOT = viewer/index.html :root. 다음 build에 덮어씀.\n"
+    "   생성: shared/build_design_mirror.py build (§🎨 STAGE3 · 분신술10 260628).\n"
+    "   내용 = index :root의 *구조 토큰만*(반지름·간격·blur·버튼·타이포·모션·z·눌림). 색/팔레트는 제외 —\n"
+    "   각 뷰어가 자기 :root에 인라인 유지(뷰어별 정체성). 4뷰어(thumb/ly/k/comp)가 link해 신규 var() 통일. */"
+)
+# 구조 토큰 판정 — 색/의미색/팔레트와 접두사가 겹치지 않음(검증: --bg/--glass/--line/--accent/--fg/--mut/
+#   --danger/--warn/--amber/--info/--bias/--on-*/--hist/--arm/--thumb 중 아래 접두사로 시작하는 것 0).
+_STRUCT_EXACT = {"--r", "--font-status", "--ease"}
+_STRUCT_PREFIX = ("--r-", "--sp-", "--blur-", "--btn", "--fs-", "--fw-", "--lh-", "--dur", "--z-", "--press-")
+
+
+def _is_struct(name):
+    return name in _STRUCT_EXACT or name.startswith(_STRUCT_PREFIX)
+
+
+def extract_struct_tokens():
+    """index :root에서 구조 토큰 (name, value) 목록을 *원본 순서대로* 반환(색 제외)."""
+    root = extract_root()
+    inner = root[root.index("{") + 1: root.rindex("}")]
+    inner = re.sub(r"/\*.*?\*/", "", inner, flags=re.S)   # 주석 통째 제거(선행·줄끝 둘 다) → split 정확
+    out = []
+    for decl in inner.split(";"):
+        decl = decl.strip()
+        if not decl.startswith("--") or ":" not in decl:
+            continue
+        name, val = decl.split(":", 1)
+        name, val = name.strip(), val.strip()
+        if _is_struct(name) and val:
+            out.append((name, val))
+    if not out:
+        raise RuntimeError("index :root에서 구조 토큰을 못 찾음")
+    return out
+
+
+def render_tokens():
+    """tokens.css 전체 텍스트 반환(파일 안 씀). 결정적 — check가 바이트 대조."""
+    lines = [_TOKENS_HEADER, ":root {"]
+    for name, val in extract_struct_tokens():
+        lines.append("  %s: %s;" % (name, val))
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def build_tokens():
+    open(TOKENSCSS, "w", encoding="utf-8").write(render_tokens())
+    print("✅ 구조토큰 build — viewer/tokens.css 를 index :root 구조토큰으로 동기화.")
+    return 0
+
+
+def check_tokens():
+    if not os.path.exists(TOKENSCSS):
+        print("⚠️ 구조토큰 check 스킵 — viewer/tokens.css 없음")
+        return 0
+    cur = open(TOKENSCSS, encoding="utf-8").read()
+    want = render_tokens()
+    if cur != want:
+        print("❌ 구조토큰 드리프트 — viewer/tokens.css ≠ index :root 구조토큰. "
+              "`python3 shared/build_design_mirror.py build` 로 동기화하라(§🎨 STAGE3).")
+        return 1
+    # tokens.css에 색(hex/rgba) 유입 금지 — 구조 전용 불변식(분신술3).
+    if re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", cur):
+        print("❌ 구조토큰 오염 — viewer/tokens.css 에 색값(hex/rgba) 발견. 색은 뷰어별 inline :root 로(§🎨 STAGE3).")
+        return 1
+    print("✅ 구조토큰 정합 — viewer/tokens.css = index :root 구조토큰(색 0).")
+    return 0
 
 
 def render():
@@ -63,21 +138,26 @@ def build():
     out = render()
     open(BASECSS, "w", encoding="utf-8").write(out)
     print("✅ 디자인 거울 build — 구성도/base.css 의 AUTO-MIRROR 블록을 viewer :root로 동기화.")
+    build_tokens()   # STAGE3: viewer/tokens.css 공유 구조토큰도 동시 갱신(거울 2호)
     return 0
 
 
 def check():
+    rc = 0
     if not os.path.exists(BASECSS):
         print("⚠️ 디자인 거울 check 스킵 — 구성도/base.css 없음")
-        return 0
-    cur = open(BASECSS, encoding="utf-8").read()
-    want = render()
-    if cur != want:
-        print("❌ 디자인 거울 드리프트 — 구성도/base.css ≠ viewer :root. "
-              "`python3 shared/build_design_mirror.py build` 로 동기화하라(§🎨 ⓐ).")
-        return 1
-    print("✅ 디자인 거울 정합 — 구성도/base.css AUTO-MIRROR = viewer :root.")
-    return 0
+    else:
+        cur = open(BASECSS, encoding="utf-8").read()
+        want = render()
+        if cur != want:
+            print("❌ 디자인 거울 드리프트 — 구성도/base.css ≠ viewer :root. "
+                  "`python3 shared/build_design_mirror.py build` 로 동기화하라(§🎨 ⓐ).")
+            rc = 1
+        else:
+            print("✅ 디자인 거울 정합 — 구성도/base.css AUTO-MIRROR = viewer :root.")
+    if check_tokens() != 0:   # STAGE3: tokens.css 정합·색오염 게이트(거울 2호)
+        rc = 1
+    return rc
 
 
 if __name__ == "__main__":
