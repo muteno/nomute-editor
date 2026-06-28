@@ -10,7 +10,6 @@
 ```text
 미국이 발표한
 '평화의 시작'
-
 그런데 시작부터
 무언가 어긋났다
 ```
@@ -37,7 +36,6 @@ Rubio Israel Lebanon signing ceremony
 ```text
 이스라엘과 레바논이
 합의문에 서명했다
-
 그런데 중재한 미국부터
 "시작의 시작"이라 했다
 ```
@@ -64,7 +62,6 @@ Marco Rubio State Department briefing
 ```text
 무장해제의 대상,
 헤즈볼라
-
 정작 그들은
 협상장에 없었다
 ```
@@ -91,7 +88,6 @@ Hezbollah Naim Qassem speech
 ```text
 이스라엘은
 떠나지 않았다
-
 레바논 5분의 1 점령한 채
 공습으로 또 3명이 숨졌다
 ```
@@ -118,7 +114,6 @@ South Lebanon Israeli occupation watchtower
 ```text
 점령자의 안전이 먼저고
 피해자의 권리는 그다음
-
 워싱턴의 악수 뒤에도
 *점령은 그대로였다*
 ```
