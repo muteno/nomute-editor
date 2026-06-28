@@ -2146,33 +2146,10 @@ function renderSpellChips() {   // 버튼 아래 칩 = 바뀐 단어만(점등=�
 // 운영자 교정 사전 — 네이버 맞춤법이 *못 잡는* '둘 다 정상 단어인데 문맥상 틀린' 혼동어(LLM 없이·무료·비차단). [틀린말, 맞는말].
 // 네이버는 사전에 있는 단어(예: 선거구 '획정')는 오타로 안 봄 → 운영자가 자주 틀리는 쌍만 큐레이션해 제안 칩으로 띄움(개별 해제 가능). 자주 틀리는 거 생기면 여기에 줄 추가.
 const CONFUSE_PAIRS = [
-  ['획정', '확정'],   // "32강 탈락 획정→확정" — 둘 다 정상단어라 네이버 미검출(운영자 260628). 시드(이후엔 자가학습으로 누적)
+  ['획정', '확정'],   // "32강 탈락 획정→확정" — 둘 다 정상단어라 네이버 미검출(운영자 260628)
 ];
-// ── 자가학습 교정(A안 + 누적 · 운영자 260628) — 입력칸에서 '한 단어'를 비슷한 단어로 직접 고치면 그 쌍을 기억(localStorage) → 다음부터 자동 제안 칩.
-//    오타교정 형태(같은 음절수 · 자모거리 1~2)만 학습 = 본인이 실제 교정한 것만 → 오탐 0. 비-LLM·무과금.
-const _LEARN_KEY = 'nomute_spell_learned', _LEARN_CAP = 400, _SPELL_FIELDS = ['lines', 'cSub', 'cTitle', 'cLines', 'warnLines'];
-function loadLearned() { try { const o = JSON.parse(localStorage.getItem(_LEARN_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch { return {}; } }
-function saveLearned(m) { try { const e = Object.entries(m); localStorage.setItem(_LEARN_KEY, JSON.stringify(e.length > _LEARN_CAP ? Object.fromEntries(e.slice(e.length - _LEARN_CAP)) : m)); } catch {} }
-function spellPairs() { const L = loadLearned(); return CONFUSE_PAIRS.concat(Object.keys(L).map(k => [k, L[k]])); }   // 시드 + 학습 누적
-function _jamo(s) { const out = []; for (const ch of s) { const o = ch.charCodeAt(0) - 0xAC00; out.push((o >= 0 && o < 11172) ? [Math.floor(o / 588), Math.floor((o % 588) / 28), o % 28] : [ch]); } return out; }
-function _jamoDist(a, b) { if (a.length !== b.length) return 9; const ja = _jamo(a), jb = _jamo(b); let d = 0; for (let i = 0; i < ja.length; i++) { const x = ja[i], y = jb[i]; if (x.length !== 3 || y.length !== 3) { if (x[0] !== y[0]) d += 2; } else { for (let k = 0; k < 3; k++) if (x[k] !== y[k]) d++; } } return d; }
-function _learnFromEdit(before, after) {   // before→after = '한 단어만 같은음절수로 자모 1~2 바뀜'이면 오타교정으로 보고 학습
-  if (before == null || before === after) return;
-  const A = before.match(/[가-힣]{2,}/g) || [], B = after.match(/[가-힣]{2,}/g) || [];
-  if (!A.length || A.length !== B.length) return;            // 토큰 수 다름 = 단순 단어교체 아님(새 입력·증감)
-  let bad = null, good = null, n = 0;
-  for (let i = 0; i < A.length; i++) if (A[i] !== B[i]) { bad = A[i]; good = B[i]; if (++n > 1) return; }   // 정확히 한 단어만 변경
-  if (!bad || bad.length !== good.length || bad.length < 2) return;   // 같은 음절수 치환만(조사·활용 변화 제외)
-  const jd = _jamoDist(bad, good); if (jd === 0 || jd > 2) return;    // 자모거리 1~2 = 오타교정 형태(전혀 다른 단어 교체 제외)
-  const m = loadLearned(); if (m[bad] === good) return; m[bad] = good; saveLearned(m);
-  try { const st = $('#status'); if (st) { st.classList.add('ok'); st.classList.remove('err'); st.textContent = '맞춤법 기억: ‘' + bad + '’ → ‘' + good + '’'; setTimeout(() => { if (st.textContent.indexOf('맞춤법 기억') === 0) { st.textContent = ''; st.classList.remove('ok'); } }, 2600); } } catch {}
-}
-// 포커스 진입 = 스냅 / 떠날 때 = 비교해 학습(제작 버튼 탭도 입력칸 blur라 잡힘)
-document.addEventListener('focusin', e => { const el = e.target; if (el && _SPELL_FIELDS.indexOf(el.id) >= 0) el._spSnap = el.value; }, true);
-document.addEventListener('focusout', e => { const el = e.target; if (el && _SPELL_FIELDS.indexOf(el.id) >= 0) { _learnFromEdit(el._spSnap, el.value); el._spSnap = el.value; } }, true);
 async function runSpellCheck() {   // 1차 누름 = 검사 → _spellReview 구성. 교정 있으면 true(리뷰 진입), 없으면 false(바로 생성). (네이버 + 운영자 교정사전 병합)
   const els = spellTargets().filter(Boolean);
-  els.forEach(el => { if (el._spSnap != null && el._spSnap !== el.value) { _learnFromEdit(el._spSnap, el.value); el._spSnap = el.value; } });   // blur 없이 제작 눌러도 교정 학습(안전망)
   const texts = els.map(el => el.value || '');
   if (!texts.some(t => t.trim())) return false;
   const gb = $('#go');
@@ -2197,8 +2174,8 @@ async function runSpellCheck() {   // 1차 누름 = 검사 → _spellReview 구�
       if (corr.length) { corr.forEach(c => corrs.push({ from: c.from, to: c.to, lit: true })); corrected = nc; }
       else if (nc !== orig) { corrs.push({ from: orig, to: nc, lit: true }); corrected = nc; }   // 쌍 못 뽑았지만 교정됨 → 통째 칩(조용한 유실 방지)
     }
-    // 운영자 교정사전(시드 + 자가학습 누적) — 네이버가 못 잡는 '정상단어 혼동'(획정→확정 등). 이미 같은 from 있으면 스킵(중복 칩 방지).
-    for (const [bad, good] of spellPairs()) {
+    // 운영자 교정사전 — 네이버가 못 잡는 '정상단어 혼동'(획정→확정 등) 보강. 이미 같은 from 있으면 스킵(중복 칩 방지).
+    for (const [bad, good] of CONFUSE_PAIRS) {
       if (orig.includes(bad) && !corrs.some(c => c.from === bad)) { corrs.push({ from: bad, to: good, lit: true }); corrected = corrected.split(bad).join(good); }
     }
     if (corrs.length) fields.push({ el, original: orig, corrected, corrections: corrs });
@@ -2371,8 +2348,7 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
   var core = document.getElementById('rfabCore'), b2 = document.getElementById('rfab2'),
       b3 = document.getElementById('rfab3'), b4 = document.getElementById('rfab4');
   function imgInput(){ if (APP === '1') return document.getElementById('pFile');
-                       if (APP === '2') return document.getElementById('cFile');
-                       if (APP === '5') return document.getElementById('file'); return null; }   // 카드뉴스(5) 이미지 선택 = #file/#fileLab 배선(운영자 260628 — FAB 이미지 선택 안먹힘 봉합)
+                       if (APP === '2') return document.getElementById('cFile'); return null; }
   function refresh(){ b3.classList.toggle('off', !imgInput()); }   // 이미지 없는 모드 = 3번 비활성
   core.addEventListener('click', function(e){ e.stopPropagation(); rfab.classList.toggle('open'); refresh(); });
   var rmin = document.getElementById('rfabMin');   // '-' = 창 최소화(iframe→부모 minimizeTool, 동일 출처)
@@ -2387,14 +2363,11 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
   b2.addEventListener('click', function(e){ e.stopPropagation(); keepFab();
     if (APP === '2') { var c = document.getElementById('cSub'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { c.focus(); } catch (_) {} } }   // 릴스 = 단일 폼(모드 순환 폐지) → 첫 입력칸으로
     else if (APP === '3') { var c3 = document.getElementById('cphName'); if (c3) { c3.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { c3.focus(); } catch (_) {} } }   // 저작권 = 이름 부분으로(탭=수정 · 플랫폼은 팝업 픽토그램)
-    else if (APP === '5') { var box = document.getElementById('cardBox'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-           var eds = document.querySelectorAll('#edChips .ed-empty'), ed = eds.length ? eds[eds.length - 1] : null;   // #cardBox는 포커스 불가 wrapper → 실제 입력 = 칩 에디터 끝 .ed-empty(contenteditable) 잡고 캐럿 끝(운영자 260628)
-           if (ed) { try { ed.focus(); var sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); } catch (_) {} } }
-    else { var t = document.getElementById('lines');
-           if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { t.focus(); } catch (_) {} } }  // 포스트 = 입력칸으로
+    else { var t = (APP === '5') ? (document.getElementById('cardBox') || document.getElementById('lines')) : document.getElementById('lines');
+           if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { t.focus(); } catch (_) {} } }  // 포스트/카드 = 입력칸으로
   });
   b3.addEventListener('click', function(e){ e.stopPropagation(); keepFab();
-    var slot = APP === '1' ? document.getElementById('pImgSlot') : APP === '2' ? document.getElementById('cImgSlot') : APP === '5' ? document.getElementById('fileLab') : null;
+    var slot = APP === '1' ? document.getElementById('pImgSlot') : APP === '2' ? document.getElementById('cImgSlot') : null;
     if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'center' });   // 사진 첨부 = 첨부 위치(이미지 슬롯)로 이동(운영자 260626)
     var f = imgInput(); if (f) f.click(); });
   b4.addEventListener('click', function(e){ e.stopPropagation(); keepFab(); var o = ['2','3','5'], i = o.indexOf(APP); selApp(o[(i + 1) % o.length]); refresh();
