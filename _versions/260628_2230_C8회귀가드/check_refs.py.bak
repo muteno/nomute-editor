@@ -310,44 +310,6 @@ def check_sens_vocab():
     return rc
 
 
-def check_curation_constants():
-    """큐레이션 랭킹 상수(viewer) ↔ docs/curation-algorithm.md §★ 정본값 정합 하드게이트.
-    #1135식 stale-PR 자기-revert·코드↔문서 드리프트를 CI가 즉시 차단(260628 13인 감사 C8).
-    viewer 리터럴(CROSS_POW·FOLLOW_W·BREAKING_RANK_BOOST·GRADE_W grade0 floor)을 §★ 인용값과 대조."""
-    rc = 0
-    try:
-        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
-        d = open(os.path.join(ROOT, 'docs', 'curation-algorithm.md'), encoding='utf-8').read()
-    except Exception as e:
-        print('⚠️ check_curation_constants 스킵(파일):', e); return 0
-    star = next((ln for ln in d.splitlines() if '누적 랭킹' in ln and 'cross^' in ln), '')
-    if not star:
-        print('⚠️ check_curation_constants 스킵(§★ 랭킹식 줄 못 찾음)'); return 0
-    def vcode(pat):
-        m = re.search(pat, v); return m.group(1) if m else None
-    def vdoc(pat):
-        m = re.search(pat, star); return m.group(1) if m else None
-    checks = [
-        ('CROSS_POW',           vcode(r'const CROSS_POW\s*=\s*([\d.]+)'),           vdoc(r'cross\^([\d.]+)')),
-        ('FOLLOW_W',            vcode(r'const FOLLOW_W\s*=\s*([\d.]+)'),            vdoc(r'FW([\d.]+)')),
-        ('BREAKING_RANK_BOOST', vcode(r'const BREAKING_RANK_BOOST\s*=\s*([\d.]+)'), vdoc(r'isBreaking\?([\d.]+)')),
-        ('GRADE_W.grade0',      vcode(r'GRADE_W\s*=\s*\{\s*0:\s*([\d.]+)'),         vdoc(r'floor 0\.05→\*\*([\d.]+)')),
-    ]
-    bad = []
-    for name, code_v, doc_v in checks:
-        if code_v is None or doc_v is None:
-            bad.append('%s: 추출실패(code=%s·doc=%s)' % (name, code_v, doc_v)); continue
-        if float(code_v) != float(doc_v):
-            bad.append('%s: viewer=%s ≠ §★문서=%s (코드↔문서 드리프트/자기-revert 의심)' % (name, code_v, doc_v))
-    if bad:
-        print('❌ 큐레이션 상수↔문서 정합 실패(C8 게이트):')
-        for b in bad: print('  -', b)
-        rc = 1
-    else:
-        print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·GRADE_W floor = §★ 일치.')
-    return rc
-
-
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -391,11 +353,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 민감 통제어휘 check 스킵:', e)
-    try:
-        if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_curation_constants 스킵:', e)
     return rc
 
 

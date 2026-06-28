@@ -6122,7 +6122,7 @@ const crossConvex = c => Math.pow(c._rankCross ?? (c.cross || 0), CROSS_POW);   
 const ACC_T_HALF = 13, ACC_T_POW = 3.0;   // 반값 나이(h)·가속지수 — 12h 후 가속 침몰(운영자 260618: 18·2.5는 12h=.73로 완만 → cross^1.6 볼록에 눌려 철지난 다수매체가 상위 점유 '묵은 피드'였음. 13·3.0=12h 반값·이후 급강). 조정 가능.
 const timeAcc = c => 1 / (1 + Math.pow(Math.max(0, (Date.now() - scTs(c)) / 3600000) / ACC_T_HALF, ACC_T_POW));
 // 누적(좌) 정렬 = cross 볼록가점 × 시간 가속감점(발행) × 연속보도(scFollow) × AI 경중(gradeW). 다수동시+최신+계속+양질=상단.
-const BREAKING_RANK_BOOST = 1.5;   // 누적 긴급 부스트 — 긴급(isBreaking) 사건은 누적칼럼서도 가시성↑(운영자 260628 "긴급할수록 가시성 높인다" 목적 직결 · 검증: 6h 일본강진 cr3이 발행량-only로 45위 묻히던 것 20위로 교정). timeAcc가 옛 긴급은 계속 누르므로 *최신 긴급만* 선택적 부상. 조정 가능.
+const BREAKING_RANK_BOOST = 3.0;   // 누적 긴급 부스트 — 긴급(isBreaking) 사건은 누적칼럼서도 가시성↑(운영자 260628 "긴급할수록 가시성 높인다" 목적). **1.5→3.0(260628 A/B 분신술 10인·7일치 전수)**: ×1.5는 죽은 파라미터(churn0·대형재난 묻힘)였음 → ×3.0이 긴급 top20 2→3·일본강진 39→19·화성화재 15→3·베네수920 52→28. 안전 확증(옛긴급 top20진입 0[timeAcc가 누름]·비긴급오염 0[breaking에만 곱]·breaking오탐 0[grade≥2 게이트]·중요훼손 top20밖 96%). 조정 가능. ⏳후속(라운드2): 저cross 신선긴급=effective cross floor(#7)·老 대형재난(rc큰 g3 52h+)=g3한정 timeAcc 연장(#4/#5) — 곱셈만으론 timeAcc 못 이김.
 const scScore = c => crossConvex(c) * timeAcc(c) * scFollow(c) * gradeW(c) * (isBreaking(c) ? BREAKING_RANK_BOOST : 1);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점 × AI경중 × [긴급이면 부스트]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트.
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // pinB = 확정 breaking & 아직 안 픽이면 1(픽하면 0). 누적칼럼 강제핀은 260617 제거 — 이 값은 pinFresh(신규칼럼 최신속보 핀)에서만 씀.
