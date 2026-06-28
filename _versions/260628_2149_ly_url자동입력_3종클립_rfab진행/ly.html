@@ -35,22 +35,10 @@
   .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .urlclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
   .urlclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
-  .urlclip.url-pp { right:46px; }                       /* 붙여넣기 = 지우개 좌측(46) · 운영자 260627 */
-  .urlclip.url-cp { right:78px; }                       /* 복사 = 붙여넣기 좌측(78·내용 있을 때만) = thumb/index 3종 분리 통일(운영자 260628) */
-  .url-hide { display:none; }                           /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
+  .urlclip.url-pp { right:46px; }                       /* 클립 = 지우개 좌측(붙여넣기/복사) · 운영자 260627 */
   .url-erase { right:14px; }                            /* 지우개 = 최우측 · 누르면 입력 비움→~10초 되돌리기 */
   .url-erase.url-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 흐리게·비활성 */
   .url-erase.url-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
-  /* 붙여넣기 폴백 모달 = readText 막힌 환경(모바일 도구 iframe)에서 '길게 눌러 붙여넣기' (thumb/index 통일 기틀·운영자 260628) · dialog=top-layer */
-  .pastefb { border:none; outline:none; background:transparent; max-width:100vw; max-height:100dvh; width:auto; padding:0; margin:auto; }
-  .pastefb::backdrop { background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
-  .pastefb-box { width:min(360px,90vw); background:linear-gradient(165deg,#14160f,#0c0f0c); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 48px rgba(0,0,0,.55); }
-  .pastefb-msg { font-size:13px; color:var(--fg); line-height:1.5; } .pastefb-msg b { color:var(--accent); }
-  .pastefb-ta { width:100%; box-sizing:border-box; min-height:90px; resize:none; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-size:14px; }
-  .pastefb-ta:focus { border-color:rgba(var(--accent-rgb),.4); outline:none; }
-  .pastefb-row { display:flex; gap:8px; justify-content:flex-end; }
-  .pastefb-btn { padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
-  .pastefb-ok { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.1); }
   textarea::placeholder, input::placeholder { color:var(--mut); }
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
   .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
@@ -129,7 +117,6 @@
   /* 3버튼 반원 아크(이미지 메뉴 thumb #rfab 동일) — 9시=입력포커스 · 10:30=파일첨부 · 12시=탭전환(운영자 260628) */
   #rfab #lyFocusFab { --rp:translate(-66px,-2.5px); }
   #rfab #lyFileFab  { --rp:translate(-47.4px,-47.4px); }
-  #rfab #lyGenFab   { --rp:translate(-25px,-61px); color:var(--accent); }   /* 진행(자막생성 ▶) = 파일첨부·탭전환 사이(11시) · 첨부/URL 있을 때만 표시(hidden 토글·k.html kGenFab 통일·운영자 260628) */
   #rfab #lyTabFab   { --rp:translate(-2.5px,-66px); }
   #rfab.open .ro { opacity:1; pointer-events:auto; transform:var(--rp,translate(0,-66px)) scale(1); }
   #rfab.open #lyFileFab { transition-delay:.06s; }
@@ -152,7 +139,7 @@
   <p class="sub">영상 소스를 통해 복사 가능한 텍스트 자막 생성</p>
 
   <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
-  <div class="urlwrap"><input type="text" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="nomute-url" enterkeyhint="go" data-1p-ignore data-lpignore="true" data-form-type="other"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div><!-- 자동입력(카드/주소/비번 바) 차단 = 검색바 동일 풀세트(autocomplete off만으론 모바일 못 막음·운영자 260628) -->
+  <div class="urlwrap"><input type="text" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
   <div class="orsep">— 또는 —</div>
   <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
   <div class="filerow">
@@ -172,7 +159,6 @@
 <div id="rfab" aria-label="빠른 메뉴">
   <button class="ro" id="lyFocusFab" type="button" title="입력칸으로 (커서 활성화)"><svg viewBox="0 0 24 24"><path d="M7 10l5-5 5 5M7 14l5 5 5-5"/></svg></button>
   <button class="ro" id="lyFileFab" type="button" title="파일 첨부 (영상·음성·TXT·SRT)"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg></button>
-  <button class="ro" id="lyGenFab" type="button" title="자막 생성" hidden><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg></button>
   <button class="ro" id="lyTabFab" type="button" title="영상 프롬프트로 전환"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <button class="rc" id="rfabCore" type="button" aria-label="빠른 메뉴 열기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="rmin" id="rfabMin" type="button" aria-label="최소화" title="최소화 (창 접기)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
@@ -193,53 +179,29 @@ const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" s
 // URL 칸 붙여넣기↔복사 + 지우개/되돌리기 (뉴스요약/썸네일 통일·운영자 260625·260627)
 const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';
 const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg>';
-// 붙여넣기 = readText 우선 / 막힌 환경(모바일 iframe·도구창)엔 '길게 눌러 붙여넣기' 폴백 — thumb/index 통일 기틀(clipPasteText·운영자 260628)
-async function clipPasteText() {
-  try { if (navigator.clipboard && navigator.clipboard.readText) { const t = await navigator.clipboard.readText(); if (t) return t; } } catch {}
-  return await clipPasteFallback();
-}
-function clipPasteFallback() {
-  return new Promise(resolve => {
-    const ov = document.createElement('dialog'); ov.className = 'pastefb';
-    ov.innerHTML = '<div class="pastefb-box"><div class="pastefb-msg">아래 칸을 <b>길게 눌러 “붙여넣기”</b> 하면 자동 반영돼</div>'
-      + '<textarea class="pastefb-ta" placeholder="여기에 붙여넣기" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>'
-      + '<div class="pastefb-row"><button type="button" class="pastefb-btn pastefb-cancel">취소</button><button type="button" class="pastefb-btn pastefb-ok">적용</button></div></div>';
-    document.body.appendChild(ov);
-    const ta = ov.querySelector('.pastefb-ta'); let done = false;
-    const finish = v => { if (done) return; done = true; try { ov.close(); } catch {} ov.remove(); resolve(v || null); };
-    ta.addEventListener('paste', () => setTimeout(() => { if (ta.value) finish(ta.value); }, 30));
-    ov.querySelector('.pastefb-ok').onclick = () => finish(ta.value);
-    ov.querySelector('.pastefb-cancel').onclick = () => finish(null);
-    ov.addEventListener('cancel', e => { e.preventDefault(); finish(null); });
-    ov.addEventListener('click', e => { if (e.target === ov) finish(null); });
-    try { ov.showModal(); } catch { ov.setAttribute('open', ''); }
-    setTimeout(() => { try { ta.focus(); } catch {} }, 60);
-  });
-}
-// URL 입력칸 클립 = 복사/붙여넣기/지우개 3버튼 분리(thumb/index attachCopyPaste 통일·운영자 260628) · 붙여넣기는 clipPasteText(폴백)
 (function () {
   const inp = $('#url'), b = $('#urlClip'); if (!inp || !b) return;
-  b.classList.add('url-pp');   // 붙여넣기 = 지우개 좌측(46)
-  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'urlclip url-cp url-hide'; cp.setAttribute('aria-label', '복사'); cp.title = '복사'; b.parentNode.appendChild(cp);   // 복사 = 내용 있을 때만(78·붙여넣기 좌측)
-  const er = document.createElement('button'); er.type = 'button'; er.className = 'urlclip url-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; b.parentNode.appendChild(er);
+  b.classList.add('url-pp');   // 클립 = 지우개 좌측(46)으로
+  const er = document.createElement('button'); er.type = 'button'; er.className = 'urlclip url-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
+  b.parentNode.appendChild(er);
   let undoTimer = null, undoVal = '', prog = false;
-  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 동일 아이콘 재대입 안 함 = 타이핑 번쩍 차단
+  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 동일 아이콘 재대입 안 함 = 타이핑마다 SVG 재생성(번쩍) 차단(분신술 A4·운영자 260628)
   const upd = () => {
-    const f = inp.value.trim().length > 0;
-    if (!b.classList.contains('ok')) { setIcon(b, PASTE_SVG, 'paste'); b.setAttribute('aria-label', '붙여넣기'); }   // 붙여넣기 = 항상(복사로 안 바뀜)
-    if (!cp.classList.contains('ok')) { setIcon(cp, COPY_SVG, 'copy'); cp.classList.toggle('url-hide', !f); }   // 복사 = 내용 있을 때만 노출
-    if (!er.classList.contains('url-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('url-off', !f); }
+    if (!b.classList.contains('ok')) { const f = inp.value.trim().length > 0; setIcon(b, f ? COPY_SVG : PASTE_SVG, f ? 'copy' : 'paste'); b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('url-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('url-off', !(inp.value || '').trim().length); }
   };
-  const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('url-undo'); er.innerHTML = ERASE_SVG; er._icon = 'erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
+  const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('url-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
   er.addEventListener('click', e => { e.preventDefault();
     if (er.classList.contains('url-undo')) { prog = true; inp.value = undoVal; inp.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { inp.focus(); } catch {} exitUndo(); return; }
     if (!(inp.value || '').length) return;
     undoVal = inp.value; prog = true; inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { inp.focus(); } catch {}
-    er.classList.remove('url-off'); er.classList.add('url-undo'); er.innerHTML = UNDO_SVG; er._icon = 'undo'; er.setAttribute('aria-label', '되돌리기'); er.title = '되돌리기 (직전 입력 복원)';
+    er.classList.remove('url-off'); er.classList.add('url-undo'); er.innerHTML = UNDO_SVG; er.setAttribute('aria-label', '되돌리기'); er.title = '되돌리기 (직전 입력 복원)';
     if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
   });
-  cp.addEventListener('click', async e => { e.preventDefault(); try { await navigator.clipboard.writeText(inp.value); cp.innerHTML = CHECK_SVG; cp._icon = 'check'; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); upd(); }, 1200); } catch {} });   // 복사
-  b.addEventListener('click', async e => { e.preventDefault(); const t = await clipPasteText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } upd(); });   // 붙여넣기(readText→폴백 통일 기틀)
+  b.addEventListener('click', async e => { e.preventDefault();
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b._icon = 'check'; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    else { try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
+  });
   inp.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
 })();
 // 파일 선택 = 빈 상태 픽토그램(텍스트 '파일 선택' 대체 · 강조색 파일 아이콘 · .covimg 참조 · 운영자 260627)
@@ -247,11 +209,9 @@ const FILE_PICTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 $('#fileTxt').innerHTML = FILE_PICTO;   // 초기 = 픽토그램
 // 빠른메뉴(thumb #rfab 계승): 코어(+) 토글 · 파일선택 = 화면 인터페이스(#file 피커) · '-' = iframe→부모 minimizeTool(동일출처)
 (function(){
-  const rfab = $('#rfab'), core = $('#rfabCore'), ffab = $('#lyFileFab'), focusFab = $('#lyFocusFab'), tabFab = $('#lyTabFab'), rmin = $('#rfabMin'), genFab = $('#lyGenFab');
+  const rfab = $('#rfab'), core = $('#rfabCore'), ffab = $('#lyFileFab'), focusFab = $('#lyFocusFab'), tabFab = $('#lyTabFab'), rmin = $('#rfabMin');
   if (!rfab || !core) return;
-  const hasInput = () => (($('#url') || {}).value || '').trim().length > 0 || (($('#file') || {}).files || []).length > 0;   // URL 입력 or 파일 첨부
-  core.addEventListener('click', e => { e.stopPropagation(); rfab.classList.toggle('open'); if (rfab.classList.contains('open') && genFab) genFab.hidden = !hasInput(); });   // 진행(자막생성)버튼 = 첨부/URL 있을 때만 표시(운영자 260628·k.html kGenFab 통일)
-  if (genFab) genFab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); const go = $('#go'); if (go) go.click(); });   // 진행 = 자막 생성(#go 트리거)
+  core.addEventListener('click', e => { e.stopPropagation(); rfab.classList.toggle('open'); });
   document.addEventListener('click', e => { if (!rfab.contains(e.target)) rfab.classList.remove('open'); });
   if (focusFab) focusFab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); const u = $('#url'); if (u) { try { u.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {} try { u.focus(); } catch (_) {} } });   // 입력칸 커서 활성화(thumb #rfab2 계승)
   if (ffab) ffab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); $('#file').click(); });   // 선택 = 파일 피커(화면 인터페이스에 맞춤)
