@@ -2028,7 +2028,7 @@
 <!-- 요약 수정 팝업 — FAB(우·중하단)에서 좌측으로 펼침. 지시대로 재작성(재요약 X·api/revise). askdlg 클론·.sbtn 클립 계승. 1차 클릭=재확인→2차=전송 -->
 <dialog id="revdlg" class="askdlg revdlg">
   <div class="askwrap">
-    <div class="askhead"><b>수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정 →</span></button><button class="askx" id="revX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+    <div class="askhead"><b>수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정 →</span></button><button class="askx askmin" id="revMin" type="button" aria-label="최소화"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 12h12"/></svg></button><button class="askx" id="revX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="asktawrap">
       <textarea id="revText" class="askta" rows="2" placeholder=""></textarea>
     </div>
@@ -2039,7 +2039,7 @@
 <!-- 🃏카드 수정 팝업 — 요약 수정(#revdlg)과 동일 CSS·동작, 범위만 카드 프롬프트 전체 재기획(api/revise-cards). 제미나이 0(이미지 재슛 안 함). 1차 클릭=재확인→2차=전송 -->
 <dialog id="crevdlg" class="askdlg revdlg">
   <div class="askwrap">
-    <div class="askhead"><b>카드 수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="crevSend" type="button"><span>수정 →</span></button><button class="askx" id="crevX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+    <div class="askhead"><b>카드 수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="crevSend" type="button"><span>수정 →</span></button><button class="askx askmin" id="crevMin" type="button" aria-label="최소화"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 12h12"/></svg></button><button class="askx" id="crevX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="asktawrap">
       <textarea id="crevText" class="askta" rows="2" placeholder=""></textarea>
     </div>
@@ -6764,8 +6764,9 @@ tooldlg.addEventListener('click', e => { if (e.target === tooldlg) tooldlg.close
 bindToolFrameLoad($('#toolframe'));   // 원본 도구 iframe load 배선(복제 프레임은 activateToolFrame이 동일 배선) · 페이드인(frame-ready)+ESC 브릿지
 $('#askX').addEventListener('click', () => askdlg.close());
 if ($('#askMin')) $('#askMin').addEventListener('click', () => minimizeAsk());   // 뉴스요약 최소화(영상/tooldlg와 동일 ▲ 복원·운영자 260627)
-// 작성 모달 최소화 — 일반 minimizeComposeDlg (▲ 복원·2개+ picker · 운영자 260628)
-// ⚠️ 요약 수정(revdlg)·카드 수정(crevdlg)은 최소화 제거(운영자 260628) — X가 입력 보존·수정 FAB 재진입으로 복원(아래 close 핸들러). pastedlg·editdlg만 최소화 유지.
+// 작성 모달 4종 최소화 — 일반 minimizeComposeDlg (▲ 복원·2개+ picker · 운영자 260628)
+if ($('#revMin')) $('#revMin').addEventListener('click', () => minimizeComposeDlg(revdlg, 'revdlg', '요약 수정'));
+if ($('#crevMin')) $('#crevMin').addEventListener('click', () => minimizeComposeDlg($('#crevdlg'), 'crevdlg', '카드 수정'));
 if ($('#pasteMin')) $('#pasteMin').addEventListener('click', () => minimizeComposeDlg(pastedlg, 'pastedlg', '전문 입력'));
 if ($('#edMin')) $('#edMin').addEventListener('click', () => minimizeComposeDlg($('#editdlg'), 'editdlg', '카드뉴스 - 이미지 - 수정'));   // 계층 표기(운영자 260628)
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
@@ -7363,7 +7364,7 @@ function openCrev() {
 function updateCrevClip() { const t = $('#crevText'); if (t) t.dispatchEvent(new Event('input', { bubbles: true })); }   // 클립 = attachCopyPaste 이식(이미지 제작 동일) → input 디스패치로 갱신(운영자 260627)
 $('#crevX').addEventListener('click', () => $('#crevdlg').close());
 $('#crevdlg').addEventListener('click', e => { if (e.target === $('#crevdlg')) $('#crevdlg').close(); });
-$('#crevdlg').addEventListener('close', () => { resetCrevSend(); });   // 닫으면 재확인만 해제 — 입력 텍스트 보존(수정 FAB 재진입 복원 · 최소화 폐지 · 운영자 260628)
+$('#crevdlg').addEventListener('close', () => { const d = $('#crevdlg'); if (d._minimizing) { d._minimizing = false; showRestoreNav(); try { $('#toolRestore').focus(); } catch (_) {} return; } resetCrevSend(); });   // 최소화 = 입력 보존(운영자 260628)
 $('#crevText').addEventListener('input', () => { resetCrevSend(); });   // 복사/붙여넣기/지우개는 attachCopyPaste가 처리(이미지 제작 이식·260627)
 $('#crevSend').addEventListener('click', async () => {
   if (CUR && isCardRevising(CUR)) return;   // 진행 중 재전송 차단(silent)
@@ -7397,7 +7398,10 @@ $('#crevSend').addEventListener('click', async () => {
 loadCardRevising();
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
-revdlg.addEventListener('close', () => { resetRevSend(); updateRevFab(); });   // 닫으면 재확인만 해제 + FAB 재평가 — 입력 텍스트는 보존(수정 FAB 재진입 시 그대로 복원 · 최소화 폐지 · 운영자 260628)
+revdlg.addEventListener('close', () => {            // 닫히면 재확인 해제 + FAB 구간 재평가(복원)
+  if (revdlg._minimizing) { revdlg._minimizing = false; showRestoreNav(); try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 = 입력 보존·연필 FAB 재등장 안 함(재오픈 충돌 차단·운영자 260628)
+  resetRevSend(); updateRevFab();
+});
 $('#revText').addEventListener('input', () => { resetRevSend(); });    // 텍스트 바꾸면 재확인 취소(오발사 방지) · 복사/붙여넣기/지우개는 attachCopyPaste가 처리(이미지 제작 이식·260627)
 $('#revSend').addEventListener('click', async () => {
   if (CUR && isRevising(CUR)) { return; }   // 진행 중 재전송 차단 — silent(표기 없음·운영자 260623)
