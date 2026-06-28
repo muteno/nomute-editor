@@ -1064,20 +1064,18 @@ function bindFile(inp, lab, store) {
     lab.classList.add('picking');
     window.addEventListener('focus', () => lab.classList.remove('picking'), { once: true });
   });
-  const inpId = inp.id;   // ⚠️ innerHTML 교체 시 새 input에 원래 id 복원 — 안 하면 #file id 소실 → FAB(rfab3) imgInput()=getElementById('file')가 null → 이미지 선택 '선택적으로만 작동' 버그(운영자 260628)
-  const rebindInput = () => { const ni = lab.querySelector('input'); if (ni) { ni.onchange = handler; if (inpId) ni.id = inpId; } };
   const reset = () => {   // 휴지통 → 업로드 취소: store 비우고 라벨 초기 상태로 + input 재바인드(운영자 260622)
     store.b64 = ''; store.name = '';
     lab.classList.remove('has');
     lab.innerHTML = '<span class="filepic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><input type="file" accept="image/*" style="display:none">';
-    rebindInput();
+    lab.querySelector('input').onchange = handler;
   };
   const applyImg = (b64, name) => {   // b64+이름 → 미리보기 렌더(파일선택·수정복원 공용)
     store.b64 = b64; store.name = name || '';
     lab.innerHTML = '<div class="fileprev"><img src="' + b64 + '"><button type="button" class="filerm" aria-label="이미지 삭제" title="이미지 삭제">' + TRASH_SVG + '</button><span class="fn">' + (name || '') + '</span></div>' +
       '<input type="file" accept="image/*" style="display:none">';
     lab.classList.add('has');
-    rebindInput();   // innerHTML 교체로 사라진 input 재바인드 + id 복원(FAB getElementById('file') 유지)
+    lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
     const rm = lab.querySelector('.filerm');   // 휴지통 = 라벨 클릭(파일창 열림) 안 타게 차단 후 삭제
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
@@ -1093,7 +1091,7 @@ function bindFile(inp, lab, store) {
     lab.innerHTML = '<div class="fileprev refonly"><img src="' + esc(url) + '"><span class="refhatch" aria-hidden="true"></span><span class="refbadge">참고</span><button type="button" class="filerm" aria-label="이미지 삭제" title="이미지 삭제">' + TRASH_SVG + '</button></div>' +
       '<input type="file" accept="image/*" style="display:none">';
     lab.classList.add('has');
-    rebindInput();
+    lab.querySelector('input').onchange = handler;
     const rm = lab.querySelector('.filerm');
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
@@ -2412,8 +2410,7 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
   #rfab .ro svg { width:19px; height:19px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
   #rfab.open .ro { opacity:1; pointer-events:auto; }
   #rfab .ro.off { opacity:.32 !important; pointer-events:none; }
-  #rfab .ro[hidden] { display:none; }   /* ⚠️ hidden 봉합 — 위 #rfab .ro{display:grid}(명시도 1,1,0)가 UA [hidden]{display:none}(0,1,0)을 이겨 무력화 → 첨부 시 rfab3↔rfabGen 대체가 시각적으로 안 먹고 *겹쳐 렌더*되던 critical(평의회 260628). #rfab .ro[hidden] 명시도 1,2,0 > 1,1,0이라 !important 불요·ly 통일 */
-  #rfab2, #rfab3, #rfab4, #rfabGen { width:35px; height:35px; }   /* 네비 3버튼 크기 = 12시(옛 #rfab4) 35px로 통일(운영자 260628) · rfabGen(▶ 제작)도 동일 */
+  #rfab2, #rfab3, #rfab4 { width:35px; height:35px; }   /* 네비 3버튼 크기 = 12시(옛 #rfab4) 35px로 통일(운영자 260628) */
   /* 빠른메뉴 코어(+) 바로 위·가운데 정렬 글래스 '-' = 창(편집기) 최소화(엄지존 · iframe→부모 minimizeTool · 코어 글래스 계승) · 빠른메뉴 펼치면 서브버튼과 겹치니 반대 촤르륵으로 사라짐 · 운영자 260627 */
   #rfab .rmin { position:absolute; right:13px; bottom:62px; width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--accent);
     background:rgba(0,0,0,.34); border:0; display:grid; place-items:center;
@@ -2426,7 +2423,6 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
   /* 픽토그램 중심을 코어 중심 기준 반경 63.5px(=현 12시 간격) 원에 정확히 9시·10:30·12시 배치. 35px .ro 안착중심이 코어보다 (+2.5,+2.5)라 그만큼 보정(운영자 260628). */
   #rfab.open #rfab2 { transform:translate(-66px,-2.5px) scale(1); transition-delay:0s; }        /* 9시 = (-63.5, 0) */
   #rfab.open #rfab3 { transform:translate(-47.4px,-47.4px) scale(1); transition-delay:.06s; }   /* 10:30 = 45°·동일 반경 63.5 */
-  #rfab.open #rfabGen { transform:translate(-47.4px,-47.4px) scale(1); transition-delay:.06s; }   /* ▶ 제작 = 이미지선택(rfab3)과 *같은 자리*(10:30) — 사진 첨부 시 이미지선택 버튼을 대체(둘 중 하나만·ly lyFileFab↔lyGenFab 패턴·운영자 260628) */
   #rfab.open #rfab4 { transform:translate(-2.5px,-66px) scale(1); transition-delay:.12s; }      /* 12시 = (0, -63.5)·수직 정렬(드리프트 -2.5 보정) */
   @media (hover:hover) and (pointer:fine) { #rfab { display:none; } }   /* PC(마우스) = 엄지 빠른메뉴 불필요 → 숨김(.cartrack PC 분기와 동일 컨벤션·운영자 260620) */
   @media (prefers-reduced-motion:reduce){ #rfab .rc, #rfab .ro { transition:opacity .15s; } }
@@ -2435,7 +2431,6 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
 <div id="rfab" aria-label="빠른 메뉴">
   <button class="ro" id="rfab2" type="button" title="전환/이동"><svg viewBox="0 0 24 24"><path d="M7 10l5-5 5 5M7 14l5 5 5-5"/></svg></button>
   <button class="ro" id="rfab3" type="button" title="이미지 선택"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></button>
-  <button class="ro" id="rfabGen" type="button" title="이미지 제작" hidden><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg></button>
   <button class="ro" id="rfab4" type="button" title="도구 전환"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <button class="rc" id="rfabCore" type="button" aria-label="빠른 메뉴 열기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="rmin" id="rfabMin" type="button" aria-label="최소화" title="최소화 (창 접기)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
@@ -2444,22 +2439,11 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
 (function(){
   var rfab = document.getElementById('rfab'); if (!rfab) return;
   var core = document.getElementById('rfabCore'), b2 = document.getElementById('rfab2'),
-      b3 = document.getElementById('rfab3'), b4 = document.getElementById('rfab4'), gen = document.getElementById('rfabGen');
+      b3 = document.getElementById('rfab3'), b4 = document.getElementById('rfab4');
   function imgInput(){ if (APP === '1') return document.getElementById('pFile');
                        if (APP === '2') return document.getElementById('cFile');
                        if (APP === '5') return document.getElementById('file'); return null; }   // 카드뉴스(5) 이미지 선택 = #file/#fileLab 배선(운영자 260628 — FAB 이미지 선택 안먹힘 봉합)
-  function curSlot(){ if (APP === '1') return document.getElementById('pImgSlot');   // 첨부 상태 슬롯(.has) = 모드별(포스트 배경·릴스 자막·카드뉴스 #fileLab)
-                      if (APP === '2') return document.getElementById('cImgSlot');
-                      if (APP === '5') return document.getElementById('fileLab'); return null; }
-  function refresh(){   // 이미지 없는 모드(저작권/경고문 = curSlot null) = rfab3 비활성 / 사진 첨부(슬롯 .has) 시 = rfab3(이미지선택) → rfabGen(▶ 제작) 대체(둘 중 하나만·ly lyFileFab↔lyGenFab 패턴·운영자 260628)
-    var s = curSlot(), imgMode = !!s;
-    var refonly = !!(s && (s.classList.contains('refonly') || s.querySelector('.refonly')));   // 참고본 = 슬롯(APP1/2)·자식 .fileprev(APP5 #fileLab) 어느 쪽이든
-    var attached = !!(s && s.classList.contains('has') && !refonly);   // ⚠️ curSlot(라벨·슬롯=영속) 기준 — imgInput(#file)은 카드뉴스 첨부 시 innerHTML 교체로 id 소실 → null이라 못 씀(운영자 버그 #2 근원). refonly(참고본=실데이터 없음·재선택 필요)는 미첨부 취급 → 이미지선택 유지(평의회 E2·ly .has=실파일 정합)
-    b3.classList.toggle('off', !imgMode);
-    if (gen) { var swap = attached; b3.hidden = swap; gen.hidden = !swap; }   // 첨부됨 = 이미지선택 숨김·▶제작 표시 / 아니면 역(재선택은 슬롯 X/휴지통으로 비운 뒤 복귀)
-  }
-  window._rfabSyncGen = refresh;   // 외부 호출용(보존)
-  ['fileLab','pImgSlot','cImgSlot'].forEach(function(id){ var el = document.getElementById(id); if (el) { try { new MutationObserver(refresh).observe(el, { attributes:true, attributeFilter:['class'] }); } catch(_){} } });   // 첨부/삭제로 슬롯 .has 토글되면 즉시 rfab3(이미지선택)↔rfabGen(▶제작) 대체(6핸들러 개별 훅 대신 단일 관찰자·운영자 260628)
+  function refresh(){ b3.classList.toggle('off', !imgInput()); }   // 이미지 없는 모드 = 3번 비활성
   core.addEventListener('click', function(e){ e.stopPropagation(); rfab.classList.toggle('open'); refresh(); });
   var rmin = document.getElementById('rfabMin');   // '-' = 창 최소화(iframe→부모 minimizeTool, 동일 출처)
   if (rmin) { if (window.parent === window) { rmin.style.display = 'none'; }   // 단독 열기(모달 아님) = 최소화 무의미 → 숨김
@@ -2482,9 +2466,7 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
   b3.addEventListener('click', function(e){ e.stopPropagation(); keepFab();
     var slot = APP === '1' ? document.getElementById('pImgSlot') : APP === '2' ? document.getElementById('cImgSlot') : APP === '5' ? document.getElementById('fileLab') : null;
     if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'center' });   // 사진 첨부 = 첨부 위치(이미지 슬롯)로 이동(운영자 260626)
-    if (APP === '5') { var fi = slot && slot.querySelector('input[type=file]'); if (fi) fi.click(); }   // 카드뉴스 = #fileLab 내부 input 직접 클릭(applyImg/reset로 id 교체돼도 영속·운영자 260628 버그#2 봉합)
-    else { var f = imgInput(); if (f) f.click(); } });
-  if (gen) gen.addEventListener('click', function(e){ e.stopPropagation(); keepFab(); var g = document.getElementById('go'); if (g) g.click(); });   // ▶ = 이미지 제작 트리거(ly lyGenFab→#go 패턴·운영자 260628)
+    var f = imgInput(); if (f) f.click(); });
   b4.addEventListener('click', function(e){ e.stopPropagation(); keepFab(); var o = ['2','3','5'], i = o.indexOf(APP); selApp(o[(i + 1) % o.length]); refresh();
     window.scrollTo({ top: 0, behavior: 'smooth' }); });   // 도구 전환 = 맨 위로(새 탭 처음부터 보이게 · 카드뉴스 포함 · 운영자 260626)
   document.querySelectorAll('.tab').forEach(function(t){ t.addEventListener('click', function(){ setTimeout(refresh, 0); }); });
