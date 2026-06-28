@@ -38,6 +38,7 @@ GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # grade 채점 대
 CAT_MIN_CROSS = int(os.environ.get("GATE_CAT_MIN_CROSS", "2"))   # 카테고리 구제: cross 이 값 이상이고 키워드가 모호(빈칸·문화)한 cross-2 후보는 AI 'cat만' 채점(grade 미기록=연예·스포츠 가십이 grade 0/1로 scFast서 침몰하는 것 방지) — AI가 안 닿던 cross-2 분류를 교정(운영자 260628 근본레버 · 키워드 DB 확장 대체)
 CHUNK = int(os.environ.get("GATE_CHUNK", "40"))               # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — 120은 ~31에서 잘림 실측)
 MAX_PER_RUN = int(os.environ.get("GATE_MAX_PER_RUN", "80"))   # 한 런당 채점 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
+GATE_CAT_QUOTA = int(os.environ.get("GATE_CAT_QUOTA", "20"))   # 한 런당 cat구제(비노출 cross-2) 최소 보장 슬롯 — 노출권 백로그가 MAX 초과여도 cat 기아 방지(감사5 실측: 노출권 1109>80이 cat 651을 0처리 → 347건 사회 오표시·운영자 260628)
 DAN = re.compile(r"\[\s*단독\s*\]")
 
 RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 기사 제목들이 각각 '얼마나 중요한 뉴스인가'를 0~3으로 채점하라. 제목만 보고, 한국 일반 독자가 9시 뉴스/속보로 볼 가치를 기준으로.
@@ -154,8 +155,11 @@ def main():
         return
     total = len(pending)
     pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
-    pending.sort(key=lambda c: 0 if surfaced(c) else 1)                   # 안정정렬 — 노출권(grade 필요) 우선, cross-2 cat구제는 후순위(중요건 채점 지연 방지)
-    pending = pending[:MAX_PER_RUN]   # 이번 런 상한 — 나머지는 다음 디스패치(self-gate)가 이어 채점(점진 클리어)
+    # 노출권(grade) 우선 + cat구제 최소쿼터 보장(GATE_CAT_QUOTA) — 노출권 백로그가 MAX 초과여도 cat구제가 *기아*되지 않게(감사5·260628: 노출권 1109>80이 cat 651을 영구 0처리 → 347건 사회 오표시였음). cat구제는 grade 미기록·cat만이라 가볍다.
+    surf = [c for c in pending if surfaced(c)]
+    catr = [c for c in pending if not surfaced(c)]   # cross-2 cat구제(needs_grading 이미 통과·최신순 보존)
+    n_cat = min(len(catr), GATE_CAT_QUOTA)
+    pending = surf[:max(0, MAX_PER_RUN - n_cat)] + catr[:n_cat]   # 노출권 다수 차지하되 cat에 최소 n_cat 슬롯 확보
     print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK})")
     grades, cats = {}, {}
     for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
