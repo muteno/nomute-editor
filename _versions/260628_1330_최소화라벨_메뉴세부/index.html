@@ -6463,20 +6463,12 @@ function flyGhost(dir, done, navPt) {                                           
   try { const a = g.animate(seq, { duration: 230, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }); a.onfinish = end; a.oncancel = () => { fin = true; g.remove(); }; }   // 230ms = 더 빠르고 자연(운영자 260627 · 옛 340 느림) · easing=표준 --ease
   catch (_) { end(); }                                                          // WAAPI 미지원 = 즉시 완료
 }
-function toolMinLabel() {   // 최소화 라벨 = "메뉴 - 세부탭"(운영자 260628). 영상=부모가 src 앎 / 이미지=thumb iframe .tab.on 텍스트 읽음(동일출처).
-  const base = ($('#toolTitle') || {}).textContent || '제작 도구';
-  try {
-    if (curToolKey === 'cap') { const src = (toolMeta.cap && toolMeta.cap.src) || ''; return '영상 - ' + (/\/k\.html/.test(src) ? '프롬프트 생성' : '자막 생성'); }
-    if (curToolKey === 'thumb') { const d = toolFrames.thumb && toolFrames.thumb.contentDocument; const t = d && d.querySelector('.tab.on'); const sub = t ? (t.textContent || '').trim() : ''; return sub ? '이미지 - ' + sub : '이미지'; }
-  } catch (_) {}
-  return base;
-}
 function minimizeTool() {
   if (!tooldlg.open || toolMinimizing) return;
   lastToolRect = tooldlg.getBoundingClientRect();                               // ★ close() 전 캡처(닫으면 display:none → rect 0)
   showRestoreNav();                                                             // ▲ 먼저 띄워 정확한 수렴 좌표 확보
   const _k = curToolKey || 'tool';
-  MIN_REG.set(_k, { label: toolMinLabel(), restore: () => restoreTool(_k) }); minRegRefresh();   // 도구키별 등록 = 이미지·영상 독립 최소화 · 라벨 "메뉴 - 세부탭"(운영자 260628)
+  MIN_REG.set(_k, { label: ($('#toolTitle') || {}).textContent || '제작 도구', restore: () => restoreTool(_k) }); minRegRefresh();   // 도구키별 등록 = 이미지·영상 독립 최소화(운영자 260628)
   toolMinimizing = true;
   flyGhost('in');                                                              // 모달 위치서 ▲로 수렴
   try { tooldlg.close(); } catch (_) { toolMinimizing = false; }                // 가드 close = 폼 보존(close 핸들러의 showRestoreNav는 이미 떠서 스킵) · throw 시 가드 stuck 방지
@@ -6554,7 +6546,7 @@ function minimizeAsk() {
   if (!askdlg.open || askMinimizing) return;
   lastToolRect = askdlg.getBoundingClientRect();                                // ★ close() 전 rect 캡처(고스트 수렴)
   showRestoreNav();
-  MIN_REG.set('askdlg', { label: '뉴스 요약 - 신청', restore: restoreAsk }); minRegRefresh();   // 요약 요청(신청) 구분 라벨(운영자 260628 · 완성 요약본 "뉴스 요약"과 분리)
+  MIN_REG.set('askdlg', { label: '뉴스 요약', restore: restoreAsk }); minRegRefresh();
   askMinimizing = true;
   flyGhost('in');
   try { askdlg.close(); } catch (_) { askMinimizing = false; }
