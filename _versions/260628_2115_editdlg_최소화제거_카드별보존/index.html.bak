@@ -1992,7 +1992,7 @@
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
 <dialog id="editdlg">
-  <div class="ed-h"><b class="ed-title">카드 변경</b><div class="askhead-act"><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+  <div class="ed-h"><b class="ed-title">카드 변경</b><div class="askhead-act"><button class="ed-x ed-min" id="edMin" type="button" aria-label="최소화"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 12h12"/></svg></button><button class="ed-x" type="button" aria-label="닫기" onclick="editdlg.close()"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
   <div class="ed-body">
     <div class="ed-imgwrap"><img class="ed-img" alt=""><button class="ed-baf" type="button" hidden aria-label="전/후 비교 (탭하면 전환)" title="전/후 비교">후</button></div>
     <div class="ed-lblrow"><span class="ed-lbl">텍스트</span><label class="ed-match"><input type="checkbox" id="edSync"><span class="ed-cbx"><svg class="ackm" viewBox="0 0 24 24" fill="none"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span><span>체크 내용과 동일하게 이미지 변경</span></label></div>
@@ -2495,7 +2495,6 @@ async function open(a) {
   $('#revStatus').textContent = '';   // 수정 요청 상태 리셋(이전 카드 잔상 제거)
   const _rt = $('#revText'); if (_rt) _rt.value = '';   // 기사로 이동 시 = 수정 요청 입력칸도 비움(이전 기사에 적던 지시 안 넘어오게 · 체크박스 리셋과 마찬가지 · 운영자 260622)
   const _crt = $('#crevText'); if (_crt) _crt.value = ''; if (typeof resetCrevSend === 'function') resetCrevSend(); if (typeof updateCrevClip === 'function') updateCrevClip();   // 카드 수정 입력칸도 동일 리셋 + 클립버튼 갱신(이전 기사 지시 누수 차단·260627)
-  _editKeptKey = null;   // 기사 이동 = 이전 기사 카드의 보존 편집 폐기(다른 기사 카드에 복원 누수 차단·운영자 260628)
   resetRevSend(); updateRevClip();   // 버튼 재확인(arm) 상태·클립(붙여넣기/복사) 아이콘도 원복
   const _dlf = $('#dlFull'); if (_dlf) { _dlf.checked = false; const _dlb = $('#dlbox'); if (_dlb) _dlb.classList.remove('full'); }   // 새 기사 = 요약 '전체 포함' 체크 기본 해제(이전 기사 체크 잔상 제거 · 운영자 260622)
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
@@ -3587,26 +3586,10 @@ async function saveAll(model, slug, btn) {
 
 // ── 카드 개별 변경(2차 팝업) — 텍스트(음절칩 강조)·이미지 희망 → 변경(1b) ──
 let EDIT_CTX = null, edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false, _edFiring = false, _edArmed = false, _edArmT = null, edCardIo = null;   // edCardIo=카드변경 칩 클립버튼 갱신자(IIFE서 할당) / PENDING_FOCUS=빈줄 포커스 / PENDING_EDIT={li,wi}=어절칩 편집 진입 / _edRendering=재렌더 중 blur 차단 / _edFiring=발사 재진입 잠금 / _edArmed·_edArmT=변경 버튼 재확인(arm)(체크/wish 재생성 시)
-let _editKeptKey = null, _editDiscardOnClose = false;   // 최소화 폐지(운영자 260628 editdlg) → X 닫기=입력 보존(라이브 globals 유지)·카드키 기억 → 같은 카드 변경버튼 재진입 시 복원 / 제출·기사이동은 discard
-const cardKeyOf = o => (o && o.card) ? (o.file + '#' + o.card.n) : null;   // 카드 식별(기사파일#카드번호)
 const MAX_LINES = 4;
 function openEdit(o) {
-  const dlg = $('#editdlg'), key = cardKeyOf(o);
-  // ★ 같은 카드 변경버튼 재진입 = 보존된 미제출 편집 복원(재로드·리셋 스킵 · wish·edLines·sync·scene는 globals/DOM에 그대로 살아있음 · 최소화 폐지·운영자 260628)
-  if (_editKeptKey && _editKeptKey === key && EDIT_CTX) {
-    _editKeptKey = null; EDIT_CTX = o;   // 카드 ref만 갱신(미제출이라 caption 동일 = edLines 유효)
-    dlg.querySelector('.ed-title').textContent = `카드 ${o.card.n} 변경`;
-    const img = dlg.querySelector('.ed-img'); img.alt = `카드 ${o.card.n}`;
-    if (!editScene) { const v = o.card.versions[o.card.cur] || {}; img.src = v.image || ''; }   // scene 있으면 updateEditAttach→updateEditBaf가 미리보기로 채움
-    renderEditChips(); resetEditFootLight(); updateEditAttach();   // 보존 칩·버튼클린·첨부UI/전후배지 복원
-    dlg.querySelector('.ed-body').scrollTop = 0; $('#edtop').classList.remove('show');
-    openComposeDlg(dlg); fitEditLines($('#edChips'));
-    if (editScene) schedEditPreview();   // 첨부 미리보기 재합성
-    return;
-  }
-  _editKeptKey = null;   // 다른 카드 = 보존 폐기·fresh 로드
   EDIT_CTX = o;
-  const v = o.card.versions[o.card.cur];
+  const v = o.card.versions[o.card.cur], dlg = $('#editdlg');
   dlg.querySelector('.ed-title').textContent = `카드 ${o.card.n} 변경`;
   const img = dlg.querySelector('.ed-img'); img.src = v.image || ''; img.alt = `카드 ${o.card.n}`;
   edLines = parseEmphLines(v.caption || '');   // *마커 → 줄별 어절 배열(줄바꿈 보존·강조 어절)
@@ -4012,15 +3995,6 @@ function resetEditFoot() {   // 변경 푸터 초기화 — 확인 게이트·ar
   edStatus('');
   edUpdateRegen();   // 초기화 후 ↻ 재생성 아이콘 상태 동기화(열 때 깨끗)
 }
-function resetEditFootLight() {   // 버튼·확인게이트·발사잠금만 리셋(wish·edLines·sync·scene 보존) — X 닫기/같은카드 재진입 복원용(운영자 260628)
-  _edFiring = false; edDisarm();
-  const foot = $('#editdlg .ed-foot'); if (foot) foot.classList.remove('confirm');
-  const g = $('#edGo'); if (g) { g.disabled = false; g.classList.remove('firing', 'okdone', 'checking', 'arm', 'regen'); edSetLabel('변경'); }
-  const y = $('#editdlg .ed-cyes'); if (y) { y.disabled = false; y.textContent = '확인'; }
-  const m = $('#editdlg .ed-cmsg'); if (m) m.textContent = '이 카드만 다시 생성할까요?';
-  edStatus('');
-  edUpdateRegen();   // wish/sync 따라 ↻ 아이콘 동기화
-}
 function edSync() { const s = $('#edSync'); return !!(s && s.checked); }
 function validateEdit() {   // 발사 전 공통 게이트(빈 텍스트·한도 초과) — 문구만/재생성 양쪽 재사용
   if (!buildEmphText().trim()) { alert('텍스트가 비어 있어.'); return false; }
@@ -4078,7 +4052,6 @@ function fireEdit() {
       if (ok && j.ok) {
         REPENDING.set(rpKey(ctx.file, ctx.card.n), { file: ctx.file, card: ctx.card.n, oldImg: ctx.card.versions[ctx.card.cur].image, textOnly: !regen, tries: 0 });
         markReshooting(ctx.card.n, !regen);   // 재생성(첨부 포함)=🍌 다시그리는중 / 문구만=✍️ 배지 구분
-        _editDiscardOnClose = true;     // 제출 성공 = 닫을 때 full 리셋(보존 안 함·편집 적용됨)
         $('#editdlg').close();          // 보던 캐러셀 그대로(스크롤 유지)
         pollWhilePending();
       } else { alert(j.error || `실패 (${ok ? 'ok' : 'err'})`); }
@@ -5003,10 +4976,10 @@ window.addEventListener('scroll', fadeTop, { passive:true }); fadeTop();
 $('#edGo').onclick = submitEdit;
 $('#editdlg .ed-cno').onclick = () => $('#editdlg .ed-foot').classList.remove('confirm');
 $('#editdlg .ed-cyes').onclick = fireEdit;
-$('#editdlg').addEventListener('close', () => {   // 닫힘(✕·취소·백드롭·ESC) 시 — 최소화 폐지(운영자 260628): X=입력 보존(라이브 globals 유지·버튼만 리셋·같은 카드 변경버튼 재진입서 복원) / 제출·기사이동=full 리셋(편집 적용·소멸)
-  if (_editDiscardOnClose) { _editDiscardOnClose = false; _editKeptKey = null; resetEditFoot(); return; }   // 제출 성공 = 편집 적용됐으니 깨끗이 비움
-  resetEditFootLight();   // X·백드롭·ESC = wish·edLines·sync·scene 보존(끊긴 fetch·arm·firing만 정리)
-  _editKeptKey = EDIT_CTX ? cardKeyOf(EDIT_CTX) : null;   // 이 카드 변경버튼 재진입 시 복원할 키
+$('#editdlg').addEventListener('close', () => {   // 닫힘(✕·취소·백드롭·ESC) 시 푸터·발사잠금·arm 리셋 — 끊긴 fetch로 #edGo가 '변경 중…'·비활성으로 굳는 누수 + 3.5s arm 타이머 닫힌 모달서 발화 차단(분신술 260621)
+  const d = $('#editdlg');
+  if (d._minimizing) { d._minimizing = false; showRestoreNav(); try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 = 첨부 scene·wish·foot 보존(resetEditFoot 스킵·운영자 260628)
+  resetEditFoot();
 });
 $('#edSync').addEventListener('change', () => {   // 체크 = 이미지수정희망 잠금(이미지=텍스트 따라감) · 의도 변하니 arm 해제
   const on = $('#edSync').checked, w = $('#edWish');
@@ -6794,7 +6767,7 @@ if ($('#askMin')) $('#askMin').addEventListener('click', () => minimizeAsk());  
 // 작성 모달 최소화 — 일반 minimizeComposeDlg (▲ 복원·2개+ picker · 운영자 260628)
 // ⚠️ 요약 수정(revdlg)·카드 수정(crevdlg)은 최소화 제거(운영자 260628) — X가 입력 보존·수정 FAB 재진입으로 복원(아래 close 핸들러). pastedlg·editdlg만 최소화 유지.
 if ($('#pasteMin')) $('#pasteMin').addEventListener('click', () => minimizeComposeDlg(pastedlg, 'pastedlg', '전문 입력'));
-// editdlg(카드 이미지 수정) 최소화 폐지(운영자 260628) — X가 입력 보존·같은 카드 변경버튼 재진입으로 복원(openEdit kept-restore). pastedlg만 최소화 유지.
+if ($('#edMin')) $('#edMin').addEventListener('click', () => minimizeComposeDlg($('#editdlg'), 'editdlg', '카드뉴스 - 이미지 - 수정'));   // 계층 표기(운영자 260628)
 askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 askdlg.addEventListener('close', () => {
   if (askMinimizing) { askMinimizing = false; showRestoreNav(); if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 경로 = 첨부·입력 보존(이미지 비움 스킵·운영자 260627)
