@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>영상 자막 생성기</title>
 <style>
-  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-rgb:15,253,2;   /* index :root 동기 — raw rgba(15,253,2) 박기 차단(분신술 4·8) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; }
+  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108; }
   * { box-sizing:border-box; }
-  /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
-  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   /* 스크롤바 = 반투명 검정(중립) — 뉴스 뷰어 통일(index 계승 · 운영자 260626) */
   html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; }
   ::-webkit-scrollbar { width:10px; height:10px; }
@@ -16,7 +14,7 @@
   ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
     border:2px solid var(--bg); background-clip:padding-box; }
   ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
-  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(15,253,2,.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
   h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
   .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
@@ -24,7 +22,7 @@
   label:first-of-type { margin-top:0; }
   textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; }
   input[type=text] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
-  textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  textarea:focus, input:focus { border-color:rgba(15,253,2,.35); box-shadow:0 0 0 3px rgba(15,253,2,.08); outline:none; }
   /* 붙여넣기 = 2A 동그라미, URL 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
   .urlwrap { position:relative; }
   .urlclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6;   /* URL 복사/붙여넣기 = opacity 60%(운영자 260625) */
@@ -33,7 +31,7 @@
   .urlclip svg { display:block; width:13px; height:13px; }
   .urlclip::before { content:""; position:absolute; inset:-8px; }
   .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
-  .urlclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .urlclip:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(15,253,2,.6); }
   .urlclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
   .urlclip.url-pp { right:46px; }                       /* 클립 = 지우개 좌측(붙여넣기/복사) · 운영자 260627 */
   .url-erase { right:14px; }                            /* 지우개 = 최우측 · 누르면 입력 비움→~10초 되돌리기 */
@@ -48,7 +46,7 @@
   .file:active { background:transparent; }   /* 누름 = 박스 전체 칠하기 금지 → 픽토그램만 축소(운영자 260628) */
   .file:active svg { transform:scale(.8); }   /* 픽토그램만 액티브(블록 전체 X · .rmin:active svg 패턴 계승) */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; animation:fileIn .42s ease; }   /* 파일 들어옴 = 솔리드 강조 테두리로 프레임 + 팝+글로우 확인 모션(파일명 표시·가독) */
-  @keyframes fileIn { 0% { transform:scale(.965); box-shadow:0 0 0 0 rgba(var(--accent-rgb),.45); } 45% { transform:scale(1.025); box-shadow:0 0 0 6px rgba(var(--accent-rgb),.10); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } }
+  @keyframes fileIn { 0% { transform:scale(.965); box-shadow:0 0 0 0 rgba(15,253,2,.45); } 45% { transform:scale(1.025); box-shadow:0 0 0 6px rgba(15,253,2,.10); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(15,253,2,0); } }
   @media (prefers-reduced-motion:reduce) { .file.has { animation:none; } }
   /* 파일 업로드(좌·넓게) + 생성(우·짧게) 한 줄 가로 분할 — 풀폭 스택 대신 */
   .filerow { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
@@ -61,16 +59,16 @@
     padding:4px 9px; border-radius:999px; margin-right:7px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   /* 업로드 게이지 = 뉴스요약 진행바(.prog .seg.cur)의 움직이는 shine 계승(실패 빗금 X) */
-  .lybar { height:7px; border-radius:999px; background:rgba(var(--accent-rgb),.16); position:relative; overflow:hidden; margin:10px 0 2px; }
+  .lybar { height:7px; border-radius:999px; background:rgba(15,253,2,.16); position:relative; overflow:hidden; margin:10px 0 2px; }
   .lybar::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%; border-radius:999px;
-    background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.85),transparent);
+    background:linear-gradient(90deg,transparent,rgba(15,253,2,.85),transparent);
     transform:translateX(-120%); animation:lyshine 1.35s linear infinite; will-change:transform; }
   @keyframes lyshine { to { transform:translateX(360%); } }
   @media (prefers-reduced-motion:reduce){ .lybar::after { animation:none; } }
   /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
   .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
-  .go:hover { background:rgba(255,255,255,.08); border-color:rgba(var(--accent-rgb),.3); }
-  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  .go:hover { background:rgba(255,255,255,.08); border-color:rgba(15,253,2,.3); }
+  .go:active { transform:scale(.955); background:rgba(15,253,2,.08); border-color:rgba(15,253,2,.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
@@ -102,14 +100,14 @@
   /* 빠른메뉴 = 이미지 도구(thumb.html #rfab) 계승 — 영상 자막생성기에도: 코어(+) 펼치면 파일선택 · 코어 위 '-' 최소화(엄지존·iframe→부모 minimizeTool) · 화면 인터페이스(파일)에 맞춘 선택 버튼 · 운영자 260627 */
   #rfab { position:fixed; right:18px; bottom:34%; z-index:70; width:0; height:0; }
   #rfab .rc { position:absolute; right:0; bottom:0; width:54px; height:54px; border-radius:50%; cursor:pointer;
-    background:rgba(0,0,0,.34); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.4); display:grid; place-items:center;
+    background:rgba(0,0,0,.34); color:var(--accent); border:1px solid rgba(15,253,2,.4); display:grid; place-items:center;
     backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
     box-shadow:0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
     transition:transform .25s; -webkit-tap-highlight-color:transparent; }
   #rfab.open .rc { transform:rotate(135deg); }
   #rfab .rc svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
   #rfab .ro { position:absolute; right:7px; bottom:7px; width:35px; height:35px; border-radius:50%; cursor:pointer; color:var(--accent);
-    background:rgba(0,0,0,.34); border:1px solid rgba(var(--accent-rgb),.4); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    background:rgba(0,0,0,.34); border:1px solid rgba(15,253,2,.4); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
     display:grid; place-items:center; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
     opacity:0; transform:translate(0,0) scale(.3); pointer-events:none;
     transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
@@ -139,7 +137,7 @@
   <p class="sub">영상 소스를 통해 복사 가능한 텍스트 자막 생성</p>
 
   <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
-  <div class="urlwrap"><input type="text" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
+  <div class="urlwrap"><input type="text" id="url" placeholder="https://…"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div>
   <div class="orsep">— 또는 —</div>
   <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
   <div class="filerow">
@@ -180,10 +178,9 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
   const er = document.createElement('button'); er.type = 'button'; er.className = 'urlclip url-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
   b.parentNode.appendChild(er);
   let undoTimer = null, undoVal = '', prog = false;
-  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 동일 아이콘 재대입 안 함 = 타이핑마다 SVG 재생성(번쩍) 차단(분신술 A4·운영자 260628)
   const upd = () => {
-    if (!b.classList.contains('ok')) { const f = inp.value.trim().length > 0; setIcon(b, f ? COPY_SVG : PASTE_SVG, f ? 'copy' : 'paste'); b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
-    if (!er.classList.contains('url-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('url-off', !(inp.value || '').trim().length); }
+    if (!b.classList.contains('ok')) { const f = inp.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('url-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('url-off', !(inp.value || '').trim().length); }
   };
   const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('url-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
   er.addEventListener('click', e => { e.preventDefault();
@@ -194,7 +191,7 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
     if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
   });
   b.addEventListener('click', async e => { e.preventDefault();
-    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b._icon = 'check'; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(inp.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
     else { try { const t = await navigator.clipboard.readText(); if (t) { inp.value = t; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
   });
   inp.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
