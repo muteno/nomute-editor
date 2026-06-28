@@ -39,7 +39,7 @@
   .scn-erase.scn-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 흐리게·비활성 */
   .scn-erase.scn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
   /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
-  .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
+  .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
   .go:hover { background:rgba(255,255,255,.08); border-color:rgba(15,253,2,.3); }
   .go:active { transform:scale(.955); background:rgba(15,253,2,.08); border-color:rgba(15,253,2,.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
@@ -90,6 +90,38 @@
   .code button:active { transform:scale(.85); }
   .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+  /* 빠른메뉴 = 이미지/자막 도구(#rfab) 계승 — 영상 프롬프트에도: 코어(+) 펼치면 웹 렌더 생성 · 코어 위 '-' 최소화(엄지존·iframe→부모 minimizeTool) · 운영자 260628 */
+  #rfab { position:fixed; right:18px; bottom:34%; z-index:70; width:0; height:0; }
+  #rfab .rc { position:absolute; right:0; bottom:0; width:54px; height:54px; border-radius:50%; cursor:pointer;
+    background:rgba(0,0,0,.34); color:var(--accent); border:1px solid rgba(15,253,2,.4); display:grid; place-items:center;
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    box-shadow:0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
+    transition:transform .25s; -webkit-tap-highlight-color:transparent; }
+  #rfab.open .rc { transform:rotate(135deg); }
+  #rfab .rc svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
+  #rfab .ro { position:absolute; right:7px; bottom:7px; width:35px; height:35px; border-radius:50%; cursor:pointer; color:var(--accent);
+    background:rgba(0,0,0,.34); border:1px solid rgba(15,253,2,.4); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    display:grid; place-items:center; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+    opacity:0; transform:translate(0,0) scale(.3); pointer-events:none;
+    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
+  #rfab .ro svg { width:18px; height:18px; stroke:currentColor; stroke-width:1.9; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  /* 3버튼 반원 아크(이미지 메뉴 thumb #rfab 동일) — 9시=입력포커스 · 10:30=생성 · 12시=탭전환(운영자 260628) */
+  #rfab #kFocusFab { --rp:translate(-66px,-2.5px); }
+  #rfab #kGenFab   { --rp:translate(-47.4px,-47.4px); }
+  #rfab #kTabFab   { --rp:translate(-2.5px,-66px); }
+  #rfab.open .ro { opacity:1; pointer-events:auto; transform:var(--rp,translate(0,-66px)) scale(1); }
+  #rfab.open #kGenFab { transition-delay:.06s; }
+  #rfab.open #kTabFab { transition-delay:.12s; }
+  #rfab .ro:active { transform:var(--rp,translate(0,-66px)) scale(.9); }
+  #rfab .rmin { position:absolute; right:13px; bottom:62px; width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--accent);
+    background:rgba(0,0,0,.34); border:1px solid rgba(15,253,2,.4); display:grid; place-items:center;
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3); box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
+  #rfab .rmin svg { width:15px; height:15px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
+  #rfab .rmin:active { transform:scale(.85); transition:transform .09s; }
+  #rfab.open .rmin { opacity:0; transform:translateY(8px) scale(.3); pointer-events:none; }
+  @media (prefers-reduced-motion:reduce){ #rfab .rc,#rfab .ro,#rfab .rmin { transition:opacity .15s; } #rfab.open .ro{ transform:var(--rp,translate(0,-66px)); } #rfab.open .rmin{ transform:none; } #rfab .rmin:active{ transition:transform .09s; } }
+  @media (hover:hover) and (pointer:fine) { #rfab { display:none; } }   /* PC(마우스) = 엄지 빠른메뉴 불필요 → 숨김 */
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
@@ -104,6 +136,15 @@
 
   <div class="status" id="status"></div>
   <div class="out" id="out"></div>
+</div>
+
+<!-- 빠른메뉴(이미지/자막 도구 #rfab 계승) — 코어(+) 펼치면 웹 렌더 생성 · 코어 위 '-' 최소화 -->
+<div id="rfab" aria-label="빠른 메뉴">
+  <button class="ro" id="kFocusFab" type="button" title="입력칸으로 (커서 활성화)"><svg viewBox="0 0 24 24"><path d="M7 10l5-5 5 5M7 14l5 5 5-5"/></svg></button>
+  <button class="ro" id="kGenFab" type="button" title="웹 렌더 생성"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg></button>
+  <button class="ro" id="kTabFab" type="button" title="자막 생성기로 전환"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
+  <button class="rc" id="rfabCore" type="button" aria-label="빠른 메뉴 열기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="rmin" id="rfabMin" type="button" aria-label="최소화" title="최소화 (창 접기)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
 </div>
 
 <script>
@@ -258,6 +299,19 @@ $('#go').onclick = async () => {
     status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
   } finally { $('#go').disabled = false; }
 };
+// 빠른메뉴(thumb/ly #rfab 계승): 코어(+) 토글 · 생성 = 웹 렌더 생성(#go) · '-' = iframe→부모 minimizeTool(동일출처)
+(function(){
+  const rfab = $('#rfab'), core = $('#rfabCore'), gen = $('#kGenFab'), focusFab = $('#kFocusFab'), tabFab = $('#kTabFab'), rmin = $('#rfabMin');
+  if (!rfab || !core) return;
+  core.addEventListener('click', e => { e.stopPropagation(); rfab.classList.toggle('open'); });
+  document.addEventListener('click', e => { if (!rfab.contains(e.target)) rfab.classList.remove('open'); });
+  if (focusFab) focusFab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); const s = $('#scene'); if (s) { try { s.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {} try { s.focus(); } catch (_) {} } });   // 입력칸 커서 활성화(thumb #rfab2 계승)
+  if (gen) gen.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); const g = $('#go'); if (g) g.click(); });   // 생성 = 화면 주요 액션(웹 렌더)
+  if (tabFab) { if (window.parent === window) { tabFab.style.display = 'none'; }   // 단독(모달 아님) = 탭 없음 → 숨김
+    else tabFab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); try { const tabs = parent.document.querySelectorAll('#toolTabs .tooltab'); const other = [...tabs].find(t => !t.classList.contains('on')); if (other) other.click(); } catch (_) {} }); }   // 탭전환 = 부모 비활성 탭 클릭 재사용(영상프롬프트↔자막)
+  if (rmin) { if (window.parent === window) { rmin.style.display = 'none'; }   // 단독(모달 아님) = 최소화 무의미 → 숨김
+    else rmin.addEventListener('click', e => { e.stopPropagation(); try { if (parent.minimizeTool) parent.minimizeTool(); } catch (_) {} }); }
+})();
 </script>
 <script src="cscroll.js"></script>
 </body>

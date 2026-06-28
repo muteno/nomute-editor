@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>최소화 버튼 누적 픽스 + 레이어 정리</title>
+<style>
+  :root{
+    --bg:#121212; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108;
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697;
+    --danger:#ff5b4a; --warn:#ffd24a; --hist:#c24bf5; --hist-rgb:194,75,245;
+    --remote:#0cd0f7; --ease:cubic-bezier(.22,.61,.36,1); --blur-l:22px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:radial-gradient(120% 60% at 50% -8%,rgba(15,253,2,.05),transparent 55%),var(--bg);
+    color:var(--fg); font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif; padding:22px 14px 64px;}
+  .wrap{max-width:760px; margin:0 auto}
+  h1{font-size:20px; margin:2px 0 4px; letter-spacing:-.3px} h1 b{color:var(--accent)}
+  .lead{color:var(--mut); font-size:13px; margin:0 0 20px}
+  h2{font-size:15px; margin:26px 0 12px; padding-left:10px; border-left:3px solid var(--accent); letter-spacing:-.2px}
+  .card{border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.018); padding:14px 15px; margin:0 0 12px}
+  .pin{font-size:13.5px; font-weight:800; margin:0 0 8px; color:var(--fg)} .pin .ic{color:var(--accent)}
+  p{margin:6px 0} .mut{color:var(--mut)} code{font:12px ui-monospace,Menlo,monospace; background:rgba(255,255,255,.06); padding:1px 6px; border-radius:5px; color:var(--fg-2)}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px} @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+  .ba{border:1px solid var(--line); border-radius:12px; padding:11px 12px; font-size:13px}
+  .ba.b{border-color:rgba(255,91,74,.32); background:rgba(255,91,74,.05)} .ba.a{border-color:rgba(var(--accent-rgb),.34); background:rgba(var(--accent-rgb),.06)}
+  .ba h4{margin:0 0 6px; font-size:12px; font-weight:800; letter-spacing:.3px} .ba.b h4{color:#ff8a7a} .ba.a h4{color:var(--accent)}
+  ul{margin:6px 0 2px; padding-left:18px} li{margin:3px 0; font-size:13.5px}
+  table{width:100%; border-collapse:collapse; font-size:13px; margin:4px 0}
+  th,td{text-align:left; padding:7px 9px; border-bottom:1px solid var(--line2)} th{color:var(--mut); font-weight:700; font-size:11.5px}
+  td code{font-size:11.5px}
+  /* 레이어 스택 다이어그램 */
+  .stack{display:flex; flex-direction:column; gap:7px; margin:6px 0 2px}
+  .lyr{position:relative; border-radius:11px; padding:11px 13px; border:1px solid var(--line); display:flex; align-items:center; gap:10px; font-size:13px}
+  .lyr .z{font:800 11px ui-monospace,monospace; color:var(--mut); min-width:62px}
+  .lyr .nm{font-weight:800} .lyr .ds{color:var(--mut); font-size:12px; margin-left:auto; text-align:right}
+  .lyr.top{border-color:rgba(var(--hist-rgb),.5); background:linear-gradient(110deg,rgba(var(--hist-rgb),.12),transparent)} .lyr.top .nm{color:var(--hist)}
+  .lyr.rem{border-color:rgba(12,208,247,.4); background:linear-gradient(110deg,rgba(12,208,247,.09),transparent)} .lyr.rem .nm{color:var(--remote)}
+  .lyr.con{border-color:var(--line); background:rgba(255,255,255,.02)} .lyr.con .nm{color:var(--fg-2)}
+  .arrow{text-align:center; color:var(--mut); font-size:11px; margin:1px 0}
+  .tag{display:inline-block; font:800 10px ui-monospace,monospace; padding:1px 7px; border-radius:999px; vertical-align:middle}
+  .tag.fix{background:rgba(var(--accent-rgb),.14); color:var(--accent)} .tag.risk{background:rgba(255,210,74,.14); color:var(--warn)}
+  .verdict{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 2px}
+  .vchip{font-size:12px; font-weight:800; padding:5px 11px; border-radius:999px; border:1px solid var(--line)}
+  .vchip.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08)}
+  .foot{margin-top:24px; color:var(--mut); font-size:11.5px; text-align:center; border-top:1px solid var(--line2); padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>최소화 버튼 <b>누적 버그 픽스</b> + z-index 레이어 정리</h1>
+  <p class="lead">운영자 3대 요구 — ① 최소화 버튼이 누적(2개+)될 때 작동 안 함 픽스 · ② 최소화 버튼 최우선 · ③ 레이어 레벨 정리(최소화 &gt; 리모컨 &gt; 내용). PR #1089.</p>
+
+  <h2>1. 누적 버그 — 원인과 픽스</h2>
+  <div class="card">
+    <p class="pin"><span class="ic">📍</span> 2개+ 최소화 시 ▲ 누르면 뜨는 <b>복원 선택 메뉴(picker)</b>에서 항목을 골라도 복원이 안 됐음</p>
+    <div class="grid2">
+      <div class="ba b"><h4>전 (BUG)</h4>
+        바깥탭 닫기 리스너가 <b>탭 위치를 안 가림</b> → picker 항목을 탭하면 <code>pointerdown</code>(capture)이 항목의 <code>click</code>보다 <b>먼저</b> picker를 제거 → 선택이 죽음. <span class="mut">정확히 "누적(2개+)될 때만" 깨지는 이유 = picker는 2개 이상일 때만 뜸.</span></div>
+      <div class="ba a"><h4>후 (FIX)</h4>
+        <code>onMinPickOutside</code> 가드 신설 — <code>.min-pick</code>·<code>#toolRestore</code> 내부 탭이면 <b>닫지 않음</b> → 항목 click이 살아 복원 실행. <code>once</code>→명시 해제, ▲ 재탭 토글 추가. <span class="mut">검증된 데모(260628)의 <code>.closest</code> 가드를 라이브에 반영.</span></div>
+    </div>
+  </div>
+
+  <h2>2. 레이어 정리 — 「최소화 &gt; 리모컨 &gt; 내용」</h2>
+  <div class="card">
+    <p class="mut" style="font-size:13px;margin-top:0">기존: raw z-index 50+개가 흩어져 기준 없음. → <b style="color:var(--fg)"><code>:root</code> z-index 토큰 스케일</b>로 3계층 명문화(값 보존 = 동작 무변, 계층만 codify).</p>
+    <div class="stack">
+      <div class="lyr top"><span class="z">200~206</span><span class="nm">▲ 최소화 시스템</span><span class="ds"><code>--z-min*</code> · 복원 ▲·picker·실드·칩 · 최우선</span></div>
+      <div class="arrow">▲ 위 &nbsp;·&nbsp; 아래 ▼</div>
+      <div class="lyr rem"><span class="z">35~130</span><span class="nm">리모컨 (떠있는 컨트롤)</span><span class="ds"><code>--z-nav</code>·<code>--z-remote</code>·팝/토스트/사유메뉴</span></div>
+      <div class="arrow">▲ 위 &nbsp;·&nbsp; 아래 ▼</div>
+      <div class="lyr con"><span class="z">1~22</span><span class="nm">내용 (피드·모달 본문)</span><span class="ds">컴포넌트 내부 스택·드롭다운 = 로컬 raw 유지</span></div>
+    </div>
+    <p class="mut" style="font-size:12px">⚠️ 열린 모달은 브라우저 <b>top-layer</b>라 z-index로 못 이김 → ▲를 열린 모달 안으로 옮기는 <code>reparentNav</code>가 "최우선"을 보장(기존 메커니즘 유지·강화).</p>
+  </div>
+
+  <h2>3. 평의회가 잡은 고아(orphan) 결함 — 보강 4건</h2>
+  <div class="card">
+    <p class="mut" style="font-size:13px;margin-top:0"><b style="color:var(--fg)">10인 적대 평의회</b>가 발견 → 전부 <code>closeMinPicker()</code> 누락이 원인. picker 열린 채 컨텍스트가 바뀔 때 <code>#minPick</code>·리스너가 고아로 남던 것:</p>
+    <table>
+      <tr><th>경로</th><th>증상</th><th>보강 위치</th></tr>
+      <tr><td>모달이 폰 뒤로가기·ESC로 닫힘 <span class="tag fix">A3</span></td><td>picker가 닫힌 모달 안에 고아 → 다음 ▲ 탭 먹힘 + 리스너 누수</td><td><code>reparentNav</code></td></tr>
+      <tr><td>롱프레스 → 전체종료 <span class="tag fix">A4·7·10</span></td><td>고아 picker + 리스너</td><td><code>hideRestoreNav</code></td></tr>
+      <tr><td>최소화 중 다른 도구 열기 <span class="tag fix">A4</span></td><td>고아 picker</td><td><code>hideRestoreNav</code></td></tr>
+      <tr><td>롱프레스 닫기 진입 <span class="tag fix">A2</span></td><td>실드가 picker 위 시각 겹침</td><td><code>arm</code></td></tr>
+    </table>
+    <p class="mut" style="font-size:12px"><code>closeMinPicker</code>는 멱등(picker 없으면 no-op) · reparentNav는 컨텍스트 변경 시만 발화 → 핫패스 회귀 0.</p>
+  </div>
+
+  <h2>4. 장단점 · 효율성 · 품질저하 리스크</h2>
+  <div class="grid2">
+    <div class="card" style="margin:0"><p class="pin"><span class="ic">＋</span> 장점</p>
+      <ul>
+        <li>누적 최소화 복원 정상화(핵심 버그)</li>
+        <li>최소화 시스템 항상 최우선 보장</li>
+        <li>레이어 계층 <code>:root</code> 토큰으로 명문화 → 드리프트 차단</li>
+        <li>고아 picker·리스너 전 경로 회수(메모리·UX)</li>
+        <li>순수 프론트 · LLM/과금 0</li>
+      </ul>
+    </div>
+    <div class="card" style="margin:0"><p class="pin"><span class="ic">⚠</span> 리스크 (낮음)</p>
+      <ul>
+        <li>토큰화 12곳 <b>값 1:1 보존</b> → 픽셀/스택 회귀 0 <span class="tag fix">검증</span></li>
+        <li><code>.qflash</code>만 40→41 (failmenu와 동거·동시표출 없음) <span class="tag risk">1px</span></li>
+        <li>핫패스 <code>closeMinPicker</code> = 멱등 no-op → 회귀 0 <span class="tag fix">재검증</span></li>
+        <li>잔여 minor(stale picker 목록 등) = 기존 구조 엣지·실사용 거의 도달 불가</li>
+      </ul>
+    </div>
+  </div>
+  <p class="mut" style="font-size:12.5px;margin-top:10px"><b style="color:var(--fg)">효율성</b>: 새 CSS/컴포넌트 거의 0(토큰 추출 + 가드 3줄 + 보강 3줄). <code>check_refs</code> rc=0(거울 정합·토큰 게이트·JS 구문). §🎨 "기존 라이브 값 추출=회귀0 예외"라 기틀 게이트 미발동.</p>
+
+  <h2>5. 검증</h2>
+  <div class="card">
+    <div class="verdict">
+      <span class="vchip ok">10인 평의회 ✅6/⚠️4/❌0</span>
+      <span class="vchip ok">mustFix 전부 수정</span>
+      <span class="vchip ok">3인 재검증 3/3 만장일치 PASS</span>
+      <span class="vchip ok">check_refs rc=0</span>
+    </div>
+    <p class="mut" style="font-size:12.5px">Opus 4.8 · effort high · READ-ONLY 실측 · 서로 다른 앵글(z계층·picker·top-layer·이벤트타이밍·MIN_REG·회귀·모바일·접근성·정합·총괄). 재검증 = 고아 결함 재현경로 전부 닫힘 + 핫패스 삽입 회귀 0 확인 + 머지 후 <code>git show origin/main</code> read-back.</p>
+  </div>
+
+  <div class="foot">nomute-editor · 260628 · PR #1089 · 백업 <code>_versions/260628_1410_최소화_리모컨_레이어정리/</code></div>
+</div>
+</body>
+</html>
