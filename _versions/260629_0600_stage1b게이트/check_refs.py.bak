@@ -348,69 +348,6 @@ def check_curation_constants():
     return rc
 
 
-_INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
-_AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
-
-def check_autocomplete():
-    """평문 텍스트 입력칸 = OS 자동완성 끔 4종 세트 하드 게이트(§🎨 · 운영자 260628).
-    편집가능 <input type=text|search>가 autocomplete/autocapitalize/autocorrect/spellcheck 중 하나라도
-    빠지면 rc=1 → 모바일 OS가 🔑비번·💳카드·📍주소 자동완성 바를 붙여 입력 번잡(운영자 실측 = 썸네일 '부제').
-    제외: readonly/disabled/hidden(표시 전용 = 자동완성 대상 아님)·기타 type."""
-    rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
-        try:
-            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
-        except Exception:
-            continue
-        for m in _INPUT_RE.finditer(s):
-            tag = m.group(0)
-            tl = tag.lower()
-            tm = re.search(r'type\s*=\s*["\']?(\w+)', tl)
-            typ = tm.group(1) if tm else 'text'   # type 생략 = text
-            if typ not in ('text', 'search'):
-                continue
-            if 'readonly' in tl or 'disabled' in tl:
-                continue
-            miss = [n for n in _AC_NEED if n not in tl]
-            if miss:
-                ln = s[:m.start()].count('\n') + 1
-                print('❌ 자동완성 4종 누락 — %s:%d (%s 빠짐) → autocomplete/autocapitalize/autocorrect/spellcheck off 추가(§🎨)'
-                      % (rel, ln, '·'.join(miss)))
-                rc = 1
-    if rc == 0:
-        print('✅ 자동완성 게이트 — 편집가능 text/search 입력칸 전부 OS 자동완성 끔 4종 세트.')
-    return rc
-
-
-# render-text × (닫기/삭제 버튼이 SVG 아닌 문자 ×/✕ 사용) = 드리프트(§🎨 닫기=SVG X-path 단일 권장).
-# 컴포넌트 컨텍스트(aria-label 닫기·삭제 류 또는 close/del/x 클래스)이고 *내용이 ×문자 하나뿐*일 때만 잡아
-# 치수 텍스트('1080×1350')·JS 문자열 오탐 0. WARN(점진 통일 — thumb 등 병렬작업 파일이라 비차단).
-_XSET = '×✕⨯╳✖'
-_XEL_RE = re.compile(r'<(button|a|span|div|i)\b([^>]*)>\s*([' + _XSET + r'])\s*</\1>', re.I)
-_XCTX_RE = re.compile(r'aria-label\s*=\s*["\'][^"\']*(닫기|닫음|삭제|취소|제거|지우)|class\s*=\s*["\'][^"\']*(tool-x|dlg-x|-x\b|close|abdel|del|btn-x)', re.I)
-
-def check_x_char():
-    warns = []
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
-        try:
-            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
-        except Exception:
-            continue
-        s2 = re.sub(r'<!--.*?-->', '', s, flags=re.S)   # 주석 제거(오탐 차단)
-        for m in _XEL_RE.finditer(s2):
-            if _XCTX_RE.search(m.group(2)):
-                ln = s2[:m.start()].count('\n') + 1
-                warns.append('%s:%d <%s> 닫기/삭제 = 문자 「%s」 → SVG X-path(§🎨 닫기=SVG 단일 권장)'
-                             % (rel, ln, m.group(1), m.group(3)))
-    if warns:
-        print('⚠️ 닫기/삭제 × 문자 게이트(비차단) — SVG로 통일 권장:')
-        for w in warns:
-            print('  -', w)
-    else:
-        print('✅ 닫기/삭제 × 문자 게이트 — 문자 ×/✕ 닫기버튼 0(전부 SVG).')
-    return 0   # WARN-only(병렬작업 파일 비차단)
-
-
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -459,15 +396,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_curation_constants 스킵:', e)
-    try:
-        if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_autocomplete 스킵:', e)
-    try:
-        check_x_char()   # 닫기/삭제 × 문자 → SVG 권장(WARN-only·병렬작업 파일 비차단)
-    except Exception as e:
-        print('⚠️ check_x_char 스킵:', e)
     return rc
 
 
