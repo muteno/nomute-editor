@@ -4589,9 +4589,6 @@ const EDIT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
 const THUMBUP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3z"/><path d="M7 10l4.5-7.5a2 2 0 0 1 2.5 2V8h5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.6 20H7"/></svg>';
 const THUMBDOWN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3z"/><path d="M17 14l-4.5 7.5a2 2 0 0 1-2.5-2V16H5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 6.4 4H17"/></svg>';
 const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
-// 상태문구 픽토그램(§🎨 이모지 금지 · 인라인 vertical-align) — 동적문자열은 esc() 동반 innerHTML만(XSS 가드·운영자 260628·ly/k 통일)
-const OK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M5 13l4 4L19 7"/></svg>';
-const ERR_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="vertical-align:-2px"><path d="M6 6 18 18M18 6 6 18"/></svg>';
 // (ERASE_SVG·UNDO_SVG는 위 4183~4184에 단일 정의 — main #1056 중복분 제거·머지 260627. #askText는 그 상수를 공유)
 // 다운로드 시퀀스 버튼(.cref-dlall) 아이콘 = 다운(dn)↔체크(chk) 스왑 한 벌(완료 시 체크 팝 · 정본 패턴 구성도 §9)
 const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
@@ -6881,8 +6878,8 @@ $('#askSend').addEventListener('click', async () => {
       setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false;
         $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();   // 리셋 = 닫은 뒤(빈 초기화면 깜빡임 차단 · 운영자 260622)
       }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
-    else { $('#askStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
-  } catch { $('#askStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
+    else { $('#askStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
+  } catch { $('#askStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
   btn.classList.remove('firing'); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
@@ -6913,7 +6910,7 @@ $('#pasteSend').addEventListener('click', async () => {
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, body: text }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
-      $('#pasteStatus').innerHTML = OK_SVG + ' 재분석 시작 — 곧 Picking…으로, 완료되면 PICKED';
+      $('#pasteStatus').textContent = '✅ 재분석 시작 — 곧 Picking…으로, 완료되면 PICKED';
       const id = candId(c);
       saveRating(id, { picked: true, pickedAt: Date.now() });   // pickedAt 리셋 → pickTimedOut 해제(새 분석창)
       pfAddResub(id);                                            // pfailHas 억제 → Failed→Picking(임시창)
@@ -6921,8 +6918,8 @@ $('#pasteSend').addEventListener('click', async () => {
       setTimeout(() => { pastedlg.close(); btn.disabled = false; if (CURTAB === 'scrap') renderScrap(); pollPicking(); }, 1300);
       return;
     }
-    $('#pasteStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`);
-  } catch { $('#pasteStatus').innerHTML = ERR_SVG + ' 전송 실패'; }
+    $('#pasteStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`);
+  } catch { $('#pasteStatus').textContent = '❌ 전송 실패'; }
   btn.disabled = false;
 });
 // ── 요약 수정 배선 — FAB(콘텐츠 초안~시사점 구간 점등)→팝업(좌측 펼침·즉시 포커스) · 클립(.sbtn 캐러셀) · 전송(1차 재확인→2차 PICK 게이지 발사) ──
@@ -7429,8 +7426,8 @@ $('#revSend').addEventListener('click', async () => {
       }, 1600);   // 닫힐 때까지 disabled(중복전송 차단)
       return;
     }
-    $('#revStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`);
-  } catch { $('#revStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
+    $('#revStatus').textContent = '❌ ' + (d.error || `서버 ${r.status}`);
+  } catch { $('#revStatus').textContent = '❌ 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
   btn.disabled = false;
 });
 // ── PC(마우스) 전용: 팝업 모달 헤더 잡고 드래그 이동(메뉴 아님 · 운영자 260619) ──
