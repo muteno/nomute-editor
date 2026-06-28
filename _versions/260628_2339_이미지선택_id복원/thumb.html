@@ -1064,20 +1064,18 @@ function bindFile(inp, lab, store) {
     lab.classList.add('picking');
     window.addEventListener('focus', () => lab.classList.remove('picking'), { once: true });
   });
-  const inpId = inp.id;   // ⚠️ innerHTML 교체 시 새 input에 원래 id 복원 — 안 하면 #file id 소실 → FAB(rfab3) imgInput()=getElementById('file')가 null → 이미지 선택 '선택적으로만 작동' 버그(운영자 260628)
-  const rebindInput = () => { const ni = lab.querySelector('input'); if (ni) { ni.onchange = handler; if (inpId) ni.id = inpId; } };
   const reset = () => {   // 휴지통 → 업로드 취소: store 비우고 라벨 초기 상태로 + input 재바인드(운영자 260622)
     store.b64 = ''; store.name = '';
     lab.classList.remove('has');
     lab.innerHTML = '<span class="filepic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><input type="file" accept="image/*" style="display:none">';
-    rebindInput();
+    lab.querySelector('input').onchange = handler;
   };
   const applyImg = (b64, name) => {   // b64+이름 → 미리보기 렌더(파일선택·수정복원 공용)
     store.b64 = b64; store.name = name || '';
     lab.innerHTML = '<div class="fileprev"><img src="' + b64 + '"><button type="button" class="filerm" aria-label="이미지 삭제" title="이미지 삭제">' + TRASH_SVG + '</button><span class="fn">' + (name || '') + '</span></div>' +
       '<input type="file" accept="image/*" style="display:none">';
     lab.classList.add('has');
-    rebindInput();   // innerHTML 교체로 사라진 input 재바인드 + id 복원(FAB getElementById('file') 유지)
+    lab.querySelector('input').onchange = handler;   // innerHTML 교체로 사라진 input 재바인드
     const rm = lab.querySelector('.filerm');   // 휴지통 = 라벨 클릭(파일창 열림) 안 타게 차단 후 삭제
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
@@ -1093,7 +1091,7 @@ function bindFile(inp, lab, store) {
     lab.innerHTML = '<div class="fileprev refonly"><img src="' + esc(url) + '"><span class="refhatch" aria-hidden="true"></span><span class="refbadge">참고</span><button type="button" class="filerm" aria-label="이미지 삭제" title="이미지 삭제">' + TRASH_SVG + '</button></div>' +
       '<input type="file" accept="image/*" style="display:none">';
     lab.classList.add('has');
-    rebindInput();
+    lab.querySelector('input').onchange = handler;
     const rm = lab.querySelector('.filerm');
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
