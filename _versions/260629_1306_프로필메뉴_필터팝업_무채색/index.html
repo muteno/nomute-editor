@@ -198,8 +198,8 @@
   /* 긴급 속보 웹푸시 토글(메시지 팝업 상단) */
   .pushrow { display:flex; align-items:center; gap:8px; padding:4px 12px 8px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
   .pushrow .pl { font-size:12px; font-weight:700; color:var(--fg); white-space:nowrap; }
-  .pushbtn { margin-left:auto; font:800 13px inherit; line-height:1; padding:4px 4px; cursor:pointer; border:none; background:none; color:var(--mut); }   /* 박스·체크 없이 명도로만 OFF(뮤트 회색)/ON(흰색) 구분 · 운영자 260621→무채색 260629 */
-  .pushbtn.on { color:var(--fg); }                     /* 무채색 — ON = 흰색(초록 제거·OFF 뮤트와 명도 대비·운영자 260629) */
+  .pushbtn { margin-left:auto; font:800 13px inherit; line-height:1; padding:4px 4px; cursor:pointer; border:none; background:none; color:var(--mut); }   /* 박스·체크 없이 색으로만 OFF(회색)/ON(초록) 구분 · 운영자 260621 */
+  .pushbtn.on { color:var(--accent); }                 /* ON = 초록 */
   .pushbtn.denied { color:var(--amber); }              /* 차단됨 = 앰버(탭→해제 안내) */
   .pushbtn:disabled { opacity:.55; cursor:default; }
   .pushbtn:active { transform:scale(var(--press-l,.95)); }
@@ -222,11 +222,13 @@
   .pmenu .pmenu-rf { margin-left:auto; width:30px; height:30px; min-width:0; padding:0; display:grid; place-items:center;
     background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; color:var(--mut); font-size:16px;
     cursor:pointer; transition:color .15s, background .15s, border-color .15s, transform .25s; }
-  .pmenu .pmenu-rf:hover { color:var(--fg); border-color:var(--line); background:rgba(255,255,255,.06); transform:rotate(180deg); }   /* 무채색 — 새로고침 hover=중립(탭별 앰버/시안 hover 폐지·운영자 260629) */
+  .pmenu .pmenu-rf:hover { color:var(--accent); border-color:rgba(15,253,2,.4); background:var(--accent-dim); transform:rotate(180deg); }
+  body.tab-scrap .pmenu .pmenu-rf:hover { color:#ff9614; border-color:rgba(255,150,20,.45); background:rgba(255,150,20,.14); }   /* 레거시 탭 = 앰버(배너색 매칭) */
+  body[data-tab="sns"] .pmenu .pmenu-rf:hover { color:#0cd0f7; border-color:rgba(12,208,247,.45); background:rgba(12,208,247,.14); }   /* SNS 탭 = 시안 */
   .pmenu .psub { padding:0 12px 9px; font-size:12px; font-style:italic; font-weight:800; color:var(--mut); border-bottom:1px solid var(--line2); margin-bottom:4px; }
   .pmenu a, .pmenu button { display:block; width:100%; text-align:left; background:none; border:none;
     color:var(--fg); font:inherit; font-size:13px; padding:9px 12px; border-radius:10px; cursor:pointer; text-decoration:none; }
-  .pmenu a:hover, .pmenu button:hover { background:rgba(255,255,255,.06); color:var(--fg); }   /* 무채색 — hover=흰색(강조색 제거·운영자 260629) */
+  .pmenu a:hover, .pmenu button:hover { background:rgba(255,255,255,.06); color:var(--accent); }
   /* (긴급 확인 버튼·프로필 긴급 점등 폐지 — 운영자 260620: 긴급 배지는 사건속성으로 계속 표시, 프로필 확인 루틴만 제거) */
   @keyframes popIn { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }
   @keyframes popOut { from { opacity:1; transform:none;} to { opacity:0; transform:scale(.92) translateY(-4px);} }   /* popIn 역재생 = 아바타(top-right)로 촤르륵 접힘 */
@@ -296,9 +298,9 @@
   .chip { font-size:12.5px; font-weight:600; color:var(--mut); background:none; border:none;
     padding:4px 3px; cursor:pointer; font-family:inherit; white-space:nowrap; transition:color .15s, text-shadow .15s; }
   .chip:hover { color:var(--fg); }
-  .chip.on { color:var(--fg); font-weight:800; }   /* 무채색 통일 — 활성 칩 = 중립 흰색(강조색·글로우 제거·운영자 260629 · 카드 카테고리색은 불변) */
+  .chip.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(15,253,2,.55); }
   .chip-iss { margin-left:0; font-weight:700; }   /* 이슈 칩(긴급+이슈 통합·카테고리와 별개 인덱스·운영자 260621) */
-  .chip-iss.on { color:var(--fg); font-weight:800; }   /* 무채색 통일 — 이슈 활성 = 중립 흰색(노랑 제거·운영자 260629) */
+  .chip-iss.on { color:#ffd24a; font-weight:800; text-shadow:0 0 11px rgba(255,200,40,.6); }   /* 이슈 선택 시 = 노랑 */
   /* 날짜 헤더(검색 위) — 날짜 강조 · 세로 구분선 · Today 강조 */
   .dhead { display:flex; align-items:center; gap:14px; max-width:860px; margin:0 auto; padding:0 16px 11px; font-size:13px; }
   .dh-date { color:var(--fg); font-weight:700; letter-spacing:-.1px; }   /* 날짜 = 차분 흰색(첨부 톤 — 강조는 '오늘 N'만) */
@@ -2128,7 +2130,7 @@ function renderChips() {
   const none = !FILTERS.cats.size && !FILTERS.issue;
   let h = `<button class="chip${none ? ' on' : ''}" data-f="all">전체</button>`;
   h += `<button class="chip chip-iss${FILTERS.issue ? ' on' : ''}" data-f="issue">이슈</button>`;   // 이슈 = 긴급+이슈 통합 토글(켜면 breaking·issue 둘 다 표시·운영자 260621)
-  h += CHIP_CATS.map(cat => { const on = FILTERS.cats.has(cat); return `<button class="chip${on ? ' on' : ''}" data-cat="${cat}">${cat}</button>`; }).join('');   // 무채색 통일 — 활성 칩 = 중립 흰색(.chip.on)·카테고리 고유색 inline 제거(운영자 260629 · 카드 카테고리색 CAT_COLOR는 불변)
+  h += CHIP_CATS.map(cat => { const on = FILTERS.cats.has(cat), col = CAT_COLOR[cat] || 'var(--accent)'; return `<button class="chip${on ? ' on' : ''}" data-cat="${cat}"${on ? ` style="color:${col};text-shadow:0 0 11px ${col}99"` : ''}>${cat}</button>`; }).join('');   // 활성 칩 = 카테고리 고유색(정치 빨강·국제 시안·테크 바이올렛 등 각각·운영자 260622)
   c.innerHTML = h;
 }
 
