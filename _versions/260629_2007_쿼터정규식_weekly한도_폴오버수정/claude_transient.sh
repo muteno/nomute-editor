@@ -15,7 +15,7 @@ is_transient() {
 #   인증죽음(401/oauth만료)·5xx 과부하와 구분(그건 전환해도 무의미·is_transient/health 담당). 앞 8줄만 검사(본문 인용 오탐 억제).
 is_quota() {
   local s; s="$(printf '%s\n' "${1:-}" | head -n 8)"
-  grep -qiE 'usage limit|weekly limit|hit your.{0,20}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)' <<<"$s"   # 'weekly limit'·'hit your … limit'·'limit … resets <날짜>' = Claude 신규 주간한도 문구(260629 실측: 요약 전건 실패 원인 — 폴오버 미작동) 추가
+  grep -qiE 'usage limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|resets? (at|in)' <<<"$s"
 }
 
 # claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*으로 1단계씩 전환(3계정 체인).

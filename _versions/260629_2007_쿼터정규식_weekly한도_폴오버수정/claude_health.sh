@@ -11,7 +11,7 @@ claude_systemic_reason() {
   case "$s" in
     *"invalid x-api-key"*|*"authentication_error"*|*"oauth"*|*"unauthorized"*|*"please run /login"*|*"invalid api key"*|*"401"*|*"403"*|*"credit balance"*|*"login expired"*)
       echo "인증 오류(키·토큰 만료·무효 — 운영자 OAuth 토큰 점검 필요)"; return 0 ;;
-    *"rate_limit"*|*"rate limit"*|*"overloaded"*|*"usage limit"*|*"weekly limit"*|*"hit your"*|*"quota"*|*"429"*|*"529"*|*"too many requests"*)
+    *"rate_limit"*|*"rate limit"*|*"overloaded"*|*"usage limit"*|*"quota"*|*"429"*|*"529"*|*"too many requests"*)
       echo "사용량 한도(쿼터·레이트리밋 — 잠시 후 자동 복구)"; return 0 ;;
   esac
   return 1
