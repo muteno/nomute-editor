@@ -1477,8 +1477,14 @@
   /* 기록·닫기 = 헤더 우측(.fb-headact)으로 이동 = 첨부3 패턴. X=.askx 글래스 계승 / 클립=.iobtn-edge 하단걸침(revdlg 미러 · 헤더 버튼과 안 겹침) */
   .slide-fb .iobtn-edge { top:auto; bottom:0; transform:translateY(50%); }
   .slide-fb .iobtn-edge:active { transform:translateY(50%) scale(var(--press-s,.85)); }
-  /* 취소확인 팝업(confirmCancelVote)도 메인 피드백 팝업과 동일 헤더 패턴(.fb-head + [취소(삭제)·.asksend][X·.askx]) = 첨부3 통일(운영자 260629 'go'). 경고문구만 헤더 아래 .fb-note */
-  .fb-note { font-size:11.5px; font-weight:600; color:rgba(255,255,255,.55); }
+  /* ── 취소확인 팝업(confirmCancelVote) 전용 = 옛 레이아웃 유지(제목 위·버튼 아래) · 메인 피드백 팝업(.fb-head 신패턴)과 스코프 분리 ── */
+  .fb-vote { font-size:13px; font-weight:800; color:#fff; } .fb-sub { font-weight:600; color:rgba(255,255,255,.55); font-size:11.5px; }
+  .fb-x:not(.askx) { position:absolute; top:8px; right:9px; width:26px; height:26px; border-radius:9px; font-size:11px; color:rgba(255,255,255,.6); background:rgba(255,255,255,.06); border:1px solid var(--line2); cursor:pointer; display:grid; place-items:center; }   /* 취소확인 X(메인은 .fb-x.askx 헤더 인플로우) */
+  .fb-x:not(.askx):hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .fb-act { display:flex; gap:8px; justify-content:flex-end; }
+  .fb-act button { padding:8px 15px; font:700 12.5px inherit; border-radius:999px; cursor:pointer; }
+  .fb-save:not(.asksend) { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }   /* 취소확인 버튼(메인 기록은 .asksend 순수글래스) */
+  .fb-save[disabled] { opacity:.55; } .fb-act button:active { transform:scale(var(--press-l,.95)); }
   .fb-done { font-size:13px; font-weight:800; color:var(--accent); text-align:center; padding:6px 0; }
   .slide-wait { aspect-ratio:4/5; display:grid; place-items:center; border-radius:16px; border:1px solid var(--line);
     background:rgba(5,12,8,.4); color:var(--accent); font-size:13px; text-align:center; padding:0 18px; line-height:1.5; }
@@ -4198,8 +4204,9 @@ function confirmCancelVote(card, vote, fig, file) {
   const host = fig.querySelector('.slide-img') || fig; if (!host) return;   // 오버레이(.feed-ui)면 자신이 host
   const ex = host.querySelector('.slide-fb'); if (ex) ex.remove();
   const fb = document.createElement('div'); fb.className = 'slide-fb';
-  fb.innerHTML = `<div class="fb-head"><b class="fb-title">${vote === 'up' ? THUMBUP_SVG + ' 좋아요' : THUMBDOWN_SVG + ' 아쉬워요'} 취소할까요?</b><div class="fb-headact"><button type="button" class="fb-save asksend">취소(삭제)</button><button type="button" class="fb-x askx" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
-     <div class="fb-note">기록도 삭제돼</div>`;
+  fb.innerHTML = `<button type="button" class="fb-x" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+     <div class="fb-vote">${vote === 'up' ? THUMBUP_SVG + ' 좋아요' : THUMBDOWN_SVG + ' 아쉬워요'} 취소할까요? <span class="fb-sub">— 기록도 삭제돼</span></div>
+     <div class="fb-act"><button type="button" class="fb-save">취소(삭제)</button></div>`;
   fb.querySelector('.fb-x').onclick = () => fb.remove();
   fb.querySelector('.fb-save').onclick = () => {
     const save = fb.querySelector('.fb-save'); save.disabled = true; save.textContent = '삭제 중…';
