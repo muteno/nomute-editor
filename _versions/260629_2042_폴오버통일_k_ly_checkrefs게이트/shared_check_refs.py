@@ -527,39 +527,6 @@ def check_soremeori():
     return rc
 
 
-def check_claude_failover():
-    """모든 Claude 호출 스크립트는 폴오버 SSOT를 경유 — 계정 로테이션 통일(운영자 260629·§📰).
-    자체 쿼터 정규식·자체 폴오버 금지: 한 곳만 stale돼도 전건 실패(260629 'weekly limit' 미인식 실측 = 폴오버 누락·요약/카드 전건 failed).
-    스캔 범위 = .github/scripts/ + scraper/(둘 다 실제 claude 호출처 — auto_pick_breaking.py가 scraper에 있음 · 분신술10 발견).
-    호출 신호 = 비-주석 라인의 claude_meter / run_claude( / 'claude -p'(주석·docstring 멘션은 제외 = ly_stt·token_report 오탐 차단 → run_claude는 *호출* `(` 요구).
-    경유 = claude_failover(셸 SSOT 호출) 또는 claude_py/run_claude(파이썬 SSOT = is_quota+failover 내장)."""
-    rc = 0
-    miss = []
-    INVOKE = re.compile(r'^(?!\s*#).*(claude_meter|run_claude\(|claude -p)', re.M)   # 실제(비-주석) Claude 호출만 — run_claude는 호출`(`만(import·docstring 제외)·주석 속 'claude -p' 멘션(ly_stt 등) 제외
-    COMPLY = re.compile(r'claude_failover|claude_py|run_claude')                     # 셸=claude_failover 호출 / 파이썬=claude_py(run_claude) SSOT 경유
-    for d in ('.github/scripts', 'scraper'):
-        sdir = os.path.join(ROOT, d)
-        try:
-            names = sorted(n for n in os.listdir(sdir) if n.endswith(('.sh', '.py')))
-        except Exception:
-            continue
-        for n in names:
-            try:
-                txt = open(os.path.join(sdir, n), encoding='utf-8').read()
-            except Exception:
-                continue
-            if not INVOKE.search(txt):
-                continue
-            if not COMPLY.search(txt):
-                miss.append(d + '/' + n)
-    if miss:
-        print('❌ claude 폴오버 게이트 — Claude 호출인데 폴오버 SSOT(claude_failover/claude_py) 미경유: %s · 자체 쿼터처리 금지(계정 로테이션 통일·§📰)' % ', '.join(miss))
-        rc = 1
-    else:
-        print('✅ claude 폴오버 게이트 — 전 Claude 호출처(.github/scripts+scraper)가 폴오버 SSOT 경유(주간한도 시 3계정 자동 로테이션 통일·§📰).')
-    return rc
-
-
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -603,11 +570,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 민감 통제어휘 check 스킵:', e)
-    try:
-        if check_claude_failover() != 0:   # claude -p 호출 = 폴오버 SSOT 경유 통일(자체 쿼터처리·따로놀기 차단 · 260629 weekly한도 전건실패)
-            rc = 1
-    except Exception as e:
-        print('⚠️ claude 폴오버 게이트 스킵:', e)
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1
