@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>오버레이 생성기</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
 <style>
   :root { --bg:#0b0d0c;   /* 노뮤트 문서/보고서와 통일(거의-검정 평면)·운영자 260624 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --hist-accent:#c24bf5; --hist-rgb:194,75,245;
           --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --line2:#2a2c31;
@@ -41,19 +42,21 @@
   .tab.on small { color:#bfeeb6; }
   @media (min-width:520px){ .tabs{ gap:0; } .tab{ flex:1; text-align:center; } }   /* PC(넓은 모달) = 3탭 등폭 분배 → 간격 균일·고르게 벌어짐(모바일은 기존 center+gap 유지) · 운영자 260627 */
   .panel { background:transparent; border:0; border-radius:0; padding:0; box-shadow:none; }   /* 겉면 프레임 제거 = 뉴스 요약 페이지(index .nm-wrap) 계승 — 섹션·입력칸이 배경 글래스 위에 바로 흐름(외곽 라인 불필요·운영자 260626). 깊이는 입력칸 자체 글래스가 담당(§🎨 테두리보다 글래스). */
-  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 8px; }   /* 소제목 위아래 마진 통일·확보 = 각 칸 분리감(운영자 260617). first-of-type 예외·인라인 없음 → 전부 동일. */
+  label { display:block; font-size:var(--fs-label); color:var(--mut); margin:14px 0 8px; }   /* 소제목 위아래 마진 통일·확보(운영자 260617). .fl=소머리(흰색800+형광블릿) / 무클래스·.chk·.file=비소머리(회색 유지) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) */
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 뉴스 정본 content:'• '(블록·공백) 동일 */
   input[type=text], input[type=number], textarea, select {
-    width:100%; padding:12px; background:rgba(14,15,17,.55); border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; font-size:90%;   /* 반투명 = 패널의 블러된 실크가 입력칸에도 은은히 비침(피드 동일 결) · 글자 가독 위해 .55 · 운영자 260625 · 입력 글자 90%(이 화면 한정·운영자 260626) */
+    width:100%; padding:12px; background:rgba(14,15,17,.55); border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:90%;   /* 반투명 = 패널의 블러된 실크가 입력칸에도 은은히 비침(피드 동일 결) · 글자 가독 위해 .55 · 운영자 260625 · 입력 글자 90%(이 화면 한정·운영자 260626) */
   }
   input:focus, textarea:focus, select:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
   input::placeholder, textarea::placeholder { color:var(--mut); }
-  textarea { min-height:96px; resize:vertical; }
+  textarea { min-height:96px; resize:none; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
   .row { display:flex; gap:8px; }
   .row > * { flex:1; }
   .hint { font-size:12px; color:var(--mut); margin-top:5px; }
   .hint b { color:var(--accent); }
   .seg { display:flex; gap:6px; }
-  .seg button { flex:1; padding:8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--fg); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); transition:border-color .15s, background .15s; }
+  .seg button { flex:1; padding:8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); backdrop-filter:blur(10px) saturate(1.2); -webkit-backdrop-filter:blur(10px) saturate(1.2); border:1px solid rgba(255,255,255,.09); border-radius:var(--r-s); color:var(--fg); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.07); transition:border-color .15s, background .15s; }
   .seg button.on { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); box-shadow:inset 0 1px 0 rgba(255,255,255,.1); }
   .seg button.fixed { cursor:default; }   /* 60·30 = 항상 출력(고정 표시) — 누름 동작 없음 */
   /* 직접입력 = 버튼 자체가 입력창 (선택 시 라벨 숨고 안에 커서) */
@@ -69,7 +72,8 @@
   .trk.on { color:#ffd84d; }
   .trk.over { color:#ff7a7a; }
   /* ── 기본(통합) 모드 — 섹션머리(•) + 부제 흰색/제목 강조색 + 자막 2/3 + 이미지 슬롯 1/3 ── */
-  .csec { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--fg); margin:16px 0 9px; }   /* '• 헤더' ↔ 배경 = align-items center 수직중앙(line-height 1.3 제거 = 텍스트 박스가 cbox와 비슷 → 정렬 안정) */
+  .csec { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:16px 0 9px; }   /* 소머리 텍스트 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) · '• 헤더'↔배경 = align-items center 수직중앙 */
+  .csec::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 인라인 '• '→::before 분리(텍스트 흰색·블릿 형광) · flex라 gap:6px가 간격(블록 .fl은 content:'• ' 공백 = 뉴스 정본) */
   .csec-d { font-size:12px; font-weight:400; color:var(--mut); }
   .csec-chk { margin:0 0 0 auto; font-size:12.5px; font-weight:400; }   /* 배경 체크 = '• 헤더' 행 우측(margin-left auto)·별도 행 제거 */
   .csec-chk .cbox { width:17px; height:17px; }   /* 글자 높이로 축소 = '• 헤더'↔배경 정렬 기준 일치 */
@@ -89,7 +93,7 @@
   .covrow textarea { min-height:104px; }                   /* 자막 텍스트칸 = 3줄(콘텐츠 96px) 스크롤 없이 들어가게 +헤드룸(전역 96 → 104·운영자 260625). 슬롯도 ResizeObserver로 동기 */
   /* 이미지 슬롯 = 전경(플레이트) 완전 제거 → 픽토그램만(강조색) · 배경·테두리·blur 없음 · '이미지' 라벨 제거(운영자 260626) */
   .covimg { flex:1 1 0; min-width:0; position:relative; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-start; gap:3px;
-    min-height:104px; border:none; border-radius:9px; color:var(--accent); cursor:pointer; overflow:hidden;
+    min-height:104px; border:none; border-radius:var(--r-s); color:var(--accent); cursor:pointer; overflow:hidden;
     background:transparent; transition:background .15s; -webkit-tap-highlight-color:transparent; }
   .covimg .covimg-ic { margin:12px 16px 0 0; }   /* 빈 슬롯 픽토그램 = 슬롯 상단·우측(빠른메뉴 +/− 네비 세로열과 정렬 · 슬롯 우변·네비 둘 다 뷰포트 우측 고정이라 폭 무관 유지 · 운영자 260627). .has/.refonly = 자식 전부 absolute라 무영향 */
   @media (hover:hover) and (pointer:fine) { .covimg:hover { background:rgba(255,255,255,.04); } .covimg.has:hover { background:var(--bg); } }   /* hover 배경 = 마우스에서만. 터치는 파일창 열고 취소 후 :hover가 고착돼 슬롯이 전경색으로 칠해지던 버그 차단(상황 따라 안 바뀜 · #rfab PC숨김과 동일 컨벤션 · 운영자 260627) */
@@ -99,7 +103,7 @@
   .covimg .covimg-t { display:none; }   /* '이미지' 라벨 제거 */
   .covimg img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
   .covimg .covimg-x { position:absolute; top:6px; right:6px; width:30px; height:30px; display:grid; place-items:center; padding:0;
-    color:var(--accent); background:rgba(0,0,0,.20); border:0; border-radius:9px; cursor:pointer; z-index:2;
+    color:var(--accent); background:rgba(0,0,0,.20); border:0; border-radius:var(--r-s); cursor:pointer; z-index:2;
     filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); -webkit-tap-highlight-color:transparent; transition:transform .12s, background .15s; }   /* .fileprev .filerm 계승 */
   .covimg .covimg-x:active { transform:scale(var(--press-xs,.82)); background:rgba(0,0,0,.32); }
   .covimg .covimg-x svg { width:15px; height:15px; display:block; }
@@ -108,11 +112,11 @@
   @media (max-width:480px) {
     .covta { flex:3 1 0; }   /* 텍스트 67%→75% · 이미지 슬롯(.covimg flex:1) 33%→25% (입력 글자 90%(이 화면·260626) · 슬롯 축소로 우측 넘침 해소·운영자 260624) */
   }
-  .file { display:block; padding:12px; border:1px dashed transparent; border-radius:9px; text-align:center; color:var(--accent); cursor:pointer; background:transparent; transition:color .18s, border-color .18s, background .18s, transform .12s ease; }   /* 빈 상태 = 플레이트 없는 사진 픽토그램만(ly .file 통일·운영자 260628) */
+  .file { display:block; padding:12px; border:1px dashed transparent; border-radius:var(--r-s); text-align:center; color:var(--accent); cursor:pointer; background:transparent; transition:color .18s, border-color .18s, background .18s, transform .12s ease; }   /* 빈 상태 = 플레이트 없는 사진 픽토그램만(ly .file 통일·운영자 260628) */
   .file svg { width:26px; height:26px; display:block; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }   /* 파일/사진 픽토그램(빈 상태·ly 47 계승) */
-  .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(박스 전체 X·ly 49 계승) */
+  .file:active { background:transparent; }   /* 누름 = 박스 전체 칠하기 금지(ly .file:active 통일) → PC 파일창(별창) 열림 중 배경/테두리 노출 차단 = .picking 폐지(운영자 260628) */
+  .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(박스 전체 X·ly 계승) */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
-  .file.picking { color:var(--accent); border-color:rgba(var(--accent-rgb),.35); background:rgba(var(--accent-rgb),.08); }   /* 누름→업로드창 열린 동안 강조 = 이미지 제작(.go:active)와 동일 은은한 톤(border .35·bg .08) — 강한 솔리드 테두리 '중첩' 제거·액티브 모션 통일(운영자 260628) */
   /* 미리보기 = 4:5 컴팩트(업로드 보통 1080×1350) · 파일명은 칸 안 차지 말고 우하단 50% 반투명 오버레이(우측정렬) */
   .fileprev { position:relative; display:inline-block; margin-top:8px; max-width:100%; }
   .fileprev img { display:block; aspect-ratio:4/5; height:230px; max-width:100%; width:auto; object-fit:cover; border-radius:7px; }
@@ -132,7 +136,7 @@
   .fileprev.refonly .refhatch { border-radius:7px; }
   /* 생성 버튼 = 카드 '카드 이미지 생성'(.mkbtn)과 통일 = 글래스 고스트(accent-dim+테두리+네온 글자·pill·하단 게이지 · 운영자 260621) */
   .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
-  .go:hover { background:rgba(255,255,255,.08); border-color:rgba(var(--accent-rgb),.3); }
+  /* .go:hover 제거 — 메인 버튼(index .mkbtn) 계승: hover 전경 fill 없음·:active만 피드백(운영자 260629 "마우스 올리면 버튼 전경 뜸" 차단 + 터치 stuck-hover 동시 차단) */
   .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(edshake 재사용·운영자 260622) */
@@ -174,7 +178,7 @@
   /* 붙여넣기 폴백 모달 = readText 막힌 환경(모바일 칩)에서 '길게 눌러 붙여넣기' (통일 기틀·운영자 260628) · dialog=top-layer */
   .pastefb { border:none; outline:none; background:transparent; max-width:100vw; max-height:100dvh; width:auto; padding:0; margin:auto; }
   .pastefb::backdrop { background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
-  .pastefb-box { width:min(360px,90vw); background:linear-gradient(165deg,#14160f,#0c0f0c); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 48px rgba(0,0,0,.55); }
+  .pastefb-box { width:min(360px,90vw); background:linear-gradient(165deg,#14160f,#0c0f0c); border:1px solid var(--line); border-radius:var(--r-l); padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 48px rgba(0,0,0,.55); }
   .pastefb-msg { font-size:13px; color:#cfd2d7; line-height:1.5; } .pastefb-msg b { color:var(--accent); }
   .pastefb-ta { width:100%; box-sizing:border-box; min-height:90px; resize:none; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.05); color:#e8eaed; font:inherit; font-size:14px; }
   .pastefb-ta:focus { border-color:rgba(var(--accent-rgb),.4); outline:none; }
@@ -184,7 +188,7 @@
   /* 제작 직전 결과물 명세(통합 모드 — 체크 많아 한눈 요약) · 블릿 말머리·좌측정렬 · 활성=노랑/비활성=회색 */
   .gospec { margin:16px 2px 0; font-size:12.5px; color:var(--mut); text-align:left; line-height:1.8; }
   /* 옵션줄 = 검정 배경 패널로 돋보이게(운영자 260624) */
-  #goSpec { margin:9px 0 0; padding:10px 13px; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:11px; }   /* 옵션줄 = 검정 패널 · 머리↔박스 간격 9px(헤더·오버레이와 통일·운영자 260624) */
+  #goSpec { margin:9px 0 0; padding:10px 13px; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:var(--r-m); }   /* 옵션줄 = 검정 패널 · 머리↔박스 간격 9px(헤더·오버레이와 통일·운영자 260624) */
   /* • 오버레이 포맷 토글 — 포스트=시안 / 릴스=레몬(운영자 260624) */
   .csec .ovsep { color:var(--mut); font-weight:400; margin:0 5px; }
   .csec .ovfmt { cursor:pointer; font-weight:800; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:3px 5px; transition:color .15s, transform .1s; }   /* 패딩 = 폰 탭 영역 확보(도형 없이 · 분신술8) */
@@ -249,7 +253,7 @@
   .platpop:not(.none) .ppbtn:nth-child(6) { animation-delay:.17s; }
   @keyframes ppbtn-in { from { opacity:0; transform:translateX(-9px) scale(.78); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce) { .platpop:not(.none), .platpop:not(.none) .ppbtn { animation:none; } }
-  .ppbtn { min-width:38px; height:34px; display:grid; place-items:center; padding:0 8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); border:1px solid rgba(255,255,255,.09); border-radius:9px; color:var(--mut); cursor:pointer; font:inherit; font-weight:600; font-size:11px; transition:border-color .15s, background .15s, color .15s; }
+  .ppbtn { min-width:38px; height:34px; display:grid; place-items:center; padding:0 8px; background:linear-gradient(165deg, rgba(34,56,41,.42), rgba(14,26,18,.52)); border:1px solid rgba(255,255,255,.09); border-radius:var(--r-s); color:var(--mut); cursor:pointer; font:inherit; font-weight:600; font-size:11px; transition:border-color .15s, background .15s, color .15s; }
   .ppbtn:hover { color:var(--fg); border-color:rgba(255,255,255,.2); }
   .ppbtn.on { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); }
   .ppbtn:active { transform:scale(var(--press-m,.9)); }
@@ -258,7 +262,7 @@
   /* 교정 칩 = 버튼 아래·바뀐 단어만·탭으로 점등 토글(노랑=적용 / 회색=그대로) */
   .spellchips { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
   .spellchips[hidden] { display:none; }
-  .spchip { font:inherit; font-size:12px; padding:6px 11px; border-radius:9px; cursor:pointer; user-select:none;
+  .spchip { font:inherit; font-size:12px; padding:6px 11px; border-radius:var(--r-s); cursor:pointer; user-select:none;
     border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); transition:.15s; display:inline-flex; align-items:center; gap:6px; }
   .spchip::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--mut); transition:.15s; flex:none; }
   .spchip.on { border-color:rgba(var(--warn-rgb),.55); background:rgba(var(--warn-rgb),.12); color:var(--warn); font-weight:700; }
@@ -266,7 +270,7 @@
   .chk { display:flex; align-items:center; gap:9px; margin-top:14px; font-size:14px; color:var(--fg); cursor:pointer; }   /* 체크박스 = k.html .chk 계승 */
   /* 축약 체크 = 수집함 확인 토글(.sc-tg.ack) 체크표시 그대로 계승 — 안 누름 −(회색) → 누름 ✓(초록·한 획 드로우-인) + 글래스 박스 초록 틴트 + 눌림 scale(운영자 260622) */
   .chk input { position:absolute; left:0; width:18px; height:18px; margin:0; opacity:0; cursor:pointer; }
-  .chk .cbox { flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:9px;
+  .chk .cbox { flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:var(--r-s);
     border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.5);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
   .chk .cbox .ackm { width:15px; height:15px; display:block; }
@@ -298,7 +302,7 @@
   .status.ok { color:var(--accent); }   /* 맞춤법 자동교정 알림(비-에러·잠깐) */
   /* 대기열/로그 — 제작 건별 행(동시 처리) */
   .jobs { display:flex; flex-direction:column; gap:6px; margin:10px 0 0; }
-  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:9px; background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* flex-wrap = 다중 변형(.jvars)이 아래 줄 전체폭으로 떨어짐 */
+  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* flex-wrap = 다중 변형(.jvars)이 아래 줄 전체폭으로 떨어짐 */
   .job .jlab { font-weight:800; color:var(--accent); }
   .job .jvar { color:#fff; font-weight:400; }   /* OPA·변형 라벨 = 흰색·일반체(초록 제목과 구분 · 운영자 260619) */
   .job .jvars { flex-basis:100%; display:flex; flex-direction:column; align-items:flex-start; gap:3px; margin-top:2px; padding-left:0; margin-bottom:3px; }   /* 다중 변형([1]·[2]…) = 줄바꿈·헤더와 동일 좌측선(들여쓰기 0) · margin-top 65%(헤더~[1] 좁힘) · margin-bottom = 박스 상하 시각 여백 대칭(헤더줄 「전체」버튼 오프셋 보정 · 운영자 260620) */
@@ -427,7 +431,7 @@
   .hist-body { margin-top:6px; }
   .hist-tools { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:10px; }
   .hist-note { color:var(--mut); font-size:11px; font-weight:500; margin-left:9px; }   /* 헤더 옆 설명(최근 12시간 내 제작 건) */
-  .hist-bul { color:var(--hist-accent); font-weight:700; transition:color .3s ease; }   /* 보라 = 중요 버튼 마커(접힘) · 펼치면 그린 점등(운영자 260626) */
+  .hist-bul { color:var(--hist-accent); font-size:var(--fs-label); font-weight:var(--fw-b); transition:color .3s ease; }   /* 보라 = 특수 블릿(이전제작 = 따로 구분이 맞음·운영자 260629) · 펼치면 그린 점등 · 굵기 = 소머리 블릿 표준(--fw-b 700 · 형광 .csec::before와 동일·색만 보라) */
   .hist.open .hist-bul { color:var(--accent); }
   .hist-clr { background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--mut); font:inherit; font-size:11px; padding:4px 10px; border-radius:8px; cursor:pointer; transition:color .15s, background .15s, border-color .15s; }
   .hist-clr:hover { color:var(--fg); border-color:rgba(255,255,255,.2); }
@@ -447,7 +451,7 @@
   .hist-it { display:flex; flex-direction:column; }
   .hist-hd { color:var(--fg); font-size:11.5px; font-weight:600; margin:0 0 6px 7px; }   /* 제작 시각 = 오전/오후 H:MM · 흰색 · 좌측 들여쓰기(운영자 260621) */
   .hist-thumb { position:relative; }
-  .hist-thumb img { width:100%; aspect-ratio:4/5; object-fit:cover; border:1px solid var(--line); border-radius:9px; display:block; background:var(--pan); }
+  .hist-thumb img { width:100%; aspect-ratio:4/5; object-fit:cover; border:1px solid var(--line); border-radius:var(--r-s); display:block; background:var(--pan); }
   .hist-thumb .imgdl { top:6px; right:6px; width:28px; height:28px; }
   .hist-thumb .imgdl svg { width:12px; height:12px; }
   .hist-thumb .imgedit { top:6px; right:40px; width:28px; height:28px; }   /* 다운로드(우상단) 바로 왼쪽 = '옆에' */
@@ -456,7 +460,7 @@
   .hist-cap-v { font-weight:400; }
   @media (max-width:480px){ .hist-grid { grid-template-columns:repeat(2,1fr); } }
   /* 텍스트칸 붙여넣기↔복사 (우상단 · 뷰어 .copy 계승) */
-  .iobtn { position:absolute; top:8px; right:8px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); -webkit-tap-highlight-color:transparent; }
+  .iobtn { position:absolute; top:8px; right:8px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:var(--r-s); cursor:pointer; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); -webkit-tap-highlight-color:transparent; }
   .iobtn:hover { background:rgba(255,255,255,.12); color:var(--fg); }
   .iobtn:active { transform:scale(var(--press-s,.85)); }
   .iobtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
@@ -487,7 +491,7 @@
   .none { display:none; }
 
   /* ── 카드 텍스트 칩 에디터 (인라인 — /5 카드뉴스) ── */
-  .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
+  .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:var(--r-m); }
   .ed-line { display:flex; flex-wrap:nowrap; align-items:center; gap:calc(6px * var(--eds,1)); min-height:calc(30px * var(--eds,1)); position:relative; padding-right:22px; }
   .ed-chip { flex:none; font-size:calc(16px * var(--eds,1)); line-height:1.4; padding:calc(2px * var(--eds,1)) calc(3px * var(--eds,1)); border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line2); color:var(--fg); cursor:pointer; user-select:none; white-space:nowrap; transition:background .12s, color .12s, border-color .12s; }
   .ed-chips.ed-building .ed-chip { transition:none; }   /* 재빌드 프레임 = 갓 생성 칩 전환 억제(툭 튐 0) · 다음 프레임 복원(분신술 A5·운영자 260628) */
@@ -538,7 +542,7 @@
   .abdlg-in { padding:18px 18px 16px; position:relative; }
   /* 닫기 X = 정본 .tool-x 글래스 사각(30px·우상단) — 옛 무스타일 bare 버튼 교정(분신술 1·2 P0) */
   .abdlg .dlg-x { position:absolute; top:14px; right:14px; width:30px; height:30px; flex:none; display:grid; place-items:center; padding:0; z-index:2;
-    background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; color:var(--fg); cursor:pointer; transition:color .15s, border-color .15s, transform .12s; }
+    background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); cursor:pointer; transition:color .15s, border-color .15s, transform .12s; }
   .abdlg .dlg-x:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }
   .abdlg .dlg-x:active { transform:scale(var(--press-s,.85)); }
   .abdlg .dlg-x svg { width:15px; height:15px; }
@@ -576,7 +580,7 @@
 
     <!-- OPA (1 — 오버레이 투명도: 58 기본 / 30 / 직접입력) -->
     <div id="opaBox" class="none">
-      <label>투명도 (OPA)</label>
+      <label class="fl">투명도 (OPA)</label>
       <div class="seg" id="opaSeg">
         <button data-opa="58" class="on">58</button>
         <button data-opa="30">30</button>
@@ -586,7 +590,7 @@
 
     <!-- lines (1 포스트) — 텍스트(2/3) + 배경 이미지 슬롯(1/3·옵션) -->
     <div id="linesBox" class="none">
-      <label>텍스트</label>
+      <label class="fl">텍스트</label>
       <div class="covrow">
         <textarea id="lines" class="covta" placeholder=""></textarea>
         <div class="covimg" id="pImgSlot" role="button" tabindex="0" aria-label="배경 이미지 첨부"></div>
@@ -599,11 +603,11 @@
     <div id="reelsBox" class="none">
       <div id="rCombo">
         <input type="checkbox" id="cBg" hidden>      <!-- 배경(nobg 헤더) = 옵션줄 '배경' 토글 / hidden=발사 상태 유지 -->
-        <div class="csec">• 헤더</div>
+        <div class="csec">헤더</div>
         <input type="text" id="cSub" class="cf cf-sub" placeholder="부제" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         <input type="text" id="cTitle" class="cf cf-title" placeholder="제목" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         <span id="cHdrTrk" class="trk cmtrk"></span>   <!-- 부제/제목 자간 초과 안내(헤더 탭과 동일) -->
-        <div class="csec">• 오버레이 <span class="ovsep">|</span> <span id="ovFmtTog" class="ovfmt post" role="button" tabindex="0" title="탭=포스트(4:5)↔릴스(9:16) · 자간 한도 다름(−45/−30) · 헤더 입력 중엔 릴스 고정">포스트</span></div>   <!-- 포맷=텍스트 시작 전 선택(자간 한도 분기) · OPA 등은 옵션줄 -->
+        <div class="csec">오버레이 <span class="ovsep">|</span> <span id="ovFmtTog" class="ovfmt post" role="button" tabindex="0" title="탭=포스트(4:5)↔릴스(9:16) · 자간 한도 다름(−45/−30) · 헤더 입력 중엔 릴스 고정">포스트</span></div>   <!-- 포맷=텍스트 시작 전 선택(자간 한도 분기) · OPA 등은 옵션줄 -->
         <div class="covrow">
           <textarea id="cLines" class="covta" placeholder="강조는 별표로, 최대 3줄 가능"></textarea>
           <div class="covimg" id="cImgSlot" role="button" tabindex="0" aria-label="자막 이미지 첨부"></div>
@@ -616,10 +620,10 @@
     <!-- /3 저작권 — · 포맷 + · 저작권(ON/OFF·자연 문구 탭수정) + · 안내문(팝업 선택) · 제작버튼 공유 (운영자 260624) -->
     <div id="copyBox" class="none">
       <!-- · 포맷 = 단일 토글(한 번에 하나만 · 탭=포스트↔릴스 · 썸네일 #ovFmtTog 패턴) · 기본 릴스 · 저작권·안내문 공유 -->
-      <div class="csec">• 포맷 <span id="cpFmtTog" class="ovfmt reels" role="button" tabindex="0" aria-label="포맷 — 탭=포스트↔릴스" title="탭=포스트(4:5)↔릴스(9:16)">릴스</span></div>
+      <div class="csec">포맷 <span id="cpFmtTog" class="ovfmt reels" role="button" tabindex="0" aria-label="포맷 — 탭=포스트↔릴스" title="탭=포스트(4:5)↔릴스(9:16)">릴스</span></div>
 
       <!-- · 저작권 [ON] · 기본 ON · 탭=켜기/끄기 -->
-      <div class="csec">• 저작권 <span class="onoff on" id="copyTog" role="button" tabindex="0" aria-pressed="true" title="탭=저작권 켜기/끄기">ON</span></div>
+      <div class="csec">저작권 <span class="onoff on" id="copyTog" role="button" tabindex="0" aria-pressed="true" title="탭=저작권 켜기/끄기">ON</span></div>
       <!-- ⓒ 2026. nomute(instagram). all rights reserved. — 자연 문구, 부분 탭=수정 · 'all rights…'는 편집화면만 줄바꿈(출력은 이어짐) -->
       <div class="cphline" id="cphLine">
         <span class="cph-st">ⓒ&nbsp;</span><span class="cph-ed cph-yr" id="cphYear" contenteditable="true" inputmode="numeric" enterkeyhint="done" spellcheck="false" role="textbox" aria-label="연도" data-ph="2026" title="탭=연도 수정">2026</span><span class="cph-st">.&nbsp;</span><span class="cph-ed cph-nm" id="cphName" contenteditable="true" enterkeyhint="done" spellcheck="false" role="textbox" aria-label="계정명" data-ph="nomute" title="탭=이름 수정"></span><span class="cph-st">(</span><span id="cphPlat" class="cph-plat" data-plat="instagram" role="button" tabindex="0" title="탭=플랫폼 선택">instagram</span><span class="cph-st">).</span><span class="cph-br"></span><span class="cph-st">all rights reserved.</span>
@@ -636,7 +640,7 @@
       <input type="text" id="cplat" class="none" placeholder="플랫폼 직접입력 (예: tiktok)" style="margin-top:8px" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
 
       <!-- · 안내문 [OFF] · 기본 OFF · 탭=팝업(경고/AI/자유문구) → 고르면 ON·출력 -->
-      <div class="csec gsec" id="guideSec">• 안내문 <span class="onoff" id="guideTog" role="button" tabindex="0" aria-haspopup="true" aria-pressed="false" title="탭=경고/AI/자유문구 고르기">OFF</span>
+      <div class="csec gsec" id="guideSec">안내문 <span class="onoff" id="guideTog" role="button" tabindex="0" aria-haspopup="true" aria-pressed="false" title="탭=경고/AI/자유문구 고르기">OFF</span>
         <div class="platpop gpop none" id="guidePop" role="menu" aria-label="안내문 종류">
           <button type="button" class="ppbtn gpbtn" data-gm="caution" role="menuitem">경고</button>
           <button type="button" class="ppbtn gpbtn" data-gm="ai" role="menuitem">AI</button>
@@ -648,10 +652,11 @@
 
     <!-- /5 카드뉴스 — 칩 에디터 인라인(텍스트 입력 전면 교체·처음부터) -->
     <div id="cardBox" class="none">
+      <div class="csec">텍스트 및 이미지</div>   <!-- 섹션 소머리(•) = ly '• 파일'·헤더 .csec 기틀 계승(텍스트 칩+배경 이미지 입력 구간 · 운영자 260629) -->
       <div class="edwrap"><div class="ed-chips" id="edChips" aria-label="단어 — 탭하면 강조"></div></div>
     </div>
 
-    <div class="csec none" id="rOptHead">• 옵션</div>
+    <div class="csec none" id="rOptHead">옵션</div>
     <div class="gospec none" id="goSpec"><span class="gs-lbl">배경</span>: <span class="gs-v gs-tog" id="gsBg" role="button" tabindex="0" title="탭=배경(흰칸 없는 버전) 추가">OFF</span> &nbsp;&nbsp; <span class="gs-lbl">OPA</span> <span class="gs-v on gs-tog" id="gsOpa1" role="button" tabindex="0" title="탭=ON/OFF (60)">60</span> <span class="gs-v gs-tog gsop-step" id="gsOpa2Dn" role="button" tabindex="0" title="-5" hidden>−</span><span class="gs-v gs-tog" id="gsOpa2" role="button" tabindex="0" title="탭=추가/끄기 · 켜면 −/+ 또는 스크롤·드래그로 값 조절">+30</span><span class="gs-v gs-tog gsop-step" id="gsOpa2Up" role="button" tabindex="0" title="+5" hidden>+</span> <span style="color:var(--mut)"> | </span><span class="gs-v" id="gsImg" title="이미지 첨부 시 자막 합성본(JPG)">합성본</span> &nbsp;&nbsp; <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog" id="gsAbbr" role="button" tabindex="0" title="탭=ON/OFF">ON</span></div>
     <div class="makerow" id="makeRow">
       <!-- 카드뉴스 배경 이미지(/5만 표시) — 제작 버튼과 한 행(ly 통일·260628) -->
@@ -774,8 +779,8 @@ function selApp(a) {
   if (a === '2') updateComboTrk();                                             // 릴스 단일 폼 자간 안내(부제/제목·자막)
   if (a === '3') { syncCpFmt(); syncCopyTog(); syncGuide(); }                  // 포맷 세그·저작권 ON/OFF·안내문 토글 UI 갱신
   clearSpellReview();                                                          // 앱 바뀌면 진행 중이던 교정 리뷰 폐기
-  const gb = $('#go');                                                         // 버튼 문구 = 맞춤법 대상 앱(1·2·3 안내문)만 '및 맞춤법 교정'
-  if (gb) { const lbl = (a === '1' || a === '2' || (a === '3' && guideMode)) ? '이미지 제작 및 맞춤법 교정' : '이미지 제작'; gb.dataset.label = lbl;
+  const gb = $('#go');                                                         // 버튼 문구 = '이미지 제작'(맞춤법 교정은 기능 유지·문구만 간소화·운영자 260629)
+  if (gb) { const lbl = '이미지 제작'; gb.dataset.label = lbl;
     if (!gb.classList.contains('firing') && !gb.classList.contains('okdone') && !gb.classList.contains('spell-arm')) gb.textContent = lbl; }
   updateGoSpec();
 }
@@ -1058,12 +1063,8 @@ function getComboOpas() { const out = []; if (cOpa1on) out.push(60); if (cOpa2on
 
 // ---- 파일 (재사용 바인더 — #file=/1·/5 배경) ----
 function bindFile(inp, lab, store) {
-  // 파일 선택 박스 = 누르면 강조(.picking) → 업로드 창 닫히면(선택/취소 무관·포커스 복귀) 해제(운영자 260622).
-  // 라벨에 바인드(=innerHTML 교체돼도 라벨 엘리먼트는 유지) · once 포커스 = 다이얼로그 닫힘 감지(선택=change도 해제).
-  lab.addEventListener('click', () => {
-    lab.classList.add('picking');
-    window.addEventListener('focus', () => lab.classList.remove('picking'), { once: true });
-  });
+  // 빈 상태 = 플레이트 없는 픽토그램만(ly .file 통일) · 누름 피드백은 CSS .file:active svg 축소뿐.
+  // 옛 .picking 강조(누름→업로드창 열림 동안 배경/테두리)는 PC에서 파일 대화상자가 별창이라 페이지 뒤로 노출 → 폐지(ly엔 없음·자막생성기와 동일 동작·운영자 260628).
   const inpId = inp.id;   // ⚠️ innerHTML 교체 시 새 input에 원래 id 복원 — 안 하면 #file id 소실 → FAB(rfab3) imgInput()=getElementById('file')가 null → 이미지 선택 '선택적으로만 작동' 버그(운영자 260628)
   const rebindInput = () => { const ni = lab.querySelector('input'); if (ni) { ni.onchange = handler; if (inpId) ni.id = inpId; } };
   const reset = () => {   // 휴지통 → 업로드 취소: store 비우고 라벨 초기 상태로 + input 재바인드(운영자 260622)
@@ -1082,7 +1083,6 @@ function bindFile(inp, lab, store) {
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
   const handler = e => {
-    lab.classList.remove('picking');
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
     r.onload = () => applyImg(r.result, f.name);

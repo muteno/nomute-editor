@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>영상 자막 생성기</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
 <style>
   :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-rgb:15,253,2;   /* index :root 동기 — raw rgba(15,253,2) 박기 차단(분신술 4·8) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95; }
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 사다리+무효화(index 통일·운영자 260628·분신술10) */
-  * { box-sizing:border-box; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* 모바일 기본 하늘색 탭 하이라이트 박스 제거 = index:78·thumb:15 전역 계승(체크박스·라벨 탭 시 시안 박스 차단·운영자 260629) */
   /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
   button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   /* 스크롤바 = 반투명 검정(중립) — 뉴스 뷰어 통일(index 계승 · 운영자 260626) */
@@ -21,10 +22,12 @@
   .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
   h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
   .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
-  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 6px; }   /* 비-소머리 라벨 베이스(.file 등) · 소머리는 .fl(흰색800+형광블릿) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) */
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 뉴스 정본 content:'• ' 동일 */
   label:first-of-type { margin-top:0; }
-  textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; }
-  input[type=text], input[type=url] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; }
+  textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; resize:none; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
+  input[type=text], input[type=url] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; }
   textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
   /* 붙여넣기 = 2A 동그라미, URL 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
   .urlwrap { position:relative; }
@@ -45,7 +48,7 @@
   /* 붙여넣기 폴백 모달 = readText 막힌 환경(모바일 도구 iframe)에서 '길게 눌러 붙여넣기' (thumb/index 통일 기틀·운영자 260628) · dialog=top-layer */
   .pastefb { border:none; outline:none; background:transparent; max-width:100vw; max-height:100dvh; width:auto; padding:0; margin:auto; }
   .pastefb::backdrop { background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
-  .pastefb-box { width:min(360px,90vw); background:linear-gradient(165deg,#14160f,#0c0f0c); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 48px rgba(0,0,0,.55); }
+  .pastefb-box { width:min(360px,90vw); background:linear-gradient(165deg,#14160f,#0c0f0c); border:1px solid var(--line); border-radius:var(--r-l); padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 48px rgba(0,0,0,.55); }
   .pastefb-msg { font-size:13px; color:var(--fg); line-height:1.5; } .pastefb-msg b { color:var(--accent); }
   .pastefb-ta { width:100%; box-sizing:border-box; min-height:90px; resize:none; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-size:14px; }
   .pastefb-ta:focus { border-color:rgba(var(--accent-rgb),.4); outline:none; }
@@ -56,7 +59,7 @@
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
   .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
   .divider { border:none; border-top:1px solid var(--line); margin:20px 0 6px; }
-  .file { display:block; padding:12px; border:1px dashed transparent; border-radius:9px; text-align:center; color:var(--accent); cursor:pointer; background:transparent; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 빈 상태 = 플레이트 없는 픽토그램만(강조색·.covimg 참조·운영자 260627) */
+  .file { display:block; padding:12px; border:1px dashed transparent; border-radius:var(--r-s); text-align:center; color:var(--accent); cursor:pointer; background:transparent; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }   /* 빈 상태 = 플레이트 없는 픽토그램만(강조색·.covimg 참조·운영자 260627) */
   .file svg { width:26px; height:26px; display:block; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }   /* 파일 픽토그램(빈 상태) */
   .file:active { background:transparent; }   /* 누름 = 박스 전체 칠하기 금지 → 픽토그램만 축소(운영자 260628) */
   .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 픽토그램만 액티브(블록 전체 X · .rmin:active svg 패턴 계승) */
@@ -82,7 +85,7 @@
   @media (prefers-reduced-motion:reduce){ .lybar::after { animation:none; } }
   /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
   .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
-  .go:hover { background:rgba(255,255,255,.08); border-color:rgba(var(--accent-rgb),.3); }
+  /* .go:hover 제거 — 메인 버튼(index .mkbtn) 계승: hover 전경 fill 없음·:active만 피드백(운영자 260629 "마우스 올리면 버튼 전경 뜸" 차단 + 터치 stuck-hover 동시 차단) */
   .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
@@ -105,7 +108,7 @@
   .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 12px; }
   .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e9eaec; }
   .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
-    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:9px; cursor:pointer;
+    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-s); cursor:pointer;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
   .code button svg { display:block; }
   .code button:hover { background:rgba(255,255,255,.16); }
@@ -151,12 +154,10 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="sub">영상 소스를 통해 복사 가능한 텍스트 자막 생성</p>
-
-  <label>📍 URL <span class="paid">(인스타·틱톡)</span></label>
+  <label class="fl">URL</label>
   <div class="urlwrap"><input type="url" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="nomute-url" enterkeyhint="go" data-1p-ignore data-lpignore="true" data-form-type="other"><button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"></button></div><!-- type=url = 단일행 text의 카드/비번/주소 자동입력 바 억제(검색바 type=search와 동일 원리·풀세트만으론 type=text는 모바일서 안 막힘·운영자 260628) -->
   <div class="orsep">— 또는 —</div>
-  <label>📍 파일 <span class="paid">(영상·음성·TXT·SRT)</span></label>
+  <label class="fl">파일</label>
   <div class="filerow">
     <label class="file" id="fileLab" aria-label="파일 선택" title="파일 선택 (영상·음성·TXT·SRT)"><span id="fileTxt"></span>
       <input type="file" accept="video/*,audio/*,.txt,.srt,.vtt,text/plain" id="file" style="display:none">
@@ -265,9 +266,9 @@ function setUploading(msg) {   // 업로드/추출 중 = 게이지 + '업로드 
   $('#fileTxt').textContent = msg || '업로드 중입니다…'; $('#fileLab').classList.remove('has'); $('#uprog').hidden = false; $('#go').disabled = true;
   if (window._lySyncFab) window._lySyncFab();   // 업로드 중 = 아직 미첨부 상태 → rfab 진행버튼을 파일첨부 버튼으로 유지(완료 시 setBadge가 재대체 · 운영자 260628)
 }
-function setBadge(type, name) {   // 업로드 완료 = 타입 색배지 + 파일명 ✓ + 생성 잠금해제
+function setBadge(type, name) {   // 업로드 완료 = 타입 색배지 + 파일명 + 생성 잠금해제(✓ 제거·운영자 260629)
   $('#uprog').hidden = true; $('#go').disabled = false;
-  $('#fileTxt').innerHTML = `<span class="ftype" style="color:${FTYPE_COLOR[type]}">${type}</span><span class="fname">${esc(name)} ${CHECK_SVG}</span>`;
+  $('#fileTxt').innerHTML = `<span class="ftype" style="color:${FTYPE_COLOR[type]}">${type}</span><span class="fname">${esc(name)}</span>`;   /* ✓ 체크 제거 = 둘째 줄로 밀려 버튼 세로로 늘어나던 것 차단(파일명·말줄임은 .fname ellipsis 유지·운영자 260629) */
   $('#fileLab').classList.add('has');
   if (window._lySyncFab) window._lySyncFab();   // 파일 첨부 완료 → rfab 파일첨부 버튼을 진행(자막생성)으로 대체(운영자 260628)
 }

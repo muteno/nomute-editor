@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>영상 프롬프트</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
 <style>
   :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-rgb:15,253,2;   /* index :root 동기 — raw rgba(15,253,2) 박기 차단(분신술 4·8) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95; }
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 사다리+무효화(index 통일·운영자 260628·분신술10) */
-  * { box-sizing:border-box; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* 모바일 기본 하늘색 탭 하이라이트 박스 제거 = index:78·thumb:15 전역 계승(체크박스 라벨 등 탭 시 시안 박스 차단·운영자 260629) */
   /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
   button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   /* 스크롤바 = 반투명 검정(중립) — 뉴스 뷰어 통일(index 계승 · 운영자 260626) */
@@ -20,11 +21,12 @@
   body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
   h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
-  .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
-  .sub b { color:var(--accent); font-weight:700; }   /* 비디오 엔진명 = 강조색 */
-  label { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; }
+  .eng { color:var(--accent); font-weight:600; margin-left:9px; }   /* 엔진명 = '• 스토리 구성' 소머리 옆 인라인 형광 태그(라벨 13px 상속 · 헤더의 종속 메타 · 별도 .sub 줄 폐지로 위계 통합·여백 절감 · 운영자 260629) */
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 6px; }   /* 비-소머리 라벨 베이스(.chk 등) · 소머리는 .fl(흰색800+형광블릿) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) */
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 뉴스 정본 content:'• ' 동일 */
   label:first-of-type { margin-top:0; }
-  textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:9px; color:var(--fg); font:inherit; resize:vertical; }
+  textarea { width:100%; min-height:150px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; resize:none; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
   textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
   textarea::placeholder, input::placeholder { color:var(--mut); }
   /* 붙여넣기 = 2A 동그라미, 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
@@ -45,7 +47,7 @@
   .scn-erase.scn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
   /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
   .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
-  .go:hover { background:rgba(255,255,255,.08); border-color:rgba(var(--accent-rgb),.3); }
+  /* .go:hover 제거 — 메인 버튼(index .mkbtn) 계승: hover 전경 fill 없음·:active만 피드백(운영자 260629 "마우스 올리면 버튼 전경 뜸" 차단 + 터치 stuck-hover 동시 차단) */
   .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
@@ -57,10 +59,10 @@
     animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
   @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
-  .chk { display:flex; align-items:center; gap:9px; margin-top:12px; font-size:14px; color:var(--fg); cursor:pointer; }
+  .chk { display:flex; align-items:center; gap:9px; margin-top:12px; font-size:14px; font-weight:400; color:var(--mut); cursor:pointer; }   /* 옵션 토글 라벨 = 미선택 MUT(섹션 소머리 아님 → 600 아닌 400 · 선택 시 .chk:has(:checked)로 accent · 운영자 260629) */
   /* 레퍼런스 체크 = 수집함 확인 토글(.sc-tg.ack) 체크표시 그대로 계승 — 안 누름 −(회색) → 누름 ✓(초록·한 획 드로우-인) + 글래스 박스 초록 틴트 + 눌림 scale(운영자 260622) */
   .chk input { position:absolute; left:0; width:18px; height:18px; margin:0; opacity:0; cursor:pointer; }
-  .chk .cbox { flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:9px;
+  .chk .cbox { flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:var(--r-s);
     border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.5);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
   .chk .cbox .ackm { width:15px; height:15px; display:block; }
@@ -75,6 +77,7 @@
   .chk input:focus-visible + .cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
   @media (prefers-reduced-motion:reduce) { .chk .cbox .ackm path { transition:none; } }
   .paid { color:var(--mut); font-size:11px; font-weight:400; }
+  .paid .eng { margin-left:0; }   /* 체크 옵션 안 엔진명(Gemini) = .eng 형광(accent·600) 계승하되 헤더 9px 갭은 리셋(주석 컨텍스트 인라인 · 위 'Kling 3.0 Omni'와 동일 형식 · 운영자 260629) */
   .ref { margin:0 0 16px; }
   .ref img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
   .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }
@@ -88,7 +91,7 @@
   .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 14px; }
   .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e9eaec; }
   .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
-    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:9px; cursor:pointer;
+    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-s); cursor:pointer;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
   .code button svg { display:block; }
   .code button:hover { background:rgba(255,255,255,.16); }
@@ -133,12 +136,10 @@
 </head>
 <body>
 <div class="wrap">
-  <p class="sub">📍 비디오 엔진: <b>Kling 3.0 Omni</b></p>
-
-  <label>📍 스토리 구성</label>
+  <label class="fl">스토리 구성 <span class="eng" title="비디오 엔진">Kling 3.0 Omni</span></label>
   <div class="scnwrap"><textarea id="scene" placeholder="내용을 입력해주세요"></textarea><button class="scnclip" id="sceneClip" type="button" aria-label="붙여넣기"></button></div>
-  <label class="chk"><input type="checkbox" id="refimage"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 레퍼런스 이미지 동시 생성 <span class="paid">· Gemini (최대 15분)</span></label>
-  <button class="go" id="go">웹 렌더 생성</button>
+  <label class="chk"><input type="checkbox" id="refimage"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 레퍼런스 이미지 동시 생성 <span class="paid">· <span class="eng">Gemini</span> (최대 15분)</span></label>
+  <button class="go" id="go">영상 프롬프트 생성</button>
 
   <div class="status" id="status"></div>
   <div class="out" id="out"></div>
@@ -147,7 +148,7 @@
 <!-- 빠른메뉴(이미지/자막 도구 #rfab 계승) — 코어(+) 펼치면 웹 렌더 생성 · 코어 위 '-' 최소화 -->
 <div id="rfab" aria-label="빠른 메뉴">
   <button class="ro" id="kFocusFab" type="button" title="입력칸으로 (커서 활성화)"><svg viewBox="0 0 24 24"><path d="M7 10l5-5 5 5M7 14l5 5 5-5"/></svg></button>
-  <button class="ro" id="kGenFab" type="button" title="웹 렌더 생성"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg></button>
+  <button class="ro" id="kGenFab" type="button" title="영상 프롬프트 생성"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg></button>
   <button class="ro" id="kTabFab" type="button" title="자막 생성기로 전환"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
   <button class="rc" id="rfabCore" type="button" aria-label="빠른 메뉴 열기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="rmin" id="rfabMin" type="button" aria-label="최소화" title="최소화 (창 접기)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>

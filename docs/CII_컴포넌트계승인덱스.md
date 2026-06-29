@@ -14,8 +14,9 @@
 - **크기·마진·반지름·z = 토큰만**(raw px 금지). 없으면 가장 가까운 토큰, 정 없으면 `:root`에 토큰부터 추가.
 - **아이콘 = SVG만**(이모지·`✕`문자 금지). 같은 의미는 같은 path.
 - **닫기/최소화/버튼묶음 = 헤더 우측**(`margin-left:auto`는 *묶음 래퍼*에 — 개별 버튼에 걸면 갇혀 좌측붙음 = editdlg 버그).
-- **이미지 위 오버레이 버튼 = 검정 20%**(아이콘색만 accent). 일반 다운로드 = `.dlbtn`(accent 10%).
+- **이미지 위 오버레이 버튼 = 검정 20%**(아이콘색만 accent). 일반 다운로드 = `.dlbtn`(accent 10%). ⚠️ **카드 위 다운로드류(저장 `.save`·오버레이 PNG `.ovl` 등)는 빠짐없이 `.dlbtn`** = 클릭 액티브 통일(안 붙이면 누락 · 260629 `.ovl` 교정).
 - **누름 :active = 맥락별 계승**(작은아이콘 .82 / 글래스버튼 .85 / 토글·닫기 .92 / 푸시 .95 / go .955 / 프로필 .97 / 카드 .99 · 픽토만 축소 .55 · 고정 0.96 금지).
+- **소머리(구분자) `•` = 텍스트 흰색(`--fg`)·`--fw-x`(800) / 블릿 형광(`--accent`)·`--fw-b`(700) · `--fs-label`(13px)** — 크기·굵기 *토큰*(리터럴 금지). 특수(이전제작·최소화)만 블릿 보라(`--hist-accent`) · 텍스트는 *항상* 흰색. **회색(`--mut`) 소머리·블릿 없는 소머리 금지.** 블릿 메커니즘 = **블록은 `::before content:'• '`(공백·뉴스 정본 동일), flex(`.csec`)는 `content:'•'`+`gap:6px`**(둘 다 6px급 간격·layout별). 정본 = 뉴스 `index .cref-lbl`. `.gospec`(명세 readout)은 소머리 아님(예외). 강제 = `check_refs.check_soremeori()`.
 
 ## 인덱스 표
 
@@ -26,10 +27,11 @@
 | 복원 ▲ | `#toolRestore` + `.min-pick` | `--btn-sm` | glass `--blur-l` | scale .82 | ▲ | 우하단·`--z-min`(200) | — | focus 이동 | index |
 | 최소화 라벨 | `MIN_REG` label | — | — | — | — | picker | — | — | "부모 메뉴 - 세부"(이미지-썸네일/영상-자막/뉴스 요약-신청/카드뉴스-이미지-수정) |
 | 입력칸 focus | `input/textarea:focus` | — | — | — | — | — | — | `:focus-visible` 2px accent 링 | 4파일 통일 `rgba(var(--accent-rgb),.35)`+`.08` 링 |
-| 클립 3버튼 | `.iobtn-edge`(별칭 `.urlclip/.scnclip/.askclip` → 통일 대상) | 26 | glass `.06`/blur13 opacity.6 | scale .85 | COPY/PASTE/CHECK/ERASE/UNDO `_SVG` | 입력칸 우상단 걸침 | — | — | thumb `attachCopyPaste` |
+| 클립 3버튼 | `.iobtn-edge`(별칭 `.urlclip/.scnclip/.askclip` → 통일 대상) | 26 | glass `.06`/blur13 opacity.6 | scale .85 | COPY/PASTE/CHECK/ERASE/UNDO `_SVG` | **입력칸 우측 걸침 2케이스**(우하단=base / 우상단=`.asktawrap.clip-top`) · 가로 right 14/46/78px 사다리(우측 기준) · 다른 버튼 위치 따라 상/하 선택 · **케이스 2개 고정**(과증식 금지·운영자 260629) | — | — | thumb `attachCopyPaste` · index `.asktawrap.clip-top` |
 | 다운로드 | `.dlbtn`(+컨텍스트) | `--btn` | accent 10% / 이미지위 검정20% | ↓바운스 + ✓팝·링(클립) | `DOWNLOAD_SVG` | abs 우상단행 | — | `aria-label` | index/thumb `.dlbtn` |
+| 소머리(구분자) `•` | `.cref-lbl`(정본)·`p.lbl`·thumb `.csec`·k/ly/comp/thumb포스트 `label.fl`·`.hist-bul`(특수) | `--fs-label`(13)·텍스트`--fw-x`/블릿`--fw-b` | 텍스트 흰색`--fg` · 블릿 형광`--accent`(특수=보라`--hist-accent`) | — | 블록=`::before content:'• '` / flex(.csec)=`content:'•'`+gap6 | 섹션·폼 머리 | 14~16 0 | 블릿 ::before/`aria-hidden`=SR 무시 | index `.cref-lbl` |
 | 모달 헤더 | `.tool-h`(+`.tool-hbtns`) | — | — | — | — | 제목 좌 + 버튼묶음 우(`margin-left:auto` 래퍼) | `11px 16px` | `aria-labelledby` | index `.tool-h` |
-| 모달/팝업 | `<dialog>` + `history.pushState` | — | glass blur | `@starting-style`(등장) | — | top-layer | radius 22px | 백버튼=닫기 | index `tooldlg` |
+| 모달/팝업 | `<dialog>` + `history.pushState` | — | glass blur | `@starting-style`(등장) | — | top-layer | radius 22px · **헤더↔입력 간격 = 15px 단일표준**(`.askhead margin-bottom` · ask-family[askdlg·revdlg·crevdlg] 전부 동일 · 클립 하단걸침이라 상단 클리어런스 불필요 · 모달별 override 금지 · 운영자 260629) | 백버튼=닫기 | index `tooldlg`·`.askhead` |
 | FAB 빠른메뉴 | `#rfab`(.rc/.ro/.rmin) | 54/35/28 | glass `rgba(0,0,0,.34)`+blur14 | rotate135(코어) | + / 도구 픽토 | 우하단·z70 | — | PC=숨김 | thumb `#rfab`(ly/k 동기) |
 | 토스트 | `.nm-toast` | — | ⚠ raw hex(토큰화 대상) | — | `.ft-act`=.sbtn | fixed 하단·`--z-float` | — | ⚠ `role=alert` 필요 | index |
 | 캐러셀 | scroll-snap 트랙 | — | — | — | — | — | — | — | `feed-ui`/`cardRefCarousel` |

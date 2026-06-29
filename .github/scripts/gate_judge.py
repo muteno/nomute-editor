@@ -31,13 +31,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
 sys.path.insert(0, str(ROOT / "shared"))
+sys.path.insert(0, str(ROOT / "scraper"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
+from to_candidates import cat_force   # AI 이후 키워드 이차검증(바이오 임상=경제·노벨 시상=국제 · 정본=to_candidates)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
 MODEL = os.environ.get("GATE_MODEL", "claude-opus-4-8")
 GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # grade 채점 대상: cross 이 값 이상(노출권)
 CAT_MIN_CROSS = int(os.environ.get("GATE_CAT_MIN_CROSS", "2"))   # 카테고리 구제: cross 이 값 이상이고 키워드가 모호(빈칸·문화)한 cross-2 후보는 AI 'cat만' 채점(grade 미기록=연예·스포츠 가십이 grade 0/1로 scFast서 침몰하는 것 방지) — AI가 안 닿던 cross-2 분류를 교정(운영자 260628 근본레버 · 키워드 DB 확장 대체)
 CHUNK = int(os.environ.get("GATE_CHUNK", "40"))               # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — 120은 ~31에서 잘림 실측)
 MAX_PER_RUN = int(os.environ.get("GATE_MAX_PER_RUN", "80"))   # 한 런당 채점 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
+GATE_CAT_QUOTA = int(os.environ.get("GATE_CAT_QUOTA", "40"))   # 한 런당 cat구제(비노출 cross-2) 최소 보장 슬롯 — 노출권 백로그가 MAX 초과여도 cat 기아 방지(감사5 실측: 노출권 1109>80이 cat 651을 0처리 → 347건 사회 오표시·운영자 260628). 260629 20→40 상향(분신술10 검증5·10: 오분류 71%가 AI 미채점 백로그 → cat 소화 가속·노출권 grade와 80캡 내 균형[surf 40+cat 40]·운영자 "AI 전수 재분류")
 DAN = re.compile(r"\[\s*단독\s*\]")
 
 RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 기사 제목들이 각각 '얼마나 중요한 뉴스인가'를 0~3으로 채점하라. 제목만 보고, 한국 일반 독자가 9시 뉴스/속보로 볼 가치를 기준으로.
@@ -76,6 +79,7 @@ RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 
 정치 · 사회 · 경제 · 문화 · 국제 · 테크
 ⚠️ 사건의 *본질*로 분류하라 — 장소·소재가 아니라 무슨 일인지로. '미술관서 흉기난동·경찰 추적'은 장소가 미술관이어도 강력범죄 = **사회**. '경기장 압사·공연장 화재'도 사고 = **사회**. 반대로 영화·드라마·게임·스포츠 경기·연예·전시·공연·문학 자체가 주제면 **문화**. 해외·국가간·전쟁·외교·통상 = **국제**. 대통령·국회·선거·정당·정책 = **정치**. 증시·기업·산업·부동산·고용 = **경제**. AI·IT·반도체·우주·과학 = **테크**. 사건사고·범죄·재난·사법·경찰·교육·노동·복지·의료 = **사회**.
 ⚠️ **정부·대통령·국회·정책 주체의 발언·정책·결정·논쟁이 본질이면, 소재가 반도체·AI·산업·증시여도 정치다**(정부정책이니까 — 예: '李대통령 호남반도체 물부족 비판'·'정부 반도체 5조 투자' = **정치** / 테크·경제는 *순수 기술·기업·시장* 기사에만).
+⚠️ **경계 우선순위 — 헷갈리면 이 순서로 판단(앞이 맞으면 멈춤·소재에 먼저 끌리지 마)**: ① **위치** 해외에서 벌어진 일(재난·사고·통상·정책 포함)=**국제**(사건 성격보다 우선 — 예: '베네수엘라 지진 920명'·'터키 공장 화재'·'프랑스 항공기 추락'=국제) → ② **주체** 정부·대통령·국회·정당·정책 주체=**정치**(소재가 반도체·AI·증시여도) → ③ **본질** 재난/사고/범죄/재판/노동=사회 · 영화/드라마/스포츠경기/연예/공연=문화 · 증시/기업/산업/고용/무역=경제 → ④ **소재** 반도체·AI·우주·과학=**테크**(순수 기술·기업·시장 기사에만·*최후수단*). ⚠️ **국경 넘는 규제·수출통제·관세·무역분쟁=국제**(통상 본질·소재 산업 무시 — 예: '中 미쓰비시 日 수출통제'·'美 관세 강화'=국제) / **지역·국가 산업지표(성장률·수출량·고용)=경제**(반도체 소재여도 — 예: '충북 반도체 성장률 전국1위'=경제).
 
 규칙: 각 기사를 정확히 한 줄씩, "<번호>\\t<0|1|2|3>\\t<정치|사회|경제|문화|국제|테크>" 형식으로만 출력한다(설명·머리말 금지)."""
 RUBRIC_VER = hashlib.sha256(RUBRIC.encode("utf-8")).hexdigest()[:12]
@@ -89,11 +93,17 @@ def surfaced(c):
 
 
 def cat_rescue(c):
-    """cross-2 카테고리 구제 대상 — 노출권은 아니나(grade 불필요) 키워드가 못/잘못 분류한 것
-    (빈칸=미분류·viewer가 사회 catch-all로 표시 / 문화=키워드 추측 오분류 빈발). AI가 cat만 교정."""
+    """cross-2 카테고리 AI 재판별 — 노출권은 아니나(grade 불필요) 키워드 분류를 AI가 제목 본질로 재판별.
+    ⚠️ 운영자 260629 "AI가 이미 들어갈거면 더 깊게 들어가서 판별하게": 옛 cat∈{빈칸,문화} 게이트 제거 →
+    cross≥2 전부 AI cat 판별로 확대. 근거(실측): 키워드 cat_of는 단일 부분문자열 매칭이라 cross-2의 87%
+    (1617/1861)가 단일매칭=저신뢰 — '미국'→국제·'회장'→경제 *확신오류*와 substring 충돌('강회장'→경제·
+    '골프존홀딩스'→문화)이 빈발. 옛 게이트는 그 확신오류(국제·경제로 틀림)를 *영영 사각*에 뒀다
+    (피아니스트 콩쿠르→국제·드라마 '신입사원 강회장'→경제). 이제 cross≥2면 cat을 AI 본질판정에 맡김.
+    grade 미기록·cat만이라 가벼움 · 한 런 = MAX_PER_RUN(80)·GATE_CAT_QUOTA(20)·scrape 15분 throttle·
+    3계정 폴오버가 캡(한 런 비용 불변 → 쿼터 폭발 없음). 백로그는 최신순 점진 소화·신규는 유입 즉시 교정 ·
+    폭발 징후(폴오버 ALT2 도달·요약 실패)면 이 게이트에 옛 cat∈{빈칸,문화} 조건 복원으로 한 줄 롤백."""
     return ((c.get("cross") or 0) >= CAT_MIN_CROSS
-            and not surfaced(c)
-            and (c.get("cat") or "") in ("", "문화"))
+            and not surfaced(c))
 
 
 def needs_grading(c):
@@ -154,8 +164,11 @@ def main():
         return
     total = len(pending)
     pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
-    pending.sort(key=lambda c: 0 if surfaced(c) else 1)                   # 안정정렬 — 노출권(grade 필요) 우선, cross-2 cat구제는 후순위(중요건 채점 지연 방지)
-    pending = pending[:MAX_PER_RUN]   # 이번 런 상한 — 나머지는 다음 디스패치(self-gate)가 이어 채점(점진 클리어)
+    # 노출권(grade) 우선 + cat구제 최소쿼터 보장(GATE_CAT_QUOTA) — 노출권 백로그가 MAX 초과여도 cat구제가 *기아*되지 않게(감사5·260628: 노출권 1109>80이 cat 651을 영구 0처리 → 347건 사회 오표시였음). cat구제는 grade 미기록·cat만이라 가볍다.
+    surf = [c for c in pending if surfaced(c)]
+    catr = [c for c in pending if not surfaced(c)]   # cross-2 cat구제(needs_grading 이미 통과·최신순 보존)
+    n_cat = min(len(catr), GATE_CAT_QUOTA)
+    pending = surf[:max(0, MAX_PER_RUN - n_cat)] + catr[:n_cat]   # 노출권 다수 차지하되 cat에 최소 n_cat 슬롯 확보
     print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK})")
     grades, cats = {}, {}
     for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
@@ -178,13 +191,18 @@ def main():
         if g is None:
             continue  # 누락분 = 미도장 유지(다음 런 재시도)
         ct = cats.get(str(i))
+        fc = cat_force(c.get("title") or "")   # 키워드 이차검증 — 바이오 임상=경제·노벨 시상=국제(강마커면 AI보다 우선 · 운영자 260629)
         if surfaced(c):                   # 노출권 = grade+cat 둘 다 반영(기존 동작)
             c["grade"] = g                # pending 은 cands 원소 참조 → 직접 반영
             c["grade_rubric"] = RUBRIC_VER    # 채점 도장(이 rubric 버전으로 채점됨)
-            if ct:
+            if fc:
+                c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선 · 이차검증)
+            elif ct:
                 c["cat"] = ct             # AI 카테고리 — 제목 맥락 이해(미술관 흉기난동=사회) → 키워드 cat_of 결과를 덮음(더 정확·뷰어 articleCat이 c.cat 우선)
         else:                             # cross-2 cat 구제 = cat만 반영, grade 미기록(grade 0/1이 소프트뉴스를 scFast서 침몰시키는 것 방지 · 운영자 260628)
-            if ct:
+            if fc:
+                c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선)
+            elif ct:
                 c["cat"] = ct
             c["cat_rubric"] = RUBRIC_VER  # cat 채점 도장(재채점 루프 방지) — grade/grade_rubric 은 안 씀
             catfix += 1

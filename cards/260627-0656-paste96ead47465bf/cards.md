@@ -10,7 +10,6 @@
 ```text
 베이징 한복판
 가장 높은 빌딩이
-
 대낮에 비행기에
 뚫렸다
 ```
@@ -40,7 +39,6 @@ Beijing CITIC Tower skyline
 ```text
 26일 오후, 528m
 109층 중신타워
-
 소형 비행기가
 상층부를 들이받았다
 ```
@@ -70,7 +68,6 @@ CITIC Tower crash damage
 ```text
 하필 그곳은
 국영 중신그룹 본사
-
 베이징에서 가장 높은
 자본의 심장부였다
 ```
@@ -100,7 +97,6 @@ China Zun CITIC headquarters
 ```text
 1층에선 연기와 불길
 사람들은 대피했다
-
 원인도 피해 규모도
 아직 확인되지 않았다
 ```
@@ -130,7 +126,6 @@ Beijing skyscraper fire evacuation
 ```text
 정작 또렷한 건
 '지우는 속도'였다
-
 경찰은 촬영을 막고
 *영상은 사라지고 있다*
 ```
@@ -160,7 +155,6 @@ Beijing police block filming
 ```text
 사고는 어디서든
 일어날 수 있다
-
 진짜 차이는 그다음
 *물어볼 자료가 남느냐*다
 ```
