@@ -90,17 +90,11 @@ def surfaced(c):
 
 
 def cat_rescue(c):
-    """cross-2 카테고리 AI 재판별 — 노출권은 아니나(grade 불필요) 키워드 분류를 AI가 제목 본질로 재판별.
-    ⚠️ 운영자 260629 "AI가 이미 들어갈거면 더 깊게 들어가서 판별하게": 옛 cat∈{빈칸,문화} 게이트 제거 →
-    cross≥2 전부 AI cat 판별로 확대. 근거(실측): 키워드 cat_of는 단일 부분문자열 매칭이라 cross-2의 87%
-    (1617/1861)가 단일매칭=저신뢰 — '미국'→국제·'회장'→경제 *확신오류*와 substring 충돌('강회장'→경제·
-    '골프존홀딩스'→문화)이 빈발. 옛 게이트는 그 확신오류(국제·경제로 틀림)를 *영영 사각*에 뒀다
-    (피아니스트 콩쿠르→국제·드라마 '신입사원 강회장'→경제). 이제 cross≥2면 cat을 AI 본질판정에 맡김.
-    grade 미기록·cat만이라 가벼움 · 한 런 = MAX_PER_RUN(80)·GATE_CAT_QUOTA(20)·scrape 15분 throttle·
-    3계정 폴오버가 캡(한 런 비용 불변 → 쿼터 폭발 없음). 백로그는 최신순 점진 소화·신규는 유입 즉시 교정 ·
-    폭발 징후(폴오버 ALT2 도달·요약 실패)면 이 게이트에 옛 cat∈{빈칸,문화} 조건 복원으로 한 줄 롤백."""
+    """cross-2 카테고리 구제 대상 — 노출권은 아니나(grade 불필요) 키워드가 못/잘못 분류한 것
+    (빈칸=미분류·viewer가 사회 catch-all로 표시 / 문화=키워드 추측 오분류 빈발). AI가 cat만 교정."""
     return ((c.get("cross") or 0) >= CAT_MIN_CROSS
-            and not surfaced(c))
+            and not surfaced(c)
+            and (c.get("cat") or "") in ("", "문화"))
 
 
 def needs_grading(c):
