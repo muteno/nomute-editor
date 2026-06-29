@@ -111,9 +111,9 @@
   }
   .file { display:block; padding:12px; border:1px dashed transparent; border-radius:var(--r-s); text-align:center; color:var(--accent); cursor:pointer; background:transparent; transition:color .18s, border-color .18s, background .18s, transform .12s ease; }   /* 빈 상태 = 플레이트 없는 사진 픽토그램만(ly .file 통일·운영자 260628) */
   .file svg { width:26px; height:26px; display:block; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }   /* 파일/사진 픽토그램(빈 상태·ly 47 계승) */
-  .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(박스 전체 X·ly 49 계승) */
+  .file:active { background:transparent; }   /* 누름 = 박스 전체 칠하기 금지(ly .file:active 통일) → PC 파일창(별창) 열림 중 배경/테두리 노출 차단 = .picking 폐지(운영자 260628) */
+  .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(박스 전체 X·ly 계승) */
   .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
-  .file.picking { color:var(--accent); border-color:rgba(var(--accent-rgb),.35); background:rgba(var(--accent-rgb),.08); }   /* 누름→업로드창 열린 동안 강조 = 이미지 제작(.go:active)와 동일 은은한 톤(border .35·bg .08) — 강한 솔리드 테두리 '중첩' 제거·액티브 모션 통일(운영자 260628) */
   /* 미리보기 = 4:5 컴팩트(업로드 보통 1080×1350) · 파일명은 칸 안 차지 말고 우하단 50% 반투명 오버레이(우측정렬) */
   .fileprev { position:relative; display:inline-block; margin-top:8px; max-width:100%; }
   .fileprev img { display:block; aspect-ratio:4/5; height:230px; max-width:100%; width:auto; object-fit:cover; border-radius:7px; }
@@ -1059,12 +1059,8 @@ function getComboOpas() { const out = []; if (cOpa1on) out.push(60); if (cOpa2on
 
 // ---- 파일 (재사용 바인더 — #file=/1·/5 배경) ----
 function bindFile(inp, lab, store) {
-  // 파일 선택 박스 = 누르면 강조(.picking) → 업로드 창 닫히면(선택/취소 무관·포커스 복귀) 해제(운영자 260622).
-  // 라벨에 바인드(=innerHTML 교체돼도 라벨 엘리먼트는 유지) · once 포커스 = 다이얼로그 닫힘 감지(선택=change도 해제).
-  lab.addEventListener('click', () => {
-    lab.classList.add('picking');
-    window.addEventListener('focus', () => lab.classList.remove('picking'), { once: true });
-  });
+  // 빈 상태 = 플레이트 없는 픽토그램만(ly .file 통일) · 누름 피드백은 CSS .file:active svg 축소뿐.
+  // 옛 .picking 강조(누름→업로드창 열림 동안 배경/테두리)는 PC에서 파일 대화상자가 별창이라 페이지 뒤로 노출 → 폐지(ly엔 없음·자막생성기와 동일 동작·운영자 260628).
   const inpId = inp.id;   // ⚠️ innerHTML 교체 시 새 input에 원래 id 복원 — 안 하면 #file id 소실 → FAB(rfab3) imgInput()=getElementById('file')가 null → 이미지 선택 '선택적으로만 작동' 버그(운영자 260628)
   const rebindInput = () => { const ni = lab.querySelector('input'); if (ni) { ni.onchange = handler; if (inpId) ni.id = inpId; } };
   const reset = () => {   // 휴지통 → 업로드 취소: store 비우고 라벨 초기 상태로 + input 재바인드(운영자 260622)
@@ -1083,7 +1079,6 @@ function bindFile(inp, lab, store) {
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
   const handler = e => {
-    lab.classList.remove('picking');
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
     r.onload = () => applyImg(r.result, f.name);

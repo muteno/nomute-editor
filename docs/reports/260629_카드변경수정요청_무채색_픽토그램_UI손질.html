@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드 변경·수정 요청 모달 UI 손질 — 전/후 보고</title>
+<style>
+  /* §🎨 토큰값 인라인 복사(viewer/index.html :root, 260629 스냅샷) — 일회성 보고서 */
+  :root{ --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --line2:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+         --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108; --arm:#ffd23f; --danger:#ff6b6b; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg);
+        font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; padding:26px 16px 64px; }
+  .wrap{ max-width:1000px; margin:0 auto; }
+  h1{ font-size:20px; font-weight:800; margin:0 0 4px; }
+  h1 b{ color:var(--accent); }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 22px; }
+  h2{ font-size:15px; font-weight:800; margin:30px 0 6px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  h2 .n{ color:var(--accent); margin-right:7px; }
+  p{ margin:7px 0; } .mut{ color:var(--mut); font-size:13px; }
+  code{ background:var(--pan); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font:12px/1 ui-monospace,Menlo,monospace; color:#cfe9c4; }
+  .note{ background:var(--pan); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:11px 14px; margin:14px 0; font-size:13.5px; }
+  .ba{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0; }
+  @media (max-width:680px){ .ba{ grid-template-columns:1fr; } }
+  .col h3{ margin:0 0 9px; font-size:12.5px; font-weight:800; display:flex; align-items:center; gap:7px; }
+  .badge{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; }
+  .badge.b{ color:var(--danger); background:rgba(255,107,107,.13); border:1px solid rgba(255,107,107,.4); }
+  .badge.a{ color:var(--accent); background:rgba(var(--accent-rgb),.13); border:1px solid rgba(var(--accent-rgb),.4); }
+
+  /* ===== 카드 변경 모달 미니 재현 ===== */
+  .modal{ border:1px solid rgba(255,255,255,.13); border-radius:18px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.5); }
+  .modal.before{ background:linear-gradient(165deg, rgba(27,44,32,.93), rgba(11,19,14,.96)); }      /* 전: 초록 틴트 */
+  .modal.after{ background:linear-gradient(165deg, rgba(14,16,15,.94), rgba(9,12,10,.97)); }        /* 후: 중립 */
+  .m-h{ display:flex; align-items:center; padding:11px 14px; border-bottom:1px solid var(--line2); }
+  .m-title{ font-size:15px; font-weight:800; letter-spacing:-.2px; }
+  .before .m-title{ color:var(--accent); }                 /* 전: 초록 타이틀 */
+  .after .m-title{ color:var(--fg); }                      /* 후: 무채색 */
+  .m-x{ margin-left:auto; width:28px; height:28px; display:grid; place-items:center; border-radius:8px; color:var(--fg); background:rgba(255,255,255,.06); border:1px solid var(--line); }
+  .m-x svg{ width:14px; height:14px; }
+  .m-body{ padding:12px 14px 14px; }
+  .lblrow{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:4px; }
+  .lbl{ font-size:12px; font-weight:800; color:var(--mut); }
+  .match{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--mut); }
+  .match .cbx{ width:17px; height:17px; display:grid; place-items:center; border-radius:5px; background:rgba(255,255,255,.05); border:1px solid var(--line); }
+  .match .cbx svg{ width:11px; height:11px; stroke:var(--mut); }
+  /* 칩 영역(클립버튼 상단걸침) */
+  .cardwrap{ position:relative; }
+  .before .cardwrap{ margin-top:0; }                       /* 전: 여백 0 → 버튼 겹침 */
+  .after .cardwrap{ margin-top:10px; }                     /* 후: 10px 여백 */
+  .chips{ display:flex; flex-direction:column; gap:5px; min-height:34px; padding:7px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:10px; margin-top:7px; }
+  .chipline{ display:flex; gap:5px; }
+  .chip{ font-size:13px; padding:2px 5px; border-radius:6px; background:rgba(255,255,255,.05); border:1px solid var(--line2); }
+  .clipbtns{ position:absolute; top:0; right:8px; transform:translateY(-50%); display:flex; gap:6px; z-index:3; }
+  .clip{ width:24px; height:24px; border-radius:50%; display:grid; place-items:center; background:rgba(20,22,21,.85); border:1px solid var(--line); color:var(--mut); }
+  .clip svg{ width:12px; height:12px; }
+  .ovl-warn{ position:absolute; left:0; right:42px; top:-9px; height:18px; pointer-events:none; }
+  /* 푸터: 사진 픽토 버튼 + 변경 */
+  .foot{ display:flex; gap:10px; align-items:stretch; padding:11px 14px; border-top:1px solid var(--line2); }
+  .attach{ flex:1.4; display:grid; place-items:center; min-height:42px; border-radius:10px; color:var(--accent); }
+  .before .attach{ background:rgba(255,255,255,.06); border:1px solid var(--line); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }   /* 전: 글래스 플레이트 비침 */
+  .after .attach{ background:transparent; border:1px solid transparent; }                                                                          /* 후: 플레이트 0(ly .file) */
+  .attach svg{ width:26px; height:26px; }
+  .go{ flex:1; display:inline-flex; align-items:center; justify-content:center; padding:9px 0; font:800 13px inherit; color:var(--accent); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; }
+
+  /* ===== 수정 요청 팝업 버튼 ===== */
+  .revrow{ display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid rgba(255,255,255,.13); border-radius:14px; background:linear-gradient(165deg, rgb(14,16,15), rgb(9,12,10)); }
+  .rev-title{ font-size:15px; font-weight:800; letter-spacing:-.2px; }
+  .before .rev-title{ color:var(--accent); text-shadow:0 0 12px rgba(15,253,2,.4); }
+  .after .rev-title{ color:var(--fg); }
+  .revsend{ margin-left:auto; padding:6px 14px; font:800 12px inherit; color:var(--accent); background:rgba(0,0,0,.34); border:1px solid rgba(var(--accent-rgb),.36); border-radius:999px; }
+  .before .revsend{ box-shadow:0 4px 12px rgba(15,253,2,.28); }    /* 전: 초록 글로우(디밍) */
+  .after .revsend{ box-shadow:none; }                              /* 후: 평평 */
+
+  /* 섹션 헤더 */
+  .sech{ font-size:15px; font-weight:800; letter-spacing:-.3px; padding:8px 0; }
+  .before .sech{ color:var(--accent); }
+  .after .sech{ color:var(--fg); }
+
+  table{ border-collapse:collapse; width:100%; margin:6px 0; font-size:13px; }
+  th,td{ text-align:left; padding:8px 10px; border:1px solid var(--line); vertical-align:top; }
+  th{ background:var(--pan); color:var(--mut); font-weight:800; white-space:nowrap; width:74px; }
+  .ok{ color:var(--accent); } ul{ margin:6px 0; padding-left:19px; } li{ margin:3px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>카드 변경 · 수정 요청 모달 <b>무채색·픽토그램 UI 손질</b> — 전/후</h1>
+  <p class="sub">대상 = <code>viewer/index.html</code> (뉴스 요약 뷰어) · 운영자 5건 지시 · 260629</p>
+
+  <div class="note">
+    <b>한눈 요약 —</b> 카드 변경 모달과 수정 요청 팝업의 ① 사진 픽토그램 버튼(PC 칠해짐) ② 라벨↔클립버튼 겹침
+    ③ 초록 창 음영 ④ 수정 버튼 초록 글로우(디밍) ⑤ 상단 초록 타이틀·헤더 — 5가지를 손봤다.
+    아래는 같은 마크업을 <b>전 CSS</b> / <b>후 CSS</b>로 나란히 렌더한 것.
+  </div>
+
+  <h2><span class="n">A</span>카드 변경 모달 — ①②③⑤ 한 화면</h2>
+  <div class="ba">
+    <div class="col"><h3>BEFORE <span class="badge b">초록·겹침·플레이트</span></h3>
+      <div class="modal before">
+        <div class="m-h"><span class="m-title">카드 1 변경</span><span class="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+        <div class="m-body">
+          <div class="lblrow"><span class="lbl">텍스트</span><span class="match"><span class="cbx"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg></span>체크 내용과 동일하게 이미지 변경</span></div>
+          <div class="cardwrap">
+            <div class="clipbtns">
+              <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
+              <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span>
+              <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
+            </div>
+            <div class="chips"><div class="chipline"><span class="chip">또,</span><span class="chip">화성이다</span></div><div class="chipline"><span class="chip">부품공장에서</span><span class="chip">불이</span><span class="chip">났고</span></div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><span class="go">변경</span></div>
+      </div>
+      <p class="mut">초록 배경 음영 · 초록 타이틀 · 사진 버튼에 글래스 플레이트 비침 · 클립버튼이 라벨에 닿음.</p>
+    </div>
+    <div class="col"><h3>AFTER <span class="badge a">중립·여백·플레이트0</span></h3>
+      <div class="modal after">
+        <div class="m-h"><span class="m-title">카드 1 변경</span><span class="m-x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+        <div class="m-body">
+          <div class="lblrow"><span class="lbl">텍스트</span><span class="match"><span class="cbx"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg></span>체크 내용과 동일하게 이미지 변경</span></div>
+          <div class="cardwrap">
+            <div class="clipbtns">
+              <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></span>
+              <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span>
+              <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></span>
+            </div>
+            <div class="chips"><div class="chipline"><span class="chip">또,</span><span class="chip">화성이다</span></div><div class="chipline"><span class="chip">부품공장에서</span><span class="chip">불이</span><span class="chip">났고</span></div></div>
+          </div>
+        </div>
+        <div class="foot"><span class="attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><span class="go">변경</span></div>
+      </div>
+      <p class="mut">중립(무채색) 배경 · 흰 타이틀 · 사진 버튼 = 플레이트 없는 픽토만(자막생성기와 동일) · 클립버튼 여백 확보.</p>
+    </div>
+  </div>
+
+  <h2><span class="n">B</span>수정 요청 팝업 — ④⑤ (수정 버튼 디밍 + 타이틀)</h2>
+  <div class="ba">
+    <div class="col"><h3>BEFORE <span class="badge b">초록 글로우·초록 타이틀</span></h3>
+      <div class="before"><div class="revrow"><span class="rev-title">수정 요청</span><span class="revsend">수정</span></div></div>
+      <p class="mut">'수정' 버튼 뒤 초록 글로우(box-shadow) = 디밍처럼 떠보임 · 초록 타이틀+글로우.</p>
+    </div>
+    <div class="col"><h3>AFTER <span class="badge a">평평·무채색 타이틀</span></h3>
+      <div class="after"><div class="revrow"><span class="rev-title">수정 요청</span><span class="revsend">수정</span></div></div>
+      <p class="mut">글로우 제거 = 표준 게이지 버튼(글래스+전송 시 채움) 그대로 · 무채색 타이틀.</p>
+    </div>
+  </div>
+
+  <h2><span class="n">C</span>요약 리더 섹션 헤더 — ⑤ (⚠️ 260626 결정 뒤집음)</h2>
+  <div class="ba">
+    <div class="col"><h3>BEFORE <span class="badge b">초록 헤더</span></h3>
+      <div class="before" style="padding:0 12px"><div class="sech">1. 기사 요약 · 시사점</div><div class="sech">썸네일 후보 — 검색 · AI 생성</div><div class="sech">카드뉴스</div></div>
+    </div>
+    <div class="col"><h3>AFTER <span class="badge a">무채색 헤더</span></h3>
+      <div class="after" style="padding:0 12px"><div class="sech">1. 기사 요약 · 시사점</div><div class="sech">썸네일 후보 — 검색 · AI 생성</div><div class="sech">카드뉴스</div></div>
+    </div>
+  </div>
+  <div class="note">⚠️ <b>요약 리더(#dlg) 섹션 헤더</b>는 260626에 운영자가 "초록 유지"로 정했던 부분이라, 이번에 무채색으로 바꾼 건 그 결정을 <b>뒤집은 것</b>. "각 모든 창 상단 무채색" 지시 + 첨부5(요약 리더 상단 동그라미)에 따라 포함했어. <b>팝업 타이틀만 원했고 요약 리더 섹션 헤더는 초록으로 두고 싶으면 그 부분만 되돌릴게</b>(<code>.phase&gt;summary</code>·<code>.thumbsec-h</code> 2곳).</div>
+
+  <h2><span class="n">D</span>변경 요약 · 검증</h2>
+  <table>
+    <tr><th>①</th><td>사진 픽토 버튼(<code>#edAttach</code>) = 빈 상태 <code>backdrop-filter:none</code> 추가 → blur 플레이트까지 제거 = ly <code>.file</code>과 완전 동일(PC 칠해짐 차단).</td></tr>
+    <tr><th>②</th><td><code>.edcardwrap</code> <code>margin-top:10px</code> → 상단걸침 클립버튼(13px 돌출)이 '체크 내용과 동일하게' 라벨과 안 겹침.</td></tr>
+    <tr><th>③</th><td><code>#editdlg</code> 배경 초록 그라데(<code>rgba(27,44,32…)</code>) → 중립(<code>rgba(14,16,15…)</code>) = <code>#dlg</code>·<code>#tooldlg</code> 레포 기틀 통일.</td></tr>
+    <tr><th>④</th><td><code>.revdlg .asksend</code> 초록 글로우 <code>box-shadow</code> 제거 → 표준 게이지 버튼 계승(카드 수정 <code>#crevdlg</code>도 같이).</td></tr>
+    <tr><th>⑤</th><td>상단 타이틀·헤더 초록 → 무채색(<code>var(--fg)</code>): <code>.ed-title</code>·<code>.askhead b</code>(글로우도 제거)·<code>.tool-h b</code>·<code>.phase&gt;summary</code>·<code>.thumbsec-h</code>. 본문 점·💡·강조는 유지.</td></tr>
+    <tr><th>검증</th><td class="ok">check_refs 통과(rc=0) · viewer JS 구문 OK · 디자인 토큰 게이트 raw baseline 이내 · <b>레포 CSS 계승(STAGE3 tokens.css) 확인</b>: 디자인 거울 정합 ✅ · 구조토큰 정합(tokens.css = index :root) ✅ · 4뷰어 tokens.css 링크 ✅. 단일 뷰어 순수 시각 = 자가검증.</td></tr>
+  </table>
+</div>
+</body>
+</html>
