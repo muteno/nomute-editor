@@ -31,9 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
 sys.path.insert(0, str(ROOT / "shared"))
-sys.path.insert(0, str(ROOT / "scraper"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
-from to_candidates import cat_force   # AI 이후 키워드 이차검증(바이오 임상=경제·노벨 시상=국제 · 정본=to_candidates)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
 MODEL = os.environ.get("GATE_MODEL", "claude-opus-4-8")
 GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # grade 채점 대상: cross 이 값 이상(노출권)
@@ -191,18 +189,13 @@ def main():
         if g is None:
             continue  # 누락분 = 미도장 유지(다음 런 재시도)
         ct = cats.get(str(i))
-        fc = cat_force(c.get("title") or "")   # 키워드 이차검증 — 바이오 임상=경제·노벨 시상=국제(강마커면 AI보다 우선 · 운영자 260629)
         if surfaced(c):                   # 노출권 = grade+cat 둘 다 반영(기존 동작)
             c["grade"] = g                # pending 은 cands 원소 참조 → 직접 반영
             c["grade_rubric"] = RUBRIC_VER    # 채점 도장(이 rubric 버전으로 채점됨)
-            if fc:
-                c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선 · 이차검증)
-            elif ct:
+            if ct:
                 c["cat"] = ct             # AI 카테고리 — 제목 맥락 이해(미술관 흉기난동=사회) → 키워드 cat_of 결과를 덮음(더 정확·뷰어 articleCat이 c.cat 우선)
         else:                             # cross-2 cat 구제 = cat만 반영, grade 미기록(grade 0/1이 소프트뉴스를 scFast서 침몰시키는 것 방지 · 운영자 260628)
-            if fc:
-                c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선)
-            elif ct:
+            if ct:
                 c["cat"] = ct
             c["cat_rubric"] = RUBRIC_VER  # cat 채점 도장(재채점 루프 방지) — grade/grade_rubric 은 안 씀
             catfix += 1
