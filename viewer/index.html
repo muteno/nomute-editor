@@ -2409,6 +2409,8 @@ const CAT_KW = {
 };
 // 하트(♥♡❤ 등) — 제목에 들어가면 연예인 열애/결혼·2세 = 100% 문화(운영자 260624). 사회 오분류·미분류 구제.
 const HEART_RE = /[♡♥❣❤\u{1F493}-\u{1F49F}\u{1F9E1}\u{1FA77}]/u;
+// 정치 인물·강마커 = 정치 강제(사회/미분류만 → 정치 · to_candidates.py POL_FORCE_RE와 바이트 동기 · 운영자 260629). 李·尹·정치인 실명이 CAT_KW에 없고 사회-우선 tie-break이 정치를 덮던 것 교정. ⚠️ 경제·국제·문화 주제는 유지(中 李씨·정치인 경제정책 오분류 방지) · 인물셋 운영자 튜닝.
+const POL_FORCE_RE = /李|尹|이재명|윤석열|한동훈|이준석|조국|김건희|김문수|우원식|한덕수|추미애|홍준표|안철수|오세훈|이낙연|나경원|김기현|권성동|정청래|박찬대|대통령|대통령실|청와대|탄핵|내란|여당|야당|국민의힘|민주당|대선|총선|공천|비대위|당대표|원내대표|거부권|국정감사|영부인/;
 // OSEN(오!쎈) — 조선일보 문화부 스포츠·연예 브랜드 → 100% 문화(운영자 260625). 제목 [오!쎈]/[Oh!쎈]/[OSEN=] 태그로 잡힘(영문 'Oh!쎈' 스펠링 보강·운영자 260628).
 const OSEN_RE = /오\s*!?\s*쎈|Oh\s*!?\s*쎈|OSEN/i;
 // 스포츠·연예 전문 매체 — 매체명만으로 100% 문화(운영자 260625). 선수·팀명 아님(선수 사회면 논란 오분류 방지)·연예도 문화라 안전. to_candidates.py와 동기.
@@ -2429,7 +2431,8 @@ function articleCat(a) {
   if (b && b !== '사회') { if (b === '테크' && pol) return '정치'; if (b === '문화' && (CRIME_OVERRIDE_RE.test(a.title || '') || JUDICIAL_OVERRIDE_RE.test(a.title || ''))) return '사회'; return b; }   // 큐 category 있으면 정본(단 테크라도 대통령·정부정책이면 정치 · 문화라도 사법·범죄 본질[헌재·대법원·성착취]이면 사회=저장 문화 라벨도 즉시 교정 · 사회는 하트 재분류 여지)
   if (OSEN_RE.test(a.title || '') || SPORTS_MEDIA_RE.test(a.media || '')) return '문화';   // OSEN 태그·스포츠 전문매체 = 100% 문화(사회·미분류 위로)
   if (HEART_RE.test(a.title || '')) return '문화';   // 하트 = 100% 문화(사회·미분류 위로)
-  if (b) return b;   // 사회(하트 없음)
+  if (POL_FORCE_RE.test(a.title || '')) return '정치';   // 정치 인물·강마커(李·尹·이재명·윤석열·대통령·탄핵 등) = 정치(사회/미분류 위로 · 하트→문화 자매 · 운영자 260629)
+  if (b) return b;   // 사회(하트·정치 없음)
   const t = `${a.title || ''} ${a.summary || ''}`;
   let best = '', bn = 0;
   const musicCombo = AMBIG_ARTIST_RE.test(t) && MUSIC_CTX_RE.test(t);   // 모호 가수명 + 음악문맥 동반(운영자 260628)
