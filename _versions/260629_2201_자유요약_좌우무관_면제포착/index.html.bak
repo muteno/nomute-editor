@@ -2392,13 +2392,9 @@ function biasLabel(a) {
     return `<b class="bias" style="color:var(--mut)">무관</b>`;
   const N = biasNum(a.bias_src);
   if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략)
-    return `<b class="bias" style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>`;
-  const d = M - N;
-  if (!d)   // 보정 0 = 단일값
-    return `<b class="bias" style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b>`;
-  // 카드 라벨 = 콤팩트 방향색 '좌 보정(4+1)'(운영자 #1215 복원 재적용 — #1218 풀플로우 '중립 5 (+1/우 보정)→중립 6'는 본문 decorate에만, 카드 제외). 본문 편향줄(biasFlowHtml)은 불변.
-  const zc = biasZoneCol(N);   // 원문방향 '좌'=방향색 · N=방향색 · '보정'·델타 부호=흰(--fg) · 괄호=mut
-  return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--fg)">보정</span><span style="color:var(--mut)">(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
+    return `<b class="bias">${biasZoneHtml(M)}</b>`;
+  // 본문 편향줄과 동일 포맷(운영자 260629) — '중립 5 (+1 / 우 보정) → 중립 6' (보정0=단일값)
+  return `<b class="bias">${biasFlowHtml(N, M)}</b>`;
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크','스포츠':'문화','연예':'문화' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621) · 스포츠·연예 = 문화(260625)
@@ -2636,11 +2632,11 @@ function decorate(root) {
     if (!tn || tn.nodeType !== 3 || !/^\s*이렇게\s*볼\s*수도/.test(tn.data)) return;
     tn.data = tn.data.replace(/^\s*이렇게\s*볼\s*수도\s*[①-⑳0-9]*\s*[)）.·]?\s*/, '');
   });
-  // 0c) 활용옵션 편향 불릿(li) 통째 제거 → 편향은 콘텐츠 초안(자유요약) 편향줄에서만 표시(중복 제거 · 운영자 260629). 옛 '| 약보수 보정' suffix 처리도 li 삭제로 자연 해소.
+  // 0c) 활용옵션 편향 불릿(li)의 '| 약보수 보정 (…)' 제거 → 사유는 자유요약 편향줄로 이동(중복 차단 · 운영자 260625)
   root.querySelectorAll('li').forEach(li => {
     const tn = li.firstChild;
-    if (!tn || tn.nodeType !== 3 || !/^\s*편향\s*[:：]/.test(tn.data)) return;   // 불릿 머리가 '편향:'인 것만(앵글·시사점 본문 중 편향 언급은 보존)
-    li.remove();
+    if (!tn || tn.nodeType !== 3 || !/편향\s*[:：]/.test(tn.data)) return;
+    tn.data = tn.data.replace(/\s*[|｜]\s*약보수\s*보정.*$/, '');
   });
   // 0b) 다각도 해석: '라벨: 설명'의 라벨(콜론 앞)을 항상 강조(굵게)로 통일 — AI가 **굵게** 안 달아도(라벨은 창의·고정 아님) 앵글 요약 라벨이면 항상 강조(운영자 260622)
   const _dh2 = [...root.querySelectorAll('h2')].find(h => /다각도/.test(h.textContent || ''));
@@ -2757,8 +2753,7 @@ function decorate(root) {
     const t = p.textContent;
     const why = (t.match(/보정[^()]*\(([^)]*)\)/) || [])[1] || '';   // 약보수 보정 사유 — 화살표 줄 아래 '약보수 보정 :' 흰색 줄로(운영자 260625 · 옛 ↳ 회색 폐지)
     const whyHtml = why ? ` <span class="biaswhy"><b>약보수 보정</b> : ${esc(why)}</span>` : '';
-    // 무관(면제) — 지침 §79 'F형·아동피해·성범죄·추모·순수정보·스포츠·행정' 등 좌우 축 부적용. 'N/A'·'무관' 외 'AI가 숫자(중립N)로 줬는데 why=면제/좌우 쟁점 아님'인 일탈도 포착 → '무관'(mut·카드 biasLabel과 통일·운영자 260629 "본문도 무관으로"). 설명(why)은 그대로.
-    if (/무관|N\s*\/?\s*A|좌우\s*쟁점.{0,8}아/i.test(t)) { p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>' + whyHtml; p.classList.add('bullet'); return; }
+    if (/무관|N\s*\/?\s*A/i.test(t)) { p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>' + whyHtml; p.classList.add('bullet'); return; }
     const flow = t.match(/원문\s*(\d+)\s*[\/／]\s*10[^\n]*?(?:요약|큐레이션)\s*(\d+)\s*[\/／]\s*10/);   // 자유요약 = 원문→요약 (전각슬래시·줄경계 강건화·평의회1)
     if (flow) {
       const N = +flow[1], M = +flow[2];
