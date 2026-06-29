@@ -26,7 +26,7 @@
 | 복원 ▲ | `#toolRestore` + `.min-pick` | `--btn-sm` | glass `--blur-l` | scale .82 | ▲ | 우하단·`--z-min`(200) | — | focus 이동 | index |
 | 최소화 라벨 | `MIN_REG` label | — | — | — | — | picker | — | — | "부모 메뉴 - 세부"(이미지-썸네일/영상-자막/뉴스 요약-신청/카드뉴스-이미지-수정) |
 | 입력칸 focus | `input/textarea:focus` | — | — | — | — | — | — | `:focus-visible` 2px accent 링 | 4파일 통일 `rgba(var(--accent-rgb),.35)`+`.08` 링 |
-| 클립 3버튼 | `.iobtn-edge`(별칭 `.urlclip/.scnclip/.askclip` → 통일 대상) | 26 | glass `.06`/blur13 opacity.6 | scale .85 | COPY/PASTE/CHECK/ERASE/UNDO `_SVG` | 입력칸 우상단 걸침 | — | — | thumb `attachCopyPaste` |
+| 클립 3버튼 | `.iobtn-edge`(별칭 `.urlclip/.scnclip/.askclip` → 통일 대상) | 26 | glass `.06`/blur13 opacity.6 | scale .85 | COPY/PASTE/CHECK/ERASE/UNDO `_SVG` | **입력칸 우측 걸침 2케이스**(우하단=base / 우상단=`.asktawrap.clip-top`) · 가로 right 14/46/78px 사다리(우측 기준) · 다른 버튼 위치 따라 상/하 선택 · **케이스 2개 고정**(과증식 금지·운영자 260629) | — | — | thumb `attachCopyPaste` · index `.asktawrap.clip-top` |
 | 다운로드 | `.dlbtn`(+컨텍스트) | `--btn` | accent 10% / 이미지위 검정20% | ↓바운스 + ✓팝·링(클립) | `DOWNLOAD_SVG` | abs 우상단행 | — | `aria-label` | index/thumb `.dlbtn` |
 | 모달 헤더 | `.tool-h`(+`.tool-hbtns`) | — | — | — | — | 제목 좌 + 버튼묶음 우(`margin-left:auto` 래퍼) | `11px 16px` | `aria-labelledby` | index `.tool-h` |
 | 모달/팝업 | `<dialog>` + `history.pushState` | — | glass blur | `@starting-style`(등장) | — | top-layer | radius 22px | 백버튼=닫기 | index `tooldlg` |
