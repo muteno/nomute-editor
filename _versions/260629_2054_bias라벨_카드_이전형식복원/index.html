@@ -2370,8 +2370,8 @@ function dlScrap(a) {    // 스크랩(우): <30분 NEW(라임 강조) / 30분~6h
 }
 // (옛 biasText/BIAS_COLOR 제거 260624 — 카드가 biasLabel 텍스트 라벨로 바뀌어 유일 호출부 사라진 죽은코드 + 옛 색맵은 좌우 반전[약우=파랑]이라 미래 재호출 시 위험. 평의회 검증5·6·10 권고.) · 게이지바 CSS(.bgauge·.biasrow)·--bias-*-rgb 토큰은 #922 카드 게이지 롤백으로 호출부 0 = 도먼트(후속 정리 가능).
 // ── 편향 텍스트 라벨(카드 kv 줄) — 게이지바(#922) 롤백, 텍스트 라벨로 복귀(운영자 260624). 본문 자유요약은 게이지흐름 유지(decorate M).
-//    형식: 원문→요약 보정 있으면 '좌 보정(4+1)'(원문방향+N±델타), 보정0이면 '좌 4', 원문값 부재면 '중립 5'(요약값만). 좌우무관(N/A)→'무관'.
-//    라벨은 숫자에서 도출(1~2강좌·3~4좌·5~6중립·7~8우·9~10강우) = 같은 숫자에 다른 라벨 뜨던 드리프트 차단. 색은 원문방향(보정 전) 기준. (260629 #1203 '좌 4 +1(우 보정)' 흰색안 → 운영자 요청으로 카드 라벨만 이전 방향색 형식으로 복원·본문 decorate 줄은 불변)
+//    형식(260629 A·본문 편향줄과 통일): 보정 있으면 '좌 4 +1(우 보정)'(원문방향+숫자 · +n/−n 보정델타 · 우/좌 보정 방향라벨), 보정0이면 '좌 4', 원문값 부재면 '중립 5'(요약값만). 좌우무관(N/A)→'무관'.
+//    라벨은 숫자에서 도출(1~2강좌·3~4좌·5~6중립·7~8우·9~10강우) = 같은 숫자에 다른 라벨 뜨던 드리프트 차단. 색 = 강조색(보정델타 +n)만 accent·그 외 전부 흰색(옛 좌/우 방향색 제거 — 방향은 '우/좌 보정' 텍스트로 명시).
 const biasNum = s => { const m = /(\d+)\s*[\/／]\s*10/.exec(s || ''); return m ? +m[1] : null; };
 const biasZone = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? '강좌' : v <= 4 ? '좌' : v <= 6 ? '중립' : v <= 8 ? '우' : '강우'; };
 const biasZoneCol = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? 'var(--bias-l2)' : v <= 4 ? 'var(--bias-l1)' : v <= 6 ? 'var(--fg-2)' : v <= 8 ? 'var(--bias-r1)' : 'var(--bias-r2)'; };
@@ -2380,13 +2380,13 @@ function biasLabel(a) {
   if (M == null || /무관|N\s*\/?\s*A/i.test(a.bias || ''))
     return `<b class="bias" style="color:var(--mut)">무관</b>`;
   const N = biasNum(a.bias_src);
-  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략)
-    return `<b class="bias" style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>`;
+  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략) · 흰색(본문 컨벤션 통일·260629)
+    return `<b class="bias biasv">${biasZone(M)} ${M}</b>`;
   const d = M - N;
-  if (!d)   // 보정 0 = 단일값
-    return `<b class="bias" style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b>`;
-  const zc = biasZoneCol(N);   // 원문방향 '좌'=방향색 · N=방향색 · '보정' 단어+보정델타 '+1'=흰색(--fg) · 괄호=mut(운영자 260624)
-  return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--fg)">보정</span><span style="color:var(--mut)">(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
+  if (!d)   // 보정 0 = 단일값 · 흰색
+    return `<b class="bias biasv">${biasZone(N)} ${N}</b>`;
+  // 원문방향+숫자=흰색(.biasv) · 보정델타 +n/−n=강조색(.biascorr) · (우/좌 보정)=흰색(.biasdir) — 본문 편향줄과 동일 컨벤션(운영자 260629 A·긴 대시바·옛 방향색 제거)
+  return `<b class="bias"><span class="biasv">${biasZone(N)} ${N}</span> <span class="biascorr">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span class="biasdir">(${d > 0 ? '우' : '좌'} 보정)</span></b>`;   // 예: 좌 4 +1(우 보정)
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크','스포츠':'문화','연예':'문화' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621) · 스포츠·연예 = 문화(260625)
