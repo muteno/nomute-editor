@@ -15,9 +15,7 @@ is_transient() {
 #   인증죽음(401/oauth만료)·5xx 과부하와 구분(그건 전환해도 무의미·is_transient/health 담당). 앞 8줄만 검사(본문 인용 오탐 억제).
 is_quota() {
   local s; s="$(printf '%s\n' "${1:-}" | head -n 8)"
-  # ⚠️ 'weekly limit'·'hit your … limit'·'limit … resets <날짜>' 추가(260629·동시세션 합본) = Claude Code 주간 한도 메시지 "You've hit your weekly limit · resets Jul 3" 포착.
-  #   이게 빠져 있어 주간한도 시 failover가 안 걸리고 활성계정에서 즉시 실패(서브계정 미시도)했음 — ask/analyze/card 전부 영향(SSOT).
-  grep -qiE 'usage limit|weekly limit|hit your .{0,40}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)' <<<"$s"
+  grep -qiE 'usage limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|resets? (at|in)' <<<"$s"
 }
 
 # claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*으로 1단계씩 전환(3계정 체인).
