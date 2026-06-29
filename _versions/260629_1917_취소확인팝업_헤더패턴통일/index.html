@@ -1460,7 +1460,6 @@
   .vbtn:not(:disabled) { color:#fff; text-shadow:0 1px 7px rgba(0,0,0,.95); cursor:pointer; }   /* 그 방향 판 있음 = 흰색+그림자 */
   .vbtn:not(:disabled):active { transform:scale(var(--press-m,.9)); }
   .sbtn.voted { color:var(--accent); border-color:rgba(15,253,2,.45); background:rgba(15,253,2,.14); }
-  .sbtn.thumb-arm { font-size:11px; font-weight:800; letter-spacing:-.3px; color:var(--accent); }   /* 투표 취소 arm = 픽토그램→'취소' 텍스트(2탭 취소·팝업 폐지·운영자 260629). voted 초록 박스 위 텍스트만(텍스트/픽토 단독·공존금지 준수) */
   /* 따봉/다운 피드백 패널(슬라이드 상단 오버레이·글래스) */
   .slide-fb { position:absolute; top:52px; left:10px; right:10px; z-index:4; padding:12px; border-radius:14px;
     background:rgba(8,12,10,.78); border:1px solid rgba(255,255,255,.16); box-shadow:0 10px 30px rgba(0,0,0,.45);
@@ -1478,6 +1477,14 @@
   /* 기록·닫기 = 헤더 우측(.fb-headact)으로 이동 = 첨부3 패턴. X=.askx 글래스 계승 / 클립=.iobtn-edge 하단걸침(revdlg 미러 · 헤더 버튼과 안 겹침) */
   .slide-fb .iobtn-edge { top:auto; bottom:0; transform:translateY(50%); }
   .slide-fb .iobtn-edge:active { transform:translateY(50%) scale(var(--press-s,.85)); }
+  /* ── 취소확인 팝업(confirmCancelVote) 전용 = 옛 레이아웃 유지(제목 위·버튼 아래) · 메인 피드백 팝업(.fb-head 신패턴)과 스코프 분리 ── */
+  .fb-vote { font-size:13px; font-weight:800; color:#fff; } .fb-sub { font-weight:600; color:rgba(255,255,255,.55); font-size:11.5px; }
+  .fb-x:not(.askx) { position:absolute; top:8px; right:9px; width:26px; height:26px; border-radius:9px; font-size:11px; color:rgba(255,255,255,.6); background:rgba(255,255,255,.06); border:1px solid var(--line2); cursor:pointer; display:grid; place-items:center; }   /* 취소확인 X(메인은 .fb-x.askx 헤더 인플로우) */
+  .fb-x:not(.askx):hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .fb-act { display:flex; gap:8px; justify-content:flex-end; }
+  .fb-act button { padding:8px 15px; font:700 12.5px inherit; border-radius:999px; cursor:pointer; }
+  .fb-save:not(.asksend) { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }   /* 취소확인 버튼(메인 기록은 .asksend 순수글래스) */
+  .fb-save[disabled] { opacity:.55; } .fb-act button:active { transform:scale(var(--press-l,.95)); }
   .fb-done { font-size:13px; font-weight:800; color:var(--accent); text-align:center; padding:6px 0; }
   .slide-wait { aspect-ratio:4/5; display:grid; place-items:center; border-radius:16px; border:1px solid var(--line);
     background:rgba(5,12,8,.4); color:var(--accent); font-size:13px; text-align:center; padding:0 18px; line-height:1.5; }
@@ -2037,7 +2044,7 @@
 <!-- 요약 수정 팝업 — FAB(우·중하단)에서 좌측으로 펼침. 지시대로 재작성(재요약 X·api/revise). askdlg 클론·.sbtn 클립 계승. 1차 클릭=재확인→2차=전송 -->
 <dialog id="revdlg" class="askdlg revdlg">
   <div class="askwrap">
-    <div class="askhead"><b>뉴스 수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정</span></button><button class="askx" id="revX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+    <div class="askhead"><b>수정 요청</b><div class="revhead-act"><button class="asksend revsend" id="revSend" type="button"><span>수정</span></button><button class="askx" id="revX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="asktawrap">
       <textarea id="revText" class="askta" rows="2" placeholder=""></textarea>
     </div>
@@ -2360,8 +2367,8 @@ function dlScrap(a) {    // 스크랩(우): <30분 NEW(라임 강조) / 30분~6h
 }
 // (옛 biasText/BIAS_COLOR 제거 260624 — 카드가 biasLabel 텍스트 라벨로 바뀌어 유일 호출부 사라진 죽은코드 + 옛 색맵은 좌우 반전[약우=파랑]이라 미래 재호출 시 위험. 평의회 검증5·6·10 권고.) · 게이지바 CSS(.bgauge·.biasrow)·--bias-*-rgb 토큰은 #922 카드 게이지 롤백으로 호출부 0 = 도먼트(후속 정리 가능).
 // ── 편향 텍스트 라벨(카드 kv 줄) — 게이지바(#922) 롤백, 텍스트 라벨로 복귀(운영자 260624). 본문 자유요약은 게이지흐름 유지(decorate M).
-//    형식(260629 A·본문 편향줄과 통일): 보정 있으면 '좌 4 +1(우 보정)'(원문방향+숫자 · +n/−n 보정델타 · 우/좌 보정 방향라벨), 보정0이면 '좌 4', 원문값 부재면 '중립 5'(요약값만). 좌우무관(N/A)→'무관'.
-//    라벨은 숫자에서 도출(1~2강좌·3~4좌·5~6중립·7~8우·9~10강우) = 같은 숫자에 다른 라벨 뜨던 드리프트 차단. 색 = 강조색(보정델타 +n)만 accent·그 외 전부 흰색(옛 좌/우 방향색 제거 — 방향은 '우/좌 보정' 텍스트로 명시).
+//    형식: 원문→요약 보정 있으면 '좌 보정(4+1)'(원문방향+N±델타), 보정0이면 '좌 4', 원문값 부재면 '중립 5'(요약값만). 좌우무관(N/A)→'무관'.
+//    라벨은 숫자에서 도출(1~2강좌·3~4좌·5~6중립·7~8우·9~10강우) = 같은 숫자에 다른 라벨 뜨던 드리프트 차단. 색은 원문방향(보정 전) 기준.
 const biasNum = s => { const m = /(\d+)\s*[\/／]\s*10/.exec(s || ''); return m ? +m[1] : null; };
 const biasZone = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? '강좌' : v <= 4 ? '좌' : v <= 6 ? '중립' : v <= 8 ? '우' : '강우'; };
 const biasZoneCol = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? 'var(--bias-l2)' : v <= 4 ? 'var(--bias-l1)' : v <= 6 ? 'var(--fg-2)' : v <= 8 ? 'var(--bias-r1)' : 'var(--bias-r2)'; };
@@ -2370,13 +2377,13 @@ function biasLabel(a) {
   if (M == null || /무관|N\s*\/?\s*A/i.test(a.bias || ''))
     return `<b class="bias" style="color:var(--mut)">무관</b>`;
   const N = biasNum(a.bias_src);
-  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략) · 흰색(본문 컨벤션 통일·260629)
-    return `<b class="bias biasv">${biasZone(M)} ${M}</b>`;
+  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략)
+    return `<b class="bias" style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>`;
   const d = M - N;
-  if (!d)   // 보정 0 = 단일값 · 흰색
-    return `<b class="bias biasv">${biasZone(N)} ${N}</b>`;
-  // 원문방향+숫자=흰색(.biasv) · 보정델타 +n/−n=강조색(.biascorr) · (우/좌 보정)=흰색(.biasdir) — 본문 편향줄과 동일 컨벤션(운영자 260629 A·긴 대시바·옛 방향색 제거)
-  return `<b class="bias"><span class="biasv">${biasZone(N)} ${N}</span> <span class="biascorr">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span class="biasdir">(${d > 0 ? '우' : '좌'} 보정)</span></b>`;   // 예: 좌 4 +1(우 보정)
+  if (!d)   // 보정 0 = 단일값
+    return `<b class="bias" style="color:${biasZoneCol(N)}">${biasZone(N)} ${N}</b>`;
+  const zc = biasZoneCol(N);   // 원문방향 '좌'=방향색 · N=방향색 · '보정' 단어+보정델타 '+1'=흰색(--fg) · 괄호=mut(운영자 260624)
+  return `<b class="bias"><span style="color:${zc}">${biasZone(N)}</span> <span style="color:var(--fg)">보정</span><span style="color:var(--mut)">(</span><span style="color:${zc}">${N}</span><span style="color:var(--fg)">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span style="color:var(--mut)">)</span></b>`;   // 예: 좌 보정(4+1)
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크','스포츠':'문화','연예':'문화' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621) · 스포츠·연예 = 문화(260625)
@@ -2748,7 +2755,7 @@ function decorate(root) {
     } else {
       const one = t.match(/(\d+)\s*[\/／]\s*10/);   // IG·Thread = 단일값(원문 없음) → 숫자 도출 라벨로 정리
       if (one) { const M = +one[1];
-        p.innerHTML = `편향: <b class="biasv">${biasZone(M)} ${M}</b>` + whyHtml;   // 흰색 통일(방향색 제거·260629)
+        p.innerHTML = `편향: <b style="color:${biasZoneCol(M)}">${biasZone(M)} ${M}</b>` + whyHtml;
       }
     }
     p.classList.add('bullet');
@@ -4189,33 +4196,30 @@ function applyVoteState(fig, file, card) {
 }
 function onThumb(card, vote, fig, file) {
   const cur = getVote(file, card.n);
-  if (cur === vote) { armCancelThumb(card, vote, fig, file); return; }   // 같은 쪽 재탭 = 인라인 arm(버튼 안 '취소' 표시) → 한 번 더 탭하면 취소(팝업 폐지·운영자 260629)
+  if (cur === vote) { confirmCancelVote(card, vote, fig, file); return; }   // 같은 쪽 재탭 = 취소
   if (cur) return;                                                          // 다른 쪽 이미 투표 = 잠김(disabled)
   openFeedback(card, vote, fig, file);                                      // 미투표 = 패널(크로스전환은 패널서)
 }
-// 투표 취소 = 인라인 2탭(확인 팝업 폐지·운영자 260629). 이미 투표한 썸을 재탭 → 버튼 내용이 '취소'로 arm → 한 번 더 탭하면 삭제. 미확정이면 자동 해제(아이콘 복원).
-function armCancelThumb(card, vote, fig, file) {
-  const btn = fig.querySelector(vote === 'up' ? '.fbup' : '.fbdown'); if (!btn) return;
-  if (btn.classList.contains('thumb-arm')) { cancelVote(card, vote, fig, file, btn); return; }   // 2탭 = 취소 확정
-  fig.querySelectorAll('.sbtn.thumb-arm').forEach(disarmThumb);   // 한 번에 하나만 arm
-  btn._iconHTML = btn.innerHTML; btn.classList.add('thumb-arm'); btn.textContent = '취소';   // 픽토그램 보존 → '취소' 텍스트(텍스트/픽토 단독 교체 = §📐 공존금지 준수)
-  clearTimeout(btn._armT); btn._armT = setTimeout(() => disarmThumb(btn), 2600);   // 미확정 = 자동 해제
-}
-function disarmThumb(btn) {
-  if (!btn || !btn.classList.contains('thumb-arm')) return;
-  clearTimeout(btn._armT); btn.classList.remove('thumb-arm');
-  if (btn._iconHTML != null) { btn.innerHTML = btn._iconHTML; btn._iconHTML = null; }   // 아이콘 복원
-}
-function cancelVote(card, vote, fig, file, btn) {
-  if (btn) { clearTimeout(btn._armT); btn.disabled = true; }
-  fetch('api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ action: 'delete', article: file, card: String(card.n), vote }) })
-    .then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
-    .then(({ ok, j }) => {
-      if (btn) { btn.disabled = false; disarmThumb(btn); }
-      if (ok && j.ok) { setVote(file, card.n, null); applyVoteState(fig, file, card.n); }   // 성공 = 투표 제거 + 썸 원복(아이콘·활성)
-      else alert(j.error || '취소 실패');
-    }).catch(e => { if (btn) { btn.disabled = false; disarmThumb(btn); } alert('요청 실패: ' + e.message); });
+function confirmCancelVote(card, vote, fig, file) {
+  const host = fig.querySelector('.slide-img') || fig; if (!host) return;   // 오버레이(.feed-ui)면 자신이 host
+  const ex = host.querySelector('.slide-fb'); if (ex) ex.remove();
+  const fb = document.createElement('div'); fb.className = 'slide-fb';
+  fb.innerHTML = `<button type="button" class="fb-x" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+     <div class="fb-vote">${vote === 'up' ? THUMBUP_SVG + ' 좋아요' : THUMBDOWN_SVG + ' 아쉬워요'} 취소할까요? <span class="fb-sub">— 기록도 삭제돼</span></div>
+     <div class="fb-act"><button type="button" class="fb-save">취소(삭제)</button></div>`;
+  fb.querySelector('.fb-x').onclick = () => fb.remove();
+  fb.querySelector('.fb-save').onclick = () => {
+    const save = fb.querySelector('.fb-save'); save.disabled = true; save.textContent = '삭제 중…';
+    fetch('api/feedback', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', article: file, card: String(card.n), vote }),
+    }).then(async r => ({ ok: r.ok, j: await r.json().catch(() => ({})) }))
+      .then(({ ok, j }) => {
+        if (ok && j.ok) { setVote(file, card.n, null); applyVoteState(fig, file, card.n); fb.innerHTML = '<div class="fb-done">취소됐어 ' + CHECK_SVG + '</div>'; setTimeout(() => fb.remove(), 900); }
+        else { save.disabled = false; save.textContent = '취소(삭제)'; alert(j.error || '실패'); }
+      }).catch(e => { save.disabled = false; save.textContent = '취소(삭제)'; alert('요청 실패: ' + e.message); });
+  };
+  host.appendChild(fb);
 }
 // ── 슛 PIN 입력 UI ──
 // confirm/prompt 대체. #pindlg(4칸)로 4자리 PIN을 받아 Promise로 돌려준다.
