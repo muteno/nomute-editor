@@ -135,6 +135,8 @@
 
 ## 설정 (1회)
 
+> 🔑 **토큰 회전(재발급)·계정 선택 상세는 `docs/api-key-rotation.md` 정본** — 발급 명령·플랫폼별 차이·시크릿창 계정선택 레시피·Cloudflare(`GH_TOKEN`) 구분까지. 아래는 간략판.
+
 ### 1) 구독 OAuth 토큰 시크릿 (API 키 아님)
 GitHub 레포 → **Settings → Secrets and variables → Actions → Secrets** 에 Max 계정별 토큰 3개:
 - `CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB` ← 기본 계정
