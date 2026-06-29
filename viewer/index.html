@@ -451,7 +451,9 @@
   #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
   .soc-item:hover { border-color:rgba(12,208,247,.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(12,208,247,.2); }
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
-  .soc-burst { color:#0cd0f7; }
+  .soc-burst { color:#0cd0f7; }   /* 🔥 burst 점수 = 기본 SNS 시안 */
+  .soc-burst.hot30 { color:var(--accent); }       /* 상위 ~30%(burst≥12·7일치 p70) = 강조색(운영자 260629) */
+  .soc-burst.hot10 { color:var(--hist-accent); }   /* 상위 ~10%(burst≥24·7일치 p90) = 보라(--hist 계승) */
   .soc-src { color:#9becff; }
   .soc-posts { color:var(--mut); font-weight:700; }
   .soc-age { color:var(--mut); margin-left:auto; font-weight:700; }
@@ -6413,6 +6415,8 @@ const socLean = s => { const v = SOC_LEAN_MAP[s]; return v === 'l' ? 'lean-l' : 
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
 let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
+// 🔥 SNS burst 색 티어 임계 — 7일치(14d 5스냅샷·고유 22사건) 분포: p90≈23.9(보라)·p70≈11.8(강조). 표시 전용(랭킹·정렬·진입 무관). 정본 = docs/social-burst.md.
+const SOC_HOT10 = 24, SOC_HOT30 = 12;
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
   let _ss = '';   // 이번 렌더 구성(행 ID·순서+검색어) 누적
@@ -6427,7 +6431,8 @@ function renderSns() {
     el.href = r.url || '#'; el.target = '_blank'; el.rel = 'noopener';
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge(r.age_h);
-    el.innerHTML = `<div class="soc-top"><span class="soc-burst">${FIRE_SVG} ${(+r.burst || 0).toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
+    const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
+    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + '"></span>').join('')}</div>`;
     el.querySelector('.soc-title').textContent = r.title || '';
