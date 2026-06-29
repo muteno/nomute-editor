@@ -1,0 +1,66 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>STAGE 3 — 공유 구조토큰 tokens.css (분신술10)</title>
+<style>
+:root{--bg:#121212;--pan:#16171a;--line:rgba(255,255,255,.08);--fg:#eef7f0;--mut:#8fa697;--accent:#0FFD02;--danger:#ff5b4a;--warn:#ffd24a;--hist:#c24bf5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,'Pretendard Variable',system-ui,sans-serif;padding:22px;max-width:920px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:26px 0 10px;color:var(--accent)}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin:10px 0}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:700}
+code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:6px;font-size:12.5px}
+.ok{color:var(--accent)}.no{color:var(--danger)}.warn{color:var(--warn)}.hist{color:var(--hist)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut);margin-right:5px}
+ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+.big{font-size:15px;font-weight:700}
+</style></head><body>
+
+<h1>STAGE 3 — 공유 구조토큰 <code>tokens.css</code></h1>
+<div class="sub">디자인 토큰 단일정본화 · 분신술 10인 적대검증 후 머지 · 260628</div>
+
+<div class="card">
+<span class="big">한 줄 요약</span> — 4뷰어(썸네일·자막·영상프롬프트·합성)가 <b>버튼·여백·반지름 같은 구조 토큰을 각자 raw 값으로 흩뿌리던 것</b>을, <span class="ok">index에서 자동 파생한 공유 <code>tokens.css</code> 한 장</span>으로 모았다. <b>색(팔레트)은 일부러 안 건드림</b>(뷰어마다 톤이 다른 게 의도). 화면은 <span class="ok">한 픽셀도 안 바뀜</span> — 신규 컴포넌트가 "뜬금없는 값" 대신 공유 토큰을 쓰게 하는 <b>배관 + 자동 게이트</b>를 깔았다.
+</div>
+
+<h2>왜 했나 (디자인 싱킹)</h2>
+<div class="card">
+운영자 요구 = "버튼/마진/색/머리표가 흩어졌다 → 통일 + 신규 컴포넌트 뜬금없는 거 방지". 실측해보니 4뷰어엔 구조 토큰이 <b>0개</b>(전부 raw px) → 새 버튼 만들면 또 raw로 새서 드리프트 반복. <span class="ok">공유 토큰을 link해 어휘를 주면, 새 컴포넌트는 처음부터 <code>var(--r-m)</code>로 통일</span>된다(과거 raw는 안 건드려도 미래 드리프트 차단).
+</div>
+
+<h2>핵심 결정 — 무엇을 공유하고 무엇을 남겼나</h2>
+<table>
+<tr><th>구분</th><th>처리</th><th>이유</th></tr>
+<tr><td class="ok">구조 토큰 48개<br>(반지름·간격·blur·버튼·타이포·모션·z·눌림)</td><td>공유 <code>tokens.css</code>로 통일</td><td>버튼 34px이 뷰어마다 다를 이유 없음</td></tr>
+<tr><td class="hist">색·팔레트<br>(--bg·--fg·--mut·--line·--accent·의미색)</td><td class="warn">뷰어별 inline 유지(공유 안 함)</td><td>thumb 문서톤·4뷰어 중립 vs index 녹색브랜드 = <b>의도된 분리</b>(주석·G채널값으로 입증)</td></tr>
+</table>
+<div class="card"><span class="no">✗ 폐기된 원안</span> = "4뷰어가 index :root 통째 상속" → 분신술 실측 결과 <b>5개 화면 재색칠 회귀</b>(thumb 배경 밝아짐·4뷰어 글자 녹색기 침투·테두리 흐려짐). 기틀이 막으려는 '조용한 모서리 깎임' 그 자체라 만장일치 폐기.</div>
+
+<h2>전 / 후</h2>
+<table>
+<tr><th></th><th>전</th><th>후</th></tr>
+<tr><td>구조 토큰 정의처</td><td>index만 87개, 4뷰어 0개(raw px)</td><td class="ok">index = SSOT, tokens.css가 자동 파생, 4뷰어 link</td></tr>
+<tr><td>신규 컴포넌트</td><td class="no">var() 쓸 토큰이 없어 raw로 샘</td><td class="ok"><code>var(--r-m)</code> 등 48개 어휘 사용 가능</td></tr>
+<tr><td>드리프트 방어</td><td>문서·소프트룰뿐</td><td class="ok">거울 정합 + 색오염 + 링크존재 = 3중 하드게이트(rc=1)</td></tr>
+<tr><td>렌더(픽셀)</td><td colspan="2" class="ok">동일 — 4뷰어가 구조토큰을 var()로 안 쓰던 터라 link해도 0 변화(실측: 미정의 참조 0건·Playwright 4뷰어 팔레트 보존 확인)</td></tr>
+</table>
+
+<h2>효율 · 품질 · 리스크 (5요소)</h2>
+<table>
+<tr><th>축</th><th>평가</th></tr>
+<tr><td>효율</td><td>기존 <code>build_design_mirror</code>(base.css 거울) 인프라 재사용 = 신규 코드 최소·CI 추가비용 0</td></tr>
+<tr><td>품질</td><td class="ok">SSOT 한 곳(index) 보존 + 자동 파생 → 손베끼기 드리프트 봉합</td></tr>
+<tr><td>픽셀 회귀</td><td class="ok">0 — 구조 var() 미참조 실측 + 색 inline 오버라이드(Playwright 검증)</td></tr>
+<tr><td>병렬 충돌</td><td class="ok">0 — 병렬 세션은 rfab(2400행대)만, 이 변경은 &lt;head&gt;(7행)·새 파일 = 줄 격리</td></tr>
+<tr><td>잔여 리스크</td><td class="warn">raw px→var() 점진 이관(STAGE3c)은 픽셀 검수 필요 → <b>이번 스코프 밖·보류</b>. 색 통일은 영구 금지(재색칠).</td></tr>
+</table>
+
+<h2>분신술 10인 평결</h2>
+<div class="card">
+원안(전체 상속) = <span class="no">만장일치 폐기</span>. 안전형(구조만·파생·게이트·픽셀0) = <span class="ok">✅ 2 / ⚠️ 8(조건부) · ❌ 0</span> → 조건(색제외·게이트·no-cache·마커·:root 비파괴·이관 분리) 전부 반영 후 머지. <span class="tag">READ-ONLY 준수</span> rogue 커밋 0(사후점검).
+</div>
+
+</body></html>

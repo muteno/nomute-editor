@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # AI 경중 게이트 — viewer/candidates.json 의 '노출 후보'(cross≥GATE_MIN or 속보후보 or [단독])를
-# Claude(claude -p) 1콜 배치로 0~3 경중 채점 → grade 확정. 구조 신호(cross/burst/연속보도)가
+# Claude(claude -p) 1콜 배치로 0~3 경중 채점 → grade 확정 + 카테고리(6버킷) 동시 산출.
+# + cross-2 cat 구제(운영자 260628 근본레버): AI가 안 닿던 cross<GATE_MIN 영역에서 키워드가 모호(빈칸·문화)한
+#   후보는 같은 콜로 'cat만' 교정(grade 미기록 = 연예·스포츠 가십이 grade 0/1로 scFast서 침몰하는 것 방지).
+#   → 키워드 다단계 DB 확장 대신 AI가 분류를 맡는 길(키워드는 'AI 호출 트리거'로 격하). 구조 신호(cross/burst/연속보도)가
 # 사건 vs 보도자료를 못 가르는 한계(AUC 0.5~0.59 실측)를 AI 내용판정으로 보완(정본 docs §2.5).
 # breaking_judge 와 한 쌍(속보=긴급여부 / gate=경중) · 같은 워크플로·구독 OAuth 로 돈다.
 #
@@ -31,9 +34,11 @@ sys.path.insert(0, str(ROOT / "shared"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
 MODEL = os.environ.get("GATE_MODEL", "claude-opus-4-8")
-GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # 채점 대상: cross 이 값 이상(노출권)
+GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # grade 채점 대상: cross 이 값 이상(노출권)
+CAT_MIN_CROSS = int(os.environ.get("GATE_CAT_MIN_CROSS", "2"))   # 카테고리 구제: cross 이 값 이상이고 키워드가 모호(빈칸·문화)한 cross-2 후보는 AI 'cat만' 채점(grade 미기록=연예·스포츠 가십이 grade 0/1로 scFast서 침몰하는 것 방지) — AI가 안 닿던 cross-2 분류를 교정(운영자 260628 근본레버 · 키워드 DB 확장 대체)
 CHUNK = int(os.environ.get("GATE_CHUNK", "40"))               # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — 120은 ~31에서 잘림 실측)
 MAX_PER_RUN = int(os.environ.get("GATE_MAX_PER_RUN", "80"))   # 한 런당 채점 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
+GATE_CAT_QUOTA = int(os.environ.get("GATE_CAT_QUOTA", "20"))   # 한 런당 cat구제(비노출 cross-2) 최소 보장 슬롯 — 노출권 백로그가 MAX 초과여도 cat 기아 방지(감사5 실측: 노출권 1109>80이 cat 651을 0처리 → 347건 사회 오표시·운영자 260628)
 DAN = re.compile(r"\[\s*단독\s*\]")
 
 RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 기사 제목들이 각각 '얼마나 중요한 뉴스인가'를 0~3으로 채점하라. 제목만 보고, 한국 일반 독자가 9시 뉴스/속보로 볼 가치를 기준으로.
@@ -50,7 +55,7 @@ RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 
 [1 = 경미 — 보도가치 약함]
 - 루틴 행정·지자체 일상·minor 업데이트·소소한 동정
 
-⚠️ 개별·단일 피의자 형사사건의 선고·판결·구형·항소심·구속(전국적 대형·화제 아닌 일상 강력범죄)은 **[3] 아님** — 개별 사법 절차 결과는 일반 기사로 [1]~[2]에 둔다(breaking 긴급 판정과 동일 기준·260618 엄선).
+⚠️ 개별·단일 피의자 형사사건의 선고·판결·구형·항소심·구속(전국적 대형·화제 아닌 일상 강력범죄)은 **[3] 아님** — 개별 사법 절차 결과는 일반 기사로 **기본 [1]**에 둔다(전국적 대형·화제·고위공직자급일 때만 [2] · breaking 긴급 판정과 동일 기준·260618·260628 엄선).
 
 ⚠️ 화재·사고라도 ① 제목에 '인명피해 없음·재산피해만·연기만'이 명시됐거나 ② 사건성 없는 일상적 단일 사고사·변사(개별 추락·질식·끼임·교통·돌연사 등 1명)면 **[3]·[2] 아님 → [1]**(사건이 벌어진 사실과 별개로 *피해 규모*로 경중을 매김). 단 다음은 깎지 말고 유지 — ⓐ 사상 여부가 제목에 안 드러난 화재·사고·재난(초기 속보 보호) ⓑ 사상 2명 이상·심정지(=다수) ⓒ 타살·피살·총격·테러·전쟁/국제충돌 피해·산업재해/근무 중 사망·아동/취약자 피해·고위공직자/유명인·전국적 화제(발칵·파문·공분 등)는 단일이어도 '일상' 아님(260620 엄선).
 
@@ -58,6 +63,9 @@ RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 
 - 기업·기관 보도자료·홍보·신제품 출시·행사 개최·업무협약·수상 보도
 - 스포츠 경기 결과·중계·선수 단신, 연예 가십·신변잡기
 - 증시 현황 수치 나열, 인사·부고·공지·날씨·운세
+- 복권·로또·줍줍·당첨, 해외 엽기·진기록·황당사건·가십성 토픽, 생활 분통·부부/고부 갈등·SNS 하소연, 미용/건강 잡학·생활정보팁, 교통량·정체·귀성/귀경 예보
+
+⚠️ 화제성(클릭·회자)이 곧 중요도는 아니다 — 위 연성·잡학·신변잡기는 여러 매체가 받아써도, 화제가 되어도 [0]~[1]이다(콘텐츠화해도 다수의 유의미한 반응을 끌기 어려움). 단 실제 사고·재난·사망·범죄 피해나 정치·경제·사회 현안이면 본 규정과 무관 — 원래 경중대로 [2]~[3] 유지(예: '교통량 감소'는 [0]이나 '교통사고 사망'은 사건, '단오 창포물 미용지혜'는 [0]이나 '베네수엘라 강진'의 강진 자체는 재난).
 
 ⚠️ 핵심: '보도자료(홍보)'와 '진짜 사건'을 가려라. 여러 매체가 동시에 받아쓴 홍보성 발표여도 0이다.
 실제로 무슨 일이 *벌어진* 사건·현안이라야 2~3이다. 행정 동사("당국 조사·대응")에 휘둘리지 말고
@@ -81,9 +89,21 @@ def surfaced(c):
             or bool(DAN.search(c.get("title") or "")))
 
 
+def cat_rescue(c):
+    """cross-2 카테고리 구제 대상 — 노출권은 아니나(grade 불필요) 키워드가 못/잘못 분류한 것
+    (빈칸=미분류·viewer가 사회 catch-all로 표시 / 문화=키워드 추측 오분류 빈발). AI가 cat만 교정."""
+    return ((c.get("cross") or 0) >= CAT_MIN_CROSS
+            and not surfaced(c)
+            and (c.get("cat") or "") in ("", "문화"))
+
+
 def needs_grading(c):
-    """노출권이고, 아직 현재 RUBRIC 버전으로 채점되지 않았으면 True(미채점 or rubric 변경)."""
-    return surfaced(c) and c.get("grade_rubric") != RUBRIC_VER
+    """노출권(grade+cat) 미채점이거나, cross-2 cat구제(cat만) 미채점이면 True. rubric 변경 시 되살아남."""
+    if surfaced(c):
+        return c.get("grade_rubric") != RUBRIC_VER
+    if cat_rescue(c):
+        return c.get("cat_rubric") != RUBRIC_VER
+    return False
 
 
 def _clean(t):
@@ -135,7 +155,11 @@ def main():
         return
     total = len(pending)
     pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
-    pending = pending[:MAX_PER_RUN]   # 이번 런 상한 — 나머지는 다음 디스패치(self-gate)가 이어 채점(점진 클리어)
+    # 노출권(grade) 우선 + cat구제 최소쿼터 보장(GATE_CAT_QUOTA) — 노출권 백로그가 MAX 초과여도 cat구제가 *기아*되지 않게(감사5·260628: 노출권 1109>80이 cat 651을 영구 0처리 → 347건 사회 오표시였음). cat구제는 grade 미기록·cat만이라 가볍다.
+    surf = [c for c in pending if surfaced(c)]
+    catr = [c for c in pending if not surfaced(c)]   # cross-2 cat구제(needs_grading 이미 통과·최신순 보존)
+    n_cat = min(len(catr), GATE_CAT_QUOTA)
+    pending = surf[:max(0, MAX_PER_RUN - n_cat)] + catr[:n_cat]   # 노출권 다수 차지하되 cat에 최소 n_cat 슬롯 확보
     print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK})")
     grades, cats = {}, {}
     for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
@@ -152,22 +176,29 @@ def main():
         print("::warning::경중 채점 전 청크 실패 — 다음 런 재시도")
         sys.exit(0)
     dist = Counter()
+    catfix = 0
     for i, c in enumerate(pending):
         g = grades.get(str(i))
         if g is None:
             continue  # 누락분 = 미도장 유지(다음 런 재시도)
-        c["grade"] = g                    # pending 은 cands 원소 참조 → 직접 반영
-        c["grade_rubric"] = RUBRIC_VER    # 채점 도장(이 rubric 버전으로 채점됨)
         ct = cats.get(str(i))
-        if ct:
-            c["cat"] = ct                 # AI 카테고리 — 제목 맥락 이해(미술관 흉기난동=사회) → 키워드 cat_of 결과를 덮음(더 정확·뷰어 articleCat이 c.cat 우선)
+        if surfaced(c):                   # 노출권 = grade+cat 둘 다 반영(기존 동작)
+            c["grade"] = g                # pending 은 cands 원소 참조 → 직접 반영
+            c["grade_rubric"] = RUBRIC_VER    # 채점 도장(이 rubric 버전으로 채점됨)
+            if ct:
+                c["cat"] = ct             # AI 카테고리 — 제목 맥락 이해(미술관 흉기난동=사회) → 키워드 cat_of 결과를 덮음(더 정확·뷰어 articleCat이 c.cat 우선)
+        else:                             # cross-2 cat 구제 = cat만 반영, grade 미기록(grade 0/1이 소프트뉴스를 scFast서 침몰시키는 것 방지 · 운영자 260628)
+            if ct:
+                c["cat"] = ct
+            c["cat_rubric"] = RUBRIC_VER  # cat 채점 도장(재채점 루프 방지) — grade/grade_rubric 은 안 씀
+            catfix += 1
         dist[g] += 1
     import tempfile, os                          # 원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)
     _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
     with os.fdopen(_fd, "w", encoding="utf-8") as _f:
         _f.write(json.dumps(cands, ensure_ascii=False))
     os.replace(_tmp, CAND)
-    print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, rubric {RUBRIC_VER})")
+    print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, cross-2 cat구제 {catfix}건, rubric {RUBRIC_VER})")
     for i, c in enumerate(pending):
         if grades.get(str(i)) == 0:
             print(f"  0(비뉴스) {c.get('title', '')[:50]}")

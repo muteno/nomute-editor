@@ -96,8 +96,12 @@ def check_versions():
 # raw를 토큰으로 줄였으면 baseline도 그만큼 낮춰 재발 방지(드리프트는 늘 때만 잡힘).
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
-    'viewer/index.html': {'accent_raw': 122, 'blur': 124, 'hex': 167},   # accent_raw 105→123 요약본 스포티파이→노뮤트 / mkbtn 글래스 +1 / blur90→92 요약본 제목복사 글래스 / 92→90 #editdlg backdrop 제거(main 260621) / +2 요약헤더 .dlbox 글래스 알약 var(--blur-m)(260621) / 124→122 대기열 .qgo·.qb-succ accent rgba→var(--accent-rgb) 토큰화(260622) / blur 92→100 = 당겨서새로고침 #ptr 글래스 var(--blur-s) +2(토큰·raw 아님) + 기존 누적분 흡수(260623) / 100→102 = 수정중 .rev-hint 글래스 var(--blur-s) 복원(260623) / 102→104 = 뉴스요약 .askclip 하단걸침 2A 글래스 var(--blur-s) +2(토큰·복붙버튼 일괄통일·260625) / blur 104→106 = 수집함 병합박스(.mergebox) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·병합기능·260625) / blur 106→110·hex 168→167 = 병합 바 중립칩 재설계(초록알약 1표면→글래스 칩+별도 X+기준칩 3표면 var(--blur-s)·토큰·raw 아님) + #0c0c0c 제거(빈 mb-n display:none)(260625) / blur 110→112 = 병합 해제 확인 팝오버(.unmerge-go) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·260626) / blur 112→114 = 라디얼 제작메뉴 자막생성 도구 탭(.tooltab) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·thumb .tab 계승·260626) / blur 114→116 = 수정/요약 전송버튼(.asksend) 글래스 통일 backdrop var(--blur-s) +2(토큰·raw 아님·.mkbtn 정본 계승·머지시 main 114 기준 +2·260627) / blur 116→120 = 입력칸 복사/붙여넣기/지우개·되돌리기(.iobtn·.iobtn-edge) 이미지 제작 attachCopyPaste 이식 backdrop var(--blur-s)·var(--blur-m) +4(토큰·raw 아님·#revText·#crevText·260627) / blur 120→122 = 뉴스요약 최소화 선택 picker(.min-pick) 글래스 backdrop var(--blur-l) +2(토큰·raw 아님·260627) / blur 122→124 = main 실측 124 lag 흡수(선존 +2) · 필터 오버레이(.filterpop) token var(--blur-l) +2 와 옛 토글(.tk) raw 8px −2 상쇄 = 순증 0(raw→token 교체·옛 카테고리 칩바→필터 버튼 오버레이·260628)
-    'viewer/thumb.html': {'accent_raw': 0, 'blur': 41, 'hex': 30},   # blur39→41 = 빠른메뉴 코어 위 '-' 최소화(#rfab .rmin) 글래스 backdrop blur+webkit = 형제 .rc 코어 외형 계승(blur14 saturate1.3·thumb엔 blur토큰 없어 raw·창 최소화 엄지존·260627). accent rgba 토큰화 완료(--accent-rgb·260621). blur41→43 = 이미지 슬롯(.covimg) 글래스모피즘 backdrop blur+webkit(플레이트 색 제거·픽토 accent 50% · thumb엔 blur토큰 없어 raw·260626). blur43→39 = .covimg 글래스 제거(전경 완전 제거→픽토만·−2) + 상단 3탭 글자화(.tab 글래스 제거·−2)(운영자 260626). blur/hex는 thumb 독자팔레트라 잔존(후속). hex…→28 = .go.err 미입력 빨강(#ff7a7a·#ff5d5d) · hex28→27 = 흰 체크 #fff 제거. hex29→30 = 개별 변형 다운로드(.jvar-dl.dlbtn) 도형제거·픽토그램 흰색 #fff = 좌측 라벨(.jvar #fff)과 색 일치 목적(--fg #e9eaec≠#fff라 토큰화 불가·의도적 raw·260626). hex27→29 = 썸네일 통합 오버레이 포맷색(.ovfmt.post 시안 #1fd6ee · .ovfmt.reels 레몬 #e7ff2e · 후속 토큰화·260624). hex31→29 = /3 저작권 단일토글 전환으로 중복 .cpfmt 시안/레몬 hex 2개 제거(.ovfmt 계승=중복 회수 · §🎨 "raw 줄이면 baseline도 낮춰라" · 분신술7·8·260625). blur32→34 = 저작권 복사칩(.cref-kw 글래스) · blur34→36 = 축약 체크 = 수집함 확인토글(.sc-tg.ack) 글래스 박스 계승(backdrop blur·−→✓ 모프·accent는 var(--accent-rgb) 토큰·260622). blur36→38 = #rfab .rc 빠른메뉴 코어를 수정 연필 FAB(.rev-fab) 글래스 외형 계승(backdrop blur+webkit·thumb엔 blur토큰 없어 raw·260622). blur38→40 = 통합모드 OPA 롤러(260624) → blur40→38 = OPA 롤러 제거·섹션 헤더 인라인 조절 전환(글래스 팝업 폐지·blur 2개 감소·260624). blur38→39 = 축약어 등록 다이얼로그(.abdlg) cfm 글래스 계승(thumb엔 blur토큰 없어 raw·260624). blur39→41 = .iobtn-edge G1 글래스모피즘 backdrop blur13+saturate(복붙버튼 통일·thumb엔 blur토큰 없어 raw·260625).
+    'viewer/index.html': {'accent_raw': 109, 'blur': 128, 'hex': 161},   # STAGE1 조임(분신술10·260628): accent 122→109·hex 167→161 = 헐렁 baseline 실측까지(raw 되살아나는 구멍 차단). //   # blur126→128 = 뉴스요약 사진첨부(.askattach) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·혼자 flat이라 '따로놀던' 것 형제 .iobtn/.sbtn과 통일·운영자 260628) // accent_raw 105→123 요약본 스포티파이→노뮤트 / mkbtn 글래스 +1 / blur90→92 요약본 제목복사 글래스 / 92→90 #editdlg backdrop 제거(main 260621) / +2 요약헤더 .dlbox 글래스 알약 var(--blur-m)(260621) / 124→122 대기열 .qgo·.qb-succ accent rgba→var(--accent-rgb) 토큰화(260622) / blur 92→100 = 당겨서새로고침 #ptr 글래스 var(--blur-s) +2(토큰·raw 아님) + 기존 누적분 흡수(260623) / 100→102 = 수정중 .rev-hint 글래스 var(--blur-s) 복원(260623) / 102→104 = 뉴스요약 .askclip 하단걸침 2A 글래스 var(--blur-s) +2(토큰·복붙버튼 일괄통일·260625) / blur 104→106 = 수집함 병합박스(.mergebox) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·병합기능·260625) / blur 106→110·hex 168→167 = 병합 바 중립칩 재설계(초록알약 1표면→글래스 칩+별도 X+기준칩 3표면 var(--blur-s)·토큰·raw 아님) + #0c0c0c 제거(빈 mb-n display:none)(260625) / blur 110→112 = 병합 해제 확인 팝오버(.unmerge-go) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·260626) / blur 112→114 = 라디얼 제작메뉴 자막생성 도구 탭(.tooltab) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·thumb .tab 계승·260626) / blur 114→116 = 수정/요약 전송버튼(.asksend) 글래스 통일 backdrop var(--blur-s) +2(토큰·raw 아님·.mkbtn 정본 계승·머지시 main 114 기준 +2·260627) / blur 116→120 = 입력칸 복사/붙여넣기/지우개·되돌리기(.iobtn·.iobtn-edge) 이미지 제작 attachCopyPaste 이식 backdrop var(--blur-s)·var(--blur-m) +4(토큰·raw 아님·#revText·#crevText·260627) / blur 120→122 = 뉴스요약 최소화 선택 picker(.min-pick) 글래스 backdrop var(--blur-l) +2(토큰·raw 아님·260627) / blur 122→124 = main 실측 124 lag 흡수(선존 +2) · 필터 오버레이(.filterpop) token var(--blur-l) +2 와 옛 토글(.tk) raw 8px −2 상쇄 = 순증 0(raw→token 교체·옛 카테고리 칩바→필터 버튼 오버레이·260628) / blur124→126 = 붙여넣기 폴백 모달(.pastefb::backdrop) var(--blur-s) +2(토큰·raw 아님·통일 기틀·260628)
+    'viewer/thumb.html': {'accent_raw': 0, 'blur': 43, 'hex': 34},   # STAGE1: hex 35→34 실측조임.   # blur39→41 = 빠른메뉴 코어 위 '-' 최소화(#rfab .rmin) 글래스 backdrop blur+webkit = 형제 .rc 코어 외형 계승(blur14 saturate1.3·thumb엔 blur토큰 없어 raw·창 최소화 엄지존·260627). accent rgba 토큰화 완료(--accent-rgb·260621). blur41→43 = 이미지 슬롯(.covimg) 글래스모피즘 backdrop blur+webkit(플레이트 색 제거·픽토 accent 50% · thumb엔 blur토큰 없어 raw·260626). blur43→39 = .covimg 글래스 제거(전경 완전 제거→픽토만·−2) + 상단 3탭 글자화(.tab 글래스 제거·−2)(운영자 260626). blur/hex는 thumb 독자팔레트라 잔존(후속). hex…→28 = .go.err 미입력 빨강(#ff7a7a·#ff5d5d) · hex28→27 = 흰 체크 #fff 제거. hex29→30 = 개별 변형 다운로드(.jvar-dl.dlbtn) 도형제거·픽토그램 흰색 #fff = 좌측 라벨(.jvar #fff)과 색 일치 목적(--fg #e9eaec≠#fff라 토큰화 불가·의도적 raw·260626). hex27→29 = 썸네일 통합 오버레이 포맷색(.ovfmt.post 시안 #1fd6ee · .ovfmt.reels 레몬 #e7ff2e · 후속 토큰화·260624). hex31→29 = /3 저작권 단일토글 전환으로 중복 .cpfmt 시안/레몬 hex 2개 제거(.ovfmt 계승=중복 회수 · §🎨 "raw 줄이면 baseline도 낮춰라" · 분신술7·8·260625). blur32→34 = 저작권 복사칩(.cref-kw 글래스) · blur34→36 = 축약 체크 = 수집함 확인토글(.sc-tg.ack) 글래스 박스 계승(backdrop blur·−→✓ 모프·accent는 var(--accent-rgb) 토큰·260622). blur36→38 = #rfab .rc 빠른메뉴 코어를 수정 연필 FAB(.rev-fab) 글래스 외형 계승(backdrop blur+webkit·thumb엔 blur토큰 없어 raw·260622). blur38→40 = 통합모드 OPA 롤러(260624) → blur40→38 = OPA 롤러 제거·섹션 헤더 인라인 조절 전환(글래스 팝업 폐지·blur 2개 감소·260624). blur38→39 = 축약어 등록 다이얼로그(.abdlg) cfm 글래스 계승(thumb엔 blur토큰 없어 raw·260624). blur39→41 = .iobtn-edge G1 글래스모피즘 backdrop blur13+saturate(복붙버튼 통일·thumb엔 blur토큰 없어 raw·260625). blur41→43·hex30→35 = 붙여넣기 폴백 모달(.pastefb dialog) 신설 — backdrop blur(4px) webkit+표준 +2(thumb엔 blur토큰 없어 raw) + 박스 배경 그라데이션·메시지/입력/버튼 색(#14160f·#0c0f0c·#cfd2d7·#e8eaed = 기존 모달 배경·보조텍스트 패턴 복제·적합 토큰 부재) +5(통일 기틀·readText 막힌 환경 폴백·운영자 260628).
+    # ▼ 도구 3파일 게이트 편입(분신술 9·10 P0 — 옛 사각지대: 닫기/최소화 버그가 난 파일군이 무방비였음). accent_raw=0 = ly/k 토큰화 완료(--accent-rgb·260628), 늘면 즉시 잡힘. comp 7은 후속 토큰화 대상.
+    'viewer/ly.html': {'accent_raw': 0, 'blur': 14, 'hex': 16},   # blur12→14·hex14→16 = 붙여넣기 폴백 모달(.pastefb) 신설 — backdrop blur(4px) webkit+표준 +2(ly엔 blur토큰 없어 raw) + 박스 배경 그라데이션 #14160f·#0c0f0c +2(기존 모달 배경 패턴·통일 기틀·운영자 260628)
+    'viewer/k.html': {'accent_raw': 0, 'blur': 12, 'hex': 7},
+    'viewer/comp.html': {'accent_raw': 0, 'blur': 2, 'hex': 5},   # STAGE1: --accent-rgb 추가·raw 7곳 토큰화 → accent_raw 7→0(픽셀0·k/ly 패턴·260628).
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
 
@@ -110,6 +114,7 @@ _FWD_UNUSED = {
     '--fs-body', '--fs-display', '--fs-h1', '--fs-h2', '--fs-h3', '--fs-label', '--fs-xs',
     '--fw-b', '--fw-x', '--lh-base', '--on-arm', '--r-l', '--r-m', '--r-pill', '--sp-1', '--sp-2',
     '--sp-3', '--sp-4', '--warn',
+    '--press-pico',   # 픽토온리 눌림 = thumb/ly/k의 rmin/file가 씀(index엔 .55 픽토 버튼 없음) = forward-declared(260628)
 }
 # --on-arm(arm 채움 위 글자색) = .revsend.confirm 채움 그라데 → 표준 플랫 arm 전환(260622)으로 현재 미배선.
 # 정의는 보존(--arm/--arm-rgb 짝 · 향후 채움형 arm 컴포넌트용 어휘) → forward-unused 처리(§🎨).
@@ -140,7 +145,7 @@ def check_viewer_js():
     if not node:
         print('⚠️ viewer JS 구문검사 스킵(node 없음)'); return 0
     rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html'):
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html'):
         try:
             html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
         except Exception:
@@ -164,8 +169,41 @@ def check_viewer_js():
             print('✅ viewer JS 구문 OK — %s' % rel)
     return rc
 
+_ICON_DECL_RE = re.compile(r'^const ([A-Z0-9_]+_SVG) = ', re.M)
+def check_icon_ssot():
+    """공유 아이콘 SSOT 하드 게이트(운영자 260628 '하나 바꾸면 다 바뀜').
+    nm-svg.js가 정의한 공유 아이콘을 뷰어가 다시 인라인 const로 선언하면(=섀도잉·드리프트 부활) rc=1.
+    각 뷰어가 공유 아이콘을 *쓰면서* nm-svg.js를 로드 안 하면(런타임 ReferenceError) rc=1."""
+    nm = os.path.join(ROOT, 'viewer/nm-svg.js')
+    if not os.path.exists(nm):
+        print('⚠️ nm-svg.js 없음 — 아이콘 SSOT 게이트 스킵'); return 0
+    shared = set(_ICON_DECL_RE.findall(open(nm, encoding='utf-8').read()))
+    if not shared:
+        print('⚠️ nm-svg.js에 공유 상수 0 — 게이트 스킵'); return 0
+    rc = 0
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html'):
+        try:
+            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        loads = 'nm-svg.js' in html
+        inlined = set(_ICON_DECL_RE.findall(html)) & shared
+        if inlined:
+            print('❌ 아이콘 SSOT 위반 — %s가 공유 아이콘을 인라인 재선언(섀도잉): %s → nm-svg.js만 두고 제거'
+                  % (rel, ', '.join(sorted(inlined)))); rc = 1
+        used = {c for c in shared if (c in html) and not loads}
+        if used and not loads:
+            print('❌ 아이콘 SSOT 위반 — %s가 공유 아이콘(%s)을 쓰는데 nm-svg.js 미로드 → <script src="nm-svg.js"> 추가'
+                  % (rel, ', '.join(sorted(used))[:60])); rc = 1
+    if rc == 0:
+        print('✅ 아이콘 SSOT 정합 — 공유 아이콘 %d개 단일정본(nm-svg.js)·인라인 재선언 0' % len(shared))
+    return rc
+
 def check_design():
-    warns = []
+    # accent_raw = 차단(rc=1) 승격(운영자 ③b·STAGE1·260628). 단일 정확패턴 `rgba(15,253,2`라 오탐 0,
+    #   index 빼고 전부 0(thumb/ly/k/comp) → 새 raw 강조색 박기 구조적 차단. 봇 무영향(check-refs.yml=PR전용·봇은 데이터JSON만 직푸시·A7 실측).
+    # hex/blur/죽은토큰 = WARN 유지(의도적 raw·토큰글래스 +2 누적이라 차단하면 정당작업 막힘).
+    warns, hard = [], []
     for rel, base in _DESIGN_BASELINE.items():
         try:
             s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
@@ -176,16 +214,21 @@ def check_design():
                'hex': len(re.findall(r'#[0-9a-fA-F]{3,8}\b', s))}
         for k, b in base.items():
             if cnt[k] > b:
-                warns.append('%s: raw %s %d > baseline %d → var() 토큰으로(§🎨)' % (rel, k, cnt[k], b))
+                msg = '%s: raw %s %d > baseline %d → var() 토큰으로(§🎨)' % (rel, k, cnt[k], b)
+                (hard if k == 'accent_raw' else warns).append(msg)
     for n in _new_dead_tokens():   # 새로 추가됐는데 var() 미배선인 토큰(죽은 토큰) — 배선하거나 정의 삭제
         warns.append('viewer/index.html: 토큰 %s 정의됐으나 var() 미사용 → 배선하거나 정의 삭제(§🎨)' % n)
+    if hard:
+        print('❌ 디자인 토큰 게이트(차단) — raw 강조색(rgba(15,253,2)) 증가 = var(--accent-rgb) 토큰으로:')
+        for w in hard:
+            print('  -', w)
     if warns:
         print('⚠️ 디자인 토큰 게이트(비차단): raw 값 증가 감지 —')
         for w in warns:
             print('  -', w)
-    else:
+    if not hard and not warns:
         print('✅ 디자인 토큰 게이트 — raw 값 baseline 이내(신규 미토큰 없음).')
-    return 0   # WARN-only
+    return 1 if hard else 0   # accent_raw만 차단, hex/blur/죽은토큰은 WARN
 
 # 주입 지침 소스에 '----- ... -----' 형태 본문 줄 금지 (R6 가드 · 260624).
 # inject_guidelines.sh 의 guidelines_version() 은 해시 입력에서 경로헤더('^----- path -----$')를 제외해
@@ -267,6 +310,184 @@ def check_sens_vocab():
     return rc
 
 
+def check_curation_constants():
+    """큐레이션 랭킹 상수(viewer) ↔ docs/curation-algorithm.md §★ 정본값 정합 하드게이트.
+    #1135식 stale-PR 자기-revert·코드↔문서 드리프트를 CI가 즉시 차단(260628 13인 감사 C8).
+    viewer 리터럴(CROSS_POW·FOLLOW_W·BREAKING_RANK_BOOST·GRADE_W grade0 floor)을 §★ 인용값과 대조."""
+    rc = 0
+    try:
+        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        d = open(os.path.join(ROOT, 'docs', 'curation-algorithm.md'), encoding='utf-8').read()
+    except Exception as e:
+        print('⚠️ check_curation_constants 스킵(파일):', e); return 0
+    star = next((ln for ln in d.splitlines() if '누적 랭킹' in ln and 'cross^' in ln), '')
+    if not star:
+        print('⚠️ check_curation_constants 스킵(§★ 랭킹식 줄 못 찾음)'); return 0
+    def vcode(pat):
+        m = re.search(pat, v); return m.group(1) if m else None
+    def vdoc(pat):
+        m = re.search(pat, star); return m.group(1) if m else None
+    checks = [
+        ('CROSS_POW',           vcode(r'const CROSS_POW\s*=\s*([\d.]+)'),           vdoc(r'cross\^([\d.]+)')),
+        ('FOLLOW_W',            vcode(r'const FOLLOW_W\s*=\s*([\d.]+)'),            vdoc(r'FW([\d.]+)')),
+        ('BREAKING_RANK_BOOST', vcode(r'const BREAKING_RANK_BOOST\s*=\s*([\d.]+)'), vdoc(r'isBreaking\?([\d.]+)')),
+        ('ACC_T_HALF',          vcode(r'const ACC_T_HALF\s*=\s*([\d.]+)'),          vdoc(r'timeAcc\((\d+(?:\.\d+)?)·')),
+        ('ACC_T_POW',           vcode(r'ACC_T_POW\s*=\s*([\d.]+)'),                 vdoc(r'timeAcc\([\d.]+·([\d.]+)\)')),
+        ('GRADE_W.grade0',      vcode(r'GRADE_W\s*=\s*\{\s*0:\s*([\d.]+)'),         vdoc(r'gradeW\{0:([\d.]+)')),
+        ('GRADE_W.grade1',      vcode(r'GRADE_W\s*=\s*\{[^}]*?1:\s*([\d.]+)'),      vdoc(r'gradeW\{[^}]*?1:([\d.]+)')),
+        ('GRADE_W.grade2',      vcode(r'GRADE_W\s*=\s*\{[^}]*?2:\s*([\d.]+)'),      vdoc(r'gradeW\{[^}]*?2:([\d.]+)')),
+        ('GRADE_W.grade3',      vcode(r'GRADE_W\s*=\s*\{[^}]*?3:\s*([\d.]+)'),      vdoc(r'gradeW\{[^}]*?3:([\d.]+)')),
+    ]
+    bad = []
+    for name, code_v, doc_v in checks:
+        if code_v is None or doc_v is None:
+            bad.append('%s: 추출실패(code=%s·doc=%s)' % (name, code_v, doc_v)); continue
+        if float(code_v) != float(doc_v):
+            bad.append('%s: viewer=%s ≠ §★문서=%s (코드↔문서 드리프트/자기-revert 의심)' % (name, code_v, doc_v))
+    if bad:
+        print('❌ 큐레이션 상수↔문서 정합 실패(C8 게이트):')
+        for b in bad: print('  -', b)
+        rc = 1
+    else:
+        print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·ACC_T·GRADE_W 전체 = §★ 일치.')
+    return rc
+
+
+_CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
+
+
+def _parse_cat_kw(text):
+    """CAT_KW={...} 블록 → 버킷별 토큰집합 (py 큰따옴표·js 작은따옴표 공용·//·# 주석 제거)."""
+    m = re.search(r'CAT_KW\s*=\s*\{(.*?)\n\s*\}\s*;?', text, re.S)
+    if not m:
+        return None
+    body = re.sub(r'//[^\n]*', '', m.group(1))
+    body = re.sub(r'#[^\n]*', '', body)
+    out = {}
+    for b in _CATKW_BUCKETS:
+        bm = re.search(r'(?:"%s"|%s)\s*:\s*\[(.*?)\]' % (b, b), body, re.S)
+        out[b] = set(re.findall(r"""['"]([^'"]+)['"]""", bm.group(1))) if bm else set()
+    return out
+
+
+def check_cat_kw():
+    """CAT_KW 카테고리 키워드사전 py(to_candidates.py) ↔ js(viewer/index.html) 정합 하드게이트.
+    수동 미러라 매 세션 드리프트(같은 단어가 두 엔진서 다른/없는 버킷)가 누적 — 분류 오분류 재발의
+    근본(260628 C9 분신술 10인). 버킷별 토큰집합 일치 + 버킷충돌(같은 토큰·다른 버킷) 둘 다 검사."""
+    rc = 0
+    try:
+        py = open(os.path.join(ROOT, 'scraper', 'to_candidates.py'), encoding='utf-8').read()
+        js = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+    except Exception as e:
+        print('⚠️ check_cat_kw 스킵(파일):', e); return 0
+    P = _parse_cat_kw(py); J = _parse_cat_kw(js)
+    if P is None or J is None:
+        print('⚠️ check_cat_kw 스킵(CAT_KW 블록 못 찾음 — py=%s·js=%s)' % (P is not None, J is not None)); return 0
+    bad = []
+    for b in _CATKW_BUCKETS:
+        onlyP, onlyJ = P[b] - J[b], J[b] - P[b]
+        if onlyP: bad.append('[%s] py에만: %s' % (b, ', '.join(sorted(onlyP))))
+        if onlyJ: bad.append('[%s] js에만: %s' % (b, ', '.join(sorted(onlyJ))))
+    pmap, jmap = {}, {}
+    for b in _CATKW_BUCKETS:
+        for t in P[b]: pmap.setdefault(t, set()).add(b)
+        for t in J[b]: jmap.setdefault(t, set()).add(b)
+    for t in set(pmap) & set(jmap):
+        if pmap[t] != jmap[t]:
+            bad.append("버킷충돌 '%s': py=%s js=%s" % (t, sorted(pmap[t]), sorted(jmap[t])))
+    if bad:
+        print('❌ CAT_KW py↔js 드리프트(C9 게이트 — 키워드 한쪽만 고침=분류 오분류 근본):')
+        for b in bad: print('  -', b)
+        rc = 1
+    else:
+        print('✅ CAT_KW py↔js 정합 — 6버킷 토큰집합 일치·버킷충돌 0.')
+    return rc
+
+
+_INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
+_AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
+
+def check_autocomplete():
+    """평문 텍스트 입력칸 = OS 자동완성 끔 4종 세트 하드 게이트(§🎨 · 운영자 260628).
+    편집가능 <input type=text|search>가 autocomplete/autocapitalize/autocorrect/spellcheck 중 하나라도
+    빠지면 rc=1 → 모바일 OS가 🔑비번·💳카드·📍주소 자동완성 바를 붙여 입력 번잡(운영자 실측 = 썸네일 '부제').
+    제외: readonly/disabled/hidden(표시 전용 = 자동완성 대상 아님)·기타 type."""
+    rc = 0
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
+        try:
+            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        for m in _INPUT_RE.finditer(s):
+            tag = m.group(0)
+            tl = tag.lower()
+            tm = re.search(r'type\s*=\s*["\']?(\w+)', tl)
+            typ = tm.group(1) if tm else 'text'   # type 생략 = text
+            if typ not in ('text', 'search'):
+                continue
+            if 'readonly' in tl or 'disabled' in tl:
+                continue
+            miss = [n for n in _AC_NEED if n not in tl]
+            if miss:
+                ln = s[:m.start()].count('\n') + 1
+                print('❌ 자동완성 4종 누락 — %s:%d (%s 빠짐) → autocomplete/autocapitalize/autocorrect/spellcheck off 추가(§🎨)'
+                      % (rel, ln, '·'.join(miss)))
+                rc = 1
+    if rc == 0:
+        print('✅ 자동완성 게이트 — 편집가능 text/search 입력칸 전부 OS 자동완성 끔 4종 세트.')
+    return rc
+
+
+# render-text × (닫기/삭제 버튼이 SVG 아닌 문자 ×/✕ 사용) = 드리프트(§🎨 닫기=SVG X-path 단일 권장).
+# 컴포넌트 컨텍스트(aria-label 닫기·삭제 류 또는 close/del/x 클래스)이고 *내용이 ×문자 하나뿐*일 때만 잡아
+# 치수 텍스트('1080×1350')·JS 문자열 오탐 0. WARN(점진 통일 — thumb 등 병렬작업 파일이라 비차단).
+_XSET = '×✕⨯╳✖'
+_XEL_RE = re.compile(r'<(button|a|span|div|i)\b([^>]*)>\s*([' + _XSET + r'])\s*</\1>', re.I)
+_XCTX_RE = re.compile(r'aria-label\s*=\s*["\'][^"\']*(닫기|닫음|삭제|취소|제거|지우)|class\s*=\s*["\'][^"\']*(tool-x|dlg-x|-x\b|close|abdel|del|btn-x)', re.I)
+
+def check_x_char():
+    warns = []
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
+        try:
+            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        s2 = re.sub(r'<!--.*?-->', '', s, flags=re.S)   # 주석 제거(오탐 차단)
+        for m in _XEL_RE.finditer(s2):
+            if _XCTX_RE.search(m.group(2)):
+                ln = s2[:m.start()].count('\n') + 1
+                warns.append('%s:%d <%s> 닫기/삭제 = 문자 「%s」 → SVG X-path(§🎨 닫기=SVG 단일 권장)'
+                             % (rel, ln, m.group(1), m.group(3)))
+    if warns:
+        print('⚠️ 닫기/삭제 × 문자 게이트(비차단) — SVG로 통일 권장:')
+        for w in warns:
+            print('  -', w)
+    else:
+        print('✅ 닫기/삭제 × 문자 게이트 — 문자 ×/✕ 닫기버튼 0(전부 SVG).')
+    return 0   # WARN-only(병렬작업 파일 비차단)
+
+
+def check_tokens_link():
+    """공유 구조토큰 tokens.css 배선 하드게이트(§🎨 STAGE3·분신술7·260628).
+    4뷰어(thumb/ly/k/comp)가 viewer/tokens.css를 <link>로 로드하는지 검증 — 미링크면 신규 컴포넌트가
+    var(--r-m 등) 구조토큰을 못 써 raw로 새거나(드리프트), 옛 링크가 깨지면 침묵(check_paths가 HTML <link>
+    미검증)이라 여기서 잡는다. tokens.css 파일 부재면 게이트 무력(아직 미생성=스킵)."""
+    if not os.path.exists(os.path.join(ROOT, 'viewer', 'tokens.css')):
+        print('⚠️ tokens.css 없음 — 구조토큰 링크 게이트 스킵'); return 0
+    rc = 0
+    for rel in ('viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
+        try:
+            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        if not re.search(r'<link[^>]+href=["\']tokens\.css["\']', html):
+            print('❌ 구조토큰 링크 누락 — %s가 tokens.css를 <link> 안 함 → <head>에 <link rel=stylesheet href=tokens.css> 추가(§🎨 STAGE3)' % rel)
+            rc = 1
+    if rc == 0:
+        print('✅ 구조토큰 링크 — 4뷰어 전부 tokens.css 로드.')
+    return rc
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -290,13 +511,19 @@ def main():
     except Exception as e:
         print('⚠️ check_viewer_js 스킵:', e)
     try:
+        if check_icon_ssot() != 0:   # 공유 아이콘 SSOT(하드 게이트 — 인라인 재선언·미로드=드리프트 부활 차단·260628)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_icon_ssot 스킵:', e)
+    try:
         import build_design_mirror   # 디자인 거울 정합: 구성도/base.css = viewer :root (하드 게이트·§🎨 ⓐ)
         if build_design_mirror.check() != 0:
             rc = 1
     except Exception as e:
         print('⚠️ 디자인 거울 check 스킵:', e)
     try:
-        check_design()          # 디자인 토큰 게이트(비차단 경고 — raw 증가·새 죽은토큰)
+        if check_design() != 0:   # accent_raw 차단(rc=1·운영자 ③b STAGE1) · hex/blur/죽은토큰은 내부 WARN
+            rc = 1
     except Exception as e:
         print('⚠️ check_design 스킵:', e)
     try:
@@ -304,6 +531,30 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 민감 통제어휘 check 스킵:', e)
+    try:
+        if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_curation_constants 스킵:', e)
+    try:
+        if check_cat_kw() != 0:   # CAT_KW 카테고리 키워드사전 py↔js 정합(하드 게이트 — 키워드 한쪽만 고침=분류 오분류 근본·260628 C9)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_cat_kw 스킵:', e)
+    try:
+        if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_autocomplete 스킵:', e)
+    try:
+        check_x_char()   # 닫기/삭제 × 문자 → SVG 권장(WARN-only·병렬작업 파일 비차단)
+    except Exception as e:
+        print('⚠️ check_x_char 스킵:', e)
+    try:
+        if check_tokens_link() != 0:   # 공유 구조토큰 tokens.css 4뷰어 링크(하드 게이트·§🎨 STAGE3·260628)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_tokens_link 스킵:', e)
     return rc
 
 
