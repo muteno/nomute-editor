@@ -196,9 +196,9 @@
   .msgpop .mh .mx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   .msglist { max-height:46vh; overflow-y:auto; overflow-x:hidden; padding:2px; }   /* overflow-x:hidden = 항목 슬라이드인(translateX 12px) 시 가로 스크롤바 깜빡 차단(운영자 260621) */
   /* 긴급 속보 웹푸시 토글(메시지 팝업 상단) */
-  .pushrow { display:flex; align-items:center; gap:8px; padding:9px 12px; border-top:1px solid var(--line2); margin-top:4px; }   /* 알림 = 위 링크들과 구분자(border-top) 분리 · 상하 패딩 9px = 메시지(.pmenu button)와 동일 간격 · 알림↔ON 수직중앙(align-items center) · 운영자 260629 */
-  .pushrow .pl { font-size:13px; font-weight:700; color:var(--fg); white-space:nowrap; line-height:1; }   /* 13px·line-height:1 = ON과 동일 메트릭 → 수직정렬 정합(운영자 260629) */
-  .pushbtn { font:800 13px inherit; line-height:1; padding:0 4px; cursor:pointer; border:none; background:none; color:var(--mut); }   /* ON/OFF 볼드(800) · 세로 패딩 0 = .pl과 baseline 정합(수직중앙) · 명도로만 OFF(뮤트 회색)/ON(흰) 구분 · 운영자 260629 */
+  .pushrow { display:flex; align-items:center; gap:8px; padding:4px 12px 8px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
+  .pushrow .pl { font-size:12px; font-weight:700; color:var(--fg); white-space:nowrap; }
+  .pushbtn { font:800 13px inherit; line-height:1; padding:4px 4px; cursor:pointer; border:none; background:none; color:var(--mut); }   /* ON을 '알림' 옆에 붙임(margin-left:auto 제거·gap 8px·볼드 · 운영자 260629) · 명도로만 OFF(뮤트 회색)/ON(흰) 구분 */
   .pushbtn.on { color:var(--accent); }                 /* ON = 강조색(초록) — 무채 메뉴의 단일 포인트(활성 토글 강조 · 운영자 260629) */
   .pushbtn.denied { color:var(--amber); }              /* 차단됨 = 앰버(탭→해제 안내) */
   .pushbtn:disabled { opacity:.55; cursor:default; }
@@ -254,9 +254,7 @@
     filter:drop-shadow(0 0 5px rgba(15,253,2,.4)); }   /* 프로필 테두리색(피드=그린) · 탭 전환 시 색 즉시 = transition:stroke 제거(운영자 260621: 0.3s 페이드가 늦게 느껴짐) */
   body.tab-scrap .topsearch .ts-ico { stroke:#ff9614; filter:drop-shadow(0 0 5px rgba(255,150,20,.4)); }   /* 스크랩 탭=앰버(프로필 테두리 따라) */
   body[data-tab="sns"] .topsearch .ts-ico { stroke:#0cd0f7; filter:drop-shadow(0 0 5px rgba(12,208,247,.45)); }   /* SNS 탭=시안 */
-  .topsearch .ts-rf .ts-ico { transition:transform .45s cubic-bezier(.4,0,.2,1); }
-  .topsearch .ts-rf:active { transform:none; }   /* 픽토온리 = 박스 안 줄임(공통 .ts-toggle:active scale 무효) → 아이콘만 회전(축소+회전 동시 투박 제거·운영자 260628) */
-  .topsearch .ts-rf:active .ts-ico { transform:rotate(-360deg); }   /* 강제 새로고침 = 한 바퀴 완전 회전(−300 멈칫 → −360 깔끔 완주) */
+  .topsearch .ts-rf:active { transform:none; }   /* 픽토온리 — 공통 .ts-toggle:active scale 끔(축소+회전 동시 투박 제거). 누름 회전은 기틀 ic-spin(시맨틱 모션) 위임으로 통일 = .pmenu-rf 등과 동일 픽토그램 액티브 계승(새 모션 안 만듦·운영자 260629) */
   .topsearch input { width:0; opacity:0; padding:0; height:36px; min-width:0; border:1px solid transparent; border-radius:999px;
     background:rgba(4,5,6,.5); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
     color:#fff; font:inherit; font-size:13.5px; font-weight:600; outline:none;
@@ -4969,7 +4967,7 @@ document.addEventListener('click', e => {
   closeFilterPop();   // 스크롤하면 필터 오버레이도 닫힘(pmenu·msgpop과 동일 · 운영자 260627)
 }, { passive: true }));
 $('#refresh').addEventListener('click', () => { hidePmenu(); load(); loadMessages(); loadCandidates(); loadPickFails(); loadHealth(true); });
-$('#topRefresh').addEventListener('click', () => location.reload());   // 강제 하드 새로고침(코드+데이터 · 탭은 localStorage 복원). 운영자 260619.
+$('#topRefresh').addEventListener('click', () => { setTimeout(() => location.reload(), 420); });   // 강제 하드 새로고침(코드+데이터 · 탭은 localStorage 복원). 위임 ic-spin(누름 회전)이 한 바퀴 보이고 리로드 — 즉시 reload면 스핀이 안 보임(운영자 260629·260619).
 // (🚨 긴급 확인 버튼 핸들러 폐지 — 운영자 260620: 프로필 긴급 점등·확인 루틴 제거. 토스트 재알림 de-dup은 수집함 진입(showTab scrap)으로 이전.)
 // 메시지함 위치 = 프로필(아바타) 우측 라인·세로 중앙 기준 → 좌하단으로 펼침(고정좌표·뷰포트 기준)
 function placeMsgpop() {
@@ -7350,10 +7348,10 @@ $('#pdfBtn').addEventListener('click', downloadSummaryHtml);
   if (pdf) pdf.addEventListener('click', () => { pdf.classList.add('okflash'); setTimeout(() => pdf.classList.remove('okflash'), 520); });
   if (src) src.addEventListener('click', () => { src.classList.add('openflash'); setTimeout(() => src.classList.remove('openflash'), 520); });
 })();
-// 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·ts-rf·rev-fab 등)는 셀렉터서 제외.
+// 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·rev-fab 등)는 셀렉터서 제외. ts-rf(상단 강제새로고침)도 ic-spin으로 편입 = .pmenu-rf와 동일 픽토그램 액티브(운영자 260629).
 document.addEventListener('click', e => {
   if (e.defaultPrevented) return;   // 드래그/취소된 클릭(캐러셀 스와이프 등)엔 헛모션 방지
-  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall');
+  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall');
   if (!b) return;
   const svg = b.querySelector('svg'); if (!svg) return;
   const m = b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin';
