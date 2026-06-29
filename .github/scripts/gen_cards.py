@@ -38,7 +38,9 @@ def parse_cards(md):
         pm = re.search(r'\*\*이미지\s*프롬프트\*\*\s*\n+```[a-zA-Z]*\n([\s\S]*?)```', body)
         if not pm:
             continue   # 이미지 프롬프트 없으면 렌더 불가 → skip
-        out.append({"n": n, "text": (tm.group(1).strip() if tm else ""), "prompt": pm.group(1).strip()})
+        # 렌더 방어(운영자 260629): 텍스트 블록 내 빈 줄(연 구분) 제거 — 합성기가 빈 줄을 한 줄로 렌더해 중간 공백 생김.
+        _txt = "\n".join(l for l in tm.group(1).split("\n") if l.strip()).strip() if tm else ""
+        out.append({"n": n, "text": _txt, "prompt": pm.group(1).strip()})
     return out
 
 
