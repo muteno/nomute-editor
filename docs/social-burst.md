@@ -44,3 +44,9 @@
 3. ✅ **뷰어 배선** — `social-scan.yml` → `viewer/social_candidates.json` 커밋 → SNS 탭 `renderSns`(시안 카드·🔥burst·⛓N소스·소스칩·클릭=원문). 2차 Claude '진짜 공론화 vs 떡밥' 판정 = 파킹(미적용).
 4. 🟡 **법적**: 공개 hot-post 수집 리스크 낮~중. robots·rate 존중·캐시 최소.
 5. ✅ **자동화**: `social-scan.yml` 매시 정각 cron(`0 * * * *`) + 수동 dispatch. 무료(RSS만·LLM 0)·운영자 손 0(260618).
+
+## 🔥 burst 색 티어 (뷰어 표시 · 260629 · 운영자)
+SNS 카드의 🔥burst 점수를 **백분위 색 티어**로 표시 — **표시 전용**(랭킹·정렬·진입 무관 = 순수 시각).
+- **상위 ~10% = 보라**(`--hist-accent` #c24bf5) · **상위 ~30% = 강조색**(`--accent`) · 그 외 = 기본 시안(#0cd0f7).
+- **임계 = `SOC_HOT10=24` / `SOC_HOT30=12`** · 정본 = `viewer/index.html` 상수 + `.soc-burst.hot10/.hot30` CSS + `renderSns` 클래스 부여.
+- 근거 = **7일치(14d·5스냅샷·고유 22사건) burst 분포 실측**: max 44.9 · p90≈23.9(→보라컷 24) · p70≈11.8(→강조컷 12) · 5~15 구간 밀집·고outlier 소수. ⚠️ 스크랩 빈도 낮아 표본 얇음(22) — 분포 커지면 상수만 재캘리.
