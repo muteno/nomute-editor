@@ -388,13 +388,10 @@
   .biasrow .bcap .barw { color:var(--mut); font-weight:400; }
   .biasrow .bcap .bcorr { font-style:normal; color:var(--accent); font-weight:800; font-size:11.5px; }
   /* 본문(요약 상세) 편향 줄 — 원문→요약 (긴 대시바 ─→ 폐지, 짧은 화살표 →) + 보정델타 '+n(우 보정)/−n(좌 보정)'. 강조색(+n 숫자)만 accent·그 외 전부 흰색(운영자 260629). */
-  /* 편향 줄 새 포맷(운영자 260629): '중립 5 (+1 / 우 보정) → 중립 6' — 강조색 = 숫자(N·M)·보정델타(±n)·방향(우/좌 보정) / 흰색 = 존라벨(중립)·괄호·슬래시 / mut = 화살표 연결자. */
-  .biasar { color:var(--mut); font-weight:400; }   /* 원문→요약 화살표 연결자 */
-  .biasv { color:var(--fg); font-weight:700; }   /* 존 라벨(중립/좌/우) = 흰색 */
-  .biasnum { color:var(--accent); font-weight:800; }   /* 원문·요약 숫자(5·6) = 강조색 */
-  .biaspar { color:var(--fg); font-weight:400; }   /* 괄호·슬래시 ( / ) = 흰색 */
-  .biascorr { font-style:normal; color:var(--accent); font-weight:800; }   /* 보정 델타 +n/−n = 강조색 */
-  .biasdir { color:var(--accent); font-weight:800; }   /* 방향 라벨 '우/좌 보정' = 강조색(운영자 260629) */
+  .biasar { color:var(--mut); font-weight:400; }   /* 원문→요약 짧은 화살표 연결자(긴 대시바 제거 후) */
+  .biasv { color:var(--fg); font-weight:700; }   /* 원문·요약 방향+숫자 = 흰색(옛 좌/우 파랑·빨강 방향색 제거 — 방향은 '우/좌 보정' 텍스트로 명시) */
+  .biascorr { font-style:normal; color:var(--accent); font-weight:800; }   /* 보정 델타 +n/−n = 강조색 유지 */
+  .biasdir { color:var(--fg); font-weight:700; }   /* (우 보정)/(좌 보정) 방향 라벨 = 흰색 */
   .biaswhy { display:block; color:var(--fg); font-size:var(--fs-h3); margin-top:3px; line-height:1.5; }   /* T3 본문 = 14(--fs-h3) = 편향줄과 동일 크기(운영자 260625) · 약보수 보정 사유 = 흰색 */
   .biaswhy b { font-weight:800; color:var(--accent); }   /* '약보수 보정' 라벨 = 강조색 */
   /* 민감 키워드 = 박스 없이 흰 글자만(E). */
@@ -2378,23 +2375,18 @@ function dlScrap(a) {    // 스크랩(우): <30분 NEW(라임 강조) / 30분~6h
 const biasNum = s => { const m = /(\d+)\s*[\/／]\s*10/.exec(s || ''); return m ? +m[1] : null; };
 const biasZone = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? '강좌' : v <= 4 ? '좌' : v <= 6 ? '중립' : v <= 8 ? '우' : '강우'; };
 const biasZoneCol = v => { v = Math.min(10, Math.max(1, v)); return v <= 2 ? 'var(--bias-l2)' : v <= 4 ? 'var(--bias-l1)' : v <= 6 ? 'var(--fg-2)' : v <= 8 ? 'var(--bias-r1)' : 'var(--bias-r2)'; };
-// 편향 줄 새 포맷(운영자 260629) — '중립 5 (+1 / 우 보정) → 중립 6'. 보정을 원문 옆 괄호로(가운데) · 강조색=숫자/델타/방향, 흰색=존라벨/괄호/슬래시.
-const biasZoneHtml = v => `<span class="biasv">${biasZone(v)} </span><span class="biasnum">${v}</span>`;   // 존 라벨(흰)+숫자(강조)
-const biasFlowHtml = (N, M) => {   // 원문 N → 요약 M (보정 표기 포함). 보정0이면 단일값.
-  const d = M - N;
-  if (!d) return biasZoneHtml(N);
-  const corr = ` <span class="biaspar">(</span><span class="biascorr">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span class="biaspar"> / </span><span class="biasdir">${d > 0 ? '우' : '좌'} 보정</span><span class="biaspar">)</span>`;
-  return `${biasZoneHtml(N)}${corr} <span class="biasar">→</span> ${biasZoneHtml(M)}`;
-};
 function biasLabel(a) {
   const M = biasNum(a.bias);
   if (M == null || /무관|N\s*\/?\s*A/i.test(a.bias || ''))
     return `<b class="bias" style="color:var(--mut)">무관</b>`;
   const N = biasNum(a.bias_src);
-  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략)
-    return `<b class="bias">${biasZoneHtml(M)}</b>`;
-  // 본문 편향줄과 동일 포맷(운영자 260629) — '중립 5 (+1 / 우 보정) → 중립 6' (보정0=단일값)
-  return `<b class="bias">${biasFlowHtml(N, M)}</b>`;
+  if (N == null)   // 원문 없음(옛 기사·IG·Thread·폴백) = 요약값만 표시(보정 표기 생략) · 흰색(본문 컨벤션 통일·260629)
+    return `<b class="bias biasv">${biasZone(M)} ${M}</b>`;
+  const d = M - N;
+  if (!d)   // 보정 0 = 단일값 · 흰색
+    return `<b class="bias biasv">${biasZone(N)} ${N}</b>`;
+  // 원문방향+숫자=흰색(.biasv) · 보정델타 +n/−n=강조색(.biascorr) · (우/좌 보정)=흰색(.biasdir) — 본문 편향줄과 동일 컨벤션(운영자 260629 A·긴 대시바·옛 방향색 제거)
+  return `<b class="bias"><span class="biasv">${biasZone(N)} ${N}</span> <span class="biascorr">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span class="biasdir">(${d > 0 ? '우' : '좌'} 보정)</span></b>`;   // 예: 좌 4 +1(우 보정)
 }
 // 대분류(C) — 옛 큐 category 값 → 5버킷 UI 매핑(지침엔 없음·표면화만). 박스 없는 색글자.
 const CAT_MAP = { '사회':'사회','정치':'정치','시사':'사회','경제':'경제','문화':'문화','국제':'국제','외교':'국제','테크':'테크','과학':'테크','IT':'테크','AI':'테크','스포츠':'문화','연예':'문화' };   // 정치 → 독립 버킷(사회서 분리·운영자 260621) · 스포츠·연예 = 문화(260625)
@@ -2756,13 +2748,17 @@ function decorate(root) {
     if (/무관|N\s*\/?\s*A/i.test(t)) { p.innerHTML = '편향: <b class="bias" style="color:var(--mut)">무관</b>' + whyHtml; p.classList.add('bullet'); return; }
     const flow = t.match(/원문\s*(\d+)\s*[\/／]\s*10[^\n]*?(?:요약|큐레이션)\s*(\d+)\s*[\/／]\s*10/);   // 자유요약 = 원문→요약 (전각슬래시·줄경계 강건화·평의회1)
     if (flow) {
-      const N = +flow[1], M = +flow[2];
-      // 새 포맷(운영자 260629): '중립 5 (+1 / 우 보정) → 중립 6' — 보정을 원문 옆 괄호로 · 강조색=숫자/델타/방향
-      p.innerHTML = `편향: ${biasFlowHtml(N, M)}` + whyHtml;
+      const N = +flow[1], M = +flow[2], d = M - N;
+      // 긴 대시바(─→) 제거 → 짧은 화살표(→) · 보정델타는 끝에 '+n(우 보정)/−n(좌 보정)'로(숫자=accent·방향라벨=흰색) · 원문·요약 방향숫자=흰색(운영자 260629)
+      const corrHtml = d
+        ? ` <span class="biascorr">${d > 0 ? '+' : '−'}${Math.abs(d)}</span><span class="biasdir">(${d > 0 ? '우' : '좌'} 보정)</span>`
+        : '';
+      p.innerHTML = `편향: <b class="biasv">${biasZone(N)} ${N}</b> <span class="biasar">→</span> <b class="biasv">${biasZone(M)} ${M}</b>${corrHtml}`
+        + whyHtml;
     } else {
       const one = t.match(/(\d+)\s*[\/／]\s*10/);   // IG·Thread = 단일값(원문 없음) → 숫자 도출 라벨로 정리
       if (one) { const M = +one[1];
-        p.innerHTML = `편향: ${biasZoneHtml(M)}` + whyHtml;
+        p.innerHTML = `편향: <b class="biasv">${biasZone(M)} ${M}</b>` + whyHtml;   // 흰색 통일(방향색 제거·260629)
       }
     }
     p.classList.add('bullet');
