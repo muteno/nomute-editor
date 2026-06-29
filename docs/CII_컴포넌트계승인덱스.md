@@ -29,7 +29,7 @@
 | 클립 3버튼 | `.iobtn-edge`(별칭 `.urlclip/.scnclip/.askclip` → 통일 대상) | 26 | glass `.06`/blur13 opacity.6 | scale .85 | COPY/PASTE/CHECK/ERASE/UNDO `_SVG` | **입력칸 우측 걸침 2케이스**(우하단=base / 우상단=`.asktawrap.clip-top`) · 가로 right 14/46/78px 사다리(우측 기준) · 다른 버튼 위치 따라 상/하 선택 · **케이스 2개 고정**(과증식 금지·운영자 260629) | — | — | thumb `attachCopyPaste` · index `.asktawrap.clip-top` |
 | 다운로드 | `.dlbtn`(+컨텍스트) | `--btn` | accent 10% / 이미지위 검정20% | ↓바운스 + ✓팝·링(클립) | `DOWNLOAD_SVG` | abs 우상단행 | — | `aria-label` | index/thumb `.dlbtn` |
 | 모달 헤더 | `.tool-h`(+`.tool-hbtns`) | — | — | — | — | 제목 좌 + 버튼묶음 우(`margin-left:auto` 래퍼) | `11px 16px` | `aria-labelledby` | index `.tool-h` |
-| 모달/팝업 | `<dialog>` + `history.pushState` | — | glass blur | `@starting-style`(등장) | — | top-layer | radius 22px | 백버튼=닫기 | index `tooldlg` |
+| 모달/팝업 | `<dialog>` + `history.pushState` | — | glass blur | `@starting-style`(등장) | — | top-layer | radius 22px · **헤더↔입력 간격 = 15px 단일표준**(`.askhead margin-bottom` · ask-family[askdlg·revdlg·crevdlg] 전부 동일 · 클립 하단걸침이라 상단 클리어런스 불필요 · 모달별 override 금지 · 운영자 260629) | 백버튼=닫기 | index `tooldlg`·`.askhead` |
 | FAB 빠른메뉴 | `#rfab`(.rc/.ro/.rmin) | 54/35/28 | glass `rgba(0,0,0,.34)`+blur14 | rotate135(코어) | + / 도구 픽토 | 우하단·z70 | — | PC=숨김 | thumb `#rfab`(ly/k 동기) |
 | 토스트 | `.nm-toast` | — | ⚠ raw hex(토큰화 대상) | — | `.ft-act`=.sbtn | fixed 하단·`--z-float` | — | ⚠ `role=alert` 필요 | index |
 | 캐러셀 | scroll-snap 트랙 | — | — | — | — | — | — | — | `feed-ui`/`cardRefCarousel` |
