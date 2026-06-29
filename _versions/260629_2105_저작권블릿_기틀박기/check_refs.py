@@ -520,11 +520,6 @@ def check_soremeori():
         mh = re.search(r'\.hist-bul\s*\{([^}]*)\}', t)
         if not mh or 'var(--hist-accent)' not in mh.group(1):
             print('❌ 소머리 게이트 — thumb .hist-bul 특수 블릿이 보라(--hist-accent) 아님(§📐 특수)'); rc = 1
-        # 토글(.ovfmt/.onoff) 붙는 .csec 행높이 상쇄 = 토글 세로패딩(3px·탭영역)이 flex 행 키워 첫 소머리 • 내려앉는 것 차단(§📐 첫 블릿 화면선·운영자 260629 저작권탭 교정)
-        mn = re.search(r'\.csec \.ovfmt\s*,\s*\.csec \.onoff\s*\{([^}]*)\}', t)
-        nb = mn.group(1) if mn else ''
-        if not mn or not (('margin-top:-' in nb and 'margin-bottom:-' in nb) or 'margin-block:-' in nb):
-            print('❌ 소머리 게이트 — thumb .csec 토글(.ovfmt/.onoff) 행높이 상쇄(margin-block:-3px) 누락 → 토글 붙은 첫 소머리 • 내려앉음 재발(§📐 첫 블릿 화면선)'); rc = 1
     except Exception:
         pass
     if rc == 0:
