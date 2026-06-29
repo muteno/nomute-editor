@@ -742,23 +742,38 @@
   /* 선택된 멤버 = 점선(강조 선)만 · accent 채움·코너✓ 제거(운영자 260625) */
   .scrap-col.green .sc-item.sc-sel, .scrap-col.black .sc-item.sc-sel {
     border:2px dotted rgba(var(--accent-rgb),.7) !important; }
-  /* 앵커(기준) 카드 = 길게 누른 것 · 형광 테두리 + 상단선 칩줄[기준·병합·X] (플로팅 바 폐지→인라인 통합 · '기사 선택' 프롬프트 제거 · X=강조색 유지 · 운영자 260629) */
+  /* 앵커(기준) 카드 = 길게 누른 것 · 형광 테두리 + '기준' 중립칩(이모지 삭제·강조=글자·수직중앙 · 운영자 260625) */
   body.merge-mode .sc-item.sc-anchor { border-color:var(--accent) !important; cursor:default;
     box-shadow:0 0 0 1px rgba(var(--accent-rgb),.4), 0 0 16px rgba(var(--accent-rgb),.22); }
-  /* 칩줄 = 기준 카드 윗 선에 중앙 높이로 걸침(top:-9 + height 18 → 중심 0 = 상단선 수직중앙 정렬 · 운영자 260629) · 기준=표시 / 병합·X=액션 · 셋 다 강조색 같은 뉘앙스 */
-  .merge-tags { position:absolute; top:-9px; left:9px; z-index:4; display:inline-flex; align-items:center; gap:5px; }
-  .merge-tags .mtag { display:inline-flex; align-items:center; height:18px; padding:0 9px; line-height:1; border-radius:999px;
-    font-size:9.5px; font-weight:800; letter-spacing:-.2px; color:var(--accent);
+  body.merge-mode .sc-item.sc-anchor::before { content:'기준'; position:absolute; top:-8px; left:9px; z-index:4;
+    display:inline-flex; align-items:center; height:18px; padding:0 9px; line-height:1;
+    font-size:9.5px; font-weight:800; letter-spacing:-.2px; color:var(--accent); border-radius:999px;
     background:rgba(20,24,21,.72); border:1px solid rgba(var(--accent-rgb),.4);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 2px 7px rgba(0,0,0,.45);
     -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); }
-  .merge-tags .mtag-base { cursor:default; }   /* 기준 = 표시(비클릭·기존 칩 그대로) */
-  .merge-tags .mtag-go { cursor:pointer; transition:transform .12s var(--ease), border-color .15s, opacity .15s; }
-  .merge-tags .mtag-go:active { transform:scale(var(--press-s,.85)); border-color:rgba(var(--accent-rgb),.7); }
-  .merge-tags .mtag-go.empty { opacity:.4; }   /* 선택 0 = 흐릿(눌러도 무동작) */
-  .merge-tags .mtag-x { width:18px; padding:0; justify-content:center; cursor:pointer; transition:transform .12s, border-color .15s; }   /* X = 강조색(.mtag color 상속) 항상 켜둠 */
-  .merge-tags .mtag-x svg { width:10px; height:10px; stroke:currentColor; stroke-width:2.2; fill:none; stroke-linecap:round; display:block; }
-  .merge-tags .mtag-x:active { transform:scale(var(--press-s,.85)); border-color:rgba(var(--accent-rgb),.7); }
+  @media (prefers-reduced-motion:reduce) { .mergebar { animation:none; } }
+  /* 병합 바 = JS(positionMergeBar)가 *기준 카드 바로 위*에 띄움(fixed·기준 따라 스크롤·화면밖이면 상단 sticky 클램프) · 병합모드 때만 · 보라 레이어(--hist-accent)로 일반 액션과 구별 · 리모컨(--z-remote 36) 위 --z-float · 운영자 260628 */
+  .mergebar { position:fixed; z-index:var(--z-float); left:0; top:0; display:none; align-items:center; gap:var(--sp-1); will-change:top,left; }
+  body.merge-mode .mergebar { display:inline-flex; animation:mgBoxIn .26s var(--ease); }
+  @keyframes mgBoxIn { 0% { transform:translateY(8px) scale(.9); opacity:0; } 100% { transform:none; opacity:1; } }
+  .mergebox { display:inline-flex; align-items:center; height:32px; padding:0 13px; border-radius:var(--r-s); cursor:pointer; line-height:1;
+    font-size:13px; font-weight:800; letter-spacing:-.2px; color:var(--hist-accent);
+    background:rgba(26,28,26,.42); border:1px solid rgba(var(--hist-rgb),.45);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 4px 14px rgba(0,0,0,.4), 0 0 14px rgba(var(--hist-rgb),.28);
+    -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); transition:transform .12s var(--ease), border-color .15s; }
+  .mergebox:active { transform:scale(.95); border-color:rgba(var(--hist-rgb),.75); }
+  .mergebox .mb-ico { width:15px; height:15px; margin-right:7px; stroke:var(--hist-accent); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; display:block; }
+  .mergebox .mb-lbl { color:var(--hist-accent); line-height:1; }   /* 병합 = 보라 강조 글자 */
+  .mergebox .mb-n { color:var(--fg); font-variant-numeric:tabular-nums; margin-left:6px; line-height:1; }   /* 숫자 = 중립 */
+  .mergebox.empty { opacity:.55; }
+  .mergebox.empty .mb-lbl { color:var(--mut); }
+  .mergebox.empty .mb-ico { stroke:var(--mut); }
+  .mergebox.empty .mb-n { display:none; }
+  .mb-x { display:grid; place-items:center; width:32px; height:32px; border-radius:var(--r-s); cursor:pointer; color:var(--mut);
+    background:rgba(26,28,26,.42); border:1px solid rgba(255,255,255,.17); box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+    -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); transition:transform .12s, color .15s, border-color .15s; }
+  .mb-x:active { transform:scale(.85); color:var(--hist-accent); border-color:rgba(var(--hist-rgb),.6); }
+  .mb-x svg { width:13px; height:13px; stroke:currentColor; stroke-width:2.1; fill:none; stroke-linecap:round; display:block; }
   /* (병합 표시 = '＋N 합' 배지 폐지 → 매체 수 숫자를 주황(.sc-cross.merged)으로만 표시·운영자 260626) */
   /* X 푸터 카피라이트 */
   .foot { text-align:center; color:var(--mut); font-size:11px; opacity:.55; letter-spacing:-.1px;
@@ -1932,7 +1947,14 @@
 
 <div class="wrap"><div id="list"></div></div>
 <section class="scrapview" id="scrapview" hidden>
-  <!-- 병합 액션 = 기준 카드 상단선 인라인 칩줄[기준·병합·X](.merge-tags) — JS가 앵커 카드에 주입. 플로팅 바·'기사 선택' 프롬프트 폐지(운영자 260629). -->
+  <!-- 병합 바 = 신규 칼럼 헤더 줄(운영자 260625·위치 불변) · 병합모드 때만. 칩=병합(강조 글자)+카운트 / 별도 X(둥근사각 radius 일치). 0=흐릿("기사 선택")·1+=("병합 N"). -->
+  <div class="mergebar" id="mergebar">
+    <button class="mergebox empty" id="mergebox" type="button" aria-label="선택한 기사 병합">
+      <svg class="mb-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v6a5 5 0 0 0 5 5h5M17 12l3 3-3 3"/></svg>
+      <span class="mb-lbl">기사 선택</span><span class="mb-n">0</span>
+    </button>
+    <button class="mb-x" id="mergeboxX" type="button" aria-label="병합 취소"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+  </div>
   <div id="scrapList"></div>
 </section>
 <section class="snsview" id="snsview" hidden>
@@ -5923,7 +5945,8 @@ function enterMerge(c) {
   if (MERGE_MODE) return;
   MERGE_MODE = true; MERGE_ANCHOR = candId(c); MERGE_SEL = new Set();
   document.body.classList.add('merge-mode');
-  markMergeCards(); updateMergeBox();
+  markMergeCards(); updateMergeBox(); positionMergeBar();
+  requestAnimationFrame(positionMergeBar);   // display 적용 후 실측 크기로 재배치
   try { history.pushState({ merge: 1 }, ''); } catch {}   // 폰 뒤로가기 = 병합모드 취소(딴 화면 안 벗어남·§🎨 패턴)
   try { navigator.vibrate && navigator.vibrate(12); } catch {}
 }
@@ -5935,19 +5958,9 @@ function markMergeCards() {   // 앵커/멤버/선택 표시(재렌더 후에도
     el.classList.toggle('sc-anchor', isA);
     el.classList.toggle('sc-mergeable', !isA);
     el.classList.toggle('sc-sel', !isA && MERGE_SEL.has(el.dataset.cid));
-    if (isA) ensureMergeTags(el);
-    else { const t = el.querySelector(':scope > .merge-tags'); if (t) t.remove(); }   // 비앵커엔 칩줄 없음
   });
   if (!anchorSeen && MERGE_MODE && !CANDS.some(c => candId(c) === MERGE_ANCHOR)) exitMerge();   // 앵커가 CANDS서도 소멸 = 유령 박스 자동 종료(분신술6·10). pool 필터로만 빠진 경우(CANDS엔 존재)는 유지 = 곧 복귀 가능.
-  updateMergeBox();   // 재렌더(라이브폴 등) 후 병합 칩 선택수 상태 갱신
-}
-function ensureMergeTags(el) {   // 앵커 카드 상단선에 칩줄[기준·병합·X] 주입(없으면) — 재렌더 후에도 멱등
-  if (el.querySelector(':scope > .merge-tags')) return;
-  const t = document.createElement('div'); t.className = 'merge-tags';
-  t.innerHTML = '<span class="mtag mtag-base">기준</span>'
-    + '<button class="mtag mtag-go empty" type="button" aria-label="선택한 기사 병합">병합</button>'
-    + '<button class="mtag mtag-x" type="button" aria-label="병합 취소"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg></button>';
-  el.appendChild(t);
+  positionMergeBar();   // 재렌더(라이브폴 등) 후 기준 카드 위치 갱신
 }
 function toggleMergeSel(id, card) {
   if (MERGE_SEL.has(id)) { MERGE_SEL.delete(id); card.classList.remove('sc-sel'); }
@@ -5955,9 +5968,12 @@ function toggleMergeSel(id, card) {
   updateMergeBox();
   try { navigator.vibrate && navigator.vibrate(8); } catch {}
 }
-function updateMergeBox() {   // 병합 칩 = 선택 0이면 흐릿(.empty·눌러도 무동작), 1+면 활성
-  const go = document.querySelector('#scrapList .sc-anchor .mtag-go'); if (!go) return;
-  go.classList.toggle('empty', MERGE_SEL.size === 0);
+function updateMergeBox() {
+  const box = $('#mergebox'); if (!box) return;
+  const n = MERGE_SEL.size, nEl = box.querySelector('.mb-n'), lEl = box.querySelector('.mb-lbl');
+  if (nEl) nEl.textContent = n;
+  if (lEl) lEl.textContent = n ? '병합' : '기사 선택';
+  box.classList.toggle('empty', n === 0);
 }
 function exitMerge(fromPop) {
   if (!MERGE_MODE) return;
@@ -5965,7 +5981,6 @@ function exitMerge(fromPop) {
   document.body.classList.remove('merge-mode');
   document.querySelectorAll('#scrapList .sc-anchor, #scrapList .sc-mergeable, #scrapList .sc-sel')
     .forEach(el => el.classList.remove('sc-anchor', 'sc-mergeable', 'sc-sel'));
-  document.querySelectorAll('#scrapList .merge-tags').forEach(t => t.remove());   // 인라인 칩줄 정리
   if (!fromPop) { try { if (history.state && history.state.merge) history.back(); } catch {} }
 }
 function doMerge() {
@@ -6029,25 +6044,43 @@ function openUnmergePop(numEl, c) {
   setTimeout(() => document.addEventListener('click', _unmergeOutside, true), 0);   // 여는 클릭이 즉시 닫지 않게 1틱 뒤 배선
   window.addEventListener('scroll', closeUnmergePop, true);
 }
-// (positionMergeBar·_mergeBarReflow 폐지 — 플로팅 바 → 앵커 카드 인라인 칩줄로 통합·운영자 260629)
-// 이벤트 배선(1회) — 카드 선택·인라인 칩은 위임(capture)으로 카드 자체 click보다 먼저 가로채 stopPropagation(중복 동작 차단).
+// 병합 바를 *기준 카드 바로 위*에 배치(fixed) — 기준 카드 따라 스크롤, 화면 위로 넘으면 상단 sticky 클램프(항상 보이고 탭 가능·운영자 260628). 기준 카드 못 찾으면(필터로 빠짐) 상단 고정.
+let _mergeBarRaf = 0;
+function positionMergeBar() {
+  if (!MERGE_MODE) return;
+  const bar = $('#mergebar'); if (!bar) return;
+  const anchor = document.querySelector('#scrapList .sc-item.sc-anchor');
+  const GAP = 8, MIN_TOP = 8, barH = bar.offsetHeight || 36, barW = bar.offsetWidth || 130;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let top, left;
+  if (anchor) {
+    const r = anchor.getBoundingClientRect();
+    top = Math.max(MIN_TOP, Math.min(r.top - barH - GAP, vh - barH - 84));   // 카드 위 · 위로 넘으면 상단 sticky · 아래로 넘으면 bnav(78px) 위
+    left = Math.max(8, Math.min(r.left, vw - barW - 8));   // 기준 카드 좌측 정렬(화면 안 클램프)
+  } else { top = MIN_TOP; left = 8; }
+  bar.style.top = top + 'px'; bar.style.left = left + 'px';
+}
+function _mergeBarReflow() { if (_mergeBarRaf) return; _mergeBarRaf = requestAnimationFrame(() => { _mergeBarRaf = 0; positionMergeBar(); }); }
+// 이벤트 배선(1회) — 카드 선택은 위임(capture)으로 카드 자체 click보다 먼저 가로채 stopPropagation(중복 동작 차단).
 (function wireMerge() {
-  const host = $('#scrapList');
+  const host = $('#scrapList'), box = $('#mergebox'), boxX = $('#mergeboxX');
+  window.addEventListener('scroll', _mergeBarReflow, true);   // 기준 카드 따라 바 재배치(MERGE_MODE 아니면 no-op)
+  window.addEventListener('resize', _mergeBarReflow);
   if (host) host.addEventListener('click', e => {
     if (!MERGE_MODE) return;
-    if (e.target.closest('.mtag-x')) { e.stopPropagation(); e.preventDefault(); exitMerge(); return; }   // 인라인 X(강조색) = 취소
-    if (e.target.closest('.mtag-go')) { e.stopPropagation(); e.preventDefault(); doMerge(); return; }   // 인라인 '병합' = 커밋(선택 0이면 doMerge 자체 가드)
     const card = e.target.closest('.sc-item'); if (!card) return;
     e.stopPropagation(); e.preventDefault();
     if (card.dataset.cid === MERGE_ANCHOR) return;   // 앵커(기준)는 선택 불가
     toggleMergeSel(card.dataset.cid, card);
   }, true);
+  if (box) box.addEventListener('click', e => { if (e.target.closest('#mergeboxX')) return; doMerge(); });
+  if (boxX) boxX.addEventListener('click', e => { e.stopPropagation(); exitMerge(); });
   ['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, () => { clearTimeout(_mergeLpT); _mergeLpT = null; }));   // 손가락 뗌을 카드서 못 잡는 기기 대비(qFeedBtn 패턴·분신술3) = 빠른 탭이 600ms 뒤 오발 진입하는 것 차단
   window.addEventListener('popstate', () => { const _td = $('#tooldlg'); if (_composeRecovering || (LBOX && LBOX.open) || isComposingModalOpen() || (_td && _td.open) || !qpop.hidden) return; if (MERGE_MODE) exitMerge(true); });   // 폰 뒤로가기 = 취소(이미 pop됨 → back 안 함) · ⚠️ 상위 오버레이(모달·대기열)·컴포즈 회수 back이면 그 몫 → 병합 over-close 차단(평의회 G4/V4 · 260628)
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && MERGE_MODE) exitMerge(); });
-  document.addEventListener('click', e => {   // 빈 곳(카드 밖) 탭 = 취소(카드 위·칩은 host capture가 stopPropagation으로 선점)
+  document.addEventListener('click', e => {   // 빈 곳(카드·박스 밖) 탭 = 취소(카드 위는 host capture가 stopPropagation으로 선점)
     if (!MERGE_MODE) return;
-    if (e.target.closest('#scrapList .sc-item')) return;
+    if (e.target.closest('#scrapList .sc-item, #mergebar')) return;
     exitMerge();
   });
 })();
