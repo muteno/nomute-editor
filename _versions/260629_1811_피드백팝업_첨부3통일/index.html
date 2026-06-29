@@ -1464,26 +1464,19 @@
   .slide-fb { position:absolute; top:52px; left:10px; right:10px; z-index:4; padding:12px; border-radius:14px;
     background:rgba(8,12,10,.78); border:1px solid rgba(255,255,255,.16); box-shadow:0 10px 30px rgba(0,0,0,.45);
     backdrop-filter:blur(18px) saturate(1.2); -webkit-backdrop-filter:blur(18px) saturate(1.2); display:flex; flex-direction:column; gap:9px; }
-  .fb-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }   /* 첨부3(수정요청) 헤더 통일 = 제목 + [기록][X] 우측 묶음(.askhead 미러 · '— 무엇에 대해?' 부제 제거·운영자 260629) */
-  .fb-title { font-size:13px; font-weight:800; color:#fff; }
-  .fb-headact { display:flex; align-items:center; gap:8px; flex:none; }   /* = .revhead-act(기록+X) */
-  .slide-fb .asksend { padding:6px 13px; font-size:12px; }   /* 기록 버튼 = .asksend 글래스(첨부3 수정버튼 동일) · 작은 패널 compact(revdlg .asksend 패턴) */
+  .fb-vote { font-size:13px; font-weight:800; color:#fff; } .fb-sub { font-weight:600; color:rgba(255,255,255,.55); font-size:11.5px; }
   .fb-aspect { display:flex; gap:7px; }
   .fb-aspect button { flex:1; padding:8px; font:700 12.5px inherit; color:rgba(255,255,255,.72); background:rgba(255,255,255,.06);
     border:1px solid var(--line2); border-radius:10px; cursor:pointer; transition:color .12s, background .12s, border-color .12s; }
   .fb-aspect button.on { color:var(--accent); border-color:rgba(15,253,2,.4); background:rgba(15,253,2,.1); }
-  .fb-comment { display:block; width:100%; box-sizing:border-box; font:inherit; font-size:13px; line-height:1.5; color:#fff; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:10px; padding:9px 11px; min-height:48px; resize:none; }   /* 첨부3 통일 = textarea(askta 미러) + 하단걸침 클립 */
+  .fb-comment { font:inherit; font-size:13px; color:#fff; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:10px; padding:9px 11px; }
   .fb-comment::placeholder { color:rgba(255,255,255,.4); font-style:italic; } .fb-comment:focus { outline:none; border-color:rgba(15,253,2,.4); }
-  /* 기록·닫기 = 헤더 우측(.fb-headact)으로 이동 = 첨부3 패턴. X=.askx 글래스 계승 / 클립=.iobtn-edge 하단걸침(revdlg 미러 · 헤더 버튼과 안 겹침) */
-  .slide-fb .iobtn-edge { top:auto; bottom:0; transform:translateY(50%); }
-  .slide-fb .iobtn-edge:active { transform:translateY(50%) scale(var(--press-s,.85)); }
-  /* ── 취소확인 팝업(confirmCancelVote) 전용 = 옛 레이아웃 유지(제목 위·버튼 아래) · 메인 피드백 팝업(.fb-head 신패턴)과 스코프 분리 ── */
-  .fb-vote { font-size:13px; font-weight:800; color:#fff; } .fb-sub { font-weight:600; color:rgba(255,255,255,.55); font-size:11.5px; }
-  .fb-x:not(.askx) { position:absolute; top:8px; right:9px; width:26px; height:26px; border-radius:9px; font-size:11px; color:rgba(255,255,255,.6); background:rgba(255,255,255,.06); border:1px solid var(--line2); cursor:pointer; display:grid; place-items:center; }   /* 취소확인 X(메인은 .fb-x.askx 헤더 인플로우) */
-  .fb-x:not(.askx):hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .fb-x { position:absolute; top:8px; right:9px; width:26px; height:26px; border-radius:9px; font-size:11px; color:rgba(255,255,255,.6);
+    background:rgba(255,255,255,.06); border:1px solid var(--line2); cursor:pointer; display:grid; place-items:center; }   /* 사각 통일(원형→9px), 26px는 카드 컨텍스트 */
+  .fb-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   .fb-act { display:flex; gap:8px; justify-content:flex-end; }
   .fb-act button { padding:8px 15px; font:700 12.5px inherit; border-radius:999px; cursor:pointer; }
-  .fb-save:not(.asksend) { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }   /* 취소확인 버튼(메인 기록은 .asksend 순수글래스) */
+  .fb-save { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }
   .fb-save[disabled] { opacity:.55; } .fb-act button:active { transform:scale(var(--press-l,.95)); }
   .fb-done { font-size:13px; font-weight:800; color:var(--accent); text-align:center; padding:6px 0; }
   .slide-wait { aspect-ratio:4/5; display:grid; place-items:center; border-radius:16px; border:1px solid var(--line);
@@ -4149,9 +4142,11 @@ function openFeedback(card, vote, slideEl, file) {
   const up = vote === 'up';
   const fb = document.createElement('div'); fb.className = 'slide-fb';
   fb.innerHTML =
-    `<div class="fb-head"><b class="fb-title">${up ? '좋았던 점' : '아쉬운 점'}</b><div class="fb-headact"><button type="button" class="fb-save asksend"><span>기록</span></button><button type="button" class="fb-x askx" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
+    `<button type="button" class="fb-x" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+     <div class="fb-vote">${up ? '좋았던 점' : '아쉬운 점'} <span class="fb-sub">— 무엇에 대해?</span></div>
      <div class="fb-aspect"><button type="button" data-a="image" class="on">이미지</button><button type="button" data-a="text">텍스트</button></div>
-     <textarea class="fb-comment" rows="2" maxlength="300" placeholder="의견" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>`;
+     <input class="fb-comment" maxlength="300" placeholder="의견" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+     <div class="fb-act"><button type="button" class="fb-save asksend"><span>기록</span></button></div>`;
   let aspect = 'image';
   fb.querySelectorAll('.fb-aspect button').forEach(b => b.onclick = () => {
     aspect = b.dataset.a; fb.querySelectorAll('.fb-aspect button').forEach(x => x.classList.toggle('on', x === b));
@@ -4159,7 +4154,6 @@ function openFeedback(card, vote, slideEl, file) {
   fb.querySelector('.fb-x').onclick = () => fb.remove();
   fb.querySelector('.fb-save').onclick = () => submitFeedback({ file, card: card.n, vote, aspect, comment: fb.querySelector('.fb-comment').value.trim() }, fb, slideEl);
   host.appendChild(fb);
-  attachCopyPaste(fb.querySelector('.fb-comment'), true);   // 첨부3(수정요청) 통일 = [붙여넣기][지우개] 클립(하단걸침 · .slide-fb 스코프)
   setTimeout(() => fb.querySelector('.fb-comment').focus({ preventScroll: true }), 50);
 }
 function submitFeedback(p, fb, slideEl) {
