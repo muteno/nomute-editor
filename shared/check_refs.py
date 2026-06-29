@@ -488,6 +488,45 @@ def check_tokens_link():
     return rc
 
 
+def check_soremeori():
+    """소머리(구분자 •) 표준 강제 — 텍스트 흰색(--fg)·블릿 형광(--accent)·토큰 굵기(§📐·운영자 260629).
+    회색(--mut) 소머리·블릿 없는 소머리·리터럴 굵기 재발을 차단(옛 흰색600 인라인 드리프트 방지).
+    정본 = 뉴스 index .cref-lbl(무변경). 대상 = label.fl(thumb/k/ly/comp) + thumb .csec/.hist-bul.
+    .gospec(명세 readout)은 소머리 아님 = 검사 제외."""
+    rc = 0
+    # 블록 소머리 label.fl = 텍스트 흰색(--fg)·800(--fw-x) + ::before 형광(--accent)·700(--fw-b)
+    for rel in ('viewer/thumb.html', 'viewer/k.html', 'viewer/ly.html', 'viewer/comp.html'):
+        try:
+            css = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        m = re.search(r'label\.fl\s*\{([^}]*)\}', css)
+        if not m:
+            print('❌ 소머리 게이트 — %s에 label.fl 규칙 없음(소머리 = 흰색800+형광블릿·§📐)' % rel); rc = 1; continue
+        if 'var(--fg)' not in m.group(1) or 'var(--fw-x)' not in m.group(1):
+            print('❌ 소머리 게이트 — %s label.fl 텍스트가 흰색(--fg)·800(--fw-x) 아님(회색/리터럴 금지·§📐)' % rel); rc = 1
+        mb = re.search(r'label\.fl::before\s*\{([^}]*)\}', css)
+        if not mb or 'var(--accent)' not in mb.group(1) or 'var(--fw-b)' not in mb.group(1):
+            print('❌ 소머리 게이트 — %s label.fl::before 블릿이 형광(--accent)·700(--fw-b) 아님(블릿 누락/색오류·§📐)' % rel); rc = 1
+    # flex 소머리 thumb .csec = 텍스트 흰색800 + ::before 형광700 · .hist-bul = 특수 보라
+    try:
+        t = open(os.path.join(ROOT, 'viewer', 'thumb.html'), encoding='utf-8').read()
+        mc = re.search(r'\.csec\s*\{([^}]*)\}', t)
+        if not mc or 'var(--fg)' not in mc.group(1) or 'var(--fw-x)' not in mc.group(1):
+            print('❌ 소머리 게이트 — thumb .csec 텍스트가 흰색(--fg)·800(--fw-x) 아님(§📐)'); rc = 1
+        mcb = re.search(r'\.csec::before\s*\{([^}]*)\}', t)
+        if not mcb or 'var(--accent)' not in mcb.group(1) or 'var(--fw-b)' not in mcb.group(1):
+            print('❌ 소머리 게이트 — thumb .csec::before 블릿이 형광(--accent)·700(--fw-b) 아님(§📐)'); rc = 1
+        mh = re.search(r'\.hist-bul\s*\{([^}]*)\}', t)
+        if not mh or 'var(--hist-accent)' not in mh.group(1):
+            print('❌ 소머리 게이트 — thumb .hist-bul 특수 블릿이 보라(--hist-accent) 아님(§📐 특수)'); rc = 1
+    except Exception:
+        pass
+    if rc == 0:
+        print('✅ 소머리 게이트 — 5뷰어 소머리 텍스트 흰색·블릿 형광(특수 보라)·토큰 일치(§📐).')
+    return rc
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -555,6 +594,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_tokens_link 스킵:', e)
+    try:
+        if check_soremeori() != 0:   # 소머리(구분자 •) 텍스트 흰색·블릿 형광·토큰(하드 게이트 — 회색/무블릿/리터럴 재발 차단·§📐·260629)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_soremeori 스킵:', e)
     return rc
 
 
