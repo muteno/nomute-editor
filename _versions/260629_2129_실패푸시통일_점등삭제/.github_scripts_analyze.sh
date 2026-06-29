@@ -32,6 +32,7 @@ emit_fail_msg() {
 # 지침 SSOT 강제 주입 — live 에디터 지침을 프롬프트 고정부에 떠먹인다(읽기 의존 X = 강제).
 # GVER(지침 버전 도장)는 산출물 frontmatter에 박혀, 지침이 바뀌면 같은 기사 재공유 시 재생성된다.
 source "$ROOT/shared/inject_guidelines.sh"
+source "$ROOT/shared/claude_health.sh"   # 시스템성(인증·쿼터) 실패 → 사용자 메시지(프로필 점등)
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — analyze·ask·cardmake 공용(재시도 판정 드리프트 차단)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 source "$ROOT/shared/url_guard.sh"          # is_article_url() SSOT — 포털·도메인 루트(기사경로 없는 URL) 차단(폰·분석 공용)
@@ -255,6 +256,7 @@ ${extracted}"
     fi
     break
   done
+  claude_health_update "$out" "/tmp/${base}.err"   # 응답O=정상(경고해제) / 빈응답+인증·쿼터=경고(프로필 점등)
 
   # 실패 판정: 비정상 종료 / 빈 출력 / 모델이 실패 신호 / frontmatter 없음
   if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^ANALYSIS_FAILED' <<<"$out" || ! grep -qm1 '^---' <<<"$out"; then
