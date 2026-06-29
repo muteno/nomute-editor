@@ -1005,7 +1005,7 @@
   .ed-status.err { color:var(--danger); }
   .ed-status.ok { color:var(--accent); }
   .ed-wish { width:100%; box-sizing:border-box; font:inherit; font-size:15px; line-height:1.6; color:var(--fg);
-    background:rgba(5,12,8,.6); border:1px solid var(--line); border-radius:12px; padding:12px 13px; resize:none; min-height:78px; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
+    background:rgba(5,12,8,.6); border:1px solid var(--line); border-radius:12px; padding:12px 13px; resize:vertical; min-height:78px; }
   .ed-wish:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,253,2,.18); }
   /* 어절 칩 — 한 줄=한 행(.ed-line). 카드 줄바꿈과 1:1 (폰 가로 달라도 행이 폭에 맞춰 균일 축소 --eds). */
   .ed-chips { display:flex; flex-direction:column; align-items:stretch; gap:5px; min-height:34px; padding:6px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:11px; }
@@ -1688,7 +1688,7 @@
     padding:9px 16px; cursor:pointer; white-space:nowrap; text-align:left; -webkit-tap-highlight-color:transparent; transition:transform .1s, background .15s, color .15s, border-color .15s; }
   .min-pick-it:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); }
   .min-pick-it:active { transform:scale(var(--press-l,.96)); }
-  .askta { display:block; width:100%; box-sizing:border-box; min-height:96px; resize:none; border-radius:14px; padding:12px 14px;
+  .askta { display:block; width:100%; box-sizing:border-box; min-height:96px; resize:vertical; border-radius:14px; padding:12px 14px;
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
   .askta:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18); }   /* 포커스 = 강조색 테두리+글로우(타이핑 활성 신호 · .ed-wish:focus 등 전 입력칸 정본 통일 · 흰색 이탈 교정 260627) */
   .askta::placeholder { color:var(--mut); }
@@ -1742,10 +1742,10 @@
   .askclip.ask-cp.ask-cphide { opacity:0; pointer-events:none; transform:translateY(50%) scale(.6); }   /* 빈칸 = 복사할 것 없음 → 숨김 */
   .ask-erase { right:14px; }
   .ask-erase.ask-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
-  /* 입력칸 클립 3버튼(복사·붙여넣기·지우개) = 2 케이스 (운영자 260629 · CII 기틀 박음): 기본 .clip-bottom=우하단(base 그대로) / .clip-top=우상단 변형. 가로 = right 14/46/78px 사다리 공통(입력칸 우측 기준 = attachCopyPaste 정본). ⚠️ 케이스 2개로 고정(다른 버튼 위치 따라 상/하 선택만 · 과증식 금지). 뉴스요약(askdlg)=우하단(base) · revdlg/crevdlg=우하단(헤더 수정·X와 안 겹침). */
-  .asktawrap.clip-top .askclip { top:0; bottom:auto; transform:translateY(-50%); }
-  .asktawrap.clip-top .askclip:active { transform:translateY(-50%) scale(var(--press-s,.85)); }
-  .asktawrap.clip-top .askclip.ask-cphide { transform:translateY(-50%) scale(.6); }
+  /* 요약 요청(askdlg) 텍스트칸 클립 3버튼 = 우상단 걸침으로 통일(기틀 CII '입력칸 우상단' 표준 · 옛 하단걸침 이탈 교정 · 운영자 260629). revdlg/crevdlg는 헤더(수정·X)와 겹쳐 하단 유지(260625) → askdlg만 scoped. */
+  #askdlg .asktawrap .askclip { top:0; bottom:auto; transform:translateY(-50%); }
+  #askdlg .asktawrap .askclip:active { transform:translateY(-50%) scale(var(--press-s,.85)); }
+  #askdlg .asktawrap .askclip.ask-cphide { transform:translateY(-50%) scale(.6); }
   .ask-erase.ask-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
   .askimgs { display:flex; flex-wrap:nowrap; gap:8px; margin-top:11px; }   /* 최대 3장 = 한 줄 고정(줄바꿈 금지·운영자 260629) */
   .askimg { position:relative; width:64px; height:64px; border-radius:10px; overflow:hidden; border:1px solid var(--line2); }
@@ -2409,8 +2409,6 @@ const CAT_KW = {
 };
 // 하트(♥♡❤ 등) — 제목에 들어가면 연예인 열애/결혼·2세 = 100% 문화(운영자 260624). 사회 오분류·미분류 구제.
 const HEART_RE = /[♡♥❣❤\u{1F493}-\u{1F49F}\u{1F9E1}\u{1FA77}]/u;
-// 정치 인물·강마커 = 정치 강제(사회/미분류만 → 정치 · to_candidates.py POL_FORCE_RE와 바이트 동기 · 운영자 260629). 李·尹·정치인 실명이 CAT_KW에 없고 사회-우선 tie-break이 정치를 덮던 것 교정. ⚠️ 경제·국제·문화 주제는 유지(中 李씨·정치인 경제정책 오분류 방지) · 인물셋 운영자 튜닝.
-const POL_FORCE_RE = /李|尹|이재명|윤석열|한동훈|이준석|조국|김건희|김문수|우원식|한덕수|추미애|홍준표|안철수|오세훈|이낙연|나경원|김기현|권성동|정청래|박찬대|대통령|대통령실|청와대|탄핵|내란|여당|야당|국민의힘|민주당|대선|총선|공천|비대위|당대표|원내대표|거부권|국정감사|영부인/;
 // OSEN(오!쎈) — 조선일보 문화부 스포츠·연예 브랜드 → 100% 문화(운영자 260625). 제목 [오!쎈]/[Oh!쎈]/[OSEN=] 태그로 잡힘(영문 'Oh!쎈' 스펠링 보강·운영자 260628).
 const OSEN_RE = /오\s*!?\s*쎈|Oh\s*!?\s*쎈|OSEN/i;
 // 스포츠·연예 전문 매체 — 매체명만으로 100% 문화(운영자 260625). 선수·팀명 아님(선수 사회면 논란 오분류 방지)·연예도 문화라 안전. to_candidates.py와 동기.
@@ -2431,8 +2429,7 @@ function articleCat(a) {
   if (b && b !== '사회') { if (b === '테크' && pol) return '정치'; if (b === '문화' && (CRIME_OVERRIDE_RE.test(a.title || '') || JUDICIAL_OVERRIDE_RE.test(a.title || ''))) return '사회'; return b; }   // 큐 category 있으면 정본(단 테크라도 대통령·정부정책이면 정치 · 문화라도 사법·범죄 본질[헌재·대법원·성착취]이면 사회=저장 문화 라벨도 즉시 교정 · 사회는 하트 재분류 여지)
   if (OSEN_RE.test(a.title || '') || SPORTS_MEDIA_RE.test(a.media || '')) return '문화';   // OSEN 태그·스포츠 전문매체 = 100% 문화(사회·미분류 위로)
   if (HEART_RE.test(a.title || '')) return '문화';   // 하트 = 100% 문화(사회·미분류 위로)
-  if (POL_FORCE_RE.test(a.title || '')) return '정치';   // 정치 인물·강마커(李·尹·이재명·윤석열·대통령·탄핵 등) = 정치(사회/미분류 위로 · 하트→문화 자매 · 운영자 260629)
-  if (b) return b;   // 사회(하트·정치 없음)
+  if (b) return b;   // 사회(하트 없음)
   const t = `${a.title || ''} ${a.summary || ''}`;
   let best = '', bn = 0;
   const musicCombo = AMBIG_ARTIST_RE.test(t) && MUSIC_CTX_RE.test(t);   // 모호 가수명 + 음악문맥 동반(운영자 260628)
