@@ -5835,12 +5835,12 @@ function openPaste(c) {
 // PICKED 클릭 → 피드(메뉴3) 이동 + 해당 기사 팝업. 픽 결과가 피드에 떴으니(pickInFeed) url/클러스터로 매칭해 open(a).
 function pickedOpen(c) {   // PICKED → 피드 이동+모달. url/cluster 매칭, 없으면 load() 후 재매칭(feedOpenBy 공용)
   const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean));
-  feedOpenBy(() => DATA.find(x => x && x.url && us.has(_normU(x.url))));
+  feedOpenBy(() => DATA.find(x => x && x.url && x.has_body && us.has(_normU(x.url))));   // has_body 필수 — body 없는 stub 매치 시 빈 모달 대신 feedOpenBy가 '피드 반영 중' 안내(scFeedArticle 게이트와 일관·260630)
 }
 function scFeedArticle(c) {   // 이 후보가 요약돼 피드(DATA=articles.json)에 떠 있나 → 그 기사 객체(없으면 null).
   // 카드 탭 라우팅에 사용: 있으면 뉴스 요약으로, 없으면 기사 전문으로(요약 안된 빈 요약 목업 차단 · 운영자 260621).
   const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean));
-  return us.size ? DATA.find(x => x && x.url && us.has(_normU(x.url))) : null;
+  return us.size ? (DATA.find(x => x && x.url && x.has_body && us.has(_normU(x.url))) || null) : null;   // ⚠️ has_body 필수 — 요약 body가 *실제로 있는* 피드 기사만 매치(픽됐으나 분석 미완·실패로 body 없는 stub은 제외 → 클릭이 빈 요약 모달 대신 기사 원문으로 폴백·운영자 260630 재발버그)
 }
 // 보관한도(데이터)는 크게(10일·수천 건) 두되, 화면은 컬럼당 SC_PAGE장만 그려 가볍게 유지.
 // 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → '더 보기'로 청크 추가.
