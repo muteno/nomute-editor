@@ -29,10 +29,10 @@ MAX_BATCH = _int_env("THUMB_MAX_BATCH", 3)   # 1런당 기사 수 상한(비용 
 # 빈값이면 전체(백로그 포함). 워크플로가 활성화 날짜를 박는다.
 SINCE = os.environ.get("THUMB_SINCE", "").strip()
 KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-# ⏸ AI 썸네일 생성 임시 OFF 스위치(운영자 260622) — 켜면 Gemini 2화풍 생성만 건너뛰고
-#    검색이미지(og:image·관련사진 fetch = 망만 필요·키 무관)는 그대로 채운다. 복구 = env 제거(또는 '0').
-#    (자동 뉴스요약 경로 둘 다[news-analyze.yml = URL/전문 픽 · news-ask.yml = ✨요약요청]에서 세팅 ·
-#     수동 '다시 만들기'[thumb-redo.yml]는 미세팅 = AI 정상.)
+# ⏸ AI 썸네일 생성 OFF 스위치(옵션) — THUMB_AI_OFF=1이면 Gemini 2화풍 생성만 건너뛰고
+#    검색이미지(og:image·관련사진 fetch = 망만 필요·키 무관)는 그대로 채운다.
+#    ✅ 260630 자동경로(news-analyze·news-ask) 재가동 = 미세팅(AI ON) · 260622 임시 OFF는 운영자 요청으로 해제.
+#    수동 '다시 만들기'[thumb-redo.yml]는 항상 AI ON.
 AI_OFF = os.environ.get("THUMB_AI_OFF", "").strip().lower() in ("1", "true", "yes", "on")
 # ⚠️ 검색이미지는 더 이상 Google CSE JSON API를 안 씀(2025 신규고객 차단 死 → "this project does not have
 #    access" 403 PERMISSION_DENIED). 대체 = 기사 본인 og:image 추출(fetch_article_images). CSE 시크릿 미사용.
