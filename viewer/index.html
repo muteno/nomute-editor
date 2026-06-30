@@ -2552,7 +2552,8 @@ async function open(a) {
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
   setupScrub();   // 모달 헤더 = 스크롤 위치 스크러버(게이지 + 요약·프롬프트·카드 틱 + 클릭 점프)
   const src = $('#src'); if (a.url){ src.href=hrefOk(a.url); src.style.display=''; } else src.style.display='none';
-  const dlg = $('#dlg'); dlg.showModal(); $('#dlgbody').scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋(스크롤=본문 래퍼 .dlg-body)
+  const dlg = $('#dlg'); const _dlgWasOpen = dlg.open; if (!_dlgWasOpen) { dlg.showModal(); try { history.pushState({ dlg: true }, ''); } catch {} }   // 신규 열림만 showModal+pushState(폰 뒤로가기=요약모달 먼저 닫기·lbox 패턴·!wasOpen=재진입 이중 push/show 방지·260630 QA ③)
+  $('#dlgbody').scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋(스크롤=본문 래퍼 .dlg-body)
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
   updateRevFab();   // 열릴 때 FAB 초기 상태(맨 위라 보통 숨김)
   updateCrevFab();   // 🃏 카드 수정 FAB도 동일 초기화
@@ -5004,7 +5005,9 @@ $('#msgbtn').addEventListener('click', e => { e.stopPropagation(); openMsgbox();
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
-$('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
+let _dlgPop = false;   // 폰 뒤로가기(popstate)로 #dlg가 닫혔는지 — close 핸들러의 히스토리 정리 분기(lbox _lboxPop 패턴·260630 QA ③)
+$('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = '';
+  if (_dlgPop) { _dlgPop = false; } else if (history.state && history.state.dlg) { try { history.back(); } catch {} } });   // X·백드롭·ESC로 닫힘 = push한 {dlg}칸 회수(뒤로가기로 닫혔으면 이미 pop돼 _dlgPop만 리셋)
 $('#dlgbody').addEventListener('scroll', updateScrub, { passive: true });
 // 본문 레이아웃 변화(짧은 본문·details 펼침·리사이즈·폴링 재렌더)도 FAB/scrub 갱신 — 스크롤 없으면 scroll 이벤트가 안 와 stale되던 것 차단(260630 QA 엣지)
 new ResizeObserver(() => { if ($('#dlg').open) updateScrub(); }).observe($('#dlgbody'));
@@ -5034,19 +5037,25 @@ function updateScrub() {
   const dp = $('#dlgprog'); if (!dp || !dp.firstElementChild) return;
   const db = $('#dlgbody'), range = db.scrollHeight - db.clientHeight, st = db.scrollTop;
   const pct = range > 0 ? Math.max(0, Math.min(100, st / range * 100)) : 0;
+  // ① 읽기 일괄 — getBoundingClientRect를 style 쓰기 사이에 끼우면 scroll마다 강제 reflow 5회(쓰기→읽기 thrash).
+  //   읽기(db.top + 4타깃)를 먼저 모아 reflow 1회로. 스크럽바 쓰기는 헤더 요소라 #dlgbody 콘텐츠 위치 불변 = 출력 동일(260630 QA ③).
+  const top = db.getBoundingClientRect().top, tg = scrubTargets();
+  let cur = 'n';
+  const rows = ['n', 's', 'm', 't'].map(k => {
+    const tick = dp.querySelector(`.scrub-tick[data-j="${k}"]`), lb = dp.querySelector(`.scrub-lb[data-j="${k}"]`), el = tg[k];
+    if (!el) return { tick, lb, el: null };
+    const off = st + (el.getBoundingClientRect().top - top);
+    if (st >= off - 8) cur = k;
+    return { tick, lb, el, p: range > 0 ? Math.max(0, Math.min(100, off / range * 100)) : 0 };
+  });
+  // ② 쓰기 일괄(읽기 끝난 뒤 = reflow 1회)
   const fill = $('#scrubFill'), dot = $('#scrubDot');
   if (fill) fill.style.width = pct + '%';
   if (dot) dot.style.left = pct + '%';
-  const top = db.getBoundingClientRect().top, tg = scrubTargets();
-  let cur = 'n';
-  ['n', 's', 'm', 't'].forEach(k => {
-    const el = tg[k], tick = dp.querySelector(`.scrub-tick[data-j="${k}"]`), lb = dp.querySelector(`.scrub-lb[data-j="${k}"]`);
-    if (!el) { if (tick) tick.style.display = 'none'; if (lb) lb.classList.add('off'); return; }
-    if (lb) lb.classList.remove('off');
-    const off = st + (el.getBoundingClientRect().top - top);
-    const p = range > 0 ? Math.max(0, Math.min(100, off / range * 100)) : 0;
-    if (tick) { tick.style.display = ''; tick.style.left = p + '%'; }
-    if (st >= off - 8) cur = k;
+  rows.forEach(r => {
+    if (!r.el) { if (r.tick) r.tick.style.display = 'none'; if (r.lb) r.lb.classList.add('off'); return; }
+    if (r.lb) r.lb.classList.remove('off');
+    if (r.tick) { r.tick.style.display = ''; r.tick.style.left = r.p + '%'; }
   });
   dp.querySelectorAll('.scrub-lb').forEach(lb => lb.classList.toggle('cur', lb.dataset.j === cur && !lb.classList.contains('off')));
   const hd = $('.dlg-h'); if (hd) hd.classList.toggle('scrolled', st > 60);
@@ -7647,6 +7656,31 @@ loadPending();      // eager — 대기열 처리중 건수 배지 초기 표시
 function isComposingModalOpen() {
   return ['#revdlg', '#crevdlg', '#askdlg', '#pastedlg', '#editdlg'].some(s => { const d = $(s); return !!(d && d.open); });
 }
+// 요약 리더(#dlg) 폰 뒤로가기 = 모달 먼저 닫기(lbox/tooldlg/merge 패턴 계승·§🎨·260630 QA ③). 상위 오버레이(컴포즈·라이트박스·도구·대기열·병합)·컴포즈 자기칸 회수 back은 그쪽 몫 → #dlg over-close 차단.
+window.addEventListener('popstate', () => {
+  if (_composeRecovering) return;
+  if (history.state && history.state.dlg) return;   // ⚠️ 핵심 가드: 내 {dlg} 칸이 *아직 현재* = 상위 오버레이(lbox/tooldlg 등)만 pop됨 → #dlg 유지. dialog.close()는 .open을 *동기* false로 바꿔(close 이벤트만 비동기) 먼저 등록된 lbox(3156)/tooldlg(6580) 핸들러가 자기 모달을 동기 close하면 아래 .open 가드가 무력화돼 #dlg까지 닫던 over-close를 차단(등록순서·동기 close에 면역 · 검증4 적대 발견 · 260630 QA ③)
+  if (isComposingModalOpen() || (LBOX && LBOX.open) || (tooldlg && tooldlg.open) || !qpop.hidden || MERGE_MODE) return;   // 2차 안전망(컴포즈는 #dlg보다 늦게 등록=가드 유효)
+  const d = $('#dlg');
+  if (d && d.open) { _dlgPop = true; d.close(); }
+});
+// 전문 입력 모달(#askdlg) 키보드 가림 보정 — askdlg는 하단에 전송 버튼이 있어, 모바일 키보드가 뜨면(visualViewport 축소·dvh는 키보드 미반영) 전송이 키보드 뒤로 가린다. 키보드 떠 있을 때만 보이는 영역 높이로 클램프 + 위로 당김(내부 overflow:auto라 내용 스크롤 유지). revdlg/crevdlg는 전송이 헤더라 무관·미적용(스코프 축소=회귀면 차단). 260630 QA ③.
+(function () {
+  const vv = window.visualViewport; if (!vv) return;
+  const DLGS = ['#askdlg', '#pastedlg'].map(s => $(s)).filter(Boolean);   // 둘 다 .askdlg(margin:30dvh·max-height:calc(70dvh-28px)·overflow:auto) + 하단 전송(.askbot). revdlg/crev=헤더 전송이라 무관 / editdlg=.askdlg 미상속·footer(.ed-foot)가 별도 스크롤(.ed-body) 밖 고정이라 동일 보정 부적합 → 둘 다 제외(검증7 pastedlg 갭 보강·재검증C 사유 정정)
+  if (!DLGS.length) return;
+  const reset = d => { d.style.maxHeight = ''; d.style.marginTop = ''; };
+  function fit() {
+    const kb = window.innerHeight - vv.height;   // 키보드 높이 근사(layout vp − visual vp)
+    DLGS.forEach(d => {
+      if (!d.open) { reset(d); return; }
+      if (kb > 100) { d.style.maxHeight = (vv.height - 24) + 'px'; d.style.marginTop = (vv.offsetTop + 12) + 'px'; }
+      else reset(d);   // 키보드 내려가면 CSS 복원
+    });
+  }
+  vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+  DLGS.forEach(d => d.addEventListener('close', () => reset(d)));   // 닫힐 때 인라인 보정 제거(다음 열림서 stale 방지)
+})();
 // ── 작성 모달 폰 뒤로가기 = 모달 먼저 닫기(입력 손실 방지 · §🎨 "모달+폰뒤로가기 = pushState/popstate" lbox/tooldlg 패턴 계승 · 분신술6 발견 · 260627) ──
 // 작성 모달(ask·rev·crev·paste·edit)을 openComposeDlg로 열면 history 칸 1개 push → 폰 뒤로가기 1번 = 그 모달만 닫고 앱 안 벗어남(입력 유지).
 // 다른 경로(X·백드롭·ESC·전송완료 close())로 닫히면 push한 칸을 history.back()으로 회수(잔류 칸 = 다음 뒤로가기 2번 눌러야 하는 것 방지).
