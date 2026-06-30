@@ -1,5 +1,5 @@
 // Cloudflare Pages Function — 뷰어 썸네일 '다시 만들기' → GitHub thumb-redo 워크플로 발사.
-// 단일 기사 AI 썸네일 재생성. sid 주면 그 화풍 1개만(per-image), 없으면 전체 4화풍(검색 og:image 보존).
+// 단일 기사 AI 썸네일 재생성. sid 주면 그 화풍 1개만(per-image), 없으면 전체 2화풍(포토에디토리얼·극화 · 검색 og:image 보존).
 // ⚠️ 게이트 없음(운영자 260620 — 암호게이트는 추후 앱 전체 일괄). 유료(Gemini). make-cards.js 패턴 계승.
 // env: GH_TOKEN = GitHub fine-grained PAT(이 레포·Actions Read/write).
 export async function onRequestPost({ request, env }) {

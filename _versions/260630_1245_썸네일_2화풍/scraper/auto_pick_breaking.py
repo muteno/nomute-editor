@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # 긴급 grade≥3 자동 픽 — candidates.json 의 새 isBreaking(breaking·grade≥3·cross≥2·<4h) 사건을
 # 자동으로 pending/ 적재(분석 입구) → news-analyze 발동(요약·카드 자동 생성). breaking-judge.yml 이 판정 직후 호출.
-# ⚠️⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독 쿼터) + Gemini 썸네일 2장($). 보수적 다중 가드:
+# ⚠️⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독 쿼터) + Gemini 썸네일 3장($). 보수적 다중 가드:
 #   ① grade≥3 (대형·다수피해만 · 운영자 260622 — push 의 grade≥2 보다 엄격 = 자동픽 ⊆ push 의도)
 #   ② cross≥2(다매체 검증) ③ first_seen·published *둘 다* <4h (운영자 260623 — first_seen=갓 감지 + 발행도 신선해야:
 #      발행 16h stale 건이 방금 수집됐다고 자동분석 들어가던 것 차단 · published 없는 매체는 first_seen 만으로 폴백)

@@ -1,0 +1,99 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>썸네일 3→2화풍 + 카드 1K 확인</title>
+<style>
+:root{--bg:#121212;--pan:#16171a;--line:rgba(255,255,255,.08);--fg:#eef7f0;--mut:#8fa697;--accent:#0FFD02;--danger:#ff5b4a;--warn:#ffd24a;--hist:#c24bf5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,'Pretendard Variable',system-ui,sans-serif;padding:22px;max-width:920px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:26px 0 10px;color:var(--accent)}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin:10px 0}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:700}
+code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:6px;font-size:12.5px}
+.ok{color:var(--accent)}.no{color:var(--danger)}.warn{color:var(--warn)}.hist{color:var(--hist)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--mut);margin-right:5px}
+ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+.big{font-size:15px;font-weight:700}
+.thumbs{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}
+.slot{flex:1;min-width:120px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0d0e10}
+.slot .ph{display:block;aspect-ratio:4/5;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;text-align:center;padding:8px}
+.slot.drop .ph{background:repeating-linear-gradient(135deg,rgba(255,91,74,.08) 0 8px,transparent 8px 16px)}
+.slot .cap{font-size:11.5px;padding:6px 8px;border-top:1px solid var(--line);color:var(--fg)}
+.slot.drop .cap{color:var(--danger);text-decoration:line-through}
+</style></head><body>
+
+<h1>썸네일 3화풍 → 2화풍 + 카드 1K 확인</h1>
+<div class="sub">뉴스 AI 썸네일 시사만평(cartoon) 폐지 → 포토에디토리얼·웹툰극화 2장만 · 카드 phase3 = 이미 1K 확인 · 260630</div>
+
+<div class="card">
+<span class="big">한 줄 요약</span> — 뉴스 요약 시 뽑던 AI 썸네일 <b>3화풍</b>(포토에디토리얼·웹툰극화·<span class="no">시사만평</span>)을 운영자 요청대로 <span class="ok">포토에디토리얼 + 웹툰극화 <b>2장</b></span>으로 줄였다(해상도 1K 유지). 카드뉴스 phase3(이미지 생성)은 <span class="ok">이미 1K로 생성 중</span>이라 <b>손댈 것 없음</b>(확인만).
+</div>
+
+<h2>① 썸네일 — 무엇을 바꿨나 (전 / 후)</h2>
+<div class="thumbs">
+  <div class="slot"><span class="ph">포토<br>에디토리얼</span><div class="cap ok">✓ 유지 (sid=photo)</div></div>
+  <div class="slot"><span class="ph">웹툰<br>극화</span><div class="cap ok">✓ 유지 (sid=webtoon)</div></div>
+  <div class="slot drop"><span class="ph">시사만평</span><div class="cap">폐지 (sid=cartoon)</div></div>
+</div>
+<table>
+<tr><th></th><th>전</th><th>후</th></tr>
+<tr><td>화풍(STYLES)</td><td>photo · webtoon · cartoon (3)</td><td class="ok">photo · webtoon (2)</td></tr>
+<tr><td>픽당 생성 이미지</td><td>3장</td><td class="ok">2장 (과금 약 1/3↓)</td></tr>
+<tr><td>해상도</td><td colspan="2" class="ok">1K — 변경 없음 (<code>gemini_image(..., "1K")</code>)</td></tr>
+<tr><td>뷰어 렌더</td><td colspan="2">코드 무변경 — <code>thumb_gen[]</code> 배열을 동적 렌더(개수 하드코딩 없음·<code>slice(0,7)</code>)</td></tr>
+<tr><td>기존 썸네일</td><td colspan="2" class="warn">이미 만든 3화풍 gen.json은 <b>보존</b>(재과금 0·skip) → 옛 기사엔 시사만평 잔존. 소급 제거하려면 '다시 만들기'(thumb-redo)</td></tr>
+</table>
+<div class="card">
+<span class="ok">코어 변경 1곳</span> = <code>.github/scripts/thumb_gen.py</code>의 <code>STYLES</code> 리스트에서 <code>cartoon</code> 튜플 제거. <code>process_one</code>·<code>main()</code>의 생성 루프·<code>target_sids</code>가 STYLES를 따라 자동으로 2화풍이 됨. 나머지는 전부 <b>드리프트 동기화(주석·문서)</b> = 기능 무변경.
+</div>
+
+<h2>② 카드뉴스 phase3 — 1K 확인 (변경 없음)</h2>
+<table>
+<tr><th>지점</th><th>확인 결과</th></tr>
+<tr><td><code>gen_cards.py:246</code> (슛/shoot)</td><td class="ok"><code>tg.gemini_image(c["prompt"] + " " + CARD_STYLE)</code> — image_size 인자 없음 → 기본값 <code>"1K"</code></td></tr>
+<tr><td><code>gen_cards.py:183</code> (edit)</td><td class="ok"><code>tg.gemini_image(prompt + " " + CARD_STYLE)</code> — 동일, 기본 <code>"1K"</code></td></tr>
+<tr><td><code>gemini_image</code> 시그니처</td><td class="ok"><code>image_size="1K"</code> 기본값 (실측)</td></tr>
+<tr><td>최종 카드 1080×1350</td><td>Gemini 1K 장면을 <code>card_news.py</code>가 합성하는 <b>카드 캔버스 규격</b> — Gemini 생성해상도와 별개</td></tr>
+</table>
+<div class="card"><span class="big">결론</span> — 카드 이미지는 <span class="ok">이미 1K로 생성</span>되고 있다. Gemini가 1K 장면을 그리고, 그 위에 글자를 1080×1350 캔버스로 정밀 합성하는 구조. <b>요청대로 바꿀 게 없다.</b></div>
+
+<h2>효율 · 품질 · 리스크 (5요소)</h2>
+<table>
+<tr><th>축</th><th>평가</th></tr>
+<tr><td>전/후</td><td>썸네일 3장→2장(시사만평 폐지) · 카드는 1K 유지(무변경)</td></tr>
+<tr><td>효율</td><td class="ok">썸네일 자동/재생성 Gemini 과금 약 <b>1/3 절감</b> (픽당 3장→2장 · <code>THUMB_MAX_BATCH=3</code> 기사수 불변 = 최대 3기사×2장)</td></tr>
+<tr><td>품질</td><td class="ok">해상도·프롬프트·구도 불변 → 개별 이미지 품질 저하 0 (선택지 수만 축소)</td></tr>
+<tr><td>품질저하 리스크</td><td class="warn">화풍 다양성 ↓(시사만평 옵션 사라짐) — 운영자 의도된 결정. 기존 cartoon 든 옛 기사엔 잔존(skip·재과금0)</td></tr>
+<tr><td>회귀 리스크</td><td class="ok">뷰어 동적 렌더라 개수 무관 · sid 보존(재과금0) · check_refs rc=0 · 워크플로/JS 구문 OK</td></tr>
+</table>
+
+<h2>검증</h2>
+<table>
+<tr><th>게이트</th><th>결과</th></tr>
+<tr><td><code>shared/check_refs.py</code></td><td class="ok">rc=0 (거울·참조·게이트 정합)</td></tr>
+<tr><td>python <code>ast.parse</code> (thumb_gen·gen_cards·auto_pick_breaking)</td><td class="ok">OK</td></tr>
+<tr><td>STYLES import 실측</td><td class="ok">count=2 (photo·webtoon)</td></tr>
+<tr><td><code>gemini_image</code> 기본 image_size</td><td class="ok">"1K"</td></tr>
+<tr><td>워크플로 4종 YAML <code>safe_load</code></td><td class="ok">OK</td></tr>
+<tr><td><code>build-viewer.mjs</code> <code>node --check</code></td><td class="ok">OK</td></tr>
+<tr><td>3→2 잔재 grep</td><td class="ok">클린 (무관건=RSS category·apps/k 화풍어휘·아카이브 제외)</td></tr>
+</table>
+
+<h2>적대 10인 평의회 (§✅ⓑ · Opus·effort max·READ-ONLY)</h2>
+<div class="card" id="council">
+앵글 10종(STYLES정확성·기존보존/재과금·main스킵·뷰어렌더·워크플로·redo경로·카드1K·문서드리프트·숨은화풍의존·총괄) 적대 검증 → <span class="ok" id="verdict">✅ 8 / ⚠️ 2 / ❌ 0 (블로커 0)</span> <span class="tag">READ-ONLY 준수</span> rogue 커밋/브랜치 0(사후점검).
+<ul>
+<li><span class="ok">✅ 8</span> — STYLES 정확(photo·webtoon)·기존 cartoon gen.json은 superset skip으로 <b>재과금 0 보존</b>·뷰어 동적렌더라 회귀 0·카드 phase3 <b>1K 확정</b>·redo 경로 안전·워크플로 무변경.</li>
+<li><span class="warn">⚠️ 2 (A8·A9)</span> — 전부 <b>문서 드리프트 잔재</b>(런타임 0). 1차 grep이 놓친 패턴(<code>4화풍</code>·<code>AI생성 3</code>·<code>썸네일 3장</code>) → <span class="ok">전건 수정</span>: CLAUDE.md §📰·<code>thumbredo.js</code>·<code>news-analysis.md</code>·viewer 주석 3곳. 재grep 클린·check_refs rc=0.</li>
+</ul>
+</div>
+
+<h2>+ 같은 세션 후속 — 카드 프롬프트 '계속 실패' 진단</h2>
+<div class="card">
+운영자 추가 요청으로 카드 재생성 반복 실패 원인 진단: <b>일회성 아님 / systemic 아님 = 이 기사(돼지 발언) 한정 재현성 폭주</b>. metrics 실측 <span class="no">out 64,274토큰·≈14분·rc 0</span>인데 <code>### [카드 1]</code> 헤더가 없어 포맷검사 실패. <code>MultiEdit</code> 경고는 레드헤링(옛 로그 전부 존재·무해). 처방 = <code>cardmake.sh</code>에 <b>폭주(runaway) 분류 + reason 첫 줄 + tail 저장</b>, 뷰어가 "재시도 무의미"를 표면화(헛클릭 방지). 상세 = <code>docs/작업이력.md</code> 카드 항목.
+</div>
+
+</body></html>

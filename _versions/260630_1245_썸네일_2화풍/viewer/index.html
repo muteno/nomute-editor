@@ -1559,7 +1559,7 @@
     padding:10px; border:1px dashed var(--line); border-radius:11px; line-height:1.5; }
   @keyframes crefpulse { 0%,100%{opacity:.4} 50%{opacity:.85} }
 
-  /* ── 썸네일 후보 섹션(기사 제목 바로 아래) — 검색 + AI생성 2화풍 · 각 4:5 캐러셀 ── */
+  /* ── 썸네일 후보 섹션(기사 제목 바로 아래) — 검색 3 + AI생성 3 · 각 4:5 캐러셀 ── */
   .thumbsec { margin:14px 0 18px; padding-top:14px; border-top:1px solid var(--line2); }
   .thumbsec-h { display:flex; align-items:center; gap:10px; font-size:var(--fs-h2); font-weight:800; color:var(--accent); margin:0 0 10px; letter-spacing:-.2px; }   /* T2 헤더 = 15(--fs-h2) 통일(섹션머리) · 강조색(네온그린) 삽입(운영자 260629) · 제목 좌 + 전체버튼 우 */
   .thumbsec-h .thsec-t { flex:1; min-width:0; }   /* 제목 = 좌측 차지 → 전체버튼 우측 밀착 */
@@ -2530,7 +2530,7 @@ async function open(a) {
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 화면에 보이는 그 제목(AI 헤드라인) 그대로 복사 (운영자 260620·260627 표시값 우선 정정)
   if (_h1c) { const _ttl = _h1c.textContent.trim() || a.title || ''; if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }   // ⚠️ 표시값(h1=AI 헤드) 우선 — a.title(원본 스크랩 제목)이 아니라 화면에 보이는 제목을 복사(불일치 버그 봉합 · _ttl은 버튼 append 前 계산이라 버튼텍스트 미포함)
-  const tsec = thumbSec(a);   // 썸네일 후보(검색 + AI생성 2화풍) — 기사 제목 바로 아래
+  const tsec = thumbSec(a);   // 썸네일 후보(검색 3 + AI생성 3) — 기사 제목 바로 아래
   if (tsec) { const h1 = md.querySelector('h1'); (h1 ? h1.insertAdjacentElement('afterend', tsec) : md.insertAdjacentElement('afterbegin', tsec)); }
   cardSec(a);
   feedSec(a);     // 섹션 3: 카드 피드(이미지 있을 때만 표시)
@@ -2780,8 +2780,8 @@ function decorate(root) {
   // 5) 상단 기사 제목 = 복사 버튼 없음(#3) — 카드뉴스 제목만 복사 영역으로(cardSec)
 }
 
-// ── 썸네일 후보 섹션 — 기사 제목 바로 아래(픽한 기사). 검색 이미지 + AI 생성 2화풍(각 4:5 캐러셀). ──
-// 데이터: a.cards.thumb_search[]={img,link,label} (기사 og:image+유사 · label=''(대표)/'유사') · a.cards.thumb_gen[]={img,label} (Gemini 2화풍).
+// ── 썸네일 후보 섹션 — 기사 제목 바로 아래(픽한 기사). 검색 이미지 3 + AI 생성 3(각 4:5 캐러셀). ──
+// 데이터: a.cards.thumb_search[]={img,link,label} (기사 og:image+유사 · label=''(대표)/'유사') · a.cards.thumb_gen[]={img,label} (Gemini 3화풍).
 // 백엔드 채워지기 전(P1): 검색=라이브 폴백(Wikimedia 이미지 + 구글 검색 링크) / 생성=대기 플레이스홀더.
 function thumbSec(a) {
   const c = a.cards || {};
@@ -2802,14 +2802,14 @@ function thumbSec(a) {
   const wrap = document.createElement('div'); wrap.className = 'thumbsec'; wrap.dataset.sig = thumbSecSig(a);
   const dlAllH = (search.length + gen.length) ? '<button type="button" class="sbtn cref-dlall dlbtn thsec-dlall" title="썸네일 후보 전체 저장" aria-label="썸네일 후보 전체 저장">' + DLSEQ_IC + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 제목 라인 우측(검색+AI생성 통합 · .dlbtn 표준 · 운영자 260622)
   wrap.innerHTML = '<div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — 검색 · AI 생성</span>' + dlAllH + '</div>';
-  // 1) 검색 이미지(4:5 캐러셀) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
+  // 1) 검색 이미지(4:5 × 3) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
     // 좌측(회색 돋보기) = 기사 제목 검색(불변) · 키워드(한/영 + 토글)는 thumbStatic이 kwData로 처리(운영자 260622)
     const _titleHref = 'https://www.google.com/search?tbm=isch&tbs=qdr:d&q=' + encodeURIComponent((a.title || '뉴스').slice(0, 100));
     wrap.appendChild(thumbStatic('검색 이미지', search, 'search', _titleHref, c.thumb_usage,
       { ko: (a.image_query || '').trim(), en: (a.image_query_en || '').trim() }));
   }
-  // 2) AI 생성(4:5 × 2화풍) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(2화풍+재생성 누적)
+  // 2) AI 생성(4:5 × 3) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(4화풍+재생성 누적)
   if (gen.length) wrap.appendChild(thumbStatic('AI 생성', gen, 'gen', null, c.thumb_usage));
   const dlH = wrap.querySelector('.thsec-dlall');   // 제목 라인 전체저장 = 검색+AI생성 전 이미지 통합 순차 다운로드(.dlbtn 표준 dlAllSeq)
   if (dlH) {
@@ -2828,7 +2828,7 @@ function usageText(bucket, kind) {
   const title = kind === 'search'
     ? (tok ? '검색·비전 제미나이 누적 ' + tok.toLocaleString() + '토큰 · 추정 $' + usd
            : '검색 = og:image 스크래핑(AI 비전 미사용) · 제미나이 0')
-    : '제미나이 — 2화풍+재생성 누적 ' + tok.toLocaleString() + '토큰 · 추정 $' + usd
+    : '제미나이 — 4화풍+재생성 누적 ' + tok.toLocaleString() + '토큰 · 추정 $' + usd
       + (bucket.calls ? ' (최근 ' + bucket.calls + '콜)' : '');
   return '<span class="cref-usage" title="' + esc(title) + '">$ ' + usd + ', T ' + tok.toLocaleString() + '</span>';
 }
@@ -2836,7 +2836,7 @@ const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none"
 const SEARCH_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
 // 정적 캐러셀(thumb_search/thumb_gen) — items=[{img,label?,sid?}]. 탭=확대 · 우상단 액션행 .sbtn(저장 · 생성슬롯=재생성+저장 · §🎨 .slide-acts 계승). usage={gen,search}.
 function thumbStatic(label, items, kind, href, usage, kwData) {
-  const list = items.slice(0, kind === 'search' ? 60 : 7);   // 검색이미지 = '+5장 더'로 누적되니 cap 해제(7→60, 12장↑ 표시) · AI 생성은 2화풍(영향 0) · 운영자 260622
+  const list = items.slice(0, kind === 'search' ? 60 : 7);   // 검색이미지 = '+5장 더'로 누적되니 cap 해제(7→60, 12장↑ 표시) · AI 생성은 3화풍(영향 0) · 운영자 260622
   const wrap = document.createElement('div'); wrap.className = 'cref';
   const kd = kwData || {};
   const _moreFile = (kind === 'search' && CUR_A) ? CUR_A.file : '';   // '+5장 더' = 현재 모달 기사(CUR_A)에 관련 뉴스이미지 더 검색(api/moreimg · 운영자 260622)
@@ -3163,11 +3163,8 @@ function cardSec(a) {
   const cs = $('#cardsum'); if (cs) cs.textContent = (st === 'generating' && genStuck) ? '2. 카드 뉴스 프롬프트 — 실패(시간초과)' : (sumlabel[st] || '카드 뉴스 프롬프트');   // phase 2 = 카드 뉴스 프롬프트(운영자 260629). 프롬프팅 15분 초과 = 접힌 헤더도 '실패'로
 
   if (!st || st === 'failed') {
-    if (st === 'failed') {   // error.log 첫 줄 'reason:' 표면화(운영자 260630) — '모델 폭주=재시도 무의미' 등 사유를 보여 헛클릭 방지
-      const em = (c.error || '').match(/^reason:\s*(.+)$/m);
-      const rsn = em ? em[1].trim() : '레포 cards/ 의 error.log 참조';
-      sec.insertAdjacentHTML('beforeend', `<div class="genstat">직전 카드 제작 실패 — ${esc(rsn)}</div>`);
-    }
+    if (st === 'failed') sec.insertAdjacentHTML('beforeend',
+      `<div class="genstat">직전 카드 제작 실패 — 레포 cards/ 의 error.log 참조</div>`);
     const b = document.createElement('button');
     b.className = 'mkbtn';
     b.textContent = st === 'failed' ? '프롬프트 다시 생성' : '프롬프트 생성';

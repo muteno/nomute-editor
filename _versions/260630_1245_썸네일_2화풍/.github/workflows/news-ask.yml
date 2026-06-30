@@ -1,14 +1,14 @@
-name: news-analyze
+name: news-ask
 
-# pending/ 에 URL(.txt)이 들어오면 Claude Code 헤드리스로 큐레이션 다이제스트를 만들어 queue/ 에 커밋.
-# - queue/ 커밋이 다시 트리거하지 않도록 paths 필터는 pending/** 만.
-# - GITHUB_TOKEN 푸시는 기본적으로 워크플로를 재트리거하지 않음(이중 안전).
+# 뷰어 ✨요약 요청(asks/*.json = 자연어 + 캡처) → Claude 헤드리스가 해석·기사검색(WebSearch)·캡처판독(Read)
+# → 큐레이션 다이제스트를 queue/ 에 커밋(= 뉴스요약에 뜸). Termux 대체 멀티모달 입구.
+# news-analyze(pending/** = URL)와 별개 트랙 — analyze 불변 안 건드림. 출력 포맷·지침주입은 analyze 재사용.
 on:
   push:
     branches: [main]
     paths:
-      - 'pending/**'
-  workflow_dispatch:        # 수동 실행 — account 1회성 오버라이드(변수 안 건드림)
+      - 'asks/**'
+  workflow_dispatch:
     inputs:
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
@@ -19,29 +19,22 @@ on:
           - MUTENO
           - EMS1130G
 
-# 동시 실행 충돌 방지 — 순차 처리(진행 중 작업 취소 안 함).
 concurrency:
-  group: news-analyze
+  group: news-ask
   cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
-  analyze:
+  ask:
     runs-on: ubuntu-latest
-    timeout-minutes: 90   # 6건 직렬 분석 대비(건당 timeout 900s — 콘텐츠 초안 포함이라 상향)
-    outputs:
-      force_stems: ${{ steps.force.outputs.stems }}   # force 재분석(전문 직접 입력)으로 덮어쓴 카드 stem(공백 구분) → card_plan 이 단일 프롬프트 갱신(운영자 260628)
+    timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v5   # Node24 (6/16 러너 디폴트 전환 대응)
+        uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-          # 트리거 커밋(github.sha)이 아니라 체크아웃 시점의 최신 main을 받는다.
-          # concurrency 순차 큐에서 뒤 run이 옛 커밋을 체크아웃하면 앞 run이 이미
-          # 처리한 pending을 재분석 → failed 로그 add/add 충돌로 push 실패(run#5 원인).
-          ref: main
+          fetch-depth: 0   # 최신 main 기준(순차 큐에서 옛 커밋 체크아웃 방지)
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -49,13 +42,11 @@ jobs:
           node-version: '24'
 
       - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치 — analyze와 동일하게 설치(없으면 exit 127)
 
-      - name: Analyze pending articles
+      - name: Process asks
         env:
-          # 인증 = 구독 OAuth 토큰(API 키 미사용). 계정 동적 선택:
-          #   수동 실행 inputs.account → 리포 변수 vars.ACTIVE_ACCOUNT → 기본 NOMUTEFB(서브1=EMS1130G·서브2=MUTENO·쿼터 한도 시 2단 자동 폴오버)
-          #   (secrets[format(...)] 동적 인덱싱·vars||기본값 = 공식 지원 문법)
+          # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
@@ -63,43 +54,21 @@ jobs:
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
-            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음 — 등록 확인"; exit 1
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
           fi
-          # 디버그: 값 노출 없이 잘림 여부만 배제(길이 + 표준 prefix 12자 — sk-ant-oat01 까지라 비민감)
-          echo "token len=${#CLAUDE_CODE_OAUTH_TOKEN} prefix=${CLAUDE_CODE_OAUTH_TOKEN:0:12}"
-          # OAuth를 조용히 덮어쓰는 변수 방어적 제거(anthropics/claude-code#34826)
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
-          bash .github/scripts/analyze.sh
+          bash .github/scripts/ask.sh
 
-      # force 재분석(전문 직접 입력)으로 덮어쓴 카드 stem 을 잡 output 으로 노출 → card_plan 이 그 카드 프롬프트만 갱신.
-      # always = 위 분석이 일부 실패해도 성공한 force 건은 갱신 신호 전달. 비면 빈 문자열(card_plan 가드).
-      - name: Force-refresh stems output
-        id: force
-        if: always()
-        run: |
-          s="$(tr '\n' ' ' < /tmp/force_regen_files.txt 2>/dev/null || true)"
-          echo "stems=${s}" >> "$GITHUB_OUTPUT"
-
-      # viewer 빌드 스텝 없음(의도) — Cloudflare Pages가 push마다 `node build-viewer.mjs`를 직접 실행.
-      # 커밋이 분석 직후·무조건이라 빌드류 실패가 Opus 분석물을 증발시킬 수 없다(run#2 교훈).
       - name: Commit results
         if: always()
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add queue pending
+          git add queue asks
           git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만(없어도 무해)
-          git add viewer/messages.json 2>/dev/null || true   # messages.json = claude 시스템성 알림(있을 때만 · 없어도 커밋 안 죽게 — set -e로 분석물 유실 차단 260619)
-          if git diff --cached --quiet; then
-            echo "변경 없음 — 커밋 생략"
-            exit 0
-          fi
-          TITLES=$(cat /tmp/analyzed_titles.txt 2>/dev/null | paste -sd'; ' - || echo "기사")
-          git commit -m "analyze: ${TITLES:-기사}"
-          # 동시 푸시 경합 대비 rebase 재시도.
-          # -X theirs = rebase 충돌 시 이 run의 분석 결과 우선(분석물 보존 최우선).
-          # 실패하면 rebase --abort로 깨끗이 되돌린 뒤 재시도 — abort 없이 pull만 반복하면
-          # "unmerged files" fatal로 전 재시도가 무력화된다(run#5 원인).
+          git add viewer/messages.json 2>/dev/null || true   # messages.json = gitignore된 빌드산출물(러너 부재) → 있을 때만·없어도 set -e로 커밋 안 죽게(analyze:77 가드 미러 · 260619 회귀복구 260621 분신술)
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "ask: 요약 요청 큐레이션"
           for i in 1 2 3 4; do
             if git pull --rebase -X theirs origin main && git push origin HEAD:main; then exit 0; fi
             git rebase --abort 2>/dev/null || true
@@ -107,40 +76,37 @@ jobs:
           done
           echo "push 실패"; exit 1
 
-      # 분석 완료 푸시 — 요약이 준비되면 구독자(프로필 알림 ON)에게 통지. 탭하면 그 요약 창이 열림(/?a=<파일>).
-      # 비치명(실패해도 파이프 안 깸). 새 요약(analyzed_files) 있을 때만. 각 요약 건별 딥링크(≤PUSH_SUM_MAX=6) · 초과분만 묶음 피드.
-      - name: 분석 완료 푸시 (요약 열기)
+      # 요약 요청 완료 푸시 — 요약이 준비되면 통지. 탭하면 그 요약 창이 열림(/?a=<파일>). 비치명(analyze와 공용 스크립트).
+      - name: 요약 완료 푸시 (요약 열기)
         if: success()
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: bash .github/scripts/notify_summary.sh
 
-      # 수집 실패 알림 — '내용이 안 들어와 대기열 미등록'을 준비된 시점에 웹푸시(탭→메시지함 실패 메시지).
-      # always() = 잡이 빨개지는 Surface failures 전에 실행돼야 함(메시지함은 위 Commit 에서 이미 커밋됨).
-      - name: 수집 실패 알림 (대기열 미등록 통지)
+      # 요약 요청 실패 푸시 — ask.sh 가 /tmp/analyzed_fail_msgs.txt 에 적재한 실패 base 를 통지(탭→메시지함 실패 메시지). news-analyze 와 동일 패턴(운영자 260629 ask 경로 푸시 통일).
+      - name: 요약 실패 알림 (요청 미완료 통지)
         if: always()
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: bash .github/scripts/notify_fail.sh
 
-      # 분석 실패가 있으면 잡을 빨갛게 → GitHub 푸시 알림 = '조용한 실패' 차단(Commit·푸시 스텝 이후라 성공분은 이미 저장됨).
-      - name: Surface failures (실패 시 잡 빨갛게 → 알림)
+      - name: Surface failures
         if: always()
         run: |
-          if [ -s /tmp/analyzed_failures.txt ]; then
-            N=$(wc -l < /tmp/analyzed_failures.txt)
-            echo "::error::큐레이션 분석 실패 ${N}건 — pending/failed/ 로그 확인:"
-            cat /tmp/analyzed_failures.txt
+          # ⚠️ 이번 런에서 새로 실패한 것만 빨강(asks/failed/ 누적 전체 아님 — stale-red 차단·260620).
+          # 옛 실패는 asks/failed/에 남아도 뷰어 대기열(api/pending)이 24h 표면화 → CI는 깨끗.
+          RUNLIST="${RUNNER_TEMP:-/tmp}/ask_fail_run"
+          if [ -s "$RUNLIST" ]; then
+            echo "::error::요약 요청 처리 실패(이번 런 $(wc -l < "$RUNLIST")건) — asks/failed/ 로그 확인"
+            while read -r b; do echo "── $b ──"; cat "asks/failed/$b.log" 2>/dev/null | head -40; done < "$RUNLIST"
             exit 1
           fi
-          echo "실패 없음"
+          echo "이번 런 실패 없음"
 
-  # 2단계 = 카드뉴스 프롬프팅(자동·텍스트만·제미나이 0). 다이제스트(analyze) 직후 별도 잡으로
-  # 돌려 timeout 독립(분석 잡을 안 늘림). 제미나이/Zapier는 사용자 '슛'(card-make.yml full)에서만.
   card_plan:
-    needs: analyze
+    needs: ask
     if: always()              # 분석 일부 실패해도 성공 큐는 카드 프롬프트 생성
     runs-on: ubuntu-latest
     timeout-minutes: 120      # 텍스트 카드 MAX_BATCH(3)건 × Opus
@@ -154,7 +120,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          ref: main           # analyze가 push한 최신 queue 포함
+          ref: main           # ask가 push한 최신 queue 포함
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
@@ -174,33 +140,6 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
           # text 모드 = cards/ 미존재·지침 stale 큐만 골라 카드 MD까지(제미나이 0, state=text_done).
           bash .github/scripts/cardmake.sh all text || echo "::warning::카드플랜 일부 실패(다이제스트는 보존됨)"
-
-      # force 재분석(전문 직접 입력)으로 요약이 바뀐 카드 = all 게이트가 GVER 동일이라 스킵 → 그 카드 프롬프트만 단일 갱신.
-      # done/이미지(슛) 카드는 보호(슛 이미지·편집 보존 → 요약만 반영, 카드는 운영자 재촬영). news-revise.yml card_refresh 패턴 계승.
-      - name: Force card refresh (전문 재제출로 바뀐 요약의 카드 프롬프트 갱신 — done/이미지 보호)
-        if: ${{ needs.analyze.outputs.force_stems != '' }}
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
-          FORCE_STEMS: ${{ needs.analyze.outputs.force_stems }}   # env 경유 = run 스크립트 직접 인터폴레이션(주입) 회피
-          # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON·GEMINI_API_KEY env 없음(유료 발사 불가) + 아래 unset(Lock B) = 제미나이 0
-        run: |
-          [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "토큰 없음 — force 카드 갱신 생략"; exit 0; }
-          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
-          for stem in ${FORCE_STEMS}; do
-            stem="${stem%.md}"
-            [ -n "${stem}" ] || continue
-            [ -f "queue/${stem}.md" ] || { echo "queue/${stem}.md 없음 — 생략"; continue; }
-            st="$(grep -o '"state":"[^"]*"' "cards/${stem}/status.json" 2>/dev/null | cut -d'"' -f4)"
-            imgs="$(ls cards/${stem}/*.jpg cards/${stem}/*.png cards/${stem}/scenes/*.jpg 2>/dev/null | head -1)"
-            if [ "${st}" = "done" ] || [ "${st}" = "fired_partial" ] || [ -n "${imgs}" ]; then
-              echo "force 카드 보호(state='${st:-?}', 이미지=${imgs:-없음}) — 자동 재생성 생략(요약은 반영됨·카드는 운영자 재촬영)"; continue
-            fi
-            echo "force 카드 프롬프트 갱신: ${stem}"
-            bash .github/scripts/cardmake.sh "${stem}.md" text || echo "::warning::force 카드 갱신 실패(요약은 반영됨): ${stem}"
-          done
 
       # 좀비 generating 차단 — 위 스텝이 크래시/중단되면 status가 영영 'generating'(모달 '프롬프팅 중' 영구).
       # always로 잔류 generating 을 failed 로 스윕·커밋해 모달이 멈추지 않게 한다.
@@ -244,11 +183,11 @@ jobs:
             echo "::warning::재빌드 트리거 실패(다음 정기 빌드 때 반영)"
           fi
 
-  # 3단계 = AI 썸네일 후보 2화풍(픽한 기사만·자동). 카드(외부 Apps Script/Drive)와 분리된
+  # 3단계 = AI 썸네일 후보 3화풍(픽한 기사만·자동). 카드(외부 Apps Script/Drive)와 분리된
   # 레포 내 경로 = Actions가 Gemini를 직접 호출, 한국어 글자도 이미지에 직접 렌더(compose 불필요).
-  # ⚠️ 비용잠금(Lock A) 해제 지점 = 픽=Gemini 2장 자동과금. GEMINI_API_KEY 시크릿 없으면 no-op(스캐폴드).
+  # ⚠️ 비용잠금(Lock A) 해제 지점 = 픽=Gemini 3장 자동과금. GEMINI_API_KEY 시크릿 없으면 no-op(스캐폴드).
   thumb_gen:
-    needs: analyze
+    needs: ask
     if: always()              # 분석 일부 실패해도 성공 큐는 썸네일 생성
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -262,12 +201,12 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          ref: main           # analyze가 push한 최신 queue 포함
+          ref: main           # ask가 push한 최신 queue 포함
       - name: 검색이미지(기사 og:image 추출) — AI 썸네일 생성은 임시 OFF (신규 픽만)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # ⏸ 임시(운영자 260622): 뉴스요약 자동경로의 AI 썸네일 생성만 OFF — 검색이미지(og:image·관련사진)는 유지.
-          #    복구 = 이 줄 삭제(또는 '0'). GEMINI_API_KEY/R2는 그대로 둠(수동 '다시 만들기' thumb-redo.yml은 AI 정상 작동).
+          # ⏸ 임시(운영자 260622): ✨요약요청 자동경로의 AI 썸네일 생성만 OFF — 검색이미지(og:image·관련사진)는 유지.
+          #    news-analyze.yml과 쌍둥이 자동 뉴스요약 경로라 동일 적용. 복구 = 이 줄 삭제(또는 '0'). 수동 thumb-redo는 AI 정상.
           THUMB_AI_OFF: '1'
           # ⚠️ Google CSE JSON API = 2025 신규고객 차단(死) → 폐기. 검색이미지는 기사 og:image 추출(망만 필요, 키 무관).
           # 저장소 = Cloudflare R2(설정 시 공개 URL 서빙·레포 비대 회피). 5개 다 있어야 R2, 아니면 git 폴백.
@@ -283,7 +222,6 @@ jobs:
           if [ -z "${GEMINI_API_KEY}" ] && [ "${THUMB_AI_OFF}" != "1" ]; then
             echo "GEMINI_API_KEY 미설정 — 썸네일 생성 생략(스캐폴드)"; exit 0
           fi
-          pip install --quiet Pillow 2>/dev/null || pip3 install --quiet Pillow 2>/dev/null || echo "Pillow 설치 실패 — 매체 로고필터 no-op(검색이미지 무회귀)"
           python3 .github/scripts/thumb_gen.py || echo "::warning::썸네일 생성 일부 실패(다이제스트·카드는 보존됨)"
       - name: Commit thumbnails
         if: always()
