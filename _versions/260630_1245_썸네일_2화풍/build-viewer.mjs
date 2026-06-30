@@ -204,7 +204,7 @@ for (const a of articles) {
   a.cards = {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     thumb_search: thumbSearch,   // 검색이미지(기사 og:image+유사) — R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사'
-    thumb_gen: thumbGen,         // AI 생성 2화풍(P3 Gemini · 포토에디토리얼·극화)
+    thumb_gen: thumbGen,         // AI 생성 3화풍(P3 Gemini)
     thumb_usage: thumbUsage,     // 제미나이 토큰 — {gen:{calls,total,cumulative}, search:{…}} · 없으면 null
     card_usage: cardUsage,       // 카드 생성 제미나이 토큰 — {calls,total,cumulative} · 없으면 null(카드 개요 '비용')
 

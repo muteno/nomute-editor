@@ -198,6 +198,15 @@ ${GBLOCK}
 $(cat "$q")"
     # 인라인 재시도 — API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(analyze·ask와 동일·260622).
     #   성공(필수 헤더 존재)·CARDS_FAILED(막다른길)는 즉시 탈출. 과부하 신호일 때만 재시도(is_transient).
+    # ── 폭주(runaway) 교정 재시도 (운영자 260630 · 원인 대응) ──
+    #   모델이 양식을 무시하고 대용량 출력(카드헤더 없음)하면 = 폭주. 정상 기사는 미발동(성공 즉시 탈출)이고,
+    #   폭주 때만 "사고과정 없이 첫 글자부터 카드 양식만·즉시 종료"를 강제하는 교정 프리픽스를 붙여 *1회* 재시도한다
+    #   (정치 민감·모욕 메타포 기사서 6만+토큰 폭주 → 포맷검사 실패하던 근본 대응 · 비용 바운드=폭주 재시도 1회만 ·
+    #    잡 timeout 120분 내 충분). 그래도 실패하면 아래 분류기가 'runaway'로 표면화.
+    fp_base="$fp"; runaway_fixed=0
+    STRICT_PREFIX="⚠️⚠️ [출력 규율 — 강제]: 직전 시도가 양식을 어겨 실패했다. 지금은 사고과정·서론·해설·자기검증을 일절 쓰지 말고, 응답 첫 글자부터 \`# {제목}\`으로 시작해 카드뉴스 MD 양식(\`### [카드 N]\`·\`**텍스트**\`·\`**이미지 프롬프트**\`·\`**검색어**\`)만 3~7장 출력하라. 마지막 카드 직후 즉시 멈춰라(블록·문장 반복 금지). 도저히 카드화 불가하면 첫 줄에 \`CARDS_FAILED: <사유>\`만 출력하라.
+
+"
     inline_delay=15
     for attempt in $(seq 1 "$INLINE_TRIES"); do
       out="$(printf '%s' "$fp" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
@@ -216,17 +225,41 @@ $(cat "$q")"
         echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
         sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
       fi
+      # 폭주 교정 — rc0·출력은 있는데 카드헤더 없음(=양식 위반/폭주) → 교정 프리픽스로 1회만 재시도.
+      if [ "$runaway_fixed" -eq 0 ] && [ "$attempt" -lt "$INLINE_TRIES" ] && [ $rc -eq 0 ] && [ -n "${out// }" ]; then
+        runaway_fixed=1
+        echo "  ⚠️ 양식 위반/폭주 추정($(printf '%s' "$out" | wc -l | tr -d ' ')줄·카드헤더 없음) — 출력규율 강제 프리픽스로 교정 재시도(${attempt}/${INLINE_TRIES})"
+        fp="${STRICT_PREFIX}${fp_base}"; continue
+      fi
       break
     done
 
     # 실패 판정: 비정상 종료 / 빈 출력 / 실패 신호 / parsePrompts 필수 헤더 부재
     if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^CARDS_FAILED' <<<"$out" \
        || ! grep -qm1 '^### \[카드 1\]' <<<"$out" || ! grep -qm1 '^\*\*이미지 프롬프트\*\*' <<<"$out"; then
+      # ── 실패 사유 분류(운영자 260630) — '모델 폭주(runaway)'를 일시·막다른길과 구별해 명시 ──
+      #   증상: 카드헤더(### [카드 1]) 없는 대용량 출력 = 모델이 출력 상한까지 폭주(예: 정치 민감 기사서 6만+ 토큰)
+      #   → 클릭 재시도로 안 풀림(같은 콘텐츠=같은 폭주). reason 첫 줄을 error.log에 박아 뷰어가 표면화(헛클릭 방지).
+      ol=$(printf '%s' "$out" | wc -l | tr -d ' '); ob=$(printf '%s' "$out" | wc -c | tr -d ' ')
+      if grep -qm1 '^CARDS_FAILED' <<<"$out"; then
+        reason="$(grep -m1 '^CARDS_FAILED' <<<"$out" | cut -c1-200)"
+      elif [ $rc -ne 0 ]; then
+        reason="비정상 종료(exit $rc · $(head -c 120 "/tmp/${stem}.err" 2>/dev/null | tr '\n' ' '))"
+      elif [ -z "${out// }" ]; then
+        reason="빈 응답(모델 무출력)"
+      elif ! grep -qm1 '^### \[카드 1\]' <<<"$out" && { [ "${ol:-0}" -gt 400 ] || [ "${ob:-0}" -gt 40000 ]; }; then
+        reason="모델 출력 폭주(runaway · ${ol}줄/${ob}B · 카드헤더 미생성) — 출력규율 강제 교정 재시도도 실패. 전문 붙여넣기/다이제스트 수정 권장"
+      else
+        reason="카드 포맷 미생성(필수 헤더·라벨 부재 · ${ol}줄/${ob}B)"
+      fi
       {
-        echo "exit_code: $rc"
+        echo "reason: $reason"
+        echo "exit_code: $rc · out_lines: $ol · out_bytes: $ob"
         echo "---- stderr ----"; cat "/tmp/${stem}.err" 2>/dev/null
-        echo "---- stdout(head) ----"; printf '%s\n' "$out" | head -n 30
+        echo "---- stdout(head 30) ----"; printf '%s\n' "$out" | head -n 30
+        echo "---- stdout(tail 20) ----"; printf '%s\n' "$out" | tail -n 20
       } > "cards/$stem/error.log"
+      echo "::warning::카드 실패 [$stem]: $reason"
       status_json "cards/$stem" "failed"
       commit_push "cards: $stem 제작 실패"
       fail=$((fail+1)); echo "::endgroup::"; continue

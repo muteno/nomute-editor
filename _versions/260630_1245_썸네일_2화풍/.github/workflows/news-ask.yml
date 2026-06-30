@@ -183,9 +183,9 @@ jobs:
             echo "::warning::재빌드 트리거 실패(다음 정기 빌드 때 반영)"
           fi
 
-  # 3단계 = AI 썸네일 후보 2화풍(픽한 기사만·자동). 카드(외부 Apps Script/Drive)와 분리된
+  # 3단계 = AI 썸네일 후보 3화풍(픽한 기사만·자동). 카드(외부 Apps Script/Drive)와 분리된
   # 레포 내 경로 = Actions가 Gemini를 직접 호출, 한국어 글자도 이미지에 직접 렌더(compose 불필요).
-  # ⚠️ 비용잠금(Lock A) 해제 지점 = 픽=Gemini 2장 자동과금. GEMINI_API_KEY 시크릿 없으면 no-op(스캐폴드).
+  # ⚠️ 비용잠금(Lock A) 해제 지점 = 픽=Gemini 3장 자동과금. GEMINI_API_KEY 시크릿 없으면 no-op(스캐폴드).
   thumb_gen:
     needs: ask
     if: always()              # 분석 일부 실패해도 성공 큐는 썸네일 생성
@@ -202,11 +202,12 @@ jobs:
         with:
           fetch-depth: 0
           ref: main           # ask가 push한 최신 queue 포함
-      - name: 썸네일 후보 — 검색이미지(og:image) + AI 2화풍 생성 (신규 픽만)
+      - name: 검색이미지(기사 og:image 추출) — AI 썸네일 생성은 임시 OFF (신규 픽만)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # ✅ AI 썸네일 2화풍(포토에디토리얼·극화) 생성 ON(운영자 260630 재가동 — 260622 임시 OFF 해제).
-          #    news-analyze.yml과 쌍둥이 경로 동일. 일시 차단하려면 THUMB_AI_OFF: '1' 추가(검색이미지는 유지). 수동 thumb-redo는 항상 AI.
+          # ⏸ 임시(운영자 260622): ✨요약요청 자동경로의 AI 썸네일 생성만 OFF — 검색이미지(og:image·관련사진)는 유지.
+          #    news-analyze.yml과 쌍둥이 자동 뉴스요약 경로라 동일 적용. 복구 = 이 줄 삭제(또는 '0'). 수동 thumb-redo는 AI 정상.
+          THUMB_AI_OFF: '1'
           # ⚠️ Google CSE JSON API = 2025 신규고객 차단(死) → 폐기. 검색이미지는 기사 og:image 추출(망만 필요, 키 무관).
           # 저장소 = Cloudflare R2(설정 시 공개 URL 서빙·레포 비대 회피). 5개 다 있어야 R2, 아니면 git 폴백.
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
