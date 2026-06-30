@@ -2208,8 +2208,11 @@ async function load() {
       const model = buildFeedModel(a); let swapped = false;
       for (const [k, v] of [...REPENDING]) {
         if (v.file !== CUR) continue;
-        const slot = model.findIndex(m => m.n === v.card);
-        const newImg = slot >= 0 ? (c.images[slot] || null) : null;
+        // 완료판정 = oldImg(발사 시점 card.versions[cur].image)와 *같은 소스*인 model.versions[cur].image로 비교.
+        // ⚠️ c.images[slot](R2/name 경로)은 versions 경로(oldImg)와 URL 체계가 달라, 2판+(이미 한 번 수정) 카드선
+        //    내용 무관 항상 !== → 첫 폴(빌드 전)에 조기 '완료' 오판 → 옛 이미지로 되돌리고 폴 중단 = 미반영(운영자 260630).
+        const mm = model.find(m => m.n === v.card);
+        const newImg = mm ? ((mm.versions[mm.cur] || {}).image || null) : null;
         if (newImg && newImg !== v.oldImg) { REPENDING.delete(k); swapped = true; }
       }
       if (swapped) {   // 새 이미지(+버전) 반영 — 캐러셀 위치 보존하며 피드 재구성(고정 UI가 현재 사진에 재바인딩)
