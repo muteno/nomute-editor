@@ -1,24 +1,29 @@
 # 한 번에 좁힌 건 50원, 남은 격차 1630원…최저임금 협상 또 시한 넘겼다
 
 **[프롬프트 설계]**
-- 화풍: B 극화(한국 웹툰 극화) — 매년 시한을 넘기고 공익위원 손에 넘어가는 협상 '구조'를 무겁게 짚는 사회 이슈라, 사실적이고 진지한 극화가 맞다.
-- 분위기: 좀처럼 좁혀지지 않는 두 숫자 사이의 차갑고 팽팽한 교착 — 흐린 무채색 톤 위에 단 하나의 형광 그린이 '벌어진 간극'만 찌르는 정조.
-- 연출 방향: 시급 1만 원 시대를 사는 누구나 당사자라 멈춘다(독자훅) — 한 번에 50원만 움직이고 1630원이 남은 비대칭, 그 뒤에서 노동자의 생계와 영세 자영업자의 폐업이 끝내 만나지 못한 채 결정이 공익위원에게 넘어가는 '의례화된 구조'를 전한다(시사점 관점). 카드마다 '벌어진 거리'와 '닿지 못하는 두 손·시선'을 비주얼 키노트로, 형광 그린(#0FFD02)은 메우지 못한 간극 위에만 얹는다.
+- 화풍: B 극화(한국 웹툰 극화) — 노사 교착과 협상 구조를 짚는 사회 고발 톤이라, 사실적이고 무게감 있는 극화체로 친숙하게 풀었다.
+- 분위기: 차분하지만 팽팽한 교착. muted·desaturated 회의장 공기에 냉소 한 겹 — 또 시한을 넘긴 무력감.
+- 연출 방향: 독자가 멈추는 지점은 "또 시한 넘김, 결국 공익위원 몫"이라는 냉소다(저임금 노동자도 영세 자영업자도 매년 같은 장면을 본다). 전하려는 건 노사가 미는 거리는 30·20원인데 결정권은 딴 데 있다는 협상의 의례화. 그래서 카드 전체가 '좁혀지지 않는 두 숫자'와 '마주 앉았으나 끝내 시선이 닿지 않는 교착'을 키노트로 삼아, 숫자의 거리감을 인물의 거리감으로 번역한다. thumb_dispatch의 흐린 확산광(LGT08) 톤과 네온그린 악센트만 이어받아 차분한 무게를 유지한다.
 
 ### [카드 1]
 **텍스트**
 ```text
-내년 최저임금 협상이
-올해도 법정 시한을 넘겼다
-노사가 하루에 좁힌 건 단 50원
-정작 남은 격차는 1630원이었다
+노사가 하루를 다 써서 좁힌 거리는
+*겨우 50원에 그쳤다*.
+아직 남은 격차는 1630원이다.
+대체 어떤 숫자들이었을까.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a long Korean government wage-committee negotiation table, two opposing groups of suited negotiators seated at the far ends facing each other across a wide empty stretch of polished table, rigid tense postures, hands folded and still, untouched documents, no one reaching across the deadlocked gap, a cold standoff. A lone closed folder left in the empty center of the table catches a faint neon-green (#0FFD02) edge-glow — the only color in the frame. Camera: wide shot from a high angle, shot on 35mm lens. Lighting/mood: overcast diffused daylight through tall windows, flat muted somber shadows. monochrome desaturated base with a single neon-green (#0FFD02) accent, film-noir low-key lighting, deep shadows.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with selective color accents, heavy tense atmosphere.
+Scene: a long Korean government committee conference table viewed from directly above, two rows of suited members seated facing each other, a clear empty gap running down the center between them, printed wage proposal sheets laid before each side, postures stiff and guarded, no one reaching across the divide.
+monochrome desaturated base with a single neon green #0FFD02 accent glowing faintly on the wage figures on the sheets, film-noir low-key lighting, deep shadows.
+Camera: wide establishing shot from a bird's-eye overhead angle, shot on a 24mm wide lens.
+Lighting/mood: overcast diffused interior daylight, flat soft shadows, muted somber institutional mood.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long conference table and meeting-room floor) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the long conference table) extending edge to edge from top to bottom of the frame. The main subject — the two divided rows and the central gap — is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Minimal Korean text only if essential (a few characters max), no English text, no garbled or fake script, no meaningless letters, no dense text.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -34,17 +39,22 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-30일 정부세종청사 10차 전원회의
-노사가 내놓은 1차 수정안
-노동계는 시급 1만1970원
-경영계는 1만340원을 적어냈다
+물음의 답은 이랬다. 30일 회의에서
+노사가 1차 수정안을 받았다.
+노동계는 시급 1만1970원을,
+경영계는 *1만340원을 불렀다*.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: an extreme close-up of two Korean hands coming from opposite sides of a meeting table, each sliding a closed document folder toward the center but stopping short, fingertips tense and pressing down, a clear unbridged gap left between the two folders, the quiet pressure of an unmet offer. A neon-green (#0FFD02) pen rests on one of the folders as the single point of color. Camera: extreme close-up from eye-level, shot on 100mm macro lens. Lighting/mood: cold dim interior light, heavy and tense, faint trembling stillness. monochrome desaturated base with a single neon-green (#0FFD02) accent, film-noir low-key lighting, deep shadows.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with selective color accents, heavy tense atmosphere.
+Scene: a labor-side committee member and a management-side member seated across a Korean conference table, each sliding a freshly printed revised proposal sheet forward, two sheets bearing different wage figures meeting near the center, faces set and unyielding, eyes guarded.
+monochrome desaturated base with a single neon green #0FFD02 accent on the two competing figures, film-noir low-key lighting, deep shadows.
+Camera: medium shot from a three-quarter eye-level angle, shot on a 50mm standard lens.
+Lighting/mood: cold dim interior light, heavy and quiet, faint trembling tension.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the conference table top) extending edge to edge from top to bottom of the frame. The main subject (the two hands and folders) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the conference table surface) extending edge to edge from top to bottom of the frame. The main subject — the two members and the meeting sheets — is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Minimal Korean text only if essential (a few characters max), no English text, no garbled or fake script, no meaningless letters, no dense text.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -54,23 +64,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-최저임금위원회 근로자위원 사용자위원
+최저임금 노사 1차 수정안
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-현행 최저임금은 1만320원
-노동계 안은 16% 인상이지만
-경영계 안은 0.2%에 그친다
-같은 시급, 인상률은 80배 차이다
+처음엔 더 멀었다. 노동계가
+1만2000원, 경영계가 동결을 불렀다.
+노동계가 30원 낮추고 경영계가 20원 올려,
+*합쳐 50원을 좁힌 게 전부다*.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: an enormous conference hall table seen in an extreme long shot, two small groups of negotiators reduced to tiny distant figures at the extreme opposite ends, an overwhelming empty expanse of table stretching between them, the sheer scale emphasizing an unbridgeable distance between two positions. A single small object at the vast table's midpoint glows faint neon-green (#0FFD02), marking the unmet middle. Camera: extreme long shot from eye-level, shot on 24mm wide lens. Lighting/mood: overcast diffused daylight, flat muted somber tone, cold institutional emptiness. monochrome desaturated base with a single neon-green (#0FFD02) accent, film-noir low-key lighting, deep shadows.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with selective color accents, heavy tense atmosphere.
+Scene: a hand with a pen lightly correcting a single figure on a proposal sheet, an old number faintly struck through and a barely-different number written beside it, the adjustment almost imperceptible, the gesture small and reluctant.
+monochrome desaturated base with a single neon green #0FFD02 accent on the tiny corrected mark, film-noir low-key lighting, deep shadows.
+Camera: extreme close-up from a high angle looking down, shot on a 100mm macro lens.
+Lighting/mood: warm soft desk-lamp glow, quiet wistful tone.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the vast conference table) extending edge to edge from top to bottom of the frame. The main subjects (the two distant groups) are anchored in the upper-center band on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk surface holding the document) extending edge to edge from top to bottom of the frame. The main subject — the hand and the barely-changed figure — is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Minimal Korean text only if essential (a few characters max), no English text, no garbled or fake script, no meaningless letters, no dense text.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -80,23 +95,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-최저임금 인상률 노사 격차
+최저임금 노동계 경영계 최초요구안
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-숫자 뒤의 셈법은 정반대였다
-노동계는 임금이 올라야
-소비가 살아난다 말하고
-경영계는 오를수록 폐업을 걱정한다
+좁힌 폭은 작아도 두 안의 거리는 멀다.
+현행 1만320원과 견주면 노동계 16%,
+경영계는 고작 0.2% 인상이다.
+*인상률만 따지면 80배 차이다*.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: two Korean committee representatives in serious disagreement, face to face in the same frame — the labor-side representative leans in, pressing his argument with an earnest open hand; the management-side representative meets his gaze and holds firm with a steady, resolute expression and a composed, immovable posture. Equal conviction on both sides, charged but dignified tension, neither caricatured. A single neon-green (#0FFD02) nameplate light glows on the table between them as the only color. Camera: two-shot from a Dutch angle, shot on 50mm lens. Lighting/mood: a single hard side-light cutting across both faces, deep chiaroscuro shadows, tense atmosphere. monochrome desaturated base with a single neon-green (#0FFD02) accent, film-noir low-key lighting, deep shadows.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with selective color accents, heavy tense atmosphere.
+Scene: the labor representative and the management representative in profile facing each other across the table, an exaggerated visual sense of distance charging the space between them, one leaning forward in earnest, the other arms folded and reserved, the gap between the two bodies wide and unbridged.
+monochrome desaturated base with a single neon green #0FFD02 accent splitting the empty space between them, film-noir low-key lighting, deep shadows.
+Camera: medium two-shot from a slight Dutch-angle tilt, shot on a 70mm short telephoto lens.
+Lighting/mood: a single hard side-light cutting across the figures, deep chiaroscuro shadows, tense atmosphere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the meeting room interior) extending edge to edge from top to bottom of the frame. The main subjects (the two faces) are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the negotiation table and the dim room behind) extending edge to edge from top to bottom of the frame. The main subject — the two facing figures and the gap — is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Minimal Korean text only if essential (a few characters max), no English text, no garbled or fake script, no meaningless letters, no dense text.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -106,23 +126,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-한국노총 한국경총 최저임금
+2027 최저임금 인상률
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-앞서 18일 업종별 차등 적용은 부결돼
-내년에도 단일 최저임금이 적용된다
-이제 노사가 다툴 쟁점은
-'인상 폭' 하나로 좁혀졌다
+숫자 뒤에 깔린 논리는 정반대다.
+노동계는 임금이 올라야 소비가 산다고,
+경영계는 오를수록 영세 자영업자가
+*폐업까지 내몰린다고 맞선다*.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a low-angle view of a row of Korean wage-committee members' raised hands during a vote in the government meeting room, the institutional moment a contentious agenda is struck down, somber and procedural, the raised hands and forearms dominating the upper frame, faces mostly above and out of frame, the weight of a collective decision. A single neon-green (#0FFD02) detail (one band on a wrist) marks the one point of color. Camera: medium shot from a low angle, shot on 50mm lens. Lighting/mood: cold dim interior light, flat institutional gray, heavy and impersonal. monochrome desaturated base with a single neon-green (#0FFD02) accent, film-noir low-key lighting, deep shadows.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with selective color accents, heavy tense atmosphere.
+Scene: a tight close-up of two committee members caught mid-argument — in the foreground a weary labor representative, jaw tight and eyes pleading for a worker's livelihood, while the management representative's set face and folded arms press in from the frame edge, carrying the weight of a small-business owner's burden, the two gazes never meeting.
+monochrome desaturated base with a faint neon green #0FFD02 accent rim-lighting the tense edge between them, film-noir low-key lighting, deep shadows.
+Camera: close-up from an eye-level angle, shot on an 85mm portrait lens.
+Lighting/mood: cold dim interior, heavy and suffocating, a faint trembling tension.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the committee meeting room) extending edge to edge from top to bottom of the frame. The main subject (the raised hands) is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dim conference room) extending edge to edge from top to bottom of the frame. The main subject — the two faces in tense near-confrontation — is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Minimal Korean text only if essential (a few characters max), no English text, no garbled or fake script, no meaningless letters, no dense text.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -132,23 +157,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-최저임금위원회 표결 업종별 차등
+한국노총 경총 최저임금 회의
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-생계가 빠듯한 노동자도
-폐업을 저울질하는 자영업자도
-끝내 한 테이블에서 만나지 못한 채
-올해도 매듭은 공익위원의 몫이 된다
+두 셈법이 평행선을 달리는 사이,
+업종 차등도 부결돼 쟁점은 인상 폭뿐이다.
+그런데 결정은 늘 공익위원 중재안 몫이라,
+*노사의 두 숫자는 명분 신호에 가깝다*.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere. Scene: a wide shot of two weary Korean figures far apart in one muted shared space — on one side a tired wage worker in a work uniform, head slightly bowed; on the other a worried small-business owner in an apron standing by a half-shuttered tiny storefront — a wide empty gap between them, neither facing the other, both downcast, two lives that never meet across the same wage. A faint neon-green (#0FFD02) glow lingers in the empty gap between them, the only color. Camera: wide shot from eye-level, shot on 35mm lens. Lighting/mood: overcast diffused daylight, flat muted somber shadows, a quiet closing weight. monochrome desaturated base with a single neon-green (#0FFD02) accent, film-noir low-key lighting, deep shadows.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, screentone shading, cel-shaded color with defined edges, high-contrast chiaroscuro, muted desaturated palette with selective color accents, heavy tense atmosphere.
+Scene: a wide emptied Korean government conference hall after the session has broken up, the two sides' chairs pushed back and vacated, a single empty chair at the head of the table — the public-interest mediator's seat — left isolated and waiting under the high institutional ceiling, proposal papers still scattered on the table, conveying that the real decision rests with someone not yet seated.
+monochrome desaturated base with a single neon green #0FFD02 accent resting faintly on the central empty chair, film-noir low-key lighting, deep shadows.
+Camera: extreme long shot from a low angle looking up, shot on a 16mm wide lens.
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber institutional emptiness.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the continuous floor of the shared space) extending edge to edge from top to bottom of the frame. The main subjects (the two figures) are anchored in the upper-center band on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the conference hall floor and far wall) extending edge to edge from top to bottom of the frame. The main subject — the isolated empty mediator's chair — is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Minimal Korean text only if essential (a few characters max), no English text, no garbled or fake script, no meaningless letters, no dense text.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,5 +188,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-최저임금 소상공인 저임금 노동자
+최저임금위원회 공익위원 중재안
 ```
