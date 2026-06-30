@@ -2636,10 +2636,11 @@ function decorate(root) {
     if (!tn || tn.nodeType !== 3 || !/^\s*이렇게\s*볼\s*수도/.test(tn.data)) return;
     tn.data = tn.data.replace(/^\s*이렇게\s*볼\s*수도\s*[①-⑳0-9]*\s*[)）.·]?\s*/, '');
   });
-  // 0c) 활용옵션 편향 불릿(li) 통째 제거 → 편향은 콘텐츠 초안(자유요약) 편향줄에서만 표시(중복 제거 · 운영자 260629·260630).
-  //   ⚠️ textContent + 머리 편향 이모지(📊 등 BIAS_RE) 제거 후 판정 — '**편향**:'(bold·firstChild=<strong>)·'📊 편향:'(이모지 머리) 둘 다 포착(이모지 strip은 step3라 0c 시점엔 잔존). 옛 firstChild-텍스트노드 검사는 bold·이모지 누락.
+  // 0c) 활용옵션 편향 불릿(li) 통째 제거 → 편향은 콘텐츠 초안(자유요약) 편향줄에서만 표시(중복 제거 · 운영자 260629). 옛 '| 약보수 보정' suffix 처리도 li 삭제로 자연 해소.
   root.querySelectorAll('li').forEach(li => {
-    if (/^편향\s*[:：]/.test((li.textContent || '').replace(BIAS_RE, '').trimStart())) li.remove();   // (이모지 제외) 불릿 머리가 '편향:'인 것만 — 앵글·시사점 본문 중 편향 언급은 보존
+    const tn = li.firstChild;
+    if (!tn || tn.nodeType !== 3 || !/^\s*편향\s*[:：]/.test(tn.data)) return;   // 불릿 머리가 '편향:'인 것만(앵글·시사점 본문 중 편향 언급은 보존)
+    li.remove();
   });
   // 0b) 다각도 해석: '라벨: 설명'의 라벨(콜론 앞)을 항상 강조(굵게)로 통일 — AI가 **굵게** 안 달아도(라벨은 창의·고정 아님) 앵글 요약 라벨이면 항상 강조(운영자 260622)
   const _dh2 = [...root.querySelectorAll('h2')].find(h => /다각도/.test(h.textContent || ''));
