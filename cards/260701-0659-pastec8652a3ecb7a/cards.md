@@ -1,186 +1,180 @@
-# 홀란 결승골, 노르웨이 28년 만에 월드컵 16강 진출
+# 노르웨이 28년 만의 16강, 골보다 터진 '노 젓기'
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 한국 스포츠 웹툰의 박진감으로 친숙하게. 야간 경기장의 명암과 막판 결승골의 긴장·환희가 극화의 강한 먹선·고대비와 정확히 맞는다.
-- 분위기: 28년 기다림이 터지는 환희 + 막판까지 뒤집힌 승부의 긴장. 차분한 desaturated 베이스 위에 노르웨이 레드 한 색만 살려 시선을 강제로 모은다.
-- 연출 방향: 뉴스 안 보는 SNS 독자도 '막판 결승골'과 '오래 기다린 약팀의 반전'이라는 보편적 짜릿함에서 스크롤을 멈춘다(독자훅). 전하려는 건 '확실한 간판 하나가 결정적 순간을 닫는다'는 값어치(💡 관점). 그래서 매 카드를 사건의 결정적 순간 — 차는 발, 포효, 얼싸안음, 다음을 응시하는 등 — 에 맞춰 야간 조명·레드 악센트로 가장 뜨겁고 사실적으로 잡는다. 화풍만 전 카드 고정, 샷·앵글·거리는 카드마다 분산.
+- 화풍: A 한국 웹툰 수채화 — 28년 만의 환희와 한 팬에서 번진 축제 정서엔 따뜻한 수채화가 맞다(범죄·고발 톤의 극화는 부적합).
+- 분위기: 벅찬 환희와 집단적 열광, 트로피 없이도 이번 월드컵을 가장 즐긴 팀의 축제감. 무겁지 않게, 보는 재미가 먼저.
+- 연출 방향: 결승골보다 '함께 노 젓는' 집단 의식이 진짜 주인공이다 — 붉은 물결과 한 몸처럼 젖혀지는 군중의 동작에 시선을 모은다. 뉴스를 안 보는 SNS 이용자도 '저 광경 뭐지' 하고 스크롤을 멈추게 만드는 게 목표. 노르웨이의 붉은 단색 악센트를 카드 전체에 관통시켜, 경기장 안 환호 → 군중의 노젓기 → 도시로의 확산이 하나의 붉은 흐름으로 읽히게 한다(샷·앵글은 카드마다 분산, 화풍·악센트만 공유).
 
 ### [카드 1]
 **텍스트**
 ```text
-28년 만에 돌아온 노르웨이가
-끝내 *16강 문을 열었다*
-코트디부아르를 2-1로 꺾으며
-1998년 이후 첫 토너먼트에 섰다
+28년을 기다린 무대에서
+노르웨이가 끝내 16강에 올랐다
+그러나 마지막 휘슬까지
+*승부는 출렁였다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with a single bold red accent, heavy dramatic atmosphere.
-Scene: a football team in plain red jerseys erupting in celebration on the pitch right after a decisive goal, several players sprinting with arms thrown wide and mouths open in a roar, teammates colliding into a tight embrace, raw joy and release; generic players with no exact real-person likeness, plain jerseys with no logos and no readable text; a vast floodlit night stadium with a blurred crowd behind.
-Camera: wide shot (WS) from a low angle looking up, shot on a 24mm wide lens, cinematic.
-Lighting/mood: bright cold stadium floodlights raking from high above, deep chiaroscuro shadows, exhilarating night atmosphere; desaturated base with the red of the jerseys as the single color accent carrying the eye.
-Keep the celebrating players, their faces, raised arms and the roar in the upper-center and upper two-thirds, out of the bottom area.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface — the stadium pitch and night air — extending edge to edge from top to bottom of the frame, ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame.
-Composition: ONE continuous surface extending edge to edge, the main subject anchored in the upper-center; no other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the stadium pitch) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Camera: wide establishing shot from a low angle, shot on a 24mm wide lens.
+Lighting/mood: bright stadium floodlights at night with a warm celebratory glow, jubilant and triumphant atmosphere.
+Scene: Norwegian football players in red and blue kits roaring with arms thrown up in triumph on the stadium pitch, a vast crowd of red-clad supporters rising behind them, the long-awaited moment of a 28-year wait breaking into pure joy, the exultant players anchored high in the upper-center. korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette of peach cream and dusty blue, hand-drawn loose ink contours, emotive jubilant expressions, warm ambient lighting, desaturated warm base with a single vivid red accent carried by the supporters' red shirts and kits.
+minimal Korean text only if essential, otherwise no text in the image.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no team logos, no sponsor text, no dense text covering the image; minimal Korean text only if essential
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential
 ```
 **검색어**
 ```text
-Norway World Cup round of 16
+Norway World Cup celebration
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-경기의 물꼬를 튼 건 누사였다
-전반 39분 페널티 지역 왼쪽에서
-외데고르의 패스를 받아
-*오른발로 골문을 갈랐다*
+전반 누사가 선제골로 앞서갔지만
+디알로가 동점골로 따라붙었다
+후반 41분, 홀란의 왼발이
+*28년의 승부를 닫았다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with a single bold red accent, heavy dramatic atmosphere.
-Scene: a winger in a plain red jersey striking a curling right-foot shot from the left edge of the penalty box, the ball bending away toward the far top corner, body coiled and leaning into the kick, a goalkeeper diving helplessly in the background, dynamic motion energy; generic player with no exact real-person likeness, plain jersey with no logos and no readable text; a floodlit night pitch.
-Camera: full shot (FS) from a three-quarter front angle at eye level, shot on a 35mm documentary lens.
-Lighting/mood: bright stadium floodlights with a hard side-light and crisp directional shadows, charged night atmosphere; desaturated base with a single red accent on the jersey and a faint red streak tracing the ball's path.
-Keep the striker, the kicking leg and the bending ball in the upper-center and upper two-thirds, out of the bottom area.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface — the stadium pitch and night air — extending edge to edge from top to bottom of the frame, ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame.
-Composition: ONE continuous surface extending edge to edge, the main subject anchored in the upper-center; no other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the stadium pitch) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Camera: medium shot from eye level, shot on a 70mm short telephoto lens.
+Lighting/mood: stadium floodlights at night, sharp and electric, decisive tension snapping into release.
+Scene: a powerful blond striker sweeping the ball into the goal with his left foot in front of the net, the net rippling, his face caught in fierce concentration breaking into elation, a beaten goalkeeper sprawled behind, the deciding instant of the match, the striker and ball anchored in the upper-center. korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette of peach cream and dusty blue, hand-drawn loose ink contours, emotive intense expression, warm ambient lighting, desaturated warm base with a single vivid red accent on the striker's red kit.
+minimal Korean text only if essential, otherwise no text in the image.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no team logos, no sponsor text, no dense text covering the image; minimal Korean text only if essential
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential
 ```
 **검색어**
 ```text
-Antonio Nusa Norway goal
+Haaland goal Norway Ivory Coast
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-그러나 코트디부아르도 거셌다
-후반 교체된 디알로가 14분 만에
-현란한 개인기로 수비를 허물고
-*왼발로 균형을 맞췄다*
+정작 화제는 경기가 끝난 뒤였다
+붉은 옷을 입은 팬 수백 명이
+한 몸처럼 몸을 젖히며
+*바이킹의 노를 저었다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with a single bold orange accent, heavy dramatic atmosphere.
-Scene: an attacking player in a plain orange jersey surging through two off-balance defenders with a quick close dribble, the ball glued to his left foot, defenders reeling and grasping at air, sense of unstoppable momentum and urgency; generic players with no exact real-person likeness, plain jerseys with no logos and no readable text; a floodlit night pitch.
-Camera: medium shot (MS) with a Dutch tilt, canted tilted horizon, shot on a 50mm lens.
-Lighting/mood: cold restless stadium floodlights, sharp unstable shadows, rising tension; desaturated base with a single orange accent (the attacker's jersey) carrying the eye.
-Keep the dribbling attacker, his eyes and the ball at his foot in the upper-center and upper two-thirds, out of the bottom area.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface — the stadium pitch and night air — extending edge to edge from top to bottom of the frame, ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame.
-Composition: ONE continuous surface extending edge to edge, the main subject anchored in the upper-center; no other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the stadium stands) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Camera: extreme long shot from a high bird's-eye angle, shot on a 20mm wide lens.
+Lighting/mood: stadium floodlights washing over the stands at night, collective euphoric energy.
+Scene: hundreds of supporters dressed in red packed across the stadium stands, all leaning back in perfect unison as if rowing a viking longship together, the oar-pulling motion rippling through the dense crowd like one single living body, the surging red sea of fans filling the upper-center. korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette of peach cream and dusty blue, hand-drawn loose ink contours, emotive collective fervor, warm ambient lighting, desaturated warm base with a single vivid red accent flooding the crowd's red clothing.
+minimal Korean text only if essential, otherwise no text in the image.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no team logos, no sponsor text, no dense text covering the image; minimal Korean text only if essential
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential
 ```
 **검색어**
 ```text
-Amad Diallo Ivory Coast
+Norway fans rowing celebration
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-승부를 가른 건 결국 간판이었다
-후반 41분 홀란이 골문 앞에서
-베르그의 패스를 왼발로 밀어 넣어
-*결승골을 터뜨렸다*
+*노를 저은 건 팬만이 아니었다*
+선수들이 응원석 앞에 모여들었고
+외데고르는 북으로 박자를 맞췄다
+홀란은 "이기면 하자"며 웃었다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with a single bold red accent, heavy dramatic atmosphere.
-Scene: a powerful tall striker in a plain red jersey in the instant after scoring the winner, mouth open in a primal roar, fists clenched and neck taut, eyes blazing with triumph, sweat catching the light; generic player with no exact real-person likeness, plain jersey with no logos and no readable text; a blurred floodlit stadium behind.
-Camera: tight big close-up from a low angle looking up, shot on an 85mm portrait lens, intense and dominant.
-Lighting/mood: a hard bright floodlight rim from above with deep chiaroscuro shadows, explosive dramatic night; desaturated base with the red accent dominating the frame.
-Keep the roaring face, clenched fists and eyes in the upper-center and upper two-thirds, out of the bottom area.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface — the figure and the stadium night air — extending edge to edge from top to bottom of the frame, ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame.
-Composition: ONE continuous surface extending edge to edge, the main subject anchored in the upper-center; no other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the trackside before the supporters' stand) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Camera: group shot from a three-quarter angle, shot on an 85mm portrait lens.
+Lighting/mood: warm floodlight glow at night, intimate celebratory warmth.
+Scene: a tight cluster of football players gathered just in front of the supporters' stand, one player holding a drum and beating the rhythm, the whole group leaning together in the same rowing motion with broad grins and arms linked, a blond star at the center laughing openly, camaraderie radiating, the grouped players anchored in the upper-center. korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette of peach cream and dusty blue, hand-drawn loose ink contours, emotive joyful expressions, warm ambient lighting, desaturated warm base with a single vivid red accent on the players' red kits.
+minimal Korean text only if essential, otherwise no text in the image.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no team logos, no sponsor text, no dense text covering the image; minimal Korean text only if essential
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential
 ```
 **검색어**
 ```text
-Erling Haaland goal celebration
+Norway players Odegaard drum
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-이 골은 홀란의 대회 5호 골이다
-메시에 이어 득점 2위에 올랐다
-출전한 세 경기에서 모두 득점하며
-*팀을 16강에 올린 해결사였다*
+열기는 경기장 밖으로 번져나갔다
+뉴욕 타임스스퀘어가 노를 저었고
+의회에선 의원들이 몸을 젖혔고
+*그 진동이 지진계에까지 잡혔다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with a single bold red accent, heavy dramatic atmosphere.
-Scene: one striker in a plain red jersey standing at the exact center as teammates converge from every side into a celebratory pile, seen from directly overhead, the single star clearly the focal point the whole team rushes toward, radiating energy; generic players with no exact real-person likeness, plain red jerseys with no logos and no readable text; a floodlit green pitch below.
-Camera: wide shot (WS) from a bird's-eye overhead top-down angle, shot on a 20mm wide lens.
-Lighting/mood: even bright stadium floodlights from above casting graphic shadows that radiate outward, triumphant night; desaturated base with the converging red jerseys as the single color accent.
-Keep the central star and the converging teammates in the upper-center and upper two-thirds, out of the bottom area.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface — the pitch seen from directly above — extending edge to edge from top to bottom of the frame, ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame.
-Composition: ONE continuous surface extending edge to edge, the main subject anchored in the upper-center; no other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the open city plaza) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Camera: wide shot from a high angle, shot on a 35mm lens.
+Lighting/mood: bright daytime city light, festive contagious energy spilling into public space.
+Scene: a dense crowd of ordinary people in a bustling urban plaza ringed by towering blank billboards, all seated in long rows and leaning back together in the same rowing motion, the stadium celebration now overflowing into everyday city streets, the rowing crowd filling the upper-center. korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette of peach cream and dusty blue, hand-drawn loose ink contours, emotive playful energy, warm ambient lighting, desaturated warm base with a single vivid red accent threaded through the crowd's red clothing.
+minimal Korean text only if essential, otherwise no text in the image.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no team logos, no sponsor text, no dense text covering the image; minimal Korean text only if essential
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential
 ```
 **검색어**
 ```text
-Haaland Norway teammates celebration
+Times Square Norway rowing
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-홀란은 28년의 갈증을 한 방에 끝냈다
-다음 상대는 일본을 꺾은 브라질이다
-별 하나가 경기 전체를 바꾸기도 한다
-*그 한 방이 또 통할지가 진짜 시험대다*
+한 팬이 고안한 노 젓기가
+1년 만에 의회와 뉴욕까지 번졌다
+트로피는 브라질의 몫일지 몰라도
+*즐기는 법만큼은 노르웨이가 보여줬다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with a single bold red accent, heavy dramatic atmosphere.
-Scene: a lone player in a plain red jersey seen from behind, standing on the pitch and gazing toward the far end of the vast night stadium, a contemplative forward look toward the next challenge, quiet resolve after the celebration, the looming arena stretching ahead; generic player with no exact real-person likeness, plain jersey with no logos and no readable text; a floodlit night stadium ahead.
-Camera: full shot (FS) from behind, a back shot, shot on a 70mm short telephoto lens.
-Lighting/mood: a cool blue-tinged floodlight haze glowing ahead with a long shadow trailing behind, anticipatory and solemn night mood; desaturated base with a single red accent on the jersey.
-Keep the figure's back, shoulders and head and the horizon ahead in the upper-center and upper two-thirds, out of the bottom area.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface — the stadium pitch and night air — extending edge to edge from top to bottom of the frame, ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame.
-Composition: ONE continuous surface extending edge to edge, the main subject anchored in the upper-center; no other surface, no transition between two distinct surfaces anywhere in the frame.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the stadium stand) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Camera: close-up from a profile side angle, shot on an 85mm portrait lens.
+Lighting/mood: soft warm dusk light fading, quiet and tender afterglow.
+Scene: a single supporter in a red shirt seated alone in profile, leaning back mid-rowing-motion with a faraway warm smile, behind them a softly blurred suggestion of countless others just beginning the same motion, one person's small private act quietly becoming everyone's, the lone supporter anchored in the upper-center. korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette of peach cream and dusty blue, hand-drawn loose ink contours, emotive tender expression, warm ambient lighting, desaturated warm base with a single vivid red accent on the lone supporter's red shirt.
+minimal Korean text only if essential, otherwise no text in the image.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no team logos, no sponsor text, no dense text covering the image; minimal Korean text only if essential
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential
 ```
 **검색어**
 ```text
-Brazil national team World Cup
+Norway supporters red shirt
 ```
