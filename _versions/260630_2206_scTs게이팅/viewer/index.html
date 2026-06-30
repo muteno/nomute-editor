@@ -440,7 +440,7 @@
   .pill.gen { color:var(--accent); border:1px solid rgba(15,253,2,.4); animation:pulse 1.6s ease-in-out infinite; }
   .pill.bad { color:#ff7b72; border:1px solid rgba(255,123,114,.4); }
   @keyframes pulse { 50% { opacity:.45; } }
-  @media (prefers-reduced-motion:reduce) { .pill.gen, .genstat.live { animation:none; } .gdots i { animation:none; opacity:1; } }   /* 생성중 opacity 점멸 정지(260630 QA) · 점 모션도 정지(점 3개 정적 노출) */
+  @media (prefers-reduced-motion:reduce) { .pill.gen, .genstat.live { animation:none; } }   /* 생성중 opacity 점멸 정지(260630 QA) */
   .empty { color:var(--mut); text-align:center; padding:56px 0; }
   /* ── 스크랩(수집·큐레이션) 뷰 ── */
   .scrapview { max-width:860px; margin:0 auto; padding:10px 16px 64px; position:relative; }   /* 레거시 = 첫 글래스 블록(누적/신규 패널) 시작선을 feed·sns와 통일(pt 14→10 · 운영자 260627 점1) · 병합박스 absolute 기준 */
@@ -1393,11 +1393,6 @@
   .genstat { margin:14px 0 4px; padding:13px 15px; border:1px solid var(--line); border-radius:16px;
     color:var(--accent); font-size:13px; background:rgba(255,255,255,.04); text-align:center; }   /* 상태문구 = 강조색(픽토 제거·운영자 260629) */
   .genstat.live { color:var(--accent); border-color:rgba(15,253,2,.3); animation:pulse 1.6s ease-in-out infinite; }
-  /* 진행중 점 모션(C·페이드) — '…' 대신 점 3개가 하나씩 톡톡 떠오름. 자리 안 흔들리게 폭 고정(운영자 260630) */
-  .gdots { display:inline-block; width:1.1em; text-align:left; }
-  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
-  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
-  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
   .cardnote { margin:16px 0 6px; font-size:13px; color:var(--accent); font-weight:700; }
   .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin:8px 0; }
   .gal figure { margin:0; }
@@ -3196,9 +3191,7 @@ function cardSec(a) {
       b.onclick = () => makeCards(a.file, b, 'text');   // 프롬프팅 재시도 = 2단계만(이미지는 카드 이미지 생성 버튼)
       sec.appendChild(b);
     } else {
-      // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
-      const phase = c.has_md ? '카드 이미지 생성 중입니다' : '카드뉴스 프롬프팅 중입니다';
-      sec.innerHTML = `<div class="genstat live">${phase}<span class="gdots"><i>.</i><i>.</i><i>.</i></span> 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
+      sec.innerHTML = `<div class="genstat live">카드뉴스 프롬프팅 중입니다… 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
     }
     return;
   }
@@ -6140,12 +6133,11 @@ function openUnmergePop(numEl, c) {
     exitMerge();
   });
 })();
-// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 *미래*면 first_seen 사용.
-// ⚠️ published>first_seen 역전 = '물리적 불가'로 보던 가드가 **연속보도 클러스터**에서 오발화(과감점 버그·운영자 260630·평의회10): first_seen이 *이탈한 옛 멤버*서 별칭승계돼(살아있는 멤버는 전부 신선) published>first_seen이 정상 발생 → 24h로 늙혀 9시뉴스감(rc 큰 대형) 강등(미스매치 324건/10.8%·cross≥8 34건). 교정 = `report_count≥FOLLOW_RC_MIN`(=확인된 연속보도 클러스터·기존 상수 재사용·새 임계 0)이면 역전이어도 published 채택. **future-cut(p≤now)은 불변** = KST/UTC 미래 오기록은 계속 first_seen(보호 보존·진짜 미래발행 8건·누적자격 0). rc 낮은 단발 역전(의심)은 보수적으로 first_seen 유지(§★ 보수성).
+// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 미래거나 수집보다 뒤면(=물리적 불가) first_seen 사용.
 const scTs = c => {
   const p = Date.parse(c.published || ''), f = Date.parse(c.first_seen || '');
-  if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000 || (c.report_count || 0) >= FOLLOW_RC_MIN)) return p;   // 발행 정상(미래 아님) AND (수집보다 앞 OR 연속보도 클러스터[rc≥6]) → 발행 우선
-  if (!isNaN(f)) return f;                                                               // 발행 미래(오기록) 또는 rc낮은 역전 → 수집시각(존재 확인된 상한)
+  if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000)) return p;   // 발행 정상(미래 아님·수집보다 앞) → 발행 우선
+  if (!isNaN(f)) return f;                                                               // 발행 오기록(미래·수집보다 뒤) → 수집시각(존재 확인된 상한)
   return isNaN(p) ? 0 : p;
 };
 // ── 최신 게이트(scFast): 최신한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
