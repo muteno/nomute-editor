@@ -1106,7 +1106,7 @@
     box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
   }
   /* 요약 리더(#dlg)만 = 초록 시그니처 워시 제거 + 피드 실크(feed_bg) 배경 (운영자 260626 · 타 모달 불변). 검정 스크림(.62~.72)로 본문 가독 유지. ⚠️ 헤더 무채색화(운영자 260629 "각 모든 창 상단 무채색" — 옛 '섹션·헤더 초록 유지' 뒤집음): 섹션 헤더(.phase summary)·썸네일 후보(.thumbsec-h) = 무채색. 본문 점·💡·강조(.emon 등)는 유지. */
-  #dlg { scrollbar-gutter: stable both-edges;   /* PC 세로 스크롤바 = 우측에만 거터 생겨 우상단 둥근 모서리에 음영 누출하던 것 차단 → 좌우 대칭 예약(모바일은 radius:0이라 무해 · 260630) */
+  #dlg { display:flex; flex-direction:column; overflow:hidden;   /* 스크롤 컨테이너 = 본문 래퍼(.dlg-body) → 헤더 .dlg-h 고정·스크롤바가 헤더 영역 안 침범(우상단 관통 fix · 260630) */
       background:
       linear-gradient(165deg, rgba(8,10,9,.62), rgba(8,10,9,.72)),
       url(assets/brand/feed_bg.png) center/cover no-repeat, #0b0d0c; }
@@ -1174,10 +1174,11 @@
   @media (prefers-reduced-motion:reduce){ #toolMin:active{ transform:none; } .tool-restore:active{ transform:none; } .tool-restore.pulsing svg{ animation:none; } .tr-closebtn{ animation:none; } }
   /* PC(마우스) 팝업 모달 드래그 — 헤더 잡고 이동(makeDraggable이 pointer:fine에서만 클래스 부여) */
   .drag-handle { cursor:move; -webkit-user-select:none; user-select:none; touch-action:none; }
-  .dlg-h { position:sticky; top:0; z-index:6; background:rgba(20,22,24,.74); backdrop-filter:blur(22px) saturate(1.2);   /* 상단 툴바 = 중립 무채색(초록 틴트 제거·260629) · z-index 2→6 = 스크롤 시 카드 복사버튼(.copy z5)·화살표(.feednav z3)가 헤더 X 위로 떠 겹치던 것 차단(헤더가 덮음·운영자 260629) */
+  .dlg-h { flex:none; z-index:6; background:rgba(20,22,24,.74); backdrop-filter:blur(22px) saturate(1.2);   /* flex:none = 헤더 고정(옛 sticky 대체 · 스크롤은 .dlg-body로 이전·260630) · z-index 6 = 스크롤 시 카드 복사버튼(.copy z5)·화살표(.feednav z3)가 헤더 위로 떠 겹치던 것 차단 */
     -webkit-backdrop-filter:blur(22px) saturate(1.2); border-bottom:1px solid var(--line2);
     padding:11px 16px; display:flex; flex-direction:column; gap:11px;
-    border-top-left-radius:22px; border-top-right-radius:22px; }   /* 상하 대칭(11≠12 비대칭 교정) · 상단 모서리 = 모달 radius(22)와 동일 → sticky 헤더 직각 배경이 둥근 모서리 덮던 것 차단(우상단 음영 fix · 260630) */
+    border-top-left-radius:22px; border-top-right-radius:22px; }   /* 상하 대칭(11≠12 비대칭 교정) · 상단 모서리 = 모달 radius(22)와 동일 → 헤더 직각 배경이 둥근 모서리 덮던 것 차단(우상단 음영 fix · 260630) */
+  .dlg-body { flex:1; min-height:0; overflow-y:auto; }   /* 본문 스크롤 컨테이너(헤더 .dlg-h 아래) → 스크롤바가 헤더 영역 안 침범(관통 fix·260630) · min-height:0 = flex 자식 스크롤 필수 */
   .dlg-top { display:flex; gap:10px; align-items:center; }
   /* 모달 헤더 스왑: 맨 위=원문/X / 스크롤=스크러버(스크롤 위치 게이지). */
   .dlg-prog { display:none; }
@@ -1976,6 +1977,7 @@
 
 <dialog id="dlg">
   <div class="dlg-h"><div class="dlg-prog" id="dlgprog"></div><div class="dlg-top"><span class="dlbox" id="dlbox"><label class="dl-full" title="체크 = IG·스레드·카드뉴스 본문까지 포함(전체) · 미체크 = 기본 요약"><input type="checkbox" id="dlFull" aria-label="전체 포함(IG·스레드·카드뉴스 본문)"><span class="dl-cbox"><svg class="dl-dash" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg><svg class="dl-chk" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span></label><button id="pdfBtn" class="dlg-pdf" type="button" title="요약 HTML 다운로드 — 체크 시 전체 포함"><span class="dl-lbl">요약</span><svg class="dl-ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button></span><a id="src" target="_blank" rel="noopener">원문 <span class="arr">↗</span></a></div><button class="tool-x dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="dlg-body" id="dlgbody">
   <details class="phase" id="ph-sum" open>
     <summary>1. 기사 요약 · 시사점</summary>
     <div class="md" id="mdbody"></div>
@@ -1988,6 +1990,7 @@
     <summary>3. 카드 뉴스</summary>
     <div class="md" id="feedsec"></div>
   </details>
+  </div>
   <!-- 요약 수정 FAB — 콘텐츠 초안~시사점 스크롤 구간에만 점등(펜 모양 원·우측 중하단). 클릭 → revdlg 팝업(좌측 펼침).
        #dlg 직속(backdrop-filter 박스 기준 fixed) → 스크롤해도 모달 안에 고정. 옛 'rev-launch' 알약 대체. -->
   <button class="rev-fab" id="revFab" type="button" aria-label="요약 수정" title="요약 수정">
@@ -2547,7 +2550,7 @@ async function open(a) {
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
   setupScrub();   // 모달 헤더 = 스크롤 위치 스크러버(게이지 + 요약·프롬프트·카드 틱 + 클릭 점프)
   const src = $('#src'); if (a.url){ src.href=hrefOk(a.url); src.style.display=''; } else src.style.display='none';
-  const dlg = $('#dlg'); dlg.showModal(); dlg.scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋
+  const dlg = $('#dlg'); dlg.showModal(); $('#dlgbody').scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋(스크롤=본문 래퍼 .dlg-body)
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
   updateRevFab();   // 열릴 때 FAB 초기 상태(맨 위라 보통 숨김)
   updateCrevFab();   // 🃏 카드 수정 FAB도 동일 초기화
@@ -3977,7 +3980,7 @@ function startRevisePoll() {
         REVISING.delete(file); changed = true;
         if ($('#dlg').open && CUR === file) {                // 열린 본문 자동 갱신(스크롤 위치 보존)
           const a = DATA.find(x => x.file === file);
-          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a).then(() => { if (dlg) dlg.scrollTop = st; }); }
+          if (a) { const db = $('#dlgbody'), st = db ? db.scrollTop : 0; open(a).then(() => { if (db) db.scrollTop = st; }); }
         }
       } else if (Date.now() - v.ts > 20 * 60000) {           // 20분 폴백 — revise 최대 15분+빌드 여유(색은 a.rev로 추후 자동 반영)
         REVISING.delete(file); changed = true;
@@ -4728,7 +4731,7 @@ function updateRevFab() {
   fab.classList.toggle('show', show);
   // #dlg가 backdrop-filter라 그 박스가 fixed/absolute 컨테이닝블록 → 내부 absolute는 콘텐츠와 함께 스크롤됨.
   // top을 scrollTop만큼 보정해 뷰포트 70%(중하단) 라인에 고정(스크롤해도 화면 같은 자리).
-  if (show) fab.style.top = Math.round(dlg.scrollTop + dlg.clientHeight * 0.7 - 26) + 'px';
+  if (show) fab.style.top = Math.round(dlg.clientHeight * 0.7 - 26) + 'px';
   applyReviseFab();   // FAB 재노출 시 잔류 표기 클래스 정리(표기 자체는 제거됨)
 }
 // ── 🃏 카드 수정 FAB — 위 요약 수정 FAB의 카드판 미러. 노출=카드 프롬프트 구간(#ph-card~#ph-feed 직전 = 이미지 생성 직전), 색=cards.crev(요약 a.rev과 독립 = 따로 돎). ──
@@ -4766,7 +4769,7 @@ function updateCrevFab() {
   const dlg = $('#dlg');
   const show = !!(dlg && dlg.open && !$('#crevdlg').open && !$('#revdlg').open && crevFabVisible());   // 팝업 열렸으면 숨김(겹침 방지)
   fab.classList.toggle('show', show);
-  if (show) fab.style.top = Math.round(dlg.scrollTop + dlg.clientHeight * 0.7 - 26) + 'px';   // 요약 FAB과 동일 = 뷰포트 70% 라인 고정(구간 안 겹쳐 동시 노출 없음)
+  if (show) fab.style.top = Math.round(dlg.clientHeight * 0.7 - 26) + 'px';   // 요약 FAB과 동일 = 뷰포트 70% 라인 고정(구간 안 겹쳐 동시 노출 없음)
   applyCrevFab();
 }
 function jumpTo(which) {
@@ -4778,10 +4781,10 @@ function jumpTo(which) {
   else if (which === 't') { const f = $('#ph-feed'); el = (f && !f.hidden) ? f : (sec.querySelector('.mkbtn') || $('#ph-card')); }  // 4/4 카드 피드
   if (!el) return;
   const d = el.closest('details'); if (d) d.setAttribute('open', '');   // 접혀 있으면 펼침
-  const dlg = $('#dlg'), stickyH = ($('.dlg-h') ? $('.dlg-h').offsetHeight : 0);
+  const db = $('#dlgbody');
   requestAnimationFrame(() => {
-    const top = dlg.scrollTop + (el.getBoundingClientRect().top - dlg.getBoundingClientRect().top) - stickyH;
-    dlg.scrollTo({ top: Math.max(0, top), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const top = db.scrollTop + (el.getBoundingClientRect().top - db.getBoundingClientRect().top);
+    db.scrollTo({ top: Math.max(0, top), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   });
 }
 const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));   // String() = 비문자열(숫자·객체) 입력도 안전(api/candidates 직독 등 빌드 우회 대비)
@@ -4999,7 +5002,7 @@ $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidd
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
 $('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
-$('#dlg').addEventListener('scroll', updateScrub, { passive: true });
+$('#dlgbody').addEventListener('scroll', updateScrub, { passive: true });
 
 // 모달 헤더 스크러버 — 스크롤 위치 게이지 + 섹션(요약·프롬프트·카드) 틱 + 클릭 점프. 맨위=원문/X, 스크롤=스크러버.
 function setupScrub() {
@@ -5008,8 +5011,8 @@ function setupScrub() {
   dp.innerHTML = `<div class="scrub"><div class="scrub-bar" id="scrubBar"><div class="scrub-fill" id="scrubFill"></div><i class="scrub-tick" data-j="n"></i><i class="scrub-tick" data-j="s"></i><i class="scrub-tick" data-j="m"></i><i class="scrub-tick" data-j="t"></i><div class="scrub-dot" id="scrubDot"></div></div><div class="scrub-labels"><span class="scrub-lb" data-j="n">요약</span><span class="scrub-lb" data-j="s">SNS 요약</span><span class="scrub-lb" data-j="m">프롬프트</span><span class="scrub-lb" data-j="t">카드</span></div></div>`;
   const bar = $('#scrubBar');
   bar.onclick = e => {
-    const dlg = $('#dlg'), r = bar.getBoundingClientRect(), range = dlg.scrollHeight - dlg.clientHeight;
-    dlg.scrollTo({ top: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * range, behavior: 'smooth' });
+    const db = $('#dlgbody'), r = bar.getBoundingClientRect(), range = db.scrollHeight - db.clientHeight;
+    db.scrollTo({ top: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * range, behavior: 'smooth' });
   };
   dp.querySelectorAll('.scrub-lb').forEach(lb => { lb.onclick = () => jumpTo(lb.dataset.j); });
   requestAnimationFrame(updateScrub);
@@ -5021,13 +5024,12 @@ function scrubTargets() {
 function updateScrub() {
   const dlg = $('#dlg'); if (!dlg || !dlg.open) return;
   const dp = $('#dlgprog'); if (!dp || !dp.firstElementChild) return;
-  const range = dlg.scrollHeight - dlg.clientHeight, st = dlg.scrollTop;
+  const db = $('#dlgbody'), range = db.scrollHeight - db.clientHeight, st = db.scrollTop;
   const pct = range > 0 ? Math.max(0, Math.min(100, st / range * 100)) : 0;
   const fill = $('#scrubFill'), dot = $('#scrubDot');
   if (fill) fill.style.width = pct + '%';
   if (dot) dot.style.left = pct + '%';
-  const top = dlg.getBoundingClientRect().top, tg = scrubTargets();
-  const hh = ($('.dlg-h') ? $('.dlg-h').offsetHeight : 0);
+  const top = db.getBoundingClientRect().top, tg = scrubTargets();
   let cur = 'n';
   ['n', 's', 'm', 't'].forEach(k => {
     const el = tg[k], tick = dp.querySelector(`.scrub-tick[data-j="${k}"]`), lb = dp.querySelector(`.scrub-lb[data-j="${k}"]`);
@@ -5036,7 +5038,7 @@ function updateScrub() {
     const off = st + (el.getBoundingClientRect().top - top);
     const p = range > 0 ? Math.max(0, Math.min(100, off / range * 100)) : 0;
     if (tick) { tick.style.display = ''; tick.style.left = p + '%'; }
-    if (st >= off - hh - 8) cur = k;
+    if (st >= off - 8) cur = k;
   });
   dp.querySelectorAll('.scrub-lb').forEach(lb => lb.classList.toggle('cur', lb.dataset.j === cur && !lb.classList.contains('off')));
   const hd = $('.dlg-h'); if (hd) hd.classList.toggle('scrolled', st > 60);
@@ -7417,7 +7419,7 @@ function startCardRevisePoll() {
         CARD_REVISING.delete(file); changed = true;
         if ($('#dlg').open && CUR === file) {              // 열린 카드 자동 갱신(스크롤 보존) — open이 ensureDetail로 새 cards.md 재로드
           const a = DATA.find(x => x.file === file);
-          if (a) { const dlg = $('#dlg'), st = dlg ? dlg.scrollTop : 0; open(a).then(() => { if (dlg) dlg.scrollTop = st; }); }
+          if (a) { const db = $('#dlgbody'), st = db ? db.scrollTop : 0; open(a).then(() => { if (db) db.scrollTop = st; }); }
         }
       } else if (Date.now() - v.ts > 20 * 60000) {        // 20분 폴백 — 조용히 사라지지 말고 표면화
         CARD_REVISING.delete(file); changed = true;
