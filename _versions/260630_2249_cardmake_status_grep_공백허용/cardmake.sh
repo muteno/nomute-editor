@@ -123,7 +123,7 @@ $(cat "queue/$stem.md" 2>/dev/null)
   EDIT_TEXT="$EDIT_TEXT" EDIT_WISH="${EDIT_WISH:-}" EDIT_SYNC="${EDIT_SYNC:-0}" EDIT_PROMPT="$EDIT_PROMPT" EDIT_SCENE="$EDIT_SCENE" \
     python3 .github/scripts/gen_cards.py --stem "$stem" --edit-card "$CARD_N" \
     || { echo "::error::카드 변경 실패"; exit 1; }
-  pv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
+  pv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
   status_json "cards/$stem" "done" "${pv:-$GVER}"
   commit_push "cards: $stem 카드$CARD_N 변경"
   echo "::endgroup::"
@@ -139,11 +139,11 @@ if [ "$TARGET" = "all" ]; then
     stem="$(basename "$q" .md)"
     if [ ! -d "cards/$stem" ]; then targets+=("$q"); continue; fi
     # 지침 게이트 — 카드의 지침 버전이 현재와 다르면(갱신됨) 재생성 대상에 포함.
-    cv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
+    cv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     [ "$cv" = "$GVER" ] && continue   # 지침 동일 = 최신, 스킵
     # ⛔ done 보호(운영자 승인 260618) — 이미 '슛'해 이미지까지 만든 카드(done/fired_partial/렌더이미지·scenes 보존본)는
     #    지침이 바뀌어도 자동 재생성하지 않는다(이미지·운영자 편집 유실 방지). 반영은 운영자 재촬영(슛)으로.
-    cst="$(grep -o '"state":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
+    cst="$(grep -o '"state":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     cimg="$(ls "cards/$stem"/*.jpg "cards/$stem"/*.png "cards/$stem"/scenes/*.jpg 2>/dev/null | head -1)"
     if [ "$cst" = "done" ] || [ "$cst" = "fired_partial" ] || [ -n "$cimg" ]; then
       echo "지침 변경됐으나 이미 촬영된 카드 — 보호·재생성 스킵: $stem (state=${cst:-?})"; continue
@@ -182,7 +182,7 @@ for q in "${targets[@]}"; do
   # shoot(렌더만) + 기존 cards.md 있으면 = 클로드 스킵(낭비·드리프트 0). 텍스트의 지침버전 보존(pv).
   if [ "$MODE" = shoot ] && [ -s "cards/$stem/cards.md" ]; then
     echo "슛(렌더만): 기존 cards.md 재사용 — 클로드 스킵"
-    pv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
+    pv="$(grep -o '"guidelines_version":"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     [ -n "$pv" ] || pv="$GVER"
   else
     # 고정부(프롬프트 + 강제 주입 지침) → 가변부(다이제스트). stdin 전달 = ARG_MAX 회피
