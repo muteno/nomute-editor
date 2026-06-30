@@ -49,6 +49,9 @@ commit_push() {
   push_main || { echo "::error::push 실패: $1"; return 1; }
 }
 
+# ⚠️ status.json 쓰기 = json.dump(기본 separator) → 콜론 뒤 공백 `"key": "val"`. 이걸 읽는 모든 grep은
+#    반드시 `'"key":[[:space:]]*"…"'`(공백 허용)이라야 함 — 무공백 `'"key":"…"'`는 공백포맷을 영구 미스
+#    (보호 게이트·지침버전 게이트 무력화·좀비 미수거 = 260620·260630 분신술 실증). 신규 읽기 grep도 이 규칙 따를 것.
 status_json() {  # $1=dir $2=state [$3=버전 오버라이드(shoot=기존 버전 보존)]
   # rev = 이 카드가 만들어진 시점의 요약(queue) 수정회차 — 뷰어 stale 감지용(요약이 더 revise되면 a.rev>cards.rev).
   # gen_cards가 남긴 .r2_images.json(R2 공개URL 배열) 있으면 "images"로 합쳐 박는다(뷰어가 R2 직접서빙).
