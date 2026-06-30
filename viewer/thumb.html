@@ -1869,7 +1869,16 @@ function renderEditChips() {
         chip.title = '탭=강조 / 더블탭=수정(비우면 삭제)';
         chip.onclick = () => { if (chip.isContentEditable) return; if (wd.em) { wd.em = null; wd.on = true; renderEditChips(); return; } wd.on = !wd.on; chip.classList.toggle('on'); };
         chip.ondblclick = () => { chip.textContent = wd.text; chip.contentEditable = 'true'; chip.spellcheck = true; chip.lang = 'ko'; chip.classList.add('editing'); chip.focus(); window.getSelection()?.selectAllChildren(chip); };
-        chip.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); chip.blur(); } };
+        chip.onkeydown = ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); chip.blur(); return; }
+          // 어절을 다 지운 뒤 백스페이스 = 앞 어절로 넘어가 이어서 지움(같은 줄 안에서만 · wi=0이면 멈춤=마지노선 · index.html 카드변경과 동일·council 검증 · 운영자 260630)
+          if (ev.key === 'Backspace' && !ev.isComposing && wi > 0 && !chip.textContent.replace(/[\s\u200b\uFEFF\u2060]/g, '')) {
+            ev.preventDefault();
+            edLines[li].splice(wi, 1);
+            PENDING_EDIT = { li, wi: wi - 1 };
+            renderEditChips();
+          }
+        };
         chip.oninput = ev => {
           const raw = chip.textContent, si = raw.search(/\s/);
           if (si >= 0 && !ev.isComposing) {
