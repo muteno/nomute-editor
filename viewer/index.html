@@ -1666,6 +1666,8 @@
     .topsearch { bottom:-26px; height:54px; }   /* 모바일 — 프로필 동일 box + ~6px 더 아래(운영자 260621) */
     .bar { padding:0 12px; }
     dialog { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
+    #dlg .dlg-h { padding-top:calc(11px + env(safe-area-inset-top)); }   /* 노치 회피 — 풀스크린 헤더가 상태바/노치와 안 겹치게(260630 QA 모바일) */
+    #dlg .dlg-x { top:calc(11px + env(safe-area-inset-top)); }
     .md { padding:6px 14px 44px; }
     .gal { grid-template-columns:repeat(2,1fr); }
   }
@@ -4459,11 +4461,12 @@ attachCopyPaste($('#edWish'), true); attachCopyPaste($('#pasteText'), true);   /
   const copyB = document.createElement('button'); copyB.type = 'button'; copyB.className = 'iobtn iobtn-edge iobtn-copy-e iobtn-hide'; copyB.innerHTML = COPY_SVG; copyB.setAttribute('aria-label', '복사'); copyB.title = '복사'; wrap.appendChild(copyB);   // 복사 = 내용 있을 때만(78)
   const eraser = document.createElement('button'); eraser.type = 'button'; eraser.className = 'iobtn iobtn-edge iobtn-erase'; eraser.innerHTML = ERASE_SVG; eraser.setAttribute('aria-label', '입력 지우기'); eraser.title = '입력 지우기'; wrap.appendChild(eraser);   // 지우개 = 최우측(14)
   let undoTimer = null, undoLines = null;
+  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 번쩍임 차단(§🎨 _icon 가드 — 칩 편집/분할마다 SVG 재생성하던 것 차단·260630 QA)
   const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } eraser.classList.remove('iobtn-undo'); eraser.innerHTML = ERASE_SVG; eraser.setAttribute('aria-label', '입력 지우기'); eraser.title = '입력 지우기'; if (edCardIo) edCardIo(); };
   edCardIo = () => {   // 붙여넣기 항상 / 복사는 내용 있을 때만 / 지우개 = 빈칸 dim
     const filled = buildEmphText().trim().length > 0;
-    if (!btn.classList.contains('ok')) { btn.innerHTML = PASTE_SVG; btn.dataset.mode = 'paste'; btn.setAttribute('aria-label', '붙여넣기'); btn.title = '붙여넣기'; }
-    if (!copyB.classList.contains('ok')) { copyB.innerHTML = COPY_SVG; copyB.classList.toggle('iobtn-hide', !filled); }
+    if (!btn.classList.contains('ok')) { setIcon(btn, PASTE_SVG, 'paste'); btn.dataset.mode = 'paste'; btn.setAttribute('aria-label', '붙여넣기'); btn.title = '붙여넣기'; }
+    if (!copyB.classList.contains('ok')) { setIcon(copyB, COPY_SVG, 'copy'); copyB.classList.toggle('iobtn-hide', !filled); }
     if (!eraser.classList.contains('iobtn-undo')) eraser.classList.toggle('iobtn-off', !filled);
   };
   copyB.onclick = ev => { ev.preventDefault(); clipCopy(buildEmphText(), copyB, edCardIo); };   // 복사 전용
@@ -5003,6 +5006,8 @@ $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidd
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
 $('#dlg').addEventListener('close', () => { document.documentElement.style.overflow = ''; });
 $('#dlgbody').addEventListener('scroll', updateScrub, { passive: true });
+// 본문 레이아웃 변화(짧은 본문·details 펼침·리사이즈·폴링 재렌더)도 FAB/scrub 갱신 — 스크롤 없으면 scroll 이벤트가 안 와 stale되던 것 차단(260630 QA 엣지)
+new ResizeObserver(() => { if ($('#dlg').open) updateScrub(); }).observe($('#dlgbody'));
 
 // 모달 헤더 스크러버 — 스크롤 위치 게이지 + 섹션(요약·프롬프트·카드) 틱 + 클릭 점프. 맨위=원문/X, 스크롤=스크러버.
 function setupScrub() {

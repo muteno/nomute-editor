@@ -105,9 +105,10 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
   const b = document.createElement('button'); b.type = 'button'; b.className = 'clipbtn clip-pp'; wrap.appendChild(b);
   const er = document.createElement('button'); er.type = 'button'; er.className = 'clipbtn clip-erase'; er.setAttribute('aria-label', '입력 지우기'); wrap.appendChild(er);
   let undoTimer = null, undoVal = '', prog = false;
+  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 번쩍임 차단 — 매 input SVG 재생성 방지(§🎨 _icon 가드·260630 QA)
   const upd = () => {
-    if (!b.classList.contains('ok')) { const f = ta.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
-    if (!er.classList.contains('clip-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('clip-off', !(ta.value || '').trim().length); }
+    if (!b.classList.contains('ok')) { const f = ta.value.trim().length > 0; setIcon(b, f ? COPY_SVG : PASTE_SVG, f ? 'copy' : 'paste'); b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('clip-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('clip-off', !(ta.value || '').trim().length); }
   };
   const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('clip-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); upd(); };
   er.addEventListener('click', e => { e.preventDefault();
@@ -118,7 +119,7 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
     if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
   });
   b.addEventListener('click', async e => { e.preventDefault();
-    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b._icon = 'check'; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
     else { try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
   });
   ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
