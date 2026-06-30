@@ -6133,12 +6133,11 @@ function openUnmergePop(numEl, c) {
     exitMerge();
   });
 })();
-// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 *미래*면 first_seen 사용.
-// ⚠️ published>first_seen 역전 = '물리적 불가'로 보던 가드가 **연속보도 클러스터**에서 오발화(과감점 버그·운영자 260630·평의회10): first_seen이 *이탈한 옛 멤버*서 별칭승계돼(살아있는 멤버는 전부 신선) published>first_seen이 정상 발생 → 24h로 늙혀 9시뉴스감(rc 큰 대형) 강등(미스매치 324건/10.8%·cross≥8 34건). 교정 = `report_count≥FOLLOW_RC_MIN`(=확인된 연속보도 클러스터·기존 상수 재사용·새 임계 0)이면 역전이어도 published 채택. **future-cut(p≤now)은 불변** = KST/UTC 미래 오기록은 계속 first_seen(보호 보존·진짜 미래발행 8건·누적자격 0). rc 낮은 단발 역전(의심)은 보수적으로 first_seen 유지(§★ 보수성).
+// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 미래거나 수집보다 뒤면(=물리적 불가) first_seen 사용.
 const scTs = c => {
   const p = Date.parse(c.published || ''), f = Date.parse(c.first_seen || '');
-  if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000 || (c.report_count || 0) >= FOLLOW_RC_MIN)) return p;   // 발행 정상(미래 아님) AND (수집보다 앞 OR 연속보도 클러스터[rc≥6]) → 발행 우선
-  if (!isNaN(f)) return f;                                                               // 발행 미래(오기록) 또는 rc낮은 역전 → 수집시각(존재 확인된 상한)
+  if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000)) return p;   // 발행 정상(미래 아님·수집보다 앞) → 발행 우선
+  if (!isNaN(f)) return f;                                                               // 발행 오기록(미래·수집보다 뒤) → 수집시각(존재 확인된 상한)
   return isNaN(p) ? 0 : p;
 };
 // ── 최신 게이트(scFast): 최신한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
