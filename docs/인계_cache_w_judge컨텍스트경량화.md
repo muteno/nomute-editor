@@ -1,7 +1,7 @@
 # 🧯 인계 — cache_w 누수 절감: judge 컨텍스트 경량화(`--bare`)
 
 > **작성** 260701 · 적대 평의회(sonnet 전환) 후속 진단에서 발견 · 정본 = 이 문서 + `.github/scripts/gate_judge.py`·`breaking_judge.py`
-> **상태**: 🟡 **제안(미적용)** — 검증된 해법은 확보, 카나리아 적용은 다음 세션/운영자 승인 후. 이 문서는 그 *인계장*.
+> **상태**: ✅ **적용 완료(260701 머지)** — gate/breaking 둘 다 `--bare` 기본 ON(env `GATE_BARE`/`BREAKING_BARE` 토글, 기본 1). claude 2.1.197 `--bare` 지원 확인(`--help`: "skip ... auto-memory ... and CLAUDE.md auto-discovery"). 효과(cache_w 하락)는 첫 라이브 런 `metrics/usage`로 실측 검증.
 
 ---
 
