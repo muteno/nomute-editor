@@ -3173,14 +3173,10 @@ function cardSec(a) {
   const cs = $('#cardsum'); if (cs) cs.textContent = (st === 'generating' && genStuck) ? '2. 카드 뉴스 프롬프트 — 실패(시간초과)' : (sumlabel[st] || '카드 뉴스 프롬프트');   // phase 2 = 카드 뉴스 프롬프트(운영자 260629). 프롬프팅 15분 초과 = 접힌 헤더도 '실패'로
 
   if (!st || st === 'failed') {
-    if (st === 'failed') {   // error.log 첫 줄 'reason:' 표면화(운영자 260630) — '모델 폭주=재시도 무의미' 등 사유를 보여 헛클릭 방지
-      const em = (c.error || '').match(/^reason:\s*(.+)$/m);
-      const rsn = em ? em[1].trim() : '레포 cards/ 의 error.log 참조';
-      sec.insertAdjacentHTML('beforeend', `<div class="genstat">직전 카드 제작 실패 — ${esc(rsn)}</div>`);
-    }
+    // 실패 = 로그 박스 노출 안 함(사유는 error.log에 기록됨) → 버튼만 '재생성'으로. 실패 표식은 헤더 '— 실패'(sumlabel)로 유지(운영자 260630).
     const b = document.createElement('button');
     b.className = 'mkbtn';
-    b.textContent = st === 'failed' ? '프롬프트 다시 생성' : '프롬프트 생성';
+    b.textContent = st === 'failed' ? '재생성' : '프롬프트 생성';
     b.onclick = () => makeCards(a.file, b, 'text');   // 2단계(텍스트·프롬프트)만 — 이미지(3단계)는 text_done 후 아래 '카드 이미지 생성' 버튼에서만
     sec.appendChild(b);
     return;
