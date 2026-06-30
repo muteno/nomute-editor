@@ -23,7 +23,6 @@ sys.path.insert(0, str(ROOT / "shared"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
 MODEL = os.environ.get("BREAKING_MODEL", "claude-opus-4-8")
-EFFORT = os.environ.get("BREAKING_EFFORT", "").strip()   # 이진 속보 판정엔 추론 불필요 = effort 미사용 기본(불필요 thinking 토큰·쿼터 차단 + sonnet effort 비호환 원천차단). 필요시 env로 부여(하위호환). 260630 평의회 — breaking은 sonnet-5 운영.
 CHUNK = int(os.environ.get("BREAKING_CHUNK", "40"))             # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — gate_judge와 동일·후보 풀 커져도 절단 0)
 MAX_PER_RUN = int(os.environ.get("BREAKING_MAX_PER_RUN", "80")) # 한 런당 판정 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
 
@@ -124,14 +123,12 @@ def judge(items):
     """items=[(idx_str, title)] → ({idx_str: bool}, rc, stderr)."""
     listing = "\n".join(f"{i}\t{(t or '').replace(chr(9), ' ').replace(chr(10), ' ').replace(chr(13), ' ')}" for i, t in items)   # 탭/개행 제거(idx 매핑 보호)
     prompt = f"{RUBRIC}\n[사건 목록]\n{listing}\n\n[판정 출력]"
-    cmd = ["claude", "-p", "--model", MODEL]
-    if EFFORT:                                   # 빈값(기본)이면 --effort 자체를 안 보냄(이진 판정엔 불필요·sonnet 비호환 차단)
-        cmd += ["--effort", EFFORT]
-    cmd += ["--disallowedTools",
-            "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
-            "--max-turns", "1"]
     p, rc, err = run_claude(
-        cmd, prompt, timeout=300, source="breaking")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2) · source=토큰 계측
+        ["claude", "-p", "--model", MODEL, "--effort", "max",
+         "--disallowedTools",
+         "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
+         "--max-turns", "1"],
+        prompt, timeout=300, source="breaking")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2) · source=토큰 계측
     if p is None:
         return {}, rc, err
     verdicts = {}
