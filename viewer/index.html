@@ -440,7 +440,7 @@
   .pill.gen { color:var(--accent); border:1px solid rgba(15,253,2,.4); animation:pulse 1.6s ease-in-out infinite; }
   .pill.bad { color:#ff7b72; border:1px solid rgba(255,123,114,.4); }
   @keyframes pulse { 50% { opacity:.45; } }
-  @media (prefers-reduced-motion:reduce) { .pill.gen, .genstat.live { animation:none; } }   /* 생성중 opacity 점멸 정지(260630 QA) */
+  @media (prefers-reduced-motion:reduce) { .pill.gen, .genstat.live { animation:none; } .gdots i { animation:none; opacity:1; } }   /* 생성중 opacity 점멸 정지(260630 QA) · 점 모션도 정지(점 3개 정적 노출) */
   .empty { color:var(--mut); text-align:center; padding:56px 0; }
   /* ── 스크랩(수집·큐레이션) 뷰 ── */
   .scrapview { max-width:860px; margin:0 auto; padding:10px 16px 64px; position:relative; }   /* 레거시 = 첫 글래스 블록(누적/신규 패널) 시작선을 feed·sns와 통일(pt 14→10 · 운영자 260627 점1) · 병합박스 absolute 기준 */
@@ -1393,6 +1393,11 @@
   .genstat { margin:14px 0 4px; padding:13px 15px; border:1px solid var(--line); border-radius:16px;
     color:var(--accent); font-size:13px; background:rgba(255,255,255,.04); text-align:center; }   /* 상태문구 = 강조색(픽토 제거·운영자 260629) */
   .genstat.live { color:var(--accent); border-color:rgba(15,253,2,.3); animation:pulse 1.6s ease-in-out infinite; }
+  /* 진행중 점 모션(C·페이드) — '…' 대신 점 3개가 하나씩 톡톡 떠오름. 자리 안 흔들리게 폭 고정(운영자 260630) */
+  .gdots { display:inline-block; width:1.1em; text-align:left; }
+  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
+  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
   .cardnote { margin:16px 0 6px; font-size:13px; color:var(--accent); font-weight:700; }
   .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin:8px 0; }
   .gal figure { margin:0; }
@@ -3191,7 +3196,9 @@ function cardSec(a) {
       b.onclick = () => makeCards(a.file, b, 'text');   // 프롬프팅 재시도 = 2단계만(이미지는 카드 이미지 생성 버튼)
       sec.appendChild(b);
     } else {
-      sec.innerHTML = `<div class="genstat live">카드뉴스 프롬프팅 중입니다… 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
+      // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
+      const phase = c.has_md ? '카드 이미지 생성 중입니다' : '카드뉴스 프롬프팅 중입니다';
+      sec.innerHTML = `<div class="genstat live">${phase}<span class="gdots"><i>.</i><i>.</i><i>.</i></span> 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
     }
     return;
   }
