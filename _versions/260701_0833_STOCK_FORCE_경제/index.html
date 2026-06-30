@@ -2475,12 +2475,10 @@ const AMBIG_ARTIST_RE = /지수|가을|리즈|레이|리사|슈화|청하|태연
 const MUSIC_CTX_RE = /앨범|음악|신곡|컴백|데뷔|타이틀곡|뮤직비디오|뮤비|음원|콘서트|공연|팬미팅|월드투어|걸그룹|보이그룹|아이돌|완전체|솔로곡|소속사|엔터테인먼트|블랙핑크|블핑|에스파|아이브|뉴진스|르세라핌|세븐틴|방탄|BTS|트와이스|레드벨벳|여자아이들|YG|JYP|HYBE|제니|로제|카리나|윈터|장원영|안유진/i;
 // 테크→경제 오버라이드 — 애플·맥북·아이폰·반도체 등 테크 소재라도 가격·실적·마진 등 경제 본질이면 경제(운영자 260629 · to_candidates.py ECON_CTX_RE와 동기).
 const ECON_CTX_RE = /값|가격|인상|인하|마진|매출|실적|영업이익|순이익|적자|흑자|주가|관세|판매량|출하량|점유율|어닝|원가|수익성|투자|증시/;
-const STOCK_FORCE_RE = /상한가|하한가|목표가|사이드카|서킷브레이커/;   // 주식 전문어 = 경제 무조건(운영자 260701 · to_candidates.py STOCK_FORCE_RE와 바이트 동기) — 가격제한폭·증권사 목표주가·매매중단(사이드카·서킷브레이커). articleCat 최상단서 어느 카테고리든 경제로.
 // 정치→사회 오버라이드 — 지자체·도청·시청 등 지방행정이고 정치 쟁점(여야·선거·탄핵…) 아니면 사회(운영자 260629 · to_candidates.py LOCALGOV_RE/POL_DISPUTE_RE와 동기).
 const LOCALGOV_RE = /지자체|지방자치|도청|시청|구청|군청|도지사|구청장|군수|시의회|도의회|구의회|자치구|광역시|특별자치|조례|구역청|행정구역/;
 const POL_DISPUTE_RE = /대통령|여당|야당|여야|국회|의원|장관|특검|탄핵|공천|선거|여론조사|내각|대선|총선/;
 function articleCat(a) {
-  if (STOCK_FORCE_RE.test(a.title || '')) return '경제';   // 주식 전문어(상한가·하한가·목표가·사이드카·서킷브레이커) = 경제 무조건(py cat_force STOCK_FORCE_RE 동기·운영자 260701)
   const b = catBucket(a.category);
   const pol = POL_OVERRIDE_RE.test(a.title || '');   // 정치 주체 마커 — 테크 오버라이드용
   if (b && b !== '사회') { if (b === '테크' && pol) return '정치'; if (b === '테크' && ECON_CTX_RE.test(a.title || '')) return '경제'; if (b === '정치' && LOCALGOV_RE.test(a.title || '') && !POL_DISPUTE_RE.test(a.title || '')) return '사회'; if (b === '문화' && (CRIME_OVERRIDE_RE.test(a.title || '') || JUDICIAL_OVERRIDE_RE.test(a.title || ''))) return '사회'; return b; }   // 큐 category 있으면 정본(단 테크+경제본질[값·마진]=경제 · 테크+정부정책=정치 · 정치+지방행정·쟁점無=사회 · 문화+사법본질[헌재·성착취]=사회 = 저장 라벨도 즉시 교정 · 사회는 하트 재분류 여지)
