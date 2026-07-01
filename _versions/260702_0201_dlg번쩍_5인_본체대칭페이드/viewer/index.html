@@ -77,7 +77,7 @@
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   /* 스크롤바 = 반투명 검정(중립) — 페이지·다이얼로그 공통 (운영자 260626: 초록 글래스→검정) */
-  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; scrollbar-gutter:stable; }   /* 스크롤바 자리 상시 예약 → 모달 overflow:hidden 토글 시 뷰포트 폭 불변 = 상단 중앙정렬 요소(배너·시계) 좌우 점프 차단(5인 배너앵글 260701 · 모바일 오버레이 스크롤바는 무영향·데스크톱 겸사) */
+  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; }
   ::-webkit-scrollbar { width:10px; height:10px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
@@ -125,7 +125,6 @@
     box-shadow:0 18px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.10);
     --glow:15,253,2;            /* 글로우 색(피드=초록·기본) */
     animation:bannerbreath 5.5s ease-in-out infinite; will-change:filter; }
-  body:has(#dlg[open]) .bannerframe { animation-play-state:paused; }   /* 요약모달 열림 중 배너 filter 애니 정지 → 모달 뒤라 안 보임(무손실) + 닫을 때 상시 will-change 레이어 재합성 델타 제거 = 상단 잔번쩍 차단(5인 GPU·배너앵글 260701 · play-state는 위상 보존) */
   body.tab-scrap .bannerframe { --glow:255,150,20; }   /* 스크랩 탭 = 앰버 글로우 */
   body[data-tab="sns"] .bannerframe { --glow:12,208,247; }   /* SNS 탭 = 시안 글로우 */
   .bannerclip { position:relative; border-radius:20px; overflow:hidden; border:1px solid var(--line); }
@@ -1120,16 +1119,12 @@
   #dlg { display:flex; flex-direction:column; overflow:hidden;   /* 스크롤 컨테이너 = 본문 래퍼(.dlg-body) → 헤더 .dlg-h 고정·스크롤바가 헤더 영역 안 침범(우상단 관통 fix · 260630) */
       background:
       linear-gradient(165deg, rgba(8,10,9,.62), rgba(8,10,9,.72)),
-      url(assets/brand/feed_bg.png) center/cover no-repeat, #0b0d0c;
-      transition:opacity .18s ease, overlay .18s allow-discrete, display .18s allow-discrete; }   /* 본체도 backdrop과 동일 .18s opacity 페이드(open·close 대칭) — 5인 만장일치 260701: #dlg만 본체 페이드 누락→'본체 하드컷 vs backdrop만 페이드' 비대칭이 잔번쩍 진범(.askdlg는 본체+backdrop 둘 다 페이드=대칭). opacity-only(transform 제외 = blur30 재계산 스내그 회피·#tooldlg 1134 전례) */
+      url(assets/brand/feed_bg.png) center/cover no-repeat, #0b0d0c; }
   dialog::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); }
   /* #dlg(요약모달) 닫기 번쩍 픽스(.askdlg::backdrop 1712 패턴 계승 · 운영자 260701): 요약창 닫을 때 backdrop(blur7)을 즉시 제거 말고 페이드아웃 → 뒤 메인/상단 배너가 한 프레임 비쳐 '버퍼처럼 미리 나오던' 것 마스킹(overlay/display allow-discrete = 페이드 동안 top-layer 유지) */
   #dlg::backdrop { transition:opacity .18s ease, overlay .18s allow-discrete, display .18s allow-discrete; }
   @starting-style { #dlg[open]::backdrop { opacity:0; } }   /* 열 때 대칭 페이드인 */
   #dlg:not([open])::backdrop { opacity:0; }   /* 닫힘(전이) 목표 = 투명 → 위 transition이 부드럽게 뺌 */
-  @starting-style { #dlg[open] { opacity:0; } }   /* 본체 열기 페이드인(backdrop과 동시) */
-  #dlg:not([open]) { opacity:0; }                 /* 본체 닫힘 목표 = 투명(backdrop과 동시 = 본체만 먼저 사라져 홀로 남던 blur 스크림 중간프레임 소멸) */
-  @media (prefers-reduced-motion:reduce) { #dlg, #dlg::backdrop { transition:none; } }   /* 접근성 = 즉시(전이 없음) */
   /* 제작 도구 모달(iframe) — 도구 페이지를 뷰어 위 모달로(클릭→등장). backdrop은 dialog 공통(뒤 dimmed·블러7) 상속 */
   #tooldlg { width:min(600px,94vw); height:90dvh; max-height:90dvh; padding:0; overflow:hidden; display:flex; flex-direction:column;
     background:rgba(17,18,20,.64); backdrop-filter:blur(34px) saturate(1.4); -webkit-backdrop-filter:blur(34px) saturate(1.4);   /* 중립 무채색 글래스(녹색 틴트 제거 · 운영자 260626) */
