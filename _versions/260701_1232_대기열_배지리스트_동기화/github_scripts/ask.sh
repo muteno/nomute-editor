@@ -33,13 +33,12 @@ if [ ${#files[@]} -eq 0 ]; then
 fi
 
 for f in "${files[@]}"; do
-  base="$(basename "$f" .json)"          # YYYY-MM-DD-HHMM-xxxxx (ts=submit.js toISOString→[:.]제거→T치환→slice15·UTC·초없음)
+  base="$(basename "$f" .json)"          # YYYYMMDD-HHMMSS-xxxxx (ts=submit.js toISOString·UTC)
   # 스크랩(IN) 시각 = 운영자가 '요청을 전송한 시점' = 파일명 ts(UTC) → KST 변환해 큐 파일명 YYMMDD-HHMM 으로.
   # ⚠️ 처리 시점 runner date(UTC)를 쓰면 9h 틀어져 feedAgeH(KST 가정) 정렬·대기열 '몇분 전'이 어긋남(운영자 260621 "스크랩=내가 요청한 시점, 안 박히니 못 찾음").
-  # ⚠️ 정규식은 submit.js 실제 형식 YYYY-MM-DD-HHMM(대시 3개·초 없음)에 맞춤 — 옛 YYYYMMDD-HHMMSS 기대는 항상 unmatch→폴백(처리시각) 상시발동이라 의도 안 먹었음(260701 픽스).
-  bts="${base:0:15}"; stamp=""           # YYYY-MM-DD-HHMM (UTC·초없음)
-  if [[ "$bts" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2})$ ]]; then
-    stamp="$(TZ=Asia/Seoul date -d "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:00Z" +%y%m%d-%H%M 2>/dev/null)" || stamp=""
+  bts="${base:0:15}"; stamp=""           # YYYYMMDD-HHMMSS (UTC)
+  if [[ "$bts" =~ ^([0-9]{4})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2})$ ]]; then
+    stamp="$(TZ=Asia/Seoul date -d "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}Z" +%y%m%d-%H%M 2>/dev/null)" || stamp=""
   fi
   [ -z "$stamp" ] && stamp="$(TZ=Asia/Seoul date +%y%m%d-%H%M)"   # 폴백: 파싱 실패 시 현재 KST
   echo "::group::요약 요청: $base"

@@ -5376,10 +5376,13 @@ async function loadQueue() {
   } catch { if (g === qGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시 시도</div>'; return; }
   if (g !== qGen) return;
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
-  // 진행중(processing/retry) 최상단 고정 → 발견성 배지(=진행중 건수)와 리스트 1페이지가 항상 일치.
-  //   (시각 파싱 실패로 t=null이면 API 최신순 정렬서 맨뒤로 밀려 배지엔 세는데 1페이지엔 안 뜨던 불일치 방어·운영자 260701.)
-  //   그룹 내·완료(succ/fail)는 API 최신순 유지(JS 안정정렬). '내역 지우기' 컷오프 이후만.
-  const _qProg = it => (it.status === 'processing' || it.status === 'retry') ? 0 : 1;
+  // 발견성 배지(진행중 건수)도 이 응답으로 즉시 동기화 — 리스트 열 때 별도 폴 안 기다리고 배지 최신화(stale 불일치 방지·추가 fetch 0·운영자 260701). status 기준(loadPending과 동일 = 파이프라인 처리중 = 어디서 세든 같은 값).
+  PEND_PROC = items.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length; updateQBadge();
+  // 화면상 '진행중'(스피너로 그려지는 것) 최상단 고정 → 리스트 1페이지가 배지·진행상태와 일치.
+  //   _qProg를 eff 기준(succ인데 피드 미반영=빌드랙도 qRowHtml서 스피너로 그려짐 → 상단)으로 잡아 '스피너인데 하단' 모순 차단(260701).
+  //   시각 파싱 실패로 t=null이어도 진행중이면 status로 상단 → API 최신순 정렬 맨뒤로 밀려 안 뜨던 불일치 방어. 완료(succ/fail)는 API 최신순 유지(JS 안정정렬). '내역 지우기' 컷오프 이후만.
+  const _qEff = it => (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;   // qRowHtml eff와 동일 기준(빌드랙 succ=스피너)
+  const _qProg = it => { const e = _qEff(it); return (e === 'processing' || e === 'retry') ? 0 : 1; };
   QITEMS = items.filter(it => !it.t || it.t > cut).sort((a, b) => _qProg(a) - _qProg(b) || (b.t || 0) - (a.t || 0));
   QPAGE = 0;
   renderQueuePage();
@@ -5408,24 +5411,25 @@ function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 
   const enteredK = it.t ? new Date(it.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '?';
   const nowK = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
   const d = it.diag || {};
-  if (d.kind === 'ask-failed') {   // ✨요약요청(ask) 실패 = pending(.txt) 아닌 asks/failed/ 경로 → 전용 진단(운영자 260620)
+  if (d.kind === 'ask-failed' || d.kind === 'ask-stuck') {   // ✨요약요청(ask) = asks/ 경로 전용 진단(pending .txt 아님). ask-failed=asks/failed/격리·로그有 / ask-stuck=asks/ 잔류·20분+ 미처리(로그無 — 옛 일반 stuck 경로로 새 pending/*.txt 오문구 차단·260701)
+    const stuckAsk = d.kind === 'ask-stuck';
     const A = [];
-    A.push('# ✨요약 요청 처리 실패 진단 — ' + qTitle(it));
+    A.push('# ✨요약 요청 ' + (stuckAsk ? '미처리(stuck) 진단' : '처리 실패 진단') + ' — ' + qTitle(it));
     A.push('', '> 자동 생성(뷰어 대기열). 이 파일을 클로드에게 전달하면 원인 분석·복구에 사용합니다.', '');
     A.push('## 요약 (5W1H)');
-    A.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK);
+    A.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK + (stuckAsk && d.mins != null ? ' · 경과 약 ' + d.mins + '분' : ''));
     A.push('- **무엇(What)**: ✨요약 요청(자연어' + (d.reqText ? '+캡처 가능' : '') + ') — `news-ask` 트랙(`pending/` analyze와 별개).');
-    A.push('- **어디서(Where)**: `asks/failed/' + it.id + '.json`(+`.log`)로 격리.');
-    A.push('- **왜(Why·추정)**: ask.sh 처리 실패(빈 요청/Claude 해석 실패/커밋 실패 — 아래 로그).');
+    A.push('- **어디서(Where)**: ' + (stuckAsk ? '`asks/' + it.id + '.json`(미처리 잔류 — 아직 asks/failed/ 이동 전)' : '`asks/failed/' + it.id + '.json`(+`.log`)로 격리') + '.');
+    A.push('- **왜(Why·추정)**: ' + (stuckAsk ? 'news-ask 워크플로 미완/미발동(20분+ 잔류) — 단발 런이라 자가재시도 없음. Actions run 확인.' : 'ask.sh 처리 실패(빈 요청/Claude 해석 실패/커밋 실패 — 아래 로그).'));
     A.push('', '## 입력 (요청문)', '', '````', d.reqText || '(텍스트 없음 — 캡처만일 수 있음)', '````');
     if (d.log) A.push('', '## 실패 로그', '', '````', d.log, '````');
     A.push('', '## 진단 힌트 (클로드용)');
     A.push('- 확인: GitHub Actions `news-ask` 최근 run → `Run ask` / `Surface failures` 스텝 로그.');
-    A.push('- 복구: `news-ask` workflow_dispatch 재실행(account 선택) — 단 `asks/failed/`의 json을 `asks/`로 되돌려야 재처리.');
+    A.push('- 복구: `news-ask` workflow_dispatch 재실행(account 선택)' + (stuckAsk ? '.' : ' — 단 `asks/failed/`의 json을 `asks/`로 되돌려야 재처리.'));
     A.push('- 입력 식별자(grep용): `' + it.id + '`');
     const aa = document.createElement('a');
     aa.href = URL.createObjectURL(new Blob([A.join('\n')], { type: 'text/markdown;charset=utf-8' }));
-    aa.download = '요약요청실패_' + it.id + '.md';
+    aa.download = (stuckAsk ? '요약요청미처리_' : '요약요청실패_') + it.id + '.md';
     document.body.appendChild(aa); aa.click(); aa.remove();
     setTimeout(() => { try { URL.revokeObjectURL(aa.href); } catch {} }, 1500);
     return;

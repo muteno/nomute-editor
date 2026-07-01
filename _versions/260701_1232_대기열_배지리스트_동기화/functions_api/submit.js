@@ -16,7 +16,7 @@ export async function onRequestPost({ request, env }) {
     : [];
   if (!text && !images.length) return json({ error: '빈 요청 — 내용이나 캡처를 넣어줘' }, 400);
 
-  const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);   // YYYY-MM-DD-HHMM (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) — pending.js askTime·ask.sh 파서가 이 형식 기대
+  const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);   // YYYYMMDD-HHMMSS
   const rnd = Math.random().toString(36).slice(2, 7);
   const path = `asks/${ts}-${rnd}.json`;
   const payload = JSON.stringify({ ts, text, images });   // images = data URL 배열
