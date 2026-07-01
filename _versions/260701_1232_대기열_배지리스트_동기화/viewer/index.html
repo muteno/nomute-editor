@@ -5376,11 +5376,7 @@ async function loadQueue() {
   } catch { if (g === qGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시 시도</div>'; return; }
   if (g !== qGen) return;
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
-  // 진행중(processing/retry) 최상단 고정 → 발견성 배지(=진행중 건수)와 리스트 1페이지가 항상 일치.
-  //   (시각 파싱 실패로 t=null이면 API 최신순 정렬서 맨뒤로 밀려 배지엔 세는데 1페이지엔 안 뜨던 불일치 방어·운영자 260701.)
-  //   그룹 내·완료(succ/fail)는 API 최신순 유지(JS 안정정렬). '내역 지우기' 컷오프 이후만.
-  const _qProg = it => (it.status === 'processing' || it.status === 'retry') ? 0 : 1;
-  QITEMS = items.filter(it => !it.t || it.t > cut).sort((a, b) => _qProg(a) - _qProg(b) || (b.t || 0) - (a.t || 0));
+  QITEMS = items.filter(it => !it.t || it.t > cut);   // '내역 지우기' 컷오프 이후만(API 최신순 유지)
   QPAGE = 0;
   renderQueuePage();
 }
