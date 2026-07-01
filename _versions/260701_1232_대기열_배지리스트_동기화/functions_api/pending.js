@@ -84,7 +84,7 @@ export async function onRequestGet({ env }) {
   }));
 
   // ── 2b) asks/failed/ 최근 = ✨요약요청(ask) 처리 실패(FAIL + 로그). ask 실패가 그동안 뷰어에 안 떴음 → 대기열에 표면화(운영자 260620). ──
-  // ⚠️ ask 파일명 ts = submit.js의 toISOString(UTC) `YYYY-MM-DD-HHMM` → askTime(UTC) 파싱(폰 KST의 fnameTime과 다름).
+  // ⚠️ ask 파일명 ts = submit.js의 toISOString(UTC) `YYYYMMDD-HHMMSS` → askTime(UTC) 파싱(폰 KST의 fnameTime과 다름).
   const askFailed = (await listDir('asks/failed'))
     .filter(f => f && f.type === 'file' && /\.json$/i.test(f.name))
     .map(f => ({ f, t: askTime(f.name) }))
@@ -104,7 +104,7 @@ export async function onRequestGet({ env }) {
 
   // ── 2c) asks/ top-level (.json) = ✨요약요청 접수(in-flight·처리중). submit.js가 asks/<ts>.json 커밋 →
   //   news-ask가 처리 후 rm(성공=queue/ 생성)·실패=asks/failed/ 이동. 그동안 대기열에 안 떠 '접수 확인'이 안 됐음
-  //   → 제출 즉시 '처리중'으로 표면화(운영자 260622 — "무조건 대기열엔 떠야 안심"). 파일명 ts=toISOString(UTC)→askTime(YYYY-MM-DD-HHMM). url無(요약요청)→key 없음.
+  //   → 제출 즉시 '처리중'으로 표면화(운영자 260622 — "무조건 대기열엔 떠야 안심"). 파일명 ts=toISOString(UTC)→askTime. url無(요약요청)→key 없음.
   const askPend = (await listDir('asks'))
     .filter(f => f && f.type === 'file' && /\.json$/i.test(f.name))   // asks/failed/ 는 type:'dir' → 제외
     .map(f => ({ f, t: askTime(f.name) }))
@@ -135,15 +135,12 @@ export async function onRequestGet({ env }) {
   return json({ items, now });
 }
 
-// ask 파일명 = submit.js `toISOString().replace(/[:.]/g,'').replace('T','-').slice(0,15)` = YYYY-MM-DD-HHMM
-//   (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) → epoch ms. ⚠️ UTC 파싱(폰 KST의 fnameTime과 다름).
-//   ⚠️ 이전 정규식(YYYYMMDD-HHMMSS)은 실제 파일명과 안 맞아 항상 null → ask가 배지엔 세지만(processing)
-//   리스트 정렬 맨뒤로 밀려 1페이지서 사라지고, askFailed는 `x.t &&` 필터에 컷돼 아예 안 뜨던 버그(260701 픽스).
+// ask 파일명 YYYYMMDD-HHMMSS(submit.js toISOString=UTC) → epoch ms. ⚠️ UTC 파싱(폰 KST의 fnameTime과 다름).
 function askTime(name) {
-  const m = name.match(/^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})/);
+  const m = name.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/);
   if (!m) return null;
-  const [, y, mo, dd, hh, mi] = m;
-  const ms = Date.parse(`${y}-${mo}-${dd}T${hh}:${mi}:00Z`);
+  const [, y, mo, dd, hh, mi, ss] = m;
+  const ms = Date.parse(`${y}-${mo}-${dd}T${hh}:${mi}:${ss}Z`);
   return Number.isFinite(ms) ? ms : null;
 }
 // pending YYMMDD-HHMMSS(digits=6) / queue YYMMDD-HHMM(digits=4) → epoch ms(KST·폰 date 기준).
