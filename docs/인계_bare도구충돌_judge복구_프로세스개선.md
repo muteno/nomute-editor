@@ -1,6 +1,6 @@
 # 인계 — `--bare` 도구충돌 사고 · judge 복구 · 프로세스 개선 (장기 작업 · 세션 끊겨도 이어갈 것)
 
-> ✅ **상태 = 3갈래 전부 완료 (260701).** (1) judge 복구 ✔ · (2) 인덱싱 접음 ✔ · (3) 카나리아 프로세스 규칙화 ✔(#1288). **잔여(선택·비긴급) = judge `--bare` 재활성**(§1④·§4 마지막 — cache_w 회수용, 안 해도 판정 정상). 이 문서 = 사고 전말·복구 근거의 SSOT(라우터 §📰 포인터). 재활성 시도할 세션은 §1④ 카나리아 절차 그대로.
+> ✅ **상태 = 전부 완료 (260701).** (1) judge 복구 ✔ · (2) 인덱싱 접음 ✔ · (3) 카나리아 프로세스 규칙화 ✔(#1288) · (4) **judge cache_w 재활성 = `--safe-mode`로 완료 ✔(#1290·카나리아 승격 · cache_creation −97.2% 실측)**. 이 문서 = 사고 전말·복구 근거의 SSOT(라우터 §📰 포인터). ⚠️ **진짜 원인 정정(아래 §0)**: 사고는 도구충돌(MultiEdit)이 아니라 **`--bare`의 OAuth 인증실패**였음(실측). ∴ 재활성은 `--bare` 아닌 **`--safe-mode`**(OAuth 유지)로 했다. **잔여(선택)=생성경로 dead `--bare` 정리.**
 > ⚠️ (원래 취지) 진행 중일 때 다음 세션이 체크리스트를 이어가라고 만든 문서. 완료 항목 `[x]`·날짜 기록. (운영자 지시 260701: "장기간 될 수도 있으니 기록해놔서 계속 참조하게.")
 
 ## 0. 배경 — 이번에 무슨 일이 있었나 (사고 전말)
@@ -10,11 +10,12 @@
 - **(A) 문서 감량 = 성공·유지**: PR #1275(완료로그 압축)·#1276(A단계 문체압축) → 100,806B→95,966B(**−4.8%**), 규칙 0 손실(핵심토큰 전존·check_refs rc=0).
 - **(B) 인덱싱 = 실패·롤백**: PR #1281(생성경로 `--bare` 기본 ON). 분신술 10인 검증 중 **라이브 파손 발견** → 롤백(#1284).
 
-**🔑 진짜 원인 (확정)**: `--bare` 모드는 CLI 도구 세트를 축소하는데, 생성경로·judge의 `--disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,…"`에 **bare 모드엔 없는 도구(`MultiEdit` 등)** 가 들어있음 → CLI가 *"Permission deny rule 'MultiEdit' matches no known tool"* 로 **시작하자마자 rc=1 즉사**. 인증·품질·입력 전부 정상이었고 **딱 도구명 충돌 하나**가 문제.
-- 실측 stderr(머지 후 생성경로 실패 로그): `Permission deny rule "MultiEdit" matches no known tool — check for typos.`
-- 즉 **인덱싱 방법(`--bare`) 자체는 유효. 구현(금지도구 목록에 bare 미지원 도구 혼입)의 실수.** 단 도구명 충돌로 성공 케이스가 0이라 **`--bare`의 실제 절감효과·품질영향은 아직 미실측.**
+**🔑 진짜 원인 (260701 실측 *정정* — 초기 진단 틀렸음)**: 처음엔 "`MultiEdit` 도구충돌"로 진단했으나 **부정확**. 컨테이너·실 OAuth Actions 3모드 실측 결과:
+- `Permission deny rule "MultiEdit" matches no known tool` = **비치명 stderr 경고** — normal·safe·bare 모드 *전부*에서 뜨고 normal/safe는 rc=0 성공. `MultiEdit`은 CLI 2.1.197에 **아예 없는 도구**라 어느 모드든 "unknown" 경고만 냄(판정 무영향·stdout 미오염).
+- **진짜 원인 = `--bare`가 OAuth를 안 읽음.** CLI 2.1.197 `--help`: *"Anthropic auth is strictly ANTHROPIC_API_KEY or apiKeyHelper via --settings (OAuth and keychain are never read)."* 이 레포는 **구독 OAuth 전용**(종량제 키 없음 · 워크플로 `unset ANTHROPIC_API_KEY`) → `--bare`면 **인증부터 rc=1 즉사**. (실측: 컨테이너 `--bare`+동일 = `Authentication error` rc=1 / `--safe-mode`+동일 = rc=0 정상.)
+- ∴ **인덱싱 목표(CLAUDE.md 로드 스킵) 자체는 유효하나 그 *수단*으로 `--bare`는 OAuth 레포엔 영영 불가.** 올바른 수단 = **`--safe-mode`**(CLAUDE.md·skills·hooks·MCP만 끄고 *"Auth, built-in tools, permissions work normally"*). 실측 절감 = cache_creation **53,855→1,512(−97.2%)** · 판정 동일(NO=NO) · rc=0(실 OAuth Actions 카나리아).
 
-**🚨 파생 발견 (핵심)**: 같은 충돌이 **judge에도** 있었음. `gate_judge.py`·`breaking_judge.py`도 `--disallowedTools`에 `MultiEdit` + `GATE_BARE`/`BREAKING_BARE` 기본 ON(#1264·260630 22:47 도입). → **judge가 260630부터 `--bare`로 rc=1 즉사 = 경중(grade)·긴급(breaking) 판정이 열흘 가까이 멈춰 있었음.** 증거: judge shard 0건(성공 계측 없음) + 미판정 적체 **391→494 증가**(채점 0).
+**🚨 파생 발견 (핵심)**: 같은 `--bare`(OAuth 문제)가 **judge에도** 있었음. `gate_judge.py`·`breaking_judge.py`도 `GATE_BARE`/`BREAKING_BARE` 기본 ON(#1264·260630 22:47 도입). → **judge가 260630부터 `--bare`로 인증 rc=1 즉사 = 경중(grade)·긴급(breaking) 판정이 열흘 가까이 멈춰 있었음.** 증거: judge shard 0건(성공 계측 없음) + 미판정 적체 **391→494 증가**(채점 0).
 
 **현재 상태 (안전·롤백 완료)**: 생성경로·judge `--bare` 전부 **기본 OFF**(#1284·#1285). CLAUDE.md −4.8% 유지. check_refs rc=0.
 
@@ -24,17 +25,17 @@
 
 목표: judge 파손을 **확실히** 확정하고, **제대로 고치고**, **재발 방지**.
 
-- [ ] **① 파손 100% 확정 (쐐기)**: breaking-judge 워크플로 최근 런 job 로그 stderr에 `MultiEdit matches no known tool`이 실제로 찍혔는지 확인. (정황증거 = 적체 391→494·shard 0·생성경로와 동일조건 = 이미 강하나, 로그로 못박기.)
+- [x] **① 파손 확정 + 원인 정정** (260701): 초기 "MultiEdit 도구충돌" 진단은 **틀렸음**. 3모드 실측 = `MultiEdit matches no known tool`은 normal/safe/bare *전부*서 뜨는 **비치명 노이즈**(CLI 2.1.197에 없는 도구). **진짜 원인 = `--bare`가 OAuth 안 읽음 → 인증 rc=1 즉사**(§0 정정). 정황증거(적체 391→537·shard 0)와 정합.
 - [x] **② 즉시 롤백** (260701 · #1285): `GATE_BARE`/`BREAKING_BARE` 기본 1→0 → `--bare` 안 붙음 → judge 작동 복귀.
-- [ ] **③ 채점 재개 실측**: 롤백 후 다음 judge 런에서 미판정 적체(494)가 **줄어드는지**·judge shard가 rc=0으로 남는지 확인. 안 줄면 다른 원인.
-- [ ] **④ 근본 수정 결정**: judge `--bare`는 원래 cache_w 81%↓ 목적(#1264)이었음. 되살리려면 **`--disallowedTools`에서 bare 미지원 도구(`MultiEdit`·`NotebookEdit`·`Task` 등) 제거** 후 `GATE_BARE=1` 재활성 → 카나리아 1런으로 rc=0·cache_w 하락 확인. **또는** 롤백 유지(누수 감수·판정 정상 우선). ⚠️ judge는 도구 자체를 안 씀(`--max-turns 1`·전 도구 disallow)이라 `--disallowedTools`를 **아예 비우거나 `"*"` 한 토큰**으로 바꾸면 충돌 원천 제거 가능 — 검토.
-- [ ] **⑤ 재발 방지 게이트** (아래 §3와 공유): `check_refs`에 "`--bare` 켜는 스크립트인데 `--disallowedTools`에 bare 미지원 도구 있으면 rc=1" 추가 → judge·생성경로 재발 기계 차단.
+- [x] **③ 채점 재개 실측** (260701): 롤백 후 breaking-judge 트리거 → 적체 **537→337→23** 급감 · judge shard **rc=0·cache_w 57k**(normal 모드 복귀) = 정상 판정 복귀 확인.
+- [x] **④ 근본 수정 = `--safe-mode`로 재활성 완료** (260701 · #1290): `--bare` 재활성은 **불가 판명**(OAuth 안 읽음 = 사고 진짜원인). 대신 **`--safe-mode`**(OAuth 유지 + CLAUDE.md·skills·hooks·MCP만 비활성)로 cache_w 재활성 → **실 OAuth Actions 카나리아 rc=0·cache_creation 53,855→1,512(−97.2%)·판정 동일** → 승격(workflow env `GATE_SAFE`/`BREAKING_SAFE`='1'). `--disallowedTools`서 `MultiEdit`(phantom)만 제거.
+- [x] **⑤ 재발 방지 게이트** (260701): `check_refs.check_judge_bare()` — judge `--bare` emit·생성경로 `--bare` 기본 ON이면 `rc=1`(OAuth 즉사 차단·--safe-mode는 통과). 옛 `check_bare_tool_conflict`(도구충돌 프레이밍)에서 정확한 원인(OAuth)으로 재작성.
 
 ---
 
 ## 2. 인덱싱 (생성경로 `--bare`) = **접음 (운영자 (2) 확정)**
 
-- 더 진행 안 함. 코드(claude_meter.sh·more_images.py 게이트)는 **기본 OFF로 남겨둠**(제거 안 함 = 미래 재검토 여지·현재 무해). CLAUDE.md §📰 L175 "생성경로 --bare 금지"는 **정확한 상태**(금지=OFF)라 유지.
+- 더 진행 안 함(생성경로 CLAUDE.md-스킵 최적화는 보류). 코드(claude_meter.sh·more_images.py `CLAUDE_BARE` 게이트)는 **기본 OFF로 남아 있음**(현재 무해). ⚠️ **단 `--bare`는 OAuth 레포엔 영영 불가**(재검토 여지 아님·§0) → 훗날 생성경로도 CLAUDE.md 로드 스킵하려면 `--safe-mode`로(단 생성은 MCP/skills/컨텍스트 의존 가능 = judge와 달리 정밀분석 후에만). 잔여 = dead `--bare` 게이트 정리(§4 마지막·선택).
 
 ---
 
@@ -59,5 +60,11 @@
 - **260701 (마무리)**: **(3) 프로세스 개선 = ①②③④ 완료** (#1288 merge `270f4c3`).
   - 규칙 "라이브 파이프라인 플래그 = 카나리아 1건 후 승격(전면 기본 ON 금지)"을 CLAUDE.md §📰 불변 L177에 등재(`--bare` 불변 바로 뒤).
   - 검증 = check_refs rc=0(신규 `--bare↔도구충돌 게이트` 포함) + `git show origin/main:CLAUDE.md` read-back 실측. CLAUDE.md 95,966B→97,799B(+1.8KB = 규칙 1줄, 감량 실질 유지).
-  - **∴ 이 장기작업 3갈래(1 judge복구 / 2 인덱싱접음 / 3 프로세스) 전부 종료.** judge 라이브 정상(shard 재생성·grade 커밋 재개 확인) · `--bare` 재활성은 미결(원하면 §1④ 카나리아 절차로 훗날).
+  - **∴ 이 장기작업 3갈래(1 judge복구 / 2 인덱싱접음 / 3 프로세스) 전부 종료.** judge 라이브 정상(shard 재생성·grade 커밋 재개 확인).
+- **260701 (재활성)**: **(4) judge cache_w 재활성 = `--safe-mode`로 완료** (운영자 "라우터 md 품질 유지하면서 참조는 없애는거").
+  - 🔑 **원인 재규명**: `--bare` 재활성을 시도하다 CLI `--help` 정독 → **`--bare`는 OAuth 안 읽음**(strictly ANTHROPIC_API_KEY) 발견. 이 레포는 OAuth 전용 → `--bare`는 영영 불가 = **#1264 사고 진짜원인도 이것**(MultiEdit stderr는 비치명 노이즈였음·3모드 실측 정정). §0·§1① 갱신.
+  - ✅ **해법 = `--safe-mode`**: CLAUDE.md·skills·hooks·MCP만 끄고 *"Auth·built-in 도구·permissions 정상"*. judge(gate·breaking) `--bare`→`--safe-mode`(env `GATE_SAFE`/`BREAKING_SAFE`) · `--disallowedTools`서 phantom `MultiEdit` 제거 · check_refs `check_judge_bare`로 재작성.
+  - 🧪 **카나리아(§📰 규칙 준수·#1288 자체적용)**: ⓐ 기본 OFF 머지(#1290) → ⓑ workflow `safe_mode=true` 디스패치(self-test 스텝·#1291) → ⓒ **실 OAuth Actions 실측: normal cache_creation 53,855 vs safe 1,512 = −97.2% · 둘 다 rc=0 · 판정 동일(NO=NO)** → ⓓ 승격(env `'1'` 고정). 컨테이너 A/B도 동일(50,070→1,708).
+  - **∴ judge가 CLAUDE.md 로드 없이 판정(cache_w −97%·품질 0변화·OAuth 정상).** 롤백 = workflow env `GATE_SAFE`/`BREAKING_SAFE` 두 줄 제거(코드 기본 OFF).
+  - ⏭ **잔여(선택·비긴급)**: 생성경로(claude_meter.sh·more_images.py)의 **dead `--bare` 게이트 정리** — 기본 OFF라 무해하나 `--bare`는 OAuth로 영영 불가한 footgun(미래 세션이 `CLAUDE_BARE=1` 하면 생성 인증 즉사). 제거하거나(권장) 생성 품질 정밀분석 후 `--safe-mode`로 전환. check_judge_bare가 기본 ON 승격은 이미 rc=1로 차단 중.
   - ⏭ **잔여(선택·비긴급)**: judge `--bare` 재활성(cache_w 81%↓ 회수) — 이제 §📰 카나리아 규칙 + `check_bare_tool_conflict` 게이트가 있으니 안전하게 시도 가능. 절차 = `--disallowedTools`에서 `MultiEdit`/`NotebookEdit`/`Task` 제거(또는 `"*"` 단일토큰) → `GATE_BARE=1` → `breaking-judge.yml` `workflow_dispatch` 단건 → 로그 rc=0·cache_w 하락 확인 → 기본 ON. 안 해도 판정은 정상(누수만 감수).
