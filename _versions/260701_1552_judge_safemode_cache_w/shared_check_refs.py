@@ -565,16 +565,13 @@ def check_claude_failover():
     return rc
 
 
-def check_judge_bare():
-    """judge(gate_judge·breaking_judge)는 라이브·구독 OAuth 전용 파이프라인 → --bare 금지, --safe-mode만.
-    ⚠️ 진짜 원인(260701 실측 정정): --bare는 OAuth를 안 읽는다(CLI 2.1.197 --help 명시 "Anthropic auth is
-    strictly ANTHROPIC_API_KEY or apiKeyHelper — OAuth and keychain are never read"). 이 레포는 구독 OAuth 전용
-    (종량제 키 없음 · 워크플로가 ANTHROPIC_API_KEY도 unset)이라 judge에 --bare면 *인증부터* rc=1 즉사 = #1264(260630)
-    사고의 진짜 원인. (당시 'MultiEdit matches no known tool' stderr는 *비치명 노이즈* — normal/safe 모드에서도 뜨고 rc=0,
-    MultiEdit은 CLI 2.1.197에 아예 없는 도구일 뿐. 도구충돌은 원인 아니었음·실측 260701.)
-    ∴ CLAUDE.md 로드 스킵(cache_w 절감)이 필요하면 반드시 --safe-mode(Auth·built-in 도구·permissions 정상 유지).
-    게이트: judge 스크립트가 '--bare'를 emit(코드경로)하면 rc=1 · 생성경로(claude_meter·more_images)도 --bare 기본 ON이면 rc=1(OAuth 즉사).
-    정본 = CLAUDE.md §📰 + docs/인계_bare도구충돌_judge복구_프로세스개선.md."""
+def check_bare_tool_conflict():
+    """--bare 모드는 CLI 도구 세트를 축소 → --disallowedTools에 bare 미지원 도구(MultiEdit·NotebookEdit·Task)를
+    지정하면 CLI가 'matches no known tool'로 거부 = claude rc=1 즉사(260701 사고: 생성경로 #1281·judge #1264 파손·판정 열흘 멈춤).
+    게이트: --bare가 기본 ON인 경로 + --disallowedTools에 bare 미지원 도구 = rc=1(재활성 시 재발 차단).
+    현재 롤백(기본 OFF)이면 통과 · 미래 재활성(기본 "1"/:-1) 시 도구 안 빼면 커밋 막힘.
+    정본 = docs/인계_bare도구충돌_judge복구_프로세스개선.md."""
+    UNSUP = ('MultiEdit', 'NotebookEdit', 'Task')   # bare 모드에 없는 도구(실측 MultiEdit 거부·유사 추정)
     rc = 0
     bad = []
 
@@ -584,23 +581,45 @@ def check_judge_bare():
         except Exception:
             return ''
 
-    # judge(py): '--bare' emit(코드경로)면 = OAuth 인증 즉사. 주석 속 설명('--safe-mode: … --bare 아님')은 따옴표 없어 미매칭.
+    def _unsup_in_disallow(txt):
+        found = []
+        for m in re.finditer(r'disallowedTools"?\s*,?\s*\n?\s*"([^"]+)"', txt):
+            for t in UNSUP:
+                if t in m.group(1) and t not in found:
+                    found.append(t)
+        return found
+
+    # judge(py): 한 파일에 *_BARE 기본 ON + --disallowedTools
     for n in ('gate_judge.py', 'breaking_judge.py'):
         txt = _read('.github/scripts/' + n)
-        if re.search(r'"--bare"', txt):
-            bad.append('%s (judge에 --bare emit = OAuth 안 읽어 인증 즉사 → --safe-mode 사용)' % n)
+        if re.search(r'(GATE|BREAKING)_BARE"\s*,\s*"1"', txt):
+            u = _unsup_in_disallow(txt)
+            if u:
+                bad.append('%s (judge --bare 기본ON + --disallowedTools %s)' % (n, '/'.join(u)))
 
-    # 생성경로: --bare 기본 ON(claude_meter :-1 / more_images "1")이면 = OAuth 즉사(현재 롤백 OFF면 통과)
+    # 생성경로: claude_meter 기본 ON(:-1) + 그 래퍼 쓰는 .sh의 --disallowedTools
     if re.search(r'CLAUDE_BARE:-1', _read('shared/claude_meter.sh')):
-        bad.append('claude_meter.sh (CLAUDE_BARE 기본 ON = 생성경로 --bare = OAuth 즉사)')
-    if re.search(r'CLAUDE_BARE"\s*,\s*"1"', _read('.github/scripts/more_images.py')):
-        bad.append('more_images.py (CLAUDE_BARE 기본 ON = --bare = OAuth 즉사)')
+        import glob
+        for p in sorted(glob.glob(os.path.join(ROOT, '.github/scripts/*.sh'))):
+            txt = open(p, encoding='utf-8').read()
+            if 'claude_meter' not in txt:
+                continue
+            u = _unsup_in_disallow(txt)
+            if u:
+                bad.append('%s (claude_meter --bare 기본ON + --disallowedTools %s)' % (os.path.basename(p), '/'.join(u)))
+
+    # more_images.py: 자체 --bare 기본 ON + --disallowedTools
+    mi = _read('.github/scripts/more_images.py')
+    if re.search(r'CLAUDE_BARE"\s*,\s*"1"', mi):
+        u = _unsup_in_disallow(mi)
+        if u:
+            bad.append('more_images.py (--bare 기본ON + --disallowedTools %s)' % '/'.join(u))
 
     if bad:
-        print('❌ judge/파이프라인 --bare 게이트 — OAuth 전용 레포에 --bare(OAuth 안 읽음=인증 즉사·260701 사고 진짜원인): %s → --safe-mode로 교체(CLAUDE.md 로드 스킵 + Auth·도구 정상 · 정본 CLAUDE.md §📰)' % ', '.join(bad))
+        print('❌ --bare↔도구충돌 게이트 — --bare 기본 ON인데 --disallowedTools에 bare 미지원 도구(MultiEdit 등) = CLI "no known tool" rc=1 즉사 재발(260701 사고): %s → --disallowedTools에서 그 도구 빼거나 --bare 기본 OFF(정본 docs/인계_bare도구충돌_judge복구_프로세스개선.md)' % ', '.join(bad))
         rc = 1
     else:
-        print('✅ judge/파이프라인 --bare 게이트 — judge는 --safe-mode(OAuth 정상)·생성경로 --bare 기본 OFF(260701 사고 재발방지).')
+        print('✅ --bare↔도구충돌 게이트 — --bare 기본 ON 경로에 bare 미지원 --disallowedTools 없음(260701 재발방지).')
     return rc
 
 
@@ -653,7 +672,7 @@ def main():
     except Exception as e:
         print('⚠️ claude 폴오버 게이트 스킵:', e)
     try:
-        if check_judge_bare() != 0:   # judge = OAuth 전용 → --bare 금지(OAuth 안 읽어 인증 즉사 = 260701 사고 진짜원인) · --safe-mode만 · 생성경로 --bare 기본 ON도 차단
+        if check_bare_tool_conflict() != 0:   # --bare 기본 ON + --disallowedTools bare미지원도구(MultiEdit) 충돌 = rc=1 즉사 재발방지(260701 사고)
             rc = 1
     except Exception as e:
         print('⚠️ --bare 도구충돌 게이트 스킵:', e)

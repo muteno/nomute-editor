@@ -23,10 +23,6 @@ on:
         description: '실제 긴급 포맷(News / (긴급)…) 미리보기 1발'
         type: boolean
         default: false
-      safe_mode:
-        description: 'judge --safe-mode 카나리아(CLAUDE.md 로드 스킵 = cache_w 절감 시험 · 기본 OFF)'
-        type: boolean
-        default: false
 
 concurrency:
   group: breaking-judge
@@ -71,7 +67,6 @@ jobs:
         if: steps.chk.outputs.pending != '0'
         env:
           BREAKING_MODEL: claude-sonnet-5   # 룰북 이진 분류 = sonnet-5 운영(opus 대비 쿼터 대폭↓·다층 게이트가 오탐 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
-          BREAKING_SAFE: ${{ inputs.safe_mode && '1' || '' }}   # --safe-mode 카나리아 게이트: dispatch safe_mode=true일 때만 ON(CLAUDE.md 로드 스킵). 자동/예약 런은 빈값=OFF. 승격 = 이 줄을 '1' 고정(260701 §📰 카나리아 규칙).
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
@@ -88,7 +83,6 @@ jobs:
           GATE_MODEL: claude-sonnet-5   # 룰북 0~3 분류 = sonnet-5 운영(빈도·쿼터 1위 호출 · gradeW완화·cat_force·grade게이트가 경계오차 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
           GATE_MAX_PER_RUN: "200"   # 한 런 노출권 경중 채점 상한 80→200(운영자 260701 전수검증 — 미채점 백로그 소진·수집함 노출건 다 AI 검증). sonnet 빠름·timeout 45로 커버. 롤백=이 줄 제거(코드 기본 80).
           GATE_CAT_QUOTA: "120"     # 한 런 cross-2 cat 재판별 상한 40→120(cat 미판별 백로그가 최다·우편요금류 오분류가 여기 갇힘). 롤백=이 줄 제거(코드 기본 40).
-          GATE_SAFE: ${{ inputs.safe_mode && '1' || '' }}   # --safe-mode 카나리아 게이트: dispatch safe_mode=true일 때만 ON(CLAUDE.md 로드 스킵). 자동/예약 런은 빈값=OFF. 승격 = 이 줄을 '1' 고정(260701 §📰 카나리아 규칙).
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
