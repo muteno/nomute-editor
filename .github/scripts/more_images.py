@@ -72,7 +72,9 @@ prompt = """다음은 한 뉴스기사의 큐레이션 요약·시사점이다. 
 print("Claude({}) 관련 뉴스이미지 소스 검색 — '{}'".format(MODEL, head[:40]), flush=True)
 try:
     res = subprocess.run(
-        ["claude", "-p", "--model", MODEL, "--effort", "max",
+        ["claude", "-p"]
+        + (["--bare"] if os.environ.get("CLAUDE_BARE", "0").strip().lower() not in ("0", "false", "no", "off", "") else [])  # 라우터 auto-discovery 스킵(안 읽는 ~37k 누수 차단 · 260701 · 롤백 CLAUDE_BARE=0)
+        + ["--model", MODEL, "--effort", "max",
          "--allowedTools", "WebFetch,WebSearch",
          "--disallowedTools", "Write,Edit,MultiEdit,NotebookEdit,Bash,Task",
          "--max-turns", "40"],

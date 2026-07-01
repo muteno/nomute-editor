@@ -1,0 +1,187 @@
+name: breaking-judge
+# 속보 2차 판정 — viewer/candidates.json 의 미판정 속보후보(breaking_candidate & 'breaking' 없음)를
+# Claude(claude -p) 로 '긴급 속보?' 판정 → breaking=true/false 확정. 급발 사건만 push(사용자 확정).
+# scrape 가 새 속보후보 뜰 때만 디스패치(매 15분 X) → 토큰 절약. self-gate: 후보 없으면 Claude 설치도 안 함.
+# GITHUB_TOKEN 커밋은 워크플로를 재트리거하지 않음(루프 방지).
+
+on:
+  workflow_dispatch:
+    inputs:
+      account:
+        description: '이 실행에 쓸 구독 OAuth 계정'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+      test_push:
+        description: '테스트 알림 1발(구독자 전원·긴급 무관)'
+        type: boolean
+        default: false
+      preview:
+        description: '실제 긴급 포맷(News / (긴급)…) 미리보기 1발'
+        type: boolean
+        default: false
+
+concurrency:
+  group: breaking-judge
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # candidates.json·pending·seen·push 원장 커밋
+  actions: write    # 긴급 자동픽 → news-analyze 디스패치(GITHUB_TOKEN push 는 재귀방지로 못 깨움 → 명시 발동 · pick.yml 동일)
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45   # 런당 상한 상향 25→45(운영자 260701 전수검증) — 속보 ≤2청크 + 경중 MAX_PER_RUN=200(≤5청크)+cat QUOTA=120(≤3청크). sonnet 청크당 ~2-3분 → ~35분 내 · 나머지는 재디스패치
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # 게이트 — 미판정 속보후보 + 미채점 경중후보 수. 0이면 아래 Claude 설치·판정 스텝 전부 스킵(비용 0).
+      - name: 미판정 후보 확인 (속보 + 경중)
+        id: chk
+        run: |
+          nb=$(python3 .github/scripts/breaking_judge.py --count)
+          ng=$(python3 .github/scripts/gate_judge.py --count)
+          n=$((nb + ng))
+          echo "pending=$n" >> "$GITHUB_OUTPUT"
+          echo "미판정: 속보 ${nb}건 · 경중 ${ng}건 (총 ${n})"
+
+      - name: Setup Node
+        if: steps.chk.outputs.pending != '0'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code CLI
+        if: steps.chk.outputs.pending != '0'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 속보 판정 (claude -p)
+        if: steps.chk.outputs.pending != '0'
+        env:
+          BREAKING_MODEL: claude-sonnet-5   # 룰북 이진 분류 = sonnet-5 운영(opus 대비 쿼터 대폭↓·다층 게이트가 오탐 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+        run: |
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN 비어있음 — 판정 생략(다음 런 재시도)"; exit 0
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          python3 .github/scripts/breaking_judge.py
+
+      - name: 경중 채점 (claude -p · AI 게이트)
+        if: steps.chk.outputs.pending != '0'
+        env:
+          GATE_MODEL: claude-sonnet-5   # 룰북 0~3 분류 = sonnet-5 운영(빈도·쿼터 1위 호출 · gradeW완화·cat_force·grade게이트가 경계오차 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
+          GATE_MAX_PER_RUN: "200"   # 한 런 노출권 경중 채점 상한 80→200(운영자 260701 전수검증 — 미채점 백로그 소진·수집함 노출건 다 AI 검증). sonnet 빠름·timeout 45로 커버. 롤백=이 줄 제거(코드 기본 80).
+          GATE_CAT_QUOTA: "120"     # 한 런 cross-2 cat 재판별 상한 40→120(cat 미판별 백로그가 최다·우편요금류 오분류가 여기 갇힘). 롤백=이 줄 제거(코드 기본 40).
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+        run: |
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN 비어있음 — 채점 생략(다음 런 재시도)"; exit 0
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          python3 .github/scripts/gate_judge.py
+
+      - name: Commit (breaking 확정)
+        if: steps.chk.outputs.pending != '0'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add viewer/candidates.json 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter·gate/breaking) 동반 커밋 — 있을 때만
+          if git diff --cached --quiet; then echo "변동 없음 — 커밋 생략"; exit 0; fi
+          git commit -m "AI 판정: 속보 breaking · 경중 grade 갱신"
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep $((2**i))
+          done
+          echo "::error::breaking 판정 push 실패"; exit 1
+
+      # 긴급(breaking AND grade≥2) 새 사건 → 구독자에게 웹푸시(앱 꺼도 옴). 비치명·dedup(push/sent.json).
+      - name: 긴급 웹푸시 발송 (pywebpush)
+        if: steps.chk.outputs.pending != '0' || github.event.inputs.test_push == 'true' || github.event.inputs.preview == 'true'
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 설치 실패 — 발송 생략"; exit 0; }
+          if [ "${{ github.event.inputs.test_push }}" = "true" ]; then
+            python3 .github/scripts/push_send.py --test
+          elif [ "${{ github.event.inputs.preview }}" = "true" ]; then
+            python3 .github/scripts/push_send.py --notify "News" "(긴급) 이런 식으로 긴급 속보가 옵니다 — 미리보기"
+          else
+            python3 .github/scripts/push_send.py
+          fi
+
+      - name: Commit (push 원장·구독 정리)
+        if: steps.chk.outputs.pending != '0' || github.event.inputs.test_push == 'true' || github.event.inputs.preview == 'true'
+        run: |
+          if [ -z "$(git status --porcelain push/)" ]; then echo "push 변동 없음 — 커밋 생략"; exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add push/
+          git commit -m "push: 발송 원장·구독 정리"
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep $((2**i))
+          done
+          echo "::error::push 원장 커밋 실패"; exit 1
+
+      # ── 긴급 grade≥3 자동 픽 → pending 적재 + news-analyze 발동(자동 요약·카드). 운영자 260622. ──
+      # ⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독) + Gemini 썸네일 2장($). 보수적 다중 가드는
+      #    scraper/auto_pick_breaking.py 안(grade≥3·cross≥2·<4h[first_seen 기준]·사건당1회 다중키 영구dedup·런2/일8 상한 · PICK_URL=c.url 로 수동픽과 dedup 정합).
+      - name: 긴급 grade≥3 자동 픽
+        if: steps.chk.outputs.pending != '0'
+        id: autopick
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+        run: |
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN   # 구독 OAuth만 사용(api-key 충돌 차단 · 판정 스텝과 동일)
+          python3 -m pip install --quiet --break-system-packages feedparser requests || { echo "::warning::deps 설치 실패 — 자동픽 생략"; echo "picked=0" >> "$GITHUB_OUTPUT"; exit 0; }   # 24.04 PEP-668 = --break-system-packages 필수(push 스텝과 동일 · 없으면 자동픽 무성과 green)
+          python3 scraper/auto_pick_breaking.py | tee /tmp/autopick.out
+          echo "picked=$(sed -n 's/^PICKED=//p' /tmp/autopick.out | tail -1)" >> "$GITHUB_OUTPUT"
+
+      - name: 자동픽 커밋 & 분석 발동
+        if: steps.chk.outputs.pending != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json)" ]; then
+            echo "자동픽 변동 없음 — 커밋 생략"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json
+          git commit -m "auto-pick: 긴급 grade≥3 자동 분석 (픽 ${{ steps.autopick.outputs.picked }}건)"
+          pushed=0
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && { pushed=1; break; }
+            git rebase --abort 2>/dev/null || true
+          done
+          # ⚠️ pending·seen·ledger = 한 커밋(원자) → push 실패면 셋 다 main 미반영 = 분석 발동해도 news-analyze가 pending 못 봄(무과금)
+          #    + 다음 런 재평가(self-heal·로컬 커밋은 runner 종료 시 폐기). ∴ push 성공했을 때만 발동(무의미 no-op 디스패치 회피).
+          if [ "$pushed" != 1 ]; then echo "::warning::자동픽 커밋 push 실패 — 분석 미발동(pending 미반영·다음 런 재평가)"; exit 0; fi
+          # 실제 픽이 있을 때만 분석 발동(GITHUB_TOKEN push 는 재귀방지로 news-analyze 못 깨움 → 명시 디스패치 · pick.yml 패턴)
+          if [ "${{ steps.autopick.outputs.picked }}" != "0" ] && [ -n "${{ steps.autopick.outputs.picked }}" ]; then
+            ok=0; for i in 1 2 3; do
+              gh workflow run news-analyze.yml && { ok=1; break; }
+              echo "::warning::news-analyze 디스패치 실패 — 재시도 $i"; sleep $((i*3))
+            done
+            [ "$ok" = 1 ] || echo "::warning::news-analyze 디스패치 3회 실패 — pending 적재됨(다음 흡수)"
+          fi

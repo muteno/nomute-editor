@@ -565,6 +565,45 @@ def check_claude_failover():
     return rc
 
 
+def check_judge_bare():
+    """judge(gate_judge·breaking_judge)는 라이브·구독 OAuth 전용 파이프라인 → --bare 금지, --safe-mode만.
+    ⚠️ 진짜 원인(260701 실측 정정): --bare는 OAuth를 안 읽는다(CLI 2.1.197 --help 명시 "Anthropic auth is
+    strictly ANTHROPIC_API_KEY or apiKeyHelper — OAuth and keychain are never read"). 이 레포는 구독 OAuth 전용
+    (종량제 키 없음 · 워크플로가 ANTHROPIC_API_KEY도 unset)이라 judge에 --bare면 *인증부터* rc=1 즉사 = #1264(260630)
+    사고의 진짜 원인. (당시 'MultiEdit matches no known tool' stderr는 *비치명 노이즈* — normal/safe 모드에서도 뜨고 rc=0,
+    MultiEdit은 CLI 2.1.197에 아예 없는 도구일 뿐. 도구충돌은 원인 아니었음·실측 260701.)
+    ∴ CLAUDE.md 로드 스킵(cache_w 절감)이 필요하면 반드시 --safe-mode(Auth·built-in 도구·permissions 정상 유지).
+    게이트: judge 스크립트가 '--bare'를 emit(코드경로)하면 rc=1 · 생성경로(claude_meter·more_images)도 --bare 기본 ON이면 rc=1(OAuth 즉사).
+    정본 = CLAUDE.md §📰 + docs/인계_bare도구충돌_judge복구_프로세스개선.md."""
+    rc = 0
+    bad = []
+
+    def _read(p):
+        try:
+            return open(os.path.join(ROOT, p), encoding='utf-8').read()
+        except Exception:
+            return ''
+
+    # judge(py): '--bare' emit(코드경로)면 = OAuth 인증 즉사. 주석 속 설명('--safe-mode: … --bare 아님')은 따옴표 없어 미매칭.
+    for n in ('gate_judge.py', 'breaking_judge.py'):
+        txt = _read('.github/scripts/' + n)
+        if re.search(r'"--bare"', txt):
+            bad.append('%s (judge에 --bare emit = OAuth 안 읽어 인증 즉사 → --safe-mode 사용)' % n)
+
+    # 생성경로: --bare 기본 ON(claude_meter :-1 / more_images "1")이면 = OAuth 즉사(현재 롤백 OFF면 통과)
+    if re.search(r'CLAUDE_BARE:-1', _read('shared/claude_meter.sh')):
+        bad.append('claude_meter.sh (CLAUDE_BARE 기본 ON = 생성경로 --bare = OAuth 즉사)')
+    if re.search(r'CLAUDE_BARE"\s*,\s*"1"', _read('.github/scripts/more_images.py')):
+        bad.append('more_images.py (CLAUDE_BARE 기본 ON = --bare = OAuth 즉사)')
+
+    if bad:
+        print('❌ judge/파이프라인 --bare 게이트 — OAuth 전용 레포에 --bare(OAuth 안 읽음=인증 즉사·260701 사고 진짜원인): %s → --safe-mode로 교체(CLAUDE.md 로드 스킵 + Auth·도구 정상 · 정본 CLAUDE.md §📰)' % ', '.join(bad))
+        rc = 1
+    else:
+        print('✅ judge/파이프라인 --bare 게이트 — judge는 --safe-mode(OAuth 정상)·생성경로 --bare 기본 OFF(260701 사고 재발방지).')
+    return rc
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -613,6 +652,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ claude 폴오버 게이트 스킵:', e)
+    try:
+        if check_judge_bare() != 0:   # judge = OAuth 전용 → --bare 금지(OAuth 안 읽어 인증 즉사 = 260701 사고 진짜원인) · --safe-mode만 · 생성경로 --bare 기본 ON도 차단
+            rc = 1
+    except Exception as e:
+        print('⚠️ --bare 도구충돌 게이트 스킵:', e)
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1

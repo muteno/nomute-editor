@@ -23,6 +23,10 @@ on:
         description: '실제 긴급 포맷(News / (긴급)…) 미리보기 1발'
         type: boolean
         default: false
+      safe_mode:
+        description: 'judge --safe-mode 카나리아(CLAUDE.md 로드 스킵 = cache_w 절감 시험 · 기본 OFF)'
+        type: boolean
+        default: false
 
 concurrency:
   group: breaking-judge
@@ -54,19 +58,56 @@ jobs:
           echo "미판정: 속보 ${nb}건 · 경중 ${ng}건 (총 ${n})"
 
       - name: Setup Node
-        if: steps.chk.outputs.pending != '0'
+        if: steps.chk.outputs.pending != '0' || github.event.inputs.safe_mode == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: '24'
 
       - name: Install Claude Code CLI
-        if: steps.chk.outputs.pending != '0'
+        if: steps.chk.outputs.pending != '0' || github.event.inputs.safe_mode == 'true'
         run: npm install -g @anthropic-ai/claude-code
+
+      # 카나리아 self-test (safe_mode 디스패치 전용 · pending=0에도 실행) — 실 OAuth env에서 --safe-mode가
+      # ① rc=0(인증 정상 = --bare와 달리 OAuth 유지) ② cache_creation 급락(CLAUDE.md 로드 스킵) 인지 A/B 실측.
+      # 레포에 아무것도 안 씀(read-only). safe-mode가 OAuth로 실패하면 이 스텝이 exit 1 = 카나리아 실패 가시화.
+      - name: --safe-mode 카나리아 self-test
+        if: github.event.inputs.safe_mode == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+        run: |
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then echo "::warning::OAuth 토큰 없음 — self-test 생략"; exit 0; fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          TOOLS="Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep"
+          P='판정: 다음 제목이 속보인가? "삼성전자 2분기 실적 발표" — 오직 YES 또는 NO로만 답하라.'
+          echo "=== normal 모드 (CLAUDE.md 로드) ==="
+          printf '%s' "$P" | claude -p --model claude-sonnet-5 --output-format json --disallowedTools "$TOOLS" --max-turns 1 > /tmp/n.json 2>/tmp/n.err || true
+          echo "=== --safe-mode (CLAUDE.md 스킵) ==="
+          printf '%s' "$P" | claude -p --safe-mode --model claude-sonnet-5 --output-format json --disallowedTools "$TOOLS" --max-turns 1 > /tmp/s.json 2>/tmp/s.err || true
+          python3 - <<'PY'
+          import json
+          def rd(p):
+            try: return json.load(open(p))
+            except Exception as e: return {"_load_err": str(e)}
+          n, s = rd('/tmp/n.json'), rd('/tmp/s.json')
+          nu, su = n.get('usage',{}), s.get('usage',{})
+          ncw, scw = nu.get('cache_creation_input_tokens'), su.get('cache_creation_input_tokens')
+          serr = s.get('is_error', True)
+          print(f"normal : cache_creation={ncw} is_error={n.get('is_error')} result={ (n.get('result') or '')[:20]!r}")
+          print(f"safe   : cache_creation={scw} is_error={serr} result={ (s.get('result') or '')[:20]!r}")
+          if ncw and scw: print(f"→ cache_creation 절감 = {100*(1-scw/ncw):.1f}%")
+          import sys
+          if serr or scw is None:
+            print("::error::--safe-mode 카나리아 실패 — 실 OAuth env에서 rc≠0/usage없음. 승격 금지, 롤백 유지.")
+            open('/tmp/s.err').read() and print(open('/tmp/s.err').read()[:400])
+            sys.exit(1)
+          print("::notice::--safe-mode 카나리아 통과 — OAuth 정상(rc=0) + CLAUDE.md 로드 스킵 확인.")
+          PY
 
       - name: 속보 판정 (claude -p)
         if: steps.chk.outputs.pending != '0'
         env:
           BREAKING_MODEL: claude-sonnet-5   # 룰북 이진 분류 = sonnet-5 운영(opus 대비 쿼터 대폭↓·다층 게이트가 오탐 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
+          BREAKING_SAFE: '1'   # 승격 완료(260701 카나리아 실측 rc=0·OAuth 정상·cache_creation 53,855→1,512 −97.2%): 자동/예약 judge 런도 --safe-mode(CLAUDE.md 로드 스킵). 롤백=이 줄을 '' 또는 제거(코드 기본 OFF).
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
@@ -83,6 +124,7 @@ jobs:
           GATE_MODEL: claude-sonnet-5   # 룰북 0~3 분류 = sonnet-5 운영(빈도·쿼터 1위 호출 · gradeW완화·cat_force·grade게이트가 경계오차 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
           GATE_MAX_PER_RUN: "200"   # 한 런 노출권 경중 채점 상한 80→200(운영자 260701 전수검증 — 미채점 백로그 소진·수집함 노출건 다 AI 검증). sonnet 빠름·timeout 45로 커버. 롤백=이 줄 제거(코드 기본 80).
           GATE_CAT_QUOTA: "120"     # 한 런 cross-2 cat 재판별 상한 40→120(cat 미판별 백로그가 최다·우편요금류 오분류가 여기 갇힘). 롤백=이 줄 제거(코드 기본 40).
+          GATE_SAFE: '1'   # 승격 완료(260701 카나리아 실측 rc=0·OAuth 정상·cache_creation 53,855→1,512 −97.2%): 자동/예약 judge 런도 --safe-mode(CLAUDE.md 로드 스킵). 롤백=이 줄을 '' 또는 제거(코드 기본 OFF).
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
