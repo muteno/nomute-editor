@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드 재시도 표식 — 반영본 260701</title>
+<style>
+  :root{
+    --bg:#121212; --line:rgba(255,255,255,.08);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --on-accent:#062108;
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697;
+    --arm:#ffd93d; --arm-rgb:255,217,61;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    line-height:1.6;padding:26px 18px 60px;max-width:760px;margin:0 auto;-webkit-font-smoothing:antialiased}
+  h1{font-size:20px;font-weight:800;letter-spacing:-.4px;margin:0 0 6px}
+  h2{font-size:15px;font-weight:800;color:var(--accent-bright);margin:34px 0 4px;letter-spacing:-.2px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 8px}
+  .lead{color:var(--fg-2);font-size:13.5px;margin:0 0 10px}
+  .note{color:var(--mut);font-size:12px;margin:6px 0 0}
+  .grid{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px}
+  .card{flex:1 1 320px;min-width:290px;background:linear-gradient(165deg,rgba(255,255,255,.035),rgba(255,255,255,.015));
+    border:1px solid var(--line);border-radius:18px;padding:16px 16px 18px}
+  .clabel{font-size:11.5px;font-weight:800;letter-spacing:.2px;margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px}
+  .clabel.first{color:var(--accent);background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.35)}
+  .clabel.retry{color:var(--arm);background:rgba(var(--arm-rgb),.14);border:1px solid rgba(var(--arm-rgb),.5)}
+  .ctitle{font-size:14px;font-weight:700;color:var(--fg);margin-bottom:16px;letter-spacing:-.2px}
+  /* ── 게이지바(.prog 실계승) ── */
+  .prog{display:flex;gap:7px;width:100%}
+  .prog .seg{flex:1;display:flex;flex-direction:column;gap:8px;align-items:center;min-width:0}
+  .prog .sl{font-size:11px;line-height:1;letter-spacing:-.3px;color:var(--mut);font-weight:700;opacity:.55;white-space:nowrap;position:relative}
+  .prog .bar{width:100%;height:7px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:hidden}
+  .prog .seg.done .sl{color:var(--accent);opacity:1}
+  .prog .seg.done .bar{background:linear-gradient(90deg,var(--accent-bright),var(--accent));box-shadow:0 0 8px rgba(var(--accent-rgb),.4)}
+  .prog .seg.cur .sl{color:var(--accent);opacity:1;animation:segCurGlow 1.5s ease-in-out infinite}
+  .prog .seg.cur .bar{background:rgba(var(--accent-rgb),.16)}
+  .prog .seg.cur .bar::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;border-radius:999px;
+    background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.85),transparent);transform:translateX(-120%);animation:shine 1.35s linear infinite}
+  /* ★ 재시도 = 진행(초록)은 그대로, 라벨('프롬프트')은 가운데 고정 + 우측에 MUT '재(N회)'(absolute라 라벨 안 밀림) */
+  .prog .rn{position:absolute;left:100%;top:50%;transform:translateY(-50%);margin-left:5px;opacity:1;
+    font-size:9.5px;font-weight:700;color:var(--mut);letter-spacing:-.2px;white-space:nowrap;pointer-events:none}
+  /* 실패(재시도도 실패) = 기존 앰버 45° 빗금 그대로 */
+  .prog .seg.fail .sl{color:rgba(255,74,62,.5);opacity:1}
+  .prog .seg.fail .bar{background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px)}
+  @keyframes segCurGlow{0%,100%{opacity:1;text-shadow:0 0 9px rgba(var(--accent-rgb),.7)}50%{opacity:.62;text-shadow:0 0 3px rgba(var(--accent-rgb),.3)}}
+  @keyframes shine{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
+  /* ── phase2 진입부 배너(.genstat 실계승 — 픽토 없음·텍스트+점만) ── */
+  .genstat{margin:12px 0 4px;padding:13px 15px;border:1px solid var(--line);border-radius:16px;
+    color:var(--accent);font-size:13px;background:rgba(255,255,255,.04);text-align:center;font-weight:600}
+  .genstat.live{color:var(--accent);border-color:rgba(var(--accent-rgb),.3);animation:pulse 1.6s ease-in-out infinite}
+  .genstat .gen-rn{color:var(--mut);font-weight:700;font-size:.85em;margin-left:1px}
+  .gdots{display:inline-block;width:1.1em;text-align:left}
+  .gdots i{font-style:normal;opacity:0;animation:gdots 1.4s infinite}
+  .gdots i:nth-child(2){animation-delay:.22s}.gdots i:nth-child(3){animation-delay:.44s}
+  @keyframes gdots{0%{opacity:0}25%,70%{opacity:1}95%,100%{opacity:0}}
+  @keyframes pulse{50%{opacity:.55}}
+  .cap{font-size:11.5px;color:var(--mut);margin-top:9px}
+  .cap b{color:var(--fg-2);font-weight:700}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0 0}
+</style>
+</head>
+<body>
+  <h1>카드 프롬프트 <span style="color:var(--mut)">재(N회)</span> 표식 — 반영본</h1>
+  <p class="sub">첫 시도 = 기존 그대로(초록 진행). 자동 재시도 진입 시에만 <b style="color:var(--mut)">재(N회)</b>를 덧붙임 — 기존 기틀(게이지·genstat 배너)에 표식만 추가. 픽토그램 없음. 재시도도 실패(=2회 이상) 시엔 기존 '실패' 표현.</p>
+
+  <h2>A · 메뉴3 게이지바</h2>
+  <p class="lead">'프롬프트' 라벨은 <b>가운데 고정</b>, 그 우측에 <b style="color:var(--mut)">MUT '재(1회)'</b>. 진행 게이지(초록)는 그대로.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="clabel first">첫 시도</div>
+      <div class="ctitle">홍석천 "배재고 학생들 광주 가서…"</div>
+      <div class="prog">
+        <div class="seg done"><span class="sl">요약</span><span class="bar"></span></div>
+        <div class="seg cur"><span class="sl">프롬프트</span><span class="bar"></span></div>
+        <div class="seg"><span class="sl">카드</span><span class="bar"></span></div>
+      </div>
+      <p class="cap">기존과 동일 — 표식 없음.</p>
+    </div>
+    <div class="card">
+      <div class="clabel retry">재시도 중</div>
+      <div class="ctitle">홍석천 "배재고 학생들 광주 가서…"</div>
+      <div class="prog">
+        <div class="seg done"><span class="sl">요약</span><span class="bar"></span></div>
+        <div class="seg cur"><span class="sl">프롬프트<span class="rn">재(1회)</span></span><span class="bar"></span></div>
+        <div class="seg"><span class="sl">카드</span><span class="bar"></span></div>
+      </div>
+      <p class="cap">'프롬프트' 고정 + 우측 MUT <b>재(1회)</b>. 라벨은 안 밀림.</p>
+    </div>
+  </div>
+
+  <h2>B · phase2(카드 상세) 진입부 배너</h2>
+  <p class="lead">기존 <code>.genstat</code> 배너(텍스트+점, 픽토 없음)에 <b>(N회)</b>만 부착.</p>
+  <div class="card" style="flex-basis:100%">
+    <div class="clabel first">첫 시도</div>
+    <div class="genstat live">카드뉴스 프롬프팅 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+    <div class="clabel retry" style="margin-top:16px">재시도 중</div>
+    <div class="genstat live">카드뉴스 프롬프팅 중<span class="gen-rn">(1회)</span><span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+    <p class="cap">첫 시도 15분 초과 → 자동 1회 재시도. 기존 배너에 MUT <b>(1회)</b>만 붙음.</p>
+  </div>
+
+  <hr>
+  <p class="note" style="margin-top:16px">반영: cardmake.sh 재시도 진입 시 <code>status.json</code>에 <code>retry:1</code> 기록·커밋 → build-viewer가 <code>cards.retry</code> 투영 → 게이지(<code>.rn</code>)·배너(<code>.gen-rn</code>)가 MUT '재/（N회)' 표식. 색·애니 전부 기존 토큰(<code>--mut</code>·<code>--accent</code>·shine·pulse). 재시도도 실패하면 <code>retry</code> 해제되고 기존 '실패' 표현으로.</p>
+</body>
+</html>
