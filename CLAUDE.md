@@ -38,11 +38,9 @@
 4. **누적 = 작업이력 원장 + 개선 우선사항 (NEW 원장 · 정본=`docs/작업이력.md`).** 완료 작업은 거기 **append-only로 누적**(날짜·요지·전후·결정·검증결과), 실행 개선점은 같은 문서 **§우선사항(다음엔 이렇게)**에 박아 다음 세션이 더 고효율·고품질로 수행하게 한다(§🧠 SSOT 정신 — 역할 경계·비대 cap·중복차단은 원장 머리말이 정함).
 
 ## 🔕 PR 웹훅 구독 = 머지 즉시 해제 (컨텍스트 보호 · 정본 · 260616)
-세션 중단·압축돼도 안 잊게 박아둠 — `<github-webhook-activity>` 메시지의 정체·처리 표준.
-- **정체·왜**: 이 원격실행 환경은 **PR을 만들면 그 PR 활동을 자동 구독**한다 → 댓글·CI·배포(Cloudflare)·머지 알림이 `<github-webhook-activity>` 블록으로 세션에 **계속 쌓인다**. 무해(GitHub/Cloudflare 자동알림)하지만 **토큰을 먹어 컨텍스트(채팅 용량)를 잠식 → 압축이 빨라진다**. ⚠️ 이게 핵심 문제(거슬림이 아니라 출혈).
-- **언제까지**: PR이 **MERGED/CLOSED 될 때까지** 계속 옴(머지하면 자동 해제 통지도 옴).
-- **규칙(표준 처리)**: ① 사용자가 "watch/지켜봐/babysit" **명시 안 하면 PR 자동 감시 안 함**(기본 OFF). ② **PR 머지 직후 `mcp__github__unsubscribe_pr_activity`를 그 PR 번호로 즉시 호출**(출혈 차단) — 새 PR마다 또 자동 구독되면 **또 즉시 해제**. ③ 사용자가 "이거 꺼/끄셈" 하면 **알려진 전 PR 번호 모두 unsubscribe**. ④ webhook 블록은 답장 없이 처리(필요한 액션만, 보통 무액션).
-- **나중에/지속 시**: 메시지가 또 누적돼 보이면 = 어떤 PR 구독이 살아있는 것 → 해당 PR 번호로 unsubscribe. 압축으로 이 맥락 잃어도 **이 절을 보고 그대로 처리**.
+PR을 만들면 이 환경이 그 활동을 **자동 구독** → 댓글·CI·배포·머지 알림이 `<github-webhook-activity>`로 **계속 쌓여 토큰을 먹는다**(무해하나 컨텍스트 잠식 = 압축 빨라짐 · MERGED/CLOSED까지 옴 · ⚠️ 이게 핵심 = 거슬림 아닌 출혈). 처리 표준:
+- **규칙**: ① "watch/지켜봐/babysit" **명시 없으면 자동 감시 안 함**(기본 OFF). ② **PR 머지 직후 `mcp__github__unsubscribe_pr_activity`를 그 번호로 즉시 호출**(새 PR마다 재구독되면 또 즉시 해제). ③ "이거 꺼/끄셈" 하면 **알려진 전 PR 번호 모두 unsubscribe**. ④ webhook 블록은 답장 없이 처리(보통 무액션).
+- 메시지가 또 누적되면 = 살아있는 구독 → 그 PR 번호로 unsubscribe. 압축으로 이 맥락 잃어도 **이 절 보고 그대로 처리**.
 
 ## ⚠️ 기틀 보호 — 구조 변경은 반드시 사용자에게 묻는다 (모델 맘대로 절대 금지)
 이 빌드의 **기틀**(앱↔라우터 분리 · 라이브러리↔지침 분리 · 3단계 파이프라인 · 라이브러리 참조 방식 · 출력 포맷 골격 · INVARIANTS)을 바꾸는 일 — 특히 **라이브러리를 지침에 다시 인라인**하거나, 분리를 해체하거나, 단계를 합치는 것 — 은 **스스로 결정하지 말고, 사용자에게 확실히 묻고 승인받은 뒤에만 한다.**
@@ -189,10 +187,10 @@
   - **🎯 긴급 grade≥3 자동 픽 (260622 · 운영자 승인 · 검출·알림 → *자동 분석* · ⚠️ grade≥2 푸시게이트 통일분은 운영자 요청으로 롤백 260622 = grade≥3 복귀):** 알림에서 끝나지 않고 — **breaking AND grade≥3 AND cross≥2 AND <4h(first_seen 기준)** 사건은 `scraper/auto_pick_breaking.py`가 `breaking-judge.yml` 판정 직후 **자동으로 `pending/` 적재 → `news-analyze` 발동**(= 자동 요약 + 자동 Gemini 썸네일 2장 · 이전엔 픽=수동만). **⚠️ 카드 제미나이-0 잠금 불변** = 자동픽은 일반 픽과 동일 다운스트림이라 요약+썸네일까지만, **카드는 `text_done` 유지**(수동 '슛' 전까지 제미나이 0 · §📰 Lock A/B 그대로). **보수 다중 가드(자동 과금이라)**: grade≥3(대형·다수피해만 · 푸시·화면알림과 동일 grade≥3 = 260622 동일선상) · cross≥2 · <4h · **사건당 1회 영구 dedup**(`push/autopick.json` · event_key/url **+ 제목해시** 다중키 = url 점프에도 안정 · KST) · 런2/일8 상한 · `pick_pending` load_active(수동픽 충돌 0 · `PICK_URL=c.url` 로 수동픽과 같은 키). 상수(env) `AUTOPICK_MIN_GRADE=3`·`MIN_CROSS=2`·`MAX_PER_RUN=2`·`MAX_PER_DAY=8`. **큐레이션 알고리즘(신호·랭킹·grade) 무변경 = downstream 소비만**(§★ 방향 불변). 정본 = `scraper/auto_pick_breaking.py` + `breaking-judge.yml` 자동픽 스텝 + `docs/curation-algorithm.md §8`.
 
 ## 🧰 합성기/제작기 deps = 7일 캐시 필수 + 네트워크 op 타임아웃 (플랫폼 인프라 · UX 안정 · 260618)
-제작 워크플로(썸네일·합성·자막 등 `*-make.yml`)가 **매 런 무거운 deps(폰트·ffmpeg·pip·모델)를 재설치**하다 미러/네트워크가 간헐 스톨하면 **잡 한도까지 무한 행 → cancel → 산출 없음 = '되다 안되다'**(실측 260618 `thumb-make`: Setup 스텝 20분 행→cancel). 사용자 앱 UX의 핵심 = *제작이 항상 빠르고 안정적으로 끝나는 것*. ∴ 두 가지를 **필수**로 한다:
-- **① 7일 캐시 필수**: 무거운 deps는 반드시 `.github/actions/runner-setup` 캐시로 받는다 — pip(`~/.cache/pip`)·whisper(`~/.cache/huggingface`)·**apt .deb(`~/.cache/nomute-apt` · 폰트/ffmpeg)**. 워크플로는 `with: { setup, apt: '<패키지>', whisper: 'true' }`만 주면 됨 → 첫 런만 다운·이후 **오프라인 적중(7일)**. ⚠️ **새 제작 앱·새 시스템 deps도 `setup.sh`에 생설치로 박지 말고 runner-setup 캐시 경로(`apt` 입력)로** 넣는다(재다운 0 = 즉시·안정).
-- **② 네트워크 op 타임아웃 필수**: `setup.sh`의 `apt-get`/`pip`/prefetch 등 *모든 네트워크 명령*은 `timeout`(+1회 재시도)로 감싼다 — 무한 행 대신 빠른 실패(`set -e`) → 클라가 타임아웃 표시 → 재시도하면 캐시 채워져 성공. + `*-make.yml` Setup 스텝에 `timeout-minutes` 백스톱(20분 cancel 차단).
-- 정본 구현 = `runner-setup/action.yml`(apt .deb 캐시·오프라인 dpkg) + 각 `apps/*/setup.sh`(timeout 폴백) + `*-make.yml`(Setup `timeout-minutes`). 라이브 적용(260618): thumb·comp(폰트 `fonts-noto-cjk`)·ly(`ffmpeg`). 클라 폴 타임아웃(제작 3분·#458)은 이 백엔드 캐시·timeout과 한 쌍.
+제작 워크플로(`*-make.yml`)가 매 런 무거운 deps(폰트·ffmpeg·pip·모델)를 재설치하다 네트워크 스톨하면 **무한 행→cancel→산출 없음 = '되다 안되다'**(실측 260618 thumb-make 20분 행). 제작이 항상 빠르고 안정적으로 끝나게 두 가지 **필수**:
+- **① 7일 캐시 필수**: 무거운 deps는 반드시 `.github/actions/runner-setup` 캐시로 — pip(`~/.cache/pip`)·whisper(`~/.cache/huggingface`)·**apt .deb(`~/.cache/nomute-apt` · 폰트/ffmpeg)**. 워크플로는 `with: { setup, apt: '<패키지>', whisper: 'true' }`만 → 첫 런만 다운·이후 **오프라인 적중(7일)**. ⚠️ **새 제작 앱·새 deps도 `setup.sh` 생설치 말고 runner-setup 캐시 경로(`apt` 입력)로**(재다운 0).
+- **② 네트워크 op 타임아웃 필수**: `setup.sh`의 `apt-get`/`pip`/prefetch 등 *모든 네트워크 명령*은 `timeout`(+1회 재시도)로 감싼다 → 무한 행 대신 빠른 실패(`set -e`)·재시도 시 캐시 적중 성공. + `*-make.yml` Setup에 `timeout-minutes` 백스톱(20분 cancel 차단).
+- 정본 = `runner-setup/action.yml`(apt .deb 캐시·오프라인 dpkg) + 각 `apps/*/setup.sh`(timeout 폴백) + `*-make.yml`(`timeout-minutes`). 라이브(260618): thumb·comp(`fonts-noto-cjk`)·ly(`ffmpeg`). 클라 폴 타임아웃(제작 3분·#458)과 한 쌍.
 
 ## 🗺 파일 지도 (플랫폼)
 - `apps/news/` = **뉴스 에디터**: `00_에디터_뉴스_운영` · `01_지침_*` · `02_라이브러리_*` · `03_자동화_*` · `04_구조_*` · `05_리뷰_*` · `fact_guard.py`(수치 대조 소프트 게이트)
