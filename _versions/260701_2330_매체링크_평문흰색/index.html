@@ -364,8 +364,10 @@
   .kv .outcol { flex:0 0 92px; width:92px; }   /* 매체 칸 고정폭 = 7자 실측폭 91px + 1px(운영자 260630, 96→92로 편향 아주 조금 좌측). 편향 칸 항상 같은 x 시작·7자 무절단(초과는 outletShort 6자+…) */
   .kv span { display:block; font-size:11px; color:var(--mut); margin-bottom:3px; }
   .kv b { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; line-height:1.45; }
-  .kv .mlink { text-decoration:none; display:block; min-width:0; color:var(--fg); }   /* 대표 매체 = 원문 링크(클릭 유지)지만 표기는 평문 흰색 — 밑줄·링크색·hover accent 없음(하이퍼링크처럼 안 보이게 · 운영자 260701) */
-  .kv .mlink b { border-bottom:0; }
+  .kv .mlink { text-decoration:none; display:block; min-width:0; }   /* 대표 매체 = 원문 하이퍼링크(카드 목록·맨앞). 이름=흰색 유지, 밑줄로 링크성 표시 → 탭/호버 시 accent(운영자 260701·§🎨 nm-srclink 톤 계승·경량) */
+  .kv .mlink b { border-bottom:1px solid var(--line); }
+  @media (hover:hover) { .kv .mlink:hover b { color:var(--accent); border-bottom-color:rgba(var(--accent-rgb),.5); } }
+  .kv .mlink:active b { color:var(--accent); }
   .kv .typecol b { overflow:visible; } /* 태그칩 줄바꿈 허용(typewrap이 흐름 관리) */
   .kv .bias { overflow:visible; }   /* 편향 라벨 = 짧음·가로 한 줄(클립 불필요) */
   .kv .bias span { display:inline; font-size:inherit; margin:0; line-height:inherit; }   /* 내부 색 토큰이 위 '.kv span{display:block·11px}'(라벨용)에 걸려 세로로 쪼개지던 것 차단 — '좌 보정(4+1)' 한 줄(운영자 260624) */
@@ -416,8 +418,8 @@
   .prog .seg { flex:1; display:flex; flex-direction:column; gap:8px; align-items:center; cursor:pointer; min-width:0; outline:none; }
   .prog .sl { font-size:11px; line-height:1; letter-spacing:-.3px; color:var(--mut); font-weight:700;
     opacity:.55; white-space:nowrap; transition:color .3s, opacity .3s; position:relative; }
-  .prog .rn { position:absolute; left:100%; top:0; margin-left:5px; opacity:1;
-    font-size:11px; font-weight:700; color:var(--mut); line-height:1; letter-spacing:-.3px; white-space:nowrap; pointer-events:none; }   /* 자동 재시도 표식 — 라벨('프롬프트') 우측에 MUT '(N회)' · 라벨과 크기(11px)·정렬(top:0=baseline) 동일 · 라벨은 가운데 고정(rn=absolute) · 운영자 260701 */
+  .prog .rn { position:absolute; left:100%; top:50%; transform:translateY(-50%); margin-left:5px; opacity:1;
+    font-size:9.5px; font-weight:700; color:var(--mut); letter-spacing:-.2px; white-space:nowrap; pointer-events:none; }   /* 자동 재시도 표식 — 라벨('프롬프트') 우측에 MUT '재(N회)'(라벨은 가운데 고정·rn=absolute) · 운영자 260701 */
   .prog .sk { font-style:normal; font-size:.7em; opacity:.5; margin-left:3px; font-weight:800; letter-spacing:.05em; }
   .prog .bar { width:100%; height:7px; border-radius:999px; background:rgba(255,255,255,.06); position:relative;
     overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.3); transition:background .35s; }
@@ -1404,7 +1406,7 @@
   .genstat { margin:14px 0 4px; padding:13px 15px; border:1px solid var(--line); border-radius:16px;
     color:var(--accent); font-size:13px; background:rgba(255,255,255,.04); text-align:center; }   /* 상태문구 = 강조색(픽토 제거·운영자 260629) */
   .genstat.live { color:var(--accent); border-color:rgba(15,253,2,.3); animation:pulse 1.6s ease-in-out infinite; }
-  .genstat .gen-rn { color:var(--mut); }   /* 자동 재시도 회차 '(N회)' — 기존 배너 문구와 크기 동일(작게 안 함)·MUT 색만 · 운영자 260701 */
+  .genstat .gen-rn { color:var(--mut); font-weight:700; font-size:.85em; margin-left:1px; }   /* 자동 재시도 회차 '(N회)' — 기존 배너에 부착(MUT·부차정보 톤) · 운영자 260701 */
   /* 진행중 점 모션(C·페이드) — '…' 대신 점 3개가 하나씩 톡톡 떠오름. 자리 안 흔들리게 폭 고정(운영자 260630) */
   .gdots { display:inline-block; width:1.1em; text-align:left; }
   .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
@@ -2349,14 +2351,14 @@ function progGauge(a) {
   // 실패 이력(error.log 잔존) = 한 번이라도 깨진 흔적 → 해당 단계에 영속 흉터(scar). 재시도·성공해도 유지.
   const scarSeg = (a.cards && a.cards.failedOnce) ? (hasMd ? 2 : 1) : -1;
   const aria = { n:'인스타 요약으로 이동', m:'카드 프롬프트로 이동', t:'카드 이미지로 이동' };
-  const retry = (st === 'generating' && busy) ? (Number(a.cards && a.cards.retry) || 0) : 0;   // 자동 재시도 회차(프롬프팅 중일 때만) — 진행 세그먼트 라벨 우측에 MUT '(N회)'
+  const retry = (st === 'generating' && busy) ? (Number(a.cards && a.cards.retry) || 0) : 0;   // 자동 재시도 회차(프롬프팅 중일 때만) — 진행 세그먼트 라벨 우측에 MUT '재(N회)'
   const html = segs.map(([lb, j], i) => {
     let cls = '';
     if (i < done) cls = ' done';
     else if (i === done && busy) cls = ' cur';
     else if (i === done && fail) cls = ' fail';
     if (i === scarSeg) cls += ' scar';
-    const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry}회)</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N회)'(크기·정렬 라벨과 동일)
+    const rn = (i === done && busy && retry > 0) ? `<span class="rn">재(${retry}회)</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '재(N회)'
     return `<div class="seg${cls}" data-j="${j}" role="button" tabindex="0" aria-label="${aria[j]}"><span class="sl">${lb}${rn}</span><span class="bar"></span></div>`;
   }).join('');
   return `<div class="prog">${html}</div>`;
@@ -3241,7 +3243,7 @@ function cardSec(a) {
     } else {
       // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
       const phase = c.has_md ? '카드 이미지 생성 중' : '카드뉴스 프롬프팅 중';
-      const rtag = (Number(c.retry) || 0) > 0 ? ` <span class="gen-rn">(${Number(c.retry)}회)</span>` : '';   // 자동 재시도 회차 = 기존 배너 '중' 뒤 띄어쓰기 하나 + '(N회)'(MUT·크기 동일) · 운영자 260701
+      const rtag = (Number(c.retry) || 0) > 0 ? `<span class="gen-rn">(${Number(c.retry)}회)</span>` : '';   // 자동 재시도 회차 = 기존 배너에 '(N회)' 부착(MUT) · 운영자 260701
       sec.innerHTML = `<div class="genstat live">${phase}${rtag}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후(4375)와 동일 문구로 통일·꼬리말 제거(운영자 260701)
     }
     return;
