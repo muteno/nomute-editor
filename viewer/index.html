@@ -777,8 +777,7 @@
   /* S(개정·AB) 하단 네비 = 4안(중앙 FAB) + 네온바 인디케이터 + 글래스(투명도↑) */
   .bnav { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-nav); display:flex; justify-content:space-around; align-items:flex-end;
     padding:0 8px calc(7px + env(safe-area-inset-bottom));
-    background:linear-gradient(0deg, rgba(8,15,11,.64), rgba(13,23,16,.40));
-    backdrop-filter:blur(26px) saturate(1.4); -webkit-backdrop-filter:blur(26px) saturate(1.4);
+    background:linear-gradient(0deg, rgba(8,15,11,.97), rgba(13,23,16,.94));   /* ⚡버퍼 260701(A7·운영자 "블러 죽여버리셈"): 하단 고정바 backdrop-filter blur(26px) 제거 — position:fixed라 콘텐츠 스크롤마다 26px 가우시안(최대 반경) 재샘플하던 jank 1순위. 불투명 배경(.97/.94)으로 대체 = 블러 없이도 바 선명·글래스 크롬 대신 솔리드 다크. */
     border-top:1px solid rgba(255,255,255,.09); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
     padding:11px 4px 6px; background:none; border:none; color:var(--mut); font:inherit; font-size:10.5px; font-weight:700;
@@ -3355,14 +3354,7 @@ async function translateKoEn(text) {   // 무키·CORS 폴백(엔티티맵 0일 
     return /MYMEMORY WARNING|QUERY LENGTH|INVALID/i.test(t) ? '' : t.trim();
   } catch { return ''; }
 }
-function cardRefCarousel(caption, title, foreign) {
-  const wrap = document.createElement('div'); wrap.className = 'cref';
-  wrap.innerHTML = '<div class="cref-h"><span class="cref-lbl">' + SEARCH_SVG + ' 관련 이미지' + (foreign ? ' · 외국(영문 검색)' : ' (샘플)') + '</span>'
-    + '<a class="sbtn cref-srch" target="_blank" rel="noopener" title="구글 이미지 검색" aria-label="구글 이미지 검색">' + SEARCH_SVG + '</a></div>'   // §🎨 .sbtn 아이콘 통일(초록 알약 폐기)
-    + '<div class="cref-track"><div class="cref-slot ld">불러오는 중…</div><div class="cref-slot ld"></div><div class="cref-slot ld"></div></div>';
-  refResolveAndLoad(wrap, caption, title, foreign);
-  return wrap;
-}
+// [죽은코드 제거 260701·분신술 A10] cardRefCarousel — 호출 0(관련이미지 캐러셀 UI 폐지 잔해). refResolveAndLoad는 타 경로 공유 여부 미확인이라 보존.
 // 카드 캡션 → 구글 이미지 검색용 키워드(명사형 · '+' 연결). 한국어 형태소분석기 없이 휴리스틱(운영자 260620 · 일단판).
 //  풀문장을 그대로 검색하면 너무 구체적이라 안 맞음 → 핵심 명사만 추출(조사·불용어·숫자단위 제거, 한자어 서술어 X했다/됐다→명사, native 동사 제거).
 //  한계(인정): 의미판단(비핵심 명사 탈락·들이받았다→사고)·1글자 명사·동사많은 짧은 캡션은 못 따라감 → 카드 텍스트 품질 좋아지면 같이 개선. '+'는 encodeURIComponent로 %2B가 돼 구글 박스에 +로 그대로 들어감(운영자 검증 포맷).
@@ -3648,17 +3640,7 @@ function renderSlide(card, i, ctx) {
 }
 
 // 전체 다운로드 — zip 없이 순차 다운로드(250ms 간격 = 브라우저 다중 다운로드 차단 회피). iOS는 개별 ⬇ 폴백.
-async function saveAll(model, slug, btn) {
-  const imgs = model.map(m => m.versions[m.cur].image).filter(Boolean);
-  if (!imgs.length) return;
-  const lbl = (btn && btn.querySelector('.lbl')) || btn, orig = lbl ? lbl.textContent : '';
-  for (let i = 0; i < imgs.length; i++) {
-    downloadImg(imgs[i], `${dlStamp(CUR_A)}_${slug}_${String(i + 1).padStart(2, '0')}.jpg`);   // R2=프록시 경유(교차출처 a[download] 무시 → 탭 폭발 방지)
-    if (lbl) lbl.textContent = `저장 중… ${i + 1}/${imgs.length}`;
-    await new Promise(r => setTimeout(r, 250));
-  }
-  if (lbl) { lbl.innerHTML = CHECK_SVG; setTimeout(() => { lbl.textContent = orig || 'ALL'; }, 1800); }
-}
+// [죽은코드 제거 260701·분신술 A10] saveAll — 호출 0(카드 이미지 'ALL' 일괄저장 버튼 폐지 잔해). 개별 저장은 downloadImg 직접 사용.
 
 // ── 카드 개별 변경(2차 팝업) — 텍스트(음절칩 강조)·이미지 희망 → 변경(1b) ──
 let EDIT_CTX = null, edLines = [], PENDING_FOCUS = null, PENDING_EDIT = null, _edRendering = false, _edFiring = false, _edArmed = false, _edArmT = null, edCardIo = null;   // edCardIo=카드변경 칩 클립버튼 갱신자(IIFE서 할당) / PENDING_FOCUS=빈줄 포커스 / PENDING_EDIT={li,wi}=어절칩 편집 진입 / _edRendering=재렌더 중 blur 차단 / _edFiring=발사 재진입 잠금 / _edArmed·_edArmT=변경 버튼 재확인(arm)(체크/wish 재생성 시)
@@ -4337,15 +4319,7 @@ function _wirePin() {                         // 입력 배선(1회만)
   dlg.addEventListener('close', () => { if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(null); } });
 }
 // PIN 한 번 받기 — err 있으면 흔들기 표시 후 재입력. resolve = 4자리 문자열 또는 null(취소)
-function askPin(err) {
-  _wirePin();
-  const dlg = $('#pindlg');
-  if (!dlg.open) dlg.showModal();
-  if (err) _pinShake(err); else { $('#pinerr').textContent = ''; _pinReset(); }
-  // showModal 직후 자동 포커스 보장(브라우저 따라 빗나가는 케이스 대비)
-  requestAnimationFrame(() => { const c = _pinCells()[0]; if (c && !_pinValue()) c.focus(); });
-  return new Promise(res => { _pinResolve = res; });
-}
+// [죽은코드 제거 260701·분신술 A10] askPin — 호출 0(PIN 다이얼로그 진입점 미배선 = 기능 도먼트). 재도입 시 이 함수 복원.
 
 async function makeCards(target, btn, mode) {
   // mode: 'text'=프롬프트(2단계)만 생성·이미지 0 / 'shoot'=이미지(3단계·유료)만 / 그 외=full(프롬프트+이미지 한방)
@@ -4670,17 +4644,7 @@ async function addEditScene(file) {   // 파일 1장 — 4:5 검증 후 editScen
 function edAttachClick(e) {   // 첨부 버튼 = image 2 슬롯식(운영자 260627): 첨부됨이면 탭=제거(파일선택 가로채기) / 미첨부면 기본(파일선택). 합성은 '변경' 버튼만.
   if (editScene) { if (e) { e.preventDefault(); e.stopPropagation(); } edClearScene(); }
 }
-function edLaunchScene() {   // 첨부버튼 게이지(goFill)→✓→fireEdit(scene 동반) — edLaunch 시퀀스 계승. _edFiring 잠금은 fireEdit이 공유.
-  const g = $('#edAttach');
-  if (!g || g.classList.contains('firing') || _edFiring) return;
-  if (!validateEdit()) return;   // 텍스트 빈/한도초과 공용 게이트
-  _edSceneArmed = false; g.classList.remove('armed');
-  g.classList.add('firing');
-  setTimeout(() => {
-    g.classList.remove('firing'); g.classList.add('okdone');
-    setTimeout(fireEdit, edReduced() ? 60 : 300);
-  }, edReduced() ? 160 : 720);
-}
+// [죽은코드 제거 260701·분신술 A10] edLaunchScene — 호출 0(폐지된 2단 첨부발사 잔해·실발사 = edLaunch). _edSceneArmed는 edClearScene이 계속 사용(고아 아님).
 function edClearScene() {   // 첨부 제거(첨부 버튼 탭) — 썸네일·전후·원본 복원·체크/희망 재활성
   if (!editScene) return;
   editScene = null; _edSceneArmed = false; _edAfterSrc = null; _edBaf = 'after'; clearTimeout(_edPrevT);
@@ -6750,13 +6714,7 @@ function restoreTool(key) {
     setTimeout(() => { try { $('#toolX').focus(); } catch (_) {} }, 0);
   }, n);
 }
-function closeToolFully() {                                                      // 완전종료 = ▲ 롱프레스 확인 후
-  hideRestoreNav();
-  if (tooldlg.open) { tooldlg.close(); return; }                                // (드문) 모달 열린 채면 정규 닫기
-  discardTool(curToolKey); tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = '';   // 활성 도구 프레임 회수(복제면 제거·원본이면 blank)
-  if (history.state && history.state.tool) history.back();
-  const f = $('#toolfab'); if (f) { try { f.focus(); } catch (_) {} }
-}
+// [죽은코드 제거 260701·분신술 A10] closeToolFully — 호출 0. 완전종료 실경로 = closeNow→closeAllMinimized(260627 다중최소화 리팩터 잔해).
 // ── 다중 최소화 레지스트리 + 뉴스요약 최소화 + 선택 picker (운영자 260627) ──────────────────
 // ▲ 복원 버튼은 공유. 최소화된 게 1개면 ▲ 탭=바로 복원 / 2개+면 ▲ 탭=어느 걸 펼칠지 선택 picker.
 const MIN_REG = new Map();   // id → { label, restore } · 최소화된 모달 추적
