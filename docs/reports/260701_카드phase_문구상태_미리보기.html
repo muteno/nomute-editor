@@ -53,19 +53,20 @@
   /* 재생성/재시도(실패 복구) = 2번(재확인 arm) 노랑색으로 통일(운영자) */
   .mkbtn.retry{background:rgba(var(--arm-rgb),.16);color:var(--arm);border-color:rgba(var(--arm-rgb),.55)}
   .mkbtn.retry:active{background:rgba(var(--arm-rgb),.26)}
+  /* 재시도 게이지 = 버튼색(노랑)에 맞춘 풀필→✓ (.mkbtn 상태머신 계승·색만 arm) */
+  .mkbtn.retry.firing{color:var(--on-arm);
+    background:linear-gradient(var(--arm),var(--arm)) left/0% 100% no-repeat, linear-gradient(rgba(var(--arm-rgb),.16),rgba(var(--arm-rgb),.16));
+    animation:goFill .72s linear forwards}
+  .mkbtn.retry.okdone{background:var(--arm);color:var(--on-arm);border-color:var(--arm)}
+  .mkbtn.retry .gck path{stroke:var(--on-arm)}
 
   /* ===== 진행중 = 버튼 모양 그대로(pill·같은 폰트/배경) + 초록 글로우 펄스 + 점 모션 =====
      ▸ 둥근 버튼(999px) 유지 · 버튼 폰트 14px/800 · 버튼 배경 rgba(0,0,0,.34) 유지 · '도형 전경'(초록 테두리 글로우)만 진행중 톤 */
-  .genlive{display:block;width:100%;margin:10px 0 4px;padding:14px;font-size:14px;font-weight:800;font-family:inherit;
-    text-align:center;color:var(--accent);
-    background:rgba(0,0,0,.5);                       /* 짙은 먹색 50% 반투명 */
-    border:1px solid rgba(255,255,255,.14);          /* 테두리 = 글래스(먹색에 맞춘 반투명 흰) */
-    border-radius:999px;
-    -webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);   /* 글래스모피즘 */
-    animation:liveGlow 1.6s ease-in-out infinite}
-  @keyframes liveGlow{   /* 진행중 = 초록 글로우 숨쉬기(도형 전경) · 테두리는 글래스 유지하며 살짝만 초록 */
-    0%,100%{border-color:rgba(255,255,255,.12);box-shadow:0 0 12px -5px rgba(var(--accent-rgb),.35)}
-    50%{border-color:rgba(15,253,2,.34);box-shadow:0 0 18px -3px rgba(var(--accent-rgb),.6)}}
+  /* 진행중 도형 = 라이브 .genstat.live 그대로(기틀 유지) — 살짝 둥근 직사각·초록 얇은 테두리·pulse. 문구만 바뀜 */
+  .genlive{margin:14px 0 4px;padding:13px 15px;border:1px solid rgba(15,253,2,.3);border-radius:16px;
+    color:var(--accent);font-size:13px;background:rgba(255,255,255,.04);text-align:center;
+    animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.45}}
   .gdots{display:inline-block;width:1.1em;text-align:left}
   .gdots i{font-style:normal;opacity:0;animation:gdots 1.4s infinite}
   .gdots i:nth-child(2){animation-delay:.22s}.gdots i:nth-child(3){animation-delay:.44s}
@@ -102,20 +103,23 @@
       <div class="state">
         <p class="stt"><span class="dot"></span>진행 버튼 누를 때 = 진행 중 (통일)</p>
         <div id="p2live"><button class="mkbtn" onclick="fire2(this)">프롬프트 생성</button></div>
-        <p class="hint">누르면 풀필→✓→그대로 pill 유지하며 「카드뉴스 프롬프팅 중···」 (안 바뀜)</p>
+        <p class="hint">누르면 풀필→✓→진행 박스(기틀 genstat)「카드뉴스 프롬프팅 중···」 (안 바뀜)</p>
         <button class="reset" onclick="reset2()">↺ 다시</button>
       </div>
 
       <div class="state">
         <p class="stt fail"><span class="dot"></span>실패 — ⓐ 초기 실패</p>
         <p class="cardhdr">2. 카드 뉴스 프롬프트 <b>— 실패</b></p>
-        <button class="mkbtn retry">프롬프트 다시 생성</button>
+        <div id="p2fa"><button class="mkbtn retry" onclick="fireRetry(this,'p2fa')">프롬프트 다시 생성</button></div>
+        <p class="hint">눌러봐 — 노랑 게이지 풀필→✓→진행 박스(기틀)「카드뉴스 프롬프팅 중···」</p>
+        <button class="reset" onclick="resetRetry('p2fa')">↺ 다시</button>
       </div>
 
       <div class="state">
         <p class="stt fail"><span class="dot"></span>실패 — ⓑ 프롬프팅 15분+ 멈춤</p>
         <p class="cardhdr">2. 카드 뉴스 프롬프트 <b>— 실패(시간초과)</b></p>
-        <button class="mkbtn retry">프롬프트 다시 생성</button>
+        <div id="p2fb"><button class="mkbtn retry" onclick="fireRetry(this,'p2fb')">프롬프트 다시 생성</button></div>
+        <button class="reset" onclick="resetRetry('p2fb')">↺ 다시</button>
       </div>
     </section>
 
@@ -132,24 +136,27 @@
       <div class="state">
         <p class="stt"><span class="dot"></span>진행 버튼 누를 때 = 진행 중 (통일)</p>
         <div id="p3live"><button class="mkbtn" data-lbl="카드 이미지 생성" onclick="fire3(this)">카드 이미지 생성</button></div>
-        <p class="hint">1차 탭=「이미지 생성 확인」(노랑) · 2차 탭=풀필→✓→pill 유지하며 「카드 이미지 생성 중···」 (안 바뀜)</p>
+        <p class="hint">1차 탭=「이미지 생성 확인」(노랑) · 2차 탭=풀필→✓→진행 박스(기틀 genstat)「카드 이미지 생성 중···」 (안 바뀜)</p>
         <button class="reset" onclick="reset3()">↺ 다시</button>
       </div>
 
       <div class="state">
         <p class="stt fail"><span class="dot"></span>실패 — ⓐ 일부만 생성됨</p>
-        <button class="mkbtn retry">카드 이미지 생성 재시도 <span class="sub-w">(일부)</span></button>
+        <div id="p3fa"><button class="mkbtn retry" onclick="fireRetry(this,'p3fa')">카드 이미지 생성 재시도 <span class="sub-w">(일부)</span></button></div>
+        <p class="hint">눌러봐 — 노랑 게이지 풀필→✓→진행 박스(기틀)「카드 이미지 생성 중···」</p>
+        <button class="reset" onclick="resetRetry('p3fa')">↺ 다시</button>
       </div>
 
       <div class="state">
         <p class="stt fail"><span class="dot"></span>실패 — ⓑ 발사 후 18분+ 이미지 미완</p>
-        <button class="mkbtn retry">카드 이미지 생성 재시도</button>
+        <div id="p3fb"><button class="mkbtn retry" onclick="fireRetry(this,'p3fb')">카드 이미지 생성 재시도</button></div>
+        <button class="reset" onclick="resetRetry('p3fb')">↺ 다시</button>
       </div>
     </section>
   </div>
 
   <div class="chg">
-    <b>이번 반영(v4)</b> — ① 재생성/재시도 버튼 = 2번(재확인) 노랑색으로 전환 · ② 진행 박스 = 짙은 먹색 50% 반투명 + 글래스모피즘(테두리도 이에 맞춘 글래스) + 초록 글로우·점 모션 · ③ (앞서) 실패 멘트 삭제·형광 통일·'중' 띄어쓰기·(일부) 흰색
+    <b>이번 반영(v5)</b> — ① 진행중 도형 = <b>라이브 genstat.live 그대로(기틀 유지)</b> · 문구만 변경(먹색 pill 재설계 철회) · ② 재시도 버튼도 눌러보면 <b>노랑 게이지(풀필→✓)→진행 박스</b>로 전개 · ③ (유지) 재시도 노랑·실패 멘트 삭제·형광 통일·'중' 띄어쓰기·(일부) 흰색·문구 통일
   </div>
   <div class="legend">
     <b>점 모션(C·페이드) = <span class="ok">진행 박스</span></b>에만 · 실패 박스/버튼 라벨은 정지 · 접힌 요약탭 헤더 <code>— 프롬프팅 중…</code>는 그대로(운영자 확정).<br>
@@ -182,6 +189,26 @@
     }, 760);
   }
   function reset3(){ document.getElementById('p3live').innerHTML='<button class="mkbtn" data-lbl="카드 이미지 생성" onclick="fire3(this)">카드 이미지 생성</button>'; }
+
+  // ── 재시도(실패 복구) 버튼 = 노랑 게이지 풀필→✓→진행 박스(기틀) ──
+  const RETRY_ORIG = {
+    p2fa: { label:'프롬프트 다시 생성',      pill:'카드뉴스 프롬프팅 중', partial:false },
+    p2fb: { label:'프롬프트 다시 생성',      pill:'카드뉴스 프롬프팅 중', partial:false },
+    p3fa: { label:'카드 이미지 생성 재시도', pill:'카드 이미지 생성 중',  partial:true  },
+    p3fb: { label:'카드 이미지 생성 재시도', pill:'카드 이미지 생성 중',  partial:false },
+  };
+  function retryBtnHTML(id){
+    const o = RETRY_ORIG[id];
+    const lbl = o.partial ? (o.label + ' <span class="sub-w">(일부)</span>') : o.label;
+    return '<button class="mkbtn retry" onclick="fireRetry(this,\''+id+'\')">'+lbl+'</button>';
+  }
+  function fireRetry(btn, id){
+    btn.classList.add('firing'); btn.style.pointerEvents='none';
+    setTimeout(()=>{ btn.classList.add('okdone','checking'); btn.innerHTML=CHECK;
+      setTimeout(()=>{ toLive(id, RETRY_ORIG[id].pill); }, 720);
+    }, 760);
+  }
+  function resetRetry(id){ document.getElementById(id).innerHTML = retryBtnHTML(id); }
 </script>
 </body>
 </html>
