@@ -73,7 +73,7 @@ print("Claude({}) 관련 뉴스이미지 소스 검색 — '{}'".format(MODEL, h
 try:
     res = subprocess.run(
         ["claude", "-p"]
-        + (["--bare"] if os.environ.get("CLAUDE_BARE", "1").strip().lower() not in ("0", "false", "no", "off", "") else [])  # 라우터 auto-discovery 스킵(안 읽는 ~37k 누수 차단 · 260701 · 롤백 CLAUDE_BARE=0)
+        + (["--bare"] if os.environ.get("CLAUDE_BARE", "0").strip().lower() not in ("0", "false", "no", "off", "") else [])  # 라우터 auto-discovery 스킵(안 읽는 ~37k 누수 차단 · 260701 · 롤백 CLAUDE_BARE=0)
         + ["--model", MODEL, "--effort", "max",
          "--allowedTools", "WebFetch,WebSearch",
          "--disallowedTools", "Write,Edit,MultiEdit,NotebookEdit,Bash,Task",
