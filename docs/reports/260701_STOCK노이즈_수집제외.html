@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>증권/시황 노이즈 수집 제외 필터 — 보고서 260701</title>
+<style>
+:root{--bg:#0b0d0c;--pan:#14171a;--fg:#e9eaec;--mut:#8a8f98;--line:#242830;--accent:#22c55e;--accent-rgb:34,197,94;--danger:#ef4444;--amber:#f59e0b;--r:14px}
+*{box-sizing:border-box}
+body{margin:0;padding:28px 16px 64px;background:var(--bg);color:var(--fg);
+ font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;line-height:1.6;font-size:15px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:23px;margin:0 0 6px;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:13.5px;margin:0 0 26px}
+h2{font-size:16.5px;margin:30px 0 12px;padding-left:10px;border-left:3px solid var(--accent);letter-spacing:-.01em}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:12px 0}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:12.5px}
+td.n{color:var(--accent);font-weight:700;white-space:nowrap}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line)}
+.g{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.09)}
+.r{color:var(--danger);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.09)}
+.a{color:var(--amber);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.09)}
+code{background:#0e1113;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px;color:#cfe9d6}
+ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+.big{font-size:30px;font-weight:800;color:var(--accent);letter-spacing:-.02em}
+.grid{display:flex;gap:12px;flex-wrap:wrap}
+.stat{flex:1;min-width:130px;background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.stat .k{color:var(--mut);font-size:12.5px;margin-bottom:4px}
+.mut{color:var(--mut)}
+.ex{color:var(--mut);font-size:13px}
+.arrow{color:var(--accent);font-weight:700}
+</style></head><body><div class="wrap">
+
+<h1>증권/시황 노이즈 수집 제외 필터</h1>
+<p class="sub">뉴스 큐레이션 · 260701 · <code>scraper/stock_filter.py</code> 신설 · main <code>e0f925d</code> 반영</p>
+
+<h2>한눈에</h2>
+<div class="grid">
+  <div class="stat"><div class="k">제외(실측)</div><div class="big">98건</div><div class="ex">candidates 2,821건 중</div></div>
+  <div class="stat"><div class="k">오탐</div><div class="big">0건</div><div class="ex">정상 뉴스 딸려나감 없음</div></div>
+  <div class="stat"><div class="k">적용 지점</div><div class="big">수집</div><div class="ex">최상류 = 아예 안 들어옴</div></div>
+</div>
+<div class="card">증권사 리포트·개별종목 시황·증권사 홍보/인사·기업 자기홍보 같은 <b>큐레이션에 가치 없는 노이즈</b>를,
+수집하는 순간(RSS 파싱 최상류)에서 걸러낸다. 그래서 수집함(candidates)·교차등장(cross)·클러스터링에 <b>아예 안 섞인다.</b>
+이미 쌓여 있던 노이즈도 다음 스크랩 때 정리된다.</div>
+
+<h2>전 / 후</h2>
+<table>
+<tr><th>구분</th><th>전</th><th>후</th></tr>
+<tr><td>증권사 목표가 리포트</td><td class="mut">"하나證 …목표가 300만원 상향" 등 수집됨</td><td><span class="tag g">제외</span></td></tr>
+<tr><td>개별종목 시황</td><td class="mut">"[특징주] 매드업 125% 급등" 등</td><td><span class="tag g">제외</span></td></tr>
+<tr><td>증권사 홍보/인사</td><td class="mut">발행어음 특판·IRP 이벤트·[인사] 명단</td><td><span class="tag g">제외</span></td></tr>
+<tr><td>지수 전반 뉴스</td><td class="mut">"코스피 급락에 서킷브레이커"</td><td><span class="tag a">유지</span> (큰 사건)</td></tr>
+<tr><td>증권사 사건/세금</td><td class="mut">"키움증권 전산오류"·"증권거래세 폭증"</td><td><span class="tag a">유지</span> (뉴스성)</td></tr>
+</table>
+
+<h2>규칙 (3층)</h2>
+<div class="card">
+<p><b>① 단독 제외</b> — 태그·전용어 (오탐 0 실측)<br>
+<span class="ex"><code>[특징주]</code> <code>[C컷]</code> <code>[인사]</code> <code>[서울데이터랩]</code> <code>[마감시황]</code> <code>[핫스탁]</code> 목표가 대장주 <code>證</code> 수혜/관련주 한양증권</span></p>
+<p><b>② 증권사 AND</b> — <span class="mut">(증권·투자증권·금융투자)</span> <span class="arrow">AND</span> <span class="mut">(리포트어·홍보어·임원인사어)</span><br>
+<span class="ex">→ <code>증권거래세</code>(세금뉴스)는 예외 보존</span></p>
+<p><b>③ 기업명 AND</b> — <span class="mut">주요 종목·대기업(45개)</span> <span class="arrow">AND</span> <span class="mut">(최우수 · 개별종목 급등락)</span><br>
+<span class="ex">→ 지수(코스피·코스닥) 맥락이면 유지</span></p>
+</div>
+
+<h2>오탐 방지 — 핵심 설계</h2>
+<div class="card">
+<ul>
+<li><b>"증권/투자" 단독은 신호 아님</b> → <span class="ex">해외직접투자·메가투자·증권거래세 보존</span></li>
+<li><b>개별종목만 급등락 제외, 지수 맥락은 유지</b> → <span class="ex">"코스피 급락에 삼성전자 폭락" <span class="tag a">유지</span> · "SK하이닉스 11% 급락" <span class="tag g">제외</span></span></li>
+<li><b>기업명 리스트 AND</b> → <span class="ex">"대한민국 32강 확률 급락"(스포츠)·"동탄 급등"(부동산) 안 걸림</span></li>
+<li><b>"협업" 규칙 제외</b> → <span class="ex">"LG전자, 엔비디아와 협업"(중요) 보호</span></li>
+</ul>
+</div>
+
+<h2>장단점 · 효율성 · 리스크</h2>
+<table>
+<tr><th>축</th><th>내용</th></tr>
+<tr><td class="n">장점</td><td>수집함이 증권 노이즈로 도배되던 걸 근본 차단. 수집 최상류라 cross·랭킹 계산도 깨끗. 규칙이 <code>stock_filter.py</code> 한 곳(SSOT)에 모여 유지보수 쉬움.</td></tr>
+<tr><td class="n">단점</td><td>기업명·종목명 리스트(45개)는 새 대형주가 나오면 <span class="mut">가끔 추가</span> 필요(수동). 정규식 기반이라 완전 신종 표현은 놓칠 수 있음.</td></tr>
+<tr><td class="n">효율성</td><td>순수 정규식 = <b>LLM 토큰 0·과금 0</b>. 수집 단계 1회 매칭이라 성능 부담 무시 가능.</td></tr>
+<tr><td class="n">품질저하 리스크</td><td><b>낮음.</b> dry-run 2,821건 오탐 0 실측. AND 조건·지수맥락 예외·기업명 리스트로 정상 뉴스 보존을 최우선(보수적) 설계. 클러스터링·cross·신호·grade 로직은 <b>불변</b>(기틀 비저촉).</td></tr>
+</table>
+
+<h2>검증</h2>
+<div class="card"><ul>
+<li>dry-run 실측(candidates 2,821건): 제외 98건 · <b>오탐 0</b> (협업·지수맥락·증권거래세·해외투자 전부 보존 확인)</li>
+<li>구문 OK(<code>py_compile</code> 3파일) · <code>check_refs</code> 통과</li>
+<li>원격 <code>git show origin/main</code> read-back으로 반영 실측</li>
+</ul></div>
+
+</div></body></html>
