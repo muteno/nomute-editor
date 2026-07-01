@@ -1423,8 +1423,6 @@
   /* ▼ 다운로드 버튼 표준(전 앱 공통 · 강조색 + 10% 반투명 + 클릭 ✓팝+링 · 정본=여기 · 운영자 260622) — 새 다운로드 버튼은 .dlbtn 한 클래스만 추가, 색·효과 재설계 금지 */
   .dlbtn { color:var(--accent) !important; background:rgba(var(--accent-rgb),.10) !important; border-color:rgba(var(--accent-rgb),.22) !important; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
   .dlbtn:hover { background:rgba(var(--accent-rgb),.16) !important; }
-  /* ▼ 다운로드 완료(클릭 후) = 강조색 → 흰색 영속 표식 (전 앱 공통 기틀 · 운영자 260701) — '이미 받음'을 색으로 알림. 클릭 즉시 흰색·재렌더에도 URL키(DLED)로 복원. 새 다운로드 버튼도 .dlbtn만 붙이면 자동 적용(색 재설계 금지). */
-  .dlbtn.dl-done { color:var(--fg) !important; }
   /* 이미지 위 오버레이 다운로드/저장 플레이트 = 중립 검정 20%(그린 아님 · 다양한 사진/카드 위 대비 · 아이콘은 그린 유지 · thumb.html .imgdl.dlbtn 선례 · 운영자 260624). 전역 .dlbtn 표준(green 10%)·다크UI 위 버튼은 불변. 스코프 셀렉터(0,2~3,0)+!important로 표준만 덮어씀. */
   .timg-dl.dlbtn { background:rgba(0,0,0,.20) !important; border-color:transparent !important; }                 /* 썸네일 후보 슬롯 저장 */
   .timg-dl.dlbtn:hover { background:rgba(0,0,0,.24) !important; }
@@ -1627,7 +1625,6 @@
   .cref-dlall .dlseq-ic .chk { opacity:0; }
   .cref-dlall.dlbtn::before { display:none; }   /* 미니멀 = 좌→우 채움 없음 */
   .cref-dlall.dlbtn.dlseq-busy, .cref-dlall.dlbtn.dlseq-done { color:var(--accent) !important; }   /* 채움 없으니 글자 강조색 유지(검정 전환 X) */
-  .cref-dlall.dlbtn.dl-done, .cref-dlall.dlbtn.dl-done .cref-dllbl { color:var(--fg) !important; }   /* 전체 받음 = 완료 후 흰색 유지 */
   .cref-dlall.dlbtn.dlseq-done .dlseq-ic .dn { opacity:0; }
   .cref-dlall.dlbtn.dlseq-done .dlseq-ic .chk { opacity:1; animation:dlChkPop .42s var(--ease); }
   @keyframes dlChkPop { 0%{transform:scale(.3)} 58%{transform:scale(1.3)} 100%{transform:scale(1)} }
@@ -2921,8 +2918,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     const i = +slot.dataset.i, it = list[i]; if (!it) return;
     const acts = slot.querySelector('.timg-acts');
     if (kind === 'gen' && it.sid) acts.insertBefore(thumbRedoSbtn(it.sid), acts.firstChild);   // 생성 슬롯마다 재생성 .sbtn(저장 앞)
-    const _tdl = slot.querySelector('.timg-dl'); if (dlSeen(it.img)) _tdl.classList.add('dl-done');   // 재렌더 시 '받음' 흰색 복원
-    _tdl.addEventListener('click', e => { e.stopPropagation(); dlMark(it.img, _tdl); });   // 저장 앵커 탭 = 네이티브 다운로드(확대 라이트박스로 안 번지게만) + '받음' 흰색
+    slot.querySelector('.timg-dl').addEventListener('click', e => e.stopPropagation());   // 저장 앵커 탭 = 네이티브 다운로드(확대 라이트박스로 안 번지게만)
     slot.addEventListener('click', e => { if (!e.target.closest('.timg-acts')) openLightbox(list, i, label); });   // 탭=확대(복사는 확대뷰에서)
     slot.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(list, i, label); } });
   });
@@ -3043,11 +3039,6 @@ function thumbRedoSbtn(sid) {
 
 // ── 썸네일 이미지: 복사·저장·확대(라이트박스) — §🎨 .sbtn/.tool-x/<dialog>+popstate 계승 ──
 // 전체 다운로드 통합 — 순차 저장(진행 i/N 라벨) → 초록 ✓ 완료(첨부2식). 검색이미지·카드피드 두 자리 공용(운영자 260622).
-// 다운로드 완료(이미 받음) 표식 — URL 키로 기억해 재렌더에도 '흰색(.dl-done)' 유지(전 앱 공통 기틀·운영자 260701)
-const DLED = new Set();
-const _dlKey = u => (u || '').split('?')[0].split('#')[0];
-const dlSeen = u => !!u && DLED.has(_dlKey(u));
-const dlMark = (u, btn) => { if (u) DLED.add(_dlKey(u)); if (btn) btn.classList.add('dl-done'); };
 async function dlAllSeq(btn, urls, namer) {
   if (!btn || btn._dlbusy) return;
   urls = (urls || []).filter(Boolean);
@@ -3064,8 +3055,7 @@ async function dlAllSeq(btn, urls, namer) {
     await new Promise(r => setTimeout(r, 280));
   }
   if (lbl) lbl.textContent = '완료';
-  btn.classList.remove('dlseq-busy'); btn.classList.add('dlseq-done', 'dl-done');   // 꽉 채움 + ✓ 팝 + 글로우 · dl-done=전체 받음 흰색 유지
-  urls.forEach(u => DLED.add(_dlKey(u)));   // 개별 URL도 '받음' 기억(개별 버튼도 흰색 복원)
+  btn.classList.remove('dlseq-busy'); btn.classList.add('dlseq-done');   // 꽉 채움 + ✓ 팝 + 글로우
   setTimeout(() => {   // ✓ 잠깐 보여준 뒤 즉시 복귀(드레인 없음 = 글자 안 가려짐·운영자 260622)
     btn.classList.add('dlseq-snap'); btn.classList.remove('dlseq-done');
     if (lbl) lbl.textContent = orig || '전체';
@@ -3175,11 +3165,10 @@ function _ensureLbox() {
     d.querySelector('.lbox-no').textContent = LBOX_ITEMS.length ? (idx() + 1) + ' / ' + LBOX_ITEMS.length : '';
     const it = cur(), src = d.querySelector('.lbox-src'), dl = d.querySelector('.lbox-dl');
     if (it.link) { src.href = it.link; src.hidden = false; } else src.hidden = true;
-    if (dl && it.img) { const dn = thumbDlName(LBOX_LABEL, it, idx()); dl.href = dlSrc(it.img, dn); dl.download = dn; dl.classList.toggle('dl-done', dlSeen(it.img)); }   // 슬라이드별 저장 앵커(api/dl 프록시·네이티브 다운로드 · href는 DOM 프로퍼티라 raw) + '받음' 흰색
+    if (dl && it.img) { const dn = thumbDlName(LBOX_LABEL, it, idx()); dl.href = dlSrc(it.img, dn); dl.download = dn; }   // 슬라이드별 저장 앵커(api/dl 프록시·네이티브 다운로드 · href는 DOM 프로퍼티라 raw)
   };
   track.addEventListener('scroll', () => { clearTimeout(track._t); track._t = setTimeout(sync, 90); });
   d.querySelector('.lbox-copy').addEventListener('click', e => copyImg(cur().img, e.currentTarget));
-  d.querySelector('.lbox-dl').addEventListener('click', () => dlMark(cur().img));   // 네이티브 다운로드 + '받음' 흰색(sync가 다음 슬라이드서 복원)
   d.querySelector('.lbox-x').addEventListener('click', () => d.close());
   d.addEventListener('click', e => { if (e.target === d) d.close(); });   // 백드롭 탭=닫기
   d.addEventListener('cancel', e => { e.preventDefault(); d.close(); });   // ESC=닫기
@@ -3605,10 +3594,9 @@ function feedSec(a, keepIdx = 0) {
     const v = card.versions[card.cur] || {};
     uiNo.innerHTML = `<b>${card.n}</b>/${totalN}`;
     uiEdit.onclick = () => openEdit({ card, idx, file: a.file });
-    if (v.image) { uiSave.style.display = ''; const dn = `${dlStamp(CUR_A)}_${slug}_${String(idx + 1).padStart(2, '0')}.jpg`; uiSave.href = v.image; uiSave.setAttribute('download', dn); uiSave.classList.toggle('dl-done', dlSeen(v.image)); uiSave.onclick = e => { e.preventDefault(); downloadImg(v.image, dn, uiSave); dlMark(v.image, uiSave); }; }   // R2=프록시 경유(교차출처 a[download] 무시 문제 해소)·href는 폴백 · '받음' 흰색
+    if (v.image) { uiSave.style.display = ''; const dn = `${dlStamp(CUR_A)}_${slug}_${String(idx + 1).padStart(2, '0')}.jpg`; uiSave.href = v.image; uiSave.setAttribute('download', dn); uiSave.onclick = e => { e.preventDefault(); downloadImg(v.image, dn, uiSave); }; }   // R2=프록시 경유(교차출처 a[download] 무시 문제 해소)·href는 폴백
     else { uiSave.style.display = 'none'; uiSave.onclick = null; }
-    const uiOvl = ui.querySelector('.ovl'); uiOvl.classList.remove('dl-done');   // 오버레이 PNG = 카드별 산출 → 카드 전환 시 초기화(클릭 시 generic 핸들러가 흰색)
-    uiOvl.onclick = () => exportOverlay(card, idx, slug);   // 오버레이만 투명 PNG
+    ui.querySelector('.ovl').onclick = () => exportOverlay(card, idx, slug);   // 오버레이만 투명 PNG
     ui.querySelector('.fbup').onclick = () => onThumb(card, 'up', ui, a.file);
     ui.querySelector('.fbdown').onclick = () => onThumb(card, 'down', ui, a.file);
     applyVoteState(ui, a.file, card.n);   // 기존 투표(localStorage) 반영
@@ -7421,7 +7409,6 @@ document.addEventListener('click', e => {
 // 다운로드 버튼 표준 클릭효과 = ✓ 팝 + 링 리플(.dlbtn 전 앱 공통 · 위임·캡처 · 운영자 260622)
 document.addEventListener('click', e => {
   const b = e.target.closest('.dlbtn'); if (!b) return;
-  if (!b.matches('.cref-dlall')) b.classList.add('dl-done');   // 클릭 즉시 '받음' 흰색(전체=.cref-dlall은 완료 시 별도 처리·운영자 260701)
   const o = document.createElement('span'); o.className = 'dl-ack';
   o.innerHTML = '<span class="dl-ring"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
   if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
