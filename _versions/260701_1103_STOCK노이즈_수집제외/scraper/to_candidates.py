@@ -10,9 +10,6 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from stock_filter import is_excluded_title  # 증권/시황 노이즈 제외(SSOT · 운영자 260701)
-
 ROOT = Path(__file__).resolve().parent.parent
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "scraper" / "out" / "articles.json"
 DST = ROOT / "viewer" / "candidates.json"
@@ -334,8 +331,7 @@ def main():
         except Exception:
             return 0.0
 
-    kept = [c for c in merged.values()
-            if age_h(c) <= TTL_HOURS and not is_excluded_title(c.get("title") or "")]   # 증권/시황 노이즈 = 기존 수집분도 정리(운영자 260701)
+    kept = [c for c in merged.values() if age_h(c) <= TTL_HOURS]
     kept.sort(key=lambda c: (c.get("cross") or 0, c.get("published") or ""), reverse=True)
     kept = kept[:CAP]
 
