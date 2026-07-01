@@ -416,7 +416,7 @@
   .prog .seg { flex:1; display:flex; flex-direction:column; gap:8px; align-items:center; cursor:pointer; min-width:0; outline:none; }
   .prog .sl { font-size:11px; line-height:1; letter-spacing:-.3px; color:var(--mut); font-weight:700;
     opacity:.55; white-space:nowrap; transition:color .3s, opacity .3s; position:relative; }
-  .prog .rn { position:absolute; left:100%; top:0; margin-left:1px; opacity:1;
+  .prog .rn { position:absolute; left:100%; top:0; margin-left:5px; opacity:1;
     font-size:11px; font-weight:700; color:var(--mut); line-height:1; letter-spacing:-.3px; white-space:nowrap; pointer-events:none; }   /* 자동 재시도 표식 — 라벨('프롬프트') 우측에 MUT '(N회)' · 라벨과 크기(11px)·정렬(top:0=baseline) 동일 · 라벨은 가운데 고정(rn=absolute) · 운영자 260701 */
   .prog .sk { font-style:normal; font-size:.7em; opacity:.5; margin-left:3px; font-weight:800; letter-spacing:.05em; }
   .prog .bar { width:100%; height:7px; border-radius:999px; background:rgba(255,255,255,.06); position:relative;
@@ -610,14 +610,7 @@
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
   .sc-fail { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
     color:rgba(255,74,62,.95); background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px); border:1px solid rgba(255,176,46,.55); cursor:pointer;
-    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 · 롱프레스 콜아웃/텍스트선택 차단(qFeedBtn 동일 패턴 + touch-action) */
-  /* 재시도 상태머신(운영자 260701): 재시도 arm·재분석 중 = 빗금 30% 반투명(Failed 100%보다 옅게)·빨강 글씨체 유지 · 노랑 채움 폐지 */
-  .sc-fail.retry { background:repeating-linear-gradient(45deg,rgba(255,206,64,.078) 0 4px,rgba(255,206,64,.027) 4px 8px); letter-spacing:0; }   /* 재시도 arm = 빗금30% · color(빨강) 상속 */
-  .sc-fail.picking { background:repeating-linear-gradient(45deg,rgba(255,206,64,.078) 0 4px,rgba(255,206,64,.027) 4px 8px); color:var(--fg); letter-spacing:0; cursor:default; position:relative; overflow:hidden; }   /* 재분석 중 = 빗금30% + 진행 shine(기존 Picking 계승) */
-  .sc-fail.picking > span { position:relative; z-index:1; }
-  .sc-fail.picking::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent); animation:scFailShine 1.3s linear infinite; }
-  @keyframes scFailShine { 0% { transform:translateX(-120%); } 100% { transform:translateX(320%); } }
-  @media (prefers-reduced-motion:reduce) { .sc-fail.picking::after { animation:none; } }
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* Failed = Picking…/PICKED 동급 풀폭 칩 · 피드 실패 진행바 텍스처 계승 · 롱프레스 콜아웃/텍스트선택 차단(qFeedBtn 동일 패턴 + touch-action — iOS 네이티브 콜아웃이 커스텀 메뉴 가리는 것 방지) */
   .sc-fail:hover { background:repeating-linear-gradient(45deg,rgba(255,206,64,.40) 0 4px,rgba(255,206,64,.16) 4px 8px); }
   .sc-fail:active { transform:scale(var(--press-l,.97)); }
   .sc-item.pickfail { border-color:rgba(255,176,46,.5); }
@@ -2363,7 +2356,7 @@ function progGauge(a) {
     else if (i === done && busy) cls = ' cur';
     else if (i === done && fail) cls = ' fail';
     if (i === scarSeg) cls += ' scar';
-    const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N)'(숫자만·크기·정렬 라벨과 동일 · 운영자 260701)
+    const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry}회)</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N회)'(크기·정렬 라벨과 동일)
     return `<div class="seg${cls}" data-j="${j}" role="button" tabindex="0" aria-label="${aria[j]}"><span class="sl">${lb}${rn}</span><span class="bar"></span></div>`;
   }).join('');
   return `<div class="prog">${html}</div>`;
@@ -3341,9 +3334,8 @@ function cardSec(a) {
   // text_done = 이미지 발사 버튼(3단계) — 이미지 나오면(done) 사라짐
   if (st === 'text_done') {
     const b = document.createElement('button');
-    const shot = !!c.failedOnce;   // 한 번 슛(이미지) 실패해 error.log 잔존(피드 게이지 scar와 동기) → 첫 시도 아닌 '재시도' 표기(노랑·fired_partial과 통일·운영자 260701)
-    b.className = shot ? 'mkbtn retry' : 'mkbtn';
-    b.textContent = shot ? '카드 이미지 생성 재시도' : '카드 이미지 생성';
+    b.className = 'mkbtn';
+    b.textContent = '카드 이미지 생성';
     b.onclick = () => makeCards(a.file, b, 'shoot');
     sec.appendChild(b);
   }
@@ -5662,14 +5654,7 @@ const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 
 const PICK_TIMEOUT_MS = 10 * 60000;
 const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pendStatus(c) === 'retry' || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
-// 실패 재시도 횟수(누적) — Failed(N) 표시 · 재시도(대기열 재투입)할 때마다 +1 (운영자 260701)
-const FAILRETRY_KEY = 'nm_fail_retries';
-const failRetriesGet = () => { try { return JSON.parse(localStorage.getItem(FAILRETRY_KEY) || '{}'); } catch { return {}; } };
-function bumpFailRetry(c) { const m = failRetriesGet(), id = candId(c); m[id] = (m[id] || 0) + 1; try { localStorage.setItem(FAILRETRY_KEY, JSON.stringify(m)); } catch {} }
-const failCount = c => 1 + (failRetriesGet()[candId(c)] || 0);   // 최초 실패 1 + 재시도 횟수
-const failLabel = c => 'Failed' + (failCount(c) >= 2 ? '(' + failCount(c) + ')' : '');   // N≥2만 괄호(첫 실패=Failed) · '회' 없이 숫자만
-// Failed 칩 = 탭→재시도(2탭 arm: 재시도 문구·빗금30%→재탭→대기열 재투입) · 원문은 제목 탭(길게 메뉴 폐지·운영자 260701).
-const failChipHtml = c => `<button class="sc-fail" type="button" title="탭 = 재시도(다시 대기열로) · 제목 = 원문">${failLabel(c)}</button>`;
+const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
 // 실패 트레이 '체크 = 제자리 복귀'(운영자 260701): 체크하면 그 실패 후보를 상단 실패 트레이서 빼고 수집함 칼럼
 // *원래 자리*로 되돌린다(Failed 딱지 유지 = 재시도·원문 그대로 · 강제 상단 노출 X). 순위·자격은 일반 규칙 그대로라
 // 주변부가 그대로면 제자리(예: 위에서 3번째 픽→실패→체크→3번째 복귀). 일방향(add) — 재실패해도 재발 안 함. 되돌리려면 localStorage nm_fail_requeue 삭제.
@@ -5787,35 +5772,27 @@ function failOpen(c) {   // ⚠️ window.open이 전역 open(피드 모달)에 
   const a = document.createElement('a'); a.href = hrefOk(c.url); a.target = '_blank'; a.rel = 'noopener noreferrer';
   document.body.appendChild(a); a.click(); a.remove();
 }
-function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대기열 재투입 · 전문 없이 fetch 재시도 · alt=cluster_members로 원매체 403 우회) ② (옵션) 가까운 관련기사 새 탭. 칩 재시도=noOpen(대기열만·원문은 제목 탭) / 토스트=새 탭 유지(운영자 260701·260622)
+function failRetry(c) {   // ↻ 재시도 — ① 자동 재분석 재발사(전문 없이 = fetch 재시도 · alt=cluster_members로 원매체 403 우회 = '재시도 한바퀴') ② 가까운 관련기사 원문 새 탭(원기사 막혔어도 타매체는 읽힘 · 운영자 260622)
   if (!c) return;
   const alt = pickAlt(c);   // 같은 사건 타매체(메이저 우선·가까운 관련기사)
-  if (c.url) {   // ① 재분석 재발사(body 없이 → fetch 재시도 · alt 동반) = 다시 대기열(pending)로 · Failed→Picking(pfResubActive)
+  if (c.url) {   // ① 재분석 재발사(body 없이 → fetch 재시도 · alt 동반) + Failed→Picking 표시(pasteSend body-less판)
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
     const id = candId(c); saveRating(id, { picked: true, pickedAt: Date.now() }); pfAddResub(id);
   }
-  if (!(opts && opts.noOpen)) {   // ② 가까운 관련기사 원문 새 탭 — 토스트 재시도만(칩 재시도는 생략 = 대기열만 · 원문은 제목 탭)
-    const go = alt[0] || c.url;
-    if (go) { const a = document.createElement('a'); a.href = hrefOk(go); a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); a.remove(); }
-  }
+  const go = alt[0] || c.url;   // ② 가까운 관련기사 원문(없으면 원기사) 새 탭 — 앵커 클릭(전역 open 셰도잉 회피·failOpen 패턴)
+  if (go) { const a = document.createElement('a'); a.href = hrefOk(go); a.target = '_blank'; a.rel = 'noopener noreferrer'; document.body.appendChild(a); a.click(); a.remove(); }
   if (CURTAB === 'scrap') renderScrap();
 }
 // Failed 칩 배선 — 탭=원문 열기 / 길게(480ms)·우클릭=컨텍스트 메뉴(실패 사유·내용 입력). 대기열(qFeedBtn) 롱프레스 패턴 계승.
-function wireFailChip(fb, c) {   // Failed 칩 = 재시도 상태머신(2탭: 탭→'재시도' arm[빗금30%·빨강]→재탭→대기열 재투입+Picking) · 원문은 제목 탭(길게 메뉴 폐지·운영자 260701)
+function wireFailChip(fb, c) {
   if (!fb) return;
-  let armed = false, armT = null;
-  fb.onclick = e => {
-    e.stopPropagation();
-    if (fb.classList.contains('picking')) return;   // 재분석 진행 중 = 무시
-    if (!armed) {   // 1탭 = '재시도' arm(오발 방지 · 빗금30%·빨강 글씨 유지) · 3.5s 무동작이면 Failed(N) 원복
-      armed = true; fb.classList.add('retry'); fb.textContent = '재시도';
-      clearTimeout(armT); armT = setTimeout(() => { armed = false; fb.classList.remove('retry'); fb.textContent = failLabel(c); }, 3500);
-      return;
-    }
-    clearTimeout(armT); armed = false; fb.classList.remove('retry');   // 2탭 = 확정 → 다시 대기열로
-    fb.classList.add('picking'); fb.innerHTML = '<span>Picking…</span>';
-    bumpFailRetry(c); failRetry(c, { noOpen: true });   // 실패 카운트 +1 + 재분석 재발사(대기열) → pfResubActive → renderScrap이 빗금30% Picking 유지
-  };
+  let t = null, lp = false;   // lp = 롱프레스 발화 — 직후 합성 click 억제(원문 안 열림)
+  fb.onclick = e => { e.stopPropagation(); if (lp || Date.now() - _failMenuAt < 500) { lp = false; return; } failOpen(c); };   // lp=롱프레스 / 타임스탬프=메뉴 첫항목 focus→칩 blur→lp 리셋이 데스크톱 마우스 홀드의 trailing click 억제를 깨던 것 봉합(둘 중 하나면 원문 안 엶)
+  fb.addEventListener('pointerdown', e => { if (e.button) return; lp = false; clearTimeout(t); t = setTimeout(() => { lp = true; openFailMenu(c, fb); }, 480); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fb.addEventListener(ev, () => clearTimeout(t)));
+  fb.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); clearTimeout(t); openFailMenu(c, fb); });   // 우클릭은 click 미발생 → lp 안 건드림
+  fb.addEventListener('blur', () => { lp = false; });   // 메뉴를 ESC/외부클릭으로 닫아 lp 가 true로 남았을 때 다음 키보드 Enter 1회 삼킴 방지(pointerup 리셋은 합성 click 억제를 깨므로 금지)
+  fb.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(t); });   // 칩이 스크롤 리스트(수집함) 안 — 드래그 스크롤로 손가락 이동하면 롱프레스 타이머 취소(스크롤 중 메뉴 오발 차단)
 }
 let _failMenuC = null, _failMenuAt = 0;   // _failMenuAt = 메뉴 오픈 시각 — 직후 합성 click 억제(아래 onclick)
 function openFailMenu(c, anchor) {
@@ -6281,9 +6258,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
                ? (failChipHtml(c) + (col === 'fail' ? failHideChk() : ''))
                : ((pstate === 'settled' || !DATA_LOADED)
                    ? `<div class="sc-got" aria-label="픽 완료" title="탭하면 피드에서 이 기사 열기">PICKED</div>`
-                   : (pfResubActive(candId(c))
-                       ? `<button class="sc-fail picking" type="button" aria-label="재분석 중" tabindex="-1"><span>Picking…</span></button>`
-                       : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`)))
+                   : `<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>`))
            : `<button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분·흐려짐)">${ACK_MORPH}</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">${STAR_SVG}</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ' + CHECK_SVG : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
