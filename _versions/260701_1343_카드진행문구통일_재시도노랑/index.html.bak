@@ -1386,13 +1386,6 @@
   /* 유료(3단계 슛) 재확인 arm = 한 번 더 눌러야 발사(오발 과금 방지·맑은 노랑 --arm · 운영자 260622) */
   .mkbtn.arm { background:rgba(var(--arm-rgb),.16); color:var(--arm); border-color:rgba(var(--arm-rgb),.55); }
   .mkbtn.arm:active { background:rgba(var(--arm-rgb),.26); }
-  /* 재시도(실패 복구) 버튼 = 재확인 arm과 같은 레몬(노랑)으로 통일 · 게이지도 노랑 풀필→✓ (운영자 260701) */
-  .mkbtn.retry { background:rgba(var(--arm-rgb),.16); color:var(--arm); border-color:rgba(var(--arm-rgb),.55); }
-  .mkbtn.retry:active { background:rgba(var(--arm-rgb),.26); }
-  .mkbtn.retry.firing { color:var(--on-arm);
-    background:linear-gradient(var(--arm),var(--arm)) left/0% 100% no-repeat, linear-gradient(rgba(var(--arm-rgb),.16),rgba(var(--arm-rgb),.16)); }
-  .mkbtn.retry.okdone { background:var(--arm); color:var(--on-arm); border-color:var(--arm); }
-  .mkbtn.retry .gck path { stroke:var(--on-arm); }
   /* stale = 요약이 카드 제작 후 또 수정됨 → '다시 제작' 권유. 글래스 톤 유지하되 앰버로 색 구분. */
   .mkbtn.stale { background:rgba(255,170,40,.13); color:var(--amber); border-color:rgba(255,170,40,.42); }
   .mkbtn.stale:active { background:rgba(255,170,40,.22); }
@@ -3198,27 +3191,34 @@ function cardSec(a) {
   if (!st || st === 'failed') {
     // 실패 = 로그 박스 노출 안 함(사유는 error.log에 기록됨) → 버튼만 '재생성'으로. 실패 표식은 헤더 '— 실패'(sumlabel)로 유지(운영자 260630).
     const b = document.createElement('button');
-    b.className = st === 'failed' ? 'mkbtn retry' : 'mkbtn';   // 실패 재시도 = 레몬(노랑) 통일(운영자 260701)
-    b.textContent = st === 'failed' ? '프롬프트 다시 생성' : '프롬프트 생성';
+    b.className = 'mkbtn';
+    b.textContent = st === 'failed' ? '재생성' : '프롬프트 생성';
     b.onclick = () => makeCards(a.file, b, 'text');   // 2단계(텍스트·프롬프트)만 — 이미지(3단계)는 text_done 후 아래 '카드 이미지 생성' 버튼에서만
     sec.appendChild(b);
     return;
   }
   if (st === 'generating') {
-    if (genStuck) {   // 15분째 프롬프팅 멈춤 = 워크플로 중단/타임아웃 추정 → 실패로 표시·재시도(멘트 삭제·헤더 '실패(시간초과)'로 표식·운영자 260701)
+    if (genStuck) {   // 15분째 프롬프팅 멈춤 = 워크플로 중단/타임아웃 추정 → 실패로 표시·재시도
+      sec.insertAdjacentHTML('beforeend',
+        `<div class="genstat">카드 프롬프팅 실패 — ${stuckMin === 999 ? '' : stuckMin + '분째 '}멈춰 있어(워크플로 중단/타임아웃 추정). 아래로 다시 시도해줘.</div>`);
       const b = document.createElement('button');
-      b.className = 'mkbtn retry';
+      b.className = 'mkbtn';
       b.textContent = '프롬프트 다시 생성';
       b.onclick = () => makeCards(a.file, b, 'text');   // 프롬프팅 재시도 = 2단계만(이미지는 카드 이미지 생성 버튼)
       sec.appendChild(b);
     } else {
       // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
-      const phase = c.has_md ? '카드 이미지 생성 중' : '카드뉴스 프롬프팅 중';
-      sec.innerHTML = `<div class="genstat live">${phase}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후(4375)와 동일 문구로 통일·꼬리말 제거(운영자 260701)
+      const phase = c.has_md ? '카드 이미지 생성 중입니다' : '카드뉴스 프롬프팅 중입니다';
+      sec.innerHTML = `<div class="genstat live">${phase}<span class="gdots"><i>.</i><i>.</i><i>.</i></span> 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
     }
     return;
   }
-  // fired_partial 멘트(설명 문장) 삭제 — 재시도는 아래 노랑 버튼으로 유도(운영자 260701). stuck은 버튼 문구 '(일부)' 분기에 사용.
+  let note = {
+    fired_partial: ROCKET_SVG + ' 일부만 생성됨 — 아래 재생성 버튼으로 나머지 채우기',
+  }[st];
+  if (st === 'fired_partial' && stuck)   // 발사 후 18분째 이미지 미완 = 인증 만료/렌더 실패 가능 → 재시도 유도
+    note = `생성됐지만 ${stuckMin}분째 이미지 미완 — 인증 만료·렌더 실패일 수 있어. 아래로 다시 시도해줘.`;
+  if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   // 카드 이미지는 섹션 3 '카드 피드'(feedSec)에서 렌더. #cardsec은 텍스트·프롬프트·복사·슛 정본 유지.
   if (c.md) {
     // 🃏 카드 수정 = 우측 반투명 FAB(#crevFab)로만 노출(요약 수정 FAB 미러 · 큰 mkbtn 폐지 · 운영자 260624). 색=cards.crev 독립.
@@ -3314,8 +3314,8 @@ function cardSec(a) {
   // fired_partial = 발사됐으나 미완 → 재발사(텍스트 재사용·렌더만).
   if (st === 'fired_partial') {
     const b = document.createElement('button');
-    b.className = 'mkbtn retry';   // 재시도 = 레몬(노랑) 통일
-    b.textContent = stuck ? '카드 이미지 생성 재시도' : '카드 이미지 생성 재시도 (일부)';   // (일부)=일부만 생성 / 18분+ 미완이면 (일부) 없이(운영자 260701)
+    b.className = 'mkbtn';
+    b.textContent = '카드 이미지 다시 생성';
     b.onclick = () => makeCards(a.file, b, 'shoot');
     sec.appendChild(b);
   }
@@ -4372,7 +4372,7 @@ async function makeCards(target, btn, mode) {
         btn.innerHTML = '<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
         await new Promise(res => setTimeout(res, 520));
       }
-      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중'}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후=진행중 한 문구 통일(생성중 박스 3212와 동일·중간 안 바뀜·운영자 260701)
+      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? "프롬프트 생성 시작" : '카드 이미지 생성 시작'}<span class="gdots"><i>.</i><i>.</i><i>.</i></span>${isText ? " — 1~2분 내 ⏳로 바뀜(이미지는 그 뒤 '카드 이미지 생성' 버튼)" : ' — 워크플로 시작, 1~2분 내 ⏳로 바뀜'}</div>`;   // 슛 직후 안내도 점 모션(C·페이드) 통일 — 3212줄 생성중 박스와 동일(260701)
       return;
     }
     if (btn) { btn.classList.remove('firing', 'okdone', 'checking'); btn.style.pointerEvents = ''; }
