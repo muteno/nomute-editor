@@ -44,9 +44,6 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 import requests
 import feedparser
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from stock_filter import is_excluded_title  # 증권/시황 노이즈 수집 제외(SSOT · 운영자 260701)
-
 # ── 설정 ────────────────────────────────────────────────────────────
 # 평범한 브라우저로 위장. RSS는 봇 차단이 거의 없지만,
 # User-Agent 없는 raw 요청만 막는 서버가 있어 최소한의 위장을 둔다.
@@ -240,15 +237,12 @@ def collect(feeds, hours):
             link = normalize_link(e.get("link", ""))
             if not link or link in seen:
                 continue
-            title = strip_tags(e.get("title", ""))
-            if is_excluded_title(title):   # 증권/시황 노이즈 = 수집 제외(stock_filter SSOT · 운영자 260701)
-                continue
             pub = parse_time(e)
             if pub and pub < cutoff:
                 continue
             seen.add(link)
             articles.append({
-                "title": title,
+                "title": strip_tags(e.get("title", "")),
                 "link": link,
                 "publisher": feed["publisher"],
                 "category": feed["categories"],
