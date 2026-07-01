@@ -1386,13 +1386,6 @@
   /* 유료(3단계 슛) 재확인 arm = 한 번 더 눌러야 발사(오발 과금 방지·맑은 노랑 --arm · 운영자 260622) */
   .mkbtn.arm { background:rgba(var(--arm-rgb),.16); color:var(--arm); border-color:rgba(var(--arm-rgb),.55); }
   .mkbtn.arm:active { background:rgba(var(--arm-rgb),.26); }
-  /* 재시도(실패 복구) 버튼 = 재확인 arm과 같은 레몬(노랑)으로 통일 · 게이지도 노랑 풀필→✓ (운영자 260701) */
-  .mkbtn.retry { background:rgba(var(--arm-rgb),.16); color:var(--arm); border-color:rgba(var(--arm-rgb),.55); }
-  .mkbtn.retry:active { background:rgba(var(--arm-rgb),.26); }
-  .mkbtn.retry.firing { color:var(--on-arm);
-    background:linear-gradient(var(--arm),var(--arm)) left/0% 100% no-repeat, linear-gradient(rgba(var(--arm-rgb),.16),rgba(var(--arm-rgb),.16)); }
-  .mkbtn.retry.okdone { background:var(--arm); color:var(--on-arm); border-color:var(--arm); }
-  .mkbtn.retry .gck path { stroke:var(--on-arm); }
   /* stale = 요약이 카드 제작 후 또 수정됨 → '다시 제작' 권유. 글래스 톤 유지하되 앰버로 색 구분. */
   .mkbtn.stale { background:rgba(255,170,40,.13); color:var(--amber); border-color:rgba(255,170,40,.42); }
   .mkbtn.stale:active { background:rgba(255,170,40,.22); }
@@ -3198,27 +3191,34 @@ function cardSec(a) {
   if (!st || st === 'failed') {
     // 실패 = 로그 박스 노출 안 함(사유는 error.log에 기록됨) → 버튼만 '재생성'으로. 실패 표식은 헤더 '— 실패'(sumlabel)로 유지(운영자 260630).
     const b = document.createElement('button');
-    b.className = st === 'failed' ? 'mkbtn retry' : 'mkbtn';   // 실패 재시도 = 레몬(노랑) 통일(운영자 260701)
-    b.textContent = st === 'failed' ? '프롬프트 다시 생성' : '프롬프트 생성';
+    b.className = 'mkbtn';
+    b.textContent = st === 'failed' ? '재생성' : '프롬프트 생성';
     b.onclick = () => makeCards(a.file, b, 'text');   // 2단계(텍스트·프롬프트)만 — 이미지(3단계)는 text_done 후 아래 '카드 이미지 생성' 버튼에서만
     sec.appendChild(b);
     return;
   }
   if (st === 'generating') {
-    if (genStuck) {   // 15분째 프롬프팅 멈춤 = 워크플로 중단/타임아웃 추정 → 실패로 표시·재시도(멘트 삭제·헤더 '실패(시간초과)'로 표식·운영자 260701)
+    if (genStuck) {   // 15분째 프롬프팅 멈춤 = 워크플로 중단/타임아웃 추정 → 실패로 표시·재시도
+      sec.insertAdjacentHTML('beforeend',
+        `<div class="genstat">카드 프롬프팅 실패 — ${stuckMin === 999 ? '' : stuckMin + '분째 '}멈춰 있어(워크플로 중단/타임아웃 추정). 아래로 다시 시도해줘.</div>`);
       const b = document.createElement('button');
-      b.className = 'mkbtn retry';
+      b.className = 'mkbtn';
       b.textContent = '프롬프트 다시 생성';
       b.onclick = () => makeCards(a.file, b, 'text');   // 프롬프팅 재시도 = 2단계만(이미지는 카드 이미지 생성 버튼)
       sec.appendChild(b);
     } else {
       // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
-      const phase = c.has_md ? '카드 이미지 생성 중' : '카드뉴스 프롬프팅 중';
-      sec.innerHTML = `<div class="genstat live">${phase}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후(4375)와 동일 문구로 통일·꼬리말 제거(운영자 260701)
+      const phase = c.has_md ? '카드 이미지 생성 중입니다' : '카드뉴스 프롬프팅 중입니다';
+      sec.innerHTML = `<div class="genstat live">${phase}<span class="gdots"><i>.</i><i>.</i><i>.</i></span> 완료되면 여기에 자동으로 떠(1~2분 단위 갱신)</div>`;
     }
     return;
   }
-  // fired_partial 멘트(설명 문장) 삭제 — 재시도는 아래 노랑 버튼으로 유도(운영자 260701). stuck은 버튼 문구 '(일부)' 분기에 사용.
+  let note = {
+    fired_partial: ROCKET_SVG + ' 일부만 생성됨 — 아래 재생성 버튼으로 나머지 채우기',
+  }[st];
+  if (st === 'fired_partial' && stuck)   // 발사 후 18분째 이미지 미완 = 인증 만료/렌더 실패 가능 → 재시도 유도
+    note = `생성됐지만 ${stuckMin}분째 이미지 미완 — 인증 만료·렌더 실패일 수 있어. 아래로 다시 시도해줘.`;
+  if (note) sec.insertAdjacentHTML('beforeend', `<div class="cardnote">${note}</div>`);
   // 카드 이미지는 섹션 3 '카드 피드'(feedSec)에서 렌더. #cardsec은 텍스트·프롬프트·복사·슛 정본 유지.
   if (c.md) {
     // 🃏 카드 수정 = 우측 반투명 FAB(#crevFab)로만 노출(요약 수정 FAB 미러 · 큰 mkbtn 폐지 · 운영자 260624). 색=cards.crev 독립.
@@ -3314,8 +3314,8 @@ function cardSec(a) {
   // fired_partial = 발사됐으나 미완 → 재발사(텍스트 재사용·렌더만).
   if (st === 'fired_partial') {
     const b = document.createElement('button');
-    b.className = 'mkbtn retry';   // 재시도 = 레몬(노랑) 통일
-    b.textContent = stuck ? '카드 이미지 생성 재시도' : '카드 이미지 생성 재시도 (일부)';   // (일부)=일부만 생성 / 18분+ 미완이면 (일부) 없이(운영자 260701)
+    b.className = 'mkbtn';
+    b.textContent = '카드 이미지 다시 생성';
     b.onclick = () => makeCards(a.file, b, 'shoot');
     sec.appendChild(b);
   }
@@ -4372,7 +4372,7 @@ async function makeCards(target, btn, mode) {
         btn.innerHTML = '<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
         await new Promise(res => setTimeout(res, 520));
       }
-      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중'}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후=진행중 한 문구 통일(생성중 박스 3212와 동일·중간 안 바뀜·운영자 260701)
+      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? "프롬프트 생성 시작" : '카드 이미지 생성 시작'}<span class="gdots"><i>.</i><i>.</i><i>.</i></span>${isText ? " — 1~2분 내 ⏳로 바뀜(이미지는 그 뒤 '카드 이미지 생성' 버튼)" : ' — 워크플로 시작, 1~2분 내 ⏳로 바뀜'}</div>`;   // 슛 직후 안내도 점 모션(C·페이드) 통일 — 3212줄 생성중 박스와 동일(260701)
       return;
     }
     if (btn) { btn.classList.remove('firing', 'okdone', 'checking'); btn.style.pointerEvents = ''; }
@@ -5376,14 +5376,7 @@ async function loadQueue() {
   } catch { if (g === qGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시 시도</div>'; return; }
   if (g !== qGen) return;
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
-  // 발견성 배지(진행중 건수)도 이 응답으로 즉시 동기화 — 리스트 열 때 별도 폴 안 기다리고 배지 최신화(stale 불일치 방지·추가 fetch 0·운영자 260701). status 기준(loadPending과 동일 = 파이프라인 처리중 = 어디서 세든 같은 값).
-  PEND_PROC = items.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length; updateQBadge();
-  // 화면상 '진행중'(스피너로 그려지는 것) 최상단 고정 → 리스트 1페이지가 배지·진행상태와 일치.
-  //   _qProg를 eff 기준(succ인데 피드 미반영=빌드랙도 qRowHtml서 스피너로 그려짐 → 상단)으로 잡아 '스피너인데 하단' 모순 차단(260701).
-  //   시각 파싱 실패로 t=null이어도 진행중이면 status로 상단 → API 최신순 정렬 맨뒤로 밀려 안 뜨던 불일치 방어. 완료(succ/fail)는 API 최신순 유지(JS 안정정렬). '내역 지우기' 컷오프 이후만.
-  const _qEff = it => (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;   // qRowHtml eff와 동일 기준(빌드랙 succ=스피너)
-  const _qProg = it => { const e = _qEff(it); return (e === 'processing' || e === 'retry') ? 0 : 1; };
-  QITEMS = items.filter(it => !it.t || it.t > cut).sort((a, b) => _qProg(a) - _qProg(b) || (b.t || 0) - (a.t || 0));
+  QITEMS = items.filter(it => !it.t || it.t > cut);   // '내역 지우기' 컷오프 이후만(API 최신순 유지)
   QPAGE = 0;
   renderQueuePage();
 }
@@ -5411,25 +5404,24 @@ function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 
   const enteredK = it.t ? new Date(it.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '?';
   const nowK = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
   const d = it.diag || {};
-  if (d.kind === 'ask-failed' || d.kind === 'ask-stuck') {   // ✨요약요청(ask) = asks/ 경로 전용 진단(pending .txt 아님). ask-failed=asks/failed/격리·로그有 / ask-stuck=asks/ 잔류·20분+ 미처리(로그無 — 옛 일반 stuck 경로로 새 pending/*.txt 오문구 차단·260701)
-    const stuckAsk = d.kind === 'ask-stuck';
+  if (d.kind === 'ask-failed') {   // ✨요약요청(ask) 실패 = pending(.txt) 아닌 asks/failed/ 경로 → 전용 진단(운영자 260620)
     const A = [];
-    A.push('# ✨요약 요청 ' + (stuckAsk ? '미처리(stuck) 진단' : '처리 실패 진단') + ' — ' + qTitle(it));
+    A.push('# ✨요약 요청 처리 실패 진단 — ' + qTitle(it));
     A.push('', '> 자동 생성(뷰어 대기열). 이 파일을 클로드에게 전달하면 원인 분석·복구에 사용합니다.', '');
     A.push('## 요약 (5W1H)');
-    A.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK + (stuckAsk && d.mins != null ? ' · 경과 약 ' + d.mins + '분' : ''));
+    A.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK);
     A.push('- **무엇(What)**: ✨요약 요청(자연어' + (d.reqText ? '+캡처 가능' : '') + ') — `news-ask` 트랙(`pending/` analyze와 별개).');
-    A.push('- **어디서(Where)**: ' + (stuckAsk ? '`asks/' + it.id + '.json`(미처리 잔류 — 아직 asks/failed/ 이동 전)' : '`asks/failed/' + it.id + '.json`(+`.log`)로 격리') + '.');
-    A.push('- **왜(Why·추정)**: ' + (stuckAsk ? 'news-ask 워크플로 미완/미발동(20분+ 잔류) — 단발 런이라 자가재시도 없음. Actions run 확인.' : 'ask.sh 처리 실패(빈 요청/Claude 해석 실패/커밋 실패 — 아래 로그).'));
+    A.push('- **어디서(Where)**: `asks/failed/' + it.id + '.json`(+`.log`)로 격리.');
+    A.push('- **왜(Why·추정)**: ask.sh 처리 실패(빈 요청/Claude 해석 실패/커밋 실패 — 아래 로그).');
     A.push('', '## 입력 (요청문)', '', '````', d.reqText || '(텍스트 없음 — 캡처만일 수 있음)', '````');
     if (d.log) A.push('', '## 실패 로그', '', '````', d.log, '````');
     A.push('', '## 진단 힌트 (클로드용)');
     A.push('- 확인: GitHub Actions `news-ask` 최근 run → `Run ask` / `Surface failures` 스텝 로그.');
-    A.push('- 복구: `news-ask` workflow_dispatch 재실행(account 선택)' + (stuckAsk ? '.' : ' — 단 `asks/failed/`의 json을 `asks/`로 되돌려야 재처리.'));
+    A.push('- 복구: `news-ask` workflow_dispatch 재실행(account 선택) — 단 `asks/failed/`의 json을 `asks/`로 되돌려야 재처리.');
     A.push('- 입력 식별자(grep용): `' + it.id + '`');
     const aa = document.createElement('a');
     aa.href = URL.createObjectURL(new Blob([A.join('\n')], { type: 'text/markdown;charset=utf-8' }));
-    aa.download = (stuckAsk ? '요약요청미처리_' : '요약요청실패_') + it.id + '.md';
+    aa.download = '요약요청실패_' + it.id + '.md';
     document.body.appendChild(aa); aa.click(); aa.remove();
     setTimeout(() => { try { URL.revokeObjectURL(aa.href); } catch {} }, 1500);
     return;
