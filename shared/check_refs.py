@@ -565,6 +565,64 @@ def check_claude_failover():
     return rc
 
 
+def check_bare_tool_conflict():
+    """--bare 모드는 CLI 도구 세트를 축소 → --disallowedTools에 bare 미지원 도구(MultiEdit·NotebookEdit·Task)를
+    지정하면 CLI가 'matches no known tool'로 거부 = claude rc=1 즉사(260701 사고: 생성경로 #1281·judge #1264 파손·판정 열흘 멈춤).
+    게이트: --bare가 기본 ON인 경로 + --disallowedTools에 bare 미지원 도구 = rc=1(재활성 시 재발 차단).
+    현재 롤백(기본 OFF)이면 통과 · 미래 재활성(기본 "1"/:-1) 시 도구 안 빼면 커밋 막힘.
+    정본 = docs/인계_bare도구충돌_judge복구_프로세스개선.md."""
+    UNSUP = ('MultiEdit', 'NotebookEdit', 'Task')   # bare 모드에 없는 도구(실측 MultiEdit 거부·유사 추정)
+    rc = 0
+    bad = []
+
+    def _read(p):
+        try:
+            return open(os.path.join(ROOT, p), encoding='utf-8').read()
+        except Exception:
+            return ''
+
+    def _unsup_in_disallow(txt):
+        found = []
+        for m in re.finditer(r'disallowedTools"?\s*,?\s*\n?\s*"([^"]+)"', txt):
+            for t in UNSUP:
+                if t in m.group(1) and t not in found:
+                    found.append(t)
+        return found
+
+    # judge(py): 한 파일에 *_BARE 기본 ON + --disallowedTools
+    for n in ('gate_judge.py', 'breaking_judge.py'):
+        txt = _read('.github/scripts/' + n)
+        if re.search(r'(GATE|BREAKING)_BARE"\s*,\s*"1"', txt):
+            u = _unsup_in_disallow(txt)
+            if u:
+                bad.append('%s (judge --bare 기본ON + --disallowedTools %s)' % (n, '/'.join(u)))
+
+    # 생성경로: claude_meter 기본 ON(:-1) + 그 래퍼 쓰는 .sh의 --disallowedTools
+    if re.search(r'CLAUDE_BARE:-1', _read('shared/claude_meter.sh')):
+        import glob
+        for p in sorted(glob.glob(os.path.join(ROOT, '.github/scripts/*.sh'))):
+            txt = open(p, encoding='utf-8').read()
+            if 'claude_meter' not in txt:
+                continue
+            u = _unsup_in_disallow(txt)
+            if u:
+                bad.append('%s (claude_meter --bare 기본ON + --disallowedTools %s)' % (os.path.basename(p), '/'.join(u)))
+
+    # more_images.py: 자체 --bare 기본 ON + --disallowedTools
+    mi = _read('.github/scripts/more_images.py')
+    if re.search(r'CLAUDE_BARE"\s*,\s*"1"', mi):
+        u = _unsup_in_disallow(mi)
+        if u:
+            bad.append('more_images.py (--bare 기본ON + --disallowedTools %s)' % '/'.join(u))
+
+    if bad:
+        print('❌ --bare↔도구충돌 게이트 — --bare 기본 ON인데 --disallowedTools에 bare 미지원 도구(MultiEdit 등) = CLI "no known tool" rc=1 즉사 재발(260701 사고): %s → --disallowedTools에서 그 도구 빼거나 --bare 기본 OFF(정본 docs/인계_bare도구충돌_judge복구_프로세스개선.md)' % ', '.join(bad))
+        rc = 1
+    else:
+        print('✅ --bare↔도구충돌 게이트 — --bare 기본 ON 경로에 bare 미지원 --disallowedTools 없음(260701 재발방지).')
+    return rc
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -613,6 +671,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ claude 폴오버 게이트 스킵:', e)
+    try:
+        if check_bare_tool_conflict() != 0:   # --bare 기본 ON + --disallowedTools bare미지원도구(MultiEdit) 충돌 = rc=1 즉사 재발방지(260701 사고)
+            rc = 1
+    except Exception as e:
+        print('⚠️ --bare 도구충돌 게이트 스킵:', e)
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1
