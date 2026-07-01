@@ -13,7 +13,7 @@ on:
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
-        default: MUTENO
+        default: NOMUTEFB
         options:
           - NOMUTEFB
           - MUTENO
@@ -47,10 +47,10 @@ jobs:
       - name: Process asks
         env:
           # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
@@ -130,10 +130,10 @@ jobs:
 
       - name: Card-plan (텍스트 카드 프롬프트 — 제미나이 0)
         env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
           # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON·GEMINI_API_KEY env 자체가 없음(유료 생성 발사 불가). + cardmake text모드 unset(Lock B).
         run: |
           [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "토큰 없음 — 카드플랜 생략"; exit 0; }
