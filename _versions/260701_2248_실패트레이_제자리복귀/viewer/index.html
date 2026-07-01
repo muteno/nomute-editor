@@ -5634,7 +5634,7 @@ async function loadPickFails() {
   detectPickFail();
 }
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
-const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pickFailedShow(c) && !failRequeued(c); });   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃(체크로 제자리 복귀한 건 = 확인처리라 알림 제외)
+const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pickFailedShow(c); });   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
 const pickInFeed = c => { const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean)); return DATA.some(a => a && a.url && us.has(_normU(a.url))); };   // 픽 결과가 피드(3번 메뉴)에 등장했나 — 후보 url *또는 cluster_members*(같은 사건 타 매체) 매칭. 막힌 매체(403)는 분석기가 다른 클러스터 멤버 url로 분석해 정확 url 불일치 → 영구 Picking 갇히던 버그 차단(260619)
 const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 종결 = 피드 등장 OR 실패복구 해소 → 둘 다 'Picking' 탈출(해소된 픽이 영구 Picking에 갇히던 버그 차단·260618)
@@ -5644,19 +5644,17 @@ const PICK_TIMEOUT_MS = 10 * 60000;
 const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pendStatus(c) === 'retry' || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 const failChipHtml = c => `<button class="sc-fail" type="button" title="${esc('분석 실패 — 탭=원문 열기 · 길게/우클릭=메뉴(실패 사유·내용 입력): ' + (pfReason(c) || (pickTimedOut(c) ? '무응답(10분 초과)' : 'fetch 차단')))}">Failed</button>`;
-// 실패 트레이 '체크 = 제자리 복귀'(운영자 260701): 체크하면 그 실패 후보를 상단 실패 트레이서 빼고 수집함 칼럼
-// *원래 자리*로 되돌린다(Failed 딱지 유지 = 재시도·원문 그대로 · 강제 상단 노출 X). 순위·자격은 일반 규칙 그대로라
-// 주변부가 그대로면 제자리(예: 위에서 3번째 픽→실패→체크→3번째 복귀). 일방향(add) — 재실패해도 재발 안 함. 되돌리려면 localStorage nm_fail_requeue 삭제.
-const FAILREQUEUE_KEY = 'nm_fail_requeue';
-const failRequeuedSet = () => { try { return new Set(JSON.parse(localStorage.getItem(FAILREQUEUE_KEY) || '[]')); } catch { return new Set(); } };
-const failRequeued = c => failRequeuedSet().has(candId(c));
-function requeueFail(c) {
-  const s = failRequeuedSet(); s.add(candId(c));
-  try { localStorage.setItem(FAILREQUEUE_KEY, JSON.stringify([...s])); } catch {}
-  markPickFailSeen();   // 빨강 링/토스트도 '봤음' 처리(트레이 정리와 함께 알림 해제)
-  if (CURTAB === 'scrap') renderScrap();   // 즉시 반영 = 트레이서 빠지고 칼럼 제자리 등장
+// 실패 트레이 '체크 = 숨김'(운영자 260621): 체크하면 그 실패 후보를 트레이·칼럼 어디에도 안 뜨게(로컬 누적·기기락). 되돌리려면 localStorage nm_failhide 삭제.
+const FAILHIDE_KEY = 'nm_failhide';
+const failHiddenSet = () => { try { return new Set(JSON.parse(localStorage.getItem(FAILHIDE_KEY) || '[]')); } catch { return new Set(); } };
+const failHidden = c => failHiddenSet().has(candId(c));
+function toggleFailHide(c) {
+  const s = failHiddenSet(), id = candId(c);
+  s.has(id) ? s.delete(id) : s.add(id);
+  try { localStorage.setItem(FAILHIDE_KEY, JSON.stringify([...s])); } catch {}
+  if (CURTAB === 'scrap') renderScrap();   // 즉시 반영 = 체크한 항목 사라짐
 }
-const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" aria-label="수집함 제자리로 되돌리기" title="체크 = 실패 트레이서 빼고 수집함 원래 자리로(Failed 딱지 유지 · 재시도·원문 그대로)">${CHECK_SVG}</button>`;
+const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" aria-label="실패 숨김" title="체크 = 실패 트레이에서 숨김(처리 확인)">${CHECK_SVG}</button>`;
 // ── 픽 상태 cross-device 동기화 (B안 · 운영자 260620): 픽 표시는 로컬 nm_ratings(기기락)이라 폰↔PC 미동기였다.
 //    이미 전역인 pending/(픽하면 생김)·queue(피드 DATA)·picks-failed 를 진실원본으로 *유도* → 어느 기기서 픽해도 같은 상태.
 //    localStorage(r.picked)는 발사 직후 깜빡임 가리는 낙관적 오버레이로 유지. (정본 설계 = docs/_세션_작업큐_260620.md §D)
@@ -5957,7 +5955,7 @@ function renderScrap() {
   // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
   const _mm = mergesAll(), _mergedMembers = new Set(), _liveIds = new Set(CANDS.map(candId));   // 병합 멤버 = 실패트레이서도 제외(앵커에 흡수=이중표면 방지·분신술8 F1) — ⚠️ 단 앵커가 *살아있을 때만*(앵커 탈락[GC·rep점프·별점] 시 흡수처 사라져 멤버 증발 silent-loss 방지·재검4)
   for (const a of Object.keys(_mm)) { if (!_liveIds.has(a)) continue; (Array.isArray(_mm[a] && _mm[a].members) ? _mm[a].members : []).forEach(m => _mergedMembers.add(m)); }
-  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || '') && !failRequeued(c) && !_mergedMembers.has(candId(c)));   // 체크(제자리 복귀)한 실패·병합 멤버는 트레이서 제외 → requeue 건은 칼럼 원래 자리로(운영자 260701·260625)
+  const failed = base.filter(c => pickState(c) === 'failed' && !JUNK_HEAD.test(c.title || '') && !failHidden(c) && !_mergedMembers.has(candId(c)));   // 체크(숨김)한 실패·병합 멤버는 트레이서 제외(운영자 260621·260625)
   const failSet = new Set(failed.map(c => candId(c)));   // 전체 실패 candId = 칼럼서 제외(누설 방지 — dedup 전 집합)
   failed.sort((a, b) => scTs(b) - scTs(a));   // 최신 실패 먼저
   const failedShown = scDedup(failed);   // 트레이 표시도 동일제목 중복 접기(분신술2 — 트레이 미적용 보강)
@@ -5965,7 +5963,7 @@ function renderScrap() {
     const r = rt[candId(c)] || {};
     if (failSet.has(candId(c))) return false;                       // 실패 = 트레이로(칼럼서 제외 = 카드 종속분리)
     if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
-    // (실패 체크 → 트레이서만 빼고 칼럼 제자리로 = requeue 건은 여기서 안 막음. failSet[위]이 '체크 안 한 실패'만 칼럼서 걸러 트레이로 보냄 · 운영자 260701)
+    if (failHidden(c)) return false;                                // 실패 체크-숨김 = 칼럼에도 안 뜸(트레이서 빠진 게 칼럼으로 새지 않게 · 운영자 260621)
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
@@ -5984,10 +5982,10 @@ function renderScrap() {
     const key = col.dataset.col;
     let arr;
     if (key === 'new') {   // 신규 칼럼 = 최신분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신규서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신순.
-      arr = pool.filter(c => _untri(c) && (scFast(c) || failRequeued(c)) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신규 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 누적行(아래). 오래된 속보가 신규 톱 차지·누적 중복하던 회귀 차단. · 실패 체크복귀(failRequeued) = cross 낮아도 자격 면제(찾을 수 있게) · 정렬은 아래 그대로라 순위 제자리(강제 상단 X · 운영자 260701)
+      arr = pool.filter(c => _untri(c) && scFast(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신규 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 누적行(아래). 오래된 속보가 신규 톱 차지·누적 중복하던 회귀 차단.
       arr = arr.map(c => ({ c, p: pinFresh(c), f: fastScore(c), t: scTs(c) })).sort((a, b) => (b.p - a.p) || (b.f - a.f) || (b.t - a.t)).map(x => x.c);   // 최신 속보 핀 → fastScore decay 하강(톱 독차지 방지). 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시. ⚡버퍼 260701: Schwartzian(정렬키 요소당 1회 사전계산) — 비교당 재계산(Math.pow·Date.parse ~2·log₂n회) 제거·순서 동일.
     } else {   // 누적 = 9시뉴스감(좌측·넓은 누적). 발생 4h↑(신규서 졸업) AND (cross≥8 OR 긴급[breaking] OR 연속보도 보조진입[followEnters: cross≥4 AND rc≥6 AND grade∉0,1]). 최신(<4h)과 시간 배타. ⚠️ 긴급이었던 건 cross<8이어도 누적 합류(사라지는 구멍 차단·운영자 260617) → 일반 누적 점수(scScore)로 랭킹. 중요도순.
-      arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c) || failRequeued(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);   // + 실패 체크복귀(failRequeued) = cross<8·non-breaking이라 원래 자격 없어도 면제(찾을 수 있게) · 정렬은 아래 scScore 그대로라 순위 제자리(강제 상단 X · 운영자 260701)
+      arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);
       arr = arr.map(c => ({ c, s: scScore(c), t: scTs(c) })).sort((a, b) => (b.s - a.s) || (b.t - a.t)).map(x => x.c);   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 최신 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 최신 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·최신 pinFresh(최신속보 핀)는 별개 유지. ⚡버퍼 260701: Schwartzian(scScore 요소당 1회) — 비교당 재계산 제거·순서 동일.
     }
     const lim = Math.min(scShown[key], arr.length);   // dedup은 pool 단계서 전역 1회(위) — 칼럼별 중복 접기 불요
@@ -6261,7 +6259,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
       el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
     } else if (pstate === 'failed') {   // 픽했는데 분석 실패/무응답 = Failed 칩(탭→원문 / 길게·우클릭→메뉴) 배선
       wireFailChip(el.querySelector('.sc-fail'), c);
-      const _fh = el.querySelector('.sc-failhide'); if (_fh) _fh.onclick = e => { e.stopPropagation(); requeueFail(c); };   // 체크 = 트레이서 빼고 칼럼 제자리 복귀(운영자 260701)
+      const _fh = el.querySelector('.sc-failhide'); if (_fh) _fh.onclick = e => { e.stopPropagation(); toggleFailHide(c); };   // 체크 = 트레이서 숨김(운영자 260621)
     } else {   // PICKED(완료) = 탭하면 피드(메뉴3)로 이동 + 해당 기사 팝업
       const g = el.querySelector('.sc-got:not(.picking)'); if (g) g.onclick = () => pickedOpen(c);
     }
