@@ -1,0 +1,102 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex,nofollow"><title>PIN 보안 키패드(셔플)</title>
+<style>
+:root{--accent:#0FFD02;--accent-rgb:15,253,2;--fg:#eef7f0;--fg-2:#cdd6cf;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--r-l:16px}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b0d0c;color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:26px 18px 60px}
+h1{font-size:21px;font-weight:800;margin:0 0 4px;letter-spacing:-.3px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 24px}
+p{color:var(--fg-2);font-size:13.5px;margin:0 0 14px}
+.demorow{display:grid;gap:20px;grid-template-columns:1fr 1fr;align-items:start}
+@media(max-width:640px){.demorow{grid-template-columns:1fr}}
+.stage{background:#000;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-l);padding:24px 14px 20px;min-height:420px}
+.cap{font-size:11.5px;color:var(--mut);text-align:center;margin-top:10px}
+.box{background:linear-gradient(165deg,rgba(28,30,33,.9),rgba(15,16,18,.96));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-l);padding:15px}
+.box h3{margin:0 0 10px;font-size:11.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--accent)}
+ul{margin:4px 0 0;padding-left:17px}li{color:var(--fg-2);font-size:12.5px;margin:6px 0}li b{color:var(--fg)}
+
+/* ── pinForm 재현 ── */
+.card{max-width:340px;margin:0 auto;text-align:center}
+.m{font-size:15px;font-weight:800;color:var(--mut);letter-spacing:-.2px}
+.slots{display:flex;justify-content:center;gap:18px;margin:24px 0 2px}
+.slot{width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);background:none;opacity:.5;transition:background .15s,border-color .15s,opacity .15s,transform .15s}
+.slot.on{background:var(--accent);border-color:var(--accent);opacity:1;transform:scale(1.1)}
+.slots.bad .slot{border-color:var(--danger)}.slots.bad .slot.on{background:var(--danger);border-color:var(--danger)}
+.slots.checking .slot.on{animation:slotPulse .8s ease infinite}
+@keyframes slotPulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes slotShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-9px)}28%{transform:translateX(8px)}44%{transform:translateX(-6px)}60%{transform:translateX(4px)}76%{transform:translateX(-2px)}}
+.slots.shake{animation:slotShake .45s cubic-bezier(.36,.07,.19,.97)}
+.err{color:var(--danger);font-size:12px;font-weight:700;margin-top:15px;min-height:15px}
+.okm{color:var(--accent);font-size:12.5px;font-weight:800;margin-top:15px;min-height:15px}
+.info{color:var(--mut);font-size:12.5px;font-weight:700;margin-top:15px;min-height:15px;line-height:1.5}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:288px;margin:26px auto 0}
+.key{height:58px;display:grid;place-items:center;font-size:23px;font-weight:700;font-family:inherit;color:var(--fg);background:none;border:none;border-radius:16px;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .12s,transform .07s}
+.key:active{background:rgba(255,255,255,.09);transform:scale(.93)}
+.key.empty{visibility:hidden;pointer-events:none}
+.key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pad.off{pointer-events:none;opacity:.45;transition:opacity .2s}
+</style></head><body><div class="wrap">
+
+<h1>PIN 보안 키패드 — PAYCO식 셔플</h1>
+<p class="sub">공개 발행본 잠금화면 · functions/s/[slug].js · 260703</p>
+<p>OS 키보드 대신 <b>자체 숫자 키패드</b>. 6칸 슬롯 중 <b>입력한 것만 강조색</b>(빈 칸은 무채색), 키패드는 <b>한 자리 누를 때마다 위치가 셔플</b>돼(어깨너머·키로깅 완화). 6칸 채우면 자동 검증. 아래 직접 눌러봐 — <b>123456</b>=성공 · <b>898900</b>=비밀번호 초기화 완료(안내) · 그 외=실패(빨강+흔들림).</p>
+
+<div class="demorow">
+  <div>
+    <div class="stage"><div class="card">
+      <div class="m">PIN으로 잠긴 문서입니다.</div>
+      <div class="slots" id="slots"><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
+      <div class="err" id="verr" hidden></div>
+      <div class="info" id="vinfo" hidden></div>
+      <div class="okm" id="okm" hidden>✓ 확인됨 — 문서 열림</div>
+      <div class="pad" id="pad"></div>
+    </div></div>
+    <div class="cap">누를 때마다 숫자 위치가 바뀜 · 입력한 슬롯만 강조색 · 지우기=⌫</div>
+  </div>
+  <div style="display:grid;gap:14px">
+    <div class="box"><h3>방식 (PAYCO 계승)</h3><ul>
+      <li><b>6칸 슬롯</b> — 입력한 것만 강조색, 빈 칸 무채색</li>
+      <li><b>셔플 키패드</b> — 매 입력마다 숫자 위치 재배치</li>
+      <li><b>자동 검증</b> — 6칸 차면 바로(열기 버튼 X)</li>
+      <li><b>지우기</b>(⌫)로 한 자리씩 정정 · 데스크톱 물리 키보드도 허용</li>
+      <li>실제 PIN은 hidden으로 GET 제출 = <b>서버 검증</b>(셔플은 표시용)</li>
+    </ul></div>
+    <div class="box"><h3>상태 피드백</h3><ul>
+      <li><b>확인 중</b> = 슬롯 펄스 + 패드 비활성</li>
+      <li><b>성공</b> = 문서로 페이지 교체(자동 오픈)</li>
+      <li><b>실패</b> = 슬롯 <b>빨강 + 흔들림</b> + 처음부터</li>
+      <li><b>마스터(898900)</b> = ‘비밀번호 초기화 완료’(mut 회색·흔들림 X)</li>
+    </ul></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var pad=document.getElementById('pad'),slots=document.getElementById('slots'),dots=slots.getElementsByClassName('slot'),
+      verr=document.getElementById('verr'),vinfo=document.getElementById('vinfo'),okm=document.getElementById('okm');
+  var real='',fired=false,order=[],kds=null;
+  var BSVG='<svg viewBox="0 0 24 24"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
+  function shuffle(){order=[0,1,2,3,4,5,6,7,8,9];for(var i=9;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=order[i];order[i]=order[j];order[j]=t;}}
+  function build(){var h='';for(var i=0;i<9;i++)h+='<button type="button" class="key kd"></button>';h+='<button type="button" class="key empty" tabindex="-1"></button>';h+='<button type="button" class="key kd"></button>';h+='<button type="button" class="key back" data-back="1" aria-label="지우기">'+BSVG+'</button>';pad.innerHTML=h;kds=pad.querySelectorAll('.kd');}
+  function applyOrder(){for(var i=0;i<10;i++){kds[i].textContent=order[i];kds[i].setAttribute('data-d',order[i]);}}
+  function fill(){for(var i=0;i<6;i++)dots[i].className='slot'+(i<real.length?' on':'');}
+  function clr(){verr.hidden=true;vinfo.hidden=true;okm.hidden=true;}
+  function press(d){if(fired||real.length>=6)return;slots.classList.remove('bad');clr();real+=String(d);fill();shuffle();applyOrder();if(real.length===6)setTimeout(fire,140);}
+  function back(){if(fired||!real.length)return;slots.classList.remove('bad');real=real.slice(0,-1);fill();}
+  function fire(){
+    if(fired||real.length!==6)return;fired=true;slots.classList.add('checking');pad.classList.add('off');
+    setTimeout(function(){                                   // 데모: 서버 왕복 대신 판정
+      slots.classList.remove('checking');pad.classList.remove('off');
+      if(real==='898900'){real='';fill();vinfo.textContent='비밀번호 초기화 완료';vinfo.hidden=false;shuffle();applyOrder();fired=false;}
+      else if(real==='123456'){okm.hidden=false;}
+      else{real='';fill();slots.classList.add('bad');void slots.offsetWidth;slots.classList.add('shake');verr.textContent='핀이 맞지 않아요 (1/5)';verr.hidden=false;shuffle();applyOrder();setTimeout(function(){slots.classList.remove('shake');},500);fired=false;}
+    },600);
+  }
+  pad.addEventListener('click',function(e){var b=e.target.closest('.key');if(!b)return;if(b.getAttribute('data-back')!==null)back();else if(b.getAttribute('data-d')!==null)press(b.getAttribute('data-d'));});
+  document.addEventListener('keydown',function(e){if(fired)return;if(e.key>='0'&&e.key<='9'){press(e.key);}else if(e.key==='Backspace'){back();}});
+  build();shuffle();applyOrder();fill();
+})();
+</script>
+</div></body></html>
