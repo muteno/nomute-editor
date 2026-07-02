@@ -606,11 +606,12 @@
   .nm-toast .tg { flex:none; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:2px 8px; box-shadow:0 0 8px rgba(255,60,50,.5); }
   .nm-toast b { color:#ffd9cf; }
   .nm-toast .ft-msg { flex:1; min-width:0; }   /* 본문이 남는 폭 채움 → ✓·↻ 버튼 우측 정렬(운영자 260622) */
-  .nm-toast .ft-act { flex:none; width:28px; height:28px; }   /* ✓확인·↻재시도·↗원문 = PICK(.ft-pick 28px·게이지 버튼 .sc-got/.unmerge-go 계승 높이)과 통일 → 하단 토스트 액션 3버튼 높이 정렬(운영자 260702). .sbtn 기틀(눌림 scale·.ok 플래시·ic-spin) 계승 */
+  .nm-toast .ft-act { flex:none; width:28px; height:28px; }   /* ✓확인·↻재시도·↗이동 = 28px(게이지 버튼 .sc-got/.unmerge-go 계승 높이) → 하단 토스트 액션 버튼 높이 정렬(운영자 260702). .sbtn 기틀(눌림 scale·.ok 플래시·ic-spin) 계승 */
   .nm-toast .ft-act svg { width:14px; height:14px; }   /* Q_ARR(원문·크기 미지정)·CHECK 아이콘 크기 통일 = 14(토스트 기존 유지) */
   /* 긴급 토스트 PICK = 수집함 [PICK] 이식(운영자 260702) · 초록 게이지 goFill→✓ = .sc-got firing/okdone 상태머신 계승(색은 var 토큰) */
-  /* PICK = 옆 버튼(.sbtn 체크·원문)과 완전 일맥상통 → HTML은 class "sbtn ft-pick" → 배경·투명도·hover·:active(press-s .85)·blur·흰색 전부 .sbtn 상속. 여기선 텍스트 버튼화(폭·높이·폰트)만 오버라이드 · 폰트 = body(Pretendard)·600·자간0 = 뷰어 버튼 표준(§🎨)·게이지 폐지(운영자 260702) */
-  .nm-toast .ft-pick { flex:none; width:auto; min-width:54px; height:28px; padding:0 13px; font-size:12px; font-weight:600; letter-spacing:0; }
+  /* 긴급/실패 토스트 이동 버튼(↗) 색 = 상태 표시 · .ft-act(.sbtn) 계승 + 색만(운영자 260702 · PICK 폐지) */
+  .nm-toast .ft-act.go-ready { color:var(--accent); }   /* 요약 완료 = 초록 → 뉴스 요약 이동 */
+  .nm-toast .ft-act.go-wait { color:var(--mut); }         /* 준비 중/실패 = 회색 → 기사 원문 이동(준비 전 요약열기 = 빈 목업 차단) */
   @media (prefers-reduced-motion:reduce) { .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
   .sc-fail { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
@@ -5575,7 +5576,7 @@ async function loadSocial() {
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 🚨배지·핀·최신 공용(grade≥2) — 'grade1 경미인데 ⚡이슈' 모순 차단(260617). ⚠️ 토스트·점등은 isAlert(grade≥3)로 분리(운영자 260622).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
 const isAlert = c => !!c.breaking && c.grade != null && c.grade >= 3;   // 📢 화면알림(점등·토스트)·앱푸시·자동요약 공용 = breaking AND grade≥3(대형/엄중) · 운영자 260622 3단위계: 앱푸시긴급(grade≥3·알림류)⊂긴급(grade≥2·🚨배지·핀)⊂일반 · 이슈(⚡)는 별개 개념 · 미채점(null)=제외.
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && !pickState(c); });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<3 제외. ⚠️ +pickState 제외(운영자 260702): 자동픽(auto_pick_breaking = grade≥3·cross≥2·<4h 자동요약)·수동픽으로 이미 분석중/완료/실패(picking·settled·failed)인 건은 토스트서 빼 '자동요약 중인데 PICK' 중복표시 차단 → PICK은 자동픽 안 되는 긴급(cross<2 등)만. 실패는 fail 토스트가 담당. → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단).
+const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && pickState(c) !== 'failed' && !brkToastSeen(c); });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·수집함 처리분(action/score/picked/dismissed/acked)·AI 경중<3 제외. ⚠️ 자동픽으로 분석중(picking)·완료(settled)여도 토스트는 뜸 = 긴급 알림 + 이동 버튼(회색 원문/초록 요약) 제공(운영자 260702). failed만 제외(fail 토스트가 담당) · brkToastSeen = 이 기기 토스트 체크/이동한 건(핀·원장 무영향 로컬 seen).
 function detectBreaking() {
   // 미처리 긴급 큐 = breakingNow()(isAlert·grade≥3·<4h·미픽/미확인/미패스). 한 건씩 상주 토스트로.
   // '체크(확인) 전까진 계속'(운영자 260702) = 처리(ack/pick/pass)돼 큐서 빠질 때까지 유지 · 나이 4h↑면 자연 소멸.
@@ -5583,13 +5584,13 @@ function detectBreaking() {
   if (q.length && CURTAB !== 'scrap') showToast(q[0], q.length);   // 첫 건 집중(+N=나머지) · 토스트는 수집함 밖에서만
   else hideToast();
 }
-// 단건 확인(ack) = '이 건 봤음' → 서버 ledger(api/rate)에도 기록(triage-state.json cross-device·toggleAck와 동일 경로) · breakingNow서 빠져 다음 건으로.
-function ackBreak(c) {
-  const id = candId(c), cur = ratingsAll()[id] || {};
-  if (cur.acked) return;                         // 이미 확인 = 중복 post 생략
-  saveRating(id, { acked: true });               // 로컬 즉시 반영(같은 기기 재알림 즉시 차단)
-  postRate({ id, url: c.url || '', title: c.title || '', acked: true, score: cur.score || 0, picked: !!cur.picked, dismissed: !!cur.dismissed, action: cur.action || '', reason: cur.reason || '' });   // 서버 ledger → triage-state.json (srvTriage가 url+cluster_members로 매칭 = candId 드리프트에도 견고)
-}
+// 긴급 토스트 = 순수 로컬 확인(운영자 260702) — 수집함 acked(pinB 핀해제·ratings.jsonl 원장·cross-device)와 *분리*.
+//   토스트 체크/이동 = 이 기기 로컬 seen(brkToastMark)만 → 그 건 breakingNow서 빠지고 다음 건. 큐레이션 강도·정렬(핀)·전 기기 원장 전부 무영향.
+//   (수집함 카드의 toggleAck는 기존대로 원장 기록 = 취향/핀 담당 · 토스트와 역할 분리)
+const BRK_TSEEN = 'nomute_brk_toast_seen';
+const brkTSeen = () => { try { return new Set(JSON.parse(localStorage.getItem(BRK_TSEEN) || '[]')); } catch { return new Set(); } };
+const brkToastSeen = c => brkTSeen().has(candId(c));
+function brkToastMark(c) { try { const s = brkTSeen(); s.add(candId(c)); localStorage.setItem(BRK_TSEEN, JSON.stringify([...s])); } catch {} }
 // 토스트/알림 → 수집함 진입 후 해당 후보 카드로 스크롤+점멸. 렌더(loadCandidates)가 비동기라 짧게 재시도. 운영자 260620.
 function scGoTo(c) {
   showTab('scrap');
@@ -5604,29 +5605,29 @@ function scGoTo(c) {
   setTimeout(find, 140);
 }
 let _toastC = null;
-// 하단 긴급 토스트 = 수집함(레거시) [PICK][✓확인] 이식(PASS 제외) → [✓체크][PICK][↗원문] 3버튼(운영자 260702).
-//   ✓체크 = 이 건만 확인(다음 건으로) / PICK = 수집함 pickCard 동일(분석 발동 + 초록 게이지 goFill→✓) / ↗원문 = 이동만·확인 안 함(토스트 유지).
-//   한 건씩 차례로 = detectBreaking이 breakingNow()[0]만 상주 표시. 체크/PICK(또는 수집함 PASS)로 처리하면 그 건 빠지고 다음 건 자동 등장.
+// 하단 긴급 토스트 = [✓체크][이동] 2버튼(운영자 260702 · PICK 폐지). 긴급은 auto_pick_breaking이 이미 자동요약(picking)이라 PICK 불필요.
+//   ✓체크 = 순수 로컬 확인(brkToastMark·핀/원장 무영향·수집함 acked와 분리) → 다음 건.
+//   이동 = 요약 완료면 초록·뉴스요약 / 준비 중이면 회색·기사원문(goBreaking이 scFeedArticle로 자동 분기 = 준비 전 요약열기 빈 목업 차단) → 클릭 시 로컬 seen(자동 사라짐)·다음 건.
+//   한 건씩 = detectBreaking이 breakingNow()[0]만 상주. 체크/이동으로 로컬 seen되면 빠지고 다음 건. failed는 fail 토스트가 담당.
 function showToast(c, total) {
   if (!c) { hideToast(); return; }
   let t = document.getElementById('nmToast');
   if (!t) { t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast'; document.body.appendChild(t); }
   _toastC = c;
-  t.onclick = () => goBreaking(c);   // 본체 탭 = 해당 건(요약 완료=요약창 / 미완료=대표 원문) · 확인 안 함(결정 아님 → 토스트 유지)
+  const ready = !!scFeedArticle(c);   // 요약 완료(피드 등장)? → 초록·뉴스요약 / 아직(picking) → 회색·기사원문
+  const move = () => { brkToastMark(c); goBreaking(c); setTimeout(detectBreaking, 60); };   // 이동 = 로컬 seen(자동 사라짐) + goBreaking(ready면 요약·아니면 원문) + 다음 건
+  t.onclick = move;   // 본체 탭 = 이동과 동일
   const title = esc((c.title || '').slice(0, 34));
   const more = total > 1 ? ` <b>+${total - 1}</b>` : '';
   t.innerHTML = `<span class="tg">긴급</span><span class="ft-msg">${title || '속보'}${more}</span>`
-    + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 봤음" title="확인 — 봤음(이 건 알림 끔·다음 건으로)">${CHECK_SVG}</button>`
-    + `<button class="sbtn ft-pick" type="button" data-bt="pick" aria-label="PICK — 요약 발동" title="PICK — 이 기사 분석·요약 발동(수집함 픽과 동일)"><span>PICK</span></button>`
-    + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 바로가기" title="원문 바로가기(새 탭 · 확인 안 함 · 토스트 유지)">${Q_ARR}</button>`;   // ↗ = 뷰어 원문 바로가기 표준 아이콘(qgo Q_ARR) 계승 · 색은 .sbtn 기본(흰) — 운영자 260702
-  const _ak = t.querySelector('[data-bt="ack"]'), _pk = t.querySelector('[data-bt="pick"]'), _sr = t.querySelector('[data-bt="src"]');
-  // ✓체크 = 이 건만 확인 → detectBreaking이 다음 미처리 건으로(없으면 사라짐). 옛 전체 숨김(seen) 방식 폐지.
-  if (_ak) _ak.onclick = ev => { ev.stopPropagation(); ackBreak(c); detectBreaking(); };
-  // PICK = 수집함 pickCard 동일(중복가드·롤백·alt·api/pick 발동). 게이지 없이 누르면 바로 발동(:active scale 후·운영자 260702) → 다음 건. 사유 메뉴는 긴급 즉응이라 생략.
-  if (_pk) _pk.onclick = ev => { ev.stopPropagation(); if (_pk.dataset.fired) return; _pk.dataset.fired = '1'; pickCard(c); setTimeout(detectBreaking, 130); };
-  // ↗원문 = 대표 매체 원문 새 탭 · 확인 안 함(결정 아님 → 돌아오면 토스트 유지·운영자 260702)
-  if (_sr) _sr.onclick = ev => { ev.stopPropagation(); openExt(scLinkUrl(c) || c.url); };
-  requestAnimationFrame(() => t.classList.add('show'));   // 자동 사라짐(옛 6.5s) 폐지 = 체크/PICK/PASS 전까지 상주(운영자 260702)
+    + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 봤음" title="확인 — 봤음(다음 건으로 · 핀·원장 무영향)">${CHECK_SVG}</button>`
+    + `<button class="sbtn ft-act ${ready ? 'go-ready' : 'go-wait'}" type="button" data-bt="go" aria-label="${ready ? '뉴스 요약 열기' : '기사 원문'}" title="${ready ? '뉴스 요약 열기(요약 완료)' : '기사 원문(요약 준비 중)'}">${Q_ARR}</button>`;
+  const _ak = t.querySelector('[data-bt="ack"]'), _go = t.querySelector('[data-bt="go"]');
+  // ✓체크 = 순수 로컬 확인(brkToastMark·핀/원장 안 건드림) → 다음 건
+  if (_ak) _ak.onclick = ev => { ev.stopPropagation(); brkToastMark(c); detectBreaking(); };
+  // 이동 = ready(요약완료)면 초록·뉴스요약 / 아니면 회색·기사원문 · 클릭 시 자동 사라짐(seen)·다음 건
+  if (_go) _go.onclick = ev => { ev.stopPropagation(); move(); };
+  requestAnimationFrame(() => t.classList.add('show'));   // 자동 사라짐 폐지 = 체크/이동 전까지 상주(운영자 260702)
 }
 function hideToast() { const t = document.getElementById('nmToast'); if (t) t.classList.remove('show'); _toastC = null; }
 // (PICK 게이지 함수 toastPickGo 폐지 — 게이지 없이 누르면 :active 후 바로 pickCard 발동으로 변경·운영자 260702)
@@ -5819,18 +5820,20 @@ function showFailToast(n, sample) {
   let t = document.getElementById('nmFailToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmFailToast'; t.className = 'nm-toast fail';
-    t.onclick = () => { t.classList.remove('show'); if (_failToastC && _failToastC.url) failOpen(_failToastC); else showTab('scrap'); };   // 탭 → 실패기사 원문 바로 열기(FAILED칩 또 누를 필요 없이 · 운영자 260620)
+    t.onclick = () => { markPickFailSeen(); t.classList.remove('show'); if (_failToastC && _failToastC.url) failOpen(_failToastC); else showTab('scrap'); };   // 본체 탭 = 실패기사 원문 + 로컬 seen(사라짐·운영자 260702)
     document.body.appendChild(t);
   }
   _failToastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 34)) : '';
   t.innerHTML = `<span class="tg">${WARN_SVG} FAIL</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''}</span>`
-    + `<button class="sbtn ft-act" type="button" data-fa="ack" aria-label="확인 — 알림 끄기" title="확인 — 봤음(알림 끄기)">${CHECK_SVG}</button>`
-    + `<button class="sbtn ft-act" type="button" data-fa="retry" aria-label="재시도 — 재분석+관련기사" title="재시도 — 자동 재분석 + 가까운 관련기사 원문 새 탭(확인 겸함)">${REFRESH_SVG}</button>`;
-  // ✓ 확인 = 알림 끔(seen·링/토스트 소거) + 초록 .ok 플래시 후 사라짐 / ↻ 재시도 = 전문 붙여넣기 복구 모달(openPaste) · 둘 다 본문탭(원문)과 분리(stopPropagation)
-  const _ack = t.querySelector('[data-fa="ack"]'), _rt = t.querySelector('[data-fa="retry"]');
-  if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeen(); clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 340); };
-  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) failRetry(_failToastC); };   // ↻ 재시도 = 확인(ack) + 자동 재분석(api/pick·cluster alt 재시도 한바퀴) + 가까운 관련기사 원문 새 탭(운영자 260622)
+    + `<button class="sbtn ft-act" type="button" data-fa="ack" aria-label="확인 — 실패 이해" title="확인 — 실패 이해(알림 끄기·추가 동작 없음)">${CHECK_SVG}</button>`
+    + `<button class="sbtn ft-act" type="button" data-fa="retry" aria-label="재시도 — 재분석" title="재시도 — 자동 재분석(대기열 재투입 · 왜 실패인지 몰라도)">${REFRESH_SVG}</button>`
+    + `<button class="sbtn ft-act go-wait" type="button" data-fa="src" aria-label="원문" title="기사 원문(실패 = 요약 없음 · 고정 원문)">${Q_ARR}</button>`;
+  // 3버튼 다 = 로컬 seen(markPickFailSeen) + 토스트 사라짐(이동해도 돌아오면 없음·운영자 260702). 확인=이해만 / 재시도=재분석(새탭X=원문버튼이 담당) / 원문=기사 원문(회색·실패라 고정). 본문탭과 stopPropagation 분리.
+  const _ack = t.querySelector('[data-fa="ack"]'), _rt = t.querySelector('[data-fa="retry"]'), _sr = t.querySelector('[data-fa="src"]');
+  if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeen(); clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 300); };   // 확인 = 실패 이해(초록 플래시 후 사라짐·추가 동작 없음)
+  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) failRetry(_failToastC, { noOpen: true }); };   // 재시도 = 자동 재분석만(새 탭 X = 원문 버튼이 담당) + 사라짐
+  if (_sr) _sr.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) failOpen(_failToastC); };   // 원문 = 기사 원문 새 탭(실패라 고정) + 사라짐
   requestAnimationFrame(() => t.classList.add('show'));
   clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 7000);
 }
