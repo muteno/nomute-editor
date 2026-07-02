@@ -10,6 +10,7 @@ export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
     new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
 
+  if (!originOk(request)) return json({ error: '허용되지 않은 출처' }, 403);   // CSRF 방어(spellcheck.js originOk 계승·검증1/5) — 상태변경은 동일출처 Origin 필수
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
   if (!env.GH_TOKEN) return json({ error: '서버 미설정 — GH_TOKEN 필요' }, 500);
@@ -26,11 +27,10 @@ export async function onRequestPost({ request, env }) {
   const days = [1, 3, 7].includes(+body.days) ? +body.days : 3;
   const pin = /^\d{4}$/.test(String(body.pin || '')) ? String(body.pin) : '';
 
-  // slug = 추측 불가 랜덤 20자(hex) — 링크 모르면 접근 0. 파일명·URL 경로로 쓰임(경로주입 없음: hex만).
-  const slug = [...crypto.getRandomValues(new Uint8Array(10))].map(b => b.toString(16).padStart(2, '0')).join('');
-
   const now = Date.now();                    // exp = 절대 epoch ms(만료 판정용). created 표시는 뷰어가 KST 포맷.
   const exp = now + days * 86400e3;
+  // slug = 시각프리픽스(epoch초 base36 7자)+랜덤(hex 16자) → 파일명 정렬=시간순 = published.js 최신 정렬 회복(검증6/10 목록 누락 방지). 여전히 추측 불가(랜덤 64bit).
+  const slug = Math.floor(now / 1000).toString(36).padStart(7, '0') + '-' + [...crypto.getRandomValues(new Uint8Array(8))].map(b => b.toString(16).padStart(2, '0')).join('');
   let pinHash = '';
   if (pin) pinHash = await sha256hex(pin + ':' + slug);   // 핀 평문 저장 안 함(해시+slug 솔트)
 
@@ -51,6 +51,11 @@ export async function onRequestPost({ request, env }) {
   return json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 300)}` }, 502);
 }
 
+function originOk(request) {   // spellcheck.js originOk 계승 — 상태변경 POST는 동일출처(apps.nomute.kr·*.nomute.kr·*.pages.dev)만 허용(CSRF·폼 POST 차단)
+  const o = request.headers.get('origin');
+  if (!o) return false;
+  try { const h = new URL(o).hostname; return h === 'apps.nomute.kr' || h.endsWith('.nomute.kr') || h.endsWith('.pages.dev'); } catch { return false; }
+}
 async function sha256hex(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');

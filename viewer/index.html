@@ -5033,7 +5033,7 @@ const pmenu = $('#pmenu');
 const msgpop = $('#msgpop');
 // 프로필 메뉴 = 다른 부분 활성화 시 popOut(촤르륵)으로 닫힘 — hidden 즉시 대신 애니 후 hidden(reduced-motion이면 즉시).
 let pmTimer = null;
-function showPmenu(){ clearTimeout(pmTimer); pmenu.classList.remove('closing'); pmenu.hidden = false; }
+function showPmenu(){ clearTimeout(pmTimer); pmenu.classList.remove('closing'); pmenu.hidden = false; loadPubBadge(); }
 function hidePmenu(){
   if (pmenu.hidden || pmenu.classList.contains('closing')) return;
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) { pmenu.hidden = true; return; }
@@ -7393,7 +7393,7 @@ async function nmFontFace() {   // woff2 → @font-face(base64) 임베드용 CSS
   } catch (e) { _nmFontCss = ''; }
   return _nmFontCss;
 }
-async function buildSummaryHtml(full) {   // full=true('전체' 체크): IG·스레드 섹션 유지 + 카드뉴스 본문 추가
+async function buildSummaryHtml(full, opts) {   // full=true('전체'): IG·스레드+카드뉴스 · opts.embedFont=false면 폰트 CDN링크(발행=크기↓·600KB초과 방지·검증7/10)
   const src = document.createElement('div');
   src.innerHTML = (($('#mdbody') || {}).innerHTML) || '';
   src.querySelectorAll('button, .copy, .ovmeta').forEach(el => el.remove());   // 뷰어 복사·더보기 + 개요칩(.ovmeta=매체·기자·IN 적재시각 등 내부 운영메타) 제거 — 공유 요약엔 불필요·출처줄과 중복·IN 유출 방지
@@ -7488,7 +7488,7 @@ async function buildSummaryHtml(full) {   // full=true('전체' 체크): IG·스
     srcLi = '<li><span class="ic">' + LINK_SVG + '</span><span>' + link + par + '</span></li>';
   } else { srcLi = '<li><span class="meta">출처 정보 없음</span></li>'; }
   const crLine = 'ⓒ ' + now.getFullYear() + '. <a class="nm-iglink" href="https://www.instagram.com/no_mute/" target="_blank" rel="noopener">에디터 노뮤트(@no_mute, 인스타그램)</a>. all rights reserved. (' + ymd + ')';   // @no_mute = 인스타 하이퍼링크·강조색(운영자 260621)
-  const fontCss = await nmFontFace();
+  const fontCss = (opts && opts.embedFont === false) ? '' : await nmFontFace();   // 발행 경로는 폰트 인라인 스킵(616KB) → 아래 CDN링크 폴백 사용
   const fontHead = fontCss ? ('<style>' + fontCss + '</style>')
     : '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/variable/pretendardvariable.min.css">';
   return SUMMARY_TPL
@@ -7663,7 +7663,7 @@ function openPubDlg() {
   $('#pubScope').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.scope === 'public'));
   $('#pubPin').value = '';
   const st = $('#pubStatus'); st.textContent = ''; st.classList.remove('err');
-  const go = $('#pubGo'); go.classList.remove('firing'); go.disabled = false;
+  const go = $('#pubGo'); go.classList.remove('firing'); go.disabled = false; _pubBusy = false;   // _pubBusy 리셋 = in-flight 중 닫고 재열기 시 죽은 버튼 방지(검증7)
   openComposeDlg(pubdlg);   // dialog 스택·폰 뒤로가기 = 기존 컴포즈 모달 시스템 계승
 }
 $('#pubScope').addEventListener('click', e => {
@@ -7679,14 +7679,14 @@ $('#pubGo').addEventListener('click', async () => {
   if (pin && !/^\d{4}$/.test(pin)) { st.textContent = 'PIN은 숫자 4자리로'; st.classList.add('err'); return; }
   _pubBusy = true; go.disabled = true; st.classList.remove('err'); st.textContent = '';
   try {
-    const html = await buildSummaryHtml($('#dlFull') && $('#dlFull').checked);   // 자기완결 HTML(API 호출0·데이터 인라인) = 우회 차단
+    const html = await buildSummaryHtml($('#dlFull') && $('#dlFull').checked, { embedFont: false });   // 폰트 CDN링크(발행 크기↓·600KB초과 방지) · 나머지 자기완결(API호출0=우회차단)
     const title = (CUR_A && CUR_A.title) || '뉴스 요약';
     const r = await fetch('api/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, title, html, scope: _pubScope, days: 3, pin }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok && d.slug) {
       go.classList.add('firing');   // 게이지 좌→우(.revsend.firing 계승)
-      await copyText(location.origin + '/s/' + d.slug + (pin ? '?p=' + pin : ''));
-      st.textContent = '✓ 발행됨 · 링크 복사 완료';
+      await copyText(location.origin + '/s/' + d.slug);   // ?p=핀 미포함 = PIN 잠금 무력화 방지(검증3·7·1). PIN은 별도 전달.
+      st.textContent = pin ? ('✓ 발행됨 · 링크 복사 · PIN ' + pin + ' 별도 전달') : '✓ 발행됨 · 링크 복사 완료';
       setTimeout(() => { pubdlg.close(); go.classList.remove('firing'); go.disabled = false; loadPub(); }, 1300);
     } else { go.disabled = false; st.textContent = (d && d.error) ? String(d.error).slice(0, 90) : '발행 실패 — 다시'; st.classList.add('err'); }
   } catch { go.disabled = false; st.textContent = '네트워크 오류 — 다시'; st.classList.add('err'); }
@@ -7694,12 +7694,13 @@ $('#pubGo').addEventListener('click', async () => {
 });
 
 let PUBITEMS = [], PUBPAGE = 0, _pubCloseTimer = 0, _pubPushed = false, _pubPop = false;
-const _pubBtnEl = $('#pubBtn'); if (_pubBtnEl) _pubBtnEl.addEventListener('click', openPub);
+const _pubBtnEl = $('#pubBtn'); if (_pubBtnEl) _pubBtnEl.addEventListener('click', e => { e.stopPropagation(); openPub(); });   // stopPropagation = #msgbtn 패턴(pmenu 안 버튼이라 안 하면 열자마자 바깥클릭 닫힘·검증8·9)
 function openPub() {   // 발행본 팝업 열기 — openQueue 미러(프로필 기준 위치)
   closeOverlays('pubpop');
   clearTimeout(_pubCloseTimer); pubpop.classList.remove('closing');
   const pr = $('#profile').getBoundingClientRect();
   pubpop.style.top = Math.round(pr.bottom + 8) + 'px';
+  pubpop.style.maxHeight = (window.innerHeight - Math.round(pr.bottom + 8) - 12) + 'px';   // 짧은 뷰포트서 페이저 이탈 방지(openQueue 대칭·검증8)
   pubpop.hidden = false;
   pubpop.style.left = Math.round((window.innerWidth - pubpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단·qpop 동일)
   if (!_pubPushed) { history.pushState({ pubpop: true }, ''); _pubPushed = true; }
@@ -7768,7 +7769,8 @@ async function loadPub() {   // loadQueue 미러(api/published)
   PUBPAGE = 0; renderPubPage(); _updatePubBadge();
 }
 function _updatePubBadge() { const n = PUBITEMS.filter(x => !x.expired).length, c = $('#pubBtnCnt'); if (c) c.textContent = n ? '(' + n + ')' : ''; }
-(async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; _updatePubBadge(); } catch {} })();   // 초기 배지
+let _pubBadgeInit = false;
+function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; _updatePubBadge(); } catch {} })(); }   // 배지 = 프로필 메뉴 첫 열림 시 1회 로드(매 페이지로드 41콜 PAT 경합 방지·검증9)
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 revdlg.addEventListener('close', () => { resetRevSend(); updateRevFab(); });   // 닫으면 재확인만 해제 + FAB 재평가 — 입력 텍스트는 보존(수정 FAB 재진입 시 그대로 복원 · 최소화 폐지 · 운영자 260628)
@@ -7925,7 +7927,7 @@ loadPending();      // eager — 대기열 처리중 건수 배지 초기 표시
 // 🔧 유지보수 규칙(필수): 새 폴링·자동갱신·setTimeout/setInterval·render 경로가 *모달 뒤 DOM*을 건드리면 반드시 이 가드로 감쌀 것
 //                  (moreImgGo tick의 thumbsec 교체도 이 가드 적용 = 분신술7 발견분). 새 작성 모달 만들면 id를 아래 목록에 추가. (정본=이 주석 + docs/작업이력.md §2)
 function isComposingModalOpen() {
-  return ['#revdlg', '#crevdlg', '#askdlg', '#pastedlg', '#editdlg'].some(s => { const d = $(s); return !!(d && d.open); });
+  return ['#revdlg', '#crevdlg', '#askdlg', '#pastedlg', '#editdlg', '#pubdlg'].some(s => { const d = $(s); return !!(d && d.open); });
 }
 // 요약 리더(#dlg) 폰 뒤로가기 = 모달 먼저 닫기(lbox/tooldlg/merge 패턴 계승·§🎨·260630 QA ③). 상위 오버레이(컴포즈·라이트박스·도구·대기열·병합)·컴포즈 자기칸 회수 back은 그쪽 몫 → #dlg over-close 차단.
 window.addEventListener('popstate', () => {

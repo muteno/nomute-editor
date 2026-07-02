@@ -21,6 +21,7 @@ export async function onRequestGet({ env }) {
 
   const files = list
     .filter(f => f && f.type === 'file' && /\.json$/i.test(f.name))
+    .sort((a, b) => b.name.localeCompare(a.name))   // slug 시각프리픽스라 이름 내림차순 = 최신순 → slice 전에 정렬(검증6/10: 정렬 전 컷 = 최신 누락 버그 방지)
     .slice(0, CAP);
 
   const items = [];

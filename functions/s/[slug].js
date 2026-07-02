@@ -7,7 +7,7 @@
 const REPO = 'muteno/nomute-editor';
 
 export async function onRequestGet({ params, request, env }) {
-  const slug = String(params.slug || '').toLowerCase().replace(/[^a-f0-9]/g, '').slice(0, 20);   // hex만(경로주입·확장자 차단)
+  const slug = String(params.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);   // 시각프리픽스(base36)+hex+하이픈만(경로주입·확장자 차단 — /·. 불가)
   if (!slug) return page('링크가 올바르지 않습니다.', 404);
   if (!env.GH_TOKEN) return page('서버 설정 오류입니다.', 500);
 
@@ -30,12 +30,16 @@ export async function onRequestGet({ params, request, env }) {
     if (h !== m.pinHash) return pinForm(slug, true);
   }
 
+  const cacheable = !m.pinHash;   // 핀 있으면 캐시 금지(응답 유출 방지) · 무핀만 짧은 엣지캐시 → 반복/프리뷰봇 히트를 CF가 흡수 = 공용 PAT DoS 완화(검증10 H1)
   return new Response(m.html || '', {
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'no-store',
+      'cache-control': cacheable ? 'public, max-age=60, s-maxage=300' : 'no-store',
       'x-robots-tag': 'noindex, nofollow',
+      'x-content-type-options': 'nosniff',
       'referrer-policy': 'no-referrer',
+      // CSP: connect-src 'none' = 발행본 페이지서 동일오리진 fetch 차단(본체 API 우회 원천봉쇄·검증1/2/4/5 5명 지적). frame-ancestors 'none'·form-action 'none'.
+      'content-security-policy': "default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; font-src https://cdn.jsdelivr.net; script-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     },
   });
 }
