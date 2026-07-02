@@ -50,13 +50,7 @@ guidelines_block() {
     #   왕복 = 아래 :-1 ↔ :-0 한 줄 플립(또는 호출 시 env IG_DIET=0). 다른 작업·새 룰은 누적된 채 유지(마커/awk만 토글).
     if [ "${IG_DIET:-1}" = "1" ]; then
       # 다이어트 ON: INJECT-SKIP 구간 제외(파일엔 보존·주입분만 슬림). 마커 없는 파일은 전량 그대로.
-      # 프로필 스코프(260702 · 14인 평의회 ⑧ SYS-05): `INJECT-SKIP-START profile=<이름>` 마커는 *그 프로필일 때만*
-      #   구간 제외(예: profile=summary = 01의 카드 전용 21KB를 요약 주입에서만 뺌 — card 주입은 전량 유지).
-      #   무스코프 마커(기존)는 전 프로필 제외(하위호환). 마커 줄 자체는 어느 프로필이든 미출력(프롬프트 오염 방지).
-      awk -v prof="$profile" '
-        /<!-- *INJECT-SKIP-START/ { if ($0 !~ /profile=/ || index($0, "profile=" prof)) skip=1; next }
-        /<!-- *INJECT-SKIP-END *-->/ { skip=0; next }
-        skip!=1' "$f"
+      awk '/<!-- *INJECT-SKIP-START *:?/{skip=1} skip!=1; /<!-- *INJECT-SKIP-END *-->/{skip=0}' "$f"
     else
       # 다이어트 OFF(롤백·R6 지점): 아카이브/이력 포함 전량 주입(R6 의미해시는 별개라 유지).
       cat "$f"
