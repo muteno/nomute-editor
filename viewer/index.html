@@ -1994,11 +1994,11 @@
   .asksend.firing { color:var(--on-accent); opacity:1; border-color:var(--accent); pointer-events:none; }   /* 전송 중 = 초록 게이지 위 어두운 글자(구성도 .send.is-fire 정본) */
   .asksend.firing::before { content:''; position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }   /* 초록 채움(검정 #06140d 아님·260622) */
   @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
-  /* 전송(#askSend) 게이지 = fetch(큐 커밋) 완료까지 진행 → '다 찬 후 멈춤' 제거. pickGauge 고정 0.72s 대신 transition으로 90% 점근(응답 대기 커버) → 응답 오면 현재위치서 100%+체크(점프 없음). #askSend 전용이라 수정·발행 게이지는 pickGauge 유지(틀 보존·운영자 260702) */
-  #askSend.firing::before { animation:none; transition:transform 3.6s linear; }   /* base scaleX(0)→90%(3.6s 균등) = 응답 대기 내내 진행(게이지량∝대기시간) → 응답 오면 gdone서 100%. fetch 시간 가변 흡수 = '다 찬 후 멈춤' 제거(대부분 응답<3.6s라 진행 중 완료) */
-  #askSend.firing.grun::before { transform:scaleX(.9); }   /* rAF 트리거 = 0→90% 점근(fetch 진행 동안 계속 차오름) */
-  #askSend.firing.gdone::before { transform:scaleX(1); transition:transform .16s linear; }   /* 응답 = 현재 위치→100% 급속 마무리 */
-  @media (prefers-reduced-motion:reduce) { #askSend.firing::before, #askSend.firing.gdone::before { transition-duration:.12s; } }
+  /* 라이브 게이지(.glive) = fetch 완료까지 진행 → '다 찬 후 멈춤'·'누른 직후 무반응' 제거. pickGauge 고정 0.72s 대신 transition 90% 점근(응답 대기 커버) → 응답 오면 현재위치서 100%+체크(점프 없음). gaugeStart()가 부여 — 전송·수정 3종·기록·발행 공용(전부 .asksend 보유 · specificity가 .asksend/.revsend pickGauge를 덮음 · 다른 firing 버튼은 pickGauge 유지 = 틀 보존 · 운영자 260702) */
+  .asksend.glive.firing::before { animation:none; transition:transform 3.6s linear; }   /* base scaleX(0)→90%(3.6s 균등) = 응답 대기 내내 진행(게이지량∝대기시간) → 응답 오면 gdone서 100%. fetch 시간 가변 흡수(대부분 응답<3.6s라 진행 중 완료) */
+  .asksend.glive.firing.grun::before { transform:scaleX(.9); }   /* rAF 트리거 = 0→90% 점근(fetch 진행 동안 계속 차오름) */
+  .asksend.glive.firing.gdone::before { transform:scaleX(1); transition:transform .16s linear; }   /* 응답 = 현재 위치→100% 급속 마무리 */
+  @media (prefers-reduced-motion:reduce) { .asksend.glive.firing::before, .asksend.glive.firing.gdone::before { transition-duration:.12s; } }
   /* 전송 실패 = 흔들림 / 완료 = settle 펄스 (전송 상태머신 fail·done · 운영자 260622) */
   .asksend.shake { animation:asksh .4s ease; }
   @keyframes asksh { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
@@ -4500,7 +4500,7 @@ function submitFeedback(p, fb, slideEl) {
   const save = fb.querySelector('.fb-save');
   if (save.classList.contains('firing')) return;                                  // 중복 전송 가드(게이지 진행 중)
   // 전송버튼(.asksend) 계승 = 초록 게이지 좌→우 채움 → 다 차면 ✓ 팝(요약요청/수정요청과 동일 상태머신·askShowCheck 공용)
-  save.disabled = true; askHideCheck(save); save.classList.add('firing'); save.dataset.ft = Date.now();
+  save.disabled = true; askHideCheck(save); gaugeStart(save);   // 게이지 = 응답까지 진행(옛 pickGauge 0.72s는 fetch 길면 꽉 찬 채 멈춤 · 운영자 260702)
   fetch('api/feedback', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ action: 'record', article: p.file, card: String(p.card), vote: p.vote, aspect: p.aspect, comment: p.comment }),
@@ -4509,11 +4509,11 @@ function submitFeedback(p, fb, slideEl) {
       if (ok && j.ok) {
         setVote(p.file, p.card, p.vote);            // 1표 상태 저장 → 반대쪽 잠금
         applyVoteState(slideEl, p.file, p.card);
-        save.classList.remove('done'); void save.offsetWidth; save.classList.add('done');               // settle 펄스(asksend 공용)
-        setTimeout(() => askShowCheck(save), Math.max(0, 740 - (Date.now() - (+save.dataset.ft || 0)))); // 게이지 다 찬 뒤 ✓ 팝(시안2)
+        save.classList.remove('done'); void save.offsetWidth; save.classList.add('done'); gaugeDone(save);   // settle 펄스 + 게이지 현위치→100% 급속(asksend 공용)
+        setTimeout(() => askShowCheck(save), 200);   // 게이지 100% 찬 뒤 ✓ 팝(gdone .16s + 여유·시안2)
         setTimeout(() => fb.remove(), 1500);                                                             // ✓ 보여주고 패널 닫음
-      } else { save.classList.remove('firing'); save.classList.add('shake'); setTimeout(() => save.classList.remove('shake'), 420); save.disabled = false; alert(j.error || '실패'); }
-    }).catch(e => { save.classList.remove('firing'); save.classList.add('shake'); setTimeout(() => save.classList.remove('shake'), 420); save.disabled = false; alert('요청 실패: ' + e.message); });
+      } else { gaugeClear(save); save.classList.add('shake'); setTimeout(() => save.classList.remove('shake'), 420); save.disabled = false; alert(j.error || '실패'); }
+    }).catch(e => { gaugeClear(save); save.classList.add('shake'); setTimeout(() => save.classList.remove('shake'), 420); save.disabled = false; alert('요청 실패: ' + e.message); });
 }
 // ── 투표 상태(1카드 1표·localStorage) — 기록하면 반대쪽 잠금, 같은 쪽 재탭=취소(DB 삭제) ──
 function getVote(file, card) { try { return (JSON.parse(localStorage.getItem('nomute_fb') || '{}'))[`${file}#${card}`] || null; } catch { return null; } }
@@ -7427,6 +7427,10 @@ function askShowCheck(btn){ if (!btn || btn.querySelector('.ack')) return; btn.c
   const d = document.createElement('span'); d.className = 'ack';
   d.innerHTML = '<svg viewBox="0 0 24 24" role="img" aria-label="완료"><path d="M5 13l4 4L19 7"/></svg>'; btn.appendChild(d); }
 function askHideCheck(btn){ if (!btn) return; btn.classList.remove('checked'); const d = btn.querySelector('.ack'); if (d) d.remove(); }
+// 라이브 게이지 헬퍼(전송·수정 3종·기록·발행 공용 · 운영자 260702) — fetch 전에 start(게이지가 응답까지 점근 진행 = 멈춤·무반응 제거), 성공 시 gaugeDone(현위치→100% 급속·askShowCheck는 호출부서 ~200ms 뒤), 실패·정리 시 gaugeClear.
+function gaugeStart(btn){ if (!btn) return; btn.classList.add('glive', 'firing'); requestAnimationFrame(() => requestAnimationFrame(() => btn.classList.add('grun'))); }   // 2중 rAF = scaleX(0) 한 프레임 페인트 후 .9 트리거(같은 프레임이면 transition 무시됨)
+function gaugeDone(btn){ if (btn) btn.classList.add('gdone'); }
+function gaugeClear(btn){ if (btn) btn.classList.remove('glive', 'firing', 'grun', 'gdone'); }
 $('#askSend').addEventListener('click', async () => {
   const text = $('#askText').value.trim();
   if (!text && !askImages.length) {   // 빈 입력(텍스트·이미지 없음) = 입력창 흔들림 + placeholder 강조 1회 점등 + 전송버튼 흔들림(동시 · 운영자 260622)
@@ -7436,7 +7440,7 @@ $('#askSend').addEventListener('click', async () => {
     $('#askText').focus();
     return;
   }
-  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); requestAnimationFrame(() => requestAnimationFrame(() => btn.classList.add('grun')));   // 게이지 = 응답까지 진행(grun=0→90% · 응답 시 gdone서 100% = '다 찬 후 멈춤' 제거) · 2중 rAF = scaleX(0) 한 프레임 페인트 후 .9 트리거(같은 프레임이면 transition 무시됨) · 상태텍스트 폐지(운영자 260622·260702)
+  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); gaugeStart(btn);   // 게이지 = 응답까지 진행(grun=0→90% · 응답 시 gdone서 100% = '다 찬 후 멈춤' 제거 · 공용 헬퍼) · 상태텍스트 폐지(운영자 260622·260702)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl), nothumb: genImgOn() ? 0 : 1 }) });   // nothumb=1이면 제미나이 썸네일 생성 skip(검색 og:image는 항상)·운영자 260702
     const d = await r.json().catch(() => ({}));
@@ -7444,12 +7448,12 @@ $('#askSend').addEventListener('click', async () => {
       setTimeout(() => askShowCheck(btn), 200);   // 게이지 100% 찬 뒤 ✓ 팝(gdone .16s + 여유 · 응답 즉시라 '다 찬 후 멈춤' 없음·시안2·260702)
       setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 접수 즉시 대기열 배지 갱신(60s 폴링 안 기다림 · asks/ 표면화 = '처리중' 확인 · GitHub 전파 대비 2회 · 운영자 260622)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
-      setTimeout(() => { askdlg.close(); btn.classList.remove('firing', 'grun', 'gdone'); askHideCheck(btn); btn.disabled = false;
+      setTimeout(() => { askdlg.close(); gaugeClear(btn); askHideCheck(btn); btn.disabled = false;
         $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();   // 리셋 = 닫은 뒤(빈 초기화면 깜빡임 차단 · 운영자 260622)
       }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
     else { $('#askStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
   } catch { $('#askStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
-  btn.classList.remove('firing', 'grun', 'gdone'); btn.disabled = false;
+  gaugeClear(btn); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
 $('#failmenu').addEventListener('click', e => {
@@ -7966,20 +7970,20 @@ $('#crevSend').addEventListener('click', async () => {
   }
   clearTimeout(crevConfirmT);                  // 2차 = 전송
   btn.classList.remove('confirm'); if (lbl) lbl.textContent = '수정';
-  btn.disabled = true; askHideCheck(btn);
+  btn.disabled = true; askHideCheck(btn); gaugeStart(btn);   // 게이지 = 재확인 탭 즉시·응답까지 진행(옛 'fetch 후 firing' 무반응 멈춤 제거 · 운영자 260702)
   try {
     const r = await fetch('api/revise-cards', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, instruction }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
-      btn.classList.add('firing');
-      setTimeout(() => askShowCheck(btn), 740);
+      gaugeDone(btn);
+      setTimeout(() => askShowCheck(btn), 200);
       startCardRevising(CUR);
-      setTimeout(() => { $('#crevdlg').close(); $('#crevText').value = ''; btn.disabled = false; btn.classList.remove('firing'); updateCrevClip(); }, 1400);
+      setTimeout(() => { $('#crevdlg').close(); $('#crevText').value = ''; btn.disabled = false; gaugeClear(btn); updateCrevClip(); }, 1400);
     } else {
-      btn.disabled = false; $('#crevStatus').textContent = (d && d.error) ? String(d.error).slice(0, 80) : '전송 실패 — 다시';
+      gaugeClear(btn); btn.disabled = false; $('#crevStatus').textContent = (d && d.error) ? String(d.error).slice(0, 80) : '전송 실패 — 다시';
     }
   } catch {
-    btn.disabled = false; $('#crevStatus').textContent = '네트워크 오류 — 다시';
+    gaugeClear(btn); btn.disabled = false; $('#crevStatus').textContent = '네트워크 오류 — 다시';
   }
 });
 loadCardRevising();
@@ -8008,11 +8012,10 @@ pubdlg.addEventListener('click', e => { if (e.target === pubdlg) pubdlg.close();
 $('#pubGo').addEventListener('click', async () => {
   if (_pubBusy || !CUR_A) return;
   const go = $('#pubGo'), st = $('#pubStatus'), pin = ($('#pubPin').value || '').trim();
-  const fail = (msg) => { go.classList.remove('firing'); go.classList.add('shake'); setTimeout(() => go.classList.remove('shake'), 420); go.disabled = false; st.textContent = msg; st.classList.add('err'); };
+  const fail = (msg) => { gaugeClear(go); go.classList.add('shake'); setTimeout(() => go.classList.remove('shake'), 420); go.disabled = false; st.textContent = msg; st.classList.add('err'); };
   if (pin && !/^\d{6}$/.test(pin)) { fail('PIN은 숫자 6자리로'); return; }
   _pubBusy = true; go.disabled = true; st.classList.remove('err'); st.textContent = '';
-  const t0 = Date.now();
-  go.classList.add('firing');   // 발행 즉시 게이지 좌→우(html 생성·업로드 동안 노출 · 운영자 "html 보여줄때 게이지")
+  gaugeStart(go);   // 발행 즉시 게이지 = html 생성·업로드 응답까지 진행(옛 pickGauge 0.72s는 업로드 길면 꽉 찬 채 멈춤 · 운영자 260702)
   try {
     const html = await buildSummaryHtml($('#dlFull') && $('#dlFull').checked, { embedFont: false });   // 폰트 CDN링크(발행 크기↓·600KB초과 방지) · 나머지 자기완결(API호출0=우회차단)
     const title = (CUR_A && CUR_A.title) || '뉴스 요약';
@@ -8020,10 +8023,10 @@ $('#pubGo').addEventListener('click', async () => {
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok && d.slug) {
       await copyText(location.origin + '/s/' + d.slug);   // ?p=핀 미포함 = PIN 잠금 무력화 방지(검증3·7·1). PIN은 별도 전달.
-      go.classList.remove('done'); void go.offsetWidth; go.classList.add('done');   // settle 팝 + 게이지 다 찬 뒤 ✓팝 = 전송/수정(#askSend) 버튼과 동일 메커니즘(askShowCheck·.ack·운영자 "다른 버튼과 동일")
-      setTimeout(() => askShowCheck(go), Math.max(0, 740 - (Date.now() - t0)));
+      go.classList.remove('done'); void go.offsetWidth; go.classList.add('done'); gaugeDone(go);   // settle 팝 + 게이지 현위치→100% 급속 = 전송/수정 버튼과 동일 메커니즘(askShowCheck·.ack·운영자 "다른 버튼과 동일")
+      setTimeout(() => askShowCheck(go), 200);   // 게이지 100% 찬 뒤 ✓ 팝(gdone .16s + 여유)
       st.textContent = pin ? ('✓ 발행됨 · 링크 복사 · PIN ' + pin + ' 별도 전달') : '✓ 발행됨 · 링크 복사 완료';
-      setTimeout(() => { pubdlg.close(); go.classList.remove('firing', 'done'); askHideCheck(go); go.disabled = false; loadPub(); }, 1500);   // ✓ 노출 시간 확보 후 닫기(askSend 계승)
+      setTimeout(() => { pubdlg.close(); gaugeClear(go); go.classList.remove('done'); askHideCheck(go); go.disabled = false; loadPub(); }, 1500);   // ✓ 노출 시간 확보 후 닫기(askSend 계승)
     } else { fail((d && d.error) ? String(d.error).slice(0, 90) : '발행 실패 — 다시'); }
   } catch { fail('네트워크 오류 — 다시'); }
   finally { _pubBusy = false; }
@@ -8426,23 +8429,23 @@ $('#revSend').addEventListener('click', async () => {
   }
   clearTimeout(revConfirmT);                   // 2차 클릭 = 실제 전송
   btn.classList.remove('confirm'); if (lbl) lbl.textContent = '수정';
-  btn.disabled = true; askHideCheck(btn);   // '보내는 중' 문구 없음 — 버튼 .firing 게이지로 충분
+  btn.disabled = true; askHideCheck(btn); gaugeStart(btn);   // 게이지 = 재확인 탭 즉시 시작·응답까지 진행(옛 'fetch 후 firing'은 fetch 동안 무반응 멈춤 · 운영자 260702) · '보내는 중' 문구 없음
   try {
     const r = await fetch('api/revise', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, instruction }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
-      btn.classList.add('firing');   // 초록 게이지 채움(.firing → pickGauge)
-      setTimeout(() => askShowCheck(btn), 740);   // 게이지 다 찬 뒤 ✓ 팝(시안2)
+      gaugeDone(btn);   // 게이지 현재위치→100% 급속 마무리
+      setTimeout(() => askShowCheck(btn), 200);   // 게이지 100% 찬 뒤 ✓ 팝(gdone .16s + 여유·시안2)
       $('#revStatus').textContent = '';   // 안내문구 없음 — 버튼 ✓로 충분(운영자 260623)
       startRevising(CUR);   // 완료 폴링·자동 갱신만 시작(시각 표기 없음 · 운영자 260623)
-      setTimeout(() => { revdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false;
+      setTimeout(() => { revdlg.close(); gaugeClear(btn); askHideCheck(btn); btn.disabled = false;
         $('#revText').value = ''; updateRevClip();   // ⚠️ 입력 리셋 = 닫은 뒤(게이지 도는 1.6s 동안 빈칸이 보여 '내가 쓴 게 사라졌나' 불안 차단 · askSend와 동일 표준 · 운영자 260622·260627)
       }, 1600);   // 닫힐 때까지 disabled(중복전송 차단)
       return;
     }
     $('#revStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`);
   } catch { $('#revStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
-  btn.disabled = false;
+  gaugeClear(btn); btn.disabled = false;
 });
 
 // ── 이미지 재생성(코멘트 반영) — 요약 수정(revise) 미러. 대상 = 현재 기사(CUR)의 특정 화풍(TREDO_SID). api/thumbredo {article,sid,wish}. ──
@@ -8462,7 +8465,7 @@ function updateTredoClip() { const t = $('#tredoText'); if (t) t.dispatchEvent(n
 function resetTredoSend() {   // 발사 버튼 원복(재확인·게이지 해제)
   clearTimeout(tredoConfirmT);
   const btn = $('#tredoSend'); if (!btn) return;
-  btn.classList.remove('confirm', 'firing'); askHideCheck(btn); btn.disabled = false;
+  btn.classList.remove('confirm'); gaugeClear(btn); askHideCheck(btn); btn.disabled = false;
   const lbl = btn.querySelector('span'); if (lbl) lbl.textContent = '수정';
 }
 function openTredo(sid) {
@@ -8490,13 +8493,13 @@ $('#tredoSend').addEventListener('click', async () => {
   }
   clearTimeout(tredoConfirmT);                 // 2차 = 실제 전송
   btn.classList.remove('confirm'); if (lbl) lbl.textContent = '수정';
-  btn.disabled = true; askHideCheck(btn);
+  btn.disabled = true; askHideCheck(btn); gaugeStart(btn);   // 게이지 = 재확인 탭 즉시·응답까지 진행(옛 'fetch 후 firing' 무반응 멈춤 제거 · 운영자 260702)
   try {
     const r = await fetch('/api/thumbredo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ article: CUR, sid: TREDO_SID, wish }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
-      btn.classList.add('firing');   // 초록 게이지 채움(.revsend.firing → pickGauge)
-      setTimeout(() => askShowCheck(btn), 740);   // 게이지 다 찬 뒤 ✓ 팝
+      gaugeDone(btn);   // 게이지 현재위치→100% 급속 마무리
+      setTimeout(() => askShowCheck(btn), 200);   // 게이지 100% 찬 뒤 ✓ 팝
       const rec = THUMB_REDO.get(CUR) || { t0: Date.now(), snap: {} };   // per-sid 등록(동일 기사 다화풍 동시 재생성 추적)
       rec.t0 = Date.now();
       rec.snap[TREDO_SID] = genImgOf(DATA.find(x => x.file === CUR) || CUR_A, TREDO_SID);   // ⚠️ fresh 소스(완료비교와 동일) — CUR_A는 open서 동결이라 재발사 시 stale→조기완료(260630 클래스) 방지(평의회 async)
@@ -8507,7 +8510,7 @@ $('#tredoSend').addEventListener('click', async () => {
     }
     $('#tredoStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || ('서버 ' + r.status));
   } catch { $('#tredoStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; }
-  btn.disabled = false;
+  gaugeClear(btn); btn.disabled = false;
 });
 // ── PC(마우스) 전용: 팝업 모달 헤더 잡고 드래그 이동(메뉴 아님 · 운영자 260619) ──
 function makeDraggable(dlg, handleSel) {
