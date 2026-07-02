@@ -46,77 +46,6 @@ def git(*args):
         return ""
 
 
-def _get_tokenizer():
-    """독점률용 토큰화 — knews_scraper 정본 우선, 실행 환경에 feedparser 없으면 폴백 미러(social_burst 선례).
-    ⚠️ 미러는 knews tokenize/same_topic(overlap≥3 OR jaccard≥0.5)와 동기 유지(후속 = tokenize SSOT 모듈화 §7)."""
-    try:
-        import sys
-        sys.path.insert(0, str(ROOT / "scraper"))
-        from knews_scraper import tokenize, same_topic
-        return tokenize, same_topic
-    except Exception:
-        import re
-        stop = {"속보", "단독", "종합", "포토", "영상", "인터뷰", "오늘", "내일", "오전", "오후",
-                "기자", "그래픽", "사진", "코멘트", "전망", "관련", "현장", "이것", "그것",
-                "공식", "전체", "주요", "기사"}
-
-        def tokenize(title):
-            t = re.sub(r"\[[^\]]*\]", " ", title or "")
-            t = re.sub(r"<[^>]+>", " ", t)
-            return {x for x in re.findall(r"[가-힣]{2,}|[A-Za-z]{2,}|[0-9]{2,}", t) if x not in stop}
-
-        def same_topic(ta, tb):
-            inter = len(ta & tb)
-            if inter == 0:
-                return False
-            if inter >= 3:
-                return True
-            return inter / len(ta | tb) >= 0.5
-
-        return tokenize, same_topic
-
-
-def _dominance(cands, now):
-    """독점률 = 누적칼럼 근사 상위30 중 최대 단일사건 점유%(도배 재발 감지 · 260702 fable패널 수정안).
-    풀 = 누적자격 미러(나이≥4h AND [cross≥8 OR 긴급 OR followEnters]) · 정렬 = cross^1.3×timeAcc(13·3.0).
-    뷰어 scScore 근사(gradeW·긴급부스트 생략 — 실측 교집합 27/30·평시 3%). 상수는 §★ 정본과 짝(변경 시 갱신).
-    반환 (점유%, 건수, 대표제목) 또는 None(풀<15 = 심야 표본 부족·판정 유보)."""
-    pool = []
-    for c in cands:
-        a = age_h(c.get("published"), now)
-        if a is None or a < 0:                      # 발행 없음/미래 오기록 → 수집시각 폴백
-            a = age_h(c.get("first_seen"), now)
-        if a is None or a < 4:
-            continue
-        g = c.get("grade")
-        brk = bool(c.get("breaking")) and (g is None or (g or 0) >= 2)
-        fol = (c.get("cross") or 0) >= 4 and (c.get("report_count") or 0) >= 6 and g != 0
-        if (c.get("cross") or 0) >= 8 or brk or fol:
-            pool.append((c, a))
-    if len(pool) < 15:
-        return None
-    scored = sorted(pool, key=lambda x: ((x[0].get("cross") or 0) ** 1.3) / (1 + (x[1] / 13) ** 3.0),
-                    reverse=True)[:30]
-    top = [c for c, _ in scored]
-    tokenize, same_topic = _get_tokenizer()
-    toks = [tokenize(c.get("title") or "") for c in top]
-    parent = list(range(len(top)))
-
-    def find(x):
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
-
-    for i in range(len(top)):
-        for j in range(i + 1, len(top)):
-            if toks[i] and toks[j] and same_topic(toks[i], toks[j]):
-                parent[find(j)] = find(i)
-    groups = Counter(find(i) for i in range(len(top)))
-    root, size = groups.most_common(1)[0]
-    return size / len(top) * 100, size, (top[root].get("title") or "")
-
-
 def main():
     now = dt.datetime.now(timezone.utc)
     nowk = now.astimezone(KST)
@@ -188,18 +117,6 @@ def main():
     f = "✅" if len(urg) < 8 else "⚠️"
     print(f"  {f} 현재 🚨긴급자격(breaking&grade≥2&<4h) {len(urg)}건"
           + ("  (←8↑면 긴급 과다 의심)" if len(urg) >= 8 else ""))
-    # 독점률(도배 재발 감지 — 6/28형 '단일사건 상단 도배'를 숫자로 · ≥30%면 §7 접기(fold)안 검토 신호)
-    try:
-        dom = _dominance(c, now)
-        if dom is None:
-            print("  · 독점률: 누적자격 풀 <15 (심야 표본 부족) — 판정 유보")
-        else:
-            pct, size, title = dom
-            flag = "⚠️" if pct >= 30 else "·"
-            print(f"  {flag} 독점률(누적 상위30 최대 단일사건): {pct:.0f}%({size}건)"
-                  + (f"  ← 도배 의심 · §7 접기안 검토 — {title[:28]}" if pct >= 30 else "  (기준 3~13% 정상 · 6/28형 도배 = 75%)"))
-    except Exception as e:
-        print(f"  · 독점률 계산 실패(비치명): {e}")
     print(f"  → 심층 비교: python3 scraper/compare_collected.py  (어제↔오늘 낮 승격·긴급 분포)")
 
     # ─────────── ③ 롤백 검토 ───────────
