@@ -31,14 +31,9 @@ on:
         description: '사건 묶기(group_judge) 카나리아 1런(기본 OFF — §📰 플래그 절차 · 실측 후 env GROUP_ON 승격)'
         type: boolean
         default: false
-      trans_canary:
-        description: '외신 제목 번역(title_translate) 카나리아 1런(기본 OFF — §📰 플래그 절차 · 실측 후 env TRANS_ON 승격)'
-        type: boolean
-        default: false
 
 env:
   GROUP_ON: '1'   # 사건 묶기(group_judge) 승격 완료(260702 카나리아 3차 실측: 판정 20/20·YES15/NO5·베네수↔일본 강진 등 템플릿 다른사건 정확 분리·rc=0·opus·~46s). 롤백 = 이 줄 제거(스텝 자동 OFF · scrape 게이트 gg 합산 줄도 짝 제거).
-  TRANS_ON: ''    # 외신 제목 번역 — gate_judge *편승*(별도 콜 0 · 같은 배치 줄에 번역 칸 추가 · title_ko 표시 전용). 기본 OFF(§📰 카나리아 절차: dispatch inputs.trans_canary=true 단건 실측 → 통과 시 '1' 승격 · 승격 시 scrape 디스패치 게이트 env에도 TRANS_ON '1' 짝 추가 = 번역-only 백로그도 디스패치 계상).
 
 concurrency:
   group: breaking-judge
@@ -60,11 +55,8 @@ jobs:
           fetch-depth: 0
 
       # 게이트 — 미판정 속보후보 + 미채점 경중후보 수. 0이면 아래 Claude 설치·판정 스텝 전부 스킵(비용 0).
-      # 외신 번역 편승분은 gate_judge --count 가 TRANS_ON 일 때 스스로 계상(needs_grading에 미번역 포함) = 별도 카운트 불요.
       - name: 미판정 후보 확인 (속보 + 경중 + 묶기)
         id: chk
-        env:
-          TRANS_ON: ${{ inputs.trans_canary && '1' || env.TRANS_ON }}   # 카나리아 1런 = 이 런만 번역 편승 ON(계상 포함)
         run: |
           nb=$(python3 .github/scripts/breaking_judge.py --count)
           ng=$(python3 .github/scripts/gate_judge.py --count)
@@ -74,7 +66,7 @@ jobs:
           fi
           n=$((nb + ng + gj))
           echo "pending=$n" >> "$GITHUB_OUTPUT"
-          echo "미판정: 속보 ${nb}건 · 경중 ${ng}건(번역 편승 포함) · 묶기 ${gj}건 (총 ${n})"
+          echo "미판정: 속보 ${nb}건 · 경중 ${ng}건 · 묶기 ${gj}건 (총 ${n})"
 
       - name: Setup Node
         if: steps.chk.outputs.pending != '0' || github.event.inputs.safe_mode == 'true'
@@ -137,11 +129,10 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           python3 .github/scripts/breaking_judge.py
 
-      - name: 경중 채점 (claude -p · AI 게이트 · 외신 번역 편승)
+      - name: 경중 채점 (claude -p · AI 게이트)
         if: steps.chk.outputs.pending != '0'
         env:
           GATE_MODEL: claude-sonnet-5   # 룰북 0~3 분류 = sonnet-5 운영(빈도·쿼터 1위 호출 · gradeW완화·cat_force·grade게이트가 경계오차 흡수 · effort 미사용=코드 기본 · 260630 평의회). 롤백=이 줄 제거(코드 기본 opus 복귀).
-          TRANS_ON: ${{ inputs.trans_canary && '1' || env.TRANS_ON }}   # 외신 제목 번역 편승(같은 콜 · 번역도 sonnet 급 = 운영자 260703 "번역도 소넷"). 카나리아 = trans_canary 1런.
           GATE_MAX_PER_RUN: "200"   # 한 런 노출권 경중 채점 상한 80→200(운영자 260701 전수검증 — 미채점 백로그 소진·수집함 노출건 다 AI 검증). sonnet 빠름·timeout 45로 커버. 롤백=이 줄 제거(코드 기본 80).
           GATE_CAT_QUOTA: "120"     # 한 런 cross-2 cat 재판별 상한 40→120(cat 미판별 백로그가 최다·우편요금류 오분류가 여기 갇힘). 롤백=이 줄 제거(코드 기본 40).
           GATE_SAFE: '1'   # 승격 완료(260701 카나리아 실측 rc=0·OAuth 정상·cache_creation 53,855→1,512 −97.2%): 자동/예약 judge 런도 --safe-mode(CLAUDE.md 로드 스킵). 롤백=이 줄을 '' 또는 제거(코드 기본 OFF).

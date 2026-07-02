@@ -1,35 +1,45 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow"><title>노뮤트 발행본</title>
-<style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--r-modal:22px}
+<style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--line:rgba(255,255,255,.08);--r-modal:22px}
 html,body{margin:0;height:100%;background:#0b0d0c;color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .wrap{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}
 .card{max-width:360px;width:100%;text-align:center;background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,.98));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-modal);padding:26px 22px}
 .card .m{font-size:15px;font-weight:800;color:var(--mut);letter-spacing:-.2px}
-.err{color:var(--danger);font-size:12px;margin-top:11px;font-weight:700;white-space:nowrap}</style></head><body><div class="wrap"><div class="card"><div class="m">PIN으로 잠긴 문서입니다.</div>
+.err{color:var(--danger);font-size:12px;margin-top:11px;font-weight:700;white-space:nowrap}</style></head><body><div class="wrap"><div class="card"><div class="m">문서 PIN을 입력해주세요</div>
 <div class="slots" id="slots" aria-hidden="true"><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
 <div class="err" id="verr">PIN 번호가 틀립니다 (1/5)</div><div class="info" id="vinfo" hidden></div>
 <div class="pad" id="pad"></div>
-<form id="f" method="get" action="/s/preview" novalidate><input type="hidden" name="p" id="hid"></form>
+<form id="f" method="post" action="/s/preview" novalidate><input type="hidden" name="p" id="hid"></form>
 <style>
 .card{background:none;border:none;padding:6px 4px}   /* 카드 패널(글자 뒤 배경) 제거 — 글자·슬롯·패드만 흑배경 위에(운영자 260703 · pinForm 한정 오버라이드·에러/안내 page()는 카드 유지) */
-.slots{display:flex;justify-content:center;gap:18px;margin:24px 0 2px}
-.slot{width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);background:none;opacity:.5;display:grid;place-items:center;font-size:17px;font-weight:800;line-height:1;color:var(--accent);transition:background .15s ease,border-color .15s ease,opacity .15s ease,transform .15s ease}
-.slot.on{background:var(--accent);border-color:var(--accent);opacity:1;transform:scale(1.1)}   /* 입력한 것만 강조색(운영자 260703) */
-.slot.peek{border-color:transparent;background:none;opacity:1;transform:scale(1.15)}   /* 방금 입력한 자리 = 점 대신 숫자 잠깐 노출(0.7s·운영자 260703) */
-.slots.bad .slot{border-color:var(--danger)}
-.slots.bad .slot.on{background:var(--danger);border-color:var(--danger)}
+.slots{display:flex;justify-content:center;gap:16px;margin:24px 0 2px}
+/* 슬롯 = 균일 그리드 박스(18×22 고정) — 빈 원(::before)·명조 별(*)·숫자픽이 전부 같은 박스 중앙 = 기준선 통일(내려앉음 교정·운영자 260703) */
+.slot{width:18px;height:22px;display:grid;place-items:center;font-size:18px;font-weight:800;line-height:1;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}
+.slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);transition:border-color .15s ease}
+.slot.on{opacity:1}
+.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 28px/1 Georgia,'Times New Roman','Batang','바탕',serif;color:var(--accent);transform:translateY(7px)}   /* 마스킹 = 명조 '*'(점보다 가시적·운영자 260703). 애스터리스크 글리프가 상단에 붙어 translateY 광학 보정 */
+.slot.peek{opacity:1;transform:scale(1.12)}   /* 방금 입력한 자리 = 도형 대신 숫자 잠깐 노출(0.7s·운영자 260703) */
+.slot.peek::before{content:none}
+.slots.bad .slot::before{border-color:var(--danger)}
+.slots.bad .slot.on::before{color:var(--danger)}
 .slots.checking .slot.on{animation:slotPulse .8s ease infinite}
 @keyframes slotPulse{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes slotShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-9px)}28%{transform:translateX(8px)}44%{transform:translateX(-6px)}60%{transform:translateX(4px)}76%{transform:translateX(-2px)}}
 .slots.shake{animation:slotShake .45s cubic-bezier(.36,.07,.19,.97)}
 .err{margin-top:15px;min-height:15px}
 .info{color:var(--mut);font-size:12.5px;margin-top:15px;font-weight:700;line-height:1.5}   /* 마스터 초기화 안내 = mut 회색(정보·에러 아님·운영자 260703) */
-.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:288px;margin:26px auto 0}
-.key{height:58px;display:grid;place-items:center;font-size:23px;font-weight:700;font-family:inherit;color:var(--fg);background:none;border:none;border-radius:16px;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:background .12s ease,transform .07s ease}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:288px;margin:26px auto 0}
+.key{height:58px;display:grid;place-items:center;font-size:23px;font-weight:700;font-family:inherit;color:var(--fg);background:none;border:none;border-radius:0;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:background .12s ease,color .15s ease,transform .07s ease}
+.key:nth-child(3n+2),.key:nth-child(3n){border-left:1px solid var(--line)}   /* 셀 사이 구분선 = 내부선만(2·3열 좌측 + 2행부터 상단·운영자 260703) */
+.key:nth-child(n+4){border-top:1px solid var(--line)}
 .key:active{background:rgba(255,255,255,.09);transform:scale(.93)}
-.key.empty{visibility:hidden;pointer-events:none}
-.key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.key.hit{background:rgba(var(--accent-rgb),.16);color:var(--accent)}   /* 누름 순간 강조색 플래시(짧은 탭에도 보이게 JS로 ~0.18s 유지·운영자 260703) */
+.key.back.hit svg{stroke:var(--accent)}
+.key.empty{pointer-events:none}   /* visibility:hidden이면 구분선까지 사라져 격자에 구멍 → 투명 셀로 유지(운영자 260703) */
+.key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s ease}
+.pad.b2 .key{color:rgba(var(--accent-rgb),.85)}   /* 5~6자리(판B) = 키 전경색 강조 틴트 → 배치 바뀜을 색으로 표기(운영자 260703) */
+.pad.b2 .key.back svg{stroke:rgba(var(--accent-rgb),.85)}
 .pad.off{pointer-events:none;opacity:.45;transition:opacity .2s ease}   /* 확인 중 = 패드 비활성 */
 @media (prefers-reduced-motion:reduce){.slots.shake{animation-duration:.01s}.slots.checking .slot.on{animation:none}.key:active{transform:none}}
 </style>
@@ -48,7 +58,16 @@ html,body{margin:0;height:100%;background:#0b0d0c;color:var(--fg);font:15px/1.6 
     h+='<button type="button" class="key back" data-back="1" aria-label="지우기">'+BSVG+'</button>';
     pad.innerHTML=h;kds=pad.querySelectorAll('.kd');            // 10개 숫자 버튼(DOM 순서 = order 인덱스)
   }
-  function applyOrder(){var o=real.length>=4?orderB:orderA;for(var i=0;i<10;i++){kds[i].textContent=o[i];kds[i].setAttribute('data-d',o[i]);}}   // 자리수로 판 결정 = 지웠다 다시 쳐도 같은 판
+  function applyOrder(){                                        // 자리수로 판 결정 = 지웠다 다시 쳐도 같은 판. 판B = .b2(키 전경색 틴트로 배치 전환 표기)
+    var b2=real.length>=4,o=b2?orderB:orderA;
+    pad.classList.toggle('b2',b2);
+    for(var i=0;i<10;i++){kds[i].textContent=o[i];kds[i].setAttribute('data-d',o[i]);}
+  }
+  function flash(el){                                           // 누름 순간 강조색 — :active만으론 짧은 탭에 안 보여 JS로 0.18s 유지(물리 키보드 입력도 해당 키 점등)
+    if(!el)return;
+    el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit');
+    clearTimeout(el._ht);el._ht=setTimeout(function(){el.classList.remove('hit');},180);
+  }
   function fill(peek){                                          // peek=true → 방금 입력한 자리만 숫자 노출(0.7s 후·다음 입력 시 즉시 마스킹)
     clearTimeout(peekT);
     for(var i=0;i<6;i++){dots[i].className='slot'+(i<real.length?' on':'');dots[i].textContent='';}
@@ -61,11 +80,12 @@ html,body{margin:0;height:100%;background:#0b0d0c;color:var(--fg);font:15px/1.6 
   }
   function press(d){
     if(fired||real.length>=6)return;
+    flash(pad.querySelector('.kd[data-d="'+d+'"]'));            // 클릭·물리키 공통 점등(호출부가 숫자만 보장)
     unbad();real+=String(d);fill(true);
     applyOrder();                                               // 4자리 채우는 순간 판B로 전환(그 전까진 판A 고정)
     if(real.length===6)setTimeout(fire,340);
   }
-  function back(){if(fired||!real.length)return;unbad();real=real.slice(0,-1);fill();applyOrder();}
+  function back(){if(fired||!real.length)return;flash(pad.querySelector('.back'));unbad();real=real.slice(0,-1);fill();applyOrder();}
   function fire(){                                              // 6칸 채움 → 확인 중 → 서버 검증(성공=문서 열림 / 실패=슬롯 빨강 흔들림 재응답)
     if(fired||real.length!==6)return;
     fired=true;clearTimeout(peekT);fill();                      // 검증 들어갈 땐 숫자픽 즉시 마스킹(노출 잔류 차단)
