@@ -102,7 +102,7 @@ def summarize(items, label):
     gd = Counter(("미채점" if c.get("grade") is None else str(c.get("grade"))) for c in items)
     cb = Counter(_cross_bucket(c.get("cross")) for c in items)
     catiss = Counter((c.get("cat") or "미분류") for c in iss)
-    print(f"  cross≥8(⚡이슈 자격): {len(iss)}건" + (f" · cat별 {dict(catiss)}" if iss else ""))
+    print(f"  cross≥8(누적 진입 자격 — 배지는 cross≥10+grade+정형컷·§8 260702): {len(iss)}건" + (f" · cat별 {dict(catiss)}" if iss else ""))
     print("  grade 분포: " + " ".join(f"{k}:{gd.get(k, 0)}" for k in ("0", "1", "2", "3", "미채점"))
           + " · cross 버킷: " + " ".join(f"{k}:{cb.get(k, 0)}" for k in ("2", "3-4", "5-7", "8-11", "12+")))
     # rc(연속보도) 분포 — 연합 섹션 4피드 추가(260702 fable패널)의 rc 인플레 측정용(기준선: rc≥6 395건·중앙값 1).

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoMute 클립보드 다운로더 — 사용 가이드 v5.3</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f5f8; --card:#ffffff; --ink:#16182b; --muted:#6b7280;
+    --line:#e4e7ee; --accent:#4f46e5; --accent-soft:#eef0fe;
+    --code-bg:#1b1b2b; --code-ink:#e7e9f5; --code-key:#8be9c8; --code-cmt:#7c7f9e;
+    --warn:#b45309; --warn-bg:#fef6e7; --ok:#0f7a4d; --ok-bg:#e9f6ee; --danger:#b42323; --danger-bg:#fdeeee;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard",system-ui,-apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+    line-height:1.65; font-size:15px; padding:32px 16px 80px;
+  }
+  .wrap{max-width:840px;margin:0 auto}
+
+  /* header */
+  header{margin-bottom:26px}
+  .eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:8px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 10px;font-weight:800;letter-spacing:-.02em}
+  .lead{color:var(--muted);font-size:15px;margin:0}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:18px}
+  .chip{background:var(--accent-soft);color:var(--accent);font-weight:700;padding:8px 14px;border-radius:10px;font-size:14px;white-space:nowrap}
+  .arrow{color:#b8bcc8;font-weight:700}
+
+  /* section card */
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 24px 22px;margin-top:18px}
+  h2{font-size:18px;margin:0 0 14px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+  h2 .n{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;background:var(--ink);color:#fff;border-radius:8px;font-size:13px;font-weight:700;flex:none}
+  h2 small{font-size:13px;font-weight:600;color:var(--muted)}
+  h3{font-size:15px;margin:18px 0 8px;font-weight:700;color:var(--ink)}
+  p{margin:8px 0}
+  ul{margin:8px 0;padding-left:20px}
+  li{margin:5px 0}
+  b{font-weight:700}
+  .muted{color:var(--muted)}
+  .small{font-size:13px;color:var(--muted)}
+
+  /* keycap */
+  kbd{
+    font-family:inherit;font-size:12.5px;font-weight:700;line-height:1;
+    background:linear-gradient(#fbfbfd,#eceef4);border:1px solid #cfd3df;
+    border-bottom-width:2px;border-radius:6px;padding:4px 7px;color:#33384a;
+    box-shadow:0 1px 0 rgba(0,0,0,.04);white-space:nowrap;display:inline-block
+  }
+  .combo{display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
+  .combo span{color:var(--muted);font-weight:700;font-size:11px}
+
+  /* code block */
+  .codeblock{position:relative;margin:12px 0}
+  .codeblock pre{
+    margin:0;background:var(--code-bg);color:var(--code-ink);border-radius:12px;
+    padding:16px 84px 16px 16px;overflow-x:auto;
+    font-family:"JetBrains Mono","SFMono-Regular",Consolas,"Courier New",monospace;
+    font-size:13px;line-height:1.6;
+  }
+  .codeblock code{white-space:pre;display:block}
+  .copybtn{
+    position:absolute;top:9px;right:9px;background:#33364d;color:#cdd1e6;border:1px solid #474a66;
+    border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:background .15s,color .15s
+  }
+  .copybtn:hover{background:#42456a;color:#fff}
+  .copybtn.done{background:var(--code-key);color:#0d2a20;border-color:var(--code-key)}
+  .ck{color:var(--code-key)}
+  .cc{color:var(--code-cmt)}
+
+  /* download buttons */
+  .dlrow{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 6px}
+  .dlfile{flex:1;min-width:230px;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:13px 16px;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer;text-align:left;transition:filter .15s,transform .06s}
+  .dlfile:hover{filter:brightness(1.09)}
+  .dlfile:active{transform:scale(.98)}
+  .dlfile span{display:block;font-size:12px;font-weight:600;opacity:.85;margin-top:3px}
+  .dlfile.done{background:var(--ok)}
+
+  /* callouts */
+  .note{border-radius:12px;padding:13px 15px;margin:14px 0;font-size:14px;border:1px solid}
+  .note .t{font-weight:700;margin-bottom:3px;display:block}
+  .note.warn{background:var(--warn-bg);border-color:#f0d9a8;color:#7a4d09}
+  .note.warn b{color:#7a4d09}
+  .note.ok{background:var(--ok-bg);border-color:#bfe6cf;color:#0c5c3a}
+  .note.danger{background:var(--danger-bg);border-color:#f0c4c4;color:#8a1f1f}
+
+  /* table */
+  .tbl{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px;overflow:hidden;border-radius:12px;border:1px solid var(--line)}
+  .tbl th{background:var(--ink);color:#fff;text-align:left;padding:10px 12px;font-weight:700;font-size:13px}
+  .tbl td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:#f8f9fc}
+  .tbl code{background:#eef0f5;border-radius:5px;padding:1px 6px;font-family:"JetBrains Mono",Consolas,monospace;font-size:12px;color:#2a2d44;white-space:nowrap}
+  .tbl td.path code{white-space:normal;word-break:break-all}
+  .badge{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px}
+  .badge.keep{background:#e9f6ee;color:#0f7a4d}
+  .badge.del{background:#fdeeee;color:#b42323}
+  .badge.auto{background:#eef0fe;color:#4f46e5}
+
+  /* danger table variant header */
+  .tbl.trouble th{background:#7a2222}
+
+  footer{text-align:center;color:var(--muted);font-size:12.5px;margin-top:26px;padding-top:8px}
+  .rule{height:1px;background:var(--line);margin:18px 0}
+  a{color:var(--accent)}
+
+  @media (max-width:560px){
+    body{font-size:14.5px;padding:22px 12px 60px}
+    h1{font-size:25px}
+    .codeblock pre{padding-right:16px;padding-top:44px}
+    .copybtn{top:8px;right:8px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">NoMute · Utility</div>
+    <h1>클립보드 다운로더 가이드</h1>
+    <p class="lead">URL 복사하고 <b>Ctrl+Shift+D</b>만 누르면 Downloader.bat이 그 URL을 받아 다운로드하는 시스템. 이제 그냥 실행(더블클릭)해도 클립보드의 URL을 자동으로 물어온다. <span class="muted">(v5.3 · 클립보드 자동 + 연속 입력 + 자막 폴더 정리)</span></p>
+    <div class="flow">
+      <span class="chip">URL 복사</span>
+      <span class="arrow">→</span>
+      <span class="chip">Ctrl + Shift + D</span>
+      <span class="arrow">→</span>
+      <span class="chip">다운로더 실행 + URL 자동입력</span>
+    </div>
+  </header>
+
+  <!-- 1 -->
+  <section>
+    <h2><span class="n">1</span> 한눈에 보기</h2>
+    <p>어딘가에서 영상·링크 <b>URL을 복사</b>한 뒤 단축키를 누르면(또는 bat을 그냥 실행하면), 그 URL이 <b>Downloader.bat</b>에 자동으로 들어가 다운로드가 시작돼. 받은 파일은 로컬 + <b>구글드라이브</b>(<code style="font-size:12px">내 드라이브\Shared</code>) 양쪽에 저장돼.</p>
+    <div class="note ok">
+      <span class="t">v5.2에서 바뀐 점</span>
+      ① <b>어떻게 실행하든</b>(단축키·더블클릭) 클립보드에 URL이 복사돼 있으면 <b>자동으로 첫 입력</b>으로 들어감 — 별도 러너(.ps1) 불필요.<br>
+      ② 클라우드 저장이 OneDrive → <b>구글드라이브</b>(<code style="font-size:12px">내 드라이브\Shared</code>)로 변경.<br>
+      연속 입력(<kbd>q</kbd>로 종료)은 v5.1 그대로.
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <h2><span class="n">2</span> 설치 파일 + 최초 설치 <small>· PC당 한 번 · PowerShell 안 씀</small></h2>
+    <p>필요한 파일 두 개가 <b>이 문서 안에 내장</b>돼 있어. 아래 버튼으로 받으면 끝 — 매번 새로 받을 필요 없고, 이 HTML 하나만 있으면 어느 PC든 재설치 가능.</p>
+    <div class="dlrow">
+      <button class="dlfile" onclick="dlFile(this,'pl-bat','Downloader.bat')">⬇ Downloader.bat<span>v5.3 · 다운로더 본체</span></button>
+      <button class="dlfile" onclick="dlFile(this,'pl-inst','단축키설치.bat')">⬇ 단축키설치.bat<span>Ctrl+Shift+D 등록 · PC당 1회</span></button>
+    </div>
+    <ul>
+      <li><b>① Downloader.bat</b> → OneDrive의 <b>고정 위치</b>에 넣는다(기존 파일 덮어쓰기):<br><code style="font-size:12px;white-space:pre-wrap">…OneDrive\황세웅\6.  Nomute\창고\05. Utility\Downloader.bat</code></li>
+      <li><b>② 단축키설치.bat</b> → 아무 데나 받아서 <b>더블클릭</b> → <b>[OK] 설치 완료</b> 뜨면 끝. 이 파일은 지워도 됨.</li>
+    </ul>
+    <div class="note ok">
+      <span class="t">옛 방식(.ps1) 쓰던 PC면?</span>
+      그냥 위 ①② 그대로 하면 돼. 설치기가 <b>같은 단축키를 쓰던 옛 바로가기를 자동으로 해제</b>하고 새 방식(bat 직접 실행)으로 바꿔줘. 러너 ps1을 매번 새로 받을 필요는 원래도 없었고, 이제는 <b>아예 안 씀</b> — <code style="font-size:12px">%USERPROFILE%\nomute</code> 폴더는 지워도 됨.
+    </div>
+    <div class="note warn">
+      <span class="t">실행할 때 Windows 경고가 뜨면</span>
+      인터넷에서 받은 bat이라 SmartScreen이 막을 수 있어 → <b>"추가 정보" → "실행"</b>. 브라우저가 다운로드를 막으면 <b>"유지"</b>를 눌러.
+    </div>
+    <div class="note danger">
+      <span class="t">버튼 눌렀는데 "파일을 복사할 수 없음"(인터넷 보안 설정)이 뜨면</span>
+      이 HTML이 <b>'인터넷에서 받은 파일' 표식</b>을 달고 있어서 .bat 저장을 윈도우가 차단한 것. → 이 HTML 파일 <b>우클릭 → 속성 → 맨 아래 "차단 해제" 체크 → 확인</b> 후 다시 열면 버튼이 정상 작동해(PC당 1회). 급하면 아래 PowerShell 방법으로 파일 없이 설치 가능.
+    </div>
+
+    <h3>버튼이 보안에 막히면 — PowerShell 붙여넣기 설치 (다운로드 0)</h3>
+    <p class="small">단축키 등록은 파일 없이도 가능해. 시작 메뉴에서 <b>powershell</b> 검색해 창을 열고, 아래를 <b>통째로</b> 붙여넣고 Enter — 단축키설치.bat과 완전히 같은 동작. ⚠️ bat 파일 내용을 PowerShell에 붙여넣는 건 안 됨(언어가 다름) — 반드시 아래 전용 코드로.</p>
+    <div class="codeblock">
+      <button class="copybtn" onclick="copyCode(this)">복사</button>
+      <pre><code>$bat = "$env:OneDriveCommercial\황세웅\6.  Nomute\창고\05. Utility\Downloader.bat"
+if (Test-Path -LiteralPath $bat) {
+  $ws = New-Object -ComObject WScript.Shell
+  foreach ($d in @([Environment]::GetFolderPath('Programs'),[Environment]::GetFolderPath('Desktop'))) {
+    Get-ChildItem -LiteralPath $d -Filter *.lnk -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+      try { $s=$ws.CreateShortcut($_.FullName); if ($s.Hotkey -and (($s.Hotkey -replace ' ','') -ieq 'Ctrl+Shift+D')) { $s.Hotkey=''; $s.Save(); "  [OFF] $($_.FullName)" } } catch {}
+    }
+  }
+  $lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'NoMute Downloader.lnk'
+  $s = $ws.CreateShortcut($lnk); $s.TargetPath = $bat; $s.WorkingDirectory = (Split-Path $bat); $s.Hotkey = 'Ctrl+Shift+D'; $s.Description = 'NoMute downloader hotkey'; $s.Save()
+  "[OK] 설치 완료 - 이제 Ctrl+Shift+D (안 먹으면 로그아웃 후 재로그인 한 번)"
+}
+if (-not (Test-Path -LiteralPath $bat)) { "[오류] Downloader.bat 없음: $bat  - 먼저 이 위치에 파일을 넣어줘" }</code></pre>
+    </div>
+    <p class="small">※ Downloader.bat <b>본체</b>는 파일이 필요하니, 버튼이 막히면 위 "차단 해제" 후 받거나 다른 경로(메신저·클라우드)로 그 위치에 넣어줘.</p>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <h2><span class="n">3</span> 평소 사용법 <small>· 두 가지 방법, 둘 다 연속 입력</small></h2>
+
+    <h3>방법 A — 단축키 (빠름)</h3>
+    <ul>
+      <li>다운로드할 URL을 <b>복사</b> <span class="combo"><kbd>Ctrl</kbd><span>+</span><kbd>C</kbd></span></li>
+      <li><span class="combo"><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>D</kbd></span> 를 누른다 → 검은 창이 뜨고 <b>복사한 URL이 첫 입력으로 자동 처리</b>됨</li>
+      <li>다운로드 후 <b>그 창에서 계속</b> — 다음 URL을 복사해 붙여넣거나(우클릭) 직접 입력</li>
+      <li>다 끝나면 <kbd>q</kbd> 입력해 종료</li>
+    </ul>
+
+    <h3>방법 B — 더블클릭</h3>
+    <ul>
+      <li><b>Downloader.bat</b>을 더블클릭 — 이때도 <b>클립보드에 URL이 있으면 자동으로 첫 입력</b>돼(v5.2). 없으면 평소처럼 URL 붙여넣기 → <kbd>q</kbd>로 종료</li>
+    </ul>
+
+    <div class="note">
+      <span class="t">클립보드가 비었거나 URL이 아니면</span>
+      자동 입력 없이 <b>그냥 URL 입력 대기</b>로 시작해(오작동 방지 — <code style="font-size:12px">http(s)://</code> 로 시작할 때만 자동 사용). 창에 직접 붙여넣으면 됨.
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <h2><span class="n">4</span> 자막</h2>
+    <p>영상과 함께 <b>자막(.srt)</b> + 편집용 <b>텍스트(.txt)</b>를 자동으로 받아. 자막 txt는 번호·타임코드·중복 줄을 제거한 깔끔한 본문이라 바로 쓰기 좋아.</p>
+    <div class="note ok">
+      <span class="t">자막은 영상 제목 폴더로 정리 (v5.3)</span>
+      자막 파일(.srt/.txt)은 <b>영상 제목 이름의 폴더</b> 안에 들어가고, 영상 파일은 폴더 밖에 그대로 있어 — 영상과 자막이 안 섞여. 클라우드에도 같은 폴더 구조로 복사돼.
+    </div>
+    <ul>
+      <li><b>YouTube</b> — 가장 안정적. 수동 자막 + 자동생성 자막 둘 다 시도.</li>
+      <li><b>X · 인스타 · 틱톡 · 페북 · 스레드</b> — 플랫폼에 자막 트랙이 거의 없어서 영상만 받아지는 게 정상.</li>
+    </ul>
+    <div class="note warn">
+      <span class="t">자막이 안 생기면 ffmpeg부터 확인</span>
+      srt 변환은 <b>ffmpeg.exe</b>가 해. yt-dlp 폴더(<code style="font-size:12px">…\05. Utility\yt-dlp\</code>)에 <b>ffmpeg.exe가 없으면</b> 자막이 .vtt로만 남거나 안 생기고, txt 변환도 실패해. 유튜브인데 자막이 안 나오면 99% 이 문제.
+    </div>
+    <p class="small">자막 언어를 바꾸려면 BAT 위쪽 <code style="font-size:11px">set "SUBLANG=en,ko"</code> 줄 수정 (예: <code style="font-size:11px">ko</code> 만 / <code style="font-size:11px">en</code> 만). 유튜브 자동자막이 가끔 누락되면 <code style="font-size:11px">en.*,ko.*</code> 로 넓힐 수도 있어.</p>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <h2><span class="n">5</span> 저장 위치</h2>
+    <table class="tbl">
+      <tr><th>구분</th><th>경로</th></tr>
+      <tr><td>임시(로컬)</td><td class="path"><code>%USERPROFILE%\Downloads\yt-dlp</code></td></tr>
+      <tr><td>최종(클라우드)</td><td class="path"><code>%USERPROFILE%\Google Drive 스트리밍\내 드라이브\Shared</code></td></tr>
+    </table>
+    <p class="small">로컬에 먼저 받고 → 구글드라이브 <b>Shared</b> 폴더로 복사하는 <b>이중 저장</b>이야. 사용자 계정명(Hwang 등)이 PC마다 달라도 <code style="font-size:11px">%USERPROFILE%</code>이 알아서 맞춰줘. 구글드라이브가 없는 PC면 <b>[알림]</b> 띄우고 로컬에만 저장해(가짜 폴더 안 만듦).</p>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <h2><span class="n">6</span> 다른 PC로 옮길 때</h2>
+    <p>Downloader.bat은 OneDrive 고정 위치에 있으니 <b>동기화만 되면 자동으로 따라와</b>. 새 PC에서 할 일은 하나뿐:</p>
+    <ul>
+      <li>이 HTML에서 <b>단축키설치.bat</b>을 받아 <b>더블클릭 1회</b> — 끝.</li>
+    </ul>
+    <div class="note ok">
+      <span class="t">경로는 자동으로 맞음</span>
+      bat 위치는 <code style="font-size:12px">%OneDriveCommercial%</code>, 구글드라이브는 <code style="font-size:12px">%USERPROFILE%</code> 기준이라 <b>사용자 계정명(Hwang 등)이 달라도 그대로 작동</b>해. 회사 OneDrive 로그인 + 구글드라이브 데스크톱 로그인만 돼 있으면 됨.
+    </div>
+    <p class="small">⚠ 구글드라이브 데스크톱이 없으면 다운로드는 되지만 로컬에만 저장돼(실행 시 [알림] 표시).</p>
+  </section>
+
+  <!-- 7 -->
+  <section>
+    <h2><span class="n">7</span> 파일 위치 <small>· 지워도 되는 것 vs 남길 것</small></h2>
+    <table class="tbl">
+      <tr><th>항목</th><th>위치</th><th>보관</th></tr>
+      <tr><td>이 설명서 (HTML)</td><td>아무 곳 — 설치파일 내장 = 재설치 키트</td><td><span class="badge keep">보관</span></td></tr>
+      <tr><td>다운로더 본체</td><td class="path"><code>OneDrive\…\6.  Nomute\창고\05. Utility\Downloader.bat</code></td><td><span class="badge keep">원본 · 위치 고정</span></td></tr>
+      <tr><td>단축키 바로가기</td><td class="path"><code>시작 메뉴\NoMute Downloader.lnk</code></td><td><span class="badge auto">설치기가 자동 생성</span></td></tr>
+      <tr><td>단축키설치.bat</td><td>아무 곳</td><td><span class="badge del">설치 후 지워도 됨</span></td></tr>
+      <tr><td>(옛 방식) 러너·로그</td><td class="path"><code>%USERPROFILE%\nomute\</code></td><td><span class="badge del">폐지 — 지워도 됨</span></td></tr>
+    </table>
+    <p class="small">정리: 남겨야 하는 건 <b>이 HTML + OneDrive의 Downloader.bat</b> 두 개뿐. 나머지는 전부 재생성 가능.</p>
+  </section>
+
+  <!-- 8 -->
+  <section>
+    <h2><span class="n">8</span> 문제 해결</h2>
+    <table class="tbl trouble">
+      <tr><th>증상</th><th>원인</th><th>해결</th></tr>
+      <tr>
+        <td>받은 bat 실행하니 <b>Windows 경고</b>가 뜸</td>
+        <td>인터넷에서 받은 파일이라 SmartScreen이 확인 요청</td>
+        <td>"추가 정보" → "실행" (한 번만)</td>
+      </tr>
+      <tr>
+        <td>다운로드 버튼에 <b>"파일을 복사할 수 없음"</b>(인터넷 보안 설정)</td>
+        <td>인터넷에서 받은 HTML 표식(MOTW) 때문에 .bat 저장 차단</td>
+        <td>이 HTML 우클릭 → 속성 → <b>"차단 해제"</b> → 확인 → 다시 열기 — 또는 2번의 PowerShell 붙여넣기 설치</td>
+      </tr>
+      <tr>
+        <td><span class="combo"><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>D</kbd></span> 눌러도 반응 없음</td>
+        <td>단축키 미적용, 또는 다른 앱과 충돌(브라우저의 "모든 탭 북마크"가 같은 키)</td>
+        <td>로그아웃→재로그인 또는 재부팅 · 그래도 안 되면 단축키 변경(아래 9번)</td>
+      </tr>
+      <tr>
+        <td>유튜브인데 <b>자막</b>이 안 생김</td>
+        <td>yt-dlp 폴더에 ffmpeg.exe 없음</td>
+        <td>ffmpeg.exe를 yt-dlp 폴더에 넣기</td>
+      </tr>
+      <tr>
+        <td><b>SNS 영상</b> 자막이 없음</td>
+        <td>플랫폼에 자막 트랙 자체가 없음(정상)</td>
+        <td>영상만 받으면 됨 — 코드 문제 아님</td>
+      </tr>
+      <tr>
+        <td>실행했는데 <b>클립보드 URL 자동입력이 안 됨</b></td>
+        <td>클립보드 내용이 http(s)로 시작하지 않음 (URL 앞에 다른 글자)</td>
+        <td>URL만 다시 복사 후 재실행 — 또는 창에 직접 붙여넣기</td>
+      </tr>
+      <tr>
+        <td>[알림] <b>구글드라이브 폴더 없음</b> — 로컬에만 저장</td>
+        <td>구글드라이브 데스크톱 미설치/미로그인</td>
+        <td>구글드라이브 설치·로그인 후 재실행 (그 전에도 로컬 저장은 정상)</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- 9 -->
+  <section>
+    <h2><span class="n">9</span> 설정 바꾸는 법</h2>
+
+    <h3>단축키 변경</h3>
+    <p class="small"><b>단축키설치.bat</b> 메모장으로 열어 위쪽 <code style="font-size:11px">HOTKEY</code> 줄 수정 후, 다시 더블클릭.</p>
+    <div class="codeblock">
+      <button class="copybtn" onclick="copyCode(this)">복사</button>
+      <pre><code>set "HOTKEY=<span class="ck">Ctrl+Alt+J</span>"   <span class="cc">:: 원하는 키로</span></code></pre>
+    </div>
+
+    <h3>저장 경로 변경</h3>
+    <p class="small"><b>Downloader.bat</b>에서 <code style="font-size:11px">GDRIVE</code>·<code style="font-size:11px">CLOUD</code> 줄 수정.</p>
+    <div class="codeblock">
+      <button class="copybtn" onclick="copyCode(this)">복사</button>
+      <pre><code>set "GDRIVE=%USERPROFILE%\Google Drive 스트리밍\내 드라이브"
+set "CLOUD=%GDRIVE%\Shared"</code></pre>
+    </div>
+
+    <h3>자막 언어 변경</h3>
+    <p class="small"><b>Downloader.bat</b>에서 <code style="font-size:11px">SUBLANG</code> 줄 수정.</p>
+    <div class="codeblock">
+      <button class="copybtn" onclick="copyCode(this)">복사</button>
+      <pre><code>set "SUBLANG=en,ko"   <span class="cc">:: ko / en / all / en.*,ko.* 등</span></code></pre>
+    </div>
+  </section>
+
+  <footer>
+    NoMute · 클립보드 다운로더 가이드 · v5.3 · 단축키 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> · 설치파일 내장
+  </footer>
+
+</div>
+
+<script type="text/plain" id="pl-bat">
+QGVjaG8gb2ZmDQpjaGNwIDk0OSA+bnVsDQpzZXRsb2NhbCBlbmFibGVkZWxheWVkZXhwYW5zaW9uDQoNClJFTSA9PT0gwM7A
+2iC48LXlICh2NS4xKTogtNzD4MWwILXuwLi3ziBVUkzAuyCz0bHiuOkgsdcgVVJMwLsgw7kgwNS3wsC4t84gwNq1vyDDs7iu
+ID09PQ0KUkVNICAgICDDs7iuIMjEIMG+t+HHz8H2IL7KsO0gsOi80yC02cC9IFVSTCDA1LfCILTrseIgKHG3ziDBvrfhKQ0K
+UkVNID09PSB2NS4zOiBbwNq1v10gsP3IoyDAzL26xMnAzMfBKMbEvK0gx8i9uikgKyBDUDk0OSDA+sDlKLH6wfi5rsDaIMS/
+uMe15SDHyL26KSArIMDauLc9v7W788GmuPEgxvq09SA9PT0NCnNldCAiQVJHVVJMPSV+MSINCg0KZWNobyA9PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KZWNobyAgILi4tMkgtNm/7rfOtPUgdjUuMw0KZWNobyAg
+IFlUL0lHL1gvVFQvRkIvVGhyZWFkcyAtILrxtfC/wCArIMDMuczB9iArIMDauLcNCmVjaG8gICDAzsDaL8WsuLO6uLXlPcO5
+IFVSTCDA2rW/IC8gwMzIxCCw6LzTIMDUt8IgsKG0ySAocSDBvrfhKQ0KZWNobyA9PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PQ0KZWNoby4NCg0KUkVNID09PSDFrLizuri15SC48LXlICh2NS4yKTogwM7A2iC++MDM
+IL3Hx+DHz7jpKLT1uu3FrLivoaS03MPgxbAgte4pIMWsuLO6uLXlsKEgVVJMwM8gtqcgw7kgwNS3wsC4t84gwNq1vyC757/r
+ID09PQ0Kc2V0ICJBUkdTUkM9wM7A2rfOILnewLoiDQppZiBkZWZpbmVkIEFSR1VSTCBnb3RvIGFyZ3NyY19kb25lDQpmb3Ig
+L2YgInVzZWJhY2txIGRlbGltcz0iICUlYSBpbiAoYHBvd2Vyc2hlbGwgLW5vcHJvZmlsZSAtYyAiJGw9QChHZXQtQ2xpcGJv
+YXJkIC1FcnJvckFjdGlvbiBTaWxlbnRseUNvbnRpbnVlKVswXTsgaWYoJGwpeyRsPSRsLlRyaW0oKTsgJHQ9JGwuVG9Mb3dl
+cigpOyBmb3JlYWNoKCRwIGluICdodHRwczovLycsJ2h0dHA6Ly8nLCd0dHBzOi8vJywndHRwOi8vJyl7IGlmKCR0LlN0YXJ0
+c1dpdGgoJHApKXsgV3JpdGUtT3V0cHV0ICRsOyBicmVhayB9IH0gfSJgKSBkbyBzZXQgIkFSR1VSTD0lJWEiDQppZiBkZWZp
+bmVkIEFSR1VSTCBzZXQgIkFSR1NSQz3FrLizuri15b+hvK0gsKjB9sfRIg0KOmFyZ3NyY19kb25lDQoNClJFTSA9PT0gsOa3
+ziC8s8GkID09PQ0Kc2V0ICJZVERMUD0lT25lRHJpdmVDb21tZXJjaWFsJVzIsry8v/VcNi4gIE5vbXV0ZVzDorDtXDA1LiBV
+dGlsaXR5XHl0LWRscCINCnNldCAiR0RMPSVZVERMUCVcZ2FsbGVyeS1kbC5leGUiDQpzZXQgIkNPT0tJRVM9JVlURExQJVxj
+b29raWVzLnR4dCINClJFTSA9PT0gxay287/steUgwPrA5SA9ILG4sdu15bbzwMy66iAodjUuMikgLSBVU0VSUFJPRklMRSCx
+4sHYwMy28yBQQyCw6MGkuO0guauw/CA9PT0NCnNldCAiR0RSSVZFPSVVU0VSUFJPRklMRSVcR29vZ2xlIERyaXZlIL26xq64
+rrnWXLO7ILXltvPAzLrqIg0Kc2V0ICJDTE9VRD0lR0RSSVZFJVxTaGFyZWQiDQpzZXQgIkxPQ0FMPSVVU0VSUFJPRklMRSVc
+RG93bmxvYWRzXHl0LWRscCINCnNldCAiR1RFTVA9JUxPQ0FMJVxfZ2FsbGVyeV90ZW1wIg0KDQpSRU0gPT09IMDauLcgvLPB
+pCAodjQuOSkgPT09DQpSRU0gICBTVUJMQU5HICAgIDogud7AuyDA2ri3IL7wvu4uICJlbixrbyIgLyAiZW4iIC8gImtvIiAv
+ICJhbGwiILXuLiAtt84gwaa/3CCwobTJKCJhbGwsLWxpdmVfY2hhdCIpDQpSRU0gICBNQUtFX1NVQlRYVDogMT1zcnS4piDF
+uMDTxNq15SDBprDFx9EgdHh0t861tSC6r8ivLCAwPXNydLi4IMCvwfYNCnNldCAiU1VCTEFORz1lbixrbyINCnNldCAiTUFL
+RV9TVUJUWFQ9MSINCg0KUkVNID09PSBPbmVEcml2ZUNvbW1lcmNpYWwgyK+w5rqvvPYgw7zFqSAodjQuOCkgPT09DQppZiAi
+JU9uZURyaXZlQ29tbWVyY2lhbCUiPT0iIiAoDQogICAgZWNobyBbv8C3+V0gT25lRHJpdmVDb21tZXJjaWFsIMivsOa6r7z2
+IL74wL0uDQogICAgZWNobyAgICAgICAgT25lRHJpdmUgyLi75y/H0LGzILDowaQgtb+x4sitILvzxcIgyK7Azi4NCiAgICBw
+YXVzZQ0KICAgIGdvdG8gZW5kDQopDQoNClJFTSA9PT0geXQtZGxwIMO8xakgPT09DQppZiBub3QgZXhpc3QgIiVZVERMUCVc
+eXQtZGxwLmV4ZSIgKA0KICAgIGVjaG8gW7/At/ldIHl0LWRscC5leGUgvvjAvS4gT25lRHJpdmUgtb+x4sitIMiuwM4uDQog
+ICAgcGF1c2UNCiAgICBnb3RvIGVuZA0KKQ0KDQpSRU0gPT09IGZmbXBlZyDDvMWpICh2NC44KSA9PT0NCmlmIG5vdCBleGlz
+dCAiJVlURExQJVxmZm1wZWcuZXhlIiAoDQogICAgZWNobyBbsOaw7V0gZmZtcGVnLmV4ZSC++MC9LiC/tbvzILq0x9VeKG1w
+NF4pILnXIMDauLcgc3J0ILqvyK/AzCC9x8bQx9IgvPYgwNbAvS4NCikNCg0KUkVNID09PSBnYWxsZXJ5LWRsIMO8xakgPT09
+DQpzZXQgIkhBU19HREw9MCINCmlmIGV4aXN0ICIlR0RMJSIgc2V0ICJIQVNfR0RMPTEiDQppZiAiIUhBU19HREwhIj09IjEi
+IGVjaG8gW8iuwM5dIGdhbGxlcnktZGwgu+e/6yCwobTJDQppZiAiIUhBU19HREwhIj09IjAiIGVjaG8gW7DmsO1dIGdhbGxl
+cnktZGwuZXhlIL74wL0uIMDMuczB9iC02b/ut8615SC68ciwvLrIrS4NCg0KUkVNID09PSDE7cWwIMbEwM8gw7zFqSA9PT0N
+CnNldCAiSEFTX0NPT0tJRVM9MCINCmlmIGV4aXN0ICIlQ09PS0lFUyUiIHNldCAiSEFTX0NPT0tJRVM9MSINCmlmICIhSEFT
+X0NPT0tJRVMhIj09IjEiIGVjaG8gW8iuwM5dIMTtxbAgxsTAzyDA1sC9IChJRy9YIMDMuczB9iCwobTJKQ0KaWYgIiFIQVNf
+Q09PS0lFUyEiPT0iMCIgZWNobyBbvsu4sl0gxO3FsCDGxMDPIL74wL0uIElHL1ggwMy5zMH2tMIgxO3FsCDHyr/kLg0KDQpS
+RU0gPT09IMDauLcgvLPBpCDHpb3DICh2NC45KSA9PT0NCmVjaG8gW8iuwM5dIMDauLcgvvC+7jogIVNVQkxBTkchIC8gdHh0
+ILqvyK86ICFNQUtFX1NVQlRYVCENCg0KUkVNID09PSC3zsTDIMb6tPUgPT09DQppZiBub3QgZXhpc3QgIiVMT0NBTCUiIG1r
+ZGlyICIlTE9DQUwlIg0KDQpSRU0gPT09IMWstvO/7LXlILvnwPwgsMvB9SA9PT0NCmVjaG8uDQplY2hvIFuwy8H1XSDFrLbz
+v+y15SC+srHiIMXXvbrGri4uLg0Kc2V0ICJEVUFMPTAiDQppZiBub3QgZXhpc3QgIiVHRFJJVkUlIiAoDQogICAgZWNobyBb
+vsu4sl0gsbix27XltvPAzLrqIMb6tPUgvvjAvTogJUdEUklWRSUNCiAgICBlY2hvICAgICAgICCxuLHbteW288DMuuogucy8
+s8ShL7nMt86x18DOIC0gwMy5+L+jILfOxMO/obi4IMD6wOUNCiAgICBnb3RvIGNsb3VkX2RvbmUNCikNCmlmIG5vdCBleGlz
+dCAiJUNMT1VEJSIgbWtkaXIgIiVDTE9VRCUiIDI+bnVsDQppZiBub3QgZXhpc3QgIiVDTE9VRCUiIGdvdG8gY2xvdWRfZG9u
+ZQ0KZWNobyB0ZXN0XyVSQU5ET00lID4gIiVDTE9VRCVcX3dyaXRlX3Rlc3QudG1wIiAyPm51bA0KaWYgbm90IGV4aXN0ICIl
+Q0xPVUQlXF93cml0ZV90ZXN0LnRtcCIgZ290byBjbG91ZF9kb25lDQpkZWwgIiVDTE9VRCVcX3dyaXRlX3Rlc3QudG1wIiA+
+bnVsIDI+JjENCnNldCAiRFVBTD0xIg0KZWNobyBbyK7Azl0gxay287/steUgvrKx4iCwobTJDQoNCjpjbG91ZF9kb25lDQpl
+Y2hvIFvIrsDOXSC3zsTDOiAlTE9DQUwlDQppZiAiIURVQUwhIj09IjEiIGVjaG8gW8iuwM5dIMWstvO/7LXlOiAlQ0xPVUQl
+DQpjZCAvZCAiJUxPQ0FMJSINCg0KOmxvb3ANCmVjaG8uDQplY2hvIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tDQpSRU0gPT09IHY1LjI6IMDOwNovxay4s7q4teW3ziBVUkwgud6+0sC4uOkgsdewySDDuSDA1LfC
+wLi3ziwgvsa0z7jpIMH3waIgwNS3wiA9PT0NCmlmIGRlZmluZWQgQVJHVVJMICgNCiAgICBzZXQgIlVSTD0hQVJHVVJMISIN
+CiAgICBzZXQgIkFSR1VSTD0iDQogICAgZWNobyBbwNq1v10gIUFSR1NSQyEgw7kgVVJMILvnv+sgXijAzMjEILDovNMgwNS3
+wiCwobTJXikNCikgZWxzZSAoDQogICAgc2V0ICJVUkw9Ig0KICAgIHNldCAvcCBVUkw9VVJMILrZv6mz1rHiIF4ocT3Bvrfh
+Xik6IA0KKQ0KaWYgL2kgIiFVUkwhIj09InEiIGdvdG8gZW5kDQppZiAiIVVSTCEiPT0iIiBnb3RvIGxvb3ANCg0KUkVNID09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KUkVNICBVUkwgwNq1vyDBpMGmIHY0
+LjcrDQpSRU0gIC0gvtW/oSC62cC6IL6yt7mx4iDF2L26xq4gwaawxQ0KUkVNICAtIHR0cHM6Ly8gdHRwOi8vIC1ePiBodHRw
+czovLyBodHRwOi8vILq4waQNClJFTSAgLSDAr8i/vLogsMvB9Q0KUkVNID09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PQ0KDQpSRU0gLS0tIL/4ursguem+9yAoUG93ZXJTaGVsbCC9x8bQILTruvEpIC0tLQ0K
+c2V0ICJVUkxfQkFDS1VQPSFVUkwhIg0KDQpSRU0gLS0tIL6yt7mx4iDBprDFICsgc2NoZW1lILq4waQgKFBvd2VyU2hlbGwg
+x9EgwdkpIC0tLQ0KZm9yIC9mICJ1c2ViYWNrcSBkZWxpbXM9IiAlJWEgaW4gKGBwb3dlcnNoZWxsIC1ub3Byb2ZpbGUgLWMg
+IiR1PSchVVJMISc7IGZvcmVhY2goJHAgaW4gJ2h0dHBzOi8vJywnaHR0cDovLycsJ3R0cHM6Ly8nLCd0dHA6Ly8nKXskaT0k
+dS5JbmRleE9mKCRwKTsgaWYoJGkgLWdlIDApeyR1PSR1LlN1YnN0cmluZygkaSk7IGJyZWFrfX07IGlmKCR1LlN0YXJ0c1dp
+dGgoJ3R0cHM6Ly8nKSl7JHU9J2gnKyR1fWVsc2VpZigkdS5TdGFydHNXaXRoKCd0dHA6Ly8nKSl7JHU9J2gnKyR1fTsgV3Jp
+dGUtT3V0cHV0ICR1LlRyaW0oKSJgKSBkbyBzZXQgIlVSTD0lJWEiDQoNClJFTSAtLS0gUG93ZXJTaGVsbCC9x8bQIL3DIL/4
+ursgurm/+CAtLS0NCmlmICIhVVJMISI9PSIiIHNldCAiVVJMPSFVUkxfQkFDS1VQISINCg0KUkVNIC0tLSB0dHBzL3R0cCDA
+zMHfIL7IwPzA5cShIChQb3dlclNoZWxsIL/syLggvcMgtOu68SkgLS0tDQppZiAvaSAiIVVSTDp+MCw3ISI9PSJ0dHBzOi8v
+IiBzZXQgIlVSTD1oIVVSTCEiDQppZiAvaSAiIVVSTDp+MCw2ISI9PSJ0dHA6Ly8iIHNldCAiVVJMPWghVVJMISINCg0KUkVN
+IC0tLSDAr8i/vLogsMvB9SAtLS0NCnNldCAiVVJMX1ZBTElEPTAiDQppZiAvaSAiIVVSTDp+MCw4ISI9PSJodHRwczovLyIg
+c2V0ICJVUkxfVkFMSUQ9MSINCmlmIC9pICIhVVJMOn4wLDchIj09Imh0dHA6Ly8iIHNldCAiVVJMX1ZBTElEPTEiDQppZiAi
+IVVSTF9WQUxJRCEiPT0iMCIgKA0KICAgIGVjaG8uDQogICAgZWNobyBbv8C3+V0gwK/Iv8fRIFVSTMDMIL7GtNQ6ICFVUkwh
+DQogICAgZWNobyAgICAgICAgaHR0cHM6Ly8gt84gvcPA28fPtMIgVVJMwLsgutm/qbPWvu7B4C4NCiAgICBlY2hvLg0KICAg
+IGdvdG8gbG9vcA0KKQ0KDQpSRU0gLS0tIMGkwaYgv8+34SAtLS0NCmVjaG8gW1VSTF0gIVVSTCENCg0KUkVNID09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KDQpSRU0gx8O3p8b7ILCowfYNCnNldCAiUExB
+VD1FVEMiDQplY2hvICIhVVJMISIgfCBmaW5kIC9pICJ5b3V0dWJlLmNvbSIgPm51bCAmJiBzZXQgIlBMQVQ9WVQiDQplY2hv
+ICIhVVJMISIgfCBmaW5kIC9pICJ5b3V0dS5iZSIgPm51bCAmJiBzZXQgIlBMQVQ9WVQiDQplY2hvICIhVVJMISIgfCBmaW5k
+IC9pICJpbnN0YWdyYW0uY29tIiA+bnVsICYmIHNldCAiUExBVD1JRyINCmVjaG8gIiFVUkwhIiB8IGZpbmQgL2kgInguY29t
+IiA+bnVsICYmIHNldCAiUExBVD1YIg0KZWNobyAiIVVSTCEiIHwgZmluZCAvaSAidHdpdHRlci5jb20iID5udWwgJiYgc2V0
+ICJQTEFUPVgiDQplY2hvICIhVVJMISIgfCBmaW5kIC9pICJ0aWt0b2suY29tIiA+bnVsICYmIHNldCAiUExBVD1UVCINCmVj
+aG8gIiFVUkwhIiB8IGZpbmQgL2kgImZhY2Vib29rLmNvbSIgPm51bCAmJiBzZXQgIlBMQVQ9RkIiDQplY2hvICIhVVJMISIg
+fCBmaW5kIC9pICJmYi53YXRjaCIgPm51bCAmJiBzZXQgIlBMQVQ9RkIiDQplY2hvICIhVVJMISIgfCBmaW5kIC9pICJ0aHJl
+YWRzLm5ldCIgPm51bCAmJiBzZXQgIlBMQVQ9VEgiDQplY2hvICIhVVJMISIgfCBmaW5kIC9pICJ0aHJlYWRzLmNvbSIgPm51
+bCAmJiBzZXQgIlBMQVQ9VEgiDQoNCmZvciAvZiAlJWkgaW4gKCdwb3dlcnNoZWxsIC1ub3Byb2ZpbGUgLWMgIkdldC1EYXRl
+IC1Gb3JtYXQgJ3l5eXlNTWRkX0hIbW1zcyciJykgZG8gc2V0ICJUUz0lJWkiDQplY2hvIFuwqMH2XSDHw7enxvs6ICFQTEFU
+ISAvIL3DsKI6ICFUUyENCg0KUkVNID09PSBUaHJlYWRzIL7Is7sgKHY0LjgpID09PQ0KaWYgIiFQTEFUISI9PSJUSCIgKA0K
+ICAgIGVjaG8gW77Is7tdIFRocmVhZHO0wiB5dC1kbHAvZ2FsbGVyeS1kbCCw+L3EIMH2v/jAzCC60r7IwaTH1bTPtNkuDQog
+ICAgZWNobyAgICAgICAgtNm/7rfOteUgvcfG0CCwobTJvLrAzCCz9L3AtM+02S4gwM+03CC9w7W1x9W0z7TZLg0KKQ0KDQpS
+RU0gPT09IMDauLcgvsizuyAodjQuOSkgPT09DQppZiBub3QgIiFQTEFUISI9PSJZVCIgKA0KICAgIGVjaG8gW77Is7tdIMDa
+uLcgw9/D4sC6IFlvdVR1YmW/obytILChwOUgvsjBpMD7wNS0z7TZLg0KICAgIGVjaG8gICAgICAgIElHL1gvVFQvRkIvVGhy
+ZWFkc7TCIMDauLcgxq63osDMILXlubC+7iAuc3J0Ly50eHSwoSC+yCC7/bHmILz2IMDWvcC0z7TZLg0KKQ0KDQpSRU0gPT09
+IFsxLzJdIHl0LWRscCC68bXwv8AgKyDA2ri3IL3DtbUgPT09DQplY2hvLg0KZWNobyBbMS8yXSB5dC1kbHAguvG18L/AICsg
+wNq4tyC9w7W1Li4uDQppZiAiIUhBU19DT09LSUVTISI9PSIxIiAoDQogICAgIiVZVERMUCVceXQtZGxwLmV4ZSIgLS1uby1j
+YWNoZS1kaXIgLS1mZm1wZWctbG9jYXRpb24gIiVZVERMUCUiIC0tY29va2llcyAiJUNPT0tJRVMlIiAtLXRyaW0tZmlsZW5h
+bWVzIDEyMCAtLXdpbmRvd3MtZmlsZW5hbWVzIC1QICIlTE9DQUwlIiAtUCAidGVtcDolVEVNUCUiIC1vICIhVFMhXyFQTEFU
+IV8lJSh1cGxvYWRlcl9pZClzXyUlKHRpdGxlKXMuJSUoZXh0KXMiIC1vICJzdWJ0aXRsZTolJSh0aXRsZSlzLyFUUyFfIVBM
+QVQhXyUlKHVwbG9hZGVyX2lkKXMuJSUoZXh0KXMiIC0td3JpdGUtc3VicyAtLXdyaXRlLWF1dG8tc3VicyAtLXN1Yi1sYW5n
+cyAiIVNVQkxBTkchIiAtLWNvbnZlcnQtc3VicyBzcnQgLWYgImJ2KitiYS9iL2Jlc3QiIC0tbWVyZ2Utb3V0cHV0LWZvcm1h
+dCBtcDQgLU4gNCAiIVVSTCEiDQopIGVsc2UgKA0KICAgICIlWVRETFAlXHl0LWRscC5leGUiIC0tbm8tY2FjaGUtZGlyIC0t
+ZmZtcGVnLWxvY2F0aW9uICIlWVRETFAlIiAtLXRyaW0tZmlsZW5hbWVzIDEyMCAtLXdpbmRvd3MtZmlsZW5hbWVzIC1QICIl
+TE9DQUwlIiAtUCAidGVtcDolVEVNUCUiIC1vICIhVFMhXyFQTEFUIV8lJSh1cGxvYWRlcl9pZClzXyUlKHRpdGxlKXMuJSUo
+ZXh0KXMiIC1vICJzdWJ0aXRsZTolJSh0aXRsZSlzLyFUUyFfIVBMQVQhXyUlKHVwbG9hZGVyX2lkKXMuJSUoZXh0KXMiIC0t
+d3JpdGUtc3VicyAtLXdyaXRlLWF1dG8tc3VicyAtLXN1Yi1sYW5ncyAiIVNVQkxBTkchIiAtLWNvbnZlcnQtc3VicyBzcnQg
+LWYgImJ2KitiYS9iL2Jlc3QiIC0tbWVyZ2Utb3V0cHV0LWZvcm1hdCBtcDQgLU4gNCAiIVVSTCEiDQopDQpzZXQgIllUX1JD
+PSFlcnJvcmxldmVsISINCmlmICFZVF9SQyEgbmVxIDAgZWNobyBbeXQtZGxwXSC68bXwv8AguPggud7AvS4gwMy5zMH2ILDU
+vcO5sMDPILChtMm8ui4NCg0KUkVNID09PSDA2ri3IHNydCAtXj4gdHh0ILqvyK8gKHY0LjkpID09PQ0KZWNoby4NCmlmICIh
+TUFLRV9TVUJUWFQhIj09IjAiIGdvdG8gc3ViX3NraXANCmVjaG8gW8DauLddIHNydCAtXj4gdHh0ILqvyK8gvcO1tS4uLg0K
+cG93ZXJzaGVsbCAtbm9wcm9maWxlIC1jICJHZXQtQ2hpbGRJdGVtIC1MaXRlcmFsUGF0aCAnJUxPQ0FMJScgLUZpbHRlciAn
+IVRTIV8hUExBVCFfKi5zcnQnIC1SZWN1cnNlIC1FcnJvckFjdGlvbiBTaWxlbnRseUNvbnRpbnVlIHwgRm9yRWFjaC1PYmpl
+Y3QgeyAkdCA9ICRfLkZ1bGxOYW1lIC1yZXBsYWNlICdcLnNydCQnLCcudHh0JzsgJGxzID0gR2V0LUNvbnRlbnQgLUxpdGVy
+YWxQYXRoICRfLkZ1bGxOYW1lIC1FbmNvZGluZyBVVEY4IHwgV2hlcmUtT2JqZWN0IHsgJF8gLW5vdG1hdGNoICdeXGQrJCcg
+LWFuZCAkXyAtbm90bWF0Y2ggJy0tPicgLWFuZCAkXy5UcmltKCkgLW5lICcnIH0gfCBGb3JFYWNoLU9iamVjdCB7ICgkXyAt
+cmVwbGFjZSAnPFtePl0rPicsJycpLlRyaW0oKSB9OyAkbyA9IE5ldy1PYmplY3QgU3lzdGVtLkNvbGxlY3Rpb25zLkFycmF5
+TGlzdDsgZm9yZWFjaCgkbCBpbiAkbHMpeyBpZigkby5Db3VudCAtZXEgMCAtb3IgJG9bJG8uQ291bnQtMV0gLW5lICRsKXsg
+W3ZvaWRdJG8uQWRkKCRsKSB9IH07IGlmKCRvLkNvdW50IC1ndCAwKXsgU2V0LUNvbnRlbnQgLUxpdGVyYWxQYXRoICR0IC1W
+YWx1ZSAkbyAtRW5jb2RpbmcgVVRGODsgV3JpdGUtT3V0cHV0ICgnICBbdHh0XSAnICsgKFNwbGl0LVBhdGggJHQgLUxlYWYp
+KSB9IH0iDQpnb3RvIHN1Yl9kb25lDQo6c3ViX3NraXANCmVjaG8gW8DauLddIHR4dCC6r8ivILrxyLC8usitIC0gc3J0uLgg
+wK/B9g0KOnN1Yl9kb25lDQoNClJFTSA9PT0gWzIvMl0gZ2FsbGVyeS1kbCDAzLnMwfYgvcO1tSA9PT0NCmVjaG8uDQppZiAi
+IVBMQVQhIj09IllUIiBnb3RvIHNraXBfZ2FsbGVyeQ0KaWYgIiFIQVNfR0RMISI9PSIwIiBnb3RvIHNraXBfZ2FsbGVyeV9u
+b2dkbA0KZ290byBkb19nYWxsZXJ5DQoNCjpza2lwX2dhbGxlcnkNCmVjaG8gWzIvMl0gWW91VHViZSAtIMDMuczB9iC++MC9
+LCC9usW1DQpnb3RvIHBvc3RfZG93bmxvYWQNCg0KOnNraXBfZ2FsbGVyeV9ub2dkbA0KZWNobyBbMi8yXSBnYWxsZXJ5LWRs
+ILnMvLPEoSAtIL26xbUNCmdvdG8gcG9zdF9kb3dubG9hZA0KDQo6ZG9fZ2FsbGVyeQ0KZWNobyBbMi8yXSBnYWxsZXJ5LWRs
+IMDMuczB9iC9w7W1Li4uDQppZiBleGlzdCAiJUdURU1QJSIgcm1kaXIgL3MgL3EgIiVHVEVNUCUiIDI+bnVsDQpta2RpciAi
+JUdURU1QJSIgMj5udWwNCg0KUkVNIMTtxbAgxsTAzyDA1sC4uOkgu+e/6ywgvvjAuLjpIMTtxbAgvvjAzCC9w7W1DQppZiAi
+IUhBU19DT09LSUVTISI9PSIxIiBnb3RvIGdkbF93aXRoX2Nvb2tpZXMNCmdvdG8gZ2RsX3dpdGhvdXRfY29va2llcw0KDQo6
+Z2RsX3dpdGhfY29va2llcw0KIiVHREwlIiAtRCAiJUdURU1QJSIgLS1maWx0ZXIgImV4dGVuc2lvbiBub3QgaW4gKCdtcDQn
+LCdtNHYnLCd3ZWJtJywnbW92JywnbTN1OCcsJ21wMycsJ200YScsJ3RzJywnYWFjJywnb2dnJykiIC0tY29va2llcyAiJUNP
+T0tJRVMlIiAiIVVSTCEiDQpzZXQgIkdETF9SQz0hZXJyb3JsZXZlbCEiDQpnb3RvIGdkbF9kb25lDQoNCjpnZGxfd2l0aG91
+dF9jb29raWVzDQoiJUdETCUiIC1EICIlR1RFTVAlIiAtLWZpbHRlciAiZXh0ZW5zaW9uIG5vdCBpbiAoJ21wNCcsJ200dics
+J3dlYm0nLCdtb3YnLCdtM3U4JywnbXAzJywnbTRhJywndHMnLCdhYWMnLCdvZ2cnKSIgIiFVUkwhIg0Kc2V0ICJHRExfUkM9
+IWVycm9ybGV2ZWwhIg0KDQo6Z2RsX2RvbmUNCnNldCAvYSBHRExfQ05UPTANCmZvciAvciAiJUdURU1QJSIgJSVmIGluICgq
+KSBkbyAoDQogICAgbW92ZSAvWSAiJSVmIiAiJUxPQ0FMJVwhVFMhXyFQTEFUIV9nYWxsZXJ5XyUlfm54ZiIgPm51bCAyPiYx
+DQogICAgaWYgbm90IGVycm9ybGV2ZWwgMSBzZXQgL2EgR0RMX0NOVCs9MQ0KKQ0Kcm1kaXIgL3MgL3EgIiVHVEVNUCUiIDI+
+bnVsDQppZiAhR0RMX0NOVCEgZ3RyIDAgZ290byBnYWxsZXJ5X29rDQppZiAhR0RMX1JDISBuZXEgMCBnb3RvIGdhbGxlcnlf
+ZmFpbA0KZWNobyBbZ2FsbGVyeS1kbF0gud7AuiDAzLnMwfYgvvjAvQ0KZ290byBwb3N0X2Rvd25sb2FkDQoNCjpnYWxsZXJ5
+X29rDQplY2hvIFtnYWxsZXJ5LWRsXSAhR0RMX0NOVCGwsyDAzLnMwfYgud7AvQ0KZ290byBwb3N0X2Rvd25sb2FkDQoNCjpn
+YWxsZXJ5X2ZhaWwNCmVjaG8gW2dhbGxlcnktZGxdIL3HxtAgKGVycm9ybGV2ZWw9IUdETF9SQyEpDQppZiAiIUhBU19DT09L
+SUVTISI9PSIwIiBlY2hvICAgICAgxO3FsCDGxMDPIL74wL0uIMiuwOXHwbfOsde3pcC4t84gZXhwb3J0IMfKv+QuDQppZiAi
+IUhBU19DT09LSUVTISI9PSIxIiBlY2hvICAgICAgxO3FsCC4uLfhILChtMm8ui4gwOdleHBvcnQgx8q/5C4NCmdvdG8gcG9z
+dF9kb3dubG9hZA0KDQo6cG9zdF9kb3dubG9hZA0KUkVNID09PSDFrLbzv+y15SC6ubvnID09PQ0KZWNoby4NCmlmICIhRFVB
+TCEiPT0iMCIgZ290byBjb3B5X3NraXANCmVjaG8gW7q5u+ddIHJvYm9jb3B5ILW/seLIrS4uLg0Kcm9ib2NvcHkgIiVMT0NB
+TCUiICIlQ0xPVUQlIiAiIVRTIV8hUExBVCFfKi4qIiAvUyAvUjo1IC9XOjIgL05KSCAvTkpTIC9OREwgL05DIC9OUyAvTlAg
+L01UOjQNCnNldCAiUkNfQ09ERT0hZXJyb3JsZXZlbCEiDQppZiAhUkNfQ09ERSEgZ2VxIDggZ290byBjb3B5X2ZhaWwNCmlm
+ICFSQ19DT0RFISBnZXEgMSBnb3RvIGNvcHlfb2sNCmVjaG8gW7q5u+ddILv1IMbEwM8gvvjAvQ0KZ290byBjb3B5X2RvbmUN
+Cg0KOmNvcHlfb2sNCmVjaG8gW7q5u+ddIL/Pt+EgKHJjPSFSQ19DT0RFISkNCmdvdG8gY29weV9kb25lDQoNCjpjb3B5X2Zh
+aWwNCmVjaG8gW7q5u+cgvcfG0F0gcm9ib2NvcHkgZXJyb3JsZXZlbD0hUkNfQ09ERSENCmVjaG8gICAgICC3zsTDIMbEwM/A
+uiC+yMD8OiAlTE9DQUwlDQpnb3RvIGNvcHlfZG9uZQ0KDQo6Y29weV9za2lwDQplY2hvIFu6ubvnXSDFrLbzv+y15SC68ciw
+vLrIrSAtILfOxMO4uCDA+sDlDQoNCjpjb3B5X2RvbmUNCmVjaG8uDQplY2hvID09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09DQplY2hvICAgtNm/7rfOteUgv8+34Q0KZWNobyAgILfOxMM6ICAgICVMT0NBTCUNCmlm
+ICIhRFVBTCEiPT0iMSIgZWNobyAgIMWstvO/7LXlOiAlQ0xPVUQlDQplY2hvID09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09DQplY2hvLg0KZWNobyBbtNnAvSBVUkwgwNS3wiCwobTJLiDBvrfhtMIgcV0NCnBhdXNl
+DQpnb3RvIGxvb3ANCg0KOmVuZA0KZWNoby4NCmVjaG8gwb634cfVtM+02S4NCmVuZGxvY2FsDQpwYXVzZQ0KZXhpdCAvYg0K
+</script>
+<script type="text/plain" id="pl-inst">
+QGVjaG8gb2ZmDQpjaGNwIDk0OSA+bnVsDQpzZXRsb2NhbA0KDQpSRU0gPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT0NClJFTSAgTm9NdXRlILTZv+63zrT1ILTcw+DFsCC8s8ShseIgKHY1LjIpDQpSRU0gIC0gtPW6
+7cWsuK8gx9EgufjAzLjpILOhLiBQQ7TnIDHIuLi4IL3Hx+AuDQpSRU0gIC0gQ3RybCtTaGlmdCtEILimILSpuKO46SBEb3du
+bG9hZGVyLmJhdMDMILnZt84gvcfH4LXHsNQNClJFTSAgICC9w8DbILjetLq/oSC52bfOsKGx4ihOb011dGUgRG93bmxvYWRl
+ci5sbmspuKYgte63z8fRtNkuDQpSRU0gIC0gsLDAuiC03MPgxbC4piC+srT4IL++ILnZt86wobHiKLG4ufbA/CBwczEguea9
+xCC17im0wiDA2rW/IMfYwaYuDQpSRU0gIC0gtNzD4MWwuKYgudmy2bfBuOkgvsa3oSBIT1RLRVkgwdm4uCCw7cShsO0gtNm9
+wyC09brtxay4ry4NClJFTSA9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0Kc2V0ICJI
+T1RLRVk9Q3RybCtTaGlmdCtEIg0Kc2V0ICJCQVRQQVRIPSVPbmVEcml2ZUNvbW1lcmNpYWwlXMiyvLy/9Vw2LiAgTm9tdXRl
+XMOisO1cMDUuIFV0aWxpdHlcRG93bmxvYWRlci5iYXQiDQpzZXQgIkxOS1BBVEg9JUFQUERBVEElXE1pY3Jvc29mdFxXaW5k
+b3dzXFN0YXJ0IE1lbnVcUHJvZ3JhbXNcTm9NdXRlIERvd25sb2FkZXIubG5rIg0KDQplY2hvID09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09DQplY2hvICAgTm9NdXRlILTZv+63zrT1ILTcw+DFsCC8s8ShICglSE9U
+S0VZJSkNCmVjaG8gPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCmVjaG8uDQoNClJF
+TSA9PT0gT25lRHJpdmUgyK7AziA9PT0NCmlmICIlT25lRHJpdmVDb21tZXJjaWFsJSI9PSIiICgNCiAgICBlY2hvIFu/wLf5
+XSBPbmVEcml2ZUNvbW1lcmNpYWwgyK+w5rqvvPYgvvjAvS4NCiAgICBlY2hvICAgICAgICBPbmVEcml2ZSDIuLvnL8fQsbMg
+sOjBpCC1v7HiyK0gu/PFwiDIrsDOLg0KICAgIGVjaG8uDQogICAgcGF1c2UNCiAgICBleGl0IC9iIDENCikNCg0KUkVNID09
+PSC02b/ut8609SC6u8O8IMiuwM4gPT09DQppZiBub3QgZXhpc3QgIiVCQVRQQVRIJSIgKA0KICAgIGVjaG8gW7/At/ldIERv
+d25sb2FkZXIuYmF0IL74wL0uILjVwPogvsa3oSDAp8Shv6Egs9a+7sHgOg0KICAgIGVjaG8gICAgICAgICVCQVRQQVRIJQ0K
+ICAgIGVjaG8uDQogICAgcGF1c2UNCiAgICBleGl0IC9iIDENCikNCmVjaG8gW8iuwM5dILTZv+63zrT1OiAlQkFUUEFUSCUN
+Cg0KUkVNID09PSBbMS8yXSCwsMC6ILTcw+DFsLimIL6ytMIgseLBuCC52bfOsKGx4iDH2MGmICjD5rW5ILnmwfYpID09PQ0K
+ZWNobyBbMS8yXSCx4sG4ICVIT1RLRVklILnZt86wobHiIMGkuK4uLi4NCnBvd2Vyc2hlbGwgLU5vUHJvZmlsZSAtRXhlY3V0
+aW9uUG9saWN5IEJ5cGFzcyAtQ29tbWFuZCAiJHdzPU5ldy1PYmplY3QgLUNvbU9iamVjdCBXU2NyaXB0LlNoZWxsOyAkZGly
+cz1AKFtFbnZpcm9ubWVudF06OkdldEZvbGRlclBhdGgoJ1Byb2dyYW1zJyksW0Vudmlyb25tZW50XTo6R2V0Rm9sZGVyUGF0
+aCgnRGVza3RvcCcpKTsgZm9yZWFjaCgkZCBpbiAkZGlycyl7IEdldC1DaGlsZEl0ZW0gLUxpdGVyYWxQYXRoICRkIC1GaWx0
+ZXIgKi5sbmsgLVJlY3Vyc2UgLUVycm9yQWN0aW9uIFNpbGVudGx5Q29udGludWUgfCBGb3JFYWNoLU9iamVjdCB7IHRyeXsg
+JHM9JHdzLkNyZWF0ZVNob3J0Y3V0KCRfLkZ1bGxOYW1lKTsgaWYoJHMuSG90a2V5IC1hbmQgKCgkcy5Ib3RrZXkgLXJlcGxh
+Y2UgJyAnLCcnKSAtaWVxICgkZW52OkhPVEtFWSAtcmVwbGFjZSAnICcsJycpKSl7ICRzLkhvdGtleT0nJzsgJHMuU2F2ZSgp
+OyBXcml0ZS1PdXRwdXQgKCcgIFtPRkZdICcgKyAkXy5GdWxsTmFtZSkgfSB9Y2F0Y2h7fSB9IH0iDQoNClJFTSA9PT0gWzIv
+Ml0gu/Ugudm3zrChseIgte63zyAovcPA2yC43rS6ID0gtNzD4MWwsKEguNS0wiDAp8ShKSA9PT0NCmVjaG8gWzIvMl0gu/Ug
+tNzD4MWwILXut88uLi4NCnBvd2Vyc2hlbGwgLU5vUHJvZmlsZSAtRXhlY3V0aW9uUG9saWN5IEJ5cGFzcyAtQ29tbWFuZCAi
+JHdzPU5ldy1PYmplY3QgLUNvbU9iamVjdCBXU2NyaXB0LlNoZWxsOyAkcz0kd3MuQ3JlYXRlU2hvcnRjdXQoJGVudjpMTktQ
+QVRIKTsgJHMuVGFyZ2V0UGF0aD0kZW52OkJBVFBBVEg7ICRzLldvcmtpbmdEaXJlY3Rvcnk9KFNwbGl0LVBhdGggJGVudjpC
+QVRQQVRIKTsgJHMuSG90a2V5PSRlbnY6SE9US0VZOyAkcy5EZXNjcmlwdGlvbj0nTm9NdXRlIGRvd25sb2FkZXIgaG90a2V5
+JzsgJHMuU2F2ZSgpOyBXcml0ZS1PdXRwdXQgKCcgIFtTRVRdICcgKyAkZW52OkxOS1BBVEgpIg0KDQpSRU0gPT09ILDhsPog
+sMvB9SAoudm3zrChseIgvcfBuCDIrsDOKSA9PT0NCmlmIG5vdCBleGlzdCAiJUxOS1BBVEglIiAoDQogICAgZWNoby4NCiAg
+ICBlY2hvIFu/wLf5XSC52bfOsKGx4iC7/by6IL3HxtAuIMCnILjevcPB9iDIrsDOLg0KICAgIGVjaG8uDQogICAgcGF1c2UN
+CiAgICBleGl0IC9iIDENCikNCg0KZWNoby4NCmVjaG8gW09LXSC8s8ShIL/Pt+EuDQplY2hvICAgICAgwMzBpiBVUkwgurm7
+58fPsO0gJUhPVEtFWSUguLggtKm4o7jpDQplY2hvICAgICAgtNm/7rfOtPWwoSC237jpvK0gsdcgVVJMus7FzSDA2rW/ILTZ
+v+63zrXltci02S4NCmVjaG8uDQplY2hvICAgICAgLSC03MPgxbCwoSC52bfOIL7IILjUwLi46Togt86x177Gv/QgyMQgwOe3
+zrHXwM4gx9EgufguDQplY2hvICAgICAgLSC/viC55r3EIMjnwPvAziBVU0VSUFJPRklMRVxub211dGUgxvq09bTCIMDMwaYg
+vsggvrK0zyDB9r/2tbUgtcouDQplY2hvLg0KcGF1c2UNCmV4aXQgL2IgMA0K
+</script>
+
+<script>
+  function dlFile(btn,id,name){
+    var b64=document.getElementById(id).textContent.replace(/\s+/g,'');
+    var bin=atob(b64), u8=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([u8],{type:'application/octet-stream'}));
+    a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1200);
+    var t=btn.querySelector('span'), old=t.textContent;
+    btn.classList.add('done'); t.textContent='저장됨 — 다운로드 폴더 확인';
+    setTimeout(function(){ btn.classList.remove('done'); t.textContent=old; },1800);
+  }
+  function fallbackCopy(text, ok){
+    var ta=document.createElement('textarea');
+    ta.value=text; ta.style.position='fixed'; ta.style.top='-9999px'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand('copy'); ok(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+  function copyCode(btn){
+    var pre=btn.parentElement.querySelector('code');
+    var text=pre.innerText;
+    var ok=function(){
+      var old=btn.textContent;
+      btn.textContent='복사됨'; btn.classList.add('done');
+      setTimeout(function(){ btn.textContent='복사'; btn.classList.remove('done'); },1400);
+    };
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(ok).catch(function(){ fallbackCopy(text,ok); });
+    } else {
+      fallbackCopy(text,ok);
+    }
+  }
+</script>
+</body>
+</html>
