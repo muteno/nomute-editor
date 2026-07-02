@@ -1,0 +1,197 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex,nofollow"><title>PIN 자동검증 · 발행본 픽토그램</title>
+<style>
+:root{--accent:#0FFD02;--accent-rgb:15,253,2;--on-accent:#062108;--fg:#eef7f0;--fg-2:#cdd6cf;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--warn:#ffcf3a;--arm:#ffe14d;--r-l:16px;--r-modal:22px}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0b0d0c;color:var(--fg);font:15px/1.62 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.wrap{max-width:880px;margin:0 auto;padding:28px 18px 70px}
+h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 26px}
+h2{font-size:16px;font-weight:800;margin:38px 0 6px;padding-left:10px;border-left:3px solid var(--accent);letter-spacing:-.2px}
+p{color:var(--fg-2);font-size:13.5px;margin:0 0 12px}
+.demorow{display:grid;gap:18px;grid-template-columns:1fr 1fr;align-items:start;margin-top:14px}
+@media(max-width:680px){.demorow{grid-template-columns:1fr}}
+.stage{background:#000;border:1px solid rgba(255,255,255,.08);border-radius:var(--r-l);padding:22px 16px;display:grid;place-items:center;min-height:230px}
+.cap{font-size:11.5px;color:var(--mut);text-align:center;margin-top:8px}
+.grid{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-top:10px}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+.box{background:linear-gradient(165deg,rgba(28,30,33,.9),rgba(15,16,18,.96));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-l);padding:15px}
+.box h3{margin:0 0 10px;font-size:11.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--mut)}
+.box.after h3{color:var(--accent)}
+ul{margin:4px 0 0;padding-left:17px}
+li{color:var(--fg-2);font-size:12.5px;margin:5px 0}
+li b{color:var(--fg)}
+.tag{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:6px}
+.tag.plus{color:var(--accent);background:rgba(var(--accent-rgb),.12)}
+.tag.risk{color:var(--warn);background:rgba(255,207,58,.12)}
+
+/* ── PIN 카드 (functions/s/[slug].js 재현) ── */
+.card{max-width:360px;width:100%;text-align:center;background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,.98));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-modal);padding:26px 22px}
+.card .m{font-size:15px;font-weight:800;color:var(--mut);letter-spacing:-.2px}
+.pinwrap{position:relative;margin-top:18px}
+#pin{width:100%;box-sizing:border-box;height:56px;padding:0 46px;text-align:center;font-size:22px;letter-spacing:10px;font-weight:800;font-family:inherit;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--fg);caret-color:var(--accent);outline:none;transition:border-color .18s ease,box-shadow .18s ease,color .18s ease}
+#pin::placeholder{color:var(--mut);letter-spacing:8px}
+#pin:focus{border-color:rgba(var(--accent-rgb),.55);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14)}
+.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;padding:0;border:none;background:none;color:var(--mut);cursor:pointer;border-radius:9px}
+.eye:active{transform:translateY(-50%) scale(.85)}
+.eye svg{grid-area:1/1;width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.eye .off{display:none}
+#pin.checking{border-color:rgba(var(--accent-rgb),.7);color:var(--accent);caret-color:transparent;pointer-events:none;animation:pinPulse .85s ease infinite}
+@keyframes pinPulse{0%,100%{box-shadow:0 0 0 3px rgba(var(--accent-rgb),.16)}50%{box-shadow:0 0 0 6px rgba(var(--accent-rgb),.30)}}
+#pin.bad{border-color:var(--danger);box-shadow:0 0 0 3px rgba(var(--danger-rgb),.26);color:var(--danger);caret-color:var(--danger)}
+#pin.bad::placeholder{color:rgba(var(--danger-rgb),.55)}
+@keyframes pinShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-9px)}28%{transform:translateX(8px)}44%{transform:translateX(-6px)}60%{transform:translateX(4px)}76%{transform:translateX(-2px)}}
+.pinwrap.shake{animation:pinShake .45s cubic-bezier(.36,.07,.19,.97)}
+.err{color:var(--danger);font-size:12px;margin-top:13px;font-weight:700;white-space:nowrap;min-height:15px}
+.ok-msg{color:var(--accent);font-size:12.5px;font-weight:800;margin-top:13px;min-height:15px}
+
+/* ── 발행본 팝업 rows (viewer/index.html 재현) ── */
+.demo{background:linear-gradient(165deg,rgba(24,25,28,.72),rgba(16,17,19,.8));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-modal);padding:12px 14px 14px;width:100%;max-width:400px}
+.qh{display:flex;align-items:center;gap:6px;padding:0 3px 8px}
+.qh b{font-size:14px;font-weight:800}
+.qc{font-size:13px;font-weight:700;color:var(--mut);margin-left:2px}.qc .tn{color:var(--accent);font-weight:800}
+.qrow{display:flex;align-items:center;gap:9px;padding:8px 3px;border-top:1px solid rgba(255,255,255,.06)}
+.qrow:first-of-type{border-top:none}
+.qrow.pub-open{cursor:pointer;border-radius:8px;transition:background .16s ease}
+.qrow.pub-open:hover{background:rgba(255,255,255,.05)}
+.qt{flex:none;width:60px;font-size:11px;font-weight:800;color:var(--mut);white-space:nowrap}
+.qt.qt-new{color:var(--accent)}.qt.qt-mid{color:var(--warn)}
+.qmain{flex:1;min-width:0;font-size:12.5px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qrow.exp .qmain{color:var(--mut);text-decoration:line-through;opacity:.7}
+.pinmark{flex:none;display:grid;place-items:center;margin-right:6px;color:var(--mut)}
+.pinmark.locked{color:var(--arm)}.pinmark svg{width:14px;height:14px}
+.pub-ico{position:relative;flex:none;width:34px;height:34px;display:grid;place-items:center;padding:0;border:none;background:none;color:var(--mut);cursor:pointer;border-radius:8px;transition:color .16s ease,transform .12s ease}
+.pub-ico::before{content:'';position:absolute;inset:-4px}
+.pub-ico svg{width:18px;height:18px}
+.pub-ico:active{transform:scale(.82)}
+.pub-share:hover{color:var(--accent)}.pub-rm:hover{color:var(--danger)}
+.pub-ico.ok{color:var(--accent)}
+.pub-ico:disabled{color:var(--mut);opacity:.4;cursor:default}
+@keyframes ic-rise{0%{transform:translate(0,0)}45%{transform:translate(2px,-2.5px)}100%{transform:translate(0,0)}}
+.ic-rise{animation:ic-rise .42s ease}
+.hint{font-size:11px;color:var(--mut);text-align:center;margin-top:9px}
+.mini{position:fixed;left:0;right:0;margin-inline:auto;bottom:22px;width:max-content;max-width:88vw;display:flex;align-items:center;gap:8px;padding:9px 14px;background:linear-gradient(135deg,rgba(13,40,18,.95),rgba(9,20,12,.95));border:1px solid rgba(15,253,2,.45);border-radius:999px;color:#dfffe4;font-size:12.5px;font-weight:700;opacity:0;transform:translateY(14px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:50}
+.mini.show{opacity:1;transform:translateY(0)}.mini svg{width:14px;height:14px;color:var(--accent)}
+</style></head><body><div class="wrap">
+
+<h1>PIN 자동검증 · 발행본 픽토그램 정리</h1>
+<p class="sub">공개 발행본 잠금화면(functions/s) + 발행본 팝업(viewer/index.html) · 260703</p>
+
+<!-- ═══ PIN ═══ -->
+<h2>1. PIN 잠금화면 — 6자리 자동검증</h2>
+<p>6자리를 다 넣으면 <b>버튼 없이 자동으로 검증</b>돼(‘열기’ 버튼 삭제). 맞으면 <b>바로 열림</b>, 틀리면 <b>흔들리며 빨강 점등 → 처음부터</b>. 아래에서 직접 쳐봐 — 데모 정답은 <b>123456</b>(그 외는 실패 연출).</p>
+<div class="demorow">
+  <div>
+    <div class="stage"><div class="card">
+      <div class="m">PIN으로 잠긴 문서입니다.</div>
+      <div class="pinwrap" id="pinwrap">
+        <input id="pin" type="text" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
+        <button type="button" id="eye" class="eye" aria-label="PIN 표시">
+          <svg class="on" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="off" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.2 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.2-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>
+        </button>
+      </div>
+      <div class="err" id="verr" hidden></div>
+      <div class="ok-msg" id="okmsg" hidden>✓ 확인됨 — 문서 열림</div>
+    </div></div>
+    <div class="cap">6자리 = 자동 발사 · 틀리면 흔들림+빨강 · 눈 아이콘=표시 토글</div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr">
+    <div class="box after"><h3>동작 흐름</h3><ul>
+      <li>6자리 입력 → <b>320ms 뒤 자동 검증</b>(별도 열기 버튼 X)</li>
+      <li>검증 중 = 입력칸 <b>중립 accent 글로우 펄스</b>(‘확인 중’) — 서버가 성공/실패 결정이라 <b>가짜 성공 애니 없음</b></li>
+      <li><b>성공</b> = 서버가 문서로 응답 → 페이지 교체 = 자동 오픈</li>
+      <li><b>실패</b> = 서버가 폼 재응답 → 로드 시 <b>흔들림 + 빨강 점등 + 빈 입력(처음부터)</b></li>
+      <li>5회 누적 = 10분 잠금(기존 유지) · 마스터 PIN(기존 유지)</li>
+    </ul></div>
+  </div>
+</div>
+
+<!-- ═══ 발행본 rows ═══ -->
+<h2>2. 발행본 팝업 — 도형 없는 픽토그램(대기열 계승)</h2>
+<p>공유·삭제 버튼의 <b>박스(테두리·배경) 제거 → 픽토그램만</b>(뉴스 대기열 상태아이콘의 ‘도형 제거’ 계승). 평소엔 <b>무채색</b>(행마다 전경색 X), <b>다가갈 때만</b> 공유=초록 / 삭제=빨강. 행 아무 데나 누르면 새 탭+링크복사(기존). 눌림 = 픽토그램 <b>단일 모션</b>(공유 ↗상승 · 삭제 축소)로 정리 — 버튼 눌러도 행 배경 안 번쩍.</p>
+<div class="demorow">
+  <div>
+    <div class="stage"><div class="demo">
+      <div class="qh"><b>발행본</b><span class="qc">Today <span class="tn">2</span> / 누적 4</span></div>
+      <div id="rows"></div>
+      <div class="hint">행 클릭 = 새 탭+복사 · 공유=↗ · 삭제=hover 빨강 · 잠금=자물쇠</div>
+    </div></div>
+    <div class="cap">rest 무채색 · hover/active만 의미색 · 히트영역 ≥42px</div>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr">
+    <div class="box"><h3>전 (Before)</h3><ul>
+      <li>공유 = <b>초록 테두리+배경 박스</b> · 삭제 = <b>빨강 박스</b> → 행마다 전경색이 튐</li>
+      <li>누름 = 박스 scale + 아이콘 모션 <b>이중</b> → 어수선</li>
+    </ul></div>
+    <div class="box after"><h3>후 (After)</h3><ul>
+      <li>박스 제거 → <b>픽토그램만</b>(대기열 도형제거 계승)</li>
+      <li>평소 <b>무채색(--mut)</b>, hover/active만 의미색</li>
+      <li>누름 = <b>단일 모션</b>(공유 ↗ / 삭제 scale .82) · 액티브 유지</li>
+    </ul></div>
+  </div>
+</div>
+
+<h2>효율 · 품질저하 리스크</h2>
+<p><span class="tag plus">효율</span> PIN 검증 <b>왕복 1회</b>(기존과 동일 · 클릭 1회 절약 = 버튼 삭제). 발행본은 CSS만 정리 · 신규 아이콘 0. LLM·네트워크 추가 <b>0</b>.</p>
+<p><span class="tag risk">품질저하</span> PIN — 낙관적 unlock 애니 제거로 <b>가짜 성공</b> 사라짐(정직). 자동검증은 <code>fired</code> 가드로 중복발사 차단. 발행본 — 삭제가 평소 무채색이라 위험도 낮아 보일 수 있으나 <b>hover/active에서 빨강 노출</b> + 잠금본은 PIN 확인 유지(오삭제 방지 불변).</p>
+
+<div class="mini" id="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span>링크를 복사했어 · 새 탭에서 열림</span></div>
+
+<script>
+/* ── PIN 데모 (실제 pinForm 스크립트 로직 미러 · 데모정답=123456) ── */
+(function(){
+  var pin=document.getElementById('pin'),eye=document.getElementById('eye'),verr=document.getElementById('verr'),okmsg=document.getElementById('okmsg'),pw=document.getElementById('pinwrap');
+  var real='',reveal=false,fired=false,autoT=null;
+  function mask(){return real.length?Array(real.length).join('•')+real.slice(-1):'';}
+  function render(){pin.value=reveal?real:mask();try{pin.setSelectionRange(pin.value.length,pin.value.length);}catch(e){}}
+  function shake(){pw.classList.remove('shake');void pw.offsetWidth;pw.classList.add('shake');}
+  function clearBad(){pin.classList.remove('bad');verr.hidden=true;okmsg.hidden=true;}
+  function arm(){clearTimeout(autoT);if(real.length===6&&!fired)autoT=setTimeout(fire,320);}
+  function fire(){
+    if(fired||real.length!==6)return;fired=true;clearTimeout(autoT);
+    pin.classList.add('checking');pin.blur();
+    setTimeout(function(){                                  // 데모: 서버 왕복 대신 정답 비교
+      pin.classList.remove('checking');
+      if(real==='123456'){okmsg.hidden=false;}
+      else{real='';render();pin.classList.add('bad');shake();verr.textContent='핀이 맞지 않아요 (1/5)';verr.hidden=false;fired=false;setTimeout(function(){pin.focus();},200);}
+    },700);
+  }
+  function upd(){clearBad();render();arm();}
+  pin.addEventListener('beforeinput',function(e){
+    if(fired){e.preventDefault();return;}
+    var t=e.inputType||'';
+    if(t==='insertText'||t==='insertFromPaste'||t==='insertCompositionText'){real=(real+((e.data||'').replace(/\D/g,''))).slice(0,6);e.preventDefault();}
+    else if(t.indexOf('delete')===0){real=real.slice(0,-1);e.preventDefault();}
+    else{e.preventDefault();}
+    upd();
+  });
+  pin.addEventListener('input',function(){if(fired||pin.value===(reveal?real:mask()))return;real=pin.value.replace(/\D/g,'').slice(0,6);upd();});
+  eye.addEventListener('click',function(){reveal=!reveal;eye.querySelector('.on').style.display=reveal?'none':'';eye.querySelector('.off').style.display=reveal?'':'none';render();if(!fired)pin.focus();});
+})();
+
+/* ── 발행본 rows 데모 ── */
+(function(){
+var SHARE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+var CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+var LOCK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2.4"/><path d="M8.2 11V8a3.8 3.8 0 0 1 7.6 0v3"/></svg>';
+var TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>';
+var data=[{t:'23분 전',c:'qt-new',ttl:'국내 대형 화재 종합 — 사상자 다수',lk:false,ex:false},
+ {t:'3시간 전',c:'qt-mid',ttl:'금융시장 급변동 · 서킷브레이커',lk:true,ex:false},
+ {t:'11시간 전',c:'',ttl:'교육 정책 개편안 발표 요약',lk:false,ex:false},
+ {t:'3일 전',c:'',ttl:'(만료) 지난 사건 후속 정리',lk:false,ex:true}];
+var mini=document.getElementById('mini'),mt;function showMini(){mini.classList.add('show');clearTimeout(mt);mt=setTimeout(function(){mini.classList.remove('show')},2400);}
+var box=document.getElementById('rows');
+data.forEach(function(it){
+  var row=document.createElement('div');row.className='qrow'+(it.ex?' exp':' pub-open');
+  var sh=it.ex?'<button class="pub-ico pub-share" disabled>'+SHARE+'</button>':'<button class="pub-ico pub-share" data-motion="rise" title="공유">'+SHARE+'</button>';
+  row.innerHTML='<span class="qt '+it.c+'">'+it.t+'</span><span class="qmain">'+it.ttl+'</span><span class="pinmark '+(it.lk?'locked':'')+'">'+LOCK+'</span>'+sh+'<button class="pub-ico pub-rm" title="삭제">'+TRASH+'</button>';
+  if(!it.ex)row.addEventListener('click',function(e){if(e.target.closest('button, .pinmark'))return;showMini();});
+  var sb=row.querySelector('.pub-share:not([disabled])');
+  if(sb)sb.addEventListener('click',function(e){e.stopPropagation();var s=sb.querySelector('svg');s.classList.remove('ic-rise');void s.offsetWidth;s.classList.add('ic-rise');if(navigator.share){navigator.share({title:it.ttl,url:location.href}).catch(function(){});return;}sb.innerHTML=CHECK;sb.classList.add('ok');setTimeout(function(){sb.innerHTML=SHARE;sb.classList.remove('ok');},1200);});
+  box.appendChild(row);
+});
+})();
+</script>
+</div></body></html>
