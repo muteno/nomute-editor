@@ -2000,8 +2000,7 @@
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
   .pin-in { width:100%; box-sizing:border-box; border:none; background:transparent; color:var(--fg); text-align:right; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:var(--fs-h1); letter-spacing:.45em; padding:3px 0; outline:none; }
   .pin-in::placeholder { color:var(--mut); }
-  .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill)+.revsend(게이지) 계승 · 전폭 · 발행>게이지>체크 */
-  .pub-go svg { width:18px; height:18px; vertical-align:middle; }   /* 성공 시 CHECK_SVG */
+  .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
   .pubpop .qc { font-size:var(--fs-xs); color:var(--mut); }   /* 발행본 개수 부제(대기열 b 옆) */
@@ -7715,8 +7714,7 @@ function openPubDlg() {
   const ex = new Date(Date.now() + 3 * 86400e3 + 9 * 3600e3);   // 만료 = +3일 · KST(§📐)로 mm/dd 표기
   $('#pubExp').textContent = '3일 (~' + String(ex.getUTCMonth() + 1).padStart(2, '0') + '/' + String(ex.getUTCDate()).padStart(2, '0') + ')';
   const st = $('#pubStatus'); st.textContent = ''; st.classList.remove('err');
-  const go = $('#pubGo'); go.classList.remove('firing', 'shake'); go.disabled = false; _pubBusy = false;   // _pubBusy 리셋 = in-flight 중 닫고 재열기 시 죽은 버튼 방지(검증7)
-  go.querySelector('span').textContent = '발행';   // 성공 시 CHECK 표시 후 재열기 = 라벨 복원
+  const go = $('#pubGo'); go.classList.remove('firing', 'shake', 'done'); askHideCheck(go); go.disabled = false; _pubBusy = false;   // firing·done·✓(ack) 리셋 = 전송/수정 버튼 동일 · _pubBusy = in-flight 중 닫고 재열기 죽은버튼 방지(검증7)
   openComposeDlg(pubdlg);   // dialog 스택·폰 뒤로가기 = 기존 컴포즈 모달 시스템 계승
 }
 $('#pubScope').addEventListener('click', e => {
@@ -7741,11 +7739,10 @@ $('#pubGo').addEventListener('click', async () => {
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok && d.slug) {
       await copyText(location.origin + '/s/' + d.slug);   // ?p=핀 미포함 = PIN 잠금 무력화 방지(검증3·7·1). PIN은 별도 전달.
-      const wait = Math.max(0, 720 - (Date.now() - t0));   // 게이지 완주 보장 → 체크(발행>게이지>체크)
-      if (wait) await new Promise(res => setTimeout(res, wait));
-      go.querySelector('span').innerHTML = CHECK_SVG;   // 체크 표시(게이지 채운 위)
+      go.classList.remove('done'); void go.offsetWidth; go.classList.add('done');   // settle 팝 + 게이지 다 찬 뒤 ✓팝 = 전송/수정(#askSend) 버튼과 동일 메커니즘(askShowCheck·.ack·운영자 "다른 버튼과 동일")
+      setTimeout(() => askShowCheck(go), Math.max(0, 740 - (Date.now() - t0)));
       st.textContent = pin ? ('✓ 발행됨 · 링크 복사 · PIN ' + pin + ' 별도 전달') : '✓ 발행됨 · 링크 복사 완료';
-      setTimeout(() => { pubdlg.close(); loadPub(); }, 950);   // 재열기 시 openPubDlg가 라벨·firing 복원
+      setTimeout(() => { pubdlg.close(); go.classList.remove('firing', 'done'); askHideCheck(go); go.disabled = false; loadPub(); }, 1500);   // ✓ 노출 시간 확보 후 닫기(askSend 계승)
     } else { fail((d && d.error) ? String(d.error).slice(0, 90) : '발행 실패 — 다시'); }
   } catch { fail('네트워크 오류 — 다시'); }
   finally { _pubBusy = false; }
