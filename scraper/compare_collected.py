@@ -12,6 +12,7 @@
 import json
 import os
 import sys
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 ROOT = __import__("pathlib").Path(__file__).resolve().parent.parent
@@ -75,6 +76,19 @@ def fmt_rows(items):
     return out
 
 
+def _cross_bucket(x):
+    x = x or 0
+    if x >= 12:
+        return "12+"
+    if x >= 8:
+        return "8-11"
+    if x >= 5:
+        return "5-7"
+    if x >= 3:
+        return "3-4"
+    return "2"
+
+
 def summarize(items, label):
     n = len(items)
     g3 = [c for c in items if (c.get("grade") or 0) >= 3]
@@ -83,6 +97,19 @@ def summarize(items, label):
     urg = [c for c in items if is_breaking_viewer(c) and (c.get("grade") or 0) >= 2]
     print(f"\n=== {label} — 수집 {n}건 ===")
     print(f"  grade3: {len(g3)} · ⬆️승격(추정): {len(promo)} · 🚨breaking: {len(brk)} · 긴급자격(breaking&g≥2): {len(urg)}")
+    # 소스 확장 cross 인플레 측정(260702 +4매체 · curation §7) — ⚡이슈 자격·grade 분포·cross 버킷·cat별 cross≥8(경제 편중 관측).
+    iss = [c for c in items if (c.get("cross") or 0) >= 8]
+    gd = Counter(("미채점" if c.get("grade") is None else str(c.get("grade"))) for c in items)
+    cb = Counter(_cross_bucket(c.get("cross")) for c in items)
+    catiss = Counter((c.get("cat") or "미분류") for c in iss)
+    print(f"  cross≥8(⚡이슈 자격): {len(iss)}건" + (f" · cat별 {dict(catiss)}" if iss else ""))
+    print("  grade 분포: " + " ".join(f"{k}:{gd.get(k, 0)}" for k in ("0", "1", "2", "3", "미채점"))
+          + " · cross 버킷: " + " ".join(f"{k}:{cb.get(k, 0)}" for k in ("2", "3-4", "5-7", "8-11", "12+")))
+    # rc(연속보도) 분포 — 연합 섹션 4피드 추가(260702 fable패널)의 rc 인플레 측정용(기준선: rc≥6 395건·중앙값 1).
+    rcs = sorted((c.get("report_count") or 0) for c in items)
+    rc6 = sum(1 for r in rcs if r >= 6)
+    med = rcs[len(rcs) // 2] if rcs else 0
+    print(f"  rc 분포: rc≥6 {rc6}건 · 중앙값 {med} · 최대 {rcs[-1] if rcs else 0}")
     if promo:
         print(f"  ── ⬆️ 승격건(grade3·저burst, 새 로직 구제 대상) {len(promo)} ──")
         for line in fmt_rows(promo):

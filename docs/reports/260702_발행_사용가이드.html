@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>노뮤트 발행 기능 — 뭘 하면 되나 (플랫폼·화면별)</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --panel:#14171a; --panel2:#0f1113;
+    --fg:#eef7f0; --mut:#9aa7a0; --line:rgba(255,255,255,.09);
+    --accent:#0FFD02; --accent2:#d8ff3d; --accent-rgb:15,253,2;
+    --danger:#ff5b4a; --amber:#ffcf3d; --info:#5cc8ff;
+    --r:14px; --r-s:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:26px 18px 60px}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 22px}
+  .sub b{color:var(--accent2)}
+
+  /* 상태 요약 2열 */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 26px}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+  .stat{border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;background:linear-gradient(165deg,var(--panel),var(--panel2))}
+  .stat.done{border-color:rgba(var(--accent-rgb),.35)}
+  .stat.todo{border-color:rgba(255,207,61,.35)}
+  .stat .h{font-size:12px;font-weight:800;letter-spacing:.02em;margin:0 0 8px;display:flex;align-items:center;gap:7px}
+  .stat.done .h{color:var(--accent)}
+  .stat.todo .h{color:var(--amber)}
+  .stat ul{margin:0;padding-left:17px}
+  .stat li{margin:3px 0;font-size:13.5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .dot.g{background:var(--accent);box-shadow:0 0 8px rgba(var(--accent-rgb),.7)}
+  .dot.a{background:var(--amber);box-shadow:0 0 8px rgba(255,207,61,.6)}
+
+  /* 섹션 */
+  section{margin:0 0 26px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,var(--panel),var(--panel2))}
+  .shead{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .plat{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:3px 9px;border-radius:999px}
+  .plat.b{background:var(--info)}
+  .plat.c{background:var(--amber)}
+  .shead h2{font-size:16.5px;font-weight:800;margin:0}
+  .shead .once{margin-left:auto;font-size:12px;color:var(--mut);white-space:nowrap}
+  .sbody{padding:6px 18px 18px}
+  .why{font-size:13px;color:var(--mut);margin:12px 0 4px;padding:10px 12px;border-left:2px solid var(--accent);background:rgba(var(--accent-rgb),.05);border-radius:0 var(--r-s) var(--r-s) 0}
+  .why b{color:var(--fg)}
+
+  /* 스텝 */
+  ol.steps{list-style:none;margin:14px 0 0;padding:0;counter-reset:s}
+  ol.steps>li{counter-increment:s;position:relative;padding:11px 0 11px 44px;border-top:1px solid var(--line)}
+  ol.steps>li:first-child{border-top:none}
+  ol.steps>li::before{content:counter(s);position:absolute;left:0;top:9px;width:28px;height:28px;
+    display:grid;place-items:center;border-radius:50%;background:rgba(var(--accent-rgb),.14);
+    color:var(--accent);font-weight:800;font-size:13.5px;border:1px solid rgba(var(--accent-rgb),.4)}
+  .scr{font-size:11px;font-weight:800;color:var(--info);letter-spacing:.02em;display:block;margin-bottom:2px}
+  .st{font-size:14.5px}
+  .st b{color:var(--accent2)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:rgba(255,255,255,.08);
+    padding:2px 6px;border-radius:6px;color:#fff;white-space:nowrap}
+  .pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);margin:2px 3px 0 0}
+  .pill.on{border-color:rgba(var(--accent-rgb),.5);color:var(--accent)}
+  .pill.off{color:var(--mut);text-decoration:line-through;opacity:.6}
+
+  .warn{margin:14px 0 0;padding:11px 13px;border-radius:var(--r-s);font-size:13px;
+    background:rgba(255,91,74,.09);border:1px solid rgba(255,91,74,.35);color:#ffd7d1}
+  .warn b{color:var(--danger)}
+  .tip{margin:14px 0 0;padding:11px 13px;border-radius:var(--r-s);font-size:13px;
+    background:rgba(92,200,255,.08);border:1px solid rgba(92,200,255,.3);color:#d6efff}
+  .tip b{color:var(--info)}
+
+  /* 순서 요약 바 */
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:28px 0 0;padding:16px;border:1px dashed var(--line);border-radius:14px;justify-content:center}
+  .flow .n{padding:8px 13px;border-radius:10px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.35);font-size:13px;font-weight:700}
+  .flow .arw{color:var(--accent);font-weight:800}
+  .foot{color:var(--mut);font-size:12px;text-align:center;margin:22px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>노뮤트 발행 기능 — 뭘 하면 되나</h1>
+  <p class="sub">코드는 이미 <b>머지·배포 완료(라이브)</b>. 네가 할 건 딱 둘 — <b>① Cloudflare 설정 1회</b> → <b>② 웹앱에서 발행·테스트</b>. 아래는 화면별로 뭘 누르면 되는지만.</p>
+
+  <div class="grid2">
+    <div class="stat done">
+      <div class="h"><span class="dot g"></span> 내가 끝낸 것 (건드릴 것 없음)</div>
+      <ul>
+        <li>발행 API·서빙·목록·삭제 (백엔드)</li>
+        <li>요약 화면 <b>‘공유’ 버튼</b> (다운로드 자리 대체)</li>
+        <li>프로필 → <b>‘발행본’</b> 2차 팝업</li>
+        <li>우회 차단 4중 (CSP·리다이렉트 등)</li>
+      </ul>
+    </div>
+    <div class="stat todo">
+      <div class="h"><span class="dot a"></span> 네가 할 것</div>
+      <ul>
+        <li><b>Cloudflare</b>: <code>/s/*</code> 만 비번 우회 (1회)</li>
+        <li><b>웹앱</b>: 요약 열고 → 공유 → 발행</li>
+        <li><b>테스트</b>: 시크릿창에서 링크 확인</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 플랫폼 1 -->
+  <section>
+    <div class="shead">
+      <span class="plat">플랫폼 ①</span>
+      <h2>Cloudflare 대시보드</h2>
+      <span class="once">딱 1번 · 약 3분</span>
+    </div>
+    <div class="sbody">
+      <div class="why"><b>왜 필요:</b> <code>apps.nomute.kr</code> 전체가 비번(Access) 뒤라, 지금은 발행 링크 <code>/s/…</code> 도 로그인 벽에 막혀. <b><code>/s/*</code> 경로만</b> 뚫어줘야 남한테 보여줄 수 있어. (예전에 <b>아이콘 우회</b> 만든 거랑 완전 동일한 방식)</div>
+      <ol class="steps">
+        <li><span class="scr">화면: 로그인</span><span class="st"><code>one.dash.cloudflare.com</code> 접속 → 왼쪽 메뉴 <b>Zero Trust</b> 클릭</span></li>
+        <li><span class="scr">화면: Zero Trust</span><span class="st"><b>Access</b> → <b>Applications</b> 로 이동</span></li>
+        <li><span class="scr">화면: Applications</span><span class="st"><b>Add an application</b> → <b>Self-hosted</b> 선택</span></li>
+        <li><span class="scr">화면: 앱 설정 (도메인)</span><span class="st">도메인 칸에 → subdomain <code>apps</code> · domain <code>nomute.kr</code> · <b>Path <code>s/*</code></b> &nbsp;(이름은 아무거나, 예: <code>발행본 공개</code>)</span></li>
+        <li><span class="scr">화면: 정책(Policy)</span><span class="st">정책 추가 → Action <b>Bypass</b> · Include <b>Everyone</b> &nbsp;(이름 예: <code>공개</code>)</span></li>
+        <li><span class="scr">화면: 저장</span><span class="st"><b>Save</b> → 끝. (즉시 적용 · 배포 기다릴 것 없음)</span></li>
+      </ol>
+      <div class="warn"><b>⚠️ 딱 하나 주의:</b> Path 는 <b>정확히 <code>s/*</code></b> 로. <code>*</code> 나 <code>api/*</code> 처럼 넓게 잡으면 본체·API 까지 뚫려서 우회 구멍이 생겨. <code>/api/*</code> 는 비번 뒤에 그대로 둬야 함(발행·삭제는 로그인된 나만).</div>
+    </div>
+  </section>
+
+  <!-- 플랫폼 2 -->
+  <section>
+    <div class="shead">
+      <span class="plat b">플랫폼 ②</span>
+      <h2>apps.nomute.kr 웹앱 — 발행하기</h2>
+      <span class="once">평소 사용</span>
+    </div>
+    <div class="sbody">
+      <ol class="steps">
+        <li><span class="scr">화면: 요약 리더 (기사 요약 열었을 때)</span><span class="st">전에 다운로드였던 자리 → 이제 <b>[공유]</b> 버튼. 누르면 발행 설정 팝업이 뜸.</span></li>
+        <li><span class="scr">화면: 발행 설정 팝업</span><span class="st">
+          <b>공개범위</b>:
+          <span class="pill on">링크가 있는 누구나</span>
+          <span class="pill off">허용한 사람만</span>
+          <span class="pill">비공개</span><br>
+          <span style="color:var(--mut);font-size:12.5px">· ‘허용한 사람만’ 은 아직 미구현이라 비활성(회색)</span>
+        </span></li>
+        <li><span class="scr">화면: 발행 설정 팝업 (계속)</span><span class="st"><b>만료</b> <span class="pill">1일</span><span class="pill on">3일</span><span class="pill">7일</span> &nbsp;·&nbsp; <b>PIN</b> 4자리(선택 — 넣으면 링크 열 때 핀 요구)</span></li>
+        <li><span class="scr">화면: 발행 버튼</span><span class="st"><b>[발행]</b> 누르면 게이지바 차오르고 → 끝나면 <b>링크 자동 복사</b> + “✓ 발행됨” 표시. 그 링크 붙여넣어서 공유하면 됨.</span></li>
+      </ol>
+      <div class="tip"><b>💡 PIN 걸었을 때:</b> 복사되는 링크엔 핀이 안 들어가(보안). 링크는 링크대로 보내고 <b>PIN 4자리는 따로</b> 알려줘야 상대가 열 수 있어.</div>
+    </div>
+  </section>
+
+  <!-- 플랫폼 2b : 발행본 관리 -->
+  <section>
+    <div class="shead">
+      <span class="plat b">플랫폼 ②</span>
+      <h2>apps.nomute.kr 웹앱 — 발행본 관리</h2>
+      <span class="once">확인·삭제</span>
+    </div>
+    <div class="sbody">
+      <div class="why"><b>어디서 보나:</b> 뭘 발행했는지, 언제 만료되는지 한 곳에서 관리. <b>대기열이랑 똑같은 UI</b>(2차 팝업)라 익숙할 거야.</div>
+      <ol class="steps">
+        <li><span class="scr">화면: 프로필 메뉴</span><span class="st">상단 <b>프로필</b> 눌러 메뉴 열기 → <b>‘발행본’</b> 항목(옆에 발행 개수 숫자)</span></li>
+        <li><span class="scr">화면: 발행본 팝업 (2차)</span><span class="st">발행한 것들이 최신순 목록으로. 각 줄에 <b>제목 · 만료 D-N · 🔒(핀걸림 표시)</b></span></li>
+        <li><span class="scr">화면: 발행본 팝업 (각 항목)</span><span class="st">항목마다 <b>링크 복사</b> / <b>삭제(휴지통)</b>. 삭제하면 그 링크 즉시 못 열림(비공개).</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 플랫폼 3 : 검증 -->
+  <section>
+    <div class="shead">
+      <span class="plat c">검증 ③</span>
+      <h2>제대로 됐나 · 우회 막혔나 테스트</h2>
+      <span class="once">1회 확인</span>
+    </div>
+    <div class="sbody">
+      <div class="why"><b>목표:</b> 남들은 <b>발행한 것만</b> 보이고, 이 링크로 <b>본체·다른 발행본엔 못 들어가는지</b> 확인.</div>
+      <ol class="steps">
+        <li><span class="scr">화면: 시크릿창(로그아웃 상태)</span><span class="st">발행 링크 <code>apps.nomute.kr/s/…</code> 를 <b>시크릿/다른 기기</b>에서 열기 → 요약이 <b>보이면 정상</b>(비번 안 물음).</span></li>
+        <li><span class="scr">화면: 우회 시도</span><span class="st">그 상태에서 <code>apps.nomute.kr</code> 딴 주소로 가보기 → <b>로그인 벽이 떠야 정상</b>(본체 우회 차단 확인).</span></li>
+        <li><span class="scr">화면: 만료 / 핀</span><span class="st">기간 지나면 “만료된 링크” 안내만 뜸 · 핀 걸린 건 <b>핀 입력창</b>이 먼저 뜸.</span></li>
+      </ol>
+      <div class="warn"><b>혹시 안 되면:</b> 링크에서 로그인 벽이 뜨면 → 플랫폼① Path가 <code>s/*</code> 맞는지 재확인. 반대로 <code>apps.nomute.kr</code> 본체가 비번 없이 열리면 → 우회 정책 범위가 너무 넓은 것(즉시 알려줘).</div>
+    </div>
+  </section>
+
+  <div class="flow">
+    <span class="n">① Cloudflare <code style="background:rgba(0,0,0,.3)">/s/*</code> 우회 (1회)</span>
+    <span class="arw">→</span>
+    <span class="n">② 웹앱: 요약 → 공유 → 발행</span>
+    <span class="arw">→</span>
+    <span class="n">③ 시크릿창에서 링크 확인</span>
+  </div>
+  <p class="foot">막히는 지점 스샷으로 주면 바로 잡아줄게. · 후속(같이 볼 것): 만료 발행본 자동정리 크론 등</p>
+
+</div>
+</body>
+</html>

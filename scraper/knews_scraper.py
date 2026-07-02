@@ -164,19 +164,25 @@ def same_topic(ta, tb):
 
 # ── 수집 ────────────────────────────────────────────────────────────
 def fetch_feed(feed):
-    """단일 피드 수집. 실패 시 None + 로그."""
+    """단일 피드 수집. 네트워크 예외는 1회 재시도(1.5s 텀) — 간헐 타임아웃 1건에도 dead_feeds
+    구성이 요동해 obs 안정본(커밋 생략)이 무력화되던 것 방지(260702 평의회: transient 이중실패 확률 ≈ p²).
+    실패 시 None + 로그. (bozo/빈피드 = 콘텐츠 문제라 재시도 안 함.)"""
     url = feed["url"]
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=REQ_TIMEOUT)
-        r.raise_for_status()
-        parsed = feedparser.parse(r.content)
-        if parsed.bozo and not parsed.entries:
-            log(f"  ⚠ 파싱불가/빈피드: {feed['publisher']} {feed['title']}")
+    for attempt in (1, 2):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=REQ_TIMEOUT)
+            r.raise_for_status()
+            parsed = feedparser.parse(r.content)
+            if parsed.bozo and not parsed.entries:
+                log(f"  ⚠ 파싱불가/빈피드: {feed['publisher']} {feed['title']}")
+                return None
+            return parsed
+        except Exception as e:
+            if attempt == 1:
+                time.sleep(1.5)
+                continue
+            log(f"  ✗ 실패({type(e).__name__}): {feed['publisher']} {feed['title']} — {url}")
             return None
-        return parsed
-    except Exception as e:
-        log(f"  ✗ 실패({type(e).__name__}): {feed['publisher']} {feed['title']} — {url}")
-        return None
 
 
 def parse_time(entry):
@@ -223,19 +229,31 @@ def extract_image(entry):
 
 
 def collect(feeds, hours):
-    """모든 피드를 긁어 기사 리스트 생성 (시간필터 + 중복제거)."""
+    """모든 피드를 긁어 기사 리스트 생성 (시간필터 + 중복제거). 피드별 건강(health) 원장도 함께 반환."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     seen = set()
     articles = []
     ok, dead = 0, 0
+    health = []   # 피드별 {publisher,title,url,ok,n} — 죽은 피드가 stderr로만 사라지던 무음 드리프트 방지(260702)
 
     for feed in feeds:
         parsed = fetch_feed(feed)
         time.sleep(FEED_DELAY)
         if parsed is None:
             dead += 1
+            health.append({"publisher": feed["publisher"], "title": feed["title"],
+                           "url": feed["url"], "ok": False, "n": 0, "fresh": 0})
             continue
         ok += 1
+        # fresh = 시간창 내(또는 시각 미상) 엔트리 수 — fetch 되고 n>0인데 fresh=0이면 '좀비'(콘텐츠 갱신 멈춘 피드).
+        # 실증: JTBC fs.jtbc RSS가 응답·형식 유효인데 2024-10에서 멈춰 수집 기여 0(260702 실측).
+        fresh = 0
+        for e in parsed.entries:
+            pt = parse_time(e)
+            if pt is None or pt >= cutoff:
+                fresh += 1
+        health.append({"publisher": feed["publisher"], "title": feed["title"],
+                       "url": feed["url"], "ok": True, "n": len(parsed.entries), "fresh": fresh})
         for e in parsed.entries:
             link = normalize_link(e.get("link", ""))
             if not link or link in seen:
@@ -258,7 +276,7 @@ def collect(feeds, hours):
             })
 
     log(f"피드 결과: 성공 {ok} / 죽음 {dead} / 수집 수 {len(articles)}건")
-    return articles
+    return articles, health
 
 
 # ── 주요도 산정 (교차등장) ───────────────────────────────────────────
@@ -270,6 +288,8 @@ BURST_WINDOW_MIN = 15
 # 튀지 말고 '풀텍스트 종합 메이저'를 먼저 잇게 = 조선/동아 보수메이저 → 중진보 메이저 순. 통신사(연합·뉴시스)는
 # 풀텍스트지만 종합지·지상파 다음(군소보단 위). 미등재 매체는 _pick_rank 가 최하(len) → 자동 후순위.
 # ⚠️ url/dedup/event_key/cross/클러스터링은 불변 — 이 순위는 '대표 표시·원문 링크' 픽에만 영향(주변부).
+# ⚠️ 중앙일보·한국일보 = 현재 '유령'(feeds.csv 피드 0개 — 중앙 RSS는 공식 종료 페이지 실측·한국일보 RSS 미확인 = 260702).
+#   수집 0이라 픽 매칭도 0(무해 dead entry). 목록엔 유지 — 미래 재수집(신규 피드·네이버API 등) 시 순위 자동 복원.
 PICK_PRIORITY = [
     "조선일보", "동아일보", "중앙일보", "세계일보", "국민일보",   # 보수 메이저(종합·풀텍스트)
     "한국일보", "서울신문", "한겨레신문", "경향신문",            # 중도·중진보 메이저(종합·풀텍스트)
@@ -394,16 +414,41 @@ def main():
     feeds = load_feeds(args.feeds, cats)
     log(f"대상 피드 {len(feeds)}개 (카테고리: {args.categories})")
 
-    articles = collect(feeds, args.hours)
+    articles, health = collect(feeds, args.hours)
+
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    # 피드 건강 원장 — 죽은 피드 관측 가능화(scrape.yml이 안정본을 scraper/obs/로 복사 → daily_health가 리포트).
+    # 전 피드 죽음(articles 0)일 때가 제일 중요한 순간이라 조기 return *앞*에 쓴다. 시각 = KST(§📐 🕘).
+    # ⚠️ 원장 쓰기 = 비치명(try) — 관측층 IO 실패가 코어(articles.json→candidates 갱신)를 못 막게(260702 평의회).
+    try:
+        kst = timezone(timedelta(hours=9))
+        (out / "feed_health.json").write_text(json.dumps({
+            "ts": datetime.now(kst).isoformat(timespec="seconds"),
+            "ok": sum(1 for h in health if h["ok"]),
+            "dead": sum(1 for h in health if not h["ok"]),
+            "feeds": health,
+        }, ensure_ascii=False, indent=1), encoding="utf-8")
+        # obs 커밋용 안정본 — ts·n·fresh(매 런 변동 필드) 제외 = 죽은/좀비 '구성'이 바뀔 때만 내용 변화.
+        # 안 그러면 밤(뉴스 없어 candidates 변동 0) 런의 '커밋 생략'이 전부 커밋으로 바뀜(+68커밋/일 노이즈).
+        # zombie = 응답·형식 유효(ok·n>0)인데 시간창 내 발행 0 = 갱신 멈춘 피드(주간 니치 피드는 일시 오탐 가능 — 정보성).
+        (out / "feed_health_obs.json").write_text(json.dumps({
+            "ok": sum(1 for h in health if h["ok"]),
+            "dead": sum(1 for h in health if not h["ok"]),
+            "dead_feeds": [{"publisher": h["publisher"], "title": h["title"], "url": h["url"]}
+                           for h in health if not h["ok"]],
+            "zombie_feeds": [{"publisher": h["publisher"], "title": h["title"], "url": h["url"]}
+                             for h in health if h["ok"] and h["n"] > 0 and h["fresh"] == 0],
+        }, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log(f"feed_health 기록 실패(비치명·계속): {e}")
+
     if not articles:
         log("수집된 기사 없음 — 피드 URL이 죽었거나 시간범위 내 기사가 없음")
         return
 
     articles = score_crosspost(articles)
     articles.sort(key=lambda a: (a["cross_score"], a["published"] or ""), reverse=True)
-
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
 
     (out / "articles.json").write_text(
         json.dumps(articles, ensure_ascii=False, indent=2), encoding="utf-8")
