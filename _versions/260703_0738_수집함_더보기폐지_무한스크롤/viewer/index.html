@@ -850,7 +850,6 @@
              color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:10px; }
   .sc-more:hover { color:var(--fg); background:rgba(255,255,255,.07); }
   .sc-more:active { transform:scale(var(--press-l,.98)); }
-  .sc-sentinel { height:2px; pointer-events:none; }   /* 무한스크롤 센티널(더보기 버튼 폐지·운영자 260703) — 보이지 않는 바닥 표식, IO가 감지해 자동 추가 렌더 */
   /* ── 수집함 병합(merge·운영자 260625): 토큰 클러스터링서 갈라진 같은 사건을 운영자가 수동으로 묶음(롱프레스→체크→병합). 풀카드 토글(시안 B). localStorage(이 기기). 픽 시 멤버 cluster_members 합쳐 종합요약(기존 alt 메커니즘 재사용·파이프라인 0 변경). ── */
   body.merge-mode .scrap-cols .sc-item { cursor:pointer; -webkit-user-select:none; user-select:none; }
   body.merge-mode .scrap-cols .sc-item.sc-mergeable:not(.sc-sel) { opacity:.72; }
@@ -6155,20 +6154,9 @@ function scFeedArticle(c) {   // 이 후보가 요약돼 피드(DATA=articles.js
   return us.size ? (DATA.find(x => x && x.url && x.has_body && us.has(_normU(x.url))) || null) : null;   // ⚠️ has_body 필수 — 요약 body가 *실제로 있는* 피드 기사만 매치(픽됐으나 분석 미완·실패로 body 없는 stub은 제외 → 클릭이 빈 요약 모달 대신 기사 원문으로 폴백·운영자 260630 재발버그)
 }
 // 보관한도(데이터)는 크게(10일·수천 건) 두되, 화면은 컬럼당 SC_PAGE장만 그려 가볍게 유지.
-// 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → 청크 추가 렌더.
+// 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → '더 보기'로 청크 추가.
 const SC_PAGE = 150;
 const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
-// '더 보기' 버튼 폐지 → 무한 스크롤(운영자 260703 — "hover/클릭 모호 + 누르다 기사 오탭" 교정): 컬럼 바닥의
-// 투명 센티널이 화면 600px 앞에 들어오면 SC_PAGE 추가 렌더(도달 전 미리 채워 끊김 없음 · 페이지 스크롤 구조라 root=viewport).
-// IO 1개 재사용 — 재렌더마다 disconnect 후 새 센티널만 관찰(콜백은 렌더 1회만 = 양 컬럼 동시 교차해도 이중 렌더 방지).
-const _scIO = ('IntersectionObserver' in window) ? new IntersectionObserver(ents => {
-  for (const e of ents) {
-    if (!e.isIntersecting) continue;
-    const key = e.target.dataset.col;
-    _scIO.unobserve(e.target);
-    if (scShown[key] != null) { scShown[key] += SC_PAGE; renderScrap(); break; }   // 재렌더가 남은 센티널 재생성·재관찰
-  }
-}, { rootMargin: '600px 0px' }) : null;   // IO 미지원 구형 = 옛 더보기 버튼 폴백(아래 renderScrap)
 let scFoldOpen = false, _scFoldN = 0;   // 검증대기 접기(Q-1·260702): 토글 상태(재렌더 유지·새로고침 접힘 기본) · 이번 렌더의 접힌 건수(양수=접힘·음수=펼침)
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
 let _scrapSig = '';   // 직전 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · 피드 _feedSig 대응 · 운영자 260621)
@@ -6305,7 +6293,6 @@ function renderScrap() {
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
   // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
-  if (_scIO) _scIO.disconnect();   // 이번 렌더서 교체될 옛 센티널 관찰 해제(detached 노드 참조 누적 방지)
   host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
@@ -6335,19 +6322,12 @@ function renderScrap() {
       col.appendChild(el);
       _scSig += key[0] + candId(arr[i]) + ',';   // 시그니처 누적(칼럼 첫글자+카드ID·순서)
     }
-    if (arr.length > lim) {                                             // 나머지는 보관만 — 스크롤 도달 시 자동 추가(더보기 버튼 폐지·운영자 260703)
-      if (_scIO) {
-        const sent = document.createElement('div');
-        sent.className = 'sc-sentinel'; sent.dataset.col = key; sent.setAttribute('aria-hidden', 'true');
-        col.appendChild(sent);
-        _scIO.observe(sent);
-      } else {                                                          // IO 미지원 구형 브라우저만 옛 버튼 폴백
-        const more = document.createElement('button');
-        more.className = 'sc-more'; more.type = 'button';
-        more.textContent = `더 보기 +${Math.min(SC_PAGE, arr.length - lim)}  ·  남은 ${arr.length - lim}건`;
-        more.onclick = () => { scShown[key] += SC_PAGE; renderScrap(); };
-        col.appendChild(more);
-      }
+    if (arr.length > lim) {                                             // 나머지는 보관만 — 탭하면 추가 렌더
+      const more = document.createElement('button');
+      more.className = 'sc-more'; more.type = 'button';
+      more.textContent = `더 보기 +${Math.min(SC_PAGE, arr.length - lim)}  ·  남은 ${arr.length - lim}건`;
+      more.onclick = () => { scShown[key] += SC_PAGE; renderScrap(); };
+      col.appendChild(more);
     }
     if (key === 'new' && _scFoldN !== 0) {   // 검증대기 접기 토글 — .sc-more 컴포넌트 계승(텍스트 단독 = §📐 라벨 규칙·신규 CSS 0)
       const fold = document.createElement('button');
