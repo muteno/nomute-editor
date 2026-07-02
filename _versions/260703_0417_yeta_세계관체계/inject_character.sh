@@ -9,9 +9,6 @@
 _yc_files() {
   local id="$1"
   echo "apps/yeta/00_지침_캐릭터챗.md"
-  # 세계관(월드 바이블) = 존재할 때만 자동 활성(운영자가 _TEMPLATE_세계관.md 채워 이 이름으로 승격하면 켜짐 · 260703).
-  # ⚠️ 순서 계약: 00(하드룰) → 10(세계 공통 — 페르소나 불변 = 캐시 접두 안정) → 카드(맨 뒤·말투 제1규칙이 최종 우선).
-  [ -f "apps/yeta/10_세계관.md" ] && echo "apps/yeta/10_세계관.md"
   echo "apps/yeta/characters/${id}.md"
 }
 
