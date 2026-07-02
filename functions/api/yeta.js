@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
 
   // 유저 텍스트 절제 + 프롬프트 델리미터 위장 무력화(</user_message> 탈출·<<NOTE>> 스푸핑 차단 — yeta_chat.sh 파서 짝)
   const text = String(body.text || '').slice(0, 4000)
-    .replace(/<\/?user_message>/gi, '').replace(/<<\/?NOTE>>/g, '').trim();
+    .replace(/<\/?user_message>/gi, '').replace(/<<\s*\/?\s*NOTE\s*>>/gi, '').trim();   // i+공백 관대 = sh 관대 파서와 짝(평의회⑤)
   if (!text) return json({ error: '빈 메시지' }, 400);
 
   // 일 상한(KST) — D4 운영자 확정 = 무제한(기본). env YETA_MAX_PER_DAY(양수) 넣을 때만 상한 발동(쿼터 방어 노브는 유지).
@@ -88,6 +88,9 @@ export async function onRequestPost({ request, env }) {
   });
   const remain = cap > 0 ? cap - used - 1 : -1;   // -1 = 무제한(뷰어는 표시 생략)
   if (r.status === 204) return json({ ok: true, remain });
+  // dispatch 실패 = 답장 올 런이 없음 → awaiting 고착 방지: state=error 롤백(뷰어 인라인 실패 버블 · 재전송 유도 · 평의회②)
+  sess.state = 'error'; sess.err = `발사 실패(GitHub ${r.status}) — 다시 보내면 재시도`; delete sess.awaiting_since;
+  await env.YETA_R2.put(key, JSON.stringify(sess), { httpMetadata: { contentType: 'application/json' } });
   return json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 300)}`, remain }, 502);
 }
 
