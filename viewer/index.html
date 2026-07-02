@@ -700,6 +700,14 @@
     background:repeating-linear-gradient(45deg, rgba(15,253,2,.20) 0 5px, rgba(15,253,2,.05) 5px 10px); }
   .sc-got.picking { position:relative; overflow:hidden; background:rgba(15,253,2,.10); }   /* 분석 진행(피드 진입 전) = 움직이는 shine */
   .sc-got:not(.picking) { pointer-events:auto; cursor:pointer; }   /* PICKED = 탭하면 피드로 이동+팝업(Picking…은 비활성 유지) */
+  /* 픽 발사(사유 선택 후) = 초록 게이지 풀필→✓ 체크(unmerge-go/mkbtn 상태머신 계승·운영자 260702) → 그다음 Picking… */
+  .sc-got.firing { color:var(--on-accent); border-color:var(--accent); overflow:hidden; pointer-events:none;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(rgba(15,253,2,.12),rgba(15,253,2,.12));
+    animation:goFill .72s linear forwards; }
+  .sc-got.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); pointer-events:none; }
+  .sc-got .gck { width:16px; height:16px; }
+  .sc-got .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
+  @media (prefers-reduced-motion:reduce) { .sc-got.firing { animation-duration:.2s; } .sc-got .gck path { animation:none; stroke-dashoffset:0; } }
   .sc-got.picking > span { position:relative; z-index:1; }
   .sc-got.picking::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%;
     background:linear-gradient(90deg,transparent,rgba(15,253,2,.5),transparent); transform:translateX(-120%);
@@ -6506,9 +6514,23 @@ function applyTriage(act, c, el, reason, text) {
     const alt = pickAlt(c).slice(0, 8);
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) }).catch(() => {});
   }
-  if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 'Picking…'(분석 중) → 피드 진입 시 PICKED
-    if (el) { el.classList.add('picked'); if (el._rsn) closeRsn(el._rsn); const bot = el.querySelector('.sc-bot'); if (bot) bot.innerHTML = '<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>'; }
-    pollPicking();   // 분석 완료(피드 등장)까지 폴 → 떴으면 PICKED, 실패면 분석 실패
+  if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 초록 게이지→✓ 체크→'Picking…'(분석 중) → 피드 진입 시 PICKED (운영자 260702·재시도 패턴 계승 · api/pick은 위서 이미 발사=모션 순수 시각)
+    if (el) {
+      el.classList.add('picked'); if (el._rsn) closeRsn(el._rsn);
+      const bot = el.querySelector('.sc-bot');
+      const _pk = () => { if (bot && bot.isConnected) bot.innerHTML = '<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>'; };
+      if (bot) {
+        const _red = matchMedia('(prefers-reduced-motion:reduce)').matches;
+        bot.innerHTML = '<div class="sc-got firing" aria-label="픽 발사"><span>전송</span></div>';   // 초록 게이지 풀필(goFill .72s)
+        const go = bot.querySelector('.sc-got');
+        setTimeout(() => {
+          if (!go || !go.isConnected) return;   // 그새 재렌더면 중단(무해)
+          go.classList.remove('firing'); go.classList.add('okdone'); go.innerHTML = '<svg class="gck" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7"/></svg>';   // ✓ 체크(goTick)
+          setTimeout(_pk, _red ? 60 : 440);   // ✓ 잠깐 보인 뒤 Picking
+        }, _red ? 90 : 740);   // goFill .72s 채움 후
+      }
+    }
+    pollPicking();   // 분석 완료(피드 등장)까지 폴 → 떴으면 PICKED, 실패면 분석 실패 (모션과 독립·즉시 시작)
   } else {
     collapseCard(el);   // down/pass = 접혀 사라짐
   }
