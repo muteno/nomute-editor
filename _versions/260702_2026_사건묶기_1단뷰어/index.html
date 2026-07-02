@@ -6094,24 +6094,6 @@ function mergeDecorate(anchor, memCands) {
     cluster_members: cm,
     _mergeCount: memCands.length, _mergeMembers: memCands.map(candId) };
 }
-// AI 확정 사건 묶기(group_judge · 운영자 260702) — 같은 group_id 카드를 자동 병합(수동 병합과 동일 mergeDecorate 파이프 = UI·픽·랭킹댐핑 공짜).
-// group_id는 breaking-judge의 group_judge(opus)가 '같은 실제 사건' YES 확정한 그룹에만 박힘 — 렉시컬 단독 병합 금지 선례(260625 안산↔청주) 준수.
-// 수동 병합(applyMerges)이 먼저 접은 멤버는 pool에 이미 없음 = 수동 우선 자연 보장. 홀로 남은 group 카드는 그대로(병합 없음).
-function applyAutoGroups(pool) {
-  const by = new Map();
-  for (const c of pool) if (c.group_id) { const a = by.get(c.group_id) || []; a.push(c); by.set(c.group_id, a); }
-  if (!by.size) return pool;
-  const drop = new Set(), deco = new Map();
-  for (const [gid, cards] of by) {
-    if (cards.length < 2) continue;
-    const anchor = cards.find(c => c.url === gid) || cards.slice().sort((a, b) => (b.cross || 0) - (a.cross || 0))[0];
-    const mem = cards.filter(c => c !== anchor);
-    deco.set(candId(anchor), mergeDecorate(anchor, mem));
-    mem.forEach(c => drop.add(candId(c)));
-  }
-  if (!deco.size) return pool;
-  return pool.map(c => deco.get(candId(c)) || c).filter(c => !drop.has(candId(c)));
-}
 // 병합 적용 = pool(dedup된 후보)서 멤버 카드 접고 앵커는 mergeDecorate. 멤버가 pool 밖(타 필터로 빠짐)이면 CANDS 폴백으로 찾음.
 function applyMerges(pool) {
   const M = mergesAll();
@@ -6154,7 +6136,7 @@ function renderScrap() {
   const failSet = new Set(failed.map(c => candId(c)));   // 전체 실패 candId = 칼럼서 제외(누설 방지 — dedup 전 집합)
   failed.sort((a, b) => scTs(b) - scTs(a));   // 최신 실패 먼저
   const failedShown = scDedup(failed);   // 트레이 표시도 동일제목 중복 접기(분신술2 — 트레이 미적용 보강)
-  const pool = applyAutoGroups(applyMerges(scDedup(base.filter(c => {   // 📍 전역 dedup(칼럼 분배 *전* 1회) = 같은 제목 대표가 신규/누적 경계로 갈려 둘 다 뜨던 누설 차단(분신술2) · applyMerges = 운영자 수동 병합 fold(멤버 접고 앵커 종합·운영자 260625) · applyAutoGroups = AI 확정 사건 묶기(group_id·260702 — 수동 뒤 = 수동 우선)
+  const pool = applyMerges(scDedup(base.filter(c => {   // 📍 전역 dedup(칼럼 분배 *전* 1회) = 같은 제목 대표가 신규/누적 경계로 갈려 둘 다 뜨던 누설 차단(분신술2) · applyMerges = 운영자 수동 병합 fold(멤버 접고 앵커 종합·운영자 260625)
     const r = rt[candId(c)] || {};
     if (failSet.has(candId(c))) return false;                       // 실패 = 트레이로(칼럼서 제외 = 카드 종속분리)
     if (r.dismissed && !pickState(c)) return false;                 // 👎 관심없음 = 제외 · 단 타기기/파이프라인이 픽한 건(전역 pickState)은 잔류→PICKED 표시(운영자 260620 B1)
@@ -6162,7 +6144,7 @@ function renderScrap() {
     if (r.score >= 1 && !ratedKeep.has(candId(c))) return false;    // 별점 매긴 건 = 다음 갱신 때 제외(이번 세션은 유지·DB엔 남김)
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
-  }))));
+  })));
   if (!pool.length && !failedShown.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = ''; return; }
   host.classList.add('scrap-cols');
   host.innerHTML = (failedShown.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">분석 실패 ${failedShown.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;

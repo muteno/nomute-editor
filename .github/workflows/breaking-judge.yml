@@ -27,6 +27,10 @@ on:
         description: 'judge --safe-mode 카나리아(CLAUDE.md 로드 스킵 = cache_w 절감 시험 · 기본 OFF)'
         type: boolean
         default: false
+      group_canary:
+        description: '사건 묶기(group_judge) 카나리아 1런(기본 OFF — §📰 플래그 절차 · 실측 후 env GROUP_ON 승격)'
+        type: boolean
+        default: false
 
 concurrency:
   group: breaking-judge
@@ -134,6 +138,23 @@ jobs:
           fi
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           python3 .github/scripts/gate_judge.py
+
+      # 사건 묶기 판정 — 토큰 클러스터링서 갈라진 같은 사건을 AI가 확정(YES→group_id → 뷰어 자동 병합·mergeDecorate 파이프).
+      # ⚠️ 카나리아 OFF 기본(§📰 라이브 플래그 절차): dispatch inputs.group_canary=true 단건 실측 → 통과 시 env GROUP_ON: '1' 승격.
+      # 모델 = opus 4.8(사건 동일성 = 정밀 판정·autopick _ai_same 선례 · 운영자 260702 "탄탄하게") · 도장 캐시 = 같은 그룹 재판정 0.
+      - name: 사건 묶기 판정 (claude -p · group_judge)
+        if: steps.chk.outputs.pending != '0' && (inputs.group_canary || env.GROUP_ON == '1')
+        env:
+          GROUP_SAFE: '1'   # judge류 공통 --safe-mode(§📰 · 판정은 stdin 룰북만 = CLAUDE.md 불필요)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+        run: |
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN 비어있음 — 사건 묶기 생략(다음 런 재시도)"; exit 0
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          python3 .github/scripts/group_judge.py
 
       - name: Commit (breaking 확정)
         if: steps.chk.outputs.pending != '0'
