@@ -1845,7 +1845,7 @@
   .ask-inrow .asktawrap { flex:1 1 0; min-width:0; }   /* 🔑 입력칸이 남은 폭을 채움(첨부 아이콘 46px 제외) — flex-grow 누락 시 textarea가 내재폭(cols)만큼만 좁게 뜨고 첨부 아이콘이 중앙에 붕 뜨던 레이아웃 깨짐 픽스(운영자 260702) */
   .ask-inrow .askattach { align-self:flex-start; margin-top:4px; }   /* 첨부 아이콘 = 입력칸 상단 정렬(세로로 긴 입력칸 중앙 붕뜸 방지 · 하단 걸침 복사/붙여넣기 클립과 상·하 분리) */
   /* 첨부 썸네일 = 전용 풀폭 행(첨부 시만·3장 다 보임·평의회 레이아웃 R3) */
-  .askimgs { display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 0 4px; padding-top:2px; }
+  .askimgs { flex:1 1 auto; min-width:0; display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0; }   /* 하단행 안에서 썸네일 = 좌측 flex-grow(spacer 역할) → [이미지][전송]이 우측·썸네일 세로중앙 정렬(운영자 260702) */
   .askimgs:empty { display:none; }   /* 첨부 0장 = 행 접힘(레이아웃 점프 최소·R4) */
   .askimg { position:relative; flex:none; width:64px; height:64px; border-radius:var(--r-m,12px); overflow:hidden; border:1px solid var(--line2); }
   .askimg img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }   /* 탭=확대(기존 openLightbox 재사용·평의회) */
@@ -1853,10 +1853,9 @@
   .askimg-x::before { content:""; position:absolute; top:-8px; bottom:-8px; left:-5px; right:-5px; }   /* 터치 확장(가로 좁게=인접 오탭 방지·평의회 R2·.timg-acts 표준) */
   .askimg-x svg { width:11px; height:11px; }
   .askimg-kb { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#cdd; font-size:8.5px; text-align:center; padding:1px 0; pointer-events:none; }
-  .askbot { display:flex; align-items:center; gap:12px; margin-top:12px; }   /* [상태][spacer][이미지 토글][전송] · 첨부·🖼는 위(반갈·전용 행)로 분리 → .askclip 걸침 클리어는 .ask-inrow margin-bottom이 담당(운영자 260702·평의회) */
-  .ask-spacer { flex:1 1 0; min-width:0; }
+  .askbot { display:flex; align-items:center; gap:12px; margin-top:8px; }   /* [썸네일(flex-grow)][상태][이미지][전송] 한 행·세로중앙 정렬 = 썸네일 세로중앙에 버튼 맞춤·위 여백 축소(운영자 260702) */
   /* 이미지 생성 토글 = 「이미지」 단어(볼드 없음·네온그린 켜짐/회색 꺼짐 · .onoff 결 계승 · 운영자 260702) */
-  .genimg-tg { flex:none; cursor:pointer; font-weight:500; font-size:var(--fs-label,13px); letter-spacing:.02em; color:var(--accent); -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:5px 4px; transition:color .15s, transform .1s; }
+  .genimg-tg { flex:none; margin-left:auto; cursor:pointer; font-weight:500; font-size:var(--fs-label,13px); letter-spacing:.02em; color:var(--accent); -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:5px 4px; transition:color .15s, transform .1s; }   /* margin-left:auto = 썸네일 없어도 [이미지][전송] 우측 고정 */
   .genimg-tg.off { color:var(--mut); }
   .genimg-tg:active { transform:scale(var(--press-m,.92)); }
   /* 🖼 첨부 픽토 = 좁은 플레이트없는 칸·픽토 중앙·누름 svg만 축소·✓N 배지는 픽토 위(운영자 260702·평의회 미관·계승) */
@@ -1875,6 +1874,7 @@
   @keyframes askAttachPop { 0%{ transform:scale(0); } 60%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
   @media (prefers-reduced-motion:reduce) { .askattach-badge.pop { animation:none; } }
   .askstatus { flex:0 1 auto; min-width:0; font-size:12px; color:var(--mut); }   /* 첨부 썸네일(askimgs)이 flex1 좌측 차지 → 상태문구는 버튼 옆 작게(평소 빈칸) · 운영자 260630 */
+  .askstatus:empty { display:none; }   /* 평소 빈칸 = 자리 안 차지(에러·전송실패 때만 나타남 · 운영자 260702) */
   /* 빈 입력 안내 = 입력창 안 placeholder처럼 보이는 반짝 오버레이(내용 있으면 숨김·운영자 260622) */
   .askph { position:absolute; top:12px; left:14px; right:42px; font-size:14px; line-height:1.6; color:var(--mut); pointer-events:none; }   /* 정적 placeholder = 열자마자 반짝이며 재촉 안 함 · 빈 채 전송 시에만 .attn 반짝(운영자 260622) */
   .askph.hide { display:none; }
@@ -2178,10 +2178,9 @@
       </div>
       <label class="askattach" id="askAttach" title="이미지 첨부" aria-label="이미지 첨부"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></span><span class="askattach-badge" id="askAttachBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span id="askAttachCnt"></span></span><input id="askFile" type="file" accept="image/*" multiple hidden></label>
     </div>
-    <div class="askimgs" id="askImgs"></div>
     <div class="askbot">
+      <div class="askimgs" id="askImgs"></div>
       <span class="askstatus" id="askStatus"></span>
-      <span class="ask-spacer"></span>
       <span class="genimg-tg" id="genImgTg" role="button" tabindex="0" aria-pressed="true" title="AI 썸네일 생성 켜기/끄기 (검색 이미지는 항상 가져옴)">이미지</span>
       <button class="asksend" id="askSend" type="button"><span>전송</span></button>
     </div>
