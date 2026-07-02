@@ -6,7 +6,8 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PROMPT_FILE="prompts/card-make.md"
-MODEL="claude-opus-4-8"
+source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 7스크립트 하드코딩 1점화 · 260702)
+MODEL="$PIPE_MODEL"
 TARGET="${1:-all}"
 MODE="${2:-full}"            # full=클로드+렌더 / text=텍스트만(자동 카드플랜·제미나이0) / shoot=렌더만(텍스트 재사용)
 MAX_BATCH="${MAX_BATCH:-3}"  # all 배치 상한 — 무상한 Opus 폭증 차단(나머지는 다음 회차가 처리·중복skip이 페이징)
@@ -140,6 +141,10 @@ fi
 shopt -s nullglob
 targets=()
 if [ "$TARGET" = "all" ]; then
+  # 지침 변경 재생성 지평선(14인 평의회 ⑧ SYS-03 · 260702) — 지침 1자 수정 = text_done 백로그 전량(230+건)
+  #   재생성 폭탄이던 것을 최근 N일(기본 14일)로 캡. 옛 기사는 운영자가 그 기사를 쓸 때(단일 지정·shoot·edit =
+  #   무게이트) 갱신. env CARD_REGEN_SINCE=YYMMDD 로 오버라이드(0이면 지평선 OFF = 구 동작).
+  CARD_REGEN_SINCE="${CARD_REGEN_SINCE:-$(TZ='Asia/Seoul' date -d '14 days ago' +%y%m%d 2>/dev/null || echo 0)}"
   # 최신(파일명 = YYMMDD-HHMM…) 먼저 — 방금 공유한 기사가 옛 백로그에 밀리지 않게(파일명 ASCII-safe).
   for q in $(ls -1 queue/*.md 2>/dev/null | sort -r); do
     stem="$(basename "$q" .md)"
@@ -147,6 +152,11 @@ if [ "$TARGET" = "all" ]; then
     # 지침 게이트 — 카드의 지침 버전이 현재와 다르면(갱신됨) 재생성 대상에 포함.
     cv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     [ "$cv" = "$GVER" ] && continue   # 지침 동일 = 최신, 스킵
+    # 재생성 지평선 — 이미 카드가 있는(cards.md 존재) 옛 기사는 지침이 stale이어도 자동 재생성 제외.
+    sd="${stem%%-*}"
+    if [ "$CARD_REGEN_SINCE" != "0" ] && [[ "$sd" =~ ^[0-9]{6}$ ]] && [ "$sd" -lt "$CARD_REGEN_SINCE" ] && [ -s "cards/$stem/cards.md" ]; then
+      continue   # 지평선 이전 백로그 — 뷰어 stale 감지는 그대로 남음(운영자 수요 시 단일 재생성)
+    fi
     # ⛔ done 보호(운영자 승인 260618) — 이미 '슛'해 이미지까지 만든 카드(done/fired_partial/렌더이미지·scenes 보존본)는
     #    지침이 바뀌어도 자동 재생성하지 않는다(이미지·운영자 편집 유실 방지). 반영은 운영자 재촬영(슛)으로.
     cst="$(grep -o '"state":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
@@ -196,12 +206,41 @@ for q in "${targets[@]}"; do
     # --disallowedTools + --max-turns = 헤드리스 무중단(파일쓰기/권한대기/툴 무한루프 차단, analyze.sh와 동일).
     # timeout 900(15분) = analyze 요약콜과 동일·뷰어 genStuck(15분 실패표시)와 정합(260619 1500→900↓:
     #   백엔드가 25분까지 슬롯 붙들어 15~25분이 낭비였음 — 프론트는 이미 15분에 실패라 운영자 재시도. 단발 Opus콜이라 15분이면 충분).
+    # thumb_dispatch 해설(라이브러리 조회·가변부 = GVER 무영향 · 14인 평의회 ⑦ LIB-05 · 260702) —
+    #   analyze가 고른 연출 코드(AG/LGT/SG/DF)가 카드 LLM에겐 해독 불가 문자열로 전달되던 계승 회로 보수.
+    #   thumb_gen._load_lib 재사용(SSOT) · 코드 미존재·파일 부재 = 빈 문자열(fail-soft·현 동작 유지).
+    disp="$(grep -m1 '^thumb_dispatch:' "$q" 2>/dev/null | sed -E 's/^thumb_dispatch:[[:space:]]*"?//; s/"[[:space:]]*$//')"
+    disp_note=""
+    if [ -n "${disp// }" ]; then
+      disp_note="$(DISP="$disp" python3 - 2>/dev/null <<'PY'
+import os, sys
+sys.path.insert(0, os.path.join(".github", "scripts"))
+try:
+    import thumb_gen as tg
+    lib = tg._load_lib()
+    out = []
+    for code in os.environ.get("DISP", "").replace(",", " ").split():
+        kw = lib.get(code.strip())
+        if kw:
+            out.append("%s = %s" % (code.strip(), kw))
+    print("\n".join(out[:6]))
+except Exception:
+    pass
+PY
+)"
+    fi
+    if [ -n "${disp_note// }" ]; then
+      disp_note="
+
+[참고: thumb_dispatch 코드 해설 — analyze가 이 사건을 보고 고른 연출 코드의 라이브러리 정의다. §라이브러리 계승 규칙대로 조명 톤·정조만 비주얼 키노트로 상속하고, 앵글·샷 코드를 카드 N장에 복제하지 마라(카드 앵글은 카드마다 분산).]
+${disp_note}"
+    fi
     fp="$(cat "$PROMPT_FILE")
 
 ${GBLOCK}
 
 [큐레이션 다이제스트 — 이 기사로 카드뉴스 MD를 만든다]
-$(cat "$q")"
+$(cat "$q")${disp_note}"
     # 인라인 재시도 — API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(analyze·ask와 동일·260622).
     #   성공(필수 헤더 존재)·CARDS_FAILED(막다른길)는 즉시 탈출. 과부하 신호일 때만 재시도(is_transient).
     # ── 폭주(runaway) 교정 재시도 (운영자 260630 · 원인 대응) ──
@@ -280,9 +319,45 @@ $(cat "$q")"
       fail=$((fail+1)); echo "::endgroup::"; continue
     fi
 
-    # 모델 사족 방어 — 첫 '#' 줄(제목)부터 저장
-    printf '%s\n' "$out" | sed -n '/^#/,$p' > "cards/$stem/cards.md"
+    # ── 규격 린트 + 교정 재시도 1회 (14인 평의회 ⑤⑧ SYS-02 · 260702) ──
+    #   합성기 물리 제약(줄≤4·hangul≤18·weight≤19.5·빈줄0·별표짝)·비ASCII 혼입을 슛(=Gemini 과금) *전에* 검사.
+    #   위반이면 위반 목록을 명시한 교정 프리픽스로 1회만 재생성(비용 바운드 — 폭주 교정과 동일 골격),
+    #   재실패면 저장은 유지(비차단·::warning) — 렌더 단계 실패(과금 후)보다 언제나 싸다.
+    printf '%s\n' "$out" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.tmp"
+    lint_out="$(python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.tmp" 2>&1)"; lint_rc=$?
+    if [ $lint_rc -ne 0 ]; then
+      echo "  ⚠️ 규격 린트 위반 — 교정 재시도 1회"
+      printf '%s\n' "$lint_out" | sed 's/^/    /'
+      LINT_PREFIX="⚠️⚠️ [규격 교정 — 강제]: 직전 시도가 아래 합성기 규격을 위반했다. 위반 항목만 고쳐 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라(내용·구성은 유지·규격만 교정 · 응답 첫 글자부터 \`# {제목}\`).
+[위반 목록]
+${lint_out}
+
+"
+      out2="$(printf '%s' "${LINT_PREFIX}${fp_base}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+            --model "$MODEL" --effort max \
+            --allowedTools "WebFetch,WebSearch" \
+            --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
+            --max-turns 40 2>/dev/null)"
+      if [ -n "${out2// }" ] && grep -qm1 '^### \[카드 1\]' <<<"$out2"; then
+        printf '%s\n' "$out2" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.retry"
+        if python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.retry" >/dev/null 2>&1; then
+          echo "  ✓ 교정 재시도 통과 — 교정본 채택"
+          cp "/tmp/${stem}.cards.retry" "/tmp/${stem}.cards.tmp"
+        else
+          echo "::warning::[$stem] 규격 교정 재시도도 위반 잔존 — 원본 저장(비차단·렌더 단계 방어에 위임)"
+        fi
+      else
+        echo "::warning::[$stem] 규격 교정 재시도 무출력/양식 위반 — 원본 저장(비차단)"
+      fi
+    fi
+    # prev 보존(재생성 A/B 비교 원본 · 14인 평의회 ⑪ LOOP-05) — 1세대만(덮어쓰기·뷰어 미노출)
+    [ -s "cards/$stem/cards.md" ] && cp "cards/$stem/cards.md" "cards/$stem/cards.prev.md"
+    mv "/tmp/${stem}.cards.tmp" "cards/$stem/cards.md"
     pv="$GVER"
+    # 커버리지 소프트 경보(요약→카드 알맹이 증발 · 14인 평의회 ② SYS-01 · 비차단 · 248쌍 실측 기반 HS≥2 게이트)
+    cov_out="$(python3 .github/scripts/card_gate.py coverage "$q" "cards/$stem/cards.md" 2>&1)"; cov_rc=$?
+    printf '%s\n' "$cov_out" > "cards/$stem/coverage.log"
+    [ $cov_rc -eq 2 ] && echo "::warning::[$stem] 요약→카드 알맹이 누락 의심(고신호 ≥2) — 슛 전에 '텍스트만 수정'으로 복원 검토: $(printf '%s' "$cov_out" | grep -m1 'COV 플래그')"
   fi
 
   state="text_done"

@@ -7,7 +7,8 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
-MODEL="claude-opus-4-8"
+source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
+MODEL="$PIPE_MODEL"
 INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
 RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
 THIN_BYTES=900          # 본문 '충분' 기준(바이트·wc -c=로케일무관) ≈ 한글 ~250자(라벨 제외 본문 ~210자). 이보다 짧으면 통신사·제목스텁(뉴시스·연합 등) 의심 → 같은사건 더 완전한 기사 탐색. fetch_article 게이트(한글<200자=빈출력≈600B)보다 충분히 높고, 정상 단신 오탐은 줄임(평의회 권고 260622)
@@ -340,6 +341,9 @@ ${extracted}"
     n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
   fi
   printf '%s\n' "$out" > "$outfile"
+  # Fact↔자유요약 커버리지 참고 로그(비차단 · 14인 평의회 ② SYS-01 경량판 · 260702) — P1 단일 병목(자유요약)의
+  #   수치 누락을 Actions 로그로 가시화(프롬프트 쪽 '내부 대조' 지시와 상호 검증 쌍 · exit 항상 0).
+  python3 .github/scripts/card_gate.py factcov "$outfile" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$f"
   rm -f "pending/${base}.retry"   # 과부하 후 회복 성공 = 재시도 마커 정리(뷰어 '재시도 중' 해제)
   echo "${title:-$id}" >> /tmp/analyzed_titles.txt
