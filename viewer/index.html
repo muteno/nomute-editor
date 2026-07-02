@@ -637,7 +637,7 @@
   .scrap-col.green .sc-item.pickfail, .scrap-col.black .sc-item.pickfail { border-color:rgba(255,176,46,.5); }
   body.has-pickfail:not(.has-breaking) .profile { border-radius:50%; animation:profFail 1.7s ease-in-out infinite; }   /* 실패·속보 둘 다 빨강(운영자 요청) · 속보 있으면 그게 우선(중복 애니 방지) */
   @keyframes profFail { 0%,100% { box-shadow:0 0 0 2px #ff3b3b, 0 0 8px rgba(255,60,50,.45); } 50% { box-shadow:0 0 0 2px #ff5a4a, 0 0 18px rgba(255,85,60,.8); } }
-  .nm-toast.fail { background:linear-gradient(135deg, rgba(42,30,11,.95), rgba(20,15,9,.95)); border-color:rgba(255,176,46,.55);
+  .nm-toast.fail { background:linear-gradient(135deg, rgba(42,30,11,.86), rgba(20,15,9,.86)); border-color:rgba(255,176,46,.55);   /* 글래스모피즘 = 기본 긴급 토스트(.86)와 통일 · blur18 상속(운영자 260702) */
     box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,176,46,.22); }
   .nm-toast.fail .tg { background:linear-gradient(135deg,#ffae34,#ff7a2f); box-shadow:0 0 8px rgba(255,176,46,.5); }
   .nm-toast.fail b { color:#ffe9cf; }
@@ -5575,7 +5575,7 @@ async function loadSocial() {
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 🚨배지·핀·최신 공용(grade≥2) — 'grade1 경미인데 ⚡이슈' 모순 차단(260617). ⚠️ 토스트·점등은 isAlert(grade≥3)로 분리(운영자 260622).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
 const isAlert = c => !!c.breaking && c.grade != null && c.grade >= 3;   // 📢 화면알림(점등·토스트)·앱푸시·자동요약 공용 = breaking AND grade≥3(대형/엄중) · 운영자 260622 3단위계: 앱푸시긴급(grade≥3·알림류)⊂긴급(grade≥2·🚨배지·핀)⊂일반 · 이슈(⚡)는 별개 개념 · 미채점(null)=제외.
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked; });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD(머리표junk)·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<3 제외 → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단·앵글10 B2) · 확인✓ 누르면 점등 꺼짐.
+const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && !pickState(c); });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·처리분(action/score/picked/dismissed)·확인(ack·전 기기)·AI 경중<3 제외. ⚠️ +pickState 제외(운영자 260702): 자동픽(auto_pick_breaking = grade≥3·cross≥2·<4h 자동요약)·수동픽으로 이미 분석중/완료/실패(picking·settled·failed)인 건은 토스트서 빼 '자동요약 중인데 PICK' 중복표시 차단 → PICK은 자동픽 안 되는 긴급(cross<2 등)만. 실패는 fail 토스트가 담당. → 토스트풀 ⊆ 렌더풀(scGoTo 헛탭 차단).
 function detectBreaking() {
   // 미처리 긴급 큐 = breakingNow()(isAlert·grade≥3·<4h·미픽/미확인/미패스). 한 건씩 상주 토스트로.
   // '체크(확인) 전까진 계속'(운영자 260702) = 처리(ack/pick/pass)돼 큐서 빠질 때까지 유지 · 나이 4h↑면 자연 소멸.
