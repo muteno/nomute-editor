@@ -404,6 +404,46 @@ def check_cat_kw():
     return rc
 
 
+_ISS_REGEX_NAMES = ('BJ_CRASH', 'BJ_MKT', 'BJ_HEAD', 'BJ_PR')
+
+def check_issue_badge_parity():
+    """⚡이슈 배지 게이트 viewer(issCross) ↔ build-viewer(issEligible) 규칙 동일 하드게이트(260702 · 10인 검증7).
+    배지 규칙이 두 파일에 이중 구현(수집함=렌더타임·피드=빌드타임)이라 한쪽만 고치면 수집함↔피드 배지
+    드리프트 — 주석 계약을 기계로 강제(check_cat_kw 선례). 검사: ISS_CROSS_MIN 값 + BJ_* 4종 정규식
+    바이트 동일 + grade3 우회(`=== 3`·cross 8) 마커 양쪽 존재."""
+    rc = 0
+    try:
+        js = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        bv = open(os.path.join(ROOT, 'build-viewer.mjs'), encoding='utf-8').read()
+    except Exception as e:
+        print('⚠️ check_issue_badge_parity 스킵(파일):', e); return 0
+    bad = []
+    def _iss_min(src, tag):
+        m = re.search(r'const ISS_CROSS_MIN = (\d+);', src)
+        if not m: bad.append('%s: ISS_CROSS_MIN 선언 못 찾음' % tag); return None
+        return m.group(1)
+    a, b = _iss_min(js, 'viewer'), _iss_min(bv, 'build-viewer')
+    if a and b and a != b: bad.append('ISS_CROSS_MIN 불일치: viewer=%s build-viewer=%s' % (a, b))
+    for name in _ISS_REGEX_NAMES:
+        ma = re.search(r'const %s = /(.+?)/;' % name, js)
+        mb = re.search(r'const %s = /(.+?)/;' % name, bv)
+        if not ma or not mb:
+            bad.append('%s 정규식 선언 못 찾음(viewer=%s·build=%s)' % (name, bool(ma), bool(mb))); continue
+        if ma.group(1) != mb.group(1):
+            bad.append('%s 정규식 드리프트:\n      viewer: /%s/\n      build : /%s/' % (name, ma.group(1), mb.group(1)))
+    for src, tag in ((js, 'viewer issCross'), (bv, 'build-viewer issEligible')):
+        line = re.search(r'const issCross = .+|return \(cr >= ISS_CROSS_MIN.+', src)
+        if not line or '=== 3' not in line.group(0) or '>= 8' not in line.group(0):
+            bad.append('%s: grade3 우회(=== 3 · cross>=8) 마커 부재/드리프트' % tag)
+    if bad:
+        print('❌ 이슈 배지 게이트 viewer↔build-viewer 드리프트(한쪽만 수정 = 수집함↔피드 배지 불일치):')
+        for x in bad: print('  -', x)
+        rc = 1
+    else:
+        print('✅ 이슈 배지 패리티 — ISS_CROSS_MIN·BJ_* 4종 정규식·grade3 우회 = viewer↔build-viewer 동일.')
+    return rc
+
+
 _INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
 _AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
 
@@ -667,6 +707,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_cat_kw 스킵:', e)
+    try:
+        if check_issue_badge_parity() != 0:   # ⚡이슈 배지 게이트 viewer↔build-viewer 규칙 동일(하드 게이트 — 한쪽만 수정=수집함↔피드 배지 드리프트·260702 10인 검증7)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_issue_badge_parity 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1

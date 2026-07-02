@@ -6432,11 +6432,11 @@ const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000)
 const ISS_CROSS_MIN = 10;   // 8→10(260702): "오늘 cr10 = 확대 전 cr8" 실측 환산(스냅샷당 cross≥8 클러스터 5.3→12.35 인플레 보정) · D+3~7 compare_collected 재측정으로 10↔12 재확인 예정.
 const issGrade = c => c.grade == null || c.grade >= 2;   // 🚨긴급(isBreaking)과 동일 게이트 — null(미채점) 관용 필수(strict ≥2 금지 = 갓 도착 미채점 대형 보호 · gate_judge 도달률 100% 실측이라 통상 전부 채점됨).
 const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건(코스피 폭락 등)이면 컷 면제
-const BJ_MKT = /(증시|코스피|코스닥|환율|유가|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '환율마감'만 다뤄 '출발'류 보강)
+const BJ_MKT = /(증시|코스피|코스닥|환율|유가(?!족)|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '환율마감'만 다뤄 '출발'류 보강 · '유가족…마감' 오컷 방지 lookahead = 10인 검증5)
 const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — JUNK_HEAD와 달리 칼럼엔 잔존)
-const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|공시|합작사|출자)/;   // 기업 PR·공시 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용)
+const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용 · ⚠️'공시' 제외 = 공시가격[부동산 정책]·공공시설[복지]·공시송달[사법] substring 오컷 실증 → 기업공시는 '지분율' 등이 커버 · 10인 검증5)
 const badgeJunk = c => { const t = c.title || ''; return (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t); };
-const issCross = c => (c.cross || 0) >= ISS_CROSS_MIN && issGrade(c) && !badgeJunk(c);   // 이슈 배지 cross 경로(aged-breaking 경로는 별도 = isBreaking이 이미 grade 게이트 내장)
+const issCross = c => ((c.cross || 0) >= ISS_CROSS_MIN || (c.grade === 3 && (c.cross || 0) >= 8)) && issGrade(c) && !badgeJunk(c);   // 이슈 배지 cross 경로 — grade3(AI확정 대형)만 옛 임계 8 유지(인플레 보정 예외: 저cross 국제 대형재난[미얀마 내전·베네수엘라 강진]이 배지 잃던 비대칭 구제 = §1 "중요한 게 묻히면 안 됨" · 10인 검증6). aged-breaking 경로는 별도(isBreaking이 grade 게이트 내장).
 const scBadgeType = c => {
   // 긴급/이슈 나이 = 발행나이·수집(first_seen)나이 中 *큰 값* → 둘 다 <4h여야 긴급(피드 brkIssueKind와 동일 원칙·운영자 260623). scTs는 이미 발행우선이라 통상 발행기준 유지, 발행<수집 오기록 엣지만 추가 방어.
   const pubAge = (Date.now() - scTs(c)) / 3600000, fsT = Date.parse(c.first_seen || ''),
@@ -6445,8 +6445,8 @@ const scBadgeType = c => {
   if (ageH >= FAST_MAX_H && ageH < 24 && (issCross(c) || isBreaking(c))) return 'iss';
   return ''; };
 const BADGE_HTML = { brk: '<span class="sc-badge brk">긴급</span>', iss: '<span class="sc-badge iss">이슈</span>' };   // 인라인 메타 텍스트(긴급=빨강·이슈=노랑 · 글래스 칩 폐지·운영자 260621)
-// scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16 — 배지(ISS_CROSS_MIN 10)보다 엄격한 독립 층(옛 '배지 8×2' 관계는 260702 배지 10 상향으로 소멸·값 16은 불변 유지). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
-const scLit = c => ((Date.now() - scTs(c)) / 3600000) < 12 && (c.cross || 0) >= 16;
+// scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16 AND 이슈 게이트(grade·정형컷) — 배지(ISS_CROSS_MIN 10)보다 엄격한 독립 층(옛 '배지 8×2' 관계는 260702 배지 10 상향으로 소멸·값 16은 불변 유지). ⚠️ 게이트 상속(260702·10인 검증3): 안 하면 cross≥16 시황/PR이 "배지는 컷됐는데 노랑 글로우만 점등"하는 모순(환율출발 cr16 실측). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
+const scLit = c => ((Date.now() - scTs(c)) / 3600000) < 12 && (c.cross || 0) >= 16 && issGrade(c) && !badgeJunk(c);
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
   '<div class="scrap-col black"><div class="scrap-coltitle ct-new">신규</div><div class="scrap-list" data-col="new"></div></div>';

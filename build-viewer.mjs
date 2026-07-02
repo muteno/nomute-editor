@@ -64,13 +64,13 @@ try {
 // 이슈 = cross≥10 AND grade(null‖≥2) AND !badgeJunk. 배지 강조 전용 — 칼럼 진입(CROSS_MIN 8)·랭킹·fbJunk veto와 무관.
 const ISS_CROSS_MIN = 10;   // 8→10(260702): 수집확대(6/26 분야+7/2 경제지) cross 인플레 2.5배 보정 — "오늘 cr10=확대 전 cr8" 실측 환산.
 const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건이면 컷 면제
-const BJ_MKT = /(증시|코스피|코스닥|환율|유가|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '마감'만 다뤄 '출발' 보강)
+const BJ_MKT = /(증시|코스피|코스닥|환율|유가(?!족)|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '마감'만 다뤄 '출발' 보강 · '유가족' 오컷 방지)
 const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — 칼럼엔 잔존)
-const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|공시|합작사|출자)/;   // 기업 PR·공시 정형구(다매체 동시배포로 cross가 높게 잡히는 홍보성)
+const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구('공시' 제외 = 공시가격·공공시설·공시송달 오컷 방지 — viewer와 규칙 동일)
 const badgeJunk = t => (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t);
 const issEligible = url => {
   const cr = CROSS.get(url || '') || 0, g = GRADE.has(url || '') ? GRADE.get(url || '') : null;
-  return cr >= ISS_CROSS_MIN && (g == null || g >= 2) && !badgeJunk(CTITLE.get(url || '') || '');
+  return (cr >= ISS_CROSS_MIN || (g === 3 && cr >= 8)) && (g == null || g >= 2) && !badgeJunk(CTITLE.get(url || '') || '');   // grade3(대형)만 옛 임계 8 유지 — viewer issCross와 규칙 동일
 };
 
 // 원문 편향 N 추출 — 분석 본문 '📊 편향: 원문 N/10 색(라벨) → 요약 M/10…'의 원문값.
