@@ -40,17 +40,6 @@ export async function onRequestGet({ env }) {
   }));
 
   items.sort((a, b) => (b.created || 0) - (a.created || 0));
-
-  // 누적 = 전체 발행 이력 총합(published/_stats.json · publish.js가 증가). ⚠️ 404(최초·없음)와 일시오류(5xx/429)를 구분:
-  //   404 → 0 폴백(items.length로 바닥) / 일시오류 → null(응답서 total 생략 → 클라가 이전 누적 보존 = 잘못된 낮은값 붕괴 차단·평의회 260702).
-  let total = null;
-  try {
-    const rs = await fetch(`https://api.github.com/repos/${REPO}/contents/published/_stats.json?ref=main`, { headers: { ...H, accept: 'application/vnd.github.raw' } });
-    if (rs.ok) total = (+JSON.parse(await rs.text()).total) || 0;
-    else if (rs.status === 404) total = 0;
-  } catch { /* 네트워크 = null 유지 */ }
-
-  const out = { items, now };
-  if (total != null) out.total = Math.max(total, items.length);   // 누적 < 활성 불가(floor)
-  return json(out);
+  // 누적(현재 유통중 수)은 뷰어가 items(활성)에서 직접 계산 — 별도 카운터 없음(운영자 260702 재정의). `_` prefix 필터는 유지(과거 _stats.json 잔재 목록 노출 차단·방어).
+  return json({ items, now });
 }

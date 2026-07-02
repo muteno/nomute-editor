@@ -959,7 +959,7 @@
   @keyframes modalRise { from { opacity:0; transform:scale(.95) translateY(8px); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce) { #pindlg, #editdlg, .askdlg { animation:none; } }
   #pindlg { width:min(340px,90vw); max-width:340px; max-height:88vh; height:fit-content; margin:auto;
-    background:linear-gradient(165deg, rgba(24,25,28,.72), rgba(16,17,19,.8));   /* 무채색 글래스 — 초록 틴트 제거(전역 dialog 초록 배경 상속 차단 · #editdlg·#tooldlg 통일 · 운영자 260702). ⚠️ height:fit-content = showModal UA inset 제약 하 max-height:none+height:auto가 세로 880px stretch되던 것 차단(실측 254px 내용크기·중앙정렬) */
+    background:linear-gradient(165deg, rgba(24,25,28,.72), rgba(16,17,19,.8));   /* 무채색 글래스(전역 dialog blur30 상속·메시지함 톤) — 초록 틴트 제거(#editdlg·#tooldlg 통일 · 운영자 260702). ⚠️ height:fit-content = showModal UA inset 제약 하 max-height:none+height:auto가 세로 880px stretch되던 것 차단(실측 254px 내용크기·중앙정렬) · 변경중은 헤더 인라인이라 전체화면 오버레이 없음=backdrop-filter 제약 불요(260702 재설계) */
     border-radius:var(--r-modal); padding:26px 22px 22px; text-align:center; animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }
   #pindlg .pin-title { font-size:18px; font-weight:800; color:var(--fg); letter-spacing:-.3px; }   /* 창 상단 타이틀 = 무채색(초록 제거·운영자 260629) */
   #pindlg .pin-sub { margin:8px 0 18px; font-size:12.5px; line-height:1.5; color:var(--mut); }
@@ -977,9 +977,16 @@
   .pin-boxes.shake { animation:pinShake .4s ease; }
   @keyframes pinShake { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-8px);} 40%,80%{transform:translateX(8px);} }
   .pin-err { min-height:16px; margin-top:12px; font-size:12px; font-weight:700; color:#ff7676; }
-  .pin-cancel { margin-top:16px; padding:9px 22px; font:700 13px inherit; color:var(--mut);
-    background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; cursor:pointer; }
-  .pin-cancel:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  /* 헤더 nav 라인(제목 좌·변경중·X 우) = 메시지함 .mh 계승 · 하단 취소 폐지(운영자 260702) */
+  .pin-head { display:flex; align-items:center; gap:8px; margin-bottom:18px; }   /* align-items:center = 잠금해제(18px)·변경중(13px) 중앙높이 정렬(폰트 크기 달라도) */
+  .pin-head .pin-title { text-align:left; }   /* flex:1 제거 = 잠금 해제 위치 그대로(좌·자연폭) · 변경중은 gap 8로 살짝 우측 */
+  .pin-x { margin-left:auto; width:30px; height:30px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
+  .pin-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
+  .pin-x svg { display:block; }   /* 누름(:active 회전)·reduced-motion 가드는 공용 .tool-x 규칙(1331~1335)에 .pin-x 편입으로 계승 = pubpop X와 프레스 통일(평의회 260702) */
+  /* 변경중(잠금/해제/삭제 2~3초 · 네트워크 왕복 불가피) = 타이틀 옆 인라인 · gdots 점 모션(기존 기틀 계승) · --fs-label(13·들쭉날쭉 방지) · 강조색(운영자 260702 재설계) */
+  .pin-busy { display:inline-flex; align-items:center; gap:1px; margin-left:5px; font-size:var(--fs-label); font-weight:800; color:var(--accent); letter-spacing:.2px; }   /* margin-left = 타이틀서 조금 더 우측(header gap 8 + 5·운영자 260702) */
+  .pin-busy[hidden] { display:none; }
+  .pin-boxes.busy { opacity:.5; }   /* 변경중 = 입력칸 흐리게(처리 중 표시·pointerEvents는 JS) */
   @media (max-width:600px) { #pindlg { width:90vw; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); } }   /* 데스크탑(.13)과 동일 보더 · height/max-height는 전역 #pindlg(fit-content/88vh) 상속 = 세로 stretch 방지(운영자 260702) */
 
   /* ── 카드 변경 2차 팝업(글래스) ── */
@@ -1319,11 +1326,11 @@
   @media (prefers-reduced-motion:reduce) { .ic-spin, .ic-bounce, .ic-rise, .ic-check { animation:none; } }
   /* 눌림(press) 일관 — :active 없던 닫기/새로고침/유틸 아이콘 버튼 보강(운영자 260621 · 모든 곳) */
   /* 닫기(X) 누름 = 회전(로딩 스핀 느낌) + 살짝 눌림 (운영자 260622). 닫기는 클릭 즉시 팝업이 닫혀 ic-spin(클릭) 스핀이 안 보임 → 누르는 동안 보이는 :active 회전으로 피드백을 준다. transition으로 ×→+→×… 돌아가는 모션이 보임. */
-  .tool-x, .dlg-x, .mx, .ed-x, .askx, .qh-x, .fb-x, .sc-rsn-x, .askimg-x { transition:transform .3s var(--ease); }
-  .tool-x:active, .dlg-x:active, .mx:active, .ed-x:active, .askx:active, .qh-x:active, .fb-x:active, .sc-rsn-x:active, .askimg-x:active { transform:rotate(180deg) scale(var(--press-m,.92)); }
+  .tool-x, .dlg-x, .mx, .ed-x, .askx, .qh-x, .fb-x, .sc-rsn-x, .askimg-x, .pin-x { transition:transform .3s var(--ease); }
+  .tool-x:active, .dlg-x:active, .mx:active, .ed-x:active, .askx:active, .qh-x:active, .fb-x:active, .sc-rsn-x:active, .askimg-x:active, .pin-x:active { transform:rotate(180deg) scale(var(--press-m,.92)); }
   .pmenu-rf:active, .gsrch:active { transform:scale(var(--press-m,.9)); }
   .pmenu .pmenu-rf:active { transform:rotate(180deg) scale(var(--press-m,.9)); }   /* 새로고침(프로필 메뉴) = hover 회전 유지 + 눌림(specificity로 위 plain scale 묻힘 보정) */
-  @media (prefers-reduced-motion:reduce) { .tool-x, .dlg-x, .mx, .ed-x, .askx, .qh-x, .fb-x, .sc-rsn-x, .askimg-x { transition:none; } }
+  @media (prefers-reduced-motion:reduce) { .tool-x, .dlg-x, .mx, .ed-x, .askx, .qh-x, .fb-x, .sc-rsn-x, .askimg-x, .pin-x { transition:none; } }
   .md { padding:8px 18px 26px; }
   .md h1 { font-size:19px; line-height:1.4; letter-spacing:-.4px; }
   .md h2 { font-size:14px; color:var(--accent); border-bottom:1px solid var(--line2); padding-bottom:5px; margin-top:24px; letter-spacing:-.2px; }
@@ -2023,6 +2030,9 @@
   .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
+  /* 발행본 팝업 = 메시지함(msgpop) UI/UX 계승(운영자 260702): 무채색 글래스 + msgUnfold(우상단 펼침) · 위치=openPub(placeMsgpop 미러·프로필 우측 앵커) · 닫힘=즉시(msgpop 동일) · qpop 글래스톤/popIn·popOut 오버라이드(폭 min(94vw,440px)은 유지) */
+  .pubpop { width:min(92vw,440px); background:linear-gradient(165deg, rgba(24,25,28,.66), rgba(16,17,19,.74)); border:1px solid rgba(255,255,255,.14); border-radius:16px; box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); backdrop-filter:blur(26px) saturate(1.5); -webkit-backdrop-filter:blur(26px) saturate(1.5); transform-origin:top right; animation:msgUnfold .26s cubic-bezier(.22,.61,.36,1) both; }   /* blur26/sat1.5·gradient·radius·shadow = msgpop 정확 계승(qpop blur24/1.05 오버라이드) · 92vw=좁은폰 좌측클립 방지(평의회 260702) */
+  @media (prefers-reduced-motion:reduce){ .pubpop { animation:none; } }
   .pubpop .qc { font-size:13px; font-weight:700; color:var(--mut); padding-bottom:8px; font-variant-numeric:tabular-nums; }   /* Today N / 누적 M — 발행본 타이틀(.bpop b)과 동일 글자크기·하단패딩으로 높이 중앙정렬 · <b> 아닌 <span>이라 .bpop b 룰 안 탐 · tabular=숫자 폭 고정(운영자 260702) */
   .pubpop .qc .tn { color:var(--accent); font-weight:800; }   /* 오늘 발행 수만 강조 — 0이어도 강조 유지(운영자 '0에만 강조'·나머지 mut) */
   .pubpop .qrow.exp .qmain { color:var(--mut); text-decoration:line-through; opacity:.7; }
@@ -2135,7 +2145,7 @@
 
 <!-- 슛(유료 발사) PIN 입력 — confirm/안내 다이얼로그·prompt 대체. 4칸 자동이동·자동인증 -->
 <dialog id="pindlg">
-  <div class="pin-title"><span id="pinTitleTxt">PIN</span></div>
+  <div class="pin-head"><span class="pin-title" id="pinTitleTxt">PIN</span><span class="pin-busy" id="pinBusy" hidden>변경중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></span><button class="pin-x" type="button" id="pinX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="pin-sub" id="pinSub">PIN 6자리 입력</div>
   <div class="pin-boxes" id="pinboxes">
     <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 1">
@@ -2146,7 +2156,6 @@
     <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 6">
   </div>
   <div class="pin-err" id="pinerr"></div>
-  <button class="pin-cancel" type="button" onclick="pindlg.close()">취소</button>
 </dialog>
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
@@ -7858,27 +7867,30 @@ $('#pubGo').addEventListener('click', async () => {
   finally { _pubBusy = false; }
 });
 
-let PUBITEMS = [], PUB_TOTAL = 0, PUBPAGE = 0, _pubCloseTimer = 0, _pubPushed = false, _pubPop = false;
+let PUBITEMS = [], PUBPAGE = 0, _pubCloseTimer = 0, _pubPushed = false, _pubPop = false;
 const _pubBtnEl = $('#pubBtn'); if (_pubBtnEl) _pubBtnEl.addEventListener('click', e => { e.stopPropagation(); openPub(); });   // stopPropagation = #msgbtn 패턴(pmenu 안 버튼이라 안 하면 열자마자 바깥클릭 닫힘·검증8·9)
-function openPub() {   // 발행본 팝업 열기 — openQueue 미러(프로필 기준 위치)
+function placePubpop() {   // 발행본 팝업 위치 = 메시지함(placeMsgpop) 계승: 프로필 우측·세로중앙 앵커 → 우상단 기준 msgUnfold 펼침(운영자 260702)
+  const pr = $('#profile').getBoundingClientRect();
+  const top = Math.round(pr.top + pr.height / 2);
+  pubpop.style.top = top + 'px';                                       // 프로필 세로 중앙 → 아래로(msgpop 동일)
+  pubpop.style.right = Math.max(8, Math.round(window.innerWidth - pr.right)) + 'px';   // 프로필 우측 라인 기준(좌측 넘침 방지)
+  pubpop.style.left = 'auto'; pubpop.style.bottom = 'auto';
+  pubpop.style.maxHeight = (window.innerHeight - top - 12) + 'px';     // 하단 넘침 방지(내부 스크롤)
+}
+function openPub() {   // 발행본 팝업 열기 — 메시지함 UI/UX 계승(글래스·msgUnfold·앵커)
   closeOverlays('pubpop');
   clearTimeout(_pubCloseTimer); pubpop.classList.remove('closing');
-  const pr = $('#profile').getBoundingClientRect();
-  pubpop.style.top = Math.round(pr.bottom + 8) + 'px';
-  pubpop.style.maxHeight = (window.innerHeight - Math.round(pr.bottom + 8) - 12) + 'px';   // 짧은 뷰포트서 페이저 이탈 방지(openQueue 대칭·검증8)
+  placePubpop();
   pubpop.hidden = false;
-  pubpop.style.left = Math.round((window.innerWidth - pubpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단·qpop 동일)
   if (!_pubPushed) { history.pushState({ pubpop: true }, ''); _pubPushed = true; }
   loadPub();
 }
-function closePubUser() {   // closeQueueUser 미러
+function closePubUser() {   // 닫힘 = 즉시 hidden(메시지함 msgpop 동일 · 옛 popOut 슬라이드 폐지)
   if (pubpop.hidden) return;
-  if (!pubpop.classList.contains('closing')) {
-    if (matchMedia('(prefers-reduced-motion:reduce)').matches) pubpop.hidden = true;
-    else { pubpop.classList.add('closing'); clearTimeout(_pubCloseTimer); _pubCloseTimer = setTimeout(() => { pubpop.hidden = true; pubpop.classList.remove('closing'); }, 190); }
-  }
+  pubpop.hidden = true; pubpop.classList.remove('closing'); clearTimeout(_pubCloseTimer);
   if (_pubPushed) { _pubPushed = false; if (_pubPop) _pubPop = false; else if (history.state && history.state.pubpop) history.back(); }
 }
+['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!pubpop.hidden) placePubpop(); }, { passive: true }));   // 회전·리사이즈 재배치(placeMsgpop 대칭)
 $('#pubpopX').addEventListener('click', closePubUser);
 const _LOCKSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const _LOCKOPENSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.3"/></svg>';   // 열린 자물쇠(고리 젖혀짐) — 미잠금
@@ -7900,11 +7912,12 @@ function pubRowHtml(it) {   // qRowHtml 미러: N시간 전 | 제목 | 잠금토
 }
 function renderPubPage() {   // renderQueuePage 미러
   const box = $('#pubpopList'), pg = $('#pubpopPage'); if (!box) return;
-  const cnt = $('#pubpopCnt');   // Today N(오늘 발행·강조) / 누적 M(전체 발행 이력 총합·mut) — 상단 '오늘 N/누적' 패턴(운영자 260702)
+  const cnt = $('#pubpopCnt');   // Today N(오늘 발행·강조) / 누적 M(현재 유통중=활성 발행본 수·mut) — 삭제/만료 시 감소(운영자 260702 재정의: 누적=전체이력 아님, *현재 유통중* 수)
   if (cnt) { const kd = ms => new Date((ms || 0) + 9 * 3600e3).toISOString().slice(0, 10), td = kd(Date.now());   // KST 기준 오늘(§📐)
-    const todayN = PUBITEMS.filter(x => kd(x.created) === td).length;
-    cnt.innerHTML = 'Today <span class="tn">' + todayN + '</span> / 누적 ' + (PUB_TOTAL || 0); }
-  if (!PUBITEMS.length) { box.innerHTML = '<div class="qempty">발행한 요약이 없어<small>요약 열고 공유 버튼으로 발행</small></div>'; if (pg) pg.innerHTML = ''; return; }
+    const todayN = PUBITEMS.filter(x => !x.expired && kd(x.created) === td).length;   // TODAY = 오늘 발행(유통중)
+    const activeN = PUBITEMS.filter(x => !x.expired).length;   // 누적 = 현재 유통중(만료·삭제 제외) · D-3 등 만료기준 바뀌어도 '유통중 수' 의미 불변
+    cnt.innerHTML = 'Today <span class="tn">' + todayN + '</span> / 누적 ' + activeN; }
+  if (!PUBITEMS.length) { box.innerHTML = '<div class="qempty">현재 발행본 없음</div>'; if (pg) pg.innerHTML = ''; return; }
   const pages = Math.ceil(PUBITEMS.length / QPER);
   PUBPAGE = Math.min(Math.max(0, PUBPAGE), pages - 1);
   const slice = PUBITEMS.slice(PUBPAGE * QPER, PUBPAGE * QPER + QPER);
@@ -7934,12 +7947,14 @@ async function _pubRemoveLocked(it, btn) {
   while (true) {
     const pin = await _awaitPin();
     if (pin == null) return;   // 취소(X·ESC·백드롭·폰 뒤로가기)
+    _pinBusy(true);   // 변경중 오버레이(네트워크 2~3초)
     let d = null, ok = false;
     try {
       const r = await fetch('api/unpublish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: it.slug, pin }) });
       d = await r.json().catch(() => ({}));
       ok = r.ok && d && d.ok;
     } catch { /* 네트워크 오류 → 아래 흔들기 */ }
+    _pinBusy(false);
     if (ok) {
       PUBITEMS = PUBITEMS.filter(x => x.slug !== it.slug);
       $('#pindlg').close(); renderPubPage(); _updatePubBadge();
@@ -7956,15 +7971,15 @@ async function loadPub() {   // loadQueue 미러(api/published)
   try {
     const r = await fetch('api/published?_=' + Date.now());
     if (g !== _pubGen) return;
-    if (!r.ok) { box.innerHTML = '<div class="qempty">발행본 조회 실패 (' + r.status + ')</div>'; return; }
-    const j = await r.json(); PUBITEMS = (j.items || []).sort((a, b) => (b.created || 0) - (a.created || 0)); if (typeof j.total === 'number') PUB_TOTAL = j.total;   // 서버가 total 생략(일시오류)이면 이전 누적 보존(붕괴 방지·평의회 260702)
-  } catch { if (g === _pubGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시</div>'; return; }
+    if (!r.ok) { box.innerHTML = '<div class="qempty">네트워크 오류</div>'; return; }
+    const j = await r.json(); PUBITEMS = (j.items || []).sort((a, b) => (b.created || 0) - (a.created || 0));   // 누적은 클라가 활성 개수로 계산(j.total 미사용·운영자 260702 재정의)
+  } catch { if (g === _pubGen) box.innerHTML = '<div class="qempty">네트워크 오류</div>'; return; }
   if (g !== _pubGen) return;
   PUBPAGE = 0; renderPubPage(); _updatePubBadge();
 }
 function _updatePubBadge() { const c = $('#pubBtnCnt'); if (c) c.textContent = ''; }   // '발행본 (N)' 개수·괄호 폐지(운영자 260702) — 프로필 버튼엔 라벨만
 let _pubBadgeInit = false;
-function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; if (typeof j.total === 'number') PUB_TOTAL = j.total; _updatePubBadge(); } catch {} })(); }   // 배지 = 프로필 메뉴 첫 열림 시 1회 로드(매 페이지로드 41콜 PAT 경합 방지·검증9)
+function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; _updatePubBadge(); } catch {} })(); }   // 배지 = 프로필 메뉴 첫 열림 시 1회 로드(매 페이지로드 41콜 PAT 경합 방지·검증9)
 
 // ── 발행본 잠금 토글 — 자물쇠 픽토그램 롱프레스(600ms) → #pindlg PIN 입력 → api/relock(실제 공개링크 PIN 보호 토글). 잠금=새 PIN 설정 / 해제=기존 PIN 정확히(불일치=흔들기 재입력). qFeedBtn 롱프레스 패턴 계승. 운영자 260702. ──
 function _awaitPin() { return new Promise(res => { _pinResolve = res; }); }   // 4자리 채우면 resolve(값)·닫히면 resolve(null) — 기존 #pindlg 배선 재사용
@@ -7975,9 +7990,15 @@ function openPinDlg(title, sub) {
   const er = $('#pinerr'); if (er) er.textContent = '';
   _pinCells().forEach(c => { c.value = ''; c.classList.remove('filled'); });
   const boxes = $('#pinboxes'); if (boxes) boxes.classList.remove('err', 'shake');
+  _pinBusy(false);
   openComposeDlg($('#pindlg'));   // showModal + 폰 뒤로가기 스택(다른 모달과 동일 · #pindlg는 isComposingModalOpen 등재로 over-close 차단)
   setTimeout(() => { const c0 = _pinCells()[0]; if (c0) c0.focus(); }, 60);
 }
+function _pinBusy(on) {   // 변경중(잠금/해제/삭제 2~3초 · 네트워크 왕복) — 타이틀 옆 인라인 '변경중 gdots' 표시 + 입력칸 흐림·잠금
+  const b = $('#pinBusy'); if (b) b.hidden = !on;
+  const boxes = $('#pinboxes'); if (boxes) { boxes.classList.toggle('busy', on); boxes.style.pointerEvents = on ? 'none' : ''; }
+}
+{ const _px = $('#pinX'); if (_px) _px.addEventListener('click', () => $('#pindlg').close()); }   // 헤더 X = 닫기 → 뒤 발행본 팝업으로 복귀(pubpop은 뒤에 유지됨)
 function _paintPinmark(pm, pinned) {   // 같은 노드 제자리 갱신 = 색 CSS transition 살림(겉면 자연 스위칭·재렌더로 노드 파괴 안 함)
   if (!pm) return;
   pm.classList.toggle('locked', pinned); pm.classList.toggle('open', !pinned);
@@ -7992,12 +8013,14 @@ async function lockToggle(it, pm) {
   while (true) {
     const pin = await _awaitPin();
     if (pin == null) return;   // 취소(X·ESC·백드롭·폰 뒤로가기)
+    _pinBusy(true);   // 변경중 오버레이(네트워크 2~3초)
     let d = null, ok = false;
     try {
       const r = await fetch('api/relock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: it.slug, pin }) });
       d = await r.json().catch(() => ({}));
       ok = r.ok && d && d.ok;
     } catch { /* 네트워크 오류 → 아래 흔들기 */ }
+    _pinBusy(false);
     if (ok) {
       it.pinned = !!d.pinned;
       if (pm && pm.isConnected) _paintPinmark(pm, it.pinned); else renderPubPage();   // 노드 유지=색 트윈 / 소실 시 폴백

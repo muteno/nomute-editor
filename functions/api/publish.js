@@ -47,43 +47,8 @@ export async function onRequestPost({ request, env }) {
     },
     body: JSON.stringify({ message: `publish: ${title.slice(0, 60) || file}`, content, branch: 'main' }),
   });
-  if (r.status === 201 || r.status === 200) {
-    try { await bumpPubTotal(env); } catch { /* 누적 카운터 실패해도 발행은 성공 */ }
-    return json({ ok: true, slug, path: `/s/${slug}` });
-  }
+  if (r.status === 201 || r.status === 200) return json({ ok: true, slug, path: `/s/${slug}` });
   return json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 300)}` }, 502);
-}
-
-// 누적 발행 카운터 = published/_stats.json {v,total} — 전체 발행 이력 총합(증가만·unpublish로 안 줄임). best-effort(실패=발행 성공 유지). published.js가 `_` prefix 제외라 목록엔 안 뜸.
-async function bumpPubTotal(env) {
-  const H = { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28' };
-  const base = `https://api.github.com/repos/${REPO}/contents/published`;
-  const url = `${base}/_stats.json`;
-  for (let attempt = 0; attempt < 3; attempt++) {   // 동시 발행 경합(409 sha·422 최초create) 재시도
-    let total, sha = '';
-    const g = await fetch(`${url}?ref=main`, { headers: H });
-    if (g.ok) {
-      try { const j = await g.json(); sha = j.sha; total = ((+JSON.parse(atobUtf8(j.content)).total) || 0) + 1; }
-      catch { total = 1; }   // 손상 = 1부터 재기록(published.js 폴백이 활성수로 바닥 → 표시 붕괴 없음)
-    } else if (g.status === 404) {
-      total = await countPublished(base, H);   // 최초 시드 = 현재 발행본 파일수(방금 발행분 포함) → '전체 이력' 단조증가 시작(unpublish로 안 줄임)
-    } else return;   // 그 외 오류 = 포기(발행 자체는 성공)
-    const put = { message: `stats: published total ${total}`, content: b64utf8(JSON.stringify({ v: 1, total })), branch: 'main' };
-    if (sha) put.sha = sha;
-    const p = await fetch(url, { method: 'PUT', headers: H, body: JSON.stringify(put) });
-    if (p.ok) return;
-    if (p.status !== 409 && p.status !== 422) return;   // 409=sha 경합·422=최초 create 동시성 → 재조회 재시도 / 그 외 포기
-  }
-}
-// 현재 발행본(디렉터리) 파일수 = 최초 시드 기준(_stats 등 메타파일 제외 · published.js 필터와 동일)
-async function countPublished(base, H) {
-  try {
-    const r = await fetch(`${base}?ref=main`, { headers: H });
-    if (!r.ok) return 1;
-    const j = await r.json();
-    if (!Array.isArray(j)) return 1;
-    return Math.max(1, j.filter(f => f && f.type === 'file' && /\.json$/i.test(f.name) && !f.name.startsWith('_')).length);
-  } catch { return 1; }
 }
 
 function originOk(request) {   // spellcheck.js originOk 계승 — 상태변경 POST는 동일출처(apps.nomute.kr·*.nomute.kr·*.pages.dev)만 허용(CSRF·폼 POST 차단)
@@ -101,9 +66,4 @@ function b64utf8(str) {
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin);
-}
-// GitHub contents API의 base64(줄바꿈 포함) → UTF-8 문자열
-function atobUtf8(b64) {
-  const bin = atob(String(b64 || '').replace(/\s/g, ''));
-  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
 }
