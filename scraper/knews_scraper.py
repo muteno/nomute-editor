@@ -164,19 +164,25 @@ def same_topic(ta, tb):
 
 # ── 수집 ────────────────────────────────────────────────────────────
 def fetch_feed(feed):
-    """단일 피드 수집. 실패 시 None + 로그."""
+    """단일 피드 수집. 네트워크 예외는 1회 재시도(1.5s 텀) — 간헐 타임아웃 1건에도 dead_feeds
+    구성이 요동해 obs 안정본(커밋 생략)이 무력화되던 것 방지(260702 평의회: transient 이중실패 확률 ≈ p²).
+    실패 시 None + 로그. (bozo/빈피드 = 콘텐츠 문제라 재시도 안 함.)"""
     url = feed["url"]
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=REQ_TIMEOUT)
-        r.raise_for_status()
-        parsed = feedparser.parse(r.content)
-        if parsed.bozo and not parsed.entries:
-            log(f"  ⚠ 파싱불가/빈피드: {feed['publisher']} {feed['title']}")
+    for attempt in (1, 2):
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=REQ_TIMEOUT)
+            r.raise_for_status()
+            parsed = feedparser.parse(r.content)
+            if parsed.bozo and not parsed.entries:
+                log(f"  ⚠ 파싱불가/빈피드: {feed['publisher']} {feed['title']}")
+                return None
+            return parsed
+        except Exception as e:
+            if attempt == 1:
+                time.sleep(1.5)
+                continue
+            log(f"  ✗ 실패({type(e).__name__}): {feed['publisher']} {feed['title']} — {url}")
             return None
-        return parsed
-    except Exception as e:
-        log(f"  ✗ 실패({type(e).__name__}): {feed['publisher']} {feed['title']} — {url}")
-        return None
 
 
 def parse_time(entry):
@@ -414,24 +420,28 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     # 피드 건강 원장 — 죽은 피드 관측 가능화(scrape.yml이 안정본을 scraper/obs/로 복사 → daily_health가 리포트).
     # 전 피드 죽음(articles 0)일 때가 제일 중요한 순간이라 조기 return *앞*에 쓴다. 시각 = KST(§📐 🕘).
-    kst = timezone(timedelta(hours=9))
-    (out / "feed_health.json").write_text(json.dumps({
-        "ts": datetime.now(kst).isoformat(timespec="seconds"),
-        "ok": sum(1 for h in health if h["ok"]),
-        "dead": sum(1 for h in health if not h["ok"]),
-        "feeds": health,
-    }, ensure_ascii=False, indent=1), encoding="utf-8")
-    # obs 커밋용 안정본 — ts·n·fresh(매 런 변동 필드) 제외 = 죽은/좀비 '구성'이 바뀔 때만 내용 변화.
-    # 안 그러면 밤(뉴스 없어 candidates 변동 0) 런의 '커밋 생략'이 전부 커밋으로 바뀜(+68커밋/일 노이즈).
-    # zombie = 응답·형식 유효(ok·n>0)인데 시간창 내 발행 0 = 갱신 멈춘 피드(주간 니치 피드는 일시 오탐 가능 — 정보성).
-    (out / "feed_health_obs.json").write_text(json.dumps({
-        "ok": sum(1 for h in health if h["ok"]),
-        "dead": sum(1 for h in health if not h["ok"]),
-        "dead_feeds": [{"publisher": h["publisher"], "title": h["title"], "url": h["url"]}
-                       for h in health if not h["ok"]],
-        "zombie_feeds": [{"publisher": h["publisher"], "title": h["title"], "url": h["url"]}
-                         for h in health if h["ok"] and h["n"] > 0 and h["fresh"] == 0],
-    }, ensure_ascii=False, indent=1), encoding="utf-8")
+    # ⚠️ 원장 쓰기 = 비치명(try) — 관측층 IO 실패가 코어(articles.json→candidates 갱신)를 못 막게(260702 평의회).
+    try:
+        kst = timezone(timedelta(hours=9))
+        (out / "feed_health.json").write_text(json.dumps({
+            "ts": datetime.now(kst).isoformat(timespec="seconds"),
+            "ok": sum(1 for h in health if h["ok"]),
+            "dead": sum(1 for h in health if not h["ok"]),
+            "feeds": health,
+        }, ensure_ascii=False, indent=1), encoding="utf-8")
+        # obs 커밋용 안정본 — ts·n·fresh(매 런 변동 필드) 제외 = 죽은/좀비 '구성'이 바뀔 때만 내용 변화.
+        # 안 그러면 밤(뉴스 없어 candidates 변동 0) 런의 '커밋 생략'이 전부 커밋으로 바뀜(+68커밋/일 노이즈).
+        # zombie = 응답·형식 유효(ok·n>0)인데 시간창 내 발행 0 = 갱신 멈춘 피드(주간 니치 피드는 일시 오탐 가능 — 정보성).
+        (out / "feed_health_obs.json").write_text(json.dumps({
+            "ok": sum(1 for h in health if h["ok"]),
+            "dead": sum(1 for h in health if not h["ok"]),
+            "dead_feeds": [{"publisher": h["publisher"], "title": h["title"], "url": h["url"]}
+                           for h in health if not h["ok"]],
+            "zombie_feeds": [{"publisher": h["publisher"], "title": h["title"], "url": h["url"]}
+                             for h in health if h["ok"] and h["n"] > 0 and h["fresh"] == 0],
+        }, ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log(f"feed_health 기록 실패(비치명·계속): {e}")
 
     if not articles:
         log("수집된 기사 없음 — 피드 URL이 죽었거나 시간범위 내 기사가 없음")

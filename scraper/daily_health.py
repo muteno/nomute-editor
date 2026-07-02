@@ -83,16 +83,17 @@ def main():
     # RSS 피드 건강 원장(scraper/obs/feed_health.json 안정본 — 죽은피드 구성 변화시 scrape가 갱신 · 무음 드리프트 방지 260702)
     try:
         fh = json.loads((ROOT / "scraper" / "obs" / "feed_health.json").read_text(encoding="utf-8"))
-        deadf = fh.get("dead_feeds", [])
-        tot = (fh.get("ok") or 0) + (fh.get("dead") or 0)
+        # 원소 dict 정규화 — 부분 손상 시 요약줄 출력 후 순회서 터져 '생존'+'원장없음' 이중출력 모순 방지(평의회 260702)
+        deadf = [x for x in (fh.get("dead_feeds") or []) if isinstance(x, dict)]
+        zomb = [x for x in (fh.get("zombie_feeds") or []) if isinstance(x, dict)]
+        okn = fh.get("ok") or 0   # null도 0 표시(리터럴 None 방지) — 임계·표시 기준은 리스트 길이로 단일화
         f = "✅" if len(deadf) <= 5 else "⚠️"
-        print(f"  {f} RSS 피드 생존 {fh.get('ok', '?')}/{tot} (죽음 {fh.get('dead', '?')})"
-              + ("  (←죽음 5↑ = feeds.csv 정리 검토)" if len(deadf) > 5 else ""))
+        print(f"  {f} RSS 피드 생존 {okn}/{okn + len(deadf)} (죽음 {len(deadf)})"
+              + ("  (←죽음 6↑ = feeds.csv 정리 검토)" if len(deadf) > 5 else ""))
         for x in deadf[:5]:
             print(f"      ✗ {x.get('publisher', '?')} {x.get('title', '')}")
         if len(deadf) > 5:
             print(f"      … 외 {len(deadf) - 5}개 (scraper/obs/feed_health.json)")
-        zomb = fh.get("zombie_feeds", [])
         if zomb:   # 응답은 오는데 갱신 멈춘 피드(JTBC 2024-10 멈춤 실측 케이스) — 주간 니치 피드는 일시 오탐 가능
             print(f"  🧟 좀비 피드(응답 OK·24h 발행 0) {len(zomb)}개: "
                   + " · ".join(f"{x.get('publisher', '?')} {x.get('title', '')}" for x in zomb[:4])
