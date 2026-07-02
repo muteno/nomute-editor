@@ -1970,6 +1970,11 @@
   .asksend.firing { color:var(--on-accent); opacity:1; border-color:var(--accent); pointer-events:none; }   /* 전송 중 = 초록 게이지 위 어두운 글자(구성도 .send.is-fire 정본) */
   .asksend.firing::before { content:''; position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left; animation:pickGauge .72s linear forwards; z-index:0; }   /* 초록 채움(검정 #06140d 아님·260622) */
   @media (prefers-reduced-motion:reduce) { .asksend.firing::before { animation-duration:.2s; } }
+  /* 전송(#askSend) 게이지 = fetch(큐 커밋) 완료까지 진행 → '다 찬 후 멈춤' 제거. pickGauge 고정 0.72s 대신 transition으로 90% 점근(응답 대기 커버) → 응답 오면 현재위치서 100%+체크(점프 없음). #askSend 전용이라 수정·발행 게이지는 pickGauge 유지(틀 보존·운영자 260702) */
+  #askSend.firing::before { animation:none; transition:transform 3.6s linear; }   /* base scaleX(0)→90%(3.6s 균등) = 응답 대기 내내 진행(게이지량∝대기시간) → 응답 오면 gdone서 100%. fetch 시간 가변 흡수 = '다 찬 후 멈춤' 제거(대부분 응답<3.6s라 진행 중 완료) */
+  #askSend.firing.grun::before { transform:scaleX(.9); }   /* rAF 트리거 = 0→90% 점근(fetch 진행 동안 계속 차오름) */
+  #askSend.firing.gdone::before { transform:scaleX(1); transition:transform .16s linear; }   /* 응답 = 현재 위치→100% 급속 마무리 */
+  @media (prefers-reduced-motion:reduce) { #askSend.firing::before, #askSend.firing.gdone::before { transition-duration:.12s; } }
   /* 전송 실패 = 흔들림 / 완료 = settle 펄스 (전송 상태머신 fail·done · 운영자 260622) */
   .asksend.shake { animation:asksh .4s ease; }
   @keyframes asksh { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
@@ -7376,20 +7381,20 @@ $('#askSend').addEventListener('click', async () => {
     $('#askText').focus();
     return;
   }
-  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now();   // 게이지 모션만(상태텍스트 '보내는 중/요청됨' 폐지 = 버튼 firing→done ✓로 충분·운영자 260622)
+  const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); btn.classList.add('firing'); btn.dataset.ft = Date.now(); requestAnimationFrame(() => requestAnimationFrame(() => btn.classList.add('grun')));   // 게이지 = 응답까지 진행(grun=0→90% · 응답 시 gdone서 100% = '다 찬 후 멈춤' 제거) · 2중 rAF = scaleX(0) 한 프레임 페인트 후 .9 트리거(같은 프레임이면 transition 무시됨) · 상태텍스트 폐지(운영자 260622·260702)
   try {
     const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl), nothumb: genImgOn() ? 0 : 1 }) });   // nothumb=1이면 제미나이 썸네일 생성 skip(검색 og:image는 항상)·운영자 260702
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done');   // 성공 = 버튼 done+✓ 체크로 표시(상태텍스트 폐지·운영자 260622) · reflow-reset = 매 성공 settle 재생 · ⚠️ 입력 리셋은 닫은 뒤(아래)로 — 즉시 비우면 1.6s 동안 빈 초기화면이 보임(운영자 260622)
-      setTimeout(() => askShowCheck(btn), Math.max(0, 740 - (Date.now() - (+btn.dataset.ft || 0))));   // 게이지 다 찬 뒤 ✓ 팝(시안2)
+    if (r.ok && d.ok) { btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done', 'gdone');   // 성공 = done팝 + gdone(게이지 현재위치→100% 급속 마무리 = 멈춤 없이 응답 즉시 채움) · 입력 리셋은 닫은 뒤(아래)로 — 즉시 비우면 1.6s 빈화면(운영자 260622)
+      setTimeout(() => askShowCheck(btn), 200);   // 게이지 100% 찬 뒤 ✓ 팝(gdone .16s + 여유 · 응답 즉시라 '다 찬 후 멈춤' 없음·시안2·260702)
       setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 접수 즉시 대기열 배지 갱신(60s 폴링 안 기다림 · asks/ 표면화 = '처리중' 확인 · GitHub 전파 대비 2회 · 운영자 260622)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
-      setTimeout(() => { askdlg.close(); btn.classList.remove('firing'); askHideCheck(btn); btn.disabled = false;
+      setTimeout(() => { askdlg.close(); btn.classList.remove('firing', 'grun', 'gdone'); askHideCheck(btn); btn.disabled = false;
         $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();   // 리셋 = 닫은 뒤(빈 초기화면 깜빡임 차단 · 운영자 260622)
       }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
     else { $('#askStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
   } catch { $('#askStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
-  btn.classList.remove('firing'); btn.disabled = false;
+  btn.classList.remove('firing', 'grun', 'gdone'); btn.disabled = false;
 });
 // ── Failed 칩 컨텍스트 메뉴(실패 사유·내용 입력) + 전문 직접 입력 모달 ──
 $('#failmenu').addEventListener('click', e => {
