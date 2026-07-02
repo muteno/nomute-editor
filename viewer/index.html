@@ -609,18 +609,8 @@
   .nm-toast .ft-act { flex:none; width:28px; height:28px; }   /* ✓확인·↻재시도·↗원문 = PICK(.ft-pick 28px·게이지 버튼 .sc-got/.unmerge-go 계승 높이)과 통일 → 하단 토스트 액션 3버튼 높이 정렬(운영자 260702). .sbtn 기틀(눌림 scale·.ok 플래시·ic-spin) 계승 */
   .nm-toast .ft-act svg { width:14px; height:14px; }   /* Q_ARR(원문·크기 미지정)·CHECK 아이콘 크기 통일 = 14(토스트 기존 유지) */
   /* 긴급 토스트 PICK = 수집함 [PICK] 이식(운영자 260702) · 초록 게이지 goFill→✓ = .sc-got firing/okdone 상태머신 계승(색은 var 토큰) */
-  .nm-toast .ft-pick { flex:none; display:grid; place-items:center; min-width:54px; height:28px; padding:0 12px; border-radius:var(--r-s);
-    font-size:12px; font-weight:800; letter-spacing:.04em; cursor:pointer; color:var(--accent);
-    background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, border-color .14s, transform .1s; }   /* 플레인 다크 글래스 = 수집함 .sc-tg.pick / .sbtn 배경·투명도 계승(글자만 형광) · 초록틴트 배경 폐지(운영자 260702) */
-  .nm-toast .ft-pick:hover { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.08); }   /* 수집함 .sc-tg.pick:hover 계승 = 미세 형광 틴트만 */
-  .nm-toast .ft-pick:active { transform:scale(var(--press-m,.9)); }
-  .nm-toast .ft-pick.firing { color:var(--on-accent); border-color:var(--accent); overflow:hidden; pointer-events:none;
-    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(rgba(var(--accent-rgb),.12),rgba(var(--accent-rgb),.12));
-    animation:goFill .72s linear forwards; }
-  .nm-toast .ft-pick.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); pointer-events:none; }
-  .nm-toast .ft-pick .gck { width:16px; height:16px; }
-  .nm-toast .ft-pick .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
-  @media (prefers-reduced-motion:reduce){ .nm-toast .ft-pick.firing { animation-duration:.2s; } .nm-toast .ft-pick .gck path { animation:none; stroke-dashoffset:0; } }
+  /* PICK = 옆 버튼(.sbtn 체크·원문)과 완전 일맥상통 → HTML은 class "sbtn ft-pick" → 배경·투명도·hover·:active(press-s .85)·blur·흰색 전부 .sbtn 상속. 여기선 텍스트 버튼화(폭·높이·폰트)만 오버라이드 · 폰트 = body(Pretendard)·600·자간0 = 뷰어 버튼 표준(§🎨)·게이지 폐지(운영자 260702) */
+  .nm-toast .ft-pick { flex:none; width:auto; min-width:54px; height:28px; padding:0 13px; font-size:12px; font-weight:600; letter-spacing:0; }
   @media (prefers-reduced-motion:reduce) { .nm-toast { transition:opacity .15s; } }
   /* ⚠ 픽 분석 실패/무응답(10분 초과) — 칩 = 피드 진행바 실패(.seg.fail)와 같은 앰버 45° 빗금 + 빨강 라벨 · 프로필 링 = 속보와 같은 빨강(운영자 요청). 탭 → 원문 열림(요약 모달 안 띄움). */
   .sc-fail { flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
@@ -5627,26 +5617,19 @@ function showToast(c, total) {
   const more = total > 1 ? ` <b>+${total - 1}</b>` : '';
   t.innerHTML = `<span class="tg">긴급</span><span class="ft-msg">${title || '속보'}${more}</span>`
     + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 봤음" title="확인 — 봤음(이 건 알림 끔·다음 건으로)">${CHECK_SVG}</button>`
-    + `<button class="ft-pick" type="button" data-bt="pick" aria-label="PICK — 요약 발동" title="PICK — 이 기사 분석·요약 발동(수집함 픽과 동일)"><span>PICK</span></button>`
+    + `<button class="sbtn ft-pick" type="button" data-bt="pick" aria-label="PICK — 요약 발동" title="PICK — 이 기사 분석·요약 발동(수집함 픽과 동일)"><span>PICK</span></button>`
     + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 바로가기" title="원문 바로가기(새 탭 · 확인 안 함 · 토스트 유지)">${Q_ARR}</button>`;   // ↗ = 뷰어 원문 바로가기 표준 아이콘(qgo Q_ARR) 계승 · 색은 .sbtn 기본(흰) — 운영자 260702
   const _ak = t.querySelector('[data-bt="ack"]'), _pk = t.querySelector('[data-bt="pick"]'), _sr = t.querySelector('[data-bt="src"]');
   // ✓체크 = 이 건만 확인 → detectBreaking이 다음 미처리 건으로(없으면 사라짐). 옛 전체 숨김(seen) 방식 폐지.
   if (_ak) _ak.onclick = ev => { ev.stopPropagation(); ackBreak(c); detectBreaking(); };
-  // PICK = 수집함 pickCard 동일(중복가드·롤백·alt·api/pick 발동) + 초록 게이지(goFill→✓) 후 다음 건. 긴급 즉응이라 사유 메뉴는 생략(즉시 발동).
-  if (_pk) _pk.onclick = ev => { ev.stopPropagation(); if (_pk.dataset.fired) return; _pk.dataset.fired = '1'; toastPickGo(_pk, () => { pickCard(c); setTimeout(detectBreaking, 80); }); };
+  // PICK = 수집함 pickCard 동일(중복가드·롤백·alt·api/pick 발동). 게이지 없이 누르면 바로 발동(:active scale 후·운영자 260702) → 다음 건. 사유 메뉴는 긴급 즉응이라 생략.
+  if (_pk) _pk.onclick = ev => { ev.stopPropagation(); if (_pk.dataset.fired) return; _pk.dataset.fired = '1'; pickCard(c); setTimeout(detectBreaking, 130); };
   // ↗원문 = 대표 매체 원문 새 탭 · 확인 안 함(결정 아님 → 돌아오면 토스트 유지·운영자 260702)
   if (_sr) _sr.onclick = ev => { ev.stopPropagation(); openExt(scLinkUrl(c) || c.url); };
   requestAnimationFrame(() => t.classList.add('show'));   // 자동 사라짐(옛 6.5s) 폐지 = 체크/PICK/PASS 전까지 상주(운영자 260702)
 }
 function hideToast() { const t = document.getElementById('nmToast'); if (t) t.classList.remove('show'); _toastC = null; }
-// PICK 게이지 = 수집함 .sc-got firing→okdone(goFill 좌→우 풀필 + ✓ goTick) 상태머신 계승 → 콜백서 실제 발동(pickCard).
-function toastPickGo(btn, done) {
-  const red = matchMedia('(prefers-reduced-motion:reduce)').matches;
-  btn.classList.add('firing'); btn.innerHTML = '<span>전송</span>';
-  const fin = () => { btn.classList.remove('firing'); btn.classList.add('okdone'); btn.innerHTML = '<svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>'; if (done) done(); };
-  if (red) { fin(); return; }
-  setTimeout(fin, 720);   // goFill .72s와 동기
-}
+// (PICK 게이지 함수 toastPickGo 폐지 — 게이지 없이 누르면 :active 후 바로 pickCard 발동으로 변경·운영자 260702)
 // ── ⚠ 픽 분석 실패 알림 — fetch 막는 매체(chosun 등)로 분석 실패해 'PICKED'로 남고 피드에 안 뜬
 //    '내가 픽한' 기사. 속보와 동일 급(프로필 링·토스트)으로 알리고, 수집함서 '다시'(전문 붙여넣기)로 복구.
 //    build-viewer 가 pending/failed/ → picks-failed.json 으로 떨궈줌(이미 queue에 든 복구분은 제외). ──
