@@ -1,0 +1,144 @@
+<meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>마퀴 펫 v2 — NO MUTE 점등 애니메이션</title>
+<style>
+:root { --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --r-m:11px; --r-pill:999px;
+  --blur-s:8px; --fw-b:700; --fw-x:800; --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif;
+  --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08); }
+body { margin:0; padding:28px 18px 60px; background:#121212; color:var(--fg);
+  font:15px/1.65 'Pretendard Variable',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+main { max-width:760px; margin:0 auto; }
+h1 { font-size:21px; margin:0 0 4px; } h1 b { color:var(--accent); }
+.sub { color:var(--mut); font-size:13px; margin-bottom:22px; }
+h2 { font-size:15px; margin:30px 0 10px; color:var(--fg); }
+h2::before { content:'• '; color:var(--accent); }
+table { border-collapse:collapse; width:100%; font-size:13.5px; }
+th,td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th { color:var(--mut); font-weight:700; white-space:nowrap; }
+.demo { position:relative; height:170px; border-radius:20px; overflow:hidden;
+  background:linear-gradient(135deg,#0a1f10,#123018 55%,#0a1a0e); border:1px solid var(--line); }
+.demo .topbanner { position:absolute; inset:0; }
+.cap { color:var(--mut); font-size:12px; margin-top:6px; }
+code { background:rgba(255,255,255,.06); padding:1px 5px; border-radius:5px; font-size:12.5px; }
+ul { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+.good { color:var(--accent); } .warn { color:#ffd24a; }
+/* 마스코트 v2(마퀴 펫) — 크리터가 스캐폴드 위 마퀴 간판에 NO MUTE 글자 타일을 한 장씩 붙이고 점등하는 13s 루프.
+     첨부 레퍼런스(픽셀 크리터·NOW SHOWING 마퀴·사다리·타일 슬랩·점등 플리커) 형질 계승 + 글자만 네온그린(--accent). 산책 펫 대체(260703). */
+  .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; width:176px; height:58px;
+    pointer-events:none; user-select:none; z-index:6; }
+  .pet::before, .pet::after { content:''; position:absolute; top:30px; bottom:0; width:2px;
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.26) 0 2px, transparent 2px 5px); }   /* 간판 스캐폴드 다리 2개(레퍼런스 사다리 형질 축약) — dotted border 대신 gradient 대시(합성 레이어 잔상 quirk 회피) */
+  .pet::before { left:34px; } .pet::after { right:34px; }
+  .pm-sign { position:absolute; left:0; right:0; top:0; height:33px; border-radius:11px;
+    border:1.5px dotted rgba(255,255,255,.34); background:rgba(4,6,5,.42);
+    backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s));
+    animation:pmSign 13s linear infinite; }   /* 점묘 테두리 = 마퀴 전구 라인 */
+  .pm-now { position:absolute; top:-6px; left:50%; transform:translateX(-50%) scale(.5); transform-origin:50% 50%;
+    font:var(--fw-b) 9px/1.4 var(--font-status); letter-spacing:.22em; white-space:nowrap;
+    padding:1px 8px; border-radius:var(--r-pill); border:1px dotted rgba(255,255,255,.4);
+    background:rgba(4,6,5,.9); color:rgba(255,255,255,.6); }   /* 9px×scale(.5) = CJK 로케일 최소폰트 클램프 회피 */
+  .pm-tiles { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:2px;
+    animation:pmLight 13s linear infinite; }
+  .pm-sp { width:5px; }   /* NO ↔ MUTE 단어 간격 */
+  .pm-t { width:15px; height:19px; display:grid; place-items:center; border-radius:4px;   /* 동심원: 간판 r-m(11) − 세로패딩7 = 4 */
+    background:rgba(2,4,2,.85); border:1px solid rgba(255,255,255,.07);
+    font:var(--fw-x) 12px/1 var(--font-status); color:var(--accent);
+    text-shadow:0 0 7px rgba(var(--accent-rgb),.65); }
+  .pm-t0 { animation:pmT0 13s linear infinite; } .pm-t1 { animation:pmT1 13s linear infinite; }
+  .pm-t2 { animation:pmT2 13s linear infinite; } .pm-t3 { animation:pmT3 13s linear infinite; }
+  .pm-t4 { animation:pmT4 13s linear infinite; } .pm-t5 { animation:pmT5 13s linear infinite; }
+  /* 타일 슬랩 팝 — 크리터 착지 직후 아래서 튀어올라 박힘(overshoot 1.18 → 안착). 96.5% 소등 후 루프 리셋 */
+  @keyframes pmT0 { 0%,10.2% { opacity:0; transform:translateY(7px) scale(.4); } 10.8% { opacity:1; transform:translateY(-2px) scale(1.18); } 11.8% { transform:none; } 93% { opacity:1; } 96.5%,100% { opacity:0; } }
+  @keyframes pmT1 { 0%,18.6% { opacity:0; transform:translateY(7px) scale(.4); } 19.2% { opacity:1; transform:translateY(-2px) scale(1.18); } 20.2% { transform:none; } 93% { opacity:1; } 96.5%,100% { opacity:0; } }
+  @keyframes pmT2 { 0%,27.1% { opacity:0; transform:translateY(7px) scale(.4); } 27.7% { opacity:1; transform:translateY(-2px) scale(1.18); } 28.7% { transform:none; } 93% { opacity:1; } 96.5%,100% { opacity:0; } }
+  @keyframes pmT3 { 0%,35.6% { opacity:0; transform:translateY(7px) scale(.4); } 36.2% { opacity:1; transform:translateY(-2px) scale(1.18); } 37.2% { transform:none; } 93% { opacity:1; } 96.5%,100% { opacity:0; } }
+  @keyframes pmT4 { 0%,44% { opacity:0; transform:translateY(7px) scale(.4); } 44.6% { opacity:1; transform:translateY(-2px) scale(1.18); } 45.6% { transform:none; } 93% { opacity:1; } 96.5%,100% { opacity:0; } }
+  @keyframes pmT5 { 0%,52.5% { opacity:0; transform:translateY(7px) scale(.4); } 53.1% { opacity:1; transform:translateY(-2px) scale(1.18); } 54.1% { transform:none; } 93% { opacity:1; } 96.5%,100% { opacity:0; } }
+  /* 완성 점등 — 55.5% 확 켜짐 → 56.3% 깜빡(플리커) → 재점등 홀드 → 94% 소등(레퍼런스 점등 형질) */
+  @keyframes pmSign {
+    0%,54.5% { border-color:rgba(255,255,255,.34); box-shadow:none; background:rgba(4,6,5,.42); }
+    55.5% { border-color:rgba(var(--accent-rgb),.75); box-shadow:0 0 14px rgba(var(--accent-rgb),.4), 0 0 30px rgba(var(--accent-rgb),.18); background:rgba(8,16,8,.5); }
+    56.3% { border-color:rgba(255,255,255,.4); box-shadow:0 0 6px rgba(var(--accent-rgb),.15); background:rgba(4,6,5,.42); }
+    57.6%,86% { border-color:rgba(var(--accent-rgb),.75); box-shadow:0 0 14px rgba(var(--accent-rgb),.42), 0 0 30px rgba(var(--accent-rgb),.2); background:rgba(8,16,8,.5); }
+    94%,100% { border-color:rgba(255,255,255,.34); box-shadow:none; background:rgba(4,6,5,.42); }
+  }
+  @keyframes pmLight {   /* 글자 밝기 동반 플리커(타일 일괄 = 컨테이너 filter 1개) */
+    0%,54.5% { filter:brightness(.92); }
+    55.5% { filter:brightness(1.7) drop-shadow(0 0 6px rgba(var(--accent-rgb),.5)); }
+    56.3% { filter:brightness(1.05); }
+    57.6%,86% { filter:brightness(1.45) drop-shadow(0 0 5px rgba(var(--accent-rgb),.45)); }
+    94%,100% { filter:brightness(.92); }
+  }
+  .pm-walk { position:absolute; left:0; bottom:0; width:39px; height:26px; z-index:1;
+    animation:pmWalk 13s linear infinite; will-change:transform; }   /* X 이동·등퇴장(래퍼) · z-index=크리터가 스캐폴드 다리(::after) 앞에서 걸음 */
+  .pm-critter { display:block; height:26px; width:auto;
+    filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
+    animation:pmHop 13s linear infinite; }   /* Y 홉(자식) — X/Y 분리 = transform 충돌 회피 */
+  @keyframes pmWalk {   /* 좌입장 → 타일 자리마다 멈춰 슬랩 → 점등 구경 → 우퇴장(페이드) */
+    0% { transform:translateX(-18px); opacity:0; }
+    2.5% { opacity:1; }
+    8.5%,13.5% { transform:translateX(23px); }
+    17%,21.5% { transform:translateX(40px); }
+    25%,30% { transform:translateX(65px); }
+    33.5%,38.5% { transform:translateX(82px); }
+    42%,47% { transform:translateX(99px); }
+    50.5%,60% { transform:translateX(116px); }
+    65% { transform:translateX(146px); opacity:1; }
+    68%,100% { transform:translateX(168px); opacity:0; }
+  }
+  @keyframes pmHop {   /* 타일 팝 직전 -15px 점프(착지=슬랩 타이밍) + 점등 후 기쁨 더블홉(-7px) */
+    0%,9.8% { transform:none; } 10.5% { transform:translateY(-15px); }
+    11.4%,18.2% { transform:none; } 18.9% { transform:translateY(-15px); }
+    19.8%,26.7% { transform:none; } 27.4% { transform:translateY(-15px); }
+    28.3%,35.2% { transform:none; } 35.9% { transform:translateY(-15px); }
+    36.8%,43.6% { transform:none; } 44.3% { transform:translateY(-15px); }
+    45.2%,52.1% { transform:none; } 52.8% { transform:translateY(-15px); }
+    53.7%,55.8% { transform:none; } 56.6% { transform:translateY(-7px); }
+    57.4%,58.2% { transform:none; } 59% { transform:translateY(-7px); }
+    59.8%,100% { transform:none; }
+  }
+  @media (prefers-reduced-motion:reduce) { .pet, .pet * { animation:none !important; }
+    .pm-walk { transform:translateX(116px); } }   /* 정적: 완성된 간판 + 옆에 선 크리터 */
+.topbanner .pet { left:50%; transform:translateX(-88px); bottom:22px; }
+</style>
+<main>
+<h1>마퀴 펫 v2 — <b>NO MUTE</b> 점등 애니메이션</h1>
+<div class="sub">260703 · 기능 3번 페이지(뉴스 요약) 상단 배너 펫 교체 · 레퍼런스 영상 형질 계승 + 글자 네온그린</div>
+
+<h2>라이브 데모 (실제 CSS 그대로 · 13초 루프)</h2>
+<div class="demo"><div class="topbanner"><div class="pet" aria-hidden="true"><!-- 마퀴 펫 v2 — 크리터가 NO MUTE 타일을 붙이고 점등(13s 루프 · 260703) -->
+    <div class="pm-sign"><span class="pm-now">NOW SHOWING</span><span class="pm-tiles"><b class="pm-t pm-t0">N</b><b class="pm-t pm-t1">O</b><i class="pm-sp"></i><b class="pm-t pm-t2">M</b><b class="pm-t pm-t3">U</b><b class="pm-t pm-t4">T</b><b class="pm-t pm-t5">E</b></span></div>
+    <span class="pm-walk"><img class="pm-critter" src="data:image/webp;base64,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" alt="" draggable="false"></span>
+  </div></div></div>
+<div class="cap">크리터 입장 → 타일 6장 슬랩(N·O·M·U·T·E) → 완성 점등(플리커) → 기쁨 홉 → 퇴장 → 소등 리셋. 실서비스와 동일 키프레임.</div>
+
+<h2>전 / 후 비교</h2>
+<table>
+<tr><th></th><th>전 (산책 펫)</th><th>후 (마퀴 펫 v2)</th></tr>
+<tr><th>동작</th><td>배너 하단을 좌우 왕복 산책(9s)</td><td>레퍼런스 영상 형질: 마퀴 간판에 NO MUTE 타일을 한 장씩 붙이고 점등(13s)</td></tr>
+<tr><th>구성</th><td>이미지 1장</td><td>NOW SHOWING 립 + 점묘 마퀴 간판(글래스) + 스캐폴드 다리 + 크리터(기존 pet.webp 재활용)</td></tr>
+<tr><th>글자</th><td>없음</td><td>NO MUTE — 네온그린(--accent) 타일·완성 시 글로우 점등</td></tr>
+<tr><th>크기</th><td>높이 50px</td><td>높이 58px(비슷·동일 자리 bottom:6px)</td></tr>
+<tr><th>pet.webp</th><td>손실 WebP 101KB(크롬 디코더 알파 노이즈 → 흰 잔상)</td><td>무손실 WebP <b>1.8KB(−98%)</b> · 잔상 0</td></tr>
+</table>
+
+<h2>장단점</h2>
+<ul>
+<li class="good">✅ 브랜드 각인 — 배너에 NO MUTE가 매 루프 점등(펫 산책보다 정보가 생김).</li>
+<li class="good">✅ 순수 CSS 키프레임(JS 0·이벤트 0) — 기존 펫과 동일하게 pointer-events:none 장식층.</li>
+<li class="good">✅ 크리터 = 기존 pet.webp 재활용 = 아이덴티티 연속 + 파일 98% 감량 덤.</li>
+<li class="warn">△ 산책 펫의 "무작위 왕복" 리듬은 사라짐(대신 13s 서사 루프).</li>
+</ul>
+
+<h2>효율성</h2>
+<ul>
+<li>추가 리소스 0(이미지 재활용·폰트 기존) · pet.webp −99.3KB.</li>
+<li>합성 부하: transform/opacity/filter 위주 — 기존 배너 브리딩·펫 애니와 동급. reduced-motion이면 전부 정지(완성 간판 정적 표시).</li>
+</ul>
+
+<h2>품질저하 리스크</h2>
+<ul>
+<li>탭별 글로우색(앰버·시안)과 무관하게 글자는 항상 네온그린 — 브랜드 고정 의도(요청 사양).</li>
+<li>점등 글로우가 배너 이미지 위에서 과하게 보일 수 있음 → 홀드 밝기를 brightness 1.45로 절제. 실기기에서 과하면 수치만 낮추면 됨(키프레임 2곳).</li>
+<li>손실 WebP 잔상은 무손실 재인코딩으로 제거(픽셀 동일·디코더 간 차이 원천 차단).</li>
+</ul>
+</main>
