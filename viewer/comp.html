@@ -120,7 +120,7 @@ const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
   });
   b.addEventListener('click', async e => { e.preventDefault();
     if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b._icon = 'check'; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
-    else { try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
+    else { const selS = ta.selectionStart, selE = ta.selectionEnd; try { const t = await navigator.clipboard.readText(); if (t) { if (typeof ta.setRangeText === 'function' && typeof selS === 'number') ta.setRangeText(t, selS, selE, 'end'); else ta.value += t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }   // 캐럿 삽입(덮어쓰기 폐지·운영자 260702)
   });
   ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
 })();
