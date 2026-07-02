@@ -634,7 +634,7 @@ def process_one(md, stem):
         print("  ⏸ AI 썸네일 생성 OFF({}) — 검색이미지만 처리(기존 썸네일·gen.json·토큰 영향 0)".format("THUMB_AI_OFF" if AI_OFF else "no_thumb"))
     else:
         _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
-        redo_wish = os.environ.get("THUMB_REDO_WISH", "").strip()[:500]   # 뷰어 '다시 만들기' 팝업 코멘트(선택) — 재생성 화풍에만 반영(배치 경로는 미설정 → 빈값 = 영향 0). [:500]=수동 dispatch 대비 심층방어(프론트 API도 500 캡·평의회)
+        redo_wish = re.sub(r"[\x00-\x1f\x7f]", " ", os.environ.get("THUMB_REDO_WISH", "")).strip()[:500]   # 뷰어 '다시 만들기' 팝업 코멘트(선택) — 재생성 화풍에만 반영(배치 경로는 미설정 → 빈값 = 영향 0). 제어문자 제거+[:500] = 수동 dispatch(프론트 우회) 대비 대칭 심층방어(로그 워크플로커맨드 차단·평의회 보안)
         if redo_wish:
             print("  📝 재생성 지시 반영: {}".format(redo_wish[:80]))
         existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
