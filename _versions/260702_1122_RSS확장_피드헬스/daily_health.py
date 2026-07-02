@@ -80,26 +80,6 @@ def main():
         print(f"  · 웹푸시 구독자 {len(subs) if isinstance(subs, list) else '?'}명")
     except Exception:
         print("  · 웹푸시 구독자 0명(또는 미생성)")
-    # RSS 피드 건강 원장(scraper/obs/feed_health.json 안정본 — 죽은피드 구성 변화시 scrape가 갱신 · 무음 드리프트 방지 260702)
-    try:
-        fh = json.loads((ROOT / "scraper" / "obs" / "feed_health.json").read_text(encoding="utf-8"))
-        # 원소 dict 정규화 — 부분 손상 시 요약줄 출력 후 순회서 터져 '생존'+'원장없음' 이중출력 모순 방지(평의회 260702)
-        deadf = [x for x in (fh.get("dead_feeds") or []) if isinstance(x, dict)]
-        zomb = [x for x in (fh.get("zombie_feeds") or []) if isinstance(x, dict)]
-        okn = fh.get("ok") or 0   # null도 0 표시(리터럴 None 방지) — 임계·표시 기준은 리스트 길이로 단일화
-        f = "✅" if len(deadf) <= 5 else "⚠️"
-        print(f"  {f} RSS 피드 생존 {okn}/{okn + len(deadf)} (죽음 {len(deadf)})"
-              + ("  (←죽음 6↑ = feeds.csv 정리 검토)" if len(deadf) > 5 else ""))
-        for x in deadf[:5]:
-            print(f"      ✗ {x.get('publisher', '?')} {x.get('title', '')}")
-        if len(deadf) > 5:
-            print(f"      … 외 {len(deadf) - 5}개 (scraper/obs/feed_health.json)")
-        if zomb:   # 응답은 오는데 갱신 멈춘 피드(JTBC 2024-10 멈춤 실측 케이스) — 주간 니치 피드는 일시 오탐 가능
-            print(f"  🧟 좀비 피드(응답 OK·24h 발행 0) {len(zomb)}개: "
-                  + " · ".join(f"{x.get('publisher', '?')} {x.get('title', '')}" for x in zomb[:4])
-                  + (" …" if len(zomb) > 4 else ""))
-    except Exception:
-        print("  · 피드 건강 원장 없음(다음 scrape 런부터 생성)")
 
     # ─────────── ② 알고리즘 신호 ───────────
     gd = Counter(x.get("grade") for x in c)
