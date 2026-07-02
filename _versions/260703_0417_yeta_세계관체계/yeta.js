@@ -59,12 +59,11 @@ export async function onRequestPost({ request, env }) {
   if (op === 'draw') {   // 페르소나 뽑기/재뽑기 — 대화 맥락(턴·노트)은 유지, 화자만 교체
     const persona = String(body.persona || '');
     if (!ID_RE.test(persona)) return json({ error: '잘못된 페르소나 id' }, 400);
-    const name = String(body.name || '').replace(/<<\s*\/?\s*NOTE(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 24);
-    const enter = String(body.enter || '').replace(/<<\s*\/?\s*NOTE(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 60);   // 등장 연출 문구(roster enter_line · 아이데이션②)
+    const name = String(body.name || '').replace(/<<\s*\/?\s*NOTE\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 24);
     const sess = await readSess();
     sess.turns = sess.turns || [];
     if (sess.persona && sess.persona !== persona && sess.turns.length) {
-      sess.turns.push({ role: 'sys', text: enter || `${name || persona} 등장`, ts: Date.now() });   // 대화 중 교체 = 합류 신호(enter_line 연출 우선 · 프롬프트 문맥에도 실림)
+      sess.turns.push({ role: 'sys', text: `${name || persona} 등장`, ts: Date.now() });   // 대화 중 교체 = 합류 신호(프롬프트 문맥에도 실림)
     }
     sess.persona = persona;
     sess.updated = Date.now();
