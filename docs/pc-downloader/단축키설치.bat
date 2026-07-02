@@ -5,13 +5,13 @@ setlocal
 REM ===============================================
 REM  NoMute 다운로더 단축키 설치기 (v5.2)
 REM  - 더블클릭 한 번이면 끝. PC당 1회만 실행.
-REM  - Ctrl+Shift+D 를 누르면 downloader2.bat이 바로 실행되게
+REM  - Ctrl+Shift+D 를 누르면 Downloader.bat이 바로 실행되게
 REM    시작 메뉴에 바로가기(NoMute Downloader.lnk)를 등록한다.
 REM  - 같은 단축키를 쓰던 옛 바로가기(구버전 ps1 방식 등)는 자동 해제.
 REM  - 단축키를 바꾸려면 아래 HOTKEY 줄만 고치고 다시 더블클릭.
 REM ===============================================
 set "HOTKEY=Ctrl+Shift+D"
-set "BATPATH=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\downloader2.bat"
+set "BATPATH=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\Downloader.bat"
 set "LNKPATH=%APPDATA%\Microsoft\Windows\Start Menu\Programs\NoMute Downloader.lnk"
 
 echo ===============================================
@@ -30,7 +30,7 @@ if "%OneDriveCommercial%"=="" (
 
 REM === 다운로더 본체 확인 ===
 if not exist "%BATPATH%" (
-    echo [오류] downloader2.bat 없음. 먼저 아래 위치에 넣어줘:
+    echo [오류] Downloader.bat 없음. 먼저 아래 위치에 넣어줘:
     echo        %BATPATH%
     echo.
     pause
