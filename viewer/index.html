@@ -1300,7 +1300,11 @@
   @keyframes ic-bounce { 0% { transform:translateY(0); } 45% { transform:translateY(2.5px); } 100% { transform:translateY(0); } }
   .ic-spin { animation:ic-spin .5s cubic-bezier(.2,.7,.3,1); }
   .ic-bounce { animation:ic-bounce .42s ease; }
-  @media (prefers-reduced-motion:reduce) { .ic-spin, .ic-bounce { animation:none; } }
+  @keyframes ic-rise { 0% { transform:translate(0,0); } 45% { transform:translate(2px,-2.5px); } 100% { transform:translate(0,0); } }   /* ↗ 이동 = 7시→2시 상승 nudge(토스트 원문·요약 이동 버튼 · 운영자 260702) */
+  @keyframes ic-check { 0% { transform:scale(1); } 40% { transform:scale(1.25); } 100% { transform:scale(1); } }   /* ✓ 확인 = 체크 팝 */
+  .ic-rise { animation:ic-rise .42s ease; }
+  .ic-check { animation:ic-check .4s cubic-bezier(.2,.7,.3,1); }
+  @media (prefers-reduced-motion:reduce) { .ic-spin, .ic-bounce, .ic-rise, .ic-check { animation:none; } }
   /* 눌림(press) 일관 — :active 없던 닫기/새로고침/유틸 아이콘 버튼 보강(운영자 260621 · 모든 곳) */
   /* 닫기(X) 누름 = 회전(로딩 스핀 느낌) + 살짝 눌림 (운영자 260622). 닫기는 클릭 즉시 팝업이 닫혀 ic-spin(클릭) 스핀이 안 보임 → 누르는 동안 보이는 :active 회전으로 피드백을 준다. transition으로 ×→+→×… 돌아가는 모션이 보임. */
   .tool-x, .dlg-x, .mx, .ed-x, .askx, .qh-x, .fb-x, .sc-rsn-x, .askimg-x { transition:transform .3s var(--ease); }
@@ -5620,8 +5624,8 @@ function showToast(c, total) {
   const title = esc((c.title || '').slice(0, 34));
   const more = total > 1 ? ` <b>+${total - 1}</b>` : '';
   t.innerHTML = `<span class="tg">긴급</span><span class="ft-msg">${title || '속보'}${more}</span>`
-    + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 봤음" title="확인 — 봤음(다음 건으로 · 핀·원장 무영향)">${CHECK_SVG}</button>`
-    + `<button class="sbtn ft-act ${ready ? 'go-ready' : 'go-wait'}" type="button" data-bt="go" aria-label="${ready ? '뉴스 요약 열기' : '기사 원문'}" title="${ready ? '뉴스 요약 열기(요약 완료)' : '기사 원문(요약 준비 중)'}">${Q_ARR}</button>`;
+    + `<button class="sbtn ft-act" type="button" data-bt="ack" data-motion="check" aria-label="확인 — 봤음" title="확인 — 봤음(다음 건으로 · 핀·원장 무영향)">${CHECK_SVG}</button>`
+    + `<button class="sbtn ft-act ${ready ? 'go-ready' : 'go-wait'}" type="button" data-bt="go" data-motion="rise" aria-label="${ready ? '뉴스 요약 열기' : '기사 원문'}" title="${ready ? '뉴스 요약 열기(요약 완료)' : '기사 원문(요약 준비 중)'}">${Q_ARR}</button>`;
   const _ak = t.querySelector('[data-bt="ack"]'), _go = t.querySelector('[data-bt="go"]');
   // ✓체크 = 순수 로컬 확인(brkToastMark·핀/원장 안 건드림) → 다음 건
   if (_ak) _ak.onclick = ev => { ev.stopPropagation(); brkToastMark(c); detectBreaking(); };
@@ -5826,9 +5830,9 @@ function showFailToast(n, sample) {
   _failToastC = sample || null;
   const title = sample ? esc((sample.title || '').slice(0, 34)) : '';
   t.innerHTML = `<span class="tg">${WARN_SVG} FAIL</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''}</span>`
-    + `<button class="sbtn ft-act" type="button" data-fa="ack" aria-label="확인 — 실패 이해" title="확인 — 실패 이해(알림 끄기·추가 동작 없음)">${CHECK_SVG}</button>`
+    + `<button class="sbtn ft-act" type="button" data-fa="ack" data-motion="check" aria-label="확인 — 실패 이해" title="확인 — 실패 이해(알림 끄기·추가 동작 없음)">${CHECK_SVG}</button>`
     + `<button class="sbtn ft-act" type="button" data-fa="retry" aria-label="재시도 — 재분석" title="재시도 — 자동 재분석(대기열 재투입 · 왜 실패인지 몰라도)">${REFRESH_SVG}</button>`
-    + `<button class="sbtn ft-act go-wait" type="button" data-fa="src" aria-label="원문" title="기사 원문(실패 = 요약 없음 · 고정 원문)">${Q_ARR}</button>`;
+    + `<button class="sbtn ft-act go-wait" type="button" data-fa="src" data-motion="rise" aria-label="원문" title="기사 원문(실패 = 요약 없음 · 고정 원문)">${Q_ARR}</button>`;
   // 3버튼 다 = 로컬 seen(markPickFailSeen) + 토스트 사라짐(이동해도 돌아오면 없음·운영자 260702). 확인=이해만 / 재시도=재분석(새탭X=원문버튼이 담당) / 원문=기사 원문(회색·실패라 고정). 본문탭과 stopPropagation 분리.
   const _ack = t.querySelector('[data-fa="ack"]'), _rt = t.querySelector('[data-fa="retry"]'), _sr = t.querySelector('[data-fa="src"]');
   if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeen(); clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 300); };   // 확인 = 실패 이해(초록 플래시 후 사라짐·추가 동작 없음)
@@ -7554,8 +7558,8 @@ document.addEventListener('click', e => {
   const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall');
   if (!b) return;
   const svg = b.querySelector('svg'); if (!svg) return;
-  const m = b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin';
-  svg.classList.remove('ic-spin', 'ic-bounce'); void svg.offsetWidth; svg.classList.add(m);
+  const m = b.dataset.motion ? ('ic-' + b.dataset.motion) : (b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin');   // data-motion=rise(↗이동)/check(✓확인) 명시 우선(운영자 260702) · 없으면 다운로드=바운스/그외=회전
+  svg.classList.remove('ic-spin', 'ic-bounce', 'ic-rise', 'ic-check'); void svg.offsetWidth; svg.classList.add(m);
 }, true);
 // 다운로드 버튼 표준 클릭효과 = ✓ 팝 + 링 리플(.dlbtn 전 앱 공통 · 위임·캡처 · 운영자 260622)
 document.addEventListener('click', e => {
