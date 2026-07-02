@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>썸네일 후킹 · 뉴스 요약 완성도 — 분신술 10인 평의회</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --panel:#14171a; --panel2:#0f1113;
+    --fg:#eef7f0; --mut:#9aa7a0; --line:rgba(255,255,255,.09);
+    --accent:#0FFD02; --accent2:#d8ff3d; --accent-rgb:15,253,2;
+    --danger:#ff5b4a; --amber:#ffcf3d; --info:#5cc8ff; --violet:#b48cff;
+    --r:14px; --r-s:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 16px 70px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  h2{font-size:17px;font-weight:800;margin:34px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+  h2 .no{color:var(--accent);margin-right:6px}
+  h3{font-size:14.5px;font-weight:800;margin:20px 0 8px}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 20px}
+  .sub b{color:var(--accent2)}
+  p{margin:8px 0}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 8px}
+  @media(max-width:640px){.grid{grid-template-columns:1fr 1fr}}
+  .stat{border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;background:linear-gradient(165deg,var(--panel),var(--panel2))}
+  .stat b{display:block;font-size:20px;color:var(--accent)}
+  .stat span{font-size:12px;color:var(--mut)}
+  table{width:100%;border-collapse:collapse;font-size:12.8px;margin:10px 0 4px}
+  th{color:var(--mut);font-weight:700;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:12px}
+  td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .tblbox{border:1px solid var(--line);border-radius:var(--r);background:var(--panel2);padding:2px 10px;overflow-x:auto}
+  .id{font-weight:800;color:var(--accent);white-space:nowrap}
+  .id.f{color:var(--amber)}
+  .tag{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:0 8px;font-size:11px;color:var(--mut);margin:0 2px 2px 0;white-space:nowrap}
+  .tag.hi{color:var(--accent);border-color:rgba(var(--accent-rgb),.4)}
+  .tag.mid{color:var(--info);border-color:rgba(92,200,255,.35)}
+  .tag.warn{color:var(--amber);border-color:rgba(255,207,61,.4)}
+  .tag.risk{color:var(--danger);border-color:rgba(255,91,74,.4)}
+  .tag.vio{color:var(--violet);border-color:rgba(180,140,255,.4)}
+  .card{border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(165deg,var(--panel),var(--panel2));padding:14px 16px;margin:12px 0}
+  .card.s{border-color:rgba(var(--accent-rgb),.32)}
+  .card h4{margin:0 0 6px;font-size:14.5px}
+  .card h4 .id{margin-right:6px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 4px}
+  @media(max-width:640px){.ba{grid-template-columns:1fr}}
+  .ba .b,.ba .a{border-radius:var(--r-s);padding:10px 12px;font-size:12.8px}
+  .ba .b{background:rgba(255,91,74,.07);border:1px solid rgba(255,91,74,.22)}
+  .ba .a{background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.25)}
+  .ba .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;display:block;margin-bottom:4px}
+  .ba .b .lbl{color:var(--danger)} .ba .a .lbl{color:var(--accent)}
+  .ev{border-left:3px solid var(--info);background:rgba(92,200,255,.06);border-radius:0 var(--r-s) var(--r-s) 0;padding:8px 12px;margin:8px 0;font-size:12.8px}
+  .ev b{color:var(--info)}
+  .note{color:var(--mut);font-size:12.5px}
+  code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:12px}
+  pre{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px;font-size:11.8px;line-height:1.55;overflow-x:auto;white-space:pre-wrap}
+  .risk{color:var(--danger)} .ok{color:var(--accent)} .warn{color:var(--amber)}
+  ul{margin:6px 0;padding-left:20px} li{margin:4px 0}
+  .conv{border:1px solid rgba(var(--accent-rgb),.3);border-radius:var(--r);padding:12px 14px;margin:10px 0;background:rgba(var(--accent-rgb),.04)}
+  .wavebox{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:10px 0;background:var(--panel2)}
+  .wavebox b.w{color:var(--accent);font-size:14px}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>썸네일 후킹 · 뉴스 요약 완성도 — 분신술 10인</h1>
+<p class="sub">FABLE 5 · <b>서로 다른 앵글 10인 병렬 평의회 · 전원 READ-ONLY 실측</b> · 260702 · 직전 14인 보고서 감사 포함</p>
+
+<div class="grid">
+  <div class="stat"><b>10인</b><span>독립 앵글 (rogue 0 사후점검)</span></div>
+  <div class="stat"><b>실물 6장</b><span>R2 썸네일 다운로드 판독</span></div>
+  <div class="stat"><b>6/6본</b><span>프롬프트 카메라 자기모순</span></div>
+  <div class="stat"><b>141/141</b><span>품질 무검증 커밋 실측</span></div>
+</div>
+
+<h2><span class="no">§0</span>한 장 요약</h2>
+<p><b>① 직전 14인 보고서 = ⚠️ 조건부 수용.</b> 정량 주장 20여 개를 전수 재검증한 결과 치명 날조 0·재현율 높음(79.3% vs 79% 수준). 단 <b>문면 오류 5건</b>(실타래 grep·한국기표 0회·스크립트 7개·별점 414건·P1-01 무규정)과 <b>구조 맹점 3개</b>(prompts 우회 배치 = SSOT 규칙 이원화 / 슛 모드의 구텍스트 재사용 = 신규칙 소급 0 / Wave 1 시점 규칙 30건 순증 무완화)를 안고 있다.</p>
+<p><b>② P1 요약의 다음 병목 = 조항이 아니라 계측.</b> 최근 17건 실측에서 글자수 자가 신고가 실측과 최대 −229~+88자 괴리(Thread 상한 초과 4건이 "약 430/450"으로 통과), URL↔기자 크레딧 오귀속 2건, 법원 판시 따옴표 안 변조 1건, 같은 사건 69분 간격 중복 분석 1쌍. 전부 스크립트 레인 기계 린트(무버스트)로 잡힌다.</p>
+<p><b>③ 썸네일 "후킹 약함"은 증상, 병명은 역할 무정의 + 설계된 절제의 총합.</b> 레포 스스로 "<code># 제목</code>이 곧 썸네일"·"오버레이 뒤 후킹 배경"이라 선언(텍스트 훅 = 제목 담당)했는데 AI 썸네일은 단독컷도 배경도 아닌 어중간한 물건이라 검색 실사진+수동 오버레이(일 16건·AI-OFF 기간에도 무중단)에 밀린다. 그 위에 ⓐ글자 훅 봉쇄+깨진 한글 누출의 이중 손해 ⓑ감정 피크 기사일수록 '정의의 저울' 알레고리로 도피(렌더 불능) ⓒphoto 화풍의 "와이드 롱샷·아이레벨" 하드코딩이 표정 클로즈업을 원천 배제+dispatch와 6/6본 모순 ⓓ프롬프트 1,437자 중 사건 고유 정보 7~8%·금지 11절 ⓔ표정(EM)·제스처(GST)·동세(ACT) 어휘가 조회망 밖 ⓕ141/141 "포맷 성공=완성" 무검증 ⓖwish 불만 사료가 로그로 소멸 — 7겹이 쌓여 "품위 있으나 멈추게 하지 않는" 이미지가 구조적으로 나온다. <b>개선안 대부분이 thumb_gen.py·prompts 수정 = GVER 해시 밖 = 재생성·재과금 0.</b></p>
+
+<h2><span class="no">§1</span>직전 14인 보고서 감사 (앵글①) — ⚠️ 조건부 수용</h2>
+<p class="note">정량 주장 전수 재검증: 85.6KB 주입·해시 파일집합·17세/700만원 증발·카드 6장 69%·말줄 강조 77.9%·한자 혼입·조명 22vs10 단절·인물 표류·빈 코퍼스 — <b>전부 실물 재현 ✅</b>. 아래는 정정·보강분만.</p>
+
+<h3>문면 오류 5건 (수용 전 정정)</h3>
+<div class="tblbox"><table>
+<tr><th>#</th><th>보고서 주장</th><th>실측 정정</th></tr>
+<tr><td>1</td><td>"'실타래' 레포 전체 grep 0건"</td><td>수집 데이터(candidates.json 등)에 2건 존재 — <b>"지침·프롬프트 grep 0건"으로 정정</b>(취지는 유효)</td></tr>
+<tr><td>2</td><td>LIB-04 "근조화환 등 한국 기표 사용 0회"</td><td>과장 — <code>chrysanthemum</code> 13덱·<code>funeral wreath</code> 2덱 자생 사용. LIB-04의 가치 = '없는 어휘 공급'이 아니라 <b>'산발 사용의 코드화'</b></td></tr>
+<tr><td>3</td><td>SYS-08 "7개 스크립트 하드코딩"</td><td>실측 <b>11개</b>(analyze·ask·judge류·cardmake·kmake·lymake·revise류) — 제안 유효·숫자 정정</td></tr>
+<tr><td>4</td><td>"별점 414건"</td><td>ratings.jsonl 419줄 = 별점류 224 + pick 110 + pass 55 + 👎 30 <b>혼합 원장</b>. "수정요청 12건"은 현 스냅샷서 재검증 불가</td></tr>
+<tr><td>5</td><td>P1-01 BEFORE "무규정"</td><td>01:3에 "맨 위 기사 제목(IG 헤드)이 곧 썸네일" 기존재 — 실제 문제는 <b>규정 신호 상충</b>(frontmatter <code>title: 원문 그대로</code> 주석이 앵커링·H1 플레이스홀더 무지시). P1-01 구현 = 이 상충 해소가 본체</td></tr>
+</table></div>
+
+<h3>구조 맹점 3개 (수용 조건)</h3>
+<div class="tblbox"><table>
+<tr><th>맹점</th><th>내용</th><th>조건</th></tr>
+<tr><td class="risk">SSOT 이원화</td><td>Wave 0이 품질 규칙(P2T-01·02·P2I-01)을 prompts/로 우회 배치 — inject_guidelines.sh:1-9가 차단하려던 '미세하게 다른 사본 두 개'를 제도화. prompts 수정은 GVER 불변 = 미촬영 247건 stale인데 도장 구분 불가 + <b>슛 모드는 기존 cards.md 재사용(cardmake.sh:189-192)이라 옛 덱 발사 시 신규칙 0 적용</b></td><td>01 정본에 규칙 명시 + prompts는 포인터, 또는 status.json에 <code>prompt_version</code> 도장 병기 + 슛 전 단일 재생성 권고 1줄</td></tr>
+<tr><td class="risk">Wave 1 순증</td><td>완화 산수(-3K·-21KB)가 전부 Wave 2 승인 게이트 뒤 — Wave 1 시점엔 규칙 ~30건 순증만(v1.15.14 롤백 전례를 스스로 인용하면서 승인 지연 시나리오 무완화). 30건 1커밋 = 규칙별 효과 귀속 불가</td><td>LIB-05 다이어트를 Wave 1에 원자적으로 묶거나 "총량 감소 방향" 문구 삭제</td></tr>
+<tr><td class="warn">기구현 중복</td><td>SYS-04(헤드리스 예외)는 card-make.md:3·:8, news-analysis.md 말미에 이미 실전 완화 존재 — 01에 또 넣으면 사본 2곳+버스트 비용. 효과 '중'은 과대</td><td>강등 또는 prompts 쪽 1줄 보강으로 대체</td></tr>
+</table></div>
+<p class="note">추가: P2I-06·LIB-01·LIB-03이 02의 §6/§8 같은 표를 각자 수정 — 번들 커밋 내 상호 충돌 후보(조율 규정 필요). 보고서 측정 창·스크립트 미첨부 = 제3자 재검증 곤란(측정 스크립트를 docs/에 남기는 항목 권장).</p>
+
+<h2><span class="no">§2</span>P1 요약 완성도 — 추가 발견 · 7건 (앵글②·① 수렴)</h2>
+<div class="ev"><b>실측 하이라이트</b> — 최근 17건(260702 전건): Thread 450 상한 초과 4건(자가 "약 430" → 실측 488 / "약 400" → 477 = <b>77자 과소 신고</b>) · IG "약 690" → 실측 461(−229 과대 신고 = 과소 활용이 목표선 내로 위장) · 홍명보 건은 폐기된 구 상한 <code>460/500</code> 분모 표기 · fnnews URL에 조선일보 기자 크레딧(1201)·한국일보 URL에 중앙일보 크레딧(2015) · 1심 판시 <code>"겪었을 것"</code>→<code>"겪었다"</code> 따옴표 안 변조(2015) · 잠실 개표소 사건 69분 간격 2회 전량 분석(1137↔1201 — alt_urls 교집합 있는데도 감지 0) · '…건 …였다' 리빌 훅 한 파일 4연발(2239).</div>
+<div class="tblbox"><table>
+<tr><th>ID</th><th>개선안</th><th>출처</th><th>효과</th><th>비용</th><th>레인</th></tr>
+<tr><td class="id">NEW-1</td><td><b>digest_guard 규격·자수 린트</b> — analyze.sh 저장 직전 기계 검사: 실측 자수(Thread&gt;500만 하드)·표기/실측 괴리 병기·분모 드리프트·🔎 마커·자유요약 ⚡ 혼입·# 제목 [속보] 잔존(P1-01 역가드). <b>2인 독립 수렴</b>(앵글① "P1 기계 린트 부재 = 최대 누락" 동일 결론) — 지침 3연속 길이 교정(v1.18.0/18.1/18.4)이 자가 카운트 오차로 계속 새는 구조를 끊는 유일 레버</td><td>②①</td><td>상</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">NEW-2</td><td><b>url↔크레딧 정합 규칙</b> — 대체 매체 분석 시 media/reporter는 url 매체와 일치(분석 소스는 교차확인란으로)·두 필드 상이 출력 금지 1줄</td><td>②</td><td>중</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">NEW-3</td><td><b>직접 인용 보존 1줄</b> — 따옴표 안 문자열은 Fact 블록과 자구 일치, 줄이려면 따옴표 풀어 간접 인용으로(법적·신뢰 리스크 차단)</td><td>②</td><td>중</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">NEW-4</td><td><b>동일 사건 중복 감지</b> — 저장 전 최근 48h queue의 url+alt_urls 교집합·제목 유사도 대조 → "⚠️ 동일 사건 추정" 비차단 표시(과금 절감+이중 게시 방지)</td><td>②</td><td>중</td><td>중</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">NEW-5</td><td><b>채널 간 훅 차별화</b> — Thread 헤드 = IG 헤드 문장·핵심 어절 재사용 금지 + 리빌 문형('…건 …였다') 세트당 ≤1회(P1-10 지문 목록에 보강)</td><td>②</td><td>중</td><td>하</td><td class="warn">번들(P1-10 동승)</td></tr>
+<tr><td class="id">NEW-6</td><td><b>편향 게이지 검증</b> — 01:78 스스로 "무조건 5 고무도장 경향 관찰" 기록. 별점 원장(pick/pass 사유)과 엮은 월간 대조 = LOOP-04 자연 확장</td><td>①</td><td>중</td><td>중</td><td class="vio">후속</td></tr>
+<tr><td class="id">NEW-7</td><td><b>P1-05↔SYS-06 연결 회로</b> — 시사점 '착지 한 줄'을 카드가 기계 식별할 키가 없음(hook만 있음). SYS-06 승인 시 <code>closing</code> 키 동반 검토</td><td>①</td><td>중</td><td>하</td><td class="risk">기틀(SYS-06 편승)</td></tr>
+</table></div>
+
+<h2><span class="no">§3</span>썸네일 — 문제 재정의 (앵글⑩·⑦)</h2>
+<div class="conv">
+<p><b>"후킹 약함"은 증상이다. 병명 = 역할 무정의.</b> 레포 실측:</p>
+<ul>
+<li><b>텍스트 훅의 정본 = <code># 제목</code></b> — prompts:106 "맨 위 기사 제목이 곧 썸네일이다" + 뷰어 제목 복사 버튼. 후킹의 절반(카피)은 이미 제목이 담당.</li>
+<li><b>이미지의 실제 역할 = 오버레이 배경</b> — 뷰어 "+5장 더" 툴팁 스스로 "오버레이 뒤 후킹 배경으로 검색". 실전 = 검색 실사진 + 수동 오버레이 생성기(thumb_out 283건/18일 = <b>일 16건, AI-OFF 기간에도 하루도 안 빠짐</b>).</li>
+<li><b>AI 썸네일은 세 역할 어느 쪽에도 최적화 안 됨</b>: 단독 대표컷(→훅 텍스트 필요한데 NO_TITLE 봉쇄) / 오버레이 배경(→조용한 영역·9:16 필요한데 full-bleed 단일초점·4:5 고정) / 카드1 표지(→별도 파이프). 검색 실사진에 밀리는 게 합리적 귀결.</li>
+<li><b>운영자 타임라인이 판정을 새겨놨다</b>(앵글⑦): 260621 Gemini 월 지출캡 429 사고 → 260622 "임시 OFF"(<b>직접 계기는 비용 사고, 8일 꺼놔도 무지장 = 진짜 신호</b>) → 260630 2화풍·1K로 조건부 재가동 → 260702 no_thumb 토글 + 연필 wish 개편 = "자동 전량"에서 "필요할 때 지시해 뽑는 물건"으로 취급 이동 중.</li>
+<li><b>불만의 화석 3개가 같은 방향</b>: GOVERNING "스톡사진풍 도피 금지"·주석 "'밥 먹는 그림'화 방지"·260621 암시룰 제거("충돌·분노 순화 방지·운영자 요청") + 실 wish 「전체적으로 더 어둡고 비 내리는 밤 분위기로」 — 전부 <b>"밋밋하고 안전하게 도피한다"</b>.</li>
+</ul>
+<p><b>∴ 처방 순서: ① 역할 확정(제목과 한 몸인 훅 상속 + 실사진 공백 보충) → ② 그 역할에 맞는 프롬프트·장면 품질 → ③ 게이트·환류.</b> 프롬프트만 자극적으로 벼리는 건 오진.</p>
+</div>
+
+<h2><span class="no">§4</span>썸네일 — 원인 수렴 맵 (독립 위원 겹침 = 신뢰 최상)</h2>
+<div class="tblbox"><table>
+<tr><th>수렴</th><th>원인 (전부 실물 근거)</th><th>독립 위원</th></tr>
+<tr><td class="id">T1</td><td><b>글자 이중 손해</b> — SNS 최대 훅(카피)은 NO_TITLE로 봉쇄, 정작 모델은 깨진 한글 피켓·영어 저울 라벨을 화면 중앙에 렌더(실물 4/6장)</td><td>③ ⑥ ⑩</td></tr>
+<tr><td class="id">T2</td><td><b>장면 문법 실패</b> — thumb_scene 밀도는 평균 5/7로 양호하나, 감정 피크 기사일수록 알레고리 도피("정의의 저울"·"수갑은 비껴가고" = 렌더 불능)·부재/정적(SG-09) 3/15·2주체 병치 — 후킹이 가장 필요한 기사에서 가장 약한 그림이 나오는 <b>역상관</b></td><td>③ ⑤</td></tr>
+<tr><td class="id">T3</td><td><b>화풍 카메라 하드코딩 모순</b> — photo "와이드 롱샷·깊은 심도·아이레벨" 고정 = 표정 클로즈업 원천 배제(46 CTS-08 "세로피드는 타이트가 이긴다"와 정반대) + dispatch AG 코드와 <b>6/6본 충돌</b>(아이레벨+top-down 동시 지시)</td><td>③ ④ ⑨</td></tr>
+<tr><td class="id">T4</td><td><b>프롬프트 구조 결함</b> — 1,437자 한 줄 " ".join·사건 고유 정보 7~8%·금지 11절/22명사(개념 프라이밍 위험)·라이브러리 예시문 리터럴 오염(시골길 사고에 '명패·연단·마이크' 주입). 카드는 같은 모델에서 라벨+개행 영어 문법으로 이미 성공 운영</td><td>③ ⑨</td></tr>
+<tr><td class="id">T5</td><td><b>후킹 어휘 배선 단절</b> — EM 표정 46종·GST 제스처·ACT 동세가 _LIB_FILES와 analyze 메뉴 양쪽에서 누락(38/40 TSV가 내부 참조까지 해놨는데 런타임이 절반을 끊음)·13/01a/01b는 히트 0 죽은 로드</td><td>④</td></tr>
+<tr><td class="id">T6</td><td><b>품질 무검증</b> — 141/141 "포맷 성공=완성" 커밋·후킹 판정 지점 0. 게이트 인프라(비전 훅 _vision_keep·usage 버킷·뷰어 $ 표기)는 이미 배선 = '점화만 남은 예정 공사'(docs 스스로 "🌱 잔여: PIL 품질게이트" 예고)</td><td>⑧</td></tr>
+<tr><td class="id">T7</td><td><b>피드백 소멸</b> — wish가 로그로만 남고 90일 소멸(현존 사료 단 2건)·썸네일만 평가 입구 0(스크랩 419행·카드 👍👎와 대조)</td><td>⑦</td></tr>
+<tr><td class="id">T8</td><td><b>해외 사건 배경 오염</b> — COMPOSITION "한국 기본값"이 장면의 '태국 시골길'을 눌러 한옥+한국어 표지판 렌더(실물)</td><td>③ ⑨</td></tr>
+</table></div>
+
+<div class="card s"><h4><span class="id">벤치마크</span>태국 스님 기사(260702-2239) photo 1장 = 전 원인의 교차 증거물</h4>
+<div class="ev"><b>실물 판독</b> — SG-09 '부재' 장면(인적 없는 정적 = 후킹 0) + photo 롱샷 고정(감정 없음) + "한국 기본값" 오염(태국 사건에 한옥·한국어 표지판) + NO_TITLE에도 깨진 글자 + 라이브러리 리터럴('빈 의자·연단·마이크')까지 한 컷에 전부. <b>개선안 검증 시 이 기사 재생성(thumb-redo)을 전/후 비교 기준으로 쓸 것.</b></div></div>
+
+<h2><span class="no">§5</span>썸네일 개선안 인덱스 — 14건 (통합·중복 제거)</h2>
+<p class="note"><b>전부 GVER 해시 밖</b>(thumb_gen.py·prompts·TSV·워크플로) = 카드 재생성 폭탄 0 · 기존 썸네일 skip 게이트(gen.json sid 존재) 덕에 <b>재과금 0, 신규 픽부터 적용</b>. 비용 실측(앵글⑧): 현행 월 $33~42·재생성 3.2% = 돈이 아니라 품질 무검증이 문제.</p>
+<div class="tblbox"><table>
+<tr><th>ID</th><th>개선안</th><th>출처</th><th>효과</th><th>비용</th><th>레인</th></tr>
+<tr><td class="id">TH-01</td><td><b>build_prompt v2</b> — 라벨+개행 8줄(영어 고정문·한국어 SCENE 유지)·dispatch 접두사 버킷 분리(CAMERA/LIGHT/STAGING·모순쌍 뒤 코드 드롭)·화풍 카메라는 dispatch 부재 시 폴백으로 강등·금지 11절 → AVOID 1줄 응집(긍정 재서술)·STAGING에 "adapt this motif" 래핑(리터럴 오염 중화)·ASCII 린트. 카드 검증 문법 이식 = T3·T4 동시 해소</td><td>⑨③④</td><td>상</td><td>중</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-02</td><td><b>thumb_scene 서식 강화</b> — 알레고리 금지(카메라가 찍을 수 있는 물리 장면만)+감정 맺힘점 선두 강제+5요소(인물수·행동·시선·핵심사물·장소)+시간대/광원 1단어+군중 기사 "주인공 1인+배경 군중" = T2 직격. prompts 1행·코드 0줄</td><td>⑤③</td><td>상</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-03</td><td><b>훅 SSOT 동기화</b> — thumb_scene 정의를 "# 제목(IG 헤드)을 시각화한 결정적 순간"으로 못 박고 <b>P1-01과 한 커밋 배포</b> — 제목·카드1·썸네일이 한 훅에서 파생(따로 고치면 훅 이원화 드리프트 재생산)</td><td>⑩⑤</td><td>상</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-04</td><td><b>후킹 어휘 배선</b> — analyze 메뉴에 EM(표정·시선)·GST/ACT(제스처·동세) 2줄 노출 + _LIB_FILES에 22·33·47 추가(Gemini 칼럼 실존 = 무수정 로드·미존재 코드 fail-soft 유지). <b>반드시 세트</b>(메뉴 없이 파일만 = 죽은 로드 재판)</td><td>④</td><td>상</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-05</td><td><b>photo 화풍 카메라 교체</b> — "와이드 롱샷·아이레벨" → 타이트 미디엄~클로즈업 기본(sid 유지 = 재과금 0). dispatch 공란 기사의 바닥값 상향</td><td>④③</td><td>상</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-06</td><td><b>품질 게이트 2단</b> — ⓐPIL 밴드/단색 검사(무과금·_is_logo_card 패턴) → 미달만 ⓑ<code>THUMB_JUDGE=1</code> Gemini 비전 자가채점+재생성 1회. <b>⚠️ 필수: 미달이어도 항상 gen.json 기록 + attempts 상한(화풍당 1회·기사당 4콜)</b> — 미기록형 게이트는 백필 루프(main L731~)와 결합해 무한 재과금·좀비 슬롯잠식이 됨. score를 gen.json에 실으면 정렬만으로 베스트=첫 슬롯</td><td>⑧</td><td>상</td><td>중</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-07</td><td><b>wish 원장 적립</b> — thumbredo.js가 받는 {article,sid,wish}를 <code>scraper/thumb_wishes.jsonl</code> append(rate.yml 패턴 ~20줄)+저장 버튼 탭 = 암묵 픽 신호. 지금 구조에선 유일한 불만 1차 사료가 90일 소멸 — 적립 입구 없으면 루프 전체가 시작 못 함</td><td>⑦</td><td>상</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-08</td><td><b>"한국 기본값" 조건화</b> — 해외 사건(frontmatter로 판정)이면 해당 문장 제거/교체 = T8 재발 차단(코드 1~2줄)</td><td>③⑨</td><td>중</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id">TH-09</td><td><b>썸네일판 RCH-02</b> — 표지 강등 모티프(유혈·무기 겨눔) 회피를 GOVERNING에 대칭 적용(카드1에만 있고 썸네일에 없음 — 같은 피드 첫 픽셀). 260621 암시룰 제거(순화 방지)와 충돌 않게 '강등 모티프만' 한정</td><td>⑩</td><td>중</td><td>하</td><td class="ok">무버스트</td></tr>
+<tr><td class="id f">TH-10</td><td><b>텍스트 훅 PIL 오버레이 하이브리드</b> — Gemini 원본은 그대로 두고 IG 헤드 첫 줄을 PIL로 얹은 <code>gen-&lt;sid&gt;-hook.png</code> 병행 업로드(nomute_overlay import 재사용·Pillow 기설치·과금 0·원본 보존). 읽히는 한글 훅을 무료로 해결</td><td>⑥③</td><td>상</td><td>중</td><td class="risk">승인(CLAUDE.md §🖼 "타이틀 안 박음" 문구 갱신)</td></tr>
+<tr><td class="id f">TH-11</td><td><b>디폴트 반전</b> — 자동 배치는 검색 대표 이미지 0장(paste·차단매체)일 때만 photo 1장, 나머지는 온디맨드(연필 wish·no_thumb 배관 기존재) = <b>과금 ≥50%↓</b> + AI가 실제로 이기는 슬롯(실사진 공백)에 집중</td><td>⑩⑦</td><td>상</td><td>중</td><td class="risk">승인(자동생성 정책 변경)</td></tr>
+<tr><td class="id f">TH-12</td><td><b>뷰어→/1 원탭 브리지</b> — 생성/검색 슬롯에 "이 이미지로 포스트 제작" 버튼(R2 URL을 thumb.html에 전달) — 현행 다운로드→재업로드 3단 마찰 제거</td><td>⑥</td><td>상</td><td>중</td><td class="vio">후속 PR</td></tr>
+<tr><td class="id f">TH-13</td><td><b>참조이미지 체이닝</b> — og:image bytes를 Gemini parts에 첨부(배선만 확장·이미 확보된 bytes 재사용). 실존인물 재현 리스크 → "역할화·비식별" 지시 필수 + <b>기본 OFF 플래그 → 카나리아 1건 → 승격</b>(§📰 260701 절차)</td><td>⑥</td><td>중상</td><td>중</td><td class="risk">승인+카나리아</td></tr>
+<tr><td class="id f">TH-14</td><td><b>웹툰 화풍 존치 재검토</b> — 뉴스 계정에서 AI 일러 인지가 신뢰도를 깎을 가능성(운영자가 실사진 선택해온 행동이 방증). 기본 OFF·연필로만 호출(sid 보존) = 과금 추가 반감. TH-07 원장 데이터로 판정 권장</td><td>⑩</td><td>중</td><td>하</td><td class="risk">승인</td></tr>
+</table></div>
+<p class="note"><b>기각</b>: N변주 생성+선별(과금 3배·판정 문제 못 풀고 wish가 대체재 — 앵글⑥⑧ 독립 기각 일치) · 1K→2K 해상도(후킹은 구도·내용 문제, 화질 아님 — 실물 판독 기각).</p>
+
+<h2><span class="no">§6</span>대표 전/후 — 프롬프트 v2 (태국 스님 건 실물 조립)</h2>
+<div class="ba">
+<div class="b"><span class="lbl">BEFORE (현행 1,437자 한 줄)</span>한국어 산문 덩어리 + 영문 키워드가 마침표 없이 충돌. 금지 11절. photo 화풍 "와이드 롱샷·아이레벨"과 dispatch "빈 좌석 클로즈" 동시 지시. SG-09 리터럴 "empty chair with a nameplate, abandoned podium and microphone"이 시골길 사고에 주입. "한국 기본값"이 태국을 한옥으로 오염. → 실물: 인적 없는 한국 농로 롱샷, 깨진 한글 표지판.</div>
+<div class="a"><span class="lbl">AFTER (v2 ~850자 8줄)</span><code>NEWS EDITORIAL PHOTO — one decisive moment that stops the scroll.</code><br><code>STYLE: reportage press photograph, documentary realism, unposed mid-action.</code><br><code>SCENE: {thumb_scene 한국어 그대로}</code><br><code>CAMERA: {AG/DF 버킷 | 폴백: tight medium}, one clear focal subject, frozen split-second.</code><br><code>LIGHT: {LGT 버킷}</code><br><code>STAGING (adapt this motif to the scene above): {SG 버킷}</code><br><code>FRAME: 4:5 vertical, edge to edge; use the event's actual region (rural Thailand).</code><br><code>AVOID: stock-photo look, blank bands, watermark, legible lettering, identifiable individuals.</code></div>
+</div>
+
+<h2><span class="no">§7</span>실행 웨이브</h2>
+<div class="wavebox"><b class="w">Wave T0 — 무버스트 · 승인 불요 · 재과금 0 (한 커밋)</b>
+<p class="note">TH-01(프롬프트 v2)·TH-02(장면 서식)·TH-03(훅 SSOT — <b>P1-01과 동승</b>)·TH-04(어휘 배선)·TH-05(photo 카메라)·TH-07(wish 원장)·TH-08(한국 기본값)·TH-09(모티프) + <b>NEW-1(digest_guard)·NEW-2·NEW-3</b> — 검증 = 태국 스님 건 thumb-redo 전/후 비교</p></div>
+<div class="wavebox"><b class="w">Wave T1 — 운영자 승인 안건</b>
+<p class="note">㉠ TH-10 텍스트 훅 오버레이(§🖼 문구 갱신) · ㉡ TH-11 디폴트 반전(과금 ≥50%↓) · ㉢ TH-06 품질 게이트(신규 콜 +미미) · ㉣ TH-14 웹툰 기본 OFF · ㉤ TH-13 참조 체이닝(카나리아)</p></div>
+<div class="wavebox"><b class="w">14인 보고서 처리</b>
+<p class="note">⚠️ 조건부 수용 — §1의 오류 5건 정정 + SSOT 이원화 조건(prompt_version 도장 or 01 정본화) + Wave 1 순증 완화(LIB-05 원자 묶음) 반영 후 Wave 0부터. NEW-4(중복 감지)·NEW-6·NEW-7은 후속.</p></div>
+
+<h2><span class="no">§8</span>리스크 총괄</h2>
+<div class="tblbox"><table>
+<tr><th>리스크</th><th>내용</th><th>완화</th></tr>
+<tr><td class="risk">게이트 무한루프</td><td>미기록형 품질 게이트 = 백필 스캔과 결합해 런마다 재과금+슬롯 잠식</td><td>미달이어도 항상 기록+attempts 메타·화풍당 재시도 1회 상한(TH-06 내장)</td></tr>
+<tr><td class="risk">자극 과잉 회귀</td><td>후킹 강화가 선정성·플랫폼 강등으로 역풍</td><td>TH-09 강등 모티프 회피 동승 + 안전문은 AVOID 1줄로 보존(제거 아님)</td></tr>
+<tr><td class="warn">영어 고정문 전환 편차</td><td>v2 문법 전환 직후 화풍 톤 변동 가능</td><td>태국 스님 건 벤치마크 전/후 비교 + 구 프롬프트 함수 보존(1커밋 롤백)</td></tr>
+<tr><td class="warn">TH-10 원본/훅판 이원화</td><td>훅판 별도 키 = R2 오브젝트 2배</td><td>훅판은 대표 1화풍만 생성·원본 보존이라 롤백 자유</td></tr>
+<tr><td class="warn">규칙 순증(P1)</td><td>NEW 제안도 결국 조항 추가</td><td>NEW-1~4는 전부 스크립트 레인(지침 0자) — 지침 비대와 무관</td></tr>
+</table></div>
+
+<p class="sub" style="margin-top:26px">작성 = 메인(FABLE 5) · 근거 = 10인 앵글 실측 보고 전문(실물 썸네일 6장 판독·프롬프트 6본 실조립·Actions 이력·usage 138건 전수) · 다음 단계 = 운영자 승인 → Wave T0 한 커밋 → 태국 스님 건 전/후 검증</p>
+
+</div></body></html>
