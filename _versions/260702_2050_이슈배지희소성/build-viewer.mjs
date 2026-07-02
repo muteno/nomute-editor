@@ -48,30 +48,15 @@ try {
 } catch { /* queue 없음 */ }
 
 // 수집함 cross 인덱스(이슈 판정용) — viewer/candidates.json url→cross 맵. 직접공유분(매칭 없음)은 cross 0 → issue false(운영자: 직접은 어쩔 수 없음).
-const CROSS = new Map(), BRK = new Map(), CAT = new Map(), GRADE = new Map(), CTITLE = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계) · GRADE·CTITLE = 이슈 배지 게이트용(260702 옵션2)
+const CROSS = new Map(), BRK = new Map(), CAT = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계)
 try {
   const cj = JSON.parse(readFileSync('viewer/candidates.json', 'utf8'));
   for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) {
     CROSS.set(c.url, c.cross || 0);
     BRK.set(c.url, !!c.breaking && (c.grade == null || c.grade >= 2));   // 긴급 = breaking_judge 확정 AND 경중 grade≥2(미채점 포함) — cross 무관
     if (c.cat) CAT.set(c.url, c.cat);   // 후보 cat(gate_judge AI 분류·미술관 흉기난동=사회) → 픽 기사 카테고리 승계용
-    GRADE.set(c.url, c.grade == null ? null : c.grade);   // 이슈 배지 grade 게이트(null=미채점 관용)
-    CTITLE.set(c.url, c.title || '');   // 이슈 배지 정형·홍보컷은 후보 원제목 기준(요약 제목 아님)
   }
 } catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
-
-// ── ⚡이슈 배지 판정 (260702 옵션2 · 정본 = viewer/index.html scBadgeType 블록과 **규칙 동일** 유지 — 한쪽만 고치면 수집함↔피드 배지 드리프트) ──
-// 이슈 = cross≥10 AND grade(null‖≥2) AND !badgeJunk. 배지 강조 전용 — 칼럼 진입(CROSS_MIN 8)·랭킹·fbJunk veto와 무관.
-const ISS_CROSS_MIN = 10;   // 8→10(260702): 수집확대(6/26 분야+7/2 경제지) cross 인플레 2.5배 보정 — "오늘 cr10=확대 전 cr8" 실측 환산.
-const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건이면 컷 면제
-const BJ_MKT = /(증시|코스피|코스닥|환율|유가|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '마감'만 다뤄 '출발' 보강)
-const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — 칼럼엔 잔존)
-const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|공시|합작사|출자)/;   // 기업 PR·공시 정형구(다매체 동시배포로 cross가 높게 잡히는 홍보성)
-const badgeJunk = t => (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t);
-const issEligible = url => {
-  const cr = CROSS.get(url || '') || 0, g = GRADE.has(url || '') ? GRADE.get(url || '') : null;
-  return cr >= ISS_CROSS_MIN && (g == null || g >= 2) && !badgeJunk(CTITLE.get(url || '') || '');
-};
 
 // 원문 편향 N 추출 — 분석 본문 '📊 편향: 원문 N/10 색(라벨) → 요약 M/10…'의 원문값.
 // AI가 이미 본문에 계산(요약 알고리즘 0 변경) → 옛 기사도 빌드 때 소급 적용. 못 찾으면 ''(게이지가 요약만 표시).
@@ -119,7 +104,7 @@ for (const f of files) {
       category: meta.category || CAT.get(meta.url || '') || '',   // frontmatter category 우선 → 없으면 후보 cat(gate_judge AI 분류) 승계 → 둘 다 없으면 뷰어 articleCat 키워드 폴백(미술관 흉기난동=사회 교정·260626)
       breaking: BRK.has(meta.url || '') ? BRK.get(meta.url || '') : /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // 긴급 = 매칭되면 AI breaking_judge 판정 따름(AI가 NO면 제목 [속보]여도 X) · 미매칭(직접공유)만 제목 표식 폴백.
       cross: CROSS.get(meta.url || '') || 0,                    // 수집함 매칭 매체 수(직접공유=0)
-      issue: issEligible(meta.url),                             // index3: 이슈여부 = cross≥10 AND grade(null‖≥2) AND !badgeJunk(260702 옵션2 — 옛 cross≥8 단독은 홍보·시황이 다매체 동시배포만으로 배지 획득·수집확대 인플레로 남발). 직접공유분은 매칭 없어 false.
+      issue: (CROSS.get(meta.url || '') || 0) >= 8,             // index3: 이슈여부 = cross≥8(8+매체=넓은 이슈, 운영자 5→8). 직접공유분은 매칭 없어 false.
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
       rev: Number(meta.rev) || 0,   // 수정 회차(서버 정본) — revise.sh가 프론트매터 rev 증가. 뷰어 색·완료감지 기준.

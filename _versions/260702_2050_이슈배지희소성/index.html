@@ -588,7 +588,7 @@
   .sc-item.removing { opacity:0; transform:scale(.96) translateX(16px); pointer-events:none; overflow:hidden;
     transition:height .32s ease, opacity .3s ease, transform .3s ease, margin .32s ease, padding .32s ease; }
   @media (prefers-reduced-motion:reduce) { .sc-item.removing { transition:opacity .12s; } }
-  /* 배지(=사건 속성) = 메타라인 인라인 텍스트(이슈=노랑·긴급=빨강 · 글래스 칩 폐지 → 카테고리 · 매체 N · 배지 한 줄 · 운영자 260621). 🚨긴급(breaking AND <4h) / ⚡이슈(cross≥10·grade게이트·정형컷[issCross] 또는 aged-breaking 4~24h · 1일↑ 없음 · 260702 옵션2). 점등(테두리·글로우)은 별개 조건 유지. */
+  /* 배지(=사건 속성) = 메타라인 인라인 텍스트(이슈=노랑·긴급=빨강 · 글래스 칩 폐지 → 카테고리 · 매체 N · 배지 한 줄 · 운영자 260621). 🚨긴급(breaking AND <4h) / ⚡이슈(cross≥8 또는 aged-breaking 4~24h · 1일↑ 없음). 점등(테두리·글로우)은 별개 조건 유지. */
   /* 테두리 우선순위(디자인안02·운영자 260621) = 긴급(빨강) > 이슈(노랑) > PICK(초록) > 실패(앰버) > 평점 > 기본. JS가 배지에 b-brk/b-iss 단일부여 · !important로 .picked·scrap 베이스 테두리 위(라벨 있으면 테두리=라벨색·PICK 초록 안 뺏김). ⚠️ 260619 '긴급 빨강 테두리 없음' → 디자인안02로 복원. */
   .sc-item.b-brk { border-color:rgba(var(--danger-rgb),.6) !important; }
   .sc-item.b-iss { border-color:rgba(var(--warn-rgb),.55) !important; }
@@ -2413,7 +2413,7 @@ function render() {
     (!cardonly || hasCardImage(a)) &&
     (!q || (a.title+a.media).toLowerCase().includes(q)) &&
     (!FILTERS.cats.size || FILTERS.cats.has(articleCat(a))) &&
-    (!FILTERS.issue || a.breaking || a.issue || /속보/.test(a.title || '')));   // 이슈 필터 = 긴급(breaking·속보)+이슈(a.issue = 빌드타임 issEligible: cross≥10·grade게이트·정형컷 260702) 통합
+    (!FILTERS.issue || a.breaking || a.issue || /속보/.test(a.title || '')));   // 이슈 필터 = 긴급(breaking·속보)+이슈(cross≥8) 통합
   const list = $('#list');
   if (!rows.length) { list.innerHTML = '<div class="empty">결과 없음</div>'; _feedSig = ''; return; }
   // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
@@ -2681,14 +2681,14 @@ function feedAgeH(a) {
   if (m) return Math.max(0, (Date.now() - Date.UTC(2000 + +m[1], +m[2] - 1, +m[3], +m[4] - 9, +m[5])) / 3600000);   // 파일명=KST wall-clock → UTC instant(−9h) = 브라우저 TZ 무관·KST 고정(수집함 scTs와 동일 절대시각 기준)
   return articleAgeH(a);
 }
-// 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 scBadge와 동일): 긴급(breaking 신규<4h) → 이슈(4h~24h AND [a.issue 또는 aged breaking]) → 1일↑·신규(<4h)·비이슈는 없음. 둘 다 만족이면 긴급 우선.
-// 긴급/이슈 분류(상호배타·긴급우선) → 카드 테두리 점등 클래스. 'brk'(IN<4h breaking)·'iss'(4h~24h AND [a.issue 또는 aged breaking])·''(1일↑·신규<4h·비이슈). a.issue = build-viewer issEligible(cross≥10·grade게이트·정형컷 — 수집함 issCross와 규칙 동일·260702).
+// 배지 = 상호배타·나이 전이(문서 §라벨 최종확정·수집함 scBadge와 동일): 긴급(breaking 신규<4h) → 이슈(4h~24h AND [cross≥8 또는 aged breaking]) → 1일↑·신규(<4h)·비이슈는 없음. 둘 다 만족이면 긴급 우선.
+// 긴급/이슈 분류(상호배타·긴급우선) → 카드 테두리 점등 클래스. 'brk'(IN<4h breaking)·'iss'(4h~24h AND [cross≥8 또는 aged breaking])·''(1일↑·신규<4h·비이슈).
 function brkIssueKind(a) {
   const brk = a.breaking || /속보/.test(a.title || '');
   // 긴급/이슈 나이 = IN(수집)나이·발행나이 中 *큰 값* → 둘 다 <4h여야 긴급(운영자 260623). 발행 16h 지난 syndication-지연 건을 방금 수집(IN<4h)했다고 IN만 보고 긴급 뜨던 버그 차단 — 화면 'N시간 전'(발행)과 배지 일치. 발행 무효(1e7)면 IN만(time 빈 매체 폴백 유지 = 옛 동작).
   const inAge = feedAgeH(a), pubAge = articleAgeH(a), ageH = Math.max(inAge, pubAge < 9e6 ? pubAge : 0);
   if (brk && ageH < FAST_MAX_H) return 'brk';            // breaking AND IN·발행 둘 다 <4h → 긴급(이슈도 만족이면 긴급 우선)
-  if (ageH >= FAST_MAX_H && ageH < 24 && (a.issue || brk)) return 'iss';   // 4h~24h AND (issEligible OR aged breaking) → 이슈 · 신규(<4h)엔 안 뜸·1일↑ 없음(260618 · 게이트 260702)
+  if (ageH >= FAST_MAX_H && ageH < 24 && (a.issue || brk)) return 'iss';   // 4h~24h AND (cross≥8 OR aged breaking) → 이슈 · 신규(<4h)엔 안 뜸·1일↑ 없음(260618)
   return '';
 }
 
@@ -6424,28 +6424,17 @@ let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r.picked && !r.acked) ? 1 : 0; };   // 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619)
 // 최신 핀 = 확정 속보 AND 발생 4h 내(최신)만 상단 고정. 오래된 속보는 핀 안 함 → fastScore decay로 하강(findable but 톱 아님 — 16h 속보가 최신 톱 차지하던 문제 해결).
 const pinFresh = c => (pinB(c) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000) ? 1 : 0;
-// 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h·미확인) / ⚡이슈(4h~24h AND [issCross 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙. ⚠️ ✓확인(acked)해도 🚨 유지 = 긴급은 사건속성·계속 표시(운영자 260620 · 4h 지나면 자연히 ⚡이슈).
-// 배지 타입 = 배지칩·테두리(b-)·글로우(lit-) 공용 단일출처. 긴급(breaking 신규<4h) > 이슈(4~24h·issCross 또는 aged-breaking) · 둘다면 긴급. (✓확인해도 유지=긴급은 사건속성·운영자 260620)
-// ── ⚡이슈 배지 게이트 (260702 옵션2·운영자 승인 · build-viewer.mjs issEligible과 **규칙 동일** 유지 — 한쪽만 고치면 수집함↔피드 배지 드리프트) ──
-// 옛 cross≥8 단독 = grade 무게이트(🚨긴급과 비대칭)라 홍보·시황이 다매체 동시배포만으로 배지 획득 + 수집확대(6/26 분야·7/2 경제지) cross 인플레 2.5배로 남발(38건 실측→20건).
-// 배지 강조 전용 — 칼럼 진입(CROSS_MIN 8)·랭킹(scScore)·fbJunk veto(cross≥8 floor)와 무관 = 컷돼도 기사는 누적 칼럼 잔존(강조 해제일 뿐 소멸 아님).
-const ISS_CROSS_MIN = 10;   // 8→10(260702): "오늘 cr10 = 확대 전 cr8" 실측 환산(스냅샷당 cross≥8 클러스터 5.3→12.35 인플레 보정) · D+3~7 compare_collected 재측정으로 10↔12 재확인 예정.
-const issGrade = c => c.grade == null || c.grade >= 2;   // 🚨긴급(isBreaking)과 동일 게이트 — null(미채점) 관용 필수(strict ≥2 금지 = 갓 도착 미채점 대형 보호 · gate_judge 도달률 100% 실측이라 통상 전부 채점됨).
-const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건(코스피 폭락 등)이면 컷 면제
-const BJ_MKT = /(증시|코스피|코스닥|환율|유가|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '환율마감'만 다뤄 '출발'류 보강)
-const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — JUNK_HEAD와 달리 칼럼엔 잔존)
-const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|공시|합작사|출자)/;   // 기업 PR·공시 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용)
-const badgeJunk = c => { const t = c.title || ''; return (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t); };
-const issCross = c => (c.cross || 0) >= ISS_CROSS_MIN && issGrade(c) && !badgeJunk(c);   // 이슈 배지 cross 경로(aged-breaking 경로는 별도 = isBreaking이 이미 grade 게이트 내장)
+// 수집함 배지(사건 속성) = 🚨긴급(breaking 신규<4h·미확인) / ⚡이슈(4h~24h AND [cross≥8 또는 aged breaking]) / 없음. 신규(<4h)엔 이슈 안 뜸(이슈=넓게 쌓인 누적 속성)·1일↑ 없음(운영자 260618). 나이기준=scTs(발행·칼럼 경계와 동일)·brkIssueKind(피드)와 동일 규칙. ⚠️ ✓확인(acked)해도 🚨 유지 = 긴급은 사건속성·계속 표시(운영자 260620 · 4h 지나면 자연히 ⚡이슈).
+// 배지 타입 = 배지칩·테두리(b-)·글로우(lit-) 공용 단일출처. 긴급(breaking 신규<4h) > 이슈(4~24h·cross≥8 또는 aged-breaking) · 둘다면 긴급. (✓확인해도 유지=긴급은 사건속성·운영자 260620)
 const scBadgeType = c => {
   // 긴급/이슈 나이 = 발행나이·수집(first_seen)나이 中 *큰 값* → 둘 다 <4h여야 긴급(피드 brkIssueKind와 동일 원칙·운영자 260623). scTs는 이미 발행우선이라 통상 발행기준 유지, 발행<수집 오기록 엣지만 추가 방어.
   const pubAge = (Date.now() - scTs(c)) / 3600000, fsT = Date.parse(c.first_seen || ''),
     ageH = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);
   if (isBreaking(c) && ageH < FAST_MAX_H) return 'brk';
-  if (ageH >= FAST_MAX_H && ageH < 24 && (issCross(c) || isBreaking(c))) return 'iss';
+  if (ageH >= FAST_MAX_H && ageH < 24 && ((c.cross || 0) >= 8 || isBreaking(c))) return 'iss';
   return ''; };
 const BADGE_HTML = { brk: '<span class="sc-badge brk">긴급</span>', iss: '<span class="sc-badge iss">이슈</span>' };   // 인라인 메타 텍스트(긴급=빨강·이슈=노랑 · 글래스 칩 폐지·운영자 260621)
-// scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16 — 배지(ISS_CROSS_MIN 10)보다 엄격한 독립 층(옛 '배지 8×2' 관계는 260702 배지 10 상향으로 소멸·값 16은 불변 유지). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
+// scLit = 이슈 글로우(노랑) 점등 조건 = <12h AND cross≥16(=이슈배지 8×2). lit-iss로 부여(테두리와 독립). ⚠️ 260619엔 '긴급 빨강 테두리 없음'이었으나 디자인안02(운영자 260621)로 긴급 빨강 테두리(b-brk)+글로우(lit-brk) 복원 — 테두리=라벨색·글로우=독립.
 const scLit = c => ((Date.now() - scTs(c)) / 3600000) < 12 && (c.cross || 0) >= 16;
 const SC_COLS_HTML =
   '<div class="scrap-col green"><div class="scrap-coltitle ct-cross">누적</div><div class="scrap-list" data-col="cross"></div></div>' +
