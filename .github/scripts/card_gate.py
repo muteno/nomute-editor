@@ -10,9 +10,10 @@
   factcov <queue.md>           📰 Fact→자유요약 커버리지 경량판(P1 자가 대조 보조)
                                → 출력만 · exit 항상 0
 
-설계 근거(260702 연장 실측 248쌍): raw 플래그 평균 6.64/쌍 = 건수 임계는 늑대소년.
-고신호 유형(나이·형량·인원·사건식별자·억/만원 금액)은 오탐 ~0 → HS ≥2건일 때만 경보 승격
-(전체의 ~31%에서 발동 · 데이터덤프 환율 기사는 자동으로 조용). 전 플래그는 로그로 남긴다.
+설계 근거(260702 연장 실측 248쌍 + 9인 리뷰 253쌍 재실측): raw 플래그 평균 6.64/쌍 = 건수 임계는 늑대소년.
+고신호 유형(나이·형량·인원·사건식별자·억/만원 금액)은 오탐 ~0 → HS ≥2건일 때만 경보 승격.
+초판 _HS_TAIL에 '년'이 있어 단순 연도가 과승격(경보율 44.3%) → '년' 제거·형량 head 검사 보전으로
+29.6% 교정(문서 주장 ~31%와 합치 · 데이터덤프 환율 기사는 자동으로 조용). 전 플래그는 로그로 남긴다.
 ⚠️ 전부 비차단(경보·로그) — 공감 환산('250km→한반도 절반')은 정당한 변환이라 플래그=확인 신호.
 """
 import os
@@ -95,7 +96,7 @@ def lint(md_path):
     return 0
 
 
-_HS_TAIL = re.compile(r'^(세|살|명|년|부|심|호|만\s*원|만원|억|가구|건의|차례)')
+_HS_TAIL = re.compile(r'^(세|살|명|부|심|호|만\s*원|만원|억|가구|차례)')   # '년' 제외(단순 연도 과승격 — 253쌍 재실측 44.3%→29.6% 교정 · 형량 'N년'은 head 검사가 보전)
 
 
 def _high_signal(flag, summary):
@@ -106,6 +107,10 @@ def _high_signal(flag, summary):
     if "%" in flag or "." in flag:
         return False
     for m in re.finditer(re.escape(flag), summary):
+        # 단어 경계 — 매칭 앞뒤가 숫자/소수점이면 다른 수치의 부분열('3'이 '13명' 내부) = 스킵
+        if (m.start() > 0 and (summary[m.start() - 1].isdigit() or summary[m.start() - 1] in '.,')) \
+           or (m.end() < len(summary) and summary[m.end()].isdigit()):
+            continue
         tail = summary[m.end():m.end() + 3].lstrip()
         if _HS_TAIL.match(tail):
             return True
@@ -113,7 +118,7 @@ def _high_signal(flag, summary):
         # 괄호 나이 "(17)" · 징역/벌금 선행 수치
         if head.endswith("(") and tail.startswith(")"):
             return True
-        if head.rstrip().endswith(("징역", "벌금")):
+        if head.rstrip().endswith(("징역", "금고", "벌금")) or "집행유예" in head:
             return True
     # 스케일 표기(…억/…조/…만 = 금액·규모)는 그 자체로 고신호 ('700만'+'원' 분리 토큰 대응)
     return bool(re.search(r'[억조만]\s*$', flag))
