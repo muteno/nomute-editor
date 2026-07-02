@@ -36,6 +36,8 @@
 | FAB 빠른메뉴 | `#rfab`(.rc/.ro/.rmin) | 54/35/28 | glass `rgba(0,0,0,.34)`+blur14 | rotate135(코어) | + / 도구 픽토 | 우하단·z70 | — | PC=숨김 | thumb `#rfab`(ly/k 동기) |
 | 토스트 | `.nm-toast`(긴급 빨강)/`.nm-toast.fail`(실패 앰버) | 버튼 28(`.ft-act`)·이동 min54 | 글래스 `.86`+blur18(색만 구분) | 버튼 `.sbtn` press-s | `.ft-act`=.sbtn·svg14 · 이동↗=`.go-ready`(초록 요약완료)/`.go-wait`(회색 준비중·실패) · 클릭 시맨틱모션(`data-motion`) | fixed 하단·bottom 86·`--z-float` | — | ⚠ `role=alert` 필요 | index `showToast`(긴급 [✓체크][이동])/`showFailToast`(실패 [✓확인][↻재시도][↗원문]) |
 | 아이콘 누름 모션 | 위임 click(캡처·1핸들러) | — | — | — | `ic-spin`(회전·기본)·`ic-bounce`(↓다운로드/저장)·`ic-rise`(↗이동 7시→2시 상승)·`ic-check`(✓팝) · 버튼 `data-motion="rise/check"` 우선(없으면 다운로드=bounce/그외=spin) | — | — | reduced-motion 무효 | index 위임핸들러(§🎨) |
+| 채팅 버블(yeta) | `.yb.me`/`.yb.ai`(+`.sys`/`.fail`) | max-w 78% | me=`--bubble-me`(accent 10%)·ai=`--bubble-ai`(무채 .07) — :root 토큰(260703) | — | — | 꼬리쪽 모서리만 `--r-s` | radius `--r-l`·pad 9/13 | — | index `#yetadlg .yb`(yRender) |
+| 캐릭터 챗 모달 | `#yetadlg`(dialog+pushState) | min(600px,94vw)×min(88dvh,760px) | 무채 그라데 .92/.96(불투명 — backdrop-filter:none 명시) | — | 닫기=`.tool-x`·전송=`.yeta-send`(모션 위임 등재) | 중앙(모바일 margin:auto 필수) | radius `--r-modal` | 뒤로가기=popstate | index `openYeta`·greeting SSOT=roster.json(카드 frontmatter와 동기 유지) |
 | 캐러셀 | scroll-snap 트랙 | — | — | — | — | — | — | — | `feed-ui`/`cardRefCarousel` |
 | 수정 진행바 | `.reshoot-badge`+`.reshoot-bar`(썸네일) · 카드=`.reshoot-badge`(텍스트만·바 없음) | 바 118px·h4 | 배지 glass `rgba(8,15,11,.62)`blur10 · 바 track `rgba(255,255,255,.16)`·채움 `--accent` | — | 없음(텍스트 "수정 중…" + 인디터미넌트 스윕) | 이미지/슬롯 정중앙 abs·z3 · dim `brightness(.5)` | radius `--r-pill` | reduced-motion=감속(2.4s) | 썸네일 index `markSlotReshooting` · 카드 `markReshooting` |
 
