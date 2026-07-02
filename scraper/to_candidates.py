@@ -287,6 +287,11 @@ def main():
         # 안정 사건키 = 최초 rep url(별칭 통해 승계) — obs 시계열이 rep 점프에도 사건을 잇게(연속성).
         # url은 여전히 1차 키(원장·picked·동시성 무변) · event_key는 가산 그룹라벨일 뿐.
         c["event_key"] = prev.get("event_key") or (aliases[0] if is_alias else url)
+        # cat 되덮힘 근본픽스(260702 fable 패널 발견·운영자 승인 "교체"): 키워드 폴백이 빈값("")이면
+        # 기존 cat(gate_judge AI 교정 포함)을 보존 — 안 그러면 AI cat 수명이 다음 스크랩(~15분)뿐이라
+        # 미분류 248건 중 92%가 'AI 도장 보유하고도 미분류'로 눌어붙던 근본. 키워드가 non-empty면 최신 판정 우선(기존 동작).
+        if not c.get("cat") and prev.get("cat"):
+            c["cat"] = prev["cat"]
         entry = {**prev, **c}                     # prev의 grade/breaking 도장 등 보존 + c가 최신 덮음
         if is_alias:                              # 별칭=다른 url(제목 다를 수 있음) → AI rubric 비워 재판정 유도(stale 도장 전파 차단)
             entry.pop("grade_rubric", None)
