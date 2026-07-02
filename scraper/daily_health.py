@@ -188,6 +188,23 @@ def main():
     f = "✅" if len(urg) < 8 else "⚠️"
     print(f"  {f} 현재 🚨긴급자격(breaking&grade≥2&<4h) {len(urg)}건"
           + ("  (←8↑면 긴급 과다 의심)" if len(urg) >= 8 else ""))
+    # ⚡이슈 배지 계기판(260702 정적 10 확정·fable 4인 — 캘린더 재측정 폐지의 대가로 지불하는 상시 감시 1줄 · §8 260702)
+    #  근사 = viewer issCross의 badgeJunk(정형컷 정규식 4종) 미반영(3본째 미러 회피·±3건) — cross·grade·grade3우회·나이창만.
+    #  나이 = max(발행, first_seen) 근사(scBadgeType 동일 원칙). 상한 경보 = 재인플레(남발 재발) · 하한 0 = 과조임/수집장애 의심.
+    def _iss_age(x):
+        a1, a2 = age_h(x.get("published"), now), age_h(x.get("first_seen"), now)
+        cand = [v for v in (a1, a2) if v is not None]
+        return max(cand) if cand else None
+    def _iss_ok(x):
+        g, cr = x.get("grade"), (x.get("cross") or 0)
+        return (g is None or g >= 2) and (cr >= 10 or (g == 3 and cr >= 8))
+    issq = [x for x in c if _iss_ok(x) and (_iss_age(x) or 99) >= 4 and (_iss_age(x) or 99) < 24]
+    resv = [x for x in c if (x.get("grade") is None or (x.get("grade") or 0) >= 2) and x.get("grade") != 3
+            and 8 <= (x.get("cross") or 0) <= 9 and (_iss_age(x) or 99) >= 4 and (_iss_age(x) or 99) < 24]
+    f = "⚠️" if (len(issq) >= 30 or len(issq) == 0) else "✅"
+    print(f"  {f} ⚡이슈배지 자격(근사·badgeJunk 미반영 ±3) {len(issq)}건 · cr8~9 저수지 {len(resv)}건"
+          + ("  (←30↑ = 재인플레 의심 → §8 260702 실측환산 절차로 임계 재조정)" if len(issq) >= 30 else "")
+          + ("  (←0 = 과조임/수집장애 의심)" if len(issq) == 0 else "  (기준 260702=13~20 · 저수지 급증 = 다음 인플레 전조)"))
     # 독점률(도배 재발 감지 — 6/28형 '단일사건 상단 도배'를 숫자로 · ≥30%면 §7 접기(fold)안 검토 신호)
     try:
         dom = _dominance(c, now)
