@@ -198,6 +198,9 @@ for q in "${targets[@]}"; do
   # shoot(렌더만) + 기존 cards.md 있으면 = 클로드 스킵(낭비·드리프트 0). 텍스트의 지침버전 보존(pv).
   if [ "$MODE" = shoot ] && [ -s "cards/$stem/cards.md" ]; then
     echo "슛(렌더만): 기존 cards.md 재사용 — 클로드 스킵"
+    # 재촬영 경로 lint(비차단 · 9인 리뷰 ② 260702) — 레거시 카드의 규격 위반·비ASCII 혼입을 과금 렌더 전에 가시화(차단 안 함·재사용 유지)
+    python3 .github/scripts/card_gate.py lint "cards/$stem/cards.md" >/dev/null 2>&1 \
+      || echo "::warning::[$stem] 기존 cards.md 규격 위반 잔존(레거시) — 렌더는 진행하되 '텍스트만 수정'으로 교정 권장"
     pv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     [ -n "$pv" ] || pv="$GVER"
   else

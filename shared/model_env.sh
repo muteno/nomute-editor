@@ -6,4 +6,3 @@
 # ⚠️ 생성/하드작업은 opus 4.8 유지가 운영자 정본(CLAUDE.md §🤖) — 이 파일은 '교체를 쉽게'지 '내리라'가 아님.
 #   판정(gate/breaking)은 별도 축(GATE_MODEL·BREAKING_MODEL — sonnet 운영)이라 여기 안 탄다.
 PIPE_MODEL="${PIPE_MODEL:-claude-opus-4-8}"
-PIPE_EFFORT="${PIPE_EFFORT:-max}"
