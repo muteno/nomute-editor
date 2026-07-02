@@ -7,8 +7,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
-source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
-MODEL="$PIPE_MODEL"
+MODEL="claude-opus-4-8"
 
 # 지침 SSOT 강제 주입(analyze와 동일 summary 세트) — 출력 포맷·품질기준 일치, GVER 도장.
 source "$ROOT/shared/inject_guidelines.sh"

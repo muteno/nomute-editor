@@ -8,8 +8,7 @@ set -uo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
-source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
-MODEL="$PIPE_MODEL"
+MODEL="claude-opus-4-8"
 source "$ROOT/shared/claude_transient.sh"   # is_quota/claude_failover — 계정 한도 시 대체 계정 1단계씩 전환(서브1→서브2)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 사용량 계측
 
