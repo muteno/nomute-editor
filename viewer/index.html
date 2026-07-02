@@ -4999,7 +4999,19 @@ async function pushToggle() {
       const r = await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
       if (!r.ok) { await sub.unsubscribe().catch(() => {}); throw new Error('구독 저장 실패(' + r.status + ')'); }
     }
-  } catch (e) { alert('알림 설정 실패: ' + (e.message || e)); }
+  } catch (e) {
+    const m = (e && e.message) || String(e);
+    // 'push service error'(Chromium) = 브라우저가 푸시 백엔드(구글 FCM)에 등록 실패 — 알림 권한(granted)과 별개 단계.
+    // 대표 원인 = Brave가 '구글 푸시 메시징'을 기본 차단(JS로 못 켬 → 설정 안내). denied 안내와 같은 방식(운영자 260702).
+    if (/push service|service not available|registration failed|abort/i.test(m)) {
+      let brave = false; try { if (navigator.brave && navigator.brave.isBrave) brave = await navigator.brave.isBrave(); } catch {}
+      alert(brave
+        ? '브라우저(Brave)가 구글 푸시 메시징을 꺼놔서 알림을 못 켜요. 켜는 법:\n① 주소창에 brave://settings/privacy 붙여넣기\n② "Use Google services for push messaging"(구글 푸시 메시징 사용) 켜기\n③ Brave 완전 종료 후 다시 열기\n④ 다시 "켜기"\n\n(brave:// 주소는 클릭이 안 되니 복사해서 주소창에 붙여넣어요.)'
+        : '브라우저가 푸시 서비스(구글 FCM)에 등록하지 못했어요. 켜는 법:\n① VPN·방화벽이 있으면 끄고 다시 시도\n② 회사·학교 관리 PC면 정책 차단일 수 있어요\n③ Brave 브라우저면 brave://settings/privacy → "Use Google services for push messaging" 켠 뒤 재시작\n\n(' + m + ')');
+    } else {
+      alert('알림 설정 실패: ' + m);
+    }
+  }
   finally { await pushRefresh(); }
 }
 const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click', pushToggle);
