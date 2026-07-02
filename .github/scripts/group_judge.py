@@ -116,17 +116,21 @@ def judge(groups):
         titles = "\n".join(f"  - {(m.get('title') or '').strip()[:90]}" for m in g)   # MAX_SIZE≤8이라 전 멤버 제시(부분 제시 오판 차단)
         lines.append(f"G{i}:\n{titles}")
     prompt = RUBRIC + "\n\n" + "\n".join(lines)
-    args = ["--model", MODEL, "-p"]
-    if EFFORT:
-        args += ["--effort", EFFORT]
+    cmd = ["claude", "-p"]   # ⚠️ 첫 요소 = 실행파일(run_claude가 subprocess.run(args)로 그대로 실행 — gate_judge 패턴 · 카나리아 2차서 누락 실측 FileNotFoundError '--model')
     if SAFE:
-        args += ["--safe-mode"]
-    p, rc, err = run_claude(args, prompt, timeout=300)
-    if rc != 0:
+        cmd += ["--safe-mode"]
+    cmd += ["--model", MODEL]
+    if EFFORT:
+        cmd += ["--effort", EFFORT]
+    cmd += ["--disallowedTools",
+            "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
+            "--max-turns", "1"]
+    p, rc, err = run_claude(cmd, prompt, timeout=300, source="group")   # source = 토큰 계측 shard(metrics)
+    if p is None or rc != 0:
         print(f"::warning::group_judge claude rc={rc} — 이번 런 스킵({(err or '')[:160]})")
         return {}
     verdicts = {}
-    for m in re.finditer(r"^\s*G(\d+)\s*:\s*(YES|NO)\s*$", p or "", re.M | re.I):
+    for m in re.finditer(r"^\s*G(\d+)\s*:\s*(YES|NO)\s*$", p.stdout or "", re.M | re.I):
         idx = int(m.group(1))
         if 1 <= idx <= len(groups):
             verdicts[idx - 1] = m.group(2).upper() == "YES"
