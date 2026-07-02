@@ -22,25 +22,12 @@ export async function onRequestGet({ params, request, env }) {
   if (m.scope !== 'public') return page('비공개로 설정된 발행본입니다.', 403);
   if (m.exp && Date.now() > m.exp) return page('만료된 링크입니다. (발행 후 기간이 지났어요)', 410);
 
-  // 핀 잠금 — ?p=123456. 없거나 틀리면 입력 폼. 오류 5회 누적 = 10분 접속 잠금(운영자 260703).
-  // 카운터 = Cloudflare Cache API(colo 단위·TTL 600s) — KV 바인딩 없는 이 프로젝트의 무설정 서버측 상태.
-  // 같은 이용자는 같은 colo라 체감상 전역이지만 분산 IP·캐시 축출엔 fail-open(가용성 우선·완화 목적).
+  // 핀 잠금 — ?p=123456. 없거나 틀리면 입력 폼.
   if (m.pinHash) {
     const pin = new URL(request.url).searchParams.get('p') || '';
-    const isMaster = pin === PIN_MASTER;                          // 마스터 = 잠금 즉시 해제·오류 미집계(운영자 전용)
-    let fails = await lockGet(slug);
-    if (fails >= LOCK_MAX) {
-      if (isMaster) { await lockClear(slug); return pinForm(slug, 0); }
-      return pinForm(slug, fails);
-    }
-    if (!/^\d{6}$/.test(pin)) return pinForm(slug, 0);
+    if (!/^\d{6}$/.test(pin)) return pinForm(slug, false);
     const h = await sha256hex(pin + ':' + slug);
-    if (h !== m.pinHash) {
-      if (isMaster) { await lockClear(slug); return pinForm(slug, 0); }
-      fails += 1; await lockSet(slug, fails);
-      return pinForm(slug, fails);
-    }
-    await lockClear(slug);                                        // 성공 = 카운터 리셋
+    if (h !== m.pinHash) return pinForm(slug, true);
   }
 
   const cacheable = !m.pinHash;   // 핀 있으면 캐시 금지(응답 유출 방지) · 무핀만 짧은 엣지캐시 → 반복/프리뷰봇 히트를 CF가 흡수 = 공용 PAT DoS 완화(검증10 H1)
@@ -61,21 +48,6 @@ export async function onRequestGet({ params, request, env }) {
 async function sha256hex(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// 핀 오류 잠금 — 5회 누적 = 10분(운영자 260703). 카운터는 colo 캐시(키 = .invalid 가상 URL·실서빙 충돌 0).
-// 실패 시마다 TTL 갱신(슬라이딩) → 잠금은 마지막 오류로부터 10분. try/catch 전부 fail-open(잠금이 열람을 못 죽이게).
-const PIN_MASTER = '898900';
-const LOCK_MAX = 5, LOCK_TTL = 600;
-function lockKey(slug) { return 'https://pinlock.nomute.invalid/' + slug; }
-async function lockGet(slug) {
-  try { const r = await caches.default.match(lockKey(slug)); return r ? (parseInt(await r.text(), 10) || 0) : 0; } catch { return 0; }
-}
-async function lockSet(slug, n) {
-  try { await caches.default.put(lockKey(slug), new Response(String(n), { headers: { 'cache-control': `max-age=${LOCK_TTL}` } })); } catch {}
-}
-async function lockClear(slug) {
-  try { await caches.default.delete(lockKey(slug)); } catch {}
 }
 
 // 안내/에러 페이지 — 자기완결(외부 리소스0·다크). 본체 링크·API 노출 없음(우회 차단).
@@ -99,10 +71,7 @@ function page(msg, status = 200) {
 // 핀 입력 폼 — 뷰어 기틀 계승: 입력칸(포커스 강조링)·글래스 강조 버튼(.mkbtn goFill 게이지 풀필→자물쇠 해제 모션).
 // PIN 마스킹(현재 입력한 숫자만 노출·나머지 •) + MUT색 눈 토글(전체 표시). CSP 헤더 없음 → 인라인 style/script 동작.
 // ⚠️ 화면 입력칸에 pattern 금지 + form novalidate — 마스킹값(•)이 숫자 패턴에 걸려 브라우저 기본 말풍선("요청한 형식과…")이 submit을 가로챔(6자 정상 입력도 차단·260702 실측). 검증은 JS(real.length)·에러는 .err 한 줄 텍스트로만.
-function pinForm(slug, fails) {
-  const locked = fails >= LOCK_MAX;
-  const msg = locked ? 'PIN 오류 5회 누적으로 10분 간 접속이 불가합니다'
-    : fails > 0 ? `핀이 맞지 않아요 (${fails}/${LOCK_MAX})` : '';
+function pinForm(slug, wrong) {
   const inner = `<div class="m">PIN으로 잠긴 문서입니다.</div>
 <form id="f" method="get" action="/s/${slug}" novalidate>
   <div class="pinwrap">
@@ -116,7 +85,7 @@ function pinForm(slug, fails) {
     <span class="go-t">열기</span>
     <svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect class="lbody" x="5" y="11" width="14" height="10" rx="2.6"/><path class="lshackle" d="M8.2 11V8a3.8 3.8 0 0 1 7.6 0v3"/></svg>
   </button>
-</form><div class="err" id="verr"${msg ? '' : ' hidden'}>${msg}</div>
+</form><div class="err" id="verr"${wrong ? '' : ' hidden'}>핀이 맞지 않아요</div>
 <style>
 .pinwrap{position:relative;margin-top:16px}
 #pin{width:100%;box-sizing:border-box;height:52px;padding:0 46px;text-align:center;font-size:20px;letter-spacing:10px;font-weight:800;font-family:inherit;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--fg);caret-color:var(--accent);outline:none;transition:border-color .18s ease,box-shadow .18s ease}
@@ -175,7 +144,7 @@ function pinForm(slug, fails) {
 })();
 </script>`;
   return new Response(shell(inner), {
-    status: locked ? 429 : fails > 0 ? 401 : 200,
+    status: wrong ? 401 : 200,
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow' },
   });
 }
