@@ -7,16 +7,6 @@
 const REPO = 'muteno/nomute-editor';
 
 export async function onRequestGet({ params, request, env }) {
-  return serve(params, request, env, null);
-}
-// POST = 키패드 핀 제출 경로(운영자 260703 · "페이지 이동 시 핀 노출" 교정) — GET ?p=는 URL·주소창·히스토리에 핀이 남아
-// 성공 후에도 노출됐음 → 폼을 POST로 전환해 핀이 URL에 안 실림(응답 URL = /s/<slug> 클린). GET ?p=는 하위호환 유지.
-export async function onRequestPost({ params, request, env }) {
-  let pin = '';
-  try { const fd = await request.formData(); pin = String(fd.get('p') || ''); } catch {}
-  return serve(params, request, env, pin);
-}
-async function serve(params, request, env, postPin) {
   const slug = String(params.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);   // 시각프리픽스(base36)+hex+하이픈만(경로주입·확장자 차단 — /·. 불가)
   if (!slug) return page('링크가 올바르지 않습니다.', 404);
   if (!env.GH_TOKEN) return page('서버 설정 오류입니다.', 500);
@@ -32,11 +22,11 @@ async function serve(params, request, env, postPin) {
   if (m.scope !== 'public') return page('비공개로 설정된 발행본입니다.', 403);
   if (m.exp && Date.now() > m.exp) return page('만료된 링크입니다. (발행 후 기간이 지났어요)', 410);
 
-  // 핀 잠금 — POST 폼(정식) 또는 ?p=123456(하위호환). 없거나 틀리면 입력 폼. 오류 5회 누적 = 10분 접속 잠금(운영자 260703).
+  // 핀 잠금 — ?p=123456. 없거나 틀리면 입력 폼. 오류 5회 누적 = 10분 접속 잠금(운영자 260703).
   // 카운터 = Cloudflare Cache API(colo 단위·TTL 600s) — KV 바인딩 없는 이 프로젝트의 무설정 서버측 상태.
   // 같은 이용자는 같은 colo라 체감상 전역이지만 분산 IP·캐시 축출엔 fail-open(가용성 우선·완화 목적).
   if (m.pinHash) {
-    const pin = postPin !== null ? postPin : (new URL(request.url).searchParams.get('p') || '');
+    const pin = new URL(request.url).searchParams.get('p') || '';
     const isMaster = pin === PIN_MASTER;                          // 마스터 = 잠금 즉시 해제·오류 미집계(운영자 전용)
     let fails = await lockGet(slug);
     if (fails >= LOCK_MAX) {
@@ -95,7 +85,7 @@ function shell(inner) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow"><title>노뮤트 발행본</title>
-<style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--line:rgba(255,255,255,.08);--r-modal:22px}
+<style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--r-modal:22px}
 html,body{margin:0;height:100%;background:#0b0d0c;color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .wrap{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}
 .card{max-width:360px;width:100%;text-align:center;background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,.98));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-modal);padding:26px 22px}
@@ -108,57 +98,39 @@ function page(msg, status = 200) {
   });
 }
 // 핀 입력 폼 — PAYCO식 보안 키패드(방식 계승·운영자 260703). 6칸 슬롯(입력한 것만 강조색) + 자체 셔플 숫자 키패드(OS 키보드 X).
-// 키패드 셔플 = 2판제(운영자 260703 개정): 1~4자리 = 판A 고정 · 5~6자리 = 판B 고정(입력마다 재셔플 X — 위치 학습 가능해 오입력↓).
-//   백스페이스로 3자리 이하로 되돌아가면 판A로 복귀 = 자리수↔판 매핑이 항상 유지(어깨너머 완화는 2판 전환+매 로드 새 셔플로 확보).
-// 입력 순간 = 방금 누른 자리만 숫자 잠깐 노출(0.7s·다음 입력/검증 시 즉시 마스킹 — 폰 비번 관례·운영자 260703).
-//   마스킹 표식 = 명조(세리프) '*' 강조색(점보다 가시적·운영자 260703) · 슬롯은 균일 그리드 박스(숫자·별 기준선 통일 = 내려앉음 교정).
-// 6칸 채우면 *자동 검증*(별도 열기 버튼 X) → POST 제출로 서버 검증(핀이 URL·히스토리에 안 남음 — "이동 시 핀 노출" 교정·운영자 260703).
+// 키패드 = 입력할 때마다 위치 재셔플(어깨너머/키로깅 완화). 6칸 채우면 *자동 검증*(별도 열기 버튼 X) → GET 네비게이션으로 서버 검증.
 //   성공 = 서버가 문서 HTML로 응답(페이지 교체 = 자동 오픈) / 실패 = 폼 재응답(fails>0) → 로드 시 슬롯 빨강+흔들림+처음부터(입력 빈 상태).
-//   빨강(슬롯·입력부만)은 3초 유지 후 처음 색으로 자동 복귀(입력 시작해도 즉시 복귀) — 잠금(locked) 문구는 상태라 유지(운영자 260703).
 //   notice(마스터 입력 시) = '비밀번호 초기화 완료' 안내(.info mut · 에러 아님 → 흔들림 없음).
-// 키패드 = 셀 사이 구분선(내부선만·--line) · 5~6자리(판B)는 키 전경색이 강조 틴트로 바뀜(판 전환 시각 표기) · 누름 순간 강조색 플래시(.hit·운영자 260703).
 // 카드 배경 제거(글자·슬롯·패드만 흑배경 위) · CSP 헤더 없음 → 인라인 style/script 동작.
-// ⚠️ 실제 PIN은 hidden input(name=p)로 POST 제출 = 서버 검증(클라 셔플은 표시용·검증 무관). 슬롯/키패드는 표시 UI라 pattern·novalidate 무관.
-// ※ 이 폼 = PIN 입력 UI 정본(범용 — 다른 화면에 이식 시 이 슬롯·2판 키패드·에러 상태머신 그대로 계승).
+// ⚠️ 실제 PIN은 hidden input(name=p)로 GET 제출 = 서버 검증(클라 셔플은 표시용·검증 무관). 슬롯/키패드는 표시 UI라 pattern·novalidate 무관.
 function pinForm(slug, fails, notice) {
   const locked = fails >= LOCK_MAX;
   const msg = locked ? 'PIN 오류 5회 누적으로 10분 간 접속이 불가합니다'
-    : fails > 0 ? `PIN 번호가 틀립니다 (${fails}/${LOCK_MAX})` : '';
+    : fails > 0 ? `핀이 맞지 않아요 (${fails}/${LOCK_MAX})` : '';
   const info = notice ? esc(notice) : '';
-  const inner = `<div class="m">문서 PIN을 입력해주세요</div>
+  const inner = `<div class="m">PIN으로 잠긴 문서입니다.</div>
 <div class="slots" id="slots" aria-hidden="true">${'<span class="slot"></span>'.repeat(6)}</div>
 <div class="err" id="verr"${msg ? '' : ' hidden'}>${msg}</div><div class="info" id="vinfo"${info ? '' : ' hidden'}>${info}</div>
 <div class="pad" id="pad"></div>
-<form id="f" method="post" action="/s/${slug}" novalidate><input type="hidden" name="p" id="hid"></form>
+<form id="f" method="get" action="/s/${slug}" novalidate><input type="hidden" name="p" id="hid"></form>
 <style>
 .card{background:none;border:none;padding:6px 4px}   /* 카드 패널(글자 뒤 배경) 제거 — 글자·슬롯·패드만 흑배경 위에(운영자 260703 · pinForm 한정 오버라이드·에러/안내 page()는 카드 유지) */
-.slots{display:flex;justify-content:center;gap:16px;margin:24px 0 2px}
-/* 슬롯 = 균일 그리드 박스(18×22 고정) — 빈 원(::before)·명조 별(*)·숫자픽이 전부 같은 박스 중앙 = 기준선 통일(내려앉음 교정·운영자 260703) */
-.slot{width:18px;height:22px;display:grid;place-items:center;font-size:18px;font-weight:800;line-height:1;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}
-.slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);transition:border-color .15s ease}
-.slot.on{opacity:1}
-.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 28px/1 Georgia,'Times New Roman','Batang','바탕',serif;color:var(--accent);transform:translateY(7px)}   /* 마스킹 = 명조 '*'(점보다 가시적·운영자 260703). 애스터리스크 글리프가 상단에 붙어 translateY 광학 보정 */
-.slot.peek{opacity:1;transform:scale(1.12)}   /* 방금 입력한 자리 = 도형 대신 숫자 잠깐 노출(0.7s·운영자 260703) */
-.slot.peek::before{content:none}
-.slots.bad .slot::before{border-color:var(--danger)}
-.slots.bad .slot.on::before{color:var(--danger)}
+.slots{display:flex;justify-content:center;gap:18px;margin:24px 0 2px}
+.slot{width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);background:none;opacity:.5;transition:background .15s ease,border-color .15s ease,opacity .15s ease,transform .15s ease}
+.slot.on{background:var(--accent);border-color:var(--accent);opacity:1;transform:scale(1.1)}   /* 입력한 것만 강조색(운영자 260703) */
+.slots.bad .slot{border-color:var(--danger)}
+.slots.bad .slot.on{background:var(--danger);border-color:var(--danger)}
 .slots.checking .slot.on{animation:slotPulse .8s ease infinite}
 @keyframes slotPulse{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes slotShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-9px)}28%{transform:translateX(8px)}44%{transform:translateX(-6px)}60%{transform:translateX(4px)}76%{transform:translateX(-2px)}}
 .slots.shake{animation:slotShake .45s cubic-bezier(.36,.07,.19,.97)}
 .err{margin-top:15px;min-height:15px}
 .info{color:var(--mut);font-size:12.5px;margin-top:15px;font-weight:700;line-height:1.5}   /* 마스터 초기화 안내 = mut 회색(정보·에러 아님·운영자 260703) */
-.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:288px;margin:26px auto 0}
-.key{height:58px;display:grid;place-items:center;font-size:23px;font-weight:700;font-family:inherit;color:var(--fg);background:none;border:none;border-radius:0;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:background .12s ease,color .15s ease,transform .07s ease}
-.key:nth-child(3n+2),.key:nth-child(3n){border-left:1px solid var(--line)}   /* 셀 사이 구분선 = 내부선만(2·3열 좌측 + 2행부터 상단·운영자 260703) */
-.key:nth-child(n+4){border-top:1px solid var(--line)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:288px;margin:26px auto 0}
+.key{height:58px;display:grid;place-items:center;font-size:23px;font-weight:700;font-family:inherit;color:var(--fg);background:none;border:none;border-radius:16px;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:background .12s ease,transform .07s ease}
 .key:active{background:rgba(255,255,255,.09);transform:scale(.93)}
-.key.hit{background:rgba(var(--accent-rgb),.16);color:var(--accent)}   /* 누름 순간 강조색 플래시(짧은 탭에도 보이게 JS로 ~0.18s 유지·운영자 260703) */
-.key.back.hit svg{stroke:var(--accent)}
-.key.empty{pointer-events:none}   /* visibility:hidden이면 구분선까지 사라져 격자에 구멍 → 투명 셀로 유지(운영자 260703) */
-.key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s ease}
-.pad.b2 .key{color:rgba(var(--accent-rgb),.85)}   /* 5~6자리(판B) = 키 전경색 강조 틴트 → 배치 바뀜을 색으로 표기(운영자 260703) */
-.pad.b2 .key.back svg{stroke:rgba(var(--accent-rgb),.85)}
+.key.empty{visibility:hidden;pointer-events:none}
+.key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .pad.off{pointer-events:none;opacity:.45;transition:opacity .2s ease}   /* 확인 중 = 패드 비활성 */
 @media (prefers-reduced-motion:reduce){.slots.shake{animation-duration:.01s}.slots.checking .slot.on{animation:none}.key:active{transform:none}}
 </style>
@@ -166,10 +138,9 @@ function pinForm(slug, fails, notice) {
 (function(){
   var f=document.getElementById('f'),hid=document.getElementById('hid'),pad=document.getElementById('pad'),
       slots=document.getElementById('slots'),dots=slots.getElementsByClassName('slot'),verr=document.getElementById('verr');
-  var real='',fired=false,kds=null,peekT=null,badT=null,LOCKED=${locked ? 'true' : 'false'};
+  var real='',fired=false,order=[],kds=null;
   var BSVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
-  function mkOrder(){var o=[0,1,2,3,4,5,6,7,8,9];for(var i=9;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=o[i];o[i]=o[j];o[j]=t;}return o;}
-  var orderA=mkOrder(),orderB=mkOrder();                        // 2판제: 1~4자리=판A · 5~6자리=판B(입력 중 재셔플 X·백스페이스로 돌아가도 매핑 유지·운영자 260703)
+  function shuffle(){order=[0,1,2,3,4,5,6,7,8,9];for(var i=9;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=order[i];order[i]=order[j];order[j]=t;}}   // 셔플 = 키패드 위치 계속 바뀜(운영자 260703)
   function build(){                                              // 12칸 = 숫자 9 + 빈칸 + 숫자 1 + 지우기. 버튼 노드는 고정, 라벨만 셔플(누름 :active 유지·DOM 파괴 없음)
     var h='';for(var i=0;i<9;i++)h+='<button type="button" class="key kd"></button>';
     h+='<button type="button" class="key empty" tabindex="-1" aria-hidden="true"></button>';
@@ -177,38 +148,18 @@ function pinForm(slug, fails, notice) {
     h+='<button type="button" class="key back" data-back="1" aria-label="지우기">'+BSVG+'</button>';
     pad.innerHTML=h;kds=pad.querySelectorAll('.kd');            // 10개 숫자 버튼(DOM 순서 = order 인덱스)
   }
-  function applyOrder(){                                        // 자리수로 판 결정 = 지웠다 다시 쳐도 같은 판. 판B = .b2(키 전경색 틴트로 배치 전환 표기)
-    var b2=real.length>=4,o=b2?orderB:orderA;
-    pad.classList.toggle('b2',b2);
-    for(var i=0;i<10;i++){kds[i].textContent=o[i];kds[i].setAttribute('data-d',o[i]);}
-  }
-  function flash(el){                                           // 누름 순간 강조색 — :active만으론 짧은 탭에 안 보여 JS로 0.18s 유지(물리 키보드 입력도 해당 키 점등)
-    if(!el)return;
-    el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit');
-    clearTimeout(el._ht);el._ht=setTimeout(function(){el.classList.remove('hit');},180);
-  }
-  function fill(peek){                                          // peek=true → 방금 입력한 자리만 숫자 노출(0.7s 후·다음 입력 시 즉시 마스킹)
-    clearTimeout(peekT);
-    for(var i=0;i<6;i++){dots[i].className='slot'+(i<real.length?' on':'');dots[i].textContent='';}
-    if(peek&&real.length){var d=dots[real.length-1];d.className='slot peek';d.textContent=real.slice(-1);
-      peekT=setTimeout(function(){fill();},700);}
-  }
-  function unbad(){                                             // 입력 시작 = 빨강 즉시 복귀(3초 타이머보다 우선·잠금 문구는 유지)
-    clearTimeout(badT);slots.classList.remove('bad','shake');
-    if(!LOCKED&&verr&&!verr.hidden)verr.hidden=true;
-  }
+  function applyOrder(){for(var i=0;i<10;i++){kds[i].textContent=order[i];kds[i].setAttribute('data-d',order[i]);}}
+  function fill(){for(var i=0;i<6;i++)dots[i].className='slot'+(i<real.length?' on':'');}
   function press(d){
     if(fired||real.length>=6)return;
-    flash(pad.querySelector('.kd[data-d="'+d+'"]'));            // 클릭·물리키 공통 점등(호출부가 숫자만 보장)
-    unbad();real+=String(d);fill(true);
-    applyOrder();                                               // 4자리 채우는 순간 판B로 전환(그 전까진 판A 고정)
-    if(real.length===6)setTimeout(fire,340);
+    slots.classList.remove('bad');real+=String(d);fill();
+    shuffle();applyOrder();                                     // 입력할 때마다 재셔플 = 위치 계속 바뀜
+    if(real.length===6)setTimeout(fire,140);
   }
-  function back(){if(fired||!real.length)return;flash(pad.querySelector('.back'));unbad();real=real.slice(0,-1);fill();applyOrder();}
+  function back(){if(fired||!real.length)return;slots.classList.remove('bad');real=real.slice(0,-1);fill();}
   function fire(){                                              // 6칸 채움 → 확인 중 → 서버 검증(성공=문서 열림 / 실패=슬롯 빨강 흔들림 재응답)
     if(fired||real.length!==6)return;
-    fired=true;clearTimeout(peekT);fill();                      // 검증 들어갈 땐 숫자픽 즉시 마스킹(노출 잔류 차단)
-    hid.value=real;slots.classList.add('checking');pad.classList.add('off');
+    fired=true;hid.value=real;slots.classList.add('checking');pad.classList.add('off');
     setTimeout(function(){f.submit();},150);
   }
   pad.addEventListener('click',function(e){
@@ -221,13 +172,9 @@ function pinForm(slug, fails, notice) {
     if(e.key>='0'&&e.key<='9'){press(e.key);e.preventDefault();}
     else if(e.key==='Backspace'){back();e.preventDefault();}
   });
-  build();applyOrder();fill();
+  build();shuffle();applyOrder();fill();
   // 서버가 틀린 핀으로 이 폼을 재응답(verr 메시지) → 슬롯 빨강 + 흔들림(입력 빈 상태 = 처음부터). 마스터 안내(.info)는 정보라 흔들림 없음.
-  // 빨강은 3초 유지 후 처음 색으로 자동 복귀(입력부만·운영자 260703). 잠금(locked) 문구는 상태 표시라 유지(타이머 미적용).
-  if(!verr.hidden&&verr.textContent.trim()){
-    slots.classList.add('bad');void slots.offsetWidth;slots.classList.add('shake');
-    if(!LOCKED)badT=setTimeout(function(){slots.classList.remove('bad','shake');verr.hidden=true;},3000);
-  }
+  if(!verr.hidden&&verr.textContent.trim()){slots.classList.add('bad');void slots.offsetWidth;slots.classList.add('shake');}
 })();
 </script>`;
   return new Response(shell(inner), {

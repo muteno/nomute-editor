@@ -1,0 +1,50 @@
+# yeta 무대 배경 생성 — 수동 dispatch 전용(⚠️ Gemini 유료 = 자동 트리거 금지 · §📰 "유료는 슛에서만" 정신)
+# 무음동 8무대 9:16 배경 → R2 yeta_bg/ 업로드 → roster.json bg 주입 커밋. 운영자 직접 지시(260703) 1회성.
+# 멱등: bg 채워진 무대는 skip — 재실행 안전. 전체 재생성은 input force=1.
+name: yeta-bg
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '1 = 기존 bg 도 재생성·덮어쓰기(기본 = 빈 슬롯만)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yeta-bg
+  cancel-in-progress: false
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 배경 생성 + roster 주입
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          FORCE: ${{ github.event.inputs.force }}
+        run: python3 .github/scripts/yeta_bg.py
+
+      - name: roster 커밋 (rebase 재시도 = thumb-make 패턴)
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add apps/yeta/characters/roster.json viewer/assets/yeta_bg 2>/dev/null || true
+          git commit -m "yeta: 무대 배경 생성 → roster bg 주입" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin main && git rebase origin/main && git push origin HEAD:main; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push 5회 실패"; exit 1; }
