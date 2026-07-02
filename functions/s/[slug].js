@@ -22,10 +22,10 @@ export async function onRequestGet({ params, request, env }) {
   if (m.scope !== 'public') return page('비공개로 설정된 발행본입니다.', 403);
   if (m.exp && Date.now() > m.exp) return page('만료된 링크입니다. (발행 후 기간이 지났어요)', 410);
 
-  // 핀 잠금 — ?p=1234. 없거나 틀리면 입력 폼.
+  // 핀 잠금 — ?p=123456. 없거나 틀리면 입력 폼.
   if (m.pinHash) {
     const pin = new URL(request.url).searchParams.get('p') || '';
-    if (!/^\d{4}$/.test(pin)) return pinForm(slug, false);
+    if (!/^\d{6}$/.test(pin)) return pinForm(slug, false);
     const h = await sha256hex(pin + ':' + slug);
     if (h !== m.pinHash) return pinForm(slug, true);
   }
@@ -74,7 +74,7 @@ function pinForm(slug, wrong) {
   const inner = `<div class="m">PIN으로 잠긴 문서입니다.</div>
 <form id="f" method="get" action="/s/${slug}">
   <div class="pinwrap">
-    <input id="pin" name="p" type="text" inputmode="numeric" pattern="\\d*" maxlength="4" placeholder="••••" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
+    <input id="pin" name="p" type="text" inputmode="numeric" pattern="\\d*" maxlength="6" placeholder="••••••" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
     <button type="button" id="eye" class="eye" aria-label="PIN 표시">
       <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
       <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.2 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.2-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>
@@ -117,14 +117,14 @@ function pinForm(slug, wrong) {
   function render(){hid.value=real;pin.value=reveal?real:mask();try{pin.setSelectionRange(pin.value.length,pin.value.length);}catch(e){}}
   pin.addEventListener('beforeinput',function(e){
     var t=e.inputType||'';
-    if(t==='insertText'||t==='insertFromPaste'||t==='insertCompositionText'){real=(real+((e.data||'').replace(/\\D/g,''))).slice(0,4);e.preventDefault();}
+    if(t==='insertText'||t==='insertFromPaste'||t==='insertCompositionText'){real=(real+((e.data||'').replace(/\\D/g,''))).slice(0,6);e.preventDefault();}
     else if(t.indexOf('delete')===0){if(t==='deleteContentBackward'||t==='deleteContentForward'||t==='deleteByCut')real=real.slice(0,-1);else real='';e.preventDefault();}
     else{e.preventDefault();}
     render();
   });
   pin.addEventListener('input',function(){                       // beforeinput 미지원 브라우저 폴백
     if(pin.value===(reveal?real:mask()))return;
-    real=pin.value.replace(/\\D/g,'').slice(0,4);render();
+    real=pin.value.replace(/\\D/g,'').slice(0,6);render();
   });
   eye.addEventListener('click',function(){
     reveal=!reveal;
@@ -134,7 +134,7 @@ function pinForm(slug, wrong) {
   });
   f.addEventListener('submit',function(e){
     e.preventDefault();
-    if(real.length!==4){pin.focus();if(go.animate)go.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:280});return;}
+    if(real.length!==6){pin.focus();if(go.animate)go.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:280});return;}
     hid.value=real;go.classList.add('firing');
     setTimeout(function(){go.classList.remove('firing');go.classList.add('opening');requestAnimationFrame(function(){go.classList.add('unlocked');});},720);
     setTimeout(function(){f.submit();},1280);                    // 게이지(0.72s) → 자물쇠 해제(0.5s) 후 이동
