@@ -31,10 +31,11 @@ export async function onRequestGet({ params, request, env }) {
   }
 
   const cacheable = !m.pinHash;   // 핀 있으면 캐시 금지(응답 유출 방지) · 무핀만 짧은 엣지캐시 → 반복/프리뷰봇 히트를 CF가 흡수 = 공용 PAT DoS 완화(검증10 H1)
+  // ⚠️ s-maxage 60s = 발행 후 사후 잠금(api/relock ON) 시 엣지에 캐시된 무핀 본문 노출창을 ≤60s로 축소(relock가 CF 캐시를 퍼지 못 함 · 옛 300s는 최대 5분 노출 = 잠금 의미 훼손 · 평의회 260702).
   return new Response(m.html || '', {
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      'cache-control': cacheable ? 'public, max-age=60, s-maxage=300' : 'no-store',
+      'cache-control': cacheable ? 'public, max-age=60, s-maxage=60' : 'no-store',
       'x-robots-tag': 'noindex, nofollow',
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'no-referrer',
