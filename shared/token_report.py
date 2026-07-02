@@ -36,6 +36,8 @@ SRC_LABEL = {
     "ask": "요약 요청(ask)",
     "revise": "요약 수정(revise)",
     "gate": "경중 채점(gate)",
+    "autopick": "긴급 자동픽(autopick)",
+    "revise-cards": "카드 일괄수정(revise-cards)",
     "breaking": "속보 판정(breaking)",
     "k": "영상 프롬프트(k)",
     "ly": "릴스 자막(ly)",

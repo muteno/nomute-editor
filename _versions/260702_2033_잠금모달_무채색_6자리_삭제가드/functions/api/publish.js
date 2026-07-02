@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — 뷰어 '공유(공개 발행)' → published/<slug>.json 커밋(submit.js 패턴 계승).
 // 입력 = { file, title, html, scope, days, pin } : file=큐 id · html=뷰어 buildSummaryHtml 자기완결 결과 ·
-//   scope=public|private(허용한사람만은 미구현) · days=1|3|7(만료) · pin=6자리(선택).
+//   scope=public|private(허용한사람만은 미구현) · days=1|3|7(만료) · pin=4자리(선택).
 // 서빙 = functions/s/[slug].js (만료·pin·scope 게이트). 목록/삭제 = published.js / unpublish.js.
 // env: GH_TOKEN = GitHub fine-grained PAT(Contents:read+write · submit/revise/pending 동일 토큰). R2 미사용.
 // ⚠️ 자기완결 HTML(API 호출0·데이터 인라인)만 저장 → /s/*만 Access Bypass여도 본체 우회 불가(CLAUDE.md §🔒).
@@ -25,7 +25,7 @@ export async function onRequestPost({ request, env }) {
   const title = String(body.title || '').replace(/\s+/g, ' ').trim().slice(0, 200);
   const scope = ['public', 'private'].includes(body.scope) ? body.scope : 'public';   // '허용한 사람만'은 미구현 → 저장 안 받음
   const days = [1, 3, 7].includes(+body.days) ? +body.days : 3;
-  const pin = /^\d{6}$/.test(String(body.pin || '')) ? String(body.pin) : '';
+  const pin = /^\d{4}$/.test(String(body.pin || '')) ? String(body.pin) : '';
 
   const now = Date.now();                    // exp = 절대 epoch ms(만료 판정용). created 표시는 뷰어가 KST 포맷.
   const exp = now + days * 86400e3;
