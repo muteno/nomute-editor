@@ -52,14 +52,18 @@ jobs:
           fetch-depth: 0
 
       # 게이트 — 미판정 속보후보 + 미채점 경중후보 수. 0이면 아래 Claude 설치·판정 스텝 전부 스킵(비용 0).
-      - name: 미판정 후보 확인 (속보 + 경중)
+      - name: 미판정 후보 확인 (속보 + 경중 + 묶기)
         id: chk
         run: |
           nb=$(python3 .github/scripts/breaking_judge.py --count)
           ng=$(python3 .github/scripts/gate_judge.py --count)
-          n=$((nb + ng))
+          gj=0   # 사건 묶기 백로그 — canary/GROUP_ON일 때만 합산(OFF면 group 때문에 CLI 설치하는 낭비 0 · 260702 카나리아 1차가 pending=0에 막힌 것 보완)
+          if [ "${{ inputs.group_canary }}" = "true" ] || [ "${GROUP_ON}" = "1" ]; then
+            gj=$(python3 .github/scripts/group_judge.py --count 2>/dev/null || echo 0)
+          fi
+          n=$((nb + ng + gj))
           echo "pending=$n" >> "$GITHUB_OUTPUT"
-          echo "미판정: 속보 ${nb}건 · 경중 ${ng}건 (총 ${n})"
+          echo "미판정: 속보 ${nb}건 · 경중 ${ng}건 · 묶기 ${gj}건 (총 ${n})"
 
       - name: Setup Node
         if: steps.chk.outputs.pending != '0' || github.event.inputs.safe_mode == 'true'
