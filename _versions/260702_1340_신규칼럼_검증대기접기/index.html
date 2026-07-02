@@ -6011,7 +6011,6 @@ function scFeedArticle(c) {   // 이 후보가 요약돼 피드(DATA=articles.js
 // 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → '더 보기'로 청크 추가.
 const SC_PAGE = 150;
 const scShown = { cross: SC_PAGE, new: SC_PAGE };   // 컬럼별 현재 렌더 장수(재렌더에도 유지)
-let scFoldOpen = false, _scFoldN = 0;   // 검증대기 접기(Q-1·260702): 토글 상태(재렌더 유지·새로고침 접힘 기본) · 이번 렌더의 접힌 건수(양수=접힘·음수=펼침)
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
 let _scrapSig = '';   // 직전 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · 피드 _feedSig 대응 · 운영자 260621)
 // 같은 사건 중복 대표 접기 — 정규화 제목 동일(=같은 헤드라인=같은 기사)이면 우세한 1장만 남김(운영자 260625 · 분신술 10인 보강).
@@ -6135,18 +6134,6 @@ function renderScrap() {
     if (key === 'new') {   // 신규 칼럼 = 최신분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신규서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신순.
       arr = pool.filter(c => _untri(c) && (scFast(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신규 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 누적行(아래). · 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross 낮아도 자격 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
       arr = arr.map(c => ({ c, p: pinFresh(c), f: fastScore(c), t: scTs(c) })).sort((a, b) => (b.p - a.p) || (b.f - a.f) || (b.t - a.t)).map(x => x.c);   // 최신 속보 핀 → fastScore decay 하강(톱 독차지 방지). 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시. ⚡버퍼 260701: Schwartzian(정렬키 요소당 1회 사전계산) — 비교당 재계산(Math.pow·Date.parse ~2·log₂n회) 제거·순서 동일.
-      // 검증대기 접기(Q-1 · 운영자 승인 260702): 미채점(grade null)·cross≤3·burst<3·비속보(확정/후보)·비액션(픽/재시도)은
-      // 하단 접힘 묶음 — 신규 표시분의 85%가 이런 미채점 소규모 보도자료(실측 142/168)라 스크롤 절반 잠식(fable2).
-      // 컷 아닌 접기 = 소실 0(§1 보수성 무위반) · 랭킹/신호/수집 0 변경(순수 표시층) · 펼침 = 기존 더보기 페이지네이션에 그대로 합류.
-      _scFoldN = 0;
-      if (!q) {   // 검색 중엔 접기 비활성(찾는 중 = 전부 표시)
-        const heldIds = new Set(arr.filter(c => c.grade == null && (c.cross || 0) <= 3 && (c.burst || 0) < 3
-          && !c.breaking && !c.breaking_candidate && !failRequeued(c) && !pickState(c)).map(candId));
-        if (heldIds.size >= 4) {   // 3건 이하면 접을 가치 없음(버튼이 더 시끄러움)
-          if (scFoldOpen) { arr = arr.filter(c => !heldIds.has(candId(c))).concat(arr.filter(c => heldIds.has(candId(c)))); _scFoldN = -heldIds.size; }
-          else { arr = arr.filter(c => !heldIds.has(candId(c))); _scFoldN = heldIds.size; }
-        }
-      }
     } else {   // 누적 = 9시뉴스감(좌측·넓은 누적). 발생 4h↑(신규서 졸업) AND (cross≥8 OR 긴급[breaking] OR 연속보도 보조진입[followEnters: cross≥4 AND rc≥6 AND grade∉0,1]). 최신(<4h)과 시간 배타. ⚠️ 긴급이었던 건 cross<8이어도 누적 합류(사라지는 구멍 차단·운영자 260617) → 일반 누적 점수(scScore)로 랭킹. 중요도순.
       arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);   // + 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross<8·non-breaking이라 원래 자격 없어도 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 scScore 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
       arr = arr.map(c => ({ c, s: scScore(c), t: scTs(c) })).sort((a, b) => (b.s - a.s) || (b.t - a.t)).map(x => x.c);   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 최신 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 최신 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·최신 pinFresh(최신속보 핀)는 별개 유지. ⚡버퍼 260701: Schwartzian(scScore 요소당 1회) — 비교당 재계산 제거·순서 동일.
@@ -6164,13 +6151,6 @@ function renderScrap() {
       more.textContent = `더 보기 +${Math.min(SC_PAGE, arr.length - lim)}  ·  남은 ${arr.length - lim}건`;
       more.onclick = () => { scShown[key] += SC_PAGE; renderScrap(); };
       col.appendChild(more);
-    }
-    if (key === 'new' && _scFoldN !== 0) {   // 검증대기 접기 토글 — .sc-more 컴포넌트 계승(텍스트 단독 = §📐 라벨 규칙·신규 CSS 0)
-      const fold = document.createElement('button');
-      fold.className = 'sc-more sc-fold'; fold.type = 'button';
-      fold.textContent = _scFoldN > 0 ? `검증대기 +${_scFoldN}건 펼치기` : '검증대기 접기';
-      fold.onclick = () => { scFoldOpen = !scFoldOpen; renderScrap(); };
-      col.appendChild(fold);
     }
   });
   _scSig += '|' + q;
