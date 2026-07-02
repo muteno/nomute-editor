@@ -186,7 +186,8 @@ const PHOTO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
     try { await navigator.clipboard.writeText(ta.value); cp.innerHTML = CHECK_SVG; cp._icon = 'check'; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); upd(); }, 1200); } catch {}
   });
   b.addEventListener('click', async e => { e.preventDefault();   // 붙여넣기 전용(기존: 교체)
-    try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd();
+    const selS = ta.selectionStart, selE = ta.selectionEnd;   // await 전 캐럿 스냅
+    try { const t = await navigator.clipboard.readText(); if (t) { if (typeof ta.setRangeText === 'function' && typeof selS === 'number') ta.setRangeText(t, selS, selE, 'end'); else ta.value += t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd();   // 캐럿 삽입(덮어쓰기 폐지·운영자 260702)
   });
   ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
 })();
