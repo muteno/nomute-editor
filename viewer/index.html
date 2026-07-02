@@ -1275,7 +1275,7 @@
   /* 커스텀 원형 체크박스(네이티브 input 시각 숨김·포커스 유지) */
   .dl-full { position:relative; display:inline-flex; align-items:center; height:34px; padding-left:4px; cursor:pointer; touch-action:manipulation; }   /* padding-left=탭타깃 확장(.dlbox 좌패딩 5+4=시각 9px 동일) */
   .dl-full input { position:absolute; left:0; top:50%; transform:translateY(-50%); width:16px; height:16px; margin:0; opacity:0; cursor:pointer; }
-  .dl-cbox { width:12px; height:12px; flex:none; border-radius:4px; margin-right:9px; position:relative; top:1px;   /* 체크3(둥근 사각 −/✓·트리아지 통일)·12px·top:1px 살짝 내림(크기 유지·라벨 광학정렬·운영자 260623) */
+  .dl-cbox { width:12px; height:12px; flex:none; border-radius:4px; margin-right:6px; position:relative; top:-1px;   /* 체크3(둥근 사각 −/✓·트리아지 통일)·12px · top:-1px 살짝 올림(운영자 260702) · margin-right 6=공유 라벨 좌측 당김(운영자 260702) */
     border:1.5px solid rgba(255,255,255,.28); background:rgba(255,255,255,.04);
     display:inline-flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s, box-shadow .15s; }
   .dl-cbox svg { position:absolute; width:8px; height:8px; display:block; transition:opacity .15s, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
@@ -1289,9 +1289,9 @@
   .dlg-pdf { background:transparent !important; border:0 !important; box-shadow:none !important;
     backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
     height:auto !important; width:auto !important; padding:0 !important; margin:0 !important;
-    gap:4px; font-size:12px; font-weight:600; color:var(--mut); touch-action:manipulation; }
+    gap:5px; font-size:13px; font-weight:600; color:var(--mut); touch-action:manipulation; }   /* 공유 = 조금 키움(12→13·gap 5·아이콘 14 · 운영자 260702) */
   .dlg-pdf .dl-lbl { transition:color .15s; }
-  .dlg-pdf .dl-ico { transition:transform .35s cubic-bezier(.2,.7,.3,1); }
+  .dlg-pdf .dl-ico { width:14px; height:14px; transition:transform .35s cubic-bezier(.2,.7,.3,1); }
   /* 요약 탭 = 다운로드 확인(초록 플래시 + 아이콘 ↓바운스 = 시맨틱 모션) */
   .dlg-pdf.okflash { color:var(--accent) !important; }
   .dlg-pdf.okflash .dl-ico { animation:dlbounce .42s ease; }
@@ -2019,11 +2019,15 @@
   .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
-  .pubpop .qc { font-size:var(--fs-xs); color:var(--mut); }   /* 발행본 개수 부제(대기열 b 옆) */
-  .pubpop .qt.d-ok { color:var(--accent); } .pubpop .qt.d-soon { color:var(--danger); } .pubpop .qt.d-exp { color:var(--mut); opacity:.6; }
+  .pubpop .qc { font-size:13px; font-weight:700; color:var(--mut); padding-bottom:8px; font-variant-numeric:tabular-nums; }   /* Today N / 누적 M — 발행본 타이틀(.bpop b)과 동일 글자크기·하단패딩으로 높이 중앙정렬 · <b> 아닌 <span>이라 .bpop b 룰 안 탐 · tabular=숫자 폭 고정(운영자 260702) */
+  .pubpop .qc .tn { color:var(--accent); font-weight:800; }   /* 오늘 발행 수만 강조 — 0이어도 강조 유지(운영자 '0에만 강조'·나머지 mut) */
   .pubpop .qrow.exp .qmain { color:var(--mut); text-decoration:line-through; opacity:.7; }
-  .pubpop .pinmark { flex:none; color:var(--mut); display:grid; place-items:center; }   /* 핀 표식 = mut */
-  .pubpop .pinmark svg { width:13px; height:13px; }
+  .pubpop .pinmark { position:relative; flex:none; display:grid; place-items:center; margin-right:6px; cursor:pointer; touch-action:manipulation; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; transition:color .2s ease, transform .12s ease; }   /* 잠금 토글 = 길게 눌러 잠금/해제(qFeedBtn 롱프레스 계승) · 우측 버튼과 마진 6px(운영자 260702) */
+  .pubpop .pinmark::before { content:''; position:absolute; inset:-8px; }   /* 롱프레스 히트영역 확장(14→30px)·레이아웃 무영향(absolute) — 이벤트는 부모(.pinmark)로 귀속(평의회 260702) */
+  .pubpop .pinmark svg { width:14px; height:14px; }
+  .pubpop .pinmark.locked { color:var(--arm); }   /* 잠금 = 레몬(강조·운영자) */
+  .pubpop .pinmark.open { color:var(--mut); }      /* 해제 = 무강조 회색(강조색 아님·운영자) */
+  .pubpop .pinmark:active { transform:scale(.86); }
 </style>
 </head>
 <body data-tab="feed">
@@ -2127,8 +2131,8 @@
 
 <!-- 슛(유료 발사) PIN 입력 — confirm/안내 다이얼로그·prompt 대체. 4칸 자동이동·자동인증 -->
 <dialog id="pindlg">
-  <div class="pin-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2 0-2.8a2 2 0 0 0-3 0z"/><path d="M12 15l-3-3a22 22 0 0 1 8-10c2.5 0 5 2.5 5 5a22 22 0 0 1-10 8z"/><path d="M9 12H4s.5-2.8 2-4a4 4 0 0 1 3 0M12 15v5s2.8-.5 4-2a4 4 0 0 0 0-3"/></svg> 생성 PIN</div>
-  <div class="pin-sub">유료 생성이야(Gemini·Cloud Run). 4자리 암호 입력.</div>
+  <div class="pin-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2 0-2.8a2 2 0 0 0-3 0z"/><path d="M12 15l-3-3a22 22 0 0 1 8-10c2.5 0 5 2.5 5 5a22 22 0 0 1-10 8z"/><path d="M9 12H4s.5-2.8 2-4a4 4 0 0 1 3 0M12 15v5s2.8-.5 4-2a4 4 0 0 0 0-3"/></svg> <span id="pinTitleTxt">PIN</span></div>
+  <div class="pin-sub" id="pinSub">4자리 암호 입력.</div>
   <div class="pin-boxes" id="pinboxes">
     <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 1">
     <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 2">
@@ -5356,14 +5360,14 @@ $('#bnav').addEventListener('click', e => {
 //   팝업이 오발 닫히던 버그 차단(폰 웹뷰선 타깃 탈락 시 stopPropagation 도 불안정). pointerdown 은 재렌더 전이라 타깃이 붙어있어 판정 정확(운영자 260622).
 let _popDownInside = false;
 ['pointerdown', 'mousedown'].forEach(ev => document.addEventListener(ev, e => {
-  _popDownInside = !!(e.target && e.target.closest && e.target.closest('#bpop, #linkpop, #qpop, #pubpop'));
+  _popDownInside = !!(e.target && e.target.closest && e.target.closest('#bpop, #linkpop, #qpop, #pubpop, #pindlg'));   // #pindlg = pubpop 위 top-layer 모달 — 그 안 클릭이 pubpop 바깥클릭 닫힘을 오발동 안 하게(평의회 260702)
 }, true));
 document.addEventListener('click', e => {
   if (_popDownInside) return;   // 팝업 내부에서 시작한 클릭 = 안 닫음(타깃 탈락 무관)
   if (!bpop.hidden && !bpop.contains(e.target) && !$('#bnav').contains(e.target)) { bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open'); }
   if (!linkpop.hidden && !linkpop.contains(e.target) && !$('#bnav').contains(e.target)) linkpop.hidden = true;
   if (!qpop.hidden && !qpop.contains(e.target) && !$('#bnav').contains(e.target)) closeQueueUser();
-  if (!pubpop.hidden && !pubpop.contains(e.target) && !$('#profile').contains(e.target)) closePubUser();
+  if (!pubpop.hidden && !pubpop.contains(e.target) && !$('#profile').contains(e.target) && !($('#pindlg') && $('#pindlg').open)) closePubUser();   // pindlg(잠금 PIN) 열려 있으면 pubpop 유지(평의회 260702)
 });
 
 // ── 대기열(뉴스요약 = 롱프레스 600ms · 연달아 두번 탭 · 우클릭 · 배지 → 열기 / 떠있을 때 한번 더 탭 → 닫기) — 분석 대기/중(pending/) 기사 개요. api/pending 라이브 조회(파이프라인 0 변경·읽기전용). ──
@@ -7819,7 +7823,7 @@ $('#pubGo').addEventListener('click', async () => {
   finally { _pubBusy = false; }
 });
 
-let PUBITEMS = [], PUBPAGE = 0, _pubCloseTimer = 0, _pubPushed = false, _pubPop = false;
+let PUBITEMS = [], PUB_TOTAL = 0, PUBPAGE = 0, _pubCloseTimer = 0, _pubPushed = false, _pubPop = false;
 const _pubBtnEl = $('#pubBtn'); if (_pubBtnEl) _pubBtnEl.addEventListener('click', e => { e.stopPropagation(); openPub(); });   // stopPropagation = #msgbtn 패턴(pmenu 안 버튼이라 안 하면 열자마자 바깥클릭 닫힘·검증8·9)
 function openPub() {   // 발행본 팝업 열기 — openQueue 미러(프로필 기준 위치)
   closeOverlays('pubpop');
@@ -7842,24 +7846,29 @@ function closePubUser() {   // closeQueueUser 미러
 }
 $('#pubpopX').addEventListener('click', closePubUser);
 const _LOCKSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const _LOCKOPENSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.3"/></svg>';   // 열린 자물쇠(고리 젖혀짐) — 미잠금
 const _TRASHSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>';
-function _pubDayLabel(it) {
-  if (it.expired) return { t: '만료', c: 'd-exp' };
-  const d = Math.ceil(((it.exp || 0) - Date.now()) / 86400e3);
-  return { t: 'D-' + Math.max(0, d), c: d <= 1 ? 'd-soon' : 'd-ok' };
+function _pubAgeLabel(it) {   // 대기열 표기 완전 통일(운영자 260702): D-N 폐지 → qAgo(qRowHtml과 동일 함수 = 분 정밀도 포함)·색도 대기열과 동일 경계(≤60분 qt-new·≤240분 qt-mid)
+  const t = it.created ? qAgo(it.created) : '방금';
+  const am = it.created ? (Date.now() - it.created) / 60000 : 1e9;
+  const c = am <= 60 ? 'qt-new' : (am <= 240 ? 'qt-mid' : '');
+  return { t, c };
 }
-function pubRowHtml(it) {   // qRowHtml 미러: 만료D-N | 제목 | 핀 | 링크복사 | 삭제
-  const dl = _pubDayLabel(it);
+function pubRowHtml(it) {   // qRowHtml 미러: N시간 전 | 제목 | 잠금토글 | 링크복사 | 삭제
+  const al = _pubAgeLabel(it);
   const ttl = it.title || '(제목 없음)', cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;
-  const pin = '<span class="pinmark"' + (it.pinned ? ' title="핀 잠금"' : ' style="visibility:hidden"') + '>' + (it.pinned ? _LOCKSVG : '') + '</span>';
+  const pin = '<span class="pinmark ' + (it.pinned ? 'locked' : 'open') + '" data-slug="' + qEsc(it.slug) + '" role="button" tabindex="0" title="' + (it.pinned ? '잠금됨 · 길게 눌러 해제' : '길게 눌러 잠금') + '">' + (it.pinned ? _LOCKSVG : _LOCKOPENSVG) + '</span>';
   const copy = it.expired ? '<button class="qgo go-gray" type="button" disabled title="만료됨">' + COPY_SVG + '</button>'
     : '<button class="qgo go-green pub-copy" type="button" title="링크 복사">' + COPY_SVG + '</button>';
   const rm = '<button class="qdl pub-rm" type="button" title="발행 취소(삭제)">' + _TRASHSVG + '</button>';
-  return '<div class="qrow' + (it.expired ? ' exp' : '') + '"><span class="qt ' + dl.c + '">' + qEsc(dl.t) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span>' + pin + copy + rm + '</div>';
+  return '<div class="qrow' + (it.expired ? ' exp' : '') + '"><span class="qt ' + al.c + '">' + qEsc(al.t) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span>' + pin + copy + rm + '</div>';
 }
 function renderPubPage() {   // renderQueuePage 미러
   const box = $('#pubpopList'), pg = $('#pubpopPage'); if (!box) return;
-  const cnt = $('#pubpopCnt'); if (cnt) cnt.textContent = PUBITEMS.length ? (PUBITEMS.filter(x => !x.expired).length + '건 공개중') : '';
+  const cnt = $('#pubpopCnt');   // Today N(오늘 발행·강조) / 누적 M(전체 발행 이력 총합·mut) — 상단 '오늘 N/누적' 패턴(운영자 260702)
+  if (cnt) { const kd = ms => new Date((ms || 0) + 9 * 3600e3).toISOString().slice(0, 10), td = kd(Date.now());   // KST 기준 오늘(§📐)
+    const todayN = PUBITEMS.filter(x => kd(x.created) === td).length;
+    cnt.innerHTML = 'Today <span class="tn">' + todayN + '</span> / 누적 ' + (PUB_TOTAL || 0); }
   if (!PUBITEMS.length) { box.innerHTML = '<div class="qempty">발행한 요약이 없어<small>요약 열고 공유 버튼으로 발행</small></div>'; if (pg) pg.innerHTML = ''; return; }
   const pages = Math.ceil(PUBITEMS.length / QPER);
   PUBPAGE = Math.min(Math.max(0, PUBPAGE), pages - 1);
@@ -7869,6 +7878,7 @@ function renderPubPage() {   // renderQueuePage 미러
     const row = box.children[i]; if (!row) return;
     const cbtn = row.querySelector('.pub-copy'); if (cbtn) cbtn.onclick = (e) => { e.stopPropagation(); copyText(location.origin + '/s/' + it.slug).then(() => { const o = cbtn.innerHTML; cbtn.innerHTML = CHECK_SVG; setTimeout(() => { cbtn.innerHTML = o; }, 1200); }); };
     const rbtn = row.querySelector('.pub-rm'); if (rbtn) rbtn.onclick = (e) => { e.stopPropagation(); _pubRemove(it, rbtn); };
+    const pm = row.querySelector('.pinmark'); if (pm) wirePinLongPress(pm, it);   // 잠금 토글 = 길게 눌러 PIN 입력
   });
   if (pg) { pg.innerHTML = pagerHtml(pages, PUBPAGE); pg.querySelectorAll('[data-pg]').forEach(b => b.onclick = (e) => { e.stopPropagation(); PUBPAGE = +b.dataset.pg; setTimeout(renderPubPage, 0); }); }
 }
@@ -7889,14 +7899,71 @@ async function loadPub() {   // loadQueue 미러(api/published)
     const r = await fetch('api/published?_=' + Date.now());
     if (g !== _pubGen) return;
     if (!r.ok) { box.innerHTML = '<div class="qempty">발행본 조회 실패 (' + r.status + ')</div>'; return; }
-    const j = await r.json(); PUBITEMS = (j.items || []).sort((a, b) => (b.created || 0) - (a.created || 0));
+    const j = await r.json(); PUBITEMS = (j.items || []).sort((a, b) => (b.created || 0) - (a.created || 0)); if (typeof j.total === 'number') PUB_TOTAL = j.total;   // 서버가 total 생략(일시오류)이면 이전 누적 보존(붕괴 방지·평의회 260702)
   } catch { if (g === _pubGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시</div>'; return; }
   if (g !== _pubGen) return;
   PUBPAGE = 0; renderPubPage(); _updatePubBadge();
 }
-function _updatePubBadge() { const n = PUBITEMS.filter(x => !x.expired).length, c = $('#pubBtnCnt'); if (c) c.textContent = n ? '(' + n + ')' : ''; }
+function _updatePubBadge() { const c = $('#pubBtnCnt'); if (c) c.textContent = ''; }   // '발행본 (N)' 개수·괄호 폐지(운영자 260702) — 프로필 버튼엔 라벨만
 let _pubBadgeInit = false;
-function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; _updatePubBadge(); } catch {} })(); }   // 배지 = 프로필 메뉴 첫 열림 시 1회 로드(매 페이지로드 41콜 PAT 경합 방지·검증9)
+function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; if (typeof j.total === 'number') PUB_TOTAL = j.total; _updatePubBadge(); } catch {} })(); }   // 배지 = 프로필 메뉴 첫 열림 시 1회 로드(매 페이지로드 41콜 PAT 경합 방지·검증9)
+
+// ── 발행본 잠금 토글 — 자물쇠 픽토그램 롱프레스(600ms) → #pindlg PIN 입력 → api/relock(실제 공개링크 PIN 보호 토글). 잠금=새 PIN 설정 / 해제=기존 PIN 정확히(불일치=흔들기 재입력). qFeedBtn 롱프레스 패턴 계승. 운영자 260702. ──
+function _awaitPin() { return new Promise(res => { _pinResolve = res; }); }   // 4자리 채우면 resolve(값)·닫히면 resolve(null) — 기존 #pindlg 배선 재사용
+function openPinDlg(title, sub) {
+  _wirePin();
+  const tt = $('#pinTitleTxt'); if (tt) tt.textContent = title;
+  const ss = $('#pinSub'); if (ss) ss.textContent = sub;
+  const er = $('#pinerr'); if (er) er.textContent = '';
+  _pinCells().forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  const boxes = $('#pinboxes'); if (boxes) boxes.classList.remove('err', 'shake');
+  openComposeDlg($('#pindlg'));   // showModal + 폰 뒤로가기 스택(다른 모달과 동일 · #pindlg는 isComposingModalOpen 등재로 over-close 차단)
+  setTimeout(() => { const c0 = _pinCells()[0]; if (c0) c0.focus(); }, 60);
+}
+function _paintPinmark(pm, pinned) {   // 같은 노드 제자리 갱신 = 색 CSS transition 살림(겉면 자연 스위칭·재렌더로 노드 파괴 안 함)
+  if (!pm) return;
+  pm.classList.toggle('locked', pinned); pm.classList.toggle('open', !pinned);
+  pm.innerHTML = pinned ? _LOCKSVG : _LOCKOPENSVG;
+  const t = pinned ? '잠금됨 · 길게 눌러 해제' : '길게 눌러 잠금';
+  pm.title = t; pm.setAttribute('aria-label', t);
+}
+async function lockToggle(it, pm) {
+  if ($('#pindlg').open) return;   // 재진입 가드(키 리핏·이중 발동 → showModal 재호출 InvalidStateError 방지)
+  const locked = !!it.pinned;
+  openPinDlg(locked ? '잠금 해제' : '잠금 설정', locked ? '기존 PIN 4자리 입력 → 잠금 해제' : '새 PIN 4자리 입력 → 공개 링크 잠금');
+  while (true) {
+    const pin = await _awaitPin();
+    if (pin == null) return;   // 취소(X·ESC·백드롭·폰 뒤로가기)
+    let d = null, ok = false;
+    try {
+      const r = await fetch('api/relock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: it.slug, pin }) });
+      d = await r.json().catch(() => ({}));
+      ok = r.ok && d && d.ok;
+    } catch { /* 네트워크 오류 → 아래 흔들기 */ }
+    if (ok) {
+      it.pinned = !!d.pinned;
+      if (pm && pm.isConnected) _paintPinmark(pm, it.pinned); else renderPubPage();   // 노드 유지=색 트윈 / 소실 시 폴백
+      $('#pindlg').close();
+      return;
+    }
+    if (!$('#pindlg').open) return;   // in-flight 중 사용자가 닫음 → 숨은 다이얼로그에 흔들기·좀비 await 방지(평의회 260702)
+    _pinShake(d && d.mismatch ? 'PIN이 틀렸어. 다시.' : ((d && d.error) ? String(d.error).slice(0, 40) : '실패 — 다시'));
+  }
+}
+// 롱프레스 타이머 = 단일 공유(한 번에 하나만) + window 취소는 *모듈 1회 등록*(행마다 등록하면 window 리스너 누수 — qFeedBtn 단일등록 패턴 계승·평의회 260702)
+let _pinLpTimer = null;
+function _pinLpCancel() { clearTimeout(_pinLpTimer); }
+window.addEventListener('pointerup', _pinLpCancel);
+window.addEventListener('pointercancel', _pinLpCancel);
+function wirePinLongPress(el, it) {   // 롱프레스 600ms(qFeedBtn 계승) · 절대거리 8px 이동 취소 · 키보드 Enter/Space 즉시
+  let x0 = 0, y0 = 0;
+  el.addEventListener('pointerdown', e => { if (e && e.button) return; x0 = e.clientX; y0 = e.clientY; clearTimeout(_pinLpTimer); _pinLpTimer = setTimeout(() => lockToggle(it, el), 600); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, _pinLpCancel));
+  el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 8) clearTimeout(_pinLpTimer); });
+  el.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); });   // 짧은 탭·롱프레스 후 click 무동작(롱프레스만 토글)
+  el.addEventListener('contextmenu', e => e.preventDefault());   // 롱프레스 시 iOS/안드 컨텍스트 메뉴 억제
+  el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); lockToggle(it, el); } });
+}
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
 revdlg.addEventListener('close', () => { resetRevSend(); updateRevFab(); });   // 닫으면 재확인만 해제 + FAB 재평가 — 입력 텍스트는 보존(수정 FAB 재진입 시 그대로 복원 · 최소화 폐지 · 운영자 260628)
@@ -8118,7 +8185,7 @@ loadPending();      // eager — 대기열 처리중 건수 배지 초기 표시
 // 🔧 유지보수 규칙(필수): 새 폴링·자동갱신·setTimeout/setInterval·render 경로가 *모달 뒤 DOM*을 건드리면 반드시 이 가드로 감쌀 것
 //                  (moreImgGo tick의 thumbsec 교체도 이 가드 적용 = 분신술7 발견분). 새 작성 모달 만들면 id를 아래 목록에 추가. (정본=이 주석 + docs/작업이력.md §2)
 function isComposingModalOpen() {
-  return ['#revdlg', '#crevdlg', '#tredodlg', '#askdlg', '#pastedlg', '#editdlg', '#pubdlg'].some(s => { const d = $(s); return !!(d && d.open); });
+  return ['#revdlg', '#crevdlg', '#tredodlg', '#askdlg', '#pastedlg', '#editdlg', '#pubdlg', '#pindlg'].some(s => { const d = $(s); return !!(d && d.open); });   // #pindlg=발행본 잠금 PIN(pubpop 위 top-layer) → 폰 뒤로가기 시 pindlg만 닫고 pubpop 유지·over-close 차단(평의회 260702)
 }
 // 요약 리더(#dlg) 폰 뒤로가기 = 모달 먼저 닫기(lbox/tooldlg/merge 패턴 계승·§🎨·260630 QA ③). 상위 오버레이(컴포즈·라이트박스·도구·대기열·병합)·컴포즈 자기칸 회수 back은 그쪽 몫 → #dlg over-close 차단.
 window.addEventListener('popstate', () => {

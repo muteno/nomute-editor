@@ -20,7 +20,7 @@ export async function onRequestGet({ env }) {
   } catch { /* 디렉토리 없음 = 빈 목록 */ }
 
   const files = list
-    .filter(f => f && f.type === 'file' && /\.json$/i.test(f.name))
+    .filter(f => f && f.type === 'file' && /\.json$/i.test(f.name) && !f.name.startsWith('_'))   // _stats.json 등 메타파일 제외(발행본 목록 아님)
     .sort((a, b) => b.name.localeCompare(a.name))   // slug 시각프리픽스라 이름 내림차순 = 최신순 → slice 전에 정렬(검증6/10: 정렬 전 컷 = 최신 누락 버그 방지)
     .slice(0, CAP);
 
@@ -40,5 +40,17 @@ export async function onRequestGet({ env }) {
   }));
 
   items.sort((a, b) => (b.created || 0) - (a.created || 0));
-  return json({ items, now });
+
+  // 누적 = 전체 발행 이력 총합(published/_stats.json · publish.js가 증가). ⚠️ 404(최초·없음)와 일시오류(5xx/429)를 구분:
+  //   404 → 0 폴백(items.length로 바닥) / 일시오류 → null(응답서 total 생략 → 클라가 이전 누적 보존 = 잘못된 낮은값 붕괴 차단·평의회 260702).
+  let total = null;
+  try {
+    const rs = await fetch(`https://api.github.com/repos/${REPO}/contents/published/_stats.json?ref=main`, { headers: { ...H, accept: 'application/vnd.github.raw' } });
+    if (rs.ok) total = (+JSON.parse(await rs.text()).total) || 0;
+    else if (rs.status === 404) total = 0;
+  } catch { /* 네트워크 = null 유지 */ }
+
+  const out = { items, now };
+  if (total != null) out.total = Math.max(total, items.length);   // 누적 < 활성 불가(floor)
+  return json(out);
 }
