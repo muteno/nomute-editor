@@ -27,10 +27,6 @@ on:
         description: 'judge --safe-mode 카나리아(CLAUDE.md 로드 스킵 = cache_w 절감 시험 · 기본 OFF)'
         type: boolean
         default: false
-      group_canary:
-        description: '사건 묶기(group_judge) 카나리아 1런(기본 OFF — §📰 플래그 절차 · 실측 후 env GROUP_ON 승격)'
-        type: boolean
-        default: false
 
 concurrency:
   group: breaking-judge
@@ -139,23 +135,6 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           python3 .github/scripts/gate_judge.py
 
-      # 사건 묶기 판정 — 토큰 클러스터링서 갈라진 같은 사건을 AI가 확정(YES→group_id → 뷰어 자동 병합·mergeDecorate 파이프).
-      # ⚠️ 카나리아 OFF 기본(§📰 라이브 플래그 절차): dispatch inputs.group_canary=true 단건 실측 → 통과 시 env GROUP_ON: '1' 승격.
-      # 모델 = opus 4.8(사건 동일성 = 정밀 판정·autopick _ai_same 선례 · 운영자 260702 "탄탄하게") · 도장 캐시 = 같은 그룹 재판정 0.
-      - name: 사건 묶기 판정 (claude -p · group_judge)
-        if: steps.chk.outputs.pending != '0' && (inputs.group_canary || env.GROUP_ON == '1')
-        env:
-          GROUP_SAFE: '1'   # judge류 공통 --safe-mode(§📰 · 판정은 stdin 룰북만 = CLAUDE.md 불필요)
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
-        run: |
-          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
-            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN 비어있음 — 사건 묶기 생략(다음 런 재시도)"; exit 0
-          fi
-          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
-          python3 .github/scripts/group_judge.py
-
       - name: Commit (breaking 확정)
         if: steps.chk.outputs.pending != '0'
         run: |
@@ -214,7 +193,6 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
         run: |
-          set -o pipefail   # 기본 셸은 -e만(pipefail OFF) → 아래 tee 파이프가 스크립트 크래시를 green으로 삼키던 것 차단(평의회3 · 런로그 실측)
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN   # 구독 OAuth만 사용(api-key 충돌 차단 · 판정 스텝과 동일)
           python3 -m pip install --quiet --break-system-packages feedparser requests || { echo "::warning::deps 설치 실패 — 자동픽 생략"; echo "picked=0" >> "$GITHUB_OUTPUT"; exit 0; }   # 24.04 PEP-668 = --break-system-packages 필수(push 스텝과 동일 · 없으면 자동픽 무성과 green)
           python3 scraper/auto_pick_breaking.py | tee /tmp/autopick.out
@@ -225,29 +203,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # ⚠️ metrics 동반 필수(260702 유실 근인): 자동픽의 AI 중복판정(run_claude source=autopick)이 이 런의
-          #    metrics/usage shard(위 Commit 스텝이 이미 커밋한 추적파일)에 계측 1줄을 append → add 목록에 metrics가
-          #    없으면 unstaged가 남아 아래 pull --rebase가 "You have unstaged changes"로 4회 전부 실패 = 픽 유실.
-          #    (실측: 24h 내 선행 픽이 있어 AI 콜이 뜬 픽은 전부 미반영·런은 green — 260702 윤석열 상고심·김명수 기소)
-          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json metrics)" ]; then
+          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json)" ]; then
             echo "자동픽 변동 없음 — 커밋 생략"; exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json   # 'pending'은 pick_pending._clear_stale_failed의 pending/failed/* 삭제까지 스테이징(제2 오염원 — 목록서 pending 빼면 재발 · 평의회1)
-          git add metrics 2>/dev/null || true   # 계측 shard 동반 커밋(위 ⚠️ · judge Commit 스텝의 'git add metrics' 패턴과 동일)
-          if git diff --cached --quiet; then echo "스테이지 변화 없음 — 커밋 생략"; exit 0; fi   # 스테이지 0인데 commit 치면 rc≠0 = 오탐 red(judge Commit 스텝과 대칭 · 평의회3)
+          git add pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json
           git commit -m "auto-pick: 긴급 grade≥3 자동 분석 (픽 ${{ steps.autopick.outputs.picked }}건)"
           pushed=0
           for i in 0 1 2 3; do
             [ "$i" -gt 0 ] && sleep $((2**i))
-            git pull --rebase --autostash -X ours origin main && git push origin HEAD:main && { pushed=1; break; }
+            git pull --rebase -X ours origin main && git push origin HEAD:main && { pushed=1; break; }
             git rebase --abort 2>/dev/null || true
           done
           # ⚠️ pending·seen·ledger = 한 커밋(원자) → push 실패면 셋 다 main 미반영 = 분석 발동해도 news-analyze가 pending 못 봄(무과금)
           #    + 다음 런 재평가(self-heal·로컬 커밋은 runner 종료 시 폐기). ∴ push 성공했을 때만 발동(무의미 no-op 디스패치 회피).
-          #    실패는 red 표면화(exit 1 · judge Commit 스텝과 동일) — 옛 warning+green이 260625~0702 유실을 가렸음.
-          if [ "$pushed" != 1 ]; then echo "::error::자동픽 커밋 push 실패 — 분석 미발동(pending 미반영·다음 런 재평가)"; exit 1; fi
+          if [ "$pushed" != 1 ]; then echo "::warning::자동픽 커밋 push 실패 — 분석 미발동(pending 미반영·다음 런 재평가)"; exit 0; fi
           # 실제 픽이 있을 때만 분석 발동(GITHUB_TOKEN push 는 재귀방지로 news-analyze 못 깨움 → 명시 디스패치 · pick.yml 패턴)
           if [ "${{ steps.autopick.outputs.picked }}" != "0" ] && [ -n "${{ steps.autopick.outputs.picked }}" ]; then
             ok=0; for i in 1 2 3; do
