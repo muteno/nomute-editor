@@ -1,0 +1,153 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>게이지→✓ 발사 피드백 미리보기</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108;
+    --arm:#ffd93d; --arm-rgb:255,217,61; --on-arm:#1a1205;
+    --danger:#ff5b6a; --r-s:9px; --press-l:.95;
+    --panel:#171b19; --panel2:#1e2320;
+  }
+  *{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:radial-gradient(120% 80% at 50% -10%, #16201a, var(--bg));color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;line-height:1.6;padding:26px 16px 70px}
+  .wrap{max-width:520px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:24px}
+  .demo{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 16px 18px;margin:16px 0}
+  .demo h2{font-size:14px;margin:0 0 3px;color:var(--accent)}
+  .demo.amber h2{color:var(--arm)}
+  .demo .d-sub{color:var(--mut);font-size:12px;margin:0 0 14px}
+  /* 카드 컨텍스트(수집함 아이템 축약) */
+  .card{background:linear-gradient(165deg, rgba(28,34,30,.7), rgba(11,13,11,.8));border:1px solid var(--line);border-radius:13px;padding:11px 12px}
+  .card.amber{background:linear-gradient(165deg, rgba(40,28,12,.6), rgba(11,9,6,.74));border-color:rgba(255,176,46,.34)}
+  .c-top{display:flex;gap:6px;font-size:11px;color:var(--mut);font-weight:700;margin-bottom:5px}
+  .c-top .cat{color:var(--accent)} .card.amber .c-top .cat{color:#8fb39c}
+  .c-title{font-size:13.5px;font-weight:700;color:var(--fg);margin-bottom:11px;letter-spacing:-.2px}
+  .c-bot{display:flex;gap:6px;align-items:stretch}
+
+  /* ===== 공통 게이지/체크 키프레임 (라이브 정본) ===== */
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
+  @keyframes goTick { to { stroke-dashoffset:0; } }
+  @keyframes shine { to { transform:translateX(320%); } }
+  .gck{width:16px;height:16px}
+  .gck path{fill:none;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;animation:goTick .38s .04s ease forwards}
+
+  /* ===== ① 재시도 칩 (.sc-fail · 노랑 --arm) — 라이브 그대로 ===== */
+  .sc-fail{flex:1;display:grid;place-items:center;height:24px;border-radius:9px;font-size:12px;font-weight:800;letter-spacing:.06em;
+    color:var(--danger);border:1px solid rgba(255,206,64,.34);cursor:pointer;user-select:none;
+    background:repeating-linear-gradient(45deg,rgba(255,206,64,.26) 0 4px,rgba(255,206,64,.09) 4px 8px);transition:transform .12s}
+  .sc-fail:active{transform:scale(var(--press-l))}
+  .sc-fail.retry{background:repeating-linear-gradient(45deg,rgba(255,206,64,.078) 0 4px,rgba(255,206,64,.027) 4px 8px);letter-spacing:0}
+  .sc-fail.firing{color:var(--on-arm);pointer-events:none;border-color:var(--arm);letter-spacing:0;
+    background:linear-gradient(var(--arm),var(--arm)) left/0% 100% no-repeat, linear-gradient(rgba(var(--arm-rgb),.16),rgba(var(--arm-rgb),.16));
+    animation:goFill .72s linear forwards}
+  .sc-fail.okdone{background:var(--arm);color:var(--on-arm);border-color:var(--arm)}
+  .sc-fail .gck path{stroke:var(--on-arm)}
+  .sc-fail.picking{background:repeating-linear-gradient(45deg,rgba(255,206,64,.078) 0 4px,rgba(255,206,64,.027) 4px 8px);color:var(--fg);letter-spacing:0;cursor:default;position:relative;overflow:hidden}
+  .sc-fail.picking>span{position:relative;z-index:1}
+  .sc-fail.picking::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent);animation:shine 1.3s linear infinite}
+  .ftr-x{flex:none;width:24px;height:24px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--accent)}
+  .ftr-x svg{width:15px;height:15px}
+
+  /* ===== ② PICK 트리아지 (.sc-tg / .sc-got · 초록 --accent) — 라이브 그대로 ===== */
+  .sc-tg{flex:1;height:24px;border-radius:9px;font-size:12px;font-weight:800;letter-spacing:0;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);cursor:pointer;transition:transform .12s}
+  .sc-tg:active{transform:scale(var(--press-l))}
+  .sc-tg.pick{flex:1.5;color:var(--accent)}
+  .sc-got{flex:1;display:grid;place-items:center;height:24px;border-radius:9px;font-size:12px;font-weight:800;letter-spacing:.06em;
+    color:var(--accent);border:1px solid rgba(15,253,2,.4);user-select:none;
+    background:repeating-linear-gradient(45deg, rgba(15,253,2,.20) 0 5px, rgba(15,253,2,.05) 5px 10px)}
+  .sc-got.firing{color:var(--on-accent);border-color:var(--accent);overflow:hidden;pointer-events:none;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(rgba(15,253,2,.12),rgba(15,253,2,.12));
+    animation:goFill .72s linear forwards}
+  .sc-got.okdone{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .sc-got .gck path{stroke:var(--on-accent)}
+  .sc-got.picking{position:relative;overflow:hidden;background:rgba(15,253,2,.10)}
+  .sc-got.picking>span{position:relative;z-index:1}
+  .sc-got.picking::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(90deg,transparent,rgba(15,253,2,.5),transparent);animation:shine 1.2s linear infinite}
+
+  .hint{color:var(--mut);font-size:11.5px;margin-top:11px;text-align:center}
+  .hint b{color:var(--fg);font-weight:700}
+  .replay{margin-top:12px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--mut);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:20px;padding:5px 13px;cursor:pointer}
+  .replay:active{transform:scale(.95)}
+  @media (prefers-reduced-motion:reduce){ .sc-fail.firing,.sc-got.firing{animation-duration:.2s} .gck path{animation:none;stroke-dashoffset:0} .sc-fail.picking::after,.sc-got.picking::after{animation:none} }
+</style></head><body><div class="wrap">
+
+<h1>게이지 → ✓ 체크 → Picking</h1>
+<div class="sub">발사 피드백 미리보기 · 실제 CSS·타이밍(게이지 .72s · 체크 .38s) 그대로 · <b style="color:var(--fg)">버튼을 탭</b>하면 재생</div>
+
+<!-- ① 재시도 -->
+<div class="demo amber">
+  <h2>① 분석 실패 트레이 — 재시도 (노랑)</h2>
+  <p class="d-sub">2탭 확정: 탭 → <b style="color:var(--danger)">재시도</b> arm → 다시 탭 → 노랑 게이지 → ✓ → Picking</p>
+  <div class="card amber">
+    <div class="c-top"><span class="cat">사회</span>·<span>10</span>·<span>이슈</span></div>
+    <div class="c-title">'여고생 살해범' 아버지가 경찰…리얼돌 등 증거 인멸했다</div>
+    <div class="c-bot">
+      <button class="sc-fail" id="failBtn" type="button"><span>Failed</span></button>
+      <button class="ftr-x" type="button" title="숨김"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg></button>
+    </div>
+  </div>
+  <div style="text-align:center"><button class="replay" onclick="resetFail()">↻ 처음부터</button></div>
+</div>
+
+<!-- ② PICK -->
+<div class="demo">
+  <h2>② 수집함 — PICK (초록)</h2>
+  <p class="d-sub">PICK 탭 → (실제앱은 사유 선택) → 초록 게이지 → ✓ → Picking</p>
+  <div class="card">
+    <div class="c-top"><span class="cat">경제</span>·<span>11</span>·<span>이슈</span></div>
+    <div class="c-title">차익 실현 영향 받은 뉴욕 증시 소폭 하락, 국제 유가는 4개월 만에 최저치</div>
+    <div class="c-bot" id="pickBot">
+      <button class="sc-tg pass" type="button">PASS</button>
+      <button class="sc-tg pick" id="pickBtn" type="button">PICK</button>
+      <button class="sc-tg" type="button" style="flex:none;width:24px">✓</button>
+    </div>
+  </div>
+  <div style="text-align:center"><button class="replay" onclick="resetPick()">↻ 처음부터</button></div>
+</div>
+
+<p class="hint">타이밍이 빠르거나 느리면 <b>게이지 .72s / 체크후 .44s</b> 숫자만 조정 가능 · reduced-motion이면 자동으로 짧아짐</p>
+
+<script>
+  var CHECK = '<svg class="gck" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7"/></svg>';
+  var RED = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* ① 재시도 — wireFailChip 시퀀스 그대로 */
+  var failBtn = document.getElementById('failBtn'), fArmed=false, fArmT=null, fTs=[];
+  function resetFail(){ fTs.forEach(clearTimeout); fTs=[]; clearTimeout(fArmT); fArmed=false;
+    failBtn.className='sc-fail'; failBtn.disabled=false; failBtn.innerHTML='<span>Failed</span>'; }
+  failBtn.onclick=function(){
+    if(failBtn.classList.contains('picking')||failBtn.classList.contains('firing'))return;
+    if(!fArmed){ fArmed=true; failBtn.classList.add('retry'); failBtn.textContent='재시도';
+      clearTimeout(fArmT); fArmT=setTimeout(function(){fArmed=false;failBtn.classList.remove('retry');failBtn.innerHTML='<span>Failed</span>';},3500); return; }
+    clearTimeout(fArmT); fArmed=false; failBtn.classList.remove('retry');
+    failBtn.disabled=true; failBtn.classList.add('firing');
+    fTs.push(setTimeout(function(){
+      failBtn.classList.remove('firing'); failBtn.classList.add('okdone'); failBtn.innerHTML=CHECK;
+      fTs.push(setTimeout(function(){
+        failBtn.classList.remove('okdone'); failBtn.disabled=false;
+        failBtn.classList.add('picking'); failBtn.innerHTML='<span>Picking…</span>';
+      }, RED?60:440));
+    }, RED?90:740));
+  };
+
+  /* ② PICK — applyTriage 픽 시퀀스 그대로 */
+  var pickBot=document.getElementById('pickBot'), pTs=[];
+  var PICK_ROW='<button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" id="pickBtn" type="button">PICK</button><button class="sc-tg" type="button" style="flex:none;width:24px">✓</button>';
+  function wirePick(){ var b=document.getElementById('pickBtn'); if(b) b.onclick=firePick; }
+  function resetPick(){ pTs.forEach(clearTimeout); pTs=[]; pickBot.innerHTML=PICK_ROW; wirePick(); }
+  function firePick(){
+    pickBot.innerHTML='<div class="sc-got firing" aria-label="픽 발사"><span>전송</span></div>';
+    var go=pickBot.querySelector('.sc-got');
+    pTs.push(setTimeout(function(){
+      if(!go||!go.isConnected)return;
+      go.classList.remove('firing'); go.classList.add('okdone'); go.innerHTML=CHECK;
+      pTs.push(setTimeout(function(){
+        pickBot.innerHTML='<div class="sc-got picking" aria-label="분석 중"><span>Picking…</span></div>';
+      }, RED?60:440));
+    }, RED?90:740));
+  }
+  wirePick();
+</script>
+</div></body></html>
