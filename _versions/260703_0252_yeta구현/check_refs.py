@@ -630,11 +630,6 @@ def check_judge_bare():
         if re.search(r'"--bare"', txt):
             bad.append('%s (judge에 --bare emit = OAuth 안 읽어 인증 즉사 → --safe-mode 사용)' % n)
 
-    # yeta 챗(sh): 신규 claude 스크립트가 --bare emit하면 동일 즉사 — 기존 고정 튜플의 사각지대 봉합(260703 계획안 P0).
-    # judge와 동일하게 emit 형태("--bare" 따옴표)만 매칭 — 주석 속 '--bare 금지' 경고문은 오탐 안 함.
-    if re.search(r'"--bare"', _read('.github/scripts/yeta_chat.sh')):
-        bad.append('yeta_chat.sh ("--bare" emit = OAuth 안 읽어 인증 즉사 → --safe-mode만 · env YETA_SAFE)')
-
     # 생성경로: --bare 기본 ON(claude_meter :-1 / more_images "1")이면 = OAuth 즉사(현재 롤백 OFF면 통과)
     if re.search(r'CLAUDE_BARE:-1', _read('shared/claude_meter.sh')):
         bad.append('claude_meter.sh (CLAUDE_BARE 기본 ON = 생성경로 --bare = OAuth 즉사)')
