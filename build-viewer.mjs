@@ -102,9 +102,11 @@ for (const f of files) {
   try {
     const raw = readFileSync(join(QUEUE, f), 'utf8');
     const { meta, body } = parseFrontmatter(raw);
+    const tko = stripLeadEmoji(meta.title_ko || '');   // 외신 한국어 번역 제목(분석 frontmatter title_ko · 260703) — 있으면 표시 제목으로 승격
     articles.push({
       file: f,
-      title: stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
+      title: tko || stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 외신=title_ko 우선(피드 목록·검색·강마커 cat이 한국어로 작동) · 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
+      title_orig: tko ? (stripLeadEmoji(meta.title) || '') : '',   // 번역 적용 시 원문 제목 보존(모달 하단 MUT 줄·검색 보조 · 260703)
       url: meta.url || '',
       date: meta.date || '',
       time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.

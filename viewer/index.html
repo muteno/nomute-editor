@@ -642,6 +642,7 @@
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
   .sc-orig { font-size:var(--fs-xs); color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }   /* 외신 원문(번역 제목 아래 1줄 · 검증용) */
+  .md-orig { font-size:var(--fs-xs); color:var(--mut); margin:18px 0 4px; word-break:break-word; }   /* 요약 모달 하단 외신 원문 제목(MUT 소형 · 운영자 260703) */
   .sc-bot { display:flex; align-items:center; gap:10px; margin-top:1px; }
   .sc-stars { display:flex; gap:3px; }
   .sc-star { width:26px; height:26px; display:grid; place-items:center; cursor:pointer; color:var(--line);
@@ -2538,7 +2539,7 @@ function render() {
   const cardonly = $('#cardonly').checked;
   const rows = DATA.filter(a =>
     (!cardonly || hasCardImage(a)) &&
-    (!q || (a.title+a.media).toLowerCase().includes(q)) &&
+    (!q || (a.title+(a.title_orig||'')+a.media).toLowerCase().includes(q)) &&   // 외신 = 번역 제목(a.title)·원문(title_orig) 둘 다 검색 매칭(260703)
     (!FILTERS.cats.size || FILTERS.cats.has(articleCat(a))) &&
     (!FILTERS.issue || a.breaking || a.issue || /속보/.test(a.title || '')));   // 이슈 필터 = 긴급(breaking·속보)+이슈(a.issue = 빌드타임 issEligible: cross≥10·grade게이트·정형컷 260702) 통합
   const list = $('#list');
@@ -2847,6 +2848,8 @@ async function open(a) {
   md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
   decorate(md);
   addCopyButtons(md);
+  { const _orig = a.title_orig || ((a.title && !/[가-힣]/.test(a.title)) ? a.title : '');   // 외신 = 원문 제목 보존 줄(신규=title_orig · 구식 digest=영문 title 폴백)
+    if (_orig) { const _od = document.createElement('div'); _od.className = 'md-orig'; _od.textContent = '원문 제목 · ' + _orig; md.appendChild(_od); } }   // 요약본 아래 MUT 소형(운영자 260703 · textContent=XSS 안전)
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 화면에 보이는 그 제목(AI 헤드라인) 그대로 복사 (운영자 260620·260627 표시값 우선 정정)
   if (_h1c) { const _ttl = _h1c.textContent.trim() || a.title || ''; if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }   // ⚠️ 표시값(h1=AI 헤드) 우선 — a.title(원본 스크랩 제목)이 아니라 화면에 보이는 제목을 복사(불일치 버그 봉합 · _ttl은 버튼 append 前 계산이라 버튼텍스트 미포함)
@@ -5570,9 +5573,14 @@ const DL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-l
 // 큐 항목 id ↔ 피드(DATA=articles.json) 기사 매칭 — file은 .md 유무 양쪽 허용(제목·준비여부·이동 공용 단일출처)
 const qMatch = id => DATA.find(x => x && x.file && (x.file === id || String(x.file).replace(/\.md$/, '') === id));
 // SUCC 제목 = 피드(DATA)서 file 매칭 우선(없으면 API title). file은 .md 유무 양쪽 허용.
+function qKo(it) {   // 외신 픽 대기열 = 수집함 후보 title_ko 역참조(한국어 표시 · 서버 무변경 — it.key = api/pending normU(url) 매칭키 재사용 · 260703). 제목이 외국어(한글 0)일 때만 조회.
+  if (!it || !it.key || !it.title || /[가-힣]/.test(it.title)) return '';
+  const c = (CANDS || []).find(x => String(x.url || '').trim().replace(/\/+$/, '') === it.key);
+  return c ? scKoTitle(c) : '';
+}
 function qTitle(it) {
-  if (it.status === 'succ') { const a = qMatch(it.id); if (a && a.title) return a.title; return it.title || '분석 완료'; }
-  return it.title || '(내용 없음)';
+  if (it.status === 'succ') { const a = qMatch(it.id); if (a && a.title) return a.title; return qKo(it) || it.title || '분석 완료'; }
+  return qKo(it) || it.title || '(내용 없음)';
 }
 // 대기열 행 = 시간 | 제목 | 상태(픽토그램) | 바로가기(↗·목적지 색). 전부 좌측정렬·30px·테두리 색맞춤(시안 확정 260622).
 const Q_REFR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>';   // ↻ 새로고침
