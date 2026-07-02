@@ -22,7 +22,7 @@ permissions:
 jobs:
   chat:
     runs-on: ubuntu-latest
-    timeout-minutes: 60   # 웜 세션(SESSION_MAX 55분 + 마진 · 아이데이션③) — 답장 후 대기하며 후속 메시지 즉답(30초 목표의 본체)
+    timeout-minutes: 15
     steps:
       - name: Checkout (shallow+sparse — 챗은 히스토리·전체 트리 불필요 = 비대 레포 클론 비용 회피)
         uses: actions/checkout@v5
@@ -55,9 +55,6 @@ jobs:
       - name: CLI PATH
         run: echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
 
-      - name: pywebpush (per-reply 푸시용 · pip 캐시라 수 초)
-        run: python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null || echo "pywebpush 미설치 — 푸시 생략(비치명)"
-
       - name: 캐릭터 답장 생성 (claude -p · 세션 R2)
         id: chat
         env:
@@ -72,9 +69,6 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           YETA_R2_BUCKET: ${{ secrets.YETA_R2_BUCKET }}
           YETA_CHAR: ${{ inputs.char }}
-          # 웜 루프 내 per-reply 즉시 푸시용(잡끝 푸시는 웜 대기만큼 지연 — 아이데이션③) · 없으면 스크립트가 조용히 생략
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           # YETA_SAFE: '1'  ← --safe-mode 승격 지점(카나리아 rc=0·품질 실측 후 이 줄 활성 · §📰 라이브 플래그 절차 · 기본 OFF)
         run: |
           [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "::error::OAuth 토큰 없음"; exit 1; }
@@ -82,7 +76,22 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY   # 유료 자동발사 오염 0(§📰 Lock 정신)
           bash .github/scripts/yeta_chat.sh
 
-      # (성공 푸시는 스크립트가 웜 루프 안에서 답장마다 즉시 발송 — push_reply() · 잡끝 스텝은 웜 대기만큼 지연이라 폐지 · 아이데이션③)
+      # 답장 완료 웹푸시 — 탭하면 그 캐릭터 대화창(/?yeta=<id>). push_send --notify 재사용(배포대기 불필요 = R2 즉시 반영).
+      # ⚠️ 실답장 마커(/tmp/yeta_replied) 게이트 — NOPENDING·스캐폴드 no-op 런(exit 0)의 가짜 "답장 도착" 푸시 차단(평의회⑦⑧).
+      - name: 답장 웹푸시
+        if: success()
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          YETA_CHAR: ${{ inputs.char }}   # ⚠️ run 블록 ${{ }} 직접 보간 금지(셸 인젝션) — env 경유(functions 정규식 검증 + 이중 방어)
+        run: |
+          [ -f /tmp/yeta_replied ] || { echo "실답장 없음(no-op/NOPENDING) — 푸시 생략"; exit 0; }
+          [ -n "${VAPID_PRIVATE_KEY}" ] || { echo "VAPID 없음 — 푸시 생략"; exit 0; }
+          [[ "$YETA_CHAR" =~ ^[a-z0-9_-]{1,24}$ ]] || { echo "잘못된 char — 푸시 생략"; exit 0; }
+          python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null || { echo "pywebpush 미설치 — 푸시 생략"; exit 0; }
+          python3 .github/scripts/push_send.py --notify "yeta" "답장이 도착했어 — 탭해서 확인" \
+            --url "/?yeta=${YETA_CHAR}" --tag "nomute-yeta-${YETA_CHAR}" || echo "::warning::푸시 실패(비치명)"
+
       # 실패 웹푸시 — 앱 닫아둔 유저도 답장 실패를 인지(§📰 실패알림=웹푸시 정신 · 평의회①⑥⑩). 세션 state=error 는 yeta_chat.sh 가 기록.
       - name: 실패 알림
         if: failure()
