@@ -1988,20 +1988,20 @@
   .pub-body { padding:14px 18px 18px; }
   .pub-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:13px 0; border-top:1px solid var(--line2); }
   .pub-row:first-child { border-top:none; padding-top:4px; }
-  .pub-col { flex-direction:column; align-items:stretch; gap:9px; }   /* 공개범위 = 라벨 위·seg 전폭(긴 라벨 3개를 컴팩트 폭에 수용) */
   .pub-l { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }
-  .pub-pinrow .pub-l { color:var(--mut); }   /* PIN = mut 컬러·크기 동일(운영자 목업) */
-  .pub-v { font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); font-variant-numeric:tabular-nums; }
-  .pub-seg { display:flex; gap:6px; width:100%; }
-  .pub-seg button { flex:1; height:36px; padding:0 4px; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:var(--fw-b) 12px inherit; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
-  .pub-seg button.on { color:var(--accent); background:var(--accent-dim); border-color:rgba(var(--accent-rgb),.5); }   /* 선택 = dim accent(솔리드 형광 폐지 · .rev-fab hover·--accent-dim 계승) */
-  .pub-seg button:disabled { opacity:.38; cursor:not-allowed; }   /* '허용한 사람만' = 미구현(read-only) */
-  .pub-seg button:not(.on):not(:disabled):hover { color:var(--fg); }
-  .pub-seg button:not(.on):not(:disabled):active { transform:scale(var(--press-m)); }
-  .pub-pin { width:96px; height:36px; text-align:center; font-size:var(--fs-body); letter-spacing:2px; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--fg); transition:border-color .15s, box-shadow .15s; }
-  .pub-pin::placeholder { letter-spacing:normal; color:var(--mut); }
-  .pub-pin:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18); }   /* 포커스 = 강조 링(pin-cell 계승·컴팩트) */
-  .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill)+.revsend(게이지 firing) 계승 · 전폭·primary 높이 */
+  .pub-v { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); font-variant-numeric:tabular-nums; }   /* 만료 = 흰색 평문(3일 ~mm/dd)·버튼 아님(운영자) */
+  .pub-seg { display:flex; gap:6px; }   /* 2택 토글(누구나/비공개) 우측 인라인 */
+  .pub-seg button { min-width:62px; height:32px; padding:0 14px; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:var(--fw-b) 12px inherit; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
+  .pub-seg button.on { color:var(--accent); background:var(--accent-dim); border-color:rgba(var(--accent-rgb),.5); }   /* 선택 = dim accent(--accent-dim·.rev-fab hover 계승) */
+  .pub-seg button:not(.on):active { transform:scale(var(--press-m)); }
+  /* PIN = cron식 fieldset(둘러싼 테두리 + legend 라벨·모노스페이스·자간·우측정렬) · 항상 활성 */
+  .pin-fs { margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
+  .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
+  .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
+  .pin-in { width:100%; box-sizing:border-box; border:none; background:transparent; color:var(--fg); text-align:right; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:var(--fs-h1); letter-spacing:.45em; padding:3px 0; outline:none; }
+  .pin-in::placeholder { color:var(--mut); }
+  .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill)+.revsend(게이지) 계승 · 전폭 · 발행>게이지>체크 */
+  .pub-go svg { width:18px; height:18px; vertical-align:middle; }   /* 성공 시 CHECK_SVG */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
   .pubpop .qc { font-size:var(--fs-xs); color:var(--mut); }   /* 발행본 개수 부제(대기열 b 옆) */
@@ -2164,18 +2164,20 @@
 </dialog>
 
 <!-- 요약 수정 팝업 — FAB(우·중하단)에서 좌측으로 펼침. 지시대로 재작성(재요약 X·api/revise). askdlg 클론·.sbtn 클립 계승. 1차 클릭=재확인→2차=전송 -->
-<!-- 공개 발행 확인 — 요약창 헤더 '공유' 버튼으로 열림. 공개범위·만료·PIN → '발행하고 링크 복사'. 발행 버튼=.revsend(게이지 firing) 계승·dialog 패턴(#dlg) 계승. -->
+<!-- 공개 발행 확인 — 요약창 헤더 '공유' 버튼으로 열림. 공개범위(누구나/비공개 토글)·만료(3일 ~mm/dd)·PIN(cron식 fieldset) → '발행'. 발행 버튼=.asksend 글래스+.revsend 게이지(발행>게이지>체크) 계승·컴팩트 중앙 모달(#pindlg) 계승. -->
 <dialog id="pubdlg">
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title">공개 링크로 발행</b></div><button class="tool-x dlg-x" id="pubdlgX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="pub-body">
-    <div class="pub-row pub-col"><span class="pub-l">공개 범위</span><span class="pub-seg" id="pubScope">
-      <button type="button" class="on" data-scope="public">링크 있는 누구나</button>
-      <button type="button" data-scope="allow" disabled>허용한 사람만</button>
+    <div class="pub-row"><span class="pub-l">공개 범위</span><span class="pub-seg" id="pubScope">
+      <button type="button" class="on" data-scope="public">누구나</button>
       <button type="button" data-scope="private">비공개</button>
     </span></div>
-    <div class="pub-row"><span class="pub-l">만료</span><span class="pub-v" id="pubExp">3일 (D-3)</span></div>
-    <div class="pub-row pub-pinrow"><span class="pub-l">잠금 설정 (PIN)</span><input id="pubPin" class="pub-pin" type="text" inputmode="numeric" maxlength="4" placeholder="선택" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-    <button id="pubGo" class="asksend revsend pub-go" type="button"><span>발행하고 링크 복사</span></button>
+    <div class="pub-row"><span class="pub-l">만료</span><span class="pub-v" id="pubExp">3일</span></div>
+    <fieldset class="pin-fs">
+      <legend>잠금 설정 (PIN)</legend>
+      <input id="pubPin" class="pin-in" type="text" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </fieldset>
+    <button id="pubGo" class="asksend revsend pub-go" type="button"><span>발행</span></button>
     <div class="pub-status" id="pubStatus"></div>
   </div>
 </dialog>
@@ -7710,8 +7712,11 @@ function openPubDlg() {
   _pubScope = 'public';
   $('#pubScope').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.scope === 'public'));
   $('#pubPin').value = '';
+  const ex = new Date(Date.now() + 3 * 86400e3 + 9 * 3600e3);   // 만료 = +3일 · KST(§📐)로 mm/dd 표기
+  $('#pubExp').textContent = '3일 (~' + String(ex.getUTCMonth() + 1).padStart(2, '0') + '/' + String(ex.getUTCDate()).padStart(2, '0') + ')';
   const st = $('#pubStatus'); st.textContent = ''; st.classList.remove('err');
-  const go = $('#pubGo'); go.classList.remove('firing'); go.disabled = false; _pubBusy = false;   // _pubBusy 리셋 = in-flight 중 닫고 재열기 시 죽은 버튼 방지(검증7)
+  const go = $('#pubGo'); go.classList.remove('firing', 'shake'); go.disabled = false; _pubBusy = false;   // _pubBusy 리셋 = in-flight 중 닫고 재열기 시 죽은 버튼 방지(검증7)
+  go.querySelector('span').textContent = '발행';   // 성공 시 CHECK 표시 후 재열기 = 라벨 복원
   openComposeDlg(pubdlg);   // dialog 스택·폰 뒤로가기 = 기존 컴포즈 모달 시스템 계승
 }
 $('#pubScope').addEventListener('click', e => {
@@ -7724,20 +7729,25 @@ pubdlg.addEventListener('click', e => { if (e.target === pubdlg) pubdlg.close();
 $('#pubGo').addEventListener('click', async () => {
   if (_pubBusy || !CUR_A) return;
   const go = $('#pubGo'), st = $('#pubStatus'), pin = ($('#pubPin').value || '').trim();
-  if (pin && !/^\d{4}$/.test(pin)) { st.textContent = 'PIN은 숫자 4자리로'; st.classList.add('err'); return; }
+  const fail = (msg) => { go.classList.remove('firing'); go.classList.add('shake'); setTimeout(() => go.classList.remove('shake'), 420); go.disabled = false; st.textContent = msg; st.classList.add('err'); };
+  if (pin && !/^\d{4}$/.test(pin)) { fail('PIN은 숫자 4자리로'); return; }
   _pubBusy = true; go.disabled = true; st.classList.remove('err'); st.textContent = '';
+  const t0 = Date.now();
+  go.classList.add('firing');   // 발행 즉시 게이지 좌→우(html 생성·업로드 동안 노출 · 운영자 "html 보여줄때 게이지")
   try {
     const html = await buildSummaryHtml($('#dlFull') && $('#dlFull').checked, { embedFont: false });   // 폰트 CDN링크(발행 크기↓·600KB초과 방지) · 나머지 자기완결(API호출0=우회차단)
     const title = (CUR_A && CUR_A.title) || '뉴스 요약';
     const r = await fetch('api/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, title, html, scope: _pubScope, days: 3, pin }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok && d.slug) {
-      go.classList.add('firing');   // 게이지 좌→우(.revsend.firing 계승)
       await copyText(location.origin + '/s/' + d.slug);   // ?p=핀 미포함 = PIN 잠금 무력화 방지(검증3·7·1). PIN은 별도 전달.
+      const wait = Math.max(0, 720 - (Date.now() - t0));   // 게이지 완주 보장 → 체크(발행>게이지>체크)
+      if (wait) await new Promise(res => setTimeout(res, wait));
+      go.querySelector('span').innerHTML = CHECK_SVG;   // 체크 표시(게이지 채운 위)
       st.textContent = pin ? ('✓ 발행됨 · 링크 복사 · PIN ' + pin + ' 별도 전달') : '✓ 발행됨 · 링크 복사 완료';
-      setTimeout(() => { pubdlg.close(); go.classList.remove('firing'); go.disabled = false; loadPub(); }, 1300);
-    } else { go.disabled = false; st.textContent = (d && d.error) ? String(d.error).slice(0, 90) : '발행 실패 — 다시'; st.classList.add('err'); }
-  } catch { go.disabled = false; st.textContent = '네트워크 오류 — 다시'; st.classList.add('err'); }
+      setTimeout(() => { pubdlg.close(); loadPub(); }, 950);   // 재열기 시 openPubDlg가 라벨·firing 복원
+    } else { fail((d && d.error) ? String(d.error).slice(0, 90) : '발행 실패 — 다시'); }
+  } catch { fail('네트워크 오류 — 다시'); }
   finally { _pubBusy = false; }
 });
 
