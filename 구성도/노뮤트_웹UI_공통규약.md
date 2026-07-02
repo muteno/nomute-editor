@@ -6,7 +6,7 @@
 >
 > **사람이 보는 사인오프 버전** = `구성도/*.html` (인터랙티브). 이 MD는 그 확정값을 코드 적용용으로 옮긴 것.
 >
-> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` = 구성도 데모가 쓰는 토큰만 발췌한 *부분거울***(전체 거울 아님 — 나머지 토큰은 아직 각 HTML 인라인 `:root`에 잔존·점진 통일 후속) → ③ **이 MD·구성도 HTML = 규칙·시각화**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). ⚠️ 이 MD의 hex/px은 대부분 *viewer 추출본(descriptive)*이나, §0 opacity 스케일·일부 §6~8은 *목표(prescriptive)*라 viewer 현 raw값과 다를 수 있음(그건 지향점). 상세 = `CLAUDE.md §🎨`.
+> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` AUTO-MIRROR 블록 = viewer :root *전체 자동거울***(`shared/build_design_mirror.py build`가 :root 통째 복사 — 손 베끼기·"부분거울" 시절 폐지, 직접수정 금지·다음 build에 덮어씀 · 정정 260702) → ③ **이 MD·구성도 HTML = 규칙·시각화**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). ⚠️ 이 MD의 hex/px은 대부분 *viewer 추출본(descriptive)*이나, §0 opacity 스케일·일부 §6~8은 *목표(prescriptive)*라 viewer 현 raw값과 다를 수 있음(그건 지향점). 상세 = `CLAUDE.md §🎨`.
 
 ---
 
@@ -37,8 +37,8 @@
   --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
   /* 모션 */
   --ease:cubic-bezier(.2,.7,.3,1); --dur-fast:.12s; --dur:.18s;
-  /* 상태 타이포 */
-  --font-status:'Orbitron','Pretendard Variable',sans-serif;
+  /* 상태 타이포 — Orbitron 폐지(운영자 260621)·Pretendard 통일, var(--font-status)는 호환 위해 유지 */
+  --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif;
 }
 ```
 
@@ -172,12 +172,12 @@ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-lin
 
 ---
 
-## 7. 상태 타이포 = Orbitron
+## 7. 상태 타이포 — Orbitron 폐지(운영자 260621)·현행 Pretendard 통일
 
-영문 상태어·배지 숫자는 **Orbitron** 공통. 한글은 Pretendard 유지.
+~~영문 상태어·배지 숫자 = Orbitron~~ → **폐지(운영자 260621)**: 상태어·배지 숫자도 **Pretendard로 통일**(정본 주석 = `viewer/index.html:15`·base.css §상태 타이포 동일). `var(--font-status)`는 **호환 위해 유지**하되 이제 Pretendard로 렌더 — Orbitron `@import` 재도입 금지.
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&display=swap');
-:root { --font-status:'Orbitron','Pretendard Variable',sans-serif; }
+/* @import Orbitron — 폐지(260621) · 재도입 금지 */
+:root { --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif; }
 /* 적용 대상: PICK·Picking…·PICKED·PASS·Failed·thumb 상태어, 라벨사전 영문, 버튼 안 숫자(OPA 등) · viewer 실셀렉터 = .sc-got/.sc-fail/.sc-tg/.sc-pick span/.sc-cross/#qbadge/.qb (아래 .stat 등은 구성도 데모 클래스) */
 .stat,.ind-bar span,.fail-chip,.picked-chip,.pickbtn,
 .sc-got,.sc-tg { font-family:var(--font-status); letter-spacing:.04em; }   /* viewer 실클래스 = .sc-tg(.pass/.down) — 옛 .sc-pass/.sc-down 오기 정정(260621) */
@@ -224,5 +224,5 @@ PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM
 1. 도구 페이지(comp·ly·k) `:root`를 §0 정본으로 교체 → 중립 회색·매직넘버 제거.
 2. 생성/전송 버튼을 §1 상태머신으로 교체(라벨·색·재확인 게이트·소진).
 3. §2 배치·§3 위계·§4 표면 규칙으로 마크업 정리.
-4. §5 메뉴색·§6 픽토그램·§7 Orbitron·§8 모션·§9 컴포넌트·§10 시각시스템·§11 부속설명 적용.
+4. §5 메뉴색·§6 픽토그램·§7 상태타이포(Pretendard·Orbitron 폐지)·§8 모션·§9 컴포넌트·§10 시각시스템·§11 부속설명 적용.
 5. 게이트 = `shared/check_refs.py check_design()` 통과 확인.
