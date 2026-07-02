@@ -90,7 +90,13 @@ if kind == "ok" and len(turns) < ins:            # fresh 가 더 짧다 = reset(
 text = os.environ.get("REPLY_TEXT", "")
 persona_env = os.environ.get("PERSONA", "")
 empty = False
+mood = ""
 if kind == "ok":
+    # 무드 태그(배경 연출 · 260703) — 위치 무관 추출 후 전부 제거(화이트리스트 밖 = 무시)
+    mm = re.search(r'<<\s*MOOD\s*:\s*([a-zA-Z]+)\s*>>', text, flags=re.I)
+    if mm and mm.group(1).lower() in ("base", "warm", "tense", "blue"):
+        mood = mm.group(1).lower()
+    text = re.sub(r'<<\s*/?\s*MOOD(?:\s*:\s*\w+)?\s*>>', '', text, flags=re.I)
     # 이중 기억 파서(v3 · 아이데이션③): <<NOTE:PUB>>=공용 / <<NOTE:ME>>=페르소나별 사적 · 마커 변형 관대 · 누락 = 기존값 보존
     notes_found = {}
     parts = re.split(r'<<\s*NOTE(?:\s*:\s*(\w+))?\s*>>', text, flags=re.I)
@@ -104,11 +110,14 @@ if kind == "ok":
     if not text:
         s["state"] = "error"; s["err"] = "빈 대사 — 다시 보내면 재시도"; empty = True
     else:
-        turns.insert(ins, {"role": "assistant", "text": text, "ts": now,
-                           "persona": persona_env,
-                           "model": os.environ.get("MODEL", ""),
-                           "effort": os.environ.get("EFF", ""),
-                           "gen_s": int(os.environ.get("GEN_S", "0") or 0)})   # 다이얼·소요 박제 = 뷰어 체감 캡션(아이데이션④)
+        turn = {"role": "assistant", "text": text, "ts": now,
+                "persona": persona_env,
+                "model": os.environ.get("MODEL", ""),
+                "effort": os.environ.get("EFF", ""),
+                "gen_s": int(os.environ.get("GEN_S", "0") or 0)}   # 다이얼·소요 박제 = 뷰어 체감 캡션(아이데이션④)
+        if mood:
+            turn["mood"] = mood                        # 장면 공기(뷰어 배경 배리언트 크로스페이드 훅)
+        turns.insert(ins, turn)
         if "PUB" in notes_found:
             s["note_pub"] = notes_found["PUB"]; s.pop("note", None)   # 레거시 단일 note 는 승계 후 정리
         if "ME" in notes_found and persona_env:
@@ -187,7 +196,8 @@ ${PENDING}
 <</NOTE>>
 <<NOTE:ME>>
 (갱신된 둘만의 기억 — 관계 진도·너에게만 한 말)
-<</NOTE>>"
+<</NOTE>>
+- 기억 블록 뒤 마지막 한 줄 = 장면의 공기 태그(대사에서 언급 금지): <<MOOD:base>>(평소)/<<MOOD:warm>>(온기·설렘)/<<MOOD:tense>>(긴장·서늘)/<<MOOD:blue>>(쓸쓸·침잠) 중 하나만."
 
   echo "yeta: ${PERSONA}(${CNAME}) · v${CVER} · ${MODEL}${EFF:+ · effort $EFF}${SAFE:+ · safe}"
   EFF_ARGS=(); [ -n "$EFF" ] && EFF_ARGS=(--effort "$EFF")   # 빈값 = 플래그 생략(gate_judge SSOT 패턴)

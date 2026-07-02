@@ -48,7 +48,7 @@ try {
 } catch { /* queue 없음 */ }
 
 // 수집함 cross 인덱스(이슈 판정용) — viewer/candidates.json url→cross 맵. 직접공유분(매칭 없음)은 cross 0 → issue false(운영자: 직접은 어쩔 수 없음).
-const CROSS = new Map(), BRK = new Map(), CAT = new Map(), GRADE = new Map(), CTITLE = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계) · GRADE·CTITLE = 이슈 배지 게이트용(260702 옵션2)
+const CROSS = new Map(), BRK = new Map(), CAT = new Map(), GRADE = new Map(), CTITLE = new Map(), KOTITLE = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계) · GRADE·CTITLE = 이슈 배지 게이트용(260702 옵션2) · KOTITLE = 외신 번역 제목 폴백(260703)
 try {
   const cj = JSON.parse(readFileSync('viewer/candidates.json', 'utf8'));
   for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) {
@@ -57,6 +57,7 @@ try {
     if (c.cat) CAT.set(c.url, c.cat);   // 후보 cat(gate_judge AI 분류·미술관 흉기난동=사회) → 픽 기사 카테고리 승계용
     GRADE.set(c.url, c.grade == null ? null : c.grade);   // 이슈 배지 grade 게이트(null=미채점 관용)
     CTITLE.set(c.url, c.title || '');   // 이슈 배지 정형·홍보컷은 후보 원제목 기준(요약 제목 아님)
+    if (c.title_ko && c.title_ko_of === c.title) KOTITLE.set(c.url, c.title_ko);   // 외신 번역 도장(gate 편승) — frontmatter title_ko 없는 픽 기사(프롬프트 이전 분석·LLM 누락)의 피드 제목 폴백(뷰어 scKoTitle 동일 술어)
   }
 } catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
 
@@ -102,9 +103,12 @@ for (const f of files) {
   try {
     const raw = readFileSync(join(QUEUE, f), 'utf8');
     const { meta, body } = parseFrontmatter(raw);
+    // 외신 한국어 번역 제목(260703) — 1순위 분석 frontmatter title_ko · 2순위 수집함 후보 도장(KOTITLE — LLM 누락·프롬프트 이전 분석분 폴백) → 표시 제목 승격(피드 리스트 영어 원문 노출 차단 · 운영자 "원문으로 표시 안되게")
+    const tko = stripLeadEmoji(meta.title_ko || '') || (!/[가-힣]/.test(meta.title || '') ? (KOTITLE.get(meta.url || '') || '') : '');
     articles.push({
       file: f,
-      title: stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
+      title: tko || stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 외신=title_ko 우선(피드 목록·검색·강마커 cat이 한국어로 작동) · 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
+      title_orig: tko ? (stripLeadEmoji(meta.title) || '') : '',   // 번역 적용 시 원문 제목 보존(모달 하단 MUT 줄·검색 보조 · 260703)
       url: meta.url || '',
       date: meta.date || '',
       time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.
