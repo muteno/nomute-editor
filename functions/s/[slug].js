@@ -66,7 +66,7 @@ async function sha256hex(s) {
 // 핀 오류 잠금 — 5회 누적 = 10분(운영자 260703). 카운터는 colo 캐시(키 = .invalid 가상 URL·실서빙 충돌 0).
 // 실패 시마다 TTL 갱신(슬라이딩) → 잠금은 마지막 오류로부터 10분. try/catch 전부 fail-open(잠금이 열람을 못 죽이게).
 const PIN_MASTER = '898900';
-const MASTER_NOTICE = '마스터 확인 · 접속 잠금을 초기화했어요 — 원래 PIN을 입력하면 열려요';   // 마스터 입력 시 안내(운영자 260703 · 문서를 여는 게 아니라 5회 잠금 카운터를 리셋하는 도구)
+const MASTER_NOTICE = '비밀번호 초기화 완료';   // 마스터 입력 시 안내(운영자 260703 · mut 회색 · 문구 간결화 · 5회 잠금 카운터 리셋)
 const LOCK_MAX = 5, LOCK_TTL = 600;
 function lockKey(slug) { return 'https://pinlock.nomute.invalid/' + slug; }
 async function lockGet(slug) {
@@ -137,7 +137,7 @@ function pinForm(slug, fails, notice) {
 @keyframes pinShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-9px)}28%{transform:translateX(8px)}44%{transform:translateX(-6px)}60%{transform:translateX(4px)}76%{transform:translateX(-2px)}}
 .pinwrap.shake{animation:pinShake .45s cubic-bezier(.36,.07,.19,.97)}
 .err{margin-top:13px}
-.info{color:var(--accent);font-size:12.5px;margin-top:13px;font-weight:700;line-height:1.5}   /* 마스터 초기화 안내 = accent(정보·에러 아님) */
+.info{color:var(--mut);font-size:12.5px;margin-top:13px;font-weight:700;line-height:1.5}   /* 마스터 초기화 안내 = mut 회색(정보·에러 아님·운영자 260703) */
 @media (prefers-reduced-motion:reduce){.pinwrap.shake{animation-duration:.01s}#pin.checking{animation:none;box-shadow:0 0 0 4px rgba(var(--accent-rgb),.22)}}
 </style>
 <script>
