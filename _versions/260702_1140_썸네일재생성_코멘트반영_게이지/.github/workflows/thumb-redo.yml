@@ -12,10 +12,6 @@ on:
         description: '화풍 sid 1개만 재생성(photo/webtoon · 2화풍). 비우면 전체. (폐지 sid: cartoon/photo_close — 전달 시 기존 gen.json에서 제거만 되고 재생성 안 됨)'
         required: false
         default: ''
-      wish:
-        description: '재생성 지시(자연어·선택). 프롬프트에 얹어 반영. 비우면 기존 프롬프트로 재추첨.'
-        required: false
-        default: ''
 
 permissions:
   contents: write
@@ -44,14 +40,11 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           ARTICLE: ${{ inputs.article }}
           SID: ${{ inputs.sid }}
-          WISH: ${{ inputs.wish }}
         run: |
           [ -n "${GEMINI_API_KEY}" ] || { echo "GEMINI_API_KEY 미설정 — 생략"; exit 0; }
           export THUMB_ONLY="${ARTICLE%.md}"
           export THUMB_REDO_SID="${SID}"
-          export THUMB_REDO_WISH="${WISH}"   # 자연어 재생성 지시(선택) → thumb_gen이 프롬프트에 얹음(셸 비보간 = 인젝션 안전)
-          # ⚠️ WISH의 개행·제어문자는 thumbredo.js가 제거(load-bearing) → 아래 echo가 ::workflow-command:: 를 못 만든다(워크플로커맨드 인젝션 차단·평의회 보안)
-          echo "재생성 대상: ${THUMB_ONLY} ${SID:+(화풍 ${SID})}${WISH:+ · 지시: ${WISH}}"
+          echo "재생성 대상: ${THUMB_ONLY} ${SID:+(화풍 ${SID})}"
           python3 .github/scripts/thumb_gen.py || echo "::warning::재생성 일부 실패"
       - name: Commit
         if: always()
