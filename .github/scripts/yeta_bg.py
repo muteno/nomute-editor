@@ -12,7 +12,7 @@ roster.json 의 해당 페르소나 bg 슬롯에 공개 URL 주입(라인 정규
 멱등: roster bg 가 이미 차 있으면 그 무대는 skip(FORCE=1 이면 재생성·덮어쓰기).
 카드/썸네일/k 와 동일 파이프(thumb_gen.gemini_image·r2_upload) 재사용 = 배관 1개(k_refgen 전례).
 """
-import os, re, sys, hashlib
+import os, re, sys, hashlib, subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import thumb_gen as tg   # gemini_image · r2_upload · R2_ON · KEY (모듈 import = main 미실행)
@@ -36,6 +36,26 @@ STAGES = [
     ("gym",       ["von"],           "체육관 '강철'의 새벽. 샌드백과 바벨, 높은 창으로 드는 푸른 새벽빛, 거친 콘크리트 벽."),
     ("radio",     ["yun"],           "심야 라디오 부스 '주파수'. 붉은 ON AIR 무드의 콘솔 페이더와 마이크, 어두운 방음벽, 작은 조명."),
 ]
+
+
+def r2_head(key):
+    """R2 객체 존재 확인 + ETag(단순 업로드 = md5) → (존재, etag 12자). 재과금 0 재사용용 —
+    260703 run#1 실측: 생성·업로드 성공 후 커밋 스텝 git add pathspec 에러로 roster 주입만 유실
+    → 재실행이 Gemini를 다시 태우면 이중 과금이라, 이미 있는 객체는 생성 없이 URL만 주입한다."""
+    if not tg.R2_ON:
+        return False, ""
+    endpoint = "https://{}.r2.cloudflarestorage.com".format(tg.R2_ACCOUNT)
+    env = dict(os.environ, AWS_ACCESS_KEY_ID=tg.R2_KEY, AWS_SECRET_ACCESS_KEY=tg.R2_SECRET,
+               AWS_DEFAULT_REGION="auto")
+    try:
+        out = subprocess.run(["aws", "s3api", "head-object", "--bucket", tg.R2_BUCKET, "--key", key,
+                              "--endpoint-url", endpoint, "--query", "ETag", "--output", "text"],
+                             capture_output=True, text=True, env=env, timeout=30)
+        if out.returncode != 0:
+            return False, ""
+        return True, out.stdout.strip().strip('"')[:12]
+    except Exception:
+        return False, ""
 
 
 def set_bg(text, pid, url):
@@ -63,6 +83,16 @@ def main():
         # 멱등 — 대상 전원 bg 채워져 있으면 skip(FORCE=1 예외)
         if not force and all(re.search(r'"id"\s*:\s*"%s"[^\n]*"bg"\s*:\s*"[^"]+"' % re.escape(p), roster) for p in pids):
             print("· {} — bg 이미 있음, skip".format(key)); skipped += 1; continue
+        r2key = "yeta_bg/{}.png".format(key)
+        if not force:   # 재과금 0 — R2에 이미 객체 있으면(이전 런이 업로드 후 roster 주입만 유실) 생성 없이 URL만 주입
+            exists, etag = r2_head(r2key)
+            if exists:
+                url = "{}/{}?v={}".format(tg.R2_PUBLIC, r2key, etag)
+                print("· {} — R2 기존 객체 재사용(생성 0): {}".format(key, url))
+                for p in pids:
+                    roster, hit = set_bg(roster, p, url)
+                    print("  {} bg ← 재사용".format(p) if hit else "  ⚠️ {} 라인 못 찾음".format(p))
+                made += 1; continue
         print("· {} 생성 — {}".format(key, scene[:38]), flush=True)
         png = tg.gemini_image(BASE + scene, "1K", tag="yetabg", aspect="9:16")
         if not png:
@@ -70,7 +100,7 @@ def main():
         v = hashlib.sha256(png).hexdigest()[:8]   # 캐시버스트(재생성 시 URL 갱신 — R2 raw 5분 캐시 무관 즉시 반영)
         url = None
         if tg.R2_ON:
-            url = tg.r2_upload(png, "yeta_bg/{}.png".format(key))
+            url = tg.r2_upload(png, r2key)
             if url:
                 url += "?v=" + v
         if not url:   # git 폴백 — 뷰어 상대경로(레포 비대 주의라 R2 권장)
