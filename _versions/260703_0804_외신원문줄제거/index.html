@@ -643,6 +643,8 @@
   .sc-media { flex:none; white-space:nowrap; color:var(--fg); font-weight:800; }   /* 상대시간 = 우측(sc-top space-between)·흰·800·외톨이행 방지(운영자 260621) */
   .sc-title { font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; }
   .sc-title a { color:inherit; text-decoration:none; }
+  .sc-orig { font-size:var(--fs-xs); color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }   /* 외신 원문(번역 제목 아래 1줄 · 검증용) */
+  .md-orig { font-size:var(--fs-xs); color:var(--mut); margin:18px 0 4px; word-break:break-word; }   /* 요약 모달 하단 외신 원문 제목(MUT 소형 · 운영자 260703) */
   .sc-bot { display:flex; align-items:center; gap:10px; margin-top:1px; }
   .sc-stars { display:flex; gap:3px; }
   .sc-star { width:26px; height:26px; display:grid; place-items:center; cursor:pointer; color:var(--line);
@@ -1070,7 +1072,7 @@
   .pin-busy { display:inline-flex; align-items:center; gap:1px; margin-left:5px; font-size:var(--fs-label); font-weight:800; color:var(--accent); letter-spacing:.2px; }   /* margin-left = 타이틀서 조금 더 우측(header gap 8 + 5·운영자 260702) */
   .pin-busy[hidden] { display:none; }
   .pin-boxes.busy { opacity:.5; }   /* 변경중 = 입력칸 흐리게(처리 중 표시·pointerEvents는 JS) */
-  @media (max-width:600px) { #pindlg { width:90vw; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); margin:8vh auto auto; margin:8dvh auto auto; } }   /* 데스크탑(.13)과 동일 보더 · height/max-height는 전역 #pindlg(fit-content/88vh) 상속 = 세로 stretch 방지(운영자 260702) · margin=상단 anchoring: 폰 키보드가 화면 하단 ~50%를 덮어 세로 정중앙이면 PIN 칸이 가려짐(운영자 실측 260703) → 위 8vh 고정(dvh 미지원 폴백 vh) — 데스크탑(키보드 없음)은 중앙 유지 */
+  @media (max-width:600px) { #pindlg { width:90vw; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); } }   /* 데스크탑(.13)과 동일 보더 · height/max-height는 전역 #pindlg(fit-content/88vh) 상속 = 세로 stretch 방지(운영자 260702) */
 
   /* ── 카드 변경 2차 팝업(글래스) ── */
   #editdlg { width:min(460px,94vw); max-width:460px; max-height:94vh; height:auto; margin:auto; padding:0; color:var(--fg);
@@ -2107,7 +2109,6 @@
   #pubdlg { width:min(420px,92vw); max-width:420px; height:auto; max-height:88vh; margin:auto;
     border-radius:var(--r-modal); overflow:hidden; animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }   /* 820 와이드·모바일 풀스크린 무력화 = pindlg 컴팩트 계승(작은 폼) */
   @media (prefers-reduced-motion:reduce) { #pubdlg { animation:none; } }
-  @media (max-width:600px) { #pubdlg { margin:8vh auto auto; margin:8dvh auto auto; } }   /* PIN 설정 fieldset이 창 하부라 키보드에 가림 → #pindlg와 동일 상단 anchoring(운영자 260703) */
   .pub-title { font-size:var(--fs-h2); font-weight:var(--fw-x); color:var(--fg); letter-spacing:-.2px; }
   .pub-body { padding:14px 18px 18px; }
   .pub-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:13px 0; border-top:1px solid var(--line2); }
@@ -2868,7 +2869,8 @@ async function open(a) {
   md.innerHTML = DOMPurify.sanitize(marked.parse(a.body || ''));
   decorate(md);
   addCopyButtons(md);
-  // 외신 원문 제목 줄(.md-orig)은 폐지 — 운영자 260703 "메뉴1·3 리스트/모달에서 원문 표시 안되게"(한국어 단독 · 원문 = 헤더 '원문 ↗' 링크로 충분). title_orig 데이터는 검색 매칭용으로만 잔존.
+  { const _orig = a.title_orig || ((a.title && !/[가-힣]/.test(a.title)) ? a.title : '');   // 외신 = 원문 제목 보존 줄(신규=title_orig · 구식 digest=영문 title 폴백)
+    if (_orig) { const _od = document.createElement('div'); _od.className = 'md-orig'; _od.textContent = '원문 제목 · ' + _orig; md.appendChild(_od); } }   // 요약본 아래 MUT 소형(운영자 260703 · textContent=XSS 안전)
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 화면에 보이는 그 제목(AI 헤드라인) 그대로 복사 (운영자 260620·260627 표시값 우선 정정)
   if (_h1c) { const _ttl = _h1c.textContent.trim() || a.title || ''; if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }   // ⚠️ 표시값(h1=AI 헤드) 우선 — a.title(원본 스크랩 제목)이 아니라 화면에 보이는 제목을 복사(불일치 버그 봉합 · _ttl은 버튼 append 前 계산이라 버튼텍스트 미포함)
@@ -6661,7 +6663,8 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
            : `<button class="sc-tg pass" type="button">PASS</button><button class="sc-tg pick" type="button">PICK</button><button class="sc-tg ack${st.acked ? ' on' : ''}" type="button" aria-label="확인 — 봤음 표시" title="확인 — 봤다고 표시(신규와 구분·흐려짐)">${ACK_MORPH}</button>`)
        : `<div class="sc-stars">${[1, 2, 3, 4, 5].map(n => `<button class="sc-star${st.score >= n ? ' on' : ''}" type="button" data-n="${n}" aria-label="관심도 ${n}점">${STAR_SVG}</button>`).join('')}</div><button class="sc-pick${st.picked ? ' done' : ''}" type="button" title="${st.picked ? '큐레이션 보냄 — 몇 분 뒤 피드에 떠' : '분석·카드 자동 생성(피드로) — 한 번 더 눌러 확정'}"><span>${st.picked ? '큐레이션 ' + CHECK_SVG : 'PICK'}</span></button>`}</div>
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
-  el.querySelector('.sc-title a').textContent = scKoTitle(c) || c.title || '(제목 없음)';   // 외신 = 번역 제목 단독 표시(원문 보조줄 없음 — 운영자 260703 "원문으로 표시 안되게" · 원문 확인 = 제목 링크가 어차피 원기사)
+  el.querySelector('.sc-title a').textContent = scKoTitle(c) || c.title || '(제목 없음)';   // 외신 = 번역 제목 우선(원문은 아래 보조줄)
+  if (scKoTitle(c)) { const _o = document.createElement('div'); _o.className = 'sc-orig'; _o.textContent = c.title || ''; el.querySelector('.sc-title').after(_o); }   // 원문 1줄(검증용·textContent = XSS 안전)
   // 타이틀 링크 라우팅: 요약돼 피드에 있으면 → 뉴스 요약(가로채기) / 아니면 → 기사 전문(원래 a href 그대로).
   { const ta = el.querySelector('.sc-title a'); if (ta) ta.addEventListener('click', e => { if (scFeedArticle(c)) { e.preventDefault(); pickedOpen(c); } }); }
   if (triage) {   // 최신 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 처리. PICK은 잔류(PICKED 비활성), down/pass는 접힘.
@@ -8085,43 +8088,18 @@ async function yDraw() {   // 랜덤 뽑기/재뽑기 — 맥락 유지·화자 
   if (!r || !r.ok) { $('#yetaLog').insertAdjacentHTML('beforeend', `<div class="yb fail">${esc((r && r.error) || '뽑기 실패 — 다시 눌러줘')}</div>`); return; }
   YSESS = r.sess; yApply(c); yRender();
 }
-let _ybgCur = 0, _yStageKey = '';   // 무대 2겹 크로스페이드(§🎬 배너 디졸브 축소판) — 다음 레이어에 그리고 opacity 스왑
-function yPaintBg(bgUrl, tint) {   // 레이어 페인트(페르소나 전환·무드 전환 공용) — 같은 그림 재페인트는 키 가드가 막음
-  const layers = [$('#ybgA'), $('#ybgB')], next = layers[1 - _ybgCur], curL = layers[_ybgCur];
-  next.style.backgroundImage = bgUrl
-    ? `linear-gradient(rgba(10,10,14,.72),rgba(10,10,14,.86)), url("${bgUrl}")`
-    : `radial-gradient(120% 90% at 50% 0%, ${tint}14, transparent 55%)`;                            // 이미지 없으면 페르소나색 은은한 무드 틴트
-  next.classList.add('on'); curL.classList.remove('on'); _ybgCur = 1 - _ybgCur;
-}
-const Y_MOODS = ['warm', 'tense', 'blue'];   // 답장 <<MOOD>> 화이트리스트(base=기본 무대) — yeta_bg.py MOODS와 짝
-function yMoodUrl(bg, mood) {   // base URL → 배리언트 규약 파생(…/tea.png?v=x → …/tea_warm.png) · 쿼리 제거
-  if (!bg || !mood) return bg || '';
-  return bg.split('?')[0].replace(/\.png$/, `_${mood}.png`);
-}
-function yStage(mood) {   // 무대 = 페르소나 bg × 무드 — 키 같으면 no-op, 배리언트는 프리로드 성공 시에만(실패 = base 유지)
-  if (!YCUR) return;
-  const key = `${YCUR.id}|${mood || ''}`;
-  if (key === _yStageKey) return;
-  _yStageKey = key;
-  const tint = YCUR.color || '#7c5cfc';
-  if (!YCUR.bg || !mood) { yPaintBg(YCUR.bg || '', tint); return; }
-  const vurl = yMoodUrl(YCUR.bg, mood), im = new Image();
-  im.onload = () => { if (_yStageKey === key) yPaintBg(vurl, tint); };   // 늦게 로드돼도 무대가 바뀌었으면 폐기
-  im.onerror = () => { if (_yStageKey === key) yPaintBg(YCUR.bg, tint); };   // 배리언트 미생성 = base 폴백
-  im.src = vurl;
-}
+let _ybgCur = 0;   // 무대 2겹 크로스페이드(§🎬 배너 디졸브 축소판) — 다음 레이어에 그리고 opacity 스왑
 function yApply(c) {   // 페르소나 적용 — 이름·태그·포인트색·배경이 스르륵 전환(캐릭터 따라 톤 변화 = 운영자 컨셉)
   YCUR = c;
   $('#yetaTitle').textContent = c.name; $('#yetaTag').textContent = c.tagline || '';
   $('#yetaAva').textContent = c.initial || (c.name || '?')[0];   // 헤더 상주 프로필(색은 --yeta-ac 자동)
   yetadlg.style.setProperty('--yeta-ac', c.color || 'var(--bubble-me)');
-  yStage(yLastMood());   // 무대 전환 — 대화의 공기(마지막 답장 무드)는 화자 바뀌어도 이어짐(같은 방)
-}
-function yLastMood() {   // 마지막 답장의 장면 공기(없으면 base)
-  const turns = (YSESS && YSESS.turns) || [];
-  for (let i = turns.length - 1; i >= 0; i--)
-    if (turns[i].role === 'assistant') return Y_MOODS.includes(turns[i].mood) ? turns[i].mood : '';
-  return '';
+  const layers = [$('#ybgA'), $('#ybgB')], next = layers[1 - _ybgCur], curL = layers[_ybgCur];
+  const tint = c.color || '#7c5cfc';
+  next.style.backgroundImage = c.bg
+    ? `linear-gradient(rgba(10,10,14,.72),rgba(10,10,14,.86)), url("${c.bg}")`                     // 감정별 배경 이미지 훅(운영자 샘플 대기)
+    : `radial-gradient(120% 90% at 50% 0%, ${tint}14, transparent 55%)`;                            // 이미지 없으면 페르소나색 은은한 무드 틴트
+  next.classList.add('on'); curL.classList.remove('on'); _ybgCur = 1 - _ybgCur;
 }
 // ── 페르소나 픽커 — 이름 탭 = 주민 직접 선택(🎲=랜덤 병행 · msgpop 계승 팝업) ──
 function yPickToggle(force) {
@@ -8194,7 +8172,6 @@ function yRender() {
   if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}</div>`;
   else if (typing) h += yTypingHtml(!_yTypOn);
   _yFailOn = !!failMsg; _yTypOn = typing;
-  yStage(yLastMood());   // 새 답장의 공기 → 배경 배리언트 크로스페이드(키 가드 = 같으면 no-op)
   const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;   // 스크롤 강탈 방지(평의회⑨)
   log.innerHTML = h;
   if (atBottom) log.scrollTop = log.scrollHeight;
