@@ -193,6 +193,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
         run: |
+          set -o pipefail   # 기본 셸은 -e만(pipefail OFF) → 아래 tee 파이프가 스크립트 크래시를 green으로 삼키던 것 차단(평의회3 · 런로그 실측)
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN   # 구독 OAuth만 사용(api-key 충돌 차단 · 판정 스텝과 동일)
           python3 -m pip install --quiet --break-system-packages feedparser requests || { echo "::warning::deps 설치 실패 — 자동픽 생략"; echo "picked=0" >> "$GITHUB_OUTPUT"; exit 0; }   # 24.04 PEP-668 = --break-system-packages 필수(push 스텝과 동일 · 없으면 자동픽 무성과 green)
           python3 scraper/auto_pick_breaking.py | tee /tmp/autopick.out
@@ -212,8 +213,9 @@ jobs:
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json
+          git add pending scraper/seen_urls.txt push/autopick.json push/autopick_events.json   # 'pending'은 pick_pending._clear_stale_failed의 pending/failed/* 삭제까지 스테이징(제2 오염원 — 목록서 pending 빼면 재발 · 평의회1)
           git add metrics 2>/dev/null || true   # 계측 shard 동반 커밋(위 ⚠️ · judge Commit 스텝의 'git add metrics' 패턴과 동일)
+          if git diff --cached --quiet; then echo "스테이지 변화 없음 — 커밋 생략"; exit 0; fi   # 스테이지 0인데 commit 치면 rc≠0 = 오탐 red(judge Commit 스텝과 대칭 · 평의회3)
           git commit -m "auto-pick: 긴급 grade≥3 자동 분석 (픽 ${{ steps.autopick.outputs.picked }}건)"
           pushed=0
           for i in 0 1 2 3; do
