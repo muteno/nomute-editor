@@ -27,8 +27,9 @@ li b{color:var(--fg)}
 .tag.risk{color:var(--warn);background:rgba(255,207,58,.12)}
 
 /* ── PIN 카드 (functions/s/[slug].js 재현) ── */
-.card{max-width:360px;width:100%;text-align:center;background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,.98));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-modal);padding:26px 22px}
+.card{max-width:360px;width:100%;text-align:center;background:none;border:none;padding:6px 4px}   /* 카드 배경 제거(운영자 260703) */
 .card .m{font-size:15px;font-weight:800;color:var(--mut);letter-spacing:-.2px}
+.info{color:var(--accent);font-size:12.5px;margin-top:13px;font-weight:700;line-height:1.5;min-height:15px}
 .pinwrap{position:relative;margin-top:18px}
 #pin{width:100%;box-sizing:border-box;height:56px;padding:0 46px;text-align:center;font-size:22px;letter-spacing:10px;font-weight:800;font-family:inherit;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--fg);caret-color:var(--accent);outline:none;transition:border-color .18s ease,box-shadow .18s ease,color .18s ease}
 #pin::placeholder{color:var(--mut);letter-spacing:8px}
@@ -80,7 +81,7 @@ li b{color:var(--fg)}
 
 <!-- ═══ PIN ═══ -->
 <h2>1. PIN 잠금화면 — 6자리 자동검증</h2>
-<p>6자리를 다 넣으면 <b>버튼 없이 자동으로 검증</b>돼(‘열기’ 버튼 삭제). 맞으면 <b>바로 열림</b>, 틀리면 <b>흔들리며 빨강 점등 → 처음부터</b>. 아래에서 직접 쳐봐 — 데모 정답은 <b>123456</b>(그 외는 실패 연출).</p>
+<p>6자리를 다 넣으면 <b>버튼 없이 자동으로 검증</b>(더 빠르게)돼. 맞으면 <b>바로 열림</b>, 틀리면 <b>흔들리며 빨강 점등 → 처음부터</b>. 카드 배경도 없앴고 첫 로드에 입력창이 바로 포커스돼. 아래에서 직접 쳐봐 — <b>123456</b>=성공 · <b>898900</b>=마스터 초기화 안내 · 그 외=실패 연출.</p>
 <div class="demorow">
   <div>
     <div class="stage"><div class="card">
@@ -93,17 +94,19 @@ li b{color:var(--fg)}
         </button>
       </div>
       <div class="err" id="verr" hidden></div>
+      <div class="info" id="vinfo" hidden></div>
       <div class="ok-msg" id="okmsg" hidden>✓ 확인됨 — 문서 열림</div>
     </div></div>
     <div class="cap">6자리 = 자동 발사 · 틀리면 흔들림+빨강 · 눈 아이콘=표시 토글</div>
   </div>
   <div class="grid" style="grid-template-columns:1fr">
-    <div class="box after"><h3>동작 흐름</h3><ul>
-      <li>6자리 입력 → <b>320ms 뒤 자동 검증</b>(별도 열기 버튼 X)</li>
+    <div class="box after"><h3>동작 흐름 (260703 갱신)</h3><ul>
+      <li>6자리 입력 → <b>140ms 뒤 자동 검증</b>(별도 열기 버튼 X · <b>더 빠르게</b>)</li>
       <li>검증 중 = 입력칸 <b>중립 accent 글로우 펄스</b>(‘확인 중’) — 서버가 성공/실패 결정이라 <b>가짜 성공 애니 없음</b></li>
-      <li><b>성공</b> = 서버가 문서로 응답 → 페이지 교체 = 자동 오픈</li>
-      <li><b>실패</b> = 서버가 폼 재응답 → 로드 시 <b>흔들림 + 빨강 점등 + 빈 입력(처음부터)</b></li>
-      <li>5회 누적 = 10분 잠금(기존 유지) · 마스터 PIN(기존 유지)</li>
+      <li><b>성공</b> = 서버 문서 응답 → 페이지 교체 = 자동 오픈 / <b>실패</b> = 폼 재응답 → <b>흔들림 + 빨강 점등 + 처음부터</b></li>
+      <li><b>마스터(898900)</b> = 접속 잠금 <b>초기화 안내</b> 표시(accent 정보 · 흔들림 X · 데모서 쳐봐)</li>
+      <li><b>카드 배경 제거</b> — 글자·입력칸만 흑배경 위에 · 첫 로드 <b>입력창 자동 포커스</b>(탭 어디나 재포커스)</li>
+      <li>5회 누적 = 10분 잠금 · 마스킹 · 눈 토글 <b>불변</b></li>
     </ul></div>
   </div>
 </div>
@@ -146,17 +149,19 @@ li b{color:var(--fg)}
   var real='',reveal=false,fired=false,autoT=null;
   function mask(){return real.length?Array(real.length).join('•')+real.slice(-1):'';}
   function render(){pin.value=reveal?real:mask();try{pin.setSelectionRange(pin.value.length,pin.value.length);}catch(e){}}
+  var vinfo=document.getElementById('vinfo');
   function shake(){pw.classList.remove('shake');void pw.offsetWidth;pw.classList.add('shake');}
-  function clearBad(){pin.classList.remove('bad');verr.hidden=true;okmsg.hidden=true;}
-  function arm(){clearTimeout(autoT);if(real.length===6&&!fired)autoT=setTimeout(fire,320);}
+  function clearBad(){pin.classList.remove('bad');verr.hidden=true;okmsg.hidden=true;vinfo.hidden=true;}
+  function arm(){clearTimeout(autoT);if(real.length===6&&!fired)autoT=setTimeout(fire,140);}   // 빠른 확인(140ms)
   function fire(){
     if(fired||real.length!==6)return;fired=true;clearTimeout(autoT);
     pin.classList.add('checking');pin.blur();
-    setTimeout(function(){                                  // 데모: 서버 왕복 대신 정답 비교
+    setTimeout(function(){                                  // 데모: 서버 왕복 대신 정답 비교(실제는 GET 네비게이션)
       pin.classList.remove('checking');
-      if(real==='123456'){okmsg.hidden=false;}
-      else{real='';render();pin.classList.add('bad');shake();verr.textContent='핀이 맞지 않아요 (1/5)';verr.hidden=false;fired=false;setTimeout(function(){pin.focus();},200);}
-    },700);
+      if(real==='898900'){real='';render();vinfo.textContent='마스터 확인 · 접속 잠금을 초기화했어요 — 원래 PIN을 입력하면 열려요';vinfo.hidden=false;fired=false;setTimeout(function(){pin.focus();},150);}
+      else if(real==='123456'){okmsg.hidden=false;}
+      else{real='';render();pin.classList.add('bad');shake();verr.textContent='핀이 맞지 않아요 (1/5)';verr.hidden=false;fired=false;setTimeout(function(){pin.focus();},180);}
+    },520);
   }
   function upd(){clearBad();render();arm();}
   pin.addEventListener('beforeinput',function(e){
