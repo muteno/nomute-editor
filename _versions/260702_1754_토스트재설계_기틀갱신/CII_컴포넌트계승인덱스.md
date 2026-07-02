@@ -1,0 +1,58 @@
+# 📑 CII — 컴포넌트 계승 인덱스 (Component Inheritance Index)
+
+> **운영자 정본 · 260628 · 분신술 10인 도출.** UI/UX 컴포넌트를 **표로 인덱싱**해 "항상 계승"시키는 기틀. §🎨 "📦 정본 컴포넌트 인벤토리"(불릿)의 **기계가독 표 승격판**. 새 버튼·입력칸·모달·아이콘을 만들거나 이식할 때 **반드시 이 표의 정본 셀렉터를 계승**(재설계 금지). 충돌 시 §🎨·viewer `:root`가 정본.
+
+## 왜 (재발 방지)
+드리프트 2대 근원: ① thumb/ly/k/comp가 index `:root` 토큰 미상속(raw 값 박힘) ② 같은 컴포넌트 4중 복제(한 곳만 고쳐짐). 이 표 = "어떤 컴포넌트는 *무엇을* 계승해야 하는가"의 단일 출처. 코드가 표와 어긋나면 드리프트.
+
+## 위계 (값·규칙·강제 3층 — §🎨 그대로)
+1. **값 SSOT** = `viewer/index.html :root` 토큰 (색·`--btn*`·`--r*`·`--sp*`·`--blur*`·`--z*`·타이포·모션).
+2. **규칙·인덱스** = 이 표 + §🎨 + `구성도/00_가이드북_버튼인터랙션.html`.
+3. **강제** = `shared/check_refs.py check_design()`(raw 값 baseline·5파일 커버) + `build_design_mirror.py`(거울 정합).
+
+## 표기 규칙
+- **크기·마진·반지름·z = 토큰만**(raw px 금지). 없으면 가장 가까운 토큰, 정 없으면 `:root`에 토큰부터 추가.
+- **아이콘 = SVG만**(이모지·`✕`문자 금지). 같은 의미는 같은 path.
+- **닫기/최소화/버튼묶음 = 헤더 우측**(`margin-left:auto`는 *묶음 래퍼*에 — 개별 버튼에 걸면 갇혀 좌측붙음 = editdlg 버그).
+- **이미지 위 오버레이 버튼 = 검정 20%**(아이콘색만 accent). 일반 다운로드 = `.dlbtn`(accent 10%). ⚠️ **카드 위 다운로드류(저장 `.save`·오버레이 PNG `.ovl` 등)는 빠짐없이 `.dlbtn`** = 클릭 액티브 통일(안 붙이면 누락 · 260629 `.ovl` 교정).
+- **누름 :active = 맥락별 계승**(작은아이콘 .82 / 글래스버튼 .85 / 토글·닫기 .92 / 푸시 .95 / go .955 / 프로필 .97 / 카드 .99 · 픽토만 축소 .55 · 고정 0.96 금지).
+- **소머리(구분자) `•` = 텍스트 흰색(`--fg`)·`--fw-x`(800) / 블릿 형광(`--accent`)·`--fw-b`(700) · `--fs-label`(13px)** — 크기·굵기 *토큰*(리터럴 금지). 특수(이전제작·최소화)만 블릿 보라(`--hist-accent`) · 텍스트는 *항상* 흰색. **회색(`--mut`) 소머리·블릿 없는 소머리 금지.** 블릿 메커니즘 = **블록은 `::before content:'• '`(공백·뉴스 정본 동일), flex(`.csec`)는 `content:'•'`+`gap:6px`**(둘 다 6px급 간격·layout별). 정본 = 뉴스 `index .cref-lbl`. `.gospec`(명세 readout)은 소머리 아님(예외). ⚠️ **flex `.csec`에 토글(`.ovfmt`/`.onoff`) 붙으면 토글 세로패딩(3px·탭영역)이 행을 키워 `•`가 ~3px 내려앉음 → `.csec .ovfmt, .csec .onoff { margin-block:-3px }`로 행높이 기여 상쇄**(탭영역 보존·토글 유무 무관 첫 블릿 화면선 통일·운영자 260629 저작권탭 교정). 강제 = `check_refs.check_soremeori()`.
+
+## 인덱스 표
+
+| 컴포넌트 | 정본 셀렉터 | 크기 | 플레이트 | :active | 아이콘 | 위치 | 마진 | a11y | 정본 |
+|---|---|---|---|---|---|---|---|---|---|
+| 닫기 X | `.tool-x`(별칭 `.dlg-x/.ed-x/.askx/.mx`) | `--btn-sm`(30) | glass `.06`+`--line` | 회전180 .92 | path `M6 6 18 18M18 6 6 18` sw1.8 | 헤더 우측묶음 / abs 우상단 | — | `aria-label="닫기"` | index `.tool-x` |
+| 최소화 − | `#toolMin`·`.askmin`·`.ed-min`·`.rmin` | `--btn-sm` / 28(rfab) | glass(헤더) / glass border:0(rfab) | 헤더 .8 · rfab=픽토 .55 | path `M6 12h12` | 닫기 좌측(헤더) | — | `aria-label="최소화"` | index `#toolMin` |
+| 복원 ▲ | `#toolRestore` + `.min-pick` | `--btn-sm` | glass `--blur-l` | scale .82 | ▲ | 우하단·`--z-min`(200) | — | focus 이동 | index |
+| 최소화 라벨 | `MIN_REG` label | — | — | — | — | picker | — | — | "부모 메뉴 - 세부"(이미지-썸네일/영상-자막/뉴스 요약-신청/카드뉴스-이미지-수정) |
+| 입력칸 focus | `input/textarea:focus` | — | — | — | — | — | — | `:focus-visible` 2px accent 링 | 4파일 통일 `rgba(var(--accent-rgb),.35)`+`.08` 링 |
+| 클립 3버튼 | `.iobtn-edge`(별칭 `.urlclip/.scnclip/.askclip` → 통일 대상) | 26 | glass `.06`/blur13 opacity.6 | scale .85 | COPY/PASTE/CHECK/ERASE/UNDO `_SVG` | **입력칸 우측 걸침 2케이스**(우하단=base / 우상단=`.asktawrap.clip-top`) · 가로 right 14/46/78px 사다리(우측 기준) · 다른 버튼 위치 따라 상/하 선택 · **케이스 2개 고정**(과증식 금지·운영자 260629) | — | — | thumb `attachCopyPaste` · index `.asktawrap.clip-top` |
+| 다운로드 | `.dlbtn`(+컨텍스트) | `--btn` | accent 10% / 이미지위 검정20% · **받음=`.dl-done`→흰색(`--fg`)** | ↓바운스 + ✓팝·링(클립) · 클릭 후 흰색 영속(URL키 `DLED` 복원·260701) | `DOWNLOAD_SVG` | abs 우상단행 | — | `aria-label` | index/thumb `.dlbtn` |
+| 소머리(구분자) `•` | `.cref-lbl`(정본)·`p.lbl`·thumb `.csec`·k/ly/comp/thumb포스트 `label.fl`·`.hist-bul`(특수) | `--fs-label`(13)·텍스트`--fw-x`/블릿`--fw-b` | 텍스트 흰색`--fg` · 블릿 형광`--accent`(특수=보라`--hist-accent`) | — | 블록=`::before content:'• '` / flex(.csec)=`content:'•'`+gap6 | 섹션·폼 머리 | 14~16 0 | 블릿 ::before/`aria-hidden`=SR 무시 | index `.cref-lbl` |
+| 최외곽 박스(뷰) | 레거시 `.scrap-cols`·뉴스요약 `.card`·SNS `.soc-item` | radius `--r-l`(16) | — | — | — | 각 뷰 최바깥 | — | — | 전 뷰 16px 통일(레거시 기준·운영자 260701) · 모달은 예외 `--r-modal`(22) · 내부 중첩(sc-item13·failtray14)은 각자 유지 |
+| 모달 헤더 | `.tool-h`(+`.tool-hbtns`) | — | — | — | — | 제목 좌 + 버튼묶음 우(`margin-left:auto` 래퍼) | `11px 16px` | `aria-labelledby` | index `.tool-h` |
+| 모달/팝업 | `<dialog>` + `history.pushState` | — | glass blur | `@starting-style`(등장) | — | top-layer | radius 22px · **헤더↔입력 간격 = 15px 단일표준**(`.askhead margin-bottom` · ask-family[askdlg·revdlg·crevdlg·tredodlg(이미지 수정 요청)] 전부 동일 · 클립 하단걸침이라 상단 클리어런스 불필요 · 모달별 override 금지 · 운영자 260629) · **스크롤형 모달 둥근 모서리 음영 차단(260630)**: 모달이 스크롤 컨테이너면 `scrollbar-gutter:stable both-edges`(PC 세로 스크롤바가 우측에만 거터 생겨 우상단 둥근 모서리에 음영 누출하던 것 = 좌우 대칭 예약으로 차단) **+** sticky 헤더에 top `border-radius`=모달 radius(헤더 직각 배경이 둥근 모서리 덮음 차단) / `overflow:hidden` 가능한 모달(#tooldlg)은 그걸로 갈음(둘 다 불필요) · 모바일 `radius:0`이라 무해 | 백버튼=닫기 | index `tooldlg`·`.askhead` |
+| FAB 빠른메뉴 | `#rfab`(.rc/.ro/.rmin) | 54/35/28 | glass `rgba(0,0,0,.34)`+blur14 | rotate135(코어) | + / 도구 픽토 | 우하단·z70 | — | PC=숨김 | thumb `#rfab`(ly/k 동기) |
+| 토스트 | `.nm-toast` | — | ⚠ raw hex(토큰화 대상) | — | `.ft-act`=.sbtn | fixed 하단·`--z-float` | — | ⚠ `role=alert` 필요 | index |
+| 캐러셀 | scroll-snap 트랙 | — | — | — | — | — | — | — | `feed-ui`/`cardRefCarousel` |
+| 수정 진행바 | `.reshoot-badge`+`.reshoot-bar`(썸네일) · 카드=`.reshoot-badge`(텍스트만·바 없음) | 바 118px·h4 | 배지 glass `rgba(8,15,11,.62)`blur10 · 바 track `rgba(255,255,255,.16)`·채움 `--accent` | — | 없음(텍스트 "수정 중…" + 인디터미넌트 스윕) | 이미지/슬롯 정중앙 abs·z3 · dim `brightness(.5)` | radius `--r-pill` | reduced-motion=감속(2.4s) | 썸네일 index `markSlotReshooting` · 카드 `markReshooting` |
+
+⚠ = 현 드리프트(후속 교정). 별칭 셀렉터(`.ed-x` 등)는 `.tool-x` 스펙을 *복제*가 아니라 *계승*해야 함 — 단일화 후속.
+
+## 적용 절차 (새 컴포넌트·이식)
+1. 이 표에서 해당 행 찾기 → **정본 셀렉터를 그대로 계승**(클래스 추가만, 재설계 금지).
+2. 표에 없는 새 컴포넌트면 → 위 표기 규칙대로 만들고 **이 표에 행 추가**(인덱스 갱신 = 등재).
+3. 4뷰어(index/thumb/ly/k) 공통이면 같은 패턴으로 미러(SVG 상수·토큰).
+4. `python3 shared/check_refs.py` 통과 확인(raw 값 baseline·거울 정합).
+
+## 강제·후속 로드맵
+- ✅ `check_design` 5파일 커버(ly/k/comp 편입·260628) · ✅ ly/k 토큰화 · ✅ 도구앱 focus-visible.
+- ✅ **이모지→SVG 전면**(4뷰어 UI 이모지 픽토그램화 · PR #1119·1120·1121·1125 · 핀·블릿·💡 외 전부 · 운영자 "전부 무조건").
+- ✅ **P1 = `nm-svg.js` 아이콘 SSOT**(260628) — 공유 아이콘 10종(CHECK·COPY·PASTE·ERASE·UNDO·WAIT·ERR·OK·DOWNLOAD·WARN) 단일정본·4뷰어 `<script src="nm-svg.js">` 로드(`cscroll.js` 패턴)·인라인 복제 제거. 발산본 통일=정본(DOWNLOAD=14px[thumb CSS 12px 재지정 무관]·WARN=index/ly/k 다수본). **하드 게이트** = `check_refs.check_icon_ssot()`(인라인 재선언=섀도잉·미로드=ReferenceError 차단 → "하나 바꾸면 다 바뀜" 보장).
+- ✅ **:active 눌림 효과 토큰화**(260628 · PR #1133·1135 · 분신술 10인) — 14개 임의 scale → 4뷰어 `:root` 5토큰 사다리(`--press-pico/xs/s/m/l` = `.55/.82/.85/.9/.95`, 기존 우세값 스냅·델타 ≤.03) + `scale(var(--press-*,fallback))` + reduced-motion 무효화 블록(`--press-*:1`). **픽토온리 = `:active svg{scale}`로 강제**(배경 plate 안 따라움직임 — `.vh-fbtn`·`.jvar-dl` 버그픽스). **제외=셀렉터 화이트리스트**(값 기반 금지 — `.mergebox(.95)`·`.rev-fab(.9)` 충돌): 게이지(`.go/.mkbtn/.ed-go/.edattach/.sc-pick/.unmerge-go/.hist-clr`)·보라(`.mergebox/.mb-x/#histRemote/.rev-fab`)·카드(`.card/.abadd .99`). 색플래시(복사 형광) 보존. ⚠️ 4뷰어 `:root` 독립(상속 0) → 토큰 4곳 각각·index만 거울 대상. ⏳ 잔여 = 이모지 SVG도 nm-svg 편입 검토 · `check_press_tokens` 게이트(raw scale 재등장 차단).
+- ⏳ P2 = `tokens.css` 공유 `<link>` + `build_design_mirror` 확장(thumb/ly/k에 `--r/sp/blur/btn/z` 주입).
+- ⏳ P3 = `구성도/00_컴포넌트_인덱스.html` 시각본 + (선택) `build_components_index.py`로 표↔코드 diff 하드게이트(`build_library` 패턴).
+- ⏳ 잔여 = 닫기 X 13클래스 단일화 · 토스트 토큰화+`role=alert` · z충돌(`.totop`/`.nm-top`) · radius/gap 토큰화.
+
+> 상세 감사·전후·우선순위 = `docs/reports/260628_UIUX_기틀_분신술10인.html`.

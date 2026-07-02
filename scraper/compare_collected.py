@@ -105,6 +105,11 @@ def summarize(items, label):
     print(f"  cross≥8(⚡이슈 자격): {len(iss)}건" + (f" · cat별 {dict(catiss)}" if iss else ""))
     print("  grade 분포: " + " ".join(f"{k}:{gd.get(k, 0)}" for k in ("0", "1", "2", "3", "미채점"))
           + " · cross 버킷: " + " ".join(f"{k}:{cb.get(k, 0)}" for k in ("2", "3-4", "5-7", "8-11", "12+")))
+    # rc(연속보도) 분포 — 연합 섹션 4피드 추가(260702 fable패널)의 rc 인플레 측정용(기준선: rc≥6 395건·중앙값 1).
+    rcs = sorted((c.get("report_count") or 0) for c in items)
+    rc6 = sum(1 for r in rcs if r >= 6)
+    med = rcs[len(rcs) // 2] if rcs else 0
+    print(f"  rc 분포: rc≥6 {rc6}건 · 중앙값 {med} · 최대 {rcs[-1] if rcs else 0}")
     if promo:
         print(f"  ── ⬆️ 승격건(grade3·저burst, 새 로직 구제 대상) {len(promo)} ──")
         for line in fmt_rows(promo):
