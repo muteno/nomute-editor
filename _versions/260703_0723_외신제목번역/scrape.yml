@@ -1,0 +1,136 @@
+name: scrape
+# 한국 주요 뉴스 RSS 수집(knews_scraper) → ① viewer/candidates.json 갱신(수집함, 항상·과금0)
+#                                        → ② analyze=true 일 때만 pending 적재 + news-analyze 발동(유료).
+# 기본 = 수집만(큐레이션). 사람이 스크랩 탭에서 고름(픽=분석은 별도). cron 은 수집만 돌려 무인 토큰 0.
+# 비용: 이 레포 public → Actions 무제한 무료. 자동분석(analyze=true)만 Opus 토큰 소비.
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: '최근 N시간 기사만 수집'
+        default: '24'
+      min_cross:
+        description: '교차등장 최소 매체 수(수집함·분석 공통 기본값 — to_candidates 는 CAND_MIN_CROSS 사용)'
+        default: '2'
+      top:
+        description: '자동분석 시 적재 최대 기사 수(analyze=true 한정)'
+        default: '20'
+      categories:
+        description: "수집 분야: all=전 분야(기본·260626 운영자 확대) / major=핵심5(전체·정치·경제·사회·국제) / 'politics,economy' 식 지정"
+        default: 'all'
+      analyze:
+        description: 'true = 수집 후 top-N 자동분석까지(유료·Opus). 기본 false = 수집만.'
+        default: 'false'
+  schedule:
+    # ⚠️ 실제 15분 구동 = 외부 cron-job.org가 이 워크플로의 workflow_dispatch API를 15분마다 호출(정본 타이머·신뢰성↑).
+    #    아래 GitHub 네이티브 schedule은 보조 폴백뿐(GitHub cron은 지연·누락 잦음) — 중복 15분 트리거 방지로 2회/일만. 수집만(analyze 기본 false=토큰0).
+    - cron: '0 21,9 * * *'   # 매일 06:00·18:00 KST (UTC 21:00·09:00)
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # candidates.json · pending/ · seen_urls.txt 커밋·push
+  actions: write    # news-analyze 디스패치(analyze=true 한정)
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install --quiet feedparser requests
+
+      - name: Collect (RSS → articles.json · top_urls.txt)
+        run: |
+          python3 scraper/knews_scraper.py \
+            --categories "${{ inputs.categories || 'all' }}" \
+            --out scraper/out \
+            --hours "${{ inputs.hours || '24' }}" \
+            --min-cross "${{ inputs.min_cross || '2' }}" \
+            --top "${{ inputs.top || '20' }}"
+
+      - name: Update 수집함 (candidates.json — 항상)
+        run: python3 scraper/to_candidates.py scraper/out/articles.json
+
+      - name: 관측 누적 (obs — 사건 cross/burst 궤적 영구 로그)
+        run: |
+          python3 scraper/snapshot.py || true   # 비치명: 실패해도 scrape 안 깸
+          cp scraper/out/feed_health_obs.json scraper/obs/feed_health.json 2>/dev/null || true   # 피드 건강 원장 안정본(ts·n·fresh 제외 = 죽은/좀비 구성 변화시만 커밋 · daily_health가 읽음 · 260702)
+
+      - name: Commit candidates.json + obs
+        run: |
+          if [ -z "$(git status --porcelain viewer/candidates.json scraper/obs)" ]; then
+            echo "수집함·관측 변동 없음 — 커밋 생략"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add viewer/candidates.json scraper/obs
+          git commit -m "scrape: 수집함 candidates + 관측 obs 갱신"
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+          done
+          echo "::error::candidates push 실패"; exit 1
+
+      # ── 속보 판정 디스패치 (새 속보후보 뜰 때만 — 토큰 절약, news-analyze 와 동일 패턴) ──
+      # candidates.json 에 미판정 속보후보(breaking_candidate & 'breaking' 없음)가 있으면
+      # breaking-judge 를 깨워 Claude 급발 판정 → breaking 확정. 없으면 디스패치 생략.
+      - name: 속보후보 판정 디스패치
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          nb=$(python3 .github/scripts/breaking_judge.py --count 2>/dev/null || echo 0)
+          ng=$(python3 .github/scripts/gate_judge.py --count 2>/dev/null || echo 0)
+          gg=$(python3 .github/scripts/group_judge.py --count 2>/dev/null || echo 0)   # 사건 묶기 백로그(GROUP_ON 승격 260702 — breaking-judge env GROUP_ON 롤백 시 이 줄도 짝 제거)
+          n=$(( ${nb:-0} + ${ng:-0} + ${gg:-0} ))
+          if [ "${n}" -gt 0 ]; then
+            echo "미판정 속보 ${nb}건 · 경중 ${ng}건 — breaking-judge(속보+경중) 디스패치"
+            gh workflow run breaking-judge.yml || echo "::warning::breaking-judge 디스패치 실패(다음 scrape 재시도)"
+          else
+            echo "미판정 후보 없음 — 디스패치 생략"
+          fi
+
+      # ── 자동분석 (analyze=true 한정 — 유료) ──────────────────────────────
+      - name: Emit to pending/ (중복 스킵)
+        if: ${{ (inputs.analyze || 'false') == 'true' }}
+        run: python3 scraper/to_pending.py | tee /tmp/emit.out
+
+      - name: Commit & trigger analyze
+        if: ${{ (inputs.analyze || 'false') == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain pending scraper/seen_urls.txt)" ]; then
+            echo "신규 적재분 없음 — 커밋·분석발동 생략"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pending scraper/seen_urls.txt
+          NEW="$(sed -n 's/^NEW=//p' /tmp/emit.out | tail -1)"
+          git commit -m "scrape: pending ${NEW:-?}건 적재 (RSS 교차등장)"
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && break
+            git rebase --abort 2>/dev/null || true
+          done
+          # GITHUB_TOKEN 푸시는 news-analyze(push 트리거)를 재귀방지로 못 깨운다 → 명시 디스패치.
+          ok=0; for i in 1 2 3; do
+            gh workflow run news-analyze.yml && { ok=1; break; }
+            echo "::warning::news-analyze 디스패치 실패 — 재시도 $i"; sleep $((i*3))
+          done
+          [ "$ok" = 1 ] || { echo "::error::news-analyze 디스패치 3회 실패 — pending 적재됐으나 분석 미발동(수동 실행 필요)"; exit 1; }

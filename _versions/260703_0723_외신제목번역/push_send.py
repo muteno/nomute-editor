@@ -41,11 +41,6 @@ def brk_url(c):
         u += "&bl=" + quote(bl, safe="")
     return u
 
-def disp_title(c):
-    # 외신 = 한국어 번역 제목 우선(gate_judge 편승 title_ko · 원문 일치 도장만 유효 — 뷰어 scKoTitle 과 동일 술어 · 260703)
-    ko = c.get("title_ko")
-    return ko if (ko and c.get("title_ko_of") == c.get("title")) else (c.get("title") or "")
-
 def dedup_keys(c):
     # 같은 사건 중복 발송 차단 — event_key(별칭 점프에도 안정) + 제목해시(event_key=url 디폴트라 url 점프 시
     # 갈리는 구멍 보완: 같은 헤드라인이면 url 달라도 같은 키). 둘 중 하나라도 sent에 있으면 스킵.
@@ -128,7 +123,7 @@ def main():
             ks = dedup_keys(c)
             if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
                 continue
-            msgs.append({"keys": ks, "title": "News", "body": ("(긴급) " + disp_title(c))[:120], "url": brk_url(c), "tag": "nomute-breaking"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(외신=번역 제목) · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
+            msgs.append({"keys": ks, "title": "News", "body": ("(긴급) " + (c.get("title") or ""))[:120], "url": brk_url(c), "tag": "nomute-breaking"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인" · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
         if not msgs:
             print("새 긴급 없음 — 발송 생략"); return
 
