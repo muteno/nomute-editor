@@ -59,8 +59,8 @@ export async function onRequestPost({ request, env }) {
   if (op === 'draw') {   // 페르소나 뽑기/재뽑기 — 대화 맥락(턴·노트)은 유지, 화자만 교체
     const persona = String(body.persona || '');
     if (!ID_RE.test(persona)) return json({ error: '잘못된 페르소나 id' }, 400);
-    const name = String(body.name || '').replace(/<<\s*\/?\s*NOTE(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 24);
-    const enter = String(body.enter || '').replace(/<<\s*\/?\s*NOTE(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 60);   // 등장 연출 문구(roster enter_line · 아이데이션②)
+    const name = String(body.name || '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 24);
+    const enter = String(body.enter || '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 60);   // 등장 연출 문구(roster enter_line · 아이데이션②)
     const sess = await readSess();
     sess.turns = sess.turns || [];
     if (sess.persona && sess.persona !== persona && sess.turns.length) {
@@ -77,7 +77,7 @@ export async function onRequestPost({ request, env }) {
 
   // 유저 텍스트 절제 + 프롬프트 델리미터 위장 무력화(yeta_chat.sh 관대 파서와 짝)
   const text = String(body.text || '').slice(0, 4000)
-    .replace(/<\/?user_message>/gi, '').replace(/<<\s*\/?\s*NOTE\s*>>/gi, '').trim();
+    .replace(/<\/?user_message>/gi, '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').trim();   // NOTE·MOOD 위장 무력화(draw 새니타이즈와 동형)
   if (!text) return json({ error: '빈 메시지' }, 400);
 
   // 다이얼(모델×노력) — 화이트리스트 강제(오타·주입 = 기본 폴백 · 30초 목표라 effort 기본 low)

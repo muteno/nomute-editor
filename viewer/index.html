@@ -8059,18 +8059,43 @@ async function yDraw() {   // 랜덤 뽑기/재뽑기 — 맥락 유지·화자 
   if (!r || !r.ok) { $('#yetaLog').insertAdjacentHTML('beforeend', `<div class="yb fail">${esc((r && r.error) || '뽑기 실패 — 다시 눌러줘')}</div>`); return; }
   YSESS = r.sess; yApply(c); yRender();
 }
-let _ybgCur = 0;   // 무대 2겹 크로스페이드(§🎬 배너 디졸브 축소판) — 다음 레이어에 그리고 opacity 스왑
+let _ybgCur = 0, _yStageKey = '';   // 무대 2겹 크로스페이드(§🎬 배너 디졸브 축소판) — 다음 레이어에 그리고 opacity 스왑
+function yPaintBg(bgUrl, tint) {   // 레이어 페인트(페르소나 전환·무드 전환 공용) — 같은 그림 재페인트는 키 가드가 막음
+  const layers = [$('#ybgA'), $('#ybgB')], next = layers[1 - _ybgCur], curL = layers[_ybgCur];
+  next.style.backgroundImage = bgUrl
+    ? `linear-gradient(rgba(10,10,14,.72),rgba(10,10,14,.86)), url("${bgUrl}")`
+    : `radial-gradient(120% 90% at 50% 0%, ${tint}14, transparent 55%)`;                            // 이미지 없으면 페르소나색 은은한 무드 틴트
+  next.classList.add('on'); curL.classList.remove('on'); _ybgCur = 1 - _ybgCur;
+}
+const Y_MOODS = ['warm', 'tense', 'blue'];   // 답장 <<MOOD>> 화이트리스트(base=기본 무대) — yeta_bg.py MOODS와 짝
+function yMoodUrl(bg, mood) {   // base URL → 배리언트 규약 파생(…/tea.png?v=x → …/tea_warm.png) · 쿼리 제거
+  if (!bg || !mood) return bg || '';
+  return bg.split('?')[0].replace(/\.png$/, `_${mood}.png`);
+}
+function yStage(mood) {   // 무대 = 페르소나 bg × 무드 — 키 같으면 no-op, 배리언트는 프리로드 성공 시에만(실패 = base 유지)
+  if (!YCUR) return;
+  const key = `${YCUR.id}|${mood || ''}`;
+  if (key === _yStageKey) return;
+  _yStageKey = key;
+  const tint = YCUR.color || '#7c5cfc';
+  if (!YCUR.bg || !mood) { yPaintBg(YCUR.bg || '', tint); return; }
+  const vurl = yMoodUrl(YCUR.bg, mood), im = new Image();
+  im.onload = () => { if (_yStageKey === key) yPaintBg(vurl, tint); };   // 늦게 로드돼도 무대가 바뀌었으면 폐기
+  im.onerror = () => { if (_yStageKey === key) yPaintBg(YCUR.bg, tint); };   // 배리언트 미생성 = base 폴백
+  im.src = vurl;
+}
 function yApply(c) {   // 페르소나 적용 — 이름·태그·포인트색·배경이 스르륵 전환(캐릭터 따라 톤 변화 = 운영자 컨셉)
   YCUR = c;
   $('#yetaTitle').textContent = c.name; $('#yetaTag').textContent = c.tagline || '';
   $('#yetaAva').textContent = c.initial || (c.name || '?')[0];   // 헤더 상주 프로필(색은 --yeta-ac 자동)
   yetadlg.style.setProperty('--yeta-ac', c.color || 'var(--bubble-me)');
-  const layers = [$('#ybgA'), $('#ybgB')], next = layers[1 - _ybgCur], curL = layers[_ybgCur];
-  const tint = c.color || '#7c5cfc';
-  next.style.backgroundImage = c.bg
-    ? `linear-gradient(rgba(10,10,14,.72),rgba(10,10,14,.86)), url("${c.bg}")`                     // 감정별 배경 이미지 훅(운영자 샘플 대기)
-    : `radial-gradient(120% 90% at 50% 0%, ${tint}14, transparent 55%)`;                            // 이미지 없으면 페르소나색 은은한 무드 틴트
-  next.classList.add('on'); curL.classList.remove('on'); _ybgCur = 1 - _ybgCur;
+  yStage(yLastMood());   // 무대 전환 — 대화의 공기(마지막 답장 무드)는 화자 바뀌어도 이어짐(같은 방)
+}
+function yLastMood() {   // 마지막 답장의 장면 공기(없으면 base)
+  const turns = (YSESS && YSESS.turns) || [];
+  for (let i = turns.length - 1; i >= 0; i--)
+    if (turns[i].role === 'assistant') return Y_MOODS.includes(turns[i].mood) ? turns[i].mood : '';
+  return '';
 }
 // ── 페르소나 픽커 — 이름 탭 = 주민 직접 선택(🎲=랜덤 병행 · msgpop 계승 팝업) ──
 function yPickToggle(force) {
@@ -8143,6 +8168,7 @@ function yRender() {
   if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}</div>`;
   else if (typing) h += yTypingHtml(!_yTypOn);
   _yFailOn = !!failMsg; _yTypOn = typing;
+  yStage(yLastMood());   // 새 답장의 공기 → 배경 배리언트 크로스페이드(키 가드 = 같으면 no-op)
   const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;   // 스크롤 강탈 방지(평의회⑨)
   log.innerHTML = h;
   if (atBottom) log.scrollTop = log.scrollHeight;
