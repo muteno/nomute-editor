@@ -606,11 +606,13 @@
   .nm-toast .tg { flex:none; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#ff3b3b,#ff7a2f); border-radius:999px; padding:2px 8px; box-shadow:0 0 8px rgba(255,60,50,.5); }
   .nm-toast b { color:#ffd9cf; }
   .nm-toast .ft-msg { flex:1; min-width:0; }   /* 본문이 남는 폭 채움 → ✓·↻ 버튼 우측 정렬(운영자 260622) */
-  .nm-toast .ft-act { flex:none; width:28px; height:28px; }   /* ✓확인·↻재시도 = PICK(.ft-pick 28px·게이지 버튼 .sc-got/.unmerge-go 계승 높이)과 통일 → 하단 토스트 액션 3버튼 높이 정렬(운영자 260702). .sbtn 기틀(눌림 scale·.ok 플래시·ic-spin) 계승 */
+  .nm-toast .ft-act { flex:none; width:28px; height:28px; }   /* ✓확인·↻재시도·↗원문 = PICK(.ft-pick 28px·게이지 버튼 .sc-got/.unmerge-go 계승 높이)과 통일 → 하단 토스트 액션 3버튼 높이 정렬(운영자 260702). .sbtn 기틀(눌림 scale·.ok 플래시·ic-spin) 계승 */
+  .nm-toast .ft-act svg { width:14px; height:14px; }   /* Q_ARR(원문·크기 미지정)·CHECK 아이콘 크기 통일 = 14(토스트 기존 유지) */
   /* 긴급 토스트 PICK = 수집함 [PICK] 이식(운영자 260702) · 초록 게이지 goFill→✓ = .sc-got firing/okdone 상태머신 계승(색은 var 토큰) */
   .nm-toast .ft-pick { flex:none; display:grid; place-items:center; min-width:54px; height:28px; padding:0 12px; border-radius:var(--r-s);
     font-size:12px; font-weight:800; letter-spacing:.04em; cursor:pointer; color:var(--accent);
-    background:rgba(var(--accent-rgb),.10); border:1px solid rgba(var(--accent-rgb),.34); }
+    background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, border-color .14s, transform .1s; }   /* 플레인 다크 글래스 = 수집함 .sc-tg.pick / .sbtn 배경·투명도 계승(글자만 형광) · 초록틴트 배경 폐지(운영자 260702) */
+  .nm-toast .ft-pick:hover { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.08); }   /* 수집함 .sc-tg.pick:hover 계승 = 미세 형광 틴트만 */
   .nm-toast .ft-pick:active { transform:scale(var(--press-m,.9)); }
   .nm-toast .ft-pick.firing { color:var(--on-accent); border-color:var(--accent); overflow:hidden; pointer-events:none;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(rgba(var(--accent-rgb),.12),rgba(var(--accent-rgb),.12));
@@ -4753,7 +4755,7 @@ const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
 // 다운로드 시퀀스 버튼(.cref-dlall) 아이콘 = 다운(dn)↔체크(chk) 스왑 한 벌(완료 시 체크 팝 · 정본 패턴 구성도 §9)
 const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
 const ACK_MORPH = '<svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg>';   // 확인 토글 −→✓ 드로우-인(시안1·운영자 260622)
-const EXT_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4"/></svg>';   // 원문 새 탭(external-link 픽토그램 · 긴급 토스트 ↗버튼·운영자 260622)
+// (EXT_SVG 폐지 — 긴급 토스트 원문 아이콘을 뷰어 원문 바로가기 표준 Q_ARR로 통일 · 운영자 260702)
 const SEND_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>';   // 직접입력 사유 전송(종이비행기 · 강조색 X · 운영자 260626)
 async function copyText(text, btn) {
   text = (text || '').replace(/\n+$/, '');
@@ -5626,7 +5628,7 @@ function showToast(c, total) {
   t.innerHTML = `<span class="tg">긴급</span><span class="ft-msg">${title || '속보'}${more}</span>`
     + `<button class="sbtn ft-act" type="button" data-bt="ack" aria-label="확인 — 봤음" title="확인 — 봤음(이 건 알림 끔·다음 건으로)">${CHECK_SVG}</button>`
     + `<button class="ft-pick" type="button" data-bt="pick" aria-label="PICK — 요약 발동" title="PICK — 이 기사 분석·요약 발동(수집함 픽과 동일)"><span>PICK</span></button>`
-    + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 새 탭" title="원문 새 탭(확인 안 함 · 토스트 유지)">${EXT_SVG}</button>`;
+    + `<button class="sbtn ft-act" type="button" data-bt="src" aria-label="원문 바로가기" title="원문 바로가기(새 탭 · 확인 안 함 · 토스트 유지)">${Q_ARR}</button>`;   // ↗ = 뷰어 원문 바로가기 표준 아이콘(qgo Q_ARR) 계승 · 색은 .sbtn 기본(흰) — 운영자 260702
   const _ak = t.querySelector('[data-bt="ack"]'), _pk = t.querySelector('[data-bt="pick"]'), _sr = t.querySelector('[data-bt="src"]');
   // ✓체크 = 이 건만 확인 → detectBreaking이 다음 미처리 건으로(없으면 사라짐). 옛 전체 숨김(seen) 방식 폐지.
   if (_ak) _ak.onclick = ev => { ev.stopPropagation(); ackBreak(c); detectBreaking(); };
