@@ -334,6 +334,7 @@ ${extracted}"
 
   # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
+  title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(있으면 완료 푸시 본문에 우선 · 260703)
   if [ -n "$REGEN_TARGET" ]; then
     outfile="$REGEN_TARGET"
   else
@@ -346,7 +347,7 @@ ${extracted}"
   python3 .github/scripts/card_gate.py factcov "$outfile" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$f"
   rm -f "pending/${base}.retry"   # 과부하 후 회복 성공 = 재시도 마커 정리(뷰어 '재시도 중' 해제)
-  echo "${title:-$id}" >> /tmp/analyzed_titles.txt
+  echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt   # 완료 푸시 = 외신이면 번역 제목(title_ko 비면 원문 → id 폴백)
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   [ -n "$FORCE" ] && [ -n "$REGEN_TARGET" ] && basename "$outfile" >> /tmp/force_regen_files.txt   # force 재분석 = 같은 GVER로 덮어써 card_plan all 게이트가 카드 스킵 → 단일 프롬프트 갱신 신호(운영자 260628)
   echo "성공 → $outfile (지침 ${GVER})"
