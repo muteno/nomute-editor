@@ -133,7 +133,7 @@ def lib_lookup(dispatch):
             out.append(kw)
     return ", ".join(out)
 
-def build_prompt(art_dir, scene, dispatch="", wish=""):
+def build_prompt(art_dir, scene, dispatch=""):
     parts = [GOVERNING, art_dir]   # 지배조건 맨 앞 = 화풍/구도보다 우선(위계 선언)
     if scene:
         parts.append("장면: " + scene)
@@ -141,11 +141,6 @@ def build_prompt(art_dir, scene, dispatch="", wish=""):
     if cam:
         parts.append("앵글·조명·연출(이 장면에 적용): " + cam)
     parts.append(COMPOSITION)
-    # 재생성 지시(운영자 코멘트 · 뷰어 '다시 만들기' 팝업 → THUMB_REDO_WISH) — 구도 뒤·글자금지 앞에 얹어 우선 반영.
-    # 단 위 안전(선정·미성년·실존인물 닮기 금지)·글자 규칙은 그대로 지키게 명시(자유입력이라 가드 유지).
-    if wish:
-        parts.append("추가 연출 지시(운영자 요청 · 반드시 우선 반영): " + wish
-                     + " — 단 위의 안전·선정성 금지·인물 식별 금지 규칙은 그대로 지킬 것.")
     parts.append(NO_TITLE)
     return " ".join(parts)
 
@@ -631,15 +626,12 @@ def process_one(md, stem):
         print("  ⏸ AI 썸네일 생성 OFF({}) — 검색이미지만 처리(기존 썸네일·gen.json·토큰 영향 0)".format("THUMB_AI_OFF" if AI_OFF else "no_thumb"))
     else:
         _u0 = len(_USAGE)                         # 이 기사 제미나이 호출 사용량 슬라이스 시작점
-        redo_wish = os.environ.get("THUMB_REDO_WISH", "").strip()   # 뷰어 '다시 만들기' 팝업 코멘트(선택) — 재생성 화풍에만 반영(배치 경로는 미설정 → 빈값 = 영향 0)
-        if redo_wish:
-            print("  📝 재생성 지시 반영: {}".format(redo_wish[:80]))
         existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
         gen = []
         for sid, label, art_dir in STYLES:
             if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
                 gen.append(existing[sid]); continue
-            png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch, redo_wish), "1K")   # 1K(토큰 절감 · 운영자 260621 · 폰 피드용 충분). 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch) + wish=운영자 재생성 지시. '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
+            png = gemini_image(build_prompt(art_dir, thumb_scene or iq or lead, dispatch), "1K")   # 1K(토큰 절감 · 운영자 260621 · 폰 피드용 충분). 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=라이브러리 앵글/조명/연출(dispatch). '밥 먹는 그림'화 방지=충돌순간을 라이브러리 연출로 촬영.
             if not png:
                 print("  ✗ {} 실패".format(label)); continue
             if R2_ON:                                # R2 = 공개 URL(레포 미저장)
