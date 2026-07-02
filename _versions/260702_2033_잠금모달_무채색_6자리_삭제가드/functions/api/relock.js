@@ -1,5 +1,5 @@
 // Cloudflare Pages Function — 발행본 '잠금 토글'(공개 링크 PIN 보호 ON/OFF) → published/<slug>.json의 pinHash 갱신.
-// 입력 = { slug, pin(6자리) }. 현재 상태로 동작 결정(토글):
+// 입력 = { slug, pin(4자리) }. 현재 상태로 동작 결정(토글):
 //   · 잠금돼 있으면(pinHash 있음) → 해제 요청 = 입력 PIN이 기존 PIN과 일치해야 pinHash 제거(불일치=403 mismatch).
 //   · 안 잠겼으면(pinHash 없음) → 잠금 요청 = 입력 PIN으로 pinHash 설정.
 // 서빙 게이트 = functions/s/[slug].js (pinHash 있으면 ?p=PIN 요구). publish.js와 동일 해시식 sha256hex(pin+':'+slug).
@@ -18,7 +18,7 @@ export async function onRequestPost({ request, env }) {
   const slug = String(body.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);   // 경로주입 차단(unpublish.js 동일 패턴)
   if (!slug) return json({ error: '잘못된 대상(slug)' }, 400);
   const pin = String(body.pin || '');
-  if (!/^\d{6}$/.test(pin)) return json({ error: 'PIN은 숫자 6자리' }, 400);
+  if (!/^\d{4}$/.test(pin)) return json({ error: 'PIN은 숫자 4자리' }, 400);
 
   const H = { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json', 'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28' };
   const url = `https://api.github.com/repos/${REPO}/contents/published/${slug}.json`;
