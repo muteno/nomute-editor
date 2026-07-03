@@ -36,6 +36,8 @@ KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 AI_OFF = os.environ.get("THUMB_AI_OFF", "").strip().lower() in ("1", "true", "yes", "on")
 # 🔍 품질 게이트(TH-06 · 분신술⑧ 260703) — 기본 OFF. THUMB_GATE=1이면 생성 직후 단색 밴드(PIL) 판독→미달 시 1회 재생성.
 #    §📰 카나리아 절차 준수: 기본 OFF로 머지(라이브 무영향) → workflow_dispatch 단건 실측 → 승격.
+#    ⚠️ 승격 시 배선 필수(검증4): Pillow 설치는 news-analyze.yml·moreimg.yml 두 곳뿐 — news-ask.yml thumb_gen 잡·
+#    thumb-redo.yml에 pip install Pillow + THUMB_GATE env를 같이 넣어야 함(없으면 _band_fail이 조용히 no-op = 헛 카나리아).
 GATE = os.environ.get("THUMB_GATE", "").strip() == "1"
 # ⚠️ 검색이미지는 더 이상 Google CSE JSON API를 안 씀(2025 신규고객 차단 死 → "this project does not have
 #    access" 403 PERMISSION_DENIED). 대체 = 기사 본인 og:image 추출(fetch_article_images). CSE 시크릿 미사용.
@@ -78,7 +80,9 @@ GOVERNING = (
 #    AVOID의 gore 항목은 '유혈 클로즈업·무기 겨눔'(표지 강등 모티프)만 한정 = 긴장 유지·순화 아님(분신술⑩ RCH-02 대칭).
 _FRAME_KO = ("Korean people and setting by default (if the event is clearly foreign, use the event's actual "
              "region and people)")
-_FRAME_FOREIGN = "set in the event's actual country, region and people — NOT Korea (this is a foreign news event)"
+# ⚠️ 하드 부정문("NOT Korea") 금지 — image_query_en은 '외신 검색 키'라 북한·한국팀 해외경기도 정당하게 채워짐
+#    → NOT Korea 강제 시 한반도 인물·한국 선수가 외국인으로 오염(실물 4/45건 · 검증9). 긍정문만.
+_FRAME_FOREIGN = "set in the event's actual country, region and people (this is a foreign-location news event)"
 def _frame(foreign):
     return ("FRAME: vertical 4:5, the scene fills the entire frame edge to edge — every corner is part of the "
             "location, no empty margins or bands; one clear protagonist with a single sharp focal point (eyes, "
@@ -140,18 +144,26 @@ _BUCKET_PREFIX = {"AG": "camera", "S": "camera", "L": "camera",
                   # DF(거리/크롭)는 camera가 아니라 focus 버킷 — DF-09 '빈 의자' 류 장면 모티프가 섞여 있어
                   # CAMERA 줄에 넣으면 소품이 카메라 지시로 오염(v1 리터럴 오염 재발 · 자가 트레이스 실측 260703).
                   "DF": "focus",
-                  "LGT": "light", "SG": "staging", "NST": "staging",
+                  # NST(뉴스 화풍 캐논)는 화풍 정의라 STYLE 줄에 병기(STAGING 오배치 방지·검증1 — 현 메뉴엔 없어 수동 dispatch 대비).
+                  "LGT": "light", "SG": "staging", "NST": "style",
                   "EM": "expression", "GST": "expression", "ACT": "expression"}
 
+# 동일 모티프 SG↔DF 쌍 — analyze가 습관적으로 둘 다 찍음(큐 실측 SG-09+DF-09 동시 지정 ~23건 · 검증3).
+# 같은 모티프(부재·군중고립·이중성)를 FOCUS·STAGING 2줄로 반복하면 'adapt' 래핑을 뚫고 리터럴 소품 확률↑ → DF 쪽 드롭.
+_MOTIF_DUP = (("SG-09", "DF-09"), ("SG-04", "DF-07"), ("SG-16", "DF-12"))
+
 def lib_buckets(dispatch):
-    """thumb_dispatch 코드열 → 버킷별 Gemini 키워드 dict(camera/light/staging/expression).
-    미존재 코드 드롭(화이트리스트=실존 코드만·fail-soft 유지)."""
+    """thumb_dispatch 코드열 → 버킷별 Gemini 키워드 dict(camera/focus/light/staging/expression).
+    미존재 코드 드롭(화이트리스트=실존 코드만·fail-soft 유지) + 동일 모티프 SG↔DF 중복이면 DF 드롭."""
     out = {}
     if not dispatch:
         return out
+    codes = [c.strip() for c in dispatch.replace(",", " ").split() if c.strip()]
+    for sg, df in _MOTIF_DUP:
+        if sg in codes and df in codes:
+            codes.remove(df)
     lib = _load_lib()
-    for code in dispatch.replace(",", " ").split():
-        code = code.strip()
+    for code in codes:
         kw = lib.get(code)
         if not kw:
             continue
@@ -161,6 +173,13 @@ def lib_buckets(dispatch):
             out[bucket].append(kw)
     return {k: ", ".join(v) for k, v in out.items()}
 
+# 거리(샷사이즈) 어휘 검출 — AG 22코드 중 거리 포함은 3개뿐(AG-18·21·22·전부 wide)·최다 사용 AG-01은 각도 전용
+# = 거리 미지정이면 르포 프라이어상 와이드 회귀(검증3) → 거리·DF 둘 다 없을 때만 화풍 기본 거리 구절을 병기.
+# ⚠️ 부감 계열(top-down·bird's-eye·god's-eye·aerial·high-angle)은 거리 지정으로 간주 = 병기 억제 —
+#    부감 뒤에 'tight medium' 병기 시 모순 재생산(실물 24/195건 · 검증9).
+_SHOT_RE = re.compile(r"\b(wide|close[- ]?up|medium|long shot|full[- ]?shot|extreme|macro|tight|choker|"
+                      r"bird'?s[- ]?eye|top[- ]?down|overhead|god'?s[- ]?eye|aerial|high[- ]?angle)\b", re.I)
+
 def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotion="", foreign=False):
     """v2(260703 분신술⑨) — 라벨+개행 구획(카드 cards.md 검증 문법 이식) · 고정문 영어·SCENE 한국어.
     옛 v1 = 1,300~1,500자 한 줄 " ".join(사건 정보 7~8%·금지 11절·카메라 자기모순 6/6본) → 구조 교체.
@@ -169,16 +188,28 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
     hook/emotion = frontmatter 0단계 판 상속(분신술⑤ — 제목 따로 그림 따로 차단). 없으면 줄 자체 생략(하위호환).
     wish 감싸기(앞 FRAME·뒤 SAFETY 재천명 = 인젝션 방어)는 v1 그대로 계승. wish 없으면 배치 프롬프트에 흔적 0."""
     b = lib_buckets(dispatch)
-    lines = [GOVERNING, "STYLE: " + look]
+    lines = [GOVERNING, "STYLE: " + look + ((", " + b["style"]) if b.get("style") else "")]
     if scene:
         lines.append("SCENE: " + scene)
     if hook:
-        lines.append("HOOK (what this one image must convey): " + hook)
+        # 가드(검증3): hook이 SCENE 밖 개체·제2 장면을 주입하거나 글자로 렌더되지 않게 라벨에 못박음.
+        lines.append("HOOK (the idea this one image must convey — do not add elements beyond SCENE, "
+                     "never render these words as text): " + hook)
     if emotion:
-        lines.append("MOOD (the reader's dominant emotion here): " + emotion)
-    lines.append("CAMERA: " + (b.get("camera") or cam_default) + ", a frozen split-second")
+        # 첫 절만(— 뒤 "스크롤이 멎고…" 류 독자심리 메타·감정 시퀀스 산문 = 단일 프레임에 노이즈 · 검증3).
+        lines.append("MOOD (the reader's dominant emotion): " + re.split(r"\s*[—–-]\s", emotion)[0].strip())
+    cam = b.get("camera")
+    if cam:
+        if "focus" not in b and not _SHOT_RE.search(cam):
+            # AG 각도 전용 코드(거리 0)만 있고 DF도 없으면 화풍 기본 거리 구절(첫 절)만 병기 — 와이드 회귀 차단.
+            # 조건부라 AG-18(부재 와이드)·AG-21(군중 부감)·DF 지정 건과 모순 안 만듦(검증3 "무조건 병기 금물").
+            cam = cam + ", " + cam_default.split(",")[0].strip()
+    else:
+        cam = cam_default
+    lines.append("CAMERA: " + cam + ", a frozen split-second")
     if b.get("focus"):
-        lines.append("FOCUS (distance & crop of the key subject, adapt this to the scene above): " + b["focus"])
+        lines.append("FOCUS (distance & crop of the key subject, adapt this to the scene above, "
+                     "do not copy its literal props): " + b["focus"])
     if b.get("light"):
         lines.append("LIGHT: " + b["light"])
     if b.get("staging"):
@@ -559,8 +590,11 @@ def _is_logo_card(img_bytes):
     return dom >= 0.70 and len(c) <= 80
 
 def _band_fail(png_bytes):
-    """상·하 8% 가장자리 띠가 사실상 단색(빈/검정 밴드·레터박스 = FRAME 위반)인지 PIL로 직접 판독(THUMB_GATE 전용).
-    _is_logo_card와 같은 '픽셀 직접 보기' 계열. PIL 없음·판독 실패 = False(통과 = 무회귀·fail-soft)."""
+    """상·하 8% 가장자리 띠가 '검정/흰 단색 밴드·레터박스'(FRAME 위반)인지 PIL로 직접 판독(THUMB_GATE 전용).
+    _is_logo_card와 같은 '픽셀 직접 보기' 계열. PIL 없음·판독 실패 = False(통과 = 무회귀·fail-soft).
+    ⚠️ 판정 = 분산 극소 AND 극단 명도(거의 순검정/순백) 둘 다 — 분산만 보면 thumbnail() 평균화로
+    하늘·밤·벽 등 평범한 저분산 밴드가 전부 오탐(검증1 실측: 노이즈 전체 이미지 var~35<40)이라
+    레터박스의 본질인 '순검정/순백 띠'로 조인다(흐린 하늘 mean~180대·밤하늘 mean>10은 통과)."""
     try:
         import io
         from PIL import Image
@@ -573,7 +607,7 @@ def _band_fail(png_bytes):
             vals = [px[y * w + x] for y in rows for x in range(w)]
             mean = sum(vals) / len(vals)
             var = sum((v - mean) ** 2 for v in vals) / len(vals)
-            if var < 40:                                     # 분산 극소 = 사실상 단색 띠
+            if var < 15 and (mean < 10 or mean > 245):       # 사실상 균일 + 순검정/순백 = 진짜 밴드만
                 return True
         return False
     except Exception:
@@ -725,8 +759,9 @@ def process_one(md, stem):
             # (기사당 최대 4콜)·재시도본도 밴드면 '항상 기록'(미기록형 게이트 = main 백필 루프와 결합해 무한 재과금 — 분신술⑧).
             if png and GATE and _band_fail(png):
                 print("  🔍 게이트: 단색 밴드 검출 → 1회 재생성 ({})".format(sid), flush=True)
-                png2 = gemini_image(prompt + "\nRETRY NOTE: the previous attempt left a solid blank band — "
-                                    "fill the entire frame with the scene, edge to edge.", "1K")
+                # RETRY NOTE는 프롬프트 *앞*에 — 후미는 AVOID·SAFETY 재천명이 '마지막 말'로 남아야(위계 보존·검증4).
+                png2 = gemini_image("RETRY NOTE: the previous attempt left a solid blank band — fill the "
+                                    "entire frame with the scene, edge to edge.\n" + prompt, "1K")
                 if png2:
                     png = png2
             if not png:
@@ -817,12 +852,14 @@ def main():
         try:
             from datetime import datetime, timezone, timedelta
             ts_kst = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M")   # KST 강제(§📐)
-            wish_raw = re.sub(r"[\x00-\x1f\x7f]", " ", os.environ.get("THUMB_REDO_WISH", "")).strip()[:500]
-            os.makedirs("scraper", exist_ok=True)
-            with open("scraper/thumb_wishes.jsonl", "a", encoding="utf-8") as wf:
-                wf.write(json.dumps({"ts": ts_kst, "article": only, "sid": redo_sid or "all",
-                                     "wish": wish_raw}, ensure_ascii=False) + "\n")
-            print("  📒 wish 원장 적립: scraper/thumb_wishes.jsonl")
+            # 제어문자 + U+2028/2029(유니코드 라인분리) 제거 = jsonl 1레코드 1물리줄 보장(미래 splitlines() 리더 방어·검증7).
+            wish_raw = re.sub(r"[\x00-\x1f\x7f  ]", " ", os.environ.get("THUMB_REDO_WISH", "")).strip()[:500]
+            if wish_raw:   # 빈 wish(무코멘트 재추첨)는 스킵 — 원장 = 자연어 불만 사료(검증2·4·7·8 수렴 지적)
+                os.makedirs("scraper", exist_ok=True)
+                with open("scraper/thumb_wishes.jsonl", "a", encoding="utf-8") as wf:
+                    wf.write(json.dumps({"ts": ts_kst, "article": only, "sid": redo_sid or "all",
+                                         "wish": wish_raw}, ensure_ascii=False) + "\n")
+                print("  📒 wish 원장 적립: scraper/thumb_wishes.jsonl")
         except Exception as e:
             print("  ⚠️ wish 원장 기록 실패(무시): {}".format(e))
         print("THUMB_ONLY 재생성 완료:", only, ("(화풍 " + redo_sid + ")") if redo_sid else "")
