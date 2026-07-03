@@ -69,12 +69,9 @@ STYLES = [
      "intense emotional expression",
      "tight upper-body framing, medium close-up, slight low angle for tension, single hard side light"),
     ("watercolor", "수채화",
-     # 인물 표정·동작 위주(운영자 260703): 극화는 표정 강조 시 과강렬 ↔ 수채화는 매체가 순화해줘서 표정·동작
-     # 정면 승부가 오히려 적정 타격 — look에 박아 dispatch 카메라와 무관하게 항상 인물 중심 유지.
      "soft editorial watercolor illustration, bleeding translucent washes, textured paper grain, "
-     "muted palette with one quiet warm accent — human figures are the heart of the scene: their facial "
-     "expressions and body gestures carry the story, raw emotion softened and made bearable by the gentle medium",
-     "close medium shot on the main figure's face and hands, gentle framing, soft atmospheric depth"),
+     "lyrical delicate mood, muted palette with one quiet warm accent",
+     "medium shot centered on the emotional core, gentle framing, soft atmospheric depth"),
     ("cartoon", "시사만평",
      # ⚠️ 'korean'은 만평 전통(화풍)이지 장소 아님 — 명시 없으면 해외 사건도 한국 배경·한글 간판으로 렌더(카나리아 실측 260703).
      "newspaper editorial cartoon in the korean manpyeong tradition (drawing style only — depict the event's "
