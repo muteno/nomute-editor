@@ -1,0 +1,113 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>잠금 설정 · 기존 PIN 확인 게이트 제안</title>
+<style>
+/* viewer :root 토큰 복사(일회성 스냅샷 — §🎯② 보고서는 동기화 의무 없음) */
+:root{--accent:#0FFD02;--accent-rgb:15,253,2;--on-accent:#062108;--fg:#eef7f0;--fg-2:#cfd8d0;--mut:#8fa697;--danger:#ff5b4a;--arm:#ffd93d;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.06);--r-m:11px;--r-l:16px}
+body{margin:0;background:#0b0d0c;color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding:22px 16px 60px;max-width:720px;margin-inline:auto}
+h1{font-size:19px;margin:6px 0 4px}
+h2{font-size:15px;margin:30px 0 8px;color:var(--accent)}
+p{margin:6px 0;color:var(--fg-2);font-size:13.5px}
+.mut{color:var(--mut)} .sm{font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:10px 0}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:700;background:rgba(255,255,255,.03)}
+td b{color:var(--fg)}
+.rec{color:var(--accent);font-weight:800}
+code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:6px;font-size:12px}
+.wrap-x{overflow-x:auto}
+/* ── 실제 잠금 설정 팝업 재현(msgpop·pushrow 계승) + 제안 게이트 ── */
+.demo{display:grid;place-items:center;padding:26px 0;background:radial-gradient(circle at 50% 30%,rgba(15,253,2,.04),transparent 60%);border:1px dashed var(--line);border-radius:var(--r-l);margin:14px 0}
+.pop{width:min(300px,90vw);background:linear-gradient(165deg,rgba(24,25,28,.97),rgba(16,17,19,.98));border:1px solid rgba(255,255,255,.14);border-radius:var(--r-l);box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);overflow:hidden}
+.mh{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 12px;border-bottom:1px solid var(--line2)}
+.mh b{font-size:13px;font-weight:800}
+.mh .mx{margin-left:auto;width:26px;height:26px;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--fg);border:1px solid var(--line);border-radius:9px;font-size:12px}
+/* 제안 신설: 현재 PIN 확인 행 */
+.vrow{padding:10px 12px 4px}
+.vrow .vl{font-size:12px;font-weight:800;color:var(--arm);letter-spacing:-.2px}
+.vrow .vin{width:100%;box-sizing:border-box;margin-top:7px;height:40px;text-align:left;letter-spacing:.45em;font:800 17px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid rgba(255,217,61,.4);border-radius:10px;padding:0 12px;outline:none;transition:border-color .18s,box-shadow .18s}
+.vrow .vin:focus{border-color:rgba(255,217,61,.75);box-shadow:0 0 0 3px rgba(255,217,61,.13)}
+.vrow.badv .vin{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,91,74,.15)}
+.vrow .vh{font-size:11px;color:var(--mut);margin-top:5px}
+.vrow.badv .vh{color:var(--danger);font-weight:700}
+@keyframes vshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}45%{transform:translateX(6px)}70%{transform:translateX(-4px)}}
+.vrow.shake .vin{animation:vshake .4s cubic-bezier(.36,.07,.19,.97)}
+/* 설정 본문 = 검증 전 디밍+비활성 */
+.body-rows{transition:opacity .25s,filter .25s}
+.pop.guard .body-rows{opacity:.35;filter:blur(1.5px) saturate(.6);pointer-events:none}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border-top:1px solid var(--line2)}
+.prow:first-child{border-top:none}
+.prow .pl{font-size:13px;font-weight:700}
+.prow .pb{font-size:13px;font-weight:800;color:var(--accent);background:none;border:none}
+.prow .pin-mini{width:96px;text-align:center;font-size:13px;font-weight:700;color:var(--fg);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:9px;padding:4px 6px}
+.hint{padding:7px 12px 11px;font-size:11.5px;color:var(--mut)}
+.ok-flash{color:var(--accent)!important}
+.note{border-left:3px solid var(--arm);padding:6px 12px;background:rgba(255,217,61,.05);border-radius:0 10px 10px 0;margin:10px 0;font-size:12.5px;color:var(--fg-2)}
+</style>
+
+<h1>잠금 설정 — 「변경 전 기존 PIN 확인」 게이트 제안</h1>
+<p class="mut sm">260703 · 문제: 지금은 누구든 잠금 설정을 열어 PIN 교체·토글 OFF 가능 = 잠금 의미 반감. 아래 데모는 실제 팝업 CSS로 동작함 — 직접 탭해서 체험.</p>
+
+<h2>A안(추천) — 인라인 가드: 팝업 안에서 현재 PIN 먼저</h2>
+<p>PIN이 이미 설정된 기기에서 잠금 설정을 열면 → 설정 행들이 <b>디밍·비활성</b>되고 상단에 <b>「현재 PIN 확인」</b> 입력이 먼저 뜸. 현재 PIN 또는 마스터(898900) 통과 시에만 편집 활성(팝업 닫으면 다시 잠김).</p>
+
+<div class="demo">
+  <div class="pop guard" id="pop">
+    <div class="mh"><b>잠금 설정</b><span class="mx">✕</span></div>
+    <div class="vrow" id="vrow">
+      <div class="vl">현재 PIN 확인 — 변경하려면 먼저 입력</div>
+      <input class="vin" id="vin" inputmode="numeric" maxlength="6" placeholder="●●●●●●" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="vh" id="vh">이 기기에 저장된 PIN 6자리 (데모 정답: 123456 · 마스터 898900)</div>
+    </div>
+    <div class="body-rows" id="rows">
+      <div class="prow"><span class="pl">화면 잠금</span><button class="pb">ON</button></div>
+      <div class="prow"><span class="pl">PIN (6자리)</span><input class="pin-mini" placeholder="설정됨 · 변경 입력" readonly></div>
+      <div class="prow"><span class="pl">자동 잠금(분)</span><input class="pin-mini" style="width:52px" value="2" readonly></div>
+      <div class="hint" id="dhint">잠겨 있음 — 현재 PIN 확인 후 변경 가능</div>
+    </div>
+  </div>
+</div>
+
+<h2>대안 비교</h2>
+<div class="wrap-x"><table>
+<tr><th>안</th><th>흐름</th><th>장점</th><th>단점</th></tr>
+<tr><td class="rec">A 인라인 가드 (추천)</td><td>팝업 상단 현재 PIN 행 → 통과 시 편집 활성</td><td>팝업 안에서 완결·기존 컴포넌트만 계승(신규 화면 0)·마스터 자연 통합</td><td>팝업 세로 +60px</td></tr>
+<tr><td>B 전면 키패드</td><td>설정 열기 전 잠금 화면 키패드(lockNow 재사용)로 인증</td><td>키패드 정본 100% 재사용·입력 UX 동일</td><td>팝업 하나 열자고 전면 오버레이 = 과함·설정 진입 2단계</td></tr>
+<tr><td>C 저장 시점 검증</td><td>편집은 자유·저장 순간에 기존 PIN 요구</td><td>열람 마찰 0</td><td>필드 3개(토글·PIN·분) 각각 게이트 = 번잡·토글 OFF 같은 즉시 액션과 안 맞음</td></tr>
+</table></div>
+
+<h2>A안 구현 포인트 (승인 시 그대로 반영)</h2>
+<div class="wrap-x"><table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>게이트 조건</td><td><code>lkPinH()</code> 존재 &amp;&amp; 이번 팝업서 미검증 → <code>.guard</code> 클래스(디밍·pointer-events:none)</td></tr>
+<tr><td>검증</td><td>6자리 입력 즉시 <code>lkHash()</code> 대조 — 현재 PIN 또는 <code>LK_MASTER_H</code>(898900) = 통과·행 접힘</td></tr>
+<tr><td>오답</td><td>빨강 + 흔들림 + 3초 복귀(잠금 화면 정본 동일) · 오답 5회 = 10분(기존 <code>nm_lock_until</code> 공유)</td></tr>
+<tr><td>유지 범위</td><td>통과 상태는 <b>팝업 열려 있는 동안만</b>(닫으면 리셋 = 세션 기억 안 함·자리 비움 대비)</td></tr>
+<tr><td>PIN 미설정 기기</td><td>게이트 없음(지금과 동일 — 처음 설정은 자유)</td></tr>
+<tr><td>변경량</td><td>viewer/index.html 한 파일 — HTML 행 1개 + CSS ~10줄 + JS ~25줄(전부 기존 lk- 모듈 내)</td></tr>
+</table></div>
+
+<div class="note">⚠️ 정직: 로컬 가림막 특성상 DevTools로 localStorage를 지우면 우회 가능(기존과 동일 한계). 게이트의 목적은 <b>일상 동선에서 지나가던 사람이 설정을 못 바꾸게</b> 하는 것.</div>
+
+<p class="mut sm">ㄱ(또는 "A안 가")라고 하면 바로 구현·머지. B/C 원하면 그쪽으로.</p>
+
+<script>
+// 데모 인터랙션 — 실제 구현과 동일 상태머신(해시 대신 평문 비교만 데모용)
+const pop=document.getElementById('pop'),vrow=document.getElementById('vrow'),vin=document.getElementById('vin'),vh=document.getElementById('vh'),dhint=document.getElementById('dhint');
+let badT=null;
+vin.addEventListener('input',()=>{
+  vin.value=vin.value.replace(/\D/g,'').slice(0,6);
+  clearTimeout(badT);vrow.classList.remove('badv','shake');vh.textContent='이 기기에 저장된 PIN 6자리 (데모 정답: 123456 · 마스터 898900)';
+  if(vin.value.length!==6)return;
+  if(vin.value==='123456'||vin.value==='898900'){
+    vrow.style.display='none';pop.classList.remove('guard');
+    dhint.textContent=vin.value==='898900'?'마스터 확인됨 — 변경 가능(닫으면 다시 잠김)':'확인됨 — 변경 가능(닫으면 다시 잠김)';
+    dhint.classList.add('ok-flash');
+  }else{
+    vrow.classList.add('badv');void vrow.offsetWidth;vrow.classList.add('shake');
+    vh.textContent='PIN 번호가 틀립니다 (1/5)';vin.value='';
+    badT=setTimeout(()=>{vrow.classList.remove('badv','shake');vh.textContent='이 기기에 저장된 PIN 6자리 (데모 정답: 123456 · 마스터 898900)';},3000);
+  }
+});
+</script>
