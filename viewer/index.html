@@ -2215,14 +2215,15 @@
   .pin-fs { position:relative; margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
   .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
-  .pub-slots { display:flex; gap:16px; padding:6px 2px 4px; }   /* PIN 슬롯 = 방금 입력 자리만 숫자+형광 노출·나머지 * 마스킹(화면잠금 .lk-slot peek 계승·운영자 260703) */
-  .pub-slot { width:16px; height:24px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) */
-  .pub-slot::before { content:''; grid-area:1/1; width:9px; height:9px; border-radius:50%; background:var(--mut); transition:background .15s; }   /* 미입력 = mut 동그라미(숫자 잉크 세로중심 정렬·운영자 260703 복구) */
-  .pub-slot.on::before { background:var(--fg); }   /* 입력됨(마지막 아님) = 흰 동그라미 */
-  .pub-slot.cur::before { content:none; }   /* 방금 입력 자리 = 원 숨기고 숫자 노출 */
-  .pub-slots.bad .pub-slot::before { background:var(--danger); }
-  .pub-slots.bad .pub-slot.cur { color:var(--danger); }   /* 숫자 외 입력 = 붉게 */
-  .pub-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(.lk-slots.shake 계승) */
+  /* ── PIN 슬롯 공통 정본(§🎨 CII·분신술10 만장일치 260703) — 방금 자리만 숫자+형광·나머지 동그라미 마스킹 · gap/pad %=사이즈무관 비율(flex % = 컨테이너 content-box 기준 닮음변환) · .pub-slot/.lk-slot/.pin-cell 별칭 계승 · 입력·보안·상태머신은 각 어댑터(뷰/컨트롤러 분리) ── */
+  .pin-slots, .pub-slots { display:flex; justify-content:center; gap:5%; padding:6px 4.5% 4px; }
+  .pin-slot, .pub-slot { width:16px; height:24px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) */
+  .pin-slot::before, .pub-slot::before { content:''; grid-area:1/1; width:56%; aspect-ratio:1; border-radius:50%; background:var(--mut); transition:background .15s; }   /* 미입력 = mut 동그라미(슬롯 56% 상대·place-items center 세로중심 자동·* 편심 없음) */
+  .pin-slot.on::before, .pub-slot.on::before { background:var(--fg); }   /* 입력됨(이전) = 흰 동그라미 */
+  .pin-slot.cur::before, .pub-slot.cur::before { content:none; }   /* 방금 입력 = 원 숨기고 숫자 노출 */
+  .pin-slots.bad .pin-slot::before, .pub-slots.bad .pub-slot::before { background:var(--danger); }
+  .pin-slots.bad .pin-slot.cur, .pub-slots.bad .pub-slot.cur { color:var(--danger); }   /* 숫자 외 = 붉게 */
+  .pin-slots.shake, .pub-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(lkShake 단일) */
   .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; }   /* 투명 오버레이 = 탭 시 OS 숫자키패드 · 값은 슬롯이 시각화(16px=iOS 확대 방지) */
   .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
@@ -8440,17 +8441,18 @@ $('#pubVis').addEventListener('click', () => {
 });
 // ── 발행 PIN = 슬롯 6칸(입력자리 숫자 노출·미입력 점) + 2단 입력(1차 설정→2차 확인) · 화면잠금 .lk-slot 계승(마스킹 없음·운영자 260703) ──
 let _pubStage = 1, _pubPin1 = '', _pubPinOK = false;
-function renderPubSlots() {
-  const v = ($('#pubPin') && $('#pubPin').value) || '';
-  const sl = $('#pubSlots') ? $('#pubSlots').children : [];
-  const last = v.length - 1;   // 방금 입력한(마지막) 자리 = 숫자+형광, 이전 입력분은 * 마스킹(흰)·미입력 = * mut
+// 공통 PIN 슬롯 렌더(§🎨 정본·분신술10 260703) — 방금 자리만 숫자·나머지 동그라미. reveal='last'(방금 노출·발행/조회 운영자 260703) / 'none'(완전마스킹). 입력·상태머신은 각 어댑터가 value만 넘김(뷰/컨트롤러 분리 = pub/lk/pin-cell 공유).
+function renderPinSlots(slotsEl, value, opts) {
+  const v = value || '', sl = slotsEl ? slotsEl.children : [], last = v.length - 1;
+  const reveal = (opts && opts.reveal) || 'last';
   for (let i = 0; i < sl.length; i++) {
-    const cur = (i === last && last >= 0);
-    sl[i].classList.toggle('cur', cur);                  // 방금 입력 = 숫자 형광
-    sl[i].classList.toggle('on', i < v.length && !cur);  // 입력됨(이전) = * 흰색
-    sl[i].textContent = cur ? v[i] : '';                 // 마지막만 숫자, 나머지는 ::before '*'
+    const cur = (reveal === 'last' && i === last && last >= 0);   // 방금 입력 = 숫자 형광
+    sl[i].classList.toggle('cur', cur);
+    sl[i].classList.toggle('on', i < v.length && !cur);           // 입력됨(이전) = 흰 동그라미
+    sl[i].textContent = cur ? v[i] : '';
   }
 }
+function renderPubSlots() { renderPinSlots($('#pubSlots'), ($('#pubPin') && $('#pubPin').value) || ''); }   // 발행 어댑터 = wrapper(호출부·2단 상태머신 유지)
 function pubPinBad() { const s = $('#pubSlots'); if (!s) return; s.classList.remove('shake'); void s.offsetWidth; s.classList.add('bad', 'shake'); setTimeout(() => s.classList.remove('bad', 'shake'), 480); }
 function pubPinReset() { _pubStage = 1; _pubPin1 = ''; _pubPinOK = false; if ($('#pubPin')) $('#pubPin').value = ''; const lg = $('#pubPinLeg'); if (lg) lg.textContent = '잠금 설정 (PIN)'; renderPubSlots(); }
 if ($('#pubPin')) $('#pubPin').addEventListener('input', () => {
