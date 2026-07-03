@@ -322,13 +322,6 @@
   .yb.me i.yn { color:rgba(255,255,255,.82); }
   .yb.sys { align-self:center; background:none; border:none; color:var(--mut); font-size:var(--fs-sm); padding:2px 4px; }
   .yb.fail { align-self:flex-start; background:rgba(var(--danger-rgb),.08); border:1px solid rgba(var(--danger-rgb),.4); color:var(--danger); font-size:var(--fs-sm); }
-  .yfail-retry { display:block; margin-top:7px; padding:5px 12px; border:1px solid rgba(var(--danger-rgb),.5); border-radius:var(--r-pill); background:none; color:var(--danger); font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); cursor:pointer; }   /* 원탭 재시도(재타이핑 0) */
-  .yfail-retry:active { transform:scale(var(--press-m,.9)); }
-  /* 연속 메시지 그룹핑 — 직전과 같은 화자면 아바타·이름 생략(카톡/제타 톡방 결 · 운영자 260703) */
-  .ymsg.cont { margin-top:-6px; }   /* .yeta-log gap 10 상쇄 = 바짝 붙임 */
-  .ymsg.cont .yava { visibility:hidden; }
-  .ymsg.cont .yname { display:none; }
-  .yb.me.cont { margin-top:-6px; }
   .yb-cap { display:block; margin-top:5px; font-size:var(--fs-xs); color:var(--mut); opacity:.8; font-variant-numeric:tabular-nums; font-style:normal; }   /* 다이얼 체감 캡션(모델·노력·초 = tabular) */
   /* 타이핑 = 캐릭터 버블(카톡·제타 결 — 아바타+이름+점 3개 바운스 버블 · 운영자 260703 "입력하는 게 자연스럽게·오래 걸려도 입력 중 느낌 확실히") */
   .ymsg.ytyp .yb.ai { padding:13px 16px; }
@@ -8473,12 +8466,6 @@ $('#yetaPick').addEventListener('click', async e => {
   if (r && r.ok) { YSESS = r.sess; yApply(c); yRender(); }
 });
 yetadlg.addEventListener('click', e => { const pk = $('#yetaPick'); if (!pk.hidden && !pk.contains(e.target) && !$('#yetaWho').contains(e.target)) yPickToggle(false); });   // 바깥 탭 = 닫힘
-$('#yetaLog').addEventListener('click', async e => {   // 원탭 재시도(재타이핑 0 · retry op = 기존 pending 유저 턴 재발사)
-  if (!e.target.closest('.yfail-retry')) return;
-  const r = await yApi('retry').catch(() => null);
-  if (r && r.ok) { yStartPoll(); yLoad(); }
-  else { miniToast((r && r.error) || '재시도 실패 — 잠시 후 다시'); }
-});
 async function yLoad() {
   if (!yetadlg.open) return;
   const r = await yApi('get').catch(() => null);
@@ -8490,10 +8477,10 @@ async function yLoad() {
   if (c && (!YCUR || YCUR.id !== c.id)) yApply(c);
   yRender();
 }
-function yAiMsg(t, fresh, cont) {   // 캐릭터 메시지 = 아바타 + 이름 + 버블(+다이얼 캡션) · fresh=신규만 촤르륵 · cont=직전과 같은 화자(아바타·이름 생략 = 톡방 그룹핑)
+function yAiMsg(t, fresh) {   // 캐릭터 메시지 = 아바타 + 이름 + 버블(+다이얼 캡션 = 곱 체감) · fresh=신규만 촤르륵(.in)
   const p = yPersona(t.persona) || YCUR || {};
   const cap = t.model ? `<span class="yb-cap">${esc(yLabel(t.model, t.effort))}${t.gen_s ? '·' + t.gen_s + 's' : ''}</span>` : '';
-  return `<div class="ymsg${fresh ? ' in' : ''}${cont ? ' cont' : ''}"><span class="yava"${p.color ? ` style="color:${esc(p.color)}"` : ''}>${esc(p.initial || (p.name || '?')[0])}</span><span class="ycol"><span class="yname">${esc(p.name || '')}</span><div class="yb ai">${yFmt(t.text)}${cap}</div></span></div>`;
+  return `<div class="ymsg${fresh ? ' in' : ''}"><span class="yava"${p.color ? ` style="color:${esc(p.color)}"` : ''}>${esc(p.initial || (p.name || '?')[0])}</span><span class="ycol"><span class="yname">${esc(p.name || '')}</span><div class="yb ai">${yFmt(t.text)}${cap}</div></span></div>`;
 }
 let _yLastN = -1, _yTypOn = false, _yFailOn = false;   // 촤르륵 키드 상태 — 신규 노드만 .in(폴 재렌더 재트리거 방지 · 운영자 "채팅방 모션 그대로 유지")
 function yTypingHtml(fresh) {   // 타이핑 = 캐릭터 버블(점 3개 바운스 · 카톡/제타 결) — 등장만 촤르륵, 이후 재렌더는 무애니 유지
@@ -8516,10 +8503,9 @@ function yRender() {
   if (!turns.length && YCUR) h += yAiMsg({ text: YCUR.greeting || '왔네.', persona: YCUR.id });   // 첫인사 — 서버 draw가 greeting 턴을 박기 전(레이스)이나 미설정 세션의 임시 표시(정상 경로는 서버 턴)
   h += turns.map((t, i) => {
     const fresh = !first && i >= prevN;   // 신규 턴만 촤르륵
-    const pv = turns[i - 1];              // 직전 턴 = 같은 화자면 그룹핑(cont)
-    if (t.role === 'user') return `<div class="yb me${fresh ? ' in' : ''}${pv && pv.role === 'user' ? ' cont' : ''}">${yFmt(t.text)}</div>`;
-    if (t.role === 'assistant') return yAiMsg(t, fresh, pv && pv.role === 'assistant' && (pv.persona || '') === (t.persona || ''));
-    return `<div class="yb sys${fresh ? ' in' : ''}">${esc(t.text)}</div>`;   // sys = 페르소나 합류 등(그룹 끊음)
+    if (t.role === 'user') return `<div class="yb me${fresh ? ' in' : ''}">${yFmt(t.text)}</div>`;
+    if (t.role === 'assistant') return yAiMsg(t, fresh);
+    return `<div class="yb sys${fresh ? ' in' : ''}">${esc(t.text)}</div>`;   // sys = 페르소나 합류 등
   }).join('');
   _yLastN = turns.length;
   const awaiting = !!(s.state === 'awaiting');   // 판정 = state(클록스큐 함정 회피 · 평의회③)
@@ -8528,7 +8514,7 @@ function yRender() {
   const failMsg = s.state === 'error' ? `답장을 못 만들었어 — 다시 보내면 재시도야. (${(s.err || '').slice(0, 80)})`
     : (awaiting && waitMs > zlim ? '답장이 너무 늦네 — 러너가 밀렸거나 실패한 듯. 다시 보내면 재시도야.' : '');
   const typing = !failMsg && awaiting && !!YCUR;
-  if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}<button type="button" class="yfail-retry" aria-label="다시 보내기">다시 보내기</button></div>`;   // 원탭 재시도(재타이핑 0 · retry op)
+  if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}</div>`;
   else if (typing) h += yTypingHtml(!_yTypOn);
   _yFailOn = !!failMsg; _yTypOn = typing;
   yStage(yLastMood());   // 새 답장의 공기 → 배경 배리언트 크로스페이드(키 가드 = 같으면 no-op)
