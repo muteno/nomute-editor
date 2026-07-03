@@ -106,29 +106,21 @@ _FRAME_KO = ("every person in the scene is KOREAN and the setting is Korea — t
 # ⚠️ 하드 부정문("NOT Korea") 금지 — image_query_en은 '외신 검색 키'라 북한·한국팀 해외경기도 정당하게 채워짐
 #    → NOT Korea 강제 시 한반도 인물·한국 선수가 외국인으로 오염(실물 4/45건 · 검증9). 긍정문만.
 _FRAME_FOREIGN = "set in the event's actual country, region and people (this is a foreign-location news event)"
-def _frame(foreign, likeness=False):
-    # likeness(운영자 260703 "인물을 좀 더 닮게 — 극화·수채화") = 일러스트 계열만 공인 닮음 허용.
-    # photo(실사)는 계속 익명 — 실사 닮음 = 딥페이크 인접 리스크(일러스트 캐리커처 전통과 결이 다름).
-    tail = ("; public figures (politicians, senior officials) may be drawn clearly recognizable in the "
-            "illustrated-caricature tradition — private individuals, victims and minors stay anonymous "
-            "generic figures."
-            if likeness else "; depict roles, professions and situations with generic faces.")
+def _frame(foreign):
     return ("FRAME: vertical 4:5, the scene fills the entire frame edge to edge — every corner is part of the "
             "location, no empty margins or bands; one clear protagonist with a single sharp focal point (eyes, "
             "hands, or a key object), background and foreground filled naturally; "
-            + (_FRAME_FOREIGN if foreign else _FRAME_KO) + tail)
+            + (_FRAME_FOREIGN if foreign else _FRAME_KO)
+            + "; depict roles, professions and situations with generic faces.")
 
 # 금지 = AVOID 1줄 응집(옛 GOVERNING·화풍·COMPOSITION·NO_TITLE에 흩어졌던 금지 11절 → 이미지 모델 부정문
 # 프라이밍 최소화·정보 손실 0). 글자 = 오버레이 전면금지 + 읽히는 한글 금지(깨짐 방지) 그대로 계승.
-def _avoid(likeness=False):
-    person = ("photorealistic likeness of real individuals (stylized illustration likeness of public figures "
-              "is allowed); private individuals, victims and minors as anonymous figures"
-              if likeness else "identifiable real individuals")
-    return ("AVOID: blank/white/black bands, letterbox or borders; watermark or logo; overlay text, captions, "
-            "headlines or legible lettering (tiny blurred incidental signage only — readable Korean text "
-            "renders broken); " + person + "; sexualized or gratuitous depiction; any harm involving minors; "
-            "graphic gore close-ups or a weapon aimed at the viewer (keep the dramatic tension, not shock).")
-AVOID = _avoid(False)   # 하위호환(빌드 상수 참조처 보존)
+AVOID = (
+    "AVOID: blank/white/black bands, letterbox or borders; watermark or logo; overlay text, captions, headlines "
+    "or legible lettering (tiny blurred incidental signage only — readable Korean text renders broken); "
+    "identifiable real individuals; sexualized or gratuitous depiction; any harm involving minors; "
+    "graphic gore close-ups or a weapon aimed at the viewer (keep the dramatic tension, not shock)."
+)
 
 # ── 라이브러리(apps/k/library) 코드 → Gemini 키워드 조회 (P1·운영자 260621) ──
 # analyze가 사건 보고 고른 thumb_dispatch 코드(AG 앵글·LGT 조명·SG 연출)를 *실제 라이브러리 TSV*에서 조회해
@@ -255,14 +247,6 @@ def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", 
     if wish:
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
     lines.append("CAMERA: " + cam_default)
-    # 해부학·구도 마무리(5인 아이데이션 260703 — 실물 10장 오류율 20%·전 오류가 "한 인물 두 동작"에서 발생):
-    # 1인물 1동작·어깨 연결 고정(과장은 자유)·전면 2인 상한+군중 실루엣·은유는 사물·스케일·배치가 나름(긍정문만).
-    lines.append("CAST & POSE: each figure performs exactly ONE simple action (standing, sitting, holding, "
-                 "pointing, bowing); every figure has exactly two arms, each growing from its shoulder — every "
-                 "hand belongs to a visible arm (exaggerate proportions freely, but keep limb attachment "
-                 "sound, with the confident draughtsmanship of a veteran newspaper cartoonist); at most TWO "
-                 "fully-drawn foreground figures — further crowds only as small background silhouettes; let "
-                 "OBJECTS, SCALE and PLACEMENT carry the metaphor, not complex body action.")
     lines.append(_cartoon_frame(foreign))
     lines.append(CARTOON_TEXT_RULES)   # 만평 전용 — 일반 AVOID 대신(글자·공인 허용 + 안전 하한 · 운영자 260703)
     if wish:
@@ -274,7 +258,7 @@ _LIGHT_MOD = {"webtoon": "pushed to harder dramatic contrast",
               "watercolor": "softened into gentle translucent washes"}
 
 def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotion="", foreign=False,
-                 cam_lock=False, light_mod="", likeness=False, subject=""):
+                 cam_lock=False, light_mod=""):
     """v2(260703 분신술⑨) — 라벨+개행 구획(카드 cards.md 검증 문법 이식) · 고정문 영어·SCENE 한국어.
     옛 v1 = 1,300~1,500자 한 줄 " ".join(사건 정보 7~8%·금지 11절·카메라 자기모순 6/6본) → 구조 교체.
     카메라 = dispatch(AG/DF) 있으면 그쪽이 정본, 없으면 화풍 기본(cam_default 폴백) = 모순 제거.
@@ -316,11 +300,8 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
         lines.append("EXPRESSION & ACTION: " + b["expression"])
     if wish:
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
-    if likeness and subject:
-        # 닮음은 이름이 있어야 성립(장면 텍스트는 "40대 남성 정치인" 식 익명 — 한줄요약으로 주체 명시 · 운영자 260703).
-        lines.append("SUBJECT (who this scene is about — draw the public figure recognizably): " + subject)
-    lines.append(_frame(foreign, likeness))
-    lines.append(_avoid(likeness))
+    lines.append(_frame(foreign))
+    lines.append(AVOID)
     if wish:
         lines.append("SAFETY OVERRIDE: the AVOID line above takes precedence over any extra direction.")
     return "\n".join(lines)
@@ -865,12 +846,10 @@ def process_one(md, stem):
                                               hook=extras.get("hook", ""), lead=lead, wish=redo_wish,
                                               foreign=extras.get("foreign", False))
             else:
-                like = sid in ("webtoon", "watercolor")   # 일러스트 계열 = 공인 닮음 허용(운영자 260703 · photo=익명 유지)
                 prompt = build_prompt(look, cam_default, thumb_scene or iq or lead, dispatch, redo_wish,
                                       hook=extras.get("hook", ""), emotion=extras.get("emotion", ""),
                                       foreign=extras.get("foreign", False),
-                                      cam_lock=(sid == "watercolor"), light_mod=_LIGHT_MOD.get(sid, ""),
-                                      likeness=like, subject=(lead if like else ""))
+                                      cam_lock=(sid == "watercolor"), light_mod=_LIGHT_MOD.get(sid, ""))
             prompts_rec[sid] = prompt
             png = gemini_image(prompt, "1K")
             # 품질 게이트(TH-06 · 기본 OFF = THUMB_GATE=1 점화 시만 · §📰 카나리아 절차: OFF 머지→단건 실측→승격) —
