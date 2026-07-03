@@ -22,26 +22,28 @@ KEY = os.environ.get("OPENAI_API_KEY", "")
 MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2")   # 운영자 지정 · 실제 ID 다르면 env로 교체(gpt-image-1 등)
 API = "https://api.openai.com/v1/images/generations"
 
-# 공통 스타일 — 프로필 아바타(정사각 1:1·얼굴중심 클로즈업·무음동 야간 톤·실존인물 닮기 금지 안전가드).
-BASE = ("Cinematic semi-realistic character portrait, perfectly square 1:1 composition, "
+# 공통 스타일 — 한국 웹툰(manhwa) 프로필 초상(정사각 1:1·얼굴중심·미남미녀·키·글래머러스 존재감·착장 유지 안전가드).
+BASE = ("Korean webtoon-style character profile portrait, polished digital manhwa illustration, "
+        "clean lineart with soft cel shading, perfectly square 1:1, "
         "face-centered head-and-shoulders close-up (the face fills the frame), "
-        "one single fictional original Korean character, NOT resembling any real or famous person, "
-        "set in the moody night-lit back-alley atmosphere of a quiet Seoul neighborhood, "
-        "soft low-key lighting, shallow depth of field, subtle film grain, gentle color grade, "
-        "no text, no caption, no watermark, no logo, tasteful and safe. Character — ")
+        "one single original fictional character, very good-looking and attractive, "
+        "tall with an elegant glamorous striking presence, refined proportions, flawless skin, "
+        "set in the moody night-lit back-alley mood of a quiet Seoul neighborhood, "
+        "soft cinematic lighting, gentle color grade, fully clothed and tasteful, "
+        "no text, no caption, no watermark, no logo. Character — ")
 
-# 캐릭터 10인 초상(카드 성격·배경·나이대 반영 · '어울리는 하나씩')
+# 캐릭터 10인 초상(카드 성격·배경 반영 · 미남미녀·매력 각인 · '어울리는 하나씩')
 FACES = [
-    ("desk",  "a sharp-eyed man in his 40s, veteran newsroom editor-in-chief, thin-rimmed glasses, tired but piercing gaze, faint stubble, muted grey shirt, cold newsroom monitor glow on his face."),
-    ("kopi",  "a witty man in his early 30s, freelance copywriter, tousled hair, playful slightly cynical half-smile, cozy oversized knit, warm teahouse lamplight."),
-    ("mudi",  "a gentle man in his late 40s, teahouse owner, calm reassuring smile, soft kind eyes, linen apron collar, warm amber pendant light."),
-    ("sera",  "a prickly young woman in her late teens, idol trainee, one earphone in, cool aloof guarded expression, sporty hoodie, cold fluorescent basement-studio light."),
-    ("haeun", "a warm woman in her early 30s, high-school Korean-literature teacher, easy teasing smile, neat blouse slightly loosened, soft evening street glow."),
-    ("gaeul", "a confident woman in her 30s, merchants'-association leader, poised proud composed expression, tailored coat collar, shopfront neon reflection."),
-    ("baek",  "a stoic man in his 40s, quiet former-special-forces bodyguard, square jaw, expressionless watchful eyes, black suit collar, deep dramatic shadow."),
-    ("ryu",   "a laid-back man in his 40s, kendo master, light stubble, nonchalant sleepy half-lidded gaze, dark hair loosely tied back, cool moonlight."),
-    ("von",   "a disciplined man in his 40s, boxing-gym owner, short cropped hair, intense composed expression, strong athletic build, cool blue pre-dawn light."),
-    ("yun",   "a mellow man in his 30s, late-night radio DJ, headphones resting around his neck, soft introspective expression, dim red ON-AIR glow."),
+    ("desk",  "a strikingly handsome man in his early 40s, veteran newsroom editor-in-chief, sharp intelligent eyes behind thin-rimmed glasses, cool composed expression, sleek dark hair, faint stubble, crisp muted shirt, confident sharp jawline."),
+    ("kopi",  "a charming handsome man in his early 30s, freelance copywriter, playful witty half-smile, stylishly tousled hair, warm expressive eyes, cozy oversized knit, effortlessly cool vibe."),
+    ("mudi",  "a warm handsome man in his late 30s, teahouse owner, gentle reassuring smile, soft kind eyes, calm mature charisma, tidy linen apron over a fitted shirt."),
+    ("sera",  "a beautiful young woman in her late teens, idol trainee, chic aloof guarded expression, sleek ponytail with one earphone in, delicate striking features, trendy sporty outfit."),
+    ("haeun", "a beautiful elegant woman in her early 30s, high-school Korean-literature teacher, warm teasing smile, soft wavy hair, graceful refined features, neat stylish blouse."),
+    ("gaeul", "a gorgeous confident woman in her 30s, merchants'-association leader, poised proud gaze, glamorous polished look, sleek hair, tailored elegant coat."),
+    ("baek",  "an extremely handsome man in his early 40s, tall broad-shouldered quiet bodyguard, chiseled jaw, intense watchful eyes, sharp black suit, cool dramatic shadow."),
+    ("ryu",   "a handsome charismatic man in his early 40s, laid-back kendo master, light stubble, alluring half-lidded gaze, dark hair loosely tied back, elegant traditional-modern attire."),
+    ("von",   "a handsome athletic man in his early 40s, disciplined boxing-gym owner, short cropped hair, strong composed features, fit muscular build, clean fitted jacket."),
+    ("yun",   "a handsome mellow man in his 30s, late-night radio DJ, soft introspective eyes, stylishly tousled hair, headphones resting around his neck, quiet magnetic charm."),
 ]
 
 
