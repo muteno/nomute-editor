@@ -311,6 +311,11 @@ ${extracted}"
   # 모델이 frontmatter 앞에 사족(인사·진행 멘트)을 붙이는 드리프트 방어 — 첫 '---' 줄부터만 저장
   out="$(printf '%s\n' "$out" | sed -n '/^---[[:space:]]*$/,$p')"
 
+  # 이중 여는 '---' 드리프트 방어(260703 실측 AKR20260703026800065) — 여는 '---' 직후의 잉여 '---'·빈 줄을 접는다.
+  #   모델이 '---\n\n---\ntitle:…'처럼 여는 표식을 두 번 뱉으면 첫 블록(gv·alt만)이 조기 폐합 →
+  #   진짜 frontmatter(title 등)가 본문行 → 뷰어 meta.title 공백 = 피드에 파일명 노출. 정상 출력(--- 다음 바로 key:)은 무변형.
+  out="$(printf '%s\n' "$out" | awk 'NR==1{print;next} !s && (/^---[[:space:]]*$/ || /^[[:space:]]*$/){next} {s=1;print}')"
+
   # 지침 버전 도장 — 첫 '---' 바로 뒤에 삽입(모델이 쓰는 게 아니라 스크립트가 박는다 = 정확).
   out="$(printf '%s\n' "$out" | awk -v v="$GVER" \
         '!done && /^---[[:space:]]*$/{print; print "guidelines_version: \"" v "\""; done=1; next} {print}')"
