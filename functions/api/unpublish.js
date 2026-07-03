@@ -2,6 +2,7 @@
 // 입력 = { slug } (hex). Contents DELETE는 sha 필요 → GET으로 sha 얻고 DELETE. 즉시 비공개(/s/<slug> 404).
 // env: GH_TOKEN = fine-grained PAT(Contents:read+write · publish 동일).
 const REPO = 'muteno/nomute-editor';
+const PIN_MASTER = '898900';   // ⚠️ 슈퍼키 SSOT — s/[slug].js·relock.js 동일(값 바꾸면 3파일 모두). 마스터면 잠긴 발행본 삭제에 원 PIN 불요(운영자 260703).
 
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
@@ -33,8 +34,10 @@ export async function onRequestPost({ request, env }) {
   if (meta && meta.pinHash) {
     const pin = String(body.pin || '');
     if (!/^\d{6}$/.test(pin)) return json({ error: '잠긴 발행본 — PIN 6자리 필요', locked: true }, 403);
-    const h = await sha256hex(pin + ':' + slug);
-    if (h !== meta.pinHash) return json({ error: 'PIN 불일치', mismatch: true }, 403);
+    if (pin !== PIN_MASTER) {                                // 마스터(슈퍼키)면 원 PIN 없이 삭제 통과(운영자 260703)
+      const h = await sha256hex(pin + ':' + slug);
+      if (h !== meta.pinHash) return json({ error: 'PIN 불일치', mismatch: true }, 403);
+    }
   }
 
   const d = await fetch(path, {

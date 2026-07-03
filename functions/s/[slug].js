@@ -7,6 +7,16 @@
 const REPO = 'muteno/nomute-editor';
 
 export async function onRequestGet({ params, request, env }) {
+  return serve(params, request, env, null);
+}
+// POST = 키패드 핀 제출 경로(운영자 260703 · "페이지 이동 시 핀 노출" 교정) — GET ?p=는 URL·주소창·히스토리에 핀이 남아
+// 성공 후에도 노출됐음 → 폼을 POST로 전환해 핀이 URL에 안 실림(응답 URL = /s/<slug> 클린). GET ?p=는 하위호환 유지.
+export async function onRequestPost({ params, request, env }) {
+  let pin = '';
+  try { const fd = await request.formData(); pin = String(fd.get('p') || ''); } catch {}
+  return serve(params, request, env, pin);
+}
+async function serve(params, request, env, postPin) {
   const slug = String(params.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);   // 시각프리픽스(base36)+hex+하이픈만(경로주입·확장자 차단 — /·. 불가)
   if (!slug) return page('링크가 올바르지 않습니다.', 404);
   if (!env.GH_TOKEN) return page('서버 설정 오류입니다.', 500);
@@ -22,12 +32,24 @@ export async function onRequestGet({ params, request, env }) {
   if (m.scope !== 'public') return page('비공개로 설정된 발행본입니다.', 403);
   if (m.exp && Date.now() > m.exp) return page('만료된 링크입니다. (발행 후 기간이 지났어요)', 410);
 
-  // 핀 잠금 — ?p=123456. 없거나 틀리면 입력 폼.
+  // 핀 잠금 — POST 폼(정식) 또는 ?p=123456(하위호환). 없거나 틀리면 입력 폼. 오류 5회 누적 = 10분 접속 잠금(운영자 260703).
+  // 카운터 = Cloudflare Cache API(colo 단위·TTL 600s) — KV 바인딩 없는 이 프로젝트의 무설정 서버측 상태.
+  // 같은 이용자는 같은 colo라 체감상 전역이지만 분산 IP·캐시 축출엔 fail-open(가용성 우선·완화 목적).
   if (m.pinHash) {
-    const pin = new URL(request.url).searchParams.get('p') || '';
-    if (!/^\d{6}$/.test(pin)) return pinForm(slug, false);
-    const h = await sha256hex(pin + ':' + slug);
-    if (h !== m.pinHash) return pinForm(slug, true);
+    const pin = postPin !== null ? postPin : (new URL(request.url).searchParams.get('p') || '');
+    if (pin === PIN_MASTER) {                                     // 마스터(슈퍼키) = 어떤 발행본이든 즉시 열람 통과(운영자 260703 만능키 승격 — 옛 '리셋만'에서 실제 열람으로)
+      await lockClear(slug);                                      // 오류 잠금 카운터 리셋하고 아래 문서 응답으로 통과
+    } else {
+      let fails = await lockGet(slug);
+      if (fails >= LOCK_MAX) return pinForm(slug, fails);
+      if (!/^\d{6}$/.test(pin)) return pinForm(slug, 0);
+      const h = await sha256hex(pin + ':' + slug);
+      if (h !== m.pinHash) {
+        fails += 1; await lockSet(slug, fails);
+        return pinForm(slug, fails);
+      }
+      await lockClear(slug);                                      // 성공 = 카운터 리셋
+    }
   }
 
   const cacheable = !m.pinHash;   // 핀 있으면 캐시 금지(응답 유출 방지) · 무핀만 짧은 엣지캐시 → 반복/프리뷰봇 히트를 CF가 흡수 = 공용 PAT DoS 완화(검증10 H1)
@@ -50,100 +72,165 @@ async function sha256hex(s) {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// 핀 오류 잠금 — 5회 누적 = 10분(운영자 260703). 카운터는 colo 캐시(키 = .invalid 가상 URL·실서빙 충돌 0).
+// 실패 시마다 TTL 갱신(슬라이딩) → 잠금은 마지막 오류로부터 10분. try/catch 전부 fail-open(잠금이 열람을 못 죽이게).
+const PIN_MASTER = '898900';   // ⚠️ 슈퍼키(만능키) SSOT — relock.js·unpublish.js에 동일 상수(값 바꾸면 3파일 모두 교체). 898900이면 열람·잠금해제·삭제 전부 원 PIN 없이 통과(운영자 260703). 코드 평문이라 레포 접근자에 노출 — 발행본은 가벼운 잠금이라 개인용 수용.
+const LOCK_MAX = 5, LOCK_TTL = 600;
+function lockKey(slug) { return 'https://pinlock.nomute.invalid/' + slug; }
+async function lockGet(slug) {
+  try { const r = await caches.default.match(lockKey(slug)); return r ? (parseInt(await r.text(), 10) || 0) : 0; } catch { return 0; }
+}
+async function lockSet(slug, n) {
+  try { await caches.default.put(lockKey(slug), new Response(String(n), { headers: { 'cache-control': `max-age=${LOCK_TTL}` } })); } catch {}
+}
+async function lockClear(slug) {
+  try { await caches.default.delete(lockKey(slug)); } catch {}
+}
+
 // 안내/에러 페이지 — 자기완결(외부 리소스0·다크). 본체 링크·API 노출 없음(우회 차단).
 // 색·반지름은 viewer/index.html :root 토큰을 그대로 인라인 복제(CSP가 외부 CSS 차단 → 링크 불가 · 기틀 계승).
 function shell(inner) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow"><title>노뮤트 발행본</title>
-<style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--r-modal:22px}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--line:rgba(255,255,255,.08);--r-modal:22px}
 html,body{margin:0;height:100%;background:#0b0d0c;color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .wrap{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}
 .card{max-width:360px;width:100%;text-align:center;background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,.98));border:1px solid rgba(255,255,255,.08);border-radius:var(--r-modal);padding:26px 22px}
 .card .m{font-size:15px;font-weight:800;color:var(--mut);letter-spacing:-.2px}
-.err{color:var(--danger);font-size:12px;margin-top:11px;font-weight:700}</style></head><body><div class="wrap"><div class="card">${inner}</div></div></body></html>`;
+.err{color:var(--danger);font-size:12px;margin-top:11px;font-weight:700;white-space:nowrap}</style></head><body><div class="wrap"><div class="card">${inner}</div></div></body></html>`;
 }
 function page(msg, status = 200) {
   return new Response(shell(`<div class="m">${esc(msg)}</div>`), {
     status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow' },
   });
 }
-// 핀 입력 폼 — 뷰어 기틀 계승: 입력칸(포커스 강조링)·글래스 강조 버튼(.mkbtn goFill 게이지 풀필→자물쇠 해제 모션).
-// PIN 마스킹(현재 입력한 숫자만 노출·나머지 •) + MUT색 눈 토글(전체 표시). CSP 헤더 없음 → 인라인 style/script 동작.
-function pinForm(slug, wrong) {
-  const inner = `<div class="m">PIN으로 잠긴 문서입니다.</div>
-<form id="f" method="get" action="/s/${slug}">
-  <div class="pinwrap">
-    <input id="pin" name="p" type="text" inputmode="numeric" pattern="\\d*" maxlength="6" placeholder="••••••" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
-    <button type="button" id="eye" class="eye" aria-label="PIN 표시">
-      <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-      <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7c2 0 3.7.6 5.2 1.5M22 12s-3.5 7-10 7c-2 0-3.7-.6-5.2-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/></svg>
-    </button>
-  </div>
-  <button type="submit" id="go" class="go">
-    <span class="go-t">열기</span>
-    <svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect class="lbody" x="5" y="11" width="14" height="10" rx="2.6"/><path class="lshackle" d="M8.2 11V8a3.8 3.8 0 0 1 7.6 0v3"/></svg>
-  </button>
-</form>${wrong ? '<div class="err">핀이 맞지 않아요</div>' : ''}
+// 핀 입력 폼 — PAYCO식 보안 키패드(방식 계승·운영자 260703). 6칸 슬롯(입력한 것만 강조색) + 자체 셔플 숫자 키패드(OS 키보드 X).
+// 키패드 셔플 = 2판제(운영자 260703 개정): 1~4자리 = 판A 고정 · 5~6자리 = 판B 고정(입력마다 재셔플 X — 위치 학습 가능해 오입력↓).
+//   백스페이스로 3자리 이하로 되돌아가면 판A로 복귀 = 자리수↔판 매핑이 항상 유지(어깨너머 완화는 2판 전환+매 로드 새 셔플로 확보).
+// 입력 순간 = 방금 누른 자리만 숫자 잠깐 노출(0.7s·다음 입력/검증 시 즉시 마스킹 — 폰 비번 관례·운영자 260703).
+//   마스킹 표식 = 명조(세리프) '*' 강조색(점보다 가시적·운영자 260703) · 슬롯은 균일 그리드 박스(숫자·별 기준선 통일 = 내려앉음 교정).
+// 6칸 채우면 *자동 검증*(별도 열기 버튼 X) → POST 제출로 서버 검증(핀이 URL·히스토리에 안 남음 — "이동 시 핀 노출" 교정·운영자 260703).
+//   성공 = 서버가 문서 HTML로 응답(페이지 교체 = 자동 오픈) / 실패 = 폼 재응답(fails>0) → 로드 시 슬롯 빨강+흔들림+처음부터(입력 빈 상태).
+//   빨강(슬롯·입력부만)은 3초 유지 후 처음 색으로 자동 복귀(입력 시작해도 즉시 복귀) — 잠금(locked) 문구는 상태라 유지(운영자 260703).
+//   notice(마스터 입력 시) = '비밀번호 초기화 완료' 안내(.info mut · 에러 아님 → 흔들림 없음).
+// 키패드 = 셀 사이 구분선(내부선만·--line) · 5~6자리(판B)는 키 전경색이 강조 틴트로 바뀜(판 전환 시각 표기) · 누름 순간 강조색 플래시(.hit·운영자 260703).
+// 카드 배경 제거(글자·슬롯·패드만 흑배경 위) · CSP 헤더 없음 → 인라인 style/script 동작.
+// ⚠️ 실제 PIN은 hidden input(name=p)로 POST 제출 = 서버 검증(클라 셔플은 표시용·검증 무관). 슬롯/키패드는 표시 UI라 pattern·novalidate 무관.
+// ※ 이 폼 = PIN 입력 UI 정본(범용 — 다른 화면에 이식 시 이 슬롯·2판 키패드·에러 상태머신 그대로 계승).
+function pinForm(slug, fails, notice) {
+  const locked = fails >= LOCK_MAX;
+  const msg = locked ? 'PIN 오류 5회 누적으로 10분 간 접속이 불가합니다'
+    : fails > 0 ? `PIN 번호가 틀립니다 (${fails}/${LOCK_MAX})` : '';
+  const info = notice ? esc(notice) : '';
+  const inner = `<div class="m">문서 PIN을 입력해주세요</div>
+<div class="slots" id="slots" aria-hidden="true">${'<span class="slot"></span>'.repeat(6)}</div>
+<div class="err" id="verr"${msg ? '' : ' hidden'}>${msg}</div><div class="info" id="vinfo"${info ? '' : ' hidden'}>${info}</div>
+<div class="pad" id="pad"></div>
+<form id="f" method="post" action="/s/${slug}" novalidate><input type="hidden" name="p" id="hid"></form>
 <style>
-.pinwrap{position:relative;margin-top:16px}
-#pin{width:100%;box-sizing:border-box;height:52px;padding:0 46px;text-align:center;font-size:20px;letter-spacing:10px;font-weight:800;font-family:inherit;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--fg);caret-color:var(--accent);outline:none;transition:border-color .18s ease,box-shadow .18s ease}
-#pin::placeholder{color:var(--mut);letter-spacing:8px}
-#pin:focus{border-color:rgba(var(--accent-rgb),.55);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14)}
-.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;padding:0;border:none;background:none;color:var(--mut);cursor:pointer;border-radius:9px;-webkit-tap-highlight-color:transparent}
-.eye:active{transform:translateY(-50%) scale(.85)}
-.eye svg{grid-area:1/1;width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.eye .off{display:none}
-.go{position:relative;display:block;width:100%;margin:12px 0 0;padding:14px;font-size:14px;font-weight:800;font-family:inherit;background:rgba(0,0,0,.34);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.36);border-radius:999px;cursor:pointer;overflow:hidden;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:transform .12s ease,background .15s ease,border-color .15s ease}
-.go:active{transform:scale(.955);background:rgba(0,0,0,.44)}
-.go .lock{display:none;width:26px;height:26px}
-.go.firing{color:var(--on-accent);pointer-events:none;background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat,linear-gradient(var(--accent-dim),var(--accent-dim));animation:goFill .72s linear forwards}
-@keyframes goFill{from{background-size:0% 100%,100% 100%}to{background-size:100% 100%,100% 100%}}
-.go.opening{background:var(--accent);color:var(--on-accent);border-color:var(--accent);display:grid;place-items:center}
-.go.opening .go-t{display:none}
-.go.opening .lock{display:block}
-.lock .lbody{fill:var(--on-accent);stroke:none}
-.lock .lshackle{fill:none;stroke:var(--on-accent);stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transform-origin:15.5px 9px;transition:transform .5s cubic-bezier(.2,.7,.3,1)}
-.go.unlocked .lshackle{transform:rotate(-32deg) translateY(-1px)}
-@media (prefers-reduced-motion:reduce){.go.firing{animation-duration:.2s}.lock .lshackle{transition-duration:.15s}}
+.card{background:none;border:none;padding:6px 4px}   /* 카드 패널(글자 뒤 배경) 제거 — 글자·슬롯·패드만 흑배경 위에(운영자 260703 · pinForm 한정 오버라이드·에러/안내 page()는 카드 유지) */
+.slots{display:flex;justify-content:center;gap:16px;margin:24px 0 2px}
+/* 슬롯 = 균일 그리드 박스(18×22 고정) — 빈 원(::before)·명조 별(*)·숫자픽이 전부 같은 박스 중앙 = 기준선 통일(내려앉음 교정·운영자 260703) */
+.slot{width:18px;height:22px;display:grid;place-items:center;font:400 20px/1 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}   /* 숫자픽 = 볼드 뺀 Pretendard 레귤러(뷰어 .lk-slot 동일·운영자 260703 — *는 모노 유지) */
+.slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);transition:border-color .15s ease}
+.slot.on{opacity:1}
+.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);transform:translateY(3px)}   /* 마스킹 * = 숫자와 같은 모노 폰트(운영자 260703) · translateY 3px = 숫자 잉크 세로중심 정렬(크로미엄 픽셀 실측 튜닝·뷰어 .lk-slot 동일값) */
+.slot.peek{opacity:1;transform:scale(1.12)}   /* 방금 입력한 자리 = 도형 대신 숫자 잠깐 노출(0.7s·운영자 260703) */
+.slot.peek::before{content:none}
+.slots.bad .slot::before{border-color:var(--danger)}
+.slots.bad .slot.on::before{color:var(--danger)}
+.slots.checking .slot.on{animation:slotPulse .8s ease infinite}
+@keyframes slotPulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes slotShake{0%,100%{transform:translateX(0)}12%{transform:translateX(-9px)}28%{transform:translateX(8px)}44%{transform:translateX(-6px)}60%{transform:translateX(4px)}76%{transform:translateX(-2px)}}
+.slots.shake{animation:slotShake .45s cubic-bezier(.36,.07,.19,.97)}
+.err{margin-top:15px;min-height:15px}
+.info{color:var(--mut);font-size:12.5px;margin-top:15px;font-weight:700;line-height:1.5}   /* 마스터 초기화 안내 = mut 회색(정보·에러 아님·운영자 260703) */
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:288px;margin:26px auto 0}
+.key{height:58px;display:grid;place-items:center;font-size:23px;font-weight:700;font-family:inherit;color:var(--fg);background:none;border:none;border-radius:0;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:background .12s ease,color .15s ease,transform .07s ease}
+.key:nth-child(3n+2),.key:nth-child(3n){border-left:1px solid var(--line)}   /* 셀 사이 구분선 = 내부선만(2·3열 좌측 + 2행부터 상단·운영자 260703) */
+.key:nth-child(n+4){border-top:1px solid var(--line)}
+.key:active{background:rgba(255,255,255,.09);transform:scale(.93)}
+.key.hit{background:rgba(var(--accent-rgb),.16);color:var(--accent)}   /* 누름 순간 강조색 플래시(짧은 탭에도 보이게 JS로 ~0.18s 유지·운영자 260703) */
+.key.back.hit svg{stroke:var(--accent)}
+.key.empty{pointer-events:none}   /* visibility:hidden이면 구분선까지 사라져 격자에 구멍 → 투명 셀로 유지(운영자 260703) */
+.key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s ease}
+.pad.b2 .key{color:rgba(var(--accent-rgb),.85)}   /* 5~6자리(판B) = 키 전경색 강조 틴트 → 배치 바뀜을 색으로 표기(운영자 260703) */
+.pad.b2 .key.back svg{stroke:rgba(var(--accent-rgb),.85)}
+.pad.off{pointer-events:none;opacity:.45;transition:opacity .2s ease}   /* 확인 중 = 패드 비활성 */
+@media (prefers-reduced-motion:reduce){.slots.shake{animation-duration:.01s}.slots.checking .slot.on{animation:none}.key:active{transform:none}}
 </style>
 <script>
 (function(){
-  var f=document.getElementById('f'),pin=document.getElementById('pin'),eye=document.getElementById('eye'),go=document.getElementById('go');
-  var real='',reveal=false;
-  pin.removeAttribute('name');                                   // 화면값=마스킹 → 제출 금지. 실제값은 hidden으로.
-  var hid=document.createElement('input');hid.type='hidden';hid.name='p';f.appendChild(hid);
-  function mask(){return real.length?Array(real.length).join('•')+real.slice(-1):'';}   // 마지막(방금 입력한) 숫자만 노출
-  function render(){hid.value=real;pin.value=reveal?real:mask();try{pin.setSelectionRange(pin.value.length,pin.value.length);}catch(e){}}
-  pin.addEventListener('beforeinput',function(e){
-    var t=e.inputType||'';
-    if(t==='insertText'||t==='insertFromPaste'||t==='insertCompositionText'){real=(real+((e.data||'').replace(/\\D/g,''))).slice(0,6);e.preventDefault();}
-    else if(t.indexOf('delete')===0){if(t==='deleteContentBackward'||t==='deleteContentForward'||t==='deleteByCut')real=real.slice(0,-1);else real='';e.preventDefault();}
-    else{e.preventDefault();}
-    render();
+  var f=document.getElementById('f'),hid=document.getElementById('hid'),pad=document.getElementById('pad'),
+      slots=document.getElementById('slots'),dots=slots.getElementsByClassName('slot'),verr=document.getElementById('verr');
+  var real='',fired=false,kds=null,peekT=null,badT=null,LOCKED=${locked ? 'true' : 'false'};
+  var BSVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
+  function mkOrder(){var o=[0,1,2,3,4,5,6,7,8,9];for(var i=9;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=o[i];o[i]=o[j];o[j]=t;}return o;}
+  var orderA=mkOrder(),orderB=mkOrder();                        // 2판제: 1~4자리=판A · 5~6자리=판B(입력 중 재셔플 X·백스페이스로 돌아가도 매핑 유지·운영자 260703)
+  function build(){                                              // 12칸 = 숫자 9 + 빈칸 + 숫자 1 + 지우기. 버튼 노드는 고정, 라벨만 셔플(누름 :active 유지·DOM 파괴 없음)
+    var h='';for(var i=0;i<9;i++)h+='<button type="button" class="key kd"></button>';
+    h+='<button type="button" class="key empty" tabindex="-1" aria-hidden="true"></button>';
+    h+='<button type="button" class="key kd"></button>';
+    h+='<button type="button" class="key back" data-back="1" aria-label="지우기">'+BSVG+'</button>';
+    pad.innerHTML=h;kds=pad.querySelectorAll('.kd');            // 10개 숫자 버튼(DOM 순서 = order 인덱스)
+  }
+  function applyOrder(){                                        // 자리수로 판 결정 = 지웠다 다시 쳐도 같은 판. 판B = .b2(키 전경색 틴트로 배치 전환 표기)
+    var b2=real.length>=4,o=b2?orderB:orderA;
+    pad.classList.toggle('b2',b2);
+    for(var i=0;i<10;i++){kds[i].textContent=o[i];kds[i].setAttribute('data-d',o[i]);}
+  }
+  function flash(el){                                           // 누름 순간 강조색 — :active만으론 짧은 탭에 안 보여 JS로 0.18s 유지(물리 키보드 입력도 해당 키 점등)
+    if(!el)return;
+    el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit');
+    clearTimeout(el._ht);el._ht=setTimeout(function(){el.classList.remove('hit');},180);
+  }
+  function fill(peek){                                          // peek=true → 방금 입력한 자리만 숫자 노출(0.7s 후·다음 입력 시 즉시 마스킹)
+    clearTimeout(peekT);
+    for(var i=0;i<6;i++){dots[i].className='slot'+(i<real.length?' on':'');dots[i].textContent='';}
+    if(peek&&real.length){var d=dots[real.length-1];d.className='slot peek';d.textContent=real.slice(-1);
+      peekT=setTimeout(function(){fill();},700);}
+  }
+  function unbad(){                                             // 입력 시작 = 빨강 즉시 복귀(3초 타이머보다 우선·잠금 문구는 유지)
+    clearTimeout(badT);slots.classList.remove('bad','shake');
+    if(!LOCKED&&verr&&!verr.hidden)verr.hidden=true;
+  }
+  function press(d){
+    if(fired||real.length>=6)return;
+    flash(pad.querySelector('.kd[data-d="'+d+'"]'));            // 클릭·물리키 공통 점등(호출부가 숫자만 보장)
+    unbad();real+=String(d);fill(true);
+    applyOrder();                                               // 4자리 채우는 순간 판B로 전환(그 전까진 판A 고정)
+    if(real.length===6)setTimeout(fire,340);
+  }
+  function back(){if(fired||!real.length)return;flash(pad.querySelector('.back'));unbad();real=real.slice(0,-1);fill();applyOrder();}
+  function fire(){                                              // 6칸 채움 → 확인 중 → 서버 검증(성공=문서 열림 / 실패=슬롯 빨강 흔들림 재응답)
+    if(fired||real.length!==6)return;
+    fired=true;clearTimeout(peekT);fill();                      // 검증 들어갈 땐 숫자픽 즉시 마스킹(노출 잔류 차단)
+    hid.value=real;slots.classList.add('checking');pad.classList.add('off');
+    setTimeout(function(){f.submit();},150);
+  }
+  pad.addEventListener('click',function(e){
+    var b=e.target.closest('.key');if(!b)return;
+    if(b.getAttribute('data-back')!==null)back();
+    else if(b.getAttribute('data-d')!==null)press(b.getAttribute('data-d'));
   });
-  pin.addEventListener('input',function(){                       // beforeinput 미지원 브라우저 폴백
-    if(pin.value===(reveal?real:mask()))return;
-    real=pin.value.replace(/\\D/g,'').slice(0,6);render();
+  document.addEventListener('keydown',function(e){             // 데스크톱 물리 키보드도 허용
+    if(fired)return;
+    if(e.key>='0'&&e.key<='9'){press(e.key);e.preventDefault();}
+    else if(e.key==='Backspace'){back();e.preventDefault();}
   });
-  eye.addEventListener('click',function(){
-    reveal=!reveal;
-    eye.querySelector('.on').style.display=reveal?'none':'';
-    eye.querySelector('.off').style.display=reveal?'':'none';
-    render();pin.focus();
-  });
-  f.addEventListener('submit',function(e){
-    e.preventDefault();
-    if(real.length!==6){pin.focus();if(go.animate)go.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:280});return;}
-    hid.value=real;go.classList.add('firing');
-    setTimeout(function(){go.classList.remove('firing');go.classList.add('opening');requestAnimationFrame(function(){go.classList.add('unlocked');});},720);
-    setTimeout(function(){f.submit();},1280);                    // 게이지(0.72s) → 자물쇠 해제(0.5s) 후 이동
-  });
-  pin.focus();
+  build();applyOrder();fill();
+  // 서버가 틀린 핀으로 이 폼을 재응답(verr 메시지) → 슬롯 빨강 + 흔들림(입력 빈 상태 = 처음부터). 마스터 안내(.info)는 정보라 흔들림 없음.
+  // 빨강은 3초 유지 후 처음 색으로 자동 복귀(입력부만·운영자 260703). 잠금(locked) 문구는 상태 표시라 유지(타이머 미적용).
+  if(!verr.hidden&&verr.textContent.trim()){
+    slots.classList.add('bad');void slots.offsetWidth;slots.classList.add('shake');
+    if(!LOCKED)badT=setTimeout(function(){slots.classList.remove('bad','shake');verr.hidden=true;},3000);
+  }
 })();
 </script>`;
   return new Response(shell(inner), {
-    status: wrong ? 401 : 200,
+    status: locked ? 429 : fails > 0 ? 401 : 200,
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow' },
   });
 }

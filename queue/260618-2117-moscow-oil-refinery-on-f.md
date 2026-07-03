@@ -1,6 +1,7 @@
 ---
 guidelines_version: "eee4b100e5a1"
 title: "Moscow oil refinery on fire after Ukraine drone strikes"
+title_ko: "우크라이나 드론 공습에 모스크바 정유공장 화재"
 url: "https://www.theguardian.com/world/2026/jun/18/moscow-oil-refinery-on-fire-ukraine-drone-stikes"
 date: "2026-06-18"
 time: ""

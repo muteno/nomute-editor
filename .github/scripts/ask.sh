@@ -7,7 +7,8 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
-MODEL="claude-opus-4-8"
+source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
+MODEL="$PIPE_MODEL"
 
 # 지침 SSOT 강제 주입(analyze와 동일 summary 세트) — 출력 포맷·품질기준 일치, GVER 도장.
 source "$ROOT/shared/inject_guidelines.sh"
@@ -128,8 +129,10 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
     echo "실패 → asks/failed/${base}"; echo "::endgroup::"; continue
   fi
 
-  # frontmatter 앞 사족 제거 + 지침버전 도장(스크립트가 박음) — analyze와 동일.
+  # frontmatter 앞 사족 제거 + 이중 여는 '---' 접기 + 지침버전 도장(스크립트가 박음) — analyze와 동일.
+  #   (이중 --- = 모델이 여는 표식 두 번 뱉으면 첫 블록 조기 폐합 → title 본문行 → 피드 파일명 노출 · 260703 실측 가드)
   out="$(printf '%s\n' "$out" | sed -n '/^---[[:space:]]*$/,$p')"
+  out="$(printf '%s\n' "$out" | awk 'NR==1{print;next} !s && (/^---[[:space:]]*$/ || /^[[:space:]]*$/){next} {s=1;print}')"
   out="$(printf '%s\n' "$out" | awk -v v="$GVER" '!d && /^---[[:space:]]*$/{print; print "guidelines_version: \"" v "\""; d=1; next} {print}')"
   # 뷰어 '이미지' 토글 OFF → queue frontmatter에 no_thumb: "1" 주입 → thumb_gen이 제미나이 썸네일 skip(검색 og:image는 항상·운영자 260702)
   if [ -n "$nothumb" ]; then
@@ -142,7 +145,8 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
-  echo "${title:-$id}" >> /tmp/analyzed_titles.txt
+  title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(완료 푸시 우선 · analyze.sh 미러 · 260703)
+  echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   echo "성공 → $outfile (${title:-$id})"
   echo "::endgroup::"
