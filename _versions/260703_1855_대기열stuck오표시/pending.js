@@ -1,15 +1,12 @@
 // Cloudflare Pages Function — 뷰어 '대기열' 상태판(읽기 전용 · 파이프라인 0 변경).
 // 흐름(CLAUDE.md §뉴스 큐 · docs/news-pipeline.md §대기열): 폰공유/픽 → pending/<YYMMDD-HHMMSS-rand>.txt
 //   → news-analyze → 성공 시 queue/<YYMMDD-HHMM-id>.md 생성 + pending 삭제 / 실패 시 pending/failed/(+.log).
-// ∴ 상태 = pending 잔류(처리중 / stuck-FAIL) · pending/failed(FAIL+로그) · queue 최근(SUCC).
-// GET → { items:[{ id, t(epochMs·KST), title, via, src, status:'processing'|'retry'|'fail'|'succ', tries?, alt1?, diag? }], now } 최신 먼저.
+// ∴ 상태 = pending 잔류(처리중<20m / stuck-FAIL≥20m) · pending/failed(FAIL+로그) · queue 최근(SUCC).
+// GET → { items:[{ id, t(epochMs·KST), title, via, src, status:'processing'|'retry'|'fail'|'succ', tries?, diag? }], now } 최신 먼저.
 //   retry = analyze.sh 가 API 일시 과부하(5xx/Overloaded) 시 남긴 pending/<base>.retry 마커 = 자동 재시도 대기(FAIL 아님 · 260622).
-//   alt1 = 픽 경로 '# alt:' 첫 url(=메이저 — pickAlt/auto_pick 이 breaking_pick 을 맨 앞에 둠) → 뷰어 ↗ 원문 링크가
-//     대표 url(최초보도=흔히 통신사·속보 스텁, 본문 한 줄)로 튀던 것 교정(수집함 카드 scLinkUrl 과 동일 정책 · 운영자 260703).
-// env: GH_TOKEN(contents:read + actions:read — push/thumb·pick 과 동일 PAT[Actions: Read and write]).
+// env: GH_TOKEN(contents:read · push/thumb와 동일 PAT).
 const REPO = 'muteno/nomute-editor';
-const STUCK_MIN = 20;            // pending 잔류 이 분 이상 + analyze 런 비활성 = FAIL(stuck) 표시(운영자 260619 · 활성런 예외 260703)
-const ACTIVE_STUCK_MIN = 90;     // analyze 런이 살아 있어도 이 분 이상 잔류 = FAIL(방어 상한 — 직렬 배치 최악 대기 초과)
+const STUCK_MIN = 20;            // pending 잔류 이 분 이상 = FAIL(stuck) 표시(운영자 260619)
 const RECENT_MS = 24 * 3600e3;  // failed/queue 최근 창(24h — 폰 밤샘 실패도 대기열에 잔존·표면화, 운영자 260620 분신술)
 const CAP_PEND = 25, CAP_FAIL = 12, CAP_QUEUE = 20;
 
@@ -35,24 +32,6 @@ export async function onRequestGet({ env }) {
       return r.ok ? await r.text() : '';
     } catch { return ''; }
   };
-  // ── news-analyze 활성(진행/대기) 여부 — 직렬 배치(Opus 분석 1건 ~8~14분 × N건 · concurrency 직렬)라
-  //   pending 이 20분+ 잔류해도 런이 살아 있으면 '대기 중'이지 실패가 아니다(260703 실측: 52분 대기 →
-  //   가짜 FAIL 표시·Failed(3)·재시도 헛발. 실제 분석 실패 0건). pending-sweep.yml 의 active 게이트
-  //   (in_progress/queued 런 수)와 동일 판정 = 파이프라인과 한 정의. status 필터+per_page=1 → total_count 만
-  //   읽음(payload 최소). 조회 실패 = null(판단불가) → 기존 20분 stuck 보수 유지(오탐>미탐 안전측).
-  const analyzeActive = async () => {
-    try {
-      const cnt = async (st) => {
-        const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/news-analyze.yml/runs?status=${st}&per_page=1`, { headers: H });
-        if (!r.ok) return null;
-        const j = await r.json();
-        return (j && Number.isFinite(j.total_count)) ? j.total_count : null;
-      };
-      const [a, b] = await Promise.all([cnt('in_progress'), cnt('queued')]);
-      if (a === null && b === null) return null;
-      return ((a || 0) + (b || 0)) > 0;
-    } catch { return null; }
-  };
 
   const items = [];
 
@@ -64,25 +43,20 @@ export async function onRequestGet({ env }) {
   const pend = pdir
     .filter(f => f && f.type === 'file' && /\.txt$/i.test(f.name))
     .sort((a, b) => b.name.localeCompare(a.name)).slice(0, CAP_PEND);
-  // stuck 오판 방지 게이트: STUCK_MIN 넘은 비-retry 후보가 하나라도 있을 때만 analyze 활성 조회(평상시 API 호출 0).
-  const oldPend = pend.some(f => { const t = fnameTime(f.name, 6); return !!t && (now - t) / 60000 >= STUCK_MIN && !retryBase.has(f.name.replace(/\.txt$/i, '')); });
-  const active = oldPend ? await analyzeActive() : null;   // true=런 활성(대기=정상) / false=비활성(진짜 고아) / null=판단불가(보수)
   await Promise.all(pend.map(async f => {
     const base = f.name.replace(/\.txt$/i, '');
     const t = fnameTime(f.name, 6);
-    const { line1, body, title, alt1 } = parseTxt(await raw('pending/' + encodeURIComponent(f.name)));
+    const { line1, body, title } = parseTxt(await raw('pending/' + encodeURIComponent(f.name)));
     const paste = line1.startsWith('paste:');
     const ageMin = t ? (now - t) / 60000 : 0;
     const retry = retryBase.has(base);
     let rmark = null;
     if (retry) { try { rmark = JSON.parse(await raw('pending/' + encodeURIComponent(base) + '.retry') || '{}'); } catch {} }
-    // 런 활성이면 상한을 ACTIVE_STUCK_MIN 으로 완화(직렬 배치 대기 = 처리중) · 비활성/판단불가면 기존 STUCK_MIN(sweep 가 ≤20분 내 재디스패치).
-    const stuck = !retry && !!t && ageMin >= (active === true ? ACTIVE_STUCK_MIN : STUCK_MIN);   // 재시도 중이면 stuck-FAIL 로 안 봄(자가치유 정상상태)
+    const stuck = !retry && !!t && ageMin >= STUCK_MIN;   // 재시도 중이면 stuck-FAIL 로 안 봄(자가치유 정상상태)
     items.push({
       id: base, t, status: retry ? 'retry' : (stuck ? 'fail' : 'processing'),
       via: paste ? '전문' : 'URL', src: paste ? '' : prettyUrl(line1),
       key: paste ? '' : normU(line1),   // 후보 url 매칭키(뷰어 cross-device 픽 표시 · paste는 url無→매칭 제외)
-      alt1: paste ? '' : normU(alt1),   // ↗ 원문 링크용 메이저 url(있으면 대표 url 대신 — 속보 스텁 회피 · 260703)
       tries: retry ? ((rmark && rmark.attempts) || 0) : 0,   // 뷰어 '재시도 N' 칩
       title: bodyTitle(body, paste, line1, title),
       diag: retry ? { kind: 'retry', attempts: (rmark && rmark.attempts) || 0, error: (rmark && rmark.error) || '', last: (rmark && rmark.last) || '', line1, hasBody: !!body }
@@ -98,13 +72,12 @@ export async function onRequestGet({ env }) {
     .sort((a, b) => b.t - a.t).slice(0, CAP_FAIL);
   await Promise.all(failed.map(async ({ f, t }) => {
     const base = f.name.replace(/\.txt$/i, '');
-    const { line1, body, title, alt1 } = parseTxt(await raw('pending/failed/' + encodeURIComponent(f.name)));
+    const { line1, body, title } = parseTxt(await raw('pending/failed/' + encodeURIComponent(f.name)));
     const log = await raw('pending/failed/' + encodeURIComponent(base) + '.log');
     const paste = line1.startsWith('paste:');
     items.push({
       id: base, t, status: 'fail', via: paste ? '전문' : 'URL', src: paste ? '' : prettyUrl(line1),
       key: paste ? '' : normU(line1),   // 후보 url 매칭키(cross-device Failed 표시)
-      alt1: paste ? '' : normU(alt1),   // ↗ 원문 링크용 메이저 url(속보 스텁 회피 · 260703)
       title: bodyTitle(body, paste, line1, title),
       diag: { kind: 'failed', line1, hasBody: !!body, bodyHead: body.slice(0, 400), log: (log || '').slice(0, 2500) },
     });
@@ -185,9 +158,7 @@ function parseTxt(txt) {   // 폰공유: LINE1\n# body:\nBODY / 픽(pick_pending
   const bi = txt.indexOf('\n# body:');
   const head = bi >= 0 ? txt.slice(0, bi) : txt;
   const tm = head.match(/^# title:[ \t]*([^\r\n]+)/m);   // 픽 경로 헤드라인 — 값은 한 줄만(빈 title일 때 다음 줄 오캡처 차단)
-  const am = head.match(/^# alt:[ \t]*([^\r\n]+)/m);     // 픽 경로 대체 fetch 후보(공백구분) — 첫 항목 = 메이저(breaking_pick 맨 앞 · pickAlt/auto_pick 공통)
-  const alt1 = am ? ((am[1].trim().split(/\s+/)[0]) || '') : '';
-  return { line1: head.split('\n')[0].trim(), body: bi >= 0 ? txt.slice(bi + 8).trim() : '', title: tm ? tm[1].trim() : '', alt1: /^https?:\/\//i.test(alt1) ? alt1 : '' };
+  return { line1: head.split('\n')[0].trim(), body: bi >= 0 ? txt.slice(bi + 8).trim() : '', title: tm ? tm[1].trim() : '' };
 }
 function bodyTitle(body, paste, line1, title) {
   const t = ((title || '').trim() || (body ? body.replace(/\s+/g, ' ').trim() : '')).slice(0, 90);

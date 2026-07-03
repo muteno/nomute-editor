@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>대기열 가짜 실패 · 속보 스텁 링크 — 근본 해결 (260703)</title>
+<style>
+  :root { --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --accent:#0FFD02; --danger:#ff5b4a; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7; --line:rgba(255,255,255,.09); --pan:rgba(255,255,255,.04); }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:28px 18px 60px; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; line-height:1.65; max-width:760px; margin-inline:auto; }
+  h1 { font-size:21px; line-height:1.4; margin:0 0 6px; }
+  h2 { font-size:16px; margin:34px 0 10px; color:var(--accent); }
+  h3 { font-size:14px; margin:20px 0 8px; }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:24px; }
+  .pan { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin:12px 0; }
+  .bad { border-color:rgba(255,91,74,.35); }
+  .good { border-color:rgba(15,253,2,.25); }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:700; font-size:12px; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:99px; font-size:11px; font-weight:800; }
+  .t-red { background:rgba(255,91,74,.14); color:var(--danger); }
+  .t-grn { background:rgba(15,253,2,.12); color:var(--accent); }
+  .t-amb { background:rgba(255,150,20,.14); color:var(--amber); }
+  code { background:rgba(255,255,255,.07); padding:1px 6px; border-radius:6px; font-size:12px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .tl { list-style:none; padding:0; margin:8px 0; font-size:13px; }
+  .tl li { padding:6px 0 6px 18px; border-left:2px solid var(--line); margin-left:8px; position:relative; }
+  .tl li::before { content:''; position:absolute; left:-5px; top:14px; width:8px; height:8px; border-radius:50%; background:var(--mut); }
+  .tl li.ok::before { background:var(--accent); }
+  .tl li.fake::before { background:var(--danger); }
+  .scrollx { overflow-x:auto; }
+  .kv { color:var(--mut); font-size:12px; }
+  .big { font-size:15px; font-weight:800; }
+</style>
+</head>
+<body>
+<h1>대기열 '계속 실패' + 머니투데이 속보 링크 — 원인 추적·근본 해결</h1>
+<div class="sub">260703 · 대상 = 뷰어 대기열 상태판(<code>functions/api/pending.js</code>) + 뷰어 픽 상태머신(<code>viewer/index.html</code>)</div>
+
+<h2>한 줄 결론</h2>
+<div class="pan good">
+  <span class="big">실제 분석 실패는 0건이었다.</span><br>
+  ① '실패·Failed(3)'는 <b>직렬 배치 대기(52분)를 20분 기준으로 실패라 오판한 표시 버그</b>,
+  ② 머니투데이 링크는 <b>대기열 ↗만 아직 '클러스터 최초보도 URL'(=속보 스텁)을 쓰고 있던 잔재</b>다. 둘 다 고쳤다.
+</div>
+
+<h2>그날 실제로 일어난 일 (GitHub Actions + 메트릭 실측)</h2>
+<ul class="tl">
+  <li class="ok"><b>17:42</b> 다른 기사 픽 → 분석 런 A 시작 (news-analyze는 한 줄로 서서 1건씩 처리 · 1건당 8~14분)</li>
+  <li class="ok"><b>17:43</b> '달 착륙선' 픽 → 런 A 뒤에 줄 섬</li>
+  <li class="fake"><b>18:03~</b> 20분 경과 → 대기열이 '실패'로 표시 (실제로는 그냥 줄 서서 대기 중)</li>
+  <li class="fake"><b>~18:40</b> 운영자 재시도 2탭 → Failed(3). 재시도는 이미 대기 중이라 중복 차단(no-op) — 헛발</li>
+  <li class="ok"><b>18:35 / 18:44</b> 두 기사 모두 <b>분석 성공</b> (rc=0 · 요약 품질 정상 — 메이저 알트 소스로 본문 확보)</li>
+</ul>
+<div class="kv">근거: metrics/usage 260703 전건 rc=0 · 런 28649142493(17:42→18:23) → 28650704820(18:23→18:45) 연속 활성 · 17:43 푸시의 런은 GitHub 대기열 교체 규칙으로 취소됐지만 다음 런이 남은 건 전부 처리(설계대로).</div>
+
+<h2>원인 2가지</h2>
+<table>
+  <tr><th>증상</th><th>원인</th><th>성격</th></tr>
+  <tr>
+    <td>'실패' 표시 · Failed(3)</td>
+    <td><code>api/pending</code>의 <code>STUCK_MIN=20</code> — pending 20분+ 잔류면 <b>런이 살아 있어도</b> 무조건 실패 표시. 픽 2건이 몰리면 직렬 배치 특성상 30~50분 대기가 정상인데 이를 실패로 분류</td>
+    <td><span class="tag t-red">표시 버그</span></td>
+  </tr>
+  <tr>
+    <td>대기열 ↗ = 머니투데이 속보 스텁 (본문 "3일 경남 진주시." 한 줄)</td>
+    <td>픽의 정본 키 = 클러스터 <b>최초보도</b> URL(속보가 빠른 통신사·머니투데이류). 수집함 카드 링크는 260622에 '메이저 우선'으로 고쳤지만 <b>대기열 ↗만 옛 키를 그대로 사용</b></td>
+    <td><span class="tag t-amb">일관성 누락</span></td>
+  </tr>
+</table>
+
+<h2>고친 것 (전/후)</h2>
+<div class="scrollx"><table>
+  <tr><th>지점</th><th>전</th><th>후</th></tr>
+  <tr>
+    <td>stuck(실패) 판정<br><span class="kv">api/pending</span></td>
+    <td>pending 20분+ 잔류 = 무조건 '실패'</td>
+    <td>분석 런이 <b>진행/대기 중이면 '처리중' 유지</b>(방어 상한 90분). 런이 없을 때만 20분 실패(진짜 고아 — sweep이 20분 내 자동 재발사)</td>
+  </tr>
+  <tr>
+    <td>클라 10분 타임아웃<br><span class="kv">viewer pickTimedOut</span></td>
+    <td>서버가 '처리중'이라 해도 10분 지나면 FAIL 표시</td>
+    <td>서버 진실원본(processing/retry) 우선 — 대기 중엔 Picking 유지</td>
+  </tr>
+  <tr>
+    <td>대기열 ↗ 원문 링크</td>
+    <td>클러스터 최초보도 URL(속보 스텁 위험)</td>
+    <td><b>메이저 URL 우선</b>(<code># alt:</code> 첫 항목 = breaking_pick) — 수집함 카드와 동일 정책. 폰공유(alt 없음)는 기존 그대로</td>
+  </tr>
+</table></div>
+
+<h2>장단점 · 리스크</h2>
+<table>
+  <tr><th></th><th>내용</th></tr>
+  <tr><td><span class="tag t-grn">장점</span></td><td>가짜 실패·헛 재시도 근절(대기=대기로 보임) · 진짜 실패 신호(런 죽음·분석 실패 격리)는 그대로 살아 있음 · 대기열/수집함 링크 목적지 통일</td></tr>
+  <tr><td><span class="tag t-amb">비용</span></td><td>GitHub API 조회 2콜 추가 — 단 <b>20분+ 잔류 건이 있을 때만</b> 조회(평상시 0콜) · per_page=1로 응답 최소</td></tr>
+  <tr><td><span class="tag t-red">품질저하 리스크</span></td><td>진짜 장애가 '런은 활성인데 안 끝나는' 형태면 실패 표시가 최대 90분까지 늦어질 수 있음 → 방어 상한 90분 + 분석 실패 시 failed/ 격리·웹푸시(기존 경로)가 즉시 알림이라 커버. 조회 실패 시엔 기존 20분 기준으로 보수 폴백</td></tr>
+  <tr><td><span class="tag t-amb">안 고친 것(의도)</span></td><td>직렬 배치 자체(픽 몰리면 수십 분 소요)는 파이프라인 기틀(concurrency 직렬·쿼터 보호)이라 유지 — 이제 '오래 걸림'이 실패로 안 보이는 게 핵심</td></tr>
+</table>
+
+<h2>검증</h2>
+<div class="pan">
+  <b>10인 적대 평의회</b>(READ-ONLY·각기 다른 앵글: 메커니즘·GitHub API·상태머신·링크 경로·성능·보안·엣지케이스·다운스트림·회귀·총괄) 만장일치 ✅ 후 머지.
+  <code>check_refs</code> 통과(rc=0) · <code>node --check</code> 구문 통과 · 머지 후 <code>git show origin/main</code> read-back 실측.
+</div>
+</body>
+</html>

@@ -5963,7 +5963,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(메이저·api/pending이 '# alt:' 첫 url) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('go-green')) qGo(it.id); else if (it.key) failOpen({ url: it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
@@ -6265,7 +6265,7 @@ const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
 const PICK_TIMEOUT_MS = 10 * 60000;
-const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; const _ps = pendStatus(c); if (!r.picked || _ps === 'retry' || _ps === 'processing' || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)·processing(서버 진실원본 = pending 잔류·직렬 배치 대기 중)이면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622 · 직렬 배치 52분 대기가 Failed(3)로 오표시되던 것 차단 260703 — 진짜 실패는 서버 stuck[런 비활성 20분]/picks-failed 가 알림)
+const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; if (!r.picked || pendStatus(c) === 'retry' || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 // 실패 재시도 횟수(누적) — Failed(N) 표시 · 재시도(대기열 재투입)할 때마다 +1 (운영자 260701)
 const FAILRETRY_KEY = 'nm_fail_retries';
