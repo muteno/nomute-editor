@@ -910,8 +910,10 @@ def process_one(md, stem):
                 prompt = ("REFERENCE FACE: the attached photo is the REAL face of the public figure this "
                           "story is about. Redraw THAT exact person — same face, hairstyle and build, "
                           "clearly recognizable as the same individual — in the illustration style described "
-                          "below. (If the attached person is a private individual, a victim, or a minor, "
-                          "ignore this and keep them an anonymous generic figure.)\n" + prompt)
+                          "below. (If the attached photo shows no single clear human face — a building, chart, "
+                          "crowd or object — ignore it entirely and just follow the scene below. If the person "
+                          "is a private individual, a victim, or a minor, ignore this and keep them an "
+                          "anonymous generic figure.)\n" + prompt)
             prompts_rec[sid] = prompt
             png = gemini_image(prompt, "1K", ref_png=use_ref)
             # 품질 게이트(TH-06 · 기본 OFF = THUMB_GATE=1 점화 시만 · §📰 카나리아 절차: OFF 머지→단건 실측→승격) —
