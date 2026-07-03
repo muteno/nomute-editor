@@ -988,19 +988,18 @@
   /* S(개정·AB) 하단 네비 = 4안(중앙 FAB) + 네온바 인디케이터 + 글래스(투명도↑) */
   .bnav { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-nav); display:flex; justify-content:space-around; align-items:flex-end;
     padding:0 8px calc(7px + env(safe-area-inset-bottom));
-    background:linear-gradient(0deg, rgba(12,13,15,.55), rgba(18,19,22,.42));
-    backdrop-filter:blur(var(--blur-l)) saturate(1.35); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);   /* 글래스모피즘 복원(운영자 260703 "글래스 최대한 살려·가시성 확보됨") — 260701에 스크롤 jank로 뺐던 backdrop blur 재도입(옛 26px raw→--blur-l 22px 토큰·index 글래스 정합). ⚠️ position:fixed 고정바라 스크롤 시 미세 렉 가능 = 폰 실측서 거슬리면 --blur-m(14px)로 낮춤. */
-    border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
+    background:linear-gradient(0deg, rgba(12,13,15,.97), rgba(18,19,22,.94));   /* 무채색 다크(초록 틴트 rgba(8,15,11)→중립 · 운영자 260703). ⚡버퍼 260701(A7·"블러 죽여버리셈"): 하단 고정바 backdrop-filter blur(26px) 제거 — position:fixed라 콘텐츠 스크롤마다 26px 가우시안 재샘플하던 jank 1순위. 불투명 배경(.97/.94)으로 대체 = 블러 없이도 바 선명·솔리드 다크. */
+    border-top:1px solid rgba(255,255,255,.09); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
     padding:11px 4px 6px; background:none; border:none; color:var(--mut); font:inherit; font-size:10.5px; font-weight:700;
     letter-spacing:-.2px; cursor:pointer; text-decoration:none; }   /* color transition 제거 = 탭 누르자마자 색 즉시 전환(운영자 260621) */
   .bnav-i svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; transition:transform var(--dur); }
   .bnav-i::before { content:''; position:absolute; top:0; left:50%; width:30px; height:3.5px; border-radius:0 0 4px 4px;
-    background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.55), 0 0 16px rgba(var(--accent-rgb),.3);   /* 강조색 활성 인디케이터 = 활성 탭 점등 포인트(운영자 260703 "강조색은 +픽토그램·활성표시부만" · 무채색 맹맹→강조색 재적용) */
+    background:var(--fg); box-shadow:0 0 8px rgba(255,255,255,.4), 0 0 16px rgba(255,255,255,.18);   /* 무채색 활성 인디케이터(초록 네온 제거·운영자 260703) */
     transform:translateX(-50%) scaleX(0); transition:transform .25s cubic-bezier(.22,.61,.36,1); }
-  .bnav-i.active { color:var(--accent); }   /* 강조색 활성 = 점등 포인트(운영자 260703 · 활성 탭 하나만 강조색 = 딱 포인트, 옛날 전체 초록 쏠림 아님) */
+  .bnav-i.active { color:var(--fg); }   /* 무채색 활성(초록→흰색·운영자 260703) */
   .bnav-i.active::before { transform:translateX(-50%) scaleX(1); }
-  .bnav-i.active svg { filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),.5)); }
+  .bnav-i.active svg { filter:drop-shadow(0 0 5px rgba(255,255,255,.32)); }
   .bnav-i:active svg { transform:scale(var(--press-m,.9)); }
   /* 대기열 발견성 배지 = 피드버튼 우상단 처리중 건수(숨은 롱프레스 의존 제거·탭=열림·운영자 260620) */
   .bnav-i .qbadge { position:absolute; top:-1px; left:50%; transform:translateX(4px); min-width:16px; height:16px;
@@ -1009,10 +1008,9 @@
     box-shadow:0 0 8px rgba(15,253,2,.5); cursor:pointer; z-index:2; }
   .bnav-i .qbadge[hidden] { display:none; }
   .bnav-fab { flex:none; width:52px; height:52px; margin:0 6px 16px; border-radius:50%; border:none; cursor:pointer;
-    background:linear-gradient(155deg, rgba(58,61,68,.5), rgba(36,38,43,.58)); color:var(--accent); display:grid; place-items:center;
-    backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);   /* 반투명 글래스 원 = 네비바 글래스 흐름에 녹아듦(운영자 260703 "가운데 원 너무 안 투명해 흐름 끊김") · 무채색 반투명 + 픽토그램만 강조색 = + 포인트 */
-    box-shadow:0 8px 22px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25); transition:transform .12s; text-decoration:none; }
-  .bnav-fab svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 4px rgba(var(--accent-rgb),.42)); transition:transform .3s var(--ease); }   /* +가 강조색으로 회전(ic-spin 위임 모션·line 8273) = 누름 액티브 효과 = 강조색 +가 빙글 → × */
+    background:linear-gradient(155deg, rgba(48,50,55,.96), rgba(31,33,37,.98)); color:var(--fg); display:grid; place-items:center;   /* 무채색 다크 원(초록 제거·운영자 260703) — 배경바보다 밝게 + inset 하이라이트로 입체 */
+    box-shadow:0 8px 22px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22); transition:transform .12s; text-decoration:none; }
+  .bnav-fab svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; stroke-linejoin:round; transition:transform .3s var(--ease); }
   .bnav-fab:active { transform:scale(var(--press-m,.92)); }
   .bnav-fab.open { box-shadow:0 8px 22px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 4px rgba(255,255,255,.14); }   /* + 메뉴 열림 = 무채색 링(초록 제거·운영자 260703) */
   .bnav-fab.open svg { transform:rotate(135deg); }   /* + → × */
