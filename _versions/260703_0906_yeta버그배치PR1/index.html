@@ -8109,7 +8109,7 @@ let YCHARS = [], YCUR = null, YREADY = false, YSESS = null, _yetaPop = false, _y
 let YDIAL = { model: 'claude-opus-4-8', effort: 'low' };   // 기본 = 진심×번개(30초 컷 · 아이데이션①)
 try { const _yd = JSON.parse(localStorage.getItem('nomute_yeta_dial') || 'null'); if (_yd && _yd.model) YDIAL = _yd; } catch {}
 const Y_MODELS = [['claude-sonnet-5', '가볍게'], ['claude-opus-4-8', '진심']];
-const Y_EFFS = [['low', '번개'], ['medium', '보통'], ['max', '깊게']];   // '보통'=medium(옛 ''=CLI기본 high라 오히려 최저속 = 라벨 배신 교정)
+const Y_EFFS = [['low', '번개'], ['', '보통'], ['max', '깊게']];
 const yApi = (op, extra) => fetch('api/yeta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op, ...(extra || {}) }) }).then(r => r.json());
 const yFmt = t => esc(t).replace(/\*([^*\n]{1,200}?)\*/g, '<i class="yn">$1</i>');   // *지문* → 이탤릭(제타 대화 폰트 결)
 const yPersona = id => YCHARS.find(x => x.id === id);
@@ -8141,7 +8141,7 @@ async function yDraw() {   // 랜덤 뽑기/재뽑기 — 맥락 유지·화자 
   if (!YCHARS.length) return;
   const pool = YCHARS.filter(c => !YCUR || c.id !== YCUR.id);
   const c = pool[Math.floor(Math.random() * pool.length)] || YCHARS[0];
-  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '' }).catch(() => null);
   if (!r || !r.ok) { $('#yetaLog').insertAdjacentHTML('beforeend', `<div class="yb fail">${esc((r && r.error) || '뽑기 실패 — 다시 눌러줘')}</div>`); return; }
   YSESS = r.sess; yApply(c); yRender();
 }
@@ -8199,7 +8199,7 @@ $('#yetaPick').addEventListener('click', async e => {
   yPickToggle(false);
   const c = yPersona(b.dataset.id);
   if (!c || (YCUR && YCUR.id === c.id)) return;
-  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '' }).catch(() => null);
   if (r && r.ok) { YSESS = r.sess; yApply(c); yRender(); }
 });
 yetadlg.addEventListener('click', e => { const pk = $('#yetaPick'); if (!pk.hidden && !pk.contains(e.target) && !$('#yetaWho').contains(e.target)) yPickToggle(false); });   // 바깥 탭 = 닫힘
@@ -8237,7 +8237,7 @@ function yRender() {
   $('#yetaIn').hidden = false; $('#yetaDials').hidden = false; $('#yetaReset').hidden = false;
   const prevN = _yLastN, first = prevN < 0;   // 첫 렌더(재진입 포함) = 전체 무애니(히스토리 우르르 방지)
   let h = '';
-  if (!turns.length && YCUR) h += yAiMsg({ text: YCUR.greeting || '왔네.', persona: YCUR.id });   // 첫인사 — 서버 draw가 greeting 턴을 박기 전(레이스)이나 미설정 세션의 임시 표시(정상 경로는 서버 턴)
+  if (!turns.length && YCUR) h += yAiMsg({ text: YCUR.greeting || '왔네.', persona: YCUR.id });   // 첫인사(표시 전용 · roster SSOT)
   h += turns.map((t, i) => {
     const fresh = !first && i >= prevN;   // 신규 턴만 촤르륵
     if (t.role === 'user') return `<div class="yb me${fresh ? ' in' : ''}">${yFmt(t.text)}</div>`;
