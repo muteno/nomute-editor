@@ -2243,6 +2243,7 @@
   .qpop .pub-ico:active { transform:scale(var(--press-xs,.82)); }   /* 작은 아이콘 tier = --press-xs(.82) */
   .qpop .pub-share { color:var(--accent); }   /* 상시 의미색(운영자 260703 확정 — rest 무채 폐지·플레이트 시절 톤 유지) */
   .qpop .pub-rm { color:var(--danger); }      /* 삭제 = 상시 빨강(동일 확정) — 발행본·메시지함 공용(qpop 스코프) */
+  .qpop .pub-rm svg { width:16px; height:16px; }   /* 휴지통 = 뚜껑+통이 꽉 찬 형태라 공유(18)와 같은 박스여도 커 보임 → 16으로 시각 균형(운영자 260704 '다른 곳보다 큼') */
   .qpop .pub-ico.ok { color:var(--accent); }   /* 공유 폴백 복사 성공 ✓ 플래시 */
   .qpop .pub-ico:disabled { color:var(--mut); opacity:.4; cursor:default; }
   .qpop .pub-ico:disabled::before { display:none; } .qpop .pub-ico:disabled:active { transform:none; }
@@ -5312,6 +5313,7 @@ function msgDismiss(id) { if (!id) return; const s = msgDismissed(); s.add(Strin
 const MSG_READ_KEY = 'nomute_msg_read';
 function msgReadSet() { try { return new Set(JSON.parse(localStorage.getItem(MSG_READ_KEY) || '[]')); } catch { return new Set(); } }
 function msgMarkAllRead() { const dis = msgDismissed(), read = msgReadSet(); allMsgs().forEach(m => { if (m.id && !dis.has(String(m.id))) read.add(String(m.id)); }); try { localStorage.setItem(MSG_READ_KEY, JSON.stringify([...read])); } catch {} }
+function unreadCount() { const dis = msgDismissed(), read = msgReadSet(); return allMsgs().filter(m => m.id && !dis.has(String(m.id)) && !read.has(String(m.id))).length; }   // 안 읽은 메시지 수(프로필 클릭 시 메뉴→메시지함 촤르륵 판정 · 운영자 260704)
 function msgKind(m) {   // 알림구분 라벨(운영자 260704 '알림구분' 열) — 종류별 색
   if (m._health) return { t: '시스템', c: 'mk-sys' };
   if (m.level === 'warn' || String(m.id || '').startsWith('fail-')) return { t: '경고', c: 'mk-warn' };
@@ -5343,6 +5345,7 @@ function renderMsgList() {
 }
 // 메시지함 열고(필요시) 특정 메시지로 스크롤·강조 — 푸시 알림 탭(/?msg=<id>) 진입점.
 function openMsgbox(highlightId) {
+  hidePmenu();   // 프로필 메뉴 닫음(촤르륵 접힘 · 메시지함 뒤에 안 남음 · 다음 프로필 클릭 정상 토글 · 운영자 260704)
   closeOverlays('msg'); renderMsgList(); pushRefresh(); placeMsgpop(); msgpop.hidden = false;
   msgMarkAllRead(); renderMsgBadge();   // 메시지함 열면 = 읽음 → 배지·링 제거(운영자 260704)
   if (highlightId) requestAnimationFrame(() => {
@@ -5434,11 +5437,16 @@ function closeOverlays(keep) {
   if (keep !== 'merge' && MERGE_MODE) exitMerge();   // 병합모드도 정리(다른 화면전환 시 잔존·z누수 차단·분신술4) — exitMerge가 pushState 칸도 회수
   closeFailMenu();   // Failed 칩 컨텍스트 메뉴도 같이 닫음(겹침 방지 — 자기 자신은 직후 다시 표시)
 }
+let _menuToMsg = null;
 $('#profile').addEventListener('click', e => {
   e.stopPropagation();
-  // 프로필 탭 = 항상 프로필 메뉴(운영자 260704: 메시지 자동팝업 폐지 — 메시지함은 메뉴 안 '메시지' 버튼으로 진입 · '프로필 메뉴 진입 불가' 버그 해결)
+  // 프로필 탭 = 프로필 메뉴 먼저(운영자 260704). 안 읽은 메시지 있으면 메뉴 촤르륵 뜬 뒤 이어서 메시지함으로 차례로 도달(340ms = popIn .16s 본 뒤 전환) · 없으면 메뉴만.
   const willOpen = pmenu.hidden || pmenu.classList.contains('closing');
-  closeOverlays('pmenu'); if (willOpen) { showPmenu(); pushRefresh(); } else { hidePmenu(); }
+  closeOverlays('pmenu'); clearTimeout(_menuToMsg);
+  if (willOpen) {
+    showPmenu(); pushRefresh();
+    if (unreadCount() > 0) _menuToMsg = setTimeout(() => { if (!pmenu.hidden && !pmenu.classList.contains('closing')) openMsgbox(); }, 340);
+  } else { hidePmenu(); }
 });
 document.addEventListener('click', e => {
   if (!msgpop.hidden && !msgpop.contains(e.target) && !$('#profile').contains(e.target)) msgpop.hidden = true;
