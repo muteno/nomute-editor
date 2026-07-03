@@ -3,7 +3,7 @@
 SessionStart(startup·resume·compact 직후) = 항상 주입 → 긴 세션·컨텍스트 압축에도 계약 생존.
 UserPromptSubmit(--if-ui-prompt) = UI 어휘 감지 턴에만 리마인더(컨텍스트 절약).
 토큰 어휘는 viewer/index.html :root에서 라이브 추출 = 절대 안 낡음(inject_guidelines.sh 철학: 읽으라 하지 말고 떠먹인다)."""
-import os, re, sys, json
+import os, re, sys, json, subprocess
 
 root = os.environ.get('CLAUDE_PROJECT_DIR') or os.getcwd()
 
@@ -21,6 +21,14 @@ if '--if-ui-prompt' in sys.argv:
           'viewer/index.html :root var() 토큰 사용, 컴포넌트는 docs/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승, '
           '버튼 패턴은 구성도/00_가이드북_버튼인터랙션.html. 규칙 전문 = CLAUDE.md §🎨 + nomute-design 스킬.')
     sys.exit(0)
+
+# pre-commit 자동 활성화(셋업 제로·멱등) — git이 repo 내 훅을 자동 활성화 안 하므로 여기서 처리(운영자 260703)
+try:
+    if os.path.isdir(os.path.join(root, '.githooks')):
+        subprocess.run(['git', '-C', root, 'config', 'core.hooksPath', '.githooks'],
+                       capture_output=True, timeout=5)
+except Exception:
+    pass
 
 toks = []
 try:
