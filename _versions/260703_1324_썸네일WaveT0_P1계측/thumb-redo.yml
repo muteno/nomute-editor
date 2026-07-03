@@ -16,10 +16,6 @@ on:
         description: '재생성 지시(자연어·선택). 프롬프트에 얹어 반영. 비우면 기존 프롬프트로 재추첨.'
         required: false
         default: ''
-      gate:
-        description: '품질 게이트 카나리아(1=THUMB_GATE 점화 — 단색 밴드 검출 시 1회 재생성 · 기본 꺼짐 · §📰 카나리아 절차)'
-        required: false
-        default: ''
 
 permissions:
   contents: write
@@ -49,11 +45,8 @@ jobs:
           ARTICLE: ${{ inputs.article }}
           SID: ${{ inputs.sid }}
           WISH: ${{ inputs.wish }}
-          THUMB_GATE: ${{ inputs.gate }}
         run: |
           [ -n "${GEMINI_API_KEY}" ] || { echo "GEMINI_API_KEY 미설정 — 생략"; exit 0; }
-          # Pillow = 로고필터(_is_logo_card)·게이트(_band_fail) 픽셀 판독용 — 없으면 둘 다 조용히 no-op이라 명시 설치(검증4).
-          pip install --quiet Pillow 2>/dev/null || echo "Pillow 설치 실패(픽셀 판독 없이 진행 · fail-soft)"
           export THUMB_ONLY="${ARTICLE%.md}"
           export THUMB_REDO_SID="${SID}"
           export THUMB_REDO_WISH="${WISH}"   # 자연어 재생성 지시(선택) → thumb_gen이 프롬프트에 얹음(셸 비보간 = 인젝션 안전)
@@ -69,7 +62,6 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add cards 2>/dev/null || true
-          git add scraper/thumb_wishes.jsonl 2>/dev/null || true   # wish 원장(운영자 재생성 지시 적립 · TH-07 260703)
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           git commit -m "thumbs: 재생성 ${ARTICLE%.md} ${SID:+(${SID})}"
           for i in 1 2 3 4; do

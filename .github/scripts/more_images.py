@@ -26,7 +26,7 @@ mdpath = os.path.join("queue", STEM + ".md")
 if not os.path.exists(mdpath):
     die("기사 md 없음: " + mdpath)
 md = open(mdpath, encoding="utf-8").read()   # 본문(요약·시사점) 발췌용
-head, lead, iq, thumb_scene, art_url, alt_urls, image_sources, dispatch = tg.parse_md(mdpath)   # parse_md = 경로 인자(파일을 자기가 open) — 내용 문자열 넘기면 OSError(평의회 검증)
+head, lead, iq, thumb_scene, art_url, alt_urls, image_sources, dispatch, _extras = tg.parse_md(mdpath)   # parse_md = 경로 인자(파일을 자기가 open) — 내용 문자열 넘기면 OSError(평의회 검증) · extras(hook·emotion·foreign)는 썸네일 프롬프트 전용이라 여기선 미사용(260703)
 if not head:
     die("헤드라인 파싱 실패: " + STEM)
 

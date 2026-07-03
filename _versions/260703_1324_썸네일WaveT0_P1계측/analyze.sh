@@ -7,8 +7,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
-source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
-MODEL="$PIPE_MODEL"
+MODEL="claude-opus-4-8"
 INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
 RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
 THIN_BYTES=900          # 본문 '충분' 기준(바이트·wc -c=로케일무관) ≈ 한글 ~250자(라벨 제외 본문 ~210자). 이보다 짧으면 통신사·제목스텁(뉴시스·연합 등) 의심 → 같은사건 더 완전한 기사 탐색. fetch_article 게이트(한글<200자=빈출력≈600B)보다 충분히 높고, 정상 단신 오탐은 줄임(평의회 권고 260622)
@@ -311,11 +310,6 @@ ${extracted}"
   # 모델이 frontmatter 앞에 사족(인사·진행 멘트)을 붙이는 드리프트 방어 — 첫 '---' 줄부터만 저장
   out="$(printf '%s\n' "$out" | sed -n '/^---[[:space:]]*$/,$p')"
 
-  # 이중 여는 '---' 드리프트 방어(260703 실측 AKR20260703026800065) — 여는 '---' 직후의 잉여 '---'·빈 줄을 접는다.
-  #   모델이 '---\n\n---\ntitle:…'처럼 여는 표식을 두 번 뱉으면 첫 블록(gv·alt만)이 조기 폐합 →
-  #   진짜 frontmatter(title 등)가 본문行 → 뷰어 meta.title 공백 = 피드에 파일명 노출. 정상 출력(--- 다음 바로 key:)은 무변형.
-  out="$(printf '%s\n' "$out" | awk 'NR==1{print;next} !s && (/^---[[:space:]]*$/ || /^[[:space:]]*$/){next} {s=1;print}')"
-
   # 지침 버전 도장 — 첫 '---' 바로 뒤에 삽입(모델이 쓰는 게 아니라 스크립트가 박는다 = 정확).
   out="$(printf '%s\n' "$out" | awk -v v="$GVER" \
         '!done && /^---[[:space:]]*$/{print; print "guidelines_version: \"" v "\""; done=1; next} {print}')"
@@ -339,7 +333,6 @@ ${extracted}"
 
   # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
-  title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(있으면 완료 푸시 본문에 우선 · 260703)
   if [ -n "$REGEN_TARGET" ]; then
     outfile="$REGEN_TARGET"
   else
@@ -347,15 +340,9 @@ ${extracted}"
     n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
   fi
   printf '%s\n' "$out" > "$outfile"
-  # Fact↔자유요약 커버리지 참고 로그(비차단 · 14인 평의회 ② SYS-01 경량판 · 260702) — P1 단일 병목(자유요약)의
-  #   수치 누락을 Actions 로그로 가시화(프롬프트 쪽 '내부 대조' 지시와 상호 검증 쌍 · exit 항상 0).
-  python3 .github/scripts/card_gate.py factcov "$outfile" 2>/dev/null | sed 's/^/  /' || true
-  # 규격·자수 기계 린트(비차단 · 분신술② NEW-1 · 260703) — Thread/IG 실측 자수·자가표기 괴리·분모 드리프트·
-  #   🔎 마커·⚡ 혼입·# 제목 [속보] 잔존을 Actions 로그로 가시화(자가 추정만 믿던 길이 룰의 기계 눈 · exit 항상 0).
-  python3 shared/digest_guard.py "$outfile" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$f"
   rm -f "pending/${base}.retry"   # 과부하 후 회복 성공 = 재시도 마커 정리(뷰어 '재시도 중' 해제)
-  echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt   # 완료 푸시 = 외신이면 번역 제목(title_ko 비면 원문 → id 폴백)
+  echo "${title:-$id}" >> /tmp/analyzed_titles.txt
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   [ -n "$FORCE" ] && [ -n "$REGEN_TARGET" ] && basename "$outfile" >> /tmp/force_regen_files.txt   # force 재분석 = 같은 GVER로 덮어써 card_plan all 게이트가 카드 스킵 → 단일 프롬프트 갱신 신호(운영자 260628)
   echo "성공 → $outfile (지침 ${GVER})"
