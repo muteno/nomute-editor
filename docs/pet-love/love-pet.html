@@ -1,0 +1,443 @@
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>LOVE ♥ — now showing</title>
+<style>
+  :root{ --bg:#0d0c0b; }
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;
+       font-family:ui-monospace,Menlo,Consolas,monospace;color:#8a8178}
+  #wrap{position:relative;width:min(94vmin,720px);aspect-ratio:1/1}
+  canvas{width:100%;height:100%;display:block;border-radius:14px;
+         image-rendering:pixelated;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+  #hud{position:absolute;left:0;right:0;bottom:-34px;display:flex;gap:10px;
+       align-items:center;justify-content:center;font-size:12px;letter-spacing:.12em}
+  #replay{cursor:pointer;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+          color:#cdbfae;border-radius:999px;padding:6px 14px;font:inherit;letter-spacing:.14em}
+  #replay:active{transform:scale(.94)}
+  .shot #hud{display:none}
+</style>
+<div id="wrap">
+  <canvas id="c" width="1080" height="1080"></canvas>
+  <div id="hud"><button id="replay">↻ REPLAY</button></div>
+</div>
+<script>
+const C = document.getElementById('c'), X = C.getContext('2d');
+const W = 1080, H = 1080;
+
+/* ---------- palette (sampled from source) ---------- */
+const P = {
+  bg:      [13,12,11],
+  dotLow:  [40,37,34],
+  dotMid:  [120,112,103],
+  glowWarm:[255,228,176],
+  cream:   [248,232,200],
+  creamHi: [255,244,214],
+  creamShade:[224,203,160],
+  coral:   '#db5d61',
+  coralSh: '#b0474b',
+  amber:   '#eba93f',
+  amberDim:'#6f5a2c',
+  pet:     '#ce6d59',
+  petSh:   '#a9513d',
+  petDk:   '#7c3a2b',
+  eye:     '#181210',
+  tongue:  '#e58aa0',
+};
+const rgb = a => `rgb(${a[0]},${a[1]},${a[2]})`;
+const mix = (a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+
+/* ---------- helpers ---------- */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;      // easeInOutQuad
+const easeOut=t=>1-Math.pow(1-t,3);
+const easeIn=t=>t*t*t;
+const smooth=(e0,e1,x)=>{const t=clamp((x-e0)/(e1-e0),0,1);return t*t*(3-2*t);};
+function mul32(a){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
+
+/* ---------- geometry (1080 space) ---------- */
+const CX = 540;
+const MQ = {x:250, y:176, w:580, h:270, r:30};          // marquee panel
+const MQC = {x:CX, y:176+270*0.60};                     // keyword centre
+const PILL = {x:CX, y:150, w:376, h:56, r:28};          // NOW SHOWING pill
+const GROUND = 892;                                     // pet ground line
+const LAD = {topL:472, topR:610, topY:452, botL:300, botR:786, botY:958}; // easel
+
+/* ---------- dot field (halftone bg + ladder), precomputed x2 ---------- */
+const CELL = 5, GX = Math.ceil(W/CELL), GY = Math.ceil(H/CELL);
+function ladderInk(px,py){
+  // A-frame easel: two converging rails + rungs, rendered as mid dots
+  const t = clamp((py-LAD.topY)/(LAD.botY-LAD.topY),0,1);      // 0 top .. 1 bottom
+  if(py<LAD.topY-4||py>LAD.botY+4) return 0;
+  const lx = lerp(LAD.topL,LAD.botL,t), rx = lerp(LAD.topR,LAD.botR,t);
+  const railW = lerp(6,15,t);
+  let ink=0;
+  if(Math.abs(px-lx)<railW) ink=Math.max(ink,.34);
+  if(Math.abs(px-rx)<railW) ink=Math.max(ink,.34);
+  // centre rail (front leg of stepladder)
+  const cx = (lx+rx)/2, cW=lerp(5,12,t);
+  if(Math.abs(px-cx)<cW && t>.04) ink=Math.max(ink,.24);
+  // rungs: closer together toward top (perspective)
+  const nRungs=6;
+  for(let i=0;i<nRungs;i++){
+    const rt = Math.pow(i/(nRungs-1),1.5);                     // bunched at top
+    const ry = lerp(LAD.topY+18, LAD.botY-6, rt);
+    const rl = lerp(LAD.topL,LAD.botL,(ry-LAD.topY)/(LAD.botY-LAD.topY));
+    const rr = lerp(LAD.topR,LAD.botR,(ry-LAD.topY)/(LAD.botY-LAD.topY));
+    if(Math.abs(py-ry)<lerp(4,7,t) && px>rl-4 && px<rr+4) ink=Math.max(ink,.28);
+  }
+  return ink;
+}
+function buildField(lit){
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const g=cv.getContext('2d');
+  for(let j=0;j<GY;j++){
+    for(let i=0;i<GX;i++){
+      const px=i*CELL+CELL/2, py=j*CELL+CELL/2;
+      // faint background texture, gentle top vignette
+      let ink = 0.11 + 0.05*smooth(700,120,py);
+      ink += (mul32(i*131+j*977)-0.5)*0.045;                  // organic jitter
+      // ladder
+      ink = Math.max(ink, ladderInk(px,py));
+      // lit glow around marquee
+      if(lit){
+        const dx=(px-CX)/1.0, dy=(py-(MQ.y+MQ.h*0.42));
+        const d=Math.sqrt(dx*dx+dy*dy);
+        const halo=smooth(560,60,d)*0.9;
+        ink=Math.max(ink, halo);
+      }
+      ink=clamp(ink,0,1);
+      if(ink<0.02) continue;
+      // colour ramp
+      let col = ink<0.5 ? mix(P.dotLow,P.dotMid,ink/0.5)
+                        : mix(P.dotMid,P.glowWarm,(ink-0.5)/0.5);
+      const rad = CELL*0.52*(0.30+0.70*ink);
+      g.fillStyle=`rgb(${col[0]|0},${col[1]|0},${col[2]|0})`;
+      g.beginPath();g.arc(px,py,rad,0,7);g.fill();
+    }
+  }
+  return cv;
+}
+let FIELD_UNLIT, FIELD_LIT;
+
+/* ---------- rounded rect ---------- */
+function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);
+  g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);
+  g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+
+/* ---------- pixel font 5x7 + heart ---------- */
+const FONT={
+ L:["10000","10000","10000","10000","10000","10000","11111"],
+ O:["01110","10001","10001","10001","10001","10001","01110"],
+ V:["10001","10001","10001","10001","01010","01010","00100"],
+ E:["11111","10000","10000","11110","10000","10000","11111"],
+};
+function glyphW(g){return 5;}
+function drawGlyph(g,ox,oy,px,color,alpha){
+  const rows = FONT[g];
+  X.globalAlpha=alpha; X.fillStyle=color;
+  for(let r=0;r<rows.length;r++)for(let c=0;c<rows[r].length;c++)
+    if(rows[r][c]==='1') X.fillRect(ox+c*px, oy+r*px, px+.6, px+.6);
+  X.globalAlpha=1;
+}
+/* cute dense-pixel heart: coral base + pink highlight + white shine, in the
+   original keyword-pink family (#db5d61). Rasterised fine for density. */
+const HEART_NX=17, HEART_NY=15;
+const HCOL={ base:P.coral, pink:'#f39aa4', hi:'#ffd3da', shine:'#fff2f4',
+            shade:P.coralSh, line:'#8d383c' };
+function heartInside(x,y){const a=x*x+y*y-1; return a*a*a - x*x*y*y*y <= 0;}
+function drawHeart(cx,cy,cell,alpha){
+  X.globalAlpha=alpha;
+  const ox=cx-HEART_NX*cell/2, oy=cy-HEART_NY*cell/2;
+  const sx=2.5/(HEART_NX-1), sy=2.5/(HEART_NY-1);
+  for(let j=0;j<HEART_NY;j++)for(let i=0;i<HEART_NX;i++){
+    const x=(i/(HEART_NX-1))*2.5-1.25;
+    const y=1.18-(j/(HEART_NY-1))*2.5;            // top lobes = +y
+    if(!heartInside(x,y)) continue;
+    const edge = !(heartInside(x-sx,y)&&heartInside(x+sx,y)&&heartInside(x,y+sy)&&heartInside(x,y-sy));
+    let col=HCOL.base;
+    if(x<-0.02 && y>0.30) col=HCOL.pink;          // upper-left highlight
+    if((x>0.34) || (y<-0.42)) col=HCOL.shade;     // lower-right shadow
+    const sh=Math.hypot(x+0.46, y-0.50);
+    if(sh<0.24) col=HCOL.hi;
+    if(sh<0.12) col=HCOL.shine;                   // tiny sparkle
+    if(edge) col=HCOL.line;                       // dark outline
+    X.fillStyle=col;
+    X.fillRect(ox+i*cell, oy+j*cell, cell+.6, cell+.6);
+  }
+  X.globalAlpha=1;
+}
+// keyword = L O V E ♥   (reveal[0..1] per slot)
+const KEY=['L','O','V','E','H'];
+function drawKeyword(reveal, onCream){
+  const PX=13;                                   // pixel size of letters
+  const GAP=PX*2.0;                              // space between glyphs
+  const heartCell=PX*0.52;                       // finer pixels -> dense heart
+  const heartW=HEART_NX*heartCell;
+  const advance=k=> k===4? heartW : 5*PX;
+  let total=GAP*4; for(let k=0;k<5;k++) total+=advance(k);
+  let x=CX-total/2;
+  const cy=MQC.y;                                // vertical centre of keyword
+  const letterTop=cy-3.5*PX;
+  for(let k=0;k<5;k++){
+    const rv=clamp(reveal[k],0,1);
+    const w=advance(k);
+    if(rv>0){
+      const yoff=(1-easeOut(rv))*-26;            // drop-in
+      if(k===4){
+        drawHeart(x+w/2, cy+yoff-PX*0.3, heartCell, rv);
+      } else {
+        if(onCream) drawGlyph(KEY[k], x+3, letterTop+yoff+3, PX, 'rgba(120,60,55,.20)', rv);
+        drawGlyph(KEY[k], x, letterTop+yoff, PX, P.coral, rv);
+      }
+    }
+    x+=w+GAP;
+  }
+}
+
+/* ---------- NOW SHOWING (tiny 3x5 dotted text) ---------- */
+const MINI={
+ N:["101","101","111","101","101"], // will treat as 3col but use special
+};
+// simple: draw with fillText using pixel-ish font substitute
+function drawNowShowing(litK){
+  X.save();
+  // pill stays dark even when lit; border + text warm to amber
+  rr(X,PILL.x-PILL.w/2,PILL.y-PILL.h/2,PILL.w,PILL.h,PILL.r);
+  X.fillStyle='rgb(20,17,14)';X.fill();
+  X.lineWidth=2.5;
+  X.strokeStyle=`rgba(${lerp(74,242,litK)|0},${lerp(66,182,litK)|0},${lerp(58,92,litK)|0},${lerp(.34,.9,litK)})`;
+  X.stroke();
+  // "NOW SHOWING" — letter-spaced LED-ish caps, dim grey -> amber
+  const dc = mix([120,114,106],[242,178,68],litK);
+  X.fillStyle=`rgb(${dc[0]|0},${dc[1]|0},${dc[2]|0})`;
+  X.font="800 30px ui-monospace,Menlo,Consolas,monospace";
+  X.textAlign="center";X.textBaseline="middle";
+  try{X.letterSpacing="7px";}catch(e){}
+  if(litK>0){X.shadowColor=`rgba(242,172,64,${0.75*litK})`;X.shadowBlur=11*litK;}
+  X.fillText("NOW SHOWING", PILL.x-2, PILL.y+1);
+  X.shadowBlur=0; try{X.letterSpacing="0px";}catch(e){}
+  X.restore();
+}
+
+/* ---------- marquee panel ---------- */
+function drawPanel(litK){
+  if(litK<=0) { // unlit: dotted outline + faint inner
+    X.save();
+    rr(X,MQ.x,MQ.y,MQ.w,MQ.h,MQ.r);
+    X.fillStyle='rgba(20,17,14,.55)';X.fill();
+    X.lineWidth=3;X.setLineDash([2.4,4.2]);
+    X.strokeStyle='rgba(150,142,132,.42)';X.stroke();
+    X.setLineDash([]);X.restore();
+    return;
+  }
+  // lit: cream fill (bloom in) + inner border
+  X.save();
+  X.globalAlpha=litK;
+  rr(X,MQ.x,MQ.y,MQ.w,MQ.h,MQ.r);
+  const grd=X.createLinearGradient(0,MQ.y,0,MQ.y+MQ.h);
+  grd.addColorStop(0,rgb(P.creamHi));grd.addColorStop(1,rgb(P.creamShade));
+  X.fillStyle=grd;X.fill();
+  // faint dot texture on cream (printed look)
+  X.clip();X.globalCompositeOperation='multiply';
+  X.fillStyle='rgba(150,120,80,.06)';
+  for(let yy=MQ.y;yy<MQ.y+MQ.h;yy+=5)for(let xx=MQ.x;xx<MQ.x+MQ.w;xx+=5){
+    X.beginPath();X.arc(xx,yy,1.1,0,7);X.fill();}
+  X.globalCompositeOperation='source-over';
+  X.restore();
+}
+
+/* ---------- additive bloom ---------- */
+function drawBloom(k){
+  if(k<=0)return;
+  X.save();X.globalCompositeOperation='lighter';
+  const g=X.createRadialGradient(CX,MQ.y+MQ.h*0.4,20,CX,MQ.y+MQ.h*0.4,470);
+  g.addColorStop(0,`rgba(255,236,190,${.34*k})`);
+  g.addColorStop(.5,`rgba(255,210,140,${.14*k})`);
+  g.addColorStop(1,'rgba(255,200,120,0)');
+  X.fillStyle=g;X.fillRect(0,0,W,H);X.restore();
+}
+
+/* ---------- pet sprites ---------- */
+// side critter facing right (matches source): chunky blob, TWO eyes on top,
+// snout nub on the right, stubby legs; legend b=base d=shade e=eye .=empty
+const SIDE_A=[
+ "bbbbbbbbbb..",
+ "bbbbbbbbbbb.",
+ "bebbbbebbbb.",   // two eyes (cols 1 & 6)
+ "bbbbbbbbbbbb",
+ "bbbbbbbbbbdb",   // snout nub on the right
+ "bbbbbbbbbbb.",
+ "bbbbbbbbbb..",
+ "bb..bb..bb..",   // legs A
+ "bb..bb..bb..",
+];
+const SIDE_B=[
+ "bbbbbbbbbb..",
+ "bbbbbbbbbbb.",
+ "bebbbbebbbb.",
+ "bbbbbbbbbbbb",
+ "bbbbbbbbbbdb",
+ "bbbbbbbbbbb.",
+ "bbbbbbbbbb..",
+ ".bb..bb..bb.",   // legs B (shifted)
+ ".bb..bb..bb.",
+];
+// front form (exact source silhouette, NOT a dog): broad head lobes + centre
+// dip, two wide-set eyes, chunky body, four stubby legs
+const FRONT_A=[
+ "bbbb.....bbbb",   // broad rounded head, centre dip (no pointy ears)
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ "bbbebbbbbebbb",   // two wide-set eyes
+ "bbbebbbbbebbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ ".bbbbbbbbbbb.",
+ ".bb.bb.bb.bb.",   // four stubby legs A
+ ".bb.bb.bb.bb.",
+];
+const FRONT_B=[
+ "bbbb.....bbbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ "bbbebbbbbebbb",
+ "bbbebbbbbebbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ "bbbbbbbbbbbbb",
+ ".bbbbbbbbbbb.",
+ "..bb.bb.bb.b.",   // legs B (trot)
+ "..bb.bb.bb.b.",
+];
+function drawSprite(sp,cx,cy,px,flip){
+  const h=sp.length, w=sp[0].length;
+  const ox=cx-w*px/2, oy=cy-h*px/2;
+  X.save();
+  if(flip){X.translate(cx,0);X.scale(-1,1);X.translate(-cx,0);}
+  for(let r=0;r<h;r++)for(let c=0;c<w;c++){
+    const ch=sp[r][c];if(ch==='.')continue;
+    X.fillStyle = ch==='e'?P.eye : ch==='d'?P.petSh : P.pet;
+    X.fillRect(ox+c*px, oy+r*px, px+.6, px+.6);
+  }
+  X.restore();
+}
+
+/* ---------- timeline ---------- */
+const DUR=13.0;
+const T={ walkIn:[0,2.2], climb:[2.2,3.4], type:[3.4,9.3],
+         illum:[9.3,10.3], trot:[10.3,12.5], hold:[12.5,13.0] };
+function seg(t,[a,b]){return clamp((t-a)/(b-a),0,1);}
+
+function renderAt(t){
+  t=((t%DUR)+DUR)%DUR;
+  // lit factor
+  let litK = smooth(T.illum[0], T.illum[1], t);
+  // loop fade back to dark at the very end
+  litK *= (1 - smooth(T.hold[0]+0.15, DUR, t)*1.0);
+  const bloomK = litK;
+
+  // ---- background field (crossfade unlit->lit) ----
+  X.clearRect(0,0,W,H);
+  X.fillStyle=rgb(P.bg);X.fillRect(0,0,W,H);
+  X.drawImage(FIELD_UNLIT,0,0);
+  if(litK>0){X.globalAlpha=litK;X.drawImage(FIELD_LIT,0,0);X.globalAlpha=1;}
+
+  // ---- bloom halo behind the panel ----
+  drawBloom(bloomK);
+  // ---- panel + keyword + pill (crisp, on top of glow) ----
+  drawPanel(litK);
+  // keyword reveal per slot, synced to pet crossing during 'type'
+  const rev=[0,0,0,0,0];
+  const tp=seg(t,T.type);
+  for(let k=0;k<5;k++){
+    const s=k/5, e=(k+0.55)/5;
+    rev[k]=smooth(s,e,tp);
+  }
+  if(t>=T.type[0]) drawKeyword(rev, litK>0.15);
+  drawNowShowing(litK);
+
+  // ---- pet ----
+  drawPet(t);
+}
+
+function drawPet(t){
+  const walkFrame = (Math.floor(t*7)%2)===0;
+  if(t<T.walkIn[1]){
+    // enter bottom-left, walk right to ladder base
+    const k=seg(t,T.walkIn);
+    const x=lerp(-70, LAD.botL+40, easeOut(k));
+    const bob=Math.abs(Math.sin(t*9))*4;
+    drawSprite(walkFrame?SIDE_A:SIDE_B, x, GROUND-bob-14, 7.2, false);
+  } else if(t<T.climb[1]){
+    // climb the easel up to marquee top-left
+    const k=ease(seg(t,T.climb));
+    const sx=lerp(LAD.botL+40, MQ.x+70, k);
+    const sy=lerp(GROUND-14, MQ.y-8, k);
+    const px=lerp(7.2,5.6,k);
+    drawSprite(walkFrame?SIDE_A:SIDE_B, sx, sy, px, false);
+  } else if(t<T.type[1]){
+    // walk across the top edge of the marquee while letters appear below
+    const k=seg(t,T.type);
+    const sx=lerp(MQ.x+70, MQ.x+MQ.w-70, k);
+    const bob=Math.abs(Math.sin(t*10))*3;
+    drawSprite(walkFrame?SIDE_A:SIDE_B, sx, MQ.y-10-bob, 5.6, false);
+  } else if(t<T.illum[1]){
+    // pause at right end during illumination
+    const sx=MQ.x+MQ.w-70;
+    drawSprite(SIDE_A, sx, MQ.y-10, 5.6, false);
+  } else if(t<T.trot[1]){
+    // descend + appear in foreground as a big dog, trot to the right
+    const k=seg(t,T.trot);
+    // first 35%: shrink-drop behind ladder; then emerge front growing
+    if(k<0.30){
+      const kk=k/0.30;
+      const sx=lerp(MQ.x+MQ.w-70, LAD.botR-30, kk);
+      const sy=lerp(MQ.y-10, GROUND-40, kk);
+      drawSprite(SIDE_A, sx, sy, lerp(5.6,6.4,kk), false);
+    } else {
+      const kk=(k-0.30)/0.70;
+      const grow=easeOut(smooth(0,0.35,kk));
+      const sx=lerp(CX-40, W+90, easeIn(kk));
+      const px=lerp(7.5,11.5,grow);
+      const bob=Math.abs(Math.sin(t*9))*5;
+      const fr=(Math.floor(t*6)%2)===0;
+      drawSprite(fr?FRONT_A:FRONT_B, sx, GROUND-46-bob, px, false);
+    }
+  }
+  // hold: pet already gone
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  FIELD_UNLIT=buildField(false);
+  FIELD_LIT=buildField(true);
+  window.renderAt=renderAt; window.DUR=DUR;
+  const params=new URLSearchParams(location.search);
+  if(params.has('t')){                       // headless single-frame mode
+    document.body.classList.add('shot');
+    renderAt(parseFloat(params.get('t')));
+    window.__ready=true;
+    return;
+  }
+  if(params.has('cap')){                      // batch-capture mode (no RAF)
+    document.body.classList.add('shot');
+    renderAt(0); window.__ready=true;
+    return;
+  }
+  let start=null, speed=1;
+  function loop(now){
+    if(start==null)start=now;
+    renderAt(((now-start)/1000)*speed);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  document.getElementById('replay').onclick=()=>{start=null;};
+  // expose for capture
+  window.renderAt=renderAt; window.DUR=DUR;
+}
+boot();
+</script>
