@@ -215,9 +215,8 @@
     background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; padding:4px 6px; }
   .pushrow .lk-in:focus { outline:none; border-color:rgba(var(--accent-rgb),.5); }
   .pushrow .lk-in.lk-min { width:52px; }
-  .pushrow .lk-in.off { opacity:.4; cursor:not-allowed; }   /* 화면 잠금 OFF = 자동 잠금(분) 비활성(readonly) — 잠금 안 무장이라 분 설정 무의미(운영자 260703) */
   .pushrow .lk-in.bad { border-color:var(--danger); box-shadow:0 0 0 3px rgba(var(--danger-rgb),.14); }   /* 오답 = 빨강 3초 후 복귀(잠금 화면 정본 리듬) */
-  /* PIN 설정/변경 버튼(운영자 260703) — ON/OFF 토글 아님(화면 잠금과 혼동 방지): 평소 '설정'/'변경'(mut)·누르면 '취소'(accent·입력 모드)·2단 입력 완료 시 '저장'(pill) → 게이지 goFill(mkbtn 정본 계승) → ✓ */
+  /* PIN 변경 버튼(운영자 260703) — 평소 OFF(mut)·누르면 ON(accent)·2단 입력 완료 시 '변경'(pill) → 게이지 goFill(mkbtn 정본 계승) → ✓ */
   .pushrow .lk-grp { flex:none; display:flex; align-items:center; gap:8px; }
   .pushrow .lk-chg { flex:none; padding:0 2px; font-size:13px; font-weight:800; line-height:var(--lh-base); color:var(--mut); background:none; border:none; cursor:pointer; }
   .pushrow .lk-chg:active { transform:scale(var(--press-l,.95)); }
@@ -420,7 +419,9 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인을 따라 좌우로 왔다갔다(alternate) 산책 */
+  /* (도먼트) Paperlogy 4 Regular '오늘도 화이팅' 6자 서브셋(840B) — 마퀴펫 v2 롤백(260703)으로 현재 미사용. 참조 텍스트 없으면 브라우저가 다운로드 안 함 = 비용 0 · 마퀴 재도전 대비 보존. */
+  @font-face { font-family:'Paperlogy'; src:url(assets/fonts/paperlogy-pet.woff2) format('woff2'); font-weight:400; font-display:swap; }
+  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인 좌우 산책. pet.webp = 50프레임 애니 webp(공 드리블+헤딩 = 포인트) → ⚠️ 재인코딩·최적화 금지(무손실/단일프레임 변환 시 애니 소실 = 260703 실사고·마퀴펫 v2는 운영자 요청 롤백·_versions/260703_1253_마퀴펫_롤백 보관) */
   .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
     pointer-events:none; user-select:none; z-index:6; will-change:transform;
     filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
@@ -2244,7 +2245,7 @@
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
     <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
-  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false">
+  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false"><!-- 노뮤트 펫 = 공 드리블+헤딩 50프레임 애니 webp(원본 · 재인코딩 금지) -->
   <div class="topsearch" id="topsearch">
     <input id="q" type="search" placeholder="검색" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="nomute-q" enterkeyhint="search" data-1p-ignore data-lpignore="true" data-form-type="other"><!-- 자동완성·autofill(카드/주소/이전입력 제안) 차단 = 일반 텍스트칸(운영자 260628) · 외형·검색기능 불변 · 비번관리자 autofill도 무시 -->
     <button class="ts-toggle" id="searchToggle" type="button" aria-label="검색"><svg class="ts-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
@@ -5518,9 +5519,8 @@ function lkSettingsRefresh() {
   btn.textContent = lkOn() ? 'ON' : 'OFF'; btn.classList.toggle('on', lkOn());
   chgReset();   // PIN 변경 플로우 초기화(팝업 재열림·토글 조작 = 진행중 변경 취소)
   min.value = String(lkMin());
-  min.readOnly = !lkOn(); min.classList.toggle('off', !lkOn());   // 화면 잠금 OFF = 분 설정 비활성(readonly·dim — 잠금 무장 안 되므로 무의미·운영자 260703)
   hint.classList.remove('bad');
-  hint.textContent = lkPinH() ? (lkOn() ? `유휴 ${lkMin()}분 후 화면이 잠깁니다` : '토글을 켜면 유휴 시 잠깁니다') : 'PIN 미설정 — 우측 [설정]을 눌러 설정하세요';
+  hint.textContent = lkPinH() ? (lkOn() ? `유휴 ${lkMin()}분 후 화면이 잠깁니다` : '토글을 켜면 유휴 시 잠깁니다') : 'PIN 미설정 — 우측 [OFF]를 눌러 설정하세요';
 }
 function openLockPop() {
   closeOverlays('lockpop');
@@ -5547,7 +5547,7 @@ let chgStep = null, chgNew = '', chgBadT = null;
 const lkChgBtn = $('#lockChgBtn'), lkPinInEl = $('#lockPinIn');
 function chgReset() {
   chgStep = null; chgNew = ''; clearTimeout(chgBadT);
-  lkChgBtn.textContent = lkPinH() ? '변경' : '설정'; lkChgBtn.className = 'lk-chg';   // ON/OFF 아님 = PIN 설정/변경 액션(화면 잠금 토글과 혼동 방지·운영자 260703)
+  lkChgBtn.textContent = 'OFF'; lkChgBtn.className = 'lk-chg';
   lkPinInEl.value = ''; lkPinInEl.readOnly = true; lkPinInEl.classList.remove('bad');
   lkPinInEl.placeholder = lkPinH() ? '설정됨' : '미설정';
 }
@@ -5570,8 +5570,8 @@ lkChgBtn.addEventListener('click', async () => {
     return;
   }
   if (chgStep) { lkSettingsRefresh(); return; }                 // ON 상태서 재탭 = 취소(초기화)
-  chgStep = lkPinH() ? 'verify' : 'new1';                       // 설정/변경 탭 = 입력 모드 진입(기존 있으면 확인부터) — 재탭 시 취소
-  lkChgBtn.textContent = '취소'; lkChgBtn.classList.add('on');
+  chgStep = lkPinH() ? 'verify' : 'new1';                       // OFF→ON = 변경 모드 진입(기존 있으면 확인부터)
+  lkChgBtn.textContent = 'ON'; lkChgBtn.classList.add('on');
   lkPinInEl.readOnly = false; lkPinInEl.value = '';
   lkPinInEl.placeholder = chgStep === 'verify' ? '기존 PIN 확인' : '새 PIN 1회차';
   chgHint(chgStep === 'verify' ? '기존 PIN을 먼저 입력하세요' : '새 PIN 6자리를 입력하세요');
@@ -5596,10 +5596,10 @@ lkPinInEl.addEventListener('input', async e => {
   } else if (chgStep === 'new1') {
     chgNew = v; chgStep = 'new2'; el.value = ''; el.placeholder = '재입력 (2회차)'; chgHint('한 번 더 똑같이 입력하세요');
   } else if (chgStep === 'new2') {
-    if (v === chgNew) {                                          // 일치 = 버튼 멘트 '저장'으로 무장(게이지 대기)
+    if (v === chgNew) {                                          // 일치 = 버튼 멘트 '변경'으로 무장(게이지 대기)
       chgStep = 'armed'; el.readOnly = true; el.value = '●●●●●●';
-      lkChgBtn.textContent = '저장'; lkChgBtn.classList.add('armed');
-      chgHint('[저장]을 누르면 적용됩니다');
+      lkChgBtn.textContent = '변경'; lkChgBtn.classList.add('armed');
+      chgHint('[변경]을 누르면 저장됩니다');
     } else { chgNew = ''; chgStep = 'new1'; el.placeholder = '새 PIN 1회차'; chgBad('재입력이 달라요 — 처음부터 다시', '새 PIN 6자리를 입력하세요'); }
   }
 });
