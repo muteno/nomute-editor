@@ -5,7 +5,6 @@
 // 서빙 게이트 = functions/s/[slug].js (pinHash 있으면 ?p=PIN 요구). publish.js와 동일 해시식 sha256hex(pin+':'+slug).
 // env: GH_TOKEN = fine-grained PAT(Contents:read+write · publish/unpublish 동일). 상태변경이라 동일출처(originOk)만.
 const REPO = 'muteno/nomute-editor';
-const PIN_MASTER = '898900';   // ⚠️ 슈퍼키 SSOT — s/[slug].js·unpublish.js 동일(값 바꾸면 3파일 모두). 마스터면 잠금 해제에 원 PIN 불요(운영자 260703).
 
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
@@ -36,8 +35,8 @@ export async function onRequestPost({ request, env }) {
 
   const wasLocked = !!m.pinHash;
   if (wasLocked) {
-    const h = await sha256hex(pin + ':' + slug);           // 해제 = 기존 PIN 정확히 입력(단 마스터면 불일치 무시 = 슈퍼키 해제·운영자 260703)
-    if (pin !== PIN_MASTER && h !== m.pinHash) return json({ error: 'PIN 불일치', mismatch: true }, 403);
+    const h = await sha256hex(pin + ':' + slug);           // 해제 = 기존 PIN 정확히 입력해야
+    if (h !== m.pinHash) return json({ error: 'PIN 불일치', mismatch: true }, 403);
     m.pinHash = '';
   } else {
     m.pinHash = await sha256hex(pin + ':' + slug);          // 잠금 = 새 PIN 설정
