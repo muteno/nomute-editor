@@ -73,12 +73,19 @@ STYLES = [
      "lyrical delicate mood, muted palette with one quiet warm accent",
      "medium shot centered on the emotional core, gentle framing, soft atmospheric depth"),
     ("cartoon", "시사만평",
+<<<<<<< HEAD
      # ⚠️ 'korean'은 만평 전통(화풍)이지 장소 아님 — 명시 없으면 해외 사건도 한국 배경·한글 간판으로 렌더(카나리아 실측 260703).
      "newspaper editorial cartoon in the korean manpyeong tradition (drawing style only — depict the event's "
      "actual people and location), pen-and-ink caricature linework with restrained flat or light watercolor "
      "tinting, a single metaphorical scene of dignified satire on the issue — anonymous role-based caricatures "
      "only (a bureaucrat in a suit, a worker in a helmet), never the likeness of a real person, no derogatory "
      "or hateful depiction, no written labels or speech bubbles",
+=======
+     "korean newspaper editorial cartoon, pen-and-ink caricature linework with restrained flat or light "
+     "watercolor tinting, a single metaphorical scene of dignified satire on the issue — anonymous role-based "
+     "caricatures only (a bureaucrat in a suit, a worker in a helmet), never the likeness of a real person, "
+     "no derogatory or hateful depiction",
+>>>>>>> origin/main
      "single-panel composition with one clear central metaphor, eye-level"),
 ]
 
