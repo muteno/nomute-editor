@@ -8,7 +8,7 @@
 #     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.png 로컬 커밋·아무것도 안 깨짐)
 #
 # 안전: GEMINI_API_KEY 없으면 즉시 no-op(스캐폴드). 어떤 기사/화풍 실패도 fail-soft(파이프라인 안 깸).
-# 비용: 픽한 기사당 이미지 4장(유료·4화풍 — 운영자 260703). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
+# 비용: 픽한 기사당 이미지 2장(유료·2화풍). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
 #
 # 정본 = 이 파일(썸네일 프롬프트 SSOT). 참조 = apps/news/03_자동화_레퍼런스.md §썸네일 후보.
 
@@ -55,10 +55,8 @@ R2_ON = all([R2_ACCOUNT, R2_BUCKET, R2_PUBLIC, R2_KEY, R2_SECRET])
 #   + 세로 4:5 피드 저후킹(46 CTS-08 "타이트가 이긴다")이라 폐지 → 감정 코어 타이트 기본.
 # 고정문 = 영어(카드 cards.md 문법과 통일 — 같은 Gemini 모델서 운영 검증) · SCENE(장면)만 한국어 유지(상류 무변경).
 # ⚠️ sid 리네임 금지 = 기존 카드 재과금 0(process_one이 sid로 보존). 추가만 허용(웹툰/포토 sid 유지).
-# ✅ 4화풍 재편(운영자 260703 — "에디토리얼1·극화1·수채화1·풍자(시사만평)1"): v2 개선 위에 수채화(260621 폐지)·
-#    시사만평(260630 폐지)을 **옛 sid 그대로(watercolor·cartoon)** 재추가 = 옛 gen.json 보존분 재과금 0.
-#    픽당 2장→4장 = 과금 2배(운영자 승인) · 소급은 THUMB_SINCE(워크플로)가 260703으로 캡(261619~ 백로그 폭탄 차단).
-#    photo_close(포토클로즈업)만 폐지 유지. 정의는 옛 한국어 원문(백업 _versions)을 v2 영어 look으로 등가 이식.
+# ⚠️ cartoon(시사만평) 폐지(운영자 260630) = 포토에디토리얼+극화 2장만 생성(과금 1/3 절감).
+#    기존에 cartoon이 든 gen.json은 보존(재과금 0) · 재생성('다시 만들기') 시 2화풍만 다시 그림.
 STYLES = [
     ("photo", "포토 에디토리얼",
      "reportage press photograph, natural available light, documentary realism, "
@@ -68,16 +66,6 @@ STYLES = [
      "korean webtoon serious drama illustration, bold clean ink lines, dramatic high-contrast shading, "
      "intense emotional expression",
      "tight upper-body framing, medium close-up, slight low angle for tension, single hard side light"),
-    ("watercolor", "수채화",
-     "soft editorial watercolor illustration, bleeding translucent washes, textured paper grain, "
-     "lyrical delicate mood, muted palette with one quiet warm accent",
-     "medium shot centered on the emotional core, gentle framing, soft atmospheric depth"),
-    ("cartoon", "시사만평",
-     "korean newspaper editorial cartoon, pen-and-ink caricature linework with restrained flat or light "
-     "watercolor tinting, a single metaphorical scene of dignified satire on the issue — anonymous role-based "
-     "caricatures only (a bureaucrat in a suit, a worker in a helmet), never the likeness of a real person, "
-     "no derogatory or hateful depiction",
-     "single-panel composition with one clear central metaphor, eye-level"),
 ]
 
 # 지배 조건(맨 앞·최상위) — 화풍·구도보다 먼저 읽혀 "무엇을·어떻게"의 우선순위를 잡는다(프롬프트 위계 = 나열보다 준수율↑).
@@ -746,8 +734,8 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
-    # AI 생성 4화풍(260703 재편) — THUMB_AI_OFF(전역) 또는 no_thumb(이 기사·뷰어 '이미지' 토글 OFF)면 통째 생략(검색이미지만 채움).
-    # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 photo_close sid는 STYLES에 없어 자동 드롭 · watercolor·cartoon은 260703 복귀).
+    # AI 생성 2화풍 — THUMB_AI_OFF(전역) 또는 no_thumb(이 기사·뷰어 '이미지' 토글 OFF)면 통째 생략(검색이미지만 채움).
+    # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor·photo_close sid는 STYLES에 없어 자동 드롭).
     changed = False
     no_thumb = _md_no_thumb(md)   # 이 기사만 제미나이 썸네일 생성 skip(뷰어 '이미지' 토글 OFF·검색 og:image는 위서 이미 채움·운영자 260702)
     if AI_OFF or no_thumb:
