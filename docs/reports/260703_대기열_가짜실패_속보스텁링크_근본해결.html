@@ -77,12 +77,12 @@
   <tr>
     <td>stuck(실패) 판정<br><span class="kv">api/pending</span></td>
     <td>pending 20분+ 잔류 = 무조건 '실패'</td>
-    <td>분석 런이 <b>진행/대기 중이면 '처리중' 유지</b>(방어 상한 90분). 런이 없을 때만 20분 실패(진짜 고아 — sweep이 20분 내 자동 재발사)</td>
+    <td>분석 런이 <b>진행/대기 중이면 '처리중' 유지</b>(방어 상한 120분 — 잡 timeout 90분 + 배치 누적 마진). 런이 없을 때만 20분 실패(진짜 고아 — sweep이 20분 내 자동 재발사). 요약요청(ask) 경로에도 동일 적용</td>
   </tr>
   <tr>
     <td>클라 10분 타임아웃<br><span class="kv">viewer pickTimedOut</span></td>
     <td>서버가 '처리중'이라 해도 10분 지나면 FAIL 표시</td>
-    <td>서버 진실원본(processing/retry) 우선 — 대기 중엔 Picking 유지</td>
+    <td>서버 진실원본(processing/retry) 우선 — 대기 중엔 Picking 유지. 단 130분 절대 상한 백스톱은 유지(서버 오작동 병리 대비)</td>
   </tr>
   <tr>
     <td>대기열 ↗ 원문 링크</td>
@@ -96,14 +96,18 @@
   <tr><th></th><th>내용</th></tr>
   <tr><td><span class="tag t-grn">장점</span></td><td>가짜 실패·헛 재시도 근절(대기=대기로 보임) · 진짜 실패 신호(런 죽음·분석 실패 격리)는 그대로 살아 있음 · 대기열/수집함 링크 목적지 통일</td></tr>
   <tr><td><span class="tag t-amb">비용</span></td><td>GitHub API 조회 2콜 추가 — 단 <b>20분+ 잔류 건이 있을 때만</b> 조회(평상시 0콜) · per_page=1로 응답 최소</td></tr>
-  <tr><td><span class="tag t-red">품질저하 리스크</span></td><td>진짜 장애가 '런은 활성인데 안 끝나는' 형태면 실패 표시가 최대 90분까지 늦어질 수 있음 → 방어 상한 90분 + 분석 실패 시 failed/ 격리·웹푸시(기존 경로)가 즉시 알림이라 커버. 조회 실패 시엔 기존 20분 기준으로 보수 폴백</td></tr>
+  <tr><td><span class="tag t-red">품질저하 리스크</span></td><td>진짜 장애가 '런은 활성인데 안 끝나는' 형태면 실패 표시가 최대 120분까지 늦어질 수 있음 → 방어 상한 120분 + 분석 실패 시 failed/ 격리·웹푸시(기존 경로)가 즉시 알림이라 커버. 조회 실패 시엔 기존 20분 기준으로 보수 폴백</td></tr>
   <tr><td><span class="tag t-amb">안 고친 것(의도)</span></td><td>직렬 배치 자체(픽 몰리면 수십 분 소요)는 파이프라인 기틀(concurrency 직렬·쿼터 보호)이라 유지 — 이제 '오래 걸림'이 실패로 안 보이는 게 핵심</td></tr>
 </table>
 
 <h2>검증</h2>
 <div class="pan">
-  <b>10인 적대 평의회</b>(READ-ONLY·각기 다른 앵글: 메커니즘·GitHub API·상태머신·링크 경로·성능·보안·엣지케이스·다운스트림·회귀·총괄) 만장일치 ✅ 후 머지.
-  <code>check_refs</code> 통과(rc=0) · <code>node --check</code> 구문 통과 · 머지 후 <code>git show origin/main</code> read-back 실측.
+  <b>10인 적대 평의회</b>(READ-ONLY·각기 다른 앵글: 메커니즘·GitHub API·상태머신·링크 경로·성능·보안·엣지케이스·다운스트림·회귀·총괄) — 1차 ✅6·⚠️4.
+  ⚠️ 지적 7건 전부 반영: 방어 상한 90→120분(잡 timeout 마진) · 대기열 버튼 게이트-목적지 통일 · 클라 130분 절대 백스톱 복원 · 상태 전이 시 화면 자동 갱신 · API 부분실패 판정 정교화 · 활성 조회 병렬화 · 요약요청(ask) 경로 동일 오탐 제거.
+  반영 후 <b>재검증 2인 ✅</b>(만장일치 수렴) → <code>check_refs</code> rc=0 · <code>node --check</code> 통과 → 머지 → <code>git show origin/main</code> read-back 실측.
+</div>
+<div class="pan">
+  <b>기각·이월(기록)</b>: 직렬 배치 자체의 병렬화(파이프라인 기틀·쿼터 보호 위반이라 기각) · 처리중 항목 경과시간 칩(아이데이션 이월) · 픽 대기 p50/p95 계측(이월) · CAP_PEND 25 초과·미래 타임스탬프 항목(기존 성질·실무 무해).
 </div>
 </body>
 </html>

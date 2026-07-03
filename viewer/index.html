@@ -5923,7 +5923,7 @@ function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | 
   return '<button class="qgo go-' + kind + '" type="button"' + dis + ' title="' + title + '">' + Q_ARR + '</button>';
 }
 function qRowHtml(it) {
-  const url = it.key && /^https?:\/\//i.test(it.key);
+  const url = /^https?:\/\//i.test(String(it.alt1 || it.key || ''));   // 활성 게이트 = 목적지(alt1‖key)와 동일 소스(게이트-목적지 갈림 차단 · 평의회7 V-1)
   // 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면(Pages 빌드 랙) 사실상 미준비 →
   // 조기 '완료/초록 뉴스요약 이동' 금지, 준비될 때까지 처리중처럼 주황 ↗(원문) 유지(운영자 260622).
   const eff = (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;
@@ -5963,7 +5963,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(메이저·api/pending이 '# alt:' 첫 url) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
@@ -6265,7 +6265,8 @@ const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
 const PICK_TIMEOUT_MS = 10 * 60000;
-const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; const _ps = pendStatus(c); if (!r.picked || _ps === 'retry' || _ps === 'processing' || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)·processing(서버 진실원본 = pending 잔류·직렬 배치 대기 중)이면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622 · 직렬 배치 52분 대기가 Failed(3)로 오표시되던 것 차단 260703 — 진짜 실패는 서버 stuck[런 비활성 20분]/picks-failed 가 알림)
+const PICK_HARD_MS = 130 * 60000;   // 서버 'processing' 신뢰의 절대 상한(서버 ACTIVE_STUCK_MIN 120분 + 그레이스) — 서버가 파일명 파싱불가·미래 타임스탬프 등으로 'processing'을 영구 반환하는 병리에서도 클라 백스톱이 살아 있게(평의회3 이슈1 · 260703)
+const pickTimedOut = c => { if (!DATA_LOADED) return false; const r = ratingsAll()[candId(c)] || {}; const _ps = pendStatus(c); const _trust = _ps === 'retry' || (_ps === 'processing' && !!r.pickedAt && (Date.now() - r.pickedAt < PICK_HARD_MS)); if (!r.picked || _trust || pickInFeed(c) || pfailHas(c) || pfResolved().has(candId(c)) || pfResubActive(candId(c))) return false; return !r.pickedAt || (Date.now() - r.pickedAt > PICK_TIMEOUT_MS); };   // pickedAt 없는 옛 픽 = 즉시 타임아웃 처리(무한 Picking 차단·260618) · retry(서버 일시 과부하 자동 재시도 중)·processing(서버 진실원본 = pending 잔류·직렬 배치 대기 중, 단 PICK_HARD_MS 내에서만 신뢰)이면 타임아웃 비활성 = 빨강 링/토스트 거짓FAIL 차단(pickState와 짝·운영자 260622 · 직렬 배치 52분 대기가 Failed(3)로 오표시되던 것 차단 260703 — 진짜 실패는 서버 stuck[런 비활성 20분·활성 120분]/picks-failed 가 알림)
 const pickFailedShow = c => pfailHas(c) || pickTimedOut(c);   // 화면 '실패' 표시 = 서버 분석실패(picks-failed) OR 클라 무응답 타임아웃
 // 실패 재시도 횟수(누적) — Failed(N) 표시 · 재시도(대기열 재투입)할 때마다 +1 (운영자 260701)
 const FAILRETRY_KEY = 'nm_fail_retries';
@@ -6294,15 +6295,17 @@ const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" a
 let PEND = new Map();   // normUrl → 'processing'|'retry'|'fail'|'succ' (api/pending 라이브 · retry=일시 과부하 자동 재시도 대기)
 let PEND_PROC = 0;      // 처리중(processing) 대기열 건수 = 피드버튼 발견성 배지(숨은 롱프레스 의존 제거·운영자 260620)
 async function loadPending(render) {
+  let changed = false;   // 상태 전이 감지 — 폴(render 미지정)에서도 processing→fail/succ 전이면 재렌더(스크랩 상주 시 칩 스테일 차단 · 평의회3 이슈2 · 260703)
   try {
     const r = await fetch('api/pending?_=' + Date.now());
     if (r.ok) { const d = await r.json(); const m = new Map();
       (d.items || []).forEach(it => { if (it && it.key) m.set(_normU(it.key), it.status); });
+      changed = m.size !== PEND.size || [...m].some(([k, v]) => PEND.get(k) !== v);   // 키 추가/삭제·상태 변화 모두 감지(전이 드묾 = 재렌더 비용 미미)
       PEND = m;
       PEND_PROC = (d.items || []).filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
       updateQBadge(); }
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
-  if (render && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
+  if ((render || changed) && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
 }
 function updateQBadge() {   // 피드 bnav 버튼 우상단 처리중 건수 배지 — 0이면 숨김. 탭=대기열(롱프레스 의존 제거).
   const b = document.getElementById('qbadge'); if (!b) return;
