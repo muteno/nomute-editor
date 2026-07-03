@@ -2220,11 +2220,19 @@
   .pub-vis.private { color:var(--accent); }
   .pub-vis:active { transform:scale(var(--press-m)); }
   /* PIN = cron식 fieldset(둘러싼 테두리 + legend 라벨·모노스페이스·자간·좌측정렬) · 항상 활성 */
-  .pin-fs { margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
+  .pin-fs { position:relative; margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
   .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
-  .pin-in { width:100%; box-sizing:border-box; border:none; background:transparent; color:var(--fg); text-align:left; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:var(--fs-h1); letter-spacing:.45em; padding:3px 0; outline:none; }   /* text-align:left = 입력 숫자가 첫자리(플레이스홀더 첫 점) 위치부터 채워짐 — 옛 right는 우측부터 들어와 어색(운영자 260703) */
-  .pin-in::placeholder { color:var(--mut); }
+  .pub-slots { display:flex; gap:16px; padding:6px 2px 4px; }   /* PIN 슬롯 = 입력자리 숫자 노출·미입력 점(화면잠금 .lk-slot 계승·마스킹 없음·운영자 260703) */
+  .pub-slot { width:16px; height:24px; display:grid; place-items:center; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); transition:color .15s; }
+  .pub-slot::before { content:''; grid-area:1/1; width:8px; height:8px; border-radius:50%; background:var(--mut); opacity:.5; transition:opacity .15s; }   /* 미입력 = 점 */
+  .pub-slot.filled { color:var(--fg); }
+  .pub-slot.filled::before { opacity:0; }   /* 입력 자리 = 숫자, 점 숨김 */
+  .pub-slots.done .pub-slot.filled { color:var(--accent); }   /* 6자리 다 채우면 전체 강조색 */
+  .pub-slots.bad .pub-slot::before { background:var(--danger); opacity:1; }
+  .pub-slots.bad .pub-slot.filled { color:var(--danger); }   /* 숫자 외 입력 = 붉게 */
+  .pub-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(.lk-slots.shake 계승) */
+  .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; }   /* 투명 오버레이 = 탭 시 OS 숫자키패드 · 값은 슬롯이 시각화(16px=iOS 확대 방지) */
   .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
@@ -2442,8 +2450,9 @@
     <div class="pub-row"><span class="pub-l">공개 범위</span><button type="button" class="pub-vis" id="pubVis" data-scope="public">누구나</button></div>
     <div class="pub-row"><span class="pub-l">만료</span><span class="pub-v" id="pubExp">3일</span></div>
     <fieldset class="pin-fs">
-      <legend>잠금 설정 (PIN)</legend>
-      <input id="pubPin" class="pin-in" type="text" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <legend id="pubPinLeg">잠금 설정 (PIN)</legend>
+      <div class="pub-slots" id="pubSlots" aria-hidden="true"><span class="pub-slot"></span><span class="pub-slot"></span><span class="pub-slot"></span><span class="pub-slot"></span><span class="pub-slot"></span><span class="pub-slot"></span></div>
+      <input id="pubPin" class="pin-in-h" type="text" inputmode="numeric" maxlength="6" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="PIN 6자리 입력">
     </fieldset>
     <button id="pubGo" class="asksend revsend pub-go" type="button"><span>발행</span></button>
     <div class="pub-status" id="pubStatus"></div>
@@ -8399,7 +8408,7 @@ function openPubDlg() {
   if (!CUR_A) return;
   _pubScope = 'public';
   const _pv = $('#pubVis'); if (_pv) { _pv.classList.remove('private'); _pv.textContent = '누구나'; _pv.dataset.scope = 'public'; }
-  $('#pubPin').value = '';
+  pubPinReset();
   const ex = new Date(Date.now() + 3 * 86400e3 + 9 * 3600e3);   // 만료 = +3일 · KST(§📐)로 mm/dd 표기
   $('#pubExp').textContent = '3일 (~' + String(ex.getUTCMonth() + 1).padStart(2, '0') + '/' + String(ex.getUTCDate()).padStart(2, '0') + ')';
   const st = $('#pubStatus'); st.textContent = ''; st.classList.remove('err');
@@ -8411,11 +8420,34 @@ $('#pubVis').addEventListener('click', () => {
   v.textContent = priv ? '비공개' : '누구나';
   _pubScope = priv ? 'private' : 'public'; v.dataset.scope = _pubScope;
 });
+// ── 발행 PIN = 슬롯 6칸(입력자리 숫자 노출·미입력 점) + 2단 입력(1차 설정→2차 확인) · 화면잠금 .lk-slot 계승(마스킹 없음·운영자 260703) ──
+let _pubStage = 1, _pubPin1 = '', _pubPinOK = false;
+function renderPubSlots() {
+  const v = ($('#pubPin') && $('#pubPin').value) || '';
+  const sl = $('#pubSlots') ? $('#pubSlots').children : [];
+  for (let i = 0; i < sl.length; i++) { sl[i].textContent = v[i] || ''; sl[i].classList.toggle('filled', i < v.length); }
+  if ($('#pubSlots')) $('#pubSlots').classList.toggle('done', v.length === 6);   // 6자리 다 채우면 전체 강조색
+}
+function pubPinBad() { const s = $('#pubSlots'); if (!s) return; s.classList.remove('shake'); void s.offsetWidth; s.classList.add('bad', 'shake'); setTimeout(() => s.classList.remove('bad', 'shake'), 480); }
+function pubPinReset() { _pubStage = 1; _pubPin1 = ''; _pubPinOK = false; if ($('#pubPin')) $('#pubPin').value = ''; const lg = $('#pubPinLeg'); if (lg) lg.textContent = '잠금 설정 (PIN)'; renderPubSlots(); }
+if ($('#pubPin')) $('#pubPin').addEventListener('input', () => {
+  const raw = $('#pubPin').value, clean = raw.replace(/\D/g, '').slice(0, 6);
+  if (clean !== raw) { $('#pubPin').value = clean; pubPinBad(); }   // 숫자 외/6자리 초과 = 흔들림+붉게
+  _pubPinOK = false; renderPubSlots();
+  if ($('#pubPin').value.length !== 6) return;
+  if (_pubStage === 1) {                                              // 1차 6자리 완료 → 잠깐 노출 후 2차 재입력으로
+    _pubPin1 = $('#pubPin').value;
+    setTimeout(() => { if (_pubStage === 1 && $('#pubPin').value === _pubPin1) { _pubStage = 2; $('#pubPin').value = ''; const lg = $('#pubPinLeg'); if (lg) lg.textContent = '다시 입력'; renderPubSlots(); } }, 520);
+  } else {                                                            // 2차: 1차와 일치 = 확정(강조 유지) / 불일치 = 흔들림+처음부터
+    if ($('#pubPin').value === _pubPin1) { _pubPinOK = true; const lg = $('#pubPinLeg'); if (lg) lg.textContent = '잠금 설정 완료'; }
+    else { pubPinBad(); setTimeout(pubPinReset, 500); }
+  }
+});
 $('#pubdlgX').addEventListener('click', () => pubdlg.close());
 pubdlg.addEventListener('click', e => { if (e.target === pubdlg) pubdlg.close(); });
 $('#pubGo').addEventListener('click', async () => {
   if (_pubBusy || !CUR_A) return;
-  const go = $('#pubGo'), st = $('#pubStatus'), pin = ($('#pubPin').value || '').trim();
+  const go = $('#pubGo'), st = $('#pubStatus'), pin = _pubPinOK ? ($('#pubPin').value || '').trim() : '';   // 2단 확정(_pubPinOK) 시만 잠금 PIN 전송 · 미확정/미입력 = 잠금 없이 발행
   const fail = (msg) => { gaugeClear(go); go.classList.add('shake'); setTimeout(() => go.classList.remove('shake'), 420); go.disabled = false; st.textContent = msg; st.classList.add('err'); };
   if (pin && !/^\d{6}$/.test(pin)) { fail('PIN은 숫자 6자리로'); return; }
   _pubBusy = true; go.disabled = true; st.classList.remove('err'); st.textContent = '';
