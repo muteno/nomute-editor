@@ -5294,18 +5294,24 @@ async function loadMessages() {
   renderMsgBadge();
 }
 function renderMsgBadge() {
-  const all = allMsgs();
-  const n = all.length;
-  const warn = all.some(m => m && m.level === 'warn');   // 수집 실패 등 = 노란 점등(haswarn)
+  const dis = msgDismissed(), read = msgReadSet();
+  const visible = allMsgs().filter(m => !(m.id && dis.has(String(m.id))));   // 목록 표시분(삭제 제외)
+  const unread = visible.filter(m => m.id && !read.has(String(m.id)));        // 안 읽음 = id 있고 읽음기록 없음(healthMsg=id없음은 shc-bad로 별도 점등)
+  const n = unread.length;   // 배지·링 = 안 읽은 수(운영자 260704: 읽으면 사라짐)
+  const warn = unread.some(m => m && m.level === 'warn');   // 수집 실패 등 = 노란 점등(haswarn) · 안 읽은 것만
   const prof = $('#profile'), badge = $('#pbadge');
   if (prof) { prof.classList.toggle('hasmsg', n > 0); prof.classList.toggle('haswarn', warn); prof.classList.toggle('shc-bad', shcBad()); }
   if (badge) badge.textContent = n > 99 ? '99+' : String(n);
-  const bc = $('#msgbtncnt'); if (bc) bc.textContent = n ? `(${n})` : '';
+  const bc = $('#msgbtncnt'); if (bc) bc.textContent = visible.length ? `(${visible.length})` : '';   // pmenu 라벨 = 전체 표시 수(읽음 무관)
 }
 // 메시지 삭제 = 로컬 감춤(localStorage) — 서버 메시지(md 영구)는 이 기기에서만 숨김(읽은 알림 정리용 · 운영자 260704)
 const MSG_DISMISS_KEY = 'nomute_msg_dismissed';
 function msgDismissed() { try { return new Set(JSON.parse(localStorage.getItem(MSG_DISMISS_KEY) || '[]')); } catch { return new Set(); } }
 function msgDismiss(id) { if (!id) return; const s = msgDismissed(); s.add(String(id)); try { localStorage.setItem(MSG_DISMISS_KEY, JSON.stringify([...s])); } catch {} }
+// 메시지 읽음 = 로컬 기록(localStorage) — 메시지함 열면 현재 메시지 다 읽음 처리 → 배지·링 사라짐(운영자 260704: 읽으면 알림 사라져야). 목록엔 남음(삭제와 별개).
+const MSG_READ_KEY = 'nomute_msg_read';
+function msgReadSet() { try { return new Set(JSON.parse(localStorage.getItem(MSG_READ_KEY) || '[]')); } catch { return new Set(); } }
+function msgMarkAllRead() { const dis = msgDismissed(), read = msgReadSet(); allMsgs().forEach(m => { if (m.id && !dis.has(String(m.id))) read.add(String(m.id)); }); try { localStorage.setItem(MSG_READ_KEY, JSON.stringify([...read])); } catch {} }
 function msgKind(m) {   // 알림구분 라벨(운영자 260704 '알림구분' 열) — 종류별 색
   if (m._health) return { t: '시스템', c: 'mk-sys' };
   if (m.level === 'warn' || String(m.id || '').startsWith('fail-')) return { t: '경고', c: 'mk-warn' };
@@ -5338,6 +5344,7 @@ function renderMsgList() {
 // 메시지함 열고(필요시) 특정 메시지로 스크롤·강조 — 푸시 알림 탭(/?msg=<id>) 진입점.
 function openMsgbox(highlightId) {
   closeOverlays('msg'); renderMsgList(); pushRefresh(); placeMsgpop(); msgpop.hidden = false;
+  msgMarkAllRead(); renderMsgBadge();   // 메시지함 열면 = 읽음 → 배지·링 제거(운영자 260704)
   if (highlightId) requestAnimationFrame(() => {
     const el = $('#msglist .msgrow[data-id="' + (window.CSS && CSS.escape ? CSS.escape(highlightId) : highlightId) + '"]');
     if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('flash'); }
@@ -5429,8 +5436,7 @@ function closeOverlays(keep) {
 }
 $('#profile').addEventListener('click', e => {
   e.stopPropagation();
-  // 점등(메시지 있음) + 메시지함 닫힘 = 프로필 탭하면 곧장 메시지함(운영자 260623). 메시지 없으면 기존대로 프로필 메뉴.
-  if (allMsgs().length && msgpop.hidden) { openMsgbox(); return; }
+  // 프로필 탭 = 항상 프로필 메뉴(운영자 260704: 메시지 자동팝업 폐지 — 메시지함은 메뉴 안 '메시지' 버튼으로 진입 · '프로필 메뉴 진입 불가' 버그 해결)
   const willOpen = pmenu.hidden || pmenu.classList.contains('closing');
   closeOverlays('pmenu'); if (willOpen) { showPmenu(); pushRefresh(); } else { hidePmenu(); }
 });
