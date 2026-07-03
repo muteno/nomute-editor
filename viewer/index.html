@@ -173,23 +173,16 @@
   /* 수집 실패(대기열 미등록) 메시지 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·메시지 지우면 소멸 · 운영자 260623) */
   .profile.hasmsg.haswarn { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
   .profile.hasmsg.haswarn .pbadge { background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
-  .msgitem.msg-health .mt, .msgitem.msg-warn .mt { color:var(--warn); font-weight:700; }
-  .msgitem.flash { animation:msgFlash 1.6s ease; }          /* 푸시 딥링크(/?msg=)로 들어왔을 때 해당 메시지 잠깐 노랗게 강조 */
+  .msgrow.flash { animation:msgFlash 1.6s ease; }          /* 푸시 딥링크(/?msg=)로 들어왔을 때 해당 메시지 행 잠깐 노랗게 강조 · 경고색은 .msgrow.q-warn .qmain(아래) */
   @keyframes msgFlash { 0%,100%{ background:transparent; } 18%{ background:rgba(var(--warn-rgb),.18); } }
 
   /* ── 메시지 팝업(프로필 근처) ── */
-  .msgpop { position:fixed; z-index:21; width:min(300px,82vw); overflow:hidden;
-    background:linear-gradient(165deg, rgba(24,25,28,.66), rgba(16,17,19,.74));   /* 무채색 글래스 모피즘 — 초록 틴트 제거(#tooldlg·filterpop 톤 통일·운영자 260702) */
-    backdrop-filter:blur(26px) saturate(1.5); -webkit-backdrop-filter:blur(26px) saturate(1.5);
-    border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:6px;
+  /* 메시지함 = 발행본(qpop) 표 계승(운영자 260704): qpop 클래스로 qh/qrow/qlist·glass 상속 + 이 규칙은 msgpop 고유(위치앵커·radius·shadow) · 폭/정렬/구분색 오버라이드는 발행본 CSS 뒤(qpop보다 뒤 선언 = 소스순 이김) · 행=renderMsgList가 .qrow 렌더 */
+  .msgpop { position:fixed; z-index:21; border:1px solid rgba(255,255,255,.14); border-radius:16px; padding:6px;
     box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); transform-origin:top right;
-    animation:msgUnfold .26s cubic-bezier(.22,.61,.36,1) both; }   /* 위치=JS(프로필 우측·세로중앙 앵커) · 우상단 기준 좌하단으로 촤르륵 */
+    animation:msgUnfold .26s cubic-bezier(.22,.61,.36,1) both; }   /* 위치=JS(프로필 우측·세로중앙 앵커) · glass/overflow=qpop 상속 · 폭/qlist/정렬 오버라이드는 §발행본 뒤 */
   @keyframes msgUnfold { from { opacity:0; transform:scale(.82) translateY(-8px); } to { opacity:1; transform:none; } }
-  .msglist > * { animation:msgItem .34s cubic-bezier(.22,.61,.36,1) both; }   /* 메시지 항목 촤르륵(우→좌 스태거) */
-  .msglist > *:nth-child(2){ animation-delay:.05s } .msglist > *:nth-child(3){ animation-delay:.1s }
-  .msglist > *:nth-child(4){ animation-delay:.15s } .msglist > *:nth-child(n+5){ animation-delay:.2s }
-  @keyframes msgItem { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
-  @media (prefers-reduced-motion:reduce){ .msgpop, .msglist > * { animation:none; } }
+  @media (prefers-reduced-motion:reduce){ .msgpop { animation:none; } }   /* 메시지함 열림 애니 off · 행(qrow) 스태거는 .qpop .qlist .qrow reduced-motion이 처리(260704 표 전환으로 msgItem 애니 폐지) */
   .msgpop[hidden] { display:none; }
   .msgpop .mh { display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; border-bottom:1px solid var(--line2); margin-bottom:4px; }
   .msgpop .mh b { font-size:13px; font-weight:800; }
@@ -198,7 +191,6 @@
     background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:9px;
     font:inherit; font-size:14px; cursor:pointer; }
   .msgpop .mh .mx:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
-  .msglist { max-height:46vh; overflow-y:auto; overflow-x:hidden; padding:2px; }   /* overflow-x:hidden = 항목 슬라이드인(translateX 12px) 시 가로 스크롤바 깜빡 차단(운영자 260621) */
   /* 긴급 속보 웹푸시 토글(메시지 팝업 상단) */
   .pushrow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; border-top:1px solid var(--line2); }   /* 알림 = SNS·메시지·발행본과 동일 행높이·간격(margin-top 제거·구분자 하어라인만 유지) · 라벨 좌·토글 우 · 운영자 260702 */
   .pushrow .pl { font-size:13px; font-weight:700; color:var(--fg); white-space:nowrap; line-height:var(--lh-base); }   /* line-height 1.6 = .pmenu a/button과 동일 행높이 → 간격 일치(운영자 260702) */
@@ -2244,18 +2236,26 @@
   .pubpop .qrow.pub-open { cursor:pointer; border-radius:8px; transition:background .16s ease; }   /* 행 클릭 = 새 탭+링크복사(운영자 260702) — 어포던스: 손가락 커서 + hover 미세 하이라이트 */
   .pubpop .qrow.pub-open:hover { background:rgba(255,255,255,.05); }
   /* 발행본 액션 = 도형 제거(PR 1377 재적용 · 운영자 260703 — yeta v2(PR 1378) 머지가 옛 베이스로 덮은 회귀 복원): 버튼 박스 없이 픽토그램만·간격은 qrow gap 유지 · rest 무채색·hover/focus만 의미색 · 누름 = 공유 ic-share 별자리 훑기(아래 ic-* 블록) / 삭제 scale · 행 배경 안 번쩍(옛 hover:none active 제거) · ⚠️ 주석에 PR 번호 '#NNNN' 표기 금지 = check_refs hex 게이트가 4자리 hex로 오인 */
-  .pubpop .pub-ico { position:relative; flex:none; width:34px; height:34px; display:grid; place-items:center; padding:0; border:none; background:none; color:var(--mut); cursor:pointer; border-radius:8px; transition:color .16s ease, transform .12s ease; -webkit-tap-highlight-color:transparent; }
-  .pubpop .pub-ico::before { content:''; position:absolute; inset:-4px; }   /* 히트영역 ≥42px(skill §16)·레이아웃 무영향 */
-  .pubpop .pub-ico svg { width:18px; height:18px; }
-  .pubpop .pub-ico:active { transform:scale(var(--press-xs,.82)); }   /* 작은 아이콘 tier = --press-xs(.82) */
-  .pubpop .pub-share { color:var(--accent); }   /* 상시 의미색(운영자 260703 확정 — rest 무채 폐지·플레이트 시절 톤 유지) */
-  .pubpop .pub-rm { color:var(--danger); }      /* 삭제 = 상시 빨강(동일 확정) — ic-share 점등은 0% 무채 딤→플레어라 상시색에서도 또렷 */
-  .pubpop .pub-ico.ok { color:var(--accent); }   /* 공유 폴백 복사 성공 ✓ 플래시 */
-  .pubpop .pub-ico:disabled { color:var(--mut); opacity:.4; cursor:default; }
-  .pubpop .pub-ico:disabled::before { display:none; } .pubpop .pub-ico:disabled:active { transform:none; }
+  .qpop .pub-ico { position:relative; flex:none; width:34px; height:34px; display:grid; place-items:center; padding:0; border:none; background:none; color:var(--mut); cursor:pointer; border-radius:8px; transition:color .16s ease, transform .12s ease; -webkit-tap-highlight-color:transparent; }
+  .qpop .pub-ico::before { content:''; position:absolute; inset:-4px; }   /* 히트영역 ≥42px(skill §16)·레이아웃 무영향 */
+  .qpop .pub-ico svg { width:18px; height:18px; }
+  .qpop .pub-ico:active { transform:scale(var(--press-xs,.82)); }   /* 작은 아이콘 tier = --press-xs(.82) */
+  .qpop .pub-share { color:var(--accent); }   /* 상시 의미색(운영자 260703 확정 — rest 무채 폐지·플레이트 시절 톤 유지) */
+  .qpop .pub-rm { color:var(--danger); }      /* 삭제 = 상시 빨강(동일 확정) — 발행본·메시지함 공용(qpop 스코프) */
+  .qpop .pub-ico.ok { color:var(--accent); }   /* 공유 폴백 복사 성공 ✓ 플래시 */
+  .qpop .pub-ico:disabled { color:var(--mut); opacity:.4; cursor:default; }
+  .qpop .pub-ico:disabled::before { display:none; } .qpop .pub-ico:disabled:active { transform:none; }
   .pubpop .qlist { flex-basis:calc(5 * 51px); overflow:hidden; }   /* 행높이 47→51px(액션 34px) 정합 — 한 페이지 5행 무스크롤(.qpop 기본치 뒤에 선언 = 오버라이드) · overflow:hidden = 5행 고정크기·가로세로 스크롤 완전 제거(운영자 260703 '항상 저 크기 유지·스크롤 없애') */
   .pubpop .qh-xcell, .pubpop .qrow .qact { justify-content:center; }   /* 삭제(휴지통) = 헤더 X 바로 아래 가로중심 일직선(운영자 260703 'X랑 맞게 그 아래 가운데 정렬 · 가로폭 기준') · 대기열은 flex-start 유지·발행본만 center */
   .pubpop .pub-acts { flex:none; display:flex; align-items:center; }   /* 잠금·공유 묶음 = 중간 열(자연폭·pinmark margin-right 6px가 간격) · 삭제는 우측 qact 셀로 분리 = 대기열 qst|qact 미러(운영자 260703 '표처럼 열로 구분') */
+
+  /* ── 메시지함 표 오버라이드 = 발행본(pubpop) 미러 · qpop 규칙보다 뒤 선언(소스순 이김) · 운영자 260704 ── */
+  .msgpop { width:min(92vw,440px); }   /* 발행본과 동일 폭(qpop 94vw 오버라이드 = 좁은폰 좌측 안 삐짐) */
+  .msgpop .qlist { flex-basis:calc(5 * 51px); overflow:hidden; }   /* 발행본과 동일 5행 고정 높이·가로세로 스크롤 제거(운영자 '크기 유지·스크롤 없애') */
+  .msgpop .qh-xcell, .msgpop .qrow .qact { justify-content:center; }   /* 삭제(휴지통) = 헤더 X 바로 아래 중앙정렬(발행본 미러) */
+  .msgrow .mkind { font-size:11px; font-weight:800; }   /* 알림구분 라벨 = 대기열 상태셀(qst) 자리 · 종류별 색 */
+  .msgrow .mkind.mk-info { color:var(--mut); } .msgrow .mkind.mk-warn { color:var(--warn); } .msgrow .mkind.mk-sys { color:var(--info); }
+  .msgrow.q-warn .qmain { color:var(--warn); font-weight:700; }
   .pubpop .pinmark { position:relative; flex:none; display:grid; place-items:center; margin-right:6px; cursor:pointer; touch-action:manipulation; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; transition:color .2s ease, transform .12s ease; }   /* 잠금 토글 = 길게 눌러 잠금/해제(qFeedBtn 롱프레스 계승) · 우측 버튼과 마진 6px(운영자 260702) */
   .pubpop .pinmark::before { content:''; position:absolute; inset:-8px; }   /* 롱프레스 히트영역 확장(14→30px)·레이아웃 무영향(absolute) — 이벤트는 부모(.pinmark)로 귀속(평의회 260702) */
   .pubpop .pinmark svg { width:14px; height:14px; }
@@ -2307,9 +2307,9 @@
       <button id="lockBtn">잠금 설정</button>
     </div>
   </div>
-  <div class="msgpop" id="msgpop" hidden>
-    <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-    <div class="msglist" id="msglist"></div>
+  <div class="qpop msgpop" id="msgpop" hidden>
+    <div class="qh"><b>메시지</b><span class="qc" id="msgpopcnt"></span><span class="qh-xcell"><button class="tool-x" id="msgclose" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div>
+    <div class="qlist" id="msglist"></div>
   </div>
   <!-- 잠금 설정 팝업 = 메시지함(msgpop) 계승 · 행 = pushrow/pushbtn 계승(운영자 260703) -->
   <div class="msgpop" id="lockpop" hidden>
@@ -5301,27 +5301,44 @@ function renderMsgBadge() {
   if (badge) badge.textContent = n > 99 ? '99+' : String(n);
   const bc = $('#msgbtncnt'); if (bc) bc.textContent = n ? `(${n})` : '';
 }
+// 메시지 삭제 = 로컬 감춤(localStorage) — 서버 메시지(md 영구)는 이 기기에서만 숨김(읽은 알림 정리용 · 운영자 260704)
+const MSG_DISMISS_KEY = 'nomute_msg_dismissed';
+function msgDismissed() { try { return new Set(JSON.parse(localStorage.getItem(MSG_DISMISS_KEY) || '[]')); } catch { return new Set(); } }
+function msgDismiss(id) { if (!id) return; const s = msgDismissed(); s.add(String(id)); try { localStorage.setItem(MSG_DISMISS_KEY, JSON.stringify([...s])); } catch {} }
+function msgKind(m) {   // 알림구분 라벨(운영자 260704 '알림구분' 열) — 종류별 색
+  if (m._health) return { t: '시스템', c: 'mk-sys' };
+  if (m.level === 'warn' || String(m.id || '').startsWith('fail-')) return { t: '경고', c: 'mk-warn' };
+  return { t: '알림', c: 'mk-info' };
+}
+function msgAgo(m) {   // 대기열·발행본과 동일 상대시간(qAgo) — t(ms) 우선, 없으면 ts 문자열 KST 파싱
+  if (m.t) return qAgo(m.t);
+  if (m.ts) { const p = Date.parse(String(m.ts).replace(' ', 'T') + (/[+Z]$/.test(m.ts) ? '' : '+09:00')); return isNaN(p) ? String(m.ts) : qAgo(p); }
+  return '';
+}
+// 메시지함 = 대기열·발행본 표 미러(운영자 260704): 시간 | 구분 | 내용(…축약) | 삭제(헤더 X 아래 중앙정렬)
 function renderMsgList() {
-  const msgs = allMsgs();
+  const dis = msgDismissed();
+  const msgs = allMsgs().filter(m => !(m.id && dis.has(String(m.id))));
   const cnt = $('#msgpopcnt'); if (cnt) cnt.textContent = msgs.length ? `${msgs.length}건` : '';
   const list = $('#msglist'); if (!list) return;
-  if (!msgs.length) { list.innerHTML = '<div class="msgempty">새 메시지 없음</div>'; return; }
-  list.innerHTML = '';
-  msgs.forEach(m => {
-    const it = document.createElement('div'); it.className = 'msgitem' + (m._health ? ' msg-health' : '') + (m.level === 'warn' ? ' msg-warn' : '');
-    if (m.id) it.dataset.id = m.id;   // 푸시 딥링크(/?msg=<id>) 강조 매칭용
-    const t = document.createElement('div'); t.className = 'mt';
-    if (m._health || m.level === 'warn') t.innerHTML = WARN_SVG + ' ' + esc(m.text || ''); else t.textContent = m.text || '';   // 경고/건강 메시지 = ⚠ 픽토그램 prepend(esc 가드·이모지 폐지)
-    it.appendChild(t);
-    if (m.ts) { const d = document.createElement('div'); d.className = 'md8'; d.textContent = m.ts; it.appendChild(d); }
-    list.appendChild(it);
-  });
+  if (!msgs.length) { list.innerHTML = '<div class="qempty">새 메시지 없음</div>'; return; }
+  list.innerHTML = msgs.map(m => {
+    const k = msgKind(m), body = m.text || '', cp = [...body], bodyS = cp.length > 60 ? cp.slice(0, 60).join('') + '…' : body;
+    const canDel = !!m.id && !m._health;   // 시스템·id없는 알림 = 삭제 불가(빈 qact 셀 = 정렬 유지)
+    const del = canDel ? '<button class="pub-ico pub-rm msg-del" type="button" title="삭제" data-id="' + qEsc(String(m.id)) + '">' + _TRASHSVG + '</button>' : '';
+    return '<div class="qrow msgrow' + ((m._health || m.level === 'warn') ? ' q-warn' : '') + '"' + (m.id ? ' data-id="' + qEsc(String(m.id)) + '"' : '') + '>'
+      + '<span class="qt">' + qEsc(msgAgo(m)) + '</span>'
+      + '<span class="qst mkind ' + k.c + '">' + k.t + '</span>'
+      + '<span class="qmain" title="' + qEsc(body) + '">' + qEsc(bodyS) + '</span>'
+      + '<span class="qact">' + del + '</span></div>';
+  }).join('');
+  list.querySelectorAll('.msg-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); msgDismiss(b.dataset.id); renderMsgList(); renderMsgBadge(); });
 }
 // 메시지함 열고(필요시) 특정 메시지로 스크롤·강조 — 푸시 알림 탭(/?msg=<id>) 진입점.
 function openMsgbox(highlightId) {
   closeOverlays('msg'); renderMsgList(); pushRefresh(); placeMsgpop(); msgpop.hidden = false;
   if (highlightId) requestAnimationFrame(() => {
-    const el = $('#msglist .msgitem[data-id="' + (window.CSS && CSS.escape ? CSS.escape(highlightId) : highlightId) + '"]');
+    const el = $('#msglist .msgrow[data-id="' + (window.CSS && CSS.escape ? CSS.escape(highlightId) : highlightId) + '"]');
     if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('flash'); }
   });
 }
