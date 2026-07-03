@@ -5441,7 +5441,7 @@ $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidd
 //    ⚠️ 성격 = 사생활 가림막(클라 로컬·DevTools로 우회 가능) — 접근 보안 자체는 CF Access 담당(발행본 서버 검증과 별개).
 const LK_MASTER_H = '19bd473e8747c6ac41e3477aac557468f2010b7d9d2205a3fd6e7e0cc8eef2eb';   // sha256('898900:nmlock') = 발행본 마스터(898900) 통일·평문 미노출
 const LK_MAX = 5, LK_OUT_MS = 600000;   // 오류 5회 = 10분(발행본 LOCK_MAX·LOCK_TTL 정본 동일)
-const lkOn = () => localStorage.getItem('nm_lock_on') !== '0';   // 기본 ON(운영자 260703) — 명시적으로 끈('0') 기기만 OFF. PIN 미설정이면 lockNow 가드로 실제 잠금은 안 걸림(설정 즉시 활성).
+const lkOn = () => localStorage.getItem('nm_lock_on') === '1';
 const lkPinH = () => localStorage.getItem('nm_lock_pin') || '';
 const lkMin = () => Math.min(120, Math.max(1, parseInt(localStorage.getItem('nm_lock_min') || '2', 10) || 2));   // 기본 2분(운영자 260703)
 async function lkHash(p) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p + ':nmlock')); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
@@ -5552,11 +5552,13 @@ $('#lockpopX').addEventListener('click', e => { e.stopPropagation(); lockpop.hid
 lockpop.addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', () => { if (!lockpop.hidden) lockpop.hidden = true; });
 $('#lockOnBtn').addEventListener('click', async () => {
-  // 기본 ON 체계(운영자 260703): 토글은 상태만 — 실제 잠금 무장은 PIN 존재가 게이트(lockNow/lockArm 가드·힌트가 안내).
   if (lkOn()) { try { localStorage.setItem('nm_lock_on', '0'); } catch {} clearTimeout(_lkT); }
-  else { try { localStorage.setItem('nm_lock_on', '1'); } catch {} _lkLast = Date.now(); lockArm(); }
+  else {
+    if (!lkPinH()) { const h = $('#lockHint'); h.textContent = 'PIN 6자리를 먼저 설정하세요'; h.classList.add('bad'); $('#lockPinIn').focus(); return; }
+    try { localStorage.setItem('nm_lock_on', '1'); } catch {}
+    _lkLast = Date.now(); lockArm();
+  }
   lkSettingsRefresh();
-  if (lkOn() && !lkPinH()) { const h = $('#lockHint'); h.classList.add('bad'); $('#lockPinIn').focus(); }
 });
 $('#lockPinIn').addEventListener('input', async e => {
   const el = e.target; el.value = el.value.replace(/\D/g, '').slice(0, 6);
