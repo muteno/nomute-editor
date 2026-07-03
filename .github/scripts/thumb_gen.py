@@ -216,7 +216,9 @@ GOVERNING_SATIRE = (
 # ③ full-bleed 예외(흰 여백+얇은 테두리 = 만평 정체성). ⚠️ 안전 하한은 유지: 사인·피해자·미성년 익명·모욕/혐오 금지.
 CARTOON_TEXT_RULES = (
     "TEXT & FIGURES: short Korean speech bubbles and hand-written labels ARE allowed and are part of the "
-    "genre — keep each to a few large, clearly legible Korean words (fewer, bigger words render cleaner); "
+    "genre — but use AT MOST 3 text elements in total (e.g. one speech bubble + one or two labels, plus "
+    "optionally one bottom caption strip); do NOT label every object — the drawing speaks, text only lands "
+    "the punch. Keep each to a few large, clearly legible Korean words (fewer, bigger words render cleaner); "
     "draw the wording from the HOOK/INSIGHT above. Caricatures of public figures (politicians, senior "
     "officials) in the editorial-cartoon tradition are allowed. "
     "AVOID: watermark or logo; sexualized or gratuitous depiction; any harm involving minors; private "
