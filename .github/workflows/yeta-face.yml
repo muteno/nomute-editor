@@ -10,6 +10,10 @@ on:
         description: '1 = 기존 avatar 도 재생성·덮어쓰기(기본 = 빈 슬롯만)'
         required: false
         default: ''
+      only:
+        description: '특정 캐릭터 id 하나만(연결·모델 테스트 · 예: mudi). 비우면 전체'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -27,7 +31,7 @@ jobs:
 
       - name: 얼굴 생성 + roster avatar 주입
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_nomute || secrets.OPENAI_API_KEY }}   # 운영자 등록 시크릿명 = OPENAI_API_KEY_nomute(폴백 OPENAI_API_KEY)
           OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}   # 선택 — 미설정이면 스크립트 기본(gpt-image-2)
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
@@ -35,6 +39,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           FORCE: ${{ github.event.inputs.force }}
+          YETA_FACE_ONLY: ${{ github.event.inputs.only }}
         run: python3 .github/scripts/yeta_face.py
 
       - name: roster 커밋 (rebase 재시도 = thumb-make 패턴)
