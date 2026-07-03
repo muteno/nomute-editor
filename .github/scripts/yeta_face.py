@@ -100,8 +100,12 @@ def main():
     except OSError:
         print("::error::roster.json 없음"); return 1
 
+    only = os.environ.get("YETA_FACE_ONLY", "").strip()   # 특정 id 하나만(연결·모델 테스트용 · 비용 절감)
+    faces = [f for f in FACES if not only or f[0] == only]
+    if only and not faces:
+        print("::warning::YETA_FACE_ONLY={} 가 FACES에 없음".format(only)); return 0
     made, skipped, failed = 0, 0, 0
-    for pid, desc in FACES:
+    for pid, desc in faces:
         if not force and re.search(r'"id"\s*:\s*"%s"[^\n]*"avatar"\s*:\s*"[^"]+"' % re.escape(pid), roster):
             print("· {} — avatar 이미 있음, skip".format(pid)); skipped += 1; continue
         print("· {} 생성 — {}".format(pid, desc[:44]), flush=True)
