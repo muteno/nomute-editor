@@ -143,7 +143,8 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   printf '%s\n' "$out" > "$outfile"
   rm -f "$f"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
-  echo "${title:-$id}" >> /tmp/analyzed_titles.txt
+  title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(완료 푸시 우선 · analyze.sh 미러 · 260703)
+  echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   echo "성공 → $outfile (${title:-$id})"
   echo "::endgroup::"

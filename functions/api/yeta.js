@@ -52,6 +52,8 @@ export async function onRequestPost({ request, env }) {
   if (op === 'get') return json({ ok: true, sess: await readSess() });
 
   if (op === 'reset') {
+    const cur = await env.YETA_R2.get(KEY);   // 삭제 직전 1세대 백업(reset 비가역 완화 — R2엔 copy 없어 get→put) · 비공개 버킷
+    if (cur) { try { await env.YETA_R2.put('sessions/main.prev.json', await cur.arrayBuffer(), { httpMetadata: { contentType: 'application/json' } }); } catch {} }
     await putSess({ turns: [], note: '', state: 'idle', updated: Date.now() });   // 페르소나도 비움 → 재뽑기
     return json({ ok: true });
   }
@@ -59,12 +61,16 @@ export async function onRequestPost({ request, env }) {
   if (op === 'draw') {   // 페르소나 뽑기/재뽑기 — 대화 맥락(턴·노트)은 유지, 화자만 교체
     const persona = String(body.persona || '');
     if (!ID_RE.test(persona)) return json({ error: '잘못된 페르소나 id' }, 400);
-    const name = String(body.name || '').replace(/<<\s*\/?\s*NOTE(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 24);
-    const enter = String(body.enter || '').replace(/<<\s*\/?\s*NOTE(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 60);   // 등장 연출 문구(roster enter_line · 아이데이션②)
+    const sani = s => String(s || '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '');
+    const name = sani(body.name).slice(0, 24);
+    const enter = sani(body.enter).slice(0, 60);       // 등장 연출 문구(roster enter_line · 아이데이션②)
+    const greeting = sani(body.greeting).slice(0, 300);   // 첫인사 — 첫 진입 시 실제 assistant 턴으로 박제(증발·모델 문맥 누락 동시 해결)
     const sess = await readSess();
     sess.turns = sess.turns || [];
     if (sess.persona && sess.persona !== persona && sess.turns.length) {
       sess.turns.push({ role: 'sys', text: enter || `${name || persona} 등장`, ts: Date.now() });   // 대화 중 교체 = 합류 신호(enter_line 연출 우선 · 프롬프트 문맥에도 실림)
+    } else if (!sess.turns.length && greeting) {
+      sess.turns.push({ role: 'assistant', text: greeting, persona, ts: Date.now() });   // 첫 진입 = 첫인사를 턴으로(뷰어 재렌더에도 유지 + HIST에 실려 캐릭터가 자기 인사를 앎)
     }
     sess.persona = persona;
     sess.updated = Date.now();
@@ -77,7 +83,7 @@ export async function onRequestPost({ request, env }) {
 
   // 유저 텍스트 절제 + 프롬프트 델리미터 위장 무력화(yeta_chat.sh 관대 파서와 짝)
   const text = String(body.text || '').slice(0, 4000)
-    .replace(/<\/?user_message>/gi, '').replace(/<<\s*\/?\s*NOTE\s*>>/gi, '').trim();
+    .replace(/<\/?user_message>/gi, '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').trim();   // NOTE·MOOD 위장 무력화(draw 새니타이즈와 동형)
   if (!text) return json({ error: '빈 메시지' }, 400);
 
   // 다이얼(모델×노력) — 화이트리스트 강제(오타·주입 = 기본 폴백 · 30초 목표라 effort 기본 low)

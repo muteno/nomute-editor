@@ -38,6 +38,15 @@ STAGES = [
 ]
 
 
+# 감정(무드) 배리언트(운영자 260703 "배경으로 감정·분위기") — 같은 무대가 공기만 바뀜(무대 유지 = 몰입 유지).
+# 답장 <<MOOD:x>> 태그(yeta_chat.sh 파싱) → 뷰어가 yeta_bg/<stage>_<mood>.png 로 크로스페이드(URL 규약 파생 — roster 는 base 만).
+MOODS = [
+    ("warm",  "따뜻하고 아늑한 공기 — 전구색 조명이 더 풍성하고 부드러운 빛번짐, 온기 도는 색감, 편안한 분위기."),
+    ("tense", "긴장감 도는 공기 — 차갑고 푸른 색조, 그늘이 깊고 조명 일부가 꺼짐, 대비가 살짝 올라간 서늘한 분위기."),
+    ("blue",  "쓸쓸하고 조용한 공기 — 비가 막 그친 듯한 습기, 유리에 맺힌 물기·푸른 새벽빛, 채도를 낮춘 가라앉은 분위기."),
+]
+
+
 def r2_head(key):
     """R2 객체 존재 확인 + ETag(단순 업로드 = md5) → (존재, etag 12자). 재과금 0 재사용용 —
     260703 run#1 실측: 생성·업로드 성공 후 커밋 스텝 git add pathspec 에러로 roster 주입만 유실
@@ -112,6 +121,23 @@ def main():
             roster, hit = set_bg(roster, p, url)
             print("  {} bg ← {}".format(p, url) if hit else "  ⚠️ {} 라인 못 찾음".format(p))
         made += 1
+
+    # 무드 배리언트 — roster 무관(뷰어가 base URL에서 규약 파생)이라 멱등 키 = R2 존재(git 폴백은 로컬 파일 존재)
+    for key, _pids, scene in STAGES:
+        for mood, mod in MOODS:
+            r2key = "yeta_bg/{}_{}.png".format(key, mood)
+            local = os.path.join(LOCAL_DIR, "{}_{}.png".format(key, mood))
+            if not force and (r2_head(r2key)[0] or os.path.exists(local)):
+                skipped += 1; continue
+            print("· {}_{} 생성".format(key, mood), flush=True)
+            png = tg.gemini_image(BASE + scene + " " + mod, "1K", tag="yetabg", aspect="9:16")
+            if not png:
+                print("  ⚠️ 생성 실패 — 건너뜀(비치명·재실행으로 채움)"); failed += 1; continue
+            if not (tg.R2_ON and tg.r2_upload(png, r2key)):
+                os.makedirs(LOCAL_DIR, exist_ok=True)
+                open(local, "wb").write(png)
+                print("  ⚠️ R2 미설정/실패 → git 폴백: {}".format(local))
+            made += 1
 
     if made:
         open(ROSTER, "w", encoding="utf-8").write(roster)
