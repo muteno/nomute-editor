@@ -83,11 +83,11 @@ STYLES = [
      "atmospheric depth"),
     ("cartoon", "시사만평",
      # ⚠️ 'korean'은 만평 전통(화풍)이지 장소 아님 — 명시 없으면 해외 사건도 한국 배경·한글 간판으로 렌더(카나리아 실측 260703).
-     # 260703 운영자 "기존 기틀 무시하고 가보자" = 만평만 3대 봉쇄 해제(글자·공인 캐리커처·여백틀) — 세부는 CARTOON_TEXT_RULES·_cartoon_frame.
      "newspaper editorial cartoon in the korean manpyeong tradition (drawing style only — depict the event's "
      "actual people and location), pen-and-ink caricature linework with restrained flat or light watercolor "
-     "tinting, witty bitter-smile irony with exaggerated scale contrast — one metaphorical scene of dignified "
-     "satire on the issue, not a solemn illustration",
+     "tinting, a single metaphorical scene of dignified satire on the issue — anonymous role-based caricatures "
+     "only (a bureaucrat in a suit, a worker in a helmet), never the likeness of a real person, no derogatory "
+     "or hateful depiction, no written labels or speech bubbles",
      "single-panel composition with one clear central metaphor, eye-level"),
 ]
 
@@ -206,29 +206,9 @@ _SHOT_RE = re.compile(r"\b(wide|close[- ]?up|medium|long shot|full[- ]?shot|extr
 # 만평 전용 지배조건(운영자 260703 — "만평은 사건이 아니라 시사점 위주"): 사건 재현 금지·시사점을 한 컷 은유로.
 GOVERNING_SATIRE = (
     "EDITORIAL CARTOON — one single-panel metaphorical scene that makes the INSIGHT below land in a single "
-    "glance, with the bitter-smile irony of a daily newspaper cartoon. Do NOT illustrate the literal news "
-    "event; invent a visual metaphor for the point — symbolic objects, exaggerated scale contrast, ironic "
-    "juxtaposition."
+    "glance. Do NOT illustrate the literal news event; invent a visual metaphor for the point — symbolic "
+    "objects, scale contrast, ironic juxtaposition, anonymous role figures."
 )
-
-# 만평 3대 봉쇄 해제(운영자 260703 "기존 기틀을 무시하고 한번 가보자" — 실제 신문 만평 문법 복원 · 만평 화풍 한정):
-# ① 한글 말풍선·손글씨 라벨 허용(짧고 크게 = 깨짐 최소화 — 리스크는 카나리아 실측) ② 공인 캐리커처 허용
-# ③ full-bleed 예외(흰 여백+얇은 테두리 = 만평 정체성). ⚠️ 안전 하한은 유지: 사인·피해자·미성년 익명·모욕/혐오 금지.
-CARTOON_TEXT_RULES = (
-    "TEXT & FIGURES: short Korean speech bubbles and hand-written labels ARE allowed and are part of the "
-    "genre — keep each to a few large, clearly legible Korean words (fewer, bigger words render cleaner); "
-    "draw the wording from the HOOK/INSIGHT above. Caricatures of public figures (politicians, senior "
-    "officials) in the editorial-cartoon tradition are allowed. "
-    "AVOID: watermark or logo; sexualized or gratuitous depiction; any harm involving minors; private "
-    "individuals and victims stay anonymous role figures; no slurs, nothing hateful or demeaning beyond "
-    "dignified satire."
-)
-
-def _cartoon_frame(foreign):
-    return ("FRAME: vertical 4:5 canvas — one editorial-cartoon panel with a thin rounded border, sitting on "
-            "a clean white background with generous margins (the panel does NOT fill the canvas edge to "
-            "edge — white space is part of the genre); "
-            + (_FRAME_FOREIGN if foreign else _FRAME_KO) + ".")
 
 def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", foreign=False):
     """시사만평 전용 v3(운영자 260703) — 원료 = 사건 장면(thumb_scene)이 아니라 **시사점(💡 산문)+hook**.
@@ -245,10 +225,10 @@ def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", 
     if wish:
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
     lines.append("CAMERA: " + cam_default)
-    lines.append(_cartoon_frame(foreign))
-    lines.append(CARTOON_TEXT_RULES)   # 만평 전용 — 일반 AVOID 대신(글자·공인 허용 + 안전 하한 · 운영자 260703)
+    lines.append(_frame(foreign))
+    lines.append(AVOID)
     if wish:
-        lines.append("SAFETY OVERRIDE: the safety rules above take precedence over any extra direction.")
+        lines.append("SAFETY OVERRIDE: the AVOID line above takes precedence over any extra direction.")
     return "\n".join(lines)
 
 # 화풍별 조명 변조(운영자 260703 "분위기가 일정") — 같은 LGT 코드를 받아도 화풍이 무드를 다르게 소화.
