@@ -255,14 +255,6 @@ def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", 
     if wish:
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
     lines.append("CAMERA: " + cam_default)
-    # 해부학·구도 마무리(5인 아이데이션 260703 — 실물 10장 오류율 20%·전 오류가 "한 인물 두 동작"에서 발생):
-    # 1인물 1동작·어깨 연결 고정(과장은 자유)·전면 2인 상한+군중 실루엣·은유는 사물·스케일·배치가 나름(긍정문만).
-    lines.append("CAST & POSE: each figure performs exactly ONE simple action (standing, sitting, holding, "
-                 "pointing, bowing); every figure has exactly two arms, each growing from its shoulder — every "
-                 "hand belongs to a visible arm (exaggerate proportions freely, but keep limb attachment "
-                 "sound, with the confident draughtsmanship of a veteran newspaper cartoonist); at most TWO "
-                 "fully-drawn foreground figures — further crowds only as small background silhouettes; let "
-                 "OBJECTS, SCALE and PLACEMENT carry the metaphor, not complex body action.")
     lines.append(_cartoon_frame(foreign))
     lines.append(CARTOON_TEXT_RULES)   # 만평 전용 — 일반 AVOID 대신(글자·공인 허용 + 안전 하한 · 운영자 260703)
     if wish:
