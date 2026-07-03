@@ -101,8 +101,8 @@ GOVERNING = (
 # FRAME = full-bleed 충전 + 단일 초점 + 지역 기본값. (구) '하단 자막 자리'는 260621 폐기(검정 띠만 유발).
 # ⚠️ 암시룰(시신·유혈·고통 '직접묘사 말고 암시' 강제)은 260621 제거 — 충돌·분노 순화 방지(운영자 요청·일단은).
 #    AVOID의 gore 항목은 '유혈 클로즈업·무기 겨눔'(표지 강등 모티프)만 한정 = 긴장 유지·순화 아님(분신술⑩ RCH-02 대칭).
-_FRAME_KO = ("Korean people and setting by default (if the event is clearly foreign, use the event's actual "
-             "region and people)")
+_FRAME_KO = ("every person in the scene is KOREAN and the setting is Korea — this is a domestic Korean news "
+             "story (only if the event is clearly foreign, use the event's actual region and people)")
 # ⚠️ 하드 부정문("NOT Korea") 금지 — image_query_en은 '외신 검색 키'라 북한·한국팀 해외경기도 정당하게 채워짐
 #    → NOT Korea 강제 시 한반도 인물·한국 선수가 외국인으로 오염(실물 4/45건 · 검증9). 긍정문만.
 _FRAME_FOREIGN = "set in the event's actual country, region and people (this is a foreign-location news event)"
