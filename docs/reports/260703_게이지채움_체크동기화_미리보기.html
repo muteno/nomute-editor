@@ -1,0 +1,154 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>생성 게이지바 — 채움→체크 타이밍 전/후</title>
+<style>
+  :root{
+    --accent:#0ffd02; --accent-rgb:15,253,2; --on-accent:#06140d;
+    --bg:#0b0d0c; --pan:rgba(255,255,255,.045); --line:rgba(255,255,255,.1);
+    --fg:#e9eaec; --mut:#9aa0a3;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:radial-gradient(120% 90% at 50% 0%,#101613 0%,var(--bg) 60%); color:var(--fg);
+    line-height:1.6; -webkit-font-smoothing:antialiased; padding:26px 16px 60px; }
+  .wrap{ max-width:640px; margin:0 auto; }
+  h1{ font-size:20px; font-weight:800; letter-spacing:-.4px; margin:0 0 6px; }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 24px; }
+  .card{ background:var(--pan); border:1px solid var(--line); border-radius:16px; padding:18px 18px 20px; margin:0 0 16px;
+    backdrop-filter:blur(8px); }
+  .card h2{ font-size:13.5px; font-weight:800; margin:0 0 12px; color:var(--fg); display:flex; align-items:center; gap:7px; }
+  .card h2 .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.7); }
+  p{ margin:0 0 10px; font-size:13.5px; }
+  p:last-child{ margin-bottom:0; }
+  .mut{ color:var(--mut); }
+  b.acc{ color:var(--accent); font-weight:800; }
+  code{ background:rgba(0,0,0,.4); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfeecb; }
+
+  /* ── 실제 뷰어 asksend 게이지 CSS 그대로 복사(viewer/index.html 2071~2099) ── */
+  .demo-row{ display:flex; flex-direction:column; gap:20px; margin:6px 0 4px; }
+  .lane{ display:flex; align-items:center; gap:14px; }
+  .lane .tag{ flex:0 0 78px; font-size:11.5px; font-weight:800; text-align:right; letter-spacing:-.2px; }
+  .lane.now .tag{ color:#ff8f6b; }
+  .lane.next .tag{ color:var(--accent); }
+  .lane .meta{ display:block; color:var(--mut); font-weight:600; font-size:10px; margin-top:2px; }
+
+  .asksend{ flex:none; position:relative; overflow:hidden; background:rgba(0,0,0,.34); color:var(--accent);
+    border:1px solid rgba(var(--accent-rgb),.36); border-radius:999px; padding:11px 30px; min-width:150px;
+    font-size:15px; font-weight:800; cursor:pointer; text-align:center; }
+  .asksend > span{ position:relative; z-index:1; }
+  .asksend.firing::before{ content:''; position:absolute; inset:0; background:var(--accent); transform:scaleX(0);
+    transform-origin:left; z-index:0; }
+  .asksend.glive.firing::before{ transition:transform 3.6s linear; }
+  .asksend.glive.firing.grun::before{ transform:scaleX(.9); }
+  /* 현재(전): gdone .16s + 체크 200ms */
+  .now .asksend.glive.firing.gdone::before{ transform:scaleX(1); transition:transform .16s linear; }
+  /* 제안(후): gdone .3s + 체크 300ms */
+  .next .asksend.glive.firing.gdone::before{ transform:scaleX(1); transition:transform .3s linear; }
+  .asksend .ack{ position:absolute; inset:0; z-index:2; display:grid; place-items:center; transform:scale(0);
+    animation:ackPop .44s cubic-bezier(.18,1.5,.4,1) forwards; }
+  .asksend .ack svg{ width:19px; height:19px; }
+  .asksend .ack path{ fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:24; stroke-dashoffset:24; animation:ackTick .26s .12s ease forwards; }
+  .asksend.checked > span:not(.ack){ opacity:0; }
+  @keyframes ackPop{ 0%{transform:scale(0)} 60%{transform:scale(1.28)} 100%{transform:scale(1)} }
+  @keyframes ackTick{ to{ stroke-dashoffset:0; } }
+
+  .playbar{ display:flex; align-items:center; gap:12px; margin-top:18px; flex-wrap:wrap; }
+  .play{ appearance:none; border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.1);
+    color:var(--accent); font-weight:800; font-size:13.5px; border-radius:999px; padding:10px 22px; cursor:pointer;
+    transition:transform .1s, background .15s; }
+  .play:hover{ background:rgba(var(--accent-rgb),.18); }
+  .play:active{ transform:scale(.94); }
+  .hint{ color:var(--mut); font-size:11.5px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:4px; }
+  th,td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ color:var(--mut); font-weight:700; font-size:11.5px; }
+  td:first-child{ color:var(--mut); white-space:nowrap; font-weight:700; }
+  .ok{ color:var(--accent); font-weight:800; }
+  .warn{ color:#ffcf4a; }
+</style>
+
+<div class="wrap">
+  <h1>생성 게이지바 — 채움 → 체크 타이밍 손질</h1>
+  <p class="sub">전송·재확인·수정·발행 공용 게이지(<code>.asksend</code>) · 보여주기식 연출 · 260703</p>
+
+  <div class="card">
+    <h2><span class="dot"></span>지금 왜 어색한가</h2>
+    <p>응답이 오면 게이지가 <b class="acc">0.16초</b> 만에 100%로 <b>확</b> 차버리고, 체크(✓)는 그 뒤 <b>200ms</b>에 떠. 게이지는 이미 꽉 찼는데 체크가 안 떠서 <span class="warn">"확 참 → 멈칫 → 체크"</span>로 읽혀 = 다 찬 다음에 딜레이 되는 느낌.</p>
+    <p class="mut">고치는 방향: 마지막 채움을 <b class="acc">0.3초</b>로 늘려 눈이 따라오게 하고, 체크를 채움이 끝나는 순간(<b class="acc">300ms</b>)에 딱 물림 → "스르륵 다 참 → 곧바로 체크".</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span>직접 비교 — 눌러봐</h2>
+    <div class="demo-row">
+      <div class="lane now">
+        <div class="tag">현재<span class="meta">0.16s · +200ms</span></div>
+        <button class="asksend" id="bNow"><span>생성</span></button>
+      </div>
+      <div class="lane next">
+        <div class="tag">제안<span class="meta">0.3s · +300ms</span></div>
+        <button class="asksend" id="bNext"><span>생성</span></button>
+      </div>
+    </div>
+    <div class="playbar">
+      <button class="play" id="play">▶ 나란히 재생</button>
+      <span class="hint">응답 도착 시점은 동일 · 마지막 채움과 체크만 다름</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span>무엇을 바꿨나 (<code>viewer/index.html</code>)</h2>
+    <table>
+      <tr><th>위치</th><th>전</th><th>후</th></tr>
+      <tr><td>채움 마무리<br><span class="mut" style="font-weight:400">gdone transition</span></td><td>0.16s</td><td class="ok">0.3s</td></tr>
+      <tr><td>체크 등장<br><span class="mut" style="font-weight:400">askShowCheck · 6곳</span></td><td>+200ms</td><td class="ok">+300ms</td></tr>
+    </table>
+    <p class="mut" style="margin-top:10px; font-size:12px">공용 헬퍼라 6곳(전송·요약수정·카드재확인·발행·기록) 전부 같은 값으로 통일 = 일관.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="dot"></span>장단점 · 리스크</h2>
+    <table>
+      <tr><td>장점</td><td>"다 찬 후 멈칫" 공백 제거 · 채움→체크 매끄럽게 연결 · 마지막 채움이 눈에 보임</td></tr>
+      <tr><td>단점</td><td>응답 후 체감 마무리가 0.14초 느려짐(0.16→0.3s) — 보여주기 연출이라 무해</td></tr>
+      <tr><td>효율</td><td>CSS 값 1 + 상수 6, 로직·구조 무변경 · 렌더 부하 0</td></tr>
+      <tr><td>품질저하</td><td class="ok">없음 — 순수 시각 타이밍 · 동작/데이터/파이프라인 무관 · reduced-motion 경로 보존</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+  const NOW = document.getElementById('bNow');
+  const NEXT = document.getElementById('bNext');
+  const RESP_MS = 1050;   // 응답 도착 시뮬(게이지 ~26% 찬 시점) — 실제 fetch 응답 시점 대역
+
+  function reset(btn){
+    btn.classList.remove('glive','firing','grun','gdone','checked');
+    const a = btn.querySelector('.ack'); if (a) a.remove();
+    void btn.offsetWidth;
+  }
+  function showCheck(btn){
+    if (btn.querySelector('.ack')) return;
+    btn.classList.add('checked');
+    const d = document.createElement('span'); d.className = 'ack';
+    d.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+    btn.appendChild(d);
+  }
+  // gaugeStart → grun(0→90%) → 응답 시 gdone(→100%) → checkDelay 뒤 체크 (실제 헬퍼 재현)
+  function play(btn, checkDelay){
+    reset(btn);
+    btn.classList.add('glive','firing');
+    requestAnimationFrame(() => requestAnimationFrame(() => btn.classList.add('grun')));
+    setTimeout(() => {
+      btn.classList.add('gdone');
+      setTimeout(() => showCheck(btn), checkDelay);
+    }, RESP_MS);
+  }
+  function playBoth(){ play(NOW, 200); play(NEXT, 300); }
+  document.getElementById('play').addEventListener('click', playBoth);
+  // 첫 로드 시 한 번 자동 재생
+  setTimeout(playBoth, 500);
+</script>

@@ -8,7 +8,7 @@
 #     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.png 로컬 커밋·아무것도 안 깨짐)
 #
 # 안전: GEMINI_API_KEY 없으면 즉시 no-op(스캐폴드). 어떤 기사/화풍 실패도 fail-soft(파이프라인 안 깸).
-# 비용: 픽한 기사당 이미지 4장(유료·4화풍 — 운영자 260703). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
+# 비용: 픽한 기사당 이미지 2장(유료·2화풍). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
 #
 # 정본 = 이 파일(썸네일 프롬프트 SSOT). 참조 = apps/news/03_자동화_레퍼런스.md §썸네일 후보.
 
@@ -55,10 +55,8 @@ R2_ON = all([R2_ACCOUNT, R2_BUCKET, R2_PUBLIC, R2_KEY, R2_SECRET])
 #   + 세로 4:5 피드 저후킹(46 CTS-08 "타이트가 이긴다")이라 폐지 → 감정 코어 타이트 기본.
 # 고정문 = 영어(카드 cards.md 문법과 통일 — 같은 Gemini 모델서 운영 검증) · SCENE(장면)만 한국어 유지(상류 무변경).
 # ⚠️ sid 리네임 금지 = 기존 카드 재과금 0(process_one이 sid로 보존). 추가만 허용(웹툰/포토 sid 유지).
-# ✅ 4화풍 재편(운영자 260703 — "에디토리얼1·극화1·수채화1·풍자(시사만평)1"): v2 개선 위에 수채화(260621 폐지)·
-#    시사만평(260630 폐지)을 **옛 sid 그대로(watercolor·cartoon)** 재추가 = 옛 gen.json 보존분 재과금 0.
-#    픽당 2장→4장 = 과금 2배(운영자 승인) · 소급은 THUMB_SINCE(워크플로)가 260703으로 캡(261619~ 백로그 폭탄 차단).
-#    photo_close(포토클로즈업)만 폐지 유지. 정의는 옛 한국어 원문(백업 _versions)을 v2 영어 look으로 등가 이식.
+# ⚠️ cartoon(시사만평) 폐지(운영자 260630) = 포토에디토리얼+극화 2장만 생성(과금 1/3 절감).
+#    기존에 cartoon이 든 gen.json은 보존(재과금 0) · 재생성('다시 만들기') 시 2화풍만 다시 그림.
 STYLES = [
     ("photo", "포토 에디토리얼",
      "reportage press photograph, natural available light, documentary realism, "
@@ -68,27 +66,6 @@ STYLES = [
      "korean webtoon serious drama illustration, bold clean ink lines, dramatic high-contrast shading, "
      "intense emotional expression",
      "tight upper-body framing, medium close-up, slight low angle for tension, single hard side light"),
-    ("watercolor", "수채화",
-     # 인물 표정·동작 위주(운영자 260703): 극화는 표정 강조 시 과강렬 ↔ 수채화는 매체가 순화해줘서 표정·동작
-     # 정면 승부가 오히려 적정 타격. + 근접 강화(운영자 2차: "표정·핵심 사물 더 크게·카메라 더 근접") =
-     # 수채화는 카메라를 dispatch와 무관하게 잠근다(process_one이 cam_lock 전달 · 항상 초근접).
-     # 260703 운영자 확정 판("거의 온듯 — 이 느낌 살려서 반영") = 벤치마크 v4 실물의 문법을 굳힘:
-     # 측면/3/4 프로필·얼굴의 결(주름·세월)을 다정하게·안료 번짐 입자·손과 사물이 전경에 큼직하게.
-     "soft editorial watercolor illustration, bleeding translucent washes, granulated pigment texture, "
-     "textured paper grain, muted palette with one quiet warm accent — human figures are the heart of the "
-     "scene: their facial expressions and body gestures carry the story, weathered faces rendered tenderly "
-     "in profile or three-quarter view, raw emotion softened and made bearable by the gentle medium",
-     "intimate close-up from a profile or three-quarter angle — the main figure's face and the key object "
-     "in their hands fill most of the frame, hands prominent in the foreground, gentle framing, soft "
-     "atmospheric depth"),
-    ("cartoon", "시사만평",
-     # ⚠️ 'korean'은 만평 전통(화풍)이지 장소 아님 — 명시 없으면 해외 사건도 한국 배경·한글 간판으로 렌더(카나리아 실측 260703).
-     # 260703 운영자 "기존 기틀 무시하고 가보자" = 만평만 3대 봉쇄 해제(글자·공인 캐리커처·여백틀) — 세부는 CARTOON_TEXT_RULES·_cartoon_frame.
-     "newspaper editorial cartoon in the korean manpyeong tradition (drawing style only — depict the event's "
-     "actual people and location), pen-and-ink caricature linework with restrained flat or light watercolor "
-     "tinting, witty bitter-smile irony with exaggerated scale contrast — one metaphorical scene of dignified "
-     "satire on the issue, not a solemn illustration",
-     "single-panel composition with one clear central metaphor, eye-level"),
 ]
 
 # 지배 조건(맨 앞·최상위) — 화풍·구도보다 먼저 읽혀 "무엇을·어떻게"의 우선순위를 잡는다(프롬프트 위계 = 나열보다 준수율↑).
@@ -203,60 +180,7 @@ def lib_buckets(dispatch):
 _SHOT_RE = re.compile(r"\b(wide|close[- ]?up|medium|long shot|full[- ]?shot|extreme|macro|tight|choker|"
                       r"bird'?s[- ]?eye|top[- ]?down|overhead|god'?s[- ]?eye|aerial|high[- ]?angle|cowboy)\b", re.I)
 
-# 만평 전용 지배조건(운영자 260703 — "만평은 사건이 아니라 시사점 위주"): 사건 재현 금지·시사점을 한 컷 은유로.
-GOVERNING_SATIRE = (
-    "EDITORIAL CARTOON — one single-panel metaphorical scene that makes the INSIGHT below land in a single "
-    "glance, with the bitter-smile irony of a daily newspaper cartoon. Do NOT illustrate the literal news "
-    "event; invent a visual metaphor for the point — symbolic objects, exaggerated scale contrast, ironic "
-    "juxtaposition."
-)
-
-# 만평 3대 봉쇄 해제(운영자 260703 "기존 기틀을 무시하고 한번 가보자" — 실제 신문 만평 문법 복원 · 만평 화풍 한정):
-# ① 한글 말풍선·손글씨 라벨 허용(짧고 크게 = 깨짐 최소화 — 리스크는 카나리아 실측) ② 공인 캐리커처 허용
-# ③ full-bleed 예외(흰 여백+얇은 테두리 = 만평 정체성). ⚠️ 안전 하한은 유지: 사인·피해자·미성년 익명·모욕/혐오 금지.
-CARTOON_TEXT_RULES = (
-    "TEXT & FIGURES: short Korean speech bubbles and hand-written labels ARE allowed and are part of the "
-    "genre — keep each to a few large, clearly legible Korean words (fewer, bigger words render cleaner); "
-    "draw the wording from the HOOK/INSIGHT above. Caricatures of public figures (politicians, senior "
-    "officials) in the editorial-cartoon tradition are allowed. "
-    "AVOID: watermark or logo; sexualized or gratuitous depiction; any harm involving minors; private "
-    "individuals and victims stay anonymous role figures; no slurs, nothing hateful or demeaning beyond "
-    "dignified satire."
-)
-
-def _cartoon_frame(foreign):
-    return ("FRAME: vertical 4:5 canvas — one editorial-cartoon panel with a thin rounded border, sitting on "
-            "a clean white background with generous margins (the panel does NOT fill the canvas edge to "
-            "edge — white space is part of the genre); "
-            + (_FRAME_FOREIGN if foreign else _FRAME_KO) + ".")
-
-def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", foreign=False):
-    """시사만평 전용 v3(운영자 260703) — 원료 = 사건 장면(thumb_scene)이 아니라 **시사점(💡 산문)+hook**.
-    사건은 EVENT CONTEXT로만 깔아 은유의 소재를 제공(문자 그대로 그리지 말 것 명시). dispatch(사건용
-    앵글·조명)는 의도적으로 미사용 — 은유가 구도를 결정한다. insight·hook 둘 다 없으면 호출부가 일반
-    build_prompt로 폴백(구형 큐 하위호환)."""
-    lines = [GOVERNING_SATIRE, "STYLE: " + look]
-    if insight:
-        lines.append("INSIGHT (the point this cartoon must convey): " + insight)
-    if hook:
-        lines.append("HOOK (one-line handle of the point): " + hook)
-    if lead:
-        lines.append("EVENT CONTEXT (grounding only — do not draw this scene literally): " + lead)
-    if wish:
-        lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
-    lines.append("CAMERA: " + cam_default)
-    lines.append(_cartoon_frame(foreign))
-    lines.append(CARTOON_TEXT_RULES)   # 만평 전용 — 일반 AVOID 대신(글자·공인 허용 + 안전 하한 · 운영자 260703)
-    if wish:
-        lines.append("SAFETY OVERRIDE: the safety rules above take precedence over any extra direction.")
-    return "\n".join(lines)
-
-# 화풍별 조명 변조(운영자 260703 "분위기가 일정") — 같은 LGT 코드를 받아도 화풍이 무드를 다르게 소화.
-_LIGHT_MOD = {"webtoon": "pushed to harder dramatic contrast",
-              "watercolor": "softened into gentle translucent washes"}
-
-def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotion="", foreign=False,
-                 cam_lock=False, light_mod=""):
+def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotion="", foreign=False):
     """v2(260703 분신술⑨) — 라벨+개행 구획(카드 cards.md 검증 문법 이식) · 고정문 영어·SCENE 한국어.
     옛 v1 = 1,300~1,500자 한 줄 " ".join(사건 정보 7~8%·금지 11절·카메라 자기모순 6/6본) → 구조 교체.
     카메라 = dispatch(AG/DF) 있으면 그쪽이 정본, 없으면 화풍 기본(cam_default 폴백) = 모순 제거.
@@ -275,23 +199,19 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
         # 첫 절만(— 뒤 "스크롤이 멎고…" 류 독자심리 메타·감정 시퀀스 산문 = 단일 프레임에 노이즈 · 검증3).
         lines.append("MOOD (the reader's dominant emotion): " + re.split(r"\s*[—–-]\s", emotion)[0].strip())
     cam = b.get("camera")
-    if cam_lock or not cam:
-        # cam_lock = 화풍이 카메라를 잠금(수채화 = 항상 초근접 · 운영자 260703 — dispatch 각도보다 화풍 정체성 우선).
+    if cam:
+        if "focus" not in b and not _SHOT_RE.search(cam):
+            # AG 각도 전용 코드(거리 0)만 있고 DF도 없으면 화풍 기본 거리 구절(첫 절)만 병기 — 와이드 회귀 차단.
+            # 조건부라 AG-18(부재 와이드)·AG-21(군중 부감)·DF 지정 건과 모순 안 만듦(검증3 "무조건 병기 금물").
+            cam = cam + ", " + cam_default.split(",")[0].strip()
+    else:
         cam = cam_default
-    elif "focus" not in b and not _SHOT_RE.search(cam):
-        # AG 각도 전용 코드(거리 0)만 있고 DF도 없으면 화풍 기본 거리 구절(첫 절)만 병기 — 와이드 회귀 차단.
-        # 조건부라 AG-18(부재 와이드)·AG-21(군중 부감)·DF 지정 건과 모순 안 만듦(검증3 "무조건 병기 금물").
-        cam = cam + ", " + cam_default.split(",")[0].strip()
-    # 평면 탈피(운영자 260703 "전부 카메라가 평면") — 눈높이(윤리)는 존엄이지 정면 평면이 아님을 명시:
-    # 감정에 맞는 시점(3/4·측면·어깨너머·살짝 높낮이)을 고르게 해 밋밋한 정면 구도 고착을 푼다.
-    lines.append("CAMERA: " + cam + ", a frozen split-second; choose an expressive viewpoint — three-quarter, "
-                 "profile, over-the-shoulder or a subtle height shift as the emotion demands, not a flat "
-                 "head-on composition (eye-level dignity does not mean flatness)")
-    if b.get("focus") and not cam_lock:
+    lines.append("CAMERA: " + cam + ", a frozen split-second")
+    if b.get("focus"):
         lines.append("FOCUS (distance & crop of the key subject, adapt this to the scene above, "
                      "do not copy its literal props): " + b["focus"])
     if b.get("light"):
-        lines.append("LIGHT: " + b["light"] + ((", " + light_mod) if light_mod else ""))
+        lines.append("LIGHT: " + b["light"])
     if b.get("staging"):
         lines.append("STAGING (adapt this motif to the scene above, do not copy its literal props): " + b["staging"])
     if b.get("expression"):
@@ -343,12 +263,8 @@ def parse_md(path):
     emo = fm.get("emotion", "").strip()
     if emo.startswith("<") or emo == "1순위 감정 + 왜 거기서 멈추는지 반 줄":
         emo = ""
-    # 시사점(💡 산문) = 만평의 원료(운영자 260703 — "만평은 사건이 아니라 시사점 위주"). 앞 400자 응축.
-    im_ = re.search(r"^###?\s*💡[^\n]*\n+(.+?)(?:\n#|\Z)", body, re.S | re.M)
-    insight = re.sub(r"\s+", " ", im_.group(1)).strip()[:400] if im_ else ""
     # 해외 사건 판정(분신술③ T8 — '한국 기본값'이 태국 사건을 한옥으로 오염) = image_query_en 채움 여부(해외 전용 키).
-    extras = {"hook": hook, "emotion": emo, "insight": insight,
-              "foreign": bool(fm.get("image_query_en", "").strip())}
+    extras = {"hook": hook, "emotion": emo, "foreign": bool(fm.get("image_query_en", "").strip())}
     return head, lead, iq, ts, fm.get("url", "").strip(), fm.get("alt_urls", "").split(), fm.get("image_sources", "").split(), fm.get("thumb_dispatch", "").strip(), extras
 
 def _md_url(path):
@@ -818,8 +734,8 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
-    # AI 생성 4화풍(260703 재편) — THUMB_AI_OFF(전역) 또는 no_thumb(이 기사·뷰어 '이미지' 토글 OFF)면 통째 생략(검색이미지만 채움).
-    # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 photo_close sid는 STYLES에 없어 자동 드롭 · watercolor·cartoon은 260703 복귀).
+    # AI 생성 2화풍 — THUMB_AI_OFF(전역) 또는 no_thumb(이 기사·뷰어 '이미지' 토글 OFF)면 통째 생략(검색이미지만 채움).
+    # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 watercolor·photo_close sid는 STYLES에 없어 자동 드롭).
     changed = False
     no_thumb = _md_no_thumb(md)   # 이 기사만 제미나이 썸네일 생성 skip(뷰어 '이미지' 토글 OFF·검색 og:image는 위서 이미 채움·운영자 260702)
     if AI_OFF or no_thumb:
@@ -831,24 +747,14 @@ def process_one(md, stem):
             print("  📝 재생성 지시 반영: {}".format(redo_wish[:80]))
         existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
         gen = []
-        prompts_rec = {}   # sid → 실제 발사 프롬프트(역추적용 · 운영자 260703 "합격점 되면 역추적해서 프롬프트를 뽑아낼 수 있게")
         for sid, label, look, cam_default in STYLES:
             if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
                 gen.append(existing[sid]); continue
             # v2 프롬프트(라벨+개행·영어 고정문·hook/emotion 상속·해외 지역 스위치). 1K(토큰 절감 · 운영자 260621).
             # 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=dispatch 버킷 + wish=재생성 지시.
-            # 화풍별 특칙(운영자 260703): cartoon=시사점 은유(사건 장면 미사용·insight/hook 없으면 일반 폴백) /
-            # watercolor=카메라 잠금(항상 초근접) / webtoon·watercolor=조명 변조(_LIGHT_MOD).
-            if sid == "cartoon" and (extras.get("insight") or extras.get("hook")):
-                prompt = build_cartoon_prompt(look, cam_default, extras.get("insight", ""),
-                                              hook=extras.get("hook", ""), lead=lead, wish=redo_wish,
-                                              foreign=extras.get("foreign", False))
-            else:
-                prompt = build_prompt(look, cam_default, thumb_scene or iq or lead, dispatch, redo_wish,
-                                      hook=extras.get("hook", ""), emotion=extras.get("emotion", ""),
-                                      foreign=extras.get("foreign", False),
-                                      cam_lock=(sid == "watercolor"), light_mod=_LIGHT_MOD.get(sid, ""))
-            prompts_rec[sid] = prompt
+            prompt = build_prompt(look, cam_default, thumb_scene or iq or lead, dispatch, redo_wish,
+                                  hook=extras.get("hook", ""), emotion=extras.get("emotion", ""),
+                                  foreign=extras.get("foreign", False))
             png = gemini_image(prompt, "1K")
             # 품질 게이트(TH-06 · 기본 OFF = THUMB_GATE=1 점화 시만 · §📰 카나리아 절차: OFF 머지→단건 실측→승격) —
             # 단색 밴드(빈/검정 띠 = FRAME 위반)만 결정론 판독, 미달이면 1회 재생성. ⚠️ 상한 = 화풍당 재시도 1회
@@ -875,19 +781,6 @@ def process_one(md, stem):
         if changed:
             json.dump(gen, open(os.path.join(tdir, "gen.json"), "w", encoding="utf-8"),
                       ensure_ascii=False, indent=2)
-            # 프롬프트 원장(역추적 · 운영자 260703) — 이번에 실제 발사된 sid의 프롬프트만 병합 기록(보존 sid는 기존 유지).
-            # "이 그림 합격" → prompts.json에서 그 sid 프롬프트를 꺼내 레시피로 굳힌다. 텍스트 ~2KB/기사 = git 부담 미미.
-            try:
-                pp = os.path.join(tdir, "prompts.json")
-                try:
-                    prev_p = json.load(open(pp, encoding="utf-8"))
-                except Exception:
-                    prev_p = {}
-                fired = {g.get("sid") for g in gen if g.get("sid")} - set(existing)
-                prev_p.update({k: v for k, v in prompts_rec.items() if k in fired})
-                json.dump(prev_p, open(pp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-            except Exception as e:
-                print("  ⚠️ prompts.json 기록 실패(무시): {}".format(e))
         # 제미나이 토큰 사용량 — 이 기사 호출분을 usage.json에 기록 + 로그(누적 합산 포함).
         # 태그별 분리: gen=이미지 생성(tag"img") / search=검색·비전(tag"vision") — 뷰어가 각 라벨(🍌 AI 생성·🔎 검색) 옆에 따로 표기.
         # (현재 검색=og:image 스크래핑이라 vision 호출 0 → search 버킷 0; THUMB_VISION 점화 시 _rec_usage(tag="vision")로 자동 채워짐.)
