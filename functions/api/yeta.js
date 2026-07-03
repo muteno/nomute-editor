@@ -78,6 +78,21 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: true, sess });
   }
 
+  if (op === 'retry') {   // 원탭 재시도 — 실패(state=error)한 pending 유저 턴을 재타이핑 없이 재발사(새 유저 턴 추가 X)
+    if (!env.GH_TOKEN) return json({ error: '서버 미설정 — GH_TOKEN 필요' }, 500);
+    const sess = await readSess();
+    const turns = sess.turns || [];
+    const lastA = turns.map(t => t.role).lastIndexOf('assistant');
+    if (!turns.slice(lastA + 1).some(t => t.role === 'user')) return json({ error: '재시도할 메시지가 없어' }, 409);
+    sess.state = 'awaiting'; sess.awaiting_since = Date.now(); delete sess.err;
+    await putSess(sess);
+    const rst = await dispatch(env);
+    if (rst === 204) return json({ ok: true });
+    sess.state = 'error'; sess.err = `재발사 실패(GitHub ${rst})`; delete sess.awaiting_since;
+    await putSess(sess);
+    return json({ error: `GitHub dispatch ${rst}` }, 502);
+  }
+
   if (op !== 'send') return json({ error: '알 수 없는 op' }, 400);
   if (!env.GH_TOKEN) return json({ error: '서버 미설정 — GH_TOKEN 필요' }, 500);
 
