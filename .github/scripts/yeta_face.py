@@ -29,21 +29,23 @@ BASE = ("Korean webtoon-style character profile portrait, polished digital manhw
         "one single original fictional character, very good-looking and attractive, "
         "tall with an elegant glamorous striking presence, refined proportions, flawless skin, "
         "set in the moody night-lit back-alley mood of a quiet Seoul neighborhood, "
-        "soft cinematic lighting, gentle color grade, fully clothed and tasteful, "
+        "soft cinematic lighting with a subtle touch of fantasy — faint magical ambient glow, "
+        "delicate floating light particles, a dreamlike ethereal atmosphere (still grounded and semi-realistic, not costume fantasy), "
+        "gentle color grade, fully clothed and tasteful, "
         "no text, no caption, no watermark, no logo. Character — ")
 
 # 캐릭터 10인 초상(카드 성격·배경 반영 · 미남미녀·매력 각인 · '어울리는 하나씩')
 FACES = [
-    ("desk",  "a strikingly handsome man in his early 40s, veteran newsroom editor-in-chief, sharp intelligent eyes behind thin-rimmed glasses, cool composed expression, sleek dark hair, faint stubble, crisp muted shirt, confident sharp jawline."),
-    ("kopi",  "a charming handsome man in his early 30s, freelance copywriter, playful witty half-smile, stylishly tousled hair, warm expressive eyes, cozy oversized knit, effortlessly cool vibe."),
-    ("mudi",  "a warm handsome man in his late 30s, teahouse owner, gentle reassuring smile, soft kind eyes, calm mature charisma, tidy linen apron over a fitted shirt."),
-    ("sera",  "a beautiful young woman in her late teens, idol trainee, chic aloof guarded expression, sleek ponytail with one earphone in, delicate striking features, trendy sporty outfit."),
-    ("haeun", "a beautiful elegant woman in her early 30s, high-school Korean-literature teacher, warm teasing smile, soft wavy hair, graceful refined features, neat stylish blouse."),
-    ("gaeul", "a gorgeous confident woman in her 30s, merchants'-association leader, poised proud gaze, glamorous polished look, sleek hair, tailored elegant coat."),
-    ("baek",  "an extremely handsome man in his early 40s, tall broad-shouldered quiet bodyguard, chiseled jaw, intense watchful eyes, sharp black suit, cool dramatic shadow."),
-    ("ryu",   "a handsome charismatic man in his early 40s, laid-back kendo master, light stubble, alluring half-lidded gaze, dark hair loosely tied back, elegant traditional-modern attire."),
-    ("von",   "a handsome athletic man in his early 40s, disciplined boxing-gym owner, short cropped hair, strong composed features, fit muscular build, clean fitted jacket."),
-    ("yun",   "a handsome mellow man in his 30s, late-night radio DJ, soft introspective eyes, stylishly tousled hair, headphones resting around his neck, quiet magnetic charm."),
+    ("desk",  "a strikingly handsome man in his early 40s, veteran newsroom editor-in-chief, sharp intelligent eyes behind thin-rimmed glasses, cool composed expression, sleek dark hair, faint stubble, crisp muted shirt, confident sharp jawline; cold newsroom monitor glow with a faint icy-blue holographic shimmer."),
+    ("kopi",  "a charming handsome man in his early 30s, freelance copywriter, playful witty half-smile, stylishly tousled hair, warm expressive eyes, cozy oversized knit, effortlessly cool vibe; warm teahouse lamplight with soft golden floating bokeh."),
+    ("mudi",  "a warm handsome man in his late 30s, teahouse owner, gentle reassuring smile, soft kind eyes, calm mature charisma, tidy linen apron over a fitted shirt; warm amber pendant light with gentle glowing steam wisps."),
+    ("sera",  "a beautiful young woman in her late teens, idol trainee, chic aloof guarded expression, sleek ponytail with one earphone in, delicate striking features, trendy sporty outfit; dreamy neon pink-and-blue haze, cool fluorescent shimmer."),
+    ("haeun", "a beautiful elegant woman in her early 30s, high-school Korean-literature teacher, warm teasing smile, soft wavy hair, graceful refined features, neat stylish blouse; soft dusk glow with drifting warm petals of light."),
+    ("gaeul", "a gorgeous confident woman in her 30s, merchants'-association leader, poised proud gaze, glamorous polished look, sleek hair, tailored elegant coat; elegant amethyst-violet aura, refined shopfront neon reflection."),
+    ("baek",  "an extremely handsome man in his early 40s, tall broad-shouldered quiet bodyguard, chiseled jaw, intense watchful eyes, sharp black suit; deep dramatic shadow with a faint steel-blue mist."),
+    ("ryu",   "a handsome charismatic man in his early 40s, laid-back kendo master, light stubble, alluring half-lidded gaze, dark hair loosely tied back, elegant traditional-modern attire; silver-teal moonlit haze."),
+    ("von",   "a handsome athletic man in his early 40s, disciplined boxing-gym owner, short cropped hair, strong composed features, fit muscular build, clean fitted jacket; cool blue pre-dawn light with faint drifting sparks."),
+    ("yun",   "a handsome mellow man in his 30s, late-night radio DJ, soft introspective eyes, stylishly tousled hair, headphones resting around his neck, quiet magnetic charm; dim red ON-AIR glow with soft starlight particles."),
 ]
 
 
