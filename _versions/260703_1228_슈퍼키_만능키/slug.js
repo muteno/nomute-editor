@@ -37,19 +37,20 @@ async function serve(params, request, env, postPin) {
   // 같은 이용자는 같은 colo라 체감상 전역이지만 분산 IP·캐시 축출엔 fail-open(가용성 우선·완화 목적).
   if (m.pinHash) {
     const pin = postPin !== null ? postPin : (new URL(request.url).searchParams.get('p') || '');
-    if (pin === PIN_MASTER) {                                     // 마스터(슈퍼키) = 어떤 발행본이든 즉시 열람 통과(운영자 260703 만능키 승격 — 옛 '리셋만'에서 실제 열람으로)
-      await lockClear(slug);                                      // 오류 잠금 카운터 리셋하고 아래 문서 응답으로 통과
-    } else {
-      let fails = await lockGet(slug);
-      if (fails >= LOCK_MAX) return pinForm(slug, fails);
-      if (!/^\d{6}$/.test(pin)) return pinForm(slug, 0);
-      const h = await sha256hex(pin + ':' + slug);
-      if (h !== m.pinHash) {
-        fails += 1; await lockSet(slug, fails);
-        return pinForm(slug, fails);
-      }
-      await lockClear(slug);                                      // 성공 = 카운터 리셋
+    const isMaster = pin === PIN_MASTER;                          // 마스터 = 잠금 즉시 해제·오류 미집계(운영자 전용)
+    let fails = await lockGet(slug);
+    if (fails >= LOCK_MAX) {
+      if (isMaster) { await lockClear(slug); return pinForm(slug, 0, MASTER_NOTICE); }   // 마스터 = 잠금 초기화 + 안내(운영자 260703)
+      return pinForm(slug, fails);
     }
+    if (!/^\d{6}$/.test(pin)) return pinForm(slug, 0);
+    const h = await sha256hex(pin + ':' + slug);
+    if (h !== m.pinHash) {
+      if (isMaster) { await lockClear(slug); return pinForm(slug, 0, MASTER_NOTICE); }   // 마스터 = 잠금 초기화 + 안내(문서 안 엶 = 리셋 도구)
+      fails += 1; await lockSet(slug, fails);
+      return pinForm(slug, fails);
+    }
+    await lockClear(slug);                                        // 성공 = 카운터 리셋
   }
 
   const cacheable = !m.pinHash;   // 핀 있으면 캐시 금지(응답 유출 방지) · 무핀만 짧은 엣지캐시 → 반복/프리뷰봇 히트를 CF가 흡수 = 공용 PAT DoS 완화(검증10 H1)
@@ -74,7 +75,8 @@ async function sha256hex(s) {
 
 // 핀 오류 잠금 — 5회 누적 = 10분(운영자 260703). 카운터는 colo 캐시(키 = .invalid 가상 URL·실서빙 충돌 0).
 // 실패 시마다 TTL 갱신(슬라이딩) → 잠금은 마지막 오류로부터 10분. try/catch 전부 fail-open(잠금이 열람을 못 죽이게).
-const PIN_MASTER = '898900';   // ⚠️ 슈퍼키(만능키) SSOT — relock.js·unpublish.js에 동일 상수(값 바꾸면 3파일 모두 교체). 898900이면 열람·잠금해제·삭제 전부 원 PIN 없이 통과(운영자 260703). 코드 평문이라 레포 접근자에 노출 — 발행본은 가벼운 잠금이라 개인용 수용.
+const PIN_MASTER = '898900';
+const MASTER_NOTICE = '비밀번호 초기화 완료';   // 마스터 입력 시 안내(운영자 260703 · mut 회색 · 문구 간결화 · 5회 잠금 카운터 리셋)
 const LOCK_MAX = 5, LOCK_TTL = 600;
 function lockKey(slug) { return 'https://pinlock.nomute.invalid/' + slug; }
 async function lockGet(slug) {
