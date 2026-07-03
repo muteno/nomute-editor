@@ -134,10 +134,10 @@ function pinForm(slug, fails, notice) {
 .card{background:none;border:none;padding:6px 4px}   /* 카드 패널(글자 뒤 배경) 제거 — 글자·슬롯·패드만 흑배경 위에(운영자 260703 · pinForm 한정 오버라이드·에러/안내 page()는 카드 유지) */
 .slots{display:flex;justify-content:center;gap:16px;margin:24px 0 2px}
 /* 슬롯 = 균일 그리드 박스(18×22 고정) — 빈 원(::before)·명조 별(*)·숫자픽이 전부 같은 박스 중앙 = 기준선 통일(내려앉음 교정·운영자 260703) */
-.slot{width:18px;height:22px;display:grid;place-items:center;font:800 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}   /* 숫자픽 = 뷰어 .pin-cell과 동일 모노 스택(PIN 숫자 글자체 전 화면 통일·운영자 260703) */
+.slot{width:18px;height:22px;display:grid;place-items:center;font-size:18px;font-weight:800;line-height:1;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}
 .slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);transition:border-color .15s ease}
 .slot.on{opacity:1}
-.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);transform:translateY(5px)}   /* 마스킹 * = 숫자와 같은 모노 폰트 통일(옛 명조 폐지·운영자 260703) · 글리프 상단 쏠림 translateY 광학 보정 */
+.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 28px/1 Georgia,'Times New Roman','Batang','바탕',serif;color:var(--accent);transform:translateY(7px)}   /* 마스킹 = 명조 '*'(점보다 가시적·운영자 260703). 애스터리스크 글리프가 상단에 붙어 translateY 광학 보정 */
 .slot.peek{opacity:1;transform:scale(1.12)}   /* 방금 입력한 자리 = 도형 대신 숫자 잠깐 노출(0.7s·운영자 260703) */
 .slot.peek::before{content:none}
 .slots.bad .slot::before{border-color:var(--danger)}
