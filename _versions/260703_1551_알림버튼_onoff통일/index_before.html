@@ -204,6 +204,7 @@
   .pushrow .pl { font-size:13px; font-weight:700; color:var(--fg); white-space:nowrap; line-height:var(--lh-base); }   /* line-height 1.6 = .pmenu a/button과 동일 행높이 → 간격 일치(운영자 260702) */
   .pushrow .pushbtn { flex:none; display:inline-block; width:auto; padding:0 2px; font-size:13px; font-weight:800; line-height:var(--lh-base); color:var(--mut); background:none; border:none; cursor:pointer; }   /* .pmenu button(블록·전폭·9/12패딩) leak 오버라이드(0,2,0) = 컴팩트 인라인 → 알림 행 안 부풀음(옛 57.8→38.8) · 운영자 260702 */
   .pushrow .pushbtn.on { color:var(--accent); }        /* ON = 강조색(초록) 확정(0,3,0 = .pmenu button 못 이김) · 무채 메뉴의 단일 포인트 */
+  .pushrow .pushbtn.denied { color:var(--amber); }     /* 차단됨 = 앰버(탭→해제 안내) */
   .pushbtn:disabled { opacity:.55; cursor:default; }
   .pushbtn:active { transform:scale(var(--press-l,.95)); }
   /* ── 화면 잠금(응답없음 lock · 운영자 260703) — 유휴 N분(기본 2) 후 챠콜 90% 모피즘 전면 오버레이 + PIN 키패드.
@@ -2275,7 +2276,7 @@
     <button id="pubBtn">발행본 <span id="pubBtnCnt"></span></button>
     <button id="setToggle" class="pmenu-sns" type="button" aria-expanded="false" aria-controls="setSub">설정<svg class="sns-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
     <div class="pmenu-sub" id="setSub" hidden>   <!-- 설정 = 2차 아코디언(알림·잠금 · SNS 패턴 계승 · 운영자 260703) -->
-      <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">OFF</button></div>
+      <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">켜기</button></div>
       <button id="lockBtn">잠금 설정</button>
     </div>
   </div>
@@ -5314,7 +5315,7 @@ async function pushRefresh() {
   const st = await pushState();
   if (st === 'unsupported') { row.hidden = true; return; }   // iOS 미설치 등 = 숨김
   row.hidden = false;
-  // ON/OFF 2-state 통일(운영자 260703): denied(차단)도 'OFF'로 표기 — 클릭 시 pushToggle이 해제 안내(차단은 거의 안 생김·항상 허용해둠). '차단됨'/앰버 폐지.
+  if (st === 'denied') { btn.textContent = '차단됨'; btn.classList.remove('on'); btn.classList.add('denied'); btn.disabled = false; return; }   // 앰버·클릭 가능 — pushToggle이 해제 안내(denied는 JS로 못 풂)
   btn.disabled = false; btn.classList.remove('denied'); btn.textContent = st === 'on' ? 'ON' : 'OFF'; btn.classList.toggle('on', st === 'on');
 }
 async function pushToggle() {
@@ -5322,7 +5323,7 @@ async function pushToggle() {
   if (Notification.permission === 'denied') {   // denied는 JS로 못 풂(웹 표준·PWA도 동일·설정 deeplink API 없음) → 환경별 설정 안내
     const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
     alert(pwa
-      ? '알림이 꺼져 있어요(설치된 앱). 버튼으론 못 켜요(보안 제약).\n\n켜는 법:\n① 홈 화면 노뮤트 아이콘 꾹 누르기 → 앱 정보(ⓘ) → 알림 → 허용\n② 또는 폰 설정 → 앱 → 노뮤트(없으면 Chrome) → 알림 → 허용\n→ 앱 다시 열고 알림 ON\n\n그래도 안 되면: 아이콘 삭제 후 다시 "홈 화면에 추가"로 재설치 = 권한 초기화(가장 확실).'
+      ? '알림이 꺼져 있어요(설치된 앱). 버튼으론 못 켜요(보안 제약).\n\n켜는 법:\n① 홈 화면 노뮤트 아이콘 꾹 누르기 → 앱 정보(ⓘ) → 알림 → 허용\n② 또는 폰 설정 → 앱 → 노뮤트(없으면 Chrome) → 알림 → 허용\n→ 앱 다시 열고 "켜기"\n\n그래도 안 되면: 아이콘 삭제 후 다시 "홈 화면에 추가"로 재설치 = 권한 초기화(가장 확실).'
       : '알림이 브라우저에서 차단돼 있어요. 켜는 법:\n주소창 왼쪽 🔒 → 사이트 설정 → 알림 → "허용" → 새로고침.');
     return;
   }
