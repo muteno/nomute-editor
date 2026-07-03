@@ -72,27 +72,10 @@ STYLES = [
      "korean webtoon serious drama illustration, bold clean ink lines, dramatic high-contrast shading, "
      "intense emotional expression",
      "tight upper-body framing, medium close-up, slight low angle for tension, single hard side light"),
-    ("watercolor", "수채화",
-     # 인물 표정·동작 위주(운영자 260703): 극화는 표정 강조 시 과강렬 ↔ 수채화는 매체가 순화해줘서 표정·동작
-     # 정면 승부가 오히려 적정 타격. + 근접 강화(운영자 2차: "표정·핵심 사물 더 크게·카메라 더 근접") =
-     # 수채화는 카메라를 dispatch와 무관하게 잠근다(process_one이 cam_lock 전달 · 항상 초근접).
-     # 260703 운영자 확정 판("거의 온듯 — 이 느낌 살려서 반영") = 벤치마크 v4 실물의 문법을 굳힘:
-     # 측면/3/4 프로필·얼굴의 결(주름·세월)을 다정하게·안료 번짐 입자·손과 사물이 전경에 큼직하게.
-     "soft editorial watercolor illustration, bleeding translucent washes, granulated pigment texture, "
-     "textured paper grain, muted palette with one quiet warm accent — human figures are the heart of the "
-     "scene: their facial expressions and body gestures carry the story, weathered faces rendered tenderly "
-     "in profile or three-quarter view, raw emotion softened and made bearable by the gentle medium",
-     "intimate close-up from a profile or three-quarter angle — the main figure's face and the key object "
-     "in their hands fill most of the frame, hands prominent in the foreground, gentle framing, soft "
-     "atmospheric depth"),
-    ("cartoon", "시사만평",
-     # ⚠️ 'korean'은 만평 전통(화풍)이지 장소 아님 — 명시 없으면 해외 사건도 한국 배경·한글 간판으로 렌더(카나리아 실측 260703).
-     # 260703 운영자 "기존 기틀 무시하고 가보자" = 만평만 3대 봉쇄 해제(글자·공인 캐리커처·여백틀) — 세부는 CARTOON_TEXT_RULES·_cartoon_frame.
-     "newspaper editorial cartoon in the korean manpyeong tradition (drawing style only — depict the event's "
-     "actual people and location), pen-and-ink caricature linework with restrained flat or light watercolor "
-     "tinting, witty bitter-smile irony with exaggerated scale contrast — one metaphorical scene of dignified "
-     "satire on the issue, not a solemn illustration",
-     "single-panel composition with one clear central metaphor, eye-level"),
+    # 수채화·시사만평 = 운영자 260703 저녁 폐지 → 포토 에디토리얼 + 웹툰 극화 2화풍만(픽당 4장→2장 = 자동 Gemini 과금 절반).
+    # 관련 헬퍼(build_cartoon_prompt·_cartoon_frame·CARTOON_TEXT_RULES·_LIGHT_MOD watercolor·process_one의 cartoon/watercolor 특칙 분기)는
+    # 복귀 대비 dormant 보존(호출 0 = 무해 · photo_close 폐지 전례와 동일 = STYLES에서 빼면 신규 발사 0·기존 gen.json 그 sid는 자동 드롭).
+    # 옛 sid(watercolor·cartoon) 정의 원문은 _versions 백업·git 이력에 있음(재추가 시 재과금 0).
 ]
 
 # 지배 조건(맨 앞·최상위) — 화풍·구도보다 먼저 읽혀 "무엇을·어떻게"의 우선순위를 잡는다(프롬프트 위계 = 나열보다 준수율↑).
