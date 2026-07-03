@@ -1,0 +1,80 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>PIN 슬롯 입력 모션 시안 3종</title>
+<style>
+:root{--accent:#0FFD02;--fg:#eef7f0;--mut:#8fa697;--line:rgba(255,255,255,.08)}
+body{margin:0;background:#0b0d0c;color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding:22px 16px 60px;max-width:640px;margin-inline:auto}
+h1{font-size:18px;margin:6px 0 2px}
+p{margin:6px 0;color:#cfd8d0;font-size:13.5px}
+.mut{color:var(--mut)} .sm{font-size:12px}
+.var{border:1px solid var(--line);border-radius:16px;padding:16px 14px 14px;margin:14px 0;background:linear-gradient(165deg,rgba(24,25,28,.6),rgba(10,11,12,.75))}
+.var h2{font-size:14px;margin:0 0 2px;color:var(--accent)}
+.var .d{font-size:12px;color:var(--mut);margin:0 0 14px}
+.slots{display:flex;justify-content:center;gap:16px;margin:10px 0 6px;height:26px;align-items:center}
+.slot{width:18px;height:22px;display:grid;place-items:center;font:800 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}
+.slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut)}
+.slot.on{opacity:1}
+.slot.on::before{content:'*';width:auto;height:auto;border:none;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);transform:translateY(3px)}
+.slot.peek{opacity:1}
+.slot.peek::before{content:none}
+/* V1 현행: 숫자픽 확대 */
+.v1 .slot.peek{transform:scale(1.12)}
+/* V2 플랫: 확대 없음 — 제자리 페이드만 */
+.v2 .slot.peek{transform:none;animation:fadeIn .13s ease}
+@keyframes fadeIn{from{opacity:.2}to{opacity:1}}
+/* V3 올-모노: 빈칸도 원 대신 흐린 * — 스크린샷( * / 1 5 * * * ) 결 */
+.v3 .slot::before{content:'*';width:auto;height:auto;border:none;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mut);opacity:.5;transform:translateY(3px)}
+.v3 .slot{opacity:1}
+.v3 .slot::before{transition:color .15s ease}
+.v3 .slot.on::before{color:var(--accent);opacity:1}
+.v3 .slot.peek{transform:none;animation:fadeIn .13s ease}
+.rp{display:block;margin:8px auto 0;padding:7px 18px;font:800 12px/1 inherit;color:var(--accent);background:rgba(0,0,0,.34);border:1px solid rgba(15,253,2,.36);border-radius:999px;cursor:pointer}
+.rp:active{transform:scale(.95)}
+.pick{font-size:12px;color:var(--mut);margin-top:10px}
+</style>
+
+<h1>PIN 슬롯 입력 모션 — 시안 3종</h1>
+<p class="mut sm">고민 지점: "○○○○○○ 정적 줄에서 숫자만 커졌다 줄어드는 게 안 어울림". 각 시안의 [재생]을 눌러 타이핑을 비교해봐.</p>
+
+<div class="var v1">
+  <h2>V1 — 현행 (숫자픽 확대 1.12)</h2>
+  <p class="d">방금 친 숫자가 살짝 커졌다 돌아옴 — 눈에 띄지만 정적 줄에서 튐.</p>
+  <div class="slots" data-v="v1"></div>
+  <button class="rp" data-v="v1">재생</button>
+</div>
+
+<div class="var v2">
+  <h2>V2 — 플랫 (확대 제거 · 제자리 페이드)</h2>
+  <p class="d">숫자가 제자리에서 조용히 떠오름 — 줄 높이·리듬 그대로. 구조 변화 0(한 줄 삭제).</p>
+  <div class="slots" data-v="v2"></div>
+  <button class="rp" data-v="v2">재생</button>
+</div>
+
+<div class="var v3">
+  <h2>V3 — 올-모노 미니멀 (빈칸도 흐린 *)</h2>
+  <p class="d">참고 스크린샷(<code style="font-family:ui-monospace,monospace">*/15 * * * *</code>) 결 — 원 없이 처음부터 끝까지 * 한 줄. 입력 = 흐린 *→선명한 초록 *. 제일 간결·모던, 대신 "몇 칸 남았나" 인지가 원보다 약간 약함.</p>
+  <div class="slots" data-v="v3"></div>
+  <button class="rp" data-v="v3">재생</button>
+</div>
+
+<p class="pick">추천 = <b style="color:var(--accent)">V3</b>(참고 이미지 결 그대로) 또는 <b>V2</b>(현 구조 유지 + 튐만 제거). 번호로 답하면 잠금 화면·발행본 둘 다 반영.</p>
+
+<script>
+document.querySelectorAll('.slots').forEach(s=>{ s.innerHTML='<span class="slot"></span>'.repeat(6); });
+function play(v){
+  const s=document.querySelector('.slots[data-v="'+v+'"]'), dots=s.children;
+  const digits='294617';
+  for(const d of dots){d.className='slot';d.textContent='';}
+  let i=0;
+  const step=()=>{
+    if(i>0){dots[i-1].className='slot on';dots[i-1].textContent='';}
+    if(i>=6)return;
+    dots[i].className='slot peek';dots[i].textContent=digits[i];
+    i++;setTimeout(step,560);
+  };
+  setTimeout(step,300);
+}
+document.querySelectorAll('.rp').forEach(b=>b.addEventListener('click',()=>play(b.dataset.v)));
+play('v1');play('v2');play('v3');
+</script>

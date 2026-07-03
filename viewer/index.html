@@ -68,6 +68,7 @@
     --z-min-pop:201;     /* ④ 복원 선택 picker */
     --z-min-shield:205;  /* ④ 롱프레스 닫기 실드 */
     --z-min-chip:206;    /* ④ 롱프레스 "닫기" 칩 */
+    --z-lock:300;        /* ⑤ 화면 잠금(응답없음 lock) = 전면 가림막 — 최소화 시스템 위 최상위(운영자 260703 · 열린 <dialog> top-layer는 z로 못 이겨 잠금 시 close 처리) */
     /* 눌림(:active) scale 사다리 — 14개 임의값 → 5토큰 스냅(운영자 260628·분신술10). 버튼은 scale(var(--press-*,fallback)) 참조 = 하나 바꾸면 그 tier 전부. 클수록 덜 줄임(물리적). 픽토온리는 :active svg에만 적용(배경 plate 안 따라움직임). */
     --press-pico:.55;  /* 플레이트 없는 픽토그램-온리 = SVG만 축소(rmin/file/vh-fbtn) */
     --press-xs:.82;    /* 작은 아이콘·닫기·클립·다운로드 */
@@ -206,6 +207,61 @@
   .pushrow .pushbtn.denied { color:var(--amber); }     /* 차단됨 = 앰버(탭→해제 안내) */
   .pushbtn:disabled { opacity:.55; cursor:default; }
   .pushbtn:active { transform:scale(var(--press-l,.95)); }
+  /* ── 화면 잠금(응답없음 lock · 운영자 260703) — 유휴 N분(기본 2) 후 챠콜 90% 모피즘 전면 오버레이 + PIN 키패드.
+     키패드 = 발행본 /s/ pinForm 정본 이식(lk- 프리픽스 · 2판 셔플·숫자픽·명조 * 마스킹·빨강 3초·5회=10분·마스터 통일).
+     설정 팝업 = msgpop 계승 · 행 = pushrow/pushbtn 계승(토글 동일 구성). ⚠️ 사생활 가림막(클라 로컬) — 접근 보안은 CF Access가 담당. */
+  #lockpop .pushrow:first-of-type { border-top:none; }   /* 헤더(.mh) border-bottom과 이중선 방지 */
+  .pushrow .lk-in { flex:none; width:96px; text-align:center; font:inherit; font-size:13px; font-weight:700; color:var(--fg);
+    background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; padding:4px 6px; }
+  .pushrow .lk-in:focus { outline:none; border-color:rgba(var(--accent-rgb),.5); }
+  .pushrow .lk-in.lk-min { width:52px; }
+  .pushrow .lk-in.bad { border-color:var(--danger); box-shadow:0 0 0 3px rgba(var(--danger-rgb),.14); }   /* 오답 = 빨강 3초 후 복귀(잠금 화면 정본 리듬) */
+  /* PIN 변경 버튼(운영자 260703) — 평소 OFF(mut)·누르면 ON(accent)·2단 입력 완료 시 '변경'(pill) → 게이지 goFill(mkbtn 정본 계승) → ✓ */
+  .pushrow .lk-grp { flex:none; display:flex; align-items:center; gap:8px; }
+  .pushrow .lk-chg { flex:none; padding:0 2px; font-size:13px; font-weight:800; line-height:var(--lh-base); color:var(--mut); background:none; border:none; cursor:pointer; }
+  .pushrow .lk-chg:active { transform:scale(var(--press-l,.95)); }
+  .pushrow .lk-chg.on { color:var(--accent); }
+  .pushrow .lk-chg.armed, .pushrow .lk-chg.firing, .pushrow .lk-chg.okdone { padding:4px 13px; line-height:1.2; border-radius:999px; color:var(--accent);
+    border:1px solid rgba(var(--accent-rgb),.36); background:rgba(0,0,0,.34); position:relative; overflow:hidden; }
+  .pushrow .lk-chg.firing { color:var(--on-accent); pointer-events:none; border-color:var(--accent);
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s linear forwards; }
+  .pushrow .lk-chg.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); pointer-events:none; }
+  .pushrow .lk-chg .gck { width:15px; height:15px; display:block; }
+  .pushrow .lk-chg .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
+  @media (prefers-reduced-motion:reduce){ .pushrow .lk-chg.firing { animation-duration:.2s; } .pushrow .lk-chg .gck path { animation:none; stroke-dashoffset:0; } }
+  .lk-hint { padding:7px 12px 10px; font-size:11.5px; color:var(--mut); line-height:1.5; }
+  .lk-hint.bad { color:var(--danger); font-weight:700; }
+  .lockscr { position:fixed; inset:0; z-index:var(--z-lock); display:grid; place-items:center;
+    background:rgba(8,9,10,.90); backdrop-filter:blur(24px) saturate(.85); -webkit-backdrop-filter:blur(24px) saturate(.85); }   /* 챠콜 90% + 모피즘(운영자 지정) */
+  .lockscr[hidden] { display:none; }
+  .lockscr .lk-card { text-align:center; width:min(320px,86vw); }
+  .lockscr .lk-m { font-size:15px; font-weight:800; color:var(--mut); letter-spacing:-.2px; }
+  .lk-slots { display:flex; justify-content:center; gap:16px; margin:24px 0 2px; }
+  .lk-slot { width:18px; height:22px; display:grid; place-items:center; font:400 20px/1 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,sans-serif; color:var(--accent); opacity:.5; transition:opacity .15s ease, transform .15s ease; }   /* 숫자픽 = 볼드 뺀 Pretendard 레귤러(운영자 260703 — 정적 * 줄에 모노 볼드 숫자가 튀던 것 해소·*는 모노 유지) */
+  .lk-slot::before { content:''; grid-area:1/1; width:13px; height:13px; box-sizing:border-box; border-radius:50%; border:2px solid var(--mut); transition:border-color .15s ease; }
+  .lk-slot.on { opacity:1; }
+  .lk-slot.on::before { content:'*'; width:auto; height:auto; border:none; border-radius:0; font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); transform:translateY(3px); }   /* * 마스킹 = 숫자와 같은 모노 폰트(운영자 260703) · translateY 3px = 숫자('8') 잉크 세로중심에 * 정렬(크로미엄 픽셀 실측 튜닝 — 캔버스 메트릭 모델은 실렌더와 2.5px 오차라 폐기·운영자 "각 숫자 기준 중앙 정렬") */
+  .lk-slot.peek { opacity:1; transform:scale(1.12); }   /* 방금 입력한 자리 = 숫자 0.7s 노출 */
+  .lk-slot.peek::before { content:none; }
+  .lk-slots.bad .lk-slot::before { border-color:var(--danger); }
+  .lk-slots.bad .lk-slot.on::before { color:var(--danger); }
+  @keyframes lkShake { 0%,100%{transform:translateX(0)} 12%{transform:translateX(-9px)} 28%{transform:translateX(8px)} 44%{transform:translateX(-6px)} 60%{transform:translateX(4px)} 76%{transform:translateX(-2px)} }
+  .lk-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }
+  .lk-err { color:var(--danger); font-size:12px; margin-top:15px; min-height:15px; font-weight:700; }
+  .lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:0; max-width:288px; margin:26px auto 0; }
+  .lk-key { height:58px; display:grid; place-items:center; font-size:23px; font-weight:700; font-family:inherit; color:var(--fg); background:none; border:none; border-radius:0; cursor:pointer;
+    -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:background .12s ease, color .15s ease, transform .07s ease; }
+  .lk-key:nth-child(3n+2), .lk-key:nth-child(3n) { border-left:1px solid var(--line); }   /* 셀 내부 구분선(정본 동일) */
+  .lk-key:nth-child(n+4) { border-top:1px solid var(--line); }
+  .lk-key:active { background:rgba(255,255,255,.09); transform:scale(.93); }
+  .lk-key.hit { background:rgba(var(--accent-rgb),.16); color:var(--accent); }   /* 누름 순간 강조색 플래시 */
+  .lk-key.back.hit svg { stroke:var(--accent); }
+  .lk-key.empty { pointer-events:none; }
+  .lk-key.back svg { width:26px; height:26px; stroke:var(--fg); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:stroke .15s ease; }
+  .lk-pad.b2 .lk-key { color:rgba(var(--accent-rgb),.85); }   /* 5~6자리 = 판B 전경색 틴트(정본 동일) */
+  .lk-pad.b2 .lk-key.back svg { stroke:rgba(var(--accent-rgb),.85); }
+  @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} }
   .msgitem { padding:9px 10px; border-radius:10px; }
   .msgitem + .msgitem { border-top:1px solid var(--line2); }
   .msgitem .mt { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -266,6 +322,13 @@
   .yb.me i.yn { color:rgba(255,255,255,.82); }
   .yb.sys { align-self:center; background:none; border:none; color:var(--mut); font-size:var(--fs-sm); padding:2px 4px; }
   .yb.fail { align-self:flex-start; background:rgba(var(--danger-rgb),.08); border:1px solid rgba(var(--danger-rgb),.4); color:var(--danger); font-size:var(--fs-sm); }
+  .yfail-retry { display:block; margin-top:7px; padding:5px 12px; border:1px solid rgba(var(--danger-rgb),.5); border-radius:var(--r-pill); background:none; color:var(--danger); font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); cursor:pointer; }   /* 원탭 재시도(재타이핑 0) */
+  .yfail-retry:active { transform:scale(var(--press-m,.9)); }
+  /* 연속 메시지 그룹핑 — 직전과 같은 화자면 아바타·이름 생략(카톡/제타 톡방 결 · 운영자 260703) */
+  .ymsg.cont { margin-top:-6px; }   /* .yeta-log gap 10 상쇄 = 바짝 붙임 */
+  .ymsg.cont .yava { visibility:hidden; }
+  .ymsg.cont .yname { display:none; }
+  .yb.me.cont { margin-top:-6px; }
   .yb-cap { display:block; margin-top:5px; font-size:var(--fs-xs); color:var(--mut); opacity:.8; font-variant-numeric:tabular-nums; font-style:normal; }   /* 다이얼 체감 캡션(모델·노력·초 = tabular) */
   /* 타이핑 = 캐릭터 버블(카톡·제타 결 — 아바타+이름+점 3개 바운스 버블 · 운영자 260703 "입력하는 게 자연스럽게·오래 걸려도 입력 중 느낌 확실히") */
   .ymsg.ytyp .yb.ai { padding:13px 16px; }
@@ -345,28 +408,22 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
+  /* 마퀴 펫 글자 전용 폰트 — 운영자 제공 Paperlogy 4 Regular을 '오늘도 화이팅' 6자만 서브셋(840B·assets/fonts SSOT→빌드 복사). 부드러운 라운드체(옛 딱딱함 교체·운영자 260703). */
+  @font-face { font-family:'Paperlogy'; src:url(assets/fonts/paperlogy-pet.woff2) format('woff2'); font-weight:400; font-display:swap; }
   /* 마스코트 v2(마퀴 펫) — 크리터가 스캐폴드 위 마퀴 간판에 NO MUTE 글자 타일을 한 장씩 붙이고 점등하는 13s 루프.
      첨부 레퍼런스(픽셀 크리터·NOW SHOWING 마퀴·사다리·타일 슬랩·점등 플리커) 형질 계승 + 글자만 네온그린(--accent). 산책 펫 대체(260703). */
   .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; width:176px; height:58px;
+    transform:scale(1.5); transform-origin:left bottom;   /* 전반 크기 150%(좌하단 고정 확대 · 운영자 260703) */
     pointer-events:none; user-select:none; z-index:6; }
-  .pet::before, .pet::after { content:''; position:absolute; top:30px; bottom:0; width:2px;
-    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.26) 0 2px, transparent 2px 5px); }   /* 간판 스캐폴드 다리 2개(레퍼런스 사다리 형질 축약) — dotted border 대신 gradient 대시(합성 레이어 잔상 quirk 회피) */
-  .pet::before { left:34px; } .pet::after { right:34px; }
-  .pm-sign { position:absolute; left:0; right:0; top:0; height:33px; border-radius:var(--r-m);
-    border:1.5px dotted rgba(255,255,255,.34); background:rgba(4,6,5,.42);
-    backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s));
-    animation:pmSign 13s linear infinite; }   /* 점묘 테두리 = 마퀴 전구 라인 */
-  .pm-now { position:absolute; top:-6px; left:50%; transform:translateX(-50%) scale(.5); transform-origin:50% 50%;
-    font:var(--fw-b) 9px/1.4 var(--font-status); letter-spacing:.22em; white-space:nowrap;
-    padding:1px 8px; border-radius:var(--r-pill); border:1px dotted rgba(255,255,255,.4);
-    background:rgba(4,6,5,.9); color:rgba(255,255,255,.6); }   /* 9px×scale(.5) = CJK 로케일 최소폰트 클램프 회피 */
+  /* 모피즘 간판 프레임(글래스·점묘테두리·점등)·NOW SHOWING·스캐폴드 다리 폐지(운영자 260703) — 크리터가 글자 타일만 하나씩 붙이는 점프 모션만 유지. pm-sign은 타일 위치 컨테이너로만(투명). */
+  .pm-sign { position:absolute; left:0; right:0; top:0; height:33px; }
   .pm-tiles { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:2px;
     animation:pmLight 13s linear infinite; }
   .pm-sp { width:5px; }   /* NO ↔ MUTE 단어 간격 */
-  .pm-t { width:15px; height:19px; display:grid; place-items:center; border-radius:4px;   /* 동심원: 간판 r-m(11) − 세로패딩7 = 4 */
-    background:rgba(2,4,2,.85); border:1px solid rgba(255,255,255,.07);
-    font:var(--fw-x) 12px/1 var(--font-status); color:var(--accent);
-    text-shadow:0 0 7px rgba(var(--accent-rgb),.65); }
+  .pm-t { width:15px; height:15px; display:grid; place-items:center; border-radius:4px; opacity:0;   /* 15×15 정사각 = 글자(12px) 상하좌우 동일 마진 1.5px·타이트(운영자 260703) · 폭 15 유지 = 크리터 슬랩 캘리브레이션 보존 · opacity:0 base = 애니 적용 전 FOUC 플래시(글자 미리 뜸) 차단(운영자 260703) */
+    background:rgba(2,4,2,.3); border:1px solid rgba(255,255,255,.07);   /* 도형 배경 30% 반투명(옛 .85 → .3 · 글자는 또렷·운영자 260703) */
+    font:400 12px/1 'Paperlogy', var(--font-status); color:var(--fg);   /* Paperlogy(운영자 제공·라운드체) → 폴백 Pretendard(--font-status) · weight 400 = 폰트 실제 굵기(800 요청 시 faux-bold 왜곡 방지) · 한글 '오늘도 화이팅' · 글자=흰색(--fg 토큰=순백 육안동일·raw hex 회피·운영자 260703) */
+    text-shadow:0 1px 2px rgba(0,0,0,.5), 0 0 7px rgba(255,255,255,.4); }   /* 흰 글자 가독 = 어두운 그림자 + 부드러운 백열 글로우(옛 accent 글로우 → 흰색 · pmLight 점등 플리커는 유지) */
   .pm-t0 { animation:pmT0 13s linear infinite; } .pm-t1 { animation:pmT1 13s linear infinite; }
   .pm-t2 { animation:pmT2 13s linear infinite; } .pm-t3 { animation:pmT3 13s linear infinite; }
   .pm-t4 { animation:pmT4 13s linear infinite; } .pm-t5 { animation:pmT5 13s linear infinite; }
@@ -402,7 +459,7 @@
     2.5% { opacity:1; }
     8.5%,13.5% { transform:translateX(23px); }
     17%,21.5% { transform:translateX(40px); }
-    25%,30% { transform:translateX(65px); }
+    25%,30% { transform:translateX(56px); }
     33.5%,38.5% { transform:translateX(82px); }
     42%,47% { transform:translateX(99px); }
     50.5%,60% { transform:translateX(116px); }
@@ -421,7 +478,7 @@
     59.8%,100% { transform:none; }
   }
   @media (prefers-reduced-motion:reduce) { .pet, .pet * { animation:none !important; }
-    .pm-walk { transform:translateX(116px); } }   /* 정적: 완성된 간판 + 옆에 선 크리터 */
+    .pm-walk { transform:translateX(116px); } .pm-t { opacity:1 !important; } }   /* 정적: 완성된 간판 + 옆에 선 크리터 · 애니 없으면 base opacity:0이라 타일 안 보임 → 강제 노출 */
   .bar select { appearance:none; -webkit-appearance:none; padding-right:30px; cursor:pointer;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238fa697' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 13px center; }
@@ -879,6 +936,9 @@
     box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 26px rgba(0,0,0,.28);
     backdrop-filter:blur(13px) saturate(1.15); -webkit-backdrop-filter:blur(13px) saturate(1.15); }
   /* ── 실패 트레이 = 픽 분석실패를 카드(칼럼) 종속서 분리해 상단 전폭에 모음(cross<8·4h 솎여 미렌더돼도 실패 silent-drop 차단·운영자 260620 분신술) ── */
+  .sc-chips { display:flex; justify-content:flex-end; margin:0 0 2px; }   /* 국제 칩 행(260703 §7③) — .chip 컴포넌트 계승·그리드 전폭 */
+  .scrap-cols .sc-chips { grid-column:1 / -1; }
+  .sc-chips .chip { padding:5px 9px; }   /* 탭 타깃 확보(칩 베이스 계승·색·폰트 무변경) */
   .scrap-cols .sc-failtray { grid-column:1 / -1; border-radius:14px; padding:9px 10px 11px;
     background:linear-gradient(180deg, rgba(255,176,46,.12), rgba(12,9,5,.34)); border:1px solid rgba(255,176,46,.34);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
@@ -1635,16 +1695,16 @@
   .fi-saveall svg { display:block; width:12px; height:12px; } .fi-saveall:active { transform:scale(var(--press-l,.95)); } .fi-saveall[disabled] { opacity:.6; }
   /* ▼ 다운로드 버튼 표준(전 앱 공통 · 강조색 + 10% 반투명 + 클릭 ✓팝+링 · 정본=여기 · 운영자 260622) — 새 다운로드 버튼은 .dlbtn 한 클래스만 추가, 색·효과 재설계 금지 */
   .dlbtn { color:var(--accent) !important; background:rgba(var(--accent-rgb),.10) !important; border-color:rgba(var(--accent-rgb),.22) !important; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
-  .dlbtn:hover { background:rgba(var(--accent-rgb),.16) !important; }
+  @media (hover:hover){ .dlbtn:hover { background:rgba(var(--accent-rgb),.16) !important; } }   /* hover = 마우스 환경만 — 터치는 탭 후 hover가 눌러붙어(sticky) 배경 잔상 박스로 남음(운영자 260703 · thumb와 통일) */
   /* ▼ 다운로드 완료(클릭 후) = 강조색 → 흰색 영속 표식 (전 앱 공통 기틀 · 운영자 260701) — '이미 받음'을 색으로 알림. 클릭 즉시 흰색·재렌더에도 URL키(DLED)로 복원. 새 다운로드 버튼도 .dlbtn만 붙이면 자동 적용(색 재설계 금지). */
   .dlbtn.dl-done { color:var(--fg) !important; }
   /* 이미지 위 오버레이 다운로드/저장 플레이트 = 중립 검정 20%(그린 아님 · 다양한 사진/카드 위 대비 · 아이콘은 그린 유지 · thumb.html .imgdl.dlbtn 선례 · 운영자 260624). 전역 .dlbtn 표준(green 10%)·다크UI 위 버튼은 불변. 스코프 셀렉터(0,2~3,0)+!important로 표준만 덮어씀. */
   .timg-dl.dlbtn { background:rgba(0,0,0,.20) !important; border-color:transparent !important; }                 /* 썸네일 후보 슬롯 저장 */
-  .timg-dl.dlbtn:hover { background:rgba(0,0,0,.24) !important; }
+  @media (hover:hover){ .timg-dl.dlbtn:hover { background:rgba(0,0,0,.24) !important; } }
   .slide-acts .save.dlbtn, .slide-acts .ovl.dlbtn { background:rgba(0,0,0,.20) !important; border-color:transparent !important; }   /* 카드뉴스 캐러셀 '이 사진 저장' + '오버레이만 PNG'(둘 다 다운로드류 = .dlbtn 액티브 통일·운영자 260629) */
-  .slide-acts .save.dlbtn:hover, .slide-acts .ovl.dlbtn:hover { background:rgba(0,0,0,.24) !important; }
+  @media (hover:hover){ .slide-acts .save.dlbtn:hover, .slide-acts .ovl.dlbtn:hover { background:rgba(0,0,0,.24) !important; } }
   .lbox-bar .lbox-dl.dlbtn { background:rgba(0,0,0,.20) !important; border-color:transparent !important; }       /* 라이트박스(확대뷰) 다운로드 */
-  .lbox-bar .lbox-dl.dlbtn:hover { background:rgba(0,0,0,.24) !important; }
+  @media (hover:hover){ .lbox-bar .lbox-dl.dlbtn:hover { background:rgba(0,0,0,.24) !important; } }
   .dlbtn .dl-ack { position:absolute; inset:0; border-radius:inherit; overflow:hidden; display:grid; place-items:center; pointer-events:none; z-index:6; color:var(--accent); }   /* overflow:hidden = ✓팝·링 리플을 버튼 안에 가둠(이미지 위 오버레이서 밖으로 새 '위에 중첩' 차단 · 운영자 260628) */
   /* 픽토그램-온리 다운로드(이미지 위 ↓: 썸네일 슬롯·캐러셀·라이트박스) = ✓팝 오버레이가 ↓아이콘/기존이미지와 중첩 → ✓ 제거하고 :active scale 액티브만(전체저장 .cref-dlall 선례 동일 · 같은 ↓ 이모지 전체 적용 · 운영자 260628) */
   .timg-dl.dlbtn .dl-ack, .slide-acts .save.dlbtn .dl-ack, .slide-acts .ovl.dlbtn .dl-ack, .lbox-dl.dlbtn .dl-ack { display:none !important; }
@@ -1833,7 +1893,7 @@
   .cref-dlall .cref-dllbl { font-size:var(--fs-xs); font-weight:700; color:inherit; white-space:nowrap; transition:color .18s; }
   /* ▼ 다운로드 시퀀스 버튼(전체저장 — 썸네일 후보·카드뉴스·썸네일 생성기 공용) = 미니멀 텍스트(시안 9번·운영자 260623): 글래스/테두리/채움 없이 아이콘+라벨만, 완료 시 ✓ 팝(채움 없음·글자 강조색 유지). 정본 = 구성도/버튼인터랙션_기틀북.css §9 · JS=dlAllSeq. */
   .cref-dlall.dlbtn { background:transparent !important; border-color:transparent !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; box-shadow:none !important; padding:0 6px; }
-  .cref-dlall.dlbtn:hover { background:rgba(255,255,255,.06) !important; }
+  @media (hover:hover){ .cref-dlall.dlbtn:hover { background:rgba(255,255,255,.06) !important; } }   /* 터치 sticky hover = '전체' 다운 완료 후 회색 박스 잔상 → 마우스 환경만(운영자 260703 · thumb .jsave와 통일) */
   .cref-dlall.dlbtn .dl-ack { display:none !important; }
   .cref-dlall .dlseq-ic { width:15px; height:15px; display:inline-grid; }
   .cref-dlall .dlseq-ic svg { grid-area:1/1; width:15px; height:15px; }
@@ -2222,8 +2282,8 @@
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
     <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
-  <div class="pet" aria-hidden="true"><!-- 마퀴 펫 v2 — 크리터가 NO MUTE 타일을 붙이고 점등(13s 루프 · 260703) -->
-    <div class="pm-sign"><span class="pm-now">NOW SHOWING</span><span class="pm-tiles"><b class="pm-t pm-t0">N</b><b class="pm-t pm-t1">O</b><i class="pm-sp"></i><b class="pm-t pm-t2">M</b><b class="pm-t pm-t3">U</b><b class="pm-t pm-t4">T</b><b class="pm-t pm-t5">E</b></span></div>
+  <div class="pet" aria-hidden="true"><!-- 마퀴 펫 v2 — 크리터가 '오늘도 화이팅' 타일을 붙이는 점프(13s 루프) · NOW SHOWING·모피즘 간판 폐지, 글자만 교체(운영자 260703) -->
+    <div class="pm-sign"><span class="pm-tiles"><b class="pm-t pm-t0">오</b><b class="pm-t pm-t1">늘</b><b class="pm-t pm-t2">도</b><i class="pm-sp"></i><b class="pm-t pm-t3">화</b><b class="pm-t pm-t4">이</b><b class="pm-t pm-t5">팅</b></span></div>
     <span class="pm-walk"><img class="pm-critter" src="pet.webp" alt="" draggable="false"></span>
   </div>
   <div class="topsearch" id="topsearch">
@@ -2247,10 +2307,28 @@
     <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">켜기</button></div>
     <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
     <button id="pubBtn">발행본 <span id="pubBtnCnt"></span></button>
+    <button id="lockBtn">잠금 설정</button>
   </div>
   <div class="msgpop" id="msgpop" hidden>
     <div class="mh"><b>메시지</b><span class="mc" id="msgpopcnt"></span><button class="mx" id="msgclose" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
     <div class="msglist" id="msglist"></div>
+  </div>
+  <!-- 잠금 설정 팝업 = 메시지함(msgpop) 계승 · 행 = pushrow/pushbtn 계승(운영자 260703) -->
+  <div class="msgpop" id="lockpop" hidden>
+    <div class="mh"><b>잠금 설정</b><button class="mx" id="lockpopX" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+    <div class="pushrow"><span class="pl">화면 잠금</span><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
+    <div class="pushrow"><span class="pl">PIN (6자리)</span><span class="lk-grp"><input class="lk-in" id="lockPinIn" type="text" inputmode="numeric" maxlength="6" placeholder="미설정" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" readonly><button class="lk-chg" id="lockChgBtn" type="button">OFF</button></span></div>
+    <div class="pushrow"><span class="pl">자동 잠금(분)</span><input class="lk-in lk-min" id="lockMinIn" type="text" inputmode="numeric" maxlength="3" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    <div class="lk-hint" id="lockHint"></div>
+  </div>
+  <!-- 화면 잠금 오버레이(챠콜 90%+모피즘) — PIN 키패드 = 발행본 정본 이식(운영자 260703) -->
+  <div class="lockscr" id="lockscr" hidden>
+    <div class="lk-card">
+      <div class="lk-m">화면이 잠겨 있습니다 · PIN을 입력해주세요</div>
+      <div class="lk-slots" id="lkSlots" aria-hidden="true"><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span></div>
+      <div class="lk-err" id="lkErr"></div>
+      <div class="lk-pad" id="lkPad"></div>
+    </div>
   </div>
 </div>
 
@@ -5328,6 +5406,7 @@ function hidePmenu(){
 function closeOverlays(keep) {
   if (keep !== 'pmenu') hidePmenu();
   if (keep !== 'msg') msgpop.hidden = true;
+  if (keep !== 'lockpop') { const _lp = $('#lockpop'); if (_lp) _lp.hidden = true; }
   if (keep !== 'bpop') { bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open'); }   // 라디얼 닫힘 = .open 제거(다음 열림 애니 복원) + FAB ×→+ 복귀
   if (keep !== 'linkpop') linkpop.hidden = true;
   if (keep !== 'qpop') closeQueueUser();
@@ -5374,6 +5453,203 @@ function placeMsgpop() {
 ['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!msgpop.hidden) placeMsgpop(); }, { passive: true }));
 $('#msgbtn').addEventListener('click', e => { e.stopPropagation(); openMsgbox(); });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
+
+// ── 화면 잠금(응답없음 lock) — 운영자 260703. 유휴 N분(기본 2) → 챠콜 90% 모피즘 전면 오버레이 + PIN 키패드.
+//    키패드 = 발행본 /s/ pinForm 정본 이식(2판 셔플·숫자픽·명조 *·빨강 3초·오류 5회=10분 잠금·마스터 통일).
+//    저장 = localStorage(이 기기): nm_lock_on/_pin(sha256)/_min/_last/_locked/_fails/_until. 평문 PIN 미저장.
+//    ⚠️ 성격 = 사생활 가림막(클라 로컬·DevTools로 우회 가능) — 접근 보안 자체는 CF Access 담당(발행본 서버 검증과 별개).
+const LK_MASTER_H = '19bd473e8747c6ac41e3477aac557468f2010b7d9d2205a3fd6e7e0cc8eef2eb';   // sha256('898900:nmlock') = 발행본 마스터(898900) 통일·평문 미노출
+const LK_MAX = 5, LK_OUT_MS = 600000;   // 오류 5회 = 10분(발행본 LOCK_MAX·LOCK_TTL 정본 동일)
+const lkOn = () => localStorage.getItem('nm_lock_on') !== '0';   // 기본 ON(운영자 260703) — 명시적으로 끈('0') 기기만 OFF. PIN 미설정이면 lockNow 가드로 실제 잠금은 안 걸림(설정 즉시 활성).
+const lkPinH = () => localStorage.getItem('nm_lock_pin') || '';
+const lkMin = () => Math.min(120, Math.max(1, parseInt(localStorage.getItem('nm_lock_min') || '2', 10) || 2));   // 기본 2분(운영자 260703)
+async function lkHash(p) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p + ':nmlock')); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
+const lockscr = $('#lockscr'), lkSlotsEl = $('#lkSlots'), lkPadEl = $('#lkPad'), lkErrEl = $('#lkErr');
+const lkDots = lkSlotsEl.getElementsByClassName('lk-slot');
+const isLocked = () => !lockscr.hidden;
+// ── 유휴 감시: 활동 = _lkLast만 갱신(이벤트마다 타이머 재무장 안 함) · 타이머는 만기 시 경과 재확인 후 잔여만큼 재무장 ──
+let _lkLast = Date.now(), _lkT = null;
+function lockArm() {
+  clearTimeout(_lkT); _lkT = null;
+  if (!lkOn() || !lkPinH() || isLocked()) return;
+  const remain = lkMin() * 60000 - (Date.now() - _lkLast);
+  _lkT = setTimeout(() => { _lkT = null; (Date.now() - _lkLast >= lkMin() * 60000 - 500) ? lockNow() : lockArm(); }, Math.max(1000, remain));
+}
+['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(ev =>
+  window.addEventListener(ev, () => { if (!isLocked()) _lkLast = Date.now(); }, { passive: true, capture: true }));
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { try { localStorage.setItem('nm_lock_last', String(_lkLast)); } catch {} return; }   // 이탈 시 활동시각 보존(재진입 경과 판정용)
+  const last = Math.max(_lkLast, parseInt(localStorage.getItem('nm_lock_last') || '0', 10) || 0);
+  if (lkOn() && lkPinH() && !isLocked() && Date.now() - last >= lkMin() * 60000) lockNow(); else lockArm();
+});
+function lockNow() {
+  if (isLocked() || !lkPinH()) return;   // PIN 미설정 = 잠그면 못 푼다 → 무시(토글이 선행 차단)
+  document.querySelectorAll('dialog[open]').forEach(d => { try { d.close(); } catch {} });   // <dialog> top-layer는 z로 못 이김 → 잠금 시 닫음(§🎨 함정)
+  try { closeOverlays(''); } catch {}   // 팝업류 전부 정리(부팅 직후 등 후반 const 미초기화 시에도 잠금은 진행 = TDZ 방어)
+  try { localStorage.setItem('nm_locked', '1'); } catch {}
+  document.documentElement.style.overflow = 'hidden';
+  lkReal = ''; lkBusy = false; lkErrEl.textContent = ''; lkSlotsEl.classList.remove('bad', 'shake');
+  lkA = lkOrder(); lkB = lkOrder(); lkBuildPad(); lkApply(); lkFill();   // 잠금마다 새 2판 셔플
+  lockscr.hidden = false;
+}
+function lkUnlock() {
+  try { localStorage.setItem('nm_locked', '0'); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
+  lockscr.hidden = true; document.documentElement.style.overflow = '';
+  lkReal = ''; _lkLast = Date.now(); lockArm();
+}
+// ── 키패드(정본 이식 · lk- 프리픽스) ──
+let lkReal = '', lkBusy = false, lkA = null, lkB = null, lkKds = null, lkPeekT = null, lkBadT = null;
+const LK_BSVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
+function lkOrder() { const o = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; for (let i = 9; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)), t = o[i]; o[i] = o[j]; o[j] = t; } return o; }
+function lkBuildPad() {
+  let h = ''; for (let i = 0; i < 9; i++) h += '<button type="button" class="lk-key kd"></button>';
+  h += '<button type="button" class="lk-key empty" tabindex="-1" aria-hidden="true"></button><button type="button" class="lk-key kd"></button>';
+  h += '<button type="button" class="lk-key back" data-back="1" aria-label="지우기">' + LK_BSVG + '</button>';
+  lkPadEl.innerHTML = h; lkKds = lkPadEl.querySelectorAll('.kd');
+}
+function lkApply() { const b2 = lkReal.length >= 4, o = b2 ? lkB : lkA; lkPadEl.classList.toggle('b2', b2); for (let i = 0; i < 10; i++) { lkKds[i].textContent = o[i]; lkKds[i].setAttribute('data-d', o[i]); } }   // 1~4자리 판A · 5~6자리 판B(백스페이스 복귀도 유지)
+function lkFill(peek) {
+  clearTimeout(lkPeekT);
+  for (let i = 0; i < 6; i++) { lkDots[i].className = 'lk-slot' + (i < lkReal.length ? ' on' : ''); lkDots[i].textContent = ''; }
+  if (peek && lkReal.length) { const d = lkDots[lkReal.length - 1]; d.className = 'lk-slot peek'; d.textContent = lkReal.slice(-1); lkPeekT = setTimeout(() => lkFill(), 700); }
+}
+function lkFlash(el) { if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); clearTimeout(el._ht); el._ht = setTimeout(() => el.classList.remove('hit'), 180); }
+function lkUnbad() { clearTimeout(lkBadT); lkSlotsEl.classList.remove('bad', 'shake'); if (!lkOutLeft()) lkErrEl.textContent = ''; }
+const lkFails = () => parseInt(localStorage.getItem('nm_lock_fails') || '0', 10) || 0;
+const lkOutLeft = () => Math.max(0, (parseInt(localStorage.getItem('nm_lock_until') || '0', 10) || 0) - Date.now());   // 5회 잠금 잔여 ms
+function lkPress(d) {
+  if (lkBusy || !isLocked() || lkReal.length >= 6) return;
+  lkFlash(lkPadEl.querySelector('.kd[data-d="' + d + '"]'));
+  lkUnbad(); lkReal += String(d); lkFill(true); lkApply();
+  if (lkReal.length === 6) setTimeout(lkFire, 340);
+}
+function lkBack() { if (lkBusy || !isLocked() || !lkReal.length) return; lkFlash(lkPadEl.querySelector('.back')); lkUnbad(); lkReal = lkReal.slice(0, -1); lkFill(); lkApply(); }
+async function lkFire() {
+  if (lkBusy || lkReal.length !== 6) return;
+  lkBusy = true; clearTimeout(lkPeekT); lkFill();   // 검증 진입 = 숫자픽 즉시 마스킹
+  let h = ''; try { h = await lkHash(lkReal); } catch {}
+  const master = h === LK_MASTER_H;
+  if (master || (h && h === lkPinH() && !lkOutLeft())) { lkUnlock(); lkBusy = false; return; }   // 마스터 = 5회 잠금도 즉시 해제(발행본 동일)
+  const out = lkOutLeft();
+  let n = lkFails();
+  if (!out) { n += 1; try { localStorage.setItem('nm_lock_fails', String(n)); if (n >= LK_MAX) localStorage.setItem('nm_lock_until', String(Date.now() + LK_OUT_MS)); } catch {} }
+  lkErrEl.textContent = (out || n >= LK_MAX) ? `PIN 오류 ${LK_MAX}회 누적 — ${Math.ceil((lkOutLeft() || LK_OUT_MS) / 60000)}분 후 다시` : `PIN 번호가 틀립니다 (${n}/${LK_MAX})`;
+  lkReal = ''; lkFill(); lkApply();
+  lkSlotsEl.classList.add('bad'); void lkSlotsEl.offsetWidth; lkSlotsEl.classList.add('shake');
+  clearTimeout(lkBadT); lkBadT = setTimeout(() => { lkSlotsEl.classList.remove('bad', 'shake'); if (!lkOutLeft()) lkErrEl.textContent = ''; }, 3000);   // 빨강 3초 후 초기색 복귀(정본 동일 · 5회 잠금 문구는 유지)
+  lkBusy = false;
+}
+lkPadEl.addEventListener('click', e => {
+  const b = e.target.closest('.lk-key'); if (!b) return;
+  if (b.getAttribute('data-back') !== null) lkBack();
+  else if (b.getAttribute('data-d') !== null) lkPress(b.getAttribute('data-d'));
+});
+document.addEventListener('keydown', e => {   // 물리 키보드(잠금 중에만)
+  if (!isLocked()) return;
+  if (e.key >= '0' && e.key <= '9') { lkPress(e.key); e.preventDefault(); }
+  else if (e.key === 'Backspace') { lkBack(); e.preventDefault(); }
+});
+// ── 설정 팝업(프로필 → 잠금 설정) — msgpop 앵커 미러 · 토글 = pushbtn ON/OFF 동일 구성 ──
+const lockpop = $('#lockpop');
+function lkSettingsRefresh() {
+  const btn = $('#lockOnBtn'), min = $('#lockMinIn'), hint = $('#lockHint');
+  btn.textContent = lkOn() ? 'ON' : 'OFF'; btn.classList.toggle('on', lkOn());
+  chgReset();   // PIN 변경 플로우 초기화(팝업 재열림·토글 조작 = 진행중 변경 취소)
+  min.value = String(lkMin());
+  hint.classList.remove('bad');
+  hint.textContent = lkPinH() ? (lkOn() ? `유휴 ${lkMin()}분 후 화면이 잠깁니다` : '토글을 켜면 유휴 시 잠깁니다') : 'PIN 미설정 — 우측 [OFF]를 눌러 설정하세요';
+}
+function openLockPop() {
+  closeOverlays('lockpop');
+  const pr = $('#profile').getBoundingClientRect(), top = Math.round(pr.top + pr.height / 2);   // placeMsgpop 미러(§🎨 프로필 앵커 팝업 정본)
+  lockpop.style.top = top + 'px'; lockpop.style.right = Math.max(8, Math.round(window.innerWidth - pr.right)) + 'px';
+  lockpop.style.left = 'auto'; lockpop.style.bottom = 'auto'; lockpop.style.maxHeight = (window.innerHeight - top - 12) + 'px';
+  lkSettingsRefresh(); lockpop.hidden = false;
+}
+$('#lockBtn').addEventListener('click', e => { e.stopPropagation(); openLockPop(); });
+$('#lockpopX').addEventListener('click', e => { e.stopPropagation(); lockpop.hidden = true; });
+lockpop.addEventListener('click', e => e.stopPropagation());
+document.addEventListener('click', () => { if (!lockpop.hidden) lockpop.hidden = true; });
+$('#lockOnBtn').addEventListener('click', async () => {
+  // 기본 ON 체계(운영자 260703): 토글은 상태만 — 실제 잠금 무장은 PIN 존재가 게이트(lockNow/lockArm 가드·힌트가 안내).
+  if (lkOn()) { try { localStorage.setItem('nm_lock_on', '0'); } catch {} clearTimeout(_lkT); }
+  else { try { localStorage.setItem('nm_lock_on', '1'); } catch {} _lkLast = Date.now(); lockArm(); }
+  lkSettingsRefresh();
+  if (lkOn() && !lkPinH()) $('#lockHint').classList.add('bad');
+});
+// ── PIN 변경 = 2단 재입력 플로우(운영자 260703): [OFF(mut)] 누르면 [ON(accent)] = 변경 모드 →
+//    ① 기존 PIN 확인(설정된 기기만·마스터 898900 통과·오답 = 빨강 3초·5회 잠금 공유) → ② 새 PIN 1회차 → ③ 재입력(2회차)
+//    → 버튼 멘트 '변경'(pill) → 누르면 게이지 goFill 풀필 → ✓ 저장(mkbtn 상태머신 계승). ON 상태서 다시 누르면 취소. ──
+let chgStep = null, chgNew = '', chgBadT = null;
+const lkChgBtn = $('#lockChgBtn'), lkPinInEl = $('#lockPinIn');
+function chgReset() {
+  chgStep = null; chgNew = ''; clearTimeout(chgBadT);
+  lkChgBtn.textContent = 'OFF'; lkChgBtn.className = 'lk-chg';
+  lkPinInEl.value = ''; lkPinInEl.readOnly = true; lkPinInEl.classList.remove('bad');
+  lkPinInEl.placeholder = lkPinH() ? '설정됨' : '미설정';
+}
+function chgHint(t, bad) { const h = $('#lockHint'); h.textContent = t; h.classList.toggle('bad', !!bad); }
+function chgBad(msg, next) {   // 오답 = 빨강 3초 후 안내 복귀(잠금 화면 정본 리듬)
+  lkPinInEl.classList.add('bad'); lkPinInEl.value = ''; chgHint(msg, true);
+  clearTimeout(chgBadT); chgBadT = setTimeout(() => { lkPinInEl.classList.remove('bad'); chgHint(next || ''); }, 3000);
+}
+lkChgBtn.addEventListener('click', async () => {
+  if (chgStep === 'armed') {                                    // [변경] = 게이지 풀필 → 저장
+    const newPin = chgNew;
+    lkChgBtn.classList.add('firing');
+    setTimeout(async () => {
+      let h = ''; try { h = await lkHash(newPin); } catch {}
+      if (h) { try { localStorage.setItem('nm_lock_pin', h); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {} }
+      lkChgBtn.classList.remove('firing'); lkChgBtn.classList.add('okdone');
+      lkChgBtn.innerHTML = '<svg class="gck" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4L19 7"/></svg>';
+      setTimeout(() => { lkSettingsRefresh(); chgHint(`PIN 변경됨 · 유휴 ${lkMin()}분 후 잠김`); _lkLast = Date.now(); lockArm(); }, 700);
+    }, 720);
+    return;
+  }
+  if (chgStep) { lkSettingsRefresh(); return; }                 // ON 상태서 재탭 = 취소(초기화)
+  chgStep = lkPinH() ? 'verify' : 'new1';                       // OFF→ON = 변경 모드 진입(기존 있으면 확인부터)
+  lkChgBtn.textContent = 'ON'; lkChgBtn.classList.add('on');
+  lkPinInEl.readOnly = false; lkPinInEl.value = '';
+  lkPinInEl.placeholder = chgStep === 'verify' ? '기존 PIN 확인' : '새 PIN 1회차';
+  chgHint(chgStep === 'verify' ? '기존 PIN을 먼저 입력하세요' : '새 PIN 6자리를 입력하세요');
+  lkPinInEl.focus();
+});
+lkPinInEl.addEventListener('input', async e => {
+  const el = e.target; el.value = el.value.replace(/\D/g, '').slice(0, 6);
+  el.classList.remove('bad'); clearTimeout(chgBadT);
+  if (!chgStep || chgStep === 'armed' || el.value.length !== 6) return;
+  const v = el.value;
+  if (chgStep === 'verify') {
+    if (lkOutLeft()) { chgBad(`PIN 오류 ${LK_MAX}회 누적 — ${Math.ceil(lkOutLeft() / 60000)}분 후 다시`, '기존 PIN을 먼저 입력하세요'); return; }
+    let h = ''; try { h = await lkHash(v); } catch {}
+    if (h && (h === lkPinH() || h === LK_MASTER_H)) {           // 마스터 = 기존 확인 통과 + 오류카운터 리셋(발행본 동일)
+      try { localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
+      chgStep = 'new1'; el.value = ''; el.placeholder = '새 PIN 1회차'; chgHint('확인됨 — 새 PIN 6자리를 입력하세요');
+    } else {
+      const n = lkFails() + 1;
+      try { localStorage.setItem('nm_lock_fails', String(n)); if (n >= LK_MAX) localStorage.setItem('nm_lock_until', String(Date.now() + LK_OUT_MS)); } catch {}
+      chgBad(`PIN 번호가 틀립니다 (${Math.min(n, LK_MAX)}/${LK_MAX})`, '기존 PIN을 먼저 입력하세요');
+    }
+  } else if (chgStep === 'new1') {
+    chgNew = v; chgStep = 'new2'; el.value = ''; el.placeholder = '재입력 (2회차)'; chgHint('한 번 더 똑같이 입력하세요');
+  } else if (chgStep === 'new2') {
+    if (v === chgNew) {                                          // 일치 = 버튼 멘트 '변경'으로 무장(게이지 대기)
+      chgStep = 'armed'; el.readOnly = true; el.value = '●●●●●●';
+      lkChgBtn.textContent = '변경'; lkChgBtn.classList.add('armed');
+      chgHint('[변경]을 누르면 저장됩니다');
+    } else { chgNew = ''; chgStep = 'new1'; el.placeholder = '새 PIN 1회차'; chgBad('재입력이 달라요 — 처음부터 다시', '새 PIN 6자리를 입력하세요'); }
+  }
+});
+$('#lockMinIn').addEventListener('change', e => {
+  const v = Math.min(120, Math.max(1, parseInt(e.target.value.replace(/\D/g, ''), 10) || 2));
+  try { localStorage.setItem('nm_lock_min', String(v)); } catch {}
+  lkSettingsRefresh(); lockArm();
+});
+// 부팅: 잠근 채 이탈(새로고침 포함) 또는 켜둔 채 유휴 초과 = 즉시 잠금(F5 우회 차단) · 아니면 무장만.
+// ⚠️ setTimeout(0) = 스크립트 전체 완주 후 실행 — 즉시 호출하면 lockNow→closeOverlays가 이 아래에서 선언되는 const(bpop 등)를 TDZ로 쳐 부팅째 죽음(헤드리스 실측).
+if (lkPinH() && (localStorage.getItem('nm_locked') === '1'
+  || (lkOn() && Date.now() - (parseInt(localStorage.getItem('nm_lock_last') || '0', 10) || Date.now()) >= lkMin() * 60000))) setTimeout(lockNow, 0);
+else lockArm();
 
 // 모달 닫히면 배경 스크롤 복구(#5 — 닫기 버튼·Esc 모두 close 이벤트)
 let _dlgPop = false;   // 폰 뒤로가기(popstate)로 #dlg가 닫혔는지 — close 핸들러의 히스토리 정리 분기(lbox _lboxPop 패턴·260630 QA ③)
@@ -6274,6 +6550,7 @@ const _scIO = ('IntersectionObserver' in window) ? new IntersectionObserver(ents
   }
 }, { rootMargin: '600px 0px' }) : null;   // IO 미지원 구형 = 옛 더보기 버튼 폴백(아래 renderScrap)
 let scFoldOpen = false, _scFoldN = 0;   // 검증대기 접기(Q-1·260702): 토글 상태(재렌더 유지·새로고침 접힘 기본) · 이번 렌더의 접힌 건수(양수=접힘·음수=펼침)
+let scIntlOn = false;   // 국제 칩(260703 분신술 §7③): ON = 국제 레인 명시 브라우즈(cat 국제 OR 외신 title_ko · 칼럼 진입게이트 면제·랭킹은 그대로). 기본 OFF = 기존 화면 0 변경·세션 한정(새로고침 초기화).
 let ratedKeep = new Set();   // 이번 세션에 별점 매긴 카드 = 다음 갱신(새로고침) 전까진 유지, 갱신 때 리스트서 제외
 let _scrapSig = '';   // 직전 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · 피드 _feedSig 대응 · 운영자 260621)
 // 같은 사건 중복 대표 접기 — 정규화 제목 동일(=같은 헤드라인=같은 기사)이면 우세한 1장만 남김(운영자 260625 · 분신술 10인 보강).
@@ -6382,7 +6659,9 @@ function renderScrap() {
   const rt = ratingsAll();
   CANDS.forEach(c => { const s = srvTriage(c); if (s) { const id = candId(c); rt[id] = { ...s, ...(rt[id] || {}) }; } });   // 서버 트리아지(전 기기 ledger) 아래에 로컬 오버레이 = PASS/👎/확인 cross-device(운영자 260620)
   scRT = rt;   // scRT = 정렬에서 픽 상태(누적 고정 제외) 참조
-  const base = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.title_ko || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상(외신 번역 제목도 한글 검색 매칭)
+  const scIntl = c => (c.cat || '') === '국제' || !!c.title_ko;   // 국제 레인 술어 = 국제 카테고리 OR 외신(번역 도장 · §8 260703)
+  const base0 = q ? CANDS.filter(c => ((c.title || '') + ' ' + (c.title_ko || '') + ' ' + (c.media || c.source || '')).toLowerCase().includes(q)) : CANDS;   // 수집된 후보 전반 대상(외신 번역 제목도 한글 검색 매칭)
+  const base = scIntlOn ? base0.filter(scIntl) : base0;   // 국제 칩 ON = 국제·외신만(검색과 AND · OFF면 종전과 동일)
   // 픽 분석실패 = 카드(칼럼) 종속서 분리해 상단 전폭 '실패 트레이'에 모음 — cross<8·4h 솎여 칼럼에 미렌더돼도 실패가 안 사라지게(운영자 260620 분신술 표면작업).
   const _mm = mergesAll(), _mergedMembers = new Set(), _liveIds = new Set(CANDS.map(candId));   // 병합 멤버 = 실패트레이서도 제외(앵커에 흡수=이중표면 방지·분신술8 F1) — ⚠️ 단 앵커가 *살아있을 때만*(앵커 탈락[GC·rep점프·별점] 시 흡수처 사라져 멤버 증발 silent-loss 방지·재검4)
   for (const a of Object.keys(_mm)) { if (!_liveIds.has(a)) continue; (Array.isArray(_mm[a] && _mm[a].members) ? _mm[a].members : []).forEach(m => _mergedMembers.add(m)); }
@@ -6399,9 +6678,12 @@ function renderScrap() {
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
   }))));
-  if (!pool.length && !failedShown.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = ''; return; }
+  const _chipsHtml = `<div class="sc-chips"><button type="button" class="chip sc-intl${scIntlOn ? ' on' : ''}" aria-pressed="${scIntlOn}" title="국제·외신만 보기 — 진입게이트 무관 브라우즈">국제</button></div>`;   // 국제 칩(260703 §7③) — .chip 컴포넌트 계승(피드 필터 칩과 동일 클래스 = §🎨)
+  const _wireIntl = () => { const b = host.querySelector('.sc-intl'); if (b) b.onclick = () => { scIntlOn = !scIntlOn; renderScrap(); }; };
+  if (!pool.length && !failedShown.length) { host.classList.remove('scrap-cols'); host.innerHTML = _chipsHtml + `<div class="scrap-empty">${q ? '검색 결과 없음' : (scIntlOn ? '국제·외신 후보 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.')}</div>`; _wireIntl(); _scrapSig = ''; return; }
   host.classList.add('scrap-cols');
-  host.innerHTML = (failedShown.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">분석 실패 ${failedShown.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
+  host.innerHTML = _chipsHtml + (failedShown.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">분석 실패 ${failedShown.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
+  _wireIntl();
   if (failedShown.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
     const tray = host.querySelector('.sc-failtray-list');
     failedShown.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); _scSig += 'f' + candId(c) + ','; });
@@ -6414,13 +6696,13 @@ function renderScrap() {
     const key = col.dataset.col;
     let arr;
     if (key === 'new') {   // 신규 칼럼 = 최신분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신규서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신순.
-      arr = pool.filter(c => _untri(c) && (scFast(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신규 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 누적行(아래). · 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross 낮아도 자격 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
+      arr = pool.filter(c => _untri(c) && (scIntlOn || scFast(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // scIntlOn = 국제 칩 명시 브라우즈 = 진입게이트 면제(기본 OFF·260703)   // 신규 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 누적行(아래). · 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross 낮아도 자격 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
       arr = arr.map(c => ({ c, p: pinFresh(c), f: fastScore(c), t: scTs(c) })).sort((a, b) => (b.p - a.p) || (b.f - a.f) || (b.t - a.t)).map(x => x.c);   // 최신 속보 핀 → fastScore decay 하강(톱 독차지 방지). 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시. ⚡버퍼 260701: Schwartzian(정렬키 요소당 1회 사전계산) — 비교당 재계산(Math.pow·Date.parse ~2·log₂n회) 제거·순서 동일.
       // 검증대기 접기(Q-1 · 운영자 승인 260702): 미채점(grade null)·cross≤3·burst<3·비속보(확정/후보)·비액션(픽/재시도)은
       // 하단 접힘 묶음 — 신규 표시분의 85%가 이런 미채점 소규모 보도자료(실측 142/168)라 스크롤 절반 잠식(fable2).
       // 컷 아닌 접기 = 소실 0(§1 보수성 무위반) · 랭킹/신호/수집 0 변경(순수 표시층) · 펼침 = 기존 더보기 페이지네이션에 그대로 합류.
       _scFoldN = 0;
-      if (!q) {   // 검색 중엔 접기 비활성(찾는 중 = 전부 표시)
+      if (!q && !scIntlOn) {   // 검색·국제 칩 중엔 접기 비활성(브라우즈 중 = 전부 표시)
         const heldIds = new Set(arr.filter(c => c.grade == null && (c.cross || 0) <= 3 && (c.burst || 0) < 3
           && !c.breaking && !c.breaking_candidate && !failRequeued(c) && !pickState(c)).map(candId));
         if (heldIds.size >= 4) {   // 3건 이하면 접을 가치 없음(버튼이 더 시끄러움)
@@ -6429,7 +6711,7 @@ function renderScrap() {
         }
       }
     } else {   // 누적 = 9시뉴스감(좌측·넓은 누적). 발생 4h↑(신규서 졸업) AND (cross≥8 OR 긴급[breaking] OR 연속보도 보조진입[followEnters: cross≥4 AND rc≥6 AND grade∉0,1]). 최신(<4h)과 시간 배타. ⚠️ 긴급이었던 건 cross<8이어도 누적 합류(사라지는 구멍 차단·운영자 260617) → 일반 누적 점수(scScore)로 랭킹. 중요도순.
-      arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);   // + 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross<8·non-breaking이라 원래 자격 없어도 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 scScore 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
+      arr = pool.filter(c => _untri(c) && (scIntlOn || (c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);   // scIntlOn = 국제 칩 명시 브라우즈 = 진입게이트 면제(기본 OFF·260703)   // + 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross<8·non-breaking이라 원래 자격 없어도 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 scScore 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
       arr = arr.map(c => ({ c, s: scScore(c), t: scTs(c) })).sort((a, b) => (b.s - a.s) || (b.t - a.t)).map(x => x.c);   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 최신 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 최신 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·최신 pinFresh(최신속보 핀)는 별개 유지. ⚡버퍼 260701: Schwartzian(scScore 요소당 1회) — 비교당 재계산 제거·순서 동일.
     }
     const lim = Math.min(scShown[key], arr.length);   // dedup은 pool 단계서 전역 1회(위) — 칼럼별 중복 접기 불요
@@ -6461,7 +6743,7 @@ function renderScrap() {
       col.appendChild(fold);
     }
   });
-  _scSig += '|' + q;
+  _scSig += '|' + q + (scIntlOn ? '|i' : '');
   host.classList.toggle('no-anim', _scSig === _scrapSig || _searchRender);   // 직전과 동일 구성(탭 재진입·픽/확인·동일데이터)·검색 타이핑 = 스태거 생략 = 깜빡임 0 · 새 카드·삭제만 촤르륵(분신술 A2)
   _scrapSig = _scSig;
   pollPicking();   // 픽 후·새로고침 잔존 Picking… 분석완료 폴 시동(가드: 진행중·picking 없으면 즉시 반환)
@@ -8109,7 +8391,7 @@ let YCHARS = [], YCUR = null, YREADY = false, YSESS = null, _yetaPop = false, _y
 let YDIAL = { model: 'claude-opus-4-8', effort: 'low' };   // 기본 = 진심×번개(30초 컷 · 아이데이션①)
 try { const _yd = JSON.parse(localStorage.getItem('nomute_yeta_dial') || 'null'); if (_yd && _yd.model) YDIAL = _yd; } catch {}
 const Y_MODELS = [['claude-sonnet-5', '가볍게'], ['claude-opus-4-8', '진심']];
-const Y_EFFS = [['low', '번개'], ['', '보통'], ['max', '깊게']];
+const Y_EFFS = [['low', '번개'], ['medium', '보통'], ['max', '깊게']];   // '보통'=medium(옛 ''=CLI기본 high라 오히려 최저속 = 라벨 배신 교정)
 const yApi = (op, extra) => fetch('api/yeta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op, ...(extra || {}) }) }).then(r => r.json());
 const yFmt = t => esc(t).replace(/\*([^*\n]{1,200}?)\*/g, '<i class="yn">$1</i>');   // *지문* → 이탤릭(제타 대화 폰트 결)
 const yPersona = id => YCHARS.find(x => x.id === id);
@@ -8141,7 +8423,7 @@ async function yDraw() {   // 랜덤 뽑기/재뽑기 — 맥락 유지·화자 
   if (!YCHARS.length) return;
   const pool = YCHARS.filter(c => !YCUR || c.id !== YCUR.id);
   const c = pool[Math.floor(Math.random() * pool.length)] || YCHARS[0];
-  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '' }).catch(() => null);
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
   if (!r || !r.ok) { $('#yetaLog').insertAdjacentHTML('beforeend', `<div class="yb fail">${esc((r && r.error) || '뽑기 실패 — 다시 눌러줘')}</div>`); return; }
   YSESS = r.sess; yApply(c); yRender();
 }
@@ -8199,10 +8481,16 @@ $('#yetaPick').addEventListener('click', async e => {
   yPickToggle(false);
   const c = yPersona(b.dataset.id);
   if (!c || (YCUR && YCUR.id === c.id)) return;
-  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '' }).catch(() => null);
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
   if (r && r.ok) { YSESS = r.sess; yApply(c); yRender(); }
 });
 yetadlg.addEventListener('click', e => { const pk = $('#yetaPick'); if (!pk.hidden && !pk.contains(e.target) && !$('#yetaWho').contains(e.target)) yPickToggle(false); });   // 바깥 탭 = 닫힘
+$('#yetaLog').addEventListener('click', async e => {   // 원탭 재시도(재타이핑 0 · retry op = 기존 pending 유저 턴 재발사)
+  if (!e.target.closest('.yfail-retry')) return;
+  const r = await yApi('retry').catch(() => null);
+  if (r && r.ok) { yStartPoll(); yLoad(); }
+  else { miniToast((r && r.error) || '재시도 실패 — 잠시 후 다시'); }
+});
 async function yLoad() {
   if (!yetadlg.open) return;
   const r = await yApi('get').catch(() => null);
@@ -8214,10 +8502,10 @@ async function yLoad() {
   if (c && (!YCUR || YCUR.id !== c.id)) yApply(c);
   yRender();
 }
-function yAiMsg(t, fresh) {   // 캐릭터 메시지 = 아바타 + 이름 + 버블(+다이얼 캡션 = 곱 체감) · fresh=신규만 촤르륵(.in)
+function yAiMsg(t, fresh, cont) {   // 캐릭터 메시지 = 아바타 + 이름 + 버블(+다이얼 캡션) · fresh=신규만 촤르륵 · cont=직전과 같은 화자(아바타·이름 생략 = 톡방 그룹핑)
   const p = yPersona(t.persona) || YCUR || {};
   const cap = t.model ? `<span class="yb-cap">${esc(yLabel(t.model, t.effort))}${t.gen_s ? '·' + t.gen_s + 's' : ''}</span>` : '';
-  return `<div class="ymsg${fresh ? ' in' : ''}"><span class="yava"${p.color ? ` style="color:${esc(p.color)}"` : ''}>${esc(p.initial || (p.name || '?')[0])}</span><span class="ycol"><span class="yname">${esc(p.name || '')}</span><div class="yb ai">${yFmt(t.text)}${cap}</div></span></div>`;
+  return `<div class="ymsg${fresh ? ' in' : ''}${cont ? ' cont' : ''}"><span class="yava"${p.color ? ` style="color:${esc(p.color)}"` : ''}>${esc(p.initial || (p.name || '?')[0])}</span><span class="ycol"><span class="yname">${esc(p.name || '')}</span><div class="yb ai">${yFmt(t.text)}${cap}</div></span></div>`;
 }
 let _yLastN = -1, _yTypOn = false, _yFailOn = false;   // 촤르륵 키드 상태 — 신규 노드만 .in(폴 재렌더 재트리거 방지 · 운영자 "채팅방 모션 그대로 유지")
 function yTypingHtml(fresh) {   // 타이핑 = 캐릭터 버블(점 3개 바운스 · 카톡/제타 결) — 등장만 촤르륵, 이후 재렌더는 무애니 유지
@@ -8237,12 +8525,13 @@ function yRender() {
   $('#yetaIn').hidden = false; $('#yetaDials').hidden = false; $('#yetaReset').hidden = false;
   const prevN = _yLastN, first = prevN < 0;   // 첫 렌더(재진입 포함) = 전체 무애니(히스토리 우르르 방지)
   let h = '';
-  if (!turns.length && YCUR) h += yAiMsg({ text: YCUR.greeting || '왔네.', persona: YCUR.id });   // 첫인사(표시 전용 · roster SSOT)
+  if (!turns.length && YCUR) h += yAiMsg({ text: YCUR.greeting || '왔네.', persona: YCUR.id });   // 첫인사 — 서버 draw가 greeting 턴을 박기 전(레이스)이나 미설정 세션의 임시 표시(정상 경로는 서버 턴)
   h += turns.map((t, i) => {
     const fresh = !first && i >= prevN;   // 신규 턴만 촤르륵
-    if (t.role === 'user') return `<div class="yb me${fresh ? ' in' : ''}">${yFmt(t.text)}</div>`;
-    if (t.role === 'assistant') return yAiMsg(t, fresh);
-    return `<div class="yb sys${fresh ? ' in' : ''}">${esc(t.text)}</div>`;   // sys = 페르소나 합류 등
+    const pv = turns[i - 1];              // 직전 턴 = 같은 화자면 그룹핑(cont)
+    if (t.role === 'user') return `<div class="yb me${fresh ? ' in' : ''}${pv && pv.role === 'user' ? ' cont' : ''}">${yFmt(t.text)}</div>`;
+    if (t.role === 'assistant') return yAiMsg(t, fresh, pv && pv.role === 'assistant' && (pv.persona || '') === (t.persona || ''));
+    return `<div class="yb sys${fresh ? ' in' : ''}">${esc(t.text)}</div>`;   // sys = 페르소나 합류 등(그룹 끊음)
   }).join('');
   _yLastN = turns.length;
   const awaiting = !!(s.state === 'awaiting');   // 판정 = state(클록스큐 함정 회피 · 평의회③)
@@ -8251,7 +8540,7 @@ function yRender() {
   const failMsg = s.state === 'error' ? `답장을 못 만들었어 — 다시 보내면 재시도야. (${(s.err || '').slice(0, 80)})`
     : (awaiting && waitMs > zlim ? '답장이 너무 늦네 — 러너가 밀렸거나 실패한 듯. 다시 보내면 재시도야.' : '');
   const typing = !failMsg && awaiting && !!YCUR;
-  if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}</div>`;
+  if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}<button type="button" class="yfail-retry" aria-label="다시 보내기">다시 보내기</button></div>`;   // 원탭 재시도(재타이핑 0 · retry op)
   else if (typing) h += yTypingHtml(!_yTypOn);
   _yFailOn = !!failMsg; _yTypOn = typing;
   yStage(yLastMood());   // 새 답장의 공기 → 배경 배리언트 크로스페이드(키 가드 = 같으면 no-op)

@@ -65,6 +65,7 @@ persona = s.get("persona") or ""
 note_pub = s.get("note_pub") or s.get("note") or ""          # 레거시 단일 note = 공용으로 승계(이중기억 v3 · 아이데이션③)
 note_me = ((s.get("notes") or {}).get(persona)) or ""
 print(json.dumps({"note_pub": note_pub, "note_me": note_me, "hist": hist, "pending": "\n".join(pending), "ins": ins,
+                  "anchor_ts": last_u.get("ts"),   # 마지막 pending 유저 턴 ts = insert 앵커(인덱스 대신 = 400 트림/시프트 면역)
                   "persona": persona,
                   "model": last_u.get("model") or pref.get("model") or "",
                   "effort": last_u.get("effort") if isinstance(last_u.get("effort"), str) else (pref.get("effort") or "")},
@@ -76,17 +77,31 @@ matv() { python3 -c 'import json,sys; v=json.loads(sys.argv[1]).get(sys.argv[2])
 
 # ── 세션 반영 — fresh 재-read 후 답장을 ins 자리에 insert(끝-append 금지 = 후속 메시지 매몰 방지) ──
 # rc: 0=반영(대사) · 2=세션 교체(reset) 폐기 · 3=빈 대사(error 기록) · 그 외=실패
-finish() {  # $1=ok|error · $2=텍스트 — env: INS·PERSONA·MODEL·EFF·GEN_S
-  r2get || :   # fresh(그 사이 append 보존). 실패 시 기존 $SESS 로 진행(비치명)
-  REPLY_TEXT="$2" PERSONA="${PERSONA:-}" MODEL="${MODEL:-}" EFF="${EFF:-}" GEN_S="${GEN_S:-0}" \
+finish() {  # $1=ok|error · $2=텍스트 — env: INS·ANCHOR_TS·PERSONA·MODEL·EFF·GEN_S
+  # fresh 재-read(그 사이 append 보존) — 실패 시 stale 위에 쓰면 후속 유저 메시지 유실 → 재시도 후 반영 포기(데이터 보호)
+  local _g=0 _i
+  for _i in 1 2 3; do if r2get; then _g=1; break; fi; [ "$_i" -lt 3 ] && sleep 2; done
+  if [ "$_g" = 0 ]; then echo "::error::finish r2get 실패 — 반영 포기(답장 폐기·유저 데이터 보호)"; _did_reply=0; return 1; fi
+  REPLY_TEXT="$2" PERSONA="${PERSONA:-}" MODEL="${MODEL:-}" EFF="${EFF:-}" GEN_S="${GEN_S:-0}" ANCHOR_TS="${ANCHOR_TS:-}" \
     python3 - "$SESS" "$1" "${INS:-0}" "${CVER:-}" <<'PY'
 import json, os, re, sys, time
 p, kind, ins, cver = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+anchor_ts = os.environ.get("ANCHOR_TS", "")
 s = json.load(open(p, encoding="utf-8"))
 turns = s.setdefault("turns", [])
 now = int(time.time() * 1000)
-if kind == "ok" and len(turns) < ins:            # fresh 가 더 짧다 = reset(세션 교체) → 옛 답장 폐기
-    print("세션 교체 감지 — 답장 폐기", file=sys.stderr); sys.exit(2)
+if kind == "ok":
+    # insert 위치 = 앵커(마지막 pending 유저 턴 ts) 재탐색 — 400 트림/인덱스 시프트에 면역(옛 절대 ins 폐기)
+    at = None
+    try: at = int(anchor_ts) if anchor_ts else None
+    except (TypeError, ValueError): at = None
+    if at is not None:
+        pos = next((i for i, t in enumerate(turns) if t.get("role") == "user" and t.get("ts") == at), None)
+        if pos is None:                          # 앵커 유저 턴이 없다 = reset/사라짐 → 옛 답장 폐기
+            print("앵커 유저 턴 없음(reset/트림) — 답장 폐기", file=sys.stderr); sys.exit(2)
+        ins = pos + 1
+    elif len(turns) < ins:                       # 레거시 폴백(ts 없는 세션) — 길이 축소 = reset
+        print("세션 교체 감지 — 답장 폐기", file=sys.stderr); sys.exit(2)
 text = os.environ.get("REPLY_TEXT", "")
 persona_env = os.environ.get("PERSONA", "")
 empty = False
@@ -160,7 +175,7 @@ process_turn() {
   [ "$mat" = "NOPENDING" ] && return 2
   [ -n "$mat" ] || { echo "::error::세션 파싱 실패(malformed) — state 미변경"; return 1; }
   NOTE_PUB="$(matv note_pub)"; NOTE_ME="$(matv note_me)"; HIST="$(matv hist)"; PENDING="$(matv pending)"
-  INS="$(matv ins)"; PERSONA="$(matv persona)"
+  INS="$(matv ins)"; ANCHOR_TS="$(matv anchor_ts)"; PERSONA="$(matv persona)"
   RAW_MODEL="$(matv model)"; RAW_EFF="$(matv effort)"
   case "$RAW_MODEL" in claude-opus-4-8|claude-sonnet-5) MODEL="$RAW_MODEL" ;; *) MODEL="$DEFAULT_MODEL" ;; esac   # 화이트리스트 재강제(방어 심층 · 아이데이션④)
   case "$RAW_EFF" in low|medium|high|max) EFF="$RAW_EFF" ;; "") EFF="" ;; *) EFF="$DEFAULT_EFF" ;; esac

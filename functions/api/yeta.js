@@ -52,6 +52,8 @@ export async function onRequestPost({ request, env }) {
   if (op === 'get') return json({ ok: true, sess: await readSess() });
 
   if (op === 'reset') {
+    const cur = await env.YETA_R2.get(KEY);   // 삭제 직전 1세대 백업(reset 비가역 완화 — R2엔 copy 없어 get→put) · 비공개 버킷
+    if (cur) { try { await env.YETA_R2.put('sessions/main.prev.json', await cur.arrayBuffer(), { httpMetadata: { contentType: 'application/json' } }); } catch {} }
     await putSess({ turns: [], note: '', state: 'idle', updated: Date.now() });   // 페르소나도 비움 → 재뽑기
     return json({ ok: true });
   }
@@ -59,17 +61,36 @@ export async function onRequestPost({ request, env }) {
   if (op === 'draw') {   // 페르소나 뽑기/재뽑기 — 대화 맥락(턴·노트)은 유지, 화자만 교체
     const persona = String(body.persona || '');
     if (!ID_RE.test(persona)) return json({ error: '잘못된 페르소나 id' }, 400);
-    const name = String(body.name || '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 24);
-    const enter = String(body.enter || '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '').slice(0, 60);   // 등장 연출 문구(roster enter_line · 아이데이션②)
+    const sani = s => String(s || '').replace(/<<\s*\/?\s*(?:NOTE|MOOD)(?:\s*:\s*\w+)?\s*>>/gi, '').replace(/<\/?user_message>/gi, '');
+    const name = sani(body.name).slice(0, 24);
+    const enter = sani(body.enter).slice(0, 60);       // 등장 연출 문구(roster enter_line · 아이데이션②)
+    const greeting = sani(body.greeting).slice(0, 300);   // 첫인사 — 첫 진입 시 실제 assistant 턴으로 박제(증발·모델 문맥 누락 동시 해결)
     const sess = await readSess();
     sess.turns = sess.turns || [];
     if (sess.persona && sess.persona !== persona && sess.turns.length) {
       sess.turns.push({ role: 'sys', text: enter || `${name || persona} 등장`, ts: Date.now() });   // 대화 중 교체 = 합류 신호(enter_line 연출 우선 · 프롬프트 문맥에도 실림)
+    } else if (!sess.turns.length && greeting) {
+      sess.turns.push({ role: 'assistant', text: greeting, persona, ts: Date.now() });   // 첫 진입 = 첫인사를 턴으로(뷰어 재렌더에도 유지 + HIST에 실려 캐릭터가 자기 인사를 앎)
     }
     sess.persona = persona;
     sess.updated = Date.now();
     await putSess(sess);
     return json({ ok: true, sess });
+  }
+
+  if (op === 'retry') {   // 원탭 재시도 — 실패(state=error)한 pending 유저 턴을 재타이핑 없이 재발사(새 유저 턴 추가 X)
+    if (!env.GH_TOKEN) return json({ error: '서버 미설정 — GH_TOKEN 필요' }, 500);
+    const sess = await readSess();
+    const turns = sess.turns || [];
+    const lastA = turns.map(t => t.role).lastIndexOf('assistant');
+    if (!turns.slice(lastA + 1).some(t => t.role === 'user')) return json({ error: '재시도할 메시지가 없어' }, 409);
+    sess.state = 'awaiting'; sess.awaiting_since = Date.now(); delete sess.err;
+    await putSess(sess);
+    const rst = await dispatch(env);
+    if (rst === 204) return json({ ok: true });
+    sess.state = 'error'; sess.err = `재발사 실패(GitHub ${rst})`; delete sess.awaiting_since;
+    await putSess(sess);
+    return json({ error: `GitHub dispatch ${rst}` }, 502);
   }
 
   if (op !== 'send') return json({ error: '알 수 없는 op' }, 400);
