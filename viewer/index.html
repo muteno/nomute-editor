@@ -2216,10 +2216,9 @@
   .pub-row:first-child { border-top:none; padding-top:4px; }
   .pub-l { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }
   .pub-v { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); font-variant-numeric:tabular-nums; }   /* 만료 = 흰색 평문(3일 ~mm/dd)·버튼 아님(운영자) */
-  .pub-seg { display:flex; gap:6px; }   /* 2택 토글(누구나/비공개) 우측 인라인 */
-  .pub-seg button { min-width:62px; height:32px; padding:0 14px; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:var(--fw-b) 12px inherit; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
-  .pub-seg button.on { color:var(--accent); background:var(--accent-dim); border-color:rgba(var(--accent-rgb),.5); }   /* 선택 = dim accent(--accent-dim·.rev-fab hover 계승) */
-  .pub-seg button:not(.on):active { transform:scale(var(--press-m)); }
+  .pub-vis { background:none; border:none; padding:4px 6px; font:var(--fw-b) var(--fs-label) inherit; color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* 공개범위 단일 토글 = 워드만(누구나 회색 기본 ⟷ 비공개 강조색) · 색으로 on/off 구분(운영자 260703) */
+  .pub-vis.private { color:var(--accent); }
+  .pub-vis:active { transform:scale(var(--press-m)); }
   /* PIN = cron식 fieldset(둘러싼 테두리 + legend 라벨·모노스페이스·자간·좌측정렬) · 항상 활성 */
   .pin-fs { margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
   .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
@@ -2440,10 +2439,7 @@
 <dialog id="pubdlg">
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title">공개 링크로 발행</b></div><button class="tool-x dlg-x" id="pubdlgX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="pub-body">
-    <div class="pub-row"><span class="pub-l">공개 범위</span><span class="pub-seg" id="pubScope">
-      <button type="button" class="on" data-scope="public">누구나</button>
-      <button type="button" data-scope="private">비공개</button>
-    </span></div>
+    <div class="pub-row"><span class="pub-l">공개 범위</span><button type="button" class="pub-vis" id="pubVis" data-scope="public">누구나</button></div>
     <div class="pub-row"><span class="pub-l">만료</span><span class="pub-v" id="pubExp">3일</span></div>
     <fieldset class="pin-fs">
       <legend>잠금 설정 (PIN)</legend>
@@ -8402,7 +8398,7 @@ let _pubScope = 'public', _pubBusy = false;
 function openPubDlg() {
   if (!CUR_A) return;
   _pubScope = 'public';
-  $('#pubScope').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.scope === 'public'));
+  const _pv = $('#pubVis'); if (_pv) { _pv.classList.remove('private'); _pv.textContent = '누구나'; _pv.dataset.scope = 'public'; }
   $('#pubPin').value = '';
   const ex = new Date(Date.now() + 3 * 86400e3 + 9 * 3600e3);   // 만료 = +3일 · KST(§📐)로 mm/dd 표기
   $('#pubExp').textContent = '3일 (~' + String(ex.getUTCMonth() + 1).padStart(2, '0') + '/' + String(ex.getUTCDate()).padStart(2, '0') + ')';
@@ -8410,10 +8406,10 @@ function openPubDlg() {
   const go = $('#pubGo'); go.classList.remove('firing', 'shake', 'done'); askHideCheck(go); go.disabled = false; _pubBusy = false;   // firing·done·✓(ack) 리셋 = 전송/수정 버튼 동일 · _pubBusy = in-flight 중 닫고 재열기 죽은버튼 방지(검증7)
   openComposeDlg(pubdlg);   // dialog 스택·폰 뒤로가기 = 기존 컴포즈 모달 시스템 계승
 }
-$('#pubScope').addEventListener('click', e => {
-  const b = e.target.closest('button[data-scope]'); if (!b || b.disabled) return;
-  _pubScope = b.dataset.scope;
-  $('#pubScope').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+$('#pubVis').addEventListener('click', () => {
+  const v = $('#pubVis'); const priv = v.classList.toggle('private');
+  v.textContent = priv ? '비공개' : '누구나';
+  _pubScope = priv ? 'private' : 'public'; v.dataset.scope = _pubScope;
 });
 $('#pubdlgX').addEventListener('click', () => pubdlg.close());
 pubdlg.addEventListener('click', e => { if (e.target === pubdlg) pubdlg.close(); });
