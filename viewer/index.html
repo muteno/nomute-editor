@@ -2223,14 +2223,13 @@
   .pin-fs { position:relative; margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
   .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
-  .pub-slots { display:flex; gap:16px; padding:6px 2px 4px; }   /* PIN 슬롯 = 입력자리 숫자 노출·미입력 점(화면잠금 .lk-slot 계승·마스킹 없음·운영자 260703) */
-  .pub-slot { width:16px; height:24px; display:grid; place-items:center; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); transition:color .15s; }
-  .pub-slot::before { content:''; grid-area:1/1; width:8px; height:8px; border-radius:50%; background:var(--mut); opacity:.5; transition:opacity .15s; }   /* 미입력 = 점 */
-  .pub-slot.filled { color:var(--fg); }
-  .pub-slot.filled::before { opacity:0; }   /* 입력 자리 = 숫자, 점 숨김 */
-  .pub-slots.done .pub-slot.filled { color:var(--accent); }   /* 6자리 다 채우면 전체 강조색 */
-  .pub-slots.bad .pub-slot::before { background:var(--danger); opacity:1; }
-  .pub-slots.bad .pub-slot.filled { color:var(--danger); }   /* 숫자 외 입력 = 붉게 */
+  .pub-slots { display:flex; gap:16px; padding:6px 2px 4px; }   /* PIN 슬롯 = 방금 입력 자리만 숫자+형광 노출·나머지 * 마스킹(화면잠금 .lk-slot peek 계승·운영자 260703) */
+  .pub-slot { width:16px; height:26px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) */
+  .pub-slot::before { content:'*'; grid-area:1/1; font:800 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--mut); transform:translateY(3px); transition:color .15s; }   /* 미입력 * = mut(화면잠금 lk-slot * 세로정렬 translateY 3px 계승) */
+  .pub-slot.on::before { color:var(--fg); }   /* 입력됨(마지막 아님) * = 흰색 */
+  .pub-slot.cur::before { content:none; }   /* 방금 입력 자리 = * 숨기고 숫자 노출 */
+  .pub-slots.bad .pub-slot::before { color:var(--danger); }
+  .pub-slots.bad .pub-slot.cur { color:var(--danger); }   /* 숫자 외 입력 = 붉게 */
   .pub-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(.lk-slots.shake 계승) */
   .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; }   /* 투명 오버레이 = 탭 시 OS 숫자키패드 · 값은 슬롯이 시각화(16px=iOS 확대 방지) */
   .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
@@ -8425,8 +8424,13 @@ let _pubStage = 1, _pubPin1 = '', _pubPinOK = false;
 function renderPubSlots() {
   const v = ($('#pubPin') && $('#pubPin').value) || '';
   const sl = $('#pubSlots') ? $('#pubSlots').children : [];
-  for (let i = 0; i < sl.length; i++) { sl[i].textContent = v[i] || ''; sl[i].classList.toggle('filled', i < v.length); }
-  if ($('#pubSlots')) $('#pubSlots').classList.toggle('done', v.length === 6);   // 6자리 다 채우면 전체 강조색
+  const last = v.length - 1;   // 방금 입력한(마지막) 자리 = 숫자+형광, 이전 입력분은 * 마스킹(흰)·미입력 = * mut
+  for (let i = 0; i < sl.length; i++) {
+    const cur = (i === last && last >= 0);
+    sl[i].classList.toggle('cur', cur);                  // 방금 입력 = 숫자 형광
+    sl[i].classList.toggle('on', i < v.length && !cur);  // 입력됨(이전) = * 흰색
+    sl[i].textContent = cur ? v[i] : '';                 // 마지막만 숫자, 나머지는 ::before '*'
+  }
 }
 function pubPinBad() { const s = $('#pubSlots'); if (!s) return; s.classList.remove('shake'); void s.offsetWidth; s.classList.add('bad', 'shake'); setTimeout(() => s.classList.remove('bad', 'shake'), 480); }
 function pubPinReset() { _pubStage = 1; _pubPin1 = ''; _pubPinOK = false; if ($('#pubPin')) $('#pubPin').value = ''; const lg = $('#pubPinLeg'); if (lg) lg.textContent = '잠금 설정 (PIN)'; renderPubSlots(); }
