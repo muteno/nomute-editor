@@ -39,10 +39,6 @@ AI_OFF = os.environ.get("THUMB_AI_OFF", "").strip().lower() in ("1", "true", "ye
 #    ⚠️ 승격 시 배선 필수(검증4): Pillow 설치는 news-analyze.yml·moreimg.yml 두 곳뿐 — news-ask.yml thumb_gen 잡·
 #    thumb-redo.yml에 pip install Pillow + THUMB_GATE env를 같이 넣어야 함(없으면 _band_fail이 조용히 no-op = 헛 카나리아).
 GATE = os.environ.get("THUMB_GATE", "").strip() == "1"
-# 🖼 참조 체이닝(운영자 260703 "그 사람 그대로") — 기본 OFF. THUMB_REF=1이면 극화·수채화 생성 시 그 기사 대표
-#    실사진(search.json 대표 og:image)을 Gemini 입력으로 첨부해 실제 얼굴 재현(텍스트 이름만으론 모델이 얼굴 모름).
-#    §📰 카나리아 절차: OFF 머지→thumb-redo 단건 실측→승격. photo(실사)는 제외(딥페이크 인접). 사인·피해자·미성년은 프롬프트가 익명 유지.
-REF_ON = os.environ.get("THUMB_REF", "").strip() == "1"
 # ⚠️ 검색이미지는 더 이상 Google CSE JSON API를 안 씀(2025 신규고객 차단 死 → "this project does not have
 #    access" 403 PERMISSION_DENIED). 대체 = 기사 본인 og:image 추출(fetch_article_images). CSE 시크릿 미사용.
 # ── 저장소 = Cloudflare R2 (설정 시) → 공개 URL 직접 서빙(레포 비대 회피·egress 0). 미설정이면 git 폴백. ──
@@ -422,20 +418,14 @@ def _usage_total(calls):
     s = lambda k: sum(int(c.get(k) or 0) for c in calls)
     return {"calls": len(calls), "prompt_tokens": s("prompt"), "output_tokens": s("output"), "total_tokens": s("total")}
 
-def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None):
+def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5"):
     """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft). usageMetadata는 _USAGE에 기록.
 
     image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일·카드 모두 1K 호출(토큰 절감).
     aspect: 화면비("4:5" 기본=카드/썸네일 · "16:9"/"9:16"=영상 레퍼런스 등).
-    ref_png: 참조 얼굴 사진 bytes(운영자 260703 참조 체이닝) — 있으면 parts 앞에 inline_data로 첨부해
-             "이 실제 얼굴로 그려라". 실사진→일러스트 = 공인 캐리커처 전통(안전 하한은 프롬프트가 유지). 없으면 텍스트 전용.
     """
-    parts = []
-    if ref_png:
-        parts.append({"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(ref_png).decode()}})
-    parts.append({"text": prompt})
     payload = {
-        "contents": [{"parts": parts}],
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"responseModalities": ["IMAGE"],
                              "imageConfig": {"aspectRatio": aspect, "imageSize": image_size}},
     }
@@ -823,21 +813,6 @@ def _load_gen(tdir):
     except Exception:
         return []
 
-def _load_ref_face(tdir):
-    """search.json 대표(label=='') og:image를 bytes로 fetch — 참조 체이닝용(THUMB_REF · 운영자 260703).
-    대표 = 그 기사 인물 실사진. http_image(SSRF·매직바이트 가드) 재사용. 실패·부재=None(fail-soft = 텍스트 전용 회귀)."""
-    try:
-        items = json.load(open(os.path.join(tdir, "search.json"), encoding="utf-8"))
-    except Exception:
-        return None
-    rep = next((x for x in items if not x.get("label")), None) or (items[0] if items else None)
-    if not rep or not rep.get("url"):
-        return None
-    b, _ct, _ext = http_image(rep["url"])
-    if b:
-        print("  🖼 참조 얼굴 확보(대표 og:image {}…)".format(rep["url"][-32:]))
-    return b
-
 def process_one(md, stem):
     """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 2화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
     head, lead, iq, thumb_scene, art_url, alt_urls, image_sources, dispatch, extras = parse_md(md)
@@ -884,7 +859,6 @@ def process_one(md, stem):
         existing = {g.get("sid"): g for g in _load_gen(tdir) if g.get("sid")}
         gen = []
         prompts_rec = {}   # sid → 실제 발사 프롬프트(역추적용 · 운영자 260703 "합격점 되면 역추적해서 프롬프트를 뽑아낼 수 있게")
-        ref_face = _load_ref_face(tdir) if REF_ON else None   # 참조 얼굴(극화·수채 = 실제 얼굴 재현 · THUMB_REF)
         for sid, label, look, cam_default in STYLES:
             if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
                 gen.append(existing[sid]); continue
@@ -903,17 +877,8 @@ def process_one(md, stem):
                                       foreign=extras.get("foreign", False),
                                       cam_lock=(sid == "watercolor"), light_mod=_LIGHT_MOD.get(sid, ""),
                                       likeness=like, subject=(lead if like else ""))
-            # 참조 체이닝(THUMB_REF · 극화·수채만) — 대표 실사진을 첨부하고 "이 얼굴로 그려라" 프리픽스(앞=최우선).
-            #   ⚠️ 안전 하한: 사인·피해자·미성년이면 익명 유지(모델 판단 지시) — photo는 애초 REF 대상 아님·cartoon은 이번 제외.
-            use_ref = ref_face if (REF_ON and sid in ("webtoon", "watercolor")) else None
-            if use_ref:
-                prompt = ("REFERENCE FACE: the attached photo is the REAL face of the public figure this "
-                          "story is about. Redraw THAT exact person — same face, hairstyle and build, "
-                          "clearly recognizable as the same individual — in the illustration style described "
-                          "below. (If the attached person is a private individual, a victim, or a minor, "
-                          "ignore this and keep them an anonymous generic figure.)\n" + prompt)
             prompts_rec[sid] = prompt
-            png = gemini_image(prompt, "1K", ref_png=use_ref)
+            png = gemini_image(prompt, "1K")
             # 품질 게이트(TH-06 · 기본 OFF = THUMB_GATE=1 점화 시만 · §📰 카나리아 절차: OFF 머지→단건 실측→승격) —
             # 단색 밴드(빈/검정 띠 = FRAME 위반)만 결정론 판독, 미달이면 1회 재생성. ⚠️ 상한 = 화풍당 재시도 1회
             # (기사당 최대 4콜)·재시도본도 밴드면 '항상 기록'(미기록형 게이트 = main 백필 루프와 결합해 무한 재과금 — 분신술⑧).
@@ -921,7 +886,7 @@ def process_one(md, stem):
                 print("  🔍 게이트: 단색 밴드 검출 → 1회 재생성 ({})".format(sid), flush=True)
                 # RETRY NOTE는 프롬프트 *앞*에 — 후미는 AVOID·SAFETY 재천명이 '마지막 말'로 남아야(위계 보존·검증4).
                 png2 = gemini_image("RETRY NOTE: the previous attempt left a solid blank band — fill the "
-                                    "entire frame with the scene, edge to edge.\n" + prompt, "1K", ref_png=use_ref)
+                                    "entire frame with the scene, edge to edge.\n" + prompt, "1K")
                 if png2:
                     png = png2
             if not png:
