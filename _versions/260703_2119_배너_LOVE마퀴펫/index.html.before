@@ -433,11 +433,27 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* 마스코트 → LOVE 마퀴 펫 — 상단 배너 좌하단 'NOW SHOWING · LOVE' 간판 리빌(원본 캔버스 애니를 애니 webp로 프리렌더). 기존 산책 펫과 같은 자리(topbanner 직속·배너 breath 필터 밖). 애니는 webp 자체가 루프 = CSS 무애니 */
-  .lovemarq { position:absolute; left:7%; bottom:0; height:80%; width:auto;
-    pointer-events:none; user-select:none; z-index:6;
-    filter:drop-shadow(0 3px 5px rgba(0,0,0,.5)); }
-  /* reduced-motion: webp 내부 프레임은 CSS로 못 멈춤(기존 pet.webp도 동일) — CSS 애니 없음이라 별도 비활성 불요 */
+  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인을 따라 좌우로 왔다갔다(alternate) 산책 */
+  .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
+    pointer-events:none; user-select:none; z-index:6; will-change:transform;
+    filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
+    animation:petStroll 9s ease-in-out infinite; }   /* alternate 제거 = 키프레임이 왕복 1바퀴 다 담음(엇박 리듬) */
+  @keyframes petStroll {   /* 좌우 위치 + scaleX 방향전환(걷는 쪽 바라봄). 불균일 % 간격 = 엇박 */
+    0%   { transform:translateX(0) scaleX(1); }
+    9%   { transform:translateX(46px) scaleX(1); }    /* 빠른 dart 우 */
+    15%  { transform:translateX(39px) scaleX(1); }    /* 멈칫(살짝 뒤로) */
+    21%  { transform:translateX(41px) scaleX(1); }
+    40%  { transform:translateX(108px) scaleX(1); }   /* 느긋이 우끝 */
+    49%  { transform:translateX(108px) scaleX(1); }   /* hold(엇박 pause) */
+    51%  { transform:translateX(106px) scaleX(-1); }  /* 좌향 전환(피벗) */
+    59%  { transform:translateX(62px) scaleX(-1); }   /* dash 좌 */
+    65%  { transform:translateX(69px) scaleX(-1); }   /* 멈칫 */
+    85%  { transform:translateX(5px) scaleX(-1); }    /* 느긋이 좌끝 */
+    93%  { transform:translateX(5px) scaleX(-1); }    /* hold */
+    98%  { transform:translateX(0) scaleX(1); }       /* 우향 전환·복귀 */
+    100% { transform:translateX(0) scaleX(1); }
+  }
+  @media (prefers-reduced-motion:reduce) { .pet { animation:none; } }
   .bar select { appearance:none; -webkit-appearance:none; padding-right:30px; cursor:pointer;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238fa697' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 13px center; }
@@ -2242,7 +2258,7 @@
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
     <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
-  <img class="lovemarq" src="love_marquee.webp" alt="" aria-hidden="true" draggable="false">
+  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false">
   <div class="topsearch" id="topsearch">
     <input id="q" type="search" placeholder="검색" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="nomute-q" enterkeyhint="search" data-1p-ignore data-lpignore="true" data-form-type="other"><!-- 자동완성·autofill(카드/주소/이전입력 제안) 차단 = 일반 텍스트칸(운영자 260628) · 외형·검색기능 불변 · 비번관리자 autofill도 무시 -->
     <button class="ts-toggle" id="searchToggle" type="button" aria-label="검색"><svg class="ts-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
