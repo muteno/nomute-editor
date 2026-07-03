@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Wave T0 구현 — 썸네일 프롬프트 v2 + P1 계측</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --panel:#14171a; --panel2:#0f1113;
+    --fg:#eef7f0; --mut:#9aa7a0; --line:rgba(255,255,255,.09);
+    --accent:#0FFD02; --accent2:#d8ff3d; --accent-rgb:15,253,2;
+    --danger:#ff5b4a; --amber:#ffcf3d; --info:#5cc8ff; --violet:#b48cff;
+    --r:14px; --r-s:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:26px 16px 70px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  h2{font-size:17px;font-weight:800;margin:34px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+  h2 .no{color:var(--accent);margin-right:6px}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 20px}
+  .sub b{color:var(--accent2)}
+  p{margin:8px 0}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 8px}
+  @media(max-width:640px){.grid{grid-template-columns:1fr 1fr}}
+  .stat{border:1px solid var(--line);border-radius:var(--r);padding:12px 13px;background:linear-gradient(165deg,var(--panel),var(--panel2))}
+  .stat b{display:block;font-size:20px;color:var(--accent)}
+  .stat span{font-size:12px;color:var(--mut)}
+  table{width:100%;border-collapse:collapse;font-size:12.8px;margin:10px 0 4px}
+  th{color:var(--mut);font-weight:700;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;font-size:12px}
+  td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .tblbox{border:1px solid var(--line);border-radius:var(--r);background:var(--panel2);padding:2px 10px;overflow-x:auto}
+  .id{font-weight:800;color:var(--accent);white-space:nowrap}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 4px}
+  @media(max-width:640px){.ba{grid-template-columns:1fr}}
+  .ba .b,.ba .a{border-radius:var(--r-s);padding:10px 12px;font-size:12.3px}
+  .ba .b{background:rgba(255,91,74,.07);border:1px solid rgba(255,91,74,.22)}
+  .ba .a{background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.25)}
+  .ba .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;display:block;margin-bottom:4px}
+  .ba .b .lbl{color:var(--danger)} .ba .a .lbl{color:var(--accent)}
+  code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:12px}
+  pre{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px;font-size:11.6px;line-height:1.5;overflow-x:auto;white-space:pre-wrap}
+  .risk{color:var(--danger)} .ok{color:var(--accent)} .warn{color:var(--amber)}
+  ul{margin:6px 0;padding-left:20px} li{margin:4px 0}
+  .note{color:var(--mut);font-size:12.5px}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Wave T0 구현 — 썸네일 프롬프트 v2 + P1 계측</h1>
+<p class="sub">운영자 "품질 안 떨어지면 모두 진행" 승인 → 무버스트 전량 + 게이트(기본 OFF) 구현 · <b>검증 10인 평의회 + 재검증 통과</b> · 260703</p>
+
+<div class="grid">
+  <div class="stat"><b>12+α</b><span>구현 항목 (TH 9 + NEW 3 + 게이트)</span></div>
+  <div class="stat"><b>재과금 0</b><span>기존 썸네일·카드 (GVER 밖·sid 보존)</span></div>
+  <div class="stat"><b>10+1인</b><span>검증 평의회 + 수정델타 재검증</span></div>
+  <div class="stat"><b>18건</b><span>평의회 지적 → 수정 반영</span></div>
+</div>
+
+<h2><span class="no">§1</span>뭐가 바뀌었나 — 쉬운 설명</h2>
+<p><b>썸네일이 후킹 약했던 7겹 원인 중 코드로 고칠 수 있는 걸 전부 고쳤다.</b> 이제 새로 픽하는 기사부터: ① Gemini 프롬프트가 한 줄 뭉치(사건 정보 7%)에서 <b>라벨 구획 구조</b>(카드에서 검증된 문법)로 바뀌고, ② 요약이 뽑은 <b>hook(화두)·emotion(감정)이 썸네일에 그대로 상속</b>돼 제목·카드·썸네일이 같은 감정 좌표에서 출발하고, ③ 요약 AI가 장면을 뽑을 때 <b>"정의의 저울" 같은 알레고리 금지 + 감정 맺힘점(눈빛·주먹)부터 쓰라</b>는 서식이 강제되고, ④ 라이브러리에 있던 <b>표정(FACS)·제스처·동세 어휘가 처음으로 배선</b>돼 "절규하는 얼굴·멱살 대치·충돌 찰나" 같은 후킹 코드를 고를 수 있고, ⑤ 포토 화풍의 "와이드 롱샷" 고정(후킹 정반대)이 풀리고, ⑥ 태국 사건이 한옥으로 나오던 배경 오염이 고쳐졌다. 덤으로 ⑦ 재생성 코멘트(wish)가 이제 소멸하지 않고 원장에 쌓이고, ⑧ 뉴스 요약엔 글자수 자가신고 대신 <b>기계 실측 린트</b>가 붙었다(상한 초과·크레딧 오귀속·인용 변조 재발 방지 규칙 포함).</p>
+
+<h2><span class="no">§2</span>전/후 — 대표 프롬프트 (실물 조립)</h2>
+<div class="ba">
+<div class="b"><span class="lbl">BEFORE (v1 · 1,437자 한 줄)</span>한국어 산문+영문 키워드가 마침표 없이 한 덩어리. 사건 정보 7~8%·금지 11절. photo "와이드 롱샷·아이레벨" 하드코딩이 dispatch와 6/6본 모순. 라이브러리 예시 소품('명패·연단·마이크')이 시골길 사고에 문자 그대로 주입. 태국 사건에 "한국 기본값" 강제 → 한옥 렌더.</div>
+<div class="a"><span class="lbl">AFTER (v2 · 라벨 구획)</span><code>GOVERNING</code>(영어·결정적 순간) → <code>STYLE</code> → <code>SCENE</code>(한국어) → <code>HOOK·MOOD</code>(0단계 판 상속) → <code>CAMERA</code>(dispatch 정본·거리 조건부 병기) → <code>FOCUS·LIGHT·STAGING·EXPRESSION</code>(버킷 분리·adapt 래핑) → <code>FRAME</code>(해외면 현지 강제·긍정문) → <code>AVOID</code>(금지 1줄 응집). SG↔DF 동일 모티프 자동 디듀프.</div>
+</div>
+
+<h2><span class="no">§3</span>구현 목록</h2>
+<div class="tblbox"><table>
+<tr><th>ID</th><th>내용</th><th>파일</th></tr>
+<tr><td class="id">TH-01</td><td>build_prompt v2 — 라벨+개행·영어 고정문·버킷 분리(camera/focus/light/staging/expression)·AVOID 응집·HOOK 가드("SCENE 밖 개체 추가 금지·글자 렌더 금지")·MOOD 첫 절만</td><td>thumb_gen.py</td></tr>
+<tr><td class="id">TH-02</td><td>thumb_scene 서식 — 알레고리 금지·맺힘점 선두·5요소+시간대·군중=주인공1·따옴표 글자 소품 금지·LGT 정합</td><td>news-analysis.md</td></tr>
+<tr><td class="id">TH-03</td><td>훅 상속 — frontmatter hook·emotion → 썸네일 프롬프트(HOOK/MOOD 줄·구형 파일 하위호환) + "장면 = hook·# 제목이 말하는 그 순간" 명시</td><td>둘 다</td></tr>
+<tr><td class="id">TH-04</td><td>EM(표정 7)·GST(제스처 5)·ACT(동세 5) 메뉴 노출 + _LIB_FILES 22·33·47 배선(전 코드 실존 검증) + "전체 4~5개·같은 모티프 SG·DF 하나만"</td><td>둘 다</td></tr>
+<tr><td class="id">TH-05</td><td>photo "와이드 롱샷·아이레벨" 폐지 → 타이트 미디엄 폴백(부감·거리 지정 dispatch엔 병기 억제 = 모순 0)</td><td>thumb_gen.py</td></tr>
+<tr><td class="id">TH-06</td><td>품질 게이트(<b>기본 OFF</b>·THUMB_GATE=1) — 순검정/순백 밴드 PIL 판독→1회 재생성·항상 기록·화풍당 1회 상한(무한 재과금 차단)·redo에 카나리아 input(gate)+Pillow 배선</td><td>thumb_gen.py·thumb-redo.yml</td></tr>
+<tr><td class="id">TH-07</td><td>wish 원장 — 재생성 코멘트를 scraper/thumb_wishes.jsonl에 KST 적립(빈 wish 스킵·U+2028 필터·fail-soft)</td><td>thumb_gen.py·thumb-redo.yml</td></tr>
+<tr><td class="id">TH-08</td><td>해외 사건 = image_query_en 신호로 현지 배경(긍정문 — "NOT Korea" 하드 부정은 북한·한국인 주체 오염이라 배제)</td><td>thumb_gen.py</td></tr>
+<tr><td class="id">TH-09</td><td>표지 강등 모티프만 회피(유혈 클로즈업·무기 겨눔 — "keep the tension, not shock" 명문 = 260621 순화 방지 결정과 비충돌)</td><td>thumb_gen.py</td></tr>
+<tr><td class="id">NEW-1</td><td>digest_guard 기계 린트 — Thread/IG/자유요약 실측 자수(면책 줄 제외)·자가표기 괴리·분모 드리프트·⚡혼입·제목 복붙(title_ko 포함)·⚠️/ℹ️ 2단화·하드 500은 개행 포함 판정. analyze.sh+ask.sh 저장 직후 비차단 배선</td><td>shared/digest_guard.py 신설</td></tr>
+<tr><td class="id">NEW-2</td><td>url↔크레딧 정합 — media·reporter = url 기사와 일치(paste 타매체 url·url빈값 예외 명시)</td><td>news-analysis.md</td></tr>
+<tr><td class="id">NEW-3</td><td>직접 인용 보존 — 따옴표 안 자구 일치·시제/양태 변조 금지(판시 변조 실측 재발 방지)</td><td>news-analysis.md</td></tr>
+</table></div>
+
+<h2><span class="no">§4</span>검증 — 10인 평의회 + 재검증</h2>
+<p class="note">전원 READ-ONLY Explore 실측(rogue 0 사후점검). 평결: ✅3(하위호환·보안·비용) + ⚠️7 → <b>지적 18건 전부 수정 반영 또는 근거 기각</b> → 수정 델타 재검증 통과.</p>
+<div class="tblbox"><table>
+<tr><th>평의회 지적(대표)</th><th>조치</th></tr>
+<tr><td>_band_fail 분산 임계 40 = 노이즈·하늘 오탐(승격 전 필수)</td><td class="ok">수정 — var&lt;15 AND 순검정/순백(mean 극단)만. 합성 3케이스 재현 통과</td></tr>
+<tr><td>CAMERA 거리 병기가 부감 앵글과 tight 모순 재생산(12%)</td><td class="ok">수정 — 부감 어휘를 거리 지정으로 간주해 병기 억제</td></tr>
+<tr><td>"NOT Korea" 하드 부정문 — 북한·한국 선수 오염 4/45건</td><td class="ok">수정 — 긍정문만("actual country…")</td></tr>
+<tr><td>SG-09+DF-09 동일 모티프 2줄 중복(습관 23건)</td><td class="ok">수정 — 코드쌍 디듀프 + 프롬프트 규칙 이중 방어</td></tr>
+<tr><td>digest_guard: 면책 줄 과대계상·IG 하한 늑대소년(59%)·placeholder 오파싱·title_ko 사각</td><td class="ok">수정 — 면책 제외·하한 550·regex 정밀화·title_ko 대조·2단화</td></tr>
+<tr><td>paste 타매체 url 케이스 크레딧 규칙 정면 충돌</td><td class="ok">수정 — 예외 ⓐⓑ 명시</td></tr>
+<tr><td>ask 경로 린트 사각·03 문서 v1 서술 드리프트·RETRY NOTE 위계</td><td class="ok">수정 — ask.sh 배선·03 §🖼 갱신·NOTE 전치</td></tr>
+<tr><td>빈 wish 원장 적립(4인 수렴)</td><td class="ok">수정 — 빈 wish 스킵</td></tr>
+<tr><td>명사 폴백(구백로그 78건)에 tight 부적합</td><td class="warn">기각 — redo 한정·SINCE 밖·저위험(기록)</td></tr>
+</table></div>
+
+<h2><span class="no">§5</span>리스크·남은 것</h2>
+<ul>
+<li><span class="warn">영어 고정문 전환 톤 변동</span> — 카드 동일 문법 운영 검증 + <b>태국 스님 건(260702-2239) 벤치마크 재생성으로 전/후 실물 비교</b>(머지 후 실행). 구판 롤백 = 백업 <code>_versions/260703_1324_썸네일WaveT0_P1계측/</code> 1커밋.</li>
+<li><span class="warn">두 화풍 구도 유사화 가능성</span>(dispatch 있으면 카메라 동일) — 벤치마크에서 확인, 불만이면 화풍별 장면 재해석 지시(후속).</li>
+<li><span class="ok">과금</span> — 프롬프트 토큰 델타 ≈ 0(영어 전환 상쇄·검증8 실측), 게이트 OFF, 기존 생성분 재생성 회로 부재 증명.</li>
+<li><b>이월(후속)</b>: 게이트 승격 시 news-ask.yml Pillow+env 배선 · TH-06ⓑ 비전 채점·score 정렬 · TH-07 저장탭 신호 · NEW-3의 01 지침 반영(번들 레인) · TH-10(PIL 훅 오버레이)·TH-11(디폴트 반전)·TH-14(웹툰 OFF)는 벤치마크 평가 후 별도 승인.</li>
+</ul>
+
+<p class="sub" style="margin-top:26px">작성 = 메인(FABLE 5) · 배포 = 무버스트(GVER 밖 = 카드·기존 썸네일 재생성 0) · 다음 = 태국 스님 건 thumb-redo 카나리아(gate=1) 전/후 비교</p>
+
+</div></body></html>

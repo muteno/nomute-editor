@@ -143,6 +143,8 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   outfile="queue/${stamp}-${id}.md"
   n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
   printf '%s\n' "$out" > "$outfile"
+  # 규격·자수 기계 린트(비차단 · analyze.sh 미러 · 분신술② NEW-1 · 260703) — ask 경로 다이제스트 사각지대 해소(검증4).
+  python3 shared/digest_guard.py "$outfile" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$f"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
   title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(완료 푸시 우선 · analyze.sh 미러 · 260703)
