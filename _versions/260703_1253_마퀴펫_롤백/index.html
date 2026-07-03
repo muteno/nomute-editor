@@ -419,29 +419,109 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* (도먼트) Paperlogy 4 Regular '오늘도 화이팅' 6자 서브셋(840B) — 마퀴펫 v2 롤백(260703)으로 현재 미사용. 참조 텍스트 없으면 브라우저가 다운로드 안 함 = 비용 0 · 마퀴 재도전 대비 보존. */
+  /* 마퀴 펫 글자 전용 폰트 — 운영자 제공 Paperlogy 4 Regular을 '오늘도 화이팅' 6자만 서브셋(840B·assets/fonts SSOT→빌드 복사). 부드러운 라운드체(옛 딱딱함 교체·운영자 260703). */
   @font-face { font-family:'Paperlogy'; src:url(assets/fonts/paperlogy-pet.woff2) format('woff2'); font-weight:400; font-display:swap; }
-  /* 마스코트(노뮤트 펫) — 상단 배너 하단 라인 좌우 산책. pet.webp = 50프레임 애니 webp(공 드리블+헤딩 = 포인트) → ⚠️ 재인코딩·최적화 금지(무손실/단일프레임 변환 시 애니 소실 = 260703 실사고·마퀴펫 v2는 운영자 요청 롤백·_versions/260703_1253_마퀴펫_롤백 보관) */
-  .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
-    pointer-events:none; user-select:none; z-index:6; will-change:transform;
-    filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
-    animation:petStroll 9s ease-in-out infinite; }   /* alternate 제거 = 키프레임이 왕복 1바퀴 다 담음(엇박 리듬) */
-  @keyframes petStroll {   /* 좌우 위치 + scaleX 방향전환(걷는 쪽 바라봄). 불균일 % 간격 = 엇박 */
-    0%   { transform:translateX(0) scaleX(1); }
-    9%   { transform:translateX(46px) scaleX(1); }    /* 빠른 dart 우 */
-    15%  { transform:translateX(39px) scaleX(1); }    /* 멈칫(살짝 뒤로) */
-    21%  { transform:translateX(41px) scaleX(1); }
-    40%  { transform:translateX(108px) scaleX(1); }   /* 느긋이 우끝 */
-    49%  { transform:translateX(108px) scaleX(1); }   /* hold(엇박 pause) */
-    51%  { transform:translateX(106px) scaleX(-1); }  /* 좌향 전환(피벗) */
-    59%  { transform:translateX(62px) scaleX(-1); }   /* dash 좌 */
-    65%  { transform:translateX(69px) scaleX(-1); }   /* 멈칫 */
-    85%  { transform:translateX(5px) scaleX(-1); }    /* 느긋이 좌끝 */
-    93%  { transform:translateX(5px) scaleX(-1); }    /* hold */
-    98%  { transform:translateX(0) scaleX(1); }       /* 우향 전환·복귀 */
-    100% { transform:translateX(0) scaleX(1); }
+  /* 마스코트 v2(마퀴 펫) — 크리터가 스캐폴드 위 마퀴 간판에 NO MUTE 글자 타일을 한 장씩 붙이고 점등하는 13s 루프.
+     첨부 레퍼런스(픽셀 크리터·NOW SHOWING 마퀴·사다리·타일 슬랩·점등 플리커) 형질 계승 + 글자만 네온그린(--accent). 산책 펫 대체(260703). */
+  .pet { position:absolute; left:clamp(44px,17%,150px); bottom:6px; width:176px; height:58px;
+    transform:scale(1.5); transform-origin:left bottom;   /* 전반 크기 150%(좌하단 고정 확대 · 운영자 260703) */
+    pointer-events:none; user-select:none; z-index:6; }
+  /* 모피즘 간판 프레임(글래스·점묘테두리·점등)·NOW SHOWING·스캐폴드 다리 폐지(운영자 260703) — 크리터가 글자 타일만 하나씩 붙이는 점프 모션만 유지. pm-sign은 타일 위치 컨테이너로만(투명). */
+  .pm-sign { position:absolute; left:0; right:0; top:0; height:33px; }
+  .pm-tiles { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:2px;
+    animation:pmLight 13s linear infinite; }
+  .pm-sp { width:5px; }   /* NO ↔ MUTE 단어 간격 */
+  .pm-t { width:15px; height:15px; display:grid; place-items:center; border-radius:4px; opacity:0;   /* 15×15 정사각 = 글자(12px) 상하좌우 동일 마진 1.5px·타이트(운영자 260703) · 폭 15 유지 = 크리터 슬랩 캘리브레이션 보존 · opacity:0 base = 애니 적용 전 FOUC 플래시(글자 미리 뜸) 차단(운영자 260703) */
+    background:rgba(2,4,2,.3); border:1px solid rgba(255,255,255,.07);   /* 도형 배경 30% 반투명(옛 .85 → .3 · 글자는 또렷·운영자 260703) */
+    font:400 12px/1 'Paperlogy', var(--font-status); color:var(--fg);   /* Paperlogy(운영자 제공·라운드체) → 폴백 Pretendard(--font-status) · weight 400 = 폰트 실제 굵기(800 요청 시 faux-bold 왜곡 방지) · 한글 '오늘도 화이팅' · 글자=흰색(--fg 토큰=순백 육안동일·raw hex 회피·운영자 260703) */
+    /* 겉 2px 검정 테두리(스티커 컷·운영자 260703) = 12방향 text-shadow 링 — text-stroke+paint-order 대신 전 브라우저 안전·글리프 안 파먹음·라운드체와 결 맞는 둥근 외곽. 옛 백열 글로우는 테두리와 상충이라 폐지(가독은 테두리가 대체). */
+    text-shadow:2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000,
+      1.4px 1.4px 0 #000, -1.4px 1.4px 0 #000, 1.4px -1.4px 0 #000, -1.4px -1.4px 0 #000,
+      1.8px .8px 0 #000, -1.8px .8px 0 #000, .8px -1.8px 0 #000, -.8px 1.8px 0 #000; }
+  /* 글자별 높이 지그재그(조금만 자유롭게·운영자 260703) — transform은 슬랩 키프레임(pmT*) 점유라 margin-top으로 오프셋(충돌 0·.pet scale 1.5 반영 시 화면 ±3px). */
+  .pm-t0 { animation:pmT0 13s linear infinite; margin-top:-2px; } .pm-t1 { animation:pmT1 13s linear infinite; margin-top:1px; }
+  .pm-t2 { animation:pmT2 13s linear infinite; margin-top:-1px; } .pm-t3 { animation:pmT3 13s linear infinite; margin-top:2px; }
+  .pm-t4 { animation:pmT4 13s linear infinite; margin-top:-1px; } .pm-t5 { animation:pmT5 13s linear infinite; margin-top:1px; }
+  /* 타일 팝 = 공 헤딩 도착과 동시 탄생(overshoot 1.18 → 안착 · 공이 글자가 되는 핸드오프).
+     소멸 = 크리터 우퇴장(60~68%)을 따라 좌→우 순차 윙크아웃(62~74.5% · "사라지면서 문자들도 자연스럽게" · 운영자 260703) — 옛 일괄 93/96.5% 소등 폐지. */
+  @keyframes pmT0 { 0%,10.2% { opacity:0; transform:translateY(7px) scale(.4); } 10.8% { opacity:1; transform:translateY(-2px) scale(1.18); } 11.8% { transform:none; } 62% { opacity:1; transform:none; } 64.5%,100% { opacity:0; transform:translateY(4px) scale(.85); } }
+  @keyframes pmT1 { 0%,18.6% { opacity:0; transform:translateY(7px) scale(.4); } 19.2% { opacity:1; transform:translateY(-2px) scale(1.18); } 20.2% { transform:none; } 64% { opacity:1; transform:none; } 66.5%,100% { opacity:0; transform:translateY(4px) scale(.85); } }
+  @keyframes pmT2 { 0%,27.1% { opacity:0; transform:translateY(7px) scale(.4); } 27.7% { opacity:1; transform:translateY(-2px) scale(1.18); } 28.7% { transform:none; } 66% { opacity:1; transform:none; } 68.5%,100% { opacity:0; transform:translateY(4px) scale(.85); } }
+  @keyframes pmT3 { 0%,35.6% { opacity:0; transform:translateY(7px) scale(.4); } 36.2% { opacity:1; transform:translateY(-2px) scale(1.18); } 37.2% { transform:none; } 68% { opacity:1; transform:none; } 70.5%,100% { opacity:0; transform:translateY(4px) scale(.85); } }
+  @keyframes pmT4 { 0%,44% { opacity:0; transform:translateY(7px) scale(.4); } 44.6% { opacity:1; transform:translateY(-2px) scale(1.18); } 45.6% { transform:none; } 70% { opacity:1; transform:none; } 72.5%,100% { opacity:0; transform:translateY(4px) scale(.85); } }
+  @keyframes pmT5 { 0%,52.5% { opacity:0; transform:translateY(7px) scale(.4); } 53.1% { opacity:1; transform:translateY(-2px) scale(1.18); } 54.1% { transform:none; } 72% { opacity:1; transform:none; } 74.5%,100% { opacity:0; transform:translateY(4px) scale(.85); } }
+  /* ⚽ 공 드리블+헤딩(레퍼런스 포인트 복원 · 운영자 260703 "공 몰면서 머리 헤딩") — 크리터가 공을 앞에 굴리며 걷다가, 홉 순간 머리로 쳐올려 공이 글자 자리(-33px)에 꽂히며 타일 팝과 교대(공=글자가 됨). 3중 레이어 = X 드리블(래퍼) / Y 아크·소멸리스폰(중간) / 구슬 미세 바운스(자식·.46s 상시) — transform 축 분리(pmWalk/pmHop 패턴 계승). */
+  .pm-ball { position:absolute; left:0; bottom:4px; width:0; height:0; z-index:1;
+    animation:pmBallX 13s linear infinite; will-change:transform; }
+  .pm-bally { position:absolute; left:0; bottom:0; opacity:0;   /* opacity:0 base = FOUC 차단(.pm-t 패턴) + reduced-motion 시 공 자동 숨김 */
+    animation:pmBallY 13s linear infinite; }
+  .pm-ballb { display:block; width:8px; height:8px; box-sizing:border-box; border-radius:50%;
+    background:var(--fg); border:2px solid #000;   /* 스티커 컷 글자와 동일 결(흰 몸·검정 2px 테두리) */
+    animation:pmBallB .46s ease-in-out infinite; }
+  @keyframes pmBallX {   /* 크리터 앞(+26px)에서 드리블 → 헤딩 비행 중 타일 중심으로 백드리프트 → 숨김 중 다음 위치 스냅 */
+    0% { transform:translateX(4px); }
+    8.5%,9.7% { transform:translateX(45px); } 10.8% { transform:translateX(38px); } 11.3% { transform:translateX(45px); }
+    17%,18.1% { transform:translateX(62px); } 19.2% { transform:translateX(55px); } 19.7% { transform:translateX(62px); }
+    25%,26.6% { transform:translateX(78px); } 27.7% { transform:translateX(72px); } 28.2% { transform:translateX(78px); }
+    33.5%,35.1% { transform:translateX(104px); } 36.2% { transform:translateX(96px); } 36.7% { transform:translateX(104px); }
+    42%,43.5% { transform:translateX(121px); } 44.6% { transform:translateX(113px); } 45.1% { transform:translateX(121px); }
+    50.5%,52% { transform:translateX(138px); } 53.1%,100% { transform:translateX(130px); }
   }
-  @media (prefers-reduced-motion:reduce) { .pet { animation:none; } }
+  @keyframes pmBallY {   /* 헤딩 아크(급상승→감속 도착 -33px) + 도착 즉시 소멸(타일 팝과 교대) → 지면 복귀 후 리스폰. 마지막(팅) 후엔 공 없음 = 크리터 빈손 세리머니·퇴장 */
+    0% { transform:none; opacity:0; } 2% { opacity:1; }
+    9.7% { transform:none; } 10.4% { transform:translateY(-26px); } 10.8% { transform:translateY(-33px); opacity:1; } 10.9% { opacity:0; } 11.2% { transform:none; } 11.6% { opacity:1; }
+    18.1% { transform:none; } 18.8% { transform:translateY(-26px); } 19.2% { transform:translateY(-33px); opacity:1; } 19.3% { opacity:0; } 19.6% { transform:none; } 20% { opacity:1; }
+    26.6% { transform:none; } 27.3% { transform:translateY(-26px); } 27.7% { transform:translateY(-33px); opacity:1; } 27.8% { opacity:0; } 28.1% { transform:none; } 28.5% { opacity:1; }
+    35.1% { transform:none; } 35.8% { transform:translateY(-26px); } 36.2% { transform:translateY(-33px); opacity:1; } 36.3% { opacity:0; } 36.6% { transform:none; } 37% { opacity:1; }
+    43.5% { transform:none; } 44.2% { transform:translateY(-26px); } 44.6% { transform:translateY(-33px); opacity:1; } 44.7% { opacity:0; } 45% { transform:none; } 45.4% { opacity:1; }
+    52% { transform:none; } 52.7% { transform:translateY(-26px); } 53.1% { transform:translateY(-33px); opacity:1; } 53.2%,100% { opacity:0; }
+  }
+  @keyframes pmBallB { 0%,100% { transform:none; } 50% { transform:translateY(-2.5px); } }   /* 상시 미세 바운스 = 구르는 공 질감 */
+  /* 완성 점등 — 55.5% 확 켜짐 → 56.3% 깜빡(플리커) → 재점등 홀드 → 94% 소등(레퍼런스 점등 형질) */
+  @keyframes pmSign {
+    0%,54.5% { border-color:rgba(255,255,255,.34); box-shadow:none; background:rgba(4,6,5,.42); }
+    55.5% { border-color:rgba(var(--accent-rgb),.75); box-shadow:0 0 14px rgba(var(--accent-rgb),.4), 0 0 30px rgba(var(--accent-rgb),.18); background:rgba(8,16,8,.5); }
+    56.3% { border-color:rgba(255,255,255,.4); box-shadow:0 0 6px rgba(var(--accent-rgb),.15); background:rgba(4,6,5,.42); }
+    57.6%,86% { border-color:rgba(var(--accent-rgb),.75); box-shadow:0 0 14px rgba(var(--accent-rgb),.42), 0 0 30px rgba(var(--accent-rgb),.2); background:rgba(8,16,8,.5); }
+    94%,100% { border-color:rgba(255,255,255,.34); box-shadow:none; background:rgba(4,6,5,.42); }
+  }
+  @keyframes pmLight {   /* 글자 밝기 동반 플리커(타일 일괄 = 컨테이너 filter 1개) */
+    0%,54.5% { filter:brightness(.92); }
+    55.5% { filter:brightness(1.7) drop-shadow(0 0 6px rgba(var(--accent-rgb),.5)); }
+    56.3% { filter:brightness(1.05); }
+    57.6%,86% { filter:brightness(1.45) drop-shadow(0 0 5px rgba(var(--accent-rgb),.45)); }
+    94%,100% { filter:brightness(.92); }
+  }
+  .pm-walk { position:absolute; left:0; bottom:0; width:39px; height:26px; z-index:1;
+    animation:pmWalk 13s linear infinite; will-change:transform; }   /* X 이동·등퇴장(래퍼) · z-index=크리터가 스캐폴드 다리(::after) 앞에서 걸음 */
+  .pm-critter { display:block; height:26px; width:auto;
+    filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
+    animation:pmHop 13s linear infinite; }   /* Y 홉(자식) — X/Y 분리 = transform 충돌 회피 */
+  @keyframes pmWalk {   /* 좌입장 → 타일 자리마다 멈춰 슬랩 → 점등 구경 → 우퇴장(페이드) */
+    0% { transform:translateX(-18px); opacity:0; }
+    2.5% { opacity:1; }
+    8.5%,13.5% { transform:translateX(23px); }
+    17%,21.5% { transform:translateX(40px); }
+    25%,30% { transform:translateX(56px); }
+    33.5%,38.5% { transform:translateX(82px); }
+    42%,47% { transform:translateX(99px); }
+    50.5%,60% { transform:translateX(116px); }
+    65% { transform:translateX(146px); opacity:1; }
+    68%,100% { transform:translateX(168px); opacity:0; }
+  }
+  @keyframes pmHop {   /* 타일 팝 직전 -15px 점프(착지=슬랩 타이밍) + 점등 후 기쁨 더블홉(-7px) */
+    0%,9.8% { transform:none; } 10.5% { transform:translateY(-15px); }
+    11.4%,18.2% { transform:none; } 18.9% { transform:translateY(-15px); }
+    19.8%,26.7% { transform:none; } 27.4% { transform:translateY(-15px); }
+    28.3%,35.2% { transform:none; } 35.9% { transform:translateY(-15px); }
+    36.8%,43.6% { transform:none; } 44.3% { transform:translateY(-15px); }
+    45.2%,52.1% { transform:none; } 52.8% { transform:translateY(-15px); }
+    53.7%,55.8% { transform:none; } 56.6% { transform:translateY(-7px); }
+    57.4%,58.2% { transform:none; } 59% { transform:translateY(-7px); }
+    59.8%,100% { transform:none; }
+  }
+  @media (prefers-reduced-motion:reduce) { .pet, .pet * { animation:none !important; }
+    .pm-walk { transform:translateX(116px); } .pm-t { opacity:1 !important; } }   /* 정적: 완성된 간판 + 옆에 선 크리터 · 애니 없으면 base opacity:0이라 타일 안 보임 → 강제 노출 */
   .bar select { appearance:none; -webkit-appearance:none; padding-right:30px; cursor:pointer;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238fa697' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 13px center; }
@@ -2245,7 +2325,11 @@
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
     <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
-  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false"><!-- 노뮤트 펫 = 공 드리블+헤딩 50프레임 애니 webp(원본 · 재인코딩 금지) -->
+  <div class="pet" aria-hidden="true"><!-- 마퀴 펫 v2 — 크리터가 '오늘도 화이팅' 타일을 붙이는 점프(13s 루프) · NOW SHOWING·모피즘 간판 폐지, 글자만 교체(운영자 260703) -->
+    <div class="pm-sign"><span class="pm-tiles"><b class="pm-t pm-t0">오</b><b class="pm-t pm-t1">늘</b><b class="pm-t pm-t2">도</b><i class="pm-sp"></i><b class="pm-t pm-t3">화</b><b class="pm-t pm-t4">이</b><b class="pm-t pm-t5">팅</b></span></div>
+    <span class="pm-walk"><img class="pm-critter" src="pet.webp" alt="" draggable="false"></span>
+    <span class="pm-ball"><span class="pm-bally"><span class="pm-ballb"></span></span></span><!-- ⚽ 드리블+헤딩 공(레퍼런스 포인트 · 260703) -->
+  </div>
   <div class="topsearch" id="topsearch">
     <input id="q" type="search" placeholder="검색" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="nomute-q" enterkeyhint="search" data-1p-ignore data-lpignore="true" data-form-type="other"><!-- 자동완성·autofill(카드/주소/이전입력 제안) 차단 = 일반 텍스트칸(운영자 260628) · 외형·검색기능 불변 · 비번관리자 autofill도 무시 -->
     <button class="ts-toggle" id="searchToggle" type="button" aria-label="검색"><svg class="ts-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
