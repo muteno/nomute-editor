@@ -169,32 +169,6 @@ def main():
             print(f"  🧟 좀비 피드(응답 OK·24h 발행 0) {len(zomb)}개: "
                   + " · ".join(f"{x.get('publisher', '?')} {x.get('title', '')}" for x in zomb[:4])
                   + (" …" if len(zomb) > 4 else ""))
-        # orphan 피드 경보(260703 분신술 §7④): 생존(비dead·비zombie)인데 최근 7일 '대표(rep) 후보' 0
-        #  = 무성과 피드가 '생존 151' healthy 집계에 은폐되던 것 표면화. ⚠️ '수집 0' 아님 — 멤버로 cross
-        #  기여는 가능(KED글로벌 = followEnters 4번째 매체 pivotal → 제거 금지 · §8 260703). 기지(baseline)는 정보줄·신규만 ⚠️.
-        try:
-            import csv
-            pubs = Counter()
-            with (ROOT / "scraper" / "feeds.csv").open(encoding="utf-8") as fp:
-                for row in csv.DictReader(fp):
-                    p = (row.get("publisher") or "").strip()
-                    if p:
-                        pubs[p] += 1
-            bad = Counter((x.get("publisher") or "").strip() for x in deadf + zomb)
-            alive_pubs = {p for p, n in pubs.items() if bad.get(p, 0) < n}   # 피드 1개라도 생존하면 alive
-            reps7 = Counter((x.get("media") or "").strip() for x in c
-                            if (age_h(x.get("first_seen"), now) or 999) < 168)
-            orphan = sorted(p for p in alive_pubs if reps7.get(p, 0) == 0)
-            KNOWN_ORPHAN = {"KED글로벌", "NYT코리아"}   # baseline(§8 260703 실측 — 신규 등장분만 경보)
-            if orphan:
-                new_o = [p for p in orphan if p not in KNOWN_ORPHAN]
-                flag = "⚠️" if new_o else "·"
-                print(f"  {flag} orphan 피드(생존·7일 대표후보 0) {len(orphan)}곳: " + " · ".join(orphan[:6])
-                      + (" …" if len(orphan) > 6 else "")
-                      + ("  ← 신규 orphan = 수집되는데 후보 전무(클러스터·피드 점검)" if new_o
-                         else "  (기지 — 멤버 cross 기여형·제거 금지 §8 260703)"))
-        except Exception as e:
-            print(f"  · orphan 계산 실패(비치명): {e}")
     except Exception:
         print("  · 피드 건강 원장 없음(다음 scrape 런부터 생성)")
 
@@ -243,36 +217,6 @@ def main():
                   + (f"  ← 도배 의심 · §7 접기안 검토 — {title[:28]}" if pct >= 30 else "  (기준 3~13% 정상 · 6/28형 도배 = 75%)"))
     except Exception as e:
         print(f"  · 독점률 계산 실패(비치명): {e}")
-    # 묻힘 계측(외신·국제 · 260703 분신술 §7①): AI확정 대형(grade3)인데 4h+ 에서 누적 3경로(cross≥8/긴급/
-    #  followEnters) 전부 미충족 = 두 칼럼 미노출. §1 "중요한 게 묻히면 안 됨" 유일 자동감시 — breaking 문체
-    #  가드 등 개선의 before/after 토대(임계·자동조치 없음 = 순수 계측 · 정본 §8 260703). 나이 = 발행 우선·수집 폴백(_dominance 동일).
-    try:
-        def _intl(x):
-            return (x.get("cat") == "국제") or bool(x.get("title_ko"))
-        def _cum_ok(x):
-            g = x.get("grade")
-            brk = bool(x.get("breaking")) and (g is None or (g or 0) >= 2)
-            fol = (x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6 and g != 0
-            return (x.get("cross") or 0) >= 8 or brk or fol
-        buried, b2 = [], 0
-        for x in c:
-            if not _intl(x):
-                continue
-            a = age_h(x.get("published"), now)
-            if a is None or a < 0:
-                a = age_h(x.get("first_seen"), now)
-            if a is None or a < 4 or _cum_ok(x):
-                continue
-            if x.get("grade") == 3:
-                buried.append(x)
-            elif x.get("grade") == 2:
-                b2 += 1
-        print(f"  · 묻힘(외신·국제 4h+ 누적 미진입): grade3 {len(buried)}건 · grade2 {b2}건"
-              + "  (기준 260703 g3=19 — 개선 효과·급증 감시용 게이지)")
-        for x in buried[:3]:
-            print(f"      ◦ {(x.get('title_ko') or x.get('title') or '')[:38]} (cr{x.get('cross') or 0}·rc{x.get('report_count') or 0})")
-    except Exception as e:
-        print(f"  · 묻힘 계측 실패(비치명): {e}")
     print(f"  → 심층 비교: python3 scraper/compare_collected.py  (어제↔오늘 낮 승격·긴급 분포)")
 
     # ─────────── ③ 롤백 검토 ───────────
