@@ -1137,8 +1137,19 @@
     border-radius:var(--r-modal); padding:26px 22px 22px; text-align:center; animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }
   #pindlg .pin-title { font-size:18px; font-weight:800; color:var(--fg); letter-spacing:-.3px; }   /* 창 상단 타이틀 = 무채색(초록 제거·운영자 260629) */
   #pindlg .pin-sub { margin:8px 0 18px; font-size:12.5px; line-height:1.5; color:var(--mut); }
-  /* PIN 입력 = 발행 슬롯 정본 계승(§🎨 CII·분신술10 stage-2 260703) — 옛 .pin-cell 6-input(박스·disc·좁은폰 오버플로 12~48px)·pinShake 폐지 → 정본 .pin-slots(동그라미)+.pin-in-h(투명 오버레이)·lkShake 재사용 = 발행/조회/삭제 완전통일 · raw accent 3곳 소멸(baseline 하향) */
-  .pin-boxwrap { position:relative; }   /* 오버레이(.pin-in-h inset:0) 앵커 = 발행 .pin-fs(relative) 계승 · 안에 .pin-slots(span6)+.pin-in-h 형제 = input을 슬롯 밖에 둬 renderPinSlots가 span만 순회(발행 #pubSlots 구조 정확 계승) · pin-sub margin-bottom:18px가 상단 간격 */
+  .pin-boxes { display:flex; gap:8px; justify-content:center; }
+  .pin-cell {
+    width:42px; height:54px; text-align:center; font:800 22px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg);   /* 폰트 = .pin-in(발행창 PIN)과 동일 모노 스택 — PIN 입력란 숫자 글자체 전 모달 통일(운영자 260703) */
+    background:rgba(255,255,255,.05); border:2px solid var(--line); border-radius:12px; caret-color:var(--accent);
+    transition:border-color .15s, box-shadow .15s, background .15s; -webkit-text-security:disc;
+  }   /* 6칸 = 42*6 + gap8*5 = 292 ≤ 296(340폭−패딩44) · 배경 무채색(옛 rgba(5,12,8) 초록끼 제거·운영자 260702) */
+  /* 활성칸 = 강조색 테두리 + 글로우 */
+  .pin-cell:focus { outline:none; border-color:var(--accent); background:rgba(15,253,2,.08);
+    box-shadow:0 0 0 3px rgba(15,253,2,.22), 0 0 16px rgba(15,253,2,.25); }
+  .pin-cell.filled { border-color:rgba(15,253,2,.45); }
+  .pin-boxes.err .pin-cell { border-color:#ff5b5b; box-shadow:0 0 0 2px rgba(255,91,91,.25); }
+  .pin-boxes.shake { animation:pinShake .4s ease; }
+  @keyframes pinShake { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-8px);} 40%,80%{transform:translateX(8px);} }
   .pin-err { min-height:16px; margin-top:12px; font-size:12px; font-weight:700; color:#ff7676; }
   /* 헤더 nav 라인(제목 좌·변경중·X 우) = 메시지함 .mh 계승 · 하단 취소 폐지(운영자 260702) */
   .pin-head { display:flex; align-items:center; gap:8px; margin-bottom:18px; }   /* align-items:center = 잠금해제(18px)·변경중(13px) 중앙높이 정렬(폰트 크기 달라도) */
@@ -1149,7 +1160,7 @@
   /* 변경중(잠금/해제/삭제 2~3초 · 네트워크 왕복 불가피) = 타이틀 옆 인라인 · gdots 점 모션(기존 기틀 계승) · --fs-label(13·들쭉날쭉 방지) · 강조색(운영자 260702 재설계) */
   .pin-busy { display:inline-flex; align-items:center; gap:1px; margin-left:5px; font-size:var(--fs-label); font-weight:800; color:var(--accent); letter-spacing:.2px; }   /* margin-left = 타이틀서 조금 더 우측(header gap 8 + 5·운영자 260702) */
   .pin-busy[hidden] { display:none; }
-  .pin-slots.busy { opacity:.5; }   /* 변경중(#pindlg 잠금해제/삭제 네트워크 대기) = 슬롯 흐리게 · pointerEvents는 JS(오버레이 input) — 발행은 busy 미사용 */
+  .pin-boxes.busy { opacity:.5; }   /* 변경중 = 입력칸 흐리게(처리 중 표시·pointerEvents는 JS) */
   @media (max-width:600px) { #pindlg { width:90vw; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); margin:8vh auto auto; margin:8dvh auto auto; } }   /* 데스크탑(.13)과 동일 보더 · height/max-height는 전역 #pindlg(fit-content/88vh) 상속 = 세로 stretch 방지(운영자 260702) · margin=상단 anchoring: 폰 키보드가 화면 하단 ~50%를 덮어 세로 정중앙이면 PIN 칸이 가려짐(운영자 실측 260703) → 위 8vh 고정(dvh 미지원 폴백 vh) — 데스크탑(키보드 없음)은 중앙 유지 */
 
   /* ── 카드 변경 2차 팝업(글래스) ── */
@@ -2204,7 +2215,7 @@
   .pin-fs { position:relative; margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
   .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
-  /* ── PIN 슬롯 공통 정본(§🎨 CII·분신술10 만장일치 260703) — 방금 자리만 숫자+형광·나머지 동그라미 마스킹 · gap/pad %=사이즈무관 비율(flex % = 컨테이너 content-box 기준 닮음변환) · .pub-slot/.lk-slot 별칭 계승 · #pindlg 잠금해제/삭제도 .pin-slot 통일(stage-2 260703) · 입력·보안·상태머신은 각 어댑터(뷰/컨트롤러 분리) ── */
+  /* ── PIN 슬롯 공통 정본(§🎨 CII·분신술10 만장일치 260703) — 방금 자리만 숫자+형광·나머지 동그라미 마스킹 · gap/pad %=사이즈무관 비율(flex % = 컨테이너 content-box 기준 닮음변환) · .pub-slot/.lk-slot/.pin-cell 별칭 계승 · 입력·보안·상태머신은 각 어댑터(뷰/컨트롤러 분리) ── */
   .pin-slots, .pub-slots { display:flex; justify-content:center; gap:5%; padding:6px 4.5% 4px; }
   .pin-slot, .pub-slot { width:16px; height:24px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) */
   .pin-slot::before, .pub-slot::before { content:''; grid-area:1/1; width:56%; aspect-ratio:1; border-radius:50%; background:var(--mut); transition:background .15s; }   /* 미입력 = mut 동그라미(슬롯 56% 상대·place-items center 세로중심 자동·* 편심 없음) */
@@ -2384,8 +2395,14 @@
 <dialog id="pindlg">
   <div class="pin-head"><span class="pin-title" id="pinTitleTxt">PIN</span><span class="pin-busy" id="pinBusy" hidden>변경중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></span><button class="pin-x" type="button" id="pinX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="pin-sub" id="pinSub">PIN 6자리 입력</div>
-  <div class="pin-boxwrap"><div class="pin-slots" id="pinboxes" aria-hidden="true"><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span></div>
-    <input class="pin-in-h" id="pinInput" type="text" inputmode="numeric" maxlength="6" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="PIN 6자리 입력"></div>
+  <div class="pin-boxes" id="pinboxes">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 1">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 2">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 3">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 4">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 5">
+    <input class="pin-cell" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="1" autocomplete="off" aria-label="PIN 6">
+  </div>
   <div class="pin-err" id="pinerr"></div>
 </dialog>
 
@@ -4674,45 +4691,65 @@ function cancelVote(card, vote, fig, file, btn) {
       else alert(j.error || '취소 실패');
     }).catch(e => { if (btn) { btn.disabled = false; disarmThumb(btn); } alert('요청 실패: ' + e.message); });
 }
-// ── PIN 입력 UI (발행 슬롯 정본 계승 · stage-2 260703) ──
-// confirm/prompt 대체. #pindlg 슬롯 6개(동그라미)를 단일 투명 오버레이(.pin-in-h)로 받아 Promise로 돌려준다.
-// 입력→슬롯 시각화(방금 자리 숫자·이전 흰원), 6자리 채우면 엔터 없이 자동 resolve. 취소=null.
-// 숫자만(비숫자 무시)·6자리 상한(붙여넣기도 이 필터 통과). ⚠️ PIN은 세션/로컬에 저장 안 함(매번 입력).
+// ── 슛 PIN 입력 UI ──
+// confirm/prompt 대체. #pindlg(6칸)로 6자리 PIN을 받아 Promise로 돌려준다.
+// 한 자 입력→다음 칸 자동이동, 마지막 칸 입력→엔터 없이 자동 resolve. 취소=null.
+// 숫자만(비숫자 무시), 백스페이스로 이전 칸, 6자리 붙여넣기 분배. ⚠️ PIN은 세션/로컬에 저장 안 함(매번 입력).
 let _pinWired = false, _pinResolve = null;
-function _pinInput() { return $('#pinInput'); }
-function _pinValue() { const el = _pinInput(); return el ? el.value : ''; }   // 단일 오버레이 input이 값의 원천(옛 6칸 join 폐지)
-function _pinPaint() { const boxes = $('#pinboxes'); if (boxes) renderPinSlots(boxes, _pinValue()); }   // 슬롯 시각화 = 발행 정본(방금 자리 숫자·나머지 동그라미)
-function _pinReset() {                        // 값 비우고 오버레이 포커스(도먼트 · 재도입 대비 슬롯식)
-  const el = _pinInput(); if (el) el.value = '';
-  const boxes = $('#pinboxes'); if (boxes) boxes.classList.remove('bad', 'shake');
-  _pinPaint(); if (el) el.focus();
+function _pinCells() { return [...$('#pindlg').querySelectorAll('.pin-cell')]; }
+function _pinValue() { return _pinCells().map(c => c.value).join(''); }
+function _pinReset() {                       // 칸 비우고 첫 칸 포커스
+  const cells = _pinCells();
+  cells.forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  const boxes = $('#pinboxes'); boxes.classList.remove('err', 'shake');
+  cells[0].focus();
 }
-function _pinShake(msg) {                      // 오답: 흔들기(lkShake) + 에러문구 + 초기화 재입력
-  const boxes = $('#pinboxes'), err = $('#pinerr'), el = _pinInput();
+function _pinShake(msg) {                     // 오답: 흔들기 + 에러문구 + 초기화 재입력
+  const boxes = $('#pinboxes'), err = $('#pinerr');
   if (err) err.textContent = msg || '암호가 틀렸어. 다시.';
-  if (el) el.value = '';
-  if (boxes) { boxes.classList.remove('shake'); void boxes.offsetWidth; boxes.classList.add('bad', 'shake'); }   // 리플로우 → 애니 재시작 · bad=붉은 동그라미(정본 .pin-slots.bad)
-  _pinPaint();
-  if (el) el.focus();
+  boxes.classList.add('err');
+  boxes.classList.remove('shake'); void boxes.offsetWidth;   // 리플로우 → 애니 재시작
+  boxes.classList.add('shake');
+  const cells = _pinCells();
+  cells.forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  cells[0].focus();
 }
-function _wirePin() {                          // 입력 배선(1회만) — 발행 pubPin 핸들러 계승(단일 오버레이 input·자동이동/paste분배 불필요)
-  if (_pinWired) return;
-  const dlg = $('#pindlg'), el = _pinInput(), boxes = $('#pinboxes');
-  if (!el || !boxes) return;                   // DOM 미준비면 다음 open 때 재시도(_pinWired 미설정)
-  _pinWired = true;
-  el.addEventListener('input', () => {
-    const raw = el.value, clean = raw.replace(/\D/g, '').slice(0, 6);   // 숫자만·6자리 상한(type=text라 붙여넣기도 이 필터를 통과)
-    if (clean !== raw) el.value = clean;
-    boxes.classList.remove('bad', 'shake');
-    renderPinSlots(boxes, el.value);
-    if (el.value.length === 6 && _pinResolve) {                         // 6자리 다 차면 자동 인증(엔터 X) — 값 배관·서버검증은 불변
-      const r = _pinResolve; _pinResolve = null; r(el.value);
-    }
+function _wirePin() {                         // 입력 배선(1회만)
+  if (_pinWired) return; _pinWired = true;
+  const dlg = $('#pindlg'), cells = _pinCells();
+  cells.forEach((cell, i) => {
+    cell.addEventListener('input', () => {
+      cell.value = (cell.value.match(/\d/g) || []).join('').slice(-1);   // 숫자 1자만 유지
+      cell.classList.toggle('filled', !!cell.value);
+      $('#pinboxes').classList.remove('err');
+      if (cell.value && i < cells.length - 1) cells[i + 1].focus();      // 다음 칸 자동 이동
+      if (_pinValue().length === cells.length) {                          // 6칸 다 차면 자동 인증(엔터 X)
+        const v = _pinValue();
+        if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(v); }
+      }
+    });
+    cell.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !cell.value && i > 0) { cells[i - 1].focus(); e.preventDefault(); }   // 빈 칸 백스페이스 → 이전 칸
+      else if (e.key === 'ArrowLeft' && i > 0) { cells[i - 1].focus(); e.preventDefault(); }
+      else if (e.key === 'ArrowRight' && i < cells.length - 1) { cells[i + 1].focus(); e.preventDefault(); }
+    });
+    cell.addEventListener('paste', e => {                                 // 4자리 붙여넣기 → 칸 분배
+      const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+      const digits = (txt.match(/\d/g) || []).slice(0, cells.length);
+      if (!digits.length) return;
+      e.preventDefault();
+      cells.forEach((c, k) => { c.value = digits[k] || ''; c.classList.toggle('filled', !!c.value); });
+      const last = Math.min(digits.length, cells.length) - 1;
+      cells[Math.min(last + 1, cells.length - 1)].focus();
+      if (_pinValue().length === cells.length && _pinResolve) {
+        const r = _pinResolve; _pinResolve = null; r(_pinValue());
+      }
+    });
   });
   // dialog가 닫히면(취소·esc·백드롭) 대기 중 Promise를 null로 정리
   dlg.addEventListener('close', () => { if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(null); } });
 }
-// PIN 한 번 받기 — err 있으면 흔들기 표시 후 재입력. resolve = 6자리 문자열 또는 null(취소)
+// PIN 한 번 받기 — err 있으면 흔들기 표시 후 재입력. resolve = 4자리 문자열 또는 null(취소)
 // [죽은코드 제거 260701·분신술 A10] askPin — 호출 0(PIN 다이얼로그 진입점 미배선 = 기능 도먼트). 재도입 시 이 함수 복원.
 
 async function makeCards(target, btn, mode) {
@@ -8873,22 +8910,21 @@ let _pubBadgeInit = false;
 function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (async () => { try { const r = await fetch('api/published'); const j = await r.json(); PUBITEMS = j.items || []; _updatePubBadge(); } catch {} })(); }   // 배지 = 프로필 메뉴 첫 열림 시 1회 로드(매 페이지로드 41콜 PAT 경합 방지·검증9)
 
 // ── 발행본 잠금 토글 — 자물쇠 픽토그램 롱프레스(600ms) → #pindlg PIN 입력 → api/relock(실제 공개링크 PIN 보호 토글). 잠금=새 PIN 설정 / 해제=기존 PIN 정확히(불일치=흔들기 재입력). qFeedBtn 롱프레스 패턴 계승. 운영자 260702. ──
-function _awaitPin() { return new Promise(res => { _pinResolve = res; }); }   // 6자리 채우면 resolve(값)·닫히면 resolve(null) — 기존 #pindlg 배선 재사용
+function _awaitPin() { return new Promise(res => { _pinResolve = res; }); }   // 4자리 채우면 resolve(값)·닫히면 resolve(null) — 기존 #pindlg 배선 재사용
 function openPinDlg(title, sub) {
   _wirePin();
   const tt = $('#pinTitleTxt'); if (tt) tt.textContent = title;
   const ss = $('#pinSub'); if (ss) ss.textContent = sub;
   const er = $('#pinerr'); if (er) er.textContent = '';
-  const el = _pinInput(); if (el) el.value = '';
-  const boxes = $('#pinboxes'); if (boxes) { boxes.classList.remove('bad', 'shake'); renderPinSlots(boxes, ''); }
+  _pinCells().forEach(c => { c.value = ''; c.classList.remove('filled'); });
+  const boxes = $('#pinboxes'); if (boxes) boxes.classList.remove('err', 'shake');
   _pinBusy(false);
   openComposeDlg($('#pindlg'));   // showModal + 폰 뒤로가기 스택(다른 모달과 동일 · #pindlg는 isComposingModalOpen 등재로 over-close 차단)
-  setTimeout(() => { const e2 = _pinInput(); if (e2) e2.focus(); }, 60);
+  setTimeout(() => { const c0 = _pinCells()[0]; if (c0) c0.focus(); }, 60);
 }
 function _pinBusy(on) {   // 변경중(잠금/해제/삭제 2~3초 · 네트워크 왕복) — 타이틀 옆 인라인 '변경중 gdots' 표시 + 입력칸 흐림·잠금
   const b = $('#pinBusy'); if (b) b.hidden = !on;
-  const boxes = $('#pinboxes'); if (boxes) boxes.classList.toggle('busy', on);   // 슬롯 흐림
-  const el = _pinInput(); if (el) el.style.pointerEvents = on ? 'none' : '';     // 오버레이 재입력 차단(변경중)
+  const boxes = $('#pinboxes'); if (boxes) { boxes.classList.toggle('busy', on); boxes.style.pointerEvents = on ? 'none' : ''; }
 }
 { const _px = $('#pinX'); if (_px) _px.addEventListener('click', () => $('#pindlg').close()); }   // 헤더 X = 닫기 → 뒤 발행본 팝업으로 복귀(pubpop은 뒤에 유지됨)
 function _paintPinmark(pm, pinned) {   // 같은 노드 제자리 갱신 = 색 CSS transition 살림(겉면 자연 스위칭·재렌더로 노드 파괴 안 함)
