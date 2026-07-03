@@ -72,11 +72,15 @@ STYLES = [
      # 인물 표정·동작 위주(운영자 260703): 극화는 표정 강조 시 과강렬 ↔ 수채화는 매체가 순화해줘서 표정·동작
      # 정면 승부가 오히려 적정 타격. + 근접 강화(운영자 2차: "표정·핵심 사물 더 크게·카메라 더 근접") =
      # 수채화는 카메라를 dispatch와 무관하게 잠근다(process_one이 cam_lock 전달 · 항상 초근접).
-     "soft editorial watercolor illustration, bleeding translucent washes, textured paper grain, "
-     "muted palette with one quiet warm accent — human figures are the heart of the scene: their facial "
-     "expressions and body gestures carry the story, raw emotion softened and made bearable by the gentle medium",
-     "intimate close-up — the main figure's face and the key object in their hands fill most of the frame, "
-     "gentle framing, soft atmospheric depth"),
+     # 260703 운영자 확정 판("거의 온듯 — 이 느낌 살려서 반영") = 벤치마크 v4 실물의 문법을 굳힘:
+     # 측면/3/4 프로필·얼굴의 결(주름·세월)을 다정하게·안료 번짐 입자·손과 사물이 전경에 큼직하게.
+     "soft editorial watercolor illustration, bleeding translucent washes, granulated pigment texture, "
+     "textured paper grain, muted palette with one quiet warm accent — human figures are the heart of the "
+     "scene: their facial expressions and body gestures carry the story, weathered faces rendered tenderly "
+     "in profile or three-quarter view, raw emotion softened and made bearable by the gentle medium",
+     "intimate close-up from a profile or three-quarter angle — the main figure's face and the key object "
+     "in their hands fill most of the frame, hands prominent in the foreground, gentle framing, soft "
+     "atmospheric depth"),
     ("cartoon", "시사만평",
      # ⚠️ 'korean'은 만평 전통(화풍)이지 장소 아님 — 명시 없으면 해외 사건도 한국 배경·한글 간판으로 렌더(카나리아 실측 260703).
      "newspaper editorial cartoon in the korean manpyeong tradition (drawing style only — depict the event's "
