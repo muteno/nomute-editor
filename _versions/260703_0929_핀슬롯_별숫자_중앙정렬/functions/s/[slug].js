@@ -137,7 +137,7 @@ function pinForm(slug, fails, notice) {
 .slot{width:18px;height:22px;display:grid;place-items:center;font:800 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}   /* 숫자픽 = 뷰어 .pin-cell과 동일 모노 스택(PIN 숫자 글자체 전 화면 통일·운영자 260703) */
 .slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);transition:border-color .15s ease}
 .slot.on{opacity:1}
-.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);transform:translateY(3px)}   /* 마스킹 * = 숫자와 같은 모노 폰트(운영자 260703) · translateY 3px = 숫자 잉크 세로중심 정렬(크로미엄 픽셀 실측 튜닝·뷰어 .lk-slot 동일값) */
+.slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);transform:translateY(5px)}   /* 마스킹 * = 숫자와 같은 모노 폰트 통일(옛 명조 폐지·운영자 260703) · 글리프 상단 쏠림 translateY 광학 보정 */
 .slot.peek{opacity:1;transform:scale(1.12)}   /* 방금 입력한 자리 = 도형 대신 숫자 잠깐 노출(0.7s·운영자 260703) */
 .slot.peek::before{content:none}
 .slots.bad .slot::before{border-color:var(--danger)}
