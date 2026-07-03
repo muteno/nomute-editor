@@ -109,10 +109,9 @@ _FRAME_FOREIGN = "set in the event's actual country, region and people (this is 
 def _frame(foreign, likeness=False):
     # likeness(운영자 260703 "인물을 좀 더 닮게 — 극화·수채화") = 일러스트 계열만 공인 닮음 허용.
     # photo(실사)는 계속 익명 — 실사 닮음 = 딥페이크 인접 리스크(일러스트 캐리커처 전통과 결이 다름).
-    tail = ("; the named public figure must look like the REAL person — reproduce their actual facial "
-            "features, hairstyle and eyewear faithfully as seen in press photos, adapted to the drawing "
-            "style (a portrait of that person, not a generic lookalike) — private individuals, victims "
-            "and minors stay anonymous generic figures."
+    tail = ("; public figures (politicians, senior officials) may be drawn clearly recognizable in the "
+            "illustrated-caricature tradition — private individuals, victims and minors stay anonymous "
+            "generic figures."
             if likeness else "; depict roles, professions and situations with generic faces.")
     return ("FRAME: vertical 4:5, the scene fills the entire frame edge to edge — every corner is part of the "
             "location, no empty margins or bands; one clear protagonist with a single sharp focal point (eyes, "
@@ -263,11 +262,7 @@ def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", 
                  "hand belongs to a visible arm (exaggerate proportions freely, but keep limb attachment "
                  "sound, with the confident draughtsmanship of a veteran newspaper cartoonist); at most TWO "
                  "fully-drawn foreground figures — further crowds only as small background silhouettes; let "
-                 "OBJECTS, SCALE and PLACEMENT carry the metaphor, not complex body action. "
-                 "SPATIAL CLARITY: give every major element (each figure, each object, each hand) its own "
-                 "clear space — elements must NOT overlap or cross one another; every arm and gesture is "
-                 "fully visible from shoulder to fingertip, never hidden behind or tangled with another "
-                 "element; the panel reads in one glance with clean separate silhouettes against white space.")
+                 "OBJECTS, SCALE and PLACEMENT carry the metaphor, not complex body action.")
     lines.append(_cartoon_frame(foreign))
     lines.append(CARTOON_TEXT_RULES)   # 만평 전용 — 일반 AVOID 대신(글자·공인 허용 + 안전 하한 · 운영자 260703)
     if wish:
@@ -323,8 +318,7 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
     if likeness and subject:
         # 닮음은 이름이 있어야 성립(장면 텍스트는 "40대 남성 정치인" 식 익명 — 한줄요약으로 주체 명시 · 운영자 260703).
-        lines.append("SUBJECT (who this scene is about — draw this public figure's REAL face, "
-                     "a faithful portrait of the actual person): " + subject)
+        lines.append("SUBJECT (who this scene is about — draw the public figure recognizably): " + subject)
     lines.append(_frame(foreign, likeness))
     lines.append(_avoid(likeness))
     if wish:
