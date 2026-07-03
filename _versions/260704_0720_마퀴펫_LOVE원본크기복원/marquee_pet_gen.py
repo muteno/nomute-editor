@@ -1,22 +1,21 @@
-# LOVE 마퀴 펫 에셋 재작화기(260704 v4 · 운영자 "LOVE 크기 원본 유지") — v3 전구 테두리 전광판은 유지하되,
-# LOVE♥ 텍스트의 120% 확대·세로중앙정렬을 롤백해 원본 크기·원본 코럴색으로 복원.
-# 입력 = v2 원본(전구·120% 이전): _versions/260703_2119_배너_LOVE마퀴펫/love_marquee.webp
-# 출력 = viewer/love_marquee.webp. 전구 테두리+크림 패널+플레이트+펫 = 유지 · LOVE♥ = v2 원본 크롭(원본 크기)을 원위치 합성.
+# LOVE 마퀴 펫 에셋 재작화기(260703 v3 · 운영자 목표 디자인) — 간판부를 전구 테두리 마퀴로 재작화.
+# 입력 = v2 에셋(정본 백업: _versions/260703_2234_마퀴간판전구_120중앙_탭분리/love_marquee.webp)
+# 출력 = viewer/love_marquee.webp(v3). 검은 테두리+전구 점(NOW SHOWING 라벨 겹침 점만 제외·운영자 지시)
+# + 크림 패널 + LOVE♥ 5×7 픽셀폰트 재작화(셀4px = 원본의 ~120%·세로 중앙). 사다리·펫·글로우 = 원본 유지.
 # 펫 복원 = 정적 기준프레임(f70) 차분 + 공간 게이트(x≥188 ∨ 플레이트 위) — 옛 텍스트 고스트 차단.
 import math, sys
 import numpy as np
 from PIL import Image, ImageDraw
 
-SRC = '_versions/260703_2119_배너_LOVE마퀴펫/love_marquee.webp'   # v2 원본(전구·120% 이전 = 원본 크기 텍스트 보유)
-PLATE_SRC = '_versions/260704_0720_마퀴펫_LOVE원본크기복원/love_marquee.webp'  # 직전 v3(반듯한 NOW SHOWING 플레이트 — v2 원본은 라벨이 기울어져 크롭 어긋남)
-OUT = sys.argv[1] if len(sys.argv) > 1 else 'viewer/love_marquee.webp'
+SRC = 'viewer/love_marquee.webp'
+OUT = sys.argv[1] if len(sys.argv) > 1 else 'viewer/love_marquee_v3.webp'
 
 # ── 실측 기하(f70 기준) ──
 PX0, PY0, PX1, PY1 = 58, 19, 208, 80        # 크림 패널 bbox(inclusive)
 OM = 7                                       # 테두리 밴드 폭 → 외곽 = 패널 +7px
 OX0, OY0, OX1, OY1 = PX0-OM, PY0-OM, PX1+OM, PY1+OM
 PLX0, PLY0, PLX1, PLY1 = 87, 9, 178, 18      # NOW SHOWING 플레이트 bbox
-LTX0, LTY0, LTX1, LTY1 = 72, 49, 182, 72     # v2 원본 LOVE♥ 크롭 영역(원본 크기·코럴색 — f70 실측)
+TX0, TY0, TX1, TY1 = 80, 42, 186, 64         # LOVE♥ 텍스트 bbox
 LIT = set(range(48, 84))                     # 점등 프레임
 DIM = {48: 187/211, 49: 199/211, 50: 206/211, 51: 206/211, 52: 206/211, 53: 208/211}
 CREAM = (248, 238, 200)
@@ -56,7 +55,7 @@ def perimeter_points(x0, y0, x1, y1, rad, step):
     return pts
 
 def build_sign(love_bmp, plate_crop):
-    W, H = 264, 240
+    W, H = 263, 240
     hi = Image.new('RGBA', (W*S, H*S), (0, 0, 0, 0))
     d = ImageDraw.Draw(hi)
     d.rounded_rectangle((OX0*S, OY0*S, (OX1+1)*S-1, (OY1+1)*S-1), radius=11*S, fill=FRAME_C+(255,))
@@ -71,27 +70,48 @@ def build_sign(love_bmp, plate_crop):
         d.ellipse(((x-r)*S, (y-r)*S, (x+r)*S, (y+r)*S), fill=BULB+(255,))
     sign = hi.resize((W, H), Image.LANCZOS)
     sign.alpha_composite(plate_crop, (PLX0, PLY0))            # 플레이트 원본 재사용
-    sign.alpha_composite(love_bmp, (LTX0, LTY0))             # LOVE♥ = v2 원본 크롭을 원위치에(원본 크기·확대·중앙정렬 없음)
+    nw, nh = love_bmp.size                                    # 이미 120% 크기로 작화됨
+    cx, cy = (PX0+PX1+1)//2, (PY0+PY1+1)//2                   # 패널 중심 = 세로 중앙정렬
+    sign.alpha_composite(love_bmp, (cx-nw//2, cy-nh//2))
     return sign
 
-def extract_love(im):
-    """v2 원본 f70에서 LOVE♥ 텍스트만 소프트 알파로 추출 — 원본 크기·원본 코럴색 보존(재작화·확대 없음)."""
-    im.seek(70)
-    a = np.array(im.convert('RGBA')).astype(float)
-    crop = a[LTY0:LTY1+1, LTX0:LTX1+1]
-    r, g, b = crop[..., 0], crop[..., 1], crop[..., 2]
-    redness = r - (g + b) / 2                      # 코럴=높음 · 크림/앰버 배경=낮음
-    alpha = np.clip((redness - 30) / 50, 0, 1) * 255
-    out = np.dstack([crop[..., 0], crop[..., 1], crop[..., 2], alpha]).astype(np.uint8)
-    return Image.fromarray(out, 'RGBA')
+# 5×7 픽셀 폰트 재작화 — 셀 4px → 글자높이 28px = 원본 23px의 ~120%(운영자 지시)
+GLYPHS = {
+    'L': ["X....", "X....", "X....", "X....", "X....", "X....", "XXXXX"],
+    'O': [".XXX.", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX."],
+    'V': ["X...X", "X...X", "X...X", "X...X", "X...X", ".X.X.", "..X.."],
+    'E': ["XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "XXXXX"],
+    '♥': [".XX.XX.", "XXXXXXX", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X..."],
+}
+RED, RED_D = (172, 62, 58), (138, 46, 44)
+
+def draw_love(cell=4, gap=6):
+    seq = ['L', 'O', 'V', 'E', '♥']
+    wcells = [len(GLYPHS[c][0]) for c in seq]
+    W = sum(w*cell for w in wcells) + gap*(len(seq)-1)
+    H = 7*cell
+    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    x = 0
+    for c, wc in zip(seq, wcells):
+        rows = GLYPHS[c]
+        for cy_ in range(7):
+            for cx_ in range(wc):
+                if rows[cy_][cx_] == 'X':
+                    below = cy_ == 6 or rows[cy_+1][cx_] != 'X'
+                    col = RED_D if below else RED   # 하단 에지 셀 = 어두운 베벨(원본 질감 계승)
+                    d.rectangle((x+cx_*cell, cy_*cell, x+(cx_+1)*cell-1, (cy_+1)*cell-1), fill=col+(255,))
+        x += wc*cell + gap
+    return img
 
 def main():
     im = Image.open(SRC)
     n = im.n_frames
     im.seek(70); ref = np.array(im.convert('RGBA')).astype(int)
-    love_bmp = extract_love(im)   # v2 원본 텍스트 크롭(원본 크기·코럴색)
-    plate_im = Image.open(PLATE_SRC); plate_im.seek(70)
-    plate_crop = plate_im.convert('RGBA').crop((PLX0, PLY0, PLX1+1, PLY1+1))   # NOW SHOWING = v3(반듯·깔끔)
+    # LOVE♥ 비트맵(빨강만 소프트 알파 추출 — AA 가장자리 보존)
+    love_bmp = draw_love()   # 노이즈 소스 구제 대신 그리드 재작화(목표 이미지의 균일 픽셀 폰트)
+    im.seek(70)
+    plate_crop = im.convert('RGBA').crop((PLX0, PLY0, PLX1+1, PLY1+1))
     sign = build_sign(love_bmp, plate_crop)
 
     frames, durs = [], []
