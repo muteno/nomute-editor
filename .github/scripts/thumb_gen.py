@@ -178,7 +178,7 @@ def lib_buckets(dispatch):
 # ⚠️ 부감 계열(top-down·bird's-eye·god's-eye·aerial·high-angle)은 거리 지정으로 간주 = 병기 억제 —
 #    부감 뒤에 'tight medium' 병기 시 모순 재생산(실물 24/195건 · 검증9).
 _SHOT_RE = re.compile(r"\b(wide|close[- ]?up|medium|long shot|full[- ]?shot|extreme|macro|tight|choker|"
-                      r"bird'?s[- ]?eye|top[- ]?down|overhead|god'?s[- ]?eye|aerial|high[- ]?angle)\b", re.I)
+                      r"bird'?s[- ]?eye|top[- ]?down|overhead|god'?s[- ]?eye|aerial|high[- ]?angle|cowboy)\b", re.I)
 
 def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotion="", foreign=False):
     """v2(260703 분신술⑨) — 라벨+개행 구획(카드 cards.md 검증 문법 이식) · 고정문 영어·SCENE 한국어.
@@ -251,7 +251,9 @@ def parse_md(path):
     # 검색용 image_query와 분리 — 있으면 thumb scene 1순위(없으면 iq→lead 폴백). 미기입 템플릿(<…>)이면 무시.
     ts = fm.get("thumb_scene", "").strip()
     # 미기입 템플릿(<…>) 또는 프롬프트 예시문을 그대로 베낀 것 무시 → iq/lead 폴백(image_query 예시 가드와 대칭).
-    if ts.startswith("<") or ts == "화재로 그을린 건물 앞 가족 잃은 주민이 오열하는데 뒤편 관계자들은 서류만 들여다보는 순간":
+    if ts.startswith("<") or ts in (
+            "화재로 그을린 건물 앞 가족 잃은 주민이 오열하는데 뒤편 관계자들은 서류만 들여다보는 순간",
+            "충혈된 눈으로 오열하는 50대 주민의 일그러진 얼굴, 그 뒤 그을린 건물 앞에서 서류만 들여다보는 정장 차림 관계자들, 잿빛 오후"):
         ts = ""
     # 0단계 판 상속(분신술⑤ 260703) — SYS-06 frontmatter 3키 중 hook·emotion을 썸네일 프롬프트로 계승
     # (제목·카드·썸네일이 같은 감정 좌표에서 출발 = '제목 따로 그림 따로' 차단). 예시 placeholder 베낌은 가드.

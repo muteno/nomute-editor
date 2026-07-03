@@ -22,7 +22,8 @@ def _clen(s):
     return len(_DISCLAIMER.sub("", s).replace("\n", ""))   # 개행·면책 제외 실측
 
 def _clen_hard(s):
-    return len(_DISCLAIMER.sub("", s))                     # 개행 포함(플랫폼 하드 상한 판정용)
+    # 플랫폼 하드 상한 판정 = 물리 총량(면책 줄도 실제 게시물에 포함되므로 안 뺌·개행 포함 — 재검증11)
+    return len(s)
 
 def _claim(body, name):
     """헤더의 자가표기 자수·분모 추출 — '약 460/500자'·'728/800자'·'936자' 대응.
@@ -63,7 +64,7 @@ def lint(path):
         if hi and n > hi:
             warns.append("[{}] 실측 {}자 > 상한 {}자 (자가표기 {})".format(name, n, hi, claim if claim is not None else "없음"))
         elif lo and n < lo:
-            infos.append("[{}] 실측 {}자 < 목표선 {}자 = 과소 활용 (자가표기 {})".format(name, n, lo, claim if claim is not None else "없음"))
+            infos.append("[{}] 실측 {}자 < 완충 하한 {}자 = 과소 활용 의심 (자가표기 {})".format(name, n, lo, claim if claim is not None else "없음"))
         if hard and _clen_hard(b) > hard:   # 플랫폼 하드 상한 = 개행 포함 실카운트로 판정(검증5)
             warns.append("[{}] ⛔ 개행 포함 {}자 > 플랫폼 하드 {} — 게시 시 잘림 위험".format(name, _clen_hard(b), hard))
         if claim is not None and abs(claim - n) >= 60:
