@@ -28,7 +28,7 @@ export async function onRequestPost({ request, env }) {
   // 로스터는 R2 불필요(레포 raw) — 셋업 전에도 목록·안내를 그릴 수 있게 R2 가드보다 앞.
   if (op === 'chars') {
     const r = await fetch(`https://raw.githubusercontent.com/${REPO}/main/apps/yeta/characters/roster.json`,
-      { headers: { 'user-agent': 'nomute-viewer' }, cf: { cacheTtl: 300, cacheEverything: true } });
+      { headers: { 'user-agent': 'nomute-viewer' }, cf: { cacheTtl: 60, cacheEverything: true } });
     if (!r.ok) return json({ error: `로스터 로드 실패(${r.status})` }, 502);
     return json({ ok: true, chars: await r.json(), ready: !!env.YETA_R2 });
   }
