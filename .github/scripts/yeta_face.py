@@ -19,7 +19,7 @@ import thumb_gen as tg   # r2_upload · R2_ON (모듈 import = main 미실행 ·
 ROSTER = "apps/yeta/characters/roster.json"
 LOCAL_DIR = "viewer/assets/yeta_face"   # R2 미설정 git 폴백(뷰어 상대경로 서빙)
 KEY = os.environ.get("OPENAI_API_KEY", "")
-MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-2")   # 운영자 지정 · 실제 ID 다르면 env로 교체(gpt-image-1 등)
+MODEL = (os.environ.get("OPENAI_IMAGE_MODEL") or "gpt-image-2").strip()   # 빈 env(vars 미설정=빈문자열)도 기본값으로 — os.environ.get 기본값은 빈값 안 덮음(260703 버그) · 실제 ID 다르면 vars OPENAI_IMAGE_MODEL로 교체
 API = "https://api.openai.com/v1/images/generations"
 
 # 공통 스타일 — 한국 웹툰(manhwa) 프로필 초상(정사각 1:1·얼굴중심·미남미녀·키·글래머러스 존재감·착장 유지 안전가드).
