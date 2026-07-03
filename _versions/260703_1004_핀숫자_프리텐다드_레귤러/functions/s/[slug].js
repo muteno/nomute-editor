@@ -95,7 +95,6 @@ function shell(inner) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex,nofollow"><title>노뮤트 발행본</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>:root{--accent:#0FFD02;--accent-rgb:15,253,2;--accent-dim:rgba(15,253,2,.13);--on-accent:#062108;--fg:#eef7f0;--mut:#8fa697;--danger:#ff5b4a;--danger-rgb:255,91,74;--line:rgba(255,255,255,.08);--r-modal:22px}
 html,body{margin:0;height:100%;background:#0b0d0c;color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .wrap{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}
@@ -135,7 +134,7 @@ function pinForm(slug, fails, notice) {
 .card{background:none;border:none;padding:6px 4px}   /* 카드 패널(글자 뒤 배경) 제거 — 글자·슬롯·패드만 흑배경 위에(운영자 260703 · pinForm 한정 오버라이드·에러/안내 page()는 카드 유지) */
 .slots{display:flex;justify-content:center;gap:16px;margin:24px 0 2px}
 /* 슬롯 = 균일 그리드 박스(18×22 고정) — 빈 원(::before)·명조 별(*)·숫자픽이 전부 같은 박스 중앙 = 기준선 통일(내려앉음 교정·운영자 260703) */
-.slot{width:18px;height:22px;display:grid;place-items:center;font:400 20px/1 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}   /* 숫자픽 = 볼드 뺀 Pretendard 레귤러(뷰어 .lk-slot 동일·운영자 260703 — *는 모노 유지) */
+.slot{width:18px;height:22px;display:grid;place-items:center;font:800 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);opacity:.5;transition:opacity .15s ease,transform .15s ease}   /* 숫자픽 = 뷰어 .pin-cell과 동일 모노 스택(PIN 숫자 글자체 전 화면 통일·운영자 260703) */
 .slot::before{content:'';grid-area:1/1;width:13px;height:13px;box-sizing:border-box;border-radius:50%;border:2px solid var(--mut);transition:border-color .15s ease}
 .slot.on{opacity:1}
 .slot.on::before{content:'*';width:auto;height:auto;border:none;border-radius:0;font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent);transform:translateY(3px)}   /* 마스킹 * = 숫자와 같은 모노 폰트(운영자 260703) · translateY 3px = 숫자 잉크 세로중심 정렬(크로미엄 픽셀 실측 튜닝·뷰어 .lk-slot 동일값) */
