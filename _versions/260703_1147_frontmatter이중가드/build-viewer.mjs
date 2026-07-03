@@ -37,7 +37,6 @@ function parseFrontmatter(raw) {
     const kv = line.match(/^([A-Za-z_]+):\s*(.*)$/);
     if (!kv) continue;
     let v = kv[2].trim().replace(/^"(.*)"$/, '$1').replace(/\\"/g, '"');
-    if (/^'.*'$/.test(v)) v = v.slice(1, -1).replace(/''/g, "'");   // YAML 작은따옴표 래핑도 벗김(제목에 쌍따옴표 포함 시 모델이 '…' 사용 → 래핑째 노출되던 것 · '' 이스케이프 복원 · 260703 실측)
     meta[kv[1]] = v;
   }
   return { meta, body: m[2].trim() };
@@ -106,10 +105,9 @@ for (const f of files) {
     const { meta, body } = parseFrontmatter(raw);
     // 외신 한국어 번역 제목(260703) — 1순위 분석 frontmatter title_ko · 2순위 수집함 후보 도장(KOTITLE — LLM 누락·프롬프트 이전 분석분 폴백) → 표시 제목 승격(피드 리스트 영어 원문 노출 차단 · 운영자 "원문으로 표시 안되게")
     const tko = stripLeadEmoji(meta.title_ko || '') || (!/[가-힣]/.test(meta.title || '') ? (KOTITLE.get(meta.url || '') || '') : '');
-    const h1m = (body || '').match(/^#\s+(.+)$/m);   // 본문 첫 H1(AI 헤드) — frontmatter title 유실(이중 --- 등) 시 제목 폴백(파일명 노출 차단 · 260703 실측)
     articles.push({
       file: f,
-      title: tko || stripLeadEmoji(meta.title) || (h1m ? stripLeadEmoji(h1m[1]) : '') || f.replace(/\.md$/, ''),   // 외신=title_ko 우선(피드 목록·검색·강마커 cat이 한국어로 작동) · 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625) · H1 폴백 → 파일명은 최후
+      title: tko || stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 외신=title_ko 우선(피드 목록·검색·강마커 cat이 한국어로 작동) · 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
       title_orig: tko ? (stripLeadEmoji(meta.title) || '') : '',   // 번역 적용 시 원문 제목 보존(모달 하단 MUT 줄·검색 보조 · 260703)
       url: meta.url || '',
       date: meta.date || '',
