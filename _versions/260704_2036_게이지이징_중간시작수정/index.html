@@ -58,8 +58,8 @@
     --arm:var(--accent-4); --arm-rgb:var(--accent-4-rgb); --on-arm:#1a1205; --thumb:var(--accent-4);   /* arm/thumb=accent-4(운영자 260704) */
     /* 모션 토큰 — 곳곳 인라인 .18s/.15s 점진 이관용(신규/수정 CSS는 이거 참조). */
     --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
-    /* 게이지 채움 곡선 = 센 ease-out(초반 빠르게·끝 완만 = 응답 점프 최소)이되 *눈에 보이는* 감속 = 하우스 곡선(cardIn·bnav 계승). 옛 (.12,.9,.22,1)은 시간 10%에 55% 도달 = 0.72s 게이지서 첫 몇 프레임에 화면 중반 텔레포트 → '중간에서 시작·이징 안 먹힘' 착시 → 폐기. 처음부터 쓸려오르며 감속(가시성)+응답시점 71% 프론트로드(점프 완화) 양립. 전 게이지바(glive·pickGauge·goFill) 공통 SSOT — 새 게이지도 이거 계승(제각각 금지). 260704 */
-    --gauge-ease:cubic-bezier(.22,.61,.36,1);
+    /* 게이지 채움 곡선 = 센 ease-out(초반 빠르게·끝 완만 = 응답 점프 최소). 전 게이지바(glive·pickGauge·goFill) 공통 SSOT — 새 게이지도 이거 계승(제각각 금지). 260704 */
+    --gauge-ease:cubic-bezier(.12,.9,.22,1);
     /* 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). var(--font-status)는 호환 위해 유지. */
     --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif;
     /* ── z-index 레이어 스케일 (운영자 260628 · 「최소화 > 리모컨 > 내용」 단일정본=여기) ──
@@ -567,8 +567,13 @@
   /* 출처성향 게이지 — 이슈가 어느 성향 커뮤에서 떴는지 소스별 점으로(뉴스 편향바 --bias-* 토큰 계승·LLM 0·순수 매핑). */
   .soc-gauge { position:relative; height:9px; margin-top:10px; border-radius:var(--r-pill);
     background:linear-gradient(90deg, rgba(var(--bias-l2-rgb),.42) 0%, rgba(var(--bias-l1-rgb),.30) 28%, rgba(var(--bias-mid-rgb),.24) 50%, rgba(var(--bias-r1-rgb),.30) 72%, rgba(var(--bias-r2-rgb),.42) 100%); }
-  .soc-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; transform:translate(-50%,-50%); border:1.5px solid rgba(0,0,0,.4);
-    background:var(--fg); box-shadow:0 0 5px rgba(255,255,255,.45); }   /* 흰색 단일 마커(운영자 260704 "동그라미 흰색 통일") — 편향은 *색*이 아니라 게이지 *위치*로 표현(다이버징 그라데이션=위치 눈금). 등급별 색분기(옛 lean-* 파랑/시안/코랄/빨강)는 위치와 중복+제각각이라 혼란 → --fg 중립 전경 흰색으로 통일. glow=순백 rgba(box-shadow=토큰 없는 축) */
+  .soc-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; transform:translate(-50%,-50%); border:1.5px solid rgba(0,0,0,.4); }
+  .soc-dot.lean-ll  { background:var(--bias-l2); box-shadow:0 0 5px rgba(var(--bias-l2-rgb),.7); }
+  .soc-dot.lean-l   { background:var(--bias-l1); box-shadow:0 0 5px rgba(var(--bias-l1-rgb),.7); }
+  .soc-dot.lean-mid { background:var(--bias-mid); box-shadow:0 0 5px rgba(var(--bias-mid-rgb),.6); }
+  .soc-dot.lean-r   { background:var(--bias-r1); box-shadow:0 0 5px rgba(var(--bias-r1-rgb),.7); }
+  .soc-dot.lean-rr  { background:var(--bias-r2); box-shadow:0 0 5px rgba(var(--bias-r2-rgb),.7); }
+  .soc-dot.lean-unk { background:var(--mut); }
   .scrap-head { padding:6px 2px 12px; }
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
@@ -967,7 +972,7 @@
   /* 대기열(뉴스요약 롱프레스) — 분석 대기/중 기사 개요. .bpop 글래스 계승 + 넓은 폭·행 레이아웃. */
   /* 대기열 = 제출 기사 상태판(처리중/SUCC/FAIL). 글래스(.bpop 계승)·크게·위로. */
   .qpop { width:min(94vw,440px); max-width:94vw; min-width:0; overflow:hidden;
-    background:var(--modal-glass-anchor); backdrop-filter:blur(24px) saturate(1.05); -webkit-backdrop-filter:blur(24px) saturate(1.05); }   /* 무채색 반투명 글래스(운영자 260628 "초록 틴트 빼고 무채색") = 중립 그레이 알파↓(.86/.9)로 뒤 은은히 비침 + blur 24·saturate 1.05(살짝만·프로스트). 옛 초록틴트(초록 워시) → 중립 무채. 대기열만, 다른 .bpop 불변(운영자 260622) · 폭 명시 고정 = 페이지마다 동일(이전 min-width만 → 폭이 가장 긴 제목따라 늘어 가변 + left 어긋나 2페이지서 화면밖 밀림). width 고정 → 긴 제목은 …로 잘림 · 운영자 260622 */
+    background:var(--modal-glass-anchor); backdrop-filter:blur(24px) saturate(1.05); -webkit-backdrop-filter:blur(24px) saturate(1.05); }   /* 무채색 반투명 글래스(운영자 260628 "초록 틴트 빼고 무채색") = 중립 그레이 알파↓(.86/.9)로 뒤 은은히 비침 + blur 24·saturate 1.05(살짝만·프로스트). 옛 초록틴트 rgba(24,40,29)/(12,21,15) → 중립. 대기열만, 다른 .bpop 불변(운영자 260622) · 폭 명시 고정 = 페이지마다 동일(이전 min-width만 → 폭이 가장 긴 제목따라 늘어 가변 + left 어긋나 2페이지서 화면밖 밀림). width 고정 → 긴 제목은 …로 잘림 · 운영자 260622 */
   .qpop .qh { display:flex; align-items:center; gap:6px; padding:0 3px; flex:none; background:var(--modal-head-bg); backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); border-bottom:1px solid var(--line2); }   /* 표준 헤더 띠 계승(--modal-head-bg·blur-l·border) · padding 0 3px 유지(qrow 우측 기준선 정렬) · qpop overflow:hidden이 상단 모서리 처리 */
   .qpop .qh svg { stroke:var(--fg); flex:none; }   /* 헤더 아이콘 = 무채색(상단 초록 제거·운영자 260629) */
   .qpop .qh b { margin-right:2px; }
@@ -1021,7 +1026,6 @@
   .qpg:hover, .qpg-nav:hover { color:var(--accent); }
   .qpg.on { color:#04140a; background:var(--accent); border-color:var(--accent); }
   .qpg-nav:disabled { opacity:.35; cursor:default; }
-  .qpg-nav svg { width:14px; height:14px; }   /* SVG chevron 정중앙(유니코드 ‹› 폐지·§🔒 3-1) */
   .qempty { padding:16px 6px; text-align:center; color:var(--mut); font-size:12px; line-height:1.55; }
   .qempty small { display:block; font-size:11px; opacity:.7; margin-top:3px; }
   #bnav .bnav-i[data-tab="feed"] { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* 더블탭 줌·300ms 클릭지연 차단 = 연달아 두번 탭(대기열 열기) 신뢰성(ed-chip 패턴 계승·260621) */
@@ -1064,19 +1068,19 @@
   #pindlg { width:min(340px,90vw); max-width:340px; max-height:88vh; height:fit-content; margin:auto;
     background:linear-gradient(165deg, rgba(24,25,28,.72), rgba(16,17,19,.8));   /* 무채색 글래스(.72/.8 근불투명·프로스트=::backdrop blur7 — base dialog blur는 260704 제거·메시지함 톤) — 초록 틴트 제거(#editdlg·#tooldlg 통일 · 운영자 260702). ⚠️ height:fit-content = showModal UA inset 제약 하 max-height:none+height:auto가 세로 880px stretch되던 것 차단(실측 254px 내용크기·중앙정렬) · 변경중은 헤더 인라인이라 전체화면 오버레이 없음=backdrop-filter 제약 불요(260702 재설계) */
     border-radius:var(--r-modal); padding:26px 22px 22px; text-align:center; animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }
-  #pindlg .pin-title { font-size:18px; font-weight:var(--fw-x); color:var(--fg); letter-spacing:-.3px; }   /* 창 상단 타이틀 = 무채색 · 굵기 토큰화(800→--fw-x·회귀0) · font-size 18은 스케일 부재로 유지(운영자 260629) */
+  #pindlg .pin-title { font-size:18px; font-weight:800; color:var(--fg); letter-spacing:-.3px; }   /* 창 상단 타이틀 = 무채색(초록 제거·운영자 260629) */
   #pindlg .pin-sub { margin:8px 0 18px; font-size:12.5px; line-height:1.5; color:var(--mut); }
   /* PIN 입력 = 발행 슬롯 정본 계승(§🎨 CII·분신술10 stage-2 260703) — 옛 .pin-cell 6-input(박스·disc·좁은폰 오버플로 12~48px)·pinShake 폐지 → 정본 .pin-slots(동그라미)+.pin-in-h(투명 오버레이)·lkShake 재사용 = 발행/조회/삭제 완전통일 · raw accent 3곳 소멸(baseline 하향) */
   .pin-boxwrap { position:relative; }   /* 오버레이(.pin-in-h inset:0) 앵커 = 발행 .pin-fs(relative) 계승 · 안에 .pin-slots(span6)+.pin-in-h 형제 = input을 슬롯 밖에 둬 renderPinSlots가 span만 순회(발행 #pubSlots 구조 정확 계승) · pin-sub margin-bottom:18px가 상단 간격 */
-  .pin-err { min-height:16px; margin-top:12px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:#ff7676; }   /* fs/fw 토큰화(12px→--fs-sm·700→--fw-b·회귀0) */
+  .pin-err { min-height:16px; margin-top:12px; font-size:12px; font-weight:700; color:#ff7676; }
   /* 헤더 nav 라인(제목 좌·변경중·X 우) = 메시지함 .mh 계승 · 하단 취소 폐지(운영자 260702) */
   .pin-head { display:flex; align-items:center; gap:8px; margin:-26px -22px 18px; padding:11px 16px; background:var(--modal-head-bg); backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); border-bottom:1px solid var(--line2); border-radius:calc(var(--r-modal) - 1px) calc(var(--r-modal) - 1px) 0 0; }   /* 셸 헤더 글래스 띠 계승(--modal-head-bg·blur-l·글래스모피즘 = 메시지함 .mh 계승) · margin -26/-22 = #pindlg padding(26 22) 상쇄 전폭 · radius=컨테이너(--r-modal 22)-border1 · align-items:center = 잠금해제(18)·변경중(13) 중앙정렬 · 미반영0(운영자 260704) */
   .pin-head .pin-title { text-align:left; }   /* flex:1 제거 = 잠금 해제 위치 그대로(좌·자연폭) · 변경중은 gap 8로 살짝 우측 */
-  .pin-x { margin-left:auto; width:30px; height:30px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:var(--r-s); cursor:pointer; }   /* radius 토큰화(9px→--r-s·회귀0) */
+  .pin-x { margin-left:auto; width:30px; height:30px; flex:none; display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--fg); border:1px solid var(--line); border-radius:9px; cursor:pointer; }
   .pin-x:hover { color:var(--accent); border-color:rgba(15,253,2,.4); }
   .pin-x svg { display:block; }   /* 누름(:active 회전)·reduced-motion 가드는 공용 .tool-x 규칙(1331~1335)에 .pin-x 편입으로 계승 = pubpop X와 프레스 통일(평의회 260702) */
   /* 변경중(잠금/해제/삭제 2~3초 · 네트워크 왕복 불가피) = 타이틀 옆 인라인 · gdots 점 모션(기존 기틀 계승) · --fs-label(13·들쭉날쭉 방지) · 강조색(운영자 260702 재설계) */
-  .pin-busy { display:inline-flex; align-items:center; gap:1px; margin-left:5px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); letter-spacing:.2px; }   /* margin-left = 타이틀서 조금 더 우측(header gap 8 + 5·운영자 260702) · 굵기 토큰화(800→--fw-x·회귀0) */
+  .pin-busy { display:inline-flex; align-items:center; gap:1px; margin-left:5px; font-size:var(--fs-label); font-weight:800; color:var(--accent); letter-spacing:.2px; }   /* margin-left = 타이틀서 조금 더 우측(header gap 8 + 5·운영자 260702) */
   .pin-busy[hidden] { display:none; }
   .pin-slots.busy { opacity:.5; }   /* 변경중(#pindlg 잠금해제/삭제 네트워크 대기) = 슬롯 흐리게 · pointerEvents는 JS(오버레이 input) — 발행은 busy 미사용 */
   @media (max-width:600px) { #pindlg { width:90vw; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); margin:8vh auto auto; margin:8dvh auto auto; } }   /* 데스크탑(.13)과 동일 보더 · height/max-height는 전역 #pindlg(fit-content/88vh) 상속 = 세로 stretch 방지(운영자 260702) · margin=상단 anchoring: 폰 키보드가 화면 하단 ~50%를 덮어 세로 정중앙이면 PIN 칸이 가려짐(운영자 실측 260703) → 위 8vh 고정(dvh 미지원 폴백 vh) — 데스크탑(키보드 없음)은 중앙 유지 */
@@ -1229,22 +1233,21 @@
   /* 피드 좌우 넘김 화살표(PC·반투명 글래스) */
   .feedwrap { position:relative; }
   .feednav { position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:25px; height:25px; border-radius:50%;
-    display:grid; place-items:center; line-height:0; color:#fff; cursor:pointer;
+    display:grid; place-items:center; font-size:14px; line-height:0; color:#fff; padding-bottom:2px; cursor:pointer;
     background:rgba(12,16,14,.34); border:1px solid rgba(255,255,255,.2); box-shadow:0 4px 16px rgba(0,0,0,.28);
     backdrop-filter:blur(12px) saturate(1.2); -webkit-backdrop-filter:blur(12px) saturate(1.2);
     opacity:.85; transition:background .15s, opacity .15s, transform .1s; }
-  .feednav svg { width:15px; height:15px; }   /* SVG chevron 정중앙 = font-size·padding-bottom 편심 땜빵 폐지(§🔒 3-1·분신술10 260704) */
   .feednav:hover { background:rgba(12,16,14,.55); opacity:1; }
   .feednav:active { transform:translateY(-50%) scale(var(--press-m,.9)); }
   .feednav.prev { left:8px; } .feednav.next { right:8px; }
   .feednav:disabled { opacity:0; pointer-events:none; }
-  @media (hover:hover) and (pointer:fine) { .feednav { width:42px; height:42px; } .feednav svg { width:22px; height:22px; } }   /* PC = 원래 크기(svg 확대) / 폰(coarse)은 25px 유지 · font-size·padding-bottom 편심 땜빵 폐지 = SVG 정중앙 */
+  @media (hover:hover) and (pointer:fine) { .feednav { width:42px; height:42px; font-size:24px; padding-bottom:3px; } }   /* PC = 원래 크기 / 폰(coarse)은 25px 유지 */
   .slide-img img { cursor:zoom-in; }
 
   /* ── 다이얼로그 ── */
   dialog {
     width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
-    background:var(--modal-glass);   /* 무채색 셸 토큰(.64) = base 기본값 무채색화(운영자 260704 "무조건 통일") — 옛 초록 글래스(초록 시그니처)는 #dlg가 폐기한 '초록 시그니처' 잔재로 #pubdlg만 상속하던 유일 이탈색 → 폐쇄형 팔레트(§🎨) 밖 아웃라이어라 기존 셸토큰으로 정렬. 배경 override 안 하는 신규 모달도 무채색 안전 기본값 상속 */
+    background:var(--modal-glass);   /* 무채색 셸 토큰(.64) = base 기본값 무채색화(운영자 260704 "무조건 통일") — 옛 초록 글래스 rgba(27,44,32…)는 #dlg가 폐기한 '초록 시그니처' 잔재로 #pubdlg만 상속하던 유일 이탈색 → 폐쇄형 팔레트(§🎨) 밖 아웃라이어라 기존 셸토큰으로 정렬. 배경 override 안 하는 신규 모달도 무채색 안전 기본값 상속 */
     /* ⛔ 컨테이너 backdrop-filter 없음 = 전 모달 통일 기본값(오류 안 나는 방법·운영자 260704 "같은 레벨 통일·논외=감염"). 컨테이너 blur는 textarea 리페인트마다 재샘플 = 모바일 GPU 타이핑 번쩍(260701 진범)이라 base서 아예 제거 → 어느 dialog도 상속만으로 flicker 안전(#pindlg·#pubdlg PIN 입력이 옛 blur30 상속하던 잠재 위반도 소멸). 프로스트감 = ::backdrop blur7 + 헤더 X줄 띠(.modal-head)의 --blur-l만(둘 다 정적=타이핑 무관). 신규 모달도 컨테이너 backdrop-filter 추가 금지(글래스감은 ::backdrop이 담당). */
     border:1px solid rgba(255,255,255,.13); border-radius:var(--r-modal);   /* 전 모달 22 통일(#dlg만 26이던 것) */
     box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
@@ -1304,7 +1307,7 @@
     border:none; background:none; color:var(--hist-accent); -webkit-tap-highlight-color:transparent; }
   .tool-restore.show { display:grid; }
   .tool-restore svg { display:block; opacity:.8; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5)); }   /* 다양한 배경 위 대비 · 삼각형 픽토그램 불투명도 80%(↑·배지 숫자와 통일 · 운영자 260703) */
-  .tool-restore:active { transform:scale(var(--press-xs,.82)); }   /* raw→토큰(.82=--press-xs·회귀0·형제 #toolMin과 통일) */
+  .tool-restore:active { transform:scale(.82); }
   .tool-restore:focus-visible { outline:2px solid #fff; outline-offset:3px; border-radius:5px; }
   .tool-restore.pulsing svg { animation:triGlow 1.8s var(--ease) infinite; }   /* 발견성 = 보라 글로우 호흡(위치 안정) */
   .tool-restore.arming svg { transform:scale(1.08); }   /* 길게누름 시 살짝 강조(칩이 위에 뜸) */
@@ -1368,7 +1371,7 @@
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); touch-action:manipulation;
     transition:color .15s, background .15s, border-color .15s, box-shadow .15s, transform .1s, filter .1s; }
   .dlbox:hover { background:rgba(255,255,255,.13); }
-  .dlbox.press { transform:scale(var(--press-l,.95)); filter:brightness(.92); }   /* raw→근접토큰(.94→--press-l .95·미세) */
+  .dlbox.press { transform:scale(.94); filter:brightness(.92); }
   .dlbox.full { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10);
     box-shadow:0 0 16px rgba(var(--accent-rgb),.30), 0 0 0 1px rgba(var(--accent-rgb),.25); }
   .dlbox:has(.dlg-pdf:focus-visible) { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }   /* #pdfBtn 키보드 포커스 링(자체 box-shadow:none이라 알약이 대신 표시) */
@@ -2135,7 +2138,7 @@
   @media (prefers-reduced-motion:reduce) { #pubdlg { animation:none; } }
   @media (max-width:600px) { #pubdlg { margin:8vh auto auto; margin:8dvh auto auto; } }   /* PIN 설정 fieldset이 창 하부라 키보드에 가림 → #pindlg와 동일 상단 anchoring(운영자 260703) */
   .pub-title { font-size:var(--fs-h2); font-weight:var(--fw-x); color:var(--fg); letter-spacing:-.2px; }
-  .pub-body { padding:14px var(--sp-3) var(--sp-3); }   /* 18px→--sp-3 토큰화(회귀0·14px 광학 유지) */
+  .pub-body { padding:14px 18px 18px; }
   .pub-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:13px 0; border-top:1px solid var(--line2); }
   .pub-row:first-child { border-top:none; padding-top:4px; }
   .pub-l { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }
@@ -2157,7 +2160,7 @@
   .pin-slots.bad .pin-slot.cur, .pub-slots.bad .pub-slot.cur, .lk-slots.bad .lk-slot.cur { color:var(--danger); }   /* 숫자 외 = 붉게 */
   .pin-slots.shake, .pub-slots.shake, .lk-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(lkShake 단일) */
   .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; }   /* 투명 오버레이 = 탭 시 OS 숫자키패드 · 값은 슬롯이 시각화(16px=iOS 확대 방지) */
-  .pub-go { width:100%; margin-top:var(--sp-3); padding:var(--sp-2); color:var(--fg); }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 · 무채색(운영자 260704): 정적 글자만 무채(흰)로 오버라이드 · 테두리는 .asksend 계승 그대로(임의 칠 금지 · 운영자 260704) · firing 게이지·완료는 accent(초록) 유지('게이지는 강조색이 맞음') */
+  .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; color:var(--fg); }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 · 무채색(운영자 260704): 정적 글자만 무채(흰)로 오버라이드 · 테두리는 .asksend 계승 그대로(임의 칠 금지 · 운영자 260704) · firing 게이지·완료는 accent(초록) 유지('게이지는 강조색이 맞음') */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
   /* 발행본 팝업 = 메시지함(msgpop) UI/UX 계승(운영자 260702): 무채색 글래스 + msgUnfold(우상단 펼침) · 위치=openPub(placeMsgpop 미러·프로필 우측 앵커) · 닫힘=즉시(msgpop 동일) · qpop 글래스톤/popIn·popOut 오버라이드(폭 min(94vw,440px)은 유지) */
@@ -2195,7 +2198,7 @@
   .pubpop .pinmark svg { width:14px; height:14px; }
   .pubpop .pinmark.locked { color:var(--arm); }   /* 잠금 = 레몬(강조·운영자) */
   .pubpop .pinmark.open { color:var(--mut); }      /* 해제 = 무강조 회색(강조색 아님·운영자) */
-  .pubpop .pinmark:active { transform:scale(var(--press-s,.85)); }   /* raw→근접토큰(.86→--press-s .85·미세) */
+  .pubpop .pinmark:active { transform:scale(.86); }
 </style>
 </head>
 <body data-tab="feed">
@@ -3884,7 +3887,7 @@ function feedSec(a, keepIdx = 0) {
     const navP = document.createElement('button'), navN = document.createElement('button');
     navP.type = navN.type = 'button'; navP.className = 'feednav prev'; navN.className = 'feednav next';
     navP.setAttribute('aria-label', '이전'); navN.setAttribute('aria-label', '다음');
-    navP.innerHTML = CHEV_L_SVG; navN.innerHTML = CHEV_R_SVG;   // 표지판 도형 = SVG 픽토그램(유니코드 ‹› 폐지·§🔒 3-1·nm-svg CHEV_*_SVG = 아이콘 SSOT 게이트 편입)
+    navP.innerHTML = '‹'; navN.innerHTML = '›';
     navP.onclick = () => step(-1); navN.onclick = () => step(1);
     const updateNav = () => { const max = track.scrollWidth - track.clientWidth - 2; navP.disabled = track.scrollLeft <= 2; navN.disabled = track.scrollLeft >= max; };
     track.addEventListener('scroll', updateNav, { passive: true });
@@ -5947,10 +5950,10 @@ function qRowHtml(it) {
 }
 function pagerHtml(pages, cur) {   // 5개/페이지 · 페이지번호 슬라이딩 윈도우(최대 5개)
   if (pages <= 1) return '';
-  let h = '<button class="qpg-nav" data-pg="' + Math.max(0, cur - 1) + '"' + (cur === 0 ? ' disabled' : '') + '>' + CHEV_L_SVG + '</button>';
+  let h = '<button class="qpg-nav" data-pg="' + Math.max(0, cur - 1) + '"' + (cur === 0 ? ' disabled' : '') + '>‹</button>';
   const W = 5, end = Math.min(pages, Math.max(0, cur - 2) + W), start = Math.max(0, end - W);
   for (let i = start; i < end; i++) h += '<button class="qpg' + (i === cur ? ' on' : '') + '" data-pg="' + i + '">' + (i + 1) + '</button>';
-  h += '<button class="qpg-nav" data-pg="' + Math.min(pages - 1, cur + 1) + '"' + (cur === pages - 1 ? ' disabled' : '') + '>' + CHEV_R_SVG + '</button>';
+  h += '<button class="qpg-nav" data-pg="' + Math.min(pages - 1, cur + 1) + '"' + (cur === pages - 1 ? ' disabled' : '') + '>›</button>';
   return h;
 }
 function renderQueuePage() {
@@ -7302,7 +7305,7 @@ const socSrc = s => (NAVER_CHIP[s] ? NAVER_CHIP[s].cls : '');
 // 출처성향 게이지값 — 소스 → 정치성향(1~10축·biasZoneCol 정합). SOC_LEAN_MAP 우선·네이버=약진보(칩 동축)·미등록=불명(회색). LLM 0.
 const LEAN_VAL = { ll:1, l:3, mid:5, r:7, rr:9 };
 const socVal = s => { const k = SOC_LEAN_MAP[s]; if (k) return LEAN_VAL[k]; if (NAVER_CHIP[s]) return LEAN_VAL.l; return null; };
-// (socValKey 제거 — 동그라미 흰색 통일로 편향 등급 클래스 불요·260704)
+const socValKey = v => v == null ? 'unk' : v <= 2 ? 'll' : v <= 4 ? 'l' : v <= 6 ? 'mid' : v <= 8 ? 'r' : 'rr';
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
 let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
@@ -7329,7 +7332,7 @@ function renderSns() {
     let _ws = 0, _wt = 0;
     Object.values(_plat).forEach(p => { const w = Math.min(p.n, 6); _ws += p.v * w; _wt += w; });   // 6 = POSTS_CAP 미러(네이버 100글→6·커뮤 1글→1)
     const _mid = _wt ? _ws / _wt : null;
-    const _gauge = _mid == null ? '' : `<div class="soc-gauge"><span class="soc-dot" style="left:${((_mid - 1) / 9 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 옛 lean-* 색분기 제거(운영자 260704) */
+    const _gauge = _mid == null ? '' : `<div class="soc-gauge"><span class="soc-dot lean-${socValKey(_mid)}" style="left:${((_mid - 1) / 9 * 100).toFixed(1)}%"></span></div>`;
     el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>
@@ -8116,7 +8119,7 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-kwtog:not(.st):hover { background:rgba(255,255,255,.09); }
   .nm-kwrow { margin:0 0 10px; }
   .nm-kw { display:inline-block; max-width:100%; font-size:11.5px; font-weight:600; color:#8fa697; line-height:1.5; word-break:break-word; cursor:pointer; padding:4px 10px; border-radius:8px; background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.08); -webkit-tap-highlight-color:transparent; transition:color .15s, background .15s; }
-  .nm-kw:active { transform:scale(var(--press-l,.95)); }   /* raw→근접토큰(.985→--press-l .95·미세) */
+  .nm-kw:active { transform:scale(.985); }
   .nm-kw.kwok { color:#0FFD02; background:rgba(255,255,255,.06); }   /* 복사 완료 = 강조색 잠시 */
   .nm-imslot .nm-imdl { position:absolute; right:7px; bottom:7px; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; color:#0FFD02; text-decoration:none; background:rgba(0,0,0,.2); border:1px solid rgba(255,255,255,.14); cursor:pointer; transition:transform .1s, background .15s; }   /* 이미지 위 오버레이 = 검정 플레이트 + accent 아이콘(§🎨) */
   .nm-imslot .nm-imdl:hover { background:rgba(0,0,0,.32); }
@@ -8531,7 +8534,7 @@ $('#pubGo').addEventListener('click', async () => {
       await copyText(location.origin + '/s/' + d.slug);   // ?p=핀 미포함 = PIN 잠금 무력화 방지(검증3·7·1). PIN은 별도 전달.
       go.classList.remove('done'); void go.offsetWidth; go.classList.add('done'); gaugeDone(go);   // settle 팝 + 게이지 현위치→100% 급속 = 전송/수정 버튼과 동일 메커니즘(askShowCheck·.ack·운영자 "다른 버튼과 동일")
       setTimeout(() => askShowCheck(go), 300);   // 게이지 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·운영자 260703)
-      st.textContent = pin ? ('발행됨 · 링크 복사 · PIN ' + pin + ' 별도 전달') : '발행됨 · 링크 복사 완료';   // ✓ 문자 폐지 = 발행 버튼 .ack SVG 체크가 성공표시 담당(§🔒 3-1·표지판 문자 금지)
+      st.textContent = pin ? ('✓ 발행됨 · 링크 복사 · PIN ' + pin + ' 별도 전달') : '✓ 발행됨 · 링크 복사 완료';
       setTimeout(() => { pubdlg.close(); gaugeClear(go); go.classList.remove('done'); askHideCheck(go); go.disabled = false; loadPub(); }, 1500);   // ✓ 노출 시간 확보 후 닫기(askSend 계승)
     } else { fail((d && d.error) ? String(d.error).slice(0, 90) : '발행 실패 — 다시'); }
   } catch { fail('네트워크 오류 — 다시'); }
