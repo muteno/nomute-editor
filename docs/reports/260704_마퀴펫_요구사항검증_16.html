@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>LOVE 마퀴펫 — 요구사항 16 전수 검증</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-dim:#0bbf02;
+    --bg:#0a0f0c; --panel:#12181400; --card:#141a16; --card2:#101512;
+    --fg:#e9eaec; --mut:#9aa39c; --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.14);
+    --red:#e23b2a; --amber:#e2a93a; --cream:#f7edca; --cyan:#0cd0f7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:
+      radial-gradient(circle at 20% 0%, rgba(15,253,2,.10), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(12,208,247,.06), transparent 45%),
+      var(--bg);
+    color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    -webkit-font-smoothing:antialiased; padding:22px 14px 60px; }
+  .wrap{max-width:920px;margin:0 auto}
+  header{text-align:center;padding:8px 0 20px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+  h1 .heart{color:var(--red)}
+  .sub{color:var(--mut);font-size:13.5px;line-height:1.55}
+  .kpis{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0 4px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 16px;min-width:96px}
+  .kpi b{display:block;font-size:22px;font-weight:800;color:var(--accent)}
+  .kpi.red b{color:var(--amber)}
+  .kpi span{font-size:11.5px;color:var(--mut)}
+  .legend{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 15px;margin:18px 0 24px;font-size:12.5px;color:var(--mut)}
+  .legend b{color:var(--fg)}
+  .legend code{color:var(--accent);font-size:11.5px}
+  .req{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0;margin:0 0 16px;overflow:hidden}
+  .req-h{display:flex;align-items:flex-start;gap:11px;padding:14px 16px;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent);border-bottom:1px solid var(--line)}
+  .rid{flex:0 0 auto;font-size:12px;font-weight:800;color:var(--bg);background:var(--accent);border-radius:8px;padding:3px 8px;line-height:1.3;letter-spacing:.02em}
+  .rtitle{flex:1;font-size:15.5px;font-weight:700;line-height:1.4}
+  .badge{flex:0 0 auto;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;align-self:center}
+  .b-done{color:var(--accent);border:1px solid rgba(15,253,2,.35);background:rgba(15,253,2,.08)}
+  .b-todo{color:var(--amber);border:1px solid rgba(226,169,58,.35);background:rgba(226,169,58,.08)}
+  .fields{display:grid;grid-template-columns:1fr;gap:0}
+  .f{display:grid;grid-template-columns:112px 1fr;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  .f:last-child{border-bottom:0}
+  .f .k{font-size:11.5px;font-weight:700;color:var(--mut);padding-top:1px;letter-spacing:.01em}
+  .f .v{font-size:13.5px;line-height:1.55}
+  .f.hero .v{color:var(--fg)}
+  .f.hero .v .was{color:var(--mut)} .f.hero .v .arrow{color:var(--accent);font-weight:800;padding:0 4px}
+  .f.god .k{color:var(--accent)} .f.god .v{color:#d6ffce}
+  .f.unk .k{color:var(--cyan)} .f.unk .v{color:#bfeefb}
+  .f.risk .k{color:var(--amber)}
+  .pill{display:inline-block;font-size:11px;color:var(--cream);border:1px solid var(--line2);border-radius:6px;padding:1px 6px;margin:2px 4px 0 0}
+  footer{margin-top:26px;padding:16px;border:1px dashed var(--line2);border-radius:14px;background:var(--card2)}
+  footer h3{margin:0 0 8px;font-size:14px;color:var(--amber)}
+  footer p{margin:5px 0;font-size:13px;color:var(--mut)}
+  footer code{color:var(--accent);font-size:12px}
+  .prlist{margin-top:14px;font-size:12px;color:var(--mut);text-align:center;line-height:1.9}
+  .prlist span{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:2px 10px;margin:2px}
+  @media(max-width:560px){ .f{grid-template-columns:1fr;gap:3px} .f .k{padding-top:0} }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>LOVE <span class="heart">&#9829;</span> 마퀴펫 &mdash; 요구사항 16 전수 검증</h1>
+  <div class="sub">260704 세션 · 뉴스요약 배너 캔버스 애니메이션(<code>viewer/marquee.js</code>)<br>운영자가 세션 중 말한 요구사항 전부를 행으로 인덱싱 · 각 항목 origin/main 실측 검증</div>
+  <div class="kpis">
+    <div class="kpi"><b>16</b><span>총 요구사항</span></div>
+    <div class="kpi"><b>15</b><span>완료·검증 &#10003;</span></div>
+    <div class="kpi red"><b>1</b><span>후속 예정 &#8987;</span></div>
+  </div>
+</header>
+
+<div class="legend">
+  <b>인덱싱 필수값(각 요구사항 공통 열):</b> 기존&rarr;현재 · 리스크 · 장단점 · 단점 보완 · 추후 계획 · 아이데이션 · 신의 한수 · 이건 모르겠다.<br>
+  <b>검증 방식:</b> <code>check_refs rc=0</code> + <code>git show origin/main</code> read-back + Playwright(Chromium) 실제 렌더 프레임 판독(등장/점등/손하트/퇴장 페이드/사다리 최하단 확대).
+</div>
+
+<!-- R01 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R01</span><span class="rtitle">투명 배경(C안) &mdash; 뒤 배너&middot;글로우 비침</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">캔버스가 어두운 단색(#131313)으로 배경을 채워 뒤 브랜드 배너가 가려짐</span><span class="arrow">&rarr;</span><code>LOVE_BG='transparent'</code>, 매 프레임 clearRect만 &mdash; 뒤 배너&middot;녹색 글로우 그대로 비침</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">투명이라 배경 밝기에 따라 저대비 요소(회색 도트)가 묻힐 수 있음</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 배너와 일체감&middot;깊이감 / 단 = 배경 대비가 뷰마다 달라 보장 안 됨</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">사다리&middot;간판을 고대비 크림 베이지로, NOW SHOWING 도트는 밝은 회색으로</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음(안정)</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">배경 luminance 샘플링 &rarr; 사다리 알파 자동 대비(auto-contrast)</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">배경 채우기 자체를 skip + clearRect만 = 별도 알파합성 없이 투명(GPU 저비용)</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">초저사양 폰에서 매 프레임 투명 합성 비용 체감 여부</div></div>
+  </div>
+</div>
+
+<!-- R02 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R02</span><span class="rtitle">사다리 베이지(크림) 색 &mdash; 가시성 확보</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">어두운 구조색이라 투명배경 위에서 안 보임</span><span class="arrow">&rarr;</span>LOVE 크림 <code>#f7edca</code> 베이지</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">밝은 배너 구간에선 크림도 대비가 낮을 수 있음</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 가시성&middot;브랜드 톤 통일 / 단 = 유사 배경색과 겹치면 묻힘</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">알파 0.96 고정 + rails lineWidth 8로 굵게</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">배경 밝기 감지해 크림/딥 자동 반전</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">사다리&middot;간판&middot;글자를 같은 크림 계열로 = 한 세트로 읽힘</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R03 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R03</span><span class="rtitle">점등 후에도 사다리 불투명도 유지</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">점등되면 사다리가 흐려지거나 사라짐</span><span class="arrow">&rarr;</span>lit 무관 사다리 알파 0.96 고정</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">점등 순간 글로우와 겹쳐 잠깐 과밝을 수 있음</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 구조 일관성 / 단 = 점등 연출과 사다리가 시선 경쟁</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">글로우는 짧은 버스트(1.7s)로 제한</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">점등 시 사다리에 살짝 림라이트</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">없음(상수화가 정답 &mdash; 과설계 회피)</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R04 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R04</span><span class="rtitle">간판 테두리 불투명도 = 사다리 라인과 통일</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">간판 테두리&middot;사다리 라인 불투명도가 제각각</span><span class="arrow">&rarr;</span>둘 다 <code>rgba(247,237,202,0.96)</code> 동일(공유 상수 LAD_RGB)</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">간판 테두리는 점등 시 페이드아웃(mo=1-lit) &mdash; 완전 통일은 미점등 구간 한정</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 미점등 시 한 세트 / 단 = 점등 후 테두리는 의도적으로 사라짐(연출)</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">점등 후 테두리 역할을 크림 패널이 대체</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">없음</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">같은 LAD_RGB 상수 공유 = 색 드리프트 원천 차단</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R05 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R05</span><span class="rtitle">좌측 잘림 해소 &mdash; .lovemarq 위치 조정</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">left 3%로 씬 좌측 일부 잘림</span><span class="arrow">&rarr;</span>left 6%</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">화면폭 매우 좁은 기기에서 우측 여백 편차</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 좌측 안 잘림 / 단 = 배너 내 수평위치 고정값(완전 반응형 아님)</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">% 단위라 대체로 스케일</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">필요 시 clamp()로 반응형 위치</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">없음</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">없음</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">초광폭/초협폭 실기기 좌우 여백(라이브 눈 확인 필요)</div></div>
+  </div>
+</div>
+
+<!-- R06 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R06</span><span class="rtitle">사다리+간판 = 깔끔한 solid 선(점묘 제거)</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">하프톤(점묘)이라 &ldquo;오리다 만 것처럼&rdquo; 너덜너덜</span><span class="arrow">&rarr;</span>solid stroke(round cap/join)로 깔끔</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">solid라 도트 질감(레트로 감성) 일부 상실</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 선명&middot;정돈 / 단 = 픽셀 도트 무드 감소</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">NOW SHOWING 박스 아웃라인은 도트 유지(부분 절충)</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">solid + 미세 도트 오버레이 하이브리드</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">round lineCap로 끝단 뭉툭 = &ldquo;잘린 느낌&rdquo; 원천 제거</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R07 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R07</span><span class="rtitle">다른 요소 보존 &mdash; NOW SHOWING/패널 안 덮기(딱 라인만)</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">라인 수정하며 NOW SHOWING/점등 패널을 덮을 위험</span><span class="arrow">&rarr;</span>drawLadder/drawFrameSolid만 손대고 drawStructure/drawLitPanel 무손상</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">렌더 함수가 분리 안 됐으면 회귀 가능</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 국소 변경으로 안전 / 단 = 없음</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">렌더를 레이어로 분리(사다리/테두리/구조/패널/글자/펫)</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">없음</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">레이어드 렌더 = 각 요소 독립 수정이 안전</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R08 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R08</span><span class="rtitle">손하트 &mdash; 얼굴&middot;몸통 고정, 팔만 안으로 감싸기</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">scaleX로 상체 전체 압축 = 얼굴까지 찌그러짐</span><span class="arrow">&rarr;</span>base(몸&middot;얼굴&middot;다리 고정)/armL(왼팔) 스프라이트 분리, 팔만 안+아래로 감쌈</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">스프라이트 미로드 시 통짜 폴백(drawPet('rest'))</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 얼굴 안정&middot;자연스런 손하트 / 단 = 스프라이트 2장 추가(용량)</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">data URI 인라인 + 미로드 폴백</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">팔 관절 2단(어깨&middot;팔꿈치) 분리로 더 유기적</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">명도 낮은 팔 영역만 떼서 별 스프라이트로 = 얼굴 완전 고정</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R09 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R09</span><span class="rtitle">손에서 2~3개 임의크기 하트 발사</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">발사 없음(멀뚱)</span><span class="arrow">&rarr;</span>팔 펼치는 순간 hash 기반 2~3개, 임의 크기&middot;속도&middot;퍼짐으로 슝슝 발사</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">결정적 렌더라 매 루프 동일 패턴(진짜 랜덤 아님)</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 결정적=프레임 재현 가능 / 단 = 반복 시 같은 궤적</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">hash seed에 인덱스 섞어 개수/크기 다양화</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">사이클마다 seed 회전 = 루프마다 다른 궤적</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">Date.now/random 없이 hash()로 결정적 무작위 = 재현성+다양성 양립</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R10 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R10</span><span class="rtitle">우팔 = 왼팔 데칼코마니(좌우반전) 손가락 분리</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">우팔 손가락 없음(비대칭)</span><span class="arrow">&rarr;</span><code>ctx.scale(-1,1)</code>로 왼팔을 미러축(ax) 기준 반전 = 손가락 대칭</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">미러축 계산 틀리면 우팔 위치 어긋남</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 스프라이트 1장으로 양팔&middot;정확 대칭 / 단 = 조명이 좌우 동일(그림자 비대칭 손실)</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">필요 시 미러 후 밝기 미세조정</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">없음</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">데칼코마니(미러) = 우팔 스프라이트 별도 제작 0</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R11 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R11</span><span class="rtitle">rest 후 우측 퇴장 + 씬 페이드아웃(등장과 대칭)</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">손하트 후 멀뚱히 정지</span><span class="arrow">&rarr;</span>1.7s 후 우측으로 걸어나감 + 전체 씬 페이드아웃(등장 페이드인과 대칭)</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">퇴장 타이밍/속도가 어색하면 급해 보임</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 루프 자연 마무리 / 단 = 총 길이 증가(DUR 13.6s)</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">easeOut로 감속 퇴장</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">퇴장 직전 손 흔들기 프레임</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">등장=페이드인, 퇴장=페이드아웃 대칭 = 루프 이음새 매끈</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R12 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R12</span><span class="rtitle">간판 LOVE 글자색 = 설정(marqColor) 반영 복원</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">커밋 #1535 회귀로 설정색 반영 끊김</span><span class="arrow">&rarr;</span><code>localStorage.marqColor</code>를 _readMarqCol로 읽어 글자색 적용(pageAccent서 갱신)</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">localStorage 접근 실패 시 기본색(#c85c5c) 폴백</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 프로필 메뉴 설정 즉시 반영 / 단 = 손하트 발사색(RED/CRIM)과는 분리(의도)</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">try/catch 폴백</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">문구(marqKeyword)도 같은 방식으로 반영(R16-후속)</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">색+문구 통합 실시간 프리뷰</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">발사 하트색과 간판 글자색 분리 = 설정이 연출 불가침값을 안 건드림</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R13 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R13</span><span class="rtitle">프로필 전광판 메뉴 반영 검증(5인 분신술)</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">메뉴 수정이 실제 반영되는지 불확실</span><span class="arrow">&rarr;</span>5인 적대 검증 &mdash; 색은 반영&middot;문구는 미반영(marqKeyword 리딩 부재) 진단</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">문구 미반영은 남은 결함(후속으로 이관)</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 근본원인 특정 / 단 = 문구는 별도 폰트 작업 필요</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">문구 커스터마이징 후속 착수(R16-후속)</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">A-Z 픽셀폰트 + 동적 타일 레이아웃</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">기호(&#9829;)도 픽셀아트 글리프로 전환</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">없음</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">5~7자 가변 문구의 타일 레이아웃 자동화 난이도</div></div>
+  </div>
+</div>
+
+<!-- R14 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R14</span><span class="rtitle">사다리 배너 아랫변 연장 + 퇴장 시 펫과 동시 소멸</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">baseY 906(공중에 뜸) + 퇴장 페이드 타이밍 어긋남</span><span class="arrow">&rarr;</span>baseY 1078(캔버스 바닥) + 페이드아웃 시작을 퇴장 시점(sit1+1.7)에 동기</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">canvas-배너 CSS 스케일은 세션서 검증 불가(라이브 눈 확인)</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 공중부양 해소&middot;동시 소멸 / 단 = 실제 배너 아랫변 정합은 CSS 의존</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">bottom:0 정렬(R다음 로직)로 캔버스 바닥=배너 바닥 보장</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">없음</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">페이드 시작=퇴장 시점 결합 = 펫&middot;사다리&middot;간판이 한 타이밍</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">실기기 배너 높이 대비 92% 캔버스 하단 정합 오차</div></div>
+  </div>
+</div>
+
+<!-- R15 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R15</span><span class="rtitle">퇴장 페이드 = 간판+사다리 한 덩어리(분리 페이드 해소)</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">drawLitPanel이 globalAlpha=lit(=1)로 씬 페이드를 덮어써 간판만 안 옅어짐(분리 페이드)</span><span class="arrow">&rarr;</span><code>_FADE</code> 모듈변수로 패널&middot;글자&middot;하트가 씬 페이드를 곱해 사다리와 동일 투명도 락스텝</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">새로 알파 세팅하는 함수 추가 시 _FADE 곱을 빠뜨리면 재발</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 하나의 이미지처럼 소멸 / 단 = 알파 곱 규칙을 신규 함수가 지켜야 함</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">_FADE 규칙을 코드 주석으로 명시</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">없음</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">renderFrame 말미 전역 알파 검증 assert</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">앰비언트 fade를 모듈변수화 = 내부에서 절대알파 쓰는 함수도 씬 페이드에 합류</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">없음</div></div>
+  </div>
+</div>
+
+<!-- R16 -->
+<div class="req">
+  <div class="req-h"><span class="rid">R16</span><span class="rtitle">사다리 한 단 짧게 + 매달린 stub 제거 &rarr; 배너 아랫변 flush</span><span class="badge b-done">완료&middot;검증</span></div>
+  <div class="fields">
+    <div class="f hero"><div class="k">기존&rarr;현재</div><div class="v"><span class="was">k&lt;rungs로 맨 아래 rung만 지워 rails가 마지막 rung 아래로 ~108px 매달림(dangling stub &mdash; 운영자 X 표시)</span><span class="arrow">&rarr;</span>rungs 6&rarr;5 + <code>k&lt;=rungs</code> = 맨 아래 rung을 baseY(배너 아랫변)에 붙임, rails 끝=rung=flush, 총 6단</div></div>
+    <div class="f risk"><div class="k">리스크</div><div class="v">baseY가 canvas 최하단(1078/1080)이라 rung이 2px 여백으로 아슬함</div></div>
+    <div class="f"><div class="k">장단점</div><div class="v">장 = 매달린 stub 0&middot;flush / 단 = 최하단 rung이 배너 끝에 매우 근접</div></div>
+    <div class="f"><div class="k">단점 보완</div><div class="v">필요 시 baseY 미세 상향(예 1070)</div></div>
+    <div class="f"><div class="k">추후 계획</div><div class="v">라이브 실물서 최하단 rung 잘림 여부 확인</div></div>
+    <div class="f"><div class="k">아이데이션</div><div class="v">없음</div></div>
+    <div class="f god"><div class="k">신의 한수</div><div class="v">rung 수 줄이고 마지막을 baseY에 붙임 = &ldquo;한 단 짧게&rdquo;+&ldquo;flush&rdquo; 동시 충족(별도 rail 자르기 로직 불필요)</div></div>
+    <div class="f unk"><div class="k">이건 모르겠다</div><div class="v">실기기 스케일에서 최하단 rung 2px가 안티에일리어싱으로 뭉개질지</div></div>
+  </div>
+</div>
+
+<footer>
+  <h3>&#8987; 후속 예정(운영자 &ldquo;차분히&rdquo;) &mdash; 유일 미완 항목</h3>
+  <p><b>문구(marqKeyword) 픽셀폰트 커스터마이징</b> &mdash; 프로필 전광판 메뉴에서 입력한 문구가 간판에 반영되도록. 필요: A-Z(및 기호 &#9829;)를 픽셀아트 글리프로, 글자 수에 따른 동적 타일 레이아웃. 소스 = <code>_versions/260704_0921</code>의 5&times;7 폰트를 현 정사각 구조에 이식.</p>
+  <p style="color:#8a8f92">※ 색(marqColor)은 R12에서 이미 반영 완료 &mdash; 남은 건 문구뿐. 급하지 않으니 별도 세션에서 착수.</p>
+  <div class="prlist">
+    <b style="display:block;color:#9aa39c;margin-bottom:6px">머지된 PR</b>
+    <span>#1538 투명배경</span><span>#1539 사다리색</span><span>#1546 불투명도/위치</span><span>#1550 solid선</span><span>#1554 손하트</span><span>#1555 퇴장</span><span>#1556 글자색</span><span>#1563 사다리연장</span><span>#1566 bottom:0</span><span>#1570 한덩어리페이드</span><span>#1574 flush</span>
+  </div>
+</footer>
+</div>
+</body>
+</html>
