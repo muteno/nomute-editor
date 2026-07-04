@@ -1,0 +1,101 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>요약요청 타임아웃 근본수리 + 실패 재시도 버튼 · 260704</title>
+<style>
+:root{--bg:#0b0d0c;--pan:#14171a;--pan2:#1a1e22;--fg:#e9eaec;--mut:#9aa0a6;--line:#2a2f35;--accent:#0FFD02;--arm:#d8ff3d;--amber:#ffce40;--danger:#ff5a5a;--info:#57b6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.62;font-size:15px;-webkit-text-size-adjust:100%}
+.wrap{max-width:860px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:23px;font-weight:800;letter-spacing:-.4px;margin:0 0 6px;line-height:1.3}
+.sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+.sub b{color:var(--accent)}
+h2{font-size:16px;font-weight:800;margin:30px 0 10px;padding-left:10px;border-left:3px solid var(--accent)}
+p{margin:8px 0}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+.card.warn{border-color:rgba(255,206,64,.4)}
+.card.danger{border-color:rgba(255,90,90,.35)}
+code{background:var(--pan2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--arm)}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px;overflow-x:auto;display:block}
+@media(min-width:640px){table{display:table}}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--pan2);font-weight:700;color:var(--mut);white-space:nowrap}
+.bad{color:var(--danger);font-weight:700}
+.good{color:var(--accent);font-weight:700}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:4px}
+.tag.g{background:rgba(15,253,2,.12);color:var(--accent)}
+.tag.a{background:rgba(255,206,64,.14);color:var(--amber)}
+ul{margin:8px 0;padding-left:20px}li{margin:4px 0}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0;font-size:12.5px}
+.step{background:var(--pan2);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.arr{color:var(--accent);font-weight:800}
+small{color:var(--mut)}
+</style></head><body><div class="wrap">
+
+<h1>요약요청(ask) 타임아웃 근본수리 + 실패 재시도 버튼</h1>
+<div class="sub">260704 · PR <b>#1552</b> (squash <code>98bb4e0</code>) · 10인 평의회 + 재검증 5인 만장일치</div>
+
+<h2>1. 무엇이 문제였나</h2>
+<div class="card danger">
+<p>뷰어 ✨요약요청에 기사 전문("중국인, 몇 시간 연수 후 렌터카 허용")을 붙여넣었는데 <b class="bad">실패</b> — 원문도 못 찾고 재시도도 불가라 매번 전문을 다시 검색해 붙여야 했다.</p>
+<p><b>진짜 원인 = <code>claude -p</code>가 900초(15분) 타임아웃</b>(exit 124). 로그의 <code>MultiEdit matches no known tool</code>은 무해한 노이즈였다. 붙여넣은 전문은 멀쩡히 저장돼 있었음(입력 문제 아님).</p>
+<ul>
+<li><b class="bad">폴오버·재시도 안 걸림</b> — 타임아웃은 출력이 비어 <code>is_quota</code>/<code>is_transient</code> 정규식이 못 잡음(둘 다 출력 텍스트를 grep).</li>
+<li><b class="bad">오분류</b> — 타임아웃인데 "내용 분석 결함(입력이 비었거나 불충분)"으로 잘못 안내.</li>
+<li><b class="bad">왜 15분?</b> — 전문을 이미 줬는데도 <code>image_sources</code> 지침이 "전문이라도 WebSearch 7~10개·여러 번"을 강제 → 검색 루프가 15분을 먹음. + <code>--effort max</code>로 각 검색 턴이 느림.</li>
+</ul>
+</div>
+
+<h2>2. 전 → 후 비교</h2>
+<table>
+<tr><th>항목</th><th>전(문제)</th><th>후(수정)</th></tr>
+<tr><td>실패 시 재시도</td><td class="bad">없음 — 전문 다시 검색·붙여넣기</td><td class="good">대기열 ↗ = 재시도 버튼 1탭 → 전문 복원→요약창</td></tr>
+<tr><td>타임아웃 폴오버</td><td class="bad">안 걸림(출력 빈값)</td><td class="good">rc=124 감지 → 다른 계정 1회 시도</td></tr>
+<tr><td>타임아웃/기사 최악</td><td class="bad">45분(force 3회)*</td><td class="good">20분(ask)/30분(analyze) — 2회 상한</td></tr>
+<tr><td>검색(전문일 때)</td><td class="bad">image_sources 7~10개·url 강제</td><td class="good">2~3개 best-effort·못 찾으면 요약 우선</td></tr>
+<tr><td>effort</td><td>max(검색에 헛사고)</td><td class="good">high(env <code>PIPE_SEARCH_EFFORT</code>)</td></tr>
+<tr><td>실패 안내</td><td class="bad">"내용 결함"(오분류)</td><td class="good">"시간 초과 — 재시도 누르면 복원"</td></tr>
+</table>
+<p><small>* 45분은 초기안(force가 재시도 3회를 다 먹음)에서 평의회가 잡은 워크플로 초과 위험 — 최종안은 force 1회 + 데드라인 가드로 봉인.</small></p>
+
+<h2>3. 재시도 흐름</h2>
+<div class="flow">
+<span class="step">실패 항목 ↗(재시도)</span><span class="arr">→</span>
+<span class="step"><code>api/askget</code> 전문 복원</span><span class="arr">→</span>
+<span class="step">요약창 재오픈(전문 채움)</span><span class="arr">→</span>
+<span class="step">전송</span><span class="arr">→</span>
+<span class="step">성공 시 옛 실패파일 정리(<code>retryOf</code>)</span>
+</div>
+
+<h2>4. 변경 요약</h2>
+<div class="card">
+<p><span class="tag g">파이프라인</span> <code>ask.sh</code>·<code>analyze.sh</code> — effort high · 타임아웃 600/900s · <code>claude_failover_force</code> 1회 + <code>claude_reset_force_swap</code>(쿼터 3계정 체인 예산 보존) · 데드라인 가드(배치 초과 방지) · <code>rc≠124</code> 백오프 가드(2회 상한) · 오분류 정정.</p>
+<p><span class="tag g">프롬프트</span> <code>news-analysis.md §0·§52</code> — 전문이면 url검색·image_sources를 2~3개로 최소화(타임아웃 근본원인 제거 · 공유 SSOT라 analyze도 치료).</p>
+<p><span class="tag g">API</span> <code>functions/api/askget.js</code>(신규) 실패 전문 온디맨드 조회 · <code>submit.js</code> 재제출 성공 시 옛 파일 정리.</p>
+<p><span class="tag g">뷰어</span> 대기열 요약요청 실패 ↗ → 재시도 버튼(<code>go-arm</code> 레몬토큰) · <code>askRetry</code>가 <code>closeQueueUser</code> 제거로 history 경쟁 회피.</p>
+</div>
+
+<h2>5. 효율성</h2>
+<ul>
+<li><b>타임아웃 자릿수급 감소</b> — 전문일 때 검색 루프(15~25회 → 2~3회)를 붕괴시켜 근본 제거. effort high로 검색 턴도 빨라짐.</li>
+<li><b>워크플로 안전</b> — force 1회 + 데드라인 가드로 과부하 배치에서도 잡 timeout(60/90분) 초과 방지.</li>
+<li><b>쿼터 보존</b> — 타임아웃 계정전환을 기사마다 되돌려(<code>reset</code>) 쿼터 3계정 체인 예산을 잠식하지 않음.</li>
+<li><b>사용자 노동 0</b> — 실패해도 재검색·재붙여넣기 없이 1탭 재시도.</li>
+</ul>
+
+<h2>6. 품질 저하 리스크 <span class="tag a">주의</span></h2>
+<div class="card warn">
+<ul>
+<li><b>effort max→high</b> — 요약·편향 균형 품질이 미세 저하할 수 있음(평의회 "중간·미측정"). 완화 = 모델 opus 4.8 유지 + 지침 강제주입 + 검색완화가 남은 예산을 요약에 씀. <b>→ 카나리아 1건 실측 필요</b>(측정으로 뒤집히면 <code>PIPE_SEARCH_EFFORT=max</code> env 한 줄로 롤백).</li>
+<li><b>원문 링크 감소</b> — 전문일 때 검색 포기가 늘면 "원문 ↗"가 빈 요약이 늘 수 있음. 운영자 우선순위(요약 완성 &gt; URL·이미지)로 의식적 허용.</li>
+<li><b>stuck-retry 정리</b> — 워크플로 처리 중 파일 삭제는 racy → best-effort(최악=현 상태, 악화 없음).</li>
+</ul>
+</div>
+
+<h2>7. 검증</h2>
+<div class="card">
+<p><b>10인 적대 평의회</b>(Opus·읽기전용) → ❌2건(타임아웃 45분 워크플로 초과 · 재시도 후 옛파일 24h 잔존) + ⚠️ 다수 발견 → <b>전부 반영</b> → <b>재검증 5인</b>(force/reset·timeout루프·submit·history·검색완화) <b class="good">만장일치 수렴</b>.</p>
+<p><small>기계 게이트 <code>check_refs</code> rc=0(폴오버·--bare·디자인 토큰) · 병합 후 <code>git show origin/main</code> read-back으로 실반영 확인. origin/main에 다른 세션이 넣은 간단수정(<code>timeout_retried</code>)은 이 포괄버전으로 흡수·통일.</small></p>
+</div>
+
+<p style="margin-top:26px;color:var(--mut);font-size:12.5px">다음 = <b style="color:var(--accent)">카나리아 실측</b>: 그 실패건("중국인 렌터카") 재시도 버튼을 눌러 새 로직으로 성공하는지 확인 → 품질 무손상이면 effort high 확정, 아니면 env 롤백.</p>
+
+</div></body></html>
