@@ -992,11 +992,11 @@
   /* S(개정·AB) 하단 네비 = 4안(중앙 FAB) + 네온바 인디케이터 + 글래스(투명도↑) */
   .bnav { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-nav); display:flex; justify-content:space-around; align-items:flex-end;
     padding:0 8px calc(7px + env(safe-area-inset-bottom));
-    background:rgba(0,0,0,.30);   /* 검정 30% 반투명(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스와 겹쳐 은은한 어둠(운영자 260704 "아래 네비에도 투명도 30%") */
+    background:transparent;   /* 투명도 100%(완전 투명·배경 fill 제거) — backdrop blur 글래스만 유지(운영자 260703 "투명도 100%") */
     backdrop-filter:blur(var(--blur-l)) saturate(1.35); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);   /* 글래스모피즘 복원(운영자 260703 "글래스 최대한 살려·가시성 확보됨") — 260701에 스크롤 jank로 뺐던 backdrop blur 재도입(옛 26px raw→--blur-l 22px 토큰·index 글래스 정합). ⚠️ position:fixed 고정바라 스크롤 시 미세 렉 가능 = 폰 실측서 거슬리면 --blur-m(14px)로 낮춤. */
     border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    min-height:39px; margin:0 0 4px; padding:0 4px; background:none; border:none; color:var(--mut); font:inherit; font-size:var(--fs-label); font-weight:700;
+    min-height:39px; margin:0 0 7px; padding:0 4px; background:none; border:none; color:var(--mut); font:inherit; font-size:var(--fs-label); font-weight:700;
     letter-spacing:-.2px; cursor:pointer; text-decoration:none; }   /* 아이콘 제거·글자 메뉴(운영자 260703) · min-height 52+mb 16 = FAB 값 재사용 → 글자가 중앙 FAB 원 세로중앙에 정렬 · color transition 제거 = 탭 누르자마자 색 즉시 전환(운영자 260621) */
   .bnav-i::before { content:''; position:absolute; top:0; left:50%; width:30px; height:3.5px; border-radius:0 0 4px 4px;
     background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.55), 0 0 16px rgba(var(--accent-rgb),.3);   /* 강조색 활성 인디케이터 = 활성 탭 점등 포인트(운영자 260703 "강조색은 +픽토그램·활성표시부만" · 무채색 맹맹→강조색 재적용) */
@@ -1013,12 +1013,12 @@
     box-shadow:0 0 8px rgba(15,253,2,.5); cursor:pointer; z-index:2; }
   .bnav-i .qbadge[hidden] { display:none; }
   .bnav-fab { flex:none; width:39px; height:39px; margin:0 6px 12px; border-radius:50%; border:none; cursor:pointer;
-    background:rgba(0,0,0,.30); color:var(--accent); display:grid; place-items:center;
-    backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);   /* 검정 30% 반투명 원(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스로 형체 유지 · 음양각(inset 하이라이트/음영/유리링)·외부 그림자 제거 = 평평한 버튼만 딱(운영자 260704 "음양각 오버렙 없애고 자연스럽게 버튼만 · 검정 30% 투명도") */
-    transition:transform .12s; text-decoration:none; }
+    background:transparent; color:var(--accent); display:grid; place-items:center;
+    backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);   /* 반투명 글래스 원(배경 알파 ≈30% · rgba .27/.33) — 네비바 글래스 흐름에 녹아들되 배경 fill로 형체·입체 유지(운영자 260703 "30% 투명도 다시 적용" · 100% transparent는 형체 약해 30% 복원) · backdrop blur·입체 그림자 유지(픽토그램만 강조색 = + 포인트) */
+    box-shadow:0 11px 26px rgba(0,0,0,.5), inset 0 2px 1px rgba(255,255,255,.34), inset 0 -7px 13px rgba(0,0,0,.33), inset 0 0 0 1px rgba(255,255,255,.09); transition:transform .12s; text-decoration:none; }   /* 입체감(볼록 유리) — 상단 하이라이트(빛)+하단 내부음영(볼록)+가장자리 유리링+깊은 외부그림자 = 반투명 글래스 유지하며 떠있는 구체감(운영자 260703 "입체감만 있으면") */
   .bnav-fab svg { width:20px; height:20px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 4px rgba(var(--accent-rgb),.42)); transition:transform .3s var(--ease); }   /* +가 강조색으로 회전(ic-spin 위임 모션·line 8273) = 누름 액티브 효과 = 강조색 +가 빙글 → × */
   .bnav-fab:active { transform:scale(var(--press-m,.92)); }
-  .bnav-fab.open { box-shadow:0 0 0 4px rgba(255,255,255,.14); }   /* 열림 = 무채색 링만(음양각·외부그림자 제거, 평평 유지) — 열림 상태 표시 = 링 + svg 회전(+→×)(운영자 260704) */
+  .bnav-fab.open { box-shadow:0 11px 26px rgba(0,0,0,.5), inset 0 2px 1px rgba(255,255,255,.34), inset 0 -7px 13px rgba(0,0,0,.33), inset 0 0 0 1px rgba(255,255,255,.09), 0 0 0 4px rgba(255,255,255,.14); }   /* 열림 = 입체 그림자(base 계승) + 무채색 링(운영자 260703) */
   .bnav-fab.open svg { transform:rotate(135deg); }   /* + → × */
   /* 라디얼 제작 메뉴 — FAB 위로 3버튼 반원 펼침. 버튼=.sbtn 투명 글래스 계승(rgba(8,15,11,.3)·blur8 → 뒤 비침). 위치=transform translate(GPU 합성·리플로우 0)·등장=scale/opacity. (아이템은 position:absolute라 fixed+transform iOS 히트테스트 누수 무관 — 이미 transform:scale 사용 중이었음.) */
   .radmenu { position:fixed; left:50%; bottom:calc(41px + env(safe-area-inset-bottom)); width:0; height:0; z-index:var(--z-remote); --rad-r:106px; }   /* 메인버튼↔펼침 간격 = 원복(운영자 요청: 75% 축소는 메인 라디얼이 아니라 도구 내부 #rfab 펼침이 대상이었음·260627) */
