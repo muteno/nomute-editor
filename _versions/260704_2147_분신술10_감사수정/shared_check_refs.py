@@ -101,7 +101,7 @@ _DESIGN_BASELINE = {
     # ▼ 도구 3파일 게이트 편입(분신술 9·10 P0 — 옛 사각지대: 닫기/최소화 버그가 난 파일군이 무방비였음). accent_raw=0 = ly/k 토큰화 완료(--accent-rgb·260628), 늘면 즉시 잡힘. comp 7은 후속 토큰화 대상.
     'viewer/ly.html': {'accent_raw': 0, 'blur': 14, 'hex': 11, 'accent_hex': 0, 'green_wash': 0},   # 감사 배치3(260704): err빨강→var(--danger)[신설]·뜬회색#cfd2d7→--mut. # blur12→14·hex14→16 = 붙여넣기 폴백 모달(.pastefb) 신설 — backdrop blur(4px) webkit+표준 +2(ly엔 blur토큰 없어 raw) + 박스 배경 그라데이션 #14160f·#0c0f0c +2(기존 모달 배경 패턴·통일 기틀·운영자 260628)
     'viewer/k.html': {'accent_raw': 0, 'blur': 12, 'hex': 3, 'accent_hex': 0, 'green_wash': 0},
-    'viewer/comp.html': {'accent_raw': 0, 'blur': 2, 'hex': 1, 'accent_hex': 0, 'green_wash': 0},   # 감사 배치3(260704): err빨강→var(--danger)[신설]·뜬회색#cfd2d7→--mut(hex1=textarea bg #0e0f11만). nm-svg.js 로드·인라인아이콘 5종 삭제·상태줄 이모지→SVG = icon_ssot·viewer_js 게이트 편입(반쪽편입 해소·분신술10 260704). # STAGE1: --accent-rgb 추가·raw 7곳 토큰화 → accent_raw 7→0(픽셀0·k/ly 패턴·260628).
+    'viewer/comp.html': {'accent_raw': 0, 'blur': 2, 'hex': 1, 'accent_hex': 0, 'green_wash': 0},   # 감사 배치3(260704): err빨강→var(--danger)[신설]·뜬회색#cfd2d7→--mut. # STAGE1: --accent-rgb 추가·raw 7곳 토큰화 → accent_raw 7→0(픽셀0·k/ly 패턴·260628).
 }
 _ROOT_BLOCK = re.compile(r':root\s*\{.*?\}', re.S)
 
@@ -149,7 +149,7 @@ def check_viewer_js():
     if not node:
         print('⚠️ viewer JS 구문검사 스킵(node 없음)'); return 0
     rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html'):
         try:
             html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
         except Exception:
@@ -185,7 +185,7 @@ def check_icon_ssot():
     if not shared:
         print('⚠️ nm-svg.js에 공유 상수 0 — 게이트 스킵'); return 0
     rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/comp.html'):
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html'):
         try:
             html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
         except Exception:
