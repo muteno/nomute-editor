@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>세션 요구사항 16 인덱싱 · 검증 보고서 (260704)</title>
+<style>
+  :root{
+    --bg:#121212; --card:rgba(255,255,255,.035); --card2:rgba(255,255,255,.02);
+    --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.05);
+    --accent:#0FFD02; --purple:#c24bf5; --red:#e23b2a; --lime:#d8ff3d; --cyan:#0cd0f7; --blue:#3a6ddb; --coral:#ff7a6b;
+    --r-l:16px; --r-m:11px; --r-s:9px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Pretendard",Roboto,"Noto Sans KR",sans-serif;
+    line-height:1.6;font-size:15px;-webkit-font-smoothing:antialiased;padding:28px 18px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:23px;font-weight:800;margin:0 0 6px;letter-spacing:-.02em}
+  h1 .g{color:var(--accent)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 24px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 28px}
+  .chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--mut)}
+  .chip b{color:var(--fg);font-weight:700}
+  h2{font-size:16px;font-weight:800;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h2 .n{color:var(--accent);font-variant-numeric:tabular-nums}
+  /* index summary table */
+  .idxwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-l);margin:0 0 30px}
+  table.idx{border-collapse:collapse;width:100%;min-width:640px;font-size:13px}
+  table.idx th,table.idx td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+  table.idx th{background:rgba(255,255,255,.04);color:var(--mut);font-weight:700;font-size:12px;position:sticky;top:0}
+  table.idx td.id{color:var(--accent);font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.idx tr:last-child td{border-bottom:none}
+  .st{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .st.done{background:rgba(15,253,2,.13);color:var(--accent)}
+  .st.scan{background:rgba(12,208,247,.13);color:var(--cyan)}
+  .st.hold{background:rgba(216,255,61,.14);color:var(--lime)}
+  /* requirement cards */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);padding:18px 18px 8px;margin:0 0 16px}
+  .card > .top{display:flex;align-items:flex-start;gap:11px;margin-bottom:4px}
+  .card .rid{color:var(--accent);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:1px}
+  .card .rtitle{font-weight:800;font-size:15.5px;flex:1;letter-spacing:-.01em}
+  .card .req{color:var(--mut);font-size:12.5px;margin:2px 0 14px;padding-left:35px}
+  .card .req::before{content:"요구: ";color:var(--fg);opacity:.55}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line2);border-radius:var(--r-m);overflow:hidden;border:1px solid var(--line2)}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  .cell{background:var(--bg);padding:11px 13px}
+  .cell .lb{font-size:10.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+  .cell .lb::before{content:"";width:7px;height:7px;border-radius:2px;flex:none}
+  .cell.beforeafter .lb::before{background:var(--fg)}
+  .cell.risk .lb::before{background:var(--red)}
+  .cell.pros .lb::before{background:var(--cyan)}
+  .cell.fix .lb::before{background:var(--lime)}
+  .cell.plan .lb::before{background:var(--blue)}
+  .cell.idea .lb::before{background:var(--purple)}
+  .cell.god .lb::before{background:var(--accent)}
+  .cell.unk .lb::before{background:var(--mut)}
+  .cell .lb .t{color:var(--mut)}
+  .cell.god .lb .t{color:var(--accent)}
+  .cell.risk .lb .t{color:var(--coral)}
+  .cell .bd{font-size:12.7px;color:var(--fg);opacity:.92}
+  .cell .bd b{color:var(--fg);font-weight:700;opacity:1}
+  .cell .bd code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px;font-size:11.5px;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  .cell.god .bd{color:#dfffdb}
+  .arrow{color:var(--accent);font-weight:800}
+  .foot{margin-top:34px;padding:16px 18px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);font-size:13px;color:var(--mut)}
+  .foot b{color:var(--fg)}
+  .legend{font-size:11px;color:var(--mut);margin:-18px 0 22px}
+  .num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1><span class="g">노뮤트</span> 세션 요구사항 16 인덱싱 · 검증 보고서</h1>
+<p class="sub">260704 · frontmatter 버그 수리 → 중복 회수 → 기틀화 → 디자인 기틀 미적용 전수조사</p>
+
+<div class="meta">
+  <span class="chip">머지 PR <b>#1562 · #1572</b></span>
+  <span class="chip">분신술 <b>10인 + 조사 8인</b></span>
+  <span class="chip">완료 <b>15</b> / 조사완료 <b>1</b></span>
+  <span class="chip">check_refs <b>rc=0</b></span>
+</div>
+
+<h2><span class="n">§1.</span>&nbsp; 요구사항 인덱스 (16행 요약)</h2>
+<p class="legend">상태 — <span class="st done">완료·머지</span> 코드/문서 반영+read-back 확인 · <span class="st scan">조사완료</span> 실측 데이터 확보(수정은 승인 대기) · <span class="st hold">지시대기</span></p>
+<div class="idxwrap">
+<table class="idx">
+<thead><tr><th>#</th><th>요구사항</th><th>산출물</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td class="id">R01</td><td>깨진 화면 원인 규명</td><td>진단: frontmatter 닫는 <code>---</code> 누락 → 뷰어 파싱 실패</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R02</td><td>재발 방지 — 생성측 보증 (ask.sh)</td><td>저장 직전 닫는 <code>---</code> 자동 삽입 awk</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R03</td><td>재발 방지 — 생성측 보증 (analyze.sh)</td><td>동일 awk 미러</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R04</td><td>재발 방지 — 렌더측 방어 (build-viewer)</td><td>닫는 <code>---</code> 없어도 관용 파싱</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R05</td><td>과거 깨진 파일 수리</td><td>렌터카 요약 1건 닫는 <code>---</code> 삽입</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R06</td><td>재발 감시 — 회귀 카나리아</td><td>digest_guard WARN(비차단)</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R07</td><td>수리 검증 (적대 평의회)</td><td>10인 만장일치 ✅ · 285파일 회귀 0</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R08</td><td>중복 요약 둘 중 하나 회수</td><td>18:40본 회수 · 16:27본(원문URL 완비) 유지</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R09</td><td>코딩 참고점 기틀에 박기</td><td>CLAUDE.md §📰 「LLM frontmatter 3층 방어」</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R10</td><td>"이 경우는 검증하지마" 준수</td><td>회수+기틀 평의회 생략(자가검증만)</td><td><span class="st done">완료·머지</span></td></tr>
+<tr><td class="id">R11</td><td>디자인 기틀 파일 위치 브리핑</td><td>3계층 8파일 지도(값 SSOT·규칙·게이트·거울)</td><td><span class="st done">완료</span></td></tr>
+<tr><td class="id">R12</td><td>기틀 미적용 조사 — index.html</td><td>부분이관 드리프트: radius 999px×34·accent-rgb×62·fw×134</td><td><span class="st scan">조사완료</span></td></tr>
+<tr><td class="id">R13</td><td>기틀 미적용 조사 — thumb/ly/k/comp</td><td>thumb 62선언·ly·k·comp 계승/미계승 혼재</td><td><span class="st scan">조사완료</span></td></tr>
+<tr><td class="id">R14</td><td>기틀 미적용 조사 — CII 컴포넌트</td><td>M1(×문자) + H1~H4(✓문자·abbrDlg 헤더 미계승)</td><td><span class="st scan">조사완료</span></td></tr>
+<tr><td class="id">R15</td><td>기틀 미적용 조사 — 소프트룰 사각지대</td><td>raw 드리프트 <b>80%가 기계 게이트 밖</b>(1,637개)</td><td><span class="st scan">조사완료</span></td></tr>
+<tr><td class="id">R16</td><td>요구사항 16 인덱싱 HTML 보고서 제출</td><td>이 문서</td><td><span class="st done">완료</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2><span class="n">§2.</span>&nbsp; 요구사항별 상세 (필수 8값 × 16행)</h2>
+
+<!-- ============ R01 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R01</span><span class="rtitle">깨진 화면 원인 규명</span></div>
+  <div class="req">"먼가 깨진거 같은데 원인 찾아주고"</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">요약 모달에 메타데이터(<code>guidelines_version</code>·<code>title</code>…)가 raw로 통째 노출 <span class="arrow">→</span> 원인 확정: LLM이 frontmatter 닫는 <code>---</code>를 생략 → 뷰어 <code>parseFrontmatter</code> 여닫이 정규식 매치 실패 → 전체가 본문으로 렌더</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">오진 시 엉뚱한 곳 수리. 실제로 <code>ask.sh</code> line148 awk를 범인으로 의심할 소지 있었음</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> queue 285파일 중 딱 1건만 그런 것까지 특정. <b>단</b> LLM 확률적 출력이라 "왜 이 파일만"의 결정론적 재현은 불가</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">정상본(16:27)과 깨진본(18:40) 바이트 비교(<code>cat -A</code>)로 닫는 <code>---</code> 유무를 물증화</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">없음(원인 확정 종결)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">LLM 출력 파싱 버그는 "1건 재현"보다 "형식 불변식"으로 접근해야 근절 → R09로 연결</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">정상/깨진 두 파일을 <b>나란히 diff</b>해 line148 awk 무죄를 즉시 배제 → 진단 시간 단축</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">LLM이 왜 하필 이 요청에서만 닫는 <code>---</code>를 뺐는지(effort high 전환 영향? 순수 변동성?)는 미상</div></div>
+  </div>
+</div>
+
+<!-- ============ R02 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R02</span><span class="rtitle">생성측 보증 — ask.sh</span></div>
+  <div class="req">"재발 위험있으면 해결좀" (요약요청 경로)</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">닫는 <code>---</code> 없이 그대로 저장 <span class="arrow">→</span> 저장 직전 awk가 필드 끝지점에서 닫는 <code>---</code> 자동 삽입(정상 출력은 무변형)</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">awk가 정상 출력을 건드리면 회귀. 필드 판정 정규식이 본문을 흡수하면 frontmatter 반토막</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 근본 지점(생성) 차단. <b>단</b> 정규식이 <code>key: "value"</code> 단일라인 전제 — 규약 위반 출력엔 취약</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">모든 필드 주입 뒤 <b>마지막</b>에 배치 + build-viewer가 동일 방식 truncate → 불일치 원천 차단</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">필드 정규식을 <code>:([[:space:]]|$)</code>로 넓히는 완화안(보류 — 실효 0건)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">awk 케이스 4종(정상·누락·빈줄 없이 본문·URL 다중값) 단위테스트로 무변형 실증</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">"이미 닫는 <code>---</code> 있으면 그 줄에서 <code>cl=1</code>로 멈춤" — <b>정상 출력 절대 무변형</b> 보장 로직</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">LLM이 <code>key:"value"</code>(콜론 뒤 공백 생략)까지 어길 확률 — 285파일 0건이나 미래는 미상</div></div>
+  </div>
+</div>
+
+<!-- ============ R03 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R03</span><span class="rtitle">생성측 보증 — analyze.sh</span></div>
+  <div class="req">재발 방지 미러 (폰공유·자동픽 자동요약 경로)</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">ask.sh와 동일 결함 보유(미러) <span class="arrow">→</span> 같은 awk를 #마약 백스톱·alt_urls 주입 뒤에 배치</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">analyze.sh는 <b>자동 큐레이션 심장</b> — 오작동 시 전 자동요약 손상</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> ask/analyze 대칭 유지. <b>단</b> 라이브 파이프라인이라 검증 부담 큼</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">REGEN(덮어쓰기) 경로도 동일 변형 거침을 코드로 확인(평의회 앵글⑧)</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">없음(2곳이 LLM-생성 frontmatter의 전부 — 평의회 앵글④ 확증)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">revise 경로는 여닫이 매치 fail-safe라 구조적 재발 불가 — 추가 손댈 곳 없음</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">주입 순서를 "보증 awk = 항상 마지막"으로 고정 → 첫-매치 가드와 충돌 원천 차단</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">라이브 자동요약이 실제 다음 발동 때 무결한지는 다음 런 로그로만 최종 확인 가능</div></div>
+  </div>
+</div>
+
+<!-- ============ R04 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R04</span><span class="rtitle">렌더측 방어 — build-viewer 관용 파싱</span></div>
+  <div class="req">재발 방지 2층 (뷰어 렌더 시)</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">닫는 <code>---</code> 없으면 <code>return {meta:{},body:raw}</code>=메타 통째 노출 <span class="arrow">→</span> 여는 <code>---</code>만 있어도 필드 끝지점서 본문 관용 분리</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">정상 파일 파싱 경로 변경 시 285건 전체 회귀</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 원본 안 고쳐도 재빌드로 렌더 교정. <b>단</b> 깨진 파일의 본문 첫 줄이 영문 <code>Word:</code>면 1줄 흡수(이미 깨진 파일 한정)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd"><code>i&gt;0</code> 가드(필드 0개면 raw 보존) + ASCII-키 제한(한글 본문 흡수 불가)</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">없음(thumb_gen.parse_md 등 엄격 소비자도 생성 보증으로 커버)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">정상 파일은 첫 정규식이 매치 = 새 분기 미진입 = 기존 동작 100% 불변(격리 테스트로 실증)</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd"><b>생성+렌더가 동일 방식으로 truncate</b> → 어느 쪽이 뚫려도 둘의 결과가 일치(불일치 0)</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">라이브가 Cloudflare Access 뒤라 curl 검증 불가 — 실제 렌더는 운영자 눈/배포 전파로만 확인</div></div>
+  </div>
+</div>
+
+<!-- ============ R05 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R05</span><span class="rtitle">과거 깨진 파일 수리</span></div>
+  <div class="req">"기존거 제대로 하던지"</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">렌터카 요약 1건 닫는 <code>---</code> 없음 <span class="arrow">→</span> 생성측과 동일 awk 적용해 닫는 <code>---</code> 삽입(펜스 2개 확인)</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">수동 편집이 본문/메타 경계를 잘못 잡으면 다른 필드 손상</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 생성 awk와 <b>동일 로직</b> 적용 = 일관성. <b>단</b> 이 파일은 R08에서 결국 회수됨(수리 무의미해질 뻔)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">회수 전까지 렌더 정상화 확인 + 백업 보존</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">없음(R08에서 회수 완료)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">전수 스캔(<code>^---$</code> 카운트&lt;2)으로 다른 깨진 파일 0건 확인 — 소급 구제 불요</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">수동 삽입 대신 <b>생성 awk를 그 파일에 실행</b> → 사람 손 오차 0</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">—</div></div>
+  </div>
+</div>
+
+<!-- ============ R06 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R06</span><span class="rtitle">회귀 카나리아 — digest_guard</span></div>
+  <div class="req">재발 감시 (awk가 미래에 깨질 경우)</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">닫는 <code>---</code> 누락을 침묵 통과(경고·차단 0) <span class="arrow">→</span> 저장 직후 lint에서 WARN 출력(Actions 로그 조기발견)</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">거의 없음(비차단·<code>return 0</code> 유지)</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 생성 awk 회귀를 로그로 조기포착. <b>단</b> 방어가 아닌 <b>감지</b>(이미 저장된 뒤)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">방어는 생성 awk가 이미 담당 — 카나리아는 순수 이중 안전판</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">WARN 누적 시 알림 연동 여지(현재는 로그만)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">check_refs 신규 게이트는 <b>넣지 않음</b> — check-refs.yml은 PR 전용인데 queue는 봇 직푸시라 경로 불일치(무효)</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">하드 차단 대신 WARN — 차단하면 다이제스트 유실(메타 노출보다 나쁨)이라 <b>자동수정&gt;차단</b> 판단</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">—</div></div>
+  </div>
+</div>
+
+<!-- ============ R07 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R07</span><span class="rtitle">수리 검증 — 적대적 10인 평의회</span></div>
+  <div class="req">frontmatter 수리(파이프라인 심장)의 안전 확인</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">자가검증 3종만 <span class="arrow">→</span> Opus 4.8 읽기전용 10인 병렬 소환(근본원인·정규식·회귀·누락경로·내부구조·다운스트림·순서·게이트·총괄)</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">평의회가 READ-ONLY 계약 위반해 rogue 커밋할 위험(#1080 전례)</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 만장일치 ✅ · 285파일 회귀 0 확증. <b>단</b> 토큰 비용(10인 병렬)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">Explore(Edit/Write 미보유) 타입으로 발사 = 파일변경 기계적 차단 + rogue 브랜치 사후점검</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">없음(수리 확정 종결)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">각 앵글이 "잔여 잠재취약"을 기록만 하고 차단 안 함 → 최소변경 원칙 유지</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">10개 각도를 <b>중복 없이</b> 분담(근본·정규식·회귀·경로·구조·순서·게이트·다운스트림·총괄) → 사각지대 최소화</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">소프트룰(모델 준수)이라 약한 모델·미래 세션에서 동일 품질 보장은 불확실</div></div>
+  </div>
+</div>
+
+<!-- ============ R08 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R08</span><span class="rtitle">중복 요약 둘 중 하나 회수</span></div>
+  <div class="req">"올라온것중에 둘중 하나 회수해"</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">같은 기사 요약 2건(16:27·18:40) 피드 중복 <span class="arrow">→</span> <b>18:40본 회수</b>(queue+cards) · 16:27본(원문URL·검색이미지 완비) 유지</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">둘의 장단이 상충(16:27=URL O·카드 실패 / 18:40=URL X·카드 텍스트 완성) — 잘못 지우면 원하던 것 손실</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 피드 중복 해소. <b>단</b> 남긴 16:27본은 카드가 실패 상태라 다시 '슛' 필요</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">삭제 전 <code>AskUserQuestion</code>으로 어느 것 남길지 운영자 확정 + 백업 보존(롤백 가능)</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">16:27본 카드 재생성(운영자 '슛' 시점)</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">viewer 산출물은 커밋 안 됨(Cloudflare Pages가 재빌드) → queue/cards만 지우면 피드 자동 정리</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">카드 <code>status.json</code>·error.log까지 확인해 <b>"URL vs 카드완성" 트레이드오프를 표로</b> 제시 후 선택 위임</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">운영자가 같은 기사를 왜 두 번 요약요청했는지(첫 요청 불만? 실패 재시도?)는 미상</div></div>
+  </div>
+</div>
+
+<!-- ============ R09 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R09</span><span class="rtitle">코딩 참고점 기틀에 박기</span></div>
+  <div class="req">"코딩할때 참고할만한 점 있으면 기틀에 박고"</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">교훈이 코드 주석·작업이력에만 <span class="arrow">→</span> CLAUDE.md §📰 "🔒 깨면 안 되는 불변"에 <b>「LLM frontmatter 출력=형식 보증 3층」</b> 불변 추가</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">라우터 비대화(얇은 라우터 원칙 위배). 소프트룰이라 약한 모델은 무시 가능</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 미래 세션이 신규 LLM 파서에 3층 계승. <b>단</b> 기계 강제 아님(문서 소프트룰)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">코드측 실제 강제는 digest_guard 카나리아가 담당 — 문서는 원칙, 게이트는 감지</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">신규 LLM출력 파서·생성 스크립트가 3층 계승하는지 리뷰 시 확인</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">"여닫이 매치 파서는 한쪽 누락에 통째 실패" 경고를 일반화 — frontmatter 외 다른 페어 파서에도 적용</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">교훈을 "이 버그 수정"이 아니라 <b>"LLM출력→기계파싱 전반의 3층 원칙"</b>으로 추상화</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">라우터에 넣을지 별도 문서로 뺄지의 최적 위치(현재 §📰 불변 하위)는 취향 여지</div></div>
+  </div>
+</div>
+
+<!-- ============ R10 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R10</span><span class="rtitle">"이 경우는 검증하지마" 준수</span></div>
+  <div class="req">회수+기틀기록은 평의회 생략</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">실질 코드변경은 10인 표준 <span class="arrow">→</span> 운영자 지시로 회수(콘텐츠 정리)+기틀(산문)은 <b>평의회 생략</b>, check_refs+read-back 자가검증만</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">검증 생략분에 숨은 결함이 있어도 못 잡음</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 토큰·시간 절약(운영자 판단 존중). <b>단</b> 자가검증만의 커버리지 한계</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">회수=되돌리기 쉬운 콘텐츠 삭제(백업), 기틀=산문이라 검증가 효용 낮은 영역으로 한정</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">없음</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">검증 강도를 대상 성격(코드=10인 / 콘텐츠·산문=자가)에 맞춰 조절하는 게 §✅ 정본에 부합</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">지시를 그대로 따르되 check_refs+원격 read-back <b>최소 안전장치는 유지</b>(반영 보장은 불변)</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">—</div></div>
+  </div>
+</div>
+
+<!-- ============ R11 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R11</span><span class="rtitle">디자인 기틀 파일 위치 브리핑</span></div>
+  <div class="req">"지금 디자인 기틀 파일 위치 브리핑하고"</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">머릿속 산재 <span class="arrow">→</span> 3계층 8파일 지도 확정: <b>값</b>=<code>viewer/index.html :root</code>(102토큰)+<code>design-tokens.lock</code> / <b>규칙</b>=CLAUDE.md §🎨+CII+가이드북 / <b>게이트</b>=check_refs / <b>거울</b>=tokens.css·base.css(build 파생)</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">거울 파일(tokens.css·base.css)을 정본으로 오해하고 직접 수정 → 다음 build에 소멸</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> :root 한 곳 고치면 거울·9데모 자동 동기화. <b>단</b> 4뷰어 색은 독자 팔레트라 완전 단일화는 아님</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">거울은 <code>build_design_mirror.py</code> 자동 생성 + check_refs 정합 하드게이트로 드리프트 차단</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">STAGE3(4뷰어 구조토큰 var() 배선)은 진행 중 — R12~R15가 그 남은 규모</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">파일 8개를 "값·규칙·게이트·거울" 4역할로 묶으면 신규 세션 이해 빠름</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">각 파일 존재+링크 여부를 실측(<code>tokens.css</code> 4뷰어 링크 확인)으로 검증 후 브리핑</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd"><code>viewer/tokens.html</code>이 실사용 페이지인지 디자인 데모인지(조사 대상서 제외함)</div></div>
+  </div>
+</div>
+
+<!-- ============ R12 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R12</span><span class="rtitle">미적용 조사 — index.html</span></div>
+  <div class="req">"그거 적용안된곳 찾아내 웹앱내에" (index)</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">막연 <span class="arrow">→</span> <b>부분 이관 드리프트</b> 정량: radius <code>999px</code>×34·<code>16px</code>×11·<code>9px</code>×20, <code>--r-m</code>(11px)은 정의됐는데 0회 사용, accent-rgb 리터럴 62곳, font-weight 800/700 raw 134곳</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">index 9,097줄 대량 치환 시 회귀·시각 변화 위험 큼</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 토큰값 정확 일치분만 골라 안전. <b>단</b> 같은 파일에 토큰 사용·raw 병존(반쪽 이관 상태)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">SUMMARY_TPL(CSP self-contained)·<code>::backdrop</code>·토큰 부재값은 정당 예외로 분리</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">P0=999px→<code>--r-pill</code> 34곳 일괄, P1=accent-rgb 62곳→<code>var(--accent-rgb)</code></div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">"토큰이 이미 정의·소수 사용 중인데 raw 병존" = 가장 안전한 치환 후보(값 검증 불요)</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">토큰 <code>var()</code> 실사용 횟수 vs 같은값 raw 병존을 <b>표로 대비</b> → 이관 완성도를 수치화</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">복합 padding(<code>9px 12px</code>처럼 토큰값+비토큰 혼합)은 기계 치환 난이도 — 개별 검토 필요</div></div>
+  </div>
+</div>
+
+<!-- ============ R13 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R13</span><span class="rtitle">미적용 조사 — thumb/ly/k/comp</span></div>
+  <div class="req">4뷰어 구조토큰 미참조</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">tokens.css 링크만 하고 var() 미사용 <span class="arrow">→</span> <b>thumb 62선언</b>(blur10·pill999×9·typo32·spacing10)·ly(blur5·radius999×4·fs12)·k(18곳)·comp(첨부행·<code>.go</code>·<code>.status</code>) 계승/미계승 혼재</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">색은 독자 팔레트라 <b>절대 통일 금지</b>(재색칠 회귀) — 구조토큰만 조심히</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 색 안 건드리고 구조만 정합. <b>단</b> thumb는 인라인 blur 토큰이 없어 값 부재분은 계승 불가(토큰 확장 선행)</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">"토큰 정확 일치분"만 P0, "그리드 밖(토큰 부재)"은 STAGE3 토큰 확장 후로 분리</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">P0=4뷰어 <code>999px</code>→<code>--r-pill</code>, <code>.abdlg</code> radius 20px↔<code>.cfm var(--r-modal)</code> 형제 불일치 교정</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">comp는 <code>--r-s</code>·<code>--fs-label</code>은 계승하면서 <code>.go</code> 버튼만 raw = 같은 파일 내 일관성부터 맞추면 저비용</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">각 뷰어 baseline(blur 43/14/12/2)과 조사 카운트를 <b>대조</b>해 "계승 가능 vs 토큰 부재" 정확 분리</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">near-miss(radius 10px가 --r-s 9/--r-m 11 사이)가 광학보정인지 드리프트인지 — 개별 의도 확인 필요</div></div>
+  </div>
+</div>
+
+<!-- ============ R14 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R14</span><span class="rtitle">미적용 조사 — CII 컴포넌트</span></div>
+  <div class="req">컴포넌트 계승 인덱스 드리프트</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">막연 <span class="arrow">→</span> <b>M1</b> thumb <code>.abdel</code> 문자 <code>×</code>(기계 검출) · <b>H1</b> comp <code>✓</code> 문자(ly는 이미 제거·CHECK_SVG 있는데 미사용) · <b>H2~H4</b> thumb <code>#abbrDlg</code> 헤더·닫기X가 CII 정본 미계승</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">기계가 <code>✓</code>·화살표는 못 잡음(<code>_XSET</code>에 없음) = 수동 감사 없인 계속 샘</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 표지판 도형(§🎨 3-1) 정본 SVG 자명. <b>단</b> 컴포넌트 축은 값 게이트와 별개라 자동화 약함</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd"><code>check_x_char()</code>의 <code>_XSET</code>에 <code>✓</code>·화살표 추가 → H1류 기계 검출로 승격</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">P0=comp <code>✓</code>→<code>CHECK_SVG</code>·thumb <code>×</code>→X-path / P1=<code>.abdlg-h</code>를 <code>.modal-head</code> 별칭 등재</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">ly가 이미 <code>✓</code> 제거한 교정을 comp에 <b>전파</b>만 하면 됨(선례 계승 = 재설계 0)</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">"셀렉터명은 <code>.dlg-x</code>(원형)인데 스타일은 <code>.tool-x</code>(사각)" 같은 <b>표↔코드 엇갈림</b>까지 색출(H4)</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">상태 텍스트 이모지(<code>⏳✅⚠️</code>)를 SVG로 바꿀지 — "글래스 아이콘 버튼 아님"이라 현재는 예외 처리</div></div>
+  </div>
+</div>
+
+<!-- ============ R15 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R15</span><span class="rtitle">미적용 조사 — 소프트룰 사각지대</span></div>
+  <div class="req">기계 게이트가 안 잡는 축</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">사각지대 규모 미상 <span class="arrow">→</span> <b>raw 드리프트의 ~80%(1,637개)가 기계 게이트 밖</b>: spacing 505(토큰화 &lt;1%)·typo 508(~8%)·shadow 155(토큰 없음)·motion 287(~4%)·radius 182(22%)</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">게이트가 accent/hex/blur 4키만 세고 나머지는 <b>정규식 자체가 없음</b> → 모델 준수에만 의존</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 우선순위 정량화(spacing·typo가 최대). <b>단</b> shadow는 토큰이 아예 없어 준수 대상 자체가 없음</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">check_refs에 radius/spacing/typo raw 카운트 게이트 신설(baseline ratchet 방식) → 소프트룰을 기계화</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">shadow 토큰 신설(index 121개 최우선) → 4뷰어 motion(--dur/--ease) 배선 0%부터</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">진원지=index.html(모든 미강제 축의 60~70%) → index부터 게이트 켜면 최대 효과</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">"게이트가 세는 406 vs 안 세는 1,637"을 대비해 <b>사각지대 80%를 한 수치로</b> 제시</div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">spacing 1~2px 광학보정·keyframe timing 일부가 정당 raw라 실효 규모는 소폭 하향 가능(정확 경계 미확정)</div></div>
+  </div>
+</div>
+
+<!-- ============ R16 ============ -->
+<div class="card">
+  <div class="top"><span class="rid">R16</span><span class="rtitle">요구사항 16 인덱싱 HTML 보고서 제출</span></div>
+  <div class="req">"요구사항 다 행으로 만들어서 정리 · html로 제출"</div>
+  <div class="grid">
+    <div class="cell beforeafter"><div class="lb"><span class="t">기존 → 현재</span></div><div class="bd">채팅 산발 보고 <span class="arrow">→</span> 16행 인덱스 + 필수 8값(기존→현재·리스크·장단점·단점보완·추후계획·아이데이션·신의한수·이건모르겠다) 카드형 HTML</div></div>
+    <div class="cell risk"><div class="lb"><span class="t">리스크</span></div><div class="bd">16개를 억지로 맞추면 항목 중복·희석</div></div>
+    <div class="cell pros"><div class="lb"><span class="t">장 · 단점</span></div><div class="bd"><b>장</b> 세션 전체를 한 문서로 검증 가능. <b>단</b> 넓은 8열 표는 모바일서 세로 스택 필요</div></div>
+    <div class="cell fix"><div class="lb"><span class="t">단점 보완</span></div><div class="bd">최근 보고서 스타일 복제(재설계 0)·§🎨 토큰값 인라인·반응형 grid(680px 이하 1열)</div></div>
+    <div class="cell plan"><div class="lb"><span class="t">추후 계획</span></div><div class="bd">R12~R15 조사분의 실제 수정 착수 여부는 운영자 지시 대기</div></div>
+    <div class="cell idea"><div class="lb"><span class="t">아이데이션</span></div><div class="bd">"완료(코드머지)"와 "조사완료(수정대기)"를 상태 배지로 구분 → 무엇이 남았는지 한눈에</div></div>
+    <div class="cell god"><div class="lb"><span class="t">신의 한수</span></div><div class="bd">각 요구를 작업 단위로 16 분해 → 요구사항 누락 없이 <b>전수 추적</b></div></div>
+    <div class="cell unk"><div class="lb"><span class="t">이건 모르겠다</span></div><div class="bd">운영자가 의도한 "16"이 이 분해와 정확히 일치하는지(다른 그루핑을 원했을 여지)</div></div>
+  </div>
+</div>
+
+<div class="foot">
+<b>검증 종합</b> — R01~R10: 코드/문서 <b>main 머지 완료</b>(PR #1562·#1572), <code>git show origin/main</code> read-back 확인, check_refs rc=0. R07 frontmatter 수리는 적대적 10인 만장일치 ✅. R11~R16: 디자인 기틀 브리핑 + 미적용 <b>8인 병렬 조사 완료</b>(실측 데이터 확보). <b>디자인 미적용분(R12~R15)의 실제 수정은 착수 안 함 — 운영자 지시 대기</b>(기틀 대량 변경이라 §기틀 보호·§🧪 검증 절차 선행 필요).
+</div>
+
+</div>
+</body>
+</html>
