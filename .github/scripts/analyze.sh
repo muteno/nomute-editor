@@ -136,7 +136,7 @@ for f in "${files[@]}"; do
   # 운영자 명시 재제출(pick.js 전문 직접 입력 = '# force: 1')이면 GVER 일치해도 재분석(덮어쓰기) — 기존 빈약/오분석 카드를
   #   전문 붙여넣기로 고치려는데 중복게이트가 무음 차단하던 것 해소(운영자 260628). ⚠️ '# body:' 이전 헤더만 검사
   #   = 붙여넣은 본문이 우연히 '# force:' 줄을 가져도 오인 안 함. 자동 수집·body-less 재시도엔 마커 없음 → 게이트 불변.
-  #   ⚠️ 범위 = **요약(queue)** 재분석까지. 이미 생성된 카드/썸네일은 GVER 게이트(cardmake.sh·thumb_gen.py)라 force로 자동
+  #   ⚠️ 범위 = **요약(queue)** 재분석까지. 이미 생성된 카드는 GVER 게이트(cardmake.sh)·썸네일은 존재+THUMB_SINCE 게이트(thumb_gen.py = GVER 비소비)라 force로 자동
   #   갱신 안 됨 → 운영자 '슛'/'다시 만들기'로 갱신(Failed 픽 복구는 다운스트림 미생성이라 새로 정상 생성 = 무영향). 5인 검증3 ⚠️.
   FORCE=""; if sed -n '/^# body:/q;p' "$f" 2>/dev/null | grep -qm1 '^# force:[[:space:]]*1[[:space:]]*$'; then FORCE=1; fi   # 후행 앵커 = '# force: 11' 류 오매치 차단(검증1 방어심층)
   existing="$(compgen -G "queue/*-${id}.md" 2>/dev/null | head -n1 || true)"
@@ -374,7 +374,7 @@ ${extracted}"
   # Fact↔자유요약 커버리지 참고 로그(비차단 · 14인 평의회 ② SYS-01 경량판 · 260702) — P1 단일 병목(자유요약)의
   #   수치 누락을 Actions 로그로 가시화(프롬프트 쪽 '내부 대조' 지시와 상호 검증 쌍 · exit 항상 0).
   python3 .github/scripts/card_gate.py factcov "$outfile" 2>/dev/null | sed 's/^/  /' || true
-  # 분량 가드(기본 OFF · SUMMARY_LEN_GUARD='1' 카나리아) — IG/Thread 과소 시 자유요약에서 1회 보강(잡 예산 내 · fail-soft · 260705)
+  # 분량 가드(기본 OFF · SUMMARY_LEN_GUARD='1' 카나리아) — IG/Thread 과소 시 자유요약에서 1회 보강(잡 예산 내 · fail-soft · 260705 · repair ≤+480s는 다음-기사 헤드룸(2×900s) 내 = 잡 최악 무변·평의회8)
   if [ "$SECONDS" -le "$ANALYZE_JOB_DEADLINE" ]; then summary_repair "$outfile" analyze-repair; fi
   # 규격·자수 기계 린트(비차단 · 분신술② NEW-1 · 260703) — Thread/IG 실측 자수·자가표기 괴리·분모 드리프트·
   #   🔎 마커·⚡ 혼입·# 제목 [속보] 잔존을 Actions 로그로 가시화(자가 추정만 믿던 길이 룰의 기계 눈 · exit 항상 0).

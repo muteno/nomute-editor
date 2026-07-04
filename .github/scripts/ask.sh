@@ -168,7 +168,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   outfile="queue/${stamp}-${id}.md"
   n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
   printf '%s\n' "$out" > "$outfile"
-  # 분량 가드(기본 OFF · SUMMARY_LEN_GUARD='1' 카나리아) — IG/Thread 과소 시 자유요약에서 1회 보강(잡 예산 내 · fail-soft · 260705)
+  # 분량 가드(기본 OFF · SUMMARY_LEN_GUARD='1' 카나리아) — IG/Thread 과소 시 자유요약에서 1회 보강(잡 예산 내 · fail-soft · 260705 · repair ≤+480s는 다음-기사 헤드룸(2×600s) 내 = 잡 최악 무변·평의회8)
   if [ "$SECONDS" -le "$ASK_JOB_DEADLINE" ]; then summary_repair "$outfile" ask-repair; fi
   # 규격·자수 기계 린트(비차단 · analyze.sh 미러 · 분신술② NEW-1 · 260703) — ask 경로 다이제스트 사각지대 해소(검증4). 가드 뒤 = 최종본 실측.
   python3 shared/digest_guard.py "$outfile" 2>/dev/null | sed 's/^/  /' || true
