@@ -46,6 +46,8 @@
     --fs-body:15px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800; --lh-base:1.6;
     /* 보조텍스트·재확인(arm)·썸네일메뉴색 — 구성도 정합 신설(260621). arm = 재확인 전용(앰버서 분리·맑은 노랑). */
     --fg-2:#cfd8d0; --arm:#ffd93d; --arm-rgb:255,217,61; --on-arm:#1a1205; --thumb:#ffce54;
+    /* yeta 말벗 제타 — 앱 한정 메인 강조색 = 네온 보라 고정(운영자 260703). 내 버블·전송·강조 = 네온보라 / 캐릭터 버블 = 짙은 회색 / 창 = 근흑. 페르소나 구분은 아바타 이니셜색·배경 이미지로만(강조 톤은 고정). */
+    --bubble-me:#b45cff; --bubble-ai:#1e2023; --yeta-bg:#0d0b12;
     /* 모션 토큰 — 곳곳 인라인 .18s/.15s 점진 이관용(신규/수정 CSS는 이거 참조). */
     --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
     /* 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). var(--font-status)는 호환 위해 유지. */
@@ -276,7 +278,9 @@
   .pmenu a, .pmenu button { display:block; width:100%; text-align:left; background:none; border:none;
     color:var(--fg); font:inherit; font-size:13px; padding:9px 12px; border-radius:10px; cursor:pointer; text-decoration:none; }
   .pmenu a:hover, .pmenu button:hover { color:var(--fg); }   /* 무채색 — hover=흰(강조색 제거) · 배경 박스 없음(음영제거·.bpop a 통일 계승·운영자 260629) */
-  .pmenu .pmenu-sns { display:flex; align-items:center; gap:6px; }   /* SNS = 2차 토글(라벨 + 쉐브론) */
+  .pmenu .pmenu-yeta { color:var(--accent); font-weight:var(--fw-x); letter-spacing:.04em; }   /* YETA = 강조색·굵게(운영자 260703 · 유일 강조 메뉴) */
+  .pmenu .pmenu-yeta:hover { color:var(--accent-bright, var(--accent)); }   /* hover도 강조 유지(무채 회귀 안 함) */
+  .pmenu .pmenu-sns { display:flex; align-items:center; gap:6px; }   /* SNS = 2차 토글(라벨 + 쉐브론 = .yeta-who 어포던스 계승) */
   .pmenu .pmenu-sns .sns-chev { flex:none; color:var(--mut); transition:transform var(--dur) var(--ease); }
   .pmenu .pmenu-sns[aria-expanded="true"] .sns-chev { transform:rotate(180deg); }
   .pmenu-sub { overflow:hidden; max-height:0; transition:max-height .26s var(--ease); }   /* 아코디언 — 펼침 시 4개 링크 슬라이드 */
@@ -294,6 +298,103 @@
   .pmenu.closing { animation:popOut var(--dur) cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 다른 부분 활성화 시 슬라이드 닫힘(closeOverlays·바깥클릭·캡처) */
   @media (prefers-reduced-motion: reduce) { .pmenu { animation:none; } }   /* 열림도 즉시 — 닫힘(hidePmenu JS 가드)과 대칭 */
 
+  /* ── yeta 말벗 제타(#yetadlg · 260703 v2 제타결) — 랜덤 페르소나 톡방. 다크 창(--yeta-bg) + 캐릭터 버블(--bubble-ai·아바타+이름) + 내 버블 제타 보라(--bubble-me) + *나레이션* 이탤릭. 페르소나 색 = --yeta-ac(JS가 roster color 주입 = "캐릭터 따라 톤" 운영자 컨셉) ── */
+  #yetadlg { width:min(600px,94vw); height:min(88dvh,760px); padding:0; border:1px solid rgba(255,255,255,.10); border-radius:var(--r-modal);
+    background:var(--yeta-bg); color:var(--fg); overflow:hidden; --yeta-ac:var(--bubble-me);
+    backdrop-filter:none; -webkit-backdrop-filter:none; }   /* 불투명 bg → 전역 dialog blur30 상속 낭비 차단(#editdlg 패턴 · 평의회④) */
+  #yetadlg::backdrop { background:rgba(0,0,0,.6); }
+  @media (max-width:640px) { #yetadlg { margin:auto; } }   /* 전역 dialog{margin:0}(모바일) 좌상단 쏠림 함정 교정 — #tooldlg 전례(평의회④) */
+  .yeta-wrap { display:flex; flex-direction:column; height:100%; }
+  .yeta-h { display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line2); flex:none; }
+  .yeta-h b { font-size:var(--fs-h2); font-weight:var(--fw-x); }
+  .yeta-h .yh-tag { font-size:var(--fs-xs); color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .yeta-h .yh-r { margin-left:auto; display:flex; align-items:center; gap:6px; }   /* 우측 묶음 = 래퍼에 margin-left:auto(CII) */
+  .yh-reset { border:none; background:none; color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); cursor:pointer; padding:4px 6px; white-space:nowrap; }
+  .yh-reset.armed { color:var(--arm); }   /* 2탭 재확인 = 텍스트 교체(§📐) */
+  .yeta-stage { position:relative; flex:1; display:flex; flex-direction:column; overflow:hidden; }   /* 무대 = 2겹 배경 크로스페이드(§🎬 배너 디졸브 축소판 · 260703) */
+  .ybg { position:absolute; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity .6s var(--ease); pointer-events:none; }
+  .ybg.on { opacity:1; }
+  @media (prefers-reduced-motion:reduce) { .ybg { transition:none; } }
+  .yeta-log { position:relative; flex:1; overflow-y:auto; padding:var(--sp-3) var(--sp-2) var(--sp-2); display:flex; flex-direction:column; gap:10px; }   /* 페르소나 배경 훅 — JS가 어두운 그라데+roster bg 이미지 주입(운영자 감정별 이미지 대기) */
+  .ymsg { display:flex; gap:8px; align-items:flex-start; max-width:86%; }   /* 캐릭터 메시지 = 아바타+이름+버블(제타 결) */
+  .ymsg .yava { flex:none; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-sm); font-weight:var(--fw-x);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); color:var(--yeta-ac); margin-top:2px; }
+  .yava.has-img, .yh-ava.has-img, .ypick-row .yava.has-img { background-size:cover; background-position:center; color:transparent; }   /* GPT 얼굴(yeta_face) = 이미지 채움·이니셜 숨김 · 없으면 이니셜 폴백 */
+  .ymsg .ycol { display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .ymsg .yname { font-size:var(--fs-xs); color:var(--mut); padding-left:2px; }
+  .yb { padding:10px 13px; border-radius:var(--r-l); font-size:var(--fs-body); line-height:var(--lh-base); white-space:pre-wrap; word-break:break-word; }
+  .yb i.yn { font-style:italic; color:var(--fg-2); opacity:.75; }   /* *나레이션* = 이탤릭 톤다운("대화 폰트 이런식" — 제타 결) */
+  .yb.ai { background:var(--bubble-ai); border:1px solid rgba(255,255,255,.05); border-top-left-radius:var(--r-s); }
+  .yb.me { align-self:flex-end; max-width:78%; background:var(--bubble-me); color:#fff; border-top-right-radius:var(--r-s); }
+  .yb.me i.yn { color:rgba(255,255,255,.82); }
+  .yb.sys { align-self:center; background:none; border:none; color:var(--mut); font-size:var(--fs-sm); padding:2px 4px; }
+  .yb.fail { align-self:flex-start; background:rgba(var(--danger-rgb),.08); border:1px solid rgba(var(--danger-rgb),.4); color:var(--danger); font-size:var(--fs-sm); }
+  .yfail-retry { display:block; margin-top:7px; padding:5px 12px; border:1px solid rgba(var(--danger-rgb),.5); border-radius:var(--r-pill); background:none; color:var(--danger); font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); cursor:pointer; }   /* 원탭 재시도(재타이핑 0) */
+  .yfail-retry:active { transform:scale(var(--press-m,.9)); }
+  /* 방 상단 캐릭터 소개 배너 — 대화방 진입 시 최상단(운영자 260703 "캐릭터 소개가 위에 나오고") · 무채색 글래스 결 */
+  .yintro { align-self:stretch; display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:var(--sp-2) var(--sp-3) 0; }
+  .yintro-ava { width:66px; height:66px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-h2); font-weight:var(--fw-x); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:var(--yeta-ac); background-size:cover; background-position:center; }
+  .yintro-ava.has-img { color:transparent; border-color:rgba(255,255,255,.18); }
+  .yintro-name { font-size:var(--fs-h2); font-weight:var(--fw-x); color:var(--fg); margin-top:2px; }
+  .yintro-tag { font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--yeta-ac); }
+  .yintro-desc { font-size:var(--fs-sm); color:var(--mut); line-height:var(--lh-base); max-width:36ch; }
+  .yintro-sep { width:100%; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent); margin-top:8px; }
+  /* 연속 메시지 그룹핑 — 직전과 같은 화자면 아바타·이름 생략(카톡/제타 톡방 결 · 운영자 260703) */
+  .ymsg.cont { margin-top:-6px; }   /* .yeta-log gap 10 상쇄 = 바짝 붙임 */
+  .ymsg.cont .yava { visibility:hidden; }
+  .ymsg.cont .yname { display:none; }
+  .yb.me.cont { margin-top:-6px; }
+  .yb-cap { display:block; margin-top:5px; font-size:var(--fs-xs); color:var(--mut); opacity:.8; font-variant-numeric:tabular-nums; font-style:normal; }   /* 다이얼 체감 캡션(모델·노력·초 = tabular) */
+  /* 타이핑 = 캐릭터 버블(카톡·제타 결 — 아바타+이름+점 3개 바운스 버블 · 운영자 260703 "입력하는 게 자연스럽게·오래 걸려도 입력 중 느낌 확실히") */
+  .ymsg.ytyp .yb.ai { padding:13px 16px; }
+  .ytdots { display:inline-flex; gap:5px; align-items:center; height:1.2em; }
+  .ytdots i { width:6px; height:6px; border-radius:50%; background:var(--fg-2); animation:ytdot 1.15s ease-in-out infinite; }
+  .ytdots i:nth-child(2) { animation-delay:.14s; } .ytdots i:nth-child(3) { animation-delay:.28s; }
+  @keyframes ytdot { 0%,55%,100% { transform:none; opacity:.4; } 25% { transform:translateY(-4px); opacity:1; } }
+  /* 촤르륵 등장/퇴장 — 신규 노드에만 .in(폴 재렌더 재트리거 방지 = JS가 인덱스 키드) · 회수/삭제 = .out 접힘 후 제거(운영자 "지워도 촤르륵") */
+  @keyframes ybIn { from { opacity:0; transform:translateY(10px) scale(.92); } }
+  @keyframes ybOut { to { opacity:0; transform:translateY(8px) scale(.92); } }
+  .yeta-log .in { animation:ybIn .3s cubic-bezier(.22,.61,.36,1) both; transform-origin:bottom left; }
+  .yeta-log .yb.me.in { transform-origin:bottom right; }
+  .yeta-log .out { animation:ybOut .2s var(--ease) both; pointer-events:none; }
+  @media (prefers-reduced-motion:reduce) { .yeta-log .in, .yeta-log .out, .ytdots i { animation:none; } }
+  .yeta-setup { padding:var(--sp-3); color:var(--mut); font-size:var(--fs-label); line-height:1.7; }
+  .yeta-in { flex:none; display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom)); }
+  .yeta-in[hidden] { display:none; }   /* 리스트뷰에서 입력행 숨김 — display:flex가 hidden(display:none) 이기던 버그 교정(운영자 260703 스샷) */
+  .yeta-in textarea { flex:1; resize:none; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:var(--r-l); color:var(--fg);
+    font-size:var(--fs-body); line-height:1.4; padding:10px 13px; max-height:120px; font-family:inherit; text-align:center; }   /* 메시지칸 중앙정렬(운영자 260703) */
+  .yeta-in textarea:focus-visible { outline:none; border-color:var(--yeta-ac); box-shadow:0 0 0 2px rgba(255,255,255,.06); }
+  .yeta-send { flex:none; width:var(--btn); height:var(--btn); align-self:flex-end; border-radius:50%; border:none;
+    background:var(--bubble-me); color:#fff; display:grid; place-items:center; cursor:pointer; touch-action:manipulation; }   /* 제타 보라 원형 전송(CTA 결) · touch-action=폰 탭 신뢰성(스크롤 팬에 안 먹힘 · 레포 관례) */
+  .yeta-send:active { transform:scale(var(--press-m,.9)); }
+  .yeta-send:disabled { opacity:.4; pointer-events:none; }
+  /* 페르소나 픽커 — 헤더 이름 탭 → 주민 직접 선택(msgpop 무채 글래스 계승 · saturate(0)=뒤 색 비침 차단 · §🎨 무채 크롬) */
+  .yeta-who { display:flex; align-items:center; gap:8px; min-width:0; background:none; border:none; color:inherit; font:inherit; cursor:pointer; padding:0; text-align:left; touch-action:manipulation; }
+  .yh-ava { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-size:var(--fs-sm); font-weight:var(--fw-x);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.10); color:var(--yeta-ac); }   /* 헤더 상주 프로필 — 스크롤·긴 대화에도 캐릭터가 계속 보임(운영자 260703) · .yava 동형 */
+  .yeta-who:active { transform:scale(var(--press-l,.95)); }
+  .yeta-who .yw-chev { flex:none; color:var(--mut); }
+  .yeta-pick { position:absolute; top:8px; left:10px; z-index:8; width:min(320px,86%); max-height:min(60dvh,420px); overflow-y:auto;
+    background:linear-gradient(165deg,rgba(24,25,28,.94),rgba(16,17,19,.96)); backdrop-filter:blur(26px) saturate(0); -webkit-backdrop-filter:blur(26px) saturate(0);
+    border:1px solid rgba(255,255,255,.14); border-radius:var(--r-l); padding:6px; transform-origin:top left;
+    animation:msgUnfold .26s cubic-bezier(.22,.61,.36,1) both; }
+  @media (prefers-reduced-motion:reduce) { .yeta-pick { animation:none; } }
+  .yeta-pick[hidden] { display:none; }
+  .ypick-row { display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:none; border:none; color:var(--fg); font:inherit;
+    padding:8px 10px; border-radius:var(--r-m); cursor:pointer; touch-action:manipulation; -webkit-touch-callout:none; user-select:none; }   /* 폰 탭 신뢰성 — 스크롤 컨테이너(.yeta-list) 안 버튼이 팬 제스처에 안 먹히게(레포 관례 .sc-item·bnav 동일) */
+  .ypick-row:hover { background:rgba(255,255,255,.06); }
+  .ypick-row:active { transform:scale(var(--press-l,.95)); }
+  .ypick-row.cur { background:rgba(255,255,255,.08); }
+  .ypick-row .yp-col { min-width:0; display:flex; flex-direction:column; }
+  .ypick-row .yp-name { font-weight:var(--fw-x); font-size:var(--fs-h3); }
+  .ypick-row .yp-tag { font-size:var(--fs-xs); color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* SNS 메뉴식 캐릭터 선택 리스트(첫 진입) — .ypick-row 계승, stage 전체 오버레이 */
+  .yeta-list { position:absolute; inset:0; z-index:6; overflow-y:auto; padding:var(--sp-2) var(--sp-2) 20px; display:flex; flex-direction:column; gap:4px; }
+  .yeta-list[hidden] { display:none; }
+  .yeta-list .ypick-row { padding:11px 12px; border-radius:var(--r-m); }
+  .yeta-list .ypick-row .yava { width:44px; height:44px; font-size:var(--fs-body); }   /* 목록 아바타 = 조금 크게(얼굴 부각) */
+  .yeta-list .yl-dice { margin-top:6px; border:1px dashed var(--line); border-radius:var(--r-m); background:none; color:var(--mut); font:inherit; font-size:var(--fs-sm); font-weight:var(--fw-b); padding:12px; cursor:pointer; text-align:center; touch-action:manipulation; }
+  .yeta-list .yl-dice:active { transform:scale(var(--press-l,.96)); }
   /* 가로중앙(translateX(-50%)) 팝업 전용 — popIn은 to{transform:none}이라 fill-mode:both가 중앙정렬 translateX를 지워 우측 오버플로우. 중앙 보존판. */
   @keyframes popInCx { from { opacity:0; transform:scale(.92) translateY(-4px);} to { opacity:1; transform:none;} }   /* translateX 뺌 — 정렬은 JS 좌변지정(fixed+translateX 히트테스트 누수 차단·운영자 260622) */
 
@@ -324,17 +425,17 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* 마스코트 = 전 탭 공놀이 산책 펫으로 롤백(운영자 260704 '일단 100% 롤백'): 뉴스요약·레거시·SNS 모두 옛 산책 펫(공놀이 pet.webp). LOVE 마퀴펫(marquee.js·아래 .lovemarq)은 일단 도먼트(전 탭 숨김·전구 애니 정지) — 뉴스요약 재도입은 추후. 기준선 = 기존 라인보다 6px 아래(운영자 '조금만 더 아래로'). */
-  .lovemarq { position:absolute; left:6%; bottom:-6px; height:88%; width:auto; display:none;   /* 일단 전 탭 숨김(LOVE 도먼트·260704) — 뉴스요약 재도입 시 display:block + 탭 게이트 복구 */
+  /* 마스코트 = 탭 분리(운영자 260703): 뉴스요약(feed) = LOVE 마퀴 펫 v3(전구 테두리·NOW SHOWING 겹침 점 제거·LOVE♥ 120% 세로중앙 — 프리렌더 webp) / 레거시·SNS = 옛 산책 펫(공놀이) 복원. 기준선 = 기존 라인보다 6px 아래(운영자 '조금만 더 아래로'). */
+  .lovemarq { position:absolute; left:6%; bottom:-6px; height:88%; width:auto; display:block;
     pointer-events:none; user-select:none; z-index:6;
     filter:drop-shadow(0 3px 5px rgba(0,0,0,.5)); }   /* canvas 실시간 렌더(marquee.js) — width:auto = canvas 내부 비율(전광판+펫동선)대로. height는 웹폰트 아닌 canvas라 갭 없음 */
-  /* .lovemarq(LOVE 마퀴펫) = 위 base display:none = 전 탭 숨김(도먼트) · 재도입 시 여기에 body[data-tab] 탭 게이트 복구 */
-  /* 산책 펫(공놀이 pet.webp) — 마퀴 이전 원형 그대로 복원(_versions/260703_2119 백업 정본) · 전 탭(뉴스요약·레거시·SNS) 표시 */
-  .pet { display:block; position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
+  body[data-tab="scrap"] .lovemarq, body[data-tab="sns"] .lovemarq { display:none; }
+  /* 산책 펫(공놀이 pet.webp) — 마퀴 이전 원형 그대로 복원(_versions/260703_2119 백업 정본) · 레거시/SNS 탭 전용 */
+  .pet { display:none; position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
     pointer-events:none; user-select:none; z-index:6; will-change:transform;
     filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
     animation:petStroll 9s ease-in-out infinite; }   /* alternate 제거 = 키프레임이 왕복 1바퀴 다 담음(엇박 리듬) */
-  /* .pet(공놀이 산책펫) = 위 base display:block = 전 탭 표시(뉴스요약·레거시·SNS 모두 · 260704 롤백) */
+  body[data-tab="scrap"] .pet, body[data-tab="sns"] .pet { display:block; }
   @keyframes petStroll {   /* 좌우 위치 + scaleX 방향전환(걷는 쪽 바라봄). 불균일 % 간격 = 엇박 */
     0%   { transform:translateX(0) scaleX(1); }
     9%   { transform:translateX(46px) scaleX(1); }    /* 빠른 dart 우 */
@@ -543,10 +644,11 @@
   .soc-chip { font-size:10.5px; font-weight:700; color:#9becff; background:rgba(12,208,247,.1); border:1px solid rgba(12,208,247,.28); border-radius:999px; padding:2px 8px; }
   .soc-chip.lean-l { color:#8fb6ff; background:rgba(90,140,255,.13); border-color:rgba(90,140,255,.34); }   /* 진보 성향 = 파랑(통념·근사) */
   .soc-chip.lean-r { color:#ff9a9a; background:rgba(255,90,90,.12); border-color:rgba(255,90,90,.34); }   /* 보수 성향 = 빨강(통념·근사) */
-  /* 네이버 계열 = 브랜드 에메랄드(--naver #03C75A · accent 형광라임과 hue 30° 이격 · 매트=글로우0) · 색 동일 통일(운영자 260704). 카페=☕컵·블로그=✒️펜 픽토그램 + 짧은 라벨, 지식iN=이름만(무게변주·점선 폐지). lean(정치색)과 독립 축. */
-  .soc-chip.src-naver         { color:var(--naver); background:rgba(var(--naver-rgb),.12); border-color:rgba(var(--naver-rgb),.32); }
-  .soc-chip.src-naver.ico     { display:inline-flex; align-items:center; gap:3px; padding-left:7px; }   /* 픽토 + 짧은 글자(카페·블로그) */
-  .soc-chip.src-naver.ico svg { width:11px; height:11px; flex:none; display:block; }
+  /* 네이버 계열 = 브랜드 에메랄드(--naver #03C75A · accent 형광라임과 hue 30° 이격 · 매트=글로우0). 같은 네이버톤에서 무게 변주로 플랫폼 구분: 카페=짙게(모임)·블로그=옅게(1인)·지식iN=점선(Q&A). lean(정치색)과 독립 축. */
+  .soc-chip.src-naver      { color:var(--naver); background:rgba(var(--naver-rgb),.12); border-color:rgba(var(--naver-rgb),.32); }
+  .soc-chip.src-naver-cafe { background:rgba(var(--naver-rgb),.18); border-color:rgba(var(--naver-rgb),.48); }   /* 카페=커뮤니티 게시판(집단) → 짙게/채워 무게↑ */
+  .soc-chip.src-naver-blog { background:rgba(var(--naver-rgb),.08); border-color:rgba(var(--naver-rgb),.30); }   /* 블로그=개인 창작(1인) → 옅게/여백 무게↓ */
+  .soc-chip.src-naver-kin  { border-style:dashed; }   /* 지식iN=Q&A → 점선 테두리(비색상 구분·색맹 보조) */
   .scrap-head { padding:6px 2px 12px; }
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
@@ -889,7 +991,7 @@
     padding:30px 16px calc(70px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 (75% 축소 반영·운영자 260703) */
   /* S(개정·AB) 하단 네비 = 4안(중앙 FAB) + 네온바 인디케이터 + 글래스(투명도↑) */
   .bnav { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-nav); display:flex; justify-content:space-around; align-items:flex-end;
-    padding:0 8px calc(6px + env(safe-area-inset-bottom));   /* 세로패딩 축소 = 네비 높이 ~85%(운영자 260704 "네비바 높이 85%") */
+    padding:0 8px calc(7px + env(safe-area-inset-bottom));
     background:rgba(0,0,0,.30);   /* 검정 30% 반투명(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스와 겹쳐 은은한 어둠(운영자 260704 "아래 네비에도 투명도 30%") */
     backdrop-filter:blur(var(--blur-l)) saturate(1.35); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);   /* 글래스모피즘 복원(운영자 260703 "글래스 최대한 살려·가시성 확보됨") — 260701에 스크롤 jank로 뺐던 backdrop blur 재도입(옛 26px raw→--blur-l 22px 토큰·index 글래스 정합). ⚠️ position:fixed 고정바라 스크롤 시 미세 렉 가능 = 폰 실측서 거슬리면 --blur-m(14px)로 낮춤. */
     border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
@@ -910,8 +1012,7 @@
     background:var(--accent); color:#04140a; font-size:10px; font-weight:800; line-height:1; border-radius:9px;
     box-shadow:0 0 8px rgba(15,253,2,.5); cursor:pointer; z-index:2; }
   .bnav-i .qbadge[hidden] { display:none; }
-  .bnav-fab { flex:none; width:39px; height:39px; margin:0 6px 4px; border-radius:50%; cursor:pointer; position:relative; top:-12px;
-    border:1px solid rgba(255,255,255,.30);   /* 겉면 연한 흰 획 30%(운영자 260704) · top:-12 = 원 상단 ~30% 네비 위로 튀어나옴 · margin-bottom 축소로 네비 라인높이 = 탭글자와 동일(네비 안 키움) */
+  .bnav-fab { flex:none; width:39px; height:39px; margin:0 6px 12px; border-radius:50%; border:none; cursor:pointer;
     background:rgba(0,0,0,.30); color:var(--accent); display:grid; place-items:center;
     backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);   /* 검정 30% 반투명 원(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스로 형체 유지 · 음양각(inset 하이라이트/음영/유리링)·외부 그림자 제거 = 평평한 버튼만 딱(운영자 260704 "음양각 오버렙 없애고 자연스럽게 버튼만 · 검정 30% 투명도") */
     transition:transform .12s; text-decoration:none; }
@@ -2174,8 +2275,8 @@
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
     <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
-  <canvas class="lovemarq" id="marqCanvas" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 = 실시간 canvas 렌더(marquee.js) — 전광판·NOW SHOWING·펫 애니·키워드/색 커스텀. 일단 도먼트(CSS display:none 전 탭·marquee.js hidden()=항상 정지·260704 롤백) — 뉴스요약 재도입 예정 -->
-  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 전 탭(뉴스요약·레거시·SNS) = 옛 산책 펫(공놀이) — 260704 '100% 롤백'(운영자) -->
+  <canvas class="lovemarq" id="marqCanvas" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 = 실시간 canvas 렌더(marquee.js) — 전광판이 글자 크기에 맞춰 축소·NOW SHOWING 유지·배경 투명(노이즈 0)·원본 애니 재현·키워드/글자색 커스텀(프로필-설정-전광판). 옛 love_marquee.webp 대체(260704) · 뉴스요약 탭 전용 -->
+  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 레거시·SNS 탭 = 옛 산책 펫(공놀이) 복원(운영자 260703) -->
 
   <div class="topsearch" id="topsearch">
     <input id="q" type="search" placeholder="검색" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="nomute-q" enterkeyhint="search" data-1p-ignore data-lpignore="true" data-form-type="other"><!-- 자동완성·autofill(카드/주소/이전입력 제안) 차단 = 일반 텍스트칸(운영자 260628) · 외형·검색기능 불변 · 비번관리자 autofill도 무시 -->
@@ -2190,6 +2291,7 @@
     </div>
     <div class="psub">News curation</div>
     <a href="https://nomute.kr" target="_blank" rel="noopener">Home ↗</a>
+    <button id="yetaBtn" class="pmenu-yeta">YETA</button>   <!-- 캐릭터 챗 = 강조색·대문자(운영자 260703) · Home 아래 지정 위치 -->
     <button id="snsToggle" class="pmenu-sns" type="button" aria-expanded="false" aria-controls="snsSub">SNS<svg class="sns-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
     <div class="pmenu-sub" id="snsSub" hidden>   <!-- SNS = 2차 이동 수단(아코디언 · 운영자 260703) -->
       <a href="https://instagram.com/no_mute" target="_blank" rel="noopener">Instagram ↗</a>
@@ -2459,6 +2561,29 @@
   <div class="qpage" id="pubpopPage"></div>
 </div>
 
+<!-- yeta 말벗 제타 — 프로필 메뉴 진입(랜덤 페르소나 톡방 · 세션=R2 비공개 단일 스레드 · 260703 v2). 🎲=재뽑기(맥락 유지·화자 교체) · 다이얼=모델×노력(턴별 박제). 폰 뒤로가기=닫기(dlg pushState 패턴). -->
+<dialog id="yetadlg">
+  <div class="yeta-wrap">
+    <div class="yeta-h">
+      <button class="tool-x" id="yetaDice" type="button" aria-label="페르소나 재뽑기" title="재뽑기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="9.2" cy="9.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.8" cy="9.2" r="1.15" fill="currentColor" stroke="none"/><circle cx="9.2" cy="14.8" r="1.15" fill="currentColor" stroke="none"/><circle cx="14.8" cy="14.8" r="1.15" fill="currentColor" stroke="none"/></svg></button>
+      <button class="yeta-who" id="yetaWho" type="button" aria-label="페르소나 선택" aria-haspopup="true"><span class="yh-ava" id="yetaAva" aria-hidden="true">y</span><b id="yetaTitle">yeta</b><span class="yh-tag" id="yetaTag"></span><svg class="yw-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      <span class="yh-r">
+        <button class="yh-reset" id="yetaReset" type="button" hidden>새 대화</button>
+        <button class="tool-x" id="yetaX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+      </span>
+    </div>
+    <div class="yeta-stage">
+      <div class="ybg" id="ybgA"></div><div class="ybg" id="ybgB"></div>
+      <div class="yeta-log" id="yetaLog"></div>
+      <div class="yeta-pick" id="yetaPick" hidden></div>
+      <div class="yeta-list" id="yetaList" hidden></div>   <!-- SNS 메뉴식 캐릭터 선택 리스트(첫 진입 · 운영자 260703) -->
+    </div>
+    <div class="yeta-in" id="yetaIn" hidden>
+      <textarea id="yetaText" rows="1" placeholder="메시지" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send"></textarea>
+      <button class="yeta-send" id="yetaSend" type="button" aria-label="전송" data-motion="rise"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2 15 22 11 13 2 9z"/></svg></button>   <!-- 종이비행기(운영자 260703) -->
+    </div>
+  </div>
+</dialog>
 <!-- Failed 칩 컨텍스트 메뉴 — 길게 누르거나(480ms) 우클릭. 실패 사유(진단 MD 다운로드) · 내용 입력(전문 붙여넣기 재분석). .bpop 글래스 계승. -->
 <div class="failmenu" id="failmenu" hidden role="menu" aria-label="실패 처리">
   <button class="failmenu-it" data-act="diag" type="button" role="menuitem"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>실패 사유</button>
@@ -4965,9 +5090,6 @@ const STAR_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentC
 const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>';   // 🔗 출처·⛓ 교차
 const FIRE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-2.5C9 9 9 11 11 11c0-2-1-4 1-9z"/><path d="M8.5 13a5.5 5.5 0 1 0 7 0c0 2-1.5 3-1.5 3s.5-3-2-5c-1 2-3 3-3 7z"/></svg>';   // 🔥 burst
 const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M6 9l6 6 6-6"/></svg>';   // ▾ 더보기(접기=회전 클래스)
-// 소스칩 픽토그램(SNS 네이버 계열) — 카페=☕컵(정면·커뮤니티) · 블로그=✒️펜(1인 창작). 지식iN은 픽토 없이 이름만. 크기는 .soc-chip .ico svg가 11px로. 운영자 260704.
-const CAFE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 11.3a2 2 0 0 1-2 1.7H9a2 2 0 0 1-2-1.7L6 8z"/><path d="M4.5 8h15"/><path d="M9.2 2.8c-.6 1 .6 1.8 0 2.8M14.2 2.8c-.6 1 .6 1.8 0 2.8"/></svg>';   // ☕ 컵 정면 + 김
-const BLOG_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';   // ✒️ 펜
 // (ERASE_SVG·UNDO_SVG는 위 4183~4184에 단일 정의 — main #1056 중복분 제거·머지 260627. #askText는 그 상수를 공유)
 // 다운로드 시퀀스 버튼(.cref-dlall) 아이콘 = 다운(dn)↔체크(chk) 스왑 한 벌(완료 시 체크 팝 · 정본 패턴 구성도 §9)
 const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
@@ -7223,13 +7345,8 @@ async function enterScrap() {
 const SOC_LEAN_MAP = { '클리앙': 'l', '보배드림': 'l', '오유': 'l', '82쿡': 'l', '더쿠': 'l', '인스티즈': 'l', '네이트판': 'l', '루리웹': 'l', '에펨코리아': 'r', '디시': 'r', '일베': 'r' };
 const socLean = s => { const v = SOC_LEAN_MAP[s]; return v === 'l' ? 'lean-l' : v === 'r' ? 'lean-r' : ''; };
 // SNS 소스 플랫폼 분류 — 네이버 계열 브랜드칩(socLean 정치성향과 독립 축·네이버는 lean 없음). 소스명 = social_burst.py NAVER_QUERIES 표시이름 1:1.
-// 픽토 + 짧은 라벨(운영자 260704): 카페=☕컵·블로그=✒️펜(ico=flex), 지식iN=픽토 없이 이름만. 색은 .src-naver로 통일.
-const NAVER_CHIP = {
-  '네이버카페':   { cls: 'src-naver src-naver-cafe ico', icon: CAFE_SVG, label: '카페' },
-  '네이버블로그': { cls: 'src-naver src-naver-blog ico', icon: BLOG_SVG, label: '블로그' },
-  '지식iN':       { cls: 'src-naver src-naver-kin',       icon: '',       label: '지식iN' },
-};
-const socSrc = s => (NAVER_CHIP[s] ? NAVER_CHIP[s].cls : '');
+const SOC_SRC_MAP = { '네이버블로그': 'src-naver src-naver-blog', '네이버카페': 'src-naver src-naver-cafe', '지식iN': 'src-naver src-naver-kin' };
+const socSrc = s => SOC_SRC_MAP[s] || '';
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
 let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
@@ -7254,13 +7371,7 @@ function renderSns() {
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>`;
     el.querySelector('.soc-title').textContent = r.title || '';
-    const chips = el.querySelectorAll('.soc-chip');
-    (r.sources || []).forEach((s, k) => {
-      const c = chips[k]; if (!c) return;
-      const nv = NAVER_CHIP[s];
-      if (nv) { c.innerHTML = nv.icon; c.appendChild(document.createTextNode(nv.label)); }   // 픽토(신뢰상수) + 짧은 라벨(텍스트노드=XSS안전)
-      else c.textContent = s;   // 커뮤니티 소스명
-    });
+    const chips = el.querySelectorAll('.soc-chip'); (r.sources || []).forEach((s, k) => { if (chips[k]) chips[k].textContent = s; });
     list.appendChild(el);
     _ss += (r.url || r.title || '') + ',';   // 시그니처 누적(행 ID·순서)
   });
@@ -8238,7 +8349,7 @@ $('#pdfBtn').addEventListener('click', openPubDlg);   // '공유' = 공개 발�
 // 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·rev-fab 등)는 셀렉터서 제외. ts-rf(상단 강제새로고침)도 ic-spin으로 편입 = .pmenu-rf와 동일 픽토그램 액티브(운영자 260629).
 document.addEventListener('click', e => {
   if (e.defaultPrevented) return;   // 드래그/취소된 클릭(캐러셀 스와이프 등)엔 헛모션 방지
-  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall,.pub-share,.dlg-pdf');   // .pub-share·.dlg-pdf = 요약 헤더 '공유'도 별자리 훑기(ic-share) 편입(260703)
+  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall,.pub-share,.dlg-pdf,.yeta-send');   // 병합: main .pub-share + yeta .yeta-send 양쪽 보존(260703) · .dlg-pdf = 요약 헤더 '공유'도 별자리 훑기 편입(260703)
   if (!b) return;
   const svg = b.querySelector('svg'); if (!svg) return;
   const m = b.dataset.motion ? ('ic-' + b.dataset.motion) : (b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin');   // data-motion=rise(↗이동)/check(✓확인)/share(별자리 훑기) 명시 우선(운영자 260702·260703) · 없으면 다운로드=바운스/그외=회전
@@ -8429,6 +8540,264 @@ $('#pubGo').addEventListener('click', async () => {
 let PUBITEMS = [], PUBPAGE = 0, _pubCloseTimer = 0, _pubPushed = false, _pubPop = false;
 const _pubBtnEl = $('#pubBtn'); if (_pubBtnEl) _pubBtnEl.addEventListener('click', e => { e.stopPropagation(); openPub(); });   // stopPropagation = #msgbtn 패턴(pmenu 안 버튼이라 안 하면 열자마자 바깥클릭 닫힘·검증8·9)
 
+// ── yeta 말벗 제타 (프로필 메뉴 · 랜덤 페르소나 톡방 · 세션=R2 단일 스레드 — functions/api/yeta.js · 260703 v2) ──
+// 🎲 뽑기/재뽑기 = 맥락(턴·관계노트) 유지·화자만 교체. 다이얼 2개(모델×노력 — 턴별 박제·답장 캡션으로 곱 체감).
+// 프리웜 = 창 열면 러너 선부팅(warm op · 30초 목표). 폴 = 다이얼 적응형(깊게 8s/그외 4s · 좀비 임계 10분/5분).
+// *나레이션* = 이탤릭(제타 결). 페르소나 색/배경 = roster color·bg → --yeta-ac·log 배경(운영자 컨셉 훅).
+const yetadlg = $('#yetadlg');
+let YCHARS = [], YCUR = null, YREADY = false, YSESS = null, _yetaPop = false, _yPoll = null, _yResetArm = 0, _yResetT = null;
+const YDIAL = { model: 'claude-opus-4-8', effort: 'low' };   // 모델 = 항상 '진심'(opus) 고정(운영자 260703 "가볍게 진심은 항상 진심") · effort low = 30초 컷 · 다이얼 UI 폐지(감정 게이지는 후속 캐릭터방 개편)
+let _yView = 'chat';   // 'list'(SNS식 캐릭터 선택) | 'chat'(대화방) — 첫 진입/이름탭 = 리스트(운영자 260703)
+const yApi = (op, extra) => fetch('api/yeta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op, ...(extra || {}) }) }).then(r => r.json());
+const yFmt = t => esc(t).replace(/\*([^*\n]{1,200}?)\*/g, '<i class="yn">$1</i>');   // *지문* → 이탤릭(제타 대화 폰트 결)
+const yPersona = id => YCHARS.find(x => x.id === id);
+async function openYeta() {
+  if (!yetadlg.open) { yetadlg.showModal(); document.documentElement.style.overflow = 'hidden'; history.pushState({ ydlg: 1 }, ''); _yLastN = -1; _yTypOn = false; _yFailOn = false; }   // 재진입 = 촤르륵 키드 리셋(히스토리 전체 무애니)
+  const log = $('#yetaLog');
+  if (!YCHARS.length) {
+    log.innerHTML = '<div class="yeta-setup">불러오는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>';
+    const r = await yApi('chars').catch(() => null);
+    if (r && r.ok) { YCHARS = r.chars || []; YREADY = !!r.ready; }
+  }
+  if (!YCHARS.length) { log.innerHTML = '<div class="yeta-setup">페르소나 목록을 못 불러왔어 — 잠시 후 다시 열어봐.</div>'; return; }
+  if (!YREADY) { yShowList(); return; }   // R2 미설정이어도 캐릭터 목록은 구경 가능(선택 시 셋업 안내 · chars는 R2 불필요)
+  yWarm();   // 프리웜 — 러너 선부팅(첫 답장 30초 목표 · 아이데이션③⑤)
+  await yLoad();   // 페르소나 있으면 챗, 없으면 SNS식 선택 리스트(yLoad가 뷰 분기 · 랜덤 자동진입 폐지 = 선택 먼저)
+}
+// ── SNS 메뉴식 캐릭터 선택 리스트(첫 진입·이름탭) ──
+function yView(mode) {   // 'list' ↔ 'chat' 헤더·영역 토글
+  _yView = mode; const list = mode === 'list';
+  $('#yetaList').hidden = !list;
+  $('#yetaLog').style.display = list ? 'none' : '';
+  $('#yetaIn').hidden = list; $('#yetaDice').hidden = list; $('#yetaReset').hidden = list;
+  $('#yetaAva').style.display = list ? 'none' : '';
+  const chev = $('#yetaWho').querySelector('.yw-chev'); if (chev) chev.style.display = list ? 'none' : '';
+  if (list) { $('#yetaTitle').textContent = '무음동 사람들'; $('#yetaTag').textContent = '대화할 상대를 골라'; yStopPoll(); yPickToggle(false); }
+}
+function yRenderList() {   // 캐릭터 = SNS 리스트(.ypick-row 계승) + 🎲 랜덤
+  $('#yetaList').innerHTML = YCHARS.map(c => `<button type="button" class="ypick-row" data-id="${esc(c.id)}">${yAva(c)}<span class="yp-col"><span class="yp-name">${esc(c.name)}</span><span class="yp-tag">${esc(c.tagline || '')}</span></span></button>`).join('')
+    + `<button type="button" class="yl-dice" id="ylDice">🎲 랜덤으로 만나기</button>`;
+}
+function yShowList() { yRenderList(); yView('list'); }
+async function yEnterChat(c) {   // 리스트에서 캐릭터 선택 → 대화방 진입(draw)
+  if (!c) return;
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
+  // R2 미설정/진입 실패여도 대화방으로 들어가 소개는 보여준다(intro=roster 데이터라 서버 불필요) · 실패는 스쳐가는 토스트 대신 모달 안 배너로(토스트가 showModal top-layer 뒤로 숨어 "무반응"으로 보이던 문제 — 분신술 260703)
+  const fail = (r && r.setup) ? '저장소(R2) 미설정 — 소개만 볼 수 있어. 대화는 셋업 후 켜져.'
+             : (!r || !r.ok) ? ((r && r.error) || '진입 실패 — 잠시 후 다시 눌러줘') : '';
+  _yLastN = -1; _yTypOn = false; _yFailOn = false;
+  if (fail) { YSESS = null; yView('chat'); yApply(c); yShowIntroOnly(c, fail); return; }
+  YSESS = r.sess; yView('chat'); yApply(c); yRender();
+}
+function yShowIntroOnly(c, note) {   // R2 미설정/진입 실패 시 — 대화방에 소개 배너 + 안내만(입력 숨김) · "설명조차 안 뜬다" 해소(분신술 260703)
+  const log = $('#yetaLog');
+  log.innerHTML = yIntroHtml(c) + `<div class="yeta-setup">${esc(note)}</div>`;
+  $('#yetaIn').hidden = true; $('#yetaDice').hidden = true; $('#yetaReset').hidden = true;
+  yStopPoll(); log.scrollTop = 0;
+}
+$('#yetaList').addEventListener('click', e => {
+  if (e.target.closest('.yl-dice')) { yEnterChat(YCHARS[Math.floor(Math.random() * YCHARS.length)]); return; }
+  const row = e.target.closest('.ypick-row'); if (row) yEnterChat(yPersona(row.dataset.id));
+});
+function yWarm() {   // 4.5분 디바운스 — 웜 런이 살아있을 확률 높으면 안 쏨(러너분 낭비 억제)
+  try {
+    const last = +localStorage.getItem('nomute_yeta_warm') || 0;
+    if (Date.now() - last < 270000) return;
+    localStorage.setItem('nomute_yeta_warm', String(Date.now()));
+    yApi('warm').catch(() => null);
+  } catch {}
+}
+async function yDraw() {   // 랜덤 뽑기/재뽑기 — 맥락 유지·화자 교체(운영자: 고정은 재미없다)
+  if (!YCHARS.length) return;
+  const pool = YCHARS.filter(c => !YCUR || c.id !== YCUR.id);
+  const c = pool[Math.floor(Math.random() * pool.length)] || YCHARS[0];
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
+  if (!r || !r.ok) { $('#yetaLog').insertAdjacentHTML('beforeend', `<div class="yb fail">${esc((r && r.error) || '뽑기 실패 — 다시 눌러줘')}</div>`); return; }
+  YSESS = r.sess; yApply(c); yRender();
+}
+let _ybgCur = 0, _yStageKey = '';   // 무대 2겹 크로스페이드(§🎬 배너 디졸브 축소판) — 다음 레이어에 그리고 opacity 스왑
+function yPaintBg(bgUrl, tint) {   // 레이어 페인트(페르소나 전환·무드 전환 공용) — 같은 그림 재페인트는 키 가드가 막음
+  const layers = [$('#ybgA'), $('#ybgB')], next = layers[1 - _ybgCur], curL = layers[_ybgCur];
+  next.style.backgroundImage = bgUrl
+    ? `linear-gradient(rgba(10,10,14,.72),rgba(10,10,14,.86)), url("${bgUrl}")`
+    : `radial-gradient(120% 90% at 50% 0%, ${tint}14, transparent 55%)`;                            // 이미지 없으면 페르소나색 은은한 무드 틴트
+  next.classList.add('on'); curL.classList.remove('on'); _ybgCur = 1 - _ybgCur;
+}
+const Y_MOODS = ['warm', 'tense', 'blue'];   // 답장 <<MOOD>> 화이트리스트(base=기본 무대) — yeta_bg.py MOODS와 짝
+function yMoodUrl(bg, mood) {   // base URL → 배리언트 규약 파생(…/tea.png?v=x → …/tea_warm.png) · 쿼리 제거
+  if (!bg || !mood) return bg || '';
+  return bg.split('?')[0].replace(/\.png$/, `_${mood}.png`);
+}
+function yStage(mood) {   // 무대 = 페르소나 bg × 무드 — 키 같으면 no-op, 배리언트는 프리로드 성공 시에만(실패 = base 유지)
+  if (!YCUR) return;
+  const key = `${YCUR.id}|${mood || ''}`;
+  if (key === _yStageKey) return;
+  _yStageKey = key;
+  const tint = YCUR.color || getComputedStyle(document.documentElement).getPropertyValue('--bubble-me').trim();   // 폴백 = --bubble-me 토큰 직독(동값 raw 복붙 제거 = 이중 관리 해소·260703)
+  if (!YCUR.bg || !mood) { yPaintBg(YCUR.bg || '', tint); return; }
+  const vurl = yMoodUrl(YCUR.bg, mood), im = new Image();
+  im.onload = () => { if (_yStageKey === key) yPaintBg(vurl, tint); };   // 늦게 로드돼도 무대가 바뀌었으면 폐기
+  im.onerror = () => { if (_yStageKey === key) yPaintBg(YCUR.bg, tint); };   // 배리언트 미생성 = base 폴백
+  im.src = vurl;
+}
+function yApply(c) {   // 페르소나 적용 — 이름·태그·포인트색·배경이 스르륵 전환(캐릭터 따라 톤 변화 = 운영자 컨셉)
+  YCUR = c;
+  $('#yetaTitle').textContent = c.name; $('#yetaTag').textContent = c.tagline || '';
+  const _av = $('#yetaAva');   // 헤더 상주 프로필 — avatar(얼굴) 있으면 이미지, 없으면 이니셜(색은 --yeta-ac 자동)
+  if (c.avatar) { _av.textContent = ''; _av.classList.add('has-img'); _av.style.backgroundImage = `url('${c.avatar}')`; }
+  else { _av.textContent = c.initial || (c.name || '?')[0]; _av.classList.remove('has-img'); _av.style.backgroundImage = ''; }
+  // 강조색(--yeta-ac)은 네온보라 고정 — 페르소나 구분은 아바타 이니셜색·배경으로만(운영자 260703). CSS 기본값(:root --yeta-ac) 사용, 런타임 주입 제거.
+  yStage(yLastMood());   // 무대 전환 — 대화의 공기(마지막 답장 무드)는 화자 바뀌어도 이어짐(같은 방)
+}
+function yLastMood() {   // 마지막 답장의 장면 공기(없으면 base)
+  const turns = (YSESS && YSESS.turns) || [];
+  for (let i = turns.length - 1; i >= 0; i--)
+    if (turns[i].role === 'assistant') return Y_MOODS.includes(turns[i].mood) ? turns[i].mood : '';
+  return '';
+}
+// ── 페르소나 픽커 — 이름 탭 = 주민 직접 선택(🎲=랜덤 병행 · msgpop 계승 팝업) ──
+function yPickToggle(force) {
+  const pk = $('#yetaPick');
+  const open = force !== undefined ? force : pk.hidden;
+  if (!open) { pk.hidden = true; return; }
+  if (!YCHARS.length) return;
+  pk.innerHTML = YCHARS.map(c => `<button type="button" class="ypick-row${YCUR && YCUR.id === c.id ? ' cur' : ''}" data-id="${esc(c.id)}">${yAva(c)}<span class="yp-col"><span class="yp-name">${esc(c.name)}</span><span class="yp-tag">${esc(c.tagline || '')}</span></span></button>`).join('');
+  pk.hidden = false;
+}
+$('#yetaWho').addEventListener('click', e => { e.stopPropagation(); yShowList(); });   // 이름탭 = SNS 선택 리스트로(다른 캐릭터 고르기 · 옛 팝업 픽커 대체)
+$('#yetaPick').addEventListener('click', async e => {
+  e.stopPropagation();
+  const b = e.target.closest('.ypick-row'); if (!b) return;
+  yPickToggle(false);
+  const c = yPersona(b.dataset.id);
+  if (!c || (YCUR && YCUR.id === c.id)) return;
+  const r = await yApi('draw', { persona: c.id, name: c.name, enter: c.enter_line || '', greeting: c.greeting || '' }).catch(() => null);
+  if (r && r.ok) { YSESS = r.sess; yApply(c); yRender(); }
+});
+yetadlg.addEventListener('click', e => { const pk = $('#yetaPick'); if (!pk.hidden && !pk.contains(e.target) && !$('#yetaWho').contains(e.target)) yPickToggle(false); });   // 바깥 탭 = 닫힘
+$('#yetaLog').addEventListener('click', async e => {   // 원탭 재시도(재타이핑 0 · retry op = 기존 pending 유저 턴 재발사)
+  if (!e.target.closest('.yfail-retry')) return;
+  const r = await yApi('retry').catch(() => null);
+  if (r && r.ok) { yStartPoll(); yLoad(); }
+  else { miniToast((r && r.error) || '재시도 실패 — 잠시 후 다시'); }
+});
+async function yLoad() {
+  if (!yetadlg.open) return;
+  const r = await yApi('get').catch(() => null);
+  if (!r) return;
+  if (r.setup) { $('#yetaLog').innerHTML = '<div class="yeta-setup">⚠️ 저장소(R2) 미설정 — 셋업 후 대화가 켜져.</div>'; $('#yetaIn').hidden = true; return; }
+  if (!r.ok) { $('#yetaLog').innerHTML = `<div class="yb fail">${esc(r.error || '로드 실패')}</div>`; return; }
+  YSESS = r.sess || {};
+  if (!YSESS.persona) { if (_yView !== 'list') yShowList(); return; }   // 페르소나 없음 = SNS 선택 리스트(랜덤 자동진입 폐지)
+  const c = yPersona(YSESS.persona);
+  if (!c) { if (_yView !== 'list') yShowList(); return; }   // 스테일 persona(로스터에 없는 id) → 죽은 대화방(YCUR=null) 대신 리스트 폴백(분신술 A7)
+  if (!YCUR || YCUR.id !== c.id) yApply(c);
+  if (_yView !== 'chat') yView('chat');
+  yRender();
+}
+function yAva(p, cls) {   // 아바타 = avatar URL(GPT 얼굴 · yeta_face.py) 있으면 얼굴 이미지, 없으면 이니셜(+페르소나색)
+  cls = cls || 'yava';
+  if (p && p.avatar) return `<span class="${cls} has-img" style="background-image:url('${esc(p.avatar)}')" aria-hidden="true"></span>`;
+  return `<span class="${cls}"${p && p.color ? ` style="color:${esc(p.color)}"` : ''}>${esc((p && (p.initial || (p.name || '?')[0])) || '?')}</span>`;
+}
+function yIntroHtml(c) {   // 방 상단 캐릭터 소개 = 아바타(큰) + 이름 + 태그 + intro(roster) — 재렌더마다 최상단 고정(무애니)
+  if (!c) return '';
+  const tag = c.tagline ? `<span class="yintro-tag">${esc(c.tagline)}</span>` : '';
+  const desc = c.intro ? `<span class="yintro-desc">${esc(c.intro)}</span>` : '';
+  return `<div class="yintro">${yAva(c, 'yintro-ava')}<span class="yintro-name">${esc(c.name || '')}</span>${tag}${desc}<span class="yintro-sep"></span></div>`;
+}
+function yAiMsg(t, fresh, cont) {   // 캐릭터 메시지 = 아바타 + 이름 + 버블(+다이얼 캡션) · fresh=신규만 촤르륵 · cont=직전과 같은 화자(아바타·이름 생략 = 톡방 그룹핑)
+  const p = yPersona(t.persona) || YCUR || {};
+  const cap = t.gen_s ? `<span class="yb-cap">${t.gen_s}s</span>` : '';   // 캡션 = 소요초만(모델 항상 진심 고정이라 라벨 불필요)
+  return `<div class="ymsg${fresh ? ' in' : ''}${cont ? ' cont' : ''}">${yAva(p)}<span class="ycol"><span class="yname">${esc(p.name || '')}</span><div class="yb ai">${yFmt(t.text)}${cap}</div></span></div>`;
+}
+let _yLastN = -1, _yTypOn = false, _yFailOn = false;   // 촤르륵 키드 상태 — 신규 노드만 .in(폴 재렌더 재트리거 방지 · 운영자 "채팅방 모션 그대로 유지")
+function yTypingHtml(fresh) {   // 타이핑 = 캐릭터 버블(점 3개 바운스 · 카톡/제타 결) — 등장만 촤르륵, 이후 재렌더는 무애니 유지
+  const p = YCUR || {};
+  const lbl = '입력 중';
+  return `<div class="ymsg ytyp${fresh ? ' in' : ''}">${yAva(p)}<span class="ycol"><span class="yname">${esc(p.name || '')} · ${lbl}</span><div class="yb ai"><span class="ytdots"><i></i><i></i><i></i></span></div></span></div>`;
+}
+function yOut(el) {   // 촤르륵 복귀 — 접혀 사라진 뒤 제거(운영자: "뭐 지운다 해도 촤르륵 다시 돌아가야")
+  if (!el || !el.isConnected) { if (el) el.remove(); return; }
+  el.classList.remove('in'); el.classList.add('out');
+  const rm = () => el.remove();
+  el.addEventListener('animationend', rm, { once: true });
+  setTimeout(rm, 400);   // reduced-motion(animation:none = 이벤트 미발화) 백스톱
+}
+function yRender() {
+  const log = $('#yetaLog'), s = YSESS || {}, turns = s.turns || [];
+  $('#yetaIn').hidden = false; $('#yetaReset').hidden = false;
+  const prevN = _yLastN, first = prevN < 0;   // 첫 렌더(재진입 포함) = 전체 무애니(히스토리 우르르 방지)
+  let h = '';
+  if (YCUR) h += yIntroHtml(YCUR);   // 방 상단 캐릭터 소개 배너(운영자 260703 "대화방 들어가면 캐릭터 소개가 위에") — roster intro
+  if (!turns.length && YCUR) h += yAiMsg({ text: YCUR.greeting || '왔네.', persona: YCUR.id });   // 첫인사 — 서버 draw가 greeting 턴을 박기 전(레이스)이나 미설정 세션의 임시 표시(정상 경로는 서버 턴)
+  h += turns.map((t, i) => {
+    const fresh = !first && i >= prevN;   // 신규 턴만 촤르륵
+    const pv = turns[i - 1];              // 직전 턴 = 같은 화자면 그룹핑(cont)
+    if (t.role === 'user') return `<div class="yb me${fresh ? ' in' : ''}${pv && pv.role === 'user' ? ' cont' : ''}">${yFmt(t.text)}</div>`;
+    if (t.role === 'assistant') return yAiMsg(t, fresh, pv && pv.role === 'assistant' && (pv.persona || '') === (t.persona || ''));
+    return `<div class="yb sys${fresh ? ' in' : ''}">${esc(t.text)}</div>`;   // sys = 페르소나 합류 등(그룹 끊음)
+  }).join('');
+  _yLastN = turns.length;
+  const awaiting = !!(s.state === 'awaiting');   // 판정 = state(클록스큐 함정 회피 · 평의회③)
+  const zlim = 300000;   // 좀비 임계 5분(effort low 고정 · 가짜 실패 → 중복 쿼터 방지)
+  const waitMs = awaiting ? Math.max(0, Date.now() - (s.awaiting_since || 0)) : -1;
+  const failMsg = s.state === 'error' ? `답장을 못 만들었어 — 다시 보내면 재시도야. (${(s.err || '').slice(0, 80)})`
+    : (awaiting && waitMs > zlim ? '답장이 너무 늦네 — 러너가 밀렸거나 실패한 듯. 다시 보내면 재시도야.' : '');
+  const typing = !failMsg && awaiting && !!YCUR;
+  if (failMsg) h += `<div class="yb fail${_yFailOn ? '' : ' in'}">${esc(failMsg)}<button type="button" class="yfail-retry" aria-label="다시 보내기">다시 보내기</button></div>`;   // 원탭 재시도(재타이핑 0 · retry op)
+  else if (typing) h += yTypingHtml(!_yTypOn);
+  _yFailOn = !!failMsg; _yTypOn = typing;
+  yStage(yLastMood());   // 새 답장의 공기 → 배경 배리언트 크로스페이드(키 가드 = 같으면 no-op)
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;   // 스크롤 강탈 방지(평의회⑨)
+  log.innerHTML = h;
+  if (atBottom) log.scrollTop = log.scrollHeight;
+  if (awaiting && waitMs <= zlim) yStartPoll(); else yStopPoll();
+}
+function yStartPoll() {   // 적응형 폴 — 웜 후속 턴(10~30s 답장)을 빨리 픽업(아이데이션⑤ · 대기 중에만 돎)
+  const iv = 4000;   // 적응형 폴(effort low 고정)
+  if (_yPoll && _yPoll.iv === iv) return;
+  yStopPoll();
+  _yPoll = { iv, t: setInterval(() => { if (document.visibilityState !== 'visible') return; if (!yetadlg.open) { yStopPoll(); return; } yLoad(); }, iv) };
+}
+function yStopPoll() { if (_yPoll) clearInterval(_yPoll.t); _yPoll = null; }
+async function ySend() {
+  const ta = $('#yetaText'), text = ta.value.trim();
+  if (!text || !YCUR) return;
+  const btn = $('#yetaSend'); btn.disabled = true;
+  ta.value = ''; ta.style.height = '';
+  const log = $('#yetaLog');   // 낙관적 표시(확정은 폴이 대체) — 내 버블·타이핑 모두 촤르륵 등장
+  log.insertAdjacentHTML('beforeend', `<div class="yb me in">${yFmt(text)}</div>` + yTypingHtml(!_yTypOn));
+  _yTypOn = true;
+  const _typEl = log.lastElementChild, _meEl = _typEl.previousElementSibling;   // 실패 시 회수용(평의회⑨)
+  log.scrollTop = log.scrollHeight;
+  const r = await yApi('send', { text, model: YDIAL.model, effort: YDIAL.effort }).catch(() => ({ error: '네트워크 실패 — 다시 보내줘' }));
+  btn.disabled = false;
+  if (!r.ok) {
+    yOut(_typEl); yOut(_meEl); _yTypOn = false; ta.value = text;   // 낙관 노드 = 촤르륵 접혀 복귀 + 입력 복원(운영자 "지워도 촤르륵")
+    log.insertAdjacentHTML('beforeend', `<div class="yb fail in">${esc(r.error || '전송 실패')}</div>`); _yFailOn = true; log.scrollTop = log.scrollHeight; return;
+  }
+  if (_yLastN >= 0) _yLastN += 1;   // 낙관 버블은 이미 촤르륵함 — 폴 확정 재렌더에서 같은 턴 재애니 방지
+  ta.focus();
+  yStartPoll();
+}
+$('#yetaSend').addEventListener('click', ySend);
+$('#yetaText').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); ySend(); } });   // 폰 enterkeyhint=send · Shift+Enter=줄바꿈
+$('#yetaText').addEventListener('input', e => { const t = e.target; t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight) + 'px'; });
+$('#yetaDice').addEventListener('click', e => { e.stopPropagation(); yDraw(); });   // 🎲 재뽑기 — 맥락 유지·화자 교체
+function yResetArmClear() { _yResetArm = 0; clearTimeout(_yResetT); const b = $('#yetaReset'); b.textContent = '새 대화'; b.classList.remove('armed'); }
+$('#yetaReset').addEventListener('click', async () => {   // 2탭 재확인 = 텍스트 교체(§📐)
+  const b = $('#yetaReset');
+  if (!_yResetArm) { _yResetArm = 1; b.textContent = '지우고 새로?'; b.classList.add('armed'); _yResetT = setTimeout(yResetArmClear, 2600); return; }
+  yResetArmClear();
+  await yApi('reset').catch(() => null);
+  YSESS = null; YCUR = null; _yLastN = -1; _yTypOn = false; _yFailOn = false; yShowList();   // 리셋 = 맥락 비우고 SNS 선택 리스트로(랜덤 자동 대신 선택 먼저)
+});
+$('#yetaX').addEventListener('click', () => yetadlg.close());
+yetadlg.addEventListener('close', () => { document.documentElement.style.overflow = ''; yStopPoll(); yPickToggle(false);
+  if (_yetaPop) { _yetaPop = false; } else if (history.state && history.state.ydlg) { try { history.back(); } catch {} } });   // X·백드롭 닫힘 = push 칸 회수(#dlg 패턴)
+window.addEventListener('popstate', () => { if (_composeRecovering) return; if (yetadlg.open) { _yetaPop = true; yetadlg.close(); } });   // 폰 뒤로가기 = 닫기(컴포즈 회수 가드 계승)
+const _yetaBtnEl = $('#yetaBtn'); if (_yetaBtnEl) _yetaBtnEl.addEventListener('click', e => { e.stopPropagation(); hidePmenu(); openYeta(); });   // pmenu 진입(stopPropagation = #msgbtn 패턴)
 const _snsToggle = $('#snsToggle'); if (_snsToggle) _snsToggle.addEventListener('click', e => {   // SNS 2차 아코디언 펼침/접힘(pmenu 안 유지)
   e.stopPropagation();
   const sub = $('#snsSub'), open = _snsToggle.getAttribute('aria-expanded') === 'true';
@@ -8453,6 +8822,7 @@ const _setToggle = $('#setToggle'); if (_setToggle) _setToggle.addEventListener(
     requestAnimationFrame(() => sub.classList.add('open'));
   }
 });
+try { if (new URLSearchParams(location.search).get('yeta')) setTimeout(() => openYeta(), 400); } catch {}   // 답장 웹푸시 딥링크(/?yeta=main — sw.js notificationclick)
 function placePubpop() {   // 발행본 팝업 위치 = 메시지함(placeMsgpop) 계승: 프로필 우측·세로중앙 앵커 → 우상단 기준 msgUnfold 펼침(운영자 260702)
   const pr = $('#profile').getBoundingClientRect();
   const top = Math.round(pr.top + pr.height / 2);
