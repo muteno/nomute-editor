@@ -10,8 +10,8 @@ on:
         description: '교차소스 최소 수(공론화 컷)'
         default: '2'
       naver:
-        description: '네이버 검색 API 소스 포함(카나리아 테스트=1 · 기본 빈값=OFF)'
-        default: ''
+        description: '네이버 검색 API 소스 포함(기본 1=ON · 0 넣으면 끄기)'
+        default: '1'
   schedule:
     - cron: '*/30 * * * *'   # 30분마다 자동 갱신 — SNS 탭 소셜 버스트(무료·RSS만·LLM 0). schedule엔 inputs 없음 → min_sources 기본 2.
 
@@ -38,10 +38,10 @@ jobs:
       - name: Run social burst scan (live)
         env:
           SOCIAL_MIN_SOURCES: ${{ inputs.min_sources || '2' }}
-          # ── 네이버 검색 OpenAPI (기본 OFF · "붙여만" 260704) ──
-          # 켜기 = SOCIAL_NAVER를 '1'로 + GitHub Secret NAVER_CLIENT_ID/SECRET 등록. 셋 다 있어야 fetch_naver 작동(아니면 skip=현 동작 불변).
-          # 발급 프로세스·플랫폼별 엔드포인트 = docs/social-burst.md. 무료 한도 내(검색 API 일 25,000콜).
-          SOCIAL_NAVER: ${{ inputs.naver || '' }}                 # 자동 schedule=OFF(inputs 없음) · 수동 dispatch시 naver='1'로만 카나리아 ON(§📰 라이브 플래그 규칙)
+          # ── 네이버 검색 OpenAPI (자동 ON · 카나리아 검증 후 승격 260704) ──
+          # 기본 '1' = schedule·dispatch 모두 ON → 자동스캔도 네이버 포함(플립플롭 해소: OFF 스캔이 ON 결과 덮어쓰던 것 종식·9번/Fable). dispatch naver='0'으로 끌 수 있음.
+          # 발급·엔드포인트 = docs/social-burst.md. 무료 한도 내(검색 API 일 25,000콜·실측 5쿼리×48run=240콜/일≈1%). 배점=수집량 정규화(네이버 단독 하단 생존).
+          SOCIAL_NAVER: ${{ inputs.naver || '1' }}                # 기본 ON(§📰 카나리아 run 28692492458 통과 후 승격) · Secret NAVER_CLIENT_ID/SECRET 필요(없으면 skip)
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}         # 미등록이면 빈값 → skip
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         run: python3 scraper/social_burst.py || echo "::warning::라이브 소스 일부 막힘 — docs/social-burst.md 소스 교체 참고"
