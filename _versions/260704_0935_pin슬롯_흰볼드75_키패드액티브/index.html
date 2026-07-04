@@ -244,15 +244,13 @@
     -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:background .12s ease, color .15s ease, transform .07s ease; }
   .lk-key:nth-child(3n+2), .lk-key:nth-child(3n) { border-left:1px solid var(--line); }   /* 셀 내부 구분선(정본 동일) */
   .lk-key:nth-child(n+4) { border-top:1px solid var(--line); }
-  .lk-key:active { transform:scale(var(--press-m)); }   /* 눌림 = scale 액티브만(배경 플래시 제거 = 운영자 "배경 그대로·액티브로 충분" 260704) · --press-m(.9) 입력 느낌 */
-  .lk-key.hit { color:var(--accent); }   /* 누름 = 숫자 강조색만(배경 플래시 제거 = 운영자 260704 · scale 액티브로 피드백) */
+  .lk-key:active { background:rgba(255,255,255,.09); transform:scale(.93); }
+  .lk-key.hit { background:rgba(var(--accent-rgb),.16); color:var(--accent); }   /* 누름 순간 강조색 플래시 */
   .lk-key.back.hit svg { stroke:var(--accent); }
   .lk-key.empty { pointer-events:none; }
   .lk-key.back svg { width:26px; height:26px; stroke:var(--fg); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:stroke .15s ease; }
   .lk-pad.b2 .lk-key { color:rgba(var(--accent-rgb),.85); }   /* 5~6자리 = 판B 전경색 틴트(정본 동일) */
   .lk-pad.b2 .lk-key.back svg { stroke:rgba(var(--accent-rgb),.85); }
-  .lk-pad.b2 .lk-key.hit { color:var(--accent); }   /* 판B(5·6자리) 눌림도 hit 강조색 유효 = b2 틴트(.85) 특이도 이김(분신5 260704 · 배경 플래시 제거 후 5·6번째 무피드백 방지) */
-  .lk-pad.b2 .lk-key.back.hit svg { stroke:var(--accent); }   /* b2 백스페이스 hit stroke도 강조색 유효 */
   @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} }
   .msgitem { padding:9px 10px; border-radius:10px; }
   .msgitem + .msgitem { border-top:1px solid var(--line2); }
@@ -2204,11 +2202,11 @@
   .pin-fs { position:relative; margin:15px 0 0; border:1px solid var(--line); border-radius:var(--r-s); padding:2px 12px 9px; transition:border-color .15s, box-shadow .15s; }
   .pin-fs legend { padding:0 6px; margin-left:-2px; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); }
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
-  /* ── PIN 슬롯 공통 정본(§🎨 CII·분신술 260703·260704) — 방금 자리만 숫자(흰 --fg·볼드 --fw-x·키패드 폰트 inherit)·나머지 동그라미 mut(입력됨=미입력 동일 톤 = 방금만 부각) · 크기 75%(12×18·15px) · gap/pad %=사이즈무관 비율(flex % = 컨테이너 content-box 기준 닮음변환) · .pub-slot/.lk-slot 별칭 계승(발행/조회/삭제/화면잠금 4곳 일괄 통일) · 입력·보안·상태머신은 각 어댑터(뷰/컨트롤러 분리) ── */
+  /* ── PIN 슬롯 공통 정본(§🎨 CII·분신술10 만장일치 260703) — 방금 자리만 숫자+형광·나머지 동그라미 마스킹 · gap/pad %=사이즈무관 비율(flex % = 컨테이너 content-box 기준 닮음변환) · .pub-slot/.lk-slot 별칭 계승 · #pindlg 잠금해제/삭제도 .pin-slot 통일(stage-2 260703) · 입력·보안·상태머신은 각 어댑터(뷰/컨트롤러 분리) ── */
   .pin-slots, .pub-slots { display:flex; justify-content:center; gap:5%; padding:6px 4.5% 4px; }
-  .pin-slot, .pub-slot, .lk-slot { width:12px; height:18px; display:grid; place-items:center; position:relative; font-weight:var(--fw-x); font-size:15px; line-height:1; color:var(--fg); }   /* 크기 75%(16→12·24→18·폰트 20→15) · 방금 입력 자리(.cur) 숫자 = 흰(--fg)·볼드(--fw-x)·키패드 폰트(inherit=Pretendard, 모노 아님) — 웹앱 전반 정본 통일(운영자 260704) · .lk-slot=화면잠금 별칭 */
+  .pin-slot, .pub-slot, .lk-slot { width:16px; height:24px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) · .lk-slot=화면잠금 별칭(stage-4 260704 · 옛 *마스킹·peek 폐지) */
   .pin-slot::before, .pub-slot::before, .lk-slot::before { content:''; grid-area:1/1; width:56%; aspect-ratio:1; border-radius:50%; background:var(--mut); transition:background .15s; }   /* 미입력 = mut 동그라미(슬롯 56% 상대·place-items center 세로중심 자동·* 편심 없음) */
-  .pin-slot.on::before, .pub-slot.on::before, .lk-slot.on::before { background:var(--mut); }   /* 입력됨(이전) = mut 동그라미(미입력과 동일 톤 · 방금 숫자만 부각 = 운영자 260704) */
+  .pin-slot.on::before, .pub-slot.on::before, .lk-slot.on::before { background:var(--fg); }   /* 입력됨(이전) = 흰 동그라미 */
   .pin-slot.cur::before, .pub-slot.cur::before, .lk-slot.cur::before { content:none; }   /* 방금 입력 = 원 숨기고 숫자 노출 */
   .pin-slots.bad .pin-slot::before, .pub-slots.bad .pub-slot::before, .lk-slots.bad .lk-slot::before { background:var(--danger); }
   .pin-slots.bad .pin-slot.cur, .pub-slots.bad .pub-slot.cur, .lk-slots.bad .lk-slot.cur { color:var(--danger); }   /* 숫자 외 = 붉게 */
@@ -4688,7 +4686,7 @@ function cancelVote(card, vote, fig, file, btn) {
 }
 // ── PIN 입력 UI (발행 슬롯 정본 계승 · stage-2 260703) ──
 // confirm/prompt 대체. #pindlg 슬롯 6개(동그라미)를 단일 투명 오버레이(.pin-in-h)로 받아 Promise로 돌려준다.
-// 입력→슬롯 시각화(방금 자리 숫자·이전 mut원), 6자리 채우면 엔터 없이 자동 resolve. 취소=null.
+// 입력→슬롯 시각화(방금 자리 숫자·이전 흰원), 6자리 채우면 엔터 없이 자동 resolve. 취소=null.
 // 숫자만(비숫자 무시)·6자리 상한(붙여넣기도 이 필터 통과). ⚠️ PIN은 세션/로컬에 저장 안 함(매번 입력).
 let _pinWired = false, _pinResolve = null;
 function _pinInput() { return $('#pinInput'); }
@@ -5507,7 +5505,7 @@ function lkBuildPad() {
   lkPadEl.innerHTML = h; lkKds = lkPadEl.querySelectorAll('.kd');
 }
 function lkApply() { const b2 = lkReal.length >= 4, o = b2 ? lkB : lkA; lkPadEl.classList.toggle('b2', b2); for (let i = 0; i < 10; i++) { lkKds[i].textContent = o[i]; lkKds[i].setAttribute('data-d', o[i]); } }   // 1~4자리 판A · 5~6자리 판B(백스페이스 복귀도 유지)
-function lkFill() { renderPinSlots(lkSlotsEl, lkReal); }   // 슬롯 시각 = stage-2/발행 정본 공유(방금 자리 숫자 노출·이전·미입력 모두 mut 동그라미) · 옛 * 마스킹+peek 0.7s → 동그라미 통일(운영자 260704) · 입력/검증/셔플 로직은 불변
+function lkFill() { renderPinSlots(lkSlotsEl, lkReal); }   // 슬롯 시각 = stage-2/발행 정본 공유(방금 자리 숫자 노출·이전 흰 동그라미·미입력 회색 동그라미) · 옛 * 마스킹+peek 0.7s → 동그라미 통일(운영자 260704) · 입력/검증/셔플 로직은 불변
 function lkFlash(el) { if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); clearTimeout(el._ht); el._ht = setTimeout(() => el.classList.remove('hit'), 180); }
 function lkUnbad() { clearTimeout(lkBadT); lkSlotsEl.classList.remove('bad', 'shake'); if (!lkOutLeft()) lkErrEl.textContent = ''; }
 const lkFails = () => parseInt(localStorage.getItem('nm_lock_fails') || '0', 10) || 0;
@@ -8475,9 +8473,9 @@ function renderPinSlots(slotsEl, value, opts) {
   const v = value || '', sl = slotsEl ? slotsEl.children : [], last = v.length - 1;
   const reveal = (opts && opts.reveal) || 'last';
   for (let i = 0; i < sl.length; i++) {
-    const cur = (reveal === 'last' && i === last && last >= 0);   // 방금 입력 = 숫자(흰·볼드·키패드 폰트)
+    const cur = (reveal === 'last' && i === last && last >= 0);   // 방금 입력 = 숫자 형광
     sl[i].classList.toggle('cur', cur);
-    sl[i].classList.toggle('on', i < v.length && !cur);           // 입력됨(이전) = mut 동그라미(미입력과 동일 톤·방금 자리만 부각)
+    sl[i].classList.toggle('on', i < v.length && !cur);           // 입력됨(이전) = 흰 동그라미
     sl[i].textContent = cur ? v[i] : '';
   }
 }
