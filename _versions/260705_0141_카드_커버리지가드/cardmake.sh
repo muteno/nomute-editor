@@ -361,41 +361,6 @@ ${lint_out}
     cov_out="$(python3 .github/scripts/card_gate.py coverage "$q" "cards/$stem/cards.md" 2>&1)"; cov_rc=$?
     printf '%s\n' "$cov_out" > "cards/$stem/coverage.log"
     [ $cov_rc -eq 2 ] && echo "::warning::[$stem] 요약→카드 알맹이 누락 의심(고신호 ≥2) — 슛 전에 '텍스트만 수정'으로 복원 검토: $(printf '%s' "$cov_out" | grep -m1 'COV 플래그')"
-    # ── 커버리지 가드(기본 OFF · CARD_COV_GUARD='1' 카나리아 · 운영자 260705 "카드도 지침 잘 따르게 검증 스위치") ──
-    #   고신호 알맹이(나이·형량·금액·인원·식별자) 증발 ≥2(cov_rc=2)일 때만, 누락 목록을 프리픽스로 박아 1회 회수 재생성.
-    #   프롬프트 = fp_base 재사용(지침 주입 포함 = 인라인 발췌 드리프트 0 · 위 규격 교정 재시도와 동일 골격).
-    #   채택 3중 = 카드 양식 확인 AND lint 통과 AND 고신호 감소 — 미달이면 기존 cards.md 유지(fail-soft·경보는 위에 이미 남음).
-    #   날조 방어 = 본 생성과 동일 신뢰(같은 프롬프트+다이제스트 전문) + 카드 = text_done 단계라 운영자 슛 전 육안 게이트(자동 발행 아님).
-    #   잡 예산 = SECONDS 게이트(기본 5400s < 잡 timeout 120분 · 회수 콜 600s 상한) — 승격 = 카나리아 ≥3건 후 운영자 사인오프(§파이프라인 e).
-    if [ "${CARD_COV_GUARD:-}" = "1" ] && [ $cov_rc -eq 2 ] && [ "$SECONDS" -le "${CARD_JOB_DEADLINE:-5400}" ]; then
-      hs1="$(printf '%s' "$cov_out" | grep -oE '고신호 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; hs1="${hs1:-9}"
-      echo "  🩹 커버리지 가드: 고신호 ${hs1}건 증발 — 1회 회수 재생성"
-      COV_PREFIX="⚠️⚠️ [알맹이 회수 — 강제]: 직전 카드가 자유요약의 핵심 수치(아래 목록)를 누락했다. 그 수치들을 서사가 맞는 카드 텍스트에 자연스럽게 회수해 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라(카드 수·구성·이미지 프롬프트는 유지 우선 · 합성기 규격 준수 · 응답 첫 글자부터 \`# {제목}\`). ⛔ 자유요약에 없는 새 사실·수치 추가 금지.
-[누락 수치 목록]
-${cov_out}
-
-"
-      out3="$(printf '%s' "${COV_PREFIX}${fp_base}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
-            --model "$MODEL" --effort max \
-            --allowedTools "WebFetch,WebSearch" \
-            --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
-            --max-turns 40 2>/dev/null)" || true
-      if [ -n "${out3//[[:space:]]/}" ] && grep -qm1 '^### \[카드 1\]' <<<"$out3"; then
-        printf '%s\n' "$out3" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.cov"
-        cov2_out="$(python3 .github/scripts/card_gate.py coverage "$q" "/tmp/${stem}.cards.cov" 2>&1)" || true
-        case "$cov2_out" in *COV*) hs2="$(printf '%s' "$cov2_out" | grep -oE '고신호 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; hs2="${hs2:-0}";; *) hs2=99;; esac   # 재측정 자체가 깨지면 채택 금지(hs2=99)
-        if python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.cov" >/dev/null 2>&1 && [ "$hs2" -lt "$hs1" ]; then
-          cp "/tmp/${stem}.cards.cov" "cards/$stem/cards.md"
-          printf '%s\n' "$cov2_out" > "cards/$stem/coverage.log"
-          echo "  ✓ 회수본 채택 — 고신호 ${hs1}→${hs2}건 · lint 통과"
-        else
-          echo "  🩹 회수본 검증 실패(lint 또는 고신호 ${hs1}→${hs2}) — 원본 유지(fail-soft)"
-        fi
-        rm -f "/tmp/${stem}.cards.cov"
-      else
-        echo "  🩹 회수 콜 무출력/양식 위반 — 원본 유지(fail-soft)"
-      fi
-    fi
   fi
 
   state="text_done"
