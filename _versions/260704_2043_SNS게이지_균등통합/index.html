@@ -7323,11 +7323,12 @@ function renderSns() {
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge(r.age_h);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
-    // 출처성향 무게중심 — 네이버 3서비스→1 접기 + 진영당 1표 균등평균(글수 무시=방향만·강도는 🔥burst/글N/소스칩이 담당). 성향값 불변·성향불명 제외. 통합 단일원칙(분신술 11인·볼륨가중/클램프 폐지 260704).
-    const _plat = {};   // 성향 플랫폼(네이버 접기)별 성향값 — 진영당 1표(글수 무관)
-    (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; _plat[NAVER_CHIP[s] ? '네이버' : s] = v; });
-    const _pv = Object.values(_plat);
-    const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
+    // 출처성향 무게중심 — 네이버 3서비스→1 접기(_platform 정합·게이지 유일 미접기 교정) + 글수 min(,6) 클램프(대량수집 유계 방어·POSTS_CAP 미러). 성향값 불변·성향불명 제외. 분신술 11인 260704.
+    const _plat = {};   // 플랫폼별 {성향값 v, 글수 n} — 네이버 서비스 글수 합산해 1표化
+    (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; const key = NAVER_CHIP[s] ? '네이버' : s; const cnt = (r.src_posts && r.src_posts[s]) || 1; (_plat[key] = _plat[key] || { v, n: 0 }).n += cnt; });
+    let _ws = 0, _wt = 0;
+    Object.values(_plat).forEach(p => { const w = Math.min(p.n, 6); _ws += p.v * w; _wt += w; });   // 6 = POSTS_CAP 미러(네이버 100글→6·커뮤 1글→1)
+    const _mid = _wt ? _ws / _wt : null;
     const _gauge = _mid == null ? '' : `<div class="soc-gauge"><span class="soc-dot" style="left:${((_mid - 1) / 9 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 옛 lean-* 색분기 제거(운영자 260704) */
     el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
