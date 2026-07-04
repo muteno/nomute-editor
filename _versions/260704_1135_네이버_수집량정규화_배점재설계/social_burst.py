@@ -14,7 +14,7 @@ import argparse
 import json
 import os
 import sys
-from collections import defaultdict, Counter
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -55,9 +55,6 @@ FRESH_HOURS = float(os.environ.get("SOCIAL_FRESH_HOURS", "24"))
 # 커뮤(members 2~4)는 2·log2(x)가 선형과 교차해 사실상 불변, 네이버(71)만 CAP으로 포화.
 POSTS_W   = float(os.environ.get("SOCIAL_POSTS_W",   "2.0"))
 POSTS_CAP = float(os.environ.get("SOCIAL_POSTS_CAP", "6.0"))
-# 수집량 대비 정규화 기준(운영자: "수집량이 그만큼 많으니 다른거 수집량에 대비해서 가점 배분") —
-# 소스가 NORM_REF보다 많이 긁으면 게시물 개당 가점↓. 네이버(display100·수백건)=개당 소수, 커뮤(수십건)=1.0 → 물량으로 못 누름.
-NORM_REF  = float(os.environ.get("SOCIAL_NORM_REF",  "20"))
 
 # ── 소스(어댑터) — RSS가 가장 안정적(SSR·무인증). URL은 라이브(Actions)에서 실측·확정 필요. ──
 # (소스명, RSS URL) · 비정치·생활/이슈 게시판 위주. 막히면 docs의 어그리게이터/네이버로 대체.
@@ -125,8 +122,8 @@ def _age_h(ts, now):
         return 999.0
 
 
-def cluster_and_score(posts, now, src_total=None):
-    """posts=[{title,source,url,ts}] → 클러스터별 버스트 랭킹 rows. src_total=소스별 수집총량(수집량 대비 정규화용)."""
+def cluster_and_score(posts, now):
+    """posts=[{title,source,url,ts}] → 클러스터별 버스트 랭킹 rows."""
     n = len(posts)
     toks = [tokenize(p.get("title", "")) - _STOP for p in posts]   # 소셜 chatter(추가·폭로·근황 등) 제거 → 특정 명사로 매칭(과병합 방지·러너 knews tokenize에도 적용)
     parent = list(range(n))
@@ -151,31 +148,25 @@ def cluster_and_score(posts, now, src_total=None):
     rows = []
     for members in clusters.values():
         srcs = sorted({posts[m]["source"] for m in members})          # 표시용 서비스명(뷰어 칩 구분 유지)
-        plats = sorted({_platform(s) for s in srcs})                  # 네이버 3서비스→1플랫폼(정렬·색·배점 소스항용)
+        plats = sorted({_platform(s) for s in srcs})                  # 카운트용 — 네이버 3서비스→1플랫폼 접기
         tss = [posts[m].get("ts") for m in members if posts[m].get("ts")]
         newest = max(tss) if tss else None
         age = _age_h(newest, now)
         recency = max(0.0, 1.0 - age / FRESH_HOURS)               # 최근일수록 1.0 → 0
-        # 게시물수 가점 = 수집량 대비 정규화 — 각 게시물 = min(1, NORM_REF/그 소스 총수집).
-        # 네이버(display100·수백건)=개당 소수, 커뮤(수십)=1.0 → 많이 긁어도 물량으로 커뮤 못 누름.
-        if src_total:
-            wposts = sum(min(1.0, NORM_REF / max(src_total.get(posts[m]["source"], 1), 1)) for m in members)
-        else:
-            wposts = float(len(members))
-        posts_score = min(POSTS_CAP, POSTS_W * math.log2(1.0 + wposts))   # 로그 상한(정규화 후에도 대량 완충)
-        burst = len(plats) * 2 + posts_score + recency * 3         # 플랫폼폭(가중2) + 수집량정규화 게시물수 + 최신성(가중3)
+        posts_score = min(POSTS_CAP, POSTS_W * math.log2(len(members)))   # 로그캡 — 네이버 대량 members 포화(커뮤 2~4는 선형과 교차=불변)
+        burst = len(plats) * 2 + posts_score + recency * 3         # 플랫폼폭(가중2) + 로그캡 게시물수 + 최신성(가중3)
         rep = min(members, key=lambda m: posts[m].get("ts") or now)   # 최초 보도 = 대표
         rows.append({
             "title": posts[rep]["title"],
             "url": posts[rep].get("url", ""),
             "sources": srcs,                    # 서비스명(칩 표시)
-            "source_count": len(srcs),          # 원시 서비스수 — 게이트(MIN_SOURCES)용 → 네이버 단독(블로그+카페)도 생존(운영자: 교차만 생존 금지)
-            "platform_count": len(plats),       # 접힌 플랫폼수 — 정렬 1차키·색티어(네이버 단독은 하단·보라 방지)
+            "source_count": len(plats),         # 플랫폼 수 — 게이트(MIN_SOURCES)·정렬 1차키가 네이버 접힌값 사용
+            "platform_count": len(plats),       # 명시 필드(뷰어 platformCount 게이트용·8 분신술)
             "posts": len(members),
             "age_h": round(age, 1),
             "burst": round(burst, 2),
         })
-    rows.sort(key=lambda r: (r["platform_count"], r["burst"]), reverse=True)   # 플랫폼수 1차 → 네이버 단독(1)은 커뮤(2+) 아래·생존은 게이트가 보장
+    rows.sort(key=lambda r: (r["source_count"], r["burst"]), reverse=True)   # source_count=플랫폼수 → 네이버단독이 커뮤 위로 못 감
     return rows
 
 
@@ -303,7 +294,7 @@ def fetch_rss(now):
 NAVER_ON     = os.environ.get("SOCIAL_NAVER", "") == "1"
 NAVER_ID     = os.environ.get("NAVER_CLIENT_ID", "")
 NAVER_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
-NAVER_DISPLAY = int(os.environ.get("NAVER_DISPLAY", "100"))   # 수집은 많이(운영자) — 물량은 cluster_and_score 수집량정규화가 흡수(개당 가점↓)
+NAVER_DISPLAY = int(os.environ.get("NAVER_DISPLAY", "25"))   # 100→25: members 폭증 입구 차단(쿼터 무관·콜수 동일·7 분신술)
 NAVER_SORT    = os.environ.get("NAVER_SORT", "date")
 # (표시이름, 서비스, 쿼리) — cafe 주력(커뮤니티성)·blog 최소·지식iN 드롭(개인 Q&A·공론화 신호 약·7 분신술).
 # 연예 논란 쿼리 포함 — 운영자: "서예지 같은 연예 이슈가 오히려 SNS에서 얻어야 되는 내용"(6 분신술).
@@ -396,9 +387,6 @@ def sample_posts(now):
         # 연예 이슈 — 네이버 '총정리'지만 CONTROVERSY '가스라이팅' veto로 보존 + 커뮤(더쿠)×네이버 = 2플랫폼 통과(교차 공론화)
         {"title": "서예지 가스라이팅 논란 총정리 재조명",            "source": "네이버블로그", "url": "n4", "ts": t(1)},
         {"title": "서예지 가스라이팅 그 사건 재점화 공론화",         "source": "더쿠",       "url": "n5", "ts": t(1)},
-        # 네이버 단독(블로그+카페·커뮤 교차 0) 진짜 이슈 — 원시 source_count 2로 생존·platform 1로 하단(운영자: 교차만 생존 금지)
-        {"title": "빅히트 소속사 갑질 폭로 파문 확산",              "source": "네이버블로그", "url": "n6", "ts": t(1)},
-        {"title": "빅히트 갑질 폭로 추가 증언 공론화",             "source": "네이버카페",   "url": "n7", "ts": t(1)},
     ]
 
 
@@ -411,8 +399,7 @@ def main():
 
     posts = sample_posts(now) if args.sample else fetch_live(now)
     kept = [p for p in posts if not is_political(p["title"]) and not is_noise(p["title"], p.get("source", ""))]
-    src_total = Counter(p["source"] for p in kept)   # 소스별 수집총량 — 수집량 대비 배점 정규화(운영자)
-    rows = cluster_and_score(kept, now, src_total)
+    rows = cluster_and_score(kept, now)
     rows = [r for r in rows if r["source_count"] >= args.min_sources]
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
