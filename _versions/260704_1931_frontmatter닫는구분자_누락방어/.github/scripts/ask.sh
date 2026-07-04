@@ -151,17 +151,6 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   if [ -n "$nothumb" ]; then
     out="$(printf '%s\n' "$out" | awk '!nt && /^---[[:space:]]*$/{print; print "no_thumb: \"1\""; nt=1; next} {print}')"
   fi
-  # 닫는 '---' 보증(260704 실측 '중국인 렌터카' — LLM이 frontmatter 닫는 표식을 생략 → 뷰어가 여닫이 매치 실패 →
-  #   메타데이터 통째 본문 노출). 여는 '---' 이후 key: value 필드 줄이 끝나는 지점(닫는 '---' 없이 빈 줄·본문行이 오면)
-  #   그 앞에 '---'를 삽입한다. 이미 닫는 '---'가 있는 정상 출력은 무변형(그 줄에서 cl=1로 멈춤). build-viewer 관용 파싱과 한 쌍.
-  out="$(printf '%s\n' "$out" | awk '
-    NR==1 && /^---[[:space:]]*$/{print; op=1; next}
-    op && !cl {
-      if(/^---[[:space:]]*$/){print; cl=1; next}
-      if(/^[A-Za-z_][A-Za-z0-9_]*:[[:space:]]/){print; next}
-      print "---"; cl=1; print; next
-    }
-    {print}')"
 
   id="ask-$(printf '%s' "$base" | tr -cd 'A-Za-z0-9' | cut -c1-18)"
   outfile="queue/${stamp}-${id}.md"

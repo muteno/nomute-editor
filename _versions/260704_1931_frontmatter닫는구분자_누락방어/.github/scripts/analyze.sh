@@ -348,18 +348,6 @@ ${extracted}"
     echo "  #마약 백스톱 — 본문 약물어 감지·tags 보강"
   fi
 
-  # 닫는 '---' 보증(260704 실측 — LLM이 frontmatter 닫는 표식 생략 → 뷰어 여닫이 매치 실패 → 메타데이터 통째 본문 노출).
-  #   여는 '---' 이후 key: value 필드가 끝나는 지점(닫는 '---' 없이 빈 줄·본문行이 오면) 그 앞에 '---' 삽입.
-  #   이미 닫는 '---'가 있는 정상 출력은 무변형. ask.sh 동일 보증·build-viewer 관용 파싱과 3중 한 쌍.
-  out="$(printf '%s\n' "$out" | awk '
-    NR==1 && /^---[[:space:]]*$/{print; op=1; next}
-    op && !cl {
-      if(/^---[[:space:]]*$/){print; cl=1; next}
-      if(/^[A-Za-z_][A-Za-z0-9_]*:[[:space:]]/){print; next}
-      print "---"; cl=1; print; next
-    }
-    {print}')"
-
   # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
   title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(있으면 완료 푸시 본문에 우선 · 260703)
