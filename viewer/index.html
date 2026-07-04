@@ -7301,9 +7301,9 @@ let curToolKey = null;
 function activeToolFrame() { return (curToolKey && toolFrames[curToolKey]) || document.querySelector('#tooldlg .toolfr.active') || document.getElementById('toolframe'); }
 function thumbTabBridge(d) {   // 이미지(thumb) 탭 부모 승격(260704) = 내부 #tabs 숨김 + 내부 탭변화(b4 FAB·selApp) 역동기 → 부모 .tooltab 하이라이트. thumb.html 무접촉(부모가 style 주입+observer·same-origin).
   try {
-    if (!d.getElementById('_thumbTabHide')) { const s = d.createElement('style'); s.id = '_thumbTabHide'; s.textContent = '#tabs{display:none!important}'; (d.head || d.documentElement).appendChild(s); }
+    if (!d.getElementById('_thumbTabHide')) { const s = d.createElement('style'); s.id = '_thumbTabHide'; s.textContent = '#tabs{display:none!important}'; (d.head || d.documentElement).appendChild(s); }   // 내부 탭바 숨김(부모 .tool-tabs로 승격) · ⚠️ thumb.html:36 .tabs margin-bottom 26(옛 187px 첫블릿 정렬 보정)은 이 display:none으로 dead화 — 첫 소머리 화면선 잔차(~2~5px thumb-low 추정)는 라이브 실측 후 필요시 이 주입 스타일에 스코프 보정(예 .wrap padding-top·첫 .csec margin-top 델타 = thumb.html 무접촉 유지)
     const tabsEl = d.getElementById('tabs'); if (!tabsEl) return;
-    const sync = () => { const on = d.querySelector('.tab.on'); const app = on && on.getAttribute('data-app'); if (!app) return; if (toolMeta.thumb) toolMeta.thumb.app = app; $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x.getAttribute('data-app') === app)); };
+    const sync = () => { if (curToolKey !== 'thumb') return; const on = d.querySelector('.tab.on'); const app = on && on.getAttribute('data-app'); if (!app) return; if (toolMeta.thumb) toolMeta.thumb.app = app; $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x.getAttribute('data-app') === app)); };   // curToolKey 가드 = cap(영상) 활성 중 비활성 thumb 탭변화가 공유 #toolTabs(=cap 탭바) 오염하는 것 차단(재검증 2명 수렴·미래 방어·260704)
     if (!tabsEl._parentSynced) { tabsEl._parentSynced = true; new MutationObserver(sync).observe(tabsEl, { subtree: true, attributes: true, attributeFilter: ['class'] }); }
     sync();   // 초기 동기(thumb 로드 시 selApp('2')=썸네일 → 부모 하이라이트 정합)
   } catch (_) {}
