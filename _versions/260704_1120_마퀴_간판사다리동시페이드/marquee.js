@@ -30,7 +30,6 @@ let _MARQ_COL = '#c85c5c';
 function _hexRgb(h){ h=(h||'').replace('#',''); if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; const n=parseInt(h||'c85c5c',16); return [n>>16&255, n>>8&255, n&255]; }
 function _readMarqCol(){ try{ _MARQ_COL=localStorage.getItem('marqColor')||'#c85c5c'; }catch(e){ _MARQ_COL='#c85c5c'; } }
 _readMarqCol();
-let _FADE = 1;   // 씬 전체 페이드(renderFrame서 매 프레임 세팅) — 내부서 globalAlpha 절대세팅하는 함수(간판 패널·글자)가 이걸 곱해 사다리와 '한 덩어리'로 페이드(운영자 260704)
 const CREAM   = '#f7edca';
 const LADCOL  = [247,237,202];    // 사다리 하프톤 = LOVE 크림패널 베이지(#f7edca) — 배경 위 가시성(운영자 260704)
 const BARDARK = '#1c1a14';   // NOW SHOWING 바(어두운 중립톤 — 어떤 강조색이든 잘 보이게)
@@ -266,7 +265,7 @@ function drawLadder(lit){
   ctx.moveTo(LAD.topR,LAD.topY); ctx.lineTo(LAD.baseR,LAD.baseY);
   ctx.stroke();
   ctx.lineWidth=6;            // rungs
-  for(let k=0;k<LAD.rungs;k++){   // 맨 아래(baseY) rung 제거 = 사다리 한 단 짧게(rails는 배너 아랫변까지 유지·운영자 260704)
+  for(let k=0;k<=LAD.rungs;k++){
     const f=k/LAD.rungs;
     const lx=lerp(LAD.topL,LAD.baseL,f), rx=lerp(LAD.topR,LAD.baseR,f);
     const yy=lerp(LAD.topY,LAD.baseY,f);
@@ -426,13 +425,13 @@ function drawBoard(t, lit){
     for(let i=0;i<NTILE;i++){
       if(revealed[i]<=0) continue;
       const tx=TILE0_X + i*(TILE_W+TILE_GAP);
-      ctx.globalAlpha=(1-lit)*_FADE;
+      ctx.globalAlpha=(1-lit);
       ctx.fillStyle=TILEED; ctx.fillRect(tx-2, LET_CY-TILE_H/2-2, TILE_W+4, TILE_H+4);
       ctx.fillStyle=TILEBG; ctx.fillRect(tx, LET_CY-TILE_H/2, TILE_W, TILE_H);
       // seam line across middle (split-flap)
       ctx.fillStyle='rgba(0,0,0,0.35)';
       ctx.fillRect(tx, LET_CY-1, TILE_W, 2);
-      ctx.globalAlpha=_FADE;         // 1 아닌 앰비언트 페이드로 복원(글자도 함께 페이드)
+      ctx.globalAlpha=1;
     }
   }
   // letters
@@ -452,7 +451,7 @@ function drawBoard(t, lit){
 // lit panel (cream) + bar + amber text — drawn with alpha=lit
 function drawLitPanel(lit){
   if(lit<=0.01) return;
-  ctx.globalAlpha=lit*_FADE;         // 점등 패널도 씬 페이드 반영(사다리와 동시 소멸)
+  ctx.globalAlpha=lit;
   // cream panel (illuminated pill)
   ctx.fillStyle=CREAM;
   roundRectPath(ctx, PILL.x, PILL.y, PILL.w, PILL.h, PILL.r); ctx.fill();
@@ -461,7 +460,7 @@ function drawLitPanel(lit){
   roundRectPath(ctx, CX-BAR.w/2, BAR.y, BAR.w, BAR.h, 14); ctx.fill();
   // amber NOW SHOWING text
   drawTextAmber("NOW SHOWING", CX, BAR.y+BAR.h/2, 5);
-  ctx.globalAlpha=_FADE;             // 앰비언트 페이드로 복원(1 아님 = 뒤 글자도 함께 페이드)
+  ctx.globalAlpha=1;
 }
 function drawTextAmber(str, cx, cy, ps){
   const chW=5*ps, gap=ps*1.4;
@@ -575,7 +574,7 @@ function drawRestHearts(tr, cx, cy){
     const x=HX+vx*age+(r3-0.5)*8, y=HY+vy*age+46*age*age;
     const cell=(0.55+r2*0.85)*4.6*(1+age*0.5);                      // 임의 크기 + 날며 커짐
     let a=age<0.12?age/0.12:(age>REST_FLY-0.7?(REST_FLY-age)/0.7:1);
-    ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,a))*_FADE;   // 하트도 씬 페이드 반영
+    ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,a));
     drawGlyph('#', x, y, cell, (k%2?rgb([210,85,99]):rgb([195,69,81])), 1, 1);
     ctx.restore();
   }
@@ -588,7 +587,6 @@ function renderFrame(i){
   const t = i/FPS;
   const lit = litAmount(t);
   const fade = Math.min(smooth(T.fade0, T.fade1, t), 1-smooth(T.sit1+1.7, DUR, t));   // 페이드인(등장) + 퇴장과 동시 페이드아웃(펫·사다리·간판 함께 사라짐·운영자 260704 · 시작=퇴장 시점 sit1+1.7)
-  _FADE = fade;                                            // 간판 패널·글자도 이 값을 곱해 사다리와 한 덩어리로 페이드
 
   ctx.globalAlpha=1;
   ctx.clearRect(0,0,W,H);                                  // 항상 클리어(투명 베이스)
