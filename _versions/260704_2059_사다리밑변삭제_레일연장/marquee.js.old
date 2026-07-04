@@ -73,8 +73,7 @@ const TILE0_X = CX - TILES_W/2;                      // left edge of tile row
 function tileCX(i){ return TILE0_X + i*(TILE_W+TILE_GAP) + TILE_W/2; }
 
 // ladder
-const LAD = {topY:432, baseY:1078, topL:474, topR:576, baseL:320, baseR:730, rungs:5};   // baseY=캔버스 바닥 · rungs=5(간격 기준) · 레일은 아래로 LAD_EXT만큼 더 연장해 배너 아랫변에 잘림 = 맨 아랫변(바닥 크로스바) 없이 내려가는 열린 사다리(운영자 260704)
-const LAD_EXT = 96;   // 레일을 캔버스 바닥(H) 너머 이만큼 더 뻗음 → 배너 아랫변이 잘라냄('자르고 아래로'=바닥 크로스바가 화면 밖으로 밀려 안 보임)
+const LAD = {topY:432, baseY:1078, topL:474, topR:576, baseL:320, baseR:730, rungs:5};   // baseY=캔버스 바닥 → 사다리 하단변이 배너 아랫변에 닿음 · rungs 6→5(한 단 짧게·맨 아래 rung은 baseY에 그대로 = rails 끝=rung=배너 아랫변 flush·매달린 stub 없음·운영자 260704)
 
 // ---------- easing ----------
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -261,15 +260,13 @@ function drawLadder(lit){
   ctx.save();
   ctx.lineCap='round'; ctx.lineJoin='round';
   ctx.strokeStyle=`rgba(${LAD_RGB},0.96)`;
-  ctx.lineWidth=8;            // rails — 캔버스 바닥 너머(H+LAD_EXT)까지 같은 기울기로 연장 → 배너 아랫변이 잘라냄(둥근 stub 없이 깔끔히 잘림·운영자 260704)
-  const extF=(H+LAD_EXT-LAD.topY)/(LAD.baseY-LAD.topY);
-  const exL=lerp(LAD.topL,LAD.baseL,extF), exR=lerp(LAD.topR,LAD.baseR,extF);
+  ctx.lineWidth=8;            // rails
   ctx.beginPath();
-  ctx.moveTo(LAD.topL,LAD.topY); ctx.lineTo(exL,H+LAD_EXT);
-  ctx.moveTo(LAD.topR,LAD.topY); ctx.lineTo(exR,H+LAD_EXT);
+  ctx.moveTo(LAD.topL,LAD.topY); ctx.lineTo(LAD.baseL,LAD.baseY);
+  ctx.moveTo(LAD.topR,LAD.topY); ctx.lineTo(LAD.baseR,LAD.baseY);
   ctx.stroke();
-  ctx.lineWidth=6;            // rungs — 맨 아랫변(k=rungs=바닥 크로스바) 삭제: k<rungs (열린 사다리·운영자 260704)
-  for(let k=0;k<LAD.rungs;k++){
+  ctx.lineWidth=6;            // rungs
+  for(let k=0;k<=LAD.rungs;k++){   // k=0..rungs → 맨 아래 rung이 baseY(배너 아랫변)에 flush(rails 끝과 일치=매달린 stub 없음) · rungs=5라 총 6단(한 단 짧게)·운영자 260704
     const f=k/LAD.rungs;
     const lx=lerp(LAD.topL,LAD.baseL,f), rx=lerp(LAD.topR,LAD.baseR,f);
     const yy=lerp(LAD.topY,LAD.baseY,f);
