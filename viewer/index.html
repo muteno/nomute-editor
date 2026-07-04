@@ -1049,6 +1049,7 @@
   .qpop .qlist { margin-top:8px; display:flex; flex-direction:column; flex:0 1 calc(5 * 47px); min-height:0; overflow-y:auto; }   /* 높이=5행 고정(flex-basis 235px·grow0) → 모든 페이지 동일 크기(1페이지 기준·행 적으면 아래 빈공간). shrink1=좁은 뷰포트선 줄며 스크롤. 행=47px(아이콘30+패딩16+보더1)·제목 nowrap이라 행높이 불변 · 운영자 260622 */
   .qrow { display:flex; align-items:center; gap:9px; padding:8px 3px; border-top:1px solid var(--line2); }
   .qrow:first-child { border-top:none; }
+  .qrow.qrow-out { overflow:hidden; animation:none !important; opacity:0; transform:translateX(14px); padding-top:0; padding-bottom:0; border-top-color:transparent; pointer-events:none; transition:max-height .24s cubic-bezier(.4,0,1,1), opacity .18s ease, transform .22s cubic-bezier(.4,0,1,1), padding .24s ease; }   /* 삭제 = 확 사라지지 말고 접힘+페이드(운영자 260704 '자연스럽게·너무 느리진 않게') · animation:none = cardIn(opacity 홀드) 해제해야 페이드 transition 발동 · max-height는 JS(animateRowOut)가 offsetHeight→0 · 발행본·메시지함 공용(qrow) */
   .qrow .qt { flex:none; width:64px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }   /* 고정폭 = 시간 열 공간 일정 → 제목 시작 x 정렬(2열↓ 삐뚤어짐 해소·운영자 260621). 단순 사다리(복합표기 폐지)라 64px면 '23시간 전'·'11개월 전' 다 들어감 */
   .qrow .qmain { flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .qrow .qst { flex:none; width:58px; display:flex; align-items:center; justify-content:flex-start; }   /* 상태 = 고정폭 셀 좌측정렬 → 행마다 상태/링크 시작 x 일정·상태 라벨 좌변 일치(운영자 260622) */
@@ -5288,6 +5289,14 @@ const MSG_READ_KEY = 'nomute_msg_read';
 function msgReadSet() { try { return new Set(JSON.parse(localStorage.getItem(MSG_READ_KEY) || '[]')); } catch { return new Set(); } }
 function msgMarkAllRead() { const dis = msgDismissed(), read = msgReadSet(); allMsgs().forEach(m => { if (m.id && !dis.has(String(m.id))) read.add(String(m.id)); }); try { localStorage.setItem(MSG_READ_KEY, JSON.stringify([...read])); } catch {} }
 function unreadCount() { const dis = msgDismissed(), read = msgReadSet(); return allMsgs().filter(m => m.id && !dis.has(String(m.id)) && !read.has(String(m.id))).length; }   // 안 읽은 메시지 수(프로필 클릭 시 메뉴→메시지함 촤르륵 판정 · 운영자 260704)
+// 리스트 행 삭제 = 접힘+페이드 후 실제 제거(운영자 260704: 확 사라지지 말고 자연스럽게·.24s). reduced-motion=즉시. 발행본·메시지함·향후 다른 삭제 버튼 공용(.qrow).
+function animateRowOut(row, done) {
+  if (!row || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { done(); return; }
+  row.style.maxHeight = row.offsetHeight + 'px';   // 현재 높이 고정(접힘 기준)
+  row.classList.add('qrow-out');
+  requestAnimationFrame(() => { row.style.maxHeight = '0px'; });   // → 0으로 접힘(아래 항목 자연스럽게 올라옴)
+  setTimeout(done, 260);   // 접힘 .24s 완주 후 실제 제거(transitionend 조기발동 회피 = 단순·확실)
+}
 function msgKind(m) {   // 알림구분 라벨(운영자 260704 '알림구분' 열) — 종류별 색
   if (m._health) return { t: '시스템', c: 'mk-sys' };
   if (m.level === 'warn' || String(m.id || '').startsWith('fail-')) return { t: '경고', c: 'mk-warn' };
@@ -5315,7 +5324,7 @@ function renderMsgList() {
       + '<span class="qmain" title="' + qEsc(body) + '">' + qEsc(bodyS) + '</span>'
       + '<span class="qact">' + del + '</span></div>';
   }).join('');
-  list.querySelectorAll('.msg-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); msgDismiss(b.dataset.id); renderMsgList(); renderMsgBadge(); });
+  list.querySelectorAll('.msg-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); animateRowOut(b.closest('.qrow'), () => { msgDismiss(b.dataset.id); renderMsgList(); renderMsgBadge(); }); });
 }
 // 메시지함 열고(필요시) 특정 메시지로 스크롤·강조 — 푸시 알림 탭(/?msg=<id>) 진입점.
 function openMsgbox(highlightId) {
@@ -8888,7 +8897,7 @@ async function _pubRemove(it, btn) {
   try {
     const r = await fetch('api/unpublish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: it.slug }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { PUBITEMS = PUBITEMS.filter(x => x.slug !== it.slug); renderPubPage(); _updatePubBadge(); }
+    if (r.ok && d.ok) { animateRowOut(btn && btn.closest('.qrow'), () => { PUBITEMS = PUBITEMS.filter(x => x.slug !== it.slug); renderPubPage(); _updatePubBadge(); }); }
     else if (btn) btn.disabled = false;
   } catch { if (btn) btn.disabled = false; }
 }
