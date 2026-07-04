@@ -14,7 +14,6 @@ MODEL="$PIPE_MODEL"
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과부하(5xx/Overloaded) 인라인 재시도용(analyze와 공용)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
-source "$ROOT/shared/summary_repair.sh"    # 분량 가드 SSOT — IG/Thread 과소 시 1회 보강(기본 OFF·SUMMARY_LEN_GUARD='1' · 260705)
 INLINE_TRIES=3   # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도(15s·30s 백오프) — 버스트 ✨요약요청 유실 차단(analyze와 동일·260622)
 EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '메이저 기사 찾기'는 도구 왕복이 본질이라 max 는 매 검색 사이 헛사고로 타임아웃만 유발(누락방지 실익≈0) → high 기본(효율·품질 균형 · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
 ASK_TIMEOUT="${ASK_TIMEOUT:-600}"      # claude -p 타임아웃(초) — 요약요청은 요약만이라 10분이면 충분(검색완화 후). 초과 시 계정 1회 전환 후 격리(운영자 260704 "10분 넘으면 다른 계정" · 옛 900s는 배치 timeout 시 45분→워크플로 초과라 하향).
@@ -168,9 +167,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   outfile="queue/${stamp}-${id}.md"
   n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
   printf '%s\n' "$out" > "$outfile"
-  # 분량 가드(기본 OFF · SUMMARY_LEN_GUARD='1' 카나리아) — IG/Thread 과소 시 자유요약에서 1회 보강(잡 예산 내 · fail-soft · 260705 · repair ≤+480s는 다음-기사 헤드룸(2×600s) 내 = 잡 최악 무변·평의회8)
-  if [ "$SECONDS" -le "$ASK_JOB_DEADLINE" ]; then summary_repair "$outfile" ask-repair; fi
-  # 규격·자수 기계 린트(비차단 · analyze.sh 미러 · 분신술② NEW-1 · 260703) — ask 경로 다이제스트 사각지대 해소(검증4). 가드 뒤 = 최종본 실측.
+  # 규격·자수 기계 린트(비차단 · analyze.sh 미러 · 분신술② NEW-1 · 260703) — ask 경로 다이제스트 사각지대 해소(검증4).
   python3 shared/digest_guard.py "$outfile" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$f"
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
