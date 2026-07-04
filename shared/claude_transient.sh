@@ -67,6 +67,7 @@ _claude_slot_token() { case "${1:-0}" in 0) printf '%s' "${_CLAUDE_TOK0:-}";; 1)
 # claude_reset_force_swap(): force(타임아웃)로 임시 전환된 계정을 쿼터 확정 위치로 되돌린다(각 기사 처리 진입 시 호출).
 #   쿼터 스왑(claude_failover, _FORCE_SWAPS 미증가)은 그대로 유지 · force 로 올린 분(_FORCE_SWAPS)만 차감 → 토큰 복원.
 #   ⚠️ 한 기사에서 쿼터+타임아웃이 겹쳐도 force 분만 정확히 빠지고 쿼터 스왑은 보존(스텝 차감식).
+#   ⚠️ 차감식 전제 = claude_failover(쿼터)·claude_failover_force(타임아웃)가 *동일 슬롯 사다리(0→1→2)를 lockstep* 으로 오른다는 것 → 둘의 슬롯 순서·_claude_slot_token 매핑을 항상 동기화 유지(한쪽만 순서 바꾸면 reset 이 조용히 오복원 · 재검증 260704).
 claude_reset_force_swap() {
   local f="${_FORCE_SWAPS:-0}"; [ "$f" = "0" ] && return 0
   local q=$(( ${_CLAUDE_SWAPPED:-0} - f )); [ "$q" -lt 0 ] && q=0
