@@ -26,6 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VIEWER = os.path.join(ROOT, "viewer", "index.html")
 BASECSS = os.path.join(ROOT, "구성도", "base.css")
 TOKENSCSS = os.path.join(ROOT, "viewer", "tokens.css")   # STAGE3: 4뷰어 공유 구조토큰(색 제외) — index :root 파생
+LOCK = os.path.join(ROOT, "design-tokens.lock")   # §🔒 제1 핵심명령 기계게이트 — :root 토큰명 승인 스냅샷(신토큰=운영자 승인+lock 갱신 없으면 check_refs rc=1)
 
 START = "/* === AUTO-MIRROR:START — viewer/index.html :root 자동투영. 직접수정 금지(shared/build_design_mirror.py build) === */"
 END = "/* === AUTO-MIRROR:END === */"
@@ -60,7 +61,7 @@ _TOKENS_HEADER = (
 # 구조 토큰 판정 — 색/의미색/팔레트와 접두사가 겹치지 않음(검증: --bg/--glass/--line/--accent/--fg/--mut/
 #   --danger/--warn/--amber/--info/--bias/--on-*/--hist/--arm/--thumb 중 아래 접두사로 시작하는 것 0).
 _STRUCT_EXACT = {"--r", "--font-status", "--ease"}
-_STRUCT_PREFIX = ("--r-", "--sp-", "--blur-", "--btn", "--fs-", "--fw-", "--lh-", "--dur", "--z-", "--press-")
+_STRUCT_PREFIX = ("--r-", "--sp-", "--blur-", "--btn", "--fs-", "--fw-", "--lh-", "--dur", "--z-", "--press-", "--gauge")
 
 
 def _is_struct(name):
@@ -142,6 +143,47 @@ def build():
     return 0
 
 
+# ── §🔒 제1 핵심명령 기계게이트: 토큰 승인 락 ─────────────────────────────
+# viewer :root 토큰명 집합을 design-tokens.lock에 스냅샷. 신토큰/삭제가 락과 어긋나면 check rc=1.
+# 락 갱신은 'lock' 서브커맨드로만(build은 안 건드림) = 운영자 승인의 명시 행위(§🔒 ②[갱신]).
+# 완벽한 강제는 아님(모델이 lock도 실행 가능) — 그러나 '조용한 토큰 추가'를 차단하고 lock diff가
+# 커밋/PR에 명시적으로 남아 운영자 가시화 = '승인의 부재'를 기계가 잡는 최선 근사(분신술 앵글7·14).
+def _root_token_names():
+    # 정의 `--name:`만(한 줄에 여러 개 있어도 전부) — `var(--x)` 참조는 콜론이 안 붙어 자동 제외.
+    root = extract_root()
+    return sorted(set(re.findall(r"(--[A-Za-z0-9-]+)\s*:", root)))
+
+
+def render_lock():
+    return "\n".join(_root_token_names()) + "\n"
+
+
+def build_lock():
+    open(LOCK, "w", encoding="utf-8").write(render_lock())
+    print("✅ 토큰 락 갱신 — design-tokens.lock = viewer :root 토큰명 %d개(운영자 승인 스냅샷)." % len(_root_token_names()))
+    return 0
+
+
+def check_lock():
+    if not os.path.exists(LOCK):
+        print("⚠️ 토큰 락 check 스킵 — design-tokens.lock 없음(최초 `build_design_mirror.py lock` 으로 생성).")
+        return 0
+    want = set(_root_token_names())
+    locked = set(x.strip() for x in open(LOCK, encoding="utf-8") if x.strip())
+    new = sorted(want - locked)
+    removed = sorted(locked - want)
+    if new or removed:
+        print("❌ 토큰 락 드리프트 — viewer :root ≠ design-tokens.lock (§🔒 제1 핵심명령 ②[갱신]=운영자 승인 필수).")
+        if new:
+            print("   🆕 신설 토큰(운영자 승인 + 락 갱신 필요): " + ", ".join(new))
+        if removed:
+            print("   🗑 삭제된 토큰(운영자 승인 필요): " + ", ".join(removed))
+        print("   → 운영자 승인 후 `python3 shared/build_design_mirror.py lock` 실행해 락 갱신·커밋(§🔒 ②).")
+        return 1
+    print("✅ 토큰 락 정합 — viewer :root 토큰명 = design-tokens.lock(%d개)." % len(want))
+    return 0
+
+
 def check():
     rc = 0
     if not os.path.exists(BASECSS):
@@ -157,6 +199,8 @@ def check():
             print("✅ 디자인 거울 정합 — 구성도/base.css AUTO-MIRROR = viewer :root.")
     if check_tokens() != 0:   # STAGE3: tokens.css 정합·색오염 게이트(거울 2호)
         rc = 1
+    if check_lock() != 0:   # §🔒 기계게이트: :root 토큰명 vs design-tokens.lock(신토큰 승인 강제)
+        rc = 1
     return rc
 
 
@@ -166,6 +210,8 @@ if __name__ == "__main__":
         sys.exit(check())
     elif cmd == "build":
         sys.exit(build())
+    elif cmd == "lock":
+        sys.exit(build_lock())
     else:
-        print("사용: build_design_mirror.py [build|check]")
+        print("사용: build_design_mirror.py [build|check|lock]")
         sys.exit(2)

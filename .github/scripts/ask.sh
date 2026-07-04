@@ -77,7 +77,7 @@ ${GBLOCK}
  1) 본문에 URL이 있으면 그 기사를(운영자가 직접 고른 URL은 오래됐어도 존중), 토픽/캡처만 있으면 WebSearch 로 '제일 메이저' 기사 1건(여럿이면 합쳐서 핵심)을 찾는다. ⚠️ **토픽/캡처 검색 시 = 최신 우선(18시간 내)**: 같은 사안이면 **최근 18시간 내 보도 중 가장 메이저한 것**을 골라라(며칠·몇 주 지난 옛 기사가 뉴스요약 피드 상단 채우는 문제 방지 — 운영자 260702). 18시간 내 보도가 없으면 그중 가장 최근 것으로(억지 최신화·날짜 조작 금지), *최신 보도가 있는데 옛 기사를 고르지는 마라*.
  2) 첨부 캡처 파일이 있으면 Read 로 열어 단서로 활용한다.
  3) 찾은 기사로 위 지침·출력 포맷 그대로 큐레이션 다이제스트를 생성한다.
- 4) ⭐ 찾은 '제일 메이저' 기사의 **원본 URL(WebFetch/WebSearch로 실제 접근·확인한 것만)을 frontmatter `url:` 에 넣어라**(뷰어 상단 '원문' 링크로 노출된다). ⚠️ 스니펫에서 본 듯한 URL을 추측·조립하지 마라(사실 무결성) — 실제 확인한 기사 URL이 하나도 없을 때만 url: "". 그리고 **그 기사에서 기자(reporter)·게시일시(date·time)·매체(media)를 추출해 frontmatter + 본문 '출처:' 줄 양쪽에 정확히 반영**하라(토픽/캡처 요청이라도 네가 찾아 확인한 그 기사가 곧 원문이다). ⚠️ §입력 처리 0의 'URL 없으면 url:""' 규칙은 **운영자 전문 붙여넣기**(전문이 곧 원문) 경우에만 적용 — 요약 요청 모드에선 네가 찾아 확인한 기사 URL을 넣는다.
+ 4) ⭐ 찾은 '제일 메이저' 기사의 **원본 URL(WebFetch/WebSearch로 실제 접근·확인한 것만)을 frontmatter \`url:\` 에 넣어라**(뷰어 상단 '원문' 링크로 노출된다). ⚠️ 스니펫에서 본 듯한 URL을 추측·조립하지 마라(사실 무결성) — 실제 확인한 기사 URL이 하나도 없을 때만 url: "". 그리고 **그 기사에서 기자(reporter)·게시일시(date·time)·매체(media)를 추출해 frontmatter + 본문 '출처:' 줄 양쪽에 정확히 반영**하라(토픽/캡처 요청이라도 네가 찾아 확인한 그 기사가 곧 원문이다). ⚠️ §입력 처리 0의 'URL 없으면 url:""' 규칙은 **운영자 전문 붙여넣기**(전문이 곧 원문) 경우에만 적용 — 요약 요청 모드에선 네가 찾아 확인한 기사 URL을 넣는다.
  5) 내용이 모호해도 절대 실패(ANALYSIS_FAILED)하지 말고 best-effort 로 큐레이션한다 — 이 건은 운영자가 직접 고른 것이다.
  ⛔ Write/Edit/Bash 금지(스크립트가 저장한다). frontmatter '---' 로 시작하는 다이제스트만 출력.]
 
@@ -92,6 +92,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   # 인라인 재시도 — Anthropic API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(analyze와 동일·260622).
   #   성공·ANALYSIS_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0). 과부하 신호일 때만 재시도(is_transient).
   inline_delay=15
+  timeout_retried=0   # rc=124(900s 타임아웃) 1회 재시도 플래그 — cardmake 패턴 이식(운영자 260701 선례 · 260704 ask 2일 연속 124 실측)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
     out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
           --model "$MODEL" \
@@ -108,6 +109,14 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
     if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
       echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
       sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+    fi
+    # 요약 타임아웃(rc=124 = claude_meter 900s 상한 초과·무출력) 자동 재시도 1회 (cardmake 260701 패턴 이식 · 260704).
+    #   opus effort max + WebSearch max-turns 50이 15분을 넘겨 SIGTERM 종료되던 것 구제(7/3·7/4 연속 실측).
+    #   is_transient(5xx/과부하 텍스트)엔 안 걸리는 순수 타임아웃이라 별도 처리 — API 상태·검색 경로 편차로 2차 시도 성공 가능. 1회만(비용 바운드·잡 timeout 60분 내).
+    if [ "$timeout_retried" -eq 0 ] && [ "$attempt" -lt "$INLINE_TRIES" ] && [ "$rc" -eq 124 ]; then
+      timeout_retried=1
+      echo "  ⏳ 요약 타임아웃(rc=124 · 900s 초과·무출력) — ${inline_delay}s 후 1회 재시도(${attempt}/${INLINE_TRIES})"
+      sleep "$inline_delay"; continue
     fi
     break
   done

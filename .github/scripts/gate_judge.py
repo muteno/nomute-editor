@@ -114,7 +114,7 @@ RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 
 정치 · 사회 · 경제 · 문화 · 국제 · 테크
 ⚠️ 사건의 *본질*로 분류하라 — 장소·소재가 아니라 무슨 일인지로. '미술관서 흉기난동·경찰 추적'은 장소가 미술관이어도 강력범죄 = **사회**. '경기장 압사·공연장 화재'도 사고 = **사회**. 반대로 영화·드라마·게임·스포츠 경기·연예·전시·공연·문학 자체가 주제면 **문화**. 해외·국가간·전쟁·외교·통상 = **국제**. 대통령·국회·선거·정당·정책 = **정치**. 증시·기업·산업·부동산·고용 = **경제**. AI·IT·반도체·우주·과학 = **테크**. 사건사고·범죄·재난·사법·경찰·교육·노동·복지·의료 = **사회**.
 ⚠️ **정부·대통령·국회·정책 주체의 발언·정책·결정·논쟁이 본질이면, 소재가 반도체·AI·산업·증시여도 정치다**(정부정책이니까 — 예: '李대통령 호남반도체 물부족 비판'·'정부 반도체 5조 투자' = **정치** / 테크·경제는 *순수 기술·기업·시장* 기사에만).
-⚠️ **경계 우선순위 — 헷갈리면 이 순서로 판단(앞이 맞으면 멈춤·소재에 먼저 끌리지 마)**: ① **위치** 해외에서 벌어진 일(재난·사고·통상·정책 포함)=**국제**(사건 성격보다 우선 — 예: '베네수엘라 지진 920명'·'터키 공장 화재'·'프랑스 항공기 추락'=국제) → ② **주체** 정부·대통령·국회·정당·정책 주체=**정치**(소재가 반도체·AI·증시여도) → ③ **본질** 재난/사고/범죄/재판/노동=사회 · 영화/드라마/스포츠경기/연예/공연=문화 · 증시/기업/산업/고용/무역=경제 → ④ **소재** 반도체·AI·우주·과학=**테크**(순수 기술·기업·시장 기사에만·*최후수단*). ⚠️ **국경 넘는 규제·수출통제·관세·무역분쟁=국제**(통상 본질·소재 산업 무시 — 예: '中 미쓰비시 日 수출통제'·'美 관세 강화'=국제) / **지역·국가 산업지표(성장률·수출량·고용)=경제**(반도체 소재여도 — 예: '충북 반도체 성장률 전국1위'=경제).
+⚠️ **경계 우선순위 — 헷갈리면 이 순서로 판단(앞이 맞으면 멈춤·소재에 먼저 끌리지 마)**: ⓪ **콘텐츠** 스포츠 경기·선수 활약·연예·공연·작품이 주제면 **위치 무관 문화**(한국 선수의 해외 리그[MLB·EPL 등] 경기·기록·이적, 해외 구단·감독 소식, 해외 아티스트 공연·수상 = **문화** — 국제 아님. 예: '송성문 오타니 상대 안타'·'일본 모리야스 감독 재계약'=문화) → ① **위치** 해외에서 벌어진 일(재난·사고·통상·정책 포함)=**국제**(사건 성격보다 우선 — 예: '베네수엘라 지진 920명'·'터키 공장 화재'·'프랑스 항공기 추락'=국제) → ② **주체** 정부·대통령·국회·정당·정책 주체=**정치**(소재가 반도체·AI·증시여도) → ③ **본질** 재난/사고/범죄/재판/노동=사회 · 영화/드라마/스포츠경기/연예/공연=문화 · 증시/기업/산업/고용/무역=경제 → ④ **소재** 반도체·AI·우주·과학=**테크**(순수 기술·기업·시장 기사에만·*최후수단*). ⚠️ **국경 넘는 규제·수출통제·관세·무역분쟁=국제**(통상 본질·소재 산업 무시 — 예: '中 미쓰비시 日 수출통제'·'美 관세 강화'=국제) / **지역·국가 산업지표(성장률·수출량·고용)=경제**(반도체 소재여도 — 예: '충북 반도체 성장률 전국1위'=경제).
 
 규칙: 각 기사를 정확히 한 줄씩, "<번호>\\t<0|1|2|3>\\t<정치|사회|경제|문화|국제|테크>" 형식으로만 출력한다(설명·머리말 금지)."""
 RUBRIC_VER = hashlib.sha256(RUBRIC.encode("utf-8")).hexdigest()[:12]
@@ -194,11 +194,21 @@ def judge(items):
     return grades, cats, trans, p.returncode, p.stderr
 
 
+def _write(cands):
+    """원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)."""
+    import tempfile
+    import os as _os
+    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
+    with _os.fdopen(_fd, "w", encoding="utf-8") as _f:
+        _f.write(json.dumps(cands, ensure_ascii=False))
+    _os.replace(_tmp, CAND)
+
+
 def main():
     cands = json.loads(CAND.read_text(encoding="utf-8"))
     pending = [c for c in cands if needs_grading(c)]
 
-    if "--count" in sys.argv:           # 게이트용 — 숫자만 출력, claude 미호출
+    if "--count" in sys.argv:           # 게이트용 — 숫자만 출력, claude 미호출(강마커 선확정분 포함 = 도장 찍을 런이 뜨게)
         print(len(pending))
         return
 
@@ -206,6 +216,29 @@ def main():
         print("미채점 노출후보 없음 — 종료")
         return
     total = len(pending)
+    # 강마커 선확정 스킵(260704 · 운영자 승인 "낭비 해결"): cat구제(비노출) 대상인데 cat_force 가 이미 cat 을
+    # 확정하는 제목은 AI cat 결과가 어차피 버려짐(반영부에서 fc 우선) → claude 콜 없이 도장만 찍고 배치서 제외.
+    # 실측(260704 재채점 백로그): cat구제 1,672건 중 273건(16.3%)이 해당 — 배치 40건 단위라 *콜* 절감은
+    # 총 게이트 콜 기준 ~8~9%(Opus5인 검증5 시뮬: 76→69청크 · 항목%≠콜% 정직 표기) + 배치 슬롯을 진짜
+    # 모호건에 양보(백로그 소화 가속). ⚠️ 번역 편승 대상(외국어 제목·title_ko 미도장)은 번역 칸이 필요해 스킵 제외.
+    # ⚠️ 노출권(surfaced)은 grade 채점이 필요하므로 스킵 안 함(기존 그대로 — cat 만 fc 가 덮음).
+    skipped = 0
+    ai_pending = []
+    for c in pending:
+        fc = cat_force(c.get("title") or "") if not surfaced(c) else None
+        if fc and not needs_translate(c):
+            c["cat"] = fc
+            c["cat_rubric"] = RUBRIC_VER   # 도장 = needs_grading/--count 재계상 루프 차단(grade 미기록은 cat구제 기존 규약 그대로)
+            skipped += 1
+        else:
+            ai_pending.append(c)
+    pending = ai_pending
+    if skipped:
+        print(f"강마커 선확정 {skipped}건 — claude 콜 없이 cat 도장(배치 제외)")
+    if not pending:
+        _write(cands)
+        print(f"강마커 선확정만 {skipped}건 도장 — claude 미호출 종료")
+        return
     pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
     # 노출권(grade) 우선 + cat구제 최소쿼터 보장(GATE_CAT_QUOTA) — 노출권 백로그가 MAX 초과여도 cat구제가 *기아*되지 않게(감사5·260628: 노출권 1109>80이 cat 651을 영구 0처리 → 347건 사회 오표시였음). cat구제는 grade 미기록·cat만이라 가볍다.
     surf = [c for c in pending if surfaced(c)]
@@ -225,7 +258,9 @@ def main():
         cats.update(gc)
         trans.update(tr)
     if not grades:
-        # 전 청크 실패 = 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
+        # 전 청크 실패 = AI 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
+        if skipped:
+            _write(cands)   # 강마커 선확정 도장은 콜 실패와 무관 — 보존(안 쓰면 매 런 재도장 낭비)
         print("::warning::경중 채점 전 청크 실패 — 다음 런 재시도")
         sys.exit(0)
     dist = Counter()
@@ -259,12 +294,8 @@ def main():
             c["cat_rubric"] = RUBRIC_VER  # cat 채점 도장(재채점 루프 방지) — grade/grade_rubric 은 안 씀
             catfix += 1
         dist[g] += 1
-    import tempfile, os                          # 원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)
-    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
-    with os.fdopen(_fd, "w", encoding="utf-8") as _f:
-        _f.write(json.dumps(cands, ensure_ascii=False))
-    os.replace(_tmp, CAND)
-    print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, cross-2 cat구제 {catfix}건, 외신 번역 {tdone}건, rubric {RUBRIC_VER})")
+    _write(cands)
+    print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, cross-2 cat구제 {catfix}건, 강마커 선확정 {skipped}건, 외신 번역 {tdone}건, rubric {RUBRIC_VER})")
     for i, c in enumerate(pending):
         if grades.get(str(i)) == 0:
             print(f"  0(비뉴스) {c.get('title', '')[:50]}")
