@@ -26,7 +26,6 @@ const TILEED  = '#050505';
 const RED     = '#d25563';        // letters on dark tile
 const CRIM    = '#c34551';        // letters on cream panel
 const CREAM   = '#f7edca';
-const LADCOL  = [247,237,202];    // 사다리 하프톤 = LOVE 크림패널 베이지(#f7edca) — 배경 위 가시성(운영자 260704)
 const BARDARK = '#1c1a14';   // NOW SHOWING 바(어두운 중립톤 — 어떤 강조색이든 잘 보이게)
 const AMBER   = '#e2a93a';
 // NOW SHOWING 색 = 페이지별 강조색. 통합 시 window.LOVE_ACCENT='#hex' 지정(또는 ?accent=hex). 기본=앰버.
@@ -50,8 +49,7 @@ function _bg(){
 }
 
 // offscreen buffers for halftone passes
-const oS = document.createElement('canvas'); oS.width=W; oS.height=H; const osx=oS.getContext('2d'); // structure(마퀴 아웃라인)
-const oL = document.createElement('canvas'); oL.width=W; oL.height=H; const olx=oL.getContext('2d'); // ladder(사다리 — 베이지 하프톤 분리)
+const oS = document.createElement('canvas'); oS.width=W; oS.height=H; const osx=oS.getContext('2d'); // structure
 const oG = document.createElement('canvas'); oG.width=W; oG.height=H; const ogx=oG.getContext('2d'); // glow
 
 // ---------- geometry ----------
@@ -248,38 +246,34 @@ function drawPet(key, cx, cy){
 // ============================================================
 //  structure layer  (drawn greyscale on oS, then halftoned)
 // ============================================================
-// 사다리 = 별도 버퍼(oL)에 그려 베이지(LADCOL) 하프톤 — 배경 위 가시성(운영자 260704 "사다리 안 보여 공중에 뜬 것 같다")
-function drawLadder(t, lit){
-  olx.clearRect(0,0,W,H);
-  olx.fillStyle='#000'; olx.fillRect(0,0,W,H);
-  olx.lineCap='round'; olx.lineJoin='round';
-  const lad = (1-0.62*lit);   // dim when lit
-  olx.strokeStyle=`rgba(255,255,255,${0.9*lad})`;
-  olx.lineWidth=12;           // wide rails
-  olx.beginPath();
-  olx.moveTo(LAD.topL,LAD.topY); olx.lineTo(LAD.baseL,LAD.baseY);
-  olx.moveTo(LAD.topR,LAD.topY); olx.lineTo(LAD.baseR,LAD.baseY);
-  olx.stroke();
-  // rungs
-  olx.lineWidth=8;
-  for(let k=0;k<=LAD.rungs;k++){
-    const f=k/LAD.rungs;
-    const lx=lerp(LAD.topL,LAD.baseL,f), rx=lerp(LAD.topR,LAD.baseR,f);
-    const yy=lerp(LAD.topY,LAD.baseY,f);
-    olx.beginPath(); olx.moveTo(lx,yy); olx.lineTo(rx,yy); olx.stroke();
-  }
-  // back legs for depth (dimmer)
-  olx.strokeStyle=`rgba(255,255,255,${0.45*lad})`;
-  olx.lineWidth=9;
-  olx.beginPath();
-  olx.moveTo(LAD.topL+34,LAD.topY-6); olx.lineTo(LAD.baseL+74,LAD.baseY);
-  olx.moveTo(LAD.topR+34,LAD.topY-6); olx.lineTo(LAD.baseR+74,LAD.baseY);
-  olx.stroke();
-}
 function drawStructure(t, lit){
   osx.clearRect(0,0,W,H);
   osx.fillStyle='#000'; osx.fillRect(0,0,W,H);
   osx.lineCap='round'; osx.lineJoin='round';
+
+  // --- ladder (always) — wide flat rails read as a solid step-ladder ---
+  const lad = (1-0.62*lit);   // dim when lit
+  osx.strokeStyle=`rgba(255,255,255,${0.9*lad})`;
+  osx.lineWidth=12;           // wide rails
+  osx.beginPath();
+  osx.moveTo(LAD.topL,LAD.topY); osx.lineTo(LAD.baseL,LAD.baseY);
+  osx.moveTo(LAD.topR,LAD.topY); osx.lineTo(LAD.baseR,LAD.baseY);
+  osx.stroke();
+  // rungs
+  osx.lineWidth=8;
+  for(let k=0;k<=LAD.rungs;k++){
+    const f=k/LAD.rungs;
+    const lx=lerp(LAD.topL,LAD.baseL,f), rx=lerp(LAD.topR,LAD.baseR,f);
+    const yy=lerp(LAD.topY,LAD.baseY,f);
+    osx.beginPath(); osx.moveTo(lx,yy); osx.lineTo(rx,yy); osx.stroke();
+  }
+  // back legs for depth (dimmer)
+  osx.strokeStyle=`rgba(255,255,255,${0.45*lad})`;
+  osx.lineWidth=9;
+  osx.beginPath();
+  osx.moveTo(LAD.topL+34,LAD.topY-6); osx.lineTo(LAD.baseL+74,LAD.baseY);
+  osx.moveTo(LAD.topR+34,LAD.topY-6); osx.lineTo(LAD.baseR+74,LAD.baseY);
+  osx.stroke();
 
   // --- marquee outline (fade out when lit) — 안테나·코드선 제거 ---
   const mo = (1-lit);
@@ -548,12 +542,9 @@ function renderFrame(i){
   ctx.save();
   ctx.globalAlpha = fade;
 
-  // 1. structural halftone (marquee outline)
+  // 1. structural halftone (ladder + marquee outline)
   drawStructure(t, lit);
   halftone(osx, DOT, 6, 2.35, 0.8);
-  // 1a. ladder halftone — 베이지(LOVE 크림) 별도 색 → 배경 위 가시성(운영자 260704)
-  drawLadder(t, lit);
-  halftone(olx, LADCOL, 6, 2.35, 0.8);
   // 1b. crisp dotted NOW SHOWING (unlit only)
   if(lit<0.99) drawDottedText("NOW SHOWING", CX, BAR.y+BAR.h/2, 7.4, 1.9, [190,190,178], (1-lit)*0.95);
 

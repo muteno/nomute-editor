@@ -96,7 +96,7 @@ def check_versions():
 # raw를 토큰으로 줄였으면 baseline도 그만큼 낮춰 재발 방지(드리프트는 늘 때만 잡힘).
 # baseline = `:root` SSOT 블록 제외한 현재 raw 카운트(=드리프트는 *늘 때만* 잡힘). 260620 실측.
 _DESIGN_BASELINE = {
-    'viewer/index.html': {'accent_raw': 93, 'blur': 132, 'hex': 178, 'accent_hex': 32},   # accent97→93·blur134→132·hex180→178 = yeta(말벗 제타·캐릭터챗) 전체 삭제로 raw 회수(#yetadlg CSS·:root --bubble/--yeta-bg 토큰·.yeta-pick blur(26px)×2 제거 = §🎨 "raw 줄이면 baseline 낮춰"·260704). # hex172→180 = 전광판(마퀴펫) 글자색 프리셋 raw hex 5종(코럴#c85c5c·레몬#d8ff3d·블루#4aa3ff·핑크#ff6ba9·크림#f0e8d8)+accent fallback = 색이 의미(글자색 선택지)라 §🎨 raw 예외·accent(네온그린)는 getComputedStyle(--accent) raw0(마퀴 canvas 렌더 260704). # hex173→172 = yeta 무대 tint 폴백 #7c5cfc 제거→--bubble-me getComputedStyle 직독(동값 raw 복붙 회수 = 이중관리 해소·§🎨 ratchet·운영자 승인·260703). blur132→134 = ▲복원 개수배지(.tr-count) 글래스모피즘 backdrop var(--blur-m)+webkit +2(토큰·raw 아님·운영자 260703 '거의 투명 원 안 강조색 숫자만'). blur129→132 = 하단 네비(.bnav) 글래스 복원 backdrop var(--blur-l)+webkit +2 + 가운데 FAB(.bnav-fab) 반투명 글래스화 backdrop var(--blur-l)+webkit +2 − 옛 'blur(26px) 제거' 주석 −1 = 순증 +3(토큰·raw 아님 · 운영자 260703 "글래스 최대한 살려·가시성 확보됨·FAB도 투명하게 흐름 잇기" → 260701 jank 제거를 실측 트레이드오프로 복원 · accent는 var 토큰이라 accent_raw 순증 0). # hex163→173 = 발행본(SUMMARY_TPL 자기완결 HTML) 검색 헤더(제목검색·K검색·한/영)·키워드 칩·이미지별 저장·영문 제목 신설 → CSP가 외부 CSS 차단이라 var() 불가 = 순수 raw hex 필수(§🎨 self-contained 예외·accent는 #0FFD02 hex만·rgba(15,253,2) 순증 0·운영자 요청 260703). // accent_raw 109→97 = 하단바(.bnav/.bnav-fab/활성 인디케이터)·탑버튼(.totop) 무채색화로 초록 raw 12개 제거(§🎨 "raw 줄이면 baseline도 낮춰"·260703). hex176→163 = 마퀴펫 v2 롤백(운영자 260703 — 원본 pet.webp가 50프레임 '공 드리블+헤딩' 애니였음·재인코딩이 애니를 죽인 실사고) → 스티커 테두리 #000×12+공 테두리 #000×1 제거 = §🎨 ratchet 복원. // hex163→175 = 마퀴 펫 글자 스티커 테두리(12방향 text-shadow 링 #000 ×12 — 순수 흑 의도적 raw·§🎨 아웃라인 원칙 '순수 흑/백만'·토큰 부재·260703). // blur128→129 = 마퀴 펫 v2 간판(.pm-sign) 글래스 backdrop var(--blur-s)+webkit +2 − 옛 산책 펫 CSS 정리 −1 = 순증 +1(토큰·raw 아님·260703). // hex 160→163 = 선존 드리프트 실측 reconcile(yeta v2·v3 페르소나/버블 hex — 발행본 픽토그램·ic-share 작업은 var() 토큰만이라 순증 0 · 주석 PR번호 '#NNNN'은 4자리 hex 오탐이라 'PR NNNN' 표기·260703). // hex 158→160 = 선존 드리프트 실측 reconcile(origin/main 이미 160 = 이전 세션이 hex +2 하고 baseline 미상향 · 발행본 어포던스는 rgba(255,255,255,…)라 hex 카운트 무관·260703). // hex 161→158 = #ff5b4a→var(--danger)(348) 토큰화分 + 선존 slack 실측까지 ratchet(§🎨 "raw 줄이면 baseline 낮춰"·260630). // STAGE1 조임(분신술10·260628): accent 122→109·hex 167→161 = 헐렁 baseline 실측까지(raw 되살아나는 구멍 차단). //   # blur126→128 = 뉴스요약 사진첨부(.askattach) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·혼자 flat이라 '따로놀던' 것 형제 .iobtn/.sbtn과 통일·운영자 260628) // accent_raw 105→123 요약본 스포티파이→노뮤트 / mkbtn 글래스 +1 / blur90→92 요약본 제목복사 글래스 / 92→90 #editdlg backdrop 제거(main 260621) / +2 요약헤더 .dlbox 글래스 알약 var(--blur-m)(260621) / 124→122 대기열 .qgo·.qb-succ accent rgba→var(--accent-rgb) 토큰화(260622) / blur 92→100 = 당겨서새로고침 #ptr 글래스 var(--blur-s) +2(토큰·raw 아님) + 기존 누적분 흡수(260623) / 100→102 = 수정중 .rev-hint 글래스 var(--blur-s) 복원(260623) / 102→104 = 뉴스요약 .askclip 하단걸침 2A 글래스 var(--blur-s) +2(토큰·복붙버튼 일괄통일·260625) / blur 104→106 = 수집함 병합박스(.mergebox) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·병합기능·260625) / blur 106→110·hex 168→167 = 병합 바 중립칩 재설계(초록알약 1표면→글래스 칩+별도 X+기준칩 3표면 var(--blur-s)·토큰·raw 아님) + #0c0c0c 제거(빈 mb-n display:none)(260625) / blur 110→112 = 병합 해제 확인 팝오버(.unmerge-go) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·260626) / blur 112→114 = 라디얼 제작메뉴 자막생성 도구 탭(.tooltab) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·thumb .tab 계승·260626) / blur 114→116 = 수정/요약 전송버튼(.asksend) 글래스 통일 backdrop var(--blur-s) +2(토큰·raw 아님·.mkbtn 정본 계승·머지시 main 114 기준 +2·260627) / blur 116→120 = 입력칸 복사/붙여넣기/지우개·되돌리기(.iobtn·.iobtn-edge) 이미지 제작 attachCopyPaste 이식 backdrop var(--blur-s)·var(--blur-m) +4(토큰·raw 아님·#revText·#crevText·260627) / blur 120→122 = 뉴스요약 최소화 선택 picker(.min-pick) 글래스 backdrop var(--blur-l) +2(토큰·raw 아님·260627) / blur 122→124 = main 실측 124 lag 흡수(선존 +2) · 필터 오버레이(.filterpop) token var(--blur-l) +2 와 옛 토글(.tk) raw 8px −2 상쇄 = 순증 0(raw→token 교체·옛 카테고리 칩바→필터 버튼 오버레이·260628) / blur124→126 = 붙여넣기 폴백 모달(.pastefb::backdrop) var(--blur-s) +2(토큰·raw 아님·통일 기틀·260628) // accent_hex 32 = 요약본 SUMMARY_TPL 독립문서(viewer :root 없음→var() 불가·의도적 raw)+JS 상수 — hex 표기 우회 봉합·늘면 차단(260703 재실측·발행본 검색헤더 반영).
+    'viewer/index.html': {'accent_raw': 97, 'blur': 134, 'hex': 180, 'accent_hex': 32},   # hex172→180 = 전광판(마퀴펫) 글자색 프리셋 raw hex 5종(코럴#c85c5c·레몬#d8ff3d·블루#4aa3ff·핑크#ff6ba9·크림#f0e8d8)+accent fallback = 색이 의미(글자색 선택지)라 §🎨 raw 예외·accent(네온그린)는 getComputedStyle(--accent) raw0(마퀴 canvas 렌더 260704). # hex173→172 = yeta 무대 tint 폴백 #7c5cfc 제거→--bubble-me getComputedStyle 직독(동값 raw 복붙 회수 = 이중관리 해소·§🎨 ratchet·운영자 승인·260703). blur132→134 = ▲복원 개수배지(.tr-count) 글래스모피즘 backdrop var(--blur-m)+webkit +2(토큰·raw 아님·운영자 260703 '거의 투명 원 안 강조색 숫자만'). blur129→132 = 하단 네비(.bnav) 글래스 복원 backdrop var(--blur-l)+webkit +2 + 가운데 FAB(.bnav-fab) 반투명 글래스화 backdrop var(--blur-l)+webkit +2 − 옛 'blur(26px) 제거' 주석 −1 = 순증 +3(토큰·raw 아님 · 운영자 260703 "글래스 최대한 살려·가시성 확보됨·FAB도 투명하게 흐름 잇기" → 260701 jank 제거를 실측 트레이드오프로 복원 · accent는 var 토큰이라 accent_raw 순증 0). # hex163→173 = 발행본(SUMMARY_TPL 자기완결 HTML) 검색 헤더(제목검색·K검색·한/영)·키워드 칩·이미지별 저장·영문 제목 신설 → CSP가 외부 CSS 차단이라 var() 불가 = 순수 raw hex 필수(§🎨 self-contained 예외·accent는 #0FFD02 hex만·rgba(15,253,2) 순증 0·운영자 요청 260703). // accent_raw 109→97 = 하단바(.bnav/.bnav-fab/활성 인디케이터)·탑버튼(.totop) 무채색화로 초록 raw 12개 제거(§🎨 "raw 줄이면 baseline도 낮춰"·260703). hex176→163 = 마퀴펫 v2 롤백(운영자 260703 — 원본 pet.webp가 50프레임 '공 드리블+헤딩' 애니였음·재인코딩이 애니를 죽인 실사고) → 스티커 테두리 #000×12+공 테두리 #000×1 제거 = §🎨 ratchet 복원. // hex163→175 = 마퀴 펫 글자 스티커 테두리(12방향 text-shadow 링 #000 ×12 — 순수 흑 의도적 raw·§🎨 아웃라인 원칙 '순수 흑/백만'·토큰 부재·260703). // blur128→129 = 마퀴 펫 v2 간판(.pm-sign) 글래스 backdrop var(--blur-s)+webkit +2 − 옛 산책 펫 CSS 정리 −1 = 순증 +1(토큰·raw 아님·260703). // hex 160→163 = 선존 드리프트 실측 reconcile(yeta v2·v3 페르소나/버블 hex — 발행본 픽토그램·ic-share 작업은 var() 토큰만이라 순증 0 · 주석 PR번호 '#NNNN'은 4자리 hex 오탐이라 'PR NNNN' 표기·260703). // hex 158→160 = 선존 드리프트 실측 reconcile(origin/main 이미 160 = 이전 세션이 hex +2 하고 baseline 미상향 · 발행본 어포던스는 rgba(255,255,255,…)라 hex 카운트 무관·260703). // hex 161→158 = #ff5b4a→var(--danger)(348) 토큰화分 + 선존 slack 실측까지 ratchet(§🎨 "raw 줄이면 baseline 낮춰"·260630). // STAGE1 조임(분신술10·260628): accent 122→109·hex 167→161 = 헐렁 baseline 실측까지(raw 되살아나는 구멍 차단). //   # blur126→128 = 뉴스요약 사진첨부(.askattach) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·혼자 flat이라 '따로놀던' 것 형제 .iobtn/.sbtn과 통일·운영자 260628) // accent_raw 105→123 요약본 스포티파이→노뮤트 / mkbtn 글래스 +1 / blur90→92 요약본 제목복사 글래스 / 92→90 #editdlg backdrop 제거(main 260621) / +2 요약헤더 .dlbox 글래스 알약 var(--blur-m)(260621) / 124→122 대기열 .qgo·.qb-succ accent rgba→var(--accent-rgb) 토큰화(260622) / blur 92→100 = 당겨서새로고침 #ptr 글래스 var(--blur-s) +2(토큰·raw 아님) + 기존 누적분 흡수(260623) / 100→102 = 수정중 .rev-hint 글래스 var(--blur-s) 복원(260623) / 102→104 = 뉴스요약 .askclip 하단걸침 2A 글래스 var(--blur-s) +2(토큰·복붙버튼 일괄통일·260625) / blur 104→106 = 수집함 병합박스(.mergebox) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·병합기능·260625) / blur 106→110·hex 168→167 = 병합 바 중립칩 재설계(초록알약 1표면→글래스 칩+별도 X+기준칩 3표면 var(--blur-s)·토큰·raw 아님) + #0c0c0c 제거(빈 mb-n display:none)(260625) / blur 110→112 = 병합 해제 확인 팝오버(.unmerge-go) 글래스 backdrop var(--blur-s) +2(토큰·raw 아님·260626) / blur 112→114 = 라디얼 제작메뉴 자막생성 도구 탭(.tooltab) 글래스 backdrop var(--blur-m) +2(토큰·raw 아님·thumb .tab 계승·260626) / blur 114→116 = 수정/요약 전송버튼(.asksend) 글래스 통일 backdrop var(--blur-s) +2(토큰·raw 아님·.mkbtn 정본 계승·머지시 main 114 기준 +2·260627) / blur 116→120 = 입력칸 복사/붙여넣기/지우개·되돌리기(.iobtn·.iobtn-edge) 이미지 제작 attachCopyPaste 이식 backdrop var(--blur-s)·var(--blur-m) +4(토큰·raw 아님·#revText·#crevText·260627) / blur 120→122 = 뉴스요약 최소화 선택 picker(.min-pick) 글래스 backdrop var(--blur-l) +2(토큰·raw 아님·260627) / blur 122→124 = main 실측 124 lag 흡수(선존 +2) · 필터 오버레이(.filterpop) token var(--blur-l) +2 와 옛 토글(.tk) raw 8px −2 상쇄 = 순증 0(raw→token 교체·옛 카테고리 칩바→필터 버튼 오버레이·260628) / blur124→126 = 붙여넣기 폴백 모달(.pastefb::backdrop) var(--blur-s) +2(토큰·raw 아님·통일 기틀·260628) // accent_hex 32 = 요약본 SUMMARY_TPL 독립문서(viewer :root 없음→var() 불가·의도적 raw)+JS 상수 — hex 표기 우회 봉합·늘면 차단(260703 재실측·발행본 검색헤더 반영).
     'viewer/thumb.html': {'accent_raw': 0, 'blur': 43, 'hex': 32, 'accent_hex': 0},   # hex34→32 = 선존 슬랙 실측 ratchet(운영자 승인 260703·새 raw 잠입 틈 차단·STAGE 관례). STAGE1: hex 35→34 실측조임.   # blur39→41 = 빠른메뉴 코어 위 '-' 최소화(#rfab .rmin) 글래스 backdrop blur+webkit = 형제 .rc 코어 외형 계승(blur14 saturate1.3·thumb엔 blur토큰 없어 raw·창 최소화 엄지존·260627). accent rgba 토큰화 완료(--accent-rgb·260621). blur41→43 = 이미지 슬롯(.covimg) 글래스모피즘 backdrop blur+webkit(플레이트 색 제거·픽토 accent 50% · thumb엔 blur토큰 없어 raw·260626). blur43→39 = .covimg 글래스 제거(전경 완전 제거→픽토만·−2) + 상단 3탭 글자화(.tab 글래스 제거·−2)(운영자 260626). blur/hex는 thumb 독자팔레트라 잔존(후속). hex…→28 = .go.err 미입력 빨강(#ff7a7a·#ff5d5d) · hex28→27 = 흰 체크 #fff 제거. hex29→30 = 개별 변형 다운로드(.jvar-dl.dlbtn) 도형제거·픽토그램 흰색 #fff = 좌측 라벨(.jvar #fff)과 색 일치 목적(--fg #e9eaec≠#fff라 토큰화 불가·의도적 raw·260626). hex27→29 = 썸네일 통합 오버레이 포맷색(.ovfmt.post 시안 #1fd6ee · .ovfmt.reels 레몬 #e7ff2e · 후속 토큰화·260624). hex31→29 = /3 저작권 단일토글 전환으로 중복 .cpfmt 시안/레몬 hex 2개 제거(.ovfmt 계승=중복 회수 · §🎨 "raw 줄이면 baseline도 낮춰라" · 분신술7·8·260625). blur32→34 = 저작권 복사칩(.cref-kw 글래스) · blur34→36 = 축약 체크 = 수집함 확인토글(.sc-tg.ack) 글래스 박스 계승(backdrop blur·−→✓ 모프·accent는 var(--accent-rgb) 토큰·260622). blur36→38 = #rfab .rc 빠른메뉴 코어를 수정 연필 FAB(.rev-fab) 글래스 외형 계승(backdrop blur+webkit·thumb엔 blur토큰 없어 raw·260622). blur38→40 = 통합모드 OPA 롤러(260624) → blur40→38 = OPA 롤러 제거·섹션 헤더 인라인 조절 전환(글래스 팝업 폐지·blur 2개 감소·260624). blur38→39 = 축약어 등록 다이얼로그(.abdlg) cfm 글래스 계승(thumb엔 blur토큰 없어 raw·260624). blur39→41 = .iobtn-edge G1 글래스모피즘 backdrop blur13+saturate(복붙버튼 통일·thumb엔 blur토큰 없어 raw·260625). blur41→43·hex30→35 = 붙여넣기 폴백 모달(.pastefb dialog) 신설 — backdrop blur(4px) webkit+표준 +2(thumb엔 blur토큰 없어 raw) + 박스 배경 그라데이션·메시지/입력/버튼 색(#14160f·#0c0f0c·#cfd2d7·#e8eaed = 기존 모달 배경·보조텍스트 패턴 복제·적합 토큰 부재) +5(통일 기틀·readText 막힌 환경 폴백·운영자 260628).
     # ▼ 도구 3파일 게이트 편입(분신술 9·10 P0 — 옛 사각지대: 닫기/최소화 버그가 난 파일군이 무방비였음). accent_raw=0 = ly/k 토큰화 완료(--accent-rgb·260628), 늘면 즉시 잡힘. comp 7은 후속 토큰화 대상.
     'viewer/ly.html': {'accent_raw': 0, 'blur': 14, 'hex': 16, 'accent_hex': 0},   # blur12→14·hex14→16 = 붙여넣기 폴백 모달(.pastefb) 신설 — backdrop blur(4px) webkit+표준 +2(ly엔 blur토큰 없어 raw) + 박스 배경 그라데이션 #14160f·#0c0f0c +2(기존 모달 배경 패턴·통일 기틀·운영자 260628)
@@ -115,8 +115,6 @@ _FWD_UNUSED = {
     '--fw-b', '--fw-x', '--lh-base', '--on-arm', '--r-l', '--r-m', '--r-pill', '--sp-1', '--sp-2',
     '--sp-3', '--sp-4', '--warn',
     '--press-pico',   # 픽토온리 눌림 = thumb/ly/k의 rmin/file가 씀(index엔 .55 픽토 버튼 없음) = forward-declared(260628)
-    # accent-N 값 SSOT(운영자 260704 정립) — 의미토큰(danger/warn/arm/thumb/hist-accent/info)이 :root 별칭으로 참조 = 컴포넌트 직접 미배선이 의도(값 단일정본 패턴·§🎨).
-    '--accent-2-rgb', '--accent-3', '--accent-4', '--accent-4-rgb',
 }
 # --on-arm(arm 채움 위 글자색) = .revsend.confirm 채움 그라데 → 표준 플랫 arm 전환(260622)으로 현재 미배선.
 # 정의는 보존(--arm/--arm-rgb 짝 · 향후 채움형 arm 컴포넌트용 어휘) → forward-unused 처리(§🎨).
@@ -447,39 +445,6 @@ def check_issue_badge_parity():
     return rc
 
 
-_FORCE_PAIR_NAMES = (   # to_candidates.py ↔ viewer/index.html articleCat "바이트 동기" 주석 계약 전수(260704 기계 승격)
-    'POL_FORCE_RE', 'CULTURE_FORCE_RE', 'INTL_FORCE_RE', 'STOCK_FORCE_RE', 'POL_TITLE_RE',
-    'CRIME_OVERRIDE_RE', 'JUDICIAL_OVERRIDE_RE', 'AMBIG_ARTIST_RE', 'MUSIC_CTX_RE',
-    'ECON_CTX_RE', 'ENT_NAME_RE', 'ECON_HINT_RE', 'LOCALGOV_RE', 'POL_DISPUTE_RE',
-    'POL_OVERRIDE_RE', 'SPORTS_MEDIA_RE', 'OSEN_RE')
-
-def check_force_parity():
-    """카테고리 강마커·오버라이드 정규식 py(to_candidates) ↔ js(viewer articleCat) 바이트 동기 하드게이트(260704).
-    17쌍 전부 주석으로만 '바이트 동기' 계약이던 것을 기계로 강제(check_cat_kw C9·issue_badge 선례) —
-    한쪽만 고치면 수집 데이터(cat)와 화면 라벨(articleCat)이 갈라져 오분류가 화면·데이터 따로 남(송성문 MLB 국제 오분류 교정 260704 계기)."""
-    rc = 0
-    try:
-        py = open(os.path.join(ROOT, 'scraper', 'to_candidates.py'), encoding='utf-8').read()
-        js = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
-    except Exception as e:
-        print('⚠️ check_force_parity 스킵(파일):', e); return 0
-    bad = []
-    for name in _FORCE_PAIR_NAMES:
-        mp = re.search(r'%s = re\.compile\(r"(.+?)"[,)]' % name, py)
-        mj = re.search(r'const %s = /(.+?)/[a-z]*;' % name, js)
-        if not mp or not mj:
-            bad.append('%s 선언 못 찾음(py=%s·js=%s)' % (name, bool(mp), bool(mj))); continue
-        if mp.group(1) != mj.group(1):
-            bad.append('%s 드리프트: py %d자 ↔ js %d자' % (name, len(mp.group(1)), len(mj.group(1))))
-    if bad:
-        print('❌ 강마커 py↔js 드리프트(한쪽만 수정 = 데이터 cat ↔ 화면 articleCat 불일치):')
-        for x in bad: print('  -', x)
-        rc = 1
-    else:
-        print('✅ 강마커 패리티 — FORCE·오버라이드 17쌍 py↔js 바이트 동일.')
-    return rc
-
-
 _INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
 _AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
 
@@ -666,6 +631,11 @@ def check_judge_bare():
         if re.search(r'"--bare"', txt):
             bad.append('%s (judge에 --bare emit = OAuth 안 읽어 인증 즉사 → --safe-mode 사용)' % n)
 
+    # yeta 챗(sh): 신규 claude 스크립트가 --bare emit하면 동일 즉사 — 기존 고정 튜플의 사각지대 봉합(260703 계획안 P0).
+    # judge와 동일하게 emit 형태("--bare" 따옴표)만 매칭 — 주석 속 '--bare 금지' 경고문은 오탐 안 함.
+    if re.search(r'"--bare"', _read('.github/scripts/yeta_chat.sh')):
+        bad.append('yeta_chat.sh ("--bare" emit = OAuth 안 읽어 인증 즉사 → --safe-mode만 · env YETA_SAFE)')
+
     # 생성경로: --bare 기본 ON(claude_meter :-1 / more_images "1")이면 = OAuth 즉사(현재 롤백 OFF면 통과)
     if re.search(r'CLAUDE_BARE:-1', _read('shared/claude_meter.sh')):
         bad.append('claude_meter.sh (CLAUDE_BARE 기본 ON = 생성경로 --bare = OAuth 즉사)')
@@ -748,11 +718,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_issue_badge_parity 스킵:', e)
-    try:
-        if check_force_parity() != 0:   # 카테고리 강마커·오버라이드 17쌍 py↔js 바이트 동기(하드 게이트 — 한쪽만 수정=데이터↔화면 분류 드리프트·260704)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_force_parity 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1
