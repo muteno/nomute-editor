@@ -30,16 +30,7 @@ function parseFrontmatter(raw) {
   // frontmatter 앞 모델 사족 허용 — 첫 '---' 줄부터 파싱(구버전 파일 호환).
   const start = raw.search(/^---\s*$/m);
   if (start > 0) raw = raw.slice(start);
-  let m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
-  // 닫는 '---' 누락 방어(260704 실측: ask 렌터카 — LLM이 frontmatter 닫는 표식을 생략) — 여는 '---'만 있으면
-  // key: value 필드 줄이 끝나는 지점(빈 줄·본문 헤딩)에서 관용 분리. 정상(여닫이 다 있음) 파일은 위 정규식이 이미
-  // 매치하므로 이 분기는 안 탐 = 기존 동작 100% 불변, 깨진 케이스만 구제. 생성 측(ask/analyze.sh)의 닫는 '---' 보증과 한 쌍.
-  if (!m && /^---\s*\n/.test(raw)) {
-    const lines = raw.replace(/^---\s*\n/, '').split('\n');
-    let i = 0;
-    while (i < lines.length && /^[A-Za-z_][A-Za-z0-9_]*:\s/.test(lines[i])) i++;
-    if (i > 0) m = [null, lines.slice(0, i).join('\n'), lines.slice(i).join('\n')];   // 필드가 하나라도 있을 때만(진짜 본문만 있는 파일은 raw 그대로)
-  }
+  const m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
   if (!m) return { meta: {}, body: raw };
   const meta = {};
   for (const line of m[1].split('\n')) {
