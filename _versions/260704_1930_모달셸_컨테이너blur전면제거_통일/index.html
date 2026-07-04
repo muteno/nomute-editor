@@ -1066,7 +1066,7 @@
   @keyframes modalRise { from { opacity:0; transform:scale(.95) translateY(8px); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce) { #pindlg, #editdlg, .askdlg { animation:none; } }
   #pindlg { width:min(340px,90vw); max-width:340px; max-height:88vh; height:fit-content; margin:auto;
-    background:linear-gradient(165deg, rgba(24,25,28,.72), rgba(16,17,19,.8));   /* 무채색 글래스(.72/.8 근불투명·프로스트=::backdrop blur7 — base dialog blur는 260704 제거·메시지함 톤) — 초록 틴트 제거(#editdlg·#tooldlg 통일 · 운영자 260702). ⚠️ height:fit-content = showModal UA inset 제약 하 max-height:none+height:auto가 세로 880px stretch되던 것 차단(실측 254px 내용크기·중앙정렬) · 변경중은 헤더 인라인이라 전체화면 오버레이 없음=backdrop-filter 제약 불요(260702 재설계) */
+    background:linear-gradient(165deg, rgba(24,25,28,.72), rgba(16,17,19,.8));   /* 무채색 글래스(전역 dialog blur30 상속·메시지함 톤) — 초록 틴트 제거(#editdlg·#tooldlg 통일 · 운영자 260702). ⚠️ height:fit-content = showModal UA inset 제약 하 max-height:none+height:auto가 세로 880px stretch되던 것 차단(실측 254px 내용크기·중앙정렬) · 변경중은 헤더 인라인이라 전체화면 오버레이 없음=backdrop-filter 제약 불요(260702 재설계) */
     border-radius:var(--r-modal); padding:26px 22px 22px; text-align:center; animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }
   #pindlg .pin-title { font-size:18px; font-weight:800; color:var(--fg); letter-spacing:-.3px; }   /* 창 상단 타이틀 = 무채색(초록 제거·운영자 260629) */
   #pindlg .pin-sub { margin:8px 0 18px; font-size:12.5px; line-height:1.5; color:var(--mut); }
@@ -1248,7 +1248,7 @@
   dialog {
     width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
     background:linear-gradient(165deg, rgba(27,44,32,.60), rgba(11,19,14,.70));
-    /* ⛔ 컨테이너 backdrop-filter 없음 = 전 모달 통일 기본값(오류 안 나는 방법·운영자 260704 "같은 레벨 통일·논외=감염"). 컨테이너 blur는 textarea 리페인트마다 재샘플 = 모바일 GPU 타이핑 번쩍(260701 진범)이라 base서 아예 제거 → 어느 dialog도 상속만으로 flicker 안전(#pindlg·#pubdlg PIN 입력이 옛 blur30 상속하던 잠재 위반도 소멸). 프로스트감 = ::backdrop blur7 + 헤더 X줄 띠(.modal-head)의 --blur-l만(둘 다 정적=타이핑 무관). 신규 모달도 컨테이너 backdrop-filter 추가 금지(글래스감은 ::backdrop이 담당). */
+    backdrop-filter:blur(30px) saturate(1.6); -webkit-backdrop-filter:blur(30px) saturate(1.6);
     border:1px solid rgba(255,255,255,.13); border-radius:var(--r-modal);   /* 전 모달 22 통일(#dlg만 26이던 것) */
     box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
   }
@@ -1268,11 +1268,11 @@
   @media (prefers-reduced-motion:reduce) { #dlg, #dlg::backdrop { transition:none; } }   /* 접근성 = 즉시(전이 없음) */
   /* 제작 도구 모달(iframe) — 도구 페이지를 뷰어 위 모달로(클릭→등장). backdrop은 dialog 공통(뒤 dimmed·블러7) 상속 */
   #tooldlg { width:min(600px,94vw); height:90dvh; max-height:90dvh; padding:0; overflow:hidden; display:flex; flex-direction:column;
-    background:var(--modal-glass);   /* 컨테이너 = --modal-glass 토큰 · 컨테이너 backdrop-filter 없음 = #askdlg와 100% 동일 메서드(피드 위 글래스 셸 통일·운영자 260704 B) · 프로스트=::backdrop blur7 + 헤더 띠 --blur-l (옛 blur34 고유값 제거=글래스끼리 프로스트도 동일) */
+    background:var(--modal-glass); backdrop-filter:blur(34px) saturate(1.4); -webkit-backdrop-filter:blur(34px) saturate(1.4);   /* 컨테이너 = --modal-glass 토큰(영상값 rgba(17,18,20,.64) 그대로) · blur34는 tooldlg 고유값 */
     border:1px solid rgba(255,255,255,.13); border-radius:var(--r-modal); box-shadow:0 30px 80px rgba(0,0,0,.5);   /* 그림자 명시(베이스 의존 제거·타 모달과 통일) */
     animation:toolIn .24s cubic-bezier(.22,.61,.36,1) both; }
   #tooldlg:not([open]) { display:none; }   /* 닫힘 시 display:flex가 dialog 기본 display:none 덮어 빈 껍데기로 깔리던 버그 차단(dialog 공통) */
-  @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — 등장에 transform 얹으면 ::backdrop blur 재계산으로 한 번 턱 걸림(스내그) 방지(컨테이너 blur는 260704 제거됨). 콘텐츠 스태거 라이즈(촤르륵)는 제거됨 */
+  @keyframes toolIn { from { opacity:0; } to { opacity:1; } }   /* opacity만 — backdrop-filter(blur34)에 transform 애니 얹으면 블러 재계산으로 한 번 턱 걸림(스내그). 콘텐츠 스태거 라이즈(촤르륵)는 제거됨 */
   #tooldlg.no-tin { animation:none; }   /* 최소화 복원 = 고스트가 펼침 모션 담당 → 모달 재페이드(toolIn) 생략(이중 페이드 dip 제거 · 즉시 풀불투명 등장 · 운영자 260627). close 시 해제 */
   @media (prefers-reduced-motion:reduce) { #tooldlg { animation:none; } }
   /* ── 표준 헤더 띠 (정본=.modal-head) = 영상 .tool-h 값 그대로 토큰화 · 전 모달/팝업 계승(§🎨 셸 SSOT·이것만) ── */
@@ -1873,7 +1873,7 @@
   .askdlg { border:none; border-radius:var(--r-modal); padding:0; max-width:600px; width:94vw; color:var(--fg);
     position:fixed; inset:0; margin:30dvh auto auto; height:max-content; max-height:calc(70dvh - 28px); overflow:auto;   /* 가로 중앙 · 세로 상단 30% 지점(운영자 260620 — 16%→30% 원복). max-height 70dvh로 하단 클립 방지 */
     background:linear-gradient(165deg, rgba(24,25,28,.98), rgba(12,13,15,.99));
-    backdrop-filter:none; -webkit-backdrop-filter:none;   /* ⚠️ ask 계열 컨테이너 backdrop-filter off(규칙①) — revdlg/crevdlg/tredodlg/pastedlg = α=1 근불투명이라 입력 재샘플 번쩍 차단(260701·::backdrop 투명이라 blur 무의미). #askdlg는 .64 반투명 셸(1887 override)이나 규칙①대로 컨테이너 blur 0(base dialog blur도 260704 제거 = 이 off는 base와 동일값이나 방어 명시 유지·분신술10) */
+    backdrop-filter:none; -webkit-backdrop-filter:none;   /* ⚠️ dialog(1100) blur30 상속 차단 — ask 계열 배경은 .98/.99 거의 불투명이라 blur 무의미한데, 입력 리페인트마다 뒤(#dlg 본문) 재샘플 = 수정 중 번쩍(모바일 GPU). #dlg 본체(1892 off)에 이어 revdlg/crevdlg/ask 본체도 off = 번쩍 잔존 차단(운영자 260701) */
     box-shadow:0 24px 70px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(255,255,255,.1);
     animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }   /* 진입애니 통일 */
   .askdlg::backdrop { background:rgba(4,8,5,.46); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
@@ -1881,7 +1881,7 @@
   @starting-style { .askdlg[open]::backdrop { opacity:0; } }   /* 열 때도 블러 페이드인(대칭) */
   .askdlg:not([open])::backdrop { opacity:0; }   /* 닫힘(전이) 목표 = 투명 → 위 transition이 부드럽게 뺌 */
   .askwrap { padding:18px 18px 24px; }   /* 하단 마진 확보 — 버튼이 바닥에 너무 붙던 거 띄움 */
-  .askhead { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid var(--line2); }   /* 🔑 기틀 표준 = 모달(ask-family) 헤더↔입력 간격 15px 단일 SSOT · askdlg·revdlg·crevdlg 전부 동일 · 모달별 margin-bottom override 금지(운영자 260629) · 셸 통일(260704): base `.askhead`(revdlg/crevdlg = α=1 불투명)는 border-bottom 톤만 계승·전폭 띠/blur 없음(동색이라 안 보임) · #askdlg는 .64 반투명 셸이라 헤더 X줄 띠+blur를 아래 `#askdlg .askhead`에서 override(피드 위 글래스라 띠가 실제로 보임) · 제목 .askhead b는 이미 15/800 = .modal-head b 동일 */
+  .askhead { display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid var(--line2); }   /* 🔑 기틀 표준 = 모달(ask-family) 헤더↔입력 간격 15px 단일 SSOT · askdlg·revdlg·crevdlg 전부 동일 · 모달별 margin-bottom override 금지(운영자 260629) · 셸 통일(260704): border-bottom 톤만 계승 — 컨테이너 완전 불투명(수정 중 뒤 글자 새어보임 260701 버그픽스)이라 전폭 띠·blur는 금지(동색이라 안 보이고 번쩍 재발) · 제목 .askhead b는 이미 15/800 = .modal-head b 동일 */
   #askdlg .askwrap { padding-top:11px; }     /* 뉴스요약 헤더 위치 = revdlg(11)와 동일(운영자 260629) · 간격(margin-bottom)은 base 15 표준 그대로(옛 26 여분 제거) */
   /* 뉴스요약 입력(#askdlg) = 셸 투명 내용(운영자 260704 · 분신술 10인 안전판) — 컨테이너 반투명 틴트 --modal-glass(.64)만, backdrop-filter는 뺌: 260701 타이핑 재샘플 번쩍(모바일 GPU)의 진범이 textarea 감싼 컨테이너 blur라 원천 차단. 뒤 ::backdrop blur7이 피드를 프로스트 → 재샘플 0의 반투명 셸(거의 투명 목표 달성). ask-family=컨테이너 blur생략 표준 정합. #askdlg만 스코프(revdlg/crevdlg=#dlg 위 열려 불투명 유지=260701 방지). */
   #askdlg { background:var(--modal-glass); }
@@ -1914,8 +1914,8 @@
   /* 복/붙 = 2A 동그라미, 입력칸 하단 우측 테두리에 중앙정렬 걸침(요약요청·수정요청·카드수정 공통 · 운영자 260625) */
   .askclip { position:absolute; bottom:0; right:14px; top:auto; transform:translateY(50%); width:26px; height:26px; border-radius:50%; opacity:.6; z-index:5;   /* 요약요청·전문입력·수정 복사/붙여넣기 = opacity 60%(운영자 260625) */
     background:rgba(26,28,26,.3); border:1px solid rgba(255,255,255,.17); color:var(--mut); box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
-    -webkit-tap-highlight-color:transparent;
-    transition:transform .12s, color .15s, border-color .15s; }   /* 오버레이 backdrop-filter 없음 = 입력칸 위 떠서 타이핑마다 그 밑 텍스트/피드 재샘플 번쩍(260701) 방지 · #askdlg 반투명 셸(--modal-glass)이라 필수(옛 blur14 = revdlg .iobtn-edge{none} 미러 못 받아 잔존하던 vector · 분신술 10인 260704) · 배경 링(.3)+border+inset로 버튼 형태 유지 */
+    -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.3); backdrop-filter:blur(var(--blur-m)) saturate(1.3); -webkit-tap-highlight-color:transparent;
+    transition:transform .12s, color .15s, border-color .15s; }   /* G1 글래스모피즘(260625) */
   .askclip svg { width:13px; height:13px; }
   .askclip::before { content:""; position:absolute; inset:-8px; }
   .askclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
@@ -2050,8 +2050,8 @@
   .pastedlg .pastesub:empty { display:none; margin:0; }
   .pasteta { min-height:150px; }
   /* ── 요약 수정 FAB — 콘텐츠 초안~시사점 스크롤 구간에만 뜨는 펜 모양 플로팅 원(우측·중하단). 클릭 → revdlg 팝업.
-       #dlg가 positioned `<dialog>`(UA position:absolute)라 그 박스가 absolute 컨테이닝블록(backdrop-filter 아님 = 260704 컨테이너 blur 제거돼도 유효·분신술10 실증). ── */
-  .rev-fab { position:absolute; right:16px; z-index:7; width:52px; height:52px; padding:0; display:none; place-items:center;   /* top = updateRevFab가 스크롤 보정해 뷰포트 중하단 고정(#dlg=positioned dialog 박스 기준 → 콘텐츠 따라 스크롤되는 것 상쇄) */
+       #dlg가 backdrop-filter라 그 박스 기준 fixed(모달 뷰포트 안 고정·스크롤해도 안 흔들림 = sticky 헤더와 동일 안전 패턴). ── */
+  .rev-fab { position:absolute; right:16px; z-index:7; width:52px; height:52px; padding:0; display:none; place-items:center;   /* top = updateRevFab가 스크롤 보정해 뷰포트 중하단 고정(#dlg backdrop-filter 박스 기준 → 콘텐츠 따라 스크롤되는 것 상쇄) */
     border-radius:50%; cursor:pointer; color:var(--accent); background:var(--accent-dim); border:1px solid rgba(15,253,2,.42);
     backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
     box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(15,253,2,.14), 0 0 20px rgba(15,253,2,.26);
@@ -2107,7 +2107,7 @@
   @keyframes revRise { from { transform:scale(.96) translateY(8px); } to { transform:none; } }   /* revdlg 전용 = opacity 없음(불투명 배경 1912 유지) → 오픈 fade 0.2s 동안 revdlg 반투명해져 뒤 #dlg 요약 글자가 순간 비쳐 '반짝'이던 것 차단(운영자 260701). scale/slide만으로 등장 · crevdlg 공용(.revdlg)이라 카드수정도 같이 고쳐짐 */
   .revdlg[open] { animation:revRise .2s cubic-bezier(.22,.61,.36,1) backwards; }
   .revdlg::backdrop { background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; }   /* 완전 투명 — 수정 중에도 바깥 기사가 그대로 다 보이게 */
-  /* ⚠️ 깜빡임 픽스(260625): 옛날엔 revdlg/crevdlg backdrop 투명 → 그 아래 #dlg의 backdrop-filter(blur30)가 키 입력마다 뒤 피드 재샘플 번쩍이었음. ⚠️ 260704: base dialog 컨테이너 blur를 전면 제거(규칙①)해 #dlg엔 이제 backdrop-filter 자체가 없음 → 아래 `backdrop-filter:none`은 base와 동일값(redundant·방어 명시로 유지·분신술10 "건드리지 말 것"). 실질 유효분 = 수정 중 #dlg 배경을 중립 불투명으로 스왑(카드수정 공용) */
+  /* ⚠️ 깜빡임 픽스(260625): revdlg/crevdlg backdrop이 투명 → 그 아래 #dlg(요약모달)의 backdrop-filter(blur30)가 키 입력 리페인트마다 뒤 피드를 재샘플·재블러 = 입력 중 배경 번쩍(모바일 GPU). 수정 열린 동안만 #dlg backdrop-filter 끄고 프로스트색 그대로 불투명화 → 재샘플 없어 깜빡임 차단(.revdlg=revdlg·crevdlg 공용이라 카드수정도 같이 고쳐짐) */
   body:has(.revdlg[open]) #dlg { backdrop-filter:none; -webkit-backdrop-filter:none; background:linear-gradient(165deg, rgb(14,16,15), rgb(9,12,10)); }   /* 수정 중 불투명(깜빡임 차단) · 중립(초록 제거 · 운영자 260626) */
   /* ⚠️ 맨 뒤 무늬 번쩍 진범(운영자 260701): #dlg는 94vw×88vh라 여백으로 #dlg::backdrop(dialog::backdrop blur7)이 보이는데, 그게 맨 뒤 body의 feed_bg 실크무늬를 블러해 비춘다 → revdlg 입력 리페인트마다 그 blur7 재샘플 = 무늬 번쩍. 수정 중엔 #dlg::backdrop도 불투명 단색(무늬·블러 0)으로 = 번쩍 차단(#dlg 본체 톤과 통일) */
   body:has(.revdlg[open]) #dlg::backdrop { backdrop-filter:none; -webkit-backdrop-filter:none; background:rgb(9,12,10); }
@@ -5069,7 +5069,7 @@ function updateRevFab() {
   const dlg = $('#dlg');
   const show = !!(dlg && dlg.open && !revdlg.open && !$('#crevdlg').open && revFabVisible());   // 팝업(요약·카드) 열려 있으면 FAB 숨김(겹침 방지)
   fab.classList.toggle('show', show);
-  // #dlg가 positioned <dialog>(UA position:absolute)라 그 박스가 absolute 컨테이닝블록 → 내부 absolute는 콘텐츠와 함께 스크롤됨(backdrop-filter 무관 · 260704 컨테이너 blur 제거돼도 유효).
+  // #dlg가 backdrop-filter라 그 박스가 fixed/absolute 컨테이닝블록 → 내부 absolute는 콘텐츠와 함께 스크롤됨.
   // top을 scrollTop만큼 보정해 뷰포트 70%(중하단) 라인에 고정(스크롤해도 화면 같은 자리).
   if (show) fab.style.top = Math.round(dlg.clientHeight * 0.7 - 26) + 'px';
   applyReviseFab();   // FAB 재노출 시 잔류 표기 클래스 정리(표기 자체는 제거됨)
