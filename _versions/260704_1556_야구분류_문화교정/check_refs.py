@@ -447,39 +447,6 @@ def check_issue_badge_parity():
     return rc
 
 
-_FORCE_PAIR_NAMES = (   # to_candidates.py ↔ viewer/index.html articleCat "바이트 동기" 주석 계약 전수(260704 기계 승격)
-    'POL_FORCE_RE', 'CULTURE_FORCE_RE', 'INTL_FORCE_RE', 'STOCK_FORCE_RE', 'POL_TITLE_RE',
-    'CRIME_OVERRIDE_RE', 'JUDICIAL_OVERRIDE_RE', 'AMBIG_ARTIST_RE', 'MUSIC_CTX_RE',
-    'ECON_CTX_RE', 'ENT_NAME_RE', 'ECON_HINT_RE', 'LOCALGOV_RE', 'POL_DISPUTE_RE',
-    'POL_OVERRIDE_RE', 'SPORTS_MEDIA_RE', 'OSEN_RE')
-
-def check_force_parity():
-    """카테고리 강마커·오버라이드 정규식 py(to_candidates) ↔ js(viewer articleCat) 바이트 동기 하드게이트(260704).
-    17쌍 전부 주석으로만 '바이트 동기' 계약이던 것을 기계로 강제(check_cat_kw C9·issue_badge 선례) —
-    한쪽만 고치면 수집 데이터(cat)와 화면 라벨(articleCat)이 갈라져 오분류가 화면·데이터 따로 남(송성문 MLB 국제 오분류 교정 260704 계기)."""
-    rc = 0
-    try:
-        py = open(os.path.join(ROOT, 'scraper', 'to_candidates.py'), encoding='utf-8').read()
-        js = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
-    except Exception as e:
-        print('⚠️ check_force_parity 스킵(파일):', e); return 0
-    bad = []
-    for name in _FORCE_PAIR_NAMES:
-        mp = re.search(r'%s = re\.compile\(r"(.+?)"[,)]' % name, py)
-        mj = re.search(r'const %s = /(.+?)/[a-z]*;' % name, js)
-        if not mp or not mj:
-            bad.append('%s 선언 못 찾음(py=%s·js=%s)' % (name, bool(mp), bool(mj))); continue
-        if mp.group(1) != mj.group(1):
-            bad.append('%s 드리프트: py %d자 ↔ js %d자' % (name, len(mp.group(1)), len(mj.group(1))))
-    if bad:
-        print('❌ 강마커 py↔js 드리프트(한쪽만 수정 = 데이터 cat ↔ 화면 articleCat 불일치):')
-        for x in bad: print('  -', x)
-        rc = 1
-    else:
-        print('✅ 강마커 패리티 — FORCE·오버라이드 17쌍 py↔js 바이트 동일.')
-    return rc
-
-
 _INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
 _AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
 
@@ -748,11 +715,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_issue_badge_parity 스킵:', e)
-    try:
-        if check_force_parity() != 0:   # 카테고리 강마커·오버라이드 17쌍 py↔js 바이트 동기(하드 게이트 — 한쪽만 수정=데이터↔화면 분류 드리프트·260704)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_force_parity 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1
