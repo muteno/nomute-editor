@@ -99,67 +99,10 @@ def lint(path):
         print("DIGEST_LINT ✅ 규격·자수 통과 — " + base)
     return 0   # 비차단(경고 전용) — 하드 차단은 오탐 시 파이프라인을 세우므로 안 함(운영자 승인 전)
 
-# ── 분량 가드(SUMMARY_LEN_GUARD · 260705 · 기본 OFF 카나리아) ─────────────────────────────
-# 왜: #1552(effort max→high) 후 IG 630→540자·Thread 415→347자 급감(자유요약 무손상 = 압축 단계만 부실 ·
-#     진단 = docs/작업이력.md 260705). 보강 임계 = 지침 목표선 하단(IG 600·Thread 390) — lint 완충 550과
-#     별개 축(lint = 경고 소음 억제·guard = 재작성 발동, 값 다름 = 의도). 결빈약(자유요약<800) = 면제(지침
-#     "짧음의 근거 = 원문 결 부족" 존중). 호출 = shared/summary_repair.sh (ask.sh·analyze.sh 공용).
-REPAIR_IG_LO, REPAIR_TH_LO, REPAIR_FREE_MIN = 600, 390, 800
-
-def repair_check(path):
-    """보강 필요 판정 — 'REPAIR ig=N thread=N free=N' 또는 'OK …'/'SKIP …' 1줄. 항상 exit 0(fail-soft)."""
-    raw = open(path, encoding="utf-8").read()
-    fmm = re.search(r"^---\s*$(.*?)^---\s*$", raw, re.M | re.S)
-    body = raw[fmm.end():] if fmm else raw
-    vals = {}
-    for n in ("자유요약", "IG", "Thread"):
-        b = _blk(body, n)
-        if b is None:
-            print("SKIP {} 블록 미검출".format(n)); return 0
-        vals[n] = _clen(b)
-    if vals["자유요약"] < REPAIR_FREE_MIN:
-        print("OK 결빈약 면제 ig={} thread={} free={}".format(vals["IG"], vals["Thread"], vals["자유요약"])); return 0
-    tag = "REPAIR" if (vals["IG"] < REPAIR_IG_LO or vals["Thread"] < REPAIR_TH_LO) else "OK"
-    print("{} ig={} thread={} free={}".format(tag, vals["IG"], vals["Thread"], vals["자유요약"]))
-    return 0
-
-def splice(path, cand_path):
-    """보강 후보의 IG/Thread 코드블록 '내용'만 검증 후 원본에 이식(헤더·📊 줄·frontmatter 불변 ·
-    헤더 자수 라벨은 실측으로 갱신). 블록별 독립 판정 — 검증 실패 블록 = 원본 유지(fail-soft·항상 exit 0)."""
-    raw = open(path, encoding="utf-8").read()
-    cand = open(cand_path, encoding="utf-8").read()
-    results = []
-    for name, hi, hard in (("IG", 800, None), ("Thread", 450, 500)):
-        pat = re.compile(r"(^###\s*\[" + name + r"[^\]]*\]\s*\n+```text\n)(.*?)(\n```)", re.M | re.S)
-        mc, mt = pat.search(cand), pat.search(raw)
-        if not mc or not mt:
-            results.append("{}: 블록 미검출(후보 {}·원본 {}) — 유지".format(name, bool(mc), bool(mt))); continue
-        new, old = mc.group(2), mt.group(2)
-        n_new, n_old = _clen(new), _clen(old)
-        why = []
-        if n_new <= n_old: why.append("증가 아님 {}→{}".format(n_old, n_new))
-        if n_new > hi: why.append("상한 {} 초과({})".format(hi, n_new))
-        if hard and _clen_hard(new) > hard: why.append("개행 포함 {} > 플랫폼 하드 {}".format(_clen_hard(new), hard))
-        if name == "IG" and "🔎" not in new: why.append("🔎 리드 누락")
-        if "⚡" not in new and "ⓔ" not in new: why.append("⚡/ⓔ 출처 줄 누락")
-        if _DISCLAIMER.search(old) and not _DISCLAIMER.search(new): why.append("편향 가드 면책 줄 소실")
-        if why:
-            results.append("{}: 검증 실패({}) — 유지".format(name, " · ".join(why))); continue
-        raw = raw[:mt.start(2)] + new + raw[mt.end(2):]
-        raw = re.sub(r"^###\s*\[" + name + r"[^\]]*\]", "### [{} — {}/{}자]".format(name, n_new, hi), raw, count=1, flags=re.M)
-        results.append("{}: {}→{}자 보강".format(name, n_old, n_new))
-    open(path, "w", encoding="utf-8").write(raw)
-    print("SPLICE " + " · ".join(results))
-    return 0
-
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("사용: digest_guard.py [--repair-check|--splice <후보>] <queue/xxx.md>"); sys.exit(0)
+        print("사용: digest_guard.py <queue/xxx.md>"); sys.exit(0)
     try:
-        if sys.argv[1] == "--repair-check" and len(sys.argv) >= 3:
-            sys.exit(repair_check(sys.argv[2]))
-        if sys.argv[1] == "--splice" and len(sys.argv) >= 4:
-            sys.exit(splice(sys.argv[2], sys.argv[3]))
         sys.exit(lint(sys.argv[1]))
-    except Exception as e:   # 린트·가드 자체 오류가 분석 파이프라인을 깨지 않게(fail-soft)
-        print("DIGEST_LINT ⚠️ 실행 실패(무시): {}".format(e)); sys.exit(0)
+    except Exception as e:   # 린트 자체 오류가 분석 파이프라인을 깨지 않게(fail-soft)
+        print("DIGEST_LINT ⚠️ 린트 실행 실패(무시): {}".format(e)); sys.exit(0)
