@@ -1,5 +1,5 @@
-/* LOVE 마퀴펫 정사각 씬(1080²) 렌더러 — love_anim_standalone 원본(원 제작자) 이식 · 260704
-   풀세트: 펫이 사다리 올라 간판에 L·O·V·E·♥ 놓고 점등. 배경 모드 _bg(): 뷰어 통합=투명(LOVE_BG='transparent' → 뒤 브랜드 배너 비침·운영자 260704 C안) / standalone 기본=dark(#131313).
+/* LOVE 마퀴펫 정사각 씬(1080²) 렌더러 — love_anim_standalone2 원본(원 제작자) 이식 · 260704
+   풀세트: 펫이 사다리 올라 간판에 L·O·V·E·♥ 놓고 점등. 캔버스가 #131313 배경 자체 렌더(어두운 스크린 카드).
    window.renderFrame(i) 결정적 · 뷰어 통합(맨 아래)=탭 게이트 rAF·LOVE_ACCENT=페이지 강조색·뉴스요약 전용.
    스프라이트=marquee_pet.js(window.PETSPRITES) · 옛 가로형 마퀴는 _versions/260704_1451 백업. */
 // ============================================================
@@ -38,14 +38,6 @@ function _accent(){
     }
   }catch(e){}
   return AMBER;
-}
-// 배경 모드: 'dark'(#131313 채움) | 'transparent'(투명 — 뒤 배너 비침). 뷰어 통합=투명 고정(아래 IIFE) · standalone 기본=dark.
-function _bg(){
-  try{ if(typeof window!=='undefined'){
-    if(window.LOVE_BG) return window.LOVE_BG;
-    var q=new URLSearchParams(location.search).get('bg'); if(q) return q;
-  }}catch(e){}
-  return 'dark';
 }
 
 // offscreen buffers for halftone passes
@@ -536,8 +528,7 @@ function renderFrame(i){
   const fade = smooth(T.fade0, T.fade1, t);
 
   ctx.globalAlpha=1;
-  ctx.clearRect(0,0,W,H);                                  // 항상 클리어(투명 베이스)
-  if(_bg()!=='transparent'){ ctx.fillStyle=BG; ctx.fillRect(0,0,W,H); }  // dark 모드만 검정 채움
+  ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
 
   ctx.save();
   ctx.globalAlpha = fade;
@@ -573,7 +564,6 @@ window.FPS = FPS;
 
 // ══ 뷰어 통합(260704) — 정사각 LOVE 씬을 뉴스요약 배너에: 탭 게이트 rAF + LOVE_ACCENT=페이지 강조색 실시간 ══
 (function(){
-  window.LOVE_BG='transparent';   // 뷰어 배너 통합 = 투명(뒤 브랜드 배너 비침 · 운영자 260704 C안)
   function pageAccent(){
     try{ var c=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
          if(c) window.LOVE_ACCENT=c; }catch(e){}          // NOW SHOWING = --accent(#0FFD02) 실시간
