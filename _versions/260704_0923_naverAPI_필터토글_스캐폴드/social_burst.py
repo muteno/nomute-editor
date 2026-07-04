@@ -260,67 +260,10 @@ def fetch_rss(now):
     return posts
 
 
-# ── 네이버 검색 OpenAPI 어댑터 (기본 OFF · "붙여만" 260704) ─────────────────────────
-# 네이버 블로그·카페·지식iN에서 비정치 이슈 키워드 최신글을 소셜 소스로 편입 = 교차소스 폭↑.
-#   게이트 2중 = 플래그 SOCIAL_NAVER=1 AND 키(NAVER_CLIENT_ID/SECRET). 하나라도 없으면 즉시 skip(현 동작 100% 불변 = dead path).
-#   켜기(라이브) = social-scan.yml env SOCIAL_NAVER '1' + GitHub Secret 2개. 무료 한도 내(검색 API 일 25,000콜).
-#   설계·프로세스·플랫폼별 엔드포인트 = docs/social-burst.md.
-NAVER_ON     = os.environ.get("SOCIAL_NAVER", "") == "1"
-NAVER_ID     = os.environ.get("NAVER_CLIENT_ID", "")
-NAVER_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
-# (표시이름, 검색서비스, 쿼리) — 서비스 = blog / cafearticle / kin. 정치·노이즈는 아래 POLITICS/NOISE가 2차 컷.
-NAVER_QUERIES = [
-    ("네이버블로그", "blog",        "층간소음 갈등"),
-    ("네이버블로그", "blog",        "갑질 폭로"),
-    ("네이버카페",   "cafearticle", "학교폭력"),
-    ("네이버카페",   "cafearticle", "이웃 분쟁"),
-    ("지식iN",       "kin",         "직장 갑질"),
-]
-
-
-def fetch_naver(now):
-    """네이버 검색 OpenAPI(블로그·카페·지식iN) — 이슈 키워드 최신글을 소셜 소스로.
-       기본 OFF: SOCIAL_NAVER=1 + 키(NAVER_CLIENT_ID/SECRET) 셋 다 있어야 작동, 아니면 빈 리스트(현 동작 불변)."""
-    if not (NAVER_ON and NAVER_ID and NAVER_SECRET):
-        return []
-    try:
-        import requests
-    except Exception:
-        print("::warning::requests 미설치 — 네이버 생략")
-        return []
-    import html as _html
-    hdr = {"X-Naver-Client-Id": NAVER_ID, "X-Naver-Client-Secret": NAVER_SECRET}
-    posts = []
-    for name, svc, q in NAVER_QUERIES:
-        try:
-            r = requests.get(f"https://openapi.naver.com/v1/search/{svc}.json",
-                             params={"query": q, "display": 100, "sort": "date"},
-                             headers=hdr, timeout=20)
-            if r.status_code != 200:
-                print(f"::warning::네이버 {svc}/{q} status {r.status_code}")
-                continue
-            for it in r.json().get("items", []):
-                title = _html.unescape(re.sub(r"<[^>]+>", "", it.get("title", ""))).strip()   # <b> 강조·HTML 엔티티 제거
-                if len(title) < 4:
-                    continue
-                ts = now
-                pd = it.get("postdate")   # 블로그만 YYYYMMDD 제공(카페·kin은 날짜 없음 → now)
-                if pd and len(pd) == 8:
-                    try:
-                        ts = datetime(int(pd[:4]), int(pd[4:6]), int(pd[6:8]), tzinfo=KST)
-                    except Exception:
-                        ts = now
-                posts.append({"title": title, "source": name, "url": it.get("link", ""), "ts": ts})
-        except Exception as ex:  # noqa: BLE001
-            print(f"::warning::네이버 {svc}/{q} 실패: {ex}")
-    print(f"네이버: {len(posts)}건 (blog/cafe/kin {len(NAVER_QUERIES)}쿼리)")
-    return posts
-
-
 def fetch_live(now):
-    """라이브 수집 = 어그리게이터(이슈링크·다중 커뮤니티) + 직접 RSS(뽐뿌 등) + 네이버(기본 OFF). (source, 제목) 중복 제거."""
+    """라이브 수집 = 어그리게이터(이슈링크·다중 커뮤니티) + 직접 RSS(뽐뿌 등). (source, 제목) 중복 제거."""
     import re
-    posts = fetch_issuelink(now) + fetch_rss(now) + fetch_naver(now)
+    posts = fetch_issuelink(now) + fetch_rss(now)
     seen, out = set(), []
     for p in posts:
         key = (p["source"], re.sub(r"\s+", "", p.get("title", ""))[:40])
