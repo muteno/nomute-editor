@@ -19,8 +19,7 @@ if '--if-ui-prompt' in sys.argv:
         sys.exit(0)
     print('[🎨 UI 작업 감지 — 노뮤트 디자인 계약 리마인더] 계승이 디폴트: raw 값 창작 금지, '
           'viewer/index.html :root var() 토큰 사용, 컴포넌트는 docs/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승, '
-          '버튼 패턴은 구성도/00_가이드북_버튼인터랙션.html. 디자인 기틀 정본 위치 단일 진입점 = docs/디자인기틀_SSOT.md(규칙2번). '
-          '규칙 전문 = CLAUDE.md §🔒(제1 핵심명령)+§🎨 + nomute-design 스킬.')
+          '버튼 패턴은 구성도/00_가이드북_버튼인터랙션.html. 규칙 전문 = CLAUDE.md §🔒(제1 핵심명령)+§🎨 + nomute-design 스킬.')
     sys.exit(0)
 
 # pre-commit 자동 활성화(셋업 제로·멱등) — git이 repo 내 훅을 자동 활성화 안 하므로 여기서 처리(운영자 260703)
