@@ -36,6 +36,7 @@ SRC_LABEL = {
     "ask": "요약 요청(ask)",
     "ask-repair": "요약 분량보강(ask)",
     "analyze-repair": "요약 분량보강(analyze)",
+    "card-cov": "카드 알맹이회수(card-cov)",
     "revise": "요약 수정(revise)",
     "gate": "경중 채점(gate)",
     "autopick": "긴급 자동픽(autopick)",
