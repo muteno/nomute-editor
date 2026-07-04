@@ -1247,7 +1247,7 @@
   /* ── 다이얼로그 ── */
   dialog {
     width:min(820px,94vw); max-height:88vh; color:var(--fg); padding:0;
-    background:var(--modal-glass);   /* 무채색 셸 토큰(.64) = base 기본값 무채색화(운영자 260704 "무조건 통일") — 옛 초록 글래스 rgba(27,44,32…)는 #dlg가 폐기한 '초록 시그니처' 잔재로 #pubdlg만 상속하던 유일 이탈색 → 폐쇄형 팔레트(§🎨) 밖 아웃라이어라 기존 셸토큰으로 정렬. 배경 override 안 하는 신규 모달도 무채색 안전 기본값 상속 */
+    background:linear-gradient(165deg, rgba(27,44,32,.60), rgba(11,19,14,.70));
     /* ⛔ 컨테이너 backdrop-filter 없음 = 전 모달 통일 기본값(오류 안 나는 방법·운영자 260704 "같은 레벨 통일·논외=감염"). 컨테이너 blur는 textarea 리페인트마다 재샘플 = 모바일 GPU 타이핑 번쩍(260701 진범)이라 base서 아예 제거 → 어느 dialog도 상속만으로 flicker 안전(#pindlg·#pubdlg PIN 입력이 옛 blur30 상속하던 잠재 위반도 소멸). 프로스트감 = ::backdrop blur7 + 헤더 X줄 띠(.modal-head)의 --blur-l만(둘 다 정적=타이핑 무관). 신규 모달도 컨테이너 backdrop-filter 추가 금지(글래스감은 ::backdrop이 담당). */
     border:1px solid rgba(255,255,255,.13); border-radius:var(--r-modal);   /* 전 모달 22 통일(#dlg만 26이던 것) */
     box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);
@@ -7326,11 +7326,8 @@ function renderSns() {
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge(r.age_h);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
-    // 출처성향 무게중심 — 네이버 3서비스→1 접기(_platform 정합·게이지 유일 미접기 교정) + 글수 min(,6) 클램프(대량수집 유계 방어·POSTS_CAP 미러). 성향값 불변·성향불명 제외. 분신술 11인 260704.
-    const _plat = {};   // 플랫폼별 {성향값 v, 글수 n} — 네이버 서비스 글수 합산해 1표化
-    (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; const key = NAVER_CHIP[s] ? '네이버' : s; const cnt = (r.src_posts && r.src_posts[s]) || 1; (_plat[key] = _plat[key] || { v, n: 0 }).n += cnt; });
-    let _ws = 0, _wt = 0;
-    Object.values(_plat).forEach(p => { const w = Math.min(p.n, 6); _ws += p.v * w; _wt += w; });   // 6 = POSTS_CAP 미러(네이버 100글→6·커뮤 1글→1)
+    let _ws = 0, _wt = 0;   // 수집량 가중 중간 성향 — src_posts(소스별 글수)×socVal 가중평균(보수 커뮤 글 많으면 그쪽 무게중심). src_posts 없으면 소스 균등 폴백·성향불명 소스 제외.
+    (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; const w = (r.src_posts && r.src_posts[s]) || 1; _ws += v * w; _wt += w; });
     const _mid = _wt ? _ws / _wt : null;
     const _gauge = _mid == null ? '' : `<div class="soc-gauge"><span class="soc-dot lean-${socValKey(_mid)}" style="left:${((_mid - 1) / 9 * 100).toFixed(1)}%"></span></div>`;
     el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
