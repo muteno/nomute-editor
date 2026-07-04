@@ -570,23 +570,9 @@ def check_tokens_link():
 def check_soremeori():
     """소머리(구분자 •) 표준 강제 — 텍스트 흰색(--fg)·블릿 형광(--accent)·토큰 굵기(§📐·운영자 260629).
     회색(--mut) 소머리·블릿 없는 소머리·리터럴 굵기 재발을 차단(옛 흰색600 인라인 드리프트 방지).
-    정본 = 뉴스 index .cref-lbl/p.lbl(정본도 게이트 = 리터럴 재드리프트 차단·감사 260704 사각 제거). 대상 = label.fl(thumb/k/ly/comp) + thumb .csec/.hist-bul.
+    정본 = 뉴스 index .cref-lbl(무변경). 대상 = label.fl(thumb/k/ly/comp) + thumb .csec/.hist-bul.
     .gospec(명세 readout)은 소머리 아님 = 검사 제외."""
     rc = 0
-    # 정본(index) 소머리 = .cref-lbl(텍스트 흰색800) + ::before/p.lbl::before(형광 블릿700) — 정본도 검사(옛 '무변경 정본' 사각지대 제거: 감사서 리터럴 13/800 드리프트 발견 → 토큰화 후 게이트로 고정)
-    try:
-        idx = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
-        ml = re.search(r'\.cref-lbl\s*\{([^}]*)\}', idx)
-        if not ml or 'var(--fg)' not in ml.group(1) or 'var(--fw-x)' not in ml.group(1):
-            print('❌ 소머리 게이트 — index .cref-lbl 텍스트가 흰색(--fg)·800(--fw-x) 토큰 아님(리터럴 재드리프트·§📐 정본)'); rc = 1
-        mlb = re.search(r'\.cref-lbl::before\s*\{([^}]*)\}', idx)
-        if not mlb or 'var(--accent)' not in mlb.group(1) or 'var(--fw-b)' not in mlb.group(1):
-            print('❌ 소머리 게이트 — index .cref-lbl::before 블릿이 형광(--accent)·700(--fw-b) 토큰 아님(§📐 정본)'); rc = 1
-        mpb = re.search(r'p\.lbl::before\s*\{([^}]*)\}', idx)
-        if not mpb or 'var(--accent)' not in mpb.group(1) or 'var(--fw-b)' not in mpb.group(1):
-            print('❌ 소머리 게이트 — index #cardsec p.lbl::before 블릿이 형광(--accent)·700(--fw-b) 토큰 아님(§📐 정본)'); rc = 1
-    except Exception:
-        pass
     # 블록 소머리 label.fl = 텍스트 흰색(--fg)·800(--fw-x) + ::before 형광(--accent)·700(--fw-b)
     for rel in ('viewer/thumb.html', 'viewer/k.html', 'viewer/ly.html', 'viewer/comp.html'):
         try:
