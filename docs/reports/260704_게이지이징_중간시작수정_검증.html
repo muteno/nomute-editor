@@ -1,0 +1,227 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게이지 이징 · 중간에서 시작 수정 — 요구사항 검증 보고서</title>
+<style>
+  :root{
+    --bg:#121212; --panel:#1a1c1a; --panel2:#161816;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --on-accent:#062108;
+    --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.09);
+    --red:#e23b2a; --red-rgb:226,59,42; --amber:#ffd23d; --amber-rgb:255,210,61;
+    --r-l:16px; --r-m:11px; --r-pill:999px;
+    --gauge-old:cubic-bezier(.12,.9,.22,1);
+    --gauge-new:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Pretendard",system-ui,sans-serif;
+    line-height:1.6;padding:26px 16px 80px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:0 0 6px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+  h2{font-size:16px;font-weight:800;letter-spacing:-.3px;margin:34px 0 12px;
+    padding-left:11px;border-left:3px solid var(--accent)}
+  .lead{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-l);
+    padding:16px 18px;margin:0 0 8px}
+  .lead b{color:var(--accent)}
+  .bad{color:var(--red);font-weight:700}
+  .ok{color:var(--accent);font-weight:700}
+  .idx{display:inline-block;min-width:44px;font-variant-numeric:tabular-nums;
+    font-weight:800;color:var(--accent);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px;
+    background:var(--panel2);border-radius:var(--r-l);overflow:hidden}
+  .tbox{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-l)}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:rgba(var(--accent-rgb),.07);color:var(--accent);font-weight:800;font-size:12px;white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  td.i{font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .st{white-space:nowrap;font-weight:800;font-size:12px}
+  .st.done{color:var(--accent)}
+  .st.na{color:var(--mut)}
+  .req-must td.i{color:var(--amber)}
+  .req-must td.i::after{content:" ★";color:var(--amber);font-size:10px}
+  /* live gauge demo */
+  .demo{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-l);padding:18px}
+  .grow{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:center;margin:14px 0}
+  .glab{font-size:12px;font-weight:700}
+  .glab small{display:block;color:var(--mut);font-weight:400;font-size:11px;font-variant-numeric:tabular-nums}
+  .track{position:relative;height:16px;border-radius:var(--r-pill);
+    background:rgba(255,255,255,.06);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+  .fill{position:absolute;inset:0;transform:scaleX(0);transform-origin:left;border-radius:var(--r-pill)}
+  .fill.g-old{background:linear-gradient(90deg,#ff8a3d,var(--red))}
+  .fill.g-new{background:linear-gradient(90deg,#8dff3d,var(--accent))}
+  .fill.g-lin{background:linear-gradient(90deg,#7a8cff,#3a6ddb)}
+  .run .g-old{transition:transform .9s var(--gauge-old);transform:scaleX(1)}
+  .run .g-new{transition:transform .9s var(--gauge-new);transform:scaleX(1)}
+  .run .g-lin{transition:transform .9s linear;transform:scaleX(1)}
+  .play{margin-top:8px;background:rgba(var(--accent-rgb),.1);color:var(--accent);
+    border:1px solid rgba(var(--accent-rgb),.5);border-radius:var(--r-pill);
+    padding:10px 22px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+  .play:active{transform:scale(.96)}
+  .note{color:var(--mut);font-size:12px;margin-top:10px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-l);padding:15px 18px;margin:0 0 10px}
+  .card h3{margin:0 0 7px;font-size:14px;font-weight:800}
+  .card p{margin:0 0 6px;font-size:13.5px}
+  .card ul{margin:4px 0 0;padding-left:18px}
+  .card li{margin:3px 0;font-size:13px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  @media(max-width:560px){.ba{grid-template-columns:1fr}.grow{grid-template-columns:88px 1fr}}
+  .ba>div{border-radius:var(--r-m);padding:12px 14px;font-size:13px}
+  .ba .before{background:rgba(var(--red-rgb),.08);border:1px solid rgba(var(--red-rgb),.3)}
+  .ba .after{background:rgba(var(--accent-rgb),.08);border:1px solid rgba(var(--accent-rgb),.35)}
+  .ba h4{margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:.02em}
+  .ba .before h4{color:var(--red)}
+  .ba .after h4{color:var(--accent)}
+  code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;font-size:12px;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:var(--r-pill);
+    background:rgba(var(--accent-rgb),.14);color:var(--accent);margin-left:6px}
+</style>
+
+<div class="wrap">
+  <h1>게이지 이징 · "중간에서 시작" 수정 검증</h1>
+  <p class="sub">260704 · <code>viewer/index.html :root --gauge-ease</code> 곡선 교정 · 자가 시각검증(§✅ⓔ 순수 모션)</p>
+
+  <div class="lead">
+    <p style="margin:0 0 8px">운영자 신고 = <b>①</b> 게이지바가 <span class="bad">중간에서 시작</span>해 제대로 안 됨 · <b>②</b> 아까 고른 <b>센 이징이 아예 구현 안 됨</b>.</p>
+    <p style="margin:0">진단 결과 = <b>배선·토큰 resolve 버그 아님</b>(토큰은 :root→tokens.css→base.css→4뷰어 정상 전파, 애니메이션도 정상 발화). <b>곡선 값 자체가 계단함수에 가까웠던 것</b>이 원인 — 옛 <code>cubic-bezier(.12,.9,.22,1)</code>은 <b class="bad">시간 10%에 이미 55% 채움</b>. 0.72초 게이지에서 첫 3~4프레임(~72ms) 만에 화면 중반을 지나 순간 텔레포트 → 눈엔 "중반부터 시작·이징 없음"으로 보임. 두 증상이 <b>같은 뿌리</b>. → 하우스 곡선 <code>cubic-bezier(.22,.61,.36,1)</code>(cardIn·bnav 계승)로 교체해 <b class="ok">처음부터 눈에 보이게 감속</b>하면서도 응답시점 71% 프론트로드 유지.</p>
+  </div>
+
+  <h2>▶ 라이브 비교 (0.9초 재생 — 탭해서 눈으로 확인)</h2>
+  <div class="demo" id="demo">
+    <div class="grow">
+      <div class="glab">옛 곡선 <small>.12,.9,.22,1<br>10%→55% (텔레포트)</small></div>
+      <div class="track"><div class="fill g-old"></div></div>
+    </div>
+    <div class="grow">
+      <div class="glab" style="color:var(--accent)">새 곡선 ✓ <small>.22,.61,.36,1<br>처음부터 보이며 감속</small></div>
+      <div class="track"><div class="fill g-new"></div></div>
+    </div>
+    <div class="grow">
+      <div class="glab" style="color:#8ea0ff">옛날 linear <small>일정속도<br>"천천히 가다 확 점프"</small></div>
+      <div class="track"><div class="fill g-lin"></div></div>
+    </div>
+    <button class="play" id="play">▶ 다시 재생</button>
+    <p class="note">옛(빨강)은 순간 중반까지 튀고 멈춤 = 신고 증상. 새(초록)는 처음부터 쓸려오르며 끝에서 완만 = "센 ease-out"이 눈에 보임.</p>
+  </div>
+
+  <h2>요구사항 인덱싱 16 — 전 항목 행 정리 + 검증</h2>
+  <div class="tbox">
+  <table>
+    <tr><th>IDX</th><th>요구사항 (운영자 발화)</th><th>처리·검증 결과</th><th>상태</th></tr>
+    <tr><td class="i">R-01</td><td>게이지바가 "중간에서 시작"하는 문제 확인·수정</td><td>원인=극단 곡선의 프레임 텔레포트로 확정. 새 곡선은 scaleX 0부터 좌→우 가시 채움(transform-origin:left 검증됨)</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-02</td><td>"센 이징" 선택했는데 구현 안 됨 확인·수정</td><td>토큰 resolve/애니 발화는 정상이나 곡선이 계단이라 무이징처럼 보임 → 가시 감속 곡선으로 교체</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-03</td><td>"다 됐다" 선언 직전 보고서 작성</td><td>본 HTML = 선언 전 산출물</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-04</td><td>내가 말한 것 전부 요구사항표로 정리</td><td>1·2차 발화 전량 R-01~R-16 행으로 분해</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-05</td><td>인덱싱 16개로 구성</td><td>R-01~R-16 = 정확히 16행</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-06</td><td>요구사항을 전부 '행'으로</td><td>각 요구 1행 배치</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-07</td><td>다 되었는지 검증</td><td>수치검증(곡선 %표)+거울 build+<code>check_refs</code> rc=0+구곡선 잔존 0+자가 시각검증(위 데모)</td><td class="st done">✅ 완료</td></tr>
+    <tr><td class="i">R-08</td><td>HTML로 제출</td><td>단일파일·인라인 CSS/JS·자기완결 HTML로 전송</td><td class="st done">✅ 완료</td></tr>
+    <tr class="req-must"><td class="i">R-09</td><td>기존→현재 (전/후) <span class="tag">필수</span></td><td>아래 §전·후 섹션</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-10</td><td>리스크 <span class="tag">필수</span></td><td>아래 §리스크</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-11</td><td>장단점 <span class="tag">필수</span></td><td>아래 §장단점</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-12</td><td>단점 보완 방안 <span class="tag">필수</span></td><td>아래 §보완</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-13</td><td>추후 계획 <span class="tag">필수</span></td><td>아래 §추후 계획</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-14</td><td>아이데이션 <span class="tag">필수</span></td><td>아래 §아이데이션</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-15</td><td>신의 한수 <span class="tag">필수</span></td><td>아래 §신의 한수</td><td class="st done">✅ 수록</td></tr>
+    <tr class="req-must"><td class="i">R-16</td><td>이건 모르겠다 <span class="tag">필수</span></td><td>아래 §이건 모르겠다</td><td class="st done">✅ 수록</td></tr>
+  </table>
+  </div>
+
+  <h2>R-09 · 기존 → 현재 (전/후)</h2>
+  <div class="ba">
+    <div class="before">
+      <h4>기존 (오전 PR #1536)</h4>
+      <code>--gauge-ease: .12,.9,.22,1</code>
+      <ul>
+        <li>시간 10% → <b>55%</b>, 25% → 83% 채움</li>
+        <li>0.72s 게이지: 첫 4프레임에 중반 통과 → <b>순간 완료</b>처럼</li>
+        <li>눈에: "중간에서 시작 · 이징 없음"</li>
+      </ul>
+    </div>
+    <div class="after">
+      <h4>현재 (본 수정)</h4>
+      <code>--gauge-ease: .22,.61,.36,1</code>
+      <ul>
+        <li>시간 10% → <b>27%</b>, 25% → 59%, 33% → 71%</li>
+        <li>0부터 좌→우 <b>보이며 감속</b>(가시 채움)</li>
+        <li>응답시점 71% 프론트로드 = 옛 linear(33%)보다 훨씬 채워짐 → 점프도 완화</li>
+      </ul>
+    </div>
+  </div>
+  <p class="note">한 토큰(<code>:root --gauge-ease</code>)만 교체 → build로 tokens.css·base.css·4뷰어(thumb/k/ly/comp) 전 게이지바(전송·수정·발행·기록·재생성·PIN·PICK·슛)에 일괄 전파. 제각각 없음(SSOT).</p>
+
+  <h2>R-10 · 리스크</h2>
+  <div class="card">
+    <ul>
+      <li><b>주관적 강도</b> — "센"의 체감은 취향. 새 곡선은 <b>강-중</b> 감속이라, 옛 극단만큼 "확 참"을 원하면 약하게 느낄 수 있음(→ 보완 §R-12).</li>
+      <li><b>glive 응답 게이지</b> — 3.6s 점근 게이지도 같은 토큰 사용. 71% 프론트로드로 문제 없으나 <b>실기기(모바일 GPU)에서 실제 fetch 타이밍</b> 조합은 눈으로 재확인 권장.</li>
+      <li><b>reduced-motion</b> — OS "동작 줄이기" 켜져 있으면 게이지가 .2s로 축약돼 여전히 순간처럼 보임(곡선 무관). 만약 운영자 기기가 이 설정이면 곡선 교체와 별개 요인.</li>
+      <li><b>회귀 범위</b> — 토큰 1개라 전 게이지 동시 변경. 의도지만 넓음.</li>
+    </ul>
+  </div>
+
+  <h2>R-11 · 장단점</h2>
+  <div class="ba">
+    <div class="after"><h4>장점</h4><ul>
+      <li>두 증상(중간시작·무이징)을 <b>한 값</b>으로 동시 해결</li>
+      <li>새 곡선 창작 아님 = <b>기존 하우스 곡선 계승</b>(§🎨 드리프트 0)</li>
+      <li>옛 linear 문제(응답 점프)도 함께 완화</li>
+      <li>토큰·과금 0(순수 CSS)</li>
+    </ul></div>
+    <div class="before"><h4>단점</h4><ul>
+      <li>운영자가 오전에 고른 곡선을 <b>덮어씀</b>(재선택 필요할 수 있음)</li>
+      <li>단일 토큰이라 게이지 유형별 미세 최적화는 불가(고정형 0.72s ↔ 점근형 3.6s 타협값)</li>
+    </ul></div>
+  </div>
+
+  <h2>R-12 · 단점 보완 방안</h2>
+  <div class="card">
+    <ul>
+      <li><b>강도 재튜닝 1줄</b> — 더 "센" 걸 원하면 <code>.16,.8,.28,1</code>(33%→84%)로 즉시 교체 가능. 위 데모에 곡선만 바꿔 재확인.</li>
+      <li><b>유형 분리 옵션</b> — 정 필요하면 <code>--gauge-ease</code>(고정 0.72s·가시성)와 <code>--gauge-ease-approach</code>(점근 3.6s·프론트로드) 2토큰 분리(갱신=운영자 승인+거울+락). 지금은 과설계라 <b>보류</b>, 단일 유지.</li>
+      <li><b>재선택 데모 상시화</b> — 본 보고서의 라이브 3열 비교를 곡선 튜닝 표준 도구로 재사용(재설계 0).</li>
+    </ul>
+  </div>
+
+  <h2>R-13 · 추후 계획</h2>
+  <div class="card">
+    <ul>
+      <li>운영자 실기기 시각 확인 후 강도 확정(필요시 1줄 재튜닝).</li>
+      <li><code>docs/작업이력.md</code>에 본 교정(전/후·근본원인) append + 오전 #1536 항목에 "극단곡선 착시 → 교정" 후속 표시.</li>
+      <li>CII 「게이지(버튼 채움)」 행의 곡선 값 갱신.</li>
+      <li>(선택) reduced-motion 시 게이지 표현 별도 점검 — 축약이 과한지.</li>
+    </ul>
+  </div>
+
+  <h2>R-14 · 아이데이션</h2>
+  <div class="card">
+    <ul>
+      <li><b>곡선 미리보기를 뷰어 개발 토글로</b> — 숨은 debug 패널에서 <code>--gauge-ease</code>를 실시간 슬라이더로 바꿔 라이브 게이지에 즉시 반영(택1 후 값 복사). 취향 조율을 데모↔코드 왕복 없이.</li>
+      <li><b>게이지 "채움 완료" 마이크로 피드백</b> — 100% 도달 순간 아주 짧은 밝기 펄스(0.12s)로 "다 찼다"를 명확히(끝이 완만해 끝점이 흐릿한 이징의 약점 보완).</li>
+      <li><b>응답 도착 시 잔여구간 가속</b>(이미 gdone .3s linear로 존재) — 곡선과 물리는 지점을 문서 다이어그램화해 다음 세션 혼동 차단.</li>
+    </ul>
+  </div>
+
+  <h2>R-15 · 신의 한수</h2>
+  <div class="card">
+    <p>증상을 "곡선이 틀렸다"가 아니라 <b>수치(시간%→채움%)로 계량</b>해서 <b>"10%에 55%면 인간 눈엔 텔레포트"</b>라는 물증을 잡은 것. 덕분에 <b>새 색·새 곡선을 창작하지 않고</b> 이미 코드에 있던 하우스 곡선(<code>.22,.61,.36,1</code>)이 정확히 이 문제의 해임을 <b>%표로 증명</b> → §🎨 계승 원칙과 완전 정합하면서 두 증상·옛 linear 문제까지 한 값으로 봉합. "무이징처럼 보임"의 정체가 <b>배선이 아니라 지각(perception)</b>이라는 걸 분리해낸 게 핵심.</p>
+  </div>
+
+  <h2>R-16 · 이건 모르겠다</h2>
+  <div class="card">
+    <ul>
+      <li><b>운영자 기기의 reduced-motion 설정 여부</b> — 켜져 있으면 곡선과 무관하게 게이지가 여전히 순간처럼 보임. 이게 원인의 일부인지 확실치 않음(코드로 확인 불가·운영자 기기 설정).</li>
+      <li><b>"센"의 정확한 목표 강도</b> — <code>.22,.61,.36,1</code>(강-중)이 딱 맞는지, <code>.16,.8,.28,1</code>(더 센)이 취향인지는 <b>운영자 눈</b>이라야 확정. 수치상 둘 다 "보이는 이징"은 충족.</li>
+      <li><b>오전 데모에서 실제로 "B"가 어떤 곡선이었는지</b> — 시안 파일이 세션 스크래치라 소실. 선택된 B가 점근(3.6s)게이지 기준으로 보였고 고정(0.72s)게이지엔 부적합했을 가능성이 큼(추정).</li>
+    </ul>
+  </div>
+
+  <p class="note" style="margin-top:26px">검증 로그: <code>check_refs.py</code> rc=0(거울·구조토큰·락·디자인 게이트 전부 ✅) · 구곡선 <code>.12,.9</code> 전 파일 잔존 0 · tokens.css·base.css 전파 확인 · 곡선 %는 베지어 이분탐색 실측.</p>
+</div>
+
+<script>
+  var demo=document.getElementById('demo'),play=document.getElementById('play');
+  function run(){demo.classList.remove('run');void demo.offsetWidth;demo.classList.add('run');}
+  play.addEventListener('click',run);
+  setTimeout(run,420);
+</script>

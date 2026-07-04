@@ -1,0 +1,364 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260704 요구사항 16 — 검증 보고</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --pan:#14171a; --pan2:#191d20; --fg:#e9eaec; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.15);
+    --accent:#0FFD02; --amber:#d8ff3d; --danger:#e23b2a; --info:#0cd0f7; --coral:#ff7a6b; --blue:#3a6ddb; --purple:#a78bfa;
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Malgun Gothic',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.55;
+    padding:34px 18px 70px;max-width:1000px;margin:0 auto;
+    background-image:radial-gradient(120% 60% at 100% 0%, rgba(15,253,2,.05), transparent 60%);}
+  .tnum{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.4px;margin:0 0 3px;text-wrap:balance}
+  .sub{font-size:12.5px;color:var(--mut);margin:0 0 4px}
+  .lede{font-size:13px;color:#cfd6d2;margin:14px 0 26px;max-width:66ch;line-height:1.6}
+  .lede b{color:var(--accent);font-weight:700}
+  h2{font-size:11.5px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:1.2px;
+    margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+  /* 요약 스코어 */
+  .score{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 6px}
+  .stat{flex:1;min-width:130px;background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px}
+  .stat .k{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  .stat .v{font-size:25px;font-weight:800;margin-top:3px;letter-spacing:-.5px}
+  .stat .v small{font-size:14px;color:var(--mut);font-weight:600}
+  .stat.ok .v{color:var(--accent)}
+  /* 요약표 */
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--pan)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
+  thead th{text-align:left;padding:9px 12px;color:var(--mut);font-weight:700;font-size:10.5px;
+    text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--line2);white-space:nowrap}
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  .ix{font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .rq{font-weight:600}
+  .pr{color:var(--mut);font-variant-numeric:tabular-nums;font-size:11.5px;white-space:nowrap}
+  .done{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--accent);
+    background:rgba(15,253,2,.1);border:1px solid rgba(15,253,2,.34);border-radius:999px;padding:2px 9px;white-space:nowrap}
+  .done svg{width:11px;height:11px}
+  /* 상세 카드 */
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:16px;padding:0;margin-top:14px;overflow:hidden}
+  .ch{display:flex;align-items:center;gap:11px;padding:14px 17px;background:var(--pan2);border-bottom:1px solid var(--line)}
+  .ch .cix{font-size:13px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;
+    background:rgba(15,253,2,.09);border:1px solid rgba(15,253,2,.3);border-radius:8px;padding:3px 8px;flex:none}
+  .ch .ct{font-size:14.5px;font-weight:800;letter-spacing:-.2px;flex:1;line-height:1.35;text-wrap:balance}
+  .ch .cpr{font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums;flex:none}
+  .grid{padding:6px 17px 16px}
+  .row{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .lab{font-size:10.5px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;padding-top:2px}
+  .val{font-size:12.5px;color:#d4dad6;line-height:1.55}
+  .val .ba{color:var(--coral);font-weight:600}
+  .val .aa{color:var(--accent);font-weight:600}
+  .val code{background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;font-size:11px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  /* 특수 행 강조 */
+  .row.god{background:linear-gradient(90deg, rgba(15,253,2,.06), transparent);margin:0 -17px;padding:11px 17px;border-radius:0}
+  .row.god .lab{color:var(--accent)}
+  .row.god .val{color:#e6f5e2}
+  .row.unsure .lab{color:var(--amber)}
+  .row.unsure .val{color:#e3e6c9}
+  .arrow{color:var(--mut);padding:0 4px;font-weight:700}
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--mut);line-height:1.7}
+  footer b{color:#c8cec9;font-weight:700}
+  a{color:var(--info);text-decoration:none}
+  @media(max-width:560px){
+    body{padding:24px 13px 55px}
+    .row{grid-template-columns:1fr;gap:2px}
+    .lab{padding-top:0}
+    .row.god,.row.unsure{margin:0 -13px}
+  }
+</style>
+
+<h1>노뮤트 · 260704 요구사항 16건 검증 보고</h1>
+<p class="sub tnum">브랜드 팔레트 → 모달 셸 통일 → 편향 게이지 · 전 건 main 반영 + read-back 검증 완료</p>
+<p class="lede">오늘 세션에서 운영자가 지시한 요구사항 <b>16건 전부</b> 코드 반영·PR 스쿼시 머지·원격 <code>git show origin/main</code> read-back 검증까지 마쳤다. 관통 주제 = <b>"같은 레벨 무조건 통일 · 논외(예외)=감염"</b> — 제각각이던 색·모달·마커를 폐쇄형 팔레트와 구조 규칙으로 수렴하고, 그 방침 자체를 기틀(CLAUDE.md)에 박았다. 아래 각 건을 8개 필수 인덱싱값(전후·리스크·장단점·단점보완·추후계획·아이데이션·신의한수·이건모르겠다)으로 정리한다.</p>
+
+<h2>요약 스코어</h2>
+<div class="score">
+  <div class="stat ok"><div class="k">요구사항</div><div class="v tnum">16 <small>/ 16 완료</small></div></div>
+  <div class="stat ok"><div class="k">머지된 PR</div><div class="v tnum">12<small>건 squash</small></div></div>
+  <div class="stat"><div class="k">분신술 검증</div><div class="v tnum">4<small>회 (10~11인)</small></div></div>
+  <div class="stat"><div class="k">기틀 규칙 신설</div><div class="v tnum">3<small>개 조항</small></div></div>
+</div>
+
+<h2>16건 인덱스</h2>
+<div class="wrap">
+<table>
+<thead><tr><th>#</th><th>요구사항</th><th>상태</th><th>PR</th></tr></thead>
+<tbody>
+<tr><td class="ix tnum">01</td><td class="rq">네이버 카페/블로그 → 픽토그램(컵·펜) 대체</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1533</td></tr>
+<tr><td class="ix tnum">02</td><td class="rq">네이버 수집 가산점 상향 (100수집 &gt;75점)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1533</td></tr>
+<tr><td class="ix tnum">03</td><td class="rq">SNS 소스칩 색감 통일</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1537</td></tr>
+<tr><td class="ix tnum">04</td><td class="rq">브랜드 팔레트 폐쇄형 확립 (accent-2~5·편향5단·amber→라임)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1537·43</td></tr>
+<tr><td class="ix tnum">05</td><td class="rq">팔레트 = 제1 핵심명령 기틀화 + 타레포 이식본</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1548</td></tr>
+<tr><td class="ix tnum">06</td><td class="rq">mut 실제값 교정 (레포 내 실색 → #8fa697)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1541</td></tr>
+<tr><td class="ix tnum">07</td><td class="rq">SNS 소스칩 글자 전부 흰색</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1551</td></tr>
+<tr><td class="ix tnum">08</td><td class="rq">분신술: 편향5단 ↔ 근접색 규칙 충돌 검토</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">10인</td></tr>
+<tr><td class="ix tnum">09</td><td class="rq">모달 3단 셸 통일 (헤더띠·탭띠·투명내용)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1549·53</td></tr>
+<tr><td class="ix tnum">10</td><td class="rq">#askdlg 셸 투명 (내용만·X헤더 유지)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1558</td></tr>
+<tr><td class="ix tnum">11</td><td class="rq">썸네일 이미지 모달 첫 소머리 = 영상 정렬</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1558</td></tr>
+<tr><td class="ix tnum">12</td><td class="rq">번쩍임 전반 웹앱 확인 (분신술)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">10인</td></tr>
+<tr><td class="ix tnum">13</td><td class="rq">모달 셸 통일 = 컨테이너 blur 전면제거·예외0 (A+B)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1565</td></tr>
+<tr><td class="ix tnum">14</td><td class="rq">#pubdlg 초록 이탈 → 무채색 통일 (무조건)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1567</td></tr>
+<tr><td class="ix tnum">15</td><td class="rq">「통일은 묻지 마」 기틀 규칙 + 오늘 기틀 파일명 확인</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1567</td></tr>
+<tr><td class="ix tnum">16</td><td class="rq">SNS 편향 게이지 동그라미 = 흰색 통일 (편향=위치)</td><td><span class="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>완료</span></td><td class="pr">#1573</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>상세 — 8필수값</h2>
+
+<!-- 01 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">01</span><span class="ct">네이버 카페/블로그 → 픽토그램 대체</span><span class="cpr">#1533</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">"네이버카페"·"네이버블로그" 긴 키워드 칩</span> <span class="arrow">→</span> <span class="aa">카페=☕컵 픽토 + "카페", 블로그=✒️펜 + "블로그", 지식iN=텍스트만</span>. 색은 약진보 시안 동축.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">픽토그램이 작아(11px) 저해상 폰에서 컵/펜 구분 모호 가능.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋칩 폭 절반↓·시각 정돈. －아이콘만으론 처음 보는 유저에 학습 필요(그래서 짧은 라벨 병기).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">픽토 + 짧은 텍스트 라벨 병행(아이콘 단독 아님) = 학습부담 상쇄.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">타 소스(디시·에펨 등)도 픽토 도입 여지 — 현재는 네이버 계열만.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">지식iN도 전용 픽토(전구·Q) 검토 가능하나 텍스트가 이미 짧아 보류.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">색(성향)은 시안 그대로 두고 <b>플랫폼 구별만 픽토가 담당</b> = 성향축과 플랫폼축을 분리해 둘 다 안 깨짐.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">"카페=컵" 은유가 한국 유저에 직관적인지 — 카페(커뮤니티)와 카페(음료)의 말장난이라 호불호 갈릴 수 있음.</div></div>
+  </div>
+</div>
+
+<!-- 02 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">02</span><span class="ct">네이버 수집 가산점 상향</span><span class="cpr">#1533</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">NORM_REF 20 (100수집→50점 근방)</span> <span class="arrow">→</span> <span class="aa">NORM_REF 75 (100수집→&gt;75점)</span>. per-post weight = <code>min(1, 75/src_total)</code>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">네이버 대량 수집이 랭킹을 과점할 위험 — 후속 #1568 클램프로 완화.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋네이버 신호 반영↑(운영자 요구). －단일 소스 볼륨이 무게중심 왜곡 가능.</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">글수 <code>min(,6)</code> 클램프(#1568)로 대량수집 무력화 = 볼륨 과점 차단.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">실데이터 로그 보고 NORM_REF·클램프 K값 튜닝(운영자 동의).</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">소스별 신뢰도 가중을 성향맵과 결합하면 볼륨 아닌 질로 가점 가능.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">가점 상향과 <b>클램프를 짝으로</b> = "반영은 키우되 과점은 막는다"를 한 세트로 설계.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">75가 최적점인지 — 실트래픽에서 네이버 잔존비율(실측 83%)이 여전히 높아 재튜닝 가능성.</div></div>
+  </div>
+</div>
+
+<!-- 03 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">03</span><span class="ct">SNS 소스칩 색감 통일</span><span class="cpr">#1537</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">칩 색이 제각각·"정신사나움"</span> <span class="arrow">→</span> <span class="aa">편향 5단(강진보 파랑↔중립 흰↔강보수 빨강) 토큰 체계로 정렬</span> → 팔레트 전면 개편으로 확대(04).</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">칩 통일이 전체 팔레트 개편을 촉발 = 반영 지점 대량(대작업).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋일관성=품질. －개편 범위가 커져 회귀 위험(→ 분신술로 방어).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">토큰 SSOT + check_refs 게이트로 raw 난립 차단.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">04·05 팔레트 확립으로 흡수·완료.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">칩 = 성향 축(색) + 소스 축(픽토)로 이원화(01과 연결).</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">"칩 색 통일" 국소 요청을 <b>브랜드 팔레트 전면 확립의 트리거</b>로 승격 = 근본 정리.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">5단 세분이 실사용자에게 과한지(강/약 구분 실효) — 08 분신술에서 재검토됨.</div></div>
+  </div>
+</div>
+
+<!-- 04 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">04</span><span class="ct">브랜드 팔레트 폐쇄형 확립</span><span class="cpr">#1537·43</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">accent 단일 + 제각각 raw + amber 별도</span> <span class="arrow">→</span> <span class="aa">코어 accent + accent-2~5(보라·빨강·라임·시안) + 편향5단 + amber→라임 통합, 유일 레드/블루 원칙</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">폐쇄형이 너무 빡빡하면 신규 색 필요 시 마찰.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋유사색 난립 차단=브랜드 견고. －새 색은 승인 필요(유연성↓, 의도된 트레이드오프).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">정말 필요하면 [갱신] 정문(승인→토큰→락)으로 확장 = 닫힘≠동결.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">도메인 스케일(성향맵 등) 필요 시 폐쇄집합 안에서 확장.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">확립본 HTML을 인터랙티브 컬러칩 플레이그라운드로 발전 가능.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">"각 역할색은 <b>유일</b>"(레드=강보수 하나·블루=강진보 하나) = 색→의미 1:1로 못박아 드리프트 원천 차단.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">코랄(약보수)↔빨강(강보수)이 hue 0.5°로 사실상 같은 색 = 08에서 실약점 확인, 완전 해소는 미정.</div></div>
+  </div>
+</div>
+
+<!-- 05 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">05</span><span class="ct">팔레트 = 제1 핵심명령 기틀화 + 타레포 이식</span><span class="cpr">#1548</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">디자인 규칙이 산재</span> <span class="arrow">→</span> <span class="aa">CLAUDE.md §1 = "모든 디자인 = 루트 토큰 계승 또는 갱신 둘 뿐" 레포 제1 절대명령 + 타레포 이식 전문(<code>디자인토큰_제1핵심명령_복제전문.md</code>)</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">소프트룰(모델 준수 의존) — 약한 모델이면 미작동.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋매 세션 자동 로드=항상 유효. －기계 강제는 일부만(raw accent·락), 나머지는 준수 의존.</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">SessionStart 훅 주입 + check_refs 하드게이트로 가시성·강제 병행.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">이식본을 실제 타레포에 적용 시 9슬롯 바인딩표로 매핑.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">이식본을 범용 "디자인토큰 거버넌스" 스타터로 배포 가능.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">규칙을 <b>"계승 또는 갱신, 둘 뿐"</b> 이진 선택으로 압축 = 모델이 헷갈릴 여지 최소화.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">타레포마다 팔레트 의미축이 달라 이식본 일반형이 얼마나 그대로 먹힐지.</div></div>
+  </div>
+</div>
+
+<!-- 06 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">06</span><span class="ct">mut 실제값 교정</span><span class="cpr">#1541</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">내가 임의 창작한 #8f9499(오류)</span> <span class="arrow">→</span> <span class="aa">레포 실색 #8fa697(발행본 byline 실측)</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">없음(실측값 교정) — 오히려 내가 §1 위반(임의 창작)한 걸 바로잡음.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋정확·기존값 유지. －(교훈) 내가 값을 지어내는 실수를 함.</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">이 실수가 §🎨 "기존 색 유지·임의 창작 금지" 색 규칙 강화의 계기가 됨.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">없음(완결).</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">값 창작 방지 = "레포에서 먼저 찾아라" 를 훅으로 상기.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">운영자가 <b>발행본 실물을 지목</b>해 실색을 잡아줌 = 추측 대신 실측의 표본.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">없음 — 명확한 실측 교정.</div></div>
+  </div>
+</div>
+
+<!-- 07 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">07</span><span class="ct">SNS 소스칩 글자 전부 흰색</span><span class="cpr">#1551</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">중립·강진보만 흰글자·나머지 성향색 글자(어색)</span> <span class="arrow">→</span> <span class="aa">lean-l/r/rr + src-naver 글자 전부 var(--fg) 흰색</span> (bg/border 틴트만 성향 식별).</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">소형 칩(10.5px)서 파랑 tint 위 흰글자 대비 — AA 검증 통과.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋가독·일관. －성향이 글자색서 사라짐(→ tint/border가 담당).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">배경·테두리 색 틴트가 성향 식별 유지 = 정보 손실 0.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">16(동그라미 흰색)과 같은 철학 = 색은 최소, 형태/위치로.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">칩 글자 = 흰색 고정을 전 칩 표준으로.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">"딱 글자색만" 바꾸고 <b>bg/border는 손 안 댐</b> = 최소 변경으로 통일(운영자 "딱 지시한 것만").</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">bias-l2(파랑) 텍스트가 3.38:1로 AA 실패라 흰색 채택했는데, 저채도 파랑 tint 위 흰글자가 모든 폰에서 충분히 뜨는지.</div></div>
+  </div>
+</div>
+
+<!-- 08 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">08</span><span class="ct">분신술: 편향5단 ↔ 근접색 규칙 충돌 검토</span><span class="cpr">10인</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">"유사색 금지"와 "편향 5단 유사색 공존" 이 충돌 우려</span> <span class="arrow">→</span> <span class="aa">분신술 10인 만장: 충돌 아님(규칙=팔레트 밖 창작 금지 / 5단=팔레트 안 승인 토큰) · 5단 유지</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">잘못하면 편향 스펙트럼을 "위반"으로 오판·삭제할 뻔(내 제안 문구가 자기파괴적이었음).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋규칙 문구 정밀화·오독 방지 조항 신설. －5단이 색맹서 3덩어리로 뭉침(실약점 확인).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">§1에 "오독 방지" 조항 박음(닫힌집합 안 유사색=정상). warm축 명도사다리는 후속.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">약보수/강보수(코랄↔빨강) 구별 개선 = 채움/테두리 명도 사다리(신hex 0).</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">강보수 글자를 흰색으로(강진보 파랑칩 흰글자와 대칭) = 색맹·소칩서도 구별.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">10인이 <b>내가 넣으려던 문구가 편향축을 삭제시킴</b>을 잡아냄 = 자기파괴 방지(적대 검증의 값).</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">5단이 정말 필요한지(강/약 기능0·범례없어 미해독) = 소수의견 잔존, 3단 축소는 전역 회귀라 기각했으나 논쟁적.</div></div>
+  </div>
+</div>
+
+<!-- 09 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">09</span><span class="ct">모달 3단 셸 통일 (헤더띠·탭띠·투명내용)</span><span class="cpr">#1549·53</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">모달마다 헤더/배경 제각각</span> <span class="arrow">→</span> <span class="aa">영상모달 기준 단일 셸: 헤더 띠(.modal-head)+탭 띠(.modal-tabs)+투명 내용 · :root 셸토큰 4종 SSOT</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">4뷰어 색 공유 시 정체성 붕괴(→ 색은 뷰어별 독립 유지).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋신규 팝업이 셸 계승=재설계 0. －셸 토큰 오용 시 전 모달 영향.</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">CII 정본 셀렉터 + check_refs로 강제.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">13에서 컨테이너 blur까지 규칙화하며 완성.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">셸 토큰을 4뷰어 구조토큰처럼 공유 링크로.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val"><b>이미 잘 된 영상모달을 기준</b>으로 삼아 나머지를 맞춤 = 새 디자인 0, 계승만.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">병렬 세션이 만든 부분이 있어 셸 값이 미세하게 어긋난 지점이 남았는지(13에서 감염잔재 주석 발견).</div></div>
+  </div>
+</div>
+
+<!-- 10 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">10</span><span class="ct">#askdlg 셸 투명 (내용만·X헤더 유지)</span><span class="cpr">#1558</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">뉴스요약 입력창 = 불투명(.98)</span> <span class="arrow">→</span> <span class="aa">셸 반투명 --modal-glass(.64) 틴트 + 헤더 X줄만 띠 유지 · 컨테이너 blur는 뺌(안전판)</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">반투명+blur 재활성이 260701 모바일 타이핑 번쩍 재발 우려(12 분신술로 검증).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋"거의 투명 셸" 목표 달성. －풀 유리(blur)는 라이브 검증 불가라 안전판 채택(프로스트 약간 옅음).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">컨테이너 blur 제거 + ::backdrop blur7이 프로스트 담당 = 번쩍 원천차단하며 투명 유지.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">폰 실측서 번쩍 없으면 풀 blur 복원 가능(2줄).</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">입력 포커스 중에만 blur off(JS)로 유리감+안전 절충(차선).</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">검증 불가한 라이브 리스크를 <b>코드상 명백 안전한 쪽</b>으로 = 목표(투명) 달성하며 게이트 없이 머지.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">운영자 폰에서 풀 blur가 실제 번쩍 나는지 — 세션에선 Cloudflare Access라 렌더 검증 불가.</div></div>
+  </div>
+</div>
+
+<!-- 11 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">11</span><span class="ct">썸네일 이미지 모달 첫 소머리 = 영상 정렬</span><span class="cpr">#1558</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">이미지 탭 첫 소머리 ~34px(영상과 어긋남)</span> <span class="arrow">→</span> <span class="aa">thumbTabBridge 주입에 .panel margin-top:-16px = 첫 블릿 18px 화면선(영상 ly/k 정합)</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">음수 마진이 특정 탭서 클립/겹침 유발 가능(→ 3탭 검증).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋3탭 균일 정합·thumb.html 무접촉. －영상 첫블릿과 잔차 ~2-5px 가능(라이브 미세보정 대상).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">주입 스타일 스코프 보정으로 thumb.html 안 건드리고 미세조정 가능.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">라이브 실측 후 잔차 있으면 주입 델타 미세보정.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">첫 소머리 화면선을 전 도구 공통 상수로 토큰화.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">margin-collapse를 역이용 = <b>thumb.html 원본 무접촉</b>으로 부모 주입만으로 정렬(격리 유지).</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">-16px가 영상 첫블릿과 픽셀 정확한 델타인지 = 코드론 18px 안착 확실하나 영상측 실측값은 눈확인 필요.</div></div>
+  </div>
+</div>
+
+<!-- 12 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">12</span><span class="ct">번쩍임 전반 웹앱 확인 (분신술 10인)</span><span class="cpr">10인</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">#askdlg 투명화의 번쩍 위험 미검증</span> <span class="arrow">→</span> <span class="aa">분신술 10인 만장: 컨테이너 blur = 진범 → 제거 안전판 도출 · text-bleed는 재발 안 함(스코프 정확)</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">번쩍은 GPU 구현 의존이라 코드로 "안 난다" 증명 불가·라이브 검증 불가.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋10앵글 적대 검증으로 진범 특정. －최종 확정은 운영자 폰 눈에 의존.</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">코드상 명백 안전한 안전판(blur 제거)으로 라이브 게이트 자체를 없앰.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">13에서 base·tooldlg·askclip까지 확장해 flicker를 구조적 보장으로.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">번쩍류를 정적 렌더 diff로 자동 감지하는 테스트(라이브 대체).</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">10인이 <b>.askclip 오버레이 blur</b>라는 숨은 잔존 vector까지 색출 = 컨테이너만 보면 놓칠 지점.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">실기기 스펙트럼(저사양 안드로이드~iOS)에서 안전판이 100% 번쩍 0인지 = 표본 못 돌림.</div></div>
+  </div>
+</div>
+
+<!-- 13 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">13</span><span class="ct">모달 셸 통일 = 컨테이너 blur 전면제거 · 예외0 (A+B)</span><span class="cpr">#1565</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">blur 제각각(base30·tooldlg34·ask생략·#askdlg 예외)</span> <span class="arrow">→</span> <span class="aa">base·tooldlg·askclip 컨테이너 blur 전면 제거 · 구조 2규칙(예외0) · 프로스트=::backdrop+헤더 띠</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">tooldlg/pindlg 프로스트가 blur7로 옅어짐(눈확인 대상)·#dlg 리더 영향(실측 no-op).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋flicker가 <b>구조적 보장</b>(신규 dialog 상속만으로 안전). －프로스트 강도 약화(허용됨).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">::backdrop blur7 + 헤더 띠 blur가 글래스감 담당·불투명 모달은 원래 no-op라 무손실.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">입력 담은 DIV 앵커(lockpop·marqpop·sc-rsn)·thumb 내부 .cfm/.abdlg = 별건 세션.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">"dialog 블록 내 backdrop-filter 0"을 정규식 하드게이트로 승격(소프트룰→강제).</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">예외를 패치하지 않고 <b>base 기본값을 안전하게</b> = 실수해도 번쩍 안 나는 구조(오류 안 나는 방법).</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">규칙② 인과를 "::backdrop 투명 여부"에 묶는 게(분신술 정정) 미래 모든 케이스를 커버하는지.</div></div>
+  </div>
+</div>
+
+<!-- 14 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">14</span><span class="ct">#pubdlg 초록 이탈 → 무채색 통일</span><span class="cpr">#1567</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">발행 모달만 base 초록 글래스 상속(유일 이탈색)</span> <span class="arrow">→</span> <span class="aa">base dialog 배경 초록→var(--modal-glass) 무채색 = pubdlg 자동 합류 + 신규 모달 무채색 기본값</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">base 배경 상속 dialog가 pubdlg뿐이라 blast 단일(나머지 전부 override) = 리스크 극소.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋전 모달 무채색 완성·뿌리 수정=future-proof. －pubdlg PIN 가독 .64로 약간 투명(::backdrop로 ~80% 보정).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">--modal-glass는 askdlg/tooldlg가 쓰는 검증된 셸토큰 = pubdlg도 동급 가독.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">pindlg(.72/.8)와 pubdlg(.64) 미세 opacity 차 통일 여지(둘 다 PIN 모달).</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">모든 중앙 dialog가 --modal-glass 단일 사용하도록 더 조일 수 있음.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">pubdlg 하나만 override하지 않고 <b>base 초록 잔재 자체를 제거</b> = 근원 정리 + 미래 모달 자동 안전.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">pubdlg .64가 PIN 입력 fieldset 가독에 충분한지 = 코드상 ~80% 합성이나 실기 확인 권장.</div></div>
+  </div>
+</div>
+
+<!-- 15 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">15</span><span class="ct">「통일은 묻지 마」 기틀 규칙 + 오늘 기틀 파일명</span><span class="cpr">#1567</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">색 규칙이 "기존 색 제거는 확인" 이라 통일마다 물어봄(운영자 피로)</span> <span class="arrow">→</span> <span class="aa">§🎨에 「통일=예외=묻지 말고 즉시」 조항 신설 · 아웃라이어를 기존 토큰에 정렬은 계승 디폴트</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">"통일"과 "새 색 창작"의 경계 오판 시 임의 색 변경 위험.</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋명백한 통일은 마찰 0. －경계 판단을 모델에 맡김(→ 조항이 경계 명시).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">"확인은 팔레트에 없는 새 색 창작 or 의도된 색 없애 통일 깨기만" 으로 경계 못박음.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">이 조항이 실제로 마찰을 줄이는지 다음 세션들서 관찰.</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">오늘 기틀 파일 = <code>docs/reports/260704_브랜드컬러_확립본.html</code>(사람 사인오프 정본·값 정본은 viewer :root).</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">운영자 방침("무조건 통일·묻지 마")을 <b>일회 실행이 아니라 기틀 규칙</b>으로 = 다음 세션도 자동 적용.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">"통일 vs 새 색"의 경계가 애매한 케이스에서 모델이 정확히 판단할지 = 소프트룰 한계.</div></div>
+  </div>
+</div>
+
+<!-- 16 -->
+<div class="card">
+  <div class="ch"><span class="cix tnum">16</span><span class="ct">SNS 편향 게이지 동그라미 = 흰색 통일 (편향=위치)</span><span class="cpr">#1573</span></div>
+  <div class="grid">
+    <div class="row"><div class="lab">전 → 후</div><div class="val"><span class="ba">동그라미가 편향 등급별 색 제각각(파랑/시안/코랄/빨강)=위치와 중복·혼란</span> <span class="arrow">→</span> <span class="aa">.soc-dot = --fg 흰색 단일 마커 · 편향은 게이지 그라데이션의 위치로만 표현</span>.</div></div>
+    <div class="row"><div class="lab">리스크</div><div class="val">없음(순수 시각·로직/데이터 무변경).</div></div>
+    <div class="row"><div class="lab">장단점</div><div class="val">＋색 노이즈 0·인지부하↓·위치 한눈에. －동그라미 자체론 방향 정보 없음(게이지 그라데이션이 담당).</div></div>
+    <div class="row"><div class="lab">단점 보완</div><div class="val">게이지 다이버징 그라데이션(블루좌=진보/레드우=보수) 유지 = 위치의 방향 기준 제공.</div></div>
+    <div class="row"><div class="lab">추후 계획</div><div class="val">SOC_LEAN_MAP 성향맵 정확도 튜닝(가중식 아닌 맵 정밀도가 진짜 개선여지·분신술11 결론).</div></div>
+    <div class="row"><div class="lab">아이데이션</div><div class="val">"색은 최소, 위치/형태로" 철학을 다른 지표(점수·배지)에도 확장.</div></div>
+    <div class="row god"><div class="lab">신의 한수</div><div class="val">게이지(고정 스케일)는 그대로 두고 <b>중복 표현인 동그라미 색만 제거</b> = 운영자 통찰("이미 게이지가 보여주니까")을 정확히 실행.</div></div>
+    <div class="row unsure"><div class="lab">이건 모르겠다</div><div class="val">--fg(#eef7f0 살짝 웜)가 순백(#fff)보다 나은지 = 중립 전경 의미 정합이나 순백이 더 crisp할 수도(전용 흰마커 토큰 정립 여지).</div></div>
+  </div>
+</div>
+
+<footer>
+  <b>검증 방법</b> — 전 16건: 코드 반영 → PR squash 머지 → 원격 <code>git show origin/main:&lt;파일&gt;</code> read-back으로 실내용 확인 · <code>check_refs</code> rc=0 · 4·13·14·16은 분신술(10~11인 Opus 4.8·Explore 읽기전용·READ-ONLY 계약) 적대 검증.<br>
+  <b>미결·후속</b> — 라이브 눈확인 3건(#askdlg 풀blur 번쩍 · tooldlg/pindlg 프로스트 강도 · pubdlg PIN 가독) · 별건 세션(입력 담은 DIV 앵커 flicker · thumb 내부 dialog blur · warm축 색맹 명도사다리 · SOC_LEAN_MAP 정밀도).<br>
+  <span style="color:#6f7d74">노뮤트 · 260704 · 값 정본 = viewer/index.html :root · 이 보고서는 일회성 스냅샷(color-scheme dark)</span>
+</footer>
