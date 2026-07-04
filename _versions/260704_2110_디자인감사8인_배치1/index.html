@@ -1027,13 +1027,13 @@
   #bnav .bnav-i[data-tab="feed"] { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* 더블탭 줌·300ms 클릭지연 차단 = 연달아 두번 탭(대기열 열기) 신뢰성(ed-chip 패턴 계승·260621) */
   .qflash { position:fixed; left:50%; bottom:96px; transform:translateX(-50%) translateY(8px); z-index:var(--z-remote-pop);
     max-width:80vw; padding:9px 16px; border-radius:12px; font-size:12.5px; font-weight:700; color:var(--fg);
-    background:linear-gradient(165deg, rgba(24,25,28,.97), rgba(15,16,18,.98)); border:1px solid var(--line);   /* 무채화 = 초록 워시(24,40,29) 제거(운영자 260704 · green_wash) */
+    background:linear-gradient(165deg, rgba(24,40,29,.97), rgba(12,21,15,.98)); border:1px solid var(--line);
     box-shadow:0 14px 36px rgba(0,0,0,.55); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
   .qflash.show { opacity:1; transform:translateX(-50%) translateY(0); }
   /* Failed 칩 컨텍스트 메뉴(길게/우클릭) — .bpop 글래스 계승, 칩 옆 고정 위치(JS). 항목 2개: 실패 사유·내용 입력. */
   .failmenu { position:fixed; z-index:var(--z-remote-pop); min-width:152px; padding:6px; display:flex; flex-direction:column; gap:2px; transform-origin:top center;
-    background:linear-gradient(165deg, rgba(24,25,28,.98), rgba(15,16,18,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);   /* 무채화 = 초록 워시 제거(운영자 260704 · green_wash) */
+    background:linear-gradient(165deg, rgba(24,40,29,.98), rgba(12,21,15,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
     border:1px solid var(--line); border-radius:13px; box-shadow:0 18px 46px rgba(0,0,0,.62); animation:popIn .14s cubic-bezier(.22,.61,.36,1) both; }
   .failmenu[hidden] { display:none; }
   .failmenu-it { display:flex; align-items:center; gap:9px; width:100%; padding:9px 11px; border-radius:9px; border:none; cursor:pointer;
@@ -1686,7 +1686,7 @@
   /* 모달 내부 맨 위로 버튼 */
   .dlgtop { position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom)); z-index:6; width:44px; height:44px;
     border-radius:50%; display:none; place-items:center; cursor:pointer; color:var(--accent);
-    background:linear-gradient(165deg, rgba(24,25,28,.86), rgba(15,16,18,.92)); border:1px solid rgba(15,253,2,.34);   /* 배경 무채화(초록 워시 제거) · border·아이콘 accent 유지 = 맨위로 버튼 의미색(운영자 260704) */
+    background:linear-gradient(165deg, rgba(24,40,29,.86), rgba(12,21,15,.92)); border:1px solid rgba(15,253,2,.34);
     box-shadow:0 10px 28px rgba(0,0,0,.5); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); transition:transform .14s, opacity .2s; }
   .dlgtop.show { display:grid; } .dlgtop:active { transform:scale(var(--press-m,.92)); } .dlgtop svg { display:block; }
 
@@ -7323,11 +7323,12 @@ function renderSns() {
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge(r.age_h);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
-    // 출처성향 무게중심 — 네이버 3서비스→1 접기 + 진영당 1표 균등평균(글수 무시=방향만·강도는 🔥burst/글N/소스칩이 담당). 성향값 불변·성향불명 제외. 통합 단일원칙(분신술 11인·볼륨가중/클램프 폐지 260704).
-    const _plat = {};   // 성향 플랫폼(네이버 접기)별 성향값 — 진영당 1표(글수 무관)
-    (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; _plat[NAVER_CHIP[s] ? '네이버' : s] = v; });
-    const _pv = Object.values(_plat);
-    const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
+    // 출처성향 무게중심 — 네이버 3서비스→1 접기(_platform 정합·게이지 유일 미접기 교정) + 글수 min(,6) 클램프(대량수집 유계 방어·POSTS_CAP 미러). 성향값 불변·성향불명 제외. 분신술 11인 260704.
+    const _plat = {};   // 플랫폼별 {성향값 v, 글수 n} — 네이버 서비스 글수 합산해 1표化
+    (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; const key = NAVER_CHIP[s] ? '네이버' : s; const cnt = (r.src_posts && r.src_posts[s]) || 1; (_plat[key] = _plat[key] || { v, n: 0 }).n += cnt; });
+    let _ws = 0, _wt = 0;
+    Object.values(_plat).forEach(p => { const w = Math.min(p.n, 6); _ws += p.v * w; _wt += w; });   // 6 = POSTS_CAP 미러(네이버 100글→6·커뮤 1글→1)
+    const _mid = _wt ? _ws / _wt : null;
     const _gauge = _mid == null ? '' : `<div class="soc-gauge"><span class="soc-dot" style="left:${((_mid - 1) / 9 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 옛 lean-* 색분기 제거(운영자 260704) */
     el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
