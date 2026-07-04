@@ -7299,17 +7299,34 @@ const toolFrames = {};        // toolKey → iframe
 const toolMeta = {};          // toolKey → { title, tabs, src } (복원용)
 let curToolKey = null;
 function activeToolFrame() { return (curToolKey && toolFrames[curToolKey]) || document.querySelector('#tooldlg .toolfr.active') || document.getElementById('toolframe'); }
+function thumbTabBridge(d) {   // 이미지(thumb) 탭 부모 승격(260704) = 내부 #tabs 숨김 + 내부 탭변화(b4 FAB·selApp) 역동기 → 부모 .tooltab 하이라이트. thumb.html 무접촉(부모가 style 주입+observer·same-origin).
+  try {
+    if (!d.getElementById('_thumbTabHide')) { const s = d.createElement('style'); s.id = '_thumbTabHide'; s.textContent = '#tabs{display:none!important}'; (d.head || d.documentElement).appendChild(s); }
+    const tabsEl = d.getElementById('tabs'); if (!tabsEl) return;
+    const sync = () => { const on = d.querySelector('.tab.on'); const app = on && on.getAttribute('data-app'); if (!app) return; if (toolMeta.thumb) toolMeta.thumb.app = app; $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x.getAttribute('data-app') === app)); };
+    if (!tabsEl._parentSynced) { tabsEl._parentSynced = true; new MutationObserver(sync).observe(tabsEl, { subtree: true, attributes: true, attributeFilter: ['class'] }); }
+    sync();   // 초기 동기(thumb 로드 시 selApp('2')=썸네일 → 부모 하이라이트 정합)
+  } catch (_) {}
+}
 function bindToolFrameLoad(fr) {   // load = 페이드인(frame-ready)+ESC 브릿지. 복제 프레임에도 필수(없으면 opacity:0로 안 보임).
   fr.addEventListener('load', () => { tooldlg.classList.add('frame-ready');
-    try { const d = fr.contentDocument; if (d) d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } }); } catch (_) {} });
+    try { const d = fr.contentDocument; if (d) { d.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); tooldlg.close(); } });
+      if (fr === toolFrames.thumb) thumbTabBridge(d);   // 이미지 = 내부 탭 숨김+역동기(부모 탭바 승격)
+    } } catch (_) {} });
 }
-function renderToolTabs(tabs) {   // 탭 묶음 렌더(openTool·restoreTool 공용) · 활성 서브탭 하이라이트 = toolMeta.src
+function renderToolTabs(tabs) {   // 탭 묶음 렌더(openTool·restoreTool 공용) · 활성 서브탭 하이라이트 = toolMeta.src(영상) / toolMeta.app(thumb)
   const tt = $('#toolTabs');
   if (tabs && tabs.length) {
     tooldlg.classList.add('has-tabs');
     tt.style.gridTemplateColumns = 'repeat(' + tabs.length + ',1fr)';
-    const act = (curToolKey && toolMeta[curToolKey] && toolMeta[curToolKey].src) || tabs[0].src;
-    tt.innerHTML = tabs.map(t => '<button type="button" class="tooltab' + (t.src === act ? ' on' : '') + '" data-src="' + t.src + '">' + (t.icon ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + t.icon + '</svg>' : '') + t.label + '</button>').join('');
+    const isThumb = curToolKey === 'thumb';   // thumb = 동일-src 3탭 → app 키로 식별(src-유일성 회피). 영상 = 탭마다 src 다름.
+    const meta = curToolKey && toolMeta[curToolKey];
+    const act = isThumb ? ((meta && meta.app) || tabs[0].app) : ((meta && meta.src) || tabs[0].src);
+    tt.innerHTML = tabs.map(t => {
+      const key = isThumb ? t.app : t.src;
+      const attr = isThumb ? ('data-app="' + t.app + '"') : ('data-src="' + t.src + '"');
+      return '<button type="button" class="tooltab' + (key === act ? ' on' : '') + '" ' + attr + '>' + (t.icon ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + t.icon + '</svg>' : '') + t.label + '</button>';
+    }).join('');
   } else { tooldlg.classList.remove('has-tabs'); tt.innerHTML = ''; }
 }
 function activateToolFrame(key) {   // 이 도구 전용 iframe을 .active로(나머지 보존). 첫 도구=원본 점유, 이후=복제 생성.
@@ -7354,18 +7371,25 @@ function openTool(src, title, tabs, key) {
   tooldlg.showModal(); setTimeout(() => $('#toolX').focus(), 0);
   if (!wasOpen && !(history.state && history.state.tool)) history.pushState({ tool: true }, '');   // 백버튼 = 메인 복귀 · 최소화서 재오픈이면 기존 {tool}칸 재사용
 }
-// 도구 탭 클릭 = iframe 스왑(모달 유지 · 히스토리 칸 안 늘림)
+// 도구 탭 클릭 = iframe 스왑(영상: src 스왑) / thumb: iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존) · 모달 유지·히스토리 칸 안 늘림
 $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
   $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x === b));
-  if (curToolKey && toolMeta[curToolKey]) toolMeta[curToolKey].src = b.dataset.src;   // 활성 서브탭 기억(복원 시 하이라이트 정합)
-  loadToolFrame(b.dataset.src); });   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
+  if (curToolKey === 'thumb') {   // thumb 3탭 = 동일 문서 내부 전환 → 리로드 대신 selApp(리로드 시 폼/이미지슬롯 DOM·IDB초안 상실)
+    if (toolMeta.thumb) toolMeta.thumb.app = b.dataset.app;                       // 활성 서브탭 기억(복원·최소화 하이라이트 정합)
+    try { const w = activeToolFrame().contentWindow; if (w && w.selApp) w.selApp(b.dataset.app); } catch (_) {}
+  } else {
+    if (curToolKey && toolMeta[curToolKey]) toolMeta[curToolKey].src = b.dataset.src;   // 활성 서브탭 기억(복원 시 하이라이트 정합)
+    loadToolFrame(b.dataset.src);   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
+  } });
 // 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스 요약·이미지·영상 고정 · 세부는 탭) · 운영자 260626
 const CAP_TABS = [{ src: '/ly.html', label: '자막 생성기', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h6M7 11h10"/>' }, { src: '/k.html', label: '영상 프롬프트', icon: '<path d="M4 5h16v14H4z"/><path d="M10 9l5 3-5 3z"/>' }];
+// 이미지(thumb) 탭 = 영상처럼 부모 탭바로 승격(3단 셸 통일 · 260704). 영상은 탭마다 src 다르나(ly/k) thumb 3탭은 전부 /thumb.html 동일 → app 키로 식별(썸네일2·저작권3·카드뉴스5, thumb.html .tab data-app 계승) · 클릭 = iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존). 아이콘 = thumb.html .tab svg 계승.
+const THUMB_TABS = [{ src: '/thumb.html', app: '2', label: '썸네일', icon: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/>' }, { src: '/thumb.html', app: '3', label: '저작권', icon: '<circle cx="12" cy="12" r="10"/><path d="M14.8 9.3a3.5 3.5 0 1 0 0 5.4"/>' }, { src: '/thumb.html', app: '5', label: '카드뉴스', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9.5h6M7 13h10"/>' }];
 $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem[data-act]'); if (!b) return; e.preventDefault();
   bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open');   // 라디얼 닫고
   const a = b.dataset.act;
   if (a === 'ask') openAsk();
-  else if (a === 'thumb') openTool('/thumb.html', '이미지', null, 'thumb');
+  else if (a === 'thumb') openTool('/thumb.html', '이미지', THUMB_TABS, 'thumb');
   else if (a === 'cap') openTool(null, '영상', CAP_TABS, 'cap'); });
 $('#toolX').addEventListener('click', () => tooldlg.close());
 if ($('#toolMin')) $('#toolMin').addEventListener('click', () => minimizeTool());
