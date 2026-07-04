@@ -42,6 +42,8 @@
 | 캐릭터 챗 모달 | `#yetadlg`(dialog+pushState) | min(600px,94vw)×min(88dvh,760px) | 무채 그라데 .92/.96(불투명 — backdrop-filter:none 명시) | — | 닫기=`.tool-x`·전송=`.yeta-send`(모션 위임 등재) | 중앙(모바일 margin:auto 필수) | radius `--r-modal` | 뒤로가기=popstate | index `openYeta`·greeting SSOT=roster.json(카드 frontmatter와 동기 유지) |
 | 캐러셀 | scroll-snap 트랙 | — | — | — | — | — | — | — | `feed-ui`/`cardRefCarousel` |
 | 수정 진행바 | `.reshoot-badge`+`.reshoot-bar`(썸네일) · 카드=`.reshoot-badge`(텍스트만·바 없음) | 바 118px·h4 | 배지 glass `rgba(8,15,11,.62)`blur10 · 바 track `rgba(255,255,255,.16)`·채움 `--accent` | — | 없음(텍스트 "수정 중…" + 인디터미넌트 스윕) | 이미지/슬롯 정중앙 abs·z3 · dim `brightness(.5)` | radius `--r-pill` | reduced-motion=감속(2.4s) | 썸네일 index `markSlotReshooting` · 카드 `markReshooting` |
+| PIN 슬롯 | `.pin-slot`(별칭 `.pub-slot`/`.lk-slot`) + `renderPinSlots(el,val,{reveal})` | 12×18 · 숫자 `--fw-x`(800)·15px | 동그라미 `::before` 56%·`--mut`(입력됨 `.on`·미입력 동일 톤) · 방금 `.cur`=숫자 흰`--fg`·키패드 폰트(inherit·모노 아님) · bad=`--danger` | — | 없음(`.cur` textContent=숫자) | 발행 `#pubSlots` · #pindlg `#pinboxes`(조회/삭제) · 화면잠금 `#lkSlots` | 컨테이너 gap 5%(모달)·16px(lk 고정) | 슬롯 `aria-hidden` · 실입력=오버레이 `.pin-in-h`(발행/pindlg) `aria-label` | index `.pin-slot` 정본(2205~ · stage-1~4·크기/색 통일 260704) |
+| 셔플 키패드(화면잠금) | `.lk-key`(`.lk-pad`) | h58·23px | 무플레이트(`background:none`) · 판B(5~6자리)=accent`.85` 틴트 | `scale(var(--press-m))`(.9) + 색만(`.hit`=`--accent`·b2 특이도도 유효) — 배경 플래시 제거(운영자 260704) | 지우기 path `LK_BSVG`(26·`.back`) | 화면잠금 `#lkPad`(셔플 2판 lkA/lkB) | gap 0·셀 border `--line` | `place-items:center`(⌫↔숫자 세로중앙) · reduced-motion=scale 무효·색 유지 | index `lkBuildPad`/`lkApply`(unlock=`lkFire`·SHA-256·5회잠금과 무관) |
 
 ⚠ = 현 드리프트(후속 교정). 별칭 셀렉터(`.ed-x` 등)는 `.tool-x` 스펙을 *복제*가 아니라 *계승*해야 함 — 단일화 후속.
 
