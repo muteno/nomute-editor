@@ -75,10 +75,7 @@
     const topPad=px*2.0, botPad=px*10.5, sidePad=px*3.2;              // 펫 머리(위)·펫 동선(아래)·전구(좌우) — 전광판 비중↑
     const cw=panelW+sidePad*2, ch=topPad+panelH+botPad;
     const px0=(cw-panelW)/2, py0=topPad;
-    // A자 이젤(사다리) — 위 좁고 아래 넓음(원근) · 전광판 하단→바닥. 펫이 왼쪽 레일로 오르고 오른쪽으로 내려옴(원본 love-pet.html LAD 계승)
-    const ladTopY=py0+panelH-px*0.3, ladBotY=ch-px*0.5;
-    const ladTL=cw/2-panelW*0.11, ladTR=cw/2+panelW*0.11, ladBL=cw/2-panelW*0.40, ladBR=cw/2+panelW*0.40;
-    return {px,gap,chars,adv,tw,th,padX,padYb,padYt,panelW,panelH,cw,ch,px0,py0,cx:cw/2,ladTopY,ladBotY,ladTL,ladTR,ladBL,ladBR};
+    return {px,gap,chars,adv,tw,th,padX,padYb,padYt,panelW,panelH,cw,ch,px0,py0,cx:cw/2};
   }
   const CREAM_HI='#fff4d6',CREAM_LO='#e0cba0',FRAME='#211a15',BULB='#faf2d4';
   function drawBulbs(x0,y0,x1,y1,rad,px,py0,cx){
@@ -96,29 +93,11 @@
   const T={walkIn:[0,2.0],climb:[2.0,3.2],type:[3.2,8.8],illum:[8.8,9.8],trot:[9.8,12.2],hold:[12.2,13.0]}, DUR=13.0;
   function seg(t,a){return clamp((t-a[0])/(a[1]-a[0]),0,1);}
   let LO=layout();
-  function drawLadder(litK){                              // A자 이젤(사다리) — 펫이 오르내리는 무대(원본 love-pet.html 계승 · 선으로 또렷하게)
-    const {px,ladTopY,ladBotY,ladTL,ladTR,ladBL,ladBR}=LO;
-    const b = litK>0.25 ? 206 : 182, col=(a)=>`rgba(${b},${b-10},${b-28},${a})`;
-    X.save(); X.lineCap='round';
-    X.strokeStyle=col(0.82); X.lineWidth=px*0.34;          // 좌우 레일
-    X.beginPath();X.moveTo(ladTL,ladTopY);X.lineTo(ladBL,ladBotY);X.stroke();
-    X.beginPath();X.moveTo(ladTR,ladTopY);X.lineTo(ladBR,ladBotY);X.stroke();
-    X.strokeStyle=col(0.5); X.lineWidth=px*0.26;           // 중앙 앞다리
-    X.beginPath();X.moveTo((ladTL+ladTR)/2,ladTopY+px*0.6);X.lineTo((ladBL+ladBR)/2,ladBotY);X.stroke();
-    X.strokeStyle=col(0.62); X.lineWidth=px*0.2;           // rungs(가로대) — 위쪽 촘촘(원근)
-    const nR=5;
-    for(let i=0;i<nR;i++){
-      const rt=Math.pow(i/(nR-1),1.4), y=lerp(ladTopY+px*0.9,ladBotY-px*0.5,rt), t=(y-ladTopY)/(ladBotY-ladTopY);
-      X.beginPath();X.moveTo(lerp(ladTL,ladBL,t),y);X.lineTo(lerp(ladTR,ladBR,t),y);X.stroke();
-    }
-    X.restore();
-  }
   function renderAt(t){
     t=((t%DUR)+DUR)%DUR;
     X.clearRect(0,0,LO.cw,LO.ch);
     const {px,gap,chars,adv,th,padYt,panelW,panelH,cx,px0,py0}=LO;
     const litK=smooth(T.illum[0],T.illum[1],t)*(1-smooth(T.hold[0]+0.15,DUR,t));
-    drawLadder(litK);                                      // 사다리 먼저(뒤) — 전광판이 상단을 가림
     const ox0=px0-px*1.7,oy0=py0-px*1.7,ox1=px0+panelW+px*1.7,oy1=py0+panelH+px*1.7,rOut=px*3.0,rIn=px*1.9;
     if(litK<=0.02){
       X.save();rr(px0,py0,panelW,panelH,rIn);X.fillStyle='rgba(20,17,14,.5)';X.fill();
@@ -146,13 +125,13 @@
     }
     // 펫
     const fi=walkFi(t), GROUND=LO.ch-px*0.6, petTop=py0;
-    if(t<T.walkIn[1]){const k=seg(t,T.walkIn),xx=lerp(-px*12,LO.ladBL,easeOut(k)),bob=Math.abs(Math.sin(t*8))*px*0.5;blitPet(xx,GROUND-bob,px*11.5,fi);}         // 좌하 등장 → 사다리 밑 왼쪽
-    else if(t<T.climb[1]){const k=ease(seg(t,T.climb)),xx=lerp(LO.ladBL,px0+px*5,k),fy=lerp(GROUND,petTop+px*0.4,k);blitPet(xx,fy,lerp(px*11.5,px*8.5,k),fi);}       // 왼쪽 레일 타고 오름
-    else if(t<T.type[1]){const k=seg(t,T.type),xx=lerp(px0+px*7,px0+panelW-px*7,k),bob=Math.abs(Math.sin(t*9))*px*0.35;blitPet(xx,petTop+px*0.4-bob,px*8.2,fi);}       // 전광판 위 걷기(글자 붙이기)
-    else if(t<T.illum[1]){blitPet(px0+panelW-px*7,petTop+px*0.4,px*8.2,0);}                                                                                          // 우측 끝 대기(점등)
+    if(t<T.walkIn[1]){const k=seg(t,T.walkIn),xx=lerp(-px*12,px0-px*2,easeOut(k)),bob=Math.abs(Math.sin(t*8))*px*0.5;blitPet(xx,GROUND-bob,px*11.5,fi);}
+    else if(t<T.climb[1]){const k=ease(seg(t,T.climb)),xx=lerp(px0-px*2,px0+px*7,k),fy=lerp(GROUND,petTop+px*0.4,k);blitPet(xx,fy,lerp(px*11.5,px*8.5,k),fi);}
+    else if(t<T.type[1]){const k=seg(t,T.type),xx=lerp(px0+px*7,px0+panelW-px*7,k),bob=Math.abs(Math.sin(t*9))*px*0.35;blitPet(xx,petTop+px*0.4-bob,px*8.2,fi);}
+    else if(t<T.illum[1]){blitPet(px0+panelW-px*7,petTop+px*0.4,px*8.2,0);}
     else if(t<T.trot[1]){const k=seg(t,T.trot);
-      if(k<0.34){const kk=k/0.34,xx=lerp(px0+panelW-px*7,LO.ladBR,kk),fy=lerp(petTop+px*0.4,GROUND,kk);blitPet(xx,fy,lerp(px*8.5,px*11.5,kk),fi);}                    // 오른쪽 레일 타고 내려옴
-      else{const kk=(k-0.34)/0.66,xx=lerp(cx,LO.cw+px*16,easeIn(kk)),bob=Math.abs(Math.sin(t*8))*px*0.6;blitPet(xx,GROUND-bob,px*11.5,fi);}                            // 앞으로 또각또각 퇴장
+      if(k<0.3){const kk=k/0.3,xx=lerp(px0+panelW-px*7,px0+panelW+px*3,kk),fy=lerp(petTop+px*0.4,GROUND,kk);blitPet(xx,fy,lerp(px*8.5,px*11,kk),fi);}
+      else{const kk=(k-0.3)/0.7,xx=lerp(cx,LO.cw+px*16,easeIn(kk)),bob=Math.abs(Math.sin(t*8))*px*0.6;blitPet(xx,GROUND-bob,px*11.5,fi);}
     }
   }
   // ── 마운트 ──
