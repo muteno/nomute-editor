@@ -8352,16 +8352,12 @@ $('#pdfBtn').addEventListener('click', () => {   // '공유' = 공개 발행(다
     ['pointerup','pointerleave','pointercancel'].forEach(e => box.addEventListener(e, off));
   }
   if (pdf) pdf.addEventListener('click', () => { pdf.classList.add('okflash'); setTimeout(() => pdf.classList.remove('okflash'), 520); });
-  if (src) src.addEventListener('pointerdown', e => {   // 원문(↗) = 플래시+ic-rise를 pointerdown(누르는 순간·탭 전환 *전*)에 선발화 — click 시점 발화는 새 탭 전환 즉시라 백그라운드 재생 = 안 보임, :active만으론 모바일 빠른 탭서 미점등(운영자 260705 "이동 픽토그램 액티브 작동 안 함"). ⚠️ 열기 지연(0.28s) 금지 — 합성 앵커클릭(failOpen 패턴)은 setTimeout 안에선 팝업 차단(실측 260705) + window.open은 전역 open(피드 모달)에 가려짐 → 선발화가 유일 경로. 위임 click 모션 셀렉터에서 #src 제외(이중발화 방지·짝 수정).
-    if (e.pointerType === 'mouse' && e.button !== 0) return;   // 마우스 우클릭·휠클릭 = 발화 제외
-    src.classList.add('openflash'); setTimeout(() => src.classList.remove('openflash'), 520);
-    const svg = src.querySelector('svg'); if (svg) { svg.classList.remove('ic-rise'); void src.offsetWidth; svg.classList.add('ic-rise'); }   // 리플로우는 HTMLElement 기준(svg.offsetWidth는 undefined = 플러시 안 됨 · 8364 동일 함정)
-  });
+  if (src) src.addEventListener('click', () => { src.classList.add('openflash'); setTimeout(() => src.classList.remove('openflash'), 520); });   // ⚠️ 열기 지연(0.28s) 금지 — 합성 앵커클릭(failOpen 패턴)은 setTimeout 안에선 팝업 차단(실측 260705) + window.open은 전역 open(피드 모달)에 가려짐. 대신 '보이는 액티브'는 :active 형광 전환(아래 CSS)이 담당 = 탭 전환 전 누르는 순간에 발화
 })();
 // 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·rev-fab 등)는 셀렉터서 제외. ts-rf(상단 강제새로고침)도 ic-spin으로 편입 = .pmenu-rf와 동일 픽토그램 액티브(운영자 260629).
 document.addEventListener('click', e => {
   if (e.defaultPrevented) return;   // 드래그/취소된 클릭(캐러셀 스와이프 등)엔 헛모션 방지
-  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall,.pub-share,.dlg-pdf');   // .pub-share·.dlg-pdf = 요약 헤더 '공유'도 별자리 훑기(ic-share) 편입(260703) · #src(원문·외부이동)는 click 발화가 새 탭 전환에 삼켜져 여기서 제외 → 전용 pointerdown 선발화(8355 · 운영자 260705)
+  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall,.pub-share,.dlg-pdf,#src');   // .pub-share·.dlg-pdf = 요약 헤더 '공유'도 별자리 훑기(ic-share) 편입(260703) · #src = 원문(외부이동)은 data-motion="rise" → ↗튐(ic-rise) 편입 = 옛 .arr arrnudge(요소 부재로 dead)를 위임 모션으로 대체(운영자 260704)
   if (!b) return;
   const svg = b.querySelector('svg'); if (!svg) return;
   const m = b.dataset.motion ? ('ic-' + b.dataset.motion) : (b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin');   // data-motion=rise(↗이동)/check(✓확인)/share(별자리 훑기) 명시 우선(운영자 260702·260703) · 없으면 다운로드=바운스/그외=회전
