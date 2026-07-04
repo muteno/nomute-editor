@@ -14,8 +14,7 @@ MODEL="$PIPE_MODEL"
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과부하(5xx/Overloaded) 인라인 재시도용(analyze와 공용)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
-INLINE_TRIES=3   # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도(15s·30s 백오프) — 버스트 ✨요약요청 유실 차단(analyze와 동일·260622)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '메이저 기사 찾기'는 도구 왕복이 본질이라 max 는 매 검색 사이 헛사고로 15분 타임아웃만 유발(누락방지 실익≈0) → high 기본(효율·품질 균형 · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+INLINE_TRIES=3   # claude -p 일시 과부하(529/5xx) 인라인 재시도(15s·30s 백오프) — 버스트 ✨요약요청 유실 차단(analyze와 동일·260622)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
@@ -75,10 +74,10 @@ PY
 ${GBLOCK}
 
 [★ 요약 요청 모드 — 운영자가 자연어 + 캡처로 큐레이션을 직접 요청했다.
- 1) ⭐ **요청문에 이미 기사 본문급 전문(수백 자 이상)이 들어 있으면 = 그 전문이 곧 원문이다 → WebSearch 로 다른 기사를 찾지 말고 그 전문만으로 바로 큐레이션하라**(검색은 시간만 먹고 15분 타임아웃을 유발한다 — 운영자가 이미 본문을 줬으면 검색은 불필요·운영자 260704). 전문 없이 본문에 URL만 있으면 그 기사를(운영자가 직접 고른 URL은 오래됐어도 존중), URL·전문 없이 토픽/캡처만 있으면 WebSearch 로 '제일 메이저' 기사 1건(여럿이면 합쳐서 핵심)을 찾는다. ⚠️ **토픽/캡처 검색 시 = 최신 우선(18시간 내)**: 같은 사안이면 **최근 18시간 내 보도 중 가장 메이저한 것**을 골라라(며칠·몇 주 지난 옛 기사가 뉴스요약 피드 상단 채우는 문제 방지 — 운영자 260702). 18시간 내 보도가 없으면 그중 가장 최근 것으로(억지 최신화·날짜 조작 금지), *최신 보도가 있는데 옛 기사를 고르지는 마라*. ⚠️ **검색은 최대 2~3회로 제한** — 몇 번 찾아 안 나오면(막힌 매체·지역뉴스 등) 있는 정보로 best-effort 요약하고 넘어가라(무한 검색으로 타임아웃 나면 아예 요약이 0이 된다).
+ 1) 본문에 URL이 있으면 그 기사를(운영자가 직접 고른 URL은 오래됐어도 존중), 토픽/캡처만 있으면 WebSearch 로 '제일 메이저' 기사 1건(여럿이면 합쳐서 핵심)을 찾는다. ⚠️ **토픽/캡처 검색 시 = 최신 우선(18시간 내)**: 같은 사안이면 **최근 18시간 내 보도 중 가장 메이저한 것**을 골라라(며칠·몇 주 지난 옛 기사가 뉴스요약 피드 상단 채우는 문제 방지 — 운영자 260702). 18시간 내 보도가 없으면 그중 가장 최근 것으로(억지 최신화·날짜 조작 금지), *최신 보도가 있는데 옛 기사를 고르지는 마라*.
  2) 첨부 캡처 파일이 있으면 Read 로 열어 단서로 활용한다.
  3) 찾은 기사로 위 지침·출력 포맷 그대로 큐레이션 다이제스트를 생성한다.
- 4) ⭐ 찾은 '제일 메이저' 기사의 **원본 URL(WebFetch/WebSearch로 실제 접근·확인한 것만)을 frontmatter `url:` 에 넣어라**(뷰어 상단 '원문' 링크로 노출된다). ⚠️ 스니펫에서 본 듯한 URL을 추측·조립하지 마라(사실 무결성) — 실제 확인한 기사 URL이 하나도 없을 때만 url: "". 그리고 **그 기사에서 기자(reporter)·게시일시(date·time)·매체(media)를 추출해 frontmatter + 본문 '출처:' 줄 양쪽에 정확히 반영**하라(토픽/캡처 요청이라도 네가 찾아 확인한 그 기사가 곧 원문이다). ⚠️ **요청문에 전문이 이미 있어 검색을 생략한 경우엔 url: ""**(전문이 곧 원문 — 억지로 URL을 찾지 마라). 매체·기자·일시는 전문 안에 적힌 것을 그대로 추출해 반영하라(전문에 없으면 비워둠). 전문 없이 토픽/URL로 찾은 경우에만 그 기사 URL을 넣는다.
+ 4) ⭐ 찾은 '제일 메이저' 기사의 **원본 URL(WebFetch/WebSearch로 실제 접근·확인한 것만)을 frontmatter `url:` 에 넣어라**(뷰어 상단 '원문' 링크로 노출된다). ⚠️ 스니펫에서 본 듯한 URL을 추측·조립하지 마라(사실 무결성) — 실제 확인한 기사 URL이 하나도 없을 때만 url: "". 그리고 **그 기사에서 기자(reporter)·게시일시(date·time)·매체(media)를 추출해 frontmatter + 본문 '출처:' 줄 양쪽에 정확히 반영**하라(토픽/캡처 요청이라도 네가 찾아 확인한 그 기사가 곧 원문이다). ⚠️ §입력 처리 0의 'URL 없으면 url:""' 규칙은 **운영자 전문 붙여넣기**(전문이 곧 원문) 경우에만 적용 — 요약 요청 모드에선 네가 찾아 확인한 기사 URL을 넣는다.
  5) 내용이 모호해도 절대 실패(ANALYSIS_FAILED)하지 말고 best-effort 로 큐레이션한다 — 이 건은 운영자가 직접 고른 것이다.
  ⛔ Write/Edit/Bash 금지(스크립트가 저장한다). frontmatter '---' 로 시작하는 다이제스트만 출력.]
 
@@ -94,9 +93,9 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   #   성공·ANALYSIS_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0). 과부하 신호일 때만 재시도(is_transient).
   inline_delay=15
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter 900 \
+    out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
           --model "$MODEL" \
-          --effort "$EFFORT" \
+          --effort max \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
           --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
           --max-turns 50 \
@@ -106,13 +105,8 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
       break
     fi
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi   # 쿼터 한도 → 대체 계정 1단계씩 전환·재시도(서브1→서브2 · SSOT)
-    # 타임아웃(rc=124 = claude_meter 900s 초과) = 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대였다(이번 '중국인 렌터카' 실패의 원인).
-    #   과부하 응답지연이면 다음 계정(부하 편차)에서 회복될 수 있으므로 쿼터 아니어도 강제 계정 전환 시도(체인 소진까지 · 운영자 260704 "번갈아 다른 계정").
-    if [ $rc -eq 124 ] && claude_failover_force; then continue; fi
-    # 일시 과부하(5xx) OR 타임아웃 → 백오프 후 재시도(계정 체인 소진 후·마지막 시도면 탈출→격리). 옛날엔 타임아웃을 재시도서 제외했으나 검색완화+effort high 로 짧아진 재시도는 회복 여지 있음(운영자 260704).
-    if [ "$attempt" -lt "$INLINE_TRIES" ] && { [ $rc -eq 124 ] || is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; }; then
-      _rsn="API 일시 과부하 추정"; [ $rc -eq 124 ] && _rsn="처리 시간 초과(15분)"
-      echo "  ⏳ ${_rsn}(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
+    if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
+      echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
       sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
     fi
     break
@@ -124,13 +118,11 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
     echo "$base" >> "$ASK_FAIL_RUN"   # 이번 런 실패 기록(stale-red 차단)
     # 실패 메시지함 + 웹푸시 트리거(analyze.sh emit_fail_msg 미러 · 운영자 260629 ask 경로 푸시 통일) — fail-<base> = notify_fail.sh 딥링크(/?msg=fail-<base>)
     # 사유 분류(analyze.sh 패턴 미러 · 평의회 260629): 일시 과부하=혼잡(재시도 소진) / ANALYSIS_FAILED·기타=내용 결함 — "자동 복구" 단정 금지(콘텐츠 실패엔 거짓).
-    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk=source; elif [ $rc -eq 124 ]; then _fk=timeout; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk=congest; else _fk=source; fi
-    if [ "$_fk" = timeout ]; then
-      _fbody="$(printf '⚠️ 요약 요청이 시간 초과로 실패했어.\n사유: 원문 검색·요약이 15분을 넘겨 중단됨(과부하 또는 검색 지연).\n\n→ 대기열에서 “재시도”를 누르면 그 내용 그대로 다시 요청돼.')"
-    elif [ "$_fk" = congest ]; then
-      _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 분석 도구 혼잡(일시 과부하 — 재시도 소진).\n\n→ 대기열에서 “재시도”를 누르면 그 내용 그대로 다시 요청돼.')"
+    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk=source; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk=congest; else _fk=source; fi
+    if [ "$_fk" = congest ]; then
+      _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 분석 도구 혼잡(일시 과부하 — 재시도 소진).\n\n→ 잠시 후 그 요약을 다시 요청해줘.')"
     else
-      _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 내용 분석 결함(입력이 비었거나 불충분).\n\n→ 대기열에서 “재시도”를 누르거나 입력을 확인하고 다시 요청해줘.')"
+      _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 내용 분석 결함(입력이 비었거나 불충분).\n\n→ 입력을 확인하고 다시 요청해줘.')"
     fi
     python3 shared/msg.py set "fail-${base}" "$_fbody" warn 2>/dev/null || true
     printf '%s\n' "$base" >> /tmp/analyzed_fail_msgs.txt

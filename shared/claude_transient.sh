@@ -39,3 +39,22 @@ claude_failover() {
   fi
   return 1
 }
+
+# claude_failover_force(): 쿼터 판정(is_quota) 없이 다음 계정으로 강제 전환. 타임아웃(rc=124)처럼
+#   '출력이 비어 is_quota 가 못 잡지만 계정 바꾸면 나을 수도 있는' 상황용(서버 응답지연·계정별 부하 편차 · 운영자 260704).
+#   ⚠️ 체인·카운터(_CLAUDE_SWAPPED)는 claude_failover 와 *공유* → 쿼터 폴오버와 섞여도 같은 3계정을 1스텝씩만 소진(계정 중복·무한전환 없음).
+#   전환함=0(호출부가 같은 프롬프트로 재시도) / 다음 대체 없음·체인 소진=1(→ 호출부는 백오프 재시도 또는 격리).
+claude_failover_force() {
+  local n="${_CLAUDE_SWAPPED:-0}"
+  if [ "$n" = "0" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT"; _CLAUDE_SWAPPED=1
+    echo "  🔄 처리 지연/시간초과 — 서브1 계정으로 전환 후 재시도(force failover 1/2)"
+    return 0
+  fi
+  if [ "$n" = "1" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT2"; _CLAUDE_SWAPPED=2
+    echo "  🔄 서브1도 지연 — 서브2 계정으로 전환 후 재시도(force failover 2/2)"
+    return 0
+  fi
+  return 1
+}

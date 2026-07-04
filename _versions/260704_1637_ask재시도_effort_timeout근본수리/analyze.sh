@@ -9,8 +9,7 @@ cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
-INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '기사 찾기'는 도구 왕복이 본질이라 max 는 헛사고로 타임아웃만 유발 → high 기본(ask.sh 와 동일 env · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
 RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
 THIN_BYTES=900          # 본문 '충분' 기준(바이트·wc -c=로케일무관) ≈ 한글 ~250자(라벨 제외 본문 ~210자). 이보다 짧으면 통신사·제목스텁(뉴시스·연합 등) 의심 → 같은사건 더 완전한 기사 탐색. fetch_article 게이트(한글<200자=빈출력≈600B)보다 충분히 높고, 정상 단신 오탐은 줄임(평의회 권고 260622)
 # 통신사·제목스텁 도메인 — 제일 먼저 송고하나 본문이 제목·리드뿐인 경우가 많아 본문 fetch·모델제시 우선순위에서 뒤로(신문사 우선).
@@ -236,9 +235,9 @@ ${extracted}"
   #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 과부하 아닌 실패(빈출력·timeout)도 재시도 안 함.
   inline_delay=15
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter 900 \
+    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
           --model "$MODEL" \
-          --effort "$EFFORT" \
+          --effort max \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
           --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
           --max-turns 40 \
@@ -250,12 +249,9 @@ ${extracted}"
     fi
     # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2 · 3계정 체인 · SSOT claude_transient.sh)
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi
-    # 타임아웃(rc=124 = 900s 초과)은 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대 → 쿼터 아니어도 다음 계정으로 강제 전환 시도(체인 소진까지 · ask.sh 와 동일 · 운영자 260704).
-    if [ $rc -eq 124 ] && claude_failover_force; then continue; fi
-    # 일시 과부하(5xx) OR 타임아웃이면 백오프 후 재시도(계정 소진 후·마지막 시도면 탈출 → 아래 격리/재시도마커 분기)
-    if [ "$attempt" -lt "$INLINE_TRIES" ] && { [ $rc -eq 124 ] || is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; }; then
-      _rsn="API 일시 과부하 추정"; [ $rc -eq 124 ] && _rsn="처리 시간 초과(15분)"
-      echo "  ⏳ ${_rsn}(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
+    # 일시 과부하면 백오프 후 재시도(마지막 시도면 그대로 탈출 → 아래 격리/재시도마커 분기)
+    if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
+      echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
       sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
     fi
     break
@@ -296,10 +292,8 @@ ${extracted}"
     #   ① 모델 혼잡(일시 과부하 — 재시도 소진) → 재시도 안내
     #   ② 소스 결함(원문 차단·빈 본문 = ANALYSIS_FAILED·기타) → 대체기사 링크(있으면)+전문 붙여넣기 안내
     #      SUGGEST_URL = 모델이 ANALYSIS_FAILED 시 함께 출력하는 '같은 사건 내용충실 기사'(보수메이저→진보메이저→통신사·속보/빈기사 제외).
-    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk="source"; elif [ $rc -eq 124 ]; then _fk="timeout"; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk="congest"; else _fk="source"; fi
-    if [ "$_fk" = "timeout" ]; then
-      fail_body="$(printf '⚠️ 대기열 등록 후 처리 시간 초과로 실패했어.\n사유: 원문 분석·요약이 15분을 넘겨 중단됨(과부하 또는 지연)\n\n→ 그 기사를 다시 보내면 재시도돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
-    elif [ "$_fk" = "congest" ]; then
+    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk="source"; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk="congest"; else _fk="source"; fi
+    if [ "$_fk" = "congest" ]; then
       fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 모델 혼잡(분석 도구 일시 과부하)\n\n→ 잠시 후 자동 재시도되거나, 그 기사를 다시 보내면 돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
     else
       _sug="$(printf '%s\n' "$out" | grep -m1 '^SUGGEST_URL:' | sed 's/^SUGGEST_URL:[[:space:]]*//' | tr -d '\r' | head -c 400)"

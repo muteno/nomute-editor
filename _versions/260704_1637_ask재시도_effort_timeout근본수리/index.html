@@ -997,7 +997,6 @@
   .qgo svg { width:17px; height:17px; }
   .qgo.go-green { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
   .qgo.go-amber { color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
-  .qgo.go-arm { color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }   /* 재시도(✨요약요청 실패 = 붙여넣은 전문 복원) = 재확인·재시도 표준색 arm(레몬) 계승(§🎨 · 원문 amber 와 구분) */
   .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:default; }
   .qgo:not(.go-gray):active { transform:scale(var(--press-m,.9)); }
   .qgo.fly svg { animation:qfly .42s var(--ease,cubic-bezier(.22,.61,.36,1)); }
@@ -5897,9 +5896,6 @@ function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | 
   const dis = kind === 'gray' ? ' disabled' : '';
   return '<button class="qgo go-' + kind + '" type="button"' + dis + ' title="' + title + '">' + Q_ARR + '</button>';
 }
-function qRetryBtn(title) {   // ✨요약요청 실패 재시도 = arm(레몬) ↻ · 클릭 = api/askget 으로 전문 복원 → 요약창 재오픈(askRetry)
-  return '<button class="qgo go-arm qretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
-}
 function qRowHtml(it) {
   const url = /^https?:\/\//i.test(String(it.alt1 || it.key || ''));   // 활성 게이트 = 목적지(alt1‖key)와 동일 소스(게이트-목적지 갈림 차단 · 평의회7 V-1)
   // 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면(Pages 빌드 랙) 사실상 미준비 →
@@ -5911,9 +5907,7 @@ function qRowHtml(it) {
     action = qGoBtn('green', '뉴스요약 열기');
   } else if (eff === 'fail') {
     status = '<span class="qb-failt">실패</span>';
-    const isAsk = it.via === '요약요청';   // ✨요약요청 실패 = 원문 링크(URL 없음) 대신 '재시도' = 붙여넣은 전문 복원 → 요약창 재오픈(운영자 260704)
-    action = isAsk ? qRetryBtn('재시도 — 요청 내용을 복원해 다시 요약')
-           : url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에 자동저장(다운로드 버튼 없음)
+    action = url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에 자동저장(다운로드 버튼 없음)
   } else if (eff === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
     status = '<span class="qico s-retry spin" title="API 일시 과부하 — 자동 재시도 중' + (it.tries ? ' (' + it.tries + '회)' : '') + '">' + Q_REFR + '</span>' + (it.tries ? '<span class="qcnt">' + it.tries + '</span>' : '');
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 — 원문 링크 없음');
@@ -5943,7 +5937,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); go.classList.remove('fly'); void go.offsetWidth; go.classList.add('fly'); if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
     const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
@@ -5988,18 +5982,6 @@ async function feedOpenBy(match, keepQ) {
 }
 function qGo(id) {   // SUCC 링크 — queue 파일명(id) ↔ 피드 기사 매칭(qMatch 공용). 초록 버튼만 호출되므로 항상 매칭됨
   feedOpenBy(() => qMatch(id), true);   // true = 대기열 안 닫음(요약 모달이 위를 덮음)
-}
-async function askRetry(it) {   // ✨요약요청(ask) 실패 재시도 — api/askget 으로 원문(전문)을 복원해 요약창에 채워 다시 요청(운영자 260704).
-  // 원문 링크(URL)를 못 찾은 실패라도 '내가 붙여넣은 내용'을 그대로 되살려 재요청 = 사용자가 다시 검색해 붙일 필요 없음(우선순위 = 재시도).
-  let text = '', imgs = 0;
-  try {
-    const r = await fetch('api/askget?id=' + encodeURIComponent(it.id) + '&_=' + Date.now());
-    if (r.ok) { const j = await r.json(); text = String(j.text || ''); imgs = +j.images || 0; }
-  } catch {}
-  closeQueueUser();
-  openAsk({ prefill: text });   // 요약창 재오픈 + 전문 프리필(openAsk 가 #askText 에 채움)
-  const st = $('#askStatus');
-  if (st) { if (!text) st.textContent = '원문 복원 실패 — 직접 붙여넣어 재시도해줘'; else if (imgs) st.textContent = '캡처 ' + imgs + '장은 다시 첨부해줘(텍스트만 복원됨)'; }
 }
 function qFlash(msg, iconSvg) {   // 짧은 토스트(링크 빌드 랙 안내) · iconSvg 주면 픽토그램+esc(메시지) innerHTML(XSS 가드)
   let t = document.getElementById('qFlash');
