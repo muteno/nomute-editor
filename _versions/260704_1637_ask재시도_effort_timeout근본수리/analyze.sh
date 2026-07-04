@@ -9,10 +9,7 @@ cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
-INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '기사 찾기'는 도구 왕복이 본질이라 max 는 헛사고로 타임아웃만 유발 → high 기본(ask.sh 와 동일 env · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
-ANALYZE_TIMEOUT="${ANALYZE_TIMEOUT:-900}"   # claude -p 타임아웃(초) — analyze 는 콘텐츠 초안까지 생성이라 15분 유지(ask 요약보다 김). 초과 시 계정 1회 전환 후 격리(force·아래 · 운영자 260704).
-ANALYZE_JOB_DEADLINE="${ANALYZE_JOB_DEADLINE:-3400}"   # 스크립트 SECONDS 이 초 넘으면 새 기사 처리 시작 안 함(잔여 pending 잔류→sweep 재처리) — 과부하 다건 타임아웃이 잡 timeout(90분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 90분 - 셋업 - 다음기사 최악 2×900s).
+INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
 RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
 THIN_BYTES=900          # 본문 '충분' 기준(바이트·wc -c=로케일무관) ≈ 한글 ~250자(라벨 제외 본문 ~210자). 이보다 짧으면 통신사·제목스텁(뉴시스·연합 등) 의심 → 같은사건 더 완전한 기사 탐색. fetch_article 게이트(한글<200자=빈출력≈600B)보다 충분히 높고, 정상 단신 오탐은 줄임(평의회 권고 260622)
 # 통신사·제목스텁 도메인 — 제일 먼저 송고하나 본문이 제목·리드뿐인 경우가 많아 본문 fetch·모델제시 우선순위에서 뒤로(신문사 우선).
@@ -75,7 +72,6 @@ article_id() {
 #   (429/쿼터/인증·ANALYSIS_FAILED·정상출력 제외 · 출력 앞 8줄만 검사로 본문 인용 오탐 억제).
 
 for f in "${files[@]}"; do
-  if [ "$SECONDS" -gt "$ANALYZE_JOB_DEADLINE" ]; then echo "⏱ 잡 시간 예산 임박(${SECONDS}s>${ANALYZE_JOB_DEADLINE}s) — 잔여 기사는 다음 런/sweep 에(pending 잔류)"; break; fi   # 배치 다건 타임아웃이 잡 timeout(90분) 넘겨 처리 중 기사까지 잘리는 것 방지(평의회 260704 A)
   base="$(basename "$f" .txt)"        # YYMMDD-HHMMSS
   stamp="${base:0:11}"                # YYMMDD-HHMM
   url="$(head -n1 "$f" | tr -d '\r\n')"
@@ -191,7 +187,7 @@ for f in "${files[@]}"; do
 
 ${GBLOCK}
 
-분석할 기사 URL: ${art_url:-(없음 — 운영자 전문 붙여넣기. 아래 [사전 추출 본문]이 기사 전문이다. 매체·보도일·기자는 본문에서 추론하고, 이 기사의 원문 URL은 WebSearch로 간단히(2~3회) 찾아보되 — ⚠️ 막힌 매체·지역뉴스로 몇 번에 안 나오면 빈 문자열로 두고 전문으로 바로 요약하라(요약 완성이 URL보다 우선·무한 검색은 타임아웃 유발 · 운영자 260704). 추론한 매체+제목으로 검색(같은 매체 1순위·없으면 같은 사건 주요매체), URL 을 지어내지 말 것)}"
+분석할 기사 URL: ${art_url:-(없음 — 운영자 전문 붙여넣기. 아래 [사전 추출 본문]이 기사 전문이다. 매체·보도일·기자는 본문에서 추론하고, 이 기사의 원문 URL은 WebSearch로 찾아 frontmatter url 에 채워라 — 추론한 매체+제목으로 바로 그 기사를 검색(같은 매체 1순위·없으면 같은 사건 주요매체), 못 찾을 때만 빈 문자열·URL 을 지어내지 말 것)}"
   if [ -n "${title_hint// }" ]; then
     prompt="${prompt}
 기사 제목(수집기 메타): ${title_hint}
@@ -236,14 +232,12 @@ ${extracted}"
   # 위험(stdin은 무제한). claude -p 는 인자 없으면 stdin을 프롬프트로 읽는다.
   # 인라인 재시도 — Anthropic API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(260622).
   #   529는 거의 항상 일시적(usually temporary)이라 몇 초~분 깜빡임은 여기서 흡수 → 뷰어에 안 보이고 바로 성공.
-  #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 타임아웃(rc=124)은 계정 1회 강제전환 후 격리(force·아래), 빈출력은 재시도 안 함.
+  #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 과부하 아닌 실패(빈출력·timeout)도 재시도 안 함.
   inline_delay=15
-  claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 3계정 체인 예산 보존(평의회 260704 Q5)
-  _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$ANALYZE_TIMEOUT" \
+    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
           --model "$MODEL" \
-          --effort "$EFFORT" \
+          --effort max \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
           --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
           --max-turns 40 \
@@ -255,11 +249,8 @@ ${extracted}"
     fi
     # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2 · 3계정 체인 · SSOT claude_transient.sh)
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi
-    # 타임아웃(rc=124 = ANALYZE_TIMEOUT 초과)은 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대 → *딱 1회* 강제 계정 전환 후 재시도(ask.sh 와 동일 · 운영자 260704 "10분 넘으면 다른 계정").
-    #   ⚠️ 1회 제한 = 타임아웃은 대개 입력바운드(계정 바꿔도 반복)라 무한 전환은 워크플로 시간·쿼터만 소진(평의회 260704). 그 1회도 claude_reset_force_swap 이 다음 기사서 되돌림.
-    if [ $rc -eq 124 ] && [ "$_to_tried" = "0" ] && claude_failover_force; then _to_tried=1; continue; fi
-    # 일시 과부하(5xx)면 백오프 후 재시도(마지막 시도면 탈출 → 아래 격리/재시도마커 분기). ⚠️ 타임아웃(rc=124)은 여기서 재시도 안 함(force 1회로 끝) — `[ $rc -ne 124 ]` 명시 가드 = 과부하성 타임아웃 stderr가 is_transient 매칭돼 3회로 새는 것 봉인(2회 상한 airtight · 평의회 260704 B).
-    if [ "$attempt" -lt "$INLINE_TRIES" ] && [ $rc -ne 124 ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
+    # 일시 과부하면 백오프 후 재시도(마지막 시도면 그대로 탈출 → 아래 격리/재시도마커 분기)
+    if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
       echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
       sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
     fi
@@ -301,10 +292,8 @@ ${extracted}"
     #   ① 모델 혼잡(일시 과부하 — 재시도 소진) → 재시도 안내
     #   ② 소스 결함(원문 차단·빈 본문 = ANALYSIS_FAILED·기타) → 대체기사 링크(있으면)+전문 붙여넣기 안내
     #      SUGGEST_URL = 모델이 ANALYSIS_FAILED 시 함께 출력하는 '같은 사건 내용충실 기사'(보수메이저→진보메이저→통신사·속보/빈기사 제외).
-    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk="source"; elif [ $rc -eq 124 ]; then _fk="timeout"; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk="congest"; else _fk="source"; fi
-    if [ "$_fk" = "timeout" ]; then
-      fail_body="$(printf '⚠️ 대기열 등록 후 처리 시간 초과로 실패했어.\n사유: 원문 분석·요약이 제한 시간을 넘겨 중단됨(과부하 또는 지연)\n\n→ 그 기사를 다시 보내면 재시도돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
-    elif [ "$_fk" = "congest" ]; then
+    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk="source"; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk="congest"; else _fk="source"; fi
+    if [ "$_fk" = "congest" ]; then
       fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 모델 혼잡(분석 도구 일시 과부하)\n\n→ 잠시 후 자동 재시도되거나, 그 기사를 다시 보내면 돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
     else
       _sug="$(printf '%s\n' "$out" | grep -m1 '^SUGGEST_URL:' | sed 's/^SUGGEST_URL:[[:space:]]*//' | tr -d '\r' | head -c 400)"
