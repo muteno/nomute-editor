@@ -236,8 +236,17 @@
   .lockscr[hidden] { display:none; }
   .lockscr .lk-card { text-align:center; width:min(320px,86vw); }
   .lockscr .lk-m { font-size:15px; font-weight:800; color:var(--mut); letter-spacing:-.2px; }
-  .lk-slots { display:flex; justify-content:center; gap:16px; margin:24px 0 2px; }   /* 컨테이너 = 화면잠금 간격(전체화면 gap 16px·정본 %와 별개) · 슬롯 룩(.lk-slot 원·on·cur·bad·shake)은 정본 .pin-slot 별칭 = stage-2/발행과 완전통일(stage-4 260704) */
+  .lk-slots { display:flex; justify-content:center; gap:16px; margin:24px 0 2px; }
+  .lk-slot { width:18px; height:22px; display:grid; place-items:center; font:400 20px/1 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,sans-serif; color:var(--accent); opacity:.5; transition:opacity .15s ease, transform .15s ease; }   /* 숫자픽 = 볼드 뺀 Pretendard 레귤러(운영자 260703 — 정적 * 줄에 모노 볼드 숫자가 튀던 것 해소·*는 모노 유지) */
+  .lk-slot::before { content:''; grid-area:1/1; width:13px; height:13px; box-sizing:border-box; border-radius:50%; border:2px solid var(--mut); transition:border-color .15s ease; }
+  .lk-slot.on { opacity:1; }
+  .lk-slot.on::before { content:'*'; width:auto; height:auto; border:none; border-radius:0; font:800 26px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); transform:translateY(3px); }   /* * 마스킹 = 숫자와 같은 모노 폰트(운영자 260703) · translateY 3px = 숫자('8') 잉크 세로중심에 * 정렬(크로미엄 픽셀 실측 튜닝 — 캔버스 메트릭 모델은 실렌더와 2.5px 오차라 폐기·운영자 "각 숫자 기준 중앙 정렬") */
+  .lk-slot.peek { opacity:1; transform:scale(1.12); }   /* 방금 입력한 자리 = 숫자 0.7s 노출 */
+  .lk-slot.peek::before { content:none; }
+  .lk-slots.bad .lk-slot::before { border-color:var(--danger); }
+  .lk-slots.bad .lk-slot.on::before { color:var(--danger); }
   @keyframes lkShake { 0%,100%{transform:translateX(0)} 12%{transform:translateX(-9px)} 28%{transform:translateX(8px)} 44%{transform:translateX(-6px)} 60%{transform:translateX(4px)} 76%{transform:translateX(-2px)} }
+  .lk-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }
   .lk-err { color:var(--danger); font-size:12px; margin-top:15px; min-height:15px; font-weight:700; }
   .lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:0; max-width:288px; margin:26px auto 0; }
   .lk-key { height:58px; display:grid; place-items:center; font-size:23px; font-weight:700; font-family:inherit; color:var(--fg); background:none; border:none; border-radius:0; cursor:pointer;
@@ -2204,13 +2213,13 @@
   .pin-fs:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14); }
   /* ── PIN 슬롯 공통 정본(§🎨 CII·분신술10 만장일치 260703) — 방금 자리만 숫자+형광·나머지 동그라미 마스킹 · gap/pad %=사이즈무관 비율(flex % = 컨테이너 content-box 기준 닮음변환) · .pub-slot/.lk-slot 별칭 계승 · #pindlg 잠금해제/삭제도 .pin-slot 통일(stage-2 260703) · 입력·보안·상태머신은 각 어댑터(뷰/컨트롤러 분리) ── */
   .pin-slots, .pub-slots { display:flex; justify-content:center; gap:5%; padding:6px 4.5% 4px; }
-  .pin-slot, .pub-slot, .lk-slot { width:16px; height:24px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) · .lk-slot=화면잠금 별칭(stage-4 260704 · 옛 *마스킹·peek 폐지) */
-  .pin-slot::before, .pub-slot::before, .lk-slot::before { content:''; grid-area:1/1; width:56%; aspect-ratio:1; border-radius:50%; background:var(--mut); transition:background .15s; }   /* 미입력 = mut 동그라미(슬롯 56% 상대·place-items center 세로중심 자동·* 편심 없음) */
-  .pin-slot.on::before, .pub-slot.on::before, .lk-slot.on::before { background:var(--fg); }   /* 입력됨(이전) = 흰 동그라미 */
-  .pin-slot.cur::before, .pub-slot.cur::before, .lk-slot.cur::before { content:none; }   /* 방금 입력 = 원 숨기고 숫자 노출 */
-  .pin-slots.bad .pin-slot::before, .pub-slots.bad .pub-slot::before, .lk-slots.bad .lk-slot::before { background:var(--danger); }
-  .pin-slots.bad .pin-slot.cur, .pub-slots.bad .pub-slot.cur, .lk-slots.bad .lk-slot.cur { color:var(--danger); }   /* 숫자 외 = 붉게 */
-  .pin-slots.shake, .pub-slots.shake, .lk-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(lkShake 단일) */
+  .pin-slot, .pub-slot { width:16px; height:24px; display:grid; place-items:center; position:relative; font:400 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); }   /* 방금 입력 자리(.cur) 숫자 = 형광(--accent) */
+  .pin-slot::before, .pub-slot::before { content:''; grid-area:1/1; width:56%; aspect-ratio:1; border-radius:50%; background:var(--mut); transition:background .15s; }   /* 미입력 = mut 동그라미(슬롯 56% 상대·place-items center 세로중심 자동·* 편심 없음) */
+  .pin-slot.on::before, .pub-slot.on::before { background:var(--fg); }   /* 입력됨(이전) = 흰 동그라미 */
+  .pin-slot.cur::before, .pub-slot.cur::before { content:none; }   /* 방금 입력 = 원 숨기고 숫자 노출 */
+  .pin-slots.bad .pin-slot::before, .pub-slots.bad .pub-slot::before { background:var(--danger); }
+  .pin-slots.bad .pin-slot.cur, .pub-slots.bad .pub-slot.cur { color:var(--danger); }   /* 숫자 외 = 붉게 */
+  .pin-slots.shake, .pub-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(lkShake 단일) */
   .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; }   /* 투명 오버레이 = 탭 시 OS 숫자키패드 · 값은 슬롯이 시각화(16px=iOS 확대 방지) */
   .pub-go { width:100%; margin-top:var(--sp-3); padding:12px; }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
@@ -5463,6 +5472,7 @@ const lkPinH = () => localStorage.getItem('nm_lock_pin') || '';
 const lkMin = () => Math.min(120, Math.max(1, parseInt(localStorage.getItem('nm_lock_min') || '2', 10) || 2));   // 기본 2분(운영자 260703)
 async function lkHash(p) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p + ':nmlock')); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 const lockscr = $('#lockscr'), lkSlotsEl = $('#lkSlots'), lkPadEl = $('#lkPad'), lkErrEl = $('#lkErr');
+const lkDots = lkSlotsEl.getElementsByClassName('lk-slot');
 const isLocked = () => !lockscr.hidden;
 // ── 유휴 감시: 활동 = _lkLast만 갱신(이벤트마다 타이머 재무장 안 함) · 타이머는 만기 시 경과 재확인 후 잔여만큼 재무장 ──
 let _lkLast = Date.now(), _lkT = null;
@@ -5495,7 +5505,7 @@ function lkUnlock() {
   lkReal = ''; _lkLast = Date.now(); lockArm();
 }
 // ── 키패드(정본 이식 · lk- 프리픽스) ──
-let lkReal = '', lkBusy = false, lkA = null, lkB = null, lkKds = null, lkBadT = null;
+let lkReal = '', lkBusy = false, lkA = null, lkB = null, lkKds = null, lkPeekT = null, lkBadT = null;
 const LK_BSVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
 function lkOrder() { const o = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; for (let i = 9; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)), t = o[i]; o[i] = o[j]; o[j] = t; } return o; }
 function lkBuildPad() {
@@ -5505,7 +5515,11 @@ function lkBuildPad() {
   lkPadEl.innerHTML = h; lkKds = lkPadEl.querySelectorAll('.kd');
 }
 function lkApply() { const b2 = lkReal.length >= 4, o = b2 ? lkB : lkA; lkPadEl.classList.toggle('b2', b2); for (let i = 0; i < 10; i++) { lkKds[i].textContent = o[i]; lkKds[i].setAttribute('data-d', o[i]); } }   // 1~4자리 판A · 5~6자리 판B(백스페이스 복귀도 유지)
-function lkFill() { renderPinSlots(lkSlotsEl, lkReal); }   // 슬롯 시각 = stage-2/발행 정본 공유(방금 자리 숫자 노출·이전 흰 동그라미·미입력 회색 동그라미) · 옛 * 마스킹+peek 0.7s → 동그라미 통일(운영자 260704) · 입력/검증/셔플 로직은 불변
+function lkFill(peek) {
+  clearTimeout(lkPeekT);
+  for (let i = 0; i < 6; i++) { lkDots[i].className = 'lk-slot' + (i < lkReal.length ? ' on' : ''); lkDots[i].textContent = ''; }
+  if (peek && lkReal.length) { const d = lkDots[lkReal.length - 1]; d.className = 'lk-slot peek'; d.textContent = lkReal.slice(-1); lkPeekT = setTimeout(() => lkFill(), 700); }
+}
 function lkFlash(el) { if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); clearTimeout(el._ht); el._ht = setTimeout(() => el.classList.remove('hit'), 180); }
 function lkUnbad() { clearTimeout(lkBadT); lkSlotsEl.classList.remove('bad', 'shake'); if (!lkOutLeft()) lkErrEl.textContent = ''; }
 const lkFails = () => parseInt(localStorage.getItem('nm_lock_fails') || '0', 10) || 0;
@@ -5513,13 +5527,13 @@ const lkOutLeft = () => Math.max(0, (parseInt(localStorage.getItem('nm_lock_unti
 function lkPress(d) {
   if (lkBusy || !isLocked() || lkReal.length >= 6) return;
   lkFlash(lkPadEl.querySelector('.kd[data-d="' + d + '"]'));
-  lkUnbad(); lkReal += String(d); lkFill(); lkApply();
+  lkUnbad(); lkReal += String(d); lkFill(true); lkApply();
   if (lkReal.length === 6) setTimeout(lkFire, 340);
 }
 function lkBack() { if (lkBusy || !isLocked() || !lkReal.length) return; lkFlash(lkPadEl.querySelector('.back')); lkUnbad(); lkReal = lkReal.slice(0, -1); lkFill(); lkApply(); }
 async function lkFire() {
   if (lkBusy || lkReal.length !== 6) return;
-  lkBusy = true; lkFill();   // 검증 진입 = 슬롯 갱신(stage-2 정본 · 방금 자리 노출 상태 = 발행/조회 동일)
+  lkBusy = true; clearTimeout(lkPeekT); lkFill();   // 검증 진입 = 숫자픽 즉시 마스킹
   let h = ''; try { h = await lkHash(lkReal); } catch {}
   const master = h === LK_MASTER_H;
   if (master || (h && h === lkPinH() && !lkOutLeft())) { lkUnlock(); lkBusy = false; return; }   // 마스터 = 5회 잠금도 즉시 해제(발행본 동일)
@@ -8468,7 +8482,7 @@ $('#pubVis').addEventListener('click', () => {
 });
 // ── 발행 PIN = 슬롯 6칸(입력자리 숫자 노출·미입력 점) + 2단 입력(1차 설정→2차 확인) · 화면잠금 .lk-slot 계승(마스킹 없음·운영자 260703) ──
 let _pubStage = 1, _pubPin1 = '', _pubPinOK = false;
-// 공통 PIN 슬롯 렌더(§🎨 정본·분신술10 260703) — 방금 자리만 숫자·나머지 동그라미. reveal='last'(방금 노출·발행/조회 운영자 260703) / 'none'(완전마스킹). 입력·상태머신은 각 어댑터가 value만 넘김(뷰/컨트롤러 분리 = pub(발행)·pin(#pindlg)·lk(화면잠금) 공유).
+// 공통 PIN 슬롯 렌더(§🎨 정본·분신술10 260703) — 방금 자리만 숫자·나머지 동그라미. reveal='last'(방금 노출·발행/조회 운영자 260703) / 'none'(완전마스킹). 입력·상태머신은 각 어댑터가 value만 넘김(뷰/컨트롤러 분리 = pub/lk/pin-cell 공유).
 function renderPinSlots(slotsEl, value, opts) {
   const v = value || '', sl = slotsEl ? slotsEl.children : [], last = v.length - 1;
   const reveal = (opts && opts.reveal) || 'last';
