@@ -41,6 +41,11 @@ def lint(path):
     warns, infos = [], []
     fmm = re.search(r"^---\s*$(.*?)^---\s*$", raw, re.M | re.S)
     body = raw[fmm.end():] if fmm else raw
+    # 닫는 '---' 누락 회귀 카나리아(260704 실측 '중국인 렌터카' — LLM이 frontmatter 닫는 표식 생략 → 뷰어 메타 raw 노출).
+    #   생성측(ask/analyze.sh) awk가 이미 닫는 '---'를 보증하므로 정상 파이프라인에선 안 뜸 → 뜨면 그 awk 회귀 신호.
+    #   비차단(lint는 return 0 유지) = 저장은 이미 끝난 시점이라 차단 무의미·자동수정(awk)이 정본 방어. 로그 조기발견용.
+    if raw.lstrip().startswith("---") and len(re.findall(r"^---\s*$", raw, re.M)) < 2:
+        warns.append("frontmatter 닫는 '---' 누락 — 뷰어 메타 raw 노출 위험(생성측 awk 보증 회귀 의심)")
     title = title_ko = ""
     if fmm:
         tm = re.search(r'^title:\s*"?(.*?)"?\s*$', fmm.group(1), re.M)
