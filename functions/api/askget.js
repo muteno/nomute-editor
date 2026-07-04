@@ -23,7 +23,7 @@ export async function onRequestGet({ request, env }) {
   if (!body) body = await raw(`asks/${id}.json`);
   if (!body) return json({ error: '없음' }, 404);
   let text = '', images = 0;
-  try { const j = JSON.parse(body); text = String(j.text || ''); images = Array.isArray(j.images) ? j.images.length : 0; }
+  try { const j = JSON.parse(body); text = String(j.text || '').slice(0, 12000); images = Array.isArray(j.images) ? j.images.length : 0; }   // slice = submit.js 상류 캡 미러(다른 writer 대비 방어심화 · 평의회6)
   catch { return json({ error: '파싱 실패' }, 502); }
   return json({ id, text, images });   // images = 첨부 캡처 장수(재시도는 text만 복원 — 캡처는 클라가 안내)
 }

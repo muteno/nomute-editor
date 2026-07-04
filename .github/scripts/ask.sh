@@ -15,7 +15,8 @@ source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과부하(5xx/Overloaded) 인라인 재시도용(analyze와 공용)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 INLINE_TRIES=3   # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도(15s·30s 백오프) — 버스트 ✨요약요청 유실 차단(analyze와 동일·260622)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '메이저 기사 찾기'는 도구 왕복이 본질이라 max 는 매 검색 사이 헛사고로 15분 타임아웃만 유발(누락방지 실익≈0) → high 기본(효율·품질 균형 · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '메이저 기사 찾기'는 도구 왕복이 본질이라 max 는 매 검색 사이 헛사고로 타임아웃만 유발(누락방지 실익≈0) → high 기본(효율·품질 균형 · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+ASK_TIMEOUT="${ASK_TIMEOUT:-600}"      # claude -p 타임아웃(초) — 요약요청은 요약만이라 10분이면 충분(검색완화 후). 초과 시 계정 1회 전환 후 격리(운영자 260704 "10분 넘으면 다른 계정" · 옛 900s는 배치 timeout 시 45분→워크플로 초과라 하향).
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
@@ -93,8 +94,10 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   # 인라인 재시도 — Anthropic API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(analyze와 동일·260622).
   #   성공·ANALYSIS_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0). 과부하 신호일 때만 재시도(is_transient).
   inline_delay=15
+  claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 3계정 체인 예산 보존(평의회 260704 Q5)
+  _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter 900 \
+    out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$ASK_TIMEOUT" \
           --model "$MODEL" \
           --effort "$EFFORT" \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
@@ -106,13 +109,13 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
       break
     fi
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi   # 쿼터 한도 → 대체 계정 1단계씩 전환·재시도(서브1→서브2 · SSOT)
-    # 타임아웃(rc=124 = claude_meter 900s 초과) = 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대였다(이번 '중국인 렌터카' 실패의 원인).
-    #   과부하 응답지연이면 다음 계정(부하 편차)에서 회복될 수 있으므로 쿼터 아니어도 강제 계정 전환 시도(체인 소진까지 · 운영자 260704 "번갈아 다른 계정").
-    if [ $rc -eq 124 ] && claude_failover_force; then continue; fi
-    # 일시 과부하(5xx) OR 타임아웃 → 백오프 후 재시도(계정 체인 소진 후·마지막 시도면 탈출→격리). 옛날엔 타임아웃을 재시도서 제외했으나 검색완화+effort high 로 짧아진 재시도는 회복 여지 있음(운영자 260704).
-    if [ "$attempt" -lt "$INLINE_TRIES" ] && { [ $rc -eq 124 ] || is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; }; then
-      _rsn="API 일시 과부하 추정"; [ $rc -eq 124 ] && _rsn="처리 시간 초과(15분)"
-      echo "  ⏳ ${_rsn}(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
+    # 타임아웃(rc=124 = claude_meter ASK_TIMEOUT 초과) = 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대였다(이번 '중국인 렌터카' 실패의 원인).
+    #   서버 과부하 응답지연이면 다른 계정(부하 편차)에서 회복될 수 있으므로 *딱 1회* 강제 계정 전환 후 재시도(운영자 260704 "10분 넘으면 다른 계정").
+    #   ⚠️ 1회 제한 = 타임아웃은 대개 입력바운드(계정 바꿔도 반복)라 무한 전환은 워크플로 시간·쿼터만 소진(평의회 260704). 그 1회 전환도 claude_reset_force_swap 이 다음 기사서 되돌림.
+    if [ $rc -eq 124 ] && [ "$_to_tried" = "0" ] && claude_failover_force; then _to_tried=1; continue; fi
+    # 일시 과부하(5xx)면 백오프 후 재시도(마지막 시도면 탈출→격리). ⚠️ 타임아웃은 여기서 재시도 안 함(force 1회로 끝 = 워크플로 시간 낭비 차단·근본 방어는 검색완화).
+    if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then
+      echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
       sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
     fi
     break
@@ -126,9 +129,9 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
     # 사유 분류(analyze.sh 패턴 미러 · 평의회 260629): 일시 과부하=혼잡(재시도 소진) / ANALYSIS_FAILED·기타=내용 결함 — "자동 복구" 단정 금지(콘텐츠 실패엔 거짓).
     if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk=source; elif [ $rc -eq 124 ]; then _fk=timeout; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk=congest; else _fk=source; fi
     if [ "$_fk" = timeout ]; then
-      _fbody="$(printf '⚠️ 요약 요청이 시간 초과로 실패했어.\n사유: 원문 검색·요약이 15분을 넘겨 중단됨(과부하 또는 검색 지연).\n\n→ 대기열에서 “재시도”를 누르면 그 내용 그대로 다시 요청돼.')"
+      _fbody="$(printf '⚠️ 요약 요청이 시간 초과로 실패했어.\n사유: 원문 검색·요약이 제한 시간을 넘겨 중단됨(과부하 또는 검색 지연).\n\n→ 대기열에서 “재시도”를 누르면 그 내용이 채워져 다시 요청할 수 있어(캡처는 재첨부).')"
     elif [ "$_fk" = congest ]; then
-      _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 분석 도구 혼잡(일시 과부하 — 재시도 소진).\n\n→ 대기열에서 “재시도”를 누르면 그 내용 그대로 다시 요청돼.')"
+      _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 분석 도구 혼잡(일시 과부하 — 재시도 소진).\n\n→ 대기열에서 “재시도”를 누르면 그 내용이 채워져 다시 요청할 수 있어.')"
     else
       _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 내용 분석 결함(입력이 비었거나 불충분).\n\n→ 대기열에서 “재시도”를 누르거나 입력을 확인하고 다시 요청해줘.')"
     fi

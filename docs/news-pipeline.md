@@ -30,7 +30,7 @@
 > 🕒 **대기열(관측·상태판) — 제출 기사 처리 추적 (260619·260621 제스처 갱신):** 뷰어 **뉴스요약 버튼 = 롱프레스(600ms)·연달아 두번 탭·PC 우클릭·발견성 배지(처리중 건수) → 열기 / 떠있을 때 한번 더 탭 → 닫기**로 대기열 팝업. `functions/api/pending.js`(GET·`GH_TOKEN`)가 GitHub를 라이브 조회해 **네 상태**를 종합 반환(읽기 전용·파이프라인 0 변경):
 > - **처리중** = `pending/`에 있고 나이 `<20분` — 들어온 시각·주요 내용(폰공유=`# body:` 본문 / 픽=`# title:` 헤드라인)·전달방식(전문/URL).
 > - **재시도 중** = `pending/<base>.retry` 마커 있음(앰버 펄스 칩·260622) — Claude API 일시 과부하(5xx/Overloaded)로 분석이 즉시 격리 안 되고 pending 잔류·자동 재분석 대기(`pending-sweep`가 회복 시 재디스패치). **FAIL 아님**(빨강 X·수집함도 '분석 중'). `RETRY_CAP=5`회 초과 시에만 FAIL로 전환.
-> - **FAIL** = `pending/` 잔류 `≥20분`(stuck·단 `.retry` 마커 있으면 *재시도 중*으로 제외) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달.
+> - **FAIL** = `pending/` 잔류 `≥20분`(stuck·단 `.retry` 마커 있으면 *재시도 중*으로 제외) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달. **✨요약요청(ask) 실패는 ↗ 대신 '재시도(↻)' 버튼**(`api/askget`으로 붙여넣은 전문 복원 → 요약창 재오픈·재제출 · 옛 실패파일은 `submit`이 `retryOf`로 정리 · 정본 `viewer askRetry`·`functions/api/askget.js`·260704).
 > - **SUCC** = 최근(24h) `queue/*.md` 완료분(✨요약요청 `-ask-` 포함 — 운영자 260621 "여긴 있는데 저기에 없음"). 초록 배지 + **바로가기** → `showTab('feed')` + 해당 기사 모달(`DATA.file` 매칭, 빌드 랙이면 `load()` 후 재매칭·토스트).
 >
 > 페이지당 5개 **페이지네이션**(슬라이딩 윈도우), **🗑 내역 지우기**(확인 후 `localStorage nomute_q_cleared` 컷오프로 현재 내역 숨김). 분석 끝나면 pending 삭제(↑L17)→FAIL/처리중서 빠지고 queue가 SUCC로. 정본 = `functions/api/pending.js` + `viewer/index.html`(`openQueue`·`loadQueue`·`renderQueuePage`·`qGo`·`qDownload`·`feedOpenBy`).
@@ -213,9 +213,9 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 ## 동작·안전장치
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).
 - **동시 실행**: `concurrency: news-analyze` 로 순차 처리.
-- **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속. ⚠️ **단 Claude API 일시 과부하(5xx/Overloaded)는 예외(260622)**: 인라인 백오프 재시도(`INLINE_TRIES=3`) 후에도 과부하면 `failed/`로 즉시 안 묻고 **pending 잔류 + `<base>.retry` 마커** → `pending-sweep`(≤20분 cron)가 회복 시 자동 재분석. `RETRY_CAP=5`회 초과 시에만 격리. 입력 막다른길(`ANALYSIS_FAILED`)·429/인증은 기존대로 즉시 격리(재시도 무의미). 정본 = `.github/scripts/analyze.sh`(`is_transient`).
-- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 NOMUTEFB)로 동적 선택, 쿼터 한도 시 서브1→서브2 2단 폴오버 — 위 [계정 전환].
-- **모델**: `claude-opus-4-8` 고정. 분석 도구는 `WebFetch,WebSearch`만 허용.
+- **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속. ⚠️ **단 Claude API 일시 과부하(5xx/Overloaded)는 예외(260622)**: 인라인 백오프 재시도(`INLINE_TRIES=3`) 후에도 과부하면 `failed/`로 즉시 안 묻고 **pending 잔류 + `<base>.retry` 마커** → `pending-sweep`(≤20분 cron)가 회복 시 자동 재분석. `RETRY_CAP=5`회 초과 시에만 격리. 입력 막다른길(`ANALYSIS_FAILED`)·429/인증은 기존대로 즉시 격리(재시도 무의미). ⚠️ **타임아웃(rc=124 = analyze 900s·ask 600s 초과)은 계정 1회 강제전환(`claude_failover_force`) 후 재시도, 그래도 초과면 격리**(운영자 260704 "10분 넘으면 다른 계정" · 무한 전환 금지 = 워크플로 시간·쿼터 소진 차단 · 근본 방어 = 전문이면 검색완화[`news-analysis.md §0`·image_sources]로 타임아웃 자체 감소). 정본 = `.github/scripts/analyze.sh`·`ask.sh`(`is_transient`·`ASK_TIMEOUT`) + `shared/claude_transient.sh`(`claude_failover_force`·`claude_reset_force_swap`).
+- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 NOMUTEFB)로 동적 선택, 쿼터 한도 시 서브1→서브2 2단 폴오버(sticky) — 위 [계정 전환]. **타임아웃(rc=124)도 계정 1회 강제전환**하되 그 스왑은 기사마다 `claude_reset_force_swap`이 되돌려 쿼터 체인 예산을 잠식하지 않음(260704).
+- **모델**: `claude-opus-4-8` 고정(생성/하드작업 유지). **effort = 검색경로(analyze·ask)만 high**(env `PIPE_SEARCH_EFFORT` · 검색은 도구 왕복이라 max 헛사고가 타임아웃만 유발 · 260704), 나머지 생성경로는 max. 분석 도구는 `WebFetch,WebSearch`만 허용.
 - **품질 추종**: 분석 프롬프트가 워크플로에 하드코딩돼 있지 않고 `apps/news/`의 최신 에디터 지침을 읽어 쓰므로, 에디터가 개선되면 큐레이션 품질도 따라간다.
 
 ## 테스트 (E2E 1회)

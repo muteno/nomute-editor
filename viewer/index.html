@@ -997,7 +997,7 @@
   .qgo svg { width:17px; height:17px; }
   .qgo.go-green { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
   .qgo.go-amber { color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
-  .qgo.go-arm { color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }   /* 재시도(✨요약요청 실패 = 붙여넣은 전문 복원) = 재확인·재시도 표준색 arm(레몬) 계승(§🎨 · 원문 amber 와 구분) */
+  .qgo.go-arm { color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }   /* 재시도(✨요약요청 실패 = 붙여넣은 전문 복원) = 재시도 표준색 arm(레몬) 계승(운영자 260701 재시도=arm 정본) · viewer :root 에서 amber 와 동색(accent-4)이라 구분은 아이콘 ↻/↗으로 */
   .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:default; }
   .qgo:not(.go-gray):active { transform:scale(var(--press-m,.9)); }
   .qgo.fly svg { animation:qfly .42s var(--ease,cubic-bezier(.22,.61,.36,1)); }
@@ -5996,10 +5996,15 @@ async function askRetry(it) {   // ✨요약요청(ask) 실패 재시도 — api
     const r = await fetch('api/askget?id=' + encodeURIComponent(it.id) + '&_=' + Date.now());
     if (r.ok) { const j = await r.json(); text = String(j.text || ''); imgs = +j.images || 0; }
   } catch {}
-  closeQueueUser();
-  openAsk({ prefill: text });   // 요약창 재오픈 + 전문 프리필(openAsk 가 #askText 에 채움)
+  // ⚠️ 대기열을 closeQueueUser 로 닫지 않는다 — 그 history.back() 과 openAsk 의 pushState 가 같은 틱서 경쟁하면
+  //   방금 연 요약창이 떠돌이 popstate 로 닫힌다(평의회10 ★). 요약창(showModal·top-layer)이 대기열을 덮으므로 안 닫아도 무방(qGo keepQ 패턴).
+  openAsk({ prefill: text, retryOf: it.id });   // retryOf = 옛 실패 id → 재제출 성공 시 submit 이 옛 asks/failed 삭제(옛 실패행 24h 잔존·중복 누적 방지 = 평의회10 Q1·Q3)
   const st = $('#askStatus');
-  if (st) { if (!text) st.textContent = '원문 복원 실패 — 직접 붙여넣어 재시도해줘'; else if (imgs) st.textContent = '캡처 ' + imgs + '장은 다시 첨부해줘(텍스트만 복원됨)'; }
+  if (st) {
+    if (!text && imgs) st.textContent = '텍스트 없이 캡처만 있던 요청 — 캡처 ' + imgs + '장을 다시 첨부해줘';
+    else if (!text) st.textContent = '원문 복원 실패 — 직접 붙여넣어 재시도해줘';
+    else if (imgs) st.textContent = '캡처 ' + imgs + '장은 다시 첨부해줘(텍스트만 복원됨)';
+  }
 }
 function qFlash(msg, iconSvg) {   // 짧은 토스트(링크 빌드 랙 안내) · iconSvg 주면 픽토그램+esc(메시지) innerHTML(XSS 가드)
   let t = document.getElementById('qFlash');
@@ -7319,11 +7324,13 @@ const askdlg = $('#askdlg');
 let askImages = [];   // 압축 이미지 {dataUrl, kb}
 const ASK_MAX = 3;   // 첨부 최대 3장(운영자 260629 · 한 줄 유지)
 let _askResolveId = null;   // 실패 픽 복구로 열렸으면 그 candId — 전송 성공 시 복구표시
+let _askRetryOf = null;     // ✨요약요청 실패 재시도로 열렸으면 옛 실패 base id — 전송 성공 시 submit 이 옛 asks/failed 삭제(중복 잔존 방지 · 평의회10 Q1·Q3)
 function openAsk(opts) {
   opts = opts || {};
   bpop.hidden = true; linkpop.hidden = true; $('#askStatus').textContent = '';
   _askResolveId = opts.resolveId || null;
-  if (opts.prefill != null) $('#askText').value = opts.prefill;   // 실패 복구 = 제목·URL 프리필(전문은 사용자가 붙임)
+  _askRetryOf = opts.retryOf || null;   // 재시도 재제출이면 옛 실패 id(전송 성공 시 submit 이 옛 asks/failed 삭제) · 일반 열기면 null
+  if (opts.prefill != null) $('#askText').value = opts.prefill;   // 프리필 = askRetry 가 복원한 전문 전체(실패 재시도) 또는 제목·URL
   updateAskClip(); updateAskPh(); openComposeDlg(askdlg);   // 폰 뒤로가기 칸(입력 손실 방지·260627)
   setTimeout(() => { const ta = $('#askText'); ta.focus(); if (opts.prefill != null) { const i = ta.value.length; try { ta.setSelectionRange(i, i); } catch {} } }, 60);
 }
@@ -7782,12 +7789,13 @@ $('#askSend').addEventListener('click', async () => {
   }
   const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); gaugeStart(btn);   // 게이지 = 응답까지 진행(grun=0→90% · 응답 시 gdone서 100% = '다 찬 후 멈춤' 제거 · 공용 헬퍼) · 상태텍스트 폐지(운영자 260622·260702)
   try {
-    const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl), nothumb: genImgOn() ? 0 : 1 }) });   // nothumb=1이면 제미나이 썸네일 생성 skip(검색 og:image는 항상)·운영자 260702
+    const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl), nothumb: genImgOn() ? 0 : 1, retryOf: _askRetryOf || undefined }) });   // nothumb=1이면 제미나이 썸네일 생성 skip · retryOf=재시도면 옛 실패 id(submit 이 옛 asks/failed 삭제)·운영자 260702·260704
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) { btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done', 'gdone');   // 성공 = done팝 + gdone(게이지 현재위치→100% 급속 마무리 = 멈춤 없이 응답 즉시 채움) · 입력 리셋은 닫은 뒤(아래)로 — 즉시 비우면 1.6s 빈화면(운영자 260622)
       setTimeout(() => askShowCheck(btn), 300);   // 게이지 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·시안2·운영자 260703)
       setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 접수 즉시 대기열 배지 갱신(60s 폴링 안 기다림 · asks/ 표면화 = '처리중' 확인 · GitHub 전파 대비 2회 · 운영자 260622)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
+      _askRetryOf = null;   // 재시도 재제출 접수 완료 → 옛 실패 id 소비(submit 이 옛 asks/failed 삭제 처리)
       setTimeout(() => { askdlg.close(); gaugeClear(btn); askHideCheck(btn); btn.disabled = false;
         $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();   // 리셋 = 닫은 뒤(빈 초기화면 깜빡임 차단 · 운영자 260622)
       }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
