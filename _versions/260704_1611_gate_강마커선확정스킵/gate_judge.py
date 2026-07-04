@@ -194,21 +194,11 @@ def judge(items):
     return grades, cats, trans, p.returncode, p.stderr
 
 
-def _write(cands):
-    """원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)."""
-    import tempfile
-    import os as _os
-    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
-    with _os.fdopen(_fd, "w", encoding="utf-8") as _f:
-        _f.write(json.dumps(cands, ensure_ascii=False))
-    _os.replace(_tmp, CAND)
-
-
 def main():
     cands = json.loads(CAND.read_text(encoding="utf-8"))
     pending = [c for c in cands if needs_grading(c)]
 
-    if "--count" in sys.argv:           # 게이트용 — 숫자만 출력, claude 미호출(강마커 선확정분 포함 = 도장 찍을 런이 뜨게)
+    if "--count" in sys.argv:           # 게이트용 — 숫자만 출력, claude 미호출
         print(len(pending))
         return
 
@@ -216,29 +206,6 @@ def main():
         print("미채점 노출후보 없음 — 종료")
         return
     total = len(pending)
-    # 강마커 선확정 스킵(260704 · 운영자 승인 "낭비 해결"): cat구제(비노출) 대상인데 cat_force 가 이미 cat 을
-    # 확정하는 제목은 AI cat 결과가 어차피 버려짐(반영부에서 fc 우선) → claude 콜 없이 도장만 찍고 배치서 제외.
-    # 실측(260704 재채점 백로그): cat구제 1,672건 중 273건(16.3%)이 해당 — 배치 40건 단위라 *콜* 절감은
-    # 총 게이트 콜 기준 ~8~9%(Opus5인 검증5 시뮬: 76→69청크 · 항목%≠콜% 정직 표기) + 배치 슬롯을 진짜
-    # 모호건에 양보(백로그 소화 가속). ⚠️ 번역 편승 대상(외국어 제목·title_ko 미도장)은 번역 칸이 필요해 스킵 제외.
-    # ⚠️ 노출권(surfaced)은 grade 채점이 필요하므로 스킵 안 함(기존 그대로 — cat 만 fc 가 덮음).
-    skipped = 0
-    ai_pending = []
-    for c in pending:
-        fc = cat_force(c.get("title") or "") if not surfaced(c) else None
-        if fc and not needs_translate(c):
-            c["cat"] = fc
-            c["cat_rubric"] = RUBRIC_VER   # 도장 = needs_grading/--count 재계상 루프 차단(grade 미기록은 cat구제 기존 규약 그대로)
-            skipped += 1
-        else:
-            ai_pending.append(c)
-    pending = ai_pending
-    if skipped:
-        print(f"강마커 선확정 {skipped}건 — claude 콜 없이 cat 도장(배치 제외)")
-    if not pending:
-        _write(cands)
-        print(f"강마커 선확정만 {skipped}건 도장 — claude 미호출 종료")
-        return
     pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
     # 노출권(grade) 우선 + cat구제 최소쿼터 보장(GATE_CAT_QUOTA) — 노출권 백로그가 MAX 초과여도 cat구제가 *기아*되지 않게(감사5·260628: 노출권 1109>80이 cat 651을 영구 0처리 → 347건 사회 오표시였음). cat구제는 grade 미기록·cat만이라 가볍다.
     surf = [c for c in pending if surfaced(c)]
@@ -258,9 +225,7 @@ def main():
         cats.update(gc)
         trans.update(tr)
     if not grades:
-        # 전 청크 실패 = AI 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
-        if skipped:
-            _write(cands)   # 강마커 선확정 도장은 콜 실패와 무관 — 보존(안 쓰면 매 런 재도장 낭비)
+        # 전 청크 실패 = 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
         print("::warning::경중 채점 전 청크 실패 — 다음 런 재시도")
         sys.exit(0)
     dist = Counter()
@@ -294,8 +259,12 @@ def main():
             c["cat_rubric"] = RUBRIC_VER  # cat 채점 도장(재채점 루프 방지) — grade/grade_rubric 은 안 씀
             catfix += 1
         dist[g] += 1
-    _write(cands)
-    print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, cross-2 cat구제 {catfix}건, 강마커 선확정 {skipped}건, 외신 번역 {tdone}건, rubric {RUBRIC_VER})")
+    import tempfile, os                          # 원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)
+    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
+    with os.fdopen(_fd, "w", encoding="utf-8") as _f:
+        _f.write(json.dumps(cands, ensure_ascii=False))
+    os.replace(_tmp, CAND)
+    print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, cross-2 cat구제 {catfix}건, 외신 번역 {tdone}건, rubric {RUBRIC_VER})")
     for i, c in enumerate(pending):
         if grades.get(str(i)) == 0:
             print(f"  0(비뉴스) {c.get('title', '')[:50]}")
