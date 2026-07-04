@@ -566,7 +566,7 @@
   .soc-chip.src-naver.ico svg { width:11px; height:11px; flex:none; display:block; }
   /* 출처성향 게이지 — 이슈가 어느 성향 커뮤에서 떴는지 소스별 점으로(뉴스 편향바 --bias-* 토큰 계승·LLM 0·순수 매핑). */
   .soc-gauge { position:relative; height:9px; margin-top:10px; border-radius:var(--r-pill);
-    background:linear-gradient(90deg, rgba(var(--bias-l2-rgb),.42) 0%, rgba(var(--bias-l1-rgb),.30) 25%, rgba(var(--bias-mid-rgb),.24) 50%, rgba(var(--bias-r1-rgb),.30) 75%, rgba(var(--bias-r2-rgb),.42) 100%); }   /* stop 25/50/75 = 5단 성향값(1·3·5·7·9)의 dot 위치(_mid-1)/8과 정확 정렬(옛 28/72는 /9 버그와 짝·검토6인 260704) */
+    background:linear-gradient(90deg, rgba(var(--bias-l2-rgb),.42) 0%, rgba(var(--bias-l1-rgb),.30) 28%, rgba(var(--bias-mid-rgb),.24) 50%, rgba(var(--bias-r1-rgb),.30) 72%, rgba(var(--bias-r2-rgb),.42) 100%); }
   .soc-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; transform:translate(-50%,-50%); border:1.5px solid rgba(0,0,0,.4);
     background:var(--fg); box-shadow:0 0 5px rgba(255,255,255,.45); }   /* 흰색 단일 마커(운영자 260704 "동그라미 흰색 통일") — 편향은 *색*이 아니라 게이지 *위치*로 표현(다이버징 그라데이션=위치 눈금). 등급별 색분기(옛 lean-* 파랑/시안/코랄/빨강)는 위치와 중복+제각각이라 혼란 → --fg 중립 전경 흰색으로 통일. glow=순백 rgba(box-shadow=토큰 없는 축) */
   .scrap-head { padding:6px 2px 12px; }
@@ -7328,8 +7328,7 @@ function renderSns() {
     (r.sources || []).forEach(s => { const v = socVal(s); if (v == null) return; _plat[NAVER_CHIP[s] ? '네이버' : s] = v; });
     const _pv = Object.values(_plat);
     const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
-    const _zone = _mid == null ? '' : (_mid <= 2 ? '강진보' : _mid <= 4 ? '약진보' : _mid <= 6 ? '중립' : _mid <= 8 ? '약보수' : '강보수');
-    const _gauge = _mid == null ? '' : `<div class="soc-gauge" role="img" aria-label="출처성향 ${_zone}" title="출처성향: ${_zone} (커뮤 통념근사)"><span class="soc-dot" style="left:${((_mid - 1) / 8 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 위치=(_mid-1)/8[성향값 1~9축, 옛 /9는 강보수 우끝 미달·중립 좌편향 버그·검토6인 260704] · title/aria=툴팁·a11y(시각 라벨은 요구'라벨없이' 존중) */
+    const _gauge = _mid == null ? '' : `<div class="soc-gauge"><span class="soc-dot" style="left:${((_mid - 1) / 9 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 옛 lean-* 색분기 제거(운영자 260704) */
     el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>
