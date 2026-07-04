@@ -163,7 +163,7 @@
   }
   const RM = matchMedia('(prefers-reduced-motion:reduce)').matches;
   let start=null, raf=0, running=false;
-  function hidden(){const tb=document.body.dataset.tab;return tb==='scrap'||tb==='sns';}
+  function hidden(){const tb=document.body.dataset.tab;return tb==='scrap';}   // 레거시 탭만 정지(안 보임) · 뉴스요약·SNS = LOVE 마퀴펫 표시(260704)
   function loop(now){
     if(hidden()){ running=false; return; }               // 다른 탭 = 애니 정지(안 보임·성능)
     if(start==null) start=now;
