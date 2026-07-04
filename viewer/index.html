@@ -1407,6 +1407,10 @@
   .dlg-h a.openflash { color:var(--accent) !important; background:var(--accent-dim) !important; box-shadow:0 0 0 2px rgba(var(--accent-rgb),.2) !important; }
   .dlg-h a .arr { display:inline-block; }
   .dlg-h a.openflash .arr { animation:arrnudge .42s ease; }
+  /* 원문 링크 없음(전문 붙여넣기 기사 등 갈 수 없을 때) = 버튼 유지·흐리게 + 대각 빗금 하나(회색 currentColor·운영자 260704) */
+  .dlg-h a.off { position:relative; opacity:.4; pointer-events:none; }
+  .dlg-h a.off::after { content:''; position:absolute; left:50%; top:50%; width:22px; height:1.5px;
+    background:currentColor; border-radius:1px; transform:translate(-50%,-50%) rotate(-45deg); }
   @keyframes arrnudge { 0% { transform:translate(0,0); } 45% { transform:translate(2px,-2px); } 100% { transform:translate(0,0); } }
   @media (prefers-reduced-motion:reduce) { .dlbox.rip::after, .dlg-h a.openflash .arr { animation:none; } .dlbox.press { transform:none; } }
   /* 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 핸들러 · 운영자 260621). 다운로드/저장=↓바운스, 그 외=회전. */
@@ -1857,7 +1861,7 @@
     .topsearch { bottom:-26px; height:54px; }   /* 모바일 — 프로필 동일 box + ~6px 더 아래(운영자 260621) */
     .bar { padding:0 12px; }
     dialog { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
-    #dlg .dlg-h { padding-top:calc(11px + env(safe-area-inset-top)); }   /* 노치 회피 — 풀스크린 헤더가 상태바/노치와 안 겹치게(260630 QA 모바일) */
+    #dlg .dlg-h { padding-top:calc(11px + env(safe-area-inset-top)); border-top-left-radius:0; border-top-right-radius:0; }   /* 노치 회피 + 풀스크린 = 헤더 띠 상단 모서리 직각(모달 radius:0과 정합 → 둥근 코너 틈으로 본체 배경 비치던 것 차단 · 운영자 260704) */
     #dlg .dlg-x { top:calc(11px + env(safe-area-inset-top)); }
     .md { padding:6px 14px 44px; }
     .gal { grid-template-columns:repeat(2,1fr); }
@@ -2932,7 +2936,10 @@ async function open(a) {
   const _dlf = $('#dlFull'); if (_dlf) { _dlf.checked = false; const _dlb = $('#dlbox'); if (_dlb) _dlb.classList.remove('full'); }   // 새 기사 = 요약 '전체 포함' 체크 기본 해제(이전 기사 체크 잔상 제거 · 운영자 260622)
   applyReviseMarks();   // 이 기사가 변경 중이면 IG/Thread 소주제 '(변경 중)' + 연필 FAB 물결
   setupScrub();   // 모달 헤더 = 스크롤 위치 스크러버(게이지 + 요약·프롬프트·카드 틱 + 클릭 점프)
-  const src = $('#src'); if (a.url){ src.href=hrefOk(a.url); src.style.display=''; } else src.style.display='none';
+  // 원문 버튼 = 항상 표시. url 있으면 이동 / 없으면(전문 붙여넣기 등) .off = 흐리게+빗금·클릭 불가(운영자 260704)
+  const src = $('#src'); src.style.display='';
+  if (a.url){ src.href=hrefOk(a.url); src.classList.remove('off'); src.removeAttribute('aria-disabled'); src.title='원문 열기'; src.setAttribute('aria-label','원문 열기'); }
+  else { src.removeAttribute('href'); src.classList.add('off'); src.setAttribute('aria-disabled','true'); src.title='원문 링크 없음'; src.setAttribute('aria-label','원문 링크 없음'); }
   const dlg = $('#dlg'); const _dlgWasOpen = dlg.open; if (!_dlgWasOpen) { dlg.showModal(); try { history.pushState({ dlg: true }, ''); } catch {} }   // 신규 열림만 showModal+pushState(폰 뒤로가기=요약모달 먼저 닫기·lbox 패턴·!wasOpen=재진입 이중 push/show 방지·260630 QA ③)
   $('#dlgbody').scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋(스크롤=본문 래퍼 .dlg-body)
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
