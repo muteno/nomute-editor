@@ -9,8 +9,8 @@ PROMPT_FILE="prompts/card-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 7스크립트 하드코딩 1점화 · 260702)
 MODEL="$PIPE_MODEL"
 TARGET="${1:-all}"
-MODE="${2:-full}"
-CARD_JOB_DEADLINE="${CARD_JOB_DEADLINE:-5400}"   # 커버리지 회수 콜 시작 허용 상한(초) — *회수 콜* 예산 게이트(잡 전역 아님·전역 백스톱은 워크플로 timeout-minutes · 평의회6). 5400+900 < card_plan 120분.            # full=클로드+렌더 / text=텍스트만(자동 카드플랜·제미나이0) / shoot=렌더만(텍스트 재사용)
+MODE="${2:-full}"            # full=클로드+렌더 / text=텍스트만(자동 카드플랜·제미나이0) / shoot=렌더만(텍스트 재사용)
+CARD_JOB_DEADLINE="${CARD_JOB_DEADLINE:-5400}"   # 커버리지 회수 콜 시작 허용 상한(초) — *회수 콜* 예산 게이트(잡 전역 아님·전역 백스톱은 워크플로 timeout-minutes · 평의회6). 5400+900 < card_plan 120분.
 MAX_BATCH="${MAX_BATCH:-3}"  # all 배치 상한 — 무상한 Opus 폭증 차단(나머지는 다음 회차가 처리·중복skip이 페이징)
 
 # 🔒 제미나이 이중잠금 Lock B — text(자동 카드플랜) 모드는 유료 생성경로에 절대 안 닿는다.
