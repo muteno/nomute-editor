@@ -248,45 +248,48 @@ function drawPet(key, cx, cy){
 // ============================================================
 //  structure layer  (drawn greyscale on oS, then halftoned)
 // ============================================================
-// 사다리 = 깔끔한 베이지 solid 선(운영자 260704 "사다리 깔끔하게 · 오리다 만 것처럼 됨" → 점묘 제거) · ctx 직접
-const LAD_RGB = '247,237,202';   // 베이지(LOVE 크림 = CREAM #f7edca)
-function drawLadder(lit){
-  ctx.save();
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.strokeStyle=`rgba(${LAD_RGB},0.96)`;
-  ctx.lineWidth=8;            // rails
-  ctx.beginPath();
-  ctx.moveTo(LAD.topL,LAD.topY); ctx.lineTo(LAD.baseL,LAD.baseY);
-  ctx.moveTo(LAD.topR,LAD.topY); ctx.lineTo(LAD.baseR,LAD.baseY);
-  ctx.stroke();
-  ctx.lineWidth=6;            // rungs
+// 사다리 = 별도 버퍼(oL)에 그려 베이지(LADCOL) 하프톤 — 배경 위 가시성(운영자 260704 "사다리 안 보여 공중에 뜬 것 같다")
+function drawLadder(t, lit){
+  olx.clearRect(0,0,W,H);
+  olx.fillStyle='#000'; olx.fillRect(0,0,W,H);
+  olx.lineCap='round'; olx.lineJoin='round';
+  const lad = 1;   // 점등 후에도 사다리 불투명도 유지(운영자 260704 — 점등 dim 제거)
+  olx.strokeStyle=`rgba(255,255,255,${0.9*lad})`;
+  olx.lineWidth=12;           // wide rails
+  olx.beginPath();
+  olx.moveTo(LAD.topL,LAD.topY); olx.lineTo(LAD.baseL,LAD.baseY);
+  olx.moveTo(LAD.topR,LAD.topY); olx.lineTo(LAD.baseR,LAD.baseY);
+  olx.stroke();
+  // rungs
+  olx.lineWidth=8;
   for(let k=0;k<=LAD.rungs;k++){
     const f=k/LAD.rungs;
     const lx=lerp(LAD.topL,LAD.baseL,f), rx=lerp(LAD.topR,LAD.baseR,f);
     const yy=lerp(LAD.topY,LAD.baseY,f);
-    ctx.beginPath(); ctx.moveTo(lx,yy); ctx.lineTo(rx,yy); ctx.stroke();
+    olx.beginPath(); olx.moveTo(lx,yy); olx.lineTo(rx,yy); olx.stroke();
   }
-  ctx.restore();
-}
-// 간판 테두리(FRAME) = 깔끔한 베이지 solid(운영자 260704 "전광판 좌측 희멀건해서 안보임" → 점묘 제거·밝은 베이지로 가시성) · ctx 직접
-function drawFrameSolid(lit){
-  const mo=(1-lit);
-  if(mo<=0.01) return;
-  ctx.save();
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.strokeStyle=`rgba(${LAD_RGB},${0.96*mo})`;
-  ctx.lineWidth=8;
-  roundRectPath(ctx, FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.r);
-  ctx.stroke();
-  ctx.restore();
+  // back legs for depth (dimmer)
+  olx.strokeStyle=`rgba(255,255,255,${0.45*lad})`;
+  olx.lineWidth=9;
+  olx.beginPath();
+  olx.moveTo(LAD.topL+34,LAD.topY-6); olx.lineTo(LAD.baseL+74,LAD.baseY);
+  olx.moveTo(LAD.topR+34,LAD.topY-6); olx.lineTo(LAD.baseR+74,LAD.baseY);
+  olx.stroke();
 }
 function drawStructure(t, lit){
   osx.clearRect(0,0,W,H);
   osx.fillStyle='#000'; osx.fillRect(0,0,W,H);
   osx.lineCap='round'; osx.lineJoin='round';
-  // NOW SHOWING box outline만 halftone(점묘 유지) — FRAME/사다리는 solid 베이지로 분리
+
+  // --- marquee outline (fade out when lit) — 안테나·코드선 제거 ---
   const mo = (1-lit);
   if(mo>0.01){
+    osx.strokeStyle=`rgba(255,255,255,${0.9*mo})`;   // 전광판 테두리 = 사다리 rails(0.9)와 불투명도 동일(운영자 260704 · NOW SHOWING 박스/텍스트는 불변)
+    osx.lineWidth=7;
+    roundRectPath(osx, FRAME.x, FRAME.y, FRAME.w, FRAME.h, FRAME.r);
+    osx.stroke();
+
+    // NOW SHOWING box outline (halftoned); the text itself is drawn crisp separately
     osx.strokeStyle=`rgba(255,255,255,${0.45*mo})`;
     osx.lineWidth=5;
     roundRectPath(osx, CX-BAR.w/2, BAR.y, BAR.w, BAR.h, 14);
@@ -530,45 +533,6 @@ function petState(t){
   return {key:k, cx:SIT_X, cy:grCy(k)};
 }
 
-// ── rest 손하트(팔 감싸기) — 몸통·얼굴·다리 고정 + 팔만 안으로 감쌈(우팔=왼팔 좌우반전 데칼코마니) → 펼치며 하트 발사 · 운영자 260704 ──
-const REST_SQ=0.5, REST_HOLD=0.9, REST_OPEN=1.2, REST_FLY=1.7;
-function restArmProg(tr){
-  if(tr<REST_SQ) return easeInOut(tr/REST_SQ);                      // 감쌈 0→1
-  if(tr<REST_HOLD) return 1;                                        // 모음
-  if(tr<REST_OPEN) return 1-easeInOut((tr-REST_HOLD)/(REST_OPEN-REST_HOLD));  // 펼침 1→0
-  return 0;
-}
-function drawRestPet(tr, cx, cy){
-  const B=PETSPRITES.rest_base, A=PETSPRITES.rest_arm, bi=PIMG.rest_base, ai=PIMG.rest_arm;
-  if(!bi||!ai){ drawPet('rest',cx,cy); return; }                   // 스프라이트 미로드 = 통짜 폴백
-  const prog=restArmProg(tr);
-  const dx=Math.round(cx-B.ax*PET_SCALE), dy=Math.round(cy-B.ay*PET_SCALE);
-  const prev=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(bi, dx, dy, B.w*PET_SCALE, B.h*PET_SCALE);          // 몸통·얼굴·다리 = 완전 고정
-  const ox=62*prog, oy=30*prog;
-  ctx.drawImage(ai, dx+ox, dy+oy, A.w*PET_SCALE, A.h*PET_SCALE);    // 왼팔 = 안(오른쪽)+아래로
-  ctx.save();                                                       // 우팔 = 왼팔 좌우반전(미러축 ax)
-  ctx.translate(dx+2*A.ax*PET_SCALE, dy); ctx.scale(-1,1);
-  ctx.drawImage(ai, ox, oy, A.w*PET_SCALE, A.h*PET_SCALE);
-  ctx.restore();
-  ctx.imageSmoothingEnabled=prev;
-}
-function drawRestHearts(tr, cx, cy){
-  const age=tr-REST_HOLD; if(age<0||age>REST_FLY) return;           // 펼침(HOLD) 순간 발사
-  const HX=cx, HY=cy+16;                                            // 손 위치(몸 앞)
-  const n=2+Math.floor(hash(7,3)*2);                                // 2~3개 임의
-  for(let k=0;k<n;k++){
-    const r1=hash(k*7+1,3), r2=hash(k*5+2,9), r3=hash(k*3+3,5), spread=(k-(n-1)/2);
-    const vx=spread*66+(r1-0.5)*70, vy=-(250+r2*150);
-    const x=HX+vx*age+(r3-0.5)*8, y=HY+vy*age+46*age*age;
-    const cell=(0.55+r2*0.85)*4.6*(1+age*0.5);                      // 임의 크기 + 날며 커짐
-    let a=age<0.12?age/0.12:(age>REST_FLY-0.7?(REST_FLY-age)/0.7:1);
-    ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,a));
-    drawGlyph('#', x, y, cell, (k%2?rgb([210,85,99]):rgb([195,69,81])), 1, 1);
-    ctx.restore();
-  }
-}
-
 // ============================================================
 //  master render
 // ============================================================
@@ -584,12 +548,12 @@ function renderFrame(i){
   ctx.save();
   ctx.globalAlpha = fade;
 
-  // 1. 사다리 + 간판 테두리 = 깔끔한 베이지 solid(운영자 260704 "사다리 깔끔·전광판 좌측 안보임" → 점묘 제거)
-  drawLadder(lit);
-  drawFrameSolid(lit);
-  // 1b. NOW SHOWING 박스 아웃라인만 점묘(회색) 유지
+  // 1. structural halftone (marquee outline)
   drawStructure(t, lit);
   halftone(osx, DOT, 6, 2.35, 0.8);
+  // 1a. ladder halftone — 베이지(LOVE 크림) 별도 색 → 배경 위 가시성(운영자 260704)
+  drawLadder(t, lit);
+  halftone(olx, LADCOL, 6, 2.35, 0.8);
   // 1b. crisp dotted NOW SHOWING (unlit only)
   if(lit<0.99) drawDottedText("NOW SHOWING", CX, BAR.y+BAR.h/2, 7.4, 1.9, [190,190,178], (1-lit)*0.95);
 
@@ -608,13 +572,7 @@ function renderFrame(i){
 
   // 5. pet (front-most) — real extracted sprites
   const ps=petState(t);
-  if(ps.key==='rest'||ps.key==='rest2'){            // rest = 손하트(팔만 감쌈) + 하트 발사
-    const tr=t-T.sit1;
-    drawRestPet(tr, ps.cx, ps.cy);
-    drawRestHearts(tr, ps.cx, ps.cy);
-  } else {
-    drawPet(ps.key, ps.cx, ps.cy);
-  }
+  drawPet(ps.key, ps.cx, ps.cy);
 
   ctx.restore();
 }

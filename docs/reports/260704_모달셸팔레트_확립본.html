@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>모달·팝업 셸 팔레트 — 디자인 기틀 확립본</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-rgb:15,253,2;
+    --fg:#eef7f0; --mut:#8fa697; --line2:rgba(255,255,255,.08); --line:rgba(255,255,255,.12);
+    --r-l:16px; --r-modal:22px;
+    /* 셸 토큰 4종 = viewer/index.html :root 정본 복사(확립본 스냅샷) */
+    --modal-glass:rgba(17,18,20,.64); --modal-glass-anchor:rgba(17,18,20,.75);
+    --modal-head-bg:rgba(24,25,28,.5); --modal-tabs-bg:rgba(24,25,28,.4);
+    --blur-l:22px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    /* 컬러 블롭 = 글래스 backdrop-filter가 뒤를 뭉개는 걸 보여주는 배경 */
+    background:
+      radial-gradient(40% 30% at 20% 25%, rgba(15,253,2,.14), transparent 60%),
+      radial-gradient(35% 30% at 82% 20%, rgba(58,109,219,.20), transparent 60%),
+      radial-gradient(40% 35% at 75% 80%, rgba(194,75,245,.16), transparent 60%),
+      radial-gradient(30% 30% at 15% 85%, rgba(226,59,42,.14), transparent 60%),
+      linear-gradient(160deg,#0e1210,#080a09 60%,#0b0d10);
+    background-attachment:fixed;
+    padding:26px 16px 60px;
+  }
+  .wrap{max-width:920px; margin:0 auto;}
+  h1{font-size:21px; font-weight:800; letter-spacing:-.3px; margin:0 0 4px;}
+  h1 .g{color:var(--accent);}
+  .sub{color:var(--mut); font-size:13px; margin:0 0 8px;}
+  .sub code{background:rgba(0,0,0,.4); padding:1px 6px; border-radius:5px; font-family:ui-monospace,Menlo,monospace; color:#ccd0d3;}
+  .lead{color:#ccd0d3; font-size:13.5px; margin:0 0 24px; max-width:720px;}
+  .lead b{color:var(--fg);}
+  h2{font-size:15px; font-weight:800; margin:30px 0 12px; display:flex; align-items:center; gap:8px;}
+  h2::before{content:''; width:14px; height:3px; border-radius:2px; background:var(--accent);}
+
+  /* 팔레트 스와치 */
+  .pal{display:grid; grid-template-columns:repeat(auto-fill,minmax(205px,1fr)); gap:12px;}
+  .sw{border:1px solid var(--line2); border-radius:var(--r-l); overflow:hidden; background:rgba(255,255,255,.02);}
+  .sw .chip{height:60px; position:relative; background-image:linear-gradient(45deg,#2a2a2a 25%,transparent 25%),linear-gradient(-45deg,#2a2a2a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2a2a 75%),linear-gradient(-45deg,transparent 75%,#2a2a2a 75%); background-size:14px 14px; background-position:0 0,0 7px,7px -7px,-7px 0;}
+  .sw .chip .fill{position:absolute; inset:0;}
+  .sw .meta{padding:9px 11px;}
+  .sw .tok{font-family:ui-monospace,Menlo,monospace; font-size:12px; font-weight:700; color:var(--accent);}
+  .sw .val{font-family:ui-monospace,Menlo,monospace; font-size:11px; color:#ccd0d3; margin-top:2px;}
+  .sw .use{font-size:12px; color:var(--mut); margin-top:5px; line-height:1.45;}
+
+  /* 셸 데모(글래스모피즘 실제 렌더) */
+  .demos{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px;}
+  .demo{border:1px solid var(--line); border-radius:var(--r-modal); overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,.45);}
+  .demo.central{background:var(--modal-glass); -webkit-backdrop-filter:blur(34px) saturate(1.4); backdrop-filter:blur(34px) saturate(1.4);}
+  .demo.anchor{background:var(--modal-glass-anchor); -webkit-backdrop-filter:blur(24px) saturate(1.05); backdrop-filter:blur(24px) saturate(1.05); border-radius:var(--r-l);}
+  .d-head{flex:none; display:flex; align-items:center; justify-content:space-between; padding:11px 16px; background:var(--modal-head-bg); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); backdrop-filter:blur(var(--blur-l)) saturate(1.2); border-bottom:1px solid var(--line2);}
+  .d-head b{font-size:15px; font-weight:800; letter-spacing:-.2px;}
+  .d-head .x{width:28px; height:28px; display:grid; place-items:center; border-radius:8px; background:rgba(255,255,255,.06); border:1px solid var(--line);}
+  .d-head .x svg{width:14px; height:14px;}
+  .d-tabs{flex:none; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:9px 13px; background:var(--modal-tabs-bg); border-bottom:1px solid var(--line2);}
+  .d-tabs .t{text-align:center; font-size:12.5px; font-weight:600; color:var(--mut); padding:8px 2px;}
+  .d-tabs .t.on{color:var(--accent); font-weight:800; text-shadow:0 0 10px rgba(var(--accent-rgb),.5);}
+  .d-body{flex:1; padding:16px; min-height:76px; background:transparent;}
+  .d-lbl{display:flex; align-items:center; gap:6px; font-size:13px; font-weight:800; margin:2px 0 9px;}
+  .d-lbl::before{content:'•'; color:var(--accent); font-weight:700;}
+  .d-inp{background:rgba(14,15,17,.55); border:1px solid var(--line); border-radius:9px; padding:10px 12px; color:var(--mut); font-size:12.5px; margin-bottom:9px;}
+  .d-row{display:flex; justify-content:space-between; padding:8px 2px; border-top:1px solid var(--line2); font-size:12.5px;}
+  .d-row:first-child{border-top:none;}
+  .d-row .rv{color:var(--mut); font-weight:800;}
+  .d-cap{grid-column:1/-1; font-size:12.5px; font-weight:700; color:#ccd0d3; margin:2px 0 -8px;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px; margin-top:4px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line2); vertical-align:top;}
+  th{color:var(--mut); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.3px;}
+  td code{font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:#ccd0d3;}
+  td b{color:var(--fg);}
+  .ok{color:var(--accent); font-weight:800; white-space:nowrap;}
+
+  .rulebox{border:1px solid var(--line2); border-radius:var(--r-l); padding:14px 16px; margin-top:12px; background:linear-gradient(165deg,rgba(28,30,33,.5),rgba(15,16,18,.6));}
+  .rulebox h3{margin:0 0 8px; font-size:14px; font-weight:800;}
+  .rulebox ul{margin:6px 0; padding-left:18px;}
+  .rulebox li{font-size:13px; color:#ccd0d3; margin:4px 0;}
+  .rulebox code{font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--accent);}
+  .foot{margin-top:26px; padding-top:14px; border-top:1px solid var(--line2); color:var(--mut); font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1><span class="g">모달·팝업 셸 팔레트</span> — 디자인 기틀 확립본</h1>
+  <p class="sub">정본 값 = <code>viewer/index.html :root</code> · 참조 = <code>docs/CII</code> "모달 헤더 띠/탭 띠" · <code>CLAUDE.md §🎨</code> · 락 = <code>design-tokens.lock</code> · 260704</p>
+  <p class="lead"><b>모든 모달·팝업은 이 셸 하나를 계승한다(재설계 금지).</b> 핵심 미감 = <b>글래스모피즘</b>: 반투명 배경 + <code style="font-family:ui-monospace,monospace;color:#ccd0d3">backdrop-filter: blur</code>로 뒤 콘텐츠가 은은히 비쳐 층이 진다. 헤더 띠는 내용보다 살짝 도드라지고, 내용은 컨테이너 글래스가 비쳐 물러난다. 아래 데모는 실제 backdrop-filter로 렌더 — 뒤 컬러 블롭이 뭉개져 비치는 게 글래스다.</p>
+
+  <h2>셸 토큰 4종 (단일 SSOT)</h2>
+  <div class="pal">
+    <div class="sw"><div class="chip"><div class="fill" style="background:var(--modal-glass)"></div></div><div class="meta"><div class="tok">--modal-glass</div><div class="val">rgba(17,18,20,.64)</div><div class="use">중앙 모달 컨테이너<br>&lt;dialog&gt; · 딤(::backdrop) 있음 · blur 34</div></div></div>
+    <div class="sw"><div class="chip"><div class="fill" style="background:var(--modal-glass-anchor)"></div></div><div class="meta"><div class="tok">--modal-glass-anchor</div><div class="val">rgba(17,18,20,.75)</div><div class="use">앵커 팝업 컨테이너<br>div · 딤 없음 → 비침보호 +.11 · blur 24</div></div></div>
+    <div class="sw"><div class="chip"><div class="fill" style="background:var(--modal-head-bg)"></div></div><div class="meta"><div class="tok">--modal-head-bg</div><div class="val">rgba(24,25,28,.5)</div><div class="use">헤더 글래스 띠 (.modal-head)<br>+ blur --blur-l(22) saturate 1.2</div></div></div>
+    <div class="sw"><div class="chip"><div class="fill" style="background:var(--modal-tabs-bg)"></div></div><div class="meta"><div class="tok">--modal-tabs-bg</div><div class="val">rgba(24,25,28,.4)</div><div class="use">탭 글래스 띠 (.modal-tabs)<br>세부메뉴 있을 때만</div></div></div>
+  </div>
+
+  <h2>셸 구조 데모 (실제 글래스모피즘 렌더 — 뒤 블롭 비침)</h2>
+  <div class="demos">
+    <div class="d-cap">3단 셸 — 중앙 모달(#tooldlg 계승) · 딤 있어 컨테이너 .64</div>
+    <div class="demo central">
+      <div class="d-head"><b>이미지</b><span class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+      <div class="d-tabs"><div class="t on">썸네일</div><div class="t">저작권</div><div class="t">카드뉴스</div></div>
+      <div class="d-body"><div class="d-lbl">헤더</div><div class="d-inp">부제</div><div class="d-inp">제목</div></div>
+    </div>
+    <div class="d-cap">2단 셸 — 앵커 팝업(.qpop/.msgpop/.pmenu) · 딤 없어 컨테이너 .75</div>
+    <div class="demo anchor">
+      <div class="d-head"><b>잠금 설정</b><span class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+      <div class="d-body"><div class="d-row"><span>화면 잠금</span><span class="rv">OFF</span></div><div class="d-row"><span>PIN (6자리)</span><span class="rv">설정됨</span></div><div class="d-row"><span>자동 잠금(분)</span><span class="rv">2</span></div></div>
+    </div>
+  </div>
+
+  <h2>계승 규칙 (신규 팝업 = 이것만 끼운다)</h2>
+  <div class="rulebox">
+    <ul>
+      <li><b>헤더 띠</b> = <code>.modal-head</code> 정본(별칭 <code>.tool-h/.dlg-h/.ed-h/.mh/.qh/.pmenu-h/.pin-head</code>). 배경 <code>--modal-head-bg</code> + blur <code>--blur-l</code> + border-bottom <code>--line2</code>.</li>
+      <li><b>탭 띠</b> = <code>.modal-tabs</code> 정본(별칭 <code>.tool-tabs</code>). 배경 <code>--modal-tabs-bg</code> · has-tabs일 때만.</li>
+      <li><b>컨테이너</b> = 중앙 dialog(딤 있음) <code>--modal-glass</code>(.64) / 앵커 div(딤 없음) <code>--modal-glass-anchor</code>(.75).</li>
+      <li><b>내용</b> = 투명(배경 없음) → 컨테이너 글래스가 비쳐 층이 진다.</li>
+      <li><b>앵커 팝업 전폭</b> = 헤더에 <code>margin:-컨테이너padding</code> 상쇄 + radius <code>calc(--r-l/--r-modal − 1px)</code>.</li>
+      <li><b>예외 — 불투명 컨테이너</b>(ask-family) = blur 생략, border-bottom + 제목 톤만(동색이라 띠 안 보이고 260701 번쩍 회피). 이것도 <b>반영됨</b>(border+톤).</li>
+      <li><b>raw 창작 금지</b> — 값은 <code>:root</code> 4토큰만. 새 값 필요 시 운영자 승인 → 토큰 신설 + 거울 + CII + lock.</li>
+    </ul>
+  </div>
+
+  <h2>반영 인벤토리 — 전 모달/팝업 (미반영 0)</h2>
+  <table>
+    <tr><th>컴포넌트</th><th>컨테이너</th><th>헤더</th><th>탭</th><th>상태</th></tr>
+    <tr><td><b>이미지·영상</b> <code>#tooldlg</code></td><td><code>--modal-glass</code></td><td><code>--modal-head-bg</code></td><td><code>--modal-tabs-bg</code></td><td class="ok">✅ 3단</td></tr>
+    <tr><td><b>요약 읽기</b> <code>.dlg-h</code></td><td>본문 스크림</td><td><code>--modal-head-bg</code></td><td>—</td><td class="ok">✅</td></tr>
+    <tr><td><b>카드 변경</b> <code>.ed-h</code></td><td>불투명 .94</td><td><code>--modal-head-bg</code>(blur생략)</td><td>—</td><td class="ok">✅</td></tr>
+    <tr><td><b>대기열·메시지·발행본</b> <code>.qpop .qh</code></td><td><code>--modal-glass-anchor</code></td><td><code>--modal-head-bg</code></td><td>—</td><td class="ok">✅</td></tr>
+    <tr><td><b>잠금·전광판</b> <code>.msgpop .mh</code></td><td><code>--modal-glass-anchor</code></td><td><code>--modal-head-bg</code></td><td>—</td><td class="ok">✅</td></tr>
+    <tr><td><b>프로필 메뉴</b> <code>.pmenu-h</code></td><td><code>--modal-glass-anchor</code></td><td><code>--modal-head-bg</code></td><td>—</td><td class="ok">✅</td></tr>
+    <tr><td><b>PIN 입력</b> <code>#pindlg .pin-head</code></td><td>반투명 .72 글래스</td><td><code>--modal-head-bg</code>(글래스 띠)</td><td>—</td><td class="ok">✅ 반영</td></tr>
+    <tr><td><b>뉴스요약 입력·수정요청</b> <code>.askhead</code>×5</td><td>불투명 α=1(버그픽스)</td><td>border+톤(의도)</td><td>—</td><td class="ok">✅ 의도</td></tr>
+  </table>
+
+  <div class="foot">
+    확립본 = 참조용 스냅샷. 값 정본은 항상 <code>viewer/index.html :root</code>(충돌 시 :root 우선). 셸 변경 = <code>:root</code> 4토큰 갱신 → <code>build_design_mirror build</code> → CII 행 → <code>lock</code> → check_refs. · 글래스모피즘 = backdrop-filter blur 필수(생략 = 불투명 컨테이너 예외만).
+  </div>
+
+</div>
+</body>
+</html>

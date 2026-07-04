@@ -530,45 +530,6 @@ function petState(t){
   return {key:k, cx:SIT_X, cy:grCy(k)};
 }
 
-// ── rest 손하트(팔 감싸기) — 몸통·얼굴·다리 고정 + 팔만 안으로 감쌈(우팔=왼팔 좌우반전 데칼코마니) → 펼치며 하트 발사 · 운영자 260704 ──
-const REST_SQ=0.5, REST_HOLD=0.9, REST_OPEN=1.2, REST_FLY=1.7;
-function restArmProg(tr){
-  if(tr<REST_SQ) return easeInOut(tr/REST_SQ);                      // 감쌈 0→1
-  if(tr<REST_HOLD) return 1;                                        // 모음
-  if(tr<REST_OPEN) return 1-easeInOut((tr-REST_HOLD)/(REST_OPEN-REST_HOLD));  // 펼침 1→0
-  return 0;
-}
-function drawRestPet(tr, cx, cy){
-  const B=PETSPRITES.rest_base, A=PETSPRITES.rest_arm, bi=PIMG.rest_base, ai=PIMG.rest_arm;
-  if(!bi||!ai){ drawPet('rest',cx,cy); return; }                   // 스프라이트 미로드 = 통짜 폴백
-  const prog=restArmProg(tr);
-  const dx=Math.round(cx-B.ax*PET_SCALE), dy=Math.round(cy-B.ay*PET_SCALE);
-  const prev=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(bi, dx, dy, B.w*PET_SCALE, B.h*PET_SCALE);          // 몸통·얼굴·다리 = 완전 고정
-  const ox=62*prog, oy=30*prog;
-  ctx.drawImage(ai, dx+ox, dy+oy, A.w*PET_SCALE, A.h*PET_SCALE);    // 왼팔 = 안(오른쪽)+아래로
-  ctx.save();                                                       // 우팔 = 왼팔 좌우반전(미러축 ax)
-  ctx.translate(dx+2*A.ax*PET_SCALE, dy); ctx.scale(-1,1);
-  ctx.drawImage(ai, ox, oy, A.w*PET_SCALE, A.h*PET_SCALE);
-  ctx.restore();
-  ctx.imageSmoothingEnabled=prev;
-}
-function drawRestHearts(tr, cx, cy){
-  const age=tr-REST_HOLD; if(age<0||age>REST_FLY) return;           // 펼침(HOLD) 순간 발사
-  const HX=cx, HY=cy+16;                                            // 손 위치(몸 앞)
-  const n=2+Math.floor(hash(7,3)*2);                                // 2~3개 임의
-  for(let k=0;k<n;k++){
-    const r1=hash(k*7+1,3), r2=hash(k*5+2,9), r3=hash(k*3+3,5), spread=(k-(n-1)/2);
-    const vx=spread*66+(r1-0.5)*70, vy=-(250+r2*150);
-    const x=HX+vx*age+(r3-0.5)*8, y=HY+vy*age+46*age*age;
-    const cell=(0.55+r2*0.85)*4.6*(1+age*0.5);                      // 임의 크기 + 날며 커짐
-    let a=age<0.12?age/0.12:(age>REST_FLY-0.7?(REST_FLY-age)/0.7:1);
-    ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,a));
-    drawGlyph('#', x, y, cell, (k%2?rgb([210,85,99]):rgb([195,69,81])), 1, 1);
-    ctx.restore();
-  }
-}
-
 // ============================================================
 //  master render
 // ============================================================
@@ -608,13 +569,7 @@ function renderFrame(i){
 
   // 5. pet (front-most) — real extracted sprites
   const ps=petState(t);
-  if(ps.key==='rest'||ps.key==='rest2'){            // rest = 손하트(팔만 감쌈) + 하트 발사
-    const tr=t-T.sit1;
-    drawRestPet(tr, ps.cx, ps.cy);
-    drawRestHearts(tr, ps.cx, ps.cy);
-  } else {
-    drawPet(ps.key, ps.cx, ps.cy);
-  }
+  drawPet(ps.key, ps.cx, ps.cy);
 
   ctx.restore();
 }
