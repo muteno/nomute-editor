@@ -73,7 +73,7 @@ const TILE0_X = CX - TILES_W/2;                      // left edge of tile row
 function tileCX(i){ return TILE0_X + i*(TILE_W+TILE_GAP) + TILE_W/2; }
 
 // ladder
-const LAD = {topY:432, baseY:1078, topL:474, topR:576, baseL:320, baseR:730, rungs:5};   // baseY=캔버스 바닥 → 사다리 하단변이 배너 아랫변에 닿음 · rungs 6→5(한 단 짧게·맨 아래 rung은 baseY에 그대로 = rails 끝=rung=배너 아랫변 flush·매달린 stub 없음·운영자 260704)
+const LAD = {topY:432, baseY:1078, topL:474, topR:576, baseL:320, baseR:730, rungs:6};   // baseY=캔버스 바닥 → 사다리 하단변이 배너 아랫변에 닿음(운영자 260704 "공중에 뜬 것 해소")
 
 // ---------- easing ----------
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -266,7 +266,7 @@ function drawLadder(lit){
   ctx.moveTo(LAD.topR,LAD.topY); ctx.lineTo(LAD.baseR,LAD.baseY);
   ctx.stroke();
   ctx.lineWidth=6;            // rungs
-  for(let k=0;k<=LAD.rungs;k++){   // k=0..rungs → 맨 아래 rung이 baseY(배너 아랫변)에 flush(rails 끝과 일치=매달린 stub 없음) · rungs=5라 총 6단(한 단 짧게)·운영자 260704
+  for(let k=0;k<LAD.rungs;k++){   // 맨 아래(baseY) rung 제거 = 사다리 한 단 짧게(rails는 배너 아랫변까지 유지·운영자 260704)
     const f=k/LAD.rungs;
     const lx=lerp(LAD.topL,LAD.baseL,f), rx=lerp(LAD.topR,LAD.baseR,f);
     const yy=lerp(LAD.topY,LAD.baseY,f);
