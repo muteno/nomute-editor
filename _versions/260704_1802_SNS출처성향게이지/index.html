@@ -564,16 +564,6 @@
   .soc-chip.src-naver         { color:var(--fg); background:rgba(var(--naver-rgb),.14); border-color:rgba(var(--naver-rgb),.42); }
   .soc-chip.src-naver.ico     { display:inline-flex; align-items:center; gap:3px; padding-left:7px; }   /* 픽토 + 짧은 글자(카페·블로그) */
   .soc-chip.src-naver.ico svg { width:11px; height:11px; flex:none; display:block; }
-  /* 출처성향 게이지 — 이슈가 어느 성향 커뮤에서 떴는지 소스별 점으로(뉴스 편향바 --bias-* 토큰 계승·LLM 0·순수 매핑). */
-  .soc-gauge { position:relative; height:9px; margin-top:10px; border-radius:var(--r-pill);
-    background:linear-gradient(90deg, rgba(var(--bias-l2-rgb),.42) 0%, rgba(var(--bias-l1-rgb),.30) 28%, rgba(var(--bias-mid-rgb),.24) 50%, rgba(var(--bias-r1-rgb),.30) 72%, rgba(var(--bias-r2-rgb),.42) 100%); }
-  .soc-dot { position:absolute; top:50%; width:10px; height:10px; border-radius:50%; transform:translate(-50%,-50%); border:1.5px solid rgba(0,0,0,.4); }
-  .soc-dot.lean-ll  { background:var(--bias-l2); box-shadow:0 0 5px rgba(var(--bias-l2-rgb),.7); }
-  .soc-dot.lean-l   { background:var(--bias-l1); box-shadow:0 0 5px rgba(var(--bias-l1-rgb),.7); }
-  .soc-dot.lean-mid { background:var(--bias-mid); box-shadow:0 0 5px rgba(var(--bias-mid-rgb),.6); }
-  .soc-dot.lean-r   { background:var(--bias-r1); box-shadow:0 0 5px rgba(var(--bias-r1-rgb),.7); }
-  .soc-dot.lean-rr  { background:var(--bias-r2); box-shadow:0 0 5px rgba(var(--bias-r2-rgb),.7); }
-  .soc-dot.lean-unk { background:var(--mut); }
   .scrap-head { padding:6px 2px 12px; }
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
@@ -7269,10 +7259,6 @@ const NAVER_CHIP = {
   '지식iN':       { cls: 'src-naver src-naver-kin',       icon: '',       label: '지식iN' },
 };
 const socSrc = s => (NAVER_CHIP[s] ? NAVER_CHIP[s].cls : '');
-// 출처성향 게이지값 — 소스 → 정치성향(1~10축·biasZoneCol 정합). SOC_LEAN_MAP 우선·네이버=약진보(칩 동축)·미등록=불명(회색). LLM 0.
-const LEAN_VAL = { ll:1, l:3, mid:5, r:7, rr:9 };
-const socVal = s => { const k = SOC_LEAN_MAP[s]; if (k) return LEAN_VAL[k]; if (NAVER_CHIP[s]) return LEAN_VAL.l; return null; };
-const socValKey = v => v == null ? 'unk' : v <= 2 ? 'll' : v <= 4 ? 'l' : v <= 6 ? 'mid' : v <= 8 ? 'r' : 'rr';
 // SNS 뷰 — 소셜 버스트(커뮤니티 비정치 공론화 이슈) 레인. social_burst.py → social_candidates.json 렌더.
 // 행 = {title,url,sources[],source_count,posts,age_h,burst}. 시안 테마. 정본 설계 = docs/social-burst.md §35.3.
 let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 스태거 생략 게이트 · renderScrap 패턴 · 운영자 260622)
@@ -7293,10 +7279,8 @@ function renderSns() {
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge(r.age_h);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
-    const _dots = (r.sources || []).map(s => { const v = socVal(s); return `<span class="soc-dot lean-${socValKey(v)}" style="left:${v == null ? 50 : ((v - 1) / 9 * 100).toFixed(1)}%"></span>`; }).join('');
     el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
       <div class="soc-title"></div>
-      <div class="soc-gauge">${_dots}</div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>`;
     el.querySelector('.soc-title').textContent = r.title || '';
     const chips = el.querySelectorAll('.soc-chip');
