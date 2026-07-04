@@ -9,7 +9,8 @@ PROMPT_FILE="prompts/card-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 7스크립트 하드코딩 1점화 · 260702)
 MODEL="$PIPE_MODEL"
 TARGET="${1:-all}"
-MODE="${2:-full}"            # full=클로드+렌더 / text=텍스트만(자동 카드플랜·제미나이0) / shoot=렌더만(텍스트 재사용)
+MODE="${2:-full}"
+CARD_JOB_DEADLINE="${CARD_JOB_DEADLINE:-5400}"   # 커버리지 회수 콜 시작 허용 상한(초) — *회수 콜* 예산 게이트(잡 전역 아님·전역 백스톱은 워크플로 timeout-minutes · 평의회6). 5400+900 < card_plan 120분.            # full=클로드+렌더 / text=텍스트만(자동 카드플랜·제미나이0) / shoot=렌더만(텍스트 재사용)
 MAX_BATCH="${MAX_BATCH:-3}"  # all 배치 상한 — 무상한 Opus 폭증 차단(나머지는 다음 회차가 처리·중복skip이 페이징)
 
 # 🔒 제미나이 이중잠금 Lock B — text(자동 카드플랜) 모드는 유료 생성경로에 절대 안 닿는다.
@@ -361,39 +362,66 @@ ${lint_out}
     cov_out="$(python3 .github/scripts/card_gate.py coverage "$q" "cards/$stem/cards.md" 2>&1)"; cov_rc=$?
     printf '%s\n' "$cov_out" > "cards/$stem/coverage.log"
     [ $cov_rc -eq 2 ] && echo "::warning::[$stem] 요약→카드 알맹이 누락 의심(고신호 ≥2) — 슛 전에 '텍스트만 수정'으로 복원 검토: $(printf '%s' "$cov_out" | grep -m1 'COV 플래그')"
-    # ── 커버리지 가드(기본 OFF · CARD_COV_GUARD='1' 카나리아 · 운영자 260705 "카드도 지침 잘 따르게 검증 스위치") ──
-    #   고신호 알맹이(나이·형량·금액·인원·식별자) 증발 ≥2(cov_rc=2)일 때만, 누락 목록을 프리픽스로 박아 1회 회수 재생성.
-    #   프롬프트 = fp_base 재사용(지침 주입 포함 = 인라인 발췌 드리프트 0 · 위 규격 교정 재시도와 동일 골격).
-    #   채택 3중 = 카드 양식 확인 AND lint 통과 AND 고신호 감소 — 미달이면 기존 cards.md 유지(fail-soft·경보는 위에 이미 남음).
-    #   날조 방어 = 본 생성과 동일 신뢰(같은 프롬프트+다이제스트 전문) + 카드 = text_done 단계라 운영자 슛 전 육안 게이트(자동 발행 아님).
-    #   잡 예산 = SECONDS 게이트(기본 5400s < 잡 timeout 120분 · 회수 콜 600s 상한) — 승격 = 카나리아 ≥3건 후 운영자 사인오프(§파이프라인 e).
-    if [ "${CARD_COV_GUARD:-}" = "1" ] && [ $cov_rc -eq 2 ] && [ "$SECONDS" -le "${CARD_JOB_DEADLINE:-5400}" ]; then
-      hs1="$(printf '%s' "$cov_out" | grep -oE '고신호 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; hs1="${hs1:-9}"
-      echo "  🩹 커버리지 가드: 고신호 ${hs1}건 증발 — 1회 회수 재생성"
-      COV_PREFIX="⚠️⚠️ [알맹이 회수 — 강제]: 직전 카드가 자유요약의 핵심 수치(아래 목록)를 누락했다. 그 수치들을 서사가 맞는 카드 텍스트에 자연스럽게 회수해 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라(카드 수·구성·이미지 프롬프트는 유지 우선 · 합성기 규격 준수 · 응답 첫 글자부터 \`# {제목}\`). ⛔ 자유요약에 없는 새 사실·수치 추가 금지.
+    # ── 커버리지 가드(기본 OFF · CARD_COV_GUARD='1' 카나리아 · 운영자 260705 "카드도 지침 잘 따르게 검증 스위치" · 평의회 10인 반영) ──
+    #   고신호 알맹이(나이·형량·금액·인원·식별자) 증발 ≥2(cov_rc=2)일 때만, 누락 목록을 최종 지시로 붙여 1회 회수 재생성.
+    #   프롬프트 = fp_base + 회수 지시 *서픽스*(지침 GBLOCK 프리픽스 캐시 보존 — LINT/STRICT의 프리픽스 방식과 다른 건 의도·평의회3).
+    #   웹도구 = 차단(원료가 프롬프트 안에 전량 = 검색 효용 0·날조 벡터 차단 · 요약 가드와 정책 통일·평의회10).
+    #   채택 6중 = 양식 AND lint AND 카드 수 동일 AND 고신호 감소 AND 총플래그 비증가 AND 신규 숫자 0(역방향 날조 가드 —
+    #   digest_guard splice의 fab 가드 카드판·평의회2). 유효 측정('COV ✓'/'COV 플래그')이 아니면 채택 금지. 미달 = 원본 유지(fail-soft).
+    #   한계(정직): 이 가드는 *수치 알맹이* 축만 본다 — 起承轉結·착지·산문 흐름 같은 질적 축은 미커버(그건 지침 소프트 룰 + 운영자 슛 전 육안).
+    #   SECONDS 게이트 = *회수 콜* 예산 캡(잡 전역 예산 아님 — 그건 timeout-minutes) · 승격 = 카나리아 ≥3건 후 운영자 사인오프(§파이프라인 e).
+    if [ "${CARD_COV_GUARD:-}" = "1" ] && [ $cov_rc -eq 2 ] && [ "$SECONDS" -le "$CARD_JOB_DEADLINE" ]; then
+      hs1="$(printf '%s' "$cov_out" | grep -oE '고신호 [0-9]+건' | grep -oE '[0-9]+' | head -1)"
+      tf1="$(printf '%s' "$cov_out" | grep -oE 'COV 플래그 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; tf1="${tf1:-0}"
+      if [ -z "$hs1" ]; then
+        echo "  🩹 커버리지 가드: 고신호 건수 파싱 실패 — 회수 스킵(기준 없이 채택 불가·fail-soft)"   # 폴백 관용(구 :-9) 폐지 = 평의회2 ⑤
+      else
+        echo "  🩹 커버리지 가드: 고신호 ${hs1}건 증발 — 1회 회수 재생성(무도구·900s)"
+        n0="$(grep -c '^### \[카드' "cards/$stem/cards.md" || true)"
+        COV_SUFFIX="
+
+⚠️⚠️ [알맹이 회수 — 강제·최종 지시]: 위 지침·다이제스트로 직전에 생성된 카드가 자유요약의 핵심 수치를 누락했다. 아래 누락 목록의 수치(특히 ⚠️HS 표시)를 서사가 맞는 카드 텍스트에 자연스럽게 회수해, 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라(⚠️HS 외 목록은 서사상 자연스러울 때만 · **카드 수 동일 유지**·구성·이미지 프롬프트는 유지 우선 · 합성기 규격 준수 · 응답 첫 글자부터 \`# {제목}\`). ⛔ 자유요약에 없는 새 사실·수치 추가 금지 — 추가하는 모든 문장은 자유요약 문장으로 소급 가능해야 한다.
 [누락 수치 목록]
 ${cov_out}
-
 "
-      out3="$(printf '%s' "${COV_PREFIX}${fp_base}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
-            --model "$MODEL" --effort max \
-            --allowedTools "WebFetch,WebSearch" \
-            --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
-            --max-turns 40 2>/dev/null)" || true
-      if [ -n "${out3//[[:space:]]/}" ] && grep -qm1 '^### \[카드 1\]' <<<"$out3"; then
-        printf '%s\n' "$out3" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.cov"
-        cov2_out="$(python3 .github/scripts/card_gate.py coverage "$q" "/tmp/${stem}.cards.cov" 2>&1)" || true
-        case "$cov2_out" in *COV*) hs2="$(printf '%s' "$cov2_out" | grep -oE '고신호 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; hs2="${hs2:-0}";; *) hs2=99;; esac   # 재측정 자체가 깨지면 채택 금지(hs2=99)
-        if python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.cov" >/dev/null 2>&1 && [ "$hs2" -lt "$hs1" ]; then
-          cp "/tmp/${stem}.cards.cov" "cards/$stem/cards.md"
-          printf '%s\n' "$cov2_out" > "cards/$stem/coverage.log"
-          echo "  ✓ 회수본 채택 — 고신호 ${hs1}→${hs2}건 · lint 통과"
+        out3="$(printf '%s' "${fp_base}${COV_SUFFIX}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+              --model "$MODEL" --effort max \
+              --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep,WebFetch,WebSearch" \
+              --max-turns 40 2>/dev/null)" || true
+        if [ -n "${out3//[[:space:]]/}" ] && grep -qm1 '^### \[카드 1\]' <<<"$out3"; then
+          printf '%s\n' "$out3" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.cov"
+          n1="$(grep -c '^### \[카드' "/tmp/${stem}.cards.cov" || true)"
+          cov2_out="$(python3 .github/scripts/card_gate.py coverage "$q" "/tmp/${stem}.cards.cov" 2>&1)" || true
+          case "$cov2_out" in   # 유효 측정만 인정 — 'COV —'(생략)·크래시 = hs2/tf2=99 = 채택 금지(평의회1·2)
+            *"COV ✓"*) hs2=0; tf2=0;;
+            *"COV 플래그"*) hs2="$(printf '%s' "$cov2_out" | grep -oE '고신호 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; hs2="${hs2:-0}"
+                            tf2="$(printf '%s' "$cov2_out" | grep -oE 'COV 플래그 [0-9]+건' | grep -oE '[0-9]+' | head -1)"; tf2="${tf2:-99}";;
+            *) hs2=99; tf2=99;;
+          esac
+          fab="$(python3 - "$q" "/tmp/${stem}.cards.cov" "cards/$stem/cards.md" <<'PY' 2>/dev/null || true
+import re, sys
+nums = lambda s: set(re.findall(r"\d{2,}", s.replace(",", "")))
+q, new, old = [open(f, encoding="utf-8").read() for f in sys.argv[1:4]]
+print("\u00b7".join(sorted(nums(new) - nums(old) - nums(q))[:5]))
+PY
+)"
+          why=""
+          [ "$n1" = "$n0" ] || why="${why}카드수 ${n0}→${n1} · "
+          [ "$hs2" -lt "$hs1" ] || why="${why}고신호 ${hs1}→${hs2} 미감소 · "
+          [ "$tf2" -le "$tf1" ] || why="${why}총플래그 ${tf1}→${tf2} 증가 · "
+          [ -z "$fab" ] || why="${why}원본에 없는 숫자 도입(${fab}) · "
+          python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.cov" >/dev/null 2>&1 || why="${why}규격 lint 위반 · "
+          if [ -z "$why" ]; then
+            cp "/tmp/${stem}.cards.cov" "cards/$stem/cards.md"
+            printf '%s\n' "$cov2_out" > "cards/$stem/coverage.log"
+            echo "  ✓ 회수본 채택 — 고신호 ${hs1}→${hs2}건·플래그 ${tf1}→${tf2}건·카드 ${n0}장 유지·신규숫자 0·lint 통과"
+          else
+            echo "  🩹 회수본 검증 실패(${why%· }) — 원본 유지(fail-soft)"
+          fi
+          rm -f "/tmp/${stem}.cards.cov"
         else
-          echo "  🩹 회수본 검증 실패(lint 또는 고신호 ${hs1}→${hs2}) — 원본 유지(fail-soft)"
+          echo "  🩹 회수 콜 무출력/양식 위반 — 원본 유지(fail-soft)"
         fi
-        rm -f "/tmp/${stem}.cards.cov"
-      else
-        echo "  🩹 회수 콜 무출력/양식 위반 — 원본 유지(fail-soft)"
       fi
     fi
   fi
