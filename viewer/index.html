@@ -324,17 +324,17 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* 마스코트 = 탭 분리(운영자 260703): 뉴스요약(feed) = LOVE 마퀴 펫 v3(전구 테두리·NOW SHOWING 겹침 점 제거·LOVE♥ 120% 세로중앙 — 프리렌더 webp) / 레거시·SNS = 옛 산책 펫(공놀이) 복원. 기준선 = 기존 라인보다 6px 아래(운영자 '조금만 더 아래로'). */
-  .lovemarq { position:absolute; left:6%; bottom:-6px; height:88%; width:auto; display:block;
+  /* 마스코트 = 전 탭 공놀이 산책 펫으로 롤백(운영자 260704 '일단 100% 롤백'): 뉴스요약·레거시·SNS 모두 옛 산책 펫(공놀이 pet.webp). LOVE 마퀴펫(marquee.js·아래 .lovemarq)은 일단 도먼트(전 탭 숨김·전구 애니 정지) — 뉴스요약 재도입은 추후. 기준선 = 기존 라인보다 6px 아래(운영자 '조금만 더 아래로'). */
+  .lovemarq { position:absolute; left:6%; bottom:-6px; height:88%; width:auto; display:none;   /* 일단 전 탭 숨김(LOVE 도먼트·260704) — 뉴스요약 재도입 시 display:block + 탭 게이트 복구 */
     pointer-events:none; user-select:none; z-index:6;
     filter:drop-shadow(0 3px 5px rgba(0,0,0,.5)); }   /* canvas 실시간 렌더(marquee.js) — width:auto = canvas 내부 비율(전광판+펫동선)대로. height는 웹폰트 아닌 canvas라 갭 없음 */
-  body[data-tab="scrap"] .lovemarq, body[data-tab="sns"] .lovemarq { display:none; }
-  /* 산책 펫(공놀이 pet.webp) — 마퀴 이전 원형 그대로 복원(_versions/260703_2119 백업 정본) · 레거시/SNS 탭 전용 */
-  .pet { display:none; position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
+  /* .lovemarq(LOVE 마퀴펫) = 위 base display:none = 전 탭 숨김(도먼트) · 재도입 시 여기에 body[data-tab] 탭 게이트 복구 */
+  /* 산책 펫(공놀이 pet.webp) — 마퀴 이전 원형 그대로 복원(_versions/260703_2119 백업 정본) · 전 탭(뉴스요약·레거시·SNS) 표시 */
+  .pet { display:block; position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
     pointer-events:none; user-select:none; z-index:6; will-change:transform;
     filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
     animation:petStroll 9s ease-in-out infinite; }   /* alternate 제거 = 키프레임이 왕복 1바퀴 다 담음(엇박 리듬) */
-  body[data-tab="scrap"] .pet, body[data-tab="sns"] .pet { display:block; }
+  /* .pet(공놀이 산책펫) = 위 base display:block = 전 탭 표시(뉴스요약·레거시·SNS 모두 · 260704 롤백) */
   @keyframes petStroll {   /* 좌우 위치 + scaleX 방향전환(걷는 쪽 바라봄). 불균일 % 간격 = 엇박 */
     0%   { transform:translateX(0) scaleX(1); }
     9%   { transform:translateX(46px) scaleX(1); }    /* 빠른 dart 우 */
@@ -890,7 +890,7 @@
     padding:30px 16px calc(70px + env(safe-area-inset-bottom)); }   /* 하단 네비 클리어 (75% 축소 반영·운영자 260703) */
   /* S(개정·AB) 하단 네비 = 4안(중앙 FAB) + 네온바 인디케이터 + 글래스(투명도↑) */
   .bnav { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-nav); display:flex; justify-content:space-around; align-items:flex-end;
-    padding:0 8px calc(7px + env(safe-area-inset-bottom));
+    padding:0 8px calc(6px + env(safe-area-inset-bottom));   /* 세로패딩 축소 = 네비 높이 ~85%(운영자 260704 "네비바 높이 85%") */
     background:rgba(0,0,0,.30);   /* 검정 30% 반투명(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스와 겹쳐 은은한 어둠(운영자 260704 "아래 네비에도 투명도 30%") */
     backdrop-filter:blur(var(--blur-l)) saturate(1.35); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);   /* 글래스모피즘 복원(운영자 260703 "글래스 최대한 살려·가시성 확보됨") — 260701에 스크롤 jank로 뺐던 backdrop blur 재도입(옛 26px raw→--blur-l 22px 토큰·index 글래스 정합). ⚠️ position:fixed 고정바라 스크롤 시 미세 렉 가능 = 폰 실측서 거슬리면 --blur-m(14px)로 낮춤. */
     border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
@@ -911,7 +911,8 @@
     background:var(--accent); color:#04140a; font-size:10px; font-weight:800; line-height:1; border-radius:9px;
     box-shadow:0 0 8px rgba(15,253,2,.5); cursor:pointer; z-index:2; }
   .bnav-i .qbadge[hidden] { display:none; }
-  .bnav-fab { flex:none; width:39px; height:39px; margin:0 6px 12px; border-radius:50%; border:none; cursor:pointer;
+  .bnav-fab { flex:none; width:39px; height:39px; margin:0 6px 4px; border-radius:50%; cursor:pointer; position:relative; top:-12px;
+    border:1px solid rgba(255,255,255,.30);   /* 겉면 연한 흰 획 30%(운영자 260704) · top:-12 = 원 상단 ~30% 네비 위로 튀어나옴 · margin-bottom 축소로 네비 라인높이 = 탭글자와 동일(네비 안 키움) */
     background:rgba(0,0,0,.30); color:var(--accent); display:grid; place-items:center;
     backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);   /* 검정 30% 반투명 원(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스로 형체 유지 · 음양각(inset 하이라이트/음영/유리링)·외부 그림자 제거 = 평평한 버튼만 딱(운영자 260704 "음양각 오버렙 없애고 자연스럽게 버튼만 · 검정 30% 투명도") */
     transition:transform .12s; text-decoration:none; }
@@ -2174,8 +2175,8 @@
     <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
     <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
-  <canvas class="lovemarq" id="marqCanvas" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 = 실시간 canvas 렌더(marquee.js) — 전광판이 글자 크기에 맞춰 축소·NOW SHOWING 유지·배경 투명(노이즈 0)·원본 애니 재현·키워드/글자색 커스텀(프로필-설정-전광판). 옛 love_marquee.webp 대체(260704) · 뉴스요약 탭 전용 -->
-  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 레거시·SNS 탭 = 옛 산책 펫(공놀이) 복원(운영자 260703) -->
+  <canvas class="lovemarq" id="marqCanvas" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 = 실시간 canvas 렌더(marquee.js) — 전광판·NOW SHOWING·펫 애니·키워드/색 커스텀. 일단 도먼트(CSS display:none 전 탭·marquee.js hidden()=항상 정지·260704 롤백) — 뉴스요약 재도입 예정 -->
+  <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 전 탭(뉴스요약·레거시·SNS) = 옛 산책 펫(공놀이) — 260704 '100% 롤백'(운영자) -->
 
   <div class="topsearch" id="topsearch">
     <input id="q" type="search" placeholder="검색" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="nomute-q" enterkeyhint="search" data-1p-ignore data-lpignore="true" data-form-type="other"><!-- 자동완성·autofill(카드/주소/이전입력 제안) 차단 = 일반 텍스트칸(운영자 260628) · 외형·검색기능 불변 · 비번관리자 autofill도 무시 -->
