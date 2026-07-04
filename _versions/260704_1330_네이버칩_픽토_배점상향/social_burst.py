@@ -56,11 +56,8 @@ FRESH_HOURS = float(os.environ.get("SOCIAL_FRESH_HOURS", "24"))
 POSTS_W   = float(os.environ.get("SOCIAL_POSTS_W",   "2.0"))
 POSTS_CAP = float(os.environ.get("SOCIAL_POSTS_CAP", "6.0"))
 # 수집량 대비 정규화 기준(운영자: "수집량이 그만큼 많으니 다른거 수집량에 대비해서 가점 배분") —
-# 소스가 NORM_REF보다 많이 긁으면 게시물 개당 가점↓(개당 weight = min(1, NORM_REF/그 소스 총수집)).
-# ⚙️ 20→75 (운영자 260704): 네이버 개당 가점이 과하게 깎여(100수집→0.20=20%) 교차 클러스터서 저평가 → 75로 완화(100수집→0.75=75%).
-#   커뮤(대개 <20수집 = 이미 1.0)엔 거의 무영향, 뽐뿌(~60)만 부분 상향. 네이버카페(수백)는 75/N로 여전히 물량 방어(예 400→0.19).
-#   platform_count 1차정렬·POSTS_CAP=6은 불변 = 네이버 단독 지배 방지 유지(가점만 상향).
-NORM_REF  = float(os.environ.get("SOCIAL_NORM_REF",  "75"))
+# 소스가 NORM_REF보다 많이 긁으면 게시물 개당 가점↓. 네이버(display100·수백건)=개당 소수, 커뮤(수십건)=1.0 → 물량으로 못 누름.
+NORM_REF  = float(os.environ.get("SOCIAL_NORM_REF",  "20"))
 
 # ── 소스(어댑터) — RSS가 가장 안정적(SSR·무인증). URL은 라이브(Actions)에서 실측·확정 필요. ──
 # (소스명, RSS URL) · 비정치·생활/이슈 게시판 위주. 막히면 docs의 어그리게이터/네이버로 대체.
