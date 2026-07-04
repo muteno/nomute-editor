@@ -115,8 +115,6 @@ _FWD_UNUSED = {
     '--fw-b', '--fw-x', '--lh-base', '--on-arm', '--r-l', '--r-m', '--r-pill', '--sp-1', '--sp-2',
     '--sp-3', '--sp-4', '--warn',
     '--press-pico',   # 픽토온리 눌림 = thumb/ly/k의 rmin/file가 씀(index엔 .55 픽토 버튼 없음) = forward-declared(260628)
-    # accent-N 값 SSOT(운영자 260704 정립) — 의미토큰(danger/warn/arm/thumb/hist-accent/info)이 :root 별칭으로 참조 = 컴포넌트 직접 미배선이 의도(값 단일정본 패턴·§🎨).
-    '--accent-2-rgb', '--accent-3', '--accent-4', '--accent-4-rgb',
 }
 # --on-arm(arm 채움 위 글자색) = .revsend.confirm 채움 그라데 → 표준 플랫 arm 전환(260622)으로 현재 미배선.
 # 정의는 보존(--arm/--arm-rgb 짝 · 향후 채움형 arm 컴포넌트용 어휘) → forward-unused 처리(§🎨).
