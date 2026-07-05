@@ -1,0 +1,188 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>변경 보고 · 링크 호버 자동 오픈 + 프로필 hover 강조색</title>
+<style>
+  :root{
+    --bg:#121212; --card:#181a1c; --glass2:rgba(18,19,22,.55);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --fg:#eef7f0; --mut:#8fa697;
+    --r-l:16px; --r-modal:22px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--fg); line-height:1.65;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif;
+    padding:24px 16px 72px; max-width:780px; margin:0 auto; -webkit-font-smoothing:antialiased;}
+  h1{font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.35;}
+  h2{font-size:17px; font-weight:800; margin:34px 0 12px; padding-top:20px; border-top:1px solid var(--line); letter-spacing:-.01em;}
+  h3{font-size:14px; font-weight:700; color:var(--mut); margin:18px 0 8px; text-transform:none;}
+  p{margin:8px 0; font-size:14.5px;}
+  .meta{color:var(--mut); font-size:12.5px; margin-top:6px;}
+  .meta code{color:var(--accent); font-weight:700;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px;
+    background:rgba(255,255,255,.06); padding:1px 5px; border-radius:5px; color:#cfe9d6;}
+  .lead{background:var(--card); border:1px solid var(--line); border-radius:var(--r-l); padding:14px 16px; margin:16px 0; font-size:14px;}
+  .sumgrid{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0;}
+  .sumcard{flex:1 1 240px; background:var(--card); border:1px solid var(--line); border-radius:var(--r-l); padding:14px 15px;}
+  .sumcard .n{display:inline-block; width:22px; height:22px; border-radius:50%; background:rgba(var(--accent-rgb),.14);
+    color:var(--accent); font-weight:800; font-size:12px; text-align:center; line-height:22px; margin-bottom:8px;}
+  .sumcard b{display:block; font-size:14.5px; margin-bottom:4px;}
+  .sumcard span{font-size:12.5px; color:var(--mut);}
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:13.5px;}
+  th,td{text-align:left; padding:9px 11px; border-bottom:1px solid var(--line2); vertical-align:top;}
+  th{color:var(--mut); font-weight:700; font-size:12px;}
+  td.before{color:var(--mut);} td.after{color:var(--fg);}
+  .demo{background:var(--card); border:1px solid var(--line); border-radius:var(--r-l); padding:18px 16px; margin:14px 0;}
+  .demo .cap{font-size:12px; color:var(--mut); margin-bottom:14px;}
+  .demo .cap b{color:var(--accent);}
+  /* 공유 팝업 미니(뷰어 .bpop / .pmenu 스타일 복사) */
+  .mini{width:190px; background:var(--glass2); border:1px solid var(--line); border-radius:14px; padding:8px 6px;
+    box-shadow:0 12px 34px rgba(0,0,0,.5);}
+  .mini a{display:block; padding:8px 10px; font-size:13px; font-weight:600; color:var(--fg); text-decoration:none; border-radius:8px; cursor:pointer; transition:color .14s ease;}
+  .mini.pre-accent a:hover{color:var(--fg);}            /* 프로필 = 옛(무채색) */
+  .mini.has-accent a:hover{color:var(--accent);}         /* 링크 + 새 프로필 = 강조색 */
+  .demorow{display:flex; gap:22px; flex-wrap:wrap; align-items:flex-start;}
+  .demorow .lbl{font-size:11.5px; color:var(--mut); margin-bottom:8px; font-weight:700;}
+  .demorow .lbl.bad::before{content:"✕ "; color:#ff7a6b;}
+  .demorow .lbl.good::before{content:"✓ "; color:var(--accent);}
+  /* 링크 hover 자동오픈 데모 */
+  .hoverbay{position:relative; height:180px; border:1px dashed var(--line); border-radius:12px; background:rgba(0,0,0,.18); overflow:hidden;}
+  .navbar{position:absolute; left:0; right:0; bottom:0; height:48px; display:flex; align-items:center; justify-content:center; gap:28px;
+    background:var(--glass2); border-top:1px solid var(--line); font-size:12.5px; color:var(--mut);}
+  .navbar .lk{position:relative; color:var(--fg); font-weight:700; cursor:pointer; padding:6px 12px; border-radius:8px;}
+  .navbar .lk .prog{position:absolute; left:6px; right:6px; bottom:2px; height:2px; border-radius:2px; background:var(--accent); transform:scaleX(0); transform-origin:left; opacity:0;}
+  .navbar .lk.arming .prog{opacity:1; transition:transform .5s linear; transform:scaleX(1);}
+  .pop{position:absolute; bottom:56px; left:50%; transform:translateX(-50%) translateY(6px); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease;}
+  .pop.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .hint{font-size:11.5px; color:var(--mut); margin-top:10px;}
+  ul{margin:8px 0 8px 2px; padding-left:18px;} li{font-size:13.5px; margin:5px 0;}
+  li.plus::marker{content:"＋ "; } li.minus::marker{content:"－ ";}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; border:1px solid;}
+  .pill.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08);}
+  .verify{background:rgba(var(--accent-rgb),.05); border:1px solid rgba(var(--accent-rgb),.25); border-radius:var(--r-l); padding:14px 16px; margin:14px 0; font-size:13.5px;}
+  .verify b{color:var(--accent);}
+  .foot{margin-top:36px; padding-top:16px; border-top:1px solid var(--line); font-size:11.5px; color:var(--mut);}
+</style>
+
+<h1>하단 '링크' 0.5초 호버 자동 오픈<br>+ 프로필 메뉴 hover 강조색</h1>
+<div class="meta">대상 파일 <code>viewer/index.html</code> · 원격 실측 반영 완료 <code>origin/main db0ab6f</code> · check_refs rc=0</div>
+
+<div class="lead">
+  하단 네비게이션과 프로필 메뉴의 <b>호버(마우스 올림)</b> 경험을 다듬었어. 두 변경 모두 <b>기존 디자인 토큰 계승</b>(새 색 창작 0)이고, viewer 파일 한 개만 손댄 국소 손질이야. 아래 데모는 실제로 마우스를 올려보면 동작해.
+</div>
+
+<div class="sumgrid">
+  <div class="sumcard">
+    <span class="n">1</span>
+    <b>링크 버튼 — 0.5초 호버 = 자동 오픈</b>
+    <span>하단 '링크'에 마우스를 0.5초 이상 올리면 링크 메뉴가 저절로 뜸. 클릭 안 해도 됨.</span>
+  </div>
+  <div class="sumcard">
+    <span class="n">2</span>
+    <b>프로필 메뉴 — hover 시 강조색</b>
+    <span>프로필 메뉴 항목에 마우스를 올리면 초록 강조색으로 바뀜. 링크 메뉴와 동일한 느낌.</span>
+  </div>
+</div>
+
+<h2>① 하단 '링크' = 마우스 0.5초 호버 시 자동 오픈</h2>
+<p>하단 네비의 <code>링크</code> 버튼(<code>#linkfab</code>)에 마우스를 <b>0.5초 이상 계속 올려두면</b> 링크 메뉴(피드 탐색 팝업)가 자동으로 떠. 클릭해서 여는 기존 방식은 <b>그대로 유지</b>돼.</p>
+
+<div class="demo">
+  <div class="cap">👇 <b>'링크'에 마우스를 올린 채 0.5초 기다려봐</b> — 저절로 뜸. 마우스를 떼면(0.5초 전) 취소돼. (터치 화면에선 이 데모의 hover가 없으니 실제 폰에선 탭으로 열려.)</div>
+  <div class="hoverbay">
+    <div class="pop" id="demoPop">
+      <div class="mini has-accent">
+        <a>레거시 피드</a><a>X</a><a>Thread</a><a>인스타그램</a>
+      </div>
+    </div>
+    <div class="navbar">
+      <span>레거시</span><span>SNS</span><span>＋</span><span>뉴스 요약</span>
+      <span class="lk" id="demoLk">링크<span class="prog"></span></span>
+    </div>
+  </div>
+  <div class="hint">동작 원리: <code>pointerenter</code>(마우스만)→0.5초 타이머→<code>linkpop</code> 열기. <code>pointerleave</code>/누름이면 타이머 취소.</div>
+</div>
+
+<h3>전 / 후</h3>
+<table>
+  <tr><th>항목</th><th>전</th><th>후</th></tr>
+  <tr><td>여는 법</td><td class="before">클릭(탭)만</td><td class="after">클릭 <b>또는</b> 마우스 0.5초 호버(자동)</td></tr>
+  <tr><td>터치·펜</td><td class="before">탭으로 열림</td><td class="after">탭으로 열림 <b>(변화 없음)</b></td></tr>
+  <tr><td>닫는 법</td><td class="before">바깥 클릭·재탭·X</td><td class="after">동일 <b>(변화 없음)</b></td></tr>
+</table>
+
+<h3>왜 이렇게 했나 · 장단점</h3>
+<ul>
+  <li class="plus"><b>마우스 전용 가드</b>: <code>e.pointerType==='mouse'</code>일 때만 호버 타이머가 걸려서, 터치·펜으로 탭할 때 오작동(눌렀는데 딴 게 뜸)이 없어.</li>
+  <li class="plus"><b>기존 로직 재사용</b>: 클릭으로 열 때 쓰던 코드(다른 팝업 닫기→표시→위치잡기)를 그대로 호출 = 열림 결과가 클릭과 100% 동일. 새 경로 안 만듦.</li>
+  <li class="plus"><b>열기만</b> 넣고 닫기·클릭 토글은 안 건드림 = 회귀 위험 최소.</li>
+  <li class="minus">데스크톱에서 <b>호버 아웃해도 자동으로 안 닫힘</b>(닫기는 요청 범위 밖이라 기존 방식 유지). 마우스가 벗어나도 팝업이 남아있는 게 어색하면, '0.5초 뒤 자동 닫기'도 추가할 수 있어 — 원하면 말해줘.</li>
+</ul>
+
+<h2>② 프로필 메뉴 항목 = hover 시 강조색</h2>
+<p>지적한 대로 <b>프로필 메뉴</b> 항목은 마우스를 올려도 흰색 그대로라 뭘 고르는지 잘 안 보였어. <b>링크 메뉴</b>는 올리면 초록 강조색이 나와서 명확했지. 프로필 메뉴도 <b>링크 메뉴와 똑같이</b> 강조색이 나오게 통일했어.</p>
+
+<div class="demo">
+  <div class="cap">👇 <b>세 메뉴에 각각 마우스를 올려봐</b> — 왼쪽(옛 프로필)은 흰색뿐, 가운데(새 프로필)·오른쪽(링크)은 초록 강조색.</div>
+  <div class="demorow">
+    <div>
+      <div class="lbl bad">전 · 프로필(무채색)</div>
+      <div class="mini pre-accent"><a>SNS</a><a>설정</a><a>발행본</a><a>새로고침</a></div>
+    </div>
+    <div>
+      <div class="lbl good">후 · 프로필(강조색)</div>
+      <div class="mini has-accent"><a>SNS</a><a>설정</a><a>발행본</a><a>새로고침</a></div>
+    </div>
+    <div>
+      <div class="lbl good">참고 · 링크 메뉴</div>
+      <div class="mini has-accent"><a>레거시 피드</a><a>X</a><a>Thread</a><a>인스타그램</a></div>
+    </div>
+  </div>
+</div>
+
+<h3>전 / 후 (CSS)</h3>
+<table>
+  <tr><th>선택자</th><th>전</th><th>후</th></tr>
+  <tr><td><code>.pmenu a:hover</code><br><code>.pmenu button:hover</code></td><td class="before"><code>color:var(--fg)</code> (흰)</td><td class="after"><code>color:var(--accent)</code> (초록)</td></tr>
+  <tr><td><code>.pmenu-sub a:hover</code></td><td class="before"><code>var(--fg)</code></td><td class="after"><code>var(--accent)</code></td></tr>
+  <tr><td><code>.pmenu-sub button:hover</code></td><td class="before"><code>var(--fg)</code></td><td class="after"><code>var(--accent)</code></td></tr>
+</table>
+
+<h3>왜 이렇게 했나 · 장단점</h3>
+<ul>
+  <li class="plus"><b>선택 어포던스</b>: 지금 커서가 어느 항목 위인지 색으로 즉시 보임 = 오클릭 감소.</li>
+  <li class="plus"><b>링크 메뉴와 통일</b>: 둘이 다르게 반응하던 불일치를 없앰. 참고 소스는 <code>.bpop a:hover</code>(링크 메뉴)를 그대로 계승.</li>
+  <li class="plus"><b>기존 토큰만</b> 사용(<code>--accent</code>) = raw 색 창작 0, 브랜드 팔레트 안에서 움직임.</li>
+  <li class="minus">과거 260629에 프로필 메뉴를 일부러 무채색으로 만든 이력이 있어(팝업 크롬 중립화). 이번엔 <b>운영자 요청</b>으로 그 결정을 뒤집은 것 — 경위를 코드 주석에 남겨서 다음 세션이 '무채색 규칙 위반'으로 오판해 되돌리지 않게 했어.</li>
+</ul>
+
+<h2>효율성 · 품질 리스크</h2>
+<ul>
+  <li class="plus"><b>효율</b>: 순수 CSS hover 색 + 이벤트 리스너 3개(총 +18줄/−3줄). 렌더·네트워크·파이프라인 영향 0. 리플로우 없음.</li>
+  <li class="plus"><b>접근성</b>: 색만 바뀌고 구조·포커스·aria 불변. 키보드 동작 그대로.</li>
+  <li class="minus"><b>알림 토글(ON/OFF)</b>도 <code>.pmenu button</code>에 걸려 OFF일 때 hover하면 초록이 돼(누르면 켜진다는 신호로 자연스러움). 어색하면 이 항목만 제외 가능 — 판단 원하면 알려줘.</li>
+</ul>
+
+<div class="verify">
+  <b>검증</b> · <code>python3 shared/check_refs.py</code> rc=0 (디자인 게이트·JS 구문·거울/토큰 정합 전부 통과, 사용 색은 <code>--accent</code> 기존 토큰). 국소 뷰어 손질(단일 파일·기틀/파이프라인 무관)이라 자가검증. 머지 후 <code>git show origin/main:viewer/index.html</code>로 4곳 반영 실측 확인.
+</div>
+
+<div class="foot">
+  노뮤트 뷰어 · 일회성 변경 스냅샷 보고서 · 색은 viewer <code>:root</code> 토큰값 복사 인라인(자기완결)
+</div>
+
+<script>
+  // ① 링크 hover 자동오픈 데모 — 실제 구현과 동일 로직(pointerType 마우스만·0.5초·leave/down 취소)
+  (function(){
+    var lk = document.getElementById('demoLk'), pop = document.getElementById('demoPop'), t = null;
+    lk.addEventListener('pointerenter', function(e){
+      if (e.pointerType !== 'mouse') return;
+      clearTimeout(t); lk.classList.add('arming');
+      t = setTimeout(function(){ pop.classList.add('show'); lk.classList.remove('arming'); }, 500);
+    });
+    lk.addEventListener('pointerleave', function(){ clearTimeout(t); lk.classList.remove('arming'); });
+    lk.addEventListener('pointerdown', function(){ clearTimeout(t); lk.classList.remove('arming'); });
+    // 데모 바깥 클릭 = 팝업 닫기(재시연용)
+    document.addEventListener('click', function(e){ if (!lk.contains(e.target) && !pop.contains(e.target)) pop.classList.remove('show'); });
+  })();
+</script>
