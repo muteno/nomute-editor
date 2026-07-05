@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<title>잠금 PIN 플레이그라운드 — 뉴스 큐레이션</title>
+<title>잠금 PIN 플레이그라운드 v2 — 뉴스 큐레이션</title>
 <style>
   /* 색 정본 = viewer/index.html :root — 이 파일은 시안 스냅샷(라이브 이식 시 var() 토큰 계승) */
   :root { --accent:#00EED2; --accent-rgb:0,238,210; --a2:#d8ff3d; --a2-rgb:216,255,61; --a4:#FFE13D; --a4-rgb:255,225,61;
@@ -17,33 +17,37 @@
 
   /* ── 무대 = 폰 프레임 ── */
   .stagewrap { display:flex; justify-content:center; margin-top:14px; }
-  .stage { position:relative; width:min(392px,94vw); height:680px; border-radius:26px; overflow:hidden;
+  .stage { position:relative; width:min(392px,94vw); height:700px; border-radius:26px; overflow:hidden;
     border:1px solid rgba(255,255,255,.11); background:#0b0d0c; box-shadow:0 30px 80px rgba(0,0,0,.5); }
-  /* 뒤 배경 = 가짜 피드(글래스가 빨아들일 내용) + 컬러 블롭 */
-  .bgfeed { position:absolute; inset:0; padding:64px 16px 0; filter:saturate(1.05); }
+  .bgfeed { position:absolute; inset:0; padding:64px 16px 0; }
   .bgcard { height:92px; border-radius:16px; margin-bottom:12px; border:1px solid rgba(255,255,255,.09);
     background:linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); position:relative; overflow:hidden; }
   .bgcard i { position:absolute; left:14px; top:16px; width:38%; height:10px; border-radius:6px; background:rgba(255,255,255,.28); }
   .bgcard em { position:absolute; left:14px; top:38px; width:72%; height:8px; border-radius:6px; background:rgba(255,255,255,.13); }
   .bgcard u  { position:absolute; left:14px; top:56px; width:58%; height:8px; border-radius:6px; background:rgba(255,255,255,.10); }
-  .bgcard.c1 i { background:rgba(var(--accent-rgb),.75); }
-  .bgcard.c2 i { background:rgba(var(--a4-rgb),.8); }
-  .bgcard.c3 i { background:rgba(255,94,200,.75); }
-  .bgcard.c4 i { background:rgba(56,198,255,.8); }
-  .bgcard.c5 i { background:rgba(172,92,255,.8); }
+  .bgcard.c1 i { background:rgba(var(--accent-rgb),.75); } .bgcard.c2 i { background:rgba(var(--a4-rgb),.8); }
+  .bgcard.c3 i { background:rgba(255,94,200,.75); } .bgcard.c4 i { background:rgba(56,198,255,.8); } .bgcard.c5 i { background:rgba(172,92,255,.8); }
   .blob { position:absolute; width:230px; height:230px; border-radius:50%; filter:blur(56px); pointer-events:none; }
   .bl1 { background:rgba(var(--accent-rgb),.32); top:-70px; left:-40px; animation:dr1 9s ease-in-out infinite alternate; }
   .bl2 { background:rgba(56,120,255,.30); bottom:-90px; right:-50px; animation:dr2 10s ease-in-out infinite alternate; }
   @keyframes dr1 { to { transform:translate(90px,50px) scale(1.12); } }
   @keyframes dr2 { to { transform:translate(-80px,-40px) scale(.9); } }
+  /* 컨텍스트 목업 — 잠금 설정(프로필 메뉴)·발행본(행 리스트) */
+  .mock-pmenu { position:absolute; top:16px; right:14px; width:150px; padding:8px; border-radius:14px; display:none;
+    background:rgba(18,19,22,.75); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  .mock-pmenu b { display:block; font-size:12px; font-weight:700; color:var(--fg); padding:7px 10px; }
+  .mock-pmenu b.mm { color:var(--mut); padding-left:20px; font-weight:600; }
+  .mock-pub { position:absolute; top:24px; left:16px; right:16px; padding:10px 12px; border-radius:14px; display:none;
+    background:rgba(18,19,22,.75); border:1px solid rgba(255,255,255,.13); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); font-size:12px; }
+  .mock-pub b { color:var(--fg); font-weight:800; display:block; margin-bottom:4px; }
+  .mock-pub span { color:var(--mut); }
+  .stage[data-ctx="set"] .mock-pmenu { display:block; }
+  .stage[data-ctx="pub"] .mock-pub { display:block; }
 
   /* ── 잠금 오버레이 ── */
-  .lock { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; padding-top:96px;
-    background:rgba(5,11,13,.42); }
-  .stage[data-scrim="off"] .lock { backdrop-filter:none; -webkit-backdrop-filter:none; }
-  .stage[data-scrim="on"]  .lock { backdrop-filter:blur(calc(var(--glass) * .45)) saturate(1.1); -webkit-backdrop-filter:blur(calc(var(--glass) * .45)) saturate(1.1); }
-
-  /* 워드마크 + 점 */
+  .lock { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; padding-top:88px; background:rgba(5,11,13,.42); }
+  .stage[data-scrim="on"] .lock { backdrop-filter:blur(calc(var(--glass) * .45)) saturate(1.1); -webkit-backdrop-filter:blur(calc(var(--glass) * .45)) saturate(1.1); }
+  .stage[data-ctx="set"] .lock, .stage[data-ctx="pub"] .lock { background:rgba(5,11,13,.30); padding-top:120px; }
   .wm { text-align:center; z-index:2; }
   .wm b { display:block; font-weight:800; letter-spacing:-.5px; font-size:var(--wmsz,27px); text-shadow:0 2px 18px rgba(0,0,0,.55); }
   .wm small { display:block; margin-top:2px; font-size:11px; font-weight:600; letter-spacing:2.4px; color:var(--mut); text-transform:uppercase; }
@@ -51,61 +55,87 @@
   .gdots i { font-style:normal; animation:gd 1.2s ease-in-out infinite; }
   .gdots i:nth-child(2) { animation-delay:.18s; } .gdots i:nth-child(3) { animation-delay:.36s; }
   @keyframes gd { 0%,70%,100% { opacity:.2; } 30% { opacity:1; } }
+  .stage[data-ctx="set"] .wm, .stage[data-ctx="pub"] .wm { display:none; }   /* 팝업 컨텍스트 = 워드마크 없음(작은 모달) */
 
-  /* ── PIN 블록(카드+슬롯+패드) ── */
+  /* ── PIN 블록 ── */
   .pinwrap { margin-top:calc(26px + var(--pinY,40px)); z-index:2; display:flex; flex-direction:column; align-items:center; transition:margin-top .25s var(--ease); }
-  .pincard { display:flex; flex-direction:column; align-items:center; padding:22px 22px 18px; border-radius:22px; }
-  .stage[data-card="on"] .pincard { background:rgba(18,19,22,var(--cardA,.42)); border:1px solid rgba(255,255,255,.13);
+  .stage[data-ctx="set"] .pinwrap, .stage[data-ctx="pub"] .pinwrap { margin-top:calc(10px + var(--pinY,40px)); }
+  .pincard { display:flex; flex-direction:column; align-items:center; padding:20px 22px 18px; border-radius:22px; }
+  .stage[data-card="on"] .pincard, .stage[data-ctx="set"] .pincard, .stage[data-ctx="pub"] .pincard {
+    background:rgba(18,19,22,var(--cardA,.42)); border:1px solid rgba(255,255,255,.13);
     backdrop-filter:blur(var(--glass,22px)) saturate(1.25); -webkit-backdrop-filter:blur(var(--glass,22px)) saturate(1.25);
-    box-shadow:0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10); }
-  .stage[data-card="off"] .pincard { background:none; border:1px solid transparent; }
+    box-shadow:0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10); }   /* 팝업 컨텍스트 = 모달이므로 카드 항상 ON */
+  .stage[data-card="off"]:not([data-ctx="set"]):not([data-ctx="pub"]) .pincard { background:none; border:1px solid transparent; }
+  .pintitle { display:none; width:100%; align-items:center; justify-content:space-between; gap:14px; margin:-4px 0 14px; font-size:14px; font-weight:800; }
+  .pintitle .px { width:26px; height:26px; flex:none; border:1px solid rgba(255,255,255,.16); border-radius:8px; display:grid; place-items:center; color:var(--mut); }
+  .pintitle .px svg { width:13px; height:13px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; }
+  .stage[data-ctx="set"] .pintitle, .stage[data-ctx="pub"] .pintitle { display:flex; }
 
   .slots { display:flex; gap:15px; margin-bottom:20px; min-height:22px; align-items:center; }
   .slot { width:var(--slotsz,15px); height:var(--slotsz,15px); position:relative; display:grid; place-items:center;
-    color:var(--fg); font-weight:800; font-size:15px; transition:transform .15s var(--ease); }
+    color:var(--fg); font-weight:800; font-size:15px; }
   .slot::before { content:''; position:absolute; inset:0; border:1.6px solid rgba(var(--fg-rgb),.42); transition:all .18s var(--ease); }
-  /* 모양별 */
-  .stage[data-shape="dot"]    .slot::before { border-radius:50%; }
-  .stage[data-shape="ring"]   .slot::before { border-radius:50%; }
+  .slot::after { content:''; position:absolute; inset:-4px; border-radius:50%; border:2px solid rgba(var(--hit-rgb),.6); opacity:0; pointer-events:none; }
+  .stage[data-shape="dot"] .slot::before, .stage[data-shape="ring"] .slot::before, .stage[data-shape="digit"] .slot::before { border-radius:50%; }
   .stage[data-shape="square"] .slot::before { border-radius:5px; }
-  .stage[data-shape="dia"]    .slot::before { border-radius:3px; transform:rotate(45deg) scale(.86); }
-  .stage[data-shape="dash"]   .slot::before { height:4px; top:auto; bottom:4px; border:none; border-radius:3px; background:rgba(var(--fg-rgb),.35); }
-  .stage[data-shape="digit"]  .slot::before { border-radius:50%; }
-  /* 채움 */
-  .stage[data-shape="dot"]    .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.55); }
-  .stage[data-shape="ring"]   .slot.on::before { border-color:var(--hit); border-width:4px; box-shadow:0 0 10px rgba(var(--hit-rgb),.45); }
-  .stage[data-shape="square"] .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.5); }
-  .stage[data-shape="dia"]    .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.5); }
-  .stage[data-shape="dash"]   .slot.on::before { background:var(--hit); box-shadow:0 0 10px rgba(var(--hit-rgb),.55); }
-  .stage[data-shape="digit"]  .slot.on::before { background:var(--hit); border-color:var(--hit); }
-  .slot.on { transform:scale(1.12); }
+  .stage[data-shape="dia"] .slot::before { border-radius:3px; transform:rotate(45deg) scale(.86); }
+  .stage[data-shape="dash"] .slot::before { height:4px; top:auto; bottom:4px; border:none; border-radius:3px; background:rgba(var(--fg-rgb),.35); }
+  .stage[data-shape="dot"] .slot.on::before, .stage[data-shape="digit"] .slot.on::before, .stage[data-shape="square"] .slot.on::before, .stage[data-shape="dia"] .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.55); }
+  .stage[data-shape="ring"] .slot.on::before { border-color:var(--hit); border-width:4px; box-shadow:0 0 10px rgba(var(--hit-rgb),.45); }
+  .stage[data-shape="dash"] .slot.on::before { background:var(--hit); box-shadow:0 0 10px rgba(var(--hit-rgb),.55); }
   .slot .dg { position:relative; z-index:1; opacity:0; }
   .stage[data-shape="digit"] .slot.showdg::before { opacity:0; }
   .stage[data-shape="digit"] .slot.showdg .dg { opacity:1; }
+  /* 채움 효과(방금 입력 슬롯 .just) — 운영자 260705 v2 */
+  .stage[data-fill="pop"] .slot.just { animation:sPop .32s var(--ease); }
+  @keyframes sPop { 0% { transform:scale(.3); } 60% { transform:scale(1.28); } 100% { transform:scale(1); } }
+  .stage[data-fill="bnc"] .slot.just { animation:sBnc .36s var(--ease); }
+  @keyframes sBnc { 0% { transform:translateY(0); } 40% { transform:translateY(-7px) scale(1.12); } 100% { transform:translateY(0); } }
+  .stage[data-fill="fade"] .slot.just::before { animation:sFade .4s ease; }
+  @keyframes sFade { from { opacity:.15; } to { opacity:1; } }
+  .stage[data-fill="glow"] .slot.just::after { animation:sGlow .5s var(--ease); }
+  @keyframes sGlow { 0% { opacity:1; transform:scale(.5); } 100% { opacity:0; transform:scale(1.9); } }
   .slots.shake { animation:shk .5s var(--ease); }
   .slots.shake .slot::before { border-color:#e23b2a !important; background:none !important; box-shadow:0 0 12px rgba(226,59,42,.5) !important; }
   @keyframes shk { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-9px)} 36%{transform:translateX(8px)} 54%{transform:translateX(-6px)} 72%{transform:translateX(4px)} 88%{transform:translateX(-2px)} }
+  .slots.ok .slot::before { border-color:var(--hit); background:var(--hit); box-shadow:0 0 16px rgba(var(--hit-rgb),.7); }
 
-  /* 키패드 */
+  /* ── 키패드 — 모양 4종 × 테두리 × 간격 × 투명도 ── */
   .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--padgap,12px); width:246px; }
   .key { position:relative; height:58px; display:grid; place-items:center; font:700 20px/1 inherit; color:var(--fg);
-    cursor:pointer; user-select:none; overflow:visible; transition:transform .1s var(--ease), background .15s, color .15s, border-color .15s; border:1px solid rgba(255,255,255,.15); }
-  .key:active { transform:scale(.9); }
+    cursor:pointer; user-select:none; overflow:visible; border:1px solid rgba(255,255,255,.15);
+    transition:transform .1s var(--ease), background .15s, color .15s, border-color .15s; }
   .key.empty { pointer-events:none; visibility:hidden; }
   .key svg { width:22px; height:22px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
-  /* 키 스타일: 원형 글래스 vs 플랫 셀(현행 앱) */
-  .stage[data-keystyle="glass"] .key { border-radius:50%; width:62px; height:62px; margin:0 auto; background:rgba(255,255,255,var(--keyA,.07));
-    backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }   /* 정원(62×62) — 셀 폭에 맡기면 타원 */
-  .stage[data-keystyle="flat"] .pad { gap:0; border:1px solid rgba(255,255,255,.13); border-radius:16px; overflow:hidden;
-    background:rgba(255,255,255,calc(var(--keyA,.07) * .5)); backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }
-  .stage[data-keystyle="flat"] .key { border:none; border-radius:0; height:60px; }
-  .stage[data-keystyle="flat"] .key:nth-child(3n+2), .stage[data-keystyle="flat"] .key:nth-child(3n) { border-left:1px solid rgba(255,255,255,.09); }
-  .stage[data-keystyle="flat"] .key:nth-child(n+4) { border-top:1px solid rgba(255,255,255,.09); }
-  .stage[data-keystyle="flat"] .key.empty { visibility:visible; pointer-events:none; }
-  /* 눌림 색 */
-  .key.hit { color:var(--hit); border-color:rgba(var(--hit-rgb),.55); background:rgba(var(--hit-rgb),.16); }
-  .stage[data-keystyle="flat"] .key.hit { background:rgba(var(--hit-rgb),.14); }
-
+  /* 원형 글래스 */
+  .stage[data-keyshape="glass"] .key { border-radius:50%; width:62px; height:62px; margin:0 auto;
+    background:rgba(255,255,255,var(--keyA,.07)); backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }
+  /* 숫자만(민무늬·심플 — 도형 0) */
+  .stage[data-keyshape="plain"] .key { border:none; background:none; font-size:23px; height:56px; }
+  /* 네모(라운드 사각) */
+  .stage[data-keyshape="square"] .key { border-radius:14px; height:54px;
+    background:rgba(255,255,255,var(--keyA,.07)); backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }
+  /* 플랫 셀(현행 앱) — 불투명도 = --keyA 직결(v2 픽스: 옛 ×.5 감쇠 폐기) */
+  .stage[data-keyshape="flat"] .pad { gap:0; border:1px solid rgba(255,255,255,.13); border-radius:16px; overflow:hidden;
+    background:rgba(255,255,255,var(--keyA,.07)); backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }
+  .stage[data-keyshape="flat"] .key { border:none; border-radius:0; height:60px; background:none; }
+  .stage[data-keyshape="flat"] .key:nth-child(3n+2), .stage[data-keyshape="flat"] .key:nth-child(3n) { border-left:1px solid rgba(255,255,255,.09); }
+  .stage[data-keyshape="flat"] .key:nth-child(n+4) { border-top:1px solid rgba(255,255,255,.09); }
+  .stage[data-keyshape="flat"] .key.empty { visibility:visible; pointer-events:none; }
+  /* 테두리 OFF — 원형/네모 = 외곽선 제거(배경 유지) · 플랫 = 셀 구분선·외곽 전부 제거 */
+  .stage[data-keyborder="off"] .key { border-color:transparent !important; }
+  .stage[data-keyborder="off"][data-keyshape="flat"] .pad { border-color:transparent; }
+  /* 눌림 색(공통) */
+  .key.hit { color:var(--hit); }
+  .stage[data-keyshape="glass"] .key.hit, .stage[data-keyshape="square"] .key.hit { border-color:rgba(var(--hit-rgb),.55); }
+  /* 눌림 효과 4종(운영자 260705 v2) */
+  .stage[data-press="snap"] .key:active { transform:scale(.86); }
+  .stage[data-press="flash"] .key:active { transform:scale(.95); }
+  .stage[data-press="flash"] .key.hit { background:rgba(var(--hit-rgb),.26); }
+  .stage[data-press="flash"][data-keyshape="plain"] .key.hit { background:none; text-shadow:0 0 14px rgba(var(--hit-rgb),.8); }
+  .stage[data-press="bnc"] .key.hit { animation:kBnc .32s var(--ease); }
+  @keyframes kBnc { 0% { transform:scale(1); } 35% { transform:scale(.84); } 72% { transform:scale(1.08); } 100% { transform:scale(1); } }
+  .stage[data-press="none"] .key:active { transform:none; }
   /* 잔상 효과 */
   .fx { position:absolute; inset:0; pointer-events:none; border-radius:inherit; }
   .fx.ripple { border:2px solid rgba(var(--hit-rgb),.6); animation:fxRip .5s var(--ease) forwards; }
@@ -115,29 +145,27 @@
   .fx.trail { display:grid; place-items:center; color:rgba(var(--hit-rgb),.9); font:700 20px/1 inherit; animation:fxTr .5s ease-out forwards; }
   @keyframes fxTr { from { transform:scale(1); opacity:.9; } to { transform:scale(1.9); opacity:0; } }
 
-  /* 진입 효과(핀 블록) */
-  .pinwrap.ent-rise  { animation:eRise .6s var(--ease) backwards; }
+  /* 진입 효과 */
+  .pinwrap.ent-rise { animation:eRise .6s var(--ease) backwards; }
   @keyframes eRise { from { transform:translateY(46px); opacity:0; } }
-  .pinwrap.ent-fade  { animation:eFade .7s ease backwards; }
+  .pinwrap.ent-fade { animation:eFade .7s ease backwards; }
   @keyframes eFade { from { opacity:0; } }
-  .pinwrap.ent-blur  { animation:eBlur .65s var(--ease) backwards; }
+  .pinwrap.ent-blur { animation:eBlur .65s var(--ease) backwards; }
   @keyframes eBlur { from { filter:blur(14px); opacity:0; } }
-  .pinwrap.ent-pop   { animation:ePop .5s var(--ease) backwards; }
+  .pinwrap.ent-pop { animation:ePop .5s var(--ease) backwards; }
   @keyframes ePop { from { transform:scale(.82); opacity:0; } }
   .pinwrap.ent-stag .key { animation:eKey .45s var(--ease) backwards; animation-delay:calc(var(--i) * 36ms + .15s); }
   .pinwrap.ent-stag .pincard { animation:eFade .4s ease backwards; }
   @keyframes eKey { from { transform:translateY(18px) scale(.7); opacity:0; } }
-
-  /* 해제(성공) 아웃 */
+  /* 해제 아웃 */
   .lock.out-fade { animation:oFade .8s ease forwards; }
   @keyframes oFade { to { opacity:0; } }
   .lock.out-zoom { animation:oZoom .7s var(--ease) forwards; }
   @keyframes oZoom { to { transform:scale(1.18); opacity:0; } }
   .lock.out-blur { animation:oBlur .8s ease forwards; }
   @keyframes oBlur { to { filter:blur(16px); opacity:0; } }
-  .slots.ok .slot::before { border-color:var(--hit); background:var(--hit); box-shadow:0 0 16px rgba(var(--hit-rgb),.7); }
 
-  /* ── 컨트롤 패널 ── */
+  /* ── 컨트롤 ── */
   .panel { margin-top:16px; padding:14px 16px 16px; border:1px solid rgba(255,255,255,.09); border-radius:14px; background:rgba(255,255,255,.03); }
   .row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:11px; }
   .row:first-child { margin-top:0; }
@@ -147,7 +175,7 @@
   .chip:active { transform:scale(.93); }
   .chip.on { background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.4); color:var(--accent); }
   .chip.play { border-color:rgba(var(--a4-rgb),.4); color:var(--a4); }
-  input[type=range] { flex:1; min-width:130px; accent-color:var(--accent); }
+  input[type=range] { flex:1; min-width:120px; accent-color:var(--accent); }
   .val { font-size:12px; color:var(--fg); font-variant-numeric:tabular-nums; min-width:46px; text-align:right; }
   .sum { margin-top:16px; padding:12px 14px; border:1px dashed rgba(var(--accent-rgb),.35); border-radius:12px; background:rgba(var(--accent-rgb),.05); font-size:12.5px; line-height:1.8; }
   .sum b { color:var(--accent); }
@@ -155,12 +183,12 @@
 </style>
 </head>
 <body>
-<h1>잠금 PIN 플레이그라운드</h1>
-<p class="d">260705 · 워드마크 *뉴스 큐레이션* + ··· 후 핀 상승 진입 · 키 눌러 실제 입력 체험(다 채우면 해제 데모) · 아래에서 조합 고르고 맨 밑 요약을 복사해서 보내줘</p>
+<h1>잠금 PIN 플레이그라운드 <small style="color:var(--accent)">v2</small></h1>
+<p class="d">260705 v2 · 화면(잠금화면/잠금 설정/발행본)별 미리보기 + 키 모양·테두리·간격·눌림/채움 효과 추가 · 플랫(키패드) 불투명도 픽스 · 키 눌러 실제 입력(다 채우면 해제 데모) · 조합 골라 화면별로 요약 복사해서 보내줘</p>
 
 <div class="stagewrap">
-<div class="stage" id="st" data-shape="dot" data-keystyle="glass" data-card="on" data-scrim="on"
-  style="--glass:22px; --cardA:.42; --keyA:.07; --pinY:40px; --slotsz:15px; --wmsz:27px; --hit:#00EED2; --hit-rgb:0,238,210;">
+<div class="stage" id="st" data-ctx="lock" data-shape="dot" data-keyshape="glass" data-keyborder="on" data-press="snap" data-fill="pop" data-card="on" data-scrim="on"
+  style="--glass:22px; --cardA:.42; --keyA:.07; --pinY:40px; --slotsz:15px; --wmsz:27px; --padgap:12px; --hit:#00EED2; --hit-rgb:0,238,210;">
   <div class="bgfeed">
     <div class="blob bl1"></div><div class="blob bl2"></div>
     <div class="bgcard c1"><i></i><em></em><u></u></div>
@@ -170,10 +198,13 @@
     <div class="bgcard c5"><i></i><em></em><u></u></div>
     <div class="bgcard c1"><i></i><em></em><u></u></div>
   </div>
+  <div class="mock-pmenu"><b>메시지</b><b>발행본</b><b>설정</b><b class="mm">잠금 설정</b><b class="mm">알림</b></div>
+  <div class="mock-pub"><b>발행본</b><span>버스 정류장 사고 요약 · D-6 · 링크 복사 · PIN 잠금</span></div>
   <div class="lock" id="lock">
     <div class="wm"><b>뉴스 큐레이션</b><small>News Curation</small><br><span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
     <div class="pinwrap ent-rise" id="pw">
       <div class="pincard">
+        <div class="pintitle"><span id="ctxTitle">잠금 설정 · PIN 변경</span><span class="px"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
         <div class="slots" id="slots"></div>
         <div class="pad" id="pad"></div>
       </div>
@@ -183,27 +214,45 @@
 </div>
 
 <div class="panel">
+  <div class="row" id="rCtx"><span class="lab">화면</span>
+    <button class="chip on" data-ctx="lock">잠금화면(부팅)</button>
+    <button class="chip" data-ctx="set">잠금 설정 팝업</button>
+    <button class="chip" data-ctx="pub">발행본 PIN</button></div>
   <div class="row" id="rLen"><span class="lab">자리수</span>
     <button class="chip" data-len="4">4자리</button><button class="chip on" data-len="6">6자리</button></div>
   <div class="row" id="rShape"><span class="lab">슬롯 모양</span>
     <button class="chip on" data-shape="dot">동그라미 채움</button><button class="chip" data-shape="ring">링 두꺼워짐</button>
     <button class="chip" data-shape="square">사각</button><button class="chip" data-shape="dia">다이아</button>
     <button class="chip" data-shape="dash">대시</button><button class="chip" data-shape="digit">숫자 펄스</button></div>
+  <div class="row" id="rFill"><span class="lab">채움 효과</span>
+    <button class="chip on" data-fill="pop">팝</button><button class="chip" data-fill="bnc">바운스</button>
+    <button class="chip" data-fill="fade">페이드</button><button class="chip" data-fill="glow">글로우 번짐</button>
+    <button class="chip" data-fill="none">없음</button></div>
   <div class="row"><span class="lab">슬롯 크기</span><input type="range" id="slotsz" min="11" max="22" value="15"><span class="val" id="slotszV">15px</span></div>
-  <div class="row"><span class="lab">핀 위치</span><input type="range" id="pinY" min="0" max="150" value="40"><span class="val" id="pinYV">+40px</span></div>
-  <div class="row"><span class="lab">글래스 blur</span><input type="range" id="glass" min="0" max="40" value="22"><span class="val" id="glassV">22px</span></div>
-  <div class="row" id="rCard"><span class="lab">유리 카드</span>
-    <button class="chip on" data-card="on">카드 있음</button><button class="chip" data-card="off">맨몸(카드 없음)</button>
-    <input type="range" id="cardA" min="0" max="90" value="42"><span class="val" id="cardAV">42%</span></div>
-  <div class="row"><span class="lab">버튼 투명도</span><input type="range" id="keyA" min="0" max="50" value="7"><span class="val" id="keyAV">7%</span></div>
+  <div class="row" id="rKeyshape"><span class="lab">키 모양</span>
+    <button class="chip on" data-keyshape="glass">원형 글래스</button>
+    <button class="chip" data-keyshape="plain">숫자만(심플)</button>
+    <button class="chip" data-keyshape="square">네모</button>
+    <button class="chip" data-keyshape="flat">플랫 셀(현행)</button></div>
+  <div class="row" id="rKeyborder"><span class="lab">키 테두리</span>
+    <button class="chip on" data-keyborder="on">보임</button><button class="chip" data-keyborder="off">없음</button>
+    <span class="lab" style="min-width:0">키 간격</span><input type="range" id="padgap" min="4" max="26" value="12" style="min-width:90px"><span class="val" id="padgapV">12px</span></div>
+  <div class="row"><span class="lab">버튼 투명도</span><input type="range" id="keyA" min="0" max="50" value="7"><span class="val" id="keyAV">7%</span>
+    <span class="lab" style="min-width:0;font-weight:600">← 플랫(키패드)도 이제 반영</span></div>
+  <div class="row" id="rPress"><span class="lab">눌림 효과</span>
+    <button class="chip on" data-press="snap">스냅 축소</button><button class="chip" data-press="flash">채움 플래시</button>
+    <button class="chip" data-press="bnc">바운스</button><button class="chip" data-press="none">없음</button></div>
   <div class="row" id="rHit"><span class="lab">눌림 색</span>
     <button class="chip on" data-hit="0,238,210" data-hex="#00EED2">터쿼이즈</button>
     <button class="chip" data-hit="255,225,61" data-hex="#FFE13D">골드레몬</button>
     <button class="chip" data-hit="216,255,61" data-hex="#d8ff3d">라임옐로</button>
     <button class="chip" data-hit="15,253,2" data-hex="#0FFD02">형광그린</button>
     <button class="chip" data-hit="238,247,240" data-hex="#eef7f0">화이트</button></div>
-  <div class="row" id="rKeystyle"><span class="lab">키 스타일</span>
-    <button class="chip on" data-keystyle="glass">원형 글래스</button><button class="chip" data-keystyle="flat">플랫 셀(현행)</button></div>
+  <div class="row"><span class="lab">핀 위치</span><input type="range" id="pinY" min="0" max="150" value="40"><span class="val" id="pinYV">+40px</span></div>
+  <div class="row"><span class="lab">글래스 blur</span><input type="range" id="glass" min="0" max="40" value="22"><span class="val" id="glassV">22px</span></div>
+  <div class="row" id="rCard"><span class="lab">유리 카드</span>
+    <button class="chip on" data-card="on">카드 있음</button><button class="chip" data-card="off">맨몸(잠금화면만)</button>
+    <input type="range" id="cardA" min="0" max="90" value="42"><span class="val" id="cardAV">42%</span></div>
   <div class="row" id="rEnt"><span class="lab">진입 효과</span>
     <button class="chip on" data-ent="ent-rise">라이즈 업</button><button class="chip" data-ent="ent-fade">페이드</button>
     <button class="chip" data-ent="ent-stag">키 스태거</button><button class="chip" data-ent="ent-blur">블러 인</button>
@@ -227,10 +276,11 @@
 (() => {
   const st = document.getElementById('st'), pw = document.getElementById('pw'), lock = document.getElementById('lock');
   const slotsEl = document.getElementById('slots'), pad = document.getElementById('pad');
-  const S = { len: 6, shape: '동그라미 채움', ent: 'ent-rise', entL: '라이즈 업', fx: 'ripple', fxL: '링 리플', out: 'out-fade', outL: '페이드',
-    hit: '터쿼이즈 #00EED2', key: '원형 글래스', card: '카드 있음', scrim: 'ON', wm: 'M', vals: {} };
+  const CTX = { lock: '잠금화면(부팅)', set: '잠금 설정 팝업', pub: '발행본 PIN' };
+  const S = { ctx: 'lock', len: 6, shape: '동그라미 채움', fill: '팝', keyshape: '원형 글래스', keyborder: '보임', press: '스냅 축소',
+    ent: 'ent-rise', entL: '라이즈 업', fx: 'ripple', fxL: '링 리플', out: 'out-fade', outL: '페이드',
+    hit: '터쿼이즈 #00EED2', card: '카드 있음', scrim: 'ON', wm: 'M', vals: {} };
   let pin = [];
-
   const BACK = '<svg viewBox="0 0 24 24"><path d="M21 4H8l-6 8 6 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
 
   function buildSlots() {
@@ -240,34 +290,31 @@
   }
   function buildPad() {
     pad.innerHTML = '';
-    const keys = ['1','2','3','4','5','6','7','8','9','',{v:'0'},{v:'back'}];
     ['1','2','3','4','5','6','7','8','9','empty','0','back'].forEach((k, i) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'key'; b.style.setProperty('--i', i);
-      if (k === 'empty') { b.classList.add('empty'); }
+      if (k === 'empty') b.classList.add('empty');
       else if (k === 'back') { b.innerHTML = BACK; b.dataset.k = 'back'; }
       else { b.textContent = k; b.dataset.k = k; }
       pad.appendChild(b);
     });
   }
   function paint() {
-    [...slotsEl.children].forEach((s, i) => {
-      s.classList.toggle('on', i < pin.length);
-      s.classList.remove('showdg');
-      s.querySelector('.dg').textContent = '';
-    });
+    [...slotsEl.children].forEach((s, i) => { s.classList.toggle('on', i < pin.length); s.classList.remove('showdg'); s.querySelector('.dg').textContent = ''; });
   }
   function press(k, btn) {
     if (k === 'back') { pin.pop(); paint(); flash(btn); return; }
     if (pin.length >= S.len) return;
     pin.push(k); paint(); flash(btn);
     const idx = pin.length - 1, sl = slotsEl.children[idx];
+    sl.classList.remove('just'); void sl.offsetWidth; sl.classList.add('just');   // 채움 효과 재생
+    setTimeout(() => sl.classList.remove('just'), 550);
     if (st.dataset.shape === 'digit') { sl.querySelector('.dg').textContent = k; sl.classList.add('showdg');
       setTimeout(() => { sl.classList.remove('showdg'); sl.querySelector('.dg').textContent = ''; }, 420); }
-    if (pin.length === S.len) setTimeout(okOut, st.dataset.shape === 'digit' ? 480 : 220);
+    if (pin.length === S.len) setTimeout(okOut, st.dataset.shape === 'digit' ? 480 : 240);
   }
   function flash(btn) {
     if (!btn) return;
-    btn.classList.add('hit'); setTimeout(() => btn.classList.remove('hit'), 260);
+    btn.classList.remove('hit'); void btn.offsetWidth; btn.classList.add('hit'); setTimeout(() => btn.classList.remove('hit'), 300);
     if (S.fx === 'none') return;
     const f = document.createElement('span'); f.className = 'fx ' + S.fx;
     if (S.fx === 'trail') f.textContent = btn.dataset.k === 'back' ? '' : btn.dataset.k;
@@ -275,36 +322,34 @@
   }
   function okOut() {
     slotsEl.classList.add('ok');
-    setTimeout(() => { lock.classList.add(S.out); }, 320);
+    setTimeout(() => lock.classList.add(S.out), 320);
     setTimeout(() => { lock.classList.remove(S.out); slotsEl.classList.remove('ok'); pin = []; paint(); replayEnt(); }, 1600);
   }
   function badOut() {
     slotsEl.classList.add('shake'); if (navigator.vibrate) navigator.vibrate(60);
     setTimeout(() => { slotsEl.classList.remove('shake'); pin = []; paint(); }, 560);
   }
-  function replayEnt() {
-    pw.classList.remove('ent-rise','ent-fade','ent-stag','ent-blur','ent-pop');
-    void pw.offsetWidth; pw.classList.add(S.ent);
-  }
-
+  function replayEnt() { pw.classList.remove('ent-rise','ent-fade','ent-stag','ent-blur','ent-pop'); void pw.offsetWidth; pw.classList.add(S.ent); }
   pad.addEventListener('click', e => { const b = e.target.closest('.key'); if (b && b.dataset.k) press(b.dataset.k, b); });
 
-  // ── 컨트롤 배선 ──
-  const chipRow = (id, fn) => document.getElementById(id).addEventListener('click', e => {
-    const c = e.target.closest('.chip'); if (!c || c.classList.contains('play')) return;
-    [...e.currentTarget.querySelectorAll('.chip:not(.play)')].forEach(x => x.classList.remove('on')); c.classList.add('on'); fn(c);
+  const chipRow = (id, attr, fn) => document.getElementById(id).addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c || c.classList.contains('play') || c.dataset[attr] == null) return;
+    [...e.currentTarget.querySelectorAll('.chip[data-' + attr.toLowerCase() + ']')].forEach(x => x.classList.remove('on')); c.classList.add('on'); fn(c);
   });
-  chipRow('rLen', c => { S.len = +c.dataset.len; buildSlots(); sum(); });
-  chipRow('rShape', c => { st.dataset.shape = c.dataset.shape; S.shape = c.textContent; pin = []; paint(); sum(); });
-  chipRow('rHit', c => { st.style.setProperty('--hit', c.dataset.hex); st.style.setProperty('--hit-rgb', c.dataset.hit); S.hit = c.textContent + ' ' + c.dataset.hex; sum(); });
-  chipRow('rKeystyle', c => { st.dataset.keystyle = c.dataset.keystyle; S.key = c.textContent; sum(); });
-  chipRow('rEnt', c => { S.ent = c.dataset.ent; S.entL = c.textContent; replayEnt(); sum(); });
-  chipRow('rFx', c => { S.fx = c.dataset.fx; S.fxL = c.textContent; sum(); });
-  chipRow('rOut', c => { S.out = c.dataset.out; S.outL = c.textContent; sum(); });
-  document.getElementById('rCard').addEventListener('click', e => {
-    const c = e.target.closest('.chip'); if (!c || !c.dataset.card) return;
-    [...document.querySelectorAll('#rCard .chip[data-card]')].forEach(x => x.classList.remove('on')); c.classList.add('on');
-    st.dataset.card = c.dataset.card; S.card = c.textContent; sum(); });
+  chipRow('rCtx', 'ctx', c => { st.dataset.ctx = c.dataset.ctx; S.ctx = c.dataset.ctx;
+    document.getElementById('ctxTitle').textContent = c.dataset.ctx === 'pub' ? '발행본 잠금 해제 · PIN' : '잠금 설정 · PIN 변경';
+    pin = []; paint(); replayEnt(); sum(); });
+  chipRow('rLen', 'len', c => { S.len = +c.dataset.len; buildSlots(); sum(); });
+  chipRow('rShape', 'shape', c => { st.dataset.shape = c.dataset.shape; S.shape = c.textContent; pin = []; paint(); sum(); });
+  chipRow('rFill', 'fill', c => { st.dataset.fill = c.dataset.fill; S.fill = c.textContent; sum(); });
+  chipRow('rKeyshape', 'keyshape', c => { st.dataset.keyshape = c.dataset.keyshape; S.keyshape = c.textContent; sum(); });
+  chipRow('rKeyborder', 'keyborder', c => { st.dataset.keyborder = c.dataset.keyborder; S.keyborder = c.textContent; sum(); });
+  chipRow('rPress', 'press', c => { st.dataset.press = c.dataset.press; S.press = c.textContent; sum(); });
+  chipRow('rHit', 'hit', c => { st.style.setProperty('--hit', c.dataset.hex); st.style.setProperty('--hit-rgb', c.dataset.hit); S.hit = c.textContent + ' ' + c.dataset.hex; sum(); });
+  chipRow('rEnt', 'ent', c => { S.ent = c.dataset.ent; S.entL = c.textContent; replayEnt(); sum(); });
+  chipRow('rFx', 'fx', c => { S.fx = c.dataset.fx; S.fxL = c.textContent; sum(); });
+  chipRow('rOut', 'out', c => { S.out = c.dataset.out; S.outL = c.textContent; sum(); });
+  chipRow('rCard', 'card', c => { st.dataset.card = c.dataset.card; S.card = c.textContent; sum(); });
   document.getElementById('rWm').addEventListener('click', e => {
     const c = e.target.closest('.chip'); if (!c) return;
     if (c.dataset.wm) { [...document.querySelectorAll('#rWm .chip[data-wm]')].forEach(x => x.classList.remove('on')); c.classList.add('on');
@@ -319,23 +364,23 @@
   range('keyA', v => { st.style.setProperty('--keyA', v / 100); document.getElementById('keyAV').textContent = v + '%'; S.vals.keyA = v + '%'; sum(); });
   range('pinY', v => { st.style.setProperty('--pinY', v + 'px'); document.getElementById('pinYV').textContent = '+' + v + 'px'; S.vals.pinY = '+' + v + 'px'; sum(); });
   range('slotsz', v => { st.style.setProperty('--slotsz', v + 'px'); document.getElementById('slotszV').textContent = v + 'px'; S.vals.slotsz = v + 'px'; sum(); });
+  range('padgap', v => { st.style.setProperty('--padgap', v + 'px'); document.getElementById('padgapV').textContent = v + 'px'; S.vals.padgap = v + 'px'; sum(); });
 
   document.getElementById('replay').addEventListener('click', replayEnt);
   document.getElementById('okDemo').addEventListener('click', () => { pin = Array(S.len).fill('0'); paint(); okOut(); });
   document.getElementById('badDemo').addEventListener('click', badOut);
 
   function sum() {
-    S.vals.glass = S.vals.glass || '22px'; S.vals.cardA = S.vals.cardA || '42%'; S.vals.keyA = S.vals.keyA || '7%';
-    S.vals.pinY = S.vals.pinY || '+40px'; S.vals.slotsz = S.vals.slotsz || '15px';
+    const v = S.vals;
+    v.glass = v.glass || '22px'; v.cardA = v.cardA || '42%'; v.keyA = v.keyA || '7%'; v.pinY = v.pinY || '+40px'; v.slotsz = v.slotsz || '15px'; v.padgap = v.padgap || '12px';
     document.getElementById('sumTxt').textContent =
-      `자리수 ${S.len} · 슬롯 ${S.shape}(${S.vals.slotsz}) · 핀 위치 ${S.vals.pinY} · 글래스 ${S.vals.glass} · ${S.card}(${S.vals.cardA}) · 버튼 투명도 ${S.vals.keyA} · 눌림색 ${S.hit} · 키 ${S.key} · 진입 ${S.entL} · 잔상 ${S.fxL} · 해제 ${S.outL} · 워드마크 ${S.wm} · 딤블러 ${S.scrim}`;
+      `[${CTX[S.ctx]}] 자리수 ${S.len} · 슬롯 ${S.shape}(${v.slotsz}) · 채움 ${S.fill} · 키 ${S.keyshape}(테두리 ${S.keyborder}·간격 ${v.padgap}·투명도 ${v.keyA}) · 눌림 ${S.press}/${S.hit} · 잔상 ${S.fxL} · 핀 위치 ${v.pinY} · 글래스 ${v.glass} · ${S.card}(${v.cardA}) · 진입 ${S.entL} · 해제 ${S.outL} · 워드마크 ${S.wm} · 딤블러 ${S.scrim}`;
   }
   document.getElementById('copyBtn').addEventListener('click', async e => {
     try { await navigator.clipboard.writeText(document.getElementById('sumTxt').textContent); e.target.textContent = '복사됨 ✓'; }
     catch { e.target.textContent = '길게 눌러 복사'; }
     setTimeout(() => e.target.textContent = '복사', 1400);
   });
-
   buildPad(); buildSlots(); sum(); replayEnt();
 })();
 </script>
