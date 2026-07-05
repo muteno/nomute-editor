@@ -197,7 +197,7 @@ _HTML = """<!doctype html><html lang=ko><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content=dark>
 <title>토큰 사용량 — 10분 버킷</title><style>
 :root{--bg:#0a120d;--glass:rgba(38,64,46,.42);--glass2:rgba(14,26,18,.55);--line:rgba(255,255,255,.08);
---fg:#eef7f0;--mut:#8fa697;--accent:#00EED2;--accent-rgb:0,238,210;--accent-bright:#FFA02E;--amber:#FFA02E;--info:#0FFD02;}
+--fg:#eef7f0;--mut:#8fa697;--accent:#00EED2;--accent-rgb:0,238,210;--accent-bright:#5AFFE6;--amber:#FFE13D;--info:#0FFD02;}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);padding:0 0 50px;
 font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.2px}
 .wrap{max-width:880px;margin:0 auto;padding:20px 16px}h1{font-size:19px;margin:6px 0 2px}h1 b{color:var(--accent)}
