@@ -134,7 +134,7 @@ earthquake survivor rescued rubble Venezuela
 **텍스트**
 ```text
 열흘째, 구조대는 수색을 접기 시작했다
-무너진 건물마다 표식이 내걸렸다
+무너진 *건물마다 표식이 내걸렸다*
 *— 생존자 없음*
 ```
 **이미지 프롬프트**
