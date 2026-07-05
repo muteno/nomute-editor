@@ -97,7 +97,7 @@ def draw_t(d,x,y,t,f,c,tp,us):
     cx=x
     for ch in t:
         if us:
-            sc=(255,255,255,SA) if c==(255,255,255) else (15,253,2,SA)
+            sc=(255,255,255,SA) if c==(255,255,255) else (0,238,210,SA)
             d.text((cx,y),ch,font=f,fill=c,stroke_width=1,stroke_fill=sc)
         else:
             d.text((cx,y),ch,font=f,fill=c)
@@ -145,7 +145,7 @@ def generate(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None):
     for i,ln in enumerate(lines):
         cx=sp["lm"]*S+(lm_offsets[i]*S if lm_offsets and i<len(lm_offsets) else 0)
         for st,stx in parse(ln):
-            co=(15,253,2) if st=='h' else (255,255,255)
+            co=(0,238,210) if st=='h' else (255,255,255)
             cx=draw_t(dr,cx,cy,stx,fnt,co,tp,sp["stroke"])
         cy+=sp["lh"]*S
     cb=Image.alpha_composite(ll,tx)

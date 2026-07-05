@@ -14,7 +14,7 @@
 
 ### 핵심 v3 스펙
 - 캔버스: 1080×1350, Noto Sans CJK KR Bold 54px, 줄 높이 88px
-- 색상: 기본 `#FFF` / 강조 `#0FFD02`
+- 색상: 기본 `#FFF` / 강조 `#00EED2`(터쿼이즈 · 260705)
 - 상수: `START_X = MARGIN_LEFT = 87`, `START_Y = 888`, `MAX_WIDTH = 937`, `SAFE_BOTTOM = 1310`, `MARGIN_RIGHT = 56`, `MARGIN_BOTTOM = 234`
 - 자동 줄바꿈 없음; 폰트 축소 없음
 - 스마트 크롭은 비-4:5 이미지만 (정확히 4:5 → 리사이즈만, 크롭 0%)
