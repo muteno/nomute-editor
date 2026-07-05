@@ -298,7 +298,7 @@
   .pmenu .pmenu-x:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(255,255,255,.06); }   /* X hover = .tool-x 정본 계승(강조색 · 회전은 :active 전역 X 규칙) */
   .pmenu a, .pmenu button { display:block; width:100%; text-align:left; background:none; border:none;
     color:var(--fg); font:inherit; font-size:13px; padding:9px 12px; border-radius:10px; cursor:pointer; text-decoration:none; }
-  .pmenu a:hover, .pmenu button:hover { color:var(--fg); }   /* 무채색 — hover=흰(강조색 제거) · 배경 박스 없음(음영제거·.bpop a 통일 계승·운영자 260629) */
+  .pmenu a:hover, .pmenu button:hover { color:var(--accent); }   /* hover=강조색(링크 메뉴 .bpop a:hover 통일 · 선택 어포던스 = 뭘 고르는지 표시 · 운영자 260705, 옛 260629 무채색 뒤집음) · 배경 박스 없음 유지 */
   .pmenu .pmenu-sns { display:flex; align-items:center; gap:6px; }   /* SNS/설정 = 2차 토글 + 우측 V자 쉐브론(운영자 260704 재도입 "V자 우측 정렬" — 같은 날 오전 제거분 뒤집음) */
   .pmenu-sns .pm-chev { margin-left:auto; margin-right:-6px; flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* V자 = 우측 정렬 · 박스 30px = 헤더 X 버튼 미러 → margin -6(pmenu padding 기하 보정)으로 V자 중심 = X 버튼 정중앙 세로축(운영자 260704 "X 가로 정렬·가운데점에 맞춰") */
   .pmenu-sns .pm-chev svg { display:block; transition:transform .26s var(--ease); }   /* 펼침 = 아코디언(.26s)과 동기 회전 */
@@ -307,14 +307,14 @@
   .pmenu-sub.open { max-height:220px; }
   .pmenu-sub[hidden] { display:none; }
   .pmenu-sub a { padding-left:24px; color:var(--mut); }   /* 2차 = 들여쓰기·톤다운(1차와 위계 구분) */
-  .pmenu-sub a:hover { color:var(--fg); }
+  .pmenu-sub a:hover { color:var(--accent); }   /* 2차 링크도 hover=강조색(1차와 통일 · 운영자 260705) */
   /* 외부링크 '새 탭 열림' 어포던스 = SVG 픽토그램(::after 장식) · DOM 라벨은 텍스트단독 유지(§📐 공존 아님=•블릿과 동류) · 유니코드 ↗ 폐지(§🔒 3-1 문자금지) · 곡선/색은 currentColor 상속(hover 따라감) · 분신술10 260704 */
   .pmenu a[target="_blank"]::after, .bpop a[target="_blank"]::after, .lbox-src::after {
     content:''; display:inline-block; width:.82em; height:.82em; margin-left:.28em; vertical-align:-.06em; opacity:.6; background:currentColor;
     -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M8.5 7H17v8.5'/%3E%3C/svg%3E") center/contain no-repeat;
     mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M8.5 7H17v8.5'/%3E%3C/svg%3E") center/contain no-repeat; }
   .pmenu-sub button { padding-left:24px; color:var(--mut); }   /* 설정 2차 버튼(잠금 설정) = SNS 링크와 동일 들여쓰기·톤다운(운영자 260703) · 알림 pushbtn은 .pushrow .pushbtn(0,2,0)이 더 높아 안 밀림 */
-  .pmenu-sub button:hover { color:var(--fg); }
+  .pmenu-sub button:hover { color:var(--accent); }   /* 2차 버튼도 hover=강조색(1차와 통일 · 운영자 260705) */
   .pmenu-sub .pushrow { padding-left:24px; }   /* 알림 행도 2차 들여쓰기(잠금 설정과 위계 정렬) */
   .pmenu-sub .pushrow .pl { color:var(--mut); }   /* '알림' 라벨 = 세부 메뉴 MUT 통일(형제 2차 버튼과 동톤 · ON/OFF 토글은 불변 · 운영자 260704) — 잠금설정 팝업(lockpop) .pl은 --fg 유지 */
   @media (prefers-reduced-motion: reduce) { .pmenu-sub { transition:none; } .pmenu-sns .pm-chev svg { transition:none; } }
@@ -5892,6 +5892,21 @@ $('#bnav').addEventListener('click', e => {
   const lk = e.target.closest('#linkfab');
   if (lk) { e.preventDefault(); const wasOpen = !linkpop.hidden; closeOverlays('linkpop'); if (!wasOpen) { linkpop.hidden = false; popAt(linkpop, lk); } else linkpop.hidden = true; return; }
 });
+// 하단 네비 '링크' = 마우스 0.5초 이상 호버 시 메뉴 자동 오픈(마우스 전용 — 터치·펜 tap은 click 토글 그대로 · 열기만, 닫기는 기존 방식 유지 · 운영자 260705)
+const LINK_HOVER_MS = 500;   // hover-intent 지연(사용자 지정 0.5초) = JS 인텐트 상수(CSS 모션 토큰과 별개 축)
+let _linkHoverTimer = null;
+const _linkfabEl = $('#linkfab');
+if (_linkfabEl) {
+  _linkfabEl.addEventListener('pointerenter', e => {
+    if (e.pointerType !== 'mouse') return;   // 마우스만(터치/펜 tap은 click 토글이 담당 — 오발 차단)
+    clearTimeout(_linkHoverTimer);
+    _linkHoverTimer = setTimeout(() => {
+      if (linkpop.hidden) { closeOverlays('linkpop'); linkpop.hidden = false; popAt(linkpop, _linkfabEl); }   // click 열기와 동일 로직(closeOverlays→hidden 해제→popAt)
+    }, LINK_HOVER_MS);
+  });
+  _linkfabEl.addEventListener('pointerleave', () => clearTimeout(_linkHoverTimer));   // 마우스 벗어나면 예약 취소
+  _linkfabEl.addEventListener('pointerdown', () => clearTimeout(_linkHoverTimer));    // 탭/클릭 시작 = hover 예약 취소(click 핸들러가 토글 담당)
+}
 // 팝업(bpop·linkpop·qpop) 바깥클릭 닫기 — 단 '포인터가 팝업 안에서 눌린' 클릭은 제외.
 //   페이저(2페이지) 클릭 시 renderQueuePage 가 innerHTML 로 누른 버튼을 DOM서 떼어내 qpop.contains(target)=false 가 되며
 //   팝업이 오발 닫히던 버그 차단(폰 웹뷰선 타깃 탈락 시 stopPropagation 도 불안정). pointerdown 은 재렌더 전이라 타깃이 붙어있어 판정 정확(운영자 260622).
