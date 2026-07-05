@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). -->
-<!-- 배너 preload 일시 해제(슬림 헤더 260706 — 배너 숨김 상태라 377KB 선다운로드 낭비 · 배너 복귀 시 아래 줄 원복): <link rel="preload" as="image" href="assets/brand/main_background.jpg?v=260705t" fetchpriority="high"> --><!-- 헤더 CI 로고 preload 제거(260706 운영자 "좌상단 CI 없애줘" — 워드마크는 PGSans 임베드라 fetch 0) -->
+<!-- 배너 preload 일시 해제(슬림 헤더 260706 — 배너 숨김 상태라 377KB 선다운로드 낭비 · 배너 복귀 시 아래 줄 원복): <link rel="preload" as="image" href="assets/brand/main_background.jpg?v=260705t" fetchpriority="high"> --><link rel="preload" as="image" href="assets/brand/logo.png" fetchpriority="high"><!-- 슬림 헤더 로고 = 부팅 첫 시각 요소(29KB) 조기 다운로드 -->
 <script defer src="marked.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · 운영자 260705 "시작 시 멈춤" 진단: CDN SPOF 제거) · defer = 첫 피드 렌더는 textContent라 marked 불필요(상세 열 때만) → 파싱 비차단으로 부팅 가속 · setOptions는 window.marked 가드로 defer 늦어도 안전(parse는 open() 시점=로드 완료) -->
 
 <script defer src="purify.min.js"></script><!-- self-host + defer(marked와 동일 · 첫 렌더 비차단·sanitize는 상세 열 때만) -->
@@ -383,10 +383,10 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* ── 슬림 헤더(운영자 260706 "프로필·검색만 살리고 배너·펫은 날림 — 삭제 아님" · 2차 "인트로 News Curation 상단 가운데 + 좌상단 CI 제거") — .topbanner의 slim 클래스가 스위치: 떼면 배너·펫 원복 · 배너 img는 data-src 대기(숨김 상태 377KB 다운로드 0) ── */
-  .topbanner.slim { padding:10px 16px; min-height:60px; }   /* 패딩 = 기존 topbanner 값 계승 + 하단 대칭 · min-height 60 = 프로필 원 지름(기하 정합 — 워드마크가 absolute라 행 밴드는 이걸로 확보) */
-  .topbanner.slim .brandmark { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:5; white-space:nowrap; pointer-events:none;
-    font-family:'PGSans',var(--font-status); font-size:15px; font-weight:400; letter-spacing:.6px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* 워드마크 = 인트로 #bootsplash .bs-name 확립값 그대로 계승(운영자 "인트로에 쓰이는 News Curation을 상단 가운데") · pointer-events:none = 검색/프로필 탭 무간섭 · z5 < 검색 z6 · 정적 텍스트라 translate 중앙정렬 안전(hover/press transform 없음) */
+  /* ── 슬림 헤더(운영자 260706 "메인 로고 상단 + 프로필·검색만 살리고 배너·펫은 날림 — 삭제 아님") — .topbanner의 slim 클래스가 스위치: 떼면 배너·펫 원복 + 로고 자동 숨김(이중 노출 0) · 배너 img는 data-src 대기(숨김 상태 377KB 다운로드 0) ── */
+  .brandlogo { display:none; }   /* 비슬림(배너 복귀) 시 로고 미표시 */
+  .topbanner.slim { display:flex; align-items:center; padding:10px 16px; }   /* 패딩 = 기존 topbanner 값 계승 + 하단 대칭 */
+  .topbanner.slim .brandlogo { display:block; width:58px; height:58px; object-fit:contain; }   /* 로고 크기 = 발행본 .nm-logo 확립값(58px contain) 계승 */
   .topbanner.slim .bannerframe, .topbanner.slim .lovemarq, .topbanner.slim .pet { display:none; }   /* 배너·마퀴·산책펫 = 숨김(코드·자산·애니 전부 보존) */
   .topbanner.slim .profile, .topbanner.slim .topsearch { bottom:auto; top:50%; margin-top:-30px; }   /* 헤더 행 세로중앙 = 60px box 절반 음수마진(translate 중앙정렬은 hover/press transform과 충돌이라 금지) */
   .topbanner.slim .pmenu { top:calc(100% + 4px); }   /* 프로필 메뉴 = 헤더 행 바로 아래(배너 시절 고정 top:46은 슬림에선 아바타를 덮음) */
@@ -468,8 +468,8 @@
   }
   .card:active { transform:scale(.99); }
   /* ── 앰비언트 웨이브(유휴 생동감 · 3탭 공통 = 뉴스요약(#list .card)·레거시(#scrapList .sc-item)·SNS(#snsList .soc-item) · 운영자 260705 플레이그라운드 확정:
-     순서 순차{위→아래 · 같은 줄(레거시 2열)은 좌→우 · 260706 랜덤 폐지}·동시 1개(겹침 0 = 직전 하강 완료 후 다음)·지속 2.4s·간격 0.3s·휴지 0s·테두리 20%·글로우 15px/14%·부양 4px/1.006·유휴 5s) —
-     터치·스크롤·키 5초 무입력이면 활성 탭 카드가 화면 순서로 하나씩 강조 테두리+얇은 글로우+미세 부양. 입력 즉시 중단·5s 재대기. 엔진 = ambKick(JS 하단).
+     순서 랜덤셔플·동시 1개·지속 2.4s·간격 0.3s·휴지 0s·테두리 20%·글로우 15px/14%·부양 4px/1.006·유휴 5s) —
+     터치·스크롤·키 5초 무입력이면 활성 탭 카드가 랜덤 순서로 하나씩 강조 테두리+얇은 글로우+미세 부양. 입력 즉시 중단·5s 재대기. 엔진 = ambKick(JS 하단).
      brk/iss(긴급 빨강·이슈 노랑) = 의미색 우선 → 기본 테두리·글로우 무시하고 부양만 얹음(이슈 기본무시 = 노랑+부양). 컨테이너 id 스코프(#scrapList/#snsList) = 컬럼색·rated 테두리보다 우선(위치 무관). ── */
   #list .card.amb, #list .card.amb-fall,
   #scrapList .sc-item.amb, #scrapList .sc-item.amb-fall,
@@ -1966,10 +1966,8 @@
     .topbanner { padding:8px 12px 0; }
     .profile { width:54px; height:54px; right:22px; bottom:-20px; }
     .topsearch { bottom:-26px; height:54px; }   /* 모바일 — 프로필 동일 box + ~6px 더 아래(운영자 260621) */
-    /* 슬림 헤더 모바일 = 2단(워드마크 줄 가운데 → 아이콘 밴드 우측) — 단일 밴드 가운데 정렬은 뷰포트 약 520px 미만에서 우측 아이콘 무리(x≈216~)와 물리 충돌(실측 260706: CURATION 꼬리가 새로고침에 깔림) → 폭 못 줄이는 구조라 세로 분리. 아이콘 위치·크기는 불변(우측·엄지권) */
-    .topbanner.slim { padding:8px 12px; min-height:0; }
-    .topbanner.slim .brandmark { position:static; transform:none; text-align:center; margin:0 0 60px; }   /* 60 = 아이콘 밴드 54 + 간격 6 예약(워드마크 아래) */
-    .topbanner.slim .profile, .topbanner.slim .topsearch { top:auto; bottom:8px; margin-top:0; }   /* 아이콘 밴드 = 헤더 하단 정렬(모바일 2단) */
+    .topbanner.slim { padding:8px 12px; }   /* 슬림 헤더 = 모바일 패딩 계승 + 하단 대칭 */
+    .topbanner.slim .profile, .topbanner.slim .topsearch { margin-top:-27px; }   /* 모바일 54px box 절반(세로중앙 유지) */
     .bar { padding:0 12px; }
     dialog { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
     #dlg .dlg-h { padding-top:calc(11px + env(safe-area-inset-top)); border-top-left-radius:0; border-top-right-radius:0; }   /* 노치 회피 + 풀스크린 = 헤더 띠 상단 모서리 직각(모달 radius:0과 정합 → 둥근 코너 틈으로 본체 배경 비치던 것 차단 · 운영자 260704) */
@@ -2352,8 +2350,8 @@ try {
 <div id="bootsplash" aria-hidden="true"><div class="bs-name">News Curation</div><span class="bs-dots gdots"><i>.</i><i>.</i><i>.</i></span></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
-<div class="topbanner slim"><!-- slim = 워드마크 헤더 모드(운영자 260706 "배너·펫 날리고 프로필+검색" · 2차 "인트로 News Curation 가운데 + 좌상단 CI 제거") — 배너·펫 원복 = slim 클래스 제거 + 배너 img data-src→src + head 배너 preload 원복 -->
-  <div class="brandmark">News Curation</div>
+<div class="topbanner slim"><!-- slim = 로고 헤더 모드(운영자 260706 "배너·펫 날리고 로고+프로필+검색") — 원복 = slim 클래스 제거 + 배너 img data-src→src + head 배너 preload 원복 -->
+  <img class="brandlogo" src="assets/brand/logo.png" alt="NO mute" decoding="async" fetchpriority="high">
   <div class="bannerframe"><div class="bannerclip">
     <img class="banner layer-feed" data-src="assets/brand/main_background.jpg?v=260705t" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high"><!-- 슬림 헤더(260706): src→data-src 대기 = 숨김 배너 다운로드 0 · _bannerReady는 src 없음=complete 즉시 통과(부팅 무영향·오히려 가속) -->
     <!-- 탭별 배너 레이어 폐지(260705) — 단일 배너 --><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
@@ -9234,20 +9232,20 @@ const _firstLoad = load().then(() => { openDeepLink(); openBreakingDeepLink(); }
 Promise.allSettled([_firstLoad, _bannerReady]).then(_bootReveal);   // 피드·배너 준비되면 즉시 노출(실패해도 allSettled로 진행 · render는 load 안에서 동기 완료라 rAF 불필요·백그라운드 탭서 rAF 멈춰도 안전)
 setTimeout(_bootReveal, 1800);   // 안전망 — load/배너가 지연·실패해도 화면 반드시 노출(영구 블랙 방지)
 
-// ── 앰비언트 웨이브 엔진(운영자 260705 확정 조합 + 260706 순차·무겹침 수정 "직전꺼가 끝나면 다음거") — 5s 무입력(터치·스크롤·키·포인터) 시
-// 활성 탭 카드(뉴스요약 #list .card · 레거시 #scrapList .sc-item · SNS #snsList .soc-item)가 **화면 순서**(위→아래 · 같은 줄은 좌→우 = 레거시 2열이면 좌→우→대각선 아래 좌→우)로 하나씩
-// .amb(강조 테두리+얇은 글로우+4px 부양·CSS L449) 2.4s 점등 → 하강(0.6s)까지 완전히 끝난 뒤 0.3s 간격 두고 다음 = **동시 1개 엄수·겹침 0**(옛 "지속 55% 지점 겹침 물결" 폐지 — 몰입 방해 실측),
-// 한 바퀴 후 재수집 반복(휴지 0s·순서 고정 = 매 바퀴 동일 패턴·랜덤 셔플 폐지 → 3탭 동일 움직임).
+// ── 앰비언트 웨이브 엔진(운영자 260705 플레이그라운드 확정 조합) — 5s 무입력(터치·스크롤·키·포인터) 시
+// 활성 탭 카드(뉴스요약 #list .card · 레거시 #scrapList .sc-item · SNS #snsList .soc-item)가 랜덤 순서로 하나씩
+// .amb(강조 테두리+얇은 글로우+4px 부양·CSS L449) 2.4s 점등, 0.3s 간격 물결(다음 = 지속 55% 지점서 겹침), 한 바퀴 후 재셔플·재수집 반복(휴지 0s).
 // 입력 즉시 전체 소등+5s 재대기. reduced-motion = 엔진 미가동(전정계 배려). brk/iss(긴급·이슈)도 부양(자기 색 유지 = CSS 기본무시) · 숨은 탭 카드는 rect 높이 0으로 자동 제외.
 // 모달 열림·문서 숨김 = 시작 안 함(뒤 DOM 재렌더 아님·클래스 토글뿐이라 §깜빡임 가드 대상 아님 — 모달 중 뒤 움직임 자체가 산만해서 차단).
-const AMB = { idle: 5000, dur: 2400, gap: 300, rest: 0, fall: 600 };   // fall = amb-fall(하강 전이 .5~.55s) 잔류 시간 — 다음 카드는 이게 끝난 뒤에야 시작
+const AMB = { idle: 5000, dur: 2400, gap: 300, rest: 0 };
 const AMB_SEL = '#list .card, #scrapList .sc-item, #snsList .soc-item';   // 3탭 공통 후보(활성 탭만 rect로 걸림 · brk/iss 포함 = 부양 대상)
 const AMB_SEL_ON = '#list .card.amb, #list .card.amb-fall, #scrapList .sc-item.amb, #scrapList .sc-item.amb-fall, #snsList .soc-item.amb, #snsList .soc-item.amb-fall';
 let _ambT = 0, _ambStep = 0, _ambOff = 0, _ambIdx = 0, _ambCards = [], _ambOn = false;
 const _ambRM = matchMedia('(prefers-reduced-motion:reduce)');
+function _ambShuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }   // Fisher–Yates(플레이그라운드 동일) — 한 바퀴마다 새 순서
 function ambClear() { document.querySelectorAll(AMB_SEL_ON).forEach(c => c.classList.remove('amb', 'amb-fall')); }
 function ambStop() { _ambOn = false; clearTimeout(_ambStep); clearTimeout(_ambOff); ambClear(); }
-function ambCollect() { return [...document.querySelectorAll(AMB_SEL)].map(c => ({ c, r: c.getBoundingClientRect() })).filter(x => x.r.height > 0 && x.r.bottom > 90 && x.r.top < innerHeight - 70).sort((a, b) => (Math.abs(a.r.top - b.r.top) > 24 ? a.r.top - b.r.top : a.r.left - b.r.left)).map(x => x.c); }   // 뷰포트 내 활성 탭 카드 → 화면 순서 정렬{위→아래 · top차 24px 이내(레거시 2열 같은 줄)는 좌→우} = 3탭 동일 패턴(랜덤 셔플 폐지 · 운영자 260706)
+function ambCollect() { return _ambShuffle([...document.querySelectorAll(AMB_SEL)].filter(c => { const r = c.getBoundingClientRect(); return r.height > 0 && r.bottom > 90 && r.top < innerHeight - 70; })); }   // 뷰포트 내 활성 탭 카드만 → 랜덤 셔플
 function ambStart() {
   if (document.hidden || _ambRM.matches) return;
   if (typeof isComposingModalOpen === 'function' && isComposingModalOpen()) { ambKick(); return; }
@@ -9261,11 +9259,11 @@ function ambNext() {
   const c = _ambCards[_ambIdx];
   if (c && c.isConnected) {
     c.classList.remove('amb-fall'); c.classList.add('amb');
-    _ambOff = setTimeout(() => { c.classList.remove('amb'); c.classList.add('amb-fall'); setTimeout(() => c.classList.remove('amb-fall'), AMB.fall); }, AMB.dur);
+    _ambOff = setTimeout(() => { c.classList.remove('amb'); c.classList.add('amb-fall'); setTimeout(() => c.classList.remove('amb-fall'), 600); }, AMB.dur);
   }
   _ambIdx++;
-  let next = AMB.dur + AMB.fall + AMB.gap;   // 완전 순차 = 직전 카드가 하강까지 끝난(dur+fall) 뒤 간격(gap) 두고 다음 — 겹침 0·동시 1개 엄수(옛 dur*.55 겹침 물결 폐지 · 운영자 260706 "직전꺼가 끝나면 다음거")
-  if (_ambIdx >= _ambCards.length) { _ambIdx = 0; next += AMB.rest; _ambCards = ambCollect(); if (!_ambCards.length) { ambStop(); ambKick(); return; } }   // 한 바퀴 = 휴지 + 재수집(스크롤·재렌더 대응 · 순서 고정 = 화면 위치 정렬이라 매 바퀴 동일)
+  let next = AMB.dur * .55 + AMB.gap;   // 물결 = 현재 점등이 절반쯤 지날 때 다음 시작(플레이그라운드 동일 공식)
+  if (_ambIdx >= _ambCards.length) { _ambIdx = 0; next += AMB.rest; _ambCards = ambCollect(); if (!_ambCards.length) { ambStop(); ambKick(); return; } }   // 한 바퀴 = 휴지 + 재셔플·재수집(ambCollect가 셔플 — 매 바퀴 새 순서 · 스크롤·재렌더 대응)
   _ambStep = setTimeout(ambNext, next);
 }
 function ambKick() { clearTimeout(_ambT); ambStop(); if (_ambRM.matches) return; _ambT = setTimeout(ambStart, AMB.idle); }
