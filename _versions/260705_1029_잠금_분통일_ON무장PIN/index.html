@@ -961,6 +961,7 @@
   /* 라디얼 제작 메뉴 — FAB 위로 3버튼 반원 펼침. 버튼=.sbtn 투명 글래스 계승(rgba(8,15,11,.3)·blur8 → 뒤 비침). 위치=transform translate(GPU 합성·리플로우 0)·등장=scale/opacity. (아이템은 position:absolute라 fixed+transform iOS 히트테스트 누수 무관 — 이미 transform:scale 사용 중이었음.) */
   .radmenu { position:fixed; left:50%; bottom:calc(41px + env(safe-area-inset-bottom)); width:0; height:0; z-index:var(--z-remote); --rad-r:106px; }   /* 메인버튼↔펼침 간격 = 원복(운영자 요청: 75% 축소는 메인 라디얼이 아니라 도구 내부 #rfab 펼침이 대상이었음·260627) */
   .radmenu[hidden] { display:none; }
+  .radmenu.open::before { content:''; position:fixed; inset:0; z-index:-1; }   /* 투명 실드 — 별버튼 밖 여백·펼침 애니 중(히트박스 이동) 탭이 뒤 피드 카드(onclick=open→리더)로 관통하는 것 흡수(다른 팝업 .bpop/qpop은 실체 박스가 이 역할, 라디얼만 width0라 부재였음). 탭=바깥클릭으로 라디얼 닫힘(document click). radmenu z-context(--z-remote) 안 z-1 = 카드 위·item 아래 · 분신술10 260705 iOS 히트누수 보강 */
   .raditem { position:absolute; left:-35px; top:-26px; width:70px; background:none; border:0; padding:0; cursor:pointer; font:inherit;
     display:flex; flex-direction:column; align-items:center; gap:7px; opacity:0; transform:translate3d(0,0,0) scale(.3); pointer-events:none; will-change:transform,opacity;
     transition:transform .34s var(--ease), opacity .2s var(--ease); }   /* 펼침 위치 = transform translate(GPU 합성·리플로우 0) — 옛 left/top 트랜지션은 매 프레임 레이아웃 재계산 + .radbtn(.sbtn) backdrop-filter 블러 재합성이 겹쳐 렉/버퍼(운영자 260701). left/top는 -35/-26 고정(FAB 중심 앵커), 이동은 translate로만. */
@@ -2289,7 +2290,8 @@
     <div class="mh"><b>잠금 설정</b><button class="mx" id="lockpopX" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
     <div class="pushrow"><span class="pl">화면 잠금</span><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
     <div class="pushrow lk-sub" id="lkRowPin"><span class="pl">PIN (6자리)</span><button class="lk-chg" id="lockChgBtn" type="button">미설정</button></div>
-    <div class="pushrow lk-sub" id="lkRowMin"><span class="pl">자동 잠금(분)</span><span class="lk-step"><button class="lk-stbtn" data-dir="-1" type="button" aria-label="자동 잠금 분 감소">−</button><span class="lk-stval" id="lockMin" aria-live="polite">2</span><button class="lk-stbtn" data-dir="1" type="button" aria-label="자동 잠금 분 증가">+</button></span></div>
+    <div class="pushrow lk-sub" id="lkRowPc"><span class="pl">자동 잠금(분) · PC</span><span class="lk-step"><button class="lk-stbtn" data-dev="pc" data-dir="-1" type="button" aria-label="PC 자동 잠금 분 감소">−</button><span class="lk-stval" data-dev="pc" id="lockMinPc" aria-live="polite">2</span><button class="lk-stbtn" data-dev="pc" data-dir="1" type="button" aria-label="PC 자동 잠금 분 증가">+</button></span></div>
+    <div class="pushrow lk-sub" id="lkRowMo"><span class="pl">자동 잠금(분) · 모바일</span><span class="lk-step"><button class="lk-stbtn" data-dev="mo" data-dir="-1" type="button" aria-label="모바일 자동 잠금 분 감소">−</button><span class="lk-stval" data-dev="mo" id="lockMinMo" aria-live="polite">2</span><button class="lk-stbtn" data-dev="mo" data-dir="1" type="button" aria-label="모바일 자동 잠금 분 증가">+</button></span></div>
   </div>
   <!-- 전광판(마퀴펫) 설정 팝업 = 잠금 설정(msgpop) 계승 · 문구·글자색 커스텀 → marquee.js 실시간 반영(260704) -->
   <div class="msgpop" id="marqpop" hidden>
@@ -5436,13 +5438,15 @@ const LK_MAX = 5, LK_OUT_MS = 600000;   // 오류 5회 = 10분(발행본 LOCK_MA
 const lkOn = () => localStorage.getItem('nm_lock_on') !== '0';   // 기본 ON(운영자 260703) — 명시적으로 끈('0') 기기만 OFF. PIN 미설정이면 lockNow 가드로 실제 잠금은 안 걸림(설정 즉시 활성).
 const lkPinH = () => localStorage.getItem('nm_lock_pin') || '';
 const LK_STEPS = [1, 2, 3, 4, 5, 10, 15, 30, 60];   // 자동잠금 분 스텝(운영자 260705 · 1 최소 · 60 최대)
-function lkMinRaw() {                                // 자동잠금 분 = 단일값(PC/모바일 통일 · 운영자 260705 "하나만" — 옛 기기별 nm_lock_min_pc/_mo 폐지)
-  let raw = localStorage.getItem('nm_lock_min');
-  if (raw == null) raw = localStorage.getItem('nm_lock_min_pc') || localStorage.getItem('nm_lock_min_mo');   // 옛 기기별값 마이그레이션(있으면 승계)
+const isMobileDev = () => /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent || '');   // 실제 잠금 적용 기기 판별(PC/모바일)
+const lkMinKey = dev => 'nm_lock_min_' + dev;       // dev='pc'|'mo' — 기기별 자동잠금 분(localStorage는 기기별 독립이라 값 공유는 안 됨·설정만 각각)
+function lkMinDev(dev) {                             // 기기별 저장값 → 유효 스텝으로 스냅(레거시 단일 nm_lock_min 승계)
+  let raw = localStorage.getItem(lkMinKey(dev));
+  if (raw == null) raw = localStorage.getItem('nm_lock_min');   // 구버전 단일값 마이그레이션(양쪽 초기값)
   const v = parseInt(raw || '2', 10) || 2;
   return LK_STEPS.reduce((a, b) => Math.abs(b - v) <= Math.abs(a - v) ? b : a, LK_STEPS[0]);   // 가장 가까운 스텝으로 스냅
 }
-const lkMin = () => lkMinRaw();   // 실제 잠금 = 단일 자동잠금 분(PC·모바일 동일)
+const lkMin = () => lkMinDev(isMobileDev() ? 'mo' : 'pc');   // 실제 잠금 = 현재 접속 기기 종류값(운영자 260705)
 async function lkHash(p) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p + ':nmlock')); return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 const lockscr = $('#lockscr'), lkSlotsEl = $('#lkSlots'), lkPadEl = $('#lkPad'), lkErrEl = $('#lkErr');
 const isLocked = () => !lockscr.hidden;
@@ -5531,10 +5535,11 @@ function lkSettingsRefresh() {
   const on = lkOn();
   const btn = $('#lockOnBtn'); btn.textContent = on ? 'ON' : 'OFF'; btn.classList.toggle('on', on);
   if (lkChgBtn) { lkChgBtn.textContent = lkPinH() ? '설정' : '미설정'; lkChgBtn.classList.toggle('on', !!lkPinH()); }   // PIN 미설정↔설정 토글(요구1 · 화면잠금 ON/OFF와 동일 글자 토글)
-  const minEl = $('#lockMin');
-  if (minEl) minEl.textContent = String(lkMinRaw());   // 자동잠금 분 = 단일값 표시(PC/모바일 통일)
-  lockpop.querySelectorAll('.lk-stbtn').forEach(b => { const i = lkStepIdx() + parseInt(b.dataset.dir, 10); b.disabled = (i < 0 || i >= LK_STEPS.length); });   // 최소(1)/최대(60) 경계 = ± 비활성
-  ['#lkRowPin', '#lkRowMin'].forEach(id => { const r = $(id); if (r) r.classList.toggle('off', !on); });   // 화면 잠금 OFF = 하위(PIN·자동잠금) 전부 비활성 표기(요구7)
+  const pcEl = $('#lockMinPc'), moEl = $('#lockMinMo');
+  if (pcEl) pcEl.textContent = String(lkMinDev('pc'));
+  if (moEl) moEl.textContent = String(lkMinDev('mo'));   // 기기별 자동잠금 분 표시(요구5)
+  lockpop.querySelectorAll('.lk-stbtn').forEach(b => { const i = lkStepIdx(b.dataset.dev) + parseInt(b.dataset.dir, 10); b.disabled = (i < 0 || i >= LK_STEPS.length); });   // 최소(1)/최대(60) 경계 = ± 비활성
+  ['#lkRowPin', '#lkRowPc', '#lkRowMo'].forEach(id => { const r = $(id); if (r) r.classList.toggle('off', !on); });   // 화면 잠금 OFF = 하위(PIN·자동잠금) 전부 비활성 표기(요구7)
 }
 function openLockPop() {
   _minAuthed = false; _minAuthing = null;   // 자동잠금 편집 인증 = 팝업 열 때마다 초기화(요구6)
@@ -5653,48 +5658,48 @@ $('#lockOnBtn').addEventListener('click', async () => {
     if (!ok) return;
     try { localStorage.setItem('nm_lock_on', '0'); } catch {}
     clearTimeout(_lkT);
-  } else {                                               // OFF → ON : PIN 미설정이면 새 PIN 설정을 즉시 유도(운영자 260705 "ON/OFF PIN 마무리") — 옛 흐름은 PIN 없이 ON만 되고 lockNow 가드로 실제 무장 안 돼 '켰는데 안 잠김' 반쪽 상태였음. 설정 완료해야 ON(취소=ON 안 됨) = 켜짐↔무장 일치.
-    if (!lkPinH()) { const ok = await lkAskNewPin(); if (!ok) return; }   // PIN 없으면 먼저 설정(성공 시 아래서 ON) · 있으면 그대로 ON(권한상승 아님 = 인증 불필요)
+  } else {                                               // OFF → ON : 켜기(권한상승 아님 = 인증 불필요) · PIN 미설정이면 아래 PIN 버튼으로 설정해야 실제 무장(lockNow 가드)
     try { localStorage.setItem('nm_lock_on', '1'); } catch {}
     _lkLast = Date.now();
   }
   lkSettingsRefresh(); lockArm();
 });
 // ── 자동 잠금(분) 스테퍼 = PC/모바일 각각 · OPA 컨트롤 계승(±탭·휠·세로드래그) · 변경 시 PIN 인증(요구5·6) ──
-const lkStepIdx = () => LK_STEPS.indexOf(lkMinRaw());
+const lkStepIdx = dev => LK_STEPS.indexOf(lkMinDev(dev));
 async function lkMinAuth() {                             // 자동잠금 변경 = 팝업 세션당 1회 PIN 인증(요구6 · PIN 미설정이면 즉시 통과 · 동시 조작은 인증 모달 1회 공유)
   if (_minAuthed) return true;
   if (_minAuthing) return _minAuthing;                   // 진행 중 = 같은 인증 프라미스 공유(중복 #pindlg 진입 차단)
   _minAuthing = (async () => { try { const ok = await lkVerifyOldPin(); if (ok) _minAuthed = true; return ok; } finally { _minAuthing = null; } })();   // finally = resolve/reject 무관 리셋(인증 프라미스 고착 방지·평의회3)
   return _minAuthing;
 }
-function lkMinApply(dir) {                               // 값 변경 = 동기(read-modify-write 원자적 · 인증 통과 후에만) — 매 적용 시점 현재값 기준 재계산 = 빠른 연속 조작도 정확히 누적
-  const i = Math.max(0, Math.min(LK_STEPS.length - 1, lkStepIdx() + dir));
-  if (LK_STEPS[i] === lkMinRaw()) return;                // 경계·무변화
-  try { localStorage.setItem('nm_lock_min', String(LK_STEPS[i])); } catch {}   // 단일값(PC/모바일 통일)
+function lkMinApply(dev, dir) {                          // 값 변경 = 동기(read-modify-write 원자적 · 인증 통과 후에만) — 매 적용 시점 현재값 기준 재계산 = 빠른 연속 조작도 정확히 누적(목표 인덱스 고정 안 함)
+  const i = Math.max(0, Math.min(LK_STEPS.length - 1, lkStepIdx(dev) + dir));
+  if (LK_STEPS[i] === lkMinDev(dev)) return;             // 경계·무변화
+  try { localStorage.setItem(lkMinKey(dev), String(LK_STEPS[i])); } catch {}
   lkSettingsRefresh(); lockArm();
 }
-async function lkMinReq(dir) {                           // 요청 = OFF·경계 가드 → 인증 게이트 → 동기 적용
+async function lkMinReq(dev, dir) {                      // 요청 = OFF·경계 가드 → 인증 게이트 → 동기 적용
   try {
     if (!lkOn()) return;                                 // 화면잠금 OFF = 비활성(요구7 · pointer-events + JS 이중가드)
-    if (lkStepIdx() + dir < 0 || lkStepIdx() + dir >= LK_STEPS.length) return;   // 경계 = 인증 모달도 안 띄움
+    if (lkStepIdx(dev) + dir < 0 || lkStepIdx(dev) + dir >= LK_STEPS.length) return;   // 경계 = 인증 모달도 안 띄움
     if (!(await lkMinAuth())) { lkSettingsRefresh(); return; }   // 인증 실패/취소 = 표시 원복
-    lkMinApply(dir);
+    lkMinApply(dev, dir);
   } catch {}   // localStorage 완전차단 등 예외 = 조용히 무시(부동 프라미스 rejection 차단·평의회3)
 }
 lockpop.querySelectorAll('.lk-stbtn').forEach(b => b.addEventListener('click', e => {   // ± 탭 스테퍼
   e.stopPropagation();
-  lkMinReq(parseInt(b.dataset.dir, 10));
+  lkMinReq(b.dataset.dev, parseInt(b.dataset.dir, 10));
 }));
 lockpop.querySelectorAll('.lk-stval').forEach(el => {                                   // 값 = 휠·세로드래그(OPA gs-opa 계승 · 위로=증가)
-  el.addEventListener('wheel', e => { e.preventDefault(); lkMinReq(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  const dev = el.dataset.dev;
+  el.addEventListener('wheel', e => { e.preventDefault(); lkMinReq(dev, e.deltaY < 0 ? 1 : -1); }, { passive: false });
   let sy = 0, acc = 0, drag = false;
   el.addEventListener('pointerdown', e => { drag = true; sy = e.clientY; acc = 0; el.classList.add('opa-adjusting'); try { el.setPointerCapture(e.pointerId); } catch {} });
   el.addEventListener('pointermove', e => {
     if (!drag) return;
     if (_minAuthing) { acc = 0; return; }   // 인증 모달 진행 중 = 드래그 값변경 보류(포인터캡처가 inert 우회 시 큐잉 다단점프 방지·평의회3)
     acc += (sy - e.clientY); sy = e.clientY;
-    if (Math.abs(acc) >= 18) { const d = acc > 0 ? 1 : -1; acc = 0; lkMinReq(d); }
+    if (Math.abs(acc) >= 18) { const d = acc > 0 ? 1 : -1; acc = 0; lkMinReq(dev, d); }
   });
   const end = e => { if (drag) { drag = false; el.classList.remove('opa-adjusting'); try { el.releasePointerCapture(e.pointerId); } catch {} } };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
