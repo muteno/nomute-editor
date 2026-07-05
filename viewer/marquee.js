@@ -645,7 +645,7 @@ window.FPS = FPS;
          if(c) window.LOVE_ACCENT=c; }catch(e){}          // NOW SHOWING = --accent(#00EED2) 실시간
     _readMarqCol();                                        // 전광판 LOVE 글자색(marqColor) 실시간 갱신(운영자 260704)
   }
-  function hidden(){ var tb=document.body.dataset.tab; return tb==='scrap'||tb==='sns'; }  // 레거시·SNS=산책펫(마퀴 정지)
+  function hidden(){ return true; }  // LOVE 마스코트 폐지(운영자 260705 '축구공 드리블 펫으로 전 탭 통일') — rAF 상시 정지·파일은 도먼트 보존
   var start=null, raf=0, running=false;
   var RM = matchMedia('(prefers-reduced-motion:reduce)').matches;
   function loop(now){
