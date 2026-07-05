@@ -13,10 +13,8 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). -->
-<link rel="preload" as="image" href="assets/brand/main_background.jpg" fetchpriority="high"><!-- feed 배너 = 부팅 노출(booted) 크리티컬 패스(9063 _bannerReady) → 조기·고우선 다운로드로 부팅 가속(로딩 지연 진단 260705 · 숨은 scrap/sns 배너는 탭 진입 시 지연 로드) -->
-<script defer src="marked.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · 운영자 260705 "시작 시 멈춤" 진단: CDN SPOF 제거) · defer = 첫 피드 렌더는 textContent라 marked 불필요(상세 열 때만) → 파싱 비차단으로 부팅 가속 · setOptions는 window.marked 가드로 defer 늦어도 안전(parse는 open() 시점=로드 완료) -->
-
-<script defer src="purify.min.js"></script><!-- self-host + defer(marked와 동일 · 첫 렌더 비차단·sanitize는 상세 열 때만) -->
+<script src="marked.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · 운영자 260705 "시작 시 멈춤" 진단: CDN 단일의존 SPOF = 폰 네트워크/CDN 장애 1회면 marked.setOptions throw로 부팅 전면 중단 → self-host로 항상 로드 보장) -->
+<script src="purify.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · marked와 동일 SPOF 제거) -->
 <style>
   :root {
     /* ⚠️ 디자인시스템 토큰 = 값 SSOT (정본). 신규/수정 CSS는 raw hex/px/blur 직접 박지 말고 var() 사용.
@@ -2245,9 +2243,9 @@
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
 <div class="topbanner">
   <div class="bannerframe"><div class="bannerclip">
-    <img class="banner layer-feed" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high">
-    <img class="banner layer-scrap" data-src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true"><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
-    <img class="banner layer-sns" data-src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
+    <img class="banner layer-feed" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL">
+    <img class="banner layer-scrap" src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true">
+    <img class="banner layer-sns" src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
   </div></div>
   <canvas class="lovemarq" id="marqCanvas" width="1080" height="1080" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 정사각 씬(1080²·풀세트: 펫이 사다리 올라 간판에 LOVE♥ 놓고 점등) — marquee.js 렌더·투명 배경(뒤 브랜드 배너 비침)·NOW SHOWING=페이지 강조색(window.LOVE_ACCENT). 뉴스요약 탭 전용(260704 C안) -->
   <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 전 탭(뉴스요약·레거시·SNS) = 옛 산책 펫(공놀이) — 260704 '100% 롤백'(운영자) -->
@@ -2549,7 +2547,7 @@ let DATA = [], DATA_LOADED = false;   // DATA_LOADED = 피드 1회 로드 완료
 let CUR = '';
 let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로드에서 제목·출처 참조)
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
-document.addEventListener('DOMContentLoaded', () => { if (window.marked) marked.setOptions({ breaks:true }); });   // DOMContentLoaded = defer marked 로드 완료 후 setOptions(defer는 DCL 전 순서 실행 보장) → breaks:true 적용 · window.marked 가드 = 로드 실패해도 throw 안 나 부팅 계속(SPOF 방어 · parse는 상세 open() 시점이라 더 나중 = 옵션 반영됨 · 운영자 260705)
+if (window.marked) marked.setOptions({ breaks:true });   // 방어 가드 = marked 로드 실패(self-host 파일도 만일 못 받으면)해도 여기서 throw 안 나 부팅 계속(옛 무가드 = SPOF throw로 앱 전면 멈춤 · 운영자 260705)
 
 // 민감 태그 — 에디터 본체(01 [민감 이슈 분기]) 통제어휘 7개 → 앰버 경고 틴트(.warn).
 // 앞 5개=콘텐츠 보호(선정성·피해자 안전·장면 검열) · #북·중외교=사실 무결성↑(날조 금지·오전달 중죄급)·표현/창작 제약 아님·좌우 부여(정부정책 두둔 좌/비판 우·현 정부 기준)·운영자 260622.
@@ -6354,14 +6352,11 @@ function pickAlt(c) {
 const pfKeyOf = c => [_normU(c.url), ...((c.cluster_members || []).map(_normU))].find(u => u && PFAIL.has(u)) || '';
 const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
 const pfReason = c => (PFAIL.get(pfKeyOf(c)) || {}).reason || '';
-let PFAIL_LOADING = false;   // in-flight 가드 = 부팅 eager(9069) + enterScrap(7359) 동시호출 중복 fetch 차단(loadCandidates 패턴 · 운영자 260705 로딩 진단)
 async function loadPickFails() {
-  if (PFAIL_LOADING) return; PFAIL_LOADING = true;
   try {
     const r = await fetch('picks-failed.json?_=' + Date.now());
     if (r.ok) { const d = await r.json(); if (Array.isArray(d)) PFAIL = new Map(d.map(x => [_normU(x.url), { reason: x.reason || '', ts: x.ts || '' }])); }
   } catch { /* 없으면 무시 */ }
-  finally { PFAIL_LOADING = false; }
   detectPickFail();
 }
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
@@ -6401,9 +6396,7 @@ const failHideChk = () => `<button class="sc-tg ack sc-failhide" type="button" a
 //    localStorage(r.picked)는 발사 직후 깜빡임 가리는 낙관적 오버레이로 유지. (정본 설계 = docs/_세션_작업큐_260620.md §D)
 let PEND = new Map();   // normUrl → 'processing'|'retry'|'fail'|'succ' (api/pending 라이브 · retry=일시 과부하 자동 재시도 대기)
 let PEND_PROC = 0;      // 처리중(processing) 대기열 건수 = 피드버튼 발견성 배지(숨은 롱프레스 의존 제거·운영자 260620)
-let PEND_LOADING = false;   // in-flight 가드 = 부팅 eager(9070) + enterScrap(7359) 동시호출 중복 fetch 차단(운영자 260705 로딩 진단)
 async function loadPending(render) {
-  if (PEND_LOADING) return; PEND_LOADING = true;
   let changed = false;   // 상태 전이 감지 — 폴(render 미지정)에서도 processing→fail/succ 전이면 재렌더(스크랩 상주 시 칩 스테일 차단 · 평의회3 이슈2 · 260703)
   try {
     const r = await fetch('api/pending?_=' + Date.now());
@@ -6414,7 +6407,6 @@ async function loadPending(render) {
       PEND_PROC = (d.items || []).filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
       updateQBadge(); }
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
-  finally { PEND_LOADING = false; }   // 리셋 필수 = 안 하면 플래그 영구 true로 이후 폴링 전면 차단
   if ((render || changed) && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
 }
 function updateQBadge() {   // 피드 bnav 버튼 우상단 처리중 건수 배지 — 0이면 숨김. 탭=대기열(롱프레스 의존 제거).
@@ -7346,7 +7338,6 @@ function showTab(tab) {
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
   document.body.classList.toggle('tab-scrap', tab === 'scrap');
   document.body.dataset.tab = tab;   // 카드만 토글 = 피드 탭에서만 표시(CSS body[data-tab=feed])
-  if (tab === 'scrap' || tab === 'sns') { const _bl = document.querySelector('.banner.layer-' + tab); if (_bl && _bl.dataset.src && !_bl.getAttribute('src')) _bl.src = _bl.dataset.src; }   // 숨은 배너 지연 로드 = 그 탭 처음 진입 시 1회 src 세팅(부팅 대역폭서 뺌·crossfade 그대로 · 운영자 260705 로딩 최적화)
   try { localStorage.setItem('nomute_tab', tab); } catch {}   // 새로고침 복원용
 
   setViewhead(tab);
