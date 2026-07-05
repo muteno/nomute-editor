@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). -->
-<link rel="preload" as="image" href="assets/brand/main_background.jpg" fetchpriority="high"><!-- feed 배너 = 부팅 노출(booted) 크리티컬 패스(9063 _bannerReady) → 조기·고우선 다운로드로 부팅 가속(로딩 지연 진단 260705 · 숨은 scrap/sns 배너는 탭 진입 시 지연 로드) -->
+<link rel="preload" as="image" href="assets/brand/main_background.jpg?v=260705t" fetchpriority="high"><!-- feed 배너 = 부팅 노출(booted) 크리티컬 패스(9063 _bannerReady) → 조기·고우선 다운로드로 부팅 가속(로딩 지연 진단 260705 · 숨은 scrap/sns 배너는 탭 진입 시 지연 로드) -->
 <script defer src="marked.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · 운영자 260705 "시작 시 멈춤" 진단: CDN SPOF 제거) · defer = 첫 피드 렌더는 textContent라 marked 불필요(상세 열 때만) → 파싱 비차단으로 부팅 가속 · setOptions는 window.marked 가드로 defer 늦어도 안전(parse는 open() 시점=로드 완료) -->
 
 <script defer src="purify.min.js"></script><!-- self-host + defer(marked와 동일 · 첫 렌더 비차단·sanitize는 상세 열 때만) -->
@@ -151,7 +151,7 @@
 
   /* ── 전면 배너(최상단) + 오버랩 프로필 메뉴 ── */
   .topbanner { position:relative; max-width:860px; margin:0 auto; padding:10px 16px 0; }
-  /* 배너 = 3겹(피드 초록 / 스크랩 앰버 / SNS 시안) opacity 크로스페이드(디졸브) 전환. 글로우=프레임(클립 영향X)·디졸브=클립 내부(틈/삐져나옴 X). */
+  /* 배너 = 단일(전 탭 동일 · 260705 탭별 디졸브 폐지). 글로우=프레임(클립 영향X X). */
   .bannerframe { position:relative; border-radius:20px;
     box-shadow:0 18px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.10);
     --glow:0,238,210;            /* 글로우 색(피드=강조색·기본) */
@@ -160,10 +160,7 @@
   /* 탭별 글로우 폐지 — 전 탭 강조색 글로우 통일(운영자 260705 "메뉴별 색 다른 거 다 통일") */
   .bannerclip { position:relative; border-radius:20px; overflow:hidden; border:1px solid var(--line); }
   .banner { width:100%; display:block; }
-  .banner.layer-scrap, .banner.layer-sns { position:absolute; inset:0; opacity:0;
-    transition:opacity .6s ease; will-change:opacity; }
-  body.tab-scrap .banner.layer-scrap { opacity:1; }   /* 1번 누르면 배너가 점차 오렌지로 디졸브(크로스페이드) */
-  body[data-tab="sns"] .banner.layer-sns { opacity:1; }   /* SNS = 시안 배너 디졸브 */
+  /* 탭별 배너 디졸브 레이어 폐지 — 단일 배너(전 탭 동일 자산 · 구 탭 배너 캐시 잔여가 "메뉴별 색 잔여" 유발 · 운영자 260705 "뒤 디밍 다 없애줘"). 차등 배너 재도입 시 크로스페이드 패턴은 §8-5-b 참조. */
   /* P: TV 뒤 불빛 브리딩 — 밝아졌다 은은히 죽었다 다시(절대 깜깜 X). filter=GPU 컴포지트(60fps). 색=--glow(탭별). */
   @keyframes bannerbreath {
     0%,100% { filter:brightness(1) saturate(1) drop-shadow(0 0 2px rgba(var(--glow),0)); }
@@ -455,7 +452,7 @@
   .card { display:block; }
   #list .card { content-visibility:auto; contain-intrinsic-size:auto 240px; }   /* ⚡버퍼 260701(분신술 A7): 뷰포트 밖 피드 카드의 backdrop-filter(8px)+box-shadow 페인트·레이아웃 스킵 = 스크롤 jank↓(비가상화 N카드 동시 backdrop 재샘플 완화). auto=첫 렌더 후 실제높이 기억(폴백 240px·스크롤바 점프 방지). 미지원(구 Safari)은 무시=정상 렌더(무해·progressive). 시각 무변경. */
   /* 피드 카드 = 투명 글래스(딥블랙 위) · 투명도 15% · 흐림은 위 .card(8px) 상속 · 글로우 없음 · 운영자 260625(롤백=이 블록만 제거). */
-  body[data-tab="feed"] .card { background:rgba(16,30,22,.15); }
+  /* feed 탭 전용 카드 워시 폐지(탭별 색 잔여 제거 · 운영자 260705) */
   .cardmain { min-width:0; }
   /* #1 첫줄 = IN(적재)·WRITE(보도) 두 날짜. WRITE 항상 강조(accent), IN은 오늘일 때만 강조(B). */
   .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; align-items:center; gap:9px; flex-wrap:nowrap; min-width:0; }   /* [카테고리] 보도(좌) ··· 스크랩+긴급/이슈(우) = 항상 1줄(운영자 260621·디자인안04). 라벨 폐지. */
@@ -1089,7 +1086,7 @@
   .failmenu-it svg { flex:none; opacity:.85; }
   .failmenu-it:hover { color:var(--accent); background:rgba(255,255,255,.06); }
   .failmenu-it:active { transform:scale(var(--press-l,.98)); }
-  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .banner.layer-scrap, .banner.layer-sns { transition:none; } .failmenu { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .failmenu { animation:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
   .totop { position:fixed; right:20px; bottom:calc(99px + env(safe-area-inset-bottom)); z-index:34;   /* 아래 변 쪽으로 내림(104→99·네비바 바로 위) · 작아진 만큼 우측 20 · 운영자 260703 */
@@ -2304,9 +2301,9 @@ try {
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
 <div class="topbanner">
   <div class="bannerframe"><div class="bannerclip">
-    <img class="banner layer-feed" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high">
-    <img class="banner layer-scrap" data-src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true"><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
-    <img class="banner layer-sns" data-src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
+    <img class="banner layer-feed" src="assets/brand/main_background.jpg?v=260705t" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high">
+    <!-- 탭별 배너 레이어 폐지(260705) — 단일 배너 --><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
+    
   </div></div>
   <canvas class="lovemarq" id="marqCanvas" width="1080" height="1080" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 정사각 씬(1080²·풀세트: 펫이 사다리 올라 간판에 LOVE♥ 놓고 점등) — marquee.js 렌더·투명 배경(뒤 브랜드 배너 비침)·NOW SHOWING=페이지 강조색(window.LOVE_ACCENT). 뉴스요약 탭 전용(260704 C안) -->
   <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 전 탭(뉴스요약·레거시·SNS) = 옛 산책 펫(공놀이) — 260704 '100% 롤백'(운영자) -->
@@ -7462,7 +7459,7 @@ function showTab(tab) {
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
   document.body.classList.toggle('tab-scrap', tab === 'scrap');
   document.body.dataset.tab = tab;   // 카드만 토글 = 피드 탭에서만 표시(CSS body[data-tab=feed])
-  if (tab === 'scrap' || tab === 'sns') { const _bl = document.querySelector('.banner.layer-' + tab); if (_bl && _bl.dataset.src && !_bl.getAttribute('src')) _bl.src = _bl.dataset.src; }   // 숨은 배너 지연 로드 = 그 탭 처음 진입 시 1회 src 세팅(부팅 대역폭서 뺌·crossfade 그대로 · 운영자 260705 로딩 최적화)
+  // (탭별 배너 지연 로드 폐지 — 단일 배너 260705)입 시 1회 src 세팅(부팅 대역폭서 뺌·crossfade 그대로 · 운영자 260705 로딩 최적화)
   try { localStorage.setItem('nomute_tab', tab); } catch {}   // 새로고침 복원용
 
   setViewhead(tab);
