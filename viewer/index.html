@@ -5434,6 +5434,7 @@ function placeMsgpop() {
   msgpop.style.maxHeight = (window.innerHeight - top - 12) + 'px';     // 하단 넘침 방지(내부 스크롤)
 }
 ['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!msgpop.hidden) placeMsgpop(); }, { passive: true }));
+['resize', 'orientationchange'].forEach(ev => window.addEventListener(ev, () => { if (!qpop.hidden && !qpop.classList.contains('closing')) placeQpop(); }, { passive: true }));   // 대기열도 창 크기 바뀌면 재배치(PC 버튼 위 앵커·좌우 클램프 유지 = 창 좁혀도 안 짤림 · 운영자 260705)
 $('#msgbtn').addEventListener('click', e => { e.stopPropagation(); openMsgbox(); });
 $('#msgclose').addEventListener('click', e => { e.stopPropagation(); msgpop.hidden = true; });
 
@@ -5941,14 +5942,20 @@ if (qFeedBtn) {
   }
 }
 let _qPushed = false, _qPop = false;   // 대기열 폰 뒤로가기 = 먼저 닫기(§🎨 pushState/popstate · 라이트박스 패턴 계승 · 운영자 260622)
+function placeQpop() {   // 대기열 위치 — PC(정밀 포인터=마우스)는 호버한 뉴스요약 버튼 위 앵커 / 모바일(터치)은 화면 중앙(정면) · 둘 다 뷰포트 좌우·상단 클램프(창 좁혀도 안 짤림) · 운영자 260705
+  const r = qFeedBtn.getBoundingClientRect();
+  qpop.style.bottom = (window.innerHeight - r.top + 12) + 'px';   // 네비 위로(크게·위로 띄움)
+  qpop.style.maxHeight = (r.top - 16) + 'px';   // 네비 위 가용높이로만 캡(세로 안 짤림 · 헤더·페이지=flex:none, 리스트만 압축)
+  const w = qpop.offsetWidth || Math.min(window.innerWidth * 0.94, 440);   // 실측 폭(hidden 해제 후 호출 · CSS min(94vw,440) 폴백)
+  const fine = !!(window.matchMedia && matchMedia('(pointer: fine)').matches);   // 정밀 포인터(마우스)=PC → 버튼 위 앵커 / 터치=모바일 → 화면 중앙(pointer:fine 관용 계승)
+  const cx = fine ? (r.left + r.width / 2) : (window.innerWidth / 2);   // 앵커 중심 = PC는 호버 버튼 중앙, 모바일은 화면 중앙
+  qpop.style.left = Math.round(Math.max(8, Math.min(cx - w / 2, window.innerWidth - w - 8))) + 'px';   // 좌우 8px 클램프(좁은 창서도 안 넘침·translateX 안 씀=히트테스트 누수 차단)
+}
 function openQueue() {
   closeOverlays('qpop');
   clearTimeout(_qCloseTimer); qpop.classList.remove('closing');   // 닫힘 애니 중 재오픈 = 취소(다시 촤르륵 열림)
-  const r = qFeedBtn.getBoundingClientRect();
-  qpop.style.bottom = (window.innerHeight - r.top + 12) + 'px';   // 네비 위로(크게·위로 띄움)
-  qpop.style.maxHeight = (r.top - 16) + 'px';   // 네비 위 가용높이로만 캡(하한 없음 → 박스 top=4px 항상 ≥0, 짧은 뷰포트서도 헤더 안 잘림). 헤더·페이지=flex:none, 리스트만 압축.
-  qpop.hidden = false;
-  qpop.style.left = Math.round((window.innerWidth - qpop.offsetWidth) / 2) + 'px';   // translateX 안 씀(히트테스트 누수 차단) → 폭 재서 뷰포트 좌변 중앙(운영자 260622)
+  qpop.hidden = false;   // 폭 측정 위해 먼저 표시
+  placeQpop();           // 위치 = PC 버튼 위 앵커 / 모바일 중앙 + 뷰포트 클램프
   try { sessionStorage.setItem('nomute_q_open', '1'); } catch {}   // 열림 기억 → 외부 링크(↗) 갔다 돌아오면(pageshow) 자동 재오픈
   if (!_qPushed) { history.pushState({ qpop: true }, ''); _qPushed = true; }   // 폰 뒤로가기 한 번 = 대기열 먼저 닫기(딴 화면 안 벗어남)
   loadQueue();
