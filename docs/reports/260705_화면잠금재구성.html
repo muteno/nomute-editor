@@ -1,0 +1,94 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>화면잠금 재구성 + 잠금화면 오션 배경</title>
+<style>
+  :root{ --bg:#121212; --accent:#0FFD02; --accent-5:#0cd0f7; --bias-l2:#3a6ddb; --fg:#eef7f0; --mut:#8fa697;
+    --card:rgba(255,255,255,.04); --line:rgba(255,255,255,.09); --ok:#5fdfa3; --warn:#f3c95a; --bad:#f5807f; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px;-webkit-font-smoothing:antialiased;padding:22px 16px 60px;max-width:760px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;margin:0 0 4px;line-height:1.35}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+  h2{font-size:15px;font-weight:800;margin:26px 0 11px;display:flex;align-items:center;gap:8px}
+  h2::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);flex:none}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:2px 0}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:12px}
+  td b{color:var(--fg)}
+  .before{color:var(--mut)} .after{color:var(--fg)}
+  .lock{height:132px;border-radius:12px;margin:6px 0 2px;position:relative;overflow:hidden;display:grid;place-items:center;
+    background:radial-gradient(130% 100% at 60% 40%, #12303a 0%, #0e2430 40%, #0a1a24 70%, #081016 100%)}
+  .lock .dots{display:flex;gap:13px}.lock .dots i{width:11px;height:11px;border-radius:50%;border:1.6px solid rgba(255,255,255,.5)}
+  .lock span{position:absolute;left:12px;bottom:9px;font-size:11px;color:var(--mut)}
+  ul{margin:6px 0;padding-left:20px} li{margin:4px 0}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:6px}
+  .t-fix{background:rgba(95,223,163,.16);color:var(--ok)} .t-risk{background:rgba(243,201,90,.16);color:var(--warn)}
+  .t-reg{background:rgba(245,128,127,.16);color:var(--bad)}
+  code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .ok{color:var(--ok);font-weight:700} .accent{color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+</style>
+
+<h1>화면잠금 재구성 + 잠금화면 오션 배경</h1>
+<div class="sub">260705 · <code>viewer/index.html</code> · <code>check_refs.py</code> · PR #1674 (머지 <code>4147434</code>) · §검증 10인 평의회</div>
+
+<div class="lock"><div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div><span>잠금화면 = 오션(파랑·시안) 물결 위 PIN — 물결은 천천히 흐름</span></div>
+
+<h2>무엇을 바꿨나</h2>
+<div class="card">
+잠금을 <b>프로필 메뉴에서 바로 켜고 끄는 ON/OFF 토글</b>로 바꿨어(알림처럼). 켤 때 PIN을 바로 만들고, 끌 때 기존 PIN을 확인해. 세부 설정 팝업에선 ON/OFF를 없애고 <b>자동잠금 게이지 + PIN 변경</b>만 남겼어. <b>잠금화면 배경은 아까 그 블루(오션) 물결</b>로 깔았고, <b>잠금이 걸린 기기는 부팅 때 인트로 없이 바로 PIN</b>이 떠. 덤으로 부팅 스플래시의 프로필 얼굴을 빼 깔끔하게 하고, 곳곳에 raw로 박혀 있던 SNS 시안색을 팔레트 토큰으로 통일했어.
+</div>
+
+<h2>전 / 후</h2>
+<table>
+<tr><th>항목</th><th>전</th><th>후</th></tr>
+<tr><td><b>잠금 ON/OFF</b></td><td class="before">팝업(잠금 설정 창) 안에 숨어 있음</td><td class="after">프로필 메뉴에 토글로 노출 · OFF→ON=즉시 PIN 설정 / ON→OFF=PIN 확인</td></tr>
+<tr><td><b>세부 팝업</b></td><td class="before">ON/OFF + 게이지 + PIN 설정/해제</td><td class="after">ON일 때만 진입 · 게이지 + PIN <b>변경</b>만(ON/OFF 제거)</td></tr>
+<tr><td><b>잠금화면 배경</b></td><td class="before">챠콜 90% + 블러(정적 다크)</td><td class="after">오션 물결(파랑·시안) + 옅은 블루-딤</td></tr>
+<tr><td><b>부팅(잠금 시)</b></td><td class="before">인트로 스플래시 → 이후 PIN</td><td class="after">인트로 스킵 → 바로 PIN(첫 페인트 전 판정=플래시 0)</td></tr>
+<tr><td><b>부팅 스플래시</b></td><td class="before">프로필 얼굴 + 앱이름</td><td class="after">앱이름만 중앙(얼굴 제거)</td></tr>
+<tr><td><b>SNS 시안색</b></td><td class="before">raw <code>#0cd0f7</code>·<code>rgba(12,208,247)</code> 곳곳</td><td class="after"><code>var(--naver)</code>·<code>var(--naver-rgb)</code> 토큰(픽셀 동일)</td></tr>
+</table>
+
+<h2>효율성 · 성능</h2>
+<div class="card">
+<ul>
+<li><b>물결 재활용(추가 비용 0)</b> — 잠금화면은 이미 도는 배경 셰이더를 z-index만 올려 앞으로 가져옴(캔버스 재초기화·컨텍스트 로스트 없음 = 순수 리컴포짓)</li>
+<li><b>잠금 중 30fps 다운시프트</b> — 유휴 잠금은 사용자가 자리를 뜬 상태 → 평소 120fps를 잠금화면에선 30fps로 낮춰 배터리 방어(평의회7 지적)</li>
+<li><b>픽셀 회귀 0 토큰화</b> — SNS 시안 raw→토큰은 값이 동일(#0cd0f7=rgb(12,208,247)) → 화면 무변화, 게이트 경고만 해소</li>
+<li><code>check_refs</code> baseline 래칫 — blur 134→132(잠금 blur 제거), hex 163→157(시안 토큰화)</li>
+</ul>
+</div>
+
+<h2>10인 평의회 발견 · 수정</h2>
+<div class="card">
+<div style="margin-bottom:10px"><span class="tag t-reg">회귀 수정</span> 토글을 팝업 밖으로 옮기면서 <b>설정 메뉴 열 때 갱신 트리거가 빠져 토글이 실제 ON인데 "OFF"로 표시</b>되던 회귀 → 메뉴 펼침에 <code>lkSettingsRefresh()</code> 추가(<span class="ok">실클릭 흐름 headless 확인</span>)</div>
+<div style="margin-bottom:10px"><span class="tag t-reg">회귀 수정</span> '잠금 설정' 라벨이 전폭 버튼→작은 텍스트로 <b>탭 타깃 축소</b> → <code>flex:1</code>로 히트영역을 행 폭까지 복원(시각 무변화)</div>
+<div class="grid2">
+<div><span class="tag t-fix">복구경로</span> 마스터 PIN(898900)이 5회잠금 중에도 통하게(잠금화면과 통일)</div>
+<div><span class="tag t-fix">모바일</span> PIN 입력 중 프로필 메뉴 유지 → 설정 후 토글 갱신이 보임</div>
+<div><span class="tag t-fix">견고성</span> 잠금화면을 <code>.topbanner</code> 밖 body 직속으로 이동(조상 스태킹 컨텍스트 함정 제거)</div>
+<div><span class="tag t-fix">레이스</span> 잠금 중 모달 진입 차단 · 토글 재진입 가드 · ON→OFF async 잠김 방어</div>
+<div><span class="tag t-fix">가독</span> 잠금화면 문구 text-shadow + 스크림 소폭 상향(움직이는 밝은 물결 위 대비 확보)</div>
+<div><span class="tag t-fix">접근성</span> PIN 오류에 <code>role="alert"</code>(스크린리더 낭독)</div>
+</div>
+</div>
+
+<h2>품질저하 리스크</h2>
+<div class="card">
+<ul>
+<li><span class="tag t-risk">주의</span> <b>잠금화면 가독성 트레이드오프</b> — 정적 다크(90%+블러)에서 투명 오션 물결로 바뀌어 대비 하한을 스크림(.34)+text-shadow로 확보. 실기기에서 흐리면 스크림 상향 여지.</li>
+<li><span class="tag t-risk">주의</span> <b>마스터 PIN이 이제 설정창에서도 5회잠금을 우회</b> — 잠금화면과 동일하게 맞춘 것(복구 일관성). 로컬 가림막 성격상 의도된 방향.</li>
+<li><span class="tag t-risk">주의</span> 부팅 인트로 스킵 판정은 스플래시 표시만 담당(실제 잠금은 메인 스크립트가 소유) — 어긋나도 보안 영향 0(앱은 booted로 정상 노출).</li>
+<li><b>데드락·언락불가·프라이버시 약화·z가림 실패·메모리 누수 = 없음</b>(평의회 실측). OFF는 PIN을 지우지만 <b>인증 뒤에만</b> 실행돼 새 우회 없음.</li>
+</ul>
+</div>
+
+<h2>검증</h2>
+<div class="card">
+§검증 10인 평의회(Opus 4.8 · READ-ONLY Explore) 각기 다른 앵글 — 상태머신·부팅정합·z스태킹·PIN변경흐름·모바일·보안·메모리·회귀·CSS특이도·통합/a11y. 핵심 안전속성 <span class="ok">전부 확인</span>, 지적분 전부 반영. headless(Chromium) 실측: 프로필 토글 실클릭 ON 표시·lockscr body 직속·스플래시 얼굴 제거·부팅스킵·시안 픽셀동일 <span class="ok">PASS</span> · <code>check_refs rc=0</code>(디자인 게이트 경고 0) · 원격 <code>git show origin/main</code> read-back 확인.
+</div>
