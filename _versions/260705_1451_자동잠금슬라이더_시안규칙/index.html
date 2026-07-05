@@ -253,16 +253,13 @@
   @media (prefers-reduced-motion:reduce){ .pushrow .lk-chg.firing { animation-duration:.2s; } .pushrow .lk-chg .gck path { animation:none; stroke-dashoffset:0; } }
   /* 하위 설정(PIN·자동잠금) 비활성 표기 = 화면 잠금 OFF일 때 dim + 조작 차단(운영자 260705 · 마스터 토글 OFF = readonly) */
   .pushrow.lk-sub.off { opacity:.4; pointer-events:none; }
-  /* 자동 잠금(분) = 좌우 드래그 슬라이더(9단계 LK_STEPS 스냅) · 양끝 1·60 네온레몬 · 값 우측 표시 (운영자 260705 · 옛 ±스테퍼/세로드래그 폐지) */
-  .pushrow .lk-stval { min-width:30px; text-align:right; font-size:13px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; -webkit-user-select:none; user-select:none; }
-  .lk-sldrow { display:flex; align-items:center; gap:10px; padding:2px 18px 12px; }
-  .lk-sldrow.off { opacity:.4; pointer-events:none; }   /* 화면잠금 OFF = 비활성(요구7 · lk-sub와 동일) */
-  .lk-cap { flex:none; font-size:12px; font-weight:800; color:var(--accent-4); text-shadow:0 0 8px rgba(var(--accent-4-rgb),.55); font-variant-numeric:tabular-nums; }   /* 양끝 1(최소)·60(최대) = 네온 레몬(--accent-4)+글로우 (운영자 260705) */
-  .lk-track { position:relative; flex:1; height:26px; display:flex; align-items:center; cursor:pointer; touch-action:none; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }
-  .lk-track .lk-rail { position:absolute; left:0; right:0; height:6px; border-radius:var(--r-pill); background:rgba(255,255,255,.12); }
-  .lk-track .lk-fill { position:absolute; left:0; height:6px; border-radius:var(--r-pill); background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.5); }
-  .lk-track .lk-thumb { position:absolute; width:20px; height:20px; border-radius:50%; background:var(--accent); transform:translateX(-50%); box-shadow:0 0 0 4px rgba(var(--accent-rgb),.18), 0 2px 6px rgba(0,0,0,.5); transition:box-shadow .15s; }
-  .lk-track.drag .lk-thumb { box-shadow:0 0 0 7px rgba(var(--accent-rgb),.22), 0 2px 8px rgba(0,0,0,.6); }
+  /* 자동 잠금 분 스테퍼 = OPA 컨트롤 계승(썸네일 gsop-step·gs-opa) — ±탭 · 값 span 세로드래그/휠 · 스텝 배열(1~60) */
+  .pushrow .lk-step { flex:none; display:flex; align-items:center; gap:2px; }
+  .pushrow .lk-stbtn { color:var(--accent); font-weight:800; font-size:15px; line-height:1; padding:6px 10px; background:none; border:none; cursor:pointer; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }   /* ± 글리프 = 15px(--fs-body값 · 형제 13px보다 크게 = 탭 표적) · 세로패딩 6px = 손가락 타깃 확보(OPA gsop-step 계승+보강) */
+  .pushrow .lk-stbtn:active { opacity:.55; }
+  .pushrow .lk-stbtn:disabled { opacity:.3; cursor:default; }
+  .pushrow .lk-stval { min-width:30px; text-align:center; font-size:13px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; cursor:ns-resize; touch-action:none; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:color .25s ease; }   /* OPA gs-opa 계승(accent↔mut·.25s 정본) */
+  .pushrow .lk-stval.opa-adjusting { color:var(--mut); }
   .lk-hint { padding:7px 12px 10px; font-size:11.5px; color:var(--mut); line-height:1.5; }
   .lk-hint.bad { color:var(--danger); font-weight:700; }
   .lockscr { position:fixed; inset:0; z-index:var(--z-lock); display:grid; place-items:center;
@@ -2327,8 +2324,7 @@
     <div class="mh"><b>잠금 설정</b><button class="mx" id="lockpopX" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
     <div class="pushrow"><span class="pl">화면 잠금</span><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
     <div class="pushrow lk-sub" id="lkRowPin"><span class="pl">PIN (6자리)</span><button class="lk-chg" id="lockChgBtn" type="button">미설정</button></div>
-    <div class="pushrow lk-sub" id="lkRowMin"><span class="pl">자동 잠금(분)</span><span class="lk-stval" id="lockMin" aria-live="polite">2</span></div>
-    <div class="lk-sldrow lk-sub" id="lkSldRow"><span class="lk-cap">1</span><div class="lk-track" id="lkTrack" role="slider" aria-label="자동 잠금 분" aria-valuemin="1" aria-valuemax="60" aria-valuenow="2" tabindex="0"><div class="lk-rail"></div><div class="lk-fill" id="lkFill"></div><div class="lk-thumb" id="lkThumb"></div></div><span class="lk-cap">60</span></div>
+    <div class="pushrow lk-sub" id="lkRowMin"><span class="pl">자동 잠금(분)</span><span class="lk-step"><button class="lk-stbtn" data-dir="-1" type="button" aria-label="자동 잠금 분 감소">−</button><span class="lk-stval" id="lockMin" aria-live="polite">2</span><button class="lk-stbtn" data-dir="1" type="button" aria-label="자동 잠금 분 증가">+</button></span></div>
   </div>
   <!-- 전광판(마퀴펫) 설정 팝업 = 잠금 설정(msgpop) 계승 · 문구·글자색 커스텀 → marquee.js 실시간 반영(260704) -->
   <div class="msgpop" id="marqpop" hidden>
@@ -5572,11 +5568,8 @@ function lkSettingsRefresh() {
   if (lkChgBtn) { lkChgBtn.textContent = lkPinH() ? '설정' : '미설정'; lkChgBtn.classList.toggle('on', !!lkPinH()); }   // PIN 미설정↔설정 토글(요구1 · 화면잠금 ON/OFF와 동일 글자 토글)
   const minEl = $('#lockMin');
   if (minEl) minEl.textContent = String(lkMinRaw());   // 자동잠금 분 = 단일값 표시(PC/모바일 통일)
-  const _sp = LK_STEPS.length > 1 ? lkStepIdx() / (LK_STEPS.length - 1) * 100 : 0;   // 슬라이더 위치 = 스텝 인덱스 비율(9단계 등간격)
-  const _th = $('#lkThumb'), _fl = $('#lkFill'), _tk = $('#lkTrack');
-  if (_th) _th.style.left = _sp + '%'; if (_fl) _fl.style.width = _sp + '%';
-  if (_tk) _tk.setAttribute('aria-valuenow', String(lkMinRaw()));
-  ['#lkRowPin', '#lkRowMin', '#lkSldRow'].forEach(id => { const r = $(id); if (r) r.classList.toggle('off', !on); });   // 화면 잠금 OFF = 하위(PIN·자동잠금·슬라이더) 전부 비활성 표기(요구7)
+  lockpop.querySelectorAll('.lk-stbtn').forEach(b => { const i = lkStepIdx() + parseInt(b.dataset.dir, 10); b.disabled = (i < 0 || i >= LK_STEPS.length); });   // 최소(1)/최대(60) 경계 = ± 비활성
+  ['#lkRowPin', '#lkRowMin'].forEach(id => { const r = $(id); if (r) r.classList.toggle('off', !on); });   // 화면 잠금 OFF = 하위(PIN·자동잠금) 전부 비활성 표기(요구7)
 }
 function openLockPop() {
   closeOverlays('lockpop');
@@ -5691,30 +5684,34 @@ $('#lockOnBtn').addEventListener('click', async () => {
 });
 // ── 자동 잠금(분) 스테퍼 = OPA 컨트롤 계승(±탭·휠·세로드래그) · PIN 안 물음(운영자 260705 "잠금 시간 바꿀 때 핀 안 묻게") ──
 const lkStepIdx = () => LK_STEPS.indexOf(lkMinRaw());
-function lkMinSetIdx(i) {                                // 인덱스 직접 설정(슬라이더 드래그·±·휠 공용) — 경계 클램프·무변화 스킵
-  i = Math.max(0, Math.min(LK_STEPS.length - 1, i));
-  if (LK_STEPS[i] === lkMinRaw()) return;
+function lkMinApply(dir) {                               // 값 변경 = 동기(read-modify-write 원자적) — 매 적용 시점 현재값 기준 재계산 = 빠른 연속 조작도 정확히 누적
+  const i = Math.max(0, Math.min(LK_STEPS.length - 1, lkStepIdx() + dir));
+  if (LK_STEPS[i] === lkMinRaw()) return;                // 경계·무변화
   try { localStorage.setItem('nm_lock_min', String(LK_STEPS[i])); } catch {}   // 단일값(PC/모바일 통일)
   lkSettingsRefresh(); lockArm();
 }
-function lkMinApply(dir) { lkMinSetIdx(lkStepIdx() + dir); }   // ±·휠 = 현재 인덱스 기준 상대 이동
 function lkMinReq(dir) {                                 // 요청 = OFF·경계 가드 → 즉시 적용(인증 없음 · 운영자 260705)
   if (!lkOn()) return;                                   // 화면잠금 OFF = 비활성(요구7 · pointer-events + JS 이중가드)
   if (lkStepIdx() + dir < 0 || lkStepIdx() + dir >= LK_STEPS.length) return;   // 경계
   lkMinApply(dir);
 }
+lockpop.querySelectorAll('.lk-stbtn').forEach(b => b.addEventListener('click', e => {   // ± 탭 스테퍼
+  e.stopPropagation();
+  lkMinReq(parseInt(b.dataset.dir, 10));
+}));
 // PC 휠 = 자동잠금 행 위에 마우스 있으면 스크롤로 증감(운영자 260705 "PC서 해당 부분 위 마우스 올라가있을 때 스크롤 위아래") — ±/숫자 어디든 행 전체가 휠 타깃(값칸만이던 것 확대) · OFF면 무시(페이지 스크롤 허용)
 { const _row = $('#lkRowMin'); if (_row) _row.addEventListener('wheel', e => { if (!lkOn()) return; e.preventDefault(); lkMinReq(e.deltaY < 0 ? 1 : -1); }, { passive: false }); }
-{ const _tk = $('#lkTrack');                                                            // 자동잠금 = 좌우 드래그 슬라이더(LK_STEPS 9단계 스냅 · 운영자 260705)
-  if (_tk) {
-    const sldByX = cx => { if (!lkOn()) return; const r = _tk.getBoundingClientRect(); if (!r.width) return; const p = Math.max(0, Math.min(1, (cx - r.left) / r.width)); lkMinSetIdx(Math.round(p * (LK_STEPS.length - 1))); };
-    let sdrag = false;
-    _tk.addEventListener('pointerdown', e => { if (!lkOn()) return; sdrag = true; _tk.classList.add('drag'); try { _tk.setPointerCapture(e.pointerId); } catch {} sldByX(e.clientX); });
-    _tk.addEventListener('pointermove', e => { if (sdrag) sldByX(e.clientX); });
-    const send = e => { if (sdrag) { sdrag = false; _tk.classList.remove('drag'); try { _tk.releasePointerCapture(e.pointerId); } catch {} } };
-    _tk.addEventListener('pointerup', send); _tk.addEventListener('pointercancel', send);
-    _tk.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { lkMinReq(-1); e.preventDefault(); } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { lkMinReq(1); e.preventDefault(); } });   // 키보드 좌우(a11y)
-  } }
+lockpop.querySelectorAll('.lk-stval').forEach(el => {                                   // 값 = 세로드래그(OPA gs-opa 계승 · 위로=증가 · 모바일 터치)
+  let sy = 0, acc = 0, drag = false;
+  el.addEventListener('pointerdown', e => { drag = true; sy = e.clientY; acc = 0; el.classList.add('opa-adjusting'); try { el.setPointerCapture(e.pointerId); } catch {} });
+  el.addEventListener('pointermove', e => {
+    if (!drag) return;
+    acc += (sy - e.clientY); sy = e.clientY;
+    if (Math.abs(acc) >= 18) { const d = acc > 0 ? 1 : -1; acc = 0; lkMinReq(d); }
+  });
+  const end = e => { if (drag) { drag = false; el.classList.remove('opa-adjusting'); try { el.releasePointerCapture(e.pointerId); } catch {} } };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+});
 // 부팅: 잠근 채 이탈(새로고침 포함) 또는 켜둔 채 유휴 초과 = 즉시 잠금(F5 우회 차단) · 아니면 무장만.
 // ⚠️ setTimeout(0) = 스크립트 전체 완주 후 실행 — 즉시 호출하면 lockNow→closeOverlays가 이 아래에서 선언되는 const(bpop 등)를 TDZ로 쳐 부팅째 죽음(헤드리스 실측).
 if (lkPinH() && (localStorage.getItem('nm_locked') === '1'
