@@ -279,8 +279,6 @@
   .lk-key:nth-child(3n+2), .lk-key:nth-child(3n) { border-left:1px solid var(--line); }   /* 셀 내부 구분선(정본 동일) */
   .lk-key:nth-child(n+4) { border-top:1px solid var(--line); }
   .lk-key:active { transform:scale(var(--press-m)); }   /* 눌림 = scale 액티브만(배경 플래시 제거 = 운영자 "배경 그대로·액티브로 충분" 260704) · --press-m(.9) 입력 느낌 */
-  @keyframes lkPop { 0%{transform:scale(.84)} 50%{transform:scale(1.04)} 100%{transform:scale(1)} }
-  .lk-key.pop { animation:lkPop .24s var(--ease); }   /* 탭 시 작아졌다 커지는 팝(빠른 탭에도 확실히 보임) + 진동 동반 · 운영자 260705 */
   .lk-key.hit { color:var(--accent); }   /* 누름 = 숫자 강조색만(배경 플래시 제거 = 운영자 260704 · scale 액티브로 피드백) */
   .lk-key.back.hit svg { stroke:var(--accent); }
   .lk-key.empty { pointer-events:none; }
@@ -289,7 +287,7 @@
   .lk-pad.b2 .lk-key.back svg { stroke:rgba(var(--accent-rgb),.85); }
   .lk-pad.b2 .lk-key.hit { color:var(--fg); }   /* 판B(5·6자리) = 기본 형광 틴트(.85) → 눌림 시 흰(--fg)으로 전환(판A 흰→형광의 대칭 · 운영자 260704) · b2 틴트 특이도 이김 */
   .lk-pad.b2 .lk-key.back.hit svg { stroke:var(--fg); }   /* b2 백스페이스 hit stroke도 흰(--fg) 전환(대칭) */
-  @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} .lk-key.pop{animation:none} }
+  @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} }
   .msgitem { padding:9px 10px; border-radius:10px; }
   .msgitem + .msgitem { border-top:1px solid var(--line2); }
   .msgitem .mt { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -5562,9 +5560,7 @@ async function lkFire() {
   lkBusy = false;
 }
 lkPadEl.addEventListener('click', e => {
-  const b = e.target.closest('.lk-key'); if (!b || b.classList.contains('empty')) return;
-  try { navigator.vibrate && navigator.vibrate(8); } catch {}   // 탭 햅틱(기존 병합 vibrate 패턴 계승·운영자 260705)
-  b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');   // 작아졌다 커지는 팝 재트리거(빠른 연타에도)
+  const b = e.target.closest('.lk-key'); if (!b) return;
   if (b.getAttribute('data-back') !== null) lkBack();
   else if (b.getAttribute('data-d') !== null) lkPress(b.getAttribute('data-d'));
 });
