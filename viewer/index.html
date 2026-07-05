@@ -990,7 +990,7 @@
   /* 대기열 = 제출 기사 상태판(처리중/SUCC/FAIL). 글래스(.bpop 계승)·크게·위로. */
   .qpop { width:min(94vw,440px); max-width:94vw; min-width:0; overflow:hidden;
     background:var(--modal-glass-anchor); backdrop-filter:blur(24px) saturate(1.05); -webkit-backdrop-filter:blur(24px) saturate(1.05); }   /* 무채색 반투명 글래스(운영자 260628 "초록 틴트 빼고 무채색") = 중립 그레이 알파↓(.86/.9)로 뒤 은은히 비침 + blur 24·saturate 1.05(살짝만·프로스트). 옛 초록틴트(초록 워시) → 중립 무채. 대기열만, 다른 .bpop 불변(운영자 260622) · 폭 명시 고정 = 페이지마다 동일(이전 min-width만 → 폭이 가장 긴 제목따라 늘어 가변 + left 어긋나 2페이지서 화면밖 밀림). width 고정 → 긴 제목은 …로 잘림 · 운영자 260622 */
-  .qpop .qh { display:flex; align-items:center; gap:6px; padding:0 3px; flex:none; background:var(--modal-head-bg); backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); border-bottom:1px solid var(--line2); }   /* 표준 헤더 띠 계승(--modal-head-bg·blur-l·border) · padding 0 3px 유지(qrow 우측 기준선 정렬) · qpop overflow:hidden이 상단 모서리 처리 */
+  .qpop .qh { display:flex; align-items:center; gap:6px; margin:-11px -15px 0; padding:9px 18px; flex:none; background:var(--modal-head-bg); backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); border-bottom:1px solid var(--line2); }   /* 표준 헤더 띠 계승(--modal-head-bg·blur-l·border) · margin -11 -15 = .bpop 컨테이너 padding(11 15) 상쇄 → 헤더가 팝업 상단·좌·우 가장자리까지 꽉 참(옛 padding 0 3 = 헤더 위 11px 컨테이너 글래스가 흐리게 뜸 · #askdlg .askhead 네거티브마진 표준 계승 · 운영자 260705) · padding 9 18 = 좌우 18(15+3 qrow 정렬 유지)·상하 9 · qpop overflow:hidden이 상단 모서리 라운드 처리 · 발행본 pubpop 공유 */
   .qpop .qh svg { stroke:var(--fg); flex:none; }   /* 헤더 아이콘 = 무채색(상단 초록 제거·운영자 260629) */
   .qpop .qh b { margin-right:2px; }
   .qpop .qh-xcell { margin-left:auto; width:44px; flex:none; display:flex; align-items:center; justify-content:flex-start; }   /* X = 우측 고정폭 셀(=.qact 폭) 좌단 → 행 ↗ 버튼(.qgo) 좌변과 X 좌변 정렬(운영자 260622) */
@@ -1231,19 +1231,15 @@
   .ed-cyes { color:var(--accent); background:rgba(15,253,2,.12); border:1px solid rgba(15,253,2,.36); }   /* 부드러운 강조색 글래스(채움 X) */
   .ed-cno:active, .ed-cyes:active { transform:scale(var(--press-l,.95)); } .ed-cyes[disabled] { opacity:.55; }
   .dlgtop.ed-top { position:absolute; right:14px; bottom:66px; left:auto; width:40px; height:40px; box-shadow:0 6px 18px rgba(0,0,0,.45); }
-  /* 재생성 중 배지(자동 교체 대기) */
-  .slide.reshooting .slide-img { filter:brightness(.5) saturate(.7); }
+  /* 재생성 중 = 카드 전체 검정 오버레이(잠금·READ-ONLY 느낌) + 중앙 '수정중' gdots 점모션(운영자 260705). 옛 brightness 딤+알약 배지+스윕바 → 오버레이+텍스트로 통일 */
+  .slide.reshooting .slide-img::after, .thumbsec .cref-slot.reshooting::after {
+    content:''; position:absolute; inset:0; z-index:2; pointer-events:none;
+    background:rgba(8,15,11,.55); backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); }   /* 검정 스크림 = 잠긴 느낌 · blur-s로 뒤 이미지 뭉갬 · 색=옛 알약 배경(8,15,11) 계승 · cref-slot은 overflow:hidden이 라운드 처리 */
+  .slide.reshooting .slide-img::after { border-radius:var(--r-l); }   /* slide-img는 overflow 없음 → img(--r-l 16) 모서리 맞춤 */
   .feed-ui.reshooting .slide-acts, .feed-ui.reshooting .slide-ver { pointer-events:none; opacity:.5; }   /* 재생성 중 = 그 카드 조작 잠금(중복 발사 방지) — 버튼은 오버레이로 이관됨 */
-  .reshoot-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; font-size:12.5px; font-weight:800; color:var(--accent);   /* 상태문구 = 강조색·픽토 제거(운영자 260629) */
-    background:rgba(8,15,11,.62); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:8px 15px; white-space:nowrap; text-align:center;
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,.4); }
-  /* 썸네일 슬롯 재생성 중(코멘트 반영) — 카드 .slide.reshooting 계승(dim + .reshoot-badge 필) + 움직이는 진행바(운영자 260702) */
   .thumbsec .cref-slot.reshooting { pointer-events:none; }
-  .thumbsec .cref-slot.reshooting img { filter:brightness(.5) saturate(.7); }   /* 카드 .slide.reshooting(.5)과 통일(평의회 디자인) */
-  .reshoot-badge .reshoot-bar { position:relative; width:118px; max-width:70%; height:4px; margin:8px auto 1px; border-radius:var(--r-pill,999px); overflow:hidden; background:rgba(255,255,255,.16); }
-  .reshoot-badge .reshoot-bar::before { content:''; position:absolute; top:0; bottom:0; left:-45%; width:45%; border-radius:var(--r-pill,999px); background:var(--accent); animation:reshootSweep 1.15s ease-in-out infinite; }   /* 인디터미넌트 스윕(비동기 1~2분 · 좌→우 반복) */
-  @keyframes reshootSweep { 0% { left:-45%; } 100% { left:100%; } }
-  @media (prefers-reduced-motion:reduce) { .reshoot-badge .reshoot-bar::before { animation-duration:2.4s; } }
+  .reshoot-badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3; font-size:var(--fs-label); font-weight:800; color:var(--accent);
+    white-space:nowrap; text-align:center; text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 상태문구 = 강조색 텍스트만(옛 알약 배경 제거 = 검정 오버레이가 배경 역할) · gdots 점모션 = pin-busy/genstat 기틀 계승 */
   @media (max-width:600px) { #editdlg { width:94vw; } .ed-img { max-height:34vh; } }
   @media (min-aspect-ratio:1/1) { #editdlg { max-height:66vh; } .ed-img { max-height:24vh; } .ed-body { max-height:calc(66vh - 114px); } }   /* PC(가로>세로) = 창 ~60%대 */
 
@@ -4553,7 +4549,7 @@ function markReshooting(n, textOnly) {
   const ui = $('#feedsec .feed-ui'); if (ui) ui.classList.add('reshooting');   // 편집은 현재 표시 카드 = 오버레이 즉시 잠금(중복 발사 방지)
   if (!s.querySelector('.reshoot-badge')) {
     const b = document.createElement('div'); b.className = 'reshoot-badge';
-    b.innerHTML = textOnly ? '문구 바꾸는 중…' : '다시 그리는 중…';   /* 픽토 제거·강조색(.reshoot-badge color · 운영자 260629) */
+    b.innerHTML = (textOnly ? '문구 바꾸는 중' : '다시 그리는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';   /* 강조색 텍스트 + gdots 점모션(수정중 표시 통일·운영자 260705) */
     (s.querySelector('.slide-img') || s).appendChild(b);
   }
 }
@@ -8943,7 +8939,7 @@ function markSlotReshooting(slot) {   // 슬롯 진행바 오버레이(카드 .r
   if (!slot || slot.classList.contains('reshooting')) return;
   slot.classList.add('reshooting');
   const b = document.createElement('div'); b.className = 'reshoot-badge';
-  b.innerHTML = '수정 중…<div class="reshoot-bar"></div>';
+  b.innerHTML = '수정중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';
   slot.appendChild(b);
 }
 function updateTredoClip() { const t = $('#tredoText'); if (t) t.dispatchEvent(new Event('input', { bubbles: true })); }   // 클립(복사/붙여넣기/지우개) 갱신 — revText 패턴
