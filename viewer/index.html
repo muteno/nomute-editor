@@ -263,34 +263,48 @@
   .lk-track.drag .lk-thumb { box-shadow:0 0 0 7px rgba(var(--accent-rgb),.22), 0 2px 8px rgba(0,0,0,.6); }
   .lk-hint { padding:7px 12px 10px; font-size:11.5px; color:var(--mut); line-height:1.5; }
   .lk-hint.bad { color:var(--danger); font-weight:700; }
-  .lockscr { position:fixed; inset:0; z-index:var(--z-lock); display:grid; place-items:center;
-    background:rgba(4,8,14,.34); }   /* 오션 물결 위 옅은 블루-딤(PIN 가독 하한) — backdrop-filter 제거 = 물결 선명 · 물결은 잠금 시 #wavebg 승격(아래)이 담당 · 운영자 260705 "인트로 PIN 배경에 블루 물결" */
-  .lockscr .lk-m, .lockscr .lk-err { text-shadow:0 1px 3px rgba(0,0,0,.6); }   /* 움직이는 밝은 물결 마루 위에서도 문구 대비 확보(스크림만으론 순간 저하 · 평의회9 260705) */
+  .lockscr { position:fixed; inset:0; z-index:var(--z-lock); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(5,11,13,.42); backdrop-filter:blur(var(--blur-s)) saturate(1.1); -webkit-backdrop-filter:blur(var(--blur-s)) saturate(1.1); }   /* 잠금 리디자인(운영자 260706 플레이그라운드 확정 조합) — 딤블러 ON = 물결 위 옅은 딤 + 프로스트(글래스 20×.45≈9 → 근접토큰 --blur-s 자동계승 §핵심명령 2-a) · 물결은 잠금 시 #wavebg 승격(아래)이 담당 */
+  .lockscr .lk-err { text-shadow:0 1px 3px rgba(0,0,0,.6); }   /* 움직이는 밝은 물결 마루 위에서도 문구 대비 확보(스크림만으론 순간 저하 · 평의회9 260705) */
   body.scr-locked .bgfx { z-index:calc(var(--z-lock) - 2); }     /* 잠금 = feed_bg 폴백도 앱 위로(WebGL 실패 시 앱 비침 차단) */
   body.scr-locked #wavebg { z-index:calc(var(--z-lock) - 1); }   /* 잠금 = 오션 물결을 앱 위·잠금카드(300) 아래로 승격 = PIN 배경(운영자 260705) */
   .lockscr[hidden] { display:none; }
-  .lockscr .lk-card { text-align:center; width:min(320px,86vw); }
-  .lockscr .lk-m { font-size:15px; font-weight:800; color:var(--mut); letter-spacing:-.2px; }
+  /* 워드마크 = 부팅 스플래시 브랜드 연속(뉴스 큐레이션 L 32px + NEWS CURATION + ··· 점모션 · 운영자 260706 확정 "워드마크 L") — 안내 산문(.lk-m) 폐지 = 슬롯·키패드 어포던스가 설명(§디자인 e) */
+  .lockscr .lk-wm { text-align:center; }
+  .lockscr .lk-wm b { display:block; font-size:32px; font-weight:800; letter-spacing:-.5px; color:var(--fg); text-shadow:0 2px 18px rgba(0,0,0,.55); }
+  .lockscr .lk-wm small { display:block; margin-top:2px; font-size:11px; font-weight:600; letter-spacing:2.4px; color:var(--mut); text-transform:uppercase; }
+  .lockscr .lk-wm .gdots { width:auto; margin-top:10px; font-size:19px; line-height:1; letter-spacing:6px; color:var(--mut); text-align:center; }   /* 처리중 gdots 계승 · 폭 1.1em 제한 해제(워드마크 하단 장식) */
+  .lockscr .lk-card { text-align:center; width:min(320px,86vw); margin-top:26px; }   /* 핀 위치 +26px(확정 조합) */
+  .lockscr.ent .lk-card { animation:lkRise .6s var(--ease) backwards; }   /* 진입 = 라이즈 업(확정 조합 · 워드마크는 정적 = 스플래시서 이어지는 느낌) */
+  @keyframes lkRise { from { transform:translateY(46px); opacity:0; } }
+  .lockscr.out { animation:lkOut .8s ease forwards; pointer-events:none; }   /* 해제 = 블러 아웃(확정 조합 · 성공 시 잠금막이 녹아 사라짐 → 앱 노출) */
+  @keyframes lkOut { to { opacity:0; filter:blur(var(--blur-m)); } }
+  /* 슬롯 = 동그라미 채움 14px(원=슬롯폭 56% → 폭 25px · 정본 .pin-slot 비율 유지) · 채움 = 터쿼이즈 + 글로우 + 바운스(확정 조합) — .lockscr 스코프 특이도가 정본(2240대)보다 높아 소스순 무관 승리 */
+  .lockscr .lk-slot { width:25px; height:25px; font-size:17px; }
+  .lockscr .lk-slot.on::before { background:var(--accent); border-color:var(--accent); box-shadow:0 0 12px rgba(var(--accent-rgb),.55); }
+  .lockscr .lk-slot.cur, .lockscr .lk-slot.on { animation:lkFillBnc .36s var(--ease); }   /* 입력 순간 1회 바운스(cur→on 전환은 동일 animation값 = 재시작 없음) */
+  @keyframes lkFillBnc { 0% { transform:translateY(0); } 40% { transform:translateY(-7px) scale(1.12); } 100% { transform:translateY(0); } }
   .lk-slots { display:flex; justify-content:center; gap:16px; margin:24px 0 2px; }   /* 컨테이너 = 화면잠금 간격(전체화면 gap 16px·정본 %와 별개) · 슬롯 룩(.lk-slot 원·on·cur·bad·shake)은 정본 .pin-slot 별칭 = stage-2/발행과 완전통일(stage-4 260704) */
   @keyframes lkShake { 0%,100%{transform:translateX(0)} 12%{transform:translateX(-9px)} 28%{transform:translateX(8px)} 44%{transform:translateX(-6px)} 60%{transform:translateX(4px)} 76%{transform:translateX(-2px)} }
   .lk-err { color:var(--danger); font-size:12px; margin-top:15px; min-height:15px; font-weight:700; }
-  .lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:0; max-width:288px; margin:26px auto 0; }
-  .lk-key { height:58px; display:grid; place-items:center; font-size:23px; font-weight:700; font-family:inherit; color:var(--fg); background:none; border:none; border-radius:0; cursor:pointer;
+  .lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:260px; margin:26px auto 0; }   /* 키패드 = 숫자만(심플·확정 조합) — 셀 구분선 폐지·간격 12px */
+  .lk-key { position:relative; height:56px; display:grid; place-items:center; font-size:23px; font-weight:700; font-family:inherit; color:var(--fg); background:none; border:none; border-radius:0; cursor:pointer;
     -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:background .12s ease, color .15s ease, transform .07s ease; }
-  .lk-key:nth-child(3n+2), .lk-key:nth-child(3n) { border-left:1px solid var(--line); }   /* 셀 내부 구분선(정본 동일) */
-  .lk-key:nth-child(n+4) { border-top:1px solid var(--line); }
-  .lk-key:active { transform:scale(var(--press-m)); }   /* 눌림 = scale 액티브만(배경 플래시 제거 = 운영자 "배경 그대로·액티브로 충분" 260704) · --press-m(.9) 입력 느낌 */
+  /* 셀 구분선 폐지 = 숫자만 플로팅(심플 · 운영자 260706 확정 조합 — 옛 플랫 셀 그리드 → 무테 · 판A/B 셔플·검증 로직 불변) */
+  .lk-key:active { transform:scale(var(--press-m)); }   /* 눌림 = scale 액티브만 · --press-m(.9) 입력 느낌 */
   @keyframes lkPop { 0%{transform:scale(.84)} 50%{transform:scale(1.04)} 100%{transform:scale(1)} }
   .lk-key.pop { animation:lkPop .24s var(--ease); }   /* 탭 시 작아졌다 커지는 팝(빠른 탭에도 확실히 보임) + 진동 동반 · 운영자 260705 */
-  .lk-key.hit { color:var(--accent); }   /* 누름 = 숫자 강조색만(배경 플래시 제거 = 운영자 260704 · scale 액티브로 피드백) */
+  .lk-key.hit { color:var(--accent); text-shadow:0 0 14px rgba(var(--accent-rgb),.8); }   /* 눌림 = 채움 플래시(숫자만 키라 텍스트 글로우 방식 · 터쿼이즈 · 운영자 260706 확정) */
   .lk-key.back.hit svg { stroke:var(--accent); }
+  .lk-fx { position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; color:rgba(var(--accent-rgb),.9); font:700 23px/1 inherit; animation:lkTrail .5s ease-out forwards; }   /* 잔상 = 숫자 확대 페이드(운영자 260706 확정 · lkFlash가 주입) */
+  @keyframes lkTrail { from { transform:scale(1); opacity:.9; } to { transform:scale(1.9); opacity:0; } }
   .lk-key.empty { pointer-events:none; }
   .lk-key.back svg { width:26px; height:26px; stroke:var(--fg); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:stroke .15s ease; }
   .lk-pad.b2 .lk-key { color:rgba(var(--accent-rgb),.85); }   /* 5~6자리 = 판B 전경색 틴트(정본 동일) */
   .lk-pad.b2 .lk-key.back svg { stroke:rgba(var(--accent-rgb),.85); }
   .lk-pad.b2 .lk-key.hit { color:var(--fg); }   /* 판B(5·6자리) = 기본 형광 틴트(.85) → 눌림 시 흰(--fg)으로 전환(판A 흰→형광의 대칭 · 운영자 260704) · b2 틴트 특이도 이김 */
   .lk-pad.b2 .lk-key.back.hit svg { stroke:var(--fg); }   /* b2 백스페이스 hit stroke도 흰(--fg) 전환(대칭) */
-  @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} .lk-key.pop{animation:none} }
+  @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} .lk-key.pop{animation:none} .lk-fx{animation:none;opacity:0} .lockscr.ent .lk-card{animation:none} .lockscr.out{animation:none;opacity:0} .lockscr .lk-slot.cur,.lockscr .lk-slot.on{animation:none} .lockscr .lk-wm .gdots i{animation:none;opacity:1} }   /* 전정계 배려 = 리디자인 모션 전부 무효(260706) */
   .msgitem { padding:9px 10px; border-radius:10px; }
   .msgitem + .msgitem { border-top:1px solid var(--line2); }
   .msgitem .mt { font-size:13px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
@@ -2299,6 +2313,7 @@
 <script>/* 부팅 인트로 스킵 판정 — 잠금(PIN 설정 + locked/유휴초과) 기기는 스플래시 없이 바로 PIN. 첫 페인트 전 html.boot-lock 세팅(플래시 0). 실제 lockNow는 메인 스크립트가 실행(여기선 스플래시만 선차단) · 자동잠금 분 = 메인 lkMinRaw와 동일 산식(레거시 nm_lock_min_pc/_mo 폴백 + LK_STEPS 최근접 스냅)이라 마이그레이션 유저도 판정 일치(평의회2·1·6·10 260705) · 260705 */
 try {
   var _bp = localStorage.getItem('nm_lock_pin');
+  if (_bp && localStorage.getItem('nm_lock_len') !== '4') _bp = null;   // 구 6자리 PIN(길이 마커 불일치) = 메인이 무효화 예정 → boot-lock 스킵(4자리 전환 마이그레이션 · 260706)
   if (_bp) {
     var _bon = localStorage.getItem('nm_lock_on') !== '0';
     var _blk = localStorage.getItem('nm_locked') === '1';
@@ -2355,7 +2370,7 @@ try {
   <!-- 잠금 설정 팝업 = 메시지함(msgpop) 계승 · 행 = pushrow/pushbtn 계승(운영자 260703) -->
   <div class="msgpop" id="lockpop" hidden>
     <div class="mh"><b>잠금 설정</b><button class="mx" id="lockpopX" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-    <div class="pushrow lk-sub" id="lkRowPin"><span class="pl">PIN (6자리)</span><button class="lk-chg" id="lockChgBtn" type="button">변경</button></div>
+    <div class="pushrow lk-sub" id="lkRowPin"><span class="pl">PIN (4자리)</span><button class="lk-chg" id="lockChgBtn" type="button">변경</button></div>
     <div class="pushrow lk-sub" id="lkRowMin"><span class="pl">자동 잠금(분)</span><span class="lk-stval" id="lockMin" aria-live="polite">2</span></div>
     <div class="lk-sldrow lk-sub" id="lkSldRow"><span class="lk-cap">1</span><div class="lk-track" id="lkTrack" role="slider" aria-label="자동 잠금 분" aria-valuemin="1" aria-valuemax="60" aria-valuenow="2" tabindex="0"><div class="lk-rail"></div><div class="lk-fill" id="lkFill"></div><div class="lk-thumb" id="lkThumb"></div></div><span class="lk-cap">60</span></div>
   </div>
@@ -2368,9 +2383,9 @@ try {
 </div>
 <!-- 화면 잠금 오버레이(오션 물결 배경 + 옅은 블루-딤 · 물결=#wavebg 승격) — body 직속 = #wavebg/.bgfx 형제(.topbanner 스태킹 컨텍스트 의존 제거 = 조상에 transform/filter 생겨도 잠금 z 안 갇힘 · 평의회3 260705) · PIN 키패드 = 발행본 정본 이식(운영자 260703·260705) -->
 <div class="lockscr" id="lockscr" hidden>
+  <div class="lk-wm" aria-hidden="true"><b>뉴스 큐레이션</b><small>News Curation</small><span class="gdots"><i>.</i><i>.</i><i>.</i></span></div><!-- 워드마크 + ··· = 스플래시 브랜드 연속(운영자 260706 확정) · 안내 산문 폐지(§디자인 e 어포던스) -->
   <div class="lk-card">
-    <div class="lk-m">화면이 잠겨 있습니다 · PIN을 입력해주세요</div>
-    <div class="lk-slotwrap"><div class="lk-slots" id="lkSlots" aria-hidden="true"><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span></div><button class="pin-eye" type="button" aria-label="PIN 표시" title="PIN 표시" aria-pressed="false"></button></div>
+    <div class="lk-slotwrap"><div class="lk-slots" id="lkSlots" aria-hidden="true"><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span><span class="lk-slot"></span></div><button class="pin-eye" type="button" aria-label="PIN 표시" title="PIN 표시" aria-pressed="false"></button></div><!-- 4자리 전환(운영자 260706) -->
     <div class="lk-err" id="lkErr" role="alert" aria-live="assertive"></div>
     <div class="lk-pad" id="lkPad"></div>
   </div>
@@ -4722,7 +4737,7 @@ function cancelVote(card, vote, fig, file, btn) {
 // confirm/prompt 대체. #pindlg 슬롯 6개(동그라미)를 단일 투명 오버레이(.pin-in-h)로 받아 Promise로 돌려준다.
 // 입력→슬롯 시각화(방금 자리 숫자·이전 mut원), 6자리 채우면 엔터 없이 자동 resolve. 취소=null.
 // 숫자만(비숫자 무시)·6자리 상한(붙여넣기도 이 필터 통과). ⚠️ PIN은 세션/로컬에 저장 안 함(매번 입력).
-let _pinWired = false, _pinResolve = null;
+let _pinWired = false, _pinResolve = null, _pinLen = 6;   // _pinLen = 표면별 자리수(발행본 6 · 화면잠금 4 — openPinDlg 3번째 인자·운영자 260706)
 function _pinInput() { return $('#pinInput'); }
 function _pinValue() { const el = _pinInput(); return el ? el.value : ''; }   // 단일 오버레이 input이 값의 원천(옛 6칸 join 폐지)
 function _pinPaint() { const boxes = $('#pinboxes'); if (boxes) renderPinSlots(boxes, _pinValue()); }   // 슬롯 시각화 = 발행 정본(방금 자리 숫자·나머지 동그라미)
@@ -4745,11 +4760,11 @@ function _wirePin() {                          // 입력 배선(1회만) — 발
   if (!el || !boxes) return;                   // DOM 미준비면 다음 open 때 재시도(_pinWired 미설정)
   _pinWired = true;
   el.addEventListener('input', () => {
-    const raw = el.value, clean = raw.replace(/\D/g, '').slice(0, 6);   // 숫자만·6자리 상한(type=text라 붙여넣기도 이 필터를 통과)
+    const raw = el.value, clean = raw.replace(/\D/g, '').slice(0, _pinLen);   // 숫자만·자리수 상한 = 표면별 가변(_pinLen · 발행본 6 / 화면잠금 4 = 운영자 260706 전환 · type=text라 붙여넣기도 이 필터를 통과)
     if (clean !== raw) el.value = clean;
     boxes.classList.remove('bad', 'shake');
     renderPinSlots(boxes, el.value);
-    if (el.value.length === 6 && _pinResolve) {                         // 6자리 다 차면 자동 인증(엔터 X) — 값 배관·서버검증은 불변
+    if (el.value.length === _pinLen && _pinResolve) {                         // 자리수 다 차면 자동 인증(엔터 X) — 값 배관·서버검증은 불변
       const r = _pinResolve; _pinResolve = null; r(el.value);
     }
   });
@@ -5513,6 +5528,9 @@ const LK_MASTER_H = '19bd473e8747c6ac41e3477aac557468f2010b7d9d2205a3fd6e7e0cc8e
 const LK_MAX = 5, LK_OUT_MS = 600000;   // 오류 5회 = 10분(발행본 LOCK_MAX·LOCK_TTL 정본 동일)
 const lkOn = () => localStorage.getItem('nm_lock_on') !== '0';   // 기본 ON(운영자 260703) — 명시적으로 끈('0') 기기만 OFF. PIN 미설정이면 lockNow 가드로 실제 잠금은 안 걸림(설정 즉시 활성).
 const lkPinH = () => localStorage.getItem('nm_lock_pin') || '';
+const LK_LEN = 4;   // 잠금 PIN 자리수 = 4 전면 전환(운영자 260706 확정 · 발행본 PIN 6자리는 별개 불변)
+// 4자리 전환 마이그레이션 — 구 6자리 PIN(길이 마커 없음/불일치)은 무효화·잠금 해제(4자리로 재설정 필요 · 운영자 선택 "전체 4자리 전환")
+if (lkPinH() && localStorage.getItem('nm_lock_len') !== String(LK_LEN)) { try { localStorage.removeItem('nm_lock_pin'); localStorage.setItem('nm_locked', '0'); } catch {} }
 const lkActive = () => lkOn() && !!lkPinH();   // 실효 잠금 = ON + PIN 존재 = 토글 표시·세부활성·방향 판정 단일 진리(260705 재구성 — 프로필 인라인 토글이 PIN 수명 소유: ON=설정, OFF=제거)
 const LK_STEPS = [1, 2, 3, 4, 5, 10, 15, 30, 60];   // 자동잠금 분 스텝(운영자 260705 · 1 최소 · 60 최대)
 function lkMinRaw() {                                // 자동잠금 분 = 단일값(PC/모바일 통일 · 운영자 260705 "하나만" — 옛 기기별 nm_lock_min_pc/_mo 폐지)
@@ -5549,38 +5567,44 @@ function lockNow() {
   lkReal = ''; lkBusy = false; lkErrEl.textContent = ''; lkSlotsEl.classList.remove('bad', 'shake');
   lkA = lkOrder(); lkB = lkOrder(); lkBuildPad(); lkApply(); lkFill(); pinEyeSet(lkSlotsEl, false);   // 잠금마다 새 2판 셔플 · 눈(전체표시) OFF 복귀(260705)
   document.body.classList.add('scr-locked');   // 오션 물결(#wavebg)을 앱 위로 승격 = PIN 배경(운영자 260705 "인트로 PIN 배경에 블루 물결")
+  lockscr.classList.remove('out', 'ent'); void lockscr.offsetWidth; lockscr.classList.add('ent');   // 진입 = 핀 블록 라이즈 업 재트리거(운영자 260706 확정)
   lockscr.hidden = false;
 }
 function lkUnlock() {
   try { localStorage.setItem('nm_locked', '0'); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
-  lockscr.hidden = true; document.body.classList.remove('scr-locked'); document.documentElement.style.overflow = '';
-  lkReal = ''; _lkLast = Date.now(); lockArm();
+  lkReal = ''; _lkLast = Date.now();
+  const _lkDone = () => { lockscr.hidden = true; lockscr.classList.remove('out', 'ent'); document.body.classList.remove('scr-locked'); document.documentElement.style.overflow = ''; lockArm(); };
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) { _lkDone(); return; }   // 전정계 = 즉시 해제
+  lockscr.classList.add('out'); setTimeout(_lkDone, 820);   // 해제 = 블러 아웃(.8s) 후 정리 — 물결 승격(scr-locked)은 아웃 끝날 때까지 유지(중간 스냅 방지 · 운영자 260706 확정)
 }
 // ── 키패드(정본 이식 · lk- 프리픽스) ──
 let lkReal = '', lkBusy = false, lkA = null, lkB = null, lkKds = null, lkBadT = null;
 const LK_BSVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
 function lkOrder() { const o = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; for (let i = 9; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)), t = o[i]; o[i] = o[j]; o[j] = t; } return o; }
 function lkBuildPad() {
-  let h = ''; for (let i = 0; i < 9; i++) h += '<button type="button" class="lk-key kd"></button>';
-  h += '<button type="button" class="lk-key empty" tabindex="-1" aria-hidden="true"></button><button type="button" class="lk-key kd"></button>';
+  let h = ''; for (let i = 0; i < 9; i++) h += '<button type="button" class="lk-key kd"><span class="lk-d"></span></button>';
+  h += '<button type="button" class="lk-key empty" tabindex="-1" aria-hidden="true"></button><button type="button" class="lk-key kd"><span class="lk-d"></span></button>';
   h += '<button type="button" class="lk-key back" data-back="1" aria-label="지우기">' + LK_BSVG + '</button>';
   lkPadEl.innerHTML = h; lkKds = lkPadEl.querySelectorAll('.kd');
 }
-function lkApply() { const b2 = lkReal.length >= 4, o = b2 ? lkB : lkA; lkPadEl.classList.toggle('b2', b2); for (let i = 0; i < 10; i++) { lkKds[i].textContent = o[i]; lkKds[i].setAttribute('data-d', o[i]); } }   // 1~4자리 판A · 5~6자리 판B(백스페이스 복귀도 유지)
+function lkApply() { const b2 = lkReal.length >= Math.ceil(LK_LEN * 2 / 3), o = b2 ? lkB : lkA; lkPadEl.classList.toggle('b2', b2); for (let i = 0; i < 10; i++) { lkKds[i].querySelector('.lk-d').textContent = o[i]; lkKds[i].setAttribute('data-d', o[i]); } }   // 앞 2/3 판A · 뒤 판B(4자리 = 1~2 판A·3~4 판B · 비율 계승) · 숫자 = 전용 스팬(.lk-d)만 갱신 — 옛 key.textContent 재대입이 잔상(.lk-fx)을 매 입력마다 파괴하던 것 차단(260706)
 function lkFill() { renderPinSlots(lkSlotsEl, lkReal); }   // 슬롯 시각 = stage-2/발행 정본 공유(방금 자리 숫자 노출·이전·미입력 모두 mut 동그라미) · 옛 * 마스킹+peek 0.7s → 동그라미 통일(운영자 260704) · 입력/검증/셔플 로직은 불변
-function lkFlash(el) { if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); clearTimeout(el._ht); el._ht = setTimeout(() => el.classList.remove('hit'), 180); }
+function lkFlash(el, d) {
+  if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); clearTimeout(el._ht); el._ht = setTimeout(() => el.classList.remove('hit'), 260);
+  if (d != null) { const f = document.createElement('span'); f.className = 'lk-fx'; f.textContent = d; el.appendChild(f); setTimeout(() => f.remove(), 520); }   // 잔상 = 숫자 확대 페이드(운영자 260706 확정 · 백스페이스는 숫자 없어 미주입)
+}
 function lkUnbad() { clearTimeout(lkBadT); lkSlotsEl.classList.remove('bad', 'shake'); if (!lkOutLeft()) lkErrEl.textContent = ''; }
 const lkFails = () => parseInt(localStorage.getItem('nm_lock_fails') || '0', 10) || 0;
 const lkOutLeft = () => Math.max(0, (parseInt(localStorage.getItem('nm_lock_until') || '0', 10) || 0) - Date.now());   // 5회 잠금 잔여 ms
 function lkPress(d) {
-  if (lkBusy || !isLocked() || lkReal.length >= 6) return;
-  lkFlash(lkPadEl.querySelector('.kd[data-d="' + d + '"]'));
+  if (lkBusy || !isLocked() || lkReal.length >= LK_LEN) return;
+  lkFlash(lkPadEl.querySelector('.kd[data-d="' + d + '"]'), d);   // 잔상 = 눌린 숫자 확대 페이드(260706)
   lkUnbad(); lkReal += String(d); lkFill(); lkApply();
-  if (lkReal.length === 6) setTimeout(lkFire, 340);
+  if (lkReal.length === LK_LEN) setTimeout(lkFire, 340);
 }
 function lkBack() { if (lkBusy || !isLocked() || !lkReal.length) return; lkFlash(lkPadEl.querySelector('.back')); lkUnbad(); lkReal = lkReal.slice(0, -1); lkFill(); lkApply(); }
 async function lkFire() {
-  if (lkBusy || lkReal.length !== 6) return;
+  if (lkBusy || lkReal.length !== LK_LEN) return;
   lkBusy = true; lkFill();   // 검증 진입 = 슬롯 갱신(stage-2 정본 · 방금 자리 노출 상태 = 발행/조회 동일)
   let h = ''; try { h = await lkHash(lkReal); } catch {}
   const master = h === LK_MASTER_H;
@@ -5673,10 +5697,10 @@ $('#marqKwIn').addEventListener('input', e => { e.target.value = e.target.value.
 const lkChgBtn = $('#lockChgBtn');
 // 새 PIN 설정 = #pindlg 소형 슬롯 2단(1회차 → 재입력 일치)·성공 시 nm_lock_pin 저장·true 반환
 async function lkAskNewPin() {
-  openPinDlg('새 PIN 설정', '새 PIN 6자리 입력');
+  openPinDlg('새 PIN 설정', '새 PIN 4자리 입력', LK_LEN);
   const p1 = await _awaitPin();
   if (p1 == null) return false;                          // 취소(X·ESC·백드롭)
-  openPinDlg('PIN 재입력', '같은 PIN 다시 입력');        // 이미 열림 → 슬롯·타이틀 리셋만(openPinDlg 가드)
+  openPinDlg('PIN 재입력', '같은 PIN 다시 입력', LK_LEN);        // 이미 열림 → 슬롯·타이틀 리셋만(openPinDlg 가드)
   while (true) {
     const p2 = await _awaitPin();
     if (p2 == null) return false;
@@ -5685,14 +5709,14 @@ async function lkAskNewPin() {
   }
   let h = ''; try { h = await lkHash(p1); } catch {}
   if (!h) { $('#pindlg').close(); return false; }   // 해시 실패 = 다이얼로그·history 칸 정리 후 종료(평의회4 260705)
-  try { localStorage.setItem('nm_lock_pin', h); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
+  try { localStorage.setItem('nm_lock_pin', h); localStorage.setItem('nm_lock_len', String(LK_LEN)); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
   $('#pindlg').close();
   return true;
 }
 // 기존 PIN 인증 = #pindlg 입력 → lkHash 비교(마스터 898900 통과)·5회잠금 반영·성공 시 true
 async function lkVerifyOldPin() {
   if (!lkPinH()) return true;                            // PIN 없으면 인증 불필요(통과)
-  openPinDlg('PIN 확인', '기존 PIN 6자리 입력');
+  openPinDlg('PIN 확인', '기존 PIN 4자리 입력', LK_LEN);
   while (true) {
     const p = await _awaitPin();
     if (p == null) return false;                         // 취소
@@ -5713,7 +5737,7 @@ async function lkVerifyOldPin() {
 }
 // PIN 변경 = 기존 PIN 확인 → 새 PIN 2단(#pindlg 열린 채 전환 = close/reopen history 레이스 회피 · 260705)
 async function lkChangePin() {
-  openPinDlg('기존 PIN 확인', '현재 PIN 6자리 입력');
+  openPinDlg('기존 PIN 확인', '현재 PIN 4자리 입력', LK_LEN);
   while (true) {                                        // 1단: 기존 PIN 인증(마스터 우선·5회잠금 = lkVerifyOldPin 동일 규칙)
     const p = await _awaitPin();
     if (p == null) return false;
@@ -5725,10 +5749,10 @@ async function lkChangePin() {
     try { localStorage.setItem('nm_lock_fails', String(n)); if (n >= LK_MAX) localStorage.setItem('nm_lock_until', String(Date.now() + LK_OUT_MS)); } catch {}
     _pinShake(`PIN 번호가 틀립니다 (${Math.min(n, LK_MAX)}/${LK_MAX})`);
   }
-  openPinDlg('새 PIN 설정', '새 PIN 6자리 입력');       // 2단: 새 PIN(dialog 열린 채 슬롯·타이틀 리셋 = openPinDlg 재호출 가드)
+  openPinDlg('새 PIN 설정', '새 PIN 4자리 입력', LK_LEN);       // 2단: 새 PIN(dialog 열린 채 슬롯·타이틀 리셋 = openPinDlg 재호출 가드)
   const p1 = await _awaitPin();
   if (p1 == null) return false;
-  openPinDlg('PIN 재입력', '같은 PIN 다시 입력');
+  openPinDlg('PIN 재입력', '같은 PIN 다시 입력', LK_LEN);
   while (true) {
     const p2 = await _awaitPin();
     if (p2 == null) return false;
@@ -5737,7 +5761,7 @@ async function lkChangePin() {
   }
   let nh = ''; try { nh = await lkHash(p1); } catch {}
   if (!nh) { $('#pindlg').close(); return false; }   // 해시 실패(비보안 컨텍스트 등) = 다이얼로그·history 칸 정리 후 종료(평의회4 260705)
-  try { localStorage.setItem('nm_lock_pin', nh); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
+  try { localStorage.setItem('nm_lock_pin', nh); localStorage.setItem('nm_lock_len', String(LK_LEN)); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
   $('#pindlg').close();
   return true;
 }
@@ -8923,13 +8947,20 @@ function loadPubBadge() { if (_pubBadgeInit) return; _pubBadgeInit = true; (asyn
 
 // ── 발행본 잠금 토글 — 자물쇠 픽토그램 롱프레스(600ms) → #pindlg PIN 입력 → api/relock(실제 공개링크 PIN 보호 토글). 잠금=새 PIN 설정 / 해제=기존 PIN 정확히(불일치=흔들기 재입력). qFeedBtn 롱프레스 패턴 계승. 운영자 260702. ──
 function _awaitPin() { return new Promise(res => { _pinResolve = res; }); }   // 6자리 채우면 resolve(값)·닫히면 resolve(null) — 기존 #pindlg 배선 재사용
-function openPinDlg(title, sub) {
+function openPinDlg(title, sub, len) {
   _wirePin();
+  _pinLen = len || 6;   // 표면별 자리수(발행본 기본 6 · 화면잠금 4 = 운영자 260706 전환)
   const tt = $('#pinTitleTxt'); if (tt) tt.textContent = title;
   const ss = $('#pinSub'); if (ss) ss.textContent = sub;
   const er = $('#pinerr'); if (er) er.textContent = '';
-  const el = _pinInput(); if (el) el.value = '';
-  const boxes = $('#pinboxes'); if (boxes) { boxes.classList.remove('bad', 'shake'); renderPinSlots(boxes, ''); pinEyeSet(boxes, false); }   // 열 때마다 눈(전체표시) OFF 복귀(보안 기본값 · 260705)
+  const el = _pinInput(); if (el) { el.value = ''; el.setAttribute('maxlength', String(_pinLen)); }
+  const boxes = $('#pinboxes');
+  if (boxes) {
+    let sp = boxes.querySelectorAll('span.pin-slot');   // 슬롯 수 = _pinLen 동기(공유 다이얼로그 가변 · span만 = 형제 버튼 미간섭)
+    while (sp.length > _pinLen) { sp[sp.length - 1].remove(); sp = boxes.querySelectorAll('span.pin-slot'); }
+    while (sp.length < _pinLen) { const s = document.createElement('span'); s.className = 'pin-slot'; boxes.appendChild(s); sp = boxes.querySelectorAll('span.pin-slot'); }
+    boxes.classList.remove('bad', 'shake'); renderPinSlots(boxes, ''); pinEyeSet(boxes, false);   // 열 때마다 눈(전체표시) OFF 복귀(보안 기본값 · 260705)
+  }
   _pinBusy(false);
   if (!$('#pindlg').open) openComposeDlg($('#pindlg'));   // showModal + 폰 뒤로가기 스택(다른 모달과 동일 · #pindlg는 isComposingModalOpen 등재로 over-close 차단) · 이미 열림이면 슬롯·타이틀만 리셋(화면잠금 2단 설정 재호출용·260704)
   setTimeout(() => { const e2 = _pinInput(); if (e2) e2.focus(); }, 60);
