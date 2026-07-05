@@ -5449,6 +5449,7 @@ const lockscr = $('#lockscr'), lkSlotsEl = $('#lkSlots'), lkPadEl = $('#lkPad'),
 const isLocked = () => !lockscr.hidden;
 // ── 유휴 감시: 활동 = _lkLast만 갱신(이벤트마다 타이머 재무장 안 함) · 타이머는 만기 시 경과 재확인 후 잔여만큼 재무장 ──
 let _lkLast = Date.now(), _lkT = null;
+let _minAuthed = false, _minAuthing = null;   // 자동잠금 편집 = 팝업 세션당 1회 PIN 인증(요구6) — openLockPop서 리셋 · openLockPop보다 앞에 선언(TDZ 방지) · _minAuthing = 동시 조작 시 인증 모달 1회 공유
 function lockArm() {
   clearTimeout(_lkT); _lkT = null;
   if (!lkOn() || !lkPinH() || isLocked()) return;
@@ -5537,6 +5538,7 @@ function lkSettingsRefresh() {
   ['#lkRowPin', '#lkRowMin'].forEach(id => { const r = $(id); if (r) r.classList.toggle('off', !on); });   // 화면 잠금 OFF = 하위(PIN·자동잠금) 전부 비활성 표기(요구7)
 }
 function openLockPop() {
+  _minAuthed = false; _minAuthing = null;   // 자동잠금 편집 인증 = 팝업 열 때마다 초기화(요구6)
   closeOverlays('lockpop');
   const pr = $('#profile').getBoundingClientRect(), top = Math.round(pr.top + pr.height / 2);   // placeMsgpop 미러(§🎨 프로필 앵커 팝업 정본)
   lockpop.style.top = top + 'px'; lockpop.style.right = Math.max(8, Math.round(window.innerWidth - pr.right)) + 'px';
@@ -5659,30 +5661,39 @@ $('#lockOnBtn').addEventListener('click', async () => {
   }
   lkSettingsRefresh(); lockArm();
 });
-// ── 자동 잠금(분) 스테퍼 = OPA 컨트롤 계승(±탭·휠·세로드래그) · PIN 안 물음(운영자 260705 "잠금 시간 바꿀 때 핀 안 묻게") ──
+// ── 자동 잠금(분) 스테퍼 = PC/모바일 각각 · OPA 컨트롤 계승(±탭·휠·세로드래그) · 변경 시 PIN 인증(요구5·6) ──
 const lkStepIdx = () => LK_STEPS.indexOf(lkMinRaw());
-function lkMinApply(dir) {                               // 값 변경 = 동기(read-modify-write 원자적) — 매 적용 시점 현재값 기준 재계산 = 빠른 연속 조작도 정확히 누적
+async function lkMinAuth() {                             // 자동잠금 변경 = 팝업 세션당 1회 PIN 인증(요구6 · PIN 미설정이면 즉시 통과 · 동시 조작은 인증 모달 1회 공유)
+  if (_minAuthed) return true;
+  if (_minAuthing) return _minAuthing;                   // 진행 중 = 같은 인증 프라미스 공유(중복 #pindlg 진입 차단)
+  _minAuthing = (async () => { try { const ok = await lkVerifyOldPin(); if (ok) _minAuthed = true; return ok; } finally { _minAuthing = null; } })();   // finally = resolve/reject 무관 리셋(인증 프라미스 고착 방지·평의회3)
+  return _minAuthing;
+}
+function lkMinApply(dir) {                               // 값 변경 = 동기(read-modify-write 원자적 · 인증 통과 후에만) — 매 적용 시점 현재값 기준 재계산 = 빠른 연속 조작도 정확히 누적
   const i = Math.max(0, Math.min(LK_STEPS.length - 1, lkStepIdx() + dir));
   if (LK_STEPS[i] === lkMinRaw()) return;                // 경계·무변화
   try { localStorage.setItem('nm_lock_min', String(LK_STEPS[i])); } catch {}   // 단일값(PC/모바일 통일)
   lkSettingsRefresh(); lockArm();
 }
-function lkMinReq(dir) {                                 // 요청 = OFF·경계 가드 → 즉시 적용(인증 없음 · 운영자 260705)
-  if (!lkOn()) return;                                   // 화면잠금 OFF = 비활성(요구7 · pointer-events + JS 이중가드)
-  if (lkStepIdx() + dir < 0 || lkStepIdx() + dir >= LK_STEPS.length) return;   // 경계
-  lkMinApply(dir);
+async function lkMinReq(dir) {                           // 요청 = OFF·경계 가드 → 인증 게이트 → 동기 적용
+  try {
+    if (!lkOn()) return;                                 // 화면잠금 OFF = 비활성(요구7 · pointer-events + JS 이중가드)
+    if (lkStepIdx() + dir < 0 || lkStepIdx() + dir >= LK_STEPS.length) return;   // 경계 = 인증 모달도 안 띄움
+    if (!(await lkMinAuth())) { lkSettingsRefresh(); return; }   // 인증 실패/취소 = 표시 원복
+    lkMinApply(dir);
+  } catch {}   // localStorage 완전차단 등 예외 = 조용히 무시(부동 프라미스 rejection 차단·평의회3)
 }
 lockpop.querySelectorAll('.lk-stbtn').forEach(b => b.addEventListener('click', e => {   // ± 탭 스테퍼
   e.stopPropagation();
   lkMinReq(parseInt(b.dataset.dir, 10));
 }));
-// PC 휠 = 자동잠금 행 위에 마우스 있으면 스크롤로 증감(운영자 260705 "PC서 해당 부분 위 마우스 올라가있을 때 스크롤 위아래") — ±/숫자 어디든 행 전체가 휠 타깃(값칸만이던 것 확대) · OFF면 무시(페이지 스크롤 허용)
-{ const _row = $('#lkRowMin'); if (_row) _row.addEventListener('wheel', e => { if (!lkOn()) return; e.preventDefault(); lkMinReq(e.deltaY < 0 ? 1 : -1); }, { passive: false }); }
-lockpop.querySelectorAll('.lk-stval').forEach(el => {                                   // 값 = 세로드래그(OPA gs-opa 계승 · 위로=증가 · 모바일 터치)
+lockpop.querySelectorAll('.lk-stval').forEach(el => {                                   // 값 = 휠·세로드래그(OPA gs-opa 계승 · 위로=증가)
+  el.addEventListener('wheel', e => { e.preventDefault(); lkMinReq(e.deltaY < 0 ? 1 : -1); }, { passive: false });
   let sy = 0, acc = 0, drag = false;
   el.addEventListener('pointerdown', e => { drag = true; sy = e.clientY; acc = 0; el.classList.add('opa-adjusting'); try { el.setPointerCapture(e.pointerId); } catch {} });
   el.addEventListener('pointermove', e => {
     if (!drag) return;
+    if (_minAuthing) { acc = 0; return; }   // 인증 모달 진행 중 = 드래그 값변경 보류(포인터캡처가 inert 우회 시 큐잉 다단점프 방지·평의회3)
     acc += (sy - e.clientY); sy = e.clientY;
     if (Math.abs(acc) >= 18) { const d = acc > 0 ? 1 : -1; acc = 0; lkMinReq(d); }
   });
