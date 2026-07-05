@@ -21,3 +21,4 @@ const ARROW_R_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // chevron(캐러셀·페이저 이전/다음) = 표지판 도형이라 유니코드 ‹/› 문자 폐지 → SVG 픽토그램(폰트 글리프 편심 차단 · §🔒 3-1 · 분신술10 260704). 크기는 각 버튼 CSS(.feednav/.qpg-nav/.carnav svg)가 지정 = viewBox 24 대칭 정중앙.
 const CHEV_L_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
 const CHEV_R_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+const MERGE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"/><path d="M12 19V10"/><path d="m8 13 4-4 4 4"/></svg>';   // 병합(위 조각으로 합침) = 상단 바(대상)+위 화살표 — ly 자막 상세 편집기 조각 병합(260706). 크기는 쓰는 쪽 CSS 지정.

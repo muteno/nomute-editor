@@ -84,6 +84,7 @@ jobs:
         env:
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          IN_ID: ${{ inputs.id }}
         run: |
           set -e
           # YouTube/IG 봇차단 우회 — YT_COOKIES 시크릿(쿠키 Netscape txt 본문) 있으면 사용
@@ -91,7 +92,8 @@ jobs:
           if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
           yt-dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
             || { echo "유튜브 다운로드 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구해. 파일 업로드나 SRT 텍스트로 해줘. (운영자: YT_COOKIES 시크릿 등록 시 URL 가능)" > /tmp/ly_err.txt; echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
-          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 > /tmp/transcript.txt \
+          SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
             || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
@@ -100,12 +102,14 @@ jobs:
         if: ${{ inputs.file != '' }}
         env:
           FILE: ${{ inputs.file }}
+          IN_ID: ${{ inputs.id }}
         run: |
           set -e
           [ -f "$FILE" ] || { echo "::error::업로드 파일 없음: $FILE"; exit 1; }
           ffmpeg -y -i "$FILE" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
             || { echo "오디오 추출 실패 — 지원 안 되는 형식일 수 있어. 다른 파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::ffmpeg 오디오 추출 실패: $FILE"; exit 1; }
-          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 > /tmp/transcript.txt \
+          SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
             || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
