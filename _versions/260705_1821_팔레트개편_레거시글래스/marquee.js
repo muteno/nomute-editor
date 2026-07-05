@@ -642,7 +642,7 @@ window.FPS = FPS;
   window.LOVE_BG='transparent';   // 뷰어 배너 통합 = 투명(뒤 브랜드 배너 비침 · 운영자 260704 C안)
   function pageAccent(){
     try{ var c=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-         if(c) window.LOVE_ACCENT=c; }catch(e){}          // NOW SHOWING = --accent(#00EED2) 실시간
+         if(c) window.LOVE_ACCENT=c; }catch(e){}          // NOW SHOWING = --accent(#0FFD02) 실시간
     _readMarqCol();                                        // 전광판 LOVE 글자색(marqColor) 실시간 갱신(운영자 260704)
   }
   function hidden(){ var tb=document.body.dataset.tab; return tb==='scrap'||tb==='sns'; }  // 레거시·SNS=산책펫(마퀴 정지)

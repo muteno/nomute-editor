@@ -29,7 +29,7 @@ START_X = MARGIN_LEFT  # 87 (캔버스 가로 8.1%)
 START_Y = 888          # 캔버스 세로 65.8%
 SAFE_BOTTOM = CANVAS_H - 40  # 1310
 COLOR_DEFAULT = (255, 255, 255)
-COLOR_HIGHLIGHT = (15, 253, 2)  # #00EED2
+COLOR_HIGHLIGHT = (15, 253, 2)  # #0FFD02
 
 # ─── 폰트 ───
 FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
