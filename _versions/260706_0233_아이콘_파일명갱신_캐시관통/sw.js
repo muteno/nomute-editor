@@ -6,7 +6,7 @@ self.addEventListener('push', event => {
   const title = d.title || '🚨 긴급 속보';
   const opts = {
     body: d.body || '',
-    icon: d.icon || '/assets/brand/icon-192-260706.png',
+    icon: d.icon || '/assets/brand/icon-192.png',
     badge: d.badge || '/assets/brand/badge.png',   // 상태바 배지 = 흑백+투명 실루엣(N) — 불투명 컬러는 안드로이드가 흰 네모로 칠함
     tag: d.tag || 'nomute-breaking',          // 같은 tag = 교체(중복 알림 안 쌓임)
     data: { url: d.url || '/' },
