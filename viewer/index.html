@@ -112,11 +112,13 @@
   body:not(.booted) > :not(#wavebg):not(.bgfx):not(#bootsplash):not(script):not(style) { opacity:0; }
   :where(body.booted) > * { opacity:1; transition:opacity .2s ease; }   /* :where=특이도 0 → 부팅 후 앱 자식 노출/페이드인하되 클래스단 opacity(.foot 딤 .55·.nm-toast/.qflash 숨김 0)는 덮지 않음(평의회 260705) */
   /* 부팅 스플래시 = OS splash 클론(프로필 아이콘 중앙·'노뮤트 뉴스 큐레이션' 하단) + 배경은 #wavebg 물결이 비침. booted되면 페이드아웃 → 앱 노출 */
-  #bootsplash { position:fixed; inset:0; z-index:100; pointer-events:none; display:grid; place-items:center; }   /* 프로필 얼굴 제거 → 브랜드 문구만 중앙(운영자 260705 "프로필 사진 없애 깔끔하게") */
-  #bootsplash .bs-name { text-align:center; font-size:15px; font-weight:600; color:var(--fg); }
+  #bootsplash { position:fixed; inset:0; z-index:100; pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:center; animation:bsFadeIn .16s ease backwards; }   /* 얼굴 제거 → 문구+진행중 점 세로 중앙 · 등장 = 아주 빠른 페이드인(운영자 260705) · backwards = 시작 전 opacity0 유지(첫 프레임 플래시 방지), forwards 아님 = booted 페이드아웃과 무충돌 */
+  @keyframes bsFadeIn { from { opacity:0; } to { opacity:1; } }
+  #bootsplash .bs-name { text-align:center; font-size:15px; font-weight:600; color:var(--fg); letter-spacing:.3px; text-shadow:0 1px 8px rgba(0,0,0,.45); }
+  #bootsplash .bs-dots { margin-top:8px; width:auto; text-align:center; font-size:18px; line-height:1; letter-spacing:5px; color:var(--mut); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* 진행중 = gdots 점모션 계승(§디자인 g · 3점 순차 페이드) · ' . . . ' 간격 */
   body.booted #bootsplash { opacity:0; pointer-events:none; transition:opacity .45s ease .12s; }   /* delay .12s = 앱 페이드인(.2s) 먼저 자리잡은 뒤 스플래시 소멸 → 로고 고스트 겹침 완화(평의회 260705) */
   html.boot-lock #bootsplash { display:none !important; }   /* 잠금 설정 기기 = 부팅 인트로 스킵 → 바로 PIN(요구: 잠금 있을 때 인트로 안 뜨고 바로 핀 · 첫 페인트 전 인라인이 클래스 세팅=플래시 0 · 260705) */
-  @media (prefers-reduced-motion:reduce) { :where(body.booted) > * { transition:none; } body.booted #bootsplash { transition:none; } }
+  @media (prefers-reduced-motion:reduce) { :where(body.booted) > * { transition:none; } body.booted #bootsplash { transition:none; } #bootsplash { animation:none; } }
   body:not(.booted) dialog::backdrop { background:transparent; backdrop-filter:none; }   /* 딥링크 콜드부트(?a=/?brk=)로 부팅 중 showModal 시 top-layer ::backdrop blur가 스플래시 위로 새는 것 차단(평의회 260705) */
   /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림 — 색 워시 제거(전 탭 공통 중립 실크 · 요약 리더와 통일 · 운영자 260626 "원톤 전역"). 탭색은 배너 글로우·강조에만 남김(§🎬 크로스페이드 불변). */
   .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none;
@@ -2302,7 +2304,7 @@ try {
 <body data-tab="feed">
 <script>setTimeout(function(){document.body.classList.add('booted');},2500);</script><!-- 최종 안전망(독립 스크립트) — 메인 앱 스크립트가 통째로 죽어도 2.5s 후 반드시 노출(영구 블랙 차단·운영자 260626). 정상 경로는 메인의 allSettled가 ~0.3s에 먼저 노출. -->
 <div class="bgfx"></div><canvas id="wavebg" aria-hidden="true"></canvas>
-<div id="bootsplash" aria-hidden="true"><div class="bs-name">노뮤트 뉴스 큐레이션</div></div>
+<div id="bootsplash" aria-hidden="true"><div class="bs-name">News Curation</div><span class="bs-dots gdots"><i>.</i><i>.</i><i>.</i></span></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
 <div class="topbanner">
