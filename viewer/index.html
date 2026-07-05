@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). -->
-<link rel="preload" as="image" href="assets/brand/main_background.jpg" fetchpriority="high"><!-- feed 배너 = 부팅 노출(booted) 크리티컬 패스(9063 _bannerReady) → 조기·고우선 다운로드로 부팅 가속(로딩 지연 진단 260705 · 숨은 scrap/sns 배너는 탭 진입 시 지연 로드) -->
+<link rel="preload" as="image" href="assets/brand/main_background.jpg?v=260705t" fetchpriority="high"><!-- feed 배너 = 부팅 노출(booted) 크리티컬 패스(9063 _bannerReady) → 조기·고우선 다운로드로 부팅 가속(로딩 지연 진단 260705 · 숨은 scrap/sns 배너는 탭 진입 시 지연 로드) -->
 <script defer src="marked.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · 운영자 260705 "시작 시 멈춤" 진단: CDN SPOF 제거) · defer = 첫 피드 렌더는 textContent라 marked 불필요(상세 열 때만) → 파싱 비차단으로 부팅 가속 · setOptions는 window.marked 가드로 defer 늦어도 안전(parse는 open() 시점=로드 완료) -->
 
 <script defer src="purify.min.js"></script><!-- self-host + defer(marked와 동일 · 첫 렌더 비차단·sanitize는 상세 열 때만) -->
@@ -46,7 +46,7 @@
     --bias-l2:#3a6ddb; --bias-l2-rgb:58,109,219; --bias-l1:#38C6FF; --bias-l1-rgb:56,198,255; --bias-mid:#eef7f0; --bias-mid-rgb:238,247,240;   /* 중립 = 본문 흰과 단일화(팔레트 흰색 1종 · 운영자 260705 2차) */ --bias-r1:#ff7a6b; --bias-r1-rgb:255,122,107; --bias-r2:var(--accent-3); --bias-r2-rgb:var(--accent-3-rgb);   /* 약진보 = 스카이 시안(#38C6FF · 국제 --cat-intl과 값 공유 = 정치 코랄↔약보수 코랄 대칭 · 운영자 260705) */
     /* 구분자(카테고리) 6색 — 네온화 개편(운영자 260705 지목: 정치=약보수 코랄 공유·사회=네온 민트·국제=스카이 시안[약진보 공유]·경제/문화/테크=네온 추천분). 값 SSOT = 여기 · 소비 = CAT_COLOR(JS 인라인). */
     --cat-pol:#38C6FF; --cat-soc:#2CF5A5; --cat-eco:#FFE13D; --cat-intl:#ff7a6b; --cat-cul:#FF5EC8; --cat-tech:#AC5CFF;   /* 정치=스카이시안(--bias-l1 값 공유)·사회=네온민트·경제=네온 골드레몬(--accent-4 값 공유)·국제=코랄(--bias-r1 값 공유)·문화=네온핑크·테크=네온바이올렛 — 정치↔국제 크로스(운영자 260705 2차) */
-    --on-amber:#241C02; --on-danger:#fff;    /* 의미색 위 글자(앰버/빨강 플래시) — on-amber = 오렌지 딥 셰이드(구 #1a1205 브라운·accent-4 오렌지화 동행 · 운영자 260705 "주황 계열" 지목분) */
+    --on-amber:#241C02; --on-danger:#eef7f0;    /* 의미색 위 글자(앰버/빨강 플래시) — on-amber = 오렌지 딥 셰이드(구 #1a1205 브라운·accent-4 오렌지화 동행 · 운영자 260705 "주황 계열" 지목분) */
     /* 반지름 스케일 */
     --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
     /* 간격 스케일(4px 그리드 근사) */
@@ -151,20 +151,16 @@
 
   /* ── 전면 배너(최상단) + 오버랩 프로필 메뉴 ── */
   .topbanner { position:relative; max-width:860px; margin:0 auto; padding:10px 16px 0; }
-  /* 배너 = 3겹(피드 초록 / 스크랩 앰버 / SNS 시안) opacity 크로스페이드(디졸브) 전환. 글로우=프레임(클립 영향X)·디졸브=클립 내부(틈/삐져나옴 X). */
+  /* 배너 = 단일(전 탭 동일 · 260705 탭별 디졸브 폐지). 글로우=프레임(클립 영향X X). */
   .bannerframe { position:relative; border-radius:20px;
     box-shadow:0 18px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.10);
     --glow:0,238,210;            /* 글로우 색(피드=강조색·기본) */
     animation:bannerbreath 5.5s ease-in-out infinite; will-change:filter; }
   body:has(#dlg[open]) .bannerframe { animation-play-state:paused; }   /* 요약모달 열림 중 배너 filter 애니 정지 → 모달 뒤라 안 보임(무손실) + 닫을 때 상시 will-change 레이어 재합성 델타 제거 = 상단 잔번쩍 차단(5인 GPU·배너앵글 260701 · play-state는 위상 보존) */
-  body.tab-scrap .bannerframe { --glow:var(--accent-4-rgb); }   /* 스크랩 탭 = 라임 글로우(앰버→accent-4 · 260704) */
-  body[data-tab="sns"] .bannerframe { --glow:12,208,247; }   /* SNS 탭 = 시안 글로우(SNS 표면 전용 raw — naver 토큰은 그린 이동 260705·재배선) */
+  /* 탭별 글로우 폐지 — 전 탭 강조색 글로우 통일(운영자 260705 "메뉴별 색 다른 거 다 통일") */
   .bannerclip { position:relative; border-radius:20px; overflow:hidden; border:1px solid var(--line); }
   .banner { width:100%; display:block; }
-  .banner.layer-scrap, .banner.layer-sns { position:absolute; inset:0; opacity:0;
-    transition:opacity .6s ease; will-change:opacity; }
-  body.tab-scrap .banner.layer-scrap { opacity:1; }   /* 1번 누르면 배너가 점차 오렌지로 디졸브(크로스페이드) */
-  body[data-tab="sns"] .banner.layer-sns { opacity:1; }   /* SNS = 시안 배너 디졸브 */
+  /* 탭별 배너 디졸브 레이어 폐지 — 단일 배너(전 탭 동일 자산 · 구 탭 배너 캐시 잔여가 "메뉴별 색 잔여" 유발 · 운영자 260705 "뒤 디밍 다 없애줘"). 차등 배너 재도입 시 크로스페이드 패턴은 §8-5-b 참조. */
   /* P: TV 뒤 불빛 브리딩 — 밝아졌다 은은히 죽었다 다시(절대 깜깜 X). filter=GPU 컴포지트(60fps). 색=--glow(탭별). */
   @keyframes bannerbreath {
     0%,100% { filter:brightness(1) saturate(1) drop-shadow(0 0 2px rgba(var(--glow),0)); }
@@ -364,12 +360,12 @@
   @media (hover:hover) { .ts-toggle:hover { transform:scale(1.18); } }   /* 마우스 호버 = 살짝 커짐(돋보기·새로고침 · 운영자 260621) */
   .topsearch .ts-ico { width:20px; height:20px; flex:none; stroke:var(--accent); fill:none; stroke-width:2.2; stroke-linecap:round;
     filter:drop-shadow(0 0 5px rgba(0,238,210,.4)); }   /* 프로필 테두리색(피드=강조색) · 탭 전환 시 색 즉시 = transition:stroke 제거(운영자 260621: 0.3s 페이드가 늦게 느껴짐) */
-  body.tab-scrap .topsearch .ts-ico { stroke:var(--accent-4); filter:drop-shadow(0 0 5px rgba(var(--accent-4-rgb),.4)); }   /* 스크랩 탭=라임(앰버→accent-4 · 260704) */
-  body[data-tab="sns"] .topsearch .ts-ico { stroke:#0cd0f7; filter:drop-shadow(0 0 5px rgba(12,208,247,.45)); }   /* SNS 탭=시안(--naver 계승) */
+   /* 스크랩 탭=라임(앰버→accent-4 · 260704) */
+  /* 검색·새로고침 버튼 탭색 폐지 — 전 탭 강조색 통일(운영자 260705) */   /* SNS 탭=시안(--naver 계승) */
   .topsearch .ts-rf:active { transform:none; }   /* 픽토온리 — 공통 .ts-toggle:active scale 끔(축소+회전 동시 투박 제거). 누름 회전은 기틀 ic-spin(시맨틱 모션) 위임으로 통일 = .pmenu-rf 등과 동일 픽토그램 액티브 계승(새 모션 안 만듦·운영자 260629) */
   .topsearch input { width:0; opacity:0; padding:0; height:36px; min-width:0; border:1px solid transparent; border-radius:999px;
     background:rgba(4,5,6,.5); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
-    color:#fff; font:inherit; font-size:13.5px; font-weight:600; outline:none;
+    color:#eef7f0; font:inherit; font-size:13.5px; font-weight:600; outline:none;
     transition:width .33s cubic-bezier(.4,0,.2,1), opacity .33s cubic-bezier(.4,0,.2,1), padding .33s cubic-bezier(.4,0,.2,1), border-color .3s ease; }   /* 열기·닫기 완전 대칭(닫기=열기 역재생) — 세 속성 같은 커브·시간 + 테두리 페이드 */
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
@@ -379,13 +375,13 @@
     height:92%; width:auto; aspect-ratio:1/1; display:block;
     image-rendering:pixelated;                              /* 도트 선명(정사각 1080² 스케일다운) */
     z-index:6; pointer-events:none; user-select:none; }     /* 투명 배경(marquee.js LOVE_BG='transparent') — 뒤 브랜드 배너·글로우 비침 · 배너 바닥 정렬(bottom:0) = 캔버스 하단=사다리 하단이 배너 아랫변에 닿음(운영자 260704) · 정사각 유지 */
-  body[data-tab="scrap"] .lovemarq, body[data-tab="sns"] .lovemarq { display:none; }   /* LOVE 마퀴펫 = 뉴스요약 탭 전용 */
+  .lovemarq { display:none; }   /* LOVE 마스코트 폐지 — 전 탭 산책 펫(공놀이)으로 통일(운영자 260705 "LOVE 떼고 축구공 드리블로") · 렌더 정지는 marquee.js hidden()=true */
   /* 산책 펫(공놀이 pet.webp) — 마퀴 이전 원형(_versions/260703_2119) · 레거시·SNS 탭 전용 */
   .pet { display:none; position:absolute; left:clamp(44px,17%,150px); bottom:6px; height:50px; width:auto;
     pointer-events:none; user-select:none; z-index:6; will-change:transform;
     filter:drop-shadow(0 3px 3px rgba(0,0,0,.45));
     animation:petStroll 9s ease-in-out infinite; }   /* alternate 제거 = 키프레임이 왕복 1바퀴 다 담음(엇박 리듬) */
-  body[data-tab="scrap"] .pet, body[data-tab="sns"] .pet { display:block; }
+  .pet { display:block; }   /* 산책 펫 = 전 탭(뉴스요약 포함 · LOVE 대체 · 운영자 260705) */
   @keyframes petStroll {   /* 좌우 위치 + scaleX 방향전환(걷는 쪽 바라봄). 불균일 % 간격 = 엇박 */
     0%   { transform:translateX(0) scaleX(1); }
     9%   { transform:translateX(46px) scaleX(1); }    /* 빠른 dart 우 */
@@ -456,7 +452,7 @@
   .card { display:block; }
   #list .card { content-visibility:auto; contain-intrinsic-size:auto 240px; }   /* ⚡버퍼 260701(분신술 A7): 뷰포트 밖 피드 카드의 backdrop-filter(8px)+box-shadow 페인트·레이아웃 스킵 = 스크롤 jank↓(비가상화 N카드 동시 backdrop 재샘플 완화). auto=첫 렌더 후 실제높이 기억(폴백 240px·스크롤바 점프 방지). 미지원(구 Safari)은 무시=정상 렌더(무해·progressive). 시각 무변경. */
   /* 피드 카드 = 투명 글래스(딥블랙 위) · 투명도 15% · 흐림은 위 .card(8px) 상속 · 글로우 없음 · 운영자 260625(롤백=이 블록만 제거). */
-  body[data-tab="feed"] .card { background:rgba(16,30,22,.15); }
+  /* feed 탭 전용 카드 워시 폐지(탭별 색 잔여 제거 · 운영자 260705) */
   .cardmain { min-width:0; }
   /* #1 첫줄 = IN(적재)·WRITE(보도) 두 날짜. WRITE 항상 강조(accent), IN은 오늘일 때만 강조(B). */
   .cardtop { font-size:11px; color:var(--mut); margin-bottom:7px; letter-spacing:-.2px; display:flex; align-items:center; gap:9px; flex-wrap:nowrap; min-width:0; }   /* [카테고리] 보도(좌) ··· 스크랩+긴급/이슈(우) = 항상 1줄(운영자 260621·디자인안04). 라벨 폐지. */
@@ -586,12 +582,12 @@
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }
   #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
-  .soc-item:hover { border-color:rgba(12,208,247,.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(12,208,247,.2); }
+  .soc-item:hover { border-color:rgba(var(--accent-rgb),.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(var(--accent-rgb),.2); }   /* SNS 시안 정체성 폐지 = 강조색 통일(운영자 260705) */
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
-  .soc-burst { color:#0cd0f7; }   /* 🔥 burst 점수 = 기본 SNS 시안(표면 전용 raw·naver 그린 이동 재배선 260705) */
+  .soc-burst { color:rgba(var(--accent-rgb),.62); }   /* burst 기본 = 흐린 강조색(티어 보존: 기본<hot30 풀강조<hot10 라임 · 시안 정체성 폐지·운영자 260705) */
   .soc-burst.hot30 { color:var(--accent); }       /* 상위 ~30%(burst≥12·7일치 p70) = 강조색(운영자 260629) */
   .soc-burst.hot10 { color:var(--hist-accent); }   /* 상위 ~10%(burst≥24·7일치 p90) = 이력색 라임(--hist 계승 · 260705) */
-  .soc-src { color:#9becff; }
+  .soc-src { color:var(--accent); }   /* SNS 연시안 폐지 = 강조색(운영자 260705) */
   .soc-posts { color:var(--mut); font-weight:700; }
   .soc-age { color:var(--mut); margin-left:auto; font-weight:700; }
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
@@ -721,7 +717,7 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
     transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 버튼과 동일 모양 */
   .sc-down svg { display:block; }
-  .sc-down:hover { background:rgba(255,255,255,.16); color:#fff; }
+  .sc-down:hover { background:rgba(255,255,255,.16); color:#eef7f0; }
   .sc-down:active { transform:scale(var(--press-s,.85)); }
   .sc-item.removing { opacity:0; transform:scale(.96) translateX(16px); pointer-events:none; overflow:hidden;
     transition:height .32s ease, opacity .3s ease, transform .3s ease, margin .32s ease, padding .32s ease; }
@@ -739,7 +735,7 @@
   .nm-toast { position:fixed; left:0; right:0; margin-inline:auto; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateY(18px);
     z-index:var(--z-float); width:min(92vw,430px); display:flex; align-items:center; gap:9px; padding:11px 15px; cursor:pointer;
     background:linear-gradient(135deg, rgba(42,13,11,.86), rgba(20,9,9,.86)); border:1px solid rgba(255,85,60,.5); border-radius:14px;
-    box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#fff; font-size:13px; font-weight:700; line-height:1.35;
+    box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(255,60,50,.22); color:#eef7f0; font-size:13px; font-weight:700; line-height:1.35;
     backdrop-filter:blur(18px) saturate(1.3); -webkit-backdrop-filter:blur(18px) saturate(1.3); opacity:0; transition:opacity .3s, transform .3s; }   /* 글래스모피즘 = 배경 반투명(.95→.86 뒤 비침)+blur 14→18(운영자 260702) · 위치 78→86px 약간 위 */
   .nm-toast.show { opacity:1; transform:translateY(0); }
   .nm-toast:not(.show) { pointer-events:none; }   /* opacity:0 유령 토스트가 탭을 계속 먹던 버그(hideToast는 .show만 제거·onclick·pointer-events 잔존) 차단 — 안 보이면 클릭도 안 받음(분신술10 260705 실측) */
@@ -805,7 +801,7 @@
   @keyframes rsnIn { from { opacity:0; transform:translateY(var(--rsn-dy,4px)) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
   .sc-rsn.up { --rsn-dy:6px; } .sc-rsn.down { --rsn-dy:-6px; }
   @media (prefers-reduced-motion:reduce){ .sc-rsn { animation:none; } }
-  .sc-rsn-q { font-size:12px; font-weight:800; color:#fff; padding-right:22px; }
+  .sc-rsn-q { font-size:12px; font-weight:800; color:#eef7f0; padding-right:22px; }
   .sc-rsn-in { flex:1 1 auto; min-width:0; box-sizing:border-box; background:rgba(0,0,0,.32); border:1px solid var(--line2); border-radius:8px;
     padding:7px 9px; color:var(--fg); font-size:12.5px; font-family:inherit; }
   .sc-rsn-in::placeholder { color:var(--mut); } .sc-rsn-in:focus { outline:none; border-color:rgba(255,255,255,.45); }
@@ -864,12 +860,12 @@
   .sc-rsn-c { font:700 12px inherit; border-radius:9px; padding:8px 12px; cursor:pointer; text-align:left; width:100%;
     background:rgba(255,255,255,.06); color:rgba(255,255,255,.82); border:1px solid var(--line2);
     transition:background .12s, color .12s, border-color .12s; }
-  .sc-rsn-c:hover { background:rgba(255,255,255,.13); color:#fff; border-color:rgba(255,255,255,.28); }
+  .sc-rsn-c:hover { background:rgba(255,255,255,.13); color:#eef7f0; border-color:rgba(255,255,255,.28); }
   .sc-rsn-c.inp { border-style:dashed; color:var(--mut); }
   /* PASS·PICK 사유 칩 hover = 무채색 통일(운영자 260630) — 중립 흰색 hover만(빨강/초록 분기 제거) */
   .sc-rsn-x { position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; padding:0; font-size:11px;
     display:grid; place-items:center; background:rgba(255,255,255,.06); color:var(--mut); border:1px solid var(--line2); cursor:pointer; }
-  .sc-rsn-x:hover { color:#fff; } .sc-rsn-x:active { transform:scale(var(--press-l,.95)); }
+  .sc-rsn-x:hover { color:#eef7f0; } .sc-rsn-x:active { transform:scale(var(--press-l,.95)); }
   /* ── 수집함 2열 (좌=누적=.green 클래스지만 색은 레몬 라임 --accent-4 · 우=신규=.black 클래스지만 색은 코어 초록 --accent). 클래스명은 레거시(리네임 리플 회피)·색은 강조 토큰만 — 다른 색 안 섞음 · 운영자 260704 ── */
   /* 수집함 = 단일 글래스 패널 하나(디밍·개별 박스2개 제거 → 가운데 시임선으로 통합 · 운영자 260621) */
   .scrap-cols { display:grid; grid-template-columns:1fr 1fr; align-items:stretch; position:relative;
@@ -972,7 +968,7 @@
     background:var(--accent); color:#04140a; font-size:10px; font-weight:800; line-height:1; border-radius:9px;
     box-shadow:0 0 8px rgba(0,238,210,.5); cursor:pointer; z-index:2; }
   .bnav-i .qbadge[hidden] { display:none; }
-  .bnav-fab { flex:none; width:39px; height:39px; margin:0 6px 4px; border-radius:50%; cursor:pointer; position:relative; top:-12px;
+  .bnav-fab { flex:none; width:40px; height:40px;   /* 39(홀)+svg20(짝) = X 반픽셀 편심 → 40(내부 38 짝) 정중앙(운영자 260705 픽셀 지적) */ margin:0 6px 4px; border-radius:50%; cursor:pointer; position:relative; top:-12px;
     border:1px solid rgba(255,255,255,.30);   /* 겉면 연한 흰 획 30%(운영자 260704) · top:-12 = 원 상단 ~30% 네비 위로 튀어나옴 · margin-bottom 축소로 네비 라인높이 = 탭글자와 동일(네비 안 키움) */
     background:rgba(0,0,0,.30); color:var(--accent); display:grid; place-items:center;
     backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);   /* 검정 30% 반투명 원(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스로 형체 유지 · 음양각(inset 하이라이트/음영/유리링)·외부 그림자 제거 = 평평한 버튼만 딱(운영자 260704 "음양각 오버렙 없애고 자연스럽게 버튼만 · 검정 30% 투명도") */
@@ -992,16 +988,16 @@
   .radmenu.open .raditem[data-ang="left"]  { transform:translate3d(calc(-1 * var(--rad-r) * .707), calc(-1 * var(--rad-r) * .707), 0) scale(1); transition-delay:.03s; }
   .radmenu.open .raditem[data-ang="right"] { transform:translate3d(calc(var(--rad-r) * .707), calc(-1 * var(--rad-r) * .707), 0) scale(1); transition-delay:.11s; }
   .raditem .radbtn { width:52px; height:52px; border-radius:50%; background:rgba(8,15,11,.45); }   /* .sbtn 글래스 그대로 + 원형·크게(specificity로 .sbtn 34px 덮음) · 크기 52 유지 · 배경 불투명 1.5배(.sbtn .3→.45 = 뒤 비침 줄임 · 운영자 260705, 크기 78 롤백) */
-  .raditem[data-act="ask"] .radbtn { color:var(--accent); }
+  .raditem[data-act="ask"] .radbtn { color:var(--accent-2); }   /* 뉴스요약 픽토 = 네온 레몬(운영자 260705) */
   .raditem[data-act="thumb"] .radbtn { color:var(--thumb); }
-  .raditem[data-act="cap"] .radbtn { color:var(--fg); }
-  .radlab { font-size:11px; font-weight:800; color:var(--mut); letter-spacing:-.2px; text-shadow:0 1px 5px rgba(0,0,0,.85); white-space:nowrap; }   /* 배경 플레이트(도형) 제거 = ＋ 열림 시 rad-scrim 그라데이션이 뒤를 가림 → 라벨은 text-shadow만으로 가독(운영자 260705, 옛 rgba(18,18,18,.75) 플레이트 폐지) */
+  .raditem[data-act="cap"] .radbtn { color:var(--accent-5); }   /* 영상 픽토 = 남는 강조색 그린(운영자 260705) */
+  .radlab { font-size:11px; font-weight:800; color:var(--fg);   /* 라벨 3종 = 흰색(운영자 260705) */ letter-spacing:-.2px; text-shadow:0 1px 5px rgba(0,0,0,.85); white-space:nowrap; }   /* 배경 플레이트(도형) 제거 = ＋ 열림 시 rad-scrim 그라데이션이 뒤를 가림 → 라벨은 text-shadow만으로 가독(운영자 260705, 옛 rgba(18,18,18,.75) 플레이트 폐지) */
   .rad-scrim {   /* ＋ 라디얼 열림 시 뒤 피드 가림막(무채색 그라데이션). ▼▼ 조절점 = 아래 3변수(전부 화면바닥 기준 px·실측 260705) — 여기 숫자만 바꾸면 위치 조절 ▼▼ */
     --scrim-bottom:50px;   /* ⓐ 스크림 아래끝 = 네비 상단(실측 navH 50 = 네비 안 가림·보통 안 건드림) */
     --scrim-solid:65px;    /* ⓑ 여기까지 완전 불투명(시작점) = 뉴스요약 라벨 밑변 · ↑키우면 진한 구간 위로 */
     --scrim-fade:147px;    /* ⓒ 여기서 완전 투명(끝점) = 이미지 버튼 원 중심 · ↑키우면 페이드 위로 길게 */
     position:fixed; z-index:calc(var(--z-nav) - 1); left:0; right:0; bottom:calc(var(--scrim-bottom) + env(safe-area-inset-bottom)); height:calc(var(--scrim-fade) - var(--scrim-bottom));   /* z = 네비(z-nav 35) 아래·피드 위 → 피드만 가리고 ＋·네비·라디얼 버튼은 모두 스크림 앞(안 가려짐·운영자 260705) */
-    background:linear-gradient(to top, var(--bg) 0, var(--bg) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent);   /* 무채색(--bg 계승): 네비~라벨밑변 불투명 → 이미지버튼 중심서 투명 */
+    background:linear-gradient(to top, rgba(var(--accent-rgb),.12) 0, rgba(var(--accent-rgb),.12) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent), linear-gradient(to top, var(--bg) 0, var(--bg) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent);   /* 강조색 12% 틴트 겹(순검정 이질감 완화 · 운영자 260705) */   /* 무채색(--bg 계승): 네비~라벨밑변 불투명 → 이미지버튼 중심서 투명 */
     opacity:0; transform:translateY(24px); transition:opacity .15s ease, transform .15s ease; pointer-events:none; }   /* 아래→위 페이드인·빠르게(.15s = raditem .34s보다 먼저 깔림) */
   .radmenu.open ~ .rad-scrim { opacity:1; transform:translateY(0); }   /* 스크림 = bpop 밖 형제 → 형제 결합자로 열림 연동(z 낮춰 ＋·네비 앞 유지) */
   @media (prefers-reduced-motion:reduce){ .rad-scrim { transition:none; } }
@@ -1090,7 +1086,7 @@
   .failmenu-it svg { flex:none; opacity:.85; }
   .failmenu-it:hover { color:var(--accent); background:rgba(255,255,255,.06); }
   .failmenu-it:active { transform:scale(var(--press-l,.98)); }
-  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .banner.layer-scrap, .banner.layer-sns { transition:none; } .failmenu { animation:none; } }
+  @media (prefers-reduced-motion: reduce) { .bannerframe { animation:none; } .failmenu { animation:none; } }
 
   /* ── 맨 위로(우하단 고정) ── */
   .totop { position:fixed; right:20px; bottom:calc(99px + env(safe-area-inset-bottom)); z-index:34;   /* 아래 변 쪽으로 내림(104→99·네비바 바로 위) · 작아진 만큼 우측 20 · 운영자 260703 */
@@ -1274,7 +1270,7 @@
   /* 피드 좌우 넘김 화살표(PC·반투명 글래스) */
   .feedwrap { position:relative; }
   .feednav { position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:25px; height:25px; border-radius:50%;
-    display:grid; place-items:center; line-height:0; color:#fff; cursor:pointer;
+    display:grid; place-items:center; line-height:0; color:#eef7f0; cursor:pointer;
     background:rgba(12,16,14,.34); border:1px solid rgba(255,255,255,.2); box-shadow:0 4px 16px rgba(0,0,0,.28);
     backdrop-filter:blur(12px) saturate(1.2); -webkit-backdrop-filter:blur(12px) saturate(1.2);
     opacity:.85; transition:background .15s, opacity .15s, transform .1s; }
@@ -1350,7 +1346,7 @@
   .tool-restore.show { display:grid; }
   .tool-restore svg { display:block; opacity:.8; filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 2px rgba(0,0,0,.5)); }   /* 다양한 배경 위 대비 · 삼각형 픽토그램 불투명도 80%(↑·배지 숫자와 통일 · 운영자 260703) */
   .tool-restore:active { transform:scale(var(--press-xs,.82)); }   /* raw→토큰(.82=--press-xs·회귀0·형제 #toolMin과 통일) */
-  .tool-restore:focus-visible { outline:2px solid #fff; outline-offset:3px; border-radius:5px; }
+  .tool-restore:focus-visible { outline:2px solid #eef7f0; outline-offset:3px; border-radius:5px; }
   .tool-restore.pulsing svg { animation:triGlow 1.8s var(--ease) infinite; }   /* 발견성 = 이력색 글로우 호흡(위치 안정 · hist=라임 260705) */
   .tool-restore.arming svg { transform:scale(1.08); }   /* 길게누름 시 살짝 강조(칩이 위에 뜸) */
   @keyframes triGlow { 0%,100%{ filter:drop-shadow(0 2px 5px rgba(0,0,0,.55)) drop-shadow(0 0 1px rgba(var(--hist-rgb),0)); }
@@ -1388,7 +1384,7 @@
   .scrub-bar { position:relative; height:6px; border-radius:999px; background:rgba(255,255,255,.09); cursor:pointer; }
   .scrub-fill { position:absolute; left:0; top:0; bottom:0; border-radius:999px; background:linear-gradient(90deg,var(--accent-bright),var(--accent)); box-shadow:0 0 8px rgba(0,238,210,.4); }
   .scrub-tick { position:absolute; top:50%; width:2px; height:10px; transform:translate(-50%,-50%); background:rgba(255,255,255,.4); border-radius:1px; pointer-events:none; }
-  .scrub-dot { position:absolute; top:50%; width:13px; height:13px; transform:translate(-50%,-50%); border-radius:50%; background:#fff; box-shadow:0 0 0 3px rgba(0,238,210,.35), 0 1px 5px rgba(0,0,0,.45); pointer-events:none; }   /* 끝단=초록 fill과 같은 pct로 동시 갱신 — transition 빼서 딱 붙어 이동(lag 제거) */
+  .scrub-dot { position:absolute; top:50%; width:13px; height:13px; transform:translate(-50%,-50%); border-radius:50%; background:#eef7f0; box-shadow:0 0 0 3px rgba(0,238,210,.35), 0 1px 5px rgba(0,0,0,.45); pointer-events:none; }   /* 끝단=초록 fill과 같은 pct로 동시 갱신 — transition 빼서 딱 붙어 이동(lag 제거) */
   .scrub-labels { display:flex; justify-content:space-between; font-size:10.5px; font-weight:700; color:var(--mut); letter-spacing:-.2px; }
   .scrub-lb { cursor:pointer; transition:color .15s; padding:1px 4px; }
   .scrub-lb:hover { color:var(--fg); }
@@ -1659,8 +1655,8 @@
   .feedhead { margin:6px 0 16px; }
   .fi-top { display:flex; align-items:center; gap:12px; margin-bottom:16px; }   /* 제목↔전체버튼 세로 중앙 정렬(높이 맞춤)·위치 유지 · 운영자 260623 */
   /* 부제 — 흰색·18px(이전 24의 75%). #feedsec.md 라 '.md h3'(13px·mut)에 눌려있던 걸 ID로 이김(이게 안 먹던 원인). */
-  #feedsec .fi-title { flex:1; min-width:0; margin:0; padding-left:8px; font-size:18px; font-weight:800; color:#fff; line-height:1.3; letter-spacing:-.4px; overflow-wrap:anywhere; }   /* min-width:0=긴 제목이 줄바꿈/축소돼 '전체' 버튼 침범 안 함(운영자 260623) · 살짝 왼쪽 들여쓰기 */
-  .fi-saveall { flex:none; align-self:flex-start; margin-top:2px; display:inline-flex; align-items:center; gap:4px; font:800 10.5px/1 inherit; color:#fff;   /* 70% 축소·글래스 톤(강조색 X) */
+  #feedsec .fi-title { flex:1; min-width:0; margin:0; padding-left:8px; font-size:18px; font-weight:800; color:#eef7f0; line-height:1.3; letter-spacing:-.4px; overflow-wrap:anywhere; }   /* min-width:0=긴 제목이 줄바꿈/축소돼 '전체' 버튼 침범 안 함(운영자 260623) · 살짝 왼쪽 들여쓰기 */
+  .fi-saveall { flex:none; align-self:flex-start; margin-top:2px; display:inline-flex; align-items:center; gap:4px; font:800 10.5px/1 inherit; color:#eef7f0;   /* 70% 축소·글래스 톤(강조색 X) */
     background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.16); border-radius:999px; padding:6px 10px; cursor:pointer; white-space:nowrap;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
   .fi-saveall svg { display:block; width:12px; height:12px; } .fi-saveall:active { transform:scale(var(--press-l,.95)); } .fi-saveall[disabled] { opacity:.6; }
@@ -1725,7 +1721,7 @@
   .slide-ver { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:3; display:none; align-items:center; gap:22px; }
   .slide-ver.show { display:flex; }
   .vbtn { background:none; border:none; padding:4px 6px; font:800 13px inherit; letter-spacing:1px; color:rgba(255,255,255,.25); cursor:default; }   /* 기본 = 비활성(25% 흰색) */
-  .vbtn:not(:disabled) { color:#fff; text-shadow:0 1px 7px rgba(0,0,0,.95); cursor:pointer; }   /* 그 방향 판 있음 = 흰색+그림자 */
+  .vbtn:not(:disabled) { color:#eef7f0; text-shadow:0 1px 7px rgba(0,0,0,.95); cursor:pointer; }   /* 그 방향 판 있음 = 흰색+그림자 */
   .vbtn:not(:disabled):active { transform:scale(var(--press-m,.9)); }
   .sbtn.voted { color:var(--accent); border-color:rgba(0,238,210,.45); background:rgba(0,238,210,.14); }
   .sbtn.thumb-arm { font-size:11px; font-weight:800; letter-spacing:-.3px; color:var(--accent); }   /* 투표 취소 arm = 픽토그램→'취소' 텍스트(2탭 취소·팝업 폐지·운영자 260629). voted 초록 박스 위 텍스트만(텍스트/픽토 단독·공존금지 준수) */
@@ -1734,14 +1730,14 @@
     background:rgba(8,12,10,.78); border:1px solid rgba(255,255,255,.16); box-shadow:0 10px 30px rgba(0,0,0,.45);
     backdrop-filter:blur(18px) saturate(1.2); -webkit-backdrop-filter:blur(18px) saturate(1.2); display:flex; flex-direction:column; gap:9px; }
   .fb-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }   /* 첨부3(수정요청) 헤더 통일 = 제목 + [기록][X] 우측 묶음(.askhead 미러 · '— 무엇에 대해?' 부제 제거·운영자 260629) */
-  .fb-title { font-size:var(--fs-h2); font-weight:800; color:#fff; }   /* 15 통일(--fs-h2 · 옛 13) · 운영자 260705 */
+  .fb-title { font-size:var(--fs-h2); font-weight:800; color:#eef7f0; }   /* 15 통일(--fs-h2 · 옛 13) · 운영자 260705 */
   .fb-headact { display:flex; align-items:center; gap:8px; flex:none; }   /* = .revhead-act(기록+X) */
   .slide-fb .asksend { padding:6px 13px; font-size:12px; }   /* 기록 버튼 = .asksend 글래스(첨부3 수정버튼 동일) · 작은 패널 compact(revdlg .asksend 패턴) */
   .fb-aspect { display:flex; gap:7px; }
   .fb-aspect button { flex:1; padding:8px; font:700 12.5px inherit; color:rgba(255,255,255,.72); background:rgba(255,255,255,.06);
     border:1px solid var(--line2); border-radius:10px; cursor:pointer; transition:color .12s, background .12s, border-color .12s; }
   .fb-aspect button.on { color:var(--accent); border-color:rgba(0,238,210,.4); background:rgba(0,238,210,.1); }
-  .fb-comment { display:block; width:100%; box-sizing:border-box; font:inherit; font-size:13px; line-height:1.5; color:#fff; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:10px; padding:9px 11px; min-height:48px; resize:none; }   /* 첨부3 통일 = textarea(askta 미러) + 하단걸침 클립 */
+  .fb-comment { display:block; width:100%; box-sizing:border-box; font:inherit; font-size:13px; line-height:1.5; color:#eef7f0; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:10px; padding:9px 11px; min-height:48px; resize:none; }   /* 첨부3 통일 = textarea(askta 미러) + 하단걸침 클립 */
   .fb-comment::placeholder { color:rgba(255,255,255,.4); font-style:italic; } .fb-comment:focus { outline:none; border-color:rgba(var(--accent-rgb),.4); }
   /* 기록·닫기 = 헤더 우측(.fb-headact)으로 이동 = 첨부3 패턴. X=.askx 글래스 계승 / 클립=.iobtn-edge 하단걸침(revdlg 미러 · 헤더 버튼과 안 겹침) */
   .slide-fb .iobtn-edge { top:auto; bottom:0; transform:translateY(50%); }
@@ -2043,7 +2039,7 @@
   .askimgs:empty { display:none; }   /* 첨부 0장 = 행 접힘(레이아웃 점프 최소·R4) */
   .askimg { position:relative; flex:none; width:64px; height:64px; border-radius:var(--r-m); overflow:hidden; border:1px solid var(--line2); }   /* 폴백 12px 오타 제거 = --r-m 실제 11px(분신술10 260704) */
   .askimg img { width:100%; height:100%; object-fit:cover; display:block; cursor:zoom-in; }   /* 탭=확대(기존 openLightbox 재사용·평의회) */
-  .askimg-x { position:absolute; top:3px; right:3px; width:19px; height:19px; border-radius:50%; border:none; cursor:pointer; padding:0; display:grid; place-items:center; background:rgba(0,0,0,.62); color:#fff; }   /* 삭제(X)만 — 교체 버튼 폐지(운영자 260702) · rotate-close 그룹(1286 .askimg-x:active 계승) · 이미지 위 검정 플레이트 */
+  .askimg-x { position:absolute; top:3px; right:3px; width:19px; height:19px; border-radius:50%; border:none; cursor:pointer; padding:0; display:grid; place-items:center; background:rgba(0,0,0,.62); color:#eef7f0; }   /* 삭제(X)만 — 교체 버튼 폐지(운영자 260702) · rotate-close 그룹(1286 .askimg-x:active 계승) · 이미지 위 검정 플레이트 */
   .askimg-x::before { content:""; position:absolute; top:-8px; bottom:-8px; left:-5px; right:-5px; }   /* 터치 확장(가로 좁게=인접 오탭 방지·평의회 R2·.timg-acts 표준) */
   .askimg-x svg { width:11px; height:11px; }
   .askimg-kb { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#cdd; font-size:8.5px; text-align:center; padding:1px 0; pointer-events:none; }
@@ -2061,7 +2057,7 @@
   .askattach.over { color:var(--danger); }   /* 3장인데 또 탭 = 빨강+흔들림(메시지 없음·운영자 260702) */
   .askattach.over .fic { animation:asksh .4s ease; }
   .askattach-badge { position:absolute; top:-6px; right:-6px; min-width:16px; height:16px; padding:0 3px; border-radius:999px; background:var(--accent); color:var(--on-accent); border:1.5px solid var(--bg); font:800 9px/1 ui-monospace,monospace; display:inline-flex; align-items:center; justify-content:center; gap:1px; }   /* ✓N 배지 = 첨부칸(46px) 우상단 코너 = 픽토 안 가림(어제 코너배지 계승 · label 기준 · 운영자 260702) */
-  .askattach.over .askattach-badge { background:var(--danger); color:#fff; }
+  .askattach.over .askattach-badge { background:var(--danger); color:#eef7f0; }
   .askattach-badge[hidden] { display:none; }   /* ⚠️ display:inline-flex가 [hidden] 속성(display:none)을 덮어써 이미지 0장에도 ✓가 떠있던 버그 차단 — 첨부 있을 때만 표시(운영자 260622) */
   .askattach-badge svg { width:9px; height:9px; }
   .askattach-badge.pop { animation:askAttachPop .3s ease; }
@@ -2164,7 +2160,7 @@
   /* 본문 IG·Thread 소주제 — 진행 중: 강조↔노랑 펄스 + (변경 중) / 완료: 노랑 고정 */
   @keyframes rvChgC { 0%,100% { color:rgba(0,238,210,.85); } 50% { color:rgba(var(--warn-rgb),1); } }
   .revsec, .revsec .cnt { animation:rvChgC 1.7s ease-in-out infinite; }
-  .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; color:#fff; }
+  .revchg { font-style:italic; font-weight:400; font-size:.82em; letter-spacing:-.2px; color:#eef7f0; }
   .revsec-done, .revsec-done .cnt { color:rgb(var(--rv-solid,255,210,74)) !important; }   /* 수정됨 = 소주제 노랑 고정(펄스 없음) */
   @media (prefers-reduced-motion:reduce) { .rev-fab.revving, .rev-fab.revving svg, .card.revving .prog .seg .bar, .card.revving .prog .seg .sl, .revsec, .revsec .cnt { animation:none !important; } .revsec, .revsec .cnt { color:rgba(var(--warn-rgb),.72) !important; } }
   /* ── 요약 수정 팝업(revdlg) — FAB(우·중하단)에서 좌측으로 촤르륵 펼침. askdlg 골격 계승 + 게이지(PICK) 발사 버튼. ── */
@@ -2305,9 +2301,9 @@ try {
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
 <div class="topbanner">
   <div class="bannerframe"><div class="bannerclip">
-    <img class="banner layer-feed" src="assets/brand/main_background.jpg" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high">
-    <img class="banner layer-scrap" data-src="assets/brand/main_background_scrap.jpg" alt="" aria-hidden="true"><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
-    <img class="banner layer-sns" data-src="assets/brand/main_background_sns.jpg" alt="" aria-hidden="true">
+    <img class="banner layer-feed" src="assets/brand/main_background.jpg?v=260705t" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high">
+    <!-- 탭별 배너 레이어 폐지(260705) — 단일 배너 --><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
+    
   </div></div>
   <canvas class="lovemarq" id="marqCanvas" width="1080" height="1080" aria-hidden="true"></canvas><!-- LOVE 마퀴펫 정사각 씬(1080²·풀세트: 펫이 사다리 올라 간판에 LOVE♥ 놓고 점등) — marquee.js 렌더·투명 배경(뒤 브랜드 배너 비침)·NOW SHOWING=페이지 강조색(window.LOVE_ACCENT). 뉴스요약 탭 전용(260704 C안) -->
   <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 전 탭(뉴스요약·레거시·SNS) = 옛 산책 펫(공놀이) — 260704 '100% 롤백'(운영자) -->
@@ -2338,7 +2334,7 @@ try {
     <div class="pmenu-sub" id="setSub" hidden>   <!-- 설정 = 2차 아코디언(알림·잠금 · SNS 패턴 계승 · 운영자 260703) -->
       <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">OFF</button></div>
       <div class="pushrow" id="lockrow"><button class="lk-open" id="lockBtn" type="button">잠금 설정</button><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
-      <button id="marqBtn">전광판</button>
+      <button id="marqBtn" hidden>전광판</button><!-- LOVE 마스코트 폐지(260705)로 설정 진입점 숨김 · 기능 도먼트 보존 -->
     </div>
   </div>
   <div class="qpop msgpop" id="msgpop" hidden>
@@ -2567,7 +2563,7 @@ try {
     <span class="radlab">이미지</span>
   </button>
   <button class="raditem" type="button" data-act="cap" data-ang="right" aria-label="영상(자막 생성기·영상 프롬프트)">
-    <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h6M7 11h10"/></svg></span>
+    <span class="sbtn radbtn"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span>
     <span class="radlab">영상</span>
   </button>
 </div>
@@ -7463,7 +7459,7 @@ function showTab(tab) {
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
   document.body.classList.toggle('tab-scrap', tab === 'scrap');
   document.body.dataset.tab = tab;   // 카드만 토글 = 피드 탭에서만 표시(CSS body[data-tab=feed])
-  if (tab === 'scrap' || tab === 'sns') { const _bl = document.querySelector('.banner.layer-' + tab); if (_bl && _bl.dataset.src && !_bl.getAttribute('src')) _bl.src = _bl.dataset.src; }   // 숨은 배너 지연 로드 = 그 탭 처음 진입 시 1회 src 세팅(부팅 대역폭서 뺌·crossfade 그대로 · 운영자 260705 로딩 최적화)
+  // (탭별 배너 지연 로드 폐지 — 단일 배너 260705)입 시 1회 src 세팅(부팅 대역폭서 뺌·crossfade 그대로 · 운영자 260705 로딩 최적화)
   try { localStorage.setItem('nomute_tab', tab); } catch {}   // 새로고침 복원용
 
   setViewhead(tab);
@@ -8226,11 +8222,11 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-media { color:#8fa697; font-weight:700; white-space:nowrap; }   /* 매체 = mut(운영자 260621) */
   .nm-meta .nm-media, .nm-meta .nm-srclink { color:#8fa697; }        /* 링크여도 메타 매체는 mut(nm-srclink 흰색 override) */
   .nm-dotsep { width:3px; height:3px; border-radius:50%; background:#565656; flex:none; }
-  .nm-date { color:#fff; font-weight:700; white-space:nowrap; }       /* 보도 날짜값 = 흰색(운영자 260621) */
+  .nm-date { color:#eef7f0; font-weight:700; white-space:nowrap; }       /* 보도 날짜값 = 흰색(운영자 260621) */
   .nm-dlabel { color:#8fa697; font-weight:600; }                      /* "보도:" 라벨 = mut */
   .nm-reporter { color:#8fa697; font-weight:600; white-space:nowrap; }   /* 기자 = mut(영문이면 빌더서 스킵) */
-  .nm-title { position:relative; font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:56px; letter-spacing:-.6px; color:#fff; }   /* 우측 56px = 제목 복사 버튼 자리 + 여유 간격(긴 제목도 버튼과 안 겹치게 캡·운영자 260621) */
-  .nm-titlecopy { position:absolute; top:2px; right:0; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }   /* 제목 우상단 = 전체복사·섹션복사와 같은 우측 정렬(틀어짐 X) */
+  .nm-title { position:relative; font-size:23px; font-weight:900; line-height:1.34; margin:0; padding-right:56px; letter-spacing:-.6px; color:#eef7f0; }   /* 우측 56px = 제목 복사 버튼 자리 + 여유 간격(긴 제목도 버튼과 안 겹치게 캡·운영자 260621) */
+  .nm-titlecopy { position:absolute; top:2px; right:0; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#eef7f0; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }   /* 제목 우상단 = 전체복사·섹션복사와 같은 우측 정렬(틀어짐 X) */
   .nm-titlecopy svg { width:14px; height:14px; display:block; }
   .nm-titlecopy:hover { background:#00EED2; color:#000; border-color:#00EED2; }
   .nm-titlecopy:active { transform:scale(var(--press-m,.88)); }
@@ -8240,12 +8236,12 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-allbtn:active { transform:scale(var(--press-l,.95)); }
   .nm-allbtn.ok { background:#00EED2; }
   .nm-grp { margin:20px 4px 8px; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#7d7d7d; }
-  .nm-grp .nm-grp-t { color:#fff; font-weight:400; text-transform:none; font-size:13px; letter-spacing:0; }                          /* 카드뉴스 제목 = 흰색·볼드 제거·본문 톤(라벨 자간/대문자 해제 · 운영자 260622) */
+  .nm-grp .nm-grp-t { color:#eef7f0; font-weight:400; text-transform:none; font-size:13px; letter-spacing:0; }                          /* 카드뉴스 제목 = 흰색·볼드 제거·본문 톤(라벨 자간/대문자 해제 · 운영자 260622) */
   .nm-grp .nm-grp-m { display:block; margin-top:3px; color:#8fa697; font-weight:400; text-transform:none; font-size:13px; letter-spacing:0; }   /* 이미지 모델 = 다음 줄·미강조(mut #8fa697 = 매체/기자 톤)·볼드 제거·원 표기 · 운영자 260622 */
   .nm-sec { position:relative; background:rgba(28,30,29,.64); -webkit-backdrop-filter:blur(18px) saturate(120%); backdrop-filter:blur(18px) saturate(120%); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:18px 20px; margin:0 0 14px; box-shadow:0 8px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08); transition:background .15s; }
   .nm-sec:hover { background:rgba(42,44,43,.72); }
   .nm-tip { border:1px solid #00EED2; }   /* 시사점 = 일반 박스(nm-sec 배경 상속) + 강조색 테두리만(초록 채움 폐지·운영자 260621) */
-  .nm-h { display:flex; align-items:center; gap:9px; font-size:13px; font-weight:700; letter-spacing:.04em; color:#fff; margin:0 0 10px; text-transform:uppercase; }
+  .nm-h { display:flex; align-items:center; gap:9px; font-size:13px; font-weight:700; letter-spacing:.04em; color:#eef7f0; margin:0 0 10px; text-transform:uppercase; }
   .nm-tip .nm-h { color:#00EED2; }
   .nm-dot { width:7px; height:7px; border-radius:50%; background:#00EED2; display:inline-block; flex:none; }
   .nm-tip .nm-dot { box-shadow:0 0 8px rgba(0,238,210,.7); }
@@ -8260,17 +8256,17 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-body li { margin:4px 0; line-height:1.64; }
   .nm-body ul > li { position:relative; padding-left:14px; }                       /* 행잉 인덴트 = 말머리는 좌측 끝, 본문만 14px(둘째줄도 정렬) */
   .nm-body ul > li::before { content:'•'; position:absolute; left:1px; top:0; }
-  .nm-body strong, .nm-body b { color:#fff; font-weight:700; }
+  .nm-body strong, .nm-body b { color:#eef7f0; font-weight:700; }
   .nm-body a { color:#00EED2; word-break:break-all; }
   .nm-body .kw { color:#00EED2; font-weight:700; }                          /* 관점 키워드·[관점 라벨] = 뷰어 decorate와 동등 강조(운영자 260621) */
   .nm-body .angle { color:#00EED2; font-weight:800; white-space:nowrap; }   /* [앵글 ①] 등 */
   .nm-body .angle-lbl { color:#00EED2; font-weight:800; }                    /* 다각도 앵글 라벨 = 강조색 굵게(뷰어와 동등 · 운영자 260622) */
   .nm-body .cem { color:#00EED2; font-weight:700; font-style:normal; }      /* 코드블록 *강조* 키워드 */
-  .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#fff; margin:11px 0 5px; }
+  .nm-body h3, .nm-body h4 { font-size:13.5px; font-weight:800; color:#eef7f0; margin:11px 0 5px; }
   .nm-body pre { font-family:inherit; font-size:inherit; line-height:1.64; color:#e6e6e6; margin:0; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; max-width:100%; }   /* ★ 자유요약(pre) 가로 오버플로 수정 — pre 기본 white-space:pre라 줄바꿈 안 되던 것 pre-wrap로(운영자 260621 · Claude Code 제공) */
   .nm-ref { margin:9px 0 0; padding:9px 13px; border-radius:9px; background:rgba(255,255,255,.045); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px); border:1px solid rgba(255,255,255,.1); font-size:11.5px; line-height:1.55; color:#8fa697; word-break:break-word; overflow-wrap:anywhere; }   /* 참고(편향 등) = 글래스 읽기전용 영역, 복사 제외(data-body 밖 · 운영자 260621) */
   .nm-ref p { margin:0; }   /* 참고줄 = 단일 행 */
-  .nm-secbtn { position:absolute; top:8px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#fff; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
+  .nm-secbtn { position:absolute; top:8px; right:14px; width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(20,22,21,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#eef7f0; border:1px solid rgba(255,255,255,.18); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:transform .1s, background .15s, color .15s; }
   .nm-tip .nm-secbtn { border-color:rgba(0,238,210,.5); }
   .nm-secbtn:hover { background:#00EED2; color:#000; border-color:#00EED2; }
   .nm-secbtn:active { transform:scale(var(--press-m,.88)); }
@@ -8289,7 +8285,7 @@ const SUMMARY_TPL = `<!doctype html>
   .src li { display:flex; align-items:baseline; gap:8px; }
   .src .ic { flex:none; font-size:13px; line-height:1; position:relative; top:1px; }
   .src .meta { color:#8fa697; font-weight:500; }
-  .nm-srclink { color:#fff; font-weight:800; text-decoration:none; border-bottom:1px solid rgba(0,238,210,.5); }
+  .nm-srclink { color:#eef7f0; font-weight:800; text-decoration:none; border-bottom:1px solid rgba(0,238,210,.5); }
   .nm-srclink:hover { color:#00EED2; border-color:#00EED2; }
   .nm-iglink { color:#00EED2; font-weight:700; text-decoration:none; border-bottom:1px solid rgba(0,238,210,.45); }   /* ⓒ 노뮤트 = 인스타 링크·강조색(운영자 260621) */
   .nm-iglink:hover { border-color:#00EED2; }
@@ -8303,13 +8299,13 @@ const SUMMARY_TPL = `<!doctype html>
   .nm-imtrack::-webkit-scrollbar-thumb { background:rgba(255,255,255,.14); border-radius:9px; }
   .nm-imslot { position:relative; flex:0 0 60%; max-width:240px; aspect-ratio:4/5; scroll-snap-align:start; border-radius:11px; overflow:hidden; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
   .nm-imslot img { width:100%; height:100%; object-fit:cover; display:block; }
-  .nm-imno { position:absolute; left:7px; top:7px; font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.45); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); padding:1px 7px; border-radius:999px; }
+  .nm-imno { position:absolute; left:7px; top:7px; font-size:11px; font-weight:700; color:#eef7f0; background:rgba(0,0,0,.45); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); padding:1px 7px; border-radius:999px; }
   /* 검색 이미지 헤더 = 제목 + 검색 버튼(제목검색·키워드 K·한/영 토글) — 뷰어 썸네일 후보 계승(자기완결·링크만·API 0) */
   .nm-imsec { padding-top:13px; }                                    /* 라벨 위로 — 상단 여백 축소(운영자 요청) */
   .nm-imhead { display:flex; align-items:center; gap:10px; margin:0 0 9px; }
   .nm-imhead .nm-h { margin:0; flex:none; }
   .nm-imacts { display:inline-flex; align-items:center; gap:6px; margin-left:auto; flex:none; }
-  .nm-imsrch { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; color:#fff; text-decoration:none; background:rgba(20,22,21,.55); border:1px solid rgba(255,255,255,.18); transition:background .15s, color .15s; }
+  .nm-imsrch { width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; color:#eef7f0; text-decoration:none; background:rgba(20,22,21,.55); border:1px solid rgba(255,255,255,.18); transition:background .15s, color .15s; }
   .nm-imsrch:hover { background:#00EED2; color:#000; border-color:#00EED2; }
   .nm-imsrch svg, .nm-kwsrch svg { width:15px; height:15px; }
   .nm-kwbox { display:inline-flex; align-items:center; height:30px; border-radius:8px; border:1px solid rgba(255,255,255,.18); overflow:hidden; color:rgba(255,255,255,.92); }
@@ -9260,7 +9256,7 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
   const ptr = document.createElement('div'); ptr.id = 'ptr'; ptr.setAttribute('aria-hidden', 'true'); ptr.innerHTML = '<div class="ptr-ring"></div>';
   document.body.appendChild(ptr);
   const ring = ptr.querySelector('.ptr-ring');
-  const COL = { feed: ['var(--accent)', 'var(--accent-rgb)'], scrap: ['var(--amber)', 'var(--amber-rgb)'], sns: ['#0cd0f7', '12,208,247'] };   // 탭→[색, rgb]. sns = SNS 표면 전용 시안 raw(--info가 그린으로 이동해 재배선 · 260705 평의회)
+  const COL = { feed: ['var(--accent)', 'var(--accent-rgb)'], scrap: ['var(--accent)', 'var(--accent-rgb)'], sns: ['var(--accent)', 'var(--accent-rgb)'] };   // 당겨새로고침 링 = 전 탭 강조색 통일(탭별 색 폐지 · 운영자 260705)
   const TRIG = 70, MAXP = 130;                         // 발동 임계 · 최대 당김(px)
   let sy = 0, sx = 0, active = false, engaged = false, dist = 0, armed = false, firing = false;
   const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
