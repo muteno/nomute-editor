@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>재시도 게이지 네온레몬 — 글자만 (최종안)</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#0FFD02; --accent-rgb:15,253,2;
+    --lemon:#d8ff3d; --lemon-rgb:216,255,61;   /* = --accent-4 네온레몬(=arm/amber/thumb·앰버 대체) */
+    --line:rgba(255,255,255,.09);
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; padding:24px 16px 60px; background:
+      radial-gradient(120% 80% at 50% -10%, #17251b 0%, #121212 55%);
+    color:var(--fg); line-height:1.6;
+    font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:560px; margin:0 auto; }
+  h1{ font-size:20px; font-weight:800; letter-spacing:-.4px; margin:0 0 4px; }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 20px; }
+  .callout{ background:rgba(var(--lemon-rgb),.07); border:1px solid rgba(var(--lemon-rgb),.22);
+    border-radius:12px; padding:12px 14px; font-size:12.5px; color:var(--fg); margin:0 0 24px; }
+  .callout b{ color:var(--lemon); }
+  h2{ font-size:13px; font-weight:800; letter-spacing:.02em; color:var(--mut); text-transform:uppercase; margin:30px 0 12px; }
+
+  .card{ background:rgba(255,255,255,.035); border:1px solid var(--line); border-radius:16px;
+    padding:18px 16px 20px; margin-bottom:14px; position:relative; overflow:hidden; }
+  .tag{ position:absolute; top:0; right:0; font-size:10px; font-weight:800; letter-spacing:.04em;
+    padding:4px 10px; border-bottom-left-radius:10px; }
+  .tag.old{ background:rgba(255,255,255,.06); color:var(--mut); }
+  .tag.new{ background:rgba(var(--lemon-rgb),.16); color:var(--lemon); }
+  .ttl{ font-size:14px; font-weight:700; margin:0 0 16px; color:var(--fg); }
+  .ttl small{ display:block; color:var(--mut); font-weight:600; font-size:12px; margin-top:2px; }
+
+  /* ── 진행 게이지(viewer/index.html .prog 그대로 복사) ── */
+  .prog{ display:flex; gap:7px; width:100%; }
+  .prog .seg{ flex:1; display:flex; flex-direction:column; gap:8px; align-items:center; min-width:0; }
+  .prog .sl{ font-size:11px; line-height:1; letter-spacing:-.3px; color:var(--mut); font-weight:700;
+    opacity:.55; white-space:nowrap; position:relative; }
+  .prog .rn{ position:absolute; left:100%; top:0; margin-left:1px; opacity:1;
+    font-size:11px; font-weight:700; color:var(--mut); line-height:1; letter-spacing:-.3px; white-space:nowrap; }
+  .prog .bar{ width:100%; height:7px; border-radius:999px; background:rgba(255,255,255,.06); position:relative;
+    overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
+  .prog .seg.done .sl{ color:var(--accent); opacity:1; }
+  .prog .seg.done .bar{ background:linear-gradient(90deg,var(--lemon),var(--accent)); box-shadow:0 0 8px rgba(var(--accent-rgb),.4); }
+  .prog .seg.cur .sl{ color:var(--accent); opacity:1; animation:segCurGlow 1.5s ease-in-out infinite; }
+  @keyframes segCurGlow{ 0%,100%{ opacity:1; text-shadow:0 0 9px rgba(var(--accent-rgb),.7); } 50%{ opacity:.62; text-shadow:0 0 3px rgba(var(--accent-rgb),.3); } }
+  .prog .seg.cur .bar{ background:rgba(var(--accent-rgb),.16); }
+  .prog .seg.cur .bar::after{ content:''; position:absolute; top:0; bottom:0; left:0; width:45%; border-radius:999px;
+    background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.85),transparent);
+    transform:translateX(-120%); animation:shine 1.35s linear infinite; }
+  @keyframes shine{ to{ transform:translateX(360%); } }
+
+  /* ── 변경 후(실제 반영본): 재시도 세그먼트 글자만 네온레몬. 막대·펄스·shine = 메인 그린 그대로 ── */
+  .prog .seg.cur.retry .sl, .prog .seg.cur.retry .rn{ color:var(--lemon); }
+
+  .note{ font-size:12.5px; color:var(--mut); margin:8px 2px 0; }
+  .note b{ color:var(--fg); font-weight:700; }
+  .lemon{ color:var(--lemon); font-weight:700; }
+  .grey{ color:var(--mut); font-weight:700; }
+  .green{ color:var(--accent); font-weight:700; }
+
+  table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:12.5px; }
+  th,td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ color:var(--mut); font-weight:700; font-size:11px; }
+  .arrow{ color:var(--mut); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>재시도 게이지 — 글자만 네온레몬 (최종안)</h1>
+  <p class="sub">카드 자동 재시도 시 <span class="lemon">프롬프트(1)</span> 세그먼트 · 트라이1 = 게이지바는 메인색</p>
+  <div class="callout">
+    막대까지 레몬으로 칠하면 프롬프트 단계 phase색(앰버 대체 = 이미 레몬)과 <b>겹쳐서</b> 구분이 안 됨.<br>
+    → 트라이1은 <b>게이지바·펄스 = 메인 그린 유지</b>, <b>라벨 글자만 네온레몬</b>. 디밍/특별강조 없음(옆 세그먼트와 동일).
+  </div>
+
+  <h2>1 · 지금 (재시도 발생 — 스샷 상황)</h2>
+  <div class="card">
+    <span class="tag old">현재</span>
+    <p class="ttl">재시도 중 <small>프롬프트(1) — 라벨=네온그린, <span class="grey">(1)=회색</span></small></p>
+    <div class="prog">
+      <div class="seg done"><span class="sl">요약</span><span class="bar"></span></div>
+      <div class="seg cur"><span class="sl">프롬프트<span class="rn">(1)</span></span><span class="bar"></span></div>
+      <div class="seg"><span class="sl">카드</span><span class="bar"></span></div>
+    </div>
+    <p class="note">재시도 세그먼트가 일반 진행과 <b>색이 같고(네온그린)</b>, <span class="grey">(1)</span>만 회색이라 재시도 신호가 약함.</p>
+  </div>
+
+  <h2>2 · 변경 후 (실제 반영본)</h2>
+  <div class="card">
+    <span class="tag new">변경 후</span>
+    <p class="ttl">재시도 중 <small>프롬프트(1) — 라벨·(1) <span class="lemon">글자만 네온레몬</span> · 막대·펄스는 <span class="green">메인 그린</span></small></p>
+    <div class="prog">
+      <div class="seg done"><span class="sl">요약</span><span class="bar"></span></div>
+      <div class="seg cur retry"><span class="sl">프롬프트<span class="rn">(1)</span></span><span class="bar"></span></div>
+      <div class="seg"><span class="sl">카드</span><span class="bar"></span></div>
+    </div>
+    <p class="note">글자만 레몬 → 회색 <span class="grey">(1)</span> 사라짐. <b>막대는 그린 그대로</b>(트라이1=메인색·phase 레몬과 안 겹침). 펄스·shine도 옆 진행과 동일(재시도만 강조/디밍 안 함).</p>
+  </div>
+
+  <h2>바뀌는 것 (딱 글자색 하나)</h2>
+  <table>
+    <tr><th>부분</th><th>지금</th><th></th><th>변경 후</th></tr>
+    <tr><td>라벨 "프롬프트"</td><td class="green">네온그린</td><td class="arrow">→</td><td class="lemon">네온레몬</td></tr>
+    <tr><td>재시도 (1) 표식</td><td class="grey">회색 --mut</td><td class="arrow">→</td><td class="lemon">네온레몬 --accent-4</td></tr>
+    <tr><td>게이지바(막대)</td><td class="green">그린</td><td class="arrow">=</td><td class="green">그린(불변)</td></tr>
+    <tr><td>펄스·shine·디밍</td><td>옆 세그먼트와 동일</td><td class="arrow">=</td><td>동일(불변)</td></tr>
+    <tr><td>정상 진행(재시도 0)</td><td class="green">네온그린</td><td class="arrow">=</td><td class="green">네온그린(불변)</td></tr>
+  </table>
+  <p class="note" style="margin-top:14px">
+    · <b>구현</b>: <code>progGauge</code> 재시도 세그먼트에 <code>.retry</code> 추가 + CSS 1줄(<code>.seg.cur.retry .sl,.rn { color:var(--accent-4) }</code>).<br>
+    · <b>범위</b>: 뷰어 CSS·JS만 · 백엔드·파이프라인·토큰 0 · 국소 뷰어 손질(리스크 낮음).
+  </p>
+</div>
+</body>
+</html>
