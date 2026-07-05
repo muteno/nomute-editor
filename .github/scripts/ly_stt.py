@@ -2,7 +2,10 @@
 # 오디오 파일 → faster-whisper large-v3-turbo STT(로컬·키 불필요) → 타임코드 트랜스크립트(stdout).
 # 그 트랜스크립트가 lymake.sh(claude -p)의 [입력]이 됨. 정본 STT 설정 = apps/ly/00_지침_자막기 STEP 0-2.
 # argv[2](선택) = 세그먼트 JSON 출력 경로 — word 타임스탬프 포함 원천 타이밍(뷰어 상세 편집기 전용·additive).
-#   stdout 트랜스크립트는 argv[2] 유무와 무관하게 바이트 동일(= claude 의역 입력·지침 해시 무영향).
+#   ⚠️ 정직(평의회1 실측): word_timestamps=True는 faster-whisper가 세그 경계를 word 정렬값으로 재산출하고
+#   디코더 seek를 재배치한다 → stdout '포맷'은 불변이나 타임코드·경계(드물게 텍스트)는 종전(False)과 달라질 수 있다.
+#   = 의역(claude) 입력이 미세 변동하는 의도된 트레이드오프(위험 수용 기록 = 작업이력 260706 · 카나리아 ko/en/es 의역 품질 정상 실측).
+#   argv[2] 미전달("" 포함) = word_timestamps=False = 종전과 완전 동일. 지침 해시는 어느 쪽이든 무영향(전사는 지침 아님).
 import sys
 import json
 import os
@@ -31,11 +34,15 @@ for seg in segments:
         segs.append({"s": round(seg.start, 2), "e": round(seg.end, 2), "t": t, "w": words})
 print(f"# STT 완료: {n}개 세그먼트", file=sys.stderr)
 if seg_json and segs:
-    from datetime import datetime
-    from zoneinfo import ZoneInfo   # 시각 = KST 강제(§표기표준)
+    from datetime import datetime, timedelta, timezone
+    try:   # 시각 = KST 강제(§표기표준) — 표기용 필드가 tzdata 부재로 성공한 STT를 죽이면 안 됨(평의회1 F2 · 고정 오프셋 폴백)
+        from zoneinfo import ZoneInfo
+        created = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+    except Exception:
+        created = datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")
     doc = {"v": 1, "model": "large-v3-turbo", "lang": info.language,
            "dur": round(float(getattr(info, "duration", 0) or 0), 2),
-           "created": datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
+           "created": created,
            "segs": segs}
     d = os.path.dirname(seg_json)
     if d:
