@@ -30,9 +30,9 @@
   --accent:#00EED2; --accent-rgb:0,238,210;
   --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
   /* 의미색 = accent 스케일 별칭(값 SSOT=accent-N · 260704) */
-  --danger:#e23b2a/*=accent-3 빨강*/; --warn:#FFA02E/*=accent-4 오렌지*/; --amber:#FFA02E/*=accent-4*/; --info:#0FFD02/*=accent-5 그린*/;
+  --danger:#e23b2a/*=accent-3 빨강*/; --warn:#FFE13D/*=accent-4 골드레몬(260705 2차·오렌지 퇴장)*/; --amber:#FFE13D/*=accent-4*/; --info:#0FFD02/*=accent-5 그린*/;
   /* 재확인(arm) = accent-4(260704 · 옛 #ffd93d 폐지) */
-  --arm:#FFA02E; --arm-rgb:255,160,46; --on-arm:#241102;
+  --arm:#FFE13D; --arm-rgb:255,225,61; --on-arm:#241C02;
   /* radius 5단 — 그 외 7·10·20·24 난립 금지. 모달만 --r-modal:22 */
   --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
   /* 간격 4배수 */
@@ -150,9 +150,9 @@ accent는 "지금 핵심"을 가리키는 손가락. **화면당 2~3곳 이내.*
 | 메뉴 | 대표색 | 토큰 |
 |---|---|---|
 | 피드·큐레이션 | 터쿼이즈 `#00EED2` | `--accent` |
-| 스크랩 | 오렌지 `#FFA02E` | `--accent-4` |
+| 스크랩 | 골드레몬 `#FFE13D` | `--accent-4` |
 | SNS | 시안 `#0cd0f7` | `--info` |
-| 썸네일 생성기 | 오렌지 `#FFA02E` | `--thumb`(accent-4 · 강조색 터쿼이즈와 구분) |
+| 썸네일 생성기 | 골드레몬 `#FFE13D` | `--thumb`(accent-4 · 강조색 터쿼이즈와 구분) |
 | ly·k | 라임(기본) | 별도 색 없음 |
 
 **전파**: 메뉴 진입 시 배너 글로우·프로필 링·배지·활성 칩·입력 focus/hover가 전부 그 한 색. **단, 1차 버튼은 예외 — 항상 라임/앰버 공통 신호(§1).**
