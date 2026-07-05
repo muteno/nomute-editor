@@ -536,8 +536,6 @@
   .prog .seg.cur .bar::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%; border-radius:999px;
     background:linear-gradient(90deg,transparent,rgba(15,253,2,.85),transparent);
     transform:translateX(-120%); animation:shine 1.35s linear infinite; will-change:transform; }
-  /* 재시도(트라이 N) = 라벨 글자만 네온레몬(--accent-4)으로 구분 · 게이지바·펄스·shine은 메인색(그린) 그대로(트라이1=메인색) — 프롬프트 phase색(레몬)과 안 겹치게 막대는 안 칠함, 디밍/강조 없이 색만(운영자 260705) */
-  .prog .seg.cur.retry .sl, .prog .seg.cur.retry .rn { color:var(--accent-4); }
   /* 실패/멈춤 = '진행되다 깨짐' 표식: 연 반투명 노랑 + 살짝 빗금, 라벨은 빨강 50% */
   .prog .seg.fail .sl { color:rgba(255,74,62,.5); opacity:1; }
   .prog .seg.fail .bar { background:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.26) 0 4px,rgba(var(--accent-4-rgb),.09) 4px 8px); box-shadow:none; }
@@ -2734,7 +2732,7 @@ function progGauge(a) {
   const html = segs.map(([lb, j], i) => {
     let cls = '';
     if (i < done) cls = ' done';
-    else if (i === done && busy) cls = retry > 0 ? ' cur retry' : ' cur';   // 재시도(트라이 N) = cur에 .retry → 글자만 네온레몬(게이지바·펄스는 메인색 유지·운영자 260705)
+    else if (i === done && busy) cls = ' cur';
     else if (i === done && fail) cls = ' fail';
     if (i === scarSeg) cls += ' scar';
     const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N)'(숫자만·크기·정렬 라벨과 동일 · 운영자 260701)
@@ -5894,6 +5892,21 @@ $('#bnav').addEventListener('click', e => {
   const lk = e.target.closest('#linkfab');
   if (lk) { e.preventDefault(); const wasOpen = !linkpop.hidden; closeOverlays('linkpop'); if (!wasOpen) { linkpop.hidden = false; popAt(linkpop, lk); } else linkpop.hidden = true; return; }
 });
+// 하단 네비 '링크' = 마우스 0.5초 이상 호버 시 메뉴 자동 오픈(마우스 전용 — 터치·펜 tap은 click 토글 그대로 · 열기만, 닫기는 기존 방식 유지 · 운영자 260705)
+const LINK_HOVER_MS = 500;   // hover-intent 지연(사용자 지정 0.5초) = JS 인텐트 상수(CSS 모션 토큰과 별개 축)
+let _linkHoverTimer = null;
+const _linkfabEl = $('#linkfab');
+if (_linkfabEl) {
+  _linkfabEl.addEventListener('pointerenter', e => {
+    if (e.pointerType !== 'mouse') return;   // 마우스만(터치/펜 tap은 click 토글이 담당 — 오발 차단)
+    clearTimeout(_linkHoverTimer);
+    _linkHoverTimer = setTimeout(() => {
+      if (linkpop.hidden) { closeOverlays('linkpop'); linkpop.hidden = false; popAt(linkpop, _linkfabEl); }   // click 열기와 동일 로직(closeOverlays→hidden 해제→popAt)
+    }, LINK_HOVER_MS);
+  });
+  _linkfabEl.addEventListener('pointerleave', () => clearTimeout(_linkHoverTimer));   // 마우스 벗어나면 예약 취소
+  _linkfabEl.addEventListener('pointerdown', () => clearTimeout(_linkHoverTimer));    // 탭/클릭 시작 = hover 예약 취소(click 핸들러가 토글 담당)
+}
 // 팝업(bpop·linkpop·qpop) 바깥클릭 닫기 — 단 '포인터가 팝업 안에서 눌린' 클릭은 제외.
 //   페이저(2페이지) 클릭 시 renderQueuePage 가 innerHTML 로 누른 버튼을 DOM서 떼어내 qpop.contains(target)=false 가 되며
 //   팝업이 오발 닫히던 버그 차단(폰 웹뷰선 타깃 탈락 시 stopPropagation 도 불안정). pointerdown 은 재렌더 전이라 타깃이 붙어있어 판정 정확(운영자 260622).
@@ -5952,36 +5965,6 @@ function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른
   try { sessionStorage.removeItem('nomute_q_open'); } catch {}
   if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
-
-// ── 하단 네비·프로필 = 마우스 호버 자동 열기/닫기 (마우스 전용 · 열기 0.5초 / 닫기 그 절반 0.25초 · 터치·펜은 기존 탭·클릭·롱프레스 그대로 · 운영자 260705) ──
-const HOVER_OPEN_MS = 500, HOVER_CLOSE_MS = 250;   // 열기=사용자 지정 0.5초 · 닫기=그 절반(호버 끝나면 더 빨리 닫힘) · JS 인텐트 상수(CSS 모션 토큰과 별개 축)
-function hoverAuto(trigger, pop, openFn, closeFn) {   // trigger에 마우스 올리면 열기 예약, trigger·pop 둘 다서 벗어나면 닫기 예약. 버튼↔팝업 갭 이동은 닫힘 취소(hover intent).
-  if (!trigger) return;
-  let ot = null, ct = null;
-  const clearBoth = () => { clearTimeout(ot); clearTimeout(ct); };
-  const armOpen = e => { if (e.pointerType !== 'mouse') return; clearBoth(); ot = setTimeout(openFn, HOVER_OPEN_MS); };   // 마우스만(터치/펜 tap은 기존 핸들러 담당 = 오발 차단)
-  const armClose = e => { if (e && e.pointerType !== 'mouse') return; clearBoth(); ct = setTimeout(closeFn, HOVER_CLOSE_MS); };   // 호버 끝나면 0.25초 뒤 닫기
-  trigger.addEventListener('pointerenter', armOpen);
-  trigger.addEventListener('pointerleave', armClose);
-  trigger.addEventListener('pointerdown', clearBoth);   // 탭/클릭/롱프레스 시작 = 호버 예약 취소(기존 핸들러가 토글 담당)
-  if (pop) {
-    pop.addEventListener('pointerenter', clearBoth);     // 팝업 위로 진입 = 닫기 취소(버튼→팝업 갭 통과 허용)
-    pop.addEventListener('pointerleave', armClose);       // 팝업서 벗어남 = 닫기 예약
-  }
-}
-{
-  const _lf = $('#linkfab');
-  hoverAuto(_lf, linkpop,   // ① 링크 → 피드 탐색 팝업 (click 열기와 동일 로직)
-    () => { if (linkpop.hidden) { closeOverlays('linkpop'); linkpop.hidden = false; popAt(linkpop, _lf); } },
-    () => { if (!linkpop.hidden) linkpop.hidden = true; });
-  hoverAuto($('#profile'), pmenu,   // ② 프로필 동그라미 → 프로필 메뉴 (다른 오버레이 닫고 showPmenu+배지 갱신 = profile 클릭과 동일·메시지함 자동전환은 hover 제외)
-    () => { if (pmenu.hidden || pmenu.classList.contains('closing')) { closeOverlays('pmenu'); showPmenu(); pushRefresh(); } },
-    () => hidePmenu());
-  hoverAuto(qFeedBtn, qpop,   // ③ 뉴스 요약 → 대기열 (openQueue = closeOverlays+위치+loadQueue · 롱프레스/더블탭/우클릭과 병존)
-    () => { if (qpop.hidden) openQueue(); },
-    () => closeQueueUser());
-}
-
 window.addEventListener('popstate', () => {   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기 · 닫는 중(closing)이면 재진입 안 함(deferred-hide 가드)
   if (_composeRecovering) return;   // 컴포즈 모달 자기칸 회수 back은 무시(마지막 모달 닫을 때 .open=false라 아래 isComposingModalOpen 가드가 풀려도 뒤 대기열 over-close 차단·평의회 V4·260628)
   const _td = $('#tooldlg');
