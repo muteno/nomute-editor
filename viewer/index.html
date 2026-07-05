@@ -536,6 +536,8 @@
   .prog .seg.cur .bar::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%; border-radius:999px;
     background:linear-gradient(90deg,transparent,rgba(15,253,2,.85),transparent);
     transform:translateX(-120%); animation:shine 1.35s linear infinite; will-change:transform; }
+  /* 재시도(트라이 N) = 라벨 글자만 네온레몬(--accent-4)으로 구분 · 게이지바·펄스·shine은 메인색(그린) 그대로(트라이1=메인색) — 프롬프트 phase색(레몬)과 안 겹치게 막대는 안 칠함, 디밍/강조 없이 색만(운영자 260705) */
+  .prog .seg.cur.retry .sl, .prog .seg.cur.retry .rn { color:var(--accent-4); }
   /* 실패/멈춤 = '진행되다 깨짐' 표식: 연 반투명 노랑 + 살짝 빗금, 라벨은 빨강 50% */
   .prog .seg.fail .sl { color:rgba(255,74,62,.5); opacity:1; }
   .prog .seg.fail .bar { background:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.26) 0 4px,rgba(var(--accent-4-rgb),.09) 4px 8px); box-shadow:none; }
@@ -2732,7 +2734,7 @@ function progGauge(a) {
   const html = segs.map(([lb, j], i) => {
     let cls = '';
     if (i < done) cls = ' done';
-    else if (i === done && busy) cls = ' cur';
+    else if (i === done && busy) cls = retry > 0 ? ' cur retry' : ' cur';   // 재시도(트라이 N) = cur에 .retry → 글자만 네온레몬(게이지바·펄스는 메인색 유지·운영자 260705)
     else if (i === done && fail) cls = ' fail';
     if (i === scarSeg) cls += ' scar';
     const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N)'(숫자만·크기·정렬 라벨과 동일 · 운영자 260701)
