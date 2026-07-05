@@ -136,7 +136,7 @@ def cat_rescue(c):
     '골프존홀딩스'→문화)이 빈발. 옛 게이트는 그 확신오류(국제·경제로 틀림)를 *영영 사각*에 뒀다
     (피아니스트 콩쿠르→국제·드라마 '신입사원 강회장'→경제). 이제 cross≥2면 cat을 AI 본질판정에 맡김.
     grade 미기록·cat만이라 가벼움 · 한 런 = MAX_PER_RUN(80)·GATE_CAT_QUOTA(20)·scrape 15분 throttle·
-    3계정 폴오버가 캡(한 런 비용 불변 → 쿼터 폭발 없음). 백로그는 최신순 점진 소화·신규는 유입 즉시 교정 ·
+    4계정 폴오버가 캡(한 런 비용 불변 → 쿼터 폭발 없음). 백로그는 최신순 점진 소화·신규는 유입 즉시 교정 ·
     폭발 징후(폴오버 ALT2 도달·요약 실패)면 이 게이트에 옛 cat∈{빈칸,문화} 조건 복원으로 한 줄 롤백."""
     return ((c.get("cross") or 0) >= CAT_MIN_CROSS
             and not surfaced(c))
@@ -174,7 +174,7 @@ def judge(items):
             "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",   # MultiEdit 제거: CLI 2.1.197에 없는 도구라 "matches no known tool" stderr 경고만 냄(비치명·모든 모드 공통 노이즈). 나머지는 실재 도구 = 계속 disallow(판정에 도구 불필요). 260701 실측.
             "--max-turns", "1"]
     p, rc, err = run_claude(
-        cmd, prompt, timeout=300, source="gate")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2) · source=토큰 계측
+        cmd, prompt, timeout=300, source="gate")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2→서브3) · source=토큰 계측
     if p is None:
         return {}, {}, {}, rc, err
     grades, cats, trans = {}, {}, {}
