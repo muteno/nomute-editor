@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>＋ 열림 스크림 모션 플레이그라운드</title>
+<style>
+  /* 색 정본 = viewer/index.html :root — 시안 스냅샷(라이브 이식 시 var() 토큰 계승) · 스카이시안 #38C6FF = --bias-l1/--cat-pol 값 공유(팔레트 내) */
+  :root { --accent:#00EED2; --accent-rgb:0,238,210; --a2:#d8ff3d; --a2-rgb:216,255,61; --a4:#FFE13D; --a4-rgb:255,225,61;
+    --a5:#0FFD02; --a5-rgb:15,253,2; --sky:#38C6FF; --sky-rgb:56,198,255; --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --ease:cubic-bezier(.22,.61,.36,1); }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--fg); font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    line-height:1.6; padding:22px 14px 90px; max-width:820px; margin:0 auto; }
+  h1 { font-size:19px; font-weight:800; letter-spacing:-.3px; }
+  p.d { font-size:12.5px; color:var(--mut); margin-top:2px; }
+
+  /* ── 무대 = 폰 하단부 ── */
+  .stagewrap { display:flex; justify-content:center; margin-top:14px; }
+  .stage { position:relative; width:min(392px,94vw); height:560px; border-radius:26px; overflow:hidden;
+    border:1px solid rgba(255,255,255,.11); background:#0b0d0c; box-shadow:0 30px 80px rgba(0,0,0,.5);
+    --spd:1; --tintA:.12; --fogB:26px; --scrimH:190px; }
+  .bgfeed { position:absolute; inset:0; padding:18px 16px 0; }
+  .bgcard { height:96px; border-radius:16px; margin-bottom:12px; border:1px solid rgba(255,255,255,.09);
+    background:linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); position:relative; }
+  .bgcard i { position:absolute; left:14px; top:16px; width:34%; height:10px; border-radius:6px; }
+  .bgcard em { position:absolute; left:14px; top:38px; width:74%; height:8px; border-radius:6px; background:rgba(255,255,255,.14); }
+  .bgcard u { position:absolute; left:14px; top:56px; width:52%; height:8px; border-radius:6px; background:rgba(255,255,255,.10); }
+  .bgcard.c1 i { background:rgba(56,198,255,.8); } .bgcard.c2 i { background:rgba(var(--a4-rgb),.8); }
+  .bgcard.c3 i { background:rgba(255,94,200,.75); } .bgcard.c4 i { background:rgba(var(--accent-rgb),.7); }
+
+  /* ── 스크림(＋ 열림 가림막) — 레이어 4종을 모션 모드가 골라 씀 ── */
+  .scrim { position:absolute; left:0; right:0; bottom:50px; height:var(--scrimH); pointer-events:none; overflow:hidden; }
+  .scrim .base { position:absolute; inset:0;
+    background:linear-gradient(to top, rgba(var(--accent-rgb),var(--tintA)) 0, rgba(var(--accent-rgb),var(--tintA)) 15px, transparent),
+               linear-gradient(to top, #121212 0, #121212 15px, transparent); }   /* 현행 = 정적 2겹(무채 + 틴트) */
+  .lay { position:absolute; inset:-20px 0 0; opacity:0; }
+  /* 파도 — 부드러운 언덕 2개가 좌우로 엇갈려 흐름 + 상하 바운스 */
+  .wv { background:radial-gradient(58% 130% at 50% 118%, rgba(var(--accent-rgb),.30), transparent 70%); width:190%; left:-45%; }
+  .wv2 { background:radial-gradient(52% 120% at 50% 122%, rgba(var(--accent-rgb),.20), transparent 72%); width:170%; left:-35%; }
+  .stage[data-mo="wave"] .wv  { opacity:1; animation:wvX calc(7.5s / var(--spd)) ease-in-out infinite alternate, wvY calc(3.4s / var(--spd)) ease-in-out infinite alternate; }
+  .stage[data-mo="wave"] .wv2 { opacity:.8; animation:wvX2 calc(9.5s / var(--spd)) ease-in-out infinite alternate, wvY2 calc(4.1s / var(--spd)) ease-in-out infinite alternate; }
+  @keyframes wvX  { from { transform:translateX(-7%); } to { transform:translateX(7%); } }
+  @keyframes wvX2 { from { transform:translateX(6%); } to { transform:translateX(-6%); } }
+  @keyframes wvY  { from { margin-bottom:0; } to { margin-bottom:14px; } }
+  @keyframes wvY2 { from { margin-bottom:10px; } to { margin-bottom:-4px; } }
+  /* 안개 — 큰 블롭 3개가 느리게 표류 + 호흡 */
+  .fog i { content:''; position:absolute; bottom:-40px; width:220px; height:150px; border-radius:50%;
+    background:rgba(var(--accent-rgb),.22); filter:blur(var(--fogB)); }
+  .fog i:nth-child(1) { left:-8%; }
+  .fog i:nth-child(2) { left:36%; background:rgba(var(--accent-rgb),.16); width:260px; }
+  .fog i:nth-child(3) { right:-10%; background:rgba(var(--accent-rgb),.20); }
+  .stage[data-mo="fog"] .fog { opacity:1; }
+  .stage[data-mo="fog"] .fog i:nth-child(1) { animation:fg1 calc(11s / var(--spd)) ease-in-out infinite alternate; }
+  .stage[data-mo="fog"] .fog i:nth-child(2) { animation:fg2 calc(13s / var(--spd)) ease-in-out infinite alternate; }
+  .stage[data-mo="fog"] .fog i:nth-child(3) { animation:fg3 calc(9.5s / var(--spd)) ease-in-out infinite alternate; }
+  @keyframes fg1 { from { transform:translate(0,6px) scale(1); opacity:.55; } to { transform:translate(46px,-8px) scale(1.15); opacity:.95; } }
+  @keyframes fg2 { from { transform:translate(20px,0) scale(1.1); opacity:.8; } to { transform:translate(-40px,8px) scale(.95); opacity:.5; } }
+  @keyframes fg3 { from { transform:translate(0,-6px) scale(.95); opacity:.6; } to { transform:translate(-30px,10px) scale(1.12); opacity:.9; } }
+  /* 브리딩 — 틴트 전체 밝기 호흡 */
+  .brt { background:linear-gradient(to top, rgba(var(--accent-rgb),.24), transparent 75%); }
+  .stage[data-mo="breath"] .brt { opacity:1; animation:brt calc(4.2s / var(--spd)) ease-in-out infinite alternate; }
+  @keyframes brt { from { opacity:.35; } to { opacity:1; } }
+  /* 오로라 — 터쿼이즈↔스카이시안 그라데이션 팬(팔레트 내 2색) */
+  .aur { background:linear-gradient(100deg, rgba(var(--accent-rgb),.26), rgba(var(--sky-rgb),.18) 40%, rgba(var(--accent-rgb),.10) 65%, rgba(var(--sky-rgb),.22)); background-size:280% 100%;
+    -webkit-mask:linear-gradient(to top, #000 30%, transparent 85%); mask:linear-gradient(to top, #000 30%, transparent 85%); }
+  .stage[data-mo="aurora"] .aur { opacity:1; animation:aur calc(10s / var(--spd)) ease-in-out infinite alternate; }
+  @keyframes aur { from { background-position:0% 0; } to { background-position:100% 0; } }
+  /* 파도+숨 콤보 */
+  .stage[data-mo="both"] .wv  { opacity:1; animation:wvX calc(7.5s / var(--spd)) ease-in-out infinite alternate, brt calc(4.2s / var(--spd)) ease-in-out infinite alternate; }
+  .stage[data-mo="both"] .wv2 { opacity:.8; animation:wvX2 calc(9.5s / var(--spd)) ease-in-out infinite alternate, wvY2 calc(4.1s / var(--spd)) ease-in-out infinite alternate; }
+  .stage[data-paused="1"] .lay, .stage[data-paused="1"] .fog i { animation-play-state:paused !important; }
+
+  /* ── 라디얼(열림 상태 목업) ── */
+  .rad { position:absolute; left:50%; bottom:92px; width:0; height:0; z-index:5; }
+  .ritem { position:absolute; left:-35px; width:70px; display:flex; flex-direction:column; align-items:center; gap:7px; }
+  .ritem .rc { width:52px; height:52px; border-radius:50%; background:rgba(8,15,11,.45); border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:grid; place-items:center; }
+  .ritem svg { width:22px; height:22px; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .ritem .rl { font-size:11px; font-weight:800; color:var(--fg); text-shadow:0 1px 5px rgba(0,0,0,.85); white-space:nowrap; }
+  .r-up { transform:translate(0,-106px); } .r-lf { transform:translate(-75px,-75px); } .r-rt { transform:translate(75px,-75px); }
+  .r-lf .rc { color:var(--a2); stroke:var(--a2); } .r-up .rc { color:var(--a4); stroke:var(--a4); } .r-rt .rc { color:var(--a5); stroke:var(--a5); }
+  .fabx { position:absolute; left:-20px; top:-20px; width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.3);
+    background:rgba(0,0,0,.3); color:var(--accent); display:grid; place-items:center; backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+    box-shadow:0 0 0 4px rgba(255,255,255,.14); }
+  .fabx svg { width:20px; height:20px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; transform:rotate(45deg); }
+
+  /* ── 하단 네비 ── */
+  .nav { position:absolute; left:0; right:0; bottom:0; height:50px; display:flex; align-items:center; z-index:6;
+    padding:0 8px; background:rgba(0,0,0,.30); backdrop-filter:blur(22px) saturate(1.35); -webkit-backdrop-filter:blur(22px) saturate(1.35);
+    border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
+  .nav b { flex:1; text-align:center; font-size:13px; font-weight:700; color:var(--mut); position:relative; }
+  .nav b.on { color:var(--accent); }
+  .nav b.on::before { content:''; position:absolute; top:-17px; left:50%; transform:translateX(-50%); width:30px; height:3.5px;
+    border-radius:0 0 4px 4px; background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.55); }
+  .nav .gap { flex:none; width:52px; }
+  /* 경계 처리 3종 */
+  .stage[data-nav="seam"] .nav { border-top:none; box-shadow:none;
+    background:linear-gradient(to top, rgba(0,0,0,.34) 55%, rgba(0,0,0,.10)); }   /* 스며듦 = 경계선 제거·배경 위끝 투명 */
+  .stage[data-nav="seam"] .scrim { bottom:34px; }   /* 스크림이 네비 뒤까지 살짝 내려와 이어짐 */
+  .stage[data-nav="one"] .nav { border-top:none; box-shadow:none; background:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .stage[data-nav="one"] .scrim { bottom:0; height:calc(var(--scrimH) + 50px); }
+  .stage[data-nav="one"] .scrim .base { background:linear-gradient(to top, rgba(var(--accent-rgb),var(--tintA)) 0, rgba(var(--accent-rgb),var(--tintA)) 58px, transparent),
+    linear-gradient(to top, #121212 0, #121212 58px, transparent); }   /* 일체형 = 네비 배경까지 스크림이 담당(유리 대신 그라데이션 크롬) */
+
+  /* ── 컨트롤 ── */
+  .panel { margin-top:16px; padding:14px 16px 16px; border:1px solid rgba(255,255,255,.09); border-radius:14px; background:rgba(255,255,255,.03); }
+  .row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:11px; }
+  .row:first-child { margin-top:0; }
+  .lab { font-size:12px; color:var(--mut); font-weight:700; min-width:64px; }
+  .chip { padding:7px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--fg);
+    font:700 12px/1 inherit; cursor:pointer; transition:transform .18s var(--ease), background .2s, border-color .2s, color .2s; touch-action:manipulation; }
+  .chip:active { transform:scale(.93); }
+  .chip.on { background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.4); color:var(--accent); }
+  .chip.play { border-color:rgba(var(--a4-rgb),.4); color:var(--a4); }
+  input[type=range] { flex:1; min-width:130px; accent-color:var(--accent); }
+  .val { font-size:12px; color:var(--fg); font-variant-numeric:tabular-nums; min-width:46px; text-align:right; }
+  .sum { margin-top:16px; padding:12px 14px; border:1px dashed rgba(var(--accent-rgb),.35); border-radius:12px; background:rgba(var(--accent-rgb),.05); font-size:12.5px; line-height:1.8; }
+  .sum b { color:var(--accent); }
+  .sum .copy { float:right; margin-left:10px; }
+</style>
+</head>
+<body>
+<h1>＋ 열림 스크림 모션 플레이그라운드</h1>
+<p class="d">260705 · 라디얼 열렸을 때 하단 가림막(스크림)에 리듬 — 파도·안개·브리딩·오로라 + 네비 경계 처리 3종 · 조합 고르고 맨 밑 요약 복사해서 보내줘</p>
+
+<div class="stagewrap">
+<div class="stage" id="st" data-mo="wave" data-nav="line" data-paused="0">
+  <div class="bgfeed">
+    <div class="bgcard c1"><i></i><em></em><u></u></div>
+    <div class="bgcard c2"><i></i><em></em><u></u></div>
+    <div class="bgcard c3"><i></i><em></em><u></u></div>
+    <div class="bgcard c4"><i></i><em></em><u></u></div>
+  </div>
+  <div class="scrim" id="scrim">
+    <div class="base"></div>
+    <div class="lay wv"></div><div class="lay wv2"></div>
+    <div class="lay fog"><i></i><i></i><i></i></div>
+    <div class="lay brt"></div>
+    <div class="lay aur"></div>
+  </div>
+  <div class="rad">
+    <div class="ritem r-lf"><span class="rc"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/></svg></span><span class="rl">뉴스 요약</span></div>
+    <div class="ritem r-up"><span class="rc"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-4.5L13 16l3-3 3 4"/></svg></span><span class="rl">이미지</span></div>
+    <div class="ritem r-rt"><span class="rc"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="m3 9 3.2-4M9.6 9l3.2-4M16.2 9l3.2-4"/></svg></span><span class="rl">영상</span></div>
+    <div class="fabx"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+  </div>
+  <div class="nav"><b>레거시</b><b>SNS</b><span class="gap"></span><b class="on">뉴스 요약</b><b>링크</b></div>
+</div>
+</div>
+
+<div class="panel">
+  <div class="row" id="rMo"><span class="lab">모션</span>
+    <button class="chip" data-mo="still">정지(현행)</button>
+    <button class="chip on" data-mo="wave">파도</button>
+    <button class="chip" data-mo="fog">안개 드리프트</button>
+    <button class="chip" data-mo="breath">브리딩</button>
+    <button class="chip" data-mo="aurora">오로라(2색 팬)</button>
+    <button class="chip" data-mo="both">파도+숨</button>
+    <button class="chip play" id="pause">⏸ 정지/재생</button></div>
+  <div class="row"><span class="lab">속도</span><input type="range" id="spd" min="40" max="220" value="100"><span class="val" id="spdV">1.0×</span></div>
+  <div class="row"><span class="lab">틴트 강도</span><input type="range" id="tintA" min="0" max="30" value="12"><span class="val" id="tintAV">12%</span></div>
+  <div class="row"><span class="lab">안개 블러</span><input type="range" id="fogB" min="10" max="60" value="26"><span class="val" id="fogBV">26px</span></div>
+  <div class="row"><span class="lab">스크림 높이</span><input type="range" id="scrimH" min="120" max="320" value="190"><span class="val" id="scrimHV">190px</span></div>
+  <div class="row" id="rNav"><span class="lab">네비 경계</span>
+    <button class="chip on" data-nav="line">현행(구획선)</button>
+    <button class="chip" data-nav="seam">스며듦(경계 흐림)</button>
+    <button class="chip" data-nav="one">일체형(스크림이 네비까지)</button></div>
+  <div class="sum" id="sum"><button class="chip copy" id="copyBtn">복사</button><b>현재 조합</b><br><span id="sumTxt"></span></div>
+</div>
+
+<script>
+(() => {
+  const st = document.getElementById('st');
+  const S = { mo: '파도', nav: '현행(구획선)', vals: { spd: '1.0×', tintA: '12%', fogB: '26px', scrimH: '190px' } };
+  const chipRow = (id, fn) => document.getElementById(id).addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c || c.classList.contains('play')) return;
+    [...e.currentTarget.querySelectorAll('.chip:not(.play)')].forEach(x => x.classList.remove('on')); c.classList.add('on'); fn(c);
+  });
+  chipRow('rMo', c => { st.dataset.mo = c.dataset.mo; S.mo = c.textContent; sum(); });
+  chipRow('rNav', c => { st.dataset.nav = c.dataset.nav; S.nav = c.textContent; sum(); });
+  const range = (id, fn) => { const el = document.getElementById(id); el.addEventListener('input', () => fn(el.value)); };
+  range('spd', v => { st.style.setProperty('--spd', v / 100); S.vals.spd = (v / 100).toFixed(1) + '×'; document.getElementById('spdV').textContent = S.vals.spd; sum(); });
+  range('tintA', v => { st.style.setProperty('--tintA', v / 100); S.vals.tintA = v + '%'; document.getElementById('tintAV').textContent = v + '%'; sum(); });
+  range('fogB', v => { st.style.setProperty('--fogB', v + 'px'); S.vals.fogB = v + 'px'; document.getElementById('fogBV').textContent = v + 'px'; sum(); });
+  range('scrimH', v => { st.style.setProperty('--scrimH', v + 'px'); S.vals.scrimH = v + 'px'; document.getElementById('scrimHV').textContent = v + 'px'; sum(); });
+  document.getElementById('pause').addEventListener('click', () => { st.dataset.paused = st.dataset.paused === '1' ? '0' : '1'; });
+  function sum() {
+    document.getElementById('sumTxt').textContent =
+      `모션 ${S.mo} · 속도 ${S.vals.spd} · 틴트 ${S.vals.tintA} · 안개 블러 ${S.vals.fogB} · 스크림 높이 ${S.vals.scrimH} · 네비 경계 ${S.nav}`;
+  }
+  document.getElementById('copyBtn').addEventListener('click', async e => {
+    try { await navigator.clipboard.writeText(document.getElementById('sumTxt').textContent); e.target.textContent = '복사됨 ✓'; }
+    catch { e.target.textContent = '길게 눌러 복사'; }
+    setTimeout(() => e.target.textContent = '복사', 1400);
+  });
+  sum();
+})();
+</script>
+</body>
+</html>

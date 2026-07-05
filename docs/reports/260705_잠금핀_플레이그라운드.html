@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>잠금 PIN 플레이그라운드 — 뉴스 큐레이션</title>
+<style>
+  /* 색 정본 = viewer/index.html :root — 이 파일은 시안 스냅샷(라이브 이식 시 var() 토큰 계승) */
+  :root { --accent:#00EED2; --accent-rgb:0,238,210; --a2:#d8ff3d; --a2-rgb:216,255,61; --a4:#FFE13D; --a4-rgb:255,225,61;
+    --a5:#0FFD02; --a5-rgb:15,253,2; --bg:#121212; --fg:#eef7f0; --fg-rgb:238,247,240; --mut:#8fa697; --ease:cubic-bezier(.22,.61,.36,1); }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--fg); font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    line-height:1.6; padding:22px 14px 90px; max-width:820px; margin:0 auto; }
+  h1 { font-size:19px; font-weight:800; letter-spacing:-.3px; }
+  p.d { font-size:12.5px; color:var(--mut); margin-top:2px; }
+
+  /* ── 무대 = 폰 프레임 ── */
+  .stagewrap { display:flex; justify-content:center; margin-top:14px; }
+  .stage { position:relative; width:min(392px,94vw); height:680px; border-radius:26px; overflow:hidden;
+    border:1px solid rgba(255,255,255,.11); background:#0b0d0c; box-shadow:0 30px 80px rgba(0,0,0,.5); }
+  /* 뒤 배경 = 가짜 피드(글래스가 빨아들일 내용) + 컬러 블롭 */
+  .bgfeed { position:absolute; inset:0; padding:64px 16px 0; filter:saturate(1.05); }
+  .bgcard { height:92px; border-radius:16px; margin-bottom:12px; border:1px solid rgba(255,255,255,.09);
+    background:linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); position:relative; overflow:hidden; }
+  .bgcard i { position:absolute; left:14px; top:16px; width:38%; height:10px; border-radius:6px; background:rgba(255,255,255,.28); }
+  .bgcard em { position:absolute; left:14px; top:38px; width:72%; height:8px; border-radius:6px; background:rgba(255,255,255,.13); }
+  .bgcard u  { position:absolute; left:14px; top:56px; width:58%; height:8px; border-radius:6px; background:rgba(255,255,255,.10); }
+  .bgcard.c1 i { background:rgba(var(--accent-rgb),.75); }
+  .bgcard.c2 i { background:rgba(var(--a4-rgb),.8); }
+  .bgcard.c3 i { background:rgba(255,94,200,.75); }
+  .bgcard.c4 i { background:rgba(56,198,255,.8); }
+  .bgcard.c5 i { background:rgba(172,92,255,.8); }
+  .blob { position:absolute; width:230px; height:230px; border-radius:50%; filter:blur(56px); pointer-events:none; }
+  .bl1 { background:rgba(var(--accent-rgb),.32); top:-70px; left:-40px; animation:dr1 9s ease-in-out infinite alternate; }
+  .bl2 { background:rgba(56,120,255,.30); bottom:-90px; right:-50px; animation:dr2 10s ease-in-out infinite alternate; }
+  @keyframes dr1 { to { transform:translate(90px,50px) scale(1.12); } }
+  @keyframes dr2 { to { transform:translate(-80px,-40px) scale(.9); } }
+
+  /* ── 잠금 오버레이 ── */
+  .lock { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; padding-top:96px;
+    background:rgba(5,11,13,.42); }
+  .stage[data-scrim="off"] .lock { backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .stage[data-scrim="on"]  .lock { backdrop-filter:blur(calc(var(--glass) * .45)) saturate(1.1); -webkit-backdrop-filter:blur(calc(var(--glass) * .45)) saturate(1.1); }
+
+  /* 워드마크 + 점 */
+  .wm { text-align:center; z-index:2; }
+  .wm b { display:block; font-weight:800; letter-spacing:-.5px; font-size:var(--wmsz,27px); text-shadow:0 2px 18px rgba(0,0,0,.55); }
+  .wm small { display:block; margin-top:2px; font-size:11px; font-weight:600; letter-spacing:2.4px; color:var(--mut); text-transform:uppercase; }
+  .gdots { display:inline-block; margin-top:10px; font-size:19px; line-height:1; letter-spacing:6px; color:var(--mut); }
+  .gdots i { font-style:normal; animation:gd 1.2s ease-in-out infinite; }
+  .gdots i:nth-child(2) { animation-delay:.18s; } .gdots i:nth-child(3) { animation-delay:.36s; }
+  @keyframes gd { 0%,70%,100% { opacity:.2; } 30% { opacity:1; } }
+
+  /* ── PIN 블록(카드+슬롯+패드) ── */
+  .pinwrap { margin-top:calc(26px + var(--pinY,40px)); z-index:2; display:flex; flex-direction:column; align-items:center; transition:margin-top .25s var(--ease); }
+  .pincard { display:flex; flex-direction:column; align-items:center; padding:22px 22px 18px; border-radius:22px; }
+  .stage[data-card="on"] .pincard { background:rgba(18,19,22,var(--cardA,.42)); border:1px solid rgba(255,255,255,.13);
+    backdrop-filter:blur(var(--glass,22px)) saturate(1.25); -webkit-backdrop-filter:blur(var(--glass,22px)) saturate(1.25);
+    box-shadow:0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.10); }
+  .stage[data-card="off"] .pincard { background:none; border:1px solid transparent; }
+
+  .slots { display:flex; gap:15px; margin-bottom:20px; min-height:22px; align-items:center; }
+  .slot { width:var(--slotsz,15px); height:var(--slotsz,15px); position:relative; display:grid; place-items:center;
+    color:var(--fg); font-weight:800; font-size:15px; transition:transform .15s var(--ease); }
+  .slot::before { content:''; position:absolute; inset:0; border:1.6px solid rgba(var(--fg-rgb),.42); transition:all .18s var(--ease); }
+  /* 모양별 */
+  .stage[data-shape="dot"]    .slot::before { border-radius:50%; }
+  .stage[data-shape="ring"]   .slot::before { border-radius:50%; }
+  .stage[data-shape="square"] .slot::before { border-radius:5px; }
+  .stage[data-shape="dia"]    .slot::before { border-radius:3px; transform:rotate(45deg) scale(.86); }
+  .stage[data-shape="dash"]   .slot::before { height:4px; top:auto; bottom:4px; border:none; border-radius:3px; background:rgba(var(--fg-rgb),.35); }
+  .stage[data-shape="digit"]  .slot::before { border-radius:50%; }
+  /* 채움 */
+  .stage[data-shape="dot"]    .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.55); }
+  .stage[data-shape="ring"]   .slot.on::before { border-color:var(--hit); border-width:4px; box-shadow:0 0 10px rgba(var(--hit-rgb),.45); }
+  .stage[data-shape="square"] .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.5); }
+  .stage[data-shape="dia"]    .slot.on::before { background:var(--hit); border-color:var(--hit); box-shadow:0 0 12px rgba(var(--hit-rgb),.5); }
+  .stage[data-shape="dash"]   .slot.on::before { background:var(--hit); box-shadow:0 0 10px rgba(var(--hit-rgb),.55); }
+  .stage[data-shape="digit"]  .slot.on::before { background:var(--hit); border-color:var(--hit); }
+  .slot.on { transform:scale(1.12); }
+  .slot .dg { position:relative; z-index:1; opacity:0; }
+  .stage[data-shape="digit"] .slot.showdg::before { opacity:0; }
+  .stage[data-shape="digit"] .slot.showdg .dg { opacity:1; }
+  .slots.shake { animation:shk .5s var(--ease); }
+  .slots.shake .slot::before { border-color:#e23b2a !important; background:none !important; box-shadow:0 0 12px rgba(226,59,42,.5) !important; }
+  @keyframes shk { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-9px)} 36%{transform:translateX(8px)} 54%{transform:translateX(-6px)} 72%{transform:translateX(4px)} 88%{transform:translateX(-2px)} }
+
+  /* 키패드 */
+  .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:var(--padgap,12px); width:246px; }
+  .key { position:relative; height:58px; display:grid; place-items:center; font:700 20px/1 inherit; color:var(--fg);
+    cursor:pointer; user-select:none; overflow:visible; transition:transform .1s var(--ease), background .15s, color .15s, border-color .15s; border:1px solid rgba(255,255,255,.15); }
+  .key:active { transform:scale(.9); }
+  .key.empty { pointer-events:none; visibility:hidden; }
+  .key svg { width:22px; height:22px; stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  /* 키 스타일: 원형 글래스 vs 플랫 셀(현행 앱) */
+  .stage[data-keystyle="glass"] .key { border-radius:50%; width:62px; height:62px; margin:0 auto; background:rgba(255,255,255,var(--keyA,.07));
+    backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }   /* 정원(62×62) — 셀 폭에 맡기면 타원 */
+  .stage[data-keystyle="flat"] .pad { gap:0; border:1px solid rgba(255,255,255,.13); border-radius:16px; overflow:hidden;
+    background:rgba(255,255,255,calc(var(--keyA,.07) * .5)); backdrop-filter:blur(var(--glass,22px)); -webkit-backdrop-filter:blur(var(--glass,22px)); }
+  .stage[data-keystyle="flat"] .key { border:none; border-radius:0; height:60px; }
+  .stage[data-keystyle="flat"] .key:nth-child(3n+2), .stage[data-keystyle="flat"] .key:nth-child(3n) { border-left:1px solid rgba(255,255,255,.09); }
+  .stage[data-keystyle="flat"] .key:nth-child(n+4) { border-top:1px solid rgba(255,255,255,.09); }
+  .stage[data-keystyle="flat"] .key.empty { visibility:visible; pointer-events:none; }
+  /* 눌림 색 */
+  .key.hit { color:var(--hit); border-color:rgba(var(--hit-rgb),.55); background:rgba(var(--hit-rgb),.16); }
+  .stage[data-keystyle="flat"] .key.hit { background:rgba(var(--hit-rgb),.14); }
+
+  /* 잔상 효과 */
+  .fx { position:absolute; inset:0; pointer-events:none; border-radius:inherit; }
+  .fx.ripple { border:2px solid rgba(var(--hit-rgb),.6); animation:fxRip .5s var(--ease) forwards; }
+  @keyframes fxRip { from { transform:scale(.7); opacity:1; } to { transform:scale(1.7); opacity:0; } }
+  .fx.ghost { background:rgba(var(--hit-rgb),.25); box-shadow:0 0 26px rgba(var(--hit-rgb),.55); animation:fxGho .55s ease-out forwards; }
+  @keyframes fxGho { from { opacity:1; } to { opacity:0; } }
+  .fx.trail { display:grid; place-items:center; color:rgba(var(--hit-rgb),.9); font:700 20px/1 inherit; animation:fxTr .5s ease-out forwards; }
+  @keyframes fxTr { from { transform:scale(1); opacity:.9; } to { transform:scale(1.9); opacity:0; } }
+
+  /* 진입 효과(핀 블록) */
+  .pinwrap.ent-rise  { animation:eRise .6s var(--ease) backwards; }
+  @keyframes eRise { from { transform:translateY(46px); opacity:0; } }
+  .pinwrap.ent-fade  { animation:eFade .7s ease backwards; }
+  @keyframes eFade { from { opacity:0; } }
+  .pinwrap.ent-blur  { animation:eBlur .65s var(--ease) backwards; }
+  @keyframes eBlur { from { filter:blur(14px); opacity:0; } }
+  .pinwrap.ent-pop   { animation:ePop .5s var(--ease) backwards; }
+  @keyframes ePop { from { transform:scale(.82); opacity:0; } }
+  .pinwrap.ent-stag .key { animation:eKey .45s var(--ease) backwards; animation-delay:calc(var(--i) * 36ms + .15s); }
+  .pinwrap.ent-stag .pincard { animation:eFade .4s ease backwards; }
+  @keyframes eKey { from { transform:translateY(18px) scale(.7); opacity:0; } }
+
+  /* 해제(성공) 아웃 */
+  .lock.out-fade { animation:oFade .8s ease forwards; }
+  @keyframes oFade { to { opacity:0; } }
+  .lock.out-zoom { animation:oZoom .7s var(--ease) forwards; }
+  @keyframes oZoom { to { transform:scale(1.18); opacity:0; } }
+  .lock.out-blur { animation:oBlur .8s ease forwards; }
+  @keyframes oBlur { to { filter:blur(16px); opacity:0; } }
+  .slots.ok .slot::before { border-color:var(--hit); background:var(--hit); box-shadow:0 0 16px rgba(var(--hit-rgb),.7); }
+
+  /* ── 컨트롤 패널 ── */
+  .panel { margin-top:16px; padding:14px 16px 16px; border:1px solid rgba(255,255,255,.09); border-radius:14px; background:rgba(255,255,255,.03); }
+  .row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:11px; }
+  .row:first-child { margin-top:0; }
+  .lab { font-size:12px; color:var(--mut); font-weight:700; min-width:64px; }
+  .chip { padding:7px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--fg);
+    font:700 12px/1 inherit; cursor:pointer; transition:transform .18s var(--ease), background .2s, border-color .2s, color .2s; touch-action:manipulation; }
+  .chip:active { transform:scale(.93); }
+  .chip.on { background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.4); color:var(--accent); }
+  .chip.play { border-color:rgba(var(--a4-rgb),.4); color:var(--a4); }
+  input[type=range] { flex:1; min-width:130px; accent-color:var(--accent); }
+  .val { font-size:12px; color:var(--fg); font-variant-numeric:tabular-nums; min-width:46px; text-align:right; }
+  .sum { margin-top:16px; padding:12px 14px; border:1px dashed rgba(var(--accent-rgb),.35); border-radius:12px; background:rgba(var(--accent-rgb),.05); font-size:12.5px; line-height:1.8; }
+  .sum b { color:var(--accent); }
+  .sum .copy { float:right; margin-left:10px; }
+</style>
+</head>
+<body>
+<h1>잠금 PIN 플레이그라운드</h1>
+<p class="d">260705 · 워드마크 *뉴스 큐레이션* + ··· 후 핀 상승 진입 · 키 눌러 실제 입력 체험(다 채우면 해제 데모) · 아래에서 조합 고르고 맨 밑 요약을 복사해서 보내줘</p>
+
+<div class="stagewrap">
+<div class="stage" id="st" data-shape="dot" data-keystyle="glass" data-card="on" data-scrim="on"
+  style="--glass:22px; --cardA:.42; --keyA:.07; --pinY:40px; --slotsz:15px; --wmsz:27px; --hit:#00EED2; --hit-rgb:0,238,210;">
+  <div class="bgfeed">
+    <div class="blob bl1"></div><div class="blob bl2"></div>
+    <div class="bgcard c1"><i></i><em></em><u></u></div>
+    <div class="bgcard c2"><i></i><em></em><u></u></div>
+    <div class="bgcard c3"><i></i><em></em><u></u></div>
+    <div class="bgcard c4"><i></i><em></em><u></u></div>
+    <div class="bgcard c5"><i></i><em></em><u></u></div>
+    <div class="bgcard c1"><i></i><em></em><u></u></div>
+  </div>
+  <div class="lock" id="lock">
+    <div class="wm"><b>뉴스 큐레이션</b><small>News Curation</small><br><span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+    <div class="pinwrap ent-rise" id="pw">
+      <div class="pincard">
+        <div class="slots" id="slots"></div>
+        <div class="pad" id="pad"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="panel">
+  <div class="row" id="rLen"><span class="lab">자리수</span>
+    <button class="chip" data-len="4">4자리</button><button class="chip on" data-len="6">6자리</button></div>
+  <div class="row" id="rShape"><span class="lab">슬롯 모양</span>
+    <button class="chip on" data-shape="dot">동그라미 채움</button><button class="chip" data-shape="ring">링 두꺼워짐</button>
+    <button class="chip" data-shape="square">사각</button><button class="chip" data-shape="dia">다이아</button>
+    <button class="chip" data-shape="dash">대시</button><button class="chip" data-shape="digit">숫자 펄스</button></div>
+  <div class="row"><span class="lab">슬롯 크기</span><input type="range" id="slotsz" min="11" max="22" value="15"><span class="val" id="slotszV">15px</span></div>
+  <div class="row"><span class="lab">핀 위치</span><input type="range" id="pinY" min="0" max="150" value="40"><span class="val" id="pinYV">+40px</span></div>
+  <div class="row"><span class="lab">글래스 blur</span><input type="range" id="glass" min="0" max="40" value="22"><span class="val" id="glassV">22px</span></div>
+  <div class="row" id="rCard"><span class="lab">유리 카드</span>
+    <button class="chip on" data-card="on">카드 있음</button><button class="chip" data-card="off">맨몸(카드 없음)</button>
+    <input type="range" id="cardA" min="0" max="90" value="42"><span class="val" id="cardAV">42%</span></div>
+  <div class="row"><span class="lab">버튼 투명도</span><input type="range" id="keyA" min="0" max="50" value="7"><span class="val" id="keyAV">7%</span></div>
+  <div class="row" id="rHit"><span class="lab">눌림 색</span>
+    <button class="chip on" data-hit="0,238,210" data-hex="#00EED2">터쿼이즈</button>
+    <button class="chip" data-hit="255,225,61" data-hex="#FFE13D">골드레몬</button>
+    <button class="chip" data-hit="216,255,61" data-hex="#d8ff3d">라임옐로</button>
+    <button class="chip" data-hit="15,253,2" data-hex="#0FFD02">형광그린</button>
+    <button class="chip" data-hit="238,247,240" data-hex="#eef7f0">화이트</button></div>
+  <div class="row" id="rKeystyle"><span class="lab">키 스타일</span>
+    <button class="chip on" data-keystyle="glass">원형 글래스</button><button class="chip" data-keystyle="flat">플랫 셀(현행)</button></div>
+  <div class="row" id="rEnt"><span class="lab">진입 효과</span>
+    <button class="chip on" data-ent="ent-rise">라이즈 업</button><button class="chip" data-ent="ent-fade">페이드</button>
+    <button class="chip" data-ent="ent-stag">키 스태거</button><button class="chip" data-ent="ent-blur">블러 인</button>
+    <button class="chip" data-ent="ent-pop">스케일 팝</button>
+    <button class="chip play" id="replay">▶ 진입 다시보기</button></div>
+  <div class="row" id="rFx"><span class="lab">잔상 효과</span>
+    <button class="chip on" data-fx="ripple">링 리플</button><button class="chip" data-fx="ghost">글로우 고스트</button>
+    <button class="chip" data-fx="trail">숫자 확대 잔상</button><button class="chip" data-fx="none">없음</button></div>
+  <div class="row" id="rOut"><span class="lab">해제 아웃</span>
+    <button class="chip on" data-out="out-fade">페이드</button><button class="chip" data-out="out-zoom">줌 스루</button>
+    <button class="chip" data-out="out-blur">블러 아웃</button>
+    <button class="chip play" id="okDemo">▶ 성공 미리보기</button><button class="chip play" id="badDemo">▶ 오답 셰이크</button></div>
+  <div class="row" id="rWm"><span class="lab">워드마크</span>
+    <button class="chip" data-wm="23">S</button><button class="chip on" data-wm="27">M</button><button class="chip" data-wm="32">L</button>
+    <button class="chip" data-scrim="on" id="scrimOn">배경 딤블러 ON</button><button class="chip" data-scrim="off" id="scrimOff">OFF</button></div>
+
+  <div class="sum" id="sum"><button class="chip copy" id="copyBtn">복사</button><b>현재 조합</b><br><span id="sumTxt"></span></div>
+</div>
+
+<script>
+(() => {
+  const st = document.getElementById('st'), pw = document.getElementById('pw'), lock = document.getElementById('lock');
+  const slotsEl = document.getElementById('slots'), pad = document.getElementById('pad');
+  const S = { len: 6, shape: '동그라미 채움', ent: 'ent-rise', entL: '라이즈 업', fx: 'ripple', fxL: '링 리플', out: 'out-fade', outL: '페이드',
+    hit: '터쿼이즈 #00EED2', key: '원형 글래스', card: '카드 있음', scrim: 'ON', wm: 'M', vals: {} };
+  let pin = [];
+
+  const BACK = '<svg viewBox="0 0 24 24"><path d="M21 4H8l-6 8 6 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="m18 9-6 6M12 9l6 6"/></svg>';
+
+  function buildSlots() {
+    slotsEl.innerHTML = '';
+    for (let i = 0; i < S.len; i++) { const d = document.createElement('span'); d.className = 'slot'; d.innerHTML = '<span class="dg"></span>'; slotsEl.appendChild(d); }
+    pin = []; paint();
+  }
+  function buildPad() {
+    pad.innerHTML = '';
+    const keys = ['1','2','3','4','5','6','7','8','9','',{v:'0'},{v:'back'}];
+    ['1','2','3','4','5','6','7','8','9','empty','0','back'].forEach((k, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'key'; b.style.setProperty('--i', i);
+      if (k === 'empty') { b.classList.add('empty'); }
+      else if (k === 'back') { b.innerHTML = BACK; b.dataset.k = 'back'; }
+      else { b.textContent = k; b.dataset.k = k; }
+      pad.appendChild(b);
+    });
+  }
+  function paint() {
+    [...slotsEl.children].forEach((s, i) => {
+      s.classList.toggle('on', i < pin.length);
+      s.classList.remove('showdg');
+      s.querySelector('.dg').textContent = '';
+    });
+  }
+  function press(k, btn) {
+    if (k === 'back') { pin.pop(); paint(); flash(btn); return; }
+    if (pin.length >= S.len) return;
+    pin.push(k); paint(); flash(btn);
+    const idx = pin.length - 1, sl = slotsEl.children[idx];
+    if (st.dataset.shape === 'digit') { sl.querySelector('.dg').textContent = k; sl.classList.add('showdg');
+      setTimeout(() => { sl.classList.remove('showdg'); sl.querySelector('.dg').textContent = ''; }, 420); }
+    if (pin.length === S.len) setTimeout(okOut, st.dataset.shape === 'digit' ? 480 : 220);
+  }
+  function flash(btn) {
+    if (!btn) return;
+    btn.classList.add('hit'); setTimeout(() => btn.classList.remove('hit'), 260);
+    if (S.fx === 'none') return;
+    const f = document.createElement('span'); f.className = 'fx ' + S.fx;
+    if (S.fx === 'trail') f.textContent = btn.dataset.k === 'back' ? '' : btn.dataset.k;
+    btn.appendChild(f); setTimeout(() => f.remove(), 600);
+  }
+  function okOut() {
+    slotsEl.classList.add('ok');
+    setTimeout(() => { lock.classList.add(S.out); }, 320);
+    setTimeout(() => { lock.classList.remove(S.out); slotsEl.classList.remove('ok'); pin = []; paint(); replayEnt(); }, 1600);
+  }
+  function badOut() {
+    slotsEl.classList.add('shake'); if (navigator.vibrate) navigator.vibrate(60);
+    setTimeout(() => { slotsEl.classList.remove('shake'); pin = []; paint(); }, 560);
+  }
+  function replayEnt() {
+    pw.classList.remove('ent-rise','ent-fade','ent-stag','ent-blur','ent-pop');
+    void pw.offsetWidth; pw.classList.add(S.ent);
+  }
+
+  pad.addEventListener('click', e => { const b = e.target.closest('.key'); if (b && b.dataset.k) press(b.dataset.k, b); });
+
+  // ── 컨트롤 배선 ──
+  const chipRow = (id, fn) => document.getElementById(id).addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c || c.classList.contains('play')) return;
+    [...e.currentTarget.querySelectorAll('.chip:not(.play)')].forEach(x => x.classList.remove('on')); c.classList.add('on'); fn(c);
+  });
+  chipRow('rLen', c => { S.len = +c.dataset.len; buildSlots(); sum(); });
+  chipRow('rShape', c => { st.dataset.shape = c.dataset.shape; S.shape = c.textContent; pin = []; paint(); sum(); });
+  chipRow('rHit', c => { st.style.setProperty('--hit', c.dataset.hex); st.style.setProperty('--hit-rgb', c.dataset.hit); S.hit = c.textContent + ' ' + c.dataset.hex; sum(); });
+  chipRow('rKeystyle', c => { st.dataset.keystyle = c.dataset.keystyle; S.key = c.textContent; sum(); });
+  chipRow('rEnt', c => { S.ent = c.dataset.ent; S.entL = c.textContent; replayEnt(); sum(); });
+  chipRow('rFx', c => { S.fx = c.dataset.fx; S.fxL = c.textContent; sum(); });
+  chipRow('rOut', c => { S.out = c.dataset.out; S.outL = c.textContent; sum(); });
+  document.getElementById('rCard').addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c || !c.dataset.card) return;
+    [...document.querySelectorAll('#rCard .chip[data-card]')].forEach(x => x.classList.remove('on')); c.classList.add('on');
+    st.dataset.card = c.dataset.card; S.card = c.textContent; sum(); });
+  document.getElementById('rWm').addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    if (c.dataset.wm) { [...document.querySelectorAll('#rWm .chip[data-wm]')].forEach(x => x.classList.remove('on')); c.classList.add('on');
+      st.style.setProperty('--wmsz', c.dataset.wm + 'px'); S.wm = c.textContent; sum(); }
+    if (c.dataset.scrim) { document.getElementById('scrimOn').classList.toggle('on', c.dataset.scrim === 'on');
+      document.getElementById('scrimOff').classList.toggle('on', c.dataset.scrim === 'off');
+      st.dataset.scrim = c.dataset.scrim; S.scrim = c.dataset.scrim.toUpperCase(); sum(); } });
+
+  const range = (id, fn) => { const el = document.getElementById(id); el.addEventListener('input', () => fn(el.value)); };
+  range('glass', v => { st.style.setProperty('--glass', v + 'px'); document.getElementById('glassV').textContent = v + 'px'; S.vals.glass = v + 'px'; sum(); });
+  range('cardA', v => { st.style.setProperty('--cardA', v / 100); document.getElementById('cardAV').textContent = v + '%'; S.vals.cardA = v + '%'; sum(); });
+  range('keyA', v => { st.style.setProperty('--keyA', v / 100); document.getElementById('keyAV').textContent = v + '%'; S.vals.keyA = v + '%'; sum(); });
+  range('pinY', v => { st.style.setProperty('--pinY', v + 'px'); document.getElementById('pinYV').textContent = '+' + v + 'px'; S.vals.pinY = '+' + v + 'px'; sum(); });
+  range('slotsz', v => { st.style.setProperty('--slotsz', v + 'px'); document.getElementById('slotszV').textContent = v + 'px'; S.vals.slotsz = v + 'px'; sum(); });
+
+  document.getElementById('replay').addEventListener('click', replayEnt);
+  document.getElementById('okDemo').addEventListener('click', () => { pin = Array(S.len).fill('0'); paint(); okOut(); });
+  document.getElementById('badDemo').addEventListener('click', badOut);
+
+  function sum() {
+    S.vals.glass = S.vals.glass || '22px'; S.vals.cardA = S.vals.cardA || '42%'; S.vals.keyA = S.vals.keyA || '7%';
+    S.vals.pinY = S.vals.pinY || '+40px'; S.vals.slotsz = S.vals.slotsz || '15px';
+    document.getElementById('sumTxt').textContent =
+      `자리수 ${S.len} · 슬롯 ${S.shape}(${S.vals.slotsz}) · 핀 위치 ${S.vals.pinY} · 글래스 ${S.vals.glass} · ${S.card}(${S.vals.cardA}) · 버튼 투명도 ${S.vals.keyA} · 눌림색 ${S.hit} · 키 ${S.key} · 진입 ${S.entL} · 잔상 ${S.fxL} · 해제 ${S.outL} · 워드마크 ${S.wm} · 딤블러 ${S.scrim}`;
+  }
+  document.getElementById('copyBtn').addEventListener('click', async e => {
+    try { await navigator.clipboard.writeText(document.getElementById('sumTxt').textContent); e.target.textContent = '복사됨 ✓'; }
+    catch { e.target.textContent = '길게 눌러 복사'; }
+    setTimeout(() => e.target.textContent = '복사', 1400);
+  });
+
+  buildPad(); buildSlots(); sum(); replayEnt();
+})();
+</script>
+</body>
+</html>
