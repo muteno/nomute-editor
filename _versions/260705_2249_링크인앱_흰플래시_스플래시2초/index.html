@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a120d">
-<meta name="color-scheme" content="dark"><!-- 브라우저 기본 캔버스 = 다크 — 하드 새로고침·네비게이션 때 첫 페인트 전 기본 흰 캔버스가 드러나 '배경 확 날아가며 흰색' 번쩍이던 것 차단(운영자 260705) -->
 <title>뉴스 큐레이션 : News Curation</title>
 <!-- 파비콘·홈 아이콘 = 노뮤트 프로필(PNG). 모바일 홈화면은 SVG data-uri 미지원 → PNG 필수 -->
 <link rel="icon" href="/favicon.ico?v=260705" sizes="any">
@@ -95,7 +94,7 @@
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   /* 스크롤바 = 반투명 검정(중립) — 페이지·다이얼로그 공통 (운영자 260626: 초록 글래스→검정) */
-  html { background:var(--bg); color-scheme:dark; scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; scrollbar-gutter:stable; }   /* background+color-scheme = 리로드 첫 페인트 전 흰 캔버스 차단(meta color-scheme와 한 쌍 · 운영자 260705 "강제 새로고침 때 흰색 번쩍") */   /* 스크롤바 자리 상시 예약 → 모달 overflow:hidden 토글 시 뷰포트 폭 불변 = 상단 중앙정렬 요소(배너·시계) 좌우 점프 차단(5인 배너앵글 260701 · 모바일 오버레이 스크롤바는 무영향·데스크톱 겸사) */
+  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; scrollbar-gutter:stable; }   /* 스크롤바 자리 상시 예약 → 모달 overflow:hidden 토글 시 뷰포트 폭 불변 = 상단 중앙정렬 요소(배너·시계) 좌우 점프 차단(5인 배너앵글 260701 · 모바일 오버레이 스크롤바는 무영향·데스크톱 겸사) */
   ::-webkit-scrollbar { width:10px; height:10px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
@@ -2565,12 +2564,11 @@ try {
 </div>
 <div class="rad-scrim" aria-hidden="true"></div>   <!-- 라디얼 가림막 = bpop 밖 형제(z 네비 아래 = 피드만 가리고 ＋·네비·라디얼 버튼은 앞) · .radmenu.open ~ 로 연동 -->
 
-<!-- 링크(피드 탐색) = 같은 창 네비게이션(target=_blank 제거 · 운영자 260705 "웹앱 그 창 안에서 열리게") — 설치형 PWA에선 외부 사이트가 앱 창 안(안드로이드 CCT 시트·iOS 인앱 오버레이)에서 열리고 뒤로가기=앱 복귀 · 로그인 = 브라우저 쿠키 공유라 1회 로그인 후 유지. ⚠️ iframe 임베드는 SNS 전부 X-Frame-Options 차단 = 원천 불가(팝업 임베드 요청의 기술 한계 · 이 방식이 가능한 최선). ↗ 새탭 어포던스(::after)는 target 없어 자동 소멸 = 의미 정합(새 탭 아님). -->
 <div class="bpop" id="linkpop" hidden>
-  <a href="https://news.naver.com/newspaper/home">레거시 피드</a>
-  <a href="https://x.com">X</a>
-  <a href="https://threads.com">Thread</a>
-  <a href="https://www.instagram.com/">인스타그램</a>
+  <a href="https://news.naver.com/newspaper/home" target="_blank" rel="noopener">레거시 피드</a>
+  <a href="https://x.com" target="_blank" rel="noopener">X</a>
+  <a href="https://threads.com" target="_blank" rel="noopener">Thread</a>
+  <a href="https://www.instagram.com/" target="_blank" rel="noopener">인스타그램</a>
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
 <div class="bpop qpop" id="qpop" hidden>
@@ -9157,8 +9155,7 @@ function openMsgDeepLink() {
 }
 
 // 부팅 reveal — 첫 피드 렌더 + 배너 이미지 로드 둘 다 끝난 뒤 한 번에 노출(시계만 먼저 뜨는 FOUC 차단·운영자 260626). idempotent.
-const _BOOT_HOLD = document.documentElement.classList.contains('boot-lock') ? 0 : 2000;   // 스플래시 최소 노출 = 앱 켠 뒤 2초(운영자 260705 "빨리 켜지면 거의 안 보임, 2초는 보이게") · 잠금 기기 = 인트로 스킵이라 홀드 0(PIN 즉시 · 260705 기틀 유지)
-const _bootReveal = () => { const w = Math.max(0, _BOOT_HOLD - performance.now()); if (w) setTimeout(() => document.body.classList.add('booted'), w); else document.body.classList.add('booted'); };   // performance.now = 페이지 오픈 기준 경과 → 준비가 일찍 끝나도 2초 채우고 노출(중복 호출 = 클래스 add no-op 안전)
+const _bootReveal = () => document.body.classList.add('booted');
 const _bannerReady = new Promise(res => {
   const im = document.querySelector('.banner.layer-feed');
   if (!im || im.complete) { res(); return; }
