@@ -12,13 +12,15 @@ function extractFn(name) {
   }
   throw new Error(`중괄호 불균형: ${name}`);
 }
-const body = ['fmtClock', 'srtTime', 'parseCues', 'lyModel'].map(extractFn).join('\n');
-const harness = new Function(`${body};
+const body = ['fmtClock', 'srtTime', 'parseCues', 'lyModel', 'lyFillerKey', 'lyIsFiller'].map(extractFn).join('\n');
+const fillers = (src.match(/const LY_FILLERS = new Set\(\[[^\]]*\]\);/) || [])[0];
+if (!fillers) throw new Error('LY_FILLERS 추출 실패');
+const harness = new Function(`${fillers};${body};
   let LY_LANG = '';
   const setLang = l => { LY_LANG = l; };
   const lyJoin = () => /^(ja|zh|yue|th|lo|my|km)$/.test(LY_LANG) ? '' : ' ';
   const lySegText = sg => sg.w.filter(w => w.on).map(w => w.t).join(lyJoin());
-  return { fmtClock, srtTime, parseCues, lyModel, lyJoin, lySegText, setLang };`)();
+  return { fmtClock, srtTime, parseCues, lyModel, lyJoin, lySegText, setLang, lyFillerKey, lyIsFiller };`)();
 
 let pass = 0, fail = 0;
 const eq = (got, want, label) => {
@@ -78,6 +80,16 @@ eq(back.length, 2, 'SRT 왕복 큐 수');
 eq(back[0].s, 0.5, 'SRT 왕복 시작');
 eq(back[0].e, 2.75, 'SRT 왕복 끝');
 eq(back[0].t, 'a b', 'SRT 왕복 텍스트');
+
+// 군더더기(필러) 판정 — 보수 사전·정확 일치·구두점 무시(평의회R2 E1)
+eq(harness.lyIsFiller('음'), true, '필러 음');
+eq(harness.lyIsFiller('음,'), true, '필러 구두점 무시');
+eq(harness.lyIsFiller('Um…'), true, '필러 영어 대소문자·말줄임');
+eq(harness.lyIsFiller('어어'), true, '필러 반복형');
+eq(harness.lyIsFiller('음악'), false, '의미어 음악 = 비필러(오컷 방지)');
+eq(harness.lyIsFiller('그니까'), false, '의미 겸용어 = 사전 제외(보수)');
+eq(harness.lyIsFiller(''), false, '빈 문자열');
+eq(harness.lyFillerKey(' Uh! '), 'uh', 'lyFillerKey 정규화');
 
 console.log(`\n결과: ${pass} 통과 · ${fail} 실패`);
 process.exit(fail ? 1 : 0);
