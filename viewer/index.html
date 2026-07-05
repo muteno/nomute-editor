@@ -5125,13 +5125,18 @@ function sisaHead() {
   const md = $('#mdbody'); if (!md) return null;
   return [...md.querySelectorAll('h1,h2,h3,h4')].find(h => /시사점/.test(h.textContent)) || null;
 }
-// 요약 수정 FAB 가시 구간 — '콘텐츠 초안(IG 드래프트)'이 화면 중앙 위로 올라온 뒤부터,
+// rev-fab 시작 앵커 = '콘텐츠 초안' 섹션 헤더. ⚠️ igHead(SNS 점프·스크럽바용)는 하위 '[IG — 약 N자]' 헤더를 잡아 시작점이 요약 하단으로 밀림 → rev-fab이 본문 중간서 안 뜨던 원인(운영자 260705). 콘텐츠 초안 없는 옛 포맷은 igHead로 폴백(igHead 자체는 SNS용이라 불변).
+function revStartHead() {
+  const md = $('#mdbody'); if (!md) return null;
+  return [...md.querySelectorAll('h1,h2,h3,h4')].find(h => /콘텐츠\s*초안/.test(h.textContent)) || igHead() || null;
+}
+// 요약 수정 FAB 가시 구간 — '콘텐츠 초안'이 화면 중앙 위로 올라온 뒤부터,
 // '이 기사의 시사점'이 화면 중앙 위로 넘어가기 전까지. (둘 다 화면 중앙 기준 = 사용자 정의)
 function revFabVisible() {
   const dlg = $('#dlg'); if (!dlg || !dlg.open) return false;
   const sum = $('#ph-sum'); if (!sum) return false;
   const centerY = window.innerHeight / 2;
-  const start = igHead() || sum;                            // 콘텐츠 초안 — 없으면 요약 섹션 시작
+  const start = revStartHead() || sum;                      // 콘텐츠 초안 섹션(igHead SNS용과 분리) — 없으면 요약 섹션 시작
   if (start.getBoundingClientRect().top > centerY) return false;   // 아직 콘텐츠 초안 전(중앙 밑) → 숨김
   const endH = sisaHead();                                  // 이 기사의 시사점
   if (endH) return endH.getBoundingClientRect().top > centerY;     // 시사점이 중앙 위로 넘어가면 숨김
