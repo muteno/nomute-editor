@@ -1866,9 +1866,8 @@
   .cref-dlall .dlseq-ic svg { grid-area:1/1; width:15px; height:15px; }
   .cref-dlall .dlseq-ic .chk { opacity:0; }
   .cref-dlall.dlbtn::before { display:none; }   /* 미니멀 = 좌→우 채움 없음 */
+  .cref-dlall.dlbtn.dlseq-busy, .cref-dlall.dlbtn.dlseq-done { color:var(--accent) !important; }   /* 채움 없으니 글자 강조색 유지(검정 전환 X) */
   .cref-dlall.dlbtn.dl-done, .cref-dlall.dlbtn.dl-done .cref-dllbl { color:var(--fg) !important; }   /* 전체 받음 = 완료 후 흰색 유지 */
-  .cref-dlall.dlbtn.dlseq-busy, .cref-dlall.dlbtn.dlseq-done, .cref-dlall.dlbtn.dlseq-busy .cref-dllbl, .cref-dlall.dlbtn.dlseq-done .cref-dllbl { color:var(--accent) !important; }   /* 채움 없으니 글자 강조색 유지 — ⚠️ 반드시 .dl-done(흰색)보다 뒤 = 소스순 승리: 완료 순간 dl-done 동반이라 옛 순서면 ✓팝·완료가 흰색으로 떠 의도 죽음(thumb .jsave와 1:1 · 운영자 260705) */
-  .cref-dlall .cref-dllbl { font-variant-numeric:tabular-nums; }   /* 진행 1/2→2/2 숫자 스왑 자간 흔들림 0(운영자 260705) */
   .cref-dlall.dlbtn.dlseq-done .dlseq-ic .dn { opacity:0; }
   .cref-dlall.dlbtn.dlseq-done .dlseq-ic .chk { opacity:1; animation:dlChkPop .42s var(--ease); }
   @keyframes dlChkPop { 0%{transform:scale(.3);opacity:0} 58%{transform:scale(1.3);opacity:1} 100%{transform:scale(1);opacity:1} }   /* opacity 동반 = scale(.3) 오프닝 프레임서 축소된 체크가 '점'으로 보이던 잔상 차단(분신술 260702·cref-dlall 15px서 더 뚜렷) */
@@ -3479,14 +3478,13 @@ async function dlAllSeq(btn, urls, namer) {
   urls = (urls || []).filter(Boolean);
   if (!urls.length) return;
   btn._dlbusy = 1; btn.style.pointerEvents = 'none';
-  btn.style.minWidth = Math.ceil(btn.getBoundingClientRect().width) + 'px';   // 폭 잠금 — 옛 '저장 중… i/N' 라벨이 버튼 폭을 키워 행이 출렁(thumb .jsave 동일 실측 · 운영자 260705). 진행 라벨은 숫자만이라 잠근 폭 안 = 시퀀스 내내 레이아웃 무이동
   const lbl = btn.querySelector('.cref-dllbl');
   const orig = lbl ? lbl.textContent : '';
   btn.classList.remove('dlseq-done', 'dlseq-release'); btn.classList.add('dlseq-busy');   // 좌→우 채움 시작(글래스 §9)
   btn.style.setProperty('--p', '0');
   for (let i = 0; i < urls.length; i++) {
     downloadImg(urls[i], namer(i));
-    if (lbl) lbl.textContent = `${i + 1}/${urls.length}`;   // 산문 '저장 중…' 제거 = 숫자만(픽토+진행수 어포던스·§디자인 산문 최소화·tabular-nums) — 폭 잠금과 짝(운영자 260705 · thumb jSaveSeq와 1:1)
+    if (lbl) lbl.textContent = `저장 중… ${i + 1}/${urls.length}`;
     btn.style.setProperty('--p', String((i + 1) / urls.length));   // 진행률만큼 채움(검정 글자 드러남)
     await new Promise(r => setTimeout(r, 280));
   }
@@ -3496,7 +3494,7 @@ async function dlAllSeq(btn, urls, namer) {
   setTimeout(() => {   // ✓ 잠깐 보여준 뒤 즉시 복귀(드레인 없음 = 글자 안 가려짐·운영자 260622)
     btn.classList.add('dlseq-snap'); btn.classList.remove('dlseq-done');
     if (lbl) lbl.textContent = orig || '전체';
-    btn.style.setProperty('--p', '0'); btn.style.minWidth = '';   // 폭 잠금 해제(운영자 260705)
+    btn.style.setProperty('--p', '0');
     requestAnimationFrame(() => btn.classList.remove('dlseq-snap'));
     btn._dlbusy = 0; btn.style.pointerEvents = '';
   }, 1050);
