@@ -103,7 +103,7 @@
   ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
   dialog::-webkit-scrollbar-thumb { border-color:rgba(16,28,20,.9); }
   body {
-    margin:0; background:var(--bg); color:var(--fg);
+    margin:0; background:transparent; color:var(--fg);   /* ⚠️ body 배경 = 투명 필수(운영자 260705 "푸른 배경 사라짐" 복구): 다크 캔버스는 html{background:var(--bg)}가 담당 — html에 배경이 생기면 body 배경의 캔버스 전파가 끊겨 body가 일반 페인트 순서(음수 z 위)로 칠해짐 → z-index:-1 고정층(#wavebg 오션 물결·.bgfx)을 통째로 덮는다. body를 불투명으로 되돌리면 물결 재소멸 */
     font:15px/1.6 "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; letter-spacing:-.2px;
     -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom);
@@ -440,8 +440,18 @@
   }
   @keyframes cardIn { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce){ .card, .soc-item, .sc-item, .bpop, .min-pick { animation:none; } }   /* 이동 스태거 무효 = 전정계 배려(형제 .qrow:989/#ph-sum:1705 계승·분신술10 260704) */
-  .card:hover { border-color:rgba(0,238,210,.30); }
+  @media (hover:hover) and (pointer:fine) {
+    .card:hover { border-color:rgba(var(--accent-rgb),.45); transform:translateY(-9px) scale(1.01);
+      box-shadow:0 22px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.10), 0 0 0 1px rgba(var(--accent-rgb),.18), 0 0 23px rgba(var(--accent-rgb),.16);
+      transition:border-color .3s ease, box-shadow .3s ease, transform .3s var(--ease); }   /* 호버 리프트 9px = 모피즘 부양(운영자 260705 플레이그라운드 확정) — 진입만 느리게(.3s)·이탈은 base .1s 스냅 · brk/iss는 자기 색 테두리/글로우 유지(전용 :hover가 색 승리) + 리프트만 공유 */
+  }
   .card:active { transform:scale(.99); }
+  /* ── 앰비언트 웨이브(유휴 생동감 · 운영자 260705 확정 조합: 지속 1s·간격 0.4s·휴지 0.8s·테두리 36%·글로우 20px/14%·부양 3px/1.006·유휴 5s) —
+     터치·스크롤·키 5초 무입력이면 피드 카드가 위→아래 하나씩 강조 테두리+얇은 글로우+미세 부양. 입력 즉시 중단·5s 재대기. 엔진 = ambKick(JS 하단). brk/iss = 의미색 우선이라 제외. ── */
+  #list .card.amb, #list .card.amb-fall { transition:border-color .5s ease, box-shadow .5s ease, transform .55s var(--ease); }   /* 상승·하강 모두 느린 전이(하강 = amb-fall 잔류 클래스가 600ms 유지 후 제거 → base 스냅 전이로 복귀) */
+  #list .card.amb:not(.brk):not(.iss) { border-color:rgba(var(--accent-rgb),.36);
+    box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.10), 0 0 0 1px rgba(var(--accent-rgb),.16), 0 0 20px rgba(var(--accent-rgb),.14);
+    transform:translateY(-3px) scale(1.006); }
   /* 긴급(빨강)/이슈(노랑) = 카드 테두리 글래스 점등(은은한 색 테두리 + 글로우). 호버 활성화 느낌은 색 안에서 강화(일반 카드는 위 초록 호버 유지). */
   .card.brk { border-color:rgba(226,35,26,.5); box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.10), 0 0 14px rgba(240,40,30,.17); }
   .card.iss { border-color:rgba(255,195,31,.55); box-shadow:0 16px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.10), 0 0 14px rgba(255,200,40,.16); }
@@ -949,7 +959,8 @@
     padding:0 8px calc(6px + env(safe-area-inset-bottom));   /* 세로패딩 축소 = 네비 높이 ~85%(운영자 260704 "네비바 높이 85%") */
     background:rgba(0,0,0,.30);   /* 검정 30% 반투명(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스와 겹쳐 은은한 어둠(운영자 260704 "아래 네비에도 투명도 30%") */
     backdrop-filter:blur(var(--blur-l)) saturate(1.35); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);   /* 글래스모피즘 복원(운영자 260703 "글래스 최대한 살려·가시성 확보됨") — 260701에 스크롤 jank로 뺐던 backdrop blur 재도입(옛 26px raw→--blur-l 22px 토큰·index 글래스 정합). ⚠️ position:fixed 고정바라 스크롤 시 미세 렉 가능 = 폰 실측서 거슬리면 --blur-m(14px)로 낮춤. */
-    border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4); }
+    border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4);
+    transition:background .2s ease, border-color .2s ease, box-shadow .2s ease; }   /* 라디얼 열림 = 일체형 크롬 해제(rad-scrim 블록)와 부드럽게 넘어가기(운영자 260705) */
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     min-height:39px; margin:0 0 4px; padding:9px 4px 0; background:none; border:none; color:var(--mut); font:inherit; font-size:var(--fs-label); font-weight:700;   /* padding-top 9 = 라벨을 바 세로중앙으로(border-box라 높이 불변 · 옛 0 4px는 39px 셀 안 중앙 = 아래 margin4+바 padding6 몫만큼 위로 치우쳐 하단이 비어 보임 → 운영자 260705 "네비 하단 빈 공간" 교정 · FAB·라디얼·스크림 기하 불변) */
     letter-spacing:-.2px; cursor:pointer; text-decoration:none; }   /* 아이콘 제거·글자 메뉴(운영자 260703) · min-height 52+mb 16 = FAB 값 재사용 → 글자가 중앙 FAB 원 세로중앙에 정렬 · color transition 제거 = 탭 누르자마자 색 즉시 전환(운영자 260621) */
@@ -991,15 +1002,21 @@
   .raditem[data-act="thumb"] .radbtn { color:var(--thumb); }
   .raditem[data-act="cap"] .radbtn { color:var(--accent-5); }   /* 영상 픽토 = 남는 강조색 그린(운영자 260705) */
   .radlab { font-size:11px; font-weight:800; color:var(--fg);   /* 라벨 3종 = 흰색(운영자 260705) */ letter-spacing:-.2px; text-shadow:0 1px 5px rgba(0,0,0,.85); white-space:nowrap; }   /* 배경 플레이트(도형) 제거 = ＋ 열림 시 rad-scrim 그라데이션이 뒤를 가림 → 라벨은 text-shadow만으로 가독(운영자 260705, 옛 rgba(18,18,18,.75) 플레이트 폐지) */
-  .rad-scrim {   /* ＋ 라디얼 열림 시 뒤 피드 가림막(무채색 그라데이션). ▼▼ 조절점 = 아래 3변수(전부 화면바닥 기준 px·실측 260705) — 여기 숫자만 바꾸면 위치 조절 ▼▼ */
-    --scrim-bottom:50px;   /* ⓐ 스크림 아래끝 = 네비 상단(실측 navH 50 = 네비 안 가림·보통 안 건드림) */
-    --scrim-solid:65px;    /* ⓑ 여기까지 완전 불투명(시작점) = 뉴스요약 라벨 밑변 · ↑키우면 진한 구간 위로 */
-    --scrim-fade:147px;    /* ⓒ 여기서 완전 투명(끝점) = 이미지 버튼 원 중심 · ↑키우면 페이드 위로 길게 */
+  .rad-scrim {   /* ＋ 라디얼 열림 시 뒤 피드 가림막(무채색 그라데이션 + 브리딩). ▼▼ 조절점 = 아래 3변수(전부 화면바닥 기준 px·실측 260705) — 여기 숫자만 바꾸면 위치 조절 ▼▼ */
+    --scrim-bottom:0px;    /* ⓐ 스크림 아래끝 = 화면 바닥(일체형: 네비 뒤까지 이어짐 · 운영자 260705 플레이그라운드 확정 "네비 경계 일체형" — 구 50px 네비상단 정지 폐기) */
+    --scrim-solid:65px;    /* ⓑ 여기까지 완전 불투명(시작점) = 뉴스요약 라벨 밑변(네비 영역 0~50 포함) · ↑키우면 진한 구간 위로 */
+    --scrim-fade:195px;    /* ⓒ 여기서 완전 투명(끝점) · 플레이그라운드 확정 높이 145px + 네비 50px */
     position:fixed; z-index:calc(var(--z-nav) - 1); left:0; right:0; bottom:calc(var(--scrim-bottom) + env(safe-area-inset-bottom)); height:calc(var(--scrim-fade) - var(--scrim-bottom));   /* z = 네비(z-nav 35) 아래·피드 위 → 피드만 가리고 ＋·네비·라디얼 버튼은 모두 스크림 앞(안 가려짐·운영자 260705) */
-    background:linear-gradient(to top, rgba(var(--accent-rgb),.12) 0, rgba(var(--accent-rgb),.12) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent), linear-gradient(to top, var(--bg) 0, var(--bg) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent);   /* 강조색 12% 틴트 겹(순검정 이질감 완화 · 운영자 260705) */   /* 무채색(--bg 계승): 네비~라벨밑변 불투명 → 이미지버튼 중심서 투명 */
+    background:linear-gradient(to top, var(--bg) 0, var(--bg) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent);   /* 무채색(--bg 계승) 단층 — 정적 강조색 12% 틴트 폐기 = 운영자 확정 "틴트 0%"(색은 아래 브리딩 ::after가 담당) */
     opacity:0; transform:translateY(24px); transition:opacity .15s ease, transform .15s ease; pointer-events:none; }   /* 아래→위 페이드인·빠르게(.15s = raditem .34s보다 먼저 깔림) */
+  .rad-scrim::after { content:''; position:absolute; inset:0; opacity:0;
+    background:linear-gradient(to top, rgba(var(--accent-rgb),.24), transparent 75%); }   /* 브리딩 레이어 = 강조색 그라데이션이 아래서 숨쉬듯 밝아졌다 잦아듦(운영자 260705 확정 "모션 브리딩·속도 2×") */
   .radmenu.open ~ .rad-scrim { opacity:1; transform:translateY(0); }   /* 스크림 = bpop 밖 형제 → 형제 결합자로 열림 연동(z 낮춰 ＋·네비 앞 유지) */
-  @media (prefers-reduced-motion:reduce){ .rad-scrim { transition:none; } }
+  .radmenu.open ~ .rad-scrim::after { animation:radBreath 2.1s ease-in-out infinite alternate; }   /* 2.1s = 기준 4.2s ÷ 속도 2×(플레이그라운드 확정) · 열림 동안만 가동 */
+  @keyframes radBreath { from { opacity:.35; } to { opacity:1; } }
+  /* 일체형 네비 — 라디얼 열림 동안 네비의 구획 크롬(경계선·유리·그림자) 제거 → 스크림 그라데이션이 네비까지 한 장(운영자 260705 확정). 스크림이 네비 뒤를 불투명(--bg)으로 받쳐 blur 소실은 비가시. 닫으면 원복. */
+  body:has(.radmenu.open) .bnav { background:transparent; border-top-color:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
+  @media (prefers-reduced-motion:reduce){ .rad-scrim { transition:none; } .radmenu.open ~ .rad-scrim::after { animation:none; opacity:.5; } }   /* 전정계 배려 = 브리딩 무효·중간 밝기 고정 */
   .bpop { position:fixed; z-index:var(--z-remote); min-width:140px; max-width:230px;   /* translateX(-50%) 제거 = fixed+translateX iOS 히트테스트 누수(탭이 뒤 요소로 샘) 차단 → 가운데정렬은 JS(popAt/openQueue)가 좌변 직접 지정(운영자 260622) */
     background:linear-gradient(165deg, rgba(22,23,25,.34), rgba(12,13,14,.42)); backdrop-filter:blur(24px) saturate(1.3); -webkit-backdrop-filter:blur(24px) saturate(1.3);   /* 글래스 = 중립(무채색) 프로스트 · 초록 틴트 제거(24,40,29→22,23,25) + 더 반투명(.44→.34) · blur 24로 가독 보존 · 운영자 260626 */
     border:1px solid var(--line); border-radius:15px; padding:11px 15px; box-shadow:0 18px 46px rgba(0,0,0,.6);
@@ -9167,6 +9184,41 @@ const _bannerReady = new Promise(res => {
 const _firstLoad = load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
 Promise.allSettled([_firstLoad, _bannerReady]).then(_bootReveal);   // 피드·배너 준비되면 즉시 노출(실패해도 allSettled로 진행 · render는 load 안에서 동기 완료라 rAF 불필요·백그라운드 탭서 rAF 멈춰도 안전)
 setTimeout(_bootReveal, 1800);   // 안전망 — load/배너가 지연·실패해도 화면 반드시 노출(영구 블랙 방지)
+
+// ── 앰비언트 웨이브 엔진(운영자 260705 플레이그라운드 확정 조합) — 5s 무입력(터치·스크롤·키·포인터) 시
+// 뷰포트 안 피드 카드가 위→아래 하나씩 .amb(강조 테두리+얇은 글로우+3px 부양·CSS L449) 1s 점등, 0.4s 간격 물결(다음 = 지속 55% 지점서 겹침),
+// 한 바퀴 후 0.8s 휴지·재수집 반복. 입력 즉시 전체 소등+5s 재대기. reduced-motion = 엔진 미가동(전정계 배려).
+// 모달 열림·문서 숨김 = 시작 안 함(뒤 DOM 재렌더 아님·클래스 토글뿐이라 §깜빡임 가드 대상 아님 — 모달 중 뒤 움직임 자체가 산만해서 차단).
+const AMB = { idle: 5000, dur: 1000, gap: 400, rest: 800 };
+let _ambT = 0, _ambStep = 0, _ambOff = 0, _ambIdx = 0, _ambCards = [], _ambOn = false;
+const _ambRM = matchMedia('(prefers-reduced-motion:reduce)');
+function ambClear() { document.querySelectorAll('#list .card.amb, #list .card.amb-fall').forEach(c => c.classList.remove('amb', 'amb-fall')); }
+function ambStop() { _ambOn = false; clearTimeout(_ambStep); clearTimeout(_ambOff); ambClear(); }
+function ambCollect() { return [...document.querySelectorAll('#list .card:not(.brk):not(.iss)')].filter(c => { const r = c.getBoundingClientRect(); return r.height > 0 && r.bottom > 90 && r.top < innerHeight - 70; }); }
+function ambStart() {
+  if (document.hidden || _ambRM.matches) return;
+  if (typeof isComposingModalOpen === 'function' && isComposingModalOpen()) { ambKick(); return; }
+  if (document.querySelector('dialog[open]')) { ambKick(); return; }   // 리더·라이트박스 등 열림 = 뒤 웨이브 산만 → 보류
+  _ambCards = ambCollect(); if (!_ambCards.length) { ambKick(); return; }
+  _ambOn = true; _ambIdx = 0; ambNext();
+}
+function ambNext() {
+  if (!_ambOn) return;
+  if (document.hidden || document.querySelector('dialog[open]')) { ambStop(); ambKick(); return; }
+  const c = _ambCards[_ambIdx];
+  if (c && c.isConnected) {
+    c.classList.remove('amb-fall'); c.classList.add('amb');
+    _ambOff = setTimeout(() => { c.classList.remove('amb'); c.classList.add('amb-fall'); setTimeout(() => c.classList.remove('amb-fall'), 600); }, AMB.dur);
+  }
+  _ambIdx++;
+  let next = AMB.dur * .55 + AMB.gap;   // 물결 = 현재 점등이 절반쯤 지날 때 다음 시작(플레이그라운드 동일 공식)
+  if (_ambIdx >= _ambCards.length) { _ambIdx = 0; next += AMB.rest; _ambCards = ambCollect(); if (!_ambCards.length) { ambStop(); ambKick(); return; } }   // 한 바퀴 = 휴지 + 재수집(스크롤·재렌더 대응)
+  _ambStep = setTimeout(ambNext, next);
+}
+function ambKick() { clearTimeout(_ambT); ambStop(); if (_ambRM.matches) return; _ambT = setTimeout(ambStart, AMB.idle); }
+['pointerdown', 'pointermove', 'wheel', 'touchstart', 'keydown', 'scroll'].forEach(ev => addEventListener(ev, ambKick, { passive: true, capture: true }));   // capture = 내부 스크롤러 포함 전 입력이 유휴 리셋
+document.addEventListener('visibilitychange', ambKick);
+ambKick();
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadMessages().then(() => openMsgDeepLink());   // ?msg=fail-… (수집 실패 푸시 탭) → 메시지함 열고 강조
 loadHealth();       // eager — 맞춤법 검사기 건강(불건강이면 프로필 노란 링 + 메시지)
