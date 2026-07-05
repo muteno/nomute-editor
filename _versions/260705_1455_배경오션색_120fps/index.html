@@ -9251,7 +9251,7 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
 /* ── 무채색 물결 배경 (#wavebg) — paper mesh-gradient 무채색 이식. 색=:root --bg에 흰색 알파(무채색 명암)·raw hex 없음. 정적 아님(천천히 흐름). 성능=백그라운드·reduced-motion 정지, WebGL 실패=feed_bg 폴백(.off). 운영자 260705 ── */
 (function(){
   var canvas=document.getElementById('wavebg'); if(!canvas) return;
-  var MAX=10, FRAME_MS=8;                                             // ~120fps 상한(운영자 요청 부드러움) · 가림/백그라운드/reduced-motion 정지로 배터리 방어 유지
+  var MAX=10, FRAME_MS=33;                                            // ~30fps 캡(앰비언트라 무손실·배터리 절감)
   var VERT='#version 300 es\n'+
     'in vec2 a_position; out vec2 v_objectUV; uniform float u_scale;\n'+
     'void main(){ gl_Position=vec4(a_position,0.,1.); vec2 uv=a_position*0.5; v_objectUV=uv/max(0.001,u_scale); }';
@@ -9274,14 +9274,13 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
     ' color/=max(1e-4,tw);\n'+
     ' float go=valueNoise(rotate(grainUV,1.)+vec2(3.)); go=mix(go,valueNoise(rotate(grainUV,2.)+vec2(-1.)),.5); go=pow(go,1.3); float gV=go*2.-1.; float gS=pow(u_grainOverlay*abs(gV),.8); color=mix(color,vec3(step(0.,gV)),.35*gS);\n'+
     ' fragColor=vec4(color,1.0); }';
-  // 색 = :root 토큰 tint(--bg에 시안·파랑) — 오션 프리셋 · 컨텍스트 무관·1회·raw hex 없음
+  // 색 = :root --bg 무채색 tint (컨텍스트 무관·1회 계산·raw hex 없음)
   var cs=getComputedStyle(document.documentElement);
   function hx(h){ h=(h||'').trim()||'#121212'; return [parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255]; }   // 폴백 #121212 = --bg 미해결 시만(정상 경로 미발동)
-  var BG=hx(cs.getPropertyValue('--bg')), CY=hx(cs.getPropertyValue('--accent-5')), BL=hx(cs.getPropertyValue('--bias-l2'));   // 시안·파랑 토큰 계승
-  function mixc(base,c,t){ t=Math.min(1,t); return [base[0]+(c[0]-base[0])*t, base[1]+(c[1]-base[1])*t, base[2]+(c[2]-base[2])*t, 1.0]; }
-  var INT=0.24, WT=[1,1,1];                                           // 오션 프리셋 강도(운영자 확정) · WT=흰색(무채 스팟)
-  var COLORS=[ mixc(BG,CY,0.55*INT), mixc(BG,BL,0.8*INT), mixc(BG,CY,1.1*INT), mixc(BG,BL,0.45*INT), mixc(BG,WT,0.2*INT) ];   // 시안(--accent-5)·파랑(--bias-l2) 틴트(오션)
-  var P={dist:0.53,swirl:0.34,speed:0.33,scale:0.86,grain:0.12};      // 운영자 확정 세팅(오션·강도0.24·120fps)
+  var BG=hx(cs.getPropertyValue('--bg'));
+  function tint(t){ return [BG[0]+(1-BG[0])*t, BG[1]+(1-BG[1])*t, BG[2]+(1-BG[2])*t, 1.0]; }   // --bg × 흰색 알파(무채색 명암)
+  var LUM=0.10, COLORS=[tint(LUM*0.08),tint(LUM*0.35),tint(LUM*1.0),tint(LUM*0.18),tint(LUM*0.55)];
+  var P={dist:0.36,swirl:0.34,speed:0.45,scale:0.86,grain:0.12};      // 운영자 확정 세팅
   var GRAIN_MIX=0.15;                                                 // getPosition 흔들림(확정 6종 밖 고정값)
   var flat=new Float32Array(MAX*4); COLORS.forEach(function(c,i){ flat.set(c,i*4); });
 
