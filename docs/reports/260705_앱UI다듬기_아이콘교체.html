@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260705 앱 UI 다듬기 9종 + 아이콘 교체 — 보고서</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+  body { margin:0; padding:28px 18px 60px; background:#121212; color:#eef7f0;
+    font-family:'Pretendard Variable',Pretendard,'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    font-size:15px; line-height:1.65; max-width:760px; margin-inline:auto; }
+  h1 { font-size:20px; letter-spacing:-.3px; }
+  h1 b { color:#00EED2; }
+  h2 { font-size:16px; margin:34px 0 10px; color:#00EED2; }
+  h2.y { color:#FFE13D; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td { border:1px solid rgba(255,255,255,.12); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:rgba(255,255,255,.05); font-weight:800; white-space:nowrap; }
+  td.b { color:#8fa697; }
+  td.a { color:#eef7f0; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:800; margin-right:6px; }
+  .fix { background:rgba(0,238,210,.14); color:#00EED2; }
+  .chk { background:rgba(255,225,61,.14); color:#FFE13D; }
+  .risk { background:rgba(226,59,42,.16); color:#ff8a7d; }
+  ul { padding-left:20px; } li { margin:5px 0; }
+  .muted { color:#8fa697; font-size:13px; }
+  code { background:rgba(255,255,255,.07); padding:1px 5px; border-radius:5px; font-size:12.5px; }
+  .icons { display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin:10px 0; }
+  .icons .cell { text-align:center; font-size:12px; color:#8fa697; }
+  .sw { width:72px; height:72px; border-radius:16px; display:block; margin:0 auto 6px; border:1px solid rgba(255,255,255,.14); }
+</style>
+</head>
+<body>
+<h1><b>앱 UI 다듬기 9종</b> + 앱 아이콘 신프로필 교체 <span class="muted">260705</span></h1>
+<p class="muted">요청 9건 전부 반영 또는 확인 완료. 코드 검증 = check_refs 전 게이트 초록 + Playwright 실측(전이·색·기하·콘솔 무오류).</p>
+
+<h2>1. 전/후 비교 (9건)</h2>
+<table>
+  <tr><th>#</th><th>항목</th><th>전</th><th>후</th></tr>
+  <tr><td>1</td><td><span class="tag fix">FIX</span>수정 요청 창 번쩍</td>
+    <td class="b">수정팝업 열리는 순간 뒤 리더(#dlg) 배경이 실크무늬→불투명으로 <b>한 프레임 하드컷</b> = 번쩍</td>
+    <td class="a">불투명 덮개(<code>#dlg::after</code>)를 0.18초 페이드 — 열림·닫힘 전 구간 부드러움 · 카드 수정 창도 동일 해결</td></tr>
+  <tr><td>2</td><td><span class="tag fix">FIX</span>프로필 메뉴 로고</td><td class="b">헤더에 노뮤트 워드마크 로고</td><td class="a">로고 삭제 — 새로고침·X 버튼만</td></tr>
+  <tr><td>3</td><td><span class="tag fix">FIX</span>저작권 이름 예시</td><td class="b">빈칸에 회색 예시 <i>nomute</i> 표시</td><td class="a">예시 없는 빈칸(탭해서 입력·검증·출력 기능 전부 동일)</td></tr>
+  <tr><td>4</td><td><span class="tag fix">FIX</span>검색·새로고침 픽토</td><td class="b">터쿼이즈(강조색)</td><td class="a">네온 골드레몬 <code>--accent-4 #FFE13D</code> — 단일 룰이라 모든 메뉴 공통</td></tr>
+  <tr><td>5</td><td><span class="tag fix">FIX</span>네비 하단 빈 공간</td><td class="b">라벨이 바 위쪽으로 치우침(위 10.6 / 아래 19.6px) = 하단이 비어 보임</td><td class="a">라벨 세로중앙(위 15.6 / 아래 14.6px) — 바 높이·＋버튼·라디얼 기하는 그대로</td></tr>
+  <tr><td>6</td><td><span class="tag fix">FIX</span>구 로딩화면 먼저 뜸</td><td class="b">OS 스플래시가 manifest 아이콘(6/22 구본·초록 배경)으로 그려짐 → 구 화면 먼저 노출</td><td class="a">아이콘 5종 전부 신프로필로 재생성 + 캐시버스트 + manifest no-cache</td></tr>
+  <tr><td>7</td><td><span class="tag fix">FIX</span>Home·SNS 링크</td><td class="b">프로필 메뉴에 Home + SNS 아코디언(4링크)</td><td class="a">삭제 — 메시지·발행본·설정만 남음</td></tr>
+  <tr><td>8</td><td><span class="tag chk">확인</span>홈 아이콘</td><td class="b">구본(초록 배경) — 신프로필 아님이 맞았음</td><td class="a">icon-192/512·maskable·apple-touch·favicon 전부 신프로필(하늘색 배경)로 교체</td></tr>
+  <tr><td>9</td><td><span class="tag chk">확인</span>앱 제목</td><td class="b" colspan="2">정상 — <code>&lt;title&gt;</code>·manifest name 모두 "뉴스 큐레이션 : News Curation". 홈화면 아이콘 밑 짧은 라벨만 short_name "노뮤트" 유지(원하면 변경 가능)</td></tr>
+</table>
+
+<h2>2. 아이콘 전/후</h2>
+<div class="icons">
+  <div class="cell"><span class="sw" style="background:#2bd943"></span>구본 배경(초록·6/22)</div>
+  <div class="cell"><span class="sw" style="background:#39d7ee"></span>신본 배경(하늘색·main_profile 동일)</div>
+</div>
+<p class="muted">동일 인물 시안, 배경색 세대만 다름. maskable은 구본 기하(78% 중앙 + 다크 프레임) 그대로 계승.</p>
+
+<h2>3. 장단점 · 효율성</h2>
+<ul>
+  <li><b>장점</b>: 번쩍임 원인(배경 하드컷)을 제거해 열림·닫힘이 대칭 페이드 — 수정 중 타이핑 번쩍 차단 효과는 기존 그대로 유지. 메뉴 슬림화로 프로필 팝업이 한 눈에.</li>
+  <li><b>효율성</b>: 픽토 색·네비 정렬은 각 한 줄 수정(기하 연쇄 0) · SNS 아코디언 JS 제거로 코드 소폭 감량 · 아이콘은 기존 파일 교체라 참조 변경 0.</li>
+  <li><b>단점/트레이드오프</b>: 없음에 가까움 — 기능 제거는 운영자 지시분(로고·Home·SNS)뿐.</li>
+</ul>
+
+<h2 class="y">4. 품질저하 리스크</h2>
+<ul>
+  <li><span class="tag risk">잔존</span><b>설치된 PWA의 OS 스플래시</b>: 안드로이드가 설치 시점 아이콘을 캐시 — 크롬이 manifest를 재체크(보통 1~3일)하거나 <b>홈화면에서 지우고 다시 추가</b>하면 즉시 신본. 코드 쪽은 완료.</li>
+  <li><span class="tag risk">별건</span>PIN·전광판 등 DIV 앵커 입력팝업의 타이핑 재샘플은 기존 문서화된 후속(이번 건과 무관·변화 없음).</li>
+  <li>번쩍 픽스는 CSS만 변경(JS 0) — 열림 애니·뒤로가기·최소화 흐름 전부 불변, Playwright로 열림 0→1→닫힘 0 전이 실측.</li>
+</ul>
+
+<p class="muted">검증: check_refs 전 게이트 rc=0 · 뷰어 JS 구문 5파일 OK · 콘솔 pageerror 0(로컬 404는 Pages Functions 부재 = 환경 한계) · 머지 후 origin/main read-back 예정.</p>
+</body>
+</html>
