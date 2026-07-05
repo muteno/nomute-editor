@@ -27,12 +27,12 @@
   /* 텍스트 — --fg-2 폐지(260704): 보조텍스트/중간회색도 --mut 단일 */
   --fg:#eef7f0; --mut:#8fa697;
   /* 브랜드/강조 */
-  --accent:#0FFD02; --accent-rgb:15,253,2;
-  --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
   /* 의미색 = accent 스케일 별칭(값 SSOT=accent-N · 260704) */
-  --danger:#e23b2a/*=accent-3 빨강*/; --warn:#d8ff3d/*=accent-4 라임*/; --amber:#d8ff3d/*=accent-4*/; --info:#0cd0f7/*=accent-5 시안*/;
+  --danger:#e23b2a/*=accent-3 빨강*/; --warn:#FFA02E/*=accent-4 오렌지*/; --amber:#FFA02E/*=accent-4*/; --info:#0FFD02/*=accent-5 그린*/;
   /* 재확인(arm) = accent-4(260704 · 옛 #ffd93d 폐지) */
-  --arm:#d8ff3d; --arm-rgb:216,255,61; --on-arm:#1a1205;
+  --arm:#FFA02E; --arm-rgb:255,160,46; --on-arm:#241102;
   /* radius 5단 — 그 외 7·10·20·24 난립 금지. 모달만 --r-modal:22 */
   --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
   /* 간격 4배수 */
@@ -149,10 +149,10 @@ accent는 "지금 핵심"을 가리키는 손가락. **화면당 2~3곳 이내.*
 
 | 메뉴 | 대표색 | 토큰 |
 |---|---|---|
-| 피드·큐레이션 | 라임 `#0FFD02` | `--accent` |
-| 스크랩 | 라임옐로 `#d8ff3d` | `--accent-4` |
+| 피드·큐레이션 | 터쿼이즈 `#00EED2` | `--accent` |
+| 스크랩 | 오렌지 `#FFA02E` | `--accent-4` |
 | SNS | 시안 `#0cd0f7` | `--info` |
-| 썸네일 생성기 | 라임옐로 `#d8ff3d` | `--thumb`(accent-4 · 요약요청 네온그린과 구분) |
+| 썸네일 생성기 | 오렌지 `#FFA02E` | `--thumb`(accent-4 · 강조색 터쿼이즈와 구분) |
 | ly·k | 라임(기본) | 별도 색 없음 |
 
 **전파**: 메뉴 진입 시 배너 글로우·프로필 링·배지·활성 칩·입력 focus/hover가 전부 그 한 색. **단, 1차 버튼은 예외 — 항상 라임/앰버 공통 신호(§1).**
@@ -212,7 +212,7 @@ PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM
 - **아이콘 SVG 상수** `COPY/PASTE/CHECK/DOWNLOAD/EDIT/LAYERS/THUMBUP/THUMBDOWN` 등(24뷰박스·stroke 2·round).
 
 ## 10. 시각 시스템 — 풀페이지 배경 · 배너 (viewer 정본)
-- **풀페이지 네온 배경** `.bgfx` = radial **3겹**(좌상 420×300·우상 720×460·하단 640×720) + 탭별 색 전환(`--bgfx`): **피드=라임**(15,253,2) / **스크랩=라임옐로**(216,255,61·accent-4) / **SNS=시안**(12,208,247). (구성도 1겹 데모는 단순화 — 라이브는 3겹.)
+- **풀페이지 네온 배경** `.bgfx` = radial **3겹**(좌상 420×300·우상 720×460·하단 640×720) + 탭별 색 전환(`--bgfx`): **(260705 정정: 라이브 .bgfx = 무채 물결 셰이더+feed_bg 폴백으로 개편 — 구 3겹 radial 탭색 서술 폐기 · 탭 색 신호는 배너·--glow가 담당)**
 - **배너** `.bannerframe` = radius **20px** + 글로우 + **호흡 애니** `bannerbreath 5.5s` ease-in-out 무한(밝기·드롭섀도 맥동). 탭 전환 = **2겹 크로스페이드 디졸브**(`.banner.layer-*` opacity .6s) — 즉시교체·슬라이드 금지. `prefers-reduced-motion`이면 즉시.
 
 ## 11. 부속 설명 · 정렬 (viewer #mdbody/#cardsec 정본)
