@@ -108,24 +108,16 @@
     -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom);
   }
   /* 부팅 reveal 게이트 — 새로고침 시 시계만 먼저 뜨고 배너·피드가 뒤따르는 FOUC 차단. 첫 피드 렌더 + 배너 로드 완료 후 .booted로 한 번에 노출(html/body 배경 #0b0d0c 다크 유지 = 흰 플래시 0). 안전망 setTimeout으로 영구 블랙 방지 · 운영자 260626 */
-  /* 부팅 reveal — 앱 콘텐츠만 숨기고 배경 물결(#wavebg)·부팅 스플래시(#bootsplash)는 부팅부터 표시. booted되면 앱 페이드인 + 스플래시 페이드아웃. 옛 body 전체 opacity→자식단위(배경물결이 부팅화면 겸함)·crefDim breathing은 물결이 대체(260626 게이트 확장·운영자 260705) */
-  body:not(.booted) > :not(#wavebg):not(.bgfx):not(#bootsplash):not(script):not(style) { opacity:0; }
-  body.booted > * { opacity:1; transition:opacity .2s ease; }
-  /* 부팅 스플래시 = OS splash 클론(프로필 아이콘 중앙·'노뮤트 뉴스 큐레이션' 하단) + 배경은 #wavebg 물결이 비침. booted되면 페이드아웃 → 앱 노출 */
-  #bootsplash { position:fixed; inset:0; z-index:100; pointer-events:none; }
-  #bootsplash img { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(27vw,132px); aspect-ratio:1; object-fit:cover; border-radius:22px; }
-  #bootsplash .bs-name { position:absolute; bottom:8.5%; left:0; right:0; text-align:center; font-size:15px; font-weight:600; color:var(--fg); }
-  body.booted #bootsplash { opacity:0; pointer-events:none; transition:opacity .55s ease; }
-  @media (prefers-reduced-motion:reduce) { body.booted > * { transition:none; } body.booted #bootsplash { transition:none; } }
+  body:not(.booted) { opacity:0; }
+  html:has(body:not(.booted)) { animation:crefDim 5s ease-in-out infinite; }   /* 진입(부팅 중) 검정 화면 = 로딩 슬라이드와 동일 무채 breathing(crefDim rgb 12,13,15↔26,28,31·5s) → '접속 중' 은은한 로딩감 · booted 되면 body(opacity 1)가 덮고 :has 해제로 정지 · 운영자 260705 */
+  body.booted { opacity:1; transition:opacity .2s ease; }
+  @media (prefers-reduced-motion:reduce) { body.booted { transition:none; } html:has(body:not(.booted)) { animation:none; } }
   /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림 — 색 워시 제거(전 탭 공통 중립 실크 · 요약 리더와 통일 · 운영자 260626 "원톤 전역"). 탭색은 배너 글로우·강조에만 남김(§🎬 크로스페이드 불변). */
   .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none;
     filter:brightness(1.2) saturate(1.05);   /* 실크 밝힘 = 글래스 카드/패널 뒤로 실크가 보여 '진짜 투명'해 보임(딥블랙이라 안 보이던 것 해소·전 화면 톤 통일·운영자 260626) */
     background:
       linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4)),
       url(assets/brand/feed_bg.png) center/cover no-repeat, #000; }
-  /* 무채색 물결 셰이더 캔버스 = .bgfx 폴백(feed_bg) 위에 덮음(형제 = .bgfx filter 영향 밖). WebGL 실패·정지·저사양 시 .off로 숨겨 feed_bg 폴백 노출. paper mesh-gradient 무채색 이식 · 색=:root --bg에 흰색 알파(무채색 명암) · 운영자 260705 */
-  #wavebg { position:fixed; inset:0; z-index:-1; pointer-events:none; display:block; width:100%; height:100%; }
-  #wavebg.off { display:none; }
   /* (피드 전용 글로우 배경 제거 — 글로우 OFF·배경은 위 .bgfx로 3탭 공통 통합 · 운영자 260625) */
   /* ── 당겨서 새로고침 = 커스텀 링(탭색) ── 네이티브(theme-color 링)를 끄고 직접 그림 → '원'만 메뉴색·주소창/상태바 불변(운영자 260623). 스피너는 .cref-ld-sp 패턴 계승. */
   html.ptr-on { overscroll-behavior-y:contain; }   /* 네이티브 당겨서새로고침 차단 — 터치기기(JS가 .ptr-on 부여)에서만 = CSS차단·JS핸들러 생사 단일게이트(데스크탑 네이티브 새로고침/바운스 보존) */
@@ -2271,8 +2263,7 @@
 </head>
 <body data-tab="feed">
 <script>setTimeout(function(){document.body.classList.add('booted');},2500);</script><!-- 최종 안전망(독립 스크립트) — 메인 앱 스크립트가 통째로 죽어도 2.5s 후 반드시 노출(영구 블랙 차단·운영자 260626). 정상 경로는 메인의 allSettled가 ~0.3s에 먼저 노출. -->
-<div class="bgfx"></div><canvas id="wavebg" aria-hidden="true"></canvas>
-<div id="bootsplash" aria-hidden="true"><img src="assets/brand/main_profile.jpg" alt=""><div class="bs-name">노뮤트 뉴스 큐레이션</div></div>
+<div class="bgfx"></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
 <div class="topbanner">
@@ -9256,66 +9247,6 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
   addEventListener('touchcancel', () => { if (!firing) reset(true); }, { passive: true });
   // bfcache 복귀(뒤로가기 등)면 firing/spin 잔존 상태 해제 — 영구 먹통 방지(분신술1·3·7·10)
   addEventListener('pageshow', e => { if (e.persisted) { firing = false; reset(false); } });
-})();
-</script>
-<script>
-/* ── 무채색 물결 배경 (#wavebg) — paper mesh-gradient 무채색 이식. 색=:root --bg에 흰색 알파(무채색 명암)·raw hex 없음. 정적 아님(천천히 흐름). 성능=백그라운드·reduced-motion 정지, WebGL 실패=feed_bg 폴백(.off). 운영자 260705 ── */
-(function(){
-  var canvas=document.getElementById('wavebg'); if(!canvas) return;
-  var gl=canvas.getContext('webgl2',{antialias:true,premultipliedAlpha:false});
-  if(!gl){ canvas.classList.add('off'); return; }                    // WebGL2 미지원 = feed_bg 폴백
-  var MAX=10;
-  var VERT='#version 300 es\n'+
-    'in vec2 a_position; out vec2 v_objectUV; uniform float u_scale;\n'+
-    'void main(){ gl_Position=vec4(a_position,0.,1.); vec2 uv=a_position*0.5; v_objectUV=uv/max(0.001,u_scale); }';
-  var FRAG='#version 300 es\n'+
-    'precision mediump float;\n'+
-    'uniform float u_time; uniform vec4 u_colors['+MAX+']; uniform float u_colorsCount;\n'+
-    'uniform float u_distortion; uniform float u_swirl; uniform float u_grainMixer; uniform float u_grainOverlay;\n'+
-    'in vec2 v_objectUV; out vec4 fragColor;\n'+
-    'vec2 rotate(vec2 uv,float th){ return mat2(cos(th),sin(th),-sin(th),cos(th))*uv; }\n'+
-    'float hash21(vec2 p){ p=fract(p*vec2(0.3183099,0.3678794))+0.1; p+=dot(p,p+19.19); return fract(p.x*p.y); }\n'+
-    'float valueNoise(vec2 st){ vec2 i=floor(st),f=fract(st); float a=hash21(i),b=hash21(i+vec2(1,0)),c=hash21(i+vec2(0,1)),d=hash21(i+vec2(1,1)); vec2 u=f*f*(3.-2.*f); return mix(mix(a,b,u.x),mix(c,d,u.x),u.y); }\n'+
-    'float noise(vec2 n,vec2 s){ return valueNoise(n+s); }\n'+
-    'vec2 getPosition(int i,float t){ float a=float(i)*.37,b=.6+fract(float(i)/3.)*.9,c=.8+fract(float(i+1)/4.); float x=sin(t*b+a),y=cos(t*c+a*1.5); return .5+.5*vec2(x,y); }\n'+
-    'void main(){ vec2 uv=v_objectUV; uv+=.5; vec2 grainUV=uv*1000.; float grain=noise(grainUV,vec2(0.)); float mixerGrain=.4*u_grainMixer*(grain-.5);\n'+
-    ' float t=.5*(u_time+41.5); float radius=smoothstep(0.,1.,length(uv-.5)); float center=1.-radius;\n'+
-    ' for(float i=1.;i<=2.;i++){ uv.x+=u_distortion*center/i*sin(t+i*.4*smoothstep(.0,1.,uv.y))*cos(.2*t+i*2.4*smoothstep(.0,1.,uv.y)); uv.y+=u_distortion*center/i*cos(t+i*2.*smoothstep(.0,1.,uv.x)); }\n'+
-    ' vec2 uvR=uv-vec2(.5); uvR=rotate(uvR,-3.*u_swirl*radius); uvR+=vec2(.5);\n'+
-    ' vec3 color=vec3(0.); float tw=0.;\n'+
-    ' for(int i=0;i<'+MAX+';i++){ if(i>=int(u_colorsCount)) break; vec2 pos=getPosition(i,t)+mixerGrain; float dist=pow(length(uvR-pos),3.5); float w=1./(dist+1e-3); color+=u_colors[i].rgb*u_colors[i].a*w; tw+=w; }\n'+
-    ' color/=max(1e-4,tw);\n'+
-    ' float go=valueNoise(rotate(grainUV,1.)+vec2(3.)); go=mix(go,valueNoise(rotate(grainUV,2.)+vec2(-1.)),.5); go=pow(go,1.3); float gV=go*2.-1.; float gS=pow(u_grainOverlay*abs(gV),.8); color=mix(color,vec3(step(0.,gV)),.35*gS);\n'+
-    ' fragColor=vec4(color,1.0); }';
-  function sh(ty,src){ var o=gl.createShader(ty); gl.shaderSource(o,src); gl.compileShader(o); if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; }
-  var prog;
-  try{ prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,VERT)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FRAG)); gl.linkProgram(prog);
-    if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)); }
-  catch(e){ canvas.classList.add('off'); return; }                   // 컴파일 실패 = 폴백
-  gl.useProgram(prog);
-  var b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-  var loc=gl.getAttribLocation(prog,'a_position'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-  var uni={}; ['u_time','u_colors','u_colorsCount','u_distortion','u_swirl','u_grainMixer','u_grainOverlay','u_scale'].forEach(function(n){ uni[n]=gl.getUniformLocation(prog,n); });
-  var cs=getComputedStyle(document.documentElement);
-  function hx(h){ h=(h||'').trim()||'#121212'; return [parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255]; }
-  var BG=hx(cs.getPropertyValue('--bg'));                             // :root 토큰 계승(raw hex 없음)
-  function tint(t){ return [BG[0]+(1-BG[0])*t, BG[1]+(1-BG[1])*t, BG[2]+(1-BG[2])*t, 1.0]; }   // --bg × 흰색 알파(무채색 명암)
-  var LUM=0.10, COLORS=[tint(LUM*0.08),tint(LUM*0.35),tint(LUM*1.0),tint(LUM*0.18),tint(LUM*0.55)];
-  var P={dist:0.36,swirl:0.34,speed:0.45,scale:0.86,grain:0.12};      // 운영자 확정 세팅
-  var flat=new Float32Array(MAX*4); COLORS.forEach(function(c,i){ flat.set(c,i*4); });
-  function resize(){ var dpr=Math.min(window.devicePixelRatio||1,2); canvas.width=Math.round(innerWidth*dpr); canvas.height=Math.round(innerHeight*dpr); gl.viewport(0,0,canvas.width,canvas.height); }
-  resize(); addEventListener('resize',resize);
-  var simTime=0, last=performance.now(), raf=0, running=false;
-  var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
-  function draw(now){ raf=0; var dt=Math.min(0.05,(now-last)/1000); last=now; simTime+=dt*P.speed*6.0;
-    gl.uniform1f(uni.u_time,simTime); gl.uniform1f(uni.u_distortion,P.dist); gl.uniform1f(uni.u_swirl,P.swirl);
-    gl.uniform1f(uni.u_grainMixer,0.15); gl.uniform1f(uni.u_grainOverlay,P.grain); gl.uniform1f(uni.u_scale,P.scale);
-    gl.uniform4fv(uni.u_colors,flat); gl.uniform1f(uni.u_colorsCount,COLORS.length);
-    gl.drawArrays(gl.TRIANGLES,0,3); if(running && !reduce) raf=requestAnimationFrame(draw); }
-  function start(){ if(running) return; running=true; last=performance.now(); raf=requestAnimationFrame(draw); }
-  function stop(){ running=false; if(raf){ cancelAnimationFrame(raf); raf=0; } }
-  if(reduce) draw(performance.now()); else start();                  // reduced-motion = 정적 1프레임
-  document.addEventListener('visibilitychange',function(){ if(document.hidden) stop(); else if(!reduce) start(); });   // 백그라운드/화면꺼짐 정지
 })();
 </script>
 </body>
