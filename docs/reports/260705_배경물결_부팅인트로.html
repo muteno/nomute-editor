@@ -1,0 +1,88 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>최하단 배경 = 무채색 물결 셰이더 + 부팅 인트로</title>
+<style>
+  :root{ --bg:#121212; --accent:#0FFD02; --accent-5:#0cd0f7; --fg:#eef7f0; --mut:#8fa697;
+    --card:rgba(255,255,255,.04); --line:rgba(255,255,255,.09); --ok:#5fdfa3; --warn:#f3c95a; --bad:#f5807f; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px;-webkit-font-smoothing:antialiased;padding:22px 16px 60px;max-width:760px;margin:0 auto}
+  h1{font-size:21px;font-weight:800;margin:0 0 4px;line-height:1.35}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+  h2{font-size:15px;font-weight:800;margin:26px 0 11px;display:flex;align-items:center;gap:8px}
+  h2::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);flex:none}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 15px;margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:2px 0}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:12px}
+  td b{color:var(--fg)}
+  .before{color:var(--mut)} .after{color:var(--fg)}
+  .wave{height:120px;border-radius:12px;margin:6px 0 2px;position:relative;overflow:hidden;
+    background:radial-gradient(120% 90% at 75% 80%, #2a2a2a 0%, #1c1c1c 35%, #141414 65%, #101010 100%)}
+  .wave span{position:absolute;left:12px;bottom:10px;font-size:11px;color:var(--mut)}
+  ul{margin:6px 0;padding-left:20px} li{margin:4px 0}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:6px}
+  .t-fix{background:rgba(95,223,163,.16);color:var(--ok)} .t-risk{background:rgba(243,201,90,.16);color:var(--warn)}
+  .t-reg{background:rgba(245,128,127,.16);color:var(--bad)}
+  code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .ok{color:var(--ok);font-weight:700} .accent{color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+</style>
+
+<h1>최하단 배경 = 무채색 물결 셰이더 + 부팅 인트로</h1>
+<div class="sub">260705 · <code>viewer/index.html</code> · <code>manifest.json</code> · PR #1666 · §검증 10인 평의회 통과</div>
+
+<div class="wave"><span>무채색 회색 물결(명암 0.10) — 실제론 천천히 흐름</span></div>
+
+<h2>무엇을 바꿨나</h2>
+<div class="card">
+최하단 배경(<code>.bgfx</code>)에 깔려 있던 정적 실크 이미지(<code>feed_bg.png</code>)를 <b>채도 0 회색 물결이 천천히 흐르는 WebGL 셰이더</b>로 교체했어. 앱 켤 때 부팅화면(웹)에도 같은 물결 + 프로필 아이콘·앱이름을 얹었고, 물결은 <b>부팅부터 앱까지 끊김 없이 연속</b>돼. paper-design/shaders의 mesh-gradient 원본을 그대로 이식하고 색만 우리 <code>--bg</code> 토큰으로 무채색화한 거야.
+</div>
+
+<h2>전 / 후</h2>
+<table>
+<tr><th>항목</th><th>전</th><th>후</th></tr>
+<tr><td><b>피드 배경</b></td><td class="before">feed_bg.png 다크 실크 (정적)</td><td class="after">회색 물결 셰이더 (은은히 흐름) · feed_bg = 폴백 강등</td></tr>
+<tr><td><b>부팅화면</b></td><td class="before">검정 breathing (crefDim)</td><td class="after">물결 + 프로필 아이콘 + "노뮤트 뉴스 큐레이션"</td></tr>
+<tr><td><b>색</b></td><td class="before">—</td><td class="after"><code>--bg</code>에 흰색 알파 tint (무채색·raw hex 0)</td></tr>
+<tr><td><b>OS splash 배경</b></td><td class="before">#0a120d</td><td class="after">#121212 (물결 톤 이음매)</td></tr>
+</table>
+
+<h2>효율성 · 성능</h2>
+<div class="card">
+<ul>
+<li><b>30fps 프레임 캡</b> — 앰비언트 배경이라 60/120fps 불필요, 무손실로 GPU/배터리 절반 절감</li>
+<li><b>정지 조건 3중</b> — 백그라운드(화면 꺼짐)·전체화면 모달(<code>dialog[open]</code>) 가림·reduced-motion 시 렌더 정지</li>
+<li><b>정적 셰이더 아님이지만 가벼움</b> — antialias 끔, 색은 1회 계산, 프레임당 힙 할당 0</li>
+<li>OS splash(안드 PWA)는 셰이더 불가(OS 제약) → 배경색만 물결 톤 정렬</li>
+</ul>
+</div>
+
+<h2>10인 평의회 발견 · 수정</h2>
+<div class="card">
+<div style="margin-bottom:10px"><span class="tag t-reg">회귀 수정</span> 부팅 후 <code>body.booted&gt;*{opacity:1}</code>이 푸터 딤(<code>.foot</code> .55)·알림 pill 숨김(<code>.nm-toast</code> 0)을 덮어써서 <b>고스트 pill이 하단에 눌러붙는 회귀</b> → <code>:where()</code> 특이도 0으로 근본 해결(<span class="ok">headless로 foot=.55 확인</span>)</div>
+<div class="grid2">
+<div><span class="tag t-fix">견고성</span> 컨텍스트 로스트(모바일 GPU 리셋) 핸들러 — 즉시 feed_bg 폴백 + 복원 시 재빌드</div>
+<div><span class="tag t-fix">성능</span> 30fps 캡 · 모달 가림 정지 · antialias off</div>
+<div><span class="tag t-fix">전환</span> 스플래시 페이드아웃 delay .12s — 로고 고스트 겹침 완화</div>
+<div><span class="tag t-fix">정합</span> border-radius→<code>var(--r-modal)</code> · resize 치수가드 · 딥링크 ::backdrop 억제</div>
+</div>
+</div>
+
+<h2>품질저하 리스크</h2>
+<div class="card">
+<ul>
+<li><span class="tag t-risk">주의</span> <b>부팅게이트 규칙 변경</b> — 앞으로 body 직속 자식을 새로 추가하면 <code>#wavebg/.bgfx/#bootsplash</code> 화이트리스트를 확인해야 함(누락 시 부팅 중 노출 어긋남). 작업이력에 명시.</li>
+<li><span class="tag t-risk">주의</span> mediump 정밀도 — 저사양 폰 장시간 포그라운드 시 물결이 미세하게 끊길 수 있음(highp는 전력 트레이드오프라 유지)</li>
+<li><span class="tag t-risk">주의</span> 저사양 자동감지 게이트는 없음(WebGL 하드실패만 폴백). OS splash(로고)↔부팅 스플래시(프로필) 이미지가 달라 런치 시 미세 점프. manifest 변경은 iOS 홈화면 재설치해야 반영.</li>
+<li><b>영구 블랙 없음</b> — 4중 부팅 안전망 유지, headless 부팅 전/후 전환 PASS.</li>
+</ul>
+</div>
+
+<h2>검증</h2>
+<div class="card">
+§검증 10인 평의회(Opus 4.8 · READ-ONLY) 각기 다른 앵글 — 영구블랙·FOUC·성능·메모리·호환폴백·GLSL·z-index·통합·접근성·총괄. 핵심 기능 <span class="ok">전부 OK</span>, 발견 11건 전부 수정. headless(Chromium) 실측: 셰이더 컴파일·렌더 OK · 부팅 전(스플래시+물결·앱숨김)/후(앱+스플래시사라짐·foot=.55) PASS · <code>check_refs rc=0</code>.
+</div>
