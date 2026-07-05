@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <!-- 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). -->
-<!-- 배너 preload 일시 해제(슬림 헤더 260706 — 배너 숨김 상태라 377KB 선다운로드 낭비 · 배너 복귀 시 아래 줄 원복): <link rel="preload" as="image" href="assets/brand/main_background.jpg?v=260705t" fetchpriority="high"> --><!-- 헤더 CI 로고 preload 제거(260706 운영자 "좌상단 CI 없애줘" — 워드마크는 PGSans 임베드라 fetch 0) -->
+<!-- 배너 preload 일시 해제(슬림 헤더 260706 — 배너 숨김 상태라 377KB 선다운로드 낭비 · 배너 복귀 시 아래 줄 원복): <link rel="preload" as="image" href="assets/brand/main_background.jpg?v=260705t" fetchpriority="high"> --><link rel="preload" as="image" href="assets/brand/logo.png" fetchpriority="high"><!-- 슬림 헤더 로고 = 부팅 첫 시각 요소(29KB) 조기 다운로드 -->
 <script defer src="marked.min.js"></script><!-- self-host(옛 jsdelivr CDN → 레포 번들 · 운영자 260705 "시작 시 멈춤" 진단: CDN SPOF 제거) · defer = 첫 피드 렌더는 textContent라 marked 불필요(상세 열 때만) → 파싱 비차단으로 부팅 가속 · setOptions는 window.marked 가드로 defer 늦어도 안전(parse는 open() 시점=로드 완료) -->
 
 <script defer src="purify.min.js"></script><!-- self-host + defer(marked와 동일 · 첫 렌더 비차단·sanitize는 상세 열 때만) -->
@@ -383,10 +383,10 @@
   /* 펼침폭 = min(300px, 화면폭 − 우측오프셋94 − 버튼80(검색+새로고침 36+36+gap8) − 좌여백16). 화면 밖(좌측) 넘침 방지 — 애니메이션·기능 불변, target 폭만 화면 안에 캡 */
   .topsearch.open input { width:min(300px, calc(100vw - 190px)); opacity:1; padding:0 15px; border-color:rgba(255,255,255,.12); }
   .topsearch input::placeholder { color:rgba(255,255,255,.5); font-weight:400; }
-  /* ── 슬림 헤더(운영자 260706 "프로필·검색만 살리고 배너·펫은 날림 — 삭제 아님" · 2차 "인트로 News Curation 상단 가운데 + 좌상단 CI 제거") — .topbanner의 slim 클래스가 스위치: 떼면 배너·펫 원복 · 배너 img는 data-src 대기(숨김 상태 377KB 다운로드 0) ── */
-  .topbanner.slim { padding:10px 16px; min-height:60px; }   /* 패딩 = 기존 topbanner 값 계승 + 하단 대칭 · min-height 60 = 프로필 원 지름(기하 정합 — 워드마크가 absolute라 행 밴드는 이걸로 확보) */
-  .topbanner.slim .brandmark { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:5; white-space:nowrap; pointer-events:none;
-    font-family:'PGSans',var(--font-status); font-size:15px; font-weight:400; letter-spacing:.6px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* 워드마크 = 인트로 #bootsplash .bs-name 확립값 그대로 계승(운영자 "인트로에 쓰이는 News Curation을 상단 가운데") · pointer-events:none = 검색/프로필 탭 무간섭 · z5 < 검색 z6 · 정적 텍스트라 translate 중앙정렬 안전(hover/press transform 없음) */
+  /* ── 슬림 헤더(운영자 260706 "메인 로고 상단 + 프로필·검색만 살리고 배너·펫은 날림 — 삭제 아님") — .topbanner의 slim 클래스가 스위치: 떼면 배너·펫 원복 + 로고 자동 숨김(이중 노출 0) · 배너 img는 data-src 대기(숨김 상태 377KB 다운로드 0) ── */
+  .brandlogo { display:none; }   /* 비슬림(배너 복귀) 시 로고 미표시 */
+  .topbanner.slim { display:flex; align-items:center; padding:10px 16px; }   /* 패딩 = 기존 topbanner 값 계승 + 하단 대칭 */
+  .topbanner.slim .brandlogo { display:block; width:58px; height:58px; object-fit:contain; }   /* 로고 크기 = 발행본 .nm-logo 확립값(58px contain) 계승 */
   .topbanner.slim .bannerframe, .topbanner.slim .lovemarq, .topbanner.slim .pet { display:none; }   /* 배너·마퀴·산책펫 = 숨김(코드·자산·애니 전부 보존) */
   .topbanner.slim .profile, .topbanner.slim .topsearch { bottom:auto; top:50%; margin-top:-30px; }   /* 헤더 행 세로중앙 = 60px box 절반 음수마진(translate 중앙정렬은 hover/press transform과 충돌이라 금지) */
   .topbanner.slim .pmenu { top:calc(100% + 4px); }   /* 프로필 메뉴 = 헤더 행 바로 아래(배너 시절 고정 top:46은 슬림에선 아바타를 덮음) */
@@ -1966,10 +1966,8 @@
     .topbanner { padding:8px 12px 0; }
     .profile { width:54px; height:54px; right:22px; bottom:-20px; }
     .topsearch { bottom:-26px; height:54px; }   /* 모바일 — 프로필 동일 box + ~6px 더 아래(운영자 260621) */
-    /* 슬림 헤더 모바일 = 2단(워드마크 줄 가운데 → 아이콘 밴드 우측) — 단일 밴드 가운데 정렬은 뷰포트 약 520px 미만에서 우측 아이콘 무리(x≈216~)와 물리 충돌(실측 260706: CURATION 꼬리가 새로고침에 깔림) → 폭 못 줄이는 구조라 세로 분리. 아이콘 위치·크기는 불변(우측·엄지권) */
-    .topbanner.slim { padding:8px 12px; min-height:0; }
-    .topbanner.slim .brandmark { position:static; transform:none; text-align:center; margin:0 0 60px; }   /* 60 = 아이콘 밴드 54 + 간격 6 예약(워드마크 아래) */
-    .topbanner.slim .profile, .topbanner.slim .topsearch { top:auto; bottom:8px; margin-top:0; }   /* 아이콘 밴드 = 헤더 하단 정렬(모바일 2단) */
+    .topbanner.slim { padding:8px 12px; }   /* 슬림 헤더 = 모바일 패딩 계승 + 하단 대칭 */
+    .topbanner.slim .profile, .topbanner.slim .topsearch { margin-top:-27px; }   /* 모바일 54px box 절반(세로중앙 유지) */
     .bar { padding:0 12px; }
     dialog { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
     #dlg .dlg-h { padding-top:calc(11px + env(safe-area-inset-top)); border-top-left-radius:0; border-top-right-radius:0; }   /* 노치 회피 + 풀스크린 = 헤더 띠 상단 모서리 직각(모달 radius:0과 정합 → 둥근 코너 틈으로 본체 배경 비치던 것 차단 · 운영자 260704) */
@@ -2352,8 +2350,8 @@ try {
 <div id="bootsplash" aria-hidden="true"><div class="bs-name">News Curation</div><span class="bs-dots gdots"><i>.</i><i>.</i><i>.</i></span></div>
 
 <div class="topclock"><span class="dh-date" id="dhDate"></span><span class="dh-sep"></span><span class="dh-clock" id="dhClock"></span><span class="dh-cnt" id="dhCnt"></span></div>
-<div class="topbanner slim"><!-- slim = 워드마크 헤더 모드(운영자 260706 "배너·펫 날리고 프로필+검색" · 2차 "인트로 News Curation 가운데 + 좌상단 CI 제거") — 배너·펫 원복 = slim 클래스 제거 + 배너 img data-src→src + head 배너 preload 원복 -->
-  <div class="brandmark">News Curation</div>
+<div class="topbanner slim"><!-- slim = 로고 헤더 모드(운영자 260706 "배너·펫 날리고 로고+프로필+검색") — 원복 = slim 클래스 제거 + 배너 img data-src→src + head 배너 preload 원복 -->
+  <img class="brandlogo" src="assets/brand/logo.png" alt="NO mute" decoding="async" fetchpriority="high">
   <div class="bannerframe"><div class="bannerclip">
     <img class="banner layer-feed" data-src="assets/brand/main_background.jpg?v=260705t" alt="THE RIGHT TO TELL PEOPLE WHAT THEY DO NOT WANT TO HEAR. — GEORGE ORWELL" fetchpriority="high"><!-- 슬림 헤더(260706): src→data-src 대기 = 숨김 배너 다운로드 0 · _bannerReady는 src 없음=complete 즉시 통과(부팅 무영향·오히려 가속) -->
     <!-- 탭별 배너 레이어 폐지(260705) — 단일 배너 --><!-- 숨은 배너(opacity 0) = data-src 지연 로드(부팅 대역폭 절약) → showTab이 scrap 탭 진입 시 src 세팅(loadBanner) · 운영자 260705 로딩 최적화 -->
