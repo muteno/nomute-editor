@@ -3531,20 +3531,20 @@ async function dlAllSeq(btn, urls, namer) {
   urls = (urls || []).filter(Boolean);
   if (!urls.length) return;
   btn._dlbusy = 1; btn.style.pointerEvents = 'none';
-  btn.style.minWidth = Math.ceil(btn.getBoundingClientRect().width) + 'px';   // 폭 잠금 — 옛 '저장 중… i/N' 라벨이 버튼 폭을 키워 행이 출렁(thumb .jsave 동일 실측 · 운영자 260705). 진행 라벨은 숫자만이라 잠근 폭 안 = 시퀀스 내내 레이아웃 무이동
+  btn.style.minWidth = Math.ceil(btn.getBoundingClientRect().width) + 'px';   // 폭 잠금 — 옛 '저장 중… i/N' 라벨이 버튼 폭을 키워 행이 출렁(thumb 전체버튼 동일 실측 · 운영자 260705). 진행 라벨은 숫자만이라 잠근 폭 안 = 시퀀스 내내 레이아웃 무이동
   const lbl = btn.querySelector('.cref-dllbl');
   const orig = lbl ? lbl.textContent : '';
   btn.classList.remove('dlseq-done', 'dlseq-release'); btn.classList.add('dlseq-busy');   // 좌→우 채움 시작(글래스 §9)
   btn.style.setProperty('--p', '0');
   for (let i = 0; i < urls.length; i++) {
     downloadImg(urls[i], namer(i));
-    if (lbl) lbl.textContent = `${i + 1}/${urls.length}`;   // 산문 '저장 중…' 제거 = 숫자만(픽토+진행수 어포던스·§디자인 산문 최소화·tabular-nums) — 폭 잠금과 짝(운영자 260705 · thumb jSaveSeq와 1:1)
+    if (lbl) lbl.textContent = `${i + 1}/${urls.length}`;   // 산문 '저장 중…' 제거 = 숫자만(픽토+진행수 어포던스·§디자인 산문 최소화·tabular-nums) — 폭 잠금과 짝(운영자 260705 · thumb dlAllSeq와 1:1 — 구 jSaveSeq 폐기 260705)
     btn.style.setProperty('--p', String((i + 1) / urls.length));   // 진행률만큼 채움(검정 글자 드러남)
     await new Promise(r => setTimeout(r, 280));
   }
   if (lbl) lbl.textContent = '완료';
   btn.classList.remove('dlseq-busy'); btn.classList.add('dlseq-done', 'dl-done');   // 꽉 채움 + ✓ 팝 + 글로우 · dl-done=전체 받음 mut 유지
-  urls.forEach(u => DLED.add(_dlKey(u)));   // 개별 URL도 '받음' 기억(개별 버튼도 흰색 복원)
+  urls.forEach(u => DLED.add(_dlKey(u)));   // 개별 URL도 '받음' 기억(개별 버튼도 mut 복원)
   setTimeout(() => {   // ✓ 잠깐 보여준 뒤 즉시 복귀(드레인 없음 = 글자 안 가려짐·운영자 260622)
     btn.classList.add('dlseq-snap'); btn.classList.remove('dlseq-done');
     if (lbl) lbl.textContent = orig || '전체';
