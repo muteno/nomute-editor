@@ -30,7 +30,7 @@ self.addEventListener('fetch', event => {
     const cached = await cache.match(key);
     const netP = fetch(req).then(res => {
       if (res.ok && !res.redirected && res.type === 'basic') {
-        return cache.put(key, res.clone()).then(() => res);   // put을 프라미스 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1)
+        return cache.put(key, res.clone()).then(() => res, () => res);   // put을 프라미스 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1) · 거부 시에도 res 반환 = put 실패(quota 등)가 첫 방문 정상 응답을 폐기하지 않음(재검증 지적)
       }
       if (cached && (res.redirected || res.type === 'opaqueredirect' || res.status === 401 || res.status === 403)) {
         // Access 세션 만료 추정 — 캐시는 안 덮고(로그인 페이지 오염 방지) 열린 페이지에 통지
