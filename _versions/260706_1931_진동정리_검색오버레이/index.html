@@ -5784,7 +5784,6 @@ function lkApply() { const o = lkA; for (let i = 0; i < 10; i++) { lkKds[i].quer
 function lkFill() { renderPinSlots(lkSlotsEl, lkReal); }   // 슬롯 시각 = stage-2/발행 정본 공유(방금 자리 숫자 노출·이전·미입력 모두 mut 동그라미) · 옛 * 마스킹+peek 0.7s → 동그라미 통일(운영자 260704) · 입력/검증/셔플 로직은 불변
 function lkFlash(el, d) {
   if (!el) return; el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); clearTimeout(el._ht); el._ht = setTimeout(() => el.classList.remove('hit'), 260);
-  try { navigator.vibrate && navigator.vibrate(15); } catch {}   // 진동 = PIN 키패드 전용(숫자·백스페이스 공통 진입점 · 운영자 260706 5차 "PIN 입력 빼고 진동 제거" — 전역 버튼 햅틱은 폐지·중간 강도 15ms만 여기 유지)
   if (d != null) { const f = document.createElement('span'); f.className = 'lk-fx'; f.textContent = d; el.appendChild(f); setTimeout(() => f.remove(), 520); }   // 잔상 = 숫자 확대 페이드(운영자 260706 확정 · 백스페이스는 숫자 없어 미주입)
 }
 function lkUnbad() { clearTimeout(lkBadT); lkSlotsEl.classList.remove('bad', 'shake'); if (!lkOutLeft()) lkErrEl.textContent = ''; }
@@ -7211,6 +7210,7 @@ function enterMerge(c) {
   document.body.classList.add('merge-mode');
   markMergeCards(); updateMergeBox();
   try { history.pushState({ merge: 1 }, ''); } catch {}   // 폰 뒤로가기 = 병합모드 취소(딴 화면 안 벗어남·§🎨 패턴)
+  try { navigator.vibrate && navigator.vibrate(12); } catch {}
 }
 function markMergeCards() {   // 앵커/멤버/선택 표시(재렌더 후에도 재적용)
   let anchorSeen = false;
@@ -7238,6 +7238,7 @@ function toggleMergeSel(id, card) {
   if (MERGE_SEL.has(id)) { MERGE_SEL.delete(id); card.classList.remove('sc-sel'); }
   else { MERGE_SEL.add(id); card.classList.add('sc-sel'); }
   updateMergeBox();
+  try { navigator.vibrate && navigator.vibrate(8); } catch {}
 }
 function updateMergeBox() {   // 병합 칩 = 선택 0이면 흐릿(.empty·눌러도 무동작), 1+면 활성
   const go = document.querySelector('#scrapList .sc-anchor .mtag-go'); if (!go) return;
@@ -8139,6 +8140,7 @@ function hideRestoreNav() {
     closeMinPicker();                                                            // 롱프레스 닫기 진입 = 열린 picker 먼저 정리(shield가 picker 위 덮는 시각 겹침 제거 · 평의회 A2 · 260628)
     tr.classList.remove('pulsing'); tr.classList.add('arming');
     tr.setAttribute('aria-label', '위 "닫기"를 탭하면 종료 · 다른 곳 탭하면 취소');
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
     const host = tr.parentElement || document.body;                             // ▲와 같은 레이어(모달 reparent 시 그 안 = 위에 보임)
     shield = document.createElement('div'); shield.className = 'tr-shield';
     shield.addEventListener('click', e => { e.stopPropagation(); if (armGuard) return; disarm(); });   // 아래 내용 클릭 차단 + 다른 곳 탭=취소
@@ -9421,7 +9423,8 @@ function openMsgDeepLink() {
 }
 
 // 부팅 reveal — 첫 피드 렌더 + 배너 이미지 로드 둘 다 끝난 뒤 한 번에 노출(시계만 먼저 뜨는 FOUC 차단·운영자 260626). idempotent.
-// 전역 버튼 탭 햅틱 = 폐지(운영자 260706 5차 "PIN 입력 빼고는 진동 넣지 마") — 진동 허용 = PIN 키패드(lkFlash)만 · 향후 검색 중앙 오버레이(첨부2 글래스필) 확정 시 그 인터랙션 추가 검토
+// 전역 버튼 탭 햅틱 — 중간 강도 15ms(운영자 260706 "진동 중간 강도") · 위임 1핸들러(pointerdown = 손끝 반응 즉시) · 버튼류 전부(잠금 키패드 포함 = 옛 lk-key 개별 8ms 통합) · iOS는 vibrate 미지원 = 무해 no-op
+addEventListener('pointerdown', e => { const t = e.target.closest && e.target.closest('button, a, [role="button"]'); if (t) { try { navigator.vibrate && navigator.vibrate(15); } catch {} } }, { capture: true, passive: true });
 const _bootReveal = () => document.body.classList.add('booted');   // 2초 홀드 폐지(운영자 260706 "항상 바로 본화면" — 스플래시 자체 폐지라 홀드 무의미) · 준비 즉시 노출
 const _bannerReady = new Promise(res => {
   const im = document.querySelector('.banner.layer-feed');
