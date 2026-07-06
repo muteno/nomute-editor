@@ -475,7 +475,8 @@
   .hist-grid > .hist-it:nth-child(4){ animation-delay:.12s } .hist-grid > .hist-it:nth-child(5){ animation-delay:.16s }
   .hist-grid > .hist-it:nth-child(n+6){ animation-delay:.2s }
   @keyframes histIn { from { opacity:0; transform:translateY(10px) scale(.985); } to { opacity:1; transform:none; } }
-  @media (prefers-reduced-motion:reduce) { .hist-grid > .hist-it { animation:none; } }
+  #histBody.closing { animation:histOut .26s cubic-bezier(.4,0,.7,.3) both; }   /* 이전 제작 닫힘 = 촤르륵(histOut 역방향 · 직전 제작 #carbar.closing 미러 · 운영자 260707 "닫힐 때도 촤르륵") */
+  @media (prefers-reduced-motion:reduce) { .hist-grid > .hist-it, #histBody.closing { animation:none; } }
   .hist-it { display:flex; flex-direction:column; }
   .hist-hd { color:var(--fg); font-size:11.5px; font-weight:600; margin:0 0 6px 7px; }   /* 제작 시각 = 오전/오후 H:MM · 흰색 · 좌측 들여쓰기(운영자 260621) */
   .hist-thumb { position:relative; }
@@ -1789,9 +1790,18 @@ function restoreById(id) {
   }
   return doRestore(pick);
 }
-$('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden; b.hidden = !open; $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open);
-  if (open) requestAnimationFrame(() => $('#hist').scrollIntoView({ behavior: 'smooth', block: 'start' }));   // 펼침 = 이전 제작을 상단 헤더 라인까지 자동 이징 스크롤 → 최근 항목 노출(운영자 260626)
-  else window.scrollTo({ top: 0, behavior: 'smooth' });   // 접음 = 상단 폼으로 복귀(첨부 상태)
+let _histCloseT = null;   // 이전 제작 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(직전 제작 _carCloseT 미러·운영자 260707)
+$('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden;   // hidden이면 지금 펼치는 동작
+  clearTimeout(_histCloseT); b.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)
+  $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open);
+  if (open) {   // 펼침 = hist-it 스태거 histIn(hidden 해제 시 재생)
+    b.hidden = false;
+    requestAnimationFrame(() => $('#hist').scrollIntoView({ behavior: 'smooth', block: 'start' }));   // 이전 제작을 상단 헤더 라인까지 자동 이징 스크롤 → 최근 항목 노출(운영자 260626)
+  } else {   // 닫힘 = 촤르륵(histOut 역재생 후 hidden · 직전 제작 carToggle 미러 · 운영자 260707)
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) { b.hidden = true; }
+    else { b.classList.add('closing'); _histCloseT = setTimeout(() => { b.hidden = true; b.classList.remove('closing'); }, 270); }   // .26s 애니 + 여유
+    window.scrollTo({ top: 0, behavior: 'smooth' });   // 접음 = 상단 폼으로 복귀(첨부 상태)
+  }
 });
 window.addEventListener('hashchange', () => maybeOpenHist());   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀜) 펼치게 · ()=래핑 = Event가 tries 인자로 새 안 들어가게(재시도 무력화 차단)
 // 결과(미리보기) 접기 — 이전 제작(histH) 로직 미러 · 기본 펼침(운영자 260706)
