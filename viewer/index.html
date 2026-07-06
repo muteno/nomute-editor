@@ -6180,8 +6180,8 @@ function renderSovResults() {
   if (!q) { host.innerHTML = ''; host._hits = null; return; }   // 검색어 없음 = 결과 접힘(:empty)
   const ql = q.toLowerCase();
   let hits;
-  if (CURTAB === 'scrap') hits = (CANDS || []).filter(c => (c.title || '').toLowerCase().includes(ql)).slice(0, 5).map(c => ({ lab: '레거시', color: 'var(--mut)', ag: '', title: c.title || '', open: () => pickedOpen(c) }));
-  else if (CURTAB === 'sns') hits = (SOCIAL || []).filter(s => (s.text || '').toLowerCase().includes(ql)).slice(0, 5).map(s => ({ lab: 'SNS', color: 'var(--mut)', ag: '', title: (s.text || '').slice(0, 90), open: () => { if (s.url) { try { window.open(s.url, '_blank', 'noopener'); } catch {} } } }));
+  if (CURTAB === 'scrap') hits = (CANDS || []).filter(c => (c.title || '').toLowerCase().includes(ql)).slice(0, 5).map(c => ({ lab: '레거시', color: 'var(--mut)', ag: '', title: c.title || '', open: () => { if (scFeedArticle(c)) { pickedOpen(c); return; } const u = scLinkUrl(c); if (u) openExt(u); } }));   // 요약됨=뉴스요약(pickedOpen)/안됨=대표매체 원문 새탭(openExt·window.open은 전역 open 섀도잉 금지) — 카드 라우팅(7614) 계승 · '피드 반영 중—곧 표시돼' 토스트 제거(운영자 260707)
+  else if (CURTAB === 'sns') hits = (SOCIAL || []).filter(s => (s.text || '').toLowerCase().includes(ql)).slice(0, 5).map(s => ({ lab: 'SNS', color: 'var(--mut)', ag: '', title: (s.text || '').slice(0, 90), open: () => { if (s.url) openExt(s.url); } }));   // SNS=해당 원문 링크로 이동(openExt=PWA 안전·전역 open 섀도잉 회피·운영자 260707)
   else hits = (DATA || []).filter(a => ((a.title || '') + (a.title_orig || '') + (a.media || '')).toLowerCase().includes(ql)).slice(0, 5).map(a => ({ lab: articleCat(a), color: CAT_COLOR[articleCat(a)] || 'var(--fg)', ag: relAge(feedAgeH(a)), title: a.title || '', open: () => open(a) }));
   if (!hits.length) { host.innerHTML = '<div class="sov-rempty">일치 결과 없음</div>'; host._hits = null; return; }
   host._hits = hits;
