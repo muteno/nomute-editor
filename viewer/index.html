@@ -456,7 +456,7 @@
     border:1px solid var(--line); border-radius:var(--r-l); padding:18px; margin:14px 0;   /* 최외곽 박스 모서리 = 레거시(.scrap-cols) 16px로 통일(운영자 260701·옛 --r 24px) */
     cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .1s;
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05);   /* 그림자·인셋 하이라이트도 soc-item 동일(비침 조건 한 벌) */
-    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both;
+    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards;
   }
   @keyframes cardIn { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce){ .card, .soc-item, .sc-item, .bpop, .min-pick { animation:none; } }   /* 이동 스태거 무효 = 전정계 배려(형제 .qrow:989/#ph-sum:1705 계승·분신술10 260704) */
@@ -473,7 +473,7 @@
      컨테이너 id 스코프(#scrapList/#snsList) = 컬럼색·rated 테두리보다 우선(위치 무관). 실패 트레이는 JS 수집 제외(앰버 의미색 보존 · 분신2). ── */
   #list .card.amb, #list .card.amb-fall,
   #scrapList .sc-item.amb, #scrapList .sc-item.amb-fall,
-  #snsList .soc-item.amb, #snsList .soc-item.amb-fall { transition:border-color .5s ease, box-shadow .5s ease, transform .55s var(--ease); animation:none; }   /* 상승·하강 모두 느린 전이(하강 = amb-fall 잔류 600ms 후 제거 → base 스냅 전이) · animation:none = 등장 cardIn(fill both)이 최종 keyframe transform을 영구 점유해 레거시·SNS 볼록(부양)이 안 먹던 원인 해제(운영자 260706 4차 "메뉴1·2 볼록 미적용" — amb는 유휴 5s 후라 등장 애니와 시점 안 겹침 = 스냅 0) */
+  #snsList .soc-item.amb, #snsList .soc-item.amb-fall { transition:border-color .5s ease, box-shadow .5s ease, transform .55s var(--ease); }   /* 상승·하강 모두 느린 전이(하강 = amb-fall 잔류 600ms 후 제거 → base 스냅 전이) · ⚠️ 옛 animation:none 토글 폐지(260706 5차) — none→cardIn(fill both) 복귀를 크롬이 애니 '재시작'으로 취급해 안착 순간 opacity 0부터 재생 = 운영자 "안착하면 번쩍/깜빡" 실측 재현(getAnimations cardIn:running@0ms). 볼록 미적용의 진짜 해법 = base fill을 both→backwards(종료 후 transform·opacity 점유 해제·to=base 동일이라 시각 무변) — 재발 주의: 등장 애니 있는 카드에 amb류 상태 클래스로 animation을 토글하지 말 것 */
   #list .card.amb:not(.brk):not(.iss),
   #scrapList .scrap-list .sc-item.amb:not(.b-brk):not(.b-iss):not(.lit-brk):not(.lit-iss),
   #snsList .soc-item.amb { border-color:rgba(var(--accent-rgb),.30);
@@ -619,7 +619,7 @@
   .soc-item { display:block; text-decoration:none; color:var(--fg); padding:12px 14px; border-radius:var(--r-l);   /* 최외곽 박스 모서리 = 레거시(.scrap-cols) 16px로 통일(운영자 260701·옛 14px) */
     background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20)); border:1px solid var(--line);   /* 글래스 = 실크 비침 · 테두리 = 피드 .card와 동일 var(--line)(거의 borderless) 통일 → 전 카드 일관(SNS 시안 정체성은 hover·burst·src 텍스트로) · 운영자 260626 */
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }
+    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards; }
   #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
   .soc-item:hover { border-color:rgba(var(--accent-rgb),.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(var(--accent-rgb),.2); }   /* SNS 시안 정체성 폐지 = 강조색 통일(운영자 260705) */
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
@@ -708,7 +708,7 @@
     box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05);
     backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);   /* SNS .soc-item 실크 글래스 1:1 계승(그라데·그림자·blur12 동일 = 비침 수준 동일 · 운영자 260706 "메뉴1 = 메뉴2 투명도") — 옛 패널 전담 blur13 폐지(패널 프로스트가 레거시만 한 겹 더 가리던 진범)·카드 단위 이관 */
     display:flex; flex-direction:column; gap:7px; transition:border-color .15s, background .15s;
-    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) both; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
+    animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards; }   /* 레거시/SNS 후보 카드도 촤르륵 스태거 */
   .sc-item.rated { border-color:rgba(0,238,210,.3); }
   .sc-item.picked { border-color:var(--accent); background:rgba(0,238,210,.06); }
   .sc-item.sc-clickable { cursor:pointer; }   /* 카드 본문 탭 = 대표 URL(버튼·링크 제외) */
