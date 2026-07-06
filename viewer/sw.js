@@ -1,28 +1,38 @@
 // 노뮤트 서비스워커 — ① 긴급(breaking) 속보 웹푸시 수신·표시 ② HTML 셸 stale-while-revalidate 캐시.
 // 발송 = .github/scripts/push_send.py(pywebpush) / 구독 = api/push. 정본 설명 = CLAUDE.md §🚨·§8-5.
 //
-// ── ② 셸 캐시(운영자 승인 260706 — OS 스플래시 노출 최단화) ──
-// 내비게이션(HTML 문서) 요청만 캐시-우선 + 백그라운드 재검증: 콜드부트 첫 페인트가 네트워크 대기 없이
-// 즉시 = WebAPK 스플래시가 한 깜빡으로 줄어듦. 데이터 JSON(articles 등)·JS·이미지는 종전대로 항상 네트워크
-// = 기사 내용은 '항상 최신' 불변 유지, HTML 셸만 배포 후 첫 진입이 직전판(백그라운드 갱신 → 다음 진입 반영).
+// ── ② 셸 캐시(운영자 승인 260706 — OS 스플래시 노출 최단화 · 기틀검증 5인 260706) ──
+// 뷰어 index 셸(/·/index.html) 최상위 내비게이션*만* 캐시-우선 + 백그라운드 재검증: 콜드부트 첫 페인트가
+// 네트워크 대기 없이 즉시 = WebAPK 스플래시가 한 깜빡으로 줄어듦.
+// ⚠️ 스코프 = index 두 경로 화이트리스트가 기틀(평의회 1·2·4·5 수렴): 도구 HTML(thumb/ly/k/comp/track)은
+//    loadToolFrame의 `?v=Date.now()` 버스트 + _headers no-cache = '항상 최신' 계약이라 절대 캐시 대상 아님
+//    (전 내비게이션 캐시였던 초안이 이 계약을 무력화 → REJECT·수정). 스코프 넓히기 = 기틀 변경(재검증 필수).
+// 트레이드(운영자 수용): index 셸 = 인라인 앱 JS 포함 통째로 배포 후 첫 진입이 직전판(백그라운드 갱신 →
+//    다음 진입 반영 · 당겨서 새로고침도 SWR = 즉시 새 셸 아님). 데이터 JSON(articles 등)·외부 JS·이미지는
+//    fetch(비내비게이션)라 SW 불간섭 = 기사 내용 '항상 최신' 불변.
 // 가드 3중: ⓐ res.type==='basic' && ok && !redirected만 캐시 = Cloudflare Access 로그인/리다이렉트 오염 차단
 //          ⓑ ?nosw=1 = 캐시 전면 우회 탈출구(순수 네트워크)
 //          ⓒ 재검증이 리다이렉트/401·403 감지 시 클라이언트에 nm-auth-stale 통지 → 페이지가 ?nosw=1 재진입
 //             = Access 세션 만료 시 '깨진 앱'에 안 갇히고 로그인 화면으로 자가치유(index 리스너와 한 쌍).
+// 롤백 런북(평의회 4): sw.js *삭제(404) 금지* — 삭제해도 브라우저는 기존 SW를 언레지스터하지 않고 캐시 서빙
+//    계속함. 반드시 '무해화 sw.js 배포'(fetch 핸들러 제거 + activate에서 nm-shell-* *전량* delete)로 되돌릴 것.
 const SHELL_CACHE = 'nm-shell-v1';
+const SHELL_PATHS = ['/', '/index.html'];   // 캐시 화이트리스트 — 여기 없는 HTML은 SW가 손 안 댐
 
 self.addEventListener('fetch', event => {
   const req = event.request;
-  if (req.method !== 'GET' || req.mode !== 'navigate') return;   // HTML 문서(탭·iframe)만 — 데이터·에셋 불간섭
+  if (req.method !== 'GET' || req.mode !== 'navigate') return;   // 최상위/iframe HTML 문서 외 불간섭
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin || url.searchParams.has('nosw')) return;
+  if (url.origin !== self.location.origin || !SHELL_PATHS.includes(url.pathname) || url.searchParams.has('nosw')) return;
   event.respondWith((async () => {
     const key = url.origin + url.pathname;   // 쿼리 제거 정규화 = 딥링크(?a=·?msg=) 변형이 캐시를 늘리지도 가르지도 않음
     const cache = await caches.open(SHELL_CACHE);
     const cached = await cache.match(key);
     const netP = fetch(req).then(res => {
-      if (res.ok && !res.redirected && res.type === 'basic') { cache.put(key, res.clone()); }
-      else if (cached && (res.redirected || res.type === 'opaqueredirect' || res.status === 401 || res.status === 403)) {
+      if (res.ok && !res.redirected && res.type === 'basic') {
+        return cache.put(key, res.clone()).then(() => res);   // put을 프라미스 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1)
+      }
+      if (cached && (res.redirected || res.type === 'opaqueredirect' || res.status === 401 || res.status === 403)) {
         // Access 세션 만료 추정 — 캐시는 안 덮고(로그인 페이지 오염 방지) 열린 페이지에 통지
         self.clients.matchAll({ type: 'window' }).then(list => list.forEach(c => c.postMessage({ type: 'nm-auth-stale' })));
       }

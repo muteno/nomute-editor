@@ -5529,11 +5529,15 @@ function openMsgbox(highlightId) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
   // Access 세션 만료 자가치유 — SW 재검증이 로그인 리다이렉트를 감지하면 통지 → ?nosw=1(캐시 우회) 재진입 = 로그인 화면 정상 노출.
+  // ?nosw=1로 정상 착지(재로그인 복귀) = 가드 해제 → 같은 탭에서 Access가 *재*만료돼도 자가치유 재무장(평의회 1 지적).
+  try { if (new URL(location.href).searchParams.has('nosw')) sessionStorage.removeItem('nmAuthKick'); } catch {}
   navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data && e.data.type === 'nm-auth-stale' && !sessionStorage.getItem('nmAuthKick')) {
-      try { sessionStorage.setItem('nmAuthKick', '1'); } catch {}   // 세션 1회 가드 = 리로드 루프 차단
-      const u = new URL(location.href); u.searchParams.set('nosw', '1'); location.replace(u.href);
-    }
+    try {   // sessionStorage 자체가 막힌 웹뷰(쿠키 차단 등)에서 getItem throw로 핸들러 침묵사 방지(평의회 2·5)
+      if (e.data && e.data.type === 'nm-auth-stale' && !sessionStorage.getItem('nmAuthKick')) {
+        sessionStorage.setItem('nmAuthKick', '1');   // 세션 1회 가드 = 리로드 루프 차단(SW의 nosw 조기 return이 1차 방어)
+        const u = new URL(location.href); u.searchParams.set('nosw', '1'); location.replace(u.href);
+      }
+    } catch {}
   });
 }
 
