@@ -7438,11 +7438,12 @@ const ACC_T_HALF = 13, ACC_T_POW = 3.0;   // 반값 나이(h)·가속지수 — 
 const timeAcc = c => 1 / (1 + Math.pow(Math.max(0, (Date.now() - scTs(c)) / 3600000) / ACC_T_HALF, ACC_T_POW));
 // ── 아웃라이어 감쇠하한(OUT · 운영자 260706): '표준편차 기준 압도적 다매체'는 하루 안엔 안 묻힌다 ──
 //    배경 실측: 병합 합산 cr39(장윤기 · z7.0) 사회 대형이 23h 시점 timeAcc .15에 눌려 신선 중형(cr9~13)들과 순위가 계속 뒤바뀜(운영자 "계속 순서가 바껴 본지도 모르겠다").
-//    완화 = scScore의 시간항만 하한: z ≥ OUT_Z1이면 timeAcc가 OUT_AGE_CAP_H(12h=반값점) 시점 값(.564) 밑으로 안 내려감 · OUT_Z0~Z1 선형 램프(경계 순위 플리커 방지).
-//    z = 강건 z(중앙값+MAD×1.4826) — 평균/표준편차는 아카이브 고래 꼬리에 오염돼 아웃라이어가 안 잡힘(실측: raw σ9.56 → cr39가 z2.0 / MAD σr2.97 → z7.0). 통계 풀 = 병합 후 pool 랭킹축(_rankCross??cross) ≥ CROSS_MIN(8·누적 진입선) — renderScrap이 outStatUpd로 갱신.
-//    자격 = issCross(⚡이슈 배지 자격 그대로 상속: cross≥10[g3=8]·grade null‖≥2·정형컷) — 배지도 못 다는 시황/PR 합산몬스터는 대상 아님(배지와 대칭). OUT_MAX_AGE_H(24h=배지 소멸선)부터 정상 감쇠 복귀(운영자 "1일 넘어가면 밀리는 게 맞다" — 배지·완화 동시 소멸).
-//    풀 n<OUT_POOL_N_MIN(심야)이면 통계 무의미 = 완화 OFF(보수·§1 · daily_health 심야가드 15 선례). 신호·진입·배지·표시·신규(fastScore) 0 변경 = 누적 랭킹 시간항 전용. 실측 260706: 발동 3건뿐{cr44 z8.7·cr39 z7.0 완전 / cr25 z2.6 ×1.15} · 장윤기 23h 7위→2위 · 25h 완화 OFF 9위 자연 침몰. 정본 = docs/curation-algorithm.md §8 260706.
-const OUT_Z0 = 2.5, OUT_Z1 = 3.5, OUT_AGE_CAP_H = 12, OUT_MAX_AGE_H = 24, OUT_POOL_N_MIN = 15, OUT_SD_MIN = 2;   // z 램프 시작/완전 · 감쇠 하한 나이(h) · 완화 상한 나이(h) · 통계 최소 풀 · σr 하한(동질 풀 z 폭주 방지). 조정 가능(§8).
+//    완화 = scScore의 시간항만 하한: z ≥ OUT_Z1이면 timeAcc가 OUT_AGE_CAP_H(12h) 시점 값(.560) 밑으로 안 내려감 · OUT_Z0~Z1 선형 램프(경계 순위 플리커 방지 — 단 24h 나이 경계는 의도적 하드 컷 = 운영자 "1일" 스펙·배지 동시 소멸이라 비대칭 아님·§8).
+//    z = 강건 z(중앙값+MAD×1.4826) — 평균/표준편차는 아카이브 고래 꼬리에 오염돼 아웃라이어가 안 잡힘(실측·병합 후 랭킹축 풀: raw σ9.56[꼬리 = 병합 앵커 rk94·82·77…] → cr39가 z2.0 / MAD σr2.97 → z7.0 · 병합 전 raw 클러스터 풀은 σ2.9라 차이가 안 보임 = 축 주의). 통계 풀 = 병합 후 pool 랭킹축(_rankCross??cross) ≥ CROSS_MIN(8·누적 진입선) — renderScrap이 outStatUpd로 갱신.
+//    자격 = issCross(⚡이슈 배지 자격 그대로 상속: cross≥10[g3=8]·grade null‖≥2·정형컷) AND rc≥FOLLOW_RC_MIN(§★ '다매체 AND 계속보도') — 배지도 못 다는 시황/PR 합산몬스터·일회성 신디케이션은 대상 아님. OUT_MAX_AGE_H(24h=배지 소멸선·배지와 동일 max축)부터 정상 감쇠 복귀(운영자 "1일 넘어가면 밀리는 게 맞다").
+//    풀 n<OUT_POOL_N_MIN(콜드스타트·데이터 희박 — 풀은 전연령이라 평시 ~470건 = 통상 미발동 안전망)이면 통계 무의미 = 완화 OFF(보수·§1). σr 하한 2 = 동질 풀서 z 폭주 방지(그땐 사실상 med+5~7 절대마진 게이트로 동작·§8). 신호·진입·배지·표시·신규(fastScore) 0 변경 = 누적 랭킹 시간항 전용.
+//    실측 260706(라이브 스냅샷 한정 — 시불변 아님·신규 유입 의존): 발동 3건{cr44 z8.7·cr39 z7.0 완전 / cr25 z2.6 ×1.2 미미} · 장윤기 23h 7위→2위 · 25h 완화 OFF 9위 자연 침몰. 감시 = daily_health OUT 계기판(근사). 정본 = docs/curation-algorithm.md §8 260706.
+const OUT_Z0 = 2.5, OUT_Z1 = 3.5, OUT_AGE_CAP_H = 12, OUT_MAX_AGE_H = 24, OUT_POOL_N_MIN = 15, OUT_SD_MIN = 2;   // z 램프 시작/완전 · 감쇠 하한 나이(h) · 완화 상한 나이(h) · 통계 최소 풀(콜드스타트 가드) · σr 하한(동질 풀 z 폭주 방지). 조정 가능(§8).
 let _outMed = 0, _outSd = 0;   // 강건 통계(중앙값 · MAD σ환산) — renderScrap이 매 렌더 갱신(검색 중 제외 · 초기 0 = 완화 OFF 보수 폴백)
 const _outMedian = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const outStatUpd = (pool, min) => {
@@ -7451,10 +7452,13 @@ const outStatUpd = (pool, min) => {
   _outMed = _outMedian(xs);
   _outSd = Math.max(1.4826 * _outMedian(xs.map(x => Math.abs(x - _outMed))), OUT_SD_MIN);
 };
-const timeAccOut = c => {   // 아웃라이어면 시간항 하한(램프 블렌드) — issCross는 아래 정의(호출은 렌더시라 TDZ 무해)
+const timeAccOut = c => {   // 아웃라이어면 시간항 하한(램프 블렌드) — 게이트 순서 = 싼 것부터(통계→나이→rc→issCross 정규식 · 24h+ 다수가 정규식 스킵). issCross는 아래 정의(호출은 렌더시라 TDZ 무해)
   const t = timeAcc(c);
-  if (_outSd <= 0 || !issCross(c)) return t;
-  if (Math.max(0, (Date.now() - scTs(c)) / 3600000) >= OUT_MAX_AGE_H) return t;
+  if (_outSd <= 0) return t;
+  const fsT = Date.parse(c.first_seen || ''), pubAge = Math.max(0, (Date.now() - scTs(c)) / 3600000),
+    ageH = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);   // 나이 = 배지(scBadgeType)와 동일 max(발행,수집)축 — "배지·완화 동시 소멸" 실보장(rep점프 first_seen 승계로 fs나이>발행나이 역전 264건 실측 — scTs 단독이면 배지 죽고 완화만 사는 비대칭)
+  if (ageH >= OUT_MAX_AGE_H) return t;
+  if ((c.report_count || 0) < FOLLOW_RC_MIN || !issCross(c)) return t;   // §★ '다매체 AND 계속보도' — rc<6 일회성 신디케이션은 압도적이어도 하한 없음(연속보도 동반 필수) + 이슈 배지 자격
   const s = Math.min(1, Math.max(0, (((c._rankCross ?? (c.cross || 0)) - _outMed) / _outSd - OUT_Z0) / (OUT_Z1 - OUT_Z0)));
   return s ? t + s * Math.max(0, 1 / (1 + Math.pow(OUT_AGE_CAP_H / ACC_T_HALF, ACC_T_POW)) - t) : t;
 };
