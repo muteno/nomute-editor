@@ -196,16 +196,7 @@ for (const a of articles) {
   if (existsSync(tdir)) {
     try {
       const s = JSON.parse(readFileSync(join(tdir, 'search.json'), 'utf8'));
-      if (Array.isArray(s)) thumbSearch = s.filter(x => x && x.url).map(x => {
-        if (!/^https?:/i.test(x.url)) {   // genimg R2 불가 git 폴백(cards/<stem>/thumbs/*.png 상대경로) — gen.json 폴백과 동일 복사 서빙
-          const f = x.url.split('/').pop();
-          if (!f || !existsSync(join(tdir, f))) return null;
-          mkdirSync(join('viewer/cards', stem, 'thumbs'), { recursive: true });
-          copyFileSync(join(tdir, f), join('viewer/cards', stem, 'thumbs', f));
-          return { img: `cards/${stem}/thumbs/${f}${bust(join(tdir, f))}`, link: x.link || '', label: x.label || '' };
-        }
-        return { img: x.url, link: x.link || x.url, label: x.label || '' };
-      }).filter(Boolean);
+      if (Array.isArray(s)) thumbSearch = s.filter(x => x && x.url).map(x => ({ img: x.url, link: x.link || x.url, label: x.label || '' }));
     } catch { /* 검색 없음 */ }
     try {
       const g = JSON.parse(readFileSync(join(tdir, 'gen.json'), 'utf8'));

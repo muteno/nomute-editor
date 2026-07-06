@@ -1,0 +1,94 @@
+name: imggen
+
+# 뷰어 '이미지 생성'(검색 카러셀 + 버튼 팝업 · functions/api/genimg.js 디스패치) —
+# Claude(Opus 4.8·effort max·구독 OAuth·폴오버 SSOT)가 기사 요약·시사점+운영자 버튼 옵션(화풍·비율·해상도·문구·주문)으로
+# Gemini 이미지 프롬프트를 작성 → Gemini(종량제 GEMINI_API_KEY)가 렌더 → R2 → cards/<stem>/thumbs/search.json 앞쪽
+# prepend(label '생성') → push마다 build-viewer 재실행 → 뷰어 카러셀 반영.
+# 운영 원칙(운영자 260707) = 구독+종량제 병행 활용: 프롬프트 지능=구독 Opus · 렌더=종량제 Gemini.
+# 카드 제미나이 0 불변과 무관 — 이 경로는 뷰어 수동 발사(슛과 동일 정책·자동 파이프라인 아님).
+on:
+  workflow_dispatch:
+    inputs:
+      stem:
+        description: '기사 file 베이스(queue/<stem>.md · cards/<stem>)'
+        required: true
+        type: string
+      opts:
+        description: '옵션 JSON {style,aspect,size,count,text,wish} — genimg.js가 화이트리스트 검증 후 전달'
+        default: '{}'
+        type: string
+      account:
+        description: '구독 OAuth 계정'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: imggen-${{ github.event.inputs.stem }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 최신 main 기준 rebase·push
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치(없으면 exit 127)
+
+      - name: Generate images
+        env:
+          # 인증 = 구독 OAuth(API 키 미사용) — analyze/ask와 동일 동적 계정 + 폴오버 체인(§📰 f)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', github.event.inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          ACTIVE_ACCOUNT: ${{ github.event.inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (github.event.inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (github.event.inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA)
+          # 렌더 = 종량제 Gemini(운영자 의도 — 썸네일·카드 슛과 동일 키). gen_image.py가 Claude 서브프로세스 동안만 env서 제거.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # R2 = 생성 PNG 재호스팅(레포 비대 회피). 5개 다 없으면 git 폴백(cards/<stem>/thumbs 커밋 → build-viewer 복사 서빙).
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          GENIMG_STEM: ${{ github.event.inputs.stem }}
+          GENIMG_OPTS: ${{ github.event.inputs.opts || '{}' }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT} · stem=${GENIMG_STEM} · opts=${GENIMG_OPTS}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON
+          python3 .github/scripts/gen_image.py
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add cards/ metrics/ 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "변경 없음(생성 이미지 0)"; exit 0
+          fi
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git commit -m "genimg: 제미나이 생성이미지 추가(버튼 프롬프트·Opus 작성)" 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::push 실패(재시도 소진)"
