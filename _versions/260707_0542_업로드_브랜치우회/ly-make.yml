@@ -26,10 +26,6 @@ on:
         description: '뷰어 버튼 설정 JSON(자막 옵션+번인 스타일 · 빈값=종전 동작) — {"lang","tone","filler","burn","style","pos","size","karaoke","keyword"}'
         type: string
         default: ''
-      up_branch:
-        description: '업로드 일회용 브랜치(up-<id> · 빈값=종전 main 커밋 경로) — ly.js가 업로드를 여기 커밋 → 러너가 회수 → 잡 끝에 삭제 = main 히스토리 비대 0'
-        type: string
-        default: ''
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -126,17 +122,8 @@ jobs:
         env:
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}
-          UP_BRANCH: ${{ inputs.up_branch }}
         run: |
           set -e
-          # 일회용 업로드 브랜치(up-<id>) 경로 = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 브랜치 삭제)
-          if [ -n "$UP_BRANCH" ]; then
-            case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
-            git fetch origin "$UP_BRANCH" --depth=1 || { echo "업로드 브랜치 없음 — 파일 유실" > /tmp/ly_err.txt; echo "::error::업로드 브랜치 fetch 실패: $UP_BRANCH"; exit 1; }
-            EXT="${FILE##*.}"
-            git show "FETCH_HEAD:$FILE" > "/tmp/upsrc.$EXT" || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/ly_err.txt; echo "::error::브랜치서 파일 회수 실패: $FILE"; exit 1; }
-            FILE="/tmp/upsrc.$EXT"
-          fi
           [ -f "$FILE" ] || { echo "::error::업로드 파일 없음: $FILE"; exit 1; }
           case "$FILE" in
             *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.avi) echo "LY_VIDEO=$FILE" >> "$GITHUB_ENV"; echo "번인용 영상 확보(업로드): $FILE";;
@@ -265,13 +252,3 @@ jobs:
             git rebase --abort 2>/dev/null || true; sleep $((i*3))
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
-
-      # 업로드 일회용 브랜치 삭제(성공·실패 무관) — 삭제되면 업로드 블롭이 unreachable = 클론·main 히스토리에 안 남음(비대 0).
-      #   가드 = up-* 만(임의 브랜치·main 오삭제 차단). 실패해도 무해(고아 브랜치 잔존일 뿐 — 발견 시 수동 정리).
-      - name: 업로드 브랜치 정리
-        if: ${{ always() && inputs.up_branch != '' }}
-        env:
-          UP_BRANCH: ${{ inputs.up_branch }}
-        run: |
-          case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
-          git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"
