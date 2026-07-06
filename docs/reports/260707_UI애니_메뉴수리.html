@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260707 UI 애니·메뉴 수리 — 결과 보고</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+  :root { --bg:#0b0d0c; --fg:#eef7f0; --mut:#9aa8a0; --accent:#00EED2; --warn:#FFE13D; --danger:#e23b2a; --line:rgba(255,255,255,.14); }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 16px 60px; background:var(--bg); color:var(--fg); font-family:'Pretendard Variable',Pretendard,'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif; line-height:1.65; }
+  main { max-width:760px; margin:0 auto; }
+  h1 { font-size:21px; margin:0 0 4px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:26px; }
+  h2 { font-size:16px; margin:34px 0 10px; color:var(--accent); }
+  h3 { font-size:14px; margin:20px 0 6px; }
+  p, li { font-size:13.5px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin:10px 0; }
+  th, td { padding:8px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+  th { background:rgba(255,255,255,.05); font-weight:800; white-space:nowrap; }
+  code { background:rgba(255,255,255,.07); padding:1px 5px; border-radius:5px; font-size:12px; }
+  .ok { color:var(--accent); font-weight:800; } .warn { color:var(--warn); font-weight:800; } .bad { color:var(--danger); font-weight:800; }
+  .card { border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin:12px 0; background:rgba(255,255,255,.03); }
+  .tag { display:inline-block; padding:1px 9px; border-radius:999px; border:1px solid var(--line); font-size:11px; color:var(--mut); margin-right:6px; }
+</style>
+</head>
+<body>
+<main>
+<h1>UI 애니·메뉴 수리 <b>결과 보고</b></h1>
+<div class="sub">260707 · PR #1769 · 운영자 요구 5건 + 분신술 10인 평의회(만장일치 OK) · 대상 = <code>viewer/index.html</code>·<code>shared/check_refs.py</code></div>
+
+<h2>무엇이 바뀌었나 (전 → 후)</h2>
+<table>
+  <tr><th>요구</th><th>전</th><th>후</th></tr>
+  <tr><td>① 설정 촤르륵</td><td>설정 아코디언 = 슬라이드만 · 잠금 설정 팝업 = 행 즉시 등장 · 닫힘 = 뚝 끊김</td><td>아코디언·잠금 팝업 행이 카드처럼 <b>순차(cardIn) 촤르륵</b> + 잠금 팝업 닫힘 = <b>접힘 애니(popOut)</b></td></tr>
+  <tr><td>② 팝업 위치</td><td>메시지함·발행본·잠금 팝업이 <span class="bad">구 프로필 자리(우상단)</span>에 떠서 열었던 메뉴와 동떨어짐</td><td><b>링크 메뉴 버튼 위 8px</b>(하단 네비)에서 <b>아래→위로 펼쳐짐</b> = 누른 자리 근처·엄지존</td></tr>
+  <tr><td>③ 탭 전환 촤르륵</td><td>메뉴 1↔2↔3 전환 시 콘텐츠가 즉시 뚝 나타남(같은 내용이면 무애니)</td><td>전환마다 들어오는 리스트가 <b>즉시 촤르륵</b>(캐시로 대기 0 · 이후 갱신 렌더는 이중 깜빡임 0)</td></tr>
+  <tr><td>④ 아이콘 후행</td><td>상단 검색·필터 아이콘이 콘텐츠와 동시(부팅 땐 0.12s 뒤) 등장</td><td>콘텐츠가 먼저 자리잡고 <b>0.3s 뒤</b> 아이콘 페이드인(부팅·탭 전환 공통)</td></tr>
+  <tr><td>⑤ 스플래시</td><td>OS 스플래시→앱 타이틀 좌표 정합 시도(안 맞음) + 진입 시 어두운 화면 flash</td><td>좌표 정합 <b>폐기</b> · 첫 페인트가 OS 스플래시 배경색(<code>#192730</code>)을 <b>그대로 이어받는 베일</b> → 콘텐츠와 <b>크로스페이드</b> · 워드마크는 제자리 페이드인</td></tr>
+</table>
+
+<h2>장단점 · 효율성 · 품질저하 리스크</h2>
+<div class="card">
+<h3 class="ok">장점</h3>
+<ul>
+  <li>팝업이 트리거(링크 메뉴) 근처 엄지존에서 열려 도달성·맥락 연결 개선.</li>
+  <li>모든 신규 모션 = 기존 정본 패턴 계승(cardIn 커브·msgUnfold 미러·popOut) — 새 안무 창작 0.</li>
+  <li>부수 성능 개선: feed/SNS에 <b>커밋 스킵</b> 신설 → 탭 전환·라이브 폴에서 동일 내용 통재빌드가 사라짐(기존엔 매번 전체 재구성).</li>
+  <li>부팅 진입이 단색→앱 크로스페이드로 이어져 검은 flash 제거.</li>
+</ul>
+<h3 class="warn">트레이드오프(의도적 · 문서화 완료)</h3>
+<ul>
+  <li>커밋 스킵 = 유휴 동일탭 폴에서 카드의 상대시간 라벨("N분 전")이 다음 실변경·탭 전환까지 동결(수집함 커밋 스킵과 동일한 기존 하우스 표준 · 자가치유).</li>
+  <li>베일 색 <code>#192730</code> = manifest <code>background_color</code>의 raw 사본(CSS가 manifest를 못 읽음 — meta theme-color와 같은 예외 · check_refs baseline 142→143 사유 기록). manifest 색 바꾸면 베일도 같이.</li>
+  <li>베일은 단색 — "움직이는 물결 그대로"의 완전 연속은 아니고 0.5s 페이드로 이어붙임(운영자 "걍 배경만" 수용 범위).</li>
+</ul>
+<h3 class="bad">품질저하 리스크(잔여 · 수용)</h3>
+<ul>
+  <li>비-PWA 브라우저 가로모드 노치폰에서 팝업 최대 높이가 노치를 살짝 침범할 수 있음(순수 미관·희소 — 평의회3 수용).</li>
+  <li>OS 스플래시 자체(아이콘·앱명 중앙 표시)는 OS 강제라 제거 불가 — 배경 연속만 담당.</li>
+</ul>
+</div>
+
+<h2>검증</h2>
+<ul>
+  <li><span class="tag">기계 게이트</span><code>check_refs</code> 전 게이트 초록(JS 구문·디자인 토큰·거울·자동완성·소머리 등).</li>
+  <li><span class="tag">헤드리스 실측</span>Playwright(412×915 세로 + 740×360 가로): 팝업 = 링크 버튼 위 8px·화면 안·아래서 펼침 확인 / 아코디언·잠금 팝업 행 스태거 / 잠금 팝업 닫힘 애니→hidden→재오픈 정상 / 가로모드 리스트 수축·페이저 보존 / 베일 페이드 후 DOM 제거 / JS 에러 0.</li>
+  <li><span class="tag">분신술 10인</span>Opus·READ-ONLY·각기 다른 앵글(JS 메커니즘·CSS 캐스케이드·모바일·부팅·잠금·렌더 성능·접근성·디자인 계약·회귀·총괄). 초회 = OK 5·주의 5 → 지적 전건 수정(커밋 스킵·가로모드 수축·lockpop 회전 재배치·reduced-motion 명시 가드·스테일 주석 4건) → 재검증 <b class="ok">전원 OK 만장일치</b>.</li>
+  <li><span class="tag">원격 실측</span>main 머지 후 <code>git show origin/main:viewer/index.html</code> read-back으로 완료 확정(§수정 모드).</li>
+</ul>
+
+<h2>산출</h2>
+<ul>
+  <li>커밋 3개: <code>585459d</code>(본 변경) · <code>f6dcea0</code>(평의회 반영) · <code>a9fa3c2</code>(주석 정직화) → PR #1769 → main.</li>
+  <li>백업 <code>_versions/260707_0351_UI애니_메뉴수리/</code> · 원장 <code>docs/작업이력.md</code> 260707 항목.</li>
+</ul>
+</main>
+</body>
+</html>
