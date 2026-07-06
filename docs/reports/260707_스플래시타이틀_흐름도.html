@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>OS 스플래시 타이틀 제거 — 케이스 흐름도</title>
+<style>
+  :root { --bg:#0b0d0c; --fg:#eef7f0; --mut:#9aa8a0; --accent:#00EED2; --accent4:#FFE13D; --accent5:#0FFD02; --danger:#e23b2a; --line:rgba(255,255,255,.14); --splash:#192730; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:22px 14px 60px; background:var(--bg); color:var(--fg); font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; line-height:1.6; }
+  main { max-width:840px; margin:0 auto; }
+  h1 { font-size:20px; margin:0 0 4px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:24px; }
+  h2 { font-size:15px; margin:8px 0; }
+  .note { font-size:12.5px; color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin:14px 0 26px; }
+  .note b { color:var(--fg); }
+  /* 공통 흐름 */
+  .flow { display:flex; align-items:stretch; gap:0; flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px; }
+  .step { flex:0 0 auto; width:150px; border:1px solid var(--line); border-radius:14px; padding:12px 10px; text-align:center; background:rgba(255,255,255,.03); display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:7px; }
+  .step .lbl { font-size:11px; color:var(--mut); font-weight:700; }
+  .arrow { flex:0 0 auto; align-self:center; color:var(--accent); font-size:20px; padding:0 6px; }
+  /* OS 스플래시 목업 폰 프레임 */
+  .phone { width:104px; height:186px; border-radius:16px; background:var(--splash); border:1px solid rgba(255,255,255,.18); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; position:relative; overflow:hidden; }
+  .phone.app { background:linear-gradient(160deg,#0e2a33,#0b1418); }
+  .wm { font-family:'Times New Roman',serif; font-size:12.5px; letter-spacing:.5px; color:var(--fg); text-align:center; line-height:1.15; }
+  .wm small { display:block; font-size:7px; letter-spacing:1px; color:var(--mut); margin-top:2px; }
+  .oslabel { font-size:8.5px; color:var(--fg); opacity:.92; }
+  .oslabel.gone { color:var(--danger); opacity:.5; text-decoration:line-through; }
+  .logo-mark { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,var(--accent),#0a8f80); display:grid; place-items:center; font-size:8px; font-weight:800; color:#022; }
+  .feedbits { position:absolute; inset:0; padding:14px 10px; display:flex; flex-direction:column; gap:6px; opacity:.5; }
+  .feedbits i { display:block; height:6px; border-radius:3px; background:rgba(255,255,255,.22); }
+  .feedbits i:nth-child(2){width:70%} .feedbits i:nth-child(3){width:85%}
+  /* 케이스 카드 */
+  .case { border:1px solid var(--line); border-radius:16px; padding:16px; margin:16px 0; background:rgba(255,255,255,.025); }
+  .case.rec { border-color:rgba(0,238,210,.5); box-shadow:0 0 0 1px rgba(0,238,210,.2); }
+  .case h2 .tag { font-size:10.5px; padding:1px 8px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+  .tag.rec { background:rgba(0,238,210,.16); color:var(--accent); }
+  .tag.warn { background:rgba(255,225,61,.16); color:var(--accent4); }
+  .kv { font-size:12.5px; margin:10px 0 0; }
+  .kv b { color:var(--fg); } .kv .g { color:var(--accent); } .kv .r { color:var(--danger); } .kv .y { color:var(--accent4); }
+  .kv div { padding:3px 0; border-top:1px dashed var(--line); }
+  .kv div:first-child { border-top:none; }
+</style>
+</head>
+<body>
+<main>
+<h1>OS 안드로이드 스플래시 <b>타이틀 제거</b> — 케이스 흐름도</h1>
+<div class="sub">260707 · 진입(OS 스플래시) → 앱 인트로 페이드 교차는 이미 적용됨(#bootveil). 여기선 "타이틀 안 뜨게"를 3가지 방법으로 비교.</div>
+
+<div class="note">
+<b>왜 케이스가 갈리나:</b> OS 스플래시는 안드로이드가 직접 그림 — 배경색(<b>manifest background_color #192730</b>) + 아이콘(<b>가운데</b>) + 앱이름 텍스트(<b>manifest name</b>). 지금 <b>아이콘 자체가 "News Curation" 글자가 박힌 워드마크</b>라, 텍스트 라벨만 지워도 아이콘 글자는 남음. 그리고 <b>WebAPK는 홈 런처 아이콘 = 스플래시 아이콘을 같은 파일로 씀</b> → 아이콘 바꾸면 홈 아이콘도 바뀜. ⚠️ 어느 케이스든 실기기 반영은 WebAPK 재민팅 <b>1~3일</b>(즉시 = 앱 재설치).
+</div>
+
+<h2 style="color:var(--mut);font-size:13px;margin-top:4px">공통 흐름 (전 케이스 동일)</h2>
+<div class="flow" style="margin-bottom:8px">
+  <div class="step"><span class="lbl">① 홈 아이콘 탭</span><div class="logo-mark">NC</div></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="lbl">② OS 스플래시<br>(진입 · 케이스별 상이)</span><div class="phone"><div class="wm">News Curation<small>뉴스 큐레이션</small></div></div></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="lbl">③ #bootveil<br>페이드아웃</span><div class="phone" style="opacity:.45"><div class="wm" style="opacity:.4">News Curation</div></div></div>
+  <div class="arrow">→</div>
+  <div class="step"><span class="lbl">④ 앱 인트로<br>페이드인 (교차)</span><div class="phone app"><div class="feedbits"><i></i><i></i><i></i><i></i></div></div></div>
+</div>
+
+<!-- CASE A -->
+<div class="case rec">
+  <h2>케이스 A — 텍스트 라벨만 제거 <span class="tag rec">추천</span></h2>
+  <div class="flow">
+    <div class="step"><span class="lbl">지금</span><div class="phone"><div class="wm">News Curation<small>뉴스 큐레이션</small></div><span class="oslabel">뉴스 큐레이션 : News Curation</span></div></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="lbl">A 적용</span><div class="phone"><div class="wm">News Curation<small>뉴스 큐레이션</small></div><span class="oslabel gone">앱이름 텍스트</span></div></div>
+  </div>
+  <div class="kv">
+    <div><b>바꾸는 것</b> · manifest <code>name</code>을 공백/최소화 → OS가 아이콘 밑에 그리는 <b>텍스트 라벨 제거</b></div>
+    <div><b>스플래시 결과</b> · <span class="g">워드마크 아이콘만</span> (아이콘에 박힌 글자는 남음 · 밑 텍스트 라벨 사라짐)</div>
+    <div><b>홈 아이콘</b> · <span class="g">불변</span> (워드마크 유지)</div>
+    <div><b>대가</b> · <span class="y">설치 프롬프트·앱 전환기 앱이름이 공백</span>(이미 설치돼 있으면 거의 무영향 · short_name '노뮤트'는 런처 라벨로 유지)</div>
+    <div><b>되돌리기</b> · manifest 한 줄</div>
+  </div>
+</div>
+
+<!-- CASE B -->
+<div class="case">
+  <h2>케이스 B — 완전 무텍스트 (아이콘도 교체)</h2>
+  <div class="flow">
+    <div class="step"><span class="lbl">지금</span><div class="phone"><div class="wm">News Curation<small>뉴스 큐레이션</small></div><span class="oslabel">뉴스 큐레이션 : News Curation</span></div></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="lbl">B 적용</span><div class="phone"><div class="logo-mark">NC</div><span class="oslabel gone">텍스트 0</span></div></div>
+  </div>
+  <div class="kv">
+    <div><b>바꾸는 것</b> · <code>name</code> 공백 <b>+</b> 스플래시 아이콘을 <b>글자 없는 심볼/로고</b>로 교체</div>
+    <div><b>스플래시 결과</b> · <span class="g">글자 0</span> (심볼만 · 완전 무텍스트)</div>
+    <div><b>홈 아이콘</b> · <span class="r">같이 바뀜</span> (WebAPK 공유 = 홈도 글자 없는 로고로)</div>
+    <div><b>대가</b> · 어떤 심볼/로고 쓸지 <b>지정 필요</b> · 260706에 워드마크로 통일한 걸 되돌림</div>
+    <div><b>되돌리기</b> · manifest + 아이콘 파일</div>
+  </div>
+</div>
+
+<!-- CASE C -->
+<div class="case">
+  <h2>케이스 C — 배경만 (아이콘 최소화)</h2>
+  <div class="flow">
+    <div class="step"><span class="lbl">지금</span><div class="phone"><div class="wm">News Curation<small>뉴스 큐레이션</small></div><span class="oslabel">뉴스 큐레이션 : News Curation</span></div></div>
+    <div class="arrow">→</div>
+    <div class="step"><span class="lbl">C 적용</span><div class="phone"><span style="font-size:8px;color:var(--mut)">거의 빈 #192730</span></div></div>
+  </div>
+  <div class="kv">
+    <div><b>바꾸는 것</b> · <code>name</code> 공백 + 아이콘도 배경색과 근접한 최소 마크 → 스플래시 = <b>거의 단색 배경</b></div>
+    <div><b>스플래시 결과</b> · <span class="g">단색 #192730 배경 위주</span> → 앱 배경(#bootveil)과 거의 이음새 0 = 가장 미니멀</div>
+    <div><b>홈 아이콘</b> · <span class="r">같이 최소화됨</span> (런처서 브랜드 식별 약해짐)</div>
+    <div><b>대가</b> · 홈 화면에서 아이콘 존재감 <b>약함</b>(찾기 어려울 수 있음)</div>
+    <div><b>되돌리기</b> · manifest + 아이콘 파일</div>
+  </div>
+</div>
+
+<div class="note" style="margin-top:24px">
+<b>내 추천 = A</b> · "타이틀(텍스트) 안 뜨게"에 가장 직접 부합하면서 홈 아이콘·브랜드는 그대로 유지. 아이콘의 워드마크 글자까지 완전히 없애려면 B(무텍스트 심볼 지정 필요) · 스플래시를 아예 빈 배경으로 = C. <b>골라주면 그 케이스로 바로 적용</b>(manifest 수정 → 실기기 재민팅 1~3일).
+</div>
+</main>
+</body>
+</html>
