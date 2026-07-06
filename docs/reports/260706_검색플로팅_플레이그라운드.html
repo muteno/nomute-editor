@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>검색 플로팅 — 플레이그라운드</title>
+<style>
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --cat-eco:#FFE13D; --cat-intl:#ff7a6b; --cat-pol:#38C6FF; --cat-soc:#2CF5A5;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --btn:34px; --btn-sm:30px; --fs-label:13px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s; --press-m:.9; --press-l:.95;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; padding:0; }
+body{ background:#0c0e0f; color:var(--fg); -webkit-font-smoothing:antialiased;
+  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif; }
+.page{ max-width:1180px; margin:0 auto; padding:20px 14px 60px; }
+h1{ font-size:19px; font-weight:var(--fw-x); letter-spacing:-.3px; margin:4px 0 2px; }
+.sub{ color:var(--mut); font-size:var(--fs-label); margin:0 0 16px; line-height:1.6; }
+.sub b{ color:var(--fg); }
+.wrap{ display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start; }
+
+/* 프레임 */
+.stagewrap{ flex:1 1 500px; min-width:320px; }
+.vpbar{ display:flex; gap:6px; margin-bottom:10px; align-items:center; }
+.vpseg{ display:flex; gap:4px; background:rgba(18,19,22,.55); border:1px solid var(--line); border-radius:var(--r-pill); padding:3px; }
+.vpseg button{ padding:6px 14px; font-size:var(--fs-sm); font-weight:var(--fw-b); font-family:inherit; color:var(--mut); background:none; border:none; border-radius:var(--r-pill); cursor:pointer; }
+.vpseg button.on{ color:#032322; background:var(--accent); }
+.frame{ position:relative; margin:0 auto; overflow:hidden; border:1px solid rgba(255,255,255,.1); box-shadow:0 18px 60px rgba(0,0,0,.55);
+  background:radial-gradient(120% 60% at 82% -8%, rgba(56,198,255,.12), transparent 55%), radial-gradient(120% 50% at -18% 104%, rgba(0,238,210,.08), transparent 52%), #0b1214;
+  transition:width .3s var(--ease), height .3s var(--ease); }
+.frame.mob{ width:min(390px,94vw); height:min(760px,80vh); border-radius:26px; }
+.frame.pc{ width:100%; height:min(680px,74vh); border-radius:14px; }
+.stagecap{ text-align:center; color:var(--mut); font-size:var(--fs-sm); margin-top:10px; line-height:1.6; }
+
+.app{ position:absolute; inset:0; display:flex; flex-direction:column;
+  /* 튜닝 변수 · 기본값 = ★추천(스포트라이트) */
+  --t-blur:7px; --t-dim:.5; --t-y:15%; --t-lift:8px; --t-shadow:.42; --t-gap:8px; }
+
+.vh{ padding:22px 14px 6px; text-align:center; flex:none; }
+.frame.pc .vh{ padding:26px 14px 8px; }
+.vh .wm{ font-size:19px; letter-spacing:3.2px; font-weight:400; font-family:Georgia,'Times New Roman',serif; }
+.vh .vt{ margin-top:9px; font-size:12px; letter-spacing:2.6px; color:var(--accent); font-family:Georgia,serif; opacity:.9; }
+.vh .vrow{ position:relative; max-width:860px; margin:6px auto 0; height:30px; }
+.vh .acts{ position:absolute; right:calc(var(--btn-sm) + var(--sp-1)); top:50%; transform:translateY(-50%); display:flex; gap:4px; align-items:center; }
+.pbtn{ width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center; background:none; border:none; padding:0; cursor:pointer; }
+.pbtn svg{ width:20px; height:20px; stroke:var(--mut); fill:none; stroke-width:2.2; stroke-linecap:round; transition:stroke var(--dur-fast) ease; }
+.pbtn.on svg{ stroke:var(--accent); filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),.45)); }
+
+/* 피드(블러 대상) — TOP PICKS 1열 */
+.feed{ flex:1; overflow:hidden; padding:8px 14px 0; }
+.feed .inner{ max-width:860px; margin:0 auto; }
+.fcard{ border:1px solid var(--line); border-radius:var(--r-l); padding:13px 15px; background:rgba(18,19,22,.42); margin-bottom:11px; }
+.fcard .cm{ display:flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:var(--fw-b); margin-bottom:7px; }
+.fcard .cm .ag{ margin-left:auto; color:var(--mut); font-weight:400; }
+.fcard .tt{ margin:0; font-size:14px; line-height:1.45; font-weight:var(--fw-x); letter-spacing:-.2px; }
+.fcard .src{ margin-top:8px; font-size:10.5px; color:var(--mut); }
+
+.bnav{ flex:none; display:flex; justify-content:space-around; align-items:center; padding:10px 4px 14px; border-top:1px solid var(--line2); background:rgba(10,13,14,.6); max-width:860px; margin:0 auto; width:100%; }
+.bnav i{ font-style:normal; font-size:11px; font-weight:var(--fw-b); color:var(--mut); }
+.bnav i.on{ color:var(--accent); }
+
+/* ── 검색 플로팅 오버레이 ──
+   [블러 레이어] 뒤 피드 전면 blur+딤 (정적 · 타이핑 무관 = flicker 0)
+   [패널] 검색바 + 결과 리스트 = 블러 위 별도 층(pointer auto·선명) */
+.sov{ position:absolute; inset:0; z-index:30; display:none; }
+.sov.open{ display:block; }
+.sblur{ position:absolute; inset:0; background:rgba(5,11,13,var(--t-dim));
+  -webkit-backdrop-filter:blur(var(--t-blur)); backdrop-filter:blur(var(--t-blur)); }   /* 전면 블러+딤(정적) · 결과는 이 위 별도 층이라 타이핑해도 이 레이어는 재샘플 안 됨 */
+.spanel{ position:absolute; left:0; right:0; top:var(--t-y); display:flex; flex-direction:column; align-items:center; padding:0 14px; pointer-events:none; }
+.sbox{ width:min(320px,90%); pointer-events:auto; }
+.sov.open .sbox{ animation:sRise .25s var(--ease) backwards; }
+@keyframes sRise{ from{ transform:translateY(40px); opacity:0; } }
+.spill{ display:flex; align-items:center; gap:4px; height:45px; padding:5px; border-radius:var(--r-pill);
+  background:rgba(17,18,20,.55); border:1px solid rgba(255,255,255,.14); box-shadow:0 10px 34px rgba(0,0,0,.45); }
+.scap{ flex:none; height:100%; aspect-ratio:1/1; display:grid; place-items:center; border-radius:var(--r-pill); background:rgba(var(--accent-rgb),.06); }
+.scap svg{ width:18px; height:18px; stroke:var(--accent); fill:none; stroke-width:2.2; stroke-linecap:round; }
+.spill input{ flex:1; min-width:0; height:100%; background:none; border:none; outline:none; color:var(--fg); font-size:15px; font-family:inherit; padding:0 4px; }
+.spill input::placeholder{ color:rgba(255,255,255,.45); }
+.sclr{ flex:none; width:34px; height:34px; display:grid; place-items:center; background:none; border:none; padding:0; cursor:pointer;
+  opacity:0; transform:scale(.7); transition:opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease); pointer-events:none; }
+.spill.has .sclr{ opacity:1; transform:scale(1); pointer-events:auto; }
+.sclr svg{ width:15px; height:15px; stroke:var(--mut); stroke-width:2; stroke-linecap:round; }
+
+/* 결과 = 블러 위로 떠오른 카드(선명·그림자) · 검색바 아래 */
+.sresults{ width:min(320px,90%); pointer-events:auto; margin-top:14px; display:flex; flex-direction:column; }
+.rcard{ background:rgba(20,22,25,.97); border:1px solid rgba(255,255,255,.1); border-radius:var(--r-m); padding:11px 13px;
+  box-shadow:0 10px 30px rgba(0,0,0,var(--t-shadow)); transform:translateY(var(--t-lift)); opacity:0;
+  animation:rPop .28s var(--ease) forwards; }
+.sresults .rcard + .rcard{ margin-top:var(--t-gap); }
+.rcard:nth-child(1){ animation-delay:.02s; } .rcard:nth-child(2){ animation-delay:.08s; } .rcard:nth-child(3){ animation-delay:.14s; }
+.rcard:nth-child(4){ animation-delay:.2s; } .rcard:nth-child(5){ animation-delay:.26s; }
+@keyframes rPop{ to{ transform:none; opacity:1; } }
+.rcard .rc-m{ display:flex; align-items:center; gap:6px; font-size:var(--fs-xs); font-weight:var(--fw-b); margin-bottom:5px; }
+.rcard .rc-m .ag{ margin-left:auto; color:var(--mut); font-weight:400; }
+.rcard .rc-t{ font-size:13px; line-height:1.4; font-weight:var(--fw-b); letter-spacing:-.2px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.rcard .rc-hl{ color:var(--accent); }
+.rempty{ text-align:center; color:rgba(255,255,255,.5); font-size:var(--fs-sm); padding:14px; pointer-events:auto; }
+
+/* 닫기 히트 = 블러 영역(패널 밖) */
+.sov .shit{ position:absolute; inset:0; z-index:-1; }
+
+/* OS 키보드 */
+.kb{ position:absolute; left:0; right:0; bottom:0; height:300px; z-index:40; display:none; background:rgba(10,12,13,.94); border-top:1px solid var(--line); padding:12px 8px 8px; }
+.frame.mob .app.kb-on .sov.open ~ .kb{ display:block; }
+.kb .kr{ display:flex; gap:5px; margin-bottom:6px; }
+.kb .kr i{ flex:1; height:34px; border-radius:6px; background:rgba(255,255,255,.07); }
+.kb .kcap{ text-align:center; color:var(--mut); font-size:10px; letter-spacing:1px; margin-top:8px; }
+
+/* 콘솔 */
+.console{ flex:1 1 330px; min-width:300px; max-width:420px; }
+.csec{ border:1px solid var(--line); border-radius:var(--r-l); padding:14px; margin-bottom:12px; background:rgba(18,19,22,.42); }
+.csec h3{ margin:0 0 10px; font-size:var(--fs-label); font-weight:var(--fw-x); }
+.csec h3 span{ color:var(--accent); margin-right:6px; }
+.rowbtns{ display:flex; gap:6px; flex-wrap:wrap; }
+.tgl{ flex:1; min-width:96px; padding:9px 10px; font-size:var(--fs-sm); font-weight:var(--fw-b); font-family:inherit; color:var(--mut);
+  background:rgba(18,19,22,.55); border:1px solid var(--line); border-radius:var(--r-pill); cursor:pointer;
+  transition:color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease; }
+.tgl.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.08); }
+.pill{ padding:8px 12px; flex:0 1 auto; }
+.pill .st{ color:var(--cat-eco); margin-right:3px; }
+.grp{ margin-top:14px; } .grp:first-of-type{ margin-top:2px; }
+.grp .gl{ font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--mut); letter-spacing:1.5px; margin-bottom:8px; }
+.grp .gl::before{ content:'•'; color:var(--accent); margin-right:5px; }
+.sl{ display:grid; grid-template-columns:96px 1fr 58px; align-items:center; gap:8px; margin-bottom:9px; }
+.sl label{ font-size:var(--fs-sm); color:var(--fg); }
+.sl label em{ display:block; font-style:normal; font-size:10px; color:var(--mut); }
+.sl output{ font-size:var(--fs-sm); color:var(--accent); text-align:right; font-variant-numeric:tabular-nums; }
+input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:none; margin:0; cursor:pointer; }
+input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:var(--r-pill); background:linear-gradient(to right, var(--accent) var(--p,50%), rgba(255,255,255,.12) var(--p,50%)); }
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; margin-top:-6px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px rgba(var(--accent-rgb),.15); border:none; }
+input[type=range]::-moz-range-thumb{ width:16px; height:16px; border-radius:50%; background:var(--accent); border:none; }
+.ckrow{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+pre#out{ margin:0 0 10px; padding:12px; font-size:11px; line-height:1.7; border-radius:var(--r-m); background:rgba(0,0,0,.35); border:1px solid var(--line2); white-space:pre-wrap; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; color:var(--fg); overflow-x:auto; }
+#copy{ width:100%; padding:12px; font-size:var(--fs-label); font-weight:var(--fw-x); font-family:inherit; color:#032322; background:var(--accent); border:none; border-radius:var(--r-m); cursor:pointer; }
+#copy.ok{ background:#5AFFE6; }
+.note{ font-size:var(--fs-sm); color:var(--mut); line-height:1.7; }
+.note b{ color:var(--fg); }
+.note ol{ margin:6px 0 0; padding-left:18px; }
+@media (prefers-reduced-motion:reduce){ .sov.open .sbox,.rcard{ animation:none; opacity:1; transform:none; } }
+</style>
+</head>
+<body>
+<div class="page">
+<h1>검색 = 전면 블러 + 일치 결과 떠오름 (스포트라이트식)</h1>
+<p class="sub">돋보기 탭 → <b>뒤 화면 전체 블러</b>, 타이핑하면 <b>일치하는 결과만 블러 위로 떠오름</b>(선명·그림자). 클리어존 위치 계산이 없어 <b>PC·모바일 무관</b> · 결과는 블러 레이어 위 별도 층이라 타이핑 번쩍임도 없음. 프레임 안에서 직접 쳐봐(홈플·태평양·관저·반도체). PC/모바일 토글로 둘 다 확인.</p>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="vpbar"><div class="vpseg"><button id="vpMob" class="on" type="button">모바일</button><button id="vpPc" type="button">PC</button></div></div>
+    <div class="frame mob" id="frame">
+      <div class="app" id="app">
+        <div class="vh">
+          <div class="wm">NEWS CURATION</div>
+          <div class="vt">TOP PICKS</div>
+          <div class="vrow"><div class="acts">
+            <button class="pbtn" type="button" aria-label="필터"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.5V20l-4-2v-6.5z"/></svg></button>
+            <button class="pbtn" id="sBtn" type="button" aria-label="검색"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+          </div></div>
+        </div>
+        <div class="feed"><div class="inner" id="feed"></div></div>
+        <div class="bnav" aria-hidden="true"><i>레거시</i><i>SNS</i><i class="on">요약</i><i>설정</i></div>
+
+        <div class="sov" id="sov">
+          <div class="shit" id="shit" aria-hidden="true"></div>
+          <div class="sblur" id="sblur" aria-hidden="true"></div>
+          <div class="spanel">
+            <div class="sbox">
+              <div class="spill" id="spill">
+                <span class="scap" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+                <input id="sq" type="text" placeholder="검색" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+                <button class="sclr" id="sclr" type="button" aria-label="지우기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+              </div>
+              <div class="sresults" id="sresults"></div>
+            </div>
+          </div>
+        </div>
+        <div class="kb" aria-hidden="true">
+          <div class="kr"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="kr"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="kr"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="kr"><i style="flex:1.6"></i><i style="flex:4.2"></i><i style="flex:1.6"></i></div>
+          <div class="kcap">OS 키보드 (근사 · 모바일만)</div>
+        </div>
+      </div>
+    </div>
+    <div class="stagecap"><b>돋보기</b> 탭 = 열기 · 어두운(블러) 영역 탭 = 닫기<br>타이핑 = 일치 결과가 블러 위로 떠오름 · 뒤 피드는 정적 블러(번쩍임 0)</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <h3><span>•</span>프리셋</h3>
+      <div class="rowbtns" id="presets"></div>
+    </div>
+    <div class="csec">
+      <h3><span>•</span>미세조정</h3>
+      <div id="sliders"></div>
+      <div class="ckrow"><button class="tgl on" id="tKb" type="button">키보드 시트</button></div>
+    </div>
+    <div class="csec">
+      <h3><span>•</span>선택값</h3>
+      <pre id="out"></pre>
+      <button id="copy" type="button">선택값 복사</button>
+    </div>
+    <div class="csec note">
+      <b>재현 한계 각주</b>
+      <ol>
+        <li>결과 카드는 원본 피드에서 필터한 <b>축약(제목+카테고리+매체)</b> — 실물은 탭 시 그 요약/기사로 이동.</li>
+        <li>블러 레이어 = 뒤 피드만 정적 블러. 검색바·결과는 그 <b>위 별도 층</b>이라 타이핑 리페인트 재샘플 없음(전면 블러여도 번쩍임 0 = 이 방식의 기술적 이점).</li>
+        <li>결과 없으면 "일치 결과 없음" 1줄(§디자인 e: 사용자 행위 피드백만 예외).</li>
+        <li>검색바(글래스 필)·라이즈는 확정 배선값 계승 · 이 시안 축 = 블러·딤·바 위치·떠오름·그림자.</li>
+        <li>워드마크 PGSans 미임베드 → 세리프 폴백 · 배경 물결 정적 근사.</li>
+      </ol>
+    </div>
+  </aside>
+</div>
+</div>
+
+<script>
+'use strict';
+const DEFAULTS = { blur:7, dim:.5, y:15, lift:8, shadow:.42, gap:8 };
+const PRESETS = [
+  { id:'p1', nm:'스포트라이트', star:'★', st:{ ...DEFAULTS } },
+  { id:'p2', nm:'센터', st:{ ...DEFAULTS, y:26, blur:9, dim:.56 } },
+  { id:'p3', nm:'약블러·근접', st:{ ...DEFAULTS, blur:4, dim:.4, y:13, lift:5, shadow:.32 } },
+  { id:'p4', nm:'강블러·강조', st:{ ...DEFAULTS, blur:11, dim:.62, lift:12, shadow:.52 } },
+];
+const SLIDERS = [
+  { k:'blur',   nm:'뒤 블러',   d:'피드 blur px', min:0, max:14, step:1, f:v=>v+'px', grp:'블러 레이어' },
+  { k:'dim',    nm:'딤 농도',   d:'rgba(5,11,13,α)', min:.2, max:.75, step:.02, f:v=>v.toFixed(2), grp:'블러 레이어' },
+  { k:'y',      nm:'검색바 위치', d:'화면 상단 %', min:8, max:40, step:1, f:v=>v+'%', grp:'검색바·결과' },
+  { k:'gap',    nm:'결과 간격', d:'카드 사이', min:4, max:16, step:1, f:v=>v+'px', grp:'검색바·결과' },
+  { k:'lift',   nm:'떠오름',    d:'등장 translateY', min:0, max:20, step:1, f:v=>v+'px', grp:'검색바·결과' },
+  { k:'shadow', nm:'그림자',    d:'카드 box-shadow α', min:.2, max:.6, step:.02, f:v=>v.toFixed(2), grp:'검색바·결과' },
+];
+const CARDS = [
+  { cat:'국제', c:'var(--cat-intl)', ag:'7시간 전', t:'이란 전쟁 기름값 폭등, 담합 때문이었다…HD현대오일뱅크·SK에너지·GS칼텍스·에쓰오일 재판행', src:'헤럴드경제' },
+  { cat:'경제', c:'var(--cat-eco)', ag:'1시간 전', t:'신보, 홈플러스 회생 폐지 피해 기업에 3000억원 긴급 유동성 지원', src:'연합뉴스 외 11' },
+  { cat:'국제', c:'var(--cat-intl)', ag:'4시간 전', t:'중국 "태평양서 핵잠수함 전략미사일 시험 발사 성공"… 일본 남부 태평양 해역에', src:'조선일보 외 9' },
+  { cat:'정치', c:'var(--cat-pol)', ag:'45분 전', t:"'尹 관저 이전' 21그램 대표 구속영장 기각", src:'한겨레 외 5' },
+  { cat:'테크', c:'#AC5CFF', ag:'2시간 전', t:'삼성전자, 차세대 반도체 패키징 라인 증설… 평택 4공장 가동 앞당긴다', src:'전자신문 외 7' },
+  { cat:'사회', c:'var(--cat-soc)', ag:'1시간 전', t:'李대통령, ‘4대 역점 과제’ 국정 브리핑… 민생 회복 최우선', src:'KBS 외 6' },
+  { cat:'경제', c:'var(--cat-eco)', ag:'1일 전', t:'중복상장 구체적 기준 나왔다… 모회사 엄격한 주주 동의 필수', src:'매일경제 외 20' },
+];
+let state = { ...PRESETS[0].st }, presetNm = '스포트라이트', vp = 'mob', kb = 1;
+
+const $ = s => document.querySelector(s);
+const app = $('#app'), sov = $('#sov'), sq = $('#sq'), spill = $('#spill'), frame = $('#frame');
+
+$('#feed').innerHTML = CARDS.map(c =>
+  '<div class="fcard"><div class="cm"><span style="color:'+c.c+'">'+c.cat+'</span><span class="ag">'+c.ag+'</span></div><div class="tt">'+c.t+'</div><div class="src">'+c.src+'</div></div>').join('');
+
+function esc(s){ return s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+function renderResults(){
+  const q = sq.value.trim();
+  const host = $('#sresults');
+  if (!q) { host.innerHTML = ''; return; }
+  const ql = q.toLowerCase();
+  const hits = CARDS.filter(c => c.t.toLowerCase().includes(ql) || c.cat.includes(q) || c.src.toLowerCase().includes(ql));
+  if (!hits.length) { host.innerHTML = '<div class="rempty">일치 결과 없음</div>'; return; }
+  host.innerHTML = hits.slice(0,5).map(c => {
+    const t = esc(c.t).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'), '<span class="rc-hl">$1</span>');
+    return '<div class="rcard"><div class="rc-m"><span style="color:'+c.c+'">'+c.cat+'</span><span class="ag">'+c.ag+'</span></div><div class="rc-t">'+t+'</div></div>';
+  }).join('');
+}
+
+/* 슬라이더 */
+(function(){
+  const host = $('#sliders'); let g='';
+  SLIDERS.forEach(s=>{
+    if(s.grp!==g){ const d=document.createElement('div'); d.className='grp'; d.innerHTML='<div class="gl">'+s.grp+'</div>'; host.appendChild(d); g=s.grp; }
+    const row=document.createElement('div'); row.className='sl';
+    row.innerHTML='<label>'+s.nm+'<em>'+s.d+'</em></label><input type="range" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'" data-k="'+s.k+'"><output data-o="'+s.k+'"></output>';
+    host.lastElementChild.appendChild(row);
+  });
+  host.addEventListener('input', e=>{ const k=e.target.dataset.k; if(!k)return; state[k]=parseFloat(e.target.value); presetNm='커스텀'; mark(); apply(); });
+})();
+/* 프리셋 */
+(function(){
+  const host=$('#presets');
+  PRESETS.forEach(p=>{ const b=document.createElement('button'); b.type='button'; b.className='tgl pill'; b.dataset.id=p.id;
+    b.innerHTML=(p.star?'<span class="st">★</span>':'')+p.nm;
+    b.addEventListener('click',()=>{ state={...p.st}; presetNm=p.nm; mark(); apply(); }); host.appendChild(b); });
+})();
+function mark(){ document.querySelectorAll('#presets .pill').forEach(b=>{ const p=PRESETS.find(x=>x.id===b.dataset.id); b.classList.toggle('on', presetNm===p.nm); }); }
+
+$('#vpMob').addEventListener('click',()=>setVp('mob'));
+$('#vpPc').addEventListener('click',()=>setVp('pc'));
+function setVp(v){ vp=v; frame.classList.toggle('mob',v==='mob'); frame.classList.toggle('pc',v==='pc'); $('#vpMob').classList.toggle('on',v==='mob'); $('#vpPc').classList.toggle('on',v==='pc'); }
+
+const sBtn=$('#sBtn');
+function openSov(){ sov.classList.add('open'); sBtn.classList.add('on'); setTimeout(()=>{ try{ sq.focus({preventScroll:true}); }catch(e){} },120); renderResults(); }
+function closeSov(){ sov.classList.remove('open'); sBtn.classList.remove('on'); sq.value=''; spill.classList.remove('has'); renderResults(); sq.blur(); }
+sBtn.addEventListener('click', e=>{ e.stopPropagation(); sov.classList.contains('open')?closeSov():openSov(); });
+$('#shit').addEventListener('click', closeSov);
+$('#sblur').addEventListener('click', closeSov);
+sq.addEventListener('input', ()=>{ spill.classList.toggle('has', !!sq.value); renderResults(); });
+$('#sclr').addEventListener('click', ()=>{ sq.value=''; spill.classList.remove('has'); renderResults(); sq.focus(); });
+$('#tKb').addEventListener('click', ()=>{ kb=!kb; $('#tKb').classList.toggle('on',kb); apply(); });
+
+function apply(){
+  app.style.setProperty('--t-blur', state.blur+'px');
+  app.style.setProperty('--t-dim', state.dim);
+  app.style.setProperty('--t-y', state.y+'%');
+  app.style.setProperty('--t-lift', state.lift+'px');
+  app.style.setProperty('--t-shadow', state.shadow);
+  app.style.setProperty('--t-gap', state.gap+'px');
+  app.classList.toggle('kb-on', !!kb);
+  SLIDERS.forEach(s=>{ const r=document.querySelector('input[data-k="'+s.k+'"]'), o=document.querySelector('output[data-o="'+s.k+'"]');
+    if(!r)return; r.value=state[s.k]; r.style.setProperty('--p', ((state[s.k]-s.min)/(s.max-s.min)*100)+'%'); o.textContent=s.f(state[s.k]); });
+  buildOut();
+}
+function buildOut(){
+  const s=state, L=[];
+  L.push('[검색 플로팅 — 선택값 · 프리셋: '+presetNm+']');
+  L.push('방식        : 전면 블러 + 일치 결과 블러 위로 떠오름(스포트라이트식)');
+  L.push('뒤 블러     : '+s.blur+'px (피드만 정적 blur · 결과는 위 별도 층 = 타이핑 flicker 0)');
+  L.push('딤 농도     : rgba(5,11,13,'+s.dim.toFixed(2)+')');
+  L.push('검색바 위치 : 상단 '+s.y+'%');
+  L.push('결과 간격   : '+s.gap+'px · 떠오름 translateY '+s.lift+'px · 그림자 α '+s.shadow.toFixed(2));
+  L.push('검색바      : 254×45급 글래스 필(확정 배선값 계승)');
+  L.push('결과        : 원본 필터 축약카드(제목 하이라이트) · 최대 5개 · 없으면 "일치 결과 없음"');
+  L.push('닫기        : 블러 영역 탭·Enter·뒤로가기 · 결과 카드 탭 = 해당 기사');
+  $('#out').textContent=L.join('\n');
+}
+$('#copy').addEventListener('click', async ()=>{
+  const t=$('#out').textContent, b=$('#copy'); let ok=false;
+  try{ await navigator.clipboard.writeText(t); ok=true; }catch(e){}
+  if(!ok){ try{ const r=document.createRange(); r.selectNodeContents($('#out')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); ok=document.execCommand('copy'); s.removeAllRanges(); }catch(e){} }
+  b.textContent=ok?'복사됨 ✓':'복사 실패 — 길게 눌러 수동'; b.classList.toggle('ok',ok);
+  setTimeout(()=>{ b.textContent='선택값 복사'; b.classList.remove('ok'); },1400);
+});
+mark(); apply();
+</script>
+</body>
+</html>
