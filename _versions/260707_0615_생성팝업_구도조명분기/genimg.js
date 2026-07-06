@@ -21,12 +21,6 @@ export async function onRequestPost({ request, env }) {
   const SIZES = ['1K', '2K', '4K'];
   const MOODS = ['auto', 'tense', 'somber', 'hope', 'calm'];
   const FONTS = ['gothic', 'serif', 'brush', 'neon'];
-  // 구도·조명·표현 포인트 = /k 메인 라이브러리 실코드(gen_image.py와 동일 집합 · 서브분기는 python이 화풍별 정본 재검증)
-  const SUBS = ['auto', 'film', 'bw', 'cinedoc', 'noir', 'tone', 'color', 'brush', 'flat', 'bleed', 'fine', 'sumuk', 'neon', 'riso', 'paper', 'clay', 'lowpoly', 'line'];
-  const ANGLES2 = ['auto', 'AG-01', 'AG-02', 'AG-03', 'AG-04', 'AG-06', 'AG-09'];
-  const POINTS = ['auto', 'DF-01', 'DF-02', 'DF-04', 'DF-05', 'DF-07'];
-  const LIGHTS = ['auto', 'LGT05', 'LGT06', 'LGT08', 'LGT09', 'LGT10', 'LGT12'];
-  const PLACES = ['auto', 'top23', 'center', 'full'];
   const opts = {
     style: STYLES.includes(o.style) ? o.style : 'photo',
     aspect: ASPECTS.includes(o.aspect) ? o.aspect : '4:5',
@@ -34,11 +28,6 @@ export async function onRequestPost({ request, env }) {
     count: Math.max(1, Math.min(4, parseInt(o.count, 10) || 1)),
     mood: MOODS.includes(o.mood) ? o.mood : 'auto',
     font: FONTS.includes(o.font) ? o.font : 'gothic',
-    sub: SUBS.includes(o.sub) ? o.sub : 'auto',
-    angle: ANGLES2.includes(o.angle) ? o.angle : 'auto',
-    point: POINTS.includes(o.point) ? o.point : 'auto',
-    light: LIGHTS.includes(o.light) ? o.light : 'auto',
-    place: PLACES.includes(o.place) ? o.place : 'auto',
     text: String(o.text || '').replace(/\s+/g, ' ').trim().slice(0, 60),
     wish: String(o.wish || '').replace(/\s+/g, ' ').trim().slice(0, 300),
   };

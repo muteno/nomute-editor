@@ -69,38 +69,6 @@ FONT_FRAG = {"gothic": "heavy bold Hangul sans-serif poster lettering, thick eve
              "serif": "elegant Hangul serif (Myeongjo-style) lettering, refined thin-to-thick stroke contrast",
              "brush": "energetic Korean brush-calligraphy Hangul lettering, hand-inked strokes",
              "neon": "glowing neon-tube Hangul sign lettering"}
-# ── 구도·조명·표현 포인트 = /k 메인 라이브러리(archive_media_master SSOT) 실코드 — 해석은 tg.lib_buckets 재사용
-#    (thumb_dispatch와 동일 조회망 = 어휘 드리프트 0 · 운영자 260707 "레포 라이브러리 뒤져서 배선"). 'auto' = 코드 없음(Opus 재량).
-ANGLE_CODES = ("AG-01", "AG-02", "AG-03", "AG-04", "AG-06", "AG-09")       # 39_cardnews_angle_height: 눈높이/로우위압/하이왜소/부감/더치/측면
-POINT_CODES = ("DF-01", "DF-02", "DF-04", "DF-05", "DF-07")                # 38_cardnews_distance_crop: 눈물클로즈/주먹인서트/서류매크로/대치투샷/군중속1인
-LIGHT_CODES = ("LGT05", "LGT06", "LGT08", "LGT09", "LGT10", "LGT12")       # 12_lighting_emotion: 촛불/골든아워/흐린확산/하드측광/역광실루엣/형광임상
-# 배치 = 카드뉴스 프롬프팅 정본 계승(apps/news/02 §합성 "main subject anchored in the upper-center" · 라우터 "핵심요소 상단 2/3")
-PLACE_FRAG = {"auto": "",
-              "top23": ("the main subject anchored in the upper two-thirds of the frame (upper-center), "
-                        "the lower zone kept visually calm and uncluttered so a caption can sit over it"),
-              "center": "the main subject centered with balanced, symmetrical visual weight",
-              "full": "full-figure staging — the protagonist visible head to toe within the scene"}
-# 화풍 서브 분기(운영자 260707 "수채도 여러 수채") — STYLE_FRAG에 병기되는 변주 look. 'auto' = 기본 look만.
-STYLE_SUB = {
-    "photo": {"film": "shot on 35mm film, visible grain, subtle lens vignette, slightly underexposed photojournalism look",
-              "bw": "black-and-white press photograph, deep blacks, high-contrast documentary tone",
-              "cinedoc": "cinematic documentary still, handheld immediacy, natural imperfect framing"},
-    "webtoon": {"noir": "stark noir inking, heavy chiaroscuro shadow shapes, minimal palette",
-                "tone": "manga screentone shading, halftone dot texture, crisp line hierarchy",
-                "color": "rich full-color webtoon rendering, soft digital gradient shading"},
-    "cartoon": {"brush": "loose brush-inked daily newspaper cartoon, quick confident strokes",
-                "flat": "flat modern editorial cartoon, clean shapes, minimal shading"},
-    "watercolor": {"bleed": "loose wet-on-wet washes, heavy pigment blooms and bleeding edges",
-                   "fine": "fine controlled watercolor, delicate detailed brushwork, crisp edges",
-                   "sumuk": "korean ink-wash (sumuk) painting with sparse watercolor accents, generous white space"},
-    "cinematic": {"noir": "film-noir mood, hard shadows, venetian-blind light patterns",
-                  "neon": "neon-lit night palette, wet reflective streets, cyan-magenta glow"},
-    "illust": {"riso": "risograph print texture, limited spot-color palette, visible grain",
-               "paper": "cut-paper collage layers, tactile edges, flat color planes"},
-    "iso3d": {"clay": "soft matte clay materials, rounded edges, pastel palette",
-              "lowpoly": "stylized low-poly geometry, faceted surfaces"},
-    "pictogram": {"line": "thin-line iconography, outline style, minimal fills"},
-}
 
 
 def load_opts():
@@ -123,34 +91,8 @@ def load_opts():
     wish = re.sub(r"\s+", " ", str(o.get("wish", "") or "")).strip()[:300]
     if text and size == "1K":
         size = "2K"   # 문구 렌더 = 2K 하한(1K는 한글 자모 뭉개짐 — 공식 팁·아이데이션 분신술 260707 · UI도 1K 딤이지만 서버 이중 플로어)
-    sub = o.get("sub") if o.get("sub") in STYLE_SUB.get(style, {}) else "auto"
-    angle = o.get("angle") if o.get("angle") in ANGLE_CODES else "auto"
-    point = o.get("point") if o.get("point") in POINT_CODES else "auto"
-    light = o.get("light") if o.get("light") in LIGHT_CODES else "auto"
-    place = o.get("place") if o.get("place") in PLACE_FRAG else "auto"
     return {"style": style, "aspect": aspect, "size": size, "count": count,
-            "mood": mood, "font": font, "text": text, "wish": wish,
-            "sub": sub, "angle": angle, "point": point, "light": light, "place": place}
-
-
-
-
-def lib_keywords(o):
-    """선택된 라이브러리 코드(angle/point/light) → tg.lib_buckets 해석(camera/focus/light 키워드 dict)."""
-    codes = [o[k] for k in ("angle", "point", "light") if o.get(k) and o[k] != "auto"]
-    try:
-        return tg.lib_buckets(" ".join(codes)) if codes else {}
-    except Exception as e:  # noqa: BLE001 — 라이브러리 파일 부재 등 = 코드 드롭(fail-soft)
-        print("::warning::lib_buckets 실패(코드 드롭): {}".format(e), flush=True)
-        return {}
-
-
-def style_look(o):
-    """화풍 look = 기본 STYLE_FRAG + 서브 분기 병기."""
-    frag = STYLE_FRAG[o["style"]]
-    sub = STYLE_SUB.get(o["style"], {}).get(o.get("sub", ""), "")
-    return frag + (", " + sub if sub else "")
-
+            "mood": mood, "font": font, "text": text, "wish": wish}
 
 
 def build_fallback(head, lead, scene, o):
@@ -163,18 +105,8 @@ def build_fallback(head, lead, scene, o):
                      'the wording): "' + o["text"] + '" — the ONLY legible text in the image, one large line, '
                      + FONT_FRAG[o["font"]] + ", every hangul syllable block complete and correctly formed, "
                      "high contrast, kept clear of faces; no other text anywhere.")
-    parts.append("STYLE: " + style_look(o))
+    parts.append("STYLE: " + STYLE_FRAG[o["style"]])
     parts.append("SCENE: " + (scene or (head + (" — " + lead if lead else ""))))
-    kw = lib_keywords(o)
-    if kw.get("camera"):
-        parts.append("CAMERA: " + kw["camera"])
-    if kw.get("focus"):
-        parts.append("FOCUS (distance & crop of the key subject, adapt to the scene, "
-                     "do not copy literal props): " + kw["focus"])
-    if kw.get("light"):
-        parts.append("LIGHT: " + kw["light"])
-    if PLACE_FRAG[o["place"]]:
-        parts.append("COMPOSITION: " + PLACE_FRAG[o["place"]])
     parts.append(tg._frame(False, likeness).replace("vertical 4:5", ASPECT_EN[o["aspect"]]))
     if MOOD_FRAG[o["mood"]]:
         parts.append("MOOD: " + MOOD_FRAG[o["mood"]])
@@ -202,17 +134,6 @@ def ask_opus(head, lead, insight, scene, o):
                  else "- 이미지에 읽히는 글자·자막·헤드라인 절대 금지(한글은 깨져 렌더됨 — 흐릿한 배경 간판만 허용).")
     mood_rule = ("- 무드: 기사 감정에 맞게 스스로 정해 MOOD 지시를 넣어라." if o["mood"] == "auto"
                  else '- 무드 = {} — MOOD 지시 포함: "{}"'.format(MOOD_KO[o["mood"]], MOOD_FRAG[o["mood"]]))
-    kw = lib_keywords(o)   # 운영자 선택 라이브러리 코드(앵글·포인트·조명) → 실키워드
-    lib_lines = []
-    if kw.get("camera"):
-        lib_lines.append('- 카메라 앵글(라이브러리 정본) — CAMERA 지시에 반드시 포함: "{}"'.format(kw["camera"]))
-    if kw.get("focus"):
-        lib_lines.append('- 표현 포인트(거리·크롭 · 라이브러리 정본) — 장면에 맞게 번안해 포함(예시 소품 리터럴 복사 금지): "{}"'.format(kw["focus"]))
-    if kw.get("light"):
-        lib_lines.append('- 조명(라이브러리 정본) — LIGHT 지시에 포함: "{}"'.format(kw["light"]))
-    if PLACE_FRAG[o["place"]]:
-        lib_lines.append('- 피사체 배치 — COMPOSITION 지시에 포함: "{}"'.format(PLACE_FRAG[o["place"]]))
-    lib_rule = "\n".join(lib_lines)
     wish_rule = ("- 운영자 추가 주문(최우선 반영): " + o["wish"]) if o["wish"] else ""
     prompt = """너는 Gemini 이미지 생성 모델을 위한 프롬프트 엔지니어다. 아래 한국 뉴스 기사와 운영자 옵션을 읽고,
 뉴스 카드 배경용 이미지 생성 프롬프트 *영문 1개*를 작성하라.
@@ -227,7 +148,6 @@ def ask_opus(head, lead, insight, scene, o):
 - 화풍 = {style_ko}. 이 스타일 지시를 반드시 포함: "{frag}"
 - 화면비 = {aspect}({aspect_en}). 장면이 프레임 가장자리까지 가득 차게(full-bleed·빈 띠/레터박스 금지·단일 초점).
 {mood_rule}
-{lib_rule}
 {text_rule}
 {wish_rule}
 
@@ -237,11 +157,11 @@ def ask_opus(head, lead, insight, scene, o):
 - 선정성·시신·유혈 클로즈업·미성년 위해 금지. 워터마크·로고 금지.
 - 국내 사건이면 인물·배경은 한국(명백한 해외 사건이면 실제 지역·인물).
 - 한글 무결성 지시는 긍정형 1회만(부정어 반복 강조 금지 — 부정 프라이밍 역효과).
-- 출력 = 영문 프롬프트 본문만, 이 레포 검증 골격의 라벨 블록 구조로: GOVERNING → (문구 있으면 TEXT) → STYLE → SCENE → CAMERA → (포인트 있으면 FOCUS) → LIGHT → MOOD → (배치 있으면 COMPOSITION) → FRAME → AVOID. 각 라벨 한 줄씩. 설명·번호·마크다운·코드블록 금지.""".format(
+- 출력 = 영문 프롬프트 본문만, 이 레포 검증 골격의 라벨 블록 구조로: GOVERNING → (문구 있으면 TEXT) → STYLE → SCENE → CAMERA → LIGHT → MOOD → FRAME → AVOID. 각 라벨 한 줄씩. 설명·번호·마크다운·코드블록 금지.""".format(
         head=head, lead=lead or "(없음)", insight=insight or "(없음)", scene=scene or "(없음)",
-        style_ko=STYLE_KO[o["style"]], frag=style_look(o),
+        style_ko=STYLE_KO[o["style"]], frag=STYLE_FRAG[o["style"]],
         aspect=o["aspect"], aspect_en=ASPECT_EN[o["aspect"]],
-        mood_rule=mood_rule, lib_rule=lib_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
+        mood_rule=mood_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
 
     args = ["claude", "-p", "--model", MODEL, "--effort", "max",
             "--disallowedTools", "Bash,Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task",
