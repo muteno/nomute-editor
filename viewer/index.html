@@ -484,7 +484,7 @@
     animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards;
   }
   @keyframes cardIn { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }
-  @media (prefers-reduced-motion:reduce){ .card, .soc-item, .sc-item, .bpop, .min-pick { animation:none; } }   /* 이동 스태거 무효 = 전정계 배려(형제 .qrow:989/#ph-sum:1705 계승·분신술10 260704) */
+  @media (prefers-reduced-motion:reduce){ .card, .soc-item, .sc-item, .bpop, .min-pick, .viewhead.vh-enter { animation:none; } }   /* 이동 스태거 무효 = 전정계 배려(형제 .qrow:989/#ph-sum:1705 계승·분신술10 260704) · 탭전환 헤더 촤르륵도 무효(260706 6차) */
   @media (hover:hover) and (pointer:fine) {
     .card:hover { border-color:rgba(var(--accent-rgb),.45); transform:translateY(-9px) scale(1.01);
       box-shadow:0 22px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 1px rgba(var(--accent-rgb),.18), 0 0 23px rgba(var(--accent-rgb),.16);
@@ -677,6 +677,7 @@
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
   /* 컨트롤 헤더바(운영자 260706 3차 재편) = 타이틀은 워드마크 서브로 이주 · 행 = 우측 클러스터만[검색 + 필터(피드 탭)] — 구 좌측 .vh-filters 컨테이너 폐지(필터가 우측 한도 슬롯으로 이주 · 3차 8). 텍스트 갱신은 setViewhead. */
   .viewhead { position:relative; max-width:860px; margin:2.1px auto 4px; padding:0 16px; }   /* margin-top 2.1 = 타이틀 170% 확대(9→15.3 · 260706 4차)를 흡수해 버튼 행 상단 화면선(워드마크 아래 35.4px) 유지: 18 + 15.3 + 2.1 = 35.4 · 단일값(모바일 공통) */
+  .viewhead.vh-enter { animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards; }   /* 탭 전환 시 검색·필터 픽토그램(vh-acts)이 콘텐츠와 함께 촤르륵(운영자 260706 6차 "미리 마중나와 있음 → 내용하고 같이 · 고정은 상단 배너만") — cardIn 결·커브 계승(콘텐츠 첫 카드와 동시 등장) · showTab가 탭 전환마다 클래스 재적용 · 상단 배너(.topbanner 워드마크·서브타이틀)는 viewhead 밖이라 불변 */
   /* (구 .vh-filters 좌측 묶음 규칙 삭제 — 260706 3차 8: 필터 버튼이 .vh-acts 우측 한도 슬롯으로 이주·카드만 토글은 필터 팝업 헤더로 편입) */
   .vh-acts #filterBtn { display:none; }   /* 필터 = 피드 탭 전용(구 body[data-tab=feed] .vh-filters 게이트 계승 — 무속성(부팅 직후)·scrap·sns = 숨김) */
   body[data-tab="feed"] .vh-acts #filterBtn { display:grid; }
@@ -7765,6 +7766,7 @@ function showTab(tab) {
   try { localStorage.setItem('nomute_tab', tab); } catch {}   // 새로고침 복원용
 
   setViewhead(tab);
+  const _vh = $('#viewhead'); if (_vh) { _vh.classList.remove('vh-enter'); void _vh.offsetWidth; _vh.classList.add('vh-enter'); }   // 탭 전환 = 검색·필터 픽토그램도 콘텐츠와 함께 촤르륵(reflow로 애니 재시작 · 운영자 260706 6차 "미리 마중나와 있던 것 → 내용하고 같이 · 고정은 배너만")
   $('#bnav').querySelectorAll('.bnav-i[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'scrap') enterScrap();   // 탭 진입 = 4소스 병렬 로드 후 renderScrap 1회(깜빡임 다수 방지 · 아래 enterScrap). 강제 재요청·cross-device·토스트 de-dup 전부 보존.
   else if (tab === 'sns') loadSocial();
