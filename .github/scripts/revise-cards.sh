@@ -10,7 +10,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
-source "$ROOT/shared/claude_transient.sh"   # is_quota/claude_failover — 계정 한도 시 대체 계정 1단계씩 전환(서브1→서브2)
+source "$ROOT/shared/claude_transient.sh"   # is_quota/claude_failover — 계정 한도 시 대체 계정 1단계씩 전환(서브1→서브2→서브3)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 사용량 계측
 
 FILE="${FILE:-}"                 # 큐 항목 id(확장자 없이) — 워크플로 input
@@ -69,8 +69,8 @@ ${CARDS_OLD}
 (재작성된 cards.md 전체 — '# 제목'부터 마지막 카드까지)
 <<<NOMUTE_CARDS_END>>>"
 
-# 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단. 쿼터 한도면 대체 계정 1단계씩 폴오버(서브1→서브2 · 3계정 체인).
-for _try in 1 2 3; do
+# 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단. 쿼터 한도면 대체 계정 1단계씩 폴오버(서브1→서브2→서브3 · 4계정 체인). 루프 상한 4 = 체인 깊이.
+for _try in 1 2 3 4; do
   out="$(printf '%s' "$prompt" | METER_SRC=revise-cards METER_REF="$FILE" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
         --model "$MODEL" \
         --effort max \

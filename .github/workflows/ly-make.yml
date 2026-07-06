@@ -18,6 +18,10 @@ on:
       file:
         description: '업로드 영상/오디오 파일 경로(uploads/<id>/src.*) — ffmpeg 오디오추출+Whisper'
         type: string
+      early_segs:
+        description: '조기 segments.json 푸시(전사 즉시 편집기 선행 · 1=ON) — 기본 OFF(fail-closed) · 라이브 ON = functions/api/ly.js가 문자열 ''1''을 명시 전달(숫자/불리언 금지 = GH 강제변환으로 조용히 OFF · 롤백 = ly.js 한 줄)'
+        type: string
+        default: '0'
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -114,11 +118,36 @@ jobs:
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
 
+      # 조기 segments.json 푸시(LY-EARLY) — STT가 끝나는 즉시 전사 사이드카만 먼저 커밋
+      #   → 뷰어 편집기가 의역(claude 1~5분)을 안 기다리고 바로 뜸(260706 평의회R2 E7 배점미달 후속 = 별도 카나리아 트랙 · 카나리아 e2etest-early 실측 = 전사 89초 선행).
+      #   best-effort: 어떤 실패든 exit 0(마지막 Commit output이 어차피 포함 = 회귀 0) · push 경쟁만 짧게 재시도.
+      #   ⚠️ 이 if는 암묵 success() 게이트 필수 — always()/failure() 추가 금지(STT 실패 시 부분 segments.json 조기 push 방지 · 평의회8).
+      - name: 조기 segments.json 커밋 (전사 즉시 편집기 선행)
+        if: ${{ inputs.early_segs == '1' && (inputs.url != '' || inputs.file != '') }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          SEG="viewer/ly_out/${IN_ID}/segments.json"
+          [ -s "$SEG" ] || { echo "segments.json 없음 — 조기 푸시 스킵"; exit 0; }
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "$SEG"
+          git commit -m "ly: ${IN_ID} 전사 조기 커밋 (편집기 선행)" || exit 0
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
+              echo "조기 푸시 완료 → 뷰어 편집기 선행 표시"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*2))
+          done
+          echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함 예정(무해)"; exit 0
+
       - name: Make ly subtitles
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           SUBS: ${{ inputs.subs }}
           IN_ID: ${{ inputs.id }}

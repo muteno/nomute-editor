@@ -152,7 +152,7 @@ def judge(items):
             "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",   # MultiEdit 제거: CLI 2.1.197에 없는 도구라 "matches no known tool" stderr 경고만 냄(비치명·모든 모드 공통 노이즈). 나머지는 실재 도구 = 계속 disallow(판정에 도구 불필요). 260701 실측.
             "--max-turns", "1"]
     p, rc, err = run_claude(
-        cmd, prompt, timeout=300, source="breaking")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2) · source=토큰 계측
+        cmd, prompt, timeout=300, source="breaking")   # 쿼터 한도면 대체 계정 1단계씩 전환·재시도(서브1→서브2→서브3) · source=토큰 계측
     if p is None:
         return {}, rc, err
     verdicts = {}
