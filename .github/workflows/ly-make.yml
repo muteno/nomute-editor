@@ -244,7 +244,8 @@ jobs:
           git rm -r "uploads/${IN_ID}" 2>/dev/null || true   # 업로드 영상/오디오 = 오디오 추출 후 불필요(git 비대화 방지)
           git add "viewer/ly_out/${IN_ID}" 2>/dev/null || true
           git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만
-          git commit -m "ly: ${IN_ID} 자막 출력" || { echo "커밋할 것 없음"; exit 0; }
+          git commit -m "ly: ${IN_ID} 자막 출력" \
+            || { [ -z "$(git log --oneline "origin/${BRANCH}..HEAD" 2>/dev/null | head -1)" ] && { echo "커밋할 것 없음"; exit 0; }; echo "신규 커밋 없음 — 미푸시 선행 커밋(조기 subs) push 진행"; }   # 조기 커밋 push 경쟁 실패 잔존분 유실 방지
           pushed=0
           for i in 1 2 3 4 5; do
             if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
