@@ -18,10 +18,6 @@ on:
       file:
         description: '업로드 영상/오디오 파일 경로(uploads/<id>/src.*) — ffmpeg 오디오추출+Whisper'
         type: string
-      early_segs:
-        description: '조기 segments.json 푸시(전사 즉시 편집기 선행 · 1=ON) — §📰 카나리아 레버·롤백 = default 0'
-        type: string
-        default: '0'
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -117,29 +113,6 @@ jobs:
             || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
-
-      # 조기 segments.json 푸시(LY-EARLY) — STT가 끝나는 즉시 전사 사이드카만 먼저 커밋
-      #   → 뷰어 편집기가 의역(claude 1~5분)을 안 기다리고 바로 뜸(체감 대기 반토막 · 260706 평의회R2 9점 채택 후속).
-      #   best-effort: 어떤 실패든 exit 0(마지막 Commit output이 어차피 포함 = 회귀 0) · push 경쟁만 짧게 재시도.
-      - name: 조기 segments.json 커밋 (전사 즉시 편집기 선행)
-        if: ${{ inputs.early_segs == '1' && (inputs.url != '' || inputs.file != '') }}
-        env:
-          IN_ID: ${{ inputs.id }}
-          BRANCH: ${{ github.ref_name }}
-        run: |
-          SEG="viewer/ly_out/${IN_ID}/segments.json"
-          [ -s "$SEG" ] || { echo "segments.json 없음 — 조기 푸시 스킵"; exit 0; }
-          git config user.name "nomute-bot"
-          git config user.email "bot@nomute.local"
-          git add "$SEG"
-          git commit -m "ly: ${IN_ID} 전사 조기 커밋 (편집기 선행)" || exit 0
-          for i in 1 2 3; do
-            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
-              echo "조기 푸시 완료 → 뷰어 편집기 선행 표시"; exit 0
-            fi
-            git rebase --abort 2>/dev/null || true; sleep $((i*2))
-          done
-          echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함 예정(무해)"; exit 0
 
       - name: Make ly subtitles
         env:
