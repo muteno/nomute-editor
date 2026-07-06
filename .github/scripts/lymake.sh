@@ -108,7 +108,7 @@ try:
 except Exception:
     o = {}
 if o.get("keyword", True) and (os.environ.get("OPTS") or "").strip():
-    md = re.sub(r"\*([^*\n]{1,24})\*", r"\1", md)   # 표시·복사 텍스트의 잔여 별표 제거(별표는 subs.json 전용 — 모델 변동성 방어)
+    md = re.sub(r"(?<!\*)\*([^*\n]{1,24})\*(?!\*)", r"\1", md)   # 표시·복사 텍스트의 잔여 단일 *별표*만 제거(subs.json 전용 — 모델 변동성 방어) · 경계 가드 = **볼드**·표 헤더 오매칭 차단(재검 3인)
 open(p, "w", encoding="utf-8").write(md)
 PY
 rm -f "${OUTDIR}/stderr.log"
