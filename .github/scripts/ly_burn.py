@@ -55,7 +55,10 @@ def probe(path):
                 rot = 0
     if abs(rot) % 180 == 90:
         w, h = h, w
-    dur = float((j.get("format") or {}).get("duration") or 0)
+    try:
+        dur = float((j.get("format") or {}).get("duration") or 0)   # 일부 webm/mkv = 'N/A' → 0(길이 체크만 생략·번인 진행)
+    except Exception:
+        dur = 0.0
     return w, h, dur
 
 
@@ -77,7 +80,8 @@ def load_segs(outdir):
         try:
             j = json.load(open(p, encoding="utf-8"))
             segs = [{"s": s["s"], "e": s["e"], "ko": s.get("t", ""), "src": ""}
-                    for s in (j.get("segs") or []) if s.get("t")]
+                    for s in (j.get("segs") or [])
+                    if isinstance(s.get("s"), (int, float)) and isinstance(s.get("e"), (int, float)) and s.get("t")]   # 세그별 필터 = 나쁜 세그 1개가 폴백 전체를 죽이지 않게(subs.json과 대칭)
             if segs:
                 return segs, "stt"
         except Exception as e:
@@ -94,9 +98,10 @@ def sanitize(t):
 
 
 def ass_time(sec):
-    sec = max(0.0, float(sec))
-    h = int(sec // 3600); m = int(sec % 3600 // 60); s = sec % 60
-    return "{}:{:02d}:{:05.2f}".format(h, m, s)
+    cs = max(0, int(round(float(sec) * 100)))   # 센티초 반올림 후 재분해 = 59.996→'0:01:00.00' 캐리업(60.00 무효 표기 차단)
+    h, rem = divmod(cs, 360000)
+    m, rem = divmod(rem, 6000)
+    return "{}:{:02d}:{:05.2f}".format(h, m, rem / 100.0)
 
 
 def star_spans(text):
@@ -156,7 +161,7 @@ def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
     used = 0
     rendered = []
     for k, w in enumerate(words):
-        cs = (cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))
+        cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 \kf 차단
         used += cs
         st, en = bounds[k]
         hit = any(a < en and st < b for a, b in spans)
@@ -236,12 +241,7 @@ def build_ass(segs, w, h, opts):
     return head + "\n" + "\n".join(lines) + "\n"
 
 
-def main():
-    if len(sys.argv) < 3:
-        print("usage: ly_burn.py <id> <video>"); return 0
-    vid_id, video = sys.argv[1], sys.argv[2]
-    outdir = os.path.join("viewer", "ly_out", vid_id)
-    os.makedirs(outdir, exist_ok=True)
+def run(vid_id, video, outdir):
     try:
         opts = json.loads(os.environ.get("OPTS") or "{}")
     except Exception:
@@ -277,13 +277,13 @@ def main():
            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=1500)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)   # 15분 백스톱 — 잡 하드킬(45분) 전에 우아하게 실패 기록(평의회)
         if r.returncode != 0 or not os.path.isfile(out_mp4) or os.path.getsize(out_mp4) < 1024:
             tail = (r.stderr or "")[-400:]
             print("::warning::ffmpeg 번인 실패:", tail)
             out_json(outdir, {"error": "영상 합성 실패 — 자막 텍스트는 정상", "detail": tail[-160:]}); return 0
     except subprocess.TimeoutExpired:
-        out_json(outdir, {"error": "영상 합성 시간 초과(25분) — 자막 텍스트는 정상"}); return 0
+        out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
     note = "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else ""
     if tg.R2_ON:
@@ -298,6 +298,25 @@ def main():
                           "note": (note + " · " if note else "") + "git 저장(R2 미설정)"}); return 0
     out_json(outdir, {"error": "R2 미설정 + 파일 {}MB(30MB 초과) — 저장 불가".format(len(data) // 1048576)})
     return 0
+
+
+def main():
+    if len(sys.argv) < 3:
+        print("usage: ly_burn.py <id> <video>"); return 0
+    vid_id, video = sys.argv[1], sys.argv[2]
+    if not re.match(r"^[A-Za-z0-9_-]{1,64}$", vid_id):   # 경로 탈출 차단(수동 dispatch 임의 id 방어 — 라이브 id는 ly.js 서버 생성)
+        print("::warning::잘못된 id 형식 — 번인 스킵:", vid_id[:40]); return 0
+    outdir = os.path.join("viewer", "ly_out", vid_id)
+    os.makedirs(outdir, exist_ok=True)
+    try:
+        return run(vid_id, video, outdir)
+    except Exception as e:   # 어떤 예외도 video.json에 사유 기록 = 뷰어 8분 헛폴 차단(전면 fail-soft)
+        try:
+            out_json(outdir, {"error": "영상 합성 실패 — 자막 텍스트는 정상 ({})".format(str(e)[:120])})
+        except Exception:
+            pass
+        print("::warning::ly_burn 예외:", e)
+        return 0
 
 
 if __name__ == "__main__":

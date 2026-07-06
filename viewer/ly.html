@@ -674,7 +674,7 @@ $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err');
   const url = $('#url').value.trim();
   if (!url && !FILE_B64 && !SRT_TEXT) return errStatus('내용 삽입 필수');   // 빈 입력 = 버튼 안 빨강+흔들림(thumb 통일·반쪽폭 버튼이라 짧게·운영자 문구)
-  $('#out').innerHTML = ''; lyHideEditor(); LY_GEN = true;   // 검증 통과 후에만 이전 결과 지움(미입력 헛클릭이 결과 안 날림) · LY_GEN = 자동복원이 진행 UI 못 덮게(평의회2 F1)
+  $('#out').innerHTML = ''; lyHideEditor(); lyBurnReset(); LY_GEN = true;   // 검증 통과 후에만 이전 결과 지움(미입력 헛클릭이 결과 안 날림) · lyBurnReset 선행 = 발사 실패 반환 시에도 옛 완성영상 잔존 차단(평의회) · LY_GEN = 자동복원이 진행 UI 못 덮게(평의회2 F1)
   LY_PENDING_SEGS = (!url && SRT_TEXT) ? parseCues(SRT_TEXT) : null;   // SRT 업로드 = 클라 파싱으로 타이밍 확보(서버 STT 없음) · 우선순위 url > SRT 동일
   if (url) lyPvSet(null);   // URL 발사 = 로컬 첨부 미리보기 해제(영상 불일치 차단)
   { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
@@ -688,7 +688,6 @@ $('#go').onclick = async () => {
     if (!res.ok || j.error) { status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); $('#out').innerHTML = ''; return; }
     lyPendSet(j.out, j.url || j.file, wantVid);   // 진행 영속화(평의회R2 C1) — 완료/실패 시 poll이 해제·타임아웃은 유지(0 유실) · v = 합성 기대(리로드 이어받기)
     LY_WANTVID = wantVid ? j.out : '';
-    lyBurnReset();
     poll(j.out, j.url || j.file);
   } catch (e) {
     status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err'); $('#out').innerHTML = '';
@@ -1098,7 +1097,7 @@ const LY_OPT_DEF = { lang: 'auto', tone: 'sns', filler: true, burn: true, style:
 const LY_OPT_KEY = 'nm_ly_opts_v1';
 let LY_OPTS = { ...LY_OPT_DEF };
 try { const sv = JSON.parse(localStorage.getItem(LY_OPT_KEY) || 'null'); if (sv && typeof sv === 'object' && !Array.isArray(sv)) LY_OPTS = { ...LY_OPT_DEF, ...sv }; } catch (e) {}
-let LY_WANTVID = '', LY_VID_T = null;   // 완성 영상(번인) 폴 상태
+let LY_WANTVID = '', LY_VID_T = null, LY_VID_GEN = 0;   // 완성 영상(번인) 폴 상태 · GEN = 세대 토큰(in-flight fetch가 리셋 후 옛 영상 표시·좀비 재예약하는 경쟁 봉인 — poll() live 패턴 이식·평의회)
 function lyOptRender() {
   document.querySelectorAll('#lyOpts .opt').forEach(b => {
     const k = b.dataset.k;
@@ -1118,10 +1117,11 @@ function lyOptRender() {
   });
 })();
 // ══ 완성 영상(자막 번인 결과) — video.json 확인·폴·표시·다운로드 ══
-function lyBurnStop() { if (LY_VID_T) { clearTimeout(LY_VID_T); LY_VID_T = null; } }
+function lyBurnStop() { LY_VID_GEN++; if (LY_VID_T) { clearTimeout(LY_VID_T); LY_VID_T = null; } }
 function lyBurnReset() { lyBurnStop(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; $('#lyBurnNote').textContent = ''; }
 function lyBurnWait() { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; $('#lyBurnNote').innerHTML = '영상에 자막 입히는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'; }
 function lyBurnShow(j) {
+  if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
   const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false;
   const v = $('#lyBurnVid'); if (v.getAttribute('src') !== j.url) v.src = j.url; v.hidden = false;
   const dl = $('#lyBurnDl'); dl.hidden = false; if (!dl._icon) { dl.innerHTML = DOWNLOAD_SVG; dl._icon = 'dl'; } dl.dataset.url = j.url;
@@ -1137,12 +1137,18 @@ async function lyVidFetch(outPath) {   // video.json 1회 fetch — SPA 폴백(H
   } catch (e) { return null; }
 }
 async function lyVidCheck(outPath) {   // 복원·재진입 1회 체크 — 있으면 조용히 표시(없으면 무동작·폴 안 함)
-  const j = await lyVidFetch(outPath); if (j && j.url) lyBurnShow(j);
+  const gen = LY_VID_GEN;
+  const j = await lyVidFetch(outPath);
+  if (gen !== LY_VID_GEN) return;   // 그 사이 리셋/새 작업 = 이 응답 폐기(옛 영상 표시 차단)
+  if (j && j.url) lyBurnShow(j);
 }
 function lyPollVideo(outPath, t0) {   // 생성 완료 직후 연속 폴(10s · 8분 백스톱) — url/스킵/에러서 종료
   lyBurnStop(); lyBurnWait();
+  const gen = LY_VID_GEN;
   const tick = async () => {
+    if (gen !== LY_VID_GEN) return;
     const j = await lyVidFetch(outPath);
+    if (gen !== LY_VID_GEN) return;   // in-flight 중 리셋 = 표시·재예약 둘 다 봉인(좀비 폴 차단)
     if (j && j.url) { lyBurnShow(j); return; }
     if (j && (j.error || j.skip)) {
       if (j.skip) { lyBurnReset(); }   // 스킵(영상 없음 등) = 조용한 공백(§디자인 빈 상태)
@@ -1156,15 +1162,15 @@ function lyPollVideo(outPath, t0) {   // 생성 완료 직후 연속 폴(10s · 
 }
 (function () {
   const dl = $('#lyBurnDl'); if (!dl) return;
-  dl.addEventListener('click', async () => {   // R2 교차출처 = fetch→blob 저장 · 막히면(CORS) 새 탭 폴백
+  dl.addEventListener('click', () => {   // R2 교차출처 = 같은-출처 프록시 api/dl 경유(index dlSrc 정본 — 직접 fetch는 CORS로 항상 실패 · 평의회) · git 폴백(상대경로) = 그대로. 동기 클릭 = 유저 제스처 보존(iOS)
     const u = dl.dataset.url; if (!u) return;
-    try {
-      const r = await fetch(u); if (!r.ok) throw new Error(String(r.status));
-      const b = await r.blob(); const a = document.createElement('a');
-      a.href = URL.createObjectURL(b); a.download = '자막영상_' + (LY_ID || 'nomute') + '.mp4';
-      document.body.appendChild(a); a.click();
-      setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch (e) {} a.remove(); }, 2000);
-    } catch (e) { try { window.open(u, '_blank'); } catch (e2) {} }
+    if (!/^https?:\/\//i.test(u) && !/^ly_out\//.test(u)) return;   // 스킴 화이트리스트(방어심화)
+    const name = '자막영상_' + (LY_ID || 'nomute') + '.mp4';
+    const a = document.createElement('a');
+    a.href = /^https?:\/\//i.test(u) ? ('api/dl?u=' + encodeURIComponent(u) + '&n=' + encodeURIComponent(name)) : u;
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { a.remove(); } catch (e) {} }, 1500);
   });
 })();
 // 다운로드 표준 클릭효과(✓팝+링·받음 흰색) — index .dlbtn 위임 정본 이식(캡처 1핸들러)
