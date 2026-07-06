@@ -1,0 +1,248 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드 호버 틴트 플레이그라운드 — 노뮤트</title>
+<style>
+/* ═══ 값 = viewer/index.html :root 사본(시안 자기완결용 · 정본은 viewer) ═══ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
+  --bias-l1-rgb:56,198,255; --bias-l2-rgb:58,109,219; --bias-r1-rgb:255,122,107;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --glass:rgba(255,255,255,.055); --glass-line:rgba(255,255,255,.14);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --fs-sm:12px; --fs-xs:11px; --fw-x:800; --fw-b:700;
+  --ease:cubic-bezier(.2,.7,.3,1); --press-m:.92;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0b0c0c;color:var(--fg);font:14px/1.6 Pretendard,'Noto Sans KR',-apple-system,system-ui,'Malgun Gothic',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+header{padding:18px 22px 6px}
+header h1{margin:0;font-size:17px;font-weight:var(--fw-x)}
+header p{margin:4px 0 0;font-size:var(--fs-sm);color:var(--mut)}
+.wrap{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
+.stagewrap{flex:1 1 480px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 22px 30px;
+  background:radial-gradient(circle at 50% 0%,rgba(var(--accent-rgb),.04),transparent 40%)}
+/* PC 프레임 — hover는 데스크톱 입력 전제(폰 = 앰비언트만) → 실사용 화면비 = 데스크톱 리스트 폭 */
+.deskt{position:relative;width:min(680px,94vw);min-height:560px;border-radius:18px;overflow:hidden;padding:22px 26px 28px;
+  border:1px solid var(--glass-line);box-shadow:0 30px 80px rgba(0,0,0,.6);
+  background:radial-gradient(120% 90% at 18% 12%,#16333c 0%,transparent 55%),radial-gradient(130% 100% at 85% 30%,#0f2f45 0%,transparent 60%),linear-gradient(165deg,#101d24,#0b1418 60%,#0a1013)}
+.stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center;max-width:560px}
+.stagecap b{color:var(--fg)}
+
+/* ═══ 튜닝 스코프 ═══ */
+.stage{
+  /* ⚠ 기본값 = 현행 실측(viewer/index.html · hover: 리프트9 · scale1.01 · 테두리 α.45 · 링 α.18 · 글로우 23px/α.16 · 전경 틴트 0 / amb: 부양4 · 테두리 .20 · 글로우 15px/.14 · 틴트 0) */
+  --t-tint:0;        /* 전경 틴트 α(호버) — 운영자 제안 .15 */
+  --t-ttop:100;      /* 틴트 그라데 상한 %(100 = 전면 워시) */
+  --t-lift:9;        /* hover 리프트 px */
+  --t-scale:1.01;    /* hover 스케일 */
+  --t-bord:.45;      /* hover 테두리 α */
+  --t-ring:.18;      /* hover 1px 링 α */
+  --t-glow:.16;      /* hover 글로우 α */
+  --t-grad:23;       /* hover 글로우 반경 px */
+  --t-atint:0;       /* 앰비언트 전경 틴트 α */
+  --t-alift:4;       /* 앰비언트 부양 px */
+}
+.grid3{display:flex;flex-direction:column;gap:14px}
+.grid1{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.colh{grid-column:1/-1;display:flex;gap:18px;margin-bottom:-2px}
+.colh b{font-size:12px;color:var(--accent-4)}
+.colh b.n{color:var(--accent)}
+.it{position:relative;display:block;background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));
+  border:1px solid var(--line);border-radius:var(--r-l);padding:16px 17px;cursor:pointer;
+  box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px);
+  transition:border-color .15s,box-shadow .15s,transform .1s}
+.grid1 .it{border-radius:13px;padding:11px 12px}
+.grid1 .g .it{border-color:rgba(var(--accent-4-rgb),.14)}
+.grid1 .b .it{border-color:rgba(var(--accent-rgb),.13)}
+.it .cat{font-size:10px;font-weight:var(--fw-x);color:#38C6FF}
+.it .cat.c2{color:#2CF5A5}.it .cat.c3{color:#FFE13D}.it .cat.c4{color:#FF5EC8}
+.it .cat small{color:var(--mut);font-weight:var(--fw-b);margin-left:6px}
+.it h3{margin:6px 0 0;font-size:13px;line-height:1.5;font-weight:var(--fw-b)}
+.grid1 .it h3{font-size:12px;margin-top:4px}
+.it .meta{margin-top:9px;display:flex;gap:14px;font-size:10.5px;color:var(--mut)}
+.it .gaugebar{margin-top:10px;height:6px;border-radius:99px;overflow:hidden;position:relative;
+  background:linear-gradient(90deg,rgba(var(--bias-l2-rgb),.8),rgba(255,255,255,.25) 50%,rgba(200,60,45,.8))}
+.it .gaugebar i{position:absolute;top:50%;left:52%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.8)}
+.it .pr{margin-top:10px;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.it .pr i{display:block;height:100%;width:70%;background:var(--accent);border-radius:99px;box-shadow:0 0 8px rgba(var(--accent-rgb),.5)}
+/* 전경 틴트 레이어(제안 축 — 현행 없음) */
+.it::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  background:linear-gradient(to top,rgba(var(--accent-rgb),var(--t-tint)),rgba(var(--accent-rgb),calc(var(--t-tint) * .55)) calc(var(--t-ttop) * .6%),rgba(var(--accent-rgb),calc(var(--t-tint) * var(--t-ttop) / 100)) calc(var(--t-ttop) * 1%),rgba(var(--accent-rgb),0) calc(var(--t-ttop) * 1% + 0.1%));
+  transition:opacity .3s ease}
+/* hover(실물 .card:hover 계승 + 틴트 축) */
+@media (hover:hover) and (pointer:fine){
+  .it:hover{border-color:rgba(var(--accent-rgb),var(--t-bord));transform:translateY(calc(var(--t-lift) * -1px)) scale(var(--t-scale));
+    box-shadow:0 22px 44px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.05),0 0 0 1px rgba(var(--accent-rgb),var(--t-ring)),0 0 calc(var(--t-grad) * 1px) rgba(var(--accent-rgb),var(--t-glow));
+    transition:border-color .3s ease,box-shadow .3s ease,transform .3s var(--ease)}
+  .it:hover::after{opacity:1}
+}
+/* 앰비언트(지그재그 순회 = amb 클래스 · 실물 값 계승) */
+.it.amb{border-color:rgba(var(--accent-rgb),.30);transform:translateY(calc(var(--t-alift) * -1px)) scale(1.006);
+  box-shadow:0 12px 28px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.05),0 0 15px rgba(var(--accent-rgb),.14);
+  transition:border-color .5s ease,box-shadow .5s ease,transform .55s var(--ease)}
+.it.amb::after{opacity:1;background:linear-gradient(to top,rgba(var(--accent-rgb),var(--t-atint)),rgba(var(--accent-rgb),calc(var(--t-atint) * .4)) 60%,transparent 100%)}
+.hint{position:absolute;right:16px;top:12px;font-size:10px;color:var(--mut);letter-spacing:.06em}
+
+/* ═══ 콘솔(확립본 골격 계승) ═══ */
+.console{flex:1 1 320px;max-width:430px;padding:16px 22px 40px;display:flex;flex-direction:column;gap:14px}
+.csec{background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-l);padding:13px 14px}
+.csec h2{margin:0 0 9px;font-size:var(--fs-sm);font-weight:var(--fw-x);color:var(--mut);letter-spacing:.06em}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:8px 15px;border:1px solid var(--glass-line);border-radius:var(--r-pill);background:var(--glass);color:var(--fg);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-b);cursor:pointer;touch-action:manipulation;transition:transform .12s var(--ease)}
+.pill:active{transform:scale(var(--press-m))}
+.pill.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+.pill .st{font-size:var(--fs-xs);opacity:.75;margin-left:4px}
+.srow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.srow .nm{flex:none;width:112px;font-size:var(--fs-xs);color:var(--fg);line-height:1.3}
+.srow .nm small{display:block;color:var(--mut);font-size:10px}
+.srow input[type=range]{appearance:none;-webkit-appearance:none;flex:1;height:6px;border-radius:var(--r-pill);border:1px solid var(--glass-line);
+  background:linear-gradient(90deg,rgba(var(--accent-rgb),.85) var(--p,50%),var(--glass) var(--p,50%));outline:none}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 10px rgba(var(--accent-rgb),.35)}
+.srow input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:none}
+.srow .val{flex:none;width:46px;text-align:right;font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.sgrp{margin:8px 0 2px;font-size:10px;font-weight:var(--fw-x);color:var(--mut);letter-spacing:.12em}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;padding:8px;border:1px solid var(--glass-line);border-radius:var(--r-m);background:var(--glass);color:var(--fg);font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);cursor:pointer}
+.seg button.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+pre#out{margin:0;padding:12px;background:rgba(0,0,0,.4);border:1px solid var(--glass-line);border-radius:var(--r-m);
+  font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-all;user-select:all}
+.copybtn{margin-top:9px;width:100%;padding:11px;border:none;border-radius:var(--r-pill);background:var(--accent);color:#04211d;
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-x);cursor:pointer;touch-action:manipulation;box-shadow:0 6px 18px rgba(var(--accent-rgb),.25)}
+.copybtn:active{transform:scale(var(--press-m))}
+.note{font-size:var(--fs-xs);color:var(--mut);line-height:1.7}
+.note b{color:var(--fg)}
+</style>
+<body>
+<header>
+  <h1>카드 호버 틴트 플레이그라운드</h1>
+  <p>호버·앰비언트(지그재그 순회) 때 강조색 전경 틴트를 얼마나 얹을지 — 메뉴1(레거시)·메뉴2(SNS)·메뉴3(뉴스요약) 케이스별로 실물 위에서 고른다.</p>
+</header>
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="deskt">
+      <span class="hint">카드에 마우스 올리기 = 호버 · 아래 [앰비언트 재생] = 지그재그 순회</span>
+      <div id="case3" class="grid3" style="margin-top:14px">
+        <a class="it"><span class="cat">정치 <small>매체 21 · 이슈</small></span><h3>정보통신망법 내일 시행… 野 "국민 입틀막법, 법 개정 나설 것"</h3><div class="meta"><span>연합뉴스</span><span>편향 무관</span></div><div class="pr"><i></i></div></a>
+        <a class="it"><span class="cat c2">사회 <small>매체 13 · 이슈</small></span><h3>"올해 2조 벌 듯"… 전쟁 특수 노린 정유 4사의 '유가 담합'</h3><div class="meta"><span>이투데이</span><span>#재난참사</span></div><div class="pr"><i style="width:44%"></i></div></a>
+        <a class="it"><span class="cat c3">경제 <small>매체 10</small></span><h3>외환시장 24시간 개방 첫날… 원·달러 환율 1527.6원 개장</h3><div class="meta"><span>매일경제</span><span>편향 무관</span></div><div class="pr"><i style="width:86%"></i></div></a>
+      </div>
+      <div id="case1" class="grid1" hidden>
+        <div class="colh"><b>누적</b><b class="n" style="margin-left:auto">신규</b></div>
+        <div class="g"><a class="it"><span class="cat c3">경제 · 13</span><h3>외환시장 24시간 개방 첫날… 원·달러 환율 2원 오른 1527.6원 개장</h3></a>
+        <a class="it" style="margin-top:10px"><span class="cat">정치 · 21 · 이슈</span><h3>정보통신망법 내일 시행… 野 "법 개정 나설 것"</h3></a></div>
+        <div class="b"><a class="it"><span class="cat c2">사회 · 9</span><h3>'계열사 저금리 대출 혐의' 명륜당 제재 여부, 공정위 전원회의서 심의</h3></a>
+        <a class="it" style="margin-top:10px"><span class="cat c4">문화 · 14</span><h3>[속보]정몽규 대한축구협회장, 사임서 제출</h3></a></div>
+      </div>
+      <div id="case2" class="grid3" hidden style="margin-top:14px">
+        <a class="it"><span class="cat" style="color:var(--accent)">🔥 13.4 · 3소스 <small>SLR · 에펨코리아 · 이토렌드</small></span><h3>브라질 vs 노르웨이] 네이마르 폭풍 오열.jpg</h3><div class="gaugebar"><i></i></div></a>
+        <a class="it"><span class="cat" style="color:var(--accent)">🔥 12.9 · 3소스 <small>쿠리앙 · 에펨코리아</small></span><h3>파울루 벤투 감독, 차기 한국 대표팀 사령탑 지원</h3><div class="gaugebar"><i style="left:38%"></i></a>
+        <a class="it"><span class="cat" style="color:var(--accent)">🔥 9.9 · 2소스 <small>루리웹 · 웃대</small></span><h3>월드컵 현재 득점 선두들 나이.jpg</h3><div class="gaugebar"><i style="left:24%"></i></div></a>
+      </div>
+    </div>
+    <div class="stagecap"><b>PC 폭 프레임</b> — hover = 데스크톱 입력 전제(폰은 앰비언트만 해당). 케이스 전환은 우측 콘솔.</div>
+  </div>
+  <aside class="console">
+    <div class="csec"><h2>케이스</h2><div class="seg" id="caseseg">
+      <button data-v="3" class="on">메뉴3 뉴스요약</button><button data-v="1">메뉴1 레거시</button><button data-v="2">메뉴2 SNS</button>
+    </div>
+    <div style="margin-top:9px" class="seg"><button id="ambplay" type="button">앰비언트 순회 재생(지그재그)</button></div></div>
+    <div class="csec"><h2>프리셋</h2><div class="pills" id="presets"></div></div>
+    <div class="csec"><h2>미세조정</h2><div id="sliders"></div></div>
+    <div class="csec"><h2>선택값</h2><pre id="out"></pre><button class="copybtn" id="copy" type="button">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계</b> — ① 카드 = 축약 목업(썸네일·투표 버튼 등 생략 · 글래스/테두리/hover 값은 실물 1:1) ② 앰비언트 순회는 데모 속도(실물 = 유휴 5s 후 시작·지속 2.4s·간격 0.3s) ③ 배경 웨이브 = CSS 근사 ④ 긴급/이슈 카드의 자기 색 테두리 우선 규칙은 생략(전 카드 강조색 기준).</div>
+  </aside>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const DEFAULTS = {tint:0, ttop:100, lift:9, scale:1.01, bord:.45, ring:.18, glow:.16, grad:23, atint:0, alift:4};
+const PRESETS = [
+ {id:'p0', nm:'현행', st:{...DEFAULTS}},
+ {id:'p1', nm:'A 전면 틴트 15%', star:'★', st:{...DEFAULTS, tint:.15, atint:.10}},
+ {id:'p2', nm:'B 하단 그라데 12%', st:{...DEFAULTS, tint:.12, ttop:55, atint:.07}},
+ {id:'p3', nm:'C 틴트 8% + 딥글로우', st:{...DEFAULTS, tint:.08, glow:.26, grad:34, atint:.06, alift:6}},
+];
+const SLIDERS = [
+ {k:'tint', nm:'호버 전경 틴트 α', d:'::after rgba(accent)', min:0, max:.35, step:.005, grp:'전경 틴트(제안 축)'},
+ {k:'ttop', nm:'틴트 퍼짐(하단→%)', d:'100 = 전면 워시', min:30, max:100, step:1},
+ {k:'atint', nm:'앰비언트 틴트 α', d:'amb 순회용', min:0, max:.3, step:.005},
+ {k:'lift', nm:'호버 리프트 px', d:'translateY', min:0, max:16, step:.5, grp:'부양·강조(현행 축)'},
+ {k:'scale', nm:'호버 스케일', d:'scale', min:1, max:1.03, step:.002},
+ {k:'bord', nm:'호버 테두리 α', d:'border-color', min:0, max:.8, step:.01},
+ {k:'ring', nm:'1px 링 α', d:'box-shadow ring', min:0, max:.5, step:.01},
+ {k:'glow', nm:'글로우 α', d:'box-shadow glow', min:0, max:.5, step:.01},
+ {k:'grad', nm:'글로우 반경 px', d:'', min:0, max:60, step:1},
+ {k:'alift', nm:'앰비언트 부양 px', d:'amb translateY', min:0, max:12, step:.5},
+];
+let state = {...DEFAULTS};
+const stage = document.querySelector('.deskt');
+stage.classList.add('stage');
+function apply(){
+  const s = stage.style;
+  ['tint','ttop','lift','scale','bord','ring','glow','grad','atint','alift'].forEach(k => s.setProperty('--t-'+k, state[k]));
+  SLIDERS.forEach(sp => {
+    const el = document.getElementById('sl_' + sp.k); if (!el) return;
+    el.value = state[sp.k];
+    el.style.setProperty('--p', ((state[sp.k] - sp.min) / (sp.max - sp.min) * 100) + '%');
+    document.getElementById('vl_' + sp.k).textContent = sp.step >= 1 ? Math.round(state[sp.k]) : (+state[sp.k]).toFixed(3).replace(/0+$/,'').replace(/\.$/,'.0');
+  });
+  buildOut();
+}
+$('#sliders').innerHTML = SLIDERS.map(sp =>
+  (sp.grp ? `<div class="sgrp">${sp.grp}</div>` : '') +
+  `<div class="srow"><span class="nm">${sp.nm}<small>${sp.d || ''}</small></span>`+
+  `<input type="range" id="sl_${sp.k}" min="${sp.min}" max="${sp.max}" step="${sp.step}">`+
+  `<span class="val" id="vl_${sp.k}"></span></div>`).join('');
+SLIDERS.forEach(sp => { document.getElementById('sl_' + sp.k).addEventListener('input', e => { state[sp.k] = +e.target.value; markCustom(); apply(); }); });
+$('#presets').innerHTML = PRESETS.map(p =>
+  `<button class="pill${p.id==='p0' ? ' on' : ''}" data-p="${p.id}" type="button">${p.nm}${p.star ? `<span class="st">${p.star}</span>` : ''}</button>`).join('');
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  state = {...PRESETS.find(x => x.id === b.dataset.p).st};
+  document.querySelectorAll('#presets .pill').forEach(x => x.classList.toggle('on', x === b));
+  apply(); ambPlay();
+});
+function markCustom(){ document.querySelectorAll('#presets .pill').forEach(x => x.classList.remove('on')); }
+$('#caseseg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#caseseg button').forEach(x => x.classList.toggle('on', x === b));
+  ['1','2','3'].forEach(v => { document.getElementById('case' + v).hidden = v !== b.dataset.v; });
+});
+/* 앰비언트 지그재그 순회 데모 — 활성 케이스 카드를 화면 순서로 하나씩 amb(겹침 0 · 실물 순차 규칙) */
+let ambT = [];
+function ambPlay(){
+  ambT.forEach(clearTimeout); ambT = [];
+  document.querySelectorAll('.it.amb').forEach(x => x.classList.remove('amb'));
+  const vis = [...document.querySelectorAll('#case1, #case2, #case3')].find(c => !c.hidden);
+  const items = [...vis.querySelectorAll('.it')].sort((a,b) => { const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); return (ra.top - rb.top) || (ra.left - rb.left); });
+  items.forEach((it, i) => {
+    ambT.push(setTimeout(() => it.classList.add('amb'), i * 1300));
+    ambT.push(setTimeout(() => it.classList.remove('amb'), i * 1300 + 1100));
+  });
+}
+$('#ambplay').addEventListener('click', ambPlay);
+const near = (a,b,eps=.006) => Math.abs(a-b) < eps;
+function buildOut(){
+  const v = state;
+  const tintNote = v.tint === 0 ? '없음(현행)' : `rgba(var(--accent-rgb), ${v.tint})${near(v.tint,.15) ? ' (운영자 제안 15%)' : ''}${v.ttop < 100 ? ` · 하단→${v.ttop}% 그라데` : ' · 전면'} → 신규 ::after 레이어(갱신 후보)`;
+  $('#out').textContent =
+`[노뮤트 카드 호버/앰비언트 — 선택값]
+전경 틴트(hover) : ${tintNote}
+전경 틴트(amb)   : ${v.atint === 0 ? '없음(현행)' : 'rgba(var(--accent-rgb), ' + v.atint + ')'}
+호버 리프트      : -${v.lift}px · scale ${v.scale}   [현행 -9px · 1.01]
+호버 테두리      : rgba(accent, ${v.bord})   [현행 .45]
+1px 링 / 글로우  : ${v.ring} / ${v.glow} · ${v.grad}px   [현행 .18 / .16 · 23px]
+앰비언트 부양    : ${v.alift}px   [현행 4px]
+적용 범위        : .card(메뉴3) · .sc-item(메뉴1) · .soc-item(메뉴2) 공통 — 카드별 자기 색(긴급/이슈) 테두리 우선 규칙 불변
+정본 배선        : @media(hover) :hover 블록 + ::after 틴트 레이어 신설 + amb 클래스`;
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#out').textContent); $('#copy').textContent = '복사됨 ✓'; }
+  catch { const r = document.createRange(); r.selectNode($('#out')); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); $('#copy').textContent = '복사됨 ✓'; }
+  setTimeout(() => $('#copy').textContent = '선택값 복사', 1400);
+});
+apply();
+</script>
+</body></html>

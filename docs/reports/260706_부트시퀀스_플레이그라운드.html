@@ -1,0 +1,326 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>부트 시퀀스 플레이그라운드 — 노뮤트</title>
+<style>
+/* ═══ 값 = viewer/index.html :root 사본(시안 자기완결용 · 정본은 viewer) ═══ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --bias-l1-rgb:56,198,255; --bias-l2-rgb:58,109,219;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --glass:rgba(255,255,255,.055); --glass-line:rgba(255,255,255,.14);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --fs-sm:12px; --fs-xs:11px; --fw-x:800; --fw-b:700;
+  --ease:cubic-bezier(.2,.7,.3,1); --blur-m:14px; --press-m:.92;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0b0c0c;color:var(--fg);font:14px/1.6 Pretendard,'Noto Sans KR',-apple-system,system-ui,'Malgun Gothic',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+header{padding:18px 22px 6px}
+header h1{margin:0;font-size:17px;font-weight:var(--fw-x)}
+header p{margin:4px 0 0;font-size:var(--fs-sm);color:var(--mut)}
+.wrap{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
+.stagewrap{flex:1 1 340px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 22px 30px;
+  background:radial-gradient(circle at 50% 0%,rgba(var(--bias-l1-rgb),.05),transparent 40%)}
+.phone{position:relative;width:min(360px,92vw);aspect-ratio:9/18;border-radius:26px;overflow:hidden;
+  border:1px solid var(--glass-line);box-shadow:0 30px 80px rgba(0,0,0,.6);background:var(--bg)}
+.stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center;max-width:360px}
+.stagecap b{color:var(--fg)}
+
+/* ═══ 폰 안 — 부트 시퀀스 레이어 ═══ */
+.app{position:absolute;inset:0;overflow:hidden;
+  /* ⚠ 기본값 = 현행 실측(260706 라이브): booted 페이드 .2s · 스윕 .5s · 언락 오버랩 380ms · 블러아웃 .8s · 메뉴 등장 90%(720ms) · cardIn .34s */
+  --t-os:1.0;        /* OS 스플래시 표시(s · 데모용 — 실물은 기기/네트워크가 결정) */
+  --t-wfade:.45;     /* OS 스플래시 → 웨이브 페이드(s · 실물 = OS가 담당하는 크로스페이드 근사) */
+  --t-boot:.2;       /* booted 앱 페이드인(s) */
+  --t-sweep:.5;      /* okring 스윕 길이(s) */
+  --t-lap:380;       /* 스윕 시작 → 블러아웃 시작 오버랩(ms) */
+  --t-out:.8;        /* lkOut 블러아웃(s) */
+  --t-menupct:90;    /* 메뉴 등장 시점(블러아웃 진행 % · 90% = 잔존 10%) */
+  --t-stag:60;       /* cardIn 스태거 간격(ms) */
+  --t-cardin:.34;    /* cardIn 카드 등장 지속(s) */
+}
+.layer{position:absolute;inset:0}
+/* ① OS 스플래시 — 정지 톤 + 중앙 워드마크(아이콘 c판 구성 근사) */
+.os{z-index:60;background:#192730;display:grid;place-items:center;opacity:1}
+.os .oswm{text-align:center}
+.os .oswm b{display:block;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:19px;letter-spacing:1.2px;text-shadow:0 1px 8px rgba(0,0,0,.45)}
+.os .oswm small{display:block;margin-top:8px;font-size:10px;letter-spacing:2.6px;color:var(--mut);font-weight:var(--fw-b)}
+/* ② 웨이브 배경(상시 바닥) */
+.wave{z-index:0;background:
+  radial-gradient(120% 90% at 18% 12%,#16333c 0%,transparent 55%),
+  radial-gradient(130% 100% at 85% 30%,#0f2f45 0%,transparent 60%),
+  radial-gradient(150% 120% at 50% 95%,#0e2a33 0%,transparent 65%),
+  linear-gradient(165deg,#101d24,#0b1418 60%,#0a1013)}
+.wave::after{content:'';position:absolute;inset:0;opacity:.5;background:
+  radial-gradient(60% 40% at 70% 70%,rgba(var(--bias-l2-rgb),.10),transparent 70%),
+  radial-gradient(50% 36% at 25% 45%,rgba(var(--bias-l1-rgb),.06),transparent 70%);
+  animation:waveDrift 9s ease-in-out infinite alternate}
+@keyframes waveDrift{to{transform:translate3d(3%,-2%,0) scale(1.04)}}
+/* ③ 앱(메뉴 = 헤더+카드+네비) */
+.main{z-index:1;opacity:0}
+.main .head{position:absolute;top:0;left:0;right:0;text-align:center;padding-top:24px}
+.main .wm{font-size:15px;letter-spacing:1.4px;color:var(--fg);text-shadow:0 1px 8px rgba(0,0,0,.45);font-family:Georgia,serif}
+.main .sub{margin-top:6px;font-size:8px;letter-spacing:.24em;color:var(--accent);opacity:.85;font-family:Georgia,serif}
+.feed{position:absolute;top:72px;left:14px;right:14px;bottom:52px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.card{flex:none;background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));border:1px solid var(--line);
+  border-radius:var(--r-l);padding:12px 13px;box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);opacity:0}
+.card.in{animation:cardIn calc(var(--t-cardin) * 1s) cubic-bezier(.22,.61,.36,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+.card .cat{font-size:9px;font-weight:var(--fw-x);color:#38C6FF}
+.card .cat.c2{color:#2CF5A5}.card .cat.c3{color:#FFE13D}
+.card h3{margin:5px 0 0;font-size:12.5px;line-height:1.45;font-weight:var(--fw-b)}
+.bnav{position:absolute;left:0;right:0;bottom:0;height:50px;display:flex;align-items:center;justify-content:space-around;
+  background:rgba(10,12,12,.72);border-top:1px solid var(--line2)}
+.bnav span{font-size:10.5px;font-weight:var(--fw-b);color:var(--mut)}
+.bnav span.on{color:var(--accent)}
+/* ④ 잠금(lockscr 근사 — 워드마크·슬롯·키패드·okring·에러) */
+.lock{z-index:40;opacity:0;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:rgba(5,11,13,.42);backdrop-filter:blur(8px)}
+.lock .lwm{text-align:center;margin-bottom:12px}
+.lock .lwm b{display:block;font-family:Georgia,serif;font-weight:400;font-size:19px;letter-spacing:1.2px}
+.lock .lwm small{display:block;margin-top:9px;font-size:10.5px;letter-spacing:2.4px;color:var(--mut);font-weight:var(--fw-b)}
+.slotwrap{position:relative;width:196px;padding:16px 0 14px;border-radius:var(--r-l);background:rgba(255,255,255,.03)}
+.slots{display:flex;justify-content:center;gap:16px}
+.slot{width:25px;height:25px;border-radius:50%;border:1.6px solid rgba(255,255,255,.28);position:relative}
+.slot.on::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px rgba(var(--accent-rgb),.6);animation:fillB .36s var(--ease)}
+@keyframes fillB{from{transform:scale(.4)}60%{transform:scale(1.18)}to{transform:scale(1)}}
+.slots.bad .slot.on::after{background:#ff5148;box-shadow:0 0 10px rgba(255,81,72,.6)}
+.slots.shake{animation:shk .4s}
+@keyframes shk{0%,100%{transform:none}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.okring{position:absolute;inset:0;pointer-events:none;opacity:0;overflow:visible}
+.slotwrap.ok .okring{opacity:1}
+.okring rect{fill:none;stroke:rgba(var(--accent-rgb),.3);stroke-width:2;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100}
+.slotwrap.ok .okring rect{animation:sweep calc(var(--t-sweep) * 1s) var(--ease) forwards}
+@keyframes sweep{to{stroke-dashoffset:0}}
+.lerr{min-height:18px;margin-top:10px;font-size:11.5px;color:#ff5148;font-weight:var(--fw-b)}
+.pad{margin-top:6px;display:grid;grid-template-columns:repeat(3,58px);gap:9px}
+.pad b{height:44px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:16px;font-weight:var(--fw-b);color:var(--fg)}
+/* 잠금 해제 아웃 = lkOut 계승 */
+.lock.ent{opacity:1;pointer-events:auto}
+.lock.out{animation:lkOut calc(var(--t-out) * 1s) ease forwards}
+@keyframes lkOut{to{opacity:0;filter:blur(var(--blur-m))}}
+/* lk-hold = 아웃 동안 메뉴 숨김(260706 수리 반영) */
+.main.hold .head,.main.hold .feed,.main.hold .bnav{opacity:0}
+.main .head,.main .feed,.main .bnav{transition:opacity .2s ease}
+/* 타임라인 표시 */
+.tl{position:absolute;left:10px;right:10px;bottom:6px;z-index:70;font-size:9px;color:rgba(255,255,255,.55);letter-spacing:.05em;text-align:center;text-shadow:0 1px 3px #000}
+
+/* ═══ 콘솔(확립본 골격 계승) ═══ */
+.console{flex:1 1 320px;max-width:430px;padding:16px 22px 40px;display:flex;flex-direction:column;gap:14px}
+.csec{background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-l);padding:13px 14px}
+.csec h2{margin:0 0 9px;font-size:var(--fs-sm);font-weight:var(--fw-x);color:var(--mut);letter-spacing:.06em}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:8px 15px;border:1px solid var(--glass-line);border-radius:var(--r-pill);background:var(--glass);color:var(--fg);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-b);cursor:pointer;touch-action:manipulation;transition:transform .12s var(--ease)}
+.pill:active{transform:scale(var(--press-m))}
+.pill.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+.pill .st{font-size:var(--fs-xs);opacity:.75;margin-left:4px}
+.srow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.srow .nm{flex:none;width:118px;font-size:var(--fs-xs);color:var(--fg);line-height:1.3}
+.srow .nm small{display:block;color:var(--mut);font-size:10px}
+.srow input[type=range]{appearance:none;-webkit-appearance:none;flex:1;height:6px;border-radius:var(--r-pill);border:1px solid var(--glass-line);
+  background:linear-gradient(90deg,rgba(var(--accent-rgb),.85) var(--p,50%),var(--glass) var(--p,50%));outline:none}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 10px rgba(var(--accent-rgb),.35)}
+.srow input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:none}
+.srow .val{flex:none;width:52px;text-align:right;font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.sgrp{margin:8px 0 2px;font-size:10px;font-weight:var(--fw-x);color:var(--mut);letter-spacing:.12em}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;padding:8px;border:1px solid var(--glass-line);border-radius:var(--r-m);background:var(--glass);color:var(--fg);font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);cursor:pointer}
+.seg button.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+pre#out{margin:0;padding:12px;background:rgba(0,0,0,.4);border:1px solid var(--glass-line);border-radius:var(--r-m);
+  font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-all;user-select:all}
+.copybtn{margin-top:9px;width:100%;padding:11px;border:none;border-radius:var(--r-pill);background:var(--accent);color:#04211d;
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-x);cursor:pointer;touch-action:manipulation;box-shadow:0 6px 18px rgba(var(--accent-rgb),.25)}
+.copybtn:active{transform:scale(var(--press-m))}
+.note{font-size:var(--fs-xs);color:var(--mut);line-height:1.7}
+.note b{color:var(--fg)}
+</style>
+<body>
+<header>
+  <h1>부트 시퀀스 플레이그라운드</h1>
+  <p>웹앱 인트로(OS 스플래시) → 웨이브 → 앱 페이드인 → PIN 성공/실패 → 메뉴 촤르륵 — 전 구간 타이밍을 재생하면서 커스텀한다. 기본값 = 현행 라이브 실측.</p>
+</header>
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="phone">
+      <div class="app" id="app">
+        <div class="layer wave"></div>
+        <div class="layer main" id="main">
+          <div class="head"><div class="wm">NEWS CURATION</div><div class="sub">TOP PICKS</div></div>
+          <div class="feed" id="feed">
+            <div class="card"><span class="cat">정치</span><h3>정보통신망법 내일 시행… 野 "법 개정 나설 것"</h3></div>
+            <div class="card"><span class="cat c2">사회</span><h3>"올해 2조 벌 듯"… 정유 4사의 '유가 담합'</h3></div>
+            <div class="card"><span class="cat c3">경제</span><h3>외환시장 24시간 개방 첫날… 1527.6원 개장</h3></div>
+            <div class="card"><span class="cat">정치</span><h3>검찰, '지방선거 공천헌금' 1심 무죄에 항소</h3></div>
+            <div class="card"><span class="cat c2">사회</span><h3>경찰, 개인정보 국외이전 기준 첫 마련</h3></div>
+          </div>
+          <div class="bnav"><span>레거시</span><span>SNS</span><span class="on">뉴스 요약</span><span>링크</span></div>
+        </div>
+        <div class="layer lock" id="lock">
+          <div class="lwm"><b>News Curation</b><small>뉴스 큐레이션</small></div>
+          <div class="slotwrap" id="slotwrap">
+            <div class="slots" id="slots"><span class="slot"></span><span class="slot"></span><span class="slot"></span><span class="slot"></span></div>
+            <svg class="okring" aria-hidden="true"><rect x="1" y="1" width="99.2%" height="96%" rx="16" pathLength="100"/></svg>
+          </div>
+          <div class="lerr" id="lerr"></div>
+          <div class="pad"><b>7</b><b>2</b><b>9</b><b>4</b><b>0</b><b>6</b><b>1</b><b>8</b><b>3</b></div>
+        </div>
+        <div class="layer os" id="os"><div class="oswm"><b>News Curation</b><small>뉴스 큐레이션</small></div></div>
+        <div class="tl" id="tl">대기 — 좌측 재생 버튼으로 시퀀스 시작</div>
+      </div>
+    </div>
+    <div class="stagecap"><b>재생 버튼</b>으로 콜드부트 전체/언락 성공/언락 실패를 반복 재생하며 타이밍을 만져봐.</div>
+  </div>
+  <aside class="console">
+    <div class="csec"><h2>재생</h2><div class="seg">
+      <button id="playAll" type="button">콜드부트 전체 재생</button><button id="playOk" type="button">언락 성공만</button><button id="playBad" type="button">언락 실패만</button>
+    </div>
+    <div style="margin-top:9px" class="seg" id="lockseg"><button data-l="1" class="on">잠금 경유 ON</button><button data-l="0">잠금 없음(바로 메인)</button></div></div>
+    <div class="csec"><h2>프리셋</h2><div class="pills" id="presets"></div></div>
+    <div class="csec"><h2>타이밍 미세조정</h2><div id="sliders"></div></div>
+    <div class="csec"><h2>선택값</h2><pre id="out"></pre><button class="copybtn" id="copy" type="button">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계</b> — ① OS 스플래시 표시 시간·크로스페이드는 안드로이드가 결정(여기 슬라이더 = 데모 감각용 · 실물 제어 불가) ② 웨이브 = CSS 근사(실물 WebGL) ③ 키패드 = 정지 목업(실제 입력 없음 · 슬롯 채움은 자동 연출) ④ PIN 실패 = 흔들림+빨강 3s 고정(정본 발행본 PIN 규칙) ⑤ 타이밍 정본 = viewer/index.html lkUnlock·okring·booted·cardIn — 여기 값은 사본.</div>
+  </aside>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const DEFAULTS = {os:1.0, wfade:.45, boot:.2, sweep:.5, lap:380, out:.8, menupct:90, stag:60, cardin:.34};
+const PRESETS = [
+ {id:'p0', nm:'현행', st:{...DEFAULTS}},
+ {id:'p1', nm:'A 스냅(빠른 부트)', st:{...DEFAULTS, os:.6, wfade:.3, boot:.15, sweep:.4, lap:300, out:.6, menupct:92, stag:45, cardin:.28}},
+ {id:'p2', nm:'B 시네마(여운)', star:'★', st:{...DEFAULTS, os:1.2, wfade:.6, boot:.3, sweep:.6, lap:420, out:1.0, menupct:94, stag:80, cardin:.42}},
+ {id:'p3', nm:'C 즉시 메뉴(오버랩 강)', st:{...DEFAULTS, sweep:.45, lap:300, out:.7, menupct:65, stag:40}},
+];
+const SLIDERS = [
+ {k:'os', nm:'OS 스플래시(s)', d:'데모 감각용 · 실물 = OS 결정', min:.3, max:2.5, step:.1, grp:'인트로'},
+ {k:'wfade', nm:'스플래시→웨이브(s)', d:'크로스페이드 근사', min:.1, max:1.2, step:.05},
+ {k:'boot', nm:'앱 페이드인(s)', d:'body.booted 전이', min:.05, max:.8, step:.05},
+ {k:'sweep', nm:'성공 스윕(s)', d:'okring 1바퀴', min:.2, max:1.2, step:.05, grp:'PIN 성공'},
+ {k:'lap', nm:'스윕→아웃 오버랩(ms)', d:'lkUnlock setTimeout', min:0, max:1000, step:10},
+ {k:'out', nm:'블러아웃(s)', d:'lkOut', min:.3, max:1.6, step:.05},
+ {k:'menupct', nm:'메뉴 등장 시점(%)', d:'아웃 진행률 · 90 = 잔존 10%', min:30, max:100, step:1},
+ {k:'stag', nm:'촤르륵 간격(ms)', d:'cardIn 스태거', min:10, max:140, step:5, grp:'메뉴 등장'},
+ {k:'cardin', nm:'카드 등장 지속(s)', d:'cardIn duration', min:.15, max:.7, step:.01},
+];
+let state = {...DEFAULTS}, withLock = true, timers = [];
+const app = $('#app'), os = $('#os'), main = $('#main'), lock = $('#lock'), slots = $('#slots'), slotwrap = $('#slotwrap'), lerr = $('#lerr'), tl = $('#tl');
+function apply(){
+  const s = app.style;
+  Object.keys(DEFAULTS).forEach(k => s.setProperty('--t-'+k, state[k]));
+  SLIDERS.forEach(sp => {
+    const el = document.getElementById('sl_' + sp.k); if (!el) return;
+    el.value = state[sp.k];
+    el.style.setProperty('--p', ((state[sp.k] - sp.min) / (sp.max - sp.min) * 100) + '%');
+    document.getElementById('vl_' + sp.k).textContent = sp.step >= 1 ? Math.round(state[sp.k]) : (+state[sp.k]).toFixed(2).replace(/0$/,'');
+  });
+  buildOut();
+}
+function clearT(){ timers.forEach(clearTimeout); timers = []; }
+const T = (fn, ms) => timers.push(setTimeout(fn, ms));
+function resetStage(toLock){
+  clearT();
+  os.style.transition = 'none'; os.style.opacity = 0;
+  main.style.transition = 'none'; main.style.opacity = 0; main.classList.remove('hold');
+  lock.className = 'layer lock'; lock.style.opacity = ''; lock.style.filter = '';
+  slotwrap.classList.remove('ok'); slots.classList.remove('bad','shake');
+  [...slots.children].forEach(x => x.classList.remove('on')); lerr.textContent = '';
+  [...$('#feed').children].forEach(c => { c.classList.remove('in'); c.style.animationDelay = ''; });
+  void app.offsetWidth;
+  if (toLock){ lock.classList.add('ent'); }
+}
+function fillSlots(bad){
+  [...slots.children].forEach((sl, i) => T(() => {
+    sl.classList.add('on'); if (bad) slots.classList.add('bad');
+  }, 260 + i * 240));
+}
+function menuIn(){
+  main.style.transition = ''; main.style.opacity = 1; main.classList.remove('hold');
+  [...$('#feed').children].forEach((c, i) => { c.style.animationDelay = (i * state.stag) + 'ms'; c.classList.add('in'); });
+}
+function unlockSeq(){
+  tl.textContent = 'PIN 성공 → 스윕 → 블러아웃 → 메뉴';
+  slotwrap.classList.add('ok');                                  /* 스윕 시작 */
+  main.style.transition = 'none'; main.style.opacity = 1; main.classList.add('hold');   /* lk-hold = 뒤 메뉴 숨김(물결만) */
+  T(() => { lock.classList.add('out'); }, state.lap);            /* 오버랩 지점에 블러아웃 */
+  T(() => { menuIn(); tl.textContent = '메뉴 촤르륵(잔존 ' + (100 - state.menupct) + '% 시점)'; }, state.lap + state.out * 1000 * state.menupct / 100);
+  T(() => { lock.className = 'layer lock'; tl.textContent = '완료 — 다시 재생해봐'; }, state.lap + state.out * 1000 + 60);
+}
+function playOk(){
+  resetStage(true); tl.textContent = 'PIN 입력 중…';
+  fillSlots(false);
+  T(unlockSeq, 260 + 4 * 240 + 240);
+}
+function playBad(){
+  resetStage(true); tl.textContent = 'PIN 입력 중…';
+  fillSlots(true);
+  T(() => {
+    slots.classList.add('shake'); lerr.textContent = 'PIN 번호가 틀립니다 (1/5)';
+    tl.textContent = '실패 — 빨강 3s 후 초기화(정본 규칙)';
+    T(() => { slots.classList.remove('bad','shake'); [...slots.children].forEach(x => x.classList.remove('on')); lerr.textContent = ''; tl.textContent = '재입력 대기'; }, 3000);
+  }, 260 + 4 * 240 + 200);
+}
+function playAll(){
+  resetStage(false);
+  os.style.opacity = 1; tl.textContent = 'OS 스플래시(정지 톤 · 아이콘판)';
+  T(() => {
+    os.style.transition = 'opacity ' + state.wfade + 's ease'; os.style.opacity = 0;
+    tl.textContent = '웨이브 페인트(콜드부트 첫 화면)';
+  }, state.os * 1000);
+  T(() => {
+    if (withLock){
+      lock.classList.add('ent'); tl.textContent = '잠금 경유(boot-lock)';
+      T(playOkInner, 700);
+    } else {
+      main.style.transition = 'opacity ' + state.boot + 's ease'; main.style.opacity = 1;
+      menuIn(); tl.textContent = 'booted 페이드인 + 메뉴 촤르륵';
+    }
+  }, state.os * 1000 + state.wfade * 1000 + 300);
+  function playOkInner(){ fillSlots(false); T(unlockSeq, 260 + 4 * 240 + 240); }
+}
+$('#playAll').addEventListener('click', playAll);
+$('#playOk').addEventListener('click', playOk);
+$('#playBad').addEventListener('click', playBad);
+$('#lockseg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; withLock = b.dataset.l === '1';
+  document.querySelectorAll('#lockseg button').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#sliders').innerHTML = SLIDERS.map(sp =>
+  (sp.grp ? `<div class="sgrp">${sp.grp}</div>` : '') +
+  `<div class="srow"><span class="nm">${sp.nm}<small>${sp.d || ''}</small></span>`+
+  `<input type="range" id="sl_${sp.k}" min="${sp.min}" max="${sp.max}" step="${sp.step}">`+
+  `<span class="val" id="vl_${sp.k}"></span></div>`).join('');
+SLIDERS.forEach(sp => { document.getElementById('sl_' + sp.k).addEventListener('input', e => { state[sp.k] = +e.target.value; markCustom(); apply(); }); });
+$('#presets').innerHTML = PRESETS.map(p =>
+  `<button class="pill${p.id==='p0' ? ' on' : ''}" data-p="${p.id}" type="button">${p.nm}${p.star ? `<span class="st">${p.star}</span>` : ''}</button>`).join('');
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  state = {...PRESETS.find(x => x.id === b.dataset.p).st};
+  document.querySelectorAll('#presets .pill').forEach(x => x.classList.toggle('on', x === b));
+  apply(); playOk();
+});
+function markCustom(){ document.querySelectorAll('#presets .pill').forEach(x => x.classList.remove('on')); }
+function buildOut(){
+  const v = state;
+  $('#out').textContent =
+`[노뮤트 부트 시퀀스 — 선택값]
+OS 스플래시   : ${v.os}s (데모 감각 — 실물 = OS 결정 · 제어 불가)
+→웨이브 페이드: ${v.wfade}s (OS 크로스페이드 근사)
+앱 페이드인   : ${v.boot}s   [현행 .2s]
+성공 스윕     : ${v.sweep}s   [현행 .5s]
+스윕→아웃 오버랩: ${v.lap}ms   [현행 380ms]
+블러아웃      : ${v.out}s   [현행 .8s]
+메뉴 등장 시점: 아웃 ${v.menupct}% (잔존 ${100 - v.menupct}%) = ${Math.round(v.out * 1000 * v.menupct / 100)}ms   [현행 90% = 720ms]
+촤르륵 간격   : ${v.stag}ms · 카드 등장 ${v.cardin}s   [현행 cardIn .34s]
+정본 배선     : lkUnlock(오버랩·아웃·메뉴%) · lkOkSweep(스윕) · body.booted(페이드인) · cardIn(지속) — viewer/index.html`;
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#out').textContent); $('#copy').textContent = '복사됨 ✓'; }
+  catch { const r = document.createRange(); r.selectNode($('#out')); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); $('#copy').textContent = '복사됨 ✓'; }
+  setTimeout(() => $('#copy').textContent = '선택값 복사', 1400);
+});
+apply();
+resetStage(false); os.style.opacity = 1;   /* 첫 화면 = OS 스플래시 정지 상태 */
+</script>
+</body></html>
