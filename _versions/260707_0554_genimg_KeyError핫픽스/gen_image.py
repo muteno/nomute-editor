@@ -161,7 +161,7 @@ def ask_opus(head, lead, insight, scene, o):
         head=head, lead=lead or "(없음)", insight=insight or "(없음)", scene=scene or "(없음)",
         style_ko=STYLE_KO[o["style"]], frag=STYLE_FRAG[o["style"]],
         aspect=o["aspect"], aspect_en=ASPECT_EN[o["aspect"]],
-        mood_rule=mood_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
+        mood_rule=mood_rule, text_rule=text_rule, wish_rule=wish_rule)
 
     args = ["claude", "-p", "--model", MODEL, "--effort", "max",
             "--disallowedTools", "Bash,Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task",
@@ -207,12 +207,7 @@ def main():
     if not tg.KEY:
         die("GEMINI_API_KEY 없음 — 렌더 불가(워크플로 시크릿 확인)")
 
-    try:
-        prompt = ask_opus(head, lead, insight, scene or iq, o)
-    except Exception as e:  # noqa: BLE001 — Opus 경로의 *코드 예외*까지 폴백이 받는다(카나리아1 KeyError 실측 = 기능 무중단 보증)
-        print("::warning::ask_opus 예외 — 결정형 폴백으로 진행: {}: {}".format(type(e).__name__, e), flush=True)
-        prompt = None
-    prompt = prompt or build_fallback(head, lead, scene or iq, o)
+    prompt = ask_opus(head, lead, insight, scene or iq, o) or build_fallback(head, lead, scene or iq, o)
     print("── 최종 프롬프트({}자) ──\n{}\n──".format(len(prompt), prompt), flush=True)
 
     tdir = os.path.join("cards", stem, "thumbs")
