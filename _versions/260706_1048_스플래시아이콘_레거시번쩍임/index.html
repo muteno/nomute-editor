@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#121212"><!-- 브랜드 블랙(--bg 값) 정렬 — 구 그린블랙 잔재 정리(스포티파이 블랙 팔레트 260623과 통일 · meta는 var() 불가라 값 복사 = 계승 · 260706) -->
+<meta name="theme-color" content="#0a120d">
 <meta name="color-scheme" content="dark"><!-- 브라우저 기본 캔버스 = 다크 — 하드 새로고침·네비게이션 때 첫 페인트 전 기본 흰 캔버스가 드러나 '배경 확 날아가며 흰색' 번쩍이던 것 차단(운영자 260705) -->
 <title>뉴스 큐레이션 : News Curation</title>
 <!-- 파비콘·홈 아이콘 = 노뮤트 프로필(PNG). 모바일 홈화면은 SVG data-uri 미지원 → PNG 필수 -->
 <link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" href="assets/brand/icon-192-260706b.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png"><!-- 아이콘 아트 = 만화남(구 파비콘) 아트 폐지 → NOmute 워드마크(logo.png 정본·재염색 0)+브랜드 블랙(--bg 값·스플래시 bg 동일 = 진입 화면서 워드마크만 떠 보임 · 운영자 260706 2차 "과거 파비콘 배경 해결") · 파일명 b판 재버전 + _headers no-cache. ⚠️ 설치된 폰 홈화면(WebAPK)은 크롬이 manifest 변화를 주기 확인(1~3일)한 뒤에야 스플래시 갱신 — 즉시 확인 = 앱 제거 후 홈화면 재추가 -->
+<link rel="icon" type="image/png" href="assets/brand/icon-192-260706.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"><!-- 아이콘 = 파일명 자체 버전(260706) + _headers no-cache — 구 초록 아이콘이 쿼리 무시 캐시·기기 WebAPK에 잔존하던 것 전 계층 관통(운영자 260706 "예전 로고 진입부 잔존") -->
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -6935,10 +6935,10 @@ function applyMerges(pool) {
   return out;
 }
 function renderScrap() {
-  let _scSig = '';   // 이번 렌더 카드 구성(트레이+양 칼럼 ID·칩 상태·검색어·접힘) 누적 — 커밋 직전 _scrapSig와 비교
+  let _scSig = '';   // 이번 렌더 카드 구성(트레이+양 칼럼 ID·검색어) 누적 — 끝에서 _scrapSig와 비교
+  closeFailMenu();   // 전체 재렌더 = Failed 칩 노드 교체 → 열린 컨텍스트 메뉴 앵커가 stale → 닫음
+  document.querySelectorAll('.sc-rsn').forEach(closeRsn);   // 재렌더 = 카드 교체 → 떠있던 사유 팝오버는 앵커 stale → 닫음(orphan 방지)
   const host = $('#scrapList'); if (!host) return;
-  const neo = document.createElement('div');   // 오프스크린 빌드 — 시그니처 완전 동일이면 커밋(DOM 교체) 자체를 생략. 종전 no-anim은 스태거만 억제하고 innerHTML 통재빌드는 그대로라, 라이브 재렌더(_firstLoad·loadPending 전이)가 웨이브 안착 직후 화면을 번쩍 갈아엎었음(운영자 260706 2차 "지그재그 안착하면 번쩍 갱신")
-  const _sents = [];   // IO 센티널 = 커밋 후에만 observe(커밋 생략 시 기존 센티널 관찰 유지 = 무한스크롤 무중단)
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rt = ratingsAll();
   CANDS.forEach(c => { const s = srvTriage(c); if (s) { const id = candId(c); rt[id] = { ...s, ...(rt[id] || {}) }; } });   // 서버 트리아지(전 기기 ledger) 아래에 로컬 오버레이 = PASS/👎/확인 cross-device(운영자 260620)
@@ -6960,22 +6960,18 @@ function renderScrap() {
     if (JUNK_HEAD.test(c.title || '')) return false;                // 머리표 junk([알림]·[사진]·[부고] 등 = 뉴스 아님) 양 컬럼서 제외
     return true;
   }))));
-  if (!pool.length && !failedShown.length) {
-    _scSig = 'E|' + q;
-    if (_scSig === _scrapSig && host.childElementCount) return;   // 동일 빈 상태 재호출 = 무접촉
-    closeFailMenu(); document.querySelectorAll('.sc-rsn').forEach(closeRsn);
-    if (_scIO) _scIO.disconnect();
-    host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = _scSig; return;
-  }
-  neo.innerHTML = (failedShown.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">분석 실패 ${failedShown.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
+  if (!pool.length && !failedShown.length) { host.classList.remove('scrap-cols'); host.innerHTML = `<div class="scrap-empty">${q ? '검색 결과 없음' : '수집 대기 중 — 스크래퍼(RSS)가 돌면 여기 후보가 쌓여.'}</div>`; _scrapSig = ''; return; }
+  host.classList.add('scrap-cols');
+  host.innerHTML = (failedShown.length ? `<div class="sc-failtray"><div class="sc-failtray-hd">분석 실패 ${failedShown.length} — 탭 = 원문 · 길게 = 재시도·사유</div><div class="sc-failtray-list"></div></div>` : '') + SC_COLS_HTML;
   if (failedShown.length) {   // 실패 트레이 렌더(makeScItem 재사용 = Failed칩·재시도메뉴·카드탭→원문 그대로). 최신 실패 먼저.
-    const tray = neo.querySelector('.sc-failtray-list');
-    failedShown.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); _scSig += 'f' + candId(c) + '~' + failCount(c) + ','; });   // 시그니처에 재시도 횟수 = Failed(N) 라벨 변화도 커밋 유발
+    const tray = host.querySelector('.sc-failtray-list');
+    failedShown.forEach((c, i) => { const el = makeScItem(c, { ...(srvTriage(c) || {}), ...ratingFor(c) }, 'fail'); el.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; tray.appendChild(el); _scSig += 'f' + candId(c) + ','; });
   }
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
   // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
-  neo.querySelectorAll('.scrap-list[data-col]').forEach(col => {
+  if (_scIO) _scIO.disconnect();   // 이번 렌더서 교체될 옛 센티널 관찰 해제(detached 노드 참조 누적 방지)
+  host.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
     if (key === 'new') {   // 신규 칼럼 = 최신분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신규서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신순.
@@ -6999,18 +6995,17 @@ function renderScrap() {
     }
     const lim = Math.min(scShown[key], arr.length);   // dedup은 pool 단계서 전역 1회(위) — 칼럼별 중복 접기 불요
     for (let i = 0; i < lim; i++) {
-      const _c = arr[i], _r = { ...(srvTriage(_c) || {}), ...ratingFor(_c) };   // 멤버기반 picked 승계 + 서버 트리아지(확인 등) 오버레이(cross-device)
-      const el = makeScItem(_c, _r, key);
+      const el = makeScItem(arr[i], { ...(srvTriage(arr[i]) || {}), ...ratingFor(arr[i]) }, key);   // 멤버기반 picked 승계 + 서버 트리아지(확인 등) 오버레이(cross-device)
       el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';   // 촤르륵 스태거(펼쳐짐)
       col.appendChild(el);
-      _scSig += key[0] + candId(_c) + '~' + (pickState(_c) || '') + (_r.action || '') + (_r.passed ? 'p' : '') + (_r.acked ? 'k' : '') + (_r.dismissed ? 'd' : '') + (_r.score || 0) + ',';   // 시그니처 = ID·순서 + 칩 상태(Picking/PICKED/Failed·확인·별점) — 상태 전이 재렌더(_firstLoad·loadPending changed)의 목적을 보존하면서, 무변화 재호출만 커밋 생략
+      _scSig += key[0] + candId(arr[i]) + ',';   // 시그니처 누적(칼럼 첫글자+카드ID·순서)
     }
     if (arr.length > lim) {                                             // 나머지는 보관만 — 스크롤 도달 시 자동 추가(더보기 버튼 폐지·운영자 260703)
       if (_scIO) {
         const sent = document.createElement('div');
         sent.className = 'sc-sentinel'; sent.dataset.col = key; sent.setAttribute('aria-hidden', 'true');
         col.appendChild(sent);
-        _sents.push(sent);   // observe = 커밋 후(커밋 생략 시 옛 센티널이 계속 살아 무한스크롤 유지)
+        _scIO.observe(sent);
       } else {                                                          // IO 미지원 구형 브라우저만 옛 버튼 폴백
         const more = document.createElement('button');
         more.className = 'sc-more'; more.type = 'button';
@@ -7027,16 +7022,9 @@ function renderScrap() {
       col.appendChild(fold);
     }
   });
-  _scSig += '|' + q + '|fold' + _scFoldN;   // 접힘 건수(펼치기 +N 라벨)도 커밋 판정에 포함
-  if (_scSig === _scrapSig && host.childElementCount) { pollPicking(); if (MERGE_MODE) markMergeCards(); return; }   // 구성·칩 상태 완전 동일 = DOM 무접촉(스킵) — 스태거 억제(no-anim)를 넘어 통재빌드 플래시 자체 제거 = 웨이브·스크롤 무중단(시간 라벨 등 부수 텍스트는 다음 실변경·탭 전환 때 갱신 = 종전 quiet 라이브폴 신선도와 동일 · 운영자 260706 2차)
-  closeFailMenu();   // 커밋 확정 시에만 — 전체 재렌더 = Failed 칩·사유 팝오버 앵커 stale → 닫음(orphan 방지)
-  document.querySelectorAll('.sc-rsn').forEach(closeRsn);
-  if (_scIO) _scIO.disconnect();   // 교체될 옛 센티널 관찰 해제(detached 노드 참조 누적 방지)
-  host.classList.add('scrap-cols');
-  host.classList.toggle('no-anim', _searchRender);   // 커밋 = 구성이 실제로 바뀐 경우뿐 → 새 카드·삭제 촤르륵 유지 · 검색 타이핑만 스태거 생략(동일 구성 케이스는 위 스킵이 흡수 · 분신술 A2 계승)
-  host.replaceChildren(...neo.childNodes);
+  _scSig += '|' + q;
+  host.classList.toggle('no-anim', _scSig === _scrapSig || _searchRender);   // 직전과 동일 구성(탭 재진입·픽/확인·동일데이터)·검색 타이핑 = 스태거 생략 = 깜빡임 0 · 새 카드·삭제만 촤르륵(분신술 A2)
   _scrapSig = _scSig;
-  if (_scIO) _sents.forEach(s => _scIO.observe(s));
   pollPicking();   // 픽 후·새로고침 잔존 Picking… 분석완료 폴 시동(가드: 진행중·picking 없으면 즉시 반환)
   if (MERGE_MODE) markMergeCards();   // 병합모드 중 재렌더(라이브폴 등) = 앵커/선택 표시 재적용
 }
