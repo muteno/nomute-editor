@@ -85,12 +85,14 @@ jobs:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
           key: nomute-ly-pydeps-${{ runner.os }}-py312-fasterwhisper-ytdlp-v1
 
-      # 재합성(reburn) 전용 경량 준비 — ffmpeg만 필요(whisper·yt-dlp 불요 = STT 환경 대신 apt 캐시만)
-      - name: ffmpeg (재합성)
+      # 재합성(reburn) 전용 경량 준비 — ffmpeg + 한글 폰트(whisper·yt-dlp 불요). ⚠️ fonts-noto-cjk 없으면 libass가
+      #   에러 없이 두부(□)로 조용히 렌더 → 정상본을 깨진 영상으로 덮어씀(평의회 불가 적발) = 폰트 확인까지 하드게이트.
+      - name: ffmpeg+한글폰트 (재합성)
         if: ${{ inputs.reburn == '1' }}
         run: |
-          command -v ffmpeg >/dev/null 2>&1 && { echo "ffmpeg 이미 있음(러너 기본)"; exit 0; }
-          timeout 300 sudo apt-get update -qq && timeout 300 sudo apt-get install -y -qq ffmpeg || { echo "::error::ffmpeg 설치 실패"; exit 1; }
+          timeout 300 sudo apt-get update -qq || true
+          timeout 300 sudo apt-get install -y -qq ffmpeg fonts-noto-cjk || { echo "::error::ffmpeg/폰트 설치 실패"; exit 1; }
+          fc-list | grep -qi "noto sans cjk" || { echo "::error::Noto Sans CJK 미탐지 — 두부 번인 차단"; exit 1; }
 
       # 재합성 소스 회수 — 기존 video.json의 src(R2 원본 보관본) → /tmp (subs.json 의역은 checkout에 이미 포함)
       - name: 재합성 소스 회수 (reburn)

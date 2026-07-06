@@ -310,8 +310,8 @@ def run(vid_id, video, outdir):
     if len(data) <= GIT_FALLBACK_MAX:
         with open(os.path.join(outdir, "subbed.mp4"), "wb") as f:
             f.write(data)
-        out_json(outdir, {"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "bytes": len(data), "dur": round(dur, 1),
-                          "note": (note + " · " if note else "") + "git 저장(R2 미설정)"}); return 0
+        out_json(outdir, {"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "src": src_url, "bytes": len(data), "dur": round(dur, 1),
+                          "note": (note + " · " if note else "") + "git 저장(R2 미설정)"}); return 0   # src 승계 = 폴백서도 재합성 버튼 유지(평의회)
     out_json(outdir, {"error": "R2 미설정 + 파일 {}MB(30MB 초과) — 저장 불가".format(len(data) // 1048576)})
     return 0
 
