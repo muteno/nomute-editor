@@ -387,7 +387,7 @@
     font-family:'PGSans',var(--font-status); font-size:22.5px; font-weight:400; letter-spacing:.9px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* margin:0 = h1 승격(UA 마진 차단 — 간격 실측 54/18 보존 · 평의회4 260706) */   /* 워드마크 = 인트로 #bootsplash .bs-name 계승 × 150%(운영자 260706 "지금의 150%" — 15→22.5px·자간 .6→.9 동배율) · line-height:1 = 간격 실측 기준(무디센더 문구라 안전) · 검색/프로필과 다른 줄이라 충돌축 소멸 */
   /* 메뉴 타이틀 = 워드마크 서브(운영자 260706 3차 지시 3·4·5·6): 구 타이틀 라인 18px 타이틀을 200% 축소(9px) + 영문 폰트 = 워드마크 스타일 그대로 계승(PGSans·400·--fg·그림자·자간 동배율 .9×.4=.36) + 워드마크 아래로 이동 · 상단 시작점 = 구 워드마크↔타이틀 간격 36px의 중간지점 = 18px(--sp-3 계승) · 메뉴명 정본 = CLAUDE.md §표기표준 뷰어 메뉴 용어집(Legacy News·Social Digest·Top Picks) · 텍스트 = setViewhead(VIEWHEAD)가 탭별 갱신 */
   .topbanner.slim .vh-title { display:block; margin:var(--sp-3) 0 0; text-align:center; line-height:1; white-space:nowrap;
-    font-family:'PGSans',var(--font-status); font-size:15.3px; font-weight:400; letter-spacing:.612px; color:var(--accent); text-shadow:0 1px 8px rgba(0,0,0,.45), 0 0 9px rgba(var(--accent-rgb),.14); }   /* 크기 = 9px의 170%(운영자 260706 4차) · 색 = 강조색 100% — 신규 칼럼 헤더(.ct-new)와 동일 색(운영자 260706 "표기한 부분 색 = 저 메뉴 색" · 구 50% 알파 디밍 폐지) · 미세 글로우 유지 · 전 메뉴 공통(단일 규칙) */
+    font-family:'PGSans',var(--font-status); font-size:15.3px; font-weight:400; letter-spacing:.612px; color:rgba(var(--accent-rgb),.5); text-shadow:0 1px 8px rgba(0,0,0,.45), 0 0 9px rgba(var(--accent-rgb),.14); }   /* 크기 = 9px의 170%(운영자 260706 4차) · 색 = 강조색 50% 불투명 + 아주 미세 글로우(운영자 "디밍 아주 조금 — 이상하면 뺌" · 글로우 항 삭제로 원복) · 전 메뉴 공통(단일 규칙) */
   .topbanner.slim .bannerframe, .topbanner.slim .lovemarq, .topbanner.slim .pet { display:none; }   /* 배너·마퀴·산책펫 = 숨김(코드·자산·애니 전부 보존) */
   /* 마스코트 = 탭 분리(운영자 260704): 뉴스요약(feed) = LOVE 마퀴펫 정사각 씬(1080²·풀세트: 펫이 사다리 올라 간판에 L·O·V·E·♥ 놓고 점등 → 어두운 라운드 스크린 카드·marquee.js) / 레거시·SNS = 공놀이 산책 펫(pet.webp). */
   .lovemarq { position:absolute; left:6%; bottom:0;
@@ -5521,19 +5521,6 @@ function openMsgbox(highlightId) {
   if (highlightId) requestAnimationFrame(() => {
     const el = $('#msglist .msgrow[data-id="' + (window.CSS && CSS.escape ? CSS.escape(highlightId) : highlightId) + '"]');
     if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('flash'); }
-  });
-}
-
-// ── SW 상시 등록 = HTML 셸 캐시(콜드부트 즉시 페인트 → OS 스플래시 한 깜빡·운영자 승인 260706) ──
-// 옛날엔 푸시 켤 때만 등록 → 캐시 SW가 전 사용자에 안 깔림. 등록은 멱등(같은 sw.js = no-op)·푸시 플로우 재등록과 충돌 0.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-  // Access 세션 만료 자가치유 — SW 재검증이 로그인 리다이렉트를 감지하면 통지 → ?nosw=1(캐시 우회) 재진입 = 로그인 화면 정상 노출.
-  navigator.serviceWorker.addEventListener('message', e => {
-    if (e.data && e.data.type === 'nm-auth-stale' && !sessionStorage.getItem('nmAuthKick')) {
-      try { sessionStorage.setItem('nmAuthKick', '1'); } catch {}   // 세션 1회 가드 = 리로드 루프 차단
-      const u = new URL(location.href); u.searchParams.set('nosw', '1'); location.replace(u.href);
-    }
   });
 }
 
