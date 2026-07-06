@@ -231,6 +231,49 @@ def main():
     print(f"  {f} ⚡이슈배지 자격(근사·badgeJunk 미반영 ±3) {len(issq)}건 · cr8~9 저수지 {len(resv)}건"
           + ("  (←30↑ = 재인플레 의심 → §8 260702 실측환산 절차로 임계 재조정)" if len(issq) >= 30 else "")
           + ("  (←0 = 과조임/수집장애 의심)" if len(issq) == 0 else "  (기준 260702=13~20 · 저수지 급증 = 다음 인플레 전조)"))
+    # OUT 아웃라이어 감쇠하한 계기판(260706 §8 — §1 보수성: '완화'엔 상시 측정+상한 경보가 짝 · 배지 계기판 선례)
+    #  근사 = viewer timeAccOut의 group_id 병합·_rankCross 댐핑까지 재현 · badgeJunk(정형컷)·수동병합(localStorage)·검색동결 미반영(±1)
+    #  기준 = 0~5 정상(실측 260706=3) · ≥6 = 과발동 조사(§8 260706 임계 재검토) · 강건 z(중앙값+MAD)·풀<15 OFF = viewer 동값
+    try:
+        grp = {}
+        for x in c:
+            gid = x.get("group_id")
+            if gid:
+                grp.setdefault(gid, []).append(x)
+        merged, dropped = {}, set()
+        for gid, cards in grp.items():
+            if len(cards) < 2:
+                continue
+            anchor = next((x for x in cards if x.get("url") == gid), None) or max(cards, key=lambda x: x.get("cross") or 0)
+            summed = sum(x.get("cross") or 0 for x in cards)
+            base = anchor.get("cross") or 0
+            cap = base * 1.5   # MERGE_DAMP_RATIO 1.5·GAIN 0.75 = viewer mergeDecorate 동값
+            rank = summed if summed <= cap else cap + (summed - cap) * 0.75
+            grades = [x.get("grade") for x in cards if x.get("grade") is not None]
+            merged[id(anchor)] = {**anchor, "cross": summed, "_rank": rank,
+                                  "report_count": max((x.get("report_count") or 0) for x in cards),
+                                  "grade": max(grades) if grades else anchor.get("grade")}
+            dropped.update(id(x) for x in cards if x is not anchor)
+        pool = [merged.get(id(x), x) for x in c if id(x) not in dropped]
+        xs = sorted(v for v in ((x.get("_rank") or x.get("cross") or 0) for x in pool) if v >= 8)
+        def _med(a):
+            m = len(a) // 2
+            return a[m] if len(a) % 2 else (a[m - 1] + a[m]) / 2
+        if len(xs) < 15:
+            print("  · OUT 감쇠하한: 통계 풀 <15 (콜드스타트) — 완화 OFF 상태")
+        else:
+            med = _med(xs)
+            sd = max(1.4826 * _med(sorted(abs(v - med) for v in xs)), 2)
+            outs = [x for x in pool
+                    if (_iss_age(x) or 99) < 24 and (x.get("report_count") or 0) >= 6 and _iss_ok(x)
+                    and ((x.get("_rank") or x.get("cross") or 0) - med) / sd >= 2.5]
+            f = "✅" if len(outs) < 6 else "⚠️"
+            print(f"  {f} OUT 감쇠하한 발동(근사·badgeJunk/수동병합 미반영) {len(outs)}건 (med {med:.1f}·σr {sd:.2f})"
+                  + ("  (←6↑ = 과발동 → §8 260706 임계 재검토)" if len(outs) >= 6 else "  (기준 0~5 · 260706 실측 3)"))
+            for x in outs[:3]:
+                print(f"      · z{(((x.get('_rank') or x.get('cross') or 0) - med) / sd):.1f} cr{x.get('cross')} rc{x.get('report_count')} {str(x.get('title') or '')[:36]}")
+    except Exception as e:
+        print(f"  · OUT 계기판 계산 실패(비치명): {e}")
     # 독점률(도배 재발 감지 — 6/28형 '단일사건 상단 도배'를 숫자로 · ≥30%면 §7 접기(fold)안 검토 신호)
     try:
         dom = _dominance(c, now)
