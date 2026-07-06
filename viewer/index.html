@@ -1103,7 +1103,10 @@
     display:flex; flex-direction:column; gap:3px; animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both; }   /* 가운데정렬 = JS(popAt/openQueue) 좌변 직접 지정 · popInCx = scale/translateY 팝인만(translateX 없음 = 히트테스트 누수 차단) */
   .bpop[hidden] { display:none; }
   #linkpop { border-radius:var(--r-l); }   /* 앵커 셸 SSOT 편입(위 그룹 #linkpop) → 배경·블러·테두리·그림자+radius 형제 팝업 통일(옛 .bpop raw 글래스 saturate1.3·15px 이탈 = 팝업 A만 뒤 색 비침·따로 놀던 것 해소·분신술10 260707) */
-  #linkpop .lp-set { border-top:1px solid var(--line2); margin-top:4px; padding-top:9px; }   /* 설정 행 = 링크 무리와 구분선(운영자 260706 4차 — 피드 링크군과 카테고리 분리) */
+  #linkpop .lp-btn { display:block; width:100%; text-align:left; background:none; border:none; color:var(--fg); font:inherit; font-size:13px; font-weight:600; padding:8px 4px; border-radius:7px; cursor:pointer; }   /* 링크 메뉴 안 앱기능 버튼(메시지·발행본·설정) = .bpop a 스타일 계승(운영자 260707 pmenu 통합) */
+  #linkpop .lp-btn:hover { color:var(--accent); }
+  #linkpop .lp-btn.pmenu-sns { display:flex; align-items:center; gap:6px; }   /* 설정 = flex(우측 V자 쉐브론 · #linkpop .lp-btn의 block 오버라이드) */
+  #linkpop #msgbtn { border-top:1px solid var(--line2); margin-top:4px; padding-top:9px; }   /* 앱기능 첫 항목(메시지) = SNS 링크군과 구분선(옛 .lp-set 구분선 계승) */
   .bpop b { font-size:13px; font-weight:800; color:var(--fg); padding:0 4px 8px 2px; }   /* 무채색(상단 초록 제거·운영자 260629) · padding-bottom 8 = 헤더↔첫 항목 간격을 항목간(19px)과 균일하게(운영자) */
   .bpop b svg { vertical-align:-2px; margin-right:4px; }   /* 피드 탐색 앞 돋보기 — 초록 accent 상속(currentColor) */
   .bpop span { font-size:11.5px; color:var(--mut); line-height:1.5; }
@@ -2599,14 +2602,7 @@ try {
       <button id="refresh" class="pmenu-rf" aria-label="새로고침" title="새로고침"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button>
       <button id="pmenuX" class="pmenu-x" aria-label="닫기" title="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
     </div><!-- X = 최우측 · 새로고침은 그 좌측 · 노뮤트 로고 삭제(운영자 260705 "프로필 부분 로고 없애줘" — 옛 260629 '로고는 유지' 뒤집음) · Home·SNS 링크 삭제(운영자 260705 "홈페이지랑 SNS 이동하는 것도 없애줘") -->
-    <button id="msgbtn">메시지 <span id="msgbtncnt"></span></button>
-    <button id="pubBtn">발행본 <span id="pubBtnCnt"></span></button>
-    <button id="setToggle" class="pmenu-sns" type="button" aria-expanded="false" aria-controls="setSub">설정<span class="pm-chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button>
-    <div class="pmenu-sub" id="setSub" hidden>   <!-- 설정 = 2차 아코디언(알림·잠금 · SNS 패턴 계승 · 운영자 260703) -->
-      <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">OFF</button></div>
-      <div class="pushrow" id="lockrow"><button class="lk-open" id="lockBtn" type="button">잠금 설정</button><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
-      <!-- 전광판 진입점 삭제(운영자 260706 "설정에서 전광판 없애줘") — marqpop·marquee.js·openMarqPop은 도먼트 보존(재도입 시 버튼+아래 핸들러만 복원) -->
-    </div>
+    <!-- 메시지·발행본·설정 아코디언(알림·잠금) = #linkpop으로 이관(운영자 260707 통합) → pmenu는 도먼트(헤더만 · 진입로 lpSettings 핸들러 제거) · showPmenu/hidePmenu는 openMsgbox 등서 참조 유지(빈 껍데기 토글 안전) · 재분리 시 위 4줄 복원 · 전광판은 marqpop 도먼트 보존 -->
   </div>
 </div>
 
@@ -2800,7 +2796,13 @@ try {
   <a href="https://x.com">X</a>
   <a href="https://threads.com">Thread</a>
   <a href="https://www.instagram.com/">인스타그램</a>
-  <a href="#" id="lpSettings" class="lp-set">설정</a><!-- 설정 진입 = 링크(메뉴4) 안으로 종속(운영자 260706 4차 "설정 아이콘만 링크 안으로") — 클릭 = 기존 설정 메뉴(pmenu) 오픈 · 설정탭 페이지 완성 시 그 진입로로 교체 예정 -->
+  <button id="msgbtn" class="lp-btn">메시지 <span id="msgbtncnt"></span></button><!-- 메시지·발행본·설정 아코디언 = pmenu서 이관(운영자 260707 "설정 눌러도 딴 창 안 뜨고 그 아래 세부 펼침" → 링크 메뉴 하나로 통합 · pmenu 도먼트) · id 유지 = openMsgbox/openPub/_setToggle 핸들러 그대로 -->
+  <button id="pubBtn" class="lp-btn">발행본 <span id="pubBtnCnt"></span></button>
+  <button id="setToggle" class="lp-btn pmenu-sns" type="button" aria-expanded="false" aria-controls="setSub">설정<span class="pm-chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button>
+  <div class="pmenu-sub" id="setSub" hidden>   <!-- 설정 = 2차 아코디언(알림·잠금) 그 자리 펼침 · 촤르륵 = max-height transition .26s(펼침/닫힘 양방) -->
+    <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">OFF</button></div>
+    <div class="pushrow" id="lockrow"><button class="lk-open" id="lockBtn" type="button">잠금 설정</button><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
+  </div>
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
 <div class="bpop qpop" id="qpop" hidden>
@@ -6316,13 +6318,7 @@ document.addEventListener('click', e => {
   if (!qpop.hidden && !qpop.contains(e.target) && !$('#bnav').contains(e.target)) closeQueueUser();
   if (!pubpop.hidden && !pubpop.contains(e.target) && !$('#profile').contains(e.target) && !($('#pindlg') && $('#pindlg').open)) closePubUser();   // pindlg(잠금 PIN) 열려 있으면 pubpop 유지(평의회 260702)
 });
-const _lpSet = $('#lpSettings');
-if (_lpSet) _lpSet.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); linkpop.hidden = true; showPmenu(); pushRefresh();
-  const lf = $('#linkfab');   // 앵커 = 누른 자리(링크 메뉴 자리 = 링크 네비 버튼 위) — 구 우상단 헤더 앵커는 탭 지점서 화면 반대편으로 "튀어나가는" 버그(운영자 260706 첨부 실측) → popAt 결(fixed·bottom) + 우측정렬·위로 펼침
-  if (lf) { const r = lf.getBoundingClientRect(); pmenu.style.position = 'fixed'; pmenu.style.top = 'auto'; pmenu.style.left = 'auto';
-    pmenu.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px'; pmenu.style.bottom = (window.innerHeight - r.top + 8) + 'px';
-    pmenu.style.transformOrigin = 'bottom right';   // popIn 펼침 원점 = 버튼 쪽(아래서 위로 = 제자리 등장)
-    pmenu.style.maxHeight = Math.max(180, r.top - 20) + 'px'; pmenu.style.overflowY = 'auto'; } });   // 설정 = 링크 다이얼 안 진입로(운영자 260706 4차 "설정 아이콘만 링크 안으로") — 기존 pmenu(메시지·발행본·알림·잠금) 오픈 · 설정탭 페이지 완성 시 교체 예정 · 아코디언 펼침은 위로 성장(maxHeight 캡+스크롤 = 상단 넘침 방지)
+// 설정 = #linkpop 안 setToggle 아코디언으로 그 자리 펼침(운영자 260707 "설정 눌러도 딴 창 안 뜨고 그 아래 세부") — 옛 lpSettings→showPmenu 별도창 오픈 핸들러 폐지 · 메시지·발행본·설정 전부 linkpop 이관 = _setToggle(아코디언)/openMsgbox/openPub가 linkpop 안에서 그대로 작동(id 유지) · linkpop 바깥클릭 가드가 setToggle 보호(linkpop.contains + _popDownInside)
 
 // ── 대기열(뉴스요약 = 롱프레스 600ms · 연달아 두번 탭 · 우클릭 · 배지 → 열기 / 떠있을 때 한번 더 탭 → 닫기) — 분석 대기/중(pending/) 기사 개요. api/pending 라이브 조회(파이프라인 0 변경·읽기전용). ──
 const qFeedBtn = $('#bnav .bnav-i[data-tab="feed"]');
