@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>이미지 생성 팝업 — + 버튼 버튼식 프롬프팅 (260707)</title>
+<style>
+  :root { --bg:#0f1113; --pan:#16181b; --fg:#eef7f0; --mut:#8fa697; --acc:#00EED2; --warn:#FFE13D; --bad:#ff7a6b; --line:rgba(255,255,255,.09); }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:20px 14px 48px; background:var(--bg); color:var(--fg); font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif; max-width:860px; margin-inline:auto; }
+  h1 { font-size:21px; margin:6px 0 2px; letter-spacing:-.3px; }
+  h2 { font-size:16px; margin:34px 0 10px; color:var(--acc); letter-spacing:-.2px; }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:22px; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; margin:10px 0; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:700; white-space:nowrap; }
+  .pan { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin:10px 0; }
+  .ok { color:var(--acc); font-weight:800; } .wr { color:var(--warn); font-weight:800; } .bd { color:var(--bad); font-weight:800; }
+  code { background:rgba(255,255,255,.06); border-radius:6px; padding:1px 6px; font-size:12.5px; }
+  .flow { font-size:13.5px; line-height:2; }
+  .flow b { color:var(--acc); }
+  ul { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+  .imgrow { display:flex; gap:10px; flex-wrap:wrap; }
+  .imgrow figure { margin:0; flex:1 1 220px; max-width:300px; }
+  .imgrow img { width:100%; border-radius:10px; border:1px solid var(--line); }
+  .imgrow figcaption { font-size:12px; color:var(--mut); margin-top:4px; }
+</style></head><body>
+
+<h1>이미지 생성 팝업 — <span class="ok">+</span> 버튼 = 버튼식 프롬프팅</h1>
+<div class="sub">260707 · PR #1772 · 구독(Opus 4.8 프롬프트) + 종량제(제미나이 렌더) 병행 활용 — "둘 다 내는데 한쪽만 쓰는 손해" 해소</div>
+
+<h2>전/후 비교</h2>
+<table>
+<tr><th></th><th>전(前)</th><th>후(後)</th></tr>
+<tr><td><b>+ 버튼</b></td><td>즉시 발사 — Claude가 관련 실사진 웹검색 5장(기능 1개 고정)</td><td>팝업 열림 — <b>이미지 생성</b>(버튼 옵션 프롬프팅) + 기존 실사진 재검색 보조 버튼(보존)</td></tr>
+<tr><td><b>프롬프팅</b></td><td>불가(운영자 개입 지점 없음)</td><td>버튼이 곧 프롬프트: 프리셋4 · 화풍8 · 비율5(4:5/1:1/3:4/9:16/16:9) · 해상도3(1K/2K/4K) · 장수1~4 · 무드5 · 한글 문구(서체4) · 자유 주문 1줄</td></tr>
+<tr><td><b>제미나이 키</b></td><td>썸네일·카드 슛에서만 사용(+ 버튼은 미사용)</td><td>+ 버튼도 종량제 렌더 활용(운영자 의도 — 결제 이중화 손해 해소)</td></tr>
+<tr><td><b>구독 쿼터</b></td><td>WebSearch 왕복(도구 콜 다수)</td><td>프롬프트 작성 1콜(effort max·도구 0) — 폴오버 4계정 체인</td></tr>
+<tr><td><b>결과 표시</b></td><td>검색 카러셀 좌측 prepend</td><td>동일 + <b>'생성' 라벨</b>로 구분 · 프롬프트 원문은 search.json에 보존(감사 가능)</td></tr>
+</table>
+
+<h2>경로(신규 배선)</h2>
+<div class="pan flow">
++ 버튼 → <b>#genidlg</b>(pubdlg 셸 계승 모달) → <b>api/genimg</b>(옵션 화이트리스트 이중검증) → <b>imggen.yml</b>(OAuth 4계정 폴오버 + GEMINI_API_KEY + R2) → <b>gen_image.py</b>{Opus 4.8 effort max가 기사 요약·시사점·장면제안 + 옵션으로 라벨블록 프롬프트 작성(claude_py 폴오버 SSOT 경유) → 실패 시 결정형 폴백(기능 무중단) → thumb_gen.gemini_image(비율·해상도 파라미터) → R2 업로드(불가 시 git 폴백) → search.json '생성' prepend} → 뷰어 폴링(25s) 자동 반영
+</div>
+
+<h2>장점</h2>
+<ul>
+<li>타이핑 0 프롬프팅 — 옵션 버튼(화풍·비율·해상도·무드·문구)이 Opus에게 넘기는 지시가 됨. 최근 조합 자동 복원(로컬스토리지).</li>
+<li>한글 문구 렌더 지원 — 따옴표 리터럴·앞쪽 배치·긍정형 무결성 지시·2K 하한(UI 딤 + 서버 플로어 이중) = 아이데이션 분신술 조사 반영.</li>
+<li>기존 기능 무손실 — 실사진 재검색은 팝업 안 보조 버튼으로 그대로. 백엔드 실패 시에도 결정형 폴백 프롬프트로 렌더 강행(fail-soft).</li>
+<li>디자인 신규 raw 0 — pubdlg 셸·.pub-vis 워드칩·asksend 버튼·토큰 계승(check_refs 디자인 게이트 초록).</li>
+</ul>
+
+<h2>단점·품질저하 리스크</h2>
+<ul>
+<li class="wr">한글 문구 정확도 ~90%(공식 한계) — 깨지면 같은 옵션으로 재생성 1탭(팝업 재열기 = 옵션 복원). 문구 짧을수록 정확.</li>
+<li class="wr">공개 엔드포인트(moreimg·make-cards와 동일 정책) — 스팸 시 지출. 장수 1~4 캡·운영자 지출 모니터링 전제.</li>
+<li>비동기 1~3분(Opus 작성 + 렌더 + 커밋 + Pages 재빌드) — 로딩 슬라이드 '생성 중…' + 25s 폴링 14회, 타임아웃 시 "곧 반영 — 새로고침".</li>
+<li>4K·다장수 = 종량제 과금 증가(기본값 1K·1장으로 가드).</li>
+</ul>
+
+<h2>효율성</h2>
+<table>
+<tr><th>축</th><th>내용</th></tr>
+<tr><td>구독</td><td>Opus 1콜(도구 0·stdin) — 기존 more_images WebSearch(도구 왕복 다수)보다 가벼움 · 쿼터 한도 시 4계정 자동 전환</td></tr>
+<tr><td>종량제</td><td>렌더만 제미나이 — 기본 1K·1장(썸네일 하우스 기본과 동일) · 문구 시에만 2K 승격</td></tr>
+<tr><td>재사용</td><td>gemini_image·r2_upload·parse_md·폴오버 SSOT·카러셀 폴링 전부 기존 부품 — 신규 렌더 코드 0</td></tr>
+</table>
+
+<h2>카나리아 실측</h2>
+<div class="pan" id="canary">
+(머지 후 main ref 단건 실발사 결과를 여기 기록)
+</div>
+
+<h2>검증(10인 분신술 평결)</h2>
+<div class="pan" id="council">
+(평결 취합 후 기록)
+</div>
+
+</body></html>
