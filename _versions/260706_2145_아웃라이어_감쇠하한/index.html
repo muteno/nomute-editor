@@ -7183,7 +7183,6 @@ function renderScrap() {
   const CROSS_MIN = 8;   // 누적 = 8개 매체 이상 보도된 것만 쌓음(운영자 260617: 5→8 엄선 — 5~7매체 어중간한 건 컷, 진짜 다매체 큰 것만 누적칼럼). 소수 매체만 다룬 약한 건 노이즈 → 누적서 제외·DB엔 잔존. 조정 가능.
   const _untri = c => { const r = rt[candId(c)] || {}; return pickState(c) || !((r.action && r.action !== 'pick') || r.passed); };   // down/pass=양 컬럼서 제외 · PICK 잔류(맨 아래 PICKED 비활성) · 전역 픽(pickState=타기기/파이프라인)은 down/pass였어도 PICKED로 잔류(운영자 260620 B1)
   // 픽은 더 이상 가라앉히지 않음(운영자 260617: PICKED도 제자리서 인식 필요) → _pk 정렬키 제거. PICKED 표시·비활성만 유지.
-  if (!q) outStatUpd(pool, CROSS_MIN);   // 아웃라이어 z 통계 갱신(§아웃라이어 감쇠하한) = 병합 후 pool·랭킹축 — 검색 중엔 직전 전체 통계 유지(부분 풀 왜곡 방지)
   neo.querySelectorAll('.scrap-list[data-col]').forEach(col => {
     const key = col.dataset.col;
     let arr;
@@ -7436,31 +7435,9 @@ const crossConvex = c => Math.pow(c._rankCross ?? (c.cross || 0), CROSS_POW);   
 //    timeW=1/(1+(age/HALF)^POW): 6h=.91·12h=.56·18h=.27·24h=.14·36h=.045·48h=.02 (13·3.0 — 12h 반값·이후 가속).
 const ACC_T_HALF = 13, ACC_T_POW = 3.0;   // 반값 나이(h)·가속지수 — 12h 후 가속 침몰(운영자 260618: 18·2.5는 12h=.73로 완만 → cross^1.6 볼록에 눌려 철지난 다수매체가 상위 점유 '묵은 피드'였음. 13·3.0=12h 반값·이후 급강). 조정 가능.
 const timeAcc = c => 1 / (1 + Math.pow(Math.max(0, (Date.now() - scTs(c)) / 3600000) / ACC_T_HALF, ACC_T_POW));
-// ── 아웃라이어 감쇠하한(OUT · 운영자 260706): '표준편차 기준 압도적 다매체'는 하루 안엔 안 묻힌다 ──
-//    배경 실측: 병합 합산 cr39(장윤기 · z7.0) 사회 대형이 23h 시점 timeAcc .15에 눌려 신선 중형(cr9~13)들과 순위가 계속 뒤바뀜(운영자 "계속 순서가 바껴 본지도 모르겠다").
-//    완화 = scScore의 시간항만 하한: z ≥ OUT_Z1이면 timeAcc가 OUT_AGE_CAP_H(12h=반값점) 시점 값(.564) 밑으로 안 내려감 · OUT_Z0~Z1 선형 램프(경계 순위 플리커 방지).
-//    z = 강건 z(중앙값+MAD×1.4826) — 평균/표준편차는 아카이브 고래 꼬리에 오염돼 아웃라이어가 안 잡힘(실측: raw σ9.56 → cr39가 z2.0 / MAD σr2.97 → z7.0). 통계 풀 = 병합 후 pool 랭킹축(_rankCross??cross) ≥ CROSS_MIN(8·누적 진입선) — renderScrap이 outStatUpd로 갱신.
-//    자격 = issCross(⚡이슈 배지 자격 그대로 상속: cross≥10[g3=8]·grade null‖≥2·정형컷) — 배지도 못 다는 시황/PR 합산몬스터는 대상 아님(배지와 대칭). OUT_MAX_AGE_H(24h=배지 소멸선)부터 정상 감쇠 복귀(운영자 "1일 넘어가면 밀리는 게 맞다" — 배지·완화 동시 소멸).
-//    풀 n<OUT_POOL_N_MIN(심야)이면 통계 무의미 = 완화 OFF(보수·§1 · daily_health 심야가드 15 선례). 신호·진입·배지·표시·신규(fastScore) 0 변경 = 누적 랭킹 시간항 전용. 실측 260706: 발동 3건뿐{cr44 z8.7·cr39 z7.0 완전 / cr25 z2.6 ×1.15} · 장윤기 23h 7위→2위 · 25h 완화 OFF 9위 자연 침몰. 정본 = docs/curation-algorithm.md §8 260706.
-const OUT_Z0 = 2.5, OUT_Z1 = 3.5, OUT_AGE_CAP_H = 12, OUT_MAX_AGE_H = 24, OUT_POOL_N_MIN = 15, OUT_SD_MIN = 2;   // z 램프 시작/완전 · 감쇠 하한 나이(h) · 완화 상한 나이(h) · 통계 최소 풀 · σr 하한(동질 풀 z 폭주 방지). 조정 가능(§8).
-let _outMed = 0, _outSd = 0;   // 강건 통계(중앙값 · MAD σ환산) — renderScrap이 매 렌더 갱신(검색 중 제외 · 초기 0 = 완화 OFF 보수 폴백)
-const _outMedian = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const outStatUpd = (pool, min) => {
-  const xs = []; for (const c of pool) { const x = c._rankCross ?? (c.cross || 0); if (x >= min) xs.push(x); }
-  if (xs.length < OUT_POOL_N_MIN) { _outSd = 0; return; }   // 풀 얇음(심야) = 완화 전체 OFF
-  _outMed = _outMedian(xs);
-  _outSd = Math.max(1.4826 * _outMedian(xs.map(x => Math.abs(x - _outMed))), OUT_SD_MIN);
-};
-const timeAccOut = c => {   // 아웃라이어면 시간항 하한(램프 블렌드) — issCross는 아래 정의(호출은 렌더시라 TDZ 무해)
-  const t = timeAcc(c);
-  if (_outSd <= 0 || !issCross(c)) return t;
-  if (Math.max(0, (Date.now() - scTs(c)) / 3600000) >= OUT_MAX_AGE_H) return t;
-  const s = Math.min(1, Math.max(0, (((c._rankCross ?? (c.cross || 0)) - _outMed) / _outSd - OUT_Z0) / (OUT_Z1 - OUT_Z0)));
-  return s ? t + s * Math.max(0, 1 / (1 + Math.pow(OUT_AGE_CAP_H / ACC_T_HALF, ACC_T_POW)) - t) : t;
-};
 // 누적(좌) 정렬 = cross 볼록가점 × 시간 가속감점(발행) × 연속보도(scFollow) × AI 경중(gradeW). 다수동시+최신+계속+양질=상단.
 const BREAKING_RANK_BOOST = 3.0;   // 누적 긴급 부스트 — 긴급(isBreaking) 사건은 누적칼럼서도 가시성↑(운영자 260628 "긴급할수록 가시성 높인다" 목적). **1.5→3.0(260628 A/B 분신술 10인·7일치 전수)**: ×1.5는 죽은 파라미터(churn0·대형재난 묻힘)였음 → ×3.0이 긴급 top20 2→3·일본강진 39→19·화성화재 15→3·베네수920 52→28. 안전 확증(옛긴급 top20진입 0[timeAcc가 누름]·비긴급오염 0[breaking에만 곱]·breaking오탐 0[grade≥2 게이트]·중요훼손 top20밖 96%). 조정 가능. ⏳후속(라운드2): 저cross 신선긴급=effective cross floor(#7)·老 대형재난(rc큰 g3 52h+)=g3한정 timeAcc 연장(#4/#5) — 곱셈만으론 timeAcc 못 이김.
-const scScore = c => crossConvex(c) * timeAccOut(c) * scFollow(c) * gradeW(c) * (isBreaking(c) ? BREAKING_RANK_BOOST : 1);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점[timeAccOut = 아웃라이어 감쇠하한 포함 · 비아웃라이어는 timeAcc 동일값] × AI경중 × [긴급이면 부스트]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트.
+const scScore = c => crossConvex(c) * timeAcc(c) * scFollow(c) * gradeW(c) * (isBreaking(c) ? BREAKING_RANK_BOOST : 1);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점 × AI경중 × [긴급이면 부스트]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트.
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // pinB = 확정 breaking & 아직 안 픽이면 1(픽하면 0). 누적칼럼 강제핀은 260617 제거 — 이 값은 pinFresh(신규칼럼 최신속보 핀)에서만 씀.
 const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r.picked && !r.acked) ? 1 : 0; };   // 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619)
