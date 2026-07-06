@@ -2959,7 +2959,7 @@ function render() {
   if (!rows.length) { list.innerHTML = (q || cardonly || FILTERS.cats.size || FILTERS.issue) ? '<div class="empty">결과 없음</div>' : ''; _feedSig = ''; return; }   // 빈 메뉴 = 조용한 공백(설명 글자열 전폐 · 운영자 260706 — §디자인 e) · 검색·필터 걸렸을 때만 '결과 없음' 피드백
   // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
   const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
-  if (sig === _feedSig && list.childElementCount) return;   // 구성·상태·필터 완전 동일 = DOM 무접촉 스킵(renderScrap 커밋 스킵 미러 · 평의회6 260707 — 탭 전환 즉시렌더 직후 fetch 재렌더가 통재빌드로 스태거를 절단·이중 비용 내던 것 차단 · sig에 rev/cards.state/긴급/수정중 전부 탑승이라 실변경은 항상 통과 · 시간 라벨류 부수 텍스트 없음 = 동결 부작용 0)
+  if (sig === _feedSig && list.childElementCount) return;   // 구성·상태·필터 완전 동일 = DOM 무접촉 스킵(renderScrap 커밋 스킵 미러 · 평의회6 260707 — 탭 전환 즉시렌더 직후 fetch 재렌더가 통재빌드로 스태거를 절단·이중 비용 내던 것 차단 · sig에 rev/cards.state/긴급/수정중 전부 탑승이라 실변경은 항상 통과). ⚠️ 정직: dlReport/dlScrap의 relAge 상대시간 라벨·progGauge stuck 판정은 sig 밖 = 유휴 동일탭 폴에선 동결·다음 실변경/탭 전환 때 갱신(자가치유) — scrap 7309 커밋 스킵과 동일한 의도적 트레이드오프(신선도 한정·데이터 무영향). sig 밖 동적 요소 추가 시 여기 재검토.
   const _anim = sig !== _feedSig && !_searchRender; _feedSig = sig;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더·검색 타이핑은 즉시(깜빡임 0)
   list.innerHTML = '';
   rows.forEach((a, i) => {
