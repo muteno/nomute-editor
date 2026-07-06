@@ -30,10 +30,6 @@ on:
         description: '업로드 일회용 브랜치(up-<id> · 빈값=종전 main 커밋 경로) — ly.js가 업로드를 여기 커밋 → 러너가 회수 → 잡 끝에 삭제 = main 히스토리 비대 0'
         type: string
         default: ''
-      reburn:
-        description: '재합성 모드(1=ON) — 기존 ly_out/<id>/subs.json 의역 + video.json src(R2 원본 보관본)로 번인만 재실행(STT·claude 스킵 = LLM 0콜·1분급)'
-        type: string
-        default: '0'
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -84,29 +80,6 @@ jobs:
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
           key: nomute-ly-pydeps-${{ runner.os }}-py312-fasterwhisper-ytdlp-v1
-
-      # 재합성(reburn) 전용 경량 준비 — ffmpeg + 한글 폰트(whisper·yt-dlp 불요). ⚠️ fonts-noto-cjk 없으면 libass가
-      #   에러 없이 두부(□)로 조용히 렌더 → 정상본을 깨진 영상으로 덮어씀(평의회 불가 적발) = 폰트 확인까지 하드게이트.
-      - name: ffmpeg+한글폰트 (재합성)
-        if: ${{ inputs.reburn == '1' }}
-        run: |
-          timeout 300 sudo apt-get update -qq || true
-          timeout 300 sudo apt-get install -y -qq ffmpeg fonts-noto-cjk || { echo "::error::ffmpeg/폰트 설치 실패"; exit 1; }
-          fc-list | grep -qi "noto sans cjk" || { echo "::error::Noto Sans CJK 미탐지 — 두부 번인 차단"; exit 1; }
-
-      # 재합성 소스 회수 — 기존 video.json의 src(R2 원본 보관본) → /tmp (subs.json 의역은 checkout에 이미 포함)
-      - name: 재합성 소스 회수 (reburn)
-        if: ${{ inputs.reburn == '1' }}
-        env:
-          IN_ID: ${{ inputs.id }}
-        run: |
-          set -e
-          SRC="$(python3 -c "import json;print(json.load(open('viewer/ly_out/${IN_ID}/video.json')).get('src') or '')" 2>/dev/null || true)"
-          case "$SRC" in https://*) ;; *) echo "재합성 원본 보관본이 없어 — 새로 생성해줘." > /tmp/ly_err.txt; echo "::error::src 없음/비https: $SRC"; exit 1;; esac
-          EXT="${SRC##*.}"; case "$EXT" in mp4|webm|mov|mkv|m4v) ;; *) EXT=mp4;; esac
-          curl -fsSL --max-time 300 "$SRC" -o "/tmp/upsrc.$EXT" || { echo "원본 다운로드 실패 — 새로 생성해줘." > /tmp/ly_err.txt; echo "::error::src 다운 실패"; exit 1; }
-          echo "LY_VIDEO=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
-          echo "REBURN=1" >> "$GITHUB_ENV"
 
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
@@ -201,7 +174,6 @@ jobs:
           echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함 예정(무해)"; exit 0
 
       - name: Make ly subtitles
-        if: ${{ inputs.reburn != '1' }}
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
@@ -226,7 +198,7 @@ jobs:
       # 자막 텍스트 선공개(번인 전 조기 커밋) — 번인(인코딩 1~3분)을 안 기다리고 자막부터 표시(LY-EARLY 패턴 계승 · best-effort exit 0).
       #   ⚠️ 암묵 success() 게이트 유지 — lymake 실패 시 부분 산출 조기 push 방지(early_segs와 동일 원칙).
       - name: 조기 subs 커밋 (번인 전 자막 선공개)
-        if: ${{ env.LY_VIDEO != '' && inputs.reburn != '1' }}
+        if: ${{ env.LY_VIDEO != '' }}
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
@@ -249,7 +221,7 @@ jobs:
       # 자막 번인(영상 합성) — 자막을 영상에 입혀 R2 업로드 → video.json(뷰어 폴링). fail-soft = 실패해도 자막 텍스트 산출은 유지(rc 0).
       #   영상 확보 실패(LY_VIDEO 빈값)여도 ly_burn이 video.json에 스킵 사유 기록 → 뷰어 헛폴링 종료.
       - name: 자막 번인 (영상 합성 → R2)
-        if: ${{ inputs.url != '' || inputs.file != '' || inputs.reburn == '1' }}
+        if: ${{ inputs.url != '' || inputs.file != '' }}
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}

@@ -26,7 +26,6 @@ export async function onRequestPost({ request, env }) {
   const url = String(body.url || '').trim().slice(0, 500);
   let fileB64 = String(body.fileB64 || '');
   const name = String(body.name || '');
-  const reburn = String(body.reburn || '').trim();   // 재합성 = 기존 작업 ID(의역·원본 재사용 → 번인만 재실행 · LLM 0)
   // 뷰어 버튼 설정(자막 옵션+번인) — 화이트리스트 키만 통과(임의 페이로드 차단) · 빈 객체 = 빈 문자열(종전 동작)
   let opts = '';
   if (body.opts && typeof body.opts === 'object') {
@@ -34,14 +33,6 @@ export async function onRequestPost({ request, env }) {
     for (const k of ['lang', 'tone', 'style', 'pos', 'size']) { const v = body.opts[k]; if (typeof v === 'string' && /^[a-z]{1,10}$/.test(v)) o[k] = v; }
     for (const k of ['filler', 'burn', 'karaoke', 'keyword']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
-  }
-  if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
-    if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
-    const rr = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-      ref: REF, inputs: { id: reburn, reburn: '1', opts, early_segs: '0' },
-    });
-    if (rr.status === 204) return json({ ok: true, id: reburn, reburn: true, out: `ly_out/${reburn}/subs.md` });
-    return json({ error: `재합성 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);
   }
   if (!subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
   if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
