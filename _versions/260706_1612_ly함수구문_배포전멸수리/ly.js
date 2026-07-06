@@ -47,7 +47,6 @@ export async function onRequestPost({ request, env }) {
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
     ref: REF, inputs: { id, subs, url, file: filePath, early_segs: '1' },   // 조기 전사 푸시 ON(LY-EARLY · 반드시 문자열 '1' — 숫자/불리언은 GH 강제변환으로 조용히 OFF) · 워크플로 default '0' = fail-closed(수동 dispatch 실수 방지) · 롤백 = 이 필드 제거 한 줄(평의회9)
-  });   // ← LY-EARLY 편입(#1725) 때 이 닫는 괄호 유실 → wrangler 번들 SyntaxError → Pages 배포 전멸(260706 11:31~ 라이브 동결 사고 · 복구)
   if (r.status === 204) return json({ ok: true, id, url: !!url, file: !!filePath, out: `ly_out/${id}/subs.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
