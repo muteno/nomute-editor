@@ -34,6 +34,9 @@ SRC_LABEL = {
     "card": "카드 텍스트(card)",
     "card-edit": "카드 수정(card-edit)",
     "ask": "요약 요청(ask)",
+    "ask-repair": "요약 분량보강(ask)",
+    "analyze-repair": "요약 분량보강(analyze)",
+    "card-cov": "카드 알맹이회수(card-cov)",
     "revise": "요약 수정(revise)",
     "gate": "경중 채점(gate)",
     "autopick": "긴급 자동픽(autopick)",
@@ -194,7 +197,7 @@ _HTML = """<!doctype html><html lang=ko><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content=dark>
 <title>토큰 사용량 — 10분 버킷</title><style>
 :root{--bg:#0a120d;--glass:rgba(38,64,46,.42);--glass2:rgba(14,26,18,.55);--line:rgba(255,255,255,.08);
---fg:#eef7f0;--mut:#8fa697;--accent:#0FFD02;--accent-rgb:15,253,2;--accent-bright:#d8ff3d;--amber:#ff9614;--info:#0cd0f7;}
+--fg:#eef7f0;--mut:#8fa697;--accent:#00EED2;--accent-rgb:0,238,210;--accent-bright:#5AFFE6;--amber:#FFE13D;--info:#0FFD02;}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);padding:0 0 50px;
 font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;letter-spacing:-.2px}
 .wrap{max-width:880px;margin:0 auto;padding:20px 16px}h1{font-size:19px;margin:6px 0 2px}h1 b{color:var(--accent)}
@@ -220,7 +223,7 @@ border:1px solid rgba(var(--accent-rgb),.28);border-radius:16px;padding:16px;mar
 <div class=note>토큰 = claude -p 실측(input/output/cache). 비용($)은 CLI 추정치(구독은 쿼터 청구라 참고용). 이미지(제미나이)는 별도 집계.</div>
 </div><script>
 const AGG=__DATA__,LAB=__LABELS__;
-const PAL=['#0FFD02','#0cd0f7','#ff9614','#d8ff3d','#c084fc','#f87171','#34d399','#fbbf24','#60a5fa'];
+const PAL=['#00EED2','#0cd0f7','#ff9614','#d8ff3d','#c084fc','#f87171','#34d399','#fbbf24','#60a5fa'];
 const fn=n=>Number(n||0).toLocaleString();
 const app=document.getElementById('app');
 function render(){

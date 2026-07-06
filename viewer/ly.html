@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<script>addEventListener('pointerdown', function (e) { var t = e.target.closest && e.target.closest('button, a, [role="button"]'); if (t) { try { navigator.vibrate && navigator.vibrate(15); } catch (_) {} } }, { capture: true, passive: true });</script><!-- 전역 버튼 탭 햅틱 15ms = index와 통일(iframe은 부모 핸들러 미도달 · 운영자 260706) --><!-- 부모(index)와 color-scheme 일치 필수 — 불일치면 크로미움이 투명 iframe에 불투명 흰 캔버스 강제 → 글래스 전부 회색 파손(운영자 260705 실측 · index color-scheme dark 도입과 한 쌍) -->
 <title>영상 자막 생성기</title>
 <link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
 <style>
-  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8fa697; --accent:#0FFD02; --accent-rgb:15,253,2;
-    --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(index 동일·감사 260704) */   /* index :root 동기 — raw rgba(15,253,2) 박기 차단(분신술 4·8) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95; }
-  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 사다리+무효화(index 통일·운영자 260628·분신술10) */
+  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(index 동일·감사 260704) */   /* index :root 동기 — raw rgba(0,238,210) 박기 차단(분신술 4·8) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322; }   /* --press-* = tokens.css 상속(인라인 이중정의 제거·감사 260704·comp 기준·회귀0) */
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 무효화 = 로컬(tokens.css엔 없음·comp 기준) */
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* 모바일 기본 하늘색 탭 하이라이트 박스 제거 = index:78·thumb:15 전역 계승(체크박스·라벨 탭 시 시안 박스 차단·운영자 260629) */
   /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
   button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
@@ -107,7 +109,7 @@
   .out table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
   .out td, .out th { border:1px solid var(--line); padding:6px 8px; text-align:left; color:var(--mut); }
   .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 12px; }
-  .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#e9eaec; }
+  .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#eef7f0; }
   .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
     color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-s); cursor:pointer;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
@@ -115,6 +117,118 @@
   .code button:hover { background:rgba(255,255,255,.16); }
   .code button:active { transform:scale(var(--press-s,.85)); }
   .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  /* ══ 자막 상세 편집기(조각 카드·단어 칩·미리보기 싱크) — 부품 전부 정본 계승: 탭=.tooltab(index) · 단어칩=.ed-chip(index #edChips 어절칩 엔진) · 체크=.dl-cbox(index) · 다운로드=.dlbtn(전 앱 표준) · 아이콘=nm-svg SSOT · 색=기존 ly 팔레트 var()만(신규 raw 색 0·신규 blur 0) ══ */
+  .lyfind[hidden], .lypv-row[hidden], .lypv-cap[hidden] { display:none; }   /* ⚠️ display:flex가 UA [hidden]을 덮는 함정 가드(#rfab .ro[hidden] 전례 동일 · lypv-cap 누락은 평의회5 적발 = 생성 전 빈 캡션바 노출 버그) */
+  .lyseg-a, .lyseg-t, .lybtn, .lyrate, .lyfbtn, .lytab, .lyreset { touch-action:manipulation; }   /* 더블탭 줌·300ms 지연 차단(평의회4·.ed-chip와 동일) */
+  .lytabs { display:none; grid-template-columns:1fr 1fr; gap:6px; padding:0 2px; border-bottom:1px solid var(--line); margin:16px 0 12px; }
+  .lytabs.show { display:grid; }
+  .lytab { padding:9px 4px; text-align:center; color:var(--mut); cursor:pointer; font-weight:600; font-size:13px; background:none; border:none; border-radius:0; font-family:inherit; transition:color .15s, transform .12s; -webkit-tap-highlight-color:transparent; }   /* 글자 탭 = index .tooltab 계승(알약 아님) */
+  .lytab:active { transform:scale(var(--press-l,.95)); }
+  @media (hover:hover){ .lytab:hover { color:var(--fg); } }   /* index .tooltab:hover 계승(평의회5) */
+  .lytab.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
+  .lytab-n { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; box-sizing:border-box; margin-left:6px; vertical-align:1px; background:var(--accent); color:var(--on-accent); font-size:10px; font-weight:800; line-height:1; border-radius:9px; box-shadow:0 0 8px rgba(var(--accent-rgb),.5); }   /* 상세 탭 조각수 뱃지 = index .qbadge 계승(absolute→인라인 변형·on-accent 토큰) — 편집기 발견성(평의회R2 B1) · 숫자 배지 = §표기 공존금지 비대상 */
+  .lytab-n[hidden] { display:none; }   /* display:inline-flex가 UA [hidden] 덮는 함정 가드(#rfab .ro 전례) */
+  /* 미리보기 = 이 세션에 첨부한 파일만(objectURL·업로드/호스팅 0) — 자막 캡션 바 + 컷스킵·속도·자막크기 */
+  .lypv { margin:14px 0 0; }
+  .lypv video { display:block; width:100%; max-height:min(320px, 40dvh); background:var(--bg); border:1px solid var(--line); border-radius:var(--r-m); }   /* 40dvh 캡 = 키보드 열림 시 편집영역 확보(평의회4) */
+  .lypv-cap { min-height:34px; display:flex; align-items:center; justify-content:center; text-align:center; padding:7px 10px; margin-top:6px; background:var(--pan); border:1px solid var(--line); border-radius:var(--r-m); color:var(--fg); font-weight:700; font-size:18px; line-height:1.45; white-space:pre-wrap; word-break:keep-all; }
+  .lypv-row { display:flex; align-items:center; gap:10px; margin-top:8px; color:var(--mut); font-size:var(--fs-sm); }
+  .lypv-row .dl-full { flex:none; height:24px; }
+  .lypv-row .lbl { user-select:none; -webkit-user-select:none; }
+  .lyrate { flex:none; min-width:36px; height:24px; padding:0 8px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--mut); font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .12s, color .15s; }
+  .lyrate:active { transform:scale(var(--press-m,.9)); color:var(--accent); }
+  .lypv-row input[type=range] { flex:1; min-width:0; accent-color:var(--accent); }
+  .lypv-fs { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:36px; text-align:right; }
+  /* 상세 툴바 — 전체선택(.dl-cbox)+아이콘 버튼(.sbtn 규격 30px) */
+  .lytool { display:flex; align-items:center; gap:7px; margin:0 0 10px; }
+  .lytool .dl-full { height:28px; color:var(--mut); font-size:var(--fs-sm); }
+  .lysp { flex:1; }
+  .lybtn { flex:none; width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center; padding:0; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .12s, background .15s, color .15s, border-color .15s; position:relative; }
+  .lybtn svg { display:block; width:15px; height:15px; }
+  .lybtn:active { transform:scale(var(--press-s,.85)); }
+  .lybtn[aria-pressed="true"] { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); }
+  .lystats { color:var(--mut); font-size:var(--fs-sm); margin:0 0 10px; line-height:1.7; }
+  .lystats b { color:var(--accent); font-weight:800; }
+  .lyfind { display:flex; gap:7px; align-items:center; margin:0 0 10px; }
+  .lyfind input { flex:1; min-width:0; padding:9px 11px; font-size:13px; }
+  .lyfbtn { flex:none; height:36px; padding:0 13px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--accent); font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; -webkit-tap-highlight-color:transparent; white-space:nowrap; transition:transform .12s, background .15s; }
+  .lyfbtn:active { transform:scale(var(--press-l,.95)); background:rgba(var(--accent-rgb),.08); }
+  .lyfn { flex:none; color:var(--mut); font-size:var(--fs-xs); min-width:26px; text-align:right; }
+  /* 조각 카드 — 내부 중첩 박스(--r-m)·현재 재생 = 강조 테두리 */
+  .lyseg { background:var(--pan); border:1px solid var(--line); border-radius:var(--r-m); padding:9px 10px 10px; margin-bottom:8px; transition:border-color .15s, opacity .15s; }
+  .lyseg.cur { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.06); }   /* 재생 중 = 테두리+옅은 배경(1px 테두리만으론 식별 약함 · 알파 변주 = 신규색 아님 · 평의회R2 C9) */
+  .lyseg.sel { box-shadow:inset 3px 0 0 rgba(var(--accent-rgb),.55); }   /* 선택(복사/SRT 대상) = 좌측 바 — 재생(.cur=배경)과 시각 문법 분리(평의회R2 검토2) */
+  .lyseg.land { animation:lyland .7s ease; }   /* 병합 착지 = 대상 카드 1회 펄스(시선 유도 · 평의회R2 C3) */
+  @keyframes lyland { 0% { border-color:rgba(var(--accent-rgb),.75); box-shadow:0 0 0 5px rgba(var(--accent-rgb),.14); } 100% { border-color:var(--line); box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } }
+  .lyseg.del { opacity:.38; }
+  .lyseg.del .lyseg-chips { pointer-events:none; }
+  .lyseg.del .lyseg-t { text-decoration:line-through; }
+  .lyseg-h { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .lyseg-h .dl-full { height:22px; }
+  .lyseg-h .dl-cbox { margin-right:0; }
+  .lyseg-n { flex:none; min-width:18px; font-size:12px; font-weight:800; color:var(--mut); }
+  .lyseg-t { flex:none; font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--mut); cursor:pointer; padding:3px 8px; margin:-3px 0; border-radius:var(--r-pill); background:rgba(255,255,255,.05); border:1px solid var(--line); -webkit-tap-highlight-color:transparent; }   /* 탭 = 그 시점으로 미리보기 이동 · 알약 크롬 = .lyrate 계승(회색 라벨로 보이던 죽은 어포던스 교정 · 평의회R2 B3) */
+  .lyseg-t b { color:var(--fg); font-weight:600; }
+  .lyseg-t:active { color:var(--accent); }
+  .lyseg-t.plain, .lyseg-t:disabled { background:none; border-color:transparent; cursor:default; }   /* 미리보기 없음(URL·복원) = 크롬 제거 = 시크 안 되는데 눌러보게 하는 허위 어포던스 차단(평의회R2 B3) */
+  .lyseg-t.plain:active { color:var(--mut); }
+  .lyseg-d { font-size:var(--fs-xs); }   /* 조각 길이 = 보조 위계(fs-xs) — 헤더 앵커는 시작시각 bold(평의회R2 D1) */
+  .lyseg-a { flex:none; width:var(--btn-xs); height:var(--btn-xs); display:grid; place-items:center; padding:0; background:transparent; border:none; border-radius:var(--r-s); color:var(--mut); cursor:pointer; position:relative; -webkit-tap-highlight-color:transparent; transition:color .15s, transform .12s; }
+  .lyseg-a::before { content:""; position:absolute; inset:-4px; }   /* 히트슬롭(시각 불변·.urlclip::before 선례 · 평의회4) — -5는 gap 8에서 인접 병합·삭제 탭영역 2px 겹침 → -4 = 정확 접점(평의회R2 D1) */
+  .lyseg-h .dl-full::before { content:""; position:absolute; inset:-6px; }   /* 조각 체크 탭영역 확장(라벨 히트만·평의회4) */
+  .lyseg-a svg { display:block; width:13px; height:13px; }
+  .lyseg-a:active { transform:scale(var(--press-s,.85)); color:var(--accent); }
+  .lyseg-chips { display:flex; flex-wrap:wrap; gap:7px; }   /* gap 7 = 인접 오탭 완화(평의회4) */
+  /* 단어 칩 = index #edChips .ed-chip 어절칩 계승(탭=토글·더블탭=수정·스페이스=분열·빈칩 백스페이스=앞과 병합) — ly 의미만 다름: 토글=자막 빼기.
+     의도 divergence(CII 등재): 패딩 2×8(터치 편의·가중폭 미표시 표면) · border --line(ly 팔레트에 --line2 부재) — 크기·굵기·상호작용은 정본 동일 */
+  .ed-chip { flex:none; max-width:100%; font-size:16px; line-height:1.4; padding:2px 8px; border-radius:7px; background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); cursor:pointer; overflow-wrap:anywhere; -webkit-user-select:none; user-select:none; touch-action:manipulation; transition:background .15s, border-color .15s, color .15s, opacity .15s; }
+  @media (hover:hover){ .ed-chip:hover { border-color:rgba(var(--accent-rgb),.4); } }
+  .ed-chip.off { opacity:.42; text-decoration:line-through; border-style:dashed; }
+  .ed-chip.hit { border-color:rgba(var(--accent-rgb),.6); background:rgba(var(--accent-rgb),.08); }
+  .ed-chip.editing { outline:2px solid var(--accent); outline-offset:1px; background:rgba(var(--accent-rgb),.08); cursor:text; -webkit-user-select:text; user-select:text; white-space:normal; word-break:break-word; text-decoration:none; opacity:1; }
+  .lyreset { display:block; margin:6px auto 0; padding:8px 14px; background:none; border:none; color:var(--mut); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .15s, transform .12s; }
+  .lyreset:active { color:var(--danger); transform:scale(var(--press-l,.95)); }
+  .lyreset.arm { color:var(--danger); }   /* 초기화 1탭 = arm 재확인(전 편집 파괴 = 무확인 1탭 금지 · fgo arm 패턴 계승 · 평의회R2 A1) */
+  /* 커스텀 체크 = index .dl-cbox 정본 이식(−→✓ 드로우 모프) */
+  .dl-full { position:relative; display:inline-flex; align-items:center; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+  .dl-full input { position:absolute; left:0; top:50%; transform:translateY(-50%); width:16px; height:16px; margin:0; opacity:0; cursor:pointer; }
+  .dl-cbox { width:12px; height:12px; flex:none; border-radius:4px; margin-right:6px; position:relative; top:-1px; border:1.5px solid rgba(255,255,255,.28); background:rgba(255,255,255,.04); display:inline-flex; align-items:center; justify-content:center; transition:background .15s, border-color .15s, box-shadow .15s; }   /* top:-1px = index 정본 광학 보정(평의회5) */
+  .dl-cbox svg { position:absolute; width:8px; height:8px; display:block; transition:opacity .15s, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
+  .dl-cbox path { fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+  .dl-cbox .dl-dash { stroke:var(--mut); opacity:1; }
+  .dl-cbox .dl-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }
+  .dl-full input:checked + .dl-cbox { background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.5); }
+  .dl-full input:checked + .dl-cbox .dl-dash { opacity:0; }
+  .dl-full input:checked + .dl-cbox .dl-chk { opacity:1; stroke-dashoffset:0; }
+  .dl-full input:focus-visible + .dl-cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
+  /* 다운로드 표준 = index .dlbtn 정본 이식(강조 10%·클릭 ✓팝+링·받음 흰색 영속) — 새 다운로드 버튼은 .dlbtn만 */
+  .dlbtn { color:var(--accent) !important; background:rgba(var(--accent-rgb),.10) !important; border-color:rgba(var(--accent-rgb),.22) !important; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  @media (hover:hover){ .dlbtn:hover { background:rgba(var(--accent-rgb),.16) !important; } }
+  .dlbtn.dl-done { color:var(--mut) !important; }   /* 받음 = mut 영속(흰색→mut 표준 개정 260706 = index 정본 추종) */
+  .dlbtn .dl-ack { position:absolute; inset:0; border-radius:inherit; overflow:hidden; display:grid; place-items:center; pointer-events:none; z-index:6; color:var(--accent); }
+  .dlbtn .dl-ack > svg { width:18px; height:18px; filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)); animation:dlAckPop .7s cubic-bezier(.18,1.5,.4,1) forwards; }
+  .dlbtn .dl-ack .dl-ring { position:absolute; inset:0; border-radius:inherit; border:1.5px solid rgba(var(--accent-rgb),.7); animation:dlRing .55s ease-out forwards; }
+  @keyframes dlAckPop { 0%{opacity:0;transform:scale(0)} 30%{opacity:1;transform:scale(1.15)} 55%{transform:scale(1)} 80%{opacity:1} 100%{opacity:0;transform:scale(1)} }
+  @keyframes dlRing { from{transform:scale(.35);opacity:.9} to{transform:scale(1);opacity:0} }
+  /* 아이콘 시맨틱 모션 = index 위임 1핸들러 축약 이식(회전/바운스/체크) */
+  @keyframes ic-spin { to { transform:rotate(360deg); } }
+  @keyframes ic-bounce { 0% { transform:translateY(0); } 45% { transform:translateY(2.5px); } 100% { transform:translateY(0); } }
+  @keyframes ic-check { 0% { transform:scale(1); } 40% { transform:scale(1.25); } 100% { transform:scale(1); } }
+  .ic-spin { animation:ic-spin .5s var(--ease); }
+  .ic-bounce { animation:ic-bounce .42s ease; }
+  .ic-check { animation:ic-check .4s var(--ease); }
+  /* 생성 대기 = 버튼 안 점모션(index .gdots 정본 그대로 계승 · 평의회R2 C2) — goFill 0.72s 가짜충전과 달리 poll 수명 내내 정직 표기 · 재클릭=재시도 유지라 disabled 아님 */
+  .gdots { display:inline-block; width:1.1em; text-align:left; }
+  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
+  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
+  .go.wait { color:var(--mut); }
+  /* 실행 후 되돌리기 칩 = url-undo 10초 문법 + .lyfbtn 축소형(status 인라인 · 평의회R2 A2) */
+  .lyundo { display:inline-block; margin-left:8px; padding:3px 10px; border-radius:var(--r-pill); border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); color:var(--accent); font-family:inherit; font-size:11px; font-weight:700; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .12s, background .15s; }
+  .lyundo:active { transform:scale(var(--press-l,.95)); background:rgba(var(--accent-rgb),.15); }
+  @media (prefers-reduced-motion:reduce){ .dlbtn .dl-ack > svg, .dlbtn .dl-ack .dl-ring { animation:none; } .dlbtn .dl-ack { opacity:0; } .ic-spin,.ic-bounce,.ic-check { animation:none; } .lyseg.land { animation:none; } .gdots i { animation:none; opacity:1; } .lyseg,.ed-chip,.lytab,.lybtn,.lyrate,.lyfbtn,.lyreset,.lyseg-a,.dl-cbox,.dl-cbox svg,.lyundo,.lyseg-t { transition:none; } }
+  .go.dim { opacity:.55; }   /* 입력 전 = 시각 위계를 파일 쪽으로(비활성 아님·탭하면 안내 흔들림 유지 · 평의회8) */
+  .lyfbtn.arm { color:var(--danger); border-color:rgba(var(--danger-rgb),.5); background:rgba(var(--danger-rgb),.10); }   /* 모두 바꾸기 빈칸(=단어 지우기) 재확인 어포던스(평의회8·가이드북 재확인 패턴) */
   html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
   /* 빠른메뉴 = 이미지 도구(thumb.html #rfab) 계승 — 영상 자막생성기에도: 코어(+) 펼치면 파일선택 · 코어 위 '-' 최소화(엄지존·iframe→부모 minimizeTool) · 화면 인터페이스(파일)에 맞춘 선택 버튼 · 운영자 260627 */
   #rfab { position:fixed; right:18px; bottom:34%; z-index:70; width:0; height:0; }
@@ -146,7 +260,7 @@
     backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
     transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }   /* 테두리·box-shadow(주변부 음영) 제거 = 깔끔 픽토그램 버튼(운영자 260628) */
   #rfab .rmin svg { width:15px; height:15px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
-  #rfab .rmin:active svg { transform:scale(var(--press-pico,.55)); }   /* 누름 = 버튼 아닌 픽토그램이 축소 = '최소화(창 작아짐)' 표현(운영자 260628) */
+  #rfab .rmin:active svg { transform:scale(var(--press-pico,.72)); }   /* 누름 = 버튼 아닌 픽토그램이 축소 = '최소화(창 작아짐)' 표현(운영자 260628) */
   #rfab.open .rmin { opacity:0; transform:translateY(8px) scale(.3); pointer-events:none; }
   @media (prefers-reduced-motion:reduce){ #rfab .rc,#rfab .ro,#rfab .rmin { transition:opacity .15s; } #rfab.open .ro{ transform:var(--rp,translate(0,-66px)); } #rfab.open .rmin{ transform:none; } #rfab .rmin:active svg{ transition:transform .09s; } }
   @media (hover:hover) and (pointer:fine) { #rfab { display:none; } }   /* PC(마우스) = 엄지 빠른메뉴 불필요 → 숨김(thumb 컨벤션 계승) */
@@ -167,8 +281,40 @@
   </div>
   <div class="lybar" id="uprog" hidden></div>
 
-  <div class="status" id="status"></div>
+  <div class="status" id="status" role="status"></div><!-- role=status = 바꿈/복사/내보내기 피드백 SR 고지(평의회9) -->
   <hr class="divider">
+  <!-- 미리보기(이 세션 첨부 파일 한정 · objectURL) — 자막 캡션 바 = 조각 타이밍 싱크 · 컷스킵/속도/자막크기 -->
+  <div class="lypv" id="lyPv" hidden>
+    <video id="lyVid" controls playsinline preload="metadata"></video>
+    <div class="lypv-cap" id="lyCap" hidden></div>
+    <div class="lypv-row" id="lyPvRow" hidden>
+      <label class="dl-full" title="삭제한 조각은 재생에서 건너뜀"><input type="checkbox" id="lySkip" checked><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">컷 스킵</span></label>
+      <button class="lyrate" id="lyRate" type="button" aria-label="재생 속도" title="재생 속도">1x</button>
+      <input type="range" id="lyFs" min="13" max="30" step="1" value="18" aria-label="자막 크기">
+      <span class="lypv-fs" id="lyFsV">18px</span>
+    </div>
+  </div>
+  <!-- 결과 탭(자막 있을 때만) — 상세 = 조각 편집기 · 개요 = 기존 의역 산출(subs.md 그대로) -->
+  <div class="lytabs" id="lyTabs" role="tablist" aria-label="자막 결과 보기"><button class="lytab" id="lyTabDet" type="button" role="tab" aria-selected="false" aria-controls="lydet">상세<span class="lytab-n" id="lyTabN" hidden></span></button><button class="lytab on" id="lyTabOv" type="button" role="tab" aria-selected="true" aria-controls="out">개요</button></div><!-- 기본 = 개요(다듬은 자막이 첫인상 · 평의회8 P0) · 상세 = 한 탭 -->
+  <div id="lydet" role="tabpanel" aria-labelledby="lyTabDet" hidden>
+    <div class="lytool">
+      <label class="dl-full"><input type="checkbox" id="lyCkAll" aria-label="전체 선택"><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">전체 선택</span></label>
+      <span class="lysp"></span>
+      <button class="lybtn" id="lyFiller" type="button" aria-pressed="false" aria-label="군더더기 빼기" title="군더더기(음·어 등) 한 번에 빼기 / 다시 누르면 되살리기"></button>
+      <button class="lybtn" id="lyFindTg" type="button" aria-pressed="false" aria-label="찾아 바꾸기" title="찾아 바꾸기"></button>
+      <button class="lybtn" id="lyCopy" type="button" aria-label="자막 복사" title="자막 복사 (선택 있으면 선택만)"></button>
+      <button class="lybtn dlbtn" id="lySrt" type="button" aria-label="SRT 다운로드" title="SRT 파일 다운로드 (선택 있으면 선택만)"></button>
+    </div>
+    <div class="lyfind" id="lyFind" hidden>
+      <input type="text" id="lyFindQ" placeholder="찾기" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="nomute-find" data-1p-ignore data-lpignore="true" data-form-type="other">
+      <input type="text" id="lyFindR" placeholder="바꾸기" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="nomute-repl" data-1p-ignore data-lpignore="true" data-form-type="other">
+      <button class="lyfbtn" id="lyFindGo" type="button">모두 바꾸기</button>
+      <span class="lyfn" id="lyFindN" aria-live="polite"></span>
+    </div>
+    <div class="lystats" id="lyStats"></div>
+    <div id="lySegs" role="group" aria-label="자막 조각 — 단어 탭=제외, 더블탭=수정"></div>
+    <button class="lyreset" id="lyReset" type="button" hidden>편집 초기화 (처음 받아쓴 자막으로)</button>
+  </div>
   <div class="out" id="out"></div>
 </div>
 
@@ -272,6 +418,7 @@ function setBadge(type, name) {   // 업로드 완료 = 타입 색배지 + 파�
   $('#fileTxt').innerHTML = `<span class="ftype" style="color:${FTYPE_COLOR[type]}">${type}</span><span class="fname">${esc(name)}</span>`;   /* ✓ 체크 제거 = 둘째 줄로 밀려 버튼 세로로 늘어나던 것 차단(파일명·말줄임은 .fname ellipsis 유지·운영자 260629) */
   $('#fileLab').classList.add('has');
   if (window._lySyncFab) window._lySyncFab();   // 파일 첨부 완료 → rfab 파일첨부 버튼을 진행(자막생성)으로 대체(운영자 260628)
+  lyGoDim();
 }
 
 let FILE_B64 = '', FILE_NAME = '', SRT_TEXT = '';   // SRT_TEXT = TXT/SRT 파일 텍스트(STT 건너뜀)
@@ -284,8 +431,10 @@ function readB64(blob, name) {   // Blob/File → data URL(base64) 저장. ⚠�
 }
 function clearFile(msg, isErr) {
   FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = ''; $('#file').value = ''; $('#uprog').hidden = true; $('#go').disabled = false;
+  lyPvSet(null);   // 첨부 거부/삭제 = 미리보기도 해제
   $('#fileTxt').innerHTML = FILE_PICTO; $('#fileLab').classList.remove('has');
   if (window._lySyncFab) window._lySyncFab();   // 첨부 삭제 → rfab 진행버튼을 파일첨부 버튼으로 복귀(운영자 260628)
+  lyGoDim();
   if (msg) { const st = $('#status'); st.textContent = msg; st.classList.toggle('err', !!isErr); }
 }
 
@@ -294,7 +443,7 @@ let FF = null, ffOnMsg = null;   // ffOnMsg = 현재 호출의 진행 콜백 —
 async function ffExtractAudio(file, onMsg) {
   ffOnMsg = onMsg;
   if (!FF) {
-    onMsg('ffmpeg 로딩 중… (첫 회 ~25MB · 잠시)');
+    onMsg('소리 추출 도구 준비 중… (첫 회만 잠시)');   // 개발자 용어(ffmpeg) 비노출(평의회8)
     const ffBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
     const coreBase = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';   // 모듈 워커는 importScripts 불가 → import() → ESM 코어 필요(UMD✗)
     const { FFmpeg } = await import(`${ffBase}/index.js`);
@@ -323,6 +472,8 @@ $('#file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   FILE_B64 = ''; FILE_NAME = ''; SRT_TEXT = '';   // 새 선택 = 이전 입력 초기화
   const st = $('#status'); st.classList.remove('err'); st.textContent = ''; $('#out').innerHTML = '';
+  lyHideEditor();
+  lyPvSet((/^(video|audio)\//.test(f.type) || /\.(mp4|mov|m4v|webm|mkv|avi|3gp|mp3|m4a|wav|ogg|oga|aac|flac|opus)$/i.test(f.name)) ? f : null);   // 영상·음성 = 즉시 미리보기(objectURL·업로드와 무관) · 텍스트 = 해제
   setUploading();   // 게이지 + '업로드 중입니다…' + #go 잠금
   try {   // 바깥 try = f.text()·readB64 등 어떤 throw에도 #go·게이지 복구(잠금 고착 차단)
     // TXT/SRT/VTT = 텍스트로 읽어 자막 입력(STT 건너뜀) + 아래 내용 출력
@@ -411,17 +562,20 @@ function wireCopy() {
 }
 
 let _curStop = null;   // 현재 진행 폴 중단 핸들 — 재시도(재클릭)로 새 폴 시작 시 옛 폴 멈춰 상태표시 충돌·중복 폴 차단
-function poll(outPath, isUrl) {
+function poll(outPath, isUrl, resumeT0) {
   if (_curStop) _curStop();   // 재시도: 이전 폴 중단
-  const t0 = Date.now(), status = $('#status'), out = $('#out');
+  const t0 = resumeT0 || Date.now(), status = $('#status'), out = $('#out');   // resumeT0 = 리로드 후 이어받기(평의회R2 C1)
   const budget = isUrl ? 1200 : 720;   // 컴팩트 백스톱 — 생성 보통 1~5분, 실패는 error.log로 즉시(아래) → budget은 백스톱. URL/파일=Whisper 첫다운+STT 여유(GH 빠른망 1~3분), SRT=짧음(260619)
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = 워크플로 실패 메시지(있으면 즉시 표시)
-  let live = true; const stop = () => { live = false; clearInterval(disp); }; _curStop = stop;
+  let live = true; const stop = () => { live = false; clearInterval(disp); goWait(false); }; _curStop = stop;
+  goWait(true);   // 대기 내내 버튼 = 정직한 진행 상태(평의회R2 C2)
   const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
-    if (sec > budget) { stop(); status.textContent = '시간 초과 — 위 버튼으로 다시 시도해줘(또는 Actions 로그 확인)'; status.classList.add('err'); out.innerHTML = ''; return; }
-    status.innerHTML = WAIT_SVG + ' 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)');
+    const early = LY_EARLY === outPath && LY_SEGS;   // 조기 전사 편집기 표시됨(LY-EARLY) — 문구·초과 처리 분기
+    if (sec > budget * 2) { stop(); status.innerHTML = ERR_SVG + (early ? ' 다듬기 시간 초과 — 완성되면 다음에 열 때 이어받아 (받아쓴 자막은 아래 살아있어)' : ' 시간 초과 — 완성되면 다음에 열 때 이어받아'); status.classList.add('err'); if (!early) { out.innerHTML = ''; lyHideEditor(); } return; }   // 하드 초과 = 폴만 종료·pend 유지(서버는 계속 돌 수 있음 → 늦게 끝나도 0 유실 · 평의회R2 검토4) · 조기 편집기는 유지(받아쓴 자막·편집 납치 금지)
+    if (sec > budget) { status.innerHTML = WAIT_SVG + (early ? ' 받아쓴 자막 나옴 — 아직 다듬는 중… ' : ' 아직 만드는 중… ') + sec + 's (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }   // 소프트 초과 = 계속(구 즉사 '시간 초과' 폐지)
+    status.innerHTML = WAIT_SVG + (early ? ' 받아쓴 자막 먼저 손봐도 돼 · 다듬는 중… ' + sec + 's' : ' 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)'));   // 조기 문구 = 기존 어휘 통일(받아쓴 자막·다듬기 — 전사/의역 신조어 금지·평의회4) · 허가문은 주 상태문에 접음(산문최소)
   };
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {
@@ -433,7 +587,10 @@ function poll(outPath, isUrl) {
         const ect = (er.headers.get('content-type') || '').toLowerCase();
         const em = await er.text();
         const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
-        if (em && em.trim() && !eHtml) { stop(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = ''; return; }
+        if (em && em.trim() && !eHtml) { stop(); lyPendClear(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = '';
+          if (LY_EARLY === outPath && LY_SEGS) { status.innerHTML += ' — 받아쓴 자막은 아래 살아있어'; LY_EARLY = ''; }   // 조기 편집기 이미 표시(LY-EARLY) = 재렌더 안 함(lyResultErr는 원본 렌더라 편집을 덮음 — 보존)
+          else lyResultErr(outPath);
+          return; }   // 의역 실패여도 STT 전사(segments.json)는 복구 표시 · 실패 확정 = pend 해제
       }
     } catch (e) { /* 재시도 */ }
     // 2) 결과(subs.md) 확인
@@ -445,9 +602,16 @@ function poll(outPath, isUrl) {
         // 결과(subs.md)가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 준다 → 그걸 결과로 오인하면
         // '완료 (0s)'에 페이지 HTML이 통째로 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과시킨다.
         const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
-        if (md && md.trim() && !isHtml) { stop(); status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)'; out.innerHTML = renderMd(md); wireCopy(); return; }
+        if (md && md.trim() && !isHtml) { stop(); lyPendClear(); status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)' + (LY_EARLY === outPath && LY_SEGS ? ' — 완성 자막은 개요 탭에' : ''); lyResult(outPath, md); return; }   // 상세 편집기 경로(segments.json 동반 로드 · 없으면 종전 렌더) · 완료 = pend 해제 · 조기 세션이면 개요 탭 힌트(탭 유지 = lyResult)
       }
     } catch (e) { /* 재시도 */ }
+    // 3) 조기 전사(segments.json) — 워크플로 LY-EARLY 짝: STT 직후 조기 커밋분이 도착하면 편집기 선행 표시(의역은 계속 생성 중 = 폴·pend 유지). URL/파일 경로만(SRT 텍스트는 segments.json 자체가 없음 — 클라 파싱 즉시라 무대상).
+    if (isUrl && LY_EARLY !== outPath && live) {
+      try {
+        const raw = await lyFetchSegs(outPath);
+        if (raw && raw.segs && raw.segs.length && live) { LY_EARLY = outPath; lyResult(outPath, '', undefined, raw); }   // md='' = 상세 탭 단독 렌더(lyResult 재사용 = 저장 편집 스냅샷 우선·랜딩 스크롤 동일) · raw 전달 = 이중 fetch·부동 프로미스 창 제거(평의회8 F3)
+      } catch (e) { /* 재시도 */ }
+    }
     if (live) setTimeout(tick, 5000);
   };
   tick();
@@ -460,12 +624,20 @@ function errStatus(m) {   // 전송 막힘 = 메시지를 버튼 안에 빨강 �
   clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
   g.textContent = m; g.setAttribute('aria-live', 'assertive');   // 메시지 = 버튼 안에
   g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label; }, 1700);
+  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); if (g.classList.contains('wait')) g.innerHTML = '자막 생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; else g.textContent = g.dataset.label; }, 1700);   // 대기 중 검증실패(극단 엣지) = 대기 라벨로 복귀
+}
+function goWait(on) {   // 생성 대기 = #go 라벨을 정직한 대기 상태로(poll 수명 동안 · 재클릭=재시도 그대로 = disabled 아님 · 평의회R2 C2 — goFill 0.72s 가짜충전의 유휴 외관 교정)
+  const g = $('#go'); if (!g) return;
+  if (on) { if (!g.dataset.label) g.dataset.label = g.textContent; g.classList.add('wait'); g.setAttribute('aria-busy', 'true'); g.innerHTML = '자막 생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; }
+  else { g.classList.remove('wait'); g.removeAttribute('aria-busy'); if (g.dataset.label) g.textContent = g.dataset.label; }
 }
 $('#go').onclick = async () => {
-  const status = $('#status'); status.classList.remove('err'); $('#out').innerHTML = '';
+  const status = $('#status'); status.classList.remove('err');
   const url = $('#url').value.trim();
   if (!url && !FILE_B64 && !SRT_TEXT) return errStatus('내용 삽입 필수');   // 빈 입력 = 버튼 안 빨강+흔들림(thumb 통일·반쪽폭 버튼이라 짧게·운영자 문구)
+  $('#out').innerHTML = ''; lyHideEditor(); LY_GEN = true;   // 검증 통과 후에만 이전 결과 지움(미입력 헛클릭이 결과 안 날림) · LY_GEN = 자동복원이 진행 UI 못 덮게(평의회2 F1)
+  LY_PENDING_SEGS = (!url && SRT_TEXT) ? parseCues(SRT_TEXT) : null;   // SRT 업로드 = 클라 파싱으로 타이밍 확보(서버 STT 없음) · 우선순위 url > SRT 동일
+  if (url) lyPvSet(null);   // URL 발사 = 로컬 첨부 미리보기 해제(영상 불일치 차단)
   { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
   $('#go').disabled = true; status.textContent = '생성 중…'; $('#out').innerHTML = '<div class="lybar"></div>';   // 생성 중에도 같은 움직이는 게이지
   try {
@@ -473,11 +645,476 @@ $('#go').onclick = async () => {
     const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();
     if (!res.ok || j.error) { status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); $('#out').innerHTML = ''; return; }
+    lyPendSet(j.out, j.url || j.file);   // 진행 영속화(평의회R2 C1) — 완료/실패 시 poll이 해제·타임아웃은 유지(0 유실)
     poll(j.out, j.url || j.file);
   } catch (e) {
     status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err'); $('#out').innerHTML = '';
   } finally { $('#go').disabled = false; }
 };
+
+// ══ 자막 상세 편집기 — 데이터 = viewer/ly_out/<id>/segments.json(Whisper word 타임스탬프·additive 사이드카) 또는 SRT 클라 파싱.
+// 편집(단어 제외·수정·분열·조각 병합·삭제·찾아바꾸기)은 전부 클라 로컬 = 파이프라인 되쓰기 0(subs.md 골격 불변) · localStorage 복원(탭 전환 리로드에도 유지).
+// 부품 계승: 단어칩 = index #edChips .ed-chip 엔진(탭 200ms 디바운스·더블탭 수정·스페이스 분열·빈칩 백스페이스 병합·stale blur 가드 전부 동일 문법).
+let LY_SEGS = null, LY_ORIG = null, LY_MD = '', LY_ID = '', LY_OUT = '', LY_LANG = '';
+let LY_PENDING_SEGS = null, LY_RENDERING = false, LY_PEND = null, LY_MEDIA_URL = '', LY_FINDT = null;
+let LY_GEN = false, LY_SEQ = 0, LY_CUR = -1, LY_SAVE_T = null;   // 생성중 플래그(복원 경쟁 차단)·결과 세대 토큰·현재 재생 조각·저장 디바운스(평의회2·6·7)
+let LY_EARLY = '';   // 조기 전사 표시된 outPath(LY-EARLY 짝) — 완료 렌더가 탭 튕김·랜딩 스크롤로 편집을 납치 안 하게 신호(다른 outPath = 자연 불일치·무해)
+const LY_LAST_KEY = 'nm_ly_last', LY_EDIT_PRE = 'nm_lyedit_';
+const LY_RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const LYX_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기 X 정본 path(문자 × 금지 게이트)
+function fmtClock(s) { s = Math.max(0, Math.round(s || 0)); const h = (s / 3600) | 0, m = ((s % 3600) / 60) | 0, ss = String(s % 60).padStart(2, '0'); return h ? h + ':' + String(m).padStart(2, '0') + ':' + ss : m + ':' + ss; }
+function srtTime(s) { const ms = Math.max(0, Math.round((s || 0) * 1000)); const p = (n, l) => String(n).padStart(l, '0'); return p((ms / 3600000) | 0, 2) + ':' + p(((ms % 3600000) / 60000) | 0, 2) + ':' + p(((ms % 60000) / 1000) | 0, 2) + ',' + p(ms % 1000, 3); }
+const lyJoin = () => /^(ja|zh|yue|th|lo|my|km)$/.test(LY_LANG) ? '' : ' ';   // 무공백 문자권(일·중 등) = 붙여 재조립(단어 join 시 엉뚱한 공백 방지)
+const lySegText = sg => sg.w.filter(w => w.on).map(w => w.t).join(lyJoin());
+function parseCues(txt) {   // SRT/VTT → 조각(s·e·텍스트) — SRT 업로드 경로는 서버 STT가 없어 클라에서 타이밍 확보
+  if (!txt || txt.indexOf('-->') < 0) return null;
+  const t = String(txt).replace(/\r/g, '');
+  const re = /(?:^|\n)[^\S\n]*(?:\d+[^\S\n]*\n)?[^\S\n]*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[.,](\d{1,3})[^\S\n]*-->[^\S\n]*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[.,](\d{1,3})[^\n]*\n([\s\S]*?)(?=\n[^\S\n]*\n|$)/g;
+  const sec = (h, m, s, ms) => (parseInt(h || '0', 10) || 0) * 3600 + parseInt(m, 10) * 60 + parseInt(s, 10) + parseInt(String(ms).padEnd(3, '0'), 10) / 1000;
+  const segs = []; let m;
+  while ((m = re.exec(t))) {
+    const body = m[9].split('\n').map(x => x.trim()).filter(x => x && !/^WEBVTT|^NOTE\b/i.test(x)).join(' ').replace(/<[^>]+>/g, '').trim();
+    if (!body) continue;
+    segs.push({ s: +sec(m[1], m[2], m[3], m[4]).toFixed(2), e: +sec(m[5], m[6], m[7], m[8]).toFixed(2), t: body, w: null });
+  }
+  return segs.length ? segs : null;
+}
+function lyModel(rawSegs) {   // 원시 세그먼트 → 편집 모델(단어 칩 상태 탑재) — word 없으면 공백 분할(타이밍 null 칩)
+  return (rawSegs || []).map(sg => ({
+    s: sg.s != null ? sg.s : null, e: sg.e != null ? sg.e : null, del: false, sel: false,
+    w: (sg.w && sg.w.length ? sg.w.map(w => ({ t: w.t, s: w.s != null ? w.s : null, e: w.e != null ? w.e : null, on: true }))
+      : String(sg.t || '').split(/\s+/).filter(Boolean).map(t => ({ t, s: null, e: null, on: true })))
+  })).filter(sg => sg.w.length);
+}
+function lySaveNow() { if (LY_SAVE_T) { clearTimeout(LY_SAVE_T); LY_SAVE_T = null; } if (!LY_ID || !LY_SEGS) return; try { localStorage.setItem(LY_EDIT_PRE + LY_ID, JSON.stringify({ ts: Date.now(), lang: LY_LANG, segs: LY_SEGS })); } catch (e) {} }
+function lySave() { clearTimeout(LY_SAVE_T); LY_SAVE_T = setTimeout(lySaveNow, 400); }   // 디바운스 400ms — 연속 편집마다 전체 직렬화(약 150KB) 동기 쓰기 반복 차단(평의회6) · 이탈 시 flush
+window.addEventListener('pagehide', lySaveNow);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') lySaveNow(); });
+function lyPrune() {   // 편집 스냅샷 = 최근 8개만 유지(localStorage 비대 방지)
+  try { const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(LY_EDIT_PRE) === 0) ks.push(k); }
+    if (ks.length > 8) ks.map(k => { let ts = 0; try { ts = (JSON.parse(localStorage.getItem(k) || '{}').ts) || 0; } catch (e) {} return { k, ts }; }).sort((a, b) => a.ts - b.ts).slice(0, ks.length - 8).forEach(o => localStorage.removeItem(o.k)); } catch (e) {}
+}
+// ── 평의회R2 채택분 인프라 ──
+const LY_PEND_KEY = 'nm_ly_pend';   // 진행 중 생성 영속화(C1) — 리로드·탭전환 리로드·타임아웃 뒤에도 완성본 0 유실
+function lyPendSet(out, heavy) { try { localStorage.setItem(LY_PEND_KEY, JSON.stringify({ out, b: !!heavy, t0: Date.now() })); } catch (e) {} }
+function lyPendClear() { try { localStorage.removeItem(LY_PEND_KEY); } catch (e) {} }
+let LY_UNDO = null, LY_UNDO_T = null;   // 원스텝 undo(A2) — 파괴 액션(병합·모두바꾸기·단어지움·초기화·군더더기) 직전 스냅샷 1단계 · url-undo 10초 문법
+function lyUndoCap() { if (LY_SEGS) LY_UNDO = { j: JSON.stringify(LY_SEGS), lang: LY_LANG }; }
+function lyUndoOffer(label) {   // 실행 후 status = 결과 + 되돌리기 칩(10s 뒤 소멸)
+  if (!LY_UNDO) return;
+  clearTimeout(LY_UNDO_T);
+  const st = $('#status'); st.classList.remove('err');
+  st.innerHTML = OK_SVG + ' ' + esc(label) + '<button type="button" class="lyundo" id="lyUndoBtn">되돌리기</button>';
+  const b = document.getElementById('lyUndoBtn');
+  if (b) b.onclick = () => {
+    if (!LY_UNDO) return;
+    let sv = null; try { sv = JSON.parse(LY_UNDO.j); } catch (e) {}
+    if (!sv || !sv.length) return;
+    LY_SEGS = sv; LY_LANG = LY_UNDO.lang || LY_LANG; LY_UNDO = null; clearTimeout(LY_UNDO_T);
+    lyRerender(); lyMarkFind();
+    st.classList.remove('err'); st.innerHTML = OK_SVG + ' 되돌렸어';
+  };
+  LY_UNDO_T = setTimeout(() => { LY_UNDO = null; const bb = document.getElementById('lyUndoBtn'); if (bb) bb.remove(); }, 10000);
+}
+function lyLand(i) {   // 병합 착지 = 대상 카드 1회 펄스(C3 · RM은 CSS서 무효)
+  const el = document.querySelector('.lyseg[data-i="' + i + '"]'); if (!el) return;
+  el.classList.remove('land'); void el.offsetWidth; el.classList.add('land');
+  setTimeout(() => { el.classList.remove('land'); }, 750);
+}
+// 군더더기(필러) 사전(E1) = 감탄사만 보수 유지 — '그'·'이제'·'좀' 등 의미 겸용어는 오컷 위험이라 제외(확장 = 운영자 확인)
+const LY_FILLERS = new Set(['음', '어', '아', '에', '으', '흠', '엄', '음음', '어어', '아아', 'um', 'uh', 'uhm', 'umm', 'er', 'erm', 'hmm', 'mm', 'mmm', 'ah', 'eh']);
+function lyFillerKey(t) { return String(t || '').toLowerCase().replace(/[.,!?…~'"“”‘’()\[\]{}·-]+/g, '').trim(); }
+function lyIsFiller(t) { return LY_FILLERS.has(lyFillerKey(t)); }
+let LY_USRSCROLL = 0;   // 재생 중 수동 열람 = 자동 스크롤 납치 3s 보류(검토1 R2) — wheel/touchstart = 사용자 의도 입력만(프로그램 스크롤과 구분)
+['wheel', 'touchstart'].forEach(ev => window.addEventListener(ev, () => { LY_USRSCROLL = Date.now(); }, { passive: true }));
+async function lyFetchSegs(outPath) {   // subs.md 형제 segments.json — SPA 폴백(HTML 200) 무시 = poll()과 동일 가드
+  try {
+    const r = await fetch(outPath.replace(/[^/]+$/, 'segments.json') + '?t=' + Date.now());
+    if (r.ok) { const ct = (r.headers.get('content-type') || '').toLowerCase(); const tx = await r.text();
+      if (!ct.includes('text/html') && !/^\s*</.test(tx)) { const j = JSON.parse(tx); if (j && j.segs && j.segs.length) return { segs: j.segs, lang: j.lang || '', dur: j.dur || 0 }; } }
+  } catch (e) {}
+  if (LY_PENDING_SEGS && LY_PENDING_SEGS.length) return { segs: LY_PENDING_SEGS, lang: '', dur: 0 };
+  return null;
+}
+async function lyResult(outPath, md, fresh, preSegs) {   // 완료(fresh 생략=true)/복원(false)/조기(md=''·preSegs=선획득 전사) — 저장된 편집본 우선 · 세대 토큰으로 비동기 재진입 경쟁 차단(평의회2 F2)
+  const seq = ++LY_SEQ;
+  const id = (outPath.match(/ly_out\/([^\/]+)\//) || [])[1] || '';
+  if (fresh !== false && md) { try { localStorage.setItem(LY_LAST_KEY, JSON.stringify({ out: outPath, ts: Date.now() })); } catch (e) {} }   // 복원은 ts 재기록 안 함 = 72h 만료 슬라이딩 방지(F6) · md 게이트 = 조기 전사(md='')가 직전 완성본 복원 포인터를 덮는 회귀 차단(평의회2·6 동일 발견)
+  const raw = preSegs || await lyFetchSegs(outPath);   // preSegs = tick 조기 감지가 이미 받은 전사 재사용(이중 fetch·부동 프로미스 창 제거 · 평의회8 F3)
+  if (seq !== LY_SEQ) return;   // 그 사이 더 새 결과가 시작됨 = 이 응답 폐기(상태 찢김 차단)
+  if (fresh === false && LY_GEN) return;   // 복원 fetch 중 생성 시작 = 복원 폐기(sub-초 틈 완전봉인 · 평의회2 재검)
+  const sameJob = LY_ID === id && LY_SEGS && LY_SEGS.length;   // 동일 작업 재렌더(조기 전사→완료 인계)
+  if (sameJob) {   // 인계 직전: 활성 편집 칩 blur = 미커밋 타이핑 즉시 커밋(재렌더가 포커스 칩을 소각해도 유실 0 · 평의회3 LOSS-A) → 디바운스 flush(리로드 대비 스냅샷 최신화)
+    const a = document.activeElement; if (a && a.isContentEditable && a.classList && a.classList.contains('ed-chip')) a.blur();
+    lySaveNow();
+  }
+  LY_OUT = outPath; LY_ID = id;
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(LY_EDIT_PRE + LY_ID) || 'null'); } catch (e) {}
+  const okSaved = !!(saved && Array.isArray(saved.segs) && saved.segs.length && saved.segs.every(s => s && Array.isArray(s.w)));   // 복원 스키마 최소 검증(F7 — 깨진 스냅샷이면 원본으로)
+  LY_ORIG = raw;
+  let segs = null;
+  if (sameJob) { segs = LY_SEGS; }   // 동일 작업 인계 = 인메모리 편집 모델이 정본(localStorage 실패 환경에도 유실 0 · 평의회3 LOSS-B — 스냅샷은 리로드 복원용)
+  else if (okSaved) { segs = saved.segs; LY_LANG = saved.lang || (raw && raw.lang) || ''; }
+  else if (raw) { segs = lyModel(raw.segs); LY_LANG = raw.lang || ''; }
+  renderResult(md, segs);
+  if (fresh !== false) {   // 완료 랜딩 = 결과로 시선 이동(복원 제외 · 평의회R2 B2)
+    const wasEarly = !!md && LY_EARLY === outPath;   // 조기 전사(LY-EARLY) 표시 후의 완료 도착 = 사용자 앞에 이미 편집기 — 탭 튕김·재랜딩으로 편집 납치 안 함(개요 안내 = poll status 힌트)
+    if (wasEarly) { LY_EARLY = ''; if ($('#lyTabs').classList.contains('show')) lyTab(true); }   // renderResult의 기본 개요 전환을 상세로 되돌림(조기 흐름 유지) · 탭바 없으면(segs 로드 실패 엣지) 종전 개요 폴백 그대로
+    else { const tgt = $('#lyTabs').classList.contains('show') ? $('#lyTabs') : $('#out'); try { tgt.scrollIntoView({ block: 'start', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {} }
+  }
+}
+async function lyResultErr(outPath) {   // 의역 실패여도 STT 세그먼트가 커밋돼 있으면 복구 표시(받아쓴 자막 유실 방지)
+  const seq = ++LY_SEQ;
+  const raw = await lyFetchSegs(outPath); if (!raw || seq !== LY_SEQ) return;
+  LY_OUT = outPath; LY_ID = (outPath.match(/ly_out\/([^\/]+)\//) || [])[1] || ''; LY_ORIG = raw; LY_LANG = raw.lang || '';
+  renderResult('', lyModel(raw.segs));
+  $('#status').innerHTML += ' — 받아쓴 자막은 살아있어(아래 상세)';
+  try { $('#lyTabs').scrollIntoView({ block: 'start', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {}   // 복구도 랜딩(평의회R2 B2)
+}
+function renderResult(md, segs) {   // 자막 결과 표시 라우터 — 세그먼트 없으면 종전(renderMd 단독) 경로 그대로
+  LY_MD = md || '';
+  const out = $('#out'); out.hidden = false; out.innerHTML = md ? renderMd(md) : ''; if (md) wireCopy();
+  const has = !!(segs && segs.length);
+  $('#lyTabs').classList.toggle('show', has);
+  if (!has) { $('#lydet').hidden = true; lyPvSync(); return; }
+  LY_SEGS = segs; LY_CUR = -1;
+  out.setAttribute('role', 'tabpanel'); out.setAttribute('aria-labelledby', 'lyTabOv');   // 탭 모드일 때만 패널 시맨틱(대칭 · 평의회9 재검)
+  $('#lyTabOv').hidden = !md;   // 의역 실패 복구 = 상세만
+  $('#lyReset').hidden = !(LY_ORIG && LY_ORIG.segs && LY_ORIG.segs.length);
+  $('#lyCap').setAttribute('lang', LY_LANG || 'ko');   // 캡션 언어 = 자막 언어(SR 발음·폰트 폴백 · 평의회9)
+  lyTab(!md);   // 기본 = 개요(다듬은 완성 자막이 첫인상 · 평의회8 P0) · 의역 없는 복구 케이스만 상세
+  renderLySegs(); lyStats(); lySave(); lyPrune(); lyPvSync();
+}
+function lyTab(det) { $('#lyTabDet').classList.toggle('on', det); $('#lyTabOv').classList.toggle('on', !det); $('#lyTabDet').setAttribute('aria-selected', det ? 'true' : 'false'); $('#lyTabOv').setAttribute('aria-selected', det ? 'false' : 'true'); $('#lydet').hidden = !det; $('#out').hidden = det; }
+function lyHideEditor() { lySaveNow(); LY_SEQ++; LY_EARLY = ''; LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3) · LY_SEQ++ = in-flight lyResult 무효화(새 발사 동기 구간의 stale 조기 렌더 차단 · 평의회2 B) · LY_EARLY 리셋 = 방어 위생(평의회2 C·6)
+function lyToggleChip(sg, w, chip) {   // 탭/스페이스 = 빼기 토글(즉시 갱신·재빌드 0)
+  w.on = !w.on; chip.classList.toggle('off', !w.on);
+  chip.setAttribute('aria-pressed', w.on ? 'false' : 'true');
+  chip.setAttribute('aria-label', w.t + (w.on ? '' : ' (뺌)'));
+  lyStats(); lySave(); lyCapRefresh();
+}
+function lyEditChip(sg, w, chip) {   // 더블탭/Enter = 고치기 진입(미리보기 정지 = 자동 스크롤 충돌 차단 · 평의회4)
+  if (sg.del) return;
+  clearTimeout(chip._tapT);
+  try { const v = $('#lyVid'); if (v && !v.paused) v.pause(); } catch (e) {}
+  chip.setAttribute('role', 'textbox'); chip.setAttribute('aria-label', '단어 고치기: ' + w.t); chip.removeAttribute('aria-pressed');   // 편집 중 = 텍스트박스 시맨틱(SR이 버튼으로 읽는 것 교정 · 평의회9 재검)
+  chip.textContent = w.t; chip.contentEditable = 'true'; chip.spellcheck = false; chip.classList.add('editing'); chip.focus();
+  try { window.getSelection().selectAllChildren(chip); } catch (e) {}
+}
+function lyChip(sg, i, w, wi, q) {   // 단어 칩 — index .ed-chip 엔진 문법 그대로(탭 디바운스 200ms·더블탭 수정·스페이스 분열·빈칩 백스페이스 앞칩 이어감) + 키보드(Space=빼기·Enter=고치기 · 평의회9 P0)
+  const chip = document.createElement('span');
+  chip.className = 'ed-chip' + (w.on ? '' : ' off') + (q && w.t.indexOf(q) >= 0 && !sg.del ? ' hit' : '');
+  chip.dataset.i = i; chip.dataset.wi = wi;
+  chip.textContent = w.t;
+  if (LY_LANG) chip.lang = LY_LANG;
+  chip.tabIndex = 0; chip.setAttribute('role', 'button');
+  chip.setAttribute('aria-pressed', w.on ? 'false' : 'true');   // pressed = 뺀 상태
+  chip.setAttribute('aria-label', w.t + (w.on ? '' : ' (뺌)'));
+  chip.title = (w.s != null && w.e != null ? w.s.toFixed(1) + '–' + w.e.toFixed(1) + 's · ' : '') + '탭=빼기·되살리기 / 두 번 탭=고치기';
+  chip.onclick = () => {   // 탭 = 빼기 토글(더블탭과 충돌 차단 — 칩별 200ms 디바운스·dblclick이 취소)
+    if (chip.isContentEditable) return;
+    clearTimeout(chip._tapT);
+    chip._tapT = setTimeout(() => { lyToggleChip(sg, w, chip); }, 200);
+  };
+  chip.ondblclick = () => { lyEditChip(sg, w, chip); };
+  chip.onkeydown = ev => {
+    if (!chip.isContentEditable) {   // 키보드 온리 경로(평의회9): Space=빼기 토글 · Enter=고치기 진입
+      if (ev.key === ' ' || ev.key === 'Spacebar') { ev.preventDefault(); lyToggleChip(sg, w, chip); }
+      else if (ev.key === 'Enter') { ev.preventDefault(); lyEditChip(sg, w, chip); }
+      return;
+    }
+    if (ev.key === 'Enter') { ev.preventDefault(); chip.blur(); return; }
+    if (ev.key === 'Backspace' && !ev.isComposing && wi > 0 && !chip.textContent.replace(/[\s​﻿⁠]/g, '')) { ev.preventDefault(); sg.w.splice(wi, 1); LY_PEND = { i, wi: wi - 1 }; lyRerenderCard(i); }
+  };
+  chip.oninput = ev => {   // 스페이스 = 그 자리서 두 칩 분열(타이밍 = 글자수 비례 배분) — IME 조합 중 제외
+    const raw = chip.textContent, si = raw.search(/\s/);
+    if (si >= 0 && !ev.isComposing) {
+      const left = raw.slice(0, si).trim(), right = raw.slice(si + 1).trim();
+      if (left && right) {
+        let cut = null; if (w.s != null && w.e != null) cut = +(w.s + (w.e - w.s) * (left.length / Math.max(1, left.length + right.length))).toFixed(2);
+        sg.w.splice(wi, 1, { t: left, s: w.s, e: cut, on: w.on }, { t: right, s: cut, e: w.e, on: w.on });
+        LY_PEND = { i, wi: wi + 1 }; lyRerenderCard(i); return;
+      }
+      if (left && !right) { chip.textContent = left; try { const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(chip); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); } catch (e) {} return; }   // 후행 공백만 = 분열 안 함(빈 우측 칩 생성 차단 · 평의회2 F5)
+      chip.textContent = right;
+    }
+  };
+  chip.onblur = () => {
+    if (LY_RENDERING || !chip.isConnected) return;   // 재렌더 중 stale blur 무시(index 가드 계승)
+    chip.contentEditable = 'false'; chip.classList.remove('editing');
+    chip.setAttribute('role', 'button'); chip.setAttribute('aria-pressed', w.on ? 'false' : 'true'); chip.setAttribute('aria-label', w.t + (w.on ? '' : ' (뺌)'));   // 버튼 시맨틱 복원(편집 종료)
+    const nt = chip.textContent.replace(/\s+/g, ' ').trim();
+    if (nt === w.t) { chip.textContent = w.t; return; }   // 무변경 = 재빌드 스킵(1만 노드 헛재빌드 차단 · 평의회6)
+    const wiped = !nt;
+    if (wiped) { lyUndoCap(); sg.w.splice(wi, 1); if (!sg.w.length) sg.del = true; }   // 비움 = 단어 삭제(빈 조각 = 자동 삭제 표시) — 비가역이라 직전 스냅샷(평의회R2 A2)
+    else if (/\s/.test(nt)) sg.w.splice(wi, 1, ...nt.split(/\s+/).map(t => ({ t, s: w.s, e: w.e, on: w.on })));
+    else w.t = nt;
+    lyRerenderCard(i);   // 단어 편집 = 조각 수 불변 → 카드 1개 국소 재빌드(평의회6)
+    if (wiped) lyUndoOffer('단어 지움');
+  };
+  return chip;
+}
+function lyBuildCard(sg, i, q) {   // 조각 카드 1개 빌드(전체/국소 재빌드 공용)
+  const card = document.createElement('div'); card.className = 'lyseg' + (sg.del ? ' del' : '') + (i === LY_CUR ? ' cur' : '') + (sg.sel ? ' sel' : ''); card.dataset.i = i;   // .cur 재적용 = 재빌드 후 하이라이트 소실 방지(평의회2 F4) · .sel = 선택 카드 좌측 바(평의회R2)
+  const h = document.createElement('div'); h.className = 'lyseg-h';
+  const ckL = document.createElement('label'); ckL.className = 'dl-full';
+  const ck = document.createElement('input'); ck.type = 'checkbox'; ck.checked = !!sg.sel; ck.disabled = !!sg.del; ck.setAttribute('aria-label', '조각 ' + (i + 1) + ' 선택');
+  ck.onchange = () => { sg.sel = ck.checked; card.classList.toggle('sel', sg.sel); lyStats(); lySave(); };
+  const cbox = document.createElement('span'); cbox.className = 'dl-cbox'; cbox.innerHTML = '<svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg>';
+  ckL.appendChild(ck); ckL.appendChild(cbox); h.appendChild(ckL);
+  const num = document.createElement('span'); num.className = 'lyseg-n'; num.textContent = i + 1; h.appendChild(num);
+  const tm = document.createElement('button'); tm.type = 'button'; tm.className = 'lyseg-t';   // button화 = 키보드 시크(평의회9)
+  if (sg.s != null && sg.e != null) {
+    tm.innerHTML = '<b>' + fmtClock(sg.s) + '</b> <span class="lyseg-d">+' + Math.max(0, sg.e - sg.s).toFixed(1) + '초</span>';   // 길이 = 소수1 + fs-xs 보조 위계(스캔 노이즈 절감 · 평의회R2 D1)
+    if (!$('#lyPv').hidden) { tm.title = '탭 = 이 시점으로 미리보기 이동'; tm.setAttribute('aria-label', fmtClock(sg.s) + '부터 미리보기'); tm.onclick = () => lySeek(sg.s); }
+    else { tm.disabled = true; tm.classList.add('plain'); tm.setAttribute('aria-label', fmtClock(sg.s) + '부터'); }   // 미리보기 없음(URL·복원) = 시크 불가 → 죽은 탭 어포던스 차단(평의회R2 B3)
+  }
+  else { tm.textContent = '—'; tm.disabled = true; tm.classList.add('plain'); }
+  h.appendChild(tm);
+  const sp = document.createElement('span'); sp.className = 'lysp'; h.appendChild(sp);
+  if (i > 0) {   // 합치기 = 위 조각으로(첫 조각 = 대상 없음)
+    const mg = document.createElement('button'); mg.type = 'button'; mg.className = 'lyseg-a'; mg.innerHTML = MERGE_SVG; mg.setAttribute('aria-label', '위 조각과 합치기'); mg.title = '위 조각과 합치기';
+    mg.onclick = () => { lyUndoCap(); const prev = LY_SEGS[i - 1]; prev.del = false; if (sg.e != null && (prev.e == null || sg.e > prev.e)) prev.e = sg.e; if (prev.s == null) prev.s = sg.s; prev.w = prev.w.concat(sg.w); LY_SEGS.splice(i, 1); LY_PEND = null; lyRerender(); lyLand(i - 1); lyUndoOffer('위 조각과 합쳤어'); };   // 착지 펄스+되돌리기(평의회R2 C3·A2)
+    h.appendChild(mg);
+  }
+  const del = document.createElement('button'); del.type = 'button'; del.className = 'lyseg-a'; del.innerHTML = sg.del ? UNDO_SVG : LYX_SVG;
+  del.setAttribute('aria-label', sg.del ? '조각 복원' : '조각 삭제'); del.title = sg.del ? '조각 복원' : '조각 삭제 (다시 누르면 복원)';
+  del.onclick = () => { sg.del = !sg.del; if (sg.del) sg.sel = false; lyRerender(); };
+  h.appendChild(del);
+  card.appendChild(h);
+  const chips = document.createElement('div'); chips.className = 'lyseg-chips';
+  sg.w.forEach((w, wi) => chips.appendChild(lyChip(sg, i, w, wi, q)));
+  card.appendChild(chips);
+  return card;
+}
+function lyFocusPend(wrap) {   // 분열·빈칩 병합 직후 그 칩 편집 진입(index PENDING_EDIT 계승·커서 끝)
+  if (!LY_PEND) return;
+  const pi = LY_PEND.i, pw = LY_PEND.wi; LY_PEND = null;
+  const c = wrap.querySelector('.ed-chip[data-i="' + pi + '"][data-wi="' + pw + '"]'), pwd = LY_SEGS[pi] && LY_SEGS[pi].w[pw];
+  if (c && pwd) {
+    c.textContent = pwd.t; c.contentEditable = 'true'; c.spellcheck = false; c.classList.add('editing'); c.focus();
+    try { const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(c); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); } catch (e) {}
+  }
+}
+function renderLySegs() {
+  const wrap = $('#lySegs'); if (!wrap || !LY_SEGS) return;
+  LY_RENDERING = true;
+  wrap.innerHTML = '';
+  const q = ($('#lyFind').hidden ? '' : $('#lyFindQ').value) || '';
+  LY_SEGS.forEach((sg, i) => wrap.appendChild(lyBuildCard(sg, i, q)));
+  lyFocusPend(wrap);
+  LY_RENDERING = false;
+}
+function lyRerenderCard(i) {   // 카드 1개 국소 재빌드 — 단어 편집·분열·이어지우기(조각 수·번호 불변)용(평의회6 · 전체 1만 노드 재빌드 회피)
+  const wrap = $('#lySegs'), old = wrap && wrap.querySelector('.lyseg[data-i="' + i + '"]');
+  if (!wrap || !old || !LY_SEGS || !LY_SEGS[i]) { lyRerender(); return; }
+  LY_RENDERING = true;
+  const q = ($('#lyFind').hidden ? '' : $('#lyFindQ').value) || '';
+  old.replaceWith(lyBuildCard(LY_SEGS[i], i, q));
+  lyFocusPend(wrap);
+  LY_RENDERING = false;
+  lyStats(); lySave(); lyCapRefresh(); lyFindCount();
+}
+function lyRerender() { renderLySegs(); lyStats(); lySave(); lyCapRefresh(); lyFindCount(); }   // 구조 변경 후 찾기 건수 동기(평의회2 F3)
+function lyStats() {
+  if (!LY_SEGS) return;
+  const alive = LY_SEGS.filter(s => !s.del);
+  const totW = LY_SEGS.reduce((a, s) => a + s.w.length, 0);
+  const offW = LY_SEGS.reduce((a, s) => a + s.w.filter(w => !w.on).length, 0);
+  const delN = LY_SEGS.length - alive.length, selN = alive.filter(s => s.sel).length;
+  let dur = (LY_ORIG && LY_ORIG.dur) || 0; LY_SEGS.forEach(s => { if (s.e != null && s.e > dur) dur = s.e; });
+  $('#lyStats').innerHTML = '조각 <b>' + alive.length + '</b>/' + LY_SEGS.length + ' · 길이 <b>' + fmtClock(dur) + '</b> · 뺀 단어 <b>' + offW + '</b>/' + totW + (delN ? ' · 삭제 <b>' + delN + '</b>' : '') + (selN ? ' · 선택 <b>' + selN + '</b>' : '');
+  const all = $('#lyCkAll'); if (all) { all.checked = alive.length > 0 && selN === alive.length; all.indeterminate = selN > 0 && selN < alive.length; }
+  const tn = $('#lyTabN'); if (tn) { tn.textContent = alive.length; tn.hidden = !LY_SEGS.length; }   // 상세 탭 조각수 뱃지(평의회R2 B1)
+  const flb = $('#lyFiller'); if (flb) { let hit = false, on = false; LY_SEGS.forEach(s => { if (!s.del) s.w.forEach(w => { if (lyIsFiller(w.t)) { hit = true; if (w.on) on = true; } }); }); flb.setAttribute('aria-pressed', hit && !on ? 'true' : 'false'); }   // 군더더기 버튼 on 상태 = 모델서 도출(복원에도 정확)
+}
+function lyFindCount() {   // 찾기 건수만(모델 순회·DOM 무접촉) — 구조 변경 후 stale 카운트 방지(평의회2 F3)
+  const q = $('#lyFind').hidden ? '' : $('#lyFindQ').value; let n = 0;
+  if (LY_SEGS && q) LY_SEGS.forEach(sg => { if (!sg.del) sg.w.forEach(w => { if (w.t.indexOf(q) >= 0) n++; }); });
+  $('#lyFindN').textContent = q ? n + '건' : '';
+}
+function lyMarkFind() {   // 찾기 하이라이트 = 클래스만 갱신(재빌드 0 = 입력 포커스 안전)
+  lyFindCount();
+  const q = $('#lyFind').hidden ? '' : $('#lyFindQ').value;
+  document.querySelectorAll('#lySegs .ed-chip').forEach(c => {
+    const sg = LY_SEGS && LY_SEGS[+c.dataset.i]; const w = sg && sg.w[+c.dataset.wi];
+    c.classList.toggle('hit', !!(q && w && w.t.indexOf(q) >= 0 && !sg.del));
+  });
+}
+function lyPickSegs() { if (!LY_SEGS) return []; const alive = LY_SEGS.filter(sg => !sg.del && lySegText(sg)); const sel = alive.filter(sg => sg.sel); return sel.length ? sel : alive; }
+(function () {   // 상세 툴바 배선(아이콘 = nm-svg SSOT)
+  const ft = $('#lyFindTg'), cp = $('#lyCopy'), dl = $('#lySrt'), fl = $('#lyFiller');
+  if (!ft || !cp || !dl) return;
+  ft.innerHTML = SWAP_SVG; cp.innerHTML = COPY_SVG; cp._icon = 'copy'; dl.innerHTML = DOWNLOAD_SVG; if (fl) fl.innerHTML = FUNNEL_SVG;
+  if (fl) fl.onclick = () => {   // 군더더기 원클릭(평의회R2 E1) — 켜진 필러 있으면 빼기(+되돌리기), 전부 빠져 있으면 되살리기(토글) · 판정 = lyIsFiller 보수 사전
+    if (!LY_SEGS) return;
+    const st = $('#status'); const hits = [];
+    LY_SEGS.forEach(sg => { if (!sg.del) sg.w.forEach(w => { if (lyIsFiller(w.t)) hits.push(w); }); });
+    if (!hits.length) { st.classList.remove('err'); st.innerHTML = OK_SVG + ' 군더더기 없음'; return; }
+    const on = hits.filter(w => w.on);
+    if (on.length) { lyUndoCap(); on.forEach(w => { w.on = false; }); lyRerender(); lyMarkFind(); lyUndoOffer('군더더기 ' + on.length + '개 뺌'); }
+    else { hits.forEach(w => { w.on = true; }); lyRerender(); lyMarkFind(); st.classList.remove('err'); st.innerHTML = OK_SVG + ' 군더더기 ' + hits.length + '개 되살림'; }
+  };
+  $('#lyTabDet').onclick = () => lyTab(true);
+  $('#lyTabOv').onclick = () => lyTab(false);
+  ft.onclick = () => { const f = $('#lyFind'); const show = f.hidden; f.hidden = !show; ft.setAttribute('aria-pressed', show ? 'true' : 'false'); if (show) { try { $('#lyFindQ').focus(); } catch (e) {} } lyMarkFind(); };
+  $('#lyFindQ').addEventListener('input', () => { clearTimeout(LY_FINDT); LY_FINDT = setTimeout(lyMarkFind, 120); fgoDisarm(); });
+  const fgo = $('#lyFindGo');
+  const fgoDisarm = () => { if (!fgo.dataset.arm) return; delete fgo.dataset.arm; fgo.classList.remove('arm'); fgo.textContent = '모두 바꾸기'; clearTimeout(fgo._armT); };
+  $('#lyFindR').addEventListener('input', fgoDisarm);
+  fgo.onclick = () => {   // 모두 바꾸기 — 빈 결과 단어는 삭제·공백 결과는 분열(칩 문법 동일)
+    const q = $('#lyFindQ').value, r = $('#lyFindR').value;
+    if (!q || !LY_SEGS) return;
+    if (!r && !fgo.dataset.arm) {   // 바꾸기 빈칸 = 단어 지우기 → 재확인 어포던스(가이드북 재확인 패턴 · 평의회8)
+      fgo.dataset.arm = '1'; fgo.classList.add('arm'); fgo.textContent = '한 번 더 = 지우기';
+      clearTimeout(fgo._armT); fgo._armT = setTimeout(fgoDisarm, 2500);
+      return;
+    }
+    fgoDisarm();
+    lyUndoCap();   // 문서 일괄 치환 = 비가역 → 직전 스냅샷(평의회R2 A2)
+    let n = 0;
+    LY_SEGS.forEach(sg => {
+      for (let wi = sg.w.length - 1; wi >= 0; wi--) { const w = sg.w[wi];
+        if (w.t.indexOf(q) >= 0) { n++; const nt = w.t.split(q).join(r).replace(/\s+/g, ' ').trim();
+          if (!nt) sg.w.splice(wi, 1); else if (/\s/.test(nt)) sg.w.splice(wi, 1, ...nt.split(/\s+/).map(t => ({ t, s: w.s, e: w.e, on: w.on }))); else w.t = nt; } }
+      if (!sg.w.length) sg.del = true;
+    });
+    lyRerender(); lyMarkFind();
+    if (n) lyUndoOffer(n + '개 단어에서 바꿈');
+    else { LY_UNDO = null; const st = $('#status'); st.classList.remove('err'); st.innerHTML = WARN_SVG + ' 바꿀 단어가 없어'; }
+  };
+  $('#lyCkAll').onchange = e => { if (!LY_SEGS) return; const v = e.target.checked; LY_SEGS.forEach(sg => { if (!sg.del) sg.sel = v; }); renderLySegs(); lyStats(); lySave(); };
+  cp.onclick = async () => {   // 복사 = 선택 조각(없으면 전체) 최종 텍스트 — CHECK 플래시(setIcon 짝가드 = _icon 동기) + 상태 고지(SR · 평의회9)
+    const list = lyPickSegs(); if (!list.length) return;
+    try { await navigator.clipboard.writeText(list.map(lySegText).join('\n')); cp.innerHTML = CHECK_SVG; cp._icon = 'check'; setTimeout(() => { cp.innerHTML = COPY_SVG; cp._icon = 'copy'; }, 1200); const st = $('#status'); st.classList.remove('err'); st.innerHTML = OK_SVG + ' 자막 ' + list.length + '조각 복사됨'; } catch (e) {}
+  };
+  dl.onclick = () => {   // SRT = 타이밍 보유 조각만(편집 반영) — CapCut·프리미어 임포트 규격(UTF-8 무BOM·CRLF·쉼표 ms — 프리미어는 LF 단독 SRT를 거부한 전례 · 평의회9)
+    const list = lyPickSegs().filter(sg => sg.s != null && sg.e != null);
+    if (!list.length) { const st = $('#status'); st.classList.remove('err'); st.innerHTML = WARN_SVG + ' 내보낼 자막이 없어'; return; }
+    const srt = list.map((sg, k) => (k + 1) + '\r\n' + srtTime(sg.s) + ' --> ' + srtTime(sg.e) + '\r\n' + lySegText(sg) + '\r\n').join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([srt], { type: 'text/plain' }));
+    a.download = '자막_' + (LY_ID || 'srt') + '.srt'; document.body.appendChild(a); a.click();
+    setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch (e) {} a.remove(); }, 1500);
+  };
+  $('#lyReset').onclick = () => {   // 초기화 = arm 2탭 재확인 + 실행 후 되돌리기 — 전 편집 파괴가 유일하게 무확인 1탭이던 모순 해소(fgo arm+url-undo 계승 · 평의회R2 A1)
+    const rb = $('#lyReset');
+    if (!LY_ORIG || !LY_ORIG.segs) return;
+    if (!rb.dataset.arm) {
+      rb.dataset.arm = '1'; rb.classList.add('arm'); rb.textContent = '한 번 더 누르면 처음 자막으로 초기화';
+      clearTimeout(rb._armT); rb._armT = setTimeout(() => { delete rb.dataset.arm; rb.classList.remove('arm'); rb.textContent = '편집 초기화 (처음 받아쓴 자막으로)'; }, 2500);
+      return;
+    }
+    delete rb.dataset.arm; rb.classList.remove('arm'); rb.textContent = '편집 초기화 (처음 받아쓴 자막으로)'; clearTimeout(rb._armT);
+    lyUndoCap();
+    LY_SEGS = lyModel(LY_ORIG.segs); LY_LANG = LY_ORIG.lang || LY_LANG;
+    try { localStorage.removeItem(LY_EDIT_PRE + LY_ID); } catch (e) {}
+    lyRerender(); lyMarkFind();
+    lyUndoOffer('처음 자막으로 초기화했어');
+  };
+})();
+function lyPvSet(f) {   // 미리보기 = 이 세션 첨부 파일 한정(objectURL·업로드/호스팅 0) — URL·복원 잡은 미리보기 없음(정직)
+  const pv = $('#lyPv'), v = $('#lyVid'); if (!pv || !v) return;
+  if (LY_MEDIA_URL) { try { URL.revokeObjectURL(LY_MEDIA_URL); } catch (e) {} LY_MEDIA_URL = ''; }
+  if (!f) { try { v.pause(); } catch (e) {} v.removeAttribute('src'); try { v.load(); } catch (e) {} pv.hidden = true; $('#lyCap').hidden = true; $('#lyPvRow').hidden = true; return; }
+  LY_MEDIA_URL = URL.createObjectURL(f); v.src = LY_MEDIA_URL; pv.hidden = false; lyPvSync();
+}
+function lyPvSync() { const has = !!(LY_SEGS && LY_SEGS.length && !$('#lyPv').hidden); $('#lyCap').hidden = !has; $('#lyPvRow').hidden = !has; if (!has) { $('#lyCap').textContent = ''; document.querySelectorAll('.lyseg.cur').forEach(x => x.classList.remove('cur')); } }
+function lySeek(t) { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || !v.src) return; try { v.currentTime = Math.max(0, t + 0.02); } catch (e) {} }
+function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || $('#lyCap').hidden || !LY_SEGS) return; const t = v.currentTime; const sg = LY_SEGS.find(s => s.s != null && t >= s.s && t < s.e); $('#lyCap').textContent = (sg && !sg.del) ? lySegText(sg) : ''; }
+(function () {   // 미리보기 싱크 — 캡션·현재 조각 하이라이트·컷 스킵·속도·자막 크기
+  const v = $('#lyVid'); if (!v) return; let last = -9;
+  v.addEventListener('timeupdate', () => {
+    if (!LY_SEGS || $('#lyPv').hidden) return;
+    const t = v.currentTime; let cur = -1, curDel = -1;
+    for (let i = 0; i < LY_SEGS.length; i++) { const sg = LY_SEGS[i]; if (sg.s == null) continue;
+      if (t >= sg.s && t < sg.e) { if (!sg.del) { cur = i; break; } if (curDel < 0) curDel = i; } }   // 생존 우선 매칭 = 병합으로 겹친 삭제조각이 생존조각을 가리는 케이스 차단(평의회4⑧)
+    if (cur < 0 && curDel >= 0 && $('#lySkip').checked && !v.paused) {   // 컷 스킵 = 삭제 조각만 걸린 구간 건너뛰기
+      let n = curDel; while (n < LY_SEGS.length && (LY_SEGS[n].del || LY_SEGS[n].s == null)) n++;
+      if (n < LY_SEGS.length && LY_SEGS[n].s > t + 0.05) lySeek(LY_SEGS[n].s);   // 진행성 가드 = 목표가 현재보다 앞일 때만(무한 시크 루프 차단 · 평의회4⑧)
+      else if (n >= LY_SEGS.length) v.pause();
+      return;
+    }
+    const useCur = cur >= 0 ? cur : curDel;
+    if (useCur !== last) {
+      last = useCur; LY_CUR = useCur;   // 재빌드 시 .cur 재적용용(평의회2 F4)
+      $('#lyCap').textContent = (cur >= 0) ? lySegText(LY_SEGS[cur]) : '';
+      document.querySelectorAll('.lyseg.cur').forEach(x => x.classList.remove('cur'));
+      if (useCur >= 0) { const el = document.querySelector('.lyseg[data-i="' + useCur + '"]'); if (el) { el.classList.add('cur');
+        if (!v.paused && !$('#lydet').hidden && !(document.activeElement && document.activeElement.isContentEditable) && Date.now() - LY_USRSCROLL > 3000) {   // 편집 중 = 자동 스크롤 정지(커서 뺏김 차단 · 평의회4④) · 수동 스크롤 후 3s 보류 = 열람 납치 차단(평의회R2 검토1)
+          try { el.scrollIntoView({ block: 'nearest', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {} } } }   // reduced-motion = 즉시 스크롤(평의회9)
+    }
+  });
+  $('#lyRate').onclick = () => { const r = v.playbackRate >= 2 ? 1 : (v.playbackRate >= 1.5 ? 2 : 1.5); v.playbackRate = r; $('#lyRate').textContent = r === 1 ? '1x' : (r === 1.5 ? '1.5x' : '2x'); };
+  const fs = $('#lyFs'); if (fs) fs.addEventListener('input', () => { $('#lyCap').style.fontSize = fs.value + 'px'; $('#lyFsV').textContent = fs.value + 'px'; });
+})();
+function lyGoDim() { const g = $('#go'); if (!g) return; g.classList.toggle('dim', !(($('#url').value || '').trim() || FILE_B64 || SRT_TEXT)); }   // 입력 전 = 생성 버튼 dim(시각 위계를 파일/URL 입력으로 · 탭하면 기존 안내 흔들림 그대로 · 평의회8)
+(function () { const u = $('#url'); if (u) u.addEventListener('input', lyGoDim); lyGoDim(); })();
+// 다운로드 표준 클릭효과(✓팝+링·받음 흰색) — index .dlbtn 위임 정본 이식(캡처 1핸들러)
+document.addEventListener('click', e => {
+  const b = e.target.closest('.dlbtn'); if (!b) return;
+  b.classList.add('dl-done');
+  const o = document.createElement('span'); o.className = 'dl-ack';
+  o.innerHTML = '<span class="dl-ring"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+  b.appendChild(o); setTimeout(() => o.remove(), 700);
+}, true);
+// 픽토그램 누름 = 시맨틱 아이콘 모션(index 위임 1핸들러 축약 이식 · 신규 버튼 스코프 한정 = 기존 컨트롤 무영향)
+document.addEventListener('click', e => {
+  if (e.defaultPrevented) return;
+  const b = e.target.closest('.lybtn,.lyseg-a'); if (!b) return;
+  const svg = b.querySelector('svg'); if (!svg) return;
+  const m = b.dataset.motion ? ('ic-' + b.dataset.motion) : (b.matches('[aria-label*="다운로드"]') ? 'ic-bounce' : 'ic-spin');
+  svg.classList.remove('ic-spin', 'ic-bounce', 'ic-check'); void b.offsetWidth; svg.classList.add(m);   // 리플로우 = HTMLElement 기준(svg.offsetWidth 함정 — index 8617 주석 계승)
+}, true);
+// 칩 편집 중 붙여넣기 = 평문 강제 — text/html 클립보드의 라이브 노드 삽입(일시 자기-XSS 창) 차단(평의회3)
+document.addEventListener('paste', e => {
+  const t = e.target && e.target.closest ? e.target.closest('.ed-chip') : null;
+  if (!t || !t.isContentEditable) return;
+  e.preventDefault();
+  const txt = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  if (txt) { try { document.execCommand('insertText', false, txt); } catch (err) { t.textContent += txt; } }
+}, true);
+// 이전 결과 자동 복원(72h) — cap 탭 전환 리로드·재진입 시 결과/편집 증발 방지(Vrew '캐시된 전사 불러옴' UX) · 호출 = 아래 이어받기 IIFE가 전 경로에서 정확히 1회 위임
+async function lyRestoreLast() {
+  try {
+    const last = JSON.parse(localStorage.getItem(LY_LAST_KEY) || 'null');
+    if (!last || !last.out || Date.now() - last.ts > 72 * 3600e3) return;
+    if (!/^ly_out\/[A-Za-z0-9_-]+\/subs\.md$/.test(last.out)) { localStorage.removeItem(LY_LAST_KEY); return; }   // 경로 허용목록 = 위조 키 방어심화(평의회3)
+    if (LY_SEGS || LY_GEN) return;
+    const r = await fetch(last.out + '?t=' + Date.now()); if (!r.ok) return;
+    const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
+    if (!md || !md.trim() || ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300))) return;
+    if (LY_SEGS || LY_GEN) return;   // 그 사이 새 생성 시작됐으면 복원 금지(진행 UI 덮어쓰기 차단 · 평의회2 F1)
+    await lyResult(last.out, md, false);   // fresh=false = ts 재기록 안 함(72h 슬라이딩 방지) · 자동 스크롤 없음
+    if (LY_GEN) return;   // 렌더 직전 재확인(과잉 방어)
+    const h = Math.max(1, Math.round((Date.now() - last.ts) / 3600e3));
+    const st = $('#status'); st.classList.remove('err');
+    st.innerHTML = OK_SVG + ' 이전 결과 복원 (' + (h >= 24 ? Math.round(h / 24) + '일' : h + '시간') + ' 전 생성) — 새로 생성하면 대체돼';
+  } catch (e) {}
+}
+// 진행 중 생성 이어받기(평의회R2 C1+검토4) — 발사 후 리로드·탭전환 리로드·타임아웃 뒤에도 완성본 0 유실. 자동 복원보다 먼저 판정(동기 선점 = 경쟁 차단).
+(function () {
+  let p = null; try { p = JSON.parse(localStorage.getItem(LY_PEND_KEY) || 'null'); } catch (e) {}
+  if (!p || !p.out || !/^ly_out\/[A-Za-z0-9_-]+\/subs\.md$/.test(p.out)) { if (p) lyPendClear(); lyRestoreLast(); return; }   // 무효 pend = 정리 후 평시 복원
+  const budget = (p.b ? 1200 : 720) * 1000;
+  if (Date.now() - (p.t0 || 0) < budget * 2) { LY_GEN = true; $('#status').classList.remove('err'); $('#out').innerHTML = '<div class="lybar"></div>'; poll(p.out, p.b, p.t0); return; }   // 창 안 = 폴 그대로 재개(경과초는 draw가 이어 표기 · 복원 IIFE는 LY_GEN 보고 양보)
+  (async () => {   // 창 밖(오래된 pend) = 1회 확인 — 완성돼 있으면 이어받고, 아니면 정리 후 평시 복원
+    try {
+      const r = await fetch(p.out + '?t=' + Date.now());
+      if (r.ok) {
+        const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
+        const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
+        if (LY_SEGS || LY_GEN) { lyPendClear(); return; }   // 그 사이 새 생성 = 이어받기 폐기(덮어쓰기 차단)
+        if (md && md.trim() && !isHtml) { lyPendClear(); const st = $('#status'); st.classList.remove('err'); st.innerHTML = OK_SVG + ' 완료 — 지난 생성 이어받음'; await lyResult(p.out, md); return; }   // fresh = LY_LAST 갱신+랜딩 스크롤
+      }
+    } catch (e) {}
+    try {   // 전사 폴백(LY-EARLY) — 완성본은 없어도 조기 전사가 커밋돼 있으면 받아쓴 자막+편집 스냅샷 재수면(pend = 유일 앵커라 유지 = 다음 열기 때 완성 재확인 · 평의회3·6 좌초 봉합)
+      const raw = await lyFetchSegs(p.out);
+      if (raw && raw.segs && raw.segs.length && !LY_SEGS && !LY_GEN) { await lyResult(p.out, '', false, raw); const st = $('#status'); st.classList.remove('err'); st.innerHTML = WAIT_SVG + ' 받아쓴 자막 복원 — 완성되면 다음에 열 때 이어받아'; return; }
+    } catch (e) {}
+    lyPendClear(); lyRestoreLast();
+  })();
+})();
 </script>
 <script src="cscroll.js"></script>
 </body>

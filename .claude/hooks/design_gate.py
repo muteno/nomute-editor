@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """PostToolUse 디자인 게이트(260702) — Edit/Write 대상이 UI 파일이면 즉시 check_refs 디자인 검사.
-위반 = exit 2 → stderr가 모델에 피드백돼 같은 턴에서 자가수정(§🎨 계승 강제의 세션내 버전).
+위반 = exit 2 → stderr가 모델에 피드백돼 같은 턴에서 자가수정(§디자인 계승 강제의 세션내 버전).
 커밋 게이트보다 한 단계 엄격: '방금 편집한 파일'의 raw 증가 WARN도 여기선 차단(지금 고치는 게 제일 쌈).
 비UI 파일은 무간섭(exit 0·출력 0) — 일반 작업 마찰 없음."""
 import json, sys, os, io, re, contextlib
@@ -47,7 +47,7 @@ if re.search(r'raw (hex|blur|accent_\w+) \d+ > baseline', out) and re.search(esc
     rc = 1
 if rc:
     sys.stderr.write(
-        '🎨 디자인 게이트 위반 — 계승이 디폴트(CLAUDE.md §🎨). raw 값 창작 금지 → viewer/index.html :root의 '
+        '🎨 디자인 게이트 위반 — 계승이 디폴트(CLAUDE.md §디자인). raw 값 창작 금지 → viewer/index.html :root의 '
         'var() 토큰 사용. 컴포넌트는 docs/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승. '
         '기틀에 없는 값이 정말 필요하면 임의로 만들지 말고 운영자에게 물어라 — 승인 시 :root 토큰+거울 재생성+CII 행+baseline 사유로 기틀 편입이 먼저다:\n' + out)
     sys.exit(2)

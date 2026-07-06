@@ -123,7 +123,12 @@ def is_controversy(text):   # 공론화 진입 신호어(제목+네이버 스니
     return any(c in text for c in CONTROVERSY)
 
 
+NSFW = ["ㅇㅎ", "후방주의"]   # 선정성 태그 — 운영자 확정 2어휘만(가십은 통과). CONTROVERSY 면제 없이 최우선 하드컷. 구 `후방` 단독은 군 후방 실뉴스 오컷이라 `후방주의`로 정밀화(운영자).
+
+
 def is_noise(title, source=""):
+    if any(x in title for x in NSFW):
+        return True    # 선정성 태그 = 무조건 컷(공론화 신호어 면제도 안 통함)
     if any(c in title for c in CONTROVERSY):
         return False   # 공론화 신호 = 하우투/상거래 컷 면제(연예이슈 보존)
     if any(n in title for n in NOISE):

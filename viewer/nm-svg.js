@@ -1,5 +1,5 @@
 // nm-svg.js — 노뮤트 뷰어 공유 아이콘 SSOT (운영자 260628 · "하나 바꾸면 관련된 거 다 바뀜")
-// 4뷰어(index·thumb·ly·k)가 <script src="nm-svg.js"> 로 로드. 여기 정의가 단일 정본 —
+// 5뷰어(index·thumb·ly·k·comp)가 <script src="nm-svg.js"> 로 로드. 여기 정의가 단일 정본 —
 // 같은 아이콘을 뷰어마다 인라인 복제하지 말고 이 파일을 고친다(드리프트 차단·CII P1).
 // classic script 전역 const = 이후 인라인 스크립트에서 그대로 참조(모듈 아님). currentColor 상속.
 // 정본 선정: DOWNLOAD=14px(thumb는 CSS로 12px 재지정=무관) · WARN=index/ly/k 다수본(vertical-align).
@@ -16,6 +16,10 @@ const DOWNLOAD_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none
 const WARN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>';
 const SWAP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>';
 const SHARE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path pathLength="1" d="M15.4 6.5l-6.8 4"/><path pathLength="1" d="M8.6 13.5l6.8 4"/></svg>';   // 선 2개 = path 분리(위 링크→아래 링크 순)+pathLength=1 — ic-share 별자리 훑기(점 순차 점등·선 드로우) 훅 · 렌더는 종전과 동일(260703)
+const EYE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';   // 눈 = PIN 전체 표시 토글(.pin-eye · 설정/발행/화면잠금 3표면 공유 · 운영자 260705) — on 상태는 색(accent)으로 표기(아이콘 교체 없음)
+const ARROW_R_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';   // 수평 오른쪽 화살표 → = 문장 안 연결자(원문→요약 편향 흐름 .biasar · 유니코드 → 폐지 §🔒3-1 · 운영자 260705). 크기는 쓰는 쪽 CSS(.biasar svg)가 지정 · currentColor 상속(부모 색 따라감)
 // chevron(캐러셀·페이저 이전/다음) = 표지판 도형이라 유니코드 ‹/› 문자 폐지 → SVG 픽토그램(폰트 글리프 편심 차단 · §🔒 3-1 · 분신술10 260704). 크기는 각 버튼 CSS(.feednav/.qpg-nav/.carnav svg)가 지정 = viewBox 24 대칭 정중앙.
 const CHEV_L_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
 const CHEV_R_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>';
+const MERGE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"/><path d="M12 19V10"/><path d="m8 13 4-4 4 4"/></svg>';   // 병합(위 조각으로 합침) = 상단 바(대상)+위 화살표 — ly 자막 상세 편집기 조각 병합(260706). 크기는 쓰는 쪽 CSS 지정.
+const FUNNEL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v5l-4 2v-7z"/></svg>';   // 깔때기(거르기) = ly 군더더기(필러 단어) 원클릭 빼기(평의회R2 E1 · 260706). 크기는 쓰는 쪽 CSS 지정.

@@ -20,21 +20,26 @@ is_quota() {
   grep -qiE 'usage limit|weekly limit|hit your .{0,40}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)' <<<"$s"
 }
 
-# claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*으로 1단계씩 전환(3계정 체인).
-#   1차 = CLAUDE_CODE_OAUTH_TOKEN_ALT(서브1) · 2차 = CLAUDE_CODE_OAUTH_TOKEN_ALT2(서브2).
+# claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*으로 1단계씩 전환(4계정 체인 = 메인1 + 세부3).
+#   1차 = CLAUDE_CODE_OAUTH_TOKEN_ALT(서브1) · 2차 = CLAUDE_CODE_OAUTH_TOKEN_ALT2(서브2) · 3차 = CLAUDE_CODE_OAUTH_TOKEN_ALT3(서브3).
 #   전환함=0(호출부가 같은 프롬프트로 재시도) / 못 함(쿼터 아님·다음 대체 없음·체인 소진)=1.
-#   _CLAUDE_SWAPPED = 지금까지 전환 횟수(0→1→2). ⚠️ ALT2 미설정이면 n=1에서 멈춤 = 옛 1단 동작(하위호환).
+#   _CLAUDE_SWAPPED = 지금까지 전환 횟수(0→1→2→3). ⚠️ ALT2/ALT3 미설정이면 그 단계에서 멈춤 = 옛 동작(하위호환).
 claude_failover() {
   is_quota "${1:-}" || return 1
   local n="${_CLAUDE_SWAPPED:-0}"
   if [ "$n" = "0" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT"; _CLAUDE_SWAPPED=1
-    echo "  🔄 계정 사용량 한도 — 서브1 계정으로 전환 후 재시도(account failover 1/2)"
+    echo "  🔄 계정 사용량 한도 — 서브1 계정으로 전환 후 재시도(account failover 1/3)"
     return 0
   fi
   if [ "$n" = "1" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT2"; _CLAUDE_SWAPPED=2
-    echo "  🔄 서브1도 한도 — 서브2 계정으로 전환 후 재시도(account failover 2/2)"
+    echo "  🔄 서브1도 한도 — 서브2 계정으로 전환 후 재시도(account failover 2/3)"
+    return 0
+  fi
+  if [ "$n" = "2" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT3:-}" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT3"; _CLAUDE_SWAPPED=3
+    echo "  🔄 서브2도 한도 — 서브3 계정으로 전환 후 재시도(account failover 3/3)"
     return 0
   fi
   return 1
@@ -43,31 +48,36 @@ claude_failover() {
 # claude_failover_force(): 쿼터 판정(is_quota) 없이 다음 계정으로 강제 전환. 타임아웃(rc=124)처럼
 #   '출력이 비어 is_quota 가 못 잡지만 계정 바꾸면 나을 수도 있는' 상황용(서버 응답지연·계정별 부하 편차 · 운영자 260704).
 #   ⚠️ 토큰 슬롯은 claude_failover(쿼터)와 공유하되, force 로 올린 스텝은 _FORCE_SWAPS 로 따로 센다 →
-#     claude_reset_force_swap()이 기사마다 되돌려, 타임아웃(대개 입력바운드 = 계정 바꿔도 반복)이 쿼터 3계정 체인
+#     claude_reset_force_swap()이 기사마다 되돌려, 타임아웃(대개 입력바운드 = 계정 바꿔도 반복)이 쿼터 4계정 체인
 #     예산을 *영구* 소진하는 것을 막는다(평의회 260704 Q5). 쿼터 스왑은 sticky 유지, force 스왑만 per-기사 임시.
 #   전환함=0(호출부가 같은 프롬프트로 재시도) / 다음 대체 없음·체인 소진=1(→ 호출부는 격리).
 claude_failover_force() {
   local n="${_CLAUDE_SWAPPED:-0}"
   if [ "$n" = "0" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT"; _CLAUDE_SWAPPED=1; _FORCE_SWAPS=$(( ${_FORCE_SWAPS:-0} + 1 ))
-    echo "  🔄 처리 지연/시간초과 — 서브1 계정으로 전환 후 재시도(force failover 1/2)"
+    echo "  🔄 처리 지연/시간초과 — 서브1 계정으로 전환 후 재시도(force failover 1/3)"
     return 0
   fi
   if [ "$n" = "1" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT2"; _CLAUDE_SWAPPED=2; _FORCE_SWAPS=$(( ${_FORCE_SWAPS:-0} + 1 ))
-    echo "  🔄 서브1도 지연 — 서브2 계정으로 전환 후 재시도(force failover 2/2)"
+    echo "  🔄 서브1도 지연 — 서브2 계정으로 전환 후 재시도(force failover 2/3)"
+    return 0
+  fi
+  if [ "$n" = "2" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT3:-}" ]; then
+    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT3"; _CLAUDE_SWAPPED=3; _FORCE_SWAPS=$(( ${_FORCE_SWAPS:-0} + 1 ))
+    echo "  🔄 서브2도 지연 — 서브3 계정으로 전환 후 재시도(force failover 3/3)"
     return 0
   fi
   return 1
 }
 
-# 계정 슬롯(0=primary·1=ALT·2=ALT2) → 토큰. primary = 이 파일 source 시점의 CLAUDE_CODE_OAUTH_TOKEN(활성계정) 스냅샷.
+# 계정 슬롯(0=primary·1=ALT·2=ALT2·3=ALT3) → 토큰. primary = 이 파일 source 시점의 CLAUDE_CODE_OAUTH_TOKEN(활성계정) 스냅샷.
 : "${_CLAUDE_TOK0:=${CLAUDE_CODE_OAUTH_TOKEN:-}}"
-_claude_slot_token() { case "${1:-0}" in 0) printf '%s' "${_CLAUDE_TOK0:-}";; 1) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}";; 2) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}";; esac; }
+_claude_slot_token() { case "${1:-0}" in 0) printf '%s' "${_CLAUDE_TOK0:-}";; 1) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}";; 2) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}";; 3) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT3:-}";; esac; }
 # claude_reset_force_swap(): force(타임아웃)로 임시 전환된 계정을 쿼터 확정 위치로 되돌린다(각 기사 처리 진입 시 호출).
 #   쿼터 스왑(claude_failover, _FORCE_SWAPS 미증가)은 그대로 유지 · force 로 올린 분(_FORCE_SWAPS)만 차감 → 토큰 복원.
 #   ⚠️ 한 기사에서 쿼터+타임아웃이 겹쳐도 force 분만 정확히 빠지고 쿼터 스왑은 보존(스텝 차감식).
-#   ⚠️ 차감식 전제 = claude_failover(쿼터)·claude_failover_force(타임아웃)가 *동일 슬롯 사다리(0→1→2)를 lockstep* 으로 오른다는 것 → 둘의 슬롯 순서·_claude_slot_token 매핑을 항상 동기화 유지(한쪽만 순서 바꾸면 reset 이 조용히 오복원 · 재검증 260704).
+#   ⚠️ 차감식 전제 = claude_failover(쿼터)·claude_failover_force(타임아웃)가 *동일 슬롯 사다리(0→1→2→3)를 lockstep* 으로 오른다는 것 → 둘의 슬롯 순서·_claude_slot_token 매핑을 항상 동기화 유지(한쪽만 순서 바꾸면 reset 이 조용히 오복원 · 재검증 260704).
 claude_reset_force_swap() {
   local f="${_FORCE_SWAPS:-0}"; [ "$f" = "0" ] && return 0
   local q=$(( ${_CLAUDE_SWAPPED:-0} - f )); [ "$q" -lt 0 ] && q=0

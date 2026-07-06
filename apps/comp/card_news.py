@@ -29,7 +29,7 @@ START_X = MARGIN_LEFT  # 87 (캔버스 가로 8.1%)
 START_Y = 888          # 캔버스 세로 65.8%
 SAFE_BOTTOM = CANVAS_H - 40  # 1310
 COLOR_DEFAULT = (255, 255, 255)
-COLOR_HIGHLIGHT = (15, 253, 2)  # #0FFD02
+COLOR_HIGHLIGHT = (15, 253, 2)  # #0FFD02 형광그린 — 콘텐츠 상수 원복(운영자 260706 "제작물이 브랜드 컬러로 뒤집어씌어짐" 롤백 · 콘텐츠 색 = UI 팔레트와 별개 축, UI 개편에 동행 금지)
 
 # ─── 폰트 ───
 FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"

@@ -481,7 +481,7 @@ function drawTextAmber(str, cx, cy, ps){
 // ============================================================
 //  pet choreography
 // ============================================================
-const FLOOR    = 974;    // feet ground line
+const FLOOR    = 1074;   // feet ground line = 배너 아랫변(캔버스 1080)에 붙임 = 펫이 사다리 발(baseY 1078)과 같은 접지선서 기어와 오름(공중부양 해소·운영자 260704 "배너 아랫변에 기어와 오르게"). grCy 단일경유라 walk·climb·down·sit·rest·퇴장·하트 전부 이 값으로 coherent 접지 · ≤1078이라 스프라이트 잘림 0
 const PLACE_CY = 430;    // pet body centroid when placing letters at the top
 const SIT_X    = 884;    // final resting x
 function petState(t){
@@ -642,10 +642,10 @@ window.FPS = FPS;
   window.LOVE_BG='transparent';   // 뷰어 배너 통합 = 투명(뒤 브랜드 배너 비침 · 운영자 260704 C안)
   function pageAccent(){
     try{ var c=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-         if(c) window.LOVE_ACCENT=c; }catch(e){}          // NOW SHOWING = --accent(#0FFD02) 실시간
+         if(c) window.LOVE_ACCENT=c; }catch(e){}          // NOW SHOWING = --accent(#00EED2) 실시간
     _readMarqCol();                                        // 전광판 LOVE 글자색(marqColor) 실시간 갱신(운영자 260704)
   }
-  function hidden(){ var tb=document.body.dataset.tab; return tb==='scrap'||tb==='sns'; }  // 레거시·SNS=산책펫(마퀴 정지)
+  function hidden(){ return true; }  // LOVE 마스코트 폐지(운영자 260705 '축구공 드리블 펫으로 전 탭 통일') — rAF 상시 정지·파일은 도먼트 보존
   var start=null, raf=0, running=false;
   var RM = matchMedia('(prefers-reduced-motion:reduce)').matches;
   function loop(now){

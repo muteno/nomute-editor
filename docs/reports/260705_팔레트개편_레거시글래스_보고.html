@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260705 팔레트 개편 + 레거시 글래스 통일 — 전/후 보고</title>
+<style>
+  /* 일회성 스냅샷 보고서 — 색은 :root 토큰값 '복사' 인라인(viewer 동기화 의무 없음·check_refs 비대상) */
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#121212;color:#eef7f0;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;line-height:1.6;padding:22px 15px 80px;max-width:760px;margin:0 auto}
+  h1{font-size:19px;font-weight:800}
+  .sub{color:#8fa697;font-size:12px;margin:2px 0 18px}
+  h2{font-size:14.5px;font-weight:800;margin:26px 0 8px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{color:#8fa697;text-align:left;font-weight:700;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.14)}
+  td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+  .d{width:14px;height:14px;border-radius:4px;display:inline-block;vertical-align:-2px;margin-right:5px;border:1px solid rgba(255,255,255,.2)}
+  .arrow{color:#8fa697;padding:0 4px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .pane{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:10px;background:linear-gradient(160deg,#17251c,#101a14)}
+  .pane h3{font-size:11px;color:#8fa697;font-weight:800;margin-bottom:8px}
+  .mock{border-radius:13px;padding:9px 11px;margin-bottom:8px}
+  .mock .mt{font-size:9.5px;color:#8fa697;margin-bottom:4px}
+  .mock .tt{font-size:12px;font-weight:700;line-height:1.35}
+  .mock .bt{display:flex;gap:4px;margin-top:8px}
+  .mock .b{flex:1;text-align:center;font-size:10px;font-weight:700;border-radius:8px;padding:4px 0;background:rgba(8,15,11,.34);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.78)}
+  .before .mock{background:linear-gradient(165deg, rgba(24,25,28,.94), rgba(10,11,12,.97));border:1px solid rgba(216,255,61,.14)}
+  .after .mock{background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));border:1px solid rgba(255,160,46,.14);box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05)}
+  .before .b.pick{color:#0FFD02}.after .b.pick{color:#00EED2}
+  ul{padding-left:18px;font-size:12.5px}
+  li{margin:4px 0}
+  .risk{border-left:3px solid #FFA02E;background:rgba(18,19,22,.42);border-radius:8px;padding:9px 12px;font-size:12.5px;color:#8fa697;margin-top:8px}
+  .risk b{color:#eef7f0}
+</style>
+<h1>팔레트 개편(터쿼이즈) + 레거시 글래스 통일 — 전/후 보고</h1>
+<div class="sub">운영자 지목 260705 · 값 정본 = viewer/index.html :root · 확립본 v2 동시 발행</div>
+
+<h2>1. 전/후 — 레거시 큐레이션 카드 (SNS 실크 글래스 계승)</h2>
+<div class="duo">
+  <div class="pane before"><h3>BEFORE — 불투명(.58~.76) 개별 그라데</h3>
+    <div class="mock"><div class="mt">정치 · 12 · <span style="color:#d8ff3d">이슈</span></div><div class="tt">"이번 주 선관위 특검법 제출…"</div><div class="bt"><span class="b">PASS</span><span class="b pick">PICK</span><span class="b" style="flex:.4">−</span></div></div>
+  </div>
+  <div class="pane after"><h3>AFTER — 실크 비침(.18/.20)+소프트 섀도</h3>
+    <div class="mock"><div class="mt">정치 · 12 · <span style="color:#FFA02E">이슈</span></div><div class="tt">"이번 주 선관위 특검법 제출…"</div><div class="bt"><span class="b">PASS</span><span class="b pick">PICK</span><span class="b" style="flex:.4">−</span></div></div>
+  </div>
+</div>
+<ul>
+  <li>배경만 교체 — 테두리 색신호(누적/신규)·긴급 빨강·이슈 테두리·PASS/PICK 컴포넌트 전부 불변(계승).</li>
+  <li>카드별 backdrop-filter는 안 얹음: 프로스트는 패널(.scrap-cols blur13)이 전담 → 중첩 blur 성능·표본 문제 회피.</li>
+</ul>
+
+<h2>2. 전/후 — 팔레트</h2>
+<table>
+  <tr><th>토큰(역할)</th><th>전</th><th></th><th>후</th></tr>
+  <tr><td><code>--accent</code> 메인</td><td><span class="d" style="background:#0FFD02"></span>#0FFD02 형광그린</td><td class="arrow">→</td><td><span class="d" style="background:#00EED2"></span><b>#00EED2 터쿼이즈</b> (on #032322)</td></tr>
+  <tr><td><code>--accent-2</code> 이력·최소화</td><td><span class="d" style="background:#c24bf5"></span>#c24bf5 보라</td><td class="arrow">→</td><td><span class="d" style="background:#d8ff3d"></span>#d8ff3d 라임옐로 (보라 퇴장)</td></tr>
+  <tr><td><code>--accent-4</code> warn·arm·amber·thumb</td><td><span class="d" style="background:#d8ff3d"></span>#d8ff3d 라임</td><td class="arrow">→</td><td><span class="d" style="background:#FFA02E"></span><b>#FFA02E 네온 앰버오렌지</b> (on #241102)</td></tr>
+  <tr><td><code>--accent-5</code> info·naver</td><td><span class="d" style="background:#0cd0f7"></span>#0cd0f7 시안</td><td class="arrow">→</td><td><span class="d" style="background:#0FFD02"></span>#0FFD02 형광그린 (naver 실브랜드 정합)</td></tr>
+  <tr><td><code>--bias-l1</code> 약진보</td><td>→accent-5 별칭(시안)</td><td class="arrow">→</td><td><span class="d" style="background:#38C6FF"></span>#38C6FF 스카이시안 <b>자기값 분리</b></td></tr>
+  <tr><td><code>--cat-pol</code> 정치</td><td><span class="d" style="background:#f5807f"></span>#f5807f</td><td class="arrow">→</td><td><span class="d" style="background:#ff7a6b"></span>#ff7a6b 코랄(약보수 값 공유)</td></tr>
+  <tr><td><code>--cat-soc</code> 사회</td><td><span class="d" style="background:#5fdfa3"></span>#5fdfa3</td><td class="arrow">→</td><td><span class="d" style="background:#2CF5A5"></span>#2CF5A5 네온 민트</td></tr>
+  <tr><td><code>--cat-eco</code> 경제</td><td><span class="d" style="background:#f3c95a"></span>#f3c95a</td><td class="arrow">→</td><td><span class="d" style="background:#FFE13D"></span>#FFE13D 네온 골드레몬(추천분)</td></tr>
+  <tr><td><code>--cat-intl</code> 국제</td><td><span class="d" style="background:#45cdf2"></span>#45cdf2</td><td class="arrow">→</td><td><span class="d" style="background:#38C6FF"></span>#38C6FF 스카이시안(약진보 값 공유)</td></tr>
+  <tr><td><code>--cat-cul</code> 문화</td><td><span class="d" style="background:#ef93cb"></span>#ef93cb</td><td class="arrow">→</td><td><span class="d" style="background:#FF5EC8"></span>#FF5EC8 네온 핑크(추천분)</td></tr>
+  <tr><td><code>--cat-tech</code> 테크</td><td><span class="d" style="background:#a78bfa"></span>#a78bfa</td><td class="arrow">→</td><td><span class="d" style="background:#AC5CFF"></span>#AC5CFF 네온 바이올렛(추천분·대비 5.1)</td></tr>
+  <tr><td>중립·글래스·모달셸·danger·편향 파랑/코랄</td><td colspan="3">불변(유지)</td></tr>
+</table>
+
+<h2>3. 같이 움직인 곳 (동기 완료)</h2>
+<ul>
+  <li>전 raw 1:1 값 스왑: index(발행본 SUMMARY_TPL 포함) · 4뷰어 :root · track/tokens.html/marquee.js · 공유페이지 [slug].js · card_news.py(카드 합성) · token_report · 구성도 데모 · 거울(base.css/tokens.css) build.</li>
+  <li>재배선 2곳: 약진보 칩(.soc-chip.lean-l)·배경 오션 시안 = accent-5→bias-l1 (형광그린 오염 차단).</li>
+  <li>게이트 동행: check_refs accent 하드패턴 = rgba(0,238,210)·#00EED2로 전환 + baseline ratchet. 토큰 신설/삭제 0 = design-tokens.lock 무변(108개).</li>
+</ul>
+
+<h2>4. 장단점·효율</h2>
+<ul>
+  <li><b>장점</b>: 별칭 구조 덕에 :root 중심 교체로 전 표면 일괄 전파 · 수집함↔SNS↔뉴스요약 표면 통일감 · naver=그린 실브랜드 정합 · warn(오렌지)와 이력(라임) 분리로 경고 시맨틱이 더 또렷.</li>
+  <li><b>단점/트레이드오프</b>: 형광그린이 info·naver로 잔존해 구 브랜드색이 화면에 남음(의도) · 값 공유 대칭(정치↔약보수·국제↔약진보) 인접 시 혼동 여지 · 발행본 등 자기완결 템플릿은 raw 복사라 향후 색 변경 때마다 재스왑 필요(구조 한계·기존과 동일).</li>
+</ul>
+
+<h2>5. 품질저하 리스크</h2>
+<div class="risk"><b>잔존 리스크 3</b> — ① 사회 네온민트(h152)와 메인 터쿼이즈(h173) 21° 간격: 작은 칩 vs 큰 강조라 실사용 구분은 되나 인지 확인 필요(운영자 지목 사안). ② 레거시 카드 소프트 섀도가 밀집 2열에서 겹침 음영으로 보일 수 있음 — 어색하면 섀도 1줄 제거로 즉시 완화 가능. ③ 이슈 글로우(lit-iss)의 노랑 raw(255,200,50)는 앰버 계열 유지 — 오렌지 warn과 결이 거의 같아 유지했고, 어긋나 보이면 accent-4-rgb 토큰화 후속.</div>

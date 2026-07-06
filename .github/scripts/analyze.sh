@@ -9,7 +9,7 @@ cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
-INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
+INLINE_TRIES=4          # 인라인 재시도 횟수 = 4계정 폴오버 체인 깊이(서브3 MUTENONA까지 단일 잡서 실호출) + 일시 과부하(529/5xx)·타임아웃(rc=124) 흡수(260622·4계정 확장 3→4)
 EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '기사 찾기'는 도구 왕복이 본질이라 max 는 헛사고로 타임아웃만 유발 → high 기본(ask.sh 와 동일 env · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
 ANALYZE_TIMEOUT="${ANALYZE_TIMEOUT:-900}"   # claude -p 타임아웃(초) — analyze 는 콘텐츠 초안까지 생성이라 15분 유지(ask 요약보다 김). 초과 시 계정 1회 전환 후 격리(force·아래 · 운영자 260704).
 ANALYZE_JOB_DEADLINE="${ANALYZE_JOB_DEADLINE:-3400}"   # 스크립트 SECONDS 이 초 넘으면 새 기사 처리 시작 안 함(잔여 pending 잔류→sweep 재처리) — 과부하 다건 타임아웃이 잡 timeout(90분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 90분 - 셋업 - 다음기사 최악 2×900s).
@@ -38,6 +38,7 @@ emit_fail_msg() {
 source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — analyze·ask·cardmake 공용(재시도 판정 드리프트 차단)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
+source "$ROOT/shared/summary_repair.sh"    # 분량 가드 SSOT — IG/Thread 과소 시 1회 보강(기본 OFF·SUMMARY_LEN_GUARD='1' · 260705)
 source "$ROOT/shared/url_guard.sh"          # is_article_url() SSOT — 포털·도메인 루트(기사경로 없는 URL) 차단(폰·분석 공용)
 GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
@@ -135,7 +136,7 @@ for f in "${files[@]}"; do
   # 운영자 명시 재제출(pick.js 전문 직접 입력 = '# force: 1')이면 GVER 일치해도 재분석(덮어쓰기) — 기존 빈약/오분석 카드를
   #   전문 붙여넣기로 고치려는데 중복게이트가 무음 차단하던 것 해소(운영자 260628). ⚠️ '# body:' 이전 헤더만 검사
   #   = 붙여넣은 본문이 우연히 '# force:' 줄을 가져도 오인 안 함. 자동 수집·body-less 재시도엔 마커 없음 → 게이트 불변.
-  #   ⚠️ 범위 = **요약(queue)** 재분석까지. 이미 생성된 카드/썸네일은 GVER 게이트(cardmake.sh·thumb_gen.py)라 force로 자동
+  #   ⚠️ 범위 = **요약(queue)** 재분석까지. 이미 생성된 카드는 GVER 게이트(cardmake.sh)·썸네일은 존재+THUMB_SINCE 게이트(thumb_gen.py = GVER 비소비)라 force로 자동
   #   갱신 안 됨 → 운영자 '슛'/'다시 만들기'로 갱신(Failed 픽 복구는 다운스트림 미생성이라 새로 정상 생성 = 무영향). 5인 검증3 ⚠️.
   FORCE=""; if sed -n '/^# body:/q;p' "$f" 2>/dev/null | grep -qm1 '^# force:[[:space:]]*1[[:space:]]*$'; then FORCE=1; fi   # 후행 앵커 = '# force: 11' 류 오매치 차단(검증1 방어심층)
   existing="$(compgen -G "queue/*-${id}.md" 2>/dev/null | head -n1 || true)"
@@ -238,7 +239,7 @@ ${extracted}"
   #   529는 거의 항상 일시적(usually temporary)이라 몇 초~분 깜빡임은 여기서 흡수 → 뷰어에 안 보이고 바로 성공.
   #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 타임아웃(rc=124)은 계정 1회 강제전환 후 격리(force·아래), 빈출력은 재시도 안 함.
   inline_delay=15
-  claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 3계정 체인 예산 보존(평의회 260704 Q5)
+  claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 4계정 체인 예산 보존(평의회 260704 Q5)
   _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
     out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$ANALYZE_TIMEOUT" \
@@ -253,7 +254,7 @@ ${extracted}"
     if { [ $rc -eq 0 ] && [ -n "${out// }" ] && grep -qm1 '^---' <<<"$out"; } || grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then
       break
     fi
-    # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2 · 3계정 체인 · SSOT claude_transient.sh)
+    # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2→서브3 · 4계정 체인 · SSOT claude_transient.sh)
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi
     # 타임아웃(rc=124 = ANALYZE_TIMEOUT 초과)은 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대 → *딱 1회* 강제 계정 전환 후 재시도(ask.sh 와 동일 · 운영자 260704 "10분 넘으면 다른 계정").
     #   ⚠️ 1회 제한 = 타임아웃은 대개 입력바운드(계정 바꿔도 반복)라 무한 전환은 워크플로 시간·쿼터만 소진(평의회 260704). 그 1회도 claude_reset_force_swap 이 다음 기사서 되돌림.
@@ -373,6 +374,8 @@ ${extracted}"
   # Fact↔자유요약 커버리지 참고 로그(비차단 · 14인 평의회 ② SYS-01 경량판 · 260702) — P1 단일 병목(자유요약)의
   #   수치 누락을 Actions 로그로 가시화(프롬프트 쪽 '내부 대조' 지시와 상호 검증 쌍 · exit 항상 0).
   python3 .github/scripts/card_gate.py factcov "$outfile" 2>/dev/null | sed 's/^/  /' || true
+  # 분량 가드(기본 OFF · SUMMARY_LEN_GUARD='1' 카나리아) — IG/Thread 과소 시 자유요약에서 1회 보강(잡 예산 내 · fail-soft · 260705 · repair ≤+480s는 다음-기사 헤드룸(2×900s) 내 = 잡 최악 무변·평의회8)
+  if [ "$SECONDS" -le "$ANALYZE_JOB_DEADLINE" ]; then summary_repair "$outfile" analyze-repair; fi
   # 규격·자수 기계 린트(비차단 · 분신술② NEW-1 · 260703) — Thread/IG 실측 자수·자가표기 괴리·분모 드리프트·
   #   🔎 마커·⚡ 혼입·# 제목 [속보] 잔존을 Actions 로그로 가시화(자가 추정만 믿던 길이 룰의 기계 눈 · exit 항상 0).
   python3 shared/digest_guard.py "$outfile" 2>/dev/null | sed 's/^/  /' || true
