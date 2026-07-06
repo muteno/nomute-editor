@@ -1,0 +1,248 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>라디얼(+) 안개 플레이그라운드 — 노뮤트</title>
+<style>
+/* ═══ 값 = viewer/index.html :root 사본(시안 자기완결용 · 정본은 viewer) ═══ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --bias-l1-rgb:56,198,255; --bias-l2-rgb:58,109,219;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --glass:rgba(255,255,255,.055); --glass-line:rgba(255,255,255,.14);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --fs-sm:12px; --fs-xs:11px; --fw-x:800; --fw-b:700;
+  --ease:cubic-bezier(.2,.7,.3,1); --press-m:.92;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0b0c0c;color:var(--fg);font:14px/1.6 Pretendard,'Noto Sans KR',-apple-system,system-ui,'Malgun Gothic',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+header{padding:18px 22px 6px}
+header h1{margin:0;font-size:17px;font-weight:var(--fw-x)}
+header p{margin:4px 0 0;font-size:var(--fs-sm);color:var(--mut)}
+.wrap{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
+.stagewrap{flex:1 1 340px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 22px 30px;
+  background:radial-gradient(circle at 50% 0%,rgba(var(--bias-l1-rgb),.05),transparent 40%)}
+.phone{position:relative;width:min(360px,92vw);aspect-ratio:9/18;border-radius:26px;overflow:hidden;
+  border:1px solid var(--glass-line);box-shadow:0 30px 80px rgba(0,0,0,.6);background:var(--bg)}
+.stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center;max-width:360px}
+.stagecap b{color:var(--fg)}
+
+/* ═══ 폰 안 — 실물 재현(웨이브 근사 + 피드 + 네비 + 라디얼 + 스크림) ═══ */
+.app{position:absolute;inset:0;overflow:hidden;
+  /* 튜닝 변수 — ⚠ 기본값 = 현행 실측(viewer/index.html .rad-scrim · 260706) */
+  --t-solid:65;          /* --scrim-solid px (완전 불투명 상한) */
+  --t-fade:195;          /* --scrim-fade px (완전 투명 지점) */
+  --t-alpha:.24;         /* 브리딩 색 α (rgba(색,.24)) */
+  --t-bmin:.35;          /* radBreath 최저 opacity(최고는 1 고정) */
+  --t-speed:2.1;         /* 브리딩 주기 s */
+  --t-stop:75;           /* 브리딩 그라데 투명 정지점 % */
+  --t-rgb:56,198,255;    /* 브리딩 색 = 스카이시안(--bias-l1 · 현행) */
+  --t-rgb2:56,198,255;   /* 듀오 모드 상단색(단색 모드 = 동일값) */
+}
+.wave{position:absolute;inset:0;background:
+  radial-gradient(120% 90% at 18% 12%,#16333c 0%,transparent 55%),
+  radial-gradient(130% 100% at 85% 30%,#0f2f45 0%,transparent 60%),
+  radial-gradient(150% 120% at 50% 95%,#0e2a33 0%,transparent 65%),
+  linear-gradient(165deg,#101d24,#0b1418 60%,#0a1013)}
+.wave::after{content:'';position:absolute;inset:0;opacity:.5;background:
+  radial-gradient(60% 40% at 70% 70%,rgba(var(--bias-l2-rgb),.10),transparent 70%),
+  radial-gradient(50% 36% at 25% 45%,rgba(var(--bias-l1-rgb),.06),transparent 70%);
+  animation:waveDrift 9s ease-in-out infinite alternate}
+@keyframes waveDrift{to{transform:translate3d(3%,-2%,0) scale(1.04)}}
+.head{position:absolute;top:0;left:0;right:0;z-index:2;text-align:center;padding-top:26px}
+.head .wm{font-size:15px;letter-spacing:1.4px;font-weight:400;color:var(--fg);text-shadow:0 1px 8px rgba(0,0,0,.45);font-family:Georgia,'Times New Roman',serif}
+.head .sub{margin-top:6px;font-size:8px;letter-spacing:.24em;color:var(--accent);opacity:.85;font-family:Georgia,serif}
+.feed{position:absolute;top:74px;left:14px;right:14px;bottom:52px;z-index:1;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.card{flex:none;background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));border:1px solid var(--line);
+  border-radius:var(--r-l);padding:12px 13px;box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(12px)}
+.card .cat{font-size:9px;font-weight:var(--fw-x);color:#38C6FF}
+.card .cat.c2{color:#2CF5A5}.card .cat.c3{color:#FFE13D}
+.card h3{margin:5px 0 7px;font-size:12.5px;line-height:1.45;font-weight:var(--fw-b)}
+.card .bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.card .bar i{display:block;height:100%;width:72%;border-radius:99px;background:var(--accent);box-shadow:0 0 8px rgba(var(--accent-rgb),.5)}
+.card .bar.b2 i{width:44%}
+
+/* ── 스크림(튜닝 대상 · 실물 .rad-scrim 1:1) ── */
+.scrim{position:absolute;left:0;right:0;bottom:0;z-index:3;pointer-events:none;
+  height:calc(var(--t-fade) * 1px);
+  background:linear-gradient(to top,var(--bg) 0,var(--bg) calc(var(--t-solid) * 1px),transparent);
+  opacity:0;transform:translateY(24px);transition:opacity .15s ease,transform .15s ease}
+.scrim::after{content:'';position:absolute;inset:0;opacity:0;background:
+  linear-gradient(to top,rgba(var(--t-rgb),var(--t-alpha)),rgba(var(--t-rgb2),calc(var(--t-alpha) * .4)) 45%,transparent calc(var(--t-stop) * 1%))}
+.app.open .scrim{opacity:1;transform:translateY(0)}
+.app.open .scrim::after{animation:radBreath calc(var(--t-speed) * 1s) ease-in-out infinite alternate}
+@keyframes radBreath{from{opacity:var(--t-bmin)}to{opacity:1}}
+
+/* ── 하단 네비 + FAB(실물 계승 · 무채 플레이트) ── */
+.bnav{position:absolute;left:0;right:0;bottom:0;height:50px;z-index:4;display:flex;align-items:center;justify-content:space-around;
+  background:rgba(10,12,12,.72);border-top:1px solid var(--line2);backdrop-filter:blur(14px);transition:background .2s,border-color .2s,box-shadow .2s}
+.app.open .bnav{background:transparent;border-top-color:transparent;box-shadow:none;backdrop-filter:none}
+.bnav span{font-size:10.5px;font-weight:var(--fw-b);color:var(--mut)}
+.bnav span.on{color:var(--accent)}
+.fab{position:absolute;left:50%;bottom:24px;z-index:6;width:40px;height:40px;margin-left:-20px;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(255,255,255,.30);background:linear-gradient(165deg,rgba(18,19,22,.30),rgba(18,19,22,.46));
+  color:var(--accent);display:grid;place-items:center;backdrop-filter:blur(22px) saturate(1.2);transition:transform .12s}
+.fab svg{width:20px;height:20px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round;transition:transform .3s var(--ease)}
+.fab:active{transform:scale(var(--press-m))}
+.app.open .fab{box-shadow:0 0 0 4px rgba(255,255,255,.14);color:rgba(255,255,255,.92)}
+.app.open .fab svg{transform:rotate(135deg)}
+.rad{position:absolute;left:50%;bottom:41px;z-index:5;width:0;height:0;--rr:106px}
+.rit{position:absolute;left:-35px;top:-26px;width:70px;display:flex;flex-direction:column;align-items:center;gap:7px;
+  opacity:0;transform:translate3d(0,0,0) scale(.3);pointer-events:none;transition:transform .34s var(--ease),opacity .2s var(--ease)}
+.app.open .rit{opacity:1}
+.app.open .rit.l{transform:translate3d(calc(var(--rr) * -.707),calc(var(--rr) * -.707),0) scale(1);transition-delay:.03s}
+.app.open .rit.u{transform:translate3d(0,calc(var(--rr) * -1),0) scale(1);transition-delay:.07s}
+.app.open .rit.r{transform:translate3d(calc(var(--rr) * .707),calc(var(--rr) * -.707),0) scale(1);transition-delay:.11s}
+.rbtn{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:rgba(255,255,255,.92);
+  background:linear-gradient(165deg,rgba(18,19,22,.34),rgba(18,19,22,.52));backdrop-filter:blur(8px)}
+.rbtn svg{width:24px;height:24px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.rlab{font-size:11px;font-weight:var(--fw-x);color:var(--fg);letter-spacing:-.2px;text-shadow:0 1px 5px rgba(0,0,0,.85);white-space:nowrap}
+
+/* ═══ 우: 콘솔(확립본 골격 계승) ═══ */
+.console{flex:1 1 320px;max-width:430px;padding:16px 22px 40px;display:flex;flex-direction:column;gap:14px}
+.csec{background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-l);padding:13px 14px}
+.csec h2{margin:0 0 9px;font-size:var(--fs-sm);font-weight:var(--fw-x);color:var(--mut);letter-spacing:.06em}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:8px 15px;border:1px solid var(--glass-line);border-radius:var(--r-pill);background:var(--glass);color:var(--fg);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-b);cursor:pointer;touch-action:manipulation;transition:transform .12s var(--ease)}
+.pill:active{transform:scale(var(--press-m))}
+.pill.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+.pill .st{font-size:var(--fs-xs);opacity:.75;margin-left:4px}
+.srow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.srow .nm{flex:none;width:112px;font-size:var(--fs-xs);color:var(--fg);line-height:1.3}
+.srow .nm small{display:block;color:var(--mut);font-size:10px}
+.srow input[type=range]{appearance:none;-webkit-appearance:none;flex:1;height:6px;border-radius:var(--r-pill);border:1px solid var(--glass-line);
+  background:linear-gradient(90deg,rgba(var(--accent-rgb),.85) var(--p,50%),var(--glass) var(--p,50%));outline:none}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 10px rgba(var(--accent-rgb),.35)}
+.srow input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:none}
+.srow .val{flex:none;width:46px;text-align:right;font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.sgrp{margin:8px 0 2px;font-size:10px;font-weight:var(--fw-x);color:var(--mut);letter-spacing:.12em}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;padding:8px;border:1px solid var(--glass-line);border-radius:var(--r-m);background:var(--glass);color:var(--fg);font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);cursor:pointer}
+.seg button.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+pre#out{margin:0;padding:12px;background:rgba(0,0,0,.4);border:1px solid var(--glass-line);border-radius:var(--r-m);
+  font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-all;user-select:all}
+.copybtn{margin-top:9px;width:100%;padding:11px;border:none;border-radius:var(--r-pill);background:var(--accent);color:#04211d;
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-x);cursor:pointer;touch-action:manipulation;box-shadow:0 6px 18px rgba(var(--accent-rgb),.25)}
+.copybtn:active{transform:scale(var(--press-m))}
+.note{font-size:var(--fs-xs);color:var(--mut);line-height:1.7}
+.note b{color:var(--fg)}
+</style>
+<body>
+<header>
+  <h1>라디얼(+) 안개 플레이그라운드</h1>
+  <p>+ 열림 시 네비까지 덮는 안개(스크림)의 높이·경계·브리딩 색과 호흡을 만져서 고른다. 기본값 = 현행 라이브 실측.</p>
+</header>
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="phone">
+      <div class="app open" id="app">
+        <div class="wave"></div>
+        <div class="head"><div class="wm">NEWS CURATION</div><div class="sub">TOP PICKS</div></div>
+        <div class="feed">
+          <div class="card"><span class="cat">정치</span><h3>정보통신망법 내일 시행… 野 "법 개정 나설 것"</h3><div class="bar"><i></i></div></div>
+          <div class="card"><span class="cat c2">사회</span><h3>"올해 2조 벌 듯"… 전쟁 특수 노린 정유 4사의 '유가 담합'</h3><div class="bar b2"><i></i></div></div>
+          <div class="card"><span class="cat c3">경제</span><h3>외환시장 24시간 개방 첫날… 원·달러 환율 1527.6원 개장</h3><div class="bar"><i></i></div></div>
+          <div class="card"><span class="cat">정치</span><h3>검찰, 건진법사 '지방선거 공천헌금' 1심 무죄에 항소</h3><div class="bar b2"><i></i></div></div>
+        </div>
+        <div class="scrim" id="scrim"></div>
+        <div class="rad">
+          <div class="rit l"><span class="rbtn"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/></svg></span><span class="rlab">뉴스 요약</span></div>
+          <div class="rit u"><span class="rbtn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 21"/></svg></span><span class="rlab">이미지</span></div>
+          <div class="rit r"><span class="rbtn"><svg viewBox="0 0 24 24"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></span><span class="rlab">영상</span></div>
+        </div>
+        <div class="bnav"><span>레거시</span><span>SNS</span><span style="width:44px"></span><span class="on">뉴스 요약</span><span>링크</span></div>
+        <button class="fab" id="fab" type="button" aria-label="제작 도구"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+    </div>
+    <div class="stagecap"><b>＋/× 탭 = 열고 닫기.</b> 안개·라디얼·네비 일체화가 실물 타이밍으로 재생된다.</div>
+  </div>
+  <aside class="console">
+    <div class="csec"><h2>프리셋</h2><div class="pills" id="presets"></div></div>
+    <div class="csec"><h2>브리딩 색</h2><div class="seg" id="colseg">
+      <button data-c="sky" class="on">스카이시안(현행)</button><button data-c="turq">터쿼이즈</button>
+      <button data-c="deep">딥블루</button><button data-c="duo">듀오(시안→딥블루)</button><button data-c="none">무채(색 0)</button>
+    </div></div>
+    <div class="csec"><h2>미세조정</h2><div id="sliders"></div></div>
+    <div class="csec"><h2>선택값</h2><pre id="out"></pre><button class="copybtn" id="copy" type="button">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계</b> — ① 배경 웨이브 = CSS 그라데 근사(실물 = WebGL 셰이더·톤만 맞춤) ② 피드 카드 = 축약 목업 ③ env(safe-area-inset-bottom) 미반영(실물은 홈인디케이터만큼 스크림·네비가 더 내려감) ④ 색·px 정본 = viewer/index.html :root — 여기 값은 사본.</div>
+  </aside>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const COLORS = {sky:['56,198,255','56,198,255'], turq:['0,238,210','0,238,210'], deep:['58,109,219','58,109,219'], duo:['56,198,255','58,109,219'], none:null};
+const DEFAULTS = {solid:65, fade:195, alpha:.24, bmin:.35, speed:2.1, stop:75, col:'sky'};
+const PRESETS = [
+ {id:'p0', nm:'현행', st:{...DEFAULTS}},
+ {id:'p1', nm:'A 얕은 안개', st:{...DEFAULTS, solid:48, fade:150, alpha:.20}},
+ {id:'p2', nm:'B 롱 페이드', star:'★', st:{...DEFAULTS, solid:56, fade:266, alpha:.18, stop:88, speed:2.8}},
+ {id:'p3', nm:'C 오션 듀오', st:{...DEFAULTS, fade:230, alpha:.26, col:'duo', speed:2.4}},
+ {id:'p4', nm:'D 무채', st:{...DEFAULTS, alpha:0, col:'none'}},
+];
+const SLIDERS = [
+ {k:'solid', nm:'불투명 상한', d:'--scrim-solid px', min:0, max:140, step:1, grp:'형태(높이)'},
+ {k:'fade', nm:'안개 끝(높이)', d:'--scrim-fade px', min:80, max:400, step:1},
+ {k:'stop', nm:'색 그라데 정지점', d:'::after transparent %', min:40, max:100, step:1},
+ {k:'alpha', nm:'브리딩 색 α', d:'rgba(색, α)', min:0, max:.5, step:.01, grp:'브리딩(호흡)'},
+ {k:'bmin', nm:'호흡 최저 밝기', d:'radBreath from', min:.05, max:.9, step:.01},
+ {k:'speed', nm:'호흡 주기(s)', d:'radBreath duration', min:.8, max:5, step:.1},
+];
+let state = {...DEFAULTS};
+const app = $('#app');
+function apply(){
+  const s = app.style;
+  s.setProperty('--t-solid', state.solid); s.setProperty('--t-fade', state.fade);
+  s.setProperty('--t-alpha', state.col === 'none' ? 0 : state.alpha);
+  s.setProperty('--t-bmin', state.bmin); s.setProperty('--t-speed', state.speed); s.setProperty('--t-stop', state.stop);
+  const c = COLORS[state.col];
+  if (c){ s.setProperty('--t-rgb', c[0]); s.setProperty('--t-rgb2', c[1]); }
+  document.querySelectorAll('#colseg button').forEach(b => b.classList.toggle('on', b.dataset.c === state.col));
+  SLIDERS.forEach(sp => {
+    const el = document.getElementById('sl_' + sp.k); if (!el) return;
+    el.value = state[sp.k];
+    el.style.setProperty('--p', ((state[sp.k] - sp.min) / (sp.max - sp.min) * 100) + '%');
+    document.getElementById('vl_' + sp.k).textContent = sp.step >= 1 ? Math.round(state[sp.k]) : (+state[sp.k]).toFixed(2).replace(/0$/,'');
+  });
+  buildOut();
+}
+$('#sliders').innerHTML = SLIDERS.map(sp =>
+  (sp.grp ? `<div class="sgrp">${sp.grp}</div>` : '') +
+  `<div class="srow"><span class="nm">${sp.nm}<small>${sp.d || ''}</small></span>`+
+  `<input type="range" id="sl_${sp.k}" min="${sp.min}" max="${sp.max}" step="${sp.step}">`+
+  `<span class="val" id="vl_${sp.k}"></span></div>`).join('');
+SLIDERS.forEach(sp => { document.getElementById('sl_' + sp.k).addEventListener('input', e => { state[sp.k] = +e.target.value; markCustom(); apply(); }); });
+$('#colseg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.col = b.dataset.c; markCustom(); apply(); });
+$('#presets').innerHTML = PRESETS.map(p =>
+  `<button class="pill${p.id==='p0' ? ' on' : ''}" data-p="${p.id}" type="button">${p.nm}${p.star ? `<span class="st">${p.star}</span>` : ''}</button>`).join('');
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  state = {...PRESETS.find(x => x.id === b.dataset.p).st};
+  document.querySelectorAll('#presets .pill').forEach(x => x.classList.toggle('on', x === b));
+  if (!app.classList.contains('open')) app.classList.add('open');
+  apply();
+});
+function markCustom(){ document.querySelectorAll('#presets .pill').forEach(x => x.classList.remove('on')); }
+$('#fab').addEventListener('click', () => app.classList.toggle('open'));
+const near = (a,b,eps=.006) => Math.abs(a-b) < eps;
+function buildOut(){
+  const v = state;
+  const colName = {sky:'--bias-l1-rgb(스카이시안 · 계승)', turq:'--accent-rgb(터쿼이즈 · 계승)', deep:'--bias-l2-rgb(딥블루 · 계승)', duo:'--bias-l1-rgb→--bias-l2-rgb 듀오(계승 2색 그라데 · 갱신 후보 구조)', none:'없음(무채 = base 단층만)'}[v.col];
+  $('#out').textContent =
+`[노뮤트 라디얼 안개 — 선택값]
+--scrim-solid : ${v.solid}px   [현행 65]
+--scrim-fade  : ${v.fade}px   [현행 195]
+브리딩 색     : ${colName}
+브리딩 α      : ${v.col==='none' ? 0 : v.alpha}   [현행 .24]
+그라데 정지점 : transparent ${v.stop}%   [현행 75%]
+radBreath     : from opacity ${v.bmin} · ${v.speed}s   [현행 .35 · 2.1s]
+정본 배선     : viewer/index.html .rad-scrim{--scrim-*} + ::after(rgba·정지점) + @keyframes radBreath`;
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#out').textContent); $('#copy').textContent = '복사됨 ✓'; }
+  catch { const r = document.createRange(); r.selectNode($('#out')); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); $('#copy').textContent = '복사됨 ✓'; }
+  setTimeout(() => $('#copy').textContent = '선택값 복사', 1400);
+});
+apply();
+</script>
+</body></html>

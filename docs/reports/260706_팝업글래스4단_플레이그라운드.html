@@ -1,0 +1,282 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>팝업 글래스 4단 플레이그라운드 — 노뮤트</title>
+<style>
+/* ═══ 값 = viewer/index.html :root 사본(시안 자기완결용 · 정본은 viewer) ═══ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --bias-l1-rgb:56,198,255; --bias-l2-rgb:58,109,219;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --glass:rgba(255,255,255,.055); --glass-line:rgba(255,255,255,.14);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+  --fs-sm:12px; --fs-xs:11px; --fw-x:800; --fw-b:700;
+  --ease:cubic-bezier(.2,.7,.3,1); --press-m:.92;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#0b0c0c;color:var(--fg);font:14px/1.6 Pretendard,'Noto Sans KR',-apple-system,system-ui,'Malgun Gothic',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+header{padding:18px 22px 6px}
+header h1{margin:0;font-size:17px;font-weight:var(--fw-x)}
+header p{margin:4px 0 0;font-size:var(--fs-sm);color:var(--mut)}
+.wrap{display:flex;flex-wrap:wrap;gap:0;align-items:flex-start}
+.stagewrap{flex:1 1 340px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 22px 30px;
+  background:radial-gradient(circle at 50% 0%,rgba(var(--accent-rgb),.04),transparent 40%)}
+.phone{position:relative;width:min(360px,92vw);aspect-ratio:9/18;border-radius:26px;overflow:hidden;
+  border:1px solid var(--glass-line);box-shadow:0 30px 80px rgba(0,0,0,.6);background:var(--bg)}
+.stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center;max-width:360px}
+.stagecap b{color:var(--fg)}
+
+/* ═══ 폰 안 ═══ */
+.app{position:absolute;inset:0;overflow:hidden;
+  /* ⚠ 기본값 = 현행 실측(viewer/index.html :root 모달 셸 4토큰 + blur) */
+  --t-anch:.42;      /* --modal-glass-anchor α(앵커 팝업 = 설정 메뉴·메시지함) */
+  --t-modal:.64;     /* --modal-glass α(중앙 모달) */
+  --t-head:.5;       /* --modal-head-bg α(헤더 띠) */
+  --t-tabs:.5;       /* --modal-tabs-bg α(탭 띠) */
+  --t-ablur:18;      /* 앵커 blur px(pmenu 현행 18 · msgpop 26) */
+  --t-asat:1;        /* 앵커 saturate(1 = 현행 pmenu · msgpop 1.5) */
+  --t-bblur:7;       /* 중앙 모달 ::backdrop blur px */
+  --t-grow:0;        /* 앵커 거동: 0=현행 bottom고정 1=top고정+스크롤 2=최대높이 선확보 */
+}
+.wave{position:absolute;inset:0;background:
+  radial-gradient(120% 90% at 18% 12%,#16333c 0%,transparent 55%),
+  radial-gradient(130% 100% at 85% 30%,#0f2f45 0%,transparent 60%),
+  radial-gradient(150% 120% at 50% 95%,#0e2a33 0%,transparent 65%),
+  linear-gradient(165deg,#101d24,#0b1418 60%,#0a1013)}
+.feed{position:absolute;top:64px;left:14px;right:14px;bottom:52px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.card{flex:none;background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));border:1px solid var(--line);
+  border-radius:var(--r-l);padding:12px 13px;box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05)}
+.card .cat{font-size:9px;font-weight:var(--fw-x);color:#38C6FF}
+.card .cat.c2{color:#2CF5A5}.card .cat.c3{color:#FFE13D}
+.card h3{margin:5px 0 0;font-size:12.5px;line-height:1.45;font-weight:var(--fw-b)}
+.bnav{position:absolute;left:0;right:0;bottom:0;height:50px;display:flex;align-items:center;justify-content:space-around;
+  background:rgba(10,12,12,.72);border-top:1px solid var(--line2);backdrop-filter:blur(14px)}
+.bnav span{font-size:10.5px;font-weight:var(--fw-b);color:var(--mut)}
+.bnav span.lk{color:var(--accent)}
+
+/* ── 앵커 팝업(pmenu 실물 계승 · 튜닝 대상) ── */
+.pmenu{position:absolute;right:14px;bottom:60px;z-index:20;min-width:170px;max-height:calc(100% - 130px);
+  background:rgba(17,18,20,var(--t-anch));backdrop-filter:blur(calc(var(--t-ablur) * 1px)) saturate(var(--t-asat));
+  border:1px solid var(--line);border-radius:16px;padding:6px;overflow-y:auto;
+  box-shadow:0 24px 60px rgba(0,0,0,.55);transform-origin:bottom right;animation:popIn .16s cubic-bezier(.22,.61,.36,1) both;
+  transition:bottom .26s var(--ease),top .26s var(--ease)}
+@keyframes popIn{from{opacity:0;transform:scale(.86) translateY(6px)}}
+.pmenu.growB{bottom:60px;top:auto}                                   /* A 현행: bottom 고정 = 위로 성장(헤더가 위로 이동) */
+.pmenu.growT{top:calc(100% - 60px - var(--ph,196px));bottom:auto}    /* B top 고정: 열 때 top 확정 = 헤더 부동·아래 공간 부족분은 내부 스크롤 */
+.pmenu.growF{bottom:60px;top:auto;min-height:var(--fh,246px)}        /* C 최대높이 선확보: 접힘 상태도 전체 높이 자리 → 성장 이동 0 */
+.pm-h{display:flex;justify-content:flex-end;gap:6px;padding:2px 2px 6px}
+.pm-h button{width:30px;height:30px;display:grid;place-items:center;background:none;border:1px solid var(--line);border-radius:9px;color:var(--mut);cursor:pointer}
+.pm-h svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round}
+.pmenu a,.pmenu button.row{display:block;width:100%;text-align:left;background:none;border:none;color:var(--fg);
+  font:inherit;font-size:13px;font-weight:var(--fw-b);padding:9px 12px;cursor:pointer;text-decoration:none}
+.pmenu .row .chev{float:right;color:var(--mut);transition:transform .26s var(--ease)}
+.pmenu .row[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.pm-sub{overflow:hidden;max-height:0;transition:max-height .26s var(--ease)}
+.pm-sub.open{max-height:120px}
+.pm-sub .srowi{display:flex;justify-content:space-between;padding:8px 12px 8px 24px;font-size:12.5px;color:var(--mut)}
+.pm-sub .srowi b{color:var(--accent);font-weight:var(--fw-x)}
+.pm-sub .srowi.off b{color:var(--mut)}
+
+/* ── 메시지함(msgpop 실물 계승) ── */
+.msgpop{position:absolute;top:56px;right:14px;z-index:20;width:min(78%,250px);
+  background:rgba(17,18,20,var(--t-anch));backdrop-filter:blur(calc(var(--t-ablur) * 1px)) saturate(var(--t-asat));
+  border:1px solid var(--line);border-radius:16px;padding:10px;box-shadow:0 24px 60px rgba(0,0,0,.55);
+  transform-origin:top right;animation:popIn .16s cubic-bezier(.22,.61,.36,1) both}
+.msgpop .mh{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:var(--fw-x);padding:2px 4px 8px}
+.msgpop .mh .mc{font-size:11px;color:var(--mut);font-weight:var(--fw-b)}
+.msgpop .qrow{display:flex;justify-content:space-between;gap:8px;padding:9px 6px;border-top:1px solid var(--line2);font-size:12px}
+.msgpop .qrow span{color:var(--mut);font-size:10.5px;flex:none}
+
+/* ── 중앙 모달(dialog 셸 계승) ── */
+.backdrop{position:absolute;inset:0;z-index:30;background:rgba(0,0,0,.25);backdrop-filter:blur(calc(var(--t-bblur) * 1px))}
+.modal{position:absolute;left:50%;top:50%;z-index:31;transform:translate(-50%,-50%);width:82%;border-radius:var(--r-modal);overflow:hidden;
+  background:rgba(17,18,20,var(--t-modal));border:1px solid rgba(255,255,255,.13);box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.modal .mhead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;
+  background:rgba(24,25,28,var(--t-head));backdrop-filter:blur(22px);border-bottom:1px solid var(--line2);font-size:14px;font-weight:var(--fw-x)}
+.modal .mtabs{display:flex;gap:14px;padding:10px 14px;background:rgba(24,25,28,var(--t-tabs));font-size:12px;color:var(--mut);font-weight:var(--fw-b)}
+.modal .mtabs b{color:var(--accent)}
+.modal .mbody{padding:14px;font-size:12.5px;line-height:1.7;color:var(--fg)}
+.modal .mbody p{margin:0 0 8px;color:var(--mut)}
+.hidden{display:none !important}
+
+/* ═══ 콘솔(확립본 골격 계승) ═══ */
+.console{flex:1 1 320px;max-width:430px;padding:16px 22px 40px;display:flex;flex-direction:column;gap:14px}
+.csec{background:var(--glass);border:1px solid var(--glass-line);border-radius:var(--r-l);padding:13px 14px}
+.csec h2{margin:0 0 9px;font-size:var(--fs-sm);font-weight:var(--fw-x);color:var(--mut);letter-spacing:.06em}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:8px 15px;border:1px solid var(--glass-line);border-radius:var(--r-pill);background:var(--glass);color:var(--fg);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-b);cursor:pointer;touch-action:manipulation;transition:transform .12s var(--ease)}
+.pill:active{transform:scale(var(--press-m))}
+.pill.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+.pill .st{font-size:var(--fs-xs);opacity:.75;margin-left:4px}
+.srow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.srow .nm{flex:none;width:112px;font-size:var(--fs-xs);color:var(--fg);line-height:1.3}
+.srow .nm small{display:block;color:var(--mut);font-size:10px}
+.srow input[type=range]{appearance:none;-webkit-appearance:none;flex:1;height:6px;border-radius:var(--r-pill);border:1px solid var(--glass-line);
+  background:linear-gradient(90deg,rgba(var(--accent-rgb),.85) var(--p,50%),var(--glass) var(--p,50%));outline:none}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 10px rgba(var(--accent-rgb),.35)}
+.srow input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:none}
+.srow .val{flex:none;width:46px;text-align:right;font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.sgrp{margin:8px 0 2px;font-size:10px;font-weight:var(--fw-x);color:var(--mut);letter-spacing:.12em}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;padding:8px;border:1px solid var(--glass-line);border-radius:var(--r-m);background:var(--glass);color:var(--fg);font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);cursor:pointer}
+.seg button.on{color:#04211d;background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+pre#out{margin:0;padding:12px;background:rgba(0,0,0,.4);border:1px solid var(--glass-line);border-radius:var(--r-m);
+  font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-all;user-select:all}
+.copybtn{margin-top:9px;width:100%;padding:11px;border:none;border-radius:var(--r-pill);background:var(--accent);color:#04211d;
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-x);cursor:pointer;touch-action:manipulation;box-shadow:0 6px 18px rgba(var(--accent-rgb),.25)}
+.copybtn:active{transform:scale(var(--press-m))}
+.note{font-size:var(--fs-xs);color:var(--mut);line-height:1.7}
+.note b{color:var(--fg)}
+</style>
+<body>
+<header>
+  <h1>팝업 글래스 4단 플레이그라운드</h1>
+  <p>모달 셸 4단(중앙 모달·앵커 팝업·헤더 띠·탭 띠)의 투명도/블러/채도를 통째로 조절 + 설정 메뉴가 아코디언 펼침 때 "도망가는" 거동 3옵션 체험.</p>
+</header>
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="phone">
+      <div class="app" id="app">
+        <div class="wave"></div>
+        <div class="feed">
+          <div class="card"><span class="cat">정치</span><h3>정보통신망법 내일 시행… 野 "법 개정 나설 것"</h3></div>
+          <div class="card"><span class="cat c2">사회</span><h3>"올해 2조 벌 듯"… 정유 4사의 '유가 담합'</h3></div>
+          <div class="card"><span class="cat c3">경제</span><h3>외환시장 24시간 개방 첫날… 1527.6원 개장</h3></div>
+          <div class="card"><span class="cat">정치</span><h3>검찰, '지방선거 공천헌금' 1심 무죄에 항소</h3></div>
+          <div class="card"><span class="cat c2">사회</span><h3>경찰, 개인정보 국외이전 기준 첫 마련</h3></div>
+        </div>
+        <div class="bnav"><span>레거시</span><span>SNS</span><span>뉴스 요약</span><span class="lk">링크</span></div>
+        <!-- 설정 메뉴(pmenu — 링크 앵커) -->
+        <div class="pmenu growB" id="pm">
+          <div class="pm-h"><button type="button" aria-label="새로고침"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button>
+          <button type="button" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+          <a>메시지</a><a>발행본</a>
+          <button class="row" id="setTog" type="button" aria-expanded="false">설정<span class="chev">⌄</span></button>
+          <div class="pm-sub" id="setSub">
+            <div class="srowi">알림 <b>ON</b></div>
+            <div class="srowi off">잠금 설정 <b>OFF</b></div>
+          </div>
+        </div>
+        <!-- 메시지함(msgpop) -->
+        <div class="msgpop hidden" id="mp">
+          <div class="mh">메시지 <span class="mc">2건</span></div>
+          <div class="qrow">요약 완료 — 네이마르 폭풍 오열 <span>1시간 전</span></div>
+          <div class="qrow">카드 제작 실패 — 재시도 필요 <span>3시간 전</span></div>
+        </div>
+        <!-- 중앙 모달 -->
+        <div class="backdrop hidden" id="bd"></div>
+        <div class="modal hidden" id="md">
+          <div class="mhead">뉴스 요약 - 신청 <span style="color:var(--mut)">×</span></div>
+          <div class="mtabs"><b>요약</b><span>프롬프트</span><span>카드</span></div>
+          <div class="mbody"><p>기사 URL 또는 전문 붙여넣기</p>베네수엘라 강진 사망자 수 3,342명으로 늘어… 구조 당국은 잔해 수색이 이번 주말까지 이어질 것으로…</div>
+        </div>
+      </div>
+    </div>
+    <div class="stagecap"><b>설정 행 탭 = 아코디언 펼침/접힘.</b> 거동 A/B/C를 바꿔가며 헤더가 움직이는지(=도망) 비교해봐.</div>
+  </div>
+  <aside class="console">
+    <div class="csec"><h2>보기</h2><div class="seg" id="viewseg">
+      <button data-v="pm" class="on">설정 메뉴</button><button data-v="mp">메시지함</button><button data-v="md">중앙 모달</button>
+    </div></div>
+    <div class="csec"><h2>아코디언 거동(도망 수리안)</h2><div class="seg" id="growseg">
+      <button data-g="0" class="on">A 현행(bottom 고정·위로 성장)</button><button data-g="1">B top 고정+내부 스크롤</button><button data-g="2">C 최대높이 선확보</button>
+    </div></div>
+    <div class="csec"><h2>프리셋</h2><div class="pills" id="presets"></div></div>
+    <div class="csec"><h2>미세조정</h2><div id="sliders"></div></div>
+    <div class="csec"><h2>선택값</h2><pre id="out"></pre><button class="copybtn" id="copy" type="button">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계</b> — ① 배경 = CSS 근사 웨이브(blur 체감은 실물과 유사 조건) ② 중앙 모달의 ::backdrop은 별도 딤 레이어로 재현(top-layer 아님) ③ msgpop 실물은 blur26·saturate1.5 별도값 — 여기선 앵커 공통축으로 묶어 체험(배선 시 분리 유지 가능) ④ 4토큰 정본 = viewer/index.html :root(--modal-glass·-anchor·-head-bg·-tabs-bg).</div>
+  </aside>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const DEFAULTS = {anch:.42, modal:.64, head:.5, tabs:.5, ablur:18, asat:1, bblur:7, grow:0};
+const PRESETS = [
+ {id:'p0', nm:'현행', st:{...DEFAULTS}},
+ {id:'p1', nm:'A 프로스트 글래스', star:'★', st:{...DEFAULTS, anch:.30, ablur:26, asat:1.4, grow:1}},
+ {id:'p2', nm:'B 크리스탈(투명↑)', st:{...DEFAULTS, anch:.22, modal:.5, head:.38, tabs:.38, ablur:30, asat:1.5, grow:1}},
+ {id:'p3', nm:'C 딥 프로스트(무채)', st:{...DEFAULTS, anch:.55, ablur:24, asat:0, grow:2}},
+];
+const SLIDERS = [
+ {k:'anch', nm:'② 앵커 팝업 α', d:'--modal-glass-anchor', min:.1, max:.95, step:.01, grp:'투명도 4단(⚠ 셸 토큰 = 기틀 축)', warn:1},
+ {k:'modal', nm:'① 중앙 모달 α', d:'--modal-glass', min:.3, max:.98, step:.01, warn:1},
+ {k:'head', nm:'③ 헤더 띠 α', d:'--modal-head-bg', min:.15, max:.9, step:.01, warn:1},
+ {k:'tabs', nm:'④ 탭 띠 α', d:'--modal-tabs-bg', min:.15, max:.9, step:.01, warn:1},
+ {k:'ablur', nm:'앵커 blur px', d:'pmenu 18 · msgpop 26', min:6, max:36, step:1, grp:'프로스트'},
+ {k:'asat', nm:'앵커 saturate', d:'0 = 뒤 색 무채화', min:0, max:1.8, step:.05},
+ {k:'bblur', nm:'모달 backdrop blur', d:'::backdrop', min:0, max:16, step:1},
+];
+let state = {...DEFAULTS};
+const app = $('#app');
+function apply(){
+  const s = app.style;
+  ['anch','modal','head','tabs','ablur','asat','bblur'].forEach(k => s.setProperty('--t-'+k, state[k]));
+  const pm = $('#pm');
+  pm.classList.toggle('growB', state.grow === 0);
+  pm.classList.toggle('growT', state.grow === 1);
+  pm.classList.toggle('growF', state.grow === 2);
+  document.querySelectorAll('#growseg button').forEach(b => b.classList.toggle('on', +b.dataset.g === state.grow));
+  SLIDERS.forEach(sp => {
+    const el = document.getElementById('sl_' + sp.k); if (!el) return;
+    el.value = state[sp.k];
+    el.style.setProperty('--p', ((state[sp.k] - sp.min) / (sp.max - sp.min) * 100) + '%');
+    document.getElementById('vl_' + sp.k).textContent = sp.step >= 1 ? Math.round(state[sp.k]) : (+state[sp.k]).toFixed(2).replace(/0$/,'');
+  });
+  buildOut();
+}
+$('#sliders').innerHTML = SLIDERS.map(sp =>
+  (sp.grp ? `<div class="sgrp">${sp.grp}</div>` : '') +
+  `<div class="srow"><span class="nm">${sp.nm}<small>${sp.d || ''}</small></span>`+
+  `<input type="range" id="sl_${sp.k}" min="${sp.min}" max="${sp.max}" step="${sp.step}">`+
+  `<span class="val" id="vl_${sp.k}"></span></div>`).join('');
+SLIDERS.forEach(sp => { document.getElementById('sl_' + sp.k).addEventListener('input', e => { state[sp.k] = +e.target.value; markCustom(); apply(); }); });
+$('#presets').innerHTML = PRESETS.map(p =>
+  `<button class="pill${p.id==='p0' ? ' on' : ''}" data-p="${p.id}" type="button">${p.nm}${p.star ? `<span class="st">${p.star}</span>` : ''}</button>`).join('');
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  state = {...PRESETS.find(x => x.id === b.dataset.p).st};
+  document.querySelectorAll('#presets .pill').forEach(x => x.classList.toggle('on', x === b));
+  apply();
+});
+function markCustom(){ document.querySelectorAll('#presets .pill').forEach(x => x.classList.remove('on')); }
+$('#viewseg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#viewseg button').forEach(x => x.classList.toggle('on', x === b));
+  $('#pm').classList.toggle('hidden', b.dataset.v !== 'pm');
+  $('#mp').classList.toggle('hidden', b.dataset.v !== 'mp');
+  $('#bd').classList.toggle('hidden', b.dataset.v !== 'md');
+  $('#md').classList.toggle('hidden', b.dataset.v !== 'md');
+});
+$('#growseg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.grow = +b.dataset.g; markCustom(); apply(); });
+/* 설정 아코디언 — 거동 비교의 핵심 체험 */
+$('#setTog').addEventListener('click', () => {
+  const open = !$('#setSub').classList.contains('open');
+  $('#setSub').classList.toggle('open', open);
+  $('#setTog').setAttribute('aria-expanded', String(open));
+});
+const near = (a,b,eps=.006) => Math.abs(a-b) < eps;
+function buildOut(){
+  const v = state;
+  const t = (val, cur, tok) => `rgba(17,18,20,${val})${near(val,cur) ? ` = ${tok} 현행(계승)` : ` → ${tok} 갱신 후보 ⚠기틀`}`;
+  const growName = ['A 현행(bottom 고정 · 펼침 = 헤더가 위로 이동)','B top 고정 + 내부 스크롤(헤더 부동 = 도망 0 · 추천)','C 최대높이 선확보(이동 0 · 접힘 시 여백 큼)'][v.grow];
+  $('#out').textContent =
+`[노뮤트 팝업 글래스 4단 — 선택값]
+② 앵커 팝업  : ${t(v.anch,.42,'--modal-glass-anchor')}
+① 중앙 모달  : ${t(v.modal,.64,'--modal-glass')}
+③ 헤더 띠    : ${t(v.head,.5,'--modal-head-bg')}
+④ 탭 띠      : ${t(v.tabs,.5,'--modal-tabs-bg')}
+앵커 blur     : ${v.ablur}px${v.ablur===18 ? ' [pmenu 현행]' : v.ablur===26 ? ' = msgpop 동값(계승)' : ' → 갱신 후보'} · saturate ${v.asat}${v.asat===0 ? '(무채 프로스트 = §디자인 i 결)' : ''}
+모달 backdrop : blur ${v.bblur}px   [현행 7]
+아코디언 거동 : ${growName}
+정본 배선     : :root 4토큰 + .pmenu backdrop-filter + lpSettings 앵커 JS(top 고정이면 bottom→top 전환 한 줄)`;
+}
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#out').textContent); $('#copy').textContent = '복사됨 ✓'; }
+  catch { const r = document.createRange(); r.selectNode($('#out')); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); $('#copy').textContent = '복사됨 ✓'; }
+  setTimeout(() => $('#copy').textContent = '선택값 복사', 1400);
+});
+apply();
+</script>
+</body></html>
