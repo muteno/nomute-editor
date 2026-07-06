@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드뉴스 전개 로직 — 분신술 12 + A/B 5 + 재검증 10 종합</title>
+<style>
+  :root{
+    --bg:#121212; --panel:rgba(255,255,255,.04); --panel2:rgba(255,255,255,.06);
+    --line:rgba(255,255,255,.10); --accent:#0FFD02; --fg:#eef7f0; --mut:#8fa697;
+    --danger:#ff5b4a; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7; --ok:#0FFD02;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    line-height:1.62;font-size:15px;-webkit-text-size-adjust:100%}
+  .wrap{max-width:880px;margin:0 auto;padding:22px 18px 80px}
+  h1{font-size:23px;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+  h2{font-size:18px;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15px;margin:20px 0 8px;color:var(--accent)}
+  p{margin:9px 0}
+  code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:5px;font-size:12.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 17px;margin:13px 0}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;margin-right:6px;vertical-align:middle}
+  .t-kill{background:rgba(255,91,74,.16);color:var(--danger)}
+  .t-keep{background:rgba(15,253,2,.14);color:var(--accent)}
+  .t-fix{background:rgba(255,210,74,.15);color:var(--warn)}
+  .t-ask{background:rgba(12,208,247,.14);color:var(--info)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:12px}
+  td.v{color:var(--danger);font-weight:600;white-space:nowrap}
+  td.g{color:var(--accent);font-weight:600;white-space:nowrap}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:11px 0}
+  @media(max-width:560px){.ba{grid-template-columns:1fr}}
+  .ba>div{border-radius:11px;padding:12px 13px;font-size:13.5px}
+  .ba .a{background:rgba(255,91,74,.07);border:1px solid rgba(255,91,74,.25)}
+  .ba .b{background:rgba(15,253,2,.06);border:1px solid rgba(15,253,2,.22)}
+  .ba h4{margin:0 0 7px;font-size:12px;letter-spacing:.04em}
+  .ba .a h4{color:var(--danger)} .ba .b h4{color:var(--accent)}
+  .q{font-family:ui-monospace,monospace;font-size:12.5px;color:#dfe;white-space:pre-wrap;line-height:1.5}
+  ul{margin:8px 0;padding-left:20px} li{margin:5px 0}
+  .big{background:linear-gradient(135deg,rgba(15,253,2,.10),rgba(12,208,247,.06));
+    border:1px solid rgba(15,253,2,.3);border-radius:13px;padding:16px 18px;margin:16px 0}
+  .big b{color:var(--accent)}
+  .muted{color:var(--mut);font-size:13px}
+  .num{color:var(--accent);font-weight:700}
+  .foot{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:var(--mut);font-size:12px}
+  .pill5{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .pill5 span{font-size:11.5px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>카드뉴스 전개 로직 — 분신술 12 · A/B 5건 · 재검증 10인 종합</h1>
+<p class="sub">대상: <code>apps/news/01 §Step 4</code>(현행 v1.18.6) 카드뉴스 텍스트 생성 · 260628 · 읽기전용 분신술 27 에이전트 실측</p>
+
+<div class="big">
+<b>한 줄 결론.</b> 카드뉴스 방향(서사·후킹)은 이미 v1.18.5에서 옳게 잡혔고 실측상 순개선이다. <b>내가 새로 제안한 보완(v1.19.1)의 신설 항목 대부분은 재검증에서 기각</b>됐다 — 데이터에 반하거나(충진 28자), 기존 룰과 동의어이거나(PULL 신용어), 운영자 본인 룰과 충돌하거나(첫카드 평서금지), 부작용이 더 크기(card-make 해시) 때문. <b>진짜 해법은 "룰 추가"가 아니라 「측정 인프라 + 자기모순 제거 + 중복 정리」</b>로 수렴했다.</p>
+</div>
+
+<h2>① 무엇을 했나 (운영자 지시 플로우)</h2>
+<table>
+<tr><th>단계</th><th>내용</th><th>결과</th></tr>
+<tr><td>분신술 12인</td><td>기틀 목적 + 카드 189개 실측, 12개 앵글 적대 진단</td><td class="g">완료</td></tr>
+<tr><td>A/B 5건</td><td>정형돈·이란·촉법소년·화성·호남 — 기존(A) vs 새 로직(B)</td><td class="g">B 5/5 우세</td></tr>
+<tr><td>브리핑</td><td>5건 종합 → 결함 7개 패치한 v1.19.1 초안</td><td class="g">완료</td></tr>
+<tr><td>재검증 10인</td><td>v1.19.1을 각 앵글로 적대 재검증(실측)</td><td class="g">완료</td></tr>
+</table>
+<p class="muted">⚠️ 재검증 다수가 공통 지적: A/B 산출물·채점표가 <b>대화로만 존재하고 레포에 파일로 없어</b> "B 5/5"를 누구도 재현·반박 못 한다. 이것이 근본 결함(아래 §4-1).</p>
+
+<h2>② A/B 결과 — 방향은 맞다 (전 → 후)</h2>
+
+<div class="ba">
+<div class="a"><h4>A · 기존 (화성 카드1)</h4><div class="q">또, 화성이다
+부품공장에서 불이 났고
+신고가 잇따랐다</div><p class="muted" style="margin:7px 0 0">"잇따랐다" 평서완결 = 넘길 이유 없음</p></div>
+<div class="b"><h4>B · 새 로직</h4><div class="q">검은 연기가 또 화성을 삼키던 한낮
+부품공장에서 시작된 불은
+아직 끝나지 않았는데</div><p class="muted" style="margin:7px 0 0">미완으로 끊어 다음 장 당김</p></div>
+</div>
+<div class="ba">
+<div class="a"><h4>A · 기존 (정형돈 클로징)</h4><div class="q">그 무게는 길고 외로웠다</div><p class="muted" style="margin:7px 0 0">다른 감정 기사에 다 붙는 범용 표어</p></div>
+<div class="b"><h4>B · 새 로직</h4><div class="q">2016년 무도를 떠난 원년 멤버가
+연락처까지 끊고 치른, 회복의 값이다</div><p class="muted" style="margin:7px 0 0">고유 토큰으로 이 기사에서만 성립</p></div>
+</div>
+<p>공통 개선: 첫카드 평서종결 제거 · WHY 배경 앞당김 · 다음 장 당김(PULL) · 안심정보 누수 차단 · 고유 시사점 클로징. <b>방향은 확정.</b> 단 "5/5"라는 숫자 자체는 근거 파일이 없어 신뢰하지 말 것.</p>
+
+<h2>③ 재검증 평결 — 신설 대부분 기각</h2>
+<p>10인이 내 보완안을 실측으로 깼다. 거의 만장일치로 <b>"과잉 신설"</b> 판정.</p>
+
+<table>
+<tr><th>내가 제안한 신설</th><th>판정</th><th>실측 근거</th></tr>
+<tr><td>충진 본문 ≥28자 하한</td><td class="v">기각</td><td>카드 평균 <span class="num">37자</span>, 천장(72자)의 52%만 사용 — 하한 박으면 기존 9% 즉시 위반 + 패딩 유발</td></tr>
+<tr><td>합성기 캡 완화(18→22자)</td><td class="v">기각</td><td>54px 폰트서 22자=1093px &gt; 937px 한계 → 물리 불가(폰트 축소=디자인 위반)</td></tr>
+<tr><td>"줄≤5" 캡 완화</td><td class="v">불필요</td><td>합성기는 <b>이미 5줄 렌더</b>(1294&lt;1310px)·MEMORY도 5줄 허용 → 지침만 "5줄 금지"인 <b>자기모순</b>이 진짜 문제</td></tr>
+<tr><td>轉 위치 장수연동 예외</td><td class="v">기각</td><td>轉은 이미 자연히 끝-2 수렴(10건 중 6건). 강제는 "이미 일어나는 일" 명문화 = 공허</td></tr>
+<tr><td>PULL / 한 이음매 1당김 / in&nbsp;medias&nbsp;res</td><td class="v">기각</td><td>기존 "넘김 훅 + 즉시 회수 + 연결 비트"와 <b>동의어</b> — 새 용어는 같은 동작을 두 룰로 인지시켜 혼동 자초</td></tr>
+<tr><td>WHY 3단 착지</td><td class="v">기각</td><td>起承轉結의 起가 이미 "누가·뭘·왜" → 해석형 3건 전부 이미 달성. <code>fact_guard.py</code> 확장이 더 나음</td></tr>
+<tr><td>클로징 7종</td><td class="v">기각</td><td>비-MECE(한 줄이 안티테제∩초단문∩권고 동시 해당) + 01에 정의 없어 새 정본 창설 = SSOT 위반</td></tr>
+<tr><td>첫카드 5제약 (ⓐ 평서 금지·ⓓ 단독 5W)</td><td class="v">충돌</td><td>ⓐ 소급시 <span class="num">78%</span> 탈락 — <b>운영자가 v1.18에 직접 넣은 산문완결 룰과 정면충돌</b>. ⓓ는 분위기카피 자리 죽여 후킹 훼손</td></tr>
+<tr><td>card-make.md 통째 해시 포함</td><td class="v">기각</td><td>카드 GVER 이미 11버전 파편화·190 중 175 stale → 추가시 <b>가짜 stale 190</b> 양산(재생성은 보호로 0)</td></tr>
+<tr><td>안티테제 ≤1</td><td class="g">조건부</td><td>방향 OK, 단 카운팅 제외 4종(인용 안·B없는 강조종결·범위부정·프롬프트줄)을 <b>열거형</b>으로 못 박아야 재현 가능</td></tr>
+</table>
+
+<h2>④ 그래서 진짜 해법 (재검증 수렴)</h2>
+
+<h3>4-1. <span class="tag t-keep">최우선</span> 측정 인프라부터 — "측정자 부재"가 근본</h3>
+<ul>
+<li>A/B 산출물 + 채점 루브릭을 <code>cards/_ab/</code> 또는 <code>docs/</code>에 <b>파일로 커밋</b> → 재현·반박·diff 가능. 룰을 7개 패치해도 본질이 안 변한 이유 = 측정자가 없어서.</li>
+<li><code>fact_guard.py</code>에 <code>--coverage</code> 역방향 모드 추가: 지금은 "출력−원문"(날조 차단)인데, "요약−카드 누락"(WHY 증발 차단)은 정반대 방향이고 <b>토크나이저 90% 재사용</b>. 기계 게이트를 새로 안 짜도 됨.</li>
+</ul>
+
+<h3>4-2. <span class="tag t-fix">자기모순 제거</span> (룰 충돌 봉합)</h3>
+<ul>
+<li>지침 "줄≤4(5 금지)" ↔ 합성기 MEMORY "최대 5줄" ↔ 실측(5줄 렌더됨) 3중 불일치 → <b>"줄≤5(6 금지)"로 통일</b>(코드 0줄 변경).</li>
+<li><code>✳️ GPT</code>·<code>🎬</code> 죽은 스펙이 <code>01</code>·<code>00</code> <b>양쪽</b>에 살아있어 매 호출 모순 지침 주입 → 자동 경로만 <code>INJECT-SKIP</code>(수동 채팅 GPT엔 유효하니 삭제 X).</li>
+</ul>
+
+<h3>4-3. <span class="tag t-fix">정리·이전</span> 룰 추가 말고 줄이기 (티어 비대칭 해소)</h3>
+<ul>
+<li>진짜 문제는 개수가 아니라 <b>① 조각 KILLER(글자수)가 흐름 룰을 항상 이김 ② 소프트룰이 토큰 압축에 묻혀 작동 안 함.</b></li>
+<li>중복 ~15개 통합(RECOMMENDED 30개 중 절반이 금지패턴의 거울) · 기계검증 가능한 KILLER를 하드게이트로 <b>이전</b>(산문서 삭제 → 토큰↓ → 소프트룰 안 묻힘) · STOP 자가표 1개로 흐름룰 흡수.</li>
+</ul>
+
+<h3>4-4. <span class="tag t-keep">살아남은 미세 보강</span> (기존 강화 — 신설 아님)</h3>
+<div class="pill5">
+<span>ⓒ 첫카드가 제목 펀치라인 반복 금지(#6 확장)</span>
+<span>ⓑ 장소 리드 — 속보는 "기시감/긴장 프레임" 얹어 허용</span>
+<span>마지막 카드 과부하 직격: 5W잔여·신규수치 금지·강조≤1</span>
+<span>후반 칸 끝줄에 "다음 칸 회수할 씨앗 1톨"(천장 30% 여백 활용)</span>
+<span>금지어 grep: 방점이 찍혔다·구조를 묻는다·체언종결</span>
+<span>접속사(정작/그런데) 세트당 ≤2</span>
+</div>
+
+<h2>⑤ 5요소 평가</h2>
+<table>
+<tr><th>요소</th><th>내용</th></tr>
+<tr><td><b>전 → 후</b></td><td>전: 룰 7개 신설(v1.19.1). 후: 신설 거의 폐기 + 측정 인프라 2개 + 자기모순 2건 통일 + 중복 ~15개 정리 + 미세 보강 6개</td></tr>
+<tr><td><b>장점</b></td><td>기사요약 기틀을 거의 안 흔듦(신설 최소) · 재현 가능한 측정자 확보 · 룰 총량 <b>감소</b> · 자기모순 봉합으로 매 호출 토큰↓</td></tr>
+<tr><td><b>효율</b></td><td><code>fact_guard</code> 재사용·자기모순 통일은 코드 0~소량 · 카드 캐시버스트 최소(자기모순 통일만 GVER 영향)</td></tr>
+<tr><td><b>품질저하 리스크</b></td><td>낮음 — 신설을 빼서 회귀면이 작음. 단 ✳️/🎬 INJECT-SKIP은 수동 GPT 워크플로 영향 확인 필요(자동만 제외하면 안전)</td></tr>
+</table>
+
+<h2>⑥ 운영자 결정 필요 (기틀 = §기틀 보호)</h2>
+<ul>
+<li><b>방향 승인</b>: 위 「신설 최소화 + 측정 인프라 + 자기모순 제거 + 정리」로 갈지.</li>
+<li><b>통일 vs 획일</b>: 클로징이 사건마다 "구조를 묻는다/평화는 못 갔다"로 동질화 = 통일의 목적(품질 하한)이 거꾸로 상투화로 뒤집힘. 통일 우선(하한 보장) vs 사건별 개성(편차 감수) — 룰로 못 박을 브랜드 톤.</li>
+<li><b>착수 순서</b>: 측정 인프라부터 vs 자기모순 제거부터.</li>
+</ul>
+
+<div class="foot">
+분신술 27 에이전트(분신술 12 + A/B 5 + 재검증 10) · 전부 Opus·읽기전용·실측 · 카드 189개·요약 196개 대조 · 일회성 스냅샷(viewer 토큰 복사·동기화 의무 없음)
+</div>
+
+</div>
+</body>
+</html>

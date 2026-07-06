@@ -18,6 +18,7 @@ on:
         type: choice
         default: MUTENO
         options:
+          - NOMUTEFB
           - MUTENO
           - EMS1130G
 
@@ -50,7 +51,9 @@ jobs:
         env:
           # 인증 = 구독 OAuth(API 키 미사용) — news-ask와 동일 동적 계정 선택
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           FILE: ${{ inputs.file }}
           INSTRUCTION: ${{ inputs.instruction }}
@@ -81,6 +84,26 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패"; exit 1; }
 
+      # 사용자 요청 IG/Thread 수정 완료 → 구독자에게 웹푸시(앱 꺼도 옴). 탭하면 그 요약 창 딥링크.
+      # notify_summary.sh 재사용(배포 반영 대기 + 건별 딥링크) · 메시지만 "수정 완료"로 override · 비치명. (운영자 260627)
+      - name: 수정 완료 웹푸시 (pywebpush · 배포 반영 후)
+        if: success()   # revise·commit 성공 시에만 — 실제 반영 뒤 알림(실패는 별도 표면화·notify 안 함)
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          VIEWER_BASE: https://nomute-editor.pages.dev
+          FILE: ${{ inputs.file }}
+          NOTIFY_TITLE: 수정 완료
+          NOTIFY_BODY_SUFFIX: ' — 탭해서 확인'
+          NOTIFY_TAG_PREFIX: nomute-rev
+        run: |
+          stem="${FILE}"; [ -n "$stem" ] || { echo "file 없음 — 알림 생략"; exit 0; }
+          [ -f "queue/${stem}.md" ] || { echo "queue/${stem}.md 없음 — 알림 생략"; exit 0; }
+          title="$(grep -m1 '^title:' "queue/${stem}.md" | sed -E 's/^title:[[:space:]]*"?//; s/"[[:space:]]*$//')"
+          printf '%s\n' "${stem}.md" > /tmp/analyzed_files.txt
+          printf '%s\n' "${title:-요약}" > /tmp/analyzed_titles.txt
+          bash .github/scripts/notify_summary.sh
+
   # revise로 요약(IG/Thread)이 바뀌면 그 기사 '카드 프롬프트'도 갱신해 요약과 일치시킨다(운영자 선택 260618).
   # 텍스트만·제미나이 0(card_plan과 동일 잠금): GDRIVE_SA_JSON env 부재(Lock A) + cardmake text모드 unset(Lock B).
   # ⛔ 이미 '슛'한 done/fired_partial(이미지 있는) 카드는 보호 — 자동 덮어쓰기 안 함(이미지·편집 유실 방지).
@@ -108,8 +131,11 @@ jobs:
       - name: Refresh card prompt (done/이미지 카드는 보호)
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          CARD_COV_GUARD: ${{ vars.CARD_COV_GUARD || '' }}   # 카드 커버리지 가드(고신호 증발 시 1회 회수) — 기본 OFF·repo 변수 '1'로 카나리아→승격(§파이프라인 e · 260705)
           FILE: ${{ inputs.file }}
           # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON env 자체가 없음(제미나이 발사 불가).
         run: |
@@ -117,7 +143,7 @@ jobs:
           stem="${FILE}"
           [ -n "${stem}" ] || { echo "file 입력 없음 — 생략"; exit 0; }
           [ -f "queue/${stem}.md" ] || { echo "queue/${stem}.md 없음 — 생략"; exit 0; }
-          st="$(grep -o '"state":"[^"]*"' "cards/${stem}/status.json" 2>/dev/null | cut -d'"' -f4)"
+          st="$(grep -o '"state":[[:space:]]*"[^"]*"' "cards/${stem}/status.json" 2>/dev/null | cut -d'"' -f4)"
           imgs="$(ls cards/${stem}/*.jpg cards/${stem}/*.png cards/${stem}/scenes/*.jpg 2>/dev/null | head -1)"   # 렌더 이미지/장면 보존본 = 이미 촬영됨
           if [ "${st}" = "done" ] || [ "${st}" = "fired_partial" ] || [ -n "${imgs}" ]; then
             echo "카드 보호(state='${st:-?}', 이미지=${imgs:-없음}) — 자동 재생성 생략(요약은 반영됨, 카드 반영은 운영자 재촬영으로)"; exit 0

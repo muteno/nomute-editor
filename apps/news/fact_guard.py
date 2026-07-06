@@ -12,7 +12,10 @@
 - 오탐 가능: 원문이 한글 숫자('두 명')인데 출력이 '2명'이면 플래그됨 — 그래서 소프트.
 - 소스에 보강 검색 사실을 썼다면 그 메모도 소스 파일에 같이 넣고 돌리면 오탐 없음.
 
-사용: python3 apps/news/fact_guard.py <원문.txt> <출력.txt>   (exit 항상 0)
+사용: python3 apps/news/fact_guard.py [--coverage] <A.txt> <B.txt>   (exit 항상 0)
+  기본       : A=원문 B=출력 → 출력에만 있는 수치(날조) 탐지
+  --coverage : A=요약 B=카드 → 요약에 있는데 카드에 빠진 수치(누락) 탐지
+               (재검증6 · 카드가 요약의 핵심 사실/WHY 수치를 놓쳤는지 = 토크나이저 재사용·방향만 반대)
 """
 import re
 import sys
@@ -23,6 +26,7 @@ TOL = 0.05  # 스케일 수치 반올림 허용(±5%)
 
 
 def _clean(text):
+    text = re.sub(r'\A---\s*\n.*?\n---\s*\n', '', text, flags=re.S)   # frontmatter(요약 메타: GVER 해시·ID·timestamp·날짜) 제외 = coverage 노이즈 차단
     keep = []
     for ln in text.splitlines():
         s = ln.strip()
@@ -73,19 +77,39 @@ def check(src_text, out_text):
     return flags
 
 
+def coverage(summary_text, cards_text):
+    """요약에 있는데 카드에 빠진 수치·날짜 = 카드 누락(WHY/사실 증발 기계 보조).
+    check(src=카드, out=요약) = 요약에만 있는 토큰 = 카드가 놓친 것. tokens()·check() 재사용·방향만 반대.
+    ⚠️ 한계: 수치·날짜만(인과·배경 *서술* 누락은 못 잡음) — 서사층은 STOP 자가표(소프트)가 보완."""
+    return check(cards_text, summary_text)
+
+
 def main():
-    if len(sys.argv) != 3:
-        print('사용: python3 fact_guard.py <원문.txt> <출력.txt>')
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    cov = '--coverage' in sys.argv
+    if len(args) != 2:
+        print('사용: python3 fact_guard.py [--coverage] <A.txt> <B.txt>')
+        print('  기본       : A=원문  B=출력 → 출력에만 있는 수치(날조) 탐지')
+        print('  --coverage : A=요약  B=카드 → 요약에 있는데 카드에 빠진 수치(누락) 탐지')
         return 0
-    src_text = open(sys.argv[1], encoding='utf-8').read()
-    out_text = open(sys.argv[2], encoding='utf-8').read()
-    flags = check(src_text, out_text)
-    if flags:
-        print('⚠️ 출력에만 있는 수치 %d건 — 본문 대조(원문·보강 검색 근거 없으면 수정):' % len(flags))
-        for f in flags:
-            print('  - %r' % f)
+    a_text = open(args[0], encoding='utf-8').read()
+    b_text = open(args[1], encoding='utf-8').read()
+    if cov:
+        flags = coverage(a_text, b_text)
+        if flags:
+            print('⚠️ 요약에 있는데 카드에 빠진 수치 %d건 — 카드가 핵심 사실/WHY를 놓쳤는지 점검:' % len(flags))
+            for f in flags:
+                print('  - %r' % f)
+        else:
+            print('✅ 커버리지 통과 — 요약의 수치가 카드에 다 반영됨.')
     else:
-        print('✅ 수치 대조 통과 — 출력 수치 전부 원문 근거 있음.')
+        flags = check(a_text, b_text)
+        if flags:
+            print('⚠️ 출력에만 있는 수치 %d건 — 본문 대조(원문·보강 검색 근거 없으면 수정):' % len(flags))
+            for f in flags:
+                print('  - %r' % f)
+        else:
+            print('✅ 수치 대조 통과 — 출력 수치 전부 원문 근거 있음.')
     return 0
 
 

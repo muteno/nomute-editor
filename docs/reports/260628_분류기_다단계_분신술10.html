@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카테고리 분류기 다단계 설계 — 분신술 10인 종합 (260628)</title>
+<style>
+  :root{
+    --bg:#121212;--card:#1b1d1b;--card2:#222420;--fg:#eef7f0;--fg2:#cfd8d0;--mut:#8fa697;--line:#2a2e2a;
+    --accent:#0FFD02;--danger:#ff5b4a;--warn:#ffd24a;--info:#0cd0f7;
+    --munhwa:#ef93cb;--sahoe:#5fdfa3;--gyeongje:#f3c95a;--gukje:#45cdf2;--jeongchi:#f5807f;--tech:#a78bfa;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.6;-webkit-font-smoothing:antialiased;padding:26px 16px 70px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 24px}
+  h2{font-size:16.5px;font-weight:750;margin:32px 0 12px;padding-left:11px;border-left:3px solid var(--accent)}
+  h3{font-size:14px;font-weight:700;margin:18px 0 7px;color:var(--fg)}
+  p{margin:8px 0;color:var(--fg2);font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px 17px;margin:11px 0}
+  .hi{background:linear-gradient(180deg,#1d2a1d,#181d18);border:1px solid #2f5a2f}
+  code{background:#0d0f0d;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12px;color:#d9ffd5;font-family:ui-monospace,Menlo,monospace}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.8px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:650;font-size:11.5px;letter-spacing:.02em;background:#181a18}
+  td.k{color:var(--fg);font-weight:600;white-space:nowrap}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px}
+  .p-go{color:var(--accent);border:1px solid #2f6a2f;background:#13240f}
+  .p-hold{color:var(--warn);border:1px solid #6a5a1f;background:#241f0f}
+  .p-no{color:var(--danger);border:1px solid #6a2f2f;background:#240f0f}
+  .p-ai{color:var(--tech);border:1px solid #463f6a;background:#17132a}
+  ul{margin:7px 0;padding-left:18px}li{margin:4px 0;color:var(--fg2);font-size:13.5px}
+  .big{font-size:27px;font-weight:800;letter-spacing:-.02em}
+  .stat{display:flex;gap:22px;flex-wrap:wrap;margin:8px 0}
+  .stat .n .big{color:var(--accent)}.stat .l{color:var(--mut);font-size:11.5px}
+  .red .big{color:var(--danger)}.amber .big{color:var(--warn)}
+  .tree{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--fg2);background:#0d0f0d;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;white-space:pre;line-height:1.5}
+  .muted{color:var(--mut);font-size:12px}
+  .quote{border-left:2px solid var(--munhwa);padding-left:11px;color:var(--munhwa);font-style:italic;font-size:13px;margin:8px 0}
+  b.acc{color:var(--accent)}b.dn{color:var(--danger)}b.wn{color:var(--warn)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}@media(max-width:680px){.grid2{grid-template-columns:1fr}}
+  .box{border:1px solid var(--line);border-radius:11px;padding:13px 14px;background:var(--card2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>카테고리 분류기 — 다단계 확인 테이블 설계</h1>
+  <p class="sub">분신술 10인(Opus·READ-ONLY·라이브 3,000건 실측) 종합 · 260628 · 운영자 "데이터 어떻게 분리할지 가시화"</p>
+
+  <div class="card hi">
+    <h3 style="margin-top:0">🎯 한 장 결론 — 데이터가 방향을 바꿨다</h3>
+    <p>운영자의 0~5열 다단계 테이블은 <b class="acc">맞는 추상화</b>다. 하지만 10인 실측이 드러낸 진짜 그림은 다르다:</p>
+    <ul>
+      <li><b class="dn">근본 원인 재발견</b>: gate_judge AI는 <code>cross≥3</code>에만 돈다 → <b class="dn">cross-2 후보 1,883건(전체 63%)은 AI가 영영 안 닿는다</b>. 베이비몬스터·지수가 사회로 뜬 건 "AI 판정 전 순간"이 아니라 <b>AI 경로 자체가 없어서</b>. 거기선 키워드가 1차이자 최종.</li>
+      <li><b class="wn">키워드 테이블은 거의 죽은 자산</b>: 등재 가수 70명 중 라이브에 <b>실제 등장 8명(11%)</b>. <code>cross≥2</code> 게이트가 네임스페이스를 이미 극단적으로 좁혀, 등재해도 안 나타난다. 2차 게이트 실발동 <b>3건</b>·3차 <b>0건</b>.</li>
+      <li><b class="acc">정답</b>: 키워드를 무한 확장하지 말고, <b>gate_judge AI의 *카테고리 판정*만 cross-2로 당겨라</b>(빈칸·셀럽경계 표적 선별). AI는 같은 콜에서 cat을 <b>이미 출력</b> 중이라 한계비용 ≈0.</li>
+    </ul>
+    <p class="muted">→ 0~5열 테이블은 "새 엔진"이 아니라 <b>이미 있는 엔진</b>(2차=<code>AMBIG+MUSIC_CTX</code>, 3차=<code>CRIME/JUDICIAL_OVERRIDE</code>)의 데이터 외부화일 뿐. 채울 건 구조가 아니라 데이터 + 게이트 임계 한 칸.</p>
+  </div>
+
+  <div class="stat">
+    <div class="n"><span class="big">3,000</span><div class="l">실측 후보</div></div>
+    <div class="n red"><span class="big">63%</span><div class="l">cross-2 = AI 미도달</div></div>
+    <div class="n amber"><span class="big">11%</span><div class="l">등재 가수 실등장률</div></div>
+    <div class="n red"><span class="big">23</span><div class="l">'레이' 전수 오염건</div></div>
+    <div class="n"><span class="big">10</span><div class="l">분신 평결 ✅3 ⚠️6 ❌1</div></div>
+  </div>
+
+  <h2>🌳 분리 전략 — 5티어 결정트리</h2>
+  <div class="tree">입력: (피드/AI cat, 제목, 매체)
+│
+├─[T0 정본]   피드/AI cat 있음 → 그게 정답  (테크+정부→정치 / 문화+범죄·사법→사회)
+│
+├─[T-매체]    OSEN·[Oh!쎈]·스포츠매체·하트(♥)  → 문화 즉시        2차확인 N
+│
+├─[T1 직등재] 고유·무충돌 1개  (엔하이픈·NMIXX·무한도전·홈런)    2차확인 N
+│
+├─[T2 2차확인] 충돌·약어·방송사  → 문화신호 동반해야 문화         2차확인 Y
+│             (지수·도끼·화사·IU·TXT·KBS·HYBE)  없으면 +0 중립
+│
+├─[T3 3차역전] T1·T2 충족해도 정치/사법 강신호 → 사회로 역전     3차확인 Y
+│             (유재석+부정선거 / 손흥민+음주운전)
+│
+└─[T4 AI위임] 술어형 모호(침묵·논란·입장) · cross-2 빈칸 → gate_judge</div>
+  <p class="muted">운영자 "2차확인여부" 열 = T1(N)이냐 T2(Y)냐 플래그 · "3차확인여부" 열 = T3 역전 받느냐. <b>둘 다 코드에 이미 존재</b>(분신 #10·#4·#9 합의).</p>
+
+  <h2>📊 0~6열 테이블 — 대표행 (분신 #10 + 운영자 스키마 + анти열 신설)</h2>
+  <p>분신 #2·#10 공통 제안: 운영자 0~5열 앞에 <b class="acc">-1열 "제외어근(anti)"</b>을 추가. 충돌어 절반은 긍정게이트가 아니라 <b>부정어근 차단</b>이 본질(레이→릴레이·플레이 차단).</p>
+  <table>
+    <tr><th>-1 제외어근</th><th>1 키워드</th><th>2 2차?</th><th>3 2차키워드</th><th>4 3차?</th><th>5 3차키워드</th></tr>
+    <tr><td class="muted">–</td><td class="k">엔하이픈 / NMIXX / ILLIT</td><td><span class="pill p-go">N</span></td><td class="muted">–</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="muted">–</td><td class="k">무한도전 / 런닝맨 / 흑백요리사</td><td><span class="pill p-go">N</span></td><td class="muted">–</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="dn">주가지수·물가지수·MSCI</td><td class="k">지수</td><td><span class="pill p-hold">Y</span></td><td>앨범·블핑·컴백·소속사</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="dn">릴레이·플레이·몬테레이·브레이커</td><td class="k">레이</td><td colspan="4"><span class="pill p-no">제외</span> 23건 전수 오염 — 가수 등장 0 · 비용＜0</td></tr>
+    <tr><td class="dn">화사한·화사하다</td><td class="k">화사</td><td><span class="pill p-hold">Y</span></td><td>마마무·흠뻑쇼·무대</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="dn">살인·연장·도구</td><td class="k">도끼</td><td><span class="pill p-hold">Y</span></td><td>힙합·레이블·랩·쇼미</td><td class="wn">Y</td><td>구속·기소·음주운전</td></tr>
+    <tr><td class="dn">FIU·EU·국제단위</td><td class="k">IU <span class="muted">(영문)</span></td><td><span class="pill p-hold">Y</span></td><td>아이유·앨범·콘서트</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="dn">.txt·텍스트</td><td class="k">TXT</td><td colspan="4"><span class="pill p-no">제외</span> 한글 "투모로우바이투게더"로 커버</td></tr>
+    <tr><td class="muted">–</td><td class="k">김호중 / 이무진</td><td><span class="pill p-go">N</span></td><td class="muted">–</td><td class="wn">Y</td><td>가석방·구속·전속계약</td></tr>
+    <tr><td class="muted">–</td><td class="k">유재석 / 강호동</td><td><span class="pill p-ai">Y</span></td><td>출연·녹화·MC·핑계고</td><td class="wn">Y</td><td><b>부정선거</b>·탄핵·시위·실형</td></tr>
+    <tr><td class="muted">–</td><td class="k">손흥민 / 김민재</td><td><span class="pill p-go">N</span></td><td class="muted">–</td><td class="wn">Y</td><td>음주운전·기소·사망</td></tr>
+    <tr><td class="dn">사장·노조·청문회·재승인</td><td class="k">KBS / MBC / JTBC</td><td><span class="pill p-no">Y강제</span></td><td>예능·드라마·시청률·편성</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="muted">–</td><td class="k">[순간포착]·[핫피플]·[공식]</td><td><span class="pill p-hold">+2가점</span></td><td class="muted">태그(표본작아 hard 아님)</td><td class="muted">N</td><td class="muted">–</td></tr>
+    <tr><td class="dn">협박·스토킹·기소</td><td class="k">쯔양 / 곽튜브 <span class="muted">(유튜버 인물명)</span></td><td><span class="pill p-ai">Y</span></td><td>영상·채널·콘텐츠</td><td class="wn">Y</td><td>협박·고소·사망</td></tr>
+  </table>
+
+  <h2>🔬 데이터가 말한 것 (운영자 직관 정정 2건 포함)</h2>
+  <div class="grid2">
+    <div class="box"><h3 style="margin-top:0">🟢 그대로 맞은 직관</h3><ul>
+      <li>방송사 단독 위험 — KBS·MBC·JTBC <b class="dn">비문화 50~100%</b>(사장 부친상·노조·청문회). 2차확인 필수 확정.</li>
+      <li>도끼 = 사회 多 — 힙합 동반만 문화, CRIME 우선. 운영자 안 그대로.</li>
+      <li>충돌어 2차게이트 정상작동 — 레이/슈화/하니 사회분류 정확.</li>
+    </ul></div>
+    <div class="box"><h3 style="margin-top:0">🔴 데이터가 뒤집은 직관</h3><ul>
+      <li><b>화사</b>: '화사하다' 오탐이 문제가 <b>아니라</b>, 진짜 가수 화사인데 <b>분류실패(빈칸)</b>가 문제 → AMBIG에 <b>추가</b>해야(빠져있음).</li>
+      <li><b>스포츠경향 등 전용매체</b>: 추가 <b>불가</b> — 수집기가 클러스터 대표를 종합지로 띄워 전용매체가 노출 0건. 매체규칙은 사실상 사문화 → URL 도메인 화이트리스트가 진짜 레버.</li>
+      <li><b>[Oh!쎈] 외 태그</b>: 변형([Oh!쎈 이슈/현장])은 <code>OSEN_RE</code>가 <b>이미 다 잡음</b>. 진짜 누수는 [순간포착]·[핫피플]뿐.</li>
+    </ul></div>
+  </div>
+
+  <h3>영어 약어 = 지뢰밭 (분신 #2·#7 — 반드시 단어경계 분리)</h3>
+  <p><code>re.I</code>+substring으로 넣으면 즉시 터지는 것: <b class="dn">IVE → 9건</b>(surv<b>ive</b>·l<b>ive</b>·arch<b>ive</b>), <b class="dn">NCT → sa<b>nct</b>uary</b>, <b class="dn">IU → FIU</b>, TXT→.txt, ROSE→장미, god→신, TWS→무선이어폰, EXO→exoplanet.
+  → 영문은 한글과 <b>다른 정규식</b>: <code>(?&lt;![A-Za-z])…(?![A-Za-z])</code> 영문경계 + 위험약어는 2차게이트. 안전군(aespa·NMIXX·ILLIT·STAYC·ENHYPEN·ATEEZ·RIIZE·ZEROBASEONE)만 직등재.</p>
+
+  <h3>2차 키워드 풀 — 오염 솎아냄 (분신 #3 실측)</h3>
+  <p><b class="dn">빼야:</b> 출연(40%)·예고(60%)·진행(65%)·경기(35%)·골(38%)·부상(57%)·중계(100%) — 정치/경제 오염. &nbsp; <b class="acc">안전:</b> 앨범·신곡·컴백·콘서트·녹화·MC·게스트·시청률·차트·발매·무대(정치무대 오염 0)·뮤비.</p>
+
+  <h2>✅ 권고 — 지금 / 보류 / AI / 구현</h2>
+  <div class="card">
+    <p><span class="pill p-go">즉시 머지 (저위험·고확신)</span></p>
+    <ul>
+      <li>그룹 영문 안전군 직등재(단어경계): aespa·NMIXX·ILLIT·STAYC·ENHYPEN·ATEEZ·RIIZE·ZEROBASEONE·THE BOYZ·NCT·BTS 등 + 한글 누락분.</li>
+      <li>예능 IP 직등재: 무한도전·런닝맨·놀면뭐하니·나는솔로·유퀴즈·흑백요리사·삼시세끼·미운우리새끼 (워크맨·복면가왕·환승만 2차).</li>
+      <li>가수 추가: 이영지·한로로·타블로 + <b>화사를 AMBIG에 추가</b>.</li>
+      <li>태그 +2가점: [순간포착]·[핫피플]·[공식]. &nbsp; <b class="dn">레이 즉시 제외</b>.</li>
+      <li>3차에 <b>"부정선거" 1단어 추가</b> = 운영자 예시 정확 해결·부작용 0(ROI 최고).</li>
+    </ul>
+    <p><span class="pill p-hold">보류 — 데이터가 위험</span></p>
+    <ul>
+      <li>방송사·소속사 단독 등재 보류(2차 강게이트 설계 후). 충돌어 저빈도(지수·청하·리사·가을)는 등재가치 ≈0.</li>
+      <li>리센느 영문표기·클래식 기획사 명단 = <b>운영자 확인 대기</b>.</li>
+    </ul>
+    <p><span class="pill p-ai">AI에 위임 (키워드로 불가)</span></p>
+    <ul>
+      <li>셀럽 + 술어형(침묵·논란·입장·동참) = 맥락 판단 → gate_judge. "유재석 부정선거 <b>침묵</b>"의 '침묵'은 키워드 불가.</li>
+      <li><b>cross-2 cat 판정을 gate_judge로 당기기</b>(빈칸·셀럽경계 표적). 같은 콜에서 cat 이미 출력 = 한계비용 0. <b>이게 가장 큰 레버.</b></li>
+    </ul>
+  </div>
+  <div class="card">
+    <p><span class="pill p-go">구현 (분신 #9 — 레포에 이미 있는 패턴 재사용)</span></p>
+    <p>지금 py(<code>to_candidates.py</code>)·js(<code>index.html</code>) 2곳에 정규식 <b>손복붙</b>(주석 "동기" 7회). 72개+다단계로 가면 드리프트 수학적 확정. → <b>단일 SSOT</b> <code>lexicon/categories.tsv</code>(0~5열) + <code>pools.tsv</code>(2·3차 풀) → <code>build_lexicon.py</code>가 py/js 투영 → <code>check_refs.py</code> 하드게이트. <span class="muted">이건 신규 발명이 아니라 <code>build_library</code>·<code>build_design_mirror</code>·<code>check_sens_vocab</code> 3종 가동 패턴의 재적용.</span></p>
+    <p class="muted">+ 가시화 무료: SSOT를 한 번 더 투영해 <code>viewer/lexicon.html</code>(티어별 색칠 표) = 항상 정합되는 이 문서의 라이브판.</p>
+  </div>
+
+  <h2>📋 캡처된 운영자 요구 (대화 누락 0)</h2>
+  <p class="muted">영문그룹명·예능·이영지·도끼(힙합조건)·화사(2중)·오쎈외태그·스포츠경향매체·IU·한로로·타블로·STAYC/PROMIS9/리센느/NMIXX/ILLIT/레드벨벳 영문·보이그룹영문·소속사·클래식기획사·방송사+근7년예능+유튜브·셀럽사회경계(유재석부정선거)·스포츠스타동일·0~5열테이블·치트키(듣보잡)·분신술가시화 — <b>전부 위 설계에 반영</b>. 미해결 2건: 리센느 영문표기·클래식기획사 명단(운영자 확인).</p>
+
+</div>
+</body>
+</html>

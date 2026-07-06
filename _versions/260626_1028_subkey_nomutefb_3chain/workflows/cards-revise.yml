@@ -1,0 +1,83 @@
+name: cards-revise
+
+# 뷰어 🃏카드 수정 요청(api/revise-cards → 디스패치) → Claude 헤드리스가 cards/<file>/cards.md(카드 프롬프트
+# 전체)를 운영자 지시대로 재기획 → 같은 파일 커밋(= 뷰어 카드에 반영). status.json updated 갱신으로 뷰어가 완료 감지.
+# ⛔ 재요약 아님(기존 요약을 맥락으로만) · ⛔ 제미나이 0(이미지 재슛 안 함·프롬프트 텍스트만) = 구독 OAuth·무료·과금 0.
+# 인증·디스패치 = news-revise 미러(구독 OAuth·종량제 키 미사용).
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: '큐 항목 id(확장자 없이 · 260616-0823-…)'
+        type: string
+      instruction:
+        description: '카드 재기획 지시(자연어)'
+        type: string
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: card-make   # card_plan·card-make·card_refresh와 같은 그룹 = 같은 cards/ 직렬화(동시 쓰기·git 충돌 방지)
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  revise-cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 최신 main 기준(순차 큐에서 옛 커밋 체크아웃 방지)
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Revise cards.md
+        env:
+          # 인증 = 구독 OAuth(API 키 미사용) — news-revise와 동일 동적 계정 선택 + 폴오버
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          FILE: ${{ inputs.file }}
+          INSTRUCTION: ${{ inputs.instruction }}
+          # 🔒 제미나이 0: 이 잡엔 GDRIVE_SA_JSON·GEMINI_API_KEY env 자체가 없음(이미지 재슛 불가 = 텍스트만).
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT} · 대상: ${FILE}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
+          bash .github/scripts/revise-cards.sh
+
+      - name: Commit result
+        if: always()
+        env:
+          BRANCH: ${{ github.ref_name }}
+          FILE: ${{ inputs.file }}
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add cards 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 토큰 계측 shard(있을 때만)
+          git commit -m "cards-revise: ${FILE:-?} 카드 프롬프트 재기획" || { echo "변경 없음"; exit 0; }
+          # 동시 커밋 레이스 대비 — 매 시도 origin 흡수 후 push
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패"; exit 1; }

@@ -1,0 +1,135 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>:active 눌림 효과 통일 — 인터랙티브 미리보기 (260628)</title>
+<style>
+:root{
+  --bg:#121212;--pan:#16171a;--line:#2a2c31;--fg:#e9eaec;--mut:#8b8f98;--accent:#0FFD02;--accent-rgb:15,253,2;--danger:#ff5d5d;--warn:#f3c95a;--on-accent:#062108;
+  --ease:cubic-bezier(.2,.8,.3,1);--dur-fast:.12s;
+  /* ▼ 제안: 눌림 scale 토큰 사다리(14개 임의값 → 5단계 · 크기 클수록 덜 줄임=물리적) */
+  --press-xs:.82;  /* 작은 아이콘(≤22px)·닫기·클립 */
+  --press-s:.88;   /* 글래스 아이콘 버튼(.sbtn류 34px) */
+  --press-m:.93;   /* 토글·중간 버튼·FAB */
+  --press-l:.96;   /* 큰 버튼·생성(go)·카드·확인게이지 */
+  --press-pico:.55;/* 플레이트 없는 픽토그램-온리(투명/이미지 위) = 픽토만 축소 */
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(125% 70% at 50% -8%,rgba(var(--accent-rgb),.05),transparent 55%) fixed,var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:24px 16px 80px}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:21px;margin:0 0 4px}h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:13px;margin:0 0 8px}
+.hint{color:var(--accent);font-size:12.5px;margin:0 0 20px}
+h2{font-size:16px;margin:28px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2 .n{color:var(--accent);font-weight:800;margin-right:6px}
+p{margin:6px 0;font-size:13.5px}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin:12px 0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:10px 0}
+.lbl{font-size:11.5px;color:var(--mut);min-width:128px}
+code{background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;font-size:12px;color:#cfe9c8}
+.bad{color:var(--danger);font-weight:700}.good{color:var(--accent);font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(var(--accent-rgb),.07);color:var(--accent)}
+/* ===== 데모 버튼들 ===== */
+.btn{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--accent);-webkit-tap-highlight-color:transparent;user-select:none;
+  transition:transform var(--dur-fast) var(--ease),background .15s,border-color .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:rgba(255,255,255,.08)}
+.glass{width:34px;height:34px;border-radius:10px;backdrop-filter:blur(8px)}
+.go{padding:12px 20px;border-radius:999px;font-weight:800;font-size:14px}
+.card-d{width:100%;padding:16px;border-radius:14px;text-align:left;color:var(--fg)}
+.pico{width:30px;height:30px;border:none;background:transparent;color:var(--accent)}
+.pico svg,.glass svg{width:18px;height:18px}
+svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* 눌림 tiers */
+.p-xs:active{transform:scale(var(--press-xs))}
+.p-s:active{transform:scale(var(--press-s))}
+.p-m:active{transform:scale(var(--press-m))}
+.p-l:active{transform:scale(var(--press-l))}
+.p-pico:active svg{transform:scale(var(--press-pico))}
+.p-pico:active{background:transparent}
+.pico svg{transition:transform var(--dur-fast) var(--ease)}
+/* 모션 타입 데모 */
+.m-rot:active svg{transform:rotate(180deg)}
+.m-grow{animation:none}
+.m-grow.go-anim{animation:grow .42s var(--ease)}
+@keyframes grow{0%{transform:scale(.96)}45%{transform:scale(1.03)}100%{transform:scale(1)}}
+/* 중첩버그 데모 */
+.dlwrap{position:relative;display:inline-flex}
+.ack{position:absolute;inset:0;display:grid;place-items:center;color:var(--accent);pointer-events:none;border-radius:inherit;overflow:hidden}
+.ack.show svg{animation:ackpop .7s cubic-bezier(.18,1.5,.4,1)}
+@keyframes ackpop{0%{opacity:0;transform:scale(0)}30%{opacity:1;transform:scale(1.15)}55%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}
+.note{font-size:12px;color:var(--mut);margin-top:4px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;border:1px solid var(--line);margin:2px 4px 2px 0}
+</style></head><body><div class="wrap">
+
+<h1><b>:active 눌림 효과</b> 통일 — 인터랙티브 미리보기</h1>
+<p class="sub">260628 · 운영자 "액티브까지 통일, 제일 베스트로 · 중첩버그 확인 · 하나 바꾸면 다 바뀜 · 별로면 원복"</p>
+<p class="hint">▶ 아래 버튼들을 <b>실제로 눌러봐</b>(탭/클릭). 적용 전 사인오프용 — OK면 토큰화해서 4뷰어에 일괄 반영.</p>
+
+<h2><span class="n">발견</span>지금 상태 — scale 14개 임의값 + 모션 3종 혼재</h2>
+<div class="card">
+<p>현재 눌림 scale이 <code>.55 .8 .82 .85 .88 .9 .92 .94 .95 .955 .96 .97 .98 .99</code> <b>14가지</b>로 흩어져 있어. 다만 이건 <b>의도된 그라데이션</b>(요소가 클수록 덜 줄임 = 물리적으로 자연 — CII 문서화됨)이라 *하나로 합치면 오히려 퇴행*(카드가 작은 아이콘처럼 확 줄면 어색). <b>진짜 문제 = ① 값이 임의로 14개라 "하나 바꾸면 다 바뀜"이 안 됨 ② 모션 종류 혼재</b>(plain scale vs 회전 vs 키프레임 grow vs 픽토만 축소) <b>③ 중첩버그</b>(이미지 위 버튼에 ✓오버레이가 자기 아이콘과 겹침 — 최근 수정).</p>
+</div>
+
+<h2><span class="n">제안 A</span>scale 사다리 5토큰 (14개 → 5개 · "하나 바꾸면 그 tier 전부")</h2>
+<div class="card">
+<div class="row"><span class="lbl">픽토-온리 <code>--press-pico .55</code><br><span class="note">투명·이미지 위(플레이트X)</span></span>
+  <button class="btn pico p-pico"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button>
+  <button class="btn pico p-pico"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button></div>
+<div class="row"><span class="lbl">작은 아이콘 <code>--press-xs .82</code><br><span class="note">닫기·클립·≤22px</span></span>
+  <button class="btn glass p-xs"><svg viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+  <button class="btn glass p-xs"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+<div class="row"><span class="lbl">글래스 버튼 <code>--press-s .88</code><br><span class="note">.sbtn류 34px</span></span>
+  <button class="btn glass p-s"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></button>
+  <button class="btn glass p-s"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+<div class="row"><span class="lbl">토글·FAB <code>--press-m .93</code></span>
+  <button class="btn go p-m" style="padding:9px 16px;border-radius:999px">토글</button>
+  <button class="btn glass p-m" style="width:44px;height:44px;border-radius:50%"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>
+<div class="row"><span class="lbl">큰 버튼·생성 <code>--press-l .96</code></span>
+  <button class="btn go p-l">이미지 생성</button></div>
+<div class="row"><span class="lbl">카드 <code>--press-l .96</code></span>
+  <button class="btn card-d p-l" style="background:var(--pan)">수집함 카드 — 눌러봐(전체 카드 탭 피드백)</button></div>
+<p class="note">※ 5토큰 = <code>:root</code>에 정의 → 모든 버튼은 <code>scale(var(--press-*))</code> 참조. 값 하나 고치면 그 tier 전부 바뀜(아이콘 SSOT와 같은 원리).</p>
+</div>
+
+<h2><span class="n">제안 B</span>모션 종류 표준 — "눌림 = scale, 닫기만 회전 허용"</h2>
+<div class="card">
+<table>
+<tr><th>유형</th><th>현재</th><th>제안(표준)</th></tr>
+<tr><td>일반 버튼 눌림</td><td>plain scale(여러 값)</td><td class="good">scale 토큰(위 사다리) · 단일 ease/dur</td></tr>
+<tr><td>닫기(X)</td><td>일부 rotate180, 일부 scale</td><td class="good">scale + rotate180 유지(닫기 시맨틱 = 허용 예외)</td></tr>
+<tr><td>픽토-온리(투명)</td><td>픽토만 .55 축소</td><td class="good">유지(플레이트 없으니 박스 X)</td></tr>
+<tr><td>키프레임 grow(파일 들어옴 등)</td><td>fileIn 등 개별</td><td class="good">상태 전환(확인)에만 한정 · 눌림엔 안 씀</td></tr>
+</table>
+<div class="row" style="margin-top:12px"><span class="lbl">닫기 회전(허용 예외)</span>
+  <button class="btn glass p-xs m-rot"><svg viewBox="0 0 24 24" style="transition:transform .2s var(--ease)"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
+  <span class="note">닫기는 회전+scale OK(시맨틱)</span></div>
+</div>
+
+<h2><span class="n">제안 C</span>중첩버그 안전 규칙 (최근 수정 계승)</h2>
+<div class="card">
+<p><b class="bad">버그</b>: 이미지 위·투명 버튼에 ✓팝 오버레이(<code>.dl-ack</code>)를 깔면 버튼 자기 아이콘이 z 아래로 비쳐 <b>둘 다 보임(중첩)</b>.</p>
+<p><b class="good">규칙</b>: ① 플레이트 있는 버튼만 ✓오버레이(<code>overflow:hidden</code>으로 가둠) ② 픽토-온리·이미지 위 버튼은 <b>✓오버레이 끄고 scale만</b>(<code>.dl-ack{display:none}</code> · 이미 수정됨).</p>
+<div class="row">
+  <span class="lbl bad">✗ 잘못(중첩)</span>
+  <span class="dlwrap"><button class="btn pico" id="bugBtn" style="border:1px solid var(--line);border-radius:9px;width:38px;height:38px"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button><span class="ack" id="bugAck"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M5 13l4 4L19 7"/></svg></span></span>
+  <span class="note">← 누르면 ↓와 ✓가 겹쳐 보임</span>
+</div>
+<div class="row">
+  <span class="lbl good">✓ 올바름(scale만)</span>
+  <button class="btn pico p-pico" style="border:1px solid var(--line);border-radius:9px;width:38px;height:38px"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg></button>
+  <span class="note">← 깔끔한 눌림만</span>
+</div>
+</div>
+
+<h2><span class="n">반영 방식</span>"하나 바꾸면 다 바뀜" + 원복 안전</h2>
+<div class="card">
+<p>① <code>:root</code>에 <code>--press-xs/s/m/l/pico</code> 5토큰 추가(viewer index → 거울로 4뷰어) → ② 14개 임의 scale을 <code>var(--press-*)</code>로 치환(tier 매핑) → ③ <code>check_refs</code>에 "raw scale 신규 금지" 경고(아이콘 SSOT 게이트와 같은 자기강제).</p>
+<p><b>원복 안전</b>: 토큰은 <code>:root</code> 5줄 + 치환이라, 별로면 git revert 1방. 픽셀도 tier 매핑이 기존값과 ±0.02라 회귀 미미.</p>
+<p class="hint" style="margin-top:10px">▶ 이 표준으로 갈까? 탭해보고 <b>"ㄱ"이면 토큰화해서 4뷰어 일괄 반영</b> · 특정 tier 값 조정 원하면 말해줘 · "원복/하지마"면 안 함.</p>
+</div>
+
+<script>
+// 중첩버그 데모: 누르면 ✓팝(겹침 시연)
+var bb=document.getElementById('bugBtn'),ba=document.getElementById('bugAck');
+bb.addEventListener('click',function(){ba.classList.remove('show');void ba.offsetWidth;ba.classList.add('show');});
+</script>
+</div></body></html>

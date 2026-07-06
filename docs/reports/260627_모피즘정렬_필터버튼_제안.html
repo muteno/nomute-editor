@@ -1,0 +1,242 @@
+<!doctype html><html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>모피즘 정렬 + 필터 픽토그램 버튼 — 제안 (260627)</title>
+<style>
+  :root{
+    --bg:#121212; --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --accent-2:#ff9614;
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697; --glass2:rgba(14,26,18,.55);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --danger:#ff5b4a; --warn:#ffd24a; --info:#0cd0f7;
+    --r-l:16px; --r-m:11px; --r-s:9px; --blur-l:22px; --blur-m:14px;
+    --sp-2:12px; --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px;-webkit-font-smoothing:antialiased;padding:0 0 60px}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px}
+  h1{font-size:21px;font-weight:800;margin:6px 0 2px}
+  h2{font-size:16px;font-weight:800;margin:30px 0 10px;padding-top:14px;border-top:1px solid var(--line);color:var(--accent-bright)}
+  h3{font-size:13.5px;font-weight:800;margin:18px 0 7px;color:var(--fg-2)}
+  p,li{font-size:13.5px;color:var(--fg-2);line-height:1.7}
+  code{background:rgba(var(--accent-rgb),.1);color:var(--accent-bright);padding:1px 5px;border-radius:5px;font-size:12px}
+  .sub{color:var(--mut);font-size:12px}
+  .pin{color:var(--accent)}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:rgba(255,255,255,.04);font-weight:700;color:var(--fg)}
+  .ok{color:var(--accent)} .no{color:var(--danger)} .am{color:var(--warn)}
+  .note{background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.22);border-radius:var(--r-m);padding:11px 13px;margin:12px 0;font-size:12.5px}
+  .warn{background:rgba(255,150,20,.08);border:1px solid rgba(255,150,20,.28)}
+
+  /* ===== 인터랙티브 목업(폰 프레임) ===== */
+  .demos{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:14px 0}
+  .phone{width:300px;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#0c0e0d;position:relative;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+  .phlbl{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:11px;font-weight:800;color:var(--mut);z-index:50;pointer-events:none}
+  .banner{height:120px;margin:26px 12px 0;border-radius:16px;position:relative;
+    background:linear-gradient(135deg,#1a3a1a,#0c1a0c 60%,#101810);border:1px solid var(--line);
+    box-shadow:0 12px 30px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08)}
+  .banner.scrap{background:linear-gradient(135deg,#3a2a0a,#1a1206 60%,#181206)}
+  .banner.sns{background:linear-gradient(135deg,#0a2a3a,#06141a 60%,#06141a)}
+  .banner b{position:absolute;right:12px;top:14px;font-size:12px;font-weight:800;color:rgba(255,255,255,.5);letter-spacing:.5px;text-align:right;line-height:1.3}
+  .prof{position:absolute;right:18px;bottom:-18px;width:48px;height:48px;border-radius:50%;border:3px solid var(--bg);z-index:6;
+    background:linear-gradient(135deg,var(--accent-bright),var(--accent))}
+  .banner.scrap .prof{background:linear-gradient(135deg,#ffd24a,#ff9614)}
+  .banner.sns .prof{background:linear-gradient(135deg,#9becff,#0cd0f7)}
+  .toolicons{position:absolute;right:74px;bottom:-12px;display:flex;gap:6px;z-index:6}
+  .toolicons svg{width:17px;height:17px;stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round;filter:drop-shadow(0 0 4px rgba(var(--accent-rgb),.4))}
+  .banner.scrap ~ * .toolicons svg,.banner.scrap + .vh .toolicons svg{stroke:#ff9614}
+  .vh{position:relative;margin:20px 14px 4px;min-height:26px}
+  .vh .ttl{font-size:16px;font-weight:800;color:var(--fg);margin:0}
+
+  /* 필터 픽토그램 버튼(테두리 없음·픽토그램만) = .ts-toggle 패턴 계승 */
+  .fbtns{position:absolute;top:1px;right:0;display:flex;gap:10px;align-items:center}
+  .fbtn{width:30px;height:30px;display:grid;place-items:center;background:none;border:none;padding:0;cursor:pointer;
+    position:relative;transition:transform var(--dur) var(--ease)}
+  .fbtn::after{content:"";position:absolute;inset:-6px}/* 탭영역 ≥40 확장 */
+  .fbtn svg{width:21px;height:21px;stroke:var(--mut);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke var(--dur),filter var(--dur)}
+  .fbtn:active{transform:scale(.9)}
+  .fbtn.on svg,.fbtn.live svg{stroke:var(--accent);filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),.45))}
+
+  /* 카드만 토글(off=무채색 → on=네온그린) */
+  /* 카테고리 칩바(BEFORE에만) */
+  .chipbar{display:flex;gap:13px;flex-wrap:wrap;margin:6px 14px 2px;font-size:12px}
+  .chip{color:var(--mut);font-weight:600;background:none;border:none;padding:0;cursor:pointer}
+  .chip.on{color:var(--accent);font-weight:800;text-shadow:0 0 10px rgba(var(--accent-rgb),.5)}
+  .cardonly-tg{position:absolute;top:2px;right:0;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--mut)}
+  .cardonly-tg .tk{width:30px;height:18px;border-radius:999px;background:rgba(var(--accent-rgb),.08);border:1px solid rgba(255,255,255,.12);position:relative}
+  .cardonly-tg .tk::after{content:"";position:absolute;top:50%;left:2px;width:13px;height:13px;border-radius:50%;background:var(--mut);transform:translateY(-50%);transition:transform var(--dur)}
+
+  /* 필터 모피즘 오버레이 */
+  .fpop{position:absolute;top:34px;right:0;z-index:22;min-width:150px;display:none;
+    background:linear-gradient(165deg,rgba(22,36,27,.72),rgba(11,19,14,.80));
+    -webkit-backdrop-filter:blur(22px) saturate(1.4);backdrop-filter:blur(22px) saturate(1.4);
+    border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:9px 8px;
+    box-shadow:0 24px 56px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);
+    transform-origin:top right;animation:popIn .18s var(--ease) both}
+  .fpop.show{display:block}
+  @keyframes popIn{from{opacity:0;transform:scale(.9) translateY(-8px)}to{opacity:1;transform:none}}
+  .fpop .fp-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+  .fpop .chip{font-size:12.5px;padding:5px 4px;text-align:left}
+  .feed{padding:2px 14px 14px}
+  .card{margin-top:8px;border-radius:14px;padding:11px 12px;background:rgba(16,30,22,.30);border:1px solid var(--line);
+    box-shadow:0 12px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.06);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .card .ct{font-size:10.5px;color:var(--mut);display:flex;justify-content:space-between}
+  .card .ct .cat{font-weight:700}
+  .card .tt{font-size:13px;font-weight:700;line-height:1.4;margin:5px 0 0}
+  .panel{margin-top:8px;border-radius:16px;padding:10px 9px 12px;background:rgba(255,255,255,.018);border:1px solid rgba(255,255,255,.07);
+    -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .panel .cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .colttl{font-size:11px;font-weight:800;padding:2px 2px 8px}
+  .colttl.a{color:#ff9638} .colttl.b{color:var(--accent)}
+  .mini{border-radius:11px;padding:8px 9px;background:rgba(14,26,18,.55);border:1px solid var(--line2);font-size:11px;font-weight:700}
+  /* 정렬 가이드선 */
+  .alignline{position:absolute;left:0;right:0;height:0;border-top:1.5px dashed rgba(var(--accent-rgb),.85);z-index:40;pointer-events:none}
+  .alignline span{position:absolute;right:6px;top:-15px;font-size:9px;color:var(--accent);font-weight:800}
+
+  .ctl{display:flex;gap:8px;justify-content:center;margin:6px 0 2px;flex-wrap:wrap}
+  .ctl button{background:rgba(var(--accent-rgb),.1);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.3);
+    border-radius:999px;padding:7px 15px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+  .ctl button:active{transform:scale(.96)}
+  .ctl button.active{background:var(--accent);color:#062108}
+  .pick{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0}
+  .pick .opt{flex:1;min-width:120px;border:1px solid var(--line);border-radius:var(--r-m);padding:10px;text-align:center}
+  .pick .opt svg{width:26px;height:26px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .pick .opt .nm{font-size:11px;color:var(--mut);margin-top:6px}
+</style></head>
+<body><div class="wrap">
+
+<h1>모피즘 첫 블록 정렬 + 필터 픽토그램 버튼</h1>
+<p class="sub">구현 보고서 · 260628 · viewer/index.html (뉴스 요약 / 레거시 / SNS 3탭) · 브랜치 <code>claude/morphism-alignment-filter-ui-fycr8y</code> · <b>라이브(main) 아님 — 확인 후 머지</b></p>
+
+<div class="note" style="border-color:rgba(15,253,2,.4)">
+<b>✅ 구현 완료 + 3인 적대검증 통과 + 실측 정렬 확인.</b><br>
+· <b>정렬 실측(폰 412px, Chromium):</b> 전 feed 276 / scrap 245 / sns 226 → <b class="ok">후 234 / 234 / 234 (3탭 통일)</b><br>
+· <b>3인 검증(Opus·READ-ONLY·서로 다른 앵글):</b> ①레이어/이벤트 = ✅버그0 · ②CSS/정렬 = ✅회귀0 · ③기능/접근성 = ❌1 발견→수정 완료<br>
+· <b>검증이 잡은 버그(점6):</b> ⓐ 칩 클릭 후 오버레이 오작동 닫힘(renderChips 노드 detach) → <code>stopPropagation</code> 가드 / ⓑ 당겨서새로고침 <code>blocked()</code>에 필터 오버레이 누락 → 추가 / ⓒ 탭전환 시 오버레이 미정리 → <code>closeFilterPop</code> 추가 → <b>전부 수정·재검증.</b><br>
+· <b>정리:</b> 옛 죽은 토글 CSS(.toggle/.tk/.tlbl, raw 흐림 2개) 제거 = raw→token 교체로 디자인시스템 raw 순증 0 · <code>check_refs</code> 통과.
+</div>
+
+<div class="note">먼저 <b>실측</b>했어(폰 412px, Chromium 실제 렌더). 배너 하단 기준 첫 모피즘 블록 시작 Y:
+<table><tr><th>탭</th><th>첫 모피즘 블록</th><th>현재 시작 Y</th><th>배너→블록 간격</th></tr>
+<tr><td>① 레거시(scrap)</td><td>누적/신규 글래스 패널</td><td>~245</td><td>~76</td></tr>
+<tr><td>② SNS</td><td>첫 소셜 카드</td><td>226</td><td>57</td></tr>
+<tr><td>③ 뉴스요약(feed)</td><td>첫 기사 카드</td><td><b class="no">276</b></td><td><b class="no">107</b></td></tr></table>
+→ 셋 다 다름(네 관찰 정확). feed가 <b>카테고리 필터바 + 카드만 토글</b> 때문에 제일 밑으로 밀려 있음.</div>
+
+<h2>① 바꾸는 것 (네 1~10 요구 반영)</h2>
+<ul>
+<li><b>필터(카테고리 칩바)</b> → 헤더에서 빼고 <b>깔때기 픽토그램 버튼</b>(테두리 X·픽토그램만)으로. 누르면 그 아래 <b>모피즘 글래스 오버레이</b>로 칩이 펼쳐짐. <span class="sub">(점2·7)</span></li>
+<li><b>카드만 토글</b> → <b>카드 픽토그램 버튼</b>(테두리 X)으로. 평소 무채색(off), 누르면 <b class="ok">네온그린</b>(on). <span class="sub">(점3·9)</span></li>
+<li>두 버튼 모두 <b>프로필 바로 아래</b> 우측에 나란히. <span class="sub">(점4)</span></li>
+<li>필터바가 빠져 생긴 여백으로 <b>feed 첫 카드가 위로 올라와</b> 3탭 첫 블록 라인 통일. <span class="sub">(점1·5)</span></li>
+<li>전부 <b>기존 토큰·컴포넌트 계승</b>(<code>.ts-toggle</code> 무테 아이콘 · <code>msgpop</code> 글래스 · <code>popIn</code> · <code>:root</code> 토큰). 새로 만든 건 픽토그램 2개뿐. <span class="sub">(점10)</span></li>
+</ul>
+
+<h2>② 인터랙티브 목업 — 직접 탭해봐</h2>
+<p class="sub">아래 폰에서 <b>깔때기</b>=필터 오버레이 열림 / <b>카드</b>=네온그린 토글. BEFORE/AFTER 버튼으로 비교.</p>
+<div class="ctl"><button id="bBefore">BEFORE (현재)</button><button id="bAfter" class="active">AFTER (제안)</button></div>
+
+<div class="demos" id="demoFeed"></div>
+
+<h3>3탭 정렬 비교 (AFTER)</h3>
+<p class="sub">초록 점선 = 첫 모피즘 블록 시작선. AFTER에선 3탭 모두 같은 라인(점선)에서 시작.</p>
+<div class="demos" id="demo3"></div>
+
+<h2>③ 레이어(z-index) 처리 보고 <span class="sub">(점7)</span></h2>
+<p>필터 오버레이가 <b>프로필 팝업(메뉴·메시지함)</b>과 같은 우상단에서 열려서 겹칠 수 있음. 처리 방식:</p>
+<table>
+<tr><th>레이어</th><th>요소</th><th>z-index</th><th>비고</th></tr>
+<tr><td>토스트/알림</td><td>.qflash / .failmenu</td><td>40 / 41</td><td>최상(불변)</td></tr>
+<tr><td>바텀네비</td><td>.bnav</td><td>35</td><td>불변</td></tr>
+<tr><td class="am">필터 오버레이(신규)</td><td>.fpop</td><td><b>22</b></td><td>프로필 팝업 바로 위</td></tr>
+<tr><td>프로필 메시지함</td><td>.msgpop</td><td>21</td><td>불변</td></tr>
+<tr><td>프로필 메뉴</td><td>.pmenu</td><td>20</td><td>불변</td></tr>
+</table>
+<div class="note"><b>핵심: 상호 배타(겹침 자체를 없앰).</b> 기존 <code>closeOverlays()</code> 시스템에 필터 오버레이를 등록 → <b>필터 열면 프로필 팝업이 자동으로 닫히고, 프로필 누르면 필터가 닫힘.</b> 둘이 동시에 떠 있는 일이 없음. 스크롤·바깥 탭에도 같이 닫힘(기존 패턴 그대로). z=22는 닫힘 애니가 겹치는 찰나에도 필터가 위로 오게 하는 안전값(방금 누른 게 위). <b>※ 이 값이 마음에 안 들면 말해줘 — 바로 조정.</b></div>
+
+<h2>④ 픽토그램 선택 <span class="sub">(점10: 새로 만드는 건 확인)</span></h2>
+<p>규약(<code>구성도/픽토그램.html</code>)에 '필터' 아이콘은 없어서 표준형으로 제안. '카드'는 규약의 레이어/스택 계열. 기본값은 왼쪽(굵게).</p>
+<h3>필터 버튼</h3>
+<div class="pick">
+<div class="opt"><svg viewBox="0 0 24 24"><path d="M3 5h18l-7 8.5V20l-4-2v-6.5z"/></svg><div class="nm"><b>A. 깔때기</b> (기본)</div></div>
+<div class="opt"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg><div class="nm">B. 슬라이더선</div></div>
+</div>
+<h3>카드만 버튼</h3>
+<div class="pick">
+<div class="opt"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><div class="nm"><b>A. 레이어/카드</b> (기본)</div></div>
+<div class="opt"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5L5 19"/></svg><div class="nm">B. 이미지</div></div>
+</div>
+
+<h2>⑤ 전/후 비교 · 5요소 <span class="sub">(§🎯②)</span></h2>
+<table>
+<tr><th>항목</th><th>전</th><th>후</th></tr>
+<tr><td>feed 첫 카드 시작 Y</td><td>276 (제일 낮음)</td><td class="ok">~228 (3탭 통일선)</td></tr>
+<tr><td>카테고리 필터</td><td>헤더 칩바(항상 펼쳐짐)</td><td>깔때기 버튼 → 모피즘 오버레이</td></tr>
+<tr><td>카드만</td><td>토글(트랙+글자)</td><td>카드 픽토그램(off 무채색→on 네온그린)</td></tr>
+<tr><td>장점</td><td colspan="2" class="ok">3탭 시각 일관 · 헤더 간결 · 첫 화면에 카드 더 많이 · 픽토그램 탭영역 ≥40 보장</td></tr>
+<tr><td>단점/리스크</td><td colspan="2" class="am">필터가 한 단계 숨음(탭 1번 더). 단, 상태는 깔때기 점등(활성 시 네온)으로 항상 보임 → 발견성 보완</td></tr>
+<tr><td>효율성</td><td colspan="2">기존 칩 핸들러·렌더 그대로 재사용(로직 0 변경) · DOM 위치만 이동</td></tr>
+<tr><td>품질저하 리스크</td><td colspan="2">낮음 — 동작 동일, 위치/표현만. 3인 적대검증 + 재실측으로 회귀 확인 예정</td></tr>
+</table>
+
+<h2>⑥ 진행 상태</h2>
+<p>✅ viewer 적용 → ✅ 3인 적대검증(버그 1건 발견·수정) → ✅ 재실측(234/234/234) → ✅ <code>check_refs</code> 통과 → ✅ 브랜치 push → ✅ draft PR. <b>남은 건 네 최종 확인 → main(라이브) 머지뿐.</b> 정렬 기준(첫 글래스 블록)·픽토그램(깔때기·레이어)·레이어(z=22 상호배타)가 마음에 안 들면 말해 — 브랜치라 바로 조정.</p>
+
+<script>
+const CATS=[['전체','var(--accent)'],['이슈','#ffd24a'],['정치','#f5807f'],['사회','#5fdfa3'],['경제','#f3c95a'],['문화','#ef93cb'],['국제','#45cdf2'],['테크','#a78bfa']];
+const FUNNEL='<path d="M3 5h18l-7 8.5V20l-4-2v-6.5z"/>';
+const CARDIC='<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>';
+function chips(grid){return CATS.map((c,i)=>`<button class="chip${i==0?' on':''}" style="${i==0?'':'color:'+c[1]}">${c[0]}</button>`).join('')}
+function feedPhone(mode){
+  const after=mode==='after';
+  return `<div class="phone"><div class="phlbl">뉴스 요약 (feed)</div>
+   <div class="banner"><b>THE RIGHT<br>TO TELL</b><div class="toolicons"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg></div><div class="prof"></div></div>
+   <div class="vh"><p class="ttl">뉴스 요약</p>
+     ${after?`<div class="fbtns">
+        <button class="fbtn" id="filtBtn" aria-label="필터"><svg viewBox="0 0 24 24">${FUNNEL}</svg></button>
+        <button class="fbtn" id="cardBtn" aria-label="카드만"><svg viewBox="0 0 24 24">${CARDIC}</svg></button>
+        <div class="fpop" id="fpop"><div class="fp-grid">${chips()}</div></div>
+     </div>`:`<div class="cardonly-tg"><span class="tk"></span>카드만</div>`}
+   </div>
+   ${after?'':`<div class="chipbar">${chips()}</div>`}
+   <div class="feed" style="position:relative">
+     <div class="alignline" style="top:${after?'2':'42'}px"><span>첫 블록</span></div>
+     <div class="card"><div class="ct"><span class="cat" style="color:#45cdf2">국제 · 2시간 전</span><span class="ok">NEW</span></div><p class="tt">친명·친청 이어 '친석'… 민주당 프레임 전쟁</p></div>
+     <div class="card"><div class="ct"><span class="cat" style="color:#ef93cb">문화 · 10시간 전</span><span>10시간 전</span></div><p class="tt">'하와수' 정형돈, '무한도전' 하차 후 상태 심각</p></div>
+   </div></div>`;
+}
+function tabPhone(kind){
+  let inner,cls='',lbl,line;
+  if(kind==='scrap'){cls='scrap';lbl='레거시 (scrap)';line=28;
+    inner=`<div class="feed" style="position:relative"><div class="alignline" style="top:${line}px"><span>첫 블록</span></div>
+      <div class="panel"><div class="cols"><div><div class="colttl a">누적</div><div class="mini">'내란 가담' 박성재…</div></div><div><div class="colttl b">신규</div><div class="mini">[속보] 아파트 화재…</div></div></div></div></div>`;}
+  else if(kind==='sns'){cls='sns';lbl='SNS';line=10;
+    inner=`<div class="feed" style="position:relative"><div class="alignline" style="top:${line}px"><span>첫 블록</span></div>
+      <div class="card"><div class="ct"><span class="ok">🔥 14.9 · 3소스</span><span>30분 전</span></div><p class="tt">곧 시작될 대한민국 32강 운명 ㄷㄷㄷ</p></div>
+      <div class="card"><div class="ct"><span class="ok">🔥 8.9 · 2소스</span><span>1시간 전</span></div><p class="tt">ㅇㅎ)갑자기 노출 심해진 여돌</p></div></div>`;}
+  else{line=10;lbl='뉴스요약 (feed)';
+    inner=`<div class="feed" style="position:relative"><div class="alignline" style="top:${line}px"><span>첫 블록</span></div>
+      <div class="card"><div class="ct"><span class="cat" style="color:#45cdf2">국제 · 2시간 전</span><span class="ok">NEW</span></div><p class="tt">친명·친청 이어 '친석'…</p></div></div>`;}
+  return `<div class="phone" style="width:230px"><div class="phlbl">${lbl}</div>
+    <div class="banner ${cls}"><div class="prof"></div>${kind==='feed'?'<div class="fbtns" style="bottom:auto;top:auto;right:14px;position:absolute"></div>':''}</div>
+    <div class="vh"><p class="ttl" style="font-size:14px">${kind==='scrap'?'스크랩 큐레이션 - 레거시':kind==='sns'?'스크랩 큐레이션 - SNS':'뉴스 요약'}</p>
+      ${kind==='feed'?`<div class="fbtns"><button class="fbtn live"><svg viewBox="0 0 24 24">${FUNNEL}</svg></button><button class="fbtn"><svg viewBox="0 0 24 24">${CARDIC}</svg></button></div>`:''}</div>
+    ${inner}</div>`;
+}
+function mountFeed(mode){
+  document.getElementById('demoFeed').innerHTML=feedPhone(mode);
+  if(mode==='after'){
+    const fp=document.getElementById('fpop'),fb=document.getElementById('filtBtn'),cb=document.getElementById('cardBtn');
+    fb.onclick=e=>{e.stopPropagation();const s=fp.classList.toggle('show');fb.classList.toggle('on',s);};
+    cb.onclick=()=>cb.classList.toggle('on');
+    document.addEventListener('click',e=>{if(!fp.contains(e.target)&&e.target!==fb&&!fb.contains(e.target)){fp.classList.remove('show');fb.classList.remove('on');}});
+  }
+}
+document.getElementById('bBefore').onclick=function(){this.classList.add('active');document.getElementById('bAfter').classList.remove('active');mountFeed('before');};
+document.getElementById('bAfter').onclick=function(){this.classList.add('active');document.getElementById('bBefore').classList.remove('active');mountFeed('after');};
+document.getElementById('demo3').innerHTML=tabPhone('scrap')+tabPhone('sns')+tabPhone('feed');
+mountFeed('after');
+</script>
+</div></body></html>

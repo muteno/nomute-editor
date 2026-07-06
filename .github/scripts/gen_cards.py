@@ -20,10 +20,16 @@ import thumb_gen as tg   # gemini_image · r2_upload · R2_ON · KEY (모듈 imp
 
 # ── 카드 장면 스타일(텍스트-free) — 외부 STYLE_PROMPT v3.1의 in-repo 등가물 ──
 # 핵심: 화면에 글자 절대 금지(텍스트는 합성), 4:5 full-bleed, 하단 안전영역, 한국 기본·미성년 안전.
+# ⚠️ 260702 문안 교정(14인 평의회 ⑥⑨): ① 구 "하단 40% 어둡거나 단순" ↔ NEGATIVE "no empty black areas·
+#   no caption space rendered as a solid color block" 정면 모순 → 검은 띠/디테일 꽉참 사이 런마다 널뛰던 변덕 제거
+#   (= "조용한 영역·장면의 자연 연속"으로 두 지시가 같은 그림을 가리키게). ② 구 "어떤 글자도 절대 금지" ↔
+#   01 [텍스트 처리]② 의도 글자(render the short Korean text …) 허용 모순 → 명시 문자열만 예외.
 CARD_STYLE = (
     "단일 프레임, 세로 4:5 full-bleed 구도. 장면 묘사를 충실히 반영한 고품질 이미지. "
-    "⚠️ 화면에 어떤 글자·문자·숫자·자막·캡션·로고·워터마크도 절대 넣지 마라(텍스트는 후처리 합성). "
-    "화면 하단 약 40%는 어둡거나 단순한 영역으로 두어 추후 자막 오버레이가 잘 얹히게 한다. "
+    "⚠️ 화면에 글자·문자·숫자·자막·캡션·로고·워터마크를 넣지 마라(텍스트는 후처리 합성). "
+    "단 위 프롬프트가 render the short Korean text로 명시한 그 문자열만 예외로 또렷이 렌더. "
+    "화면 하단 약 40%는 핵심 피사체·눈빛·증거를 두지 않는 조용한 영역으로 — 단색 검정 띠·빈 공간이 아니라 "
+    "장면의 자연스러운 연속(바닥·그림자·벽·어두운 배경)으로 채워, 추후 자막 오버레이가 잘 얹히게 한다. "
     "인물·배경은 한국을 기본값으로(장면이 명백히 외국이면 해당 지역). "
     "선정적·폭력적 과장 금지, 미성년자 안전, 또렷한 초점."
 )
@@ -38,7 +44,9 @@ def parse_cards(md):
         pm = re.search(r'\*\*이미지\s*프롬프트\*\*\s*\n+```[a-zA-Z]*\n([\s\S]*?)```', body)
         if not pm:
             continue   # 이미지 프롬프트 없으면 렌더 불가 → skip
-        out.append({"n": n, "text": (tm.group(1).strip() if tm else ""), "prompt": pm.group(1).strip()})
+        # 렌더 방어(운영자 260629): 텍스트 블록 내 빈 줄(연 구분) 제거 — 합성기가 빈 줄을 한 줄로 렌더해 중간 공백 생김.
+        _txt = "\n".join(l for l in tm.group(1).split("\n") if l.strip()).strip() if tm else ""
+        out.append({"n": n, "text": _txt, "prompt": pm.group(1).strip()})
     return out
 
 
@@ -149,6 +157,22 @@ def edit_one(stem, n):
 
     _u0 = len(tg._USAGE)
     has_scene = os.path.isfile(scene_local)
+    # 첨부 사진(EDIT_SCENE) 우선 — 운영자가 4:5 사진을 직접 첨부 = 그 사진이 곧 텍스트-free 장면.
+    # scene_local로 흡수 + regen=False 강제 → Gemini 미호출(제미나이 0·과금 0). wish/sync는 첨부 우선이라 클리어.
+    edit_scene = os.environ.get("EDIT_SCENE", "").strip()
+    if edit_scene:
+        if not os.path.isfile(edit_scene):
+            print("::error::EDIT_SCENE 파일 없음: " + edit_scene); return 1   # 명시 실패 — silent Gemini/text-only 폴백 차단(분신술 A2)
+        try:
+            from PIL import Image as _PILImage
+            _PILImage.open(edit_scene).verify()   # 디코드 가능성 선검증 — 손상본이 보존 장면을 덮기 전에 차단(분신술 A4)
+        except Exception as _e:
+            print("::error::첨부 사진 디코드 실패: {} ({})".format(edit_scene, _e)); return 1
+        shutil.copy2(edit_scene, scene_local)
+        has_scene = True
+        wish = ""
+        sync = False
+        print("  ✓ 카드 {} 첨부 4:5 사진을 장면으로 사용(제미나이 0)".format(n))
     regen = bool(wish) or sync or not has_scene   # 재생성 = 수동 wish · 체크(텍스트 반영) · 보존본 없음
     if regen and not tg.KEY:   # 키 없으면 재생성 불가 → 장면 있으면 문구만 폴백, 없으면 합성 불가
         if has_scene:

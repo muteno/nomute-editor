@@ -1,0 +1,203 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>24h 토큰 누수 분석</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0d0c;--pan:#15191b;--pan2:#1c2124;--fg:#e9eaec;--mut:#8b9499;--line:rgba(255,255,255,.09);
+--gn:#3ddc84;--gn2:rgba(61,220,132,.16);--cl:#ffb020;--cl2:rgba(255,176,32,.16);--dng:#ff5b5b;}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+line-height:1.5;padding:20px 16px 40px;max-width:780px;margin:0 auto;-webkit-font-smoothing:antialiased}
+h1{font-size:21px;font-weight:800;letter-spacing:-.02em}
+.win{color:var(--mut);font-size:12.5px;margin:4px 0 18px}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;margin-bottom:14px}
+.card h2{font-size:14px;font-weight:800;margin-bottom:3px}
+.card .desc{font-size:12px;color:var(--mut);margin-bottom:14px}
+.row{margin-bottom:13px}
+.lab{font-size:13px;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+.tag{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px}
+.tag.cl{background:var(--cl2);color:var(--cl)} .tag.gn{background:var(--gn2);color:var(--gn)}
+.track{position:relative;background:var(--pan2);border-radius:7px;height:26px;overflow:hidden}
+.fill{height:100%;border-radius:7px;transition:width .5s}
+.fill.cl{background:linear-gradient(90deg,rgba(255,176,32,.55),var(--cl))}
+.fill.gn{background:linear-gradient(90deg,rgba(61,220,132,.5),var(--gn))}
+.val{position:absolute;left:10px;top:0;height:26px;display:flex;align-items:center;font-size:11.5px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.val .f{color:#ffd0d0}
+.sub{font-size:11px;color:var(--mut);margin-top:3px}
+.kbox{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kpi{flex:1;min-width:120px;background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
+.kpi .n{font-size:23px;font-weight:800;letter-spacing:-.02em}
+.kpi .k{font-size:11px;color:var(--mut);margin-top:2px}
+.kpi .n.gn{color:var(--gn)} .kpi .n.cl{color:var(--cl)}
+.hwrap{display:flex;gap:3px;align-items:flex-end;height:120px;margin-top:6px}
+.hcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.hbar{position:relative;width:100%;max-width:18px;height:100px;display:flex;align-items:flex-end}
+.htot{position:absolute;bottom:0;width:100%;background:var(--gn2);border-radius:3px 3px 0 0}
+.hfail{position:absolute;bottom:0;width:100%;background:var(--dng);border-radius:3px 3px 0 0;z-index:2}
+.hlab{font-size:8.5px;color:var(--mut);margin-top:3px}
+.note{background:var(--cl2);border:1px solid rgba(255,176,32,.3);border-radius:10px;padding:12px 13px;font-size:12.5px;margin-top:4px}
+.note b{color:var(--cl)}
+.leg{font-size:11px;color:var(--mut);margin-top:9px;display:flex;gap:14px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.foot{font-size:11px;color:var(--mut);margin-top:20px;text-align:center}
+strong.gn{color:var(--gn)} strong.cl{color:var(--cl)} strong.dng{color:var(--dng)}
+</style></head><body>
+<h1>24h LLM 토큰 누수 분석</h1>
+<div class="win">06-30 07:33 ~ 07-01 07:33 KST · 웹앱(뷰어) 백엔드 · 썸네일·자막·영상 도구앱은 토큰 0(미포함)</div>
+
+<div class="kbox">
+  <div class="kpi"><div class="n">258</div><div class="k">총 LLM 콜</div></div>
+  <div class="kpi"><div class="n cl">44%</div><div class="k">판정기(gate+breaking) 비중</div></div>
+  <div class="kpi"><div class="n">17.8M</div><div class="k">캐시기록(cache_w) 토큰</div></div>
+</div>
+
+<div class="card">
+  <h2>① 소비처별 비중 (쿼터 환산 프록시)</h2>
+  <div class="desc">cost는 종량제 환산치 = 구독 쿼터 비중의 프록시(실제 달러 아님). <span style="color:var(--cl)">노랑=생성(opus 유지)</span> · <span style="color:var(--gn)">초록=분류(sonnet 전환됨)</span></div>
+  <div class="row">
+  <div class="lab">경중 채점 gate <span class="tag cl">분류</span></div>
+  <div class="track"><div class="fill cl" style="width:100.0%"></div><span class="val">29.1% · 101콜</span></div>
+  <div class="sub">opus99 + sonnet2</div>
+</div><div class="row">
+  <div class="lab">기사 큐레이션 analyze <span class="tag gn">생성</span></div>
+  <div class="track"><div class="fill gn" style="width:87.9%"></div><span class="val">25.6% · 33콜 · <span class='f'>실패14</span></span></div>
+  <div class="sub">opus33</div>
+</div><div class="row">
+  <div class="lab">카드 텍스트 card <span class="tag gn">생성</span></div>
+  <div class="track"><div class="fill gn" style="width:71.6%"></div><span class="val">20.9% · 44콜 · <span class='f'>실패20</span></span></div>
+  <div class="sub">opus44</div>
+</div><div class="row">
+  <div class="lab">속보 판정 breaking <span class="tag cl">분류</span></div>
+  <div class="track"><div class="fill cl" style="width:50.2%"></div><span class="val">14.6% · 66콜</span></div>
+  <div class="sub">opus64 + sonnet2</div>
+</div><div class="row">
+  <div class="lab">요약 요청 ask <span class="tag gn">생성</span></div>
+  <div class="track"><div class="fill gn" style="width:31.4%"></div><span class="val">9.1% · 11콜 · <span class='f'>실패4</span></span></div>
+  <div class="sub">opus11</div>
+</div><div class="row">
+  <div class="lab">요약 수정 revise <span class="tag gn">생성</span></div>
+  <div class="track"><div class="fill gn" style="width:2.1%"></div><span class="val">0.6% · 2콜 · <span class='f'>실패1</span></span></div>
+  <div class="sub">opus2</div>
+</div><div class="row">
+  <div class="lab">카드 수정 card-edit <span class="tag gn">생성</span></div>
+  <div class="track"><div class="fill gn" style="width:0.0%"></div><span class="val">0.0% · 1콜 · <span class='f'>실패1</span></span></div>
+  <div class="sub">opus1</div>
+</div>
+  <div class="note">📉 <b>분류 2종(gate+breaking)이 44%</b> — 이 24h는 거의 opus로 찍힘. 어제 sonnet 전환 직후라, <b>다음 24h부터 이 덩어리 절반 이상이 증발</b>. 그 뒤엔 analyze·card(생성·opus 유지)가 자연히 최대가 됨.</div>
+</div>
+
+<div class="card">
+  <h2>② 캐시기록(cache_w) — 숨은 누수</h2>
+  <div class="desc">콜당 ~53k 토큰이 재기록됨. 정체 = <b style="color:var(--cl)">CLAUDE.md 라우터 99KB(≈40k토큰)가 매 호출마다 컨텍스트로 자동 로드</b>. 제목 분류엔 한 줄도 안 쓰이는데 전 앱 룰북이 매번 올라감.</div>
+  <div class="row">
+  <div class="lab">경중 채점 gate</div>
+  <div class="track"><div class="fill cl" style="width:100.0%"></div><span class="val">5.4M · 콜당 53k</span></div>
+</div><div class="row">
+  <div class="lab">기사 큐레이션 analyze</div>
+  <div class="track"><div class="fill gn" style="width:80.9%"></div><span class="val">4.4M · 콜당 132k</span></div>
+</div><div class="row">
+  <div class="lab">카드 텍스트 card</div>
+  <div class="track"><div class="fill gn" style="width:52.7%"></div><span class="val">2.8M · 콜당 64k</span></div>
+</div><div class="row">
+  <div class="lab">속보 판정 breaking</div>
+  <div class="track"><div class="fill cl" style="width:65.4%"></div><span class="val">3.5M · 콜당 53k</span></div>
+</div><div class="row">
+  <div class="lab">요약 요청 ask</div>
+  <div class="track"><div class="fill gn" style="width:28.8%"></div><span class="val">1.6M · 콜당 141k</span></div>
+</div><div class="row">
+  <div class="lab">요약 수정 revise</div>
+  <div class="track"><div class="fill gn" style="width:1.7%"></div><span class="val">0.1M · 콜당 46k</span></div>
+</div>
+  <div class="note">💡 <b>cache_w는 모델 무관</b> — sonnet 전환과 별개 레버. judge를 CLAUDE.md 안 보는 컨텍스트로 돌리면 콜당 ~50k→수k로 축소 가능(별도 인계 문서 참조·검증 후 적용).</div>
+</div>
+
+<div class="card">
+  <h2>③ 시간대별 콜 · 실패 (KST)</h2>
+  <div class="desc">실패 38건 전부 out=0·cost=$0 즉시거부(쿼터 한도/입력 막다른길) = 토큰 낭비 아님. 단 활동시간대 집중 = 쿼터 압박 흔적.</div>
+  <div class="hwrap"><div class="hcol" title="00시 7콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:35%"></div></div>
+  <div class="hlab">00</div>
+</div><div class="hcol" title="01시 6콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:30%"></div></div>
+  <div class="hlab">01</div>
+</div><div class="hcol" title="02시 4콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:20%"></div></div>
+  <div class="hlab">02</div>
+</div><div class="hcol" title="03시 5콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:25%"></div></div>
+  <div class="hlab">03</div>
+</div><div class="hcol" title="04시 6콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:30%"></div></div>
+  <div class="hlab">04</div>
+</div><div class="hcol" title="05시 5콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:25%"></div></div>
+  <div class="hlab">05</div>
+</div><div class="hcol" title="06시 14콜 실패5">
+  <div class="hbar"><div class="hfail" style="height:25%"></div><div class="htot" style="height:70%"></div></div>
+  <div class="hlab">06</div>
+</div><div class="hcol" title="07시 20콜 실패4">
+  <div class="hbar"><div class="hfail" style="height:20%"></div><div class="htot" style="height:100%"></div></div>
+  <div class="hlab">07</div>
+</div><div class="hcol" title="08시 7콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:35%"></div></div>
+  <div class="hlab">08</div>
+</div><div class="hcol" title="09시 16콜 실패4">
+  <div class="hbar"><div class="hfail" style="height:20%"></div><div class="htot" style="height:80%"></div></div>
+  <div class="hlab">09</div>
+</div><div class="hcol" title="10시 8콜 실패1">
+  <div class="hbar"><div class="hfail" style="height:5%"></div><div class="htot" style="height:40%"></div></div>
+  <div class="hlab">10</div>
+</div><div class="hcol" title="11시 16콜 실패1">
+  <div class="hbar"><div class="hfail" style="height:5%"></div><div class="htot" style="height:80%"></div></div>
+  <div class="hlab">11</div>
+</div><div class="hcol" title="12시 18콜 실패6">
+  <div class="hbar"><div class="hfail" style="height:30%"></div><div class="htot" style="height:90%"></div></div>
+  <div class="hlab">12</div>
+</div><div class="hcol" title="13시 19콜 실패2">
+  <div class="hbar"><div class="hfail" style="height:10%"></div><div class="htot" style="height:95%"></div></div>
+  <div class="hlab">13</div>
+</div><div class="hcol" title="14시 8콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:40%"></div></div>
+  <div class="hlab">14</div>
+</div><div class="hcol" title="15시 7콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:35%"></div></div>
+  <div class="hlab">15</div>
+</div><div class="hcol" title="16시 6콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:30%"></div></div>
+  <div class="hlab">16</div>
+</div><div class="hcol" title="17시 14콜 실패4">
+  <div class="hbar"><div class="hfail" style="height:20%"></div><div class="htot" style="height:70%"></div></div>
+  <div class="hlab">17</div>
+</div><div class="hcol" title="18시 16콜 실패5">
+  <div class="hbar"><div class="hfail" style="height:25%"></div><div class="htot" style="height:80%"></div></div>
+  <div class="hlab">18</div>
+</div><div class="hcol" title="19시 15콜 실패3">
+  <div class="hbar"><div class="hfail" style="height:15%"></div><div class="htot" style="height:75%"></div></div>
+  <div class="hlab">19</div>
+</div><div class="hcol" title="20시 9콜 실패1">
+  <div class="hbar"><div class="hfail" style="height:5%"></div><div class="htot" style="height:45%"></div></div>
+  <div class="hlab">20</div>
+</div><div class="hcol" title="21시 11콜 실패1">
+  <div class="hbar"><div class="hfail" style="height:5%"></div><div class="htot" style="height:55%"></div></div>
+  <div class="hlab">21</div>
+</div><div class="hcol" title="22시 12콜 실패3">
+  <div class="hbar"><div class="hfail" style="height:15%"></div><div class="htot" style="height:60%"></div></div>
+  <div class="hlab">22</div>
+</div><div class="hcol" title="23시 9콜 실패0">
+  <div class="hbar"><div class="hfail" style="height:0%"></div><div class="htot" style="height:45%"></div></div>
+  <div class="hlab">23</div>
+</div></div>
+  <div class="leg"><span><span class="dot" style="background:var(--gn2)"></span>전체 콜</span><span><span class="dot" style="background:var(--dng)"></span>실패(즉시거부)</span></div>
+</div>
+
+<div class="card">
+  <h2>④ sonnet 전환 즉효 (콜당 출력토큰, 첫 라이브 런)</h2>
+  <div class="desc">effort max 제거로 불필요 추론토큰 증발 — 위원 평의회 예측 적중.</div>
+  <div class="row"><div class="lab">breaking · opus+effort</div><div class="track"><div class="fill cl" style="width:100%"></div><span class="val">6,003 tok</span></div></div>
+  <div class="row"><div class="lab">breaking · <strong class="gn">sonnet</strong></div><div class="track"><div class="fill gn" style="width:3.4%"></div><span class="val" style="left:auto;right:10px;color:var(--gn)">206 tok (−97%)</span></div></div>
+  <div class="row"><div class="lab">gate · opus+effort</div><div class="track"><div class="fill cl" style="width:100%"></div><span class="val">4,861 tok</span></div></div>
+  <div class="row"><div class="lab">gate · <strong class="gn">sonnet</strong></div><div class="track"><div class="fill gn" style="width:16.6%"></div><span class="val" style="left:auto;right:10px;color:var(--gn)">805 tok (−83%)</span></div></div>
+</div>
+
+<div class="foot">생성 시각 07-01 07:33 KST · 일회성 스냅샷(조회/진단) · 데이터=metrics/token-usage.jsonl + usage shard</div>
+</body></html>

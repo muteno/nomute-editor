@@ -1,0 +1,105 @@
+name: k-make
+
+# 뷰어 k 폼(Pages Function /api/k)이 발사 → 장면 입력으로 claude -p(/k 지침 런타임 Read)
+#   → Kling 복붙 프롬프트 md → viewer/k_out/<id>/prompt.md 커밋(폼이 폴링).
+# 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료, news/card와 동일). Kling 영상생성은 사용자가 웹앱에서.
+# ⚠️ 레퍼런스 이미지 = 옵트인 후속 스텝(직영 Gemini→R2 · k_refgen.py · Apps Script/Drive/Cloud Run 0 · 260621).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '출력 id(타임스탬프)'
+        type: string
+      scene:
+        description: '장면/기사 입력 텍스트'
+        type: string
+      refimage:
+        description: '레퍼런스 이미지도 생성(유료 Gemini/Drive)'
+        type: string
+        default: 'false'
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: NOMUTEFB
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: k-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  k:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30   # 레퍼런스 이미지(Drive 적응형 대기 상한 15분) 옵트인 대비
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Make k prompt
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
+          SCENE: ${{ inputs.scene }}
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1
+          fi
+          # OAuth를 조용히 덮어쓰는 변수 방어적 제거(news-analyze와 동일)
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/kmake.sh "$IN_ID"
+
+      - name: Reference image (직영 Gemini → R2 · 옵트인)
+        if: ${{ inputs.refimage == 'true' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$GEMINI_API_KEY" ] || { echo "::warning::GEMINI_API_KEY 미등록 — 레퍼런스 생략"; exit 0; }
+          MD="viewer/k_out/${IN_ID}/prompt.md"
+          [ -s "$MD" ] || { echo "::warning::prompt.md 없음 — 레퍼런스 생략"; exit 0; }
+          pip install --quiet requests pillow || { echo "::warning::deps 설치 실패 — 생략"; exit 0; }
+          # 직영: prompt.md '## 🖼 레퍼런스' → Gemini 직접 생성 → R2(or git 폴백). Apps Script/Drive/Cloud Run 0.
+          python3 .github/scripts/k_refgen.py "$MD" "viewer/k_out/${IN_ID}" || echo "::warning::레퍼런스 생성 실패(비치명)"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/k_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만
+          git commit -m "k: ${IN_ID} 프롬프트 출력" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }

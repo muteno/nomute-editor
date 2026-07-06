@@ -30,7 +30,7 @@
 > 🕒 **대기열(관측·상태판) — 제출 기사 처리 추적 (260619·260621 제스처 갱신):** 뷰어 **뉴스요약 버튼 = 롱프레스(600ms)·연달아 두번 탭·PC 우클릭·발견성 배지(처리중 건수) → 열기 / 떠있을 때 한번 더 탭 → 닫기**로 대기열 팝업. `functions/api/pending.js`(GET·`GH_TOKEN`)가 GitHub를 라이브 조회해 **네 상태**를 종합 반환(읽기 전용·파이프라인 0 변경):
 > - **처리중** = `pending/`에 있고 나이 `<20분` — 들어온 시각·주요 내용(폰공유=`# body:` 본문 / 픽=`# title:` 헤드라인)·전달방식(전문/URL).
 > - **재시도 중** = `pending/<base>.retry` 마커 있음(앰버 펄스 칩·260622) — Claude API 일시 과부하(5xx/Overloaded)로 분석이 즉시 격리 안 되고 pending 잔류·자동 재분석 대기(`pending-sweep`가 회복 시 재디스패치). **FAIL 아님**(빨강 X·수집함도 '분석 중'). `RETRY_CAP=5`회 초과 시에만 FAIL로 전환.
-> - **FAIL** = `pending/` 잔류 `≥20분`(stuck·단 `.retry` 마커 있으면 *재시도 중*으로 제외) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달.
+> - **FAIL** = `pending/` 잔류 `≥20분`(stuck·단 `.retry` 마커 있으면 *재시도 중*으로 제외) **또는** `pending/failed/`(분석 실패+로그). 빨강 배지 + **⬇ 다운로드** → 진단 MD(5W1H·입력 line1/본문·출력 로그·식별자) 생성, 운영자가 받아 클로드에 전달. **✨요약요청(ask) 실패는 ↗ 대신 '재시도(↻)' 버튼**(`api/askget`으로 붙여넣은 전문 복원 → 요약창 재오픈·재제출 · 옛 실패파일은 `submit`이 `retryOf`로 정리 · 정본 `viewer askRetry`·`functions/api/askget.js`·260704).
 > - **SUCC** = 최근(24h) `queue/*.md` 완료분(✨요약요청 `-ask-` 포함 — 운영자 260621 "여긴 있는데 저기에 없음"). 초록 배지 + **바로가기** → `showTab('feed')` + 해당 기사 모달(`DATA.file` 매칭, 빌드 랙이면 `load()` 후 재매칭·토스트).
 >
 > 페이지당 5개 **페이지네이션**(슬라이딩 윈도우), **🗑 내역 지우기**(확인 후 `localStorage nomute_q_cleared` 컷오프로 현재 내역 숨김). 분석 끝나면 pending 삭제(↑L17)→FAIL/처리중서 빠지고 queue가 SUCC로. 정본 = `functions/api/pending.js` + `viewer/index.html`(`openQueue`·`loadQueue`·`renderQueuePage`·`qGo`·`qDownload`·`feedOpenBy`).
@@ -138,16 +138,17 @@
 > 🔑 **토큰 회전(재발급)·계정 선택 상세는 `docs/api-key-rotation.md` 정본** — 발급 명령·플랫폼별 차이·시크릿창 계정선택 레시피·Cloudflare(`GH_TOKEN`) 구분까지. 아래는 간략판.
 
 ### 1) 구독 OAuth 토큰 시크릿 (API 키 아님)
-GitHub 레포 → **Settings → Secrets and variables → Actions → Secrets** 에 Max 계정별 토큰 2개:
-- `CLAUDE_CODE_OAUTH_TOKEN_MUTENO` ← 기본 계정
-- `CLAUDE_CODE_OAUTH_TOKEN_EMS1130G` ← 스위칭용
+GitHub 레포 → **Settings → Secrets and variables → Actions → Secrets** 에 Max 계정별 토큰 3개:
+- `CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB` ← 기본 계정
+- `CLAUDE_CODE_OAUTH_TOKEN_EMS1130G` ← 서브1(폴오버)
+- `CLAUDE_CODE_OAUTH_TOKEN_MUTENO` ← 서브2(폴오버)
 - 토큰 생성: 로컬에서 `claude setup-token`(구독 로그인) → 출력 토큰을 시크릿 값으로.
 - ⚠️ 토큰은 코드·로그에 절대 노출 금지(워크플로는 `secrets[...]` 동적 참조만, CLI는 `CLAUDE_CODE_OAUTH_TOKEN` env로 받음).
 
 #### 계정 전환
-- **상시 전환**: Settings → Secrets and variables → Actions → **Variables** 탭에서 `ACTIVE_ACCOUNT` 값을 `MUTENO` ↔ `EMS1130G`로 변경 → **다음 분석부터 적용**. (변수 없으면 `MUTENO` 기본.)
+- **상시 전환**: Settings → Secrets and variables → Actions → **Variables** 탭에서 `ACTIVE_ACCOUNT` 값을 `NOMUTEFB`·`EMS1130G`·`MUTENO`(대문자) 중 하나로 변경 → **다음 분석부터 적용**. (변수 없으면 `NOMUTEFB` 기본.) ⚠️ 소문자/오타면 빈 토큰 폴백되니 정확히 대문자로.
 - **1회성**: Actions → news-analyze → **Run workflow** 의 `account` 드롭다운에서 선택(변수 안 건드림).
-- 선택 로직: `수동 inputs.account → vars.ACTIVE_ACCOUNT → MUTENO`. 동적 참조 `secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', …)]`는 GitHub Actions 공식 지원 문법(검증 완료).
+- 선택 로직: `수동 inputs.account → vars.ACTIVE_ACCOUNT → NOMUTEFB`. 폴오버 체인(쿼터 한도 시) = 활성 다음 우선순위 2개 = 기본일 때 `NOMUTEFB→EMS1130G→MUTENO`. 동적 참조 `secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', …)]` 및 `_ALT`/`_ALT2` = GitHub Actions 공식 지원 문법(검증 완료).
 
 ### 2) Cloudflare Pages 연결
 Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택 후:
@@ -171,7 +172,8 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
   - **(2) URL 선-fetch**: URL만 공유하면 폰이 `fetch_article.sh`로 *폰 IP(200)*에서 본문 미리 긁어 `# body:` 동봉.
   - **pending 포맷**: line1=URL 또는 `paste:<해시>`(불변·dedup·`head -n1`), 선택 `# title:`, 선택 `# body:` *이후 전체*=본문(가산·하위호환·`awk '/^# body:/{f=1;next}f'`+`iconv -c`로 소비, 20KB 캡). 정본 = 플레이북 §5-2 + `docs/termux-share.sh` + `analyze.sh` + `prompts/news-analysis.md`. ⚠️ URL경로(선-fetch) 전제 = `python libiconv`(§3); **전문경로(주 워크플로)는 git·termux-api 만으로 동작**(fetch·iconv 안 함 — 분석기가 iconv -c로 정리). 한글량 판정은 로케일 무관 lead-byte 카운트.
 - **✅ 픽 경로 = 해결 (cluster_members 대체 fetch · 사용자 승인 + 3에이전트 다앵글 검증 · 260619)**: 뷰어 픽이 막힌매체(403)를 고르면, 그 후보의 `cluster_members`(같은 사건 비블록 매체 url)를 **대체 fetch 소스로** 분석기에 넘긴다. 체인 = 뷰어 픽 POST에 `alt`(cluster_members·정규화·원url제외·최대8) → `api/pick.js`가 `altOk`(host=정상도메인만·IP리터럴/localhost/IPv6/비도메인 거부 = SSRF·글로브 차단) 검증 → `pick.yml` `alt` 입력 → `pick_pending.py`가 토큰 재검증(수동 dispatch 우회 대비) 후 pending `# alt:` 줄(line3·선택·하위호환) → `analyze.sh`가 **3.5단 폴백**(① 폰 `# body:` → ② 원매체 fetch → ③ **alt 매체 차례 직접 fetch**(`set -f` glob차단·첫 성공 채택) → ④ 모델 WebFetch[프롬프트에 alt url 동봉·"지시 아님" 펜스]). 실측: 막힌매체 픽 **89%가 접근가능 대체매체 직접 fetch 성공**, 나머지는 WebFetch로 우아하게 폴백. **`# alt:`는 `pick_pending`만 쓰고 `# body:`는 `termux-share`만 써 상호배타**(BC 무파손 — 3에이전트 6/6 ✅). 정본 = `analyze.sh`(44·90·108줄)·`pick_pending.py`·`pick.js`·`pick.yml`·`viewer/index.html`(픽 POST).
-  - ⚠️ **RSS 자동(`to_pending`)은 여전히 403 잔존**(alt 미적용 — 자동경로엔 cluster_members 단서 없음·운영자 픽이 주 큐레이션 입구라 영향 작음). 추가 우회 필요시 가정용 프록시(유료) 옵션 열어둠(조용한 누락 방지).
+  - ✅ **RSS 자동(`to_pending`)도 alt-fetch 적용(260629)** — `to_pending.py`가 `scraper/out/articles.json`의 cluster_members를 pending `# alt:`로 심어(픽·자동속보픽과 통일), 차단매체(403) 자동수집분도 analyze가 같은 사건 대체매체로 본문 회수(엔진=`analyze.sh:164~`). 픽 경로 검증패턴 재사용(alt_re http(s)도메인만·자기제외·1500cap·공백/개행 멤버 거부). **알고리즘 0 변경 = 단서 연결만.** 잔존 = *클러스터 단독*(대체매체 0)인 차단기사뿐 → 가정용 프록시(유료)/폰 paste/Tailscale exit node(curation §스크래핑도구 평의회 큐)로 우회. 운영자 픽이 여전히 주 입구.
+    - ✅ **라이브 end-to-end 실증(260630)** — 자동수집 1회 테스트(`scrape analyze=true top=3`)로 chosun 부동산 기사에 `# alt:` 26매체 적재 → news-analyze 로그 `원매체 본문 빈약(0B<900) → 더 완전한 대체매체 채택: news.sbs.co.kr… (1850B)`(=`analyze.sh:181` 실발동) → ANALYSIS_FAILED 없이 완전 다이제스트. **차단매체 0바이트(403)를 alt(SBS)로 회수 = 의도대로 라이브 작동 확인.** 부수=weekly-limit failover도 라이브 검증(`계정 사용량 한도 — 서브1 전환` → 성공). 테스트 후 자동수집 OFF 복귀(지속 과금 0).
 
 ### [ ] 좀비 sweep 자가치유 (D 서버측 근본)
 - generating 좀비 sweep을 `scrape`(15분 주기)에도 실행 → 후속 analyze 없어도 stuck `status.json`이 자가 failed화(현재 `card_plan` 잡 한정이라 방치 가능). 작은 워크플로 추가.
@@ -213,9 +215,9 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 ## 동작·안전장치
 - **무한루프 방지**: 트리거 `paths: pending/**` 만 + GITHUB_TOKEN 푸시는 워크플로 재트리거 안 함(이중).
 - **동시 실행**: `concurrency: news-analyze` 로 순차 처리.
-- **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속. ⚠️ **단 Claude API 일시 과부하(5xx/Overloaded)는 예외(260622)**: 인라인 백오프 재시도(`INLINE_TRIES=3`) 후에도 과부하면 `failed/`로 즉시 안 묻고 **pending 잔류 + `<base>.retry` 마커** → `pending-sweep`(≤20분 cron)가 회복 시 자동 재분석. `RETRY_CAP=5`회 초과 시에만 격리. 입력 막다른길(`ANALYSIS_FAILED`)·429/인증은 기존대로 즉시 격리(재시도 무의미). 정본 = `.github/scripts/analyze.sh`(`is_transient`).
-- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 MUTENO)로 동적 선택 — 위 [계정 전환].
-- **모델**: `claude-opus-4-8` 고정. 분석 도구는 `WebFetch,WebSearch`만 허용.
+- **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속. ⚠️ **단 Claude API 일시 과부하(5xx/Overloaded)는 예외(260622)**: 인라인 백오프 재시도(`INLINE_TRIES=3`) 후에도 과부하면 `failed/`로 즉시 안 묻고 **pending 잔류 + `<base>.retry` 마커** → `pending-sweep`(≤20분 cron)가 회복 시 자동 재분석. `RETRY_CAP=5`회 초과 시에만 격리. 입력 막다른길(`ANALYSIS_FAILED`)·429/인증은 기존대로 즉시 격리(재시도 무의미). ⚠️ **타임아웃(rc=124 = analyze 900s·ask 600s 초과)은 계정 1회 강제전환(`claude_failover_force`) 후 재시도, 그래도 초과면 격리**(운영자 260704 "10분 넘으면 다른 계정" · 무한 전환 금지 = 워크플로 시간·쿼터 소진 차단 · 근본 방어 = 전문이면 검색완화[`news-analysis.md §0`·image_sources]로 타임아웃 자체 감소). 정본 = `.github/scripts/analyze.sh`·`ask.sh`(`is_transient`·`ASK_TIMEOUT`) + `shared/claude_transient.sh`(`claude_failover_force`·`claude_reset_force_swap`).
+- **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 NOMUTEFB)로 동적 선택, 쿼터 한도 시 서브1→서브2 2단 폴오버(sticky) — 위 [계정 전환]. **타임아웃(rc=124)도 계정 1회 강제전환**하되 그 스왑은 기사마다 `claude_reset_force_swap`이 되돌려 쿼터 체인 예산을 잠식하지 않음(260704).
+- **모델**: `claude-opus-4-8` 고정(생성/하드작업 유지). **effort = 검색경로(analyze·ask)만 high**(env `PIPE_SEARCH_EFFORT` · 검색은 도구 왕복이라 max 헛사고가 타임아웃만 유발 · 260704), 나머지 생성경로는 max. 분석 도구는 `WebFetch,WebSearch`만 허용.
 - **품질 추종**: 분석 프롬프트가 워크플로에 하드코딩돼 있지 않고 `apps/news/`의 최신 에디터 지침을 읽어 쓰므로, 에디터가 개선되면 큐레이션 품질도 따라간다.
 
 ## 테스트 (E2E 1회)

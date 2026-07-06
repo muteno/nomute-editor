@@ -1,0 +1,132 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>alt-fetch 라이브 검증 — 전/후 (260630)</title>
+<style>
+  :root{ --bg:#0c0f0d; --pan:#16171a; --line:#2a2c31; --line2:#23252a; --fg:#e9eaec; --fg2:#cfd8d0; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --arm:#ffd93d; --warn:#ffd24a; --danger:#ff5b4a; --info:#5fd6f5; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 60% at 50% -10%,rgba(15,253,2,.05),transparent 55%) fixed,var(--bg);
+    color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding:22px 16px 60px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:21px;margin:0 0 4px} .sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+  h2{font-size:15px;margin:28px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:8px}
+  .tag{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.2px}
+  .done{background:rgba(15,253,2,.14);color:var(--accent);border:1px solid rgba(15,253,2,.4)}
+  .test{background:rgba(12,208,247,.13);color:var(--info);border:1px solid rgba(12,208,247,.4)}
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch}
+  .col{flex:1 1 300px;min-width:0}
+  .cap{font-size:11.5px;color:var(--mut);margin:0 0 7px;font-weight:700;letter-spacing:.3px}
+  .beforebox,.afterbox{border-radius:10px;padding:13px;border:1px solid var(--line2);height:100%}
+  .beforebox{background:rgba(255,90,74,.05);border-color:rgba(255,90,74,.25)}
+  .afterbox{background:rgba(15,253,2,.04);border-color:rgba(15,253,2,.25)}
+  .lbl-b{font-size:10px;font-weight:800;color:#ff8d80;letter-spacing:.5px} .lbl-a{font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.5px}
+  p{margin:7px 0} .note{font-size:12.5px;color:var(--fg2)}
+  code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:5px;color:var(--fg2)}
+  .flow{display:flex;flex-direction:column;gap:0;margin:6px 0}
+  .step{display:flex;gap:11px;align-items:flex-start;padding:9px 0;border-bottom:1px dashed var(--line2)}
+  .step:last-child{border-bottom:0}
+  .num{flex:0 0 24px;height:24px;border-radius:50%;background:rgba(15,253,2,.13);color:var(--accent);font-weight:800;font-size:12px;display:grid;place-items:center;border:1px solid rgba(15,253,2,.35)}
+  .step .t{font-size:13.5px} .step .t b{color:var(--fg)} .step .t .ev{color:var(--accent);font-weight:700}
+  .logline{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--info);background:rgba(5,12,8,.55);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:10px 12px;margin:6px 0;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{color:var(--mut);font-size:11px;font-weight:700;letter-spacing:.3px}
+  .ok{color:var(--accent);font-weight:800} .neu{color:var(--mut)} .warn{color:var(--warn);font-weight:700}
+  .pill{display:inline-block;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;margin-right:5px}
+  .pill.g{background:rgba(15,253,2,.13);color:var(--accent)} .pill.r{background:rgba(255,90,74,.13);color:#ff8d80} .pill.b{background:rgba(12,208,247,.12);color:var(--info)}
+  ul{margin:7px 0;padding-left:20px} li{margin:4px 0;font-size:13.5px}
+  .kicker{font-size:11px;font-weight:800;color:var(--mut);letter-spacing:.5px;text-transform:uppercase}
+  .big{font-size:15px;font-weight:800;color:var(--accent)}
+</style></head>
+<body><div class="wrap">
+
+<h1>차단매체 본문회수(alt-fetch) — 전/후 + 라이브 검증</h1>
+<p class="sub">260630 · RSS 자동수집 경로(<code>to_pending</code>) alt-fetch 이식 · 자동수집 1회 테스트로 실증 · <span class="tag done">머지·검증 완료</span></p>
+
+<div class="card">
+  <span class="kicker">한 줄 요약</span>
+  <p class="big">RSS로 자동 수집된 <b>차단매체(조선·동아 등) 기사</b>도, 이제 같은 사건을 보도한 <b>다른 매체로 본문을 자동 회수</b>해서 요약이 깨지지 않는다. 라이브에서 chosun 0바이트(차단) → SBS 1850바이트 회수로 실증됨.</p>
+</div>
+
+<h2>1. 무엇이 문제였나 <span class="tag test">배경</span></h2>
+<div class="row">
+  <div class="col"><p class="cap">전 — RSS 자동수집의 빈틈</p>
+    <div class="beforebox"><div class="lbl-b">BEFORE</div>
+      <p class="note">한국 언론사 본문 페이지는 GitHub Actions(데이터센터 IP)에서 긁으면 <b>403으로 막힌다</b>(조선·동아·연합·중앙·한겨레 등 WAF 차단).</p>
+      <p class="note">운영자가 폰으로 직접 고른 기사(픽)·자동속보픽은 이미 <code>#&nbsp;alt:</code>(같은 사건 다른 매체)를 심어 우회했는데, <b>RSS 자동수집 경로(<code>to_pending</code>)만 그걸 안 심었다.</b></p>
+      <p class="note">→ 자동수집된 차단매체 기사는 본문이 비어 <span class="warn">요약 실패/빈약</span>.</p>
+    </div>
+  </div>
+  <div class="col"><p class="cap">후 — 픽 경로와 통일</p>
+    <div class="afterbox"><div class="lbl-a">AFTER</div>
+      <p class="note"><code>to_pending.py</code>에 <code>load_alts()</code> 신설 — 수집기가 만든 <code>articles.json</code>의 같은 사건 클러스터(cluster_members)를 pending 파일에 <code>#&nbsp;alt:</code>로 심는다.</p>
+      <p class="note">엔진(<code>analyze.sh</code>)·데이터(클러스터)는 <b>원래 있었음</b> — 그저 배선만 연결. <span class="ok">큐레이션 알고리즘 0 변경.</span></p>
+      <p class="note">검증패턴은 픽 경로 재사용: http(s) 도메인만·자기 제외·1500자 cap·<b>공백/개행 멤버 거부</b>(마커 주입 차단).</p>
+    </div>
+  </div>
+</div>
+
+<h2>2. 라이브 end-to-end 실증 <span class="tag done">스모킹건</span></h2>
+<p class="note">자동수집 1회 테스트(<code>scrape analyze=true top=3</code>)로 진짜 차단매체 기사를 돌렸다 — chosun 부동산 기사("동탄 22억…칼 빼든 정부").</p>
+<div class="flow card">
+  <div class="step"><div class="num">1</div><div class="t"><b>수집·적재</b> — scrape #1423이 chosun 기사에 <span class="ev"><code>#&nbsp;alt:</code> 26개 매체</span> 심음 (SBS·한겨레·한경·경향·mk·뉴시스…). <span class="neu">01·03 기사는 클러스터 단독→url만(하위호환).</span></div></div>
+  <div class="step"><div class="num">2</div><div class="t"><b>원매체 fetch</b> — analyze가 chosun.com 본문 fetch → <span class="warn">0바이트</span>(데이터센터 IP 403 차단 확인).</div></div>
+  <div class="step"><div class="num">3</div><div class="t"><b>alt-fetch 발동</b> — 대체매체 루프가 SBS에서 <span class="ev">1850바이트</span> 본문 회수:</div></div>
+</div>
+<div class="logline">01:57:52  원매체 본문 빈약(0B&lt;900) → 더 완전한 대체매체 채택:
+          https://news.sbs.co.kr/news/endPage.do?news_id=N1008633510… (1850B)
+02:09:11  검색 유사 보강 — alt_urls 주입(26개 매체)
+02:09:11  성공 → queue/260630-1047-ER3BHKVE65ELPLYBDTCAP3H2.md</div>
+<div class="flow card">
+  <div class="step"><div class="num">4</div><div class="t"><b>결과</b> — <span class="ok">ANALYSIS_FAILED 없이 완전 다이제스트 생성</span>(상세 수치·사실 다 채움). 출처 = SBS·헤럴드경제·뉴시스 교차확인. <span class="neu">alt 없었으면 0바이트→분석실패였을 기사.</span></div></div>
+</div>
+
+<h2>3. 부수 검증 (긍정) <span class="tag done">덤</span></h2>
+<table>
+  <tr><th>항목</th><th>라이브 실측</th></tr>
+  <tr><td><b>weekly-limit failover</b><br><span class="neu">(260629 is_quota 수정)</span></td><td><span class="ok">검증됨</span> — 로그 <code>계정 사용량 한도 — 서브1 계정으로 전환(failover 1/2)</code> → 성공. 주간한도 문구를 못 잡아 전건 실패하던 버그 수정이 실효.</td></tr>
+  <tr><td><b>다운스트림 전체</b></td><td><span class="ok">정상</span> — 3건 분석 → main 푸시 → Pages 배포 반영 → 웹푸시 발송(구독 3) · 실패 0.</td></tr>
+  <tr><td><b>정기 cron 무손상</b></td><td><span class="ok">정상</span> — 변경 머지(09:43) 직후 정기 scrape #1419 success. RSS 수집 경로 안 깨짐.</td></tr>
+</table>
+
+<h2>4. 장단점 · 효율 · 품질 리스크</h2>
+<div class="row">
+  <div class="col"><div class="card" style="height:100%">
+    <p class="cap">👍 장점</p>
+    <ul>
+      <li><span class="pill g">회수율</span> 자동수집 차단매체도 본문 회수(픽 경로 89%급).</li>
+      <li><span class="pill g">무료</span> 새 deps 0 · 외부 도구 0 · 기존 엔진·데이터 재사용.</li>
+      <li><span class="pill g">기틀무손상</span> 큐레이션 알고리즘·신호·랭킹 0 변경 = 단서 연결만.</li>
+      <li><span class="pill g">통일</span> 픽·자동속보픽·RSS자동 = 세 입구 모두 동일 alt 로직.</li>
+    </ul>
+  </div></div>
+  <div class="col"><div class="card" style="height:100%">
+    <p class="cap">⚠️ 단점 · 한계</p>
+    <ul>
+      <li><span class="pill r">조건부</span> 즉효는 자동수집(<code>analyze=true</code>) 켤 때만 — <b>현재 OFF</b>(미래 대비).</li>
+      <li><span class="pill r">잔존</span> <i>클러스터 단독</i>(대체매체 0)인 차단기사는 여전히 회수 불가 → 폰 paste/Tailscale로 우회.</li>
+      <li><span class="pill b">비용노브</span> 자동수집 ON 시 과금은 alt 아닌 <b>자동 요약+썸네일</b>에서 발생(top·MAX_BATCH로 상한).</li>
+    </ul>
+  </div></div>
+</div>
+<div class="card">
+  <p class="cap">효율성</p>
+  <p class="note">alt-fetch 루프는 <b>원매체 본문이 빈약할 때만</b> 작동(<code>cur_len &lt; 900B</code> 게이트)·충분한 본문 확보 시 <b>조기 종료</b>(불필요 fetch 차단). 정상 매체는 추가 비용 0.</p>
+  <p class="cap" style="margin-top:10px">품질저하 리스크</p>
+  <p class="note"><span class="ok">≈0.</span> 기존 동작은 그대로(alt 비면 url만 = 폰공유와 1바이트도 안 다름)·신규는 차단 케이스만 개선. 보안 = 공백/개행 멤버 거부로 가짜 마커(<code>#&nbsp;body:</code>) 주입 차단(자가검증 중 발견·수정).</p>
+</div>
+
+<h2>5. 현재 상태 · 다음</h2>
+<table>
+  <tr><th>대상</th><th>상태</th></tr>
+  <tr><td>코드(<code>to_pending</code> alt-fetch)</td><td><span class="ok">main 머지 완료</span> (<code>ed0f6f53</code>) + 라이브 실증</td></tr>
+  <tr><td>자동수집(<code>scrape analyze</code>)</td><td><span class="neu">OFF</span>(기본 false 복귀) — 지속 과금 0</td></tr>
+  <tr><td>테스트 산출</td><td>queue 3건(호남반도체·동탄부동산·홍명보) 실분석·뷰어 노출</td></tr>
+  <tr><td>다음(선택)</td><td>자동수집 영구 ON 검토 시 = 일일 과금 상한(top·배치) 먼저 합의 → alt-fetch는 그때 자동 작동(검증완)</td></tr>
+</table>
+
+<p class="sub" style="margin-top:26px">일회성 스냅샷 · 색은 viewer <code>:root</code> 토큰 복사 인라인 · 정본 = git <code>main</code></p>
+
+</div></body></html>

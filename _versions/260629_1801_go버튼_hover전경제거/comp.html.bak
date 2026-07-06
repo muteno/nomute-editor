@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>카드뉴스 합성 — 웹</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
+<style>
+  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-rgb:15,253,2;   /* index :root 동기 — raw rgba 차단(분신술10 STAGE1·260628) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#062108; }
+  * { box-sizing:border-box; }
+  /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  /* 스크롤바 = 반투명 검정(중립) — 뉴스 뷰어 통일(index 계승 · 운영자 260626) */
+  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
+  h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin:0 0 16px; }
+  label { display:block; font-size:var(--fs-label); color:var(--mut); margin:14px 0 6px; }   /* 비-소머리 라벨 베이스(.file 등) · 소머리는 .fl(흰색800+형광블릿) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) */
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 뉴스 정본 content:'• ' 동일 */
+  label:first-of-type { margin-top:0; }
+  textarea { width:100%; min-height:96px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; resize:none; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
+  textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  .file { display:block; padding:12px; border:1px dashed var(--line); border-radius:var(--r-s); text-align:center; color:#cfd2d7; cursor:pointer; background:rgba(255,255,255,.05); }   /* 이미지 선택칸 통일 = ly 초록 강조 */
+  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
+  .file img { max-width:100%; max-height:200px; border-radius:7px; margin-top:8px; }
+  .hint { font-size:12px; color:var(--mut); margin-top:5px; } .hint b { color:var(--accent); }
+  /* 첨부 슬롯 + 생성 버튼 한 행 = ly .filerow 통일(빈 상태 한 행·높이 절약 / 이미지 선택 시 미리보기 전체폭 펼침 · 운영자 260628) */
+  .makerow { display:flex; flex-wrap:wrap; gap:10px; align-items:stretch; }
+  .makerow > .file { flex:1.4 1 0; min-width:0; margin:0; display:flex; align-items:center; justify-content:center; white-space:nowrap; }
+  .makerow > .go { flex:1 1 0; min-width:140px; margin-top:0; width:auto; }
+  .makerow > .file.has { flex-basis:100%; }   /* 이미지 선택 → 슬롯 전체폭, 버튼 다음 줄 전폭(미리보기 펼침) */
+  /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
+  .go { width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }
+  .go:hover { background:rgba(255,255,255,.08); border-color:rgba(var(--accent-rgb),.3); }
+  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s linear forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
+  @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  .go.shake { animation:edshake .42s; }   /* 내용 미입력 등 전송 막힘 = 좌우 흔들림(thumb.html 통일·운영자 260622) */
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
+  .go.err { background:rgba(255,77,77,.14); color:#ff7a7a; border-color:#ff5d5d; }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb.html .go.err 통일·운영자 260622) */
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; } .status.err { color:#ff8a8a; }
+  .result img { width:100%; border:1px solid var(--line); border-radius:10px; margin-top:16px; }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+  /* 텍스트 칸 복사/붙여넣기/지우개·되돌리기 = 뉴스요약/썸네일/영상 통일(운영자 260628) */
+  .clipwrap { position:relative; }
+  .clipbtn { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); -webkit-tap-highlight-color:transparent; transition:transform .12s, color .15s, border-color .15s; }
+  .clipbtn svg { display:block; width:13px; height:13px; }
+  .clipbtn:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .clipbtn:active { transform:translateY(-50%) scale(.85); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .clipbtn.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
+  .clipbtn.clip-pp { right:46px; }                       /* 클립 = 지우개 좌측(붙여넣기/복사) */
+  .clip-erase { right:14px; }                            /* 지우개 = 최우측 · 누르면 입력 비움→~10초 되돌리기 */
+  .clip-erase.clip-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 흐리게·비활성 */
+  .clip-erase.clip-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램) */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <h1><b>카드뉴스 합성</b> · 웹</h1>
+  <p class="sub">이미지 + 텍스트 → 1080×1350 카드뉴스(스마트 크롭·하단 그라데이션·초록 강조).</p>
+
+  <label class="fl">텍스트 (줄바꿈 = 여러 줄)</label>
+  <textarea id="lines" placeholder="속보 *강조는 별표로*&#10;둘째 줄"></textarea>
+  <div class="hint"><b>*별표*</b>로 감싸면 초록 강조</div>
+
+  <label class="fl">배경 이미지</label>
+  <div class="makerow">
+    <label class="file" id="fileLab"><span>탭해서 이미지 선택</span>
+      <input type="file" accept="image/*" id="file" style="display:none">
+    </label>
+    <button class="go" id="go">웹 합성 생성</button>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let IMG_B64 = '', IMG_NAME = '';
+// 텍스트 칸 복사/붙여넣기/지우개·되돌리기 (뉴스요약/썸네일/영상 통일·운영자 260628)
+const COPY_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+const CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+const PASTE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>';
+const ERASE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>';
+const UNDO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-5"/></svg>';
+(function(){
+  const ta = $('#lines'); if (!ta) return;
+  const wrap = document.createElement('div'); wrap.className = 'clipwrap'; ta.parentNode.insertBefore(wrap, ta); wrap.appendChild(ta);
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'clipbtn clip-pp'; wrap.appendChild(b);
+  const er = document.createElement('button'); er.type = 'button'; er.className = 'clipbtn clip-erase'; er.setAttribute('aria-label', '입력 지우기'); wrap.appendChild(er);
+  let undoTimer = null, undoVal = '', prog = false;
+  const upd = () => {
+    if (!b.classList.contains('ok')) { const f = ta.value.trim().length > 0; b.innerHTML = f ? COPY_SVG : PASTE_SVG; b.dataset.mode = f ? 'copy' : 'paste'; b.setAttribute('aria-label', f ? '복사' : '붙여넣기'); }
+    if (!er.classList.contains('clip-undo')) { er.innerHTML = ERASE_SVG; er.classList.toggle('clip-off', !(ta.value || '').trim().length); }
+  };
+  const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('clip-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); upd(); };
+  er.addEventListener('click', e => { e.preventDefault();
+    if (er.classList.contains('clip-undo')) { prog = true; ta.value = undoVal; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {} exitUndo(); return; }
+    if (!(ta.value || '').length) return;
+    undoVal = ta.value; prog = true; ta.value = ''; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {}
+    er.classList.remove('clip-off'); er.classList.add('clip-undo'); er.innerHTML = UNDO_SVG; er.setAttribute('aria-label', '되돌리기');
+    if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
+  });
+  b.addEventListener('click', async e => { e.preventDefault();
+    if (b.dataset.mode === 'copy') { try { await navigator.clipboard.writeText(ta.value); b.innerHTML = CHECK_SVG; b.classList.add('ok'); setTimeout(() => { b.classList.remove('ok'); upd(); }, 1200); } catch {} }
+    else { try { const t = await navigator.clipboard.readText(); if (t) { ta.value = t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd(); }
+  });
+  ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); upd(); }); upd();
+})();
+
+function bindFile(input) {
+  input.onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    IMG_NAME = f.name;
+    const r = new FileReader();
+    r.onload = () => {
+      IMG_B64 = r.result;
+      $('#fileLab').innerHTML = '<span>' + f.name + ' ✓</span><img src="' + r.result + '">' +
+        '<input type="file" accept="image/*" id="file" style="display:none">';
+      $('#fileLab').classList.add('has');
+      bindFile($('#fileLab').querySelector('#file'));
+    };
+    r.readAsDataURL(f);
+  };
+}
+bindFile($('#file'));
+
+let _curStop = null;   // 현재 진행 폴 중단 핸들 — 재시도(재클릭)로 새 폴 시작 시 옛 폴 멈춰 상태표시 충돌·중복 폴 차단
+function poll(outPath) {
+  if (_curStop) _curStop();   // 재시도: 이전 폴 중단
+  const t0 = Date.now(), status = $('#status'), result = $('#result');
+  let live = true; const stop = () => { live = false; clearInterval(disp); }; _curStop = stop;
+  const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
+    if (!live) return;
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (sec > 420) { stop(); status.textContent = '시간 초과 — 위 버튼으로 다시 시도해줘(또는 Actions 로그 확인)'; status.classList.add('err'); return; }   // 컴팩트 백스톱 — 합성=PIL 보통 1~2분(러너+배포 포함). 옛 600s는 과대(260619)
+    status.textContent = '⏳ 합성 중… ' + sec + 's (러너 + 배포, 보통 1–2분)';
+  };
+  const disp = setInterval(draw, 1000); draw();
+  const tick = () => {
+    if (!live) return;
+    const img = new Image();
+    const url = outPath + '?t=' + Date.now();
+    img.onload = () => { if (!live) return; stop(); status.textContent = '✅ 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)'; result.innerHTML = '<img src="' + url + '">'; };
+    img.onerror = () => { if (live) setTimeout(tick, 5000); };
+    img.src = url;
+  };
+  tick();
+}
+
+function compErr(m) {   // 전송 막힘(미입력 등) = 메시지를 버튼 *안에* 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(thumb.html errStatus 통일·운영자 260622)
+  const s = $('#status'); s.textContent = ''; s.classList.remove('err');   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
+  const g = document.getElementById('go'); if (!g) return;
+  if (!g.dataset.label) g.dataset.label = g.textContent;        // 원래 라벨 보존
+  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
+  g.textContent = m; g.setAttribute('aria-live', 'assertive');  // 메시지 = 버튼 안에
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label || '웹 합성 생성'; }, 1700);
+}
+$('#go').onclick = async () => {
+  const gb = document.getElementById('go');
+  const status = $('#status'); status.classList.remove('err'); status.textContent = ''; $('#result').innerHTML = '';
+  const lines = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  if (!IMG_B64) return compErr('이미지를 선택해주세요');
+  if (!lines.length) return compErr('텍스트를 넣어주세요');
+  clearTimeout(gb._errT); gb.classList.remove('err', 'shake', 'firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760);   // 검증 통과 후에만 누름 게이지(헛발사 방지·260622)
+  $('#go').disabled = true; status.textContent = '생성 중…';
+  try {
+    const res = await fetch('/api/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ imageB64: IMG_B64, name: IMG_NAME, lines }) });
+    const j = await res.json();
+    if (!res.ok || j.error) { status.textContent = '⚠️ ' + (j.error || res.status); status.classList.add('err'); return; }
+    poll(j.out);
+  } catch (e) {
+    status.textContent = '⚠️ 요청 실패: ' + e.message; status.classList.add('err');
+  } finally { $('#go').disabled = false; }
+};
+</script>
+<script src="cscroll.js"></script>
+</body>
+</html>

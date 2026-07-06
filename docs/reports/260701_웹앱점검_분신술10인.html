@@ -1,0 +1,133 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>웹앱 점검 — 분신술 10인 (260701)</title>
+<style>
+  :root{--bg:#0b0d0c;--panel:#15191a;--panel2:#1b2022;--fg:#e9eaec;--mut:#99a0a6;--line:#272d2e;
+    --accent:#34d399;--accent-dim:rgba(52,211,153,.12);--danger:#f87171;--warn:#fbbf24;--info:#60a5fa;--ok:#34d399;
+    --r:14px;--r-s:9px}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;line-height:1.62;font-size:15px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 80px}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+  h2{font-size:18px;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15px;margin:20px 0 8px;color:var(--accent)}
+  p{margin:9px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:14px 0}
+  .verdict{background:linear-gradient(135deg,var(--accent-dim),transparent);border:1px solid rgba(52,211,153,.3)}
+  code{background:var(--panel2);padding:1.5px 6px;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#cfe9df}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;vertical-align:middle}
+  .t-ok{background:rgba(52,211,153,.16);color:var(--ok)} .t-warn{background:rgba(251,191,36,.16);color:var(--warn)} .t-bad{background:rgba(248,113,113,.16);color:var(--danger)} .t-info{background:rgba(96,165,250,.16);color:var(--info)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  td:first-child{white-space:nowrap;font-weight:600}
+  ul{margin:7px 0;padding-left:20px} li{margin:5px 0}
+  .fl{color:var(--mut);font-size:12px;font-family:ui-monospace,monospace}
+  .big{font-size:15px;font-weight:700}
+  .tier{border-left:3px solid var(--line);padding-left:14px;margin:14px 0}
+  .tier.t1{border-color:var(--accent)} .tier.t2{border-color:var(--warn)} .tier.t3{border-color:var(--info)}
+  .foot{color:var(--mut);font-size:12px;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
+  .num{color:var(--accent);font-weight:700}
+</style></head><body><div class="wrap">
+
+<h1>웹앱 점검 — 분신술 10인 평의회</h1>
+<div class="sub">nomute-editor 뷰어 · 기능 동작 + 성능('버퍼') 적대적 감사 · 2026-07-01 · READ-ONLY 실측</div>
+
+<div class="card verdict">
+<p class="big">결론: 기능은 대체로 <span class="tag t-ok">건강</span> · 최근 변경 회귀 <span class="num">0</span> · 하지만 '버퍼'는 <span class="tag t-warn">실재</span>하고 원인이 명확히 규명됨.</p>
+<p>10개 앵글로 뷰어를 실측 감사. <b>알림·푸시 정합, 큐 동기화, 입력·모달 방어, 백엔드 인젝션/경로 방어는 이 레포에서 가장 잘 만든 축</b>(대부분 ✅). 최근 4개 변경(정치 강마커·카드 진행문구·대기열 동기화·글래스)은 <b>회귀·미배선 0, 뷰어 JS 구문 RC=0</b>. 운영자가 지목한 <b>'버퍼'(랙)는 진짜 있고</b>, 4개 독립 에이전트 + 메인 실측이 <b>같은 3가지 원인</b>으로 수렴했다.</p>
+</div>
+
+<h2>1. '버퍼' 진단 — 원인 3면 (교차검증·핵심)</h2>
+<p>뷰어가 무거워지는 인과: <b>리스트가 커질수록 매 폴(60초)·타이핑마다 전체를 다시 계산·다시 그리는데, 그걸 접는 장치(메모·디바운스·가상화)가 없다.</b> 세 층이 곱해진다.</p>
+
+<h3>① 렌더 계층 (JS) — 통짜 재구축 + 미메모 <span class="tag t-bad">가장 큼</span></h3>
+<table>
+<tr><th>항목</th><th>실측</th><th>영향</th></tr>
+<tr><td>정렬키 비교당 재계산</td><td class="fl">index.html:6005<br><code>arr.sort((a,b)=&gt;scScore(b)-scScore(a))</code></td><td><code>scScore</code>(Math.pow·Date.now·정규식)가 <b>요소당 1회가 아니라 비교당</b> 호출 = n건이면 카드당 ~2·log₂n회. <code>scTs</code>는 매번 Date.parse 2회·메모 0.</td></tr>
+<tr><td><code>articleCat</code> 미메모</td><td class="fl">index.html:2491</td><td>카드당 정규식 10+개를, 한 렌더에서 filter·색·esc로 <b>3~4회 재평가</b> + 수집함서 또. 데이터 불변인데 캐시 없음.</td></tr>
+<tr><td>통짜 innerHTML 재구축</td><td class="fl">render 2264 · renderScrap 5989</td><td>행 하나 안 바뀌어도 <code>list.innerHTML=''</code> 후 전 카드 재생성. 시그니처 게이트는 <b>애니만</b> 막고 DOM 재생성·정렬은 안 막음.</td></tr>
+<tr><td>검색 무디바운스</td><td class="fl">index.html:5133</td><td>한글 IME는 한 글자에 조합 이벤트 다수 → keystroke마다 통짜 재렌더.</td></tr>
+</table>
+
+<h3>② 폴링·네트워크 계층 (JS) — 무조율 다중 폴러 <span class="tag t-warn">중</span></h3>
+<ul>
+<li><b>pollPicking 백그라운드 좀비</b> <span class="fl">index.html:5719-5738</span> — while 최대 11분, 탭 숨기면 <code>continue</code>로 fetch만 건너뛰고 <b>루프는 안 죽음</b>. 픽 완료해도 조기종료 불능 → 탭 숨긴 채 픽=11분 좀비.</li>
+<li><b>load()·loader 인플라이트 가드 부재</b> <span class="fl">2188 · loadPending·loadMessages·loadHealth·loadPickFails</span> — livePoll(60s)이 6개 fetch 병렬, in-flight 가드는 loadCandidates 하나뿐. pollPicking(25s)·qFlash·visibilitychange가 겹치면 같은 요청이 중첩 발사.</li>
+<li><b>pending.js 팬아웃</b> <span class="fl">functions/api/pending.js</span> — 요청당 GitHub API 최대 ~110호출. 동접 늘면 5000/h rate limit 소진 → 대기열이 조용히 빈 배열 폴백.</li>
+<li><b>GitHub fetch 타임아웃·재시도 없음</b> <span class="fl">발사 엔드포인트 전량</span> — spellcheck만 타임아웃 보유. 느리면 무응답(발사 실패도 못 냄).</li>
+</ul>
+
+<h3>③ CSS 컴포지트 계층 — 스크롤 페인트 <span class="tag t-warn">중</span></h3>
+<p>측정: <code>backdrop-filter</code> <span class="num">81</span> · <code>box-shadow</code> 121 · 무한 애니 22 · <code>content-visibility</code> <span class="num">0</span> · 리스너 <span class="num">195</span> · setTimeout 112.</p>
+<ul>
+<li><b>피드 카드 비가상화 × N backdrop-filter</b> <span class="fl">.card :321</span> — 전 카드 DOM, 카드마다 blur+3겹 shadow 동시 라이브. <code>content-visibility:auto</code> 미적용(코드 최소·효과 최대인 최적화 빠짐).</li>
+<li><b>하단 네비 26px 블러 고정바</b> <span class="fl">.bnav :780</span> — 레포 최대 블러+saturate, position:fixed라 스크롤마다 재샘플. reduced-motion으로도 안 꺼짐. 모바일 jank 1순위.</li>
+<li><b>배너 filter 무한 애니 + will-change:filter</b> <span class="fl">.bannerframe :127</span> — brightness+saturate+drop-shadow 5.5s 무한 = 매 프레임 재페인트 + 영구 GPU 레이어 예약.</li>
+</ul>
+
+<div class="card"><b>즉, 795KB 단일 index.html + N카드 backdrop + 26px 고정 블러 + 무한 filter 배너 + 무조율 폴러</b>가 스크롤·폴 프레임마다 겹쳐 굴러 '버퍼'로 체감된다. 하지만 <b>리스너 누수·타이머 clear 누락·중첩 등록은 없다</b>(방어 잘 됨) — 성장형 랙이지 누수형 랙이 아니다.</div>
+
+<h2>2. 앵글별 평결 (10인)</h2>
+<table>
+<tr><th>앵글</th><th>평결</th><th>핵심</th></tr>
+<tr><td>A1 피드·큐레이션</td><td><span class="tag t-warn">⚠️</span></td><td>로직·회귀 방어 촘촘. 정렬키 비교당 재계산·articleCat 미메모=렌더 버퍼.</td></tr>
+<tr><td>A2 속보·푸시</td><td><span class="tag t-ok">✅</span></td><td>게이트 정합 최고(3중 방어). pollPicking 좀비·livePoll 6-fetch 무가드만.</td></tr>
+<tr><td>A3 카드 워크플로</td><td><span class="tag t-ok">✅</span></td><td>폴러 5종 누수 0. load() 무조율 중복 + make 후 60초 반영지연.</td></tr>
+<tr><td>A4 성능·버퍼</td><td><span class="tag t-info">중단</span></td><td>도구 폭주로 자멸(리포트 없음). 앵글은 A1·A3·A7이 덮음.</td></tr>
+<tr><td>A5 입력·모달·버튼</td><td><span class="tag t-ok">✅</span></td><td>리스너 누수·히스토리 오염 0. 자동완성 4종이 본 작성칸 누락(비일관).</td></tr>
+<tr><td>A6 Pages Functions</td><td><span class="tag t-warn">⚠️</span></td><td>인젝션·경로 방어 견고. 인증/rate-limit 부재·GitHub fetch 타임아웃 부재.</td></tr>
+<tr><td>A7 CSS 렌더성능</td><td><span class="tag t-warn">⚠️</span></td><td>토큰 정합 상위 1%. .bnav 블러·.card 비가상화·bannerframe filter가 컴포지트 부담.</td></tr>
+<tr><td>A8 큐·동기화</td><td><span class="tag t-ok">✅</span></td><td>배지≠리스트 재발벡터 0. dead-code 재발스위치(nomute_q_cleared)·이중 폴만.</td></tr>
+<tr><td>A9 PWA·캐시·SW</td><td><span class="tag t-ok">✅</span></td><td>SW=푸시전용(캐시 스래싱 구조적 불가). index.html 795KB가 최대 로드병목.</td></tr>
+<tr><td>A10 총괄·회귀</td><td><span class="tag t-ok">✅</span></td><td>최근 변경 회귀 0·JS RC=0. 죽은코드 5개·check_refs 게이트 사각.</td></tr>
+</table>
+<p class="fl">수렴: 심각(❌) = 없음(치명 버그 0). 성능 ⚠️는 A1·A2·A3·A7·A9가 독립적으로 같은 3면 원인에 수렴 = 신뢰도 높음(메인 실측 확증).</p>
+
+<h2>3. 조치 목록 (메인이 검증 거쳐 수정)</h2>
+
+<div class="tier t1">
+<h3>Tier 1 — 버퍼 직격 · 저위험 · 즉시 (권장)</h3>
+<ul>
+<li><b><code>.card {content-visibility:auto; contain-intrinsic-size}</code></b> — 뷰포트 밖 카드 backdrop+shadow 페인트 스킵. 스크롤 jank 최대 ROI, 코드 최소.</li>
+<li><b><code>.bnav</code> 블러 26→14px + saturate 제거 검토</b> — 가우시안 비용 반토막, 시각차 미미.</li>
+<li><b><code>.bannerframe</code> will-change:filter 제거</b> + filter 애니 완화 — idle GPU 레이어 예약 해제.</li>
+<li><b>정렬키 Schwartzian 사전계산</b> — <code>arr.map(c=&gt;({k:scScore(c),c})).sort(...)</code> = 카드당 1회. <code>scTs</code>·<code>articleCat</code> 메모(<code>c._ts/_cat ??=</code>).</li>
+<li><b>렌더 조기반환</b> — 시그니처 동일이면 DOM 재구축 skip(상태 클래스만 토글).</li>
+<li><b>자동완성 통일</b> — <code>#askText/#revText/#crevText/#pasteText</code>에 autocorrect/autocapitalize/spellcheck off.</li>
+<li><b>죽은코드 회수</b> — <code>saveAll</code>·<code>closeToolFully</code>(+문서 괴리)·<code>edLaunchScene</code> 등 5개.</li>
+</ul>
+</div>
+
+<div class="tier t2">
+<h3>Tier 2 — 폴링·네트워크 · 중위험 · 검증 필요</h3>
+<ul>
+<li><b>pollPicking 백그라운드 break</b>(좀비 11분 제거) + <b>검색 150ms 디바운스</b>.</li>
+<li><b>loader 인플라이트 디둡</b> — livePoll·pollPicking·qFlash 중복 폴 병합(<code>api/pending</code> 인플라이트 공유).</li>
+<li><b>공통 <code>ghFetch</code> 유틸</b> — AbortController 타임아웃 + 429/5xx 백오프(발사 엔드포인트 전량).</li>
+</ul>
+</div>
+
+<div class="tier t3">
+<h3>Tier 3 — 아키텍처·큰 작업 · 운영자 결정</h3>
+<ul>
+<li><b>index.html 인라인 CSS/JS 분리</b> — 무거운 스타일·유틸을 <code>?v=</code> 장기캐시 파일로. HTML 셸만 얇게(재방문 재검증 795KB→소). 최대 로드 ROI지만 큰 리팩터.</li>
+<li><b>pending.js 경량화</b>(raw 지연로드·edge cache) + <b>candidates.json 3.3MB slim</b>.</li>
+<li><b>발사 엔드포인트 originOk 가드</b> — ⚠️ 운영자 "지출 직접 모니터링" 정책과 상충 가능 = 확인 후.</li>
+<li><b>check_refs 게이트 추가</b> — 강마커 py↔js 정규식 미러 + dead-JS 함수 검출.</li>
+<li><b>dl.js SSRF 강화</b>(정수/hex IP 표기 차단) · submit.js 이미지 합계 상한.</li>
+</ul>
+</div>
+
+<h2>4. 💡 아이데이션 베스트픽</h2>
+<div class="card">
+<p><b>1. 렌더 코얼레싱 레이어 하나가 버퍼의 절반을 접는다.</b> 폴러 전부를 "dirty 플래그 set → rAF/디바운스로 1회 load"로 라우팅하면 ①중복 fetch ②통짜 재구축 ③make 60초 지연이 동시에 완화된다. 지금의 단일-루프 가드 구조와 궁합이 좋다.</p>
+<p><b>2. <code>content-visibility:auto</code> + Schwartzian 정렬 두 줄이 스크롤/폴 랙을 리스트 크기와 무관하게 만든다.</b> 코드 최소, 픽셀 회귀 0.</p>
+<p><b>3. popstate·자동완성은 SSOT 헬퍼로.</b> 지금은 6개 전역 리스너 + 입력칸마다 손으로 박은 속성 = 새 오버레이/입력칸 추가 시 드리프트. 헬퍼 하나로 통일하면 회귀 취약성 제거.</p>
+</div>
+
+<div class="foot">
+검증: 10인 발사 중 9인 실측 보고(A4는 도구 폭주로 자멸 — 성능 앵글은 A1·A3·A7·A9 교차수렴이 덮음). 메인이 핵심 성능 주장(795KB·리스너 195·backdrop 81·정렬 :6005·bnav :780·bannerframe :127·content-visibility 0)을 <b>독립 grep 실측으로 전부 확증</b>. READ-ONLY 계약 준수(에이전트 rogue 브랜치·커밋·파일변경 0 사후확인). 이 보고서는 진단이며, 실제 수정은 메인이 §✅ 검증 거쳐 수행.
+</div>
+
+</div></body></html>

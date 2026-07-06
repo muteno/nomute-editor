@@ -53,13 +53,16 @@ _meter_record() {
 # claude_meter <timeout_s> [claude args after 'claude -p' ...]   (프롬프트는 stdin)
 claude_meter() {
   local to="$1"; shift
-  local raw rc
+  local raw rc bare=""
+  # --bare 게이트 (생성경로 CLAUDE.md auto-discovery 스킵 = 안 읽는 라우터 ~37k 토큰 컨텍스트 누수 차단 · 260701).
+  # 기본 ON · 품질 규칙은 stdin(inject_guidelines 주입)이 결정하므로 무영향 · 롤백 = env CLAUDE_BARE=0. judge(GATE_BARE·py)와 동형.
+  case "${CLAUDE_BARE:-0}" in 0|false|no|off|"") ;; *) bare="--bare" ;; esac
   # 폴백 1 — 계측 끄기(METER_OFF) 또는 jq 부재: 옛 동작 그대로(--output-format json 미부착 = 마크다운 stdout).
   if [ "${METER_OFF:-0}" = "1" ] || ! command -v jq >/dev/null 2>&1; then
-    timeout "$to" claude -p "$@"
+    timeout "$to" claude -p $bare "$@"
     return $?
   fi
-  raw="$(timeout "$to" claude -p --output-format json "$@")"
+  raw="$(timeout "$to" claude -p $bare --output-format json "$@")"
   rc=$?
   # 정상 JSON(.result 가 문자열) → 계측 + .result 만 흘림(호출부 파싱 무변경).
   if printf '%s' "$raw" | jq -e '.result | type == "string"' >/dev/null 2>&1; then

@@ -1,0 +1,131 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>UI 배치·색 — 미리보기 (260629)</title>
+<style>
+  :root{ --bg:#0c0f0d; --pan:#16171a; --line:#2a2c31; --line2:#23252a; --fg:#e9eaec; --fg2:#cfd8d0; --mut:#8b8f98;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --arm:#ffd93d; --warn:#ffd24a; --danger:#ff5b4a; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 60% at 50% -10%,rgba(15,253,2,.05),transparent 55%) fixed,var(--bg);
+    color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding:22px 16px 60px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px} .sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+  h2{font-size:15px;margin:26px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:8px}
+  .tag{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:999px;letter-spacing:.2px}
+  .done{background:rgba(15,253,2,.14);color:var(--accent);border:1px solid rgba(15,253,2,.4)}
+  .pend{background:rgba(255,217,61,.14);color:var(--arm);border:1px solid rgba(255,217,61,.45)}
+  .q{background:rgba(12,208,247,.13);color:#5fd6f5;border:1px solid rgba(12,208,247,.4)}
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  .col{flex:1 1 250px;min-width:0}
+  .cap{font-size:11.5px;color:var(--mut);margin:0 0 7px;font-weight:700}
+  .beforebox,.afterbox{border-radius:10px;padding:12px;border:1px solid var(--line2)}
+  .beforebox{background:rgba(255,90,74,.05);border-color:rgba(255,90,74,.25)}
+  .afterbox{background:rgba(15,253,2,.04);border-color:rgba(15,253,2,.25)}
+  .lbl-b{font-size:10px;font-weight:800;color:#ff8d80;letter-spacing:.5px} .lbl-a{font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.5px}
+  .note{font-size:12px;color:var(--fg2);margin:8px 0 0}
+
+  /* ── 실제 컴포넌트 목업(라이브 토큰) ── */
+  .m-menu{width:210px;background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,.97));border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+  .m-menu .mh{display:flex;align-items:center;padding:9px 10px 6px;gap:8px}
+  .m-menu .logo{font-weight:900;font-size:15px;letter-spacing:-.5px}.m-menu .logo .g{color:var(--accent)}
+  .m-menu .rf{margin-left:auto;width:26px;height:26px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;color:var(--mut);font-size:13px}
+  .m-menu .sub2{font-style:italic;font-weight:800;font-size:11px;color:var(--mut);padding:0 10px 8px;border-bottom:1px solid var(--line2)}
+  .m-menu a{display:block;padding:8px 10px;font-size:13px;color:var(--fg);text-decoration:none;border-radius:9px}
+  .m-menu .pushrow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--line2);margin-top:4px;font-size:12px;font-weight:700}
+  .m-menu .on{margin-left:6px;font-weight:800;color:var(--accent)}
+  .chips{display:flex;flex-wrap:wrap;gap:4px 14px;max-width:240px}
+  .chips .c{font-size:12.5px;font-weight:600;color:var(--mut)}.chips .c.on{color:var(--fg);font-weight:800}
+  .phaseh{font-size:15px;font-weight:800;color:var(--arm);letter-spacing:-.3px;margin:4px 0;display:flex;gap:8px;align-items:center}
+  .phaseh::after{content:'▾';margin-left:auto;color:var(--mut);font-size:11px}
+  .thsec{font-size:15px;font-weight:800;color:var(--accent);letter-spacing:-.2px}
+  .stat{font-size:13px;font-weight:700;color:var(--accent);padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);text-align:center;margin:5px 0}
+  .stat.b{color:var(--mut)} .stat.b .ico{color:var(--warn)}
+  .ta{position:relative;height:90px;border:1.5px solid var(--accent);border-radius:12px;background:rgba(5,12,8,.5);box-shadow:0 0 0 3px rgba(15,253,2,.1);padding:10px;color:var(--mut);font-size:13px}
+  .ta .clip{position:absolute;width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,.17);background:rgba(26,28,26,.4);display:grid;place-items:center;opacity:.6;color:var(--mut);font-size:11px}
+  .ta.topcase .clip{top:-12px}.ta.botcase .clip{bottom:-12px}
+  .ta .c1{right:14px}.ta .c2{right:44px}.ta .c3{right:74px}
+  .ta .grip{position:absolute;right:2px;bottom:2px;width:9px;height:9px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);opacity:.6}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;border-radius:999px;padding:3px 9px}
+  .badge.red{color:#fff;background:linear-gradient(135deg,#ff3b3b,#ff7a2f)}
+  .badge.grn{color:#06140d;background:linear-gradient(135deg,#d8ff3d,var(--accent))}
+  /* #1 라벨 간격 목업 */
+  .lblrow{font-size:12px;font-weight:800;color:var(--mut)}
+  .imgph{height:34px;border:1px dashed var(--line2);border-radius:8px;background:rgba(255,255,255,.02)}
+  /* #2 + 버튼 목업 */
+  .plusbox{position:relative;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:8px;padding:6px 30px 6px 10px;background:rgba(255,255,255,.02);height:34px}
+  .plus{position:absolute;right:3px;width:16px;border-radius:5px;background:rgba(15,253,2,.1);border:1px solid rgba(15,253,2,.42);color:var(--accent);font:800 16px/1 sans-serif;display:inline-flex;align-items:center;justify-content:center}
+  .plus.bad{height:15px;bottom:1px;top:auto}              /* 현재: 절반·하단 → 글리프 안 맞음 */
+  .plus.good{height:15px;top:50%;transform:translateY(-50%);font-size:12px}  /* 후보: 세로중앙 + 글리프 축소 */
+  small{color:var(--mut)}
+</style></head><body><div class="wrap">
+
+<h1>UI 배치·색 — 미리보기 <small style="color:var(--mut);font-weight:400">260629</small></h1>
+<p class="sub">머지 완료분(라이브) + 남은 2건 전·후 + 확인 1건. 색·토큰은 실제 라이브 값.</p>
+
+<h2><span class="tag done">머지됨</span> 1. 프로필 메뉴 · 필터</h2>
+<div class="card"><div class="row">
+  <div class="col"><p class="cap">프로필 메뉴 — 배경 무채 · 로고 CI 유지 · ON만 강조색</p>
+    <div class="m-menu"><div class="mh"><span class="logo"><span class="g">NO</span>mute</span><span class="rf">↻</span></div>
+      <div class="sub2">News curation</div><a>Home ↗</a><a>Instagram ↗</a><a>X ↗</a>
+      <div class="pushrow"><span>🔔 알림</span><span class="on">ON</span></div></div></div>
+  <div class="col"><p class="cap">카테고리 필터 — 활성칩 무채(흰)</p>
+    <div class="chips"><span class="c on">전체</span><span class="c">이슈</span><span class="c">정치</span><span class="c">사회</span><span class="c">경제</span><span class="c">문화</span><span class="c">국제</span><span class="c">테크</span></div>
+    <p class="note">활성=흰색(카테고리 빨강/글로우 제거). 카드 라벨 색은 그대로.</p></div>
+</div></div>
+
+<h2><span class="tag done">머지됨</span> 2. 대단원 레몬 · 썸네일 초록 · 섹션2 리네임</h2>
+<div class="card">
+  <div class="phaseh">1. 기사 요약 · 시사점</div>
+  <div class="phaseh">2. 카드 뉴스 프롬프트</div>
+  <div class="phaseh">3. 카드 뉴스</div>
+  <p class="thsec" style="margin-top:12px">썸네일 후보 — 검색 · AI 생성</p>
+  <p class="note">phase 1/2/3 대단원 = 레몬(<b style="color:var(--arm)">#ffd93d</b>) · 썸네일 후보 = 네온그린 · "2. 카드뉴스"→"2. 카드 뉴스 프롬프트".</p>
+</div>
+
+<h2><span class="tag done">머지됨</span> 3. 상태문구 — 픽토 제거 + 강조색</h2>
+<div class="card">
+  <div class="stat">문구 바꾸는 중…</div>
+  <div class="stat">카드뉴스 프롬프팅 중입니다…</div>
+  <div class="stat">분석 실패 3 — 탭=원문 · 길게=재시도·사유</div>
+  <p class="note">앞 픽토(✏️⏳⚠·점) 제거 + 글자 강조색. 실패문구도 운영자 "전부"대로 초록.</p>
+</div>
+
+<h2><span class="tag done">머지됨</span> 4. 리사이즈 핸들 제거 · 클립 2케이스</h2>
+<div class="card"><div class="row">
+  <div class="col"><p class="cap">뉴스요약 = 클립 <b>우하단</b>(첨부 화살표대로) · 리사이즈 그립 없음</p>
+    <div class="ta botcase">내용을 입력해주세요<span class="clip c1">⌫</span><span class="clip c2">📋</span><span class="clip c3">⎘</span></div></div>
+  <div class="col"><p class="cap">변형 = 우상단(.clip-top · 재사용)</p>
+    <div class="ta topcase">내용을 입력해주세요<span class="clip c1">⌫</span><span class="clip c2">📋</span><span class="clip c3">⎘</span></div>
+    <p class="note">2케이스 고정(과증식 금지) · CII 기틀 박음.</p></div>
+</div></div>
+
+<h2><span class="tag pend">남음</span> #1. 카드변경 — 라벨 간격 통일</h2>
+<div class="card"><div class="row">
+  <div class="col"><div class="beforebox"><div class="lbl-b">BEFORE</div>
+    <div class="imgph"></div><div class="lblrow" style="margin-top:9px">텍스트</div>
+    <div class="imgph" style="margin-top:10px"></div><div class="lblrow" style="margin-top:9px">이미지 수정</div></div></div>
+  <div class="col"><div class="afterbox"><div class="lbl-a">AFTER(예시)</div>
+    <div class="imgph"></div><div class="lblrow" style="margin-top:14px">텍스트</div>
+    <div class="imgph" style="margin-top:10px"></div><div class="lblrow" style="margin-top:14px">이미지 수정</div></div></div>
+</div><p class="note">"텍스트" 위 간격을 "이미지 수정" 쪽 기준으로 통일(실제 px는 구현 시 라이브 렌더로 측정해 정확히 맞춤).</p></div>
+
+<h2><span class="tag pend">남음</span> #2. "+" 버튼 광학 중앙</h2>
+<div class="card"><div class="row">
+  <div class="col"><div class="beforebox"><div class="lbl-b">BEFORE</div><br>
+    <div class="plusbox">불이 났고<span class="plus bad">+</span></div>
+    <p class="note">절반높이 + 가 하단정렬(bottom:1px)·16px 글리프가 15px 박스에서 안 맞아 위로 치우침.</p></div></div>
+  <div class="col"><div class="afterbox"><div class="lbl-a">AFTER(예시)</div><br>
+    <div class="plusbox">불이 났고<span class="plus good">+</span></div>
+    <p class="note">세로 중앙 + 글리프 축소 → 박스 좌우상하 중앙.</p></div></div>
+</div></div>
+
+<h2><span class="tag q">확인</span> 토스트 "긴급" 배지</h2>
+<div class="card"><div class="row">
+  <div class="col"><p class="cap">현재(벨만 제거·빨강 유지)</p><span class="badge red">긴급</span> <small>3건 · …</small>
+    <p class="note">긴급=빨강 알림 시맨틱 + 빨강 위 초록글자 가독 문제로 빨강 유지.</p></div>
+  <div class="col"><p class="cap">옵션: 초록 배지로</p><span class="badge grn">긴급</span> <small>3건 · …</small>
+    <p class="note">"강조색 통일" 원하면 이걸로.</p></div>
+</div><p class="note"><b>질문:</b> 토스트 긴급 = 빨강 유지 vs 초록 배지 — 어느 쪽?</p></div>
+
+</div></body></html>

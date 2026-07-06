@@ -37,11 +37,21 @@ on:
         description: 'edit 모드: 텍스트 반영 이미지 재생성(1=체크 / 0)'
         type: string
         default: '0'
+      # ⚠️ workflow_dispatch inputs 최대 10개 한계 — 한계 근접. 추가 시 일부를 JSON 1개 input으로 묶어라(compose.js lines 패턴 · 분신술 A7).
+      scene:
+        description: 'edit 모드: 첨부 4:5 사진 경로(uploads/<id>/src.jpg · 비면 미사용·순수 합성)'
+        type: string
+        default: ''
+      scene_sha:
+        description: 'edit 모드: 첨부 사진 커밋 SHA(dispatch 레이스 가드)'
+        type: string
+        default: ''
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
         default: MUTENO
         options:
+          - NOMUTEFB
           - MUTENO
           - EMS1130G
 
@@ -63,6 +73,18 @@ jobs:
           fetch-depth: 0
           ref: main   # 최신 main 기준(news-analyze와 동일 — 옛 커밋 체크아웃 금지)
 
+      # edit 첨부 사진(uploads/<id>/src) — make-cards.js가 main에 선커밋한 직후 dispatch라 보통 체크아웃에 포함되나,
+      # dispatch 레이스로 옛 HEAD를 받았으면 scene_sha로 직접 회수(compose.js/thumb.js image_sha 가드 계승). 못 찾으면 명시 실패.
+      - name: Ensure attached scene (dispatch-race guard)
+        if: ${{ inputs.mode == 'edit' && inputs.scene != '' }}
+        run: |
+          if [ ! -f "${{ inputs.scene }}" ] && [ -n "${{ inputs.scene_sha }}" ]; then
+            echo "첨부 사진 미발견 — SHA ${{ inputs.scene_sha }} fetch 시도(dispatch 레이스 가드)"
+            git fetch --depth 1 origin "${{ inputs.scene_sha }}" 2>/dev/null || git fetch origin main || true   # 둘 다 실패해도 아래 if로 깔끔히 ::error(set -e가 fetch 줄에서 죽지 않게 · 분신술 A2)
+            git checkout "${{ inputs.scene_sha }}" -- "${{ inputs.scene }}" 2>/dev/null || true
+          fi
+          if [ -f "${{ inputs.scene }}" ]; then echo "scene OK: ${{ inputs.scene }}"; else echo "::error::첨부 사진을 찾지 못함: ${{ inputs.scene }}"; exit 1; fi
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
@@ -83,8 +105,11 @@ jobs:
       - name: Make cards
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          CARD_COV_GUARD: ${{ vars.CARD_COV_GUARD || '' }}   # 카드 커버리지 가드(고신호 증발 시 1회 회수) — 기본 OFF·repo 변수 '1'로 카나리아→승격(§파이프라인 e · 260705)
           # 직영(gen_cards) — GEMINI 장면 직접생성 + card_news 로컬합성 + R2 저장(슛·edit 공통). GDRIVE/Cloud Run 미사용(260621 제거).
           # ⚠️ 슛(수동·암호게이트) 워크플로만 GEMINI/R2 주입 — 자동 card_plan(text)은 cardmake Lock B가 unset(제미나이 0 유지).
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -99,6 +124,7 @@ jobs:
           EDIT_TEXT: ${{ inputs.text }}
           EDIT_WISH: ${{ inputs.wish }}
           EDIT_SYNC: ${{ inputs.sync }}
+          EDIT_SCENE_PATH: ${{ inputs.scene }}   # edit 첨부 사진(4:5) 경로 — 있으면 cardmake.sh가 EDIT_SCENE로 → 순수 합성(제미나이 0)
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET} / 모드: ${MODE}${CARD_N:+ / 카드: ${CARD_N}}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then

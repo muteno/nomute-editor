@@ -6,39 +6,40 @@
 >
 > **사람이 보는 사인오프 버전** = `구성도/*.html` (인터랙티브). 이 MD는 그 확정값을 코드 적용용으로 옮긴 것.
 >
-> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` = 구성도 데모가 쓰는 토큰만 발췌한 *부분거울***(전체 거울 아님 — 나머지 토큰은 아직 각 HTML 인라인 `:root`에 잔존·점진 통일 후속) → ③ **이 MD·구성도 HTML = 규칙·시각화**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). ⚠️ 이 MD의 hex/px은 대부분 *viewer 추출본(descriptive)*이나, §0 opacity 스케일·일부 §6~8은 *목표(prescriptive)*라 viewer 현 raw값과 다를 수 있음(그건 지향점). 상세 = `CLAUDE.md §🎨`.
+> ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` AUTO-MIRROR 블록 = viewer :root *전체 자동거울***(`shared/build_design_mirror.py build`가 :root 통째 복사 — 손 베끼기·"부분거울" 시절 폐지, 직접수정 금지·다음 build에 덮어씀 · 정정 260702) → ③ **이 MD·구성도 HTML = 규칙·시각화**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). ⚠️ 이 MD의 hex/px은 대부분 *viewer 추출본(descriptive)*이나, §0 opacity 스케일·일부 §6~8은 *목표(prescriptive)*라 viewer 현 raw값과 다를 수 있음(그건 지향점). 상세 = `CLAUDE.md §🎨`.
 
 ---
 
-## 0. 토큰 베이스라인 (도구 페이지가 맞춰야 할 정본)
+## 0. 토큰 베이스라인 (viewer/index.html :root 스냅샷 · 260704 갱신)
 
-도구 페이지가 중립 회색 팔레트(`#0b0b0c` 등)를 쓰고 있으면 **아래 warm-green 정본으로 교체**한다.
+> ⚠️ **색은 뷰어별 독립** — 이 표는 `index`(뉴스) `:root` 기준이고 **값 정본 = 자동거울 `구성도/base.css`**(= viewer :root). 도구 페이지(comp·ly·k·thumb)는 **구조 토큰만 공유**(`viewer/tokens.css`)하고 색은 각자 `:root`(warm 툴톤). 아래 값이 `:root`와 어긋나면 `:root`가 옳다. 진입점 = `docs/디자인_기틀_지도.md`.
+
+도구 페이지가 중립 회색 팔레트(`#0b0b0c` 등)를 쓰고 있으면 **구조 토큰(radius·spacing·blur·모션)을 아래 정본에 맞춘다**(색은 뷰어 정체성이라 독립).
 
 ```css
 :root {
   /* 표면 */
   --bg:#0a120d;                      /* 초록빛 블랙 (중립 #0b0b0c 아님) */
-  --glass:rgba(38,64,46,.42);
   --glass2:rgba(14,26,18,.55);
   --line:rgba(255,255,255,.08);
   --line2:rgba(255,255,255,.06);
-  /* 텍스트 */
-  --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697;
+  /* 텍스트 — --fg-2 폐지(260704): 보조텍스트/중간회색도 --mut 단일 */
+  --fg:#eef7f0; --mut:#8fa697;
   /* 브랜드/강조 */
-  --accent:#0FFD02; --accent-rgb:15,253,2;
-  --accent-dim:rgba(15,253,2,.13); --on-accent:#062108;
-  /* 의미색 */
-  --danger:#ff5b4a; --warn:#ffd24a; --amber:#ff9614; --info:#0cd0f7;
-  /* 재확인(arm) */
-  --arm:#ffd93d; --arm-rgb:255,217,61; --on-arm:#1a1205;
-  /* radius — 4단 (그 외 7·10·20·22 난립 금지). --r:24=배너·큰 패널(viewer 정본 :root에 생존). */
-  --r-s:9px; --r-m:11px; --r-l:16px; --r:24px; --r-pill:999px;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+  /* 의미색 = accent 스케일 별칭(값 SSOT=accent-N · 260704) */
+  --danger:#e23b2a/*=accent-3 빨강*/; --warn:#FFE13D/*=accent-4 골드레몬(260705 2차·오렌지 퇴장)*/; --amber:#FFE13D/*=accent-4*/; --info:#0FFD02/*=accent-5 그린*/;
+  /* 재확인(arm) = accent-4(260704 · 옛 #ffd93d 폐지) */
+  --arm:#FFE13D; --arm-rgb:255,225,61; --on-arm:#241C02;
+  /* radius 5단 — 그 외 7·10·20·24 난립 금지. 모달만 --r-modal:22 */
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
   /* 간격 4배수 */
   --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
   /* 모션 */
   --ease:cubic-bezier(.2,.7,.3,1); --dur-fast:.12s; --dur:.18s;
-  /* 상태 타이포 */
-  --font-status:'Orbitron','Pretendard Variable',sans-serif;
+  /* 상태 타이포 — Orbitron 폐지(운영자 260621)·Pretendard 통일, var(--font-status)는 호환 위해 유지 */
+  --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif;
 }
 ```
 
@@ -46,7 +47,7 @@
 `glow .06` · `soft .12` · `ring .08` · `line .26` · `focus .35` · `edge .45` · `shine .85`.
 ※ 기존에 정의만 하고 안 쓰던 `--accent-dim(.13)` 토큰을 실제로 참조해 살릴 것. 인라인 매직넘버 금지.
 
-**토큰 밖 매직 색 → 토큰화**: `#cfd2d7→--fg-2`, `#ff8a8a→--danger(#ff5b4a)`, `#d8ff3d→--accent-bright`(밝은 그린·그라데 끝 — ⚠️ `--accent-2`는 viewer에서 **앰버 #ff9614**(스크랩 테마)라 다름·260621 정정).
+**토큰 밖 매직 색 → 토큰화**: 인라인 매직 색은 가장 가까운 토큰으로. ⚠️ 260704 개편 정정: `--fg-2` 폐지(→`--mut`) · `--accent-2` = **라임 #d8ff3d**(이력/최소화 · 구 보라 #c24bf5 퇴장 260705) · `--accent-bright` = **#5AFFE6 밝은 터쿼이즈 자기값**(구 accent-4 별칭 해제 260705) · 의미색(`--danger/--warn/--amber/--info/--arm`) = accent-3~5 별칭.
 
 ---
 
@@ -147,10 +148,10 @@ accent는 "지금 핵심"을 가리키는 손가락. **화면당 2~3곳 이내.*
 
 | 메뉴 | 대표색 | 토큰 |
 |---|---|---|
-| 피드·큐레이션 | 라임 `#0FFD02` | `--accent` |
-| 스크랩(레거시) | 앰버 `#ff9614` | `--amber` |
+| 피드·큐레이션 | 터쿼이즈 `#00EED2` | `--accent` |
+| 스크랩 | 골드레몬 `#FFE13D` | `--accent-4` |
 | SNS | 시안 `#0cd0f7` | `--info` |
-| 썸네일 생성기 | 노랑 `#ffce54` | (요약요청 초록과 구분) |
+| 썸네일 생성기 | 골드레몬 `#FFE13D` | `--thumb`(accent-4 · 강조색 터쿼이즈와 구분) |
 | ly·k | 라임(기본) | 별도 색 없음 |
 
 **전파**: 메뉴 진입 시 배너 글로우·프로필 링·배지·활성 칩·입력 focus/hover가 전부 그 한 색. **단, 1차 버튼은 예외 — 항상 라임/앰버 공통 신호(§1).**
@@ -172,12 +173,12 @@ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-lin
 
 ---
 
-## 7. 상태 타이포 = Orbitron
+## 7. 상태 타이포 — Orbitron 폐지(운영자 260621)·현행 Pretendard 통일
 
-영문 상태어·배지 숫자는 **Orbitron** 공통. 한글은 Pretendard 유지.
+~~영문 상태어·배지 숫자 = Orbitron~~ → **폐지(운영자 260621)**: 상태어·배지 숫자도 **Pretendard로 통일**(정본 주석 = `viewer/index.html:15`·base.css §상태 타이포 동일). `var(--font-status)`는 **호환 위해 유지**하되 이제 Pretendard로 렌더 — Orbitron `@import` 재도입 금지.
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&display=swap');
-:root { --font-status:'Orbitron','Pretendard Variable',sans-serif; }
+/* @import Orbitron — 폐지(260621) · 재도입 금지 */
+:root { --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif; }
 /* 적용 대상: PICK·Picking…·PICKED·PASS·Failed·thumb 상태어, 라벨사전 영문, 버튼 안 숫자(OPA 등) · viewer 실셀렉터 = .sc-got/.sc-fail/.sc-tg/.sc-pick span/.sc-cross/#qbadge/.qb (아래 .stat 등은 구성도 데모 클래스) */
 .stat,.ind-bar span,.fail-chip,.picked-chip,.pickbtn,
 .sc-got,.sc-tg { font-family:var(--font-status); letter-spacing:.04em; }   /* viewer 실클래스 = .sc-tg(.pass/.down) — 옛 .sc-pass/.sc-down 오기 정정(260621) */
@@ -210,7 +211,7 @@ PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM
 - **아이콘 SVG 상수** `COPY/PASTE/CHECK/DOWNLOAD/EDIT/LAYERS/THUMBUP/THUMBDOWN` 등(24뷰박스·stroke 2·round).
 
 ## 10. 시각 시스템 — 풀페이지 배경 · 배너 (viewer 정본)
-- **풀페이지 네온 배경** `.bgfx` = radial **3겹**(좌상 420×300·우상 720×460·하단 640×720) + 탭별 색 전환(`--bgfx`): **피드=라임**(15,253,2) / **스크랩=앰버**(255,150,20) / **SNS=시안**(12,208,247). (구성도 1겹 데모는 단순화 — 라이브는 3겹.)
+- **풀페이지 네온 배경** `.bgfx` = radial **3겹**(좌상 420×300·우상 720×460·하단 640×720) + 탭별 색 전환(`--bgfx`): **(260705 정정: 라이브 .bgfx = 무채 물결 셰이더+feed_bg 폴백으로 개편 — 구 3겹 radial 탭색 서술 폐기 · 탭 색 신호는 배너·--glow가 담당)**
 - **배너** `.bannerframe` = radius **20px** + 글로우 + **호흡 애니** `bannerbreath 5.5s` ease-in-out 무한(밝기·드롭섀도 맥동). 탭 전환 = **2겹 크로스페이드 디졸브**(`.banner.layer-*` opacity .6s) — 즉시교체·슬라이드 금지. `prefers-reduced-motion`이면 즉시.
 
 ## 11. 부속 설명 · 정렬 (viewer #mdbody/#cardsec 정본)
@@ -224,5 +225,5 @@ PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM
 1. 도구 페이지(comp·ly·k) `:root`를 §0 정본으로 교체 → 중립 회색·매직넘버 제거.
 2. 생성/전송 버튼을 §1 상태머신으로 교체(라벨·색·재확인 게이트·소진).
 3. §2 배치·§3 위계·§4 표면 규칙으로 마크업 정리.
-4. §5 메뉴색·§6 픽토그램·§7 Orbitron·§8 모션·§9 컴포넌트·§10 시각시스템·§11 부속설명 적용.
+4. §5 메뉴색·§6 픽토그램·§7 상태타이포(Pretendard·Orbitron 폐지)·§8 모션·§9 컴포넌트·§10 시각시스템·§11 부속설명 적용.
 5. 게이트 = `shared/check_refs.py check_design()` 통과 확인.

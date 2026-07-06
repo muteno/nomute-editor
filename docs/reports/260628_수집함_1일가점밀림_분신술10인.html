@@ -1,0 +1,169 @@
+<!doctype html><html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>수집함 1일+ 적체 — 분신술 10인 적대검증 (260628)</title>
+<style>
+  :root{
+    --bg:#121212; --accent:#0FFD02; --accent-rgb:15,253,2; --accent-bright:#d8ff3d; --accent-2:#ff9614;
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697; --glass2:rgba(14,26,18,.55);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --danger:#ff5b4a; --warn:#ffd24a; --info:#0cd0f7;
+    --r-l:16px; --r-m:11px; --r-s:9px; --blur-l:22px; --blur-m:14px;
+    --sp-2:12px; --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    letter-spacing:-.2px;-webkit-font-smoothing:antialiased;padding:0 0 60px}
+  .wrap{max-width:820px;margin:0 auto;padding:18px 16px}
+  h1{font-size:21px;font-weight:800;margin:6px 0 2px}
+  h2{font-size:16px;font-weight:800;margin:30px 0 10px;padding-top:14px;border-top:1px solid var(--line);color:var(--accent-bright)}
+  h3{font-size:13.5px;font-weight:800;margin:18px 0 7px;color:var(--fg-2)}
+  p,li{font-size:13.5px;color:var(--fg-2);line-height:1.7}
+  code{background:rgba(var(--accent-rgb),.1);color:var(--accent-bright);padding:1px 5px;border-radius:5px;font-size:12px}
+  .sub{color:var(--mut);font-size:12px}
+  .pin{color:var(--accent)}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:rgba(255,255,255,.04);font-weight:700;color:var(--fg)}
+  .ok{color:var(--accent);font-weight:700} .no{color:var(--danger);font-weight:700} .am{color:var(--warn);font-weight:700}
+  .note{background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.22);border-radius:var(--r-m);padding:11px 13px;margin:12px 0;font-size:12.5px}
+  .warn{background:rgba(255,150,20,.08);border:1px solid rgba(255,150,20,.28)}
+  .bad{background:rgba(255,91,74,.07);border:1px solid rgba(255,91,74,.26)}
+  .big{font-size:15px;font-weight:800;color:var(--fg)}
+  ul{margin:6px 0 6px 0;padding-left:20px}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 7px;border-radius:20px;margin-right:5px}
+  .t-no{background:rgba(255,91,74,.16);color:#ff8b7a}
+  .t-am{background:rgba(255,210,74,.16);color:#ffd24a}
+  .t-ok{background:rgba(15,253,2,.14);color:var(--accent)}
+  .barwrap{display:flex;align-items:center;gap:8px;margin:3px 0}
+  .barlbl{width:120px;font-size:11.5px;color:var(--fg-2);text-align:right;flex:none}
+  .bar{height:15px;border-radius:4px;flex:none}
+  .barval{font-size:11px;color:var(--mut)}
+  svg.chart{display:block;margin:8px auto;max-width:100%}
+</style></head><body><div class="wrap">
+
+<h1>수집함 누적 칼럼 1일+ 적체 — 분신술 10인 적대검증</h1>
+<p class="sub">260628 · READ-ONLY 진단(코드 변경 0) · Opus 4.8 ×10 병렬 · 실데이터 <code>viewer/candidates.json</code> 2,879건 실측</p>
+
+<div class="note big">결론 한 줄: 운영자 제보(1일+ 이란전 상단 적체)는 <b class="pin">실제로 재현됨</b>. 하지만 의심한 <b>scFollow(연속보도)는 무죄</b>다. 진짜 원인은 두 가지 — ① <b>같은 이란전이 14~21개 클러스터로 쪼개져 누적 상위 70%를 도배</b>(over-fragmentation) ② cross<sup>1.6</sup>×grade3가 정당하게 강해 timeAcc가 ~22h까지 못 누름. <b>가중치 한 줄로는 안 풀린다 → de-dup이 답이고, 그건 기틀 인접이라 운영자 승인 필요.</b></div>
+
+<h2>1. 무엇을 봤나 (재현)</h2>
+<p>누적 칼럼 정렬 = <code>scScore = cross^1.6 × timeAcc × scFollow × gradeW</code> (정본 <code>viewer/index.html:5905</code>). 진입 = 4h+ AND (cross≥8 OR breaking OR followEnters). 이 로직을 그대로 이식해 현재 데이터로 누적 칼럼을 재구성한 결과:</p>
+
+<table>
+<tr><th>#</th><th>화면시간</th><th>발행나이</th><th>cross</th><th>rc</th><th>grade</th><th>scScore</th><th>제목</th></tr>
+<tr><td>1</td><td>20시간 전</td><td>20.4h</td><td class="pin">16</td><td>3</td><td>3</td><td class="pin">43.8</td><td>[속보] 이란, 쿠웨이트·바레인 미군기지 공격</td></tr>
+<tr><td>2</td><td>1일 0시간 전</td><td>24.8h</td><td>15</td><td>2</td><td>3</td><td>22.8</td><td>미군, 호르무즈 인근서 이란 공습</td></tr>
+<tr><td>3</td><td>1일 2시간 전</td><td>26.6h</td><td>15</td><td>2</td><td>3</td><td>18.9</td><td>美, 이란 상선 공격에 보복 공습</td></tr>
+<tr><td>4</td><td>1일 1시간 전</td><td>25.8h</td><td>15</td><td>1</td><td>3</td><td>18.7</td><td>미국, 연이틀 이란 공습</td></tr>
+<tr><td>5~7</td><td>1일 3~4시간</td><td>27~29h</td><td>14~15</td><td>1~3</td><td>3</td><td>14~17</td><td>(전부 이란/중동전)</td></tr>
+</table>
+<p>→ <b>운영자 제보 "1일0h/1h/2h가 상단" 정확히 재현.</b> (운영자가 통칭한 "1일 N시간 전"은 published 24~26h. 1위는 20h.)</p>
+
+<h2>2. scFollow vs cross<sup>1.6</sup> — 누가 노화를 이기나 (주범 분리)</h2>
+<p>노화(timeAcc)를 상쇄해 1일+를 위로 올리는 힘이 무엇인지 각 항의 "증폭 배율"을 실측했다:</p>
+
+<svg class="chart" width="640" height="180" viewBox="0 0 640 180" role="img" aria-label="배율 비교">
+  <text x="10" y="16" fill="#cfd8d0" font-size="12" font-weight="700">항별 최대 증폭 배율 (다이내믹 레인지)</text>
+  <!-- timeAcc 감쇠 -->
+  <text x="150" y="48" fill="#cfd8d0" font-size="11" text-anchor="end">timeAcc 감쇠(0h→24h)</text>
+  <rect x="158" y="38" width="438" height="15" rx="4" fill="#ff5b4a"/>
+  <text x="602" y="50" fill="#ff8b7a" font-size="11" font-weight="700">7.3×↓</text>
+  <!-- cross^1.6 -->
+  <text x="150" y="80" fill="#cfd8d0" font-size="11" text-anchor="end">cross^1.6 (8→16)</text>
+  <rect x="158" y="70" width="182" height="15" rx="4" fill="#ffd24a"/>
+  <text x="346" y="82" fill="#ffd24a" font-size="11" font-weight="700">3.0×↑ (주범)</text>
+  <!-- gradeW -->
+  <text x="150" y="112" fill="#cfd8d0" font-size="11" text-anchor="end">gradeW (grade3)</text>
+  <rect x="158" y="102" width="108" height="15" rx="4" fill="#ff9614"/>
+  <text x="272" y="114" fill="#ff9614" font-size="11" font-weight="700">1.8×↑ (공범)</text>
+  <!-- scFollow -->
+  <text x="150" y="144" fill="#cfd8d0" font-size="11" text-anchor="end">scFollow (rc0→60cap)</text>
+  <rect x="158" y="134" width="132" height="15" rx="4" fill="#8fa697"/>
+  <text x="296" y="146" fill="#8fa697" font-size="11" font-weight="700">2.2× (이란전 실제는 1.2~1.4× — 무관)</text>
+</svg>
+
+<table>
+<tr><th>항</th><th>치역(실측)</th><th>이란전 실제값</th><th>역할</th></tr>
+<tr><td>timeAcc 감쇠</td><td>0h=1.0 → 24h=0.137 → 36h=0.045</td><td>20h=0.21</td><td>노화 처벌 (정상 작동 중)</td></tr>
+<tr><td><b>cross^1.6</b></td><td>cross8=27.9 → cross16=84.4 (<b>3.0×</b>)</td><td>cross16 → 84.4</td><td class="no">주범</td></tr>
+<tr><td><b>gradeW</b></td><td>0.05 ~ 1.8 (grade3=1.8×)</td><td>grade3 → ×1.8</td><td class="am">공범</td></tr>
+<tr><td>scFollow</td><td>rc0=1.0 ~ rc60(cap)=2.19 (최대 2.2×)</td><td>rc1~3 → ×1.2~1.4</td><td class="ok">무관(운영자 의심 무죄)</td></tr>
+</table>
+
+<div class="note"><b>수학적 확정:</b> scFollow 최대 2.2배 &laquo; timeAcc 감쇠 7.3배. <b>scFollow는 노화를 무력화할 수 없다.</b> 게다가 이란전 항목 rc는 거의 1~3이라 실제 곱은 1.2~1.4배뿐. <b>scFollow를 통째로 1로 꺼도 누적 상위 순위가 거의 안 바뀐다</b>(10인 중 4명이 반사실 실험으로 독립 확인). 노화를 이기는 건 cross<sup>1.6</sup>×grade3다.</div>
+
+<h2>3. rc(report_count)는 정말 영구 가점인가</h2>
+<p><b>맞다 — 단조증가, 감소 항 없음</b>(<code>scraper/to_candidates.py:210</code>). 보도가 완전히 끊겨도(<code>arts</code> 안 늘어도) rc는 과거 최댓값을 영구 보존하고, 별칭승계로 rep-url 점프에도 이월된다. 실데이터에 보도 끊긴 지 237h인데 rc22(scFollow 1.90 영구)인 좀비도 존재. <b>그러나</b> 그 scFollow 가점이 너무 작아(최대 2.2×) timeAcc(240h → 거의 0)가 같은 곱에서 침몰시킨다 → <b>이론적 결함이나 실害 미미</b>. 운영자 제보의 이란전과도 무관(이란전 rc 낮음).</p>
+
+<h2>4. 진짜 주범 — over-fragmentation (같은 사건 도배)</h2>
+<div class="bad note"><b class="big">핵심 발견:</b> 누적 칼럼 진입 후보 355건 중 <b>이란/중동전이 182건(51%)</b>. 누적 <b>상위 30 중 21건(70%)이 같은 이란전</b> 한 토픽이다. 같은 사건이 <code>미군기지 공격</code>·<code>상선 보복공습</code>·<code>호르무즈 드론</code>·<code>레바논 휴전</code>·<code>밴스 발언</code>… <b>14~21개 별개 클러스터(distinct event_key)로 쪼개져</b> 칼럼을 도배한다.</div>
+
+<svg class="chart" width="560" height="120" viewBox="0 0 560 120" role="img" aria-label="누적 상위30 점유">
+  <text x="10" y="18" fill="#cfd8d0" font-size="12" font-weight="700">누적 칼럼 상위 30 — 토픽 점유</text>
+  <rect x="10" y="34" width="378" height="34" rx="5" fill="#ff5b4a" opacity=".75"/>
+  <text x="199" y="56" fill="#fff" font-size="13" font-weight="800" text-anchor="middle">이란전 21건 (70%)</text>
+  <rect x="392" y="34" width="158" height="34" rx="5" fill="#2a4a2a"/>
+  <text x="471" y="56" fill="#cfd8d0" font-size="12" font-weight="700" text-anchor="middle">비이란 9건</text>
+  <text x="10" y="92" fill="#8fa697" font-size="11">→ 이재명 호남반도체·박성재 선고·중러 군용기 등 국내 사건이 이란전 무리에 묻힘(전부 score≤13.6)</text>
+</svg>
+
+<p>노화 로직(timeAcc)은 정상 작동한다 — 각 항목은 20h→0.21, 36h→0.045로 강하게 깎인다. <b>문제는 "한 사건이 안 내려간다"가 아니라 "같은 사건 14~21개가 동시에 상단에 떠서 다른 분야를 다 밀어낸다"</b>는 점이다. 운영자가 체감한 "이란전이 쌓인다"의 정체가 이것.</p>
+
+<div class="warn note"><b>곁가지 (이미 docs에 인지됨):</b> <code>docs/curation-algorithm.md §8</code> line 107·163에 <b>"잔여 후속 = ⓑ judge-grouping(수집함 피드 중복배지·기틀)"</b>이 미해결로 적혀 있다. 자동픽 중복(260625)은 AI 심판으로 막았으나, <b>수집함 표시 단계의 중복 클러스터 도배는 아직 미해결</b>. 이번 제보가 정확히 그 후속 과제다.</p>
+
+<h2>5. 수정안 4종 — 적대 검증 결과 (전부 가중치 안은 부적합)</h2>
+<table>
+<tr><th>안</th><th>효과(1일+ 적체 해소)</th><th>부작용 / 회귀위험</th><th>변경 범위</th><th>평결</th></tr>
+<tr>
+  <td><b>① scFollow 나이감쇠 결합</b></td>
+  <td class="no">미미 — 이란전 rc 낮아 거의 안 내려감. timeAcc와 <b>이중 처벌</b></td>
+  <td>노령 양질 followEnters 항목만 더 묻음. 신규 칼럼 &lt;3% 오염</td>
+  <td>viewer (scScore 전용 헬퍼로 격리하면 안전)</td>
+  <td><span class="tag t-am">⚠️ 효과없음</span></td>
+</tr>
+<tr>
+  <td><b>② rc를 '최근 활성'으로 한정</b></td>
+  <td class="am">이론상 맞으나 이 데이터엔 무효(상단 rc 낮음)</td>
+  <td class="no">scraper 변경 = cross 파동 위험. followEnters 진입 29/40 탈락 → "신규 졸업하면 사라지는 구멍"(docs L83) 재발</td>
+  <td class="no">scraper (고위험·기틀)</td>
+  <td><span class="tag t-no">❌ 금지</span></td>
+</tr>
+<tr>
+  <td><b>③ timeAcc 강화 (13·3.0→더↑)</b></td>
+  <td class="no">무효 — fresh 경쟁자가 풀에 0건이라 강화해도 top1~7 불변</td>
+  <td>fresh 12h 진짜 대형 과침몰. 이미 18·2.5→13·3.0로 한번 강화한 상태(docs L86)</td>
+  <td>viewer (단 §★ 임계 = 용어급 고정)</td>
+  <td><span class="tag t-am">⚠️ 무효</span></td>
+</tr>
+<tr>
+  <td><b>④ cross^1.6 약화 (→1.4 등)</b></td>
+  <td class="am">교차나이 3.5h만 당겨짐 (미미)</td>
+  <td class="no">9시뉴스 다매체 변별력 파괴 = §★ 기틀 훼손</td>
+  <td>viewer (§★ 기틀)</td>
+  <td><span class="tag t-no">❌ 기틀</span></td>
+</tr>
+<tr>
+  <td><b class="pin">⑤ 표시 de-dup (같은 event_key 그룹당 상위 1개만, 나머지 접기)</b></td>
+  <td class="ok">근본 해소 — 도배 84% 제거, 다른 분야 노출</td>
+  <td>event_key가 클러스터마다 갈려(members=0 다수) 제목 유사도 보조 필요. "어떤 사건이 묻히나"를 바꿈 = 큐레이션 출력 변경</td>
+  <td>viewer 표시층 (신호·랭킹·진입 0 변경)</td>
+  <td><span class="tag t-am">⚠️ 기틀인접 · 운영자 승인 후</span></td>
+</tr>
+</table>
+
+<h2>6. 권고 (가장 보수적 순)</h2>
+<ul>
+  <li><b class="pin">방향 = de-dup(가중치 아님).</b> 문제의 84%가 "동일 메가사건 14~21중복"이다. 가중치를 만지면(③④) 정상 다매체 변별을 깨거나(④) 효과가 없다(③). 가중치 레버로는 못 푼다 — 10인 만장일치.</li>
+  <li><b>즉효 임시방편</b>이 필요하면 누적 칼럼 "동일 event_key 최대 2개" 하드캡이 가장 작은 변경(viewer 표시층, 신호 0 손실).</li>
+  <li><b>제대로 된 해법</b> = 누적 칼럼 렌더 시 event_key + 제목 유사도로 그룹핑 → 그룹 1위만 노출, 하위는 "관련 N건" 접기(수동병합 <code>applyMerges</code> 패턴 재사용 가능).</li>
+  <li class="am"><b>게이트:</b> ⑤는 "국소 뷰어 손질"처럼 보이나 <b>어떤 사건이 칼럼에 보이냐를 바꾸므로 큐레이션 출력 변경 = §🎯③·§★ 기틀 인접</b>. 단독 머지 금지 → <b>운영자 승인 + (기틀 판정 시) 분신술 10인</b> 경유 권장. docs §8 "judge-grouping" 후속과 통합 검토.</li>
+  <li class="ok"><b>안 해도 되는 것:</b> scFollow 공식·rc 산출·timeAcc 상수는 <b>건드리지 마라</b>. 무죄거나 효과 없거나 기틀 훼손. (docs L108 "랭킹 상수는 별점 30일 라벨 전 보류"와도 정합.)</li>
+</ul>
+
+<div class="note"><b>정직 표식:</b> ✅확인 = scFollow 무죄·rc 단조증가·재현·over-fragmentation 70% (전부 실측). 🟡추정 = de-dup이 최선이나 event_key 묶임 한계로 제목 유사도 보조 필요(미구현·미검증). 이 보고서는 <b>진단(READ-ONLY)</b>이며 코드 변경 0 — 다음 단계(de-dup 구현)는 운영자 승인 후 별도 작업.</div>
+
+<p class="sub">검증가 10인 앵글: ①scTs published함정(❌무죄) ②rc영구가점(❌무관) ③cross^1.6분리(주범확정) ④의도충돌(de-dup이 답) ⑤아이데이션4안(전부부적합) ⑥화면재현(✅) ⑦진입게이트(결백) ⑧회귀·기틀(상수보류) ⑨신규칼럼교차부작용(안C격리만안전) ⑩총괄(de-dup·기틀게이트). 만장일치 수렴.</p>
+
+</div></body></html>

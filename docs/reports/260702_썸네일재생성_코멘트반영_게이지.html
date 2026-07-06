@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>뉴스요약 이미지 재생성 = 코멘트 반영 + 게이지·진행바 — 260702</title>
+<style>
+  :root{ --bg:#0b0d0c; --pan:#16171a; --pan2:#1c1e22; --line:#2a2c31; --fg:#e9eaec; --mut:#8b8f98;
+         --accent:#0FFD02; --accent-rgb:15,253,2; --arm:#ffd24a; --danger:#ff6b6b; --warn:#ffb020;
+         --r:12px; --r-pill:999px; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.62; padding:22px 16px 70px; }
+  .wrap{ max-width:820px; margin:0 auto; }
+  h1{ font-size:22px; margin:0 0 4px; letter-spacing:-.2px; }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 8px; }
+  .verdict{ display:inline-block; font-size:12.5px; font-weight:800; color:#06140d; background:var(--accent); border-radius:var(--r-pill); padding:3px 12px; margin:6px 0 18px; }
+  h2{ font-size:16.5px; margin:30px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  h3{ font-size:14px; margin:16px 0 6px; color:var(--fg); }
+  p,li{ font-size:14px; }
+  code{ background:#0f1412; border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-size:12.5px; color:#cfe9c9; }
+  .card{ background:var(--pan); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px; margin:12px 0; }
+  .muted{ color:var(--mut); }
+  table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13px; }
+  th,td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ color:var(--mut); font-weight:700; font-size:12px; }
+  .ba{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:620px){ .ba{ grid-template-columns:1fr; } }
+  .ba .b{ border-radius:10px; padding:13px 15px; font-size:13px; }
+  .before{ background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.3); }
+  .after{ background:rgba(var(--accent-rgb),.08); border:1px solid rgba(var(--accent-rgb),.3); }
+  .tag{ font-weight:800; font-size:11px; letter-spacing:.5px; text-transform:uppercase; }
+  .before .tag{ color:var(--danger); } .after .tag{ color:var(--accent); }
+  .ok{ color:var(--accent); font-weight:700; } .no{ color:var(--danger); font-weight:700; } .warn{ color:var(--warn); font-weight:700; }
+  ul{ margin:6px 0; padding-left:20px; } li{ margin:3px 0; }
+
+  /* ── 인터랙티브 데모(실제 뷰어 CSS 복제 · 탭해서 확인) ── */
+  .demo{ background:#0e100f; border:1px dashed rgba(var(--accent-rgb),.4); border-radius:14px; padding:20px; margin:14px 0; position:relative; }
+  .demo-hint{ font-size:12px; color:var(--mut); margin-bottom:14px; }
+  .slot{ position:relative; width:190px; height:238px; border-radius:11px; overflow:hidden; margin:0 auto;
+    background:linear-gradient(160deg,#2b3f2e,#4a6b52 55%,#7fa688); }
+  .slot .no{ position:absolute; top:8px; left:8px; z-index:2; font-size:11px; font-weight:800; color:#fff; background:rgba(0,0,0,.35); border-radius:var(--r-pill); padding:2px 8px; }
+  .slot .no b{ color:var(--accent); }
+  .slot .cap{ position:absolute; bottom:9px; left:0; right:0; text-align:center; z-index:2; font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  .acts{ position:absolute; top:10px; right:10px; z-index:3; display:flex; gap:6px; }
+  .sbtn{ display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(255,255,255,.16); border-radius:10px; cursor:pointer; color:rgba(255,255,255,.92);
+    background:rgba(0,0,0,.22); backdrop-filter:blur(6px); transition:transform .12s, background .15s; }
+  .sbtn:active{ transform:scale(.85); }
+  .sbtn.pencil{ color:var(--accent); }
+  /* 슬롯 재생성 중 = dim + 배지 + 진행바(실제 뷰어 복제) */
+  .slot.reshooting > .base{ filter:brightness(.5) saturate(.7); }
+  .slot.reshooting .acts{ opacity:.5; pointer-events:none; }
+  .base{ position:absolute; inset:0; }
+  .reshoot-badge{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:4; font-size:12.5px; font-weight:800; color:var(--accent); text-align:center;
+    background:rgba(8,15,11,.62); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:8px 15px; white-space:nowrap;
+    backdrop-filter:blur(10px); box-shadow:0 6px 20px rgba(0,0,0,.4); display:none; }
+  .slot.reshooting .reshoot-badge{ display:block; }
+  .reshoot-bar{ position:relative; width:118px; max-width:70%; height:4px; margin:8px auto 1px; border-radius:var(--r-pill); overflow:hidden; background:rgba(255,255,255,.16); }
+  .reshoot-bar::before{ content:''; position:absolute; top:0; bottom:0; left:-45%; width:45%; border-radius:var(--r-pill); background:var(--accent); animation:sweep 1.15s ease-in-out infinite; }
+  @keyframes sweep{ 0%{left:-45%;} 100%{left:100%;} }
+
+  /* 팝업(revdlg 미러) */
+  .pop{ position:absolute; inset:0; display:none; place-items:center; background:rgba(0,0,0,.35); border-radius:14px; z-index:10; }
+  .pop.on{ display:grid; }
+  .popbox{ width:min(340px,86%); background:linear-gradient(165deg,rgb(24,25,28),rgb(12,13,15)); border:1px solid rgba(255,255,255,.13); border-radius:22px; padding:13px 15px 14px; animation:rise .2s cubic-bezier(.22,.61,.36,1) backwards; }
+  @keyframes rise{ from{ transform:scale(.96) translateY(8px);} }
+  .pophead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .pophead b{ font-size:14px; } .popact{ display:flex; gap:8px; align-items:center; }
+  .psub{ font-size:12px; color:var(--mut); margin:-4px 0 10px; }
+  .send{ position:relative; overflow:hidden; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.05); color:var(--fg); border-radius:9px; padding:6px 13px; font-size:12px; font-weight:700; cursor:pointer; }
+  .send span{ position:relative; z-index:1; }
+  .send.confirm{ background:rgba(255,210,74,.2); color:var(--arm); border-color:rgba(255,210,74,.5); }
+  .send.firing{ color:#06140d; border-color:var(--accent); pointer-events:none; }
+  .send.firing::before{ content:''; position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left; animation:gauge .72s linear forwards; z-index:0; }
+  @keyframes gauge{ to{ transform:scaleX(1);} }
+  .xbtn{ width:30px; height:30px; border-radius:9px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:var(--fg); cursor:pointer; font-size:15px; line-height:1; }
+  textarea{ width:100%; height:56px; resize:none; background:#0f1210; border:1px solid var(--line); border-radius:9px; color:var(--fg); padding:8px 12px; font-size:13px; font-family:inherit; }
+  textarea::placeholder{ color:#6b7079; }
+  @media(prefers-reduced-motion:reduce){ .reshoot-bar::before{ animation-duration:2.4s; } .send.firing::before,.popbox{ animation-duration:.2s; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>뉴스요약 이미지 재생성 = 코멘트 반영형 + 게이지·진행바</h1>
+  <p class="sub">apps/news 뷰어 · AI 썸네일 슬롯 · 260702 · 4파일 변경 · 브랜치 <code>claude/news-summary-image-regen-yklf6o</code></p>
+  <span class="verdict">평의회 10인 + 재검증 4인 만장일치 ✅</span>
+
+  <h2>한 줄 요약</h2>
+  <div class="card">
+    AI 썸네일의 <b>재생성 버튼(↻ 새로고침)</b>이 지금까지 <b>깜깜이 재추첨</b>(똑같은 프롬프트로 랜덤)만 했어.
+    이걸 <b>연필(수정) 버튼</b>으로 바꾸고, 탭하면 <b>코멘트 팝업</b>(뉴스요약 수정 팝업과 같은 모양)이 떠서
+    "더 어둡게 · 차를 파란색으로" 같은 <b>지시를 이미지 재생성에 반영</b>하게 했어.
+    보내면 <b>버튼 게이지</b>가 차고, 이미지엔 <b>'재생성 중' 진행바</b>가 떠(1~2분 비동기). 코멘트를 비우면 <b>기존처럼 재추첨</b>.
+  </div>
+
+  <h2>탭해서 확인 — 실제 동작 미리보기</h2>
+  <div class="demo">
+    <div class="demo-hint">▶ 아래 이미지 우상단 <b style="color:var(--accent)">연필</b>을 눌러봐 → 팝업(뉴스 수정 요청과 동일) → "수정" 2번(재확인→전송) → 게이지 + 진행바. (실제 뷰어 CSS·애니 그대로)</div>
+    <div class="slot" id="dslot">
+      <div class="base"></div>
+      <span class="no"><b>2</b>/2</span>
+      <span class="cap">웹툰 극화</span>
+      <div class="acts">
+        <div class="sbtn pencil" id="dpencil" title="이 화풍 수정·재생성" aria-label="수정·재생성">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        </div>
+        <div class="sbtn" title="저장" aria-label="저장">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg>
+        </div>
+      </div>
+      <div class="reshoot-badge">수정 중…<div class="reshoot-bar"></div></div>
+      <div class="pop" id="dpop">
+        <div class="popbox">
+          <div class="pophead"><b>이미지 수정 요청</b><div class="popact"><button class="send" id="dsend"><span>수정</span></button><button class="xbtn" id="dx">✕</button></div></div>
+          <textarea placeholder=""></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>전 / 후 비교</h2>
+  <div class="ba">
+    <div class="b before"><div class="tag">전 (지금)</div>
+      <ul>
+        <li>아이콘 = <b>↻ 새로고침</b></li>
+        <li>버튼서 바로 2탭(재확인→발사)</li>
+        <li><b>깜깜이 재추첨</b> — 지시 못 줌</li>
+        <li>발사 후 버튼만 흐려짐(진행 표시 약함)</li>
+      </ul>
+    </div>
+    <div class="b after"><div class="tag">후 (변경)</div>
+      <ul>
+        <li>아이콘 = <b>✏ 연필(수정)</b> — 카드 편집과 통일</li>
+        <li>탭 → <b>코멘트 팝업</b>(revdlg 미러)</li>
+        <li><b>코멘트 반영 재생성</b> / 빈 코멘트=재추첨</li>
+        <li><b>전송 게이지 + 이미지 진행바</b>('수정 중…')</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>"작동하나?" — 기존 기능 실측 (워크플로 run 이력)</h2>
+  <div class="card">
+    <table>
+      <tr><th>기능</th><th>정체</th><th>상태</th></tr>
+      <tr><td>뉴스 이미지 추가 받아오기</td><td>검색이미지 <code>+5장 더</code>(<code>moreimg</code>) — Claude가 관련 뉴스이미지 소스 재검색</td><td><span class="ok">✅ 작동</span> (run 3/3 success, 최근 6/28)</td></tr>
+      <tr><td>화풍별 재생성</td><td><code>thumb-redo</code> — 그 화풍만 Gemini 재생성</td><td><span class="ok">✅ 작동</span> (run 2/2 success)</td></tr>
+      <tr><td>이미지 추가 생성 (AI)</td><td>AI 화풍을 2개 넘어 더 뽑는 버튼</td><td><span class="warn">⚠ 없음</span> — AI는 2화풍 고정 + 화풍별 재생성만. 필요하면 신설 가능(범위 밖)</td></tr>
+    </table>
+    <p class="muted" style="font-size:12.5px;margin:4px 0 0">※ 별개로 카드 섹션의 "카드 이미지 생성"은 카드뉴스용(다른 기능).</p>
+  </div>
+
+  <h2>장 / 단점 · 효율성 · 품질저하 리스크</h2>
+  <div class="card">
+    <h3>장점</h3>
+    <ul>
+      <li>원하는 방향으로 이미지를 <b>지시해 고칠 수 있음</b>(깜깜이 재추첨 탈피).</li>
+      <li>UI는 <b>기존 revdlg·게이지·카드 진행표시 전부 계승</b>(재설계 0 = 일관성).</li>
+      <li>연필=팝업 간접화로 <b>오탭 과금 위험이 구조적으로 제거</b>(전엔 버튼서 바로 발사).</li>
+    </ul>
+    <h3>효율성</h3>
+    <ul>
+      <li>재생성은 <b>그 화풍 1장만</b> Gemini 호출(검색·다른 화풍 보존 = 재과금 0).</li>
+      <li>코멘트는 <b>기존 요약(a.body) 재수집 없이</b> 프롬프트에만 얹음 = 추가 비용 없음.</li>
+      <li>자동 배치(news-analyze) 경로는 <b>영향 0</b>(빈 wish → 프롬프트 바이트 동일).</li>
+    </ul>
+    <h3>품질저하 리스크 & 방어</h3>
+    <ul>
+      <li><b>프롬프트 인젝션</b>(자유입력이 안전가드 흔들기): "가능한 범위에서 반영"으로 완화 + 안전 규칙을 프롬프트 <b>앞(구도)·뒤(최후미 재천명)</b>로 감쌈 + 제어문자 제거·500자 캡(프론트+백엔드 대칭).</li>
+      <li><b>비동기 조기완료 오판</b>(260630 클래스): 완료 판정을 <b>fresh 소스(DATA)</b>에서 스냅 → 재발사 stale 방지.</li>
+      <li><b>상태 잔상 오발사</b>: 기사 이동·화풍 전환 시 코멘트 리셋(같은 화풍 재진입만 초안 보존).</li>
+      <li><span class="muted">기존 태세(무인증 <code>/api/thumbredo</code>·rate-limit 없음)는 이번 변경이 악화하지 않음 — 운영자 수용(암호게이트 추후 일괄). 새 이미지는 6분 초과해도 <b>10분 타임아웃+안내</b> 후 동기경로로 자동 반영.</span></li>
+    </ul>
+  </div>
+
+  <h2>검증 — 적대적 평의회 (Opus 4.8 · READ-ONLY)</h2>
+  <div class="card">
+    <table>
+      <tr><th>라운드</th><th>인원</th><th>결과</th></tr>
+      <tr><td>1차 (전 앵글)</td><td>10인</td><td>✅4 (파이프라인·총괄·게이트·디자인) / ⚠️5 (JS·보안·async·통합·UX) / ❌1 (엣지=기사이동 코멘트 누수)</td></tr>
+      <tr><td>수정 반영</td><td>—</td><td>findings 13종 + 보안 LOW 대칭보강 전부 반영 · Playwright 재검증(기사이동·슬롯전환·백드롭·게이지·진행바·API wish) 통과 · <code>check_refs</code> rc=0</td></tr>
+      <tr><td>재검증 (실질 도메인)</td><td>4인</td><td><span class="ok">보안 ✅ · async ✅ · UX ✅ · 엣지 ✅ = 만장일치</span></td></tr>
+    </table>
+    <p class="muted" style="font-size:12.5px">핵심 잡은 것: ❌ 기사 이동 시 코멘트 누수(오발사) → open() 리셋 추가 · ⚠️ 재발사 stale snap 조기완료 → fresh 소스 · ⚠️ 백드롭 닫기/슬롯전환 잔류 · ⚠️ 프롬프트 인젝션 완화. 死코드·주석·DRY도 정리.</p>
+  </div>
+
+  <h2>변경 파일</h2>
+  <div class="card">
+    <table>
+      <tr><th>파일</th><th>변경</th></tr>
+      <tr><td><code>functions/api/thumbredo.js</code></td><td>wish 입력 수신(제어문자 제거·500자 캡·인젝션 안전)</td></tr>
+      <tr><td><code>.github/workflows/thumb-redo.yml</code></td><td>wish input → <code>THUMB_REDO_WISH</code> env(셸 비보간)</td></tr>
+      <tr><td><code>.github/scripts/thumb_gen.py</code></td><td>build_prompt에 wish 주입(안전 샌드위치) · 재생성 화풍만 · 배치 무영향</td></tr>
+      <tr><td><code>viewer/index.html</code></td><td>연필 아이콘 · <code>#tredodlg</code> 팝업 · 게이지 · 슬롯 진행바 · per-sid 완료감지 · 상태 리셋</td></tr>
+      <tr><td><code>docs/CII_컴포넌트계승인덱스.md</code></td><td>재생성 진행바 등재 · ask-family에 tredodlg</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>
+  // 데모 인터랙션(실제 뷰어 흐름 재현) — 순수 시각·§✅ⓔ HTML 미리보기
+  var pop=document.getElementById('dpop'), pencil=document.getElementById('dpencil'),
+      x=document.getElementById('dx'), send=document.getElementById('dsend'),
+      slot=document.getElementById('dslot'), lbl=send.querySelector('span');
+  var confirmT=null;
+  function reset(){ send.classList.remove('confirm','firing'); lbl.textContent='수정'; clearTimeout(confirmT); }
+  pencil.onclick=function(){ pop.classList.add('on'); reset(); };
+  x.onclick=function(){ pop.classList.remove('on'); reset(); };
+  pop.onclick=function(e){ if(e.target===pop){ pop.classList.remove('on'); reset(); } };
+  send.onclick=function(){
+    if(!send.classList.contains('confirm')){ send.classList.add('confirm'); lbl.textContent='재확인'; confirmT=setTimeout(reset,4000); return; }
+    clearTimeout(confirmT); send.classList.remove('confirm'); send.classList.add('firing');
+    setTimeout(function(){ pop.classList.remove('on'); reset(); slot.classList.add('reshooting');
+      setTimeout(function(){ slot.classList.remove('reshooting'); }, 3600); }, 900);
+  };
+</script>
+</body>
+</html>

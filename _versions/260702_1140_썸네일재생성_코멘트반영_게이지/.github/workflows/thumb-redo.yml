@@ -1,0 +1,71 @@
+name: thumb-redo
+# 뷰어 썸네일 '다시 만들기'(functions/api/thumbredo.js) → 단일 기사 AI 썸네일 재생성.
+# THUMB_ONLY=stem (+ THUMB_REDO_SID=화풍 1개면 그 화풍만) → thumb_gen 재생성(검색 og:image·타화풍 보존).
+# ⚠️ 유료(Gemini) · 게이트 없음(운영자 260620 — 암호게이트는 추후 앱 전체 일괄). news-analyze thumb_gen 잡 계승.
+on:
+  workflow_dispatch:
+    inputs:
+      article:
+        description: 'queue stem (with or without .md)'
+        required: true
+      sid:
+        description: '화풍 sid 1개만 재생성(photo/webtoon · 2화풍). 비우면 전체. (폐지 sid: cartoon/photo_close — 전달 시 기존 gen.json에서 제거만 되고 재생성 안 됨)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: thumb-make            # thumb_gen(news-analyze)와 동일 그룹 = cards/ 쓰기 직렬화(경합 방지)
+  cancel-in-progress: false
+
+jobs:
+  redo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: AI 썸네일 재생성 (단일 기사 · THUMB_ONLY · sid면 그 화풍만)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ARTICLE: ${{ inputs.article }}
+          SID: ${{ inputs.sid }}
+        run: |
+          [ -n "${GEMINI_API_KEY}" ] || { echo "GEMINI_API_KEY 미설정 — 생략"; exit 0; }
+          export THUMB_ONLY="${ARTICLE%.md}"
+          export THUMB_REDO_SID="${SID}"
+          echo "재생성 대상: ${THUMB_ONLY} ${SID:+(화풍 ${SID})}"
+          python3 .github/scripts/thumb_gen.py || echo "::warning::재생성 일부 실패"
+      - name: Commit
+        if: always()
+        env:
+          ARTICLE: ${{ inputs.article }}
+          SID: ${{ inputs.sid }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cards 2>/dev/null || true
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "thumbs: 재생성 ${ARTICLE%.md} ${SID:+(${SID})}"
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true; sleep $((2**i))
+          done
+          echo "::warning::push 실패"
+      - name: Cloudflare 즉시 재빌드
+        if: always()
+        env:
+          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
+        run: |
+          [ -n "${CF_DEPLOY_HOOK}" ] || { echo "CF_DEPLOY_HOOK 미설정 — 즉시 재빌드 생략"; exit 0; }
+          curl -fsS -X POST "${CF_DEPLOY_HOOK}" >/dev/null && echo "재빌드 트리거" || echo "재빌드 트리거 실패(무시)"

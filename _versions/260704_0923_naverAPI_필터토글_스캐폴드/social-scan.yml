@@ -1,0 +1,61 @@
+name: social-scan
+
+# 소셜 버스트(커뮤니티 RSS 교차소스 → 비정치 공론화 이슈) 검출 → 뷰어 SNS 탭(메뉴2) 레인 갱신.
+# 무인·무료(RSS만이면 0원). 결과 = viewer/social_candidates.json 커밋(라이브 서빙) + 아티팩트.
+# 정본 = scraper/social_burst.py · 설계 = docs/social-burst.md §35.3. (매시 정각 자동 스케줄 + 수동 dispatch.)
+on:
+  workflow_dispatch:
+    inputs:
+      min_sources:
+        description: '교차소스 최소 수(공론화 컷)'
+        default: '2'
+  schedule:
+    - cron: '*/30 * * * *'   # 30분마다 자동 갱신 — SNS 탭 소셜 버스트(무료·RSS만·LLM 0). schedule엔 inputs 없음 → min_sources 기본 2.
+
+concurrency:
+  group: social-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # viewer/social_candidates.json 커밋(SNS 레인 갱신)
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: pip install feedparser requests pycryptodome   # pycryptodome = 이슈링크 cupid.js(SlowAES) 봇월 우회(260625)
+      - name: Run social burst scan (live)
+        env:
+          SOCIAL_MIN_SOURCES: ${{ inputs.min_sources || '2' }}
+        run: python3 scraper/social_burst.py || echo "::warning::라이브 소스 일부 막힘 — docs/social-burst.md 소스 교체 참고"
+      - name: Publish to viewer SNS lane
+        run: |
+          mkdir -p viewer
+          cp scraper/out/social_candidates.json viewer/social_candidates.json 2>/dev/null || echo '[]' > viewer/social_candidates.json
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add viewer/social_candidates.json
+          if git diff --cached --quiet; then echo "변경 없음 — 커밋 생략"; exit 0; fi
+          git commit -m "social-scan: SNS 레인 갱신"
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase -X ours origin main && git push origin HEAD:main && break
+            git rebase --abort 2>/dev/null || true
+          done
+      - name: Upload results (live)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: social_candidates
+          path: scraper/out/social_candidates.json
+          if-no-files-found: warn
+      - name: Core self-check (sample · 마지막 — out 덮어써도 발행 후라 무관)
+        run: python3 scraper/social_burst.py --sample

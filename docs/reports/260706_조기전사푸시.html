@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>조기 전사 푸시(LY-EARLY) — 자막 편집기 선행 표시 보고</title>
+<style>
+  /* 색 = §디자인 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · viewer 동기화 비대상) */
+  :root { --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210; --danger:#e23b2a; --warn:#FFE13D; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif; padding:22px 14px 60px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:20px; margin:4px 0 2px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:12.5px; margin:0 0 18px; }
+  h2 { font-size:15px; color:var(--accent); margin:26px 0 8px; }
+  .card { background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin:10px 0; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin:8px 0; }
+  th, td { border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { color:var(--mut); font-weight:700; background:rgba(255,255,255,.03); white-space:nowrap; }
+  td b { color:var(--accent); }
+  .tbl { overflow-x:auto; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:800; background:rgba(var(--accent-rgb),.12); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.3); }
+  .cut { color:var(--mut); }
+  .warn { color:var(--warn); }
+  .ok { color:var(--accent); font-weight:700; }
+  ul { margin:6px 0; padding-left:20px; } li { margin:3px 0; }
+  code { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:5px; padding:0 5px; font-size:12px; font-family:ui-monospace,Menlo,monospace; }
+  .muted { color:var(--mut); font-size:12.5px; }
+  .flow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12px; }
+  .flow span { background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; padding:3px 9px; }
+  .flow em { color:var(--accent); font-style:normal; font-weight:800; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>조기 전사 푸시 <b>LY-EARLY</b> — 받아쓴 자막 먼저, 다듬기는 뒤에</h1>
+<p class="sub">PR #1725 main 머지(f1defeb) · 직전 자막편집기 2차의 「한 수」(E7 배점미달 후속) 이행 · 카나리아 1발 실측 통과 후 승격 · 평의회 10인 반영</p>
+
+<h2>무엇이 바뀌나 (쉬운 설명)</h2>
+<div class="card">
+  전에는 영상을 넣으면 <b>받아쓰기(STT)가 끝나도</b> AI가 자막을 다 다듬을 때까지(1~5분) 화면에 아무것도 안 떴어.
+  이제는 받아쓰기가 끝나는 <b>그 순간 편집기가 먼저 뜬다</b> — 기다리는 동안 받아쓴 자막을 미리 손볼 수 있고,
+  다듬은 완성 자막은 도착하는 대로 개요 탭에 조용히 채워진다(보던 화면 안 튕김·하던 편집 안 날아감).
+</div>
+<div class="card flow">
+  <span>영상 발사</span>→<span>받아쓰기 STT</span>→<em>편집기 즉시 등장 ←NEW</em>→<span>AI 다듬기 1~5분</span>→<span>완성 자막 개요 탭 합류</span>
+</div>
+
+<h2>전/후 비교</h2>
+<div class="tbl"><table>
+  <tr><th></th><th>전</th><th>후</th></tr>
+  <tr><td><b>대기 체감</b></td><td>받아쓰기+다듬기 전부 끝나야 화면 등장</td><td>받아쓰기 직후 편집기 등장 — <b>카나리아 실측 89초 선행(전체 대기의 48%)</b>. 다듬기가 길수록 이득 커짐</td></tr>
+  <tr><td><b>대기 중 할 일</b></td><td>없음(게이지만 바라봄)</td><td>받아쓴 자막 단어 빼기·수정·병합 미리 진행</td></tr>
+  <tr><td><b>완성 도착 순간</b></td><td>—</td><td>탭 튕김·스크롤 납치 없음 · 편집하던 내용 그대로 · 상태줄에 「완성 자막은 개요 탭에」 안내</td></tr>
+  <tr><td><b>실패·시간초과 시</b></td><td>에러 문구만</td><td>받아쓴 자막·편집 그대로 보존(「받아쓴 자막은 아래 살아있어」) · 재열기 시 전사 복원 폴백</td></tr>
+  <tr><td><b>SRT·텍스트 경로</b></td><td colspan="2">변화 0 — 바이트 단위 동일 동작(회귀 감사 확인)</td></tr>
+</table></div>
+
+<h2>카나리아 실측 (브랜치 발사 · main 무영향)</h2>
+<div class="tbl"><table>
+  <tr><th>항목</th><th>실측</th></tr>
+  <tr><td>조기 커밋</td><td>02:16:01 (STT 종료 즉시 · 스텝 1초 완료)</td></tr>
+  <tr><td>최종 커밋(다듬기 완료)</td><td>02:17:30 → <b>전사 89초 선행</b></td></tr>
+  <tr><td>데이터 정합</td><td>조기·최종 segments.json <b>md5 동일</b>(재수정 없음) · rebase 충돌 0 · 픽스처 자동 정리 확인</td></tr>
+  <tr><td>산출물 위생</td><td>e2etest 폴더 머지 전 제거 · metrics(실과금 기록)만 유지 · squash 머지 = 픽스처 blob main 히스토리 미진입</td></tr>
+</table></div>
+
+<h2>평의회 10인 → 반영된 것</h2>
+<div class="tbl"><table>
+  <tr><th>발견(앵글)</th><th>조치</th></tr>
+  <tr><td>복원 포인터 클로버 — 조기 표시가 직전 완성본 복원을 덮음 <span class="pill">2·6·8 삼중 독립 발견</span></td><td>LY_LAST 기록에 md 게이트 1줄</td></tr>
+  <tr><td>미커밋 타이핑 증발 — 완성 도착 순간 수정 입력이 열려 있으면 유실(3)</td><td>인계 직전 활성 칩 blur = 즉시 커밋</td></tr>
+  <tr><td>localStorage 실패 환경 전량 유실(3)</td><td>같은 작업 인계 = 인메모리 편집 모델이 정본(저장소 경유 폐지)</td></tr>
+  <tr><td>좌초 — 다듬기 영영 미완+재열기 시 빈 화면(3·6)</td><td>pend 창밖 확인에 전사 복원 폴백</td></tr>
+  <tr><td>재발사 순간 stale 렌더 창(2)</td><td>lyHideEditor에서 세대 토큰 증가 = in-flight 렌더 무효화</td></tr>
+  <tr><td>「전사·의역」 = 기존 어휘와 어긋난 신조어(4)</td><td>「받아쓴 자막·다듬는 중」으로 통일 · 허가문은 주 상태문에 접음(산문최소)</td></tr>
+  <tr><td>승격 방식 — default 플립은 수동 발사도 전면 ON(9)</td><td>워크플로 default '0' 유지(fail-closed) · <code>api/ly.js</code>가 문자열 '1' 명시 전달 · <b>롤백 = 그 한 줄 제거</b></td></tr>
+  <tr><td>STT 실패 시 부분 전사 푸시 위험(8) · 이중 fetch(8)</td><td>success() 게이트 경고 주석 · tick이 받은 전사를 렌더에 직접 전달</td></tr>
+  <tr><td>회귀(5) · 총괄(10)</td><td>OFF·SRT 경로 무손상 확인 · 기틀 아님(주변부·구조 무접촉) 판정 · 산출물 정리 이행</td></tr>
+</table></div>
+
+<h2>장단점 · 효율성 · 품질 리스크</h2>
+<div class="card">
+  <b>장점</b>
+  <ul>
+    <li>다듬기 대기가 죽은 시간 → 편집 시간으로 전환(다듬기가 길수록 이득 큼)</li>
+    <li>best-effort 설계 — 조기 푸시가 어떻게 실패해도 최종 커밋이 포함 = 자막 유실 0</li>
+    <li>롤백 한 줄(<code>api/ly.js</code>의 <code>early_segs</code> 필드 제거)</li>
+  </ul>
+  <b>트레이드오프(수용)</b>
+  <ul>
+    <li class="warn">영상·파일 작업당 main 커밋·Pages 배포 +1회 — ly는 운영자 수동 발사라 희소(하루 몇 건) = 봇 트래픽(일 51커밋 실측) 대비 미미. 빌드 쿼터가 신경 쓰이면 알려줘</li>
+    <li class="cut">조기 도착의 실효는 Pages 전파(약 1~2분)를 뺀 값 — 짧은 다듬기(약 90초)면 이득 미미, 긴 다듬기(3~5분)면 큼</li>
+    <li class="cut">편집기가 미리 뜨는 만큼 「이미 완성?」 오해 여지 → 상태줄이 「받아쓴 자막 먼저 손봐도 돼 · 다듬는 중… Ns」로 계속 정직 표기</li>
+  </ul>
+  <b>품질 저하 리스크</b>
+  <ul>
+    <li>다듬기 품질·자막 골격 = <b>무접촉</b>(커밋 시점만 추가 · 총괄 평의회 기틀 판정 = 주변부)</li>
+    <li>조기·최종 전사 데이터 바이트 동일 실측 = 두 화면이 다른 자막을 보일 가능성 0</li>
+  </ul>
+</div>
+
+<h2>기록 (다음 세션용)</h2>
+<div class="card muted">
+  완료 랜딩 자동 스크롤(B2)·개요 첫인상(P0)은 수동 대기 케이스 정본 그대로 — 조기 세션의 완료 도착만 「편집 중 납치 금지」 예외(같은 배치의 anti-hijack 원칙 상속). ·
+  ly.html blur baseline 15→16 = JS <code>a.blur()</code> 리터럴 오탐 1건(디자인 blur 아님 · 직전 세션 chip.blur() 전례와 동일 처리). ·
+  도먼트: uploads/ 자동청소 누수(112개 잔존·별건) · lymake error.log generic 덮어쓰기(별건) · 장영상 segments.json 비대(기존 속성).
+</div>
+
+<p class="muted">검증: 카나리아 rc=0·스텝 단위 success 실측 + 평의회 10인(Opus·effort max·읽기전용) 전 지적 반영 + check_refs rc=0 + <code>git show origin/main</code> read-back 4파일 확정. 백업 = <code>_versions/260706_1107_조기전사푸시/</code></p>
+</div>
+</body>
+</html>

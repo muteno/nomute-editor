@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>그리드 카드 지그재그/랜덤 앰비언트 플레이그라운드</title>
+<style>
+  /* 색 정본 = viewer/index.html :root — 시안 스냅샷(라이브 이식 시 var() 토큰 계승) */
+  :root { --accent:#00EED2; --accent-rgb:0,238,210; --a4:#FFE13D; --a4-rgb:255,225,61; --iss-rgb:255,200,40; --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --ease:cubic-bezier(.22,.61,.36,1); }
+  * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--fg); font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    line-height:1.6; padding:22px 14px 90px; max-width:900px; margin:0 auto; }
+  h1 { font-size:19px; font-weight:800; letter-spacing:-.3px; }
+  p.d { font-size:12.5px; color:var(--mut); margin-top:2px; }
+
+  .stagewrap { display:flex; justify-content:center; margin-top:14px; }
+  .stage { position:relative; width:min(560px,96vw); border-radius:22px; overflow:hidden; padding:16px 14px;
+    border:1px solid rgba(255,255,255,.11); background:#0b0d0c; box-shadow:0 30px 80px rgba(0,0,0,.5);
+    --bA:.55; --gPx:7px; --gA:.14; --lift:3px; --scl:1.006;
+    /* 그리드 = 메뉴1(레거시) '나란히' 배치 재현 */
+    display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .card { position:relative; border-radius:14px; border:1px solid rgba(255,255,255,.09); padding:12px 13px 11px;
+    background:linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
+    transition:transform .55s var(--ease), border-color .55s ease, box-shadow .55s ease; will-change:transform; }
+  .card .meta { display:flex; gap:7px; font-size:11px; font-weight:800; }
+  .card .meta b { color:#38C6FF; } .card .meta span { color:var(--mut); font-weight:600; }
+  .card h3 { font-size:13.5px; font-weight:800; letter-spacing:-.3px; margin:5px 0 9px; line-height:1.4; }
+  .card .bar { height:5px; border-radius:4px; background:rgba(255,255,255,.10); overflow:hidden; margin-top:5px; }
+  .card .bar i { display:block; height:100%; width:62%; border-radius:4px; background:rgba(var(--accent-rgb),.85); }
+  .card .bar.y i { width:38%; background:rgba(var(--a4-rgb),.7); }
+
+  /* ── 앰비언트 하이라이트 = 강조 테두리 + 얇은 글로우 + 미세 부양(기존 플레이그라운드 동일 문법) ── */
+  .card.amb { border-color:rgba(var(--accent-rgb),var(--bA));
+    box-shadow:0 0 0 1px rgba(var(--accent-rgb),calc(var(--bA) * .45)),
+               0 0 var(--gPx) rgba(var(--accent-rgb),var(--gA)),
+               0 10px 22px rgba(0,0,0,.38);
+    transform:translateY(calc(var(--lift) * -1)) scale(var(--scl)); }
+  .stage[data-glow="off"] .card.amb { box-shadow:0 10px 22px rgba(0,0,0,.38); }
+  .stage[data-liftoff="1"] .card.amb { transform:none; }
+
+  /* ── 이슈 카드(.iss) = 노랑 테두리 + 이슈 글로우 상시(라이브 .card.iss 미러). 앰비언트 시 '기본 테두리/글로우 무시, 부양만' 옵션 체험 ── */
+  .card.iss { border-color:rgba(var(--iss-rgb),.55); box-shadow:0 0 0 1px rgba(var(--iss-rgb),.28), 0 0 14px rgba(var(--iss-rgb),.16), 0 8px 20px rgba(0,0,0,.34); }
+  .card.iss .meta b { color:var(--a4) !important; }
+  /* 이슈 모드 A(기본무시=ON·권장): 이슈는 자기 노랑 유지 + 부양만 얹음 */
+  .stage[data-issmode="keep"] .card.iss.amb { border-color:rgba(var(--iss-rgb),.55);
+    box-shadow:0 0 0 1px rgba(var(--iss-rgb),.28), 0 0 14px rgba(var(--iss-rgb),.16), 0 10px 22px rgba(0,0,0,.4);
+    transform:translateY(calc(var(--lift) * -1)) scale(var(--scl)); }
+  .stage[data-issmode="keep"][data-liftoff="1"] .card.iss.amb { transform:none; }
+  /* 이슈 모드 B(기본무시=OFF): 이슈도 초록 앰비언트로 덮음(= 라이브 현행처럼 테두리 초록 · 비교용) */
+
+  /* ── 컨트롤 ── */
+  .panel { margin-top:16px; padding:14px 16px 16px; border:1px solid rgba(255,255,255,.09); border-radius:14px; background:rgba(255,255,255,.03); }
+  .row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:11px; }
+  .row:first-child { margin-top:0; }
+  .lab { font-size:12px; color:var(--mut); font-weight:700; min-width:78px; }
+  .chip { padding:7px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:var(--fg);
+    font:700 12px/1 inherit; cursor:pointer; transition:transform .18s var(--ease), background .2s, border-color .2s, color .2s; touch-action:manipulation; }
+  .chip:active { transform:scale(.93); }
+  .chip.on { background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.4); color:var(--accent); }
+  input[type=range] { flex:1; min-width:110px; accent-color:var(--accent); }
+  .val { font-size:12px; color:var(--fg); font-variant-numeric:tabular-nums; min-width:52px; text-align:right; }
+  .sum { margin-top:16px; padding:12px 14px; border:1px dashed rgba(var(--accent-rgb),.35); border-radius:12px; background:rgba(var(--accent-rgb),.05); font-size:12.5px; line-height:1.8; }
+  .sum b { color:var(--accent); }
+  .sum .copy { float:right; margin-left:10px; }
+</style>
+</head>
+<body>
+<h1>그리드 카드 지그재그 / 랜덤 앰비언트</h1>
+<p class="d">260705 · 메뉴1(레거시)처럼 <b style="color:var(--accent)">나란히(2열)</b> 놓인 카드를 유휴 시 하나씩 강조 — <b style="color:var(--accent)">순서 모드</b>(순차/지그재그/랜덤/대각)와 세부 변수를 골라 맨 밑 요약 복사해서 보내줘. 이슈 카드(노랑)는 "기본 테두리·글로우 무시, 부양만" 옵션도 체험 가능.</p>
+
+<div class="stagewrap">
+<div class="stage" id="st" data-glow="on" data-liftoff="0" data-issmode="keep">
+  <div class="card"><div class="meta"><b>사회</b><span>4시간 전</span></div><h3>승객이 기사 폭행, 시내버스 정류장 들이받아</h3><div class="bar"><i></i></div></div>
+  <div class="card iss"><div class="meta"><b>경제</b><span>6시간 전</span></div><h3>원화·달러 주중 24시간 거래…환율 변동성 <b style="color:var(--a4);font-size:10px">이슈</b></h3><div class="bar"><i></i></div></div>
+  <div class="card"><div class="meta"><b style="color:#2CF5A5">사회</b><span>11시간 전</span></div><h3>법무부·경찰 고위험 대상자 협력 대응</h3><div class="bar"><i></i></div></div>
+  <div class="card"><div class="meta"><b style="color:#FF5EC8">문화</b><span>1시간 전</span></div><h3>경인더비 앞둔 윤정환 "7주 공백 변수"</h3><div class="bar"><i></i></div></div>
+  <div class="card"><div class="meta"><b style="color:#AC5CFF">테크</b><span>2시간 전</span></div><h3>소버린AI 승부처는 데이터센터…1천조 전쟁</h3><div class="bar"><i></i></div></div>
+  <div class="card iss"><div class="meta"><b style="color:#ff7a6b">국제</b><span>3시간 전</span></div><h3>美·이란 협상 11일 재개 전망 <b style="color:var(--a4);font-size:10px">이슈</b></h3><div class="bar"><i></i></div></div>
+</div>
+</div>
+
+<div class="panel">
+  <div class="row" id="rWave"><span class="lab">앰비언트</span>
+    <button class="chip on" data-wave="on">웨이브 ON</button><button class="chip" data-wave="off">OFF</button></div>
+  <div class="row" id="rMode"><span class="lab">순서 모드</span>
+    <button class="chip" data-mode="seq">순차(좌→우→아래)</button>
+    <button class="chip on" data-mode="zig">지그재그(Z)</button>
+    <button class="chip" data-mode="rand">랜덤 셔플</button>
+    <button class="chip" data-mode="diag">대각 웨이브</button></div>
+  <div class="row" id="rBatch"><span class="lab">동시 개수</span>
+    <button class="chip on" data-batch="1">1개씩</button><button class="chip" data-batch="2">2개씩(한 행)</button></div>
+  <div class="row"><span class="lab">카드 지속</span><input type="range" id="dur" min="6" max="30" value="14"><span class="val" id="durV">1.4s</span></div>
+  <div class="row"><span class="lab">카드 간격</span><input type="range" id="gap" min="2" max="16" value="6"><span class="val" id="gapV">0.6s</span></div>
+  <div class="row"><span class="lab">한바퀴 휴지</span><input type="range" id="rest" min="0" max="80" value="24"><span class="val" id="restV">2.4s</span></div>
+  <div class="row"><span class="lab">테두리 알파</span><input type="range" id="bA" min="15" max="100" value="55"><span class="val" id="bAV">55%</span></div>
+  <div class="row" id="rGlow"><span class="lab">글로우</span>
+    <button class="chip on" data-glow="on">ON</button><button class="chip" data-glow="off">OFF(테두리만)</button>
+    <input type="range" id="gPx" min="3" max="20" value="7"><span class="val" id="gPxV">7px</span></div>
+  <div class="row"><span class="lab">글로우 알파</span><input type="range" id="gA" min="4" max="40" value="14"><span class="val" id="gAV">14%</span></div>
+  <div class="row" id="rLift"><span class="lab">떠오름</span>
+    <button class="chip on" data-lift="on">리프트 ON</button><button class="chip" data-lift="off">OFF(빛만)</button>
+    <input type="range" id="lift" min="0" max="8" value="3"><span class="val" id="liftV">3px</span></div>
+  <div class="row"><span class="lab">스케일</span><input type="range" id="scl" min="0" max="20" value="6"><span class="val" id="sclV">1.006</span></div>
+  <div class="row" id="rIss"><span class="lab">이슈 카드</span>
+    <button class="chip on" data-iss="keep">기본무시(노랑 유지 + 부양만)</button>
+    <button class="chip" data-iss="over">초록 앰비언트로 덮음</button></div>
+  <div class="row"><span class="lab">유휴 시작</span><input type="range" id="idle" min="2" max="20" value="6"><span class="val" id="idleV">6s</span>
+    <span class="lab" style="min-width:0;font-weight:600">← 라이브선 마지막 터치 후 이 시간 지나면 시작(여기선 상시 재생)</span></div>
+  <div class="sum" id="sum"><button class="chip copy" id="copyBtn">복사</button><b>현재 조합</b><br><span id="sumTxt"></span></div>
+</div>
+
+<script>
+(() => {
+  const st = document.getElementById('st'), cards = [...st.querySelectorAll('.card')];
+  const COLS = 2, N = cards.length, ROWS = Math.ceil(N / COLS);
+  const S = { wave:'ON', mode:'zig', modeTxt:'지그재그(Z)', batch:1, glow:'ON', lift:'ON', iss:'keep',
+    vals:{ dur:'1.4s', gap:'0.6s', rest:'2.4s', bA:'55%', gPx:'7px', gA:'14%', lift:'3px', scl:'1.006', idle:'6s' } };
+  let seq = [], si = 0, timer = 0, offTimer = 0, running = true;
+
+  // 순서(seq) 생성 = 모드별 인덱스 배열. batch=2면 한 행(2개)씩 묶어 동시.
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function buildSeq() {
+    const idx = [...Array(N).keys()];
+    let order;
+    if (S.mode === 'seq') order = idx;                                   // 0,1,2,3,4,5 (좌→우→다음행)
+    else if (S.mode === 'zig') {                                         // 지그재그 = 행마다 좌우 방향 반전(boustrophedon)
+      order = [];
+      for (let r = 0; r < ROWS; r++) { const row = idx.slice(r*COLS, r*COLS+COLS); if (r % 2) row.reverse(); order.push(...row); }
+    } else if (S.mode === 'diag') {                                      // 대각 웨이브 = (row+col) 오름차순 그룹
+      order = [...idx].sort((a,b) => ((Math.floor(a/COLS)+a%COLS) - (Math.floor(b/COLS)+b%COLS)) || (a-b));
+    } else order = shuffle([...idx]);                                    // 랜덤 셔플(한 바퀴마다 새로)
+    // batch 묶기
+    if (S.batch === 2) { const g = []; for (let i=0;i<order.length;i+=2) g.push(order.slice(i,i+2)); return g; }
+    return order.map(i => [i]);
+  }
+  function clearAll(){ cards.forEach(c => c.classList.remove('amb')); }
+  function step() {
+    clearAll();
+    if (!running) return;
+    if (si >= seq.length) { si = 0; if (S.mode === 'rand') seq = buildSeq(); }   // 랜덤은 매 바퀴 새 셔플
+    const group = seq[si] || [];
+    group.forEach(i => cards[i] && cards[i].classList.add('amb'));
+    const durMs = parseFloat(S.vals.dur)*1000, gapMs = parseFloat(S.vals.gap)*1000;
+    offTimer = setTimeout(() => group.forEach(i => cards[i] && cards[i].classList.remove('amb')), durMs);
+    si++;
+    let next = durMs*.55 + gapMs;
+    if (si >= seq.length) next += parseFloat(S.vals.rest)*1000;   // 한 바퀴 = 휴지
+    timer = setTimeout(step, next);
+  }
+  function restart(){ clearTimeout(timer); clearTimeout(offTimer); si = 0; clearAll(); seq = buildSeq(); if (running) step(); }
+
+  const pick = (rowId, attr, fn) => document.getElementById(rowId).addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c || c.dataset[attr] == null) return;
+    [...e.currentTarget.querySelectorAll('.chip[data-'+attr.toLowerCase()+']')].forEach(x => x.classList.remove('on')); c.classList.add('on'); fn(c);
+  });
+  pick('rWave','wave', c => { running = c.dataset.wave === 'on'; S.wave = running ? 'ON':'OFF'; restart(); sum(); });
+  pick('rMode','mode', c => { S.mode = c.dataset.mode; S.modeTxt = c.textContent; restart(); sum(); });
+  pick('rBatch','batch', c => { S.batch = +c.dataset.batch; restart(); sum(); });
+  pick('rGlow','glow', c => { st.dataset.glow = c.dataset.glow; S.glow = c.dataset.glow.toUpperCase(); sum(); });
+  pick('rLift','lift', c => { st.dataset.liftoff = c.dataset.lift === 'off' ? '1':'0'; S.lift = c.dataset.lift.toUpperCase(); sum(); });
+  pick('rIss','iss', c => { st.dataset.issmode = c.dataset.iss; S.iss = c.dataset.iss; sum(); });
+
+  const range = (id, fn) => { const el = document.getElementById(id); el.addEventListener('input', () => fn(el.value)); };
+  range('dur', v => { S.vals.dur = (v/10)+'s'; durV.textContent = S.vals.dur; sum(); });
+  range('gap', v => { S.vals.gap = (v/10)+'s'; gapV.textContent = S.vals.gap; sum(); });
+  range('rest', v => { S.vals.rest = (v/10)+'s'; restV.textContent = S.vals.rest; sum(); });
+  range('bA', v => { st.style.setProperty('--bA', v/100); S.vals.bA = v+'%'; bAV.textContent = v+'%'; sum(); });
+  range('gPx', v => { st.style.setProperty('--gPx', v+'px'); S.vals.gPx = v+'px'; gPxV.textContent = v+'px'; sum(); });
+  range('gA', v => { st.style.setProperty('--gA', v/100); S.vals.gA = v+'%'; gAV.textContent = v+'%'; sum(); });
+  range('lift', v => { st.style.setProperty('--lift', v+'px'); S.vals.lift = v+'px'; liftV.textContent = v+'px'; sum(); });
+  range('scl', v => { const s = (1+v/1000).toFixed(3); st.style.setProperty('--scl', s); S.vals.scl = s; sclV.textContent = s; sum(); });
+  range('idle', v => { S.vals.idle = v+'s'; idleV.textContent = v+'s'; sum(); });
+
+  function sum() {
+    document.getElementById('sumTxt').textContent =
+      `웨이브 ${S.wave} · 순서 ${S.modeTxt} · 동시 ${S.batch}개 · 지속 ${S.vals.dur} · 간격 ${S.vals.gap} · 휴지 ${S.vals.rest} · 테두리 ${S.vals.bA} · 글로우 ${S.glow}(${S.vals.gPx}/${S.vals.gA}) · 떠오름 ${S.lift}(${S.vals.lift}, 스케일 ${S.vals.scl}) · 이슈 ${S.iss==='keep'?'기본무시(노랑+부양)':'초록덮음'} · 유휴 ${S.vals.idle}`;
+  }
+  document.getElementById('copyBtn').addEventListener('click', async e => {
+    try { await navigator.clipboard.writeText(document.getElementById('sumTxt').textContent); e.target.textContent = '복사됨 ✓'; }
+    catch { e.target.textContent = '길게 눌러 복사'; }
+    setTimeout(() => e.target.textContent = '복사', 1400);
+  });
+  seq = buildSeq(); sum(); step();
+})();
+</script>
+</body>
+</html>

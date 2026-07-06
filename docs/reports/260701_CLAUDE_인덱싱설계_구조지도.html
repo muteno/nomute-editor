@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>CLAUDE.md 인덱싱 설계 — 구조 지도</title>
+<style>
+  :root{
+    --bg:#121212; --pan:#181a19; --pan2:#1f2220; --line:#2c302d;
+    --fg:#eef7f0; --fg2:#cfd8d0; --mut:#8fa697;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13);
+    --danger:#ff5b4a; --warn:#ffd24a; --amber:#ff9614; --info:#4ac6ff;
+    --r:14px; --r-s:9px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);line-height:1.6;
+    -webkit-font-smoothing:antialiased;padding:0 0 64px}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 18px}
+  header{padding:36px 18px 24px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(15,253,2,.06),transparent)}
+  header .wrap{padding:0 0 0 4px}
+  h1{font-size:25px;margin:0 0 8px;letter-spacing:-.3px}
+  h1 .g{color:var(--accent)}
+  .sub{color:var(--mut);font-size:14px;margin:0}
+  .meta{color:var(--mut);font-size:12.5px;margin-top:12px}
+  h2{font-size:18px;margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line)}
+  h2 .n{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:8px}
+  p{margin:9px 0} .lead{font-size:14.5px;color:var(--fg2)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px}
+  tr:last-child td{border-bottom:none}
+  code{background:var(--pan2);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;font-size:12px;font-family:ui-monospace,Menlo,monospace;color:#d8ff3d}
+  .bar{height:7px;background:var(--pan2);border-radius:4px;overflow:hidden;min-width:60px}
+  .bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;white-space:nowrap}
+  .t-talk{background:rgba(74,198,255,.15);color:var(--info)}
+  .t-code{background:rgba(255,150,20,.15);color:var(--amber)}
+  .t-none{background:rgba(15,253,2,.13);color:var(--accent)}
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px;margin:13px 0}
+  .big{background:linear-gradient(180deg,rgba(15,253,2,.09),rgba(15,253,2,.02));
+    border:1px solid rgba(15,253,2,.4);border-radius:var(--r);padding:17px 19px;margin:15px 0}
+  .big h3{color:var(--accent);margin:0 0 8px}
+  .kpi{display:flex;flex-wrap:wrap;gap:11px;margin:14px 0}
+  .kpi div{flex:1 1 150px;background:var(--pan);border:1px solid var(--line);border-radius:var(--r-s);padding:12px 14px}
+  .kpi .v{font-size:20px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:11.5px;color:var(--mut);margin-top:2px}
+  ul{margin:8px 0;padding-left:19px} li{margin:4px 0}
+  .foot{color:var(--mut);font-size:12px;margin-top:36px;padding-top:15px;border-top:1px solid var(--line)}
+  .hl{color:var(--accent);font-weight:600}
+  b.warn{color:var(--warn)}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1><span class="g">CLAUDE.md</span> 인덱싱 설계 — 구조 지도</h1>
+  <p class="sub">"각 기능이 CLAUDE.md의 어느 부분을 읽어야 하나" — 네가 직접 나눌 실측 자료 (질문 1·2·3)</p>
+  <p class="meta">대상 <code>CLAUDE.md</code> 95,966B / 208줄 / 18개 대절 · 260701 · 스크립트·프롬프트·워크플로 실측 근거</p>
+</div></header>
+
+<div class="wrap">
+
+  <h2><span class="n">핵심</span>한눈에</h2>
+  <div class="big">
+    <h3>CLAUDE.md는 본질적으로 "대화 세션(사람+나)용 문서"야</h3>
+    <p class="lead">18개 절을 독자로 분류하면 — <span class="hl">거의 전부가 "에이전트(나)·사람이 일하는 방식"</span>이고, 자동 파이프라인(judge·생성경로)이 <b>실제 읽어야 하는 절은 실측상 0개</b>야. 파이프라인 규칙(§📰)조차 claude가 텍스트로 읽는 게 아니라 <b>워크플로 YAML·스크립트·stdin에 코드로 이미 구현</b>돼 있거든. 그래서 "각 기능마다 읽는 부분을 나눈다"는 건 — <span class="hl">세밀하게 쪼갤 필요 없이, 생성경로 전부 <code>--bare</code>(CLAUDE.md 0) + 대화세션만 통짜 유지</span>가 답이야. judge가 그걸 이미 증명했고(19/19 성공).</p>
+  </div>
+  <div class="kpi">
+    <div><div class="v">95,966B</div><div class="l">CLAUDE.md 전체 (≈37k토큰)</div></div>
+    <div><div class="v">~72KB</div><div class="l">대화세션(나·너)용 = 75%</div></div>
+    <div><div class="v">0</div><div class="l">생성경로가 실제 읽는 절 (실측)</div></div>
+    <div><div class="v">~37k×N</div><div class="l">생성경로 콜당 절감 잠재(--bare 시)</div></div>
+  </div>
+
+  <h2><span class="n">1</span>CLAUDE.md 카테고리 구조 (질문 1)</h2>
+  <p class="lead">18개 절을 <b>7개 대분류</b>로 묶고, 각 <b>주 독자</b>를 붙였어. 독자 = <span class="tag t-talk">대화</span>(나·너 작업) / <span class="tag t-code">코드</span>(워크플로·스크립트에 이미 구현) / <span class="tag t-none">불요</span>(judge·생성경로 무관).</p>
+  <table>
+    <tr><th>대분류</th><th>포함 절</th><th>크기</th><th>%</th><th>주 독자</th></tr>
+    <tr><td><b>6. UI·산출물 규범</b></td><td>🎨 디자인 · 📐 명명·표기 · 🖼 미디어첨부</td><td>29.9KB</td><td><div class="bar"><i style="width:100%"></i></div></td><td><span class="tag t-talk">대화</span> 뷰어·앱 작업 시</td></tr>
+    <tr><td><b>5. 파이프라인 규칙</b></td><td>📰 뉴스큐 · 🧰 deps</td><td>23.3KB</td><td><div class="bar"><i style="width:78%"></i></div></td><td><span class="tag t-code">코드</span> 워크플로·스크립트 구현</td></tr>
+    <tr><td><b>3. 검증·기틀 게이트</b></td><td>✅ 검증 · 🥷 분신술 · 🧪 기틀검증 · ⚠️ 기틀보호</td><td>12.1KB</td><td><div class="bar"><i style="width:40%"></i></div></td><td><span class="tag t-talk">대화</span> 내가 검증할 때</td></tr>
+    <tr><td><b>4. 저장·인프라·모델</b></td><td>🗂 저장·수정모드 · 🧠 SSOT지도 · 🤖 모델 · 🔕 웹훅</td><td>11.2KB</td><td><div class="bar"><i style="width:37%"></i></div></td><td><span class="tag t-talk">대화</span> (모델 예외만 파이프라인 참고)</td></tr>
+    <tr><td><b>7. 참조 지도</b></td><td>🗺 파일 지도</td><td>8.1KB</td><td><div class="bar"><i style="width:27%"></i></div></td><td><span class="tag t-talk">대화</span> 파일 탐색 시</td></tr>
+    <tr><td><b>2. 운영 규범</b></td><td>💬 운영태도 · 🎯 4대표준 · 🔔 버튼</td><td>7.0KB</td><td><div class="bar"><i style="width:23%"></i></div></td><td><span class="tag t-talk">대화</span> 내가 일하는 법</td></tr>
+    <tr><td><b>1. 라우팅·진입판정</b></td><td>🧭 앱 목록·라우팅</td><td>4.0KB</td><td><div class="bar"><i style="width:13%"></i></div></td><td><span class="tag t-talk">대화</span> 앱 진입 전 판정</td></tr>
+  </table>
+  <p class="lead">→ <span class="hl">6·3·4·7·2·1 (합 ~72KB·75%)은 전부 <span class="tag t-talk">대화</span></span> = 사람·에이전트가 앱을 만들고 수정하고 검증하는 규범. <b>5(파이프라인 23KB)만 자동화 관련인데, 그것도 claude가 텍스트로 읽는 게 아니라 코드에 구현</b>돼 있어(아래 ③에서 증명).</p>
+
+  <h2><span class="n">2</span>CLAUDE.md를 참조하는 기능 세분화 (질문 2)</h2>
+  <p class="lead">CLAUDE.md를 로드하는 채널은 <b>3계층</b>이야. 이게 "기능 세분화"의 실제 모습이고, 각각 지금 어떻게 로드하는지·실제로 뭐가 필요한지:</p>
+  <table>
+    <tr><th>계층</th><th>세부 기능</th><th>지금 CLAUDE.md</th><th>실제 필요</th></tr>
+    <tr><td rowspan="1"><b>① 대화 세션</b><br><span class="tag t-talk">사람+나</span></td><td>앱 제작·수정·검증·디자인 등 <b>모든 인터랙티브 작업</b></td><td>통짜 auto-load</td><td class="hl">전체 필요 (본래 독자)</td></tr>
+    <tr><td rowspan="2"><b>② 분류 judge</b><br><span class="tag t-none">--bare 완료</span></td><td><code>gate_judge</code> — 기사 경중 grade 0~3</td><td><b class="warn">--bare (0)</b> ✅</td><td>0 (RUBRIC은 stdin)</td></tr>
+    <tr><td><code>breaking_judge</code> — 속보 이진 판정</td><td><b class="warn">--bare (0)</b> ✅</td><td>0 (RUBRIC은 stdin)</td></tr>
+    <tr><td rowspan="7"><b>③ 생성경로</b><br><span class="tag t-code">claude -p</span><br>(지금 통짜 로드 중<br>= 낭비)</td><td><code>analyze</code> — 기사 → 요약</td><td>통짜 auto-load</td><td>0 (지침 <code>apps/news</code> stdin 주입)</td></tr>
+    <tr><td><code>cardmake</code> — 요약 → 카드 텍스트</td><td>통짜 auto-load</td><td>0 (<b>"파일 읽지 마라" 프롬프트에 명시</b>)</td></tr>
+    <tr><td><code>ask</code> — 요약 재요청</td><td>통짜 auto-load</td><td>0 (stdin)</td></tr>
+    <tr><td><code>revise</code>/<code>revise-cards</code> — 요약·카드 수정</td><td>통짜 auto-load</td><td>0 (기존 요약 stdin)</td></tr>
+    <tr><td><code>kmake</code> — 장면 → 영상 프롬프트</td><td>통짜 auto-load</td><td>0 (<code>apps/k</code> 파일 Read = CLAUDE.md 아님)</td></tr>
+    <tr><td><code>lymake</code> — 음성 → 자막</td><td>통짜 auto-load</td><td>0 (<code>apps/ly</code> 파일 Read)</td></tr>
+    <tr><td><code>more_images</code> — 추가 이미지</td><td>통짜 auto-load</td><td>0 (자체 프롬프트·stdin)</td></tr>
+  </table>
+  <p class="lead"><b>②는 이미 인덱싱 완료</b>(judge = --bare로 CLAUDE.md 0, 19/19 성공). <b class="warn">③ 생성경로 7개가 지금 통짜 로드 중인데 실제 필요는 전부 0</b> — 이게 "어마어마한 누적 토큰"의 정체야. 콜마다 ~37k를 무는데 안 쓰거든.</p>
+
+  <h2><span class="n">3</span>각 기능이 무엇을 뜻하나 (질문 3)</h2>
+  <table>
+    <tr><th>기능</th><th>하는 일</th><th>규칙은 어디서 받나</th></tr>
+    <tr><td><code>gate_judge</code></td><td>수집된 기사 제목을 경중 0~3으로 채점(노출·랭킹용)</td><td>RUBRIC = 스크립트 내장 + stdin</td></tr>
+    <tr><td><code>breaking_judge</code></td><td>급발 사건인지 속보 여부 이진 판정</td><td>RUBRIC = 스크립트 내장 + stdin</td></tr>
+    <tr><td><code>analyze</code></td><td>공유된 기사를 뷰어용 요약·카드 프롬프트로 변환</td><td><code>inject_guidelines</code> → <code>apps/news/01</code>+MEMORY stdin</td></tr>
+    <tr><td><code>cardmake</code></td><td>요약을 카드뉴스 문구(텍스트)로 생성</td><td>stdin <code>apps/news/00+01+02</code> (파일 Read 금지)</td></tr>
+    <tr><td><code>ask</code></td><td>운영자가 뷰어에서 "요약 다시" 요청 시 재작성</td><td>기존 요약 + 지침 stdin</td></tr>
+    <tr><td><code>revise</code></td><td>기존 요약/카드를 "수정 요청"대로 부분 재작성</td><td>기존 결과물 + 지침 stdin</td></tr>
+    <tr><td><code>kmake</code></td><td>장면·기사를 Kling 영상 프롬프트로 설계</td><td><code>apps/k</code> 지침·라이브러리 Read</td></tr>
+    <tr><td><code>lymake</code></td><td>영상 음성(STT)을 릴스 자막으로 변환</td><td><code>apps/ly</code> 지침 Read</td></tr>
+    <tr><td><code>more_images</code></td><td>요약 기반 관련 이미지 추가 검색·생성</td><td>자체 프롬프트</td></tr>
+  </table>
+  <p class="lead">→ 공통점: <span class="hl">전부 규칙을 <code>inject_guidelines</code>(stdin) 또는 <code>apps/*</code> 명시 Read로 받아.</span> CLAUDE.md auto-load는 그 위에 얹힌 <b class="warn">중복·낭비</b>야 — 안 읽는데 매번 로드됨.</p>
+
+  <h2><span class="n">4</span>그래서 어떻게 나누나 — 제안</h2>
+  <div class="card">
+    <p><b>결론: 절 단위로 세밀하게 쪼갤 필요가 없어.</b> 생성경로가 CLAUDE.md의 특정 절을 읽는 게 아니라 <b>아무 절도 안 읽거든</b>(규칙은 stdin·코드). 그래서 나눔의 단위는 "절"이 아니라 "경로"야:</p>
+    <table>
+      <tr><th>대상</th><th>처리</th><th>효과</th></tr>
+      <tr><td><b>대화 세션</b>(나·너)</td><td>CLAUDE.md 통짜 유지 <span class="tag t-talk">그대로</span></td><td>본래 독자 = 다 필요. 손 안 댐</td></tr>
+      <tr><td><b>judge</b> 2개</td><td><code>--bare</code> <span class="tag t-none">완료</span></td><td>이미 적용·검증됨</td></tr>
+      <tr><td><b>생성경로</b> 7개</td><td><code>--bare</code> 추가 <b class="warn">(신규)</b></td><td>콜당 ~37k 절감 · 품질 무손상(실측)</td></tr>
+    </table>
+    <p class="lead">⚠️ <b>만약</b> 네가 특정 생성경로에 "이 절은 꼭 필요해" 싶은 게 있으면 — 그 <b>절만 그 경로 stdin에 콕 주입</b>(inject_guidelines 확장). 하지만 실측상 후보가 없어(파이프라인 규칙은 이미 코드에 있고, 콘텐츠 규칙은 이미 stdin). 그래서 <b>"안 나눠도 되는 게 오히려 다행"</b> — 복잡한 조각 관리 없이 경로 플래그 하나씩.</p>
+  </div>
+
+  <h2><span class="n">5</span>토큰 절감 추정 (네가 말한 "어마어마")</h2>
+  <div class="card">
+    <ul>
+      <li>생성경로 콜당 CLAUDE.md ~37k 토큰 로드 → <code>--bare</code>면 0</li>
+      <li>24h 생성 콜 ≈ analyze 33 + card 44 + ask 11 + revise/k/ly = <b>~90+콜</b> → 콜당 ~37k = <span class="hl">이론상 하루 ~3.3M+ 토큰</span></li>
+      <li><b>단 정직하게</b>: analyze·ask는 멀티턴 캐시 적중(cache_r)이 커서 실절감이 작아. <b class="hl">card·revise·kmake·lymake·more_images(단발성)가 절감 잠재 최대</b> — 여기가 순수 낭비</li>
+      <li>judge 하나로도 하루 cache_w의 <b>절반</b>을 아꼈으니, 생성경로 확대 시 체감 큼</li>
+    </ul>
+    <p class="lead">⚠️ 이건 <b>§📰 파이프라인 = 기틀</b>이라, 실행하려면 카나리아 1개(<code>card</code>나 <code>revise</code>)부터 실측(품질·cache_w 전후)하고 확대하는 게 안전.</p>
+  </div>
+
+  <div class="foot">
+    실측 근거 = 스크립트(<code>.github/scripts/*.sh</code>·judge py) claude 호출·<code>allowedTools</code>·주입 내용 / <code>prompts/*.md</code> CLAUDE.md 참조 grep(0) / 공식 <code>--bare</code> 문서 / judge 워크플로 런 19/19 성공.
+    일회성 스냅샷(viewer 동기화 무관). 실제 변경은 운영자 판단 후 카나리아로.
+  </div>
+</div>
+</body>
+</html>

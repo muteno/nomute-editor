@@ -30,13 +30,23 @@ function parseFrontmatter(raw) {
   // frontmatter 앞 모델 사족 허용 — 첫 '---' 줄부터 파싱(구버전 파일 호환).
   const start = raw.search(/^---\s*$/m);
   if (start > 0) raw = raw.slice(start);
-  const m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  let m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  // 닫는 '---' 누락 방어(260704 실측: ask 렌터카 — LLM이 frontmatter 닫는 표식을 생략) — 여는 '---'만 있으면
+  // key: value 필드 줄이 끝나는 지점(빈 줄·본문 헤딩)에서 관용 분리. 정상(여닫이 다 있음) 파일은 위 정규식이 이미
+  // 매치하므로 이 분기는 안 탐 = 기존 동작 100% 불변, 깨진 케이스만 구제. 생성 측(ask/analyze.sh)의 닫는 '---' 보증과 한 쌍.
+  if (!m && /^---\s*\n/.test(raw)) {
+    const lines = raw.replace(/^---\s*\n/, '').split('\n');
+    let i = 0;
+    while (i < lines.length && /^[A-Za-z_][A-Za-z0-9_]*:\s/.test(lines[i])) i++;
+    if (i > 0) m = [null, lines.slice(0, i).join('\n'), lines.slice(i).join('\n')];   // 필드가 하나라도 있을 때만(진짜 본문만 있는 파일은 raw 그대로)
+  }
   if (!m) return { meta: {}, body: raw };
   const meta = {};
   for (const line of m[1].split('\n')) {
     const kv = line.match(/^([A-Za-z_]+):\s*(.*)$/);
     if (!kv) continue;
     let v = kv[2].trim().replace(/^"(.*)"$/, '$1').replace(/\\"/g, '"');
+    if (/^'.*'$/.test(v)) v = v.slice(1, -1).replace(/''/g, "'");   // YAML 작은따옴표 래핑도 벗김(제목에 쌍따옴표 포함 시 모델이 '…' 사용 → 래핑째 노출되던 것 · '' 이스케이프 복원 · 260703 실측)
     meta[kv[1]] = v;
   }
   return { meta, body: m[2].trim() };
@@ -48,14 +58,31 @@ try {
 } catch { /* queue 없음 */ }
 
 // 수집함 cross 인덱스(이슈 판정용) — viewer/candidates.json url→cross 맵. 직접공유분(매칭 없음)은 cross 0 → issue false(운영자: 직접은 어쩔 수 없음).
-const CROSS = new Map(), BRK = new Map();   // BRK = AI 긴급(breaking) 판정 전파 — 수집함 isBreaking과 동일 규칙
+const CROSS = new Map(), BRK = new Map(), CAT = new Map(), GRADE = new Map(), CTITLE = new Map(), KOTITLE = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계) · GRADE·CTITLE = 이슈 배지 게이트용(260702 옵션2) · KOTITLE = 외신 번역 제목 폴백(260703)
 try {
   const cj = JSON.parse(readFileSync('viewer/candidates.json', 'utf8'));
   for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) {
     CROSS.set(c.url, c.cross || 0);
     BRK.set(c.url, !!c.breaking && (c.grade == null || c.grade >= 2));   // 긴급 = breaking_judge 확정 AND 경중 grade≥2(미채점 포함) — cross 무관
+    if (c.cat) CAT.set(c.url, c.cat);   // 후보 cat(gate_judge AI 분류·미술관 흉기난동=사회) → 픽 기사 카테고리 승계용
+    GRADE.set(c.url, c.grade == null ? null : c.grade);   // 이슈 배지 grade 게이트(null=미채점 관용)
+    CTITLE.set(c.url, c.title || '');   // 이슈 배지 정형·홍보컷은 후보 원제목 기준(요약 제목 아님)
+    if (c.title_ko && c.title_ko_of === c.title) KOTITLE.set(c.url, c.title_ko);   // 외신 번역 도장(gate 편승) — frontmatter title_ko 없는 픽 기사(프롬프트 이전 분석·LLM 누락)의 피드 제목 폴백(뷰어 scKoTitle 동일 술어)
   }
 } catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
+
+// ── ⚡이슈 배지 판정 (260702 옵션2 · 정본 = viewer/index.html scBadgeType 블록과 **규칙 동일** 유지 — 한쪽만 고치면 수집함↔피드 배지 드리프트) ──
+// 이슈 = cross≥10 AND grade(null‖≥2) AND !badgeJunk. 배지 강조 전용 — 칼럼 진입(CROSS_MIN 8)·랭킹·fbJunk veto와 무관.
+const ISS_CROSS_MIN = 10;   // 8→10(260702): 수집확대(6/26 분야+7/2 경제지) cross 인플레 2.5배 보정 — "오늘 cr10=확대 전 cr8" 실측 환산.
+const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건이면 컷 면제
+const BJ_MKT = /(증시|코스피|코스닥|환율|유가(?!족)|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '마감'만 다뤄 '출발' 보강 · '유가족' 오컷 방지)
+const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — 칼럼엔 잔존)
+const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구('공시' 제외 = 공시가격·공공시설·공시송달 오컷 방지 — viewer와 규칙 동일)
+const badgeJunk = t => (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t);
+const issEligible = url => {
+  const cr = CROSS.get(url || '') || 0, g = GRADE.has(url || '') ? GRADE.get(url || '') : null;
+  return (cr >= ISS_CROSS_MIN || (g === 3 && cr >= 8)) && (g == null || g >= 2) && !badgeJunk(CTITLE.get(url || '') || '');   // grade3(대형)만 옛 임계 8 유지 — viewer issCross와 규칙 동일
+};
 
 // 원문 편향 N 추출 — 분석 본문 '📊 편향: 원문 N/10 색(라벨) → 요약 M/10…'의 원문값.
 // AI가 이미 본문에 계산(요약 알고리즘 0 변경) → 옛 기사도 빌드 때 소급 적용. 못 찾으면 ''(게이지가 요약만 표시).
@@ -86,9 +113,13 @@ for (const f of files) {
   try {
     const raw = readFileSync(join(QUEUE, f), 'utf8');
     const { meta, body } = parseFrontmatter(raw);
+    // 외신 한국어 번역 제목(260703) — 1순위 분석 frontmatter title_ko · 2순위 수집함 후보 도장(KOTITLE — LLM 누락·프롬프트 이전 분석분 폴백) → 표시 제목 승격(피드 리스트 영어 원문 노출 차단 · 운영자 "원문으로 표시 안되게")
+    const tko = stripLeadEmoji(meta.title_ko || '') || (!/[가-힣]/.test(meta.title || '') ? (KOTITLE.get(meta.url || '') || '') : '');
+    const h1m = (body || '').match(/^#\s+(.+)$/m);   // 본문 첫 H1(AI 헤드) — frontmatter title 유실(이중 --- 등) 시 제목 폴백(파일명 노출 차단 · 260703 실측)
     articles.push({
       file: f,
-      title: stripLeadEmoji(meta.title) || f.replace(/\.md$/, ''),   // 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625)
+      title: tko || stripLeadEmoji(meta.title) || (h1m ? stripLeadEmoji(h1m[1]) : '') || f.replace(/\.md$/, ''),   // 외신=title_ko 우선(피드 목록·검색·강마커 cat이 한국어로 작동) · 선두 토픽 이모지 제거(LLM 누출 ~4% 구제·운영자 260625) · H1 폴백 → 파일명은 최후
+      title_orig: tko ? (stripLeadEmoji(meta.title) || '') : '',   // 번역 적용 시 원문 제목 보존(모달 하단 MUT 줄·검색 보조 · 260703)
       url: meta.url || '',
       date: meta.date || '',
       time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.
@@ -100,10 +131,10 @@ for (const f of files) {
       tags: withDrugTag(meta.tags, body),   // #마약 백스톱 — 본문 약물어면 #마약 보강(LLM 누락·기존 분석분 즉시 구제 · 운영자 260625)
       image_query_en: meta.image_query_en || '',   // 🌍해외사건 영문 검색쿼리(돋보기·검색이미지 영문화) — 분석 frontmatter 패스스루·국내=빈값(운영자 260622)
       image_query: meta.image_query || '',   // 상징 검색 키워드(AI 추출) — 돋보기 초록버튼=키워드 검색(회색=제목·기존)·운영자 260622
-      category: meta.category || '',   // 옛 큐 frontmatter category(있으면) — 뷰어 UI 5버킷 매핑용(C). 새 기사엔 없음.
+      category: meta.category || CAT.get(meta.url || '') || '',   // frontmatter category 우선 → 없으면 후보 cat(gate_judge AI 분류) 승계 → 둘 다 없으면 뷰어 articleCat 키워드 폴백(미술관 흉기난동=사회 교정·260626)
       breaking: BRK.has(meta.url || '') ? BRK.get(meta.url || '') : /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // 긴급 = 매칭되면 AI breaking_judge 판정 따름(AI가 NO면 제목 [속보]여도 X) · 미매칭(직접공유)만 제목 표식 폴백.
       cross: CROSS.get(meta.url || '') || 0,                    // 수집함 매칭 매체 수(직접공유=0)
-      issue: (CROSS.get(meta.url || '') || 0) >= 8,             // index3: 이슈여부 = cross≥8(8+매체=넓은 이슈, 운영자 5→8). 직접공유분은 매칭 없어 false.
+      issue: issEligible(meta.url),                             // index3: 이슈여부 = cross≥10 AND grade(null‖≥2) AND !badgeJunk(260702 옵션2 — 옛 cross≥8 단독은 홍보·시황이 다매체 동시배포만으로 배지 획득·수집확대 인플레로 남발). 직접공유분은 매칭 없어 false.
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
       rev: Number(meta.rev) || 0,   // 수정 회차(서버 정본) — revise.sh가 프론트매터 rev 증가. 뷰어 색·완료감지 기준.
@@ -125,6 +156,8 @@ for (const a of articles) {
   try { status = JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8')); } catch { /* 상태 없음 */ }
   let cardsMd = '';
   try { cardsMd = readFileSync(join(dir, 'cards.md'), 'utf8'); } catch { /* 텍스트 없음 */ }
+  // 렌더 방어(운영자 260629): 카드 텍스트 블록 내 빈 줄 제거 — 생성 로직이 막지만 이중(합성기가 빈 줄을 중간 공백으로 렌더·뷰어 pre-wrap 노출).
+  if (cardsMd) cardsMd = cardsMd.replace(/(\*\*텍스트\*\*\n```text\n)([\s\S]*?)(\n```)/g, (_m, a, b, c) => a + b.split('\n').filter(l => l.trim()).join('\n') + c);
   let cardErr = '';
   if ((status.state || '') === 'failed') {
     try { cardErr = readFileSync(join(dir, 'error.log'), 'utf8'); } catch { /* 로그 없음 */ }
@@ -201,13 +234,14 @@ for (const a of articles) {
   a.cards = {
     state: status.state || (images.length ? 'done' : cardsMd ? 'text_done' : ''),
     thumb_search: thumbSearch,   // 검색이미지(기사 og:image+유사) — R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사'
-    thumb_gen: thumbGen,         // AI 생성 3화풍(P3 Gemini)
+    thumb_gen: thumbGen,         // AI 생성 2화풍(P3 Gemini · 포토에디토리얼·극화)
     thumb_usage: thumbUsage,     // 제미나이 토큰 — {gen:{calls,total,cumulative}, search:{…}} · 없으면 null
     card_usage: cardUsage,       // 카드 생성 제미나이 토큰 — {calls,total,cumulative} · 없으면 null(카드 개요 '비용')
 
     updated: status.updated || '',
     guidelines_version: status.guidelines_version || '',
     rev: Number(status.rev) || 0,   // 카드가 만들어진 시점의 요약 회차 — a.rev > cards.rev면 요약이 더 수정됨(stale)
+    retry: Number(status.retry) || 0,   // 자동 재시도 회차(>0 = generating 중 재시도) — 게이지 '재(N회)'·배너 '(N회)' 표식(운영자 260701)
     crev: Number(status.crev) || 0,   // 카드 수정(revise-cards) 회차 — 요약 rev과 독립. 카드 수정 FAB 색(초록0·노랑1·파랑2) 기준.
     error: cardErr,
     failedOnce: existsSync(join(dir, 'error.log')),   // 실패 이력(성공해도 잔존) → 게이지 영속 흉터

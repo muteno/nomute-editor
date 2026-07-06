@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>카드 변경 — 이미지 수정 행 재구성 · 사진 버튼 통일 (전/후)</title>
+<style>
+  :root{ --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --line2:#2a2c31; --fg:#e9eaec; --mut:#8b8f98; --accent:#0FFD02; --accent-rgb:15,253,2; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; padding:26px 16px 60px; }
+  .wrap{ max-width:920px; margin:0 auto; }
+  h1{ font-size:20px; font-weight:800; margin:0 0 4px; } h1 b{ color:var(--accent); }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 22px; }
+  .note{ background:var(--pan); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:11px 14px; margin:14px 0; font-size:13.5px; }
+  .ba{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+  @media (max-width:680px){ .ba{ grid-template-columns:1fr; } }
+  .col h3{ margin:0 0 9px; font-size:12.5px; font-weight:800; display:flex; align-items:center; gap:7px; }
+  .badge{ font-size:10.5px; font-weight:800; padding:2px 8px; border-radius:999px; }
+  .badge.b{ color:#ff6b6b; background:rgba(255,107,107,.13); border:1px solid rgba(255,107,107,.4); }
+  .badge.a{ color:var(--accent); background:rgba(var(--accent-rgb),.13); border:1px solid rgba(var(--accent-rgb),.4); }
+
+  /* 카드 변경 모달 미니(중립 bg = 직전 작업 반영) */
+  .modal{ border:1px solid rgba(255,255,255,.13); border-radius:16px; padding:14px; background:linear-gradient(165deg, rgba(14,16,15,.97), rgba(9,12,10,.99)); }
+  .lblrow{ display:flex; align-items:center; gap:10px; margin-top:9px; }
+  .lblrow.sb{ justify-content:space-between; }      /* 전: 텍스트행 space-between */
+  .lblrow.fs{ justify-content:flex-start; }         /* 후: 이미지수정행 flex-start */
+  .lbl{ font-size:12px; font-weight:800; color:var(--mut); }
+  .match{ display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; color:var(--mut); }
+  .cbx{ width:19px; height:19px; display:grid; place-items:center; border-radius:6px; background:rgba(255,255,255,.05); border:1px solid var(--line); }
+  .cbx svg{ width:13px; height:13px; stroke:var(--mut); fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+  .chips{ display:flex; flex-direction:column; gap:5px; min-height:30px; padding:7px; background:rgba(5,12,8,.4); border:1px dashed var(--line2); border-radius:10px; margin-top:10px; }
+  .chipline{ display:flex; gap:5px; } .chip{ font-size:13px; padding:2px 5px; border-radius:6px; background:rgba(255,255,255,.05); border:1px solid var(--line2); }
+  .ta{ width:100%; margin-top:7px; min-height:60px; border-radius:12px; border:1px solid var(--line); background:rgba(5,12,8,.6); color:var(--mut); font:inherit; font-size:14px; padding:10px 12px; }
+  .foot{ display:flex; gap:10px; align-items:stretch; margin-top:14px; padding-top:11px; border-top:1px solid var(--line2); }
+  .attach{ flex:1.4; display:grid; place-items:center; min-height:42px; border-radius:10px; background:transparent; border:1px solid transparent; }
+  .attach svg{ width:26px; height:26px; }
+  .attach.white svg{ stroke:var(--fg); }       /* 전: 흰 픽토 */
+  .attach.green svg{ stroke:var(--accent); }    /* 후: 초록 픽토(제작기 통일) */
+  .go{ flex:1; display:inline-flex; align-items:center; justify-content:center; padding:9px 0; font:800 13px inherit; color:var(--accent); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; }
+  table{ border-collapse:collapse; width:100%; margin:10px 0; font-size:13px; }
+  th,td{ text-align:left; padding:8px 10px; border:1px solid var(--line); vertical-align:top; } th{ background:var(--pan); color:var(--mut); font-weight:800; white-space:nowrap; width:54px; }
+  .ok{ color:var(--accent); }
+  h2{ font-size:15px; font-weight:800; margin:26px 0 6px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>카드 변경 모달 — <b>이미지 수정 행 재구성 + 사진 버튼 통일</b> (전/후)</h1>
+  <p class="sub">대상 = <code>viewer/index.html</code> #editdlg · 운영자 5건 · 260629 (배경은 직전 무채색 반영)</p>
+
+  <div class="note"><b>요약 —</b> "텍스트" 행의 체크박스를 떼서 → "이미지 수정"(옛 '이미지 수정 희망') 라벨 <b>옆 작은 간격</b>으로 옮기고, 라벨을 <b>"텍스트 내용을 그대로 반영"</b>으로 바꿈. 사진 첨부 버튼은 카드뉴스 제작기처럼 <b>초록 픽토</b>로 통일.</div>
+
+  <div class="ba">
+    <div class="col"><h3>BEFORE <span class="badge b">체크=텍스트행 우측 · 흰 픽토</span></h3>
+      <div class="modal">
+        <div class="lblrow sb"><span class="lbl">텍스트</span><span class="match"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></span>체크 내용과 동일하게 이미지 변경</span></div>
+        <div class="chips"><div class="chipline"><span class="chip">또,</span><span class="chip">화성이다</span></div><div class="chipline"><span class="chip">부품공장에서</span><span class="chip">불이</span><span class="chip">났고</span></div></div>
+        <div class="lblrow"><span class="lbl">이미지 수정 희망</span></div>
+        <textarea class="ta" placeholder="내용을 입력해주세요"></textarea>
+        <div class="foot"><span class="attach white"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><span class="go">변경</span></div>
+      </div>
+    </div>
+    <div class="col"><h3>AFTER <span class="badge a">체크=이미지수정 옆 · 초록 픽토</span></h3>
+      <div class="modal">
+        <div class="lblrow"><span class="lbl">텍스트</span></div>
+        <div class="chips"><div class="chipline"><span class="chip">또,</span><span class="chip">화성이다</span></div><div class="chipline"><span class="chip">부품공장에서</span><span class="chip">불이</span><span class="chip">났고</span></div></div>
+        <div class="lblrow fs"><span class="lbl">이미지 수정</span><span class="match"><span class="cbx"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></span>텍스트 내용을 그대로 반영</span></div>
+        <textarea class="ta" placeholder="내용을 입력해주세요"></textarea>
+        <div class="foot"><span class="attach green"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><span class="go">변경</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>변경 · 검증</h2>
+  <table>
+    <tr><th>①</th><td>"텍스트" 행에서 체크박스(<code>.ed-match</code>) 제거 → 라벨만.</td></tr>
+    <tr><th>②</th><td>"이미지 수정 희망" → <b>"이미지 수정"</b> 라벨 변경.</td></tr>
+    <tr><th>③</th><td>체크박스를 "이미지 수정" 라벨 행으로 이동 = <b>좌측 묶음</b>(<code>.ed-wishrow{justify-content:flex-start}</code> + gap 10 = 옆 작은 간격).</td></tr>
+    <tr><th>④</th><td>체크박스 라벨 → <b>"텍스트 내용을 그대로 반영"</b>. (동작 동일: 체크 시 이미지가 텍스트 따라가고 희망 입력칸 잠김.)</td></tr>
+    <tr><th>⑤</th><td>사진 첨부 버튼(<code>#edAttach</code>) 빈 픽토 = 흰색 → <b>초록(<code>var(--accent)</code>)</b> = ly·카드뉴스 제작기 <code>.file</code>과 통일.</td></tr>
+    <tr><th>검증</th><td class="ok">check_refs rc=0 · viewer JS 구문 OK · 토큰 게이트 baseline 이내. <code>#edSync</code>·<code>#edWish</code> 전부 <code>getElementById</code> 참조라 DOM 이동에도 sync 로직 불변. 단일 뷰어 순수 시각/구조 = 자가검증.</td></tr>
+  </table>
+  <p class="sub">※ 체크박스는 "이미지 수정" 옆 좌측에, 텍스트영역 클립버튼(복사·붙여넣기·지우개)은 우측 — 폰 화면폭에서 안 겹침. 더 좁은 기기에서 빡빡하면 알려줘(간격/줄바꿈 조정).</p>
+</div>
+</body>
+</html>

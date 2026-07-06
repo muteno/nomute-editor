@@ -1,0 +1,113 @@
+name: card-make
+
+# 뷰어 버튼(Pages Function /api/make-cards) 또는 수동 Run workflow → 카드뉴스 일괄 제작.
+# 흐름: queue md → Claude 헤드리스 Step 4(카드 MD) → cards/<기사>/ 커밋(뷰어 ⏳→완료)
+#       → 슛/edit(렌더) = 직영 gen_cards(Actions서 Gemini 장면 직접생성 + card_news 로컬합성 + R2/git).
+#         레거시 drive_cards(Apps Script→Drive→Cloud Run) 폴백 제거(260621 운영자) — 카드는 100% 직영.
+# ⚠️ 유료 발사: Opus 토큰 + Gemini(gen_cards) 과금 — 트리거는 뷰어 게이트 뒤 수동만.
+on:
+  workflow_dispatch:
+    inputs:
+      article:
+        description: 'queue md 파일명 1개 또는 all(미제작 전체 일괄)'
+        type: string
+        default: 'all'
+      mode:
+        description: 'text=프롬프트만(2단계·제미나이0) / full=클로드+렌더(기본) / shoot=렌더만 / edit=단일 카드 재발사'
+        type: choice
+        default: full
+        options:
+          - text
+          - full
+          - shoot
+          - edit
+      card:
+        description: 'edit 모드: 변경할 카드 번호(1-base)'
+        type: string
+        default: ''
+      text:
+        description: 'edit 모드: 변경 텍스트(*강조* 포함)'
+        type: string
+        default: ''
+      wish:
+        description: 'edit 모드: 이미지 수정 희망'
+        type: string
+        default: ''
+      sync:
+        description: 'edit 모드: 텍스트 반영 이미지 재생성(1=체크 / 0)'
+        type: string
+        default: '0'
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: NOMUTEFB
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: card-make
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300   # 잡 전체 상한(일괄 다건 직렬 대비). 건당 이미지 대기는 적응형 상한 15분(정본 apps/news/03)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main   # 최신 main 기준(news-analyze와 동일 — 옛 커밋 체크아웃 금지)
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install deps
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          # pillow=장면 보존(png→jpg)·로컬 합성 / numpy=card_news 그라데이션
+          pip install --quiet google-auth requests pillow numpy
+          # card_news.py 합성 폰트(Noto CJK) — 직영(gen_cards)·edit 모드 로컬합성 필수. timeout 폴백(미러 행 차단·§🧰).
+          if [ ! -f /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc ]; then
+            (timeout 180 sudo apt-get update -qq && timeout 180 sudo apt-get install -y -qq fonts-noto-cjk) \
+              || { sleep 3; timeout 180 sudo apt-get install -y -qq fonts-noto-cjk; } \
+              || echo "::warning::fonts-noto-cjk 설치 실패 — 합성 단계서 폰트 폴백"
+          fi
+
+      - name: Make cards
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 NOMUTEFB→EMS1130G→MUTENO)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 마지막)
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'NOMUTEFB' }}
+          # 직영(gen_cards) — GEMINI 장면 직접생성 + card_news 로컬합성 + R2 저장(슛·edit 공통). GDRIVE/Cloud Run 미사용(260621 제거).
+          # ⚠️ 슛(수동·암호게이트) 워크플로만 GEMINI/R2 주입 — 자동 card_plan(text)은 cardmake Lock B가 unset(제미나이 0 유지).
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          TARGET: ${{ inputs.article }}
+          MODE: ${{ inputs.mode || 'full' }}
+          CARD_N: ${{ inputs.card }}
+          EDIT_TEXT: ${{ inputs.text }}
+          EDIT_WISH: ${{ inputs.wish }}
+          EDIT_SYNC: ${{ inputs.sync }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT} / 대상: ${TARGET} / 모드: ${MODE}${CARD_N:+ / 카드: ${CARD_N}}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿이 비어있음"; exit 1
+          fi
+          if [ -z "${GEMINI_API_KEY}" ]; then
+            echo "::warning::GEMINI_API_KEY 미등록 — 카드 MD까지만(이미지 발사 생략 · 직영 전용)"
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/cardmake.sh "${TARGET}" "${MODE}"

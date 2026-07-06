@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>발행본 잠금·표기 UI 개편 — 260702</title>
+<style>
+  :root{
+    --bg:#121212; --card:#1a1c1a; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13);
+    --fg:#eef7f0; --fg-2:#cfd8d0; --mut:#8fa697; --danger:#ff5b4a; --warn:#ffd24a; --arm:#ffd93d;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Pretendard,Roboto,"Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);line-height:1.6;padding:26px 16px 60px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+  h2{font-size:15px;font-weight:800;margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);color:var(--accent)}
+  .lead{color:var(--fg-2);font-size:13.5px;margin:0 0 14px}
+  .cols{display:flex;gap:14px;flex-wrap:wrap}
+  .col{flex:1;min-width:260px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 15px}
+  .col h3{font-size:12px;font-weight:800;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px}
+  .col.before h3{color:var(--mut)} .col.after h3{color:var(--accent)}
+  /* ── 발행본 팝업 미니 재현(실제 토큰) ── */
+  .pop{background:linear-gradient(165deg,rgba(28,30,33,.96),rgba(15,16,18,1));border:1px solid var(--line);border-radius:14px;padding:12px 12px 10px;backdrop-filter:blur(8px)}
+  .qh{display:flex;align-items:center;gap:6px;padding:0 3px}
+  .qh b{font-size:13px;font-weight:800;color:var(--fg);padding:0 4px 8px 2px;margin-right:2px}
+  .qc-old{font-size:11px;color:var(--mut)}
+  .qc-new{font-size:13px;font-weight:700;color:var(--mut);padding-bottom:8px;font-variant-numeric:tabular-nums}
+  .qc-new .tn{color:var(--accent);font-weight:800}
+  .qh .x{margin-left:auto;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.06);display:grid;place-items:center;color:var(--mut);font-size:14px}
+  .qrow{display:flex;align-items:center;gap:9px;padding:9px 3px;border-top:1px solid var(--line2)}
+  .qt{flex:none;width:60px;font-size:11px;font-weight:800;color:var(--mut);white-space:nowrap}
+  .qt.new{color:var(--accent)} .qt.old{color:var(--accent)}
+  .qmain{flex:1;min-width:0;font-size:12.5px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pin{flex:none;display:grid;place-items:center;margin-right:6px}
+  .pin svg{width:14px;height:14px}
+  .pin.locked{color:var(--arm)} .pin.open{color:var(--mut)} .pin.oldhide{visibility:hidden}
+  .gbtn{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none}
+  .gbtn.copy{background:var(--accent-dim);color:var(--accent)}
+  .gbtn.rm{background:rgba(255,91,74,.12);color:var(--danger)}
+  /* ── dlg 헤더 알약 재현 ── */
+  .dlgh{display:flex;align-items:center;gap:10px;padding:10px 4px}
+  .dlbox{display:inline-flex;align-items:center;height:34px;padding:0 9px 0 8px;border-radius:999px;background:rgba(255,255,255,.06)}
+  .cbox{width:12px;height:12px;border-radius:4px;border:1.5px solid rgba(255,255,255,.28);background:rgba(255,255,255,.04);display:grid;place-items:center;color:var(--mut);position:relative}
+  .cbox.old{margin-right:9px;top:1px} .cbox.new{margin-right:6px;top:-1px}
+  .cbox svg{width:8px;height:8px}
+  .pdf{display:inline-flex;align-items:center;color:var(--mut)}
+  .pdf.old{gap:4px;font-size:12px} .pdf.old svg{width:13px;height:13px}
+  .pdf.new{gap:5px;font-size:13px} .pdf.new svg{width:14px;height:14px}
+  .pdf b{font-weight:600}
+  .pill{display:inline-flex;align-items:center;height:34px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.06);color:var(--mut);font-size:12px;font-weight:600;gap:4px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line2);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  td b{color:var(--fg)}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:999px;margin-right:4px}
+  .ok{background:var(--accent-dim);color:var(--accent)} .warn{background:rgba(255,210,74,.14);color:var(--warn)}
+  ul{margin:6px 0;padding-left:18px} li{margin:3px 0;font-size:13px;color:var(--fg-2)}
+  .note{font-size:12px;color:var(--mut);margin-top:8px}
+  code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:5px;font-size:11.5px}
+</style></head>
+<body><div class="wrap">
+<h1>발행본 잠금·표기 UI 개편</h1>
+<p class="sub">260702 · viewer/index.html + functions/api(publish·published·relock 신설)·s/[slug] · 적대적 평의회 10인 검증 완료</p>
+
+<h2>한눈에</h2>
+<p class="lead">발행본 팝업의 <b>부제 카운트</b>를 상단 시계식 <code>Today N / 누적 M</code>(오늘 발행 강조)으로 바꾸고, 만료 <code>D-3</code> 표기를 대기열과 같은 <code>N시간 전</code>으로 통일. 자물쇠를 <b>실제 잠금 토글</b>로 승격 — 자물쇠를 <b>길게 누르면 PIN 입력창</b>이 뜨고, 잠긴 건 기존 PIN을 정확히 입력해야 <b>해제(레몬→회색·열린 자물쇠)</b>, 안 잠긴 건 새 PIN으로 <b>잠금(회색→레몬·닫힌 자물쇠)</b>. 공개 링크의 PIN 보호가 실제로 바뀐다.</p>
+
+<h2>1. 발행본 헤더 — 부제 카운트</h2>
+<div class="cols">
+  <div class="col before"><h3>전 (before)</h3>
+    <div class="pop"><div class="qh"><b>발행본</b><span class="qc-old">2건 공개중</span><span class="x">✕</span></div></div>
+    <p class="note">회색 "N건 공개중" · 프로필 버튼엔 <code>발행본 (2)</code></p>
+  </div>
+  <div class="col after"><h3>후 (after)</h3>
+    <div class="pop"><div class="qh"><b>발행본</b><span class="qc-new">Today <span class="tn">0</span> / 누적 263</span><span class="x">✕</span></div></div>
+    <p class="note">발행본과 같은 13px·중앙정렬 · <b>오늘 수(0)만 강조</b>, 나머지 mut · 프로필 버튼은 라벨만(괄호 제거)</p>
+  </div>
+</div>
+
+<h2>2. 발행행 — 시간표기 + 자물쇠 토글</h2>
+<div class="cols">
+  <div class="col before"><h3>전</h3>
+    <div class="pop">
+      <div class="qrow"><span class="qt old">D-3</span><span class="qmain">러, 우크라 키이우 대규모 공습…</span><span class="pin oldhide"></span><span class="gbtn copy">▣</span><span class="gbtn rm">🗑</span></div>
+      <div class="qrow"><span class="qt old">D-3</span><span class="qmain">러, 우크라 키이우 대규모 공습…</span><span class="pin locked" title="핀"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><span class="gbtn copy">▣</span><span class="gbtn rm">🗑</span></div>
+    </div>
+    <p class="note"><code>D-3</code>(만료 카운트다운) · 잠금 표식은 회색·조작 불가 · 미잠금 행엔 아예 안 보임</p>
+  </div>
+  <div class="col after"><h3>후</h3>
+    <div class="pop">
+      <div class="qrow"><span class="qt new">2시간 전</span><span class="qmain">러, 우크라 키이우 대규모 공습…</span><span class="pin open" title="길게 눌러 잠금"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.3"/></svg></span><span class="gbtn copy">▣</span><span class="gbtn rm">🗑</span></div>
+      <div class="qrow"><span class="qt">7시간 전</span><span class="qmain">러, 우크라 키이우 대규모 공습…</span><span class="pin locked" title="잠금됨 · 길게 눌러 해제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span><span class="gbtn copy">▣</span><span class="gbtn rm">🗑</span></div>
+    </div>
+    <p class="note"><code>N시간 전</code>(대기열 <code>qAgo</code> 통일·분 정밀도·색 사다리) · <b>잠금=레몬 닫힌자물쇠</b> / <b>해제=회색 열린자물쇠</b> · 우측 버튼과 마진 +6px · 길게 눌러 토글</p>
+  </div>
+</div>
+
+<h2>3. 요약창 헤더 — 공유 버튼·체크박스</h2>
+<div class="cols">
+  <div class="col before"><h3>전</h3>
+    <div class="pop"><div class="dlgh">
+      <span class="dlbox"><span class="cbox old"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg></span><span class="pdf old"><b>공유</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></span></span>
+      <span class="pill">원문 ↗</span>
+    </div></div>
+    <p class="note">공유 12px · 체크박스 <code>top:1px</code>·간격 9px</p>
+  </div>
+  <div class="col after"><h3>후</h3>
+    <div class="pop"><div class="dlgh">
+      <span class="dlbox"><span class="cbox new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 12h12"/></svg></span><span class="pdf new"><b>공유</b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></span></span>
+      <span class="pill">원문 ↗</span>
+    </div></div>
+    <p class="note">공유 <b>13px·아이콘 14</b>(키움) · 체크박스 <code>top:-1px</code>(위로)·간격 6px(공유 좌측 당김)</p>
+  </div>
+</div>
+
+<h2>4. 5요소 분석</h2>
+<table>
+  <tr><th>요소</th><th>내용</th></tr>
+  <tr><td><b>전/후</b></td><td>N건 공개중→<b>Today/누적</b> · D-3→<b>N시간 전</b> · 자물쇠 표식(읽기)→<b>실제 PIN 잠금 토글</b>(롱프레스) · 공유버튼/체크박스 미세 조정</td></tr>
+  <tr><td><b>장점</b></td><td>발행본 목록에서 <b>공개 링크 잠금을 즉석 토글</b>(재발행 불필요) · 표기가 상단 시계·대기열과 <b>일관</b> · 누적 발행수를 체감 · 잠금/해제가 <b>색+형태 이중부호화</b>(접근성)</td></tr>
+  <tr><td><b>단점</b></td><td>자물쇠 롱프레스는 <b>숨은 제스처</b>(발견성 낮음 → title/aria로 보완) · "누적"은 <b>이 기능 배포 후</b> 발행부터 정확 집계(과거 이력은 현재 발행수로 시드) · relock은 파일 전체(≤600KB) read-modify-write 1회</td></tr>
+  <tr><td><b>효율성</b></td><td>발행 시 GitHub 쓰기 +1(_stats) · 목록 조회 시 읽기 +1(_stats) — 개인용 저볼륨이라 무해 · 픽토그램 스위칭은 <b>재렌더 없이 제자리 갱신</b>(색 트윈 유지) · 롱프레스 window 리스너 <b>모듈 1회 등록</b>(행마다 누수 없음)</td></tr>
+  <tr><td><b>품질저하 리스크</b></td><td><span class="tag ok">해소</span>폰 뒤로가기·바깥클릭이 pindlg 위 pubpop을 닫던 over-close 2건 → <code>isComposingModalOpen</code>·바깥클릭 가드에 <code>#pindlg</code> 등재 · <span class="tag ok">해소</span>사후 잠금 후 엣지캐시 무핀 노출 5분→60초 · <span class="tag ok">해소</span>_stats 일시오류 시 누적 붕괴→값 보존 · <span class="tag warn">잔여</span>relock rate-limit 없음(단 Access+originOk 뒤 = 공개 /s 핀게이트보다 방어 두꺼움·개인용 수용)</td></tr>
+</table>
+
+<h2>5. 검증 — 적대적 평의회 10인(Opus·읽기전용)</h2>
+<p class="lead">보안·base64/경합·목록누출·롱프레스·PIN Promise·헤더정렬·시간표기·픽토그램·불변정합·통합회귀 = 10앵글 병렬 감사.</p>
+<ul>
+  <li><b>Critical ×2 해소</b>: (a) 폰 뒤로가기/바깥클릭 over-close (b) 실제로는 색 트윈 안 되던 "자연 스위칭" → 제자리 노드 갱신</li>
+  <li><b>Hardening</b>: 롱프레스 window취소 1회등록·재진입/좀비 가드 · qAgo 분정밀도 통일 · 히트영역 30px · tabular-nums · 422 재시도·시드 · 누적 404/일시오류 구분 · 엣지캐시 60s</li>
+  <li><b>보안</b>: relock 해시식·게이트가 publish·s/[slug]과 3자 일치 → 잠금/해제가 실제 서빙에 정확 반영 · originOk·slug정화·PIN검증 = 기존 패턴 계승</li>
+  <li><b>반려</b>: "0일 때 회색으로 죽이기" 제안 → 운영자 '0에만 강조' 명시라 <b>0도 강조 유지</b></li>
+</ul>
+<p class="note">이 보고서는 일회성 스냅샷(viewer와 동기화 의무 없음). 색은 viewer :root 토큰값 복사.</p>
+</div></body></html>

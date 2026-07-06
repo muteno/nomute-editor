@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>발행 모달 + UI 기틀 대청소 — 요구사항 16 인덱싱 보고서</title>
+<style>
+  :root{
+    --accent:#0FFD02; --accent-rgb:15,253,2;
+    --blue:#3a6ddb; --purple:#c24bf5; --red:#e23b2a; --amber:#f4c430; --coral:#ff7a6b;
+    --fg:#eef7f0; --mut:#8fa697; --bg:#0b0d0c;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.06);
+    --r-l:16px; --r-m:11px; --r-s:9px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; color:var(--fg);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    background:
+      radial-gradient(60% 40% at 15% 8%, rgba(15,253,2,.10), transparent 60%),
+      radial-gradient(50% 40% at 88% 4%, rgba(58,109,219,.12), transparent 60%),
+      linear-gradient(170deg,#0d100e,#080a09 55%,#0b0d10);
+    background-attachment:fixed; padding:24px 14px 70px;
+  }
+  .wrap{max-width:860px; margin:0 auto;}
+  h1{font-size:20px; font-weight:800; letter-spacing:-.4px; margin:0 0 4px; line-height:1.3;}
+  h1 .g{color:var(--accent);}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 16px;}
+  .sub code{background:rgba(0,0,0,.4); padding:1px 6px; border-radius:5px; font-family:ui-monospace,Menlo,monospace; color:#cfe8d4; font-size:11.5px;}
+
+  /* 요약 스탯 */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin:0 0 18px;}
+  .stat{border:1px solid var(--line); border-radius:var(--r-l); padding:12px 14px; background:linear-gradient(165deg,rgba(28,30,33,.5),rgba(15,16,18,.55));}
+  .stat b{display:block; font-size:22px; font-weight:800; letter-spacing:-.5px;}
+  .stat b.g{color:var(--accent);} .stat b.bl{color:var(--blue);}
+  .stat span{font-size:11.5px; color:var(--mut);}
+
+  .legend{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 20px; font-size:11.5px; color:var(--mut);}
+  .badge{display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; font-weight:700; font-size:11px; white-space:nowrap;}
+  .b-ok{background:rgba(var(--accent-rgb),.14); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.3);}
+  .b-main{background:rgba(58,109,219,.16); color:#8fb4ff; border:1px solid rgba(58,109,219,.4);}
+  .b-roll{background:rgba(244,196,48,.14); color:var(--amber); border:1px solid rgba(244,196,48,.35);}
+  .b-proc{background:rgba(194,75,245,.14); color:#dca6f8; border:1px solid rgba(194,75,245,.35);}
+
+  h2{font-size:14px; font-weight:800; margin:26px 0 12px; display:flex; align-items:center; gap:8px;}
+  h2::before{content:''; width:13px; height:3px; border-radius:2px; background:var(--accent);}
+
+  /* 요구사항 카드 */
+  .req{border:1px solid var(--line); border-radius:var(--r-l); margin:0 0 12px; overflow:hidden; background:rgba(255,255,255,.015);}
+  .req-h{display:flex; align-items:center; gap:10px; padding:11px 14px; background:linear-gradient(165deg,rgba(30,33,36,.55),rgba(16,18,20,.6)); border-bottom:1px solid var(--line2);}
+  .req-n{font-family:ui-monospace,Menlo,monospace; font-size:13px; font-weight:800; color:var(--accent); background:rgba(var(--accent-rgb),.1); border-radius:7px; padding:2px 8px; flex:none;}
+  .req-t{font-size:14px; font-weight:800; letter-spacing:-.2px; flex:1; min-width:0;}
+  .req-v{flex:none; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap;}
+  .v-ok{background:rgba(var(--accent-rgb),.14); color:var(--accent);}
+  .v-main{background:rgba(58,109,219,.16); color:#8fb4ff;}
+  .v-roll{background:rgba(244,196,48,.14); color:var(--amber);}
+  .req-b{padding:6px 14px 12px;}
+  .f{display:grid; grid-template-columns:96px 1fr; gap:10px; padding:8px 0; border-top:1px solid var(--line2); font-size:12.5px;}
+  .f:first-child{border-top:none;}
+  .fl{color:var(--mut); font-weight:700; font-size:11px; padding-top:1px;}
+  .fv{color:#dce4de; line-height:1.5;}
+  .fv b{color:var(--fg);}
+  .fv .was{color:var(--coral);} .fv .now{color:var(--accent);}
+  .fv code{font-family:ui-monospace,Menlo,monospace; font-size:11px; background:rgba(0,0,0,.35); padding:1px 5px; border-radius:4px; color:#cfe8d4;}
+  .god{color:var(--amber); font-weight:700;}
+  .dunno{color:var(--purple);}
+
+  .foot{margin-top:28px; padding:16px; border:1px solid var(--line2); border-radius:var(--r-l); background:linear-gradient(165deg,rgba(28,30,33,.4),rgba(15,16,18,.5)); font-size:12.5px; color:#cdd5cf; line-height:1.6;}
+  .foot b{color:var(--fg);}
+  .flow{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:8px 0 2px; font-size:11.5px; color:var(--mut);}
+  .flow .step{background:rgba(255,255,255,.05); border:1px solid var(--line2); border-radius:999px; padding:3px 10px; color:#dce4de;}
+  .flow .arr{color:var(--accent); font-weight:800;}
+  .tail{margin-top:18px; padding-top:12px; border-top:1px solid var(--line2); color:var(--mut); font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1><span class="g">발행 모달 + UI 기틀 대청소</span> — 요구사항 16 인덱싱 보고서</h1>
+  <p class="sub">세션 = 발행 모달 진단 → 분신술 10인 감사 → 대청소 → 재검증 10인 → main 충돌 재정렬 → 머지 · 머지본 <code>68981ab (#1564)</code> · 260704 KST · 값 정본 = <code>viewer/index.html :root</code></p>
+
+  <div class="stats">
+    <div class="stat"><b class="g">16</b><span>요구사항 인덱싱</span></div>
+    <div class="stat"><b class="g">20</b><span>적대 검증관(분신술10+재검증10)</span></div>
+    <div class="stat"><b class="bl">2</b><span>main 선행 중복(#1565·#1567)</span></div>
+    <div class="stat"><b class="g">rc=0</b><span>check_refs 전 게이트</span></div>
+  </div>
+
+  <div class="legend">
+    <span class="badge b-ok">✅ 완료·머지</span>
+    <span class="badge b-main">🔵 main 선행(중복·검증만)</span>
+    <span class="badge b-roll">⚠️ 회귀→롤백</span>
+    <span class="badge b-proc">🟣 프로세스</span>
+    <span>· 각 요구사항 = 8필수값(기존→현재·리스크·장단점·단점보완·추후계획·아이데이션·신의한수·이건모르겠다) + 검증</span>
+  </div>
+
+  <h2>요구사항 16 (행별 인덱싱)</h2>
+
+  <!-- 01 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">01</span><span class="req-t">발행 모달 초록 미반영 진단</span><span class="req-v v-ok">✅ 확정</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">발행 모달이 초록빛인데 원인 불명</span> → <span class="now">전역 <code>dialog{}</code> 초록 워시(<code>rgba(27,44,32)</code>) 상속 · 무채색 셸 <code>--modal-glass</code> 미계승으로 진단 확정</span>(글자·버튼만 무채, 컨테이너 배경만 누락 = 반쪽)</span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">진단 오판 시 엉뚱한 곳 수정 → 시간·품질 손실</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 근본원인 규명 + 게이트 사각지대 발견 / 단 = 진단에 실측 다수 소요</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">분신술 5개 앵글이 라인 단위로 교차 확증(1·2·3·9·10)</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">green_wash 게이트로 재발 하드차단(요구 11)</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">"컨테이너 배경 미명시 = 전역 상속 함정" 패턴 = 신규 모달 체크리스트화</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">backdrop 딤(<code>rgba(4,8,5,.46)</code>) vs 컨테이너 배경을 분리 실측해 초록 진범을 컨테이너로 특정</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">운영자가 스크린샷의 초록을 얼마나 거슬려했는지 정량 — 체감 강도는 주관</span></div>
+    </div>
+  </div>
+
+  <!-- 02 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">02</span><span class="req-t">웹앱 전반 분신술 10인 감사</span><span class="req-v v-ok">✅ 완료</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">발행 모달만 지적</span> → <span class="now">Opus 10인 병렬(모달셸·헤더띠·색·SVG·버튼·소머리·간격·4뷰어·입력칸·게이트총괄) 적대 감사 완료</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">10인 토큰 비용 大 · 오판 노이즈(위반 창작)</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 사각지대 다수 발굴(문자도형·nm-imdl·게이트) / 단 = 비용·대기</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">READ-ONLY 하드계약(Explore 타입)로 rogue 차단 · 오판은 화이트리스트 근거로 기각</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">발굴 항목을 요구 05~16으로 조치</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">앵글을 사각지대별로 분담 = 중복 최소·커버리지 최대</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">"게이트 통과 ≠ 규칙 준수"를 발행 모달로 실증(초록이 게이트 원리적 불가시)</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">순수 문구·톤 영역은 에이전트 효용이 작아 감사 신뢰도 낮음</span></div>
+    </div>
+  </div>
+
+  <!-- 03 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">03</span><span class="req-t">발행 모달 컨테이너 무채색화</span><span class="req-v v-main">🔵 main 선행</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv">내 방식 = <code>#pubdlg</code>에 <code>background:var(--modal-glass)</code> 명시. <span class="now">main #1567이 더 발전된 방식(base 상속)으로 이미 해결</span> → 중복이라 버림</span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">중복 커밋을 그대로 머지하면 main과 충돌·혼선</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = main이 더 우위(backdrop까지 통일) / 단 = 내 작업 일부 폐기</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">고유 개선만 최신 main 위에 재정렬(요구 16 프로세스)</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">없음 — main 방식이 정본</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">동시 세션 충돌 조기 감지 = 머지 직전 <code>git fetch</code> 필수 습관</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">머지 직전 fetch로 main 선행 발견 → 맹목 머지(충돌·중복) 회피</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">두 세션이 같은 문제를 동시에 판 이유(운영자 병렬 지시 타이밍)</span></div>
+    </div>
+  </div>
+
+  <!-- 04 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">04</span><span class="req-t">전역 dialog{} base 초록 교체</span><span class="req-v v-main">🔵 main 선행</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">base 초록 워시 상속</span> → <span class="now">main #1567이 <code>var(--modal-glass)</code>로 교체 완료</span>(내 동일 변경은 중복 폐기)</span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">base 무채화가 미오버라이드 dialog에 영향</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 미오버라이드 안전망 / 단 = 없음(전 dialog가 자체 오버라이드라 회귀0)</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">재검증1이 전 dialog 전수 확인(회귀0 확증)</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">없음 — main 정본</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">base 무채값 = 신규 모달의 "안전한 기본값"</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">main이 "통일은 묻지 마" 기틀 규칙까지 신설(#1567) = 재발 방지 상위화</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">—</span></div>
+    </div>
+  </div>
+
+  <!-- 05 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">05</span><span class="req-t">표지판 문자도형 4건 → SVG</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">feednav·qpg-nav·carnav <code>‹›</code> + abdel <code>×</code> = 유니코드 문자(폰트 글리프 편심)</span> → <span class="now">전부 SVG 픽토그램</span>(편심 <code>padding-bottom</code> 땜빵 제거 = 정중앙)</span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">SVG 크기 미지정 시 안 보임 · 로드 순서 오류</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 정중앙 보장·§🔒 3-1 준수 / 단 = CSS svg 크기 규칙 추가 필요</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">각 버튼 <code>svg{width}</code> 명시 + 재검증2·6이 로드 순서 확증</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">잔여 유니코드 도형(SVG+텍스트 공존 토글) 별도 검토</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv"><code>padding-bottom</code> 땜빵 = 폰트 편심의 물증 → 발견 시 즉시 SVG 신호</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god"><code>check_refs</code> × 문자 게이트가 이미 잡던 것을 근본(SVG)으로 해소</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">SVG+텍스트 공존(도구탭·토글 chevron)이 §📐 위반인지 관용 UI인지 = 운영자 판단 대기</span></div>
+    </div>
+  </div>
+
+  <!-- 06 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">06</span><span class="req-t">CHEV → _SVG 접미사 SSOT 편입</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was"><code>CHEV_L/R</code> = 아이콘 SSOT 게이트(<code>_SVG</code> 접미사만 매칭) 밖</span> → <span class="now"><code>CHEV_L_SVG/R_SVG</code> 개명 = 게이트 자동 편입(12→14개)</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">개명 시 참조처(index 3곳·thumb) 누락하면 <code>ReferenceError</code></span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 미로드·재선언 하드탐지 / 단 = 참조처 동반 수정</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">check_refs 아이콘 SSOT 14개 통과로 확증</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">신규 아이콘도 <code>_SVG</code> 관례 유지</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">네이밍 관례 = 게이트 자동 편입의 진입 조건</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증2가 "게이트 밖" 지적 → 개명 한 번으로 하드보호 획득</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">—</span></div>
+    </div>
+  </div>
+
+  <!-- 07 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">07</span><span class="req-t">nm-imdl .dlbtn 이식 → 회귀 롤백</span><span class="req-v v-roll">⚠️ 롤백</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv">진단5 "<code>.dlbtn</code> 미부착 ❌"로 이식했으나 <span class="was">발행본(SUMMARY_TPL 자기완결 문서)에 <code>.dlbtn</code> CSS·위임 미도달 = 아이콘 색·✓ 소실 회귀</span> → <span class="now">raw+flash 원복</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">회귀를 못 잡고 머지하면 발행본 다운로드 버튼 퇴행</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 재검증이 회귀 포착·원복 / 단 = 이식 작업 폐기</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">재검증3·6·10 삼중 포착 → 4곳 net-zero 원복 + "발행본 전용·raw 필수" 주석</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">발행본 self-contained 요소가 메인앱 위임에 의존 안 하는지 게이트 검토</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">"문서 경계 착시" = self-contained HTML은 별세계 = 이식 전 렌더 컨텍스트 확인</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">적대 재검증이 <b>내 오판(진단 따라 만든 회귀)</b>을 잡음 = 분신술 최대 가치 사례</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">발행본 다운로드 버튼에 ✓ 피드백을 로컬 복제할 가치가 있는지(운영자 우선순위)</span></div>
+    </div>
+  </div>
+
+  <!-- 08 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">08</span><span class="req-t">발행 성공 ✓토스트 문자 제거</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was"><code>'✓ 발행됨'</code> 문자 = 같은 모달 SVG 체크와 혼용</span> → <span class="now">✓ 제거(버튼 <code>.ack</code> SVG 체크가 성공표시 담당)</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">성공 피드백이 약해 보일 우려</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = §🔒 3-1 준수·SVG/문자 혼용 해소 / 단 = 미미</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">버튼 <code>.ack</code> ✓팝이 이미 성공 표시</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">없음</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">피드백은 한 곳(버튼)으로 집중 = 중복 제거</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">문자 삭제만으로 위반 해소(추가 코드 0)</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">—</span></div>
+    </div>
+  </div>
+
+  <!-- 09 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">09</span><span class="req-t">raw press scale 5건 토큰화</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was"><code>.tool-restore .82</code>·<code>.dlbox .94</code>·<code>.pinmark .86</code>·<code>.nm-kw .985</code>·comp <code>.clipbtn .85</code> raw</span> → <span class="now"><code>var(--press-*)</code> 사다리 계승</span>(정확 2건 회귀0·근접 3건 미세 ≤.035)</span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">근접 스냅의 미세 눌림 변화(.94→.95 등)</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 사다리 정합·reduced-motion 편입 / 단 = 근접 3건 미세회귀</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">눌림 애니는 순간이라 시각차 거의 0 · <code>.asksend .97</code>은 공용이라 유지(화이트리스트)</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv"><code>check_press_tokens</code> 게이트 구현(raw scale 재등장 차단·CII 예고)</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">"게이지·공용 버튼은 화이트리스트, 단발은 토큰" 이분</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증4가 <code>.asksend .97</code> 유지 정당성을 pubGo 공용 계승으로 실증</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">근접 스냅(.985→.95, .035차)이 실제 손끝에 감지되는지 = 기기별</span></div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">10</span><span class="req-t">리터럴 fs/fw/radius/padding 토큰화</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">pin-title/busy <code>800</code>·pin-err <code>12px/700</code>·pin-x <code>9px</code>·pub-go <code>12px</code>·pub-body <code>18px</code> 리터럴</span> → <span class="now"><code>var(--fw-x/fs-sm/fw-b/r-s/sp-2/sp-3)</code> 회귀0</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">토큰값 ≠ 원 리터럴이면 시각 회귀</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 전 파일 회귀0(값 정확 일치) / 단 = 없음</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">토큰 실값 대조(800=800·12=12·9=9·18=18) 후 적용</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">pin-title <code>18px</code>은 스케일 부재로 유지 → 필요 시 토큰 신설</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">토큰=리터럴 동값만 회귀0 토큰화(광학·기하값은 유지)</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증4가 6건 전부 토큰 실값 대조로 회귀0 확증</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">index 소머리 리터럴(frozen)까지 확장할지 = 뉴스 정본 동결 원칙과 충돌</span></div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">11</span><span class="req-t">green_wash 게이트 신설</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">초록 워시 <code>rgba(27,44,32)</code>는 accent도 hex도 아닌 임의 rgba라 전 게이트 사각지대</span> → <span class="now"><code>check_refs.check_design</code>에 green_wash 하드차단 신설</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">baseline 오설정 시 rc=1 오작동 or 놓침</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 게이트 사각지대 봉합·재발 차단 / 단 = baseline 유지관리</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">재검증5가 HARD/rc=1 시뮬레이션으로 실작동 확증 · baseline 실측 일치</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">정규식화(공백변형 <code>rgba(27, 44, 32</code> 우회 차단)</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">"게이트 이름 = 실제 커버리지"를 일치시켜 착시 방지</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">진단 때 발견한 사각지대를 게이트로 승화 = 같은 실수 영구 차단</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">유사 초록 워시가 앞으로 몇 개 더 나올지(정규식 vs 리터럴 나열 트레이드오프)</span></div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">12</span><span class="req-t">green_wash 변종(24,40,29) 완결성 봉합</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">게이트가 <code>27,44,32</code>만 세서 변종 <code>rgba(24,40,29)</code>(.qflash·.failmenu·.dlgtop 3곳) 미감시</span> → <span class="now">두 변종 합산 + 3곳 baseline 동결(신규 차단)</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">3곳 초록이 미반영인지 의도인지 불명 → 무채화 강행 위험</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 게이트 완결·3곳 현상 유지 / 단 = 3곳 색 의도 미해결</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">동결(신규만 차단)로 색 안 건드림 · 무채화는 §🎨 색 원칙상 별도 확인</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv"><b>3곳(.qflash 토스트·.failmenu 메뉴·.dlgtop 버튼) 초록이 의도인지 운영자 확인 → 미반영이면 무채화</b></span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">주석 속 <code>rgba(...)</code> 표기 정리 = 게이트 오탐 제거</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증5가 "게이트 이름보다 커버리지 좁음" 지적 → 변종까지 확장</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">3곳 초록이 accent 크롬 의도인지 발행 모달처럼 미반영인지 = <b>운영자 확인 필요</b></span></div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">13</span><span class="req-t">comp press 토큰화 + reduced-motion</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">comp만 <code>.clipbtn .85</code> raw + reduced-motion 무효화 블록 없음(a11y 격차)</span> → <span class="now"><code>var(--press-s)</code> + <code>@media reduced-motion</code> 블록 추가(4뷰어 통일)</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">tokens.css resolve·CSS 우선순위 오류</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 4뷰어 a11y 통일 / 단 = 없음(회귀0)</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">재검증4가 link vs 인라인 우선순위·resolve 확증</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">comp <code>.go .955</code> raw도 후속 토큰화(선존·저심각)</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">tokens.css에 reduced-motion 블록 넣으면 4뷰어 자동 무효화(build 확장)</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증8이 "comp만 격차" 실측 → 정확히 그 파일만 교정</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">comp가 아이콘 SSOT·JS 구문 게이트 밖(선존 사각지대) 언제 편입할지</span></div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">14</span><span class="req-t">thumb carnav SSOT JS 주입</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">thumb carnav = CHEV 인라인 SVG 복제(SSOT 미참조·게이트 밖)</span> → <span class="now">빈 버튼 + JS <code>innerHTML=CHEV_L_SVG</code> 주입(nm-svg SSOT 편입)</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">주입 타이밍 오류 시 화살표 미표시</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = 드리프트 차단(nm-svg 고치면 자동 전파) / 단 = 정적→JS 전환</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">주입이 최상위 초기화 컨텍스트·carPrev 정적 존재 확인(자가검증)</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">잔여 인라인 아이콘 복제도 SSOT 주입 검토</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">정적 HTML 아이콘 = 무게이트 → JS 주입이 SSOT 진입로</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증8 F1이 "인라인 복제 무게이트" 지적 → JS 주입으로 SSOT 편입</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">—</span></div>
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">15</span><span class="req-t">thumb .abdlg radius 통일</span><span class="req-v v-ok">✅ 머지</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was"><code>.abdlg</code> border-radius <code>20px</code> raw(주석은 "cfm 계승"인데 이탈)</span> → <span class="now"><code>var(--r-modal)</code>(22px·.cfm 통일)</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">2px 커짐(미세 시각 변화)</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = .cfm과 통일·의도 복원 / 단 = 2px 미세회귀</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">dialog overflow·레이아웃 무영향(코너 곡률만)</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">thumb .cfm·.abdlg 초록 배경은 별도(독자팔레트·보류)</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">주석("cfm 계승")과 코드 불일치 = 드리프트 신호</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">재검증8이 20≠22 이탈을 정확히 짚음</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">thumb .cfm/.abdlg 초록 배경(green_wash 2) 무채화 값 = thumb 독자팔레트라 운영자 결정</span></div>
+    </div>
+  </div>
+
+  <!-- 16 -->
+  <div class="req">
+    <div class="req-h"><span class="req-n">16</span><span class="req-t">문서 정합 + main 재정렬 + 재검증 10인</span><span class="req-v v-ok">✅ 완료</span></div>
+    <div class="req-b">
+      <div class="f"><span class="fl">기존→현재</span><span class="fv"><span class="was">문서(CLAUDE·CII·확립본) 미갱신 · 내 브랜치 = main 중복 포함</span> → <span class="now">green_wash·CHEV·화이트리스트 문서화 + 최신 main 위에 고유만 재정렬 + 재검증 10인 만장일치</span></span></div>
+      <div class="f"><span class="fl">리스크</span><span class="fv">재정렬 충돌·force-push 이력 손실 · 문서-코드 드리프트</span></div>
+      <div class="f"><span class="fl">장단점</span><span class="fv">장 = main 정합·이력 깔끔·문서 최신 / 단 = force-with-lease 필요</span></div>
+      <div class="f"><span class="fl">단점 보완</span><span class="fv">백업 브랜치 보존 + <code>--force-with-lease</code>(origin 확인 후 덮음) + 발행 모달 문서는 main 소관이라 미중복 정정</span></div>
+      <div class="f"><span class="fl">추후 계획</span><span class="fv">작업이력 append + 3곳 초록 확인 후속</span></div>
+      <div class="f"><span class="fl">아이데이션</span><span class="fv">"main 무관 파일은 백업서 통째 복원, 겹치는 파일만 재적용" = 재정렬 효율화</span></div>
+      <div class="f"><span class="fl">신의 한수</span><span class="fv god">thumb·comp·nm-svg를 main이 안 건드린 걸 실측 → 백업서 통째 복원으로 재작업 최소화</span></div>
+      <div class="f"><span class="fl">이건 모르겠다</span><span class="fv dunno">squash 머지로 개별 커밋 사라짐 — 롤백 시 커밋 단위 아닌 hunk 단위여야 하는지</span></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>검증 종합</b> — <code>check_refs.py</code> rc=0(전 게이트: green_wash·× 문자·아이콘 SSOT 14·자동완성·소머리·거울/락) · 원격 실측(<code>git show origin/main</code>) 7항목 반영 확인 · 분신술 10인 진단 + 재검증 10인 만장일치(nm-imdl 회귀 삼중 포착·롤백).
+    <div class="flow">
+      <span class="step">발행 모달 진단</span><span class="arr">→</span>
+      <span class="step">분신술 10인</span><span class="arr">→</span>
+      <span class="step">대청소</span><span class="arr">→</span>
+      <span class="step">재검증 10인</span><span class="arr">→</span>
+      <span class="step">main 충돌 발견</span><span class="arr">→</span>
+      <span class="step">고유만 재정렬</span><span class="arr">→</span>
+      <span class="step">머지 #1564</span>
+    </div>
+    <div class="tail">⚠️ <b>미결(운영자 확인 대기)</b>: ① thumb <code>.cfm</code>·<code>.abdlg</code> 초록 배경(green_wash baseline 2) 무채화 여부 — thumb 독자팔레트 무채값 결정 필요. ② index <code>.qflash</code>·<code>.failmenu</code>·<code>.dlgtop</code> 초록(green_wash 3)이 의도 accent인지 미반영인지. ③ SVG+텍스트 공존(도구탭·토글 chevron)이 §📐 위반인지 관용인지. · 값 정본 = <code>viewer/index.html :root</code> · 이 보고서 = 일회성 스냅샷(viewer 동기화 의무 없음).</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>인스타/스레드 수정 UX 통일 — 보고서 260627</title>
+<style>
+  /* viewer/index.html :root 토큰 복사(인라인·일회성 스냅샷) */
+  :root{
+    --bg:#121212; --panel:#181a18; --panel2:#1e211e;
+    --accent:#0FFD02; --accent-rgb:15,253,2; --accent-dim:rgba(15,253,2,.13); --on-accent:#062108; --accent-bright:#d8ff3d;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --fg:#eef7f0; --mut:#8fa697; --warn:#ffd24a; --danger:#ff5b4a;
+    --r-pill:999px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    line-height:1.6;-webkit-font-smoothing:antialiased;padding:28px 18px 80px}
+  .wrap{max-width:880px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.4px;margin:0 0 4px;color:var(--accent);text-shadow:0 0 16px rgba(var(--accent-rgb),.35)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 26px}
+  h2{font-size:16px;font-weight:800;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);letter-spacing:-.2px}
+  h2 .tag{font-size:11px;font-weight:700;color:var(--on-accent);background:var(--accent);border-radius:999px;padding:2px 9px;margin-right:8px;vertical-align:middle}
+  h2 .tag.fix{background:var(--accent)} h2 .tag.show{background:var(--warn);color:#1a1205} h2 .tag.ok{background:#0cd0f7;color:#03222a}
+  p{margin:8px 0} code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:6px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .demo{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:20px 16px;text-align:center}
+  .demo .lbl{font-size:12px;font-weight:700;color:var(--mut);margin-bottom:14px;letter-spacing:-.1px}
+  .demo .lbl b{display:block;font-size:13px;margin-bottom:2px}
+  .demo .badge{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;margin-bottom:10px}
+  .badge.cur{background:rgba(255,91,74,.16);color:#ff8a7d;border:1px solid rgba(255,91,74,.4)}
+  .badge.rec{background:rgba(var(--accent-rgb),.16);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.5)}
+  .badge.alt{background:rgba(255,255,255,.06);color:var(--mut);border:1px solid var(--line)}
+  .row{display:flex;gap:9px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px}
+  .note{font-size:11.5px;color:var(--mut);margin-top:12px;line-height:1.5}
+  .hint{font-size:11px;color:var(--accent);margin-top:8px}
+
+  /* ── asksend 버튼 3종 라이브 재현 (모달 헤더 컨텍스트) ── */
+  .askbar{background:rgba(20,22,20,.7);border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .askbar .t{font-size:13px;font-weight:800;color:var(--accent)}
+  .send{flex:none;position:relative;overflow:hidden;color:var(--accent);border-radius:999px;
+    font:inherit;font-size:13px;font-weight:800;padding:9px 18px;cursor:pointer;
+    transition:background .18s ease,border-color .18s ease,color .18s ease}
+  .send>span{position:relative;z-index:1}
+  .send:active{transform:scale(.97)}
+  /* 현재(흰색 글래스 + 중립 테두리) */
+  .send.cur{background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .send.cur:hover{background:rgba(255,255,255,.08);border-color:rgba(var(--accent-rgb),.3)}
+  /* 통일안 A — .mkbtn 정본(검정 글래스 + 초록 테두리 + blur) */
+  .send.a{background:rgba(0,0,0,.34);border:1px solid rgba(15,253,2,.36);
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+  .send.a:hover{background:rgba(0,0,0,.44);border-color:rgba(15,253,2,.55)}
+  /* 통일안 B — .fb-save 톤(초록틴트 글래스 + 초록 테두리) */
+  .send.b{background:rgba(15,253,2,.12);border:1px solid rgba(15,253,2,.36)}
+  .send.b:hover{background:rgba(15,253,2,.18);border-color:rgba(15,253,2,.55)}
+  /* 공통: 발사 게이지 + 완료 체크(asksend 정본) */
+  .send.firing{color:var(--on-accent);opacity:1;border-color:var(--accent);pointer-events:none}
+  .send.firing::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;animation:gauge .72s linear forwards;z-index:0}
+  @keyframes gauge{to{transform:scaleX(1)}}
+  .send .ack{position:absolute;inset:0;z-index:2;display:grid;place-items:center;transform:scale(0);animation:ackPop .44s cubic-bezier(.18,1.5,.4,1) forwards}
+  .send .ack svg{width:19px;height:19px}
+  .send .ack path{fill:none;stroke:var(--on-accent);stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;animation:ackTick .26s .12s ease forwards}
+  .send.checked>span:not(.ack){opacity:0}
+  @keyframes ackPop{0%{transform:scale(0)}60%{transform:scale(1.28)}100%{transform:scale(1)}}
+  @keyframes ackTick{to{stroke-dashoffset:0}}
+
+  /* ── textarea focus 데모(Issue 2) ── */
+  .ta{display:block;width:100%;box-sizing:border-box;min-height:64px;resize:vertical;border-radius:14px;padding:12px 14px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--fg);font:inherit;font-size:14px;line-height:1.6;outline:none}
+  .ta.cur:focus{border-color:rgba(255,255,255,.28);box-shadow:0 0 0 3px rgba(255,255,255,.05)}
+  .ta.fix:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18)}
+  .ta::placeholder{color:var(--mut)}
+
+  /* ── 체크 픽토그램 비교(Issue 4) ── */
+  .pict{display:flex;gap:22px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:6px}
+  .pict figure{margin:0;text-align:center}
+  .pict .chip{width:54px;height:54px;border-radius:14px;background:var(--accent);display:grid;place-items:center;margin:0 auto 8px}
+  .pict .chip svg path{fill:none;stroke:var(--on-accent);stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round}
+  .pict figcaption{font-size:11px;color:var(--mut)}
+  .pict figcaption b{display:block;color:var(--fg);font-size:12px}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--accent);font-weight:700;font-size:11.5px}
+  td.pro{color:#9be89a} td.con{color:#ffb3a8}
+  ul.chk{list-style:none;padding:0;margin:10px 0}
+  ul.chk li{padding:7px 0 7px 30px;position:relative;border-bottom:1px solid var(--line2);font-size:13.5px}
+  ul.chk li::before{content:'✓';position:absolute;left:4px;top:7px;color:var(--accent);font-weight:800}
+  ul.chk li b{color:var(--fg)} ul.chk li .n{color:var(--mut);font-size:12px;display:block;margin-top:2px}
+  .flow{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap;margin-top:10px}
+  .flow .step{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px;font-size:11.5px;color:var(--mut)}
+  .flow .step b{display:block;color:var(--fg);font-size:12px;margin-bottom:3px}
+  .flow .step.bad{border-color:rgba(255,91,74,.4)} .flow .step.bad b{color:#ff8a7d}
+  .flow .step.good{border-color:rgba(var(--accent-rgb),.4)} .flow .step.good b{color:var(--accent)}
+  .keybox{background:rgba(var(--accent-rgb),.06);border:1px solid rgba(var(--accent-rgb),.3);border-radius:12px;padding:14px 16px;margin:14px 0}
+  .keybox h3{margin:0 0 6px;font-size:13px;color:var(--accent)}
+  .keybox p{font-size:12.5px;margin:5px 0;color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>인스타/스레드 수정 UX 통일 — 보고서</h1>
+  <p class="sub">260627 · <code>viewer/index.html</code> 수정 요청(revise) 팝업 + 전 레포 입력칸/전송버튼 통일 · 다크 다운로드 본</p>
+
+  <div class="card">
+    <h2 style="margin-top:0;border:none;padding:0">📍 요구 5건 체크리스트(명세서)</h2>
+    <ul class="chk">
+      <li><b>① 전송버튼 디밍 통일</b> — 흰색 글래스(<code>rgba(255,255,255,.05)</code>)가 "애매한 디밍". 정본 주요버튼 <code>.mkbtn</code>(검정 글래스+초록 테두리)에 통일.<span class="n">→ 아래 라이브 비교 + 통일안 A 반영</span></li>
+      <li><b>② 입력칸 포커스 강조색</b> — <code>.askta:focus</code>가 흰색이라 타이핑해도 강조 안 됨. 강조색으로 교정 → 4개 공용 textarea(요약요청·수정요청·카드수정·전문) 전부 정합.<span class="n">→ 전 레포 전수조사 결과 고칠 곳은 이 한 곳뿐(thumb·ly·comp·k는 이미 강조색)</span></li>
+      <li><b>③ 입력 중 배경 깜빡임</b> — 60초 <code>livePoll</code>+1초 시계가 backdrop-filter 모달 뒤 DOM을 다시 그려 블러 재합성→번쩍. 작성 모달 열림 중엔 배경 재렌더 차단.<span class="n">→ 재발 방지 원칙을 코드 주석+작업이력에 명문화</span></li>
+      <li><b>④ 완료 체크 픽토그램 일관성</b> — 확인 결과 <code>.mkbtn</code>·<code>.ed-go</code>·<code>CHECK_SVG</code>와 <b>동일 path</b>. 이미 통일됨.<span class="n">→ 아래 픽토그램 비교 참조</span></li>
+      <li><b>⑤ 전송 시 텍스트 순간 비워짐</b> — 성공 직후 즉시 입력칸을 비워 게이지 도는 1.6초간 빈 칸이 보임. 닫은 뒤 비우도록 변경(요약요청·카드수정은 이미 그렇게 동작).<span class="n">→ revSend만 이탈했던 것 = 기존 운영자 표준(260622)에 정합</span></li>
+    </ul>
+  </div>
+
+  <h2><span class="tag show">①</span>전송버튼 디밍 통일 — 라이브 비교</h2>
+  <p>아래 버튼을 <b>직접 눌러보면</b> 게이지 채움→✓ 체크까지 실제 모션이 돈다. 평상시 바탕만 다르고 발사/체크는 셋 다 동일.</p>
+  <div class="grid">
+    <div class="demo">
+      <div class="lbl"><b>현재</b>흰색 글래스 + 중립 테두리</div>
+      <div class="badge cur">애매한 디밍</div>
+      <div class="row"><button class="send cur" type="button"><span>수정 →</span></button></div>
+      <div class="note"><code>background:rgba(255,255,255,.05)</code><br><code>border:var(--line)</code> (흰 8%)<br>→ 바탕이 뿌옇게 떠 보임·강조 신호 약함</div>
+    </div>
+    <div class="demo">
+      <div class="lbl"><b>통일안 A</b>.mkbtn 정본 계승</div>
+      <div class="badge rec">추천 · 반영함</div>
+      <div class="row"><button class="send a" type="button"><span>수정 →</span></button></div>
+      <div class="note"><code>background:rgba(0,0,0,.34)</code><br><code>border:rgba(15,253,2,.36)</code> + blur<br>→ 제작('슛') 버튼과 같은 글래스-강조 언어</div>
+    </div>
+    <div class="demo">
+      <div class="lbl"><b>통일안 B</b>.fb-save 톤</div>
+      <div class="badge alt">대안</div>
+      <div class="row"><button class="send b" type="button"><span>수정 →</span></button></div>
+      <div class="note"><code>background:rgba(15,253,2,.12)</code><br><code>border:rgba(15,253,2,.36)</code><br>→ 평상시에도 옅은 초록 존재감</div>
+    </div>
+  </div>
+  <p class="hint">↑ 버튼 클릭 = 발사 모션 재생(0.7초 게이지 → ✓ 팝). 다시 누르려면 잠시 후.</p>
+  <div class="card">
+    <p style="margin:0"><b>왜 A를 추천?</b> 사용자가 가장 자주 보는 주요 액션 버튼이 <code>.mkbtn</code>(카드 '제작/슛')이고, 그 정본이 "검정 글래스 + 초록 테두리 + 네온 글자 + blur"다. 전송버튼을 여기에 맞추면 "최대한 기존이랑 맞춤"이 정확히 충족된다. 또 <code>.fb-save</code>(피드백 기록)도 원래 초록 테두리를 의도했어서, 흰색 글래스 <code>.asksend</code>가 사실상 유일한 이탈이었다. 검정 바탕은 초록 게이지 채움 대비도 흰색보다 더 또렷하다.</p>
+  </div>
+
+  <h2><span class="tag fix">②</span>입력칸 포커스 강조색 — 전/후</h2>
+  <p>아래 칸을 <b>탭/클릭해 포커스</b>해봐. 왼쪽(현재)은 흰 테두리, 오른쪽(수정)은 강조색 테두리+글로우.</p>
+  <div class="grid">
+    <div class="demo">
+      <div class="lbl"><b>현재</b> .askta:focus = 흰색</div>
+      <div class="badge cur">강조 안 됨</div>
+      <textarea class="ta cur" placeholder="여기를 눌러 포커스 — 흰 테두리"></textarea>
+    </div>
+    <div class="demo">
+      <div class="lbl"><b>수정</b> 강조색 테두리</div>
+      <div class="badge rec">반영함</div>
+      <textarea class="ta fix" placeholder="여기를 눌러 포커스 — 초록 강조"></textarea>
+    </div>
+  </div>
+  <p class="note">전 레포(viewer/index·thumb·ly·comp·k + 구성도) 전수조사 결과: 다른 입력칸은 전부 이미 강조색(<code>border-color:var(--accent)</code>). 고칠 곳은 <code>.askta:focus</code> 한 줄뿐(요약요청·수정요청·카드수정·전문입력 4개 textarea 공유). 👎/PASS 사유칸의 빨강은 시맨틱(부정=빨강, PICK=초록 전환)이라 의도적 → 보존.</p>
+
+  <h2><span class="tag fix">③</span>입력 중 배경 깜빡임 — 원인 &amp; 재발 방지</h2>
+  <div class="flow">
+    <div class="step bad"><b>방아쇠</b>60초 <code>livePoll()</code> + 1초 <code>tickClock()</code> + revise 완료 폴이 <code>load()</code>→<code>render()</code>로 배경 DOM(피드·#mdbody)을 다시 그림</div>
+    <div class="step bad"><b>증폭기</b>수정 팝업은 <code>backdrop-filter:blur()</code> 모달. 뒤 DOM이 바뀌면 GPU가 블러를 재합성</div>
+    <div class="step bad"><b>증상</b>타이핑 중 폴이 겹치는 순간 배경이 번쩍(간헐적·유지보수 때마다 재발)</div>
+  </div>
+  <div class="flow" style="margin-top:8px">
+    <div class="step good"><b>수정</b><code>isComposingModalOpen()</code> 게이트 추가 → 작성 모달이 열려 있으면 <code>livePoll</code>·<code>tickClock</code>·revise/카드수정 완료 폴이 배경 재렌더를 보류(다음 틱·닫은 뒤 자동 따라잡음)</div>
+    <div class="step good"><b>효과</b>모달 뒤 DOM이 정지 → 블러 재합성 없음 → 깜빡임 0</div>
+  </div>
+  <div class="keybox">
+    <h3>⚠️ 필수 참조사항 — 재발 방지(이 기능 유지보수 시)</h3>
+    <p><b>원칙:</b> <code>backdrop-filter</code>(블러) 오버레이가 떠 있는 동안 <b>그 뒤 DOM을 건드리지 말 것.</b> 배경이 바뀌면 블러가 재합성되며 번쩍인다(Chromium/WebKit 공통 동작).</p>
+    <p><b>체크리스트:</b> 새 폴링·타이머·자동갱신(setInterval/폴)을 추가하거나 <code>render()</code>/<code>load()</code> 호출 경로를 손볼 때 → 반드시 <code>isComposingModalOpen()</code>(또는 동급 가드)로 작성 모달 열림 중엔 배경 재렌더를 건너뛸 것. 새 작성 모달을 만들면 그 id를 이 가드 목록에 추가.</p>
+    <p>정본 위치: <code>viewer/index.html</code> <code>isComposingModalOpen</code> 주석 블록 + <code>docs/작업이력.md</code> §우선사항.</p>
+  </div>
+
+  <h2><span class="tag ok">④</span>완료 체크 픽토그램 일관성 — 확인 결과 ✅</h2>
+  <p>전송버튼 완료 체크와 레포 내 다른 버튼들의 체크가 <b>같은 픽토그램(path)</b>인지 확인 → 동일 확정.</p>
+  <div class="pict">
+    <figure><div class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><figcaption><b>전송버튼</b>.asksend .ack</figcaption></figure>
+    <figure><div class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><figcaption><b>제작/슛</b>.mkbtn .gck</figcaption></figure>
+    <figure><div class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><figcaption><b>변경</b>.ed-go .gck</figcaption></figure>
+    <figure><div class="chip"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><figcaption><b>복사완료</b>CHECK_SVG</figcaption></figure>
+  </div>
+  <p class="note">전부 <code>path d="M5 13l4 4L19 7"</code> · <code>stroke:var(--on-accent)</code> · stroke-width 2.7 · round cap/join 동일. 차이는 진입 모션뿐(전송=팝 스프링 <code>ackPop</code> / 제작=스트로크 드로우 <code>goTick</code>) — 이건 의도된 변형(260622 시안2). <b>픽토그램 자체는 통일됨 → 변경 불요.</b></p>
+
+  <h2><span class="tag fix">⑤</span>전송 시 텍스트 순간 비워짐 — 전/후</h2>
+  <div class="grid">
+    <div class="demo" style="text-align:left">
+      <div class="badge cur" style="display:block;width:fit-content">현재(revSend)</div>
+      <div class="flow" style="flex-direction:column">
+        <div class="step bad"><b>0s</b>2차 클릭 = 전송</div>
+        <div class="step bad"><b>즉시</b><code>revText.value=''</code> → 입력칸이 <b>바로 빈칸</b></div>
+        <div class="step bad"><b>0~1.6s</b>게이지+✓ 도는데 칸은 비어 있음 → "내가 쓴 게 사라졌나?" 불안</div>
+        <div class="step bad"><b>1.6s</b>창 닫힘</div>
+      </div>
+    </div>
+    <div class="demo" style="text-align:left">
+      <div class="badge rec" style="display:block;width:fit-content">수정 후</div>
+      <div class="flow" style="flex-direction:column">
+        <div class="step good"><b>0s</b>2차 클릭 = 전송</div>
+        <div class="step good"><b>0~1.6s</b>입력 내용 <b>그대로 유지</b>된 채 게이지+✓ 재생 → "잘 전달됐다" 안심</div>
+        <div class="step good"><b>1.6s</b>창 닫힘</div>
+        <div class="step good"><b>닫힌 뒤</b><code>revText.value=''</code> (안 보이게 정리)</div>
+      </div>
+    </div>
+  </div>
+  <p class="note">요약요청(askSend)·카드수정(crevSend)은 이미 "닫은 뒤 비우기"로 동작(askSend엔 운영자 260622 주석까지 있음). revSend만 이탈했던 것을 같은 표준으로 맞춤.</p>
+
+  <h2>📊 전/후 · 장단점 · 효율 · 품질저하 리스크 (5요소)</h2>
+  <table>
+    <tr><th style="width:13%">항목</th><th style="width:30%">전 → 후</th><th>장점</th><th>리스크/단점</th></tr>
+    <tr><td>① 디밍</td><td>흰 글래스 → 검정 글래스+초록 테두리(.mkbtn 통일)</td><td class="pro">주요버튼과 시각 언어 일치·게이지 대비↑·이탈 제거</td><td class="con">취향상 초록 테두리가 강할 수 있음 → 대안 B 제공</td></tr>
+    <tr><td>② 포커스</td><td>흰 테두리 → 강조색 테두리+글로우</td><td class="pro">타이핑 활성 신호 명확·전 입력칸 정합(1줄 수정)</td><td class="con">거의 없음(시맨틱 빨강칸은 의도 보존)</td></tr>
+    <tr><td>③ 깜빡임</td><td>모달 뒤 무조건 재렌더 → 작성 모달 중 보류</td><td class="pro">깜빡임 제거·폴 비용↓·재발 방지 명문화</td><td class="con">작성 중 배경 데이터 갱신 최대 ~60초 지연(닫으면 즉시 따라잡음·무해)</td></tr>
+    <tr><td>④ 체크</td><td>변경 없음(이미 동일)</td><td class="pro">확인으로 일관성 입증</td><td class="con">없음</td></tr>
+    <tr><td>⑤ 비워짐</td><td>즉시 비움 → 닫은 뒤 비움</td><td class="pro">전송 안심감·기존 표준 정합</td><td class="con">없음(중복전송은 disabled로 이미 차단)</td></tr>
+  </table>
+  <p class="note">효율성: ①②④⑤는 순수 CSS/타이밍 조정(런타임 비용 0). ③은 오히려 불필요한 재렌더를 줄여 미세하게 가벼워짐. 품질저하 리스크: 핵심은 ③의 데이터 갱신 지연(작성 중 한정·자동 따라잡음)뿐이며 사용자 체감 무해.</p>
+</div>
+
+<script>
+  // 데모 버튼 = 클릭 시 발사→✓ 재생(실제 viewer 상태머신 축약)
+  document.querySelectorAll('.send').forEach(function(b){
+    b.addEventListener('click',function(){
+      if(b.classList.contains('firing')||b.querySelector('.ack'))return;
+      b.classList.add('firing');
+      setTimeout(function(){
+        b.classList.add('checked');
+        var d=document.createElement('span');d.className='ack';
+        d.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+        b.appendChild(d);
+      },720);
+      setTimeout(function(){
+        b.classList.remove('firing','checked');
+        var a=b.querySelector('.ack');if(a)a.remove();
+      },2200);
+    });
+  });
+</script>
+</body>
+</html>

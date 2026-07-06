@@ -1,0 +1,152 @@
+name: news-revise
+
+# 뷰어 ✏️요약 수정 요청(api/revise → 디스패치) → Claude 헤드리스가 queue/<file>.md 의
+# IG·Thread 초안만 운영자 지시대로 재작성 → 같은 파일에 in-place 커밋(= 뉴스요약에 반영).
+# ⛔ 재요약 아님: 기사 재수집·재분석 안 함(기존 요약을 입력으로 그 두 블록만 다시 씀 = 구독 쿼터 절약).
+# 인증·디스패치 = news-ask 미러(구독 OAuth·무료·per-run 과금 0). 종량제 API 키 미사용.
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: '큐 항목 id(확장자 없이 · 260616-0823-…)'
+        type: string
+      instruction:
+        description: '재작성 지시(자연어)'
+        type: string
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: news-revise-${{ inputs.file }}   # 같은 카드 동시 수정 직렬화
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  revise:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 최신 main 기준(순차 큐에서 옛 커밋 체크아웃 방지)
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치 — news-ask와 동일하게 설치
+
+      - name: Revise IG/Thread
+        env:
+          # 인증 = 구독 OAuth(API 키 미사용) — news-ask와 동일 동적 계정 선택
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          FILE: ${{ inputs.file }}
+          INSTRUCTION: ${{ inputs.instruction }}
+        run: |
+          echo "활성 계정: ${ACTIVE_ACCOUNT} · 대상: ${FILE}"
+          if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_${ACTIVE_ACCOUNT} 시크릿 비어있음"; exit 1
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/revise.sh
+
+      - name: Commit result
+        if: always()
+        env:
+          BRANCH: ${{ github.ref_name }}
+          FILE: ${{ inputs.file }}   # 커밋 메시지용(step env는 스텝 스코프라 재주입)
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add queue 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만(없어도 무해)
+          git commit -m "revise: ${FILE:-?} IG/Thread 수정 반영" || { echo "변경 없음"; exit 0; }
+          # 동시 커밋 레이스 대비 — 매 시도 origin 흡수 후 push(naive 재push는 non-ff로 무한실패)
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패"; exit 1; }
+
+  # revise로 요약(IG/Thread)이 바뀌면 그 기사 '카드 프롬프트'도 갱신해 요약과 일치시킨다(운영자 선택 260618).
+  # 텍스트만·제미나이 0(card_plan과 동일 잠금): GDRIVE_SA_JSON env 부재(Lock A) + cardmake text모드 unset(Lock B).
+  # ⛔ 이미 '슛'한 done/fired_partial(이미지 있는) 카드는 보호 — 자동 덮어쓰기 안 함(이미지·편집 유실 방지).
+  card_refresh:
+    needs: revise        # revise 성공 시에만(요약이 실제로 바뀐 뒤)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40   # cardmake claude timeout(900s=15m · 260619 1500→900↓) + 설치/체크아웃·다건 여유(잡 timeout이 claude보다 먼저 떨어져 generating 잔류하던 마진 부족 해소)
+    concurrency:
+      group: card-make   # card_plan·card-make와 같은 그룹 = 같은 cards/ 직렬화(동시 쓰기 방지)
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main        # revise가 push한 최신 queue 포함
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Refresh card prompt (done/이미지 카드는 보호)
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'EMS1130G' && secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO || secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G }}   # 대체 계정(활성의 반대) — 쿼터 한도 시 자동 폴오버
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          FILE: ${{ inputs.file }}
+          # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON env 자체가 없음(제미나이 발사 불가).
+        run: |
+          [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "토큰 없음 — 카드 갱신 생략"; exit 0; }
+          stem="${FILE}"
+          [ -n "${stem}" ] || { echo "file 입력 없음 — 생략"; exit 0; }
+          [ -f "queue/${stem}.md" ] || { echo "queue/${stem}.md 없음 — 생략"; exit 0; }
+          st="$(grep -o '"state":"[^"]*"' "cards/${stem}/status.json" 2>/dev/null | cut -d'"' -f4)"
+          imgs="$(ls cards/${stem}/*.jpg cards/${stem}/*.png cards/${stem}/scenes/*.jpg 2>/dev/null | head -1)"   # 렌더 이미지/장면 보존본 = 이미 촬영됨
+          if [ "${st}" = "done" ] || [ "${st}" = "fired_partial" ] || [ -n "${imgs}" ]; then
+            echo "카드 보호(state='${st:-?}', 이미지=${imgs:-없음}) — 자동 재생성 생략(요약은 반영됨, 카드 반영은 운영자 재촬영으로)"; exit 0
+          fi
+          # OAuth를 덮는 변수 방어 제거 + Lock B(GDRIVE unset) — 단일 파일 text 모드 = 그 기사 카드 프롬프트만 재생성(state=text_done)
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN GDRIVE_SA_JSON GEMINI_API_KEY
+          bash .github/scripts/cardmake.sh "${stem}.md" text || echo "::warning::카드 프롬프트 갱신 실패(요약은 반영됨)"
+
+      # 좀비 generating 차단(card_plan과 동일) — 위 스텝이 크래시/타임아웃되면 status가 영영 'generating'(모달 '프롬프팅 중' 영구) → always로 스윕·커밋.
+      - name: Sweep stuck generating (좀비 → failed)
+        if: always()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          swept=0
+          for s in cards/*/status.json; do
+            [ -f "$s" ] || continue
+            grep -qE '"state":[[:space:]]*"generating"' "$s" || continue   # json.dump=콜론뒤 공백 → 공백 허용(무공백 grep은 영구 미스=좀비 미수거, 260620 분신술 실증)
+            d="$(dirname "$s")"
+            echo "좀비 generating → failed: $d"
+            printf '{"state":"failed","updated":"%s","guidelines_version":""}\n' "$(date -u +%FT%TZ)" > "$s"
+            echo "잡 중단/크래시로 카드 프롬프트 갱신 미완료(자동 스윕)" > "$d/error.log"
+            swept=$((swept+1))
+          done
+          [ "$swept" -eq 0 ] && { echo "좀비 없음"; exit 0; }
+          git add cards
+          git commit -m "cards: 좀비 generating ${swept}건 → failed(스윕)" || exit 0
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true; sleep $((2**i))
+          done
+          echo "::warning::스윕 push 실패"

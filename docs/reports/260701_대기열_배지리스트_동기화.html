@@ -1,0 +1,78 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>대기열 배지-리스트 동기화 버그 픽스 (260701)</title>
+<style>
+:root{--bg:#0b0d0c;--pan:#14181a;--pan2:#1b2124;--fg:#e9eaec;--mut:#9aa2a6;--line:#262d31;--accent:#0ffd02;--accent-rgb:15,253,2;--danger:#ff4d4d;--warn:#ffd24a;--amber:#ff9614;--info:#0cd0f7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;padding:28px 18px 60px}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:23px;font-weight:800;letter-spacing:-.01em;margin:0 0 6px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+h2{font-size:17px;font-weight:800;margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.accent{color:var(--accent)}.danger{color:var(--danger)}.warn{color:var(--warn)}.mut{color:var(--mut)}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0}
+.bad{border-left:3px solid var(--danger)}.good{border-left:3px solid var(--accent)}
+code{background:var(--pan2);padding:1.5px 6px;border-radius:6px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#d6e9d0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0;font-size:13px}
+.chip{background:var(--pan2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:12px/1.4 ui-monospace,monospace}
+.arrow{color:var(--mut)}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:700;font-size:12px}
+.tag{display:inline-block;font:700 11px/1 ui-monospace,monospace;padding:4px 7px;border-radius:6px;margin-right:4px}
+.t-b{background:rgba(var(--accent-rgb),.14);color:var(--accent)}
+ul{margin:8px 0;padding-left:20px}li{margin:4px 0}
+.big{font-size:15px}.small{font-size:12.5px}
+.k{color:var(--warn);font-weight:700}
+</style></head>
+<body><div class="wrap">
+<h1>대기열 배지-리스트 동기화 버그 픽스</h1>
+<p class="sub">2026-07-01 · PR #1278 (머지 <code>a1e9c8b</code>) · 적대 10인 + 재검증 3인 만장일치</p>
+
+<h2>🐞 증상</h2>
+<div class="card bad">
+<p class="big">'뉴스요약' 버튼 배지에 <b class="k">처리중 1건</b>이 뜨는데, 대기열 리스트(1페이지)에는 그 항목이 <b class="danger">안 보임</b>.</p>
+<p class="small mut">실측: 스크린샷 시각(12:24 KST)에 <code>asks/2026-07-01-0317-3mn3f.json</code>(=12:17 KST 요약요청)이 처리중으로 존재했음. 이 항목이 배지엔 세지만 리스트에서 사라진 바로 그 건.</p>
+</div>
+
+<h2>🔍 원인 — 파일명 형식 ↔ 파서 정규식 불일치</h2>
+<p><code>submit.js</code>가 요약요청 파일명을 이렇게 만든다:</p>
+<div class="flow">
+<span class="chip">toISOString()<br>2026-07-01T03:17:00.0Z</span><span class="arrow">→ [:.] 제거·T→- ·slice(0,15) →</span>
+<span class="chip accent">2026-07-01-0317<br>(YYYY-MM-DD-HHMM)</span>
+</div>
+<p>그런데 주석엔 <code>YYYYMMDD-HHMMSS</code>로 <b class="danger">오기</b>돼 있었고, <code>pending.js</code>의 <code>askTime</code> 파서가 그 오기를 믿고 <code>/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/</code> 를 씀 → <b class="danger">매칭 실패 → 모든 요약요청의 시각이 <code>null</code></b>.</p>
+<table>
+<tr><th>경로</th><th>t=null일 때 거동</th><th>결과</th></tr>
+<tr><td>배지 <code>PEND_PROC</code></td><td><code>status</code>만 카운트 (시각 무관)</td><td class="accent">1건 셈 ✅</td></tr>
+<tr><td>리스트 <code>QITEMS</code></td><td>시각 내림차순 정렬 → <code>null</code>이 맨 뒤 → 5개 페이지네이션 1페이지서 탈락</td><td class="danger">안 보임 ❌</td></tr>
+<tr><td>실패 <code>askFailed</code></td><td><code>x.t &&</code> 필터에 컷</td><td class="danger">아예 미표시 ❌</td></tr>
+</table>
+<p class="small mut">같은 형식 불일치가 <code>ask.sh</code>에도 있어(3번째 인스턴스) 완료 요약요청의 큐 파일명 시각이 "요청시각"이 아닌 "처리시각"으로 밀리던 형제 버그도 함께 발견.</p>
+
+<h2>🔧 수정 (전 → 후)</h2>
+<table>
+<tr><th>파일</th><th>전</th><th>후</th></tr>
+<tr><td><code>pending.js</code> askTime <span class="tag t-b">근본</span></td><td class="danger"><code>YYYYMMDD-HHMMSS</code> 기대 → 항상 null</td><td class="accent"><code>YYYY-MM-DD-HHMM</code> (UTC 파싱 유지) → 정상 epoch</td></tr>
+<tr><td><code>index.html</code> loadQueue <span class="tag t-b">방어</span></td><td>API 시각순만 (진행중이 뒤로)</td><td>진행중(eff 기준·스피너) 최상단 고정 + <b>리스트 열 때 배지 즉시 동기화</b>(추가 fetch 0)</td></tr>
+<tr><td><code>submit.js:19</code> 주석</td><td class="danger"><code>// YYYYMMDD-HHMMSS</code> (오기=진원)</td><td class="accent"><code>// YYYY-MM-DD-HHMM …</code></td></tr>
+<tr><td><code>ask.sh:40</code> 정규식</td><td class="danger">항상 unmatch → 폴백(처리시각) 상시</td><td class="accent">요청시각→KST 스탬프 복원 (<code>03:17UTC→260701-1217</code>)</td></tr>
+<tr><td><code>index.html</code> qDownload</td><td>ask-stuck이 pending 전용 오문구</td><td>ask-stuck 전용 진단 분기 (asks/·news-ask 트랙)</td></tr>
+</table>
+
+<h2>⚖️ 효율 · 품질 리스크</h2>
+<div class="card good">
+<ul>
+<li><b class="accent">효율</b>: 리스트 열 때 배지 동기화는 <b>이미 받은 응답 재사용 = 추가 네트워크 0</b>. 정렬은 열 때 1회(대기열 항목 수십 개 규모 → 1ms 미만).</li>
+<li><b class="accent">품질 향상</b>: ① 요약요청이 배지·리스트에 일관 표시 ② 실패 요약요청(askFailed)이 24h 표면화(이전엔 아예 안 뜸) ③ 20분+ 미처리 stuck-FAIL 정상 작동 ④ "화면 스피너 = 정렬 상단" 일치(빌드랙 succ 포함) ⑤ 완료분 큐 시각이 요청시각으로 정확.</li>
+<li><b class="warn">리스크</b>: 낮음. API 응답 스키마 불변(<code>t</code> 값만 null→유효). UTC 파싱 유지(CLAUDE.md §📐 submit→ask 예외 규정 부합, KST로 바꾸면 +9h 버그). 페이지네이션·컷오프·픽 상태 무영향. 회귀 0(재검증 확인).</li>
+<li><b class="mut">후속(무해)</b>: <code>qDownload</code>는 현재 dead code(대기열 실패 항목에 다운로드 버튼 미노출)라 ask-stuck 분기는 미래 대비 정합. seen Set 실효0·CAP 상한·check_refs 형식↔파서 게이트는 후속 TODO.</li>
+</ul>
+</div>
+
+<h2>✅ 검증</h2>
+<ul>
+<li><b>적대 10인 평의회</b>(READ-ONLY·Opus·effort max, 각기 다른 앵글) → 핵심 수정 전원 ✅, ⚠️/❌ 5건 전부 반영.</li>
+<li><b>표적 재검증 3인</b> → 만장일치, 신규 회귀 0. <code>ask.sh</code>는 실제 bash/node 실행으로 <code>260701-1217</code>·자정/연도 넘김 엣지 통과.</li>
+<li><code>check_refs</code> rc=0 · viewer JS 구문 OK · <code>git show origin/main</code> 4개 파일 read-back 반영 실측.</li>
+</ul>
+</div></body></html>

@@ -1,0 +1,114 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>UI/UX 기틀 — 분신술 10인 감사 보고 (260628)</title>
+<style>
+:root{--bg:#121212;--pan:#16171a;--line:#2a2c31;--fg:#e9eaec;--mut:#8b8f98;--accent:#0FFD02;--accent-rgb:15,253,2;--danger:#ff5d5d;--warn:#f3c95a;--info:#45cdf2}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(125% 70% at 50% -8%,rgba(var(--accent-rgb),.05),transparent 55%) fixed,var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;padding:26px 16px 80px}
+.wrap{max-width:920px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+h2{font-size:17px;margin:30px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h2 .n{color:var(--accent);font-weight:800;margin-right:6px}
+h3{font-size:14.5px;margin:18px 0 7px;color:var(--accent)}
+p{margin:7px 0}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:15px 17px;margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:rgba(var(--accent-rgb),.07);color:var(--accent);font-weight:700}
+code{background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;font-size:12px;color:#cfe9c8}
+.p0{color:var(--danger);font-weight:800}.p1{color:var(--warn);font-weight:700}.p2{color:var(--mut)}
+.ok{color:var(--accent);font-weight:700}
+.before{color:var(--mut)}.after{color:var(--accent)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--line);margin:2px 3px 2px 0}
+.pill.d{color:var(--danger);border-color:rgba(255,93,93,.4)}.pill.w{color:var(--warn);border-color:rgba(243,201,90,.4)}.pill.g{color:var(--accent);border-color:rgba(var(--accent-rgb),.4)}
+ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+.kpi{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+.kpi div{flex:1;min-width:130px;background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+.kpi b{display:block;font-size:24px;color:var(--accent);font-variant-numeric:tabular-nums}
+.kpi span{font-size:11.5px;color:var(--mut)}
+.small{font-size:12px;color:var(--mut)}
+</style></head><body><div class="wrap">
+
+<h1><b>UI/UX 기틀</b> — 분신술 10인 적대 감사 보고</h1>
+<p class="sub">260628 · 트리거 = 카드변경(editdlg) 헤더 −/X 버튼이 래퍼에 갇혀 좌측에 붙던 버그 · 읽기전용 Opus 10인 병렬 감사 · 대상 <code>viewer/{index,thumb,ly,k,comp}.html</code></p>
+
+<div class="kpi">
+<div><b>10</b><span>읽기전용 적대 감사 에이전트</span></div>
+<div><b>2</b><span>근원(토큰 미공유 · 컴포넌트 4중복제)</span></div>
+<div><b>5</b><span>이번 PR 적용 교정</span></div>
+<div><b>15</b><span>횡단 UX 사각지대 발견</span></div>
+</div>
+
+<h2><span class="n">§1</span>근원 2가지 (왜 자꾸 재발하나)</h2>
+<div class="card">
+<p><b>① 토큰 미공유</b> — <code>index.html :root</code>가 전 토큰 SSOT인데 <code>thumb/ly/k/comp</code>는 각자 작은 <code>:root</code>를 들고 index 토큰을 <b>상속 못 함</b>. 특히 <code>ly/k</code>는 <code>--accent-rgb</code>조차 없는 깡통 root라 모든 알파합성을 <span class="before">raw <code>rgba(15,253,2,…)</code></span>로 박았다. <code>--r/--sp/--blur/--btn/--z</code> 토큰은 도구 3파일에 <b>0개</b> → index 토큰을 고쳐도 도구엔 안 닿음.</p>
+<p><b>② 컴포넌트 4중 복제</b> — FAB(<code>#rfab</code>)·클립버튼(<code>.iobtn</code>/<code>.urlclip</code>/<code>.scnclip</code>/<code>.askclip</code>)·닫기 X(13클래스)·SVG 상수(파일마다 5~16벌)가 손복사로 4벌 존재 → <b>한 곳만 고쳐지고 나머지는 뒤처짐</b>(예: <code>k.html .rmin</code>이 260628 픽스를 못 따라옴). editdlg 버그도 정확히 이 계열(<code>.ed-x margin-left:auto</code>가 래퍼에 갇힘).</p>
+</div>
+
+<h2><span class="n">§2</span>이번 PR에 적용한 교정 (전 → 후)</h2>
+<table>
+<tr><th>항목</th><th>전</th><th>후</th><th>등급</th></tr>
+<tr><td>thumb <code>#abbrX</code> 닫기</td><td class="before">CSS 룰 0 = 무스타일 bare 버튼(제목 옆 좌측)</td><td class="after">정본 30px 글래스 사각·우상단</td><td><span class="p0">P0</span></td></tr>
+<tr><td>k.html <code>#rfab .rmin</code></td><td class="before">테두리+그림자 잔존·누름=버튼축소 .85</td><td class="after">border:0·그림자 제거·누름=픽토축소 .55(thumb/ly 동기)</td><td><span class="p1">P1</span></td></tr>
+<tr><td>index <code>#toolMin</code> 아이콘</td><td class="before"><code>M6 13h12</code>(혼자 1px 어긋남)</td><td class="after"><code>M6 12h12</code>(전 최소화 통일)</td><td><span class="p1">P1</span></td></tr>
+<tr><td>ly/k 강조색</td><td class="before">raw <code>rgba(15,253,2)</code> 26곳 + <code>--accent-rgb</code> 부재</td><td class="after"><code>--accent-rgb</code> 추가 + 전부 토큰화</td><td><span class="p1">P1</span></td></tr>
+<tr><td>디자인 게이트</td><td class="before"><code>check_design</code>이 index·thumb만 감시(ly/k/comp 무방비)</td><td class="after">ly/k/comp <code>_DESIGN_BASELINE</code> 편입 = 5파일 커버</td><td><span class="p0">P0(방지)</span></td></tr>
+</table>
+<p class="small">검증: <code>check_refs</code> 통과(게이트 5파일 baseline 이내) · Playwright 실측(abbrDlg X 우상단 글래스 · k.rmin border 0/shadow none) · editdlg(직전 커밋)는 헤더 −/X 우측 정렬 + 라벨 <code>카드뉴스 - 이미지 - 수정</code>.</p>
+
+<h2><span class="n">§3</span>발견된 잔여 허점 (후속 — 우선순위)</h2>
+<table>
+<tr><th>등급</th><th>허점</th><th>실측</th></tr>
+<tr><td><span class="p0">P0</span></td><td>도구앱 키보드 포커스 링 부재</td><td><code>ly/k/comp</code> <code>:focus-visible</code> 0 (규약 "2px accent 링 필수" 위반)</td></tr>
+<tr><td><span class="p0">P0</span></td><td><code>role=alert</code>/aria-live 사실상 0</td><td>전 파일 <code>role="alert/status"</code> 0 (Failed=색만 전달)</td></tr>
+<tr><td><span class="p0">P0</span></td><td>disabled 규약-라이브 드리프트</td><td>규약 <code>opacity.42+grayscale.85</code>인데 <code>grayscale</code> 라이브 0회</td></tr>
+<tr><td><span class="p1">P1</span></td><td>닫기 X 11클래스·stroke 1.8/2 혼재·크기 18~32</td><td>같은 닫기 13클래스, <code>.ed-x/.askx</code>가 <code>.tool-x</code> 스펙 복제</td></tr>
+<tr><td><span class="p1">P1</span></td><td>아이콘 path/size 변형(DOWNLOAD 16↔14·EDIT path·CHECK stroke 5종)</td><td>같은 의미 SVG가 상수 있는데도 인라인 재작성 多</td></tr>
+<tr><td><span class="p1">P1</span></td><td>이모지 아이콘 잔존(§🎨 "이모지 금지" 위반)</td><td>ly/k 상태문구 <code>📍✓🎧✅❌⚠️</code> · index <code>🍌🔎🚨🔥</code></td></tr>
+<tr><td><span class="p1">P1</span></td><td>토스트 raw hex + 단일앱 + 인벤토리 미등재</td><td><code>.nm-toast</code> <code>#ff3b3b·#ff7a2f</code> · index에만</td></tr>
+<tr><td><span class="p1">P1</span></td><td>z-index 충돌(맨위로 버튼이 네비바 아래)</td><td><code>.totop z34·.nm-top z30</code> &lt; <code>--z-nav 35</code></td></tr>
+<tr><td><span class="p2">P2</span></td><td>radius/gap raw 난립 · revdlg 등 비계층 라벨 · scrollbar 미토큰 · text-wrap 미도입</td><td>index radius 18종·gap 18종 · <code>check_design</code> 추적 밖</td></tr>
+</table>
+
+<h2><span class="n">§4</span>제안: <b>CII — 컴포넌트 계승 인덱스</b> (Component Inheritance Index)</h2>
+<div class="card">
+<p>운영자 요구("기틀로 명명 + 픽토그램·텍스트창·버튼위치·마진 표로 인덱싱 + 항상 계승")의 직답. §🎨 "📦 정본 컴포넌트 인벤토리"(불릿)를 <b>기계가독 표</b>로 승격하고, <code>/k</code> 라이브러리 SSOT 패턴(표=정본 → 코드가 표와 diff → check_refs 강제)을 그대로 이식.</p>
+<h3>표 스키마(11열) + 예시행</h3>
+<table>
+<tr><th>컴포넌트</th><th>정본셀렉터</th><th>크기</th><th>플레이트</th><th>:active</th><th>아이콘</th><th>위치</th><th>마진</th><th>a11y</th></tr>
+<tr><td>닫기 X</td><td><code>.tool-x</code> 외</td><td><code>--btn-sm</code></td><td>glass .06</td><td>회전</td><td>X-path</td><td>abs 우상단</td><td>—</td><td>aria-label</td></tr>
+<tr><td>최소화 ▲</td><td><code>#toolRestore</code></td><td><code>--btn-sm</code></td><td>glass</td><td>scale .9</td><td><code>M6 12h12</code></td><td>우측·<code>--z-min</code></td><td>—</td><td>focus 이동</td></tr>
+<tr><td>입력칸 클립</td><td><code>.iobtn-edge</code></td><td>26px</td><td>glass .06/blur</td><td>scale .85</td><td>COPY/PASTE/ERASE</td><td>우상단 걸침</td><td><code>--sp-2</code></td><td>—</td></tr>
+<tr><td>다운로드</td><td><code>.dlbtn</code></td><td><code>--btn</code></td><td>accent10%/이미지위 검정20%</td><td>↓바운스+✓링</td><td>DOWNLOAD</td><td>abs</td><td>—</td><td>aria-label</td></tr>
+<tr><td>토스트</td><td><code>.nm-toast</code></td><td>—</td><td><span class="p1">raw hex⚠</span></td><td>—</td><td>—</td><td>fixed·<code>--z-float</code></td><td>—</td><td>role=alert⚠</td></tr>
+</table>
+<p class="small">표가 즉시 잡아내는 드리프트 실증: 토스트 행이 <b>인벤토리 미등재 + raw hex + role=alert 0</b>.</p>
+<h3>명명·거처·강제 (3중·기존 닫힌루프 재사용)</h3>
+<ul>
+<li><b>규칙·표</b> = <code>CLAUDE.md §🎨</code> 인벤토리를 위 11열 표로 승격(값은 여전히 viewer :root).</li>
+<li><b>시각본</b> = <code>구성도/00_컴포넌트_인덱스.html</code>(신규 1파일·base.css 상속·9 HTML 패턴).</li>
+<li><b>강제</b> = <code>check_refs.py</code> 게이트 — 미등재 컴포넌트·갇힌auto·X문자·이모지·raw토큰 경고(<code>check_design</code> WARN baseline 패턴) + (선택) <code>build_components_index.py</code>로 표↔코드 diff 하드게이트(<code>build_library</code> 쌍둥이).</li>
+</ul>
+</div>
+
+<h2><span class="n">§5</span>재발방지 로드맵 (우선순위)</h2>
+<table>
+<tr><th>순위</th><th>메커니즘</th><th>기존 재사용</th><th>비고</th></tr>
+<tr><td class="ok">완료</td><td>ly/k/comp 게이트 편입 + ly/k 토큰화</td><td><code>check_design</code></td><td>이번 PR</td></tr>
+<tr><td>P1</td><td><code>nm-svg.js</code> 공유(SVG 1벌) + "4벌 동일" 미러 게이트</td><td><code>cscroll.js</code> <code>&lt;script src&gt;</code> 선례 · <code>check_sens_vocab</code> 패턴</td><td>SVG 4중복 근절</td></tr>
+<tr><td>P2</td><td><code>tokens.css</code> 공유 <code>&lt;link&gt;</code> + mirror 확장</td><td><code>build_design_mirror</code> · <code>&lt;link&gt;</code> 선례</td><td>토큰 물리적 1벌</td></tr>
+<tr><td>P3</td><td>CII 표 <code>components.tsv</code> + <code>build_components_index.py</code></td><td><code>build_library</code> 패턴</td><td>표=정본·코드가 diff</td></tr>
+<tr><td>P4</td><td>공유 컴포넌트 CSS(FAB·X·클립)</td><td><code>tokens.css</code> 동형</td><td>위치/마진 버그 정본 1곳 교정</td></tr>
+</table>
+
+<h2><span class="n">§6</span>5요소 (운영자 표준)</h2>
+<div class="card">
+<p><b>전/후</b> — 전: 도구 3파일 게이트 무방비·raw 강조색 26곳·k.rmin 미동기·abbrX 무스타일·toolMin 어긋남. 후: 5파일 게이트 커버·ly/k 토큰화·cross-file 동기·P0 봉합.</p>
+<p><b>장점</b> — 근원(토큰 미공유) 일부 봉합 + 게이트 사각지대 제거로 <b>같은 클래스 버그 재발이 게이트에 걸림</b>. CII 표로 "항상 계승" 체계화 가능.</p>
+<p><b>단점/리스크</b> — 이번 PR은 라벨·토큰·게이트 위주(저위험). 더 큰 구조(컴포넌트/토큰 물리적 단일화·CII 도입)는 <b>§기틀 보호 대상</b>이라 운영자 확정 후 진행 권장(이 보고가 그 사전확인).</p>
+<p><b>효율</b> — 전부 기존 인프라(<code>check_refs</code>·<code>build_design_mirror</code>·<code>cscroll.js</code> 선례) 재사용 = 신규 최소.</p>
+<p><b>품질저하 리스크</b> — 0(라이브 값 보존·픽셀 회귀 없음·게이트는 WARN-only 비차단). Playwright·check_refs 실측 통과.</p>
+</div>
+
+<p class="small" style="margin-top:24px">정본 = 본 보고는 일회성 스냅샷(viewer 동기화 의무 없음). 적용분 정본 = <code>viewer/{index,thumb,ly,k}.html</code>·<code>shared/check_refs.py</code>. CII 기틀 도입은 운영자 확정 대기.</p>
+</div></body></html>

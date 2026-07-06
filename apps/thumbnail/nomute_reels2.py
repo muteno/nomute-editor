@@ -12,7 +12,7 @@
 from PIL import Image, ImageDraw, ImageFont
 
 FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
-GREEN = (15, 253, 2)
+GREEN = (15, 253, 2)  # 형광그린 — 콘텐츠 상수 원복(운영자 260706 롤백 · 콘텐츠 색 = UI 팔레트와 별개 축, UI 개편에 동행 금지)
 WHITE = (255, 255, 255)
 SCALE = 2                 # 2K 렌더(1080 기준 ×SCALE). reels2_base.png(1080×1920)는 render()에서 ×SCALE 업스케일.
 W, H = 1080 * SCALE, 1920 * SCALE
