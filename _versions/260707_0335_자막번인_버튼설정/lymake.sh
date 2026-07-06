@@ -16,37 +16,7 @@ OUTDIR="viewer/ly_out/${ID}"; mkdir -p "$OUTDIR"
 
 [ -n "${SUBS:-}" ] || { echo "::error::SUBS(자막/SRT 입력) 비어있음"; echo "exit: 빈 입력" > "$OUTDIR/error.log"; exit 1; }
 
-# 뷰어 버튼 설정(OPTS JSON) → [옵션] 지시줄 — 프롬프트 마커 __LY_OPTS__ 치환(버튼 = 프롬프팅 대체 · 260707)
-OPTS_LINES="$(OPTS="${OPTS:-}" python3 - <<'PY'
-import json, os, sys
-raw = (os.environ.get("OPTS") or "").strip()
-if not raw:
-    print("- 기본값(지침 그대로).")   # opts 미전달(구 클라·수동 디스패치) = 종전 프롬프트와 실질 동일(회귀 0)
-    sys.exit(0)
-try:
-    o = json.loads(raw)
-except Exception:
-    o = {}
-L = []
-lang = o.get("lang") or "auto"
-if lang == "ko":
-    L.append("- 통합 모드 강제: 원문 블록 없이 한글 자막만.")
-elif lang == "dual":
-    L.append("- 분리 모드 강제: 조각마다 원문 블록 + 한글 블록(한국어 원본이어도 병기).")
-elif lang == "src":
-    L.append("- 의역 금지: 받아쓴 원문 그대로(오탈자·띄어쓰기만 교정) — 번역 블록 생략.")
-if (o.get("tone") or "sns") == "plain":
-    L.append("- 톤: SNS 감성 의역 최소화 — 담백한 직역체.")
-if o.get("filler", True):
-    L.append("- 군더더기(음·어 등 필러) 단어·조각은 자막에서 뺀다.")
-if o.get("keyword", True):
-    L.append("- 각 조각 한글에서 핵심 단어 1개(최대 2개)를 *별표*로 감싼다(타이밍 JSON의 ko에도 동일하게).")
-print("\n".join(L) if L else "- 기본값(지침 그대로).")
-PY
-)"
-prompt="$(cat "$PROMPT_FILE")"
-prompt="${prompt/__LY_OPTS__/$OPTS_LINES}"
-prompt="$prompt
+prompt="$(cat "$PROMPT_FILE")
 ${SUBS}"
 
 # 인라인 재시도 — 쿼터 한도면 대체 계정 전환(claude_failover·서브1→서브2→서브3), 일시 과부하(5xx/Overloaded)면 백오프 재시도. 성공·LYMAKE_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0).
@@ -82,27 +52,5 @@ if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^LYMAKE_FAILED' <<<"$out" |
 fi
 
 printf '%s\n' "$out" | sed -n '/^#/,$p' > "${OUTDIR}/subs.md"
-# 꼬리 타이밍 JSON 블록 → subs.json 분리(번인·SRT용 기계 데이터 · 폼 표시 전 제거) — 없거나 깨져도 무해(번인이 segments.json 폴백 = 3층 방어 계승)
-python3 - "$OUTDIR" <<'PY' || echo "타이밍 JSON 분리 실패(무해 · segments.json 폴백)"
-import json, re, sys, os
-d = sys.argv[1]; p = os.path.join(d, "subs.md")
-md = open(p, encoding="utf-8").read()
-m = re.search(r"```json\s*\n(\{[\s\S]*?\})\s*\n?```\s*$", md)
-if m:
-    try:
-        j = json.loads(m.group(1))
-        segs = [s for s in (j.get("segs") or [])
-                if isinstance(s.get("s"), (int, float)) and isinstance(s.get("e"), (int, float))
-                and (s.get("ko") or s.get("src"))]
-        if segs:
-            with open(os.path.join(d, "subs.json"), "w", encoding="utf-8") as f:
-                json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
-        md2 = md[:m.start()].rstrip() + "\n"
-        md2 = re.sub(r"\n#{2,3}[^\n]*타이밍[^\n]*\n$", "\n", md2)   # 블록 직전 안내 소머리 잔재 정리(있을 때만)
-        open(p, "w", encoding="utf-8").write(md2)
-        print("subs.json 분리: {}조각".format(len(segs)))
-    except Exception as e:
-        print("타이밍 JSON 파싱 실패(무해·폴백):", e)
-PY
 rm -f "${OUTDIR}/stderr.log"
 echo "성공 → ${OUTDIR}/subs.md ($(wc -c < "${OUTDIR}/subs.md") bytes)"
