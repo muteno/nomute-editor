@@ -26,6 +26,14 @@ export async function onRequestPost({ request, env }) {
   const url = String(body.url || '').trim().slice(0, 500);
   let fileB64 = String(body.fileB64 || '');
   const name = String(body.name || '');
+  // 뷰어 버튼 설정(자막 옵션+번인) — 화이트리스트 키만 통과(임의 페이로드 차단) · 빈 객체 = 빈 문자열(종전 동작)
+  let opts = '';
+  if (body.opts && typeof body.opts === 'object') {
+    const o = {};
+    for (const k of ['lang', 'tone', 'style', 'pos', 'size']) { const v = body.opts[k]; if (typeof v === 'string' && /^[a-z]{1,10}$/.test(v)) o[k] = v; }
+    for (const k of ['filler', 'burn', 'karaoke', 'keyword']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }
+    if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
+  }
   if (!subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
   if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
 
@@ -46,7 +54,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, subs, url, file: filePath, early_segs: '1' },   // 조기 전사 푸시 ON(LY-EARLY · 반드시 문자열 '1' — 숫자/불리언은 GH 강제변환으로 조용히 OFF) · 워크플로 default '0' = fail-closed(수동 dispatch 실수 방지) · 롤백 = 이 필드 제거 한 줄(평의회9)
+    ref: REF, inputs: { id, subs, url, file: filePath, early_segs: '1', opts },   // 조기 전사 푸시 ON(LY-EARLY · 반드시 문자열 '1' — 숫자/불리언은 GH 강제변환으로 조용히 OFF) · 워크플로 default '0' = fail-closed(수동 dispatch 실수 방지) · 롤백 = 이 필드 제거 한 줄(평의회9) · opts = 버튼 설정 JSON 문자열(빈값 = 종전)
   });   // ← LY-EARLY 편입(#1725) 때 이 닫는 괄호 유실 → wrangler 번들 SyntaxError → Pages 배포 전멸(260706 11:31~ 라이브 동결 사고 · 복구)
   if (r.status === 204) return json({ ok: true, id, url: !!url, file: !!filePath, out: `ly_out/${id}/subs.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
