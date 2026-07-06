@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write            # 260707: read→write — 고아 up-* 업로드 브랜치 삭제(아래 스윕 스텝) 한정. main push 없음(브랜치 삭제만).
   actions: write             # news-analyze 디스패치 위해 신설(이 워크플로 한정)
 
 concurrency:
@@ -69,3 +69,21 @@ jobs:
             sleep $((i * 3))
           done
           [ "$ok" = 1 ] || echo "::warning::news-analyze 디스패치 3회 실패(다음 sweep 재시도)"
+
+      # 고아 up-* 업로드 브랜치 스윕(260707 평의회 백스톱) — ly-make 잡 하드킬·러너 유실이면 always() 정리 스텝도 못 돌아
+      #   일회용 업로드 브랜치(≤20MB 블롭 = reachable = 클론 비대 재발)가 잔존한다. 6시간 경과 up-* 일괄 삭제(정상 경로는 ly-make가 즉시 삭제).
+      - name: 고아 up-* 업로드 브랜치 스윕
+        if: always()
+        run: |
+          now=$(date +%s)
+          git ls-remote origin 'refs/heads/up-*' | while read -r sha ref; do
+            b="${ref#refs/heads/}"
+            case "$b" in up-*) ;; *) continue;; esac   # up-* 밖 삭제 원천 차단
+            git fetch -q origin "$sha" --depth=1 2>/dev/null || continue
+            ts=$(git show -s --format=%ct "$sha" 2>/dev/null || echo 0)
+            age=$(( now - ts ))
+            if [ "$ts" -gt 0 ] && [ "$age" -gt 21600 ]; then
+              git push origin --delete "$b" && echo "고아 삭제: $b ($((age/3600))h 경과)" || echo "삭제 실패(무해·다음 sweep): $b"
+            fi
+          done
+          echo "up-* 스윕 완료"
