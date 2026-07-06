@@ -121,15 +121,16 @@
   #bootsplash .bs-dots { margin-top:8px; width:auto; text-align:center; font-size:18px; line-height:1; letter-spacing:5px; color:var(--mut); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* 진행중 = gdots 점모션 계승(§디자인 g · 3점 순차 페이드) · ' . . . ' 간격 */
   body.booted #bootsplash { opacity:0; pointer-events:none; transition:opacity .45s ease .12s; }   /* delay .12s = 앱 페이드인(.2s) 먼저 자리잡은 뒤 스플래시 소멸 → 로고 고스트 겹침 완화(평의회 260705) */
   html.boot-lock #bootsplash { display:none !important; }   /* 잠금 설정 기기 = 부팅 인트로 스킵 → 바로 PIN(요구: 잠금 있을 때 인트로 안 뜨고 바로 핀 · 첫 페인트 전 인라인이 클래스 세팅=플래시 0 · 260705) */
-  html.boot-lock { overflow:hidden; }   /* 잠금 부팅 = 첫 페인트부터 스크롤바 제거 — 메인 스크립트 lockNow(인라인 overflow) 실행 전 창에서 우측 거터가 남던 것 차단(운영자 260706 4차 "사이드가 조금 남음") */
   @media (prefers-reduced-motion:reduce) { :where(body.booted) > * { transition:none; } body.booted #bootsplash { transition:none; } #bootsplash { animation:none; } }
   body:not(.booted) dialog::backdrop { background:transparent; backdrop-filter:none; }   /* 딥링크 콜드부트(?a=/?brk=)로 부팅 중 showModal 시 top-layer ::backdrop blur가 스플래시 위로 새는 것 차단(평의회 260705) */
   /* 배경 = 다크 실크(feed_bg) + 딥블랙 스크림 — 색 워시 제거(전 탭 공통 중립 실크 · 요약 리더와 통일 · 운영자 260626 "원톤 전역"). 탭색은 배너 글로우·강조에만 남김(§🎬 크로스페이드 불변). */
   .bgfx { position:fixed; inset:0; z-index:-1; pointer-events:none;
-    filter:brightness(1.2) saturate(1.05);   /* 워시 톤 = 구 실크 시절 밝힘 유지(제거 시 워시가 어두워져 체감 변화 — 값 보존) */
+    filter:brightness(1.2) saturate(1.05);   /* 실크 밝힘 = 글래스 카드/패널 뒤로 실크가 보여 '진짜 투명'해 보임(딥블랙이라 안 보이던 것 해소·전 화면 톤 통일·운영자 260626) */
     background:
+      linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.4)),
+      url(assets/brand/feed_bg.png) center/cover no-repeat,
       linear-gradient(165deg, rgba(var(--bias-l2-rgb),.20), rgba(var(--bias-l1-rgb),.10) 45%, rgba(0,0,0,0) 78%),
-      var(--bg); }   /* 구 검정 무늬 배경(feed_bg.png 실크) = 완전 제거(운영자 260706 4차 k "기존 배경 아예 날려" — 창 리사이즈 때 물결 캔버스 아래로 옛 무늬가 비치던 원인) → 최하층 = 현 오션톤 워시+--bg 단일(CSS 즉시 페인트 = 부팅 검정 차단 3차 9 겸용 · WebGL 실패 폴백도 워시) · 자산은 assets/brand에 도먼트 보존 */
+      var(--bg); }   /* 부팅 검은화면 수정(운영자 260706 3차 9): 최하층 = CSS 즉시 페인트 오션톤 워시(딥블루·시안 토큰 + --bg — 구 순검정 000 폴백 대체·hex 리터럴은 카운트라 우회 표기) — feed_bg.png(136KB) 로드 전 + #wavebg(WebGL·스크립트 말미 초기화) 첫 프레임 전 콜드 스타트의 검정 잔여 차단 · 이미지 로드 후엔 cover가 전면 덮어 픽셀 동일 = 회귀 0 */
   /* 무채색 물결 셰이더 캔버스 = .bgfx 폴백(feed_bg) 위에 덮음(형제 = .bgfx filter 영향 밖). WebGL2 미지원·셰이더 컴파일 실패·컨텍스트 로스트 시 .off로 숨겨 feed_bg 폴백 노출(저사양 자동감지는 없음 = 하드실패만 폴백). paper mesh-gradient 무채색 이식 · 색=:root --bg에 흰색 알파(무채색 명암) · 운영자 260705 */
   #wavebg { position:fixed; inset:0; z-index:-1; pointer-events:none; display:block; width:100%; height:100%; }
   #wavebg.off { display:none; }
@@ -268,13 +269,12 @@
     background:rgba(5,11,13,.42); backdrop-filter:blur(var(--blur-s)) saturate(1.1); -webkit-backdrop-filter:blur(var(--blur-s)) saturate(1.1); }   /* safe center + overflow-y = 가로모드/저높이서 워드마크·키패드 상단 잘림 대신 스크롤(미지원 브라우저 = center 폴백 · 평의회4 E1 260706) */   /* 잠금 리디자인(운영자 260706 플레이그라운드 확정 조합) — 딤블러 ON = 물결 위 옅은 딤 + 프로스트(글래스 20×.45≈9 → 근접토큰 --blur-s 자동계승 §핵심명령 2-a) · 물결은 잠금 시 #wavebg 승격(아래)이 담당 */
   .lockscr .lk-err { text-shadow:0 1px 3px rgba(0,0,0,.6); }   /* 움직이는 밝은 물결 마루 위에서도 문구 대비 확보(스크림만으론 순간 저하 · 평의회9 260705) */
   body.scr-locked .bgfx { z-index:calc(var(--z-lock) - 2); }     /* 잠금 = feed_bg 폴백도 앱 위로(WebGL 실패 시 앱 비침 차단) */
-  body.scr-locked { overflow:hidden; }   /* 잠금 중 = body 스크롤·거터 차단(CSS단 — lockNow 인라인(documentElement)과 이중 안전판 · 운영자 260706 4차 "사이드" 잔여 제거) */
   body.scr-locked #wavebg { z-index:calc(var(--z-lock) - 1); }   /* 잠금 = 오션 물결을 앱 위·잠금카드(300) 아래로 승격 = PIN 배경(운영자 260705) */
   .lockscr[hidden] { display:none; }
   /* 워드마크 = 전용 타이틀(PGSans 워드마크) 그대로 사용(운영자 260706 3차 d — "타이틀이 따로 있는데 그걸 써줘": 주 = News Curation PGSans · 서브 = 한글 뉴스 큐레이션을 구 영문 소자막 스타일(mut·자간)로 반전) · ··· 점모션 = 인트로(bootsplash) 전용으로 한정 → 잠금화면서 제거 · 안내 산문(.lk-m) 폐지 = 슬롯·키패드 어포던스가 설명(§디자인 e) */
   .lockscr .lk-wm { text-align:center; }
-  .lockscr .lk-wm b { display:block; font-family:'PGSans',var(--font-status); font-size:27.2px; font-weight:400; letter-spacing:1.088px; color:var(--fg); line-height:1; text-shadow:0 2px 18px rgba(0,0,0,.55); }   /* 영문 = 구 32의 85%(운영자 260706 4차 g) = 27.2 · 자간 동배율 유지(.9×27.2/22.5=1.088) · 그림자 = 물결 위 대비 */
-  .lockscr .lk-wm small { display:block; margin-top:9px; font-size:14.85px; font-weight:700; letter-spacing:3.24px; color:var(--mut); }   /* 한글 = 구 11의 135% + 볼드(운영자 260706 4차 g) · 줄간격 6→9("2라면 3") · 자간 동배율 3.24 · 총높이 순감(−17px대)이라 flex 중앙서 영문 상단 위 침범 없음(운영자 "지금 라인 안" 충족) */
+  .lockscr .lk-wm b { display:block; font-family:'PGSans',var(--font-status); font-size:32px; font-weight:400; letter-spacing:1.28px; color:var(--fg); line-height:1; text-shadow:0 2px 18px rgba(0,0,0,.55); }   /* 브랜드마크 계승 × 32px(자간 동배율 .9×32/22.5 · 디스플레이 폰트 자연 굵기 400) · 그림자 = 물결 위 대비(잠금 기존값) */
+  .lockscr .lk-wm small { display:block; margin-top:6px; font-size:11px; font-weight:600; letter-spacing:2.4px; color:var(--mut); }   /* 구 영문 소자막 스타일 그대로 · 텍스트만 한글(uppercase 무의미라 제거·PGSans 32 디센더 없음 보정 mt 2→6) */
   .lockscr .lk-card { text-align:center; width:min(320px,86vw); margin-top:26px; }   /* 핀 위치 +26px(확정 조합) */
   .lockscr.ent .lk-card { animation:lkRise .6s var(--ease) backwards; }   /* 진입 = 라이즈 업(확정 조합 · 워드마크는 정적 = 스플래시서 이어지는 느낌) */
   @keyframes lkRise { from { transform:translateY(46px); opacity:0; } }
@@ -287,8 +287,8 @@
   @keyframes lkFillBnc { 0% { transform:translateY(0); } 40% { transform:translateY(-7px) scale(1.12); } 100% { transform:translateY(0); } }
   .lk-slots { display:flex; justify-content:center; gap:16px; margin:0; }   /* 컨테이너 = 화면잠금 간격(전체화면 gap 16px·정본 %와 별개) · 상하 여백은 .lk-slotwrap 플레이트로 이전(260706 3차 f) · 슬롯 룩(.lk-slot 원·on·cur·bad·shake)은 정본 .pin-slot 별칭 = stage-2/발행과 완전통일(stage-4 260704) */
   @keyframes lkShake { 0%,100%{transform:translateX(0)} 12%{transform:translateX(-9px)} 28%{transform:translateX(8px)} 44%{transform:translateX(-6px)} 60%{transform:translateX(4px)} 76%{transform:translateX(-2px)} }
-  .lk-err { color:var(--danger); font-size:12px; margin-top:8px; min-height:15px; font-weight:700; }   /* 15→8 = PIN 플레이트를 다이얼 쪽으로 접근(운영자 260706 4차 g "조금 더 붙여") */
-  .lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:260px; margin:14px auto 0; }   /* 키패드 = 숫자만(심플·확정 조합) — 셀 구분선 폐지·간격 12px · 26→14 = 플레이트↔다이얼 접근(운영자 260706 4차 g) */
+  .lk-err { color:var(--danger); font-size:12px; margin-top:15px; min-height:15px; font-weight:700; }
+  .lk-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:260px; margin:26px auto 0; }   /* 키패드 = 숫자만(심플·확정 조합) — 셀 구분선 폐지·간격 12px */
   .lk-key { position:relative; height:56px; display:grid; place-items:center; font-size:23px; font-weight:700; font-family:inherit; color:var(--fg); background:none; border:none; border-radius:0; cursor:pointer;
     -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:background .12s ease, color .15s ease, transform .07s ease; }
   /* 셀 구분선 폐지 = 숫자만 플로팅(심플 · 운영자 260706 확정 조합 — 옛 플랫 셀 그리드 → 무테 · 판A/B 셔플·검증 로직 불변) */
@@ -388,7 +388,7 @@
     font-family:'PGSans',var(--font-status); font-size:22.5px; font-weight:400; letter-spacing:.9px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* margin:0 = h1 승격(UA 마진 차단 — 간격 실측 54/18 보존 · 평의회4 260706) */   /* 워드마크 = 인트로 #bootsplash .bs-name 계승 × 150%(운영자 260706 "지금의 150%" — 15→22.5px·자간 .6→.9 동배율) · line-height:1 = 간격 실측 기준(무디센더 문구라 안전) · 검색/프로필과 다른 줄이라 충돌축 소멸 */
   /* 메뉴 타이틀 = 워드마크 서브(운영자 260706 3차 지시 3·4·5·6): 구 타이틀 라인 18px 타이틀을 200% 축소(9px) + 영문 폰트 = 워드마크 스타일 그대로 계승(PGSans·400·--fg·그림자·자간 동배율 .9×.4=.36) + 워드마크 아래로 이동 · 상단 시작점 = 구 워드마크↔타이틀 간격 36px의 중간지점 = 18px(--sp-3 계승) · 메뉴명 정본 = CLAUDE.md §표기표준 뷰어 메뉴 용어집(Legacy News·Social Digest·Top Picks) · 텍스트 = setViewhead(VIEWHEAD)가 탭별 갱신 */
   .topbanner.slim .vh-title { display:block; margin:var(--sp-3) 0 0; text-align:center; line-height:1; white-space:nowrap;
-    font-family:'PGSans',var(--font-status); font-size:15.3px; font-weight:400; letter-spacing:.612px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }   /* 크기 = 9px의 170%(운영자 260706 4차 "지금의 170% · 모든 메뉴 동일") = 15.3px · 자간 동배율 .36×1.7=.612 · 전 메뉴 공통(단일 규칙) */
+    font-family:'PGSans',var(--font-status); font-size:9px; font-weight:400; letter-spacing:.36px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }
   .topbanner.slim .bannerframe, .topbanner.slim .lovemarq, .topbanner.slim .pet { display:none; }   /* 배너·마퀴·산책펫 = 숨김(코드·자산·애니 전부 보존) */
   /* 마스코트 = 탭 분리(운영자 260704): 뉴스요약(feed) = LOVE 마퀴펫 정사각 씬(1080²·풀세트: 펫이 사다리 올라 간판에 L·O·V·E·♥ 놓고 점등 → 어두운 라운드 스크린 카드·marquee.js) / 레거시·SNS = 공놀이 산책 펫(pet.webp). */
   .lovemarq { position:absolute; left:6%; bottom:0;
@@ -652,7 +652,7 @@
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
   /* 컨트롤 헤더바(운영자 260706 3차 재편) = 타이틀은 워드마크 서브로 이주 · 행 = 우측 클러스터만[검색 + 필터(피드 탭)] — 구 좌측 .vh-filters 컨테이너 폐지(필터가 우측 한도 슬롯으로 이주 · 3차 8). 텍스트 갱신은 setViewhead. */
-  .viewhead { position:relative; max-width:860px; margin:2.1px auto 4px; padding:0 16px; }   /* margin-top 2.1 = 타이틀 170% 확대(9→15.3 · 260706 4차)를 흡수해 버튼 행 상단 화면선(워드마크 아래 35.4px) 유지: 18 + 15.3 + 2.1 = 35.4 · 단일값(모바일 공통) */
+  .viewhead { position:relative; max-width:860px; margin:8.4px auto 4px; padding:0 16px; }   /* margin-top 8.4 = 타이틀이 워드마크 서브로 이주(260706 3차)한 뒤에도 버튼 행 상단이 종전 화면선(워드마크 아래 35.4px) 유지: 타이틀 마진 18 + 타이틀 9 + 8.4 = 35.4 · 구 모바일 31.4 보정(타이틀 행내 오프셋)은 타이틀이 행 밖이라 소멸 = 단일값(모바일 행 +4px 하강 = 의도·평의회1 F2) */
   /* (구 .vh-filters 좌측 묶음 규칙 삭제 — 260706 3차 8: 필터 버튼이 .vh-acts 우측 한도 슬롯으로 이주·카드만 토글은 필터 팝업 헤더로 편입) */
   .vh-acts #filterBtn { display:none; }   /* 필터 = 피드 탭 전용(구 body[data-tab=feed] .vh-filters 게이트 계승 — 무속성(부팅 직후)·scrap·sns = 숨김) */
   body[data-tab="feed"] .vh-acts #filterBtn { display:grid; }
@@ -674,14 +674,12 @@
   .filterpop.closing { animation:popOut .15s cubic-bezier(.4,0,.7,.3) both; }   /* 접힐 때 촤르륵(역방향·우상단 기준 수축 · 운영자 260629) */
   @keyframes popOut { from { opacity:1; transform:none; } to { opacity:0; transform:scale(.92) translateY(-4px); } }
   @media (prefers-reduced-motion:reduce){ .filterpop, .filterpop.closing { animation:none; } }
-  /* 팝업 재구성(운영자 260706 4차): 헤더 = 타이틀 '필터'(좌) + 초기화·닫기(우) → 구분선 → 카드 행(라벨+토글) → 구분선 → 칩 그리드 — 구 헤더 내 카드 아이콘의 라인 어긋남 해소 */
-  .fpop-h { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin:0 1px; padding-bottom:7px; border-bottom:1px solid var(--line2); }   /* 구분선 1 = 헤더 아래(모달 헤더 띠 border-bottom --line2 계승) */
-  .fpop-h .fpop-t { margin-right:auto; font-size:var(--fs-h2); font-weight:var(--fw-x); letter-spacing:-.2px; color:var(--fg); padding-left:4px; }   /* 타이틀 = 전 팝업/모달 타이틀 단일표준(15/800 · CII 모달 헤더 타이틀 계승) */
-  .fpop-row { display:flex; align-items:center; margin:0 1px; padding:5px 0 5px 4px; border-bottom:1px solid var(--line2); }   /* 구분선 2 = 카드 행 아래 */
-  .fpop-row .fr-l { flex:1; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); }   /* 라벨 = 잠금 설정 행(.pl) 문법 계승 · 토글 상태색(아이콘 on=accent)이 어포던스(§디자인 e) */
+  /* 팝업 헤더 = [카드만 토글(좌)] ↔ 초기화(새로고침)·닫기(우) (기틀 .tool-x 글래스 계승 · 카드만 편입 = 운영자 260706 3차 8 "카드를 필터 안으로") */
+  .fpop-h { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin:0 1px 6px; }
+  .fpop-h #cardonlyBtn { margin-right:auto; }   /* 토글 = 헤더 좌측(우측 X묶음과 분리 · margin-left:auto 래퍼 원칙의 미러) */
   .fpop-h .tool-x svg { width:15px; height:15px; stroke:currentColor; fill:none; }
   #filterReset:active { transform:rotate(-360deg); }   /* 초기화 = 한 바퀴 회전(.ts-rf 계승 · .tool-x transition .3s 사용 · X는 공통 rotate180 유지) */
-  .filterpop .chipbar { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; max-width:none; margin:0; padding:7px 4px 2px; }   /* 상단 7 = 구분선 2 아래 호흡(260706 4차) */
+  .filterpop .chipbar { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; max-width:none; margin:0; padding:2px 4px; }
   .filterpop .chip { padding:6px 4px; text-align:left; font-size:13px; }
   /* ── 타이틀 행(vh-row · 운영자 260706 3차 재편): 타이틀은 워드마크 서브로 이주(위 .topbanner.slim .vh-title) — 행 = 좌 필터 · 우 검색 픽토그램만(새로고침·기어 도먼트) · 코너 픽토그램 마진 한도 = 구 새로고침 슬롯 ── */
   .vh-row { position:relative; display:flex; align-items:center; justify-content:center; min-height:var(--btn-sm); }   /* 행 높이 = --btn-sm(30 · 라인 버튼 box = vh-fbtn 계승·평의회4 토큰 배선) */
@@ -2429,13 +2427,11 @@ try {
     </div>
     <input type="checkbox" id="cardonly" hidden>
     <!-- 모피즘 필터 오버레이 = msgpop 글래스 계승 · 필터 버튼 바로 아래(우측 앵커 = 한도 슬롯 정렬 · 운영자 260706 3차 8) · z=22 · closeOverlays 상호배타 · 카드만 토글 = 팝업 헤더 좌측으로 편입(운영자 "카드를 필터 안으로") -->
-    <div class="filterpop" id="filterpop" hidden><!-- 재구성(운영자 260706 4차 "이름 = 필터 · 구분선 두 개 · 카드 / 전체 이슈~ 유지"): 헤더 타이틀 + 구분선 + 카드 행 + 구분선 + 칩 그리드 -->
-      <div class="fpop-h"><b class="fpop-t" id="fpopTitle">필터</b>
+    <div class="filterpop" id="filterpop" hidden>
+      <div class="fpop-h">
+        <button class="vh-fbtn" id="cardonlyBtn" type="button" aria-label="카드만 보기(이미지 렌더된 기사만)" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
         <button class="tool-x" id="filterReset" type="button" aria-label="필터 초기화" title="필터 초기화"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button>
         <button class="tool-x" id="filterClose" type="button" aria-label="필터 닫기"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
-      </div>
-      <div class="fpop-row"><span class="fr-l">카드</span>
-        <button class="vh-fbtn" id="cardonlyBtn" type="button" aria-label="카드만 보기(이미지 렌더된 기사만)" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
       </div>
       <div class="chipbar" id="chips"></div>
     </div>
@@ -5622,8 +5618,7 @@ function lockNow() {
 function lkUnlock() {
   try { localStorage.setItem('nm_locked', '0'); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
   lkReal = ''; _lkLast = Date.now();
-  const _lkDone = () => { lockscr.hidden = true; lockscr.classList.remove('out', 'ent'); document.body.classList.remove('scr-locked'); document.documentElement.style.overflow = ''; lockArm();
-    window.scrollTo(0, 0); try { showTab((typeof CURTAB === 'string' && CURTAB) ? CURTAB : 'feed'); } catch {} };   // 해제 = 기초화면 복귀(운영자 260706 4차 j): 있던 메뉴 최상단(즉시 스크롤) → showTab 재렌더로 촤르륵(cardIn 스태거 위→아래) 재생 · 탭 미확정 = 뉴스 요약(feed) 기준
+  const _lkDone = () => { lockscr.hidden = true; lockscr.classList.remove('out', 'ent'); document.body.classList.remove('scr-locked'); document.documentElement.style.overflow = ''; lockArm(); };
   if (matchMedia('(prefers-reduced-motion:reduce)').matches) { _lkDone(); return; }   // 전정계 = 즉시 해제
   lockscr.classList.add('out'); setTimeout(_lkDone, 820);   // 해제 = 블러 아웃(.8s) 후 정리 — 물결 승격(scr-locked)은 아웃 끝날 때까지 유지(중간 스냅 방지 · 운영자 260706 확정)
 }
