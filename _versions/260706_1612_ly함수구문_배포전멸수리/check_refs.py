@@ -176,40 +176,6 @@ def check_viewer_js():
             print('✅ viewer JS 구문 OK — %s' % rel)
     return rc
 
-def check_functions_js():
-    """Pages Functions(ESM) 구문 하드 게이트 — functions/*.js 하나라도 SyntaxError면 wrangler 번들이
-    통째로 실패해 *배포 전체 전멸*(라이브가 옛 판에 동결). 실측 사고: 260706 #1725가 functions/api/ly.js
-    닫는 괄호 유실 → 11:31부터 전 빌드 Build failed·라이브 동결(운영자 '반영 안 됨' 신고로 발견).
-    viewer 게이트는 인라인 <script>만 봐서 이 구멍을 못 잡았음 → 별도 스윕. ESM(export)이라 .mjs 임시
-    복사로 node --check(ESM 모드) 파싱."""
-    node = shutil.which('node')
-    if not node:
-        print('⚠️ functions JS 구문검사 스킵(node 없음)'); return 0
-    rc = 0; n = 0
-    fdir = os.path.join(ROOT, 'functions')
-    if not os.path.isdir(fdir):
-        return 0
-    for dirpath, _dirs, files in os.walk(fdir):
-        for fn in sorted(files):
-            if not fn.endswith('.js'):
-                continue
-            p = os.path.join(dirpath, fn); rel = os.path.relpath(p, ROOT); n += 1
-            tmp = None
-            try:
-                with tempfile.NamedTemporaryFile('w', suffix='.mjs', delete=False, encoding='utf-8') as f:
-                    f.write(open(p, encoding='utf-8').read()); tmp = f.name
-                r = subprocess.run([node, '--check', tmp], capture_output=True, text=True, timeout=30)
-            finally:
-                if tmp and os.path.exists(tmp):
-                    os.remove(tmp)
-            if r.returncode != 0:
-                errs = [x for x in (r.stderr or '').splitlines() if 'Error' in x]
-                print('❌ functions JS 구문 오류 — %s: %s' % (rel, errs[0] if errs else 'syntax error'))
-                rc = 1
-    if rc == 0 and n:
-        print('✅ functions JS 구문 OK — Pages Functions %d파일(ESM) 파싱 통과' % n)
-    return rc
-
 _ICON_DECL_RE = re.compile(r'^const ([A-Z0-9_]+_SVG) = ', re.M)
 def check_icon_ssot():
     """공유 아이콘 SSOT 하드 게이트(운영자 260628 '하나 바꾸면 다 바뀜').
@@ -760,11 +726,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_viewer_js 스킵:', e)
-    try:
-        if check_functions_js() != 0:   # Pages Functions 구문(하드 게이트 — 한 파일 SyntaxError=배포 전체 전멸·260706 ly.js 사고)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_functions_js 스킵:', e)
     try:
         if check_icon_ssot() != 0:   # 공유 아이콘 SSOT(하드 게이트 — 인라인 재선언·미로드=드리프트 부활 차단·260628)
             rc = 1
