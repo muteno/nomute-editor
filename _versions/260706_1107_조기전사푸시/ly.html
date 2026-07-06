@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
-<script>addEventListener('pointerdown', function (e) { var t = e.target.closest && e.target.closest('button, a, [role="button"]'); if (t) { try { navigator.vibrate && navigator.vibrate(15); } catch (_) {} } }, { capture: true, passive: true });</script><!-- 전역 버튼 탭 햅틱 15ms = index와 통일(iframe은 부모 핸들러 미도달 · 운영자 260706) --><!-- 부모(index)와 color-scheme 일치 필수 — 불일치면 크로미움이 투명 iframe에 불투명 흰 캔버스 강제 → 글래스 전부 회색 파손(운영자 260705 실측 · index color-scheme dark 도입과 한 쌍) -->
+<meta name="color-scheme" content="dark"><!-- 부모(index)와 color-scheme 일치 필수 — 불일치면 크로미움이 투명 iframe에 불투명 흰 캔버스 강제 → 글래스 전부 회색 파손(운영자 260705 실측 · index color-scheme dark 도입과 한 쌍) -->
 <title>영상 자막 생성기</title>
 <link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
 <style>
@@ -572,10 +571,9 @@ function poll(outPath, isUrl, resumeT0) {
   const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
-    const early = LY_EARLY === outPath && LY_SEGS;   // 조기 전사 편집기 표시됨(LY-EARLY) — 문구·초과 처리 분기
-    if (sec > budget * 2) { stop(); status.innerHTML = ERR_SVG + (early ? ' 다듬기 시간 초과 — 완성되면 다음에 열 때 이어받아 (받아쓴 자막은 아래 살아있어)' : ' 시간 초과 — 완성되면 다음에 열 때 이어받아'); status.classList.add('err'); if (!early) { out.innerHTML = ''; lyHideEditor(); } return; }   // 하드 초과 = 폴만 종료·pend 유지(서버는 계속 돌 수 있음 → 늦게 끝나도 0 유실 · 평의회R2 검토4) · 조기 편집기는 유지(받아쓴 자막·편집 납치 금지)
-    if (sec > budget) { status.innerHTML = WAIT_SVG + (early ? ' 받아쓴 자막 나옴 — 아직 다듬는 중… ' : ' 아직 만드는 중… ') + sec + 's (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }   // 소프트 초과 = 계속(구 즉사 '시간 초과' 폐지)
-    status.innerHTML = WAIT_SVG + (early ? ' 받아쓴 자막 먼저 손봐도 돼 · 다듬는 중… ' + sec + 's' : ' 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)'));   // 조기 문구 = 기존 어휘 통일(받아쓴 자막·다듬기 — 전사/의역 신조어 금지·평의회4) · 허가문은 주 상태문에 접음(산문최소)
+    if (sec > budget * 2) { stop(); status.innerHTML = ERR_SVG + ' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); out.innerHTML = ''; lyHideEditor(); return; }   // 하드 초과 = 폴만 종료·pend 유지(서버는 계속 돌 수 있음 → 늦게 끝나도 0 유실 · 평의회R2 검토4)
+    if (sec > budget) { status.innerHTML = WAIT_SVG + ' 아직 만드는 중… ' + sec + 's (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }   // 소프트 초과 = 계속(구 즉사 '시간 초과' 폐지)
+    status.innerHTML = WAIT_SVG + ' 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)');
   };
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {
@@ -587,10 +585,7 @@ function poll(outPath, isUrl, resumeT0) {
         const ect = (er.headers.get('content-type') || '').toLowerCase();
         const em = await er.text();
         const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
-        if (em && em.trim() && !eHtml) { stop(); lyPendClear(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = '';
-          if (LY_EARLY === outPath && LY_SEGS) { status.innerHTML += ' — 받아쓴 자막은 아래 살아있어'; LY_EARLY = ''; }   // 조기 편집기 이미 표시(LY-EARLY) = 재렌더 안 함(lyResultErr는 원본 렌더라 편집을 덮음 — 보존)
-          else lyResultErr(outPath);
-          return; }   // 의역 실패여도 STT 전사(segments.json)는 복구 표시 · 실패 확정 = pend 해제
+        if (em && em.trim() && !eHtml) { stop(); lyPendClear(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = ''; lyResultErr(outPath); return; }   // 의역 실패여도 STT 전사(segments.json)는 복구 표시 · 실패 확정 = pend 해제
       }
     } catch (e) { /* 재시도 */ }
     // 2) 결과(subs.md) 확인
@@ -602,16 +597,9 @@ function poll(outPath, isUrl, resumeT0) {
         // 결과(subs.md)가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 준다 → 그걸 결과로 오인하면
         // '완료 (0s)'에 페이지 HTML이 통째로 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과시킨다.
         const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
-        if (md && md.trim() && !isHtml) { stop(); lyPendClear(); status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)' + (LY_EARLY === outPath && LY_SEGS ? ' — 완성 자막은 개요 탭에' : ''); lyResult(outPath, md); return; }   // 상세 편집기 경로(segments.json 동반 로드 · 없으면 종전 렌더) · 완료 = pend 해제 · 조기 세션이면 개요 탭 힌트(탭 유지 = lyResult)
+        if (md && md.trim() && !isHtml) { stop(); lyPendClear(); status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)'; lyResult(outPath, md); return; }   // 상세 편집기 경로(segments.json 동반 로드 · 없으면 종전 렌더) · 완료 = pend 해제
       }
     } catch (e) { /* 재시도 */ }
-    // 3) 조기 전사(segments.json) — 워크플로 LY-EARLY 짝: STT 직후 조기 커밋분이 도착하면 편집기 선행 표시(의역은 계속 생성 중 = 폴·pend 유지). URL/파일 경로만(SRT 텍스트는 segments.json 자체가 없음 — 클라 파싱 즉시라 무대상).
-    if (isUrl && LY_EARLY !== outPath && live) {
-      try {
-        const raw = await lyFetchSegs(outPath);
-        if (raw && raw.segs && raw.segs.length && live) { LY_EARLY = outPath; lyResult(outPath, '', undefined, raw); }   // md='' = 상세 탭 단독 렌더(lyResult 재사용 = 저장 편집 스냅샷 우선·랜딩 스크롤 동일) · raw 전달 = 이중 fetch·부동 프로미스 창 제거(평의회8 F3)
-      } catch (e) { /* 재시도 */ }
-    }
     if (live) setTimeout(tick, 5000);
   };
   tick();
@@ -658,7 +646,6 @@ $('#go').onclick = async () => {
 let LY_SEGS = null, LY_ORIG = null, LY_MD = '', LY_ID = '', LY_OUT = '', LY_LANG = '';
 let LY_PENDING_SEGS = null, LY_RENDERING = false, LY_PEND = null, LY_MEDIA_URL = '', LY_FINDT = null;
 let LY_GEN = false, LY_SEQ = 0, LY_CUR = -1, LY_SAVE_T = null;   // 생성중 플래그(복원 경쟁 차단)·결과 세대 토큰·현재 재생 조각·저장 디바운스(평의회2·6·7)
-let LY_EARLY = '';   // 조기 전사 표시된 outPath(LY-EARLY 짝) — 완료 렌더가 탭 튕김·랜딩 스크롤로 편집을 납치 안 하게 신호(다른 outPath = 자연 불일치·무해)
 const LY_LAST_KEY = 'nm_ly_last', LY_EDIT_PRE = 'nm_lyedit_';
 const LY_RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const LYX_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기 X 정본 path(문자 × 금지 게이트)
@@ -736,32 +723,22 @@ async function lyFetchSegs(outPath) {   // subs.md 형제 segments.json — SPA 
   if (LY_PENDING_SEGS && LY_PENDING_SEGS.length) return { segs: LY_PENDING_SEGS, lang: '', dur: 0 };
   return null;
 }
-async function lyResult(outPath, md, fresh, preSegs) {   // 완료(fresh 생략=true)/복원(false)/조기(md=''·preSegs=선획득 전사) — 저장된 편집본 우선 · 세대 토큰으로 비동기 재진입 경쟁 차단(평의회2 F2)
+async function lyResult(outPath, md, fresh) {   // 완료(fresh 생략=true)/복원(false) — 저장된 편집본 우선 · 세대 토큰으로 비동기 재진입 경쟁 차단(평의회2 F2)
   const seq = ++LY_SEQ;
   const id = (outPath.match(/ly_out\/([^\/]+)\//) || [])[1] || '';
-  if (fresh !== false && md) { try { localStorage.setItem(LY_LAST_KEY, JSON.stringify({ out: outPath, ts: Date.now() })); } catch (e) {} }   // 복원은 ts 재기록 안 함 = 72h 만료 슬라이딩 방지(F6) · md 게이트 = 조기 전사(md='')가 직전 완성본 복원 포인터를 덮는 회귀 차단(평의회2·6 동일 발견)
-  const raw = preSegs || await lyFetchSegs(outPath);   // preSegs = tick 조기 감지가 이미 받은 전사 재사용(이중 fetch·부동 프로미스 창 제거 · 평의회8 F3)
+  if (fresh !== false) { try { localStorage.setItem(LY_LAST_KEY, JSON.stringify({ out: outPath, ts: Date.now() })); } catch (e) {} }   // 복원은 ts 재기록 안 함 = 72h 만료 슬라이딩 방지(F6)
+  const raw = await lyFetchSegs(outPath);
   if (seq !== LY_SEQ) return;   // 그 사이 더 새 결과가 시작됨 = 이 응답 폐기(상태 찢김 차단)
   if (fresh === false && LY_GEN) return;   // 복원 fetch 중 생성 시작 = 복원 폐기(sub-초 틈 완전봉인 · 평의회2 재검)
-  const sameJob = LY_ID === id && LY_SEGS && LY_SEGS.length;   // 동일 작업 재렌더(조기 전사→완료 인계)
-  if (sameJob) {   // 인계 직전: 활성 편집 칩 blur = 미커밋 타이핑 즉시 커밋(재렌더가 포커스 칩을 소각해도 유실 0 · 평의회3 LOSS-A) → 디바운스 flush(리로드 대비 스냅샷 최신화)
-    const a = document.activeElement; if (a && a.isContentEditable && a.classList && a.classList.contains('ed-chip')) a.blur();
-    lySaveNow();
-  }
   LY_OUT = outPath; LY_ID = id;
   let saved = null; try { saved = JSON.parse(localStorage.getItem(LY_EDIT_PRE + LY_ID) || 'null'); } catch (e) {}
   const okSaved = !!(saved && Array.isArray(saved.segs) && saved.segs.length && saved.segs.every(s => s && Array.isArray(s.w)));   // 복원 스키마 최소 검증(F7 — 깨진 스냅샷이면 원본으로)
   LY_ORIG = raw;
   let segs = null;
-  if (sameJob) { segs = LY_SEGS; }   // 동일 작업 인계 = 인메모리 편집 모델이 정본(localStorage 실패 환경에도 유실 0 · 평의회3 LOSS-B — 스냅샷은 리로드 복원용)
-  else if (okSaved) { segs = saved.segs; LY_LANG = saved.lang || (raw && raw.lang) || ''; }
+  if (okSaved) { segs = saved.segs; LY_LANG = saved.lang || (raw && raw.lang) || ''; }
   else if (raw) { segs = lyModel(raw.segs); LY_LANG = raw.lang || ''; }
   renderResult(md, segs);
-  if (fresh !== false) {   // 완료 랜딩 = 결과로 시선 이동(복원 제외 · 평의회R2 B2)
-    const wasEarly = !!md && LY_EARLY === outPath;   // 조기 전사(LY-EARLY) 표시 후의 완료 도착 = 사용자 앞에 이미 편집기 — 탭 튕김·재랜딩으로 편집 납치 안 함(개요 안내 = poll status 힌트)
-    if (wasEarly) { LY_EARLY = ''; if ($('#lyTabs').classList.contains('show')) lyTab(true); }   // renderResult의 기본 개요 전환을 상세로 되돌림(조기 흐름 유지) · 탭바 없으면(segs 로드 실패 엣지) 종전 개요 폴백 그대로
-    else { const tgt = $('#lyTabs').classList.contains('show') ? $('#lyTabs') : $('#out'); try { tgt.scrollIntoView({ block: 'start', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {} }
-  }
+  if (fresh !== false) { const tgt = $('#lyTabs').classList.contains('show') ? $('#lyTabs') : $('#out'); try { tgt.scrollIntoView({ block: 'start', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {} }   // 완료 랜딩 = 결과로 시선 이동(복원 제외 · 평의회R2 B2)
 }
 async function lyResultErr(outPath) {   // 의역 실패여도 STT 세그먼트가 커밋돼 있으면 복구 표시(받아쓴 자막 유실 방지)
   const seq = ++LY_SEQ;
@@ -786,7 +763,7 @@ function renderResult(md, segs) {   // 자막 결과 표시 라우터 — 세그
   renderLySegs(); lyStats(); lySave(); lyPrune(); lyPvSync();
 }
 function lyTab(det) { $('#lyTabDet').classList.toggle('on', det); $('#lyTabOv').classList.toggle('on', !det); $('#lyTabDet').setAttribute('aria-selected', det ? 'true' : 'false'); $('#lyTabOv').setAttribute('aria-selected', det ? 'false' : 'true'); $('#lydet').hidden = !det; $('#out').hidden = det; }
-function lyHideEditor() { lySaveNow(); LY_SEQ++; LY_EARLY = ''; LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3) · LY_SEQ++ = in-flight lyResult 무효화(새 발사 동기 구간의 stale 조기 렌더 차단 · 평의회2 B) · LY_EARLY 리셋 = 방어 위생(평의회2 C·6)
+function lyHideEditor() { lySaveNow(); LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3)
 function lyToggleChip(sg, w, chip) {   // 탭/스페이스 = 빼기 토글(즉시 갱신·재빌드 0)
   w.on = !w.on; chip.classList.toggle('off', !w.on);
   chip.setAttribute('aria-pressed', w.on ? 'false' : 'true');
@@ -1107,10 +1084,6 @@ async function lyRestoreLast() {
         if (LY_SEGS || LY_GEN) { lyPendClear(); return; }   // 그 사이 새 생성 = 이어받기 폐기(덮어쓰기 차단)
         if (md && md.trim() && !isHtml) { lyPendClear(); const st = $('#status'); st.classList.remove('err'); st.innerHTML = OK_SVG + ' 완료 — 지난 생성 이어받음'; await lyResult(p.out, md); return; }   // fresh = LY_LAST 갱신+랜딩 스크롤
       }
-    } catch (e) {}
-    try {   // 전사 폴백(LY-EARLY) — 완성본은 없어도 조기 전사가 커밋돼 있으면 받아쓴 자막+편집 스냅샷 재수면(pend = 유일 앵커라 유지 = 다음 열기 때 완성 재확인 · 평의회3·6 좌초 봉합)
-      const raw = await lyFetchSegs(p.out);
-      if (raw && raw.segs && raw.segs.length && !LY_SEGS && !LY_GEN) { await lyResult(p.out, '', false, raw); const st = $('#status'); st.classList.remove('err'); st.innerHTML = WAIT_SVG + ' 받아쓴 자막 복원 — 완성되면 다음에 열 때 이어받아'; return; }
     } catch (e) {}
     lyPendClear(); lyRestoreLast();
   })();
