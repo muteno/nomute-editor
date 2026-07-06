@@ -232,11 +232,28 @@ def main():
           + ("  (←30↑ = 재인플레 의심 → §8 260702 실측환산 절차로 임계 재조정)" if len(issq) >= 30 else "")
           + ("  (←0 = 과조임/수집장애 의심)" if len(issq) == 0 else "  (기준 260702=13~20 · 저수지 급증 = 다음 인플레 전조)"))
     # OUT 아웃라이어 감쇠하한 계기판(260706 §8 — §1 보수성: '완화'엔 상시 측정+상한 경보가 짝 · 배지 계기판 선례)
-    #  근사 = viewer timeAccOut의 group_id 병합·_rankCross 댐핑까지 재현 · badgeJunk(정형컷)·수동병합(localStorage)·검색동결 미반영(±1)
-    #  기준 = 0~5 정상(실측 260706=3) · ≥6 = 과발동 조사(§8 260706 임계 재검토) · 강건 z(중앙값+MAD)·풀<15 OFF = viewer 동값
+    #  근사 = viewer 파이프 *순서* 재현: scDedup(동일제목·12h내 우세 1장) → group_id 병합·_rankCross 댐핑.
+    #  ⚠️ scDedup 생략 금지(260706 심야 정정): 빼먹으면 동일제목 파편이 합산에 살아남아 과보고(cr44 아티팩트 — 실파이프는 cr30·g1 = 무자격 · §8 정정).
+    #  badgeJunk(정형컷)·수동병합(localStorage)·검색동결은 미반영(±1). 기준 = 0~5 정상(도입 스냅샷 실측 2 — 장윤기·정보통신망법) · ≥6 = 과발동 조사(§8 260706) · 강건 z(중앙값+MAD)·풀<15 OFF = viewer 동값.
     try:
+        def _oa(x):   # 나이(h) 근사 — published 우선·없으면 first_seen(scTs 요지)
+            v = age_h(x.get("published"), now)
+            return v if v is not None else age_h(x.get("first_seen"), now)
+        _rep, cd = {}, []
+        for x in c:   # scDedup 재현: 동일 정규화 제목 AND 나이차 <12h = 우세(cross→rc) 1장만
+            k = "".join((x.get("title") or "").split()).lower()
+            if not k:
+                cd.append(x)
+                continue
+            pi = _rep.get(k)
+            if pi is not None and abs((_oa(x) or 999) - (_oa(cd[pi]) or 999)) < 12:
+                if ((x.get("cross") or 0), (x.get("report_count") or 0)) > ((cd[pi].get("cross") or 0), (cd[pi].get("report_count") or 0)):
+                    cd[pi] = x
+                continue
+            _rep[k] = len(cd)
+            cd.append(x)
         grp = {}
-        for x in c:
+        for x in cd:
             gid = x.get("group_id")
             if gid:
                 grp.setdefault(gid, []).append(x)
@@ -254,7 +271,7 @@ def main():
                                   "report_count": max((x.get("report_count") or 0) for x in cards),
                                   "grade": max(grades) if grades else anchor.get("grade")}
             dropped.update(id(x) for x in cards if x is not anchor)
-        pool = [merged.get(id(x), x) for x in c if id(x) not in dropped]
+        pool = [merged.get(id(x), x) for x in cd if id(x) not in dropped]
         xs = sorted(v for v in ((x.get("_rank") or x.get("cross") or 0) for x in pool) if v >= 8)
         def _med(a):
             m = len(a) // 2
@@ -269,7 +286,7 @@ def main():
                     and ((x.get("_rank") or x.get("cross") or 0) - med) / sd >= 2.5]
             f = "✅" if len(outs) < 6 else "⚠️"
             print(f"  {f} OUT 감쇠하한 발동(근사·badgeJunk/수동병합 미반영) {len(outs)}건 (med {med:.1f}·σr {sd:.2f})"
-                  + ("  (←6↑ = 과발동 → §8 260706 임계 재검토)" if len(outs) >= 6 else "  (기준 0~5 · 260706 실측 3)"))
+                  + ("  (←6↑ = 과발동 → §8 260706 임계 재검토)" if len(outs) >= 6 else "  (기준 0~5 · 도입 스냅샷 실측 2)"))
             for x in outs[:3]:
                 print(f"      · z{(((x.get('_rank') or x.get('cross') or 0) - med) / sd):.1f} cr{x.get('cross')} rc{x.get('report_count')} {str(x.get('title') or '')[:36]}")
     except Exception as e:
