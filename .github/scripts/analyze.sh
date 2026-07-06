@@ -9,7 +9,7 @@ cd "$ROOT"
 PROMPT_FILE="prompts/news-analysis.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
-INLINE_TRIES=3          # claude -p 일시 과부하(529/5xx)·타임아웃(rc=124) 인라인 재시도 횟수 — 짧은 깜빡임은 한 잡 안에서 즉시 흡수(260622)
+INLINE_TRIES=4          # 인라인 재시도 횟수 = 4계정 폴오버 체인 깊이(서브3 MUTENONA까지 단일 잡서 실호출) + 일시 과부하(529/5xx)·타임아웃(rc=124) 흡수(260622·4계정 확장 3→4)
 EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '기사 찾기'는 도구 왕복이 본질이라 max 는 헛사고로 타임아웃만 유발 → high 기본(ask.sh 와 동일 env · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
 ANALYZE_TIMEOUT="${ANALYZE_TIMEOUT:-900}"   # claude -p 타임아웃(초) — analyze 는 콘텐츠 초안까지 생성이라 15분 유지(ask 요약보다 김). 초과 시 계정 1회 전환 후 격리(force·아래 · 운영자 260704).
 ANALYZE_JOB_DEADLINE="${ANALYZE_JOB_DEADLINE:-3400}"   # 스크립트 SECONDS 이 초 넘으면 새 기사 처리 시작 안 함(잔여 pending 잔류→sweep 재처리) — 과부하 다건 타임아웃이 잡 timeout(90분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 90분 - 셋업 - 다음기사 최악 2×900s).
@@ -239,7 +239,7 @@ ${extracted}"
   #   529는 거의 항상 일시적(usually temporary)이라 몇 초~분 깜빡임은 여기서 흡수 → 뷰어에 안 보이고 바로 성공.
   #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 타임아웃(rc=124)은 계정 1회 강제전환 후 격리(force·아래), 빈출력은 재시도 안 함.
   inline_delay=15
-  claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 3계정 체인 예산 보존(평의회 260704 Q5)
+  claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 4계정 체인 예산 보존(평의회 260704 Q5)
   _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
     out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$ANALYZE_TIMEOUT" \
@@ -254,7 +254,7 @@ ${extracted}"
     if { [ $rc -eq 0 ] && [ -n "${out// }" ] && grep -qm1 '^---' <<<"$out"; } || grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then
       break
     fi
-    # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2 · 3계정 체인 · SSOT claude_transient.sh)
+    # 계정 사용량 한도(쿼터·레이트리밋) → 대체 계정 토큰으로 1단계씩 전환 후 즉시 재시도(서브1→서브2→서브3 · 4계정 체인 · SSOT claude_transient.sh)
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi
     # 타임아웃(rc=124 = ANALYZE_TIMEOUT 초과)은 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대 → *딱 1회* 강제 계정 전환 후 재시도(ask.sh 와 동일 · 운영자 260704 "10분 넘으면 다른 계정").
     #   ⚠️ 1회 제한 = 타임아웃은 대개 입력바운드(계정 바꿔도 반복)라 무한 전환은 워크플로 시간·쿼터만 소진(평의회 260704). 그 1회도 claude_reset_force_swap 이 다음 기사서 되돌림.
