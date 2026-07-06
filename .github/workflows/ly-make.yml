@@ -19,7 +19,7 @@ on:
         description: '업로드 영상/오디오 파일 경로(uploads/<id>/src.*) — ffmpeg 오디오추출+Whisper'
         type: string
       early_segs:
-        description: '조기 segments.json 푸시(전사 즉시 편집기 선행 · 1=ON) — §📰 카나리아 레버·롤백 = default 0'
+        description: '조기 segments.json 푸시(전사 즉시 편집기 선행 · 1=ON) — 기본 OFF(fail-closed) · 라이브 ON = functions/api/ly.js가 문자열 ''1''을 명시 전달(숫자/불리언 금지 = GH 강제변환으로 조용히 OFF · 롤백 = ly.js 한 줄)'
         type: string
         default: '0'
       account:
@@ -119,8 +119,9 @@ jobs:
           echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
 
       # 조기 segments.json 푸시(LY-EARLY) — STT가 끝나는 즉시 전사 사이드카만 먼저 커밋
-      #   → 뷰어 편집기가 의역(claude 1~5분)을 안 기다리고 바로 뜸(체감 대기 반토막 · 260706 평의회R2 9점 채택 후속).
+      #   → 뷰어 편집기가 의역(claude 1~5분)을 안 기다리고 바로 뜸(260706 평의회R2 E7 배점미달 후속 = 별도 카나리아 트랙 · 카나리아 e2etest-early 실측 = 전사 89초 선행).
       #   best-effort: 어떤 실패든 exit 0(마지막 Commit output이 어차피 포함 = 회귀 0) · push 경쟁만 짧게 재시도.
+      #   ⚠️ 이 if는 암묵 success() 게이트 필수 — always()/failure() 추가 금지(STT 실패 시 부분 segments.json 조기 push 방지 · 평의회8).
       - name: 조기 segments.json 커밋 (전사 즉시 편집기 선행)
         if: ${{ inputs.early_segs == '1' && (inputs.url != '' || inputs.file != '') }}
         env:

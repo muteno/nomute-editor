@@ -572,9 +572,9 @@ function poll(outPath, isUrl, resumeT0) {
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
     const early = LY_EARLY === outPath && LY_SEGS;   // 조기 전사 편집기 표시됨(LY-EARLY) — 문구·초과 처리 분기
-    if (sec > budget * 2) { stop(); status.innerHTML = ERR_SVG + (early ? ' 의역 시간 초과 — 완성되면 다음에 열 때 이어받아 (받아쓴 자막은 아래 살아있어)' : ' 시간 초과 — 완성되면 다음에 열 때 이어받아'); status.classList.add('err'); if (!early) { out.innerHTML = ''; lyHideEditor(); } return; }   // 하드 초과 = 폴만 종료·pend 유지(서버는 계속 돌 수 있음 → 늦게 끝나도 0 유실 · 평의회R2 검토4) · 조기 편집기는 유지(전사·편집 납치 금지)
-    if (sec > budget) { status.innerHTML = WAIT_SVG + (early ? ' 전사 완료 — 의역 아직 만드는 중… ' : ' 아직 만드는 중… ') + sec + 's (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }   // 소프트 초과 = 계속(구 즉사 '시간 초과' 폐지)
-    status.innerHTML = WAIT_SVG + (early ? ' 전사 완료 — 의역 생성 중… ' + sec + 's (받아쓴 자막 먼저 손봐도 돼)' : ' 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)'));
+    if (sec > budget * 2) { stop(); status.innerHTML = ERR_SVG + (early ? ' 다듬기 시간 초과 — 완성되면 다음에 열 때 이어받아 (받아쓴 자막은 아래 살아있어)' : ' 시간 초과 — 완성되면 다음에 열 때 이어받아'); status.classList.add('err'); if (!early) { out.innerHTML = ''; lyHideEditor(); } return; }   // 하드 초과 = 폴만 종료·pend 유지(서버는 계속 돌 수 있음 → 늦게 끝나도 0 유실 · 평의회R2 검토4) · 조기 편집기는 유지(받아쓴 자막·편집 납치 금지)
+    if (sec > budget) { status.innerHTML = WAIT_SVG + (early ? ' 받아쓴 자막 나옴 — 아직 다듬는 중… ' : ' 아직 만드는 중… ') + sec + 's (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }   // 소프트 초과 = 계속(구 즉사 '시간 초과' 폐지)
+    status.innerHTML = WAIT_SVG + (early ? ' 받아쓴 자막 먼저 손봐도 돼 · 다듬는 중… ' + sec + 's' : ' 자막 생성 중… ' + sec + 's' + (isUrl ? ' (영상 다운+Whisper STT 포함 — 첫 회 길 수 있음)' : ' (보통 1–3분)'));   // 조기 문구 = 기존 어휘 통일(받아쓴 자막·다듬기 — 전사/의역 신조어 금지·평의회4) · 허가문은 주 상태문에 접음(산문최소)
   };
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {
@@ -608,7 +608,7 @@ function poll(outPath, isUrl, resumeT0) {
     if (isUrl && LY_EARLY !== outPath && live) {
       try {
         const raw = await lyFetchSegs(outPath);
-        if (raw && raw.segs && raw.segs.length && live) { LY_EARLY = outPath; lyResult(outPath, ''); }   // md='' = 상세 탭 단독 렌더(lyResult 재사용 = 저장 편집 스냅샷 우선·랜딩 스크롤 동일)
+        if (raw && raw.segs && raw.segs.length && live) { LY_EARLY = outPath; lyResult(outPath, '', undefined, raw); }   // md='' = 상세 탭 단독 렌더(lyResult 재사용 = 저장 편집 스냅샷 우선·랜딩 스크롤 동일) · raw 전달 = 이중 fetch·부동 프로미스 창 제거(평의회8 F3)
       } catch (e) { /* 재시도 */ }
     }
     if (live) setTimeout(tick, 5000);
@@ -735,20 +735,25 @@ async function lyFetchSegs(outPath) {   // subs.md 형제 segments.json — SPA 
   if (LY_PENDING_SEGS && LY_PENDING_SEGS.length) return { segs: LY_PENDING_SEGS, lang: '', dur: 0 };
   return null;
 }
-async function lyResult(outPath, md, fresh) {   // 완료(fresh 생략=true)/복원(false) — 저장된 편집본 우선 · 세대 토큰으로 비동기 재진입 경쟁 차단(평의회2 F2)
+async function lyResult(outPath, md, fresh, preSegs) {   // 완료(fresh 생략=true)/복원(false)/조기(md=''·preSegs=선획득 전사) — 저장된 편집본 우선 · 세대 토큰으로 비동기 재진입 경쟁 차단(평의회2 F2)
   const seq = ++LY_SEQ;
   const id = (outPath.match(/ly_out\/([^\/]+)\//) || [])[1] || '';
-  if (fresh !== false) { try { localStorage.setItem(LY_LAST_KEY, JSON.stringify({ out: outPath, ts: Date.now() })); } catch (e) {} }   // 복원은 ts 재기록 안 함 = 72h 만료 슬라이딩 방지(F6)
-  const raw = await lyFetchSegs(outPath);
+  if (fresh !== false && md) { try { localStorage.setItem(LY_LAST_KEY, JSON.stringify({ out: outPath, ts: Date.now() })); } catch (e) {} }   // 복원은 ts 재기록 안 함 = 72h 만료 슬라이딩 방지(F6) · md 게이트 = 조기 전사(md='')가 직전 완성본 복원 포인터를 덮는 회귀 차단(평의회2·6 동일 발견)
+  const raw = preSegs || await lyFetchSegs(outPath);   // preSegs = tick 조기 감지가 이미 받은 전사 재사용(이중 fetch·부동 프로미스 창 제거 · 평의회8 F3)
   if (seq !== LY_SEQ) return;   // 그 사이 더 새 결과가 시작됨 = 이 응답 폐기(상태 찢김 차단)
   if (fresh === false && LY_GEN) return;   // 복원 fetch 중 생성 시작 = 복원 폐기(sub-초 틈 완전봉인 · 평의회2 재검)
-  if (LY_ID === id && LY_SEGS) lySaveNow();   // 같은 작업 재렌더(조기 전사→완료 인계) = 디바운스 편집 flush 후 스냅샷 읽기(마지막 400ms 편집 유실 0)
+  const sameJob = LY_ID === id && LY_SEGS && LY_SEGS.length;   // 동일 작업 재렌더(조기 전사→완료 인계)
+  if (sameJob) {   // 인계 직전: 활성 편집 칩 blur = 미커밋 타이핑 즉시 커밋(재렌더가 포커스 칩을 소각해도 유실 0 · 평의회3 LOSS-A) → 디바운스 flush(리로드 대비 스냅샷 최신화)
+    const a = document.activeElement; if (a && a.isContentEditable && a.classList && a.classList.contains('ed-chip')) a.blur();
+    lySaveNow();
+  }
   LY_OUT = outPath; LY_ID = id;
   let saved = null; try { saved = JSON.parse(localStorage.getItem(LY_EDIT_PRE + LY_ID) || 'null'); } catch (e) {}
   const okSaved = !!(saved && Array.isArray(saved.segs) && saved.segs.length && saved.segs.every(s => s && Array.isArray(s.w)));   // 복원 스키마 최소 검증(F7 — 깨진 스냅샷이면 원본으로)
   LY_ORIG = raw;
   let segs = null;
-  if (okSaved) { segs = saved.segs; LY_LANG = saved.lang || (raw && raw.lang) || ''; }
+  if (sameJob) { segs = LY_SEGS; }   // 동일 작업 인계 = 인메모리 편집 모델이 정본(localStorage 실패 환경에도 유실 0 · 평의회3 LOSS-B — 스냅샷은 리로드 복원용)
+  else if (okSaved) { segs = saved.segs; LY_LANG = saved.lang || (raw && raw.lang) || ''; }
   else if (raw) { segs = lyModel(raw.segs); LY_LANG = raw.lang || ''; }
   renderResult(md, segs);
   if (fresh !== false) {   // 완료 랜딩 = 결과로 시선 이동(복원 제외 · 평의회R2 B2)
@@ -780,7 +785,7 @@ function renderResult(md, segs) {   // 자막 결과 표시 라우터 — 세그
   renderLySegs(); lyStats(); lySave(); lyPrune(); lyPvSync();
 }
 function lyTab(det) { $('#lyTabDet').classList.toggle('on', det); $('#lyTabOv').classList.toggle('on', !det); $('#lyTabDet').setAttribute('aria-selected', det ? 'true' : 'false'); $('#lyTabOv').setAttribute('aria-selected', det ? 'false' : 'true'); $('#lydet').hidden = !det; $('#out').hidden = det; }
-function lyHideEditor() { lySaveNow(); LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3)
+function lyHideEditor() { lySaveNow(); LY_SEQ++; LY_EARLY = ''; LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3) · LY_SEQ++ = in-flight lyResult 무효화(새 발사 동기 구간의 stale 조기 렌더 차단 · 평의회2 B) · LY_EARLY 리셋 = 방어 위생(평의회2 C·6)
 function lyToggleChip(sg, w, chip) {   // 탭/스페이스 = 빼기 토글(즉시 갱신·재빌드 0)
   w.on = !w.on; chip.classList.toggle('off', !w.on);
   chip.setAttribute('aria-pressed', w.on ? 'false' : 'true');
@@ -1101,6 +1106,10 @@ async function lyRestoreLast() {
         if (LY_SEGS || LY_GEN) { lyPendClear(); return; }   // 그 사이 새 생성 = 이어받기 폐기(덮어쓰기 차단)
         if (md && md.trim() && !isHtml) { lyPendClear(); const st = $('#status'); st.classList.remove('err'); st.innerHTML = OK_SVG + ' 완료 — 지난 생성 이어받음'; await lyResult(p.out, md); return; }   // fresh = LY_LAST 갱신+랜딩 스크롤
       }
+    } catch (e) {}
+    try {   // 전사 폴백(LY-EARLY) — 완성본은 없어도 조기 전사가 커밋돼 있으면 받아쓴 자막+편집 스냅샷 재수면(pend = 유일 앵커라 유지 = 다음 열기 때 완성 재확인 · 평의회3·6 좌초 봉합)
+      const raw = await lyFetchSegs(p.out);
+      if (raw && raw.segs && raw.segs.length && !LY_SEGS && !LY_GEN) { await lyResult(p.out, '', false, raw); const st = $('#status'); st.classList.remove('err'); st.innerHTML = WAIT_SVG + ' 받아쓴 자막 복원 — 완성되면 다음에 열 때 이어받아'; return; }
     } catch (e) {}
     lyPendClear(); lyRestoreLast();
   })();
