@@ -273,7 +273,6 @@
   @keyframes lkRise { from { transform:translateY(46px); opacity:0; } }
   .lockscr.out { animation:lkOut .8s ease forwards; pointer-events:none; }   /* 해제 = 블러 아웃(확정 조합 · 성공 시 잠금막이 녹아 사라짐 → 앱 노출) */
   @keyframes lkOut { to { opacity:0; filter:blur(var(--blur-m)); } }
-  body.lk-hold > :not(#wavebg):not(.bgfx):not(#lockscr):not(script):not(style) { opacity:0; }   /* 언락 아웃 동안 뒤 메뉴 숨김(물결만 노출) — 구조 = booted 게이트(위 112) 동일 패턴 · 잠금막(#lockscr)은 예외(블러아웃 계속 보여야) · 해제 = lkUnlock 720ms 타이머(막 잔존 ~10% 시점)가 클래스 제거 + showTab 촤르륵 = "로딩바 없어진 다음 메뉴"(운영자 260706) */
   /* 슬롯 = 동그라미 채움 14px(원=슬롯폭 56% → 폭 25px · 정본 .pin-slot 비율 유지) · 채움 = 터쿼이즈 + 글로우 + 바운스(확정 조합) — .lockscr 스코프 특이도가 정본(2240대)보다 높아 소스순 무관 승리 */
   .lockscr .lk-slot { width:25px; height:25px; font-size:17px; }
   .lockscr .lk-slot.on::before { background:var(--accent); border-color:var(--accent); box-shadow:0 0 12px rgba(var(--accent-rgb),.55); }
@@ -5753,7 +5752,6 @@ function lockNow() {
   try { localStorage.setItem('nm_locked', '1'); } catch {}
   document.documentElement.style.overflow = 'hidden';
   lkReal = ''; lkBusy = false; lkErrEl.textContent = ''; lkSlotsEl.classList.remove('bad', 'shake'); const _ow = lkSlotsEl.closest('.lk-slotwrap'); if (_ow) _ow.classList.remove('ok');   // 성공 스윕 링(ok)도 리셋 — 없으면 직전 언락의 링이 재잠금 화면에 미입력 상태로 점등 잔존(QA6 260706)
-  document.body.classList.remove('lk-hold');   // 언락 아웃(720ms 창) 도중 재잠금 경합 시 숨김 클래스 잔존 → 화면 통째 블랙 방지(멱등 리셋)
   lkA = lkOrder(); lkBuildPad(); lkApply(); lkFill(); pinEyeSet(lkSlotsEl, false);   // 잠금마다 새 셔플(단판 — 4번째 자리 판B 전환 삭제 · 운영자 260706 3차 e) · 눈(전체표시) OFF 복귀(260705)
   document.body.classList.add('scr-locked');   // 오션 물결(#wavebg)을 앱 위로 승격 = PIN 배경(운영자 260705 "인트로 PIN 배경에 블루 물결")
   lockscr.classList.remove('out', 'ent'); void lockscr.offsetWidth; lockscr.classList.add('ent');   // 진입 = 핀 블록 라이즈 업 재트리거(운영자 260706 확정)
@@ -5762,13 +5760,10 @@ function lockNow() {
 function lkUnlock() {
   try { localStorage.setItem('nm_locked', '0'); localStorage.removeItem('nm_lock_fails'); localStorage.removeItem('nm_lock_until'); } catch {}
   lkReal = ''; _lkLast = Date.now();
-  const _lkReveal = () => { document.body.classList.remove('lk-hold'); window.scrollTo(0, 0); try { showTab((typeof CURTAB === 'string' && CURTAB) ? CURTAB : 'feed'); } catch {} };   // 메뉴 등장 = 기초화면 복귀(운영자 260706 4차 j: 최상단 + showTab 재렌더 촤르륵 · 탭 미확정 = feed) — 호출 시점만 아래 720ms로 분리
-  const _lkDone = () => { lockscr.hidden = true; lockscr.classList.remove('out', 'ent'); document.body.classList.remove('scr-locked', 'lk-hold'); document.documentElement.classList.remove('boot-lock'); document.documentElement.style.overflow = ''; lockArm(); };   // boot-lock 클래스 해제 필수 — 부여(부팅 인라인)만 있고 제거가 없으면 html.boot-lock{overflow:hidden}(4차 거터 차단)이 언락 후에도 남아 스크롤 불능(자체 적발 핫픽스 260706) · lk-hold 이중 제거 = 멱등 안전망(영구 블랙 차단)
-  if (matchMedia('(prefers-reduced-motion:reduce)').matches) { _lkDone(); _lkReveal(); return; }   // 전정계 = 즉시 해제·즉시 메뉴
-  document.body.classList.add('lk-hold');   // 아웃 동안 뒤 메뉴 숨김(물결만) — "페이드아웃 중에 메뉴가 이미 올라와 보임" 차단(운영자 260706 "로딩바 없어진 다음에 메뉴")
-  lockscr.classList.add('out');
-  setTimeout(_lkReveal, 720);   // 잠금막 잔존 ~10% 시점(lkOut .8s의 90%) = 메뉴 촤르륵 시작(운영자 "거의 10% 남았을 때 올라와야 자연스러움") · 스윕(로딩바) 타이밍은 불변
-  setTimeout(_lkDone, 820);   // 해제 = 블러 아웃(.8s) 후 정리 — 물결 승격(scr-locked)은 아웃 끝날 때까지 유지(중간 스냅 방지 · 운영자 260706 확정)
+  const _lkDone = () => { lockscr.hidden = true; lockscr.classList.remove('out', 'ent'); document.body.classList.remove('scr-locked'); document.documentElement.classList.remove('boot-lock'); document.documentElement.style.overflow = ''; lockArm();   // boot-lock 클래스 해제 필수 — 부여(부팅 인라인)만 있고 제거가 없으면 html.boot-lock{overflow:hidden}(4차 거터 차단)이 언락 후에도 남아 스크롤 불능(자체 적발 핫픽스 260706)
+    window.scrollTo(0, 0); try { showTab((typeof CURTAB === 'string' && CURTAB) ? CURTAB : 'feed'); } catch {} };   // 해제 = 기초화면 복귀(운영자 260706 4차 j): 있던 메뉴 최상단(즉시 스크롤) → showTab 재렌더로 촤르륵(cardIn 스태거 위→아래) 재생 · 탭 미확정 = 뉴스 요약(feed) 기준
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) { _lkDone(); return; }   // 전정계 = 즉시 해제
+  lockscr.classList.add('out'); setTimeout(_lkDone, 820);   // 해제 = 블러 아웃(.8s) 후 정리 — 물결 승격(scr-locked)은 아웃 끝날 때까지 유지(중간 스냅 방지 · 운영자 260706 확정)
 }
 // ── 키패드(정본 이식 · lk- 프리픽스) ──
 let lkReal = '', lkBusy = false, lkA = null, lkKds = null, lkBadT = null;   // lkB(판B) 폐지 — 단판(운영자 260706 3차 e)
