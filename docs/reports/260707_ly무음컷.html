@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>자막기 무음 컷(컷 편집) 신설 — 260707</title>
+<style>
+body{margin:0;padding:18px 14px 40px;background:#121212;color:#eef7f0;font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Malgun Gothic",-apple-system,sans-serif;line-height:1.6;font-size:14px}
+.wrap{max-width:760px;margin:0 auto}h1{font-size:17px;margin:0 0 4px}.sub{color:#8fa697;font-size:12px;margin:0 0 16px}
+h2{font-size:13px;color:#00EED2;margin:20px 0 8px;letter-spacing:.3px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid rgba(255,255,255,.09);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:#8fa697;font-weight:700;background:rgba(255,255,255,.03)}td b{color:#00EED2}
+.note{color:#8fa697;font-size:12px}.ok{color:#2CF5A5}.warn{color:#FFE13D}
+ul{margin:4px 0;padding-left:18px}li{margin:3px 0}
+code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:11.5px}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;margin:8px 0}
+.flow span{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px 9px}
+.flow em{color:#00EED2;font-style:normal}
+</style></head><body><div class="wrap">
+<h1>자막기 무음 컷(컷 편집) 신설</h1>
+<p class="sub">260707 · 운영자 확정: 배치 = 자막 설정 칩 · 기준 = 발화(Whisper STT) · 기본 OFF · main 머지 #1814 + 라이브 카나리아 실측 완료</p>
+
+<h2>① 무엇이 생겼나</h2>
+<div class="flow"><span>영상 첨부</span>→<span>자막 설정에서 <em>컷 편집</em> 켬</span>→<span>자막 생성</span>→<span>완성 영상 = <em>말 비는 구간 자동 컷</em> + 자막 싱크 자동 보정</span></div>
+<ul>
+<li>별도 분석 단계 없음 — 자막 생성이 이미 돌리는 <b>Whisper STT의 발화 타임스탬프를 재사용</b>(추가 LLM·과금 0).</li>
+<li>어절(word) 단위 타임스탬프 우선 — <b>문장 중간의 긴 침묵까지</b> 컷 대상.</li>
+<li>컷 규칙: 발화 앞뒤 0.3초 보존 · 실제 갭 1.0초 미만은 유지(호흡 보존) · 머리/꼬리 무음 포함.</li>
+<li>컷하면 뒤 자막 시각이 전부 당겨지는데, 영상·오디오·자막이 <b>같은 수식 하나</b>로 이동해서 싱크가 구조적으로 안 어긋남.</li>
+</ul>
+
+<h2>② 전 → 후</h2>
+<table>
+<tr><th>축</th><th>전</th><th>후</th></tr>
+<tr><td>무음 구간</td><td>수동 편집 앱에서 직접 컷</td><td><b>칩 하나로 자동 컷</b>(완성 영상에 반영)</td></tr>
+<tr><td>자막 싱크</td><td>컷하면 SRT 다시 손봐야</td><td><b>자동 재매핑</b>(잘린 만큼 당김)</td></tr>
+<tr><td>기본 동작</td><td>—</td><td><b>OFF</b> = 종전과 바이트 동일 경로(회귀 0)</td></tr>
+<tr><td>완성 노트</td><td>—</td><td><code>무음 3.6초 컷(1군데)</code> 식으로 표기</td></tr>
+</table>
+
+<h2>③ 검증(실측)</h2>
+<table>
+<tr><th>항목</th><th>결과</th></tr>
+<tr><td>로컬 E2E</td><td class="ok">12초 테스트 영상 → 5.3초(계산치 정합) · ASS 자막 시각 = 재매핑 계산값 일치 · 컷 OFF = 12.0초 그대로(회귀 0) · 무음성 영상 OK</td></tr>
+<tr><td>라이브 카나리아</td><td class="ok">운영자 실영상(26.3초) reburn+컷 → <b>22.8초 · 무음 3.6초 컷(1군데)</b> · R2 정상 · A/V 길이차 13ms(오디오 프레임 단위)</td></tr>
+<tr><td>메모리(러너 보호)</td><td class="ok">1차안(trim+concat) 피크 <b>8.58GB</b> = 러너 7GB OOM → 단일 패스 select 재설계 = <b>0.18GB·9배 빠름</b>(1080p 100초 실측)</td></tr>
+<tr><td>평의회</td><td class="ok">10인 적대 검증(주의 4건 전부 코드로 해소) + 수정분 재검증 3인{수학 OK(수식 동치 오차 0.5µs) · fail-soft OK · 총괄}</td></tr>
+<tr><td>실패 안전망</td><td class="ok">컷 합성이 실패하면 <b>컷만 포기하고 원본 타이밍으로 정상 번인</b> + 노트에 "무음 컷 실패" 표기(실증됨)</td></tr>
+</table>
+
+<h2>④ 장단점·리스크</h2>
+<ul>
+<li class="ok">장점: 원탭 컷 편집 · 자막 싱크 자동 · 추가 과금 0 · 기본 OFF라 기존 사용 무영향 · reburn(다시 입히기)으로 컷 켜고/끄고 재합성 가능(LLM 0).</li>
+<li class="warn">발화 기준의 성질: <b>말은 없지만 배경음(BGM·환경음)은 있는 구간도 잘림</b> — 운영자 선택 기준. 카나리아에서도 환경음 구간 3.6초가 잘렸다(의도 동작).</li>
+<li class="warn">품질 한계(정직): 컷 경계 정밀도 = 프레임 단위(약 21~33ms) · 미리보기 플레이어는 원본 타임라인(컷은 완성 영상에서 확인) · 컷 강도(0.3s/1.0s)는 고정값 — 튜닝 칩은 후속 후보.</li>
+<li class="warn">스코프: 컷은 <b>자막 붙이기(완성 영상)의 하위 옵션</b> — 자막 없이 컷만 하는 모드는 이번 범위 밖(필요하면 말해줘, 쉽게 얹을 수 있음).</li>
+</ul>
+
+<h2>⑤ 후속 후보(도먼트)</h2>
+<ul>
+<li><b>배경음악만 제거(운영자 질문)</b>: 가능 — Demucs/MDX 계열 보컬 분리 모델을 Whisper처럼 러너 로컬 실행(무료·키 불필요·7일 캐시). 켜면 완성 영상 오디오를 "목소리만"으로 교체. 비용 = 러너 시간 +1~3분/분·의존성 캐시 약 1GB. 품질 = 준수(약한 잔향 아티팩트 가능). 원하면 다음 작업으로 바로 구현.</li>
+<li>컷 강도 칩(약/중/강) · 미리보기에 컷 반영 · 컷-only 모드.</li>
+</ul>
+<p class="note">정본: <code>.github/scripts/ly_burn.py</code>(컷 로직) · <code>viewer/ly.html</code>(칩) · <code>functions/api/ly.js</code>(화이트리스트) · 원장 = docs/작업이력.md · 백업 = _versions/260707_2152_ly무음컷/</p>
+</div></body></html>
