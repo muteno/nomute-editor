@@ -202,19 +202,18 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 const H = 480;   // 프레임 높이 px — 실물 1080×1920의 % 좌표계를 그대로 비례 재현
 
 // 현행 실측(= viewer LY_OPT_DEF + ly_burn.py 수식 상수) — ⚠ 기본값은 반드시 현행(포터블 §3-2)
-//   260707 운영자 선택 배선 반영: 기본 = 깔끔·보통·위치 52·배경 100·스윕/강조 OFF(구 기본 = 릴스 기본 프리셋으로 잔존)
-const DEFAULTS = { style:'clean', pos:52, bg:100, size:.038, outline:1.0, pad:.10, kara:false, kw:false, kwc:'#0FFD02', sweep:2.2 };
+const DEFAULTS = { style:'bold', pos:24, bg:0, size:.045, outline:1.0, pad:.10, kara:true, kw:true, kwc:'#0FFD02', sweep:2.2 };
 const SIZE_SNAP = [ ['작게(s)', .032], ['보통(m)', .038], ['크게(l)', .045] ];
-const PRESETS = [   // st = 전 축 명시 리터럴(기본값 변경에 프리셋 정체성이 끌려가지 않게 · 확장 축은 현행 고정)
-  { id:'p0', nm:'현행 기본', cur:'현행 기본값', st:{ ...DEFAULTS } },
-  { id:'p1', nm:'릴스 기본', d:'구 기본(뷰어 빠른 프리셋) — 크게·카라오케·키워드', st:{ style:'bold', pos:24, bg:0, size:.045, outline:1, pad:.10, kara:true, kw:true, kwc:'#0FFD02', sweep:2.2 } },
-  { id:'p2', nm:'정보 박스', cur:'뷰어 프리셋', st:{ style:'box', pos:24, bg:44, size:.038, outline:1, pad:.10, kara:false, kw:true, kwc:'#0FFD02', sweep:2.2 } },
-  { id:'p3', nm:'캡션 회피', star:'★', d:'원본 캡션·진행바 위로 + 반투명 배경(밝은 장면 대비)', st:{ style:'clean', pos:38, bg:55, size:.038, outline:1, pad:.10, kara:true, kw:true, kwc:'#0FFD02', sweep:2.2 } },
+const PRESETS = [
+  { id:'p0', nm:'릴스 기본', cur:'현행 기본값', st:{ ...DEFAULTS } },
+  { id:'p1', nm:'깔끔 자막', cur:'현행', st:{ ...DEFAULTS, style:'clean', size:.038, kara:false, kw:false } },
+  { id:'p2', nm:'정보 박스', cur:'현행', st:{ ...DEFAULTS, style:'box', size:.038, bg:44, kara:false } },
+  { id:'p3', nm:'캡션 회피', star:'★', d:'원본 캡션·진행바 위로 + 반투명 배경(밝은 장면 대비)', st:{ ...DEFAULTS, style:'clean', size:.038, pos:38, bg:55 } },
 ];
 const SLIDERS = [
-  { k:'pos',     nm:'위치',        grp:'위치·크기', min:0, max:100, step:1, fmt:v=>v+'%', cur:'52' },
-  { k:'size',    nm:'크기(높이비)', grp:'위치·크기', min:.028, max:.055, step:.001, fmt:v=>(v*100).toFixed(1)+'%', cur:'3.8%(보통)' },
-  { k:'bg',      nm:'배경 불투명',  grp:'배경',     min:0, max:100, step:1, fmt:v=>v+'%', cur:'100' },
+  { k:'pos',     nm:'위치',        grp:'위치·크기', min:0, max:100, step:1, fmt:v=>v+'%', cur:'24' },
+  { k:'size',    nm:'크기(높이비)', grp:'위치·크기', min:.028, max:.055, step:.001, fmt:v=>(v*100).toFixed(1)+'%', cur:'4.5%(크게)' },
+  { k:'bg',      nm:'배경 불투명',  grp:'배경',     min:0, max:100, step:1, fmt:v=>v+'%', cur:'0' },
   { k:'pad',     nm:'박스 패딩',    grp:'배경',     min:.04, max:.20, step:.01, fmt:v=>'×'+v.toFixed(2), cur:'×0.10', ext:1 },
   { k:'outline', nm:'외곽선 두께',  grp:'글자',     min:.5, max:2, step:.05, fmt:v=>'×'+v.toFixed(2), cur:'×1.00', ext:1 },
   { k:'sweep',   nm:'스윕 속도(데모)', grp:'모션',  min:.8, max:4, step:.1, fmt:v=>v.toFixed(1)+'s', cur:'2.2s', demo:1 },
@@ -311,9 +310,9 @@ function buildOut() {
   L.push('모양     : ' + state.style + '\t[현행 ' + d.style + ']' + (state.style === d.style ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('위치     : ' + state.pos + '%\t[현행 ' + d.pos + ']' + (near(state.pos, d.pos) ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('배경     : ' + state.bg + '%\t[현행 ' + d.bg + ']' + (near(state.bg, d.bg) ? ' = 계승' : near(state.bg, 44) ? ' = 박스 기본(44) 계승' : ' → 기본값 갱신 후보'));
-  L.push('크기     : ' + (state.size * 100).toFixed(1) + '%\t[현행 ' + (d.size * 100).toFixed(1) + '% 보통]' + sizeNote(state.size));
-  L.push('카라오케 : ' + (state.kara ? 'ON' : 'OFF') + '\t[현행 ' + (d.kara ? 'ON' : 'OFF') + ']' + (state.kara === d.kara ? ' = 계승' : ' → 기본값 갱신 후보'));
-  L.push('키워드   : ' + (state.kw ? 'ON' : 'OFF') + '\t[현행 ' + (d.kw ? 'ON' : 'OFF') + ']' + (state.kw === d.kw ? ' = 계승' : ' → 기본값 갱신 후보'));
+  L.push('크기     : ' + (state.size * 100).toFixed(1) + '%\t[현행 4.5% 크게]' + sizeNote(state.size));
+  L.push('카라오케 : ' + (state.kara ? 'ON' : 'OFF') + '\t[현행 ON]' + (state.kara === d.kara ? ' = 계승' : ' → 기본값 갱신 후보'));
+  L.push('키워드   : ' + (state.kw ? 'ON' : 'OFF') + '\t[현행 ON]' + (state.kw === d.kw ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('◇ 확장 축(번인 수식 신설 필요 — 별도 승인)');
   L.push('외곽선   : ×' + state.outline.toFixed(2) + '\t[현행 ×1.00]' + (near(state.outline, 1) ? ' = 계승' : ' → 갱신 후보(신설)'));
   L.push('박스패딩 : ×' + state.pad.toFixed(2) + '\t[현행 ×0.10]' + (near(state.pad, .10) ? ' = 계승' : ' → 갱신 후보(신설)'));
