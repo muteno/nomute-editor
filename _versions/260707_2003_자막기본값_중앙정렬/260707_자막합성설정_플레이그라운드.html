@@ -53,10 +53,10 @@
 
   /* 자막(튜닝 대상) — 번인 ASS 재현: 하단 앵커·위로 성장·줄 단위 각진 박스 */
   .sub { position:absolute; left:7.4%; right:7.4%; text-align:center; pointer-events:none; }
-  .sub .ln { display:block; font-size:0; }   /* 스트럿 제거 — 줄높이 = .in(1.35em)만 지배(부모 폰트 스트럿 24px가 줄간격 왜곡하던 것 봉인 · 번인 libass 줄전진과 모델 일치 260707) */
+  .sub .ln { display:block; }
   .sub .src { display:block; }
   .sub .in { display:inline; box-decoration-break:clone; -webkit-box-decoration-break:clone;
-    font-weight:var(--fw-x); line-height:1.0; letter-spacing:-.2px; color:#fff; white-space:pre-wrap; }   /* 줄전진 = 1.0em — 실번인 픽셀 실측(libass가 fs를 줄높이로 정규화 · 260707 ffmpeg 계측 67px/fs67 = 1.000) · 구 1.35는 실물보다 줄간격 과대 */
+    font-weight:var(--fw-x); line-height:1.35; letter-spacing:-.2px; color:#fff; white-space:pre-wrap; }
   .sub .kw { color:var(--t-kwc,var(--accent-5)); font-weight:var(--fw-x); }
   /* 카라오케 스윕 = viewer/ly.html .lyoptpv.kara 계승(색만 변수화) — 실번인 \kf+\1c 근사 */
   .sub.kara .in .kt { background:linear-gradient(90deg,rgba(255,255,255,1) 50%,rgba(255,255,255,.42) 50%) 0 0/200% 100% no-repeat;
@@ -188,10 +188,9 @@
         <li>카라오케 = 실번인은 단어별 발화 타이밍(\kf)대로 채움 — 여기선 고정 속도 데모 루프(스윕 속도 축 = 데모 전용·번인 미반영).</li>
         <li>폰트 = 실번인 Noto Sans CJK KR / 여기선 기기 시스템폰트 — 글자폭 미세 차.</li>
         <li>줄바꿈 = 실번인은 폭 예산 청킹 + 넘치면 그 조각만 자동 축소(하한 0.62) — 여기선 고정 줄 구성 3종.</li>
-        <li>위치 상단 근처의 캡(윗줄 잘림 방지) = 실번인과 동일하게 블록 실측 기반(260707).</li>
+        <li>위치 상단 근처의 캡(윗줄 잘림 방지 · 원문+한글은 더 낮음) = 실번인 수식 그대로 재현.</li>
         <li>장면·릴스 UI = 목업(실영상 아님) — 세이프존·가독 판단 보조용.</li>
-        <li>연속 축(외곽선·박스 패딩·연속 크기) = 번인 배선 완료(260707) — 배경 ON이면 전 모양이 줄단위 박스로 수렴(패딩 = pad 계수 · 글리프 외곽선은 배경 0%에서만 의미).</li>
-        <li>배치 = 중앙 불변(260707): 게이지 = 1줄 기준점 · 줄이 늘면 블록 세로중심 유지(실번인 이벤트별 MarginV 미러).</li>
+        <li>확장 축(외곽선·박스 패딩·연속 크기·키워드색)은 현행 번인에 노출 안 된 축 — 선택 시 "갱신 후보(수식 신설)"로 표기됨.</li>
       </ul>
     </div>
   </aside>
@@ -203,21 +202,20 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 const H = 480;   // 프레임 높이 px — 실물 1080×1920의 % 좌표계를 그대로 비례 재현
 
 // 현행 실측(= viewer LY_OPT_DEF + ly_burn.py 수식 상수) — ⚠ 기본값은 반드시 현행(포터블 §3-2)
-//   260707 운영자 선택값 배선 완료: 아래 DEFAULTS = 새 라이브 기본(clean·57%·bg100·3.5%·외곽선×0.5·패딩×0.16·카라오케OFF) — 연속 축 3종(size·outline·pad)도 번인 실배선
-const DEFAULTS = { style:'clean', pos:57, bg:100, size:.035, outline:.5, pad:.16, kara:false, kw:true, kwc:'#0FFD02', sweep:2.2 };
+const DEFAULTS = { style:'bold', pos:24, bg:0, size:.045, outline:1.0, pad:.10, kara:true, kw:true, kwc:'#0FFD02', sweep:2.2 };
 const SIZE_SNAP = [ ['작게(s)', .032], ['보통(m)', .038], ['크게(l)', .045] ];
 const PRESETS = [
-  { id:'p0', nm:'캡션 기본', cur:'현행 기본값', st:{ ...DEFAULTS } },
-  { id:'p1', nm:'릴스 클래식', d:'구 기본(하단·외곽선·카라오케) = 앱 릴스 프리셋', st:{ ...DEFAULTS, style:'bold', pos:24, bg:0, size:.045, outline:1.0, pad:.10, kara:true, kw:true } },
-  { id:'p2', nm:'정보 박스', st:{ ...DEFAULTS, style:'box', size:.038, bg:44, kara:false } },
-  { id:'p3', nm:'하단 깔끔', st:{ ...DEFAULTS, style:'clean', pos:24, bg:0, size:.038, kara:false } },
+  { id:'p0', nm:'릴스 기본', cur:'현행 기본값', st:{ ...DEFAULTS } },
+  { id:'p1', nm:'깔끔 자막', cur:'현행', st:{ ...DEFAULTS, style:'clean', size:.038, kara:false, kw:false } },
+  { id:'p2', nm:'정보 박스', cur:'현행', st:{ ...DEFAULTS, style:'box', size:.038, bg:44, kara:false } },
+  { id:'p3', nm:'캡션 회피', star:'★', d:'원본 캡션·진행바 위로 + 반투명 배경(밝은 장면 대비)', st:{ ...DEFAULTS, style:'clean', size:.038, pos:38, bg:55 } },
 ];
 const SLIDERS = [
-  { k:'pos',     nm:'위치',        grp:'위치·크기', min:0, max:100, step:1, fmt:v=>v+'%', cur:'57' },
-  { k:'size',    nm:'크기(높이비)', grp:'위치·크기', min:.028, max:.055, step:.001, fmt:v=>(v*100).toFixed(1)+'%', cur:'3.5%' },
-  { k:'bg',      nm:'배경 불투명',  grp:'배경',     min:0, max:100, step:1, fmt:v=>v+'%', cur:'100' },
-  { k:'pad',     nm:'박스 패딩',    grp:'배경',     min:.04, max:.20, step:.01, fmt:v=>'×'+v.toFixed(2), cur:'×0.16' },
-  { k:'outline', nm:'외곽선 두께',  grp:'글자',     min:.5, max:2, step:.05, fmt:v=>'×'+v.toFixed(2), cur:'×0.50' },
+  { k:'pos',     nm:'위치',        grp:'위치·크기', min:0, max:100, step:1, fmt:v=>v+'%', cur:'24' },
+  { k:'size',    nm:'크기(높이비)', grp:'위치·크기', min:.028, max:.055, step:.001, fmt:v=>(v*100).toFixed(1)+'%', cur:'4.5%(크게)' },
+  { k:'bg',      nm:'배경 불투명',  grp:'배경',     min:0, max:100, step:1, fmt:v=>v+'%', cur:'0' },
+  { k:'pad',     nm:'박스 패딩',    grp:'배경',     min:.04, max:.20, step:.01, fmt:v=>'×'+v.toFixed(2), cur:'×0.10', ext:1 },
+  { k:'outline', nm:'외곽선 두께',  grp:'글자',     min:.5, max:2, step:.05, fmt:v=>'×'+v.toFixed(2), cur:'×1.00', ext:1 },
   { k:'sweep',   nm:'스윕 속도(데모)', grp:'모션',  min:.8, max:4, step:.1, fmt:v=>v.toFixed(1)+'s', cur:'2.2s', demo:1 },
 ];
 const LINES = {   // one = 뷰어 예시칸 문구 동일(크게 21.6px에서도 1줄 실측) · two/dual = 다줄 실물 감각
@@ -225,7 +223,7 @@ const LINES = {   // one = 뷰어 예시칸 문구 동일(크게 21.6px에서도
   two:  [ { kt:'새벽 라이브에서 나온 말이' }, { kt:'오늘 ', kw:'1위', kt2:'를 바꿨어' } ],
   dual: [ { src:'This part hits different' }, { kt:'여기가 ', kw:'진짜', kt2:' 다르게 들려' } ],
 };
-const LINE_H = { one:1, two:2, dual:1.62 };   // 고스트 줄 스택(ko줄 환산 · 줄전진 1.0em) — dual = 한글 1 + 원문 0.62(구 2.2 과대 정정 260707)
+const LINE_H = { one:1, two:2, dual:2.2 };   // 고스트(현행 자리) 높이 = 줄 구성 반영(dual = 원문 0.62×1.35 + 한글 1줄 근사)
 let state = { ...DEFAULTS };
 let view = { scene:'md', ui:true, ghost:true, play:true, lines:'one' };
 const near = (a, b, eps) => Math.abs(a - b) < (eps || .0015);
@@ -252,8 +250,12 @@ function shadowFor(style, fs, mul) {
 function apply() {
   const sub = $('#sub');
   const fs = H * state.size;
-  const mv = H * (0.02 + 0.0082 * state.pos);   // 게이지 기준점(1줄 하단) — 캡은 아래 블록 실측 후(번인 이벤트 캡 미러 260707)
+  const capLines = view.lines === 'dual' ? 4.9 : 3.1;   // ly_burn 상단 클립 캡 그대로
+  const mvRaw = H * (0.02 + 0.0082 * state.pos);
+  const mv = Math.min(mvRaw, Math.max(0, H - fs * capLines));
+  $('#capflag').classList.toggle('on', mv < mvRaw - .5);
   sub.innerHTML = subHtml();
+  sub.style.bottom = mv + 'px';
   sub.className = 'sub' + (state.kara ? ' kara' : '') + (state.bg > 0 ? '' : ' noplate') + (view.play ? '' : ' paused');
   sub.style.setProperty('--t-sweep', state.sweep + 's');
   sub.style.setProperty('--t-kwc', state.kw ? state.kwc : '#ffffff');
@@ -267,21 +269,10 @@ function apply() {
     el.style.padding = state.bg > 0 ? padV + 'px ' + padH + 'px' : '0';
   });
   sub.querySelectorAll('.kw').forEach(el => { if (!state.kw) { el.className = 'kt'; } });
-  // 중앙 불변 배치(운영자 260707 "1줄/2줄 중앙점 동일선" · 번인 MarginV 로직 미러): 게이지 = 1줄 기준점 고정 ·
-  //   줄 스택 초과분(패딩 상쇄)의 절반만큼 하강 = 블록 세로중심 불변 — .ln 실측(rect)이라 픽셀 검증 그 자체
-  const lnH = Array.from(sub.querySelectorAll('.ln')).reduce((a, el) => a + el.getBoundingClientRect().height, 0);
-  const shift = (lnH - fs * 1.0) / 2;   // 기준 1줄 = fs×1.0(실번인 줄전진 실측 260707)
-  const floorV = H * 0.01;
-  const padOut = state.bg > 0 ? parseFloat(padV) : 0;
-  const cap = Math.max(floorV, H - lnH - 2 * padOut - floorV);   // 상단 실측 캡(구 3.1/4.9 줄예산 추정 대체)
-  const bot = Math.max(floorV, Math.min(mv - shift, cap));
-  $('#capflag').classList.toggle('on', mv - shift > cap + .5);
-  sub.style.bottom = bot + 'px';
-  // 현행 기본 고스트(= DEFAULTS · 중앙 불변 동일 규칙으로 재현)
+  // 현행 기본 고스트(고정: bold·크게·pos24·bg0 1줄 높이)
   const gfs = H * DEFAULTS.size, gmv = H * (0.02 + 0.0082 * DEFAULTS.pos);
-  const gLn = gfs * 1.0 * (LINE_H[view.lines] || 1), gPad = DEFAULTS.bg > 0 ? gfs * DEFAULTS.pad : 0;   // 줄전진 1.0em 실측 정합
   const g = $('#ghost');
-  g.style.bottom = (gmv - (gLn - gfs * 1.0) / 2 - gPad) + 'px'; g.style.height = (gLn + 2 * gPad) + 'px';
+  g.style.bottom = gmv + 'px'; g.style.height = (gfs * 1.35 * (LINE_H[view.lines] || 1)) + 'px';
   g.classList.toggle('off', !view.ghost);
   $('#rui').classList.toggle('off', !view.ui);
   $$('.scene').forEach(el => el.classList.toggle('on', el.dataset.sc === view.scene));
@@ -308,22 +299,23 @@ function apply() {
   buildOut();
 }
 function sizeNote(v) {
-  if (near(v, DEFAULTS.size)) return ' = 계승';
-  for (const [nm, sv] of SIZE_SNAP) if (near(v, sv)) return ' → 기본값 갱신 후보(' + nm + ' 스냅)';
-  return ' → 기본값 갱신 후보(연속 크기 = 번인 배선됨)';
+  for (const [nm, sv] of SIZE_SNAP) if (near(v, sv)) return ' = ' + nm + ' 계승';
+  return ' → 갱신 후보(연속 크기 = 번인 계수 신설)';
 }
 function buildOut() {
   const d = DEFAULTS;
   const L = [];
-  L.push('[자막 합성 설정 — 선택값 · 전 축 번인 배선 완료(260707)]');
+  L.push('[자막 합성 설정 — 선택값]');
+  L.push('◇ 뷰어 즉시 배선분(기본값·프리셋 갱신)');
   L.push('모양     : ' + state.style + '\t[현행 ' + d.style + ']' + (state.style === d.style ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('위치     : ' + state.pos + '%\t[현행 ' + d.pos + ']' + (near(state.pos, d.pos) ? ' = 계승' : ' → 기본값 갱신 후보'));
-  L.push('배경     : ' + state.bg + '%\t[현행 ' + d.bg + ']' + (near(state.bg, d.bg) ? ' = 계승' : near(state.bg, 44) ? ' = 박스 종전(44)' : ' → 기본값 갱신 후보'));
-  L.push('크기     : ' + (state.size * 100).toFixed(1) + '%\t[현행 ' + (d.size * 100).toFixed(1) + '%]' + sizeNote(state.size));
-  L.push('카라오케 : ' + (state.kara ? 'ON' : 'OFF') + '\t[현행 ' + (d.kara ? 'ON' : 'OFF') + ']' + (state.kara === d.kara ? ' = 계승' : ' → 기본값 갱신 후보'));
-  L.push('키워드   : ' + (state.kw ? 'ON' : 'OFF') + '\t[현행 ' + (d.kw ? 'ON' : 'OFF') + ']' + (state.kw === d.kw ? ' = 계승' : ' → 기본값 갱신 후보'));
-  L.push('외곽선   : ×' + state.outline.toFixed(2) + '\t[현행 ×' + d.outline.toFixed(2) + ']' + (near(state.outline, d.outline) ? ' = 계승' : ' → 기본값 갱신 후보'));
-  L.push('박스패딩 : ×' + state.pad.toFixed(2) + '\t[현행 ×' + d.pad.toFixed(2) + ']' + (near(state.pad, d.pad) ? ' = 계승' : ' → 기본값 갱신 후보'));
+  L.push('배경     : ' + state.bg + '%\t[현행 ' + d.bg + ']' + (near(state.bg, d.bg) ? ' = 계승' : near(state.bg, 44) ? ' = 박스 기본(44) 계승' : ' → 기본값 갱신 후보'));
+  L.push('크기     : ' + (state.size * 100).toFixed(1) + '%\t[현행 4.5% 크게]' + sizeNote(state.size));
+  L.push('카라오케 : ' + (state.kara ? 'ON' : 'OFF') + '\t[현행 ON]' + (state.kara === d.kara ? ' = 계승' : ' → 기본값 갱신 후보'));
+  L.push('키워드   : ' + (state.kw ? 'ON' : 'OFF') + '\t[현행 ON]' + (state.kw === d.kw ? ' = 계승' : ' → 기본값 갱신 후보'));
+  L.push('◇ 확장 축(번인 수식 신설 필요 — 별도 승인)');
+  L.push('외곽선   : ×' + state.outline.toFixed(2) + '\t[현행 ×1.00]' + (near(state.outline, 1) ? ' = 계승' : ' → 갱신 후보(신설)'));
+  L.push('박스패딩 : ×' + state.pad.toFixed(2) + '\t[현행 ×0.10]' + (near(state.pad, .10) ? ' = 계승' : ' → 갱신 후보(신설)'));
   L.push('키워드색 : ' + state.kwc + '\t[현행 #0FFD02]' + (state.kwc.toLowerCase() === '#0ffd02' ? ' = 계승(콘텐츠 브랜드)' : ' → ⚠ 콘텐츠 브랜드색 갱신(운영자 확정 필요)'));
   L.push('(스윕 ' + state.sweep.toFixed(1) + 's = 데모 전용 — 실번인은 발화 길이 비례)');
   $('#out').textContent = L.join('\n');

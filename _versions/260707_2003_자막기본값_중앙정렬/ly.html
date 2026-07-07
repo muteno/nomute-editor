@@ -1213,17 +1213,16 @@ function lyGoDim() { const g = $('#go'); if (!g) return; g.classList.toggle('dim
   window.addEventListener('pagehide', () => { clearTimeout(t); save(); });
 })();
 // ══ 자막 설정 칩(버튼 = 프롬프팅 대체 · 운영자 260707) — 선택값 localStorage 영속 · 기본값 = 종전 동작 동일(무설정 = 회귀 0) ══
-const LY_OPT_DEF = { lang: 'auto', tone: 'sns', filler: true, burn: true, style: 'clean', pos: 57, size: 0.035, karaoke: false, keyword: true, bg: 100, outline: 0.5, pad: 0.16 };   // 운영자 260707 플레이그라운드 선택값 = 새 기본{캡션형: 중단 57%·불투명 줄박스·연속 크기 3.5%·외곽선 ×0.5·패딩 ×0.16} · size = 소수 높이비(칩 s/m/l 문자열과 공존 — 번인 size_frac이 양쪽 해석) · outline/pad = 번인 연속 계수(전 요청에 실림 · UI 슬라이더는 §디자인 j 배치 승인 후 후속) · 구 기본(bold·24·l·카라오케ON·bg0) = reels 프리셋으로 보존
-const LY_OPT_KEY = 'nm_ly_opts_v2';   // v1→v2 세대 교체(운영자 260707 기본값 전환) — 구 저장분이 새 기본을 덮지 않게 키 갱신(이전 버튼 조작값 = 새 기본 아래 리셋)
+const LY_OPT_DEF = { lang: 'auto', tone: 'sns', filler: true, burn: true, style: 'bold', pos: 24, size: 'l', karaoke: true, keyword: true, bg: 0 };   // pos = 세로 위치 게이지 %(0=하단 100=상단 · 24 ≈ 구 하단 세이프존 22%) · bg = 배경 불투명도 %(0=없음 · 구 박스 &H90 ≈ 44)
+const LY_OPT_KEY = 'nm_ly_opts_v1';
 const LY_POS_LEGACY = { bottom: 24, middle: 55, top: 100 };   // 구 3칩 저장값 → 게이지 % 마이그레이션(운영자 260707)
 const lyPct = (v, d) => { const n = Math.round(+v); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : d; };
 let LY_OPTS = { ...LY_OPT_DEF };
 let lySv = null;   // 원본 저장분 — 구버전(bg 키 자체가 없음) 판별용(LY_OPT_DEF 병합 후엔 구분 불가)
 try { lySv = JSON.parse(localStorage.getItem(LY_OPT_KEY) || 'null'); if (lySv && typeof lySv === 'object' && !Array.isArray(lySv)) LY_OPTS = { ...LY_OPT_DEF, ...lySv }; else lySv = null; } catch (e) { lySv = null; }
-if (typeof LY_OPTS.pos === 'string') LY_OPTS.pos = LY_POS_LEGACY[LY_OPTS.pos] ?? LY_OPT_DEF.pos;
-LY_OPTS.pos = lyPct(LY_OPTS.pos, LY_OPT_DEF.pos);
-if (lySv && !('bg' in lySv)) LY_OPTS.bg = (LY_OPTS.style === 'box' ? 44 : 0);   // 구(bg 도입 전) 저장분만 종전 승계 — v2 키라 사실상 도달 0(방어 유지)
-else LY_OPTS.bg = lyPct(LY_OPTS.bg, LY_OPT_DEF.bg);   // ⚠ 미저장(lySv null) = DEF 그대로 — 구판처럼 무조건 0으로 밀면 새 기본 bg100이 증발
+if (typeof LY_OPTS.pos === 'string') LY_OPTS.pos = LY_POS_LEGACY[LY_OPTS.pos] ?? 24;
+LY_OPTS.pos = lyPct(LY_OPTS.pos, 24);
+LY_OPTS.bg = (lySv && 'bg' in lySv) ? lyPct(LY_OPTS.bg, 0) : (LY_OPTS.style === 'box' ? 44 : 0);   // 구 저장분(bg 키 없음) = 박스면 종전 농도 44 승계 · 그 외 0(종전 배경 없음과 동일)
 let LY_WANTVID = '', LY_VID_T = null, LY_VID_GEN = 0;   // 완성 영상(번인) 폴 상태 · GEN = 세대 토큰(in-flight fetch가 리셋 후 옛 영상 표시·좀비 재예약하는 경쟁 봉인 — poll() live 패턴 이식·평의회)
 // 프리셋 = 번인축 6키 묶음 원탭(상용 자막툴 진입점 벤치 — CapCut/Submagic 템플릿 문법) · 칩은 그대로 살아있어 미세조정 가능
 const LY_PRESETS = {
@@ -1253,9 +1252,8 @@ function lyOptRender() {
   const pv = $('#lyOptPv');
   if (pv) {   // 실시간 스타일 미리보기 — 모양/크기 클래스 + 키워드 그린 + 카라오케 스윕 + 배경 알파(번인 실렌더 근사) · 값은 칩 닫힌 집합 + 게이지 정수 클램프라 클래스 조립 안전
     pv.hidden = !LY_OPTS.burn;
-    pv.className = 'lyoptpv ' + (LY_OPTS.style || 'bold') + (typeof LY_OPTS.size === 'string' ? ' ' + LY_OPTS.size : '') + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '');
+    pv.className = 'lyoptpv ' + (LY_OPTS.style || 'bold') + ' ' + (LY_OPTS.size || 'l') + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '');
     pv.style.setProperty('--lybg', (LY_OPTS.bg / 100).toFixed(2));
-    const pvt = pv.querySelector('.pvt'); if (pvt) pvt.style.fontSize = typeof LY_OPTS.size === 'number' ? Math.round(LY_OPTS.size * 467) + 'px' : '';   // 연속 크기 = l칩 비율(21px↔4.5% ≈ ×467) 인라인 환산(0.035→16px) · 문자열(s/m/l) = 종전 클래스(인라인 해제)
     const kwEl = pv.querySelector('b'); if (kwEl) kwEl.className = LY_OPTS.keyword ? 'kw' : 'kt';   // OFF = 일반 단어로 강등(그린·스윕 규칙 함께 전환)
   }
 }

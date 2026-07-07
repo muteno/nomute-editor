@@ -9,9 +9,6 @@
 #   위치 = pos 게이지 %(0=하단 100=상단 · 구 bottom/middle/top 하위호환) → align 2 고정 + MarginV 연속(24% ≈ 구 하단 세이프존 22%) ·
 #   배경 = bg 게이지 %(BackColour 알파 · 0=박스 없음 · 구 클라 박스 = 44 승계) ·
 #   폰트 = "Noto Sans CJK KR"(fontconfig 자동 탐색 = fontsdir 불요) · 회전 메타 = autorotate 기본 유지 + PlayRes 스왑.
-# 연속 축 3종(운영자 260707 플레이그라운드 선택값 배선): size = 높이비 소수(0.035 등 · 구 s/m/l 문자열 하위호환) ·
-#   outline = 외곽선 두께 배율(×0.5 등 · bg=0 글리프 스트로크에만 의미) · pad = 박스 패딩 계수(fs×pad · bg>0 줄박스 패딩).
-#   + 중앙 불변 배치: 게이지 = 1줄 기준점 고정 · 줄이 늘면 초과분 절반씩 내려 블록 세로중심 유지(이벤트별 MarginV).
 # 키워드 강조색 = 콘텐츠 브랜드 형광그린 #0FFD02(릴스 오버레이 GREEN 계승 · UI 팔레트와 별개 축 = §핵심명령 3-b-1).
 import json
 import os
@@ -25,7 +22,6 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(모듈 import = main 미
 GREEN_BGR = "&H02FD0F&"          # #0FFD02 → ASS BGR(콘텐츠 그린)
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 git 커밋 상한(레포 비대 방지)
 MAX_DUR = 600                    # 릴스/쇼츠 도구 — 10분 초과 영상은 번인 거절(러너 시간 보호)
-LINE_F = 1.0                     # libass 줄전진/폰트크기 비 = 1.0 실측(260707 ffmpeg+Noto CJK KR 프레임 픽셀 계측: 67px/fs67 — libass는 VSFilter 호환으로 fs를 줄높이로 정규화 · hhea 1.48 가정은 오류였음) · 중앙 불변 보정 전용
 
 
 def kst_now():
@@ -141,39 +137,14 @@ def chunk_lines(words, budget):
     return lines
 
 
-def size_frac(opts):
-    # 크기 = 연속 높이비(0.035 등 · 운영자 260707)가 1급 — 구 s/m/l 문자열은 등가 소수로 하위호환
-    s = opts.get("size")
-    if isinstance(s, (int, float)) and not isinstance(s, bool):
-        try:
-            v = float(s)
-            if 0.02 <= v <= 0.2:
-                return v
-        except Exception:
-            pass
-    return {"s": 0.032, "m": 0.038, "l": 0.045}.get(s or "l", 0.045)
-
-
-def coef(opts, key, dflt, lo, hi):
-    # 연속 계수 축(outline·pad) 안전 파서 — 숫자 아님·NaN·범위 밖 = 기본값/클램프
-    try:
-        v = float(opts.get(key, dflt))
-    except Exception:
-        return dflt
-    if v != v:
-        return dflt
-    return max(lo, min(hi, v))
-
-
 def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
-    # 한 조각 → (ASS 텍스트, 줄 수, 실폰트크기): 수동 \N(최대 2줄 · 넘치면 그 조각만 \fs 자동 축소) + 카라오케 \kf + 키워드 \1c(콘텐츠 그린)
-    #   줄 수·실크기 반환 = 중앙 불변 배치(이벤트별 MarginV 보정)의 블록 높이 산정용(260707)
+    # 한 조각 → ASS 텍스트: 수동 \N(최대 2줄 · 넘치면 그 조각만 \fs 자동 축소) + 카라오케 \kf + 키워드 \1c(콘텐츠 그린)
     plain, spans = star_spans(sanitize(text))
     if not keyword:
         spans = []
     words = [w for w in plain.split(" ") if w]
     if not words:
-        return "", 0, fs
+        return ""
     # 줄폭 예산(전각 단위) — 2줄 초과분은 조각 한정 인라인 축소(하한 0.62배 · 그래도 넘치면 3줄+ 허용)
     eff_fs = fs
     budget = avail_px / eff_fs
@@ -206,8 +177,7 @@ def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
         rendered.append(seg)
     lines = chunk_lines(words, budget)
     body = "\\N".join(" ".join(rendered[i] for i in ln) for ln in lines)
-    txt = ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
-    return txt, len(lines), eff_fs
+    return ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
 
 
 def pos_pct(opts):
@@ -232,10 +202,8 @@ def bg_pct(opts, style):
 
 
 def build_ass(segs, w, h, opts):
-    size_f = size_frac(opts)
+    size_f = {"s": 0.032, "m": 0.038, "l": 0.045}.get(opts.get("size") or "l", 0.045)
     fs = max(18, int(h * size_f))
-    omul = coef(opts, "outline", 1.0, 0.25, 3.0)   # 외곽선 두께 배율(운영자 260707 ×0.5)
-    pad = coef(opts, "pad", 0.10, 0.02, 0.5)       # 박스 패딩 계수 fs×pad(운영자 260707 ×0.16 · 구 box 0.10 승계 기본)
     # 위치 = 하단 앵커(align 2) 고정 + MarginV 연속값 — 게이지가 전 높이를 선형 커버(구 중앙/상단 앵커 분기 폐지)
     #   0% = 바닥 2% · 24% ≈ 구 하단 세이프존 22%(실측 420@1920) · 100% = 84% 명목 상한
     p = pos_pct(opts)
@@ -245,22 +213,24 @@ def build_ass(segs, w, h, opts):
     # 상단 클립 캡(평의회 260707) — 하단 앵커는 위로 쌓여 libass가 프레임 밖 윗줄을 클립(밀어내기 없음).
     #   fs 기반 줄예산으로 상한: 평문 = 2줄(축소 포함)+패딩 3.1fs · dual = +원문(0.62fs) 2줄 4.9fs.
     #   84% 명목 상한이 fs 하한(max 18)·dual 추가 줄에서 깨지는 케이스(240p·원문 2줄)를 픽셀 기준으로 봉합.
-    #   (260707부터 = 스타일 폴백 안전값 — 실제 상한은 아래 이벤트별 블록 실측 캡이 정밀 처리)
     margin_v = min(margin_v, max(0, h - int(fs * (4.9 if lang == "dual" else 3.1))))
     margin_lr = int(w * 0.074)
     style = opts.get("style") or "bold"
     bg = bg_pct(opts, style)
     back = "&H{:02X}000000".format(255 - int(round(bg * 2.55)))   # ASS 알파 = 00 불투명·FF 투명 · 44% → 0x8F ≈ 구 &H90(스타일 라인 = & 접미 없음)
-    if bg > 0:               # 배경 게이지 ON = 줄 단위 박스(BorderStyle 4 · 3은 다줄 겹침 = 금지) — 전 모양 수렴(260707)
-        # 패딩 = Outline값(구 box 전용 oc==back 패딩 겸용 메서드를 전 모양으로 승격 · pad 계수 = 운영자 선택 ×0.16).
-        # 글리프 외곽선색도 back 동일 = 박스 위 이중 테두리 0(검정 박스 위 검정 스트로크 = 어차피 비가시 · 모양 분기는 bg=0에서만 의미).
-        border_style, outline, shadow, oc = 4, max(2, int(fs * pad)), 0, back
-    else:                    # 배경 0% — bold/clean = 종전 그대로(omul 배율만) · box = 얇은 외곽선 폴백(흰 글자 보호)
+    if bg > 0:               # 배경 게이지 ON = 줄 단위 박스(BorderStyle 4 · 3은 다줄 겹침 = 금지) — 모양은 글리프 처리만 분기
+        if style == "box":   # 통박스 = Outline색==Back색(패딩 겸용 · 글리프 외곽선 없음)
+            border_style, outline, shadow, oc = 4, max(4, int(fs * 0.10)), 0, back
+        elif style == "clean":
+            border_style, outline, shadow, oc = 4, max(1, int(fs * 0.032)), 0, "&H00000000"
+        else:                # bold = 검정 외곽선 유지(박스가 분리감 담당 → 그림자 제거)
+            border_style, outline, shadow, oc = 4, max(2, int(fs * 0.064)), 0, "&H00000000"
+    else:                    # 배경 0% — bold/clean = 종전 그대로 · box = 얇은 외곽선 폴백(흰 글자 보호)
         back = "&H90000000"  # BorderStyle 1의 BackColour = 그림자색(bold shadow=1) — 게이지와 무관 종전값 유지
         if style == "clean" or style == "box":
-            border_style, outline, shadow, oc = 1, max(1, int(fs * 0.032 * omul)), 0, "&H00000000"
+            border_style, outline, shadow, oc = 1, max(1, int(fs * 0.032)), 0, "&H00000000"
         else:                # bold(기본) = 흰 글자+검정 외곽선+그림자(쇼츠 정석)
-            border_style, outline, shadow, oc = 1, max(1, int(fs * 0.064 * omul)), 1, "&H00000000"
+            border_style, outline, shadow, oc = 1, max(2, int(fs * 0.064)), 1, "&H00000000"
     karaoke = opts.get("karaoke", True)
     keyword = opts.get("keyword", True)
     lang = opts.get("lang") or "auto"
@@ -288,34 +258,25 @@ def build_ass(segs, w, h, opts):
     ])
     lines = []
     small = max(14, int(fs * 0.62))
-    ref_px = fs * LINE_F   # 중앙 불변 기준 = 본선(한글) 1줄 높이 — 게이지가 가리키는 배치는 1줄 기준으로 고정(운영자 캡처 보존)
-    floor_v = max(1, int(h * 0.01))   # ASS Dialogue MarginV=0은 '스타일값 사용' 폴백이라 1 이상 강제
     for sg in segs:
         s, e = float(sg["s"]), float(sg["e"])
         if e - s < 0.05:
             e = s + 0.05
         ko = sg.get("ko") or ""
         src = sanitize(sg.get("src") or "")
-        main, n_main, m_fs = build_line(ko, e - s, karaoke, keyword, fs, avail) if ko else ("", 0, fs)
+        main = build_line(ko, e - s, karaoke, keyword, fs, avail) if ko else ""
         if not main and src:
-            main, n_main, m_fs = build_line(src, e - s, karaoke, False, fs, avail)
+            main = build_line(src, e - s, karaoke, False, fs, avail)
             src = ""
         if not main:
             continue
         txt = main
-        block_px = n_main * m_fs * LINE_F
         if lang == "dual" and src and ko:
             sw = src.split(" ")
             src_chunks = chunk_lines(sw, avail / small)
             src_txt = "\\N".join(" ".join(sw[i] for i in ln) for ln in src_chunks)
             txt = "{\\fs" + str(small) + "}" + src_txt + "{\\r}\\N" + main   # 원문(작게) 위 · 한글 아래
-            block_px += len(src_chunks) * small * LINE_F
-        # 중앙 불변 배치(운영자 260707 "1줄/2줄 중앙점 동일선"): 하단 앵커는 위로만 자라 줄이 늘면 블록 중심이 떠오름 →
-        #   초과 높이의 절반만큼 MarginV를 내려 블록 세로중심 고정(1줄 = 보정 0 = 종전·캡처 그대로). 패딩은 전 이벤트 동일이라 상쇄.
-        mv_e = margin_v - int(round((block_px - ref_px) / 2))
-        mv_e = min(mv_e, max(floor_v, h - int(block_px) - floor_v))   # 상단 캡 = 이벤트 블록 실측(전역 줄예산 추정보다 정밀)
-        mv_e = max(floor_v, mv_e)
-        lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, txt))
+        lines.append("Dialogue: 0,{},{},nomute,,0,0,0,,{}".format(ass_time(s), ass_time(e), txt))
     return head + "\n" + "\n".join(lines) + "\n"
 
 
