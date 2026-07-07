@@ -11,6 +11,7 @@
 #   폰트 = "Noto Sans CJK KR"(fontconfig 자동 탐색 = fontsdir 불요) · 회전 메타 = autorotate 기본 유지 + PlayRes 스왑.
 # 키워드 강조색 = 콘텐츠 브랜드 형광그린 #0FFD02(릴스 오버레이 GREEN 계승 · UI 팔레트와 별개 축 = §핵심명령 3-b-1).
 import json
+import math
 import os
 import re
 import subprocess
@@ -102,8 +103,9 @@ def load_stt_words(outdir):
         words = []
         for sg in (j.get("segs") or []):
             for w in (sg.get("w") or []):
-                if isinstance(w.get("s"), (int, float)) and isinstance(w.get("e"), (int, float)) and str(w.get("t") or "").strip():
-                    words.append({"t": str(w["t"]), "s": float(w["s"]), "e": float(w["e"])})
+                ws, we = w.get("s"), w.get("e")
+                if isinstance(ws, (int, float)) and isinstance(we, (int, float)) and math.isfinite(ws) and math.isfinite(we) and str(w.get("t") or "").strip():
+                    words.append({"t": str(w["t"]), "s": float(ws), "e": float(we)})   # isfinite = NaN/Inf 타임스탬프 배제(json.loads가 통과시키는 리터럴 NaN이 곡선 int() 크래시 유발 차단·평의회3)
         words.sort(key=lambda x: (x["s"], x["e"]))
         return words
     except Exception as e:
@@ -181,9 +183,10 @@ def prop_cs(words, cs_total):
 
 
 def karaoke_cs(words, seg_s, seg_dur, stt_words):
-    # (리드인 센티초, 어절별 \kf 센티초 리스트) — STT word 타임스탬프가 있으면 실제 발화 곡선에 어절을 태우고(노래방식 정확),
-    #   없으면 글자수 비례(폴백). 리드인+합 = cs_total(세그 표시길이 정합). 의역이라 어절이 STT word와 1:1 아니어도
-    #   '세그 내 실제 발화 진행 곡선'에 글자 진행률로 태우므로 균등분배보다 항상 정확(한국어 원본은 word와 거의 일치).
+    # (리드인 센티초, 어절별 \kf 센티초 리스트) — STT word 타임스탬프가 있으면 실제 발화 곡선에 어절을 태우고(노래방식 동기),
+    #   없으면 글자수 비례(폴백). 리드인+합 = cs_total(세그 표시길이 정합).
+    #   한국어 원본(어절≈word 1:1) = 실발화에 정확 수렴 · 의역(외국어 어순반전)은 좌→우 카라오케 본질 한계라 균등과 대등
+    #   (자막 표시 s/e는 claude 정렬 유지 = 최악도 블록 내 스윕 미관). word 없을 때 폴백 = 종전 비트 동일(회귀 0).
     n = len(words)
     cs_total = max(10, int(seg_dur * 100))   # int(버림) = 종전 build_line과 동일(폴백 비트 일치 · round면 부동소수 경계서 1cs 벌어짐)
     if not stt_words or n == 0:
@@ -313,7 +316,7 @@ def build_ass(segs, w, h, opts, stt_words):
             e = s + 0.05
         ko = sg.get("ko") or ""
         src = sanitize(sg.get("src") or "")
-        sw = [x for x in stt_words if s <= (x["s"] + x["e"]) / 2 < e] if (karaoke and stt_words) else []   # 이 세그에 속한 STT word = 중심점 기준(경계에 살짝 걸친 옆 세그 word 오염 차단 = 곡선 왜곡 방지)
+        sw = [x for x in stt_words if s <= (x["s"] + x["e"]) / 2 < e] if (karaoke and stt_words) else []   # 이 세그의 STT word = 중심점 기준(옆 세그 word 오염 차단·시간겹침보다 net-우수 실측). 한계 = claude 세밀분할 경계에 걸친 word는 소수 세그서 STT 앵커 잃음(≤0.6s 미관·문자열-인지 배정은 후속 후보)
         main = build_line(ko, s, e - s, karaoke, keyword, fs, avail, sw) if ko else ""
         if not main and src:
             main = build_line(src, s, e - s, karaoke, False, fs, avail, sw)

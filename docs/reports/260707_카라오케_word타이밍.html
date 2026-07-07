@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>자막 카라오케 타이밍 수정</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --panel:#121316; --line:rgba(255,255,255,.10);
+    --fg:#eef7f0; --mut:#8a938e;
+    --accent:#00EED2; --green:#0FFD02; --danger:#e23b2a; --amber:#FFE13D;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:system-ui,-apple-system,'Segoe UI','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    line-height:1.6;font-size:15px;-webkit-text-size-adjust:100%}
+  .wrap{max-width:820px;margin:0 auto;padding:22px 16px 60px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.3px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 22px}
+  h2{font-size:16.5px;font-weight:800;margin:30px 0 12px;padding-left:11px;border-left:3px solid var(--accent)}
+  p{margin:9px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin:12px 0}
+  .bad{border-left:3px solid var(--danger)}
+  .good{border-left:3px solid var(--green)}
+  code{background:rgba(255,255,255,.06);padding:1.5px 6px;border-radius:6px;font-size:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .lbl{font-weight:800;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px}
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+  th{color:var(--mut);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  td.n{font-family:ui-monospace,monospace;text-align:right;font-variant-numeric:tabular-nums}
+  .tl{margin:10px 0}
+  .tl-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .tl-name{flex:none;width:62px;font-size:13px;font-weight:700}
+  .tl-bar{flex:1;height:22px;border-radius:5px;position:relative;overflow:hidden;background:rgba(255,255,255,.05)}
+  .tl-fill{height:100%;border-radius:5px 0 0 5px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:11px;font-weight:700;color:#001a17;font-variant-numeric:tabular-nums}
+  .tl-cap{font-size:11.5px;color:var(--mut);margin:2px 0 0 70px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;margin:2px 4px 2px 0}
+  .pill-g{background:rgba(15,253,2,.14);color:var(--green)}
+  .pill-a{background:rgba(0,238,210,.14);color:var(--accent)}
+  .pill-r{background:rgba(226,59,42,.16);color:#ff8a7d}
+  ul{margin:8px 0;padding-left:20px}
+  li{margin:5px 0}
+  .foot{color:var(--mut);font-size:12px;margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+  .kbd{color:var(--green);font-family:ui-monospace,monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>자막 번인 카라오케 타이밍 수정</h1>
+  <p class="sub">영상 자막(/ly) · <code>.github/scripts/ly_burn.py</code> · 260707</p>
+
+  <div class="card bad">
+    <p class="lbl">🐞 증상</p>
+    <p>"가라오케가 제대로 동작 안 하고 <b>어절 단위로 쭉쭉 이어진다</b>." 카라오케 채움(하이라이트)이 실제 말하는 속도와 무관하게 기계적으로 균등하게 흘러감.</p>
+  </div>
+
+  <h2>원인 — 이미 있는 데이터를 버리고 있었다</h2>
+  <p>STT(Whisper)가 각 단어의 <b>정확한 발화 시각</b>을 <code>segments.json</code>에 이미 뽑아두는데, 번인 스크립트가 그걸 쓰지 않고 세그먼트 시간을 <b>글자수로 균등분배</b>하고 있었어.</p>
+
+  <div class="card">
+    <p class="lbl">실측 — "다이브 손아트 대신에" (한 자막 조각)</p>
+    <div class="tl">
+      <div class="lbl" style="color:var(--danger)">전 · 글자수 균등 (버그)</div>
+      <div class="tl-row"><span class="tl-name">다이브</span><div class="tl-bar"><div class="tl-fill" style="width:33.5%;background:#5a6560">57</div></div></div>
+      <div class="tl-row"><span class="tl-name">손아트</span><div class="tl-bar"><div class="tl-fill" style="width:33.5%;background:#5a6560">57</div></div></div>
+      <div class="tl-row"><span class="tl-name">대신에</span><div class="tl-bar"><div class="tl-fill" style="width:33%;background:#5a6560">56</div></div></div>
+      <p class="tl-cap">3어절이 모두 3글자 → 각 0.57초 균등 → 실제 발화와 어긋남</p>
+    </div>
+    <div class="tl">
+      <div class="lbl" style="color:var(--green)">후 · 실제 발화 타이밍</div>
+      <div class="tl-row"><span class="tl-name">다이브</span><div class="tl-bar"><div class="tl-fill" style="width:19%;background:var(--accent)">32</div></div></div>
+      <div class="tl-row"><span class="tl-name">손아트</span><div class="tl-bar"><div class="tl-fill" style="width:38%;background:var(--accent)">64</div></div></div>
+      <div class="tl-row"><span class="tl-name">대신에</span><div class="tl-bar"><div class="tl-fill" style="width:44%;background:var(--accent)">74</div></div></div>
+      <p class="tl-cap">"다이브"는 빨리(0.32s)·"대신에"는 천천히(0.70s) — 실제 말 속도 그대로 (단위: 센티초)</p>
+    </div>
+  </div>
+
+  <h2>해결</h2>
+  <ul>
+    <li><b>발화 곡선에 태우기</b> — STT word 타임스탬프로 "세그 내 실제 발화 진행 곡선"을 만들고 자막 어절을 그 곡선에 태워 채움 시간을 산출.</li>
+    <li><b>리드인 대기</b> — 자막이 뜨고 첫 단어 발화 전 침묵 구간엔 채우지 않고 대기(<span class="kbd">\k</span>) → 발화 시작에 정확히 맞춰 채우기 시작.</li>
+    <li><b>안전 폴백</b> — word 타임스탬프가 없으면(SRT·텍스트 입력) 기존 글자수 방식 그대로 → <b>회귀 0</b>.</li>
+  </ul>
+
+  <h2>검증</h2>
+  <table>
+    <tr><th>항목</th><th>결과</th></tr>
+    <tr><td>ffmpeg 실렌더 프레임 판독</td><td>채움이 발화 타이밍대로 진행 · 리드인 대기 동작(발화 전 프레임 채움 0)</td></tr>
+    <tr><td>libass 9.2.1 태그 렌더</td><td><code>\k</code>·<code>\kf</code>·<code>\r</code>·<code>\fs</code>·<code>\N</code>·세그독립 6항목 통과</td></tr>
+    <tr><td>폴백 회귀</td><td>20만 회 퍼즈 + 전 스타일/옵션 <b>비트 동일</b></td></tr>
+    <tr><td>엣지·불변식</td><td>채움값 ≥1 · 리드인+합=표시길이 · NaN/Inf 가드</td></tr>
+    <tr><td>10인 적대 평의회</td><td><b>불가 0</b> · 주의 3건 반영/수용</td></tr>
+  </table>
+
+  <h2>장단점 · 효율성</h2>
+  <p><span class="pill pill-g">장점</span> 카라오케가 실제 노래방처럼 말에 맞춰 채워짐 · 데이터 흐름/파이프라인 변경 0(이미 있는 파일을 additive 소비) · LLM 호출 0(과금 무관) · 폴백으로 기존 동작 완전 보존.</p>
+  <p><span class="pill pill-a">효율</span> 번인 시간 사실상 불변(채움값 계산만 바뀜) · 최악 병적 입력에서도 0.25초 미만 · ffmpeg 인코딩 대비 무시 가능.</p>
+
+  <h2>한계 (정직)</h2>
+  <ul>
+    <li><b>한국어 원본 자막</b> = 단어와 어절이 거의 1:1 → 실발화에 <b>정확 수렴</b>(주 사용 경로).</li>
+    <li><b>외국어 → 한국어 의역</b> = 어순이 뒤집히면 좌→우 카라오케의 본질적 한계라 균등과 대등(자막이 뜨는 시점 자체는 정확 → 최악도 "채움 스윕이 살짝 어긋남"이지 틀린 자막 아님).</li>
+    <li>AI가 자막 조각을 잘게 나눈 경계에 단어가 걸치면 소수 조각에서 ≤0.6초 어긋남(미관) — 후속 개선 후보.</li>
+  </ul>
+
+  <div class="card good">
+    <p class="lbl" style="color:var(--green)">품질 저하 리스크 = 낮음</p>
+    <p>기존 동작(글자수 방식)은 word 데이터가 없을 때 <b>비트 단위로 그대로 보존</b>(20만 퍼즈 확인). 새 경로는 word 데이터가 있을 때만 발현하는 순수 개선이고, 모든 실패 경로는 fail-soft(번인 실패해도 자막 텍스트는 정상). 파이프라인 기틀·출력 포맷 무침범.</p>
+  </div>
+
+  <p class="foot">PR #1805 (draft) · 백업 <code>_versions/260707_1813_카라오케_word타이밍/</code> · 10인 평의회 read-only 적대 감사</p>
+
+</div>
+</body>
+</html>
