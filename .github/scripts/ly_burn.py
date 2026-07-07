@@ -286,16 +286,32 @@ def run(vid_id, video, outdir):
         out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
     note = "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else ""
+    # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
+    src_url = ""
+    try:
+        prev = json.load(open(os.path.join(outdir, "video.json"), encoding="utf-8")) if os.path.isfile(os.path.join(outdir, "video.json")) else {}
+        src_url = prev.get("src") or ""
+    except Exception:
+        src_url = ""
+    if tg.R2_ON and not src_url and os.environ.get("REBURN") != "1":
+        try:
+            if os.path.getsize(video) <= 60 * 1024 * 1024:
+                ext = (os.path.splitext(video)[1] or ".mp4").lower()
+                ctype = {"webm": "video/webm", "mov": "video/quicktime", "mkv": "video/x-matroska"}.get(ext.lstrip("."), "video/mp4")
+                src_url = tg.r2_upload(open(video, "rb").read(), "ly_out/{}/src{}".format(vid_id, ext), ctype) or ""
+        except Exception as e:
+            print("::warning::원본 보관 실패(재합성 버튼만 비활성·무해):", e)
+    bust = re.sub(r"[^0-9]", "", kst_now())[:14]   # 같은 R2 키 덮어쓰기 = 브라우저 캐시 잔존 → ?v= 버스트(재합성 반영 보장)
     if tg.R2_ON:
         url = tg.r2_upload(data, "ly_out/{}/subbed.mp4".format(vid_id), "video/mp4")
         if url:
-            out_json(outdir, {"url": url, "bytes": len(data), "dur": round(dur, 1), "note": note}); return 0
+            out_json(outdir, {"url": url + "?v=" + bust, "src": src_url, "bytes": len(data), "dur": round(dur, 1), "note": note}); return 0
         print("::warning::R2 업로드 실패 — git 폴백 시도")
     if len(data) <= GIT_FALLBACK_MAX:
         with open(os.path.join(outdir, "subbed.mp4"), "wb") as f:
             f.write(data)
-        out_json(outdir, {"url": "ly_out/{}/subbed.mp4".format(vid_id), "bytes": len(data), "dur": round(dur, 1),
-                          "note": (note + " · " if note else "") + "git 저장(R2 미설정)"}); return 0
+        out_json(outdir, {"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "src": src_url, "bytes": len(data), "dur": round(dur, 1),
+                          "note": (note + " · " if note else "") + "git 저장(R2 미설정)"}); return 0   # src 승계 = 폴백서도 재합성 버튼 유지(평의회)
     out_json(outdir, {"error": "R2 미설정 + 파일 {}MB(30MB 초과) — 저장 불가".format(len(data) // 1048576)})
     return 0
 
