@@ -1134,7 +1134,7 @@
     display:flex; flex-direction:column; gap:3px; animation:popInCx .16s cubic-bezier(.22,.61,.36,1) both; }   /* 가운데정렬 = JS(popAt/openQueue) 좌변 직접 지정 · popInCx = scale/translateY 팝인만(translateX 없음 = 히트테스트 누수 차단) */
   .bpop[hidden] { display:none; }
   #linkpop { border-radius:var(--r-l); }   /* 앵커 셸 SSOT 편입(위 그룹 #linkpop) → 배경·블러·테두리·그림자+radius 형제 팝업 통일(옛 .bpop raw 글래스 saturate1.3·15px 이탈 = 팝업 A만 뒤 색 비침·따로 놀던 것 해소·분신술10 260707) */
-  #linkpop .lp-btn { display:block; width:100%; text-align:left; background:none; border:none; color:var(--accent-4); font:inherit; font-size:13px; font-weight:600; padding:8px 4px; border-radius:7px; cursor:pointer; }   /* 링크 메뉴 안 앱기능 버튼(메시지·발행본·설정) = .bpop a 스타일 계승 + 폰트 = 형광레몬 --accent-4(외부 링크군과 위계 구분 · 운영자 260707 "이 3개는 형광레몬") · hover = 강조색 유지(1138) */
+  #linkpop .lp-btn { display:block; width:100%; text-align:left; background:none; border:none; color:var(--fg); font:inherit; font-size:13px; font-weight:600; padding:8px 4px; border-radius:7px; cursor:pointer; }   /* 링크 메뉴 안 앱기능 버튼(메시지·발행본·설정) = .bpop a 스타일 계승(운영자 260707 pmenu 통합) */
   #linkpop .lp-btn:hover { color:var(--accent); }
   #linkpop .lp-btn.pmenu-sns { display:flex; align-items:center; gap:6px; }   /* 설정 = flex(우측 V자 쉐브론 · #linkpop .lp-btn의 block 오버라이드) */
   #linkpop #msgbtn { border-top:1px solid var(--line2); margin-top:4px; padding-top:9px; }   /* 앱기능 첫 항목(메시지) = SNS 링크군과 구분선(옛 .lp-set 구분선 계승) */
@@ -5838,14 +5838,12 @@ async function pushToggle() {
     if (cur) {   // 끄기
       await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'unsubscribe', subscription: cur.toJSON() }) }).catch(() => {});
       await cur.unsubscribe();
-      try { localStorage.setItem('nm_push_want', '0'); } catch (e2) {}   // 의도 = OFF(자가치유 대상 아님)
     } else {     // 켜기 — 권한 요청 → 구독 → 서버 저장
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') { await pushRefresh(); return; }
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
       const r = await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
       if (!r.ok) { await sub.unsubscribe().catch(() => {}); throw new Error('구독 저장 실패(' + r.status + ')'); }
-      try { localStorage.setItem('nm_push_want', '1'); } catch (e2) {}   // 의도 = ON(구독 증발 시 pushHeal 재구독 기준)
     }
   } catch (e) {
     const m = (e && e.message) || String(e);
@@ -5864,22 +5862,6 @@ async function pushToggle() {
 }
 const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click', pushToggle);
 const _pushRow = $('#pushrow'); if (_pushRow) _pushRow.addEventListener('click', e => { if (e.target.closest('#pushbtn')) return; if (_pushBtn && !_pushBtn.disabled) pushToggle(); });   // 행 전체 탭 = 토글(라벨·여백 눌러도 무반응이던 것 교정 · 버튼 자체 클릭은 기존 리스너 = 중복 발화 차단)
-async function pushHeal() {   // 자가치유(운영자 260707 "ON 해놔도 어느 순간 OFF") — 의도(ON 플래그)와 실제 구독이 어긋나면 조용히 재구독.
-  // 원인 = 브라우저(FCM)가 구독을 만료·교체(pushsubscriptionchange — sw.js 핸들러 신설과 짝) · 크롬 '미사용 사이트 권한 자동 제거' 등.
-  // 권한 granted면 무프롬프트로 복구되고, 권한이 회수됐으면 조용히 실패(프롬프트 남발 금지) = OFF 표시가 정직.
-  try {
-    if (!pushOK()) return;
-    if ((localStorage.getItem('nm_push_want') || '') !== '1') return;
-    if (Notification.permission !== 'granted') return;
-    const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
-    if (await reg.pushManager.getSubscription()) return;   // 살아있음 = 정상
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
-    const r = await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
-    if (!r.ok) { await sub.unsubscribe().catch(() => {}); return; }
-    await pushRefresh();   // ON 표시 복구
-  } catch (e) { /* 조용 — 다음 진입 때 재시도 */ }
-}
-pushHeal();
 
 // 프로필 메뉴
 const pmenu = $('#pmenu');
