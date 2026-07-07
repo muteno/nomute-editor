@@ -254,7 +254,13 @@ function renderMd(md) {
         else if (t.startsWith('## ')) html += `<h2>${esc(t.slice(3))}</h2>`;
         else if (t.startsWith('# ')) html += `<h1 class="t">${esc(t.slice(2))}</h1>`;
         else if (t.startsWith('@ 순서')) html += `<p class="legend">${esc(t)}</p>`;   // @ 범례 = 본문 mut보다 또렷하게(--fg · k-make.md @절과 짝 · 260707 2차)
-        else html += `<p>${esc(t)}</p>`;
+        else {
+          // 금지 문법 누출 폴백(k-make.md가 표·굵게를 금지하나 소프트 지시 — 모델이 흘리면 raw 노출 대신 읽히게 · 260707)
+          let txt = t;
+          if (/^\|.*\|$/.test(txt)) txt = txt.replace(/^\||\|$/g, '').split('|').map(s => s.trim()).filter(Boolean).join(' · ');
+          txt = txt.replace(/\*\*([^*]+)\*\*/g, '$1');
+          html += `<p>${esc(txt)}</p>`;
+        }
       });
     }
   });
