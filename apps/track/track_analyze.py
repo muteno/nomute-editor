@@ -28,7 +28,7 @@ SCORE_TH = 0.65         # YuNet 신뢰 임계(기본 .9는 소형·측면 얼굴
 NMS_TH = 0.3
 IOU_MATCH = 0.25        # 검출 스텝 간격(~0.08s)에서 얼굴 이동은 작음 — 동일 트랙 판정 IoU
 MISS_TTL_SEC = 0.7      # 이만큼 검출이 끊기면 트랙 종료(재등장은 새 트랙 → 군집이 같은 사람으로 재결합)
-MIN_TRACK_DETS = 3      # 3회 미만 검출 트랙 = 오탐 취급(12/s 기준 0.25s)
+MIN_TRACK_DETS = 3      # 3회 미만 검출 트랙 = 오탐 취급(12/s = 검출 간격 0.083s × 2구간 ≈ 0.17s)
 EMB_MIN_PX = 42         # 임베딩 품질 하한(원본 픽셀 얼굴 폭) — 너무 작으면 임베딩 자체를 안 씀
 EMB_TOP_N = 6           # 트랙당 임베딩 대표 크롭 수(고신뢰·대형 우선)
 SIM_MERGE = 0.48        # SFace 코사인 동일인 병합 임계(공식 동일인 기준 0.363보다 보수 = 과분할 편향)
@@ -97,7 +97,8 @@ def main():
     fps = cap.get(cv2.CAP_PROP_FPS) or 0
     if not fps or fps <= 1 or fps > 240 or math.isnan(fps):
         fps = 30.0
-    nframes = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    raw_n = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+    nframes = int(raw_n) if (raw_n and not math.isnan(raw_n) and raw_n > 0) else 0   # NaN 메타 → int() ValueError 방지(평의회3)
     dur = nframes / fps if nframes > 0 else 0
     if dur > MAX_SEC + 2:
         die(f"영상이 너무 길어 — {MAX_SEC//60}분 이하만 돼(지금 {int(dur//60)}분 {int(dur%60)}초). 잘라서 올려줘.", f"길이 초과 {dur:.0f}s")
@@ -109,11 +110,15 @@ def main():
     active = []
     f = -1
     first_shape = None
-    hard_cap = int((MAX_SEC + 2) * fps)   # 컨테이너 메타가 거짓(frames=0 등)이어도 실측으로 하드캡
+    hard_cap = int((MAX_SEC + 2) * fps)   # 프레임 수 캡(1차) — fps 메타 거짓이면 아래 POS_MSEC(fps 비의존 실측)이 2차로 잡음(평의회3)
     while True:
         f += 1
         if f > hard_cap:
             die(f"영상이 너무 길어 — {MAX_SEC//60}분 이하만 돼. 잘라서 올려줘.", f"실측 길이 초과 f={f}")
+        if f % 300 == 0 and f > 0:
+            pos = cap.get(cv2.CAP_PROP_POS_MSEC) or 0
+            if pos and not math.isnan(pos) and pos > (MAX_SEC + 2) * 1000:
+                die(f"영상이 너무 길어 — {MAX_SEC//60}분 이하만 돼. 잘라서 올려줘.", f"실측 시각 초과 {pos/1000:.0f}s")
         # 검출 안 하는 프레임 = grab만(디코드 스킵 = 3~5배 빠름)
         if f % step != 0:
             if not cap.grab():
@@ -171,14 +176,25 @@ def main():
                     aligned = None
                     if rec is not None and d[2] >= EMB_MIN_PX:
                         try:
-                            aligned = rec.alignCrop(small, d[5])
+                            # 정렬크롭은 원본 프레임 + 좌표 업스케일 — 축소 프레임(small) 정렬은 고해상 소스에서
+                            #   저질 임베딩(≈업스케일 112px) → 과병합 꼬리위험까지(평의회3 ①). 좌표·이미지는 반드시 짝.
+                            row = d[5].astype(np.float32).copy()
+                            if scale < 1.0:
+                                row[:14] = row[:14] / scale
+                            aligned = rec.alignCrop(frame, row)
                         except Exception:
                             aligned = None
-                    # 대표 크롭(카드용) = 원본 프레임에서 40% 여유
+                    # 대표 크롭(카드용) = 원본 프레임에서 40% 여유 · 즉시 256px 축소(풀해상 보관 = 순수 낭비
+                    #   → 다인원·4K서 메모리 폭주 — 평의회3 ② · 출력은 어차피 256px 저장)
                     mx, my = d[2] * 0.4, d[3] * 0.5
                     x0, y0 = int(max(0, d[0] - mx)), int(max(0, d[1] - my))
                     x1, y1 = int(min(W, d[0] + d[2] + mx)), int(min(H, d[1] + d[3] + my))
-                    crop = frame[y0:y1, x0:x1].copy() if (x1 - x0 > 8 and y1 - y0 > 8) else None
+                    crop = None
+                    if x1 - x0 > 8 and y1 - y0 > 8:
+                        crop = frame[y0:y1, x0:x1]
+                        s2 = 256.0 / max(crop.shape[0], crop.shape[1])
+                        crop = cv2.resize(crop, (max(1, int(crop.shape[1] * s2)), max(1, int(crop.shape[0] * s2))),
+                                          interpolation=cv2.INTER_AREA) if s2 < 1.0 else crop.copy()
                     t["cand"].append((q, aligned, crop, d[4]))
                     t["cand"].sort(key=lambda c: -c[0])
                     del t["cand"][EMB_TOP_N:]
@@ -258,11 +274,7 @@ def main():
                 if crop is not None and q > best_q:
                     best_q, best_crop = q, crop
         crop_rel = ""
-        if best_crop is not None:
-            ch, cw = best_crop.shape[:2]
-            s = 256.0 / max(ch, cw)
-            if s < 1.0:
-                best_crop = cv2.resize(best_crop, (max(1, int(cw * s)), max(1, int(ch * s))), interpolation=cv2.INTER_AREA)
+        if best_crop is not None:   # 캡처 시점에 이미 ≤256px(위 축소) — 그대로 저장
             crop_rel = f"crops/p{idx}.jpg"
             cv2.imwrite(os.path.join(outdir, crop_rel), best_crop, [cv2.IMWRITE_JPEG_QUALITY, 82])
         segs = []
@@ -285,7 +297,7 @@ def main():
         if size <= GIT_FALLBACK_MAX:
             import shutil
             shutil.copyfile(src, os.path.join(outdir, f"src.{ext}"))
-            src_url = f"/track_out/{vid_id}/src.{ext}"
+            src_url = f"track_out/{vid_id}/src.{ext}"   # 상대경로 = ly_burn 관례(루트서빙 가정 제거 · 평의회9)
             src_note = "git-fallback"
         else:
             src_note = "src-lost"   # 렌더 시점에 명확 에러(원본 보관 실패 — 재분석 안내)

@@ -11,6 +11,7 @@
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import time
@@ -48,9 +49,12 @@ def out_json(outdir, doc):
 
 def hex_bgr(hx):
     hx = (hx or "").lstrip("#")
-    if len(hx) != 6:
-        return (210, 238, 0)   # --accent #00EED2의 BGR
-    return (int(hx[4:6], 16), int(hx[2:4], 16), int(hx[0:2], 16))
+    try:
+        if len(hx) != 6:
+            raise ValueError(hx)
+        return (int(hx[4:6], 16), int(hx[2:4], 16), int(hx[0:2], 16))
+    except ValueError:   # 비-hex 색 하나가 렌더 전체를 죽이면 안 됨(평의회4) — 기본 = --accent #00EED2의 BGR
+        return (210, 238, 0)
 
 
 def smooth3(kf):
@@ -76,21 +80,26 @@ def build_spans(person, fps, total_frames):
     bridge = int(round(BRIDGE_SEC * fps))
     segs = sorted(person.get("segs") or [], key=lambda s: s["f0"])
     groups = []   # 브리지(≤1.2s 갭)로 이어붙인 kf 묶음 — 갭 구간은 sample()의 선형보간이 커버
-    cur = None
+    cur, cur_end = None, -1
     for s in segs:
         kf = smooth3(s.get("kf") or [])
         if not kf:
             continue
-        if cur is not None and kf[0][0] - cur[-1][0] <= bridge:
+        # 브리지 기준 = 그룹의 *최대* 끝프레임(cur_end) — cur[-1]은 포함(contained) 트랙 extend 후
+        #   방금 붙인 짧은 세그의 끝을 가리켜 실제 갭을 과대평가 → 브리지 실패 → 모자이크 노출(평의회4 실버그)
+        if cur is not None and kf[0][0] - cur_end <= bridge:
             cur.extend(kf)
+            cur_end = max(cur_end, kf[-1][0])
         else:
             if cur is not None:
                 groups.append(cur)
             cur = list(kf)
+            cur_end = kf[-1][0]
     if cur is not None:
         groups.append(cur)
     spans = []
     for g in groups:
+        g.sort(key=lambda k: k[0])   # 포함 트랙 extend = f 역행 가능 → 정렬로 단조 복원(끝 패딩·이분탐색 안전 · 평의회4 후속)
         head = [max(0, g[0][0] - pad)] + list(g[0][1:])   # 시간 안전마진 ±0.3s(첫·끝 박스 고정 유지)
         tail = [min(total_frames, g[-1][0] + pad)] + list(g[-1][1:])
         sp = [head] + g + [tail]
@@ -154,6 +163,18 @@ def find_font():
     return None
 
 
+def assert_cjk_font():
+    """핀셋 하드게이트 — CJK 폰트 없으면 이름표가 에러 없이 두부(□)로 조용히 렌더 → 깨진 영상이 '성공'
+    video.json으로 표시(ly-make.yml:95 두부 게이트와 동일 원리 · 평의회1 H-2). 사일런트 폴백 금지."""
+    try:
+        r = subprocess.run(["fc-list"], capture_output=True, text=True, timeout=20)
+        if "noto sans cjk" in (r.stdout or "").lower():
+            return
+    except Exception:
+        pass
+    raise RuntimeError("한글 폰트 준비 실패 — 잠시 후 다시 렌더해줘.")
+
+
 class PinsetPainter:
     """핀셋 이름표 — 코너 브래킷 + 리더선 + 필(이름). 스타일 = viewer/track.html 목업 캔버스 계승."""
 
@@ -165,8 +186,11 @@ class PinsetPainter:
         fp = find_font()
         try:
             self.font = ImageFont.truetype(fp, fs) if fp else ImageFont.load_default()
+            if not fp:
+                print("::warning::폰트 경로 탐색 실패 — 기본 비트맵 폴백(assert_cjk_font 통과 후라 비정상)", flush=True)
         except Exception:
             self.font = ImageFont.load_default()
+            print("::warning::truetype 로드 실패 — 기본 비트맵 폴백", flush=True)
         self.lw = max(2, int(round(H * 0.0035)))
 
     def draw(self, frame, tags):
@@ -221,11 +245,11 @@ class PinsetPainter:
 
 def resolve_src(meta, vid_id, outdir):
     src = meta.get("src") or ""
-    if src.startswith("/track_out/"):
+    if src.lstrip("/").startswith("track_out/"):   # git 폴백(상대 정본 · 구 절대경로 하위호환)
         p = os.path.join("viewer", src.lstrip("/"))
         return p if os.path.isfile(p) else None
     if src.startswith("https://"):
-        ext = os.path.splitext(src)[1].lstrip(".") or "mp4"
+        ext = (os.path.splitext(src.split("?")[0])[1].lstrip(".") or "mp4")   # 쿼리스트링 방어(평의회4)
         dst = f"/tmp/track_src.{ext}"
         try:
             subprocess.run(["curl", "-fsSL", "--max-time", "300", src, "-o", dst], check=True, timeout=330)
@@ -237,8 +261,10 @@ def resolve_src(meta, vid_id, outdir):
 
 def main():
     vid_id = sys.argv[1] if len(sys.argv) > 1 else ""
+    if not re.match(r"^[0-9]{12}-[0-9a-f]{6}$", vid_id):   # 인-스크립트 자체 방어(워크플로 가드와 이중 · ly_burn 문법 · 평의회4)
+        raise RuntimeError("잘못된 작업 ID — 먼저 분석부터 해줘.")
     outdir = os.path.join("viewer", "track_out", vid_id)
-    if not vid_id or not os.path.isdir(outdir):
+    if not os.path.isdir(outdir):
         raise RuntimeError("작업 폴더 없음 — 먼저 분석부터 해줘.")
     try:
         doc = json.load(open(os.path.join(outdir, "tracks.json"), encoding="utf-8"))
@@ -248,11 +274,13 @@ def main():
         req = json.loads(os.environ.get("RENDER") or "{}")
     except Exception:
         req = {}
+    if not isinstance(req, dict):   # 유효 JSON이지만 객체가 아님(리스트·수) — AttributeError 방지(평의회4)
+        req = {}
     mode = req.get("mode") if req.get("mode") in ("mosaic", "pinset") else "mosaic"
     names = {str(k): str(v)[:24] for k, v in (req.get("names") or {}).items() if str(v).strip()}
     colors = {str(k): str(v) for k, v in (req.get("colors") or {}).items()}
     invert = bool(req.get("invert"))
-    targets = {int(t) for t in (req.get("targets") or []) if isinstance(t, (int, float))}
+    targets = {int(t) for t in (req.get("targets") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)}
 
     people = doc.get("people") or []
     all_pids = {p["pid"] for p in people}
@@ -295,7 +323,10 @@ def main():
         bgr = hex_bgr(hexc)
         plans.append((spans, names.get(str(p["pid"]), f"#{p['pid']}"), bgr, (bgr[2], bgr[1], bgr[0])))
 
-    painter = PinsetPainter(W2, H2) if mode == "pinset" else None
+    painter = None
+    if mode == "pinset":
+        assert_cjk_font()   # 두부 번인 하드게이트(평의회1 H-2) — 렌더 시작 전 차단
+        painter = PinsetPainter(W2, H2)
     out_mp4 = "/tmp/track_result.mp4"
     enc = subprocess.Popen(
         ["ffmpeg", "-y", "-loglevel", "error",
@@ -308,52 +339,62 @@ def main():
     f = 0
     frame = first
     t0 = time.time()
-    while True:
-        frame = frame[:H2, :W2]
-        if mode == "mosaic":
-            for spans, _n, _bgr, _rgb in plans:
-                for sp in spans:
-                    b = sample(sp, f)
-                    if b:
-                        mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2)
-        else:
-            tags = []
-            for spans, name, _bgr, rgb in plans:
-                for sp in spans:
-                    b = sample(sp, f)
-                    if b:
-                        tags.append((b, name, rgb))
-                        break   # 같은 사람이 동시 스팬 2개(드묾) = 첫 것만 라벨(중복 이름표 방지)
-            if tags:
-                frame = painter.draw(frame, tags)
+    try:   # 예외·타임아웃에도 ffmpeg·cap 명시 정리(좀비·미상 상태 차단 · 평의회4)
+        while True:
+            frame = frame[:H2, :W2]
+            if mode == "mosaic":
+                for spans, _n, _bgr, _rgb in plans:
+                    for sp in spans:
+                        b = sample(sp, f)
+                        if b:
+                            mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2)
+            else:
+                tags = []
+                for spans, name, _bgr, rgb in plans:
+                    for sp in spans:
+                        b = sample(sp, f)
+                        if b:
+                            tags.append((b, name, rgb))
+                            break   # 같은 사람이 동시 스팬 2개(드묾) = 첫 것만 라벨(중복 이름표 방지)
+                if tags:
+                    frame = painter.draw(frame, tags)
+            try:
+                enc.stdin.write(frame.tobytes())
+            except BrokenPipeError:
+                break
+            f += 1
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                break
         try:
-            enc.stdin.write(frame.tobytes())
-        except BrokenPipeError:
-            break
-        f += 1
-        ok, frame = cap.read()
-        if not ok or frame is None:
-            break
-    cap.release()
-    enc.stdin.close()
-    rc = enc.wait(timeout=900)
+            enc.stdin.close()
+        except Exception:
+            pass   # BrokenPipe flush 재예외 — wait로 진행(구체 실패는 rc가 말함)
+        rc = enc.wait(timeout=900)
+    finally:
+        cap.release()
+        if enc.poll() is None:
+            enc.kill()
     if rc != 0 or not os.path.isfile(out_mp4) or os.path.getsize(out_mp4) < 1024:
         raise RuntimeError("영상 인코딩 실패 — 다시 시도해줘.")
     print(f"렌더 완료 {f}프레임 · {time.time()-t0:.0f}s · {os.path.getsize(out_mp4)//1048576}MB", flush=True)
 
+    # 출력 키 = stable(id·모드당 1개 덮어쓰기) + ?v= 캐시버스트 — epoch 접미 파일명은 재렌더(주 루프)마다
+    #   R2 고아·git 폴백 mp4가 무한 누적(ly_burn stable+?v= 불변 위반 · 평의회8 상①)
+    bust = int(time.time())
     url = ""
     if tg.R2_ON:
         with open(out_mp4, "rb") as fv:
-            url = tg.r2_upload(fv.read(), f"track_res/{vid_id}/{mode}-{int(time.time())}.mp4", "video/mp4") or ""
+            url = tg.r2_upload(fv.read(), f"track_res/{vid_id}/{mode}.mp4", "video/mp4") or ""
     if not url:
         if os.path.getsize(out_mp4) <= GIT_FALLBACK_MAX:
             import shutil
-            res_rel = f"result-{mode}-{int(time.time())}.mp4"
+            res_rel = f"result-{mode}.mp4"
             shutil.copyfile(out_mp4, os.path.join(outdir, res_rel))
-            url = f"/track_out/{vid_id}/{res_rel}"
+            url = f"track_out/{vid_id}/{res_rel}"
         else:
             raise RuntimeError("결과 업로드 실패(R2) — 잠시 후 다시 렌더해줘.")
-    out_json(outdir, {"url": url, "mode": mode, "n": len(sel), "frames": f})
+    out_json(outdir, {"url": f"{url}?v={bust}", "mode": mode, "n": len(sel), "frames": f})
 
 
 if __name__ == "__main__":
@@ -365,5 +406,8 @@ if __name__ == "__main__":
         outdir = os.path.join("viewer", "track_out", vid_id)
         msg = str(e) if isinstance(e, RuntimeError) else f"렌더 중 오류 — 다시 시도해줘. ({type(e).__name__})"
         print("::warning::렌더 실패: " + repr(e), flush=True)
-        if vid_id and os.path.isdir(outdir):
-            out_json(outdir, {"error": msg})
+        try:   # 최후 방어 — 기록 실패가 rc≠0로 새면 failure() 경로로 오염(ly_burn 611 미러 · 평의회4)
+            if vid_id and os.path.isdir(outdir):
+                out_json(outdir, {"error": msg})
+        except Exception as e2:
+            print("::warning::video.json 기록 실패: " + repr(e2), flush=True)

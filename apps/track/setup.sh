@@ -21,6 +21,10 @@ command -v yt-dlp >/dev/null 2>&1 || timeout 180 pip3 install -q yt-dlp
 # 모델 2종 prefetch — YuNet 얼굴검출 232KB + SFace 얼굴임베딩 37MB → ~/.cache/nomute-track (track-make.yml actions/cache 7일)
 #   ⚠ opencv_zoo는 Git LFS: raw.githubusercontent.com은 131바이트 포인터 텍스트를 줌(실측) → 반드시 media.githubusercontent.com.
 #   핀 고정 = sha256(파일명 자체가 날짜 버전이라 main 참조 + 해시 검증 = 내용 드리프트 차단 · 실측 260707).
+if [ "${TRACK_MODE:-}" = "render" ]; then   # 렌더 = 모델 불사용(cv2 디코드+PIL+ffmpeg만) — 37MB 다운·캐시 스킵(평의회1 L-5)
+  echo "[setup] track env ready (render — 모델 스킵)"
+  exit 0
+fi
 MDIR="${NOMUTE_TRACK_MODELS:-$HOME/.cache/nomute-track}"
 mkdir -p "$MDIR"
 ZOO="https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models"

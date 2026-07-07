@@ -7,11 +7,10 @@
 <title>트래킹</title>
 <link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외) — ly.html·k.html 동일 계승. 인라인 :root가 팔레트 오버라이드 -->
 <style>
-  /* 팔레트 = ly.html(영상 도구) 계승 · 구조토큰(radius·폰트·굵기·모션 계열)은 tokens.css */
+  /* 팔레트 = ly.html(영상 도구) 계승 · 구조토큰(radius·폰트·굵기·모션 계열)은 tokens.css · 인물색 정본 = JS PALETTE(렌더 py와 짝) */
   :root{
     --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
     --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322;
-    --accent-2:#d8ff3d; --accent-3:#e23b2a; --accent-5:#0FFD02;   /* 인물 태그색 = 브랜드 팔레트 계승(index :root 값) */
     --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(ly :root 동기) */
     --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95;
   }
@@ -33,6 +32,7 @@
   .urlclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6;
     border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
     -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .urlclip::before { content:""; position:absolute; inset:-8px; }   /* 히트슬롭 42px(ly 정본 계승 · 평의회7) */
   .urlclip svg { display:block; width:13px; height:13px; }
   .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
   .urlclip:active { transform:translateY(-50%) scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
@@ -68,16 +68,17 @@
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
   .status.err { color:var(--danger); }
 
-  /* ── 3계층 = 단계 스텝퍼(순차·부모 알약탭과 시각 분리) ── */
+  /* ── 3계층 = 단계 스텝퍼(순차 진행 표시 · 노드 = 실제 button → 키보드·SR 도달 · 평의회7) ── */
   .stepper { display:flex; align-items:center; padding:4px 2px 18px; }
-  .snode { display:flex; align-items:center; gap:9px; cursor:pointer; min-width:0; }
-  .snode.locked { cursor:default; }
+  .snode { display:flex; align-items:center; gap:9px; cursor:pointer; min-width:0; background:none; border:0; padding:0; font:inherit; color:inherit; position:relative; }
+  .snode::before { content:""; position:absolute; inset:-8px; }   /* 히트슬롭(28px 점 → 44px 유효 · 평의회7) */
+  .snode:disabled { cursor:default; }
   .sdot { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:var(--fw-x);
     background:rgba(255,255,255,.05); color:var(--mut); border:1px solid var(--line); flex:none; font-variant-numeric:tabular-nums; transition:all .18s var(--gauge-ease); }
   .sdot svg { width:14px; height:14px; }
   .slabel { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); white-space:nowrap; transition:color .18s; }
   .snode:active .sdot { transform:scale(var(--press-m)); }
-  .snode.locked:active .sdot { transform:none; }
+  .snode:disabled:active .sdot { transform:none; }
   .snode.done .sdot { background:var(--accent-dim); color:var(--accent); border-color:rgba(var(--accent-rgb),.45); }
   .snode.done .slabel { color:var(--fg); }
   .snode.cur .sdot { background:var(--accent); color:var(--on-accent); border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-dim); }
@@ -94,18 +95,20 @@
   .filmstage { position:relative; width:100%; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); aspect-ratio:16/9; background:#0a1a0d; margin-top:8px; }
   .scanline { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); box-shadow:0 0 14px var(--accent); animation:scan 1.5s var(--gauge-ease) infinite; }
   @keyframes scan { 0%{ top:6%;} 50%{ top:94%;} 100%{ top:6%;} }
+  @media (prefers-reduced-motion:reduce){ .scanline { animation:none; top:50%; } .pane.on { animation:none; } }
 
   /* 모드 선택(모자이크|핀셋) — 단독 토글 = 그 표면 버튼 패밀리(글래스 필) 계승(§디자인 k) */
   .modeseg { display:flex; gap:8px; margin:0 0 12px; }
-  .mseg { flex:1; padding:11px 10px; text-align:center; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:13px; font-family:inherit; cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .mseg { flex:1; padding:11px 10px; text-align:center; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); font-family:inherit; cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
   .mseg:active { transform:scale(var(--press-m)); }
   .mseg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
-  .invtg { display:inline-flex; align-items:center; gap:7px; margin:0 0 12px; padding:8px 14px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-size:12px; font-weight:var(--fw-b); font-family:inherit; cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .invtg { display:inline-flex; align-items:center; gap:7px; margin:0 0 12px; padding:8px 14px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-b); font-family:inherit; cursor:pointer; user-select:none; position:relative; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .invtg::before { content:""; position:absolute; inset:-6px; }   /* 히트슬롭(평의회7) */
   .invtg:active { transform:scale(var(--press-m)); }
   .invtg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
 
-  /* 인물 카드(step2) — 실검출 크롭 */
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:12px; }
+  /* 인물 카드(step2) — 실검출 크롭 · minmax 136 = 320px 폰에서도 2열(평의회7) */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(136px,1fr)); gap:12px; }
   .card { background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:var(--r-l); padding:12px; position:relative; transition:border-color .18s, box-shadow .18s, opacity .18s; }
   .card.named { border-color:color-mix(in srgb,var(--pc) 55%, transparent); box-shadow:0 0 0 1px color-mix(in srgb,var(--pc) 22%,transparent); }
   .card.sel { border-color:rgba(var(--accent-rgb),.55); box-shadow:0 0 0 1px rgba(var(--accent-rgb),.25); }
@@ -114,7 +117,6 @@
   #grid[data-mode=pinset] .selchk { display:none; }
   .avatar { width:100%; aspect-ratio:1/1.05; border-radius:var(--r-m); position:relative; overflow:hidden; margin-bottom:10px; display:grid; place-items:center; background:radial-gradient(120% 120% at 50% 22%, rgba(255,255,255,.1), rgba(255,255,255,.02)); }
   .avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  #grid[data-mode=pinset] .avatar { margin-bottom:10px; }
   #grid[data-mode=mosaic] .avatar { margin-bottom:0; }
   .selchk { position:absolute; top:7px; right:7px; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px rgba(var(--accent-rgb),.45); opacity:0; transform:scale(.6); transition:opacity .15s, transform .15s var(--gauge-ease); }
   .selchk svg { width:13px; height:13px; }
@@ -140,18 +142,19 @@
   .cta:active { transform:scale(var(--press-l)); } .cta:disabled { opacity:.38; box-shadow:none; cursor:not-allowed; }
   .dlbtn { background:rgba(var(--accent-rgb),.10)!important; color:var(--accent)!important; border:1px solid rgba(var(--accent-rgb),.34)!important; }
   .dlbtn.dl-done { color:var(--mut)!important; }   /* 받음 = mut(전 앱 공통 기틀 · 운영자 260706) */
+  .ghost.dlbtn { margin-left:auto; width:38px; height:38px; padding:0; justify-content:center; }   /* 아이콘 단독(§표기 라 텍스트·SVG 공존 금지 · 평의회6) */
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
 <body>
 <div class="wrap">
-  <!-- 3계층 = 스텝퍼(부모 알약탭과 시각 분리) — 분석 1회 → 핀셋/모자이크 선택 → 렌더 N회(운영자 확정: 통합 플로우) -->
-  <div class="stepper" id="stepper" role="tablist" aria-label="진행 단계">
-    <div class="snode cur" data-s="0" role="tab"><span class="sdot">1</span><span class="slabel">영상 분석</span></div>
+  <!-- 3계층 = 스텝퍼(부모 알약탭과 시각 분리) — 분석 1회 → 인물 확정에서 핀셋/모자이크 선택 → 렌더 N회(운영자 확정: 통합 플로우) -->
+  <div class="stepper" id="stepper" aria-label="진행 단계">
+    <button type="button" class="snode cur" data-s="0" aria-current="step"><span class="sdot">1</span><span class="slabel">영상 분석</span></button>
     <div class="sline" data-l="0"></div>
-    <div class="snode locked" data-s="1" role="tab"><span class="sdot">2</span><span class="slabel">인물 확정</span></div>
+    <button type="button" class="snode locked" data-s="1" disabled><span class="sdot">2</span><span class="slabel">인물 확정</span></button>
     <div class="sline" data-l="1"></div>
-    <div class="snode locked" data-s="2" role="tab"><span class="sdot">3</span><span class="slabel">렌더</span></div>
+    <button type="button" class="snode locked" data-s="2" disabled><span class="sdot">3</span><span class="slabel">렌더</span></button>
   </div>
 
   <!-- STEP 1 = ly.html 폼 계승(URL·파일·버튼) -->
@@ -170,7 +173,7 @@
       <button class="go" id="analyze">인물 분석</button>
     </div>
     <div class="filmstage" id="filmstage" hidden><div class="scanline"></div></div>
-    <div class="status" id="astatus"></div>
+    <div class="status" id="astatus" role="status"></div>
   </div>
 
   <!-- STEP 2 = 인물 확정 + 모드(모자이크/핀셋) — 모자이크 = 카드 탭 선택 · 핀셋 = 이름 입력 -->
@@ -183,25 +186,25 @@
     <label class="fl" style="margin-top:0">등장인물 <b style="color:var(--accent)" id="pcount">0명</b> <span class="mut2" id="dropnote"></span></label>
     <div class="grid" id="grid" data-mode="mosaic"></div>
     <div class="footer">
-      <button class="ghost" id="back1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>다시 분석</button>
+      <button class="ghost" id="back1">다시 분석</button>
       <div class="stat2"><b id="cnt">0</b> / <span id="tot">0</span> <span id="statlbl">가림</span></div>
       <button class="cta" id="toRender" disabled>모자이크 렌더</button>
     </div>
-    <div class="status" id="r2status"></div>
+    <div class="status" id="r2status" role="status"></div>
   </div>
 
   <!-- STEP 3 = 렌더 결과 -->
   <div class="pane" id="p2">
     <div class="vstage" id="vwrap"></div>
-    <div class="status" id="rstatus"></div>
+    <div class="status" id="rstatus" role="status"></div>
     <div class="footer">
-      <button class="ghost" id="back2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>다시 고르기</button>
-      <button class="ghost dlbtn" id="dlVid" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l4-4m-4 4l-4-4M4 21h16"/></svg>저장</button>
+      <button class="ghost" id="back2">다시 고르기</button>
+      <button class="ghost dlbtn" id="dlVid" hidden aria-label="저장" title="저장"></button>
     </div>
   </div>
 </div>
 
-<script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — CHECK/OK/ERR/WAIT/WARN_SVG -->
+<script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — CHECK/OK/ERR/WAIT/WARN/DOWNLOAD_SVG -->
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -209,31 +212,44 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const PALETTE=['#00EED2','#e23b2a','#d8ff3d','#0FFD02','#38C6FF','#FF5EC8','#FFE13D','#AC5CFF','#2CF5A5','#ff7a6b','#3a6ddb','#eef7f0'];
 const PEND_KEY='nm_track_pend';
 const API='/api/track';
+const BUDGET=600;   // 폴 소프트 예산(초) — 분석·렌더 공용(하드 = ×2 · 재개 클램프도 이 값)
 let TK={ id:'', meta:null, people:[], mode:'mosaic', sel:new Set(), invert:false, names:{}, resultUrl:'' };
 let FILE_B64='', FILE_NAME='';
+let USER_ACT=false;   // 사용자 발사 개시 = 늦게 도착한 pend 복원이 새 작업을 격침 못 하게(평의회5 · ly LY_GEN 등가)
 const unlocked=[true,false,false];
 let step=0, _curStop=null;
 
 function go(s){
   step=s;
   $$('.pane').forEach((p,i)=>p.classList.toggle('on', i===s));
-  $$('.snode').forEach((t,i)=>{ t.classList.toggle('cur',i===s); t.classList.toggle('done',i<s); t.classList.toggle('locked', i>s && !unlocked[i]);
-    const d=t.querySelector('.sdot'); d.innerHTML = (i<s) ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>' : (i+1); });
-  $$('.sline').forEach((l,i)=> l.classList.toggle('fill', i<s));
+  $$('.snode').forEach((t,i)=>{
+    const lock=i>s&&!unlocked[i];
+    t.classList.toggle('cur',i===s); t.classList.toggle('done',i<s); t.classList.toggle('locked',lock);
+    t.disabled=lock;
+    if(i===s)t.setAttribute('aria-current','step'); else t.removeAttribute('aria-current');
+    const d=t.querySelector('.sdot'); d.innerHTML=(i<s)?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>':(i+1);
+  });
+  $$('.sline').forEach((l,i)=>l.classList.toggle('fill', i<s));
+  if(s===1)recount();   // 재진입 시 CTA·카운트 재평가(평의회5 — 렌더 후 back 잠김 방지)
 }
-$('#stepper').addEventListener('click',e=>{const t=e.target.closest('.snode'); if(t&&!t.classList.contains('locked'))go(+t.dataset.s)});
+$('#stepper').addEventListener('click',e=>{const t=e.target.closest('.snode'); if(t&&!t.disabled)go(+t.dataset.s)});
 
 const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
 const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
 const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
+const pendReady=()=>pendSet({id:TK.id, st:'ready', t0:Date.now(), mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names});   // 인물 확정 상태 영속 — 서브탭 전환 iframe 리로드에도 step2 복원(평의회5 상⑨)
 
 // ── STEP1 입력 (ly 문법 계승) ──
+const FILE_ICON=$('#fileTxt').innerHTML;   // 빈 슬롯 픽토그램 원본(초과 리셋 복원용)
 $('#file').addEventListener('change',()=>{
   const f=$('#file').files[0]; if(!f) return;
-  if(f.size>30*1024*1024){ $('#file').value=''; return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
+  FILE_B64=''; FILE_NAME='';   // 새 선택 즉시 이전 파일 무효화 — 읽는 중 발사 = 옛 파일 전송 레이스 차단(평의회5)
+  if(f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
   FILE_NAME=f.name;
+  const btn=$('#analyze'); btn.disabled=true;   // 읽는 동안 발사 잠금(불완전 B64 전송 차단)
   const rd=new FileReader();
-  rd.onload=()=>{ FILE_B64=String(rd.result||''); $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
+  rd.onload=()=>{ FILE_B64=String(rd.result||''); btn.disabled=false; $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
+  rd.onerror=()=>{ btn.disabled=false; FILE_NAME=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; errStatus('파일을 못 읽었어 — 다시'); };
   rd.readAsDataURL(f);
 });
 $('#urlClip').addEventListener('click',async()=>{ try{ const t=await navigator.clipboard.readText(); if(t)$('#url').value=t.trim(); }catch(e){} });
@@ -262,6 +278,7 @@ $('#analyze').addEventListener('click',async()=>{
   const url=$('#url').value.trim();
   if(!url && !FILE_B64) return errStatus('영상 URL이나 파일을 넣어줘');
   if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
+  USER_ACT=true;
   const status=$('#astatus'); status.classList.remove('err'); status.textContent='';
   { const gb=$('#analyze'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(()=>gb.classList.remove('firing'),760); }
   $('#analyze').disabled=true;
@@ -270,28 +287,28 @@ $('#analyze').addEventListener('click',async()=>{
     const payload = url? {url} : {fileB64:FILE_B64, name:FILE_NAME};
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ goLbl(null); status.innerHTML=WARN_SVG+' '+esc(String(j.error||res.status)); status.classList.add('err'); return; }
-    TK.id=j.id; TK.sel=new Set(); TK.names={}; TK.invert=false;
+    if(!res.ok||j.error){ goLbl(null); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    TK.id=j.id; TK.sel=new Set(); TK.names={}; TK.invert=false; TK.resultUrl='';
     pendSet({id:j.id, st:'analyze', t0:Date.now()});
     pollAnalyze('track_out/'+j.id+'/tracks.json', Date.now());
     goLbl(CHECK_SVG);
     setTimeout(()=>{ const g=$('#analyze'); if(g&&g.classList.contains('wait')) g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; },700);
-  }catch(e){ goLbl(null); status.innerHTML=WARN_SVG+' 요청 실패: '+esc(e.message); status.classList.add('err'); }
+  }catch(e){ goLbl(null); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ $('#analyze').disabled=false; }
 });
 
-// ── 분석 폴 (ly poll 문법 계승: error.log 우선·SPA 폴백 HTML 가드·연/경성 예산) ──
+// ── 분석 폴 (ly poll 문법 계승: error.log 우선·SPA 폴백 HTML 가드·연/경성 예산·await 후 live 재확인) ──
 function pollAnalyze(outPath, t0){
   if(_curStop)_curStop();
   const status=$('#astatus');
-  const budget=600;   // 분석 1~2분 + Pages 배포 1~3분 — 소프트 초과 후에도 계속(하드 ×2)
+  const budget=BUDGET;   // 분석 1~2분 + Pages 배포 1~3분 — 소프트 초과 후에도 계속(하드 ×2)
   const errPath=outPath.replace(/[^/]+$/,'error.log');
   let live=true; const stop=()=>{ live=false; clearInterval(disp); goWait(false); $('#filmstage').hidden=true; }; _curStop=stop;
   goWait(true); $('#filmstage').hidden=false;
   const draw=()=>{
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
-    if(sec>budget*2){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    if(sec>budget*2){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지 = 문구 약속 그대로(재개 클램프가 이어받음 · 평의회7)
     if(sec>budget){ status.innerHTML=WAIT_SVG+' 아직 분석 중… '+sec+'s (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }
     status.innerHTML=WAIT_SVG+' 얼굴 찾고 따라가는 중… '+sec+'s (보통 2–4분)';
   };
@@ -300,26 +317,31 @@ function pollAnalyze(outPath, t0){
     if(!live) return;
     try{   // 1) 실패 먼저 — error.log 뜨면 즉시(무한 폴 차단)
       const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
       if(er.ok){
         const ect=(er.headers.get('content-type')||'').toLowerCase();
         const em=await er.text();
+        if(!live) return;
         const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
         if(em&&em.trim()&&!eHtml){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
       }
     }catch(e){ /* 재시도 */ }
     try{   // 2) 결과(tracks.json)
       const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
       if(r.ok){
         const ct=(r.headers.get('content-type')||'').toLowerCase();
         const tx=await r.text();
+        if(!live) return;
         const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
         if(tx&&tx.trim()&&!isHtml){
           let d=null; try{ d=JSON.parse(tx); }catch(e){}
           if(d&&Array.isArray(d.people)){
-            stop(); pendClear();
+            stop();
             status.innerHTML=OK_SVG+' 완료 ('+Math.round((Date.now()-t0)/1000)+'s)';
             TK.meta=d.meta||{}; TK.people=d.people;
             buildCards(); unlocked[1]=true; go(1);
+            pendReady();   // pendClear 아님 — 서브탭 전환(iframe 리로드)에도 step2 복원(평의회5 상⑨)
             return;
           }
         }
@@ -338,26 +360,29 @@ function buildCards(){
   $('#dropnote').textContent=(TK.meta&&TK.meta.dropped)?('+'+TK.meta.dropped+' 생략'):'';
   if(!TK.people.length){ g.innerHTML='<div class="nofaces">감지된 얼굴 없음</div>'; }
   TK.people.forEach(p=>{
-    const color=PALETTE[(p.pid-1)%PALETTE.length];
-    const c=document.createElement('div'); c.className='card'; c.style.setProperty('--pc',color); c.dataset.pid=p.pid;
+    const pid=p.pid|0;   // 서버 정수 계약 + 방어 강제(평의회5)
+    const color=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length];
+    const c=document.createElement('div'); c.className='card'; c.style.setProperty('--pc',color); c.dataset.pid=pid;
     const img=p.crop?('track_out/'+TK.id+'/'+p.crop+'?v='+encodeURIComponent((TK.meta&&TK.meta.made)||'')):'';
-    c.innerHTML='<div class="avatar">'+(img?('<img alt="인물 '+p.pid+'" loading="lazy" src="'+esc(img)+'">'):'')
+    c.innerHTML='<div class="avatar">'+(img?('<img alt="인물 '+pid+'" loading="lazy" src="'+esc(img)+'">'):'')
       +'<span class="selchk">'+CHECK_SVG+'</span>'
-      +'<span class="rng">'+fmtT(p.first)+'–'+fmtT(p.last)+'</span><span class="hint">#'+p.pid+'</span></div>'
-      +'<div class="nrow"><span class="dot"></span><input class="nin" placeholder="이름 입력" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="'+esc(TK.names[p.pid]||'')+'"></div>';
+      +'<span class="rng">'+fmtT(p.first)+'–'+fmtT(p.last)+'</span><span class="hint">#'+pid+'</span></div>'
+      +'<div class="nrow"><span class="dot"></span><input class="nin" placeholder="이름 입력" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="'+esc(TK.names[pid]||'')+'"></div>';
     g.appendChild(c);
     const im=c.querySelector('.avatar img');
-    if(im) im.addEventListener('error',()=>{ setTimeout(()=>{ im.src=img+'&r='+Date.now(); },4000); },{once:true});   // 배포 전파 직후 크롭 404 = 1회 재시도
+    if(im){ let tries=0; im.addEventListener('error',function h(){ tries++; if(tries===1){ setTimeout(()=>{ im.src=img+'&r='+Date.now(); },4000); } else { im.removeEventListener('error',h); im.remove(); } }); }   // 배포 전파 지연 = 1회 재시도 · 최종 실패 = 제거(#pid·시간범위 플레이스홀더 잔존 · 평의회7)
     const inp=c.querySelector('.nin');
-    inp.addEventListener('input',()=>{ TK.names[p.pid]=inp.value.trim(); c.classList.toggle('named',!!inp.value.trim()); recount(); });
-    c.addEventListener('click',e=>{
+    inp.addEventListener('input',()=>{ TK.names[pid]=inp.value.trim(); c.classList.toggle('named',!!inp.value.trim()); recount(); });
+    const toggle=()=>{
       if(TK.mode!=='mosaic') return;   // 핀셋 = 이름 입력만(카드 탭 무동작)
-      if(e.target.closest('.nin')) return;
-      if(TK.sel.has(p.pid)) TK.sel.delete(p.pid); else TK.sel.add(p.pid);
-      c.classList.toggle('sel',TK.sel.has(p.pid)); recount();
-    });
-    if(TK.sel.has(p.pid)) c.classList.add('sel');
-    if(TK.names[p.pid]) c.classList.add('named');
+      if(TK.sel.has(pid)) TK.sel.delete(pid); else TK.sel.add(pid);
+      const on=TK.sel.has(pid);
+      c.classList.toggle('sel',on); c.setAttribute('aria-pressed',on?'true':'false'); recount();
+    };
+    c.addEventListener('click',e=>{ if(e.target.closest('.nin')) return; toggle(); });
+    c.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('.nin')){ e.preventDefault(); toggle(); } });   // 키보드 선택(평의회7)
+    if(TK.sel.has(pid)) c.classList.add('sel');
+    if(TK.names[pid]) c.classList.add('named');
   });
   applyMode();
 }
@@ -365,84 +390,98 @@ function applyMode(){
   $('#grid').dataset.mode=TK.mode;
   $$('.mseg').forEach(b=>{ const on=b.dataset.m===TK.mode; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
   const iv=$('#invtg'); iv.hidden=TK.mode!=='mosaic'; iv.classList.toggle('on',TK.invert); iv.setAttribute('aria-pressed',TK.invert?'true':'false');
+  $$('#grid .card').forEach(c=>{   // 모자이크 = 카드 자체가 토글 버튼(키보드·SR 도달) / 핀셋 = 입력칸만
+    if(TK.mode==='mosaic'){ c.setAttribute('role','button'); c.tabIndex=0; c.setAttribute('aria-pressed', c.classList.contains('sel')?'true':'false'); }
+    else { c.removeAttribute('role'); c.removeAttribute('aria-pressed'); c.tabIndex=-1; }
+  });
   $('#toRender').textContent=TK.mode==='mosaic'?'모자이크 렌더':'핀셋 렌더';
   $('#statlbl').textContent=TK.mode==='mosaic'?'가림':'이름';
   recount();
 }
 function recount(){
   const total=TK.people.length;
+  const srcLost=!!(TK.meta&&TK.meta.src_note==='src-lost');   // 원본 보관 실패 = 렌더 불가 선표시(평의회9)
+  const st=$('#r2status');
+  let n;
   if(TK.mode==='mosaic'){
-    const n=TK.invert?(total-TK.sel.size):TK.sel.size;
-    $('#cnt').textContent=n; $('#tot').textContent=total;
-    $('#toRender').disabled=!total||n<=0;
+    n=TK.invert?(total-TK.sel.size):TK.sel.size;
+    $('#toRender').disabled=!total||n<=0||srcLost;
   }else{
-    const n=TK.people.filter(p=>(TK.names[p.pid]||'').trim()).length;
-    $('#cnt').textContent=n; $('#tot').textContent=total;
-    $('#toRender').disabled=n===0;
+    n=TK.people.filter(p=>(TK.names[p.pid|0]||'').trim()).length;
+    $('#toRender').disabled=n===0||srcLost;
   }
+  $('#cnt').textContent=n; $('#tot').textContent=total;
+  if(st&&!st.classList.contains('err')) st.textContent = srcLost?'원본 보관 실패 — 처음부터 다시 분석해줘':(TK.mode==='mosaic'&&TK.invert&&total&&n<=0?'전원 선택 = 가릴 사람이 없어':'');
 }
 $$('.mseg').forEach(b=>b.addEventListener('click',()=>{ TK.mode=b.dataset.m; applyMode(); }));
 $('#invtg').addEventListener('click',()=>{ TK.invert=!TK.invert; applyMode(); });
 $('#back1').addEventListener('click',()=>{ if(_curStop)_curStop(); pendClear(); unlocked[1]=false; unlocked[2]=false; go(0); });
-$('#back2').addEventListener('click',()=>{ if(_curStop)_curStop(); go(1); });
+$('#back2').addEventListener('click',()=>{ go(1); });   // 렌더 폴은 유지(진행 중이면 완료가 step3에 준비됨) — go(1)이 recount로 CTA 재활성
 
 // ── 렌더 발사 + 폴 ──
 $('#toRender').addEventListener('click',async()=>{
+  USER_ACT=true;
   const btn=$('#toRender'), st=$('#r2status'); st.classList.remove('err'); st.textContent='';
   btn.disabled=true;
   const names={}, colors={};
-  TK.people.forEach(p=>{ colors[p.pid]=PALETTE[(p.pid-1)%PALETTE.length]; const nm=(TK.names[p.pid]||'').trim(); if(nm) names[p.pid]=nm; });
+  TK.people.forEach(p=>{ const pid=p.pid|0; colors[pid]=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length]; const nm=(TK.names[pid]||'').trim(); if(nm) names[pid]=nm; });
   const payload={render:{id:TK.id, mode:TK.mode, targets:[...TK.sel], invert:TK.invert, names, colors}};
+  const prevUrl=TK.resultUrl||'';   // 직전 결과 배제 기준선(90s 창 오인 차단 · ly skipUrl 문법 · 평의회5·9)
   try{
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ st.innerHTML=WARN_SVG+' '+esc(String(j.error||res.status)); st.classList.add('err'); recount(); return; }
-    pendSet({id:TK.id, st:'render', t0:Date.now(), mode:TK.mode});
-    unlocked[2]=true; go(2); pollRender(Date.now());
-  }catch(e){ st.innerHTML=WARN_SVG+' 요청 실패: '+esc(e.message); st.classList.add('err'); recount(); }
+    if(!res.ok||j.error){ st.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); st.classList.add('err'); recount(); return; }
+    const t0=Date.now();
+    pendSet({id:TK.id, st:'render', t0, mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names});
+    unlocked[2]=true; go(2); pollRender(t0, prevUrl, t0-90000);
+  }catch(e){ st.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; st.classList.add('err'); recount(); }
 });
 
-function pollRender(t0){
+function pollRender(t0, prevUrl, minTs){
   if(_curStop)_curStop();
   const status=$('#rstatus'); status.classList.remove('err');
   $('#vwrap').innerHTML=''; $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');
   const outPath='track_out/'+TK.id+'/video.json';
   const errPath='track_out/'+TK.id+'/error.log';
-  const budget=600;
+  const budget=BUDGET;
   let live=true, prevErr=null; const stop=()=>{ live=false; clearInterval(disp); }; _curStop=stop;
   const draw=()=>{
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
-    if(sec>budget*2){ stop(); pendClear(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    if(sec>budget*2){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지(재개 클램프가 이어받음)
     status.innerHTML=WAIT_SVG+' '+(TK.mode==='pinset'?'핀셋':'모자이크')+' 렌더 중… '+sec+'s (보통 2–5분)';
   };
   const disp=setInterval(draw,1000); draw();
-  const fresh=ts=>{ const t=Date.parse(ts||''); return !isNaN(t) && t>=t0-90000; };   // 이번 디스패치 산출만(과거 video.json 잔존 오인 차단 · ts=KST ISO)
+  const fresh=ts=>{ const t=Date.parse(ts||''); return !isNaN(t) && t>=minTs; };   // 이번 디스패치 이후 산출만(과거 video.json 오인 차단 · ts=KST ISO) — 재개 시 minTs=원 디스패치 기준(늦은 완성도 수신)
   const tick=async()=>{
     if(!live) return;
-    try{   // 워크플로 자체 사망(render 스텝 전) = error.log — 내용 변화 기준선(과거 실패 잔존 무시 · lyPollVideo 문법)
+    try{   // 워크플로 자체 사망(render 스텝 전) = error.log — 내용 변화 기준선(과거 실패 잔존 무시 · lyPollVideo 문법 · 동일 문구 재실패는 미검출 = 수용 트레이드오프·하드 타임아웃이 백스톱)
       const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
       if(er.ok){
         const ect=(er.headers.get('content-type')||'').toLowerCase();
         const em=await er.text();
+        if(!live) return;
         const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
         if(em&&em.trim()&&!eHtml){
           if(prevErr===null) prevErr=em.trim();
-          else if(em.trim()!==prevErr){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
+          else if(em.trim()!==prevErr){ stop(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
         }else if(prevErr===null) prevErr='';
       }else if(prevErr===null) prevErr='';
     }catch(e){ /* 재시도 */ }
     try{
       const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
       if(r.ok){
         const ct=(r.headers.get('content-type')||'').toLowerCase();
         const tx=await r.text();
+        if(!live) return;
         const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
         if(tx&&tx.trim()&&!isHtml){
           let d=null; try{ d=JSON.parse(tx); }catch(e){}
           if(d&&fresh(d.ts)){
-            if(d.error){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(String(d.error)); status.classList.add('err'); return; }
-            if(d.url){ stop(); pendClear(); showResult(d, Math.round((Date.now()-t0)/1000)); return; }
+            if(d.error){ stop(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(String(d.error)); status.classList.add('err'); return; }
+            if(d.url&&d.url!==prevUrl){ stop(); pendReady(); showResult(d, Math.round((Date.now()-t0)/1000)); return; }
           }
         }
       }
@@ -459,35 +498,43 @@ function showResult(d, sec){
   $('#vwrap').innerHTML='<video controls playsinline preload="metadata" src="'+esc(d.url)+'"></video>';
   const b=$('#dlVid'); b.hidden=false; b.dataset.mode=d.mode||TK.mode;
 }
-$('#dlVid').addEventListener('click',async e=>{
-  const b=e.currentTarget, u=TK.resultUrl; if(!u) return;
-  b.disabled=true;
-  try{
-    const r=await fetch(u); if(!r.ok) throw new Error(r.status);
-    const bl=await r.blob();
-    const a=document.createElement('a'); a.href=URL.createObjectURL(bl);
-    a.download='track_'+TK.id+'_'+(b.dataset.mode||'')+'.mp4'; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),30000);
-    b.classList.add('dl-done');
-  }catch(err){ window.open(u,'_blank'); }
-  finally{ b.disabled=false; }
+$('#dlVid').innerHTML=DOWNLOAD_SVG;   // 아이콘 단독(§표기 라 · nm-svg SSOT)
+$('#dlVid').addEventListener('click',e=>{
+  const b=e.currentTarget, u=TK.resultUrl;
+  if(!u||!/^(https:\/\/|\/?track_out\/)/.test(u)) return;   // 스킴 화이트리스트(ly 문법 · 평의회5)
+  const name='track_'+TK.id+'_'+(b.dataset.mode||'mosaic')+'.mp4';
+  const a=document.createElement('a');
+  a.href=/^https:/.test(u)?('api/dl?u='+encodeURIComponent(u)+'&n='+encodeURIComponent(name)):u;   // R2 교차출처 = api/dl 프록시(직접 fetch는 CORS 실패 · 동기 클릭 = iOS 제스처 보존 — ly 정본) / git 폴백 = 동일출처 직접
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  b.classList.add('dl-done');
 });
 
-// ── 진행 이어받기(리로드·재진입) — pend 있으면 해당 단계 폴 재개(0 유실) ──
+// ── 진행 이어받기(리로드·서브탭 전환·재진입) — pend 단계별 복원(0 유실 · 평의회5 상⑨) ──
+// analyze: t0을 소프트 예산 직전으로 클램프 — draw()의 하드 타임아웃이 tick()보다 먼저 걸려 완성 결과를
+//   영영 못 받던 구멍 봉합(평의회7 상1 · ly 1434 "창 밖 = 1회 확인" 등가·더 단순).
+// render: 예산은 클램프하되 ts 신선도(minTs)는 *원* 디스패치 기준 — 늦게 완성된 결과도 수신.
+// ready: 분석 완료본 재조립(step2 복원 · 선택 상태 포함).
 (function(){
   const P=pendGet(); if(!P||!P.id) return;
+  if(Date.now()-(P.t0||0)>24*3600e3){ pendClear(); return; }   // 실효 1일 — 영원 재확인 방지
   TK.id=P.id;
   if(P.st==='analyze'){
-    pollAnalyze('track_out/'+P.id+'/tracks.json', P.t0||Date.now());
-  }else if(P.st==='render'){
-    TK.mode=(P.mode==='pinset')?'pinset':'mosaic';
-    fetch('track_out/'+P.id+'/tracks.json?t='+Date.now())
-      .then(r=>r.ok?r.text():null)
-      .then(tx=>{ let d=null; try{ d=tx&&JSON.parse(tx); }catch(e){}
-        if(d&&Array.isArray(d.people)){ TK.meta=d.meta||{}; TK.people=d.people; buildCards(); unlocked[1]=true; unlocked[2]=true; go(2); pollRender(P.t0||Date.now()); }
-        else pendClear();
-      }).catch(()=>pendClear());
+    pollAnalyze('track_out/'+P.id+'/tracks.json', Math.max(P.t0||0, Date.now()-BUDGET*1000));
+    return;
   }
+  if(P.st!=='ready'&&P.st!=='render'){ pendClear(); return; }
+  TK.mode=(P.mode==='pinset')?'pinset':'mosaic';
+  TK.sel=new Set((P.sel||[]).map(n=>n|0)); TK.invert=!!P.invert; TK.names=P.names||{};
+  fetch('track_out/'+P.id+'/tracks.json?t='+Date.now())
+    .then(r=>r.ok?r.text():null)
+    .then(tx=>{
+      if(USER_ACT) return;   // 사용자가 이미 새 작업 개시 = 복원 양보(늦은 복원의 격침 방지 · 평의회5)
+      let d=null; try{ d=tx&&JSON.parse(tx); }catch(e){}
+      if(!(d&&Array.isArray(d.people))){ pendClear(); return; }
+      TK.meta=d.meta||{}; TK.people=d.people; buildCards(); unlocked[1]=true;
+      if(P.st==='render'){ unlocked[2]=true; go(2); pollRender(Math.max(P.t0||0, Date.now()-BUDGET*1000), '', (P.t0||0)-90000); }
+      else go(1);
+    }).catch(()=>{ /* 다음 열 때 재시도(pend 유지) */ });
 })();
 </script>
 </body>

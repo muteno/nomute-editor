@@ -42,7 +42,13 @@ jobs:
   track:
     runs-on: ubuntu-latest
     timeout-minutes: 30   # 3분 캡 영상 기준 분석 ~2분·렌더 ~5분 + 콜드런 deps 여유 — 무한 행만 차단(§9)
+    env:
+      TRACK_MODE: ${{ inputs.mode }}   # 셸엔 env로만 전달(run 블록 ${{ }} 생보간 금지 = 인젝션 차단 · ly-make 관례 · 평의회1 H-1) · setup.sh 모델 스킵 분기용
     steps:
+      - name: mode 가드
+        run: |
+          case "$TRACK_MODE" in analyze|render) ;; *) echo "::error::잘못된 mode: $TRACK_MODE"; exit 1;; esac
+
       - name: Checkout
         uses: actions/checkout@v5
         with:
@@ -53,19 +59,21 @@ jobs:
         with:
           python-version: '3.12'
 
-      # site-packages 캐시 — opencv-python-headless(~60MB) 재설치 회피(ly pydeps 패턴)
+      # site-packages 캐시 — opencv-python-headless(~60MB) 재설치 회피(ly pydeps 패턴) · setup.sh 해시 = dep 변경 시 자동 재빌드(평의회1 L-6)
       - name: Restore python deps (site-packages 캐시)
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-track-pydeps-${{ runner.os }}-py312-opencv-pillow-ytdlp-v1
+          key: nomute-track-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/track/setup.sh') }}-v1
 
       # 검출·임베딩 모델 캐시(YuNet 232KB + SFace 37MB) — setup.sh가 이 경로를 보고 다운 스킵(7일)
+      #   analyze 전용(렌더는 모델 불사용 = 37MB 복원·다운 스킵 · 평의회1 L-5)
       - name: 모델 캐시
+        if: ${{ inputs.mode == 'analyze' }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/nomute-track
-          key: nomute-track-models-yunet2023mar-sface2021dec-v1
+          key: nomute-track-models-${{ hashFiles('apps/track/setup.sh') }}-v1
 
       - name: 트래킹 환경 (ffmpeg+opencv+모델)
         timeout-minutes: 12   # 백스톱 — 콜드런 pip+모델 다운 여유(이후 캐시히트 즉시)
@@ -83,7 +91,7 @@ jobs:
           set -e
           COOKIES=""
           if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
-          yt-dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist $COOKIES -o "/tmp/src.%(ext)s" "$URL" \
+          yt-dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" \
             || { echo "영상 다운로드 실패 — 사이트가 봇을 막았을 수 있어. 파일 업로드로 해줘." > /tmp/track_err.txt; echo "::error::yt-dlp 실패: $URL"; exit 1; }
           SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
           [ -n "$SRC" ] || { echo "영상 다운로드 실패 — 파일 업로드로 해줘." > /tmp/track_err.txt; echo "::error::다운 산출 없음"; exit 1; }
@@ -137,7 +145,9 @@ jobs:
           set -e
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
           case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
-          # 실패도 video.json에 사유 기록 후 rc 0(fail-soft — 뷰어 헛폴 차단 · ly_burn 동일)
+          # 실패도 video.json에 사유 기록 후 rc 0(fail-soft — 뷰어 헛폴 차단 · ly_burn 동일).
+          # 네이티브 크래시(세그폴트·OOM)만 스텝 실패 → 아래 failure()가 error.log 기록 → 뷰어 렌더 폴이
+          #   error.log 기준선 감시로 잡음(track.html pollRender · 의도 설계 = || echo 가드 불필요 · 평의회1 M-4 답변)
           python3 apps/track/track_render.py "$IN_ID"
 
       - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
@@ -164,7 +174,7 @@ jobs:
           git config user.email "bot@nomute.local"
           git rm -r "uploads/${IN_ID}" 2>/dev/null || true   # 업로드 원본 = R2 보관 후 불필요(git 비대화 방지 · ly 동일)
           git add "viewer/track_out/${IN_ID}" 2>/dev/null || true
-          git commit -m "track: ${IN_ID} ${{ inputs.mode }} 출력" || { echo "커밋할 것 없음"; exit 0; }
+          git commit -m "track: ${IN_ID} ${TRACK_MODE} 출력" || { echo "커밋할 것 없음"; exit 0; }
           pushed=0
           for i in 1 2 3 4 5; do
             if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi

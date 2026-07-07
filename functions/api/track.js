@@ -68,7 +68,7 @@ export async function onRequestPost({ request, env }) {
   let filePath = '';
   let upBranch = '';
   if (!url && fileB64) {
-    const dm = fileB64.match(/^data:[^;]+;base64,(.+)$/);
+    const dm = fileB64.match(/^data:[^;,]*;base64,(.+)$/);   // mediatype 빈값(data:;base64,) 허용 — 미매치 시 프리픽스 잔존 → GH PUT 422(평의회2)
     if (dm) fileB64 = dm[1];
     if (!fileB64 || fileB64.length > 40_000_000) return json({ error: '파일은 ≤30MB — 큰 영상은 URL로(드라이브 등 직링크)' }, 400);
     const ext = (name.match(/\.(mp4|mov|m4v|webm|mkv|avi)$/i) || ['.mp4'])[0].toLowerCase();
