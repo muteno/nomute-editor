@@ -705,7 +705,8 @@
   .scrap-title { font-size:17px; font-weight:800; color:var(--fg); letter-spacing:-.3px; margin:0 0 4px; }
   .scrap-sub { font-size:12px; color:var(--mut); line-height:1.5; margin:0; }
   /* 컨트롤 헤더바(운영자 260706 3차 재편) = 타이틀은 워드마크 서브로 이주 · 행 = 우측 클러스터만[검색 + 필터(피드 탭)] — 구 좌측 .vh-filters 컨테이너 폐지(필터가 우측 한도 슬롯으로 이주 · 3차 8). 텍스트 갱신은 setViewhead. */
-  .viewhead { position:relative; max-width:860px; margin:2.1px auto 4px; padding:0 16px; }   /* margin-top 2.1 = 타이틀 170% 확대(9→15.3 · 260706 4차)를 흡수해 버튼 행 상단 화면선(워드마크 아래 35.4px) 유지: 18 + 15.3 + 2.1 = 35.4 · 단일값(모바일 공통) */
+  .viewhead { position:relative; max-width:860px; margin:2.1px auto 4px; padding:0 16px; transition:opacity .2s ease; }   /* margin-top 2.1 = 타이틀 170% 확대(9→15.3 · 260706 4차)를 흡수해 버튼 행 상단 화면선(워드마크 아래 35.4px) 유지: 18 + 15.3 + 2.1 = 35.4 · 단일값(모바일 공통) · transition = vh-ready 해금 페이드(아래 홀드와 짝) */
+  body:not(.vh-ready) .viewhead { opacity:0; }   /* 첫 콘텐츠 렌더 전 = 검색·필터 홀드(운영자 260707 스샷 "미리 마중나오지 마") — booted 열린 뒤 데이터 로딩 구간(레거시 등 늦은 소스)에도 픽토그램이 먼저 안 뜸 · 해금 = JS vh-ready(첫 카드 감지) + booted delay .3s 합성 = 콘텐츠 직후 등장 */
   .viewhead.vh-enter { animation:cardIn .34s cubic-bezier(.22,.61,.36,1) .3s backwards; }   /* 탭 전환 시 검색·필터 픽토그램(vh-acts) = 콘텐츠 촤르륵이 자리잡은 *다음* 등장(.3s 지연·backwards = 대기 중 투명 · 운영자 260707 "내용이 나온 다음에 아이콘" — 구 260706 6차 동시 등장 갱신) — cardIn 결·커브 계승 · showTab가 탭 전환마다 클래스 재적용 · 상단 배너(.topbanner 워드마크·서브타이틀)는 viewhead 밖이라 불변 */
   body:not(.booted) .viewhead.vh-enter { animation:none; }   /* 부팅 전 = vh-enter 애니 무효화(이중 방어) → viewhead가 booted 게이트(opacity 0)에 걸려 콘텐츠와 함께 등장 · 애니 opacity가 게이트 이겨 검색·필터만 먼저 뜨던 것 차단(운영자 260706 "로딩할 때 미리 떠버림" · JS booted 가드와 짝) */
   body.booted .viewhead { transition-delay:.3s; }   /* 부팅 노출 = 검색·필터 픽토그램은 콘텐츠 페이드인(.2s)이 끝난 *다음*(.3s) 등장(운영자 260707 "내용이 나온 다음에 아이콘" — 구 .12s 살짝 뒤를 명확한 후행으로) · booted opacity 게이트(113 .2s)에 delay만 얹음(콘텐츠·배너는 delay 0 유지) */
@@ -732,8 +733,10 @@
   /* 팝업 재구성(운영자 260706 4차): 헤더 = 타이틀 '필터'(좌) + 초기화·닫기(우) → 구분선 → 카드 행(라벨+토글) → 구분선 → 칩 그리드 — 구 헤더 내 카드 아이콘의 라인 어긋남 해소 */
   .fpop-h { display:flex; align-items:center; justify-content:flex-end; gap:6px; margin:0 1px; padding-bottom:7px; border-bottom:1px solid var(--line2); }   /* 구분선 1 = 헤더 아래(모달 헤더 띠 border-bottom --line2 계승) */
   .fpop-h .fpop-t { margin-right:auto; font-size:var(--fs-h2); font-weight:var(--fw-x); letter-spacing:-.2px; color:var(--fg); padding-left:4px; }   /* 타이틀 = 전 팝업/모달 타이틀 단일표준(15/800 · CII 모달 헤더 타이틀 계승) */
-  .fpop-row { display:flex; align-items:center; margin:0 1px; padding:5px 0 5px 4px; border-bottom:1px solid var(--line2); }   /* 구분선 2 = 카드 행 아래 */
-  .fpop-row .fr-l { flex:1; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); }   /* 라벨 = 잠금 설정 행(.pl) 문법 계승 · 토글 상태색(아이콘 on=accent)이 어포던스(§디자인 e) */
+  .fpop-row { display:flex; align-items:center; margin:0 1px; padding:5px 0 5px 7px; border-bottom:1px solid var(--line2); }   /* 구분선 2 = 카드 행 아래 · padding-left 7 = margin 1과 합쳐 텍스트 좌측선 8px = 아래 칩(전체·정치…)과 픽셀 일치(운영자 260707 "세로 정렬 기준선") */
+  .fpop-row .fr-l { flex:1; text-align:left; background:none; border:none; padding:0; cursor:pointer; font-family:inherit; line-height:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); transition:color .15s, transform .12s; }   /* 카드 = 글자 자체가 토글(아이콘 버튼 폐지 · 운영자 260707 "글자가 불 들어와 있으면 카드만") — 칩 문법과 동일(텍스트·on=강조색) · flex:1 = 행 전폭 히트 */
+  .fpop-row .fr-l.on { color:var(--accent); }   /* 불 들어옴 = 카드만 보기 */
+  .fpop-row .fr-l:active { transform:scale(var(--press-l,.95)); transform-origin:left center; }
   .fpop-h .tool-x svg { width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:1.8; }   /* 초기화·닫기 둘 다 stroke 1.8 = 한 행 굵기 일치(닫기 X 정본 §디자인 d) */
   #filterReset:active { transform:rotate(-360deg); }   /* 초기화 = 한 바퀴 회전(.ts-rf 계승 · .tool-x transition .3s 사용 · X는 공통 rotate180 유지) */
   .filterpop .chipbar { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; max-width:none; margin:0; padding:7px 4px 2px; }   /* 상단 7 = 구분선 2 아래 호흡(260706 4차) */
@@ -2644,9 +2647,7 @@ try {
         <button class="tool-x" id="filterReset" type="button" aria-label="필터 초기화" title="필터 초기화"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button>
         <button class="tool-x" id="filterClose" type="button" aria-label="필터 닫기"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>
       </div>
-      <div class="fpop-row"><span class="fr-l">카드</span>
-        <button class="vh-fbtn" id="cardonlyBtn" type="button" aria-label="카드만 보기(이미지 렌더된 기사만)" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></button>
-      </div>
+      <div class="fpop-row"><button class="fr-l" id="cardonlyBtn" type="button" aria-label="카드만 보기(이미지 렌더된 기사만)" aria-pressed="false">카드</button></div><!-- 글자 = 토글(불 들어옴 = 카드만 · 아이콘 폐지 · 운영자 260707) · JS(#cardonlyBtn .on/aria-pressed)는 그대로 -->
       <div class="chipbar" id="chips"></div>
     </div>
   </div>
@@ -9760,6 +9761,18 @@ const _bannerReady = new Promise(res => {
 });
 const _firstLoad = load().then(() => { openDeepLink(); openBreakingDeepLink(); });   // 첫 로드 후 딥링크 — ?a=(요약완료)→요약창 · ?brk=(긴급)→요약완료?분기
 Promise.allSettled([_firstLoad, _bannerReady]).then(_bootReveal);   // 피드·배너 준비되면 즉시 노출(실패해도 allSettled로 진행 · render는 load 안에서 동기 완료라 rAF 불필요·백그라운드 탭서 rAF 멈춰도 안전)
+// 검색·필터(viewhead) = 첫 콘텐츠와 함께 등장(운영자 260707 스샷 "미리 마중나오지 마·필터도") — booted가 피드 기준이라
+//   레거시/SNS 탭 복원 시 카드가 늦게 오면 픽토그램만 먼저 뜨던 구간을 홀드. 해금 = 세 컨테이너 중 하나라도 첫 자식 감지(vh-ready · CSS 홀드와 짝).
+//   백스톱 8s = 전 소스 실패(빈 화면)여도 검색이 영구 실종되진 않게(정직·접근 보존).
+(function () {
+  const HOSTS = ['#list', '#scrapList', '#snsList'];
+  const ok = () => HOSTS.some(s => { const el = document.querySelector(s); return el && el.children.length > 0; });
+  const arm = () => { document.body.classList.add('vh-ready'); try { mo.disconnect(); } catch (e) {} };
+  if (ok()) { document.body.classList.add('vh-ready'); return; }
+  const mo = new MutationObserver(() => { if (ok()) arm(); });
+  HOSTS.forEach(s => { const el = document.querySelector(s); if (el) mo.observe(el, { childList: true }); });
+  setTimeout(() => { if (!document.body.classList.contains('vh-ready')) arm(); }, 8000);
+})();
 setTimeout(_bootReveal, 1800);   // 안전망 — load/배너가 지연·실패해도 화면 반드시 노출(영구 블랙 방지)
 
 // ── 앰비언트 웨이브 엔진(운영자 260705 확정 조합 + 260706 순차·무겹침 "직전꺼가 끝나면 다음거" + 분신술 5인 보강) — 5s 무입력(터치·스크롤·키·포인터) 시
