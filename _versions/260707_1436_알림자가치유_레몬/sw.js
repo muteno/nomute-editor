@@ -80,28 +80,6 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-// 구독 로테이션 자가치유(운영자 260707 "ON 해놔도 어느 순간 OFF") — 브라우저(FCM)가 push 구독을 만료·교체하면
-//   이 이벤트가 오는데 미처리 시 구독이 조용히 죽어 다음 진입 때 OFF로 보임(표준 원인). 여기서 즉시 재구독+서버 저장.
-//   VAPID_PUB = index.html:VAPID_PUB와 짝(키 교체 시 두 곳 동시 갱신).
-const VAPID_PUB = 'BORNTh3cNd05vsxi2fZ-BykxM0NwKGTvIETz81g757RVFL6cDu29aAv5I7uit0WbGOmiZ4hlyMOEvb8B2HptU-I';
-function b64ToU8(s) {
-  const pad = '='.repeat((4 - s.length % 4) % 4);
-  const raw = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
-  const u8 = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) u8[i] = raw.charCodeAt(i);
-  return u8;
-}
-self.addEventListener('pushsubscriptionchange', event => {
-  event.waitUntil((async () => {
-    try {
-      const sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
-      await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
-      const old = event.oldSubscription;   // 옛 endpoint = 서버에서 정리(죽은 구독 잔존 방지 · 미지원 브라우저면 undefined = 스킵)
-      if (old) await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'unsubscribe', subscription: old.toJSON() }) }).catch(() => {});
-    } catch (e) { /* 재구독 실패(권한 회수 등) = 다음 앱 진입 시 pushHeal이 재시도 */ }
-  })());
-});
-
 self.addEventListener('install', () => self.skipWaiting());           // 새 sw 즉시 활성
 self.addEventListener('activate', event => event.waitUntil((async () => {
   const keys = await caches.keys();                                    // 구버전 셸 캐시 청소(SHELL_CACHE 버전업 대비)
