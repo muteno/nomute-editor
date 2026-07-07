@@ -46,6 +46,9 @@ P_REFRAME = (
     "Do not add any new text, watermark, or people."
 )
 P_PADFILL = (
+    "First, carefully analyze the attached image: identify the subject, their exact pose and "
+    "orientation, the scene, the lighting direction, and the textures. Base everything you draw "
+    "on what is actually visible in this specific image — not on generic assumptions. "
     "This canvas contains an original photo placed in the center, with flat neutral gray areas "
     "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
     "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
@@ -154,8 +157,14 @@ def main():
         open(os.path.join(out_dir, case + "_src.jpg"), "wb").write(jpg_bytes(img))
         src_bytes = jpg_bytes(img)
 
-        # A — reframe 1콜
-        a = tg.gemini_image(P_REFRAME.format(ar=ASPECT), image_size=SIZE,
+        # A — reframe 1콜 (crop 케이스 = 전체 재생성 기반 전신 완성 비교군 — 원본 픽셀 보존 포기 대신 해부학 자유도)
+        pa = P_REFRAME.format(ar=ASPECT)
+        if case == "crop":
+            pa = ("Expand this cropped photo to a {ar} aspect ratio, completing the partially visible person "
+                  "naturally: they are STANDING UPRIGHT walking on grass — anatomically correct full body with "
+                  "natural human proportions, same uniform, same face, same lighting and grain. "
+                  "Do not add any new separate people, text, or logos.").format(ar=ASPECT)
+        a = tg.gemini_image(pa, image_size=SIZE,
                             tag="exp:{}:A".format(case), aspect=ASPECT, ref_png=src_bytes)
         if a:
             open(os.path.join(out_dir, case + "_A_reframe.jpg"), "wb").write(a)
@@ -174,10 +183,12 @@ def main():
         if case == "crop":   # 잘린 피사체 완성 허용(같은 대상 연장 OK · 별도 신규 인물만 금지) — 기본 'no people'이 완성을 막는 것 방지
             pb = pb.replace("Do not add any new text, watermarks, logos, or people.",
                             "Do not add any new text, watermarks, or logos.")
-            pb += (" A person or object is partially cut off at the edge of the original photo: naturally "
-                   "complete the missing parts of that SAME person or object — continue the body, legs, and "
-                   "clothing consistent with their pose, proportions, lighting, and grain. Never add a new, "
-                   "separate person or object that is not already partially visible.")
+            pb += (" A person is partially cut off at the bottom edge of the original photo: naturally "
+                   "complete the missing lower body of that SAME person. The person is STANDING UPRIGHT and "
+                   "walking on the grass — draw anatomically correct hips, legs, knees, and football boots in "
+                   "a natural standing/walking pose with correct human proportions (legs roughly as long as "
+                   "the visible torso), matching the uniform, lighting, and grain. "
+                   "Never add a new, separate person or object.")   # r6 실측: 포즈 미지정 = 앉은 자세·해부학 붕괴 → 포즈·비례 명시(운영자 "불구수준" 지적)
         b = tg.gemini_image(pb, image_size=SIZE,
                             tag="exp:{}:B".format(case), aspect=ASPECT, ref_png=jpg_bytes(canvas))
         if b:
