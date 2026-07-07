@@ -7212,32 +7212,27 @@ function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대
   if (CURTAB === 'scrap') renderScrap();
 }
 // Failed 칩 배선 — 탭=원문 열기 / 길게(480ms)·우클릭=컨텍스트 메뉴(실패 사유·내용 입력). 대기열(qFeedBtn) 롱프레스 패턴 계승.
-const FAIL_ARM = new Map();   // candId → 무장 시각 — 무장을 칩 노드(클로저)가 아니라 후보 기준으로 보관 = 재렌더가 칩을 갈아치워도 무장 유지(운영자 260707 "재시도 게이지 안 돎" 원인 ②)
-const FAIL_ARM_MS = 8000;     // 무장 유지 8s(구 3.5s = 신중히 누르면 매번 해제→재무장 루프 = 게이지 영영 미발동 · 원인 ① · 헤드리스 4s 간격 재현)
 function wireFailChip(fb, c) {   // Failed 칩 = 재시도 상태머신(2탭: 탭→'재시도' arm[빗금30%·빨강]→재탭→대기열 재투입+Picking) · 원문은 제목 탭(길게 메뉴 폐지·운영자 260701)
   if (!fb) return;
-  const id = candId(c);
-  if (Date.now() - (FAIL_ARM.get(id) || 0) < FAIL_ARM_MS) { fb.classList.add('retry'); fb.textContent = '재시도'; }   // 재렌더 복원 = 무장 이어받기
+  let armed = false, armT = null;
   fb.onclick = e => {
     e.stopPropagation();
-    if (fb.classList.contains('picking') || fb.classList.contains('firing') || fb.classList.contains('okdone')) return;   // 재분석·발사 모션 중 = 무시(pointer-events:none 밖 경로까지)
-    if (Date.now() - (FAIL_ARM.get(id) || 0) >= FAIL_ARM_MS) {   // 1탭 = '재시도' arm(오발 방지 · 빗금30%·빨강 글씨 유지) · 8s 무동작이면 Failed(N) 원복
-      FAIL_ARM.set(id, Date.now());
-      fb.classList.add('retry'); fb.textContent = '재시도';
-      setTimeout(() => { if (Date.now() - (FAIL_ARM.get(id) || 0) >= FAIL_ARM_MS && fb.isConnected && !fb.classList.contains('firing') && !fb.classList.contains('okdone') && !fb.classList.contains('picking')) { fb.classList.remove('retry'); fb.textContent = failLabel(c); } }, FAIL_ARM_MS + 60);
+    if (fb.classList.contains('picking')) return;   // 재분석 진행 중 = 무시
+    if (!armed) {   // 1탭 = '재시도' arm(오발 방지 · 빗금30%·빨강 글씨 유지) · 3.5s 무동작이면 Failed(N) 원복
+      armed = true; fb.classList.add('retry'); fb.textContent = '재시도';
+      clearTimeout(armT); armT = setTimeout(() => { armed = false; fb.classList.remove('retry'); fb.textContent = failLabel(c); }, 3500);
       return;
     }
-    FAIL_ARM.delete(id); fb.classList.remove('retry');   // 2탭 = 확정 → 다시 대기열로
-    // ⚡ 발사 피드백(운영자 260702): 노랑 게이지 채움 → ✓ 체크(mkbtn.retry 상태머신 계승) → Picking. failRetry는 모션 끝에 발사(그의 renderScrap 즉시 재렌더가 게이지를 죽이지 않게 · 대기열 재투입 ~1.2s 지연 무해). 발사 타이머는 노드 교체와 무관하게 완주(액션 유실 0).
+    clearTimeout(armT); armed = false; fb.classList.remove('retry');   // 2탭 = 확정 → 다시 대기열로
+    // ⚡ 발사 피드백(운영자 260702): 노랑 게이지 채움 → ✓ 체크(mkbtn.retry 상태머신 계승) → Picking. failRetry는 모션 끝에 발사(대기열 재투입 ~1.2s 지연 무해·시각 확인 먼저).
     const _red = matchMedia('(prefers-reduced-motion:reduce)').matches;
     fb.disabled = true; fb.classList.add('firing');
     setTimeout(() => {
-      if (fb.isConnected) {   // 재렌더로 교체됐으면 시각만 생략(발사는 아래서 계속)
-        fb.classList.remove('firing'); fb.classList.add('okdone');
-        fb.innerHTML = '<svg class="gck" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7"/></svg>';   // ✓ 체크(goTick 스트로크)
-      }
+      fb.classList.remove('firing'); fb.classList.add('okdone');
+      fb.innerHTML = '<svg class="gck" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7"/></svg>';   // ✓ 체크(goTick 스트로크)
       setTimeout(() => {
-        if (fb.isConnected) { fb.classList.remove('okdone'); fb.disabled = false; fb.classList.add('picking'); fb.innerHTML = '<span>Picking…</span>'; }
+        fb.classList.remove('okdone'); fb.disabled = false;
+        fb.classList.add('picking'); fb.innerHTML = '<span>Picking…</span>';
         bumpFailRetry(c); failRetry(c, { noOpen: true });   // 실패 카운트 +1 + 재분석 재발사(대기열) → pfResubActive → renderScrap이 빗금30% Picking 유지
       }, _red ? 60 : 440);   // ✓ 잠깐 보인 뒤 Picking
     }, _red ? 90 : 740);   // goFill .72s 채움 후
