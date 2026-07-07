@@ -1,0 +1,74 @@
+# 이미지 비율 재구성(리사이즈) v1 — workflow_dispatch 전용(유료 Gemini 수동 발사만 · §📰 불변)
+# 발사 = functions/api/resize.js(uploads/<id>/src 선커밋 → src_sha 레이스 가드 → dispatch · compose.js 계승)
+# 산출 = R2 resize/<id>/ (또는 git viewer/gen_out/) + viewer/gen_out/resize.json → 뷰어 폴링.
+name: img-resize
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id (uploads/<id>/)'
+        required: true
+        type: string
+      src:
+        description: '업로드 원본 경로 (uploads/<id>/src.ext)'
+        required: true
+        type: string
+      src_sha:
+        description: '업로드 커밋 SHA — dispatch 레이스 가드(comp-make 계승)'
+        required: false
+        type: string
+      opts:
+        description: '옵션 JSON {aspect,size,lock}'
+        required: false
+        type: string
+
+permissions:
+  contents: write   # 결과 커밋 push(exp-resize 403 실측 계승)
+
+concurrency:
+  group: img-resize-${{ inputs.id }}
+  cancel-in-progress: false
+
+jobs:
+  resize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.src_sha || 'main' }}   # 업로드 src 커밋 직접 체크아웃 = dispatch 레이스 원천 차단(comp-make.yml:40 계승)
+
+      - name: Deps (timeout 감쌈 · §9 인프라)
+        run: timeout 300 pip install -q pillow numpy || (sleep 5 && timeout 300 pip install -q pillow numpy)
+
+      - name: Resize
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RESIZE_ID: ${{ inputs.id }}
+          RESIZE_SRC: ${{ inputs.src }}
+          RESIZE_OPTS: ${{ inputs.opts || '{}' }}
+        run: python3 .github/scripts/resize_image.py
+
+      - name: Commit results
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add viewer/gen_out/ 2>/dev/null || true
+          git diff --cached --quiet && { echo "산출 없음(no-op)"; exit 0; }
+          git commit -m "resize: 비율 재구성 산출 (${{ inputs.id }})"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            # resize.json 유실 봉합 — rebase -X ours(원격 승) 시 신규 항목 드랍 → /tmp 임시본 재병합(imggen.yml 계승)
+            if [ -f /tmp/resize_new.json ]; then
+              python3 -c 'import json,os;p="viewer/gen_out/resize.json";new=json.load(open("/tmp/resize_new.json"));cur=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else [];urls=set(i.get("url") for i in cur);json.dump(([i for i in new if i.get("url") not in urls]+cur)[:24],open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)'
+              git add viewer/gen_out/ 2>/dev/null || true
+              git commit --amend --no-edit 2>/dev/null || true
+            fi
+            git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::error::push 실패(재시도 소진) — 산출 유실"; exit 1

@@ -30,6 +30,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 SRC = os.environ.get("EXP_SRC", "cards/260622-1736-2595974/scenes/장면01.jpg")
 ASPECT = os.environ.get("EXP_ASPECT", "16:9")
 CASES = [c.strip() for c in os.environ.get("EXP_CASES", "plain,poster").split(",") if c.strip()]
+SIZE = os.environ.get("EXP_SIZE", "1K")   # "1K"/"2K" — 2K = 문구·디테일 선명도 실험(장당 $0.101)
 
 # 한글 폰트 = card_news와 동일 계열(fonts-noto-cjk · 워크플로가 설치)
 FONT_CANDIDATES = [
@@ -46,11 +47,16 @@ P_REFRAME = (
 )
 P_PADFILL = (
     "This canvas contains an original photo placed in the center, with flat neutral gray areas "
-    "beside it. Fill ONLY the gray areas by seamlessly extending the existing scene — continue "
-    "the background's lighting, perspective, textures, and grain across the boundary. Keep every "
-    "existing pixel of the original photo exactly unchanged. Do not add any new text, watermarks, "
-    "logos, or people. The result must look like one single continuous photograph."
-)
+    "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
+    "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
+    "grain across the boundary, and match the exact brightness and tone of the photo at the "
+    "boundary so no edge or band is visible. Match the depth of field: if the pixels adjacent to "
+    "a gray area are out of focus or blurred, the new content there must be equally out of focus — "
+    "do not introduce new sharp objects, buildings, crowds, stands, or scenery that are not "
+    "already visible in the photo. Keep every existing pixel of the original photo "
+    "exactly unchanged. Do not add any new text, watermarks, logos, or people. The result must "
+    "look like one single continuous photograph."
+)   # 라운드2: 'beside'가 상하 확장 회색 방치 → 방향 동적 주입. 라운드4: 망원 클로즈업 좌우에 관중석 등 의미적 확장 → 심도 유지·신규 사물 금지 명시
 
 
 def _font(size):
@@ -138,20 +144,41 @@ def main():
     meta = {"src": SRC, "aspect": ASPECT, "ts": ts, "results": []}
 
     for case in CASES:
-        img = make_poster(base) if case == "poster" else base
+        # crop = 피사체를 일부러 잘라(상반신만) 잘린 신체·사물을 확장부에서 '완성'해야 하는 케이스(운영자 260708 질문 — amodal completion)
+        if case == "crop":
+            img = base.crop((0, 0, base.size[0], int(base.size[1] * 0.55)))
+        elif case == "poster":
+            img = make_poster(base)
+        else:
+            img = base
         open(os.path.join(out_dir, case + "_src.jpg"), "wb").write(jpg_bytes(img))
         src_bytes = jpg_bytes(img)
 
         # A — reframe 1콜
-        a = tg.gemini_image(P_REFRAME.format(ar=ASPECT), image_size="1K",
+        a = tg.gemini_image(P_REFRAME.format(ar=ASPECT), image_size=SIZE,
                             tag="exp:{}:A".format(case), aspect=ASPECT, ref_png=src_bytes)
         if a:
             open(os.path.join(out_dir, case + "_A_reframe.jpg"), "wb").write(a)
         meta["results"].append({"case": case, "var": "A", "ok": bool(a)})
 
-        # B — pad-fill 1콜
+        # B — pad-fill 1콜 (패딩 방향을 프롬프트에 동적 주입 — 라운드2 상하 회색 방치 수리)
         canvas, box = pad_canvas(img, ASPECT)
-        b = tg.gemini_image(P_PADFILL, image_size="1K",
+        if box[1] > 0:   # 상하 확장(세로화)
+            where = "above and below it"
+            dirhint = ("upward and downward (for example, extend a ceiling or sky upward and a "
+                       "floor or ground downward)")
+        else:            # 좌우 확장(가로화)
+            where = "to its left and right"
+            dirhint = "to the left and to the right"
+        pb = P_PADFILL.format(where=where, dirhint=dirhint)
+        if case == "crop":   # 잘린 피사체 완성 허용(같은 대상 연장 OK · 별도 신규 인물만 금지) — 기본 'no people'이 완성을 막는 것 방지
+            pb = pb.replace("Do not add any new text, watermarks, logos, or people.",
+                            "Do not add any new text, watermarks, or logos.")
+            pb += (" A person or object is partially cut off at the edge of the original photo: naturally "
+                   "complete the missing parts of that SAME person or object — continue the body, legs, and "
+                   "clothing consistent with their pose, proportions, lighting, and grain. Never add a new, "
+                   "separate person or object that is not already partially visible.")
+        b = tg.gemini_image(pb, image_size=SIZE,
                             tag="exp:{}:B".format(case), aspect=ASPECT, ref_png=jpg_bytes(canvas))
         if b:
             open(os.path.join(out_dir, case + "_B_padfill.jpg"), "wb").write(b)
