@@ -15,13 +15,6 @@ OUTDIR="viewer/k_out/${ID}"; mkdir -p "$OUTDIR"
 
 [ -n "${SCENE:-}" ] || { echo "::error::SCENE(장면 입력) 비어있음"; echo "exit: 빈 입력" > "$OUTDIR/error.log"; exit 1; }
 
-# 지침 프리플라이트 — k-make.md가 Read시키는 지침 파일 실존 확인(버전 리네임 때 참조 누락 = 지침 없이 생성되는 무성 실패 → 명시 실패로 · 260707)
-GUIDE_REF="$(grep -om1 'apps/k/00_지침[^`]*\.md' "$PROMPT_FILE" || true)"
-if [ -n "$GUIDE_REF" ] && [ ! -f "$GUIDE_REF" ]; then
-  echo "::error::지침 파일 부재: $GUIDE_REF (k-make.md 참조 경로 확인 — 리네임 누락?)"
-  echo "지침 파일 부재: $GUIDE_REF — prompts/k-make.md 참조 갱신 필요" > "$OUTDIR/error.log"; exit 1
-fi
-
 # 고정부(프롬프트) → 가변부(장면). stdin 전달 = ARG_MAX 회피(analyze.sh와 동일).
 prompt="$(cat "$PROMPT_FILE")
 ${SCENE}"
