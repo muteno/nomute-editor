@@ -225,9 +225,7 @@
   /* 긴급 속보 웹푸시 토글(메시지 팝업 상단) */
   .pushrow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 12px; border-top:1px solid var(--line2); }   /* 알림 = SNS·메시지·발행본과 동일 행높이·간격(margin-top 제거·구분자 하어라인만 유지) · 라벨 좌·토글 우 · 운영자 260702 */
   .pushrow .pl { font-size:13px; font-weight:700; color:var(--fg); white-space:nowrap; line-height:var(--lh-base); }   /* line-height 1.6 = .pmenu a/button과 동일 행높이 → 간격 일치(운영자 260702) */
-  .pushrow .pushbtn { flex:none; display:inline-block; width:auto; padding:0 2px; font-size:13px; font-weight:800; line-height:var(--lh-base); color:var(--mut); background:none; border:none; cursor:pointer; position:relative; }   /* .pmenu button(블록·전폭·9/12패딩) leak 오버라이드(0,2,0) = 컴팩트 인라인 → 알림 행 안 부풀음(옛 57.8→38.8) · 운영자 260702 */
-  .pushrow .pushbtn::before { content:""; position:absolute; inset:-10px -12px; }   /* 히트슬롭(시각 불변·.urlclip::before 정본 계승) — ON/OFF 글자 ~24px 탭타깃이 빗나가던 것 교정(운영자 260707 "버튼이 이상함") */
-  #pushrow { cursor:pointer; }   /* 알림 행 = 액션이 토글 하나 → 행 전체 탭 = 토글(잠금 행은 라벨=팝업 진입이라 제외) */
+  .pushrow .pushbtn { flex:none; display:inline-block; width:auto; padding:0 2px; font-size:13px; font-weight:800; line-height:var(--lh-base); color:var(--mut); background:none; border:none; cursor:pointer; }   /* .pmenu button(블록·전폭·9/12패딩) leak 오버라이드(0,2,0) = 컴팩트 인라인 → 알림 행 안 부풀음(옛 57.8→38.8) · 운영자 260702 */
   .pushrow .pushbtn.on { color:var(--accent); }        /* ON = 강조색(초록) 확정(0,3,0 = .pmenu button 못 이김) · 무채 메뉴의 단일 포인트 */
   .pushbtn:disabled { opacity:.55; cursor:default; }
   .pushbtn:active { transform:scale(var(--press-l,.95)); }
@@ -5830,7 +5828,7 @@ async function pushToggle() {
       : '알림이 브라우저에서 차단돼 있어요. 켜는 법:\n주소창 왼쪽 🔒 → 사이트 설정 → 알림 → "허용" → 새로고침.');
     return;
   }
-  btn.disabled = true; btn.innerHTML = '변경중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';   // 처리중 = gdots 점모션 정본 계승(§디자인 g — 맨글자 '변경중'은 먹통처럼 보임 · 운영자 260707)
+  btn.disabled = true; btn.textContent = '변경중';
   try {
     const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
     const cur = await reg.pushManager.getSubscription();
@@ -5860,7 +5858,6 @@ async function pushToggle() {
   finally { await pushRefresh(); }
 }
 const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click', pushToggle);
-const _pushRow = $('#pushrow'); if (_pushRow) _pushRow.addEventListener('click', e => { if (e.target.closest('#pushbtn')) return; if (_pushBtn && !_pushBtn.disabled) pushToggle(); });   // 행 전체 탭 = 토글(라벨·여백 눌러도 무반응이던 것 교정 · 버튼 자체 클릭은 기존 리스너 = 중복 발화 차단)
 
 // 프로필 메뉴
 const pmenu = $('#pmenu');
