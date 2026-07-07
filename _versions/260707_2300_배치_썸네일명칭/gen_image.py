@@ -86,7 +86,6 @@ ANGLE_CODES = ("AG-01", "AG-02", "AG-03", "AG-04", "AG-06", "AG-09")       # 39_
 POINT_CODES = ("DF-01", "DF-02", "DF-04", "DF-05", "DF-07")                # 38_cardnews_distance_crop: 눈물클로즈/주먹인서트/서류매크로/대치투샷/군중속1인
 LIGHT_CODES = ("LGT05", "LGT06", "LGT08", "LGT09", "LGT10", "LGT12")       # 12_lighting_emotion: 촛불/골든아워/흐린확산/하드측광/역광실루엣/형광임상
 # 배치 = 카드뉴스 프롬프팅 정본 계승(apps/news/02 §합성 "main subject anchored in the upper-center" · 라우터 "핵심요소 상단 2/3")
-#   top23 = 뷰어 라벨 '썸네일'(운영자 260707 — 썸네일 조건 명칭 · 조각/값 불변 = 지침 정본 그대로)
 PLACE_FRAG = {"auto": "",
               "top23": ("the main subject anchored in the upper two-thirds of the frame (upper-center), "
                         "the lower zone kept visually calm and uncluttered so a caption can sit over it"),
