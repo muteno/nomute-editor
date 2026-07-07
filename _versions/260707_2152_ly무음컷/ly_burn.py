@@ -16,7 +16,6 @@
 #   타이밍 = \kf와 동일 글자수 비례 추정(진짜 발화 싱크 = Whisper word 타임스탬프 후속) · 카라오케와 상호배타(동시 수신 = 팝 우선).
 # 키워드 강조색 = 콘텐츠 브랜드 형광그린 #0FFD02(릴스 오버레이 GREEN 계승 · UI 팔레트와 별개 축 = §핵심명령 3-b-1).
 import json
-import math
 import os
 import re
 import subprocess
@@ -28,8 +27,6 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(모듈 import = main 미
 GREEN_BGR = "&H02FD0F&"          # #0FFD02 → ASS BGR(콘텐츠 그린)
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 git 커밋 상한(레포 비대 방지)
 MAX_DUR = 600                    # 릴스/쇼츠 도구 — 10분 초과 영상은 번인 거절(러너 시간 보호)
-CUT_PAD = 0.30                   # 무음 컷: 발화 구간 앞뒤 보존 여유(초) — 어두·어미 잘림 방지
-CUT_MIN_REMOVE = 0.40            # 무음 컷: 이만큼도 안 줄어드는 갭은 붙여둠(미세컷 = 튐만 유발·자연스러운 호흡 보존)
 LINE_F = 1.0                     # libass 줄전진/폰트크기 비 = 1.0 실측(260707 ffmpeg+Noto CJK KR 프레임 픽셀 계측: 67px/fs67 — libass는 VSFilter 호환으로 fs를 줄높이로 정규화 · hhea 1.48 가정은 오류였음) · 중앙 불변 보정 전용
 
 
@@ -98,104 +95,6 @@ def load_segs(outdir):
         except Exception as e:
             print("::warning::segments.json 파싱 실패:", e)
     return [], ""
-
-
-def _span(a, b):
-    # 유한 수치 스팬만 통과(NaN/Infinity 명시 거부 = 방어심층 · 평의회5) — json.load 기본은 allow_nan=True
-    if isinstance(a, (int, float)) and isinstance(b, (int, float)) \
-            and math.isfinite(a) and math.isfinite(b) and float(b) > float(a):
-        return (float(a), float(b))
-    return None
-
-
-def load_speech_spans(outdir, segs):
-    # 무음 컷 기준 = STT 원천(segments.json = Whisper 발화 구간·vad_filter)이 정본 — 의역(subs.json)은
-    # 군더더기 빼기 등으로 실제 발화가 자막에서 빠질 수 있어 그걸로 컷하면 진짜 말이 잘림. 없으면 자막 타이밍 폴백.
-    # 어절(word) 타임스탬프 있으면 그걸 발화 스팬으로(세그 내부 긴 침묵까지 컷 대상 · 평의회10) —
-    #   어절 사이 미세 갭은 cut_keeps 패딩+병합(제거량 0.4s 미만 유지 = 실갭 1.0s 미만 보존)이 흡수 = 과컷 없음.
-    p = os.path.join(outdir, "segments.json")
-    if os.path.isfile(p):
-        try:
-            j = json.load(open(p, encoding="utf-8"))
-            spans = []
-            for s in (j.get("segs") or []):
-                words = [w for w in (s.get("w") or []) if _span(w.get("s"), w.get("e"))]
-                if words:
-                    spans.extend(_span(w.get("s"), w.get("e")) for w in words)
-                else:
-                    sp = _span(s.get("s"), s.get("e"))
-                    if sp:
-                        spans.append(sp)
-            if spans:
-                return spans
-        except Exception as e:
-            print("::warning::segments.json 파싱 실패 — 자막 타이밍으로 컷 계산 폴백:", e)
-    return [sp for sp in (_span(s.get("s"), s.get("e")) for s in segs) if sp]
-
-
-def cut_keeps(spans, dur, pad=CUT_PAD, min_remove=CUT_MIN_REMOVE):
-    # 발화 구간 ± pad 확장 → 제거량 min_remove 미만 갭은 병합 → keep(살릴 구간) 목록.
-    # 머리(첫 발화 전)·꼬리(마지막 발화 후) 무음도 동일 규칙으로 컷(제거량이 작으면 유지).
-    keeps = []
-    for a, b in sorted(spans):
-        a = max(0.0, a - pad)
-        b = min(dur, b + pad) if dur > 0 else b + pad
-        if b <= a:
-            continue
-        if keeps and a - keeps[-1][1] < min_remove:
-            keeps[-1][1] = max(keeps[-1][1], b)
-        else:
-            keeps.append([a, b])
-    if keeps and keeps[0][0] < min_remove:
-        keeps[0][0] = 0.0
-    if keeps and dur > 0 and dur - keeps[-1][1] < min_remove:
-        keeps[-1][1] = dur
-    return [(a, b) for a, b in keeps if b - a > 0.01]
-
-
-def cut_remap(keeps):
-    # 원본 타임라인 → 컷 후 타임라인 사상(컷-자막 싱크의 핵심). 갭 안 시각 = 직전 keep 끝점으로 붕괴.
-    table, acc = [], 0.0
-    for a, b in keeps:
-        table.append((a, b, acc))
-        acc += b - a
-    def f(t):
-        t = float(t)
-        for a, b, c in table:
-            if t < a:
-                return c
-            if t <= b:
-                return c + (t - a)
-        return acc
-    return f, acc
-
-
-def has_audio(path):
-    try:
-        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
-                            "stream=index", "-of", "csv=p=0", path], capture_output=True, text=True, timeout=60)
-        return bool((r.stdout or "").strip())
-    except Exception:
-        return True   # 판별 실패 = 오디오 있다고 가정 — 무음 파일 오판 시 컷 ffmpeg가 실패해도 평문 번인 폴백이 받음(소리 있는 영상의 오디오를 조용히 떨구는 반대 방향보다 안전 · 평의회6)
-
-
-def cut_filter(keeps, audio, scale, ass_path):
-    # 단일 패스 select+setpts 시프트 — trim+concat 팬아웃은 브랜치 버퍼링으로 keep 10개에 피크 RSS 4.7GB 실측
-    # (러너 7GB OOM 위험 · 평의회8) → select가 한 패스에서 갭 프레임만 드롭 = 메모리 O(1).
-    # new_pts = t − (그 keep 앞 제거 누적) = cut_remap과 동일 사상 → 자막·영상·오디오 드리프트 구조적 0(VFR 포함 · 평의회1).
-    # -filter_complex_script 파일로 전달(구간 수십 개여도 argv 한도 무관). 한계 = 컷 경계 정밀도는 프레임/오디오프레임(약 21ms) 단위.
-    sel, off, acc = [], [], 0.0
-    for a, b in keeps:
-        # [a,b) — 경계 프레임 이중 포함/누락 없음. 시간 변수 = select는 소문자 t · setpts는 대문자 T(다르면 파싱 실패 실측)
-        sel.append("gte(t,{:.6f})*lt(t,{:.6f})".format(a, b))
-        off.append("{:.6f}*gte(T,{:.6f})*lt(T,{:.6f})".format(a - acc, a, b))
-        acc += b - a
-    sel_e, off_e = "+".join(sel), "+".join(off)
-    parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
-    if audio:
-        parts.append("[0:a]aselect='{}',asetpts='(T-({}))/TB'[ac];".format(sel_e, off_e))
-    parts.append("[vs]" + ((scale + ",") if scale else "") + "ass={}[vo]".format(ass_path))
-    return "\n".join(parts)
 
 
 def sanitize(t):
@@ -490,32 +389,6 @@ def run(vid_id, video, outdir):
         out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
-    # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
-    #   컷과 자막이 같은 파이프라인이어야 하는 이유 = 컷하면 뒤 자막 시각이 전부 당겨짐(remap이 그 싱크 담당).
-    #   자를 갭이 없거나 cut OFF = keeps 빈 목록 = 종전 단일 -vf 경로 그대로(회귀 0).
-    cut_note, keeps = "", []
-    segs_orig, dur_orig = segs, dur   # 컷 실패 폴백용(평의회6) — 재매핑 전 원본 타이밍·길이 보존
-    if opts.get("cut") and dur > 0:
-        keeps = cut_keeps(load_speech_spans(outdir, segs), dur)
-        removed = dur - sum(b - a for a, b in keeps)
-        if keeps and removed >= CUT_MIN_REMOVE:
-            remap, new_dur = cut_remap(keeps)
-            remapped = []
-            for sg in segs:
-                ns, ne = remap(sg["s"]), remap(sg["e"])
-                if ne - ns < 0.05 and float(sg["e"]) - float(sg["s"]) >= 0.15:
-                    continue   # 갭에 통째로 빠져 붕괴한 조각 드롭 = 컷 이음매 0.05s 자막 플래시 방지(평의회1) — 원래 짧던 조각은 보존
-                remapped.append(dict(sg, s=ns, e=ne))
-            segs = remapped or segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전
-            if not remapped:
-                keeps = []
-            else:
-                n_gap = len(keeps) - 1 + (1 if keeps[0][0] > 0.005 else 0) + (1 if dur - keeps[-1][1] > 0.005 else 0)
-                cut_note = "무음 {:.1f}초 컷({}군데)".format(removed, n_gap)
-                print("무음 컷:", cut_note, "· keep", len(keeps), "구간 ·", round(dur, 1), "→", round(new_dur, 1), "초")
-                dur = new_dur
-        else:
-            keeps = []
     # 다운스케일 캡(비용 보호·업스케일 없음) — 목표 치수를 먼저 확정해 PlayRes와 일치시킴(왜곡 0)
     tw, th = w, h
     if w > 1080:
@@ -526,47 +399,20 @@ def run(vid_id, video, outdir):
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass)
     out_mp4 = "/tmp/ly_subbed.mp4"
-    scale = "scale={}:{}".format(tw, th) if (tw, th) != (w, h) else ""
-
-    def plain_cmd():
-        vf = (scale + "," if scale else "") + "ass={}".format(ass_path)
-        return ["ffmpeg", "-y", "-i", video, "-vf", vf,
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
-
-    def encode(c):
-        r = subprocess.run(c, capture_output=True, text=True, timeout=900)   # 15분 백스톱 — 잡 하드킬(45분) 전에 우아하게 실패 기록(평의회)
-        return (r.returncode == 0 and os.path.isfile(out_mp4) and os.path.getsize(out_mp4) >= 1024), (r.stderr or "")
-
+    vf = ("scale={}:{},".format(tw, th) if (tw, th) != (w, h) else "") + "ass={}".format(ass_path)
+    cmd = ["ffmpeg", "-y", "-i", video, "-vf", vf,
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
     try:
-        if keeps:   # 무음 컷 = 단일 패스 select 필터체인(끝에 scale+ass — 재인코딩은 어차피 번인이 하므로 추가 열화 0)
-            aud = has_audio(video)   # 판별 실패 = True 가정 — 오판이어도 아래 폴백이 컷만 포기하고 정상 번인(무음 오디오 강제 삽입보다 안전 · 평의회6)
-            fc_path = "/tmp/ly_cut.filter"
-            with open(fc_path, "w", encoding="utf-8") as f:
-                f.write(cut_filter(keeps, aud, scale, ass_path))
-            cmd = ["ffmpeg", "-y", "-i", video, "-filter_complex_script", fc_path, "-map", "[vo]"] \
-                + (["-map", "[ac]"] if aud else []) \
-                + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-                   "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
-            ok, err = encode(cmd)
-            if not ok:   # 컷 실패 = 컷만 포기·번인은 지킨다(평의회6 P1) — 원본 타이밍 ASS 재생성 후 종전 경로 재시도
-                print("::warning::무음 컷 합성 실패 — 컷 없이 재시도:", err[-300:])
-                with open(ass_path, "w", encoding="utf-8") as f:
-                    f.write(build_ass(segs_orig, tw, th, opts))
-                cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
-                ok, err = encode(plain_cmd())
-        else:
-            ok, err = encode(plain_cmd())
-        if not ok:
-            tail = err[-400:]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)   # 15분 백스톱 — 잡 하드킬(45분) 전에 우아하게 실패 기록(평의회)
+        if r.returncode != 0 or not os.path.isfile(out_mp4) or os.path.getsize(out_mp4) < 1024:
+            tail = (r.stderr or "")[-400:]
             print("::warning::ffmpeg 번인 실패:", tail)
             out_json(outdir, {"error": "영상 합성 실패 — 자막 텍스트는 정상", "detail": tail[-160:]}); return 0
     except subprocess.TimeoutExpired:
         out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
     note = "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else ""
-    if cut_note:
-        note = (note + " · " if note else "") + cut_note
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
     try:
