@@ -32,7 +32,6 @@ export async function onRequestPost({ request, env }) {
   if (body.opts && typeof body.opts === 'object') {
     const o = {};
     for (const k of ['lang', 'tone', 'style', 'pos', 'size']) { const v = body.opts[k]; if (typeof v === 'string' && /^[a-z]{1,10}$/.test(v)) o[k] = v; }
-    for (const k of ['pos', 'bg']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v)) o[k] = Math.max(0, Math.min(100, Math.round(v))); }   // 위치·배경 게이지 %(260707) — pos는 위 문자열 루프와 타입 상호배타(한 요청의 pos는 문자열이거나 숫자 둘 중 하나): 신 뷰어=숫자 여기서, 구 캐시 뷰어=문자열 위에서 통과(ly_burn 하위호환 매핑)
     for (const k of ['filler', 'burn', 'karaoke', 'keyword']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
