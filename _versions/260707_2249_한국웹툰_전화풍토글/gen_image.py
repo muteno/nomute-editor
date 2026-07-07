@@ -63,13 +63,6 @@ STYLE_FRAG = {
                   "strong negative space, poster-like clarity"),
 }
 LIKENESS_STYLES = ("webtoon", "cartoon", "watercolor", "illust")   # 일러스트 계열 = 공인 닮음 허용(캐리커처 전통)
-# 한국웹툰식 토글(전 화풍 공통 · 운영자 260707 "모든 장르 선택 시 옵션") — 선택 화풍을 한국 웹툰 만화 문법으로 번안.
-#   화풍=극화(webtoon)일 땐 NST-B 정본 전문으로 승격(중복 병기 대신 강화 · 13_style_news_canon 계승).
-KWEB_MIX = ("rendered in korean webtoon (manhwa) visual grammar — clean confident digital ink outlines, "
-            "cel-shaded color with defined edges, subtle screentone shading accents, polished webtoon finish")
-KWEB_FULL = ("korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, "
-             "precise anatomical rendering, screentone shading, cel-shaded color with defined edges, "
-             "high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere")
 MOOD_KO = {"auto": "자동", "tense": "긴장", "somber": "침통", "hope": "희망", "calm": "차분", "anger": "분노", "eerie": "스산", "warm": "온기"}   # +3 = 라이브러리 12(감정 조명) 계열 보완(운영자 260707 "분위기 보완")
 MOOD_FRAG = {"auto": "", "tense": "tense, high-stakes urgency", "somber": "somber, grave, mournful stillness",
              "hope": "hopeful, a resolving light breaking through", "calm": "calm, composed, analytical stillness",
@@ -93,17 +86,22 @@ PLACE_FRAG = {"auto": "",
               "full": "full-figure staging — the protagonist visible head to toe within the scene"}
 # 화풍 서브 분기(운영자 260707 "수채도 여러 수채") — STYLE_FRAG에 병기되는 변주 look. 'auto' = 기본 look만.
 # 세부 확장 260707 2차+3차(운영자 "게키카도 여러 화풍·한국웹툰식 상시") — 어휘 = /k 라이브러리 실코드 + 게키가 유파 웹실증(위키 Gekiga·TCJ·MUSE 260707 검색):
-#   극화 세부 = 대표만(운영자 260707 3차 "기본+분열 4~5"): 게키가 정통·하드보일드·시대극·순정·명랑 — 서정·극사실·톤 변주는 컷.
-#   한국웹툰식 = 전 화풍 공통 토글(opts.kweb · 운영자 "모든 장르 선택 시 옵션") — 아래 KWEB_* 참조.
+#   극화 세부 = 한국웹툰(NST-B 정본 전문) · 게키가 정통(다쓰미 계열 해칭) · 하드보일드(사이토 계열) · 시대극(시라토·고지마 붓선) · 서정(카미무라) · 극사실 펜(이케가미).
 #   STYLE27 뉴스릴·NST-B 극화(13)·STYLE25 데포르메·STYLE29 과슈·STYLE18 유화·STYLE02 35mm·FM-01 표현주의(24)·STYLE10/11 애니·STYLE26 디오라마.
 STYLE_SUB = {
     "photo": {"film": "shot on 35mm film, visible grain, subtle lens vignette, slightly underexposed photojournalism look",
               "bw": "black-and-white press photograph, deep blacks, high-contrast documentary tone",
               "cinedoc": "cinematic documentary still, handheld immediacy, natural imperfect framing",
               "newsreel": "vintage newsreel archive footage look, desaturated tones, slight gate flicker, official documentary feel"},
-    "webtoon": {"gekiga": "japanese gekiga-style dramatic manga, heavy expressive ink, dense cross-hatching and hatched shadows, weathered realistic faces, cinematic panel staging, grave heavy atmosphere",
+    "webtoon": {"noir": "stark noir inking, heavy chiaroscuro shadow shapes, minimal palette",
+                "tone": "manga screentone shading, halftone dot texture, crisp line hierarchy",
+                "color": "rich full-color webtoon rendering, soft digital gradient shading",
+                "kwebtoon": "korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere",
+                "gekiga": "japanese gekiga-style dramatic manga, heavy expressive ink, dense cross-hatching and hatched shadows, weathered realistic faces, cinematic panel staging, grave heavy atmosphere",
                 "hardboiled": "hardboiled assassin-thriller gekiga, cold cinematic framing, chiseled stoic faces, precise mechanical detail, ruthless noir tension",
                 "jidai": "samurai-era period gekiga, dynamic sumi-brush strokes, weathered costumes and textures, kinetic swordplay staging",
+                "lyric": "lyrical gekiga, delicate expressive ink lines with soft wash bleed, melancholic poetic stillness, sparse emotional composition",
+                "realpen": "photorealistic gekiga pen rendering, meticulous fine cross-hatching, lifelike anatomy and fabric detail, dense dramatic realism",
                 "sunjung": "korean sunjung-manhwa delicate style, fine graceful pen lines, luminous emotive eyes, soft floral tones and airy screentone accents",
                 "chibi": "cheerful deformed cartoon, chibi proportions with oversized heads and expressive hands, exaggerated comic expressions, clean bright colors"},
     "cartoon": {"brush": "loose brush-inked daily newspaper cartoon, quick confident strokes",
@@ -157,8 +155,7 @@ def load_opts():
     place = o.get("place") if o.get("place") in PLACE_FRAG else "auto"
     return {"style": style, "aspect": aspect, "size": size, "count": count,
             "mood": mood, "font": font, "text": text, "wish": wish,
-            "sub": sub, "angle": angle, "point": point, "light": light, "place": place,
-            "kweb": bool(o.get("kweb"))}
+            "sub": sub, "angle": angle, "point": point, "light": light, "place": place}
 
 
 
@@ -174,20 +171,17 @@ def lib_keywords(o):
 
 
 def style_look(o):
-    """화풍 look = 기본 STYLE_FRAG + 서브 분기 병기 + 한국웹툰식 토글(전 화풍 · 극화는 NST-B 전문 승격)."""
+    """화풍 look = 기본 STYLE_FRAG + 서브 분기 병기."""
     frag = STYLE_FRAG[o["style"]]
     sub = STYLE_SUB.get(o["style"], {}).get(o.get("sub", ""), "")
-    look = frag + (", " + sub if sub else "")
-    if o.get("kweb"):
-        look = (KWEB_FULL + (", " + sub if sub else "")) if o["style"] == "webtoon" else (look + ", " + KWEB_MIX)
-    return look
+    return frag + (", " + sub if sub else "")
 
 
 
 def build_fallback(head, lead, scene, o):
     """Claude 실패 시 결정형 프롬프트(썸네일 정본 골격 계승) — 기능이 절대 안 죽게.
     문구(TEXT)는 프롬프트 앞쪽 + 큰따옴표 리터럴(모델이 '해석'이 아닌 '렌더 대상'으로 취급 — 아이데이션 분신술 260707)."""
-    likeness = o["style"] in LIKENESS_STYLES or o.get("kweb")   # 웹툰화 = 일러스트 계열 닮음 정책 승계
+    likeness = o["style"] in LIKENESS_STYLES
     parts = [tg.GOVERNING]
     if o["text"]:
         parts.append('TEXT (render these Korean characters EXACTLY, letter-for-letter; do not translate or restyle '
@@ -223,7 +217,7 @@ def build_fallback(head, lead, scene, o):
 def ask_opus(head, lead, insight, scene, o, free=False):
     """Opus 4.8(effort max)에게 옵션 반영 Gemini 프롬프트 작성 요청 — 실패·빈출력이면 None(→ 폴백).
     free = 자유 생성(기사 없음): [기사] 블록 대신 운영자 주문이 장면의 전부(260707)."""
-    likeness = o["style"] in LIKENESS_STYLES or o.get("kweb")   # 웹툰화 토글 = 닮음 정책 승계
+    likeness = o["style"] in LIKENESS_STYLES
     person = ("일러스트 계열이므로 공인(정치인·유명인)은 실제 인상(이목구비·헤어·안경)을 닮게 지시하되, "
               "사인·피해자·미성년은 익명 일반 인물로." if likeness
               else "실사 계열이므로 모든 인물은 익명의 일반 얼굴(실존 인물 닮기 금지 — 딥페이크 인접).")
