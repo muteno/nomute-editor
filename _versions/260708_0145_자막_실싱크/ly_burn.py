@@ -13,10 +13,7 @@
 #   outline = 외곽선 두께 배율(×0.5 등 · bg=0 글리프 스트로크에만 의미) · pad = 박스 패딩 계수(fs×pad · bg>0 줄박스 패딩).
 #   + 중앙 불변 배치: 게이지 = 1줄 기준점 고정 · 줄이 늘면 초과분 절반씩 내려 블록 세로중심 유지(이벤트별 MarginV).
 # 팝 모드(opts.pop · 운영자 260707 배치 승인): 카라오케 대신 발화 중 어절만 콘텐츠 그린 점등 — 어절 창별 이벤트 분할(build_pop_frames) ·
-#   카라오케와 상호배타(동시 수신 = 팝 우선).
-# 실싱크(운영자 260708 "어절 강조점 싱크"): 카라오케·팝의 어절 타이밍 = STT word 타임스탬프(ly_stt.py segments.json `w`)의
-#   발화 진행 곡선에 자막 어절을 글자 진행률로 투영 = 침묵·속도변화 반영(구 글자수 균등 분배 대체). word 없으면 글자수 비례 폴백(회귀 0).
-#   원문 모드(자막≈STT)=거의 정확 · 의역 모드=진행률 근사(균등보다 우수). segments.json word를 시간 겹침으로 subs 세그에 주입.
+#   타이밍 = \kf와 동일 글자수 비례 추정(진짜 발화 싱크 = Whisper word 타임스탬프 후속) · 카라오케와 상호배타(동시 수신 = 팝 우선).
 # 키워드 강조색 = 콘텐츠 브랜드 형광그린 #0FFD02(릴스 오버레이 GREEN 계승 · UI 팔레트와 별개 축 = §핵심명령 3-b-1).
 import json
 import math
@@ -134,31 +131,6 @@ def load_speech_spans(outdir, segs):
         except Exception as e:
             print("::warning::segments.json 파싱 실패 — 자막 타이밍으로 컷 계산 폴백:", e)
     return [sp for sp in (_span(s.get("s"), s.get("e")) for s in segs) if sp]
-
-
-def inject_words(segs, outdir):
-    # STT word 타임스탬프(segments.json `w`)를 각 번인 세그에 시간 겹침으로 주입(subs 의역·segments 원문 공통 · 운영자 260708 실싱크).
-    #   subs.json 세그엔 word 없음(claude 의역) → segments.json 원천 word를 [s,e] 겹침으로 매핑. 이미 w 있으면(segments 폴백) 유지.
-    if any(sg.get("w") for sg in segs):
-        return   # 이미 word 보유(segments.json 직접 폴백 경로) = 주입 불요
-    p = os.path.join(outdir, "segments.json")
-    all_w = []
-    try:
-        j = json.load(open(p, encoding="utf-8"))
-        for sseg in (j.get("segs") or []):
-            for w in (sseg.get("w") or []):
-                if isinstance(w.get("s"), (int, float)) and isinstance(w.get("e"), (int, float)) \
-                        and math.isfinite(w.get("s")) and math.isfinite(w.get("e")) and w["e"] > w["s"]:
-                    all_w.append(w)
-    except Exception as ex:
-        print("::warning::segments.json word 로드 실패(실싱크 스킵 · 글자수 비례 폴백):", ex)
-        return
-    if not all_w:
-        return
-    all_w.sort(key=lambda w: w["s"])
-    for sg in segs:
-        s0, e0 = float(sg["s"]), float(sg["e"])
-        sg["w"] = [w for w in all_w if w["e"] > s0 and w["s"] < e0]   # 세그 시간창에 걸치는 word(발화 진행 곡선 재료)
 
 
 def cut_keeps(spans, dur, pad=CUT_PAD, min_remove=CUT_MIN_REMOVE):
@@ -330,55 +302,8 @@ def coef(opts, key, dflt, lo, hi):
     return max(lo, min(hi, v))
 
 
-def _interp(x, knots):
-    # piecewise linear 보간(knots = (x,y) x오름차순) — 글자진행률 x → 시간진행률 y
-    if x <= knots[0][0]:
-        return knots[0][1]
-    for i in range(1, len(knots)):
-        x0, y0 = knots[i - 1]
-        x1, y1 = knots[i]
-        if x <= x1:
-            return y1 if x1 == x0 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
-    return knots[-1][1]
-
-
-def _sync_cs(word_lens, seg_words, cs_total):
-    # 자막 어절(글자수 word_lens)을 STT word 타임스탬프(seg_words=[{t,s,e}])의 발화 진행 곡선에 투영 → 어절별 cs.
-    #   곡선 = STT word 누적 글자비율 → 발화 시간비율(침묵·속도 반영). 자막 어절 끝 글자비율 → 곡선 보간 시간비율 → cs_total 스케일.
-    #   반환 = 어절별 cs 리스트(합=cs_total) · word 부족/부적격이면 None(→ 글자수 비례 폴백).
-    sw = [w for w in (seg_words or [])
-          if isinstance(w.get("s"), (int, float)) and isinstance(w.get("e"), (int, float))
-          and math.isfinite(w.get("s")) and math.isfinite(w.get("e")) and w["e"] > w["s"]]
-    if not sw:
-        return None
-    t0 = sw[0]["s"]
-    span = sw[-1]["e"] - t0
-    if span <= 0:
-        return None
-    tot_ch = max(1, sum(len(w.get("t") or "") for w in sw))
-    cum, knots = 0, [(0.0, 0.0)]
-    for w in sw:
-        cum += len(w.get("t") or "")
-        knots.append((cum / tot_ch, max(0.0, min(1.0, (w["e"] - t0) / span))))   # 시간비율 [0,1] 클램프(word 경계 역전 방어)
-    tot = max(1, sum(word_lens))
-    cum, prev_tr, used, cs_list = 0, 0.0, 0, []
-    for k, wl in enumerate(word_lens):
-        cum += wl
-        if k == len(word_lens) - 1:
-            cs = max(1, cs_total - used)                 # 마지막 = 잔여(합 보존)
-        else:
-            tr = _interp(cum / tot, knots)
-            tr = max(prev_tr, tr)                         # 단조 증가 강제(보간 흔들림 방어)
-            cs = max(1, int(round(cs_total * (tr - prev_tr))))
-            prev_tr = tr
-        cs_list.append(cs)
-        used += cs
-    return cs_list
-
-
-def prep_line(text, seg_dur, keyword, fs, avail_px, seg_words=None):
+def prep_line(text, seg_dur, keyword, fs, avail_px):
     # 한 조각 공용 준비(카라오케/일반 build_line·팝 build_pop_frames 공유): 새니타이즈·키워드 스팬·어절·청킹·축소·어절별 cs
-    #   seg_words = 그 세그 STT word 타임스탬프(있으면 실싱크 · 없으면 글자수 비례 폴백)
     plain, spans = star_spans(sanitize(text))
     if not keyword:
         spans = []
@@ -400,13 +325,11 @@ def prep_line(text, seg_dur, keyword, fs, avail_px, seg_words=None):
         bounds.append((st, st + len(w))); pos = st + len(w)
     total = max(1, sum(len(w) for w in words))
     cs_total = max(10, int(seg_dur * 100))
-    cs_list = _sync_cs([len(w) for w in words], seg_words, cs_total)   # 실싱크(STT word 발화 리듬 · 운영자 260708)
-    if cs_list is None:                                                # word 없음 = 글자수 비례 폴백(종전)
-        used, cs_list = 0, []
-        for k, w in enumerate(words):
-            cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 시간 차단
-            used += cs
-            cs_list.append(cs)
+    used, cs_list = 0, []
+    for k, w in enumerate(words):
+        cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 시간 차단
+        used += cs
+        cs_list.append(cs)
     hits = [any(a < en and st < b for a, b in spans) for (st, en) in bounds]
     lines = chunk_lines(words, budget)
     return words, hits, cs_list, lines, eff_fs
@@ -424,10 +347,10 @@ def _assemble(rendered, lines, eff_fs, fs):
     return ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
 
 
-def build_line(text, seg_dur, karaoke, keyword, fs, avail_px, seg_words=None):
+def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
     # 한 조각 → (ASS 텍스트, 줄 수, 실폰트크기): 수동 \N + 카라오케 \kf + 키워드 \1c(콘텐츠 그린)
-    #   줄 수·실크기 반환 = 중앙 불변 배치(이벤트별 MarginV 보정)의 블록 높이 산정용(260707) · seg_words = 실싱크(260708)
-    prep = prep_line(text, seg_dur, keyword, fs, avail_px, seg_words)
+    #   줄 수·실크기 반환 = 중앙 불변 배치(이벤트별 MarginV 보정)의 블록 높이 산정용(260707)
+    prep = prep_line(text, seg_dur, keyword, fs, avail_px)
     if not prep:
         return "", 0, fs
     words, hits, cs_list, lines, eff_fs = prep
@@ -438,11 +361,11 @@ def build_line(text, seg_dur, karaoke, keyword, fs, avail_px, seg_words=None):
     return _assemble(rendered, lines, eff_fs, fs), len(lines), eff_fs
 
 
-def build_pop_frames(text, seg_dur, keyword, fs, avail_px, seg_words=None):
+def build_pop_frames(text, seg_dur, keyword, fs, avail_px):
     # 팝 모드(운영자 260707 승인): 발화 중인 어절만 콘텐츠 그린 점등 — 어절 시간창마다 라인 전체를 다시 그린 이벤트 프레임 목록.
     #   창 경계 = \kf와 동일한 글자수 비례 분배(진짜 발화 싱크 = Whisper word 타임스탬프 후속) · 키워드(*별표*)는 전 창 상시 그린.
     #   레이아웃(청킹·축소·줄수)은 프레임 간 동일 → 박스·위치 픽셀 불변 = 창 전환 시 어절 색만 바뀜(깜빡임 0).
-    prep = prep_line(text, seg_dur, keyword, fs, avail_px, seg_words)
+    prep = prep_line(text, seg_dur, keyword, fs, avail_px)
     if not prep:
         return [], 0, fs
     words, hits, cs_list, lines, eff_fs = prep
@@ -544,14 +467,13 @@ def build_ass(segs, w, h, opts):
         ko = sg.get("ko") or ""
         src = sanitize(sg.get("src") or "")
         frames = None
-        sw_ts = sg.get("w")   # STT word 타임스탬프(실싱크 · 없으면 None → 글자수 비례 폴백)
         if pop and ko:
-            frames, n_main, m_fs = build_pop_frames(ko, e - s, keyword, fs, avail, sw_ts)
+            frames, n_main, m_fs = build_pop_frames(ko, e - s, keyword, fs, avail)
             main = frames[0][2] if frames else ""
         else:
-            main, n_main, m_fs = build_line(ko, e - s, karaoke, keyword, fs, avail, sw_ts) if ko else ("", 0, fs)
+            main, n_main, m_fs = build_line(ko, e - s, karaoke, keyword, fs, avail) if ko else ("", 0, fs)
         if not main and src:
-            main, n_main, m_fs = build_line(src, e - s, karaoke, False, fs, avail, sw_ts)   # 원문 폴백 = STT 원문이라 word 1:1 = 최상 싱크
+            main, n_main, m_fs = build_line(src, e - s, karaoke, False, fs, avail)
             src = ""
             frames = None
         if not main:
@@ -598,11 +520,6 @@ def run(vid_id, video, outdir):
     if dur > MAX_DUR:
         out_json(outdir, {"error": "영상이 {}분 — 10분 이하만 합성(릴스/쇼츠용)".format(int(dur // 60))}); return 0
     segs, src_kind = load_segs(outdir)
-    if segs:
-        try:
-            inject_words(segs, outdir)   # STT word 타임스탬프 주입(실싱크 · 실패해도 글자수 비례 폴백 = 무해)
-        except Exception as ex:
-            print("::warning::word 주입 예외(실싱크 스킵):", ex)
     if not segs:
         out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
