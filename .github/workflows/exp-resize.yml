@@ -1,0 +1,56 @@
+# 나노바나나 비율 재구성 v0 실험 — workflow_dispatch 전용(유료 Gemini 수동 발사만 · §📰 불변)
+# 자동 트리거 0 = 라이브 파이프라인 무접촉. 산출 = _산출/exp_resize_v0/<ts>/ (main 커밋).
+name: exp-resize
+on:
+  workflow_dispatch:
+    inputs:
+      src:
+        description: '레포 내 소스 이미지 경로'
+        required: false
+        default: 'cards/260622-1736-2595974/scenes/장면01.jpg'
+      aspect:
+        description: '타겟 비율 (16:9 / 9:16 / 4:5 / 1:1)'
+        required: false
+        default: '16:9'
+      cases:
+        description: '케이스 (plain,poster)'
+        required: false
+        default: 'plain,poster'
+
+concurrency:
+  group: exp-resize
+  cancel-in-progress: false
+
+jobs:
+  exp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Deps (timeout 감쌈 · §9 인프라 — 실험 단발이라 캐시 생략)
+        run: |
+          timeout 300 sudo apt-get install -y -q fonts-noto-cjk || (sleep 5 && timeout 300 sudo apt-get install -y -q fonts-noto-cjk)
+          timeout 300 pip install -q pillow numpy || (sleep 5 && timeout 300 pip install -q pillow numpy)
+
+      - name: Run experiment
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EXP_SRC: ${{ inputs.src }}
+          EXP_ASPECT: ${{ inputs.aspect }}
+          EXP_CASES: ${{ inputs.cases }}
+        run: python3 .github/scripts/exp_resize_v0.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add _산출/exp_resize_v0
+          git diff --cached --quiet && { echo "산출 없음"; exit 0; }
+          git commit -m "exp: 비율 재구성 v0 실측 산출 (${{ inputs.aspect }})"
+          for i in 1 2 3; do
+            git push origin main && break
+            git pull --rebase origin main && sleep 3
+          done
