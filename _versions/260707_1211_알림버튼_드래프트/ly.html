@@ -1110,23 +1110,6 @@ function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || 
 })();
 function lyGoDim() { const g = $('#go'); if (!g) return; g.classList.toggle('dim', !(($('#url').value || '').trim() || FILE_B64 || SRT_TEXT)); }   // 입력 전 = 생성 버튼 dim(시각 위계를 파일/URL 입력으로 · 탭하면 기존 안내 흔들림 그대로 · 평의회8)
 (function () { const u = $('#url'); if (u) u.addEventListener('input', lyGoDim); lyGoDim(); })();
-// 작성 중 자동보관(드래프트) — 이미지 도구(thumb) 패턴 이식(운영자 260707 "이 기능 영상 안에 넣어줘"): URL 입력을 30분 보관,
-//   화면 이탈·모달 닫힘·모바일 킬에도 유지. 복원 = 조용(문구 0 = §디자인 빈 상태 · thumb의 '설정 복원됨' 잔소리 미계승).
-//   파일 첨부는 대용량(최대 250MB)이라 보관 제외(정직) · 설정 칩(LY_OPTS)은 별도 영구 저장이라 무대상.
-(function () {
-  const u = $('#url'); if (!u) return;
-  const KEY = 'nm_ly_draft', MS = 30 * 60e3;
-  let t = null;
-  const save = () => { try { const v = u.value.trim(); if (v) localStorage.setItem(KEY, JSON.stringify({ url: v, ts: Date.now() })); else localStorage.removeItem(KEY); } catch (e) {} };
-  try {   // 복원 — 30분 이내·현재 비어있을 때만(생성 진행/결과 복원과 무간섭 = 입력칸 한정)
-    const d = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (d && d.url && Date.now() - (d.ts || 0) <= MS) { if (!u.value.trim()) { u.value = d.url; lyGoDim(); } }
-    else if (d) localStorage.removeItem(KEY);
-  } catch (e) {}
-  u.addEventListener('input', () => { clearTimeout(t); t = setTimeout(save, 800); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { clearTimeout(t); save(); } });
-  window.addEventListener('pagehide', () => { clearTimeout(t); save(); });
-})();
 // ══ 자막 설정 칩(버튼 = 프롬프팅 대체 · 운영자 260707) — 선택값 localStorage 영속 · 기본값 = 종전 동작 동일(무설정 = 회귀 0) ══
 const LY_OPT_DEF = { lang: 'auto', tone: 'sns', filler: true, burn: true, style: 'bold', pos: 'bottom', size: 'l', karaoke: true, keyword: true };
 const LY_OPT_KEY = 'nm_ly_opts_v1';
