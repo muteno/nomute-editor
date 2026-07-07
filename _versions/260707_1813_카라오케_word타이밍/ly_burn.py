@@ -3,8 +3,6 @@
 #   사용: ly_burn.py <id> <video_path>   (ly-make.yml 번인 스텝 전용 · ffmpeg+fonts-noto-cjk는 runner-setup가 설치)
 #   env: OPTS = 뷰어 버튼 설정 JSON(스타일·위치·크기·카라오케·키워드) · R2 5종 = thumb_gen 재사용(카드·썸네일·/k 동일 파이프)
 # 자막 소스 우선순위: subs.json(의역+타이밍 · lymake.sh가 claude 출력 꼬리 JSON 분리) → segments.json(받아쓴 원문 폴백).
-# 카라오케 타이밍: segments.json(ly_stt.py word 타임스탬프)의 실제 발화 곡선에 자막 어절을 태워 \kf 산출(노래방식 정확 동기) —
-#   word 없으면(SRT·텍스트 입력·옛 STT) 글자수 비례 폴백 = 종전 동작(회귀 0). subs↔STT 세그 경계 불일치는 시간 겹침으로 흡수.
 # 실패 = fail-soft: video.json에 사유 기록 후 rc 0 (자막 텍스트 산출은 이미 정상 — 번인이 잡을 죽이면 안 됨).
 # ASS 레시피 = 분신술 R1 기술 실측 확정본(260707): BorderStyle=3 금지(다줄 겹침) → 통박스는 4 + Outline==Back색 ·
 #   한글 자동 줄바꿈 없음 → WrapStyle 2 + 수동 \N(줄당 폭/폰트 비례) · MarginV = 하단 22%(릴스 UI 세이프존) ·
@@ -91,26 +89,6 @@ def load_segs(outdir):
     return [], ""
 
 
-def load_stt_words(outdir):
-    # segments.json(ly_stt.py 사이드카)의 word 타임스탬프 평탄화 = 카라오케 실제 발화 곡선 소스.
-    #   없거나(SRT·텍스트 입력) word 미포함(옛 word_timestamps=False STT) = 빈 리스트 → 글자수 비례 폴백(회귀 0).
-    p = os.path.join(outdir, "segments.json")
-    if not os.path.isfile(p):
-        return []
-    try:
-        j = json.load(open(p, encoding="utf-8"))
-        words = []
-        for sg in (j.get("segs") or []):
-            for w in (sg.get("w") or []):
-                if isinstance(w.get("s"), (int, float)) and isinstance(w.get("e"), (int, float)) and str(w.get("t") or "").strip():
-                    words.append({"t": str(w["t"]), "s": float(w["s"]), "e": float(w["e"])})
-        words.sort(key=lambda x: (x["s"], x["e"]))
-        return words
-    except Exception as e:
-        print("::warning::segments.json word 로드 실패(카라오케 글자수 비례 폴백):", e)
-        return []
-
-
 def sanitize(t):
     # ASS 오버라이드 태그 주입 차단({}·\) + 제어문자 제거 · 구두점 정리(마침표·쉼표 꼬리 제거, ?·! 유지 = 쇼츠 표준)
     t = re.sub(r"[{}\\\r\n\t]", " ", str(t or ""))
@@ -157,75 +135,7 @@ def chunk_lines(words, budget):
     return lines
 
 
-def _interp_cs(ctrl, p):
-    # ctrl = [(진행률x, 센티초y)…] x 오름차순 · p∈[0,1] → 구간 선형보간 y
-    if p <= ctrl[0][0]:
-        return ctrl[0][1]
-    for i in range(1, len(ctrl)):
-        x0, y0 = ctrl[i - 1]
-        x1, y1 = ctrl[i]
-        if p <= x1:
-            return y1 if x1 <= x0 else y0 + (y1 - y0) * (p - x0) / (x1 - x0)
-    return ctrl[-1][1]
-
-
-def prop_cs(words, cs_total):
-    # 글자수 비례 분배(word 타임스탬프 없을 때 폴백 = 종전 카라오케 동작 그대로)
-    total = max(1, sum(len(w) for w in words))
-    out, used = [], 0
-    for k, w in enumerate(words):
-        cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 \kf 차단
-        used += cs
-        out.append(cs)
-    return out
-
-
-def karaoke_cs(words, seg_s, seg_dur, stt_words):
-    # (리드인 센티초, 어절별 \kf 센티초 리스트) — STT word 타임스탬프가 있으면 실제 발화 곡선에 어절을 태우고(노래방식 정확),
-    #   없으면 글자수 비례(폴백). 리드인+합 = cs_total(세그 표시길이 정합). 의역이라 어절이 STT word와 1:1 아니어도
-    #   '세그 내 실제 발화 진행 곡선'에 글자 진행률로 태우므로 균등분배보다 항상 정확(한국어 원본은 word와 거의 일치).
-    n = len(words)
-    cs_total = max(10, int(seg_dur * 100))   # int(버림) = 종전 build_line과 동일(폴백 비트 일치 · round면 부동소수 경계서 1cs 벌어짐)
-    if not stt_words or n == 0:
-        return 0, prop_cs(words, cs_total)
-    chars = [max(1, len(w["t"].replace(" ", ""))) for w in stt_words]
-    tot = sum(chars)
-    # 리드인 = 자막 표시 시작 ~ 첫 발화까지의 침묵(카라오케 채움을 실제 발화에 정렬 · 0.12초 미만은 흡수 = 잡음 방지)
-    lead = int(round(max(0.0, (float(stt_words[0]["s"]) - seg_s) * 100.0)))
-    lead = min(lead, cs_total - n) if lead >= 12 else 0   # 어절당 최소 1cs 확보·과도 리드인 상한
-    if lead < 0:
-        lead = 0
-    # STT 발화 곡선 = (누적 글자비율, 세그 상대 센티초) 제어점 — 시작=리드인·끝=세그끝·세그 클램프·시간 단조증가
-    ctrl, acc, prev = [(0.0, float(lead))], 0, float(lead)
-    for w, ch in zip(stt_words, chars):
-        acc += ch
-        rel = (min(seg_s + seg_dur, max(seg_s, float(w["e"]))) - seg_s) * 100.0
-        rel = max(prev, min(float(cs_total), rel))
-        ctrl.append((acc / tot, rel))
-        prev = rel
-    ctrl[-1] = (1.0, float(cs_total))   # 끝 앵커 = 세그 끝(마지막 어절이 세그 끝까지 채워지게 · 마지막 word가 못 미쳐도 보정)
-    # 자막 어절 → 누적 글자비율 → 곡선 시간 → 어절별 fill(곡선 절대위치로 t_prev 추적 = 하한 걸린 어절이 뒤 타이밍 안 밀게)
-    kc = [max(1, len(w)) for w in words]
-    ktot = sum(kc)
-    out, kacc, t_prev = [], 0, float(lead)
-    for i, ch in enumerate(kc):
-        kacc += ch
-        t = _interp_cs(ctrl, 1.0 if i == n - 1 else kacc / ktot)
-        out.append(max(1, int(round(t - t_prev))))
-        t_prev = t
-    diff = cs_total - lead - sum(out)   # 반올림·하한 보정 → 리드인+합 = cs_total 정확히
-    if diff >= 0:
-        out[-1] += diff                 # 부족분 = 마지막 어절이 흡수
-    else:
-        i = len(out) - 1                # 초과분 = 뒤 어절부터 1까지 깎음(하한 유지 · 어절수>cs_total 극단서도 음수 \kf 0)
-        while diff < 0 and i >= 0:
-            take = min(-diff, out[i] - 1)
-            out[i] -= take; diff += take; i -= 1
-    out[-1] = max(1, out[-1])
-    return lead, out
-
-
-def build_line(text, seg_s, seg_dur, karaoke, keyword, fs, avail_px, stt_words):
+def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
     # 한 조각 → ASS 텍스트: 수동 \N(최대 2줄 · 넘치면 그 조각만 \fs 자동 축소) + 카라오케 \kf + 키워드 \1c(콘텐츠 그린)
     plain, spans = star_spans(sanitize(text))
     if not keyword:
@@ -246,16 +156,18 @@ def build_line(text, seg_s, seg_dur, karaoke, keyword, fs, avail_px, stt_words):
     for w in words:
         st = plain.find(w, pos); st = pos if st < 0 else st
         bounds.append((st, st + len(w))); pos = st + len(w)
-    lead, cs_list = karaoke_cs(words, seg_s, seg_dur, stt_words) if karaoke else (0, None)
+    total = max(1, sum(len(w) for w in words))
+    cs_total = max(10, int(seg_dur * 100))
+    used = 0
     rendered = []
     for k, w in enumerate(words):
+        cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 \kf 차단
+        used += cs
         st, en = bounds[k]
         hit = any(a < en and st < b for a, b in spans)
         seg = ""
         if karaoke:
-            if k == 0 and lead > 0:
-                seg += "{\\k" + str(lead) + "}"   # 리드인 = 첫 발화 전 대기(카라오케 채움 시작을 실제 발화에 정렬)
-            seg += "{\\kf" + str(cs_list[k]) + "}"
+            seg += "{\\kf" + str(cs) + "}"
         if hit:
             seg += "{\\1c" + GREEN_BGR + "}" + w + "{\\r" + ("" if eff_fs == fs else "}{\\fs" + str(eff_fs)) + "}"
         else:
@@ -266,7 +178,7 @@ def build_line(text, seg_s, seg_dur, karaoke, keyword, fs, avail_px, stt_words):
     return ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
 
 
-def build_ass(segs, w, h, opts, stt_words):
+def build_ass(segs, w, h, opts):
     size_f = {"s": 0.032, "m": 0.038, "l": 0.045}.get(opts.get("size") or "l", 0.045)
     fs = max(18, int(h * size_f))
     pos = opts.get("pos") or "bottom"
@@ -313,10 +225,9 @@ def build_ass(segs, w, h, opts, stt_words):
             e = s + 0.05
         ko = sg.get("ko") or ""
         src = sanitize(sg.get("src") or "")
-        sw = [x for x in stt_words if s <= (x["s"] + x["e"]) / 2 < e] if (karaoke and stt_words) else []   # 이 세그에 속한 STT word = 중심점 기준(경계에 살짝 걸친 옆 세그 word 오염 차단 = 곡선 왜곡 방지)
-        main = build_line(ko, s, e - s, karaoke, keyword, fs, avail, sw) if ko else ""
+        main = build_line(ko, e - s, karaoke, keyword, fs, avail) if ko else ""
         if not main and src:
-            main = build_line(src, s, e - s, karaoke, False, fs, avail, sw)
+            main = build_line(src, e - s, karaoke, False, fs, avail)
             src = ""
         if not main:
             continue
@@ -356,8 +267,7 @@ def run(vid_id, video, outdir):
     if w > 1080:
         tw = 1080
         th = int(round(h * tw / w / 2) * 2)
-    stt_words = load_stt_words(outdir) if opts.get("karaoke", True) else []   # 카라오케 실제 발화 곡선(word 타임스탬프) — 없으면 글자수 비례 폴백
-    ass = build_ass(segs, tw, th, opts, stt_words)
+    ass = build_ass(segs, tw, th, opts)
     ass_path = "/tmp/ly_subs.ass"
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass)
