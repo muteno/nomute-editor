@@ -39,12 +39,6 @@
   h1 { font-size:18px; margin:6px 0 18px; }
   h1 b { color:var(--accent); }
   /* 상단 3탭 = 글자만(박스·배경·테두리·blur 제거 · 글자 눌러 전환 · 중앙 모음 = '안으로 들이고' · index.html .chip 패턴 계승 · 운영자 260626) */
-  .gen-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }   /* /6 생성 탭 최근 목록(운영자 260707) */
-  .gen-it { position:relative; border-radius:var(--r-m); overflow:hidden; background:rgba(255,255,255,.04); }
-  .gen-it img { display:block; width:100%; aspect-ratio:4/5; object-fit:cover; }
-  .gen-it .gen-dl { position:absolute; right:6px; bottom:6px; width:var(--btn-sm); height:var(--btn-sm); display:flex; align-items:center; justify-content:center; border:0; border-radius:var(--r-s); cursor:pointer; }
-  .gen-it .gen-dl.dlbtn { background:rgba(0,0,0,.20) !important; }   /* 이미지 위 오버레이 플레이트 = 중립 검정(§디자인 n · 색은 아이콘만) */
-  .gen-it .gen-dl.dlbtn:active { background:rgba(0,0,0,.32) !important; }
   .tabs { display:flex; justify-content:center; gap:44px; margin-bottom:26px; }   /* 글자 탭 간격 넓힘(22→44 · 미관 · 운영자 260626) · mb 16→26 = 이미지 3탭 첫 소머리 블릿을 영상(ly/k) 첫 블릿과 동일 화면선(실측 187px)으로 통일(첫 블릿 시작라인 §📐 · 운영자 260629) */
   .tab { padding:4px 2px; background:none; border:none; box-shadow:none; border-radius:0; cursor:pointer; font-weight:600; font-size:13px; color:var(--mut); transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* 텍스트 단독 = 아이콘+글자 공존 제거(§📐 통일·운영자 260704) */
   .tab:hover { color:var(--fg); }
@@ -615,16 +609,9 @@
     <div class="tab" data-app="2">썸네일</div>
     <div class="tab" data-app="3">저작권</div>
     <div class="tab" data-app="5">카드뉴스</div>
-    <div class="tab" data-app="6">생성</div><!-- 4번 탭 = 제미나이 자유 생성(운영자 260707 "이미지 제작 세부메뉴 4번" — + 버튼 팝업의 기사 무관판) -->
   </div>
 
   <div class="panel">
-    <!-- /6 생성 = 제미나이 자유 생성(운영자 260707): 발사 = 하단 공용 [이미지 생성] 버튼 → 부모(index) #genidlg 팝업(버튼 프롬프팅 재사용) → imggen free → gen_out/free.json → 아래 그리드 폴링 -->
-    <div id="genBox" class="none">
-      <label class="fl">최근 생성</label>
-      <div id="genGrid" class="gen-grid"></div>
-    </div>
-
     <!-- /5 카드뉴스 배경 이미지 = 제작 버튼과 한 행으로 이동(ly .filerow 통일·260628) -->
 
     <!-- OPA (1 — 오버레이 투명도: 58 기본 / 30 / 직접입력) -->
@@ -828,16 +815,14 @@ function selApp(a) {
   $('#copyBox').classList.toggle('none', a !== '3');   // 저작권+안내문 통합 = /3
   $('#abbrBox').classList.add('none');   // 축약 = 전 탭 goSpec 명세 ON 토글로 이동(버튼 안 체크박스 폐지)
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
-  $('#genBox').classList.toggle('none', a !== '6');   // 생성 = /6(제미나이 자유 생성 · 운영자 260707)
   // (linesMax 폐지 — 포스트 설명줄을 postSpec 축약 명세로 대체)
   if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
   if (a === '1') updateTrkHint('lines', 'linesTrk', 'post');                   // 실시간 자간
   if (a === '2') updateComboTrk();                                             // 릴스 단일 폼 자간 안내(부제/제목·자막)
   if (a === '3') { syncCpFmt(); syncCopyTog(); syncGuide(); }                  // 포맷 세그·저작권 ON/OFF·안내문 토글 UI 갱신
-  if (a === '6') genLoad();                                                    // 생성 탭 진입 = 최근 생성 목록 로드
   clearSpellReview();                                                          // 앱 바뀌면 진행 중이던 교정 리뷰 폐기
   const gb = $('#go');                                                         // 버튼 문구 = '이미지 제작'(맞춤법 교정은 기능 유지·문구만 간소화·운영자 260629)
-  if (gb) { const lbl = a === '6' ? '이미지 생성' : '이미지 제작'; gb.dataset.label = lbl;   // /6 = 팝업 열기 발사(부모 genidlg)
+  if (gb) { const lbl = '이미지 제작'; gb.dataset.label = lbl;
     if (!gb.classList.contains('firing') && !gb.classList.contains('okdone') && !gb.classList.contains('spell-arm')) gb.textContent = lbl; }
   updateGoSpec();
 }
@@ -1217,44 +1202,6 @@ const DLED = new Set();
 const _dlKey = u => (u || '').split('?')[0].split('#')[0];
 const dlSeen = u => !!u && DLED.has(_dlKey(u));
 const dlMark = (u, btn) => { if (u) DLED.add(_dlKey(u)); if (btn) btn.classList.add('dl-done'); };
-// ── /6 생성 탭: 최근 생성 목록(gen_out/free.json) — 로드·그리드·다운로드·발사 후 폴링(운영자 260707) ──
-let GEN_LAST = '', GEN_PT = null;
-async function genLoad(quiet) {
-  try {
-    const r = await fetch('gen_out/free.json?t=' + Date.now());
-    if (!r.ok) { if (!quiet) genRender([]); return []; }
-    const tx = await r.text();
-    if (/^\s*</.test(tx)) { if (!quiet) genRender([]); return []; }   // SPA 폴백(HTML 200) 가드 = ly video.json 동일
-    const items = JSON.parse(tx);
-    if (!Array.isArray(items)) { if (!quiet) genRender([]); return []; }
-    GEN_LAST = (items[0] && items[0].url) || GEN_LAST;
-    genRender(items);
-    return items;
-  } catch (e) { if (!quiet) genRender([]); return []; }
-}
-function genRender(items) {
-  const g = $('#genGrid'); if (!g) return;
-  g.innerHTML = (items || []).map(it => {
-    const u = esc(it.url || '');
-    return '<div class="gen-it"><img loading="lazy" src="' + u + '" alt="">'
-      + '<button type="button" class="gen-dl dlbtn' + (dlSeen(it.url) ? ' dl-done' : '') + '" data-u="' + u + '" aria-label="저장">' + DOWNLOAD_SVG + '</button></div>';
-  }).join('');   // 빈 목록 = 그냥 빈 그리드(조용한 공백 §디자인 e-가 · 필러 문구 금지)
-}
-function genPoll() {
-  clearInterval(GEN_PT);
-  let n = 0; const snap = GEN_LAST;
-  GEN_PT = setInterval(async () => {
-    n++;
-    const items = await genLoad(true);
-    const head = (items[0] && items[0].url) || '';
-    if ((head && head !== snap) || n >= 14) clearInterval(GEN_PT);   // 새 결과 도착 or 백스톱(25s×14 ≈ 6분 · imggen 1~3분)
-  }, 25000);
-}
-window.addEventListener('message', e => {   // 부모(index) genidlg 자유 생성 발사 통지 → 생성 탭 전환 + 폴링
-  if (!e.data || e.data.nm !== 'genfree-fired') return;
-  selApp('6');
-  genPoll();
-});
 // 전체 다운로드 통합(dlAllSeq) — 순차 저장(진행 i/N 라벨) → 초록 ✓ 완료. 뉴스요약 카드뉴스 '전체' 정본 **통이식 사본**(운영자 260705 "통으로 이식" — 옛 job 기반 jSaveSeq 폐기: done 잡 행은 1s 인터벌 재렌더 제외(status!=='done'만 갱신)라 시퀀스 중 버튼 교체 없음 = live()/._dlSt 복원 기계 불요). index와 차이 = 다운로더 dlBlob(R2 프록시·이 파일 표준) 한 줄뿐 — 그 외 스펙 창작 금지, index 바뀌면 같이.
 async function dlAllSeq(btn, urls, namer) {
   if (!btn || btn._dlbusy) return;
@@ -2504,7 +2451,6 @@ function applySpellReview() {   // 2차 누름 = 점등된 교정만 적용. _sp
   clearSpellReview();
 }
 $('#go').onclick = async () => {
-  if (APP === '6') { parent.postMessage({ nm: 'genfree' }, '*'); return; }   // 생성 탭 = 부모(index) #genidlg 자유 생성 팝업 열기(운영자 260707 · 옵션 UI 재사용)
   if (_goLock) return; _goLock = true;   // 맞춤법 await 동안 잠금 유지(더블탭 = 중복 교정·디스패치 차단) → finally서 해제
   try {
   // firing(전송 상태머신)은 실제 전송 시점(dispatchJob)에서만 — 검증 실패 시 헛발사 방지
