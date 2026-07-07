@@ -46,11 +46,13 @@ P_REFRAME = (
 )
 P_PADFILL = (
     "This canvas contains an original photo placed in the center, with flat neutral gray areas "
-    "beside it. Fill ONLY the gray areas by seamlessly extending the existing scene — continue "
-    "the background's lighting, perspective, textures, and grain across the boundary. Keep every "
-    "existing pixel of the original photo exactly unchanged. Do not add any new text, watermarks, "
-    "logos, or people. The result must look like one single continuous photograph."
-)
+    "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
+    "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
+    "grain across the boundary, and match the exact brightness and tone of the photo at the "
+    "boundary so no edge or band is visible. Keep every existing pixel of the original photo "
+    "exactly unchanged. Do not add any new text, watermarks, logos, or people. The result must "
+    "look like one single continuous photograph."
+)   # 라운드2 실측 반영: 'beside'(좌우 암시)가 상하 확장을 회색 방치시킴 → 방향 동적 주입 + 회색 잔존 금지·경계 톤 일치 명시
 
 
 def _font(size):
@@ -149,9 +151,17 @@ def main():
             open(os.path.join(out_dir, case + "_A_reframe.jpg"), "wb").write(a)
         meta["results"].append({"case": case, "var": "A", "ok": bool(a)})
 
-        # B — pad-fill 1콜
+        # B — pad-fill 1콜 (패딩 방향을 프롬프트에 동적 주입 — 라운드2 상하 회색 방치 수리)
         canvas, box = pad_canvas(img, ASPECT)
-        b = tg.gemini_image(P_PADFILL, image_size="1K",
+        if box[1] > 0:   # 상하 확장(세로화)
+            where = "above and below it"
+            dirhint = ("upward and downward (for example, extend a ceiling or sky upward and a "
+                       "floor or ground downward)")
+        else:            # 좌우 확장(가로화)
+            where = "to its left and right"
+            dirhint = "to the left and to the right"
+        pb = P_PADFILL.format(where=where, dirhint=dirhint)
+        b = tg.gemini_image(pb, image_size="1K",
                             tag="exp:{}:B".format(case), aspect=ASPECT, ref_png=jpg_bytes(canvas))
         if b:
             open(os.path.join(out_dir, case + "_B_padfill.jpg"), "wb").write(b)
