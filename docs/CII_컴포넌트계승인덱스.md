@@ -91,6 +91,6 @@
 - ⏳ P3 = `구성도/00_컴포넌트_인덱스.html` 시각본 + (선택) `build_components_index.py`로 표↔코드 diff 하드게이트(`build_library` 패턴).
 - ⏳ 잔여 = 닫기 X 액티브(회전180+`--accent` 형광) 전역 통일 완료(260704 · 모양은 원형/둥근네모 2종 의도유지 = 형태 단일화 폐기) · 토스트 토큰화+`role=alert` · z충돌(`.totop`/`.nm-top`) · radius/gap 토큰화.
 
-- ✅ **genidlg UX 재배치 = 그룹 4군 + 카메라·구도 접기 + 고정 푸터**(260707 · 평의회 3인) — 그룹 소머리 = `.cref-lbl` 계승(`.geni-sechead` 래퍼 · §표기표준 e "부제=섹션 헤더" 의미를 폼 관례상 소머리 `•`로 실현 = 절충 명시) · 접기 = `.pmenu-sub`/`.pm-chev` 아코디언 값 계승(`.geni-camsub`/`.geni-chev` · 기본 접힘 · reduced-motion 무효) · 접힘 활성 배지 = `.qbadge` 값 계승(`.geni-n` · 내부 non-auto 개수 · 숫자만 = §디자인 e) · 고정 푸터 = tooldlg flex column 문법(`.geni-foot` — CTA 전 기종 below-the-fold 해소) · 프리셋 = GENI_RESET 스프레드(부분 병합 stale 오발사 봉합). 신규 팝업 그룹핑도 이 패턴 계승.
+- ✅ **genidlg UX 재배치 = 그룹 4군 + 카메라·구도 접기 + 고정 푸터**(260707 · 평의회 3인) — 그룹 소머리 = `.cref-lbl` 계승(`.geni-sechead` 래퍼 · §표기표준 e "부제=섹션 헤더" 의미를 폼 관례상 소머리 `•`로 실현 = 절충 명시) · 접기 = `.pm-chev` 쉐브론 계승 + **grid-template-rows 0fr↔1fr**(적대검증 260707: 구 max-height:900 하드코딩 = 접힘 140ms 지연·잠재 클리핑 → grid-rows로 지연0·내용무관) + **접힘 시 `inert`**(tab-order·SR 제거 = 원본 `.pmenu-sub[hidden]` A11y 핵심 복원 · 구 max-height:0만 = 거짓 계승 실버그였음) + cardIn 스태거 · reduced-motion 무효 · 접힘 활성 배지 = `.qbadge` 값 계승(`.geni-n` · 내부 non-auto 개수 · 숫자만 = §디자인 e) · 고정 푸터 = tooldlg flex column 문법(`.geni-foot` — CTA 전 기종 below-the-fold 해소) · 프리셋 = GENI_RESET 스프레드(부분 병합 stale 오발사 봉합). 신규 팝업 그룹핑도 이 패턴 계승.
 
 > 상세 감사·전후·우선순위 = `docs/reports/260628_UIUX_기틀_분신술10인.html`.
