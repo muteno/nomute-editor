@@ -63,9 +63,11 @@ STYLE_FRAG = {
                   "strong negative space, poster-like clarity"),
 }
 LIKENESS_STYLES = ("webtoon", "cartoon", "watercolor", "illust")   # 일러스트 계열 = 공인 닮음 허용(캐리커처 전통)
-MOOD_KO = {"auto": "자동", "tense": "긴장", "somber": "침통", "hope": "희망", "calm": "차분"}
+MOOD_KO = {"auto": "자동", "tense": "긴장", "somber": "침통", "hope": "희망", "calm": "차분", "anger": "분노", "eerie": "스산", "warm": "온기"}   # +3 = 라이브러리 12(감정 조명) 계열 보완(운영자 260707 "분위기 보완")
 MOOD_FRAG = {"auto": "", "tense": "tense, high-stakes urgency", "somber": "somber, grave, mournful stillness",
-             "hope": "hopeful, a resolving light breaking through", "calm": "calm, composed, analytical stillness"}
+             "hope": "hopeful, a resolving light breaking through", "calm": "calm, composed, analytical stillness",
+             "anger": "furious, indignant confrontational energy, protest heat", "eerie": "uneasy, eerie stillness, something quietly wrong",
+             "warm": "warm everyday human warmth, gentle intimate closeness"}
 FONT_KO = {"gothic": "고딕", "serif": "명조", "brush": "붓글씨", "neon": "네온"}
 FONT_FRAG = {"gothic": "heavy bold Hangul sans-serif poster lettering, thick even strokes",
              "serif": "elegant Hangul serif (Myeongjo-style) lettering, refined thin-to-thick stroke contrast",
@@ -83,25 +85,46 @@ PLACE_FRAG = {"auto": "",
               "center": "the main subject centered with balanced, symmetrical visual weight",
               "full": "full-figure staging — the protagonist visible head to toe within the scene"}
 # 화풍 서브 분기(운영자 260707 "수채도 여러 수채") — STYLE_FRAG에 병기되는 변주 look. 'auto' = 기본 look만.
+# 세부 확장 260707 2차+3차(운영자 "게키카도 여러 화풍·한국웹툰식 상시") — 어휘 = /k 라이브러리 실코드 + 게키가 유파 웹실증(위키 Gekiga·TCJ·MUSE 260707 검색):
+#   극화 세부 = 한국웹툰(NST-B 정본 전문) · 게키가 정통(다쓰미 계열 해칭) · 하드보일드(사이토 계열) · 시대극(시라토·고지마 붓선) · 서정(카미무라) · 극사실 펜(이케가미).
+#   STYLE27 뉴스릴·NST-B 극화(13)·STYLE25 데포르메·STYLE29 과슈·STYLE18 유화·STYLE02 35mm·FM-01 표현주의(24)·STYLE10/11 애니·STYLE26 디오라마.
 STYLE_SUB = {
     "photo": {"film": "shot on 35mm film, visible grain, subtle lens vignette, slightly underexposed photojournalism look",
               "bw": "black-and-white press photograph, deep blacks, high-contrast documentary tone",
-              "cinedoc": "cinematic documentary still, handheld immediacy, natural imperfect framing"},
+              "cinedoc": "cinematic documentary still, handheld immediacy, natural imperfect framing",
+              "newsreel": "vintage newsreel archive footage look, desaturated tones, slight gate flicker, official documentary feel"},
     "webtoon": {"noir": "stark noir inking, heavy chiaroscuro shadow shapes, minimal palette",
                 "tone": "manga screentone shading, halftone dot texture, crisp line hierarchy",
-                "color": "rich full-color webtoon rendering, soft digital gradient shading"},
+                "color": "rich full-color webtoon rendering, soft digital gradient shading",
+                "kwebtoon": "korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere",
+                "gekiga": "japanese gekiga-style dramatic manga, heavy expressive ink, dense cross-hatching and hatched shadows, weathered realistic faces, cinematic panel staging, grave heavy atmosphere",
+                "hardboiled": "hardboiled assassin-thriller gekiga, cold cinematic framing, chiseled stoic faces, precise mechanical detail, ruthless noir tension",
+                "jidai": "samurai-era period gekiga, dynamic sumi-brush strokes, weathered costumes and textures, kinetic swordplay staging",
+                "lyric": "lyrical gekiga, delicate expressive ink lines with soft wash bleed, melancholic poetic stillness, sparse emotional composition",
+                "realpen": "photorealistic gekiga pen rendering, meticulous fine cross-hatching, lifelike anatomy and fabric detail, dense dramatic realism",
+                "sunjung": "korean sunjung-manhwa delicate style, fine graceful pen lines, luminous emotive eyes, soft floral tones and airy screentone accents",
+                "chibi": "cheerful deformed cartoon, chibi proportions with oversized heads and expressive hands, exaggerated comic expressions, clean bright colors"},
     "cartoon": {"brush": "loose brush-inked daily newspaper cartoon, quick confident strokes",
-                "flat": "flat modern editorial cartoon, clean shapes, minimal shading"},
+                "flat": "flat modern editorial cartoon, clean shapes, minimal shading",
+                "woodcut": "bold woodcut print satire, carved black linework, coarse paper grain, two-tone ink feel"},
     "watercolor": {"bleed": "loose wet-on-wet washes, heavy pigment blooms and bleeding edges",
                    "fine": "fine controlled watercolor, delicate detailed brushwork, crisp edges",
-                   "sumuk": "korean ink-wash (sumuk) painting with sparse watercolor accents, generous white space"},
+                   "sumuk": "korean ink-wash (sumuk) painting with sparse watercolor accents, generous white space",
+                   "gouache": "opaque gouache illustration, flat matte color fields, visible chalky brushwork, soft layered edges",
+                   "oil": "classical oil painting, thick impasto brushwork, layered glazing, museum-canvas texture"},
     "cinematic": {"noir": "film-noir mood, hard shadows, venetian-blind light patterns",
-                  "neon": "neon-lit night palette, wet reflective streets, cyan-magenta glow"},
+                  "neon": "neon-lit night palette, wet reflective streets, cyan-magenta glow",
+                  "film35": "shot on cinematic 35mm film stock, organic grain, halation on highlights, anamorphic bokeh",
+                  "expressionism": "german expressionist staging, distorted angular set geometry, painted elongated shadows, high-contrast chiaroscuro"},
     "illust": {"riso": "risograph print texture, limited spot-color palette, visible grain",
-               "paper": "cut-paper collage layers, tactile edges, flat color planes"},
+               "paper": "cut-paper collage layers, tactile edges, flat color planes",
+               "anime": "anime key visual artwork, clean lineart, vibrant colors, detailed painted background",
+               "retro80": "retro 1980s cel anime look, airbrushed gradients, halation glow, vintage color palette"},
     "iso3d": {"clay": "soft matte clay materials, rounded edges, pastel palette",
-              "lowpoly": "stylized low-poly geometry, faceted surfaces"},
-    "pictogram": {"line": "thin-line iconography, outline style, minimal fills"},
+              "lowpoly": "stylized low-poly geometry, faceted surfaces",
+              "diorama": "miniature diorama tilt-shift look, shallow toy-like depth, handcrafted model textures"},
+    "pictogram": {"line": "thin-line iconography, outline style, minimal fills",
+                  "blueprint": "technical blueprint diagram style, precise white line iconography on deep drafting-blue field"},
 }
 
 

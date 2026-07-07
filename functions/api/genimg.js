@@ -21,10 +21,10 @@ export async function onRequestPost({ request, env }) {
   const STYLES = ['photo', 'webtoon', 'cartoon', 'watercolor', 'cinematic', 'illust', 'iso3d', 'pictogram'];
   const ASPECTS = ['4:5', '1:1', '3:4', '9:16', '16:9'];
   const SIZES = ['1K', '2K', '4K'];
-  const MOODS = ['auto', 'tense', 'somber', 'hope', 'calm'];
+  const MOODS = ['auto', 'tense', 'somber', 'hope', 'calm', 'anger', 'eerie', 'warm'];
   const FONTS = ['gothic', 'serif', 'brush', 'neon'];
   // 구도·조명·표현 포인트 = /k 메인 라이브러리 실코드(gen_image.py와 동일 집합 · 서브분기는 python이 화풍별 정본 재검증)
-  const SUBS = ['auto', 'film', 'bw', 'cinedoc', 'noir', 'tone', 'color', 'brush', 'flat', 'bleed', 'fine', 'sumuk', 'neon', 'riso', 'paper', 'clay', 'lowpoly', 'line'];
+  const SUBS = ['auto', 'film', 'bw', 'cinedoc', 'newsreel', 'noir', 'tone', 'color', 'kwebtoon', 'gekiga', 'hardboiled', 'jidai', 'lyric', 'realpen', 'sunjung', 'chibi', 'brush', 'flat', 'woodcut', 'bleed', 'fine', 'sumuk', 'gouache', 'oil', 'neon', 'film35', 'expressionism', 'riso', 'paper', 'anime', 'retro80', 'clay', 'lowpoly', 'diorama', 'line', 'blueprint'];   // 260707 2차 확장 — python STYLE_SUB와 동일 집합(서브 정본 재검증은 python)
   const ANGLES2 = ['auto', 'AG-01', 'AG-02', 'AG-03', 'AG-04', 'AG-06', 'AG-09'];
   const POINTS = ['auto', 'DF-01', 'DF-02', 'DF-04', 'DF-05', 'DF-07'];
   const LIGHTS = ['auto', 'LGT05', 'LGT06', 'LGT08', 'LGT09', 'LGT10', 'LGT12'];
