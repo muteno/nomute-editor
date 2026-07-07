@@ -179,34 +179,7 @@ def has_audio(path):
         return True   # 판별 실패 = 오디오 있다고 가정 — 무음 파일 오판 시 컷 ffmpeg가 실패해도 평문 번인 폴백이 받음(소리 있는 영상의 오디오를 조용히 떨구는 반대 방향보다 안전 · 평의회6)
 
 
-def strip_bgm(video):
-    # 배경음 제거(운영자 260707) = Demucs 보컬 분리(htdemucs·로컬·키 불필요·과금 0) — 목소리 트랙만 남긴 wav 반환.
-    # 실패/미설치/시간초과 = "" 반환(fail-soft: 원본 소리로 계속 = 컷과 동일 강등 문법). 설치 = ly-make.yml bgm 게이트 스텝.
-    # 타임아웃 600s = 릴스/쇼츠(수 분) 여유·장영상은 스킵될 수 있음(정직 한계 — note로 표면화).
-    wav = "/tmp/ly_bgm_in.wav"
-    try:
-        r = subprocess.run(["ffmpeg", "-y", "-i", video, "-vn", "-ar", "44100", "-ac", "2", wav],
-                           capture_output=True, text=True, timeout=300)
-        if r.returncode != 0 or not os.path.isfile(wav):
-            print("::warning::배경음 제거 스킵 — 오디오 추출 실패:", (r.stderr or "")[-160:])
-            return ""
-        r = subprocess.run([sys.executable, "-m", "demucs.separate", "--two-stems=vocals",
-                            "-n", "htdemucs", "-o", "/tmp/ly_demucs", wav],
-                           capture_output=True, text=True, timeout=600)
-        out = "/tmp/ly_demucs/htdemucs/ly_bgm_in/vocals.wav"
-        if r.returncode != 0 or not os.path.isfile(out):
-            print("::warning::배경음 제거 실패(demucs) —", (r.stderr or r.stdout or "")[-200:])
-            return ""
-        return out
-    except subprocess.TimeoutExpired:
-        print("::warning::배경음 제거 시간 초과 — 원본 소리로 합성")
-        return ""
-    except Exception as e:
-        print("::warning::배경음 제거 실패 —", str(e)[:160])
-        return ""
-
-
-def cut_filter(keeps, audio, scale, ass_path, asrc="[0:a]"):
+def cut_filter(keeps, audio, scale, ass_path):
     # 단일 패스 select+setpts 시프트 — trim+concat 팬아웃은 브랜치 버퍼링으로 keep 10개에 피크 RSS 4.7GB 실측
     # (러너 7GB OOM 위험 · 평의회8) → select가 한 패스에서 갭 프레임만 드롭 = 메모리 O(1).
     # new_pts = t − (그 keep 앞 제거 누적) = cut_remap과 동일 사상 → 자막·영상·오디오 드리프트 구조적 0(VFR 포함 · 평의회1).
@@ -220,7 +193,7 @@ def cut_filter(keeps, audio, scale, ass_path, asrc="[0:a]"):
     sel_e, off_e = "+".join(sel), "+".join(off)
     parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
     if audio:
-        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'[ac];".format(asrc, sel_e, off_e))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장)
+        parts.append("[0:a]aselect='{}',asetpts='(T-({}))/TB'[ac];".format(sel_e, off_e))
     parts.append("[vs]" + ((scale + ",") if scale else "") + "ass={}[vo]".format(ass_path))
     return "\n".join(parts)
 
@@ -520,12 +493,6 @@ def run(vid_id, video, outdir):
     # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
     #   컷과 자막이 같은 파이프라인이어야 하는 이유 = 컷하면 뒤 자막 시각이 전부 당겨짐(remap이 그 싱크 담당).
     #   자를 갭이 없거나 cut OFF = keeps 빈 목록 = 종전 단일 -vf 경로 그대로(회귀 0).
-    aud = has_audio(video)   # 판별 실패 = True 가정 — 오판이어도 폴백이 컷/배경음만 포기하고 정상 번인(무음 오디오 강제 삽입보다 안전 · 평의회6)
-    # 배경음 제거(운영자 260707 · 기능2) — 컷보다 *먼저*(운영자: 둘 다 켜면 배경음부터). 타임라인 불변(오디오 트랙 교체)이라 컷 계산 무영향.
-    vocals, bgm_note = "", ""
-    if opts.get("bgm") and aud:
-        vocals = strip_bgm(video)
-        bgm_note = "배경음 제거" if vocals else "배경음 제거 실패 — 원본 소리로 합성"
     cut_note, keeps = "", []
     segs_orig, dur_orig = segs, dur   # 컷 실패 폴백용(평의회6) — 재매핑 전 원본 타이밍·길이 보존
     if opts.get("cut") and dur > 0:
@@ -561,14 +528,11 @@ def run(vid_id, video, outdir):
     out_mp4 = "/tmp/ly_subbed.mp4"
     scale = "scale={}:{}".format(tw, th) if (tw, th) != (w, h) else ""
 
-    ins = ["-i", video] + (["-i", vocals] if vocals else [])   # 배경음 제거 = 보컬 wav 2번 입력(영상은 원본 그대로)
-
     def plain_cmd():
         vf = (scale + "," if scale else "") + "ass={}".format(ass_path)
-        return ["ffmpeg", "-y"] + ins + ["-vf", vf] \
-            + (["-map", "0:v:0", "-map", "1:a:0", "-shortest"] if vocals else []) \
-            + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-               "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
+        return ["ffmpeg", "-y", "-i", video, "-vf", vf,
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
     def encode(c):
         r = subprocess.run(c, capture_output=True, text=True, timeout=900)   # 15분 백스톱 — 잡 하드킬(45분) 전에 우아하게 실패 기록(평의회)
@@ -576,15 +540,16 @@ def run(vid_id, video, outdir):
 
     try:
         if keeps:   # 무음 컷 = 단일 패스 select 필터체인(끝에 scale+ass — 재인코딩은 어차피 번인이 하므로 추가 열화 0)
+            aud = has_audio(video)   # 판별 실패 = True 가정 — 오판이어도 아래 폴백이 컷만 포기하고 정상 번인(무음 오디오 강제 삽입보다 안전 · 평의회6)
             fc_path = "/tmp/ly_cut.filter"
             with open(fc_path, "w", encoding="utf-8") as f:
-                f.write(cut_filter(keeps, aud, scale, ass_path, "[1:a]" if vocals else "[0:a]"))
-            cmd = ["ffmpeg", "-y"] + ins + ["-filter_complex_script", fc_path, "-map", "[vo]"] \
+                f.write(cut_filter(keeps, aud, scale, ass_path))
+            cmd = ["ffmpeg", "-y", "-i", video, "-filter_complex_script", fc_path, "-map", "[vo]"] \
                 + (["-map", "[ac]"] if aud else []) \
                 + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                    "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
             ok, err = encode(cmd)
-            if not ok:   # 컷 실패 = 컷만 포기·번인은 지킨다(평의회6 P1) — 원본 타이밍 ASS 재생성 후 종전 경로 재시도(배경음 제거는 유지)
+            if not ok:   # 컷 실패 = 컷만 포기·번인은 지킨다(평의회6 P1) — 원본 타이밍 ASS 재생성 후 종전 경로 재시도
                 print("::warning::무음 컷 합성 실패 — 컷 없이 재시도:", err[-300:])
                 with open(ass_path, "w", encoding="utf-8") as f:
                     f.write(build_ass(segs_orig, tw, th, opts))
@@ -599,9 +564,9 @@ def run(vid_id, video, outdir):
     except subprocess.TimeoutExpired:
         out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
-    note = " · ".join(p for p in [
-        "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else "",
-        bgm_note, cut_note] if p)   # 처리 순서대로 표기: 배경음 → 컷
+    note = "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else ""
+    if cut_note:
+        note = (note + " · " if note else "") + cut_note
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
     try:
