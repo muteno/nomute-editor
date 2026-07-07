@@ -144,7 +144,13 @@ def main():
     meta = {"src": SRC, "aspect": ASPECT, "ts": ts, "results": []}
 
     for case in CASES:
-        img = make_poster(base) if case == "poster" else base
+        # crop = 피사체를 일부러 잘라(상반신만) 잘린 신체·사물을 확장부에서 '완성'해야 하는 케이스(운영자 260708 질문 — amodal completion)
+        if case == "crop":
+            img = base.crop((0, 0, base.size[0], int(base.size[1] * 0.55)))
+        elif case == "poster":
+            img = make_poster(base)
+        else:
+            img = base
         open(os.path.join(out_dir, case + "_src.jpg"), "wb").write(jpg_bytes(img))
         src_bytes = jpg_bytes(img)
 
@@ -165,6 +171,13 @@ def main():
             where = "to its left and right"
             dirhint = "to the left and to the right"
         pb = P_PADFILL.format(where=where, dirhint=dirhint)
+        if case == "crop":   # 잘린 피사체 완성 허용(같은 대상 연장 OK · 별도 신규 인물만 금지) — 기본 'no people'이 완성을 막는 것 방지
+            pb = pb.replace("Do not add any new text, watermarks, logos, or people.",
+                            "Do not add any new text, watermarks, or logos.")
+            pb += (" A person or object is partially cut off at the edge of the original photo: naturally "
+                   "complete the missing parts of that SAME person or object — continue the body, legs, and "
+                   "clothing consistent with their pose, proportions, lighting, and grain. Never add a new, "
+                   "separate person or object that is not already partially visible.")
         b = tg.gemini_image(pb, image_size=SIZE,
                             tag="exp:{}:B".format(case), aspect=ASPECT, ref_png=jpg_bytes(canvas))
         if b:
