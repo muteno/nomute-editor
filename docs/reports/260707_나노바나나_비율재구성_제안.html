@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>나노바나나 비율 재구성(리사이즈) 도구 — 제안</title>
+<style>
+/* 색은 viewer :root 토큰값 복사 인라인(일회성 스냅샷 · §작업표준 b) */
+:root{--bg:#121212;--fg:#eef7f0;--mut:#8fa697;--accent:#00EED2;--red:#e23b2a;--gold:#FFE13D;--line:rgba(255,255,255,.08);--r:16px;--rm:11px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;line-height:1.62;padding:20px 14px 60px;max-width:760px;margin:0 auto;font-size:15px}
+h1{font-size:20px;line-height:1.4;margin:8px 0 4px}
+h2{font-size:16px;margin:34px 0 10px;color:var(--accent)}
+h2 .n{opacity:.55;font-weight:700;margin-right:6px}
+p{margin:8px 0}
+.sub{color:var(--mut);font-size:12.5px}
+.card{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;margin:12px 0}
+.tl{border-color:rgba(0,238,210,.35);background:rgba(0,238,210,.06)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{border:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{background:rgba(255,255,255,.05);font-weight:800;white-space:nowrap}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.b{color:var(--accent);font-weight:800}
+.warn{color:var(--gold);font-weight:800}
+.bad{color:var(--red);font-weight:800}
+.mut{color:var(--mut)}
+code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.step{display:flex;gap:10px;margin:10px 0;align-items:flex-start}
+.step .no{flex:0 0 22px;height:22px;border-radius:50%;background:rgba(0,238,210,.14);color:var(--accent);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:2px}
+ul{padding-left:18px;margin:6px 0}
+li{margin:4px 0}
+.tag{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:1px 9px;margin-right:5px;vertical-align:1px}
+.tg{background:rgba(0,238,210,.14);color:var(--accent)}
+.ty{background:rgba(255,225,61,.14);color:var(--gold)}
+.tr{background:rgba(226,59,42,.16);color:#ff8b7d}
+svg{max-width:100%;height:auto;display:block;margin:10px auto}
+.foot{margin-top:40px;color:var(--mut);font-size:11.5px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+
+<p class="sub">docs/reports · 제안서(구현 전 결정용) · 분신술 10인 아이데이션 수렴</p>
+<h1>나노바나나 비율 재구성 도구 — 되냐? 된다, 이렇게</h1>
+<p class="sub">완성 이미지(예: 9:16 포스터)를 레이어 없이 → 구성 살리며 다른 비율(16:9 등)로</p>
+
+<div class="card tl">
+<p><span class="b">결론 = 조건부 GO.</span> 만들 수 있고, 핵심 엔진은 <span class="b">레포에 이미 90% 깔려 있다</span>(<code>gemini_image()</code>가 이미지 입력 <code>ref_png</code> + 목표비율 <code>aspect</code>를 받음). 다만 나노바나나엔 <span class="warn">진짜 아웃페인팅(마스크)이 없어서</span> 그냥 시키면 원본까지 재생성해 미묘하게 바뀐다. 그래서 알고리즘의 척추는 ─</p>
+<p style="text-align:center;font-weight:800;margin:10px 0">패딩(PIL) → 나노바나나가 빈 곳만 채움 → <span class="b">원본 픽셀 재부착(픽셀락)</span></p>
+<p>이고, <span class="warn">한글 문구·로고는 절대 모델에 안 맡기고 격리</span>(레포가 이미 쓰는 방식)한다. 착수 전에 <span class="b">공짜 실험 1판(v0)</span>으로 "진짜 되나"부터 확인하는 걸 강권.</p>
+</div>
+
+<h2><span class="n">1</span>실측으로 확인된 사실 4개</h2>
+<div class="card">
+<ul>
+<li><span class="b">엔진 이미 있음</span> — <code>thumb_gen.gemini_image(prompt, image_size, aspect, ref_png)</code>가 이미지 첨부(inlineData)+비율 지정(aspectRatio 4:5/16:9/9:16 등 10종)을 이미 지원. 신규 API 통합 0.</li>
+<li><span class="bad">마스크·아웃페인팅 공식 미지원</span> — 나노바나나 편집은 전부 <b>전체 재생성</b> 기반. "원본 건드리지 마" 프롬프트는 확률적 완화일 뿐 보장이 아님(공식 문서·업계 공통 확인). → 원본 보존은 <b>후처리 재부착이 책임</b>져야 함. Photoshop Generative Expand·Canva·Midjourney 전부 같은 사상(원본 불변 + 빈 곳만 생성 + N안 선택).</li>
+<li><span class="warn">한글 문구 = 최대 킬 리스크</span> — 레포 코드 주석에 이미 실측돼 있음("readable Korean text renders broken" · "1K는 한글 자모 뭉개짐"). 포스터는 곧 문구라서, 문구를 모델이 다시 그리는 순간 도구가 아낀 게 0이 됨. → 문구·로고는 PIL로 격리(레거시 선례 = <code>recompose_card.py</code>: 장면 보존+문구 재합성, 제미나이 0).</li>
+<li><span class="b">비용은 사소</span> — 1K 한 장 ≈ $0.067(2K $0.101). 일 3~10회 써도 월 $3~24 수준. 진짜 비용은 지연(20~60초)과 러너 deps라서, 단순 배경은 공짜 PIL 경로로 돌리는 게 이득.</li>
+</ul>
+</div>
+
+<h2><span class="n">2</span>제안 알고리즘 — 3층 라우팅</h2>
+<p>모든 이미지를 생성 AI에 넣지 않는다. 배경 복잡도를 보고 <b>가장 싼 경로부터</b>:</p>
+<div class="scroll"><table>
+<tr><th>케이스</th><th>경로</th><th>비용</th><th>품질</th></tr>
+<tr><td>노뮤트 자체 산출물(장면+문구 분리 보관됨)</td><td><b>0층</b> 장면만 확장 → 문구·로고 PIL 재합성</td><td class="b">0원</td><td>원본 100% 보존</td></tr>
+<tr><td>단색·그라데 배경(포스터·카드 다수)</td><td><b>1층</b> 가장자리 색 추출 → PIL 패딩 확장</td><td class="b">0원·즉시</td><td>거의 완벽</td></tr>
+<tr><td>복잡한 사진 배경</td><td><b>2층</b> 나노바나나 패드-필 + 픽셀락(아래)</td><td>$0.07/장</td><td>좋음(재시도 여지)</td></tr>
+<tr><td>전부 실패 시</td><td><b>폴백</b> blur-pad(유튜브 세로영상식)</td><td class="b">0원</td><td>무난·항상 성공</td></tr>
+</table></div>
+<p class="sub">판정은 가장자리 픽셀 분산(단색 여부)으로 자동 — 네 직관("복잡한 배경 아니면 툴로 충분")이 그대로 라우팅 규칙이 된다.</p>
+
+<h2><span class="n">3</span>2층(생성 경로) 상세 — 패드 → 필 → 픽셀락</h2>
+<svg viewBox="0 0 700 190" role="img" aria-label="패딩-생성-재부착 3단 파이프라인">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#8fa697"/></marker></defs>
+<!-- 1: 원본 9:16 -->
+<rect x="18" y="42" width="62" height="110" rx="8" fill="rgba(0,238,210,.16)" stroke="#00EED2" stroke-width="1.5"/>
+<text x="49" y="102" fill="#eef7f0" font-size="12" text-anchor="middle" font-weight="800">원본</text>
+<text x="49" y="170" fill="#8fa697" font-size="11" text-anchor="middle">9:16</text>
+<line x1="92" y1="97" x2="140" y2="97" stroke="#8fa697" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- 2: 패딩 캔버스 -->
+<rect x="150" y="52" width="160" height="90" rx="8" fill="rgba(143,166,151,.12)" stroke="#8fa697" stroke-dasharray="4 3"/>
+<rect x="199" y="52" width="62" height="90" rx="6" fill="rgba(0,238,210,.16)" stroke="#00EED2" stroke-width="1.5"/>
+<text x="230" y="30" fill="#eef7f0" font-size="12" text-anchor="middle" font-weight="800">① PIL 패딩</text>
+<text x="230" y="170" fill="#8fa697" font-size="11" text-anchor="middle">16:9 캔버스 중앙 배치·빈칸 회색</text>
+<line x1="322" y1="97" x2="370" y2="97" stroke="#8fa697" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- 3: 생성 -->
+<rect x="380" y="52" width="160" height="90" rx="8" fill="rgba(255,225,61,.10)" stroke="#FFE13D"/>
+<rect x="429" y="52" width="62" height="90" rx="6" fill="rgba(0,238,210,.10)" stroke="#00EED2" stroke-dasharray="3 3"/>
+<text x="460" y="30" fill="#FFE13D" font-size="12" text-anchor="middle" font-weight="800">② 나노바나나</text>
+<text x="460" y="170" fill="#8fa697" font-size="11" text-anchor="middle">"회색 영역만 이어 그려라"</text>
+<line x1="552" y1="97" x2="600" y2="97" stroke="#8fa697" stroke-width="1.5" marker-end="url(#ar)"/>
+<!-- 4: 재부착 -->
+<rect x="610" y="52" width="80" height="90" rx="8" fill="rgba(255,225,61,.10)" stroke="#FFE13D"/>
+<rect x="633" y="52" width="34" height="90" rx="5" fill="rgba(0,238,210,.30)" stroke="#00EED2" stroke-width="2"/>
+<text x="650" y="30" fill="#00EED2" font-size="12" text-anchor="middle" font-weight="800">③ 픽셀락</text>
+<text x="650" y="170" fill="#8fa697" font-size="11" text-anchor="middle">원본 재부착</text>
+</svg>
+<div class="card">
+<div class="step"><div class="no">1</div><div><b>패딩(전처리)</b> — 타겟 비율 캔버스에 원본을 배치(피사체 치우침이면 반대쪽을 더 확장 — 레포 <code>detect_subject_center</code> 재사용), 빈 영역은 중립 그레이.</div></div>
+<div class="step"><div class="no">2</div><div><b>생성 1콜</b> — 그 캔버스를 <code>ref_png</code>로 첨부 + "회색 영역만 원본의 조명·원근·질감 이어서 채워라, 원본 변경 금지" 고정 프롬프트 + <code>aspect=타겟</code>.</div></div>
+<div class="step"><div class="no">3</div><div><b>픽셀락(후처리)</b> — 결과 위에 원본 픽셀을 그대로 재부착(원본 100% 보존 보장), 경계 20~40px만 페더 블렌딩(레포 <code>create_gradient_overlay</code>의 알파 램프 재사용). 모델이 원본을 얼마나 바꿨든 무관해짐.</div></div>
+<div class="step"><div class="no">4</div><div><b>결정론 검증(공짜)</b> — 비율 확인·디코드 검증·빈 밴드 검출(<code>_band_fail</code> 재사용)·이음새 톤 비교 → 미달이면 프롬프트 강화 재시도 1회 → 그래도 실패면 blur-pad 폴백(항상 결과는 나옴).</div></div>
+</div>
+
+<h2><span class="n">4</span>전 / 후 비교</h2>
+<div class="scroll"><table>
+<tr><th></th><th>지금(도구 없음)</th><th>도구 후</th></tr>
+<tr><td>9:16 포스터 → 16:9</td><td>레이어 있는 PSD/일러 원본 찾아 수동 재배치·합성(수십 분, PC 필수)</td><td>폰에서 이미지 선택 → 비율 버튼 → 30초~1분 → 결과 그리드에서 픽</td></tr>
+<tr><td>원본이 완성본뿐일 때</td><td class="bad">사실상 불가(재제작)</td><td class="b">가능(이 도구의 존재 이유)</td></tr>
+<tr><td>단순 배경</td><td>수동 크롭·캔버스 늘리기</td><td>공짜 PIL 자동(즉시)</td></tr>
+<tr><td>원본 훼손 위험</td><td>없음(수동이니까)</td><td>픽셀락으로 원본 영역 100% 보존(생성은 확장부만)</td></tr>
+</table></div>
+
+<h2><span class="n">5</span>장단점 · 품질저하 리스크</h2>
+<div class="scroll"><table>
+<tr><th>리스크</th><th>정도</th><th>방어</th></tr>
+<tr><td>한글 문구·로고 재생성으로 깨짐</td><td class="bad">최대</td><td>모델에서 격리: 문구 영역이 확장부에 안 걸리게 패딩 설계 + 원본 문구는 픽셀락으로 보존. 문구를 새 영역까지 옮기고 싶으면 그건 PIL 재타이핑(0층). <b>OCR·요소분해·클린플레이트 인페인팅은 과설계라 안 함</b>(10인 만장일치).</td></tr>
+<tr><td>이음새 위화감(색톤·조명)</td><td class="warn">중</td><td>페더 블렌딩 + 이음새 톤 자동 비교 → 초과 시 재시도. N안 생성 후 눈으로 픽(v2).</td></tr>
+<tr><td>확장부 환각(워터마크·글자)</td><td class="warn">중</td><td>금지 프롬프트 + 결정론 검출 + 재시도.</td></tr>
+<tr><td>인물 얼굴</td><td class="warn">중</td><td>얼굴은 원본 영역에 있으므로 픽셀락이 커버. 확장부에 새 인물 생성 금지 지시.</td></tr>
+<tr><td>안전필터 차단·API 실패</td><td>하</td><td>기존 fail-soft(백오프·None) 상속 → blur-pad 폴백 → 최후엔 원본 그대로 반환(절대 안 죽음).</td></tr>
+</table></div>
+
+<h2><span class="n">6</span>효율성 (비용·재사용)</h2>
+<div class="card">
+<ul>
+<li><b>과금</b>: 복잡 배경만 Gemini(1K ≈ $0.067/장) — 라우팅으로 절반 이상은 공짜 PIL. 월 몇 달러 수준. <b>수동 발사 전용</b>(workflow_dispatch·GEMINI_API_KEY 게이트)이라 자동 과금 0 불변, 카드 제미나이-0 잠금 무접촉.</li>
+<li><b>재사용(이미 있는 것)</b>: 렌더 <code>gemini_image</code> · R2 업로드 · 업로드 배관(<code>compose.js</code>의 base64→git 선커밋→SHA 가드 판박이) · 결과 그리드+폴링(이미지 생성 탭 그대로) · 피사체 검출·페더·빈밴드 검출 전부 기존 함수.</li>
+<li><b>신설(최소)</b>: <code>resize_image.py</code>(스크립트 1) · <code>img-resize.yml</code>(얇은 워크플로 1) · <code>api/resize.js</code>(compose.js 복붙 수준 1) · 뷰어 탭 1(결과 JSON은 free.json 모델). 러너 deps는 PIL만(cv2 안 씀 = 설치 세금 0).</li>
+</ul>
+</div>
+
+<h2><span class="n">7</span>로드맵 — v0부터 (제일 중요)</h2>
+<div class="scroll"><table>
+<tr><th>단계</th><th>내용</th><th>공수</th></tr>
+<tr><td><b>v0 실험</b><br><span class="tag tg">먼저</span></td><td>상용 빌드 전에 "1콜이 진짜 구성·문구를 보존하나" 검증. <b>(a)</b> 폰에서 Google AI Studio에 실제 포스터 1장+확장 프롬프트 넣어보기(공짜·오늘 가능) 또는 <b>(b)</b> 실험 스크립트 1개 커밋 → dispatch 카나리아 1건(레포 카나리아 절차 그대로). 여기서 문구 깨짐 정도를 보고 픽셀락 강도를 정한다.</td><td>0~반나절</td></tr>
+<tr><td><b>v1 상용</b></td><td>3층 라우팅 + 패드-필-픽셀락 + 결정론 검증 + blur-pad 폴백 + 뷰어 탭(이미지 선택→비율 칩 9:16·4:5·16:9·1:1→발사→그리드). <span class="warn">뷰어 탭 배치는 §디자인 j 사전 승인 대상 — 별도 확인 받고 붙임.</span></td><td>1~2일</td></tr>
+<tr><td><b>v2</b></td><td>N안 동시 생성→베스트픽 · 이음새 자동 재시도 고도화 · 비율 축소(스마트크롭) · 자연어 주문("왼쪽엔 하늘로") 재롤.</td><td>후속</td></tr>
+</table></div>
+<div class="card">
+<p><b>적대 비판(10인 중 총괄역)도 남겨둔다</b> — ① 포스터=문구인데 문구가 확장 경계에 걸치면 재부착으로도 어색할 수 있음(v0에서 확인) ② 사용 빈도가 낮으면 전용 UI는 유지비만 — v0/v1 사이에서 실사용 몇 번 해보고 결정 ③ 문구 없는 이미지라면 기존 '이미지 생성'으로 타겟 비율 신규 생성이 더 나을 때도 있음(이 도구는 <b>이 특정 이미지를 보존해야 할 때</b> 이긴다).</p>
+</div>
+
+<h2><span class="n">8</span>다음 액션(네 선택)</h2>
+<div class="card">
+<ul>
+<li><b>A. v0 실험부터</b>(추천) — 실제 포스터 1장 나한테 던져주면 실험 스크립트+카나리아 1건으로 보존 품질 실측해서 보고. 또는 폰 AI Studio로 네가 직접 1분 실험.</li>
+<li><b>B. 바로 v1 착수</b> — 위 설계대로 구현(뷰어 탭 배치안은 착수 시 별도 승인 요청).</li>
+<li><b>C. 보류</b> — 이 문서만 원장에 남김.</li>
+</ul>
+</div>
+
+<p class="foot">분신술 10인(나노바나나 API 실측·아웃페인팅 기법·요소 보존·레포 통합·UX·품질 검증·비용 대안·경쟁 벤치마크·아키텍처·총괄 비판) 수렴 · 색상 = viewer :root 토큰값 복사 인라인 · 이 문서는 제안서(구현 전)이며 라이브 무변경.</p>
+
+</body>
+</html>

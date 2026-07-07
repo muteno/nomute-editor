@@ -2395,11 +2395,23 @@
   @media (prefers-reduced-motion:reduce) { #genidlg { animation:none; } }
   @media (max-width:600px) { #genidlg { margin:8vh auto auto; margin:8dvh auto auto; } }   /* 문구 입력 키보드 가림 회피 = pubdlg 상단 anchoring 계승 */
   #genidlg .dlg-top { min-height:var(--btn-sm); }
-  .geni-body { padding:6px var(--sp-3) var(--sp-3); overflow-y:auto; max-height:calc(88vh - 46px); }   /* 옵션 행이 길어지면 내부 스크롤(헤더 띠 고정) */
+  #genidlg { display:flex; flex-direction:column; }   /* 고정 푸터 = tooldlg flex column 문법 계승(헤더·푸터 고정 · body만 스크롤) */
+  .geni-body { padding:6px var(--sp-3) 10px; overflow-y:auto; flex:1 1 auto; min-height:0; }   /* 옵션 행이 길어지면 내부 스크롤(헤더 띠·푸터 고정) */
+  .geni-foot { flex:none; padding:10px var(--sp-3) var(--sp-3); border-top:1px solid var(--line2); }   /* 생성 CTA = 항상 가시(평의회: 전 기종 below-the-fold였음) */
+  .geni-sechead { display:flex; align-items:center; gap:8px; width:100%; padding:12px 0 2px; background:none; border:none; text-align:left; -webkit-tap-highlight-color:transparent; }   /* 그룹 소머리 행 — 라벨 = .cref-lbl 계승(블릿·13px·800) */
+  .geni-sechead .cref-lbl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 소머리 블릿 = 뉴스 정본(.cref-lbl) 동일 문법(k/ly 폼 label.fl 선례) */
+  .geni-fold { cursor:pointer; }
+  .geni-chev { margin-left:auto; flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* V자 = .pm-chev 계승(우측 정렬·30px 박스) */
+  .geni-chev svg { display:block; transition:transform .26s var(--ease); }
+  .geni-fold[aria-expanded="true"] .geni-chev svg { transform:rotate(180deg); }
+  .geni-camsub { overflow:hidden; max-height:0; transition:max-height .26s var(--ease); }   /* 아코디언 = .pmenu-sub 계승 · 카메라군 기본 접힘 */
+  .geni-fold[aria-expanded="true"] + .geni-camsub { max-height:900px; }
+  .geni-n { flex:none; min-width:16px; height:16px; padding:0 4px; border-radius:var(--r-pill); background:var(--accent); color:var(--on-accent); font-size:10px; font-weight:var(--fw-x); line-height:16px; text-align:center; font-variant-numeric:tabular-nums; }   /* 접힘 활성 개수 배지 = .qbadge 값 계승(숫자만 = §디자인 e) */
+  @media (prefers-reduced-motion:reduce){ .geni-camsub, .geni-chev svg { transition:none; } }
   .geni-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:8px 0; border-top:1px solid var(--line2); }   /* .pub-row 문법 계승(옵션 다열이라 세로만 컴팩트) */
   .geni-row:first-child { border-top:none; padding-top:4px; }
-  .geni-opts { display:flex; flex-wrap:wrap; gap:1px 2px; justify-content:flex-end; min-width:0; }
-  .geni-opt { background:none; border:none; padding:4px 6px; font:var(--fw-b) var(--fs-label) inherit; color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* 워드칩 = .pub-vis 문법 계승(밝기·색으로 on/off) */
+  .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }   /* 랩 밀집 오탭 완화(평의회 — 구 1px 2px) */
+  .geni-opt { background:none; border:none; padding:6px 7px;   /* 탭 타깃 상향(구 4px 6px = 24px 미달 · 평의회) */ font:var(--fw-b) var(--fs-label) inherit; color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* 워드칩 = .pub-vis 문법 계승(밝기·색으로 on/off) */
   .geni-opt:active { transform:scale(var(--press-m)); }
   .geni-opt.on { color:var(--accent); font-weight:var(--fw-x); }   /* 선택 = 상태색(토글 on 관례 — 무채 크롬 룰의 의미색 예외) */
   .geni-opt:disabled { opacity:.35; pointer-events:none; }   /* 문구 입력 시 1K 비활성(2K 하한) — 비활성 dim 어포던스 */
@@ -2778,27 +2790,32 @@ try {
      칩은 JS(GENI_DICT)가 채움 · 셸=pubdlg 계승 · 운영자 260707 -->
 <dialog id="genidlg">
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title">이미지 생성</b></div><button class="tool-x dlg-x" id="geniX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-  <div class="geni-body">
+  <div class="geni-body"><!-- UX 재배치(평의회 3인 260707): 그룹 4군{스타일→출력→카메라·구도(접힘)→내용} · 소머리 = .cref-lbl 계승 · 카메라군 = 전부 auto 기본+프리셋 미커버라 기본 접힘(76칩 중 67% 감축) · 생성 = 고정 푸터(전 기종 below-the-fold 해소) -->
     <div class="geni-row"><span class="pub-l">프리셋</span><span class="geni-opts" id="geniPresets"></span></div>
+    <div class="geni-sechead"><span class="cref-lbl">스타일</span></div>
     <div class="geni-row"><span class="pub-l">화풍</span><span class="geni-opts" data-k="style"></span></div>
     <div class="geni-row"><span class="pub-l">세부 화풍</span><span class="geni-opts" id="geniSub"></span></div>
-    <div class="geni-row"><span class="pub-l">웹툰화</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniKweb">한국웹툰식</button></span></div><!-- 전 화풍 공통 토글(운영자 260707 "모든 장르 선택 시 옵션") — ON = 선택 화풍을 한국 웹툰 문법으로 번안(극화는 NST-B 전문 승격) -->
+    <div class="geni-row"><span class="pub-l">웹툰화</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniKweb">한국웹툰식</button></span></div><!-- 전 화풍 공통 토글 — ON = 한국 웹툰 문법 번안(극화는 NST-B 전문 승격) -->
+    <div class="geni-row"><span class="pub-l">무드</span><span class="geni-opts" data-k="mood"></span></div>
+    <div class="geni-sechead"><span class="cref-lbl">출력</span></div>
     <div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-k="aspect"></span></div>
     <div class="geni-row"><span class="pub-l">해상도</span><span class="geni-opts" data-k="size"></span></div>
     <div class="geni-row"><span class="pub-l">장수</span><span class="geni-opts" data-k="count"></span></div>
-    <div class="geni-row"><span class="pub-l">배치</span><span class="geni-opts" data-k="place"></span></div>
-    <div class="geni-row"><span class="pub-l">거리</span><span class="geni-opts" data-k="shot"></span></div><!-- 카메라 거리(샷 크기 01b · 운영자 260707) -->
-    <div class="geni-row"><span class="pub-l">표정</span><span class="geni-opts" data-k="expr"></span></div><!-- 주인공 표정(22 FACS · 운영자 260707) -->
-    <div class="geni-row"><span class="pub-l">앵글</span><span class="geni-opts" data-k="angle"></span></div>
-    <div class="geni-row"><span class="pub-l">포인트</span><span class="geni-opts" data-k="point"></span></div>
-    <div class="geni-row"><span class="pub-l">조명</span><span class="geni-opts" data-k="light"></span></div>
-    <div class="geni-row"><span class="pub-l">무드</span><span class="geni-opts" data-k="mood"></span></div>
+    <button class="geni-sechead geni-fold" id="geniCamHead" type="button" aria-expanded="false" aria-controls="geniCamSub"><span class="cref-lbl">카메라 · 구도</span><span class="geni-n" id="geniCamN" hidden></span><span class="geni-chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button><!-- 접기 = .pmenu-sub/.pm-chev 아코디언 계승 · 배지 = 내부 non-auto 개수(숨은 활성 은폐 방지 · 숫자만 = §디자인 e) -->
+    <div class="geni-camsub" id="geniCamSub">
+      <div class="geni-row"><span class="pub-l">거리</span><span class="geni-opts" data-k="shot"></span></div>
+      <div class="geni-row"><span class="pub-l">표정</span><span class="geni-opts" data-k="expr"></span></div>
+      <div class="geni-row"><span class="pub-l">앵글</span><span class="geni-opts" data-k="angle"></span></div>
+      <div class="geni-row"><span class="pub-l">포인트</span><span class="geni-opts" data-k="point"></span></div>
+      <div class="geni-row"><span class="pub-l">조명</span><span class="geni-opts" data-k="light"></span></div>
+      <div class="geni-row"><span class="pub-l">배치</span><span class="geni-opts" data-k="place"></span></div>
+    </div>
+    <div class="geni-sechead"><span class="cref-lbl">내용</span></div>
     <div class="geni-row"><span class="pub-l">문구</span><input id="geniText" class="geni-in" type="text" maxlength="24" placeholder="없음 · 짧을수록 선명" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="geni-opt" id="geniTitleFill" type="button" aria-label="기사 제목으로 채우기">제목</button></div>
     <div class="geni-row" id="geniFontRow" hidden><span class="pub-l">서체</span><span class="geni-opts" data-k="font"></span></div>
     <div class="geni-row"><span class="pub-l">주문</span><input id="geniWish" class="geni-in" type="text" maxlength="120" placeholder="선택 · 자유 요청 한 줄" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
-    <button id="geniGo" class="asksend pub-go geni-go" type="button"><span>생성</span></button>
-    <button id="geniMore5" class="geni-alt" type="button">실사진 5장 더 찾기</button>
   </div>
+  <div class="geni-foot"><button id="geniGo" class="asksend pub-go geni-go" type="button"><span>생성</span></button><button id="geniMore5" class="geni-alt" type="button">실사진 5장 더 찾기</button></div><!-- 고정 푸터 = 스크롤 밖 CTA(평의회 만장일치 · tooldlg flex column 문법 계승) -->
 </dialog>
 <dialog id="revdlg" class="askdlg revdlg">
   <div class="askwrap">
@@ -3798,13 +3815,15 @@ const GENI_SUB = {   // 화풍별 세부 분기 — 서버 STYLE_SUB와 동일 �
   iso3d: [['auto', '기본'], ['clay', '클레이'], ['lowpoly', '로우폴리'], ['diorama', '디오라마']],
   pictogram: [['auto', '기본'], ['line', '라인'], ['blueprint', '청사진']],
 };
+const GENI_RESET = { sub: 'auto', place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', kweb: false };   // 프리셋 공통 리셋(평의회3 P1-a: Object.assign 부분 병합이 복원된 stale 축을 남겨 오발사 — 프리셋 = 진짜 초기화)
 const GENI_PRESETS = [   // 원탭 구성 바로가기(Firefly/Canva 프리셋 패턴) — 여러 옵션을 한 번에 세팅(발사는 안 함)
-  ['기본', { style: 'photo', aspect: '4:5', size: '1K', count: '1', mood: 'auto' }],
-  ['스토리', { style: 'photo', aspect: '9:16', size: '1K', count: '1', mood: 'auto' }],
-  ['와이드', { style: 'photo', aspect: '16:9', size: '1K', count: '1', mood: 'auto' }],
-  ['극화', { style: 'webtoon', aspect: '4:5', size: '1K', count: '1', mood: 'auto' }],
-  ['썸네일', { style: 'photo', aspect: '4:5', size: '1K', count: '1', mood: 'auto', place: 'top23' }],   // 원탭 = 썸네일 배치(상단⅔ 정본 · 운영자 260707)
+  ['기본', { ...GENI_RESET, style: 'photo', aspect: '4:5', size: '1K', count: '1', mood: 'auto' }],
+  ['스토리', { ...GENI_RESET, style: 'photo', aspect: '9:16', size: '1K', count: '1', mood: 'auto' }],
+  ['와이드', { ...GENI_RESET, style: 'photo', aspect: '16:9', size: '1K', count: '1', mood: 'auto' }],
+  ['극화', { ...GENI_RESET, style: 'webtoon', aspect: '4:5', size: '1K', count: '1', mood: 'auto' }],
+  ['썸네일', { ...GENI_RESET, style: 'photo', aspect: '4:5', size: '1K', count: '1', mood: 'auto', place: 'top23' }],   // 원탭 = 썸네일 배치(상단⅔ 정본 · 운영자 260707)
 ];
+const GENI_CAM_KEYS = ['shot', 'expr', 'angle', 'point', 'light', 'place'];   // 접힘 카메라·구도군 — 배지 = non-auto 개수(숨은 활성 은폐 방지)
 let _geniCtx = null;   // {file, wrap, btn} = 어느 카러셀에서 열렸는지
 let _geniSel = { style: 'photo', aspect: '4:5', size: '1K', count: '1', mood: 'auto', font: 'gothic', sub: 'auto', place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', kweb: false };   // kweb = 한국웹툰식 토글(전 화풍 · 260707)
 let _geniInited = false;
@@ -3815,6 +3834,8 @@ function geniApply() {   // 선택 상태 → 칩 .on 반영(서브 포함)
   });
   $('#geniSub').querySelectorAll('.geni-opt').forEach(b => b.classList.toggle('on', b.dataset.v === _geniSel.sub));
   const kwb = $('#geniKweb'); if (kwb) kwb.classList.toggle('on', !!_geniSel.kweb);   // 웹툰화 토글 상태 동기
+  const camN = GENI_CAM_KEYS.filter(k => _geniSel[k] && _geniSel[k] !== 'auto').length;   // 접힘 그룹 활성 배지(복원값 포함 — 모르고 발사 방지)
+  const nb = $('#geniCamN'); if (nb) { nb.textContent = camN; nb.hidden = !camN; }
 }
 function geniSubRender() {   // 세부 화풍 칩 = 선택 화풍 따라 재구성(분기 · 미보유 선택은 auto 강하)
   const list = GENI_SUB[_geniSel.style] || [['auto', '기본']];
@@ -3852,6 +3873,7 @@ function geniInit() {
   });
   $('#geniTitleFill').addEventListener('click', () => { txt.value = ((CUR_A && CUR_A.title) || '').trim().slice(0, 24); txt.dispatchEvent(new Event('input')); });
   const kwbtn = $('#geniKweb'); if (kwbtn) kwbtn.addEventListener('click', () => { _geniSel.kweb = !_geniSel.kweb; geniApply(); });   // 웹툰화 = 독립 on/off(세부 1택과 별개 축)
+  const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => { fold.setAttribute('aria-expanded', fold.getAttribute('aria-expanded') !== 'true'); });   // 카메라·구도 아코디언(.pmenu-sub 계승 · 기본 접힘)
   $('#geniX').addEventListener('click', () => $('#genidlg').close());
   $('#geniMore5').addEventListener('click', () => {   // 기존 실사진 재검색(보조 경로 보존)
     const c = _geniCtx; $('#genidlg').close();
