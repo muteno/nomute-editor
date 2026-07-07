@@ -79,6 +79,15 @@
   .chk:active .cbox { transform:scale(var(--press-m,.9)); }
   .chk input:focus-visible + .cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
   @media (prefers-reduced-motion:reduce) { .chk .cbox .ackm path { transition:none; } }
+  /* 예시 칩(탭-투-필) — 수집함 .sc-tg 글래스 필 계승(배치 승인 · 운영자 260708): 탭 = 빈 입력칸에 예문 채움(발사 없음·편집 전제) / 내용 있으면 흔들림만(덮어쓰기 방지) */
+  .seedrow { display:flex; gap:6px; margin-top:8px; }
+  .seed { flex:1; min-width:0; display:grid; place-items:center; height:24px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
+    border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
+    backdrop-filter:blur(var(--blur-s)) ; -webkit-backdrop-filter:blur(var(--blur-s)); transition:background .14s, transform .1s, color .14s, border-color .14s;   /* blur = 구조토큰(--blur-s 8px — .sc-tg 원본 blur8과 동값 계승·raw 증가 0) */
+    font-family:inherit; -webkit-tap-highlight-color:transparent; }
+  .seed:active { transform:scale(var(--press-m,.9)); color:var(--accent); border-color:rgba(var(--accent-rgb),.5); }
+  .seed.shake { animation:edshake .42s; }
+  @media (prefers-reduced-motion:reduce){ .seed.shake { animation:none; } }
   .ref { margin:0 0 16px; }
   .ref img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
   .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }
@@ -141,6 +150,12 @@
 <div class="wrap">
   <label class="fl">스토리 구성 <span class="eng" title="비디오 엔진">Kling 3.0 Omni</span></label>
   <div class="scnwrap"><textarea id="scene" maxlength="8000" placeholder="장면 아이디어나 기사 원문을 붙여넣기 — 인물·분위기·대사·비율(9:16 등) 지시도 반영 (약 8000자까지)"></textarea><!-- maxlength = api/k.js slice(0,8000)와 정합(초과분 무경고 절단 방지 · B2 #8) --><button class="scnclip" id="sceneClip" type="button" aria-label="붙여넣기"></button></div>
+  <div class="seedrow" aria-label="예시 입력(탭하면 입력칸에 채워짐)"><!-- 예시 칩 = 배치 승인(운영자 260708) · 채우기 전용(자동 발사 금지) -->
+    <button class="seed" type="button" data-k="satire">풍자 단막</button>
+    <button class="seed" type="button" data-k="news">기사 각색</button>
+    <button class="seed" type="button" data-k="real">실사 장면</button>
+    <button class="seed" type="button" data-k="dial">대사 지정</button>
+  </div>
   <label class="chk"><input type="checkbox" id="refimage"><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 참조 이미지 생성 <span class="eng">Gemini 3.1 flash image</span></label>
   <button class="go" id="go">영상 프롬프트 생성</button>
 
@@ -203,6 +218,20 @@ const PHOTO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
   ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); save(); upd(); }); upd();
 })();
 
+// 예시 칩(탭-투-필 · 배치 승인 260708): 빈 칸 = 예문 채움+포커스(편집 전제 — 의도가 잘 담긴 입력의 모범 골격: 로그라인+인물+톤+비율) / 내용 있음 = 흔들림(덮어쓰기 방지 · blank-page 해소가 용도)
+(function () {
+  const SEEDS = {
+    satire: '김정은이 편의점 야간 알바를 하다 진상 손님을 만난다 — 3등신 데포르메 화풍, 코믹 톤, 9:16, 15초',
+    news: '아래 기사를 풍자 단막극으로 각색해줘 — 핵심 인물 1명+리액터 1명, 화풍치환(데포르메), 9:16.\n\n(여기에 기사 붙여넣기)',
+    real: '실사 뉴스룩: 국회 본회의장, 의원들이 몸싸움 직전까지 가는 긴장 장면 — 대사 없이 앰비언트만, 16:9',
+    dial: '편의점 대치 코미디, 이 대사 그대로 — A: "이거 유통기한 지났는데요?" / B: "어제까지였으면 오늘도 괜찮아요." — 9:16'
+  };
+  document.querySelectorAll('.seed').forEach(b => b.addEventListener('click', () => {
+    const ta = $('#scene'); if (!ta) return;
+    if ((ta.value || '').trim()) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+    ta.value = SEEDS[b.dataset.k] || ''; ta.dispatchEvent(new Event('input', { bubbles: true })); try { ta.focus(); } catch (e) {}
+  }));
+})();
 // 최소 마크다운 렌더: ``` 펜스 = 코드블록(복사 버튼), 그 외 #/##/### 헤딩 + 문단.
 function renderMd(md) {
   const parts = md.split('```');
@@ -225,7 +254,13 @@ function renderMd(md) {
         else if (t.startsWith('## ')) html += `<h2>${esc(t.slice(3))}</h2>`;
         else if (t.startsWith('# ')) html += `<h1 class="t">${esc(t.slice(2))}</h1>`;
         else if (t.startsWith('@ 순서')) html += `<p class="legend">${esc(t)}</p>`;   // @ 범례 = 본문 mut보다 또렷하게(--fg · k-make.md @절과 짝 · 260707 2차)
-        else html += `<p>${esc(t)}</p>`;
+        else {
+          // 금지 문법 누출 폴백(k-make.md가 표·굵게를 금지하나 소프트 지시 — 모델이 흘리면 raw 노출 대신 읽히게 · 260707)
+          let txt = t;
+          if (/^\|.*\|$/.test(txt)) txt = txt.replace(/^\||\|$/g, '').split('|').map(s => s.trim()).filter(Boolean).join(' · ');
+          txt = txt.replace(/\*\*([^*]+)\*\*/g, '$1');
+          html += `<p>${esc(txt)}</p>`;
+        }
       });
     }
   });

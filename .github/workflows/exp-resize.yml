@@ -16,6 +16,13 @@ on:
         description: '케이스 (plain,poster)'
         required: false
         default: 'plain,poster'
+      size:
+        description: '해상도 (1K/2K)'
+        required: false
+        default: '1K'
+
+permissions:
+  contents: write   # 결과 커밋 push — 누락 시 github-actions[bot] 403(런1 실측 · imggen.yml:37 계승)
 
 concurrency:
   group: exp-resize
@@ -41,6 +48,7 @@ jobs:
           EXP_SRC: ${{ inputs.src }}
           EXP_ASPECT: ${{ inputs.aspect }}
           EXP_CASES: ${{ inputs.cases }}
+          EXP_SIZE: ${{ inputs.size }}
         run: python3 .github/scripts/exp_resize_v0.py
 
       - name: Commit results
@@ -50,7 +58,7 @@ jobs:
           git add _산출/exp_resize_v0
           git diff --cached --quiet && { echo "산출 없음"; exit 0; }
           git commit -m "exp: 비율 재구성 v0 실측 산출 (${{ inputs.aspect }})"
-          for i in 1 2 3; do
-            git push origin main && break
-            git pull --rebase origin main && sleep 3
+          for i in 1 2 3 4; do
+            git push origin main && exit 0 || { echo "push 재시도 $i"; git pull --rebase origin main; sleep $((2**i)); }
           done
+          echo "::error::push 실패(재시도 소진) — 실험 산출 유실"; exit 1   # 런1처럼 실패가 success로 삼켜지는 것 차단
