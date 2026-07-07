@@ -50,10 +50,13 @@ P_PADFILL = (
     "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
     "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
     "grain across the boundary, and match the exact brightness and tone of the photo at the "
-    "boundary so no edge or band is visible. Keep every existing pixel of the original photo "
+    "boundary so no edge or band is visible. Match the depth of field: if the pixels adjacent to "
+    "a gray area are out of focus or blurred, the new content there must be equally out of focus — "
+    "do not introduce new sharp objects, buildings, crowds, stands, or scenery that are not "
+    "already visible in the photo. Keep every existing pixel of the original photo "
     "exactly unchanged. Do not add any new text, watermarks, logos, or people. The result must "
     "look like one single continuous photograph."
-)   # 라운드2 실측 반영: 'beside'(좌우 암시)가 상하 확장을 회색 방치시킴 → 방향 동적 주입 + 회색 잔존 금지·경계 톤 일치 명시
+)   # 라운드2: 'beside'가 상하 확장 회색 방치 → 방향 동적 주입. 라운드4: 망원 클로즈업 좌우에 관중석 등 의미적 확장 → 심도 유지·신규 사물 금지 명시
 
 
 def _font(size):
