@@ -205,10 +205,15 @@ def build_ass(segs, w, h, opts):
     size_f = {"s": 0.032, "m": 0.038, "l": 0.045}.get(opts.get("size") or "l", 0.045)
     fs = max(18, int(h * size_f))
     # 위치 = 하단 앵커(align 2) 고정 + MarginV 연속값 — 게이지가 전 높이를 선형 커버(구 중앙/상단 앵커 분기 폐지)
-    #   0% = 바닥 2% · 24% ≈ 구 하단 세이프존 22%(실측 420@1920) · 100% = 84%(2줄 자막도 상단 프레임 안 뚫는 상한)
+    #   0% = 바닥 2% · 24% ≈ 구 하단 세이프존 22%(실측 420@1920) · 100% = 84% 명목 상한
     p = pos_pct(opts)
     align = 2
+    lang = opts.get("lang") or "auto"
     margin_v = int(h * (0.02 + 0.0082 * p))
+    # 상단 클립 캡(평의회 260707) — 하단 앵커는 위로 쌓여 libass가 프레임 밖 윗줄을 클립(밀어내기 없음).
+    #   fs 기반 줄예산으로 상한: 평문 = 2줄(축소 포함)+패딩 3.1fs · dual = +원문(0.62fs) 2줄 4.9fs.
+    #   84% 명목 상한이 fs 하한(max 18)·dual 추가 줄에서 깨지는 케이스(240p·원문 2줄)를 픽셀 기준으로 봉합.
+    margin_v = min(margin_v, max(0, h - int(fs * (4.9 if lang == "dual" else 3.1))))
     margin_lr = int(w * 0.074)
     style = opts.get("style") or "bold"
     bg = bg_pct(opts, style)
