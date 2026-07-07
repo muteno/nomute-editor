@@ -9303,10 +9303,6 @@ function openPubDlg() {
   _pubScope = 'public';
   const _pv = $('#pubVis'); if (_pv) { _pv.classList.remove('private'); _pv.textContent = '누구나'; _pv.dataset.scope = 'public'; }
   pubPinReset();
-  try {   // 고정 PIN 프리필(운영자 260707 "그때그때 바뀌니까 항상 고정") — 직전 발행 확정 PIN 자동 채움 = 모든 발행본 PIN 단일화(재잠금·해제도 같은 번호 하나만 기억). 지우고 새로 치면 기존 2단 그대로(고정 갱신 정문 = 다음 발행 성공) · 다 지우면 잠금 없이 발행(기존 문법 불변) · 발행 PIN = 공유용 저위험이라 로컬 평문 저장(nm_lock_pin 로컬 저장 선례·본인 기기)
-    const fp = localStorage.getItem('nm_pub_pin') || '';
-    if (/^\d{6}$/.test(fp)) { $('#pubPin').value = fp; _pubPinOK = true; const lg = $('#pubPinLeg'); if (lg) lg.textContent = '고정 PIN 사용 중'; renderPubSlots(); }
-  } catch (e) {}
   const ex = new Date(Date.now() + 3 * 86400e3 + 9 * 3600e3);   // 만료 = +3일 · KST(§📐)로 mm/dd 표기
   $('#pubExp').textContent = '3일 (~' + String(ex.getUTCMonth() + 1).padStart(2, '0') + '/' + String(ex.getUTCDate()).padStart(2, '0') + ')';
   const st = $('#pubStatus'); st.textContent = ''; st.classList.remove('err');
@@ -9389,7 +9385,6 @@ $('#pubGo').addEventListener('click', async () => {
     const r = await fetch('api/publish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ file: CUR, title, html, scope: _pubScope, days: 3, pin }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok && d.slug) {
-      if (pin) try { localStorage.setItem('nm_pub_pin', pin); } catch (e2) {}   // 발행 확정 PIN = 고정 PIN으로 기억(다음 발행 프리필 · 운영자 260707)
       await copyText(location.origin + '/s/' + d.slug);   // ?p=핀 미포함 = PIN 잠금 무력화 방지(검증3·7·1). PIN은 별도 전달.
       go.classList.remove('done'); void go.offsetWidth; go.classList.add('done'); gaugeDone(go);   // settle 팝 + 게이지 현위치→100% 급속 = 전송/수정 버튼과 동일 메커니즘(askShowCheck·.ack·운영자 "다른 버튼과 동일")
       setTimeout(() => askShowCheck(go), 300);   // 게이지 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·운영자 260703)
