@@ -378,10 +378,6 @@ def main():
         die("렌더 전건 실패 — 생성 이미지 0")
     merged = (new_items + existing)[:24] if free else (new_items + existing)   # 자유 목록 = 캡 24(최근만 · 비대 방지)
     json.dump(merged, open(sjson, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-    if free:   # 유실 봉합(260707 실측 사고): push 경합 재시도의 pull --rebase -X ours = 리베이스에선 원격 승 →
-        #   단일 파일 free.json의 내 항목이 조용히 드랍(렌더·R2는 무사·목록만 증발). 신규 항목을 임시본에 남겨
-        #   커밋 스텝이 매 재시도마다 재병합(prepend·URL 중복 제거·캡 24)하게 한다 — 워크플로 재병합 블록과 한 쌍.
-        json.dump(new_items, open("/tmp/genimg_new.json", "w", encoding="utf-8"), ensure_ascii=False)
     print("✅ +{}장(생성) → {} 총 {}장".format(len(new_items), sjson, len(new_items) + len(existing)), flush=True)
 
 

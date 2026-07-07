@@ -93,12 +93,6 @@ jobs:
           fi
           for i in 1 2 3 4; do
             git pull --rebase -X ours origin main 2>/dev/null || true
-            # 자유 생성 유실 봉합(260707 실측): rebase -X ours = 원격 승 → free.json 내 신규 항목 드랍 가능
-            #   → 임시본(/tmp/genimg_new.json · gen_image.py free가 기록)에서 매 재시도마다 재병합(prepend·중복 URL 제거·캡 24)
-            if [ -f /tmp/genimg_new.json ]; then
-              python3 -c 'import json,os;p="viewer/gen_out/free.json";new=json.load(open("/tmp/genimg_new.json"));cur=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else [];urls=set(i.get("url") for i in cur);json.dump(([i for i in new if i.get("url") not in urls]+cur)[:24],open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)'
-              git add viewer/gen_out/ 2>/dev/null || true
-            fi
             git commit -m "genimg: 제미나이 생성이미지 추가(버튼 프롬프트·Opus 작성)" 2>/dev/null || true
             git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
