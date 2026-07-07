@@ -1,0 +1,55 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>자막기 배경음 제거(bgm) 신설 — 260707</title>
+<style>
+body{margin:0;padding:18px 14px 40px;background:#121212;color:#eef7f0;font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Malgun Gothic",-apple-system,sans-serif;line-height:1.6;font-size:14px}
+.wrap{max-width:760px;margin:0 auto}h1{font-size:17px;margin:0 0 4px}.sub{color:#8fa697;font-size:12px;margin:0 0 16px}
+h2{font-size:13px;color:#00EED2;margin:20px 0 8px;letter-spacing:.3px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid rgba(255,255,255,.09);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:#8fa697;font-weight:700;background:rgba(255,255,255,.03)}td b{color:#00EED2}
+.note{color:#8fa697;font-size:12px}.ok{color:#2CF5A5}.warn{color:#FFE13D}
+ul{margin:4px 0;padding-left:18px}li{margin:3px 0}
+code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:11.5px}
+</style></head><body><div class="wrap">
+<h1>자막기 배경음 제거 — 목소리만 남기기</h1>
+<p class="sub">260707 · 운영자 확정: 컷 편집과 각각 독립 토글 · 둘 다 켜면 배경음부터 · 기본 OFF · Demucs 보컬 분리(로컬·과금 0)</p>
+
+<h2>① 무엇이 생겼나</h2>
+<ul>
+<li>자막 설정에 <b>배경음 제거</b> 칩 — 켜면 완성 영상의 소리가 <b>목소리만</b>으로 바뀜(배경음악·환경음 소거).</li>
+<li><b>컷 편집과 자유 조합</b>: 둘 다 켜면 배경음 먼저 지우고 → 무음 컷(순서는 코드 구조로 강제·역전 불가).</li>
+<li>분리 후 작아지는 체감 음량은 <b>라우드니스 자동 보정(-16 LUFS = SNS 표준)</b>으로 복원.</li>
+</ul>
+
+<h2>② 실측 검증(전부 실제 영상·실행)</h2>
+<table>
+<tr><th>항목</th><th>결과</th></tr>
+<tr><td>분리 품질(정량)</td><td class="ok">말 없는 구간 <b>−17.4 → −40.7dB(−23dB 감쇠)</b> = 배경 거의 소거 · 발화 구간 <b>−18.1 → −20.9dB</b> = 목소리 보존</td></tr>
+<tr><td>4조합 매트릭스</td><td class="ok">둘 다 ON = 22.8초 + LUFS −16.5 · 배경음만 = 26.3초(영상 길이 보존) · 컷만 = 22.8초 · 둘 다 OFF = 종전과 동일(회귀 0)</td></tr>
+<tr><td>처리 속도</td><td class="ok">26.3초 영상 분리 18초(CPU) — 릴스/쇼츠 여유·10분급 장영상은 시간 초과 시 자동 스킵(원본 소리)</td></tr>
+<tr><td>실패 안전망</td><td class="ok">깨진 분리 결과를 강제 주입해도 <b>원본으로 강등해 영상은 반드시 산출</b> + 노트에 "배경음 제거 실패" 정직 표기(실증)</td></tr>
+<tr><td>평의회</td><td class="ok">10인 적대 검증 — P1 6건 전부 코드 반영{영상 절단 회귀(-shortest) 제거 · 버전 핀 · 라우드니스 · 무효 분리 봉합 · 예산 백스톱 · 주석}</td></tr>
+</table>
+
+<h2>③ 전 → 후</h2>
+<table>
+<tr><th>축</th><th>전</th><th>후</th></tr>
+<tr><td>BGM 깔린 영상</td><td>자막만 얹음(소리 그대로)</td><td><b>목소리만 남긴 완성본</b> 원탭</td></tr>
+<tr><td>음량</td><td>—</td><td>분리 후 <b>-16 LUFS 자동 정규화</b></td></tr>
+<tr><td>비용</td><td>—</td><td><b>과금 0</b>(러너 로컬 모델·7일 캐시) · 러너 시간 +수 분</td></tr>
+</table>
+
+<h2>④ 한계·리스크(정직)</h2>
+<ul>
+<li class="warn">분리 특성상 목소리에 약한 잔향/아티팩트 가능(음악 위에 말하는 영상에서 체감 가능성) — 첫 실사용 몇 건 확인 권장.</li>
+<li class="warn">10분급 장영상은 분리 시간 초과로 스킵될 수 있음(노트로 표면화 — 릴스/쇼츠엔 무관).</li>
+<li class="warn">다시 입히기(reburn)마다 분리를 다시 함 — 분리 결과 R2 보관(재사용)은 후속 후보.</li>
+</ul>
+
+<h2>⑤ 후속 후보</h2>
+<ul>
+<li><b>목소리 강조 모드</b>: 완전 제거 대신 배경 15%만 남김(분리 부산물 재활용 = 공짜 구현).</li>
+<li><b>필러 컷</b>: "음·어" 어절 구간을 영상에서도 컷(운영자 아이디어 답변의 1순위 — 별도 진행).</li>
+<li>vocals R2 캐시(재합성 가속) · STT 앞 분리(소음 영상 전사 품질).</li>
+</ul>
+<p class="note">정본: <code>.github/scripts/ly_burn.py</code>(strip_bgm·loudnorm·폴백) · <code>.github/workflows/ly-make.yml</code>(Demucs 게이트·버전 핀) · 원장 = docs/작업이력.md · 백업 = _versions/260707_2315_ly배경음제거/</p>
+</div></body></html>
