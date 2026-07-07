@@ -85,8 +85,6 @@ FONT_FRAG = {"gothic": "heavy bold Hangul sans-serif poster lettering, thick eve
 ANGLE_CODES = ("AG-01", "AG-02", "AG-03", "AG-04", "AG-06", "AG-09")       # 39_cardnews_angle_height: 눈높이/로우위압/하이왜소/부감/더치/측면
 POINT_CODES = ("DF-01", "DF-02", "DF-04", "DF-05", "DF-07")                # 38_cardnews_distance_crop: 눈물클로즈/주먹인서트/서류매크로/대치투샷/군중속1인
 LIGHT_CODES = ("LGT05", "LGT06", "LGT08", "LGT09", "LGT10", "LGT12")       # 12_lighting_emotion: 촛불/골든아워/흐린확산/하드측광/역광실루엣/형광임상
-SHOT_CODES = ("S03", "S04", "S06", "S08", "S10")                           # 01b_camera_shot_size: 와이드/전신/상반신/클로즈업/표정 익스트림 클로즈업(운영자 260707 "카메라 얼마나 가까이")
-EXPR_CODES = ("EM-03", "EM-05", "EM-09", "EM-12", "EM-16", "EM-17")        # 22_expression_emotion(FACS): 슬픔/분노/억눌린 표정/직시/눈물 글썽/턱 악물기(운영자 260707 "표정 묘사")
 # 배치 = 카드뉴스 프롬프팅 정본 계승(apps/news/02 §합성 "main subject anchored in the upper-center" · 라우터 "핵심요소 상단 2/3")
 #   top23 = 뷰어 라벨 '썸네일'(운영자 260707 — 썸네일 조건 명칭 · 조각/값 불변 = 지침 정본 그대로)
 PLACE_FRAG = {"auto": "",
@@ -154,8 +152,6 @@ def load_opts():
     if text and size == "1K":
         size = "2K"   # 문구 렌더 = 2K 하한(1K는 한글 자모 뭉개짐 — 공식 팁·아이데이션 분신술 260707 · UI도 1K 딤이지만 서버 이중 플로어)
     sub = o.get("sub") if o.get("sub") in STYLE_SUB.get(style, {}) else "auto"
-    shot = o.get("shot") if o.get("shot") in SHOT_CODES else "auto"
-    expr = o.get("expr") if o.get("expr") in EXPR_CODES else "auto"
     angle = o.get("angle") if o.get("angle") in ANGLE_CODES else "auto"
     point = o.get("point") if o.get("point") in POINT_CODES else "auto"
     light = o.get("light") if o.get("light") in LIGHT_CODES else "auto"
@@ -163,15 +159,14 @@ def load_opts():
     return {"style": style, "aspect": aspect, "size": size, "count": count,
             "mood": mood, "font": font, "text": text, "wish": wish,
             "sub": sub, "angle": angle, "point": point, "light": light, "place": place,
-            "shot": shot, "expr": expr, "kweb": bool(o.get("kweb"))}
+            "kweb": bool(o.get("kweb"))}
 
 
 
 
 def lib_keywords(o):
-    """선택된 라이브러리 코드(shot/angle/point/light/expr) → tg.lib_buckets 해석(camera/focus/light/expression 버킷).
-    shot(S)·angle(AG)은 같은 camera 버킷에 ", " 병합(260707 실측)."""
-    codes = [o[k] for k in ("shot", "angle", "point", "light", "expr") if o.get(k) and o[k] != "auto"]
+    """선택된 라이브러리 코드(angle/point/light) → tg.lib_buckets 해석(camera/focus/light 키워드 dict)."""
+    codes = [o[k] for k in ("angle", "point", "light") if o.get(k) and o[k] != "auto"]
     try:
         return tg.lib_buckets(" ".join(codes)) if codes else {}
     except Exception as e:  # noqa: BLE001 — 라이브러리 파일 부재 등 = 코드 드롭(fail-soft)
@@ -210,8 +205,6 @@ def build_fallback(head, lead, scene, o):
                      "do not copy literal props): " + kw["focus"])
     if kw.get("light"):
         parts.append("LIGHT: " + kw["light"])
-    if kw.get("expression"):
-        parts.append("EXPRESSION (of the protagonist, adapt to the scene): " + kw["expression"])
     if PLACE_FRAG[o["place"]]:
         parts.append("COMPOSITION: " + PLACE_FRAG[o["place"]])
     parts.append(tg._frame(False, likeness).replace("vertical 4:5", ASPECT_EN[o["aspect"]]))
@@ -250,8 +243,6 @@ def ask_opus(head, lead, insight, scene, o, free=False):
         lib_lines.append('- 표현 포인트(거리·크롭 · 라이브러리 정본) — 장면에 맞게 번안해 포함(예시 소품 리터럴 복사 금지): "{}"'.format(kw["focus"]))
     if kw.get("light"):
         lib_lines.append('- 조명(라이브러리 정본) — LIGHT 지시에 포함: "{}"'.format(kw["light"]))
-    if kw.get("expression"):
-        lib_lines.append('- 주인공 표정(FACS 라이브러리 정본) — EXPRESSION 지시에 포함(장면에 맞게 번안): "{}"'.format(kw["expression"]))
     if PLACE_FRAG[o["place"]]:
         lib_lines.append('- 피사체 배치 — COMPOSITION 지시에 포함: "{}"'.format(PLACE_FRAG[o["place"]]))
     lib_rule = "\n".join(lib_lines)

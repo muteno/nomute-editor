@@ -28,8 +28,6 @@ export async function onRequestPost({ request, env }) {
   const ANGLES2 = ['auto', 'AG-01', 'AG-02', 'AG-03', 'AG-04', 'AG-06', 'AG-09'];
   const POINTS = ['auto', 'DF-01', 'DF-02', 'DF-04', 'DF-05', 'DF-07'];
   const LIGHTS = ['auto', 'LGT05', 'LGT06', 'LGT08', 'LGT09', 'LGT10', 'LGT12'];
-  const SHOTS = ['auto', 'S03', 'S04', 'S06', 'S08', 'S10'];   // 샷 거리(01b · 운영자 260707)
-  const EXPRS = ['auto', 'EM-03', 'EM-05', 'EM-09', 'EM-12', 'EM-16', 'EM-17'];   // 표정(22 FACS)
   const PLACES = ['auto', 'top23', 'center', 'full'];
   const opts = {
     style: STYLES.includes(o.style) ? o.style : 'photo',
@@ -42,8 +40,6 @@ export async function onRequestPost({ request, env }) {
     angle: ANGLES2.includes(o.angle) ? o.angle : 'auto',
     point: POINTS.includes(o.point) ? o.point : 'auto',
     light: LIGHTS.includes(o.light) ? o.light : 'auto',
-    shot: SHOTS.includes(o.shot) ? o.shot : 'auto',
-    expr: EXPRS.includes(o.expr) ? o.expr : 'auto',
     place: PLACES.includes(o.place) ? o.place : 'auto',
     kweb: o.kweb === true,   // 한국웹툰식 토글(전 화풍 · 운영자 260707)
     text: String(o.text || '').replace(/\s+/g, ' ').trim().slice(0, 60),
