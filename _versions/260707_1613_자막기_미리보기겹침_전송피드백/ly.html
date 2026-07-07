@@ -92,7 +92,6 @@
   /* .go:hover 제거 — 메인 버튼(index .mkbtn) 계승: hover 전경 fill 없음·:active만 피드백(운영자 260629 "마우스 올리면 버튼 전경 뜸" 차단 + 터치 stuck-hover 동시 차단) */
   .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
-  .go svg { width:20px; height:20px; vertical-align:-5px; }   /* 접수 체크(CHECK_SVG 14px 속성) 버튼 스케일 승격 — 픽토그램 단독 교체(§📐 텍스트·SVG 공존 금지) */
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
   @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
   .go.err { background:rgba(var(--danger-rgb),.14); color:var(--danger); border-color:var(--danger); }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb .go.err 통일·운영자 260622) */
@@ -250,8 +249,6 @@
   .lyoptpv .kw { color:var(--accent-5); font-weight:800; }   /* 키워드 = 콘텐츠 그린 실색(번인과 동일) */
   .lyoptpv.kara .pvt .kt { background:linear-gradient(90deg, rgba(255,255,255,1) 50%, rgba(255,255,255,.42) 50%) 0 0/200% 100% no-repeat; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; animation:lykfill 2.2s linear infinite; }
   .lyoptpv.kara .pvt .kw { background:linear-gradient(90deg, var(--accent-5) 50%, rgba(255,255,255,.42) 50%) 0 0/200% 100% no-repeat; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; animation:lykfill 2.2s linear infinite; }   /* 키워드도 스윕 동참(실번인 \\kf+\\1c 동작 근사 — 채워지면 그린) */
-  .lyoptpv.kara .pvt { text-shadow:none; }   /* 카라오케 = 채움이 투명(background-clip:text)이라 bold/clean의 글리프 그림자 4벌(가짜 아웃라인)이 채움 밑으로 그대로 비쳐 글자가 이중 겹침(운영자 260707 스샷 "노래방 때문 같다" 적중) — 스윕 중엔 text-shadow 제거 */
-  .lyoptpv.kara:not(.box) .pvt { filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }   /* 대신 렌더 결과 알파를 따르는 drop-shadow(글리프 사본 안 생김)로 깊이만 유지 · box는 자체 필 배경이라 불필요(필까지 그림자 지면 이질) */
   @keyframes lykfill { from { background-position:100% 0; } to { background-position:0 0; } }
   @media (prefers-reduced-motion:reduce){ .lyoptpv.kara .pvt .kt, .lyoptpv.kara .pvt .kw { animation:none; background:none; -webkit-text-fill-color:currentColor; } .lyoptpv.kara .pvt .kt { color:rgba(255,255,255,1); } .lyoptpv.kara .pvt .kw { color:var(--accent-5); } }
   /* 완성 영상(자막 번인 결과) — 미리보기 .lypv 크롬 계승 */
@@ -691,12 +688,6 @@ function goWait(on) {   // 생성 대기 = #go 라벨을 정직한 대기 상태
   if (on) { if (!g.dataset.label) g.dataset.label = g.textContent; g.classList.add('wait'); g.setAttribute('aria-busy', 'true'); g.innerHTML = '자막 생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; }
   else { g.classList.remove('wait'); g.removeAttribute('aria-busy'); if (g.dataset.label) g.textContent = g.dataset.label; }
 }
-function goLbl(html) {   // 전송 구간 버튼 라벨 — 게이지(0.72s) 이후 fetch(파일 = base64 통업로드 = 수십 초) 동안 무표정 공백 교정(운영자 260707 "게이지 찬 다음 멈춰")
-  const g = $('#go'); if (!g) return;
-  if (!g.dataset.label) g.dataset.label = g.textContent;   // 원라벨 1회 포획(goWait와 같은 칸 공유 — 전송 라벨을 원본으로 오포획 방지 위해 항상 이 함수가 선행)
-  if (html === null) { g.innerHTML = ''; g.textContent = g.dataset.label; g.removeAttribute('aria-busy'); }
-  else { g.setAttribute('aria-busy', 'true'); g.innerHTML = html; }
-}
 $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err');
   const url = $('#url').value.trim();
@@ -706,21 +697,17 @@ $('#go').onclick = async () => {
   if (url) lyPvSet(null);   // URL 발사 = 로컬 첨부 미리보기 해제(영상 불일치 차단)
   { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
   $('#go').disabled = true; status.textContent = '생성 중…'; $('#out').innerHTML = '<div class="lybar"></div>';   // 생성 중에도 같은 움직이는 게이지
-  goLbl('보내는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>');   // 게이지 만땅 후에도 전송(업로드·디스패치) 내내 정직 표기 — gdots 처리중 정본(§디자인 g)
   try {
     const payload = url ? { url } : SRT_TEXT ? { subs: SRT_TEXT } : { fileB64: FILE_B64, name: FILE_NAME };   // 우선순위 url > 텍스트파일(SRT) > 영상·음성
     payload.opts = { ...LY_OPTS };   // 버튼 설정 → 서버(화이트리스트 통과 후 워크플로 opts)
     const wantVid = !!LY_OPTS.burn && (!!url || (!SRT_TEXT && /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(FILE_NAME)));   // 합성 기대 = URL 또는 영상 원본 업로드(추출 mp3는 러너에 영상 없음)
     const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();
-    if (!res.ok || j.error) { goLbl(null); status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); $('#out').innerHTML = ''; return; }
+    if (!res.ok || j.error) { status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); $('#out').innerHTML = ''; return; }
     lyPendSet(j.out, j.url || j.file, wantVid);   // 진행 영속화(평의회R2 C1) — 완료/실패 시 poll이 해제·타임아웃은 유지(0 유실) · v = 합성 기대(리로드 이어받기)
     LY_WANTVID = wantVid ? j.out : '';
     poll(j.out, j.url || j.file);
-    goLbl(CHECK_SVG);   // 접수 체크 플래시(운영자 260707 "체크가 되야") — 픽토그램 단독 교체 · 700ms 뒤 poll의 대기 라벨로 복귀(errStatus의 대기중 플래시 복귀 패턴 미러 · poll→goWait(true)가 먼저 wait를 켠 직후라 순서 안전)
-    setTimeout(() => { const g = $('#go'); if (g && g.classList.contains('wait')) g.innerHTML = '자막 생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; }, 700);
   } catch (e) {
-    goLbl(null);
     status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err'); $('#out').innerHTML = '';
   } finally { $('#go').disabled = false; }
 };
