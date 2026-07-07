@@ -65,10 +65,6 @@
     -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; animation:lykfill var(--t-sweep,2.2s) linear infinite; }
   .sub.kara .in { text-shadow:none !important; }   /* 스윕 중 글리프 그림자 4벌 이중겹침 방지 = 뷰어 260707 확정 계승 */
   .sub.kara.noplate { filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-  .sub.pop .in .kt:first-child { animation:lypopA 2.2s steps(1,end) infinite; }   /* 팝 데모 = 어절 순차 점등(ly.html 미리보기 계승 · 실번인 = 어절 창 이벤트) */
-  .sub.pop .in .kt:last-child { animation:lypopB 2.2s steps(1,end) infinite; }
-  @keyframes lypopA { 0%,44% { color:var(--t-kwc,var(--accent-5)); } 45%,100% { color:#fff; } }
-  @keyframes lypopB { 0%,54% { color:#fff; } 55%,89% { color:var(--t-kwc,var(--accent-5)); } 90%,100% { color:#fff; } }
   .sub.paused .in .kt, .sub.paused .in .kw { animation-play-state:paused; }
   @keyframes lykfill { from { background-position:100% 0; } to { background-position:0 0; } }
   @media (prefers-reduced-motion:reduce){ .sub.kara .in .kt, .sub.kara .in .kw { animation:none; background:none; -webkit-text-fill-color:currentColor; } .sub.kara .in .kt { color:#fff; } .sub.kara .in .kw { color:var(--t-kwc,var(--accent-5)); } }
@@ -170,7 +166,7 @@
     <div class="csec">
       <p class="ct">설정 (전부 선택값에 실림)</p>
       <div class="row"><span class="rk">모양</span><button class="chip" type="button" data-st="bold">기본</button><button class="chip" type="button" data-st="clean">깔끔</button><button class="chip" type="button" data-st="box">박스</button></div>
-      <div class="row"><span class="rk">강조</span><button class="chip" type="button" id="tgKara">카라오케</button><button class="chip" type="button" id="tgPop">팝</button><button class="chip" type="button" id="tgKw">키워드</button></div>
+      <div class="row"><span class="rk">강조</span><button class="chip" type="button" id="tgKara">카라오케</button><button class="chip" type="button" id="tgKw">키워드</button></div>
       <div class="row"><span class="rk">색 ⚠</span>
         <button class="sw" type="button" data-kwc="#0FFD02" style="background:#0FFD02" title="형광그린(현행 콘텐츠 브랜드)"></button>
         <button class="sw" type="button" data-kwc="#00EED2" style="background:#00EED2" title="터쿼이즈(UI 코어)"></button>
@@ -208,7 +204,7 @@ const H = 480;   // 프레임 높이 px — 실물 1080×1920의 % 좌표계를 
 
 // 현행 실측(= viewer LY_OPT_DEF + ly_burn.py 수식 상수) — ⚠ 기본값은 반드시 현행(포터블 §3-2)
 //   260707 운영자 선택값 배선 완료: 아래 DEFAULTS = 새 라이브 기본(clean·57%·bg100·3.5%·외곽선×0.5·패딩×0.16·카라오케OFF) — 연속 축 3종(size·outline·pad)도 번인 실배선
-const DEFAULTS = { style:'clean', pos:57, bg:100, size:.035, outline:.5, pad:.16, kara:false, pop:false, kw:true, kwc:'#0FFD02', sweep:2.2 };   // pop = 어절 점등(카라오케 상호배타 · 260707 배선)
+const DEFAULTS = { style:'clean', pos:57, bg:100, size:.035, outline:.5, pad:.16, kara:false, kw:true, kwc:'#0FFD02', sweep:2.2 };
 const SIZE_SNAP = [ ['작게(s)', .032], ['보통(m)', .038], ['크게(l)', .045] ];
 const PRESETS = [
   { id:'p0', nm:'캡션 기본', cur:'현행 기본값', st:{ ...DEFAULTS } },
@@ -258,7 +254,7 @@ function apply() {
   const fs = H * state.size;
   const mv = H * (0.02 + 0.0082 * state.pos);   // 게이지 기준점(1줄 하단) — 캡은 아래 블록 실측 후(번인 이벤트 캡 미러 260707)
   sub.innerHTML = subHtml();
-  sub.className = 'sub' + (state.kara ? ' kara' : '') + (state.pop ? ' pop' : '') + (state.bg > 0 ? '' : ' noplate') + (view.play ? '' : ' paused');
+  sub.className = 'sub' + (state.kara ? ' kara' : '') + (state.bg > 0 ? '' : ' noplate') + (view.play ? '' : ' paused');
   sub.style.setProperty('--t-sweep', state.sweep + 's');
   sub.style.setProperty('--t-kwc', state.kw ? state.kwc : '#ffffff');
   const shadow = shadowFor(state.style, fs, state.outline);
@@ -292,7 +288,6 @@ function apply() {
   // 콘솔 동기
   $$('.chip[data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === state.style));
   $('#tgKara').classList.toggle('on', state.kara);
-  $('#tgPop').classList.toggle('on', state.pop);
   $('#tgKw').classList.toggle('on', state.kw);
   $$('.sw').forEach(b => b.classList.toggle('on', b.dataset.kwc.toLowerCase() === state.kwc.toLowerCase()));
   $$('.chip[data-sc]').forEach(b => b.classList.toggle('on', b.dataset.sc === view.scene));
@@ -326,7 +321,6 @@ function buildOut() {
   L.push('배경     : ' + state.bg + '%\t[현행 ' + d.bg + ']' + (near(state.bg, d.bg) ? ' = 계승' : near(state.bg, 44) ? ' = 박스 종전(44)' : ' → 기본값 갱신 후보'));
   L.push('크기     : ' + (state.size * 100).toFixed(1) + '%\t[현행 ' + (d.size * 100).toFixed(1) + '%]' + sizeNote(state.size));
   L.push('카라오케 : ' + (state.kara ? 'ON' : 'OFF') + '\t[현행 ' + (d.kara ? 'ON' : 'OFF') + ']' + (state.kara === d.kara ? ' = 계승' : ' → 기본값 갱신 후보'));
-  L.push('팝(어절)  : ' + (state.pop ? 'ON' : 'OFF') + '\t[현행 ' + (d.pop ? 'ON' : 'OFF') + ']' + (state.pop === d.pop ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('키워드   : ' + (state.kw ? 'ON' : 'OFF') + '\t[현행 ' + (d.kw ? 'ON' : 'OFF') + ']' + (state.kw === d.kw ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('외곽선   : ×' + state.outline.toFixed(2) + '\t[현행 ×' + d.outline.toFixed(2) + ']' + (near(state.outline, d.outline) ? ' = 계승' : ' → 기본값 갱신 후보'));
   L.push('박스패딩 : ×' + state.pad.toFixed(2) + '\t[현행 ×' + d.pad.toFixed(2) + ']' + (near(state.pad, d.pad) ? ' = 계승' : ' → 기본값 갱신 후보'));
@@ -364,8 +358,7 @@ PRESETS.forEach(p => {
 })();
 // 칩·토글 배선
 $$('.chip[data-st]').forEach(b => b.addEventListener('click', () => { state.style = b.dataset.st; if (state.style === 'box' && !state.bg) state.bg = 44; apply(); }));
-$('#tgKara').addEventListener('click', () => { state.kara = !state.kara; if (state.kara) state.pop = false; apply(); });
-$('#tgPop').addEventListener('click', () => { state.pop = !state.pop; if (state.pop) state.kara = false; apply(); });   // 팝↔카라오케 상호배타(운영자 260707)
+$('#tgKara').addEventListener('click', () => { state.kara = !state.kara; apply(); });
 $('#tgKw').addEventListener('click', () => { state.kw = !state.kw; apply(); });
 $$('.sw').forEach(b => b.addEventListener('click', () => { state.kwc = b.dataset.kwc; state.kw = true; apply(); }));
 $$('.chip[data-sc]').forEach(b => b.addEventListener('click', () => { view.scene = b.dataset.sc; apply(); }));
