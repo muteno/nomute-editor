@@ -27,8 +27,6 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(모듈 import = main 미
 GREEN_BGR = "&H02FD0F&"          # #0FFD02 → ASS BGR(콘텐츠 그린)
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 git 커밋 상한(레포 비대 방지)
 MAX_DUR = 600                    # 릴스/쇼츠 도구 — 10분 초과 영상은 번인 거절(러너 시간 보호)
-CUT_PAD = 0.30                   # 무음 컷: 발화 구간 앞뒤 보존 여유(초) — 어두·어미 잘림 방지
-CUT_MIN_REMOVE = 0.40            # 무음 컷: 이만큼도 안 줄어드는 갭은 붙여둠(미세컷 = 튐만 유발·자연스러운 호흡 보존)
 LINE_F = 1.0                     # libass 줄전진/폰트크기 비 = 1.0 실측(260707 ffmpeg+Noto CJK KR 프레임 픽셀 계측: 67px/fs67 — libass는 VSFilter 호환으로 fs를 줄높이로 정규화 · hhea 1.48 가정은 오류였음) · 중앙 불변 보정 전용
 
 
@@ -97,86 +95,6 @@ def load_segs(outdir):
         except Exception as e:
             print("::warning::segments.json 파싱 실패:", e)
     return [], ""
-
-
-def load_speech_spans(outdir, segs):
-    # 무음 컷 기준 = STT 원천(segments.json = Whisper 발화 구간·vad_filter)이 정본 — 의역(subs.json)은
-    # 군더더기 빼기 등으로 실제 발화가 자막에서 빠질 수 있어 그걸로 컷하면 진짜 말이 잘림. 없으면 자막 타이밍 폴백.
-    p = os.path.join(outdir, "segments.json")
-    if os.path.isfile(p):
-        try:
-            j = json.load(open(p, encoding="utf-8"))
-            spans = [(float(s["s"]), float(s["e"])) for s in (j.get("segs") or [])
-                     if isinstance(s.get("s"), (int, float)) and isinstance(s.get("e"), (int, float))
-                     and float(s["e"]) > float(s["s"])]
-            if spans:
-                return spans
-        except Exception as e:
-            print("::warning::segments.json 파싱 실패 — 자막 타이밍으로 컷 계산 폴백:", e)
-    return [(float(s["s"]), float(s["e"])) for s in segs if float(s["e"]) > float(s["s"])]
-
-
-def cut_keeps(spans, dur, pad=CUT_PAD, min_remove=CUT_MIN_REMOVE):
-    # 발화 구간 ± pad 확장 → 제거량 min_remove 미만 갭은 병합 → keep(살릴 구간) 목록.
-    # 머리(첫 발화 전)·꼬리(마지막 발화 후) 무음도 동일 규칙으로 컷(제거량이 작으면 유지).
-    keeps = []
-    for a, b in sorted(spans):
-        a = max(0.0, a - pad)
-        b = min(dur, b + pad) if dur > 0 else b + pad
-        if b <= a:
-            continue
-        if keeps and a - keeps[-1][1] < min_remove:
-            keeps[-1][1] = max(keeps[-1][1], b)
-        else:
-            keeps.append([a, b])
-    if keeps and keeps[0][0] < min_remove:
-        keeps[0][0] = 0.0
-    if keeps and dur > 0 and dur - keeps[-1][1] < min_remove:
-        keeps[-1][1] = dur
-    return [(a, b) for a, b in keeps if b - a > 0.01]
-
-
-def cut_remap(keeps):
-    # 원본 타임라인 → 컷 후 타임라인 사상(컷-자막 싱크의 핵심). 갭 안 시각 = 직전 keep 끝점으로 붕괴.
-    table, acc = [], 0.0
-    for a, b in keeps:
-        table.append((a, b, acc))
-        acc += b - a
-    def f(t):
-        t = float(t)
-        for a, b, c in table:
-            if t < a:
-                return c
-            if t <= b:
-                return c + (t - a)
-        return acc
-    return f, acc
-
-
-def has_audio(path):
-    try:
-        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries",
-                            "stream=index", "-of", "csv=p=0", path], capture_output=True, text=True, timeout=60)
-        return bool((r.stdout or "").strip())
-    except Exception:
-        return True   # 판별 실패 = 오디오 있다고 가정(기존 경로와 동일 인코딩 시도)
-
-
-def cut_filter(keeps, audio, scale, ass_path):
-    # keep 구간별 trim+concat 필터체인(재인코딩은 어차피 번인이 함 = 추가 품질손실 0) → 끝에 scale+ass.
-    # -filter_complex_script 파일로 전달(구간 수십 개여도 argv 한도 무관).
-    parts, pads = [], []
-    for i, (a, b) in enumerate(keeps):
-        parts.append("[0:v]trim=start={:.3f}:end={:.3f},setpts=PTS-STARTPTS[v{}];".format(a, b, i))
-        if audio:
-            parts.append("[0:a]atrim=start={:.3f}:end={:.3f},asetpts=PTS-STARTPTS[a{}];".format(a, b, i))
-            pads.append("[v{}][a{}]".format(i, i))
-        else:
-            pads.append("[v{}]".format(i))
-    parts.append("".join(pads) + "concat=n={}:v=1:a={}{};".format(
-        len(keeps), 1 if audio else 0, "[vc][ac]" if audio else "[vc]"))
-    parts.append("[vc]" + ((scale + ",") if scale else "") + "ass={}[vo]".format(ass_path))
-    return "\n".join(parts)
 
 
 def sanitize(t):
@@ -471,22 +389,6 @@ def run(vid_id, video, outdir):
         out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
-    # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
-    #   컷과 자막이 같은 파이프라인이어야 하는 이유 = 컷하면 뒤 자막 시각이 전부 당겨짐(remap이 그 싱크 담당).
-    #   자를 갭이 없거나 cut OFF = keeps 빈 목록 = 종전 단일 -vf 경로 그대로(회귀 0).
-    cut_note, keeps = "", []
-    if opts.get("cut") and dur > 0:
-        keeps = cut_keeps(load_speech_spans(outdir, segs), dur)
-        removed = dur - sum(b - a for a, b in keeps)
-        if keeps and removed >= CUT_MIN_REMOVE:
-            remap, new_dur = cut_remap(keeps)
-            segs = [dict(sg, s=remap(sg["s"]), e=remap(sg["e"])) for sg in segs]
-            n_gap = len(keeps) - 1 + (1 if keeps[0][0] > 0.005 else 0) + (1 if dur - keeps[-1][1] > 0.005 else 0)
-            cut_note = "무음 {:.1f}초 컷({}군데)".format(removed, n_gap)
-            print("무음 컷:", cut_note, "· keep", len(keeps), "구간 ·", round(dur, 1), "→", round(new_dur, 1), "초")
-            dur = new_dur
-        else:
-            keeps = []
     # 다운스케일 캡(비용 보호·업스케일 없음) — 목표 치수를 먼저 확정해 PlayRes와 일치시킴(왜곡 0)
     tw, th = w, h
     if w > 1080:
@@ -497,21 +399,10 @@ def run(vid_id, video, outdir):
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass)
     out_mp4 = "/tmp/ly_subbed.mp4"
-    scale = "scale={}:{}".format(tw, th) if (tw, th) != (w, h) else ""
-    if keeps:   # 무음 컷 = trim+concat 필터체인(끝에 scale+ass — 재인코딩은 어차피 번인이 하므로 추가 열화 0)
-        aud = has_audio(video)
-        fc_path = "/tmp/ly_cut.filter"
-        with open(fc_path, "w", encoding="utf-8") as f:
-            f.write(cut_filter(keeps, aud, scale, ass_path))
-        cmd = ["ffmpeg", "-y", "-i", video, "-filter_complex_script", fc_path, "-map", "[vo]"] \
-            + (["-map", "[ac]"] if aud else []) \
-            + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-               "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
-    else:
-        vf = (scale + "," if scale else "") + "ass={}".format(ass_path)
-        cmd = ["ffmpeg", "-y", "-i", video, "-vf", vf,
-               "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-               "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
+    vf = ("scale={}:{},".format(tw, th) if (tw, th) != (w, h) else "") + "ass={}".format(ass_path)
+    cmd = ["ffmpeg", "-y", "-i", video, "-vf", vf,
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)   # 15분 백스톱 — 잡 하드킬(45분) 전에 우아하게 실패 기록(평의회)
         if r.returncode != 0 or not os.path.isfile(out_mp4) or os.path.getsize(out_mp4) < 1024:
@@ -522,8 +413,6 @@ def run(vid_id, video, outdir):
         out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
     note = "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else ""
-    if cut_note:
-        note = (note + " · " if note else "") + cut_note
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
     try:
