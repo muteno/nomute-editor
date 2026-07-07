@@ -24,7 +24,7 @@ export async function onRequestPost({ request, env }) {
   const MOODS = ['auto', 'tense', 'somber', 'hope', 'calm', 'anger', 'eerie', 'warm'];
   const FONTS = ['gothic', 'serif', 'brush', 'neon'];
   // 구도·조명·표현 포인트 = /k 메인 라이브러리 실코드(gen_image.py와 동일 집합 · 서브분기는 python이 화풍별 정본 재검증)
-  const SUBS = ['auto', 'film', 'bw', 'cinedoc', 'newsreel', 'noir', 'gekiga', 'hardboiled', 'jidai', 'sunjung', 'chibi', 'brush', 'flat', 'woodcut', 'bleed', 'fine', 'sumuk', 'gouache', 'oil', 'neon', 'film35', 'expressionism', 'riso', 'paper', 'anime', 'retro80', 'clay', 'lowpoly', 'diorama', 'line', 'blueprint'];   // 260707 2차 확장 — python STYLE_SUB와 동일 집합(서브 정본 재검증은 python)
+  const SUBS = ['auto', 'film', 'bw', 'cinedoc', 'newsreel', 'noir', 'tone', 'color', 'kwebtoon', 'gekiga', 'hardboiled', 'jidai', 'lyric', 'realpen', 'sunjung', 'chibi', 'brush', 'flat', 'woodcut', 'bleed', 'fine', 'sumuk', 'gouache', 'oil', 'neon', 'film35', 'expressionism', 'riso', 'paper', 'anime', 'retro80', 'clay', 'lowpoly', 'diorama', 'line', 'blueprint'];   // 260707 2차 확장 — python STYLE_SUB와 동일 집합(서브 정본 재검증은 python)
   const ANGLES2 = ['auto', 'AG-01', 'AG-02', 'AG-03', 'AG-04', 'AG-06', 'AG-09'];
   const POINTS = ['auto', 'DF-01', 'DF-02', 'DF-04', 'DF-05', 'DF-07'];
   const LIGHTS = ['auto', 'LGT05', 'LGT06', 'LGT08', 'LGT09', 'LGT10', 'LGT12'];
@@ -41,7 +41,6 @@ export async function onRequestPost({ request, env }) {
     point: POINTS.includes(o.point) ? o.point : 'auto',
     light: LIGHTS.includes(o.light) ? o.light : 'auto',
     place: PLACES.includes(o.place) ? o.place : 'auto',
-    kweb: o.kweb === true,   // 한국웹툰식 토글(전 화풍 · 운영자 260707)
     text: String(o.text || '').replace(/\s+/g, ' ').trim().slice(0, 60),
     wish: String(o.wish || '').replace(/\s+/g, ' ').trim().slice(0, 300),
   };
