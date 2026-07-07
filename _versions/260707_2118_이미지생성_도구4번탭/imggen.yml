@@ -17,10 +17,6 @@ on:
         description: '옵션 JSON {style,aspect,size,count,mood,font,text,wish} — genimg.js가 화이트리스트 검증 후 전달'
         default: '{}'
         type: string
-      free:
-        description: "자유 생성(기사 무관 · 이미지 제작 도구 /6 생성 탭) — '1'=viewer/gen_out/free.json 적재(stem 무시·'free' 더미)"
-        default: '0'
-        type: string
       account:
         description: '구독 OAuth 계정'
         type: choice
@@ -73,7 +69,6 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           GENIMG_STEM: ${{ github.event.inputs.stem }}
           GENIMG_OPTS: ${{ github.event.inputs.opts || '{}' }}
-          GENIMG_FREE: ${{ github.event.inputs.free || '0' }}
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT} · stem=${GENIMG_STEM} · opts=${GENIMG_OPTS}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
@@ -87,7 +82,7 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add cards/ metrics/ viewer/gen_out/ 2>/dev/null || true   # gen_out = 자유 생성(free) 목록·git 폴백 PNG
+          git add cards/ metrics/ 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "변경 없음(생성 이미지 0)"; exit 0
           fi

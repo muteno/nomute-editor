@@ -3848,39 +3848,19 @@ function geniInit() {
     const c = _geniCtx; $('#genidlg').close();
     if (c) moreImgGo(c.file, c.wrap, c.btn);
   });
-  $('#geniGo').addEventListener('click', async () => {
+  $('#geniGo').addEventListener('click', () => {
     const c = _geniCtx; if (!c) { $('#genidlg').close(); return; }
     const text = $('#geniText').value.trim().slice(0, 24), wish = $('#geniWish').value.trim().slice(0, 120);
     const opts = { style: _geniSel.style, sub: _geniSel.sub, aspect: _geniSel.aspect, size: _geniSel.size, count: parseInt(_geniSel.count, 10) || 1, mood: _geniSel.mood, place: _geniSel.place, angle: _geniSel.angle, point: _geniSel.point, light: _geniSel.light, text, wish };
     if (text) opts.font = _geniSel.font;
     try { localStorage.setItem('GENI_OPTS', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷(복원 시 사전 검증)
-    if (c.free) {   // 자유 생성(도구 /6 탭 · 운영자 260707): 기사 카러셀 없음 → api 직접 발사 + 도구 iframe에 통지(그쪽 그리드가 폴링)
-      if (!wish && !text) { $('#geniWish').focus(); return; }   // 장면 소재 0 방지(서버도 동일 검증) — 주문 또는 문구 하나는 필수
-      const gb = $('#geniGo'); if (gb.disabled) return; gb.disabled = true;
-      try {
-        const r = await fetch('api/genimg', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ free: true, opts }) });
-        if (!r.ok) throw 0;
-        $('#genidlg').close();
-        document.querySelectorAll('#tooldlg .toolfr').forEach(f => { try { f.contentWindow.postMessage({ nm: 'genfree-fired' }, '*'); } catch (err) {} });
-      } catch (err) { if (typeof _flashBtn === 'function') _flashBtn(gb, 'err'); }
-      finally { gb.disabled = false; }
-      return;
-    }
     $('#genidlg').close();
     genImgGo(c.file, c.wrap, c.btn, opts);
-  });
-  window.addEventListener('message', e => {   // 도구 iframe(/6 생성 탭) → 자유 생성 팝업 열기 — same-origin 도구 iframe만 신뢰(source 대조)
-    if (!e.data || e.data.nm !== 'genfree') return;
-    const frs = Array.from(document.querySelectorAll('#tooldlg .toolfr'));
-    if (!frs.some(f => f.contentWindow === e.source)) return;
-    openGenIdlg(null);
   });
 }
 function openGenIdlg(file, wrap, btn) {
   geniInit();
-  _geniCtx = { file, wrap, btn, free: !file };   // free = 기사 컨텍스트 없음(이미지 제작 도구 /6 생성 탭 · 운영자 260707)
-  $('#geniTitleFill').hidden = !file;   // 기사 제목 채움 = 기사 모드 전용(자유 모드 숨김)
-  $('#geniMore5').hidden = !file;       // 실사진 재검색 = 기사 카러셀 전용(자유 모드 숨김)
+  _geniCtx = { file, wrap, btn };
   try { const s = JSON.parse(localStorage.getItem('GENI_OPTS') || 'null'); if (s) Object.keys(_geniSel).forEach(k => { const d = k === 'sub' ? (GENI_SUB[s.style || _geniSel.style] || []) : GENI_DICT[k]; if (s[k] && d && d.some(([v]) => v === s[k])) _geniSel[k] = s[k]; }); } catch {}   // 최근 사용 옵션 복원(사전 검증·문구·주문은 기사별이라 비움)
   geniSubRender();
   $('#geniText').value = ''; $('#geniWish').value = '';

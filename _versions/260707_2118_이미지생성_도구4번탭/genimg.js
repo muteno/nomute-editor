@@ -11,9 +11,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.GH_TOKEN) return json({ error: '서버 미설정 — GH_TOKEN 필요' }, 500);
 
   // file = 기사 md 베이스(stem) — moreimg.js와 동일 검증(경로조작·dispatch input 인젝션 차단).
-  // free = 자유 생성(이미지 제작 도구 /6 생성 탭 · 운영자 260707) — 기사 stem 없음 · 산출 = viewer/gen_out/free.json.
-  const free = body.free === true;
-  const stem = free ? 'free' : String(body.file || '').trim().replace(/\.md$/, '').slice(0, 120);
+  const stem = String(body.file || '').trim().replace(/\.md$/, '').slice(0, 120);
   if (!/^[A-Za-z0-9._-]+$/.test(stem) || stem.includes('..')) return json({ error: '잘못된 file' }, 400);
 
   // 옵션 화이트리스트 — gen_image.py와 동일 집합(이중 검증). 미지정/부적격 = 안전 기본값.
@@ -45,8 +43,6 @@ export async function onRequestPost({ request, env }) {
     wish: String(o.wish || '').replace(/\s+/g, ' ').trim().slice(0, 300),
   };
 
-  if (free && !opts.wish && !opts.text) return json({ error: '자유 생성 = 주문 또는 문구 필수' }, 400);   // 장면 소재 0 방지(뷰어도 동일 가드 · gen_image.py 3중)
-
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/imggen.yml/dispatches',
     {
@@ -57,7 +53,7 @@ export async function onRequestPost({ request, env }) {
         'user-agent': 'nomute-viewer',
         'x-github-api-version': '2022-11-28',
       },
-      body: JSON.stringify({ ref: 'main', inputs: { stem, opts: JSON.stringify(opts), free: free ? '1' : '0' } }),
+      body: JSON.stringify({ ref: 'main', inputs: { stem, opts: JSON.stringify(opts) } }),
     },
   );
   if (r.status === 204) return json({ ok: true, opts });
