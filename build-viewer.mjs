@@ -24,6 +24,7 @@ const MSG_OUT = 'viewer/messages.json';
 try { cpSync('assets/brand', 'viewer/assets/brand', { recursive: true }); } catch { /* 자산 없음 */ }
 try { cpSync('assets/media', 'viewer/assets/media', { recursive: true }); } catch { /* 미디어 없음 */ }   // 펫 영상 등
 try { cpSync('assets/fonts', 'viewer/assets/fonts', { recursive: true }); } catch { /* 폰트 없음 */ }   // Pretendard woff2 — 요약 HTML 다운로드에 임베드(로컬·인터넷 무관)
+try { cpSync('apps/k/assets', 'viewer/assets/k', { recursive: true }); } catch { /* /k 오버레이 없음 */ }   // AI 표기 오버레이 PNG — k.html 결과 화면 동봉 노출(정본 = apps/k/assets · 운영자 260708)
 
 function parseFrontmatter(raw) {
   // 첫 두 '---' 사이를 단순 key: "value" 파싱(중첩 없음).
