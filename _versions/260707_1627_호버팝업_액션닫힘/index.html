@@ -6632,26 +6632,36 @@ function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른
   if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
 
-// ── 하단 네비·프로필 = 마우스 호버 자동 열기 (마우스 전용 · 열기 0.5초 · 터치·펜은 기존 탭·클릭·롱프레스 그대로 · 운영자 260705) ──
-// 닫힘 = 포인터 이탈이 아니라 바깥 '액션'만 (운영자 260707 "관련 없는 공간에 포인터가 가는 게 아니라 액션이 생겨야 닫힘") — 구 이탈 0.25s 자동닫힘 폐지{(+) 라디얼서 살짝 벗어나면 닫혀 재클릭 · 호버 창이 마우스 지나가는 방향 따라 꺼지던 불만}. 닫기 경로(전부 명시 액션·기존 그대로) = 바깥클릭 클로저(bpop·linkpop·qpop 위 6576~ / pmenu 5965~) · 트리거 재클릭 토글 · X · 다른 오버레이 열기(closeOverlays) · 탭전환 · 뒤로가기.
-const HOVER_OPEN_MS = 500;   // 열기 인텐트 0.5초(스쳐 지나가는 드라이브바이 오발 차단 — 이탈 시 예약 취소) · JS 인텐트 상수(CSS 모션 토큰과 별개 축)
-function hoverAuto(trigger, openFn) {   // trigger에 마우스 올리면 열기 예약 · 이탈 = '열기 예약'만 취소(이미 열린 창은 안 닫음)
+// ── 하단 네비·프로필 = 마우스 호버 자동 열기/닫기 (마우스 전용 · 열기 0.5초 / 닫기 그 절반 0.25초 · 터치·펜은 기존 탭·클릭·롱프레스 그대로 · 운영자 260705) ──
+const HOVER_OPEN_MS = 500, HOVER_CLOSE_MS = 250;   // 열기=사용자 지정 0.5초 · 닫기=그 절반(호버 끝나면 더 빨리 닫힘) · JS 인텐트 상수(CSS 모션 토큰과 별개 축)
+function hoverAuto(trigger, pop, openFn, closeFn) {   // trigger에 마우스 올리면 열기 예약, trigger·pop 둘 다서 벗어나면 닫기 예약. 버튼↔팝업 갭 이동은 닫힘 취소(hover intent).
   if (!trigger) return;
-  let ot = null;
-  trigger.addEventListener('pointerenter', e => { if (e.pointerType !== 'mouse') return; clearTimeout(ot); ot = setTimeout(openFn, HOVER_OPEN_MS); });   // 마우스만(터치/펜 tap은 기존 핸들러 담당 = 오발 차단)
-  trigger.addEventListener('pointerleave', () => clearTimeout(ot));
-  trigger.addEventListener('pointerdown', () => clearTimeout(ot));   // 탭/클릭/롱프레스 시작 = 호버 예약 취소(기존 핸들러가 토글 담당)
+  let ot = null, ct = null;
+  const clearBoth = () => { clearTimeout(ot); clearTimeout(ct); };
+  const armOpen = e => { if (e.pointerType !== 'mouse') return; clearBoth(); ot = setTimeout(openFn, HOVER_OPEN_MS); };   // 마우스만(터치/펜 tap은 기존 핸들러 담당 = 오발 차단)
+  const armClose = e => { if (e && e.pointerType !== 'mouse') return; clearBoth(); ct = setTimeout(closeFn, HOVER_CLOSE_MS); };   // 호버 끝나면 0.25초 뒤 닫기
+  trigger.addEventListener('pointerenter', armOpen);
+  trigger.addEventListener('pointerleave', armClose);
+  trigger.addEventListener('pointerdown', clearBoth);   // 탭/클릭/롱프레스 시작 = 호버 예약 취소(기존 핸들러가 토글 담당)
+  if (pop) {
+    pop.addEventListener('pointerenter', clearBoth);     // 팝업 위로 진입 = 닫기 취소(버튼→팝업 갭 통과 허용)
+    pop.addEventListener('pointerleave', armClose);       // 팝업서 벗어남 = 닫기 예약
+  }
 }
 {
   const _lf = $('#linkfab'), _tf = $('#toolfab');
-  hoverAuto(_lf,   // ① 링크 → 피드 탐색 팝업 (click 열기와 동일 로직)
-    () => { if (linkpop.hidden) { closeOverlays('linkpop'); linkpop.hidden = false; popAt(linkpop, _lf); } });
-  hoverAuto($('#profile'),   // ② 프로필 동그라미 → 프로필 메뉴 (다른 오버레이 닫고 showPmenu+배지 갱신 = profile 클릭과 동일·메시지함 자동전환은 hover 제외)
-    () => { if (pmenu.hidden || pmenu.classList.contains('closing')) { closeOverlays('pmenu'); showPmenu(); pushRefresh(); } });
-  hoverAuto(qFeedBtn,   // ③ 뉴스 요약 → 대기열 (openQueue = closeOverlays+위치+loadQueue · 롱프레스/더블탭/우클릭과 병존)
-    () => { if (qpop.hidden) openQueue(); });
-  hoverAuto(_tf,   // ④ 제작 도구(＋) → 라디얼 팝업 (click 열기와 동일: .open = 반원 펼침 + FAB +→× · reflow 후 add)
-    () => { if (bpop.hidden) { closeOverlays('bpop'); bpop.hidden = false; void bpop.offsetWidth; bpop.classList.add('open'); if (_tf) _tf.classList.add('open'); } });
+  hoverAuto(_lf, linkpop,   // ① 링크 → 피드 탐색 팝업 (click 열기와 동일 로직)
+    () => { if (linkpop.hidden) { closeOverlays('linkpop'); linkpop.hidden = false; popAt(linkpop, _lf); } },
+    () => { if (!linkpop.hidden) linkpop.hidden = true; });
+  hoverAuto($('#profile'), pmenu,   // ② 프로필 동그라미 → 프로필 메뉴 (다른 오버레이 닫고 showPmenu+배지 갱신 = profile 클릭과 동일·메시지함 자동전환은 hover 제외)
+    () => { if (pmenu.hidden || pmenu.classList.contains('closing')) { closeOverlays('pmenu'); showPmenu(); pushRefresh(); } },
+    () => hidePmenu());
+  hoverAuto(qFeedBtn, qpop,   // ③ 뉴스 요약 → 대기열 (openQueue = closeOverlays+위치+loadQueue · 롱프레스/더블탭/우클릭과 병존)
+    () => { if (qpop.hidden) openQueue(); },
+    () => closeQueueUser());
+  hoverAuto(_tf, bpop,   // ④ 제작 도구(＋) → 라디얼 팝업 (click 열기와 동일: .open = 반원 펼침 + FAB +→× · reflow 후 add)
+    () => { if (bpop.hidden) { closeOverlays('bpop'); bpop.hidden = false; void bpop.offsetWidth; bpop.classList.add('open'); if (_tf) _tf.classList.add('open'); } },
+    () => { if (!bpop.hidden) { bpop.hidden = true; bpop.classList.remove('open'); if (_tf) _tf.classList.remove('open'); } });
 }
 
 window.addEventListener('popstate', () => {   // 폰 뒤로가기 = 대기열 떠 있으면 그것부터 닫기 · 닫는 중(closing)이면 재진입 안 함(deferred-hide 가드)
