@@ -2376,7 +2376,11 @@
   .pin-slots.bad .pin-slot::before, .pub-slots.bad .pub-slot::before, .lk-slots.bad .lk-slot::before { background:var(--danger); border-color:var(--danger); }
   .pin-slots.bad .pin-slot.cur, .pub-slots.bad .pub-slot.cur, .lk-slots.bad .lk-slot.cur { color:var(--danger); }   /* 숫자 외 = 붉게 */
   .pin-slots.shake, .pub-slots.shake, .lk-slots.shake { animation:lkShake .45s cubic-bezier(.36,.07,.19,.97); }   /* 흔들림(lkShake 단일) */
-  .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:pointer; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; }   /* 투명 오버레이 = 탭 시 OS 숫자키패드 · 값은 슬롯이 시각화(16px=iOS 확대 방지) */
+  .pin-in-h { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:none; background:none; cursor:default; outline:none; -webkit-tap-highlight-color:transparent; font-size:16px; pointer-events:none; }   /* 값 저장 오버레이 = 슬롯 시각화 원천(16px=iOS 확대 방지) · OS 키보드 폐지(inputmode=none+readonly) → 입력은 커스텀 키패드(.pin-pad)가 담당 = pointer-events 없음(탭 무반응·운영자 260707 "키보드 입력말고 메인 화면 입력 계승") */
+  /* PIN 커스텀 키패드 = 잠금화면(.lk-pad/.lk-key) 계승 · 다이얼로그 크기로 축소(운영자 260707) */
+  #pindlg .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; max-width:232px; margin:16px auto 0; }
+  #pindlg .pin-pad .lk-key { height:46px; font-size:20px; }
+  #pindlg .pin-pad .lk-key.back svg { width:24px; height:24px; }
   .pub-go { width:100%; margin-top:var(--sp-3); padding:var(--sp-2); color:var(--fg); }   /* .asksend(글래스 pill·firing 게이지·.done 팝·.ack ✓) 계승 · 전폭 · 발행>게이지>체크 = #askSend 동일 · 무채색(운영자 260704): 정적 글자만 무채(흰)로 오버라이드 · 테두리는 .asksend 계승 그대로(임의 칠 금지 · 운영자 260704) · firing 게이지·완료는 accent(초록) 유지('게이지는 강조색이 맞음') */
   .pub-status { min-height:16px; margin-top:10px; text-align:center; font-size:var(--fs-sm); color:var(--mut); }
   .pub-status.err { color:var(--danger); }
@@ -2701,8 +2705,15 @@ try {
   <div class="pin-head"><span class="pin-title" id="pinTitleTxt">PIN</span><span class="pin-busy" id="pinBusy" hidden>변경중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></span><button class="pin-x" type="button" id="pinX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="pin-sub" id="pinSub">PIN 6자리 입력</div>
   <div class="pin-boxwrap"><div class="pin-slots" id="pinboxes" aria-hidden="true"><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span><span class="pin-slot"></span></div>
-    <input class="pin-in-h" id="pinInput" type="text" inputmode="numeric" maxlength="6" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="PIN 6자리 입력"><button class="pin-eye" type="button" aria-label="PIN 표시" title="PIN 표시" aria-pressed="false"></button></div>
+    <input class="pin-in-h" id="pinInput" type="text" inputmode="none" maxlength="6" readonly autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="PIN 입력"><button class="pin-eye" type="button" aria-label="PIN 표시" title="PIN 표시" aria-pressed="false"></button></div>
   <div class="pin-err" id="pinerr"></div>
+  <!-- PIN 커스텀 키패드 = 잠금화면(.lk-key) 계승(운영자 260707 "키보드 입력말고 메인 화면 입력 계승") — OS 숫자키보드 폐지(#pinInput inputmode=none+readonly) · 탭 → #pinInput.value 갱신 → input 이벤트(슬롯·자동 resolve 재사용) · 고정 1-9·0 배열(설정 UX) -->
+  <div class="pin-pad" id="pinPad" aria-hidden="true">
+    <button type="button" class="lk-key pk" data-d="1">1</button><button type="button" class="lk-key pk" data-d="2">2</button><button type="button" class="lk-key pk" data-d="3">3</button>
+    <button type="button" class="lk-key pk" data-d="4">4</button><button type="button" class="lk-key pk" data-d="5">5</button><button type="button" class="lk-key pk" data-d="6">6</button>
+    <button type="button" class="lk-key pk" data-d="7">7</button><button type="button" class="lk-key pk" data-d="8">8</button><button type="button" class="lk-key pk" data-d="9">9</button>
+    <button type="button" class="lk-key empty" tabindex="-1" aria-hidden="true"></button><button type="button" class="lk-key pk" data-d="0">0</button><button type="button" class="lk-key back" data-back="1" aria-label="지우기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg></button>
+  </div>
 </dialog>
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
@@ -5127,15 +5138,14 @@ function _pinPaint() { const boxes = $('#pinboxes'); if (boxes) renderPinSlots(b
 function _pinReset() {                        // 값 비우고 오버레이 포커스(도먼트 · 재도입 대비 슬롯식)
   const el = _pinInput(); if (el) el.value = '';
   const boxes = $('#pinboxes'); if (boxes) boxes.classList.remove('bad', 'shake');
-  _pinPaint(); if (el) el.focus();
+  _pinPaint();   // focus() 제거 = OS 키보드 안 띄움(입력은 커스텀 키패드 · 운영자 260707)
 }
 function _pinShake(msg) {                      // 오답: 흔들기(lkShake) + 에러문구 + 초기화 재입력
   const boxes = $('#pinboxes'), err = $('#pinerr'), el = _pinInput();
   if (err) err.textContent = msg || '암호가 틀렸어. 다시.';
   if (el) el.value = '';
   if (boxes) { boxes.classList.remove('shake'); void boxes.offsetWidth; boxes.classList.add('bad', 'shake'); }   // 리플로우 → 애니 재시작 · bad=붉은 동그라미(정본 .pin-slots.bad)
-  _pinPaint();
-  if (el) el.focus();
+  _pinPaint();   // focus() 제거 = OS 키보드 안 띄움(입력=커스텀 키패드 · 운영자 260707)
 }
 function _wirePin() {                          // 입력 배선(1회만) — 발행 pubPin 핸들러 계승(단일 오버레이 input·자동이동/paste분배 불필요)
   if (_pinWired) return;
@@ -5150,6 +5160,18 @@ function _wirePin() {                          // 입력 배선(1회만) — 발
     if (el.value.length === _pinLen && _pinResolve) {                         // 자리수 다 차면 자동 인증(엔터 X) — 값 배관·서버검증은 불변
       const r = _pinResolve; _pinResolve = null; r(el.value);
     }
+  });
+  // 커스텀 키패드(.pin-pad) = 잠금화면 .lk-key 계승 · 탭 → #pinInput.value 갱신 → 위 input 이벤트 재사용(슬롯·자동 resolve 로직 불변 · OS 키보드 폐지 · 운영자 260707)
+  const pad = $('#pinPad');
+  if (pad) pad.addEventListener('click', e => {
+    const k = e.target.closest('.lk-key'); if (!k || k.classList.contains('empty')) return;
+    if (boxes.classList.contains('busy')) return;   // 변경중(네트워크 대기) = 입력 차단(_pinBusy가 boxes에 busy · 오버레이 pointer-events와 동일 게이트)
+    if (k.dataset.back) { if (!el.value.length) return; el.value = el.value.slice(0, -1); }
+    else if (k.dataset.d != null) { if (el.value.length >= _pinLen) return; el.value += k.dataset.d; }
+    else return;
+    k.classList.remove('hit'); void k.offsetWidth; k.classList.add('hit'); clearTimeout(k._ht); k._ht = setTimeout(() => k.classList.remove('hit'), 220);   // 눌림 채움 플래시(잠금화면 lkFlash 계승)
+    try { navigator.vibrate && navigator.vibrate(12); } catch {}                                   // PIN 입력 햅틱(잠금화면 동일)
+    el.dispatchEvent(new Event('input', { bubbles: true }));                                        // 기존 input 핸들러 재사용(슬롯 렌더 + 자리수 차면 자동 resolve)
   });
   // dialog가 닫히면(취소·esc·백드롭) 대기 중 Promise를 null로 정리
   dlg.addEventListener('close', () => { if (_pinResolve) { const r = _pinResolve; _pinResolve = null; r(null); } });
@@ -9488,7 +9510,7 @@ function openPinDlg(title, sub, len) {
   }
   _pinBusy(false);
   if (!$('#pindlg').open) openComposeDlg($('#pindlg'));   // showModal + 폰 뒤로가기 스택(다른 모달과 동일 · #pindlg는 isComposingModalOpen 등재로 over-close 차단) · 이미 열림이면 슬롯·타이틀만 리셋(화면잠금 2단 설정 재호출용·260704)
-  setTimeout(() => { const e2 = _pinInput(); if (e2) e2.focus(); }, 60);
+  // focus() 제거 = OS 숫자키보드 안 띄움(입력=커스텀 키패드 .pin-pad · 운영자 260707 "키보드 입력말고 메인 화면 입력 계승")
 }
 function _pinBusy(on) {   // 변경중(잠금/해제/삭제 2~3초 · 네트워크 왕복) — 타이틀 옆 인라인 '변경중 gdots' 표시 + 입력칸 흐림·잠금
   const b = $('#pinBusy'); if (b) b.hidden = !on;
