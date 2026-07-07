@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>자막기 컷 세기(cutlv) 3단 — 260708</title>
+<style>
+body{margin:0;padding:18px 14px 40px;background:#121212;color:#eef7f0;font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Malgun Gothic",-apple-system,sans-serif;line-height:1.6;font-size:14px}
+.wrap{max-width:760px;margin:0 auto}h1{font-size:17px;margin:0 0 4px}.sub{color:#8fa697;font-size:12px;margin:0 0 16px}
+h2{font-size:13px;color:#00EED2;margin:20px 0 8px;letter-spacing:.3px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border:1px solid rgba(255,255,255,.09);padding:6px 8px;text-align:left;vertical-align:top}
+th{color:#8fa697;font-weight:700;background:rgba(255,255,255,.03)}td b{color:#00EED2}
+.note{color:#8fa697;font-size:12px}.ok{color:#2CF5A5}.warn{color:#FFE13D}
+ul{margin:4px 0;padding-left:18px}li{margin:3px 0}
+code{background:rgba(255,255,255,.07);padding:1px 5px;border-radius:5px;font-size:11.5px}
+</style></head><body><div class="wrap">
+<h1>자막기 컷 세기 — 3단 + 과잉컷 자동 방지</h1>
+<p class="sub">260708 · 운영자 "컷 강도 조절 · 과하게 잘리면 싫음" · 분신술 10인 + 검증 평의회 10인 · 기본값=현행(회귀 0)</p>
+
+<h2>① 무엇이 생겼나</h2>
+<ul>
+<li>자막 설정 "컷 편집" 아래에 <b>컷 세기</b> 3칩 — <b>살짝 / 기본 / 많이</b>.</li>
+<li>운영자 우려("과하게 잘림")의 답은 슬라이더가 아니라 <b>하한이 잠긴 3칩 + 과잉컷 자동 방지</b>. 슬라이더는 극단으로 끌어 스스로 과컷을 유발할 수 있어 오히려 불안을 실현 → 기각.</li>
+<li>어느 세기든 <b>제거 비율이 천장을 넘으면 자동으로 덜 자르게 완화</b>하고 그 사실을 완성 노트에 표기(조용히 안 함).</li>
+</ul>
+
+<h2>② 세기별 동작</h2>
+<table>
+<tr><th>칩</th><th>이 길이 이상 무음만 컷</th><th>과잉컷 천장</th><th>성격</th></tr>
+<tr><td><b>살짝</b></td><td>약 1.6초 이상</td><td>35%</td><td>호흡 넉넉히 남김</td></tr>
+<tr><td><b>기본</b>(현행)</td><td>약 1.0초 이상</td><td>35%</td><td>지금 그대로</td></tr>
+<tr><td><b>많이</b></td><td>약 0.55초 이상</td><td>45%</td><td>바짝 — 침묵 많은 영상에서 실제로 더 자름</td></tr>
+</table>
+<p class="note">천장이 강도별인 이유: 단일 35%였다면 침묵 많은 영상에서 "많이"가 "기본"으로 되돌려져 무의미해짐(검증 실측). "많이"만 45%까지 허용해 실제로 더 자르게 함.</p>
+
+<h2>③ 검증(분신술 10 + 검증 평의회 10 + 실측)</h2>
+<table>
+<tr><th>항목</th><th>결과</th></tr>
+<tr><td>회귀</td><td class="ok">세기 미지정 = 기본 = 현행과 동일(3.6초 컷 바이트 동일) · 기존 사용자 무영향</td></tr>
+<tr><td>강도별 천장 효과</td><td class="ok">중간 무음 영상 실측: 기본 34% / 많이 41% = "많이"가 실제로 더 자름</td></tr>
+<tr><td>과잉컷 방지</td><td class="ok">무음 80% 극단: 많이 원래 74% → 자동 완화 40% + 노트 표면화</td></tr>
+<tr><td>수학·안전</td><td class="ok">천장 루프 반드시 종료(최악 17회)·말 뭉개짐/자막 대량유실 없음·보안 인젝션 0·뷰어 칩 로직 시뮬 통과</td></tr>
+<tr><td>평결</td><td class="ok">검증 10인 = OK 6 / 주의 4(문서·정직성 문구 — 전부 반영) · P0/P1 코드 결함 0</td></tr>
+</table>
+
+<h2>④ 한계(정직)</h2>
+<ul>
+<li class="warn">발화가 빽빽한 짧은 릴스는 <b>자를 무음 자체가 없어</b> 세기를 바꿔도 변화가 없음(툴팁으로 안내 — 고장 아님).</li>
+<li class="warn">"많이"는 발화 경계를 바짝 붙이므로 받아쓰기 경계 오차가 크면 어미가 약간 씹힐 수 있음(세기 라벨·노트로 예고).</li>
+<li class="warn">"과하게 잘림" 걱정되면 <b>살짝</b>으로 두거나, 잘린 뒤 세기 낮춰 다시 입히기(1분급 · 배경음 제거 함께 켠 경우는 재분리로 수 분).</li>
+</ul>
+<p class="note">정본: <code>.github/scripts/ly_burn.py</code>(CUT_LEVELS·cut_params·천장 루프) · <code>viewer/ly.html</code>(컷 세기 칩) · 원장 = docs/작업이력.md · 백업 = _versions/260708_0001_ly컷강도/</p>
+</div></body></html>
