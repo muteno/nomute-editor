@@ -30,6 +30,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 SRC = os.environ.get("EXP_SRC", "cards/260622-1736-2595974/scenes/장면01.jpg")
 ASPECT = os.environ.get("EXP_ASPECT", "16:9")
 CASES = [c.strip() for c in os.environ.get("EXP_CASES", "plain,poster").split(",") if c.strip()]
+SIZE = os.environ.get("EXP_SIZE", "1K")   # "1K"/"2K" — 2K = 문구·디테일 선명도 실험(장당 $0.101)
 
 # 한글 폰트 = card_news와 동일 계열(fonts-noto-cjk · 워크플로가 설치)
 FONT_CANDIDATES = [
@@ -145,7 +146,7 @@ def main():
         src_bytes = jpg_bytes(img)
 
         # A — reframe 1콜
-        a = tg.gemini_image(P_REFRAME.format(ar=ASPECT), image_size="1K",
+        a = tg.gemini_image(P_REFRAME.format(ar=ASPECT), image_size=SIZE,
                             tag="exp:{}:A".format(case), aspect=ASPECT, ref_png=src_bytes)
         if a:
             open(os.path.join(out_dir, case + "_A_reframe.jpg"), "wb").write(a)
@@ -161,7 +162,7 @@ def main():
             where = "to its left and right"
             dirhint = "to the left and to the right"
         pb = P_PADFILL.format(where=where, dirhint=dirhint)
-        b = tg.gemini_image(pb, image_size="1K",
+        b = tg.gemini_image(pb, image_size=SIZE,
                             tag="exp:{}:B".format(case), aspect=ASPECT, ref_png=jpg_bytes(canvas))
         if b:
             open(os.path.join(out_dir, case + "_B_padfill.jpg"), "wb").write(b)
