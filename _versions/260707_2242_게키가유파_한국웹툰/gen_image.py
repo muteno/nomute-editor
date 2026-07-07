@@ -85,8 +85,7 @@ PLACE_FRAG = {"auto": "",
               "center": "the main subject centered with balanced, symmetrical visual weight",
               "full": "full-figure staging — the protagonist visible head to toe within the scene"}
 # 화풍 서브 분기(운영자 260707 "수채도 여러 수채") — STYLE_FRAG에 병기되는 변주 look. 'auto' = 기본 look만.
-# 세부 확장 260707 2차+3차(운영자 "게키카도 여러 화풍·한국웹툰식 상시") — 어휘 = /k 라이브러리 실코드 + 게키가 유파 웹실증(위키 Gekiga·TCJ·MUSE 260707 검색):
-#   극화 세부 = 한국웹툰(NST-B 정본 전문) · 게키가 정통(다쓰미 계열 해칭) · 하드보일드(사이토 계열) · 시대극(시라토·고지마 붓선) · 서정(카미무라) · 극사실 펜(이케가미).
+# 세부 확장 260707 2차(운영자 "게키카도 여러 화풍·기틀 라이브러리 참고 보완") — 어휘 = /k 라이브러리 실코드 계승:
 #   STYLE27 뉴스릴·NST-B 극화(13)·STYLE25 데포르메·STYLE29 과슈·STYLE18 유화·STYLE02 35mm·FM-01 표현주의(24)·STYLE10/11 애니·STYLE26 디오라마.
 STYLE_SUB = {
     "photo": {"film": "shot on 35mm film, visible grain, subtle lens vignette, slightly underexposed photojournalism look",
@@ -96,12 +95,7 @@ STYLE_SUB = {
     "webtoon": {"noir": "stark noir inking, heavy chiaroscuro shadow shapes, minimal palette",
                 "tone": "manga screentone shading, halftone dot texture, crisp line hierarchy",
                 "color": "rich full-color webtoon rendering, soft digital gradient shading",
-                "kwebtoon": "korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere",
                 "gekiga": "japanese gekiga-style dramatic manga, heavy expressive ink, dense cross-hatching and hatched shadows, weathered realistic faces, cinematic panel staging, grave heavy atmosphere",
-                "hardboiled": "hardboiled assassin-thriller gekiga, cold cinematic framing, chiseled stoic faces, precise mechanical detail, ruthless noir tension",
-                "jidai": "samurai-era period gekiga, dynamic sumi-brush strokes, weathered costumes and textures, kinetic swordplay staging",
-                "lyric": "lyrical gekiga, delicate expressive ink lines with soft wash bleed, melancholic poetic stillness, sparse emotional composition",
-                "realpen": "photorealistic gekiga pen rendering, meticulous fine cross-hatching, lifelike anatomy and fabric detail, dense dramatic realism",
                 "sunjung": "korean sunjung-manhwa delicate style, fine graceful pen lines, luminous emotive eyes, soft floral tones and airy screentone accents",
                 "chibi": "cheerful deformed cartoon, chibi proportions with oversized heads and expressive hands, exaggerated comic expressions, clean bright colors"},
     "cartoon": {"brush": "loose brush-inked daily newspaper cartoon, quick confident strokes",
