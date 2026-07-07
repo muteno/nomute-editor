@@ -261,9 +261,12 @@ jobs:
         timeout-minutes: 12   # 설치 폭주 백스톱(재시도 포함 최악 20분 → 12분 컷 · 실측 콜드 3~7분)
         run: |
           ok=0
-          export SETUPTOOLS_USE_DISTUTILS=stdlib   # demucs sdist가 데비안 setuptools 패치와 충돌(AttributeError: install_layout) — stdlib distutils로 우회(로컬 실측 260707)
+          # demucs = sdist 전용(휠 없음) → setup.py 빌드에 setuptools 필수인데 러너 py3.12엔 미탑재
+          #   ("Can not execute setup.py since setuptools is not available" = 라이브 카나리아 #28874896795 실측) → 선설치.
+          #   ⚠️ SETUPTOOLS_USE_DISTUTILS=stdlib 금지 — py3.12는 stdlib distutils 삭제라 오히려 파손(3.11 데비안 전용 우회였음).
           for i in 1 2; do
-            if timeout 300 python3 -m pip install -q torch==2.12.1 torchaudio==2.11.0 torchcodec==0.14.0 --index-url https://download.pytorch.org/whl/cpu \
+            if timeout 120 python3 -m pip install -q --upgrade setuptools wheel \
+               && timeout 300 python3 -m pip install -q torch==2.12.1 torchaudio==2.11.0 torchcodec==0.14.0 --index-url https://download.pytorch.org/whl/cpu \
                && timeout 300 python3 -m pip install -q demucs==4.0.1 soundfile==0.14.0; then ok=1; break; fi   # 버전 핀 = 무핀 상류 추종의 조용한 기능 사망 차단(torchcodec↔torch ABI 강결합 · 평의회2 P1) · torchcodec = 신 torchaudio save 백엔드(로컬 실측 260707)
             sleep 5
           done
