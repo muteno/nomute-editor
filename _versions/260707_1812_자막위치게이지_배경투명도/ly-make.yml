@@ -1,0 +1,305 @@
+name: ly-make
+
+# 뷰어 ly 폼(Pages Function /api/ly)이 발사 → SRT/STT 텍스트로 claude -p(/ly 지침 런타임 Read)
+#   → 릴스 자막 md → viewer/ly_out/<id>/subs.md 커밋(폼이 폴링).
+# 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료). 입력 = SRT/STT 텍스트 또는 영상 URL/업로드 파일(yt-dlp/ffmpeg → Whisper large-v3-turbo STT).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '출력 id(타임스탬프)'
+        type: string
+      subs:
+        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때)'
+        type: string
+      url:
+        description: '영상 URL(yt-dlp+Whisper STT) — 있으면 subs 무시'
+        type: string
+      file:
+        description: '업로드 영상/오디오 파일 경로(uploads/<id>/src.*) — ffmpeg 오디오추출+Whisper'
+        type: string
+      early_segs:
+        description: '조기 segments.json 푸시(전사 즉시 편집기 선행 · 1=ON) — 기본 OFF(fail-closed) · 라이브 ON = functions/api/ly.js가 문자열 ''1''을 명시 전달(숫자/불리언 금지 = GH 강제변환으로 조용히 OFF · 롤백 = ly.js 한 줄)'
+        type: string
+        default: '0'
+      opts:
+        description: '뷰어 버튼 설정 JSON(자막 옵션+번인 스타일 · 빈값=종전 동작) — {"lang","tone","filler","burn","style","pos","size","karaoke","keyword"}'
+        type: string
+        default: ''
+      up_branch:
+        description: '업로드 일회용 브랜치(up-<id> · 빈값=종전 main 커밋 경로) — ly.js가 업로드를 여기 커밋 → 러너가 회수 → 잡 끝에 삭제 = main 히스토리 비대 0'
+        type: string
+        default: ''
+      reburn:
+        description: '재합성 모드(1=ON) — 기존 ly_out/<id>/subs.json 의역 + video.json src(R2 원본 보관본)로 번인만 재실행(STT·claude 스킵 = LLM 0콜·1분급)'
+        type: string
+        default: '0'
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: ly-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45   # 영상 URL 경로 Whisper 첫 다운(1.6GB)+STT + 번인(ffmpeg 백스톱 15분) 예산 — 콜드런+장영상 하드킬 방지(평의회)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code
+
+      # STT 경로(영상 URL/파일)에서만 — 파이썬 고정(site-packages 캐시 경로 안정화) + 설치분 캐시
+      - name: Setup Python (STT)
+        if: ${{ inputs.url != '' || inputs.file != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # site-packages 캐시 — setup.sh 의 faster-whisper(ctranslate2·onnxruntime 등) 재설치 회피.
+      # 실측(파일 런): STT 환경 318s 중 faster-whisper 설치가 큰 몫(Whisper 모델 1.6GB 복원은 별도·바닥).
+      # 워밍런 = 복원 → setup.sh `import faster_whisper` 통과 → pip 스킵. 무해(미적중이면 기존대로 재설치=회귀 0).
+      - name: Restore python deps (site-packages 캐시)
+        if: ${{ inputs.url != '' || inputs.file != '' }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-fasterwhisper-ytdlp-v1
+
+      # 재합성(reburn) 전용 경량 준비 — ffmpeg + 한글 폰트(whisper·yt-dlp 불요). ⚠️ fonts-noto-cjk 없으면 libass가
+      #   에러 없이 두부(□)로 조용히 렌더 → 정상본을 깨진 영상으로 덮어씀(평의회 불가 적발) = 폰트 확인까지 하드게이트.
+      - name: ffmpeg+한글폰트 (재합성)
+        if: ${{ inputs.reburn == '1' }}
+        run: |
+          timeout 300 sudo apt-get update -qq || true
+          timeout 300 sudo apt-get install -y -qq ffmpeg fonts-noto-cjk || { echo "::error::ffmpeg/폰트 설치 실패"; exit 1; }
+          fc-list | grep -qi "noto sans cjk" || { echo "::error::Noto Sans CJK 미탐지 — 두부 번인 차단"; exit 1; }
+
+      # 재합성 소스 회수 — 기존 video.json의 src(R2 원본 보관본) → /tmp (subs.json 의역은 checkout에 이미 포함)
+      - name: 재합성 소스 회수 (reburn)
+        if: ${{ inputs.reburn == '1' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          set -e
+          SRC="$(python3 -c "import json;print(json.load(open('viewer/ly_out/${IN_ID}/video.json')).get('src') or '')" 2>/dev/null || true)"
+          case "$SRC" in https://*) ;; *) echo "재합성 원본 보관본이 없어 — 새로 생성해줘." > /tmp/ly_err.txt; echo "::error::src 없음/비https: $SRC"; exit 1;; esac
+          EXT="${SRC##*.}"; case "$EXT" in mp4|webm|mov|mkv|m4v) ;; *) EXT=mp4;; esac
+          curl -fsSL --max-time 300 "$SRC" -o "/tmp/upsrc.$EXT" || { echo "원본 다운로드 실패 — 새로 생성해줘." > /tmp/ly_err.txt; echo "::error::src 다운 실패"; exit 1; }
+          echo "LY_VIDEO=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
+          echo "REBURN=1" >> "$GITHUB_ENV"
+
+      # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
+      - name: STT 환경 (영상 URL/파일)
+        if: ${{ inputs.url != '' || inputs.file != '' }}
+        timeout-minutes: 15   # 백스톱 — 첫 런 Whisper 1.6GB 다운 감안 여유(이후 캐시히트 즉시). 무한 행만 차단.
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/ly/setup.sh
+          whisper: 'true'
+          apt: ffmpeg fonts-noto-cjk   # ffmpeg+한글폰트(자막 번인 libass용) .deb 7일 캐시 → 매 런 재다운·미러행 차단
+
+      - name: STT (영상 URL → Whisper 트랜스크립트)
+        if: ${{ inputs.url != '' }}
+        env:
+          URL: ${{ inputs.url }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+        run: |
+          set -e
+          # YouTube/IG 봇차단 우회 — YT_COOKIES 시크릿(쿠키 Netscape txt 본문) 있으면 사용
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          # 번인 ON = 영상까지 다운(자막 합성용 · 실패 = 오디오-온리 폴백 → 자막 텍스트만 = 회귀 0)
+          BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
+          if [ "$BURN" = "true" ]; then
+            yt-dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist $COOKIES -o "/tmp/src.%(ext)s" "$URL" || true
+            SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
+            if [ -n "$SRC" ]; then
+              ffmpeg -y -i "$SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 || rm -f /tmp/audio.mp3
+              if [ -s /tmp/audio.mp3 ]; then echo "LY_VIDEO=$SRC" >> "$GITHUB_ENV"; echo "번인용 영상 확보: $SRC"; fi
+            fi
+          fi
+          [ -s /tmp/audio.mp3 ] || yt-dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
+            || { echo "유튜브 다운로드 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구해. 파일 업로드나 SRT 텍스트로 해줘. (운영자: YT_COOKIES 시크릿 등록 시 URL 가능)" > /tmp/ly_err.txt; echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
+          SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
+            || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+          echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
+          echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
+
+      - name: STT (업로드 파일 → ffmpeg 오디오추출 → Whisper)
+        if: ${{ inputs.file != '' }}
+        env:
+          FILE: ${{ inputs.file }}
+          IN_ID: ${{ inputs.id }}
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          set -e
+          # 일회용 업로드 브랜치(up-<id>) 경로 = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 브랜치 삭제)
+          if [ -n "$UP_BRANCH" ]; then
+            case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
+            git fetch origin "$UP_BRANCH" --depth=1 || { echo "업로드 파일이 유실됐어 — 다시 올려줘." > /tmp/ly_err.txt; echo "::error::업로드 브랜치 fetch 실패: $UP_BRANCH"; exit 1; }
+            EXT="${FILE##*.}"
+            git show "FETCH_HEAD:$FILE" > "/tmp/upsrc.$EXT" || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/ly_err.txt; echo "::error::브랜치서 파일 회수 실패: $FILE"; exit 1; }
+            FILE="/tmp/upsrc.$EXT"
+          fi
+          [ -f "$FILE" ] || { echo "::error::업로드 파일 없음: $FILE"; exit 1; }
+          case "$FILE" in
+            *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.avi) echo "LY_VIDEO=$FILE" >> "$GITHUB_ENV"; echo "번인용 영상 확보(업로드): $FILE";;
+          esac
+          ffmpeg -y -i "$FILE" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
+            || { echo "오디오 추출 실패 — 지원 안 되는 형식일 수 있어. 다른 파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::ffmpeg 오디오 추출 실패: $FILE"; exit 1; }
+          SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
+            || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+          echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
+          echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
+
+      # 조기 segments.json 푸시(LY-EARLY) — STT가 끝나는 즉시 전사 사이드카만 먼저 커밋
+      #   → 뷰어 편집기가 의역(claude 1~5분)을 안 기다리고 바로 뜸(260706 평의회R2 E7 배점미달 후속 = 별도 카나리아 트랙 · 카나리아 e2etest-early 실측 = 전사 89초 선행).
+      #   best-effort: 어떤 실패든 exit 0(마지막 Commit output이 어차피 포함 = 회귀 0) · push 경쟁만 짧게 재시도.
+      #   ⚠️ 이 if는 암묵 success() 게이트 필수 — always()/failure() 추가 금지(STT 실패 시 부분 segments.json 조기 push 방지 · 평의회8).
+      - name: 조기 segments.json 커밋 (전사 즉시 편집기 선행)
+        if: ${{ inputs.early_segs == '1' && (inputs.url != '' || inputs.file != '') }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          SEG="viewer/ly_out/${IN_ID}/segments.json"
+          [ -s "$SEG" ] || { echo "segments.json 없음 — 조기 푸시 스킵"; exit 0; }
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "$SEG"
+          git commit -m "ly: ${IN_ID} 전사 조기 커밋 (편집기 선행)" || exit 0
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
+              echo "조기 푸시 완료 → 뷰어 편집기 선행 표시"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*2))
+          done
+          echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함 예정(무해)"; exit 0
+
+      - name: Make ly subtitles
+        if: ${{ inputs.reburn != '1' }}
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          SUBS: ${{ inputs.subs }}
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}   # 뷰어 버튼 설정 → lymake.sh가 [옵션] 지시줄로 치환(빈값 = 종전 프롬프트)
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1
+          fi
+          # 영상 URL 경로면 STT 트랜스크립트를 입력(SUBS)으로 덮어씀
+          if [ -n "${LY_TRANSCRIPT:-}" ] && [ -s "${LY_TRANSCRIPT}" ]; then
+            SUBS="$(cat "${LY_TRANSCRIPT}")"; export SUBS
+          fi
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/lymake.sh "$IN_ID"
+
+      # 자막 텍스트 선공개(번인 전 조기 커밋) — 번인(인코딩 1~3분)을 안 기다리고 자막부터 표시(LY-EARLY 패턴 계승 · best-effort exit 0).
+      #   ⚠️ 암묵 success() 게이트 유지 — lymake 실패 시 부분 산출 조기 push 방지(early_segs와 동일 원칙).
+      - name: 조기 subs 커밋 (번인 전 자막 선공개)
+        if: ${{ env.LY_VIDEO != '' && inputs.reburn != '1' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
+          [ "$BURN" = "true" ] || { echo "번인 OFF — 조기 커밋 불필요(최종 커밋이 바로)"; exit 0; }
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/ly_out/${IN_ID}" 2>/dev/null || true
+          git commit -m "ly: ${IN_ID} 자막 조기 커밋 (번인 전 선공개)" || exit 0
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
+              echo "조기 푸시 완료 → 자막 먼저 표시"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*2))
+          done
+          echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함(무해)"; exit 0
+
+      # 자막 번인(영상 합성) — 자막을 영상에 입혀 R2 업로드 → video.json(뷰어 폴링). fail-soft = 실패해도 자막 텍스트 산출은 유지(rc 0).
+      #   영상 확보 실패(LY_VIDEO 빈값)여도 ly_burn이 video.json에 스킵 사유 기록 → 뷰어 헛폴링 종료.
+      - name: 자막 번인 (영상 합성 → R2)
+        if: ${{ inputs.url != '' || inputs.file != '' || inputs.reburn == '1' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
+          [ "$BURN" = "true" ] || { echo "번인 OFF"; exit 0; }
+          python3 .github/scripts/ly_burn.py "$IN_ID" "${LY_VIDEO:-}" || echo "::warning::번인 실패 — 자막 텍스트는 정상"
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          mkdir -p "viewer/ly_out/${IN_ID}"
+          if [ -s /tmp/ly_err.txt ]; then cp /tmp/ly_err.txt "viewer/ly_out/${IN_ID}/error.log";
+          else echo "자막 생성 실패 — Actions 로그를 확인해줘." > "viewer/ly_out/${IN_ID}/error.log"; fi
+          echo "error.log: $(cat viewer/ly_out/${IN_ID}/error.log)"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git rm -r "uploads/${IN_ID}" 2>/dev/null || true   # 업로드 영상/오디오 = 오디오 추출 후 불필요(git 비대화 방지)
+          git add "viewer/ly_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만
+          git commit -m "ly: ${IN_ID} 자막 출력" \
+            || { [ -z "$(git log --oneline "origin/${BRANCH}..HEAD" 2>/dev/null | head -1)" ] && { echo "커밋할 것 없음"; exit 0; }; echo "신규 커밋 없음 — 미푸시 선행 커밋(조기 subs) push 진행"; }   # 조기 커밋 push 경쟁 실패 잔존분 유실 방지
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
+
+      # 업로드 일회용 브랜치 삭제(성공·실패 무관) — 삭제되면 업로드 블롭이 unreachable = 클론·main 히스토리에 안 남음(비대 0).
+      #   가드 = up-* 만(임의 브랜치·main 오삭제 차단). 실패해도 무해(고아 브랜치 잔존일 뿐 — 발견 시 수동 정리).
+      - name: 업로드 브랜치 정리
+        if: ${{ always() && inputs.up_branch != '' }}
+        env:
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
+          git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"

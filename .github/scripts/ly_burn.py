@@ -5,7 +5,9 @@
 # 자막 소스 우선순위: subs.json(의역+타이밍 · lymake.sh가 claude 출력 꼬리 JSON 분리) → segments.json(받아쓴 원문 폴백).
 # 실패 = fail-soft: video.json에 사유 기록 후 rc 0 (자막 텍스트 산출은 이미 정상 — 번인이 잡을 죽이면 안 됨).
 # ASS 레시피 = 분신술 R1 기술 실측 확정본(260707): BorderStyle=3 금지(다줄 겹침) → 통박스는 4 + Outline==Back색 ·
-#   한글 자동 줄바꿈 없음 → WrapStyle 2 + 수동 \N(줄당 폭/폰트 비례) · MarginV = 하단 22%(릴스 UI 세이프존) ·
+#   한글 자동 줄바꿈 없음 → WrapStyle 2 + 수동 \N(줄당 폭/폰트 비례) ·
+#   위치 = pos 게이지 %(0=하단 100=상단 · 구 bottom/middle/top 하위호환) → align 2 고정 + MarginV 연속(24% ≈ 구 하단 세이프존 22%) ·
+#   배경 = bg 게이지 %(BackColour 알파 · 0=박스 없음 · 구 클라 박스 = 44 승계) ·
 #   폰트 = "Noto Sans CJK KR"(fontconfig 자동 탐색 = fontsdir 불요) · 회전 메타 = autorotate 기본 유지 + PlayRes 스왑.
 # 키워드 강조색 = 콘텐츠 브랜드 형광그린 #0FFD02(릴스 오버레이 GREEN 계승 · UI 팔레트와 별개 축 = §핵심명령 3-b-1).
 import json
@@ -178,20 +180,57 @@ def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
     return ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
 
 
+def pos_pct(opts):
+    # 위치 게이지 %(0=하단 100=상단 · 운영자 260707) — 구 3칩 문자열(bottom/middle/top)은 등가 %로 하위호환 매핑
+    p = opts.get("pos")
+    if isinstance(p, str):
+        p = {"bottom": 24, "middle": 55, "top": 100}.get(p, 24)
+    try:
+        p = float(p)
+    except Exception:
+        p = 24.0
+    return max(0.0, min(100.0, p))
+
+
+def bg_pct(opts, style):
+    # 배경 불투명도 %(0=없음 100=완전 불투명 · 운영자 260707) — 구 클라(bg 없음) = 박스만 종전 &H90(≈44%) 승계
+    try:
+        b = int(round(float(opts.get("bg"))))
+    except Exception:
+        b = 44 if style == "box" else 0
+    return max(0, min(100, b))
+
+
 def build_ass(segs, w, h, opts):
     size_f = {"s": 0.032, "m": 0.038, "l": 0.045}.get(opts.get("size") or "l", 0.045)
     fs = max(18, int(h * size_f))
-    pos = opts.get("pos") or "bottom"
-    align = {"bottom": 2, "middle": 5, "top": 8}.get(pos, 2)
-    margin_v = int(h * (0.22 if pos == "bottom" else 0.06))   # 하단 = 릴스/틱톡 UI 세이프존 22%(실측 420@1920)
+    # 위치 = 하단 앵커(align 2) 고정 + MarginV 연속값 — 게이지가 전 높이를 선형 커버(구 중앙/상단 앵커 분기 폐지)
+    #   0% = 바닥 2% · 24% ≈ 구 하단 세이프존 22%(실측 420@1920) · 100% = 84% 명목 상한
+    p = pos_pct(opts)
+    align = 2
+    lang = opts.get("lang") or "auto"
+    margin_v = int(h * (0.02 + 0.0082 * p))
+    # 상단 클립 캡(평의회 260707) — 하단 앵커는 위로 쌓여 libass가 프레임 밖 윗줄을 클립(밀어내기 없음).
+    #   fs 기반 줄예산으로 상한: 평문 = 2줄(축소 포함)+패딩 3.1fs · dual = +원문(0.62fs) 2줄 4.9fs.
+    #   84% 명목 상한이 fs 하한(max 18)·dual 추가 줄에서 깨지는 케이스(240p·원문 2줄)를 픽셀 기준으로 봉합.
+    margin_v = min(margin_v, max(0, h - int(fs * (4.9 if lang == "dual" else 3.1))))
     margin_lr = int(w * 0.074)
     style = opts.get("style") or "bold"
-    if style == "box":       # 통박스 = BorderStyle 4 + Outline색==Back색(패딩 겸용 · 3은 다줄 겹침 = 금지)
-        border_style, outline, shadow, oc, back = 4, max(4, int(fs * 0.10)), 0, "&H90000000", "&H90000000"
-    elif style == "clean":
-        border_style, outline, shadow, oc, back = 1, max(1, int(fs * 0.032)), 0, "&H00000000", "&H90000000"
-    else:                    # bold(기본) = 흰 글자+검정 외곽선+그림자(쇼츠 정석)
-        border_style, outline, shadow, oc, back = 1, max(2, int(fs * 0.064)), 1, "&H00000000", "&H90000000"
+    bg = bg_pct(opts, style)
+    back = "&H{:02X}000000".format(255 - int(round(bg * 2.55)))   # ASS 알파 = 00 불투명·FF 투명 · 44% → 0x8F ≈ 구 &H90(스타일 라인 = & 접미 없음)
+    if bg > 0:               # 배경 게이지 ON = 줄 단위 박스(BorderStyle 4 · 3은 다줄 겹침 = 금지) — 모양은 글리프 처리만 분기
+        if style == "box":   # 통박스 = Outline색==Back색(패딩 겸용 · 글리프 외곽선 없음)
+            border_style, outline, shadow, oc = 4, max(4, int(fs * 0.10)), 0, back
+        elif style == "clean":
+            border_style, outline, shadow, oc = 4, max(1, int(fs * 0.032)), 0, "&H00000000"
+        else:                # bold = 검정 외곽선 유지(박스가 분리감 담당 → 그림자 제거)
+            border_style, outline, shadow, oc = 4, max(2, int(fs * 0.064)), 0, "&H00000000"
+    else:                    # 배경 0% — bold/clean = 종전 그대로 · box = 얇은 외곽선 폴백(흰 글자 보호)
+        back = "&H90000000"  # BorderStyle 1의 BackColour = 그림자색(bold shadow=1) — 게이지와 무관 종전값 유지
+        if style == "clean" or style == "box":
+            border_style, outline, shadow, oc = 1, max(1, int(fs * 0.032)), 0, "&H00000000"
+        else:                # bold(기본) = 흰 글자+검정 외곽선+그림자(쇼츠 정석)
+            border_style, outline, shadow, oc = 1, max(2, int(fs * 0.064)), 1, "&H00000000"
     karaoke = opts.get("karaoke", True)
     keyword = opts.get("keyword", True)
     lang = opts.get("lang") or "auto"

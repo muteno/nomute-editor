@@ -237,7 +237,8 @@ function poll(outPath, refPath) {
   const t0 = Date.now(), status = $('#status'), out = $('#out');
   const budget = refPath ? 900 : 600;   // 컴팩트 백스톱 — 생성 보통 1~5분, 실패·타임아웃은 error.log로 즉시(아래) → budget은 '워크플로 증발'만 대비. ref有=이미지생성 포함 여유(260619)
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = kmake 실패 메시지(있으면 즉시 표시 — budget 다 안 기다림·260619)
-  let live = true; const stop = () => { live = false; clearInterval(disp); }; _curStop = stop;
+  let live = true; const stop = () => { live = false; clearInterval(disp); status.removeAttribute('aria-busy'); }; _curStop = stop;
+  status.setAttribute('aria-busy', 'true');   // 생성 폴 진행 표식(ly goWait 짝) — 부모 뷰어 자동잠금이 '제작중'으로 읽어 보류(운영자 260707) · 해제 = stop(완료·실패·초과·재시도 전 경로)
   const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);

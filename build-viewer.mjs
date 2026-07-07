@@ -409,3 +409,29 @@ messages.sort((a, b) => {
 });
 writeFileSync(MSG_OUT, JSON.stringify(messages, null, 2));
 console.log(`viewer/messages.json 생성 — ${messages.length}건`);
+
+// ── 자막 작업 내역 인덱스(viewer/ly_out/index.json) — 자막 생성기 '작업 내역' 게시판 데이터(운영자 260707).
+// 스캔 = ly_out/<id>/{subs.md·video.json·error.log} → {id, t(subs.md 첫 # 타이틀), ts(완료 = video.json.ts · 없으면 id의 KST yymmddHHMMSS 접두 = 시작 시각), st(done 번인완성/subs 자막만/fail 실패/gen 진행중)}.
+// 갱신 = push마다 Pages 빌드(ly-make 산출 커밋이 곧 push) — 별도 워크플로 0.
+const LY_ROOT = 'viewer/ly_out';
+if (existsSync(LY_ROOT)) {
+  const idTs = id => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); return m ? `20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00` : ''; };   // id = KST 접두(§📐)
+  const lyJobs = [];
+  for (const id of readdirSync(LY_ROOT)) {
+    const dir = join(LY_ROOT, id);
+    try { if (!statSync(dir).isDirectory()) continue; } catch { continue; }
+    const subsP = join(dir, 'subs.md');
+    let title = '';
+    if (existsSync(subsP)) { const m = readFileSync(subsP, 'utf8').match(/^#\s+(.+)$/m); if (m) title = m[1].trim(); }
+    let v = null;
+    if (existsSync(join(dir, 'video.json'))) { try { v = JSON.parse(readFileSync(join(dir, 'video.json'), 'utf8')); } catch { v = null; } }
+    let st = 'gen';                                                        // 산출물 조합 → 상태(실패 표기 = 운영자 요구)
+    if (v && v.url) st = 'done';                                           // 번인 완성
+    else if (existsSync(subsP)) st = 'subs';                               // 자막만(합성 스킵/실패·구작업 포함 — 자막은 살아있음)
+    else if ((v && (v.error || v.skip)) || existsSync(join(dir, 'error.log'))) st = 'fail';   // 산출물 없이 에러 기록만
+    lyJobs.push({ id, t: title, ts: (v && v.ts) || idTs(id), st });
+  }
+  lyJobs.sort((a, b) => (b.id || '').localeCompare(a.id || ''));           // 최신순(id = 시간 접두)
+  writeFileSync(join(LY_ROOT, 'index.json'), JSON.stringify(lyJobs));
+  console.log(`viewer/ly_out/index.json 생성 — ${lyJobs.length}건`);
+}
