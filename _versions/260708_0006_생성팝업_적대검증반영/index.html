@@ -2390,7 +2390,7 @@
   .pub-status.err { color:var(--danger); }
   /* 이미지 생성 팝업(#genidlg) — 검색 카러셀 + 버튼. 버튼 프롬프팅(화풍·비율·해상도·장수·무드·문구·주문) →
      api/genimg(Opus 프롬프트 작성 → 제미나이 종량제 렌더). 셸·행·워드칩 전부 #pubdlg 계승(.dlg-h/.pub-l/.pub-vis 문법 · 재설계 0) · 운영자 260707 */
-  #genidlg { width:min(420px,92vw); max-width:420px; height:auto; max-height:88dvh; margin:auto;   /* dvh 통일(적대검증C: 8dvh margin과 88vh 혼용 = 키보드 시 어느 경로도 미축소 → dvh로 일치) */
+  #genidlg { width:min(420px,92vw); max-width:420px; height:auto; max-height:88vh; margin:auto;
     border-radius:var(--r-modal); overflow:hidden; animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards; }   /* pubdlg 컴팩트 중앙 모달 계승 */
   @media (prefers-reduced-motion:reduce) { #genidlg { animation:none; } }
   @media (max-width:600px) { #genidlg { margin:8vh auto auto; margin:8dvh auto auto; } }   /* 문구 입력 키보드 가림 회피 = pubdlg 상단 anchoring 계승 */
@@ -2404,13 +2404,10 @@
   .geni-chev { margin-left:auto; flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* V자 = .pm-chev 계승(우측 정렬·30px 박스) */
   .geni-chev svg { display:block; transition:transform .26s var(--ease); }
   .geni-fold[aria-expanded="true"] .geni-chev svg { transform:rotate(180deg); }
-  .geni-camsub { display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s var(--ease); }   /* 아코디언 = grid-rows 0fr↔1fr(적대검증B·C: 구 max-height:900 하드코딩 = 접힘 140ms 무동작·잠재 클리핑 → grid-rows로 지연0·내용무관·클리핑0) */
-  .geni-camsub-in { overflow:hidden; }   /* grid-rows 트랙 클립 래퍼(inert는 부모 .geni-camsub에 JS 토글 = 접힘 시 tab-order·SR 제거 · 원본 .pmenu-sub[hidden] 계승의 핵심 복원) */
-  .geni-fold[aria-expanded="true"] + .geni-camsub { grid-template-rows:1fr; }
-  .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row { animation:cardIn .22s var(--ease) backwards; }   /* 촤르륵 스태거 복원(적대검증B: 운영자 260707 명시 요구였는데 드롭됨 · .pmenu-sub cardIn 계승) */
-  .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(2){ animation-delay:.03s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(3){ animation-delay:.06s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(4){ animation-delay:.09s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(5){ animation-delay:.12s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(6){ animation-delay:.15s }
-  .geni-n { flex:none; min-width:16px; height:16px; padding:0 4px; border-radius:var(--r-pill); background:var(--accent); color:var(--on-accent); font-size:10px; font-weight:var(--fw-x); line-height:16px; text-align:center; font-variant-numeric:tabular-nums; }   /* 접힘 활성 개수 배지 = .qbadge 값 계승(숫자만 = §디자인 e · aria = 부모 버튼 aria-label로) */
-  @media (prefers-reduced-motion:reduce){ .geni-camsub, .geni-chev svg { transition:none; } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row { animation:none; } }
+  .geni-camsub { overflow:hidden; max-height:0; transition:max-height .26s var(--ease); }   /* 아코디언 = .pmenu-sub 계승 · 카메라군 기본 접힘 */
+  .geni-fold[aria-expanded="true"] + .geni-camsub { max-height:900px; }
+  .geni-n { flex:none; min-width:16px; height:16px; padding:0 4px; border-radius:var(--r-pill); background:var(--accent); color:var(--on-accent); font-size:10px; font-weight:var(--fw-x); line-height:16px; text-align:center; font-variant-numeric:tabular-nums; }   /* 접힘 활성 개수 배지 = .qbadge 값 계승(숫자만 = §디자인 e) */
+  @media (prefers-reduced-motion:reduce){ .geni-camsub, .geni-chev svg { transition:none; } }
   .geni-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:8px 0; border-top:1px solid var(--line2); }   /* .pub-row 문법 계승(옵션 다열이라 세로만 컴팩트) */
   .geni-row:first-child { border-top:none; padding-top:4px; }
   .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }   /* 랩 밀집 오탭 완화(평의회 — 구 1px 2px) */
@@ -2792,7 +2789,7 @@ try {
      칩은 JS(GENI_DICT)가 채움 · 셸=pubdlg 계승 · 운영자 260707 -->
 <dialog id="genidlg">
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title">이미지 생성</b></div><button class="tool-x dlg-x" id="geniX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-  <div class="geni-body"><!-- UX 재배치(평의회 3인 260707): 그룹 4군{스타일→출력→카메라·구도(접힘)→내용} · 소머리 = .cref-lbl 계승 · 카메라군 = 저빈도·고급 축(앵글·조명·포인트 등)이라 기본 접힘(76칩 중 67% 감축 · 적대검증B: 구 '프리셋 미커버' 근거는 자기모순 = place는 썸네일 프리셋 커버·출력은 프리셋 커버인데 노출 → 실근거 = 빈도·전문성) · 생성 = 고정 푸터(전 기종 below-the-fold 해소) -->
+  <div class="geni-body"><!-- UX 재배치(평의회 3인 260707): 그룹 4군{스타일→출력→카메라·구도(접힘)→내용} · 소머리 = .cref-lbl 계승 · 카메라군 = 전부 auto 기본+프리셋 미커버라 기본 접힘(76칩 중 67% 감축) · 생성 = 고정 푸터(전 기종 below-the-fold 해소) -->
     <div class="geni-row"><span class="pub-l">프리셋</span><span class="geni-opts" id="geniPresets"></span></div>
     <div class="geni-sechead"><span class="cref-lbl">스타일</span></div>
     <div class="geni-row"><span class="pub-l">화풍</span><span class="geni-opts" data-k="style"></span></div>
@@ -2803,15 +2800,15 @@ try {
     <div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-k="aspect"></span></div>
     <div class="geni-row"><span class="pub-l">해상도</span><span class="geni-opts" data-k="size"></span></div>
     <div class="geni-row"><span class="pub-l">장수</span><span class="geni-opts" data-k="count"></span></div>
-    <button class="geni-sechead geni-fold" id="geniCamHead" type="button" aria-expanded="false" aria-controls="geniCamSub"><span class="cref-lbl">카메라 · 구도</span><span class="geni-n" id="geniCamN" hidden aria-hidden="true"></span><span class="geni-chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button><!-- 접기 = .pmenu-sub/.pm-chev 아코디언 계승 · 배지 = 내부 non-auto 개수(숨은 활성 은폐 방지 · 숫자만 = §디자인 e) -->
-    <div class="geni-camsub" id="geniCamSub" inert><div class="geni-camsub-in">
+    <button class="geni-sechead geni-fold" id="geniCamHead" type="button" aria-expanded="false" aria-controls="geniCamSub"><span class="cref-lbl">카메라 · 구도</span><span class="geni-n" id="geniCamN" hidden></span><span class="geni-chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button><!-- 접기 = .pmenu-sub/.pm-chev 아코디언 계승 · 배지 = 내부 non-auto 개수(숨은 활성 은폐 방지 · 숫자만 = §디자인 e) -->
+    <div class="geni-camsub" id="geniCamSub">
       <div class="geni-row"><span class="pub-l">거리</span><span class="geni-opts" data-k="shot"></span></div>
       <div class="geni-row"><span class="pub-l">표정</span><span class="geni-opts" data-k="expr"></span></div>
       <div class="geni-row"><span class="pub-l">앵글</span><span class="geni-opts" data-k="angle"></span></div>
       <div class="geni-row"><span class="pub-l">포인트</span><span class="geni-opts" data-k="point"></span></div>
       <div class="geni-row"><span class="pub-l">조명</span><span class="geni-opts" data-k="light"></span></div>
       <div class="geni-row"><span class="pub-l">배치</span><span class="geni-opts" data-k="place"></span></div>
-    </div></div>
+    </div>
     <div class="geni-sechead"><span class="cref-lbl">내용</span></div>
     <div class="geni-row"><span class="pub-l">문구</span><input id="geniText" class="geni-in" type="text" maxlength="24" placeholder="없음 · 짧을수록 선명" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="geni-opt" id="geniTitleFill" type="button" aria-label="기사 제목으로 채우기">제목</button></div>
     <div class="geni-row" id="geniFontRow" hidden><span class="pub-l">서체</span><span class="geni-opts" data-k="font"></span></div>
@@ -3838,7 +3835,6 @@ function geniApply() {   // 선택 상태 → 칩 .on 반영(서브 포함)
   const kwb = $('#geniKweb'); if (kwb) kwb.classList.toggle('on', !!_geniSel.kweb);   // 웹툰화 토글 상태 동기
   const camN = GENI_CAM_KEYS.filter(k => _geniSel[k] && _geniSel[k] !== 'auto').length;   // 접힘 그룹 활성 배지(복원값 포함 — 모르고 발사 방지)
   const nb = $('#geniCamN'); if (nb) { nb.textContent = camN; nb.hidden = !camN; }
-  const fh = $('#geniCamHead'); if (fh) fh.setAttribute('aria-label', '카메라 · 구도' + (camN ? ', 설정 ' + camN + '개' : ''));   // 배지 숫자 = aria-hidden → SR 의미는 버튼 aria-label로(적대검증B)
 }
 function geniSubRender() {   // 세부 화풍 칩 = 선택 화풍 따라 재구성(분기 · 미보유 선택은 auto 강하)
   const list = GENI_SUB[_geniSel.style] || [['auto', '기본']];
@@ -3876,18 +3872,7 @@ function geniInit() {
   });
   $('#geniTitleFill').addEventListener('click', () => { txt.value = ((CUR_A && CUR_A.title) || '').trim().slice(0, 24); txt.dispatchEvent(new Event('input')); });
   const kwbtn = $('#geniKweb'); if (kwbtn) kwbtn.addEventListener('click', () => { _geniSel.kweb = !_geniSel.kweb; geniApply(); });   // 웹툰화 = 독립 on/off(세부 1택과 별개 축)
-  const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => {
-    const open = fold.getAttribute('aria-expanded') !== 'true';
-    fold.setAttribute('aria-expanded', open ? 'true' : 'false');
-    const sub = $('#geniCamSub'); if (sub) { if (open) { sub.removeAttribute('inert'); setTimeout(() => { try { fold.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch {} }, 60); } else sub.setAttribute('inert', ''); }   // inert = 접힘 시 tab-order·SR 제거(적대검증B P1: 구 max-height:0만 = 안 보이는 37칩이 tab-order 잔류 = 거짓 계승 · 원본 .pmenu-sub[hidden] 핵심 복원)
-  });
-  // 자유모드 생성 게이트 + 키보드 가림 회피(적대검증A·C) — 입력 포커스 = 뷰포트 클램프 + scrollIntoView
-  ['#geniText', '#geniWish'].forEach(sel => { const el = $(sel); if (!el) return;
-    el.addEventListener('input', geniGate);
-    el.addEventListener('focus', () => { geniVV(); setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 90); });
-  });
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', geniVV);
-  const gdlg = $('#genidlg'); if (gdlg) gdlg.addEventListener('close', () => { gdlg.style.maxHeight = ''; });   // 키보드 클램프 인라인 복원
+  const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => { fold.setAttribute('aria-expanded', fold.getAttribute('aria-expanded') !== 'true'); });   // 카메라·구도 아코디언(.pmenu-sub 계승 · 기본 접힘)
   $('#geniX').addEventListener('click', () => $('#genidlg').close());
   $('#geniMore5').addEventListener('click', () => {   // 기존 실사진 재검색(보조 경로 보존)
     const c = _geniCtx; $('#genidlg').close();
@@ -3921,21 +3906,9 @@ function geniInit() {
     openGenIdlg(null);
   });
 }
-function geniGate() {   // 자유모드 생성 게이트(적대검증A: 주문·문구 둘 다 비면 발사 불가 = 사후 에러 대신 사전 disabled 어포던스)
-  const go = $('#geniGo'); if (!go) return;
-  const empty = !$('#geniText').value.trim() && !$('#geniWish').value.trim();
-  go.disabled = !!(_geniCtx && _geniCtx.free && empty);
-}
-function geniVV() {   // 키보드로 축소된 visual viewport에 팝업 높이 맞춤(적대검증C: dialog top-layer는 키보드에 안 줄어듦 → 수동 클램프 → 입력이 키보드 위로)
-  const dlg = $('#genidlg'); if (!dlg || !dlg.open || !window.visualViewport) return;
-  dlg.style.maxHeight = Math.round(window.visualViewport.height * 0.92) + 'px';
-}
 function openGenIdlg(file, wrap, btn) {
   geniInit();
   _geniCtx = { file, wrap, btn, free: !file };   // free = 기사 컨텍스트 없음(이미지 제작 도구 /6 생성 탭 · 운영자 260707)
-  const _free = !file;
-  $('#geniWish').placeholder = _free ? '필수 · 그릴 장면을 한 줄로' : '선택 · 자유 요청 한 줄';   // 자유모드 = 주문이 유일 필수(적대검증A: 구 "선택" 오라벨 교정)
-  $('#geniText').placeholder = _free ? '선택 · 이미지 속 문구' : '없음 · 짧을수록 선명';
   $('#geniTitleFill').hidden = !file;   // 기사 제목 채움 = 기사 모드 전용(자유 모드 숨김)
   $('#geniMore5').hidden = !file;       // 실사진 재검색 = 기사 카러셀 전용(자유 모드 숨김)
   try { const s = JSON.parse(localStorage.getItem('GENI_OPTS') || 'null'); if (s) Object.keys(_geniSel).forEach(k => { const d = k === 'sub' ? (GENI_SUB[s.style || _geniSel.style] || []) : GENI_DICT[k]; if (typeof s[k] === 'boolean') { if (k === 'kweb') _geniSel.kweb = s[k]; return; } if (s[k] && d && d.some(([v]) => v === s[k])) _geniSel[k] = s[k]; }); } catch {}   // 최근 사용 옵션 복원(사전 검증·문구·주문은 기사별이라 비움)
@@ -3943,14 +3916,7 @@ function openGenIdlg(file, wrap, btn) {
   $('#geniText').value = ''; $('#geniWish').value = '';
   $('#geniText').dispatchEvent(new Event('input'));   // 문구 리셋 파생상태(서체행 숨김·1K disabled 해제)를 input 핸들러로 일괄 동기 — 값만 비우면 1K가 지난 오픈의 disabled로 잔존(압축검증 뷰어JS 지적)
   geniApply();
-  // 카메라군에 복원값 있으면 자동 펼침(적대검증B: 개수 배지만으론 "무엇이" 안 보임 → 발사 전 열어 보이게) · 없으면 접힘+inert
-  const _camOpen = GENI_CAM_KEYS.some(k => _geniSel[k] && _geniSel[k] !== 'auto');
-  const _fold = $('#geniCamHead'), _sub = $('#geniCamSub');
-  if (_fold) _fold.setAttribute('aria-expanded', _camOpen ? 'true' : 'false');
-  if (_sub) { if (_camOpen) _sub.removeAttribute('inert'); else _sub.setAttribute('inert', ''); }
-  geniGate();
   openComposeDlg($('#genidlg'));   // showModal + 폰 뒤로가기 칸(컴포즈 모달 표준)
-  if (_free) setTimeout(() => { try { $('#geniWish').focus(); } catch {} }, 80);   // 자유모드 = 주문칸 진입점(적대검증A: 필수 입력이 곧 시작점 · 지연 = 모달 애니 후)
 }
 // 캐러셀 PC 드래그 — 마우스로 잡아끌어 좌우 슬라이드(터치는 overflow-x 네이티브 스와이프 유지). feedtrack 드래그와 동일 패턴.
 function attachCarouselDrag(track) {
