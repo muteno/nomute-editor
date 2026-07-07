@@ -12,8 +12,6 @@
 # 연속 축 3종(운영자 260707 플레이그라운드 선택값 배선): size = 높이비 소수(0.035 등 · 구 s/m/l 문자열 하위호환) ·
 #   outline = 외곽선 두께 배율(×0.5 등 · bg=0 글리프 스트로크에만 의미) · pad = 박스 패딩 계수(fs×pad · bg>0 줄박스 패딩).
 #   + 중앙 불변 배치: 게이지 = 1줄 기준점 고정 · 줄이 늘면 초과분 절반씩 내려 블록 세로중심 유지(이벤트별 MarginV).
-# 팝 모드(opts.pop · 운영자 260707 배치 승인): 카라오케 대신 발화 중 어절만 콘텐츠 그린 점등 — 어절 창별 이벤트 분할(build_pop_frames) ·
-#   타이밍 = \kf와 동일 글자수 비례 추정(진짜 발화 싱크 = Whisper word 타임스탬프 후속) · 카라오케와 상호배타(동시 수신 = 팝 우선).
 # 키워드 강조색 = 콘텐츠 브랜드 형광그린 #0FFD02(릴스 오버레이 GREEN 계승 · UI 팔레트와 별개 축 = §핵심명령 3-b-1).
 import json
 import os
@@ -167,14 +165,15 @@ def coef(opts, key, dflt, lo, hi):
     return max(lo, min(hi, v))
 
 
-def prep_line(text, seg_dur, keyword, fs, avail_px):
-    # 한 조각 공용 준비(카라오케/일반 build_line·팝 build_pop_frames 공유): 새니타이즈·키워드 스팬·어절·청킹·축소·어절별 cs
+def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
+    # 한 조각 → (ASS 텍스트, 줄 수, 실폰트크기): 수동 \N(최대 2줄 · 넘치면 그 조각만 \fs 자동 축소) + 카라오케 \kf + 키워드 \1c(콘텐츠 그린)
+    #   줄 수·실크기 반환 = 중앙 불변 배치(이벤트별 MarginV 보정)의 블록 높이 산정용(260707)
     plain, spans = star_spans(sanitize(text))
     if not keyword:
         spans = []
     words = [w for w in plain.split(" ") if w]
     if not words:
-        return None
+        return "", 0, fs
     # 줄폭 예산(전각 단위) — 2줄 초과분은 조각 한정 인라인 축소(하한 0.62배 · 그래도 넘치면 3줄+ 허용)
     eff_fs = fs
     budget = avail_px / eff_fs
@@ -190,56 +189,25 @@ def prep_line(text, seg_dur, keyword, fs, avail_px):
         bounds.append((st, st + len(w))); pos = st + len(w)
     total = max(1, sum(len(w) for w in words))
     cs_total = max(10, int(seg_dur * 100))
-    used, cs_list = 0, []
-    for k, w in enumerate(words):
-        cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 시간 차단
-        used += cs
-        cs_list.append(cs)
-    hits = [any(a < en and st < b for a, b in spans) for (st, en) in bounds]
-    lines = chunk_lines(words, budget)
-    return words, hits, cs_list, lines, eff_fs
-
-
-def _word(w, green, eff_fs, fs):
-    # 어절 1개 렌더 — 그린 강조면 \1c + \r(축소 조각은 \fs 재적용 짝가드)
-    if green:
-        return "{\\1c" + GREEN_BGR + "}" + w + "{\\r" + ("" if eff_fs == fs else "}{\\fs" + str(eff_fs)) + "}"
-    return w
-
-
-def _assemble(rendered, lines, eff_fs, fs):
-    body = "\\N".join(" ".join(rendered[i] for i in ln) for ln in lines)
-    return ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
-
-
-def build_line(text, seg_dur, karaoke, keyword, fs, avail_px):
-    # 한 조각 → (ASS 텍스트, 줄 수, 실폰트크기): 수동 \N + 카라오케 \kf + 키워드 \1c(콘텐츠 그린)
-    #   줄 수·실크기 반환 = 중앙 불변 배치(이벤트별 MarginV 보정)의 블록 높이 산정용(260707)
-    prep = prep_line(text, seg_dur, keyword, fs, avail_px)
-    if not prep:
-        return "", 0, fs
-    words, hits, cs_list, lines, eff_fs = prep
+    used = 0
     rendered = []
     for k, w in enumerate(words):
-        seg = ("{\\kf" + str(cs_list[k]) + "}") if karaoke else ""
-        rendered.append(seg + _word(w, hits[k], eff_fs, fs))
-    return _assemble(rendered, lines, eff_fs, fs), len(lines), eff_fs
-
-
-def build_pop_frames(text, seg_dur, keyword, fs, avail_px):
-    # 팝 모드(운영자 260707 승인): 발화 중인 어절만 콘텐츠 그린 점등 — 어절 시간창마다 라인 전체를 다시 그린 이벤트 프레임 목록.
-    #   창 경계 = \kf와 동일한 글자수 비례 분배(진짜 발화 싱크 = Whisper word 타임스탬프 후속) · 키워드(*별표*)는 전 창 상시 그린.
-    #   레이아웃(청킹·축소·줄수)은 프레임 간 동일 → 박스·위치 픽셀 불변 = 창 전환 시 어절 색만 바뀜(깜빡임 0).
-    prep = prep_line(text, seg_dur, keyword, fs, avail_px)
-    if not prep:
-        return [], 0, fs
-    words, hits, cs_list, lines, eff_fs = prep
-    frames, off = [], 0   # (시작 오프셋 cs, 길이 cs, ASS 텍스트)
-    for cur in range(len(words)):
-        rendered = [_word(w, k == cur or hits[k], eff_fs, fs) for k, w in enumerate(words)]
-        frames.append((off, cs_list[cur], _assemble(rendered, lines, eff_fs, fs)))
-        off += cs_list[cur]
-    return frames, len(lines), eff_fs
+        cs = max(1, cs_total - used) if k == len(words) - 1 else max(1, int(round(cs_total * len(w) / total)))   # 마지막도 하한 1 = 음수 \kf 차단
+        used += cs
+        st, en = bounds[k]
+        hit = any(a < en and st < b for a, b in spans)
+        seg = ""
+        if karaoke:
+            seg += "{\\kf" + str(cs) + "}"
+        if hit:
+            seg += "{\\1c" + GREEN_BGR + "}" + w + "{\\r" + ("" if eff_fs == fs else "}{\\fs" + str(eff_fs)) + "}"
+        else:
+            seg += w
+        rendered.append(seg)
+    lines = chunk_lines(words, budget)
+    body = "\\N".join(" ".join(rendered[i] for i in ln) for ln in lines)
+    txt = ("{\\fs" + str(eff_fs) + "}" + body) if eff_fs != fs else body
+    return txt, len(lines), eff_fs
 
 
 def pos_pct(opts):
@@ -294,9 +262,6 @@ def build_ass(segs, w, h, opts):
         else:                # bold(기본) = 흰 글자+검정 외곽선+그림자(쇼츠 정석)
             border_style, outline, shadow, oc = 1, max(1, int(fs * 0.064 * omul)), 1, "&H00000000"
     karaoke = opts.get("karaoke", True)
-    pop = bool(opts.get("pop", False))   # 팝 = 발화 중 어절만 그린 점등(운영자 260707) — 카라오케와 상호배타(UI 동시 불가 · 동시 수신 시 팝 우선)
-    if pop:
-        karaoke = False
     keyword = opts.get("keyword", True)
     lang = opts.get("lang") or "auto"
     avail = max(200, w - 2 * margin_lr)   # 자막 가용 폭(px)
@@ -331,40 +296,26 @@ def build_ass(segs, w, h, opts):
             e = s + 0.05
         ko = sg.get("ko") or ""
         src = sanitize(sg.get("src") or "")
-        frames = None
-        if pop and ko:
-            frames, n_main, m_fs = build_pop_frames(ko, e - s, keyword, fs, avail)
-            main = frames[0][2] if frames else ""
-        else:
-            main, n_main, m_fs = build_line(ko, e - s, karaoke, keyword, fs, avail) if ko else ("", 0, fs)
+        main, n_main, m_fs = build_line(ko, e - s, karaoke, keyword, fs, avail) if ko else ("", 0, fs)
         if not main and src:
             main, n_main, m_fs = build_line(src, e - s, karaoke, False, fs, avail)
             src = ""
-            frames = None
         if not main:
             continue
-        src_pre = ""
+        txt = main
         block_px = n_main * m_fs * LINE_F
         if lang == "dual" and src and ko:
             sw = src.split(" ")
             src_chunks = chunk_lines(sw, avail / small)
             src_txt = "\\N".join(" ".join(sw[i] for i in ln) for ln in src_chunks)
-            src_pre = "{\\fs" + str(small) + "}" + src_txt + "{\\r}\\N"   # 원문(작게) 위 · 한글 아래 — 팝 프레임에도 매 창 동일 부착
+            txt = "{\\fs" + str(small) + "}" + src_txt + "{\\r}\\N" + main   # 원문(작게) 위 · 한글 아래
             block_px += len(src_chunks) * small * LINE_F
         # 중앙 불변 배치(운영자 260707 "1줄/2줄 중앙점 동일선"): 하단 앵커는 위로만 자라 줄이 늘면 블록 중심이 떠오름 →
         #   초과 높이의 절반만큼 MarginV를 내려 블록 세로중심 고정(1줄 = 보정 0 = 종전·캡처 그대로). 패딩은 전 이벤트 동일이라 상쇄.
         mv_e = margin_v - int(round((block_px - ref_px) / 2))
         mv_e = min(mv_e, max(floor_v, h - int(block_px) - floor_v))   # 상단 캡 = 이벤트 블록 실측(전역 줄예산 추정보다 정밀)
         mv_e = max(floor_v, mv_e)
-        if frames:   # 팝 = 어절 창마다 이벤트(레이아웃 동일·MarginV 동일 = 색만 이동)
-            for fi, (off, dur, ftxt) in enumerate(frames):
-                fst = s + off / 100.0
-                if fst >= e - 0.004:
-                    break   # 초단컷(0.05s대) 보호 — cs 하한 분배가 실구간을 넘치면 잔여 창 스킵
-                fe = e if fi == len(frames) - 1 else min(e, s + (off + dur) / 100.0)
-                lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(fst), ass_time(fe), mv_e, src_pre + ftxt))
-        else:
-            lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, src_pre + main))
+        lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, txt))
     return head + "\n" + "\n".join(lines) + "\n"
 
 

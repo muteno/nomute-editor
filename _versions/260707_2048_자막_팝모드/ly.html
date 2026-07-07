@@ -278,11 +278,6 @@
   .lyoptpv.kara:not(.bgon) .pvt { filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }   /* 대신 렌더 결과 알파를 따르는 drop-shadow(글리프 사본 안 생김)로 깊이만 유지 · 배경(bgon)은 자체 필이라 불필요(필까지 그림자 지면 이질) — 구 .box 판정을 배경 게이지 기준으로 승계 */
   @keyframes lykfill { from { background-position:100% 0; } to { background-position:0 0; } }
   @media (prefers-reduced-motion:reduce){ .lyoptpv.kara .pvt .kt, .lyoptpv.kara .pvt .kw { animation:none; background:none; -webkit-text-fill-color:currentColor; } .lyoptpv.kara .pvt .kt { color:rgba(255,255,255,1); } .lyoptpv.kara .pvt .kw { color:var(--accent-5); } }
-  .lyoptpv.pop .pvt .kt:first-child { animation:lypopA 2.2s steps(1,end) infinite; }   /* 팝 데모 = 어절 순차 점등(첫 어절 → 키워드 상시 그린 → 끝 어절) — 실번인 어절 창 이벤트 근사(운영자 260707) */
-  .lyoptpv.pop .pvt .kt:last-child { animation:lypopB 2.2s steps(1,end) infinite; }
-  @keyframes lypopA { 0%,44% { color:var(--accent-5); } 45%,100% { color:rgba(255,255,255,1); } }
-  @keyframes lypopB { 0%,54% { color:rgba(255,255,255,1); } 55%,89% { color:var(--accent-5); } 90%,100% { color:rgba(255,255,255,1); } }
-  @media (prefers-reduced-motion:reduce){ .lyoptpv.pop .pvt .kt:first-child, .lyoptpv.pop .pvt .kt:last-child { animation:none; color:rgba(255,255,255,1); } }
   /* 완성 영상(자막 번인 결과) — 미리보기 .lypv 크롬 계승 */
   .lyburn { margin:16px 0 0; }
   .lyburn[hidden] { display:none; }
@@ -351,7 +346,7 @@
     <div class="lyopt-row"><span class="lyopt-k">톤</span><button class="opt" type="button" data-k="tone" data-v="sns">감성 의역</button><button class="opt" type="button" data-k="tone" data-v="plain">담백 직역</button><button class="opt" type="button" data-k="filler">군더더기 빼기</button></div>
     <label class="fl">영상 합성</label>
     <div class="lyopt-row"><span class="lyopt-k">빠른</span><button class="opt" type="button" data-ps="reels">릴스 기본</button><button class="opt" type="button" data-ps="clean">깔끔 자막</button><button class="opt" type="button" data-ps="box">정보 박스</button></div>
-    <div class="lyopt-row"><button class="opt" type="button" data-k="burn">자막 붙이기</button><button class="opt" type="button" data-k="karaoke">카라오케</button><button class="opt" type="button" data-k="pop">팝</button><button class="opt" type="button" data-k="keyword">키워드 강조</button><!-- 팝 = 발화 중 어절만 그린 점등 · 카라오케와 상호배타(운영자 260707 배치 승인: 강조 행 가운데) --></div>
+    <div class="lyopt-row"><button class="opt" type="button" data-k="burn">자막 붙이기</button><button class="opt" type="button" data-k="karaoke">카라오케</button><button class="opt" type="button" data-k="keyword">키워드 강조</button></div>
     <div class="lyopt-row"><span class="lyopt-k">모양</span><button class="opt" type="button" data-k="style" data-v="bold">기본</button><button class="opt" type="button" data-k="style" data-v="clean">깔끔</button><button class="opt" type="button" data-k="style" data-v="box">박스</button></div>
     <div class="lyopt-row"><span class="lyopt-k">배경</span><input type="range" id="lyBg" min="0" max="100" step="1" value="0" aria-label="자막 배경 불투명도 (0% = 배경 없음)"><span class="lypv-fs" id="lyBgV">0%</span></div><!-- 자막 뒷 배경 투명도 게이지(운영자 260707) — 번인 BackColour 알파 연동 -->
     <div class="lyopt-row"><span class="lyopt-k">위치</span><span class="lyopt-e">하단</span><input type="range" id="lyPos" min="0" max="100" step="1" value="24" aria-label="자막 세로 위치 (0 = 하단 · 100 = 상단)"><span class="lyopt-e">상단</span><span class="lypv-fs" id="lyPosV">24%</span></div><!-- 위치 = 3칩(하단/중앙/상단) → 연속 게이지(운영자 260707) — 24% ≈ 구 하단 세이프존 -->
@@ -1218,7 +1213,7 @@ function lyGoDim() { const g = $('#go'); if (!g) return; g.classList.toggle('dim
   window.addEventListener('pagehide', () => { clearTimeout(t); save(); });
 })();
 // ══ 자막 설정 칩(버튼 = 프롬프팅 대체 · 운영자 260707) — 선택값 localStorage 영속 · 기본값 = 종전 동작 동일(무설정 = 회귀 0) ══
-const LY_OPT_DEF = { lang: 'auto', tone: 'sns', filler: true, burn: true, style: 'clean', pos: 57, size: 0.035, karaoke: false, keyword: true, bg: 100, outline: 0.5, pad: 0.16, pop: false };   // pop = 어절 점등 강조(카라오케와 상호배타 · 기본 OFF · 운영자 260707)   // 운영자 260707 플레이그라운드 선택값 = 새 기본{캡션형: 중단 57%·불투명 줄박스·연속 크기 3.5%·외곽선 ×0.5·패딩 ×0.16} · size = 소수 높이비(칩 s/m/l 문자열과 공존 — 번인 size_frac이 양쪽 해석) · outline/pad = 번인 연속 계수(전 요청에 실림 · UI 슬라이더는 §디자인 j 배치 승인 후 후속) · 구 기본(bold·24·l·카라오케ON·bg0) = reels 프리셋으로 보존 · 동시 세션 #1807 부분판(52%·m·키워드OFF·v1키)은 운영자 최종 선택값 메시지(57%·3.5%·키워드ON)로 대체
+const LY_OPT_DEF = { lang: 'auto', tone: 'sns', filler: true, burn: true, style: 'clean', pos: 57, size: 0.035, karaoke: false, keyword: true, bg: 100, outline: 0.5, pad: 0.16 };   // 운영자 260707 플레이그라운드 선택값 = 새 기본{캡션형: 중단 57%·불투명 줄박스·연속 크기 3.5%·외곽선 ×0.5·패딩 ×0.16} · size = 소수 높이비(칩 s/m/l 문자열과 공존 — 번인 size_frac이 양쪽 해석) · outline/pad = 번인 연속 계수(전 요청에 실림 · UI 슬라이더는 §디자인 j 배치 승인 후 후속) · 구 기본(bold·24·l·카라오케ON·bg0) = reels 프리셋으로 보존 · 동시 세션 #1807 부분판(52%·m·키워드OFF·v1키)은 운영자 최종 선택값 메시지(57%·3.5%·키워드ON)로 대체
 const LY_OPT_KEY = 'nm_ly_opts_v2';   // v1→v2 세대 교체(운영자 260707 기본값 전환) — 구 저장분이 새 기본을 덮지 않게 키 갱신(이전 버튼 조작값 = 새 기본 아래 리셋)
 const LY_POS_LEGACY = { bottom: 24, middle: 55, top: 100 };   // 구 3칩 저장값 → 게이지 % 마이그레이션(운영자 260707)
 const lyPct = (v, d) => { const n = Math.round(+v); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : d; };
@@ -1232,11 +1227,11 @@ else LY_OPTS.bg = lyPct(LY_OPTS.bg, LY_OPT_DEF.bg);   // 프레시(저장 자체
 let LY_WANTVID = '', LY_VID_T = null, LY_VID_GEN = 0;   // 완성 영상(번인) 폴 상태 · GEN = 세대 토큰(in-flight fetch가 리셋 후 옛 영상 표시·좀비 재예약하는 경쟁 봉인 — poll() live 패턴 이식·평의회)
 // 프리셋 = 번인축 6키 묶음 원탭(상용 자막툴 진입점 벤치 — CapCut/Submagic 템플릿 문법) · 칩은 그대로 살아있어 미세조정 가능
 const LY_PRESETS = {
-  reels: { burn: true, karaoke: true, pop: false, keyword: true, style: 'bold', pos: 24, size: 'l', bg: 0 },
-  clean: { burn: true, karaoke: false, pop: false, keyword: false, style: 'clean', pos: 24, size: 'm', bg: 0 },
-  box: { burn: true, karaoke: false, pop: false, keyword: true, style: 'box', pos: 24, size: 'm', bg: 44 },
+  reels: { burn: true, karaoke: true, keyword: true, style: 'bold', pos: 24, size: 'l', bg: 0 },
+  clean: { burn: true, karaoke: false, keyword: false, style: 'clean', pos: 24, size: 'm', bg: 0 },
+  box: { burn: true, karaoke: false, keyword: true, style: 'box', pos: 24, size: 'm', bg: 44 },
 };
-const LY_BURN_KEYS = ['karaoke', 'pop', 'keyword', 'style', 'pos', 'size', 'bg'];   // 번인 하위 축(OFF 시 dim·누르면 번인 자동 ON)
+const LY_BURN_KEYS = ['karaoke', 'keyword', 'style', 'pos', 'size', 'bg'];   // 번인 하위 축(OFF 시 dim·누르면 번인 자동 ON)
 function lyOptRender() {
   document.querySelectorAll('#lyOpts .opt[data-k]').forEach(b => {
     const k = b.dataset.k;
@@ -1258,7 +1253,7 @@ function lyOptRender() {
   const pv = $('#lyOptPv');
   if (pv) {   // 실시간 스타일 미리보기 — 모양/크기 클래스 + 키워드 그린 + 카라오케 스윕 + 배경 알파(번인 실렌더 근사) · 값은 칩 닫힌 집합 + 게이지 정수 클램프라 클래스 조립 안전
     pv.hidden = !LY_OPTS.burn;
-    pv.className = 'lyoptpv ' + (LY_OPTS.style || LY_OPT_DEF.style) + (typeof LY_OPTS.size === 'string' ? ' ' + LY_OPTS.size : '') + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.pop ? ' pop' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '');   // style 결측 폴백 = 기본값 참조(#1807 병합) · size = 문자열만 클래스(연속 숫자는 아래 인라인 환산)
+    pv.className = 'lyoptpv ' + (LY_OPTS.style || LY_OPT_DEF.style) + (typeof LY_OPTS.size === 'string' ? ' ' + LY_OPTS.size : '') + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '');   // style 결측 폴백 = 기본값 참조(#1807 병합) · size = 문자열만 클래스(연속 숫자는 아래 인라인 환산)
     pv.style.setProperty('--lybg', (LY_OPTS.bg / 100).toFixed(2));
     const pvt = pv.querySelector('.pvt'); if (pvt) pvt.style.fontSize = typeof LY_OPTS.size === 'number' ? Math.round(LY_OPTS.size * 467) + 'px' : '';   // 연속 크기 = l칩 비율(21px↔4.5% ≈ ×467) 인라인 환산(0.035→16px) · 문자열(s/m/l) = 종전 클래스(인라인 해제)
     const kwEl = pv.querySelector('b'); if (kwEl) kwEl.className = LY_OPTS.keyword ? 'kw' : 'kt';   // OFF = 일반 단어로 강등(그린·스윕 규칙 함께 전환)
@@ -1274,8 +1269,6 @@ function lyOptSave() { try { localStorage.setItem(LY_OPT_KEY, JSON.stringify(LY_
     else {
       const k = b.dataset.k;
       if (b.dataset.v !== undefined) LY_OPTS[k] = b.dataset.v; else LY_OPTS[k] = !LY_OPTS[k];
-      if (k === 'pop' && LY_OPTS.pop) LY_OPTS.karaoke = false;   // 팝↔카라오케 동시 불가(운영자 260707)
-      if (k === 'karaoke' && LY_OPTS.karaoke) LY_OPTS.pop = false;
       if (k === 'style' && LY_OPTS.style === 'box' && !LY_OPTS.bg) LY_OPTS.bg = 44;   // 박스 선택 + 배경 0% = 종전 농도 자동 ON(박스가 안 보이는 무효 조합 방지 · 번인 자동 ON과 동일 문법)
       if (!LY_OPTS.burn && LY_BURN_KEYS.indexOf(k) >= 0) LY_OPTS.burn = true;   // 하위 축 조작 = 번인 자동 ON(상용 문법)
     }
