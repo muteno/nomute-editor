@@ -5834,11 +5834,7 @@ const b64ToU8 = s => { const pad = '='.repeat((4 - s.length % 4) % 4); const b =
 async function pushState() {   // 'on'|'off'|'denied'|'unsupported'
   if (!pushOK()) return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
-  try {
-    let r = await navigator.serviceWorker.getRegistration();
-    if (!r) r = await Promise.race([navigator.serviceWorker.ready, new Promise(res => setTimeout(res, 1500))]);   // 강제 새로고침·콜드부트 직후 등록 조회가 일시 비는 창 = ready 최대 1.5s 대기 후 재시도(일시 null → OFF 오판 방지 · 운영자 260707 "강제 새로고침하면 다시 OFF")
-    const s = r && await r.pushManager.getSubscription(); return s ? 'on' : 'off';
-  } catch { return 'off'; }
+  try { const r = await navigator.serviceWorker.getRegistration(); const s = r && await r.pushManager.getSubscription(); return s ? 'on' : 'off'; } catch { return 'off'; }
 }
 async function pushRefresh() {
   const row = $('#pushrow'), btn = $('#pushbtn'); if (!row || !btn) return;
@@ -5847,8 +5843,6 @@ async function pushRefresh() {
   row.hidden = false;
   // ON/OFF 2-state 통일(운영자 260703): denied(차단)도 'OFF'로 표기 — 클릭 시 pushToggle이 해제 안내(차단은 거의 안 생김·항상 허용해둠). '차단됨'/앰버 폐지.
   btn.disabled = false; btn.classList.remove('denied'); btn.textContent = st === 'on' ? 'ON' : 'OFF'; btn.classList.toggle('on', st === 'on');
-  if (st === 'on') { try { localStorage.setItem('nm_push_want', '1'); } catch (e) {} }   // 백필 — want 플래그 도입(260707) 전에 켠 구독은 플래그가 없어 pushHeal이 침묵 → ON으로 읽히는 순간 편입
-  else if (st === 'off') pushHeal();   // OFF가 '보이는 순간' = 치유 시점(부팅 1회만으론 팝업 열 때 어긋남) — want·권한 미충족이면 pushHeal이 스스로 무시·성공 시 ON 재렌더
 }
 async function pushToggle() {
   const btn = $('#pushbtn'); if (!btn || !pushOK()) return;
@@ -5892,30 +5886,22 @@ async function pushToggle() {
 }
 const _pushBtn = $('#pushbtn'); if (_pushBtn) _pushBtn.addEventListener('click', pushToggle);
 const _pushRow = $('#pushrow'); if (_pushRow) _pushRow.addEventListener('click', e => { if (e.target.closest('#pushbtn')) return; if (_pushBtn && !_pushBtn.disabled) pushToggle(); });   // 행 전체 탭 = 토글(라벨·여백 눌러도 무반응이던 것 교정 · 버튼 자체 클릭은 기존 리스너 = 중복 발화 차단)
-let _healBusy = null, _healCool = 0;   // 단일비행 + 쿨다운(실패 60s·성공 3s) = 팝업 연타·포그라운드 복귀마다 구독 재시도 폭주 방지
-function pushHeal() {   // 자가치유(운영자 260707 "ON 해놔도 어느 순간 OFF") — 의도(ON 플래그)와 실제 구독이 어긋나면 조용히 재구독.
-  // 원인 = 브라우저(FCM)가 구독을 만료·교체(pushsubscriptionchange — sw.js 핸들러와 짝) · 크롬 '미사용 사이트 권한 자동 제거' 등.
-  // 발동 = 부팅 1회 + 포그라운드 복귀 + pushRefresh가 OFF를 그리는 순간(표시 = 치유 트리거).
+async function pushHeal() {   // 자가치유(운영자 260707 "ON 해놔도 어느 순간 OFF") — 의도(ON 플래그)와 실제 구독이 어긋나면 조용히 재구독.
+  // 원인 = 브라우저(FCM)가 구독을 만료·교체(pushsubscriptionchange — sw.js 핸들러 신설과 짝) · 크롬 '미사용 사이트 권한 자동 제거' 등.
   // 권한 granted면 무프롬프트로 복구되고, 권한이 회수됐으면 조용히 실패(프롬프트 남발 금지) = OFF 표시가 정직.
-  if (_healBusy || Date.now() < _healCool) return _healBusy;
-  _healBusy = (async () => {
-    try {
-      if (!pushOK()) return;
-      if ((localStorage.getItem('nm_push_want') || '') !== '1') return;
-      if (Notification.permission !== 'granted') return;
-      const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
-      if (await reg.pushManager.getSubscription()) { _healCool = Date.now() + 3e3; await pushRefresh(); return; }   // 살아있음 = 표시만 동기화(pushState 일시 null로 OFF 그려진 경우 교정)
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
-      const r = await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
-      if (!r.ok) { await sub.unsubscribe().catch(() => {}); _healCool = Date.now() + 60e3; return; }
-      _healCool = Date.now() + 3e3;
-      await pushRefresh();   // ON 표시 복구
-    } catch (e) { _healCool = Date.now() + 60e3; /* 조용 — 쿨다운 후 재시도 */ }
-  })().finally(() => { _healBusy = null; });
-  return _healBusy;
+  try {
+    if (!pushOK()) return;
+    if ((localStorage.getItem('nm_push_want') || '') !== '1') return;
+    if (Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
+    if (await reg.pushManager.getSubscription()) return;   // 살아있음 = 정상
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
+    const r = await fetch('api/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'subscribe', subscription: sub.toJSON() }) });
+    if (!r.ok) { await sub.unsubscribe().catch(() => {}); return; }
+    await pushRefresh();   // ON 표시 복구
+  } catch (e) { /* 조용 — 다음 진입 때 재시도 */ }
 }
 pushHeal();
-document.addEventListener('visibilitychange', () => { if (!document.hidden) pushHeal(); });   // 앱 전환 복귀 = 백그라운드 새 SW 활성·구독 로테이션 직후일 수 있음 → 재점검
 
 // 프로필 메뉴
 const pmenu = $('#pmenu');
