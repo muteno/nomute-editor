@@ -182,11 +182,16 @@ def has_audio(path):
 def strip_bgm(video):
     # 배경음 제거(운영자 260707) = Demucs 보컬 분리(htdemucs·로컬·키 불필요·과금 0) — 목소리 트랙만 남긴 wav 반환.
     # 실패/미설치/시간초과 = "" 반환(fail-soft: 원본 소리로 계속 = 컷과 동일 강등 문법). 설치 = ly-make.yml bgm 게이트 스텝.
-    # 타임아웃 600s = 릴스/쇼츠(수 분) 여유·장영상은 스킵될 수 있음(정직 한계 — note로 표면화).
-    wav = "/tmp/ly_bgm_in.wav"
+    # 예산 = 추출 120s + 분리 600s(릴스/쇼츠 수 분 여유 · 장영상은 스킵될 수 있음 — note로 표면화 · 평의회9).
     try:
+        r = subprocess.run([sys.executable, "-c", "import demucs.separate"],
+                           capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:   # 미설치 선행 감지 = 추출 낭비 제거(평의회3) — 설치 실패 런은 여기서 즉시 강등
+            print("::warning::배경음 제거 스킵 — demucs 미설치(설치 스텝 로그 확인)")
+            return ""
+        wav = "/tmp/ly_bgm_in.wav"
         r = subprocess.run(["ffmpeg", "-y", "-i", video, "-vn", "-ar", "44100", "-ac", "2", wav],
-                           capture_output=True, text=True, timeout=300)
+                           capture_output=True, text=True, timeout=120)
         if r.returncode != 0 or not os.path.isfile(wav):
             print("::warning::배경음 제거 스킵 — 오디오 추출 실패:", (r.stderr or "")[-160:])
             return ""
@@ -194,8 +199,9 @@ def strip_bgm(video):
                             "-n", "htdemucs", "-o", "/tmp/ly_demucs", wav],
                            capture_output=True, text=True, timeout=600)
         out = "/tmp/ly_demucs/htdemucs/ly_bgm_in/vocals.wav"
-        if r.returncode != 0 or not os.path.isfile(out):
-            print("::warning::배경음 제거 실패(demucs) —", (r.stderr or r.stdout or "")[-200:])
+        # 유효성 = rc·실존·최소 크기(1KB) — 0바이트/절단 wav가 인코딩 양쪽(컷·폴백)을 다 죽이는 구멍 봉합(평의회3 P1)
+        if r.returncode != 0 or not os.path.isfile(out) or os.path.getsize(out) < 1024:
+            print("::warning::배경음 제거 실패(demucs 산출 무효) —", (r.stderr or r.stdout or "")[-200:])
             return ""
         return out
     except subprocess.TimeoutExpired:
@@ -220,7 +226,8 @@ def cut_filter(keeps, audio, scale, ass_path, asrc="[0:a]"):
     sel_e, off_e = "+".join(sel), "+".join(off)
     parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
     if audio:
-        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'[ac];".format(asrc, sel_e, off_e))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장)
+        loud = ",loudnorm=I=-16:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정(SNS 표준 -16 LUFS · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
+        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}[ac];".format(asrc, sel_e, off_e, loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장)
     parts.append("[vs]" + ((scale + ",") if scale else "") + "ass={}[vo]".format(ass_path))
     return "\n".join(parts)
 
@@ -522,6 +529,8 @@ def run(vid_id, video, outdir):
     #   자를 갭이 없거나 cut OFF = keeps 빈 목록 = 종전 단일 -vf 경로 그대로(회귀 0).
     aud = has_audio(video)   # 판별 실패 = True 가정 — 오판이어도 폴백이 컷/배경음만 포기하고 정상 번인(무음 오디오 강제 삽입보다 안전 · 평의회6)
     # 배경음 제거(운영자 260707 · 기능2) — 컷보다 *먼저*(운영자: 둘 다 켜면 배경음부터). 타임라인 불변(오디오 트랙 교체)이라 컷 계산 무영향.
+    # 트레이드오프(정직 · 평의회7): STT는 업스트림에서 *원본(배경음 포함)* 오디오로 이미 전사됨 — 분리를 STT 앞에 두면
+    #   소음 큰 클립의 전사 품질이 오를 수 있으나 매 전사에 분리 비용(수 분)이 붙어 비채택. 분리 = 번인 산출에만 적용.
     vocals, bgm_note = "", ""
     if opts.get("bgm") and aud:
         vocals = strip_bgm(video)
@@ -564,32 +573,40 @@ def run(vid_id, video, outdir):
     ins = ["-i", video] + (["-i", vocals] if vocals else [])   # 배경음 제거 = 보컬 wav 2번 입력(영상은 원본 그대로)
 
     def plain_cmd():
+        # ⚠️ -shortest 금지: vocals가 영상보다 짧으면 영상을 절단(6.4s→5.0s 실측 회귀 · 평의회1 P1) — 영상 길이가 출력을 주도(꼬리 무음 = 무해)
         vf = (scale + "," if scale else "") + "ass={}".format(ass_path)
         return ["ffmpeg", "-y"] + ins + ["-vf", vf] \
-            + (["-map", "0:v:0", "-map", "1:a:0", "-shortest"] if vocals else []) \
+            + (["-map", "0:v:0", "-map", "1:a:0", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] if vocals else []) \
             + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
-    def encode(c):
-        r = subprocess.run(c, capture_output=True, text=True, timeout=900)   # 15분 백스톱 — 잡 하드킬(45분) 전에 우아하게 실패 기록(평의회)
+    def encode(c, to=900):   # 15분 백스톱(폴백은 600 = 예산 스택 축소 · 평의회2·3) — 잡 하드킬 전에 우아하게 실패 기록
+        r = subprocess.run(c, capture_output=True, text=True, timeout=to)
         return (r.returncode == 0 and os.path.isfile(out_mp4) and os.path.getsize(out_mp4) >= 1024), (r.stderr or "")
 
     try:
-        if keeps:   # 무음 컷 = 단일 패스 select 필터체인(끝에 scale+ass — 재인코딩은 어차피 번인이 하므로 추가 열화 0)
-            fc_path = "/tmp/ly_cut.filter"
-            with open(fc_path, "w", encoding="utf-8") as f:
-                f.write(cut_filter(keeps, aud, scale, ass_path, "[1:a]" if vocals else "[0:a]"))
-            cmd = ["ffmpeg", "-y"] + ins + ["-filter_complex_script", fc_path, "-map", "[vo]"] \
-                + (["-map", "[ac]"] if aud else []) \
-                + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-                   "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
-            ok, err = encode(cmd)
-            if not ok:   # 컷 실패 = 컷만 포기·번인은 지킨다(평의회6 P1) — 원본 타이밍 ASS 재생성 후 종전 경로 재시도(배경음 제거는 유지)
-                print("::warning::무음 컷 합성 실패 — 컷 없이 재시도:", err[-300:])
-                with open(ass_path, "w", encoding="utf-8") as f:
-                    f.write(build_ass(segs_orig, tw, th, opts))
-                cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
+        if keeps or vocals:   # 컷·배경음 어느 쪽이든 = 가공 경로(컷 = 단일 패스 select 필터체인 · 재인코딩은 어차피 번인이 하므로 추가 열화 0)
+            if keeps:
+                fc_path = "/tmp/ly_cut.filter"
+                with open(fc_path, "w", encoding="utf-8") as f:
+                    f.write(cut_filter(keeps, aud, scale, ass_path, "[1:a]" if vocals else "[0:a]"))
+                cmd = ["ffmpeg", "-y"] + ins + ["-filter_complex_script", fc_path, "-map", "[vo]"] \
+                    + (["-map", "[ac]"] if aud else []) \
+                    + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+                       "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
+                ok, err = encode(cmd)
+            else:
                 ok, err = encode(plain_cmd())
+            if not ok:   # 가공 실패 = 가공만 포기·번인은 지킨다(평의회6·3 P1) — 컷·배경음 다 버리고 원본으로 확실한 산출(무효 vocals가 양쪽을 죽이는 구멍 봉합)
+                print("::warning::가공(컷/배경음) 합성 실패 — 원본으로 재시도:", err[-300:])
+                if keeps:
+                    with open(ass_path, "w", encoding="utf-8") as f:
+                        f.write(build_ass(segs_orig, tw, th, opts))
+                    cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
+                if vocals:
+                    vocals, ins = "", ["-i", video]
+                    bgm_note = "배경음 제거 실패 — 원본 소리로 합성"
+                ok, err = encode(plain_cmd(), 600)
         else:
             ok, err = encode(plain_cmd())
         if not ok:

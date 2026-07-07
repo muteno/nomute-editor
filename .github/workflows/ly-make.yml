@@ -255,15 +255,16 @@ jobs:
           path: |
             ~/.cache/torch
             ~/.cache/pip
-          key: nomute-ly-demucs-${{ runner.os }}-htdemucs-v1
+          key: nomute-ly-demucs-${{ runner.os }}-htdemucs-torch2121-demucs401-v1   # 핀 버전을 키에 반영(핀 갱신 = 키 동행 갱신 · 평의회2)
       - name: Demucs 설치 (배경음 제거)
         if: ${{ contains(inputs.opts, '"bgm":true') }}
+        timeout-minutes: 12   # 설치 폭주 백스톱(재시도 포함 최악 20분 → 12분 컷 · 실측 콜드 3~7분)
         run: |
           ok=0
           export SETUPTOOLS_USE_DISTUTILS=stdlib   # demucs sdist가 데비안 setuptools 패치와 충돌(AttributeError: install_layout) — stdlib distutils로 우회(로컬 실측 260707)
           for i in 1 2; do
-            if timeout 300 pip install -q torch torchaudio torchcodec --index-url https://download.pytorch.org/whl/cpu \
-               && timeout 300 pip install -q demucs soundfile; then ok=1; break; fi   # torchcodec = 신 torchaudio의 save 백엔드(없으면 demucs 저장 ImportError · 로컬 실측 260707)
+            if timeout 300 python3 -m pip install -q torch==2.12.1 torchaudio==2.11.0 torchcodec==0.14.0 --index-url https://download.pytorch.org/whl/cpu \
+               && timeout 300 python3 -m pip install -q demucs==4.0.1 soundfile==0.14.0; then ok=1; break; fi   # 버전 핀 = 무핀 상류 추종의 조용한 기능 사망 차단(torchcodec↔torch ABI 강결합 · 평의회2 P1) · torchcodec = 신 torchaudio save 백엔드(로컬 실측 260707)
             sleep 5
           done
           [ "$ok" = 1 ] && python3 -c "import demucs.separate; print('demucs OK')" \
@@ -273,6 +274,8 @@ jobs:
       #   영상 확보 실패(LY_VIDEO 빈값)여도 ly_burn이 video.json에 스킵 사유 기록 → 뷰어 헛폴링 종료.
       - name: 자막 번인 (영상 합성 → R2)
         if: ${{ inputs.url != '' || inputs.file != '' || inputs.reburn == '1' }}
+        timeout-minutes: 30   # bgm(분리 12m)+인코딩(15m)+폴백(10m) 스택이 잡 하드킬(45m)을 넘보지 않게 스텝 백스톱 — 초과 시 스텝만 실패·아래 커밋 스텝은 산다(하드킬의 기록 우회 봉합 · 평의회2 P1)
+        continue-on-error: true   # 번인 실패/타임아웃 = 자막 텍스트 산출은 지킨다(video.json 미기록 케이스 = 뷰어 폴 타임아웃이 수습)
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
