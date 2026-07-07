@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>/k UIUX·버그 2차 — 260707</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(일회성 스냅샷 · check_refs 비대상) */
+  :root { --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-4:#FFE13D; --danger:#e23b2a; --line:#2a2c31; --pan:#16171a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:20px 14px 60px; background:var(--bg); color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Malgun Gothic",Roboto,sans-serif; }
+  .wrap { max-width:720px; margin:0 auto; }
+  h1 { font-size:20px; margin:4px 0 2px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:18px; }
+  h2 { font-size:16px; color:var(--accent); margin:26px 0 8px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  p, li { color:var(--fg); } .m { color:var(--mut); }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+  th, td { border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:var(--pan); color:var(--mut); font-weight:700; white-space:nowrap; }
+  td b.ok { color:var(--accent); } .warn { color:var(--accent-4); } .bad { color:var(--danger); }
+  code { background:var(--pan); border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-size:12.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  .card { background:var(--pan); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:10px 0; }
+  .tag { display:inline-block; font-size:11.5px; font-weight:800; border-radius:999px; padding:2px 9px; margin-right:6px; }
+  .tg { background:rgba(0,238,210,.12); color:var(--accent); border:1px solid rgba(0,238,210,.35); }
+  .ty { background:rgba(255,225,61,.10); color:var(--accent-4); border:1px solid rgba(255,225,61,.3); }
+  ul { padding-left:20px; margin:6px 0; } li { margin:4px 0; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><b>/k</b> UIUX·버그 2차 — 의도 적중 + 마찰 제거</h1>
+  <div class="sub">260707 · 아이데이션 5인(오퍼스) + 검색 + 페이블 최종 검수 · PR #1830</div>
+
+  <h2>요지</h2>
+  <div class="card">
+    <span class="tag tg">핵심</span>이제 산출물이 <b>"내가 네 요청을 이렇게 읽었다"(의도 에코)</b>를 첫 줄에 보여주고, 복사한 샷은 <b>회색 표식으로 영속 추적</b>되며, 모달을 닫거나 새로고침해도 <b>결과·입력이 살아있다</b>. 문서 절반이 깨지던 렌더 버그(불균형 펜스)와 조용히 레퍼런스가 빠지던 버그, 타임아웃 즉사 버그도 봉합.
+  </div>
+
+  <h2>① 전 / 후 비교</h2>
+  <div class="scroll"><table>
+    <tr><th>항목</th><th>전</th><th>후</th></tr>
+    <tr><td>의도 확인</td><td class="m">산출물을 다 읽기 전까지 오독 여부를 모름</td><td><b class="ok">⚙️ 첫 줄 의도 에코</b> — <code>의도: {요지} → {해석}</code> 한 줄로 즉시 감지. 유형별 각색 강도(상세 묘사는 운영자 요소 보존·시리즈 1편·첨부 불가 고지)·앵글 기본값(화풍치환)·리터럴 보존·추정 구조화("바꾸려면 이 문구")까지 5종</td></tr>
+    <tr><td>멀티샷 복붙 왕복</td><td class="bad">복사 체크가 1.5초 뒤 사라져 어느 샷을 붙였는지 기억에 의존</td><td><b class="ok">복사한 블록 = 회색(mut) 영속 표식</b>(.dl-done 전 앱 기틀 계승 · 재진입해도 생존 · 새로 생성하면 리셋)</td></tr>
+    <tr><td>결과 생존</td><td class="bad">모달 닫기·새로고침 = 결과 증발(1~3분 재생성)</td><td><b class="ok">재열람</b> — 마지막 결과를 24시간 안에 재진입 시 자동 복원("지난 결과 · HH:MM" 라벨)</td></tr>
+    <tr><td>입력 생존</td><td class="bad">모달 닫으면 쓰던 장면 텍스트 증발</td><td><b class="ok">드래프트 자동 저장·복원</b>(+화면 이탈 순간 즉시 플러시)</td></tr>
+    <tr><td>렌더 강건성</td><td class="bad">모델이 닫는 펜스 하나 빠뜨리면 문서 후반 전체가 코드박스로 붕괴</td><td><b class="ok">불균형 펜스 = 텍스트 강등</b>(하네스 실측: 뒷섹션 정상 렌더)</td></tr>
+    <tr><td>이중 발사</td><td class="m">생성 중 재클릭 = 즉시 새 워크플로(경고 문구만)</td><td><b class="ok">4초 재확인 암</b> — 1탭 = "생성 중 — 다시 누르면 재발사", 2탭 = 진짜 재발사(오타 수정 길 유지)</td></tr>
+    <tr><td>타임아웃 회복</td><td class="bad">claude 900s 초과 = 즉시 하드 실패(재시도 0)</td><td><b class="ok">rc=124 → 계정 강제전환 1회 재시도</b>(ask.sh 패턴 이식)</td></tr>
+    <tr><td>레퍼런스 생성</td><td class="bad">펜스 태그에 잔여물 있으면 조용히 생략(무경고 no-op)</td><td><b class="ok">정규식 관용화</b> — 뷰어 렌더와 동일 관용도</td></tr>
+  </table></div>
+
+  <h2>② 장점</h2>
+  <ul>
+    <li><b>신규 화면 요소 0</b> — 전부 기존 요소의 동작 개선(배치 승인 불요 티어)·하우스 선례 계승(.dl-done·REVISING·armCancelThumb·execCommand 폴백).</li>
+    <li><b>UX 리서치 정합</b> — 헤드리스 원샷에서는 사전 프롬프트 개선 루프 대신 <b>출력측 에코백+추정 확정</b>이 정답(Prompt Rewrite 패턴의 의도 보존·가시화 원칙 — uxtigers·shapeof.ai 수렴).</li>
+    <li><b>검수 실효</b> — 페이블 diff 정독에서 결함 1건 추가 발견(재열람 복원 시 복사 표식 리셋)·즉시 봉합. 하네스가 회귀 방지 기준선.</li>
+  </ul>
+
+  <h2>③ 단점 · 한계</h2>
+  <ul>
+    <li>iOS Safari 붙여넣기 버튼(readText)은 폴백 불가(웹 한계) — 복사 쪽만 폴백 확보.</li>
+    <li>재열람은 마지막 1건만(히스토리 패널은 신규 요소 = 승인 대기).</li>
+    <li>의도 에코·리터럴 보존은 프롬프트 지시(소프트) — 모델 준수 확률을 골격+금지 이중으로 높였지만 0은 아님.</li>
+  </ul>
+
+  <h2>④ 효율성</h2>
+  <ul>
+    <li>재생성 낭비 제거: 결과 증발(1~3분·ref 최대 15분 재실행)과 입력 재타이핑이 사라짐.</li>
+    <li>오독 감지가 산출물 첫 줄로 당겨져 리롤 판단이 빨라짐 + "바꾸려면 이 문구" = 재입력 비용 최소화.</li>
+    <li>타임아웃 계정 전환으로 헛 실패(운영자 재발사) 감소.</li>
+  </ul>
+
+  <h2>⑤ 품질 저하 리스크</h2>
+  <div class="scroll"><table>
+    <tr><th>리스크</th><th>평가</th></tr>
+    <tr><td>localStorage 3키(k_scene_draft·k_last_out·k_copied) 상호작용</td><td><b class="ok">낮음</b> — 하네스에서 3키 공존 시나리오 실측(T1·T5·T8 동시 PASS). 새 생성 시 k_copied 리셋으로 오염 차단.</td></tr>
+    <tr><td>재열람이 새 생성과 레이스</td><td><b class="ok">낮음</b> — <code>_curStop</code>·#out 비어있음 이중 가드(생성이 시작됐으면 양보).</td></tr>
+    <tr><td>인포스트링 관용 오탐(짧은 영문 첫 줄 오삭제)</td><td><b class="ok">낮음</b> — 24자 상한+실프롬프트 첫 줄은 한국어/@ 구조. 하네스 T2c로 @ 본문 보존 확인.</td></tr>
+    <tr><td>rc=124 전환이 쿼터 체인 교란</td><td><b class="ok">낮음</b> — 1회 제한(<code>_to_tried</code>)·형제 스크립트(ask.sh) 검증된 패턴 그대로.</td></tr>
+  </table></div>
+
+  <h2>미실행 제안 (신규 화면 요소 = 배치 승인 대기)</h2>
+  <ul>
+    <li><span class="tag ty">A</span><b>예시 칩(탭-투-필)</b> — 입력칸 아래 상황별 예문 칩 3~4개, 탭하면 입력창에 채워짐(자동 발사 금지·편집 전제). blank-page 마비 제거.</li>
+    <li><span class="tag ty">B</span><b>비율 퀵토글(9:16/16:9)</b> — 참조 이미지 체크 줄 옆, 선택 시 장면 텍스트에 비율 요구 1줄 자동 첨부.</li>
+    <li><span class="tag ty">C</span><b>결과 히스토리</b> — 최근 생성 N건 목록(접이식)에서 과거 결과 재열람.</li>
+    <li><span class="tag ty">D</span><b>레퍼런스 이미지 저장 버튼</b> — 이미지 우하단 .dlbtn 계승(검정 플레이트 오버레이) — 현재는 OS 롱프레스 의존.</li>
+  </ul>
+
+  <p class="m" style="margin-top:22px">검증: 아이데이션 5인(오퍼스·READ-ONLY) → 수렴안 채택 → 페이블 최종 검수(diff 정독 + Playwright 하네스 12/12 + check_refs·bash -n·py_compile) → main 머지 → read-back. 백업 = <code>_versions/260707_2345_클링_UIUX버그_2차/</code>.</p>
+</div>
+</body>
+</html>
