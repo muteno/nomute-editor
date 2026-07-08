@@ -106,18 +106,19 @@ function page(msg, status = 200) {
     status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow' },
   });
 }
-// 핀 입력 폼 — PAYCO식 키패드(방식 계승·운영자 260703). 6칸 슬롯(입력한 것만 강조색) + 자체 숫자 키패드(OS 키보드 X · 고정 정상순서).
-// 키패드 = 고정 정상배열(1·2·3 / 4·5·6 / 7·8·9 / 0 · 셔플 폐지 260708 · 앱 잠금화면 lkOrder와 통일). 구 2판 셔플(1~4 판A·5~6 판B · 어깨너머 완화)은 폐지 — 발행본도 정상순서 통일(운영자 260708).
+// 핀 입력 폼 — PAYCO식 보안 키패드(방식 계승·운영자 260703). 6칸 슬롯(입력한 것만 강조색) + 자체 셔플 숫자 키패드(OS 키보드 X).
+// 키패드 셔플 = 2판제(운영자 260703 개정): 1~4자리 = 판A 고정 · 5~6자리 = 판B 고정(입력마다 재셔플 X — 위치 학습 가능해 오입력↓).
+//   백스페이스로 3자리 이하로 되돌아가면 판A로 복귀 = 자리수↔판 매핑이 항상 유지(어깨너머 완화는 2판 전환+매 로드 새 셔플로 확보).
 // 입력 순간 = 방금 누른 자리만 숫자 잠깐 노출(0.7s·다음 입력/검증 시 즉시 마스킹 — 폰 비번 관례·운영자 260703).
 //   마스킹 표식 = 명조(세리프) '*' 강조색(점보다 가시적·운영자 260703) · 슬롯은 균일 그리드 박스(숫자·별 기준선 통일 = 내려앉음 교정).
 // 6칸 채우면 *자동 검증*(별도 열기 버튼 X) → POST 제출로 서버 검증(핀이 URL·히스토리에 안 남음 — "이동 시 핀 노출" 교정·운영자 260703).
 //   성공 = 서버가 문서 HTML로 응답(페이지 교체 = 자동 오픈) / 실패 = 폼 재응답(fails>0) → 로드 시 슬롯 빨강+흔들림+처음부터(입력 빈 상태).
 //   빨강(슬롯·입력부만)은 3초 유지 후 처음 색으로 자동 복귀(입력 시작해도 즉시 복귀) — 잠금(locked) 문구는 상태라 유지(운영자 260703).
 //   notice(마스터 입력 시) = '비밀번호 초기화 완료' 안내(.info mut · 에러 아님 → 흔들림 없음).
-// 키패드 = 셀 사이 구분선(내부선만·--line) · 누름 순간 강조색 플래시(.hit·운영자 260703).
+// 키패드 = 셀 사이 구분선(내부선만·--line) · 5~6자리(판B)는 키 전경색이 강조 틴트로 바뀜(판 전환 시각 표기) · 누름 순간 강조색 플래시(.hit·운영자 260703).
 // 카드 배경 제거(글자·슬롯·패드만 흑배경 위) · CSP 헤더 없음 → 인라인 style/script 동작.
-// ⚠️ 실제 PIN은 hidden input(name=p)로 POST 제출 = 서버 검증(클라 키패드는 표시용·검증 무관). 슬롯/키패드는 표시 UI라 pattern·novalidate 무관.
-// ※ 이 폼 = PIN 입력 UI 정본(범용 — 다른 화면에 이식 시 이 슬롯·고정 키패드·에러 상태머신 그대로 계승).
+// ⚠️ 실제 PIN은 hidden input(name=p)로 POST 제출 = 서버 검증(클라 셔플은 표시용·검증 무관). 슬롯/키패드는 표시 UI라 pattern·novalidate 무관.
+// ※ 이 폼 = PIN 입력 UI 정본(범용 — 다른 화면에 이식 시 이 슬롯·2판 키패드·에러 상태머신 그대로 계승).
 function pinForm(slug, fails, notice) {
   const locked = fails >= LOCK_MAX;
   const msg = locked ? 'PIN 오류 5회 누적으로 10분 간 접속이 불가합니다'
@@ -155,6 +156,8 @@ function pinForm(slug, fails, notice) {
 .key.back.hit svg{stroke:var(--accent)}
 .key.empty{pointer-events:none}   /* visibility:hidden이면 구분선까지 사라져 격자에 구멍 → 투명 셀로 유지(운영자 260703) */
 .key.back svg{width:26px;height:26px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s ease}
+.pad.b2 .key{color:rgba(var(--accent-rgb),.85)}   /* 5~6자리(판B) = 키 전경색 강조 틴트 → 배치 바뀜을 색으로 표기(운영자 260703) */
+.pad.b2 .key.back svg{stroke:rgba(var(--accent-rgb),.85)}
 .pad.off{pointer-events:none;opacity:.45;transition:opacity .2s ease}   /* 확인 중 = 패드 비활성 */
 @media (prefers-reduced-motion:reduce){.slots.shake{animation-duration:.01s}.slots.checking .slot.on{animation:none}.key:active{transform:none}}
 </style>
@@ -164,17 +167,19 @@ function pinForm(slug, fails, notice) {
       slots=document.getElementById('slots'),dots=slots.getElementsByClassName('slot'),verr=document.getElementById('verr');
   var real='',fired=false,kds=null,peekT=null,badT=null,LOCKED=${locked ? 'true' : 'false'};
   var BSVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H9l-6 7 6 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="M16 9l-4 4M12 9l4 4"/></svg>';
-  function mkOrder(){return [1,2,3,4,5,6,7,8,9,0];}             // 고정 정상 배열(1-9·0) = 앱 잠금화면 lkOrder와 동일 정책 · 셔플 폐지(운영자 260708 "발행본도 정상순서로 통일")
-  var order=mkOrder();                                           // 단판 고정(구 orderA/orderB 2판 셔플 폐지 260708 · 배치 불변이라 판 전환 무의미)
-  function build(){                                              // 12칸 = 숫자 9 + 빈칸 + 숫자 1 + 지우기. 버튼 노드는 고정, 라벨만 갱신(누름 :active 유지·DOM 파괴 없음)
+  function mkOrder(){var o=[0,1,2,3,4,5,6,7,8,9];for(var i=9;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=o[i];o[i]=o[j];o[j]=t;}return o;}
+  var orderA=mkOrder(),orderB=mkOrder();                        // 2판제: 1~4자리=판A · 5~6자리=판B(입력 중 재셔플 X·백스페이스로 돌아가도 매핑 유지·운영자 260703)
+  function build(){                                              // 12칸 = 숫자 9 + 빈칸 + 숫자 1 + 지우기. 버튼 노드는 고정, 라벨만 셔플(누름 :active 유지·DOM 파괴 없음)
     var h='';for(var i=0;i<9;i++)h+='<button type="button" class="key kd"></button>';
     h+='<button type="button" class="key empty" tabindex="-1" aria-hidden="true"></button>';
     h+='<button type="button" class="key kd"></button>';
     h+='<button type="button" class="key back" data-back="1" aria-label="지우기">'+BSVG+'</button>';
     pad.innerHTML=h;kds=pad.querySelectorAll('.kd');            // 10개 숫자 버튼(DOM 순서 = order 인덱스)
   }
-  function applyOrder(){                                        // 고정 배열 적용(구 자리수별 판A/B 전환·b2 색틴트 폐지 260708 · index lkApply 대칭)
-    for(var i=0;i<10;i++){kds[i].textContent=order[i];kds[i].setAttribute('data-d',order[i]);}
+  function applyOrder(){                                        // 자리수로 판 결정 = 지웠다 다시 쳐도 같은 판. 판B = .b2(키 전경색 틴트로 배치 전환 표기)
+    var b2=real.length>=4,o=b2?orderB:orderA;
+    pad.classList.toggle('b2',b2);
+    for(var i=0;i<10;i++){kds[i].textContent=o[i];kds[i].setAttribute('data-d',o[i]);}
   }
   function flash(el){                                           // 누름 순간 강조색 — :active만으론 짧은 탭에 안 보여 JS로 0.18s 유지(물리 키보드 입력도 해당 키 점등)
     if(!el)return;
@@ -195,7 +200,7 @@ function pinForm(slug, fails, notice) {
     if(fired||real.length>=6)return;
     flash(pad.querySelector('.kd[data-d="'+d+'"]'));            // 클릭·물리키 공통 점등(호출부가 숫자만 보장)
     unbad();real+=String(d);fill(true);
-    applyOrder();                                               // 고정 배열 재적용(배치 불변 · 구 4자리째 판B 전환 폐지 260708 · index lkPress 대칭)
+    applyOrder();                                               // 4자리 채우는 순간 판B로 전환(그 전까진 판A 고정)
     if(real.length===6)setTimeout(fire,340);
   }
   function back(){if(fired||!real.length)return;flash(pad.querySelector('.back'));unbad();real=real.slice(0,-1);fill();applyOrder();}
