@@ -46,7 +46,17 @@ export async function onRequestPost({ request, env }) {
     }
     if (mode === 'mosaic' && !targets.length && !invert) return json({ error: '가릴 인물을 골라줘' }, 400);
     if (mode === 'pinset' && !Object.keys(names).length) return json({ error: '이름을 하나는 넣어줘' }, 400);
-    const payload = JSON.stringify({ mode, targets, invert, names, colors });
+    // 모자이크 조절 옵션(운영자 260708) — 화이트리스트 수치 클램프(렌더 py에서 재클램프 = 이중 방어)
+    const opts = {};
+    if (r.opts && typeof r.opts === 'object') {
+      const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;   // 숫자 타입 선요구 = ly.js 관례(강제변환 관용 제거 · 평의회E F2)
+      const pw = num(r.opts.pxw, 3, 20); if (pw !== null) opts.pxw = Math.round(pw);   // 상한 20 = 얼굴당 ~14블록(재식별 방지 바닥 · 평의회G)
+      const ph = num(r.opts.pxh, 3, 20); if (ph !== null) opts.pxh = Math.round(ph);
+      const sz = num(r.opts.size, 0.75, 2.5); if (sz !== null) opts.size = Math.round(sz * 100) / 100;   // 하한 0.75 = 하단 시프트 구속(0.4+0.8s≥1) — 커버 ≥ 검출박스 전 변(초상권 바닥 · 평의회G①)
+      const fe = num(r.opts.feather, 0, 40); if (fe !== null) opts.feather = Math.round(fe);   // 상한 40 = UI 정렬(평의회H)
+      if (r.opts.shape === 'ellipse' || r.opts.shape === 'rect') opts.shape = r.opts.shape;
+    }
+    const payload = JSON.stringify({ mode, targets, invert, names, colors, opts });
     if (payload.length > 4000) return json({ error: '선택이 너무 많아 — 줄여줘' }, 400);
     const rr = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
       ref: REF, inputs: { id, mode: 'render', render: payload },

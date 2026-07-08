@@ -106,6 +106,16 @@
   .invtg::before { content:""; position:absolute; inset:-6px; }   /* 히트슬롭(평의회7) */
   .invtg:active { transform:scale(var(--press-m)); }
   .invtg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
+  /* 모자이크 조절(운영자 260708 "강도·픽셀 가로세로·페더·크기") — 게이지 행 = ly 옵션 게이지(.lyopt-row) 계승 */
+  .mopts { display:flex; flex-direction:column; gap:8px; margin:0 0 12px; }
+  .mopts[hidden], .invtg[hidden], #dlVid[hidden] { display:none; }   /* ⚠️ display:flex가 UA [hidden]을 덮는 함정 — ly.html:123 전례 봉합(평의회C F1·F2: 핀셋 모드 게이지 잔존·빈 다운로드 박스) */
+  .mo-row { display:flex; align-items:center; gap:10px; }
+  .mo-k { flex:none; width:60px; color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-b); }
+  .mo-row input[type=range] { flex:1; min-width:60px; accent-color:var(--accent); }
+  .mo-v { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:36px; text-align:right; color:var(--fg); }
+  .opt2 { flex:none; padding:0 12px; height:28px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-family:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .opt2:active { transform:scale(var(--press-m)); }
+  .opt2.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
 
   /* 인물 카드(step2) — 실검출 크롭 · minmax 136 = 320px 폰에서도 2열(평의회7) */
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(136px,1fr)); gap:12px; }
@@ -183,6 +193,16 @@
       <button class="mseg" data-m="pinset" role="tab" aria-selected="false">핀셋</button>
     </div>
     <button class="invtg" id="invtg" type="button" aria-pressed="false">선택 빼고 다 가리기</button>
+    <div class="mopts" id="mopts">
+      <div class="mo-row"><span class="mo-k">모양</span>
+        <button class="opt2 on" type="button" data-shape="rect" aria-pressed="true">네모</button>
+        <button class="opt2" type="button" data-shape="ellipse" aria-pressed="false">타원</button>
+      </div>
+      <div class="mo-row"><span class="mo-k">블록 가로</span><input type="range" id="moPxw" min="4" max="20" step="1" value="9" aria-label="블록 가로 — 모자이크 가로 블록 수(적을수록 굵음)"><span class="mo-v" id="moPxwV">9</span></div>
+      <div class="mo-row"><span class="mo-k">블록 세로</span><input type="range" id="moPxh" min="4" max="20" step="1" value="9" aria-label="블록 세로 — 모자이크 세로 블록 수(적을수록 굵음)"><span class="mo-v" id="moPxhV">9</span></div>
+      <div class="mo-row"><span class="mo-k">크기</span><input type="range" id="moSize" min="75" max="200" step="5" value="100" aria-label="크기 — 모자이크 커버 배율 %"><span class="mo-v" id="moSizeV">100%</span></div>
+      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="moFeather" min="0" max="40" step="2" value="0" aria-label="페더 — 모자이크 가장자리 부드러움 px"><span class="mo-v" id="moFeatherV">0</span></div>
+    </div>
     <label class="fl" style="margin-top:0">등장인물 <b style="color:var(--accent)" id="pcount">0명</b> <span class="mut2" id="dropnote"></span></label>
     <div class="grid" id="grid" data-mode="mosaic"></div>
     <div class="footer">
@@ -213,7 +233,8 @@ const PALETTE=['#00EED2','#e23b2a','#d8ff3d','#0FFD02','#38C6FF','#FF5EC8','#FFE
 const PEND_KEY='nm_track_pend';
 const API='/api/track';
 const BUDGET=600;   // 폴 소프트 예산(초) — 분석·렌더 공용(하드 = ×2 · 재개 클램프도 이 값)
-let TK={ id:'', meta:null, people:[], mode:'mosaic', sel:new Set(), invert:false, names:{}, resultUrl:'' };
+const MO_DFLT={shape:'rect',pxw:9,pxh:9,size:100,feather:0};   // 모자이크 조절 기본값 — 커버 영역은 종전과 동일·타일 분할만 종횡 독립(세로 = 높이 기준 · 평의회F 정직 정정)
+let TK={ id:'', meta:null, people:[], mode:'mosaic', sel:new Set(), invert:false, names:{}, resultUrl:'', opts:{...MO_DFLT} };
 let FILE_B64='', FILE_NAME='';
 let USER_ACT=false;   // 사용자 발사 개시 = 늦게 도착한 pend 복원이 새 작업을 격침 못 하게(평의회5 · ly LY_GEN 등가)
 const unlocked=[true,false,false];
@@ -237,7 +258,7 @@ $('#stepper').addEventListener('click',e=>{const t=e.target.closest('.snode'); i
 const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
 const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
 const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
-const pendReady=()=>pendSet({id:TK.id, st:'ready', t0:Date.now(), mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names});   // 인물 확정 상태 영속 — 서브탭 전환 iframe 리로드에도 step2 복원(평의회5 상⑨)
+const pendReady=()=>pendSet({id:TK.id, st:'ready', t0:Date.now(), mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names, opts:TK.opts});   // 인물 확정 상태 영속 — 서브탭 전환 iframe 리로드에도 step2 복원(평의회5 상⑨)
 
 // ── STEP1 입력 (ly 문법 계승) ──
 const FILE_ICON=$('#fileTxt').innerHTML;   // 빈 슬롯 픽토그램 원본(초과 리셋 복원용)
@@ -390,6 +411,7 @@ function applyMode(){
   $('#grid').dataset.mode=TK.mode;
   $$('.mseg').forEach(b=>{ const on=b.dataset.m===TK.mode; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
   const iv=$('#invtg'); iv.hidden=TK.mode!=='mosaic'; iv.classList.toggle('on',TK.invert); iv.setAttribute('aria-pressed',TK.invert?'true':'false');
+  $('#mopts').hidden=TK.mode!=='mosaic';   // 조절 게이지 = 모자이크 전용
   $$('#grid .card').forEach(c=>{   // 모자이크 = 카드 자체가 토글 버튼(키보드·SR 도달) / 핀셋 = 입력칸만
     if(TK.mode==='mosaic'){ c.setAttribute('role','button'); c.tabIndex=0; c.setAttribute('aria-pressed', c.classList.contains('sel')?'true':'false'); }
     else { c.removeAttribute('role'); c.removeAttribute('aria-pressed'); c.tabIndex=-1; }
@@ -415,6 +437,24 @@ function recount(){
 }
 $$('.mseg').forEach(b=>b.addEventListener('click',()=>{ TK.mode=b.dataset.m; applyMode(); }));
 $('#invtg').addEventListener('click',()=>{ TK.invert=!TK.invert; applyMode(); });
+// ── 모자이크 조절(운영자 260708) — 값 = TK.opts(렌더 페이로드·pend 영속) ──
+const moWire=(id,key,fmt)=>{ const el=$('#'+id), v=$('#'+id+'V'); el.addEventListener('input',()=>{ TK.opts[key]=+el.value; v.textContent=fmt(+el.value); if(step===1&&TK.id)pendReady(); }); };   // 편집 즉시 pend 재저장 = 서브탭 전환에도 미발사 조절값 생존(평의회B N3)
+moWire('moPxw','pxw',String); moWire('moPxh','pxh',String); moWire('moSize','size',n=>n+'%'); moWire('moFeather','feather',String);
+$$('#mopts .opt2').forEach(b=>b.addEventListener('click',()=>{
+  TK.opts.shape=b.dataset.shape;
+  $$('#mopts .opt2').forEach(x=>{ const on=x.dataset.shape===TK.opts.shape; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  if(step===1&&TK.id)pendReady();
+}));
+function moSync(){   // TK.opts → 게이지 UI(복원 경로) — 오염 pend 방어 = 숫자 강제(moWire와 대칭 · 평의회C F3)
+  TK.opts=Object.assign({},MO_DFLT,TK.opts||{});
+  ['pxw','pxh','size','feather'].forEach(k=>{ const n=+TK.opts[k]; TK.opts[k]=Number.isFinite(n)?n:MO_DFLT[k]; });
+  if(TK.opts.shape!=='ellipse') TK.opts.shape='rect';
+  $('#moPxw').value=TK.opts.pxw; $('#moPxwV').textContent=TK.opts.pxw;
+  $('#moPxh').value=TK.opts.pxh; $('#moPxhV').textContent=TK.opts.pxh;
+  $('#moSize').value=TK.opts.size; $('#moSizeV').textContent=TK.opts.size+'%';
+  $('#moFeather').value=TK.opts.feather; $('#moFeatherV').textContent=TK.opts.feather;
+  $$('#mopts .opt2').forEach(x=>{ const on=x.dataset.shape===TK.opts.shape; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+}
 $('#back1').addEventListener('click',()=>{ if(_curStop)_curStop(); pendClear(); unlocked[1]=false; unlocked[2]=false; go(0); });
 $('#back2').addEventListener('click',()=>{ go(1); });   // 렌더 폴은 유지(진행 중이면 완료가 step3에 준비됨) — go(1)이 recount로 CTA 재활성
 
@@ -425,14 +465,15 @@ $('#toRender').addEventListener('click',async()=>{
   btn.disabled=true;
   const names={}, colors={};
   TK.people.forEach(p=>{ const pid=p.pid|0; colors[pid]=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length]; const nm=(TK.names[pid]||'').trim(); if(nm) names[pid]=nm; });
-  const payload={render:{id:TK.id, mode:TK.mode, targets:[...TK.sel], invert:TK.invert, names, colors}};
+  const payload={render:{id:TK.id, mode:TK.mode, targets:[...TK.sel], invert:TK.invert, names, colors,
+    opts:{shape:TK.opts.shape, pxw:TK.opts.pxw, pxh:TK.opts.pxh, size:TK.opts.size/100, feather:TK.opts.feather}}};
   const prevUrl=TK.resultUrl||'';   // 직전 결과 배제 기준선(90s 창 오인 차단 · ly skipUrl 문법 · 평의회5·9)
   try{
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
     if(!res.ok||j.error){ st.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); st.classList.add('err'); recount(); return; }
     const t0=Date.now();
-    pendSet({id:TK.id, st:'render', t0, mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names});
+    pendSet({id:TK.id, st:'render', t0, mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names, opts:TK.opts});
     unlocked[2]=true; go(2); pollRender(t0, prevUrl, t0-90000);
   }catch(e){ st.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; st.classList.add('err'); recount(); }
 });
@@ -509,6 +550,8 @@ $('#dlVid').addEventListener('click',e=>{
   b.classList.add('dl-done');
 });
 
+moSync();   // 부팅 1회 = MO_DFLT 단일 출처화(HTML value 속성과의 이중정의 드리프트 차단 · 평의회C F5)
+
 // ── 진행 이어받기(리로드·서브탭 전환·재진입) — pend 단계별 복원(0 유실 · 평의회5 상⑨) ──
 // analyze: t0을 소프트 예산 직전으로 클램프 — draw()의 하드 타임아웃이 tick()보다 먼저 걸려 완성 결과를
 //   영영 못 받던 구멍 봉합(평의회7 상1 · ly 1434 "창 밖 = 1회 확인" 등가·더 단순).
@@ -525,6 +568,7 @@ $('#dlVid').addEventListener('click',e=>{
   if(P.st!=='ready'&&P.st!=='render'){ pendClear(); return; }
   TK.mode=(P.mode==='pinset')?'pinset':'mosaic';
   TK.sel=new Set((P.sel||[]).map(n=>n|0)); TK.invert=!!P.invert; TK.names=P.names||{};
+  TK.opts=(P.opts&&typeof P.opts==='object')?P.opts:{...MO_DFLT}; moSync();
   fetch('track_out/'+P.id+'/tracks.json?t='+Date.now())
     .then(r=>r.ok?r.text():null)
     .then(tx=>{

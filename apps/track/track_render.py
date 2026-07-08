@@ -2,7 +2,8 @@
 # 인물 트래킹 렌더 — tracks.json 타임라인 + 선택 페이로드 → 모자이크(픽셀레이트) 또는 핀셋(이름표) 번인
 #   → R2 업로드 → viewer/track_out/<id>/video.json (뷰어 폴링 · ly_burn video.json 패턴 계승).
 #   사용: track_render.py <id>   (track-make.yml render 스텝 전용 · 소스는 tracks.json meta.src에서 자체 회수)
-# env: RENDER = {"mode":"mosaic"|"pinset","targets":[pid],"invert":bool,"names":{pid:이름},"colors":{pid:"#hex"}}
+# env: RENDER = {"mode":"mosaic"|"pinset","targets":[pid],"invert":bool,"names":{pid:이름},"colors":{pid:"#hex"},
+#                "opts":{pxw,pxh,size,feather,shape}}   (opts = 모자이크 조절 · 핀셋은 무시)
 #      R2 5종(thumb_gen 재사용 · 미설정 = 30MB 이하 git 폴백)
 # 고퀄 5원칙(00_지침 정본): ① 검출 갭 보간(깜빡임 0) ② 3탭 이동평균 스무딩(덜덜 떨림 0·EMA 지연 없음)
 #   ③ 시간 안전마진 ±0.3s(모자이크는 한 프레임 노출도 실패 → 과잉 커버 편향) ④ 같은 인물 트랙 간 갭 ≤1.2s 브리지(가림 통과)
@@ -23,9 +24,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import thumb_gen as tg   # r2_upload · R2_ON 재사용
 
 PAD_SEC = 0.30           # 트랙 앞뒤 시간 안전마진
+EDGE_PAD_SEC = 0.5       # 화면 가장자리 접촉 트랙 추가 패딩 — 이탈/진입 슬리버(검출 불가 부분 얼굴)는 속도 외삽으로 추적 커버(평의회I 노출 적발 봉합)
+EDGE_TOUCH_PX = 4        # 가장자리 접촉 판정 여유
 BRIDGE_SEC = 1.2         # 같은 인물 트랙 간 이 이하 갭 = 보간 브리지(짧은 가림·검출 미스 통과)
 MARGIN_W, MARGIN_H, SHIFT_UP = 1.45, 1.60, 0.10   # 모자이크 공간 마진(이마·머리카락)
-BLOCK_DIV = 9            # 픽셀 블록 = 박스폭/9 (하한 8px)
+BLOCK_DIV = 9            # 픽셀 블록 기본 분할 수(가로=폭/9 · 세로=높이/9 · 하한 8px — 구 렌더는 세로도 폭 기준이라 기본값도 픽셀 비동일·커버는 동일)
 GIT_FALLBACK_MAX = 30 * 1024 * 1024
 PALETTE = ["#00EED2", "#e23b2a", "#d8ff3d", "#0FFD02", "#38C6FF", "#FF5EC8", "#FFE13D", "#AC5CFF",
            "#2CF5A5", "#ff7a6b", "#3a6ddb", "#eef7f0"]   # 뷰어 STEP2 카드와 동일 순서(브랜드 팔레트 값 복사 — 자기완결 산출물 = §핵심명령 3-c 계승)
@@ -74,9 +77,27 @@ def smooth3(kf):
     return out
 
 
-def build_spans(person, fps, total_frames):
-    """사람 1명의 segs → 연속 스팬 목록. 스팬 = 단조증가 키프레임 [[f,x,y,w,h],...] (± 패딩·갭 브리지 포함)."""
+def _near_edge(k, W, H):
+    """박스가 화면 가장자리 접촉 = 이탈/진입 중일 개연(검출 불가 슬리버가 이어질 자리)."""
+    if not W or not H:
+        return False
+    return k[1] <= EDGE_TOUCH_PX or k[2] <= EDGE_TOUCH_PX or k[1] + k[3] >= W - EDGE_TOUCH_PX or k[2] + k[4] >= H - EDGE_TOUCH_PX
+
+
+def _extrap(k1, k2, df):
+    """k2에서 df프레임 외삽(속도 = k1→k2) — 가장자리 이탈/진입 슬리버를 이동 방향 그대로 추적 커버.
+    크기는 축소 금지(마지막 크기 유지 하한) = 커버 감소 방향 차단."""
+    dt = max(1, k2[0] - k1[0])
+    vx, vy = (k2[1] - k1[1]) / dt, (k2[2] - k1[2]) / dt
+    return [k2[0] + df, k2[1] + vx * df, k2[2] + vy * df, max(k2[3], k1[3]), max(k2[4], k1[4])]
+
+
+def build_spans(person, fps, total_frames, W=0, H=0):
+    """사람 1명의 segs → 연속 스팬 목록. 스팬 = 단조증가 키프레임 [[f,x,y,w,h],...] (± 패딩·갭 브리지 포함).
+    가장자리 접촉 끝단 = 속도 외삽 + 연장 패딩(0.3s→0.8s) — 정적 패딩은 움직이는 이탈 슬리버(f당 수 px씩
+    화면 밖으로 나가는 부분 얼굴)를 못 덮는다(평의회I 실측: 이탈 4~15프레임 노출 → 봉합)."""
     pad = int(round(PAD_SEC * fps))
+    epad = int(round(EDGE_PAD_SEC * fps))
     bridge = int(round(BRIDGE_SEC * fps))
     segs = sorted(person.get("segs") or [], key=lambda s: s["f0"])
     groups = []   # 브리지(≤1.2s 갭)로 이어붙인 kf 묶음 — 갭 구간은 sample()의 선형보간이 커버
@@ -100,8 +121,19 @@ def build_spans(person, fps, total_frames):
     spans = []
     for g in groups:
         g.sort(key=lambda k: k[0])   # 포함 트랙 extend = f 역행 가능 → 정렬로 단조 복원(끝 패딩·이분탐색 안전 · 평의회4 후속)
-        head = [max(0, g[0][0] - pad)] + list(g[0][1:])   # 시간 안전마진 ±0.3s(첫·끝 박스 고정 유지)
-        tail = [min(total_frames, g[-1][0] + pad)] + list(g[-1][1:])
+        edge_h, edge_t = _near_edge(g[0], W, H), _near_edge(g[-1], W, H)
+        pad_h = pad + (epad if edge_h else 0)
+        pad_t = pad + (epad if edge_t else 0)
+        if edge_h and len(g) >= 2:
+            head = _extrap(g[1], g[0], -min(pad_h, g[0][0]))   # 역방향 외삽(진입 슬리버 추적)
+            head[0] = max(0, g[0][0] - pad_h)
+        else:
+            head = [max(0, g[0][0] - pad_h)] + list(g[0][1:])   # 시간 안전마진(첫 박스 고정)
+        if edge_t and len(g) >= 2:
+            tail = _extrap(g[-2], g[-1], pad_t)                 # 순방향 외삽(이탈 슬리버 추적)
+            tail[0] = min(total_frames, g[-1][0] + pad_t)
+        else:
+            tail = [min(total_frames, g[-1][0] + pad_t)] + list(g[-1][1:])
         sp = [head] + g + [tail]
         dd = []   # f 단조·중복 제거(패딩이 기존 kf와 같은 f일 때)
         for k in sp:
@@ -130,19 +162,51 @@ def sample(span, f):
     return [a[i] + (b[i] - a[i]) * t for i in range(1, 5)]
 
 
-def mosaic_region(frame, x, y, w, h, W, H):
+def mosaic_region(frame, x, y, w, h, W, H, pxw=BLOCK_DIV, pxh=BLOCK_DIV, size=1.0, feather=0, shape="rect"):
+    """모자이크 1박스 — 옵션(운영자 260708): pxw/pxh = 블록 가로/세로 분할 수(프리미어 수평/수직 블록 동일 개념 ·
+    적을수록 굵음) · size = 커버 배율 · feather = 가장자리 페더 px · shape = rect/ellipse.
+    커버 보증 = 코어-강제 방식(평의회 A F1·G③④ 봉합): 코어(마진박스·참 중심 기준) 마스크를 블러 후
+    `maximum(core)`로 내부 1.0 복원 → 페더는 코어 *바깥 링 전용*(소형 얼굴 중심 반투명·가장자리 후퇴 원천 차단).
+    타원 = 코어 내접(검출박스 모서리 = 대부분 배경 · size 하한 0.75가 얼굴 타원 커버 보증 — 완전 박스 커버는 네모)."""
     cx, cy = x + w / 2, y + h / 2 - h * SHIFT_UP
-    w2, h2 = w * MARGIN_W, h * MARGIN_H
+    cw, ch = w * MARGIN_W * size, h * MARGIN_H * size   # 코어(보증 커버) 크기
+    w2, h2 = cw + feather * 2, ch + feather * 2         # 렌더 영역 = 코어 + 페더 링
     x0, y0 = int(max(0, cx - w2 / 2)), int(max(0, cy - h2 / 2))
     x1, y1 = int(min(W, cx + w2 / 2)), int(min(H, cy + h2 / 2))
     rw, rh = x1 - x0, y1 - y0
     if rw < 4 or rh < 4:
         return
-    block = max(8, int(round(w2 / BLOCK_DIV)))
-    sw, sh = max(1, rw // block), max(1, rh // block)
+    bw = max(8, int(round(w2 / max(1, pxw))))   # 블록 절대 하한 8px = 구 렌더 익명성 바닥 유지(평의회F·A F3)
+    bh = max(8, int(round(h2 / max(1, pxh))))
+    sw, sh = max(1, rw // bw), max(1, rh // bh)
     reg = frame[y0:y1, x0:x1]
-    small = cv2.resize(reg, (sw, sh), interpolation=cv2.INTER_LINEAR)
-    frame[y0:y1, x0:x1] = cv2.resize(small, (rw, rh), interpolation=cv2.INTER_NEAREST)
+    mos = cv2.resize(cv2.resize(reg, (sw, sh), interpolation=cv2.INTER_LINEAR), (rw, rh), interpolation=cv2.INTER_NEAREST)
+    if feather <= 0 and shape != "ellipse":
+        frame[y0:y1, x0:x1] = mos
+        return
+    f = max(0, int(feather))
+    # 코어 마스크 = 참 중심(cx,cy) 기준 미클램프 기하 — 화면 가장자리 클램프에도 후퇴 없이 경계까지 솔리드(cv2가 자동 클립 · 평의회A F2·G④)
+    mcx, mcy = cx - x0, cy - y0
+    ax, ay = cw / 2, ch / 2
+    core = np.zeros((rh, rw), np.float32)
+    if shape == "ellipse":
+        cv2.ellipse(core, (int(round(mcx)), int(round(mcy))), (max(1, int(round(ax))), max(1, int(round(ay)))), 0, 0, 360, 1.0, -1)
+    else:
+        cv2.rectangle(core, (int(round(mcx - ax)), int(round(mcy - ay))), (int(round(mcx + ax)), int(round(mcy + ay))), 1.0, -1)
+    mask = core
+    if f > 0:
+        ds = 4 if f >= 8 else 1   # 다운스케일 블러 ≈47% 절감(평의회H) — 그라디언트라 업스케일 후 시각 동일
+        if ds > 1:
+            sm = cv2.resize(core, (max(1, rw // ds), max(1, rh // ds)), interpolation=cv2.INTER_AREA)
+            kk = 2 * max(1, f // ds) + 1
+            sm = cv2.GaussianBlur(sm, (kk, kk), (f / ds) * 0.6)
+            mask = cv2.resize(sm, (rw, rh), interpolation=cv2.INTER_LINEAR)
+        else:
+            k = 2 * f + 1
+            mask = cv2.GaussianBlur(core, (k, k), f * 0.6)
+        mask = np.maximum(mask, core)   # 코어 강제 1.0 — 중심·구 커버 완전 보증(블러의 코어 침식 복원)
+    m3 = mask[:, :, None]
+    frame[y0:y1, x0:x1] = np.rint(reg.astype(np.float32) * (1 - m3) + mos.astype(np.float32) * m3).astype(np.uint8)
 
 
 def find_font():
@@ -282,6 +346,21 @@ def main():
     invert = bool(req.get("invert"))
     targets = {int(t) for t in (req.get("targets") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)}
 
+    def _num(v, lo, hi, dflt):   # 옵션 수치 방어(서버 검증과 이중 — 직접 dispatch도 안전)
+        try:
+            x = float(v)
+            if math.isnan(x):
+                return dflt
+            return max(lo, min(hi, x))
+        except (TypeError, ValueError):
+            return dflt
+    raw_opts = req.get("opts") if isinstance(req.get("opts"), dict) else {}
+    mo = {"pxw": int(round(_num(raw_opts.get("pxw"), 3, 20, BLOCK_DIV))),   # round = api Math.round와 정렬(평의회B N1) · 상한 20 = 얼굴당 ~14블록(재식별 방지 바닥 · 평의회G⑤)
+          "pxh": int(round(_num(raw_opts.get("pxh"), 3, 20, BLOCK_DIV))),
+          "size": _num(raw_opts.get("size"), 0.75, 2.5, 1.0),   # 하한 0.75 = 하단 시프트 구속(0.4+0.8×0.75≥1) — 커버 ≥ 검출박스 전 변(초상권 바닥 · 평의회G①)
+          "feather": int(round(_num(raw_opts.get("feather"), 0, 40, 0))),   # 상한 40 = UI와 정렬(60은 성능·커버 여유 밖 · 평의회H)
+          "shape": "ellipse" if raw_opts.get("shape") == "ellipse" else "rect"}
+
     people = doc.get("people") or []
     all_pids = {p["pid"] for p in people}
     if mode == "mosaic":
@@ -317,7 +396,7 @@ def main():
     for p in people:
         if p["pid"] not in sel:
             continue
-        spans = build_spans(p, fps, total)
+        spans = build_spans(p, fps, total, W=int(meta.get("w") or 0), H=int(meta.get("h") or 0))
         cidx = (p["pid"] - 1) % len(PALETTE)
         hexc = colors.get(str(p["pid"])) or PALETTE[cidx]
         bgr = hex_bgr(hexc)
@@ -347,7 +426,9 @@ def main():
                     for sp in spans:
                         b = sample(sp, f)
                         if b:
-                            mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2)
+                            mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2,
+                                          pxw=mo["pxw"], pxh=mo["pxh"], size=mo["size"],
+                                          feather=mo["feather"], shape=mo["shape"])
             else:
                 tags = []
                 for spans, name, _bgr, rgb in plans:
@@ -394,7 +475,8 @@ def main():
             url = f"track_out/{vid_id}/{res_rel}"
         else:
             raise RuntimeError("결과 업로드 실패(R2) — 잠시 후 다시 렌더해줘.")
-    out_json(outdir, {"url": f"{url}?v={bust}", "mode": mode, "n": len(sel), "frames": f})
+    out_json(outdir, {"url": f"{url}?v={bust}", "mode": mode, "n": len(sel), "frames": f,
+                      "opts": (mo if mode == "mosaic" else None)})   # 옵션 에코 = 결과가 어떤 설정인지 추적(디버그·재현)
 
 
 if __name__ == "__main__":
