@@ -29,9 +29,14 @@ NMS_TH = 0.3
 IOU_MATCH = 0.25        # 검출 스텝 간격(~0.08s)에서 얼굴 이동은 작음 — 동일 트랙 판정 IoU
 MISS_TTL_SEC = 0.7      # 이만큼 검출이 끊기면 트랙 종료(재등장은 새 트랙 → 군집이 같은 사람으로 재결합)
 MIN_TRACK_DETS = 3      # 3회 미만 검출 트랙 = 오탐 취급(12/s = 검출 간격 0.083s × 2구간 ≈ 0.17s)
-EMB_MIN_PX = 42         # 임베딩 품질 하한(원본 픽셀 얼굴 폭) — 너무 작으면 임베딩 자체를 안 씀
+EMB_MIN_PX = 20         # 임베딩 절대 하한(원본 픽셀 얼굴 폭) — 이 밑은 임베딩 안 씀. ⚠ 구 42 단일 게이트는
+                        #   소형 얼굴(원거리 인물)의 임베딩을 전면 차단 → 이탈·재진입 재군집이 조용히 실패
+                        #   (2인 실측: 36px 얼굴 emb=None → 같은 사람이 pid 2개로 분열 · 260708)
+EMB_HQ_PX = 42          # 고품질 기준(구 게이트 값) — 이 위는 표준 임계, 밑은 보수 임계(2단·아래)
 EMB_TOP_N = 6           # 트랙당 임베딩 대표 크롭 수(고신뢰·대형 우선)
-SIM_MERGE = 0.48        # SFace 코사인 동일인 병합 임계(공식 동일인 기준 0.363보다 보수 = 과분할 편향)
+SIM_MERGE = 0.48        # SFace 코사인 동일인 병합 임계 · 고품질↔고품질(공식 동일인 0.363보다 보수 = 과분할 편향)
+SIM_MERGE_LQ = 0.60     # 저품질(소형 얼굴) 개입 병합 임계 — 저해상 임베딩 과병합 꼬리위험(평의회3) 상쇄
+                        #   {실측: 동일인 36px 0.876 vs 남남 −0.11 = 0.60도 여유 · 소형 재군집은 살리고 오병합은 조임}
 MAX_PEOPLE = 12         # 카드 상한(등장시간 순) — 초과분은 meta.dropped로 정직 표기
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 원본 git 보관 상한(ly_burn 동일)
 
@@ -195,7 +200,7 @@ def main():
                         s2 = 256.0 / max(crop.shape[0], crop.shape[1])
                         crop = cv2.resize(crop, (max(1, int(crop.shape[1] * s2)), max(1, int(crop.shape[0] * s2))),
                                           interpolation=cv2.INTER_AREA) if s2 < 1.0 else crop.copy()
-                    t["cand"].append((q, aligned, crop, d[4]))
+                    t["cand"].append((q, aligned, crop, d[2]))   # [3] = 검출 폭(임베딩 품질 판정용)
                     t["cand"].sort(key=lambda c: -c[0])
                     del t["cand"][EMB_TOP_N:]
         # 미스 트랙 정리
@@ -211,11 +216,11 @@ def main():
 
     tracks = [t for t in tracks if len(t["kf"]) >= MIN_TRACK_DETS]
 
-    # 트랙 대표 임베딩 → 정체성 군집(그리디 · 과분할 편향)
+    # 트랙 대표 임베딩 → 정체성 군집(그리디 · 과분할 편향 · 2단 임계)
     for t in tracks:
-        embs = []
+        embs, widths = [], []
         if rec is not None:
-            for q, aligned, crop, sc in t["cand"]:
+            for q, aligned, crop, dw in t["cand"]:
                 if aligned is None:
                     continue
                 try:
@@ -223,16 +228,25 @@ def main():
                     n = np.linalg.norm(e)
                     if n > 0:
                         embs.append(e / n)
+                        widths.append(dw)
                 except Exception:
                     pass
         t["emb"] = np.mean(embs, axis=0) if embs else None
+        t["hq"] = bool(widths) and (sorted(widths)[len(widths) // 2] >= EMB_HQ_PX)   # 중앙값 폭 기준 고품질 판정
         if t["emb"] is not None:
             n = np.linalg.norm(t["emb"])
             t["emb"] = t["emb"] / n if n > 0 else None
         t["dur"] = (t["kf"][-1][0] - t["kf"][0][0]) / fps
     tracks.sort(key=lambda t: -t["dur"])
+    if os.environ.get("TRACK_DEBUG"):   # 현장 진단(재군집 튜닝) — 라이브 무영향(env 미설정 = 침묵)
+        for i, t in enumerate(tracks):
+            print(f"DBG track{i} f{t['kf'][0][0]}-{t['kf'][-1][0]} dur{t['dur']:.2f} emb={'None' if t['emb'] is None else 'ok'} cand={len(t['cand'])}", flush=True)
+        for i in range(len(tracks)):
+            for j in range(i + 1, len(tracks)):
+                if tracks[i]["emb"] is not None and tracks[j]["emb"] is not None:
+                    print(f"DBG sim {i}-{j} = {float(np.dot(tracks[i]['emb'], tracks[j]['emb'])):.3f}", flush=True)
 
-    people = []   # {tracks:[], emb(이동평균), n_emb}
+    people = []   # {tracks:[], emb(이동평균), n_emb, hq}
     for t in tracks:
         best, bi = 0.0, -1
         if t["emb"] is not None:
@@ -240,9 +254,11 @@ def main():
                 if p["emb"] is None:
                     continue
                 v = float(np.dot(t["emb"], p["emb"]))
-                if v > best:
+                # 2단 임계 — 양쪽 다 고품질 = 표준(0.48) / 한쪽이라도 소형 얼굴 = 보수(0.60 · 과병합 꼬리 차단)
+                th = SIM_MERGE if (t["hq"] and p["hq"]) else SIM_MERGE_LQ
+                if v >= th and v > best:
                     best, bi = v, i
-        if bi >= 0 and best >= SIM_MERGE:
+        if bi >= 0:
             p = people[bi]
             p["tracks"].append(t)
             k = p["n_emb"]
@@ -250,8 +266,9 @@ def main():
             n = np.linalg.norm(p["emb"])
             p["emb"] = p["emb"] / n if n > 0 else p["emb"]
             p["n_emb"] = k + 1
+            p["hq"] = p["hq"] or t["hq"]
         else:
-            people.append({"tracks": [t], "emb": t["emb"], "n_emb": 1 if t["emb"] is not None else 0})
+            people.append({"tracks": [t], "emb": t["emb"], "n_emb": 1 if t["emb"] is not None else 0, "hq": t["hq"]})
 
     for p in people:
         p["dur"] = sum(t["dur"] for t in p["tracks"])
