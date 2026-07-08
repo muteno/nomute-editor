@@ -272,17 +272,22 @@
   .lyoptpv.box:not(.bgon):not(.kara) .pvt { text-shadow:-1px -1px 0 rgba(0,0,0,.8), 1px -1px 0 rgba(0,0,0,.8), -1px 1px 0 rgba(0,0,0,.8), 1px 1px 0 rgba(0,0,0,.8); }   /* 박스+배경 0% = 얇은 외곽선 폴백(번인 동일 · 흰 글자 보호) — kara는 스윕 이중겹침 방지 우선 */
   .lyoptpv.s .pvt { font-size:15px; } .lyoptpv.m .pvt { font-size:18px; } .lyoptpv.l .pvt { font-size:21px; }
   .lyoptpv .kw { color:var(--accent-5); font-weight:800; }   /* 키워드 = 콘텐츠 그린 실색(번인과 동일) */
-  .lyoptpv.kara .pvt .kt { background:linear-gradient(90deg, rgba(255,255,255,1) 50%, rgba(255,255,255,.42) 50%) 0 0/200% 100% no-repeat; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; animation:lykfill 2.2s linear infinite; }
-  .lyoptpv.kara .pvt .kw { background:linear-gradient(90deg, var(--accent-5) 50%, rgba(255,255,255,.42) 50%) 0 0/200% 100% no-repeat; -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent; animation:lykfill 2.2s linear infinite; }   /* 키워드도 스윕 동참(실번인 \\kf+\\1c 동작 근사 — 채워지면 그린) */
-  .lyoptpv.kara .pvt { text-shadow:none; }   /* 카라오케 = 채움이 투명(background-clip:text)이라 bold/clean의 글리프 그림자 4벌(가짜 아웃라인)이 채움 밑으로 그대로 비쳐 글자가 이중 겹침(운영자 260707 스샷 "노래방 때문 같다" 적중) — 스윕 중엔 text-shadow 제거 */
-  .lyoptpv.kara:not(.bgon) .pvt { filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }   /* 대신 렌더 결과 알파를 따르는 drop-shadow(글리프 사본 안 생김)로 깊이만 유지 · 배경(bgon)은 자체 필이라 불필요(필까지 그림자 지면 이질) — 구 .box 판정을 배경 게이지 기준으로 승계 */
-  @keyframes lykfill { from { background-position:100% 0; } to { background-position:0 0; } }
-  @media (prefers-reduced-motion:reduce){ .lyoptpv.kara .pvt .kt, .lyoptpv.kara .pvt .kw { animation:none; background:none; -webkit-text-fill-color:currentColor; } .lyoptpv.kara .pvt .kt { color:rgba(255,255,255,1); } .lyoptpv.kara .pvt .kw { color:var(--accent-5); } }
-  .lyoptpv.pop .pvt .kt:first-child { animation:lypopA 2.2s steps(1,end) infinite; }   /* 팝 데모 = 어절 순차 점등(첫 어절 → 키워드 상시 그린 → 끝 어절) — 실번인 어절 창 이벤트 근사(운영자 260707) */
-  .lyoptpv.pop .pvt .kt:last-child { animation:lypopB 2.2s steps(1,end) infinite; }
+  .lyoptpv .pvt { position:relative; }   /* 두 겹 카라오케 앵커 */
+  .lyoptpv .pv-hi { display:none; }   /* 위 겹 = 카라오케에서만 등장 */
+  .lyoptpv.pop .pv-hi { display:none; }   /* 팝 우선(카라오케와 상호배타) = 위 겹 숨김 */
+  .lyoptpv.kara .pv-lo, .lyoptpv.kara .pv-lo .kw { color:rgba(255,255,255,.42); }   /* 바닥 겹 = 아직 안 채워진 흐린 색(키워드도 흐림) */
+  .lyoptpv.kara .pv-hi { display:inline; position:absolute; left:0; top:0; white-space:nowrap; clip-path:inset(0 100% 0 0); animation:lykwipe 2.2s linear infinite; }   /* 위 겹 = 밝은 채움이 전체 텍스트를 좌→우로 하나의 연속 스윕(조각별 독립 스윕 폐지 = 시작점 양분 교정) */
+  .lyoptpv.kara .pv-hi .kt { color:rgba(255,255,255,1); }
+  .lyoptpv.kara .pv-hi .kw { color:var(--accent-5); }   /* 채워진 키워드 = 콘텐츠 그린(번인과 동일) */
+  .lyoptpv.kara .pvt { text-shadow:none; }   /* 채움 밑 글리프 그림자 4벌 이중겹침 방지(운영자 260707) */
+  .lyoptpv.kara:not(.bgon) .pvt { filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }   /* 알파 따르는 깊이감(글리프 사본 없음) · 배경(bgon)은 자체 필이라 불필요 */
+  @keyframes lykwipe { from { clip-path:inset(0 100% 0 0); } to { clip-path:inset(0 -3% 0 0); } }   /* 좌→우 와이프(끝을 -3% 넘겨 마지막 글자 확실히 채움) */
+  @media (prefers-reduced-motion:reduce){ .lyoptpv.kara .pv-hi { animation:none; clip-path:none; } }   /* 모션 최소화 = 채움 전체 정적 노출(위 겹 밝음) */
+  .lyoptpv.pop .pv-lo .kt:first-child { animation:lypopA 2.2s steps(1,end) infinite; }   /* 팝 데모 = 어절 순차 점등(첫 어절 → 키워드 상시 그린 → 끝 어절) · pv-lo 한정(pv-hi는 팝서 숨김) */
+  .lyoptpv.pop .pv-lo .kt:last-child { animation:lypopB 2.2s steps(1,end) infinite; }
   @keyframes lypopA { 0%,44% { color:var(--accent-5); } 45%,100% { color:rgba(255,255,255,1); } }
   @keyframes lypopB { 0%,54% { color:rgba(255,255,255,1); } 55%,89% { color:var(--accent-5); } 90%,100% { color:rgba(255,255,255,1); } }
-  @media (prefers-reduced-motion:reduce){ .lyoptpv.pop .pvt .kt:first-child, .lyoptpv.pop .pvt .kt:last-child { animation:none; color:rgba(255,255,255,1); } }
+  @media (prefers-reduced-motion:reduce){ .lyoptpv.pop .pv-lo .kt:first-child, .lyoptpv.pop .pv-lo .kt:last-child { animation:none; color:rgba(255,255,255,1); } }
   /* 완성 영상(자막 번인 결과) — 미리보기 .lypv 크롬 계승 */
   .lyburn { margin:16px 0 0; }
   .lyburn[hidden] { display:none; }
@@ -357,7 +362,7 @@
     <div class="lyopt-row"><span class="lyopt-k">배경</span><input type="range" id="lyBg" min="0" max="100" step="1" value="0" aria-label="자막 배경 불투명도 (0% = 배경 없음)"><span class="lypv-fs" id="lyBgV">0%</span></div><!-- 자막 뒷 배경 투명도 게이지(운영자 260707) — 번인 BackColour 알파 연동 -->
     <div class="lyopt-row"><span class="lyopt-k">위치</span><span class="lyopt-e">하단</span><input type="range" id="lyPos" min="0" max="100" step="1" value="24" aria-label="자막 세로 위치 (0 = 하단 · 100 = 상단)"><span class="lyopt-e">상단</span><span class="lypv-fs" id="lyPosV">24%</span></div><!-- 위치 = 3칩(하단/중앙/상단) → 연속 게이지(운영자 260707) — 24% ≈ 구 하단 세이프존 -->
     <div class="lyopt-row"><span class="lyopt-k">크기</span><button class="opt" type="button" data-k="size" data-v="s">작게</button><button class="opt" type="button" data-k="size" data-v="m">보통</button><button class="opt" type="button" data-k="size" data-v="l">크게</button></div>
-    <div class="lyoptpv" id="lyOptPv" aria-hidden="true"><span class="pvt"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span></div><!-- 문구 = 최협폭(가용 약 246px)에서도 크게 21px 1줄(약 210px) — nowrap 높이 불변식과 한 쌍(평의회 260707) -->
+    <div class="lyoptpv" id="lyOptPv" aria-hidden="true"><span class="pvt"><span class="pv-lo"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span><span class="pv-hi" aria-hidden="true"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span></span></div><!-- 두 겹(pv-lo 바닥+pv-hi 좌→우 와이프) = 카라오케 하나의 연속 스윕(구 kt/kw 조각별 독립 스윕 = 시작점 양분 교정 · 운영자 260708) · 문구 = 최협폭에서도 1줄(nowrap 높이 불변식) -->
   </div>
 
   <div class="status" id="status" role="status"></div><!-- role=status = 바꿈/복사/내보내기 피드백 SR 고지(평의회9) -->
@@ -1282,7 +1287,7 @@ function lyOptRender() {
     pv.className = 'lyoptpv ' + (LY_OPTS.style || LY_OPT_DEF.style) + (typeof LY_OPTS.size === 'string' ? ' ' + LY_OPTS.size : '') + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.pop ? ' pop' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '');   // style 결측 폴백 = 기본값 참조(#1807 병합) · size = 문자열만 클래스(연속 숫자는 아래 인라인 환산)
     pv.style.setProperty('--lybg', (LY_OPTS.bg / 100).toFixed(2));
     const pvt = pv.querySelector('.pvt'); if (pvt) pvt.style.fontSize = typeof LY_OPTS.size === 'number' ? Math.round(LY_OPTS.size * 467) + 'px' : '';   // 연속 크기 = l칩 비율(21px↔4.5% ≈ ×467) 인라인 환산(0.035→16px) · 문자열(s/m/l) = 종전 클래스(인라인 해제)
-    const kwEl = pv.querySelector('b'); if (kwEl) kwEl.className = LY_OPTS.keyword ? 'kw' : 'kt';   // OFF = 일반 단어로 강등(그린·스윕 규칙 함께 전환)
+    pv.querySelectorAll('b').forEach(b => { b.className = LY_OPTS.keyword ? 'kw' : 'kt'; });   // 두 겹 다 토글 · OFF = 일반 단어로 강등(그린·스윕 규칙 함께 전환)
   }
 }
 function lyOptSave() { try { localStorage.setItem(LY_OPT_KEY, JSON.stringify(LY_OPTS)); } catch (err) {} }
