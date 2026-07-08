@@ -34,6 +34,9 @@ SIZES = ("1K", "2K")
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
 
 P_PADFILL = (
+    "First, carefully analyze the attached image: identify the subject, their exact pose and "
+    "orientation, the scene, the lighting direction, and the textures. Base everything you draw "
+    "on what is actually visible in this specific image — not on generic assumptions. "
     "This canvas contains an original photo placed in the center, with flat neutral gray areas "
     "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
     "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
@@ -44,7 +47,38 @@ P_PADFILL = (
     "already visible in the photo. Keep every existing pixel of the original photo "
     "exactly unchanged. Do not add any new text, watermarks, logos, or people. The result must "
     "look like one single continuous photograph."
-)   # v0 확정본(exp_resize_v0 r5) — 룰 삭제 금지: 방향 동적(r2)·심도 유지(r4)·톤 일치가 각각 실측 실패를 막는다
+)   # v0 확정본(exp r5+r7) — 룰 삭제 금지: 선분석(r7)·방향 동적(r2)·심도 유지(r4)·톤 일치가 각각 실측 실패를 막는다
+
+
+def gemini_judge(png_bytes):
+    """생성 결과 자가 QA(exp r8 검증 이식 — 운영자 '검증하면서 뽑는 프롬프팅') — 같은 모델 TEXT 판정.
+    (passed, reason) · 판정 콜 실패 = None(fail-soft·렌더는 살림)."""
+    import base64
+    import urllib.request
+    prompt = ("You are a strict photo QA judge. Answer in EXACTLY this format:\n"
+              "VERDICT: PASS or FAIL\nREASON: <one short sentence>\n"
+              "FAIL if any of these are visible: anatomically wrong human body, unnatural body proportions, "
+              "duplicated objects or duplicated text, watermarks, leftover flat gray areas, or an obvious "
+              "visible seam or brightness band. Otherwise PASS.")
+    parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(png_bytes).decode()}},
+             {"text": prompt}]
+    payload = {"contents": [{"parts": parts}], "generationConfig": {"responseModalities": ["TEXT"]}}
+    req = urllib.request.Request(tg.API + "?key=" + tg.KEY, data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            j = json.loads(r.read().decode())
+        txt = "".join(p.get("text", "") for c in j.get("candidates", [])
+                      for p in c.get("content", {}).get("parts", []))
+        up = txt.upper()
+        if "VERDICT" not in up:
+            return None
+        passed = "PASS" in up.split("REASON")[0]
+        reason = (txt.split(":", 2)[-1].strip().splitlines()[0] if "REASON" in up else txt.strip())[:200]
+        return passed, reason
+    except Exception as e:  # noqa: BLE001
+        print("  ⚠️ QA 판정 콜 실패(스킵): {}".format(e), flush=True)
+        return None
 
 
 def pad_canvas(img, ar, fill=(127, 127, 127)):
@@ -164,17 +198,27 @@ def main():
                                                         "ceiling or sky upward and a floor or ground downward)")
             else:
                 where, dirhint = "to its left and right", "to the left and to the right"
-            png = tg.gemini_image(P_PADFILL.format(where=where, dirhint=dirhint), image_size=size,
-                                  tag="resize", aspect=aspect, ref_png=jpg_bytes(canvas))
-            ok = False
-            if png:
+            base_prompt = P_PADFILL.format(where=where, dirhint=dirhint)
+            png, fb = None, ""
+            for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
+                p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
+                                    "reason: \"" + fb + "\". Fix exactly that issue this time.") if fb else "")
+                cand = tg.gemini_image(p, image_size=size, tag="resize:t{}".format(attempt),
+                                       aspect=aspect, ref_png=jpg_bytes(canvas))
+                if not cand:
+                    continue
                 try:
-                    gim = Image.open(io.BytesIO(png))
-                    gim.verify()   # 손상본 차단(gen_cards.edit_one 계승)
-                    ok = True
+                    Image.open(io.BytesIO(cand)).verify()   # 손상본 차단(gen_cards.edit_one 계승)
                 except Exception:
-                    print("::warning::렌더 디코드 실패")
-            if ok:
+                    print("::warning::렌더 디코드 실패(t{})".format(attempt))
+                    continue
+                v = gemini_judge(cand)
+                if v is None or v[0]:   # 판정 스킵(fail-soft) 또는 PASS
+                    png = cand
+                    break
+                png, fb = cand, v[1]   # FAIL — 최종 후보로는 보관·사유 피드백 재시도
+                print("  QA t{}: FAIL — {}".format(attempt, fb), flush=True)
+            if png:
                 out_img = pixel_lock(png, canvas.size, img, box) if lock else \
                     Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
             else:
