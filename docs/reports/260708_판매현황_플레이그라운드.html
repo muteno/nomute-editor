@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>판매현황 개편 플레이그라운드</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   콘솔 크롬 = 노뮤트 토큰 사본(자기완결 = 값 복사 계승 · viewer :root 260708 실측)
+   미리보기 앱 = 판매현황(외부 앱) 스크린샷 실측 발췌 팔레트 — 노뮤트 팔레트와 별개 축
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322;
+  --line:rgba(255,255,255,.08); --glass:rgba(18,19,22,.55);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-body:15px; --fs-h1:19px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
+  --press-m:.9; --press-s:.85;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:var(--fs-body)/var(--lh-base) 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased}
+header{padding:26px 24px 6px;max-width:1720px;margin:0 auto}
+header h1{margin:0;font-size:var(--fs-h1);font-weight:var(--fw-x);letter-spacing:-.01em}
+header p{margin:7px 0 0;font-size:var(--fs-label);color:var(--mut);max-width:920px}
+header b{color:var(--fg)}
+.wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;max-width:1720px;margin:0 auto;padding:14px 24px 60px}
+
+/* ── 좌: 스테이지 ── */
+.stagewrap{flex:999 1 640px;min-width:0}
+.fitbox{position:relative;overflow:hidden;border-radius:var(--r-l);border:1px solid var(--line);background:#3c3f4a}
+.appvp{transform-origin:0 0}
+.stagecap{margin-top:10px;font-size:var(--fs-xs);color:var(--mut);line-height:1.7}
+.stagecap b{color:var(--fg)}
+
+/* ── 우: 콘솔 (확립본 골격 계승) ── */
+.console{flex:1 1 330px;max-width:430px;display:flex;flex-direction:column;gap:13px}
+.csec{background:var(--glass);border:1px solid var(--line);border-radius:var(--r-l);padding:13px 14px}
+.csec h2{margin:0 0 9px;font-size:var(--fs-sm);font-weight:var(--fw-x);color:var(--mut);letter-spacing:.06em}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:8px 14px;border:1px solid var(--line);border-radius:var(--r-pill);background:rgba(255,255,255,.04);color:var(--fg);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-b);cursor:pointer;touch-action:manipulation;transition:transform var(--dur-fast) var(--ease)}
+.pill:active{transform:scale(var(--press-m,.9))}
+.pill.on{color:var(--on-accent);background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+.pill .st{font-size:var(--fs-xs);opacity:.8;margin-left:3px}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;padding:8px 4px;border:1px solid var(--line);border-radius:var(--r-m);background:rgba(255,255,255,.04);color:var(--fg);
+  font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);cursor:pointer;touch-action:manipulation;transition:transform var(--dur-fast) var(--ease)}
+.seg button:active{transform:scale(var(--press-m,.9))}
+.seg button.on{color:var(--on-accent);background:var(--accent);border-color:transparent;font-weight:var(--fw-x)}
+.wrow{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.wrow:last-child{border-bottom:none}
+.wrow .wnm{flex:1;min-width:0;font-size:var(--fs-xs);color:var(--fg);line-height:1.35}
+.wrow .wnm small{display:block;color:var(--mut);font-size:10px}
+.wrow .seg{flex:none;width:158px}
+.srow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.srow .nm{flex:none;width:118px;font-size:var(--fs-xs);color:var(--fg);line-height:1.3}
+.srow .nm small{display:block;color:var(--mut);font-size:10px}
+.srow input[type=range]{appearance:none;-webkit-appearance:none;flex:1;min-width:0;height:6px;border-radius:var(--r-pill);border:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(var(--accent-rgb),.85) var(--p,50%),rgba(255,255,255,.06) var(--p,50%));outline:none}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:none;box-shadow:0 0 10px rgba(var(--accent-rgb),.35)}
+.srow input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:none}
+.srow .val{flex:none;width:48px;text-align:right;font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.sgrp{margin:8px 0 2px;font-size:10px;font-weight:var(--fw-x);color:var(--mut);letter-spacing:.12em}
+pre#out{margin:0;padding:12px;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:var(--r-m);
+  font:11px/1.75 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);white-space:pre-wrap;word-break:break-all;user-select:all}
+.copybtn{margin-top:9px;width:100%;padding:11px;border:none;border-radius:var(--r-pill);background:var(--accent);color:var(--on-accent);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-x);cursor:pointer;touch-action:manipulation;box-shadow:0 6px 18px rgba(var(--accent-rgb),.25);transition:transform var(--dur-fast) var(--ease)}
+.copybtn:active{transform:scale(var(--press-m,.9))}
+.note{font-size:var(--fs-xs);color:var(--mut);line-height:1.75}
+.note b{color:var(--fg)}
+
+/* ─────────────────────────────────────────────────────────────
+   미리보기 앱(판매현황) — 라이트 · 스샷 실측 발췌 상수
+   튜닝 축만 --t-* (기본값 = 스샷 현행 실측)
+   ───────────────────────────────────────────────────────────── */
+.app{
+  --t-dense:12px;   /* 리스트 행 세로 패딩 */
+  --t-pad:16px;     /* 카드 패딩 */
+  --t-gap:20px;     /* 위젯 카드 간격 */
+  --t-r:12px;       /* 카드 모서리 */
+  --t-spark:32px;   /* 스파크라인 높이(신설 축) */
+  --a-bg:#f4f5f9; --a-card:#ffffff; --a-line:#e7e8f0; --a-line2:#f0f1f6;
+  --a-ink:#20222e; --a-sub:#8a8fa3; --a-pri:#4f46e5; --a-pri-bg:#eef2ff;
+  --a-good:#006300; --a-bad:#c03232; --a-grid:#eef0f5;
+  width:100%;background:var(--a-bg);color:var(--a-ink);text-align:left;
+  font:14px/1.55 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  -webkit-font-smoothing:antialiased;min-height:640px;padding-bottom:34px}
+.app .abar{display:flex;align-items:center;gap:6px;background:#fff;border-bottom:1px solid var(--a-line);padding:12px 24px}
+.app .abar .brand{font-weight:800;font-size:15px;letter-spacing:-.01em;margin-right:14px}
+.app .abar .brand span{color:var(--a-pri)}
+.app .atab{border:none;background:none;font:inherit;font-size:13.5px;font-weight:700;color:var(--a-sub);padding:7px 13px;border-radius:9px;cursor:pointer}
+.app .atab.on{color:var(--a-pri);background:var(--a-pri-bg)}
+.app .abar .ghost{margin-left:auto;font-size:12px;color:var(--a-sub)}
+.app .page{padding:20px 24px 8px;max-width:1240px;margin:0 auto}
+.app .view{display:none}
+.app .view.on{display:block}
+.app .vcols{display:flex;flex-direction:column;gap:var(--t-gap)}
+/* 카드 골격 */
+.app .acard{background:var(--a-card);border:1px solid var(--a-line);border-radius:var(--t-r);padding:var(--t-pad)}
+.app .acard>h3{margin:0 0 4px;font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.app .acard>h3 .ord{color:var(--a-pri);font-weight:800}
+.app .acard>h3 small{font-weight:600;color:var(--a-sub);font-size:12px}
+.app .acard>h3 .qm{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--a-line);color:var(--a-sub);font-size:10px;font-weight:700}
+.app .acard .cdesc{margin:0 0 10px;font-size:12px;color:var(--a-sub)}
+/* 스탯 타일 */
+.app .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:10px 0 12px}
+.app .tile{background:#fff;border:1px solid var(--a-line);border-radius:calc(var(--t-r) - 2px);padding:12px 14px}
+.app .tile .tl{font-size:11.5px;color:var(--a-sub);font-weight:600}
+.app .tile .tv{margin-top:3px;font-size:21px;font-weight:800;color:var(--a-pri);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.app .tile .tv.mut{color:var(--a-sub);font-size:17px}
+.app .tile .ts{margin-top:2px;font-size:11px;color:var(--a-sub);font-variant-numeric:tabular-nums}
+/* 인사이트 행 · CTA */
+.app .insrow{display:flex;gap:8px;align-items:baseline;font-size:12.5px;padding:3px 0;flex-wrap:wrap}
+.app .insrow .ic{flex:none;width:18px;text-align:center}
+.app .insrow b{font-weight:800}
+.app .insrow .sub{color:var(--a-sub);font-size:11.5px}
+.app .cta{display:inline-block;margin-top:10px;background:var(--a-pri);color:#fff;border:none;border-radius:9px;
+  font:inherit;font-size:12.5px;font-weight:700;padding:9px 14px;cursor:pointer}
+.app .cta.done{background:var(--a-pri-bg);color:var(--a-pri)}
+/* 프로그램 리스트(기본 판매 현황) */
+.app .pgrp{margin:4px 0 2px;font-size:12px;font-weight:800;color:var(--a-sub);letter-spacing:.08em;display:flex;align-items:center;gap:6px}
+.app .pgrp em{font-style:normal;color:var(--a-ink)}
+.app .prow{display:grid;grid-template-columns:minmax(210px,1.35fr) minmax(120px,1fr) 74px 96px 64px 148px;gap:12px;align-items:center;
+  padding:var(--t-dense) 10px;border-radius:calc(var(--t-r) - 3px);border:1px solid transparent;cursor:pointer}
+.app .prow:hover{background:#fafbff;border-color:var(--a-line2)}
+.app .prow .pt{min-width:0}
+.app .prow .pt .nm{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app .prow .pt .mt{font-size:11.5px;color:var(--a-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app .prow .spark{height:var(--t-spark);display:flex;align-items:center;min-width:0}
+.app .prow .spark svg{width:100%;height:100%}
+.app .nospark{font-size:11px;color:var(--a-sub);border:1px dashed var(--a-line);border-radius:7px;padding:2px 8px}
+.app .prow .pct{font-size:15px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.app .prow .pct small{display:block;font-size:10.5px;color:var(--a-sub);font-weight:600}
+.app .prow .dlt{font-size:12px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.app .prow .dlt small{display:block;font-size:10.5px;color:var(--a-sub);font-weight:600}
+.app .up{color:var(--a-good)}
+.app .dn{color:var(--a-bad)}
+.app .prow .dd{font-size:12.5px;font-weight:800;color:var(--a-pri);text-align:right;font-variant-numeric:tabular-nums}
+.app .prow .din{display:flex;gap:6px;align-items:center}
+.app .prow .din input{width:76px;border:1px solid var(--a-line);border-radius:8px;padding:6px 8px;font:inherit;font-size:12px;font-variant-numeric:tabular-nums;background:#fff;color:var(--a-ink)}
+.app .prow .din input:focus{outline:2px solid var(--a-pri-bg);border-color:var(--a-pri)}
+.app .prow .din button{border:1px solid var(--a-line);background:#fff;color:var(--a-pri);border-radius:8px;font:inherit;font-size:12px;font-weight:700;padding:6px 10px;cursor:pointer}
+.app .prow .din button:hover{background:var(--a-pri-bg)}
+.app .lhead{display:grid;grid-template-columns:minmax(210px,1.35fr) minmax(120px,1fr) 74px 96px 64px 148px;gap:12px;
+  padding:2px 10px 8px;font-size:10.5px;color:var(--a-sub);font-weight:700;letter-spacing:.04em}
+.app .lhead span:nth-child(n+3){text-align:right}
+.app .lhead span:last-child{text-align:left}
+/* 비교 칩 */
+.app .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
+.app .chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--a-line);background:#fff;border-radius:999px;
+  padding:7px 13px;font:inherit;font-size:12px;font-weight:600;color:var(--a-ink);cursor:pointer;max-width:340px}
+.app .chip .dot{flex:none;width:8px;height:8px;border-radius:50%;background:#d5d7e2}
+.app .chip .fp{color:var(--a-sub);font-weight:700;font-variant-numeric:tabular-nums}
+.app .chip .lb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app .chip.on{border-color:var(--a-pri);background:var(--a-pri-bg)}
+.app .chip.deny{animation:deny .3s}
+@keyframes deny{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.app .chip.rst{color:var(--a-sub)}
+.app .cmpbase{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 6px}
+.app .cmpbase .chip.on{font-weight:800;color:var(--a-pri)}
+.app .mini{display:inline-flex;border:1px solid var(--a-line);border-radius:9px;overflow:hidden}
+.app .mini button{border:none;background:#fff;font:inherit;font-size:11.5px;font-weight:700;color:var(--a-sub);padding:5px 11px;cursor:pointer}
+.app .mini button.on{color:var(--a-pri);background:var(--a-pri-bg)}
+.app .secrow{display:flex;align-items:center;gap:10px;margin:10px 0 6px;flex-wrap:wrap}
+.app .secrow .sl{font-size:12px;font-weight:700}
+/* 차트 */
+.app .chbox{position:relative;border:1px solid var(--a-line2);border-radius:calc(var(--t-r) - 3px);background:#fff;padding:8px 6px 4px;margin-top:8px}
+.app .chbox svg{display:block;width:100%;height:auto}
+.app .chempty{display:grid;place-items:center;min-height:120px;font-size:12.5px;color:var(--a-sub)}
+.app svg .grid{stroke:var(--a-grid);stroke-width:1}
+.app svg .goal{stroke:var(--a-pri);stroke-width:1;stroke-dasharray:5 4;opacity:.55}
+.app svg .tickl{fill:var(--a-sub);font-size:10px;font-variant-numeric:tabular-nums}
+.app svg .dirl{fill:var(--a-ink);font-size:10.5px;font-weight:700}
+.app svg .vline{stroke:#b9bdd1;stroke-width:1;stroke-dasharray:3 3}
+.app .tip{position:absolute;pointer-events:none;background:#20222e;color:#fff;border-radius:8px;padding:7px 10px;font-size:11px;line-height:1.5;
+  box-shadow:0 6px 18px rgba(32,34,46,.25);opacity:0;transition:opacity .12s;z-index:5;max-width:240px;font-variant-numeric:tabular-nums}
+.app .tip .tr{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.app .tip .td{width:7px;height:7px;border-radius:50%;flex:none}
+/* 선택 비교 행(범례) */
+.app .cmplist{margin-top:8px}
+.app .cmpli{display:flex;align-items:center;gap:10px;padding:9px 10px;border-top:1px solid var(--a-line2);font-size:12.5px}
+.app .cmpli .sq{flex:none;width:10px;height:10px;border-radius:3px}
+.app .cmpli .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.app .cmpli .fin{color:var(--a-sub);font-weight:700;font-variant-numeric:tabular-nums}
+.app .cmpli .x{border:none;background:none;color:var(--a-sub);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:6px}
+.app .cmpli .x:hover{background:var(--a-line2);color:var(--a-ink)}
+/* 상세 */
+.app .dhead{display:flex;align-items:baseline;gap:10px;margin:2px 0 12px;flex-wrap:wrap}
+.app .dhead .back{border:1px solid var(--a-line);background:#fff;border-radius:9px;font:inherit;font-size:12px;font-weight:700;color:var(--a-sub);padding:6px 11px;cursor:pointer}
+.app .dhead h2{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em}
+.app .dhead .hm{font-size:12px;color:var(--a-sub);font-weight:600}
+.app .graybox{background:#f3f4f8;border-radius:calc(var(--t-r) - 3px);padding:13px 15px;font-size:12.5px;color:var(--a-sub)}
+.app .promo{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
+.app .promo th{font-size:11px;color:var(--a-sub);font-weight:700;text-align:left;padding:6px 10px;border-bottom:1px solid var(--a-line)}
+.app .promo td{padding:8px 10px;border-bottom:1px solid var(--a-line2);font-variant-numeric:tabular-nums}
+.app .promo td.dl{font-weight:800;text-align:right;white-space:nowrap}
+.app .promo td.why{color:var(--a-ink)}
+.app .promo td.why .tag{display:inline-block;background:var(--a-pri-bg);color:var(--a-pri);border-radius:999px;font-size:11px;font-weight:700;padding:2px 9px;margin-right:5px}
+.app .promo td.why .none{color:var(--a-sub)}
+/* 검색 */
+.app .srchrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
+.app .srchrow input{flex:1;min-width:200px;border:1px solid var(--a-line);border-radius:9px;padding:9px 12px;font:inherit;font-size:13px;background:#fff;color:var(--a-ink)}
+.app .srchrow input:focus{outline:2px solid var(--a-pri-bg);border-color:var(--a-pri)}
+.app .srow2{display:flex;align-items:center;gap:10px;padding:9px 10px;border-top:1px solid var(--a-line2);font-size:12.5px}
+.app .srow2 .nm{flex:1;min-width:0}
+.app .srow2 .nm b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app .srow2 .nm small{color:var(--a-sub)}
+.app .srow2 .spark{flex:none;width:110px;height:26px}
+.app .srow2 .spark svg{width:100%;height:100%}
+.app .srow2 .fin{flex:none;width:64px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.app .srow2 .add{flex:none;border:1px solid var(--a-line);background:#fff;color:var(--a-pri);border-radius:8px;font:inherit;font-size:11.5px;font-weight:700;padding:5px 10px;cursor:pointer}
+.app .srow2 .add:hover{background:var(--a-pri-bg)}
+.app .srow2 .add:disabled{color:var(--a-sub);cursor:default;background:#fff}
+/* KPI 스트립 */
+.app .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+/* 구 판매현황 */
+.app .oldrib{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:calc(var(--t-r) - 2px);padding:10px 14px;font-size:12px;font-weight:600;margin-bottom:var(--t-gap)}
+.app .dest{margin-left:auto;flex:none;font-size:10.5px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.app .dest.keep{background:var(--a-pri-bg);color:var(--a-pri)}
+.app .dest.move{background:#fff7ed;color:#b45309;border:1px solid #fed7aa}
+.app .dest.hide{background:#f3f4f8;color:var(--a-sub)}
+.app .oldtb{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.app .oldtb th{font-size:10.5px;color:var(--a-sub);text-align:left;padding:5px 8px;border-bottom:1px solid var(--a-line)}
+.app .oldtb td{padding:6px 8px;border-bottom:1px solid var(--a-line2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.app .oldtb td:first-child{white-space:normal}
+/* 좁은 폭(폰 390) 리플로우 */
+.app.narrow .page{padding:14px 12px 6px}
+.app.narrow .abar{padding:10px 12px}
+.app.narrow .tiles,.app.narrow .kpis{grid-template-columns:repeat(2,1fr)}
+.app.narrow .lhead{display:none}
+.app.narrow .prow{grid-template-columns:1fr 84px;grid-template-areas:'t p' 's s' 'i i';row-gap:6px}
+.app.narrow .prow .pt{grid-area:t}
+.app.narrow .prow .pct{grid-area:p}
+.app.narrow .prow .spark{grid-area:s}
+.app.narrow .prow .din{grid-area:i}
+.app.narrow .prow .dlt,.app.narrow .prow .dd{display:none}
+@media (prefers-reduced-motion:reduce){ .pill,.seg button,.copybtn,.app .chip{transition:none;animation:none} }
+</style>
+</head>
+<body>
+<header>
+  <h1>판매현황 개편 플레이그라운드</h1>
+  <p><b>신 판매현황</b>(① 기본 현황+일일입력 → ② 비슷한 프로그램 비교 → ③ 지난 공연 검색)과 <b>프로그램 상세</b>, <b>구 판매현황</b>(현행·근사), <b>사업현황</b>(이관 위젯)을 한 프레임에서 만져보고 — 소규모 박스를 <b>어디에 배치할지</b> 콘솔에서 직접 정해서 [선택값 복사]로 답장.</p>
+</header>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="fitbox" id="fitbox">
+      <div class="appvp" id="appvp">
+        <div class="app" id="app">
+          <div class="abar">
+            <div class="brand">아트센터 <span>세일즈보드</span></div>
+            <button class="atab" data-av="sales" type="button">판매현황</button>
+            <button class="atab" data-av="biz" type="button">사업현황</button>
+            <span class="ghost" id="ghost">오늘 26.7.8(수) · 목업</span>
+          </div>
+          <div class="page">
+            <div class="view" id="v-sales"><div class="vcols" id="salescols"></div></div>
+            <div class="view" id="v-biz"><div class="vcols" id="bizcols"></div></div>
+            <div class="view" id="v-detail"><div id="detailbody"></div></div>
+            <div class="view" id="v-old"><div id="oldbody"></div></div>
+          </div>
+          <div class="tip" id="tip"></div>
+          <div id="hidebay" hidden></div>
+        </div>
+      </div>
+    </div>
+    <div class="stagecap" id="stagecap">프로그램 행 클릭 = <b>상세 화면</b> · 일일입력 칸에 숫자 넣고 [입력] = 추이 즉시 반영(화면 데모) · <b>구 판매현황 = 비교 기준(고정)</b>, 각 박스에 현재 배치안의 행선지 태그가 붙어요.</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <h2>보기</h2>
+      <div class="seg" id="viewseg">
+        <button data-v="sales" class="on" type="button">신 판매현황</button>
+        <button data-v="detail" type="button">프로그램 상세</button>
+        <button data-v="biz" type="button">사업현황</button>
+        <button data-v="old" type="button">구(현행)</button>
+      </div>
+      <div class="sgrp">프레임 폭</div>
+      <div class="seg" id="vwseg">
+        <button data-w="1280" class="on" type="button">PC 1280</button>
+        <button data-w="390" type="button">폰 390</button>
+      </div>
+    </div>
+    <div class="csec">
+      <h2>프리셋</h2>
+      <div class="pills" id="presets"></div>
+    </div>
+    <div class="csec">
+      <h2>위젯 배치 — 각 박스를 어느 메뉴에</h2>
+      <div id="placerows"></div>
+    </div>
+    <div class="csec">
+      <h2>옵션</h2>
+      <div class="sgrp">비교 구분 옵션 (사업성/예술성)</div>
+      <div class="seg" id="axseg">
+        <button data-x="1" type="button">구분 ON</button>
+        <button data-x="0" type="button">구분 없음</button>
+      </div>
+      <div class="sgrp">상세 표본 (행 클릭으로도 이동)</div>
+      <div class="seg" id="dsseg">
+        <button data-d="cho" type="button">집계 전 = 조재혁</button>
+        <button data-d="jazz" type="button">판매 중 = 스윙</button>
+      </div>
+      <div class="sgrp">상세 일일 추이 기본 기간</div>
+      <div class="seg" id="winseg">
+        <button data-n="1" type="button">1일</button>
+        <button data-n="3" type="button">3일</button>
+        <button data-n="7" type="button">7일</button>
+      </div>
+    </div>
+    <div class="csec">
+      <h2>미세조정</h2>
+      <div id="sliders"></div>
+    </div>
+    <div class="csec">
+      <h2>선택값</h2>
+      <pre id="out"></pre>
+      <button class="copybtn" id="copy" type="button">선택값 복사</button>
+    </div>
+    <div class="csec note">
+      <b>재현 한계 각주</b><br>
+      · <b>구 판매현황 = 근사 재현</b> — 원 코드(죽은 코드) 미확보라 설명·통상 패턴으로 재구성. 실물과 다르면 스샷/코드 던져주면 갱신.<br>
+      · 상세 화면 = 260708 스크린샷 실측 발췌(색·모서리·간격 근사치) · 이 앱은 토큰 정본이 없어 계승/갱신 판정은 <b>스샷 현행 대비</b>만(기틀 ⚠ 딱지 해당 없음).<br>
+      · 데이터 전부 목업 시드(오늘 = 26.7.8 고정) — 실제 판매·시트 연동·저장 없음. 일일입력·검색·비교추가 = 화면 안 데모.<br>
+      · 차트 = SVG 근사(스크린리더용 표 미포함) · 스파크라인은 각 프로그램 자체 스케일(모양 비교용) · 폰트 = 시스템 폴백(Pretendard 미임베드).<br>
+      · PC 프레임은 화면이 좁으면 비율 축소 표시(실폭 1280 기준) · 비교 선택은 최대 4개(색 구분 한계).
+    </div>
+  </aside>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function mul32(a){ return function(){ a|=0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a>>>15, 1|a); t = t + Math.imul(t ^ t>>>7, 61|t) ^ t; return ((t ^ t>>>14) >>> 0) / 4294967296; }; }
+
+/* ── 시간(목업 고정: 오늘 = 2026-07-08) ── */
+const TODAY = new Date(2026, 6, 8);
+const DAY = 864e5;
+const addD = (d, n) => new Date(d.getTime() + n*DAY);
+const dDiff = (a, b) => Math.round((a - b) / DAY);
+const WD = '일월화수목금토';
+const fmtMD = d => `${d.getMonth()+1}.${d.getDate()}`;
+const fmtMDW = d => `${fmtMD(d)}(${WD[d.getDay()]})`;
+
+/* ── 데이터 (전부 목업 시드) ───────────────────────────── */
+/* 판매 곡선 생성: 초반 오픈 버스트 + 주말 가중 + 막판 램프 */
+function genDaily(seed, open, until, totalUnits){
+  const rnd = mul32(seed), days = dDiff(until, open) + 1;
+  if (days <= 0) return [];
+  const w = [];
+  for (let i = 0; i < days; i++){
+    let v = .35 + rnd()*1.1;
+    if (i < 4) v *= 3.1;
+    const dt = addD(open, i);
+    if (dt.getDay() === 0 || dt.getDay() === 6) v *= 1.5;
+    w.push(v);
+  }
+  const sum = w.reduce((a,b)=>a+b,0);
+  let acc = 0;
+  return w.map((v,i)=>{ const n = Math.max(0, Math.round(totalUnits*v/sum)); acc += n; return {t:addD(open,i), n}; });
+}
+/* 종료공연 누적 곡선: D-90 → D-0, 최종 final% */
+function genPastCurve(seed, final){
+  const rnd = mul32(seed), w = [];
+  for (let i = 0; i <= 90; i++){
+    let v = .3 + rnd();
+    if (i < 5) v *= 3.4;
+    if (i > 82) v *= 2.6;
+    w.push(v);
+  }
+  const sum = w.reduce((a,b)=>a+b,0);
+  let acc = 0;
+  return w.map((v,i)=>{ acc += v; return {dd: i-90, c: +(final*acc/sum).toFixed(2)}; });
+}
+
+const UNIT = {'공연':'석','전시':'매','교육':'명'};
+/* 진행 프로그램 — cat 순차(공연→전시→교육) · axis = 사업성/예술성 */
+const PROGS = [
+ {id:'cho',    cat:'공연', axis:'예술성', genre:'기타',     title:'조재혁 피아노 리사이틀',              seats:926,  date:new Date(2026,8,12), open:new Date(2026,6,6),  target:0},
+ {id:'jazz',   cat:'공연', axis:'사업성', genre:'재즈',     title:'2026 여름 재즈 나이트 <스윙 인 서울>', seats:600,  date:new Date(2026,7,1),  open:new Date(2026,5,5),  target:42},
+ {id:'quartet',cat:'공연', axis:'예술성', genre:'클래식',   title:'현악사중주의 밤 <베토벤 사이클 II>',   seats:926,  date:new Date(2026,7,22), open:new Date(2026,5,20), target:22},
+ {id:'gala',   cat:'공연', axis:'사업성', genre:'뮤지컬',   title:'뮤지컬 갈라 <온 스테이지>',            seats:1200, date:new Date(2026,9,3),  open:new Date(2026,6,1),  target:6},
+ {id:'light',  cat:'전시', axis:'사업성', genre:'미디어아트',title:'미디어아트展 <빛의 정원>',             seats:20000,date:new Date(2026,5,20), end:new Date(2026,8,30), open:new Date(2026,4,15), target:31},
+ {id:'baekja', cat:'전시', axis:'예술성', genre:'특별전',   title:'특별전 <조선의 백자>',                 seats:8000, date:new Date(2026,6,15), end:new Date(2026,9,15), open:new Date(2026,5,25), target:9},
+ {id:'camp',   cat:'교육', axis:'예술성', genre:'청소년',   title:'여름 청소년 오케스트라 캠프',           seats:120,  date:new Date(2026,7,10), open:new Date(2026,4,1),  target:88},
+ {id:'intro',  cat:'교육', axis:'사업성', genre:'성인',     title:'성인 아카데미 <클래식 입문>',           seats:60,   date:new Date(2026,8,1),  open:new Date(2026,5,15), target:35},
+];
+let seedN = 11;
+PROGS.forEach(p => { p.daily = p.target > 0 ? genDaily(seedN += 7, p.open, TODAY, Math.round(p.seats * p.target / 100)) : []; });
+
+/* 종료공연 풀(비교·검색) — 스샷 5종 + 검색용 추가 */
+const PAST = [
+ {id:'s8',      cat:'공연', axis:'예술성', genre:'기타',   year:2026, title:'김영욱×클레기움 무지쿰 서울 <8 Seasons>',        final:12.5, seed:101},
+ {id:'peter',   cat:'공연', axis:'예술성', genre:'기타',   year:2026, title:'국립심포니오케스트라 <피터와 늑대 & 어미 거위>',  final:41,   seed:102},
+ {id:'easy',    cat:'공연', axis:'예술성', genre:'기타',   year:2026, title:'한국페스티발앙상블 <세상에서 가장 편한 음악>',    final:10,   seed:103},
+ {id:'chamber', cat:'공연', axis:'예술성', genre:'기타',   year:2026, title:'2026 실내악페스티벌 <실내악, 그 이상의 세계>',    final:13,   seed:104},
+ {id:'sevilla', cat:'공연', axis:'예술성', genre:'기타',   year:2026, title:'2026 헬로!오페라 <세비야의 이발사>',              final:32.5, seed:105},
+ {id:'songnyeon',cat:'공연',axis:'사업성', genre:'클래식', year:2025, title:'2025 송년음악회 <합창>',                          final:72,   seed:106},
+ {id:'nutcracker',cat:'공연',axis:'사업성',genre:'발레',   year:2025, title:'어린이 발레 <호두까기 인형>',                      final:95,   seed:107},
+ {id:'jazzfesta',cat:'공연', axis:'사업성',genre:'재즈',   year:2025, title:'2025 재즈 페스타 <미드나잇 블루>',                 final:55,   seed:108},
+ {id:'seoulnight',cat:'전시',axis:'사업성',genre:'사진',   year:2025, title:'사진전 <서울의 밤>',                               final:44,   seed:109},
+ {id:'compose', cat:'교육', axis:'예술성', genre:'주니어', year:2025, title:'주니어 작곡교실 <나의 첫 악보>',                    final:90,   seed:110},
+];
+PAST.forEach(p => p.curve = genPastCurve(p.seed, p.final));
+const pastById = id => PAST.find(p => p.id === id);
+const progById = id => PROGS.find(p => p.id === id);
+
+/* ── 파생 값 ── */
+const cum = p => p.daily.reduce((a,d)=>a+d.n,0);
+const pct = p => p.seats ? cum(p)/p.seats*100 : 0;
+const lastN = p => p.daily.length ? p.daily[p.daily.length-1].n : 0;
+const selfCurve = p => { /* 누적 % · x = 공연(시작)일 기준 D-값 */
+  let acc = 0; return p.daily.map(d => { acc += d.n; return {dd: dDiff(d.t, p.date), c:+(acc/p.seats*100).toFixed(2)}; });
+};
+const ddLabel = p => { const dd = dDiff(p.date, TODAY); return dd > 0 ? 'D-'+dd : (p.end && TODAY <= p.end ? '진행중' : 'D-DAY'); };
+
+/* ── 비교 시리즈 색 = 개체 고정(선택 시 빈 슬롯 취득 · 해제 시 반납) ── */
+const SLOTS = ['#eb6834','#008300','#2a78d6','#e87ba4'];  /* self = --a-pri 인디고 · CVD 검증 통과 세트 */
+const selColor = {};
+let cmpSel = [];
+function selectPast(id){
+  if (cmpSel.includes(id)) return true;
+  if (cmpSel.length >= 4) return false;
+  const used = new Set(cmpSel.map(x => selColor[x]));
+  selColor[id] = SLOTS.find(c => !used.has(c));
+  cmpSel.push(id);
+  return true;
+}
+function deselectPast(id){ cmpSel = cmpSel.filter(x => x !== id); delete selColor[id]; }
+selectPast('s8'); selectPast('sevilla');   /* 스샷 기본 선택 재현 */
+
+/* ── 상태 ─────────────────────────────────────────────── */
+const WIDGETS = [
+ {k:'kpi',    nm:'요약 KPI 스트립',                sub:'진행 수·오늘 판매·평균 점유율 (신설)'},
+ {k:'base',   nm:'기본 판매 현황',                 sub:'공연·전시·교육 순차 + 일일입력 + 추이'},
+ {k:'cmp',    nm:'비슷한 프로그램 판매 추이 비교',   sub:'종료공연 겹쳐보기 · 구분 옵션 연동'},
+ {k:'search', nm:'지난 공연 판매 추이 검색',        sub:'종료 프로그램 검색 → 비교에 추가'},
+ {k:'season', nm:'계절별 판매',                    sub:'봄·여름·가을·겨울 합계'},
+ {k:'annual', nm:'연간 판매 현황',                 sub:'2026 월별 + 연 누계'},
+ {k:'optcmp', nm:'옵션별 판매 추이 비교',           sub:'사업성/예술성 · 장르'},
+];
+const DEFAULTS = {
+  place:{kpi:'hide', base:'sales', cmp:'sales', search:'sales', season:'biz', annual:'biz', optcmp:'biz'},
+  ax:1, win:3, vw:1280,
+  dense:12, pad:16, gap:20, r:12, spark:32, goal:50,
+};
+/* 현행(구) = 전부 판매현황 한 페이지 · 구분 옵션 없음 */
+const OLDPLACE = {kpi:'sales', base:'sales', cmp:'hide', search:'hide', season:'sales', annual:'sales', optcmp:'sales'};
+const PRESETS = [
+ {id:'p0', nm:'현행(구)',    view:'old',   st:{...DEFAULTS, place:{...OLDPLACE}, ax:0}},
+ {id:'p1', nm:'제안 A 운영자안', star:'★', view:'sales', st:{...DEFAULTS, place:{...DEFAULTS.place}}},
+ {id:'p2', nm:'B 판매 미니멀', view:'sales', st:{...DEFAULTS, place:{kpi:'hide', base:'sales', cmp:'hide', search:'sales', season:'biz', annual:'biz', optcmp:'biz'}}},
+ {id:'p3', nm:'C 요약 강화',  view:'sales', st:{...DEFAULTS, place:{kpi:'sales', base:'sales', cmp:'sales', search:'sales', season:'biz', annual:'biz', optcmp:'biz'}}},
+];
+const SLIDERS = [
+ {k:'dense', nm:'리스트 행 밀도', d:'행 세로 패딩 px',  min:8,  max:20, step:1, grp:'레이아웃'},
+ {k:'pad',   nm:'카드 패딩',     d:'위젯 카드 내부 px', min:10, max:26, step:1},
+ {k:'gap',   nm:'위젯 간격',     d:'카드 사이 px',      min:12, max:32, step:1},
+ {k:'r',     nm:'카드 모서리',   d:'radius px',         min:8,  max:20, step:1},
+ {k:'spark', nm:'스파크 높이',   d:'행 추이 미니차트 px(신설)', min:24, max:48, step:1, grp:'추이 표시'},
+ {k:'goal',  nm:'목표 점유율',   d:'목표선 % (전 프로그램 공통)', min:30, max:90, step:5},
+];
+let state = JSON.parse(JSON.stringify(PRESETS[1].st));   /* 시작 = 제안 A(추천) */
+let curView = 'sales', curDetail = 'cho', cmpBaseId = 'jazz', axPick = '전체', srchQ = '';
+const app = $('#app'), tip = $('#tip');
+
+/* ── SVG 차트 헬퍼 ────────────────────────────────────── */
+function chartW(){ return state.vw <= 390 ? 342 : 1150; }
+const NUM = v => v.toLocaleString('ko-KR');
+
+/* D-커브 멀티라인: series = [{nm, color, pts:[{dd,c}], me?}] · 호버 메타 = 레지스트리 */
+let CHSEQ = 0; const CHREG = {};
+function dChart(series, goal, W, H){
+  const L = 34, R = W < 500 ? 70 : 96, T = 12, B = 24;
+  series = series.map(s => ({...s, pts: s.pts.filter(p => p.dd >= -90 && p.dd <= 0)})).filter(s => s.pts.length);
+  const x = dd => L + (dd + 90) / 90 * (W - L - R);
+  const maxY = Math.max(100 - 40, goal + 10, ...series.flatMap(s => s.pts.map(p => p.c))) * 1.08;
+  const yMax = Math.min(100, Math.max(20, Math.ceil(maxY / 10) * 10));
+  const y = v => T + (1 - v / yMax) * (H - T - B);
+  let g = '';
+  const steps = yMax > 60 ? [0,25,50,75,100].filter(v=>v<=yMax) : [0, Math.round(yMax/2/5)*5, yMax];
+  steps.forEach(v => { g += `<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="tickl" x="${L-5}" y="${y(v)+3.5}" text-anchor="end">${v}</text>`; });
+  if (goal <= yMax) g += `<line class="goal" x1="${L}" x2="${W-R}" y1="${y(goal)}" y2="${y(goal)}"/><text class="tickl" x="${W-R-4}" y="${y(goal)-4}" text-anchor="end" fill="#4f46e5">목표 ${goal}%</text>`;
+  [-90,-60,-30,0].forEach(dd => { g += `<text class="tickl" x="${x(dd)}" y="${H-8}" text-anchor="middle">${dd===0?'공연일':'D'+dd}</text>`; });
+  /* 라인 + 끝점 직접 라벨(잉크 텍스트 + 색점 · 겹침 회피) */
+  const ends = [];
+  series.forEach(s => {
+    if (!s.pts.length) return;
+    const d = s.pts.map((p,i) => (i?'L':'M') + x(p.dd).toFixed(1) + ' ' + y(p.c).toFixed(1)).join('');
+    const last = s.pts[s.pts.length-1];
+    g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.me?2.5:2}" stroke-linejoin="round" stroke-linecap="round"${s.me?'':' opacity=".9"'}/>`;
+    g += `<circle cx="${x(last.dd)}" cy="${y(last.c)}" r="3.2" fill="${s.color}"/>`;
+    ends.push({s, px:x(last.dd), py:y(last.c)});
+  });
+  ends.sort((a,b) => a.py - b.py);
+  let prev = -99;
+  const maxNm = W < 500 ? 9 : 14;
+  ends.forEach(e => {
+    let ly = Math.max(e.py, prev + 13); ly = Math.min(ly, H - B - 2); prev = ly;
+    const short = e.s.nm.length > maxNm ? e.s.nm.slice(0, maxNm - 1) + '…' : e.s.nm;
+    g += `<circle cx="${W-R+10}" cy="${ly-3.5}" r="3.4" fill="${e.s.color}"/><text class="dirl" x="${W-R+18}" y="${ly}">${esc(short)}</text>`;
+  });
+  const cid = ++CHSEQ; CHREG[cid] = series;
+  return {svg:`<svg viewBox="0 0 ${W} ${H}" data-chid="${cid}" data-w="${W}" data-h="${H}" data-l="${L}" data-r="${R}">${g}<line class="vline" x1="-9" x2="-9" y1="${T}" y2="${H-B}" data-vl></line></svg>`};
+}
+/* 렌더 후 svg에 호버 메타 부착 */
+function wireCharts(){
+  $$('svg[data-chid]').forEach(svg => {
+    if (svg._meta) return;
+    svg._meta = {W:+svg.dataset.w, H:+svg.dataset.h, L:+svg.dataset.l, R:+svg.dataset.r, series: CHREG[+svg.dataset.chid] || []};
+  });
+}
+
+/* 단일 색 세로 막대: data = [{lb, v, sub?}] */
+function barChart(data, W, H, opt = {}){
+  const L = 8, R = 8, T = 20, B = 22;
+  const maxV = Math.max(1, ...data.map(d => d.v)) * 1.12;
+  const n = data.length, slot = (W - L - R) / n, bw = Math.min(opt.bw || 64, slot - 2);
+  let g = `<line class="grid" x1="${L}" x2="${W-R}" y1="${H-B}" y2="${H-B}"/>`;
+  data.forEach((d, i) => {
+    const cx = L + slot * i + slot / 2;
+    const h = Math.max(d.v > 0 ? 2 : 0, (H - T - B) * d.v / maxV);
+    g += `<rect x="${(cx-bw/2).toFixed(1)}" y="${(H-B-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${opt.color || '#4f46e5'}"${d.dim ? ' opacity=".28"' : ''}/>`;
+    g += `<text class="tickl" x="${cx}" y="${H-7}" text-anchor="middle">${esc(d.lb)}</text>`;
+    if (d.v > 0 || !d.dim) g += `<text class="dirl" x="${cx}" y="${(H-B-h-6).toFixed(1)}" text-anchor="middle">${opt.fmt ? opt.fmt(d.v) : NUM(d.v)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+/* 스파크라인(자체 스케일) */
+function sparkSVG(p){
+  const pts = selfCurve(p);
+  if (pts.length < 2) return `<span class="nospark">집계 전</span>`;
+  const W = 110, H = 30, mx = Math.max(...pts.map(q => q.c)) * 1.12 || 1;
+  const x = i => 2 + i / (pts.length - 1) * (W - 8);
+  const y = c => H - 3 - c / mx * (H - 8);
+  const d = pts.map((q,i) => (i?'L':'M') + x(i).toFixed(1) + ' ' + y(q.c).toFixed(1)).join('');
+  const lp = pts[pts.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/><circle cx="${x(pts.length-1)}" cy="${y(lp.c)}" r="2.8" fill="#4f46e5"/></svg>`;
+}
+function sparkPast(p){
+  const W = 110, H = 26, pts = p.curve.filter((q,i) => i % 3 === 0);
+  const mx = p.final * 1.12 || 1;
+  const x = i => 2 + i / (pts.length - 1) * (W - 6);
+  const y = c => H - 3 - c / mx * (H - 7);
+  const d = pts.map((q,i) => (i?'L':'M') + x(i).toFixed(1) + ' ' + y(q.c).toFixed(1)).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="#9aa0b6" stroke-width="1.8"/></svg>`;
+}
+
+/* D-커브 호버(크로스헤어+툴팁) — 위임 */
+app.addEventListener('pointermove', e => {
+  const svg = e.target.closest('svg[data-w]'); if (!svg){ tip.style.opacity = 0; return; }
+  const meta = svg._meta; if (!meta) return;
+  const rect = svg.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / rect.width * meta.W;
+  if (mx < meta.L || mx > meta.W - meta.R){ tip.style.opacity = 0; svg.querySelector('[data-vl]').setAttribute('x1',-9); svg.querySelector('[data-vl]').setAttribute('x2',-9); return; }
+  const dd = Math.round((mx - meta.L) / (meta.W - meta.L - meta.R) * 90 - 90);
+  const px = meta.L + (dd + 90) / 90 * (meta.W - meta.L - meta.R);
+  const vl = svg.querySelector('[data-vl]'); vl.setAttribute('x1', px); vl.setAttribute('x2', px);
+  let rows = '';
+  meta.series.forEach(s => {
+    const pt = s.pts.find(q => q.dd === dd);
+    if (pt) rows += `<div class="tr"><span class="td" style="background:${s.color}"></span>${esc(s.nm.length>16?s.nm.slice(0,15)+'…':s.nm)} <b>${pt.c.toFixed(1)}%</b></div>`;
+  });
+  if (!rows){ tip.style.opacity = 0; return; }
+  tip.innerHTML = `<div style="color:#c3c6d4;margin-bottom:2px">${dd === 0 ? '공연일' : 'D' + dd}</div>` + rows;
+  const fb = $('#fitbox').getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX - fb.left + 14, fb.width - 200) + 'px';
+  tip.style.top  = (e.clientY - fb.top + 12) + 'px';
+  tip.style.opacity = 1;
+});
+app.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+
+/* ── 위젯 렌더러 ──────────────────────────────────────── */
+function wKPI(){
+  const live = PROGS.filter(p => p.daily.length);
+  const today = PROGS.reduce((a,p) => a + (p.daily.length && dDiff(TODAY, p.daily[p.daily.length-1].t) === 0 ? lastN(p) : 0), 0);
+  const avg = live.length ? live.reduce((a,p) => a + pct(p), 0) / live.length : 0;
+  const hit = PROGS.filter(p => pct(p) >= state.goal).length;
+  return `<section class="acard" data-w="kpi"><h3>요약 <small>진행 프로그램 전체</small></h3>
+    <div class="kpis">
+      <div class="tile"><div class="tl">진행 프로그램</div><div class="tv">${PROGS.length}</div><div class="ts">공연 4 · 전시 2 · 교육 2</div></div>
+      <div class="tile"><div class="tl">오늘 판매</div><div class="tv">+${NUM(today)}</div><div class="ts">일일입력 반영 합계</div></div>
+      <div class="tile"><div class="tl">평균 점유율</div><div class="tv">${avg.toFixed(1)}%</div><div class="ts">데이터 있는 ${live.length}개 기준</div></div>
+      <div class="tile"><div class="tl">목표(${state.goal}%) 달성</div><div class="tv">${hit}<small style="font-size:13px;color:var(--a-sub)"> /${PROGS.length}</small></div><div class="ts">누적 점유율 기준</div></div>
+    </div></section>`;
+}
+function progRow(p){
+  const has = p.daily.length > 0, u = UNIT[p.cat];
+  const dNew = lastN(p), dPct = p.seats ? dNew / p.seats * 100 : 0;
+  return `<div class="prow" data-open="${p.id}">
+    <div class="pt"><div class="nm">${esc(p.title)}</div>
+      <div class="mt">${p.axis} · ${esc(p.genre)} · ${p.cat==='공연'?'오픈석 ':''}${NUM(p.seats)}${u}${p.cat!=='공연'?' 목표':''} · ${p.end ? fmtMD(p.date)+'~'+fmtMD(p.end) : fmtMDW(p.date)}</div></div>
+    <div class="spark">${sparkSVG(p)}</div>
+    <div class="pct">${has ? pct(p).toFixed(1)+'%' : '<span style="color:var(--a-sub);font-size:12px">집계 전</span>'}${has ? `<small>${NUM(cum(p))}${u}</small>` : ''}</div>
+    <div class="dlt">${has ? `<span class="${dNew ? 'up' : ''}">${dNew ? '+'+NUM(dNew)+u : '±0'}</span><small>${dNew ? '+'+dPct.toFixed(1)+'%p' : '변동 없음'}</small>` : '<span style="color:var(--a-sub)">—</span>'}</div>
+    <div class="dd">${ddLabel(p)}</div>
+    <div class="din"><input type="number" min="0" inputmode="numeric" placeholder="+오늘 ${u}" data-in="${p.id}" autocomplete="off"><button type="button" data-add="${p.id}">입력</button></div>
+  </div>`;
+}
+function wBase(){
+  const cats = ['공연','전시','교육'];
+  let rows = `<div class="lhead"><span>프로그램</span><span>판매 추이 (판매 시작 ~ 오늘)</span><span>누적 점유율</span><span>어제/최근</span><span>D-일</span><span>일일입력</span></div>`;
+  cats.forEach(c => {
+    const list = PROGS.filter(p => p.cat === c);
+    rows += `<div class="pgrp"><em>${c}</em> ${list.length}건</div>` + list.map(progRow).join('');
+  });
+  return `<section class="acard" data-w="base"><h3><span class="ord" data-ord="base"></span>기본 판매 현황 <small>공연 → 전시 → 교육 · 행 클릭 = 상세</small></h3>${rows}</section>`;
+}
+function poolFor(baseProg){
+  let pool = PAST;
+  if (state.ax && axPick !== '전체') pool = pool.filter(p => p.axis === axPick);
+  else if (!state.ax && baseProg) pool = pool;   /* 구분 없음 = 전체 풀 */
+  return pool;
+}
+function chipsHTML(pool){
+  let h = pool.map(p => {
+    const on = cmpSel.includes(p.id);
+    return `<button class="chip${on?' on':''}" type="button" data-cmp="${p.id}">
+      <span class="dot"${on?` style="background:${selColor[p.id]}"`:''}></span><span class="lb">${esc(p.title)}</span><span class="fp">${Math.round(p.final)}%</span></button>`;
+  }).join('');
+  h += `<button class="chip rst" type="button" data-cmprst>초기화</button>`;
+  return h;
+}
+function cmpSeries(baseProg){
+  const s = [];
+  if (baseProg && baseProg.daily.length >= 2) s.push({nm:baseProg.title, color:'#4f46e5', pts:selfCurve(baseProg), me:1});
+  cmpSel.forEach(id => { const p = pastById(id); if (p) s.push({nm:p.title, color:selColor[id], pts:p.curve}); });
+  return s;
+}
+function cmpListHTML(){
+  if (!cmpSel.length) return '';
+  return `<div class="cmplist">` + cmpSel.map(id => { const p = pastById(id);
+    return `<div class="cmpli"><span class="sq" style="background:${selColor[id]}"></span><span class="nm">${esc(p.title)}</span><span class="fin">최종 ${p.final}%</span><button class="x" type="button" data-cmpx="${id}" aria-label="비교 제거">✕</button></div>`; }).join('') + `</div>`;
+}
+function axSegHTML(){
+  if (!state.ax) return '';
+  return `<span class="mini" data-axmini>` + ['전체','사업성','예술성'].map(a => `<button type="button" data-ax="${a}" class="${axPick===a?'on':''}">${a}</button>`).join('') + `</span>`;
+}
+function wCmp(){
+  const base = progById(cmpBaseId);
+  const series = cmpSeries(base);
+  const ch = dChart(series, state.goal, chartW(), state.vw <= 390 ? 210 : 260);
+  const baseChips = PROGS.filter(p => p.daily.length >= 2).map(p =>
+    `<button class="chip${p.id===cmpBaseId?' on':''}" type="button" data-base="${p.id}"><span class="lb">${esc(p.title)}</span></button>`).join('');
+  return `<section class="acard" data-w="cmp"><h3><span class="ord" data-ord="cmp"></span>비슷한 프로그램 판매 추이 비교 <small>종료공연 겹쳐보기 · 세로 = 누적 점유율%</small><span class="qm">?</span></h3>
+    <div class="secrow"><span class="sl">기준</span><div class="cmpbase">${baseChips}</div>${axSegHTML()}</div>
+    <div class="chips">${chipsHTML(poolFor(base))}</div>
+    <div class="chbox" data-dch="cmp">${ch.svg}</div>
+    ${cmpListHTML()}</section>`;
+}
+function wSearch(){
+  const q = srchQ.trim();
+  let list = PAST.filter(p => !q || p.title.includes(q) || p.genre.includes(q) || String(p.year).includes(q));
+  list = list.slice().sort((a,b) => b.year - a.year || b.final - a.final);
+  const rows = list.map(p => `<div class="srow2">
+      <div class="nm"><b>${esc(p.title)}</b><small>${p.year} · ${p.cat} · ${p.axis} · ${esc(p.genre)}</small></div>
+      <div class="spark">${sparkPast(p)}</div><div class="fin">${p.final}%</div>
+      <button class="add" type="button" data-cmpadd="${p.id}" ${cmpSel.includes(p.id)?'disabled':''}>${cmpSel.includes(p.id)?'비교 중':'비교에 추가'}</button>
+    </div>`).join('');
+  return `<section class="acard" data-w="search"><h3><span class="ord" data-ord="search"></span>지난 공연 판매 추이 검색 <small>종료 프로그램 ${PAST.length}건 · [비교에 추가] = 위 비교 차트로</small></h3>
+    <div class="srchrow"><input type="text" placeholder="제목·장르·연도 검색 (예: 재즈, 2025)" value="${esc(srchQ)}" data-srch autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    ${rows || '<div class="graybox">검색 결과 없음</div>'}</section>`;
+}
+function wSeason(){
+  const data = [{lb:'봄(3~5월)',v:12400},{lb:'여름(6~8월)',v:18900},{lb:'가을(9~11월)',v:22100},{lb:'겨울(12~2월)',v:15300}];
+  return `<section class="acard" data-w="season"><h3>계절별 판매 <small>최근 4개 시즌 합계 · 단위 석</small></h3>
+    <div class="chbox">${barChart(data, chartW(), 180)}</div></section>`;
+}
+function wAnnual(){
+  const vals = [5200,4100,6800,7900,9400,11200,8300];
+  const data = Array.from({length:12}, (_,i) => i < 7 ? {lb:(i+1)+'월', v:vals[i]} : {lb:(i+1)+'월', v:0, dim:1});
+  const total = vals.reduce((a,b)=>a+b,0);
+  return `<section class="acard" data-w="annual"><h3>연간 판매 현황 <small>2026 월별 · 8월 이후 집계 전</small></h3>
+    <div class="insrow" style="margin:2px 0 4px"><b style="font-size:19px;color:var(--a-pri);font-variant-numeric:tabular-nums">${NUM(total)}석</b><span class="sub">2026 누계 (7월 8일까지)</span></div>
+    <div class="chbox">${barChart(data, chartW(), 170, {bw:44})}</div></section>`;
+}
+let optMode = 'axis';
+function wOptcmp(){
+  let body;
+  if (optMode === 'axis'){
+    const avgCurve = axis => {
+      const pool = PAST.filter(p => p.axis === axis);
+      return Array.from({length:31}, (_,i) => { const dd = (i*3) - 90;
+        const c = pool.reduce((a,p) => a + (p.curve.find(q=>q.dd===dd)?.c ?? 0), 0) / pool.length;
+        return {dd, c:+c.toFixed(2)}; });
+    };
+    const ch = dChart([{nm:'사업성 평균', color:'#eb6834', pts:avgCurve('사업성')},{nm:'예술성 평균', color:'#2a78d6', pts:avgCurve('예술성')}], state.goal, chartW(), 210);
+    body = `<div class="chbox" data-dch="opt">${ch.svg}</div>`;
+  } else {
+    const genres = {};
+    PAST.forEach(p => { (genres[p.genre] = genres[p.genre] || []).push(p.final); });
+    const data = Object.entries(genres).map(([lb, arr]) => ({lb, v:+(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1)})).sort((a,b)=>b.v-a.v);
+    body = `<div class="chbox">${barChart(data, chartW(), 180, {fmt:v=>v+'%', bw:52})}</div>`;
+  }
+  return `<section class="acard" data-w="optcmp"><h3>옵션별 판매 추이 비교
+    <span class="mini" data-optmini><button type="button" data-om="axis" class="${optMode==='axis'?'on':''}">사업성·예술성</button><button type="button" data-om="genre" class="${optMode==='genre'?'on':''}">장르별</button></span>
+    <small>${optMode==='axis'?'종료공연 평균 누적 곡선':'장르 평균 최종 점유율'}</small></h3>${body}</section>`;
+}
+
+/* ── 상세 화면 ── */
+function dailyBuckets(p, win){
+  const out = [];
+  if (!p.daily.length) return out;
+  for (let end = p.daily.length; end > 0 && out.length < (state.vw<=390?6:10); end -= win){
+    const seg = p.daily.slice(Math.max(0, end - win), end);
+    out.unshift({lb:fmtMD(seg[0].t) + (win > 1 ? '~' : ''), v:seg.reduce((a,d)=>a+d.n,0)});
+  }
+  return out;
+}
+const PROMO = [
+  {d:'7.7', why:['문자 발송 (구독 3,000명)']},
+  {d:'7.6', why:[]},
+  {d:'7.5', why:['인스타 릴스 게시']},
+  {d:'7.4', why:[]},
+  {d:'7.3', why:['패키지 할인 오픈','보도자료 배포']},
+];
+function renderDetail(){
+  const p = progById(curDetail), has = p.daily.length > 0, enough = p.daily.length >= 2, u = UNIT[p.cat];
+  const dd = ddLabel(p);
+  const dNew = lastN(p), dPct = dNew / p.seats * 100;
+  const gap = pct(p) - state.goal;
+  const tiles = `
+    <div class="tiles">
+      <div class="tile"><div class="tl">현재 누적 점유율</div>${has ? `<div class="tv">${pct(p).toFixed(1)}%</div><div class="ts">${NUM(cum(p))}/${NUM(p.seats)}${u}</div>` : `<div class="tv mut">집계 전</div>`}</div>
+      <div class="tile"><div class="tl">어제대비</div>${has ? `<div class="tv" style="color:${dNew?'var(--a-good)':'var(--a-sub)'}">+${NUM(dNew)}${u}</div><div class="ts">+${dPct.toFixed(1)}%p</div>` : `<div class="tv mut">데이터 수집 전</div>`}</div>
+      <div class="tile"><div class="tl">목표 / 차이</div><div class="tv">${state.goal}%</div>${has ? `<div class="ts" style="color:${gap>=0?'var(--a-good)':'var(--a-bad)'};font-weight:700">${gap>=0?'+':''}${gap.toFixed(1)}%p</div>` : ''}</div>
+      <div class="tile"><div class="tl">공연일</div><div class="tv">${dd}</div></div>
+    </div>`;
+  const ins = has ? `
+    <div class="insrow"><span class="ic">💰</span><span><b>상황</b> — 판매 진행 중 · 개시 ${p.daily.length}일차 (누적 ${NUM(cum(p))}${u})</span></div>
+    <div class="insrow"><span class="ic">📣</span><span><b>가장 효과적 채널</b> — 문자 (게시 4/12건)</span><span class="sub">● 게시일 평균 +${Math.max(6, Math.round(dNew*1.2))}${u} · 비게시일 +3${u}</span></div>
+    <div class="insrow"><span class="ic">⚡</span><span><b>최대 레버</b> — 문자 발송일 판매 급증 → 공연 7일 전 추가 발송 검토</span></div>
+    <button class="cta done" type="button">오늘 일일입력 완료 · 7.8(수)</button>` : `
+    <div class="insrow"><span class="ic">💰</span><span><b>상황</b> — 판매 실적 집계 전 (티켓 오픈됨, 첫 일일입력 대기)</span></div>
+    <div class="insrow"><span class="ic">📣</span><span><b>가장 효과적 채널</b> — 문자 (게시 1/4건)</span><span class="sub">● 게시 빈도 기준, 판매 인과는 데이터 수집 전</span></div>
+    <div class="insrow"><span class="ic">⚡</span><span><b>최대 레버</b> — 일자별 판매 데이터 수집 전</span></div>
+    <button class="cta" type="button">▶ 첫 판매 실적 입력 대기 — 일일입력하면 추이·목표 대비가 표시돼요</button>`;
+  /* 비교 블록 */
+  const pool = poolFor(p);
+  const sameG = pool.filter(q => q.genre === p.genre).length >= 2;
+  const poolLb = `같은 ${p.axis}${sameG ? '·' + p.genre : ''} 종료공연`;
+  const daily = dailyBuckets(p, state.win);
+  const dailyCh = enough
+    ? `<div class="chbox">${barChart(daily, chartW(), 190, {fmt:v=>'+'+NUM(v)})}</div>`
+    : `<div class="chbox"><div class="chempty">일자별 데이터가 2개 미만이라 추이를 그릴 수 없어요</div></div>`;
+  const dcurve = enough
+    ? `<div class="secrow" style="margin-top:14px"><span class="sl">누적 점유율 비교</span><span class="sub" style="font-size:11px;color:var(--a-sub)">내 공연(인디고) vs 선택 종료공연 · D-90 → 공연일</span></div>
+       <div class="chbox" data-dch="det">${dChart(cmpSeries(p), state.goal, chartW(), state.vw<=390?210:250).svg}</div>` : '';
+  const promo = enough ? `
+    <table class="promo"><thead><tr><th style="width:74px">날짜</th><th style="width:110px;text-align:right">판매 변화</th><th>그날 한 일</th></tr></thead><tbody>
+      ${PROMO.map((r,i) => { const n = p.daily[p.daily.length-1-i]; const v = n ? n.n : 0;
+        return `<tr><td>${r.d}</td><td class="dl ${v>=10?'up':''}">+${NUM(v)}${u}</td><td class="why">${r.why.length ? r.why.map(w=>`<span class="tag">${esc(w)}</span>`).join('') : '<span class="none">—</span>'}</td></tr>`; }).join('')}
+    </tbody></table>`
+    : `<div class="graybox">일자별 데이터가 부족해 일변화를 계산할 수 없어요. (운영_일일입력에 이 공연 행이 2일 이상 쌓이면 표시돼요)</div>`;
+  $('#detailbody').innerHTML = `
+    <div class="dhead"><button class="back" type="button" data-back>← 판매현황</button>
+      <h2>${esc(p.title)}</h2><span class="hm">${p.axis} · ${esc(p.genre)} · ${p.cat==='공연'?'오픈석 ':''}${NUM(p.seats)}${u} · ${p.end ? fmtMD(p.date)+'~'+fmtMD(p.end) : fmtMDW(p.date)}</span></div>
+    <div class="vcols">
+      <section class="acard"><h3>🎯 현재 상황</h3>${tiles}${ins}</section>
+      <section class="acard"><h3>🫧 비슷한 프로그램 비교 <small>(${poolLb})</small><span class="qm">?</span></h3>
+        <div class="chips">${chipsHTML(pool)}</div>
+        <div class="secrow"><span class="sl">일일 추이</span><span class="mini" data-winmini>${[1,3,7].map(n=>`<button type="button" data-win="${n}" class="${state.win===n?'on':''}">${n}일</button>`).join('')}</span></div>
+        ${dailyCh}${dcurve}${cmpListHTML()}</section>
+      <section class="acard"><h3>📍 일일 홍보현황 — “그날 왜”</h3>${promo}</section>
+    </div>`;
+}
+
+/* ── 구 판매현황(현행 · 근사 · 고정) ── */
+function destTag(k){
+  const v = state.place[k];
+  if (v === 'sales') return `<span class="dest keep">신안: 판매현황 유지</span>`;
+  if (v === 'biz')   return `<span class="dest move">신안: 사업현황 이동</span>`;
+  return `<span class="dest hide">신안: 숨김/보류</span>`;
+}
+function renderOld(){
+  const flat = PROGS.map(p => `<tr><td>${esc(p.title)}</td><td>${p.cat}</td><td>${p.axis}</td><td>${NUM(p.seats)}${UNIT[p.cat]}</td><td>${p.daily.length?pct(p).toFixed(1)+'%':'집계 전'}</td><td>${p.end?fmtMD(p.date)+'~'+fmtMD(p.end):fmtMDW(p.date)}</td></tr>`).join('');
+  const bizRows = PROGS.filter(p => p.axis === '사업성').map(p => `<tr><td>${esc(p.title)}</td><td>${p.cat}</td><td>${p.daily.length?pct(p).toFixed(1)+'%':'집계 전'}</td><td>${p.daily.length?NUM(cum(p))+UNIT[p.cat]:'—'}</td></tr>`).join('');
+  const oldW = state.vw <= 390 ? 342 : 1100;
+  $('#oldbody').innerHTML = `
+    <div class="oldrib">구 판매현황 — 죽어있는 코드 · <b>근사 재현(원 코드 미확보)</b> · 전 위젯이 한 페이지에 순서 없이 적층돼 있던 상태 = 비교 기준(고정). 각 박스의 태그 = 현재 콘솔 배치안에서의 행선지.</div>
+    <div class="vcols">
+      <section class="acard"><h3>요약 ${destTag('kpi')}</h3>
+        <div class="kpis">
+          <div class="tile"><div class="tl">진행 프로그램</div><div class="tv">${PROGS.length}</div></div>
+          <div class="tile"><div class="tl">평균 점유율</div><div class="tv">${(PROGS.filter(p=>p.daily.length).reduce((a,p)=>a+pct(p),0)/PROGS.filter(p=>p.daily.length).length).toFixed(1)}%</div></div>
+          <div class="tile"><div class="tl">이번 주 판매</div><div class="tv">+1,284</div></div>
+          <div class="tile"><div class="tl">시즌 진행률</div><div class="tv">54%</div></div>
+        </div></section>
+      <section class="acard"><h3>전체 프로그램 <small>플랫 표 · 그룹 없음 · 일일입력 없음</small> ${destTag('base')}</h3>
+        <table class="oldtb"><thead><tr><th>프로그램</th><th>분류</th><th>옵션</th><th>규모</th><th>점유율</th><th>일정</th></tr></thead><tbody>${flat}</tbody></table></section>
+      <section class="acard"><h3>사업성 판매현황 <small>사업성만 별도 표</small> <span class="dest move">신안: 비교 ‘구분 옵션’으로 흡수</span></h3>
+        <table class="oldtb"><thead><tr><th>프로그램</th><th>분류</th><th>점유율</th><th>누적</th></tr></thead><tbody>${bizRows}</tbody></table></section>
+      <section class="acard"><h3>시즌별(계절별) 판매 ${destTag('season')}</h3>
+        <div class="chbox">${barChart([{lb:'봄',v:12400},{lb:'여름',v:18900},{lb:'가을',v:22100},{lb:'겨울',v:15300}], oldW, 160)}</div></section>
+      <section class="acard"><h3>연간 판매 현황 ${destTag('annual')}</h3>
+        <div class="chbox">${barChart(Array.from({length:12},(_,i)=> i<7 ? {lb:(i+1)+'월',v:[5200,4100,6800,7900,9400,11200,8300][i]} : {lb:(i+1)+'월',v:0,dim:1}), oldW, 150, {bw:40})}</div></section>
+      <section class="acard"><h3>옵션별 판매 추이 비교 ${destTag('optcmp')}</h3>
+        <div class="graybox">장르·사업성 조합 필터 + 표 나열(차트 없음) — 신안에선 평균 누적 곡선/장르 막대로 대체</div></section>
+    </div>`;
+}
+
+/* ── 배치·조립 ── */
+const ORDER = ['kpi','base','cmp','search','season','annual','optcmp'];
+const RENDER = {kpi:wKPI, base:wBase, cmp:wCmp, search:wSearch, season:wSeason, annual:wAnnual, optcmp:wOptcmp};
+function placeWidgets(){
+  const sales = ORDER.filter(k => state.place[k] === 'sales');
+  const biz = ORDER.filter(k => state.place[k] === 'biz');
+  $('#salescols').innerHTML = sales.map(k => RENDER[k]()).join('');
+  $('#bizcols').innerHTML = biz.map(k => RENDER[k]()).join('');
+  /* ①②③ 순번 스탬프(판매현황 안에서만) */
+  const nums = ['①','②','③','④','⑤','⑥','⑦'];
+  $$('#salescols [data-ord]').forEach((el, i) => el.textContent = nums[i] + ' ');
+  $$('#bizcols [data-ord]').forEach(el => el.textContent = '');
+}
+
+function setView(v){
+  curView = v;
+  $$('#viewseg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  $$('.app .view').forEach(el => el.classList.toggle('on', el.id === 'v-' + v));
+  $$('.app .atab').forEach(t => t.classList.toggle('on', t.dataset.av === v));
+  fit();
+}
+
+/* ── 콘솔 조립 ── */
+$('#presets').innerHTML = PRESETS.map(p =>
+  `<button class="pill${p.id==='p1'?' on':''}" data-p="${p.id}" type="button">${p.nm}${p.star?`<span class="st">${p.star}</span>`:''}</button>`).join('');
+$('#placerows').innerHTML = WIDGETS.map(w => `
+  <div class="wrow"><div class="wnm">${w.nm}<small>${w.sub}</small></div>
+    <div class="seg" data-pk="${w.k}">
+      <button type="button" data-pv="sales">판매</button>
+      <button type="button" data-pv="biz">사업</button>
+      <button type="button" data-pv="hide">숨김</button>
+    </div></div>`).join('');
+$('#sliders').innerHTML = SLIDERS.map(sp =>
+  (sp.grp ? `<div class="sgrp">${sp.grp}</div>` : '') +
+  `<div class="srow"><span class="nm">${sp.nm}<small>${sp.d}</small></span>
+   <input type="range" id="sl_${sp.k}" min="${sp.min}" max="${sp.max}" step="${sp.step}">
+   <span class="val" id="vl_${sp.k}"></span></div>`).join('');
+
+function markCustom(){ $$('#presets .pill').forEach(x => x.classList.remove('on')); }
+
+/* ── 반영(단일 지점) ── */
+function apply(){
+  const s = app.style;
+  s.setProperty('--t-dense', state.dense + 'px');
+  s.setProperty('--t-pad',   state.pad + 'px');
+  s.setProperty('--t-gap',   state.gap + 'px');
+  s.setProperty('--t-r',     state.r + 'px');
+  s.setProperty('--t-spark', state.spark + 'px');
+  app.classList.toggle('narrow', state.vw <= 390);
+  $$('#vwseg button').forEach(b => b.classList.toggle('on', +b.dataset.w === state.vw));
+  $$('#axseg button').forEach(b => b.classList.toggle('on', +b.dataset.x === state.ax));
+  $$('#winseg button').forEach(b => b.classList.toggle('on', +b.dataset.n === state.win));
+  $$('#dsseg button').forEach(b => b.classList.toggle('on', b.dataset.d === curDetail));
+  $$('#placerows .seg').forEach(seg => {
+    const k = seg.dataset.pk;
+    seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.pv === state.place[k]));
+  });
+  SLIDERS.forEach(sp => {
+    const el = $('#sl_' + sp.k); if (!el) return;
+    el.value = state[sp.k];
+    el.style.setProperty('--p', ((state[sp.k]-sp.min)/(sp.max-sp.min)*100) + '%');
+    $('#vl_' + sp.k).textContent = state[sp.k] + (sp.k === 'goal' ? '%' : 'px');
+  });
+  placeWidgets();
+  renderDetail();
+  renderOld();
+  wireCharts();
+  buildOut();
+  fit();
+}
+
+/* ── 선택값 출력 ── */
+const near = (a,b) => Math.abs(a-b) < .001;
+function buildOut(){
+  const nmOf = {kpi:'요약 KPI', base:'기본 판매현황(공연·전시·교육+일일입력)', cmp:'비슷한 프로그램 비교', search:'지난 공연 검색', season:'계절별 판매', annual:'연간 판매 현황', optcmp:'옵션별 추이 비교(장르·사업성)'};
+  const li = v => ORDER.filter(k => state.place[k] === v).map((k,i) => `${'①②③④⑤⑥⑦'[i]} ${nmOf[k]}`).join(' → ') || '(비움)';
+  const hid = ORDER.filter(k => state.place[k] === 'hide').map(k => nmOf[k]).join(' · ') || '없음';
+  const moved = ORDER.filter(k => OLDPLACE[k] === 'sales' && state.place[k] === 'biz').length;
+  const pill = $('#presets .pill.on');
+  const sl = SLIDERS.map(sp => {
+    const cur = DEFAULTS[sp.k];
+    const note = near(state[sp.k], cur) ? (sp.k === 'spark' ? '신설 축 기본값' : '= 현행(스샷 실측) 계승') : '→ 갱신 후보';
+    return `${sp.nm.padEnd(8,' ')}: ${String(state[sp.k]).padStart(3,' ')}${sp.k==='goal'?'%':'px'}  [현행 ${cur}${sp.k==='goal'?'%':'px'} · ${note}]`;
+  }).join('\n');
+  $('#out').textContent =
+`[판매현황 개편 — 선택값 · 260708]
+프리셋       : ${pill ? pill.textContent.replace('★','').trim() + (pill.dataset.p==='p1'?' ★':'') : '커스텀(수동 조정)'}
+판매현황(신) : ${li('sales')}
+사업현황     : ${li('biz')}
+숨김/보류    : ${hid}
+현행(구) 대비: 한 페이지 적층 → 사업현황 이동 ${moved}개 · 사업성 별도표는 '구분 옵션'으로 흡수
+── 옵션
+비교 구분(사업성/예술성) : ${state.ax ? 'ON' : '없음'}   [현행 없음${state.ax ? ' → 신설' : ' = 계승'}]
+상세 일일추이 기본 기간  : ${state.win}일   [현행 3일${state.win===3 ? ' = 계승' : ' → 갱신 후보'}]
+프레임 폭                : ${state.vw}px
+── 미세조정
+${sl}`;
+}
+
+/* ── 프레임 맞춤 ── */
+const vp = $('#appvp');
+function fit(){
+  const fb = $('#fitbox');
+  fb.style.maxWidth = state.vw + 'px';   /* 폰 390 = 박스도 프레임 폭으로 */
+  const bw = fb.clientWidth;
+  const sc = Math.min(1, bw / state.vw);
+  vp.style.width = state.vw + 'px';
+  vp.style.transform = `scale(${sc})`;
+  requestAnimationFrame(() => { fb.style.height = (app.offsetHeight * sc) + 'px'; });
+}
+new ResizeObserver(() => fit()).observe($('#fitbox'));
+
+/* ── 이벤트 ─────────────────────────────────────────────── */
+$('#viewseg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); });
+$('#vwseg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.vw = +b.dataset.w; apply(); });
+$('#axseg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.ax = +b.dataset.x; if (!state.ax) axPick = '전체'; markCustom(); apply(); });
+$('#winseg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; state.win = +b.dataset.n; markCustom(); apply(); });
+$('#dsseg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; curDetail = b.dataset.d; setView('detail'); apply(); });
+$('#placerows').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.place[b.closest('.seg').dataset.pk] = b.dataset.pv;
+  markCustom(); apply();
+});
+$('#presets').addEventListener('click', e => {
+  const b = e.target.closest('.pill'); if (!b) return;
+  const p = PRESETS.find(x => x.id === b.dataset.p);
+  const keepVw = state.vw;
+  state = JSON.parse(JSON.stringify(p.st));
+  state.vw = keepVw;                    /* 프레임 폭은 프리셋에 안 묶임 */
+  $$('#presets .pill').forEach(x => x.classList.toggle('on', x === b));
+  setView(p.view);
+  apply();
+});
+$('#sliders').addEventListener('input', e => {
+  const el = e.target.closest('input[type=range]'); if (!el) return;
+  state[el.id.slice(3)] = +el.value;
+  markCustom(); apply();
+});
+$('#copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#out').textContent); $('#copy').textContent = '복사됨 ✓'; }
+  catch { const r = document.createRange(); r.selectNode($('#out')); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); $('#copy').textContent = '복사됨 ✓'; }
+  setTimeout(() => $('#copy').textContent = '선택값 복사', 1400);
+});
+
+/* 앱 안 인터랙션(위임) */
+app.addEventListener('click', e => {
+  const t = e.target;
+  const tab = t.closest('.atab');        if (tab){ setView(tab.dataset.av); return; }
+  const back = t.closest('[data-back]'); if (back){ setView('sales'); return; }
+  const add = t.closest('[data-add]');   if (add){
+    const p = progById(add.dataset.add);
+    const inp = app.querySelector(`input[data-in="${p.id}"]`);
+    const n = Math.max(0, Math.round(+inp.value || 0));
+    if (!n) { inp.focus(); return; }
+    const last = p.daily[p.daily.length-1];
+    if (last && dDiff(TODAY, last.t) === 0) last.n += n;
+    else p.daily.push({t:TODAY, n});
+    apply(); return;
+  }
+  const bb = t.closest('[data-base]');   if (bb){ cmpBaseId = bb.dataset.base; apply(); return; }
+  const ax = t.closest('[data-ax]');     if (ax){ axPick = ax.dataset.ax; apply(); return; }
+  const om = t.closest('[data-om]');     if (om){ optMode = om.dataset.om; apply(); return; }
+  const wn = t.closest('[data-win]');    if (wn){ state.win = +wn.dataset.win; markCustom(); apply(); return; }
+  const cx = t.closest('[data-cmpx]');   if (cx){ deselectPast(cx.dataset.cmpx); apply(); return; }
+  const ca = t.closest('[data-cmpadd]'); if (ca){ if (!selectPast(ca.dataset.cmpadd)){ ca.classList.add('deny'); setTimeout(()=>ca.classList.remove('deny'),320); } apply(); return; }
+  const rst = t.closest('[data-cmprst]');if (rst){ cmpSel.slice().forEach(deselectPast); apply(); return; }
+  const ch = t.closest('[data-cmp]');    if (ch){
+    const id = ch.dataset.cmp;
+    if (cmpSel.includes(id)) deselectPast(id);
+    else if (!selectPast(id)){ ch.classList.add('deny'); setTimeout(()=>ch.classList.remove('deny'),320); return; }
+    apply(); return;
+  }
+  const row = t.closest('[data-open]');  if (row && !t.closest('.din')){ curDetail = row.dataset.open; setView('detail'); apply(); return; }
+});
+app.addEventListener('input', e => {
+  const s = e.target.closest('[data-srch]'); if (!s) return;
+  srchQ = s.value;
+  const caret = s.selectionStart;
+  placeWidgets();                       /* 검색 위젯 재렌더 */
+  wireCharts();
+  const ns = app.querySelector('[data-srch]');
+  if (ns){ ns.focus(); try{ ns.setSelectionRange(caret, caret); }catch(_){} }
+  buildOut();
+  fit();
+});
+
+/* ── 시작 ── */
+setView('sales');
+apply();
+window.addEventListener('resize', fit);
+</script>
+</body></html>
