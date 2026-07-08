@@ -198,27 +198,17 @@ def main():
                                                         "ceiling or sky upward and a floor or ground downward)")
             else:
                 where, dirhint = "to its left and right", "to the left and to the right"
-            base_prompt = P_PADFILL.format(where=where, dirhint=dirhint)
-            png, fb = None, ""
-            for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
-                p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
-                                    "reason: \"" + fb + "\". Fix exactly that issue this time.") if fb else "")
-                cand = tg.gemini_image(p, image_size=size, tag="resize:t{}".format(attempt),
-                                       aspect=aspect, ref_png=jpg_bytes(canvas))
-                if not cand:
-                    continue
-                try:
-                    Image.open(io.BytesIO(cand)).verify()   # 손상본 차단(gen_cards.edit_one 계승)
-                except Exception:
-                    print("::warning::렌더 디코드 실패(t{})".format(attempt))
-                    continue
-                v = gemini_judge(cand)
-                if v is None or v[0]:   # 판정 스킵(fail-soft) 또는 PASS
-                    png = cand
-                    break
-                png, fb = cand, v[1]   # FAIL — 최종 후보로는 보관·사유 피드백 재시도
-                print("  QA t{}: FAIL — {}".format(attempt, fb), flush=True)
+            png = tg.gemini_image(P_PADFILL.format(where=where, dirhint=dirhint), image_size=size,
+                                  tag="resize", aspect=aspect, ref_png=jpg_bytes(canvas))
+            ok = False
             if png:
+                try:
+                    gim = Image.open(io.BytesIO(png))
+                    gim.verify()   # 손상본 차단(gen_cards.edit_one 계승)
+                    ok = True
+                except Exception:
+                    print("::warning::렌더 디코드 실패")
+            if ok:
                 out_img = pixel_lock(png, canvas.size, img, box) if lock else \
                     Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
             else:
