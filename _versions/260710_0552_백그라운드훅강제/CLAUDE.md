@@ -167,8 +167,7 @@
 - a) **대상** = 턴이 끝나도 계속 도는 모든 실행(Bash `run_in_background` · 백그라운드 에이전트/워크플로 · 크론·모니터·폴링 루프 · 서버/와처 상주).
 - b) **묻는 시점 = 작업 착수·계획 단계 · 한 작업 한 번**: 백그라운드 필요 여부는 거의 초기에 정해진다(운영자가 명령했거나 · 계획 짜다 결단) → 정해지는 그 시점에 §선택질문 버튼으로 (무엇을 · 왜 · 언제 끝나는지) 묶어 한 번에 승인받는다. 승인 범위 안 실행 = 재질문 0(실행 직전 낱개 질문 반복 금지 = 번거로움 방지).
 - c) **운영자가 백그라운드를 명시로 시킨 경우 = 그 지시가 곧 승인**(재확인 안 물음). 작업 중간에 새로 필요해지면 그때 실행 *전에* 묻는다(승인 전 실행 금지).
-- d) **정리**: 작업 완료·중단 시 남은 백그라운드는 정리하고 보고(유령 프로세스 방치 금지).
-- e) **강제(기계 게이트 · 운영자 A안 확정)**: PreToolUse 훅 `.claude/hooks/bg_gate.py`(`.claude/settings.json` 등재)가 백그라운드 Bash(`run_in_background=true`)를 **무조건 승인 팝업**으로 강제 — 세션이 안 물었어도 실행 순간 기계가 잡는다(버튼 승인과 별개로 팝업 1번 더 = 운영자 감수 확정). 백그라운드 아님·파싱 실패 = 무의견(오차단 0). 에이전트/워크플로 축은 소프트 유지(평의회 다인 소환 팝업 폭주 방지).
+- d) **정리·한계(정직)**: 작업 완료·중단 시 남은 백그라운드는 정리하고 보고(유령 프로세스 방치 금지). 소프트 룰(기계 게이트 아님 — 매 세션 자동 로드로 가시성).
 
 ---
 
@@ -441,6 +440,6 @@
 - i) `assets/brand/` = **브랜드 자산 정본**(CI·BI): `logo.png`(투명 워드마크·여백 트림본 — 로고·CI 자리는 항상 이거) · `logo_원본.png` · `main_background.jpg`(가로 배너 — 전면/메인 배너 자리) · `main_profile.jpg`(정방형 — 프로필·아바타·파비콘 자리). 뷰어 빌드(`build-viewer.mjs`)가 `viewer/assets/brand/`로 복사해 서빙.
 - j) `_versions/` = 시스템 파일 백업(수정 모드) / `_산출/` = 뉴스 산출물 보관
 - k) `docs/` = **뉴스 큐 파이프라인 문서**(폰 공유→Actions 분석→Pages 뷰어): 입구 = `news-pipeline.md`(운영 개요+문서 인덱스) · 구조보고서 PDF · 시행착오로그(교본 원자료 — run #1 401 원인은 이 로그가 정본) · 폰재구축플레이북 · 구축보고 · `termux-share.sh` · **`디자인기틀_SSOT.md`(규칙2번 = 디자인 기틀 단일 진입점 인덱스 · §핵심명령)** · `CII_컴포넌트계승인덱스.md` · 확립본(`reports/260704_*_확립본.html`) · **`기틀_복제팩_마스터라우터.md`(타 레포에 이 레포의 일하는 방식만 이식하는 전달 정본 — 새 레포 세션에 이 파일 1개 첨부+지시문이면 끝)** · **`플레이그라운드_포터블.md`(§플레이그라운드 정본 — 디자인 제안 = 만지는 HTML 표준 · 골격 스펙+안티패턴 · 타 레포 이식팩)**
-- k-1) `apps/track/` = **트래킹**(뷰어 도구 · 진입 = `+ > 영상 > 트래킹` 탭 — 스킬 명령어 없음): `00_지침_트래킹_v1`[통합 플로우 = 분석 1회 → 확정에서 (핀셋 이름표/모자이크/키잉) 선택 → 렌더 N회 · 프리미어 수동 마스킹·로토 대체 · 기틀/한계 정본] · `track_analyze.py`(YuNet 검출+IoU 트랙+SFace 군집 + YOLO11n cv2.dnn 피사체 카드 → tracks.json) · `track_render.py`(모자이크 픽셀레이트/핀셋 이름표 번인 → R2) · `track_keying.py`[키잉 = 선택 피사체만 남기는 알파 렌더 · SAM2.1 tiny 512 멀티패스 → ProRes4444 MOV+VP9 프리뷰 · 캡 90s/4객체 · torch 헤비 스택 = 키잉 렌더 잡 한정(캐시 분리 = 타 경로 불변)] · `setup.sh`[opencv·모델 sha256 핀 · ⚠ 모델은 media.githubusercontent만 — raw는 LFS 포인터 함정] — 순수 CV = **LLM 토큰 0**(Actions 분+R2만 · thumb과 동일 급). 파이프 = `functions/api/track.js` + `.github/workflows/track-make.yml`(ly-make 미러 · up-<id> 업로드 브랜치).
+- k-1) `apps/track/` = **트래킹**(뷰어 도구 · 진입 = `+ > 영상 > 트래킹` 탭 — 스킬 명령어 없음): `00_지침_트래킹_v1`[통합 플로우 = 분석 1회 → 인물 확정에서 (핀셋 이름표/모자이크) 선택 → 렌더 N회 · 프리미어 수동 마스킹 대체 · 기틀/한계 정본] · `track_analyze.py`(YuNet 검출+IoU 트랙+SFace 군집 → tracks.json) · `track_render.py`(모자이크 픽셀레이트/핀셋 이름표 번인 → R2) · `setup.sh`[opencv·모델 sha256 핀 · ⚠ 모델은 media.githubusercontent만 — raw는 LFS 포인터 함정] — 순수 CV = **LLM 토큰 0**(Actions 분+R2만 · thumb과 동일 급). 파이프 = `functions/api/track.js` + `.github/workflows/track-make.yml`(ly-make 미러 · up-<id> 업로드 브랜치).
 - l) `shared/build_design_mirror.py` = **디자인 거울 빌더**(:root SSOT→`viewer/tokens.css`·`구성도/base.css` 투영 + 토큰 락 · 규칙2번 §5)
 - m) `shared/` = 앱 간 공유 유틸 — `attach.py`[미디어 첨부 경로 해석: `latest_attachment()`·`session_images()` → §미디어첨부. 전 앱·이식 프로젝트 공통] · `check_refs.py`(참조·버전 정합 점검 — 수정 모드에서 커밋 전 실행) · `check_env.sh`[환경 캐시 점검 — 새 세션에서 `bash shared/check_env.sh` 실행하면 Setup script 스냅샷 반영 여부를 객관 판정·설치 0·정성 판단 대체] · `profile_session.py`[세션 사고 판독 — 작업 세션 끝에 실행하면 턴별 사고량·소요·최장갭 리포트 · `--full`=사고 전문 파일 · 사고 내용이 로그에 없는 모델은 시간 갭으로 정량화] · `claude_transient.sh`/`claude_py.py`(claude -p 폴오버 SSOT) · `inject_guidelines.sh`(지침 SSOT 강제주입) · `build_library.py`(/k 라이브러리 투영)
