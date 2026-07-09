@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 노뮤트 인물 트래킹(핀셋·모자이크) — 환경 준비(멱등). 검출·군집 = 로컬 OpenCV ONNX(키·LLM 불필요 = 토큰 0).
+# 노뮤트 트래킹(핀셋·모자이크·키잉) — 환경 준비(멱등). 검출·군집·세그 = 로컬 모델(키·LLM 불필요 = 토큰 0).
 set -e
 # 양쪽 호환: Claude Code(root) / GitHub 러너(non-root → sudo)
 SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"

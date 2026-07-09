@@ -1,5 +1,5 @@
-// Cloudflare Pages Function — 뷰어 트래킹 폼 → track-make 워크플로 발사(인물 트래킹 · 핀셋/모자이크).
-// 2모드: analyze(영상 URL/업로드 → tracks.json 폴링) · render(선택 페이로드 → video.json 폴링).
+// Cloudflare Pages Function — 뷰어 트래킹 폼 → track-make 워크플로 발사(핀셋/모자이크/키잉).
+// 2모드: analyze(영상 URL/업로드 → tracks.json 폴링) · render(선택 페이로드 → video.json 폴링 — 모자이크/핀셋 번인 · 키잉 알파 분리).
 // LLM 0콜(순수 CV) — 인증·업로드(일회용 up-<id> 브랜치)·발사 골격 = ly.js 미러. env: GH_TOKEN 동일 PAT.
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
@@ -21,7 +21,7 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
 
-  // ── 렌더 경로 — 기존 분석 id + 선택 페이로드(모자이크/핀셋) → 번인만 재실행(분석 1회 = 렌더 N회)
+  // ── 렌더 경로 — 기존 분석 id + 선택 페이로드(모자이크/핀셋 번인 · 키잉 알파) 재실행(분석 1회 = 렌더 N회)
   if (body.render && typeof body.render === 'object') {
     const r = body.render;
     const id = String(r.id || '').trim();
@@ -35,7 +35,7 @@ export async function onRequestPost({ request, env }) {
       if (Array.isArray(r.extra)) {
         for (const e of r.extra) {
           if (!e || typeof e !== 'object') continue;
-          const t = num(e.t, 0, 600), x = num(e.x, 0, 1), y = num(e.y, 0, 1);
+          const t = num(e.t, 0, 90), x = num(e.x, 0, 1), y = num(e.y, 0, 1);   // 90 = py KEY_MAX_SEC 정합(평의회5)
           if (t !== null && x !== null && y !== null) extra.push({ t: Math.round(t * 100) / 100, x: Math.round(x * 10000) / 10000, y: Math.round(y * 10000) / 10000 });
           if (extra.length >= 4) break;
         }

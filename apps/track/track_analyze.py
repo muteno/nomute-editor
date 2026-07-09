@@ -130,21 +130,24 @@ def yolo_detect(net, frame, imgsz=640, conf_th=SUBJ_CONF, nms_th=SUBJ_NMS):
     if not len(out):
         return []
     cls = out[:, 4:].argmax(1)
+    wl = np.isin(cls, list(SUBJ_CLS))   # 화이트리스트 선필터 — 밖 클래스(tie 등)가 NMS에서 사람을 억제 후
+    out, scores, cls = out[wl], scores[wl], cls[wl]   #   같이 소실되는 이중 손실 차단(평의회1 F1)
+    if not len(out):
+        return []
     bx = (out[:, 0] - out[:, 2] / 2 - x0) / s
     by = (out[:, 1] - out[:, 3] / 2 - y0) / s
     boxes = np.stack([bx, by, out[:, 2] / s, out[:, 3] / s], 1)
-    idx = cv2.dnn.NMSBoxes(boxes.tolist(), scores.tolist(), conf_th, nms_th)
+    # 클래스별 NMS — 사람↔차량 등 교차 클래스 상호 억제 방지(겹쳐 선 사람이 버스에 먹히는 케이스)
+    idx = cv2.dnn.NMSBoxesBatched(boxes.tolist(), scores.tolist(), cls.astype(np.int32).tolist(), conf_th, nms_th)
     idx = np.array(idx).flatten() if len(idx) else []
     res = []
     for i in idx:
-        c = int(cls[i])
-        if c not in SUBJ_CLS:
-            continue
         x, y, w, h = boxes[i]
-        x, y = max(0.0, float(x)), max(0.0, float(y))
-        w, h = min(float(w), W - x), min(float(h), H - y)
+        x2, y2 = min(float(x + w), W), min(float(y + h), H)   # 표준 클램프 = 반대변 보존(구식은 음수 x에서
+        x, y = max(0.0, float(x)), max(0.0, float(y))          #   우변이 검출 밖으로 확장 — 평의회1 F2)
+        w, h = x2 - x, y2 - y
         if w >= 8 and h >= 8:
-            res.append((x, y, w, h, float(scores[i]), c))
+            res.append((x, y, w, h, float(scores[i]), int(cls[i])))
     return res
 
 
@@ -173,6 +176,7 @@ def main():
 
     det, rec = load_models()
     subj_net = load_subj_net()
+    subj_state = "" if subj_net is not None else "no-model"   # ""(정상)/no-model/partial(중도 실패)
     step = max(1, round(fps / DET_PER_SEC))
     ystep = step * max(1, round(DET_PER_SEC / SUBJ_PER_SEC))   # 피사체 검출 = 검출 스텝의 부분집합(추가 디코드 0)
 
@@ -280,6 +284,7 @@ def main():
             except Exception as e:   # 피사체 검출 실패가 얼굴 분석을 죽이면 안 됨(fail-soft)
                 print(f"::warning::피사체 검출 오류 f={f}: {type(e).__name__} — 이후 생략", flush=True)
                 subj_net, sdets = None, []
+                subj_state = "partial"   # 중도 실패 = 부분 산출(no-model 오표기 방지 · 평의회1 F3)
             sdets.sort(key=lambda d: -d[4])
             s_used = set()
             for sx, sy, sw, sh, ssc, scls in sdets:
@@ -302,6 +307,8 @@ def main():
                     s_active.append(st)
                     s_used.add(len(s_active) - 1)
                 # 얼굴 연결 투표 — 얼굴박스 중심이 전신박스 상단 55% 안 + 폭이 전신의 60% 미만
+                #   키 = id(얼굴트랙): 트랙 dict가 tracks 리스트에 참조 유지 = 함수 수명 내 id 안정(불변식 —
+                #   트랙을 재생성하는 리팩터 시 이 키부터 깨짐 · 평의회1 F5)
                 if scls == 0:
                     for fb, ft in frame_faces:
                         fcx, fcy = fb[0] + fb[2] / 2, fb[1] + fb[3] / 2
@@ -497,7 +504,7 @@ def main():
     doc = {"v": 2, "id": vid_id,   # v2 = subjects 추가(additive) — people 스키마·소비자(모자이크·핀셋) 불변
            "meta": {"w": W, "h": H, "fps": round(fps, 3), "frames": total_frames, "dur": round(real_dur, 2),
                     "step": step, "src": src_url, "src_note": src_note, "dropped": dropped,
-                    "subj_dropped": subj_dropped, "subj_note": ("" if subj_net is not None else "no-model"),
+                    "subj_dropped": subj_dropped, "subj_note": subj_state,
                     "made": kst_now()},
            "people": out_people, "subjects": out_subjects}
     with open(os.path.join(outdir, "tracks.json"), "w", encoding="utf-8") as fj:

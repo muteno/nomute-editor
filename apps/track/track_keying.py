@@ -2,7 +2,7 @@
 # 피사체 키잉 렌더 — 선택 피사체만 남기고 나머지 전부 투명(알파). track_render.py mode='keying'에서
 #   lazy import로 위임(torch 스택 = 키잉 러너에서만 · 모자이크/핀셋 경로는 이 파일을 import조차 안 함).
 # env RENDER = {"mode":"keying","keep":[sid],"extra":[{"t":초,"x":0..1,"y":0..1}],"opts":{"feather":px}}
-# 파이프(정본 = apps/track/00_지침 §4):
+# 파이프(정본 = apps/track/00_지침 §1.5):
 #   ① 프롬프트 계획 — keep 피사체 = 첫 양호 등장 프레임(pf)의 박스 프롬프트 · extra = 운영자 탭 포인트.
 #      SAM2는 전파 시작 후 새 객체 추가 금지(가드 실측) → 프롬프트 프레임 그룹별 멀티패스(그 프레임→끝).
 #      박스와 포인트는 한 콜에 섞으면 같은 객체로 접힘(_prepare_prompts cat dim=1) → 패스 = 박스 전용/포인트 전용.
@@ -28,13 +28,37 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(track_render와 동일)
 
 MODELS = os.environ.get("NOMUTE_TRACK_MODELS", os.path.expanduser("~/.cache/nomute-track"))
 SAM_CKPT = os.path.join(MODELS, "sam2.1_t.pt")
-KEY_MAX_SEC = 90         # 키잉 길이 캡(실측 기반 — 90s ≈ 25분 렌더) · 분석/모자이크 180s 캡과 별개
-KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측 → 4객체 90s가 잡 캡 상한선
+KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 180s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
+KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
+KEY_MAX_LONG = 1920      # 해상도 캡(긴 변) — 4K는 트림·마스크·인코딩·업로드 전 축 폭발(평의회9 F2 · 분석 DET_LONG 선례)
+KEY_BUDGET_SEC = 1620    # 발사 전 예상 전파 예산(27분) — 멀티패스 총량이 스텝 35분 캡을 못 넘게 사전 거절(평의회4·9)
+PASS_HARD_SEC = 1800     # 전파 루프 경과 백스톱(30분) — 예산 추정이 빗나가도 스텝 타임아웃 전에 정직 에러
+SEG_MS_1 = 0.63          # 실측 단가: 1객체 전파 s/frame(512 · 260709) — 예산 추정용
+SEG_MS_OBJ = 0.20        # 실측 단가: 추가 객체당 s/frame
 SEG_FPS = 15.0           # 세그멘테이션 프레임레이트(원 30fps 대비 절반 = 비용 절반 · 마스크는 hold)
 IMGSZ = 512              # SAM2 입력 긴 변 — 1024는 3937ms/f로 불가(실측) · 512 마스크 오차 0.35%
 FEATHER_DFLT = 3         # 512 업스케일 계단 완화 기본 페더 px
 PREVIEW_LONG = 960       # 프리뷰 긴 변(9:16 = 540×960)
 GIT_FALLBACK_MAX = 30 * 1024 * 1024
+
+
+def _r2_upload_file(path, key, ctype):
+    """대용량 산출물 파일 직접 업로드 — thumb_gen.r2_upload(bytes 전량 RAM + 임시파일 복제 + 90s 캡)는
+    썸네일 PNG용이라 GB급 마스터 MOV에 부적합(평의회2·9: RAM 스파이크·디스크 2배·타임아웃 상시 유실)
+    → 같은 aws cli 경로를 파일 인자·timeout 900으로 미러링. 실패 = ""(fail-soft — 콜러가 폴백/에러 판단)."""
+    if not tg.R2_ON:
+        return ""
+    env = dict(os.environ, AWS_ACCESS_KEY_ID=tg.R2_KEY, AWS_SECRET_ACCESS_KEY=tg.R2_SECRET,
+               AWS_DEFAULT_REGION="auto")
+    try:
+        subprocess.run(["aws", "s3", "cp", path, f"s3://{tg.R2_BUCKET}/{key}",
+                        "--endpoint-url", f"https://{tg.R2_ACCOUNT}.r2.cloudflarestorage.com",
+                        "--content-type", ctype, "--only-show-errors"],
+                       check=True, env=env, timeout=900)
+        return f"{tg.R2_PUBLIC}/{key}"
+    except Exception as e:
+        print(f"::warning::R2 파일 업로드 실패({key}): {e}", flush=True)
+        return ""
 
 
 def _num(v, lo, hi, dflt):
@@ -150,6 +174,8 @@ def run(vid_id, req, doc, outdir):
     if not ok:
         raise RuntimeError("원본 프레임을 못 읽었어 — 처음부터 다시 해줘.")
     H, W = first.shape[:2]
+    if max(W, H) > KEY_MAX_LONG:   # 해상도 캡 — 4K는 시간·디스크·RAM 삼중 폭발(평의회9 F2 · 명시 거절이 정직)
+        raise RuntimeError(f"키잉은 긴 변 {KEY_MAX_LONG}px까지야(지금 {max(W, H)}px) — 1080p로 줄여서 올려줘.")
     W2, H2 = W - (W % 2), H - (H % 2)
     real_dur = float(meta.get("frames") or 0) / fps if meta.get("frames") else dur
     if real_dur > KEY_MAX_SEC + 1:
@@ -158,6 +184,14 @@ def run(vid_id, req, doc, outdir):
     passes = plan_passes(subjects, keep, extras, fps, W, H)
     if not passes:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
+    # 발사 전 총량 예산 가드 — 캡(90s·4객체)은 객체 수만 묶고 멀티패스 총량은 못 묶는다(평의회9 F1: 수동 4개
+    #   분산 지정 = 4패스 = 56분 > 잡 40분). 실측 단가로 예상 전파 시간 계산 → 예산 초과 = 명시 거절.
+    total_f = float(meta.get("frames") or 0) or (real_dur * fps)
+    est = sum(max(0.0, (total_f - p["f0"]) / fps) * SEG_FPS * (SEG_MS_1 + SEG_MS_OBJ * max(0, len(p["prompts"]) - 1))
+              for p in passes)
+    if est > KEY_BUDGET_SEC:
+        raise RuntimeError(f"이 조합은 렌더가 너무 오래 걸려(예상 {int(est // 60)}분) — "
+                           f"피사체 수를 줄이거나 등장 시점이 비슷한 것끼리 골라줘.")
     fe = int(round(_num((req.get("opts") or {}).get("feather"), 0, 40, FEATHER_DFLT)))
 
     # ── ② 패스별 SAM2 전파 → 마스크 PNG ──
@@ -178,28 +212,40 @@ def run(vid_id, req, doc, outdir):
         if predictor is None:
             predictor = SAM2VideoPredictor(overrides=dict(conf=0.25, task="segment", mode="predict",
                                                           imgsz=IMGSZ, model=SAM_CKPT, save=False, verbose=False))
+        else:
+            # ⚠ 패스 간 상태 리셋 필수(평의회2 치명 적발): 라이브러리 init_state는 `if len(inference_state)>0: return`
+            #   가드라 두 번째 predict 콜에서 리셋이 스킵 → 새 프롬프트가 조용히 무시되고 이전 패스 객체를 계속
+            #   추적(무증상 오출력). 비우면 on_predict_start의 init_state가 재초기화 = 패스 격리.
+            predictor.inference_state = {}
         kwargs = {"bboxes": p["prompts"]} if p["kind"] == "box" else {"points": p["prompts"], "labels": [1] * len(p["prompts"])}
         n_masks = 0
+        live_masks = 0   # 비어있지 않은 마스크 수 — 전 구간 세그 실패가 '성공 전-투명'으로 위장하는 것 차단(평의회2)
         t_p = time.time()
         for j, res in enumerate(predictor(source=trim, stream=True, **kwargs)):
             m = None
             if res.masks is not None and len(res.masks.data):
                 m = (res.masks.data.any(0).cpu().numpy().astype(np.uint8)) * 255
+                if m.shape[:2] != (H, W):   # ffmpeg(트림)↔cv2(분석·합성) 회전 파리티 발산(90/270) = 정직 실패(평의회3)
+                    raise RuntimeError("전처리 회전 불일치 — 영상을 mp4로 변환해 다시 올려줘.")
+                if m.any():
+                    live_masks += 1
             if m is None:
                 m = np.zeros((H, W), np.uint8)   # 객체 소실 프레임 = 빈 마스크(전부 투명) — 합성이 [:H2,:W2] 크롭
             cv2.imwrite(os.path.join(mdir, f"{j:06d}.png"), m)
             n_masks = j + 1
             if j % 150 == 0:
                 print(f"패스{k + 1}/{len(passes)} 전파 {j}f · {time.time() - t_p:.0f}s", flush=True)
+            if time.time() - t_all > PASS_HARD_SEC:   # 예산 추정 빗나감 백스톱 — 스텝 타임아웃 전 정직 에러(평의회9)
+                raise RuntimeError("렌더 시간 초과 — 피사체 수를 줄이거나 영상을 잘라서 다시 해줘.")
         p["mdir"], p["n_masks"], p["t0"] = mdir, n_masks, t0_sec
         os.remove(trim)
-        if n_masks == 0:
+        if n_masks == 0 or live_masks == 0:
             raise RuntimeError("피사체 마스크 생성 실패 — 다른 프레임에서 지정하거나 다시 시도해줘.")
-        print(f"패스{k + 1}: {n_masks}마스크 · {time.time() - t_p:.0f}s", flush=True)
+        print(f"패스{k + 1}: {n_masks}마스크(실마스크 {live_masks}) · {time.time() - t_p:.0f}s", flush=True)
 
     # ── ③ 합성 + 이중 인코딩(마스터 ProRes4444 + 프리뷰 VP9) ──
     pscale = min(1.0, PREVIEW_LONG / max(W2, H2))
-    PW, PH = int(W2 * pscale) & ~1, int(H2 * pscale) & ~1
+    PW, PH = max(2, int(W2 * pscale) & ~1), max(2, int(H2 * pscale) & ~1)   # 하한 2 = 병적 종횡비 0px 방어(평의회3)
     out_mov, out_webm = "/tmp/key_master.mov", "/tmp/key_preview.webm"
     enc_m = subprocess.Popen(
         ["ffmpeg", "-y", "-loglevel", "error",
@@ -278,14 +324,10 @@ def run(vid_id, req, doc, outdir):
     print(f"키잉 완료 {f}프레임 · 총 {time.time() - t_all:.0f}s · 마스터 {os.path.getsize(out_mov) // 1048576}MB · "
           f"프리뷰 {os.path.getsize(out_webm) // 1048576}MB", flush=True)
 
-    # 출력 키 = stable + ?v= 버스트(track_render 불변 계승) — 마스터/프리뷰 둘 다
+    # 출력 키 = stable + ?v= 버스트(track_render 불변 계승) — 마스터/프리뷰 둘 다 파일 직접 업로드(GB급 RAM 적재 금지)
     bust = int(time.time())
-    url, prev = "", ""
-    if tg.R2_ON:
-        with open(out_mov, "rb") as fv:
-            url = tg.r2_upload(fv.read(), f"track_res/{vid_id}/keying.mov", "video/quicktime") or ""
-        with open(out_webm, "rb") as fv:
-            prev = tg.r2_upload(fv.read(), f"track_res/{vid_id}/keying_preview.webm", "video/webm") or ""
+    url = _r2_upload_file(out_mov, f"track_res/{vid_id}/keying.mov", "video/quicktime")
+    prev = _r2_upload_file(out_webm, f"track_res/{vid_id}/keying_preview.webm", "video/webm")
     if not url and os.path.getsize(out_mov) <= GIT_FALLBACK_MAX:
         shutil.copyfile(out_mov, os.path.join(outdir, "result-keying.mov"))
         url = f"track_out/{vid_id}/result-keying.mov"
