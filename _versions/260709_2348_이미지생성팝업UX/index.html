@@ -2423,7 +2423,6 @@
   .geni-in { flex:1 1 auto; min-width:0; box-sizing:border-box; background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:var(--r-s); color:var(--fg); font-size:var(--fs-label); font-weight:var(--fw-b); padding:6px 10px; outline:none; transition:border-color .15s; }   /* 입력칸 = .sc-memo-in 값 계승(radius만 근접 토큰 --r-s) */
   .geni-in::placeholder { color:var(--mut); opacity:.75; font-weight:var(--fw-b); }
   .geni-in:focus { border-color:rgba(255,255,255,.28); }
-  textarea.geni-in { resize:none; line-height:var(--lh-base); font-family:inherit; display:block; }   /* 주문 = 장면 컴포즈 멀티라인(태그 스코프 = 기존 input 무영향) — 폼컨트롤은 서체 미상속이라 inherit 명시 · 260709 */
   .geni-alt { display:block; width:100%; background:none; border:none; margin-top:8px; padding:4px; font:var(--fw-b) var(--fs-sm) inherit; color:var(--mut); cursor:pointer; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* 보조 경로(기존 실사진 검색 보존) = 워드 버튼 */
   .geni-alt:active { transform:scale(var(--press-m)); }
   .geni-alt:hover { color:var(--fg); }
@@ -2818,8 +2817,7 @@ try {
     <div class="geni-sechead"><span class="cref-lbl">내용</span></div>
     <div class="geni-row"><span class="pub-l">문구</span><input id="geniText" class="geni-in" type="text" maxlength="24" placeholder="없음 · 짧을수록 선명" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><button class="geni-opt" id="geniTitleFill" type="button" aria-label="기사 제목으로 채우기">제목</button></div>
     <div class="geni-row" id="geniFontRow" hidden><span class="pub-l">서체</span><span class="geni-opts" data-k="font"></span></div>
-    <div class="geni-row"><span class="pub-l">주문</span><textarea id="geniWish" class="geni-in" rows="2" maxlength="300" placeholder="선택 · 자유 요청 한 줄" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea></div><!-- 주문 = 장면·상황 컴포즈 멀티라인(2줄) · maxlength 300 = api/genimg 서버 클램프 동값 계승(구 120 과소 · 260709) -->
-
+    <div class="geni-row"><span class="pub-l">주문</span><input id="geniWish" class="geni-in" type="text" maxlength="120" placeholder="선택 · 자유 요청 한 줄" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
   </div>
   <div class="geni-foot"><button id="geniGo" class="asksend pub-go geni-go" type="button"><span>생성</span></button><button id="geniMore5" class="geni-alt" type="button">실사진 5장 더 찾기</button></div><!-- 고정 푸터 = 스크롤 밖 CTA(평의회 만장일치 · tooldlg flex column 문법 계승) -->
 </dialog>
@@ -3892,7 +3890,7 @@ function geniInit() {
     el.addEventListener('focus', () => { geniVV(); setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 90); });
   });
   if (window.visualViewport) window.visualViewport.addEventListener('resize', geniVV);
-  const gdlg = $('#genidlg'); if (gdlg) gdlg.addEventListener('close', () => { gdlg.style.maxHeight = ''; if (_geniCtx && _geniCtx.free) { try { localStorage.setItem('GENI_FREE_TXT', JSON.stringify({ text: $('#geniText').value, wish: $('#geniWish').value })); } catch {} } });   // 키보드 클램프 인라인 복원 + 자유모드 장면·문구 스냅샷(발사·X·백버튼 전부 close 경유 = 단일 저장점 · 260709)
+  const gdlg = $('#genidlg'); if (gdlg) gdlg.addEventListener('close', () => { gdlg.style.maxHeight = ''; });   // 키보드 클램프 인라인 복원
   $('#geniX').addEventListener('click', () => $('#genidlg').close());
   $('#geniMore5').addEventListener('click', () => {   // 기존 실사진 재검색(보조 경로 보존)
     const c = _geniCtx; $('#genidlg').close();
@@ -3900,7 +3898,7 @@ function geniInit() {
   });
   $('#geniGo').addEventListener('click', async () => {
     const c = _geniCtx; if (!c) { $('#genidlg').close(); return; }
-    const text = $('#geniText').value.trim().slice(0, 24), wish = $('#geniWish').value.replace(/\s+/g, ' ').trim().slice(0, 300);   // 주문 = 서버(genimg.js) 정규화·클램프 동값(개행→공백·300 · 260709)
+    const text = $('#geniText').value.trim().slice(0, 24), wish = $('#geniWish').value.trim().slice(0, 120);
     const opts = { style: _geniSel.style, sub: _geniSel.sub, aspect: _geniSel.aspect, size: _geniSel.size, count: parseInt(_geniSel.count, 10) || 1, mood: _geniSel.mood, place: _geniSel.place, shot: _geniSel.shot, expr: _geniSel.expr, angle: _geniSel.angle, point: _geniSel.point, light: _geniSel.light, kweb: !!_geniSel.kweb, text, wish };
     if (text) opts.font = _geniSel.font;
     try { localStorage.setItem('GENI_OPTS', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷(복원 시 사전 검증)
@@ -3919,13 +3917,13 @@ function geniInit() {
     $('#genidlg').close();
     genImgGo(c.file, c.wrap, c.btn, opts);
   });
+  window.addEventListener('message', e => {   // 도구 iframe(/6 생성 탭) → 자유 생성 팝업 열기 — same-origin 도구 iframe만 신뢰(source 대조)
+    if (!e.data || e.data.nm !== 'genfree') return;
+    const frs = Array.from(document.querySelectorAll('#tooldlg .toolfr'));
+    if (!frs.some(f => f.contentWindow === e.source)) return;
+    openGenIdlg(null);
+  });
 }
-window.addEventListener('message', e => {   // 도구 iframe(/6 생성 탭) → 자유 생성 팝업 열기 — same-origin 도구 iframe만 신뢰(source 대조). ⚠ 부트 등록 필수(geniInit 밖): geniInit은 팝업 최초 열림 때야 도는데 이 리스너가 그 안에 있으면 '생성 탭 → 버튼'이 첫 경로일 땐 수신자 0 = 버튼 무반응(닭-달걀 · 260709 수리)
-  if (!e.data || e.data.nm !== 'genfree') return;
-  const frs = Array.from(document.querySelectorAll('#tooldlg .toolfr'));
-  if (!frs.some(f => f.contentWindow === e.source)) return;
-  openGenIdlg(null);
-});
 function geniGate() {   // 자유모드 생성 게이트(적대검증A: 주문·문구 둘 다 비면 발사 불가 = 사후 에러 대신 사전 disabled 어포던스)
   const go = $('#geniGo'); if (!go) return;
   const empty = !$('#geniText').value.trim() && !$('#geniWish').value.trim();
@@ -3939,18 +3937,14 @@ function openGenIdlg(file, wrap, btn) {
   geniInit();
   _geniCtx = { file, wrap, btn, free: !file };   // free = 기사 컨텍스트 없음(이미지 제작 도구 /6 생성 탭 · 운영자 260707)
   const _free = !file;
-  $('#geniWish').placeholder = _free ? '필수 · 그릴 장면·상황을 설명' : '선택 · 자유 요청 한 줄';   // 자유모드 = 주문이 유일 필수(적대검증A: 구 "선택" 오라벨 교정) · '장면·상황' = 상황 설명 어포던스(운영자 260709)
+  $('#geniWish').placeholder = _free ? '필수 · 그릴 장면을 한 줄로' : '선택 · 자유 요청 한 줄';   // 자유모드 = 주문이 유일 필수(적대검증A: 구 "선택" 오라벨 교정)
   $('#geniText').placeholder = _free ? '선택 · 이미지 속 문구' : '없음 · 짧을수록 선명';
   $('#geniTitleFill').hidden = !file;   // 기사 제목 채움 = 기사 모드 전용(자유 모드 숨김)
   $('#geniMore5').hidden = !file;       // 실사진 재검색 = 기사 카러셀 전용(자유 모드 숨김)
   try { const s = JSON.parse(localStorage.getItem('GENI_OPTS') || 'null'); if (s) Object.keys(_geniSel).forEach(k => { const d = k === 'sub' ? (GENI_SUB[s.style || _geniSel.style] || []) : GENI_DICT[k]; if (typeof s[k] === 'boolean') { if (k === 'kweb') _geniSel.kweb = s[k]; return; } if (s[k] && d && d.some(([v]) => v === s[k])) _geniSel[k] = s[k]; }); } catch {}   // 최근 사용 옵션 복원(사전 검증·문구·주문은 기사별이라 비움)
   geniSubRender();
-  if (_free) {   // 자유 모드 = 직전 장면·문구 복원(기사 컨텍스트 없음 → 이어쓰기·실수 이탈 복구 · 260709) — 기사 모드는 기사별이라 비움(현행 유지)
-    let t = null; try { t = JSON.parse(localStorage.getItem('GENI_FREE_TXT') || 'null'); } catch {}
-    $('#geniText').value = (t && t.text) ? String(t.text).slice(0, 24) : '';
-    $('#geniWish').value = (t && t.wish) ? String(t.wish).slice(0, 300) : '';
-  } else { $('#geniText').value = ''; $('#geniWish').value = ''; }
-  $('#geniText').dispatchEvent(new Event('input'));   // 문구 리셋/복원 파생상태(서체행 숨김·1K disabled 해제)를 input 핸들러로 일괄 동기 — 값만 바꾸면 1K가 지난 오픈의 disabled로 잔존(압축검증 뷰어JS 지적)
+  $('#geniText').value = ''; $('#geniWish').value = '';
+  $('#geniText').dispatchEvent(new Event('input'));   // 문구 리셋 파생상태(서체행 숨김·1K disabled 해제)를 input 핸들러로 일괄 동기 — 값만 비우면 1K가 지난 오픈의 disabled로 잔존(압축검증 뷰어JS 지적)
   geniApply();
   // 카메라군에 복원값 있으면 자동 펼침(적대검증B: 개수 배지만으론 "무엇이" 안 보임 → 발사 전 열어 보이게) · 없으면 접힘+inert
   const _camOpen = GENI_CAM_KEYS.some(k => _geniSel[k] && _geniSel[k] !== 'auto');
@@ -3959,7 +3953,7 @@ function openGenIdlg(file, wrap, btn) {
   if (_sub) { if (_camOpen) _sub.removeAttribute('inert'); else _sub.setAttribute('inert', ''); }
   geniGate();
   openComposeDlg($('#genidlg'));   // showModal + 폰 뒤로가기 칸(컴포즈 모달 표준)
-  if (_free) setTimeout(() => { try { const w = $('#geniWish'); w.focus(); if (w.value) w.select(); } catch {} }, 80);   // 자유모드 = 주문칸 진입점(적대검증A: 필수 입력이 곧 시작점 · 지연 = 모달 애니 후) · 복원값 전체선택 = 새 장면은 즉시 덮어쓰기·이어쓰기는 탭 한 번(260709)
+  if (_free) setTimeout(() => { try { $('#geniWish').focus(); } catch {} }, 80);   // 자유모드 = 주문칸 진입점(적대검증A: 필수 입력이 곧 시작점 · 지연 = 모달 애니 후)
 }
 // 캐러셀 PC 드래그 — 마우스로 잡아끌어 좌우 슬라이드(터치는 overflow-x 네이티브 스와이프 유지). feedtrack 드래그와 동일 패턴.
 function attachCarouselDrag(track) {
