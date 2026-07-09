@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>리사이즈 진행 피드백 — 정본 계승 (260709)</title>
+<style>
+  /* 일회성 스냅샷 보고서 — §디자인 토큰값 복사 인라인(viewer 동기화 비대상) */
+  :root { --bg:#0b0d0c; --fg:#eef7f0; --mut:#9aa8a0; --line:rgba(255,255,255,.12); --accent:#00EED2; --accent-rgb:0,238,210; --warn:#FFE13D; --danger:#e23b2a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:22px 16px 60px; background:var(--bg); color:var(--fg); line-height:1.6;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","Segoe UI",Roboto,sans-serif; }
+  main { max-width:720px; margin:0 auto; }
+  h1 { font-size:19px; margin:0 0 4px; } h1 b { color:var(--accent); }
+  .sub { color:var(--mut); font-size:12.5px; margin:0 0 22px; }
+  h2 { font-size:14.5px; margin:30px 0 10px; color:var(--accent); }
+  p, li { font-size:13.5px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { color:var(--mut); font-weight:700; background:rgba(255,255,255,.03); white-space:nowrap; }
+  td b { color:var(--accent); font-weight:800; }
+  .bad { color:var(--danger); } .ok { color:var(--accent); } .mut { color:var(--mut); }
+  code { background:rgba(255,255,255,.07); border-radius:5px; padding:1px 5px; font-size:12px; }
+  .demo { border:1px solid var(--line); border-radius:16px; padding:18px 16px; margin:10px 0; background:rgba(255,255,255,.02); }
+  .demo .cap { font-size:11.5px; color:var(--mut); margin:0 0 10px; }
+  /* 버튼 상태머신 재현(goFire 정본) */
+  .go { display:block; width:100%; padding:13px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; text-align:center; position:relative; overflow:hidden; margin:8px 0; }
+  .go.firing { color:#08110e; background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(rgba(var(--accent-rgb),.16),rgba(var(--accent-rgb),.16)); animation:goFill 1.6s cubic-bezier(.2,.7,.2,1) infinite; }
+  @keyframes goFill { 0% { background-size:0% 100%,100% 100%; } 55%,100% { background-size:100% 100%,100% 100%; } }
+  .go.okdone { background:var(--accent); color:#08110e; border-color:var(--accent); }
+  .go.okdone svg { width:20px; height:20px; vertical-align:-5px; }
+  .go.okdone path { fill:none; stroke:#08110e; stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick 1.6s ease infinite; }
+  @keyframes goTick { 30% { stroke-dashoffset:24; } 60%,100% { stroke-dashoffset:0; } }
+  .go.stuck { background:var(--accent); border-color:var(--accent); }
+  /* genstat live 점등 재현(index 정본 사본) */
+  .genstat { margin:14px 0 4px; padding:13px 15px; border:1px solid var(--line); border-radius:16px; color:var(--accent); font-size:13px; background:rgba(255,255,255,.04); text-align:center; }
+  .genstat.live { border-color:rgba(var(--accent-rgb),.3); animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
+  .gdots { display:inline-block; width:1.1em; text-align:left; }
+  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
+  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
+  .prose-old { font-size:12.5px; color:var(--mut); text-decoration:line-through; text-decoration-color:var(--danger); margin:8px 0 0; }
+  .flow { font-size:12px; color:var(--mut); }
+  @media (prefers-reduced-motion:reduce) { .go.firing, .go.okdone path, .genstat.live, .gdots i { animation:none; } .gdots i { opacity:1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>리사이즈 진행 피드백 — <b>정본 계승</b></h1>
+  <p class="sub">viewer/thumb.html /7 리사이즈 탭 · 발사 버튼 + 변환 중 표시 · 260709</p>
+
+  <h2>• 요지 (뭐가 문제였나)</h2>
+  <p>리사이즈 탭만 디자인 정본을 안 탔다. 발사 버튼이 정본 상태머신(<code>goFire</code>)을 안 쓰고 수동으로 <code>.firing</code>만 켰다 꺼서 — 서버 응답을 기다리는 동안 <b>버튼이 통짜로 채워진 채 멈추고, 체크(✓)는 영영 안 그려졌다</b>(첨부1 증상). 진행 표시도 정본 점등(뉴스요약 프롬프팅 박스) 대신 <span class="bad">산문 안내 한 줄</span>을 박아놨었다(§디자인 e 위반 · 첨부2 빨간 밑줄).</p>
+
+  <h2>• 전 / 후</h2>
+  <table>
+    <tr><th></th><th>전 (제각각)</th><th>후 (정본 계승)</th></tr>
+    <tr><td><b>버튼 피드백</b></td><td class="bad">수동 .firing 토글 — 게이지만 차고 정지, 체크 없음, fetch 길면 통짜 민트 버튼</td><td>제작 버튼과 동일한 <b>goFire()</b> — 게이지 채움 → ✓ 체크 드로우 → '전송됨' → '리사이즈' 복귀</td></tr>
+    <tr><td><b>변환 중 표시</b></td><td class="bad">"변환 중 — 1~3분 뒤 아래 목록에 떠" 산문</td><td>뉴스요약 프롬프팅과 동일한 <b>점등 박스</b>: "변환 중" + 점 3개 모션 + 펄스 — 결과 도착·백스톱 시 자동 소등</td></tr>
+    <tr><td><b>실패 시</b></td><td class="mut">버튼 안 빨강 메시지(기존)</td><td>동일 — errStatus가 goFire 타이머까지 정리(기존 계약 그대로)</td></tr>
+  </table>
+
+  <h2>• 실물 재현 (모션 확인용)</h2>
+  <div class="demo">
+    <p class="cap">전 — 게이지만 찬 채 멈춤(체크 없음 · 첨부1 증상)</p>
+    <span class="go stuck">&nbsp;</span>
+    <p class="prose-old">변환 중 — 1~3분 뒤 아래 목록에 떠 ← 산문 안내(제거됨)</p>
+  </div>
+  <div class="demo">
+    <p class="cap">후 — 누르면: ① 게이지 채움(전송 중…) → ② ✓ 체크 → '전송됨' → 라벨 복귀 · ③ 아래에 '변환 중' 점등(완료까지)</p>
+    <span class="go firing">전송 중…</span>
+    <span class="go okdone"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span>
+    <div class="genstat live">변환 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+    <p class="flow">결과가 '최근 변환' 맨 위에 뜨면 점등이 꺼진다(별도 안내문 없음 = 어포던스가 설명).</p>
+  </div>
+
+  <h2>• 어떻게 구현했나 (계승 지도)</h2>
+  <ul>
+    <li><b>버튼</b> = 같은 파일의 <code>goFire()</code> 호출 한 줄로 교체. 다른 탭(제작·카드뉴스·저작권)과 발사 시점·모션·색·타이밍 전부 동일해짐. 수동 firing 코드 폐지.</li>
+    <li><b>점등</b> = index 정본(<code>.genstat/.gdots/@pulse</code>)을 thumb에 사본 편입 — iframe 자기완결이라 값 복사(§핵심명령 3-c). 크기·radius는 <code>var(--fs-label)</code>·<code>var(--r-l)</code> 토큰, 강조 테두리는 <code>rgba(var(--accent-rgb),.3)</code> 알파 변주(신규 raw 0).</li>
+    <li><b>수명</b> = <code>rszWait(on)</code> 헬퍼 — 발사 성공 시 점등, <code>rszPoll</code>이 새 결과 감지·백스톱(약 6분) 시 소등, 탭 전환 시 숨김/복귀 재동기(selApp 한 줄).</li>
+  </ul>
+
+  <h2>• 장단점 · 효율 · 리스크</h2>
+  <table>
+    <tr><th>장점</th><td>피드백 문법이 앱 전체와 단일화(게이지=전송·점등=진행·도착=결과) · 산문 제거로 화면 소음 감소 · 이후 /6 생성 탭에도 같은 부품 재사용 가능</td></tr>
+    <tr><th>효율</th><td>신규 코드 최소 — 기존 goFire 재사용 + CSS 사본 9줄 + 헬퍼 5줄. 폴링 주기·백엔드 무변(비용 0)</td></tr>
+    <tr><th>품질저하 리스크</th><td class="ok">낮음 — 다른 탭 로직 무접촉(리사이즈 분기 안에서만 교체) · 실패 경로는 기존 errStatus 그대로 · check_refs 전 게이트 통과</td></tr>
+    <tr><th>한계(정직)</th><td class="mut">새로고침하면 점등 상태는 잊는다(세션 단위 — 결과는 폴링·목록이 커버, 과설계 방지) · 워크플로가 조용히 죽으면 백스톱 후 무표식 소등(기존 /6과 동일 — 별건 후속)</td></tr>
+  </table>
+
+  <h2>• 검증</h2>
+  <p><code>python3 shared/check_refs.py</code> 전 게이트 rc=0(JS 구문·디자인 토큰·거울·소머리 포함) · 머지 후 <code>git show origin/main:viewer/thumb.html</code> read-back 확정 · 백업 <code>_versions/260709_2344_리사이즈_진행피드백/</code>.</p>
+</main>
+</body>
+</html>

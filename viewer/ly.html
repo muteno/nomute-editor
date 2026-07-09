@@ -264,7 +264,7 @@
   /* 스타일 실시간 미리보기 — 번인 실렌더 근사(모양·크기·키워드 그린·카라오케 스윕) · 색 전부 rgba/var(hex 순증 0) */
   .lyoptpv { margin:6px 0 2px; padding:8px 10px; background:rgba(14,15,17,1) url('ly_pvbg.webp?v=260708') center 42%/cover no-repeat; border:1px solid var(--line); border-radius:var(--r-m); display:flex; align-items:center; justify-content:center; min-height:104px; overflow:hidden; }   /* 예시 배경 = 실장면 이미지(운영자 260708 "자막 뒤 배경, 4번을 예시로 — 검정 배경이랑 구분이 안 되네") — 검정 단색 위에선 검정 외곽선·박스 자막이 안 읽혀 실판단 불가 → 번인 대상 같은 실프레임 근사(?v= 캐시버스트 = 배너 관례) · 높이 58→104 = 폰 폭에서 장면이 장면으로 보이는 최소(칸 높이는 여전히 조합 무관 고정 = 260707 높이 불변식 유지) · rgba(14,15,17)는 로드 전/실패 폴백 */
   .lyoptpv[hidden] { display:none; }
-  .lyoptpv .pvt { font-weight:800; line-height:1.35; text-align:center; color:rgba(255,255,255,1); letter-spacing:-.2px; white-space:nowrap; }   /* nowrap = 협폭(약 320px대)에서 예시문이 2줄로 랩돼 칸이 자라는 것 봉인(높이 불변식 · 평의회 260707) — 문구는 최협폭도 1줄에 들게 축약 */
+  .lyoptpv .pvt { font-weight:800; line-height:1.35; text-align:center; color:rgba(255,255,255,1); letter-spacing:-.2px; white-space:nowrap; transform:translateY(clamp(-26px, calc((50 - var(--lypv-pos, 57)) * .52px), 26px)); }   /* nowrap = 협폭(약 320px대)에서 예시문이 2줄로 랩돼 칸이 자라는 것 봉인(높이 불변식 · 평의회 260707) — 문구는 최협폭도 1줄에 들게 축약 · translateY = 위치 게이지 세로 근사(평의회8 260709: pos만 시각 반영 0이던 축 보정 — 0=하단↓ 100=상단↑ · 88px 칸 내 ±26px 기하 클램프 = 정당 raw · pv-hi는 inset:0이라 동행) */
   .lyoptpv.bold .pvt { text-shadow:-2px -2px 0 rgba(0,0,0,.95), 2px -2px 0 rgba(0,0,0,.95), -2px 2px 0 rgba(0,0,0,.95), 2px 2px 0 rgba(0,0,0,.95), 0 2px 4px rgba(0,0,0,.55); }
   .lyoptpv.clean .pvt { text-shadow:-1px -1px 0 rgba(0,0,0,.8), 1px -1px 0 rgba(0,0,0,.8), -1px 1px 0 rgba(0,0,0,.8), 1px 1px 0 rgba(0,0,0,.8); }
   .lyoptpv.bgon .pvt { background:rgba(0,0,0,var(--lybg,.55)); padding:5px 11px; border-radius:var(--r-s); }   /* 배경 게이지 ON — 알파 = 슬라이더 실시간(번인 BackColour 근사) · 모양 무관 공통 backing */
@@ -1286,6 +1286,7 @@ function lyOptRender() {
     pv.hidden = !LY_OPTS.burn;
     pv.className = 'lyoptpv ' + (LY_OPTS.style || LY_OPT_DEF.style) + (typeof LY_OPTS.size === 'string' ? ' ' + LY_OPTS.size : '') + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.pop ? ' pop' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '');   // style 결측 폴백 = 기본값 참조(#1807 병합) · size = 문자열만 클래스(연속 숫자는 아래 인라인 환산)
     pv.style.setProperty('--lybg', (LY_OPTS.bg / 100).toFixed(2));
+    pv.style.setProperty('--lypv-pos', lyPct(LY_OPTS.pos, LY_OPT_DEF.pos));   // 위치 게이지 → 미리보기 세로 반영(평의회8 260709 — 번인 MarginV의 근사·방향/크기 가독 목적)
     const pvt = pv.querySelector('.pvt'); if (pvt) pvt.style.fontSize = typeof LY_OPTS.size === 'number' ? Math.round(LY_OPTS.size * 467) + 'px' : '';   // 연속 크기 = l칩 비율(21px↔4.5% ≈ ×467) 인라인 환산(0.035→16px) · 문자열(s/m/l) = 종전 클래스(인라인 해제)
     pv.querySelectorAll('b').forEach(b => { b.className = LY_OPTS.keyword ? 'kw' : 'kt'; });   // 두 겹 다 토글 · OFF = 일반 단어로 강등(그린·스윕 규칙 함께 전환)
   }
@@ -1362,7 +1363,7 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
     if (gen !== LY_VID_GEN) return;   // in-flight 중 리셋 = 표시·재예약 둘 다 봉인(좀비 폴 차단)
     if (j && j.url && j.url !== skipUrl) { lyBurnShow(j); return; }
     if (j && !j.url && (j.error || j.skip)) {
-      if (j.skip) { lyBurnReset(); }   // 스킵(영상 없음 등) = 조용한 공백(§디자인 빈 상태)
+      if (j.skip) { $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; $('#lyBurnNote').textContent = j.skip; }   // 스킵 사유 표시(평의회6 260709) — 이 폴은 영상 기대(wantVid)에서만 도니 스킵 = 행위 피드백 1줄(§디자인 빈 상태 예외 · 구 '조용한 공백'은 오디오 입력 가정이라 침묵 오류였음)
       else { $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; $('#lyBurnNote').textContent = j.error; }
       return;
     }
