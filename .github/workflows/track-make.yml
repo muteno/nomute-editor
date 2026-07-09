@@ -2,7 +2,7 @@ name: track-make
 
 # 뷰어 트래킹 폼(Pages Function /api/track)이 발사 — 2모드 단일 워크플로:
 #   analyze = 영상(URL/업로드) → 얼굴 검출+트랙+군집 → viewer/track_out/<id>/tracks.json+crops 커밋(폼이 폴링)
-#   render  = tracks.json 타임라인 + 선택 페이로드 → 모자이크/핀셋 번인 → R2 → video.json 커밋
+#   render  = tracks.json 타임라인 + 선택 페이로드 → 모자이크/핀셋 번인 · 키잉 알파(MOV+webm) → R2 → video.json 커밋
 # LLM 0콜(순수 OpenCV·PIL·ffmpeg) — 과금 = Actions 분 + R2(원본·결과 보관)만. 골격 = ly-make 미러.
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ on:
         type: string
         default: ''
       render:
-        description: '렌더 페이로드 JSON {"mode":"mosaic|pinset","targets":[pid],"invert":bool,"names":{},"colors":{},"opts":{pxw,pxh,size,feather,shape}} — render 전용'
+        description: '렌더 페이로드 JSON {"mode":"mosaic|pinset|keying",…} — mosaic/pinset={targets,invert,names,colors,opts{pxw,pxh,size,feather,shape}} · keying={keep:[sid],extra:[{t,x,y}],opts:{feather}} — render 전용'
         type: string
         default: ''
 
@@ -41,9 +41,12 @@ permissions:
 jobs:
   track:
     runs-on: ubuntu-latest
-    timeout-minutes: 30   # 3분 캡 영상 기준 분석 ~2분·렌더 ~5분 + 콜드런 deps 여유 — 무한 행만 차단(§9)
+    timeout-minutes: 40   # 분석 ~2분·모자이크/핀셋 ~5분·키잉 90s캡 ≈25분(실측 260709) + 콜드런 deps 여유 — 무한 행만 차단(§9)
     env:
       TRACK_MODE: ${{ inputs.mode }}   # 셸엔 env로만 전달(run 블록 ${{ }} 생보간 금지 = 인젝션 차단 · ly-make 관례 · 평의회1 H-1) · setup.sh 모델 스킵 분기용
+      # 키잉 = 헤비 스택(torch+ultralytics+SAM2) 신호 — contains 러프 매칭(모자이크 이름에 'keying'이 든 극단 케이스 = 불필요 설치뿐·동작 무해).
+      #   fromJSON은 render 빈값(analyze)·수동 오타 디스패치에서 큐 시점 표현식 에러 = 채택 안 함(정직 트레이드오프).
+      TRACK_HEAVY: ${{ (inputs.mode == 'render' && contains(inputs.render, 'keying')) && '1' || '' }}
     steps:
       - name: mode 가드
         run: |
@@ -60,20 +63,21 @@ jobs:
           python-version: '3.12'
 
       # site-packages 캐시 — opencv-python-headless(~60MB) 재설치 회피(ly pydeps 패턴) · setup.sh 해시 = dep 변경 시 자동 재빌드(평의회1 L-6)
+      #   키 h 접미 = 헤비(키잉 torch+ultralytics ~1.6GB)/경량 캐시 분리 — 분석·모자이크 경로가 헤비 복원 비용을 안 냄
       - name: Restore python deps (site-packages 캐시)
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-track-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/track/setup.sh') }}-v1
+          key: nomute-track-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/track/setup.sh') }}-h${{ env.TRACK_HEAVY }}-v1
 
-      # 검출·임베딩 모델 캐시(YuNet 232KB + SFace 37MB) — setup.sh가 이 경로를 보고 다운 스킵(7일)
-      #   analyze 전용(렌더는 모델 불사용 = 37MB 복원·다운 스킵 · 평의회1 L-5)
+      # 검출·임베딩 모델 캐시 — analyze = YuNet 232KB+SFace 37MB · 키잉 = SAM2.1 tiny 149MB(키 분리 = 상호 복원 비용 0)
+      #   모자이크/핀셋 렌더 = 모델 불사용 = 스킵(평의회1 L-5)
       - name: 모델 캐시
-        if: ${{ inputs.mode == 'analyze' }}
+        if: ${{ inputs.mode == 'analyze' || env.TRACK_HEAVY == '1' }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/nomute-track
-          key: nomute-track-models-${{ hashFiles('apps/track/setup.sh') }}-v1
+          key: nomute-track-models-${{ hashFiles('apps/track/setup.sh') }}-h${{ env.TRACK_HEAVY }}-v1
 
       - name: 트래킹 환경 (ffmpeg+opencv+모델)
         timeout-minutes: 12   # 백스톱 — 콜드런 pip+모델 다운 여유(이후 캐시히트 즉시)
@@ -131,9 +135,9 @@ jobs:
           [ -n "${TRACK_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/track_err.txt; echo "::error::TRACK_SRC 빈값"; exit 1; }
           python3 apps/track/track_analyze.py "$IN_ID" "$TRACK_SRC"
 
-      - name: 렌더 (모자이크/핀셋 번인 → R2 → video.json)
+      - name: 렌더 (모자이크/핀셋 번인·키잉 알파 → R2 → video.json)
         if: ${{ inputs.mode == 'render' }}
-        timeout-minutes: 20   # 스텝 자체 캡 — 잡 30분 하드캔슬 전에 failure() error.log 표면화(평의회H)
+        timeout-minutes: 35   # 스텝 자체 캡 — 잡 40분 하드캔슬 전에 failure() error.log 표면화(평의회H · 키잉 90s ≈25분 실측 여유)
         env:
           IN_ID: ${{ inputs.id }}
           RENDER: ${{ inputs.render }}
