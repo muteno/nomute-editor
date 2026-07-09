@@ -54,8 +54,8 @@ _meter_record() {
 claude_meter() {
   local to="$1"; shift
   local raw rc bare=""
-  # --bare 게이트 (생성경로 CLAUDE.md auto-discovery 스킵 = 안 읽는 라우터 ~37k 토큰 컨텍스트 누수 차단 · 260701).
-  # 기본 ON · 품질 규칙은 stdin(inject_guidelines 주입)이 결정하므로 무영향 · 롤백 = env CLAUDE_BARE=0. judge(GATE_BARE·py)와 동형.
+  # --bare 게이트 (생성경로 CLAUDE.md auto-discovery 스킵 목적이었으나 --bare = OAuth 미독 = 인증 즉사 · §📰 사고 롤백).
+  # 기본 OFF(코드 :-0 = 롤백 확정 상태 — 구 `기본 ON` 주석은 롤백 전 잔재·정정 260709 평의회5) · 켜려면 env CLAUDE_BARE=1 = 카나리아 절차(§📰 e) 필수. judge(GATE_BARE·py)와 동형.
   case "${CLAUDE_BARE:-0}" in 0|false|no|off|"") ;; *) bare="--bare" ;; esac
   # 폴백 1 — 계측 끄기(METER_OFF) 또는 jq 부재: 옛 동작 그대로(--output-format json 미부착 = 마크다운 stdout).
   if [ "${METER_OFF:-0}" = "1" ] || ! command -v jq >/dev/null 2>&1; then
