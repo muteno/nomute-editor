@@ -26,7 +26,7 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 검사 대상 md (백업 폴더 _versions 제외)
-SCAN_GLOBS = ('*.md', 'apps/**/*.md', '.claude/skills/**/*.md')
+SCAN_GLOBS = ('*.md', 'apps/**/*.md', '.claude/skills/**/*.md', 'prompts/**/*.md')   # prompts/ = 라이브 파이프라인 프롬프트(ly-make 등)의 지침 실명 참조도 게이트(승번 리네임 시 dangling 무탐 차단 · 평의회5·10 260709)
 # 루트 기준 경로 참조로 보는 접두사 + 확장자
 PATH_PREFIX = re.compile(r'^(?:apps|shared|\.claude|_산출)/')
 PATH_EXT = re.compile(r'\.(?:md|py|sh|png)$')
