@@ -26,7 +26,7 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 검사 대상 md (백업 폴더 _versions 제외)
-SCAN_GLOBS = ('*.md', 'apps/**/*.md', '.claude/skills/**/*.md', 'prompts/**/*.md')   # prompts/ = 라이브 파이프라인 프롬프트(ly-make 등)의 지침 실명 참조도 게이트(승번 리네임 시 dangling 무탐 차단 · 평의회5·10 260709)
+SCAN_GLOBS = ('*.md', 'apps/**/*.md', '.claude/skills/**/*.md')
 # 루트 기준 경로 참조로 보는 접두사 + 확장자
 PATH_PREFIX = re.compile(r'^(?:apps|shared|\.claude|_산출)/')
 PATH_EXT = re.compile(r'\.(?:md|py|sh|png)$')
@@ -522,53 +522,6 @@ def check_force_parity():
     return rc
 
 
-def check_k_models():
-    """/k 모델·설정 3면 패리티 하드게이트(개편 P1 · 260710 스키마 v2). 모델 id와 설정 축·칩 값이
-    {viewer/k.html K_MODELS·K_VALS ↔ functions/api/k.js K_MODELS·K_SET ↔ apps/k/01_모델프로필_영상엔진.md 절}
-    3곳에 이중·삼중 구현 — 한쪽만 고치면 api 화이트리스트가 칩 값을 *조용히* 버려 설정 무시(무성 유실)
-    또는 프로필 없는 모델로 분기(k-make 오동작). check_issue_badge_parity 선례의 /k판.
-    ⚠️ 파싱 포맷 규약(감사8): 모델 id = 소문자 영숫자만 · 프로필 절 헤더 = `## <id> —`(em-dash — 하이픈도 허용) ·
-    k.html `const K_VALS = {…\\n};`(닫기 0칸)·api `const K_SET = {…\\n  };`(닫기 2칸) 리터럴 구조 유지 ·
-    칩 값에 `]`·작은따옴표 금지(정규식 절단). 구조를 리팩터하면 이 게이트 정규식도 동반 갱신."""
-    rc = 0
-    try:
-        kh = open(os.path.join(ROOT, 'viewer', 'k.html'), encoding='utf-8').read()
-        aj = open(os.path.join(ROOT, 'functions', 'api', 'k.js'), encoding='utf-8').read()
-        pf = open(os.path.join(ROOT, 'apps', 'k', '01_모델프로필_영상엔진.md'), encoding='utf-8').read()
-    except Exception as e:
-        # fail-closed(감사7·8): 이 3파일은 /k 모델 분기의 하드 의존 — 부재/리네임 = 게이트 무성 무력화가 아니라 커밋 차단
-        print('❌ /k 모델·설정 패리티: 필수 파일 못 엶(부재/리네임?) —', e); return 1
-    bad = []
-    # 모델 id 3면: k.html {id:'…'} · api ['…',…] · 프로필 '## id —'
-    m_html = set(re.findall(r"\{ id: '([a-z0-9]+)'", kh))
-    m_api_m = re.search(r"const K_MODELS = \[([^\]]*)\]", aj)
-    m_api = set(re.findall(r"'([a-z0-9]+)'", m_api_m.group(1))) if m_api_m else set()
-    m_doc = set(re.findall(r"^## ([a-z0-9]+) [—-]", pf, re.M))
-    if not (m_html and m_api and m_doc):
-        bad.append('모델 선언 못 찾음(k.html=%d·api=%d·프로필=%d)' % (len(m_html), len(m_api), len(m_doc)))
-    elif not (m_html == m_api == m_doc):
-        bad.append('모델 id 드리프트: k.html=%s · api=%s · 프로필=%s' % (sorted(m_html), sorted(m_api), sorted(m_doc)))
-    # 설정 축·칩 2면: k.html K_VALS ↔ api K_SET (문자 하나만 달라도 api가 그 칩 값을 무성 폐기)
-    m_vals = re.search(r"const K_VALS = \{(.*?)\n\};", kh, re.S)
-    ax_html = {k: re.findall(r"'([^']+)'", vals) for k, vals in re.findall(r"'([^']+)': \[([^\]]*)\]", m_vals.group(1))} if m_vals else {}
-    m_set = re.search(r"const K_SET = \{(.*?)\n  \};", aj, re.S)
-    ax_api = {k: re.findall(r"'([^']+)'", vals) for k, vals in re.findall(r"'([^']+)': \[([^\]]*)\]", m_set.group(1))} if m_set else {}
-    if not ax_html or not ax_api:
-        bad.append('설정 축 선언 못 찾음(k.html=%d·api=%d)' % (len(ax_html), len(ax_api)))
-    elif ax_html != ax_api:
-        keys = set(ax_html) | set(ax_api)
-        for k in sorted(keys):
-            if ax_html.get(k) != ax_api.get(k):
-                bad.append('축 [%s] 드리프트: k.html=%s · api=%s' % (k, ax_html.get(k), ax_api.get(k)))
-    if bad:
-        print('❌ /k 모델·설정 패리티 게이트:')
-        for b in bad: print('   -', b)
-        rc = 1
-    else:
-        print('✅ /k 모델·설정 패리티 — 모델 id 3면(k.html·api·프로필)·축/칩 2면 동일(%d모델·%d축).' % (len(m_html), len(ax_html)))
-    return rc
-
-
 _INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
 _AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
 
@@ -864,11 +817,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_force_parity 스킵:', e)
-    try:
-        if check_k_models() != 0:   # /k 모델·설정 3면 패리티(하드 게이트 — 한쪽만 수정=칩 값 무성 유실·프로필 없는 분기·260709 개편 P1)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_k_models 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1
