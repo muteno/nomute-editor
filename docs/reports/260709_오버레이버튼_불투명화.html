@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>이미지 위 오버레이 버튼 = 불투명 플레이트 — 260709</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · check_refs 비대상) */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#121212; color:#eef7f0; font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif; font-size:14px; line-height:1.65; padding:26px 14px 60px; max-width:760px; margin:0 auto; }
+  h1 { font-size:19px; font-weight:800; letter-spacing:-.3px; margin-bottom:4px; }
+  h1 b { color:#00EED2; }
+  .sub { color:#8fa697; font-size:12px; margin-bottom:22px; }
+  h2 { font-size:14px; font-weight:800; color:#eef7f0; margin:26px 0 10px; }
+  h2::before { content:'•'; color:#00EED2; margin-right:6px; }
+  p { color:#c9d6cd; margin:6px 0; }
+  .demo { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .shot { border-radius:12px; overflow:hidden; border:1px solid #2a2c31; }
+  .shot .ttl { font-size:11px; font-weight:800; padding:7px 10px; background:#1a1c1f; }
+  .shot .ttl.before { color:#8fa697; } .shot .ttl.after { color:#00EED2; }
+  .img { position:relative; height:150px; }
+  .img.bright { background:linear-gradient(135deg,#f4f2ee 0%,#e8e4dd 45%,#cfc9bd 100%); }
+  .img.dark { background:linear-gradient(135deg,#2a2622 0%,#141210 60%,#0a0908 100%); }
+  .badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.5); color:#eef7f0; font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .acts { position:absolute; top:8px; right:8px; display:flex; gap:6px; }
+  .bt { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; }
+  .bt svg { width:14px; height:14px; }
+  /* 전 = 반투명 혼재(글래스 .3 + 검정 .20) / 후 = 불투명 --bg 단일 */
+  .old-glass { background:rgba(8,15,11,.3); border:1px solid rgba(255,255,255,.14); color:rgba(255,255,255,.92); }
+  .old-black { background:rgba(0,0,0,.20); color:#00EED2; }
+  .new-plate { background:#121212; border:1px solid transparent; color:#00EED2; }
+  .new-plate.w { color:rgba(255,255,255,.92); }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid #2a2c31; vertical-align:top; }
+  th { color:#8fa697; font-weight:700; white-space:nowrap; }
+  td b { color:#00EED2; font-weight:700; }
+  code { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; color:#eef7f0; background:rgba(255,255,255,.07); padding:1px 5px; border-radius:5px; }
+  .ok { color:#00EED2; font-weight:700; } .warn { color:#FFE13D; font-weight:700; } .mut { color:#8fa697; }
+  ul { list-style:none; } li { padding-left:14px; position:relative; margin:4px 0; color:#c9d6cd; }
+  li::before { content:'•'; position:absolute; left:1px; color:#00EED2; }
+  li.x::before { content:'−'; color:#8fa697; }
+  .wrapx { overflow-x:auto; }
+  @media (max-width:520px){ .demo { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<h1>이미지 위 오버레이 버튼 = <b>불투명 플레이트</b></h1>
+<div class="sub">260709 · 운영자 지시 "아예 불투명 · 잘 보이는 것 우선" · 기틀(CLAUDE.md §디자인 n · CII) 동시 갱신</div>
+
+<p><b style="color:#eef7f0">한 줄 요약</b> — 사진·썸네일·카드 위에 뜨는 기능 버튼(수정·다운로드·삭제·투표·재생성)의 받침판을 반투명 검정 20%에서 <b style="color:#00EED2">각 화면의 배경 토큰 <code>var(--bg)</code> 완전 불투명</b>으로 전면 통일했다. 좌상단 「포스트 #1」 라벨 배지처럼 솔리드하게 깔려, 밝은 사진 위에서도 버튼이 또렷하게 읽힌다.</p>
+
+<h2>전 / 후 (밝은 사진 위 — 문제가 컸던 케이스)</h2>
+<div class="demo">
+  <div class="shot"><div class="ttl before">전 — 반투명 20% + 글래스 혼재</div>
+    <div class="img bright">
+      <span class="badge">포스트 #1 · OPA60</span>
+      <span class="acts">
+        <span class="bt old-glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="bt old-black"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg></span>
+      </span>
+    </div></div>
+  <div class="shot"><div class="ttl after">후 — 불투명 var(--bg) 단일</div>
+    <div class="img bright">
+      <span class="badge">포스트 #1 · OPA60</span>
+      <span class="acts">
+        <span class="bt new-plate w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="bt new-plate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg></span>
+      </span>
+    </div></div>
+  <div class="shot"><div class="ttl before">전 — 어두운 사진(플레이트 실종급)</div>
+    <div class="img dark">
+      <span class="acts">
+        <span class="bt old-glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="bt old-black"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg></span>
+      </span>
+    </div></div>
+  <div class="shot"><div class="ttl after">후 — 어두운 사진(아이콘 색이 가시성 담당)</div>
+    <div class="img dark">
+      <span class="acts">
+        <span class="bt new-plate w"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        <span class="bt new-plate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg></span>
+      </span>
+    </div></div>
+</div>
+<p class="mut" style="font-size:11.5px">위 데모 = 실제 CSS 값 재현(전: rgba(0,0,0,.20)·글래스 rgba(8,15,11,.3)+blur / 후: #121212·#0b0d0c = 각 뷰어 --bg). 실물은 머지 후 라이브에서 그대로.</p>
+
+<h2>기틀 감사 결과 (요청: "지금 다 그러고 있나 확인")</h2>
+<ul>
+  <li>기틀 룰(§디자인 n `검정 20%`) 준수 자체는 양호 — 다운로드류(.dlbtn 계열) 8곳 전부 규정값이었음.</li>
+  <li><span class="warn">발견한 드리프트 1건</span>: 같은 이미지 위 <b>한 줄</b>에 반투명 글래스(.sbtn = 투표·수정·재생성)와 검정 20%(.dlbtn)가 <b>혼재</b> — 룰 n)의 셀렉터 목록에 .sbtn 계열이 빠져 있던 것. 이번에 전부 룰로 편입·통일.</li>
+  <li>문서-코드 동기화: CLAUDE.md §디자인 n)·4-b, CII 표기규칙·다운로드 행 = 전부 새 값으로 갱신(아래 표).</li>
+</ul>
+
+<h2>변경 인벤토리 (전 대상 동일 반영)</h2>
+<div class="wrapx"><table>
+<tr><th>화면</th><th>버튼</th><th>셀렉터</th><th>전</th><th>후</th></tr>
+<tr><td rowspan="6">뉴스 뷰어<br>(index)</td><td>카드 캐러셀 투표·수정</td><td><code>.slide-acts .sbtn</code></td><td>글래스 .3+blur8</td><td rowspan="6"><b>var(--bg)</b> 불투명<br>테두리 투명<br>blur 제거<br>hover/active 배경 불변</td></tr>
+<tr><td>카드 저장·오버레이 PNG</td><td><code>.slide-acts .save/.ovl.dlbtn</code></td><td>검정 .20/.24</td></tr>
+<tr><td>썸네일 후보 재생성</td><td><code>.timg-acts .sbtn</code></td><td>글래스 .3+blur8</td></tr>
+<tr><td>썸네일 후보 저장</td><td><code>.timg-dl.dlbtn</code></td><td>검정 .20/.24</td></tr>
+<tr><td>라이트박스 다운로드</td><td><code>.lbox-bar .lbox-dl.dlbtn</code></td><td>검정 .20/.24 + blur8</td></tr>
+<tr><td>발행본 이미지 저장</td><td><code>.nm-imslot .nm-imdl</code></td><td>검정 .2/.32</td></tr>
+<tr><td rowspan="6">이미지 도구<br>(thumb)</td><td>이력 카드 다운로드</td><td><code>.imgdl.dlbtn</code></td><td>검정 .20/.24</td><td rowspan="6"><b>var(--bg)</b> 불투명<br>(발행본만 문서 배경 동값 복사<br>= 자기완결이라 var() 불가)</td></tr>
+<tr><td>이력 카드 수정(연필)</td><td><code>.imgedit</code> · <code>.caredit</code></td><td>검정 .20/.24</td></tr>
+<tr><td>생성(AI) 목록 다운로드</td><td><code>.gen-it .gen-dl.dlbtn</code></td><td>검정 .20/.32</td></tr>
+<tr><td>첨부 삭제(휴지통)</td><td><code>.fileprev .filerm</code></td><td>검정 .20/.24/.32</td></tr>
+<tr><td>커버 이미지 X</td><td><code>.covimg .covimg-x</code></td><td>검정 .20/.32</td></tr>
+<tr><td colspan="2">누름 피드백 = scale(--press-*)+아이콘 모션 유지 · gen-dl엔 scale 신규 계승</td><td>—</td></tr>
+</table></div>
+
+<h2>장단점 · 효율 · 품질 리스크</h2>
+<div class="wrapx"><table>
+<tr><th>장점</th><td>어떤 사진 위에서도 버튼 가시성 보장(운영자 우선순위) · 한 줄 혼재(글래스↔검정) 해소 = 일관성 · 문서(기틀)-코드 정합 복구 · blur 5곳 제거 = 스크롤/리페인트 비용 감소 · hover 단계 룰 6줄 순감</td></tr>
+<tr><th>트레이드오프</th><td>글래스 특유의 '비침 미감' 상실(운영자가 명시적으로 포기 선택) · 데스크톱 hover 배경 미세반응 제거(폰 주사용이라 영향 0 — 누름 scale·아이콘 모션은 그대로) · 어두운 사진에선 플레이트 윤곽이 덜 도드라짐(배지와 동일 거동 · 가시성은 아이콘 색이 담당)</td></tr>
+<tr><th>품질저하 리스크</th><td><span class="ok">낮음</span> — 순수 CSS 값 변경(로직·상태·파이프라인 0) · 상태색(.voted 투표됨)·전역 .dlbtn 표준(초록 10%)·받음 표식(.dl-done mut) 전부 불변 실측 · 신규 raw 0(라이브 전부 var(--bg) 토큰 · 발행본 템플릿만 +1 hex = baseline 사유 기입)</td></tr>
+<tr><th>검증</th><td>check_refs 전 게이트 <span class="ok">rc=0</span> · 실물 파일 headless 렌더 computed style <span class="ok">12케이스 전부 기대값</span>(thumb=rgb(11,13,12)·index=rgb(18,18,18)·voted 상태색 유지·blur none) · 티어 = 순수 시각 변경 → 자가 시각확인(§검증 마)</td></tr>
+</table></div>
+
+<h2>의도적으로 안 건드린 것 (버튼 아님 · 별개 컴포넌트)</h2>
+<ul>
+  <li class="x">「포스트 #1」류 라벨 배지(.cap·.slide-no·.cref-no) — 운영자가 참조한 기준점 그대로 유지.</li>
+  <li class="x">캐러셀 항행 화살표(.feednav/.carnav)·판 넘김 텍스트(전/후 .vbtn) — 항행 컴포넌트(의도된 은은함).</li>
+  <li class="x">뉴스요약 첨부 이미지 X(.askimg-x) — '닫기 X' 패밀리 정본 소속(원형 글래스). 이것도 불투명 원하면 한마디로 처리.</li>
+</ul>
+
+<div class="sub" style="margin-top:26px">산출: viewer/index.html · viewer/thumb.html · CLAUDE.md §디자인 n)/4-b · docs/CII_컴포넌트계승인덱스.md · shared/check_refs.py(baseline 사유) · 백업 _versions/260709_2311_오버레이버튼_불투명/</div>
+</body>
+</html>
