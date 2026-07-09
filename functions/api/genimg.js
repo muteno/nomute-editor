@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env }) {
   const moodAxIn = (o.moodAx && typeof o.moodAx === 'object') ? o.moodAx : {};
   const opts = {
     style: STYLES.includes(o.style) ? o.style : 'photo',
-    aspect: /^\d{1,2}:\d{1,2}$/.test(String(o.aspect || '')) ? String(o.aspect) : '4:5',   // 자유 N:N(각 1~99 · 운영자 260710) — python _parse_aspect와 동일 계약
+    aspect: (a => { const m = /^(\d{1,2}):(\d{1,2})$/.exec(String(a || '')); if (!m) return '4:5'; const w = +m[1], h = +m[2]; return (w >= 1 && h >= 1 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : '4:5'; })(o.aspect),   // 자유 N:N(각 1~99 · 비율 1:4~4:1 상한 = 극단값 후처리 병리 차단 · 평의회3) — python _parse_aspect와 동일 계약
     size: SIZES.includes(sizeIn) ? sizeIn : 'FHD',
     count: Math.max(1, Math.min(4, parseInt(o.count, 10) || 1)),
     fmt: o.fmt === 'jpg' ? 'jpg' : 'png',   // 품질 = PNG(기본)/JPG q90(운영자 260710)

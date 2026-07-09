@@ -46,12 +46,15 @@ ASPECT_EN = {"4:5": "vertical 4:5 portrait", "1:1": "square 1:1", "3:4": "vertic
 
 
 def _parse_aspect(a):
-    """'W:H'(각 1~99 정수) → (w, h) | None — genimg.js 검증 정규식과 동일 계약."""
+    """'W:H'(각 1~99 정수 · 비율 1:4~4:1) → (w, h) | None — genimg.js·뷰어 geniArVal과 동일 계약.
+    비율 상한 = 극단값(99:1 등) 크롭·리사이즈 병리(수만 px 캔버스·libjpeg 65500 한계) 차단(평의회3 260710)."""
     m = re.match(r"^(\d{1,2}):(\d{1,2})$", str(a or ""))
     if not m:
         return None
     w, h = int(m.group(1)), int(m.group(2))
-    return (w, h) if w >= 1 and h >= 1 else None
+    if not (w >= 1 and h >= 1):
+        return None
+    return (w, h) if 0.25 <= w / h <= 4 else None
 
 
 def aspect_en(a):
@@ -461,6 +464,8 @@ def main():
         print("::warning::ask_opus 예외 — 결정형 폴백으로 진행: {}: {}".format(type(e).__name__, e), flush=True)
         prompt = None
     fb_scene = (o["wish"] or o["text"]) if free else (scene or iq)   # 자유 모드 폴백 SCENE = 주문/문구(기사 없음 = head 폴백 불가)
+    if not prompt and o["texton"] and not o["text"]:
+        print("::warning::문구 살리기 ON이었으나 Opus 실패 → 결정형 폴백은 문구를 못 정해 무문구 렌더(재시도 시 문구 복원 · 평의회3)", flush=True)
     prompt = prompt or build_fallback(head, lead, fb_scene, o)
     print("── 최종 프롬프트({}자) ──\n{}\n──".format(len(prompt), prompt), flush=True)
 

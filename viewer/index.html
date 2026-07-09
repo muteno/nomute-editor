@@ -3875,7 +3875,7 @@ let _geniInited = false;
 let _geniDD = null;   // 열려 있는 선택박스(기타 화풍·세부 화풍 공용 1개)
 function geniStyleKo(v) { const hit = GENI_ALL_STYLES.find(x => x[0] === v); return hit ? hit[1] : v; }
 function geniSubKo(v) { if (v === 'auto') return '자동'; const hit = (GENI_SUB[_geniSel.style] || []).find(x => x[0] === v); return hit ? hit[1] : v; }
-function geniArVal() { const w = parseInt(_geniSel.arW, 10), h = parseInt(_geniSel.arH, 10); return (w >= 1 && w <= 99 && h >= 1 && h <= 99) ? w + ':' + h : null; }   // 직접 비율 유효값(서버 정규식 ^\d{1,2}:\d{1,2}$ 동일 계약)
+function geniArVal() { const w = parseInt(_geniSel.arW, 10), h = parseInt(_geniSel.arH, 10); return (w >= 1 && w <= 99 && h >= 1 && h <= 99 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : null; }   // 직접 비율 유효값 — 각 1~99 + 비율 1:4~4:1(극단값 후처리 병리 차단 · 평의회3) = 서버·python 3층 동일 계약
 function geniAspect() { return _geniSel.aspect === 'custom' ? geniArVal() : _geniSel.aspect; }   // 발사 비율 — 직접 미완성 = null(게이트가 막음)
 // ── 선택박스(드롭다운) — 무채 크롬 목록(§디자인 i) · '기타 화풍'/'세부 화풍 직접' 공용(운영자 260710 "선택 박스 열어서") ──
 function geniDDClose() { if (_geniDD) { _geniDD.remove(); _geniDD = null; document.removeEventListener('pointerdown', geniDDDoc, true); } }
@@ -3932,7 +3932,7 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   if (arout) {
     const val = geniArVal();
     if (!arOn) arout.textContent = '';
-    else if (!val) arout.textContent = '각 1~99';
+    else if (!val) { const w = parseInt(_geniSel.arW, 10), h = parseInt(_geniSel.arH, 10); arout.textContent = (w >= 1 && w <= 99 && h >= 1 && h <= 99) ? '범위 1:4 ~ 4:1' : '각 1~99'; }   // 숫자는 유효한데 비율 초과 = 범위 안내(단위/경고 = §디자인 e 허용)
     else { const w = parseInt(_geniSel.arW, 10), h = parseInt(_geniSel.arH, 10); const g = (function gcd(a, b) { return b ? gcd(b, a % b) : a; })(w, h); arout.textContent = '= ' + (w / g) + ':' + (h / g) + ' (' + (w / h).toFixed(2) + ')'; }   // 환산(운영자 260710 "입력하면 비율이 계산되어 나와야")
   }
   const camN = GENI_CAM_KEYS.filter(k => _geniSel[k] && _geniSel[k] !== 'auto').length;   // 접힘 그룹 활성 배지(복원값 포함 — 모르고 발사 방지)
