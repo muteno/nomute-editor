@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>영상 프롬프트 전면 개편 — 플레이그라운드</title>
+<style>
+/* ── 값 = viewer :root·tokens.css 실측 사본(자기완결 보고서 = 복사 계승 · §핵심명령 3-c) ──
+   팔레트 = viewer/k.html 인라인 :root 사본(k 뷰어 독립 팔레트 재현 — index 재색칠 아님)
+   구조 = viewer/tokens.css 실측(r-s 9/r-m 11/r-l 16/pill·sp 6/12/18/24·fs 11/12/13/15·fw 700/800·press .82/.85/.9·ease/dur) */
+:root{
+  --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --danger:#e23b2a; --warn:#FFE13D;
+  --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-body:15px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s;
+  --press-xs:.82; --press-s:.85; --press-m:.9; --blur-s:8px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html{scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent}
+body{margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg);
+  font:var(--fs-body)/var(--lh-base) -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  -webkit-font-smoothing:antialiased; padding:22px 14px 90px}
+.page{max-width:1060px; margin:0 auto}
+h1{font-size:20px; margin:0 0 4px} h1 b{color:var(--accent)}
+.sub{color:var(--mut); font-size:var(--fs-label); margin:0 0 20px}
+h2{font-size:16px; margin:34px 0 10px; font-weight:var(--fw-x)}
+h2::before{content:'• '; color:var(--accent); font-weight:var(--fw-b)}
+h3{font-size:14px; margin:18px 0 8px; color:var(--fg)}
+p{margin:6px 0; color:var(--mut); font-size:var(--fs-label)}
+p.wt{color:var(--fg)}
+table{width:100%; border-collapse:collapse; font-size:var(--fs-sm); margin:10px 0}
+th,td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top}
+th{background:var(--pan); color:var(--fg); font-weight:var(--fw-b); white-space:nowrap}
+td{color:var(--mut)} td b{color:var(--fg)} td .ac{color:var(--accent)}
+.tbl{overflow-x:auto}
+.tag{display:inline-block; padding:1px 8px; border-radius:var(--r-pill); font-size:var(--fs-xs); font-weight:var(--fw-b); border:1px solid var(--line); color:var(--mut); white-space:nowrap}
+.tag.ok{color:var(--accent); border-color:rgba(var(--accent-rgb),.4)}
+.tag.wr{color:var(--warn); border-color:rgba(255,225,61,.4)}
+.tag.dg{color:var(--danger); border-color:rgba(226,59,42,.4)}
+.note{background:var(--pan); border:1px solid var(--line); border-radius:var(--r-m); padding:10px 12px; font-size:var(--fs-sm); color:var(--mut); margin:10px 0}
+.note b{color:var(--fg)}
+code{font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--accent); background:rgba(255,255,255,.05); padding:1px 5px; border-radius:5px}
+/* ── 진단 카드 ── */
+.diag{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin:12px 0}
+.dcard{background:var(--pan); border:1px solid var(--line); border-radius:var(--r-l); padding:12px 14px}
+.dcard .dt{font-weight:var(--fw-x); font-size:var(--fs-label); color:var(--danger); margin-bottom:4px}
+.dcard .dd{font-size:var(--fs-sm); color:var(--mut)}
+.dcard .dd b{color:var(--fg)}
+/* ── 플레이그라운드 골격(포터블 §3-1) ── */
+.wrap{display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start; margin-top:14px}
+.stagewrap{flex:0 1 372px; min-width:300px; margin:0 auto}
+.frame{width:100%; aspect-ratio:9/18.5; max-height:78vh; background:var(--bg); border:1px solid var(--line); border-radius:26px; overflow:hidden; position:relative; box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.app,.baseline{position:absolute; inset:0; overflow-y:auto; padding:14px 16px 60px; scrollbar-width:thin}
+.baseline{display:none}
+.frame.cur .app{display:none}
+.frame.cur .baseline{display:block}
+.stagecap{color:var(--mut); font-size:var(--fs-sm); text-align:center; margin-top:8px}
+.console{flex:1 1 380px; min-width:300px}
+.csec{background:var(--pan); border:1px solid var(--line); border-radius:var(--r-l); padding:12px 14px; margin-bottom:12px}
+.csec .ct{font-weight:var(--fw-x); font-size:var(--fs-label); margin-bottom:9px}
+.csec .ct::before{content:'• '; color:var(--accent); font-weight:var(--fw-b)}
+.csec .cd{font-size:var(--fs-xs); color:var(--mut); margin:-5px 0 9px}
+/* 콘솔 필 버튼(수집함 .sc-tg 글래스 필 계승) */
+.pill{display:inline-grid; place-items:center; height:30px; padding:0 12px; margin:0 6px 6px 0; font-size:var(--fs-sm); font-weight:var(--fw-b); cursor:pointer;
+  border-radius:var(--r-pill); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
+  font-family:inherit; transition:transform var(--dur) var(--ease), color .14s, border-color .14s, background .14s}
+.pill:active{transform:scale(var(--press-m))}
+.pill.on{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.12)}
+.pill .st{color:var(--warn); margin-left:4px}
+/* 축 티어 3단 미니 세그먼트 */
+.axrow{display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed rgba(255,255,255,.06)}
+.axrow:last-child{border-bottom:0}
+.axnm{flex:1; font-size:var(--fs-sm); color:var(--fg)}
+.axnm i{color:var(--mut); font-style:normal; font-size:var(--fs-xs); margin-left:5px}
+.seg{display:flex; border:1px solid var(--line); border-radius:var(--r-pill); overflow:hidden}
+.seg button{border:0; background:none; color:var(--mut); font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); padding:4px 9px; cursor:pointer; transition:color .14s, background .14s}
+.seg button.on{color:var(--on-accent); background:var(--accent)}
+.seg button:active{opacity:.8}
+/* 슬라이더 */
+.sl{margin:8px 0}
+.sl .sn{display:flex; justify-content:space-between; font-size:var(--fs-sm); color:var(--mut); margin-bottom:3px}
+.sl .sv{font-variant-numeric:tabular-nums; color:var(--fg)}
+.sl input[type=range]{width:100%; accent-color:var(--accent)}
+/* 방언 미리보기·출력 */
+pre{background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-m); padding:11px 12px; margin:8px 0; white-space:pre-wrap; word-break:break-word;
+  font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg)}
+pre .cm{color:var(--mut)} pre .hl{color:var(--accent)}
+.copy{width:100%; margin-top:6px; padding:12px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:var(--r-pill);
+  font-weight:var(--fw-x); font-size:14px; font-family:inherit; cursor:pointer; transition:transform var(--dur) var(--ease), background .15s, border-color .15s}
+.copy:active{transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35)}
+.copy.done{background:var(--accent); color:var(--on-accent); border-color:var(--accent)}
+/* ── 프레임 내부 = k.html 실물 재현(값 = k.html 사본) + 개편 신규 요소 ── */
+.app{--t-gap:14px; --t-ta:150px; --t-seed:1}
+.ktabs{display:flex; gap:14px; font-size:var(--fs-sm); color:var(--mut); border-bottom:1px solid var(--line); padding:0 2px 8px; margin-bottom:14px}
+.ktabs span.on{color:var(--accent); font-weight:var(--fw-b)}
+.fl{display:block; font-size:var(--fs-label); color:var(--fg); font-weight:var(--fw-x); margin:var(--t-gap) 0 6px}
+.fl::before{content:'• '; color:var(--accent); font-weight:var(--fw-b)}
+.fl:first-of-type{margin-top:0}
+.fl .eng{color:var(--accent); font-weight:600; font-size:var(--fs-label); margin-left:9px}
+.fl .opt{color:var(--mut); font-weight:400; font-size:var(--fs-xs); margin-left:7px}
+.kta{width:100%; min-height:var(--t-ta); padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:14px; resize:none}
+.kta::placeholder{color:var(--mut)}
+.seedrow{display:flex; gap:6px; margin-top:8px}
+.seed{flex:1; min-width:0; display:grid; place-items:center; height:24px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
+  border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78); font-family:inherit;
+  transition:transform .1s, color .14s, border-color .14s}
+.seed:active{transform:scale(var(--press-m)); color:var(--accent)}
+/* 모델 선택기 = .seed 칩 패밀리 계승(글래스 필·on=강조 틴트) — 2행 그리드 */
+.mgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
+.mchip{display:grid; place-items:center; height:34px; padding:0 6px; font-size:12px; font-weight:var(--fw-b); cursor:pointer;
+  border-radius:var(--r-s); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78); font-family:inherit;
+  transition:transform .1s, color .14s, border-color .14s, background .14s}
+.mchip:active{transform:scale(var(--press-m))}
+.mchip.on{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14)}
+/* 축 칩 행 */
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{display:grid; place-items:center; height:26px; padding:0 10px; font-size:12px; font-weight:600; cursor:pointer;
+  border-radius:var(--r-pill); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78); font-family:inherit;
+  transition:transform .1s, color .14s, border-color .14s, background .14s}
+.chip:active{transform:scale(var(--press-m))}
+.chip.on{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14)}
+/* 고급 접이(디스클로저) */
+.adv{margin-top:var(--t-gap)}
+.advbtn{display:flex; align-items:center; gap:7px; width:100%; padding:10px 2px; background:none; border:0; color:var(--mut);
+  font:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); cursor:pointer; transition:color .14s}
+.advbtn svg{transition:transform var(--dur) var(--ease)}
+.advbtn.open{color:var(--fg)}
+.advbtn.open svg{transform:rotate(180deg)}
+.advbody{display:none; border-left:2px solid rgba(var(--accent-rgb),.25); padding-left:11px; margin-left:3px}
+.advbody.open{display:block}
+/* 참조 체크(현행 .chk 재현) */
+.chk{display:flex; align-items:center; gap:9px; margin-top:var(--t-gap); font-size:14px; color:var(--mut); cursor:pointer}
+.chk .cbox{flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:var(--r-s); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:var(--mut); transition:background .14s, color .14s, border-color .14s, transform .1s}
+.chk:active .cbox{transform:scale(var(--press-m))}
+.chk.on{color:var(--accent)}
+.chk.on .cbox{border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); color:var(--accent)}
+.chk .eng{color:var(--accent); font-weight:600; font-size:var(--fs-label)}
+/* 스펙 리드아웃(thumb .gospec 계승 — 의도적 회색, 값만 점등) */
+.gospec{margin-top:var(--t-gap); font-size:var(--fs-sm); color:var(--mut); line-height:1.7}
+.gospec b{color:var(--accent); font-weight:var(--fw-b)}
+/* 생성 버튼(현행 .go 재현) */
+.go{width:100%; margin-top:16px; padding:14px; background:rgba(255,255,255,.05); color:var(--accent); border:1px solid var(--line); border-radius:var(--r-pill);
+  font-weight:var(--fw-x); font-size:14px; font-family:inherit; cursor:pointer; position:relative; overflow:hidden; user-select:none;
+  transition:transform .12s var(--ease), background .15s, border-color .15s}
+.go:active{transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35)}
+.go.firing{color:var(--on-accent); pointer-events:none;
+  background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+  animation:goFill .72s var(--ease) forwards}
+@keyframes goFill{from{background-size:0% 100%,100% 100%} to{background-size:100% 100%,100% 100%}}
+/* 2단계 토글(설계 먼저) = .chk 계열 소형 */
+.twostep{display:none; align-items:center; gap:8px; margin-top:10px; font-size:var(--fs-sm); color:var(--mut); cursor:pointer}
+.twostep.show{display:flex}
+.twostep .dot{width:16px; height:16px; border-radius:50%; border:1px solid rgba(255,255,255,.2); display:grid; place-items:center; color:transparent; transition:color .14s, border-color .14s, background .14s}
+.twostep.on{color:var(--accent)}
+.twostep.on .dot{border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); color:var(--accent)}
+/* 흐름 다이어그램 */
+.flow{display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; margin:10px 0}
+.fbox{flex:1 1 150px; background:var(--pan); border:1px solid var(--line); border-radius:var(--r-m); padding:9px 11px; font-size:var(--fs-sm); color:var(--mut)}
+.fbox b{display:block; color:var(--fg); font-size:var(--fs-label); margin-bottom:3px}
+.fbox.hot{border-color:rgba(var(--accent-rgb),.4)}
+.fbox.hot b{color:var(--accent)}
+.arr{align-self:center; color:var(--mut); flex:0 0 auto}
+@media (max-width:720px){ body{padding:16px 10px 70px} .wrap{gap:16px} }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>영상 프롬프트 <b>전면 개편</b> — 만지는 제안서</h1>
+<p class="sub">뷰어 <b style="color:var(--fg)">+ → 영상</b> 도구의 재설계 시안 · 아래 폰 프레임을 직접 탭해서 골라줘 · 260709</p>
+
+<h2>현행 진단 — 왜 "그 기능을 못 하는가"</h2>
+<div class="diag">
+  <div class="dcard"><div class="dt">① 설정 축 = 0개</div><div class="dd">입력이 <b>텍스트 한 칸</b>뿐. 환경·화질·비율·프레임·구도·관점·표현방식 전부 <b>AI가 임의 추정</b> — 운영자 의도가 구조적으로 전달 안 됨.</div></div>
+  <div class="dcard"><div class="dt">② 모델 = 고정 박제</div><div class="dd">라벨에 <b>Kling 3.0 Omni</b>가 하드코딩. 선택 UI 자체가 없고 지침·출력 방언도 Kling 전용 — 다른 엔진으론 아예 못 감.</div></div>
+  <div class="dcard"><div class="dt">③ 보완이 비가시</div><div class="dd">AI가 뭘 채웠는지 <b>생성 끝난 뒤</b> 📌 추정 줄로만 보임. 발사 전에 "뭐가 자동으로 채워질지" 알 수 없음.</div></div>
+  <div class="dcard"><div class="dt">④ 라이브러리 비노출</div><div class="dd">47챕터 기틀 라이브러리(카메라·조명·화풍·날씨…)가 <b>AI 내부용</b>으로만 쓰임 — 운영자가 직접 골라 쓸 손잡이가 없음.</div></div>
+</div>
+<p>존재 목적(지침 §머리) = <b class="wt">리롤 크레딧 최소화(1회 450~528크레딧)</b>. 의도가 구조로 전달돼야 1차 성공률이 오른다 — 이 개편의 목적함수도 그대로 이거다.</p>
+
+<h2>개편안 미리보기 — 직접 만져봐</h2>
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame" id="frame">
+      <div class="app" id="app">
+        <div class="ktabs"><span>이미지</span><span class="on">영상</span><span>자막</span><span>트래킹</span></div>
+
+        <label class="fl">스토리 구성</label>
+        <textarea class="kta" readonly placeholder="장면 아이디어나 기사 원문을 붙여넣기 — 여기 쓴 묘사가 항상 최우선, 아래 설정은 부족한 부분을 채우는 보조">김정은이 편의점 야간 알바를 하다 진상 손님을 만난다 — 코믹 톤</textarea>
+        <div class="seedrow" id="seeds">
+          <button class="seed" type="button">풍자 단막</button>
+          <button class="seed" type="button">기사 각색</button>
+          <button class="seed" type="button">실사 장면</button>
+          <button class="seed" type="button">대사 지정</button>
+        </div>
+
+        <label class="fl" id="mlabel">비디오 모델 <span class="opt">프롬프트 방언·출력이 모델에 맞춰짐</span></label>
+        <div class="mgrid" id="mgrid"></div>
+
+        <div id="basicAxes"></div>
+
+        <div class="adv" id="adv">
+          <button class="advbtn" id="advbtn" type="button">고급 설정 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span class="opt" id="advcnt"></span></button>
+          <div class="advbody" id="advbody"></div>
+        </div>
+
+        <label class="chk on" id="refchk"><span class="cbox"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span> 참조 이미지 생성 <span class="eng">Gemini</span></label>
+
+        <div class="gospec" id="gospec"></div>
+        <label class="twostep" id="twostep"><span class="dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg></span> 설계안 먼저 받기 — 시나리오·설정 확인 후 프롬프트 발사(호출 2회)</label>
+        <button class="go" id="gobtn" type="button">영상 프롬프트 생성</button>
+      </div>
+
+      <div class="baseline" id="baseline">
+        <div class="ktabs"><span>이미지</span><span class="on">영상</span><span>자막</span><span>트래킹</span></div>
+        <label class="fl">스토리 구성 <span class="eng">Kling 3.0 Omni</span></label>
+        <textarea class="kta" readonly placeholder="장면 아이디어나 기사 원문을 붙여넣기 — 인물·분위기·대사·비율(9:16 등) 지시도 반영 (약 8000자까지)"></textarea>
+        <div class="seedrow">
+          <button class="seed" type="button">풍자 단막</button>
+          <button class="seed" type="button">기사 각색</button>
+          <button class="seed" type="button">실사 장면</button>
+          <button class="seed" type="button">대사 지정</button>
+        </div>
+        <label class="chk"><span class="cbox">−</span> 참조 이미지 생성 <span class="eng">Gemini 3.1 flash image</span></label>
+        <button class="go" type="button">영상 프롬프트 생성</button>
+        <div class="gospec" style="margin-top:14px">↑ 현행 전부 — 모델 박제 · 설정 축 0 · 텍스트 단칸</div>
+      </div>
+    </div>
+    <div class="stagecap" id="stagecap">칩·모델·고급 접이를 탭해봐 — 리드아웃과 방언 미리보기가 따라 바뀜</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <div class="ct">보기</div>
+      <button class="pill on" data-view="new" type="button">개편안</button>
+      <button class="pill" data-view="cur" type="button">현행(비교 기준)</button>
+    </div>
+
+    <div class="csec">
+      <div class="ct">프리셋</div>
+      <div class="cd">폼에 노출할 설정의 규모 — ★ = 추천</div>
+      <div id="presets"></div>
+    </div>
+
+    <div class="csec">
+      <div class="ct">모델 라인업</div>
+      <div class="cd">선택기에 올릴 엔진 구성(기본값은 항상 Kling Omni)</div>
+      <button class="pill" data-lineup="A" type="button">A 클링 단독</button>
+      <button class="pill" data-lineup="B" type="button">B 3종(+Veo·Sora)</button>
+      <button class="pill on" data-lineup="C" type="button">C 6종 풀<span class="st">★</span></button>
+    </div>
+
+    <div class="csec">
+      <div class="ct">설정 축 배치 — 기본 / 고급(접이) / 끔</div>
+      <div class="cd">기본 = 항상 노출 · 고급 = 접이 안 · 끔 = 이번 개편에서 제외</div>
+      <div id="axcfg"></div>
+    </div>
+
+    <div class="csec">
+      <div class="ct">동작 옵션</div>
+      <button class="pill on" data-opt="twostep" type="button">2단계 "설계 먼저" 토글 노출</button>
+      <button class="pill on" data-opt="seeds" type="button">예시 칩 유지</button>
+    </div>
+
+    <div class="csec">
+      <div class="ct">폼 미세조정</div>
+      <div class="sl"><div class="sn"><span>섹션 간격 (현행 14px)</span><span class="sv" id="gapv">14px</span></div><input type="range" id="gap" min="10" max="20" step="1" value="14"></div>
+      <div class="sl"><div class="sn"><span>입력칸 최소높이 (현행 150px)</span><span class="sv" id="tav">150px</span></div><input type="range" id="ta" min="110" max="210" step="10" value="150"></div>
+    </div>
+
+    <div class="csec">
+      <div class="ct">모델 방언 미리보기</div>
+      <div class="cd">프레임에서 모델을 탭하면 같은 장면이 그 모델 문법으로 — <span style="color:var(--warn)">Kling 외 = 리서치 기반 초안 🟡(도입 시 실측 보정)</span></div>
+      <pre id="dialect"></pre>
+    </div>
+
+    <div class="csec">
+      <div class="ct">선택값</div>
+      <pre id="out"></pre>
+      <button class="copy" id="copy" type="button">선택값 복사</button>
+    </div>
+
+    <div class="csec note" id="limits">
+      <b>재현 한계 각주</b><br>
+      · 값은 viewer :root·tokens.css·k.html의 <b>사본</b>(보고서 자기완결 — 라이브 토큰과 링크 아님)<br>
+      · 생성·폴링·결과 화면은 재현 생략(발사 버튼은 게이지 연출만) — 결과 md 골격은 현행 파서 계약 유지<br>
+      · Kling 외 모델의 방언·스펙은 리서치 기반 초안 🟡 — 버전·지원값은 도입 시점 재확인 항목<br>
+      · 칩 문구·개수는 시안 — 확정은 구현 PR에서 라이브러리 ID와 1:1 매핑<br>
+      · 폰트 = 시스템 폴백(실기기와 동일 계열)
+    </div>
+  </aside>
+</div>
+
+<h2>제안 1 — 모델 라인업 (선택기에 뭘 올릴까)</h2>
+<p>모델 목록·방언·스펙은 <b class="wt">신설 프로필 문서</b>(<code>apps/k/01_모델프로필_영상엔진.md</code>)가 정본 — 모델 추가·삭제 = 문서 행 편집(코드 무변경). 기본 선택 = 항상 <b class="wt">Kling Omni</b>(현행 지침·실증 자산 전부 유지).</p>
+<div class="tbl"><table>
+<tr><th>모델</th><th>포지션·강점</th><th>프롬프트 방언(출력이 이렇게 바뀜)</th><th>오디오</th><th>참조 이미지</th><th>주의</th></tr>
+<tr><td><b>Kling 3.0 Omni</b> <span class="tag ok">★기본·실측 정본</span></td><td>@참조 7장·주체 등록·멀티샷 6컷·한국어 립싱크·모션컨트롤 탭</td><td>한국어 본문 + 영문 테일 3종 + <code>@</code> 단독 + 네거티브 블록 (현행 그대로)</td><td>네이티브 O</td><td>@ 최대 7장</td><td>중국 정치 소재 검열 · 크레딧 과금</td></tr>
+<tr><td><b>Google Veo</b> <span class="tag wr">🟡 초안</span></td><td>시네마틱 산문 이해·현실 물리·대사 싱크</td><td>영어 산문 단락 + 오디오 큐 인라인 + negativePrompt 파라미터(API)</td><td>네이티브 O</td><td>이미지 시작·재료 O</td><td>클립 ~8s 단위 → 분막 설계 필수 · 한국어 대사 품질 재실측</td></tr>
+<tr><td><b>OpenAI Sora</b> <span class="tag wr">🟡 초안</span></td><td>물리·복잡 장면·긴 호흡 연출</td><td>영어 시네마틱 산문(샷 리스트 허용) — 네거티브 없음(회피는 서술)</td><td>O</td><td>제한적</td><td><b>실존 인물 재현 제약 강함</b> — 풍자(패턴①)에 부적합, 화풍치환②는 가능</td></tr>
+<tr><td><b>MiniMax Hailuo</b> <span class="tag wr">🟡 초안</span></td><td>모션·액션 다이내믹스</td><td>간결 영어 + <code>[Push in]</code>류 카메라 브래킷 지시어</td><td>X(후반 결합)</td><td>이미지 시작 O</td><td>대사 불가 → 오디오 축은 "무대사"로 강제</td></tr>
+<tr><td><b>Runway Gen-4</b> <span class="tag wr">🟡 초안</span></td><td>I2V 일관성·비주얼 스타일</td><td>키워드 간결·긍정 서술만 — 네거티브·부정문 금지</td><td>X</td><td><b>시작 이미지 필수</b></td><td>레퍼런스 생성 체크가 사실상 필수로 안내됨</td></tr>
+<tr><td><b>ByteDance Seedance</b> <span class="tag wr">🟡 초안</span></td><td>멀티샷 네이티브·저가 검증용</td><td>짧은 샷 나열 산문(Shot 1/2/3…)</td><td>X</td><td>이미지 시작 O</td><td>해상도 한계 — "검증용 저가 러프" 포지션</td></tr>
+</table></div>
+<p>라인업 밖 특수 도구(Wan Animate·Viggle 등 모션 전이 계열)는 MEMORY §미해결 문서 유지 — 선택기엔 안 올림(프롬프트 빌더 대상이 아님).</p>
+
+<h2>제안 2 — 설정 축 ↔ 기틀 라이브러리 매핑</h2>
+<p>칩 하나 = 라이브러리 모듈 ID 1개에 매핑 — AI는 그 <b class="wt">행만 Grep</b>해서 프롬프트에 조립(현행 행 단위 로드 원칙 그대로). 모든 축의 기본값 = <b class="wt">자동</b>(현행처럼 텍스트만 쓰고 발사해도 동작 — 설정은 "부족한 부분 보완"용).</p>
+<div class="tbl"><table>
+<tr><th>축</th><th>칩(시안)</th><th>라이브러리 정본</th><th>모델별 처리</th></tr>
+<tr><td><b>비율</b></td><td>자동 · 9:16 · 16:9 · 1:1</td><td>20 AR</td><td>Kling=UI 권장값 안내 / Veo·Sora=파라미터</td></tr>
+<tr><td><b>길이</b></td><td>자동 · 5s · 10s · 15s · 장편 분막</td><td>§1 분막 룰</td><td>모델 상한 넘으면 자동 분막(클립 계층)</td></tr>
+<tr><td><b>표현방식(화풍)</b></td><td>자동 · 데포르메 3등신 · 극화 웹툰 · 수채화 · 실사 시네마틱 · 뉴스 다큐룩 · 3D 애니</td><td>02 STYLE · 13 NST · 09 KV 전이</td><td>비실사면 photorealistic 테일 자동 제거(§5)</td></tr>
+<tr><td><b>구도·샷</b></td><td>자동 · 와이드 · 미디엄 · 클로즈업 · 익스트림 CU · 소품 인서트</td><td>01b S01–S21</td><td>샷 첫머리 프론트로딩(§2)</td></tr>
+<tr><td><b>관점·앵글</b></td><td>자동 · 아이레벨 · 로우(권력) · 하이 · 오버숄더 · 1인칭 POV · 부감 드론</td><td>01c H · 07 V · 39 AG</td><td>윤리 카메라(피해자 Eye/권력 Low) 가드 유지</td></tr>
+<tr><td><b>카메라 무브</b></td><td>자동 · 고정 · 푸시인 · 트래킹 · 오빗 · 핸드헬드</td><td>06 M01–M51</td><td>1샷 1무브 원칙으로 배분(§3)</td></tr>
+<tr><td><b>조명</b></td><td>자동 · 자연광 · 골든아워 · 저조도 · 네온 · 역광 실루엣</td><td>03 LIGHT · 12 LGT</td><td>샷당 1개 · 충돌 시 함정표 회피</td></tr>
+<tr><td><b>환경·날씨</b></td><td>자동 · 실내 · 도심 · 자연 · 비 · 눈 · 안개·황사</td><td>04 ENV · 23 WX</td><td>씬 헤딩·레퍼런스 배경 프롬프트에 연동</td></tr>
+<tr><td><b>오디오</b></td><td>자동 · 대사 중심 · 의성어만 · 무대사 앰비언트 · 음악 무드</td><td>10 AU · §6</td><td>오디오 없는 모델(Hailuo·Runway) = 자동 무효+📌 고지</td></tr>
+<tr><td><b>화질·프레임</b></td><td>자동 · 검증 720p · 1080p · 4K 업스케일 · 60fps</td><td>§0 · §9-9 크레딧 2단계</td><td>프롬프트가 아니라 ⚙️ UI/파라미터 권장값으로 출력</td></tr>
+</table></div>
+
+<h2>제안 3 — 흐름 전/후</h2>
+<h3>전 (현행)</h3>
+<div class="flow">
+  <div class="fbox"><b>텍스트 한 칸</b>장면·비율·화풍 전부 산문에 우겨넣기</div><div class="arr">→</div>
+  <div class="fbox"><b>AI 전권 추정</b>뭘 채웠는지 생성 후에야 📌로 확인</div><div class="arr">→</div>
+  <div class="fbox"><b>Kling 전용 md</b>모델 선택 불가</div>
+</div>
+<h3>후 (개편)</h3>
+<div class="flow">
+  <div class="fbox hot"><b>묘사 + 설정 칩</b>텍스트 최우선 불변 · 칩은 부족분 보완([설정] 블록으로 전달)</div><div class="arr">→</div>
+  <div class="fbox hot"><b>스펙 리드아웃</b>발사 전에 "뭐가 자동인지" 보임 (+옵션: 설계안 먼저 받기)</div><div class="arr">→</div>
+  <div class="fbox hot"><b>모델 프로필 분기</b>선택 모델의 방언·파라미터로 프롬프트 출력 (골격 헤딩 계약은 유지 = 뷰어 파서 무변경)</div>
+</div>
+<div class="note"><b>[설정] 블록 규칙(구현 스펙)</b> — api/k.js가 칩 선택을 화이트리스트 검증 후 장면 뒤에 부착: <code>[설정] 모델: veo · 비율: 9:16 · 화풍: 데포르메(STYLE-…) · …</code> (자동 축은 생략). k-make.md에 "설정 = 운영자 확정값 — 추정 금지·⚙️에 '지정' 표기, 텍스트 묘사와 충돌 시 <b>텍스트 우선 + 📌 고지</b>" 룰 추가. 리롤 축 마커(카메라/조명/액션/화풍/오디오)와 동일한 주입 차단 패턴.</div>
+
+<h2>제안 4 — 구현 단계·검증</h2>
+<div class="tbl"><table>
+<tr><th>단계</th><th>내용</th><th>파일</th><th>비고</th></tr>
+<tr><td><b>P1</b> 폼+설정+모델</td><td>모델 선택기 · 설정 칩(기본/고급) · 스펙 리드아웃 · [설정] 페이로드 · 모델 프로필 문서 신설 · k-make.md 해석 룰</td><td><code>viewer/k.html</code> · <code>functions/api/k.js</code> · <code>prompts/k-make.md</code> · <code>apps/k/01_모델프로필_영상엔진.md</code>(신설)</td><td>출력 골격 헤딩(⚙️/🎬/샷/🚫/🖼/📌) 불변 = 뷰어 파서·레퍼런스 파이프 그대로</td></tr>
+<tr><td><b>P2</b> 설계 먼저 모드</td><td>"설계안 먼저 받기" 토글 — 1차 호출 = ⚙️+🎬+스토리보드만 → 확인 후 "이대로 발사"가 2차 호출</td><td>k-make.md 분기 · api/k.js · k.html 결과 화면</td><td>호출 2배(구독 쿼터) — 기본 OFF 토글</td></tr>
+<tr><td><b>P3</b> 세션 /k 동기</td><td>대화형 /k 스킬에도 모델 프로필 분기 이식(지침 §0-1 모드 판정에 모델 축 추가)</td><td><code>.claude/skills/k</code> · <code>apps/k/00_지침</code></td><td>뷰어 경로 안정화 후</td></tr>
+</table></div>
+<div class="tbl"><table>
+<tr><th>평가 축</th><th>내용</th></tr>
+<tr><td><b>전/후</b></td><td>텍스트 단칸·Kling 박제·사후 추정 → 설정 축 10개·모델 6종·발사 전 리드아웃</td></tr>
+<tr><td><b>장점</b></td><td>의도의 구조적 전달 = 1차 성공률↑ = <b>리롤 크레딧 절감</b>(앱 존재 목적 직결) · 라이브러리가 운영자 손잡이가 됨 · 모델 이식성(프로필 문서만 추가)</td></tr>
+<tr><td><b>효율</b></td><td>P1은 호출 수 불변(원샷 유지) · 설정은 텍스트 뒤 [설정] 블록이라 파이프 구조 무변경 · P2만 호출 2배(옵션)</td></tr>
+<tr><td><b>품질저하 리스크</b></td><td>① 칩 과다 = 폰 피로 → 기본 3축+고급 접이로 상쇄 ② 설정 강제가 AI 유연성 축소 → 전 축 "자동" 디폴트 ③ Kling 외 방언 = 실측 전 초안 → CASES/⭐ 승격 체계로 성숙 ④ 출력 파서 회귀 → 헤딩 계약 동결로 차단</td></tr>
+</table></div>
+<p>구현 착수 시 = 실질 코드·구조 변경이라 <b class="wt">10인 평의회 상시 검증</b> + k.html 신규 요소 배치는 이 시안이 승인 근거(§디자인 j). 출력 골격·라이브러리 SSOT 구조는 안 건드림(기틀 비접촉) — 단 k-make.md 골격에 [설정]·모델 절 추가는 지침 골격 변경이라 <b class="wt">기틀 확인 대상</b>으로 처리.</p>
+
+<h2>결정해줘 — 4가지 (채팅 버튼과 동일)</h2>
+<div class="tbl"><table>
+<tr><th>#</th><th>질문</th><th>선택지(★=추천)</th></tr>
+<tr><td>Q1</td><td>모델 라인업</td><td>A 클링 단독 / B 3종(클링+Veo+Sora) / <b class="ac">C 6종 풀 ★</b></td></tr>
+<tr><td>Q2</td><td>기본 노출 축</td><td><b class="ac">비율·길이·화풍 3축 + 나머지 고급 접이 ★</b> / 전부 고급에 / 전부 노출</td></tr>
+<tr><td>Q3</td><td>보완 방식</td><td>원샷+리드아웃만 / <b class="ac">원샷 기본 + "설계 먼저" 토글(P2) ★</b> / 항상 2단계</td></tr>
+<tr><td>Q4</td><td>적용 범위</td><td><b class="ac">뷰어 경로 먼저(P1→P2) ★</b> / 뷰어+세션 /k 동시</td></tr>
+</table></div>
+<p>세부(칩 문구·간격·예시칩 유지 여부)는 위 플레이그라운드 만져보고 <b class="wt">[선택값 복사]</b>로 답장 — 그게 그대로 구현 스펙이 된다.</p>
+
+</div>
+<script>
+(function(){
+'use strict';
+var $ = function(s){ return document.querySelector(s); };
+var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+
+var MODELS = [
+  {id:'kling', nm:'Kling Omni', star:true},
+  {id:'veo', nm:'Veo'},
+  {id:'sora', nm:'Sora'},
+  {id:'hailuo', nm:'Hailuo'},
+  {id:'runway', nm:'Runway'},
+  {id:'seedance', nm:'Seedance'}
+];
+var LINEUP = {A:['kling'], B:['kling','veo','sora'], C:['kling','veo','sora','hailuo','runway','seedance']};
+var AXES = [
+  {k:'ratio', nm:'비율', lib:'AR', chips:['자동','9:16','16:9','1:1']},
+  {k:'len', nm:'길이', lib:'분막', chips:['자동','5s','10s','15s','장편 분막']},
+  {k:'style', nm:'표현방식', lib:'STYLE·NST', chips:['자동','데포르메 3등신','극화 웹툰','수채화','실사 시네마틱','뉴스 다큐룩','3D 애니']},
+  {k:'shot', nm:'구도·샷', lib:'01b S', chips:['자동','와이드','미디엄','클로즈업','익스트림 CU','소품 인서트']},
+  {k:'pov', nm:'관점·앵글', lib:'01c H·07 V', chips:['자동','아이레벨','로우(권력)','하이','오버숄더','1인칭 POV','부감 드론']},
+  {k:'move', nm:'카메라 무브', lib:'06 M', chips:['자동','고정','푸시인','트래킹','오빗','핸드헬드']},
+  {k:'light', nm:'조명', lib:'03 LIGHT', chips:['자동','자연광','골든아워','저조도','네온','역광 실루엣']},
+  {k:'env', nm:'환경·날씨', lib:'04 ENV·23 WX', chips:['자동','실내','도심','자연','비','눈','안개·황사']},
+  {k:'audio', nm:'오디오', lib:'10 AU', chips:['자동','대사 중심','의성어만','무대사 앰비언트','음악 무드']},
+  {k:'qual', nm:'화질·프레임', lib:'UI 권장값', chips:['자동','검증 720p','1080p','4K 업스케일','60fps']}
+];
+var TIER_STD = {ratio:'basic', len:'basic', style:'basic', shot:'adv', pov:'adv', move:'adv', light:'adv', env:'adv', audio:'adv', qual:'adv'};
+var PRESETS = [
+  {id:'p0', nm:'현행', view:'cur'},
+  {id:'pa', nm:'A 미니멀', view:'new', lineup:'B', tiers:{ratio:'basic', len:'off', style:'basic', shot:'off', pov:'off', move:'off', light:'off', env:'off', audio:'off', qual:'off'}, twostep:false, seeds:true},
+  {id:'pb', nm:'B 표준', star:true, view:'new', lineup:'C', tiers:TIER_STD, twostep:true, seeds:true},
+  {id:'pc', nm:'C 풀콘솔', view:'new', lineup:'C', tiers:{ratio:'basic', len:'basic', style:'basic', shot:'basic', pov:'basic', move:'basic', light:'basic', env:'basic', audio:'basic', qual:'basic'}, twostep:true, seeds:true}
+];
+var DIALECT = {
+  kling:{meta:'한국어 본문+영문 테일 · @참조 7장 · 네거티브 블록 O · 네이티브 오디오 O (실측 정본)',
+    txt:'@ 의 김정은(3등신 데포르메, 인민복)이 편의점 카운터 뒤에서 바코드를 찍는다. 진상 손님이 영수증을 흔들자 천천히 고개를 들어 무표정으로 바라본다.\n오디오: 바코드 삑 소리, 낮은 매장 앰비언트. 김정은: "환불은... 없습니다."\nchibi proportions, exaggerated expressions, cinematic lighting, sharp detail\nAvoid: deformed hands, extra fingers, identity drift, morphing'},
+  veo:{meta:'영어 산문 단락 · 오디오 큐 인라인 · negativePrompt 파라미터(API) · ~8s 클립 단위 🟡',
+    txt:'A satirical 3D-cartoon scene, vertical 9:16. A chibi-proportioned North Korean leader works the night shift at a Korean convenience store. He slowly looks up from the barcode scanner as an angry customer waves a receipt. Camera: slow push-in, medium to close-up. Cold fluorescent store lighting. Audio: barcode beep, low store hum. He says in deadpan Korean: "환불은... 없습니다."'},
+  sora:{meta:'영어 시네마틱 산문 · 물리 강점 · 네거티브 없음 · 실존 인물 재현 제약(풍자 주의) 🟡',
+    txt:'Satirical animated short, vertical format. A Korean convenience store at night under harsh fluorescent light. A chibi cartoon clerk scans items; an irate customer waves a crumpled receipt that flutters naturally. One continuous handheld shot pushes from medium to close-up as the clerk looks up, deadpan. Dialogue (Korean, dry): "환불은... 없습니다."'},
+  hailuo:{meta:'간결 영어 + [카메라 브래킷] · 모션 강점 · 오디오 X(후반 결합) 🟡',
+    txt:'[Push in] Chibi cartoon clerk at a Korean convenience store night shift, an angry customer waving a receipt, the clerk slowly looks up with a deadpan stare. Cold fluorescent lighting, satirical comedy tone, vertical 9:16.'},
+  runway:{meta:'키워드 간결·긍정 서술만 · 네거티브 X · 시작 이미지 필수(레퍼런스 연동) 🟡',
+    txt:'(시작 이미지 = 레퍼런스 1장 필수)\nchibi cartoon clerk, convenience store night interior, slow push-in to close-up, deadpan reaction, cold fluorescent glow, satirical comedy, vertical format'},
+  seedance:{meta:'짧은 샷 나열 · 멀티샷 네이티브 · 저가 검증용 · 오디오 X 🟡',
+    txt:'Multi-shot, vertical 9:16. Shot 1: wide — a chibi cartoon clerk scans items in a convenience store at night. Shot 2: medium — an angry customer waves a receipt. Shot 3: close-up — the clerk looks up, deadpan. Cold fluorescent lighting, satirical tone.'}
+};
+var CUR = {gap:14, ta:150};   // 현행 실측(k.html label margin 14px · textarea 150px)
+
+var state = {
+  view:'new', preset:'pb', lineup:'C',
+  tiers:JSON.parse(JSON.stringify(TIER_STD)),
+  twostep:true, seeds:true, gap:14, ta:150,
+  model:'kling', sel:{}, custom:false
+};
+AXES.forEach(function(a){ state.sel[a.k] = '자동'; });
+
+/* ── 프레임 렌더 ── */
+function chipRow(ax){
+  var row = document.createElement('div');
+  var lb = document.createElement('label'); lb.className = 'fl';
+  lb.textContent = ax.nm + ' ';
+  var op = document.createElement('span'); op.className = 'opt'; op.textContent = ax.lib; lb.appendChild(op);
+  var ch = document.createElement('div'); ch.className = 'chips';
+  ax.chips.forEach(function(c){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (state.sel[ax.k] === c ? ' on' : '');
+    b.textContent = c;
+    b.addEventListener('click', function(){ state.sel[ax.k] = c; render(); });
+    ch.appendChild(b);
+  });
+  row.appendChild(lb); row.appendChild(ch);
+  return row;
+}
+function render(){
+  // 모델 그리드
+  var mg = $('#mgrid'); mg.innerHTML = '';
+  var ids = LINEUP[state.lineup];
+  if (ids.indexOf(state.model) < 0) state.model = 'kling';
+  MODELS.forEach(function(m){
+    if (ids.indexOf(m.id) < 0) return;
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'mchip' + (state.model === m.id ? ' on' : '');
+    b.textContent = m.nm + (m.star ? ' ★' : '');
+    b.addEventListener('click', function(){ state.model = m.id; render(); });
+    mg.appendChild(b);
+  });
+  $('#mlabel').style.display = ids.length > 1 ? '' : 'none';
+  mg.style.display = ids.length > 1 ? '' : 'none';
+  // 축 배치
+  var ba = $('#basicAxes'), ab = $('#advbody'); ba.innerHTML = ''; ab.innerHTML = '';
+  var nAdv = 0;
+  AXES.forEach(function(ax){
+    var t = state.tiers[ax.k];
+    if (t === 'basic') ba.appendChild(chipRow(ax));
+    else if (t === 'adv'){ ab.appendChild(chipRow(ax)); nAdv++; }
+  });
+  $('#adv').style.display = nAdv ? '' : 'none';
+  $('#advcnt').textContent = nAdv ? nAdv + '축' : '';
+  // 옵션
+  $('#seeds').style.display = state.seeds ? '' : 'none';
+  var ts = $('#twostep'); ts.classList.toggle('show', state.twostep);
+  // 미세조정 변수
+  var app = $('#app');
+  app.style.setProperty('--t-gap', state.gap + 'px');
+  app.style.setProperty('--t-ta', state.ta + 'px');
+  // 스펙 리드아웃
+  var mn = ''; MODELS.forEach(function(m){ if (m.id === state.model) mn = m.nm; });
+  var picked = [];
+  AXES.forEach(function(ax){ if (state.tiers[ax.k] !== 'off' && state.sel[ax.k] !== '자동') picked.push(ax.nm + ' <b>' + state.sel[ax.k] + '</b>'); });
+  $('#gospec').innerHTML = '<b>' + mn + '</b> · ' + (picked.length ? picked.join(' · ') + ' · 그 외 자동' : '전 축 자동(텍스트 묘사가 정본)');
+  // 방언 미리보기
+  var d = DIALECT[state.model];
+  $('#dialect').innerHTML = '<span class="cm">' + d.meta + '</span>\n\n' + d.txt.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  // 보기·프리셋·콘솔 동기
+  $('#frame').classList.toggle('cur', state.view === 'cur');
+  $$('[data-view]').forEach(function(b){ b.classList.toggle('on', b.dataset.view === state.view); });
+  $$('[data-lineup]').forEach(function(b){ b.classList.toggle('on', b.dataset.lineup === state.lineup); });
+  $$('#presets .pill').forEach(function(b){ b.classList.toggle('on', b.dataset.preset === state.preset && !state.custom); });
+  $$('#axcfg .seg').forEach(function(sg){
+    var k = sg.dataset.ax;
+    $$('#axcfg .seg[data-ax="' + k + '"] button').forEach(function(b){ b.classList.toggle('on', b.dataset.tier === state.tiers[k]); });
+  });
+  $('[data-opt="twostep"]').classList.toggle('on', state.twostep);
+  $('[data-opt="seeds"]').classList.toggle('on', state.seeds);
+  $('#gapv').textContent = state.gap + 'px';
+  $('#tav').textContent = state.ta + 'px';
+  $('#gap').value = state.gap; $('#ta').value = state.ta;
+  buildOut();
+}
+
+/* ── 선택값 출력(현행 병기 + 계승/갱신 자동 표기) ── */
+function near(a, b, eps){ return Math.abs(a - b) < (eps || .5); }
+function buildOut(){
+  var pn = ''; PRESETS.forEach(function(p){ if (p.id === state.preset) pn = p.nm; });
+  var basics = [], advs = [], offs = [];
+  AXES.forEach(function(ax){
+    var t = state.tiers[ax.k];
+    if (t === 'basic') basics.push(ax.nm); else if (t === 'adv') advs.push(ax.nm); else offs.push(ax.nm);
+  });
+  var gapN = near(state.gap, CUR.gap) ? ' [현행 14 = 계승]' : ' [현행 14 → 갱신 후보]';
+  var taN = near(state.ta, CUR.ta) ? ' [현행 150 = 계승]' : ' [현행 150 → 갱신 후보]';
+  $('#out').textContent =
+'[영상 프롬프트 개편 — 선택값]\n' +
+'프리셋      : ' + pn + (state.custom ? ' (수정됨)' : '') + '\n' +
+'보기        : ' + (state.view === 'cur' ? '현행' : '개편안') + '\n' +
+'모델 라인업 : ' + state.lineup + ' (' + LINEUP[state.lineup].length + '종 · 기본 Kling Omni)\n' +
+'기본 노출 축: ' + (basics.join(' · ') || '(없음)') + '\n' +
+'고급(접이)  : ' + (advs.join(' · ') || '(없음)') + '\n' +
+'끔          : ' + (offs.join(' · ') || '(없음)') + '\n' +
+'설계 먼저 토글: ' + (state.twostep ? '노출(P2)' : '없음(원샷만)') + '\n' +
+'예시 칩     : ' + (state.seeds ? '유지' : '제거') + '\n' +
+'섹션 간격   : ' + state.gap + 'px' + gapN + '\n' +
+'입력칸 높이 : ' + state.ta + 'px' + taN;
+}
+
+/* ── 콘솔 구성 ── */
+var pw = $('#presets');
+PRESETS.forEach(function(p){
+  var b = document.createElement('button'); b.type = 'button'; b.className = 'pill'; b.dataset.preset = p.id;
+  b.innerHTML = p.nm + (p.star ? '<span class="st">★</span>' : '');
+  b.addEventListener('click', function(){
+    state.preset = p.id; state.custom = false; state.view = p.view;
+    if (p.view === 'new'){
+      state.lineup = p.lineup;
+      state.tiers = JSON.parse(JSON.stringify(p.tiers));
+      state.twostep = p.twostep; state.seeds = p.seeds;
+    }
+    render();
+  });
+  pw.appendChild(b);
+});
+var ac = $('#axcfg');
+AXES.forEach(function(ax){
+  var row = document.createElement('div'); row.className = 'axrow';
+  var nm = document.createElement('div'); nm.className = 'axnm'; nm.innerHTML = ax.nm + '<i>' + ax.lib + '</i>';
+  var sg = document.createElement('div'); sg.className = 'seg'; sg.dataset.ax = ax.k;
+  [['basic','기본'],['adv','고급'],['off','끔']].forEach(function(t){
+    var b = document.createElement('button'); b.type = 'button'; b.dataset.tier = t[0]; b.textContent = t[1];
+    b.addEventListener('click', function(){ state.tiers[ax.k] = t[0]; state.custom = true; render(); });
+    sg.appendChild(b);
+  });
+  row.appendChild(nm); row.appendChild(sg); ac.appendChild(row);
+});
+$$('[data-view]').forEach(function(b){ b.addEventListener('click', function(){ state.view = b.dataset.view; render(); }); });
+$$('[data-lineup]').forEach(function(b){ b.addEventListener('click', function(){ state.lineup = b.dataset.lineup; state.custom = true; render(); }); });
+$('[data-opt="twostep"]').addEventListener('click', function(){ state.twostep = !state.twostep; state.custom = true; render(); });
+$('[data-opt="seeds"]').addEventListener('click', function(){ state.seeds = !state.seeds; state.custom = true; render(); });
+$('#gap').addEventListener('input', function(e){ state.gap = +e.target.value; state.custom = true; render(); });
+$('#ta').addEventListener('input', function(e){ state.ta = +e.target.value; state.custom = true; render(); });
+
+/* ── 프레임 내부 인터랙션 ── */
+$('#advbtn').addEventListener('click', function(){
+  var open = !$('#advbody').classList.contains('open');
+  $('#advbody').classList.toggle('open', open);
+  $('#advbtn').classList.toggle('open', open);
+});
+$('#refchk').addEventListener('click', function(){ $('#refchk').classList.toggle('on'); });
+$('#twostep').addEventListener('click', function(){ $('#twostep').classList.toggle('on'); });
+$('#gobtn').addEventListener('click', function(){
+  var g = $('#gobtn'); g.classList.remove('firing'); void g.offsetWidth; g.classList.add('firing');
+  setTimeout(function(){ g.classList.remove('firing'); }, 760);
+});
+$$('#seeds .seed, #baseline .seed').forEach(function(b){ b.addEventListener('click', function(){ b.style.color = 'var(--accent)'; setTimeout(function(){ b.style.color = ''; }, 400); }); });
+
+/* ── 복사(클립보드 + execCommand 폴백) ── */
+$('#copy').addEventListener('click', function(){
+  var t = $('#out').textContent, btn = $('#copy');
+  var ok = function(){ btn.classList.add('done'); btn.textContent = '복사됨'; setTimeout(function(){ btn.classList.remove('done'); btn.textContent = '선택값 복사'; }, 1400); };
+  if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(ok).catch(function(){ fb(); }); } else fb();
+  function fb(){ try{ var ta = document.createElement('textarea'); ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.focus(); ta.select(); var d = document.execCommand('copy'); ta.remove(); if (d) ok(); }catch(e){} }
+});
+
+render();
+})();
+</script>
+</body>
+</html>
