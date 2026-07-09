@@ -39,14 +39,40 @@ export async function onRequestPost({ request, env }) {
   }
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
+    // 편집분 번인(운영자 260710) — 뷰어 상세 편집기 조각(body.segs · 편집 있을 때만 옴)을 검증해 dispatch `subs`(reburn 시 미사용 슬롯 재활용)에 JSON으로 실음 → 러너 '편집 자막 반영' 스텝이 subs.json 대체. 빈값 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 · 기능평의회10 정직화). body.restore = 원본 의역 스냅샷 복원(초기화→다시 입히기 · 기능평의회2).
+    let esubs = '';
+    if (Array.isArray(body.segs) && body.segs.length) {
+      if (body.segs.length > 700) return json({ error: '편집 조각 700개 초과 — 영상이 너무 길거나 조각이 과다해' }, 400);   // 700 = 번인 길이 게이트(600s)×실측 최대 밀도(~0.82조각/s) 정합 — slice 침묵 절단 금지(기능평의회8)
+      const out = [];
+      for (const s of body.segs) {
+        const ss = Number(s && s.s), ee = Number(s && s.e);
+        const ko = String((s && s.ko) || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 200);   // 제어문자 평탄화 = 마커/ASS 경로 방어심층(실 이스케이프는 ly_burn sanitize)
+        if (!Number.isFinite(ss) || !Number.isFinite(ee) || ss < 0 || ee <= ss || !ko) continue;
+        out.push({ s: Math.round(ss * 100) / 100, e: Math.round(ee * 100) / 100, ko });
+      }
+      if (!out.length) return json({ error: '편집 자막이 전부 무효 — 타이밍·텍스트 확인해줘' }, 400);   // 전량 탈락 = 침묵 원본행 금지(기능평의회9 · 30KB 에러와 대칭)
+      esubs = JSON.stringify({ v: 1, segs: out });
+      if (new TextEncoder().encode(esubs).length > 50000) return json({ error: '편집 자막이 너무 커(50KB 초과) — 조각을 줄여줘' }, 400);   // 바이트 실측(chars≠bytes · 한글 3B/자 — 기능평의회8) · dispatch 총예산 ~64KB 보호
+    } else if (body.restore === 1 || body.restore === true) {
+      esubs = 'RESTORE';   // 복원 센티널 — 러너가 subs.orig.json(첫 편집 반영 때 보존)으로 되돌림 · JSON 페이로드와 충돌 불가 문자열
+    }
     const rr = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-      ref: REF, inputs: { id: reburn, reburn: '1', opts, early_segs: '0' },
+      ref: REF, inputs: { id: reburn, reburn: '1', opts, early_segs: '0', subs: esubs },
     });
     if (rr.status === 204) return json({ ok: true, id: reburn, reburn: true, out: `ly_out/${reburn}/subs.md` });
     return json({ error: `재합성 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);
   }
   if (!subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
-  if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
+  if (url) {
+    // 러너發 SSRF 가드(pick.js altOk 관례 이식 · 평의회7 260709) — 이 url은 러너의 yt-dlp가 그대로 fetch하므로
+    //   IP리터럴·localhost·IPv6·클라우드 메타데이터 호스트 거부(정상 영상 URL은 항상 도메인형). http(s) 스킴 검사 승계.
+    if (/[\r\n\t]/.test(url)) return json({ error: '잘못된 URL' }, 400);   // 제어문자 선거부 = pick.js 원본 완전 동수(재평의회7 — 파서-차분·raw 전달 잔여 봉합)
+    let uh = '';
+    try { const x = new URL(url); if (x.protocol !== 'http:' && x.protocol !== 'https:') return json({ error: 'URL은 http(s)로 시작해야 해' }, 400); uh = x.hostname.toLowerCase(); } catch { return json({ error: '잘못된 URL' }, 400); }
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(uh) || uh === 'localhost' || uh.endsWith('.local') || uh.startsWith('[')
+      || uh === 'metadata.google.internal' || uh.endsWith('.internal') || uh === 'instance-data'
+      || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(uh)) return json({ error: '지원하지 않는 URL 호스트' }, 400);
+  }
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
 

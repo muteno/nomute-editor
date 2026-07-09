@@ -10,7 +10,7 @@ on:
         description: '출력 id(타임스탬프)'
         type: string
       subs:
-        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때)'
+        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때) · reburn=1이면 = 편집 자막 JSON(subs.json 대체) 또는 RESTORE(원본 스냅샷 복원) · 빈값 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 — 운영자 260710)'
         type: string
       url:
         description: '영상 URL(yt-dlp+Whisper STT) — 있으면 subs 무시'
@@ -53,7 +53,7 @@ permissions:
 jobs:
   ly:
     runs-on: ubuntu-latest
-    timeout-minutes: 45   # 영상 URL 경로 Whisper 첫 다운(1.6GB)+STT + 번인(ffmpeg 백스톱 15분) 예산 — 콜드런+장영상 하드킬 방지(평의회)
+    timeout-minutes: 60   # 콜드캐시(STT 환경 15)+STT(25)+claude+Demucs(12)+번인(35) 최악 겹침이 45를 넘던 구멍 봉합(평의회9 260709 — 구 45는 Demucs·claude 재시도 미계상). 개별 폭주는 스텝 백스톱이 먼저 끊고 잡 캡 = 최후 보루
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -83,7 +83,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-ly-pydeps-${{ runner.os }}-py312-fasterwhisper-ytdlp-v1
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # setup.sh 해시 키(track 정본 계승 · 평의회9) — 핀/패키지 변경 시 자동 재빌드(구 정적 키 = 변경분 미설치 드리프트) · -v1 = 수동 버스트 레버(track 동형 · 재평의회9)
 
       # 재합성(reburn) 전용 경량 준비 — ffmpeg + 한글 폰트(whisper·yt-dlp 불요). ⚠️ fonts-noto-cjk 없으면 libass가
       #   에러 없이 두부(□)로 조용히 렌더 → 정상본을 깨진 영상으로 덮어씀(평의회 불가 적발) = 폰트 확인까지 하드게이트.
@@ -108,6 +108,62 @@ jobs:
           echo "LY_VIDEO=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
           echo "REBURN=1" >> "$GITHUB_ENV"
 
+      # 편집분 번인(운영자 260710) — 뷰어 상세 편집기 수정(단어 빼기·조각 삭제·타이밍·텍스트)을 반영해 다시 입히기.
+      #   subs(디스패치 입력·reburn 전용 재사용) = 편집 조각 JSON → subs.json 대체(커밋 = 이후 reburn 정본도 편집본) / 'RESTORE' 센티널 = 첫 편집 때
+      #   보존한 subs.orig.json 스냅샷으로 원복(초기화→다시 입히기 · 기능평의회2). fail-soft: 검증 실패 = 현행 subs.json 그대로(::warning:: 카나리아).
+      #   개요(subs.md)는 불변(원본 의역 표시 = 의도적 분기). 반영/실패/복원은 LY_EDITED env → ly_burn note로 표면화(침묵 금지 · 기능평의회9).
+      - name: 편집 자막 반영 (reburn)
+        if: ${{ inputs.reburn == '1' && inputs.subs != '' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          SUBS: ${{ inputs.subs }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          [[ "$IN_ID" =~ ^[0-9]{12}-[0-9a-f]{6}$ ]] || { echo "id 형식 밖 — 스킵"; exit 0; }   # 두 분기(RESTORE·편집) 공통 상단 가드 = 검증 대칭 완결(재검4·5 — 파이썬 assert는 이중가드로 잔존)
+          if [ "$SUBS" = "RESTORE" ]; then
+            O="viewer/ly_out/${IN_ID}/subs.orig.json"
+            if [ -s "$O" ]; then
+              cp "$O" "viewer/ly_out/${IN_ID}/subs.json.tmp" && mv "viewer/ly_out/${IN_ID}/subs.json.tmp" "viewer/ly_out/${IN_ID}/subs.json"   # 원자 교체 = 편집 경로 os.replace와 대칭(재검3)
+              echo "LY_EDITED=restore" >> "$GITHUB_ENV"; echo "원본 의역 복원"
+            else echo "원본 스냅샷 없음 — 현행 subs.json 그대로(편집 반영 이력 없음 = 이미 원본)"; fi
+            exit 0
+          fi
+          if python3 - "$IN_ID" <<'PY'
+          import json, os, re, shutil, sys
+          from math import isfinite
+          vid = sys.argv[1]
+          assert re.fullmatch(r"[0-9]{12}-[0-9a-f]{6}", vid), "id 형식"   # 소비자(ly_burn)와 검증 대칭 — 수동 dispatch 방어심층(기능평의회4·5)
+          j = json.loads(os.environ.get("SUBS") or "")
+          segs = []
+          for s in (j.get("segs") or [])[:700]:   # 700 = ly.js 상한 미러(초과는 API가 이미 소리나게 거절 · 기능평의회8)
+              try:
+                  ss, ee = float(s["s"]), float(s["e"])
+              except Exception:
+                  continue
+              ko = str(s.get("ko") or "").strip()[:200]
+              if not (isfinite(ss) and isfinite(ee)) or ss < 0 or ee <= ss or not ko:   # isfinite = NaN/Inf가 subs.json 오염 못 하게(기능평의회5)
+                  continue
+              segs.append({"s": round(ss, 2), "e": round(ee, 2), "ko": ko})
+          assert segs, "유효 조각 0"
+          d = os.path.join("viewer", "ly_out", vid)
+          os.makedirs(d, exist_ok=True)
+          p = os.path.join(d, "subs.json")
+          orig = os.path.join(d, "subs.orig.json")
+          if os.path.isfile(p) and not os.path.isfile(orig):
+              shutil.copyfile(p, orig + ".tmp")   # 첫 편집 반영 때 원본 의역 1회 보존 = 초기화 복원 소스(기능평의회2·3)
+              os.replace(orig + ".tmp", orig)   # 스냅샷도 원자 확정 — 부분 복사 잔존이 isfile 가드에 고착되는 창 소거(재검2·3)
+          tmp = p + ".tmp"
+          with open(tmp, "w", encoding="utf-8") as f:
+              json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
+          os.replace(tmp, p)   # 원자 교체 — truncate-쓰기 금지: 중간 실패(디스크·SIGKILL)에도 원본 무손상(기능평의회3 P2)
+          print("편집 자막 반영: {}조각".format(len(segs)))
+          PY
+          then echo "LY_EDITED=1" >> "$GITHUB_ENV"
+          else
+            echo "::warning::편집 자막 반영 실패 — 현행 subs.json으로 진행"
+            echo "LY_EDITED=fail" >> "$GITHUB_ENV"
+          fi
+
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
         if: ${{ inputs.url != '' || inputs.file != '' }}
@@ -120,6 +176,7 @@ jobs:
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}
+        timeout-minutes: 25   # 다운로드+Whisper 백스톱(평의회9 260709) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단
         env:
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
@@ -133,14 +190,24 @@ jobs:
           # 번인 ON = 영상까지 다운(자막 합성용 · 실패 = 오디오-온리 폴백 → 자막 텍스트만 = 회귀 0)
           BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
           if [ "$BURN" = "true" ]; then
-            yt-dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist $COOKIES -o "/tmp/src.%(ext)s" "$URL" || true
+            yt-dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" || true   # --socket-timeout = 스톨 링크 무한 행 차단(track-make 관례 · 평의회9)
             SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
             if [ -n "$SRC" ]; then
-              ffmpeg -y -i "$SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 || rm -f /tmp/audio.mp3
-              if [ -s /tmp/audio.mp3 ]; then echo "LY_VIDEO=$SRC" >> "$GITHUB_ENV"; echo "번인용 영상 확보: $SRC"; fi
+              # 길이 선게이트(평의회9 260709) — 10분(MAX_DUR) 초과는 어차피 번인 거절 → 제일 비싼 스텝(STT·claude) *앞*에서 번인만 스킵 확정(자막 텍스트는 계속 · 사유 = video.json 선기록)
+              DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$SRC" 2>/dev/null | cut -d. -f1 || true)"
+              if [ -n "$IN_ID" ] && [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then   # IN_ID 가드 = 수동 dispatch id 공백 시 부유 video.json 차단(재평의회10 · 형제 스텝 동형)
+                mkdir -p "viewer/ly_out/${IN_ID}"
+                printf '{"skip":"영상 %s분 — 10분 이하만 합성(릴스/쇼츠용) · 자막 텍스트만"}' "$((DUR/60))" > "viewer/ly_out/${IN_ID}/video.json"
+                echo "LY_NOBURN=1" >> "$GITHUB_ENV"
+                ffmpeg -y -i "$SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 || rm -f /tmp/audio.mp3   # 오디오는 받은 영상서 추출(재다운 회피)
+                rm -f "$SRC"; SRC=""
+              else
+                ffmpeg -y -i "$SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 || rm -f /tmp/audio.mp3
+                if [ -s /tmp/audio.mp3 ]; then echo "LY_VIDEO=$SRC" >> "$GITHUB_ENV"; echo "번인용 영상 확보: $SRC"; fi
+              fi
             fi
           fi
-          [ -s /tmp/audio.mp3 ] || yt-dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
+          [ -s /tmp/audio.mp3 ] || yt-dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
             || { echo "유튜브 다운로드 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구해. 파일 업로드나 SRT 텍스트로 해줘. (운영자: YT_COOKIES 시크릿 등록 시 URL 가능)" > /tmp/ly_err.txt; echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
           SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
@@ -150,6 +217,7 @@ jobs:
 
       - name: STT (업로드 파일 → ffmpeg 오디오추출 → Whisper)
         if: ${{ inputs.file != '' }}
+        timeout-minutes: 25   # Whisper 백스톱(평의회9 260709) — URL 스텝과 동일 원칙
         env:
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}
@@ -165,9 +233,21 @@ jobs:
             FILE="/tmp/upsrc.$EXT"
           fi
           [ -f "$FILE" ] || { echo "::error::업로드 파일 없음: $FILE"; exit 1; }
+          VID=""
           case "$FILE" in
-            *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.avi) echo "LY_VIDEO=$FILE" >> "$GITHUB_ENV"; echo "번인용 영상 확보(업로드): $FILE";;
+            *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.avi) VID="$FILE";;
           esac
+          if [ -n "$VID" ]; then
+            # 길이 선게이트(평의회9 260709) — URL 경로와 동일: 10분 초과는 번인만 스킵(자막 텍스트 계속·사유 선기록)
+            DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$VID" 2>/dev/null | cut -d. -f1 || true)"
+            if [ -n "$IN_ID" ] && [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then   # IN_ID 가드 = URL 경로와 동형(재평의회10)
+              mkdir -p "viewer/ly_out/${IN_ID}"
+              printf '{"skip":"영상 %s분 — 10분 이하만 합성(릴스/쇼츠용) · 자막 텍스트만"}' "$((DUR/60))" > "viewer/ly_out/${IN_ID}/video.json"
+              echo "LY_NOBURN=1" >> "$GITHUB_ENV"
+            else
+              echo "LY_VIDEO=$VID" >> "$GITHUB_ENV"; echo "번인용 영상 확보(업로드): $VID"
+            fi
+          fi
           ffmpeg -y -i "$FILE" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
             || { echo "오디오 추출 실패 — 지원 안 되는 형식일 수 있어. 다른 파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::ffmpeg 오디오 추출 실패: $FILE"; exit 1; }
           SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
@@ -202,6 +282,7 @@ jobs:
 
       - name: Make ly subtitles
         if: ${{ inputs.reburn != '1' }}
+        timeout-minutes: 35   # claude 백스톱(평의회9 260709) — 폴오버 4계정 × 콜당 timeout 900s 최악 스택(60분)이 잡을 다 먹기 전 차단(실측 정상 1~5분 · 킬 시 failure() 실패 기록이 표면화)
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
@@ -249,7 +330,7 @@ jobs:
       # 배경음 제거(opts.bgm) 요청 런에서만 — Demucs(보컬 분리·로컬·키 불필요) 설치 + 모델·휠 7일 캐시(§9 캐시·타임아웃 원칙).
       #   실패 = 경고 후 계속(fail-soft — ly_burn.strip_bgm이 미설치를 감지해 원본 소리로 합성·잡 안 죽임). torch = CPU 휠(CUDA 대형휠 회피).
       - name: Demucs 캐시 (배경음 제거)
-        if: ${{ contains(inputs.opts, '"bgm":true') }}
+        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' }}   # bgm은 번인 하위 축 — burn OFF·길이 선-스킵(LY_NOBURN)이면 어차피 안 쓰므로 설치도 스킵(3~7분 헛설치 차단 · 평의회9·재평의회1) · contains = 뷰어 JSON.stringify 고정 직렬화 전제(기존 bgm 게이트 동일) · env 참조 = 조기 subs 커밋 스텝의 LY_VIDEO 선례
         uses: actions/cache@v4
         with:
           path: |
@@ -257,7 +338,7 @@ jobs:
             ~/.cache/pip
           key: nomute-ly-demucs-${{ runner.os }}-htdemucs-torch2121-demucs401-v1   # 핀 버전을 키에 반영(핀 갱신 = 키 동행 갱신 · 평의회2)
       - name: Demucs 설치 (배경음 제거)
-        if: ${{ contains(inputs.opts, '"bgm":true') }}
+        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' }}   # 캐시 스텝과 동일 게이트(평의회9·재평의회1)
         timeout-minutes: 12   # 설치 폭주 백스톱(재시도 포함 최악 20분 → 12분 컷 · 실측 콜드 3~7분)
         run: |
           ok=0
@@ -277,8 +358,8 @@ jobs:
       #   영상 확보 실패(LY_VIDEO 빈값)여도 ly_burn이 video.json에 스킵 사유 기록 → 뷰어 헛폴링 종료.
       - name: 자막 번인 (영상 합성 → R2)
         if: ${{ inputs.url != '' || inputs.file != '' || inputs.reburn == '1' }}
-        timeout-minutes: 30   # bgm(분리 12m)+인코딩(15m)+폴백(10m) 스택이 잡 하드킬(45m)을 넘보지 않게 스텝 백스톱 — 초과 시 스텝만 실패·아래 커밋 스텝은 산다(하드킬의 기록 우회 봉합 · 평의회2 P1)
-        continue-on-error: true   # 번인 실패/타임아웃 = 자막 텍스트 산출은 지킨다(video.json 미기록 케이스 = 뷰어 폴 타임아웃이 수습)
+        timeout-minutes: 35   # 내부 최악 스택(bgm 분리 ~12m + 인코딩 900s + 폴백 600s = ~37m)에 근접 확보(구 30 = 스택보다 짧아 SIGKILL이 ly_burn 자체 기록을 우회 · 평의회6 260709) — 그래도 킬리면 아래 백필 스텝이 사유 기록
+        continue-on-error: true   # 번인 실패/타임아웃 = 자막 텍스트 산출은 지킨다(기록 = ly_burn fail-soft + 아래 백필)
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
@@ -288,9 +369,25 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
+          [ -z "${LY_NOBURN:-}" ] || { echo "번인 선-스킵(길이 초과 · video.json 선기록 유지)"; exit 0; }
           BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
           [ "$BURN" = "true" ] || { echo "번인 OFF"; exit 0; }
           python3 .github/scripts/ly_burn.py "$IN_ID" "${LY_VIDEO:-}" || echo "::warning::번인 실패 — 자막 텍스트는 정상"
+
+      # 번인 기록 백필(평의회6 260709) — 번인 스텝 하드킬(timeout SIGKILL)은 continue-on-error라 실패 기록 스텝도 안 돎
+      #   → video.json 부재면 사유를 백필해 뷰어 영구 '입히는 중' 차단. 정상 경로 = ly_burn이 항상 기록(백필 노터치).
+      - name: 번인 기록 백필 (하드킬 대비)
+        if: ${{ always() && (inputs.url != '' || inputs.file != '' || inputs.reburn == '1') }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
+          { [ "$BURN" = "true" ] || [ "${REBURN:-}" = "1" ]; } || exit 0
+          [ -s "viewer/ly_out/${IN_ID}/subs.md" ] || exit 0   # 자막 산출 자체가 없으면(STT·claude 단계 실패) 백필 부적절 — '자막 텍스트는 정상' 오기록 차단(재평의회6 잔여 의문 봉합 · 그 경로는 실패 기록 스텝이 error.log로 표면화)
+          VJ="viewer/ly_out/${IN_ID}/video.json"
+          [ -s "$VJ" ] || { mkdir -p "viewer/ly_out/${IN_ID}"; printf '{"error":"번인 중단(시간 초과 추정) — 자막 텍스트는 정상"}' > "$VJ"; echo "백필: $VJ"; }
 
       - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
         if: failure()
@@ -300,7 +397,8 @@ jobs:
           [ -n "$IN_ID" ] || exit 0
           mkdir -p "viewer/ly_out/${IN_ID}"
           if [ -s /tmp/ly_err.txt ]; then cp /tmp/ly_err.txt "viewer/ly_out/${IN_ID}/error.log";
-          else echo "자막 생성 실패 — Actions 로그를 확인해줘." > "viewer/ly_out/${IN_ID}/error.log"; fi
+          elif [ ! -s "viewer/ly_out/${IN_ID}/error.log" ]; then echo "자막 생성 실패 — Actions 로그를 확인해줘." > "viewer/ly_out/${IN_ID}/error.log"; fi
+          # ↑ elif = lymake.sh가 남긴 상세 error.log(exit_code·stderr·stdout head) 보존 — 일반 문구로 덮지 않음(평의회6 260709)
           echo "error.log: $(cat viewer/ly_out/${IN_ID}/error.log)"
 
       - name: Commit output
