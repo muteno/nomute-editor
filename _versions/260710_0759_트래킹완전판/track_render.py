@@ -3,15 +3,12 @@
 #   → R2 업로드 → viewer/track_out/<id>/video.json (뷰어 폴링 · ly_burn video.json 패턴 계승).
 #   사용: track_render.py <id>   (track-make.yml render 스텝 전용 · 소스는 tracks.json meta.src에서 자체 회수)
 # env: RENDER = {"mode":"mosaic"|"pinset","targets":[pid],"invert":bool,"names":{pid:이름},"colors":{pid:"#hex"},
-#                "opts":{pxw,pxh,size,feather,shape},"scopes":{pid:"body"}}   (opts = 모자이크 조절 · 핀셋은 무시 ·
-#                scopes = 가림 범위: 미기재 = 'face'(얼굴 + 전신 폴백 머리 추정) / 'body' = 전신 박스 가림 · 260710)
-#      mode="keying" = track_keying.py 위임(선택 피사체만 남기는 알파 렌더 · {"keep":[sid],"keepP":[pid],"extra":[{t,x,y}],"opts":{feather}})
+#                "opts":{pxw,pxh,size,feather,shape}}   (opts = 모자이크 조절 · 핀셋은 무시)
+#      mode="keying" = track_keying.py 위임(선택 피사체만 남기는 알파 렌더 · {"keep":[sid],"extra":[{t,x,y}],"opts":{feather}})
 #      R2 5종(thumb_gen 재사용 · 미설정 = 30MB 이하 git 폴백)
-# 고퀄 원칙(00_지침 정본): ① 검출 갭 보간(깜빡임 0) ② 3탭 이동평균 스무딩(덜덜 떨림 0·EMA 지연 없음)
+# 고퀄 5원칙(00_지침 정본): ① 검출 갭 보간(깜빡임 0) ② 3탭 이동평균 스무딩(덜덜 떨림 0·EMA 지연 없음)
 #   ③ 시간 안전마진 ±0.3s(모자이크는 한 프레임 노출도 실패 → 과잉 커버 편향) ④ 같은 인물 트랙 간 갭 ≤1.2s 브리지(가림 통과)
-#   ⑤ 넉넉한 공간 마진(가로 1.45× 세로 1.6× 위로 10% 시프트 = 이마·머리카락 커버)
-#   ⑥ 가장자리 접촉 끝단 = 속도 외삽 패딩(0.3s→0.8s — 이탈/진입 슬리버를 이동 방향 그대로 추적 커버)
-#   ⑦ 얼굴 미검출 구간 = pid 연결 전신 트랙 머리 추정 폴백(build_spans_ext · 캘리브레이션 hr · 1.25× 팽창 = 과잉 커버 편향 · 260710).
+#   ⑤ 넉넉한 공간 마진(가로 1.45× 세로 1.6× 위로 10% 시프트 = 이마·머리카락 커버).
 # 실패 = fail-soft: video.json에 사유 기록 후 rc 0 (분석 산출은 이미 정상 — 렌더가 잡을 죽이면 안 됨 · ly_burn 동일).
 import json
 import math
@@ -33,14 +30,6 @@ EDGE_TOUCH_PX = 4        # 가장자리 접촉 판정 여유
 BRIDGE_SEC = 1.2         # 같은 인물 트랙 간 이 이하 갭 = 보간 브리지(짧은 가림·검출 미스 통과)
 MARGIN_W, MARGIN_H, SHIFT_UP = 1.45, 1.60, 0.10   # 모자이크 공간 마진(이마·머리카락)
 BLOCK_DIV = 9            # 픽셀 블록 기본 분할 수(가로=폭/9 · 세로=높이/9 · 하한 8px — 구 렌더는 세로도 폭 기준이라 기본값도 픽셀 비동일·커버는 동일)
-# ── 전신 폴백(운영자 260710 "종료지점까지") — 얼굴 미검출 구간(뒤통수·측면·몸만)은 people[].body(pid 확정 전신
-#    트랙)에서 머리 영역을 추정해 이어 커버 · scope='body'는 전신 박스 전체 가림. 값 유도 = 렌더 시점(분석 산출은
-#    body 원본 + hr 비율만 = "분석 1회 = 렌더 N회" 기틀 유지 — 추정 공식 튜닝에 재분석 불요).
-HEAD_RW_DFLT, HEAD_RH_DFLT, HEAD_RCX_DFLT, HEAD_RCY_DFLT = 0.34, 0.16, 0.0, 0.10   # hr 부재 시 고정 기본비(표준 인체 두신비 보수치 — 폭 = 전신의 34% 등)
-HEAD_EST_SCALE = 1.25    # 추정 머리 박스 안전 팽창 — 추정은 근사 → 과잉 커버 편향(원칙 ③ 계승 · 위에 MARGIN이 또 얹힘)
-HEAD_R_CLAMP = {"rw": (0.18, 0.75), "rh": (0.10, 0.60), "rcx": (-0.25, 0.25), "rcy": (0.04, 0.35)}   # 병적 캘리브레이션(앉은 자세·부분 프레임아웃 샘플 오염) 클램프
-FACE_PRIO_SEC = 0.25     # 얼굴 kf ±이 반경 안의 머리 추정 kf는 버림 — 실측(얼굴)과 추정(머리)의 교대 지그재그 차단
-BODY_MARGIN_W, BODY_MARGIN_H, BODY_SHIFT = 1.10, 1.08, 0.0   # 전신 scope 마진 — 전신 박스에 얼굴 마진(1.45/1.60)은 화면 절반 커버 = 과잉
 GIT_FALLBACK_MAX = 30 * 1024 * 1024
 PALETTE = ["#00EED2", "#e23b2a", "#d8ff3d", "#0FFD02", "#38C6FF", "#FF5EC8", "#FFE13D", "#AC5CFF",
            "#2CF5A5", "#ff7a6b", "#3a6ddb", "#eef7f0"]   # 뷰어 STEP2 카드와 동일 순서(브랜드 팔레트 값 복사 — 자기완결 산출물 = §핵심명령 3-c 계승)
@@ -158,74 +147,6 @@ def build_spans(person, fps, total_frames, W=0, H=0):
     return spans
 
 
-def head_from_body(b, hr):
-    """전신 박스 [f,x,y,w,h] → 머리 추정 박스(동일 5원소) — hr(분석 캘리브레이션 중앙값·클램프) 또는 고정 기본비.
-    케이스 논거: 걷다 돌아서기 = 전신 박스 유사 → 추정 유지(뒤통수 커버 = 이 기능의 존재 이유) · 앉기 = body_h
-    축소 → rcy·h로 머리 y 자동 추종(비율 왜곡은 SCALE 1.25 + 렌더 마진이 흡수) · 상단 부분 프레임아웃 = 추정
-    중심이 경계 위 = mosaic_region 참-중심 미클램프 기하가 경계까지 솔리드(기존 봉합 재사용)."""
-    hr = hr if isinstance(hr, dict) else {}
-
-    def _c(k, dflt):
-        lo, hi = HEAD_R_CLAMP[k]
-        try:
-            v = float(hr.get(k, dflt))
-        except (TypeError, ValueError):
-            return dflt
-        if math.isnan(v):
-            return dflt
-        return max(lo, min(hi, v))
-    rw, rh = _c("rw", HEAD_RW_DFLT), _c("rh", HEAD_RH_DFLT)
-    rcx, rcy = _c("rcx", HEAD_RCX_DFLT), _c("rcy", HEAD_RCY_DFLT)
-    hw = rw * b[3] * HEAD_EST_SCALE
-    hh = max(rh * b[4] * HEAD_EST_SCALE, hw * 0.9)   # 머리 종횡 바닥(폭 대비) — 납작 추정 방지
-    cx = b[1] + b[3] / 2 + rcx * b[3]
-    cy = b[2] + rcy * b[4]
-    return [b[0], cx - hw / 2, cy - hh / 2, hw, hh]
-
-
-def build_spans_ext(person, fps, total_frames, W=0, H=0, scope="face"):
-    """build_spans 상위 확장(기존 build_spans 시그니처 불변 · v2/body 부재 입력 = 픽셀 동일) — 전신 폴백 + scope
-    분기(260710). 정직: v3(body 있음) scope='face'는 얼굴+머리 kf를 병합 재세그먼트하므로 브리지 이음매의
-    smooth3 결과가 구 경로와 서브픽셀 수준 상이(의도된 커버 증가·좌표 오류 아님 — 평의회1 정정).
-    반환 = [(span, body_scope)] — body_scope 스팬은 모자이크 마진 BODY_* 적용.
-    scope='face'(기본): 얼굴 kf + 얼굴이 커버 못 하는 구간(세그 ±FACE_PRIO_SEC 밖)의 머리 추정 kf(body×hr)를
-      단일 kf 스트림으로 병합 → 갭 >BRIDGE_SEC에서 세그 분할 → 기존 build_spans(스무딩·브리지·가장자리 외삽).
-      이음새(마지막 얼굴 kf ↔ 첫 머리 kf)는 sample() 선형보간이 구조적으로 연속 — 별도 블렌딩 불요.
-      ⚠ 통짜 1세그로 넣으면 장기 부재 갭도 보간해 유령 모자이크가 떠다님 → 반드시 갭 분할.
-    scope='body': body 세그 스팬(BODY_* 마진) + 얼굴 스팬 병행(전신 미검출·클로즈업 폴백 — 모자이크 이중 적용은
-      시각 무해 · 핀셋은 메인 루프 첫-스팬 break가 중복 라벨 방지).
-    body 부재(구 v2 tracks.json) = 얼굴 스팬만(fail-soft · scope='body' 요청이면 ::warning 정직 표기)."""
-    face_spans = [(sp, False) for sp in build_spans(person, fps, total_frames, W=W, H=H)]
-    body = person.get("body") or []
-    if not body:
-        if scope == "body":
-            print(f"::warning::pid {person.get('pid')} 전신 데이터 없음(구 분석) — 얼굴 범위로만 렌더", flush=True)
-        return face_spans
-    if scope == "body":
-        return [(sp, True) for sp in build_spans({"segs": body}, fps, total_frames, W=W, H=H)] + face_spans
-    hr = person.get("hr")
-    prio = FACE_PRIO_SEC * fps
-    face_iv = [(s["kf"][0][0] - prio, s["kf"][-1][0] + prio)
-               for s in (person.get("segs") or []) if s.get("kf")]
-    head_kf = [head_from_body(k, hr)
-               for s in body for k in (s.get("kf") or [])
-               if not any(a <= k[0] <= b for a, b in face_iv)]
-    if not head_kf:
-        return face_spans
-    stream = sorted([list(k) for s in (person.get("segs") or []) for k in (s.get("kf") or [])] + head_kf,
-                    key=lambda k: k[0])
-    bridge = BRIDGE_SEC * fps
-    segs2, cur = [], [stream[0]]
-    for k in stream[1:]:
-        if k[0] - cur[-1][0] <= bridge:
-            cur.append(k)
-        else:
-            segs2.append({"f0": cur[0][0], "f1": cur[-1][0], "kf": cur})
-            cur = [k]
-    segs2.append({"f0": cur[0][0], "f1": cur[-1][0], "kf": cur})
-    return [(sp, False) for sp in build_spans({"segs": segs2}, fps, total_frames, W=W, H=H)]
-
-
 def sample(span, f):
     """스팬 안에서 프레임 f의 박스 선형보간. 밖이면 None."""
     if f < span[0][0] or f > span[-1][0]:
@@ -242,16 +163,14 @@ def sample(span, f):
     return [a[i] + (b[i] - a[i]) * t for i in range(1, 5)]
 
 
-def mosaic_region(frame, x, y, w, h, W, H, pxw=BLOCK_DIV, pxh=BLOCK_DIV, size=1.0, feather=0, shape="rect",
-                  mw=MARGIN_W, mh=MARGIN_H, shift=SHIFT_UP):
+def mosaic_region(frame, x, y, w, h, W, H, pxw=BLOCK_DIV, pxh=BLOCK_DIV, size=1.0, feather=0, shape="rect"):
     """모자이크 1박스 — 옵션(운영자 260708): pxw/pxh = 블록 가로/세로 분할 수(프리미어 수평/수직 블록 동일 개념 ·
     적을수록 굵음) · size = 커버 배율 · feather = 가장자리 페더 px · shape = rect/ellipse.
     커버 보증 = 코어-강제 방식(평의회 A F1·G③④ 봉합): 코어(마진박스·참 중심 기준) 마스크를 블러 후
     `maximum(core)`로 내부 1.0 복원 → 페더는 코어 *바깥 링 전용*(소형 얼굴 중심 반투명·가장자리 후퇴 원천 차단).
-    타원 = 코어 내접(검출박스 모서리 = 대부분 배경 · size 하한 0.75가 얼굴 타원 커버 보증 — 완전 박스 커버는 네모).
-    mw/mh/shift = 마진 파라미터화(260710 전신 폴백) — 기본값 = 현행 얼굴 마진(픽셀 동일 보증) · body 스팬은 BODY_* 전달."""
-    cx, cy = x + w / 2, y + h / 2 - h * shift
-    cw, ch = w * mw * size, h * mh * size   # 코어(보증 커버) 크기
+    타원 = 코어 내접(검출박스 모서리 = 대부분 배경 · size 하한 0.75가 얼굴 타원 커버 보증 — 완전 박스 커버는 네모)."""
+    cx, cy = x + w / 2, y + h / 2 - h * SHIFT_UP
+    cw, ch = w * MARGIN_W * size, h * MARGIN_H * size   # 코어(보증 커버) 크기
     w2, h2 = cw + feather * 2, ch + feather * 2         # 렌더 영역 = 코어 + 페더 링
     x0, y0 = int(max(0, cx - w2 / 2)), int(max(0, cy - h2 / 2))
     x1, y1 = int(min(W, cx + w2 / 2)), int(min(H, cy + h2 / 2))
@@ -289,25 +208,6 @@ def mosaic_region(frame, x, y, w, h, W, H, pxw=BLOCK_DIV, pxh=BLOCK_DIV, size=1.
         mask = np.maximum(mask, core)   # 코어 강제 1.0 — 중심·구 커버 완전 보증(블러의 코어 침식 복원)
     m3 = mask[:, :, None]
     frame[y0:y1, x0:x1] = np.rint(reg.astype(np.float32) * (1 - m3) + mos.astype(np.float32) * m3).astype(np.uint8)
-
-
-def _r2_upload_file(path, key, ctype):
-    """결과 파일 직접 업로드 — track_keying._r2_upload_file 미러(출처 정본 = 그쪽 주석). 300s 상향으로
-    모자이크/핀셋 결과 mp4가 수백 MB 가능 → tg.r2_upload(bytes 전량 RAM + 90s 캡)는 타임아웃·RAM 스파이크
-    상시 유실(평의회7 ⑤ — 소스 업로드만 고치고 결과 경로를 빠뜨렸던 비대칭 봉합)."""
-    if not tg.R2_ON:
-        return ""
-    env = dict(os.environ, AWS_ACCESS_KEY_ID=tg.R2_KEY, AWS_SECRET_ACCESS_KEY=tg.R2_SECRET,
-               AWS_DEFAULT_REGION="auto")
-    try:
-        subprocess.run(["aws", "s3", "cp", path, f"s3://{tg.R2_BUCKET}/{key}",
-                        "--endpoint-url", f"https://{tg.R2_ACCOUNT}.r2.cloudflarestorage.com",
-                        "--content-type", ctype, "--only-show-errors"],
-                       check=True, env=env, timeout=900)
-        return f"{tg.R2_PUBLIC}/{key}"
-    except Exception as e:
-        print(f"::warning::R2 파일 업로드 실패({key}): {e}", flush=True)
-        return ""
 
 
 def find_font():
@@ -450,11 +350,6 @@ def main():
     colors = {str(k): str(v) for k, v in (req.get("colors") or {}).items()}
     invert = bool(req.get("invert"))
     targets = {int(t) for t in (req.get("targets") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)}
-    scopes = {}   # pid → 'body'(전신 가림) — 미기재 = 'face'(기본 · 얼굴 + 전신 폴백 머리 추정 · 260710) · 서버 검증과 이중
-    if isinstance(req.get("scopes"), dict):
-        for k, v in req["scopes"].items():
-            if str(k).isdecimal() and v == "body":   # isdecimal = 유니코드 디짓('²' 등) int() ValueError 배제(평의회6 하드닝)
-                scopes[int(k)] = "body"
 
     def _num(v, lo, hi, dflt):   # 옵션 수치 방어(서버 검증과 이중 — 직접 dispatch도 안전)
         try:
@@ -502,12 +397,11 @@ def main():
     W2, H2 = W - (W % 2), H - (H % 2)   # yuv420p 짝수 강제
     total = int(meta.get("frames") or 0) or 10 ** 9
 
-    plans = []   # (spans[(span, body_scope)], name, bgr, rgb)
+    plans = []   # (spans, name, bgr, rgb)
     for p in people:
         if p["pid"] not in sel:
             continue
-        spans = build_spans_ext(p, fps, total, W=int(meta.get("w") or 0), H=int(meta.get("h") or 0),
-                                scope=scopes.get(p["pid"], "face"))
+        spans = build_spans(p, fps, total, W=int(meta.get("w") or 0), H=int(meta.get("h") or 0))
         cidx = (p["pid"] - 1) % len(PALETTE)
         hexc = colors.get(str(p["pid"])) or PALETTE[cidx]
         bgr = hex_bgr(hexc)
@@ -534,26 +428,20 @@ def main():
             frame = frame[:H2, :W2]
             if mode == "mosaic":
                 for spans, _n, _bgr, _rgb in plans:
-                    for sp, is_body in spans:
+                    for sp in spans:
                         b = sample(sp, f)
                         if b:
-                            if is_body:   # 전신 스팬 = 전용 마진(BODY_*) — 얼굴 마진(1.45/1.6)은 전신 박스에 과잉
-                                mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2,
-                                              pxw=mo["pxw"], pxh=mo["pxh"], size=mo["size"],
-                                              feather=mo["feather"], shape=mo["shape"],
-                                              mw=BODY_MARGIN_W, mh=BODY_MARGIN_H, shift=BODY_SHIFT)
-                            else:
-                                mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2,
-                                              pxw=mo["pxw"], pxh=mo["pxh"], size=mo["size"],
-                                              feather=mo["feather"], shape=mo["shape"])
+                            mosaic_region(frame, b[0], b[1], b[2], b[3], W2, H2,
+                                          pxw=mo["pxw"], pxh=mo["pxh"], size=mo["size"],
+                                          feather=mo["feather"], shape=mo["shape"])
             else:
                 tags = []
                 for spans, name, _bgr, rgb in plans:
-                    for sp, _isb in spans:
+                    for sp in spans:
                         b = sample(sp, f)
                         if b:
                             tags.append((b, name, rgb))
-                            break   # 같은 사람이 동시 스팬 2개(scope=body의 전신+얼굴 병행 포함) = 첫 것만 라벨(중복 이름표 방지)
+                            break   # 같은 사람이 동시 스팬 2개(드묾) = 첫 것만 라벨(중복 이름표 방지)
                 if tags:
                     frame = painter.draw(frame, tags)
             try:
@@ -580,8 +468,10 @@ def main():
     # 출력 키 = stable(id·모드당 1개 덮어쓰기) + ?v= 캐시버스트 — epoch 접미 파일명은 재렌더(주 루프)마다
     #   R2 고아·git 폴백 mp4가 무한 누적(ly_burn stable+?v= 불변 위반 · 평의회8 상①)
     bust = int(time.time())
-    # 파일 직접 업로드(timeout 900) — 300s 결과는 수백 MB 가능(구 bytes 경로 = 90s 캡·전량 RAM = 유실 · 평의회7 ⑤)
-    url = _r2_upload_file(out_mp4, f"track_res/{vid_id}/{mode}.mp4", "video/mp4")
+    url = ""
+    if tg.R2_ON:
+        with open(out_mp4, "rb") as fv:
+            url = tg.r2_upload(fv.read(), f"track_res/{vid_id}/{mode}.mp4", "video/mp4") or ""
     if not url:
         if os.path.getsize(out_mp4) <= GIT_FALLBACK_MAX:
             import shutil
@@ -591,8 +481,7 @@ def main():
         else:
             raise RuntimeError("결과 업로드 실패(R2) — 잠시 후 다시 렌더해줘.")
     out_json(outdir, {"url": f"{url}?v={bust}", "mode": mode, "n": len(sel), "frames": f,
-                      "opts": (mo if mode == "mosaic" else None),
-                      "scopes": ({str(k): v for k, v in scopes.items()} or None)})   # 옵션·범위 에코 = 결과가 어떤 설정인지 추적(디버그·재현)
+                      "opts": (mo if mode == "mosaic" else None)})   # 옵션 에코 = 결과가 어떤 설정인지 추적(디버그·재현)
 
 
 if __name__ == "__main__":
