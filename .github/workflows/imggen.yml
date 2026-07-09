@@ -14,7 +14,7 @@ on:
         required: true
         type: string
       opts:
-        description: '옵션 JSON {style,aspect,size,count,mood,font,text,wish} — genimg.js가 화이트리스트 검증 후 전달'
+        description: '옵션 JSON {style,sub,aspect(N:N자유),size(720p·FHD·2K·4K),count,fmt(png·jpg90),mood(auto·axes+moodAx),kweb,textOn,wish · 레거시 text/font/1K 수용} — genimg.js가 화이트리스트 검증 후 전달(260710 개요 개편)'
         default: '{}'
         type: string
       free:
@@ -54,6 +54,10 @@ jobs:
 
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치(없으면 exit 127)
+
+      - name: Deps (pillow — 후처리)
+        continue-on-error: true   # 설치 실패해도 잡 지속 — gen_image.post_process가 PIL 부재 시 원본 PNG 유지(fail-soft)
+        run: timeout 120 python3 -m pip install --quiet pillow || { sleep 3; timeout 120 python3 -m pip install --quiet pillow; }   # §인프라 네트워크 op 타임아웃(+1 재시도) — 커스텀 비율 크롭·해상도 스냅·JPG 인코딩용 · python3 -m pip = 실행 인터프리터 일치(6인 검증)
 
       - name: Generate images
         env:
