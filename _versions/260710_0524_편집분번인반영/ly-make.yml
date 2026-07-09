@@ -10,7 +10,7 @@ on:
         description: '출력 id(타임스탬프)'
         type: string
       subs:
-        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때) · reburn=1이면 = 편집 자막 JSON(subs.json 대체) 또는 RESTORE(원본 스냅샷 복원) · 빈값 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 — 운영자 260710)'
+        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때)'
         type: string
       url:
         description: '영상 URL(yt-dlp+Whisper STT) — 있으면 subs 무시'
@@ -107,62 +107,6 @@ jobs:
           curl -fsSL --max-time 300 "$SRC" -o "/tmp/upsrc.$EXT" || { echo "원본 다운로드 실패 — 새로 생성해줘." > /tmp/ly_err.txt; echo "::error::src 다운 실패"; exit 1; }
           echo "LY_VIDEO=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
           echo "REBURN=1" >> "$GITHUB_ENV"
-
-      # 편집분 번인(운영자 260710) — 뷰어 상세 편집기 수정(단어 빼기·조각 삭제·타이밍·텍스트)을 반영해 다시 입히기.
-      #   subs(디스패치 입력·reburn 전용 재사용) = 편집 조각 JSON → subs.json 대체(커밋 = 이후 reburn 정본도 편집본) / 'RESTORE' 센티널 = 첫 편집 때
-      #   보존한 subs.orig.json 스냅샷으로 원복(초기화→다시 입히기 · 기능평의회2). fail-soft: 검증 실패 = 현행 subs.json 그대로(::warning:: 카나리아).
-      #   개요(subs.md)는 불변(원본 의역 표시 = 의도적 분기). 반영/실패/복원은 LY_EDITED env → ly_burn note로 표면화(침묵 금지 · 기능평의회9).
-      - name: 편집 자막 반영 (reburn)
-        if: ${{ inputs.reburn == '1' && inputs.subs != '' }}
-        env:
-          IN_ID: ${{ inputs.id }}
-          SUBS: ${{ inputs.subs }}
-        run: |
-          [ -n "$IN_ID" ] || exit 0
-          [[ "$IN_ID" =~ ^[0-9]{12}-[0-9a-f]{6}$ ]] || { echo "id 형식 밖 — 스킵"; exit 0; }   # 두 분기(RESTORE·편집) 공통 상단 가드 = 검증 대칭 완결(재검4·5 — 파이썬 assert는 이중가드로 잔존)
-          if [ "$SUBS" = "RESTORE" ]; then
-            O="viewer/ly_out/${IN_ID}/subs.orig.json"
-            if [ -s "$O" ]; then
-              cp "$O" "viewer/ly_out/${IN_ID}/subs.json.tmp" && mv "viewer/ly_out/${IN_ID}/subs.json.tmp" "viewer/ly_out/${IN_ID}/subs.json"   # 원자 교체 = 편집 경로 os.replace와 대칭(재검3)
-              echo "LY_EDITED=restore" >> "$GITHUB_ENV"; echo "원본 의역 복원"
-            else echo "원본 스냅샷 없음 — 현행 subs.json 그대로(편집 반영 이력 없음 = 이미 원본)"; fi
-            exit 0
-          fi
-          if python3 - "$IN_ID" <<'PY'
-          import json, os, re, shutil, sys
-          from math import isfinite
-          vid = sys.argv[1]
-          assert re.fullmatch(r"[0-9]{12}-[0-9a-f]{6}", vid), "id 형식"   # 소비자(ly_burn)와 검증 대칭 — 수동 dispatch 방어심층(기능평의회4·5)
-          j = json.loads(os.environ.get("SUBS") or "")
-          segs = []
-          for s in (j.get("segs") or [])[:700]:   # 700 = ly.js 상한 미러(초과는 API가 이미 소리나게 거절 · 기능평의회8)
-              try:
-                  ss, ee = float(s["s"]), float(s["e"])
-              except Exception:
-                  continue
-              ko = str(s.get("ko") or "").strip()[:200]
-              if not (isfinite(ss) and isfinite(ee)) or ss < 0 or ee <= ss or not ko:   # isfinite = NaN/Inf가 subs.json 오염 못 하게(기능평의회5)
-                  continue
-              segs.append({"s": round(ss, 2), "e": round(ee, 2), "ko": ko})
-          assert segs, "유효 조각 0"
-          d = os.path.join("viewer", "ly_out", vid)
-          os.makedirs(d, exist_ok=True)
-          p = os.path.join(d, "subs.json")
-          orig = os.path.join(d, "subs.orig.json")
-          if os.path.isfile(p) and not os.path.isfile(orig):
-              shutil.copyfile(p, orig + ".tmp")   # 첫 편집 반영 때 원본 의역 1회 보존 = 초기화 복원 소스(기능평의회2·3)
-              os.replace(orig + ".tmp", orig)   # 스냅샷도 원자 확정 — 부분 복사 잔존이 isfile 가드에 고착되는 창 소거(재검2·3)
-          tmp = p + ".tmp"
-          with open(tmp, "w", encoding="utf-8") as f:
-              json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
-          os.replace(tmp, p)   # 원자 교체 — truncate-쓰기 금지: 중간 실패(디스크·SIGKILL)에도 원본 무손상(기능평의회3 P2)
-          print("편집 자막 반영: {}조각".format(len(segs)))
-          PY
-          then echo "LY_EDITED=1" >> "$GITHUB_ENV"
-          else
-            echo "::warning::편집 자막 반영 실패 — 현행 subs.json으로 진행"
-            echo "LY_EDITED=fail" >> "$GITHUB_ENV"
-          fi
 
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
