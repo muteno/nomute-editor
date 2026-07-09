@@ -738,9 +738,11 @@ def run(vid_id, video, outdir):
     except subprocess.TimeoutExpired:
         out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
+    ed_note = {"1": "편집 자막 반영", "fail": "편집 반영 실패 — 이전 자막으로 합성", "restore": "원본 의역 복원"}.get(os.environ.get("LY_EDITED") or "", "")   # 편집분 번인 결과 표면화(기능평의회9 P1 — 반영/실패/복원이 무신호로 수렴하던 침묵 봉합 · env = ly-make '편집 자막 반영' 스텝)
     note = " · ".join(p for p in [
+        ed_note,
         "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else "",
-        bgm_note, cut_note] if p)   # 처리 순서대로 표기: 배경음 → 컷
+        bgm_note, cut_note] if p)   # 처리 순서대로 표기: 편집 → 배경음 → 컷
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
     try:

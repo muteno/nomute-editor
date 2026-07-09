@@ -382,7 +382,7 @@
   <div class="lyburn" id="lyBurn" hidden>
     <label class="fl">완성 영상</label>
     <video id="lyBurnVid" controls playsinline preload="metadata" hidden></video>
-    <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (편집한 자막 있으면 그대로 · 없으면 원본 의역 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="lybtn dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div>
+    <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (편집 있으면 상세 자막 전체로 구움 · 한국어 영상만 · 없으면 현행 자막 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="lybtn dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div>
   </div>
   <!-- 결과 탭(자막 있을 때만) — 상세 = 조각 편집기 · 개요 = 기존 의역 산출(subs.md 그대로) -->
   <div class="lytabs" id="lyTabs" role="tablist" aria-label="자막 결과 보기"><button class="lytab" id="lyTabDet" type="button" role="tab" aria-selected="false" aria-controls="lydet">상세<span class="lytab-n" id="lyTabN" hidden></span></button><button class="lytab on" id="lyTabOv" type="button" role="tab" aria-selected="true" aria-controls="out">개요</button></div><!-- 기본 = 개요(다듬은 자막이 첫인상 · 평의회8 P0) · 상세 = 한 탭 -->
@@ -773,6 +773,7 @@ let LY_SEGS = null, LY_ORIG = null, LY_MD = '', LY_ID = '', LY_OUT = '', LY_LANG
 let LY_PENDING_SEGS = null, LY_RENDERING = false, LY_PEND = null, LY_MEDIA_URL = '', LY_FINDT = null;
 let LY_GEN = false, LY_SEQ = 0, LY_CUR = -1, LY_SAVE_T = null;   // 생성중 플래그(복원 경쟁 차단)·결과 세대 토큰·현재 재생 조각·저장 디바운스(평의회2·6·7)
 let LY_EARLY = '';   // 조기 전사 표시된 outPath(LY-EARLY 짝) — 완료 렌더가 탭 튕김·랜딩 스크롤로 편집을 납치 안 하게 신호(다른 outPath = 자연 불일치·무해)
+let LY_RESTORE_PEND = false;   // 편집 초기화 후 대기 신호(기능평의회2) — 다음 다시 입히기 때 서버 원본 스냅샷(subs.orig.json) 복원 요청 · 편집/새 작업이면 해제
 const LY_LAST_KEY = 'nm_ly_last', LY_EDIT_PRE = 'nm_lyedit_';
 const LY_RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const LYX_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기 X 정본 path(문자 × 금지 게이트)
@@ -904,7 +905,7 @@ function renderResult(md, segs) {   // 자막 결과 표시 라우터 — 세그
   renderLySegs(); lyStats(); lySave(); lyPrune(); lyPvSync();
 }
 function lyTab(det) { $('#lyTabDet').classList.toggle('on', det); $('#lyTabOv').classList.toggle('on', !det); $('#lyTabDet').setAttribute('aria-selected', det ? 'true' : 'false'); $('#lyTabOv').setAttribute('aria-selected', det ? 'false' : 'true'); $('#lydet').hidden = !det; $('#out').hidden = det; }
-function lyHideEditor() { lySaveNow(); LY_SEQ++; LY_EARLY = ''; LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3) · LY_SEQ++ = in-flight lyResult 무효화(새 발사 동기 구간의 stale 조기 렌더 차단 · 평의회2 B) · LY_EARLY 리셋 = 방어 위생(평의회2 C·6)
+function lyHideEditor() { lySaveNow(); LY_SEQ++; LY_EARLY = ''; LY_SEGS = null; LY_ORIG = null; LY_MD = ''; LY_CUR = -1; LY_RESTORE_PEND = false; $('#lyTabs').classList.remove('show'); $('#lydet').hidden = true; const o = $('#out'); o.hidden = false; o.removeAttribute('role'); o.removeAttribute('aria-labelledby'); $('#lyFindN').textContent = ''; lyPvSync(); }   // 선두 flush = 파일교체·URL발사 직전 <400ms 디바운스 편집 유실 봉인(평의회R2 A3) · LY_SEQ++ = in-flight lyResult 무효화(새 발사 동기 구간의 stale 조기 렌더 차단 · 평의회2 B) · LY_EARLY 리셋 = 방어 위생(평의회2 C·6)
 function lyToggleChip(sg, w, chip) {   // 탭/스페이스 = 빼기 토글(즉시 갱신·재빌드 0)
   w.on = !w.on; chip.classList.toggle('off', !w.on);
   chip.setAttribute('aria-pressed', w.on ? 'false' : 'true');
@@ -1186,6 +1187,7 @@ function lyPickSegs() { if (!LY_SEGS) return []; const alive = LY_SEGS.filter(sg
     try { localStorage.removeItem(LY_EDIT_PRE + LY_ID); } catch (e) {}
     lyRerender(); lyMarkFind();
     lyUndoOffer('처음 자막으로 초기화했어');
+    LY_RESTORE_PEND = true;   // 다음 다시 입히기 = 서버 원본 의역 스냅샷 복원 요청(기능평의회2 — 초기화가 서버 정본까지 되돌리게)
   };
 })();
 function lyPvSet(f) {   // 미리보기 = 이 세션 첨부 파일 한정(objectURL·업로드/호스팅 0) — URL·복원 잡은 미리보기 없음(정직)
@@ -1325,7 +1327,7 @@ function lyOptSave() { try { localStorage.setItem(LY_OPT_KEY, JSON.stringify(LY_
 // ══ 완성 영상(자막 번인 결과) — video.json 확인·폴·표시·다운로드 ══
 function lyBurnStop() { LY_VID_GEN++; if (LY_VID_T) { clearTimeout(LY_VID_T); LY_VID_T = null; } }
 function lyBurnReset() { lyBurnStop(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; $('#lyBurnNote').textContent = ''; }
-function lyBurnWait() { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; $('#lyBurnNote').innerHTML = '영상에 자막 입히는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'; }
+function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; $('#lyBurnNote').innerHTML = (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'; }   // msg = 경로 인지 분기(편집본/복원 · 기능평의회9 — 자체 리터럴만·기본 = 종전 문구 불변)
 function lyBurnShow(j) {
   if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
   const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false;
@@ -1382,7 +1384,7 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
   };
   tick();
 }
-(function () {   // 다시 입히기 = 번인만 재실행(LLM 0콜·1분급) — 편집분 번인(운영자 260710): 상세 편집기 수정이 있으면 그 조각을 실어 subs.json 대체, 무편집 = 종전(원본 의역 재사용 = 회귀 0)
+(function () {   // 다시 입히기 = 번인만 재실행(LLM 0콜·1분급) — 편집분 번인(운영자 260710): 편집이 있으면 *상세 자막 전체*({s,e,ko})를 실어 subs.json 대체(부분 병합 없음 = 의역과 조각화가 달라 원리상 불가 · 기능평의회2 — 미편집 조각도 상세 탭에 보이는 그대로 구워짐), 무편집 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 = 원본 복원은 초기화→다시 입히기 경로 · 기능평의회10 정직화)
   const rb = $('#lyReburn'); if (!rb) return;
   const lyEffSegs = ss => (ss || []).filter(sg => !sg.del && sg.s != null && sg.e != null && lySegText(sg))
     .map(sg => ({ s: sg.s, e: sg.e, ko: lySegText(sg) }));   // 번인 계약 = subs.json 조각 스키마(원본 시간축 — 컷 리맵은 번인 내부)
@@ -1390,16 +1392,23 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
     if (!LY_ID) return;
     const prevUrl = ($('#lyBurnDl').dataset.url || '');   // 옛 결과 url — 폴이 이걸 완료로 오인 안 하게(평의회 불가 수정)
     const st = $('#status'); st.classList.remove('err');
-    let segs = null;   // 편집이 *실제로* 있을 때만 동봉 — 원형(lyModel 재생성)과 유효 조각 비교(무편집 전송 = 전사가 의역을 덮는 회귀라 금지 · 재평의회 승인 설계)
+    let segs = null, restore = false, skipNote = '';   // 편집이 *실제로* 있을 때만 동봉(원형 lyModel 재생성과 유효 조각 비교) — 미동봉 사유는 침묵 금지·1줄 고지(기능평의회9)
     if (LY_SEGS && LY_ORIG && LY_ORIG.segs && LY_ORIG.segs.length) {
+      lyResort();   // 조절 미정산 시간 역전 정산 후 캡처(기능평의회2·7 — SRT 내보내기 sort와 대칭)
       const cur = lyEffSegs(LY_SEGS);
-      if (cur.length && JSON.stringify(cur) !== JSON.stringify(lyEffSegs(lyModel(LY_ORIG.segs)))) segs = cur;
-    }
-    rb.hidden = true; lyBurnWait();
+      const dirty = JSON.stringify(cur) !== JSON.stringify(lyEffSegs(lyModel(LY_ORIG.segs)));
+      if (dirty && !cur.length) skipNote = '조각이 전부 삭제돼 편집 반영 불가 — 현행 자막으로 구움';
+      else if (dirty && LY_LANG !== 'ko' && LY_MD) skipNote = '외국어 영상은 편집분(원문 전사)을 번인에 안 실어 — 현행 한글 의역으로 구움';   // 외국어 절벽 차단(기능평의회6 P1·1 P2: 편집 1번에 의역→원문 대체·src 소실 = lang 게이트가 유일 방벽 · 의역 없는 복구 작업(LY_MD='')은 전사가 이미 소스라 통과)
+      else if (dirty) { segs = cur; LY_RESTORE_PEND = false; }
+      else if (LY_RESTORE_PEND) restore = true;   // 초기화 후 무편집 = 서버 원본 스냅샷(subs.orig.json) 복원 요청(기능평의회2)
+    } else if (LY_SEGS) { skipNote = '원본 대조본 미확보 — 편집 반영 생략(새로고침 후 다시 시도)'; }   // 대조본 fetch 실패 복원 세션 = 침묵 폐기 금지(기능평의회9 P2)
+    if (skipNote) { st.innerHTML = WARN_SVG + ' ' + esc(skipNote); }
+    rb.hidden = true; lyBurnWait(segs ? '편집한 자막으로 입히는 중' : (restore ? '원본 의역 복원해 입히는 중' : ''));
     try {
-      const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reburn: LY_ID, opts: { ...LY_OPTS, burn: true }, ...(segs ? { segs } : {}) }) });
+      const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reburn: LY_ID, opts: { ...LY_OPTS, burn: true }, ...(segs ? { segs } : {}), ...(restore ? { restore: 1 } : {}) }) });
       const j = await res.json();
       if (!res.ok || j.error) { st.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); st.classList.add('err'); lyVidCheck(LY_OUT); return; }
+      if (restore) LY_RESTORE_PEND = false;   // 복원 발사 성공 = 신호 소진(다음 reburn은 평시)
       lyPollVideo(LY_OUT, Date.now(), prevUrl);
     } catch (e) { st.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); st.classList.add('err'); lyVidCheck(LY_OUT); }
   });
