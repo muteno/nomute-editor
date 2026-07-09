@@ -10,6 +10,7 @@
 # 고퀄 원칙(00_지침 정본): ① 검출 갭 보간(깜빡임 0) ② 3탭 이동평균 스무딩(덜덜 떨림 0·EMA 지연 없음)
 #   ③ 시간 안전마진 ±0.3s(모자이크는 한 프레임 노출도 실패 → 과잉 커버 편향) ④ 같은 인물 트랙 간 갭 ≤1.2s 브리지(가림 통과)
 #   ⑤ 넉넉한 공간 마진(가로 1.45× 세로 1.6× 위로 10% 시프트 = 이마·머리카락 커버)
+#   ⑥ 가장자리 접촉 끝단 = 속도 외삽 패딩(0.3s→0.8s — 이탈/진입 슬리버를 이동 방향 그대로 추적 커버)
 #   ⑦ 얼굴 미검출 구간 = pid 연결 전신 트랙 머리 추정 폴백(build_spans_ext · 캘리브레이션 hr · 1.25× 팽창 = 과잉 커버 편향 · 260710).
 # 실패 = fail-soft: video.json에 사유 기록 후 rc 0 (분석 산출은 이미 정상 — 렌더가 잡을 죽이면 안 됨 · ly_burn 동일).
 import json
@@ -183,7 +184,9 @@ def head_from_body(b, hr):
 
 
 def build_spans_ext(person, fps, total_frames, W=0, H=0, scope="face"):
-    """build_spans 상위 확장(기존 함수 시그니처·얼굴 경로 불변 = 회귀면 0) — 전신 폴백 + scope 분기(260710).
+    """build_spans 상위 확장(기존 build_spans 시그니처 불변 · v2/body 부재 입력 = 픽셀 동일) — 전신 폴백 + scope
+    분기(260710). 정직: v3(body 있음) scope='face'는 얼굴+머리 kf를 병합 재세그먼트하므로 브리지 이음매의
+    smooth3 결과가 구 경로와 서브픽셀 수준 상이(의도된 커버 증가·좌표 오류 아님 — 평의회1 정정).
     반환 = [(span, body_scope)] — body_scope 스팬은 모자이크 마진 BODY_* 적용.
     scope='face'(기본): 얼굴 kf + 얼굴이 커버 못 하는 구간(세그 ±FACE_PRIO_SEC 밖)의 머리 추정 kf(body×hr)를
       단일 kf 스트림으로 병합 → 갭 >BRIDGE_SEC에서 세그 분할 → 기존 build_spans(스무딩·브리지·가장자리 외삽).
@@ -286,6 +289,25 @@ def mosaic_region(frame, x, y, w, h, W, H, pxw=BLOCK_DIV, pxh=BLOCK_DIV, size=1.
         mask = np.maximum(mask, core)   # 코어 강제 1.0 — 중심·구 커버 완전 보증(블러의 코어 침식 복원)
     m3 = mask[:, :, None]
     frame[y0:y1, x0:x1] = np.rint(reg.astype(np.float32) * (1 - m3) + mos.astype(np.float32) * m3).astype(np.uint8)
+
+
+def _r2_upload_file(path, key, ctype):
+    """결과 파일 직접 업로드 — track_keying._r2_upload_file 미러(출처 정본 = 그쪽 주석). 300s 상향으로
+    모자이크/핀셋 결과 mp4가 수백 MB 가능 → tg.r2_upload(bytes 전량 RAM + 90s 캡)는 타임아웃·RAM 스파이크
+    상시 유실(평의회7 ⑤ — 소스 업로드만 고치고 결과 경로를 빠뜨렸던 비대칭 봉합)."""
+    if not tg.R2_ON:
+        return ""
+    env = dict(os.environ, AWS_ACCESS_KEY_ID=tg.R2_KEY, AWS_SECRET_ACCESS_KEY=tg.R2_SECRET,
+               AWS_DEFAULT_REGION="auto")
+    try:
+        subprocess.run(["aws", "s3", "cp", path, f"s3://{tg.R2_BUCKET}/{key}",
+                        "--endpoint-url", f"https://{tg.R2_ACCOUNT}.r2.cloudflarestorage.com",
+                        "--content-type", ctype, "--only-show-errors"],
+                       check=True, env=env, timeout=900)
+        return f"{tg.R2_PUBLIC}/{key}"
+    except Exception as e:
+        print(f"::warning::R2 파일 업로드 실패({key}): {e}", flush=True)
+        return ""
 
 
 def find_font():
@@ -431,7 +453,7 @@ def main():
     scopes = {}   # pid → 'body'(전신 가림) — 미기재 = 'face'(기본 · 얼굴 + 전신 폴백 머리 추정 · 260710) · 서버 검증과 이중
     if isinstance(req.get("scopes"), dict):
         for k, v in req["scopes"].items():
-            if str(k).isdigit() and v == "body":
+            if str(k).isdecimal() and v == "body":   # isdecimal = 유니코드 디짓('²' 등) int() ValueError 배제(평의회6 하드닝)
                 scopes[int(k)] = "body"
 
     def _num(v, lo, hi, dflt):   # 옵션 수치 방어(서버 검증과 이중 — 직접 dispatch도 안전)
@@ -558,10 +580,8 @@ def main():
     # 출력 키 = stable(id·모드당 1개 덮어쓰기) + ?v= 캐시버스트 — epoch 접미 파일명은 재렌더(주 루프)마다
     #   R2 고아·git 폴백 mp4가 무한 누적(ly_burn stable+?v= 불변 위반 · 평의회8 상①)
     bust = int(time.time())
-    url = ""
-    if tg.R2_ON:
-        with open(out_mp4, "rb") as fv:
-            url = tg.r2_upload(fv.read(), f"track_res/{vid_id}/{mode}.mp4", "video/mp4") or ""
+    # 파일 직접 업로드(timeout 900) — 300s 결과는 수백 MB 가능(구 bytes 경로 = 90s 캡·전량 RAM = 유실 · 평의회7 ⑤)
+    url = _r2_upload_file(out_mp4, f"track_res/{vid_id}/{mode}.mp4", "video/mp4")
     if not url:
         if os.path.getsize(out_mp4) <= GIT_FALLBACK_MAX:
             import shutil

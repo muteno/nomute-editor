@@ -29,8 +29,8 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(track_render와 동일)
 
 MODELS = os.environ.get("NOMUTE_TRACK_MODELS", os.path.expanduser("~/.cache/nomute-track"))
 SAM_CKPT = os.path.join(MODELS, "sam2.1_t.pt")
-KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 180s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
-KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
+KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 300s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
+KEY_MAX_OBJ = 4          # keep+keepP+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
 KEY_MAX_LONG = 1920      # 해상도 캡(긴 변) — 4K는 트림·마스크·인코딩·업로드 전 축 폭발(평의회9 F2 · 분석 DET_LONG 선례)
 KEY_BUDGET_SEC = 1620    # 발사 전 예상 전파 예산(27분) — 멀티패스 총량이 스텝 35분 캡을 못 넘게 사전 거절(평의회4·9)
 PASS_HARD_SEC = 1800     # 전파 루프 경과 백스톱(30분) — 예산 추정이 빗나가도 스텝 타임아웃 전에 정직 에러
