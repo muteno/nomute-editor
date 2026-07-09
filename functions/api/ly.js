@@ -49,6 +49,7 @@ export async function onRequestPost({ request, env }) {
   if (url) {
     // 러너發 SSRF 가드(pick.js altOk 관례 이식 · 평의회7 260709) — 이 url은 러너의 yt-dlp가 그대로 fetch하므로
     //   IP리터럴·localhost·IPv6·클라우드 메타데이터 호스트 거부(정상 영상 URL은 항상 도메인형). http(s) 스킴 검사 승계.
+    if (/[\r\n\t]/.test(url)) return json({ error: '잘못된 URL' }, 400);   // 제어문자 선거부 = pick.js 원본 완전 동수(재평의회7 — 파서-차분·raw 전달 잔여 봉합)
     let uh = '';
     try { const x = new URL(url); if (x.protocol !== 'http:' && x.protocol !== 'https:') return json({ error: 'URL은 http(s)로 시작해야 해' }, 400); uh = x.hostname.toLowerCase(); } catch { return json({ error: '잘못된 URL' }, 400); }
     if (/^\d{1,3}(\.\d{1,3}){3}$/.test(uh) || uh === 'localhost' || uh.endsWith('.local') || uh.startsWith('[')

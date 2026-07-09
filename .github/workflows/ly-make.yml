@@ -83,7 +83,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}   # setup.sh 해시 키(track 정본 계승 · 평의회9) — 핀/패키지 변경 시 자동 재빌드(구 정적 -v1 키 = 변경분 미설치 드리프트)
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # setup.sh 해시 키(track 정본 계승 · 평의회9) — 핀/패키지 변경 시 자동 재빌드(구 정적 키 = 변경분 미설치 드리프트) · -v1 = 수동 버스트 레버(track 동형 · 재평의회9)
 
       # 재합성(reburn) 전용 경량 준비 — ffmpeg + 한글 폰트(whisper·yt-dlp 불요). ⚠️ fonts-noto-cjk 없으면 libass가
       #   에러 없이 두부(□)로 조용히 렌더 → 정상본을 깨진 영상으로 덮어씀(평의회 불가 적발) = 폰트 확인까지 하드게이트.
@@ -139,7 +139,7 @@ jobs:
             if [ -n "$SRC" ]; then
               # 길이 선게이트(평의회9 260709) — 10분(MAX_DUR) 초과는 어차피 번인 거절 → 제일 비싼 스텝(STT·claude) *앞*에서 번인만 스킵 확정(자막 텍스트는 계속 · 사유 = video.json 선기록)
               DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$SRC" 2>/dev/null | cut -d. -f1 || true)"
-              if [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then
+              if [ -n "$IN_ID" ] && [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then   # IN_ID 가드 = 수동 dispatch id 공백 시 부유 video.json 차단(재평의회10 · 형제 스텝 동형)
                 mkdir -p "viewer/ly_out/${IN_ID}"
                 printf '{"skip":"영상 %s분 — 10분 이하만 합성(릴스/쇼츠용) · 자막 텍스트만"}' "$((DUR/60))" > "viewer/ly_out/${IN_ID}/video.json"
                 echo "LY_NOBURN=1" >> "$GITHUB_ENV"
@@ -184,7 +184,7 @@ jobs:
           if [ -n "$VID" ]; then
             # 길이 선게이트(평의회9 260709) — URL 경로와 동일: 10분 초과는 번인만 스킵(자막 텍스트 계속·사유 선기록)
             DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$VID" 2>/dev/null | cut -d. -f1 || true)"
-            if [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then
+            if [ -n "$IN_ID" ] && [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then   # IN_ID 가드 = URL 경로와 동형(재평의회10)
               mkdir -p "viewer/ly_out/${IN_ID}"
               printf '{"skip":"영상 %s분 — 10분 이하만 합성(릴스/쇼츠용) · 자막 텍스트만"}' "$((DUR/60))" > "viewer/ly_out/${IN_ID}/video.json"
               echo "LY_NOBURN=1" >> "$GITHUB_ENV"
@@ -274,7 +274,7 @@ jobs:
       # 배경음 제거(opts.bgm) 요청 런에서만 — Demucs(보컬 분리·로컬·키 불필요) 설치 + 모델·휠 7일 캐시(§9 캐시·타임아웃 원칙).
       #   실패 = 경고 후 계속(fail-soft — ly_burn.strip_bgm이 미설치를 감지해 원본 소리로 합성·잡 안 죽임). torch = CPU 휠(CUDA 대형휠 회피).
       - name: Demucs 캐시 (배경음 제거)
-        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') }}   # bgm은 번인 하위 축 — burn OFF면 어차피 안 쓰므로 설치도 스킵(3~7분 헛설치 차단 · 평의회9) · contains 문자열 판정 = 뷰어 JSON.stringify 고정 직렬화 전제(기존 bgm 게이트와 동일 메커니즘)
+        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' }}   # bgm은 번인 하위 축 — burn OFF·길이 선-스킵(LY_NOBURN)이면 어차피 안 쓰므로 설치도 스킵(3~7분 헛설치 차단 · 평의회9·재평의회1) · contains = 뷰어 JSON.stringify 고정 직렬화 전제(기존 bgm 게이트 동일) · env 참조 = 조기 subs 커밋 스텝의 LY_VIDEO 선례
         uses: actions/cache@v4
         with:
           path: |
@@ -282,7 +282,7 @@ jobs:
             ~/.cache/pip
           key: nomute-ly-demucs-${{ runner.os }}-htdemucs-torch2121-demucs401-v1   # 핀 버전을 키에 반영(핀 갱신 = 키 동행 갱신 · 평의회2)
       - name: Demucs 설치 (배경음 제거)
-        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') }}   # 캐시 스텝과 동일 게이트(평의회9)
+        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' }}   # 캐시 스텝과 동일 게이트(평의회9·재평의회1)
         timeout-minutes: 12   # 설치 폭주 백스톱(재시도 포함 최악 20분 → 12분 컷 · 실측 콜드 3~7분)
         run: |
           ok=0
@@ -329,6 +329,7 @@ jobs:
           [ -n "$IN_ID" ] || exit 0
           BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
           { [ "$BURN" = "true" ] || [ "${REBURN:-}" = "1" ]; } || exit 0
+          [ -s "viewer/ly_out/${IN_ID}/subs.md" ] || exit 0   # 자막 산출 자체가 없으면(STT·claude 단계 실패) 백필 부적절 — '자막 텍스트는 정상' 오기록 차단(재평의회6 잔여 의문 봉합 · 그 경로는 실패 기록 스텝이 error.log로 표면화)
           VJ="viewer/ly_out/${IN_ID}/video.json"
           [ -s "$VJ" ] || { mkdir -p "viewer/ly_out/${IN_ID}"; printf '{"error":"번인 중단(시간 초과 추정) — 자막 텍스트는 정상"}' > "$VJ"; echo "백필: $VJ"; }
 

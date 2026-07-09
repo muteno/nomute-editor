@@ -92,23 +92,24 @@ import json, re, sys, os
 d = sys.argv[1]; p = os.path.join(d, "subs.md")
 md = open(p, encoding="utf-8").read()
 j, strip_at = None, -1
-# ① 펜스 블록(마지막 것부터) — ```json/```JSON/무태그·닫는 펜스 누락(\Z)·관용. '"segs"' 포함 블록만 = 본문 예시 오인 차단
-for m in reversed(list(re.finditer(r"```[ \t]*(?:json)?\s*(\{[\s\S]*?)(?:```|\Z)", md, re.I))):
-    body = m.group(1)
-    if '"segs"' not in body:
-        continue
-    strip_at = m.start()   # 파싱 실패여도 기계 블록 표시 노출은 차단
+# ① '"segs"' 담은 *마지막* 펜스 블록만 채택(재평의회4: 파싱 실패 시 앞쪽 본문 예시로 후진하면 오채택+과제거 → 꼬리 한정)
+#    ```json/```JSON/무태그·태그 앞 공백·닫는 펜스 누락(\Z) 관용. ```python 등 딴 태그 펜스는 정규식 구조상 불매치 = 본문 보호.
+fences = [m for m in re.finditer(r"```[ \t]*(?:json)?\s*(\{[\s\S]*?)(?:```|\Z)", md, re.I) if '"segs"' in m.group(1)]
+if fences:
+    m = fences[-1]
+    strip_at = m.start()   # 파싱 실패여도 꼬리 기계 블록 표시 노출은 차단(제거 = 꼬리 한정)
     try:
-        j = json.loads(body.strip())
-        break
+        j = json.loads(m.group(1).strip())
     except Exception:
-        pass
-# ② 펜스 없는 꼬리 raw JSON — 줄머리 '{' 후보를 뒤에서부터 raw_decode(뒤 산문 240자까지 관용)
-if j is None:
+        print("::warning::타이밍 JSON 파싱 실패(꼬리 블록 형식 이탈) — segments.json 폴백")
+# ② 펜스 없는 꼬리 raw JSON — 코드펜스 *밖*(``` 짝수 패리티) + 줄머리(들여쓰기 허용) '{'를 뒤에서부터 raw_decode(재평의회4)
+if j is None and strip_at < 0:
     dec = json.JSONDecoder()
     for m in reversed(list(re.finditer(r"^[ \t]*\{", md, re.M))):
+        if md[:m.start()].count("```") % 2:
+            continue   # 열린 코드펜스 안 = 표시용 본문(오채택·여는 펜스 잔존 방지)
         try:
-            obj, end = dec.raw_decode(md, m.start())
+            obj, end = dec.raw_decode(md, m.end() - 1)   # '{' 위치부터 = 들여쓴 꼬리 JSON도 검출
         except Exception:
             continue
         if isinstance(obj, dict) and obj.get("segs") and len(md[end:].strip()) <= 240:
@@ -122,9 +123,9 @@ if isinstance(j, dict):
         with open(os.path.join(d, "subs.json"), "w", encoding="utf-8") as f:
             json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
         print("subs.json 분리: {}조각".format(len(segs)))
-elif strip_at >= 0:
-    print("타이밍 JSON 파싱 실패(무해·segments.json 폴백) — 블록은 표시본에서 제거")
-else:
+    else:
+        print("::warning::타이밍 JSON 유효 조각 0(형식 이탈) — segments.json 폴백")   # 파싱 성공·조각 0 침묵 봉합(재평의회4)
+elif strip_at < 0:
     print("::warning::타이밍 JSON 미검출 — 모델 형식 이탈 가능(segments.json 폴백·번인은 원문 타이밍)")   # ③ 카나리아
 if strip_at >= 0:
     md = md[:strip_at].rstrip() + "\n"   # 파싱 성공 여부와 무관 — 기계 블록은 표시본에서 항상 제거

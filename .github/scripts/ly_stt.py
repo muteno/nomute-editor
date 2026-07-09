@@ -35,7 +35,7 @@ def transcribe(vad):
         if seg_json:
             words = [{"t": w.word.strip(), "s": round(w.start, 2), "e": round(w.end, 2)}
                      for w in (seg.words or []) if w.word.strip()]
-        rows.append({"s": round(seg.start, 2), "e": round(seg.end, 2), "t": t, "w": words})
+        rows.append({"s": seg.start, "e": seg.end, "t": t, "w": words})   # s/e = raw 유지(stdout 구본 바이트 등가) — 라운딩은 JSON 직전에만(재평의회1·4 이중 라운드 드리프트 봉합)
     return rows, info
 
 
@@ -51,7 +51,7 @@ for r in rows:
     n += 1
     print(f"[{r['s']:.1f}-{r['e']:.1f}] {r['t']}")
     if seg_json:
-        segs.append(r)
+        segs.append({"s": round(r["s"], 2), "e": round(r["e"], 2), "t": r["t"], "w": r["w"]})
 print(f"# STT 완료: {n}개 세그먼트", file=sys.stderr)
 if seg_json and segs:
     from datetime import datetime, timedelta, timezone

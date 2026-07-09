@@ -96,11 +96,11 @@ jobs:
         run: |
           shopt -s nullglob
           now=$(date +%s)
-          TODO=""; N=0
+          TODO=(); N=0
           for d in viewer/ly_out/*/; do
             id=$(basename "$d")
             { [ -f "${d}subs.md" ] || [ -f "${d}video.json" ] || [ -f "${d}error.log" ]; } && continue
-            if [[ "$id" =~ ^([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})- ]]; then
+            if [[ "$id" =~ ^([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})-[0-9a-f]{6}$ ]]; then   # 끝 앵커+hex = ly.js 서버 규격만(비규격 dir = 셸 메타문자 여지 → 스킵 · 재평의회7)
               ts=$(TZ='Asia/Seoul' date -d "20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}" +%s 2>/dev/null || echo 0)
             else
               ts=0
@@ -109,16 +109,16 @@ jobs:
             age=$(( now - ts ))
             if [ "$age" -gt 21600 ]; then
               echo "자막 생성이 중단됐어(러너 유실 추정) — 다시 시도해줘." > "${d}error.log"
-              TODO="$TODO ${d}error.log"; N=$((N+1))
+              TODO+=("${d}error.log"); N=$((N+1))
               echo "좀비 백필: $id ($((age/3600))h 경과)"
             fi
           done
-          [ -n "$TODO" ] || { echo "ly 좀비 없음"; exit 0; }
+          [ "${#TODO[@]}" -gt 0 ] || { echo "ly 좀비 없음"; exit 0; }
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
           for i in 1 2 3; do   # 얕은 체크아웃이라 rebase 대신 최신 main 위 재커밋(경쟁 시 재시도)
             git fetch origin main 2>/dev/null && git checkout -B main FETCH_HEAD 2>/dev/null || true
-            git add $TODO
+            git add -- "${TODO[@]}"   # 배열+인용 = 워드분할·글로브 확장 원천 차단(재평의회7)
             git commit -m "ly: 좀비 진행중 ${N}건 error.log 백필(sweep)" >/dev/null || { echo "커밋할 것 없음"; exit 0; }
             if git push origin HEAD:main; then echo "백필 push 완료(${N}건)"; exit 0; fi
             git reset --mixed HEAD~1 >/dev/null 2>&1 || true
