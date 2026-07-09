@@ -1387,18 +1387,17 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
 (function () {   // 다시 입히기 = 번인만 재실행(LLM 0콜·1분급) — 편집분 번인(운영자 260710): 편집이 있으면 *상세 자막 전체*({s,e,ko})를 실어 subs.json 대체(부분 병합 없음 = 의역과 조각화가 달라 원리상 불가 · 기능평의회2 — 미편집 조각도 상세 탭에 보이는 그대로 구워짐), 무편집 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 = 원본 복원은 초기화→다시 입히기 경로 · 기능평의회10 정직화)
   const rb = $('#lyReburn'); if (!rb) return;
   const lyEffSegs = ss => (ss || []).filter(sg => !sg.del && sg.s != null && sg.e != null && lySegText(sg))
-    .map(sg => ({ s: sg.s, e: sg.e, ko: lySegText(sg) }));   // 번인 계약 = subs.json 조각 스키마(원본 시간축 — 컷 리맵은 번인 내부)
+    .map(sg => ({ s: sg.s, e: sg.e, ko: lySegText(sg) })).sort((a, b) => a.s - b.s);   // 번인 계약 = subs.json 조각 스키마(원본 시간축 — 컷 리맵은 번인 내부) · 사본 정렬 = 조절 미정산 역전 정산을 payload에서 해결(LY_SEGS·DOM 무접촉 — lyResort 단독 호출의 재렌더 누락 창 원천 소거 · 재검2가 재검7 안보다 우월 판정 · 양변 동일 정렬이라 dirty 판정 불변)
   rb.addEventListener('click', async () => {
     if (!LY_ID) return;
     const prevUrl = ($('#lyBurnDl').dataset.url || '');   // 옛 결과 url — 폴이 이걸 완료로 오인 안 하게(평의회 불가 수정)
     const st = $('#status'); st.classList.remove('err');
     let segs = null, restore = false, skipNote = '';   // 편집이 *실제로* 있을 때만 동봉(원형 lyModel 재생성과 유효 조각 비교) — 미동봉 사유는 침묵 금지·1줄 고지(기능평의회9)
     if (LY_SEGS && LY_ORIG && LY_ORIG.segs && LY_ORIG.segs.length) {
-      lyResort();   // 조절 미정산 시간 역전 정산 후 캡처(기능평의회2·7 — SRT 내보내기 sort와 대칭)
       const cur = lyEffSegs(LY_SEGS);
       const dirty = JSON.stringify(cur) !== JSON.stringify(lyEffSegs(lyModel(LY_ORIG.segs)));
       if (dirty && !cur.length) skipNote = '조각이 전부 삭제돼 편집 반영 불가 — 현행 자막으로 구움';
-      else if (dirty && LY_LANG !== 'ko' && LY_MD) skipNote = '외국어 영상은 편집분(원문 전사)을 번인에 안 실어 — 현행 한글 의역으로 구움';   // 외국어 절벽 차단(기능평의회6 P1·1 P2: 편집 1번에 의역→원문 대체·src 소실 = lang 게이트가 유일 방벽 · 의역 없는 복구 작업(LY_MD='')은 전사가 이미 소스라 통과)
+      else if (dirty && LY_LANG !== 'ko' && LY_MD) skipNote = LY_LANG ? '외국어 영상은 편집분(원문 전사)을 번인에 안 실어 — 현행 한글 의역으로 구움' : '원문 언어 미확정 — 편집분 안 실어(현행 자막으로 구움)';   // 외국어 절벽 차단(기능평의회6 P1·1 P2: 편집 1번에 의역→원문 대체·src 소실 = lang 게이트가 유일 방벽 · 의역 없는 복구 작업(LY_MD='')은 전사가 이미 소스라 통과) · lang 미확정 = 차단 유지(fail-safe·재검6)+정확한 사유(재검2)
       else if (dirty) { segs = cur; LY_RESTORE_PEND = false; }
       else if (LY_RESTORE_PEND) restore = true;   // 초기화 후 무편집 = 서버 원본 스냅샷(subs.orig.json) 복원 요청(기능평의회2)
     } else if (LY_SEGS) { skipNote = '원본 대조본 미확보 — 편집 반영 생략(새로고침 후 다시 시도)'; }   // 대조본 fetch 실패 복원 세션 = 침묵 폐기 금지(기능평의회9 P2)

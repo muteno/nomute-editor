@@ -119,9 +119,12 @@ jobs:
           SUBS: ${{ inputs.subs }}
         run: |
           [ -n "$IN_ID" ] || exit 0
+          [[ "$IN_ID" =~ ^[0-9]{12}-[0-9a-f]{6}$ ]] || { echo "id 형식 밖 — 스킵"; exit 0; }   # 두 분기(RESTORE·편집) 공통 상단 가드 = 검증 대칭 완결(재검4·5 — 파이썬 assert는 이중가드로 잔존)
           if [ "$SUBS" = "RESTORE" ]; then
             O="viewer/ly_out/${IN_ID}/subs.orig.json"
-            if [ -s "$O" ]; then cp "$O" "viewer/ly_out/${IN_ID}/subs.json"; echo "LY_EDITED=restore" >> "$GITHUB_ENV"; echo "원본 의역 복원";
+            if [ -s "$O" ]; then
+              cp "$O" "viewer/ly_out/${IN_ID}/subs.json.tmp" && mv "viewer/ly_out/${IN_ID}/subs.json.tmp" "viewer/ly_out/${IN_ID}/subs.json"   # 원자 교체 = 편집 경로 os.replace와 대칭(재검3)
+              echo "LY_EDITED=restore" >> "$GITHUB_ENV"; echo "원본 의역 복원"
             else echo "원본 스냅샷 없음 — 현행 subs.json 그대로(편집 반영 이력 없음 = 이미 원본)"; fi
             exit 0
           fi
@@ -147,7 +150,8 @@ jobs:
           p = os.path.join(d, "subs.json")
           orig = os.path.join(d, "subs.orig.json")
           if os.path.isfile(p) and not os.path.isfile(orig):
-              shutil.copyfile(p, orig)   # 첫 편집 반영 때 원본 의역 1회 보존 = 초기화 복원 소스(기능평의회2·3)
+              shutil.copyfile(p, orig + ".tmp")   # 첫 편집 반영 때 원본 의역 1회 보존 = 초기화 복원 소스(기능평의회2·3)
+              os.replace(orig + ".tmp", orig)   # 스냅샷도 원자 확정 — 부분 복사 잔존이 isfile 가드에 고착되는 창 소거(재검2·3)
           tmp = p + ".tmp"
           with open(tmp, "w", encoding="utf-8") as f:
               json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
