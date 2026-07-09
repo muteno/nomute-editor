@@ -30,27 +30,6 @@ export async function onRequestPost({ request, env }) {
   // 옵션 마커 = slice(8000) 뒤 서버측 부착(입력이 상한이어도 마커 절단 0 · k-make.md가 해석 · 260708)
   const refmulti = refimage === 'true' && (body.refmulti === true || body.refmulti === 'true');
   if (refmulti) scene += '\n\n[레퍼런스: 다장 — 인물·배경별 1장씩]';
-  // 모델·설정 칩(개편 P1 · 260709) — 화이트리스트 = 임의 문자열 주입 차단(리롤 축 패턴 동일).
-  // 값 3면 동기: 이 표 = viewer/k.html K_MODELS/K_AXES = apps/k/01_모델프로필_영상엔진.md 절 — check_refs check_k_models()가 커밋 전 강제.
-  const K_MODELS = ['kling', 'veo', 'seedance'];
-  const K_SET = {
-    '비율': ['9:16', '16:9', '1:1'],
-    '길이': ['5s', '10s', '15s', '장편 분막'],
-    '화풍': ['데포르메 3등신', '극화 웹툰', '수채화', '실사 시네마틱', '뉴스 다큐룩', '3D 애니'],
-    '구도': ['와이드', '미디엄', '클로즈업', '익스트림 CU', '소품 인서트'],
-    '관점': ['아이레벨', '로우(권력)', '하이', '오버숄더', '1인칭 POV', '부감 드론'],
-    '무브': ['고정', '푸시인', '트래킹', '오빗', '핸드헬드'],
-    '조명': ['자연광', '골든아워', '저조도', '네온', '역광 실루엣'],
-    '환경': ['실내', '도심', '자연', '비', '눈', '안개·황사'],
-    '오디오': ['대사 중심', '의성어만', '무대사 앰비언트', '음악 무드'],
-    '화질': ['검증 720p', '1080p', '4K 업스케일', '60fps'],
-  };
-  const model = K_MODELS.includes(body.model) ? body.model : 'kling';
-  if (model !== 'kling') scene += '\n\n[모델: ' + model + ']';   // kling(기본)은 마커 생략 = 현행 경로 바이트 동일(무회귀)
-  const set = (body.set && typeof body.set === 'object' && !Array.isArray(body.set)) ? body.set : {};
-  const pairs = [];
-  for (const k of Object.keys(K_SET)) { const v = set[k]; if (typeof v === 'string' && K_SET[k].includes(v)) pairs.push(k + '=' + v); }
-  if (pairs.length) scene += '\n\n[설정: ' + pairs.join(' · ') + ']';   // '자동' 축 = 클라가 안 보냄 = 마커 자체 생략
   const REROLL_AXES = ['카메라', '조명', '액션', '화풍', '오디오'];   // 화이트리스트 = 임의 문자열 주입 차단(뷰어 리롤 버튼·k-make 룰과 1:1)
   const reroll = REROLL_AXES.includes(body.reroll) ? body.reroll : '';
   if (reroll) scene += '\n\n[리롤: ' + reroll + ' — 이 축은 이전과 다른 안으로, 나머지는 같은 입력에서 재설계]';   // 무상태 헤드리스에 정직한 표현(직전 산출 못 봄 — "나머지 유지" 과약속 금지 · 검증5 F2)

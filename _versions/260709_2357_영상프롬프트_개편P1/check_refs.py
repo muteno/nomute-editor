@@ -522,48 +522,6 @@ def check_force_parity():
     return rc
 
 
-def check_k_models():
-    """/k 모델·설정 3면 패리티 하드게이트(개편 P1 · 260709). 모델 id와 설정 축·칩 값이
-    {viewer/k.html K_MODELS·K_AXES ↔ functions/api/k.js K_MODELS·K_SET ↔ apps/k/01_모델프로필_영상엔진.md 절}
-    3곳에 이중·삼중 구현 — 한쪽만 고치면 api 화이트리스트가 칩 값을 *조용히* 버려 설정 무시(무성 유실)
-    또는 프로필 없는 모델로 분기(k-make 오동작). check_issue_badge_parity 선례의 /k판."""
-    rc = 0
-    try:
-        kh = open(os.path.join(ROOT, 'viewer', 'k.html'), encoding='utf-8').read()
-        aj = open(os.path.join(ROOT, 'functions', 'api', 'k.js'), encoding='utf-8').read()
-        pf = open(os.path.join(ROOT, 'apps', 'k', '01_모델프로필_영상엔진.md'), encoding='utf-8').read()
-    except Exception as e:
-        print('⚠️ check_k_models 스킵(파일):', e); return 0
-    bad = []
-    # 모델 id 3면: k.html {id:'…'} · api ['…',…] · 프로필 '## id —'
-    m_html = set(re.findall(r"\{ id: '([a-z0-9]+)'", kh))
-    m_api_m = re.search(r"const K_MODELS = \[([^\]]*)\]", aj)
-    m_api = set(re.findall(r"'([a-z0-9]+)'", m_api_m.group(1))) if m_api_m else set()
-    m_doc = set(re.findall(r"^## ([a-z0-9]+) —", pf, re.M))
-    if not (m_html and m_api and m_doc):
-        bad.append('모델 선언 못 찾음(k.html=%d·api=%d·프로필=%d)' % (len(m_html), len(m_api), len(m_doc)))
-    elif not (m_html == m_api == m_doc):
-        bad.append('모델 id 드리프트: k.html=%s · api=%s · 프로필=%s' % (sorted(m_html), sorted(m_api), sorted(m_doc)))
-    # 설정 축·칩 2면: k.html K_AXES ↔ api K_SET (문자 하나만 달라도 api가 그 칩 값을 무성 폐기)
-    ax_html = {k: re.findall(r"'([^']+)'", chips) for k, chips in re.findall(r"\{ k: '([^']+)', tier: '[ab]', chips: \[([^\]]*)\] \}", kh)}
-    m_set = re.search(r"const K_SET = \{(.*?)\n  \};", aj, re.S)
-    ax_api = {k: re.findall(r"'([^']+)'", vals) for k, vals in re.findall(r"'([^']+)': \[([^\]]*)\]", m_set.group(1))} if m_set else {}
-    if not ax_html or not ax_api:
-        bad.append('설정 축 선언 못 찾음(k.html=%d·api=%d)' % (len(ax_html), len(ax_api)))
-    elif ax_html != ax_api:
-        keys = set(ax_html) | set(ax_api)
-        for k in sorted(keys):
-            if ax_html.get(k) != ax_api.get(k):
-                bad.append('축 [%s] 드리프트: k.html=%s · api=%s' % (k, ax_html.get(k), ax_api.get(k)))
-    if bad:
-        print('❌ /k 모델·설정 패리티 게이트:')
-        for b in bad: print('   -', b)
-        rc = 1
-    else:
-        print('✅ /k 모델·설정 패리티 — 모델 id 3면(k.html·api·프로필)·축/칩 2면 동일(%d모델·%d축).' % (len(m_html), len(ax_html)))
-    return rc
-
-
 _INPUT_RE = re.compile(r'<input\b[^>]*>', re.I)
 _AC_NEED = ('autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck')
 
@@ -859,11 +817,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_force_parity 스킵:', e)
-    try:
-        if check_k_models() != 0:   # /k 모델·설정 3면 패리티(하드 게이트 — 한쪽만 수정=칩 값 무성 유실·프로필 없는 분기·260709 개편 P1)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_k_models 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1
