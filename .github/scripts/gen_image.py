@@ -16,6 +16,7 @@ cards/<stem>/thumbs/search.json **앞쪽** prepend(label '생성') → 뷰어 �
 import datetime
 import hashlib
 import json
+import math
 import os
 import re
 import sys
@@ -199,6 +200,9 @@ def load_opts():
         o = {}
     style = o.get("style") if o.get("style") in STYLE_FRAG else "photo"
     aspect = o.get("aspect") if _parse_aspect(o.get("aspect")) else "4:5"   # 자유 N:N(운영자 260710) — genimg.js와 동일 정규식 계약
+    _aw, _ah = _parse_aspect(aspect)
+    _ag = math.gcd(_aw, _ah)
+    aspect = "{}:{}".format(_aw // _ag, _ah // _ag)   # gcd 축약 정규화(2:4→1:2 · 4:6→2:3) — 프롬프트 표기 정돈 + 네이티브 적중률↑(6인 검증 P3)
     size = {"1K": "FHD"}.get(o.get("size"), o.get("size"))                  # 레거시 '1K'(구 클라이언트) = FHD로 수렴
     if size not in SIZE_RENDER:
         size = "FHD"                                                        # 기본 = FHD(운영자 260710)
@@ -493,7 +497,8 @@ def main():
         png, ext = post_process(png, o)   # 정확 비율·목표 px·포맷(운영자 260710)
         url = None
         if tg.R2_ON:
-            url = tg.r2_upload(png, ("genfree/{}-{}.{}" if free else "thumbs/" + stem + "/genimg-{}-{}.{}").format(h8, i + 1, ext))
+            url = tg.r2_upload(png, ("genfree/{}-{}.{}" if free else "thumbs/" + stem + "/genimg-{}-{}.{}").format(h8, i + 1, ext),
+                               content_type="image/jpeg" if ext == "jpg" else "image/png")   # ext↔메타 정합(6인 검증 P2 — 미전달 = jpg인데 image/png · gen_cards/k_refgen 선례 계승)
         if not url:   # R2 미설정/실패 = git 폴백(로컬 커밋 → 뷰어 상대경로 서빙·gen.json 폴백과 동일 방식)
             fname = "genimg-{}-{}.{}".format(h8, i + 1, ext)
             with open(os.path.join(tdir, fname), "wb") as f:
