@@ -26,7 +26,32 @@ export async function onRequestPost({ request, env }) {
     const r = body.render;
     const id = String(r.id || '').trim();
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(id)) return json({ error: '잘못된 작업 ID' }, 400);
-    const mode = r.mode === 'pinset' ? 'pinset' : 'mosaic';
+    const mode = r.mode === 'pinset' ? 'pinset' : r.mode === 'keying' ? 'keying' : 'mosaic';
+    // ── 키잉 경로 — keep(피사체 sid) + extra(수동 지정 {t초, x·y 정규 0..1}) · py에서 재클램프 = 이중 방어
+    if (mode === 'keying') {
+      const keep = Array.isArray(r.keep) ? [...new Set(r.keep.filter(t => Number.isInteger(t) && t >= 1 && t <= 99))].slice(0, 4) : [];
+      const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;
+      const extra = [];
+      if (Array.isArray(r.extra)) {
+        for (const e of r.extra) {
+          if (!e || typeof e !== 'object') continue;
+          const t = num(e.t, 0, 600), x = num(e.x, 0, 1), y = num(e.y, 0, 1);
+          if (t !== null && x !== null && y !== null) extra.push({ t: Math.round(t * 100) / 100, x: Math.round(x * 10000) / 10000, y: Math.round(y * 10000) / 10000 });
+          if (extra.length >= 4) break;
+        }
+      }
+      if (keep.length + extra.length < 1) return json({ error: '남길 피사체를 골라줘' }, 400);
+      if (keep.length + extra.length > 4) return json({ error: '피사체는 최대 4개까지야' }, 400);
+      const kopts = {};
+      const fe = num(r.opts && r.opts.feather, 0, 40); if (fe !== null) kopts.feather = Math.round(fe);
+      const payload = JSON.stringify({ mode, keep, extra, opts: kopts });
+      if (payload.length > 4000) return json({ error: '선택이 너무 많아 — 줄여줘' }, 400);
+      const rr = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
+        ref: REF, inputs: { id, mode: 'render', render: payload },
+      });
+      if (rr.status === 204) return json({ ok: true, id, out: `track_out/${id}/video.json` });
+      return json({ error: `렌더 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);
+    }
     const targets = Array.isArray(r.targets) ? [...new Set(r.targets.filter(t => Number.isInteger(t) && t >= 1 && t <= 99))].slice(0, 32) : [];
     const invert = r.invert === true;
     const names = {}, colors = {};

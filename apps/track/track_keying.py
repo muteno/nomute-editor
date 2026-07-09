@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+# 피사체 키잉 렌더 — 선택 피사체만 남기고 나머지 전부 투명(알파). track_render.py mode='keying'에서
+#   lazy import로 위임(torch 스택 = 키잉 러너에서만 · 모자이크/핀셋 경로는 이 파일을 import조차 안 함).
+# env RENDER = {"mode":"keying","keep":[sid],"extra":[{"t":초,"x":0..1,"y":0..1}],"opts":{"feather":px}}
+# 파이프(정본 = apps/track/00_지침 §4):
+#   ① 프롬프트 계획 — keep 피사체 = 첫 양호 등장 프레임(pf)의 박스 프롬프트 · extra = 운영자 탭 포인트.
+#      SAM2는 전파 시작 후 새 객체 추가 금지(가드 실측) → 프롬프트 프레임 그룹별 멀티패스(그 프레임→끝).
+#      박스와 포인트는 한 콜에 섞으면 같은 객체로 접힘(_prepare_prompts cat dim=1) → 패스 = 박스 전용/포인트 전용.
+#   ② 패스별 세그 스트림 — ffmpeg 트림(-ss 정확탐색)+15fps 데시메이션본에 SAM2.1 tiny(512) 전파 → 마스크 PNG(/tmp).
+#      트림본은 회전 메타가 베이크되어 cv2/ffmpeg 로더 좌표 일치(원본 좌표 계약 = 분석과 동일 · 00_지침 좌표 불변).
+#   ③ 합성 — 원본 풀해상 순차 디코드 + 마스크 hold(세그 15fps → 원 fps) + 페더 → BGRA 두 파이프 동시 인코딩:
+#      마스터 = ProRes 4444 MOV(yuva444p10le · 프리미어 네이티브 알파) · 프리뷰 = VP9 webm(yuva420p · 뷰어 재생).
+# 실측(260709 · 4vCPU=러너 동급): 전파 512 = 627ms/f(1객체)·1030ms/f(3객체) · ProRes 22s/10초분 ·
+#   VP9 37s/10초분(1080p — 프리뷰는 540p라 더 빠름) → 60s 클립 총 ≈15분 · 90s ≈25분(잡 40분 캡 내).
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+import cv2
+import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".github", "scripts"))
+import thumb_gen as tg   # r2_upload · R2_ON 재사용(track_render와 동일)
+
+MODELS = os.environ.get("NOMUTE_TRACK_MODELS", os.path.expanduser("~/.cache/nomute-track"))
+SAM_CKPT = os.path.join(MODELS, "sam2.1_t.pt")
+KEY_MAX_SEC = 90         # 키잉 길이 캡(실측 기반 — 90s ≈ 25분 렌더) · 분석/모자이크 180s 캡과 별개
+KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측 → 4객체 90s가 잡 캡 상한선
+SEG_FPS = 15.0           # 세그멘테이션 프레임레이트(원 30fps 대비 절반 = 비용 절반 · 마스크는 hold)
+IMGSZ = 512              # SAM2 입력 긴 변 — 1024는 3937ms/f로 불가(실측) · 512 마스크 오차 0.35%
+FEATHER_DFLT = 3         # 512 업스케일 계단 완화 기본 페더 px
+PREVIEW_LONG = 960       # 프리뷰 긴 변(9:16 = 540×960)
+GIT_FALLBACK_MAX = 30 * 1024 * 1024
+
+
+def _num(v, lo, hi, dflt):
+    try:
+        x = float(v)
+        if math.isnan(x):
+            return dflt
+        return max(lo, min(hi, x))
+    except (TypeError, ValueError):
+        return dflt
+
+
+def _sample_box(subj, f):
+    """피사체 segs에서 프레임 f의 박스 선형보간 — 밖이면 None (track_render.sample 등가 · 2/s kf)."""
+    for seg in subj.get("segs") or []:
+        kf = seg.get("kf") or []
+        if not kf or f < kf[0][0] or f > kf[-1][0]:
+            continue
+        for i in range(len(kf) - 1):
+            a, b = kf[i], kf[i + 1]
+            if a[0] <= f <= b[0]:
+                t = 0.0 if b[0] == a[0] else (f - a[0]) / float(b[0] - a[0])
+                return [a[j] + (b[j] - a[j]) * t for j in range(1, 5)]
+        return list(kf[-1][1:5])
+    return None
+
+
+def plan_passes(subjects, keep, extras, fps, W, H):
+    """멀티패스 계획 — [{f0(프롬프트 프레임), kind:'box'|'point', prompts:[…]}] · 근접(≤0.5s) 박스는 한 패스.
+    수동 포인트는 프레임이 같아도 별도 패스(박스+포인트 혼합 = 같은 객체로 접히는 함정 회피)."""
+    win = max(1, int(round(0.5 * fps)))
+    boxes = []   # (pf, subj)
+    for s in subjects:
+        if s["sid"] in keep:
+            boxes.append((int(s.get("pf") or 0), s))
+    boxes.sort(key=lambda x: x[0])
+    passes = []
+    for pf, s in boxes:
+        joined = False
+        for p in passes:
+            if p["kind"] == "box" and abs(pf - p["f0"]) <= win:
+                b = _sample_box(s, p["f0"]) or s.get("pb")   # 그룹 대표 프레임 시점의 실측 박스(없으면 자기 pf 박스)
+                if b:
+                    p["prompts"].append([b[0], b[1], b[0] + b[2], b[1] + b[3]])
+                    joined = True
+                    break
+        if not joined:
+            b = s.get("pb") or [0, 0, W, H]
+            passes.append({"f0": pf, "kind": "box", "prompts": [[b[0], b[1], b[0] + b[2], b[1] + b[3]]]})
+    for e in extras:   # 수동 지정 — 탭 프레임부터 끝까지 전파(앞 구간 미커버 = 정직 한계 · 뷰어에 힌트)
+        f0 = max(0, int(round(float(e["t"]) * fps)))
+        passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
+    passes.sort(key=lambda p: p["f0"])
+    return passes
+
+
+def run(vid_id, req, doc, outdir):
+    """track_render.main()에서 위임 — 예외는 그쪽 fail-soft 래퍼가 video.json{error}로 기록."""
+    try:
+        import torch
+        from ultralytics.models.sam import SAM2VideoPredictor
+    except Exception:
+        raise RuntimeError("키잉 환경 준비 실패(의존 설치) — 잠시 후 다시 렌더해줘.")
+    if not (os.path.isfile(SAM_CKPT) and os.path.getsize(SAM_CKPT) > 100_000_000):
+        env = dict(os.environ, TRACK_MODE="render", TRACK_HEAVY="1")   # setup.sh 미완(네트워크) 재시도 — 멱등
+        subprocess.run(["bash", os.path.join(os.path.dirname(os.path.abspath(__file__)), "setup.sh")],
+                       check=False, timeout=900, env=env)
+    if not (os.path.isfile(SAM_CKPT) and os.path.getsize(SAM_CKPT) > 100_000_000):
+        raise RuntimeError("키잉 모델 준비 실패(네트워크) — 잠시 후 다시 렌더해줘.")
+    torch.set_num_threads(max(1, os.cpu_count() or 4))
+
+    meta = doc.get("meta") or {}
+    subjects = doc.get("subjects") or []
+    if not subjects and not (req.get("extra") or []):
+        raise RuntimeError("이 분석엔 피사체 정보가 없어 — 처음(영상 분석)부터 다시 해줘.")
+    dur = float(meta.get("dur") or 0)
+    if dur > KEY_MAX_SEC + 1:
+        raise RuntimeError(f"키잉은 {KEY_MAX_SEC}초까지야(지금 {int(dur)}초) — 잘라서 해줘.")
+
+    all_sids = {s["sid"] for s in subjects}
+    keep = {int(t) for t in (req.get("keep") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)} & all_sids
+    extras = []
+    for e in (req.get("extra") or [])[:KEY_MAX_OBJ]:
+        if not isinstance(e, dict):
+            continue
+        t = _num(e.get("t"), 0, KEY_MAX_SEC, None)
+        x, y = _num(e.get("x"), 0, 1, None), _num(e.get("y"), 0, 1, None)
+        if t is not None and x is not None and y is not None:
+            extras.append({"t": t, "x": x, "y": y})
+    n_obj = len(keep) + len(extras)
+    if n_obj < 1:
+        raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
+    if n_obj > KEY_MAX_OBJ:
+        raise RuntimeError(f"피사체는 최대 {KEY_MAX_OBJ}개까지야 — 줄여서 렌더해줘.")
+
+    # track_render의 소스 회수 재사용(순환 없음 — 그쪽은 이 모듈을 함수 안에서만 import)
+    import track_render as tr
+    src = tr.resolve_src(meta, vid_id, outdir)
+    if not src:
+        raise RuntimeError("원본 보관본을 못 가져왔어 — 처음(영상 분석)부터 다시 해줘.")
+
+    cap = cv2.VideoCapture(src)
+    try:
+        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)   # 분석과 동일 = 좌표 공간 일치(불변)
+    except Exception:
+        pass
+    if not cap.isOpened():
+        raise RuntimeError("원본을 못 열었어 — 처음부터 다시 해줘.")
+    fps = cap.get(cv2.CAP_PROP_FPS) or 0
+    if not fps or fps <= 1 or fps > 240 or math.isnan(fps):
+        fps = float(meta.get("fps") or 30.0)
+    ok, first = cap.read()
+    if not ok:
+        raise RuntimeError("원본 프레임을 못 읽었어 — 처음부터 다시 해줘.")
+    H, W = first.shape[:2]
+    W2, H2 = W - (W % 2), H - (H % 2)
+    real_dur = float(meta.get("frames") or 0) / fps if meta.get("frames") else dur
+    if real_dur > KEY_MAX_SEC + 1:
+        raise RuntimeError(f"키잉은 {KEY_MAX_SEC}초까지야 — 잘라서 해줘.")
+
+    passes = plan_passes(subjects, keep, extras, fps, W, H)
+    if not passes:
+        raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
+    fe = int(round(_num((req.get("opts") or {}).get("feather"), 0, 40, FEATHER_DFLT)))
+
+    # ── ② 패스별 SAM2 전파 → 마스크 PNG ──
+    mask_root = "/tmp/keymasks"
+    shutil.rmtree(mask_root, ignore_errors=True)
+    predictor = None
+    t_all = time.time()
+    for k, p in enumerate(passes):
+        t0_sec = p["f0"] / fps
+        trim = f"/tmp/keypass{k}.mp4"
+        r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ss", f"{t0_sec:.3f}",
+                            "-vf", f"fps={SEG_FPS:g}", "-an", "-c:v", "libx264", "-preset", "veryfast",
+                            "-crf", "18", trim], timeout=600)
+        if r.returncode != 0 or not os.path.isfile(trim) or os.path.getsize(trim) < 1024:
+            raise RuntimeError("전처리(트림) 실패 — 다시 시도해줘.")
+        mdir = os.path.join(mask_root, f"p{k}")
+        os.makedirs(mdir, exist_ok=True)
+        if predictor is None:
+            predictor = SAM2VideoPredictor(overrides=dict(conf=0.25, task="segment", mode="predict",
+                                                          imgsz=IMGSZ, model=SAM_CKPT, save=False, verbose=False))
+        kwargs = {"bboxes": p["prompts"]} if p["kind"] == "box" else {"points": p["prompts"], "labels": [1] * len(p["prompts"])}
+        n_masks = 0
+        t_p = time.time()
+        for j, res in enumerate(predictor(source=trim, stream=True, **kwargs)):
+            m = None
+            if res.masks is not None and len(res.masks.data):
+                m = (res.masks.data.any(0).cpu().numpy().astype(np.uint8)) * 255
+            if m is None:
+                m = np.zeros((H, W), np.uint8)   # 객체 소실 프레임 = 빈 마스크(전부 투명) — 합성이 [:H2,:W2] 크롭
+            cv2.imwrite(os.path.join(mdir, f"{j:06d}.png"), m)
+            n_masks = j + 1
+            if j % 150 == 0:
+                print(f"패스{k + 1}/{len(passes)} 전파 {j}f · {time.time() - t_p:.0f}s", flush=True)
+        p["mdir"], p["n_masks"], p["t0"] = mdir, n_masks, t0_sec
+        os.remove(trim)
+        if n_masks == 0:
+            raise RuntimeError("피사체 마스크 생성 실패 — 다른 프레임에서 지정하거나 다시 시도해줘.")
+        print(f"패스{k + 1}: {n_masks}마스크 · {time.time() - t_p:.0f}s", flush=True)
+
+    # ── ③ 합성 + 이중 인코딩(마스터 ProRes4444 + 프리뷰 VP9) ──
+    pscale = min(1.0, PREVIEW_LONG / max(W2, H2))
+    PW, PH = int(W2 * pscale) & ~1, int(H2 * pscale) & ~1
+    out_mov, out_webm = "/tmp/key_master.mov", "/tmp/key_preview.webm"
+    enc_m = subprocess.Popen(
+        ["ffmpeg", "-y", "-loglevel", "error",
+         "-f", "rawvideo", "-pix_fmt", "bgra", "-s", f"{W2}x{H2}", "-r", f"{fps:.4f}", "-i", "-",
+         "-i", src, "-map", "0:v", "-map", "1:a?",
+         "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le", "-alpha_bits", "8", "-q:v", "11",
+         "-c:a", "aac", "-b:a", "160k", "-shortest", out_mov], stdin=subprocess.PIPE)   # q11 = 기본比 −44% 용량·화질 고품질 구간(실측 260709)
+    enc_p = subprocess.Popen(
+        ["ffmpeg", "-y", "-loglevel", "error",
+         "-f", "rawvideo", "-pix_fmt", "bgra", "-s", f"{PW}x{PH}", "-r", f"{fps:.4f}", "-i", "-",
+         "-i", src, "-map", "0:v", "-map", "1:a?",
+         "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-crf", "34", "-b:v", "0", "-cpu-used", "6", "-row-mt", "1",
+         "-c:a", "libopus", "-b:a", "64k", "-shortest", out_webm], stdin=subprocess.PIPE)
+
+    cap.release()
+    cap = cv2.VideoCapture(src)   # 처음부터 재디코드(첫 프레임 포함 순차)
+    try:
+        cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 1)
+    except Exception:
+        pass
+    for p in passes:
+        p["last_j"], p["cur"] = -1, None
+    kblur = 2 * fe + 1
+    f = 0
+    t0 = time.time()
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                break
+            frame = frame[:H2, :W2]
+            alpha = None
+            for p in passes:
+                if f < p["f0"]:
+                    continue
+                j = min(p["n_masks"] - 1, int((f / fps - p["t0"]) * SEG_FPS + 1e-6))
+                if j < 0:
+                    continue
+                if j != p["last_j"]:
+                    m = cv2.imread(os.path.join(p["mdir"], f"{j:06d}.png"), cv2.IMREAD_GRAYSCALE)
+                    p["cur"] = m if m is not None else None
+                    p["last_j"] = j
+                if p["cur"] is not None:
+                    c = p["cur"][:H2, :W2]
+                    alpha = c if alpha is None else np.maximum(alpha, c)
+            if alpha is None:
+                alpha = np.zeros((H2, W2), np.uint8)
+            elif fe > 0:
+                alpha = cv2.GaussianBlur(alpha, (kblur, kblur), fe * 0.6)
+            bgra = np.dstack((frame, alpha))
+            try:
+                enc_m.stdin.write(bgra.tobytes())
+                enc_p.stdin.write((bgra if pscale >= 1.0 else cv2.resize(bgra, (PW, PH), interpolation=cv2.INTER_AREA)).tobytes())
+            except BrokenPipeError:
+                break
+            f += 1
+            if f % 300 == 0:
+                print(f"합성 {f}f · {time.time() - t0:.0f}s", flush=True)
+        for enc in (enc_m, enc_p):
+            try:
+                enc.stdin.close()
+            except Exception:
+                pass
+        rc_m = enc_m.wait(timeout=1200)
+        rc_p = enc_p.wait(timeout=1200)
+    finally:
+        cap.release()
+        for enc in (enc_m, enc_p):
+            if enc.poll() is None:
+                enc.kill()
+        shutil.rmtree(mask_root, ignore_errors=True)
+    if rc_m != 0 or not os.path.isfile(out_mov) or os.path.getsize(out_mov) < 1024:
+        raise RuntimeError("영상 인코딩 실패(마스터) — 다시 시도해줘.")
+    if rc_p != 0 or not os.path.isfile(out_webm) or os.path.getsize(out_webm) < 1024:
+        raise RuntimeError("영상 인코딩 실패(프리뷰) — 다시 시도해줘.")
+    print(f"키잉 완료 {f}프레임 · 총 {time.time() - t_all:.0f}s · 마스터 {os.path.getsize(out_mov) // 1048576}MB · "
+          f"프리뷰 {os.path.getsize(out_webm) // 1048576}MB", flush=True)
+
+    # 출력 키 = stable + ?v= 버스트(track_render 불변 계승) — 마스터/프리뷰 둘 다
+    bust = int(time.time())
+    url, prev = "", ""
+    if tg.R2_ON:
+        with open(out_mov, "rb") as fv:
+            url = tg.r2_upload(fv.read(), f"track_res/{vid_id}/keying.mov", "video/quicktime") or ""
+        with open(out_webm, "rb") as fv:
+            prev = tg.r2_upload(fv.read(), f"track_res/{vid_id}/keying_preview.webm", "video/webm") or ""
+    if not url and os.path.getsize(out_mov) <= GIT_FALLBACK_MAX:
+        shutil.copyfile(out_mov, os.path.join(outdir, "result-keying.mov"))
+        url = f"track_out/{vid_id}/result-keying.mov"
+    if not prev and os.path.getsize(out_webm) <= GIT_FALLBACK_MAX:
+        shutil.copyfile(out_webm, os.path.join(outdir, "result-keying.webm"))
+        prev = f"track_out/{vid_id}/result-keying.webm"
+    if not url and not prev:
+        raise RuntimeError("결과 업로드 실패(R2) — 잠시 후 다시 렌더해줘.")
+    tr.out_json(outdir, {"url": (f"{url}?v={bust}" if url else ""), "preview": (f"{prev}?v={bust}" if prev else ""),
+                         "mode": "keying", "n": n_obj, "frames": f, "opts": {"feather": fe},
+                         "note": ("" if url else "master-lost")})   # 마스터 유실(R2 미설정·대용량) = 프리뷰만 — 뷰어가 정직 표시
