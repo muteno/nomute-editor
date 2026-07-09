@@ -140,14 +140,46 @@ jobs:
           [ -n "${TRACK_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/track_err.txt; echo "::error::TRACK_SRC 빈값"; exit 1; }
           python3 apps/track/track_analyze.py "$IN_ID" "$TRACK_SRC"
 
+      # 조기 tracks.json 커밋(cap=1 한정) — 캡션(최대 12분)이 분석 산출 공개를 블로킹 안 하게 선공개(ly 조기 subs 패턴 · 평의회1 F2·평의회2 F2)
+      #   best-effort exit 0 · cap OFF면 종전 단일 커밋 그대로. 캡션 병합본은 최종 Commit output이 2차 커밋(첫 세션은 캡션 없이 볼 수 있음 = 수용 트레이드오프·지침 한계 기재)
+      - name: 조기 tracks.json 커밋 (캡션 전 선공개)
+        if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/track_out/${IN_ID}" 2>/dev/null || true
+          git commit -m "track: ${IN_ID} analyze 조기 커밋 (캡션 전 선공개)" || exit 0
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
+              echo "조기 푸시 완료 → 카드 먼저 표시"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*2))
+          done
+          echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함(무해)"; exit 0
+
       # 카드 캡션 + 동일인 병합 힌트 — opus 4.8 max(운영자 260710) · TRACK_CAP 게이트(카나리아 → 승격) · 전면 fail-soft
       #   (스크립트가 어떤 실패도 exit 0 = error.log 미기록 → 분석 산출·뷰어 폴 무영향 · || echo = 이중 안전벨트)
+      - name: Setup Node (캡션)
+        if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true   # 캡션 축 전체 = fail-soft(실패해도 분석 산출 무영향 · 평의회1 F3)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24   # ly-make 핀 정합
+
       - name: Install claude-code (캡션)
         if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true   # 설치 실패 = 캡션만 스킵(잡 실패 금지 · 평의회1 F1)
         run: npm install -g @anthropic-ai/claude-code
 
       - name: 카드 캡션 + 병합 힌트 (opus 4.8 max · fail-soft)
         if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true   # ⚠️ 필수 불변(평의회1 F1) — 스텝 타임아웃 SIGKILL은 스크립트 exit 0을 우회 → 이게 없으면 failure() 스텝이 error.log를 커밋해 성공한 분석을 뷰어에 실패로 오염(pollAnalyze는 error.log 우선)
         timeout-minutes: 12
         env:
           TRACK_CAP: '1'

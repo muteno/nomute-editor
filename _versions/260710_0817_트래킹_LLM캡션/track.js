@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — 뷰어 트래킹 폼 → track-make 워크플로 발사(핀셋/모자이크/키잉).
 // 2모드: analyze(영상 URL/업로드 → tracks.json 폴링) · render(선택 페이로드 → video.json 폴링 — 모자이크/핀셋 번인 · 키잉 알파 분리).
-// 이 함수 = LLM 0콜(발사·폴링 경로만 — 캡션 콜은 워크플로 스텝 축·track-make.yml 참조). 인증·업로드(일회용 up-<id> 브랜치)·발사 골격 = ly.js 미러. env: GH_TOKEN 동일 PAT.
+// LLM 0콜(순수 CV) — 인증·업로드(일회용 up-<id> 브랜치)·발사 골격 = ly.js 미러. env: GH_TOKEN 동일 PAT.
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {

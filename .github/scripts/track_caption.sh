@@ -13,7 +13,9 @@
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 [ "${TRACK_CAP:-}" = "1" ] || { echo "TRACK_CAP OFF — 캡션 스킵"; exit 0; }
-ID="${1:?usage: track_caption.sh <id>}"
+ID="${1:-}"
+[ -n "$ID" ] || { echo "::warning::id 없음 — 캡션 스킵"; exit 0; }   # ${1:?} 비영종료 대신 fail-soft 일관(평의회2 F4)
+case "$ID" in *[!0-9a-f-]*) echo "::warning::잘못된 id — 캡션 스킵"; exit 0;; esac   # 자기완결 가드(워크플로 가드에만 위임 안 함 · 평의회3)
 OUTDIR="viewer/track_out/${ID}"
 TJ="$OUTDIR/tracks.json"
 [ -s "$TJ" ] || { echo "::warning::tracks.json 없음 — 캡션 스킵"; exit 0; }
@@ -46,11 +48,15 @@ PY
 
 prompt="영상 트래킹 카드 보조 작업. 아래 각 이미지(인물 얼굴 p* · 피사체 s* 크롭)를 Read 도구로 열어 보고 JSON 하나만 출력해.
 규칙:
+- 키 = 목록의 번호 그대로: people 키 = p번호(\`p5:\` 이미지 → \"5\") · subjects 키 = s번호 · same도 p번호 쌍. 번호는 비연속일 수 있음 — 순번으로 다시 매기지 마라.
 - cap = 카드 구분용 한 줄 묘사(한국어 14자 이내 · 옷/색/위치/특징만). 신원 추정·실명·유명인 이름 절대 금지.
-- same = 서로 다른 p 카드가 *확실히* 같은 사람일 때만 pid 쌍 나열(예 [[1,3]]). 조금이라도 애매하거나 판단이 곤란하면 빈 배열 [].
-- 출력 = JSON 한 덩어리만(설명·코드펜스 금지): {\"people\":{\"1\":\"남색 정장, 마이크 앞\"},\"subjects\":{\"1\":\"흰색 승합차\"},\"same\":[]}
+- same = 서로 다른 p 카드가 *확실히* 같은 사람일 때만 p번호 쌍 나열(예 [[5,7]]). 다른 사람을 같다고 하는 오류가 놓치는 것보다 훨씬 나쁘다(모자이크 오배정 위험) — 조금이라도 애매하거나 판단이 곤란하면 빈 배열 [].
+- 열리지 않거나 식별 곤란한 이미지 = 해당 키 생략(추측 금지).
+- 출력 = JSON 한 덩어리만(설명·코드펜스 금지): {\"people\":{\"5\":\"남색 정장, 마이크 앞\",\"7\":\"회색 후드\"},\"subjects\":{\"1\":\"흰색 승합차\"},\"same\":[]}
 이미지 목록:
 $LIST"
+NCARD="$(printf '%s\n' "$LIST" | wc -l | tr -d ' ')"
+MAXTURNS=$((2 * NCARD + 10))   # 카드 수 비례(이미지 Read 왕복 여유 · 평의회8 F5)
 
 inline_delay=15; rc=1; out=""
 for attempt in $(seq 1 "$INLINE_TRIES"); do
@@ -60,7 +66,7 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
         --safe-mode \
         --allowedTools "Read" \
         --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Glob,Grep" \
-        --max-turns 40 \
+        --max-turns "$MAXTURNS" \
         2> /tmp/track_cap_stderr.log)"
   rc=$?
   if [ $rc -eq 0 ] && grep -qm1 '{' <<<"$out"; then break; fi
@@ -84,8 +90,8 @@ try:
     j = json.loads(m.group(0))
 except Exception:
     sys.exit(1)
-d = json.load(open(tj))
-clean = lambda s: str(s).strip().replace("\n", " ")[:20]
+d = json.load(open(tj, encoding="utf-8"))
+clean = lambda s: str(s).strip().replace("\n", " ")[:20]   # 프롬프트는 14자 지시 · 파서는 20자 하드캡(이중띠 · 평의회7)
 pc = j.get("people") or {}
 sc = j.get("subjects") or {}
 for p in d.get("people", []):
@@ -106,9 +112,13 @@ for pair in (j.get("same") or []):
     if a in pids and b in pids and a != b and sorted((a, b)) not in same:
         same.append(sorted((a, b)))
 d.setdefault("meta", {})["same_hint"] = same
-json.dump(d, open(tj, "w"), ensure_ascii=False)
+tmp = tj + ".captmp"
+with open(tmp, "w", encoding="utf-8") as f:   # 원자 교체 — 타임아웃 하드킬이 dump 도중 걸려도 원본 tracks.json 절단 0(평의회2 F3)
+    json.dump(d, f, ensure_ascii=False, separators=(",", ":"))   # analyze 저장 포맷 정합(compact · 평의회7)
+os.replace(tmp, tj)
 print("캡션 병합: people %d · subjects %d · same %d" % (
     sum(1 for p in d.get("people", []) if p.get("cap")),
     sum(1 for s in d.get("subjects", []) if s.get("cap")), len(same)))
 PY
+rm -f /tmp/track_cap_stderr.log   # 러너 잔존면 정리(평의회3 방어심화)
 exit 0
