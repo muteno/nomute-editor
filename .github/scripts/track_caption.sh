@@ -29,7 +29,7 @@ INLINE_TRIES="${INLINE_TRIES:-4}"
 LIST="$(python3 - "$TJ" "$OUTDIR" <<'PY'
 import json, os, sys
 tj, out = sys.argv[1], sys.argv[2]
-d = json.load(open(tj))
+d = json.load(open(tj, encoding="utf-8"))
 rows = []
 for p in d.get("people", []):
     c = p.get("crop") or ""
