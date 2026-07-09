@@ -55,6 +55,13 @@
     animation:goFill .72s var(--gauge-ease) forwards; }
   @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  /* 라이브 게이지(.glive) = 전송(업로드·디스패치) 응답까지 점근 진행 — index glive 기틀 계승(운영자 260702 · 260710 "보내는 중 = 게이지바로 다른거처럼") · 옛 0.72s 풀필+'보내는 중' gdots 문구 폐지. ⚠️ 2번 레이어도 크기 명시(100% 100%) — 생략 = auto라 background-size 보간 불가 → 90% 스냅(index 실측 함정) */
+  .go.glive.firing { animation:none;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim)) left/100% 100% no-repeat;
+    transition:background-size 3.6s var(--gauge-ease); }
+  .go.glive.firing.grun { background-size:90% 100%, 100% 100%; }   /* 2중 rAF 트리거 = 0→90% 센 ease-out 점근(응답 대기 커버) */
+  .go.glive.firing.gdone { background-size:100% 100%, 100% 100%; transition:background-size .3s linear; }   /* 응답 = 현위치→100% 급속 마무리 */
+  @media (prefers-reduced-motion:reduce) { .go.glive.firing, .go.glive.firing.gdone { transition-duration:.12s; } }
   .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(ly·thumb .go 통일) */
   @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
   @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
@@ -332,6 +339,10 @@ function goLbl(html){
   if(html===null){ g.innerHTML=''; g.textContent=g.dataset.label; g.removeAttribute('aria-busy'); }
   else { g.setAttribute('aria-busy','true'); g.innerHTML=html; }
 }
+// 라이브 게이지 헬퍼 = index gaugeStart/Done/Clear 정본 계승(전송 내내 점근 진행 · 운영자 260702)
+function gaugeStart(btn){ if(!btn) return; btn.classList.add('glive','firing'); requestAnimationFrame(()=>requestAnimationFrame(()=>btn.classList.add('grun'))); }   // 2중 rAF = 0% 한 프레임 페인트 후 90% 트리거(같은 프레임이면 transition 무시)
+function gaugeDone(btn){ if(btn) btn.classList.add('gdone'); }
+function gaugeClear(btn){ if(btn) btn.classList.remove('glive','firing','grun','gdone'); }
 
 $('#analyze').addEventListener('click',async()=>{
   const url=$('#url').value.trim();
@@ -339,21 +350,21 @@ $('#analyze').addEventListener('click',async()=>{
   if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
   USER_ACT=true;
   const status=$('#astatus'); status.classList.remove('err'); status.textContent='';
-  { const gb=$('#analyze'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(()=>gb.classList.remove('firing'),760); }
-  $('#analyze').disabled=true;
-  goLbl('보내는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>');
+  const gb=$('#analyze'); gb.disabled=true;
+  gaugeStart(gb);   // 라이브 게이지 = 전송(업로드·디스패치) 응답까지 차오름 — 옛 0.72s 풀필+'보내는 중' 문구 폐지(운영자 260710 "게이지바로 다른거처럼" · index 전송 버튼 기틀)
   try{
     const payload = url? {url} : {fileB64:FILE_B64, name:FILE_NAME};
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ goLbl(null); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    if(!res.ok||j.error){ gaugeClear(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
     TK.id=j.id; TK.sel=new Set(); TK.names={}; TK.invert=false; TK.resultUrl=''; TK.lastGot='';
     TK.keep=new Set(); TK.extra=[];   // 키잉 선택도 영상 단위 — 미리셋 = 이전 영상 sid·좌표 누출(평의회6 적발)
     pendSet({id:j.id, st:'analyze', t0:Date.now()});
+    gaugeDone(gb);   // 응답 = 게이지 현위치→100% 급속 마무리
     pollAnalyze('track_out/'+j.id+'/tracks.json', Date.now());
-    goLbl(CHECK_SVG);
-    setTimeout(()=>{ const g=$('#analyze'); if(g&&g.classList.contains('wait')) g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; },700);
-  }catch(e){ goLbl(null); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
+    goLbl(CHECK_SVG);   // ✓ 접수 플래시(goWait의 대기 라벨을 잠깐 덮음 — 같은 틱이라 플리커 0)
+    setTimeout(()=>{ gaugeClear(gb); const g=$('#analyze'); if(g&&g.classList.contains('wait')) g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; },700);   // gdone(.3s) 채움이 눈에 따라온 뒤 대기 라벨 복귀
+  }catch(e){ gaugeClear(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ $('#analyze').disabled=false; }
 });
 
