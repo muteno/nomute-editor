@@ -33,8 +33,10 @@ KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측(객
 KEY_MAX_LONG = 1920      # 해상도 캡(긴 변) — 4K는 트림·마스크·인코딩·업로드 전 축 폭발(평의회9 F2 · 분석 DET_LONG 선례)
 KEY_BUDGET_SEC = 1620    # 발사 전 예상 전파 예산(27분) — 멀티패스 총량이 스텝 35분 캡을 못 넘게 사전 거절(평의회4·9)
 PASS_HARD_SEC = 1800     # 전파 루프 경과 백스톱(30분) — 예산 추정이 빗나가도 스텝 타임아웃 전에 정직 에러
-SEG_MS_1 = 0.63          # 실측 단가: 1객체 전파 s/frame(512 · 260709) — 예산 추정용
-SEG_MS_OBJ = 0.20        # 실측 단가: 추가 객체당 s/frame
+SEG_S_1 = 0.63           # 실측 단가: 1객체 전파 s/세그프레임(512) — 예산 추정용(단위 초 — MS 아님·재검증 개명)
+SEG_S_OBJ = 0.20         # 실측 단가: 추가 객체당 s/세그프레임
+TAIL_S_PF = 0.25         # 실측 단가: 합성+인코딩+업로드 꼬리 s/원본프레임(1080×1920 기준·해상도 비례) —
+                         #   합성은 원 fps 전량 순회라 60fps = 꼬리 2배(재검증9: 예산에 미반영 시 통과 후 타임아웃)
 SEG_FPS = 15.0           # 세그멘테이션 프레임레이트(원 30fps 대비 절반 = 비용 절반 · 마스크는 hold)
 IMGSZ = 512              # SAM2 입력 긴 변 — 1024는 3937ms/f로 불가(실측) · 512 마스크 오차 0.35%
 FEATHER_DFLT = 3         # 512 업스케일 계단 완화 기본 페더 px
@@ -185,13 +187,15 @@ def run(vid_id, req, doc, outdir):
     if not passes:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
     # 발사 전 총량 예산 가드 — 캡(90s·4객체)은 객체 수만 묶고 멀티패스 총량은 못 묶는다(평의회9 F1: 수동 4개
-    #   분산 지정 = 4패스 = 56분 > 잡 40분). 실측 단가로 예상 전파 시간 계산 → 예산 초과 = 명시 거절.
+    #   분산 지정 = 4패스 = 56분 > 잡 40분). 예상 = 전파(패스별 실측 단가) + 꼬리(합성·인코딩·업로드 = 원 fps
+    #   전량 순회라 fps·해상도 비례 — 재검증9: 전파만 계산하면 60fps 다객체가 통과 후 스텝 타임아웃).
     total_f = float(meta.get("frames") or 0) or (real_dur * fps)
-    est = sum(max(0.0, (total_f - p["f0"]) / fps) * SEG_FPS * (SEG_MS_1 + SEG_MS_OBJ * max(0, len(p["prompts"]) - 1))
-              for p in passes)
+    est_seg = sum(max(0.0, (total_f - p["f0"]) / fps) * SEG_FPS * (SEG_S_1 + SEG_S_OBJ * max(0, len(p["prompts"]) - 1))
+                  for p in passes)
+    est = est_seg + total_f * TAIL_S_PF * (W * H / 2_073_600.0)
     if est > KEY_BUDGET_SEC:
         raise RuntimeError(f"이 조합은 렌더가 너무 오래 걸려(예상 {int(est // 60)}분) — "
-                           f"피사체 수를 줄이거나 등장 시점이 비슷한 것끼리 골라줘.")
+                           f"피사체 수·영상 길이를 줄이거나(60fps면 더 짧게) 등장 시점이 비슷한 것끼리 골라줘.")
     fe = int(round(_num((req.get("opts") or {}).get("feather"), 0, 40, FEATHER_DFLT)))
 
     # ── ② 패스별 SAM2 전파 → 마스크 PNG ──
