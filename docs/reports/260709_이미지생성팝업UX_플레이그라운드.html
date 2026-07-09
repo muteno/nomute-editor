@@ -1,0 +1,370 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>이미지 생성 팝업 UX — 플레이그라운드</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   이미지 생성 팝업(#genidlg) UX 플레이그라운드 — CLAUDE.md §플레이그라운드 5요소
+   골격 = docs/플레이그라운드_포터블.md §3 · 값 = viewer/index.html :root 「사본」
+   (값 정본은 언제나 viewer :root — 이 파일은 일회성 시안 스냅샷 · check_refs 비대상)
+   ═══════════════════════════════════════════════════════════════════ */
+:root{
+  /* ── viewer :root 토큰 사본(재현용 · 자기완결 CSP라 var() 정본 참조 불가 = §핵심명령 3-c 값 복사) ── */
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322;
+  --modal-glass:rgba(17,18,20,.64); --modal-head-bg:rgba(24,25,28,.85);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --blur-s:8px; --blur-l:22px; --btn-sm:30px;
+  --fs-h2:15px; --fs-h3:14px; --fs-label:13px; --fs-sm:12px; --fs-xs:11px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --press-m:.9; --press-l:.95;
+  --gauge-ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;
+  font-family:'Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+  font-size:14px;line-height:var(--lh-base);padding:18px 14px 40px}
+h1{font-size:17px;font-weight:var(--fw-x);margin:0 0 4px;letter-spacing:-.2px}
+.sub{color:var(--mut);font-size:var(--fs-sm);margin:0 0 18px}
+.wrap{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;justify-content:center;max-width:1080px;margin:0 auto}
+/* ── ① 실물 재현: 9:18 폰 프레임 ── */
+.stagewrap{flex:0 0 auto}
+.frame{position:relative;width:min(92vw,340px);aspect-ratio:9/18;background:var(--bg);
+  border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1)}
+.stagecap{color:var(--mut);font-size:var(--fs-xs);text-align:center;margin-top:10px}
+/* 생성 탭 목업 배경(실데이터 아님) + ::backdrop 근사 = 사전 blur 7px + 딤 rgba(4,8,5,.46) */
+.mock{position:absolute;inset:0;padding:22px 16px;filter:blur(7px);transform:scale(1.03)}
+.mock .m-h{height:14px;width:56%;border-radius:6px;background:rgba(255,255,255,.10);margin-bottom:14px}
+.mock .m-lbl{display:flex;align-items:center;gap:6px;margin:10px 0 8px}
+.mock .m-lbl i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.mock .m-lbl b{height:10px;width:64px;border-radius:5px;background:rgba(255,255,255,.16)}
+.mock .m-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mock .m-grid i{border-radius:12px;background:rgba(255,255,255,.07);aspect-ratio:4/5}
+.mock .m-btn{margin-top:14px;height:42px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12)}
+.dim{position:absolute;inset:0;background:rgba(4,8,5,.46)}
+/* ── 팝업 재현(#genidlg 자유 모드) — 셸·행·워드칩 = 정본 값 사본 ── */
+.pop{position:absolute;left:50%;transform:translateX(-50%);top:8%;width:92%;max-height:88%;
+  display:flex;flex-direction:column;color:var(--fg);
+  background:var(--modal-glass);border:1px solid rgba(255,255,255,.13);border-radius:var(--r-modal);
+  box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.14);overflow:hidden;
+  animation:modalRise .2s cubic-bezier(.22,.61,.36,1) backwards}
+@keyframes modalRise{from{opacity:0;transform:translateX(-50%) scale(.95) translateY(8px)}to{opacity:1;transform:translateX(-50%)}}
+@keyframes cardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes pickGauge{to{transform:scaleX(1)}}
+.pop .dlg-h{flex:none;background:var(--modal-head-bg);backdrop-filter:blur(var(--blur-l)) saturate(1.2);
+  -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);border-bottom:1px solid var(--line2);
+  padding:11px 16px;display:flex;flex-direction:column;gap:11px;
+  border-top-left-radius:var(--r-modal);border-top-right-radius:var(--r-modal);position:relative}
+.pop .dlg-top{display:flex;gap:10px;align-items:center;min-height:var(--btn-sm)}
+.pop .pub-title{font-size:var(--fs-h2);font-weight:var(--fw-x);color:var(--fg);letter-spacing:-.2px}
+.pop .tool-x{width:30px;height:30px;flex:none;display:grid;place-items:center;background:rgba(255,255,255,.06);
+  color:var(--fg);border:1px solid var(--line);border-radius:9px;cursor:pointer;
+  position:absolute;top:11px;right:14px;margin:0}
+.pop .tool-x svg{width:15px;height:15px;stroke-width:1.8}
+.pop .geni-body{padding:6px var(--sp-3) 10px;overflow-y:auto;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.pop .geni-foot{flex:none;padding:10px var(--sp-3) var(--sp-3);border-top:1px solid var(--line2)}
+.pop .geni-sechead{display:flex;align-items:center;gap:8px;width:100%;padding:12px 0 2px;background:none;border:none;text-align:left;color:var(--fg)}
+.pop .cref-lbl{font-size:var(--fs-label);font-weight:var(--fw-x);color:var(--fg)}
+.pop .cref-lbl::before{content:'• ';color:var(--accent);font-weight:var(--fw-b)}
+.pop .geni-fold{cursor:pointer;font:inherit}
+.pop .geni-chev{margin-left:auto;flex:none;width:30px;display:grid;place-items:center;color:var(--mut)}
+.pop .geni-chev svg{display:block;transition:transform .26s var(--ease)}
+.pop .geni-fold[aria-expanded="true"] .geni-chev svg{transform:rotate(180deg)}
+.pop .geni-camsub{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s var(--ease)}
+.pop .geni-camsub-in{overflow:hidden}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub{grid-template-rows:1fr}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row{animation:cardIn .22s var(--ease) backwards}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row:nth-child(2){animation-delay:.03s}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row:nth-child(3){animation-delay:.06s}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row:nth-child(4){animation-delay:.09s}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row:nth-child(5){animation-delay:.12s}
+.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row:nth-child(6){animation-delay:.15s}
+.pop .geni-n{flex:none;min-width:16px;height:16px;padding:0 4px;border-radius:var(--r-pill);background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:var(--fw-x);line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
+.pop .geni-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:8px 0;border-top:1px solid var(--line2)}
+.pop .pub-l{font-size:var(--fs-label);font-weight:var(--fw-b);color:var(--fg);white-space:nowrap}
+.pop .geni-opts{display:flex;flex-wrap:wrap;gap:3px 4px;justify-content:flex-end;min-width:0}
+.pop .geni-opt{background:none;border:none;padding:6px 7px;font:var(--fw-b) var(--fs-label) inherit;color:var(--mut);cursor:pointer;white-space:nowrap;transition:color .15s}
+.pop .geni-opt:active{transform:scale(var(--press-m))}
+.pop .geni-opt.on{color:var(--accent);font-weight:var(--fw-x)}
+.pop .geni-in{flex:1 1 auto;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--fg);font-size:var(--fs-label);font-weight:var(--fw-b);padding:6px 10px;outline:none;transition:border-color .15s}
+.pop .geni-in::placeholder{color:var(--mut);opacity:.75;font-weight:var(--fw-b)}
+.pop .geni-in:focus{border-color:rgba(255,255,255,.28)}
+.pop textarea.geni-in{resize:none;line-height:var(--lh-base);font-family:inherit;display:block}
+.pop .asksend{flex:none;position:relative;overflow:hidden;background:rgba(0,0,0,.34);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.36);border-radius:999px;
+  -webkit-backdrop-filter:blur(var(--blur-s));backdrop-filter:blur(var(--blur-s));
+  font:inherit;font-size:13px;font-weight:800;padding:9px 18px;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease}
+.pop .asksend>span{position:relative;z-index:1}
+.pop .asksend:active{transform:scale(.97)}
+.pop .asksend:disabled{opacity:.5;cursor:default}
+.pop .asksend.firing{color:var(--on-accent);opacity:1;border-color:var(--accent);pointer-events:none}
+.pop .asksend.firing::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;animation:pickGauge .72s var(--gauge-ease) forwards;z-index:0}
+.pop .pub-go{width:100%;margin-top:0;padding:var(--sp-2);color:var(--fg)}
+/* 요약줄(신규 요소 후보 · §디자인 j 승인 축) — 없음/문장형/미니칩 */
+.pop .geni-sum{display:none;color:var(--mut);font-size:var(--fs-sm);font-weight:var(--fw-b);line-height:1.5;padding:0 2px 8px;font-variant-numeric:tabular-nums}
+.pop .geni-sum b{color:var(--fg);font-weight:var(--fw-b)}
+.pop[data-sum="1"] .geni-sum{display:block}
+.pop[data-sum="2"] .geni-sum{display:flex;flex-wrap:wrap;gap:4px}
+.pop[data-sum="2"] .geni-sum b{background:rgba(255,255,255,.06);border:1px solid var(--line2);border-radius:var(--r-pill);padding:2px 8px;font-size:var(--fs-xs)}
+/* ── 배치 축: 내용(장면) 그룹 순서 — 구현은 DOM 이동 · 시안은 flex order(시각 동일) ── */
+.pop[data-pos="0"] .g-preset{order:1}.pop[data-pos="0"] .g-style{order:2}.pop[data-pos="0"] .g-out{order:3}.pop[data-pos="0"] .g-cam{order:4}.pop[data-pos="0"] .g-content{order:5}
+.pop[data-pos="1"] .g-preset{order:1}.pop[data-pos="1"] .g-content{order:2}.pop[data-pos="1"] .g-style{order:3}.pop[data-pos="1"] .g-out{order:4}.pop[data-pos="1"] .g-cam{order:5}
+.pop[data-pos="2"] .g-content{order:1}.pop[data-pos="2"] .g-preset{order:2}.pop[data-pos="2"] .g-style{order:3}.pop[data-pos="2"] .g-out{order:4}.pop[data-pos="2"] .g-cam{order:5}
+.pop[data-pos="0"] .g-preset .geni-row:first-child,.pop[data-pos="1"] .g-preset .geni-row:first-child{border-top:none;padding-top:4px}
+.pop[data-pos="2"] .g-content .geni-sechead{padding-top:4px}
+.pop[data-pos="2"] .g-content .geni-row:first-of-type{border-top:none}
+/* 내용 그룹이 위로 가면 소머리(내용)가 첫 요소 = 여백 정리 */
+.pop .ggrp{display:flex;flex-direction:column}
+/* 현행 고정 레이어 */
+.pop.isbase{pointer-events:none}
+.baseflag{position:absolute;right:10px;top:-1px;z-index:5;background:rgba(255,255,255,.08);border:1px solid var(--line2);border-top:none;border-radius:0 0 8px 8px;color:var(--mut);font-size:10px;font-weight:var(--fw-x);padding:2px 8px;letter-spacing:.4px}
+.frame[data-view="app"] #basePop{display:none}
+.frame[data-view="base"] #appPop{display:none}
+/* ── 우측 콘솔 ── */
+.console{flex:1 1 300px;max-width:420px;min-width:280px}
+.csec{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:var(--r-l);padding:14px 16px;margin-bottom:12px}
+.csec h3{margin:0 0 10px;font-size:var(--fs-label);font-weight:var(--fw-x)}
+.csec h3::before{content:'• ';color:var(--accent);font-weight:var(--fw-b)}
+.pillrow{display:flex;flex-wrap:wrap;gap:6px}
+.pill{background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:var(--r-pill);color:var(--mut);font-size:var(--fs-sm);font-weight:var(--fw-b);padding:7px 13px;cursor:pointer;transition:color .15s,border-color .15s;font-family:inherit}
+.pill:active{transform:scale(var(--press-l))}
+.pill.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);font-weight:var(--fw-x)}
+.pill .st{color:var(--accent)}
+.custom{display:none;color:var(--mut);font-size:var(--fs-xs);align-self:center;padding:0 4px}
+.custom.show{display:inline}
+.slgrp{margin-bottom:4px}
+.slgrp .g{color:var(--mut);font-size:var(--fs-xs);font-weight:var(--fw-x);letter-spacing:.4px;margin:10px 0 2px}
+.slrow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.slrow label{flex:0 0 84px;font-size:var(--fs-sm);font-weight:var(--fw-b);color:var(--fg)}
+.slrow input[type=range]{flex:1;appearance:none;-webkit-appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer;
+  background:linear-gradient(90deg,var(--accent) calc(var(--p,0)*1%),rgba(255,255,255,.12) calc(var(--p,0)*1%))}
+.slrow input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--fg);border:none;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.slrow .v{flex:0 0 96px;text-align:right;font-size:var(--fs-sm);font-weight:var(--fw-b);color:var(--accent);font-variant-numeric:tabular-nums}
+pre#out{background:rgba(0,0,0,.4);border:1px solid var(--line2);border-radius:var(--r-m);color:var(--fg);font-size:12px;line-height:1.7;padding:12px;overflow-x:auto;white-space:pre;font-variant-numeric:tabular-nums;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+#copy{width:100%;background:rgba(0,0,0,.34);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.36);border-radius:999px;font-family:inherit;font-size:13px;font-weight:800;padding:10px;cursor:pointer;transition:background .18s ease,border-color .18s ease}
+#copy:active{transform:scale(.97)}
+#copy.ok{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+.note{color:var(--mut);font-size:var(--fs-xs);line-height:1.7}
+.note b{color:var(--fg)}
+.note ul{margin:6px 0 0;padding-left:16px}
+.note li{margin-bottom:3px}
+@media (prefers-reduced-motion:reduce){.pop,.pop .geni-camsub,.pop .geni-chev svg{animation:none;transition:none}.pop .geni-fold[aria-expanded="true"]+.geni-camsub .geni-row{animation:none}}
+</style>
+
+<h1>이미지 생성 팝업 UX — 만지는 시안</h1>
+<p class="sub">축 3개: 장면(내용) 입력 위치 · 주문 줄수 · 선택 요약줄(신규 요소 후보). 팝업 속 칩·접힘·입력은 실제로 만져짐 — 화풍에서 극화를 누르면 세부 6종(게키카 포함)이 뜬다.</p>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame" id="frame" data-view="app">
+      <div class="mock" aria-hidden="true">
+        <div class="m-h"></div>
+        <div class="m-lbl"><i></i><b></b></div>
+        <div class="m-grid"><i></i><i></i><i></i><i></i></div>
+        <div class="m-btn"></div>
+      </div>
+      <div class="dim" aria-hidden="true"></div>
+      <div class="pop" id="appPop" data-pos="0" data-sum="0"></div>
+      <div class="pop isbase" id="basePop" data-pos="0" data-sum="0"><span class="baseflag">현행 고정</span></div>
+    </div>
+    <div class="stagecap">칩·카메라 접힘·주문 입력 = 실조작 가능 · 우측 [현행 고정]과 번갈아 비교</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec"><h3>보기</h3>
+      <div class="pillrow" id="viewtg">
+        <button class="pill on" data-v="app" type="button">시안(조작)</button>
+        <button class="pill" data-v="base" type="button">현행 고정</button>
+      </div>
+    </div>
+    <div class="csec"><h3>프리셋</h3>
+      <div class="pillrow" id="presets"></div><span class="custom" id="customTag">커스텀 조정 중</span>
+    </div>
+    <div class="csec"><h3>미세조정</h3><div id="sliders"></div></div>
+    <div class="csec"><h3>선택값</h3>
+      <pre id="out"></pre>
+      <button id="copy" type="button">선택값 복사</button>
+    </div>
+    <div class="csec note"><b>재현 한계 각주</b>
+      <ul>
+        <li>토큰·컴포넌트 값 = viewer <b>:root 사본</b>(자기완결 CSP → 값 복사 = 계승 · 값 정본은 언제나 viewer). 현행 기준 = 오늘 머지분(주문 2줄 textarea·300자·복원) 포함.</li>
+        <li>실물 팝업 DOM은 그룹 래퍼 없는 평평한 행 구조 — 시안은 순서 조작용 래퍼 + flex order(시각 결과 동일). 채택 시 구현 = 실제 DOM 순서 이동.</li>
+        <li>폰 뒤로가기(popstate)·키보드 클램프(geniVV)·실발사(api/genimg)·::backdrop 실블러는 미재현(배경 사전 blur 근사). 생성 버튼은 게이지 연출만 재생.</li>
+        <li>배경 「최근 생성」 그리드는 목업(실데이터 아님) · 자유 모드 재현이라 제목 채우기·실사진 재검색 버튼은 실물처럼 숨김.</li>
+        <li>요약줄은 라이브에 없는 <b>신규 요소 후보</b> — 채택 시 §디자인 j 배치 승인 축(이 시안이 승인 창구). :root 토큰 신설 없음 = 기틀 무접촉.</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ── 사전(정본 GENI_DICT·GENI_SUB 사본 — viewer/index.html) ── */
+const DICT = {
+  style:[['photo','실사'],['webtoon','극화'],['cartoon','만평'],['watercolor','수채'],['cinematic','시네마틱'],['illust','일러스트'],['iso3d','3D'],['pictogram','픽토']],
+  aspect:[['4:5','4:5'],['1:1','1:1'],['3:4','3:4'],['9:16','9:16'],['16:9','16:9']],
+  size:[['1K','1K'],['2K','2K'],['4K','4K']],
+  count:[['1','1장'],['2','2장'],['3','3장'],['4','4장']],
+  mood:[['auto','자동'],['tense','긴장'],['somber','침통'],['hope','희망'],['calm','차분'],['anger','분노'],['eerie','스산'],['warm','온기']],
+  shot:[['auto','자동'],['S10','표정 클로즈'],['S08','클로즈업'],['S06','상반신'],['S04','전신'],['S03','와이드']],
+  expr:[['auto','자동'],['EM-03','슬픔'],['EM-05','분노'],['EM-16','눈물'],['EM-17','결연'],['EM-09','억눌림'],['EM-12','직시']],
+  angle:[['auto','자동'],['AG-01','눈높이'],['AG-02','로우 위압'],['AG-03','하이 왜소'],['AG-04','부감'],['AG-06','더치'],['AG-09','측면']],
+  point:[['auto','자동'],['DF-01','눈물 클로즈'],['DF-02','주먹'],['DF-04','서류·물건'],['DF-05','대치 투샷'],['DF-07','군중 속 1인']],
+  light:[['auto','자동'],['LGT05','촛불'],['LGT06','골든아워'],['LGT08','흐린 확산'],['LGT09','하드 측광'],['LGT10','역광 실루엣'],['LGT12','형광 임상']],
+  place:[['auto','자동'],['top23','썸네일'],['center','중앙'],['full','전신']],
+};
+const SUB = {
+  photo:[['auto','기본'],['film','필름'],['bw','흑백'],['cinedoc','시네다큐'],['newsreel','뉴스릴']],
+  webtoon:[['auto','기본'],['gekiga','게키카'],['hardboiled','하드보일드'],['jidai','시대극'],['sunjung','순정'],['chibi','명랑']],
+  cartoon:[['auto','기본'],['brush','붓선'],['flat','플랫'],['woodcut','판화']],
+  watercolor:[['auto','기본'],['bleed','번짐'],['fine','세밀'],['sumuk','수묵'],['gouache','과슈'],['oil','유화']],
+  cinematic:[['auto','기본'],['noir','누아르'],['neon','네온'],['film35','35mm'],['expressionism','표현주의']],
+  illust:[['auto','기본'],['riso','리소'],['paper','페이퍼'],['anime','애니'],['retro80','레트로80']],
+  iso3d:[['auto','기본'],['clay','클레이'],['lowpoly','로우폴리'],['diorama','디오라마']],
+  pictogram:[['auto','기본'],['line','라인'],['blueprint','청사진']],
+};
+const CAMK = ['shot','expr','angle','point','light','place'];
+const XSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
+const CHEV = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+
+/* ── ③ 튜닝 축 — 기본값 = 현행 실측(오늘 머지분) ── */
+const DEFAULTS = { pos:0, rows:2, sum:0 };
+const POS_KO = ['최하단(현행)','프리셋 아래','최상단'];
+const SUM_KO = ['없음(현행)','문장형','미니 칩'];
+const PRESETS = [
+  { nm:'현행',            st:{...DEFAULTS} },
+  { nm:'장면 최상단',      st:{...DEFAULTS, pos:2} },
+  { nm:'장면 우선+요약',   star:1, st:{...DEFAULTS, pos:1, sum:1} },
+  { nm:'리드백만 추가',    st:{...DEFAULTS, sum:1} },
+];
+const SLIDERS = [
+  { k:'pos',  nm:'장면 위치', grp:'배치 — 내용(문구·주문) 그룹', min:0, max:2, step:1, f:v=>POS_KO[v] },
+  { k:'rows', nm:'주문 줄수', grp:'입력', min:1, max:3, step:1, f:v=>v+'줄' },
+  { k:'sum',  nm:'요약줄',   grp:'요약 리드백 (신규 요소 후보)', min:0, max:2, step:1, f:v=>SUM_KO[v] },
+];
+let state = {...DEFAULTS};
+
+/* ── 팝업 재현 렌더러(시안·현행 공용) ── */
+function chips(k, sel){ return DICT[k].map(([v,ko])=>'<button type="button" class="geni-opt'+(sel===v?' on':'')+'" data-k="'+k+'" data-v="'+v+'">'+ko+'</button>').join(''); }
+function subChips(style, sel){ return (SUB[style]||[['auto','기본']]).map(([v,ko])=>'<button type="button" class="geni-opt'+(sel===v?' on':'')+'" data-k="sub" data-v="'+v+'">'+ko+'</button>').join(''); }
+function renderPop(el){
+  el.insertAdjacentHTML('beforeend',
+  '<div class="dlg-h"><div class="dlg-top"><b class="pub-title">이미지 생성</b></div><button class="tool-x" type="button" aria-label="닫기">'+XSVG+'</button></div>'+
+  '<div class="geni-body">'+
+    '<div class="ggrp g-preset"><div class="geni-row"><span class="pub-l">프리셋</span><span class="geni-opts">'+['기본','스토리','와이드','극화','썸네일'].map(n=>'<button type="button" class="geni-opt" data-k="pre">'+n+'</button>').join('')+'</span></div></div>'+
+    '<div class="ggrp g-style">'+
+      '<div class="geni-sechead"><span class="cref-lbl">스타일</span></div>'+
+      '<div class="geni-row"><span class="pub-l">화풍</span><span class="geni-opts" data-box="style"></span></div>'+
+      '<div class="geni-row"><span class="pub-l">세부 화풍</span><span class="geni-opts" data-box="sub"></span></div>'+
+      '<div class="geni-row"><span class="pub-l">웹툰화</span><span class="geni-opts"><button type="button" class="geni-opt" data-k="kweb">한국웹툰식</button></span></div>'+
+      '<div class="geni-row"><span class="pub-l">무드</span><span class="geni-opts" data-box="mood"></span></div>'+
+    '</div>'+
+    '<div class="ggrp g-out">'+
+      '<div class="geni-sechead"><span class="cref-lbl">출력</span></div>'+
+      '<div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-box="aspect"></span></div>'+
+      '<div class="geni-row"><span class="pub-l">해상도</span><span class="geni-opts" data-box="size"></span></div>'+
+      '<div class="geni-row"><span class="pub-l">장수</span><span class="geni-opts" data-box="count"></span></div>'+
+    '</div>'+
+    '<div class="ggrp g-cam">'+
+      '<button class="geni-sechead geni-fold" type="button" aria-expanded="false"><span class="cref-lbl">카메라 · 구도</span><span class="geni-n" hidden></span><span class="geni-chev" aria-hidden="true">'+CHEV+'</span></button>'+
+      '<div class="geni-camsub" inert><div class="geni-camsub-in">'+
+        ['shot','거리','expr','표정','angle','앵글','point','포인트','light','조명','place','배치'].reduce((h,x,i,a)=>i%2?h:h+'<div class="geni-row"><span class="pub-l">'+a[i+1]+'</span><span class="geni-opts" data-box="'+x+'"></span></div>','')+
+      '</div></div>'+
+    '</div>'+
+    '<div class="ggrp g-content">'+
+      '<div class="geni-sechead"><span class="cref-lbl">내용</span></div>'+
+      '<div class="geni-row"><span class="pub-l">문구</span><input class="geni-in" data-in="text" type="text" maxlength="24" placeholder="선택 · 이미지 속 문구" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>'+
+      '<div class="geni-row"><span class="pub-l">주문</span><textarea class="geni-in" data-in="wish" rows="2" maxlength="300" placeholder="필수 · 그릴 장면·상황을 설명" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea></div>'+
+    '</div>'+
+  '</div>'+
+  '<div class="geni-foot"><div class="geni-sum"></div><button class="asksend pub-go geni-go" type="button" disabled><span>생성</span></button></div>');
+}
+/* 팝업별 선택 상태(칩 = 느낌 확인용 · 요약줄 소스) */
+function mkSel(){ return { style:'photo', sub:'auto', aspect:'4:5', size:'1K', count:'1', mood:'auto', kweb:false, shot:'auto', expr:'auto', angle:'auto', point:'auto', light:'auto', place:'auto' }; }
+function paint(el, sel){
+  el.querySelectorAll('[data-box]').forEach(b=>{ const k=b.dataset.box; b.innerHTML = k==='sub' ? subChips(sel.style, sel.sub) : chips(k, sel[k]); });
+  const kw = el.querySelector('[data-k="kweb"]'); if (kw) kw.classList.toggle('on', !!sel.kweb);
+  const n = CAMK.filter(k=>sel[k]!=='auto').length;
+  const nb = el.querySelector('.geni-n'); if (nb){ nb.textContent = n; nb.hidden = !n; }
+  const ko = (k,v)=>{ const d = k==='sub' ? (SUB[sel.style]||[]) : DICT[k]; const hit = d.find(x=>x[0]===v); return hit?hit[1]:v; };
+  const parts = ['<b>'+ko('style',sel.style)+(sel.sub!=='auto'?' · '+ko('sub',sel.sub):'')+(sel.kweb?' · 한국웹툰식':'')+'</b>',
+                 '<b>'+sel.aspect+' · '+sel.size+' · '+ko('count',sel.count)+'</b>',
+                 '<b>무드 '+ko('mood',sel.mood)+'</b>'];
+  if (n) parts.push('<b>카메라 '+n+'</b>');
+  el.querySelector('.geni-sum').innerHTML = parts.join(' <span style="opacity:.5">/</span> ');
+}
+function wire(el, sel){
+  el.addEventListener('click', e=>{
+    const b = e.target.closest('.geni-opt'); if (!b) return;
+    const k = b.dataset.k || (b.closest('[data-box]')||{}).dataset?.box;
+    if (b.dataset.k==='kweb'){ sel.kweb=!sel.kweb; paint(el,sel); return; }
+    if (b.dataset.k==='pre') return;   // 프리셋 칩 = 재현 전용(발사 로직 없음)
+    const box = b.closest('[data-box]'); if (!box) return;
+    sel[box.dataset.box] = b.dataset.v;
+    if (box.dataset.box==='style'){ if (!(SUB[sel.style]||[]).some(([v])=>v===sel.sub)) sel.sub='auto'; }
+    paint(el, sel);
+  });
+  const fold = el.querySelector('.geni-fold'), sub = el.querySelector('.geni-camsub');
+  fold.addEventListener('click', ()=>{ const open = fold.getAttribute('aria-expanded')!=='true';
+    fold.setAttribute('aria-expanded', open?'true':'false');
+    if (open) sub.removeAttribute('inert'); else sub.setAttribute('inert',''); });
+  const wish = el.querySelector('[data-in="wish"]'), txt = el.querySelector('[data-in="text"]'), go = el.querySelector('.geni-go');
+  const gate = ()=>{ go.disabled = !wish.value.trim() && !txt.value.trim(); };
+  wish.addEventListener('input', gate); txt.addEventListener('input', gate);
+  go.addEventListener('click', ()=>{ go.classList.add('firing'); setTimeout(()=>go.classList.remove('firing'), 900); });   // 게이지 연출만(실발사 없음)
+}
+
+/* ── 조립 ── */
+const appPop = document.getElementById('appPop'), basePop = document.getElementById('basePop');
+renderPop(appPop); renderPop(basePop);
+const selA = mkSel(); paint(appPop, selA); wire(appPop, selA);
+const selB = mkSel(); paint(basePop, selB);   // 현행 고정 = 기본 선택 그대로(비조작)
+basePop.querySelector('[data-in="wish"]').value = '';
+
+/* ── 상태 → 화면·출력 단일 반영점 ── */
+const $id = s=>document.getElementById(s);
+function apply(){
+  appPop.dataset.pos = state.pos; appPop.dataset.sum = state.sum;
+  appPop.querySelector('[data-in="wish"]').rows = state.rows;
+  SLIDERS.forEach(s=>{ const el = $id('sl-'+s.k); el.value = state[s.k];
+    el.style.setProperty('--p', ((state[s.k]-s.min)/(s.max-s.min))*100);
+    $id('vl-'+s.k).textContent = s.f(state[s.k]); });
+  const hit = PRESETS.findIndex(p=>Object.keys(p.st).every(k=>p.st[k]===state[k]));
+  document.querySelectorAll('#presets .pill').forEach((b,i)=>b.classList.toggle('on', i===hit));
+  $id('customTag').classList.toggle('show', hit<0);
+  buildOut();
+}
+function buildOut(){
+  const eq = (k)=>state[k]===DEFAULTS[k];
+  $id('out').textContent =
+`[이미지 생성 팝업 UX — 선택값]
+장면(내용) 위치 : ${POS_KO[state.pos]}   [현행 최하단]${eq('pos')?' = 계승(현행 유지)':' → 구조 변경(행 순서 이동 · :root 무변 = 기틀 아님)'}
+주문 줄수       : ${state.rows}줄   [현행 2줄]${eq('rows')?' = 계승':' → textarea rows 갱신(토큰 무접촉)'}
+요약줄(리드백)  : ${SUM_KO[state.sum]}   [현행 없음]${eq('sum')?' = 계승(현행 유지)':' → 신규 요소 = §디자인 j 배치 승인 축(푸터 위)'}`;
+}
+
+/* 프리셋 */
+$id('presets').innerHTML = PRESETS.map((p,i)=>'<button class="pill" data-i="'+i+'" type="button">'+p.nm+(p.star?' <span class="st">★</span>':'')+'</button>').join('');
+$id('presets').addEventListener('click', e=>{ const b=e.target.closest('.pill'); if(!b) return; state = {...PRESETS[+b.dataset.i].st}; apply(); });
+/* 슬라이더 */
+let lastGrp='';
+$id('sliders').innerHTML = SLIDERS.map(s=>{
+  const g = s.grp!==lastGrp ? '<div class="g">'+s.grp+'</div>' : ''; lastGrp = s.grp;
+  return g+'<div class="slrow"><label for="sl-'+s.k+'">'+s.nm+'</label><input type="range" id="sl-'+s.k+'" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'"><span class="v" id="vl-'+s.k+'"></span></div>';
+}).join('');
+SLIDERS.forEach(s=>$id('sl-'+s.k).addEventListener('input', e=>{ state[s.k]=+e.target.value; apply(); }));
+/* 보기 토글 */
+$id('viewtg').addEventListener('click', e=>{ const b=e.target.closest('.pill'); if(!b) return;
+  document.querySelectorAll('#viewtg .pill').forEach(x=>x.classList.toggle('on', x===b));
+  $id('frame').dataset.view = b.dataset.v; });
+/* 복사(클립보드 → 실패 시 Range 폴백) */
+$id('copy').addEventListener('click', async ()=>{
+  const t = $id('out').textContent, btn = $id('copy');
+  const ok = ()=>{ btn.classList.add('ok'); btn.textContent='복사됨 ✓'; setTimeout(()=>{ btn.classList.remove('ok'); btn.textContent='선택값 복사'; }, 1400); };
+  try { await navigator.clipboard.writeText(t); ok(); }
+  catch { try { const r=document.createRange(); r.selectNodeContents($id('out')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy'); s.removeAllRanges(); ok(); } catch {} }
+});
+apply();
+</script>
