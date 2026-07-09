@@ -144,9 +144,6 @@
   .dot { width:11px; height:11px; border-radius:50%; background:var(--pc); flex:none; box-shadow:0 0 8px color-mix(in srgb,var(--pc) 60%,transparent); }
   .nin { flex:1; min-width:0; background:#0e0f11; border:1px solid var(--line); color:var(--fg); font-size:14px; font-weight:var(--fw-b); font-family:inherit; padding:8px 10px; border-radius:var(--r-s); outline:none; transition:border-color .18s; }
   .nin::placeholder { color:var(--mut); font-weight:500; } .nin:focus { border-color:var(--pc); }
-  .cardcap { margin-top:8px; font-size:var(--fs-xs); color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* AI 카드 캡션(묘사 한 줄) — 운영자 260710 승인 배치(크롭 아래 회색 한 줄) · 없으면 미표시 · 단일줄이라 line-height 미지정(평의회6) */
-  .cardcap + .nrow { margin-top:8px; }   /* 핀셋 = 캡션↔이름칸 간격(캡션 없을 땐 avatar mb10 그대로) */
-  .mghint { position:absolute; top:7px; left:7px; max-width:calc(100% - 14px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; font-weight:var(--fw-b); color:var(--fg); background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.1); padding:2px 7px; border-radius:var(--r-pill); }   /* 동일인 병합 힌트 = .hint/.rng 무채색 글래스 패밀리 계승(§디자인 i) · 인물 카드 전용(키잉 subj-lb와 슬롯 비충돌) · 폭 방어 = cardcap 대칭(평의회5) */
   .nofaces { grid-column:1/-1; text-align:center; color:var(--mut); font-size:13px; padding:26px 0; }   /* 행위 피드백 1줄(결과 없음) — §디자인 e-가 예외 */
   .mut2 { color:var(--mut); font-weight:var(--fw-b); font-size:12px; }
 
@@ -442,8 +439,7 @@ function buildKeyCards(){   // 키잉 = 피사체(전신·사물) 카드 다중�
     const img=s.crop?('track_out/'+TK.id+'/'+s.crop+'?v='+encodeURIComponent((TK.meta&&TK.meta.made)||'')):'';
     c.innerHTML='<div class="avatar">'+(img?('<img alt="피사체 '+sid+'" loading="lazy" src="'+esc(img)+'">'):'')
       +'<span class="selchk">'+CHECK_SVG+'</span><span class="subj-lb">'+esc(s.label||'피사체')+'</span>'
-      +'<span class="rng">'+fmtT(s.first)+'–'+fmtT(s.last)+'</span><span class="hint">#'+sid+'</span></div>'
-      +(s.cap?('<div class="cardcap">'+esc(s.cap)+'</div>'):'');
+      +'<span class="rng">'+fmtT(s.first)+'–'+fmtT(s.last)+'</span><span class="hint">#'+sid+'</span></div>';
     g.appendChild(c);
     const im=c.querySelector('.avatar img');
     if(im){ let tries=0; im.addEventListener('error',function h(){ tries++; if(tries===1){ setTimeout(()=>{ im.src=img+'&r='+Date.now(); },4000); } else { im.removeEventListener('error',h); im.remove(); } }); }
@@ -476,18 +472,14 @@ function buildCards(){
   $('#pcount').textContent=TK.people.length+'명';
   $('#dropnote').textContent=(TK.meta&&TK.meta.dropped)?('+'+TK.meta.dropped+' 생략'):'';
   if(!TK.people.length){ g.innerHTML='<div class="nofaces">감지된 얼굴 없음</div>'; }
-  const same=(TK.meta&&Array.isArray(TK.meta.same_hint))?TK.meta.same_hint.filter(pr=>Array.isArray(pr)&&pr.length===2&&(pr[0]|0)!==(pr[1]|0)):[];   // AI 병합 힌트(확실 쌍만 · 자기쌍 컷 · 없으면 미표시 · 평의회5)
   TK.people.forEach(p=>{
     const pid=p.pid|0;   // 서버 정수 계약 + 방어 강제(평의회5)
     const color=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length];
     const c=document.createElement('div'); c.className='card'; c.style.setProperty('--pc',color); c.dataset.pid=pid;
     const img=p.crop?('track_out/'+TK.id+'/'+p.crop+'?v='+encodeURIComponent((TK.meta&&TK.meta.made)||'')):'';
-    const mate=same.find(pr=>(pr[0]|0)===pid||(pr[1]|0)===pid);
-    const mg=mate?('<span class="mghint">#'+esc(String((mate[0]|0)===pid?(mate[1]|0):(mate[0]|0)))+' 같을 수도</span>'):'';
     c.innerHTML='<div class="avatar">'+(img?('<img alt="인물 '+pid+'" loading="lazy" src="'+esc(img)+'">'):'')
-      +'<span class="selchk">'+CHECK_SVG+'</span>'+mg
+      +'<span class="selchk">'+CHECK_SVG+'</span>'
       +'<span class="rng">'+fmtT(p.first)+'–'+fmtT(p.last)+'</span><span class="hint">#'+pid+'</span></div>'
-      +(p.cap?('<div class="cardcap">'+esc(p.cap)+'</div>'):'')
       +'<div class="nrow"><span class="dot"></span><input class="nin" placeholder="이름 입력" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="'+esc(TK.names[pid]||'')+'"></div>';
     g.appendChild(c);
     const im=c.querySelector('.avatar img');
