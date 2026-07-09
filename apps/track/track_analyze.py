@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 인물 트래킹 분석 — 얼굴 검출(YuNet) + IoU 트랙 + 정체성 군집(SFace) → viewer/track_out/<id>/tracks.json + crops/
-#   사용: track_analyze.py <id> <video_path>   (track-make.yml analyze 스텝 전용 · LLM 0콜 = 순수 CV)
+#   사용: track_analyze.py <id> <video_path>   (track-make.yml analyze 스텝 전용 · 이 스크립트 = 순수 CV — 캡션 LLM은 별도 스텝 track_caption.sh)
 # 설계 불변(정본 = apps/track/00_지침):
 #   - 검출 기반 트래킹 = 드리프트 0 — 매 검출이 위치를 재접지(프리미어 포인트 트래커의 누적 어긋남 대체가 이 앱의 존재 이유).
 #   - 과분할 > 과병합: 동일인 카드 2장 = 무해(둘 다 선택하면 끝) / 남남 병합 = 엉뚱한 얼굴 모자이크 = 치명 → SIM_MERGE 보수.
