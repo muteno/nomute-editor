@@ -39,23 +39,8 @@ export async function onRequestPost({ request, env }) {
   }
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
-    // 편집분 번인(운영자 260710) — 뷰어 상세 편집기 조각(body.segs · 편집 있을 때만 옴)을 검증해 dispatch `subs`(reburn 시 미사용 슬롯 재활용)에 JSON으로 실음 → 러너 '편집 자막 반영' 스텝이 subs.json 대체. 빈값 = 종전(원본 의역 재사용).
-    let esubs = '';
-    if (Array.isArray(body.segs) && body.segs.length) {
-      const out = [];
-      for (const s of body.segs.slice(0, 400)) {   // 조각 상한 400(릴스/쇼츠 규모 초과분 컷)
-        const ss = Number(s && s.s), ee = Number(s && s.e);
-        const ko = String((s && s.ko) || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 200);   // 제어문자 평탄화 = 마커/ASS 경로 방어심층(실 이스케이프는 ly_burn sanitize)
-        if (!Number.isFinite(ss) || !Number.isFinite(ee) || ss < 0 || ee <= ss || !ko) continue;
-        out.push({ s: Math.round(ss * 100) / 100, e: Math.round(ee * 100) / 100, ko });
-      }
-      if (out.length) {
-        esubs = JSON.stringify({ v: 1, segs: out });
-        if (esubs.length > 30000) return json({ error: '편집 자막이 너무 커(30KB 초과) — 조각을 줄여줘' }, 400);   // dispatch 페이로드 보호(전체 상한 ~64KB)
-      }
-    }
     const rr = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-      ref: REF, inputs: { id: reburn, reburn: '1', opts, early_segs: '0', subs: esubs },
+      ref: REF, inputs: { id: reburn, reburn: '1', opts, early_segs: '0' },
     });
     if (rr.status === 204) return json({ ok: true, id: reburn, reburn: true, out: `ly_out/${reburn}/subs.md` });
     return json({ error: `재합성 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);

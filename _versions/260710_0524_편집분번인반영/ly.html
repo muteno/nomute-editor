@@ -382,7 +382,7 @@
   <div class="lyburn" id="lyBurn" hidden>
     <label class="fl">완성 영상</label>
     <video id="lyBurnVid" controls playsinline preload="metadata" hidden></video>
-    <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (편집한 자막 있으면 그대로 · 없으면 원본 의역 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="lybtn dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div>
+    <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (의역 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="lybtn dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div>
   </div>
   <!-- 결과 탭(자막 있을 때만) — 상세 = 조각 편집기 · 개요 = 기존 의역 산출(subs.md 그대로) -->
   <div class="lytabs" id="lyTabs" role="tablist" aria-label="자막 결과 보기"><button class="lytab" id="lyTabDet" type="button" role="tab" aria-selected="false" aria-controls="lydet">상세<span class="lytab-n" id="lyTabN" hidden></span></button><button class="lytab on" id="lyTabOv" type="button" role="tab" aria-selected="true" aria-controls="out">개요</button></div><!-- 기본 = 개요(다듬은 자막이 첫인상 · 평의회8 P0) · 상세 = 한 탭 -->
@@ -1382,22 +1382,15 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
   };
   tick();
 }
-(function () {   // 다시 입히기 = 번인만 재실행(LLM 0콜·1분급) — 편집분 번인(운영자 260710): 상세 편집기 수정이 있으면 그 조각을 실어 subs.json 대체, 무편집 = 종전(원본 의역 재사용 = 회귀 0)
+(function () {   // 다시 입히기 = 의역(subs.json) 재사용해 번인만 재실행 — LLM 0콜·1분급(설정 바꿔가며 반복 가능 · 상용 '스타일 즉시 변경' 격차 해소)
   const rb = $('#lyReburn'); if (!rb) return;
-  const lyEffSegs = ss => (ss || []).filter(sg => !sg.del && sg.s != null && sg.e != null && lySegText(sg))
-    .map(sg => ({ s: sg.s, e: sg.e, ko: lySegText(sg) }));   // 번인 계약 = subs.json 조각 스키마(원본 시간축 — 컷 리맵은 번인 내부)
   rb.addEventListener('click', async () => {
     if (!LY_ID) return;
     const prevUrl = ($('#lyBurnDl').dataset.url || '');   // 옛 결과 url — 폴이 이걸 완료로 오인 안 하게(평의회 불가 수정)
     const st = $('#status'); st.classList.remove('err');
-    let segs = null;   // 편집이 *실제로* 있을 때만 동봉 — 원형(lyModel 재생성)과 유효 조각 비교(무편집 전송 = 전사가 의역을 덮는 회귀라 금지 · 재평의회 승인 설계)
-    if (LY_SEGS && LY_ORIG && LY_ORIG.segs && LY_ORIG.segs.length) {
-      const cur = lyEffSegs(LY_SEGS);
-      if (cur.length && JSON.stringify(cur) !== JSON.stringify(lyEffSegs(lyModel(LY_ORIG.segs)))) segs = cur;
-    }
     rb.hidden = true; lyBurnWait();
     try {
-      const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reburn: LY_ID, opts: { ...LY_OPTS, burn: true }, ...(segs ? { segs } : {}) }) });
+      const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reburn: LY_ID, opts: { ...LY_OPTS, burn: true } }) });
       const j = await res.json();
       if (!res.ok || j.error) { st.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); st.classList.add('err'); lyVidCheck(LY_OUT); return; }
       lyPollVideo(LY_OUT, Date.now(), prevUrl);

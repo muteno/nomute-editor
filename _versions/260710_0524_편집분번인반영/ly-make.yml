@@ -10,7 +10,7 @@ on:
         description: '출력 id(타임스탬프)'
         type: string
       subs:
-        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때) · reburn=1이면 = 편집 자막 JSON(뷰어 편집분 · subs.json 대체 · 빈값 = 원본 의역 재사용 — 운영자 260710)'
+        description: 'SRT 또는 STT/자막 텍스트(URL 없을 때)'
         type: string
       url:
         description: '영상 URL(yt-dlp+Whisper STT) — 있으면 subs 무시'
@@ -107,38 +107,6 @@ jobs:
           curl -fsSL --max-time 300 "$SRC" -o "/tmp/upsrc.$EXT" || { echo "원본 다운로드 실패 — 새로 생성해줘." > /tmp/ly_err.txt; echo "::error::src 다운 실패"; exit 1; }
           echo "LY_VIDEO=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
           echo "REBURN=1" >> "$GITHUB_ENV"
-
-      # 편집분 번인(운영자 260710) — 뷰어 상세 편집기 수정(단어 빼기·조각 삭제·타이밍·텍스트)을 반영해 다시 입히기.
-      #   reburn=1 + subs(편집 조각 JSON) 수신 시 viewer/ly_out/<id>/subs.json 대체 → 번인·이후 reburn·최종 커밋의 정본이 편집본.
-      #   fail-soft: 파싱·검증 실패 = 원본 의역 그대로 진행(::warning:: 카나리아 · lymake 파서와 동일 정신). 개요(subs.md)는 불변(표시 이력).
-      - name: 편집 자막 반영 (reburn)
-        if: ${{ inputs.reburn == '1' && inputs.subs != '' }}
-        env:
-          IN_ID: ${{ inputs.id }}
-          SUBS: ${{ inputs.subs }}
-        run: |
-          [ -n "$IN_ID" ] || exit 0
-          python3 - "$IN_ID" <<'PY' || echo "::warning::편집 자막 반영 실패 — 원본 의역으로 진행"
-          import json, os, sys
-          vid = sys.argv[1]
-          j = json.loads(os.environ.get("SUBS") or "")
-          segs = []
-          for s in (j.get("segs") or [])[:400]:
-              try:
-                  ss, ee = float(s["s"]), float(s["e"])
-              except Exception:
-                  continue
-              ko = str(s.get("ko") or "").strip()[:200]
-              if ss < 0 or ee <= ss or not ko:
-                  continue
-              segs.append({"s": round(ss, 2), "e": round(ee, 2), "ko": ko})
-          assert segs, "유효 조각 0"
-          p = os.path.join("viewer", "ly_out", vid, "subs.json")
-          os.makedirs(os.path.dirname(p), exist_ok=True)
-          with open(p, "w", encoding="utf-8") as f:
-              json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
-          print("편집 자막 반영: {}조각".format(len(segs)))
-          PY
 
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
