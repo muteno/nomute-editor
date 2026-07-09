@@ -46,15 +46,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: `재합성 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);
   }
   if (!subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
-  if (url) {
-    // 러너發 SSRF 가드(pick.js altOk 관례 이식 · 평의회7 260709) — 이 url은 러너의 yt-dlp가 그대로 fetch하므로
-    //   IP리터럴·localhost·IPv6·클라우드 메타데이터 호스트 거부(정상 영상 URL은 항상 도메인형). http(s) 스킴 검사 승계.
-    let uh = '';
-    try { const x = new URL(url); if (x.protocol !== 'http:' && x.protocol !== 'https:') return json({ error: 'URL은 http(s)로 시작해야 해' }, 400); uh = x.hostname.toLowerCase(); } catch { return json({ error: '잘못된 URL' }, 400); }
-    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(uh) || uh === 'localhost' || uh.endsWith('.local') || uh.startsWith('[')
-      || uh === 'metadata.google.internal' || uh.endsWith('.internal') || uh === 'instance-data'
-      || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(uh)) return json({ error: '지원하지 않는 URL 호스트' }, 400);
-  }
+  if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
 

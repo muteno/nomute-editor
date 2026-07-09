@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write            # 260707: read→write — 고아 up-* 업로드 브랜치 삭제 + ly 좀비 error.log 백필 커밋(260709 평의회6 · main push는 백필 한정)
+  contents: write            # 260707: read→write — 고아 up-* 업로드 브랜치 삭제(아래 스윕 스텝) 한정. main push 없음(브랜치 삭제만).
   actions: write             # news-analyze 디스패치 위해 신설(이 워크플로 한정)
 
 concurrency:
@@ -87,41 +87,3 @@ jobs:
             fi
           done
           echo "up-* 스윕 완료"
-
-      # ly 좀비 '진행중' 스윕(260709 평의회6) — early-segments 커밋 후 러너 하드킬/유실이면 ly_out에 segments.json만 남고
-      #   완결물(subs.md·video.json·error.log)이 없어 뷰어 index가 영구 '진행중' 표기. 6시간+ 경과 미완결 디렉터리에
-      #   error.log를 백필해 실패로 표면화(디렉터리명 = KST 스탬프 YYMMDDHHMMSS-* → 나이 판정 · orphan pending 스텝과 동일 규약).
-      - name: ly 좀비 진행중 스윕 (error.log 백필)
-        if: always()
-        run: |
-          shopt -s nullglob
-          now=$(date +%s)
-          TODO=""; N=0
-          for d in viewer/ly_out/*/; do
-            id=$(basename "$d")
-            { [ -f "${d}subs.md" ] || [ -f "${d}video.json" ] || [ -f "${d}error.log" ]; } && continue
-            if [[ "$id" =~ ^([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})- ]]; then
-              ts=$(TZ='Asia/Seoul' date -d "20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}" +%s 2>/dev/null || echo 0)
-            else
-              ts=0
-            fi
-            [ "$ts" -gt 0 ] || continue
-            age=$(( now - ts ))
-            if [ "$age" -gt 21600 ]; then
-              echo "자막 생성이 중단됐어(러너 유실 추정) — 다시 시도해줘." > "${d}error.log"
-              TODO="$TODO ${d}error.log"; N=$((N+1))
-              echo "좀비 백필: $id ($((age/3600))h 경과)"
-            fi
-          done
-          [ -n "$TODO" ] || { echo "ly 좀비 없음"; exit 0; }
-          git config user.name "nomute-bot"
-          git config user.email "bot@nomute.local"
-          for i in 1 2 3; do   # 얕은 체크아웃이라 rebase 대신 최신 main 위 재커밋(경쟁 시 재시도)
-            git fetch origin main 2>/dev/null && git checkout -B main FETCH_HEAD 2>/dev/null || true
-            git add $TODO
-            git commit -m "ly: 좀비 진행중 ${N}건 error.log 백필(sweep)" >/dev/null || { echo "커밋할 것 없음"; exit 0; }
-            if git push origin HEAD:main; then echo "백필 push 완료(${N}건)"; exit 0; fi
-            git reset --mixed HEAD~1 >/dev/null 2>&1 || true
-            sleep $((i*3))
-          done
-          echo "::warning::ly 좀비 백필 push 실패(다음 sweep 재시도)"

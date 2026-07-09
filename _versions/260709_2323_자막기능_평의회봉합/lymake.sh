@@ -82,52 +82,26 @@ if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^LYMAKE_FAILED' <<<"$out" |
 fi
 
 printf '%s\n' "$out" | sed -n '/^#/,$p' > "${OUTDIR}/subs.md"
-# 꼬리 타이밍 JSON 블록 → subs.json 분리(번인·SRT용 기계 데이터 · 폼 표시 전 제거) — 없거나 깨져도 무해(번인이 segments.json 폴백)
-#   평의회 반영(260707): 매치되면 파싱 실패여도 블록은 표시본에서 제거(원시 JSON 노출 차단) · 본문 잔여 *별표* 클린(복붙 오염 2중 방어)
-#   3층 방어(CLAUDE.md §📰 LLM 형식 보증 · 평의회4 260709): LLM 출력의 펜스 변형은 확률적 = 관용 파싱 —
-#     ①펜스 관용(json 태그 생략·대문자·닫는 펜스 누락·펜스 뒤 산문 소량) ②펜스 없는 꼬리 raw JSON(raw_decode)
-#     ③미검출 = ::warning:: 카나리아(Actions 로그 조기발견 · segments.json 폴백 = 외국어 원문 번인 열화라 침묵 금지)
+# 꼬리 타이밍 JSON 블록 → subs.json 분리(번인·SRT용 기계 데이터 · 폼 표시 전 제거) — 없거나 깨져도 무해(번인이 segments.json 폴백 = 3층 방어 계승)
+#   평의회 반영(260707): 개행 유무 무관 매치 · 매치되면 파싱 실패여도 블록은 무조건 제거(원시 JSON 표시 노출 차단) · 본문 잔여 *별표* 클린(복붙 오염 2중 방어)
 OPTS="${OPTS:-}" python3 - "$OUTDIR" <<'PY' || echo "타이밍 JSON 분리 실패(무해 · segments.json 폴백)"
 import json, re, sys, os
 d = sys.argv[1]; p = os.path.join(d, "subs.md")
 md = open(p, encoding="utf-8").read()
-j, strip_at = None, -1
-# ① 펜스 블록(마지막 것부터) — ```json/```JSON/무태그·닫는 펜스 누락(\Z)·관용. '"segs"' 포함 블록만 = 본문 예시 오인 차단
-for m in reversed(list(re.finditer(r"```[ \t]*(?:json)?\s*(\{[\s\S]*?)(?:```|\Z)", md, re.I))):
-    body = m.group(1)
-    if '"segs"' not in body:
-        continue
-    strip_at = m.start()   # 파싱 실패여도 기계 블록 표시 노출은 차단
+m = re.search(r"```json\s*(\{[\s\S]*?\})\s*```\s*$", md)
+if m:
     try:
-        j = json.loads(body.strip())
-        break
-    except Exception:
-        pass
-# ② 펜스 없는 꼬리 raw JSON — 줄머리 '{' 후보를 뒤에서부터 raw_decode(뒤 산문 240자까지 관용)
-if j is None:
-    dec = json.JSONDecoder()
-    for m in reversed(list(re.finditer(r"^[ \t]*\{", md, re.M))):
-        try:
-            obj, end = dec.raw_decode(md, m.start())
-        except Exception:
-            continue
-        if isinstance(obj, dict) and obj.get("segs") and len(md[end:].strip()) <= 240:
-            j, strip_at = obj, m.start()
-            break
-if isinstance(j, dict):
-    segs = [s for s in (j.get("segs") or [])
-            if isinstance(s.get("s"), (int, float)) and isinstance(s.get("e"), (int, float))
-            and (s.get("ko") or s.get("src"))]
-    if segs:
-        with open(os.path.join(d, "subs.json"), "w", encoding="utf-8") as f:
-            json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
-        print("subs.json 분리: {}조각".format(len(segs)))
-elif strip_at >= 0:
-    print("타이밍 JSON 파싱 실패(무해·segments.json 폴백) — 블록은 표시본에서 제거")
-else:
-    print("::warning::타이밍 JSON 미검출 — 모델 형식 이탈 가능(segments.json 폴백·번인은 원문 타이밍)")   # ③ 카나리아
-if strip_at >= 0:
-    md = md[:strip_at].rstrip() + "\n"   # 파싱 성공 여부와 무관 — 기계 블록은 표시본에서 항상 제거
+        j = json.loads(m.group(1))
+        segs = [s for s in (j.get("segs") or [])
+                if isinstance(s.get("s"), (int, float)) and isinstance(s.get("e"), (int, float))
+                and (s.get("ko") or s.get("src"))]
+        if segs:
+            with open(os.path.join(d, "subs.json"), "w", encoding="utf-8") as f:
+                json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
+            print("subs.json 분리: {}조각".format(len(segs)))
+    except Exception as e:
+        print("타이밍 JSON 파싱 실패(무해·segments.json 폴백):", e)
+    md = md[:m.start()].rstrip() + "\n"   # 파싱 성공 여부와 무관 — 기계 블록은 표시본에서 항상 제거
     md = re.sub(r"\n#{2,3}[^\n]*타이밍[^\n]*\n$", "\n", md)   # 블록 직전 안내 소머리 잔재 정리(있을 때만)
 try:
     o = json.loads(os.environ.get("OPTS") or "{}")

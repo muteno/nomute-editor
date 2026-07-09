@@ -653,18 +653,7 @@ def run(vid_id, video, outdir):
                 ns, ne = remap(sg["s"]), remap(sg["e"])
                 if ne - ns < 0.05 and float(sg["e"]) - float(sg["s"]) >= 0.15:
                     continue   # 갭에 통째로 빠져 붕괴한 조각 드롭 = 컷 이음매 0.05s 자막 플래시 방지(평의회1) — 원래 짧던 조각은 보존
-                nsg = dict(sg, s=ns, e=ne)
-                if sg.get("w"):   # word 타임스탬프도 컷 시간축으로 동행 리맵(평의회3 260709) — 안 옮기면 카라오케/팝
-                    nw = []       #   어절 하이라이트가 원본 시각 기준으로 어긋남(컷 경계 걸친 세그 최대 1초+ 선행 재현)
-                    for wd in sg["w"]:
-                        try:
-                            ws, we = remap(float(wd["s"])), remap(float(wd["e"]))
-                        except Exception:
-                            continue
-                        if we - ws >= 0.02:   # 갭에 통째 붕괴한 어절 드롭(그 자리엔 발화 없음 = 안전)
-                            nw.append(dict(wd, s=round(ws, 3), e=round(we, 3)))
-                    nsg["w"] = nw   # 전부 붕괴 = 빈 리스트 → _sync_cs가 글자수 비례 폴백(회귀 0)
-                remapped.append(nsg)
+                remapped.append(dict(sg, s=ns, e=ne))
             segs = remapped or segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전
             if not remapped:
                 keeps = []
@@ -678,8 +667,6 @@ def run(vid_id, video, outdir):
                 dur = new_dur
         else:
             keeps = []
-    elif opts.get("cut"):
-        cut_note = "영상 길이 미상 — 무음 컷 건너뜀"   # dur=0(probe N/A) 침묵 스킵 표면화(평의회3·6 260709) — 조용한 무력화 금지
     # 다운스케일 캡(비용 보호·업스케일 없음) — 목표 치수를 먼저 확정해 PlayRes와 일치시킴(왜곡 0)
     tw, th = w, h
     if w > 1080:
