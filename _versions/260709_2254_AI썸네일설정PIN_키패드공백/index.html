@@ -322,7 +322,7 @@
   .lk-key.back.hit svg { stroke:var(--accent); }
   .lk-fx { position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; color:rgba(var(--accent-rgb),.9); font:700 23px/1 inherit; animation:lkTrail .5s ease-out forwards; }   /* 잔상 = 숫자 확대 페이드(운영자 260706 확정 · lkFlash가 주입) */
   @keyframes lkTrail { from { transform:scale(1); opacity:.9; } to { transform:scale(1.9); opacity:0; } }
-  .lk-key.empty { pointer-events:none; padding:0; }   /* padding:0 = 전역 .empty(피드 빈상태 padding:56px 0)와 클래스 충돌 차단 — 자리맞춤 칸이 112px로 부풀어 #pindlg·잠금화면 키패드 마지막 행 밑 공백 유발(운영자 260709 실측 · 다른 모달과 하단 여백 통일) */
+  .lk-key.empty { pointer-events:none; }
   .lk-key.back svg { width:26px; height:26px; stroke:var(--fg); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:stroke .15s ease; }
   /* (구 .lk-pad.b2 판B 틴트 4규칙 삭제 — 4번째 자리 키패드 전환 폐지 · 운영자 260706 3차 e · JS lkApply 단판 고정과 짝) */
   @media (prefers-reduced-motion:reduce){ .lk-slots.shake{animation-duration:.01s} .lk-key:active{transform:none} .lk-key.pop{animation:none} .lk-fx{animation:none;opacity:0} .lockscr.ent .lk-card{animation:none} .lockscr.ent .lk-wm{animation:none} .lockscr.out{animation:none;opacity:0} .lockscr .lk-slot.cur,.lockscr .lk-slot.on{animation:none} .lk-slotwrap.ok .lk-okring rect{animation:none} }   /* 전정계 배려 = 리디자인 모션 전부 무효(260706) · gdots 항목 = 잠금 점모션 제거(3차 d)로 회수 · okring 스윕 포함(QA6 260706) · lk-wm = OS 연속 인트로 슬라이드 무효(정중앙 정착 애니 = 워드마크 최종위치 즉시 · 260707) */
@@ -2764,7 +2764,7 @@ try {
     <div class="askbot">
       <div class="askimgs" id="askImgs"></div>
       <span class="askstatus" id="askStatus"></span>
-      <span class="genimg-tg" id="genImgTg" role="button" tabindex="0" aria-pressed="true" title="AI 썸네일 — 이번 요약만 켜기/끄기 (기본값 = 설정 · 검색 이미지는 항상 가져옴)">이미지</span>
+      <span class="genimg-tg" id="genImgTg" role="button" tabindex="0" aria-pressed="true" title="AI 썸네일 생성 켜기/끄기 (검색 이미지는 항상 가져옴)">이미지</span>
       <button class="asksend" id="askSend" type="button"><span>전송</span></button>
     </div>
   </div>
@@ -2911,7 +2911,6 @@ try {
   <div class="pmenu-sub" id="setSub" hidden>   <!-- 설정 = 2차 아코디언(알림·잠금) 그 자리 펼침 · 촤르륵 = max-height transition .26s(펼침/닫힘 양방) -->
     <div class="pushrow" id="pushrow" hidden><span class="pl">알림</span><button class="pushbtn" id="pushbtn" type="button">OFF</button></div>
     <div class="pushrow" id="lockrow"><button class="lk-open" id="lockBtn" type="button">잠금 설정</button><button class="pushbtn" id="lockOnBtn" type="button">OFF</button></div>
-    <div class="pushrow" id="genimgrow"><span class="pl">AI 썸네일</span><button class="pushbtn" id="genImgOnBtn" type="button">ON</button></div><!-- AI 썸네일 전역 디폴트(고유값·PIN 게이트 = 잠금 lkVerifyOldPin 계승) — 검색 이미지는 무관(항상 수집) · 요약창 '이미지' 토글 = 그 건 한정 오버라이드(운영자 260709) -->
   </div>
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
@@ -8295,7 +8294,6 @@ function openAsk(opts) {
   bpop.hidden = true; linkpop.hidden = true; $('#askStatus').textContent = '';
   _askResolveId = opts.resolveId || null;
   _askRetryOf = opts.retryOf || null;   // 재시도 재제출이면 옛 실패 id(전송 성공 시 submit 이 옛 asks/failed 삭제) · 일반 열기면 null
-  _genImgOvr = null; paintGenImgTg();   // AI 썸네일 = 창 열 때마다 설정 디폴트 계승(건별 오버라이드 리셋 · 운영자 260709) — 호출 시점엔 선언 완료(이벤트 경유)라 TDZ 무해
   if (opts.prefill != null) $('#askText').value = opts.prefill;   // 프리필 = askRetry 가 복원한 전문 전체(실패 재시도) 또는 제목·URL
   updateAskClip(); updateAskPh(); openComposeDlg(askdlg);   // 폰 뒤로가기 칸(입력 손실 방지·260627)
   setTimeout(() => { const ta = $('#askText'); ta.focus(); if (opts.prefill != null) { const i = ta.value.length; try { ta.setSelectionRange(i, i); } catch {} } }, 60);
@@ -8708,31 +8706,16 @@ $('#askFile').addEventListener('change', e => {
   addAskImages(files);
 });
 $('#askAttach').addEventListener('click', e => { if (askImages.length >= ASK_MAX) { e.preventDefault(); shakeAskAttach(); } });   // 3장인데 🖼 또 누르면 파일창 안 열고 빨강+흔들림(운영자 260702) · 교체(programmatic input.click)는 라벨 아니라 무영향
-// AI 썸네일 생성 = 2층 스위치(운영자 260709 재구성): ① 설정(프로필 메뉴 #genImgOnBtn) = 전역 디폴트·고유값(localStorage)·PIN 게이트(잠금 lkVerifyOldPin 계승 — PIN 미설정이면 통과)
-//   ② 요약창 '이미지' 토글(#genImgTg) = 그 건 한정 오버라이드(PIN 안 물음·설정값 안 건드림·창 열 때/전송 후 설정 디폴트로 리셋) · 검색 og:image는 어느 쪽이든 무관 = 항상 수집(구 260702 단층 토글 대체)
+// 이미지 생성 토글 = 제미나이 썸네일 2화풍 on/off(전역 기본값·이 브라우저 기억·기본 ON) · 검색 og:image는 토글 무관 항상(운영자 260702)
 const GENIMG_KEY = 'nomute_genimg';
-let _genImgOvr = null;   // null = 설정 디폴트 계승 · true/false = 이번 건 오버라이드(openAsk·전송 성공 시 리셋)
-function genImgOn() { try { return localStorage.getItem(GENIMG_KEY) !== '0'; } catch { return true; } }   // 설정(전역 디폴트) — 설정 행만 쓰고 요약창 토글은 안 씀
-function genImgEff() { return _genImgOvr === null ? genImgOn() : _genImgOvr; }   // 실효값(전송 nothumb 기준) = 건별 오버라이드 우선
-function paintGenImgTg() { const t = $('#genImgTg'); if (!t) return; const on = genImgEff(); t.classList.toggle('off', !on); t.setAttribute('aria-pressed', on ? 'true' : 'false'); }
-function paintGenImgRow() { const b = $('#genImgOnBtn'); if (!b) return; const on = genImgOn(); b.textContent = on ? 'ON' : 'OFF'; b.classList.toggle('on', on); }
+function genImgOn() { try { return localStorage.getItem(GENIMG_KEY) !== '0'; } catch { return true; } }
+function paintGenImgTg() { const t = $('#genImgTg'); if (!t) return; const on = genImgOn(); t.classList.toggle('off', !on); t.setAttribute('aria-pressed', on ? 'true' : 'false'); }
 if ($('#genImgTg')) {
-  const flip = () => { _genImgOvr = !genImgEff(); paintGenImgTg(); };   // 건별 오버라이드 = 무PIN·localStorage 무접촉(설정 고유값 보존 · 운영자 260709)
+  const flip = () => { try { localStorage.setItem(GENIMG_KEY, genImgOn() ? '0' : '1'); } catch {} paintGenImgTg(); };
   $('#genImgTg').addEventListener('click', flip);
   $('#genImgTg').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
   paintGenImgTg();
 }
-const _genImgOnBtn = $('#genImgOnBtn');
-_genImgOnBtn && _genImgOnBtn.addEventListener('click', async (e) => {   // 설정 토글 = PIN 인증 후 전역 디폴트 전환(lockOnBtn 패턴 계승)
-  e.stopPropagation();                          // 링크 메뉴 유지(문서클릭 닫힘 차단 · lockOnBtn 계승)
-  if ($('#pindlg').open) return;                // 재진입 가드(더블클릭 좀비 await · lockOnBtn 계승)
-  const ok = await lkVerifyOldPin();            // 잠금 PIN과 동일 인증(#pindlg·5회잠금·마스터 공유) — PIN 미설정 = 통과
-  if (!ok) return;
-  try { localStorage.setItem(GENIMG_KEY, genImgOn() ? '0' : '1'); } catch {}
-  _genImgOvr = null;                            // 설정 변경 = 최우선 → 걸려있던 건별 오버라이드 해제(새 디폴트 즉시 계승 · 운영자 260709)
-  paintGenImgRow(); paintGenImgTg();
-});
-paintGenImgRow();
 $('#askText').addEventListener('paste', e => { const imgs = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean); if (imgs.length) { e.preventDefault(); addAskImages(imgs); } });
 async function addAskImages(files) {
   for (const f of [...files]) {
@@ -8794,7 +8777,7 @@ $('#askSend').addEventListener('click', async () => {
   }
   const btn = $('#askSend'); btn.disabled = true; askHideCheck(btn); gaugeStart(btn);   // 게이지 = 응답까지 진행(grun=0→90% · 응답 시 gdone서 100% = '다 찬 후 멈춤' 제거 · 공용 헬퍼) · 상태텍스트 폐지(운영자 260622·260702)
   try {
-    const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl), nothumb: genImgEff() ? 0 : 1, retryOf: _askRetryOf || undefined }) });   // nothumb=1이면 제미나이 썸네일 생성 skip(실효값 = 설정 디폴트 ?? 건별 오버라이드 · 운영자 260709) · retryOf=재시도면 옛 실패 id(submit 이 옛 asks/failed 삭제)·운영자 260702·260704
+    const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, images: askImages.map(im => im.dataUrl), nothumb: genImgOn() ? 0 : 1, retryOf: _askRetryOf || undefined }) });   // nothumb=1이면 제미나이 썸네일 생성 skip · retryOf=재시도면 옛 실패 id(submit 이 옛 asks/failed 삭제)·운영자 260702·260704
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) { btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done', 'gdone');   // 성공 = done팝 + gdone(게이지 현재위치→100% 급속 마무리 = 멈춤 없이 응답 즉시 채움) · 입력 리셋은 닫은 뒤(아래)로 — 즉시 비우면 1.6s 빈화면(운영자 260622)
       setTimeout(() => askShowCheck(btn), 300);   // 게이지 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·시안2·운영자 260703)
@@ -8803,7 +8786,7 @@ $('#askSend').addEventListener('click', async () => {
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       _askRetryOf = null;   // 재시도 재제출 접수 완료 → 옛 실패 id 소비(submit 이 옛 asks/failed 삭제 처리)
       setTimeout(() => { askdlg.close(); gaugeClear(btn); askHideCheck(btn); btn.disabled = false;
-        $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs(); _genImgOvr = null; paintGenImgTg();   // 리셋 = 닫은 뒤(빈 초기화면 깜빡임 차단 · 운영자 260622) · AI 썸네일 건별 오버라이드도 소비(다음 건 = 설정 디폴트 · 운영자 260709)
+        $('#askText').value = ''; updateAskClip(); askImages = []; renderAskImgs();   // 리셋 = 닫은 뒤(빈 초기화면 깜빡임 차단 · 운영자 260622)
       }, 1600); return; }   // 성공 = 닫힐 때까지 disabled 유지(1.6s 내 중복전송 차단)
     else { $('#askStatus').innerHTML = ERR_SVG + ' ' + esc(d.error || `서버 ${r.status}`); btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
   } catch { $('#askStatus').innerHTML = ERR_SVG + ' 전송 실패 (백엔드 배선 전이면 예상된 동작)'; btn.classList.add('shake'); setTimeout(() => btn.classList.remove('shake'), 420); }
