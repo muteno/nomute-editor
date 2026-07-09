@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>합성기 → + 이미지 세부탭 편입 (260709)</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:20px 16px 48px; background:#0e1012; color:#eef7f0; font-family:'Pretendard','Noto Sans KR','Apple SD Gothic Neo',-apple-system,sans-serif; line-height:1.6; max-width:720px; margin-inline:auto; }
+  h1 { font-size:20px; margin:6px 0 2px; } h1 b { color:#00EED2; }
+  h2 { font-size:15px; margin:26px 0 8px; color:#00EED2; font-weight:800; }
+  p, li { font-size:14px; color:#c9d4cd; } .mut { color:#9fb0a6; font-size:12.5px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0; }
+  th, td { border:1px solid rgba(255,255,255,.12); padding:7px 9px; text-align:left; vertical-align:top; }
+  th { background:rgba(255,255,255,.05); color:#eef7f0; white-space:nowrap; }
+  code { background:rgba(255,255,255,.08); border-radius:5px; padding:1px 5px; font-size:12px; }
+  .ok { color:#00EED2; font-weight:700; } .warn { color:#FFE13D; font-weight:700; }
+  .card { background:rgba(24,25,28,.66); border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:14px 16px; margin:10px 0; }
+  .tabsim { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; background:rgba(20,22,24,.4); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:9px 13px; margin:8px 0; }
+  .tabsim span { text-align:center; font-size:13px; font-weight:600; color:#9fb0a6; word-break:keep-all; }
+  .tabsim .on { color:#00EED2; font-weight:800; text-shadow:0 0 11px rgba(0,238,210,.55); }
+</style>
+</head>
+<body>
+<h1><b>합성기</b> → + 이미지 세부탭 편입</h1>
+<p class="mut">260709 · viewer/index.html 단일 파일 · 백엔드(api/compose → comp-make.yml) 무접촉</p>
+
+<h2>• 뭐가 바뀌었나 (전/후)</h2>
+<div class="card">
+<p><b>전</b>: 카드뉴스 합성기(<code>viewer/comp.html</code>)는 화면·백엔드가 다 완성돼 있는데 <span class="warn">뷰어 어디에서도 링크가 없어</span> 진입 자체가 불가능했다(잠금보류 코드는 이미 comp를 전제하고 있었음 = 등재 누락 상태).</p>
+<p><b>후</b>: <b>+ &gt; 이미지</b> 세부탭 맨 끝에 <b>합성</b> 추가 — 탭 6개.</p>
+<div class="tabsim"><span>썸네일</span><span>저작권</span><span>카드뉴스</span><span>생성</span><span>리사이즈</span><span class="on">합성</span></div>
+</div>
+
+<h2>• 어떻게 붙였나 (핵심 설계)</h2>
+<table>
+<tr><th>지점</th><th>내용</th></tr>
+<tr><td>탭 등재</td><td><code>THUMB_TABS</code>에 <code>{src:'/comp.html', app:'comp', label:'합성'}</code> 1행 추가.</td></tr>
+<tr><td>프레임 분리</td><td>합성은 별도 문서라 thumb의 <code>selApp</code>(내부 전환) 불가 → 기존 다중 도구창 메커니즘(260628) 재사용: 전용 iframe 키 <code>'comp'</code>로 전환하고 <b>thumb 프레임은 display:none 보존</b>.</td></tr>
+<tr><td>폼 보존</td><td>썸네일↔합성 왕복 시 <b>리로드 0</b> — 양쪽 입력값·이미지 슬롯·진행중 폴링 전부 유지(헤드리스 실측).</td></tr>
+<tr><td>최소화/복원</td><td>합성 탭에서 ─ 최소화 → ▲ 복원 정상 · 라벨 <code>이미지 - 합성</code> · + 재진입 시 새 창 중복 생성 차단.</td></tr>
+<tr><td>닫기(X)</td><td>이미지 묶음 = thumb·comp 프레임 <b>쌍으로 회수</b>(고아 프레임 잔존 차단).</td></tr>
+<tr><td>탭바 한 줄</td><td>6탭이 되며 폰 폭(360px)서 라벨 2줄 꺾임 발생 → <code>word-break:keep-all</code> + <code>minmax(0,1fr)</code>로 한 줄 고정.</td></tr>
+</table>
+
+<h2>• 다른 것과 안 부딪히나 (리스크 점검)</h2>
+<table>
+<tr><th>축</th><th>판정</th></tr>
+<tr><td>자동잠금 보류</td><td><span class="ok">자동 편입</span> — <code>lkProdBusy</code>가 toolFrames 전체 순회라 합성 진행중(aria-busy)도 잠금 보류(코드 수정 0).</td></tr>
+<tr><td>영상(cap)·뉴스요약</td><td><span class="ok">무접촉</span> — 분기 전부 <code>curToolKey</code> 가드 안, cap/ask 경로 코드 무변경.</td></tr>
+<tr><td>기존 5탭 동작</td><td><span class="ok">무회귀</span> — selApp 경로 그대로, 헤드리스 왕복 실클릭 통과.</td></tr>
+<tr><td>백엔드</td><td><span class="ok">무접촉</span> — comp.html·api/compose·comp-make.yml·card_news.py 전부 그대로(이미 완비).</td></tr>
+<tr><td>기틀</td><td>:root·파이프라인·출력 골격 무변경 = 기틀 아님. 배치는 운영자 지시 그대로(이미지 세부탭 추가).</td></tr>
+</table>
+
+<h2>• 검증 (자가검증 · 국소 뷰어 손질 티어)</h2>
+<ul>
+<li>헤드리스 크로미움 360px 실클릭 5단계: 이미지 열기 → 합성 로드(h1 확인) → 썸네일 복귀(프레임 보존) → 합성서 최소화/복원 → X 닫기 프레임 쌍 회수 — <span class="ok">전부 통과 · JS 에러 0</span></li>
+<li><code>check_refs</code> 전체 게이트 <span class="ok">rc=0</span> (디자인·거울·JS구문·소머리·자동완성 전부 초록)</li>
+<li>백업: <code>_versions/260709_2250_합성기_이미지탭추가/</code></li>
+</ul>
+
+<h2>• 한계·각주</h2>
+<ul>
+<li class="mut">SW 셸 캐시 특성상 머지 후 <b>첫 진입 1회는 직전 화면</b>일 수 있음(두 번째 진입부터 반영 · 정상).</li>
+<li class="mut">합성 결과물 생성은 종전대로 Actions(comp-make) 1~2분 소요 — 이번 작업은 진입로 연결만.</li>
+</ul>
+</body>
+</html>
