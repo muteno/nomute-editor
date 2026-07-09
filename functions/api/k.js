@@ -27,11 +27,9 @@ export async function onRequestPost({ request, env }) {
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
   const refimage = (body.refimage === true || body.refimage === 'true') ? 'true' : 'false';
-  // 옵션 마커 = slice(8000) 뒤 서버측 부착(입력이 상한이어도 마커 절단 0 · k-make.md가 해석 · 260708)
-  const refmulti = refimage === 'true' && (body.refmulti === true || body.refmulti === 'true');
-  if (refmulti) scene += '\n\n[레퍼런스: 다장 — 인물·배경별 1장씩]';
   // 모델·설정 마커(개편 P1 · 운영자 260710 스펙) — 화이트리스트 = 임의 문자열 주입 차단(키는 서버 목록만 순회 = 사용자 키 자체를 안 읽음).
   // 값 3면 동기: 이 표 = viewer/k.html K_MODELS/K_VALS = apps/k/01_모델프로필_영상엔진.md 절 — check_refs check_k_models()가 커밋 전 강제.
+  // ⚠️ 리터럴 구조(닫기 2칸 들여쓰기·작은따옴표) = check_k_models 정규식 의존 — 재포맷 금지(재감사9).
   const K_MODELS = ['kling', 'veo', 'seedance'];
   const K_SET = {
     '비율': ['9:16', '16:9', '1:1'],
@@ -49,6 +47,9 @@ export async function onRequestPost({ request, env }) {
   const RR_DROP = { '화풍': ['표현1', '표현2'], '오디오': ['오디오'] };
   const drop = new Set(RR_DROP[reroll] || []);
   const model = K_MODELS.includes(body.model) ? body.model : 'kling';
+  // 다장 레퍼런스 = kling 전용 서버 게이트(클라 가드의 서버판 — 비Kling @ 문법 없음 · 재감사8 F1) · 마커는 slice(8000) 뒤 부착 = 절단 0(260708)
+  const refmulti = refimage === 'true' && model === 'kling' && (body.refmulti === true || body.refmulti === 'true');
+  if (refmulti) scene += '\n\n[레퍼런스: 다장 — 인물·배경별 1장씩]';
   scene += '\n\n[모델: ' + model + ']';   // 항상 부착(kling 포함) — 프로필 문서 무조건 열람 강제(운영자 260710 "모델별 프롬프팅 미적용 금지")
   const set = (body.set && typeof body.set === 'object' && !Array.isArray(body.set)) ? body.set : {};
   const pairs = [];
