@@ -4,6 +4,7 @@
 #   사용: track_render.py <id>   (track-make.yml render 스텝 전용 · 소스는 tracks.json meta.src에서 자체 회수)
 # env: RENDER = {"mode":"mosaic"|"pinset","targets":[pid],"invert":bool,"names":{pid:이름},"colors":{pid:"#hex"},
 #                "opts":{pxw,pxh,size,feather,shape}}   (opts = 모자이크 조절 · 핀셋은 무시)
+#      mode="keying" = track_keying.py 위임(선택 피사체만 남기는 알파 렌더 · {"keep":[sid],"extra":[{t,x,y}],"opts":{feather}})
 #      R2 5종(thumb_gen 재사용 · 미설정 = 30MB 이하 git 폴백)
 # 고퀄 5원칙(00_지침 정본): ① 검출 갭 보간(깜빡임 0) ② 3탭 이동평균 스무딩(덜덜 떨림 0·EMA 지연 없음)
 #   ③ 시간 안전마진 ±0.3s(모자이크는 한 프레임 노출도 실패 → 과잉 커버 편향) ④ 같은 인물 트랙 간 갭 ≤1.2s 브리지(가림 통과)
@@ -340,7 +341,11 @@ def main():
         req = {}
     if not isinstance(req, dict):   # 유효 JSON이지만 객체가 아님(리스트·수) — AttributeError 방지(평의회4)
         req = {}
-    mode = req.get("mode") if req.get("mode") in ("mosaic", "pinset") else "mosaic"
+    mode = req.get("mode") if req.get("mode") in ("mosaic", "pinset", "keying") else "mosaic"
+    if mode == "keying":   # 키잉 = 별도 모듈 위임(lazy import — torch 스택은 키잉 러너에서만 · 모자이크/핀셋 경로 무영향)
+        import track_keying
+        track_keying.run(vid_id, req, doc, outdir)   # 예외 = 아래 fail-soft 래퍼가 video.json{error}로 기록
+        return
     names = {str(k): str(v)[:24] for k, v in (req.get("names") or {}).items() if str(v).strip()}
     colors = {str(k): str(v) for k, v in (req.get("colors") or {}).items()}
     invert = bool(req.get("invert"))
