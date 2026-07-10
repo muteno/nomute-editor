@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # 영상 자막 번인(자동 합성) + 편집기 컴포지터 — 자막 ASS 번인·무음 컷·배경음 제거에 더해 편집기(edit) 축
-#   {vid_ar/vid_fit(크롭·검정 여백)·vid_res·vid_fps(60i 보간·다운)·vid_t0/t1(트림 — 자막·컷과 동시 = 조각·word·스팬 동행 리맵 260711)·aud_norm(음량 통일)}을
+#   {vid_ar/vid_fit(크롭·검정 여백·블러 여백[blur = 원본 블러 확대 배경 패드 · 260711])·vid_res(src=원본 4K 캡 3840·1080·720 — 결측 1920)·vid_fps(60i 보간·다운)·vid_t0/t1(트림 — 자막·컷과 동시 = 조각·word·스팬 동행 리맵 260711)·aud_norm(음량 통일)}을
 #   한 ffmpeg 파이프로 합성해 R2 업로드 → viewer/ly_out/<id>/video.json. 편집기 축 전부 결측 = 종전 ly 경로 그대로(회귀 0 · 260710).
+#   4K(운영자 260711): 4K급 = 캔버스 픽셀 > FHD 2배(긴 변 판별은 세로 1080×2340을 오분류 = 평의회4 교체) → EDIT_4K_MAX_SEC(180초) 선게이트 + 60i 보간 제외.
+#   enc 백스톱 = 픽셀 비례(FHD 900s → 4K 2400s 캡) · 다운스케일은 note로 표면화(침묵 금지 — FHD 자막 경로는 종전 무note = 표면 회귀 0).
 #   사용: ly_burn.py <id> <video_path>   (ly-make.yml 번인 스텝 + edit-make.yml 컴포즈 스텝 · ffmpeg+fonts-noto-cjk는 runner-setup가 설치)
 #   env: OPTS = 뷰어 버튼 설정 JSON(스타일·위치·크기·카라오케·키워드) · R2 5종 = thumb_gen 재사용(카드·썸네일·/k 동일 파이프)
 # 자막 소스 우선순위: subs.json(의역+타이밍 · lymake.sh가 claude 출력 꼬리 JSON 분리) → segments.json(받아쓴 원문 폴백).
@@ -214,6 +216,51 @@ def cut_remap(keeps):
                 return c + (t - a)
         return acc
     return f, acc
+
+
+def subtract_spans(keeps, removes):
+    # keep 목록에서 명시 제거 스팬(대본 삭제 컷 · 260711)을 차감 — 무음컷 keeps와 같은 좌표축(트림 후) 전제.
+    #   패딩·병합 없음(삭제 = 운영자 명시 의도 = 조각 경계 그대로) · 0.05s 미만 슬리버 keep은 드롭(프레임 미만 튐 방지).
+    out = [(float(a), float(b)) for a, b in keeps]
+    for ra, rb in removes:
+        nxt = []
+        for a, b in out:
+            if rb <= a or ra >= b:
+                nxt.append((a, b))
+                continue
+            if ra > a:
+                nxt.append((a, ra))
+            if rb < b:
+                nxt.append((rb, b))
+        out = nxt
+    return [(a, b) for a, b in out if b - a > 0.05]
+
+
+def load_del_spans(outdir):
+    # 대본 삭제 컷 스팬(운영자 260711 텍스트 컷) = subs.json 'del'(상세 편집기 삭제 조각·원본 시간축 [s,e] 쌍) →
+    #   검증·정렬·근접 병합. 쓰는 쪽 = ly-make '편집 자막 반영'(ly.js del 검증 통과분) — 없으면 [](종전 경로 회귀 0).
+    p = os.path.join(outdir, "subs.json")
+    if not os.path.isfile(p):
+        return []
+    try:
+        j = json.load(open(p, encoding="utf-8"))
+    except Exception:
+        return []
+    raw = []
+    for d in (j.get("del") or [])[:400]:
+        if not isinstance(d, (list, tuple)) or len(d) != 2:
+            continue
+        sp = _span(d[0], d[1])
+        if sp:
+            raw.append(sp)
+    raw.sort()
+    merged = []
+    for a, b in raw:
+        if merged and a <= merged[-1][1] + 0.01:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return [(a, b) for a, b in merged]
 
 
 def has_audio(path):
@@ -638,11 +685,14 @@ def run(vid_id, video, outdir):
             inject_words(segs, outdir)   # STT word 타임스탬프 주입(실싱크 · 실패해도 글자수 비례 폴백 = 무해)
         except Exception as ex:
             print("::warning::word 주입 예외(실싱크 스킵):", ex)
+    # 대본 삭제 컷(260711) — 삭제 조각 스팬(원본 시간축). opts.cutdel = 번인 게이트(검증④): subs.json에 del이
+    #   커밋돼 있어도 토글 OFF(재번인 opts.cutdel 부재/false)면 컷 미적용 = 토글이 켜기·끄기 양방향으로 동작.
+    del_spans = load_del_spans(outdir) if (segs and opts.get("cutdel")) else []
     # ── 편집기(edit) 축 파싱 — 전부 결측 = 순수 ly 경로(회귀 0 · 운영자 260710 골격 B 확정)
     V_AR = {"9:16": 9 / 16, "1:1": 1.0, "4:5": 4 / 5, "16:9": 16 / 9}
     vid_ar = opts.get("vid_ar") if opts.get("vid_ar") in V_AR else None
-    vid_fit = opts.get("vid_fit") if opts.get("vid_fit") in ("crop", "pad") else "crop"
-    vid_res = {"1080": 1080, "720": 720}.get(str(opts.get("vid_res") or ""))
+    vid_fit = opts.get("vid_fit") if opts.get("vid_fit") in ("crop", "pad", "blur") else "crop"   # blur = 원본 블러 확대 배경 여백(260711)
+    vid_res = {"1080": 1080, "720": 720, "src": 3840}.get(str(opts.get("vid_res") or ""))   # src = 원본 유지(4K 캡 3840 · 운영자 260711 — 결측 기본은 종전 1920)
     vid_fps = opts.get("vid_fps") if opts.get("vid_fps") in ("60i", "30", "24") else None
     no_burn = opts.get("burn") is False   # 컷 단독(STT-only) 발사 신호(편집기 260711) — 전사 segs는 컷 계산에만 쓰고 번인 억제(키 부재 = 종전대로 번인 = ly·reburn 회귀 0)
     aud_on = bool(opts.get("aud_norm"))
@@ -698,10 +748,16 @@ def run(vid_id, video, outdir):
                     segs = remapped
                     if not segs:
                         edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")
+                if del_spans:   # 삭제 스팬도 트림 시간축으로 동행(원본 좌표 = segments 스팬과 동형 · 창 밖 = 드롭)
+                    del_spans = [(max(0.0, x - trim[0]), min(dur, y - trim[0])) for x, y in del_spans if y > trim[0] and x < trim[0] + dur]
             else:
                 edit_notes.append("구간이 이상해 — 트림 건너뜀")
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
+    if del_spans and segs:   # 생존 자막 보호(검증④): 타이밍 조절·병합으로 삭제 스팬이 생존 조각과 겹치면 그 겹침은 컷 제외(남기려던 발화 오컷 차단)
+        alive = [sp for sp in (_span(sg.get("s"), sg.get("e")) for sg in segs) if sp]
+        if alive:
+            del_spans = subtract_spans(del_spans, alive)
     # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
     #   컷과 자막이 같은 파이프라인이어야 하는 이유 = 컷하면 뒤 자막 시각이 전부 당겨짐(remap이 그 싱크 담당).
     #   자를 갭이 없거나 cut OFF = keeps 빈 목록 = 종전 단일 -vf 경로 그대로(회귀 0).
@@ -715,6 +771,7 @@ def run(vid_id, video, outdir):
         bgm_note = "배경음 제거" if vocals else "배경음 제거 실패 — 원본 소리로 합성"
     cut_note, keeps = "", []
     segs_orig, dur_orig = segs, dur   # 컷 실패 폴백용(평의회6) — 재매핑 전 원본 타이밍·길이 보존
+    sil_note, del_note = "", ""
     if opts.get("cut") and dur > 0:
         pad, min_rm, max_ratio = cut_params(opts)   # 컷 강도(운영자 260708) — 살짝/기본/많이 → pad·min_remove·천장
         spans, spans_raw = load_speech_spans(outdir, segs)
@@ -731,39 +788,56 @@ def run(vid_id, video, outdir):
             removed = dur - sum(b - a for a, b in keeps)
             relaxed = True
         if keeps and removed >= min_rm:
-            remap, new_dur = cut_remap(keeps)
-            remapped = []
-            for sg in segs:
-                ns, ne = remap(sg["s"]), remap(sg["e"])
-                if ne - ns < 0.05 and float(sg["e"]) - float(sg["s"]) >= 0.15:
-                    continue   # 갭에 통째로 빠져 붕괴한 조각 드롭 = 컷 이음매 0.05s 자막 플래시 방지(평의회1) — 원래 짧던 조각은 보존
-                nsg = dict(sg, s=ns, e=ne)
-                if sg.get("w"):   # word 타임스탬프도 컷 시간축으로 동행 리맵(평의회3 260709) — 안 옮기면 카라오케/팝
-                    nw = []       #   어절 하이라이트가 원본 시각 기준으로 어긋남(컷 경계 걸친 세그 최대 1초+ 선행 재현)
-                    for wd in sg["w"]:
-                        try:
-                            ws, we = remap(float(wd["s"])), remap(float(wd["e"]))
-                        except Exception:
-                            continue
-                        if we - ws >= 0.02:   # 갭에 통째 붕괴한 어절 드롭(그 자리엔 발화 없음 = 안전)
-                            nw.append(dict(wd, s=round(ws, 3), e=round(we, 3)))
-                    nsg["w"] = nw   # 전부 붕괴 = 빈 리스트 → _sync_cs가 글자수 비례 폴백(회귀 0)
-                remapped.append(nsg)
-            segs = remapped or segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전
-            if not remapped:
-                keeps = []
-            else:
-                n_gap = len(keeps) - 1 + (1 if keeps[0][0] > 0.005 else 0) + (1 if dur - keeps[-1][1] > 0.005 else 0)
-                pct = int(round(removed / dur * 100))
-                cut_note = "무음 {:.1f}초 컷({}군데·{}%↓)".format(removed, n_gap, pct)
-                if relaxed:
-                    cut_note += " · 과잉 컷 방지로 자동 완화"   # 표면화(평의회3 리스크) — 조용한 클램프 금지
-                print("무음 컷:", cut_note, "· keep", len(keeps), "구간 ·", round(dur, 1), "→", round(new_dur, 1), "초")
-                dur = new_dur
+            n_gap = len(keeps) - 1 + (1 if keeps[0][0] > 0.005 else 0) + (1 if dur - keeps[-1][1] > 0.005 else 0)
+            pct = int(round(removed / dur * 100))
+            sil_note = "무음 {:.1f}초 컷({}군데·{}%↓)".format(removed, n_gap, pct)
+            if relaxed:
+                sil_note += " · 과잉 컷 방지로 자동 완화"
         else:
             keeps = []
     elif opts.get("cut"):
         cut_note = "영상 길이 미상 — 무음 컷 건너뜀"   # dur=0(probe N/A) 침묵 스킵 표면화(평의회3·6 260709) — 조용한 무력화 금지
+    # 대본 삭제 컷(운영자 260711 텍스트 컷): 상세 편집기 삭제 조각 스팬 = 명시 의도 → 무음컷과 달리 min_remove 임계 없음.
+    #   무음 keeps(있으면)에서 추가 차감·없으면 전체에서 차감 · 전부 삭제 = 컷 포기(빈 출력 방지 · fail-soft).
+    if del_spans and dur > 0:
+        base = keeps if keeps else [(0.0, dur)]
+        k2 = subtract_spans(base, del_spans)
+        cut_d = sum(b - a for a, b in base) - sum(b - a for a, b in k2)
+        if k2 and cut_d > 0.05:
+            keeps = k2
+            del_note = "대본 삭제 {}조각 {:.1f}초 컷".format(len(del_spans), cut_d)
+        elif not k2:
+            del_note = "전부 삭제 구간 — 삭제 컷 건너뜀"
+    elif del_spans:
+        del_note = "영상 길이 미상 — 삭제 컷 건너뜀"
+    if keeps:
+        remap, new_dur = cut_remap(keeps)
+        remapped = []
+        for sg in segs:
+            ns, ne = remap(sg["s"]), remap(sg["e"])
+            if ne - ns < 0.05 and float(sg["e"]) - float(sg["s"]) >= 0.15:
+                continue   # 갭에 통째로 빠져 붕괴한 조각 드롭 = 컷 이음매 0.05s 자막 플래시 방지(평의회1) — 원래 짧던 조각은 보존
+            nsg = dict(sg, s=ns, e=ne)
+            if sg.get("w"):   # word 타임스탬프도 컷 시간축으로 동행 리맵(평의회3 260709) — 안 옮기면 카라오케/팝
+                nw = []       #   어절 하이라이트가 원본 시각 기준으로 어긋남(컷 경계 걸친 세그 최대 1초+ 선행 재현)
+                for wd in sg["w"]:
+                    try:
+                        ws, we = remap(float(wd["s"])), remap(float(wd["e"]))
+                    except Exception:
+                        continue
+                    if we - ws >= 0.02:   # 갭에 통째 붕괴한 어절 드롭(그 자리엔 발화 없음 = 안전)
+                        nw.append(dict(wd, s=round(ws, 3), e=round(we, 3)))
+                nsg["w"] = nw   # 전부 붕괴 = 빈 리스트 → _sync_cs가 글자수 비례 폴백(회귀 0)
+            remapped.append(nsg)
+        segs = remapped or segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전
+        if not remapped:
+            keeps = []
+        else:
+            cut_note = " · ".join(p for p in [cut_note, sil_note, del_note] if p)   # 무음·대본삭제 결합 표기(무음 단독 = 종전 포맷 그대로 · 조용한 클램프 금지)
+            print("컷:", cut_note, "· keep", len(keeps), "구간 ·", round(dur, 1), "→", round(new_dur, 1), "초")
+            dur = new_dur
+    elif del_note:
+        cut_note = " · ".join(p for p in [cut_note, del_note] if p)   # 컷 미실행이어도 삭제 컷 스킵 사유는 표면화(침묵 금지)
     # ── 지오메트리 확정 — 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스(자막이 검정 여백 위에도 앉게 · 260710).
     #    트림은 위에서 선확정(자막·스팬 동행 리맵 · 260711) — 여기선 tcut(입력 -ss/-t)로만 소비. 편집기 축 결측 = 종전 ly 캡·체인 그대로.
     cw, ch, cx, cy = w, h, 0, 0
@@ -771,9 +845,11 @@ def run(vid_id, video, outdir):
     if vid_ar:
         target, cur = V_AR[vid_ar], w / h
         if abs(target - cur) < 1e-3:
+            if vid_fit == "blur":
+                edit_notes.append("이미 그 비율 — 블러 여백 생략")   # 신규 축만 표면화(pad/crop 종전 무note 유지 = 회귀 0 · 검증② N2)
             vid_ar = None   # 이미 그 비율 = 크롭/패드 생략
-        elif vid_fit == "pad":
-            pad_t = target
+        elif vid_fit in ("pad", "blur"):
+            pad_t = target   # blur = pad와 동일 캔버스·contain 산식(채움만 검정→원본 블러 확대 배경 · 260711)
         elif target < cur:
             cw = max(2, int(h * target) & ~1)
             cx = int(vid_pos * (w - cw)) & ~1
@@ -782,8 +858,8 @@ def run(vid_id, video, outdir):
             cy = int(vid_pos * (h - ch)) & ~1
     cropf = "crop={}:{}:{}:{}".format(cw, ch, cx, cy) if (cw, ch) != (w, h) else ""
     pw = ph = 0
-    if has_vid:   # 편집기 경로 = conv 캡 문법(긴 변 1920·res 캡·패드 캔버스 목표비 스냅·contain)
-        cap = min(1920, vid_res) if vid_res else 1920
+    if has_vid:   # 편집기 경로 = conv 캡 문법(긴 변 캡·res 캡·패드 캔버스 목표비 스냅·contain) — 결측=1920 · '원본(4K)'=3840
+        cap = vid_res if vid_res else 1920
         tw, th = cw, ch
         if pad_t:
             if cw / ch > pad_t:
@@ -802,12 +878,23 @@ def run(vid_id, video, outdir):
             k = cap / max(cw, ch)
             tw, th = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
         tw, th = tw & ~1, th & ~1
+        if max(cw, ch) > cap and (not vid_res or vid_res == 3840):   # 침묵 다운스케일 표면화(운영자 260711 + src 초과 소스 평의회4) — 명시 1080/720 선택은 본인 선택이라 제외
+            edit_notes.append("원본 {}×{} → 긴 변 {} 축소{}".format(w, h, cap, "" if vid_res else "(4K 유지 = 해상도 카드 '원본(4K)')"))
     else:         # 종전 ly 다운스케일 캡(비용 보호·업스케일 없음) 그대로 = 회귀 0
         tw, th = cw, ch
         if tw > 1080:
             th = int(round(th * 1080 / tw / 2) * 2)
             tw = 1080
+            if cw > 1920:   # note는 2K+/4K 소스만(평의회3·10) — FHD(1920)의 일상 자막 잡은 종전대로 무note = 표면 회귀 0
+                edit_notes.append("원본 폭 {} → 1080 축소(4K 유지 = 해상도 카드 '원본(4K)')".format(cw))
     canvas_w, canvas_h = (pw or tw), (ph or th)
+    canvas_px = canvas_w * canvas_h
+    # 4K급 판별 = 픽셀 수(FHD 2배 초과) — 긴 변>1920 판별은 세로 1080×2340(폰 화면녹화 2.5MP)을 4K로 오분류해 순수 자막 경로를 거절시킴(평의회4 불가 → 교체)
+    is4k = canvas_px > 2 * 2073600
+    if is4k and dur > 0:   # 4K 출력 예산(기틀 캡 · 운영자 260711 — 완화 = 운영자 확인): 픽셀 4배 = 인코딩 폭발이라 별도 선게이트
+        max4k = int(os.environ.get("EDIT_4K_MAX_SEC") or 180)
+        if dur > max4k + 1:
+            out_json(outdir, {"error": "원본(4K) 유지는 {}초까지 — 해상도를 1080p로 내리거나 구간을 잘라줘".format(max4k)}); return 0
     # fps(편집기) — 60i = minterpolate 보간 + 예산 가드(0.30s/출력프레임@1080×1920 실측 · 초과 = 정직 스킵+note) · 30/24 = 다운
     fpsf, interp_est = "", 0
     if vid_fps:
@@ -823,7 +910,9 @@ def run(vid_id, video, outdir):
             eff = dur if dur > 0 else float(MAX_DUR)
             unit = 60 * 0.30 * (tw * th / 2073600.0)
             est = eff * unit
-            if src_fps >= 59:
+            if is4k:
+                edit_notes.append("60fps 보간은 1080p까지 — 4K에선 건너뜀")   # 4K급 보간 = 단가 4배(예산 밖) · 정직 스킵(운영자 260711 · 판별 = canvas_px)
+            elif src_fps >= 59:
                 edit_notes.append("이미 60fps — 보간 건너뜀")
             elif est > 900:   # 잡 캡 보호(자막·배경음과 동일 잡 공존 예산 · 평의회2 260710)
                 edit_notes.append("60fps 보간 건너뜀 — 이 해상도로 {}초까지(변환 탭 720p = 120초)".format(int(900 / unit) if unit else 0))
@@ -834,7 +923,16 @@ def run(vid_id, video, outdir):
     padf = ""
     if pw:
         px_, py_ = max(0, (pw - tw) // 2) & ~1, max(0, (ph - th) // 2) & ~1
-        padf = "pad={}:{}:{}:{}:black,setsar=1".format(pw, ph, px_, py_)   # setsar=1 = contain 짝수화 미세 SAR 제거(conv 동형)
+        if vid_fit == "blur":
+            # 블러 여백(운영자 260711 승인): 검정 pad 대신 같은 프레임을 캔버스로 커버-스케일+박스블러한 배경 위에 contain 원본 오버레이
+            #   — 숏폼 표준 미감 · 생성 0(원본 재사용 = 사실왜곡 0). 입력 = 직전 scale의 tw×th 스트림(fps도 종전 위치 그대로 tw×th에서) →
+            #   split 후 bg 가지만 업스케일(블러가 덮어 업스케일 열화 비가시). 라벨 그래프 = -vf·filter_complex 양쪽 유효(ffmpeg 단입단출).
+            rad = max(2, min(pw, ph) // 26)   # 블러 반경 = 캔버스 비례(광학 보정값 · boxblur luma_power 2)
+            padf = ("split=2[bg0][fg0];"
+                    "[bg0]scale={pw}:{ph}:force_original_aspect_ratio=increase,crop={pw}:{ph},boxblur={rad}:2[bgb];"
+                    "[bgb][fg0]overlay={px}:{py},setsar=1").format(pw=pw, ph=ph, rad=rad, px=px_, py=py_)
+        else:
+            padf = "pad={}:{}:{}:{}:black,setsar=1".format(pw, ph, px_, py_)   # setsar=1 = contain 짝수화 미세 SAR 제거(conv 동형)
     scalef = "scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""
     sarf = "setsar=1" if (has_vid and scalef and not padf) else ""   # 스케일 짝수화 잔여 SAR 제거 — 패드 경로(padf 내장)와 대칭(P2평의회9 실측)
     mid = ",".join(x for x in [cropf, scalef, fpsf, padf, sarf] if x)
@@ -856,7 +954,8 @@ def run(vid_id, video, outdir):
             + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
-    enc_to = 900 + int(interp_est * 1.5)   # 60i 보간 예산(≤900s)만큼 백스톱 연장(최대 2250s) — 스텝 내 최악 스택{probe+Demucs 분리(≤780)+본 인코딩+음량(≤270)}은 컴포즈 스텝 55분 캡이 수용(P2평의회2 산술)
+    enc_base = min(2400, int(900 * max(1.0, canvas_px / 2073600.0)))   # 백스톱 = 캔버스 픽셀 비례(x264 실단가 비례 · FHD 900 → 4K 2400 캡 · 세로 2340 = ~1015 — 이진 오분류 없음 · 평의회4)
+    enc_to = enc_base + int(interp_est * 1.5)   # 60i 보간 예산(≤900s)만큼 백스톱 연장(1080p 최대 2250s · 4K 2400s) — 스텝 내 최악 스택{probe+Demucs 분리(≤780)+본 인코딩+음량(≤270)}은 컴포즈 스텝 60분 캡이 수용(P2평의회2 산술 + 4K 260711)
     def encode(c, to=None):   # 15분 백스톱(폴백은 600+보간 = 예산 스택 축소 · 평의회2·3) — 잡 하드킬 전에 우아하게 실패 기록
         to = enc_to if to is None else to
         r = subprocess.run(c, capture_output=True, text=True, timeout=to)
@@ -878,14 +977,14 @@ def run(vid_id, video, outdir):
             if not ok:   # 가공 실패 = 가공만 포기·번인은 지킨다(평의회6·3 P1) — 컷·배경음 다 버리고 원본으로 확실한 산출(무효 vocals가 양쪽을 죽이는 구멍 봉합)
                 print("::warning::가공(컷/배경음) 합성 실패 — 원본으로 재시도:", err[-300:])
                 if keeps:
-                    if ass:   # no_burn(컷 단독)은 ASS 재작성도 불요 — vf에 ass 필터 자체가 없다
+                    if ass:   # no_burn(컷 단독)은 ASS 재작성도 불요 — vf에 ass 필터 자체가 없다(STT-only 260711)
                         with open(ass_path, "w", encoding="utf-8") as f:
                             f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
-                    cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
+                    cut_note, dur = ("무음 컷 실패 — 컷 없이 합성" if sil_note else "삭제 컷 실패 — 컷 없이 합성"), dur_orig   # 라벨 = 컷 출처 분기(검증① — del 단독 폴백 오표기 방지)
                 if vocals:
                     vocals, ins = "", tcut + ["-i", video]   # 트림 보존(-ss/-t 유지) — 폴백이 구간을 잃지 않게
                     bgm_note = "배경음 제거 실패 — 원본 소리로 합성"
-                ok, err = encode(plain_cmd(), 600 + int(interp_est * 1.5))
+                ok, err = encode(plain_cmd(), 600 + (enc_base - 900) + int(interp_est * 1.5))   # 폴백 백스톱도 4K분 확장(1080p = 종전 600 유지)
         else:
             ok, err = encode(plain_cmd())
         if not ok:

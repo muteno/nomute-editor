@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>영상 도구 4종 추가 — 자막 프리셋·블러 여백·텍스트 컷·쇼츠 클리퍼 v0 (260711)</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+  :root{ --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --warn:#FFE13D; --danger:#e23b2a; --info:#0FFD02; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg);
+    font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Apple SD Gothic Neo",sans-serif; }
+  .wrap{ max-width:760px; margin:0 auto; padding:28px 18px 80px; }
+  h1{ font-size:21px; line-height:1.4; margin:0 0 6px; }
+  h1 .tag{ color:var(--accent); }
+  .sub{ color:var(--mut); font-size:13px; margin-bottom:26px; }
+  h2{ font-size:16px; margin:34px 0 10px; color:var(--accent); }
+  h3{ font-size:14px; margin:20px 0 8px; }
+  p,li{ font-size:14px; }
+  table{ width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
+  th,td{ border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th{ background:var(--pan); color:var(--mut); font-weight:700; white-space:nowrap; }
+  td b{ color:var(--fg); }
+  .ok{ color:var(--accent); font-weight:700; }
+  .warn{ color:var(--warn); font-weight:700; }
+  .bad{ color:var(--danger); font-weight:700; }
+  .mut{ color:var(--mut); }
+  code{ background:var(--pan); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-size:12.5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  .card{ border:1px solid var(--line); border-radius:14px; background:var(--pan); padding:14px 16px; margin:12px 0; }
+  .card h3{ margin-top:0; }
+  ul{ padding-left:20px; margin:8px 0; }
+  li{ margin:4px 0; }
+  .pill{ display:inline-block; border:1px solid var(--line); border-radius:99px; padding:2px 10px; font-size:12px; color:var(--mut); margin-right:6px; }
+  .flow{ background:var(--pan); border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-size:13px; overflow-x:auto; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>영상 도구 <span class="tag">4종 추가</span> — 자막 프리셋 · 블러 여백 · 텍스트 컷 · 쇼츠 클리퍼 v0</h1>
+  <div class="sub">260711 · 오퍼스 평의회 10인 기능 검토 → 운영자 배치 승인 → 구현 → 검증 평의회 10인(+재검증 2인) · 신규 탭 0 = 전부 기존 영상 탭 안</div>
+
+  <h2>한눈에 — 뭐가 생겼나</h2>
+  <table>
+    <tr><th>기능</th><th>어디에</th><th>전 → 후</th></tr>
+    <tr><td><b>① 자막 스타일 프리셋</b></td><td>편집기 › 자막 카드 최상단 칩 3개</td><td>토글·게이지 7개를 매번 손 조합 → <b>속보체·예능체·담백체 원탭</b>(기존 축 조합만 · 신규 렌더 축 0)</td></tr>
+    <tr><td><b>② 여백(블러)</b></td><td>편집기 › 비율 카드 방식 세그</td><td>세로↔가로 = 검정 레터박스만 → <b>원본 블러 확대 배경</b>(숏폼 표준 미감 · ffmpeg 재조합 = 생성 0·사실왜곡 0)</td></tr>
+    <tr><td><b>③ 텍스트 컷(삭제 컷)</b></td><td>자막 탭 › 완성 영상 행 토글</td><td>조각 삭제 = 자막만 지워짐 → <b>토글 ON이면 그 구간이 영상에서도 실제 컷</b>(무음컷 엔진 재사용 · OFF = 컷 해제 = 양방향)</td></tr>
+    <tr><td><b>④ 쇼츠 클리퍼 v0</b></td><td>편집기 › 클리퍼 카드(배타)</td><td>긴 클립에서 쇼츠 구간을 눈으로 찾음 → <b>STT+클로드가 하이라이트 후보 3~5개 제안 → 네가 탭으로 확정 → 기존 렌더 레일</b>(자동 발행 없음)</td></tr>
+  </table>
+
+  <h2>클리퍼 흐름 (track식 2단 — 제안은 자동 · 확정은 사람)</h2>
+  <div class="flow">소스(파일/URL) → [클리퍼 카드] 발사 → STT → 클로드 구간픽 1콜 → 후보 목록(시간·요지·이유) → <b>후보 탭</b> = 구간+자막+9:16+음량 스택 자동 세팅 → [편집 시작] = 기존 렌더</div>
+  <ul class="mut" style="font-size:13px">
+    <li>맥락 가드: 부정어 절단·반쪽 질문·화자 오귀속 경계 금지(프롬프트 정본 = <code>prompts/clip-make.md</code> · 사실 무결성)</li>
+    <li>재렌더 소스: URL은 원 URL 승계 · 파일 업로드는 스캔 잡이 R2에 보관(≤400MB) — 유실 시 뷰어가 선제 경고</li>
+    <li>과금: 영상당 클로드 1콜(turns=1 · 구독 쿼터 · 폴오버 SSOT 경유) — 카드 제미나이-0 등 기틀 무접촉</li>
+  </ul>
+
+  <h2>장단점 · 효율성</h2>
+  <table>
+    <tr><th></th><th>내용</th></tr>
+    <tr><td class="ok">장점</td><td>신규 모델 0 · 신규 탭 0 · 신규 렌더 경로 0 — 4기능 전부 기존 조각(word 타임스탬프·컷 엔진·트림 레일·track 2단 패턴) 재조합. 프리셋·블러는 서버 코드 수십 줄, 텍스트 컷은 무음컷 엔진에 스팬 주입, 클리퍼도 렌더는 기존 트림 그대로.</td></tr>
+    <tr><td class="ok">효율</td><td>LLM 증분 = 클리퍼 1콜/영상뿐(opt-in·배타 스캔이라 그 잡은 컴포즈 스킵 = 러너 분 상쇄). 나머지 3종 = LLM 0콜. STT·환경 캐시는 ly-make와 공유(재설치 0).</td></tr>
+    <tr><td class="warn">품질저하 리스크</td><td>①블러 배경 = bg 가지 연산 소폭 추가(예산 백스톱 내 · 실기동 8종 검증) ②텍스트 컷 = STT 오전사 기반 오컷 가능 → 조각 프리뷰로 확인 후 굽는 흐름 유지 + 생존 자막 겹침 보호 ③클리퍼 후보 = LLM 판단이라 빗나갈 수 있음 → 자동 발행 금지·운영자 확정이 방어선 ④클리퍼 원본 보관분은 R2에 잔존(v0 무정리 — 지침에 명문화·후속 GC).</td></tr>
+    <tr><td class="mut">한계(정직)</td><td>클리퍼 후보 확정 후 렌더는 새 잡 = 자막 ON이면 STT 재실행(세그 재사용 = 후속 최적화) · 입력 캡 10분 유지(롱폼 완화 = 운영자 결정 기틀) · 텍스트 컷은 조각 단위(단어 단위 컷은 점프컷 리스크로 미도입).</td></tr>
+  </table>
+
+  <h2>검증 (평의회 10인 + 재검증)</h2>
+  <table>
+    <tr><th>앵글</th><th>평결</th><th>요지</th></tr>
+    <tr><td>①컴포지터 컷 재구성</td><td class="ok">OK</td><td>무음컷 단독 경로 회귀 0 줄대조 확정 · 삭제 컷 논리 정합</td></tr>
+    <tr><td>②블러 그래프</td><td class="ok">OK</td><td>-vf·filter_complex 실기동 8종 통과 · 크로마/반경/예산/4K 패리티</td></tr>
+    <tr><td>③edit 3자 계약</td><td class="ok">OK</td><td>clip/blur/프리셋 사슬 성립 · 지목 함정 3종 전무</td></tr>
+    <tr><td>④ly 텍스트 컷 계약</td><td class="warn">주의→봉합</td><td>토글 OFF가 커밋된 컷 못 끔 → <b>cutdel 번인 게이트</b>로 양방향화 · 생존 자막 겹침 과잉컷 → 보호 차감</td></tr>
+    <tr><td>⑤워크플로</td><td class="warn">주의→봉합</td><td>의역 clip 배타 백스톱·보관 timeout·원자 교체</td></tr>
+    <tr><td>⑥클리퍼 LLM 경로</td><td class="warn">주의→봉합</td><td>§모델 등록부 clipmake 등재·stderr 잔존 정리·rc 초기화·인젝션 하드닝</td></tr>
+    <tr><td>⑦뷰어 UX 상태기계</td><td class="ok">OK</td><td>배타 스택 불변식 실증 · 체크 세션 누수·옛 후보 잔존 봉합</td></tr>
+    <tr><td>⑧보안</td><td class="ok">OK</td><td>del 3층 독립 방어·XSS esc 전량·SSRF 재검증·IN_ID 가드 대칭 봉합</td></tr>
+    <tr><td>⑨회귀 사냥</td><td class="ok">OK</td><td>순수 기존 흐름 전 경로 바이트 동일 실측(ly note 포맷 보존 포함)</td></tr>
+    <tr><td>⑩총괄 정직성</td><td class="warn">주의→봉합</td><td>거짓 서술 0·기틀 위반 0 · 잔존물 정책/등재부/침묵 no-op 3종 명문화·표면화</td></tr>
+  </table>
+  <p class="mut" style="font-size:13px">불가 0 · 지적 전건 수정 반영 후 재검증 통과 · <code>check_refs</code> 전 게이트(27✅) · cutdel 게이트/생존 보호는 단위 실측(3상태·차감 케이스) · 블러/컷 결합은 ffmpeg 실기동.</p>
+
+  <h2>변환 탭 중복 실측 (운영자 질문 답)</h2>
+  <p>변환(conv)의 5축(트림·비율 크롭/여백·해상도·fps 보간·음량)은 <b>편집기 카드에 전부 포함</b>, 캡도 편집기가 상위(600초 vs 300초). 변환에만 남은 건 <b>크롭 위치 드래그 미리보기 UI 1개</b>(편집기는 슬라이더 · 지침 §3-d 후속 이식 예정). 이번 블러 여백도 편집기에만 추가 — 기존 문서 계획("편집기 검증 후 점진 이관")대로 <b>변환 탭 접기는 별도 승인 건</b>으로 유보.</p>
+
+  <h2>산출·롤백</h2>
+  <ul>
+    <li>변경: <code>ly_burn.py</code>(블러·삭제 컷) · <code>edit.js/ly.js</code>(화이트리스트) · <code>edit-make.yml</code>(클리퍼 스텝) · <code>clipmake.sh</code>+<code>prompts/clip-make.md</code>(신규) · <code>edit.html/ly.html</code>(UI) · 지침 2종 · CLAUDE.md</li>
+    <li>백업: <code>_versions/260711_0608_영상도구4종추가/</code> · 롤백 = 백업 복원 또는 커밋 revert(4기능 전부 additive·기본 OFF라 부분 롤백도 안전)</li>
+    <li>기존 ly/conv/track 무접촉 · 순수 기존 흐름 회귀 0(⑨ 실측)</li>
+  </ul>
+</div>
+</body>
+</html>

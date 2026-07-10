@@ -24,8 +24,9 @@ export async function onRequestPost({ request, env }) {
 
   const url = String(body.url || '').trim().slice(0, 500);
   let fileB64 = String(body.fileB64 || '');
+  const r2key = String(body.r2key || '');
   const name = String(body.name || '');
-  if (!url && !fileB64) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
+  if (!url && !fileB64 && !r2key) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
   if (url) {
     // 러너發 SSRF 가드(ly.js 원본 완전 동수)
     if (/[\r\n\t]/.test(url)) return json({ error: '잘못된 URL' }, 400);
@@ -40,9 +41,9 @@ export async function onRequestPost({ request, env }) {
   const o = (body.opts && typeof body.opts === 'object') ? body.opts : {};
   const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;
   const opts = {};
-  for (const k of ['burn', 'filler', 'karaoke', 'pop', 'keyword', 'cut', 'bgm', 'aud_norm']) { if (typeof o[k] === 'boolean') opts[k] = o[k]; }
+  for (const k of ['burn', 'filler', 'karaoke', 'pop', 'keyword', 'cut', 'bgm', 'aud_norm', 'clip']) { if (typeof o[k] === 'boolean') opts[k] = o[k]; }   // clip = 클리퍼 스캔(하이라이트 후보픽 · 260711)
   const STR = { lang: ['auto', 'ko', 'dual', 'src'], tone: ['sns', 'plain'], style: ['bold', 'clean', 'box'], cutlv: ['soft', 'std', 'hard'],
-    vid_ar: ['9:16', '1:1', '4:5', '16:9'], vid_fit: ['crop', 'pad'], vid_res: ['1080', '720'], vid_fps: ['60i', '30', '24'] };
+    vid_ar: ['9:16', '1:1', '4:5', '16:9'], vid_fit: ['crop', 'pad', 'blur'], vid_res: ['src', '1080', '720'], vid_fps: ['60i', '30', '24'] };   // vid_res 'src' = 원본 유지(4K 캡 3840 · 260711) · vid_fit 'blur' = 원본 블러 확대 배경 여백(260711)
   for (const k in STR) { if (typeof o[k] === 'string' && STR[k].includes(o[k])) opts[k] = o[k]; }
   const pos = num(o.pos, 0, 100); if (pos !== null) opts.pos = Math.round(pos);          // 자막 세로 위치 %
   const bg = num(o.bg, 0, 100); if (bg !== null) opts.bg = Math.round(bg);               // 자막 배경 %
@@ -52,18 +53,31 @@ export async function onRequestPost({ request, env }) {
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;
   if (t1 !== null && t1 > 0) opts.vid_t1 = Math.round(t1 * 100) / 100;
   if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
-  if (!opts.burn && !opts.cut && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
+  if (opts.clip === true) { for (const k of Object.keys(opts)) { if (k !== 'clip') delete opts[k]; } }   // 클리퍼 = 배타 스캔 모드(후보만 뽑음 · 렌더 옵션 무시 = 서버 정규화 — 러너 스텝 게이트와 계약 일치)
+  else delete opts.clip;   // clip:false 잔여 키 제거 = 워크플로 contains 게이트 오발동 차단
+  if (!opts.clip && !opts.burn && !opts.cut && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
     && opts.vid_t0 === undefined && opts.vid_t1 === undefined) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // cut 단독 = 유효(STT-only 컷 260711)
 
-  const rl = await rateGate(GH, env.GH_TOKEN, 'edit-make.yml');   // 발사 레이트리밋(업로드 전 = up-<id> 고아 방지 · fail-open)
+  const rl = await rateGate(GH, env.GH_TOKEN, 'edit-make.yml');   // 발사 레이트리밋(업로드 전 = up-<id>·up_src 고아 방지 · fail-open)
   if (rl) return json({ error: rl.error }, 429);
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
 
-  // 파일 업로드(uploads/<id>/src.*) — 일회용 브랜치 up-<id>(ly/track/conv 동일 · 캡 30MB = conv 통일)
+  // R2 직업로드 키(대용량 ≤2GB · api/upload 발급) — 존재·크기 검증 후 러너에 r2_src로 전달(base64/up-브랜치 경로 건너뜀)
+  let r2src = '';
+  if (!url && r2key) {
+    if (!/^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)$/.test(r2key) || /\s/.test(r2key)) return json({ error: '잘못된 업로드 키 — 파일을 다시 선택해줘' }, 400);   // \s = $ 후행 개행 봉합(평의회1)
+    if (!env.R2) return json({ error: '대용량 업로드 미설정 — 파일을 다시 선택해줘' }, 501);
+    const h = await env.R2.head(r2key);
+    if (!h) return json({ error: '업로드 파일이 없어(만료·정리됨) — 다시 올려줘' }, 400);
+    if (h.size > 2 * 1024 * 1024 * 1024) return json({ error: '파일은 2GB까지' }, 400);
+    r2src = r2key;
+  }
+
+  // 파일 업로드(uploads/<id>/src.*) — 일회용 브랜치 up-<id>(ly/track/conv 동일 · 캡 30MB = R2 미바인딩 폴백)
   let filePath = '';
   let upBranch = '';
-  if (!url && fileB64) {
+  if (!url && !r2src && fileB64) {
     const dm = fileB64.match(/^data:[^;,]*;base64,(.+)$/);
     if (dm) fileB64 = dm[1];
     if (!fileB64 || fileB64.length > 40_000_000) return json({ error: '파일은 ≤30MB — 큰 영상은 URL로(드라이브 등 직링크)' }, 400);
@@ -85,7 +99,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/edit-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, url, file: filePath, up_branch: upBranch, opts: JSON.stringify(opts).slice(0, 900) },
+    ref: REF, inputs: { id, url, file: filePath, up_branch: upBranch, r2_src: r2src, opts: JSON.stringify(opts).slice(0, 900) },
   });
   if (r.status === 204) return json({ ok: true, id, out: `ly_out/${id}/video.json` });
   if (upBranch) { try { await GH(env.GH_TOKEN, `git/refs/heads/${upBranch}`, 'DELETE'); } catch { /* 고아 잔존 무해 — 수동 정리 대상 */ } }

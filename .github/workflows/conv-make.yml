@@ -20,6 +20,10 @@ on:
         description: '업로드 일회용 브랜치(up-<id> · 빈값=main 커밋 경로) — ly/track 동일'
         type: string
         default: ''
+      r2_src:
+        description: 'R2 직업로드 키(up_src/<id>.<ext> · 대용량 ≤2GB — api/upload 발급 · 빈값=미사용 · 잡 끝 삭제)'
+        type: string
+        default: ''
       opts:
         description: '변환 옵션 JSON {"fps":"keep|60i|30|24","ar":"orig|9:16|1:1|4:5|16:9","fit":"crop|pad(검정 여백·중앙)","pos":0..1(crop만),"t0":s,"t1":s,"res":"orig|1080|720","audio":"keep|norm(−14LUFS·L/R 통일)"}'
         type: string
@@ -35,7 +39,7 @@ permissions:
 jobs:
   conv:
     runs-on: ubuntu-latest
-    timeout-minutes: 38   # 60fps 보간 예산 25분(코드 INTERP_BUDGET) + 다운로드·인코딩·업로드 여유 — 무한 행만 차단(§9)
+    timeout-minutes: 58   # 최악 스택{환경 ~10 + R2 소스 8 + 변환 33(보간 예산 25분 포함)} + 우아한 실패·커밋 창 — 무한 행만 차단(§9 · R2 선스텝 재산정 평의회6 260711)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -86,6 +90,27 @@ jobs:
           fi
           [ -f "$FILE" ] || { echo "업로드 파일이 없어 — 다시 올려줘." > /tmp/conv_err.txt; echo "::error::업로드 파일 없음: $FILE"; exit 1; }
           echo "CONV_SRC=$FILE" >> "$GITHUB_ENV"
+
+      - name: 소스 확보 (R2 직업로드 — 대용량 ≤2GB)
+        if: ${{ inputs.r2_src != '' }}
+        timeout-minutes: 8   # 2GB도 러너→R2 수십 MB/s면 수분 — 잡 캡 예산 압축(평의회6)
+        env:
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          [ -z "${CONV_SRC:-}" ] || { echo "이미 소스 확보 — 스킵(다중 입력 방어)"; exit 0; }
+          printf '%s' "$R2_SRC" | grep -Eqx 'up_src/[0-9]{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)' \
+            || { echo "::error::잘못된 r2_src: $R2_SRC"; exit 1; }   # api 정규식과 동형 자체 재검증(개행·탭·확장자·문자셋 — 상류 신뢰 대신 최후 방어선 · 평의회1)
+          [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/conv_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
+          EXT="${R2_SRC##*.}"
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          aws s3 cp "s3://$R2_BUCKET/$R2_SRC" "/tmp/upsrc.$EXT" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+            || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/conv_err.txt; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
+          echo "CONV_SRC=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
 
       - name: 변환 (ffmpeg → R2 → video.json)
         timeout-minutes: 33   # 스텝 자체 캡 — 잡 38분 하드캔슬 전에 failure() error.log 표면화(track 문법)
@@ -162,3 +187,19 @@ jobs:
         run: |
           case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
           git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"
+
+      - name: 업로드 원본 정리 (R2 up_src — 일회용 · up-브랜치와 동일 수명)
+        if: ${{ always() && inputs.r2_src != '' }}
+        env:
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          case "$R2_SRC" in up_src/*) ;; *) echo "up_src/* 아님 — 스킵"; exit 0;; esac
+          case "$R2_SRC" in *..*|*' '*) exit 0;; esac
+          [ -n "$R2_BUCKET" ] || exit 0
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          aws s3 rm "s3://$R2_BUCKET/$R2_SRC" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+            || echo "원본 정리 실패(무해 — 수동 정리 대상): $R2_SRC"

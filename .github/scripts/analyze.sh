@@ -267,7 +267,7 @@ ${extracted}"
           --model "$MODEL" \
           --effort "$EFFORT" \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
-          --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
+          --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
           --max-turns 40 \
           2> "/tmp/${base}.err")"
     rc=$?

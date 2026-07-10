@@ -104,7 +104,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
           --model "$MODEL" \
           --effort "$EFFORT" \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
-          --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
+          --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
           --max-turns 50 \
           2> "/tmp/${base}.err")"
     rc=$?

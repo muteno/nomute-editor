@@ -52,7 +52,7 @@ $(cat "$file")"
         --model "$MODEL" \
         --effort max \
         --safe-mode \
-        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep" \
+        --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep" \
         --max-turns 2 \
         2>/dev/null)"
   rc=$?

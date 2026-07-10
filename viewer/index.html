@@ -657,9 +657,18 @@
   #snsList { display:flex; flex-direction:column; gap:11px; }
   /* 트렌드 레인(메뉴4 트렌드 탭 · 운영자 260710 배치 승인·260711 메뉴4 이동) — 카드 = .soc-item 실크 글래스 그대로 계승 · 라벨 = 소머리 표준(§표기표준: 텍스트 --fg·fw-x·블릿 --accent·fw-b·--fs-label) · 수치 = tabular-nums · 신규 색 0(전부 토큰) */
   #snsTrends .soc-item { cursor:default; margin-bottom:10px; }
-  .trend-lbl { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 5px; }
+  .trend-lbl { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 9px; }   /* 하단 5→9px: 라벨이 접기 토글(탭 타깃)이 되며 첫 행(외부링크)과 8px 인접 = 오탭 완충(평의회9 실측) */
   .trend-lbl::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }
-  .trend-lbl:not(:first-child) { margin-top:11px; }
+  /* 섹션 접기(운영자 260711 "내용 많으면 해당 건만 접기") = 네이티브 <details> + .phase 디스클로저 정본 계승(체브론 SVG mask·회전 .2s·즉시 열닫) · 접힘 = +N 개수 배지(.sc-fold 카운트 라벨 관용구) · 기억 = localStorage nm_trend_fold JSON 단일키(평의회2) */
+  .trend-sec + .trend-sec { margin-top:11px; }   /* 구 .trend-lbl:not(:first-child) 간격 승계(라벨이 details 안으로 들어가 셀렉터 이전) */
+  .trend-sec > summary { cursor:pointer; list-style:none; user-select:none; outline:none; -webkit-tap-highlight-color:transparent; }
+  .trend-sec > summary::-webkit-details-marker { display:none; }
+  .trend-sec > summary::after { content:''; margin-left:auto; width:12px; height:12px; background:var(--mut); transition:transform .2s;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat; }   /* .phase 디스클로저 체브론 동일 mask(CHEVRON M6 9…) 계승 */
+  .trend-sec:not([open]) > summary::after { transform:rotate(-90deg); }
+  .trend-cnt { display:none; color:var(--mut); font-weight:400; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
+  .trend-sec:not([open]) .trend-cnt { display:inline; }   /* 접힘일 때만 개수 배지 노출(펼침 = 행이 곧 개수) */
   .trend-unit { color:var(--mut); font-weight:400; font-size:var(--fs-xs); }   /* 섹션 라벨 우측 단위 선언(열 헤더 원리 · 행 반복 0 · 평의회4 — "200+ 순위 오해" 지뢰 해소) */
   .trend-time { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; margin:-2px 0 8px; }   /* 수집 시각 = "살아있냐" 한 줄(평의회10) */
   .trend-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }
@@ -3196,16 +3205,19 @@ function sensChips(tags) {
 function progGauge(a) {
   const st = (a.cards && a.cards.state) || '';
   const segs = [['요약','n'], ['프롬프트','m'], ['카드','t']];
-  // 10분 초과 미완 = 멈춤 → 펄스 정지(무한 회전 방지·시간 기반 실패 로직 · 18→10분 운영자 260704 "모두 10분 안에 안되면 실패").
+  // 시간 초과 미완 = 멈춤 → 펄스 정지(무한 회전 방지·시간 기반 실패 로직). 임계 = 백엔드 상한 정합(cardSec stuck/genStuck과 동일 기준):
+  //   렌더(fired_partial) = 10분(운영자 260704) · 프롬프팅(generating) = 26분(CARD_TIMEOUT 25분+1 · 260711 동행 — 성공할 11~25분 카드 오표시 방지).
   const up = a.cards && a.cards.updated;
-  const stuck = up && (Date.now() - Date.parse(up)) / 60000 > 10;
+  const upMin = up ? (Date.now() - Date.parse(up)) / 60000 : 0;
+  const stuck = up && upMin > 10;
+  const genStuckG = up && upMin > 26;
   const hasMd = !!(a.cards && (a.cards.md || a.cards.has_md));   // 프롬프트(텍스트)까지 갔는지 → 실패 표식 위치 판정 (has_md = 경량 인덱스 플래그·md는 detail lazy)
   let done = 1, busy = false, fail = false;   // done=완료 세그먼트 수(요약은 큐 전건 완료)
   if (st === 'done') done = 3;
   // 멈춤(stuck)이면 '진행되다 깨짐' → 펄스 대신 그 세그먼트에 실패 표식(노랑 빗금·빨강 라벨), 재시도는 cardSec 버튼.
   else if (st === 'fired_partial') { done = 2; if (stuck) fail = true; else busy = true; }   // 카드 발사·이미지 대기
   else if (st === 'text_done') done = 2;                        // 프롬프트까지·카드 대기
-  else if (st === 'generating') { if (stuck) fail = true; else busy = true; }   // 카드 프롬프팅 중
+  else if (st === 'generating') { if (genStuckG) fail = true; else busy = true; }   // 카드 프롬프팅 중(26분 = CARD_TIMEOUT 정합)
   else if (st === 'failed') { fail = true; if (hasMd) done = 2; }   // 텍스트 있으면 카드 단계 실패(seg 카드)
   // 실패 이력(error.log 잔존) = 한 번이라도 깨진 흔적 → 해당 단계에 영속 흉터(scar). 재시도·성공해도 유지.
   const scarSeg = (a.cards && a.cards.failedOnce) ? (hasMd ? 2 : 1) : -1;
@@ -4332,10 +4344,13 @@ function cardSec(a) {
   // stale = 카드 제작 후 요약을 또 revise함(a.rev > 카드가 만들어진 회차 c.rev). 이미지 있는 카드(done/fired_partial)만 —
   // 이미지는 보존하고 '다시 제작'(앰버 버튼) 권유로 운영자가 새 요약 반영(text_done은 card_refresh가 자동 갱신하므로 제외).
   const stale = (st === 'done' || st === 'fired_partial') && (Number(a.rev || 0) > Number(c.rev || 0));
-  // 10분 초과 미완 = 멈춤(시간 기반 실패 감지) — 경고·재시도 버튼 노출용(progGauge와 동일 기준 · 옛 18/15분 → 모두 10분 통일 · 운영자 260704 "모두 10분 안에 안되면 실패").
+  // 시간 기반 실패 감지 — 경고·재시도 버튼 노출용(progGauge와 동일 기준). 임계 = 그 백엔드 상한과 정합이 정본:
+  //   렌더(fired_partial) = 10분 유지(운영자 260704 "10분 안에 안되면 실패") · 프롬프팅(generating) = 26분
+  //   (= cardmake CARD_TIMEOUT 1500s(25분)+여유 1분 · 260711 900→1500 상향 동행 — 10분이면 이제 성공하는 11~25분
+  //   카드를 '실패(시간초과)'로 오표시 → 오인 재시도·중복 생성 유발[전반평의회③ P1]. 타임아웃 재시도 시 updated 재스탬프라 2차 시도도 커버).
   const stuckMin = c.updated ? Math.floor((Date.now() - Date.parse(c.updated)) / 60000) : 999;   // updated 없으면 비정상(스탬프 안 됨) = stuck 취급
-  const stuck = stuckMin > 10;        // fired_partial(이미지 렌더) 포함 10분 통일
-  const genStuck = stuckMin > 10;     // generating(프롬프팅)도 10분
+  const stuck = stuckMin > 10;        // fired_partial(이미지 렌더) = 10분 유지
+  const genStuck = stuckMin > 26;     // generating(프롬프팅) = CARD_TIMEOUT(25분)+1 정합
   // 카드 phase 헤더에 상태 반영(접어도 보이게)
   const sumlabel = { '':'2. 카드 뉴스 프롬프트', generating:'2. 카드 뉴스 프롬프트 — 프롬프팅 중…', text_done:'2. 카드 뉴스 프롬프트',   // text_done '— 텍스트·프롬프트' 접미 제거(운영자 260629 "저 말 빼자")
     done:'2. 카드 뉴스 프롬프트', fired_partial:'2. 카드 뉴스 프롬프트 — 생성됨', failed:'2. 카드 뉴스 프롬프트 — 실패' };
@@ -8563,26 +8578,39 @@ async function loadTrends() {
 // 수집함(CANDS)·큐레이션 신호·임계·랭킹·판정 전부 무접촉(옛 수집함 매칭 칩 = 레거시 커플링이라 철거).
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
-  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], tk = ((d.tiktok || {}).hashtags) || [];
-  if (!gt.length && !yt.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
+  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], tkv = ((d.tiktok || {}).videos) || [], tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711 이식) · hashtags = 구 카나리아 폴백
+  if (!gt.length && !yt.length && !tkv.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(n || '');
   const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
+  // 섹션 접기(운영자 260711) = 네이티브 <details> — 토글 = 브라우저 처리(재렌더 0 = 통재빌드 플래시 없음 · 평의회8)
+  // 기억 = localStorage nm_trend_fold JSON 단일키(nomute_tab 관용구 · 평의회2·7) · 접힘 상태는 빌드 시점 open 속성으로 복원
+  let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
+  const sec = (key, lbl, unit, n, body) =>
+    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
   let h = '<div class="soc-item soc-trend">';
   if (tm) h += `<div class="trend-time">${esc(tm)} 수집</div>`;
-  if (gt.length) h += '<div class="trend-lbl">구글 급상승 검색어 <span class="trend-unit">· 검색량≈</span></div>' + gt.slice(0, 8).map((g, i) => {   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10) + 단위 선언(평의회4)
+  if (gt.length) h += sec('gt', '구글 급상승 검색어', '· 검색량≈', Math.min(gt.length, 8), gt.slice(0, 8).map((g, i) => {   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10) + 단위 선언(평의회4)
     const u = (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));
     return `<a class="trend-row" href="${escUrl(u)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${esc(g.traffic || '')}</span></a>`;
-  }).join('');
-  if (yt.length) h += '<div class="trend-lbl">유튜브 인기 <span class="trend-unit">· 조회수</span></div>' + yt.slice(0, 5).map((v, i) =>
-    `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join('');
-  if (tk.length) h += '<div class="trend-lbl">틱톡 <span class="trend-unit">· 인기 해시태그</span></div><div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>';
+  }).join(''));
+  if (yt.length) h += sec('yt', '유튜브 인기', '· 조회수', Math.min(yt.length, 5), yt.slice(0, 5).map((v, i) =>
+    `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join(''));
+  if (tkv.length) h += sec('tk', '틱톡 인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>   // tikwm 인기 영상(글로벌 혼합·조회수 정렬 — 260711 이식)
+    `<a class="trend-row" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${t.views ? vfmt(t.views) : ''}</span></a>`).join(''));
+  else if (tk.length) h += sec('tk', '틱톡', '· 인기 해시태그', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
   h += '</div>';
   box.innerHTML = h;
   const qs = box.querySelectorAll('.trend-q');   // 텍스트 = textContent 주입(XSS 안전 · soc-title 패턴 계승)
   let k = 0;
   gt.slice(0, 8).forEach(g => { if (qs[k]) qs[k++].textContent = g.query || ''; });
   yt.slice(0, 5).forEach(v => { if (qs[k]) qs[k++].textContent = v.title || ''; });
+  if (tkv.length) tkv.slice(0, 8).forEach(t => { if (qs[k]) qs[k++].textContent = t.title || ('@' + (t.account || '')); });   // 제목 없으면 @계정 폴백
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
+  box.querySelectorAll('.trend-sec').forEach(dt => dt.addEventListener('toggle', () => {   // 접힘 기억(toggle = 사용자 탭에만 발화 · 초기 파싱 open은 미발화)
+    let st = {}; try { st = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { st = {}; }
+    if (dt.open) delete st[dt.dataset.sec]; else st[dt.dataset.sec] = 1;
+    try { localStorage.setItem('nm_trend_fold', JSON.stringify(st)); } catch {}
+  }));
 }
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
