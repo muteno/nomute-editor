@@ -1,0 +1,462 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>리사이즈 확장 미리보기 — 플레이그라운드</title>
+<style>
+/* ── thumb.html 팔레트 사본(자기완결 = 값 복사 · §핵심명령 3-c) ── */
+:root{
+  --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322;
+  --danger:#e23b2a; --danger-rgb:226,59,42;
+  --amber:#FFE13D; --amber-rgb:255,225,61;
+  /* 구조 토큰 사본(tokens.css) */
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-display:22px; --fs-h2:15px; --fs-h3:14px; --fs-label:13px; --fs-sm:12px; --fs-xs:11px;
+  --fw-b:700; --fw-x:800; --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s;
+  --press-m:.9; --press-s:.85;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:
+    radial-gradient(120% 60% at 50% -6%, rgba(var(--accent-rgb),.08), transparent 55%),
+    var(--bg);
+  color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  padding:20px 16px 60px; }
+.head{ max-width:1040px; margin:0 auto 18px; }
+.head h1{ font-size:var(--fs-display); margin:0 0 6px; letter-spacing:-.01em; }
+.head h1 b{ color:var(--accent); }
+.head p{ margin:2px 0; color:var(--mut); font-size:var(--fs-h3); }
+.head .why{ color:var(--fg); }
+
+.wrap{ max-width:1040px; margin:0 auto; display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+.stagewrap{ flex:1 1 340px; min-width:300px; position:sticky; top:14px; }
+.console{ flex:1 1 380px; min-width:300px; display:flex; flex-direction:column; gap:14px; }
+
+/* ── 폰 프레임(9:18 · 실사용 화면비) — 이미지 모달 재현 ── */
+.frame{ width:100%; max-width:360px; margin:0 auto; aspect-ratio:9/17; background:var(--bg);
+  border:1px solid var(--line); border-radius:26px; padding:12px; overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,.5); position:relative;
+  background-image:
+    radial-gradient(120% 42% at 50% -4%, rgba(var(--accent-rgb),.07), transparent 52%),
+    linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)); }
+.modal-head{ display:flex; align-items:center; justify-content:space-between;
+  padding:2px 4px 10px; border-bottom:1px solid var(--line); margin-bottom:8px; }
+.modal-head .ttl{ font-size:var(--fs-h3); font-weight:var(--fw-x); }
+.modal-head .x{ width:26px; height:26px; border-radius:8px; border:1px solid var(--line);
+  background:rgba(255,255,255,.04); color:var(--mut); display:grid; place-items:center; }
+.modal-head .x svg{ width:13px; height:13px; }
+.mtabs{ display:flex; justify-content:center; gap:22px; margin-bottom:14px; font-size:var(--fs-sm); }
+.mtabs span{ color:var(--mut); font-weight:var(--fw-b); }
+.mtabs span.on{ color:var(--accent); font-weight:var(--fw-x); text-shadow:0 0 10px rgba(var(--accent-rgb),.5); }
+
+/* 소머리(• 형광 블릿 · thumb .fl 계승) */
+.sore{ font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:0 0 8px; }
+.sore::before{ content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+
+/* 비율 칩(.ropt 사본) */
+.ropts{ display:flex; flex-wrap:wrap; gap:3px 4px; align-items:center; margin:0 0 12px; }
+.ropt{ background:none; border:none; padding:6px 7px; font:var(--fw-b) var(--fs-label)/1 inherit;
+  color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; }
+.ropt:active{ transform:scale(var(--press-m)); }
+.ropt.on{ color:var(--accent); font-weight:var(--fw-x); }
+.rsep{ color:var(--mut); opacity:.5; }
+
+/* ── 미리보기 스테이지(신규 = 이 시안의 주제) ── */
+.pv{ position:relative; width:100%; min-height:190px; display:grid; place-items:center;
+  padding:14px 6px 6px; }
+.canv{ position:relative; }                 /* 목표 결과 캔버스(스케일) */
+.canv .orig{ position:absolute; display:block; }   /* 원본(중앙·선명) */
+.canv .strip{ position:absolute; }          /* 확장부(늘어나는 부분) */
+.origline{ position:absolute; pointer-events:none; }  /* 원본 경계선 */
+.dimlabel{ position:absolute; font-size:9px; font-weight:var(--fw-b); letter-spacing:.02em;
+  color:var(--mut); background:rgba(0,0,0,.5); padding:1px 5px; border-radius:5px;
+  white-space:nowrap; pointer-events:none; }
+/* 원본 라벨 배지 */
+.origtag{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  font-size:9px; font-weight:var(--fw-x); color:var(--accent); background:rgba(0,0,0,.45);
+  padding:2px 7px; border-radius:6px; letter-spacing:.04em; pointer-events:none;
+  box-shadow:0 0 0 1px rgba(var(--accent-rgb),.35); }
+
+/* 수치 배지(늘어날 길이) */
+.metrics{ margin-top:10px; text-align:center; font-size:var(--fs-xs); line-height:1.5;
+  color:var(--mut); font-variant-numeric:tabular-nums; }
+.metrics b{ color:var(--fg); font-weight:var(--fw-x); }
+.metrics .gain{ color:var(--accent); }
+.metrics .noop{ color:var(--amber); }
+
+.shoot{ margin:12px 6px 2px; width:calc(100% - 12px); padding:11px; border-radius:var(--r-m);
+  border:1px solid rgba(var(--accent-rgb),.3); background:rgba(var(--accent-rgb),.10);
+  color:var(--accent); font-weight:var(--fw-x); font-size:var(--fs-label); text-align:center; }
+
+.stagecap{ text-align:center; color:var(--mut); font-size:var(--fs-xs); margin-top:12px; }
+
+/* ── 콘솔 ── */
+.csec{ background:var(--pan); border:1px solid var(--line); border-radius:var(--r-l);
+  padding:14px 15px; }
+.csec > .lbl{ font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:0 0 11px; }
+.csec > .lbl::before{ content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+.csec > .lbl small{ color:var(--mut); font-weight:var(--fw-b); font-size:var(--fs-xs); margin-left:6px; }
+
+/* 샘플/첨부 */
+.samples{ display:flex; gap:8px; flex-wrap:wrap; }
+.samp{ padding:8px 12px; border-radius:var(--r-m); border:1px solid var(--line);
+  background:rgba(255,255,255,.03); color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b);
+  cursor:pointer; transition:all var(--dur); }
+.samp.on{ border-color:rgba(var(--accent-rgb),.5); color:var(--accent); background:rgba(var(--accent-rgb),.08); }
+.samp:active{ transform:scale(var(--press-s)); }
+.filelbl{ padding:8px 12px; border-radius:var(--r-m); border:1px dashed var(--line);
+  background:transparent; color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); cursor:pointer; }
+.filelbl input{ display:none; }
+
+/* 프리셋 필 */
+.presets{ display:flex; flex-direction:column; gap:8px; }
+.preset{ text-align:left; padding:11px 13px; border-radius:var(--r-m); border:1px solid var(--line);
+  background:rgba(255,255,255,.02); color:var(--fg); cursor:pointer; transition:all var(--dur);
+  display:flex; align-items:center; gap:10px; }
+.preset:active{ transform:scale(var(--press-s)); }
+.preset.on{ border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.07);
+  box-shadow:0 0 0 1px rgba(var(--accent-rgb),.25) inset; }
+.preset .nm{ font-weight:var(--fw-x); font-size:var(--fs-label); }
+.preset .ds{ color:var(--mut); font-size:var(--fs-xs); margin-top:1px; }
+.preset .star{ color:var(--amber); margin-left:auto; font-size:var(--fs-label); }
+.swatch{ width:34px; height:34px; border-radius:8px; flex:0 0 auto; position:relative; overflow:hidden;
+  background:rgba(255,255,255,.04); border:1px solid var(--line); }
+
+/* 슬라이더 */
+.slider{ margin:0 0 13px; }
+.slider:last-child{ margin-bottom:0; }
+.slider .top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.slider .nm{ font-size:var(--fs-sm); color:var(--fg); font-weight:var(--fw-b); }
+.slider .nm em{ color:var(--mut); font-style:normal; font-weight:400; margin-left:5px; font-size:var(--fs-xs); }
+.slider .val{ font-size:var(--fs-sm); color:var(--accent); font-variant-numeric:tabular-nums; font-weight:var(--fw-x); }
+input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:5px; border-radius:999px;
+  background:linear-gradient(var(--accent),var(--accent)) 0/var(--p,50%) 100% no-repeat, rgba(255,255,255,.1); outline:none; }
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--accent); cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+input[type=range]::-moz-range-thumb{ width:16px; height:16px; border:none; border-radius:50%; background:var(--accent); cursor:pointer; }
+.slider.dis{ opacity:.32; pointer-events:none; }
+
+/* 출력 */
+pre#out{ margin:0 0 10px; padding:12px; background:var(--bg); border:1px solid var(--line);
+  border-radius:var(--r-s); color:var(--fg); font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;
+  white-space:pre-wrap; overflow-x:auto; }
+pre#out .k{ color:var(--accent); }
+pre#out .keep{ color:var(--mut); }
+pre#out .upd{ color:var(--amber); }
+.copy{ width:100%; padding:11px; border-radius:var(--r-m); border:1px solid rgba(var(--accent-rgb),.35);
+  background:rgba(var(--accent-rgb),.10); color:var(--accent); font-weight:var(--fw-x); font-size:var(--fs-label);
+  cursor:pointer; transition:all var(--dur); }
+.copy:active{ transform:scale(var(--press-s)); }
+.copy.done{ background:var(--accent); color:var(--on-accent); }
+
+.note{ font-size:var(--fs-xs); color:var(--mut); line-height:1.7; }
+.note b{ color:var(--fg); }
+.note ul{ margin:6px 0 0; padding-left:16px; }
+.note li{ margin:3px 0; }
+
+@media (max-width:760px){ .stagewrap{ position:static; } }
+</style>
+
+<div class="head">
+  <h1>리사이즈 <b>확장 미리보기</b> — 발사 전 시안</h1>
+  <p class="why"><b>왜</b>: 비율을 고르면 원본이 어느 방향으로 얼마나 늘어나는지, 발사(과금) 전에 점선으로 미리 본다.</p>
+  <p>리사이즈 = 아웃페인트(원본은 정중앙 100% 보존, 한 축만 대칭 확장) — 러너 <code>resize_image.py · pad_canvas</code> 계산을 브라우저에서 그대로 복제(과금 0·실시간).</p>
+  <p>비율 칩·원본보존을 눌러 실시간 갱신을 확인하고, 우측에서 <b>확장부 표현 방식</b>과 점선 스타일을 골라 <b>[선택값 복사]</b> → 답장하면 곧 실장 스펙.</p>
+</div>
+
+<div class="wrap">
+  <!-- ① 실물 재현 미리보기 -->
+  <div class="stagewrap">
+    <div class="frame">
+      <div class="modal-head">
+        <span class="ttl">이미지</span>
+        <span class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span>
+      </div>
+      <div class="mtabs"><span>썸네일</span><span>저작권</span><span>카드뉴스</span><span>생성</span><span class="on">리사이즈</span></div>
+
+      <div class="sore">비율</div>
+      <div class="ropts" id="ropts">
+        <button class="ropt" data-v="9:16">9:16</button>
+        <button class="ropt" data-v="4:5">4:5</button>
+        <button class="ropt on" data-v="16:9">16:9</button>
+        <button class="ropt" data-v="1:1">1:1</button>
+        <span class="rsep">|</span>
+        <button class="ropt on" id="lockBtn">원본 보존</button>
+      </div>
+
+      <div class="pv" id="pv"></div>
+      <div class="metrics" id="metrics"></div>
+      <div class="shoot">리사이즈</div>
+    </div>
+    <div class="stagecap">칩을 눌러 비율을 바꿔봐 — 점선 안쪽 = 늘어나는 부분</div>
+  </div>
+
+  <!-- 콘솔 -->
+  <aside class="console">
+    <div class="csec">
+      <div class="lbl">테스트 이미지 <small>세로·가로 내장 + 네 이미지 첨부</small></div>
+      <div class="samples">
+        <button class="samp on" data-samp="portrait">세로 포스터 720×1280</button>
+        <button class="samp" data-samp="land">가로 사진 1600×900</button>
+        <label class="filelbl">내 이미지 첨부<input type="file" accept="image/*" id="file"></label>
+      </div>
+    </div>
+
+    <div class="csec">
+      <div class="lbl">확장부 표현 방식 <small>늘어나는 부분을 어떻게 보일까</small></div>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="csec" id="sliderSec">
+      <div class="lbl">미세조정</div>
+      <div id="sliders"></div>
+    </div>
+
+    <div class="csec">
+      <div class="lbl">선택값 <small>복사해서 답장 = 실장 스펙</small></div>
+      <pre id="out"></pre>
+      <button class="copy" id="copy">선택값 복사</button>
+    </div>
+
+    <div class="csec">
+      <div class="lbl">재현 한계(정직)</div>
+      <div class="note">
+        <ul>
+          <li><b>확장 방향·크기·경계 = 100% 정확</b>. 러너 <code>pad_canvas</code>(8배수 반올림 포함)를 그대로 복제 → 실제 결과와 픽셀 일치.</li>
+          <li><b>확장부 내용물은 근사</b>. 실제로 채워질 그림은 발사해야 나옴(단색/제미나이 AI채움/블러 3층 라우팅). 여기 딤·빗금·블러는 "여기가 채워진다"는 <b>표식</b>일 뿐 결과물이 아님.</li>
+          <li><b>현행 = 미리보기 없음</b>(발사해야 결과 확인) — 이 시안이 신규 도입이라 "현행" 프리셋은 없음.</li>
+          <li>원본보존 ON = 원본 픽셀 절대 불변(경계 실선). OFF = AI가 원본까지 재구성 가능(경계도 점선으로 표시).</li>
+        </ul>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const clamp8 = v => Math.round(v/8)*8;
+
+/* ── 내장 샘플 이미지(canvas 생성 = 자기완결·외부요청 0) ── */
+function makePortrait(){
+  const c=document.createElement('canvas'); c.width=720; c.height=1280;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,1280); g.addColorStop(0,'#ff9524'); g.addColorStop(1,'#e05a15');
+  x.fillStyle=g; x.fillRect(0,0,720,1280);
+  x.fillStyle='rgba(255,255,255,.94)';
+  x.font='900 190px sans-serif'; x.fillText('S',48,250);
+  x.fillRect(56,300,430,22);
+  x.font='700 40px sans-serif'; x.fillText('SEASONS', 60, 380);
+  x.fillStyle='#341a0a';
+  x.beginPath(); x.arc(505,780,86,0,7); x.fill();
+  x.beginPath(); x.moveTo(360,1280); x.quadraticCurveTo(505,905,650,1280); x.fill();
+  x.fillStyle='rgba(0,0,0,.22)'; x.fillRect(0,1150,720,130);
+  x.fillStyle='rgba(255,255,255,.82)'; x.fillRect(50,1188,320,15); x.fillRect(50,1222,210,11);
+  return c.toDataURL('image/jpeg',.9);
+}
+function makeLand(){
+  const c=document.createElement('canvas'); c.width=1600; c.height=900;
+  const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,900); g.addColorStop(0,'#2a5b8f'); g.addColorStop(.62,'#8fc0dc'); g.addColorStop(.62,'#c7d99a'); g.addColorStop(1,'#6f8a3e');
+  x.fillStyle=g; x.fillRect(0,0,1600,900);
+  x.fillStyle='rgba(255,246,214,.95)'; x.beginPath(); x.arc(1180,220,90,0,7); x.fill();
+  x.fillStyle='#5c7a34';
+  x.beginPath(); x.moveTo(0,560); x.quadraticCurveTo(420,470,860,558); x.quadraticCurveTo(1240,640,1600,545); x.lineTo(1600,900); x.lineTo(0,900); x.fill();
+  x.fillStyle='#42592a';
+  x.beginPath(); x.moveTo(0,660); x.quadraticCurveTo(560,600,1120,680); x.quadraticCurveTo(1400,720,1600,672); x.lineTo(1600,900); x.lineTo(0,900); x.fill();
+  return c.toDataURL('image/jpeg',.9);
+}
+const SAMPLES = { portrait:{url:makePortrait(),w:720,h:1280}, land:{url:makeLand(),w:1600,h:900} };
+
+/* ── pad_canvas 복제(러너와 동일 · 8배수 반올림) ── */
+function padCanvas(W,H,aspect){
+  const [aw,ah] = aspect.split(':').map(Number);
+  let cw,ch;
+  if (aw/ah >= W/H){ ch=H; cw=clamp8(H*aw/ah); }
+  else { cw=W; ch=clamp8(W*ah/aw); }
+  const x=Math.floor((cw-W)/2), y=Math.floor((ch-H)/2);
+  return {cw,ch,x,y,aw,ah};
+}
+function ratioOk(W,H,aspect,tol=0.02){
+  const [aw,ah]=aspect.split(':').map(Number);
+  return Math.abs(W/H - aw/ah) <= (aw/ah)*tol;
+}
+
+/* ── 상태 ── */
+const DEFAULTS = { thick:2, dash:6, dim:.45, hint:10 };
+const PRESETS = [
+  {id:'A', nm:'점선 윤곽만', ds:'확장부 비움 · 경계만 점선', st:{...DEFAULTS, dim:0, hint:0}},
+  {id:'B', nm:'점선 + 스크림 딤', ds:'확장부를 어둡게 → 원본이 도드라짐', star:true, st:{...DEFAULTS, dim:.45, hint:0}},
+  {id:'C', nm:'점선 + 블러 힌트', ds:'원본 가장자리를 늘려 흐림(블러폴백 근사)', st:{...DEFAULTS, dim:.18, hint:14}},
+  {id:'D', nm:'점선 + 대각 빗금', ds:'도면식 해칭 = "미채움" 명시', st:{...DEFAULTS, dim:.12, hint:0}},
+];
+const SLIDERS = [
+  {k:'thick', nm:'점선 굵기', d:'확장 경계선', min:1, max:4, step:.5, unit:'px'},
+  {k:'dash', nm:'점선 간격', d:'dash 길이', min:2, max:14, step:1, unit:'px'},
+  {k:'dim', nm:'확장부 딤', d:'rgba(0,0,0,α)', min:0, max:.7, step:.01, unit:'', modes:['B','C','D']},
+  {k:'hint', nm:'블러 힌트', d:'가장자리 늘림 흐림', min:0, max:20, step:1, unit:'px', modes:['C']},
+];
+let state = {...DEFAULTS};
+let mode = 'B';
+let sampKey = 'portrait';
+let cur = SAMPLES.portrait;
+
+/* ── 스테이지 렌더 ── */
+function renderStage(){
+  const pv = $('#pv');
+  const {w:W, h:H, url} = cur;
+  const aspect = document.querySelector('#ropts .ropt.on[data-v]').dataset.v;
+  const noop = ratioOk(W,H,aspect);
+  const {cw,ch,x,y} = padCanvas(W,H,aspect);
+
+  // 스테이지 가용 영역에 맞춰 스케일
+  const maxW = pv.clientWidth - 12, maxH = 176;
+  const scale = Math.min(maxW/cw, maxH/ch);
+  const CW=cw*scale, CH=ch*scale, OX=x*scale, OY=y*scale, OW=W*scale, OH=H*scale;
+  const lock = $('#lockBtn').classList.contains('on');
+
+  // 확장 스트립(한 축만 = 좌우 or 상하)
+  const horiz = OW < CW - .5;     // 좌우 확장?
+  let strips = '';
+  const stripStyle = (L,T,Wd,Ht) => {
+    let bg='transparent', extra='', inner='';
+    if (mode==='B') bg=`rgba(0,0,0,${state.dim})`;
+    else if (mode==='D'){ bg=`rgba(0,0,0,${state.dim})`;
+      extra=`background-image:repeating-linear-gradient(45deg, rgba(var(--accent-rgb),.30) 0 1.5px, transparent 1.5px 8px);`; }
+    else if (mode==='C'){
+      // 블러 힌트 = blur_pad 폴백 근사: 원본을 캔버스 전체에 cover로 깔고 blur → 가장자리가 확장부로 늘어남
+      inner = `<img src="${url}" style="position:absolute;left:${-L}px;top:${-T}px;width:${CW}px;height:${CH}px;object-fit:cover;filter:blur(${state.hint}px);opacity:.92">`;
+      if (state.dim>0) inner += `<div style="position:absolute;inset:0;background:rgba(0,0,0,${state.dim})"></div>`;
+    }
+    return `<div class="strip" style="left:${L}px;top:${T}px;width:${Wd}px;height:${Ht}px;background:${bg};overflow:hidden;${extra}">${inner}</div>`;
+  };
+  if (!noop){
+    if (horiz){ strips = stripStyle(0,0,OX,CH) + stripStyle(OX+OW,0,CW-OX-OW,CH); }
+    else { strips = stripStyle(0,0,CW,OY) + stripStyle(0,OY+OH,CW,CH-OY-OH); }
+  }
+
+  // 확장 경계 점선 = 원본 박스 outline
+  const borderStyle = lock
+    ? `outline:${state.thick}px solid var(--accent); outline-offset:-1px; box-shadow:0 0 12px rgba(var(--accent-rgb),.4);`
+    : `outline:${state.thick}px dashed var(--accent);`;
+  // 캔버스 외곽(결과 경계) = 옅은 점선
+  const canvOutline = noop ? 'outline:1px solid rgba(var(--accent-rgb),.4);'
+    : `outline:${state.thick}px dashed var(--mut);`;
+  // 원본 경계 점선(확장부 쪽)
+  const origDash = `<div class="origline" style="left:${OX}px;top:${OY}px;width:${OW}px;height:${OH}px;border:${Math.max(1,state.thick*.9)}px dashed var(--mut);"></div>`;
+
+  const tag = noop
+    ? `<div class="origtag" style="color:var(--amber);box-shadow:0 0 0 1px rgba(var(--amber-rgb),.4)">원본 그대로</div>`
+    : `<div class="origtag">원본</div>`;
+
+  pv.innerHTML =
+    `<div class="canv" style="width:${CW}px;height:${CH}px;background:rgba(255,255,255,.03);${canvOutline}">`
+    + strips
+    + `<img class="orig" src="${url}" style="left:${OX}px;top:${OY}px;width:${OW}px;height:${OH}px;${borderStyle}">`
+    + (noop ? '' : origDash)
+    + tag
+    + `</div>`;
+
+  // 수치 배지
+  const m = $('#metrics');
+  if (noop){
+    m.innerHTML = `원본 <b>${W}×${H}</b> · <span class="noop">이미 ${aspect} 비율 — 확장 없음(그대로 저장)</span>`;
+  } else {
+    const gain = horiz ? (cw-W)/2 : (ch-H)/2;
+    const dir = horiz ? '좌우 각' : '상하 각';
+    const mult = horiz ? (cw/W) : (ch/H);
+    m.innerHTML = `원본 <b>${W}×${H}</b> &nbsp;→&nbsp; ${aspect} 결과 <b>${cw}×${ch}</b>`
+      + `<br><span class="gain">${dir} +${gain}px 확장</span> · ${horiz?'폭':'높이'} ${mult.toFixed(2)}×`;
+  }
+}
+
+/* ── 콘솔 빌드 ── */
+function buildPresets(){
+  $('#presets').innerHTML = PRESETS.map(p=>{
+    // 스와치 미니 프리뷰
+    let sw='';
+    if (p.id==='A') sw='border:1.5px dashed var(--mut);';
+    else if (p.id==='B') sw='background:rgba(0,0,0,.5);border:1.5px dashed var(--mut);';
+    else if (p.id==='C') sw='background:linear-gradient(90deg,#e05a15,#ff9524);filter:blur(2px);border:1.5px dashed var(--mut);';
+    else sw='background-image:repeating-linear-gradient(45deg,rgba(var(--accent-rgb),.4) 0 1.5px,transparent 1.5px 6px);border:1.5px dashed var(--mut);';
+    return `<button class="preset ${p.id===mode?'on':''}" data-p="${p.id}">
+      <span class="swatch" style="${sw}"></span>
+      <span><span class="nm">${p.nm}</span><div class="ds">${p.ds}</div></span>
+      ${p.star?'<span class="star">★</span>':''}</button>`;
+  }).join('');
+  document.querySelectorAll('.preset').forEach(b=> b.onclick = ()=>{
+    mode = b.dataset.p;
+    const p = PRESETS.find(x=>x.id===mode);
+    state = {...p.st};
+    buildPresets(); buildSliders(); renderStage(); buildOut();
+  });
+}
+function buildSliders(){
+  $('#sliders').innerHTML = SLIDERS.map(s=>{
+    const active = !s.modes || s.modes.includes(mode);
+    const pct = ((state[s.k]-s.min)/(s.max-s.min)*100).toFixed(1);
+    return `<div class="slider ${active?'':'dis'}" data-k="${s.k}">
+      <div class="top"><span class="nm">${s.nm}<em>${s.d}</em></span>
+        <span class="val">${state[s.k]}${s.unit}</span></div>
+      <input type="range" min="${s.min}" max="${s.max}" step="${s.step}" value="${state[s.k]}" style="--p:${pct}%">
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.slider input').forEach(inp=>{
+    const k = inp.closest('.slider').dataset.k;
+    const s = SLIDERS.find(x=>x.k===k);
+    inp.oninput = ()=>{
+      state[k] = parseFloat(inp.value);
+      inp.style.setProperty('--p', ((state[k]-s.min)/(s.max-s.min)*100)+'%');
+      inp.closest('.slider').querySelector('.val').textContent = state[k]+s.unit;
+      renderStage(); buildOut();
+    };
+  });
+}
+function buildOut(){
+  const p = PRESETS.find(x=>x.id===mode);
+  const dimNote = state.dim===0 ? '' : ` rgba(0,0,0,${state.dim})`;
+  const lock = $('#lockBtn').classList.contains('on');
+  $('#out').innerHTML =
+`<span class="k">[리사이즈 확장 미리보기 — 선택값]</span>
+표현 방식 : ${p.id} · ${p.nm}
+확장 경계 : <span class="keep">--mut 점선</span> · 굵기 ${state.thick}px · 간격 ${state.dash}px
+확장부 딤 : ${state.dim===0?'없음':'rgba(0,0,0,'+state.dim+')'}${mode==='C'?'  블러 '+state.hint+'px':''}
+원본 경계 : ${lock?'<span class="k">--accent 실선(원본보존 ON)</span>':'<span class="upd">--mut 점선(보존 OFF = AI 재구성)</span>'}
+수치 배지 : 원본크기 → 결과크기 · 늘어나는 길이(px)·배율 표기
+<span class="keep">색·radius·press = 전부 기존 토큰 계승(신규 0)</span>`;
+}
+
+/* ── 이벤트 ── */
+document.querySelectorAll('#ropts .ropt[data-v]').forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll('#ropts .ropt[data-v]').forEach(o=>o.classList.remove('on'));
+  b.classList.add('on'); renderStage();
+});
+$('#lockBtn').onclick = ()=>{ $('#lockBtn').classList.toggle('on'); renderStage(); buildOut(); };
+document.querySelectorAll('.samp').forEach(b=> b.onclick = ()=>{
+  document.querySelectorAll('.samp').forEach(o=>o.classList.remove('on'));
+  b.classList.add('on'); sampKey=b.dataset.samp; cur=SAMPLES[sampKey]; renderStage();
+});
+$('#file').onchange = e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ev=>{
+    const im = new Image();
+    im.onload = ()=>{ cur = {url:ev.target.result, w:im.naturalWidth, h:im.naturalHeight};
+      document.querySelectorAll('.samp').forEach(o=>o.classList.remove('on')); renderStage(); };
+    im.src = ev.target.result;
+  };
+  rd.readAsDataURL(f);
+};
+$('#copy').onclick = ()=>{
+  const t = $('#out').textContent;
+  const done = ()=>{ const c=$('#copy'); c.classList.add('done'); c.textContent='복사됨 ✓';
+    setTimeout(()=>{ c.classList.remove('done'); c.textContent='선택값 복사'; },1400); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(done).catch(()=>fallback(t,done));
+  else fallback(t,done);
+};
+function fallback(t,cb){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta);
+  ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove(); cb(); }
+
+/* 초기화 */
+buildPresets(); buildSliders(); renderStage(); buildOut();
+window.addEventListener('resize', renderStage);
+</script>
