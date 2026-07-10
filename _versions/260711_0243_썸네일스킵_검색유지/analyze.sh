@@ -44,27 +44,6 @@ GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
 
-# AI 썸네일 전역 설정(뷰어 설정 → api/settings.js → settings/app.json 커밋 · 운영자 260710 "검색 이미지는 유지, AI 생성만 스킵"):
-# genImgOn 이 명시적 false 면 이 런의 모든 요약(픽·자동픽·폰공유 전문)에 no_thumb:"1" 도장 → thumb_gen 이 제미나이 생성만 스킵.
-# 검색이미지(og:image·image_sources fetch)는 no_thumb 게이트 *이전* 처리라 그대로 유지 · 카드 프롬프팅(card_plan) 무접촉.
-# 파일 부재 = 빈 값(ON 폴백 = 종전 동작·신규 체크아웃 정상) · 파일은 있는데 판독 실패 = ::warning:: 표면화 후 ON 폴백
-# (반과금 스위치의 폴백이 '생성(과금)' 방향이라 조용히 넘기지 않음 · 평의회 260711). ask 경로(ask.sh)는 뷰어 건별 실효값(nothumb 페이로드)이 정본이라 여기 안 탐.
-NOTHUMB_GLOBAL="$(python3 -c '
-import json
-try:
-    v = json.load(open("settings/app.json")).get("genImgOn")
-except FileNotFoundError:
-    v = None
-except Exception:
-    v = "ERR"
-print("ERR" if v == "ERR" else ("1" if v is False else ""))
-' 2>/dev/null || true)"
-if [ "$NOTHUMB_GLOBAL" = "ERR" ]; then
-  echo "::warning::settings/app.json genImgOn 판독 실패 — ON 폴백(AI 썸네일 생성 유지 = 종전 동작)"
-  NOTHUMB_GLOBAL=""
-fi
-[ -n "$NOTHUMB_GLOBAL" ] && echo "AI 썸네일 전역 OFF(settings/app.json genImgOn=false) — 이 런 요약 전건 no_thumb 도장(검색이미지·카드 프롬프팅은 유지)"
-
 shopt -s nullglob
 files=(pending/*.txt)
 if [ ${#files[@]} -eq 0 ]; then
@@ -359,16 +338,6 @@ ${extracted}"
     out="$(printf '%s\n' "$out" | awk -v a="$alt_urls" \
           '!ad && /^---[[:space:]]*$/{print; print "alt_urls: \"" a "\""; ad=1; next} {print}')"
     echo "  검색 유사 보강 — alt_urls 주입($(printf '%s' "$alt_urls" | wc -w)개 매체)"   # 가시성(Actions 로그)
-  fi
-
-  # AI 썸네일 전역 OFF(설정 genImgOn=false) → no_thumb 도장(ask.sh 건별 주입과 동일 awk) — thumb_gen 이 제미나이 생성만
-  # 스킵하고 검색이미지는 그대로 채움(운영자 260710). 요약 시점 설정을 기사에 박는 방식 = ask 경로와 동일(뒤에 설정을 켜도
-  # 이미 요약된 기사를 소급 생성하지 않음 = 과금 서프라이즈 차단).
-  # ⚠️ 주입 위치 = alt_urls *뒤*(각 awk가 첫 --- 직후 삽입 = 나중 주입이 앞줄) → 최종 frontmatter에서 no_thumb 가
-  # 여는 --- 바로 다음(2행) 고정 = alt_urls(최대 1500자)가 앞에 와도 _md_no_thumb read(2000) 윈도 상시 안전(평의회 260711).
-  if [ -n "$NOTHUMB_GLOBAL" ]; then
-    out="$(printf '%s\n' "$out" | awk '!nt && /^---[[:space:]]*$/{print; print "no_thumb: \"1\""; nt=1; next} {print}')"
-    echo "  AI 썸네일 스킵 도장(no_thumb) — 전역 설정 OFF·검색이미지는 유지"
   fi
 
   # #마약 백스톱 — 본문에 약물어가 있으면 frontmatter tags 에 #마약 보강(LLM 누락 구제·운영자 260625).
