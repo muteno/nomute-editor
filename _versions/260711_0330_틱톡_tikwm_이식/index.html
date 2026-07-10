@@ -8563,8 +8563,8 @@ async function loadTrends() {
 // 수집함(CANDS)·큐레이션 신호·임계·랭킹·판정 전부 무접촉(옛 수집함 매칭 칩 = 레거시 커플링이라 철거).
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
-  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], tkv = ((d.tiktok || {}).videos) || [], tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711 이식) · hashtags = 구 카나리아 폴백
-  if (!gt.length && !yt.length && !tkv.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
+  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], tk = ((d.tiktok || {}).hashtags) || [];
+  if (!gt.length && !yt.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(n || '');
   const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
   let h = '<div class="soc-item soc-trend">';
@@ -8575,16 +8575,13 @@ function renderSnsTrends() {
   }).join('');
   if (yt.length) h += '<div class="trend-lbl">유튜브 인기 <span class="trend-unit">· 조회수</span></div>' + yt.slice(0, 5).map((v, i) =>
     `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join('');
-  if (tkv.length) h += '<div class="trend-lbl">틱톡 인기 <span class="trend-unit">· 조회수</span></div>' + tkv.slice(0, 8).map((t, i) =>   // tikwm 인기 영상(글로벌 혼합·조회수 정렬 — 260711 이식)
-    `<a class="trend-row" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${t.views ? vfmt(t.views) : ''}</span></a>`).join('');
-  else if (tk.length) h += '<div class="trend-lbl">틱톡 <span class="trend-unit">· 인기 해시태그</span></div><div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>';
+  if (tk.length) h += '<div class="trend-lbl">틱톡 <span class="trend-unit">· 인기 해시태그</span></div><div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>';
   h += '</div>';
   box.innerHTML = h;
   const qs = box.querySelectorAll('.trend-q');   // 텍스트 = textContent 주입(XSS 안전 · soc-title 패턴 계승)
   let k = 0;
   gt.slice(0, 8).forEach(g => { if (qs[k]) qs[k++].textContent = g.query || ''; });
   yt.slice(0, 5).forEach(v => { if (qs[k]) qs[k++].textContent = v.title || ''; });
-  if (tkv.length) tkv.slice(0, 8).forEach(t => { if (qs[k]) qs[k++].textContent = t.title || ('@' + (t.account || '')); });   // 제목 없으면 @계정 폴백
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
 }
 function renderSns() {
