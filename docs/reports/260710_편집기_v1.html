@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>편집기 v1 — 업로드 1번·1잡 (골격 B · 260710)</title>
+<style>
+  body { margin:0; background:#121212; color:#eef7f0; font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  .wrap { max-width:640px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:20px; margin:8px 0 4px; }
+  h2 { font-size:15px; margin:26px 0 8px; color:#00EED2; }
+  .sub { color:#8fa697; font-size:13px; margin:0 0 18px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid #2a2c31; vertical-align:top; }
+  th { color:#8fa697; font-weight:700; white-space:nowrap; }
+  td b { color:#00EED2; font-weight:800; }
+  .ok { color:#2CF5A5; font-weight:700; }
+  .warn { color:#FFE13D; }
+  .box { background:#16171a; border:1px solid #2a2c31; border-radius:12px; padding:12px 14px; margin:10px 0; font-size:13.5px; }
+  code { background:#0e0f11; border:1px solid #2a2c31; border-radius:5px; padding:1px 5px; font-size:12px; }
+  ul { margin:6px 0; padding-left:18px; } li { margin:3px 0; }
+  .flow { display:flex; gap:8px; align-items:stretch; margin:10px 0; flex-wrap:wrap; }
+  .flow .st { flex:1; min-width:110px; background:#16171a; border:1px solid #2a2c31; border-radius:10px; padding:9px 10px; font-size:12.5px; text-align:center; }
+  .flow .st b { display:block; color:#00EED2; font-size:12px; margin-bottom:3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>편집기 v1 — 작은 영상 편집기</h1>
+  <p class="sub">260710 · 골격 B(레시피+처리 스택 · 플레이그라운드 선택값 배선) · `+ > 영상 > 편집기` 탭(최좌측)</p>
+
+  <h2>전 / 후 (핵심 = 왕복 제거)</h2>
+  <table>
+    <tr><th>축</th><th>전(현행 2도구)</th><th>후(편집기)</th></tr>
+    <tr><td>릴스 1편</td><td>자막 생성기 발사 → 다운로드 → 변환 탭 재업로드 → 발사 (<b>배치 2회+수동 핸드오프</b>)</td><td><b>업로드 1번 · 발사 1번 · 1잡</b> — 자막+컷+배경음+음량+9:16 여백까지 한 번에</td></tr>
+    <tr><td>진입</td><td>기능이 두 탭에 분산</td><td>레시피 원탭(★릴스 완성/포맷만/화질만) 또는 [+ 처리 추가] 바텀시트 → <b>처리 스택 카드</b>(탭=펼침·X=제거·적용 순서 그대로 보임)</td></tr>
+    <tr><td>소스</td><td>URL 위·파일 아래</td><td><b>파일 픽토 좌(기본) · URL 우</b> (운영자 확정 · 기존 픽토그램·액티브 그대로)</td></tr>
+  </table>
+
+  <h2>처리 스택 카드 8종</h2>
+  <div class="box">자막(언어·톤·모양·카라오케/팝/키워드·배경/위치/크기) · 배경음 제거 · 컷 편집(세기 3 — 자막 필요) · 구간(트림 — 자막과 동시 미지원) · 비율(9:16/1:1/4:5/16:9 × 자르기/여백 검정) · 해상도(1080/720) · 프레임(60fps 보간·30·24) · 음량 통일(−14LUFS·좌우) — 하단 고정 [편집 시작 44px]에 예상 소요 병기.</div>
+
+  <h2>백엔드 (평의회 설계 그대로)</h2>
+  <div class="flow">
+    <div class="st"><b>edit-make 1잡</b>자막 ON에만 STT+의역<br>(없으면 ffmpeg만 = 러너 절약)</div>
+    <div class="st"><b>단일 컴포지터</b>번인 스크립트 확장:<br>컷→크롭→스케일→60i→여백→자막</div>
+    <div class="st"><b>후처리·전달</b>음량 SSOT 재사용 → R2<br>→ 폴 → 결과+note</div>
+  </div>
+  <div class="box">자막은 <b>최종 캔버스 기준</b> 렌더 = 9:16 여백(검정) 위에도 자막이 앉음(릴스 문법). 편집기 축이 전부 비면 기존 자막 생성기 경로와 <b>바이트 동일</b>(회귀 0 — 로컬 9케이스 실측). 기존 자막 생성기·변환 탭은 무접촉 병존 → 검증 후 점진 이관.</div>
+
+  <h2>실측</h2>
+  <table>
+    <tr><th>검증</th><th>결과</th></tr>
+    <tr><td>컴포지터 9케이스</td><td class="ok">회귀-자막만 무변 · 패드+음량(480×852·−14LUFS) · 자막+패드 · 트림 2.0s · 트림×자막=스킵 note · 60i+자막+패드 60fps · 음량만 · 크롭+720 · 빈입력 에러 유지</td></tr>
+    <tr><td>뷰어 헤드리스 실클릭</td><td class="ok">레시피 프리필·카드 펼침/제거·시트 추가(구간 dim 사유 표기)·카라오케↔팝 배타·게이지·페이로드 3종·발사 검증 2종 — 전부 PASS·JS 에러 0</td></tr>
+    <tr><td>게이트</td><td class="ok">check_refs rc=0 (edit.html 게이트 편입 포함 — JS 구문·소머리·자동완성·디자인 baseline)</td></tr>
+  </table>
+
+  <h2>한계 (정직 · v1)</h2>
+  <ul>
+    <li><span class="warn">구간(트림) × 자막 동시 미지원</span> — 자막 타임라인 재매핑 후속. 서버가 건너뛰고 사유 표기.</li>
+    <li><span class="warn">컷 편집 = 자막 필요</span>(무음 판정 원천 = 전사). 시트에 사유 1줄.</li>
+    <li>다시 입히기·상세 자막 편집·크롭 드래그 미리보기 = v1 미탑재(자막 생성기/변환 탭 그대로 사용 가능 — 병존이 이 한계의 안전망).</li>
+    <li>60fps 보간 = 예산 900초 넘으면 보간만 건너뛰고 나머지 처리는 진행(note 표기).</li>
+    <li>영상 10분 이하 · 업로드 30MB 이하.</li>
+  </ul>
+</div>
+</body>
+</html>
