@@ -26,9 +26,7 @@ import os
 import re
 import subprocess
 import sys
-import time
 from collections import Counter
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
@@ -144,36 +142,12 @@ def cat_rescue(c):
             and not surfaced(c))
 
 
-REJUDGE_MAX_H = float(os.environ.get("GATE_REJUDGE_MAX_H", "72"))   # rubric 변경 재채점 창(h) — 운영자 260710 '쿼터 절감' 승인
-
-
-def _fresh_for_rejudge(c, stamp_key):
-    """rubric 변경 *재*채점은 최근 REJUDGE_MAX_H(기본 72h·first_seen)만 — 룰북 한 줄 수정이 노출권 전량(수천 건)
-    재채점 폭탄(§7 260704 실측: 39→3,000 부활 서지)이 되던 것을 '최근 3일치만'으로 제한. 3일+ 기사는 timeAcc가
-    이미 바닥(48h=.02)이라 재채점 이득 0 = 구버전 도장 유지. 미채점(도장 없음) = 나이 무관 True(첫 채점 커버리지
-    불변) · first_seen 없음/파싱 실패 = True(보수 = 채점 쪽)."""
-    if not c.get(stamp_key):
-        return True
-    s = c.get("first_seen") or ""
-    try:
-        try:
-            t = datetime.fromisoformat(s.replace("Z", "+00:00"))
-        except ValueError:
-            t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
-        if t.tzinfo is None:
-            t = t.replace(tzinfo=timezone(timedelta(hours=9)))
-        return (time.time() - t.timestamp()) / 3600 < REJUDGE_MAX_H
-    except Exception:
-        return True
-
-
 def needs_grading(c):
-    """노출권(grade+cat) 미채점이거나, cross-2 cat구제(cat만) 미채점이거나, 외신 미번역(편승)이면 True.
-    rubric 변경 시 되살아남 — 단 재채점은 최근 72h만(_fresh_for_rejudge · 첫 채점은 나이 무관)."""
+    """노출권(grade+cat) 미채점이거나, cross-2 cat구제(cat만) 미채점이거나, 외신 미번역(편승)이면 True. rubric 변경 시 되살아남."""
     if surfaced(c):
-        return (c.get("grade_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "grade_rubric")) or needs_translate(c)
+        return c.get("grade_rubric") != RUBRIC_VER or needs_translate(c)
     if cat_rescue(c):
-        return (c.get("cat_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "cat_rubric")) or needs_translate(c)
+        return c.get("cat_rubric") != RUBRIC_VER or needs_translate(c)
     return False
 
 
