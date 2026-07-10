@@ -113,10 +113,11 @@ def plan_passes(subjects, keep, extras, fps, W, H):
             passes.append({"f0": pf, "kind": "box", "prompts": [[b[0], b[1], b[0] + b[2], b[1] + b[3]]]})
     for e in extras:   # 수동 지정 — 순방향(탭→끝) + 역방향(탭→0 · 앞 구간 커버 = 어느 장면에서 찍어도 전체 추적 · 운영자 승인)
         f0 = max(0, int(round(float(e["t"]) * fps)))
-        pt = [[float(e["x"]) * W, float(e["y"]) * H]]
-        passes.append({"f0": f0, "kind": "point", "prompts": pt})
+        passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
         if f0 > int(round(0.7 * fps)):   # 앞 구간이 유의미할 때만 역패스(1초 미만 = 순패스 시작점과 사실상 동일)
-            passes.append({"f0": f0, "kind": "point", "prompts": pt, "rev": True})   # 커버 = [0, f0)
+            # ⚠ 좌표는 정규(0..1)로 보관 — 역트림은 512급 스케일이라 원본 픽셀 좌표를 그대로 주면 프레임 밖/엉뚱한
+            #   세그먼트를 찍는다(E2E 실측 적발: 포인트가 트림 좌표계여야 함). 세그 직전에 트림 실해상으로 곱한다.
+            passes.append({"f0": f0, "kind": "point", "pt_norm": [[float(e["x"]), float(e["y"])]], "prompts": [], "rev": True})   # 커버 = [0, f0)
     passes.sort(key=lambda p: p["f0"])
     return passes
 
@@ -195,7 +196,7 @@ def run(vid_id, req, doc, outdir):
     #   전량 순회라 fps·해상도 비례 — 재검증9: 전파만 계산하면 60fps 다객체가 통과 후 스텝 타임아웃).
     total_f = float(meta.get("frames") or 0) or (real_dur * fps)
     est_seg = sum((min(float(p["f0"]), total_f) if p.get("rev") else max(0.0, total_f - p["f0"])) / fps
-                  * SEG_FPS * (SEG_S_1 + SEG_S_OBJ * max(0, len(p["prompts"]) - 1))
+                  * SEG_FPS * (SEG_S_1 + SEG_S_OBJ * max(0, len(p.get("pt_norm") or p["prompts"]) - 1))
                   for p in passes)   # 역패스 커버 = [0, f0) — 예산에 자동 포함(직접 지정 1개 = 순+역 합이 영상 전체 1회분)
     est = est_seg + total_f * TAIL_S_PF * (W * H / 2_073_600.0)
     if est > KEY_BUDGET_SEC:
@@ -225,6 +226,13 @@ def run(vid_id, req, doc, outdir):
         r = subprocess.run(cmd, timeout=600)
         if r.returncode != 0 or not os.path.isfile(trim) or os.path.getsize(trim) < 1024:
             raise RuntimeError("전처리(트림) 실패 — 다시 시도해줘.")
+        if p.get("rev"):   # 역패스 프롬프트 = 정규좌표 × 트림 실해상(512급) — 원본 픽셀 좌표는 좌표계 불일치(실측 적발)
+            tc = cv2.VideoCapture(trim)
+            tw, th = int(tc.get(cv2.CAP_PROP_FRAME_WIDTH)), int(tc.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            tc.release()
+            if tw < 2 or th < 2:
+                raise RuntimeError("전처리(트림) 실패 — 다시 시도해줘.")
+            p["prompts"] = [[nx * tw, ny * th] for nx, ny in p["pt_norm"]]
         mdir = os.path.join(mask_root, f"p{k}")
         os.makedirs(mdir, exist_ok=True)
         if predictor is None:
