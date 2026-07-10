@@ -16,20 +16,6 @@ SENT = ROOT / "push" / "sent.json"
 CAND = ROOT / "viewer" / "candidates.json"
 FAST_MAX_H = 4   # 최신 긴급만 푸시(뷰어 토스트와 동일 단일상수 정신)
 PUSH_MIN_CROSS = int(os.environ.get("PUSH_MIN_CROSS", "2"))   # 푸시 최소 교차매체(다매체 검증 = 오발송 가드 · MIN_CROSS 바뀌어도 푸시 하한 고정)
-PUSH_PUB_MAX_H = float(os.environ.get("PUSH_PUB_MAX_H", "24"))   # 발행 나이 상한(배지 소멸선과 동일 24h) — first_seen 전환의 극단 뒷북 안전판(운영자 260710)
-SENT_TTL_H = float(os.environ.get("PUSH_SENT_TTL_H", "48"))   # 발송 원장 TTL — 무기한이면 '北 미사일 발사'류 템플릿 반복 헤드라인의 *별개 새 사건*이 제목해시 충돌로 영구 오억제(분신술 260710 검증6 · autopick.json 48h 정리와 대칭)
-KST = dt.timezone(dt.timedelta(hours=9))
-
-
-def _sent_alive(ts, now_ep):
-    # 원장 키 유효 여부(TTL 창 내) — 파싱 실패 = 유효 취급(보수 = 중복 발송 차단 쪽 · 구 포맷 값도 안전)
-    try:
-        t = dt.datetime.fromisoformat(str(ts))
-        if t.tzinfo is None:
-            t = t.replace(tzinfo=KST)
-        return (now_ep - t.timestamp()) / 3600 < SENT_TTL_H
-    except Exception:
-        return True
 
 def jload(p, d):
     try: return json.loads(Path(p).read_text(encoding="utf-8"))
@@ -71,22 +57,7 @@ def dedup_keys(c):
     return ks
 
 def age_h(c):
-    # 나이 = first_seen(갓 감지) 우선·published 폴백 — published 우선(구)은 syndication 지연·스탬프 오류로
-    # breaking 후보 43%가 도착 시점 이미 4h+ = 푸시 영구 누락(자동픽 age_h와 동일 축 · §7 260619 보류 →
-    # 운영자 260710 '푸시 누락 고치기' 승인으로 전환). 진짜 뒷북 = breaking_judge('방금 터진'만 YES) 의미 게이트
-    # + grade≥3 + 아래 발행 상한(PUSH_PUB_MAX_H)이 거름.
-    s = c.get("first_seen") or c.get("published") or ""
-    for f in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"):
-        try:
-            t = dt.datetime.strptime(s.replace("Z", "+0000")[:25 if "+" in s else 19], f)
-            if t.tzinfo is None: t = t.replace(tzinfo=dt.timezone.utc)
-            return (time.time() - t.timestamp()) / 3600
-        except Exception: pass
-    return None
-
-def pub_age_h(c):
-    # 발행 나이(published 단독·없으면 None) — 극단 뒷북 상한 가드 전용(발행 24h+ = 배지도 없는 묵은 건 = 푸시 불가).
-    s = c.get("published") or ""
+    s = c.get("published") or c.get("first_seen") or ""
     for f in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"):
         try:
             t = dt.datetime.strptime(s.replace("Z", "+0000")[:25 if "+" in s else 19], f)
@@ -144,12 +115,7 @@ def main():
         msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": notify_url, "tag": notify_tag}]
     else:
         cands = jload(CAND, [])
-        _raw = jload(SENT, {})
-        if isinstance(_raw, list):
-            sent = set(_raw)   # 구 포맷(list·TTL 없음) = 전부 유효 취급(발송 시 dict로 마이그레이션)
-        else:
-            _now_ep = time.time()
-            sent = {k for k, v in _raw.items() if _sent_alive(v, _now_ep)}   # TTL 만료 키 = 억제 해제(반복 헤드라인 새 사건 재푸시 가능)
+        sent = set(jload(SENT, []))
         msgs = []
         for c in cands:
             if not is_breaking(c):
@@ -157,10 +123,7 @@ def main():
             if (c.get("cross") or 0) < PUSH_MIN_CROSS:   # 다매체 검증 미달 = 오발송 가드(푸시는 회수 불가)
                 continue
             a = age_h(c)
-            if a is None or a < 0 or a >= FAST_MAX_H:   # a<0 = 미래스탬프(소스 TZ 오기록) → 음수나이가 4h창 통과해 비가역 오발송하던 구멍 차단(뷰어 scTs 미래가드와 짝)
-                continue
-            pa = pub_age_h(c)
-            if pa is not None and pa >= PUSH_PUB_MAX_H:   # 발행 24h+ = 극단 뒷북 차단(first_seen 전환 안전판 · 운영자 260710)
+            if a is None or a < 0 or a >= FAST_MAX_H:   # a<0 = 미래발행(소스 TZ 오기록) → 음수나이가 4h창 통과해 비가역 오발송하던 구멍 차단(뷰어 scTs 미래가드와 짝)
                 continue
             ks = dedup_keys(c)
             if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
@@ -196,17 +159,10 @@ def main():
         subs2 = [s for s in subs if (s or {}).get("endpoint") not in dead]
         SUBS.write_text(json.dumps(subs2, ensure_ascii=False), encoding="utf-8")
         print(f"죽은 구독 {len(dead)} 정리")
-    if not test and not notify and sent_keys:   # 발송 원장 갱신(테스트·임의알림은 미기록) — dict{키: 발송시각 KST} + 48h TTL 정리(구 list[-500:] 무기한 대체)
-        now_iso = dt.datetime.now(KST).isoformat(timespec="seconds")
-        raw = jload(SENT, {})
-        if isinstance(raw, list):
-            raw = {k: now_iso for k in raw}   # 구 포맷 마이그레이션 — 기존 키 = 지금 도장(48h 뒤 자연 만료)
-        for k in sent_keys:
-            raw[k] = now_iso
-        _now_ep = time.time()
-        raw = {k: v for k, v in raw.items() if _sent_alive(v, _now_ep)}
+    if not test and not notify and sent_keys:   # 발송 원장 갱신(테스트·임의알림은 미기록)
+        ledger = list(jload(SENT, [])); ledger.extend(sent_keys)
         SENT.parent.mkdir(parents=True, exist_ok=True)
-        SENT.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+        SENT.write_text(json.dumps(ledger[-500:], ensure_ascii=False), encoding="utf-8")
     print(f"발송: {len(sent_keys)}/{len(msgs)} 사건 · 구독 {len(subs)}{' [TEST]' if test else ''}")
 
 if __name__ == "__main__":
