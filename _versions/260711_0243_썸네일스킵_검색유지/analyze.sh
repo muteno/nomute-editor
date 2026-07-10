@@ -44,13 +44,6 @@ GVER="$(guidelines_version summary)"
 GBLOCK="$(guidelines_block summary)"
 echo "지침 버전(summary): ${GVER}"
 
-# AI 썸네일 전역 설정(뷰어 설정 → api/settings.js → settings/app.json 커밋 · 운영자 260710 "검색 이미지는 유지, AI 생성만 스킵"):
-# genImgOn 이 명시적 false 면 이 런의 모든 요약(픽·자동픽·폰공유 전문)에 no_thumb:"1" 도장 → thumb_gen 이 제미나이 생성만 스킵.
-# 검색이미지(og:image·image_sources fetch)는 no_thumb 게이트 *이전* 처리라 그대로 유지 · 카드 프롬프팅(card_plan) 무접촉.
-# 파일/키 부재·파싱 실패 = 빈 값(ON 폴백 = 종전 동작). ask 경로(ask.sh)는 뷰어 건별 실효값(nothumb 페이로드)이 정본이라 여기 안 탐.
-NOTHUMB_GLOBAL="$(python3 -c "import json; print('1' if json.load(open('settings/app.json')).get('genImgOn') is False else '')" 2>/dev/null || true)"
-[ -n "$NOTHUMB_GLOBAL" ] && echo "AI 썸네일 전역 OFF(settings/app.json genImgOn=false) — 이 런 요약 전건 no_thumb 도장(검색이미지·카드 프롬프팅은 유지)"
-
 shopt -s nullglob
 files=(pending/*.txt)
 if [ ${#files[@]} -eq 0 ]; then
@@ -338,14 +331,6 @@ ${extracted}"
   # 지침 버전 도장 — 첫 '---' 바로 뒤에 삽입(모델이 쓰는 게 아니라 스크립트가 박는다 = 정확).
   out="$(printf '%s\n' "$out" | awk -v v="$GVER" \
         '!done && /^---[[:space:]]*$/{print; print "guidelines_version: \"" v "\""; done=1; next} {print}')"
-
-  # AI 썸네일 전역 OFF(설정 genImgOn=false) → no_thumb 도장(ask.sh 건별 주입과 동일 awk) — thumb_gen 이 제미나이 생성만
-  # 스킵하고 검색이미지는 그대로 채움(운영자 260710). 요약 시점 설정을 기사에 박는 방식 = ask 경로와 동일(뒤에 설정을 켜도
-  # 이미 요약된 기사를 소급 생성하지 않음 = 과금 서프라이즈 차단).
-  if [ -n "$NOTHUMB_GLOBAL" ]; then
-    out="$(printf '%s\n' "$out" | awk '!nt && /^---[[:space:]]*$/{print; print "no_thumb: \"1\""; nt=1; next} {print}')"
-    echo "  AI 썸네일 스킵 도장(no_thumb) — 전역 설정 OFF·검색이미지는 유지"
-  fi
 
   # 검색이미지 유사 보강 — 픽이 심은 cluster_members(같은 사건 타매체 url)를 frontmatter alt_urls 로 보존
   # → thumb_gen 이 그 og:image 를 '유사'로 fetch(검색 캐러셀 채움). alt_urls 비면 생략(스크립트가 박음=정확).
