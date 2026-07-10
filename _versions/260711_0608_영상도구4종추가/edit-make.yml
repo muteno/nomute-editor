@@ -27,7 +27,7 @@ on:
         type: string
         default: ''
       opts:
-        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm} + 편집기 축{vid_ar,vid_fit(crop/pad/blur),vid_pos,vid_res,vid_fps,vid_t0,vid_t1,aud_norm} + 클리퍼{clip=배타 스캔: STT→구간픽→clips.json·컴포즈 스킵 · 260711}'
+        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm} + 편집기 축{vid_ar,vid_fit,vid_pos,vid_res,vid_fps,vid_t0,vid_t1,aud_norm}'
         type: string
         default: '{}'
       account:
@@ -56,14 +56,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ── 자막·클리퍼 ON 경로 전용 준비(claude 의역/구간픽) — 둘 다 아니면 Node·claude 설치 안 함(러너 분 절약)
+      # ── 자막 ON 경로 전용 준비(claude 의역) — burn:false 잡은 Node·claude 설치 안 함(러너 분 절약)
       - name: Setup Node (자막)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') }}
         uses: actions/setup-node@v5
         with:
           node-version: '24'
       - name: Install claude-code (자막)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') }}
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Setup Python
@@ -72,14 +72,14 @@ jobs:
           python-version: '3.12'
 
       - name: Restore python deps (site-packages 캐시 · 자막)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') }}
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
           key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 캐시 공유(동일 키 = 재설치 0)
 
       - name: STT 환경 (자막 = whisper+ffmpeg+한글폰트)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') }}
         timeout-minutes: 15
         uses: ./.github/actions/runner-setup
         with:
@@ -87,8 +87,8 @@ jobs:
           whisper: 'true'
           apt: ffmpeg fonts-noto-cjk
 
-      - name: 변환 환경 (자막·클리퍼 없음 = ffmpeg+yt-dlp만)
-        if: ${{ !contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"clip":true') }}
+      - name: 변환 환경 (자막 없음 = ffmpeg+yt-dlp만)
+        if: ${{ !contains(inputs.opts, '"burn":true') }}
         timeout-minutes: 10
         uses: ./.github/actions/runner-setup
         with:
@@ -161,22 +161,22 @@ jobs:
             echo "영상 $((DUR/60))분 — 편집기는 10분 이하만(릴스/쇼츠용)." > /tmp/edit_err.txt; echo "::error::길이 초과 ${DUR}s"; exit 1
           fi
 
-      - name: STT (자막·클리퍼 — 오디오 추출 → Whisper)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+      - name: STT (자막 — 오디오 추출 → Whisper)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
         timeout-minutes: 25
         env:
           IN_ID: ${{ inputs.id }}
         run: |
           set -e
           ffmpeg -y -i "$EDIT_SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
-            || { echo "오디오 추출 실패 — 소리 없는 영상이면 자막·클리퍼 카드를 빼고 다시." > /tmp/edit_err.txt; echo "::error::ffmpeg 오디오 추출 실패"; exit 1; }
+            || { echo "오디오 추출 실패 — 소리 없는 영상이면 자막 카드를 빼고 다시." > /tmp/edit_err.txt; echo "::error::ffmpeg 오디오 추출 실패"; exit 1; }
           SEGJSON="viewer/ly_out/${IN_ID}/segments.json"
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
-            || { echo "Whisper STT 실패 — 오디오 인식 불가. 자막·클리퍼 카드를 빼거나 다른 영상으로." > /tmp/edit_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+            || { echo "Whisper STT 실패 — 오디오 인식 불가. 자막 카드를 빼거나 다른 영상으로." > /tmp/edit_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
 
       - name: 자막 의역 (claude)
-        if: ${{ contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"clip":true') }}   # clip 배타 러너 백스톱(검증⑤ — api 정규화와 이중 방어 · 수동 dispatch 혼합 opts 시 토큰 낭비 차단)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
         timeout-minutes: 35
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
@@ -192,70 +192,6 @@ jobs:
           SUBS="$(cat /tmp/transcript.txt)"; export SUBS
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/lymake.sh "$IN_ID"
-
-      # ── 클리퍼 구간픽(claude · 260711 v0) — STT 전사 → 하이라이트 후보 3~5개 clips.json(후보 *제안*만 · 자동 발행 없음 —
-      #    선택·렌더 = 뷰어 클리퍼 카드에서 운영자 확정 = track 분석→확정 미러). 의역(lymake)과 배타(clip = 배타 스캔 · api 정규화).
-      - name: 클리퍼 구간픽 (claude)
-        if: ${{ contains(inputs.opts, '"clip":true') }}
-        timeout-minutes: 15
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
-          IN_ID: ${{ inputs.id }}
-          SRC_URL: ${{ inputs.url }}
-        run: |
-          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
-          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝(컴포즈·커밋) 동형(검증⑧ 심층방어 대칭)
-          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
-          SUBS="$(cat /tmp/transcript.txt)"; export SUBS
-          EDIT_DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"; export EDIT_DUR
-          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
-          bash .github/scripts/clipmake.sh "$IN_ID"
-
-      # 클리퍼 원본 보관(R2 ≤400MB) — 파일/R2 업로드 소스는 잡 끝에 삭제(일회용)라, 후보 확정 후 *재렌더*가 소스를 잃음 →
-      #   스캔 성공 시 원본을 ly_out/<id>/src.*로 보관하고 clips.json src에 URL 기입(URL 소스는 clipmake가 원 URL 승계 = 보관 불요).
-      #   전면 fail-soft: 실패 = 후보 목록은 정상·재렌더만 파일 재선택(뷰어 안내).
-      - name: 클리퍼 원본 보관 (R2)
-        if: ${{ contains(inputs.opts, '"clip":true') && inputs.url == '' }}
-        timeout-minutes: 8   # R2 PUT 스톨 백스톱(형제 R2 스텝 동형 · 검증⑤)
-        env:
-          IN_ID: ${{ inputs.id }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: |
-          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝 동형(검증⑧)
-          python3 - "$IN_ID" "$EDIT_SRC" <<'PY' || echo "::warning::클리퍼 원본 보관 실패(비치명 — 재렌더 시 파일 재선택)"
-          import json
-          import os
-          import sys
-          sys.path.insert(0, ".github/scripts")
-          import thumb_gen as tg   # r2_upload·R2_ON 재사용(ly_burn 동형)
-          vid, src = sys.argv[1], sys.argv[2]
-          p = os.path.join("viewer", "ly_out", vid, "clips.json")
-          if not (tg.R2_ON and os.path.isfile(p) and src and os.path.isfile(src)):
-              print("보관 조건 미충족(R2 미설정/산출·소스 없음) — 스킵")
-              raise SystemExit(0)
-          if os.path.getsize(src) > 400 * 1024 * 1024:
-              print("원본 400MB 초과 — 보관 생략(재렌더 = 파일 재선택)")
-              raise SystemExit(0)
-          ext = (os.path.splitext(src)[1] or ".mp4").lower()
-          ctype = {"webm": "video/webm", "mov": "video/quicktime", "mkv": "video/x-matroska"}.get(ext.lstrip("."), "video/mp4")
-          url = tg.r2_upload(open(src, "rb").read(), "ly_out/{}/src{}".format(vid, ext), ctype)
-          if url:
-              j = json.load(open(p, encoding="utf-8"))
-              j["src"] = url
-              tmp = p + ".tmp"
-              with open(tmp, "w", encoding="utf-8") as f:
-                  json.dump(j, f, ensure_ascii=False, separators=(",", ":"))
-              os.replace(tmp, p)   # 원자 교체 = 레포 표준(truncate-쓰기 금지 · 검증⑤)
-              print("원본 보관:", url)
-          PY
 
       - name: Demucs 캐시 (배경음 제거)
         if: ${{ contains(inputs.opts, '"bgm":true') }}
@@ -280,7 +216,6 @@ jobs:
             || echo "::warning::Demucs 설치 실패 — 배경음 제거 스킵(원본 소리로 합성)"
 
       - name: 컴포즈 (ly_burn 단일 컴포지터 → R2 → video.json)
-        if: ${{ !contains(inputs.opts, '"clip":true') }}   # 클리퍼 = 스캔 전용(산출 = clips.json — 렌더는 후보 확정 후 별도 잡)
         timeout-minutes: 60   # 내부 백스톱 최악 스택{probe 60 + Demucs 분리 780 + 인코딩 enc_to 2400(4K)~2250(60i) + 음량 270 + R2} ≈ 59분에 정렬(4K 경로 260711) — 잡 70분 캡 전 우아한 실패 기록 창 확보
         env:
           IN_ID: ${{ inputs.id }}
@@ -343,13 +278,6 @@ jobs:
           [ -n "$IN_ID" ] || exit 0
           case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
           python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
-          CJ="viewer/ly_out/${IN_ID}/clips.json"
-          if [ -s "$CJ" ]; then   # 클리퍼 스캔 = clips.json이 산출(video.json 없음) — 실패면 clips.json 부재 → 아래 error.log 경로가 받음
-            N="$(python3 -c "import json;print(len(json.load(open('$CJ')).get('clips') or []))" 2>/dev/null || echo 0)"
-            if [ "$N" -gt 0 ] 2>/dev/null; then BODY="클립 후보 ${N}개 — 탭해서 고르기"; else BODY="클립 후보 없음 — 다른 영상으로"; fi
-            python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/edit.html#done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
-            exit 0
-          fi
           VJ="viewer/ly_out/${IN_ID}/video.json"; EL="viewer/ly_out/${IN_ID}/error.log"
           OK=0; MSG=""
           if [ -s "$VJ" ]; then
