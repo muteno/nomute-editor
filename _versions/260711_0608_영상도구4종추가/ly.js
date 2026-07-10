@@ -51,17 +51,7 @@ export async function onRequestPost({ request, env }) {
         out.push({ s: Math.round(ss * 100) / 100, e: Math.round(ee * 100) / 100, ko });
       }
       if (!out.length) return json({ error: '편집 자막이 전부 무효 — 타이밍·텍스트 확인해줘' }, 400);   // 전량 탈락 = 침묵 원본행 금지(기능평의회9 · 30KB 에러와 대칭)
-      // 대본 삭제 컷(운영자 260711 텍스트 컷) — body.del = 삭제 조각 [s,e] 쌍(원본 시간축 · 토글 ON일 때만 옴) → subs.json 'del'로 동봉(러너 ly_burn이 그 구간을 영상에서 실제 컷)
-      const edel = [];
-      if (Array.isArray(body.del) && body.del.length) {
-        if (body.del.length > 400) return json({ error: '삭제 구간 400개 초과 — 조각을 줄여줘' }, 400);
-        for (const dd of body.del) {
-          const a = Number(Array.isArray(dd) ? dd[0] : NaN), b = Number(Array.isArray(dd) ? dd[1] : NaN);
-          if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b <= a) continue;   // 불량 쌍 = 조용 드롭(컷은 부가 축 — 자막 반영은 계속)
-          edel.push([Math.round(a * 100) / 100, Math.round(b * 100) / 100]);
-        }
-      }
-      esubs = JSON.stringify(edel.length ? { v: 1, segs: out, del: edel } : { v: 1, segs: out });
+      esubs = JSON.stringify({ v: 1, segs: out });
       if (new TextEncoder().encode(esubs).length > 50000) return json({ error: '편집 자막이 너무 커(50KB 초과) — 조각을 줄여줘' }, 400);   // 바이트 실측(chars≠bytes · 한글 3B/자 — 기능평의회8) · dispatch 총예산 ~64KB 보호
     } else if (body.restore === 1 || body.restore === true) {
       esubs = 'RESTORE';   // 복원 센티널 — 러너가 subs.orig.json(첫 편집 반영 때 보존)으로 되돌림 · JSON 페이로드와 충돌 불가 문자열

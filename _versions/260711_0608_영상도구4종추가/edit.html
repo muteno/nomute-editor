@@ -132,15 +132,6 @@
   .vstage .wmsg { position:absolute; left:12px; bottom:10px; z-index:2; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }
   .status { margin-top:var(--sp-2); font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
   .status.err { color:var(--danger); }
-  /* 클리퍼 후보 목록(운영자 260711 배치 승인 — 편집기 탭 안 카드 플로우) · 톤 = .scard 계승(신규 색 0) */
-  .cliplist { display:flex; flex-direction:column; gap:var(--sp-2); margin-top:var(--sp-2); }
-  .cliplist[hidden] { display:none; }
-  .clip { text-align:left; border:1px solid var(--line); border-radius:var(--r-l); background:rgba(255,255,255,.03); color:var(--fg); font:inherit; padding:11px 13px; cursor:pointer; display:flex; flex-direction:column; gap:3px; transition:transform .12s, border-color .15s, background .15s; }
-  .clip:active { transform:scale(var(--press-l)); }
-  .clip.on { border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
-  .clip .ct { color:var(--accent); font-size:var(--fs-xs); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
-  .clip b { font-size:var(--fs-label); font-weight:var(--fw-x); }
-  .clip .cw { color:var(--mut); font-size:var(--fs-xs); }
   .status svg { vertical-align:-2px; }
   .sronly { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
   .footer { display:flex; align-items:center; gap:12px; margin-top:12px; }
@@ -179,7 +170,6 @@
 
   <div class="status" id="cstatus" role="status"></div>
   <div class="vstage" id="vwrap" hidden></div>
-  <div class="cliplist" id="cliplist" hidden role="listbox" aria-label="클립 후보 — 탭하면 구간 적용"></div>
   <div class="footer">
     <button class="ghost dlbtn" id="dlVid" hidden aria-label="저장" title="저장"></button>
   </div>
@@ -210,7 +200,7 @@ const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null
 const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
 
 /* ══ 처리 스택 모델 — ORDER = 서버 처리 순서(캐노니컬·재정렬 없음 v1) ══ */
-const ORDER=['sub','bgm','cut','trim','screen','res','fps','anorm','clip'];
+const ORDER=['sub','bgm','cut','trim','screen','res','fps','anorm'];
 const CARD={
   sub:{nm:'자막', grp:'자막', eta:210},
   bgm:{nm:'배경음 제거', grp:'소리', eta:300},
@@ -220,37 +210,28 @@ const CARD={
   res:{nm:'해상도', grp:'화면', eta:0},
   fps:{nm:'프레임', grp:'화면', eta:0},
   anorm:{nm:'음량 통일', grp:'소리', eta:15},
-  clip:{nm:'클리퍼', grp:'컷·구간', eta:230},   // 배타 스캔(STT→하이라이트 후보픽 · 260711) — 후보 탭 = 구간 적용 → 일반 렌더
 };
-let ON={sub:false,bgm:false,cut:false,trim:false,screen:false,res:false,fps:false,anorm:false,clip:false};
+let ON={sub:false,bgm:false,cut:false,trim:false,screen:false,res:false,fps:false,anorm:false};
 let P={lang:'auto',tone:'sns',filler:true,style:'clean',karaoke:false,pop:false,keyword:true,pos:57,size:35,bg:100,
   cutlv:'std',t0:'',t1:'',ar:'9:16',fit:'pad',vpos:50,res:'1080',fps:'60i'};   // 자막 기본 = ly LY_OPT_DEF 계승(캡션형)
 let OPEN='';
-const SUBPRE={   // 자막 스타일 프리셋(운영자 260711 배치 승인 — 자막 카드 최상단 칩) · 기존 축 조합만 원탭 점등(신규 렌더 축 0)
-  news:{nm:'속보체', style:'box', karaoke:false, pop:false, keyword:true, bg:100, pos:57, size:38},
-  fun:{nm:'예능체', style:'bold', karaoke:false, pop:true, keyword:true, bg:0, pos:24, size:46},
-  min:{nm:'담백체', style:'clean', karaoke:false, pop:false, keyword:false, bg:0, pos:24, size:32},
-};
-const preOn=k=>Object.entries(SUBPRE[k]).every(([p,v])=>p==='nm'||P[p]===v);
 
 function sum(k){
   if(k==='sub') return ({bold:'기본',clean:'깔끔',box:'박스'})[P.style]+(P.karaoke?'·카라오케':P.pop?'·팝':'')+(P.keyword?'·키워드':'')+' · '+P.pos+'%';
   if(k==='cut') return ({soft:'살짝',std:'기본',hard:'많이'})[P.cutlv];
   if(k==='trim') return (P.t0||0)+'~'+(P.t1||'끝')+'초';
-  if(k==='screen') return P.ar+(P.fit==='pad'?' 여백(검정)':P.fit==='blur'?' 여백(블러)':' 자르기');
+  if(k==='screen') return P.ar+(P.fit==='pad'?' 여백(검정)':' 자르기');
   if(k==='res') return P.res==='src'?'원본 유지(≤4K)':P.res+'p 이하로';
   if(k==='fps') return P.fps==='60i'?'60fps 보간':P.fps+'fps';
   if(k==='anorm') return '−14LUFS·좌우 통일';
   if(k==='bgm') return '목소리만';
-  if(k==='clip') return '하이라이트 후보 3~5개';
   return '';
 }
 const pc=(k,v,on,dim,txt)=>'<button class="pc'+(on?' on':'')+(dim?' dim':'')+'" type="button" data-p="'+k+':'+v+'" aria-pressed="'+(on?'true':'false')+'"'+(dim?' disabled':'')+'>'+txt+'</button>';   // aria-pressed = 토글 상태 SR 공지(P2평의회5 a11y)
 function segs(k, arr, cur, dim){ return '<div class="prow">'+arr.map(a=>pc(k,a[0],String(cur)===a[0],dim,a[1])).join('')+'</div>'; }
 function gauge(k, lbl, min, max, val, unit){ return '<div class="grow"><span class="k">'+lbl+'</span><input type="range" min="'+min+'" max="'+max+'" step="1" value="'+val+'" data-g="'+k+'" aria-label="'+lbl+'"><span class="v">'+val+unit+'</span></div>'; }
 function prm(k){
-  if(k==='sub') return '<div class="plbl">프리셋</div><div class="prow">'+Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm)).join('')+'</div>'
-    +'<div class="plbl">언어</div>'+segs('lang',[['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']],P.lang)
+  if(k==='sub') return '<div class="plbl">언어</div>'+segs('lang',[['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']],P.lang)
     +'<div class="plbl">톤</div><div class="prow">'+[['sns','감성 의역'],['plain','담백 직역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1])).join('')+pc('filler',P.filler?'0':'1',P.filler,false,'군더더기 빼기')+'</div>'
     +'<div class="plbl">모양·강조</div><div class="prow">'+[['bold','기본'],['clean','깔끔'],['box','박스']].map(a=>pc('style',a[0],P.style===a[0],false,a[1])).join('')
     +pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'카라오케')+pc('pop',P.pop?'0':'1',P.pop,false,'팝')+pc('keyword',P.keyword?'0':'1',P.keyword,false,'키워드')+'</div>'
@@ -258,7 +239,7 @@ function prm(k){
   if(k==='cut') return segs('cutlv',[['soft','살짝'],['std','기본'],['hard','많이']],P.cutlv);
   if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
   if(k==='screen') return segs('ar',[['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']],P.ar)
-    +'<div class="plbl">방식</div>'+segs('fit',[['crop','자르기'],['pad','여백(검정)'],['blur','여백(블러)']],P.fit)
+    +'<div class="plbl">방식</div>'+segs('fit',[['crop','자르기'],['pad','여백(검정)']],P.fit)
     +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'');
   if(k==='res') return segs('res',[['src','원본(4K)'],['1080','1080p'],['720','720p']],P.res);   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711)
   if(k==='fps') return segs('fps',[['60i','60fps 보간'],['30','30'],['24','24']],P.fps);
@@ -310,11 +291,7 @@ $('#stack').addEventListener('change',e=>{ if(e.target.closest('#t0,#t1')) rende
 document.addEventListener('click',e=>{
   const p=e.target.closest('[data-p]'); if(!p||p.disabled) return;
   const [k,v]=p.dataset.p.split(':');
-  if(k==='add'){
-    if(v==='clip'){ for(const kk in ON) ON[kk]=false; ON.clip=true; OPEN=''; closeSheet(); render(); return; }   // 클리퍼 = 배타 스캔(서버 정규화와 계약 일치)
-    ON[v]=true; ON.clip=false; OPEN=v; closeSheet(); render(); return;
-  }
-  if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } } render(); return; }   // 자막 프리셋 = 기존 토글·게이지 원탭 점등
+  if(k==='add'){ ON[v]=true; OPEN=v; closeSheet(); render(); return; }
   if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; }
   else P[k]=v;
   render();
@@ -328,7 +305,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#sheet').hidde
 
 /* ══ 레시피(원탭 · UX 평의회3 — 기본값이 일) ══ */
 function recipe(r){
-  ON={sub:false,bgm:false,cut:false,trim:false,screen:false,res:false,fps:false,anorm:false,clip:false};
+  ON={sub:false,bgm:false,cut:false,trim:false,screen:false,res:false,fps:false,anorm:false};
   if(r==='reels'){ ON.sub=ON.cut=ON.screen=ON.anorm=true; P.style='clean'; P.keyword=true; P.ar='9:16'; P.fit='pad'; }
   if(r==='fmt'){ ON.screen=ON.anorm=true; P.ar='9:16'; P.fit='pad'; }
   if(r==='hq'){ ON.fps=ON.anorm=true; P.fps='60i'; }
@@ -407,7 +384,6 @@ function goLblFlash(g){ if(!g.dataset.label) g.dataset.label='편집 시작'; g.
 
 function buildOpts(){
   const o={};
-  if(ON.clip) return {clip:true};   // 클리퍼 = 배타 스캔(후보만 — 렌더 옵션은 후보 확정 뒤 일반 발사)
   if(ON.sub){ o.burn=true; o.lang=P.lang; o.tone=P.tone; o.filler=P.filler; o.style=P.style;
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000; }
   if(ON.bgm) o.bgm=true;
@@ -451,21 +427,20 @@ $('#editGo').addEventListener('click',async()=>{
     const j=await res.json();
     if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); FILE_R2=''; return; }   // 실패 시 키 폐기 = 죽은 키(만료·소진) 재사용 루프 차단 — 다음 발사는 _lastFile 재업로드(평의회7)
     FILE_R2='';   // R2 키 소진(러너가 잡 끝에 원본 삭제 = 일회용) — 재발사는 _lastFile 재업로드 경로
-    pendSet({id:j.id, t0, lbl:editLbl(o), clip:o.clip?1:0});
+    pendSet({id:j.id, t0, lbl:editLbl(o)});
     gaugeDone(gb);
-    pollEdit(j.id, t0, t0-90000, editLbl(o), o.clip?'clip':'');
+    pollEdit(j.id, t0, t0-90000, editLbl(o));
     setTimeout(()=>{ gaugeClear(gb); },700);
   }catch(e){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ $('#editGo').disabled=false; }
 });
-function editLbl(o){ if(o.clip) return '클립 후보 찾는 중'; return o.burn?(o.vid_fps==='60i'?'자막+보간 편집':'자막 편집'):(o.vid_fps==='60i'?'60fps 보간':'편집')+' 중'; }
+function editLbl(o){ return o.burn?(o.vid_fps==='60i'?'자막+보간 편집':'자막 편집'):(o.vid_fps==='60i'?'60fps 보간':'편집')+' 중'; }
 
-/* ══ 폴(conv pollConv 문법 계승 — ly_out 계약 · error.log 즉시 · 대기 스캔라인) · kind='clip' = clips.json 소비(260711) ══ */
-function pollEdit(id, t0, minTs, wlbl, kind){
+/* ══ 폴(conv pollConv 문법 계승 — ly_out 계약 · error.log 즉시 · 대기 스캔라인) ══ */
+function pollEdit(id, t0, minTs, wlbl){
   if(_curStop)_curStop();
   EDIT_ID=id;
   const status=$('#cstatus'); status.classList.remove('err');
-  if(kind==='clip'){ $('#cliplist').hidden=true; $('#cliplist').innerHTML=''; }
   const vw=$('#vwrap'); vw.hidden=false; $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');
   const wsrc=FILE_URL||'';
   vw.innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
@@ -475,7 +450,7 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }
   status.innerHTML='<span class="sronly">'+esc(wlbl||'편집 중')+'</span>';
   const wclear=()=>{ vw.innerHTML=''; vw.hidden=true; };
-  const outPath='ly_out/'+id+'/'+(kind==='clip'?'clips.json':'video.json');
+  const outPath='ly_out/'+id+'/video.json';
   const errPath='ly_out/'+id+'/error.log';
   _pollLive=!!wsrc;
   let live=true; const stop=()=>{ live=false; _pollLive=false; clearInterval(disp); goWait(false); }; _curStop=stop;
@@ -509,12 +484,11 @@ function pollEdit(id, t0, minTs, wlbl, kind){
         const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
         if(tx&&tx.trim()&&!isHtml){
           let d=null; try{ d=JSON.parse(tx); }catch(e){}
-          if(d&&(kind==='clip'? Array.isArray(d.clips) : (d.url||d.error||d.skip))){
+          if(d&&(d.url||d.error||d.skip)){
             const ts=Date.parse(d.ts||'');
             if(!isNaN(ts)&&ts>=minTs){
               stop(); pendClear();
-              if(kind==='clip'){ wclear(); showClips(d); }
-              else if(d.url){ showResult(d, Math.round((Date.now()-t0)/1000)); }
+              if(d.url){ showResult(d, Math.round((Date.now()-t0)/1000)); }
               else { wclear(); status.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); status.classList.add('err'); }
               return;
             }
@@ -534,32 +508,6 @@ function showResult(d, sec){
   vw.innerHTML='<video controls playsinline preload="metadata" src="'+esc(d.url)+'"></video>';
   $('#dlVid').hidden=false;
 }
-/* ══ 클리퍼 후보(260711) — 스캔 결과 목록 · 탭 = 구간+쇼츠 기본 스택 적용(선택·렌더 = 운영자 2단 · 자동 발행 없음) ══ */
-let CLIPS=null;
-const mmss=s=>{ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
-function showClips(d){
-  CLIPS=d;
-  const st=$('#cstatus'), list=$('#cliplist');
-  st.classList.remove('err');
-  if(!d.clips.length){ st.innerHTML=WARN_SVG+' 클립 후보 없음 — 다른 영상으로'; list.hidden=true; return; }
-  st.innerHTML=OK_SVG+' 후보 '+d.clips.length+'개 — 골라서 구간 적용';
-  list.innerHTML=d.clips.map((c,i)=>'<button class="clip" type="button" role="option" aria-selected="false" data-ci="'+i+'"><span class="ct">'+mmss(c.s)+'–'+mmss(c.e)+' · '+Math.round(c.e-c.s)+'초</span><b>'+esc(c.title||('후보 '+(i+1)))+'</b>'+(c.why?'<span class="cw">'+esc(c.why)+'</span>':'')+'</button>').join('');
-  list.hidden=false;
-}
-$('#cliplist').addEventListener('click',e=>{
-  const b=e.target.closest('[data-ci]'); if(!b||!CLIPS) return;
-  const c=CLIPS.clips[+b.dataset.ci]; if(!c) return;
-  P.t0=String(c.s); P.t1=String(c.e);
-  for(const kk in ON) ON[kk]=false;
-  ON.sub=ON.trim=ON.screen=ON.anorm=true;   // 쇼츠 기본 스택 = ★릴스+구간(무음컷은 하이라이트 구간이라 제외 — 스택에서 조정 가능)
-  P.ar='9:16'; if(P.fit==='crop') P.fit='pad';
-  OPEN='trim';
-  if(CLIPS.src && !$('#url').value.trim() && !FILE_R2 && !FILE_B64 && !_lastFile) $('#url').value=CLIPS.src;   // 스캔이 보관한 원본 승계(업로드 소스는 잡 끝 삭제 = 일회용이라)
-  $$('#cliplist .clip').forEach(x=>{ x.classList.toggle('on',x===b); x.setAttribute('aria-selected',x===b?'true':'false'); });
-  render();
-  const st=$('#cstatus'); st.classList.remove('err');
-  st.innerHTML=OK_SVG+' 구간 '+mmss(c.s)+'–'+mmss(c.e)+' 적용 — 스택 확인 후 편집 시작';
-});
 $('#dlVid').innerHTML=DOWNLOAD_SVG;
 $('#dlVid').addEventListener('click',e=>{
   const b=e.currentTarget, u=RESULT_URL;
@@ -585,10 +533,6 @@ $('#dlVid').addEventListener('click',e=>{
         if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
           if(d&&d.url){ showResult(d,0); return; }
           if(d&&(d.error||d.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); st.classList.add('err'); return; } } }
-      const rc=await fetch('ly_out/'+id+'/clips.json?t='+Date.now());   // 클리퍼 딥링크(#done) — 후보 목록 직행(260711)
-      if(rc.ok){ const tc=await rc.text();
-        if(tc&&!/^\s*</.test(tc)){ let dc=null; try{ dc=JSON.parse(tc); }catch(e){}
-          if(dc&&Array.isArray(dc.clips)){ showClips(dc); return; } } }
       const er=await fetch('ly_out/'+id+'/error.log?t='+Date.now());
       if(er.ok){ const em=await er.text();
         if(em&&em.trim()&&!/^\s*</.test(em)){ st.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); st.classList.add('err'); return; } }
@@ -603,7 +547,7 @@ $('#dlVid').addEventListener('click',e=>{
   if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
   const t0c=Math.max(p.t0||0, Date.now()-BUDGET*1000);
   goWait(true, t0c);
-  pollEdit(p.id, t0c, (p.t0||0)-90000, p.lbl||'편집 중', p.clip?'clip':'');
+  pollEdit(p.id, t0c, (p.t0||0)-90000, p.lbl||'편집 중');
 })();
 
 recipe('reels');   // 첫 화면 = 논점 상태(추천 레시피 프리필 · UX 평의회3 — 기본값이 일한다)

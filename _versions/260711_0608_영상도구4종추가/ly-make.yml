@@ -145,14 +145,6 @@ jobs:
                   continue
               segs.append({"s": round(ss, 2), "e": round(ee, 2), "ko": ko})
           assert segs, "유효 조각 0"
-          dels = []   # 대본 삭제 컷 스팬(운영자 260711 텍스트 컷 · ly.js del 검증 통과분) — segs와 동일 검증 대칭·불량 = 조용 드롭(컷은 부가 축)
-          for dd in (j.get("del") or [])[:400]:
-              try:
-                  a, b = float(dd[0]), float(dd[1])
-              except Exception:
-                  continue
-              if isfinite(a) and isfinite(b) and a >= 0 and b > a:
-                  dels.append([round(a, 2), round(b, 2)])
           d = os.path.join("viewer", "ly_out", vid)
           os.makedirs(d, exist_ok=True)
           p = os.path.join(d, "subs.json")
@@ -161,13 +153,10 @@ jobs:
               shutil.copyfile(p, orig + ".tmp")   # 첫 편집 반영 때 원본 의역 1회 보존 = 초기화 복원 소스(기능평의회2·3)
               os.replace(orig + ".tmp", orig)   # 스냅샷도 원자 확정 — 부분 복사 잔존이 isfile 가드에 고착되는 창 소거(재검2·3)
           tmp = p + ".tmp"
-          doc = {"v": 1, "segs": segs}
-          if dels:
-              doc["del"] = dels   # 삭제 컷 스팬 동봉 → ly_burn load_del_spans가 그 구간을 영상에서 컷(260711)
           with open(tmp, "w", encoding="utf-8") as f:
-              json.dump(doc, f, ensure_ascii=False, separators=(",", ":"))
+              json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
           os.replace(tmp, p)   # 원자 교체 — truncate-쓰기 금지: 중간 실패(디스크·SIGKILL)에도 원본 무손상(기능평의회3 P2)
-          print("편집 자막 반영: {}조각{}".format(len(segs), " · 삭제 컷 {}구간".format(len(dels)) if dels else ""))
+          print("편집 자막 반영: {}조각".format(len(segs)))
           PY
           then echo "LY_EDITED=1" >> "$GITHUB_ENV"
           else
