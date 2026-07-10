@@ -2,7 +2,6 @@
 // 흐름: 브라우저가 자막 텍스트 POST → ly-make.yml 발사 → 러너가 claude -p(/ly 지침 Read)
 //        → viewer/ly_out/<id>/subs.md 커밋 → 폼이 폴링해 렌더(조각별 복사 버튼).
 // env: GH_TOKEN = comp/make-cards와 동일 PAT. 생성은 구독 OAuth(무료). v1=텍스트/SRT만.
-import { rateGate } from './_rate.js';
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
@@ -38,8 +37,6 @@ export async function onRequestPost({ request, env }) {
     for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
-  const rl = await rateGate(GH, env.GH_TOKEN, 'ly-make.yml');   // 발사 레이트리밋(reburn·신규 공통 초입 = 업로드 전 · fail-open · 260711)
-  if (rl) return json({ error: rl.error }, 429);
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
     // 편집분 번인(운영자 260710) — 뷰어 상세 편집기 조각(body.segs · 편집 있을 때만 옴)을 검증해 dispatch `subs`(reburn 시 미사용 슬롯 재활용)에 JSON으로 실음 → 러너 '편집 자막 반영' 스텝이 subs.json 대체. 빈값 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 · 기능평의회10 정직화). body.restore = 원본 의역 스냅샷 복원(초기화→다시 입히기 · 기능평의회2).

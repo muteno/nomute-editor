@@ -1,7 +1,6 @@
 // Cloudflare Pages Function — 뷰어 변환 폼 → conv-make 워크플로 발사(트림·비율 크롭·스케일·fps 60 보간/다운).
 // LLM 0콜(발사·폴링 경로만). 인증·업로드(일회용 up-<id> 브랜치)·발사 골격 = track.js 미러. env: GH_TOKEN 동일 PAT.
 // 옵션은 여기 화이트리스트 클램프 + conv_run.py에서 실측 dur로 재클램프 = 이중 방어(track opts 관례).
-import { rateGate } from './_rate.js';
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
@@ -42,9 +41,6 @@ export async function onRequestPost({ request, env }) {
   if (t1 !== null && t1 > 0) opts.t1 = Math.round(t1 * 100) / 100;
   if (opts.t0 !== undefined && opts.t1 !== undefined && opts.t1 <= opts.t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
   opts.res = ['orig', '1080', '720'].includes(o.res) ? o.res : 'orig';
-
-  const rl = await rateGate(GH, env.GH_TOKEN, 'conv-make.yml');   // 발사 레이트리밋(업로드 전 = up-<id> 고아 방지 · fail-open · 260711)
-  if (rl) return json({ error: rl.error }, 429);
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
 

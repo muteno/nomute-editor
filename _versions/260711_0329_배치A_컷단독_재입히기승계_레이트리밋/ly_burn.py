@@ -600,27 +600,11 @@ def build_ass(segs, w, h, opts):
     return head + "\n" + "\n".join(lines) + "\n"
 
 
-EDIT_KEYS = ("vid_ar", "vid_fit", "vid_pos", "vid_res", "vid_fps", "vid_t0", "vid_t1", "aud_norm")   # 편집기 축(재입히기 승계 대상 — cut·bgm은 ly 자막 축이라 제외)
-
-
 def run(vid_id, video, outdir):
     try:
         opts = json.loads(os.environ.get("OPTS") or "{}")
     except Exception:
         opts = {}
-    # 재입히기 승계(운영자 후보7 260711): reburn(자막 다시 굽기)의 opts엔 편집기 축이 없다(ly 탭 = 자막 축만) —
-    #   직전 산출 video.json의 edit_opts 스냅샷을 병합해 여백·해상도·보간·음량·트림이 유지되게("지금은 자막만" 소실 봉합).
-    #   이번 opts에 편집기 축이 하나라도 명시되면 병합 안 함(명시 우선 = 편집기 폼 발사) · 첫 발사·ly 순수 작업 =
-    #   video.json 부재/스냅샷 없음 → 무해. 스냅샷은 아래 성공 페이로드에 재도장 = reburn 연쇄에도 승계 유지.
-    inherited = False
-    if not any(k in opts for k in EDIT_KEYS):
-        try:
-            _prev_eo = (json.load(open(os.path.join(outdir, "video.json"), encoding="utf-8")).get("edit_opts") or {})
-            _take = {k: v for k, v in _prev_eo.items() if k in EDIT_KEYS}
-            if _take:
-                opts.update(_take); inherited = True
-        except Exception:
-            pass
     if not video or not os.path.isfile(video):
         out_json(outdir, {"skip": "영상 확보 실패(음성 입력 또는 다운로드 막힘) — 자막 텍스트만"}); return 0
     lang = opts.get("lang") or "auto"
@@ -644,7 +628,6 @@ def run(vid_id, video, outdir):
     vid_fit = opts.get("vid_fit") if opts.get("vid_fit") in ("crop", "pad") else "crop"
     vid_res = {"1080": 1080, "720": 720}.get(str(opts.get("vid_res") or ""))
     vid_fps = opts.get("vid_fps") if opts.get("vid_fps") in ("60i", "30", "24") else None
-    no_burn = opts.get("burn") is False   # 컷 단독(STT-only) 발사 신호(편집기 260711) — 전사 segs는 컷 계산에만 쓰고 번인 억제(키 부재 = 종전대로 번인 = ly·reburn 회귀 0)
     aud_on = bool(opts.get("aud_norm"))
     try:
         vid_pos = min(1.0, max(0.0, float(opts.get("vid_pos", 0.5))))
@@ -658,10 +641,9 @@ def run(vid_id, video, outdir):
             return None
     t0_req, t1_req = _sec("vid_t0"), _sec("vid_t1")
     has_vid = bool(vid_ar or vid_res or vid_fps or t0_req or t1_req)
-    edit_notes = (["이전 편집 설정 승계(비율·해상도·보간·음량)"] if inherited else [])   # 승계 표면화(침묵 금지)
+    edit_notes = []
     if not segs and not (has_vid or aud_on or opts.get("bgm")):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합)
-        out_json(outdir, {"error": "전사가 안 돼 컷 불가 — 소리 있는 영상인지 확인해줘" if opts.get("cut")
-                          else "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0   # 컷 단독(STT-only) = 컷 맥락 문구(260711)
+        out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
     if opts.get("cut") and not segs:
         edit_notes.append("무음 컷 건너뜀(자막 전사 필요)")   # 컷 기준 = STT 발화 스팬 — 자막 없는 편집 경로엔 원천이 없다
     # ── 트림(구간) — 컷·자막보다 *먼저* 확정(운영자 260711 트림×자막 동시): 입력 -ss/-t가 시간축 원점을 옮기므로
@@ -837,7 +819,7 @@ def run(vid_id, video, outdir):
     scalef = "scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""
     sarf = "setsar=1" if (has_vid and scalef and not padf) else ""   # 스케일 짝수화 잔여 SAR 제거 — 패드 경로(padf 내장)와 대칭(P2평의회9 실측)
     mid = ",".join(x for x in [cropf, scalef, fpsf, padf, sarf] if x)
-    ass = build_ass(segs, canvas_w, canvas_h, opts) if (segs and not no_burn) else ""   # no_burn = 컷 계산용 전사만 · 번인 0
+    ass = build_ass(segs, canvas_w, canvas_h, opts) if segs else ""
     ass_path = "/tmp/ly_subs.ass"
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass)
@@ -877,9 +859,8 @@ def run(vid_id, video, outdir):
             if not ok:   # 가공 실패 = 가공만 포기·번인은 지킨다(평의회6·3 P1) — 컷·배경음 다 버리고 원본으로 확실한 산출(무효 vocals가 양쪽을 죽이는 구멍 봉합)
                 print("::warning::가공(컷/배경음) 합성 실패 — 원본으로 재시도:", err[-300:])
                 if keeps:
-                    if ass:   # no_burn(컷 단독)은 ASS 재작성도 불요 — vf에 ass 필터 자체가 없다
-                        with open(ass_path, "w", encoding="utf-8") as f:
-                            f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
+                    with open(ass_path, "w", encoding="utf-8") as f:
+                        f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
                     cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
                 if vocals:
                     vocals, ins = "", tcut + ["-i", video]   # 트림 보존(-ss/-t 유지) — 폴백이 구간을 잃지 않게
@@ -907,9 +888,8 @@ def run(vid_id, video, outdir):
     ed_note = {"1": "편집 자막 반영", "fail": "편집 반영 실패 — 이전 자막으로 합성", "restore": "원본 의역 복원"}.get(os.environ.get("LY_EDITED") or "", "")   # 편집분 번인 결과 표면화(기능평의회9 P1 — 반영/실패/복원이 무신호로 수렴하던 침묵 봉합 · env = ly-make '편집 자막 반영' 스텝)
     note = " · ".join(p for p in [
         ed_note,
-        "받아쓴 자막(원문)으로 합성" if (src_kind == "stt" and not no_burn) else "",   # no_burn = 전사는 컷 계산용일 뿐(자막 합성 아님)
+        "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else "",
         bgm_note, cut_note] + edit_notes if p)   # 처리 순서대로 표기: 편집 → 배경음 → 컷 → 편집기(트림/보간/음량)
-    snap = {k: opts[k] for k in EDIT_KEYS if k in opts}   # 재입히기 승계 스냅샷 — 성공 산출에 도장(reburn이 읽어 병합)
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
     try:
@@ -929,15 +909,13 @@ def run(vid_id, video, outdir):
     if tg.R2_ON:
         url = tg.r2_upload(data, "ly_out/{}/subbed.mp4".format(vid_id), "video/mp4")
         if url:
-            out_json(outdir, dict({"url": url + "?v=" + bust, "src": src_url, "bytes": len(data), "dur": round(dur, 1), "note": note},
-                                  **({"edit_opts": snap} if snap else {}))); return 0
+            out_json(outdir, {"url": url + "?v=" + bust, "src": src_url, "bytes": len(data), "dur": round(dur, 1), "note": note}); return 0
         print("::warning::R2 업로드 실패 — git 폴백 시도")
     if len(data) <= GIT_FALLBACK_MAX:
         with open(os.path.join(outdir, "subbed.mp4"), "wb") as f:
             f.write(data)
-        out_json(outdir, dict({"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "src": src_url, "bytes": len(data), "dur": round(dur, 1),
-                               "note": (note + " · " if note else "") + "git 저장(R2 미설정)"},
-                              **({"edit_opts": snap} if snap else {}))); return 0   # src 승계 = 폴백서도 재합성 버튼 유지(평의회)
+        out_json(outdir, {"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "src": src_url, "bytes": len(data), "dur": round(dur, 1),
+                          "note": (note + " · " if note else "") + "git 저장(R2 미설정)"}); return 0   # src 승계 = 폴백서도 재합성 버튼 유지(평의회)
     out_json(outdir, {"error": "R2 미설정 + 파일 {}MB(30MB 초과) — 저장 불가".format(len(data) // 1048576)})
     return 0
 
