@@ -1,6 +1,6 @@
 name: edit-make
 
-# 뷰어 편집기 폼(Pages Function /api/edit)이 발사 — 업로드 1번·1잡: 영상(URL/업로드) → [자막 ON이면 STT+claude 의역]
+# 뷰어 편집기 폼(Pages Function /api/edit)이 발사 — 업로드 1번·1잡: 영상(URL/업로드) → [자막·컷 ON이면 STT · 자막 ON에만 claude 의역]
 #   → ly_burn.py 단일 컴포지터{자막 번인·무음 컷·배경음 제거 + 편집기 축: 트림·비율 크롭/여백·해상도·fps(60i 보간)·음량 통일}
 #   → R2 ly_out/<id>/subbed.mp4 → viewer/ly_out/<id>/video.json 커밋(폼이 폴링). 골격 = ly-make 미러(스텝 게이트만 편집기화).
 #   기존 ly-make·conv-make 무접촉(평의회6 점진 이관 · 운영자 2단계 확정 260710).
@@ -71,15 +71,15 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Restore python deps (site-packages 캐시 · 자막)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+      - name: Restore python deps (site-packages 캐시 · 자막·컷·클리퍼)
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
           key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 캐시 공유(동일 키 = 재설치 0)
 
-      - name: STT 환경 (자막 = whisper+ffmpeg+한글폰트)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+      - name: STT 환경 (자막·컷·클리퍼 = whisper+ffmpeg+한글폰트)
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
         timeout-minutes: 15
         uses: ./.github/actions/runner-setup
         with:
@@ -87,8 +87,8 @@ jobs:
           whisper: 'true'
           apt: ffmpeg fonts-noto-cjk
 
-      - name: 변환 환경 (자막·클리퍼 없음 = ffmpeg+yt-dlp만)
-        if: ${{ !contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"clip":true') }}
+      - name: 변환 환경 (자막·컷·클리퍼 없음 = ffmpeg+yt-dlp만)
+        if: ${{ !contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"cut":true') && !contains(inputs.opts, '"clip":true') }}
         timeout-minutes: 10
         uses: ./.github/actions/runner-setup
         with:
@@ -161,18 +161,26 @@ jobs:
             echo "영상 $((DUR/60))분 — 편집기는 10분 이하만(릴스/쇼츠용)." > /tmp/edit_err.txt; echo "::error::길이 초과 ${DUR}s"; exit 1
           fi
 
-      - name: STT (자막·클리퍼 — 오디오 추출 → Whisper)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+      - name: STT (자막·컷·클리퍼 — 오디오 추출 → Whisper)
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
         timeout-minutes: 25
         env:
           IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
         run: |
           set -e
-          ffmpeg -y -i "$EDIT_SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
-            || { echo "오디오 추출 실패 — 소리 없는 영상이면 자막·클리퍼 카드를 빼고 다시." > /tmp/edit_err.txt; echo "::error::ffmpeg 오디오 추출 실패"; exit 1; }
+          HARD=0; case "$OPTS" in *'"burn":true'*) HARD=1;; esac; case "$OPTS" in *'"clip":true'*) HARD=1;; esac
+          # 컷 단독(STT-only 260711) = 전사 실패해도 잡 살림(fail-soft) — segments.json 없으면 ly_burn이 '무음 컷 건너뜀' note.
+          #   자막·클리퍼 ON = 정직 거절(전사가 산출 원료 — 없으면 잡 의미 없음 · clip은 api 배타 정규화라 cut과 혼합 불가).
+          if ! ffmpeg -y -i "$EDIT_SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3; then
+            [ "$HARD" = 1 ] && { echo "오디오 추출 실패 — 소리 없는 영상이면 자막·클리퍼 카드를 빼고 다시." > /tmp/edit_err.txt; echo "::error::ffmpeg 오디오 추출 실패"; exit 1; }
+            echo "::warning::오디오 추출 실패 — 컷 건너뜀(소리 없는 영상?)"; exit 0
+          fi
           SEGJSON="viewer/ly_out/${IN_ID}/segments.json"
-          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
-            || { echo "Whisper STT 실패 — 오디오 인식 불가. 자막·클리퍼 카드를 빼거나 다른 영상으로." > /tmp/edit_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+          if ! python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt; then
+            [ "$HARD" = 1 ] && { echo "Whisper STT 실패 — 오디오 인식 불가. 자막·클리퍼 카드를 빼거나 다른 영상으로." > /tmp/edit_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+            rm -f "$SEGJSON"; echo "::warning::STT 실패 — 컷 건너뜀(부분 산출 정리)"; exit 0
+          fi
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
 
       - name: 자막 의역 (claude)
