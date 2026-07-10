@@ -20,10 +20,6 @@ on:
         description: '업로드 일회용 브랜치(up-<id> · 빈값=main 커밋 경로) — ly/track 동일'
         type: string
         default: ''
-      r2_src:
-        description: 'R2 직업로드 키(up_src/<id>.<ext> · 대용량 ≤2GB — api/upload 발급 · 빈값=미사용 · 잡 끝 삭제)'
-        type: string
-        default: ''
       opts:
         description: '변환 옵션 JSON {"fps":"keep|60i|30|24","ar":"orig|9:16|1:1|4:5|16:9","fit":"crop|pad(검정 여백·중앙)","pos":0..1(crop만),"t0":s,"t1":s,"res":"orig|1080|720","audio":"keep|norm(−14LUFS·L/R 통일)"}'
         type: string
@@ -91,26 +87,6 @@ jobs:
           [ -f "$FILE" ] || { echo "업로드 파일이 없어 — 다시 올려줘." > /tmp/conv_err.txt; echo "::error::업로드 파일 없음: $FILE"; exit 1; }
           echo "CONV_SRC=$FILE" >> "$GITHUB_ENV"
 
-      - name: 소스 확보 (R2 직업로드 — 대용량 ≤2GB)
-        if: ${{ inputs.r2_src != '' }}
-        timeout-minutes: 12
-        env:
-          R2_SRC: ${{ inputs.r2_src }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: |
-          set -e
-          case "$R2_SRC" in up_src/*) ;; *) echo "::error::r2_src는 up_src/* 만 허용: $R2_SRC"; exit 1;; esac
-          case "$R2_SRC" in *..*|*' '*) echo "::error::잘못된 r2_src"; exit 1;; esac
-          [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/conv_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
-          EXT="${R2_SRC##*.}"
-          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
-          aws s3 cp "s3://$R2_BUCKET/$R2_SRC" "/tmp/upsrc.$EXT" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
-            || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/conv_err.txt; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
-          echo "CONV_SRC=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
-
       - name: 변환 (ffmpeg → R2 → video.json)
         timeout-minutes: 33   # 스텝 자체 캡 — 잡 38분 하드캔슬 전에 failure() error.log 표면화(track 문법)
         env:
@@ -167,19 +143,3 @@ jobs:
         run: |
           case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
           git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"
-
-      - name: 업로드 원본 정리 (R2 up_src — 일회용 · up-브랜치와 동일 수명)
-        if: ${{ always() && inputs.r2_src != '' }}
-        env:
-          R2_SRC: ${{ inputs.r2_src }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: |
-          case "$R2_SRC" in up_src/*) ;; *) echo "up_src/* 아님 — 스킵"; exit 0;; esac
-          case "$R2_SRC" in *..*|*' '*) exit 0;; esac
-          [ -n "$R2_BUCKET" ] || exit 0
-          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
-          aws s3 rm "s3://$R2_BUCKET/$R2_SRC" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
-            || echo "원본 정리 실패(무해 — 수동 정리 대상): $R2_SRC"

@@ -6,8 +6,6 @@
 #   일반(크롭·트림·스케일·fps다운) = 트림 후 유효 길이 300초(트래킹 분석 캡 선례)
 #   60fps 보간 = 120초 캡 + 발사 전 예산 가드 — minterpolate 기본 프리셋 실측 270ms/출력프레임@1080×1920(4vCPU=러너 동급)
 #     → 1080×1920 풀은 약 83초·720p급은 120초 풀까지(해상도 비례) = 초과 시 해상도/구간 안내 메시지로 정직 거절(키잉 예산 가드 문법).
-#   4K(운영자 260711): 입력 긴 변 3840까지 수용 · 출력 긴 변>1920(해상도 '원본' 통과) = MAX_4K_SEC(120초) 별도 캡 —
-#     픽셀 4배 = 인코딩 폭발이라 스텝 33분 내 보수 예산. 60i×4K는 기존 예산식이 자동 제한(약 19초). URL 소스는 워크플로가 1920 페치 유지 = 4K는 파일 업로드로.
 import json
 import math
 import os
@@ -25,8 +23,7 @@ INTERP_MAX_SEC = 120     # 60fps 보간 캡(운영자 승인)
 INTERP_S_PF = 0.30       # 실측 단가: minterpolate 기본(mci·obmc·bilat·epzs) s/출력프레임@1080×1920 + 마진(실측 .27)
 INTERP_BUDGET = 1500     # 보간 예산 25분(스텝 33분 캡 내 다운로드·인코딩·업로드 여유)
 FF_TIMEOUT = 1900        # 메인 ffmpeg 백스톱(예산 추정이 빗나가도 스텝 타임아웃 전에 정직 에러)
-MAX_LONG = 3840          # 입력 해상도 캡 — 4K(3840)까지 수용(운영자 260711 · 8K 거절). 4K 출력은 아래 MAX_4K_SEC 별도 예산
-MAX_4K_SEC = int(os.environ.get("CONV_4K_MAX_SEC") or 120)   # 출력 긴 변>1920 = 픽셀 4배 인코딩이라 별도 캡(기틀 — 완화 = 운영자 확인)
+MAX_LONG = 1920          # 입력 해상도 캡(키잉 선례 — 4K = 시간·디스크 폭발)
 AR = {"9:16": 9 / 16, "1:1": 1.0, "4:5": 4 / 5, "16:9": 16 / 9}
 RES = {"1080": 1080, "720": 720}
 
@@ -126,7 +123,7 @@ def main():
         W = max(2, int(round(W * sar)) & ~1)
         sar_fix = f"scale={W}:{H},setsar=1"   # 표시 공간으로 선정규화 → 이후 크롭·산술 = 프리뷰와 동일 축
     if max(W, H) > MAX_LONG:
-        die(f"변환은 긴 변 {MAX_LONG}px(4K)까지야(지금 {max(W, H)}px) — 4K 이하로 다시 해줘.")
+        die(f"변환은 긴 변 {MAX_LONG}px까지야(지금 {max(W, H)}px) — 1080p 이하로 다시 해줘(URL이면 낮은 화질 링크나 파일 업로드로).")
 
     # ── 트림(입력 옵션 -ss/-t = 재인코딩이라 프레임 정확) — api 클램프 + 여기 dur 재클램프 = 이중 방어
     t0 = _num(opts.get("t0"), 0, dur, 0.0)
@@ -180,8 +177,6 @@ def main():
         k = RES[res] / max(cw, ch)
         sw, sh = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
     sw, sh = sw & ~1, sh & ~1
-    if max(pw or sw, ph or sh) > 1920 and eff > MAX_4K_SEC + 1:   # 4K 출력 예산(운영자 260711) — 해상도 '원본'으로 4K가 그대로 나가는 경우만
-        die(f"4K(원본) 변환은 {MAX_4K_SEC}초까지야(지금 구간 {int(eff)}초) — 해상도를 1080p로 내리거나 구간을 잘라줘.")
 
     # ── fps — 60i = minterpolate 보간(캡+예산 가드) · 30/24 = 다운 · keep = 그대로
     mode = opts.get("fps") if opts.get("fps") in ("keep", "60i", "30", "24") else "keep"
