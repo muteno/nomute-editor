@@ -33,7 +33,7 @@
   .file svg { width:26px; height:26px; display:block; margin:0 auto; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
   .file:active svg { transform:scale(var(--press-xs)); }
   .file.has { color:var(--fg); }
-  .file .ftype { display:inline-grid; place-items:center; min-width:42px; height:22px; padding:0 7px; border-radius:6px; background:rgba(var(--accent-rgb),.14); color:var(--accent); font-size:11px; font-weight:var(--fw-x); letter-spacing:.4px; font-variant-numeric:tabular-nums; }   /* tabular+min-width 42 = 업로드 % 자릿수 지터 방지(평의회10) */
+  .file .ftype { display:inline-grid; place-items:center; min-width:34px; height:22px; padding:0 7px; border-radius:6px; background:rgba(var(--accent-rgb),.14); color:var(--accent); font-size:11px; font-weight:var(--fw-x); letter-spacing:.4px; }
   .file .fname { font-size:11px; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; margin-top:3px; }
   .urlwrap { position:relative; flex:1; }
   input[type=url] { width:100%; height:100%; min-height:52px; padding:12px 40px 12px 12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; }
@@ -184,16 +184,14 @@
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
-<script src="upload.js"></script><!-- R2 직업로드 공용(nmUpArm/nmUpload · conv와 공유 — 미가용 = 30MB base64 폴백) -->
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const X_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
 const PEND_KEY='nm_edit_pend';
 const API='/api/edit';
-const BUDGET=2700;   // 폴 예산(초) — 하드 ×2 = 5400s ≥ 잡 캡 85분(5100 · 4K+R2 선스텝 재산정 260711)+디스패치+배포 · 재개 게이트 24h 별도(conv 문법)
+const BUDGET=2100;   // 폴 예산(초) — 하드 ×2 = 4200s = 잡 캡 70분(자막+보간 최악) · 재개 게이트 24h 별도(conv 문법)
 let FILE_B64='', FILE_NAME='', FILE_URL='', _dur=0, USER_ACT=false, _curStop=null, _pollLive=false, EDIT_ID='', RESULT_URL='';
-let FILE_R2='', _lastFile=null, _vlong=0;   // FILE_R2 = R2 직업로드 키(일회용 — 발사 소진 · _lastFile로 재업로드) · _vlong = 원본 긴 변 px(4K 판별)
 
 const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
 const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
@@ -205,7 +203,7 @@ const CARD={
   sub:{nm:'자막', grp:'자막', eta:210},
   bgm:{nm:'배경음 제거', grp:'소리', eta:300},
   cut:{nm:'컷 편집', grp:'컷·구간', eta:20, need:'sub'},
-  trim:{nm:'구간', grp:'컷·구간', eta:0},   // 자막과 동시 지원(260711 — 서버가 자막·전사 스팬을 트림 시간축으로 리맵)
+  trim:{nm:'구간', grp:'컷·구간', eta:0, not:'sub'},
   screen:{nm:'비율', grp:'화면', eta:0},
   res:{nm:'해상도', grp:'화면', eta:0},
   fps:{nm:'프레임', grp:'화면', eta:0},
@@ -221,7 +219,7 @@ function sum(k){
   if(k==='cut') return ({soft:'살짝',std:'기본',hard:'많이'})[P.cutlv];
   if(k==='trim') return (P.t0||0)+'~'+(P.t1||'끝')+'초';
   if(k==='screen') return P.ar+(P.fit==='pad'?' 여백(검정)':' 자르기');
-  if(k==='res') return P.res==='src'?'원본 유지(≤4K)':P.res+'p 이하로';
+  if(k==='res') return P.res+'p 이하로';
   if(k==='fps') return P.fps==='60i'?'60fps 보간':P.fps+'fps';
   if(k==='anorm') return '−14LUFS·좌우 통일';
   if(k==='bgm') return '목소리만';
@@ -241,7 +239,7 @@ function prm(k){
   if(k==='screen') return segs('ar',[['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']],P.ar)
     +'<div class="plbl">방식</div>'+segs('fit',[['crop','자르기'],['pad','여백(검정)']],P.fit)
     +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'');
-  if(k==='res') return segs('res',[['src','원본(4K)'],['1080','1080p'],['720','720p']],P.res);   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711)
+  if(k==='res') return segs('res',[['1080','1080p'],['720','720p']],P.res);
   if(k==='fps') return segs('fps',[['60i','60fps 보간'],['30','30'],['24','24']],P.fps);
   return '';
 }
@@ -249,7 +247,6 @@ function etaCalc(){
   let s=40;
   for(const k of ORDER){ if(ON[k]) s+=CARD[k].eta; }
   if(ON.fps&&P.fps==='60i') s+= _dur? Math.min(900, Math.round(_dur*18)) : 540;   // 실측 단가 0.30s/프레임@1080×1920 근사(URL = 중간값)
-  if(ON.res&&P.res==='src'&&_vlong>1920) s+=Math.min(720, Math.round((_dur||60)*3));   // 4K 인코딩 근사(x264 veryfast ≈ 3×실시간 · 실측 전 보수)
   return s;
 }
 function etaTxt(){ const s=etaCalc(); return s>=60?('예상 ~'+Math.ceil(s/60)+'분'):('예상 ~'+s+'초'); }
@@ -263,7 +260,8 @@ function render(){
   const cards=ORDER.filter(k=>ON[k]);
   $('#stack').innerHTML = cards.length? cards.map((k,i)=>{
     const open=OPEN===k;
-    const warn = (k==='cut'&&!ON.sub)?'<div class="warnln">컷은 자막(전사)이 필요해 — 자막 카드를 추가해줘</div>':'';
+    const warn = (k==='trim'&&ON.sub)?'<div class="warnln">자막과 동시 미지원 — 발사 때 구간은 건너뜀</div>'
+      : (k==='cut'&&!ON.sub)?'<div class="warnln">컷은 자막(전사)이 필요해 — 자막 카드를 추가해줘</div>':'';
     return '<div class="scard"><div class="hd" data-open="'+k+'"><span class="no">'+(i+1)+'</span><span class="nm">'+CARD[k].nm+'</span><span class="sum">'+esc(sum(k))+'</span><button class="rm" type="button" data-rm="'+k+'" aria-label="'+CARD[k].nm+' 제거">'+X_SVG+'</button></div>'
       +warn+(open?'<div class="prm">'+prm(k)+'</div>':'')+'</div>';
   }).join('') : '<div class="empty-stack">적용할 처리가 없어 — 아래 [+ 처리 추가] 또는 위 레시피</div>';
@@ -277,6 +275,7 @@ function renderSheet(){
       return pc('add',k,false,dim,CARD[k].nm); }).join('')+'</div>');
   const why=[];   // 비활성 사유 = 행위 피드백 1줄(§디자인 빈 상태 예외 — dim만으론 이유를 모름)
   if(!ON.cut&&!ON.sub) why.push('컷 편집 = 자막(전사) 필요');
+  if(!ON.trim&&ON.sub) why.push('구간 = 자막과 동시 불가');
   $('#sheetbody').innerHTML = parts.length? parts.join('')+(why.length?'<div class="why">'+why.join(' · ')+'</div>':'') : '<div class="grp">전부 적용됨</div>';
 }
 $('#stack').addEventListener('click',e=>{
@@ -315,40 +314,20 @@ $('#recrow').addEventListener('click',e=>{ const b=e.target.closest('[data-rec]'
 
 /* ══ 입력(파일 좌·URL 우 — 운영자 260710 · .file 픽토 계승) ══ */
 const FILE_ICON=$('#fileTxt').innerHTML;
-const fileSlotName=f=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
-const fileSlotPct=(f,p)=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+p+'%</span><span class="fname">'+esc(f.name)+'</span>'; };   // 업로드 진행 = 확장자 배지 자리에 %(신규 요소 0 — 기존 슬롯 계승)
-const fileSlotClear=()=>{ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; };
-function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 경로 그대로(≤30MB · 회귀 0) · _lastFile 신선도 가드 = 연속 선택 last-writer 꼬임 방지(평의회7 F3)
-  const rd=new FileReader();
-  rd.onload=()=>{ if(_lastFile!==f) return; FILE_B64=String(rd.result||''); btn.disabled=false; fileSlotName(f); };
-  rd.onerror=()=>{ if(_lastFile!==f) return; _lastFile=null; btn.disabled=false; FILE_NAME=''; fileSlotClear(); errStatus('파일을 못 읽었어 — 다시'); };
-  rd.readAsDataURL(f);
-}
-$('#file').addEventListener('change',async()=>{
+$('#file').addEventListener('change',()=>{
   const f=$('#file').files[0]; if(!f) return;
-  FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _vlong=0;
+  FILE_B64=''; FILE_NAME='';
   if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
   FILE_URL='';
-  if(f.size>2*1024*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('파일은 2GB까지 — 구간을 잘라서 올려줘'); }   // 거절 = 버튼 복구(직전 업로드가 잠근 상태 고착 방지 · 평의회7 F1)
-  const r2on=await nmUpArm();   // R2 직업로드 가용(문서당 1회 핑 · 4s 타임아웃) — 미가용 = 종전 30MB 경로 폴백
-  if(!r2on&&f.size>30*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('30MB 초과 — 대용량 저장 미설정(R2 바인딩 필요). URL로 해줘'); }
+  if(f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
   FILE_NAME=f.name; FILE_URL=URL.createObjectURL(f);
   const v=document.createElement('video'); v.preload='metadata'; v.src=FILE_URL;
-  v.onloadedmetadata=()=>{ _dur=v.duration||0; _vlong=Math.max(v.videoWidth||0,v.videoHeight||0); setEta(); };
+  v.onloadedmetadata=()=>{ _dur=v.duration||0; setEta(); };
   const btn=$('#editGo'); btn.disabled=true;
-  _lastFile=f;
-  if(!r2on){ legacyRead(f, btn); return; }
-  fileSlotPct(f,0);
-  try{
-    const up=await nmUpload(f,p=>{ if(_lastFile===f) fileSlotPct(f,p); });
-    if(_lastFile!==f){ nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 즉시 정리(평의회7 F2)
-    FILE_R2=up.key; btn.disabled=false; fileSlotName(f);
-  }catch(e){
-    if(_lastFile!==f) return;
-    if(f.size<=30*1024*1024){ legacyRead(f, btn); return; }   // 작은 파일 = 종전 경로 폴백(가용성 우선)
-    btn.disabled=false; _lastFile=null; FILE_NAME=''; fileSlotClear();
-    errStatus('업로드 실패 — 다시 ('+String(e&&e.message||'').slice(0,60)+')');
-  }
+  const rd=new FileReader();
+  rd.onload=()=>{ FILE_B64=String(rd.result||''); btn.disabled=false; $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
+  rd.onerror=()=>{ btn.disabled=false; FILE_NAME=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; errStatus('파일을 못 읽었어 — 다시'); };
+  rd.readAsDataURL(f);
 });
 $('#urlClip').addEventListener('click',async()=>{ try{ const t=await navigator.clipboard.readText(); if(t)$('#url').value=t.trim(); }catch(e){} });
 
@@ -388,7 +367,7 @@ function buildOpts(){
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000; }
   if(ON.bgm) o.bgm=true;
   if(ON.cut&&ON.sub){ o.cut=true; o.cutlv=P.cutlv; }
-  if(ON.trim){ const a=parseFloat(P.t0), b=parseFloat(P.t1);   // 자막과 동시 OK(서버 리맵 · 260711)
+  if(ON.trim&&!ON.sub){ const a=parseFloat(P.t0), b=parseFloat(P.t1);
     if(Number.isFinite(a)&&a>0) o.vid_t0=a;
     if(Number.isFinite(b)&&b>0) o.vid_t1=b; }
   if(ON.screen){ o.vid_ar=P.ar; o.vid_fit=P.fit; if(P.fit==='crop') o.vid_pos=Math.round(P.vpos)/100; }
@@ -399,34 +378,23 @@ function buildOpts(){
 }
 $('#editGo').addEventListener('click',async()=>{
   const url=$('#url').value.trim();
-  if(!url && !FILE_B64 && !FILE_R2 && !_lastFile) return errStatus('영상 URL이나 파일을 넣어줘');
+  if(!url && !FILE_B64) return errStatus('영상 URL이나 파일을 넣어줘');
   if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
   if(!ORDER.some(k=>ON[k])) return errStatus('처리를 하나는 넣어줘');
   if(ON.cut&&!ON.sub) return errStatus('컷 편집은 자막 카드가 필요해');
   const o=buildOpts();
   if(o.vid_t0!==undefined&&o.vid_t1!==undefined&&o.vid_t1<=o.vid_t0) return errStatus('끝이 시작보다 커야 해');
   if(_dur&&_dur>601) return errStatus('편집기는 10분 이하만(릴스/쇼츠용)');
-  if(o.vid_res==='src'&&!url&&_vlong>1920&&!o.cut){   // 4K 클라 선게이트(서버 180초 게이트 예고 · 컷은 길이가 줄어 서버 실측에 위임)
-    const eff=(o.vid_t0!==undefined||o.vid_t1!==undefined)? Math.min(_dur||1e9, o.vid_t1||_dur||1e9)-(o.vid_t0||0) : _dur;
-    if(eff&&eff>181) return errStatus('원본(4K) 유지는 3분까지 — 1080p로 내리거나 구간을 잘라줘');   // 181 = 서버(180+1)와 동일 · conv 대칭(평의회2)
-  }
   USER_ACT=true;
   const status=$('#cstatus'); status.classList.remove('err'); status.textContent='';
   const gb=$('#editGo'); gb.disabled=true;
-  if(url && FILE_R2){ nmUpDrop(FILE_R2); FILE_R2=''; }   // URL 발사 = 첨부 R2 키 미소비 → 고아 정리(평의회7 F2)
-  if(!url && !FILE_B64 && !FILE_R2 && _lastFile){   // 소진된 R2 키 재업로드(러너가 잡 끝에 원본 삭제 = 일회용 · 파일은 브라우저에 남아 재선택 불필요)
-    const f=_lastFile;
-    try{ fileSlotPct(f,0); const up=await nmUpload(f,p=>{ if(_lastFile===f) fileSlotPct(f,p); }); FILE_R2=up.key; fileSlotName(f); }
-    catch(e){ gb.disabled=false; return errStatus('재업로드 실패 — 다시 ('+String(e&&e.message||'').slice(0,60)+')'); }
-  }
   const t0=Date.now();
   gaugeStart(gb); goLblFlash(gb); goWait(true,t0);
   try{
-    const payload = url? {url, opts:o} : FILE_R2? {r2key:FILE_R2, name:FILE_NAME, opts:o} : {fileB64:FILE_B64, name:FILE_NAME, opts:o};
+    const payload = url? {url, opts:o} : {fileB64:FILE_B64, name:FILE_NAME, opts:o};
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); FILE_R2=''; return; }   // 실패 시 키 폐기 = 죽은 키(만료·소진) 재사용 루프 차단 — 다음 발사는 _lastFile 재업로드(평의회7)
-    FILE_R2='';   // R2 키 소진(러너가 잡 끝에 원본 삭제 = 일회용) — 재발사는 _lastFile 재업로드 경로
+    if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
     pendSet({id:j.id, t0, lbl:editLbl(o)});
     gaugeDone(gb);
     pollEdit(j.id, t0, t0-90000, editLbl(o));

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>대용량 업로드(R2 직업로드) + 4K 지원 — 작업 보고서 260711</title>
+<style>
+  /* 색 = 디자인 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · viewer 동기화 의무 없음) */
+  :root{ --bg:#0b0d0c; --pan:#141715; --fg:#eef7f0; --mut:#8b948f; --acc:#00EED2; --warn:#FFE13D; --danger:#e23b2a; --coral:#ff7a6b; --line:rgba(255,255,255,.09); }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--fg); font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.62; padding:22px 16px 60px; max-width:860px; margin:0 auto; font-size:15px; }
+  h1{ font-size:21px; margin:6px 0 4px; letter-spacing:-.3px; }
+  h1 b{ color:var(--acc); }
+  .sub{ color:var(--mut); font-size:12.5px; margin-bottom:22px; }
+  h2{ font-size:15.5px; margin:30px 0 10px; color:var(--acc); font-weight:800; }
+  h2 .n{ color:var(--mut); font-weight:700; margin-right:6px; }
+  p{ margin:8px 0; }
+  .card{ background:var(--pan); border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin:10px 0; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; margin:10px 0; }
+  th,td{ border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+  th{ background:rgba(255,255,255,.04); font-weight:800; white-space:nowrap; }
+  td.old{ color:var(--mut); }
+  td.new{ color:var(--fg); }
+  .ok{ color:var(--acc); font-weight:800; }
+  .wr{ color:var(--warn); font-weight:800; }
+  .bad{ color:var(--danger); font-weight:800; }
+  code{ background:rgba(255,255,255,.07); border-radius:5px; padding:1px 5px; font-size:12.5px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  ul{ padding-left:19px; } li{ margin:4px 0; }
+  .flow{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-size:12.5px; margin:8px 0; }
+  .flow .s{ background:rgba(0,238,210,.09); border:1px solid rgba(0,238,210,.28); color:var(--fg); border-radius:999px; padding:4px 11px; white-space:nowrap; }
+  .flow .a{ color:var(--mut); }
+  .tag{ display:inline-block; font-size:11.5px; font-weight:800; border-radius:6px; padding:1px 7px; margin-right:5px; }
+  .tag.g{ background:rgba(0,238,210,.12); color:var(--acc); }
+  .tag.y{ background:rgba(255,225,61,.12); color:var(--warn); }
+  .mini{ color:var(--mut); font-size:12.5px; }
+</style>
+</head>
+<body>
+<h1>대용량 업로드(<b>R2 직업로드 ≤2GB</b>) + 편집기·변환 <b>4K</b> 지원</h1>
+<div class="sub">260711 · PR #1941 · 운영자 확정(풀세트) — 30MB 병목 해소 + 생성 4K ↔ 후편집 1080p 엇박 해소 + 침묵 다운스케일 표면화</div>
+
+<h2><span class="n">1</span>무엇이 바뀌나 (쉬운 설명)</h2>
+<div class="card">
+  <p>① 편집기·변환 탭의 <b>파일 업로드가 30MB → 2GB</b>로 커진다. 파일이 GitHub를 거치지 않고 저장소(R2)로 조각조각(32MB) 직행하는 방식이라 사실상 용량 제한이 사라지고, 실질 제한은 원래 있던 <b>길이 캡(편집기 10분)</b>만 남는다.</p>
+  <p>② 편집기 해상도 카드에 <b>원본(4K)</b> 선택지가 생긴다. 이걸 고르면 4K가 4K로 나온다(지금까지는 무조건 1080p급으로 축소). 변환 탭은 <b>해상도 '원본'이면 4K가 그대로 통과</b>한다(지금까지는 4K 입력 자체를 거절).</p>
+  <p>③ 4K를 선택하지 않아 1080p로 줄여 내보낼 때, 이제 <b>결과에 "원본 3840×2160 → 긴 변 1920 축소" 안내(note)가 뜬다</b> — 말없이 줄이던 것 교정.</p>
+</div>
+<div class="flow">
+  <span class="s">폰/PC 파일(≤2GB)</span><span class="a">→</span>
+  <span class="s">api/upload · 32MB 조각</span><span class="a">→</span>
+  <span class="s">R2 up_src/* (일회용)</span><span class="a">→</span>
+  <span class="s">러너 aws s3 cp 회수</span><span class="a">→</span>
+  <span class="s">ffmpeg 편집/변환</span><span class="a">→</span>
+  <span class="s">결과 + 원본 자동 삭제</span>
+</div>
+
+<h2><span class="n">2</span>전 / 후 비교</h2>
+<table>
+  <tr><th>축</th><th>전 (260710까지)</th><th>후 (이번 변경)</th></tr>
+  <tr><td>업로드 캡</td><td class="old">30MB — base64로 부풀려 GitHub 브랜치에 커밋(워커 메모리 128MB 천장)</td><td class="new"><b>2GB</b> — R2 직업로드(32MB 균일 조각 멀티파트 · 진행% 표시). R2 바인딩 없으면 기존 30MB 경로 자동 폴백 = 회귀 0</td></tr>
+  <tr><td>편집기 4K</td><td class="old">항상 긴 변 1920으로 <b>말없이</b> 축소</td><td class="new">해상도 카드 <b>원본(4K)</b> = 긴 변 3840 유지 · 축소 시 note 표면화</td></tr>
+  <tr><td>변환 4K</td><td class="old">4K 입력 거절(긴 변 1920까지)</td><td class="new">입력 3840까지 수용 · 해상도 '원본' = 4K 통과(8K는 거절)</td></tr>
+  <tr><td>4K 예산</td><td class="old">—</td><td class="new">편집기 180초 · 변환 120초 캡(초과 = 정직 거절 + 다음 행동 안내) · 60fps 보간은 4K 제외(스킵 note)</td></tr>
+  <tr><td>URL 소스</td><td class="old">1920 페치</td><td class="new">편집기에서 <b>원본(4K) 선택 시에만</b> 2160 페치(그 외 1920 유지 = 비용 보호)</td></tr>
+  <tr><td>업로드 원본 수명</td><td class="old">up-브랜치 · 잡 끝 삭제</td><td class="new">R2 <code>up_src/*</code> · 잡 끝 삭제(동일 일회용 수명 · 재발사는 뷰어가 자동 재업로드)</td></tr>
+</table>
+
+<h2><span class="n">3</span>장단점 · 효율성</h2>
+<div class="card">
+  <p><span class="tag g">장점</span>대용량·4K 파일이 드디어 1급 입력. GitHub 히스토리 비대 0(대용량은 git 자체를 안 거침). 업로드 진행%가 보임. 침묵 다운스케일 폐지 = 정직성↑.</p>
+  <p><span class="tag g">효율</span>비용 축 = R2 저장(일회용·잡 끝 삭제 = 잔존 0) + Actions 분. 4K 잡은 1080p 대비 인코딩 시간 약 3~4배라 <b>길이 캡으로 예산을 묶었다</b>(편집기 3분·변환 2분 — 릴스/쇼츠 용도엔 충분). LLM 토큰 0(순수 ffmpeg 경로 불변).</p>
+  <p><span class="tag y">트레이드오프</span>4K 잡 대기 시간 체감↑(편집기 최악 ~40분 백스톱 · 완료 웹푸시가 커버). 60fps 보간은 4K에서 미지원(예산 4배 폭발 — 1080p로 내리면 가능). 변환 URL 소스는 1920 유지(4K는 파일 업로드로).</p>
+</div>
+
+<h2><span class="n">4</span>품질 저하 리스크 (정직)</h2>
+<ul>
+  <li><b>기존 경로 회귀 0 설계</b> — R2 미바인딩(현 라이브 상태)이면 모든 동작이 종전과 동일. 편집 축 결측 = 순수 자막 경로 캡(폭 1080)도 불변(축소 note 한 줄만 추가).</li>
+  <li><b>4K 인코딩 품질</b> — 출력은 동일 crf(편집기 20 · 변환 19) H.264라 픽셀당 품질 기준 동일. HDR(10비트) 원본은 종전과 같이 8비트 SDR 변환(톤매핑 없음 = 색 물빠짐 가능 · 기존 한계 유지).</li>
+  <li><b>미완 멀티파트 잔재</b> — 업로드 중단 시 abort를 쏘지만 fire-and-forget. 잔재는 무해(과금 미미)·후속으로 R2 수명규칙 1일 권장.</li>
+  <li><b>러너 예산 최악 스택</b> — 4K+배경음 제거 동시는 컴포즈 60분 캡에 근접 가능 → 초과 시 error.log 정직 실패(무한 행 없음).</li>
+</ul>
+
+<h2><span class="n">5</span>검증</h2>
+<div class="card">
+  <p><b>로컬 실측 8케이스 전부 통과</b> (합성 4K 3840×2160 8초 37MB · 8K 7680×4320):</p>
+  <ul>
+    <li>ly_burn: 원본(4K) 유지 = <span class="ok">3840×2160 산출</span> · 카드 없음 = 1080×1920 + <span class="ok">축소 note</span> · 4K 길이 게이트 <span class="ok">정직 거절</span> · 60i×4K <span class="ok">스킵 note</span></li>
+    <li>conv_run: 4K orig <span class="ok">통과</span> · 4K 길이 게이트 <span class="ok">거절</span> · 4K→1080 다운스케일 <span class="ok">정상</span> · 8K <span class="ok">거절</span></li>
+    <li>게이트: <code>check_refs</code> rc=0(전 항목) · py_compile · YAML 파싱 · ESM 구문 전부 통과</li>
+  </ul>
+  <p id="council"><b>10인 평의회(Opus·읽기전용·적대 감사)</b>: <span class="bad">불가 1</span> · <span class="wr">주의 8</span> · <span class="ok">OK 1</span> → 발견 전부 조치(커밋 <code>cba67bb</code>) + 회귀 케이스 재실측 6/6 통과 · 집중 재검증 1인 결과는 머지 전 확정 반영.</p>
+  <ul>
+    <li><span class="bad">[불가·4]</span> 4K 판별이 긴 변>1920이라 <b>세로 폰영상(1080×2340) 자막 경로를 오거절</b> → 판별을 <b>픽셀 수(FHD 2배 초과)</b>로 교체 + 인코딩 백스톱 픽셀 비례화. 재실측: 세로 8초 = 게이트 미발동·원본 유지 ✓</li>
+    <li><span class="wr">[HIGH·3·5]</span> 변환 여백(pad) 캔버스 캡이 3840을 따라가 <b>FHD 소스 9:16이 1920×3413로 뻥튀기</b> → 캡을 소스 결속(하한 1920)으로 복원. 재실측: 1080×1920 정확 복원 ✓ · 4K는 2160×3840 통과 ✓</li>
+    <li><span class="wr">[보안·1]</span> 키 정규식 후행 개행 허용·워크플로 자체검증 부재 → \s 차단 3면 + 러너 grep 동형 재검증(하드닝)</li>
+    <li><span class="wr">[6]</span> R2 선스텝 추가로 잡 캡 예산 부족(최악 침묵 캔슬) → 잡 캡 재산정(편집 85분·변환 58분) + 뷰어 폴 예산 동행(2700/1900s)</li>
+    <li><span class="wr">[7·8·10]</span> 버튼 고착·연속 선택 꼬임·고아 업로드 잔존·upload.js 캐시 계약 누락·자막-only 4K 축소 note 힌트 부재 등 9건 → 전부 반영(고아 = delete 즉시 정리 + 수명규칙 백스톱 권장)</li>
+    <li><span class="ok">[OK·9]</span> R2 멀티파트 API 사용 = 공식 문서 대조 전부 정확 · 미완결 잔재 = R2 기본 7일 자동 중단 확인</li>
+  </ul>
+</div>
+
+<h2><span class="n">6</span>운영자 액션 — R2 바인딩 1회 (이거 해야 2GB가 켜짐)</h2>
+<div class="card">
+  <p>Cloudflare 대시보드 → <b>Workers & Pages → nomute-editor(Pages) → Settings → Bindings → Add → R2 bucket</b> → 변수명(Variable name) = <code>R2</code> · 버킷 = 러너 시크릿 <code>R2_BUCKET</code>과 <b>같은 버킷</b> → 저장 → <b>Retry deployment(재배포)</b> 1회.</p>
+  <p class="mini">바인딩 전 = 기존 30MB 경로 그대로(아무것도 안 깨짐). 바인딩 후 = 뷰어가 자동 감지해 2GB 직업로드 켜짐(코드 추가 배포 불요). 선택 후속: R2 수명규칙(prefix <code>up_src/</code> 1일 삭제) 추가하면 중단 잔재까지 자동 청소.</p>
+</div>
+
+<h2><span class="n">7</span>롤백</h2>
+<p class="mini">백업 = <code>_versions/260711_0251_대용량업로드_4K/</code>(수정 전 10파일 전량). R2 바인딩 제거만으로도 대용량 경로 즉시 OFF(30MB 폴백 복귀). 4K 캡 조정 = env <code>EDIT_4K_MAX_SEC</code>·<code>CONV_4K_MAX_SEC</code>(코드 무수정).</p>
+</body>
+</html>
