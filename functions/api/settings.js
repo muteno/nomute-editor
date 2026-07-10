@@ -35,10 +35,10 @@ export async function onRequestGet({ env }) {
   if (!env.GH_TOKEN) return json({ error: 'GH_TOKEN 미설정' }, 500);
   const H = { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github.raw', 'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28' };
   const g = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE}?ref=main`, { headers: H });
-  if (g.status === 404) return json(clean(null));   // 최초(파일 없음) = 기본값
+  if (g.status === 404) return json({ ...clean(null), exists: false });   // 최초(파일 없음) = 기본값 · exists=false → 클라 seed 판정(레거시 승격)
   if (!g.ok) return json({ error: `GitHub ${g.status}` }, 502);
   let m; try { m = JSON.parse(await g.text()); } catch { m = null; }
-  return json(clean(m));
+  return json({ ...clean(m), exists: true });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -64,7 +64,7 @@ export async function onRequestPost({ request, env }) {
       body: JSON.stringify({ message: 'settings: 앱 설정 갱신', content: b64utf8(JSON.stringify(next)), branch: 'main', ...(sha ? { sha } : {}) }),
     });
     if (put.ok) return json({ ok: true, settings: next });
-    if (put.status === 409) continue;   // sha 경합 → 재시도(push.js 동일)
+    if (put.status === 409 || put.status === 422) continue;   // sha 경합(409)·최초 동시생성 sha 누락(422) → 최신 sha 재취득 재시도(평의회 감사1)
     return json({ error: `GitHub write ${put.status}: ${(await put.text()).slice(0, 200)}` }, 502);
   }
   return json({ error: '경합 — 재시도 실패' }, 409);
