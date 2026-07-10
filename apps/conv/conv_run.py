@@ -208,6 +208,7 @@ def main():
     if pw:   # 여백(패드) = fps 뒤(보간은 원본 픽셀만 계산 = 예산 산식 sw·sh 그대로 유효) · 오프셋 짝수 = 크로마 안전
         px, py = max(0, (pw - sw) // 2) & ~1, max(0, (ph - sh) // 2) & ~1
         vf.append(f"pad={pw}:{ph}:{px}:{py}:black")
+        vf.append("setsar=1")   # contain 짝수화가 남긴 미세 보정 SAR(≈0.25% 스퀴시) 제거 = 정사각픽셀 강제(평의회1 실측)
         ow, oh = pw, ph
     vf.append("format=yuv420p")   # 재생 호환(브라우저·프리미어)
 
@@ -230,7 +231,11 @@ def main():
     note = ""
     if audio == "norm":
         out_an = "/tmp/conv_out_an.mp4"
-        ok_a, note = audio_norm.normalize(out, out_an)
+        try:
+            ok_a, note = audio_norm.normalize(out, out_an)
+        except Exception as e:   # 이중 가드 — 헬퍼가 못 잡은 예외도 성공한 본 인코딩을 보존(fail-soft 완결 · 평의회5·6)
+            ok_a, note = False, "음량 통일 건너뜀(처리 실패)"
+            print("::warning::audio_norm 예외:", e, flush=True)
         if ok_a:
             out = out_an
         print("음량:", note, flush=True)
