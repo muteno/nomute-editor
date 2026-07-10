@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>트래킹 카드 캡션 + 병합 힌트 — 작업 보고</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+  :root{ --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --warn:#FFE13D; --danger:#e23b2a; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;padding:24px 16px 60px}
+  .wrap{max-width:720px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px} h1 b{color:var(--accent)}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+  h2{font-size:15px;margin:26px 0 10px;color:var(--fg)}
+  h2::before{content:'• ';color:var(--accent);font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--pan);color:var(--mut);font-weight:700;white-space:nowrap}
+  .ok{color:var(--accent)} .wr{color:var(--warn)} .dg{color:var(--danger)}
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:10px 0;font-size:13.5px}
+  code{background:rgba(255,255,255,.06);border-radius:6px;padding:1px 6px;font-size:12.5px}
+  ul{margin:6px 0;padding-left:20px} li{margin:4px 0}
+  .mut{color:var(--mut)}
+</style>
+</head>
+<body><div class="wrap">
+<h1>트래킹 — <b>카드 캡션 + 동일인 병합 힌트</b> (opus 4.8 max)</h1>
+<div class="sub">운영자 지시: "opus 4.8 --effort max로 이미지·영상 프롬프팅·트래킹 모두 적용" → 선택질문 답 "캡션 + 병합 힌트" · PR #1890(본체) · #1891(yt-dlp 수정) · 승격 PR</div>
+
+<h2>전 / 후</h2>
+<table>
+<tr><th></th><th>전</th><th>후</th></tr>
+<tr><td>트래킹 LLM</td><td>0콜(순수 CV)</td><td>분석 직후 보조 1콜(opus 4.8 · effort max) — 렌더/검출/군집은 그대로 0콜</td></tr>
+<tr><td>인물 확정 카드</td><td>크롭 + #번호 + 시간범위만 — 다인 영상에서 누가 누군지 크롭만으로 구분</td><td>크롭 아래 <span class="mut">회색 한 줄 묘사 캡션</span>("남색 정장, 마이크 앞") + 확실한 동일인 쌍엔 좌상단 <code>#N 같을 수도</code> 배지</td></tr>
+<tr><td>이미지·영상 프롬프팅</td><td colspan="2">변경 없음 — kmake·cardmake·lymake·revise·more_images 전부 <b>이미 opus 4.8 + effort max</b>(PIPE_MODEL 단일 원천) 실측 확인</td></tr>
+</table>
+
+<h2>구현 요지</h2>
+<div class="card">
+<ul>
+<li>신규 <code>.github/scripts/track_caption.sh</code> — claude -p{--safe-mode·Read만·폴오버 SSOT 4계정·claude_meter 계측}가 크롭을 보고 JSON 산출 → tracks.json에 <code>people[].cap</code>·<code>subjects[].cap</code>·<code>meta.same_hint</code> additive·원자 교체 병합</li>
+<li><code>track-make.yml</code> — <code>cap</code> 입력 게이트 · 캡션 축 4스텝 전부 <code>continue-on-error</code> · cap=1이면 분석 직후 tracks.json 조기 커밋(카드 선공개) → 캡션 병합 2차 커밋</li>
+<li>뷰어 — <code>.cardcap</code>·<code>.mghint</code>(기존 배지 패밀리 계승·무채색) · 구 tracks.json 하위호환(없으면 미표시)</li>
+</ul>
+</div>
+
+<h2>장 / 단 · 리스크</h2>
+<table>
+<tr><th class="ok">장점</th><td>다인 영상에서 카드 선택이 명확해짐(모자이크 오선택 방지) · 과분할 카드에 병합 단서 · 전면 fail-soft라 실패해도 분석 무손상 · 구독 OAuth = 추가 과금 0</td></tr>
+<tr><th class="wr">한계</th><td>병합 힌트는 모델이 얼굴 비교를 거부·보수 판정 가능 → 자주 빈 배열(캡션 = 안정 · 힌트 = 보너스) · 첫 세션은 캡션 없이 카드 먼저 뜨고 재진입 시 표시</td></tr>
+<tr><th class="dg">리스크</th><td>얼굴 크롭이 Anthropic으로 전송됨(실명 미출력 ≠ 이미지 미전송 — 지침 §1-1-d 정직 고지) · 분석당 opus 1콜 = 구독 쿼터 소모(이미지 ≤24장)</td></tr>
+</table>
+
+<h2>검증 · 카나리아 실측</h2>
+<div class="card">
+<ul>
+<li><b>10인 평의회 → 전 지적 봉합 → 재검증 3기 만장일치 OK</b>(continue-on-error·조기 커밋·원자 교체·pid 키 매핑·오병합 비대칭 경고·mghint 폭 방어·자기쌍 필터·문서 정합)</li>
+<li>카나리아 1차 = <span class="dg">실패</span> → <b>잠복버그 적발</b>: pydeps 캐시 적중 런에서 yt-dlp 실행파일 미복원 = URL 입력 전멸 → <code>python3 -m yt_dlp</code> 모듈 호출로 track·ly 둘 다 근본 수정(#1891 · 캡션과 무관한 실사용 개선)</li>
+<li>카나리아 2차 = <span class="ok">통과</span>(sintel 트레일러): 캡션 병합 people 3/3 · subjects 4/4 · same_hint = [](보수 판정 = 설계대로) · <b>error.log 미생성</b> · 조기+최종 2단 커밋 · metrics shard 커밋 — 전부 main read-back 실측</li>
+<li>승격 = <code>cap</code> 기본값 <code>'1'</code>(§파이프라인 e 절차 완주) · 롤백 = 기본값 한 줄 비우기</li>
+</ul>
+</div>
+
+<h2>효율성</h2>
+<div class="card">캡션 콜 = <code>--safe-mode</code>(CLAUDE.md 미로드 = cache_w 절감·judge 선례) · max-turns 카드 수 비례 · 실패 시 재시도 4계정 폴오버 · 캡션이 분석 공개를 안 막게 조기 커밋 — 통상 체감 지연 0.</div>
+</div></body>
+</html>
