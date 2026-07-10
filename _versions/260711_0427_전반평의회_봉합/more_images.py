@@ -76,7 +76,7 @@ try:
         + (["--bare"] if os.environ.get("CLAUDE_BARE", "0").strip().lower() not in ("0", "false", "no", "off", "") else [])  # 라우터 auto-discovery 스킵(안 읽는 ~37k 누수 차단 · 260701 · 롤백 CLAUDE_BARE=0)
         + ["--model", MODEL, "--effort", "max",
          "--allowedTools", "WebFetch,WebSearch",
-         "--disallowedTools", "Write,Edit,NotebookEdit,Bash,Task",
+         "--disallowedTools", "Write,Edit,MultiEdit,NotebookEdit,Bash,Task",
          "--max-turns", "40"],
         input=prompt, capture_output=True, text=True, timeout=900)
     out = res.stdout or ""

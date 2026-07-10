@@ -411,7 +411,7 @@ def ask_opus(head, lead, insight, scene, o, free=False):
         mood_rule=mood_rule, lib_rule=lib_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
 
     args = ["claude", "-p", "--model", MODEL, "--effort", "max",
-            "--disallowedTools", "Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task",
+            "--disallowedTools", "Bash,Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task",
             "--max-turns", "3"]
     # 렌더 키는 Claude 서브프로세스에 노출할 이유 0 — 호출 동안만 env서 제거(moreimg unset과 동일 정신·복원)
     saved = {k: os.environ.pop(k, None) for k in ("GEMINI_API_KEY", "GDRIVE_SA_JSON")}
