@@ -26,7 +26,9 @@ import os
 import re
 import subprocess
 import sys
+import time
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
@@ -105,6 +107,8 @@ RUBRIC = """너는 한국 뉴스 데스크의 큐레이션 판정자다. 아래 
 
 ⚠️ 화제성(클릭·회자)이 곧 중요도는 아니다 — 위 연성·잡학·신변잡기는 여러 매체가 받아써도, 화제가 되어도 [0]~[1]이다(콘텐츠화해도 다수의 유의미한 반응을 끌기 어려움). 단 실제 사고·재난·사망·범죄 피해나 정치·경제·사회 현안이면 본 규정과 무관 — 원래 경중대로 [2]~[3] 유지(예: '교통량 감소'는 [0]이나 '교통사고 사망'은 사건, '단오 창포물 미용지혜'는 [0]이나 '베네수엘라 강진'의 강진 자체는 재난).
 
+⚠️ 연예 예외 — **최정상급(국민 대부분이 아는 이름) 연예인·유명인의 열애·결별·결혼·이혼·사망·중대사고의 공식 확인·단독 보도**는 가십이 아니라 전국민적 관심 사건 = **[3]**(대형 — 목록·랭킹 가시성 최상 · 운영자 260710 2차 "grade 3이 맞음" = 구 [1] 상향. 이 [3]은 *경중·가시성 표기*일 뿐 — 긴급(속보) 여부는 별도 속보 판정이 연예 콘텐츠를 항상 X로 거르므로 푸시·자동분석엔 절대 안 감). 무명·중소 연예인의 동종 소식, 그리고 최정상급이어도 화보·근황·목격담·일상·패션·열애설(미확인 지라시)은 여전히 [0]. 예: '아이유·이종석, 4년 열애 끝 결별'(소속사 확인) = [3] / '배우 A씨 열애설 포착' = [0] / '아이유 공항패션 화제' = [0].
+
 ⚠️ 핵심: '보도자료(홍보)'와 '진짜 사건'을 가려라. 여러 매체가 동시에 받아쓴 홍보성 발표여도 0이다.
 실제로 무슨 일이 *벌어진* 사건·현안이라야 2~3이다. 행정 동사("당국 조사·대응")에 휘둘리지 말고
 그 바탕에 실제 사건이 벌어졌으면 높게 본다.
@@ -142,12 +146,36 @@ def cat_rescue(c):
             and not surfaced(c))
 
 
+REJUDGE_MAX_H = float(os.environ.get("GATE_REJUDGE_MAX_H", "72"))   # rubric 변경 재채점 창(h) — 운영자 260710 '쿼터 절감' 승인
+
+
+def _fresh_for_rejudge(c, stamp_key):
+    """rubric 변경 *재*채점은 최근 REJUDGE_MAX_H(기본 72h·first_seen)만 — 룰북 한 줄 수정이 노출권 전량(수천 건)
+    재채점 폭탄(§7 260704 실측: 39→3,000 부활 서지)이 되던 것을 '최근 3일치만'으로 제한. 3일+ 기사는 timeAcc가
+    이미 바닥(48h=.02)이라 재채점 이득 0 = 구버전 도장 유지. 미채점(도장 없음) = 나이 무관 True(첫 채점 커버리지
+    불변) · first_seen 없음/파싱 실패 = True(보수 = 채점 쪽)."""
+    if not c.get(stamp_key):
+        return True
+    s = c.get("first_seen") or ""
+    try:
+        try:
+            t = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone(timedelta(hours=9)))
+        return (time.time() - t.timestamp()) / 3600 < REJUDGE_MAX_H
+    except Exception:
+        return True
+
+
 def needs_grading(c):
-    """노출권(grade+cat) 미채점이거나, cross-2 cat구제(cat만) 미채점이거나, 외신 미번역(편승)이면 True. rubric 변경 시 되살아남."""
+    """노출권(grade+cat) 미채점이거나, cross-2 cat구제(cat만) 미채점이거나, 외신 미번역(편승)이면 True.
+    rubric 변경 시 되살아남 — 단 재채점은 최근 72h만(_fresh_for_rejudge · 첫 채점은 나이 무관)."""
     if surfaced(c):
-        return c.get("grade_rubric") != RUBRIC_VER or needs_translate(c)
+        return (c.get("grade_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "grade_rubric")) or needs_translate(c)
     if cat_rescue(c):
-        return c.get("cat_rubric") != RUBRIC_VER or needs_translate(c)
+        return (c.get("cat_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "cat_rubric")) or needs_translate(c)
     return False
 
 
@@ -157,6 +185,11 @@ def _clean(t):
 
 
 CATS_VALID = {"정치", "사회", "경제", "문화", "국제", "테크"}   # AI 카테고리 6버킷(viewer catBucket과 동일)
+
+# 가십 계급 표식(운영자 260710 "따로 가십 계급" · 문화 안에서 연예 사생활 계열을 구분) — 결정적 파이썬(AI 출력 칸 추가 없음
+# = 파서 취약면 0). cat=문화 AND 사생활 이벤트 어휘면 c["gossip"]=True 도장 → 뷰어가 칩 텍스트 '가십'으로 표시(색 = 문화 계승).
+# 사망·사고는 가십이 아니라 사건이라 어휘에서 의도적 제외(문화 칩 유지). 채점 때마다 재산정(제목 바뀌면 자동 갱신).
+GOSSIP_RE = re.compile(r"열애|결별|파혼|재혼|결혼|이혼|♥")
 
 
 def judge(items):
@@ -178,11 +211,18 @@ def judge(items):
     if p is None:
         return {}, {}, {}, rc, err
     grades, cats, trans = {}, {}, {}
+    expected = {i for i, _ in items}   # 응답 idx 검증(260710 분신술) — 입력측 탭 깨짐(_clean)만 방어하고 출력측은 무검증이라,
+    seen = set()                       #   모델이 번호를 밀려 내면 엉뚱한 기사에 grade 오도장 + rubric 도장으로 재판정 영영 차단되던 사각.
     for line in (p.stdout or "").splitlines():
         if "\t" not in line:
             continue
         cols = line.split("\t")
         k = cols[0].strip()
+        if not (k.isascii() and k.isdigit()):
+            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(기존 관용 유지 · isascii = 전각/유니코드 숫자가 청크 킬로 승격되는 이론 케이스 봉인)
+        if k not in expected or k in seen:   # 범위 밖·중복 idx = 매핑 어긋남 신호 → 청크 통째 폐기(미도장 유지 = 다음 런 재시도·기존 실패 경로 재사용)
+            return {}, {}, {}, -2, f"응답 idx 검증 실패(k={k!r} 범위밖/중복) — 오도장 방지 청크 폐기"
+        seen.add(k)
         m = re.match(r"\s*([0-3])(?![0-9])", cols[1]) if len(cols) > 1 else None   # 단일 0~3만('10'→'1' 2자리 오파싱 차단)
         if m:
             grades[k] = int(m.group(1))
@@ -294,6 +334,7 @@ def main():
                 c["cat"] = ct
             c["cat_rubric"] = RUBRIC_VER  # cat 채점 도장(재채점 루프 방지) — grade/grade_rubric 은 안 씀
             catfix += 1
+        c["gossip"] = bool(c.get("cat") == "문화" and GOSSIP_RE.search(c.get("title") or ""))   # 가십 계급 도장(운영자 260710) — 채점 시마다 재산정(True/False 항상 기록 = stale 양성 자동 해소)
         dist[g] += 1
     _write(cands)
     print(f"채점 완료: 분포 {dict(sorted(dist.items()))} / {sum(dist.values())}건 채점 (후보 {len(pending)}, cross-2 cat구제 {catfix}건, 강마커 선확정 {skipped}건, 외신 번역 {tdone}건, rubric {RUBRIC_VER})")

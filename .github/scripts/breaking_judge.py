@@ -16,6 +16,8 @@ import json
 import os
 import subprocess
 import sys
+import time
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
@@ -81,6 +83,13 @@ RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건
 ⚠️ 단 **사고·화재·재난·붕괴·중독 등 *사고성***은 그대로 O(이 게이트 미적용).
   예) "보이스피싱 모자 숨진채"·"흉기 휘두르고 자해" → 개별 = X · "어린이집 황화수소 9명 후송" → 다수·사고 = O
 
+🎤 **연예·문화 콘텐츠 게이트 (운영자 260710 — 대형 연예 grade 상향과 한 쌍):**
+연예인·유명인의 열애·결별·결혼·이혼·컴백·수상·신작·근황 등 **연예·문화 콘텐츠 소식은
+아무리 전국적 화제·최정상급이어도 급발 재난·사고가 아니므로 X**(경중 grade와 무관 —
+대형 연예의 가시성은 목록·랭킹·배지 축이 담당하고, 긴급 푸시·자동분석 축은 아니다).
+⚠️ 단 유명인의 **갑작스러운 사망·중대 사고·범죄 피해**는 콘텐츠가 아니라 사건 — 이 게이트 미적용(위 일반 규칙으로 판정).
+  예) "아이유·이종석, 4년 열애 끝 결별" → X · "배우 ○○ 고속도로 사고 중상" → 사건으로 판정
+
 📈 **증시·시장 변동성 게이트 (운영자 260626):**
 사이드카(매수·매도)·서킷브레이커 발동, 코스피·코스닥·나스닥 등 **지수의 일중 급등·급락**, 순매수/순매도,
 환율·유가·금리 등 **시장 변동성 자체**는 보도가치가 있어도 **급발 속보가 아니다 → X**.
@@ -133,9 +142,33 @@ RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건
 RUBRIC_VER = hashlib.sha256(RUBRIC.encode("utf-8")).hexdigest()[:12]
 
 
+REJUDGE_MAX_H = float(os.environ.get("BREAKING_REJUDGE_MAX_H", "72"))   # rubric 변경 재판정 창(h) — 운영자 260710 '쿼터 절감' 승인
+
+
+def _fresh_for_rejudge(c):
+    """rubric 변경 *재*판정은 최근 REJUDGE_MAX_H(기본 72h·first_seen)만 — '지금 긴급?'은 시간 민감 판정이라
+    묵은 후보를 새 rubric으로 재판정하는 건 결과 자체가 무의미한 쿼터 낭비(gate_judge와 짝 · 운영자 260710).
+    미판정(도장 없음) = 나이 무관 True(첫 판정 커버리지 = *judge 단독 기준* 불변 — 파이프라인 전체론
+    to_candidates 캐리 정리가 fresh 이탈한 무도장 후보를 선행 차단 = 실효 첫판정 창 ≈ fresh 체류기간 ·
+    "24h 지난 후보의 지금-긴급 판정은 무의미"라 방향 일치 · 검4-5 260710) · 파싱 실패 = True(보수)."""
+    if not c.get("breaking_rubric"):
+        return True
+    s = c.get("first_seen") or ""
+    try:
+        try:
+            t = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone(timedelta(hours=9)))
+        return (time.time() - t.timestamp()) / 3600 < REJUDGE_MAX_H
+    except Exception:
+        return True
+
+
 def needs_judging(c):
-    """속보후보이고, 아직 현재 RUBRIC 버전으로 판정되지 않았으면 True(미판정 or rubric 변경)."""
-    return bool(c.get("breaking_candidate")) and c.get("breaking_rubric") != RUBRIC_VER
+    """속보후보이고, 아직 현재 RUBRIC 버전으로 판정되지 않았으면 True(미판정 or rubric 변경 — 재판정은 최근 72h만)."""
+    return bool(c.get("breaking_candidate")) and c.get("breaking_rubric") != RUBRIC_VER and _fresh_for_rejudge(c)
 
 
 def judge(items):
@@ -156,27 +189,58 @@ def judge(items):
     if p is None:
         return {}, rc, err
     verdicts = {}
+    expected = {i for i, _ in items}   # 응답 idx 검증(260710 분신술) — 오번호 출력이 엉뚱한 사건에 breaking 오도장 + rubric 도장 고착되던 사각 봉합(gate_judge와 동일 패턴).
+    seen = set()
     for line in (p.stdout or "").splitlines():
         if "\t" not in line:
             continue
         k, _, v = line.partition("\t")
+        k = k.strip()
+        if not (k.isascii() and k.isdigit()):
+            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(isascii = gate_judge와 짝 일관)
+        if k not in expected or k in seen:   # 범위 밖·중복 idx = 매핑 어긋남 → 청크 통째 폐기(미도장 유지·다음 런 재시도)
+            return {}, -2, f"응답 idx 검증 실패(k={k!r} 범위밖/중복) — 오도장 방지 청크 폐기"
+        seen.add(k)
         v = v.strip().upper()
         if v.startswith("Y"):
-            verdicts[k.strip()] = True
+            verdicts[k] = True
         elif v.startswith("N"):
-            verdicts[k.strip()] = False
+            verdicts[k] = False
     return verdicts, p.returncode, p.stderr
+
+
+def _write(cands):
+    """원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates·gate_judge와 일관)."""
+    import tempfile
+    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
+    with os.fdopen(_fd, "w", encoding="utf-8") as _f:
+        _f.write(json.dumps(cands, ensure_ascii=False))
+    os.replace(_tmp, CAND)
 
 
 def main():
     cands = json.loads(CAND.read_text(encoding="utf-8"))
     pending = [c for c in cands if needs_judging(c)]
 
-    if "--count" in sys.argv:           # 게이트용 — 숫자만 출력, claude 미호출
+    if "--count" in sys.argv:           # 게이트용 — 숫자만 출력, claude 미호출·미기록
         print(len(pending))
         return
 
+    # EXCLUDE 하드가드 전량 스윕(콜 0 · 검4-5 260710): is_excluded는 결정적 파이썬이라 판정 배치와 무관하게
+    # 전 엔트리에 소급 — env 제외 키워드 변경이 72h 재판정 창 밖·이미 확정된 breaking에도 즉시 먹게(구조상
+    # EXCLUDE는 RUBRIC 해시 밖 = 재판정 트리거 불가라 이 스윕이 유일한 소급 경로). 도장은 안 건드림 =
+    # 재급증 시 재판정 경로 불변 · breaking=True → False 강등만(보수 방향).
+    swept = 0
+    for c in cands:
+        if c.get("breaking") and is_excluded(c.get("title", "")):
+            c["breaking"] = False
+            swept += 1
+    if swept:
+        print(f"EXCLUDE 스윕: 기확정 breaking {swept}건 강제 해제(운영자 제외 키워드 소급)")
+
     if not pending:
+        if swept:
+            _write(cands)   # 스윕만 있어도 반영(판정 0건이어도 제외 소급은 즉시)
         print("미판정 속보후보 없음 — 종료")
         return
     total = len(pending)
@@ -207,11 +271,7 @@ def main():
         c["breaking_rubric"] = RUBRIC_VER  # 판정 도장(이 rubric 버전으로 판정됨)
         if v:
             nbreak += 1
-    import tempfile, os                          # 원자 쓰기 — 절단 시 candidates.json 전체 이력 소실 방지(to_candidates와 일관)
-    _fd, _tmp = tempfile.mkstemp(dir=str(CAND.parent), suffix=".tmp")
-    with os.fdopen(_fd, "w", encoding="utf-8") as _f:
-        _f.write(json.dumps(cands, ensure_ascii=False))
-    os.replace(_tmp, CAND)
+    _write(cands)                                # 원자 쓰기(공통 헬퍼)
     print(f"판정 완료: 🚨속보 {nbreak}건 / 후보 {len(pending)}건 (rubric {RUBRIC_VER})")
     for i, c in enumerate(pending):
         if verdicts.get(str(i)):

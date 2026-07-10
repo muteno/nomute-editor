@@ -69,6 +69,10 @@ jobs:
               git add viewer/gen_out/ 2>/dev/null || true
               git commit --amend --no-edit 2>/dev/null || true
             fi
-            git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
           echo "::error::push 실패(재시도 소진) — 산출 유실"; exit 1
+          # ⚠️ push = HEAD:main (detached HEAD 대응) — checkout이 inputs.src_sha(comp-make 계승 = 특정 커밋 detached)라
+          #    `git push origin main`은 로컬 main 브랜치 부재로 `src refspec main does not match any` 실패(런 29068702013 실측).
+          #    comp/thumb/ly-make 3형제 전부 이 상황(src_sha detached)에서 HEAD:main 사용. imggen의 'HEAD:main 금지'는
+          #    *브랜치 ref 디스패치* 우려인데, src_sha는 resize.js가 branch:main으로 PUT한 main 계보 커밋 해시라 무해(브랜치 누출 0).
