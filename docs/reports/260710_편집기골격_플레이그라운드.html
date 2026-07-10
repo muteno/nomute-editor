@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>편집기 메뉴 골격 — 만지는 시안 (A 레시피+카테고리 vs B 레시피+처리 스택)</title>
+<style>
+/* ═ 포터블 §3 골격 계승 · 값 = viewer 토큰 실측 복사(자기완결 = §핵심명령 3-c 복사=계승) ═ */
+:root{
+  --bg:#121212; --pan:#16171a; --line:#2a2c31; --line2:rgba(255,255,255,.08); --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322; --danger:#e23b2a; --warn:#FFE13D;
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-body:15px; --fw-b:700; --fw-x:800;
+  --btn:34px; --btn-sm:30px; --btn-xs:22px; --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
+  --press-s:.85; --press-m:.9; --press-l:.95;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:#0c0d0f; color:var(--fg); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+.wrap{ display:flex; flex-wrap:wrap; gap:20px; max-width:1060px; margin:0 auto; padding:18px 14px 60px; justify-content:center; }
+h1{ flex-basis:100%; font-size:17px; margin:2px 4px 0; }
+h1 small{ color:var(--mut); font-weight:400; font-size:12.5px; display:block; }
+
+/* ── 폰 프레임(실사용 화면비 재현) ── */
+.stagewrap{ flex:0 0 auto; }
+.frame{ width:372px; height:742px; border:1px solid #33363c; border-radius:34px; overflow:hidden; background:var(--bg); position:relative; box-shadow:0 18px 60px rgba(0,0,0,.5); }
+.app{ position:absolute; inset:0; display:flex; flex-direction:column; overflow:hidden;
+  --t-chipH:34px; --t-chipR:999px; --t-cardR:16px; --t-gap:12px; --t-fsChip:13px; --t-fsHead:13px;
+  --t-fireH:48px; --t-appliedA:.08; --t-dimOff:.45; --t-padX:16px; --t-stackGap:6px; --t-sheetH:62%; --t-recA:.10; }
+.stagecap{ text-align:center; color:var(--mut); font-size:12px; margin-top:8px; }
+
+/* ── 미리보기 내부 = 도구 모달 셸 계승(헤더 띠·탭 띠·글래스) ── */
+.mhead{ flex:none; display:flex; align-items:center; gap:8px; padding:11px var(--t-padX); background:rgba(24,25,28,.5); border-bottom:1px solid var(--line2); }
+.mhead .tit{ font-weight:var(--fw-x); font-size:15px; }
+.mhead .x{ margin-left:auto; width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center; border-radius:var(--r-s); border:1px solid var(--line2); background:rgba(255,255,255,.04); color:var(--fg); cursor:pointer; }
+.mhead .x svg{ width:14px; height:14px; }
+.body{ flex:1; overflow-y:auto; padding:var(--t-gap) var(--t-padX) 90px; scrollbar-width:none; }
+.body::-webkit-scrollbar{ display:none; }
+.fl{ display:block; font-size:var(--t-fsHead); font-weight:var(--fw-x); color:var(--fg); margin:calc(var(--t-gap) + 2px) 0 6px; }
+.fl::before{ content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+.chiprow{ display:flex; flex-wrap:wrap; gap:6px; }
+.chip{ height:var(--t-chipH); padding:0 12px; display:inline-flex; align-items:center; border-radius:var(--t-chipR); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--t-fsChip); cursor:pointer; user-select:none; transition:transform var(--dur-fast), color .15s, border-color .15s, background .15s; }
+.chip:active{ transform:scale(var(--press-m)); }
+.chip.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.chip.dim{ opacity:var(--t-dimOff); }
+.srcrow{ display:flex; gap:8px; }
+.srcrow .uin{ flex:1; height:40px; padding:0 12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--mut); font-size:12.5px; display:flex; align-items:center; }
+.srcrow .fbtn{ width:46px; display:grid; place-items:center; border:1px dashed var(--line); border-radius:var(--r-s); color:var(--accent); cursor:pointer; }
+.srcrow .fbtn svg{ width:20px; height:20px; }
+.srcpin{ position:sticky; top:0; z-index:4; background:linear-gradient(var(--bg) 82%, transparent); padding-top:2px; margin-top:-2px; }
+/* 레시피 행 */
+.recrow{ display:flex; gap:6px; flex-wrap:wrap; margin-top:var(--t-gap); }
+.rec{ height:var(--t-chipH); padding:0 12px; display:inline-flex; align-items:center; gap:5px; border-radius:var(--t-chipR); border:1px solid rgba(var(--accent-rgb),.3); background:rgba(var(--accent-rgb),var(--t-recA)); color:var(--fg); font-weight:var(--fw-x); font-size:var(--t-fsChip); cursor:pointer; transition:transform var(--dur-fast); }
+.rec:active{ transform:scale(var(--press-m)); }
+.rec .st{ color:var(--accent); }
+/* 골격A 카테고리 바 */
+.catbar{ display:flex; gap:6px; overflow-x:auto; padding:var(--t-gap) 0 4px; scrollbar-width:none; position:sticky; top:0; z-index:3; background:linear-gradient(var(--bg) 88%, transparent); }
+.catbar::-webkit-scrollbar{ display:none; }
+.cat{ flex:0 0 auto; height:var(--t-chipH); padding:0 14px; display:inline-flex; align-items:center; border-radius:var(--t-chipR); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--t-fsChip); cursor:pointer; transition:transform var(--dur-fast), color .15s, border-color .15s; }
+.cat:active{ transform:scale(var(--press-m)); }
+.cat.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.catbar.segstyle{ gap:0; border:1px solid var(--line); border-radius:var(--t-chipR); padding:0; overflow:hidden; }
+.catbar.segstyle .cat{ flex:1; border:none; border-radius:0; justify-content:center; padding:0 6px; }
+.catbar.segstyle .cat.on{ background:rgba(var(--accent-rgb),.10); }
+.sect{ padding-bottom:2px; }
+/* 적용됨 요약 */
+.appliedrow{ display:flex; gap:5px; flex-wrap:wrap; margin-top:var(--t-gap); }
+.ap{ height:24px; padding:0 9px; display:inline-flex; align-items:center; gap:4px; border-radius:var(--r-pill); border:1px solid rgba(var(--accent-rgb),.3); background:rgba(var(--accent-rgb),var(--t-appliedA)); color:var(--accent); font-size:var(--fs-xs); font-weight:var(--fw-x); cursor:pointer; }
+.aplbl{ color:var(--mut); font-size:var(--fs-xs); align-self:center; }
+/* 발사 버튼 */
+.firewrap{ padding:10px var(--t-padX) 14px; }
+.firewrap.sticky{ position:absolute; left:0; right:0; bottom:0; background:linear-gradient(transparent, var(--bg) 38%); }
+.fire{ width:100%; height:var(--t-fireH); border-radius:var(--r-s); border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.13); color:var(--accent); font:inherit; font-weight:var(--fw-x); font-size:15px; cursor:pointer; transition:transform var(--dur-fast); }
+.fire:active{ transform:scale(var(--press-m)); }
+.fire .eta{ color:var(--mut); font-weight:var(--fw-b); font-size:12px; margin-left:8px; font-variant-numeric:tabular-nums; }
+/* 골격B 처리 스택 */
+.stack{ display:flex; flex-direction:column; gap:var(--t-stackGap); margin-top:var(--t-gap); }
+.scard{ border:1px solid var(--line); border-radius:var(--t-cardR); background:var(--pan); padding:10px 12px; }
+.scard .hd{ display:flex; align-items:center; gap:8px; cursor:pointer; }
+.scard .no{ color:var(--accent); font-weight:var(--fw-x); font-size:var(--fs-xs); min-width:14px; }
+.scard .nm{ font-weight:var(--fw-x); font-size:var(--t-fsChip); }
+.scard .sum{ color:var(--mut); font-size:var(--fs-xs); margin-left:auto; text-align:right; }
+.scard .rm{ width:24px; height:24px; flex:none; display:grid; place-items:center; border-radius:var(--r-s); border:1px solid var(--line2); background:rgba(255,255,255,.04); color:var(--mut); cursor:pointer; }
+.scard .rm svg{ width:11px; height:11px; }
+.scard .prm{ margin-top:8px; padding-top:8px; border-top:1px solid var(--line2); }
+.scard .prm .chiprow{ gap:5px; }
+.scard .prm .chip{ height:26px; font-size:var(--fs-xs); padding:0 9px; }
+.addbtn{ margin-top:var(--t-gap); width:100%; height:40px; border-radius:var(--t-cardR); border:1px dashed var(--line); background:transparent; color:var(--accent); font:inherit; font-weight:var(--fw-x); font-size:var(--t-fsChip); cursor:pointer; }
+.sheet{ position:absolute; left:0; right:0; bottom:0; height:var(--t-sheetH); background:rgba(22,23,26,.97); border-top:1px solid var(--line2); border-radius:var(--r-modal) var(--r-modal) 0 0; padding:14px var(--t-padX); overflow-y:auto; z-index:6; }
+.sheet[hidden]{ display:none; }
+.sheet .sh{ display:flex; align-items:center; margin-bottom:6px; }
+.sheet .sh b{ font-size:14px; }
+.sheet .grp{ color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-x); margin:10px 0 5px; }
+.inlineadd{ margin-top:8px; }
+/* 현행(2도구) 재현 */
+.tooltabs{ display:grid; grid-auto-flow:column; gap:6px; padding:9px 13px; background:rgba(20,21,24,.4); border-bottom:1px solid var(--line2); }
+.tooltab{ padding:8px 4px; text-align:center; border-radius:var(--r-s); border:1px solid transparent; color:var(--mut); font-size:11.5px; font-weight:var(--fw-x); cursor:pointer; word-break:keep-all; }
+.tooltab.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.06); }
+.curnote{ margin-top:var(--t-gap); border:1px dashed rgba(255,225,61,.35); border-radius:var(--r-m); padding:9px 11px; color:var(--warn); font-size:var(--fs-xs); line-height:1.5; }
+/* ── 콘솔 ── */
+.console{ flex:1 1 380px; max-width:520px; min-width:320px; display:flex; flex-direction:column; gap:12px; }
+.csec{ background:#131417; border:1px solid #26282d; border-radius:14px; padding:12px 14px; }
+.csec h3{ margin:0 0 8px; font-size:12.5px; color:var(--mut); font-weight:var(--fw-x); letter-spacing:.3px; }
+.viewrow,.presetrow{ display:flex; gap:6px; flex-wrap:wrap; }
+.vbtn,.pbtn{ padding:8px 13px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:12.5px; font-weight:var(--fw-x); cursor:pointer; transition:transform var(--dur-fast); }
+.vbtn:active,.pbtn:active{ transform:scale(var(--press-m)); }
+.vbtn.on,.pbtn.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.grp-t{ margin:12px 0 4px; color:#7d8f85; font-size:11px; font-weight:var(--fw-x); letter-spacing:.4px; }
+.axis{ display:grid; grid-template-columns:112px 1fr 74px; align-items:center; gap:8px; margin:5px 0; font-size:12px; }
+.axis .k{ color:var(--fg); font-weight:var(--fw-b); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.axis .k .w{ color:var(--warn); margin-left:3px; display:none; }
+.axis.warn .k .w{ display:inline; }
+.axis input[type=range]{ width:100%; accent-color:var(--accent); }
+.axis .v{ text-align:right; color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; font-size:11.5px; }
+.axis .segs{ display:flex; gap:4px; }
+.axis .segs button{ flex:1; padding:6px 4px; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:11px; font-weight:var(--fw-x); cursor:pointer; }
+.axis .segs button.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.07); }
+.warncount{ color:var(--warn); font-size:11.5px; font-weight:var(--fw-x); margin-left:auto; }
+#out{ margin:0; background:#0e0f11; border:1px solid #24262b; border-radius:10px; padding:10px 12px; font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfe0d6; white-space:pre; overflow-x:auto; }
+#copy{ margin-top:8px; width:100%; padding:10px; border-radius:10px; border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.12); color:var(--accent); font:inherit; font-weight:var(--fw-x); cursor:pointer; }
+.note{ color:var(--mut); font-size:11.5px; line-height:1.65; }
+/* 복사 알림창(§3-2′ ③) */
+.cmodal{ position:fixed; inset:0; background:rgba(8,9,10,.7); display:flex; align-items:center; justify-content:center; z-index:50; }
+.cmodal[hidden]{ display:none; }
+.cmodal .box{ width:min(420px, 88vw); background:#17181b; border:1px solid #2c2e33; border-radius:var(--r-modal); padding:18px; }
+.cmodal h4{ margin:0 0 8px; font-size:14px; }
+.cmodal .lst{ color:var(--warn); font-size:12px; margin:0 0 12px; line-height:1.6; }
+.cmodal .acts{ display:flex; gap:8px; flex-wrap:wrap; }
+.cmodal .acts button{ flex:1; min-width:100px; padding:10px 8px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-size:12px; font-weight:var(--fw-x); cursor:pointer; }
+.cmodal .acts .pri{ border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.12); color:var(--accent); }
+@media (prefers-reduced-motion:reduce){ *{ transition-duration:0s!important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>편집기 메뉴 골격 — 만지는 시안 <small>골격 A(레시피+카테고리) vs 골격 B(레시피+처리 스택) · 기능 선택은 한 모델 공유 = A에서 켜면 B 스택에도 그대로 · 폰 프레임 안을 직접 탭해봐</small></h1>
+
+  <div class="stagewrap">
+    <div class="frame"><div class="app" id="app"></div></div>
+    <div class="stagecap" id="cap">골격 A — 카테고리 칩·기능 칩·레시피·발사 전부 실탭 가능</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec"><h3>보기(골격)</h3>
+      <div class="viewrow" id="views">
+        <button class="vbtn" data-v="cur">현행(2도구)</button>
+        <button class="vbtn on" data-v="A">골격 A 레시피+카테고리 ★</button>
+        <button class="vbtn" data-v="B">골격 B 레시피+처리 스택</button>
+      </div>
+    </div>
+    <div class="csec"><h3>프리셋</h3><div class="presetrow" id="presets"></div></div>
+    <div class="csec"><h3 style="display:flex">조정 <span class="warncount" id="wc" hidden>⚠ 기틀 이탈 0축</span></h3><div id="axes"></div></div>
+    <div class="csec"><h3>선택값</h3><pre id="out"></pre><button id="copy">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계(각주)</b> — ① 정적 목업: 실제 발사·업로드·폴링·결과 영상 없음(발사 탭 = 접수 플래시만) ② 기능 컨트롤은 대표 축 요약(자막 스타일 게이지·위치 미리보기 등 실물 세부는 생략 — 실구현 시 기존 폼 그대로 이식) ③ 스택 드래그 재정렬 미재현(제거·추가만) ④ 예상 소요 = 실측 단가 기반 근사(60fps는 길이 비례라 60초 가정) ⑤ 구조 시안이라 값 축은 결정 관련으로 압축(§3-2′ 축소 완충 — 색 축 없음 = 전부 기존 팔레트 계승) ⑥ 폰트 = 시스템 폴백.</div>
+  </aside>
+</div>
+
+<!-- 복사 알림창(기틀 이탈 시) -->
+<div class="cmodal" id="cmodal" hidden>
+  <div class="box">
+    <h4>기틀 이탈 축이 있어</h4>
+    <div class="lst" id="clist"></div>
+    <div style="color:var(--mut);font-size:11.5px;margin-bottom:12px">이대로 복사하면 <b>🔁 기틀 갱신 역제안</b> 블록이 포함돼 — 회신하면 그 값으로 전 앱 동일 축을 바꾸는 승인 정문으로 감.</div>
+    <div class="acts">
+      <button class="pri" id="cInc">역제안 포함 복사</button>
+      <button id="cOnly">계승분만 복사</button>
+      <button id="cNo">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const X_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
+const UP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>';
+
+/* ══ 기능 모델(두 골격 공유 — A에서 켜면 B에도) ══ */
+const FEAT={
+  sub:{nm:'자막 붙이기', grp:'자막', eta:210, on:true},
+  karaoke:{nm:'카라오케', grp:'자막', eta:0, on:false, dep:'sub'},
+  pop:{nm:'팝', grp:'자막', eta:0, on:false, dep:'sub'},
+  keyword:{nm:'키워드 강조', grp:'자막', eta:0, on:true, dep:'sub'},
+  style:{nm:'모양', grp:'자막', eta:0, on:true, dep:'sub', seg:['기본','깔끔','박스'], v:1, fixed:true},
+  anorm:{nm:'음량 통일', grp:'소리', eta:15, on:true},
+  bgm:{nm:'배경음 제거', grp:'소리', eta:300, on:false},
+  cut:{nm:'컷 편집', grp:'컷/구간', eta:20, on:false},
+  cutlv:{nm:'컷 세기', grp:'컷/구간', eta:0, on:false, dep:'cut', seg:['살짝','기본','많이'], v:1, fixed:true},
+  trim:{nm:'구간', grp:'컷/구간', eta:0, on:false},
+  ar:{nm:'비율', grp:'화면', eta:0, on:true, seg:['원본','9:16','1:1','4:5','16:9'], v:1},
+  fit:{nm:'방식', grp:'화면', eta:0, on:true, dep:'ar', seg:['자르기','여백(검정)'], v:1},
+  res:{nm:'해상도', grp:'화면', eta:0, on:false, seg:['원본','1080p','720p'], v:0, fixed:true},
+  fps60:{nm:'60fps 보간', grp:'화면', eta:540, on:false},
+};
+const GRPS=['자막','소리','컷/구간','화면'];
+const DEF_ON=Object.fromEntries(Object.entries(FEAT).map(([k,f])=>[k,f.on]));
+const DEF_V=Object.fromEntries(Object.entries(FEAT).map(([k,f])=>[k,f.v??0]));
+
+/* ══ 상태(§3-3) — 구조 세그 + 지오메트리 · 기본 = 현행 실측/계승값 ══ */
+const DEFAULTS={ skel:'A', cats:'4', recipes:'on', applied:'on', fireBar:'sticky', srcPin:'pin', eta:'on', catStyle:'chip', stackParam:'sum', addUI:'sheet',
+  chipH:34, chipR:999, cardR:16, gap:12, fsChip:13, fsHead:13, fireH:48, padX:16, stackGap:6, appliedA:.08, dimOff:.45, recA:.10, sheetH:62 };
+const LAD={ chipH:[22,30,34], chipR:[9,11,16,22,999], cardR:[9,11,16,22], gap:[6,12,18,24], fsChip:[11,12,13,15], fsHead:[12,13,14,15,19], padX:[12,16,18,24], stackGap:[6,12,18] };
+const AXES=[
+  {k:'cats', nm:'카테고리 폭', segs:[['4','4(출력=결과줄)'],['5','5(+출력 탭)']], grp:'구조 — 골격 A'},
+  {k:'catStyle', nm:'카테고리 모양', segs:[['chip','칩바'],['seg','세그(균등)']], grp:'구조 — 골격 A'},
+  {k:'srcPin', nm:'소스 행', segs:[['pin','상단 고정'],['scroll','같이 스크롤']], grp:'구조 — 골격 A'},
+  {k:'applied', nm:'적용됨 요약', segs:[['on','표시'],['off','없음']], grp:'구조 — 골격 A'},
+  {k:'stackParam', nm:'카드 파라미터', segs:[['sum','요약(탭=펼침)'],['open','항상 펼침']], grp:'구조 — 골격 B'},
+  {k:'addUI', nm:'처리 추가', segs:[['sheet','바텀시트'],['inline','인라인 목록']], grp:'구조 — 골격 B'},
+  {k:'recipes', nm:'레시피 행', segs:[['on','표시'],['off','없음']], grp:'구조 — 공통'},
+  {k:'fireBar', nm:'발사 버튼', segs:[['sticky','하단 고정'],['inline','폼 끝']], grp:'구조 — 공통'},
+  {k:'eta', nm:'예상 소요', segs:[['on','표시'],['off','없음']], grp:'구조 — 공통'},
+  {k:'chipH', nm:'칩 높이', min:22, max:44, step:1, u:'px', lad:'chipH', tok:'--btn(34)/--btn-sm(30)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'chipR', nm:'칩 라운드', min:6, max:999, step:1, u:'px', lad:'chipR', tok:'--r-pill(999)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'cardR', nm:'카드 라운드', min:6, max:26, step:1, u:'px', lad:'cardR', tok:'--r-l(16)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'gap', nm:'섹션 간격', min:4, max:28, step:1, u:'px', lad:'gap', tok:'--sp-2(12)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'padX', nm:'좌우 패딩', min:10, max:26, step:1, u:'px', lad:'padX', tok:'16(뷰어 wrap)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'fsChip', nm:'칩 글자', min:10, max:16, step:.5, u:'px', lad:'fsChip', tok:'--fs-label(13)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'fsHead', nm:'소머리 글자', min:11, max:19, step:.5, u:'px', lad:'fsHead', tok:'--fs-label(13)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'stackGap', nm:'스택 카드 간격', min:2, max:20, step:1, u:'px', lad:'stackGap', tok:'--sp-1(6)', grp:'지오메트리(확립 축 = 사다리 눈금·이탈 ⚠)'},
+  {k:'fireH', nm:'발사 버튼 높이', min:40, max:58, step:1, u:'px', grp:'지오메트리(자유 축)'},
+  {k:'appliedA', nm:'적용됨 칩 틴트', min:0, max:.3, step:.01, grp:'알파 변주(자유 — 신규색 아님)'},
+  {k:'recA', nm:'레시피 칩 틴트', min:0, max:.3, step:.01, grp:'알파 변주(자유 — 신규색 아님)'},
+  {k:'dimOff', nm:'비활성 흐림', min:.25, max:.75, step:.01, grp:'알파 변주(자유 — 신규색 아님)'},
+  {k:'sheetH', nm:'바텀시트 높이', min:40, max:82, step:1, u:'%', grp:'지오메트리(자유 축)'},
+];
+const PRESETS=[
+  {id:'p0', nm:'현행(2도구)', st:{skel:'cur'}},
+  {id:'pa', nm:'A 기본', star:'★', st:{skel:'A', ...{}}},
+  {id:'pa5', nm:'A+출력탭(5)', st:{skel:'A', cats:'5'}},
+  {id:'paMin', nm:'A 미니멀(요약·레시피 없음)', st:{skel:'A', applied:'off', recipes:'off'}},
+  {id:'pb', nm:'B 기본', st:{skel:'B'}},
+  {id:'pbOpen', nm:'B 항상 펼침+인라인 추가', st:{skel:'B', stackParam:'open', addUI:'inline'}},
+];
+let state={...DEFAULTS};
+let MO_ON={...DEF_ON}, MO_V={...DEF_V};
+let openParam=null, sheetOn=false, curTab=0, activeCat='자막';
+
+const featOn=k=>{ const f=FEAT[k]; if(!f) return false; if(f.dep&&!MO_ON[f.dep]) return false; return !!MO_ON[k]; };
+function etaCalc(){ let s=40; for(const k in FEAT){ if(featOn(k)) s+=FEAT[k].eta; } return s; }
+const etaTxt=()=>{ const s=etaCalc(); return s>=60? ('~'+Math.round(s/60)+'분') : ('~'+s+'초'); };
+function appliedList(){
+  const out=[];
+  for(const k in FEAT){ const f=FEAT[k];
+    if(f.seg){ if(featOn(k)&&!f.fixed&&(MO_V[k]!==DEF_V[k]||featOn(k)!==DEF_ON[k])) out.push({k, t:f.seg[MO_V[k]], grp:f.grp});
+      if(k==='ar'&&featOn('ar')) { out.length=out.length; }
+      continue; }
+    if(featOn(k)&&f.eta>=0&&!f.dep&&k!=='trim'&&featOn(k)!==false&&MO_ON[k]) out.push({k, t:f.nm, grp:f.grp});
+  }
+  // 대표 요약: on 토글 전부 + 비율 선택
+  const list=[];
+  if(featOn('sub')) list.push({k:'sub', t:'자막'+(featOn('keyword')?'·키워드':''), grp:'자막'});
+  if(featOn('anorm')) list.push({k:'anorm', t:'음량 통일', grp:'소리'});
+  if(featOn('bgm')) list.push({k:'bgm', t:'배경음 제거', grp:'소리'});
+  if(featOn('cut')) list.push({k:'cut', t:'컷 편집·'+FEAT.cutlv.seg[MO_V.cutlv], grp:'컷/구간'});
+  if(featOn('ar')&&MO_V.ar>0) list.push({k:'ar', t:FEAT.ar.seg[MO_V.ar]+'·'+FEAT.fit.seg[MO_V.fit], grp:'화면'});
+  if(featOn('fps60')) list.push({k:'fps60', t:'60fps', grp:'화면'});
+  if(MO_V.res>0) list.push({k:'res', t:FEAT.res.seg[MO_V.res], grp:'화면'});
+  return list;
+}
+
+/* ══ 미리보기 렌더 ══ */
+function chip(k){ const f=FEAT[k]; const dis=f.dep&&!MO_ON[f.dep];
+  return '<button class="chip'+(featOn(k)?' on':'')+(dis?' dim':'')+'" data-f="'+k+'">'+f.nm+'</button>'; }
+function segRow(k){ const f=FEAT[k]; const dis=f.dep&&!featOn(f.dep);
+  return '<div class="chiprow" style="margin-top:6px">'+f.seg.map((s,i)=>'<button class="chip'+(i===MO_V[k]?' on':'')+(dis?' dim':'')+'" data-fs="'+k+':'+i+'" style="height:28px;font-size:11.5px;padding:0 10px">'+s+'</button>').join('')+'</div>'; }
+function srcRow(){ return '<div class="srcrow'+(state.srcPin==='pin'&&state.skel==='A'?' srcpin':'')+'" style="margin-top:2px"><div class="uin">https:// 또는 파일</div><div class="fbtn">'+UP_SVG+'</div></div>'; }
+function recRow(){ if(state.recipes!=='on') return '';
+  return '<div class="recrow" id="recrow">'
+    +'<button class="rec" data-rec="reels"><span class="st">★</span>릴스 완성</button>'
+    +'<button class="rec" data-rec="fmt">포맷만</button>'
+    +'<button class="rec" data-rec="hq">화질만</button></div>'; }
+function fireBtn(){ const eta=state.eta==='on'?'<span class="eta" id="etaT">'+etaTxt()+'</span>':'';
+  return '<div class="firewrap'+(state.fireBar==='sticky'?' sticky':'')+'"><button class="fire" id="fire">편집 시작'+eta+'</button></div>'; }
+function sectHtml(g){
+  if(g==='자막') return '<div class="chiprow">'+['sub','karaoke','pop','keyword'].map(chip).join('')+'</div><span class="fl">모양</span>'+segRow('style');
+  if(g==='소리') return '<div class="chiprow">'+['anorm','bgm'].map(chip).join('')+'</div>';
+  if(g==='컷/구간') return '<div class="chiprow">'+['cut','trim'].map(chip).join('')+'</div><span class="fl">컷 세기</span>'+segRow('cutlv');
+  if(g==='화면') return '<span class="fl">비율</span>'+segRow('ar')+'<span class="fl">방식</span>'+segRow('fit')+'<span class="fl">해상도</span>'+segRow('res')+'<div class="chiprow" style="margin-top:10px">'+chip('fps60')+'</div>';
+  if(g==='출력') return '<div class="curnote" style="border-color:var(--line);color:var(--mut)">최근 결과 목록·다운로드가 여기(목업)</div>';
+  return '';
+}
+function renderA(){
+  const cats=state.cats==='5'?[...GRPS,'출력']:GRPS;
+  if(!cats.includes(activeCat)) activeCat=cats[0];
+  return '<div class="mhead"><span class="tit">편집기</span><button class="x">'+X_SVG+'</button></div>'
+    +'<div class="body">'
+    +'<span class="fl">소스</span>'+srcRow()
+    +recRow()
+    +'<div class="catbar'+(state.catStyle==='seg'?' segstyle':'')+'" id="catbar">'+cats.map(c=>'<button class="cat'+(c===activeCat?' on':'')+'" data-cat="'+c+'">'+c+'</button>').join('')+'</div>'
+    +'<div class="sect">'+sectHtml(activeCat)+'</div>'
+    +(state.applied==='on'?'<div class="appliedrow" id="applied"><span class="aplbl">적용됨</span>'+appliedList().map(a=>'<button class="ap" data-ap="'+a.grp+'">'+a.t+'</button>').join('')+'</div>':'')
+    +(state.fireBar==='inline'?fireBtn():'')
+    +'</div>'+(state.fireBar==='sticky'?fireBtn():'');
+}
+function stackCards(){
+  const ops=appliedList();
+  if(!ops.length) return '<div class="curnote" style="border-color:var(--line);color:var(--mut)">적용할 처리가 없어 — 아래 [+ 처리 추가]</div>';
+  return ops.map((a,i)=>{
+    const open=state.stackParam==='open'||openParam===a.k;
+    let prm='';
+    if(a.k==='sub') prm='<div class="chiprow">'+['karaoke','pop','keyword'].map(chip).join('')+'</div>'+segRow('style');
+    if(a.k==='cut') prm=segRow('cutlv');
+    if(a.k==='ar') prm=segRow('ar')+segRow('fit');
+    if(a.k==='res') prm=segRow('res');
+    return '<div class="scard"><div class="hd" data-open="'+a.k+'"><span class="no">'+(i+1)+'</span><span class="nm">'+a.t+'</span><span class="sum">'+(open?'':'탭=펼침')+'</span><button class="rm" data-rm="'+a.k+'">'+X_SVG+'</button></div>'
+      +(open&&prm?'<div class="prm">'+prm+'</div>':'')+'</div>';
+  }).join('');
+}
+function addList(){
+  const off=Object.keys(FEAT).filter(k=>!FEAT[k].seg&&!FEAT[k].dep&&!featOn(k));
+  return GRPS.map(g=>{ const ks=off.filter(k=>FEAT[k].grp===g); if(!ks.length) return '';
+    return '<div class="grp">'+g+'</div><div class="chiprow">'+ks.map(chip).join('')+'</div>'; }).join('')||'<div class="grp">전부 적용됨</div>';
+}
+function renderB(){
+  return '<div class="mhead"><span class="tit">편집기</span><button class="x">'+X_SVG+'</button></div>'
+    +'<div class="body">'
+    +'<span class="fl">소스</span>'+srcRow()
+    +recRow()
+    +'<span class="fl">처리 스택</span><div class="stack" id="stack">'+stackCards()+'</div>'
+    +(state.addUI==='inline'?'<div class="inlineadd">'+addList()+'</div>':'<button class="addbtn" id="addbtn">+ 처리 추가</button>')
+    +(state.fireBar==='inline'?fireBtn():'')
+    +'</div>'
+    +(state.fireBar==='sticky'?fireBtn():'')
+    +'<div class="sheet" id="sheet"'+(sheetOn?'':' hidden')+'><div class="sh"><b>처리 추가</b><button class="x" id="shx" style="margin-left:auto;width:26px;height:26px;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--fg)">'+X_SVG+'</button></div>'+addList()+'</div>';
+}
+function renderCur(){
+  const tabs=['자막 생성기','영상 프롬프트','트래킹','변환'];
+  const inner= curTab===0
+    ? '<span class="fl">URL/파일</span>'+srcRow()+'<span class="fl">처리</span><div class="chiprow">'+['sub','cut','bgm','karaoke','pop','keyword'].map(chip).join('')+'</div><span class="fl">모양</span>'+segRow('style')
+    : '<span class="fl">URL/파일</span>'+srcRow()+'<span class="fl">프레임</span>'+segRow('res')+'<span class="fl">비율</span>'+segRow('ar')+'<span class="fl">방식</span>'+segRow('fit')+'<span class="fl">음량</span><div class="chiprow">'+chip('anorm')+'</div>';
+  return '<div class="mhead"><span class="tit">영상</span><button class="x">'+X_SVG+'</button></div>'
+    +'<div class="tooltabs">'+tabs.map((t,i)=>'<button class="tooltab'+((i===0&&curTab===0)||(i===3&&curTab===1)?' on':'')+'" data-tab="'+(i===3?1:0)+'">'+t+'</button>').join('')+'</div>'
+    +'<div class="body">'+inner
+    +'<div class="curnote">현행 = 릴스 1편에 <b>발사 2회</b>: 자막 생성기에서 뽑고 → 내려받아 → 변환 탭에 다시 올려 음량·비율 처리(수동 핸드오프 1회)</div>'
+    +fireBtn()+'</div>';
+}
+function render(){
+  const app=$('#app');
+  app.innerHTML= state.skel==='A'? renderA() : state.skel==='B'? renderB() : renderCur();
+  $('#cap').textContent= state.skel==='A'? '골격 A — 카테고리 칩·기능 칩·레시피·발사 전부 실탭 가능'
+    : state.skel==='B'? '골격 B — 스택 카드 탭=펼침 · X=제거 · [+ 처리 추가]로 복원'
+    : '현행 재현 — 자막 생성기/변환 탭 전환해봐(다른 두 탭은 장식)';
+}
+
+/* ══ 미리보기 위임 핸들러(실물 배선 §7-1-4) ══ */
+$('#app').addEventListener('click', e=>{
+  const f=e.target.closest('[data-f]'); if(f){ const k=f.dataset.f; if(FEAT[k].dep&&!MO_ON[FEAT[k].dep]){ MO_ON[FEAT[k].dep]=true; } MO_ON[k]=!MO_ON[k]; if(k==='karaoke'&&MO_ON[k]) MO_ON.pop=false; if(k==='pop'&&MO_ON[k]) MO_ON.karaoke=false; sheetOn=false; render(); buildOut(); return; }
+  const fs=e.target.closest('[data-fs]'); if(fs){ const [k,i]=fs.dataset.fs.split(':'); MO_V[k]=+i; if(FEAT[k].dep) MO_ON[FEAT[k].dep]=true; MO_ON[k]=true; render(); buildOut(); return; }
+  const c=e.target.closest('[data-cat]'); if(c){ activeCat=c.dataset.cat; render(); return; }
+  const ap=e.target.closest('[data-ap]'); if(ap){ activeCat=ap.dataset.ap; if(state.skel==='A'){ render(); } return; }
+  const rm=e.target.closest('[data-rm]'); if(rm){ const k=rm.dataset.rm; if(k==='ar') MO_V.ar=0; else if(k==='res') MO_V.res=0; else MO_ON[k]=false; render(); buildOut(); return; }
+  const op=e.target.closest('[data-open]'); if(op&&!e.target.closest('[data-rm]')){ openParam=openParam===op.dataset.open?null:op.dataset.open; render(); return; }
+  const rec=e.target.closest('[data-rec]'); if(rec){ applyRecipe(rec.dataset.rec); return; }
+  if(e.target.closest('#addbtn')){ sheetOn=true; render(); return; }
+  if(e.target.closest('#shx')){ sheetOn=false; render(); return; }
+  const tab=e.target.closest('[data-tab]'); if(tab){ curTab=+tab.dataset.tab; render(); return; }
+  const fire=e.target.closest('#fire'); if(fire){ fire.textContent='✓ 접수(목업)'; setTimeout(()=>render(), 700); return; }
+});
+function applyRecipe(r){
+  MO_ON={...DEF_ON}; MO_V={...DEF_V};
+  if(r==='reels'){ MO_ON.sub=true; MO_ON.keyword=true; MO_ON.anorm=true; MO_ON.cut=true; MO_V.ar=1; MO_V.fit=1; }
+  if(r==='fmt'){ MO_ON.sub=false; MO_ON.anorm=true; MO_V.ar=1; MO_V.fit=1; }
+  if(r==='hq'){ MO_ON.sub=false; MO_ON.anorm=true; MO_ON.fps60=true; MO_V.res=2; MO_V.ar=1; MO_V.fit=1; }
+  render(); buildOut();
+}
+
+/* ══ 콘솔: 축 빌드·프리셋·양방향 동기(§7-1-2)·⚠ 실시간(§7-2-1) ══ */
+function buildAxes(){
+  const box=$('#axes'); let html='', lastGrp='';
+  for(const a of AXES){
+    if(a.grp!==lastGrp){ html+='<div class="grp-t">'+a.grp+'</div>'; lastGrp=a.grp; }
+    if(a.segs){
+      html+='<div class="axis" data-ax="'+a.k+'"><span class="k">'+a.nm+'</span><span class="segs">'+a.segs.map(s=>'<button data-seg="'+a.k+':'+s[0]+'" class="'+(state[a.k]===s[0]?'on':'')+'">'+s[1]+'</button>').join('')+'</span><span class="v"></span></div>';
+    } else {
+      const lid=a.lad?('lad-'+a.k):'';
+      html+='<div class="axis" data-ax="'+a.k+'"><span class="k">'+a.nm+'<span class="w">⚠</span></span><input type="range" min="'+a.min+'" max="'+a.max+'" step="'+a.step+'" value="'+state[a.k]+'" data-sl="'+a.k+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+LAD[a.lad].map(v=>'<option value="'+v+'"></option>').join('')+'</datalist>':'')
+        +'<span class="v" id="v-'+a.k+'"></span></div>';
+    }
+  }
+  box.innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=PRESETS.map(p=>'<button class="pbtn" data-p="'+p.id+'">'+(p.star?'★ ':'')+p.nm+'</button>').join('');
+}
+const near=(a,b,eps=.26)=>Math.abs(a-b)<eps;
+function warnAxes(){
+  return AXES.filter(a=>a.lad&&!LAD[a.lad].some(v=>near(state[a.k],v))).map(a=>a);
+}
+function syncPresetChips(){
+  $$('#presets .pbtn').forEach(b=>{
+    const p=PRESETS.find(x=>x.id===b.dataset.p);
+    const full={...DEFAULTS, ...p.st};
+    b.classList.toggle('on', Object.keys(full).every(k=>String(full[k])===String(state[k])));
+  });
+}
+function applyAll(){
+  const app=$('#app');
+  for(const a of AXES){ if(!a.segs) app.style.setProperty('--t-'+a.k, state[a.k]+(a.u==='%'?'%':a.u?'px':'')); }
+  app.style.setProperty('--t-appliedA', state.appliedA); app.style.setProperty('--t-recA', state.recA); app.style.setProperty('--t-dimOff', state.dimOff);
+  for(const a of AXES){
+    const row=document.querySelector('[data-ax="'+a.k+'"]'); if(!row) continue;
+    if(a.segs){ row.querySelectorAll('[data-seg]').forEach(b=>b.classList.toggle('on', b.dataset.seg.split(':')[1]===String(state[a.k]))); }
+    else{ const sl=row.querySelector('input'); if(sl&&+sl.value!==+state[a.k]) sl.value=state[a.k];
+      const v=row.querySelector('.v'); if(v) v.textContent=(+state[a.k])+(a.u||'');
+      row.classList.toggle('warn', !!(a.lad&&!LAD[a.lad].some(x=>near(state[a.k],x)))); }
+  }
+  const ws=warnAxes(); const wc=$('#wc'); wc.hidden=!ws.length; wc.textContent='⚠ 기틀 이탈 '+ws.length+'축';
+  $$('#views .vbtn').forEach(b=>b.classList.toggle('on', b.dataset.v===state.skel));
+  syncPresetChips(); render(); buildOut();
+}
+$('#views').addEventListener('click', e=>{ const b=e.target.closest('.vbtn'); if(!b) return; state.skel=b.dataset.v; applyAll(); });
+$('#presets').addEventListener('click', e=>{ const b=e.target.closest('.pbtn'); if(!b) return; const p=PRESETS.find(x=>x.id===b.dataset.p); state={...DEFAULTS, ...p.st}; applyAll(); });
+$('#axes').addEventListener('click', e=>{ const s=e.target.closest('[data-seg]'); if(!s) return; const [k,v]=s.dataset.seg.split(':'); state[k]=v; applyAll(); });
+$('#axes').addEventListener('input', e=>{ const s=e.target.closest('[data-sl]'); if(!s) return; state[s.dataset.sl]=+s.value; applyAll(); });
+
+/* ══ 선택값 출력(§3-4) — 한글 2칸 폭 열맞춤(§7-1-5) ══ */
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>0x1100?2:1),0);
+const padK=(s,w)=>s+' '.repeat(Math.max(0,w-kw(s)));
+function ladNote(a){ if(!a.lad) return ''; return LAD[a.lad].some(v=>near(state[a.k],v))?' (계승'+(a.tok?' '+a.tok:'')+')':' ⚠갱신 후보'; }
+function buildOut(){
+  const L=[];
+  L.push('[편집기 골격 — 선택값]');
+  L.push(padK('골격',10)+': '+(state.skel==='A'?'A 레시피+카테고리':state.skel==='B'?'B 레시피+처리 스택':'현행(비교 기준)'));
+  for(const a of AXES){ if(!a.segs) continue; const lbl=a.segs.find(s=>s[0]===String(state[a.k])); L.push(padK(a.nm,14)+': '+(lbl?lbl[1]:state[a.k])+'   [기본 '+(a.segs.find(s=>s[0]===String(DEFAULTS[a.k]))||['',''])[1]+']'); }
+  L.push('');
+  for(const a of AXES){ if(a.segs) continue; L.push(padK(a.nm,16)+': '+state[a.k]+(a.u||'')+'   [현행 '+DEFAULTS[a.k]+(a.u||'')+']'+ladNote(a)); }
+  L.push('');
+  L.push('· 기능 데모 상태(참고): '+appliedList().map(a=>a.t).join(' · ')+' / 예상 '+etaTxt());
+  $('#out').textContent=L.join('\n');
+}
+
+/* ══ 복사(§3-2′ ③ 알림창 + §7-2-2 모달 배선 · 클립보드 폴백) ══ */
+function doCopy(txt){
+  const fin=()=>{ const b=$('#copy'); b.textContent='✓ 복사됨'; setTimeout(()=>b.textContent='선택값 복사',900); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(fin).catch(()=>{ fallback(txt); fin(); }); }
+  else{ fallback(txt); fin(); }
+  function fallback(t){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); }
+}
+function counterBlock(ws){
+  return '\n[🔁 기틀 갱신 역제안]\n'+ws.map(a=>'· '+a.nm+': 현행 '+DEFAULTS[a.k]+(a.u||'')+' → 제안 '+state[a.k]+(a.u||'')+' (적용 범위 = 전 앱 동일 축'+(a.tok?' · '+a.tok:'')+')').join('\n');
+}
+$('#copy').addEventListener('click', ()=>{
+  const ws=warnAxes();
+  if(!ws.length){ doCopy($('#out').textContent); return; }
+  $('#clist').innerHTML='이탈 축 '+ws.length+'개: '+ws.map(a=>a.nm+'('+state[a.k]+(a.u||'')+')').join(' · ');
+  $('#cmodal').hidden=false;
+});
+$('#cInc').addEventListener('click', ()=>{ doCopy($('#out').textContent+'\n'+counterBlock(warnAxes())); $('#cmodal').hidden=true; });
+$('#cOnly').addEventListener('click', ()=>{
+  const keep=AXES.filter(a=>!a.segs&&a.lad&&!LAD[a.lad].some(v=>near(state[a.k],v))).map(a=>a.k);
+  const tmp={...state}; keep.forEach(k=>state[k]=DEFAULTS[k]); buildOut(); doCopy($('#out').textContent); state=tmp; buildOut();
+  $('#cmodal').hidden=true;
+});
+$('#cNo').addEventListener('click', ()=>{ $('#cmodal').hidden=true; });
+
+buildPresets(); buildAxes(); applyAll();   // 첫 화면 = 논점 상태(골격 A) 오픈(§7-1-3)
+</script>
+</body>
+</html>
