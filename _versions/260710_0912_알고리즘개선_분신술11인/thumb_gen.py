@@ -406,8 +406,7 @@ def _usage_total(calls):
     return {"calls": len(calls), "prompt_tokens": s("prompt"), "output_tokens": s("output"), "total_tokens": s("total")}
 
 def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None):
-    """Gemini 이미지 1장 생성 → 이미지 bytes(실측: 모델이 보통 JPEG 반환 — 'PNG' 가정 금지 · 실패 시 None, fail-soft).
-    usageMetadata는 _USAGE에 기록.
+    """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft). usageMetadata는 _USAGE에 기록.
 
     image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일·카드 모두 1K 호출(토큰 절감).
     aspect: 화면비("4:5" 기본=카드/썸네일 · "16:9"/"9:16"=영상 레퍼런스 등).
@@ -436,10 +435,7 @@ def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None)
                     inl = p.get("inlineData") or p.get("inline_data")
                     if inl and inl.get("data"):
                         return base64.b64decode(inl["data"])
-            # 이미지 파트 없는 200(안전거부·무이미지)도 확률적 — HTTP 일시 오류와 동일하게 1회 재시도(260710)
-            print("  ⚠️ 이미지 파트 없음(응답에 inlineData 부재){}".format(" — 4s 후 재시도" if attempt == 0 else ""), flush=True)
-            if attempt == 0:
-                time.sleep(4); continue
+            print("  ⚠️ 이미지 파트 없음(응답에 inlineData 부재)", flush=True)
             return None
         except urllib.error.HTTPError as e:
             msg = e.read().decode()[:300]
@@ -773,12 +769,9 @@ def http_image(url):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         with _OPENER.open(req, timeout=20) as r:
-            b = r.read(8000001)   # 상한+1 — 딱 8MB read는 초과분을 '조용히 절단'해 깨진 JPEG가 매직바이트를 통과함(분신11 260709)
+            b = r.read(8000000)
     except Exception as e:
         print("  ⚠️ 이미지 다운로드 실패({}…): {}".format(url[:45], e), flush=True)
-        return None, None, None
-    if b and len(b) > 8000000:                              # 8MB 초과 = 절단본 → 거부(잘린 이미지 R2 유입 차단)
-        print("  ⚠️ 이미지 8MB 초과 거부({}…)".format(url[:45]), flush=True)
         return None, None, None
     ct, ext = _img_type(b or b"")
     if not ct:                                              # SVG/HTML/비이미지 → 거부(R2 오염·저장형 XSS 차단)
@@ -908,8 +901,7 @@ def process_one(md, stem):
             png = gemini_image(prompt, "1K", ref_png=use_ref)
             # 품질 게이트(TH-06 · 기본 OFF = THUMB_GATE=1 점화 시만 · §📰 카나리아 절차: OFF 머지→단건 실측→승격) —
             # 단색 밴드(빈/검정 띠 = FRAME 위반)만 결정론 판독, 미달이면 1회 재생성. ⚠️ 상한 = 화풍당 재시도 1회
-            # (기사당 최대 4콜 = 호출 기준 · gemini_image 내부 무이미지/HTTP 1회 재시도 포함 시 과금 HTTP 상한 8 — 260710)
-            # ·재시도본도 밴드면 '항상 기록'(미기록형 게이트 = main 백필 루프와 결합해 무한 재과금 — 분신술⑧).
+            # (기사당 최대 4콜)·재시도본도 밴드면 '항상 기록'(미기록형 게이트 = main 백필 루프와 결합해 무한 재과금 — 분신술⑧).
             if png and GATE and _band_fail(png):
                 print("  🔍 게이트: 단색 밴드 검출 → 1회 재생성 ({})".format(sid), flush=True)
                 # RETRY NOTE는 프롬프트 *앞*에 — 후미는 AVOID·SAFETY 재천명이 '마지막 말'로 남아야(위계 보존·검증4).
@@ -919,8 +911,8 @@ def process_one(md, stem):
                     png = png2
             if not png:
                 print("  ✗ {} 실패".format(label)); continue
-            if R2_ON:                                # R2 = 공개 URL(레포 미저장) · Content-Type = 매직바이트 실측(키 .png는 URL 하위호환 유지 — 서빙은 헤더가 결정)
-                url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid), _img_type(png)[0] or "image/png")
+            if R2_ON:                                # R2 = 공개 URL(레포 미저장)
+                url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid))
                 if url:
                     gen.append({"sid": sid, "img": url + "?v=" + str(int(time.time())), "label": label}); changed = True   # ?v=캐시버스트(재생성 시 같은 R2 키 덮어써도 새 이미지 반영)
                     print("  ✓ {} → R2".format(label)); continue
