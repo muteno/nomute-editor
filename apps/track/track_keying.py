@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # 피사체 키잉 렌더 — 선택 피사체만 남기고 나머지 전부 투명(알파). track_render.py mode='keying'에서
 #   lazy import로 위임(torch 스택 = 키잉 러너에서만 · 모자이크/핀셋 경로는 이 파일을 import조차 안 함).
-# env RENDER = {"mode":"keying","keep":[sid],"extra":[{"t":초,"x":0..1,"y":0..1}],"opts":{"feather":px}}
+# env RENDER = {"mode":"keying","keep":[sid],"keepP":[pid],"extra":[{"t":초,"x":0..1,"y":0..1}],"opts":{"feather":px}}
+#   keepP = 얼굴 단위 남기기(people[].pf/pb 프롬프트 · 260710) — keep(전신 피사체)과 별도 배열(keep 정수 계약 불변)
 # 파이프(정본 = apps/track/00_지침 §1.5):
 #   ① 프롬프트 계획 — keep 피사체 = 첫 양호 등장 프레임(pf)의 박스 프롬프트 · extra = 운영자 탭 포인트.
 #      SAM2는 전파 시작 후 새 객체 추가 금지(가드 실측) → 프롬프트 프레임 그룹별 멀티패스(그 프레임→끝).
@@ -29,8 +30,8 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(track_render와 동일)
 
 MODELS = os.environ.get("NOMUTE_TRACK_MODELS", os.path.expanduser("~/.cache/nomute-track"))
 SAM_CKPT = os.path.join(MODELS, "sam2.1_t.pt")
-KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 180s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
-KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
+KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 300s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
+KEY_MAX_OBJ = 4          # keep+keepP+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
 KEY_MAX_LONG = 1920      # 해상도 캡(긴 변) — 4K는 트림·마스크·인코딩·업로드 전 축 폭발(평의회9 F2 · 분석 DET_LONG 선례)
 KEY_BUDGET_SEC = 1620    # 발사 전 예상 전파 예산(27분) — 멀티패스 총량이 스텝 35분 캡을 못 넘게 사전 거절(평의회4·9)
 PASS_HARD_SEC = 1800     # 전파 루프 경과 백스톱(30분) — 예산 추정이 빗나가도 스텝 타임아웃 전에 정직 에러
@@ -38,6 +39,8 @@ SEG_S_1 = 0.63           # 실측 단가: 1객체 전파 s/세그프레임(512) 
 SEG_S_OBJ = 0.20         # 실측 단가: 추가 객체당 s/세그프레임
 TAIL_S_PF = 0.25         # 실측 단가: 합성+인코딩+업로드 꼬리 s/원본프레임(1080×1920 기준·해상도 비례) —
                          #   합성은 원 fps 전량 순회라 60fps = 꼬리 2배(재검증9: 예산에 미반영 시 통과 후 타임아웃)
+FACE_KEY_EXPAND = 1.3    # 얼굴(keepP) 박스 프롬프트 팽창 — 얼굴 검출 박스 그대로는 SAM2가 '떠 있는 얼굴 타원'만 물 수
+                         #   있어 머리카락·두상까지 포함 유도(260710) · 정직 한계: 두상 박스에서 상체까지 물 수 있음(지침 §3)
 SEG_FPS = 15.0           # 세그멘테이션 프레임레이트(원 30fps 대비 절반 = 비용 절반 · 마스크는 hold)
 IMGSZ = 512              # SAM2 입력 긴 변 — 1024는 3937ms/f로 불가(실측) · 512 마스크 오차 0.35%
 FEATHER_DFLT = 3         # 512 업스케일 계단 완화 기본 페더 px
@@ -89,27 +92,45 @@ def _sample_box(subj, f):
     return None
 
 
-def plan_passes(subjects, keep, extras, fps, W, H, total_f=0):
+def _expand_box(b, W, H, k):
+    """박스 [x,y,w,h] 중심 기준 k× 팽창 + 프레임 클램프 — 얼굴 프롬프트의 두상 포함 유도(260710)."""
+    cx, cy = b[0] + b[2] / 2, b[1] + b[3] / 2
+    w2, h2 = b[2] * k, b[3] * k
+    x0, y0 = max(0.0, cx - w2 / 2), max(0.0, cy - h2 / 2)
+    x1, y1 = min(float(W), cx + w2 / 2), min(float(H), cy + h2 / 2)
+    return [x0, y0, max(1.0, x1 - x0), max(1.0, y1 - y0)]
+
+
+def plan_passes(subjects, keep, people, keepP, extras, fps, W, H, total_f=0):
     """멀티패스 계획 — [{f0(프롬프트 프레임), kind:'box'|'point', prompts:[…]}] · 근접(≤0.5s) 박스는 한 패스.
-    수동 포인트는 프레임이 같아도 별도 패스(박스+포인트 혼합 = 같은 객체로 접히는 함정 회피)."""
+    수동 포인트는 프레임이 같아도 별도 패스(박스+포인트 혼합 = 같은 객체로 접히는 함정 회피).
+    keepP(얼굴 단위 · 260710) = people의 pf/pb 박스 프롬프트를 FACE_KEY_EXPAND 팽창해 subjects 박스와 동일 경로
+    편입(people segs도 {segs:[{kf}]} 동형이라 _sample_box 재사용)."""
     win = max(1, int(round(0.5 * fps)))
-    boxes = []   # (pf, subj)
+    boxes = []   # (pf, subj_like, expand)
     for s in subjects:
         if s["sid"] in keep:
-            boxes.append((int(s.get("pf") or 0), s))
+            boxes.append((int(s.get("pf") or 0), s, 1.0))
+    for p in people:
+        if p.get("pid") in keepP:
+            boxes.append((int(p.get("pf") or 0), p, FACE_KEY_EXPAND))
     boxes.sort(key=lambda x: x[0])
     passes = []
-    for pf, s in boxes:
+    for pf, s, ex in boxes:
         joined = False
         for p in passes:
             if p["kind"] == "box" and abs(pf - p["f0"]) <= win:
                 b = _sample_box(s, p["f0"]) or s.get("pb")   # 그룹 대표 프레임 시점의 실측 박스(없으면 자기 pf 박스)
                 if b:
+                    if ex != 1.0:
+                        b = _expand_box(b, W, H, ex)
                     p["prompts"].append([b[0], b[1], b[0] + b[2], b[1] + b[3]])
                     joined = True
                     break
         if not joined:
             b = s.get("pb") or [0, 0, W, H]
+            if ex != 1.0:
+                b = _expand_box(b, W, H, ex)
             passes.append({"f0": pf, "kind": "box", "prompts": [[b[0], b[1], b[0] + b[2], b[1] + b[3]]]})
     margin = int(round(0.7 * fps))
     for e in extras:   # 수동 지정 — 순방향(탭→끝) + 역방향(탭→0 · 앞 구간 커버 = 어느 장면에서 찍어도 전체 추적 · 운영자 승인)
@@ -143,7 +164,8 @@ def run(vid_id, req, doc, outdir):
 
     meta = doc.get("meta") or {}
     subjects = doc.get("subjects") or []
-    if not subjects and not (req.get("extra") or []):
+    people = [p for p in (doc.get("people") or []) if isinstance(p, dict) and p.get("pid")]
+    if not subjects and not people and not (req.get("extra") or []):
         raise RuntimeError("이 분석엔 피사체 정보가 없어 — 처음(영상 분석)부터 다시 해줘.")
     dur = float(meta.get("dur") or 0)
     if dur > KEY_MAX_SEC + 1:
@@ -151,6 +173,11 @@ def run(vid_id, req, doc, outdir):
 
     all_sids = {s["sid"] for s in subjects}
     keep = {int(t) for t in (req.get("keep") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)} & all_sids
+    # keepP = 얼굴 단위(260710) — pb 없는 pid(구 v2 분석) 선택 = 명시 에러(조용한 무시 금지 · 정직)
+    keepP = {int(t) for t in (req.get("keepP") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)} \
+        & {p["pid"] for p in people}
+    if any(not (isinstance(p.get("pb"), list) and len(p["pb"]) == 4) for p in people if p["pid"] in keepP):
+        raise RuntimeError("이 분석엔 얼굴 프롬프트가 없어(구 버전 분석) — 처음(영상 분석)부터 다시 해줘.")
     extras = []
     for e in (req.get("extra") or [])[:KEY_MAX_OBJ]:
         if not isinstance(e, dict):
@@ -159,7 +186,7 @@ def run(vid_id, req, doc, outdir):
         x, y = _num(e.get("x"), 0, 1, None), _num(e.get("y"), 0, 1, None)
         if t is not None and x is not None and y is not None:
             extras.append({"t": t, "x": x, "y": y})
-    n_obj = len(keep) + len(extras)
+    n_obj = len(keep) + len(keepP) + len(extras)
     if n_obj < 1:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
     if n_obj > KEY_MAX_OBJ:
@@ -193,7 +220,7 @@ def run(vid_id, req, doc, outdir):
         raise RuntimeError(f"키잉은 {KEY_MAX_SEC}초까지야 — 잘라서 해줘.")
 
     total_f = float(meta.get("frames") or 0) or (real_dur * fps)
-    passes = plan_passes(subjects, keep, extras, fps, W, H, total_f=total_f)   # total_f = 탭=끝 순패스 대칭 생략 판정(평의회9 M1)
+    passes = plan_passes(subjects, keep, people, keepP, extras, fps, W, H, total_f=total_f)   # total_f = 탭=끝 순패스 대칭 생략 판정(평의회9 M1)
     if not passes:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
     # 발사 전 총량 예산 가드 — 캡(90s·4객체)은 객체 수만 묶고 멀티패스 총량은 못 묶는다(평의회9 F1: 수동 4개
