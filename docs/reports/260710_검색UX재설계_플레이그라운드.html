@@ -1,0 +1,489 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>검색 UX 재설계 — 플레이그라운드</title>
+<style>
+:root{
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6; --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --ease:cubic-bezier(.2,.7,.3,1);
+  --pg-bg:#0b0d0c; --pg-pan:#14171a; --pg-line:rgba(255,255,255,.09); --pg-mut:#8fa697;
+  font-family:system-ui,-apple-system,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#07100e;color:var(--fg);font-family:inherit;-webkit-font-smoothing:antialiased;padding:14px}
+h1{font-size:17px;margin:2px 0 4px;font-weight:800;letter-spacing:-.3px}
+.sub{font-size:12.5px;color:var(--mut);margin:0 0 14px;line-height:1.6}
+.sub b{color:var(--accent-bright);font-weight:700}
+.wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+
+/* ── 좌: 미리보기 폰 프레임 ── */
+.stagewrap{position:sticky;top:14px;flex:0 0 auto}
+@media(max-width:760px){.stagewrap{position:static;width:100%;display:flex;flex-direction:column;align-items:center}}
+.frame{width:320px;height:640px;border-radius:30px;border:1px solid rgba(255,255,255,.14);
+  background:var(--pg-bg);overflow:hidden;position:relative;box-shadow:0 22px 60px rgba(0,0,0,.5)}
+.stagecap{font-size:11px;color:var(--mut);text-align:center;margin-top:8px;max-width:320px;line-height:1.5}
+
+/* app = 튜닝 대상. 모든 --t-* 여기 스코프 (기본값 = 현행 실측) */
+.app{
+  /* A. 상단 블러 오버레이 */
+  --t-ovBlur:9px; --t-ovSat:1; --t-ovDim:.58; --t-ovTint:0; --t-ovTop:0px; --t-ovH:186px; --t-ovSolid:55%; --t-ovFade:100%; --t-wmOp:.4; --t-mtOp:.4; --t-ovIn:.18s;
+  /* B. 검색바 */
+  --t-barTop:17%; --t-barW:254px; --t-barH:45px; --t-barR:999px; --t-barBg:.3; --t-barBlur:0px; --t-barBord:.12; --t-barBordW:1px; --t-barShY:10px; --t-barShB:34px; --t-barShA:.4; --t-barFs:15px; --t-barCap:18px; --t-barPad:5px; --t-barCapTint:.02;
+  /* C. 우측 픽토그램 */
+  --t-picSz:34px; --t-picOp:1; --t-picBg:0; --t-picOff:0px; --t-picGlow:0px; --t-picGlowA:.45; --t-picPress:.9; --t-picStroke:2;
+  /* D. 필터 리스트 */
+  --t-lsTop:0px; --t-lsPull:0px; --t-hlBg:0; --t-ftDur:.34s; --t-ftStag:.05s; --t-emptyOp:1; --t-matchGlow:0px; --t-matchBord:0;
+  /* E. 모션 */
+  --t-barRise:60px; --t-barRiseDur:.25s; --t-picDelay:0s; --t-picDur:.12s; --t-closeDur:.18s; --t-blurOut:.18s;
+  position:absolute;inset:0;overflow:hidden;background:var(--pg-bg);
+}
+
+/* 헤더 재현 */
+.pg-head{padding:calc(24px*2.25) 16px 0;position:relative;text-align:center;transition:opacity var(--t-blurOut) var(--ease)}
+.pg-brand{margin:0;font-size:22.5px;font-weight:400;letter-spacing:.9px;line-height:1;color:var(--fg);text-shadow:0 1px 8px rgba(0,0,0,.45);white-space:nowrap}
+.pg-title{margin:18px 0 0;font-size:15.3px;font-weight:400;letter-spacing:.612px;line-height:1;color:var(--accent-bright);text-shadow:0 0 9px rgba(var(--accent-rgb),.6),0 0 20px rgba(var(--accent-rgb),.2);-webkit-text-stroke:.5px var(--accent-bright);white-space:nowrap}
+.pg-vhrow{position:relative;display:flex;align-items:center;justify-content:center;min-height:30px;margin-top:10px}
+.pg-tog{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:30px;height:30px;display:grid;place-items:center;cursor:pointer;background:none;border:none;padding:0}
+.pg-tog svg{width:20px;height:20px;stroke:var(--mut);fill:none;stroke-width:2.2;stroke-linecap:round;transition:stroke .15s}
+.app.searching .pg-tog svg{stroke:var(--accent);filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),.45))}
+/* 검색 시 헤더 워드마크·타이틀 흐림(투명도) */
+.app.searching .pg-brand{opacity:var(--t-wmOp)}
+.app.searching .pg-title{opacity:var(--t-mtOp)}
+/* 검색 활성 = 헤더 돋보기 숨김(검색바 우측 픽토그램이 종료 담당 = 중복·겹침 방지) */
+.app.searching .pg-tog{opacity:0;pointer-events:none;transition:opacity var(--t-blurOut) var(--ease)}
+
+/* 상단 블러 오버레이 (검색 시) */
+.pg-ovl{position:absolute;left:0;right:0;top:var(--t-ovTop);height:var(--t-ovH);z-index:5;pointer-events:none;opacity:0;
+  background:rgba(5,11,13,var(--t-ovDim));
+  backdrop-filter:blur(var(--t-ovBlur)) saturate(var(--t-ovSat));-webkit-backdrop-filter:blur(var(--t-ovBlur)) saturate(var(--t-ovSat));
+  -webkit-mask:linear-gradient(180deg,#000 var(--t-ovSolid),transparent var(--t-ovFade));
+  mask:linear-gradient(180deg,#000 var(--t-ovSolid),transparent var(--t-ovFade));
+  transition:opacity var(--t-ovIn) var(--ease)}
+/* accent 색조 틴트 오버레이(선택) */
+.pg-ovl::after{content:'';position:absolute;inset:0;background:rgba(var(--accent-rgb),calc(var(--t-ovTint)*.14));
+  -webkit-mask:inherit;mask:inherit}
+.app.searching .pg-ovl{opacity:1}
+
+/* 검색바 (검색 시) */
+.pg-bar{position:absolute;left:50%;top:var(--t-barTop);transform:translateX(-50%);width:min(var(--t-barW),86%);z-index:7;
+  display:flex;align-items:center;gap:4px;height:var(--t-barH);padding:var(--t-barPad);border-radius:var(--t-barR);
+  background:rgba(17,18,20,var(--t-barBg));border:var(--t-barBordW) solid rgba(255,255,255,var(--t-barBord));
+  box-shadow:0 var(--t-barShY) var(--t-barShB) rgba(0,0,0,var(--t-barShA));
+  backdrop-filter:blur(var(--t-barBlur));-webkit-backdrop-filter:blur(var(--t-barBlur));
+  opacity:0;pointer-events:none}
+.app.searching .pg-bar{animation:barRise var(--t-barRiseDur) var(--ease) forwards}
+@keyframes barRise{from{opacity:0;transform:translateX(-50%) translateY(var(--t-barRise))}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.pg-cap{flex:none;height:100%;aspect-ratio:1/1;display:grid;place-items:center;border-radius:var(--t-barR);background:rgba(var(--accent-rgb),var(--t-barCapTint))}
+.pg-cap svg{width:var(--t-barCap);height:var(--t-barCap);stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round}
+.pg-q{flex:1;min-width:0;height:100%;background:none;border:none;outline:none;color:var(--fg);font-size:var(--t-barFs);font-family:inherit;padding:0 4px}
+.pg-q::placeholder{color:rgba(255,255,255,.45)}
+/* 우측 종료 픽토그램 (강조색) */
+.pg-pic{flex:none;width:var(--t-picSz);height:var(--t-picSz);display:grid;place-items:center;border:none;cursor:pointer;
+  border-radius:var(--r-s);background:rgba(var(--accent-rgb),var(--t-picBg));margin-right:var(--t-picOff);opacity:var(--t-picOp);
+  animation:picIn var(--t-picDur) var(--ease) var(--t-picDelay) backwards}
+@keyframes picIn{from{opacity:0;transform:scale(.7)}}
+.pg-pic svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:var(--t-picStroke);stroke-linecap:round;
+  filter:drop-shadow(0 0 var(--t-picGlow) rgba(var(--accent-rgb),var(--t-picGlowA)))}
+.pg-pic:active{transform:scale(var(--t-picPress))}
+
+/* 2컬럼 리스트 */
+.pg-body{padding:12px 16px 20px;transition:transform var(--t-ftDur) var(--ease);position:relative;z-index:1}
+.app.searching .pg-body{padding-top:calc(12px + var(--t-lsTop));transform:translateY(calc(-1*var(--t-lsPull)))}
+.pg-cols{display:grid;grid-template-columns:1fr 1fr;border-radius:16px;padding:10px 9px 14px;border:1px solid rgba(255,255,255,.07);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 10px 26px rgba(0,0,0,.28);position:relative}
+.pg-col{min-width:0}
+.pg-col.l{padding-right:11px}
+.pg-col.r{padding-left:11px;position:relative}
+.pg-col.r::before{content:'';position:absolute;top:4px;bottom:4px;left:0;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.18) 20%,rgba(255,255,255,.18) 80%,transparent)}
+.pg-cth{font-size:12.5px;font-weight:800;letter-spacing:-.2px;padding:4px 4px 10px}
+.pg-cth.l{color:var(--accent-4)}
+.pg-cth.r{color:var(--accent)}
+.pg-list{display:flex;flex-direction:column;gap:12px}
+.pg-card{border-radius:13px;padding:9px 11px;display:flex;flex-direction:column;gap:6px;
+  background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05)}
+.pg-col.l .pg-card{border:1px solid rgba(var(--accent-4-rgb),.14)}
+.pg-col.r .pg-card{border:1px solid rgba(var(--accent-rgb),.13)}
+/* 검색 매칭 카드 강조(글로우·테두리) */
+.app.searching .pg-card.match{box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05),0 0 var(--t-matchGlow) rgba(var(--accent-rgb),.55);border-color:rgba(var(--accent-rgb),calc(.13 + var(--t-matchBord)))}
+.pg-cmeta{font-size:10px;color:var(--mut);display:flex;justify-content:space-between;font-weight:600}
+.pg-cmeta .cat{font-weight:700}
+.pg-ctitle{font-size:12.5px;font-weight:700;line-height:1.35;color:var(--fg);letter-spacing:-.2px}
+.pg-ctitle .hl{color:var(--accent);background:rgba(var(--accent-rgb),var(--t-hlBg));border-radius:3px}
+.pg-cbot{display:flex;gap:4px;margin-top:4px}
+.pg-tg{flex:1;height:22px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(8,15,11,.34);color:rgba(255,255,255,.78);font-size:10.5px;font-weight:600;display:grid;place-items:center}
+.pg-tg.pick{flex:1.5;color:var(--accent)}
+.pg-tg.picked{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:repeating-linear-gradient(45deg,rgba(var(--accent-rgb),.20) 0 5px,rgba(var(--accent-rgb),.05) 5px 10px);font-weight:800}
+/* 검색 필터: 비매칭 카드 처리 */
+.app.searching.nomatch-hide .pg-card:not(.match){display:none}
+.app.searching.nomatch-dim .pg-card:not(.match){opacity:.22;filter:saturate(.4)}
+.pg-card{animation:cardIn var(--t-ftDur) cubic-bezier(.22,.61,.36,1) backwards}
+.app.searching .pg-card.match:nth-child(1){animation-delay:0s}
+.app.searching .pg-card.match:nth-child(2){animation-delay:var(--t-ftStag)}
+.app.searching .pg-card.match:nth-child(3){animation-delay:calc(var(--t-ftStag)*2)}
+.pg-empty{color:var(--mut);text-align:center;padding:20px 0;font-size:12px;opacity:var(--t-emptyOp)}
+.app:not(.searching) .pg-empty{display:none}
+.app:not(.nomatch-hide) .pg-empty{display:none}
+
+/* 하단 네비 재현(맥락) */
+.pg-nav{position:absolute;left:0;right:0;bottom:0;height:52px;display:flex;align-items:center;justify-content:space-around;
+  background:rgba(0,0,0,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 -10px 30px rgba(0,0,0,.4);z-index:4;font-size:10.5px;color:var(--mut)}
+.pg-nav b{color:var(--accent);font-weight:700}
+
+/* ── 우: 콘솔 ── */
+.console{flex:1;min-width:300px;max-width:560px}
+@media(max-width:760px){.console{width:100%;max-width:100%}}
+.csec{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:12px}
+.csec>.lbl{font-size:11px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.csec>.lbl::before{content:'•';color:var(--accent)}
+
+/* 보기 토글 */
+.viewtogs{display:flex;gap:6px;flex-wrap:wrap}
+.vtog{flex:1;min-width:90px;padding:9px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+.vtog.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.08)}
+
+/* 프리셋 */
+.presets{display:flex;gap:7px;flex-wrap:wrap}
+.pchip{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.pchip.on{color:#04110e;background:var(--accent);border-color:var(--accent)}
+.pchip .st{color:var(--accent-4);margin-left:3px}
+.pchip.on .st{color:#04110e}
+
+/* 슬라이더 */
+.sgrp{margin-bottom:6px}
+.sgrp-h{font-size:11px;font-weight:800;color:var(--accent-bright);margin:12px 0 8px;letter-spacing:.2px}
+.sgrp-h:first-child{margin-top:0}
+.srow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;margin-bottom:11px}
+.srow .snm{font-size:12px;color:var(--fg);font-weight:600}
+.srow .snm .warn{color:var(--accent-4);font-size:10px;margin-left:4px}
+.srow .sval{font-size:12px;color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.srow .sval.chg{color:var(--accent-4)}
+.srow input[type=range]{grid-column:1/3;width:100%;height:26px;margin:0;-webkit-appearance:none;appearance:none;background:none;cursor:pointer}
+.srow input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--accent) var(--p,0%),rgba(255,255,255,.12) var(--p,0%))}
+.srow input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:rgba(255,255,255,.12)}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);margin-top:-5.5px;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+.srow input[type=range]::-moz-range-thumb{width:16px;height:16px;border:none;border-radius:50%;background:var(--accent)}
+.sseg{display:flex;gap:5px;margin-bottom:11px;flex-wrap:wrap}
+.sseg .sl{font-size:12px;color:var(--fg);font-weight:600;flex:0 0 100%;margin-bottom:2px}
+.sseg button{flex:1;min-width:60px;padding:7px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.sseg button.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.08)}
+
+/* 출력 */
+#out{white-space:pre-wrap;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;line-height:1.55;color:var(--fg);background:rgba(0,0,0,.35);border-radius:10px;padding:11px;max-height:340px;overflow:auto;margin:0 0 10px}
+#out .g{color:var(--mut)}
+#out .a{color:var(--accent)}
+#out .u{color:var(--accent-4)}
+.copybtn{width:100%;padding:12px;border-radius:11px;border:1px solid var(--accent);background:rgba(var(--accent-rgb),.1);color:var(--accent);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+.copybtn.ok{background:var(--accent);color:#04110e}
+.note{font-size:11px;color:var(--mut);line-height:1.65}
+.note b{color:var(--accent-bright)}
+.reset{background:none;border:none;color:var(--mut);font-size:11px;text-decoration:underline;cursor:pointer;font-family:inherit;padding:0;margin-left:auto}
+</style>
+
+<h1>검색 UX 재설계 — 만지는 시안</h1>
+<p class="sub">돋보기 누르면 <b>상단만 블러+그라데이션</b>으로 헤더를 가리고, <b>검색바</b>가 뜨고, <b>누적/신규 리스트가 직접 필터</b>되는 새 루틴. 미리보기에서 <b>[검색 ON]</b> 눌러 상태 전환 → 슬라이더로 조절 → 맘에 들면 <b>[선택값 복사]</b>해서 답장 줘. 슬라이더 기본값 = <b>전부 현행 실측값</b>(전/후 비교 기준).</p>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame">
+      <div class="app" id="app">
+        <div class="pg-head">
+          <h1 class="pg-brand">News Curation</h1>
+          <div class="pg-title">Legacy News</div>
+          <div class="pg-vhrow">
+            <button class="pg-tog" id="miniTog" title="검색 토글">
+              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- 상단 블러 오버레이 -->
+        <div class="pg-ovl"></div>
+        <!-- 검색바 -->
+        <div class="pg-bar">
+          <span class="pg-cap"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+          <input class="pg-q" id="miniQ" value="ETF" placeholder="검색" readonly>
+          <button class="pg-pic" id="miniPic"><svg id="picSvg" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <!-- 리스트 -->
+        <div class="pg-body">
+          <div class="pg-cols">
+            <div class="pg-col l">
+              <div class="pg-cth l">누적</div>
+              <div class="pg-list">
+                <div class="pg-card"><div class="pg-cmeta"><span class="cat" style="color:var(--accent-4)">경제 · 33</span><span>21시간</span></div><div class="pg-ctitle">광주 군공항 일대 364㎢ 토지거래허가구역 묶인다</div><div class="pg-cbot"><span class="pg-tg picked">PICKED</span></div></div>
+                <div class="pg-card"><div class="pg-cmeta"><span class="cat" style="color:var(--cat-pol,#38C6FF)">정치 · 7</span><span>7시간</span></div><div class="pg-ctitle">임진강 필승교 수위 2m 넘어… 주민 대피 문자</div><div class="pg-cbot"><span class="pg-tg">PASS</span><span class="pg-tg pick">PICK</span></div></div>
+                <div class="pg-card"><div class="pg-cmeta"><span class="cat" style="color:var(--accent-4)">경제 · 13</span><span>5시간</span></div><div class="pg-ctitle">코스피, AI 불안 완화에 7500선 강세 출발</div><div class="pg-cbot"><span class="pg-tg">PASS</span><span class="pg-tg pick">PICK</span></div></div>
+              </div>
+              <div class="pg-empty">검색 결과 없음</div>
+            </div>
+            <div class="pg-col r">
+              <div class="pg-cth r">신규</div>
+              <div class="pg-list">
+                <div class="pg-card match"><div class="pg-cmeta"><span class="cat" style="color:var(--accent-4)">경제 · 3</span><span>2시간</span></div><div class="pg-ctitle">"18년 노하우 담았다"…<span class="hl">ETF</span> 시장 뛰어든 디에스운용</div><div class="pg-cbot"><span class="pg-tg">PASS</span><span class="pg-tg pick">PICK</span></div></div>
+                <div class="pg-card match"><div class="pg-cmeta"><span class="cat" style="color:var(--cat-pol,#38C6FF)">정치 · 9</span><span>3시간</span></div><div class="pg-ctitle">청와대 "레버리지 <span class="hl">ETF</span>, 필요하면 보완…F4 고민"</div><div class="pg-cbot"><span class="pg-tg">PASS</span><span class="pg-tg pick">PICK</span></div></div>
+                <div class="pg-card"><div class="pg-cmeta"><span class="cat" style="color:var(--cat-pol,#38C6FF)">정치 · 8</span><span>2시간</span></div><div class="pg-ctitle">"시 재정난 심각"… 박찬대 시장, 민생회복 공약 유예</div><div class="pg-cbot"><span class="pg-tg">PASS</span><span class="pg-tg pick">PICK</span></div></div>
+              </div>
+              <div class="pg-empty">검색 결과 없음</div>
+            </div>
+          </div>
+        </div>
+        <div class="pg-nav"><span><b>레거시</b></span><span>SNS</span><span>＋</span><span>뉴스 요약</span><span>설정</span></div>
+      </div>
+    </div>
+    <div class="stagecap">폰 프레임 · 현행 토큰 사본 재현 · [검색 ON]에서 상단 블러+검색바+필터 전환</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <div class="lbl">보기</div>
+      <div class="viewtogs">
+        <button class="vtog on" data-view="off">검색 OFF(기본)</button>
+        <button class="vtog" data-view="on">검색 ON(활성)</button>
+      </div>
+    </div>
+    <div class="csec">
+      <div class="lbl">프리셋 <button class="reset" id="reset">현행값 리셋</button></div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="csec">
+      <div class="lbl">미세조정 (50축)</div>
+      <div id="sliders"></div>
+    </div>
+    <div class="csec">
+      <div class="lbl">선택값</div>
+      <pre id="out"></pre>
+      <button class="copybtn" id="copy">선택값 복사</button>
+    </div>
+    <div class="csec">
+      <div class="lbl">재현 한계 각주</div>
+      <p class="note">
+        · 워드마크 폰트 = 실물은 <b>PGSans</b>(웹폰트)지만 여기선 시스템폰트 폴백(크기·자간만 일치).<br>
+        · <b>backdrop-filter 블러</b>는 뒤 콘텐츠를 흐리는데, 폰 프레임 밖(브라우저)에선 실기기와 GPU 렌더가 미세하게 다를 수 있음.<br>
+        · 리스트 카드·색·간격은 현행 <b>:root 토큰 사본</b>으로 재현(터쿼이즈 #00EED2·골드레몬 #FFE13D·검색 하이라이트).<br>
+        · 필터는 데모용(검색어 "ETF" 고정)으로 신규 컬럼 2건 매칭 시연 — 실제론 입력마다 renderScrap가 title+title_ko+media 부분일치.<br>
+        · 검색 활성 시 <b>헤더 우상단 돋보기는 숨김</b>(검색바 우측 픽토그램이 종료 담당) = 겹침 방지.<br>
+        · "현행(전체 딤)" 프리셋 = 지금 방식(sov-bg 전체 blur 9px·딤 .58) 재현 = <b>전/후 비교 기준</b>.
+      </p>
+    </div>
+  </aside>
+</div>
+
+<script>
+const app = document.getElementById('app');
+// ── 50축 정의 (기본값 = 현행 실측) ──
+const SLIDERS = [
+  {grp:'A. 상단 블러 오버레이 (헤더 가림)'},
+  {k:'ovBlur', nm:'블러 반경', unit:'px', min:0, max:30, step:.5, d:9, warn:0, tok:'--blur-* 아님(raw 9px)'},
+  {k:'ovSat', nm:'채도(saturate)', unit:'', min:0, max:2, step:.05, d:1, warn:0},
+  {k:'ovDim', nm:'딤 세기(alpha)', unit:'', min:0, max:1, step:.01, d:.58, warn:0},
+  {k:'ovTint', nm:'딤 색조(무채→터쿼이즈)', unit:'', min:0, max:1, step:.05, d:0, warn:1},
+  {k:'ovTop', nm:'오버레이 시작 top', unit:'px', min:0, max:120, step:2, d:0, warn:1},
+  {k:'ovH', nm:'오버레이 총 높이', unit:'px', min:80, max:400, step:2, d:186, warn:1},
+  {k:'ovSolid', nm:'불투명 유지 구간', unit:'%', min:0, max:100, step:1, d:55, warn:1},
+  {k:'ovFade', nm:'투명 끝점', unit:'%', min:0, max:100, step:1, d:100, warn:1},
+  {k:'wmOp', nm:'워드마크 흐림(검색시)', unit:'', min:0, max:1, step:.05, d:.4, warn:0},
+  {k:'mtOp', nm:'메뉴타이틀 흐림(검색시)', unit:'', min:0, max:1, step:.05, d:.4, warn:0},
+  {k:'ovIn', nm:'오버레이 페이드인', unit:'s', min:0, max:.6, step:.02, d:.18, warn:0},
+
+  {grp:'B. 검색바 배치'},
+  {k:'barTop', nm:'검색바 top', unit:'%', min:2, max:40, step:1, d:17, warn:1},
+  {k:'barW', nm:'검색바 폭', unit:'px', min:180, max:300, step:2, d:254, warn:0},
+  {k:'barH', nm:'검색바 높이', unit:'px', min:34, max:60, step:1, d:45, warn:0},
+  {k:'barR', nm:'검색바 radius', unit:'px', min:8, max:999, step:1, d:999, warn:0, tok:'--r-pill 999'},
+  {k:'barBg', nm:'배경 alpha', unit:'', min:0, max:1, step:.02, d:.3, warn:0},
+  {k:'barBlur', nm:'배경 blur', unit:'px', min:0, max:30, step:1, d:0, warn:0},
+  {k:'barBord', nm:'테두리 alpha', unit:'', min:0, max:.4, step:.01, d:.12, warn:0},
+  {k:'barBordW', nm:'테두리 두께', unit:'px', min:0, max:3, step:.5, d:1, warn:0},
+  {k:'barShY', nm:'그림자 y', unit:'px', min:0, max:30, step:1, d:10, warn:0},
+  {k:'barShB', nm:'그림자 blur', unit:'px', min:0, max:60, step:1, d:34, warn:0},
+  {k:'barShA', nm:'그림자 alpha', unit:'', min:0, max:.7, step:.02, d:.4, warn:0},
+  {k:'barFs', nm:'입력 폰트', unit:'px', min:12, max:20, step:.5, d:15, warn:0},
+  {k:'barCap', nm:'좌측 돋보기 크기', unit:'px', min:12, max:26, step:1, d:18, warn:0},
+  {k:'barPad', nm:'내부 패딩', unit:'px', min:2, max:12, step:1, d:5, warn:0},
+  {k:'barCapTint', nm:'좌측 돋보기 캡 틴트', unit:'', min:0, max:.3, step:.01, d:.02, warn:0},
+
+  {grp:'C. 우측 종료 픽토그램 (강조색)'},
+  {k:'picSz', nm:'픽토그램 크기', unit:'px', min:24, max:44, step:1, d:34, warn:0},
+  {k:'picOp', nm:'불투명도', unit:'', min:.3, max:1, step:.05, d:1, warn:0},
+  {k:'picBg', nm:'배경 alpha', unit:'', min:0, max:.3, step:.01, d:0, warn:0},
+  {k:'picOff', nm:'우측 여백', unit:'px', min:0, max:12, step:1, d:0, warn:0},
+  {k:'picGlow', nm:'강조 글로우 반경', unit:'px', min:0, max:16, step:1, d:0, warn:0},
+  {k:'picGlowA', nm:'글로우 세기', unit:'', min:0, max:1, step:.05, d:.45, warn:0},
+  {k:'picPress', nm:'눌림 scale', unit:'', min:.7, max:1, step:.01, d:.9, warn:0, tok:'--press-m .9'},
+  {k:'picStroke', nm:'픽토그램 선 두께', unit:'', min:1, max:3, step:.1, d:2, warn:0},
+
+  {grp:'D. 필터 리스트 (누적/신규)'},
+  {k:'lsTop', nm:'리스트 상단 여백(검색시)', unit:'px', min:0, max:80, step:2, d:0, warn:1},
+  {k:'lsPull', nm:'리스트 위로 당김(검색시)', unit:'px', min:0, max:60, step:2, d:0, warn:1},
+  {k:'hlBg', nm:'일치 하이라이트 배경', unit:'', min:0, max:.4, step:.02, d:0, warn:0},
+  {k:'ftDur', nm:'필터 전환 시간', unit:'s', min:0, max:.8, step:.02, d:.34, warn:0},
+  {k:'ftStag', nm:'필터 stagger', unit:'s', min:0, max:.2, step:.01, d:.05, warn:0},
+  {k:'emptyOp', nm:'무매칭 안내 투명도', unit:'', min:0, max:1, step:.05, d:1, warn:0},
+  {k:'matchGlow', nm:'매칭 카드 글로우', unit:'px', min:0, max:24, step:1, d:0, warn:0},
+  {k:'matchBord', nm:'매칭 카드 테두리 강조', unit:'', min:0, max:.6, step:.02, d:0, warn:0},
+
+  {grp:'E. 진입/퇴장 모션'},
+  {k:'barRise', nm:'검색바 슬라이드 거리', unit:'px', min:0, max:100, step:2, d:60, warn:0},
+  {k:'barRiseDur', nm:'검색바 슬라이드 시간', unit:'s', min:0, max:.6, step:.02, d:.25, warn:0},
+  {k:'picDelay', nm:'픽토그램 등장 지연', unit:'s', min:0, max:.5, step:.02, d:0, warn:0},
+  {k:'picDur', nm:'픽토그램 등장 시간', unit:'s', min:0, max:.5, step:.02, d:.12, warn:0},
+  {k:'closeDur', nm:'해제(종료) 시간', unit:'s', min:0, max:.6, step:.02, d:.18, warn:0},
+  {k:'blurOut', nm:'헤더 복귀 시간', unit:'s', min:0, max:.6, step:.02, d:.18, warn:0},
+];
+// 세그(비수치 선택축)
+const SEGS = [
+  {k:'picIco', nm:'우측 픽토그램 종류', opts:[['x','✕ 비우기·해제'],['glass','돋보기']], d:'x', grp:'C. 우측 종료 픽토그램 (강조색)'},
+  {k:'nomatch', nm:'비매칭 카드 처리', opts:[['hide','숨김(필터)'],['dim','흐리게 남김']], d:'hide', grp:'D. 필터 리스트 (누적/신규)'},
+];
+const UNIT_PCT = {ovSolid:1, ovFade:1, barTop:1};   // %단위 = value 그대로 %
+const DEFAULTS = {};
+SLIDERS.forEach(s=>{ if(s.k) DEFAULTS[s.k]=s.d; });
+SEGS.forEach(s=> DEFAULTS[s.k]=s.d);
+
+// 프리셋
+const PRESETS = [
+  {id:'cur', nm:'현행(전체 딤)', st:{...DEFAULTS, ovTop:0, ovH:640, ovSolid:100, ovFade:100, wmOp:1, mtOp:1, barTop:17}},
+  {id:'a', nm:'상단블러 A(기본)', st:{...DEFAULTS}},
+  {id:'b', nm:'급페이드 B', star:1, st:{...DEFAULTS, ovH:170, ovSolid:45, ovFade:88, wmOp:.28, mtOp:.28, barTop:11}},
+  {id:'c', nm:'넓은 페이드 C', st:{...DEFAULTS, ovH:260, ovSolid:35, ovFade:100, wmOp:.5, mtOp:.5}},
+];
+
+let state = {...DEFAULTS};
+let curPreset = 'a';
+
+// %/px/s 단위 CSS 값 생성
+function cssVal(k, v){
+  const s = SLIDERS.find(x=>x.k===k);
+  if(!s) return v;
+  if(s.unit==='px') return v+'px';
+  if(s.unit==='%') return v+'%';
+  if(s.unit==='s') return v+'s';
+  return v;  // 무단위(alpha 등)
+}
+function apply(){
+  for(const k in state){
+    if(typeof state[k]==='number') app.style.setProperty('--t-'+k, cssVal(k, state[k]));
+  }
+  // 세그 적용
+  app.classList.toggle('nomatch-hide', state.nomatch==='hide');
+  app.classList.toggle('nomatch-dim', state.nomatch==='dim');
+  document.getElementById('picSvg').innerHTML = state.picIco==='glass'
+    ? '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'
+    : '<path d="M6 6l12 12M18 6L6 18"/>';
+  // 슬라이더 UI 동기
+  SLIDERS.forEach(s=>{ if(!s.k) return;
+    const el = document.getElementById('sl_'+s.k); if(!el) return;
+    el.value = state[s.k];
+    const pct = (state[s.k]-s.min)/(s.max-s.min)*100;
+    el.style.setProperty('--p', pct+'%');
+    const vl = document.getElementById('vl_'+s.k);
+    vl.textContent = fmt(state[s.k], s);
+    vl.classList.toggle('chg', Math.abs(state[s.k]-s.d) > 1e-9);
+  });
+  SEGS.forEach(s=>{
+    document.querySelectorAll('[data-seg="'+s.k+'"] button').forEach(b=>b.classList.toggle('on', b.dataset.v===state[s.k]));
+  });
+  buildOut();
+}
+function fmt(v, s){
+  let out = (Number.isInteger(v)? v : v.toFixed(2).replace(/0+$/,'').replace(/\.$/,''));
+  return out + (s.unit||'');
+}
+// 프리셋 매칭 여부
+function syncPresetChips(){
+  let match = null;
+  for(const p of PRESETS){ if(Object.keys(DEFAULTS).every(k=> String(state[k])===String(p.st[k]))) { match=p.id; break; } }
+  curPreset = match;
+  document.querySelectorAll('.pchip').forEach(c=>c.classList.toggle('on', c.dataset.p===match));
+}
+
+// 계승/갱신 판정 + 출력
+const near=(a,b,eps=1e-6)=>Math.abs(a-b)<eps;
+function buildOut(){
+  let L=[];
+  L.push('[검색 UX 재설계 — 선택값]  (px·% 원값 / 현행 병기)');
+  L.push('');
+  let curGrp='';
+  SLIDERS.forEach(s=>{
+    if(s.grp){ curGrp=s.grp; L.push('<span class="a">'+s.grp+'</span>'); return; }
+    const v=state[s.k], d=s.d;
+    const same=near(v,d);
+    const tag= same ? '<span class="g">= 현행(계승)</span>' : '<span class="u">→ 갱신 '+(s.warn?'⚠기틀':'')+'</span>';
+    const cur = same? '' : ' <span class="g">[현행 '+fmt(d,s)+']</span>';
+    L.push('  '+pad(s.nm,22)+fmt(v,s).padStart(7)+'  '+tag+cur);
+  });
+  SEGS.forEach(s=>{
+    const v=state[s.k], lab=(s.opts.find(o=>o[0]===v)||['',''])[1];
+    const same=v===s.d;
+    L.push('  '+pad(s.nm,22)+lab+'  '+(same?'<span class="g">= 현행</span>':'<span class="u">→ 갱신</span>'));
+  });
+  L.push('');
+  L.push('<span class="g">※ ⚠기틀 = 레이아웃 구조 변경(오버레이 높이·검색바 위치·리스트 당김) = 반영 시 §기틀 확인</span>');
+  document.getElementById('out').innerHTML = L.join('\n');
+}
+function pad(s,n){ let w=0; for(const ch of s) w+= (ch.charCodeAt(0)>127?2:1); return s+' '.repeat(Math.max(1,n-w)); }
+
+// ── 빌드 UI ──
+function buildSliders(){
+  const host=document.getElementById('sliders'); let html='';
+  const segByGrp={}; SEGS.forEach(s=> (segByGrp[s.grp]=segByGrp[s.grp]||[]).push(s));
+  SLIDERS.forEach(s=>{
+    if(s.grp){ html+='<div class="sgrp-h">'+s.grp+'</div>';
+      (segByGrp[s.grp]||[]).forEach(sg=>{
+        html+='<div class="sseg" data-seg="'+sg.k+'"><span class="sl">'+sg.nm+'</span>'+
+          sg.opts.map(o=>'<button data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div>';
+      });
+      return;
+    }
+    html+='<div class="srow"><span class="snm">'+s.nm+(s.warn?'<span class="warn">⚠기틀</span>':'')+
+      '</span><span class="sval" id="vl_'+s.k+'"></span>'+
+      '<input type="range" id="sl_'+s.k+'" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'" value="'+s.d+'"></div>';
+  });
+  host.innerHTML=html;
+  SLIDERS.forEach(s=>{ if(!s.k) return;
+    document.getElementById('sl_'+s.k).addEventListener('input', e=>{ state[s.k]=parseFloat(e.target.value); syncPresetChips(); apply(); });
+  });
+  SEGS.forEach(s=>{
+    document.querySelectorAll('[data-seg="'+s.k+'"] button').forEach(b=>{
+      b.addEventListener('click', ()=>{ state[s.k]=b.dataset.v; syncPresetChips(); apply(); });
+    });
+  });
+}
+function buildPresets(){
+  const host=document.getElementById('presets');
+  host.innerHTML=PRESETS.map(p=>'<button class="pchip" data-p="'+p.id+'">'+p.nm+(p.star?'<span class="st">★</span>':'')+'</button>').join('');
+  host.querySelectorAll('.pchip').forEach(c=>c.addEventListener('click', ()=>{
+    const p=PRESETS.find(x=>x.id===c.dataset.p); state={...p.st}; apply(); syncPresetChips();
+  }));
+}
+// 보기 토글
+document.querySelectorAll('.vtog').forEach(b=>b.addEventListener('click', ()=>{
+  document.querySelectorAll('.vtog').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  app.classList.toggle('searching', b.dataset.view==='on');
+}));
+document.getElementById('miniTog').addEventListener('click', ()=>{
+  const on=!app.classList.contains('searching'); app.classList.toggle('searching', on);
+  document.querySelectorAll('.vtog').forEach(x=>x.classList.toggle('on', (x.dataset.view==='on')===on));
+});
+document.getElementById('miniPic').addEventListener('click', ()=>{
+  app.classList.remove('searching');
+  document.querySelectorAll('.vtog').forEach(x=>x.classList.toggle('on', x.dataset.view==='off'));
+});
+document.getElementById('reset').addEventListener('click', ()=>{ state={...DEFAULTS}; apply(); syncPresetChips(); });
+// 복사
+document.getElementById('copy').addEventListener('click', ()=>{
+  const txt=document.getElementById('out').textContent;
+  const btn=document.getElementById('copy');
+  const done=()=>{ btn.classList.add('ok'); btn.textContent='복사됨 ✓'; setTimeout(()=>{btn.classList.remove('ok'); btn.textContent='선택값 복사';},1400); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>fallback(txt,done)); }
+  else fallback(txt,done);
+});
+function fallback(txt,cb){ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(ta); cb(); }
+
+buildPresets(); buildSliders(); apply(); syncPresetChips();
+// 초기 = 검색 ON 보여주기(운영자 원하는 새 방향 즉시)
+app.classList.add('searching');
+document.querySelectorAll('.vtog').forEach(x=>x.classList.toggle('on', x.dataset.view==='on'));
+</script>
