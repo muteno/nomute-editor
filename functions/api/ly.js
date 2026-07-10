@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env }) {
     for (const k of ['lang', 'tone', 'style', 'pos', 'size', 'cutlv']) { const v = body.opts[k]; if (typeof v === 'string' && /^[a-z]{1,10}$/.test(v)) o[k] = v; }   // cutlv = 컷 세기(soft/std/hard · 운영자 260708) — 미지 값은 ly_burn cut_params가 std 폴백
     for (const k of ['pos', 'bg']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v)) o[k] = Math.max(0, Math.min(100, Math.round(v))); }   // 위치·배경 게이지 %(260707) — pos는 위 문자열 루프와 타입 상호배타(한 요청의 pos는 문자열이거나 숫자 둘 중 하나): 신 뷰어=숫자 여기서, 구 캐시 뷰어=문자열 위에서 통과(ly_burn 하위호환 매핑)
     for (const k of ['size', 'outline', 'pad']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 3) o[k] = Math.round(v * 1000) / 1000; }   // 연속 축(운영자 260707 선택값): size=높이비 소수(0.035) · outline·pad=계수 배율 — size 문자열(s/m/l)은 위 루프와 타입 상호배타 · 의미 범위 재클램프는 ly_burn(size_frac/coef)
-    for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707)
+    for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm', 'cutdel']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707) · cutdel = 삭제 컷 번인 게이트(토글 양방향 · 검증④ 260711)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
@@ -54,8 +54,7 @@ export async function onRequestPost({ request, env }) {
       // 대본 삭제 컷(운영자 260711 텍스트 컷) — body.del = 삭제 조각 [s,e] 쌍(원본 시간축 · 토글 ON일 때만 옴) → subs.json 'del'로 동봉(러너 ly_burn이 그 구간을 영상에서 실제 컷)
       const edel = [];
       if (Array.isArray(body.del) && body.del.length) {
-        if (body.del.length > 400) return json({ error: '삭제 구간 400개 초과 — 조각을 줄여줘' }, 400);
-        for (const dd of body.del) {
+        for (const dd of body.del.slice(0, 400)) {   // 초과 = 슬라이스(컷은 부가 축 — 하드 거절이 자막 반영까지 막던 모순 정리 · 검증④)
           const a = Number(Array.isArray(dd) ? dd[0] : NaN), b = Number(Array.isArray(dd) ? dd[1] : NaN);
           if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b <= a) continue;   // 불량 쌍 = 조용 드롭(컷은 부가 축 — 자막 반영은 계속)
           edel.push([Math.round(a * 100) / 100, Math.round(b * 100) / 100]);

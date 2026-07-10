@@ -669,7 +669,9 @@ def run(vid_id, video, outdir):
             inject_words(segs, outdir)   # STT word 타임스탬프 주입(실싱크 · 실패해도 글자수 비례 폴백 = 무해)
         except Exception as ex:
             print("::warning::word 주입 예외(실싱크 스킵):", ex)
-    del_spans = load_del_spans(outdir) if segs else []   # 대본 삭제 컷(260711) — 삭제 조각 스팬(원본 시간축)
+    # 대본 삭제 컷(260711) — 삭제 조각 스팬(원본 시간축). opts.cutdel = 번인 게이트(검증④): subs.json에 del이
+    #   커밋돼 있어도 토글 OFF(재번인 opts.cutdel 부재/false)면 컷 미적용 = 토글이 켜기·끄기 양방향으로 동작.
+    del_spans = load_del_spans(outdir) if (segs and opts.get("cutdel")) else []
     # ── 편집기(edit) 축 파싱 — 전부 결측 = 순수 ly 경로(회귀 0 · 운영자 260710 골격 B 확정)
     V_AR = {"9:16": 9 / 16, "1:1": 1.0, "4:5": 4 / 5, "16:9": 16 / 9}
     vid_ar = opts.get("vid_ar") if opts.get("vid_ar") in V_AR else None
@@ -733,6 +735,10 @@ def run(vid_id, video, outdir):
                 edit_notes.append("구간이 이상해 — 트림 건너뜀")
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
+    if del_spans and segs:   # 생존 자막 보호(검증④): 타이밍 조절·병합으로 삭제 스팬이 생존 조각과 겹치면 그 겹침은 컷 제외(남기려던 발화 오컷 차단)
+        alive = [sp for sp in (_span(sg.get("s"), sg.get("e")) for sg in segs) if sp]
+        if alive:
+            del_spans = subtract_spans(del_spans, alive)
     # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
     #   컷과 자막이 같은 파이프라인이어야 하는 이유 = 컷하면 뒤 자막 시각이 전부 당겨짐(remap이 그 싱크 담당).
     #   자를 갭이 없거나 cut OFF = keeps 빈 목록 = 종전 단일 -vf 경로 그대로(회귀 0).
@@ -820,6 +826,8 @@ def run(vid_id, video, outdir):
     if vid_ar:
         target, cur = V_AR[vid_ar], w / h
         if abs(target - cur) < 1e-3:
+            if vid_fit == "blur":
+                edit_notes.append("이미 그 비율 — 블러 여백 생략")   # 신규 축만 표면화(pad/crop 종전 무note 유지 = 회귀 0 · 검증② N2)
             vid_ar = None   # 이미 그 비율 = 크롭/패드 생략
         elif vid_fit in ("pad", "blur"):
             pad_t = target   # blur = pad와 동일 캔버스·contain 산식(채움만 검정→원본 블러 확대 배경 · 260711)
@@ -952,7 +960,7 @@ def run(vid_id, video, outdir):
                 if keeps:
                     with open(ass_path, "w", encoding="utf-8") as f:
                         f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
-                    cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
+                    cut_note, dur = ("무음 컷 실패 — 컷 없이 합성" if sil_note else "삭제 컷 실패 — 컷 없이 합성"), dur_orig   # 라벨 = 컷 출처 분기(검증① — del 단독 폴백 오표기 방지)
                 if vocals:
                     vocals, ins = "", tcut + ["-i", video]   # 트림 보존(-ss/-t 유지) — 폴백이 구간을 잃지 않게
                     bgm_note = "배경음 제거 실패 — 원본 소리로 합성"

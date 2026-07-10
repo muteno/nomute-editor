@@ -24,6 +24,7 @@ ${SUBS}"
 
 # 인라인 재시도 — 쿼터 한도 = 대체 계정 전환 · 일시 과부하 = 백오프(lymake 문법 그대로)
 inline_delay=15
+rc=1   # set -u 방어(INLINE_TRIES 이상값으로 루프 미진입 시 미정의 참조 차단 · 검증⑥ L1)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=clip METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
         --model "$MODEL" \
@@ -49,12 +50,14 @@ if [ $rc -ne 0 ] || [ -z "${out// }" ] || ! grep -qm1 '"clips"' <<<"$out"; then
     echo "---- stderr ----"; cat "${OUTDIR}/stderr.log" 2>/dev/null
     echo "---- stdout(head) ----"; printf '%s\n' "$out" | head -n 10
   } > "${OUTDIR}/error.log"
+  rm -f "${OUTDIR}/stderr.log"   # 실패 잔존 시 커밋 유입 차단(내용은 error.log에 이미 수용 · 검증⑥ L2)
   echo "::error::클립 구간픽 실패 (rc=$rc)"
   exit 1
 fi
 
 # LLM 출력 → clips.json — 3층 관용 파싱(§📰 LLM 형식 보증: 펜스 관용 → raw JSON → 미검출 = 실패 표면화) + 스팬 실측 검증
-CLIP_OUT="$out" python3 - "$OUTDIR" <<'PY' || { echo "클립 후보 파싱 실패 — 다시 시도해줘" > "$OUTDIR/error.log"; echo "::error::clips.json 파싱 실패"; exit 1; }
+#   길이 가드 6~90초 = 프롬프트 지시(15~60초)의 *보수 여유 하드넷*(지시 위반 후보도 운영자 확정 단계가 거름 · 검증⑥ L6/⑩ P4 — 숫자 불일치는 의도)
+CLIP_OUT="$out" python3 - "$OUTDIR" <<'PY' || { echo "클립 후보 파싱 실패 — 다시 시도해줘" > "$OUTDIR/error.log"; rm -f "$OUTDIR/stderr.log"; echo "::error::clips.json 파싱 실패"; exit 1; }
 import json
 import os
 import re
@@ -86,8 +89,11 @@ try:
     dur = float(os.environ.get("EDIT_DUR") or 0)
 except Exception:
     dur = 0.0
+cl = j.get("clips")
+if not isinstance(cl, list):
+    cl = []   # clips 비배열(모델 형식 이탈) = 0후보로 우아한 강등(TypeError 크래시 방지 · 검증⑥ L4)
 clips = []
-for c in (j.get("clips") or [])[:8]:
+for c in cl[:8]:
     try:
         s, e = float(c.get("s")), float(c.get("e"))
     except Exception:
@@ -114,8 +120,11 @@ doc = {"v": 1, "ts": ts, "dur": round(dur, 1), "clips": clips}
 src_url = (os.environ.get("SRC_URL") or "").strip()
 if src_url.startswith(("http://", "https://")):
     doc["src"] = src_url   # URL 소스 = 그대로 승계(재렌더 소스 · 파일 업로드는 후속 R2 보관 스텝이 채움)
-with open(os.path.join(d, "clips.json"), "w", encoding="utf-8") as f:
+p = os.path.join(d, "clips.json")
+tmp = p + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
     json.dump(doc, f, ensure_ascii=False, separators=(",", ":"))
+os.replace(tmp, p)   # 원자 교체 = 레포 표준(truncate-쓰기 금지 · 검증⑤)
 print("clips.json: 후보 {}개".format(len(clips)))
 PY
 rm -f "${OUTDIR}/stderr.log"

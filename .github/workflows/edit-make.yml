@@ -176,7 +176,7 @@ jobs:
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
 
       - name: 자막 의역 (claude)
-        if: ${{ contains(inputs.opts, '"burn":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"clip":true') }}   # clip 배타 러너 백스톱(검증⑤ — api 정규화와 이중 방어 · 수동 dispatch 혼합 opts 시 토큰 낭비 차단)
         timeout-minutes: 35
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
@@ -208,6 +208,7 @@ jobs:
           SRC_URL: ${{ inputs.url }}
         run: |
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝(컴포즈·커밋) 동형(검증⑧ 심층방어 대칭)
           [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
           SUBS="$(cat /tmp/transcript.txt)"; export SUBS
           EDIT_DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"; export EDIT_DUR
@@ -219,6 +220,7 @@ jobs:
       #   전면 fail-soft: 실패 = 후보 목록은 정상·재렌더만 파일 재선택(뷰어 안내).
       - name: 클리퍼 원본 보관 (R2)
         if: ${{ contains(inputs.opts, '"clip":true') && inputs.url == '' }}
+        timeout-minutes: 8   # R2 PUT 스톨 백스톱(형제 R2 스텝 동형 · 검증⑤)
         env:
           IN_ID: ${{ inputs.id }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -227,6 +229,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝 동형(검증⑧)
           python3 - "$IN_ID" "$EDIT_SRC" <<'PY' || echo "::warning::클리퍼 원본 보관 실패(비치명 — 재렌더 시 파일 재선택)"
           import json
           import os
@@ -247,8 +250,10 @@ jobs:
           if url:
               j = json.load(open(p, encoding="utf-8"))
               j["src"] = url
-              with open(p, "w", encoding="utf-8") as f:
+              tmp = p + ".tmp"
+              with open(tmp, "w", encoding="utf-8") as f:
                   json.dump(j, f, ensure_ascii=False, separators=(",", ":"))
+              os.replace(tmp, p)   # 원자 교체 = 레포 표준(truncate-쓰기 금지 · 검증⑤)
               print("원본 보관:", url)
           PY
 
