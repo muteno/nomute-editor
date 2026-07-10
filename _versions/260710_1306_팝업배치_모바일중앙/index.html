@@ -6246,19 +6246,17 @@ $('#topRefresh').addEventListener('click', () => { setTimeout(() => location.rel
 // (🚨 긴급 확인 버튼 핸들러 폐지 — 운영자 260620: 프로필 긴급 점등·확인 루틴 제거. 토스트 재알림 de-dup은 수집함 진입(showTab scrap)으로 이전.)
 // 메시지·발행본·잠금 팝업 위치 = 링크 메뉴(#linkfab) 위 앵커(운영자 260707 "열린 메뉴 가까이" — 진입로가 linkpop으로 이관됐는데 앵커만 구 프로필에 남아 딴 데서 뜨던 것 교정)
 function vhAnchor() { const p = $('#profile'); return (p && p.getClientRects().length) ? p : $('#searchToggle'); }   // 구 프로필 앵커 = linkfab 부재 시 최후 폴백으로만 잔존(기어 도먼트 260706 3차)
-function placePopNearMenu(pop) {   // 공용 배치(메시지함·발행본·잠금·전광판): PC = linkfab 위(popAt 미러 = 중앙정렬+좌우 클램프·bottom 고정·위로 펼침) · 모바일(≤600px) = 화면 가운데 정렬 + 네비 위 --sp-4 마진(운영자 260710 "하단 NAV 위에 어느 정도 마진 + 가운데 정렬" — PC는 현행 유지) · ⚠️ 호출 전 pop.hidden 해제 필수(offsetWidth 측정)
+function placePopNearMenu(pop) {   // 공용 배치: linkfab 위(popAt 미러 = 중앙정렬+좌우 클램프·bottom 고정·위로 펼침) · ⚠️ 호출 전 pop.hidden 해제 필수(offsetWidth 측정)
   const lf = $('#linkfab');
   const a = (lf && lf.getClientRects().length) ? lf : vhAnchor();
   const r = a.getBoundingClientRect();
   if (a === lf) {
-    const mob = matchMedia('(max-width:600px)').matches;   // 모바일 분기 = 하우스 지배 분기점 600 계승
-    const gap = mob ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-4')) || 24) : 8;   // 모바일 = 네비 위 마진 --sp-4(24) 토큰 계승 · PC = 구 8px(popAt 동일 간격)
-    pop.style.bottom = Math.round(window.innerHeight - r.top + gap) + 'px';
+    pop.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';   // 링크 버튼 위 8px = popAt(linkpop) 동일 간격
     pop.style.top = 'auto';
-    const w = pop.offsetWidth || 320, cx = mob ? window.innerWidth / 2 : r.left + r.width / 2;   // 모바일 = 뷰포트 정중앙(linkfab 중심이면 우측 치우침 좌23/우8 비대칭) · PC = linkfab 중심
+    const w = pop.offsetWidth || 320, cx = r.left + r.width / 2;
     pop.style.left = Math.round(Math.max(8, Math.min(cx - w / 2, window.innerWidth - w - 8))) + 'px';   // popAt 클램프 계승(translateX 금지 = 히트테스트 누수 차단)
     pop.style.right = 'auto';
-    pop.style.maxHeight = Math.max(120, r.top - gap - 12) + 'px';   // 상단 넘침 방지(내부 스크롤 · PC = 구 r.top-20 동일값 유지식)
+    pop.style.maxHeight = Math.max(120, r.top - 20) + 'px';   // 상단 넘침 방지(내부 스크롤)
     pop.classList.add('anch-b');   // 아래 앵커 = 펼침 원점 bottom(msgUnfoldUp)
   } else {   // 폴백 = 구 프로필/검색 앵커(상단 우측) — linkfab 미존재 방어
     const top = Math.round(r.top + r.height / 2);
