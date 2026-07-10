@@ -322,7 +322,8 @@ def generate(image_path, text_lines, output_path):
 
     final = composited.convert('RGB')
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    final.save(output_path, format='JPEG', quality=95)
+    # subsampling=0(4:4:4) — 기본 4:2:0은 형광그린(#0FFD02) 강조 텍스트 가장자리 크로마 번짐(분신11 감사 260709)
+    final.save(output_path, format='JPEG', quality=95, subsampling=0, optimize=True)
     print(f"OK: {output_path} ({final.size})")
     return True
 

@@ -406,7 +406,8 @@ def _usage_total(calls):
     return {"calls": len(calls), "prompt_tokens": s("prompt"), "output_tokens": s("output"), "total_tokens": s("total")}
 
 def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None):
-    """Gemini 이미지 1장 생성 → PNG bytes(실패 시 None, fail-soft). usageMetadata는 _USAGE에 기록.
+    """Gemini 이미지 1장 생성 → 이미지 bytes(실측: 모델이 보통 JPEG 반환 — 'PNG' 가정 금지 · 실패 시 None, fail-soft).
+    usageMetadata는 _USAGE에 기록.
 
     image_size: "1K"(기본·gen_cards 재사용 시 유지)·"2K"·"4K"(대문자 K 필수). 썸네일·카드 모두 1K 호출(토큰 절감).
     aspect: 화면비("4:5" 기본=카드/썸네일 · "16:9"/"9:16"=영상 레퍼런스 등).
@@ -769,9 +770,12 @@ def http_image(url):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": UA})
         with _OPENER.open(req, timeout=20) as r:
-            b = r.read(8000000)
+            b = r.read(8000001)   # 상한+1 — 딱 8MB read는 초과분을 '조용히 절단'해 깨진 JPEG가 매직바이트를 통과함(분신11 260709)
     except Exception as e:
         print("  ⚠️ 이미지 다운로드 실패({}…): {}".format(url[:45], e), flush=True)
+        return None, None, None
+    if b and len(b) > 8000000:                              # 8MB 초과 = 절단본 → 거부(잘린 이미지 R2 유입 차단)
+        print("  ⚠️ 이미지 8MB 초과 거부({}…)".format(url[:45]), flush=True)
         return None, None, None
     ct, ext = _img_type(b or b"")
     if not ct:                                              # SVG/HTML/비이미지 → 거부(R2 오염·저장형 XSS 차단)
@@ -911,8 +915,8 @@ def process_one(md, stem):
                     png = png2
             if not png:
                 print("  ✗ {} 실패".format(label)); continue
-            if R2_ON:                                # R2 = 공개 URL(레포 미저장)
-                url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid))
+            if R2_ON:                                # R2 = 공개 URL(레포 미저장) · Content-Type = 매직바이트 실측(키 .png는 URL 하위호환 유지 — 서빙은 헤더가 결정)
+                url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid), _img_type(png)[0] or "image/png")
                 if url:
                     gen.append({"sid": sid, "img": url + "?v=" + str(int(time.time())), "label": label}); changed = True   # ?v=캐시버스트(재생성 시 같은 R2 키 덮어써도 새 이미지 반영)
                     print("  ✓ {} → R2".format(label)); continue

@@ -32,12 +32,12 @@
 해상도: **2K** = post 2160×2700·reels 2160×3840 / **FHD** = post 1080×1350·reels 1080×1920 (1080 설계기준 ×SCALE2).
 
 **규칙 근거 (운영자 260621 — 의도까지 박음)**:
-- **합성본(배경 있는 것·헤더) = 2K JPG q95**: PNG↔JPG95 체감차 미미 · 2K↔1K는 차이 큼 · 용량은 JPG가 압도(실측 사진합성 5.47MB PNG→1.13MB JPG ×4.8, 포스트 1건 11MB→2.3MB). PNG·2K 7MB가 포스트 안 뜨던 원인이었음.
+- **합성본(배경 있는 것·헤더) = 2K JPG q95·4:4:4(subsampling=0·optimize — 형광그린 텍스트 크로마 번짐 방지 · 260710 평의회10)**: PNG↔JPG95 체감차 미미 · 2K↔1K는 차이 큼 · 용량은 JPG가 압도(실측 사진합성 5.47MB PNG→1.13MB JPG ×4.8, 포스트 1건 11MB→2.3MB). PNG·2K 7MB가 포스트 안 뜨던 원인이었음.
 - **영상용 투명 오버레이(`/1`·`/2` 배경X) = 2K PNG**: 2K~4K 영상 위에 얹히니 선명해야 함(다운스케일 금지) · 투명 필요라 JPG 불가.
 - **면책 오버레이(`/3`·`/4`) = FHD PNG**: 화질 비중요(있기만 하면 됨·면책 목적) → 1K로 충분.
 - 원칙: **빠르게·저비용·확실하게**(요구 기능 누락 0이 기준).
 
-**최소 부품(`thumb-make.yml` Render 내 모듈 — 포맷 규칙이 여기 모임·수정은 여기서만)**: `save_jpg(img,dst)`=JPG q95 / `save_fhd_png(img,dst,scale)`=2K→FHD PNG / `emit(ov,image,fmt,base)`=배경O→JPG·배경X→2K PNG copy.
+**최소 부품(`thumb-make.yml` Render 내 모듈 — 포맷 규칙이 여기 모임·수정은 여기서만)**: `save_jpg(img,dst)`=JPG q95·subsampling=0(4:4:4)·optimize / `save_fhd_png(img,dst,scale)`=2K→FHD PNG / `emit(ov,image,fmt,base)`=배경O→JPG·배경X→2K PNG copy.
 **`.jpg` 배관(전 경로)**: `thumb.js`(경로 ext=`wantImg?jpg:png`·R2 절대 URL) · `viewer/thumb.html`(다운로드 ext=`o.path`·R2 교차출처라 **blob 다운로드** `dlBlob`) · `build-viewer.mjs`(이전제작 = `_meta.json` 읽음).
 **저장 = R2 (260621 이전·기틀)**: `/1`~`/4`·헤더 출력 = **Cloudflare R2** 직접 업로드(`thumb-make.yml` `r2_upload`·키 `thumb_out/<id>/<file>`·베이스 `R2_BASE`=`thumb.js` 상수와 일치). **git 미커밋**(비대 0) · 업로드 **즉시 전세계 서빙**(Pages 배포 대기 0 = 포스트 "안 뜸" 근본 소멸·raw 폴백 불요). ⚠️ R2 업로드 실패 = **잡 실패**(git 폴백 안 함 — API가 R2 예측). 이전제작(전 기기) = 워크플로가 `viewer/thumb_out/<id>/_meta.json`(`[[file,R2url]]`·수KB git)만 커밋 → build-viewer가 읽어 `thumb-hist.json` 생성. 카드뉴스·뉴스카드도 R2. "R2 이미지" = git 아닌 R2의 이미지.
 **스크립트 불변**: `nomute_*.py`는 절대규칙1(불변·import/subprocess만) — 포맷은 워크플로 부품에서만 바꿈.
