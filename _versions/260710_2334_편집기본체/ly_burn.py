@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-# 영상 자막 번인(자동 합성) + 편집기 컴포지터 — 자막 ASS 번인·무음 컷·배경음 제거에 더해 편집기(edit) 축
-#   {vid_ar/vid_fit(크롭·검정 여백)·vid_res·vid_fps(60i 보간·다운)·vid_t0/t1(트림·자막 없는 경로만)·aud_norm(음량 통일)}을
-#   한 ffmpeg 파이프로 합성해 R2 업로드 → viewer/ly_out/<id>/video.json. 편집기 축 전부 결측 = 종전 ly 경로 그대로(회귀 0 · 260710).
-#   사용: ly_burn.py <id> <video_path>   (ly-make.yml 번인 스텝 + edit-make.yml 컴포즈 스텝 · ffmpeg+fonts-noto-cjk는 runner-setup가 설치)
+# 영상 자막 번인(자동 합성) — 자막 텍스트를 ASS(libass)로 영상에 입혀 R2 업로드 → viewer/ly_out/<id>/video.json.
+#   사용: ly_burn.py <id> <video_path>   (ly-make.yml 번인 스텝 전용 · ffmpeg+fonts-noto-cjk는 runner-setup가 설치)
 #   env: OPTS = 뷰어 버튼 설정 JSON(스타일·위치·크기·카라오케·키워드) · R2 5종 = thumb_gen 재사용(카드·썸네일·/k 동일 파이프)
 # 자막 소스 우선순위: subs.json(의역+타이밍 · lymake.sh가 claude 출력 꼬리 JSON 분리) → segments.json(받아쓴 원문 폴백).
 # 실패 = fail-soft: video.json에 사유 기록 후 rc 0 (자막 텍스트 산출은 이미 정상 — 번인이 잡을 죽이면 안 됨).
@@ -28,8 +26,6 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "shared"))
-import audio_norm   # 음량 통일 SSOT(−14LUFS 2패스·L/R 모노합 — 자체 loudnorm 재구현 금지 · 편집기 aud_norm)
 import thumb_gen as tg   # r2_upload · R2_ON 재사용(모듈 import = main 미실행 · k_refgen 선례)
 
 GREEN_BGR = "&H02FD0F&"          # #0FFD02 → ASS BGR(콘텐츠 그린)
@@ -257,7 +253,7 @@ def strip_bgm(video):
         return ""
 
 
-def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
+def cut_filter(keeps, audio, scale, ass_path, asrc="[0:a]"):
     # 단일 패스 select+setpts 시프트 — trim+concat 팬아웃은 브랜치 버퍼링으로 keep 10개에 피크 RSS 4.7GB 실측
     # (러너 7GB OOM 위험 · 평의회8) → select가 한 패스에서 갭 프레임만 드롭 = 메모리 O(1).
     # new_pts = t − (그 keep 앞 제거 누적) = cut_remap과 동일 사상 → 자막·영상·오디오 드리프트 구조적 0(VFR 포함 · 평의회1).
@@ -273,8 +269,7 @@ def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
     if audio:
         loud = ",loudnorm=I=-16:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정(SNS 표준 -16 LUFS · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
         parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}[ac];".format(asrc, sel_e, off_e, loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장)
-    tail = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass_on else "")
-    parts.append("[vs]" + (tail.rstrip(",") or "null") + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용
+    parts.append("[vs]" + ((scale + ",") if scale else "") + "ass={}[vo]".format(ass_path))
     return "\n".join(parts)
 
 
@@ -621,30 +616,8 @@ def run(vid_id, video, outdir):
             inject_words(segs, outdir)   # STT word 타임스탬프 주입(실싱크 · 실패해도 글자수 비례 폴백 = 무해)
         except Exception as ex:
             print("::warning::word 주입 예외(실싱크 스킵):", ex)
-    # ── 편집기(edit) 축 파싱 — 전부 결측 = 순수 ly 경로(회귀 0 · 운영자 260710 골격 B 확정)
-    V_AR = {"9:16": 9 / 16, "1:1": 1.0, "4:5": 4 / 5, "16:9": 16 / 9}
-    vid_ar = opts.get("vid_ar") if opts.get("vid_ar") in V_AR else None
-    vid_fit = opts.get("vid_fit") if opts.get("vid_fit") in ("crop", "pad") else "crop"
-    vid_res = {"1080": 1080, "720": 720}.get(str(opts.get("vid_res") or ""))
-    vid_fps = opts.get("vid_fps") if opts.get("vid_fps") in ("60i", "30", "24") else None
-    aud_on = bool(opts.get("aud_norm"))
-    try:
-        vid_pos = min(1.0, max(0.0, float(opts.get("vid_pos", 0.5))))
-    except Exception:
-        vid_pos = 0.5
-    def _sec(k):
-        try:
-            v = float(opts.get(k))
-            return v if math.isfinite(v) and v > 0 else None
-        except Exception:
-            return None
-    t0_req, t1_req = _sec("vid_t0"), _sec("vid_t1")
-    has_vid = bool(vid_ar or vid_res or vid_fps or t0_req or t1_req)
-    edit_notes = []
-    if not segs and not (has_vid or aud_on or opts.get("bgm")):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합)
+    if not segs:
         out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
-    if opts.get("cut") and not segs:
-        edit_notes.append("무음 컷 건너뜀(자막 전사 필요)")   # 컷 기준 = STT 발화 스팬 — 자막 없는 편집 경로엔 원천이 없다
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
     # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
@@ -707,115 +680,29 @@ def run(vid_id, video, outdir):
             keeps = []
     elif opts.get("cut"):
         cut_note = "영상 길이 미상 — 무음 컷 건너뜀"   # dur=0(probe N/A) 침묵 스킵 표면화(평의회3·6 260709) — 조용한 무력화 금지
-    # ── 지오메트리 확정 — [트림(자막 없는 경로만)] → 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스
-    #    (자막이 검정 여백 위에도 앉게 = 패드 뒤 렌더 · 편집기 260710). 편집기 축 결측 = 종전 ly 캡(폭 1080)·체인 그대로.
-    trim = None
-    if t0_req is not None or t1_req is not None:
-        if segs:
-            edit_notes.append("구간은 자막과 동시 미지원 — 건너뜀")   # 트림 = 자막 타임라인 재매핑 필요(후속) — v1 정직 스킵
-        else:
-            a = min(max(0.0, t0_req or 0.0), dur if dur > 0 else 1e9)
-            b = min(t1_req, dur) if (t1_req is not None and dur > 0) else (t1_req if t1_req is not None else dur)
-            if b and b > a + 0.2:
-                trim = (a, b - a)
-                dur = b - a
-            elif dur <= 0:
-                edit_notes.append("영상 길이 미상 — 트림 건너뜀")   # probe N/A(webm 등) = 범위 검증 불가(P2평의회2 문구 정정)
-            else:
-                edit_notes.append("구간이 이상해 — 트림 건너뜀")
-    cw, ch, cx, cy = w, h, 0, 0
-    pad_t = 0.0
-    if vid_ar:
-        target, cur = V_AR[vid_ar], w / h
-        if abs(target - cur) < 1e-3:
-            vid_ar = None   # 이미 그 비율 = 크롭/패드 생략
-        elif vid_fit == "pad":
-            pad_t = target
-        elif target < cur:
-            cw = max(2, int(h * target) & ~1)
-            cx = int(vid_pos * (w - cw)) & ~1
-        else:
-            ch = max(2, int(w / target) & ~1)
-            cy = int(vid_pos * (h - ch)) & ~1
-    cropf = "crop={}:{}:{}:{}".format(cw, ch, cx, cy) if (cw, ch) != (w, h) else ""
-    pw = ph = 0
-    if has_vid:   # 편집기 경로 = conv 캡 문법(긴 변 1920·res 캡·패드 캔버스 목표비 스냅·contain)
-        cap = min(1920, vid_res) if vid_res else 1920
-        tw, th = cw, ch
-        if pad_t:
-            if cw / ch > pad_t:
-                pw, ph = cw, int(round(cw / pad_t))
-            else:
-                pw, ph = int(round(ch * pad_t)), ch
-            if max(pw, ph) > cap:
-                if pw >= ph:
-                    pw, ph = cap, max(2, int(round(cap / pad_t)) & ~1)
-                else:
-                    pw, ph = max(2, int(round(cap * pad_t)) & ~1), cap
-            pw, ph = max(2, pw & ~1), max(2, ph & ~1)
-            k = min(pw / cw, ph / ch, 1.0)
-            tw, th = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
-        elif max(cw, ch) > cap:
-            k = cap / max(cw, ch)
-            tw, th = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
-        tw, th = tw & ~1, th & ~1
-    else:         # 종전 ly 다운스케일 캡(비용 보호·업스케일 없음) 그대로 = 회귀 0
-        tw, th = cw, ch
-        if tw > 1080:
-            th = int(round(th * 1080 / tw / 2) * 2)
-            tw = 1080
-    canvas_w, canvas_h = (pw or tw), (ph or th)
-    # fps(편집기) — 60i = minterpolate 보간 + 예산 가드(0.30s/출력프레임@1080×1920 실측 · 초과 = 정직 스킵+note) · 30/24 = 다운
-    fpsf, interp_est = "", 0
-    if vid_fps:
-        src_fps = 0.0
-        try:
-            rf = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                                 "stream=avg_frame_rate", "-of", "csv=p=0", video], capture_output=True, text=True, timeout=60)
-            n_, d_ = (rf.stdout or "0/1").strip().split("/")
-            src_fps = float(n_) / float(d_) if float(d_) else 0.0
-        except Exception:
-            src_fps = 0.0
-        if vid_fps == "60i":
-            eff = dur if dur > 0 else float(MAX_DUR)
-            unit = 60 * 0.30 * (tw * th / 2073600.0)
-            est = eff * unit
-            if src_fps >= 59:
-                edit_notes.append("이미 60fps — 보간 건너뜀")
-            elif est > 900:   # 잡 캡 보호(자막·배경음과 동일 잡 공존 예산 · 평의회2 260710)
-                edit_notes.append("60fps 보간 건너뜀 — 이 해상도로 {}초까지(변환 탭 720p = 120초)".format(int(900 / unit) if unit else 0))
-            else:
-                fpsf, interp_est = "minterpolate=fps=60", int(est)
-        elif src_fps > float(vid_fps) + 0.5:
-            fpsf = "fps=" + vid_fps
-    padf = ""
-    if pw:
-        px_, py_ = max(0, (pw - tw) // 2) & ~1, max(0, (ph - th) // 2) & ~1
-        padf = "pad={}:{}:{}:{}:black,setsar=1".format(pw, ph, px_, py_)   # setsar=1 = contain 짝수화 미세 SAR 제거(conv 동형)
-    scalef = "scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""
-    sarf = "setsar=1" if (has_vid and scalef and not padf) else ""   # 스케일 짝수화 잔여 SAR 제거 — 패드 경로(padf 내장)와 대칭(P2평의회9 실측)
-    mid = ",".join(x for x in [cropf, scalef, fpsf, padf, sarf] if x)
-    ass = build_ass(segs, canvas_w, canvas_h, opts) if segs else ""
+    # 다운스케일 캡(비용 보호·업스케일 없음) — 목표 치수를 먼저 확정해 PlayRes와 일치시킴(왜곡 0)
+    tw, th = w, h
+    if w > 1080:
+        tw = 1080
+        th = int(round(h * tw / w / 2) * 2)
+    ass = build_ass(segs, tw, th, opts)
     ass_path = "/tmp/ly_subs.ass"
     with open(ass_path, "w", encoding="utf-8") as f:
         f.write(ass)
     out_mp4 = "/tmp/ly_subbed.mp4"
+    scale = "scale={}:{}".format(tw, th) if (tw, th) != (w, h) else ""
 
-    tcut = ["-ss", "{:.3f}".format(trim[0]), "-t", "{:.3f}".format(trim[1])] if trim else []
-    ins = tcut + ["-i", video] + ((tcut + ["-i", vocals]) if vocals else [])   # 배경음 제거 = 보컬 wav 2번 입력 · 트림 시 두 입력 동일 -ss/-t = 동기 유지
+    ins = ["-i", video] + (["-i", vocals] if vocals else [])   # 배경음 제거 = 보컬 wav 2번 입력(영상은 원본 그대로)
 
     def plain_cmd():
         # ⚠️ -shortest 금지: vocals가 영상보다 짧으면 영상을 절단(6.4s→5.0s 실측 회귀 · 평의회1 P1) — 영상 길이가 출력을 주도(꼬리 무음 = 무해)
-        vf = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass else "")
-        vf = vf.rstrip(",") or "null"   # 자막 없는 편집 경로에서 mid도 비면 무변환 통과(null) — 오디오만 손대는 조합
+        vf = (scale + "," if scale else "") + "ass={}".format(ass_path)
         return ["ffmpeg", "-y"] + ins + ["-vf", vf] \
             + (["-map", "0:v:0", "-map", "1:a:0", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] if vocals else []) \
             + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
-    enc_to = 900 + int(interp_est * 1.5)   # 60i 보간 예산(≤900s)만큼 백스톱 연장(최대 2250s) — 스텝 내 최악 스택{probe+Demucs 분리(≤780)+본 인코딩+음량(≤270)}은 컴포즈 스텝 55분 캡이 수용(P2평의회2 산술)
-    def encode(c, to=None):   # 15분 백스톱(폴백은 600+보간 = 예산 스택 축소 · 평의회2·3) — 잡 하드킬 전에 우아하게 실패 기록
-        to = enc_to if to is None else to
+    def encode(c, to=900):   # 15분 백스톱(폴백은 600 = 예산 스택 축소 · 평의회2·3) — 잡 하드킬 전에 우아하게 실패 기록
         r = subprocess.run(c, capture_output=True, text=True, timeout=to)
         return (r.returncode == 0 and os.path.isfile(out_mp4) and os.path.getsize(out_mp4) >= 1024), (r.stderr or "")
 
@@ -824,7 +711,7 @@ def run(vid_id, video, outdir):
             if keeps:
                 fc_path = "/tmp/ly_cut.filter"
                 with open(fc_path, "w", encoding="utf-8") as f:
-                    f.write(cut_filter(keeps, aud, mid, ass_path, "[1:a]" if vocals else "[0:a]", bool(ass)))
+                    f.write(cut_filter(keeps, aud, scale, ass_path, "[1:a]" if vocals else "[0:a]"))
                 cmd = ["ffmpeg", "-y"] + ins + ["-filter_complex_script", fc_path, "-map", "[vo]"] \
                     + (["-map", "[ac]"] if aud else []) \
                     + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
@@ -836,12 +723,12 @@ def run(vid_id, video, outdir):
                 print("::warning::가공(컷/배경음) 합성 실패 — 원본으로 재시도:", err[-300:])
                 if keeps:
                     with open(ass_path, "w", encoding="utf-8") as f:
-                        f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
+                        f.write(build_ass(segs_orig, tw, th, opts))
                     cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
                 if vocals:
-                    vocals, ins = "", tcut + ["-i", video]   # 트림(자막 없는 경로) 보존 — 폴백이 구간을 잃지 않게
+                    vocals, ins = "", ["-i", video]
                     bgm_note = "배경음 제거 실패 — 원본 소리로 합성"
-                ok, err = encode(plain_cmd(), 600 + int(interp_est * 1.5))
+                ok, err = encode(plain_cmd(), 600)
         else:
             ok, err = encode(plain_cmd())
         if not ok:
@@ -849,23 +736,13 @@ def run(vid_id, video, outdir):
             print("::warning::ffmpeg 번인 실패:", tail)
             out_json(outdir, {"error": "영상 합성 실패 — 자막 텍스트는 정상", "detail": tail[-160:]}); return 0
     except subprocess.TimeoutExpired:
-        out_json(outdir, {"error": "영상 합성 시간 초과 — 자막 텍스트는 정상"}); return 0
-    # ── 음량 통일(편집기 aud_norm) — 완성본 후처리·비디오 copy·전면 fail-soft(성공 합성 보존 = conv 동형)
-    if aud_on:
-        try:
-            ok_a, a_note = audio_norm.normalize(out_mp4, "/tmp/ly_an.mp4")
-        except Exception as e:
-            ok_a, a_note = False, "음량 통일 건너뜀(처리 실패)"
-            print("::warning::audio_norm 예외:", e)
-        if ok_a:
-            out_mp4 = "/tmp/ly_an.mp4"
-        edit_notes.append(a_note)
+        out_json(outdir, {"error": "영상 합성 시간 초과(15분) — 자막 텍스트는 정상"}); return 0
     data = open(out_mp4, "rb").read()
     ed_note = {"1": "편집 자막 반영", "fail": "편집 반영 실패 — 이전 자막으로 합성", "restore": "원본 의역 복원"}.get(os.environ.get("LY_EDITED") or "", "")   # 편집분 번인 결과 표면화(기능평의회9 P1 — 반영/실패/복원이 무신호로 수렴하던 침묵 봉합 · env = ly-make '편집 자막 반영' 스텝)
     note = " · ".join(p for p in [
         ed_note,
         "받아쓴 자막(원문)으로 합성" if src_kind == "stt" else "",
-        bgm_note, cut_note] + edit_notes if p)   # 처리 순서대로 표기: 편집 → 배경음 → 컷 → 편집기(트림/보간/음량)
+        bgm_note, cut_note] if p)   # 처리 순서대로 표기: 편집 → 배경음 → 컷
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
     try:
