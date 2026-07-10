@@ -33,8 +33,6 @@ export async function onRequestPost({ request, env }) {
   const opts = {};
   opts.fps = ['keep', '60i', '30', '24'].includes(o.fps) ? o.fps : 'keep';
   opts.ar = ['orig', '9:16', '1:1', '4:5', '16:9'].includes(o.ar) ? o.ar : 'orig';
-  opts.fit = ['crop', 'pad'].includes(o.fit) ? o.fit : 'crop';   // 비율 채움 방식 — crop=자르기 · pad=검정 여백(중앙 · 260710)
-  opts.audio = ['keep', 'norm'].includes(o.audio) ? o.audio : 'keep';   // norm = 음량 통일(−14LUFS·L/R — shared/audio_norm.py)
   const pos = num(o.pos, 0, 1); if (pos !== null) opts.pos = Math.round(pos * 1000) / 1000;
   const t0 = num(o.t0, 0, 3600), t1 = num(o.t1, 0, 3600);
   if (t0 !== null && t0 > 0) opts.t0 = Math.round(t0 * 100) / 100;
