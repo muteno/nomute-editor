@@ -389,18 +389,6 @@ def check_curation_constants():
             bad.append('%s: 추출실패(code=%s·doc=%s)' % (name, code_v, doc_v)); continue
         if float(code_v) != float(doc_v):
             bad.append('%s: viewer=%s ≠ §★문서=%s (코드↔문서 드리프트/자기-revert 의심)' % (name, code_v, doc_v))
-    # FAST_MAX_H 크로스랭귀지 패리티(260710) — viewer "단일출처" 주장과 달리 auto_pick_breaking.py에 값 사본 존재
-    # (칼럼 경계·자동픽 나이 게이트가 갈리면 배지↔자동픽 불일치). 사본 자체는 유지(파이썬이 viewer를 못 읽음) — 값만 기계 대조.
-    try:
-        ap = open(os.path.join(ROOT, 'scraper', 'auto_pick_breaking.py'), encoding='utf-8').read()
-        mv = re.search(r'const FAST_MAX_H\s*=\s*(\d+)', v)
-        mp = re.search(r'^FAST_MAX_H\s*=\s*(\d+)', ap, re.M)
-        if not mv or not mp:
-            bad.append('FAST_MAX_H: 선언 추출 실패(viewer=%s·auto_pick=%s)' % (bool(mv), bool(mp)))
-        elif mv.group(1) != mp.group(1):
-            bad.append('FAST_MAX_H 크로스랭귀지 드리프트: viewer=%s ≠ auto_pick_breaking.py=%s' % (mv.group(1), mp.group(1)))
-    except Exception as e:
-        bad.append('FAST_MAX_H 패리티 검사 실패: %s' % e)
     if bad:
         print('❌ 큐레이션 상수↔문서 정합 실패(C8 게이트):')
         for b in bad: print('  -', b)
@@ -408,6 +396,26 @@ def check_curation_constants():
     else:
         print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·ACC_T·GRADE_W 전체 = §★ 일치.')
     return rc
+
+
+def check_fast_max_h_parity():
+    """FAST_MAX_H 크로스랭귀지 패리티(260710 · 검증6R FP-C로 분리) — viewer "단일출처" 주장과 달리
+    auto_pick_breaking.py에 값 사본 존재(칼럼 경계·자동픽 나이 게이트가 갈리면 배지↔자동픽 불일치 · 사본
+    유지 = 파이썬이 viewer를 못 읽어서·값만 기계 대조). check_curation_constants 안에 두면 §★ 줄 리워딩의
+    조기 return(문서 의존)이 이 코드↔코드 검사까지 조용히 꺼버려 독립 함수로 분리. fail-closed."""
+    try:
+        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        ap = open(os.path.join(ROOT, 'scraper', 'auto_pick_breaking.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_fast_max_h_parity 파일 읽기 실패(fail-closed):', e); return 1
+    mv = re.search(r'const FAST_MAX_H\s*=\s*(\d+)', v)
+    mp = re.search(r'^FAST_MAX_H\s*=\s*(\d+)', ap, re.M)
+    if not mv or not mp:
+        print('❌ FAST_MAX_H 선언 추출 실패(viewer=%s·auto_pick=%s) — 선언 형태 변경 시 이 게이트도 갱신' % (bool(mv), bool(mp))); return 1
+    if mv.group(1) != mp.group(1):
+        print('❌ FAST_MAX_H 크로스랭귀지 드리프트: viewer=%s ≠ auto_pick_breaking.py=%s (칼럼 경계↔자동픽 나이 게이트 불일치)' % (mv.group(1), mp.group(1))); return 1
+    print('✅ FAST_MAX_H 패리티 — viewer(%s) = auto_pick_breaking.py(%s) 크로스랭귀지 동일.' % (mv.group(1), mp.group(1)))
+    return 0
 
 
 _CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
@@ -871,6 +879,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ --bare 도구충돌 게이트 스킵:', e)
+    try:
+        if check_fast_max_h_parity() != 0:   # FAST_MAX_H viewer↔auto_pick 크로스랭귀지 패리티(하드 게이트·fail-closed·260710)
+            rc = 1
+    except Exception as e:
+        print('❌ check_fast_max_h_parity 예외(fail-closed):', e); rc = 1
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1

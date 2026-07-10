@@ -318,12 +318,15 @@ def main():
             t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
         return t if t.tzinfo else t.replace(tzinfo=KST)
 
-    # 캐리 강등 사각 픽스(분신술 260710): 이번 스크랩(fresh)에 없는 엔트리는 breaking_candidate 재계산(fresh 산정)이
-    # 없어 옛 True가 눌어붙음 → 아래 강등 루프가 영구 스킵 = "급증 끝나면 강등" 보장이 캐리 경로서 깨짐(isBreaking
-    # ×3.0 랭킹 부스트 좀비·TTL 240h까지). 리셋 → 아래 grade3 승격이 신선 대형은 재구제 → 강등 순서(승격 우선 불변).
-    # 일시 스크랩 누락으로 강등된 활성 사건은 재등장 시 burst 재계산으로 후보 복귀·rubric 비워져 1콜 재판정 = 자가치유.
+    # 캐리 미판정 후보 정리(분신술 260710 · 10인 검증3R로 스코프 축소): 이번 스크랩(fresh)에 없는 엔트리는
+    # breaking_candidate 재계산이 없어 옛 True가 눌어붙음 → needs_judging 영구 잔류(창 이탈한 낡은 후보를 judge가
+    # 무의미 재노출·rubric 개정 시 재판정 폭탄 가담). fresh 이탈 = 통상 스크랩 창(24h) 만료라 "지금 긴급?" 판정 무의미.
+    # ⚠️ 확정 긴급(breaking=True 도장)은 제외 — §★ "긴급이었던 건 cross<8이어도 4h 후 누적 합류(운영자 260617 구멍
+    # 차단)"의 유일한 영속 매체가 breaking 필드(§7 organic 잔류 = 설계 성질)라, 깎으면 미픽·cr<8·rc<6 확정 긴급이
+    # ~24h에 누적 칼럼서 증발 = 기틀 위반(검증3R 불가 평결 → 미판정만 정리). ×3.0 부스트 잔존은 260628 A/B 실측상
+    # 무해(timeAcc가 누름) — 부스트 나이 램프는 별도 운영자 결정 축. 판정 NO 도장분(breaking=False)도 정리 대상(무해).
     for url, c in merged.items():
-        if url not in fresh and c.get("breaking_candidate"):
+        if url not in fresh and c.get("breaking_candidate") and not c.get("breaking"):
             c["breaking_candidate"] = False
 
     # grade3 신선건 → 속보 후보 승격: burst<3 저속 새 사고(어린이집 황화수소 등 = 대형 경중인데 동시보도
