@@ -148,20 +148,6 @@
   .ghost:active { transform:scale(var(--press-l)); } .ghost svg { width:14px; height:14px; }
   .ghost.dlbtn { margin-left:auto; width:38px; height:38px; padding:0; justify-content:center; }
   #dlVid[hidden], .sheet[hidden], .sheetdim[hidden] { display:none; }
-  /* 크롭 위치 미리보기 = conv .scrub 이식(track 키잉 스크럽 계승 · 운영자 260711 "미리보기 이식 후 변환 탭 제거") */
-  .poshint { margin-top:6px; } .poshint[hidden] { display:none; }
-  .cta { background:var(--accent); color:var(--on-accent); font-weight:var(--fw-x); font-size:14px; font-family:inherit; border:none; border-radius:var(--r-pill); padding:11px 22px; cursor:pointer; transition:transform .12s; }
-  .cta:active { transform:scale(var(--press-l)); }
-  .scrub { position:fixed; inset:0; z-index:var(--z-float); background:rgba(8,9,10,.88); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:18px; }
-  .scrub[hidden] { display:none; }
-  .scrub-stage { position:relative; max-width:100%; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); touch-action:none; }
-  .scrub-stage video { display:block; max-width:100%; max-height:56vh; }
-  .cropfr { position:absolute; top:0; left:0; border:2px solid var(--accent); box-shadow:0 0 0 200vmax rgba(0,0,0,.55); cursor:grab; }
-  .cropfr:active { cursor:grabbing; }
-  .scrub-bar { width:100%; max-width:520px; display:flex; align-items:center; gap:10px; }
-  .scrub-bar input[type=range] { flex:1; min-width:60px; accent-color:var(--accent); }
-  .scrub-t { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:44px; text-align:right; color:var(--fg); }
-  .scrub-acts { display:flex; gap:10px; }
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
@@ -203,16 +189,6 @@
 <div class="sheet" id="sheet" hidden role="dialog" aria-label="처리 추가">
   <div class="sh"><b>처리 추가</b><button class="shx" id="shx" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div id="sheetbody"></div>
-</div>
-
-<!-- 크롭 위치 미리보기 — 프레임 드래그(conv 이식 · 파일 선택 시) -->
-<div class="scrub" id="scrub" hidden>
-  <div class="scrub-stage" id="scrubStage"><video id="scrubVid" playsinline muted preload="metadata"></video><div class="cropfr" id="cropFr"></div></div>
-  <div class="scrub-bar"><input type="range" id="scrubT" min="0" max="10" step="0.05" value="0" aria-label="장면 위치"><span class="scrub-t" id="scrubTv">0:00</span></div>
-  <div class="scrub-acts">
-    <button class="ghost" id="scrubCancel" type="button">취소</button>
-    <button class="cta" id="scrubOk" type="button">이 위치로</button>
-  </div>
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
@@ -281,8 +257,7 @@ function prm(k){
   if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
   if(k==='screen') return segs('ar',[['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']],P.ar)
     +'<div class="plbl">방식</div>'+segs('fit',[['crop','자르기'],['pad','여백(검정)'],['blur','여백(블러)']],P.fit)
-    +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%')
-      +(FILE_URL?'<div class="poshint"><button class="ghost" id="posPrev" type="button">위치 미리보기</button></div>':''):'');   // 드래그 프레임(conv 이식) — 파일 소스만(URL = 서버만 치수 인지 · conv 동일 정직)
+    +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'');
   if(k==='res') return segs('res',[['src','원본(4K)'],['1080','1080p'],['720','720p']],P.res);   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711)
   if(k==='fps') return segs('fps',[['60i','60fps 보간'],['30','30'],['24','24']],P.fps);
   return '';
@@ -337,7 +312,6 @@ document.addEventListener('click',e=>{
   if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } } render(); return; }   // 자막 프리셋 = 기존 토글·게이지 원탭 점등
   if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; }
   else P[k]=v;
-  if(k==='fit'&&v!=='crop') scrubClose();   // 크롭 해제 = 열려 있던 미리보기 기준 낡음 → 방어 닫기(멱등 · conv syncPos 계승)
   render();
 });
 function openSheet(){ $('#sheet').hidden=false; $('#sheetdim').hidden=false; }
@@ -345,7 +319,7 @@ function closeSheet(){ $('#sheet').hidden=true; $('#sheetdim').hidden=true; }
 $('#addbtn').addEventListener('click',openSheet);
 $('#shx').addEventListener('click',closeSheet);
 $('#sheetdim').addEventListener('click',closeSheet);
-document.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; if(!$('#scrub').hidden){ scrubClose(); return; } if(!$('#sheet').hidden) closeSheet(); });   // 스크럽(전체화면) 우선 닫기
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#sheet').hidden) closeSheet(); });
 
 /* ══ 레시피(원탭 · UX 평의회3 — 기본값이 일) ══ */
 function recipe(r){
@@ -373,11 +347,11 @@ $('#file').addEventListener('change',async()=>{
   FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0;
   CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';   // 새 소스 = 옛 스캔 후보 무효(엉뚱한 구간 적용 풋건 차단 · 검증⑦C)
   if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
-  FILE_URL=''; render();   // 크롭 미리보기 버튼 즉시 소거(열린 비율 카드 · conv 이식 260711)
+  FILE_URL='';
   if(f.size>2*1024*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('파일은 2GB까지 — 구간을 잘라서 올려줘'); }   // 거절 = 버튼 복구(직전 업로드가 잠근 상태 고착 방지 · 평의회7 F1)
   const r2on=await nmUpArm();   // R2 직업로드 가용(문서당 1회 핑 · 4s 타임아웃) — 미가용 = 종전 30MB 경로 폴백
   if(!r2on&&f.size>30*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('30MB 초과 — 대용량 저장 미설정(R2 바인딩 필요). URL로 해줘'); }
-  FILE_NAME=f.name; FILE_URL=URL.createObjectURL(f); render();   // 미리보기 버튼 노출(objectURL = 업로드 완료 전에도 로컬 프리뷰 가능)
+  FILE_NAME=f.name; FILE_URL=URL.createObjectURL(f);
   const v=document.createElement('video'); v.preload='metadata'; v.src=FILE_URL;
   v.onloadedmetadata=()=>{ _dur=v.duration||0; _varea=(v.videoWidth||0)*(v.videoHeight||0); setEta(); };
   const btn=$('#editGo'); btn.disabled=true;
@@ -396,51 +370,6 @@ $('#file').addEventListener('change',async()=>{
   }
 });
 $('#urlClip').addEventListener('click',async()=>{ try{ const t=await navigator.clipboard.readText(); if(t)$('#url').value=t.trim(); }catch(e){} });
-
-/* ══ 크롭 위치 미리보기 — 프레임 드래그(conv .scrub 이식 · track 키잉 스크럽 계승 · 운영자 260711 "이식 후 변환 탭 제거") ══ */
-const AR_NUM={'9:16':9/16,'1:1':1,'4:5':4/5,'16:9':16/9};
-let _fit=null,_posSnap=50;
-function cropLayout(){
-  const v=$('#scrubVid'), fr=$('#cropFr');
-  const dw=v.clientWidth, dh=v.clientHeight; if(!dw||!dh) return false;
-  const target=AR_NUM[P.ar]; if(!target) return false;
-  const cur=dw/dh; let fw=dw, fh=dh;
-  if(Math.abs(target-cur)>=1e-3){ if(target<cur) fw=dh*target; else fh=dw/target; }   // 동일 비율 = 크롭 생략(py 1e-3 대칭 · conv 평의회6)
-  fr.style.width=fw+'px'; fr.style.height=fh+'px';
-  const p=P.vpos/100;
-  fr.style.left=(fw<dw? p*(dw-fw) : 0)+'px';
-  fr.style.top =(fh<dh? p*(dh-fh) : 0)+'px';
-  const pan=Math.max(dw-fw, dh-fh);
-  fr.style.pointerEvents = pan<2? 'none':'auto';   // 팬 여지 <2px = 드래그 무효(거짓 grab 차단)
-  fr.style.cursor = pan<2? 'default':'grab';
-  _fit={dw,dh,fw,fh,horiz:fw<dw};
-  return true;
-}
-function syncVposUI(){ const g=$('#stack input[data-g="vpos"]'); if(g){ g.value=P.vpos; const vv=g.parentElement.querySelector('.v'); if(vv) vv.textContent=P.vpos+'%'; } }   // 열린 게이지 라이브 동기(카드 접힘 = null 무해)
-function scrubOpen(){
-  if(!FILE_URL) return;
-  _posSnap=P.vpos;   // 취소 복원 스냅샷(드래그 = 라이브 반영 · conv 평의회6)
-  const v=$('#scrubVid'); if(v.dataset.src!==FILE_URL){ v.src=FILE_URL; v.dataset.src=FILE_URL; }   // 동일 src 재로드 방지(track 가드 계승)
-  $('#scrub').hidden=false;
-  v.onloadedmetadata=()=>{ $('#scrubT').max=String(v.duration||10); cropLayout(); };
-  let _try=0; const kick=()=>{ if($('#scrub').hidden) return; if(!cropLayout()&&_try++<10) requestAnimationFrame(kick); }; requestAnimationFrame(kick);   // 레이아웃 지연 재시도
-}
-function scrubClose(){ $('#scrub').hidden=true; const v=$('#scrubVid'); try{ v.pause(); }catch(e){} }
-document.addEventListener('click',e=>{ if(e.target.closest('#posPrev')) scrubOpen(); });   // 버튼 = 카드 동적 렌더라 위임
-$('#scrubT').addEventListener('input',()=>{ const v=$('#scrubVid'); try{ v.currentTime=+$('#scrubT').value; }catch(e){} $('#scrubTv').textContent=fmtT(+$('#scrubT').value); });
-(function(){   // 드래그 = 잘리는 축 팬(포인터 캡처 · 키보드 대안 = 위치 게이지)
-  const fr=$('#cropFr'); let drag=null;
-  fr.addEventListener('pointerdown',e=>{ if(!_fit) return; drag={x:e.clientX,y:e.clientY,l:parseFloat(fr.style.left)||0,t:parseFloat(fr.style.top)||0}; fr.setPointerCapture(e.pointerId); e.preventDefault(); });
-  fr.addEventListener('pointermove',e=>{
-    if(!drag||!_fit) return;
-    if(_fit.horiz){ const l=Math.max(0,Math.min(_fit.dw-_fit.fw, drag.l+e.clientX-drag.x)); fr.style.left=l+'px'; P.vpos=Math.round((_fit.dw-_fit.fw)? l/(_fit.dw-_fit.fw)*100 : 50); }
-    else { const t=Math.max(0,Math.min(_fit.dh-_fit.fh, drag.t+e.clientY-drag.y)); fr.style.top=t+'px'; P.vpos=Math.round((_fit.dh-_fit.fh)? t/(_fit.dh-_fit.fh)*100 : 50); }
-    syncVposUI();
-  });
-  fr.addEventListener('pointerup',()=>{ drag=null; });
-})();
-$('#scrubCancel').addEventListener('click',()=>{ P.vpos=_posSnap; syncVposUI(); scrubClose(); });   // 취소 = 오픈 전 위치 복원
-$('#scrubOk').addEventListener('click',scrubClose);
 
 /* ══ 발사(conv 게이지·에러 문법 계승) ══ */
 function errStatus(m){
