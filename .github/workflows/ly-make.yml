@@ -190,7 +190,7 @@ jobs:
           # 번인 ON = 영상까지 다운(자막 합성용 · 실패 = 오디오-온리 폴백 → 자막 텍스트만 = 회귀 0)
           BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
           if [ "$BURN" = "true" ]; then
-            yt-dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" || true   # --socket-timeout = 스톨 링크 무한 행 차단(track-make 관례 · 평의회9)
+            python3 -m yt_dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" || true   # --socket-timeout = 스톨 링크 무한 행 차단(track-make 관례 · 평의회9)
             SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
             if [ -n "$SRC" ]; then
               # 길이 선게이트(평의회9 260709) — 10분(MAX_DUR) 초과는 어차피 번인 거절 → 제일 비싼 스텝(STT·claude) *앞*에서 번인만 스킵 확정(자막 텍스트는 계속 · 사유 = video.json 선기록)
@@ -207,7 +207,7 @@ jobs:
               fi
             fi
           fi
-          [ -s /tmp/audio.mp3 ] || yt-dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
+          [ -s /tmp/audio.mp3 ] || python3 -m yt_dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
             || { echo "유튜브 다운로드 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구해. 파일 업로드나 SRT 텍스트로 해줘. (운영자: YT_COOKIES 시크릿 등록 시 URL 가능)" > /tmp/ly_err.txt; echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
           SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
