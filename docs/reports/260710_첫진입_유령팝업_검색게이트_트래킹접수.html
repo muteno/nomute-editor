@@ -1,0 +1,53 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>첫 진입 유령 팝업 · 검색 동시 등장 · 트래킹 접수 표시 — 260710</title>
+<style>
+body{margin:0;padding:20px 16px 48px;background:#121212;color:#eef7f0;font-family:'Pretendard',-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;line-height:1.6;font-size:15px}
+h1{font-size:19px;margin:0 0 4px;color:#00EED2}h2{font-size:15px;margin:26px 0 8px;color:#eef7f0;border-left:3px solid #00EED2;padding-left:8px}
+.sub{color:#9aa3a0;font-size:12.5px;margin:0 0 18px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:8px 0}
+th,td{border:1px solid rgba(255,255,255,.14);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:rgba(0,238,210,.08);color:#00EED2;font-weight:800;white-space:nowrap}
+td b{color:#00EED2}.mut{color:#9aa3a0}.warn{color:#FFE13D}
+code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 5px;font-size:12.5px}
+ul{margin:6px 0;padding-left:20px}li{margin:3px 0}
+</style></head><body>
+<h1>첫 진입 화면 수리 3건 — 하단 유령 팝업 · 검색 동시 등장 · 트래킹 분석 접수 표시</h1>
+<p class="sub">260710 · viewer/index.html + viewer/track.html · 파이프라인·백엔드 무변경</p>
+
+<h2>무엇이 문제였나 (원인 실측)</h2>
+<table>
+<tr><th>증상</th><th>원인</th></tr>
+<tr><td><b>① 첫 진입 하단에 정체불명 박스</b></td><td><code>#genidlg</code>(이미지 생성 팝업)에 <code>display:flex</code>만 있고 닫힘 가드가 없어, 닫힌 팝업이 <b>문서 맨 아래 항상 렌더</b>. 콘텐츠 로딩 전(문서가 짧을 때) 내비 위로 그대로 노출 + 그 자리 탭까지 가로챔. <span class="mut">#dlg·#tooldlg는 예전에 같은 버그를 가드로 막았는데 #genidlg(260707 신설)만 누락.</span></td></tr>
+<tr><td><b>② 검색 픽토그램이 빈 화면에 선등장</b></td><td>검색·필터 홀드(vh-ready)가 <b>아무 탭 컨테이너</b>의 첫 자식으로 풀림 — 부팅 때 숨은 피드 탭이 먼저 렌더되면 보이는 레거시가 비어도 해금. + <b>8초 백스톱</b>이 빈 화면에도 강제 노출. <b>PIN 유무는 원인 아님</b> — 잠금막이 이 구간을 가려주냐(설정 시) 그대로 보이냐(미설정) 차이만 만든다.</td></tr>
+<tr><td><b>③ 트래킹 인물 분석 = 눌러도 멈춘 듯</b></td><td>누른 뒤 <b>업로드 구간(≤30MB 전송 + GitHub 커밋 = 수십 초~수 분)</b> 동안 라벨 무변화 · 게이지만 90%서 정지 = 렉으로 오인. 실제로는 정상 진행(오늘 11:02 분석 run <b>success</b> 실측) — 업로드 후에도 분석(1~5분)+배포(1~3분)가 이어져 총 대기가 길다.</td></tr>
+</table>
+
+<h2>전 / 후</h2>
+<table>
+<tr><th></th><th>전</th><th>후</th></tr>
+<tr><td><b>하단 유령</b></td><td>닫힌 이미지 생성 팝업이 문서 최하단 상시 렌더(첫 진입에 노출·오탭)</td><td><b><code>#genidlg:not([open]){display:none}</code></b> — 닫히면 화면·터치에서 완전 소멸(열림 동작 불변)</td></tr>
+<tr><td><b>검색·필터 등장</b></td><td>다른 탭 렌더·8초 경과로도 등장 → 빈 화면에 픽토그램만</td><td><b>지금 보이는 탭에 실제 콘텐츠가 그려질 때만</b> 등장(탭 전환·재렌더마다 재판정) · 빈 탭 = 픽토그램도 조용한 공백 동행 · 백스톱 폐지</td></tr>
+<tr><td><b>분석 버튼 피드백</b></td><td>누르면 게이지만 · 라벨 그대로 → 응답 와야 ✓·'분석 중'</td><td><b>누른 즉시 ✓ 접수 → '분석 중 · 0:47'</b> 경과가 업로드부터 완료까지 한 타이머로 진행(응답 시 리셋 없음) · 실패 시 대기 즉시 해제</td></tr>
+<tr><td><b>완료 전환</b></td><td>(구조는 있었음 — 대기가 안 보여서 죽은 줄 앎)</td><td>완료 시 스텝1 ✓ → <b>인물 확정(2단계) 자동 전환</b> 실클릭 검증 통과</td></tr>
+</table>
+
+<h2>장단점 · 효율성</h2>
+<ul>
+<li><b>장점</b>: 첫 진입 화면 깨끗 + 하단 오탭 소멸 · 픽토그램·콘텐츠 동시 등장(운영자 "미리 마중나오지 마" 완결) · 트래킹 대기 전 구간 가시화 = 멈춤 오인 소멸 · 전부 CSS/JS 국소 수정(서버·파이프라인 0 변경 = 회귀면 좁음).</li>
+<li><b>효율성</b>: vh-ready 8초 타이머 제거(불필요 타이머 0) · 트래킹 타이머는 대기 중 1초 간격 시간 스팬만 갱신(점모션 DOM 유지 = 리플로우 최소).</li>
+</ul>
+
+<h2>품질 저하 리스크 (정직)</h2>
+<ul>
+<li><b>데이터 전(全) 실패 시 검색 픽토그램도 계속 숨음</b> — 콘텐츠가 0이면 검색할 대상도 0이라 의도된 동작으로 정리(구 8초 백스톱 폐지). 콘텐츠가 오면 즉시 등장.</li>
+<li>분석 경과에 업로드 시간이 포함돼 "오래 걸리는 중" 안내(600초)가 조금 일찍 뜰 수 있음 — 하드 한도(×2)는 불변이라 결과 수신엔 영향 0.</li>
+<li>업로드 자체 속도는 이번 범위 밖(구조: 파일→base64→GitHub 커밋). 더 줄이려면 R2 직업로드 전환이 필요 — 별건 제안.</li>
+</ul>
+
+<h2>검증 (자가 · 헤드리스 실클릭)</h2>
+<ul>
+<li>index: 닫힌 #genidlg <code>display:none</code> · 열면 flex 복귀 · vhSync = 빈 탭 false / 콘텐츠 탭 true · JS 에러 0.</li>
+<li>track: 누른 즉시 ✓+대기 → 1.85초 시점 '분석 중…0:01'(게이지 위 가독색) → 완료 시 스텝1 ✓·2단계 전환·카드 렌더·'완료 (3s)' · JS 에러 0.</li>
+<li><code>check_refs</code> 전 게이트 rc=0 · 머지 후 <code>git show origin/main</code> read-back으로 확정.</li>
+</ul>
+</body></html>

@@ -1,0 +1,110 @@
+<meta charset="utf-8">
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이미지 리사이징·품질 제작기 개선안 — 분신 11인 감사</title>
+<style>
+  body{background:#121316;color:#eef7f0;font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;line-height:1.62;margin:0;padding:20px 14px 60px;max-width:860px;margin-inline:auto}
+  h1{font-size:21px;color:#00EED2;margin:8px 0 4px}
+  h2{font-size:16.5px;color:#00EED2;margin:34px 0 10px;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:6px}
+  h3{font-size:14.5px;color:#eef7f0;margin:20px 0 6px}
+  p,li{font-size:13.5px;color:#c7cdc9}
+  .sub{color:#9aa39d;font-size:12.5px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin:10px 0}
+  th{color:#9aa39d;text-align:left;font-weight:700;border-bottom:1px solid rgba(255,255,255,.18);padding:6px 8px;white-space:nowrap}
+  td{border-bottom:1px solid rgba(255,255,255,.07);padding:7px 8px;vertical-align:top;color:#c7cdc9}
+  .wrap{overflow-x:auto}
+  code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:12px;color:#eef7f0;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .tag{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:800;margin-right:5px;white-space:nowrap}
+  .p0{background:rgba(0,238,210,.14);color:#00EED2}
+  .p1{background:rgba(255,225,61,.13);color:#FFE13D}
+  .p2{background:rgba(56,198,255,.13);color:#38C6FF}
+  .risk{background:rgba(226,59,42,.15);color:#ff7a6b}
+  .ok{color:#5AFFE6}
+  .warn{color:#FFE13D}
+  .bad{color:#ff7a6b}
+  .box{background:rgba(24,25,28,.66);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:14px 16px;margin:12px 0}
+  ul{padding-left:20px;margin:6px 0}
+  li{margin:4px 0}
+  .num{font-variant-numeric:tabular-nums}
+</style>
+
+<h1>이미지 리사이징·품질 — 제작기 개선안</h1>
+<p class="sub">260709 · 페이블 분신 11인 병렬 감사(READ-ONLY·전 항목 코드/산출물 실측) → 메인 종합 · 대상 = 리사이즈 탭(/7)·카드뉴스·썸네일 PIL 4종·Gemini 생성·검색이미지 재호스팅·트래킹/자막/k · 아직 반영 안 함(제안서)</p>
+
+<h2>0. 한 줄 진단</h2>
+<div class="box">
+<p><b>리사이즈 필터는 전 경로 LANCZOS(상급)·세대손실 체인도 1회(깨끗)</b>인데, 진짜 병목은 3개가 따로 있다:<br>
+① <b>저장 단계 크로마 4:2:0</b> — 형광그린 <code>#0FFD02</code> 강조 텍스트가 정면 피해(카드·릴스 전부)<br>
+② <b>Gemini 1K(실측 928×1152 JPEG) → 1080+ 업스케일</b> — 인스타 최종본이 전부 약 1.2× 보간본(가짜 해상도)<br>
+③ <b>리사이즈 제작기(/7)의 확장부 업스케일 단차</b> — 원본은 선명·Gemini 확장부만 흐릿 + 2K 옵션이 뷰어에서 배선 단절</p>
+</div>
+
+<h2>1. P0 — 즉효 패키지 <span class="tag p0">한 줄 수정 · 화질 순증 · 리스크 최소</span></h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>수정</th><th>지점</th><th>효과(전→후)</th><th>리스크</th></tr>
+<tr><td>1</td><td>JPEG 저장에 <code>subsampling=0, optimize=True</code></td><td><code>card_news.py:325</code> · <code>recompose_card.py:57</code> · <code>thumb-make.yml save_jpg</code> · <code>resize_image.py:150</code></td><td>4:2:0 크로마 번짐 → 4:4:4 = 형광그린 텍스트 가장자리 즉시 선명. 용량 +10~20%(optimize가 일부 상쇄)</td><td>거의 0 (단 card_news는 "불변·import만" 룰 = 운영자 승인 필요)</td></tr>
+<tr><td>2</td><td><code>ImageOps.exif_transpose</code> 삽입</td><td><code>resize_image.py:176</code> · <code>drive_cards.py:112</code> (compose는 절대규칙1 대상 = 별도 승인)</td><td>폰 세로사진이 눕은 채 패딩/크롭되는 실버그 차단. compose는 cv2(회전 적용)↔PIL(미적용) 좌표계 불일치로 피사체 오크롭까지 유발 중</td><td>0 (정상 사진 = no-op)</td></tr>
+<tr><td>3</td><td>8MB 조용한 절단 가드 — <code>r.read(8000001)</code> 후 초과 거부</td><td><code>thumb_gen.py:772</code></td><td>잘린(하단 깨진) JPEG가 매직바이트 통과해 R2에 정상인 척 올라가는 버그 차단</td><td>0</td></tr>
+<tr><td>4</td><td>리사이즈 QA 최종 FAIL 시 <code>blur_pad</code> 폴백</td><td><code>resize_image.py:219-227</code></td><td>현재 FAIL 판정본이 그대로 출력됨 → 항상 성공하는 결정론 폴백으로 하한 보장</td><td>0 (폴백 경로 기존재)</td></tr>
+<tr><td>5</td><td>k_refgen PNG-as-JPEG 정합(실변환 q90 또는 키·MIME을 png로)</td><td><code>k_refgen.py:71-72,86</code></td><td>Content-Type 거짓 선언 제거 + 용량 수 배 절감</td><td>하 (ref.json URL만 따라감)</td></tr>
+<tr><td>6</td><td>거짓 주석 교정("PNG 바이트" → 실측 JPEG) + 썸네일 content-type 매직바이트 기반</td><td><code>thumb_gen.py:409,915</code> · <code>gen_cards.py:255</code></td><td>후속 세션 오판 방지(이번 감사에서도 3개 분신이 헷갈림)</td><td>0</td></tr>
+</table></div>
+
+<h2>2. 리사이즈 제작기(/7) 전용 개선 <span class="tag p1">핵심 대상</span></h2>
+<p class="sub">현행 = 3층 라우팅{단색 PIL 패딩(무료) / Gemini 패드필+픽셀락 / 블러 폴백} + 자가 QA 재시도 1회 · 구조 자체는 건전</p>
+<div class="wrap"><table>
+<tr><th>#</th><th>개선</th><th>내용 · 지점</th><th>난이도</th><th>비고</th></tr>
+<tr><td>R1</td><td><b>캔버스 크기 상한/정합</b></td><td>원본 장변이 렌더 해상도(1K/2K)를 크게 초과하면 캔버스를 렌더 해상도로 선축소 — Gemini 1K 출력을 5000px대 캔버스로 강제 확대(<code>pixel_lock resize_image.py:102</code>)해 생기는 <b>원본부 선명·확장부 흐림 단차</b> 제거</td><td>중</td><td>다운스케일은 결정론 = 리스크 낮음. 효과 최대</td></tr>
+<tr><td>R2</td><td><b>size 배선 복원(1K/2K)</b></td><td>엔진·워크플로·API 모두 2K 지원인데 뷰어가 <code>size:'1K'</code> 하드코딩(<code>thumb.html:2663</code>). 칩 노출은 <b>신규 UI 요소 = 배치 사전 승인 필요(§디자인 j)</b></td><td>하</td><td>2K 과금 약 $0.101/장 — 기본 1K 유지 + 대형 원본 자동 승격안</td></tr>
+<tr><td>R3</td><td>Gemini 입력 캔버스 PNG 전달</td><td><code>resize_image.py:207</code>이 회색 패드 캔버스를 q92 JPEG로 뭉개 전달 — 프롬프트의 "픽셀 불변" 요구와 자기모순, 경계 블록노이즈가 생성에 번짐</td><td>하</td><td>요청 크기 증가 — Gemini 입력 한도 확인</td></tr>
+<tr><td>R4</td><td>솔리드/블러 경로 품질 분기</td><td>1층 solid_pad조차 q92 4:2:0 재압축(:235) — 무과금 경로는 q95+4:4:4(또는 PNG)로</td><td>하</td><td>P0-1과 한 몸</td></tr>
+<tr><td>R5</td><td>dedup(동일 원본+비율+옵션 = 재사용)</td><td>현재 재발사마다 uploads/ 커밋 + Gemini 재과금. src sha1 키로 resize.json 조회</td><td>중</td><td>과금 0 재발사</td></tr>
+<tr><td>R6</td><td>blur_pad 반경 비례화 + 배경 dim</td><td><code>GaussianBlur(24)</code> 고정(:143) → <code>max(8, 장변×0.02)</code> + 밝기 −20~30%</td><td>하</td><td>폴백 경로 한정 = 무위험</td></tr>
+<tr><td>R7</td><td>QA 재시도 2→3회 + exp의 원본대조 판정 이식 · anchor(top) 옵션 이식</td><td><code>exp_resize_v0.py:97-129</code> 검증 자산이 본판 미이식 상태</td><td>중</td><td>QA 콜 과금 소폭 증가</td></tr>
+<tr><td>R8</td><td>(장기) 확장부 초해상(Real-ESRGAN류)</td><td>R1·R2 후에도 남는 업스케일 케이스용</td><td>상</td><td>러너 의존성·시간 — 후순위</td></tr>
+</table></div>
+
+<h2>3. P1 — 구조 개선 <span class="tag p1">비용/승인 판단 필요</span></h2>
+<div class="wrap"><table>
+<tr><th>#</th><th>개선</th><th>효과</th><th>트레이드오프</th></tr>
+<tr><td>1</td><td><b>카드 장면 2K 생성 후 다운스케일</b> — <code>gen_cards.py:189,252</code>에 <code>image_size="2K"</code></td><td>업스케일(×1.172)→다운스케일 반전 = 인스타 최종 화질 체감 최대. FHD 렌더(<code>gen_image.py:43</code> "FHD"=1K 보간)도 동일</td><td class="warn">과금 증가(2K 장당 ~$0.101 · 카드 5~6장/슛) — 단건 카나리아 실측 후 결정(§파이프라인 e 절차)</td></tr>
+<tr><td>2</td><td><b>공용 <code>save_jpeg()</code> 헬퍼 SSOT</b> — 품질 상수(q95/92/90 산발) + <code>subsampling=0</code> + <code>icc_profile</code> 보존 일원화</td><td>품질 정책 단일화 + iPhone P3 사진 채도 소실(전 경로 ICC 드랍 실측 0건 참조) 해결</td><td>호출부 6곳+ 수정 — 회귀 확인</td></tr>
+<tr><td>3</td><td><b>재호스팅 재인코딩 파이프</b> — 검색이미지에 exif_transpose + 장변 1280~1600 + q82(fail-soft: 실패 시 원본)</td><td>피드 전송량 5~10배 절감 + EXIF 원천 해결 + 절단본 자동 검출 + <b>실픽셀 치수 게이트</b>(현행 URL 문자열 추정뿐 = 저해상 통과·고해상 오컷 동시 발생)</td><td>CMYK·애니GIF 분기 필요. Pillow 미설치 워크플로는 스킵</td></tr>
+<tr><td>4</td><td><b>카드뉴스 2× 슈퍼샘플링</b> — 썸네일 SCALE=2 패턴 이식(2160×2700 렌더→다운스케일)</td><td>유일하게 네이티브 1080 직접 렌더인 카드 텍스트 획 경계 개선</td><td>렌더 1초 미만 증가. 937px 폭검증 상수 ×2 동기 필수. card_news 불변 룰 = 승인</td></tr>
+<tr><td>5</td><td>reels2 베이스 에셋 2K 네이티브화(<code>assets/reels2_base.png</code> 2160×3840 재제작)</td><td>매 렌더 상시 ×2 업스케일(<code>nomute_reels2.py:66</code>) 제거 — 로고·그라데 선명</td><td>에셋 교체 1회</td></tr>
+<tr><td>6</td><td>카드 사진 첨부 경로 통일 — <code>index.html:5750</code> canvas q0.85 재압축 → thumb.html식 raw 전송(서버 PIL 위임)</td><td>이중 리인코딩 1회분 제거(같은 "운영자 사진 업로드"인데 경로마다 압축 정책 상이)</td><td>base64 페이로드 증가(9MB 게이트 내)</td></tr>
+<tr><td>7</td><td>AVIF 시그니처 수용(<code>_img_type</code>) + 핫링크 폴백 강화</td><td>유럽 매체 AVIF og:image가 현재 무검증 외부 핫링크로 새는 구멍 봉합</td><td>재인코딩 파이프(3번)와 병행 시 pillow-avif 필요</td></tr>
+<tr><td>8</td><td>그라데이션 디더링(±0.5 노이즈) — <code>mk_grad</code>·카드 그라데</td><td>저조도 밴딩 억제</td><td>overlay는 절대규칙1 대상 = 승인</td></tr>
+</table></div>
+
+<h2>4. P2 — 용량·인프라·전송 <span class="tag p2">화질 무관 · 폰 체감 로딩 직결</span></h2>
+<ul>
+<li><b>캐시버스트 결정론화</b> — <code>build-viewer.mjs:173</code>의 <code>bust()=mtime</code>인데 Pages는 push마다 fresh clone이라 <b>내용 무변경에도 매 배포 <code>?v=</code>가 갱신 = 전량 재다운로드</b> → 파일 내용 해시(8자)로 교체. 카드 <code>?v=status.updated</code>(:262)도 상태 전이마다 그 기사 전장 재다운로드 → 이미지 해시/업로드 시각으로</li>
+<li><b>R2 = r2.dev 개발용 도메인 직서빙</b> — CDN 캐시 미적용·레이트리밋 대상, Image Resizing 불가 → 커스텀 도메인 + <code>--cache-control public,max-age=31536000,immutable</code>(<code>?v=</code> 기존재라 안전)</li>
+<li><b>썸네일 소형 변형</b> — 230px 슬롯(DPR3≈690px)에 1K PNG(1~2MB급) 직서빙 중 → 업로드 시 640px WebP q80 추가본(<code>gen-*@640.webp</code>) + 그리드/발행본=소형·라이트박스=원본. Gemini 생성 PNG 자체도 WebP/JPEG 재인코딩(<code>thumb_gen.py:915</code>, fail-soft) · <code>gen_image.py</code> fmt 기본 png→jpg q90</li>
+<li>img 속성 보강 — 전 이미지 <code>decoding="async"</code>, 피드 첫 슬라이드만 <code>loading="eager" fetchpriority="high"</code>(현재 LCP 후보까지 lazy), 라이트박스는 반대로 lazy 부재(열자마자 N장 동시 페치) 교정</li>
+<li><b>viewer/thumb_out 구 PNG 134개 = 102MB 정리</b>(현행은 JPG q95 저장 — 과거 산출 잔존) → 뷰어 참조분만 보존 확인 후 삭제/R2 이관</li>
+<li>ref 이미지 장변 768 축소 + 실제 mimeType 전달(<code>thumb_gen.py:418,819</code>) — 참조 체이닝 신뢰성↑ + 입력 토큰↓</li>
+<li>uploads/ 정리 워크플로 + resize.json 캡 24→상향 · 실험 산출물(<code>_산출/exp_resize_v0</code> 3MB급) git 커밋 중단</li>
+</ul>
+
+<h2>5. 건전 판정(손대지 말 것)</h2>
+<ul>
+<li class="ok">리샘플링 필터 — 전 경로 LANCZOS/INTER_AREA, 저품질 필터 0건</li>
+<li class="ok">카드 edit 경로 — 장면 보존 재합성 = 누적 세대손실 0(설계 검증 완료)</li>
+<li class="ok">영상 3경로(track_render/keying/ly_burn) — 업스케일 0·1세대 인코딩·CRF 기반 = 건전</li>
+<li class="ok">다운로드(.dlbtn) 체인 — R2 저장본과 바이트 동일(무변형 스트리밍)</li>
+<li class="ok">검색이미지 무가공 재호스팅 자체 — 원본 보존 관점 열화 0(문제는 크기 게이트·절단 가드뿐)</li>
+<li class="ok">track q82 크롭 · compressImg q0.6/0.85(LLM용) · 마퀴펫 WebP — 용도별 트레이드오프 이미 적정</li>
+</ul>
+
+<h2>6. 품질저하 리스크·주의</h2>
+<ul>
+<li class="bad"><span class="tag risk">기틀</span> <code>card_news.py</code>·<code>nomute_*.py</code> = "스크립트 불변·import만" 절대규칙 대상 — P0-1·P1-4·디더링은 운영자 승인 후에만</li>
+<li class="bad"><span class="tag risk">과금</span> 2K 상향(카드·리사이즈)은 Gemini 과금 직결 — 기본 OFF 머지 → 단건 카나리아 → 실측 후 승격(§파이프라인 e 절차 그대로)</li>
+<li class="bad"><span class="tag risk">UI</span> 리사이즈 탭 size 칩 등 화면 신규 요소 = 배치 사전 승인 필수(§디자인 j)</li>
+<li>subsampling=0 = 파일 +10~20% — R2·전송에는 무해 수준, 인스타 재압축 입력으로는 오히려 유리</li>
+</ul>
+
+<h2>7. 방법론 각주</h2>
+<p class="sub">페이블 분신 11인(Explore·READ-ONLY 계약) 병렬: ①썸네일 PIL 4종 ②card_news ③thumb_gen ④gen_cards ⑤뷰어 표시 ⑥검색이미지 ⑦track/k/ly ⑧포맷·용량 전수 ⑨텍스트 렌더 ⑩총괄 크로스컷 ⑪리사이즈 제작기 전담. 전 발견 = 파일:줄 실측(추측 배제), 산출물 실파일 PIL 측정 포함(카드 장면 130장 = 928×1152 JPEG 확인). 11인 전원 귀환·종합 완료. 메인이 resize_image.py 직독으로 교차검증. 뷰어 건전 지점 = 라이트박스·그리드 동일 URL 재사용, 위키미디어 640 변형, lazy 광범위 적용.</p>

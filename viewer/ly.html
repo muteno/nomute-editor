@@ -13,6 +13,7 @@
     --accent-5:#0FFD02; }   /* 콘텐츠 그린(index --accent-5 값 계승·track.html 로컬 계승 관례 동형) = 번인 키워드 실색 미리보기 전용 — :root 정본 정의는 legacy_green 게이트 미계수·컴포넌트는 var()만 */   /* --press-* = tokens.css 상속(인라인 이중정의 제거·감사 260704·comp 기준·회귀0) */
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 무효화 = 로컬(tokens.css엔 없음·comp 기준) */
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* 모바일 기본 하늘색 탭 하이라이트 박스 제거 = index:78·thumb:15 전역 계승(체크박스·라벨 탭 시 시안 박스 차단·운영자 260629) */
+  [hidden] { display:none !important; }   /* hidden 속성 = 무조건 승(기저 가드) — 클래스 display(flex/grid/block)가 UA hidden을 이겨 유령 노출되던 계열(#carDl·#carbar·#pushrow·ly 버튼 3종 실측 260710) 원천 종식 · 퇴장 애니는 hidden을 애니 종료 후 부여라 무영향 */
   /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
   button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   /* 스크롤바 = 반투명 검정(중립) — 뉴스 뷰어 통일(index 계승 · 운영자 260626) */
@@ -102,6 +103,12 @@
     animation:goFill .72s var(--gauge-ease) forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
   @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); opacity:1; }   /* 게이지 만땅 직후 체크 구간 = 초록 유지(thumb .go.okdone 계승) · opacity:1 = ly는 발사 중 disabled라 디밍(.5) 눌림 방지(.firing과 동일 처리) */
+  .go.checking { display:grid; place-items:center; }   /* 체크 그리는 동안 SVG 중앙정렬(thumb 계승) */
+  .go .gck { width:26px; height:26px; }
+  .go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }   /* 스트로크 드로우 체크(thumb 시안1 계승) */
+  @keyframes goTick { to { stroke-dashoffset:0; } }
+  @media (prefers-reduced-motion:reduce) { .go .gck path { animation:none; stroke-dashoffset:0; } }
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; } .status.err { color:var(--danger); }
   .out { margin-top:18px; }
   .out h1.t { font-size:20px; color:var(--fg); margin:18px 0 6px; }
@@ -742,6 +749,26 @@ function goLbl(html) {   // 전송 구간 버튼 라벨 — 게이지(0.72s) 이
   if (html === null) { g.innerHTML = ''; g.textContent = g.dataset.label; g.removeAttribute('aria-busy'); }
   else { g.setAttribute('aria-busy', 'true'); g.innerHTML = html; }
 }
+function goFireSeq() {   // 발사 상태머신 = thumb goFire 계승(구성도 .send.is-fire): 게이지 풀필 → ✓ 체크 드로우 → '보내는 중…' — 운영자 260710 순서 확정("게이지 찬 다음 체크 되고 나서 보내는 중")
+  const g = $('#go'); if (!g) return;
+  if (!g.dataset.label) g.dataset.label = g.textContent;   // 원라벨 1회 포획(goLbl과 같은 칸 공유)
+  clearTimeout(g._fT1); clearTimeout(g._fT2);
+  g.classList.remove('firing', 'okdone', 'checking'); void g.offsetWidth;   // 리플로우 = 게이지 재시작
+  g.classList.add('firing'); g.setAttribute('aria-busy', 'true');   // 게이지 구간 = 원라벨 유지('보내는 중'은 체크 뒤 — 순서 정본)
+  g._fT1 = setTimeout(() => {   // 게이지 만땅(0.72s+홀드) → ✓ 체크 드로우(thumb goTick·타이밍 동일 계승)
+    g.classList.remove('firing'); g.classList.add('okdone', 'checking');
+    g.innerHTML = '<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송 시작"><path d="M5 13l4 4L19 7"/></svg>';
+    g._fT2 = setTimeout(() => {   // 체크 후 → 전송(업로드·디스패치) 내내 정직 표기(gdots 처리중 정본 §디자인 g)
+      g.classList.remove('okdone', 'checking');
+      goLbl('보내는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>');
+    }, 560);
+  }, 900);
+}
+function goFireStop() {   // 접수(poll 인계)·실패(원복) 시 잔여 시퀀스 정리 — 늦은 타이머가 대기/에러 라벨을 되덮는 역행 차단(단일 스레드 = clearTimeout이면 경합 0)
+  const g = $('#go'); if (!g) return;
+  clearTimeout(g._fT1); clearTimeout(g._fT2);
+  g.classList.remove('firing', 'okdone', 'checking');
+}
 $('#go').onclick = async () => {
   const status = $('#status'); status.classList.remove('err');
   const url = $('#url').value.trim();
@@ -749,23 +776,21 @@ $('#go').onclick = async () => {
   $('#out').innerHTML = ''; lyHideEditor(); lyBurnReset(); LY_GEN = true;   // 검증 통과 후에만 이전 결과 지움(미입력 헛클릭이 결과 안 날림) · lyBurnReset 선행 = 발사 실패 반환 시에도 옛 완성영상 잔존 차단(평의회) · LY_GEN = 자동복원이 진행 UI 못 덮게(평의회2 F1)
   LY_PENDING_SEGS = (!url && SRT_TEXT) ? parseCues(SRT_TEXT) : null;   // SRT 업로드 = 클라 파싱으로 타이밍 확보(서버 STT 없음) · 우선순위 url > SRT 동일
   if (url) lyPvSet(null);   // URL 발사 = 로컬 첨부 미리보기 해제(영상 불일치 차단)
-  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
+  goFireSeq();   // 누름 = 게이지 → ✓ 체크 → '보내는 중…' 상태머신(검증 통과 후 = 헛발사 방지·thumb 통일 · 운영자 260710)
   $('#go').disabled = true; status.textContent = '생성 중…'; $('#out').innerHTML = '<div class="lybar"></div>';   // 생성 중에도 같은 움직이는 게이지
-  goLbl('보내는 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>');   // 게이지 만땅 후에도 전송(업로드·디스패치) 내내 정직 표기 — gdots 처리중 정본(§디자인 g)
   try {
     const payload = url ? { url } : SRT_TEXT ? { subs: SRT_TEXT } : { fileB64: FILE_B64, name: FILE_NAME };   // 우선순위 url > 텍스트파일(SRT) > 영상·음성
     payload.opts = { ...LY_OPTS };   // 버튼 설정 → 서버(화이트리스트 통과 후 워크플로 opts)
     const wantVid = !!LY_OPTS.burn && (!!url || (!SRT_TEXT && /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(FILE_NAME)));   // 합성 기대 = URL 또는 영상 원본 업로드(추출 mp3는 러너에 영상 없음)
     const res = await fetch('/api/ly', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
     const j = await res.json();
-    if (!res.ok || j.error) { goLbl(null); status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); $('#out').innerHTML = ''; return; }
+    if (!res.ok || j.error) { goFireStop(); goLbl(null); status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); $('#out').innerHTML = ''; return; }
+    goFireStop();   // 접수 = 발사 시퀀스 종료 → poll 대기 라벨('자막 생성 중…')로 인계 — 체크는 게이지 직후 이미 그려짐(구 접수 체크 플래시(운영자 260707 "체크가 되야")는 260710 순서 확정으로 게이지 직후 단계로 이동)
     lyPendSet(j.out, j.url || j.file, wantVid);   // 진행 영속화(평의회R2 C1) — 완료/실패 시 poll이 해제·타임아웃은 유지(0 유실) · v = 합성 기대(리로드 이어받기)
     LY_WANTVID = wantVid ? j.out : '';
     poll(j.out, j.url || j.file);
-    goLbl(CHECK_SVG);   // 접수 체크 플래시(운영자 260707 "체크가 되야") — 픽토그램 단독 교체 · 700ms 뒤 poll의 대기 라벨로 복귀(errStatus의 대기중 플래시 복귀 패턴 미러 · poll→goWait(true)가 먼저 wait를 켠 직후라 순서 안전)
-    setTimeout(() => { const g = $('#go'); if (g && g.classList.contains('wait')) g.innerHTML = '자막 생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; }, 700);
   } catch (e) {
-    goLbl(null);
+    goFireStop(); goLbl(null);
     status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err'); $('#out').innerHTML = '';
   } finally { $('#go').disabled = false; }
 };
