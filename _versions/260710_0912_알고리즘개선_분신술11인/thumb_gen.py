@@ -435,10 +435,7 @@ def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None)
                     inl = p.get("inlineData") or p.get("inline_data")
                     if inl and inl.get("data"):
                         return base64.b64decode(inl["data"])
-            # 이미지 파트 없는 200(안전거부·무이미지)도 확률적 — HTTP 일시 오류와 동일하게 1회 재시도(260710)
-            print("  ⚠️ 이미지 파트 없음(응답에 inlineData 부재){}".format(" — 4s 후 재시도" if attempt == 0 else ""), flush=True)
-            if attempt == 0:
-                time.sleep(4); continue
+            print("  ⚠️ 이미지 파트 없음(응답에 inlineData 부재)", flush=True)
             return None
         except urllib.error.HTTPError as e:
             msg = e.read().decode()[:300]

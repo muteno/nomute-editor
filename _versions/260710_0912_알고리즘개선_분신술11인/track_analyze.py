@@ -27,9 +27,6 @@ DET_PER_SEC = 12        # 초당 검출 횟수(사이 프레임은 렌더서 보
 SCORE_TH = 0.65         # YuNet 신뢰 임계(기본 .9는 소형·측면 얼굴을 놓침 → 완화 + 트랙 최소 검출수로 오탐 상쇄)
 NMS_TH = 0.3
 IOU_MATCH = 0.25        # 검출 스텝 간격(~0.08s)에서 얼굴 이동은 작음 — 동일 트랙 판정 IoU
-IOU_MISS_RAMP = 0.06    # 미스 1스텝당 매칭 임계 가산 — 가려진 트랙의 정지 박스 자리로 딴 사람이 지나가면
-                        #   기본 0.25로 흡수(ID 스위치 → 트랙 임베딩 오염 = SIM_MERGE 남남병합 방어 우회) 차단(260710)
-IOU_MISS_MAX = 0.50     # 미스 누적 임계 상한 — 과상향은 재획득 실패 = 트랙 분열만 늘림(과분할 무해라 상한으로 균형)
 MISS_TTL_SEC = 0.7      # 이만큼 검출이 끊기면 트랙 종료(재등장은 새 트랙 → 군집이 같은 사람으로 재결합)
 MIN_TRACK_DETS = 3      # 3회 미만 검출 트랙 = 오탐 취급(12/s = 검출 간격 0.083s × 2구간 ≈ 0.17s)
 EMB_MIN_PX = 20         # 임베딩 절대 하한(원본 픽셀 얼굴 폭) — 이 밑은 임베딩 안 씀. ⚠ 구 42 단일 게이트는
@@ -379,13 +376,10 @@ def main():
                 if i in used:
                     continue
                 v = iou(d[:4], t["kf"][-1][1:5])
-                # 트랙별 임계 = 기본 + 미스 스텝 비례 상향(직전 스텝 검출 = 기본) — 정지 박스에 오래 매달린
-                #   트랙일수록 그 자리의 새 얼굴을 흡수하기 어렵게(ID 스위치·임베딩 오염 차단 · 260710)
-                miss = max(0, (f - t["last_f"]) // step - 1)
-                if v >= min(IOU_MISS_MAX, IOU_MATCH + IOU_MISS_RAMP * miss) and v > best:
+                if v > best:
                     best, bi = v, i
             box = [f, int(d[0]), int(d[1]), int(d[2]), int(d[3]), d[4]]
-            if bi >= 0:
+            if best >= IOU_MATCH and bi >= 0:
                 t = active[bi]
                 used.add(bi)
                 t["kf"].append(box)
@@ -533,10 +527,6 @@ def main():
         if t["emb"] is not None:
             for i, p in enumerate(people):
                 if p["emb"] is None:
-                    continue
-                # 동시존재 veto — 같은 순간 각자 검출된 트랙 = 물리적으로 남남 확정(닮은 두 사람 동시 등장
-                #   케이스에서 코사인만으론 남남 병합 가능 → 결정적 증거로 차단 · body-link veto①과 동일 철학 260710)
-                if _tracks_overlap_sec([t], p["tracks"], fps) > BODY_LINK_OVL_TOL_SEC:
                     continue
                 v = float(np.dot(t["emb"], p["emb"]))
                 # 2단 임계 — 양쪽 다 고품질 = 표준(0.48) / 한쪽이라도 소형 얼굴 = 보수(0.60 · 과병합 꼬리 차단)

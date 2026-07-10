@@ -119,10 +119,7 @@ def plan_passes(subjects, keep, people, keepP, extras, fps, W, H):
         joined = False
         for p in passes:
             if p["kind"] == "box" and abs(pf - p["f0"]) <= win:
-                # 그룹 대표 프레임 시점의 *실측* 박스만 조인 — 그 시점 미등장(None)이면 조인 포기 → 아래서
-                #   자기 pf 별도 패스. 구 `or s.get("pb")` 폴백은 등장 전 프레임의 그 좌표에 있던 딴 물체를
-                #   SAM2가 끝까지 전파하는 유령 시드(무증상 오출력 · 260710 제거)
-                b = _sample_box(s, p["f0"])
+                b = _sample_box(s, p["f0"]) or s.get("pb")   # 그룹 대표 프레임 시점의 실측 박스(없으면 자기 pf 박스)
                 if b:
                     if ex != 1.0:
                         b = _expand_box(b, W, H, ex)

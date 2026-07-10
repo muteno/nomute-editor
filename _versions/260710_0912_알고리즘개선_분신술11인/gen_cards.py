@@ -187,15 +187,11 @@ def edit_one(stem, n):
             if wish:
                 prompt += "\n\n[EDIT REQUEST — 다음 수정 희망을 반영해 다시 그릴 것]: " + wish
         png = tg.gemini_image(prompt + " " + CARD_STYLE)
-        if png:
-            open(scene_local, "wb").write(png)
-            tag = " (Claude 지침 프롬프트)" if authored else (" (이미지 수정 반영)" if wish else (" (텍스트 반영)" if sync else ""))
-            print("  ✓ 카드 {} 장면 재생성{}".format(n, tag))
-        elif has_scene:
-            # 보존 장면 폴백 — 재생성 1회 실패(안전거부 등)로 edit 전체를 죽이지 않는다(키 없음 폴백과 동일 정신 · 260710)
-            print("::warning::카드 {} 장면 재생성 실패 — 기존 장면 보존·문구만 반영".format(n))
-        else:
-            print("::error::카드 {} 장면 생성 실패(보존 장면도 없음)".format(n)); return 1
+        if not png:
+            print("::error::카드 {} 장면 생성 실패".format(n)); return 1
+        open(scene_local, "wb").write(png)
+        tag = " (Claude 지침 프롬프트)" if authored else (" (이미지 수정 반영)" if wish else (" (텍스트 반영)" if sync else ""))
+        print("  ✓ 카드 {} 장면 재생성{}".format(n, tag))
     else:
         print("  ✓ 카드 {} 텍스트만 변경 — 장면 보존(제미나이 0)".format(n))
 

@@ -250,13 +250,8 @@ def render_text(canvas, text_lines, font):
     offsets = compute_line_offsets(text_lines, font)
 
     total_lines = len(text_lines)
-    last_top_y = start_y + (total_lines - 1) * LINE_HEIGHT
-    # 하단 = 마지막 줄 *실측 잉크* 하단 — 구 FONT_SIZE(54) 근사는 실제 잉크(한글 ~68px·라틴 디센더 ~77px)보다
-    #   얕아 5줄 케이스가 검사만 통과하고 렌더는 SAFE_BOTTOM 침범(Pillow 실측 260710). getbbox[3] =
-    #   draw.text 기본 앵커 기준 잉크 하단 오프셋이라 렌더와 동일 좌표계(한글-온리 5줄은 실측대로 계속 통과).
-    plain_last = "".join(seg for _, seg in parse_segments(text_lines[-1])) if text_lines else ""
-    ink_bottom = font.getbbox(plain_last)[3] if plain_last.strip() else FONT_SIZE
-    last_bottom_y = last_top_y + ink_bottom
+    last_baseline_y = start_y + (total_lines - 1) * LINE_HEIGHT
+    last_bottom_y = last_baseline_y + FONT_SIZE
 
     if last_bottom_y > SAFE_BOTTOM:
         print(f"⚠ 텍스트 {total_lines}줄 — 하단 끝({last_bottom_y}px)이 "
