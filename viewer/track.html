@@ -76,6 +76,7 @@
   .gtime { margin-left:var(--sp-1); font-variant-numeric:tabular-nums; font-weight:var(--fw-b); opacity:.8; }   /* '분석 중 · N:NN' 경과(운영자 260710 "여기에 그 시간을") — tabular = 자릿수 흔들림 0 · 색은 라벨 상속 */
   .go.firing.wait { color:var(--on-accent); }   /* 게이지(accent 채움) 위 대기 라벨·시간 = on-accent — .wait 단독 mut가 소스순으로 이겨 터쿼이즈 위 회색(저대비)이 되는 것 교정 */
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
+  .sronly { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }   /* SR 전용 개시 공지(§디자인 e 접근성 라벨 · 평의회7) */
   .status.err { color:var(--danger); }
 
   /* ── 3계층 = 단계 스텝퍼(순차 진행 표시 · 노드 = 실제 button → 키보드·SR 도달 · 평의회7) ── */
@@ -180,6 +181,10 @@
   .vstage video { width:100%; display:block; max-height:62vh; background:#000; }
   .vstage.alpha { background:repeating-conic-gradient(var(--line) 0% 25%, var(--pan) 0% 50%) 0 0/22px 22px; }   /* 투명 표시 체커보드(키잉 승인 배치 ④ · 근접 토큰 계승) */
   .vstage.alpha video { background:transparent; }
+  /* 렌더 대기 = 원본 미리보기(muted 저속 루프) + 스캔 빔 + 프리뷰 안 하단 상태문구(운영자 픽 260710 = 플레이그라운드 p2 스캔라인 ★ · 딤.48·블러5·스캔1.4s · 캡션은 아래줄→프리뷰 안 이동 + ' (NNNs)' 경과) */
+  .vstage .wscrim { position:absolute; inset:0; background:rgba(8,15,11,.48); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); }   /* 스크림 색 = index 수정중 오버레이(8,15,11) 계승 · 알파 변주 = 운영자 픽 .48 */
+  .vstage .wscan { animation-duration:1.4s; }   /* 렌더 스캔 = 운영자 픽 1.4s(STEP1 분석 스캔 1.5s와 별개 인스턴스) */
+  .vstage .wmsg { position:absolute; left:12px; bottom:10px; z-index:2; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 상태문구 = index .reshoot-badge 문법(강조색+섀도) · 좌하단 = 운영자 스크린샷 위치 */
 
   .footer { display:flex; align-items:center; gap:12px; margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
   .stat2 { font-size:12px; color:var(--mut); font-weight:var(--fw-b); } .stat2 b { color:var(--accent); font-variant-numeric:tabular-nums; }
@@ -304,6 +309,8 @@ function go(s){
     const d=t.querySelector('.sdot'); d.innerHTML=(i<s)?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>':(i+1);
   });
   $$('.sline').forEach((l,i)=>l.classList.toggle('fill', i<s));
+  const wv=$('#vwrap .wv');   // 렌더 대기 미리보기 = STEP3 밖에선 정지(숨은 페인 무한 루프 디코딩 방지 · 평의회7)
+  if(wv){ if(s===2){ if(!matchMedia('(prefers-reduced-motion:reduce)').matches) wv.play().catch(()=>{}); } else { try{ wv.pause(); }catch(e){} } }
   if(s===1)recount();   // 재진입 시 CTA·카운트 재평가(평의회5 — 렌더 후 back 잠김 방지)
 }
 $('#stepper').addEventListener('click',e=>{const t=e.target.closest('.snode'); if(t&&!t.disabled)go(+t.dataset.s)});
@@ -695,7 +702,17 @@ $('#toRender').addEventListener('click',async()=>{
 function pollRender(t0, prevUrl, minTs, wantMode){
   if(_curStop)_curStop();
   const status=$('#rstatus'); status.classList.remove('err');
-  $('#vwrap').innerHTML=''; $('#vwrap').classList.remove('alpha'); $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');   // alpha 제거 = 대기 중 빈 체커보드 잔존 차단(평의회6)
+  $('#vwrap').classList.remove('alpha'); $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');   // alpha 제거 = 대기 중 빈 체커보드 잔존 차단(평의회6)
+  // 렌더 대기 = 원본 미리보기(muted 저속 루프)+스캔 빔+프리뷰 안 상태문구(운영자 픽 260710 — 아래 캡션이 프리뷰 안 좌하단으로 · ' (NNNs)' 경과 병기)
+  const wsrc=(TK.meta&&TK.meta.src)||'';
+  const wlbl=(wantMode==='pinset'?'핀셋':wantMode==='keying'?'키잉':'모자이크')+' 렌더 중';
+  $('#vwrap').innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
+    +'<div class="wscrim"></div><div class="scanline wscan"></div>'
+    +'<div class="wmsg">'+esc(wlbl)+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="wsec"></span></div>';
+  status.innerHTML='<span class="sronly">'+esc(wlbl)+'</span>';   // SR 개시 공지 — 시각은 빈 캡션(운영자 픽) 유지·role=status 1회 낭독(평의회7 a11y)
+  const wv=$('#vwrap .wv');
+  if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }   // 전정계 배려 = 정지 1프레임(시킹으로 첫 프레임 페인트 강제 — preload=metadata 미보장 · 평의회7)
+  const wclear=()=>{ $('#vwrap').innerHTML=''; };   // 에러·타임아웃 = 대기 스테이지 정리(스캔·비디오 잔존 차단)
   const outPath='track_out/'+TK.id+'/video.json';
   const errPath='track_out/'+TK.id+'/error.log';
   const budget=RENDER_BUDGET;
@@ -703,8 +720,8 @@ function pollRender(t0, prevUrl, minTs, wantMode){
   const draw=()=>{
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
-    if(sec>budget*2){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지(재개 클램프가 이어받음)
-    status.innerHTML=WAIT_SVG+' '+(TK.mode==='pinset'?'핀셋':'모자이크')+' 렌더 중… '+sec+'s (보통 2–5분)';
+    if(sec>budget*2){ stop(); wclear(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지(재개 클램프가 이어받음)
+    const ws=$('#vwrap .wsec'); if(ws) ws.textContent=' ('+sec+'s)';   // 경과 = 프리뷰 안 병기(아래 캡션 폐지 — 운영자 260710)
   };
   const disp=setInterval(draw,1000); draw();
   const fresh=ts=>{ const t=Date.parse(ts||''); return !isNaN(t) && t>=minTs; };   // 이번 디스패치 이후 산출만(과거 video.json 오인 차단 · ts=KST ISO) — 재개 시 minTs=원 디스패치 기준(늦은 완성도 수신)
@@ -720,7 +737,7 @@ function pollRender(t0, prevUrl, minTs, wantMode){
         const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
         if(em&&em.trim()&&!eHtml){
           if(prevErr===null) prevErr=em.trim();
-          else if(em.trim()!==prevErr){ stop(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
+          else if(em.trim()!==prevErr){ stop(); wclear(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
         }else if(prevErr===null) prevErr='';
       }else if(prevErr===null) prevErr='';
     }catch(e){ /* 재시도 */ }
@@ -735,7 +752,7 @@ function pollRender(t0, prevUrl, minTs, wantMode){
         if(tx&&tx.trim()&&!isHtml){
           let d=null; try{ d=JSON.parse(tx); }catch(e){}
           if(d&&fresh(d.ts)){
-            if(d.error){ stop(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(String(d.error)); status.classList.add('err'); return; }
+            if(d.error){ stop(); wclear(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(String(d.error)); status.classList.add('err'); return; }
             const got=d.url||d.preview||'';   // 키잉 master-lost(마스터 유실·프리뷰만)도 결과 — url만 보면 영영 못 받음(헤드리스 실측 적발)
             const modeOk=!wantMode||!d.mode||d.mode===wantMode;   // 발사 모드 불일치 = 직전 다른 모드 결과 오인 차단(평의회8 · 구 video.json엔 mode 없을 수 있어 관용)
             if(got&&got!==prevUrl&&modeOk){ stop(); pendReady(); TK.lastGot=got; showResult(d, Math.round((Date.now()-t0)/1000)); return; }
