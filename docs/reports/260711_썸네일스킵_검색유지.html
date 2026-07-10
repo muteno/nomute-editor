@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>AI 썸네일 설정 OFF = 생성만 스킵·검색 유지 — 260711</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(일회성 스냅샷 · check_refs 비대상) */
+  :root { --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --acc:#00EED2; --warn:#FFE13D; --bad:#e23b2a; --info:#38C6FF; --line:rgba(255,255,255,.08); }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:22px 16px 60px; background:var(--bg); color:var(--fg);
+    font-family:"Pretendard Variable",Pretendard,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    font-size:15px; line-height:1.62; letter-spacing:-.15px; }
+  main { max-width:860px; margin:0 auto; }
+  h1 { font-size:21px; line-height:1.4; margin:0 0 6px; color:var(--acc); letter-spacing:-.3px; }
+  .sub { color:var(--mut); font-size:12.5px; margin:0 0 26px; }
+  h2 { font-size:15.5px; margin:34px 0 12px; color:var(--fg); }
+  h2::before { content:'• '; color:var(--acc); font-weight:700; }
+  p { margin:8px 0; }
+  b { font-weight:800; }
+  .ok { color:var(--acc); font-weight:800; } .wa { color:var(--warn); font-weight:800; } .no { color:var(--bad); font-weight:800; } .in { color:var(--info); font-weight:800; }
+  .mut { color:var(--mut); }
+  code { background:rgba(255,255,255,.07); border-radius:5px; padding:1px 6px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; }
+  table { width:100%; border-collapse:collapse; margin:10px 0 4px; font-size:13.5px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:rgba(255,255,255,.05); font-size:12.5px; color:var(--mut); font-weight:700; white-space:nowrap; }
+  .tw { overflow-x:auto; }
+  .card { border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin:10px 0; background:rgba(255,255,255,.03); }
+  .flow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:13px; margin:8px 0; }
+  .flow span { border:1px solid var(--line); border-radius:999px; padding:4px 12px; background:rgba(255,255,255,.04); white-space:nowrap; }
+  .flow .on { border-color:rgba(0,238,210,.45); color:var(--acc); }
+  .flow .off { border-color:rgba(226,59,42,.5); color:var(--bad); text-decoration:line-through; text-decoration-thickness:1.5px; }
+  .flow em { color:var(--mut); font-style:normal; }
+  ul { margin:6px 0 6px 4px; padding-left:18px; } li { margin:5px 0; }
+  .small { font-size:12.5px; color:var(--mut); }
+</style>
+</head>
+<body>
+<main>
+<h1>AI 썸네일 설정 OFF = 생성만 스킵 · 검색이미지는 유지</h1>
+<p class="sub">260711 · 요청 = "검색해서 이미지 받아오는 건 그대로, AI 썸네일 생성만 뉴스요약 때 스킵(카드 프롬프팅 스킵 아님)" · 검증 = 10인 평의회(Opus·읽기전용) 불가 0 + 기계 실측 · PR #1939</p>
+
+<h2>쉬운 설명 — 무엇이 왜 꺼져 있었나</h2>
+<div class="card">
+<p>설정을 꺼서 검색이 죽은 게 아니었다. <b>두 개의 구멍</b>이 겹쳐 그렇게 보였던 것:</p>
+<ul>
+  <li><b>구멍 1 — 검색 재료가 안 만들어짐</b>: 260704에 요약요청 타임아웃을 고치면서 "전문(붙여넣기) 요청은 검색하지 마라"를 넣었는데, 이게 <b>관련 이미지 소스(image_sources) 검색까지</b> 통째로 꺼버렸다. 검색이미지는 이 URL들의 대표사진을 받아오는 구조라, 재료가 빈 값이면 받아올 게 없다. 그동안은 AI 썸네일이 자리를 채워서 티가 안 났고, 설정을 끄자 <b>빈 화면으로 드러난 것</b>.</li>
+  <li><b>구멍 2 — 설정이 요약요청에만 먹힘</b>: 수집함에서 픽하는 요약(자동픽·폰공유 포함)은 설정을 아예 안 읽어서, 꺼도 AI 썸네일이 계속 생성(과금 계속)되고 있었다.</li>
+</ul>
+<p>둘 다 막았다. 이제 설정 OFF면 <b>모든 뉴스요약</b>에서 검색이미지는 오고, 제미나이 생성만 안 돈다. 카드뉴스 프롬프팅은 한 줄도 안 건드렸다.</p>
+</div>
+
+<h2>전 / 후 비교</h2>
+<div class="tw"><table>
+<tr><th>경로 (설정 OFF 기준)</th><th>전 (문제)</th><th>후 (수정)</th></tr>
+<tr><td><b>요약요청 — 전문 붙여넣기</b><br><span class="small">운영자 주 사용 경로</span></td><td><span class="no">검색 0장 + AI 0장</span> = 이미지 전무<br><span class="small">image_sources가 빈 값 → 재료 없음</span></td><td><span class="ok">검색이미지 옴</span>(소스 2~3개 best-effort 검색) · AI만 스킵</td></tr>
+<tr><td><b>요약요청 — URL/토픽</b></td><td><span class="ok">검색 옴</span> · AI 스킵 (정상이었음)</td><td>동일 유지</td></tr>
+<tr><td><b>픽 · 자동픽 · 폰공유</b></td><td><span class="no">설정 무시 — AI 계속 생성(과금)</span></td><td><span class="ok">AI만 스킵 · 검색이미지 유지</span></td></tr>
+<tr><td><b>카드뉴스 프롬프팅</b></td><td>정상</td><td><span class="ok">무접촉</span>(no_thumb는 썸네일 잡만 읽음 — 평의회 전 구간 실측)</td></tr>
+<tr><td><b>요약창 '이미지' 건별 토글</b></td><td>전역 OFF보다 우선</td><td>동일 유지(전역 OFF여도 그 건만 ON 가능)</td></tr>
+<tr><td><b>수동 '다시 만들기'</b></td><td><span class="wa">no_thumb 기사는 눌러도 AI 안 나옴</span>(문서와 불일치)</td><td><span class="ok">항상 AI 복원</span>(직접 누름 = 명시 의사)</td></tr>
+<tr><td><b>썸네일 배치 슬롯</b></td><td><span class="no">좀비 3건이 슬롯 3개 전량 잠식</span>(빈따옴표 오판 → 매 런 재적재)</td><td><span class="ok">좀비 해소 실측</span> — 신규 픽 슬롯 정상화</td></tr>
+</table></div>
+
+<h2>설정 OFF일 때 흐름 (수정 후)</h2>
+<div class="card">
+<div class="flow"><em>뉴스요약</em><span class="on">요약 다이제스트</span><span class="on">image_sources 검색 2~3개</span><span class="on">검색이미지 수집(og:image→R2)</span><span class="off">제미나이 AI 썸네일</span><span class="on">카드 프롬프팅(card_plan)</span></div>
+<p class="small">no_thumb 도장 = 요약 생성 시점 스냅샷. 나중에 설정을 다시 켜도 이미 요약된 기사를 소급 생성하지 않음(과금 서프라이즈 차단). 단 수동 '다시 만들기'·이미지 생성(+)·+N장은 도장과 무관하게 항상 동작(수동 슈퍼권한).</p>
+</div>
+
+<h2>변경 파일 (5)</h2>
+<div class="tw"><table>
+<tr><th>파일</th><th>내용</th></tr>
+<tr><td><code>.github/scripts/ask.sh</code></td><td>요약요청 프롬프트: 전문이어도 image_sources만 2~3개 best-effort 검색(요약 완성 우선 불변 · 원문 url은 빈 값 유지 명시)</td></tr>
+<tr><td><code>.github/scripts/analyze.sh</code></td><td>설정(genImgOn=false) 읽어 픽·자동픽·폰공유 요약에 no_thumb 도장 · 판독 실패는 경고 로그 후 ON 폴백(조용한 과금 방지)</td></tr>
+<tr><td><code>.github/scripts/thumb_gen.py</code></td><td>① 빈따옴표 image_sources 오판 봉합(영구 좀비 = 배치 슬롯 잠식 해소) ② 수동 재생성(THUMB_ONLY)은 no_thumb 우회 = 항상 AI</td></tr>
+<tr><td><code>viewer/index.html</code></td><td>썸네일 섹션 헤더 = 실존 캐러셀만 표기(AI 없으면 "— 검색"만 · 오버-프로미스 제거)</td></tr>
+<tr><td><code>CLAUDE.md</code> · <code>docs/작업이력.md</code></td><td>전역 스위치 시멘틱스·스냅샷 시점·수동 우회 기록(§기록SSOT)</td></tr>
+</table></div>
+
+<h2>장 / 단점 · 효율성</h2>
+<ul>
+  <li><b>장점</b>: 과금 통제가 진짜 전역이 됨(픽 경로 누수 차단) · paste 요약의 검색이미지 복원(260704 이후 죽어 있던 것) · 좀비 봉합으로 썸네일 배치 처리량 정상화 · 카드·푸시·속보 체인 무접촉.</li>
+  <li><b>단점(트레이드오프)</b>: 전문 요약요청이 검색 2~3회만큼 소폭 느려질 수 있음. 단 260704 사고 검색(기사 전문 판독 여러 번)보다 훨씬 가볍고(WebSearch만), 600초 하드컷·실패 알림 경로 불변 — 평의회 산술로 여유 확인(150~350초 &lt; 600초).</li>
+  <li><b>효율성</b>: 설정 OFF 동안 제미나이 호출 0(픽당 2장 × 픽 수만큼 절감) · 좀비 재적재 루프 제거로 매 런 헛순회 소멸.</li>
+</ul>
+
+<h2>품질저하 리스크 · 한계 (정직)</h2>
+<ul>
+  <li><span class="wa">best-effort 한계</span> — image_sources 복원은 프롬프트 지시라 모델이 가끔 비울 수 있음(그 경우 지금과 동일한 0장 = 회귀는 아님). 다음 paste 요약 몇 건에서 채워지는지 확인 권장.</li>
+  <li><span class="wa">소급 없음</span> — 이미 굶은 3건(이종석·아이유 / 리센느 원이 / 장윤기)은 자동 복구 안 됨. 필요하면 그 기사 재요약(전문 재요청) 또는 검색 캐러셀 <b>+N장</b>으로 수동 복구.</li>
+  <li><span class="in">시점 정밀</span> — 픽은 analyze 체크아웃 시점, 요약요청은 전송 시점 설정이 박힘(토글 직후 수 초~2분 경합 창 = 무해·기록만).</li>
+  <li><span class="no">별건 발견(이번 변경 무관)</span> — 최근 요약요청 카드 제작 4/5건 실패 = claude CLI가 러너에서 <code>workspace not trusted</code>로 행 → 900초 타임아웃. 썸네일이 아니라 <b>카드 제작 잡</b>의 환경 문제. 별도 조사 트랙 필요.</li>
+</ul>
+
+<h2>검증</h2>
+<ul>
+  <li><b>10인 평의회</b>(Opus 4.8 · 읽기전용 · 각기 다른 앵글) = <span class="ok">불가 0</span> — OK 5(메커니즘·카드무접촉·보안·경계·총괄) · 주의 5(전부 경미 → 지적 전건 반영: 좀비 봉합·redo 우회·문구 정밀화·경고 표면화·주입 순서·헤더 라벨).</li>
+  <li><b>기계 실측</b> = 문법 3파일 · 설정 읽기 4케이스(false/true/손상/부재) · frontmatter 주입 체인 · thumb_gen 실함수 5케이스 · <b>좀비 3건 → skip 전환 실측</b> · 뷰어 라벨 3분기 · check_refs 27게이트 rc=0.</li>
+  <li><b>라이브 확정</b> = main 머지 후 <code>git show origin/main</code> read-back(§수정 모드).</li>
+</ul>
+
+<p class="small">보고서 = 일회성 스냅샷(색은 viewer :root 토큰값 복사) · 정본 기록 = CLAUDE.md 8-3)i + docs/작업이력.md 260711 항목 · 백업 = _versions/260711_0243_썸네일스킵_검색유지/</p>
+</main>
+</body>
+</html>
