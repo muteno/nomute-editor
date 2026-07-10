@@ -38,6 +38,9 @@ export async function onRequestPost({ request, env }) {
     for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
+  // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
+  if (reburn && !/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
+  if (!reburn && !subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
   const rl = await rateGate(GH, env.GH_TOKEN, 'ly-make.yml');   // 발사 레이트리밋(reburn·신규 공통 초입 = 업로드 전 · fail-open · 260711)
   if (rl) return json({ error: rl.error }, 429);
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치

@@ -612,13 +612,13 @@ def run(vid_id, video, outdir):
     #   직전 산출 video.json의 edit_opts 스냅샷을 병합해 여백·해상도·보간·음량·트림이 유지되게("지금은 자막만" 소실 봉합).
     #   이번 opts에 편집기 축이 하나라도 명시되면 병합 안 함(명시 우선 = 편집기 폼 발사) · 첫 발사·ly 순수 작업 =
     #   video.json 부재/스냅샷 없음 → 무해. 스냅샷은 아래 성공 페이로드에 재도장 = reburn 연쇄에도 승계 유지.
-    inherited = False
+    inherited = []   # 승계된 EDIT_KEYS 목록(note를 실승계 축으로 정직 표기 · 검증3 — 고정문은 트림 승계 때 괴리)
     if not any(k in opts for k in EDIT_KEYS):
         try:
             _prev_eo = (json.load(open(os.path.join(outdir, "video.json"), encoding="utf-8")).get("edit_opts") or {})
             _take = {k: v for k, v in _prev_eo.items() if k in EDIT_KEYS}
             if _take:
-                opts.update(_take); inherited = True
+                opts.update(_take); inherited = [k for k in EDIT_KEYS if k in _take]
         except Exception:
             pass
     if not video or not os.path.isfile(video):
@@ -633,7 +633,7 @@ def run(vid_id, video, outdir):
     if dur > MAX_DUR:
         out_json(outdir, {"error": "영상이 {}분 — 10분 이하만 합성(릴스/쇼츠용)".format(int(dur // 60))}); return 0
     segs, src_kind = load_segs(outdir)
-    if segs:
+    if segs and opts.get("burn") is not False:   # no_burn(컷 단독) = word 주입 불요 — build_ass 미호출이라 순수 낭비(검증9)
         try:
             inject_words(segs, outdir)   # STT word 타임스탬프 주입(실싱크 · 실패해도 글자수 비례 폴백 = 무해)
         except Exception as ex:
@@ -658,12 +658,13 @@ def run(vid_id, video, outdir):
             return None
     t0_req, t1_req = _sec("vid_t0"), _sec("vid_t1")
     has_vid = bool(vid_ar or vid_res or vid_fps or t0_req or t1_req)
-    edit_notes = (["이전 편집 설정 승계(비율·해상도·보간·음량)"] if inherited else [])   # 승계 표면화(침묵 금지)
+    _EK_LBL = {"vid_ar": "비율", "vid_fit": "채움", "vid_pos": "위치", "vid_res": "해상도", "vid_fps": "프레임", "vid_t0": "구간", "vid_t1": "구간", "aud_norm": "음량"}
+    edit_notes = (["이전 편집 설정 승계(" + "·".join(dict.fromkeys(_EK_LBL[k] for k in inherited)) + ")"] if inherited else [])   # 실승계 축만 표기(침묵 금지·과대 표기 금지 · 검증3)
     if not segs and not (has_vid or aud_on or opts.get("bgm")):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합)
         out_json(outdir, {"error": "전사가 안 돼 컷 불가 — 소리 있는 영상인지 확인해줘" if opts.get("cut")
                           else "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0   # 컷 단독(STT-only) = 컷 맥락 문구(260711)
     if opts.get("cut") and not segs:
-        edit_notes.append("무음 컷 건너뜀(자막 전사 필요)")   # 컷 기준 = STT 발화 스팬 — 자막 없는 편집 경로엔 원천이 없다
+        edit_notes.append("무음 컷 건너뜀(전사 없음)")   # 컷 기준 = STT 발화 스팬 — 전사가 없으면(STT 실패·미실행) 컷 원천이 없다(STT-only 겸용 문구 · 검증7)
     # ── 트림(구간) — 컷·자막보다 *먼저* 확정(운영자 260711 트림×자막 동시): 입력 -ss/-t가 시간축 원점을 옮기므로
     #    자막 조각·word·(아래 컷 블록의) 전사 스팬을 전부 트림 좌표로 동행 리맵 = 컷 remap과 동일 정신(시간축 = 한 몸).
     trim = None

@@ -22,6 +22,10 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
 
+  // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
+  const _r0 = (body.render && typeof body.render === 'object') ? body.render : null;
+  if (_r0 && !/^[0-9]{12}-[0-9a-f]{6}$/.test(String(_r0.id || '').trim())) return json({ error: '잘못된 작업 ID' }, 400);
+  if (!_r0 && !String(body.url || '').trim() && !String(body.fileB64 || '')) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
   const rl = await rateGate(GH, env.GH_TOKEN, 'track-make.yml');   // 발사 레이트리밋(렌더·분석 공통 초입 = 업로드 전 · fail-open · 260711)
   if (rl) return json({ error: rl.error }, 429);
 
