@@ -45,7 +45,7 @@ def probe(src):
     """ffprobe → (W, H, fps, dur) — 회전 메타(90/270)는 표시 치수로 스왑(ffmpeg 디코드 자동회전과 좌표 공간 일치)."""
     try:
         r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
-                            "-show_entries", "stream=width,height,avg_frame_rate,duration,side_data_list",
+                            "-show_entries", "stream=width,height,sample_aspect_ratio,avg_frame_rate,duration,side_data_list",
                             "-show_entries", "format=duration", "-of", "json", src],
                            capture_output=True, text=True, timeout=120, check=True)
         d = json.loads(r.stdout or "{}")
@@ -73,7 +73,14 @@ def probe(src):
         die("영상 정보를 못 읽었어 — 다시 올려줘.", f"probe 이상: {W}x{H} dur={dur}")
     if not fps or fps <= 1 or fps > 240 or math.isnan(fps):
         fps = 30.0
-    return W, H, fps, float(dur)
+    sar = 1.0   # 아나모픽(SAR≠1) = 표시 폭이 저장 폭과 다름 — 크롭 비율 산술이 표시 공간이어야 프리뷰와 일치(평의회6)
+    try:
+        sn, sd = str(st.get("sample_aspect_ratio") or "1:1").split(":")
+        if float(sd) > 0 and float(sn) > 0:
+            sar = float(sn) / float(sd)
+    except (ValueError, AttributeError):
+        sar = 1.0
+    return W, H, fps, float(dur), sar, rot
 
 
 def r2_upload(path, key):
@@ -89,7 +96,7 @@ def r2_upload(path, key):
         subprocess.run(["aws", "s3", "cp", path, f"s3://{bucket}/{key}",
                         "--endpoint-url", f"https://{acct}.r2.cloudflarestorage.com",
                         "--content-type", "video/mp4", "--only-show-errors"],
-                       check=True, env=env, timeout=900)
+                       check=True, env=env, timeout=240)   # conv 산출 = 수십~수백MB(키잉 GB급 아님) — 스텝 캡 내 백스톱 겹침 완화(평의회2)
     except Exception as e:
         die("결과 업로드에 실패했어 — 잠시 후 다시 해줘.", f"R2 업로드 실패: {e}")
     return f"{pub}/{key}"
@@ -106,9 +113,13 @@ def main():
     except ValueError:
         opts = {}
 
-    W, H, fps, dur = probe(src)
+    W, H, fps, dur, sar, rot = probe(src)
+    sar_fix = ""
+    if abs(sar - 1.0) > 1e-3 and abs(rot) % 180 == 0:   # 비회전 아나모픽만 정규화(회전+SAR 동시는 희귀 = 지침 한계 · 평의회6)
+        W = max(2, int(round(W * sar)) & ~1)
+        sar_fix = f"scale={W}:{H},setsar=1"   # 표시 공간으로 선정규화 → 이후 크롭·산술 = 프리뷰와 동일 축
     if max(W, H) > MAX_LONG:
-        die(f"변환은 긴 변 {MAX_LONG}px까지야(지금 {max(W, H)}px) — 1080p로 줄여서 올려줘.")
+        die(f"변환은 긴 변 {MAX_LONG}px까지야(지금 {max(W, H)}px) — 1080p 이하로 다시 해줘(URL이면 낮은 화질 링크나 파일 업로드로).")
 
     # ── 트림(입력 옵션 -ss/-t = 재인코딩이라 프레임 정확) — api 클램프 + 여기 dur 재클램프 = 이중 방어
     t0 = _num(opts.get("t0"), 0, dur, 0.0)
@@ -145,6 +156,8 @@ def main():
     # ── fps — 60i = minterpolate 보간(캡+예산 가드) · 30/24 = 다운 · keep = 그대로
     mode = opts.get("fps") if opts.get("fps") in ("keep", "60i", "30", "24") else "keep"
     vf = []
+    if sar_fix:
+        vf.append(sar_fix)
     if ar:
         vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
     if (sw, sh) != (cw, ch):
