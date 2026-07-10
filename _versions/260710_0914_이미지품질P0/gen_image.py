@@ -288,7 +288,7 @@ def post_process(png, o):
             im = im.resize((max(1, round(im.size[0] * sc)), max(1, round(im.size[1] * sc))), Image.LANCZOS)
         buf = io.BytesIO()
         if o["fmt"] == "jpg":
-            im.convert("RGB").save(buf, "JPEG", quality=90, optimize=True, subsampling=0)   # 4:4:4 — 문구 번인(textOn) 크로마 번짐 방지(전 JPEG 저장 경로 통일 · 260710)
+            im.convert("RGB").save(buf, "JPEG", quality=90, optimize=True)
             return buf.getvalue(), "jpg"
         im.save(buf, "PNG", optimize=True)
         return buf.getvalue(), "png"
