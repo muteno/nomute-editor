@@ -657,18 +657,9 @@
   #snsList { display:flex; flex-direction:column; gap:11px; }
   /* 트렌드 레인(메뉴4 트렌드 탭 · 운영자 260710 배치 승인·260711 메뉴4 이동) — 카드 = .soc-item 실크 글래스 그대로 계승 · 라벨 = 소머리 표준(§표기표준: 텍스트 --fg·fw-x·블릿 --accent·fw-b·--fs-label) · 수치 = tabular-nums · 신규 색 0(전부 토큰) */
   #snsTrends .soc-item { cursor:default; margin-bottom:10px; }
-  .trend-lbl { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 9px; }   /* 하단 5→9px: 라벨이 접기 토글(탭 타깃)이 되며 첫 행(외부링크)과 8px 인접 = 오탭 완충(평의회9 실측) */
+  .trend-lbl { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 5px; }
   .trend-lbl::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }
-  /* 섹션 접기(운영자 260711 "내용 많으면 해당 건만 접기") = 네이티브 <details> + .phase 디스클로저 정본 계승(체브론 SVG mask·회전 .2s·즉시 열닫) · 접힘 = +N 개수 배지(.sc-fold 카운트 라벨 관용구) · 기억 = localStorage nm_trend_fold JSON 단일키(평의회2) */
-  .trend-sec + .trend-sec { margin-top:11px; }   /* 구 .trend-lbl:not(:first-child) 간격 승계(라벨이 details 안으로 들어가 셀렉터 이전) */
-  .trend-sec > summary { cursor:pointer; list-style:none; user-select:none; outline:none; -webkit-tap-highlight-color:transparent; }
-  .trend-sec > summary::-webkit-details-marker { display:none; }
-  .trend-sec > summary::after { content:''; margin-left:auto; width:12px; height:12px; background:var(--mut); transition:transform .2s;
-    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat;
-    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat; }   /* .phase 디스클로저 체브론 동일 mask(CHEVRON M6 9…) 계승 */
-  .trend-sec:not([open]) > summary::after { transform:rotate(-90deg); }
-  .trend-cnt { display:none; color:var(--mut); font-weight:400; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
-  .trend-sec:not([open]) .trend-cnt { display:inline; }   /* 접힘일 때만 개수 배지 노출(펼침 = 행이 곧 개수) */
+  .trend-lbl:not(:first-child) { margin-top:11px; }
   .trend-unit { color:var(--mut); font-weight:400; font-size:var(--fs-xs); }   /* 섹션 라벨 우측 단위 선언(열 헤더 원리 · 행 반복 0 · 평의회4 — "200+ 순위 오해" 지뢰 해소) */
   .trend-time { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; margin:-2px 0 8px; }   /* 수집 시각 = "살아있냐" 한 줄(평의회10) */
   .trend-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }
@@ -8576,22 +8567,17 @@ function renderSnsTrends() {
   if (!gt.length && !yt.length && !tkv.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(n || '');
   const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
-  // 섹션 접기(운영자 260711) = 네이티브 <details> — 토글 = 브라우저 처리(재렌더 0 = 통재빌드 플래시 없음 · 평의회8)
-  // 기억 = localStorage nm_trend_fold JSON 단일키(nomute_tab 관용구 · 평의회2·7) · 접힘 상태는 빌드 시점 open 속성으로 복원
-  let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
-  const sec = (key, lbl, unit, n, body) =>
-    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
   let h = '<div class="soc-item soc-trend">';
   if (tm) h += `<div class="trend-time">${esc(tm)} 수집</div>`;
-  if (gt.length) h += sec('gt', '구글 급상승 검색어', '· 검색량≈', Math.min(gt.length, 8), gt.slice(0, 8).map((g, i) => {   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10) + 단위 선언(평의회4)
+  if (gt.length) h += '<div class="trend-lbl">구글 급상승 검색어 <span class="trend-unit">· 검색량≈</span></div>' + gt.slice(0, 8).map((g, i) => {   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10) + 단위 선언(평의회4)
     const u = (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));
     return `<a class="trend-row" href="${escUrl(u)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${esc(g.traffic || '')}</span></a>`;
-  }).join(''));
-  if (yt.length) h += sec('yt', '유튜브 인기', '· 조회수', Math.min(yt.length, 5), yt.slice(0, 5).map((v, i) =>
-    `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join(''));
-  if (tkv.length) h += sec('tk', '틱톡 인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>   // tikwm 인기 영상(글로벌 혼합·조회수 정렬 — 260711 이식)
-    `<a class="trend-row" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${t.views ? vfmt(t.views) : ''}</span></a>`).join(''));
-  else if (tk.length) h += sec('tk', '틱톡', '· 인기 해시태그', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
+  }).join('');
+  if (yt.length) h += '<div class="trend-lbl">유튜브 인기 <span class="trend-unit">· 조회수</span></div>' + yt.slice(0, 5).map((v, i) =>
+    `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join('');
+  if (tkv.length) h += '<div class="trend-lbl">틱톡 인기 <span class="trend-unit">· 조회수</span></div>' + tkv.slice(0, 8).map((t, i) =>   // tikwm 인기 영상(글로벌 혼합·조회수 정렬 — 260711 이식)
+    `<a class="trend-row" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${t.views ? vfmt(t.views) : ''}</span></a>`).join('');
+  else if (tk.length) h += '<div class="trend-lbl">틱톡 <span class="trend-unit">· 인기 해시태그</span></div><div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>';
   h += '</div>';
   box.innerHTML = h;
   const qs = box.querySelectorAll('.trend-q');   // 텍스트 = textContent 주입(XSS 안전 · soc-title 패턴 계승)
@@ -8600,11 +8586,6 @@ function renderSnsTrends() {
   yt.slice(0, 5).forEach(v => { if (qs[k]) qs[k++].textContent = v.title || ''; });
   if (tkv.length) tkv.slice(0, 8).forEach(t => { if (qs[k]) qs[k++].textContent = t.title || ('@' + (t.account || '')); });   // 제목 없으면 @계정 폴백
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
-  box.querySelectorAll('.trend-sec').forEach(dt => dt.addEventListener('toggle', () => {   // 접힘 기억(toggle = 사용자 탭에만 발화 · 초기 파싱 open은 미발화)
-    let st = {}; try { st = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { st = {}; }
-    if (dt.open) delete st[dt.dataset.sec]; else st[dt.dataset.sec] = 1;
-    try { localStorage.setItem('nm_trend_fold', JSON.stringify(st)); } catch {}
-  }));
 }
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
