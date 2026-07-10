@@ -641,7 +641,7 @@ def run(vid_id, video, outdir):
     t0_req, t1_req = _sec("vid_t0"), _sec("vid_t1")
     has_vid = bool(vid_ar or vid_res or vid_fps or t0_req or t1_req)
     edit_notes = []
-    if not segs and not (has_vid or aud_on):
+    if not segs and not (has_vid or aud_on or opts.get("bgm")):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합)
         out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
     if opts.get("cut") and not segs:
         edit_notes.append("무음 컷 건너뜀(자막 전사 필요)")   # 컷 기준 = STT 발화 스팬 — 자막 없는 편집 경로엔 원천이 없다
@@ -719,6 +719,8 @@ def run(vid_id, video, outdir):
             if b and b > a + 0.2:
                 trim = (a, b - a)
                 dur = b - a
+            elif dur <= 0:
+                edit_notes.append("영상 길이 미상 — 트림 건너뜀")   # probe N/A(webm 등) = 범위 검증 불가(P2평의회2 문구 정정)
             else:
                 edit_notes.append("구간이 이상해 — 트림 건너뜀")
     cw, ch, cx, cy = w, h, 0, 0
@@ -790,7 +792,9 @@ def run(vid_id, video, outdir):
     if pw:
         px_, py_ = max(0, (pw - tw) // 2) & ~1, max(0, (ph - th) // 2) & ~1
         padf = "pad={}:{}:{}:{}:black,setsar=1".format(pw, ph, px_, py_)   # setsar=1 = contain 짝수화 미세 SAR 제거(conv 동형)
-    mid = ",".join(x for x in [cropf, ("scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""), fpsf, padf] if x)
+    scalef = "scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""
+    sarf = "setsar=1" if (has_vid and scalef and not padf) else ""   # 스케일 짝수화 잔여 SAR 제거 — 패드 경로(padf 내장)와 대칭(P2평의회9 실측)
+    mid = ",".join(x for x in [cropf, scalef, fpsf, padf, sarf] if x)
     ass = build_ass(segs, canvas_w, canvas_h, opts) if segs else ""
     ass_path = "/tmp/ly_subs.ass"
     with open(ass_path, "w", encoding="utf-8") as f:
@@ -809,7 +813,7 @@ def run(vid_id, video, outdir):
             + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
-    enc_to = 900 + int(interp_est * 1.5)   # 60i 보간 예산(≤900s)만큼 백스톱 연장 = 명목 +50% 마진(스텝 45분 캡 안 · 편집기)
+    enc_to = 900 + int(interp_est * 1.5)   # 60i 보간 예산(≤900s)만큼 백스톱 연장(최대 2250s) — 스텝 내 최악 스택{probe+Demucs 분리(≤780)+본 인코딩+음량(≤270)}은 컴포즈 스텝 55분 캡이 수용(P2평의회2 산술)
     def encode(c, to=None):   # 15분 백스톱(폴백은 600+보간 = 예산 스택 축소 · 평의회2·3) — 잡 하드킬 전에 우아하게 실패 기록
         to = enc_to if to is None else to
         r = subprocess.run(c, capture_output=True, text=True, timeout=to)
