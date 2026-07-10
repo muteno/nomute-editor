@@ -797,7 +797,7 @@ def r2_upload(png_bytes, key, content_type="image/png"):
             f.write(png_bytes); tmp = f.name
         subprocess.run(["aws", "s3", "cp", tmp, "s3://{}/{}".format(R2_BUCKET, key),
                         "--endpoint-url", endpoint, "--content-type", content_type,
-                        "--only-show-errors"], check=True, env=env, timeout=90)
+                        "--only-show-errors"], check=True, env=env, timeout=300)   # 90→300: 편집기 4K 산출(최대 ~1GB+)도 이 SSOT 경유 — 백스톱만 연장(이미지 경로 무영향 · 평의회4 260711)
         return "{}/{}".format(R2_PUBLIC, key)
     except Exception as e:
         print("  ⚠️ R2 업로드 실패: {}".format(e), flush=True)

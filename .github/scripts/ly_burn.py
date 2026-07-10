@@ -2,7 +2,8 @@
 # 영상 자막 번인(자동 합성) + 편집기 컴포지터 — 자막 ASS 번인·무음 컷·배경음 제거에 더해 편집기(edit) 축
 #   {vid_ar/vid_fit(크롭·검정 여백)·vid_res(src=원본 4K 캡 3840·1080·720 — 결측 1920)·vid_fps(60i 보간·다운)·vid_t0/t1(트림·자막 없는 경로만)·aud_norm(음량 통일)}을
 #   한 ffmpeg 파이프로 합성해 R2 업로드 → viewer/ly_out/<id>/video.json. 편집기 축 전부 결측 = 종전 ly 경로 그대로(회귀 0 · 260710).
-#   4K(운영자 260711): 출력 긴 변>1920 = EDIT_4K_MAX_SEC(180초) 선게이트 + 60i 보간 제외 + enc 백스톱 2400s — 다운스케일은 note로 표면화(침묵 금지).
+#   4K(운영자 260711): 4K급 = 캔버스 픽셀 > FHD 2배(긴 변 판별은 세로 1080×2340을 오분류 = 평의회4 교체) → EDIT_4K_MAX_SEC(180초) 선게이트 + 60i 보간 제외.
+#   enc 백스톱 = 픽셀 비례(FHD 900s → 4K 2400s 캡) · 다운스케일은 note로 표면화(침묵 금지 — FHD 자막 경로는 종전 무note = 표면 회귀 0).
 #   사용: ly_burn.py <id> <video_path>   (ly-make.yml 번인 스텝 + edit-make.yml 컴포즈 스텝 · ffmpeg+fonts-noto-cjk는 runner-setup가 설치)
 #   env: OPTS = 뷰어 버튼 설정 JSON(스타일·위치·크기·카라오케·키워드) · R2 5종 = thumb_gen 재사용(카드·썸네일·/k 동일 파이프)
 # 자막 소스 우선순위: subs.json(의역+타이밍 · lymake.sh가 claude 출력 꼬리 JSON 분리) → segments.json(받아쓴 원문 폴백).
@@ -760,16 +761,20 @@ def run(vid_id, video, outdir):
             k = cap / max(cw, ch)
             tw, th = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
         tw, th = tw & ~1, th & ~1
-        if not vid_res and max(cw, ch) > cap:   # 침묵 다운스케일 표면화(운영자 260711) — 명시 1080/720 선택은 본인 선택이라 제외
-            edit_notes.append("원본 {}×{} → 긴 변 {} 축소(4K 유지 = 해상도 카드 '원본(4K)')".format(w, h, cap))
+        if max(cw, ch) > cap and (not vid_res or vid_res == 3840):   # 침묵 다운스케일 표면화(운영자 260711 + src 초과 소스 평의회4) — 명시 1080/720 선택은 본인 선택이라 제외
+            edit_notes.append("원본 {}×{} → 긴 변 {} 축소{}".format(w, h, cap, "" if vid_res else "(4K 유지 = 해상도 카드 '원본(4K)')"))
     else:         # 종전 ly 다운스케일 캡(비용 보호·업스케일 없음) 그대로 = 회귀 0
         tw, th = cw, ch
         if tw > 1080:
             th = int(round(th * 1080 / tw / 2) * 2)
             tw = 1080
-            edit_notes.append("원본 폭 {} → 1080 축소".format(cw))   # 침묵 다운스케일 표면화(운영자 260711 · 자막 경로 표준 캡)
+            if cw > 1920:   # note는 2K+/4K 소스만(평의회3·10) — FHD(1920)의 일상 자막 잡은 종전대로 무note = 표면 회귀 0
+                edit_notes.append("원본 폭 {} → 1080 축소(4K 유지 = 해상도 카드 '원본(4K)')".format(cw))
     canvas_w, canvas_h = (pw or tw), (ph or th)
-    if max(canvas_w, canvas_h) > 1920 and dur > 0:   # 4K 출력 예산(기틀 캡 · 운영자 260711 — 완화 = 운영자 확인): 픽셀 4배 = 인코딩 폭발이라 별도 선게이트
+    canvas_px = canvas_w * canvas_h
+    # 4K급 판별 = 픽셀 수(FHD 2배 초과) — 긴 변>1920 판별은 세로 1080×2340(폰 화면녹화 2.5MP)을 4K로 오분류해 순수 자막 경로를 거절시킴(평의회4 불가 → 교체)
+    is4k = canvas_px > 2 * 2073600
+    if is4k and dur > 0:   # 4K 출력 예산(기틀 캡 · 운영자 260711 — 완화 = 운영자 확인): 픽셀 4배 = 인코딩 폭발이라 별도 선게이트
         max4k = int(os.environ.get("EDIT_4K_MAX_SEC") or 180)
         if dur > max4k + 1:
             out_json(outdir, {"error": "원본(4K) 유지는 {}초까지 — 해상도를 1080p로 내리거나 구간을 잘라줘".format(max4k)}); return 0
@@ -788,8 +793,8 @@ def run(vid_id, video, outdir):
             eff = dur if dur > 0 else float(MAX_DUR)
             unit = 60 * 0.30 * (tw * th / 2073600.0)
             est = eff * unit
-            if max(canvas_w, canvas_h) > 1920:
-                edit_notes.append("60fps 보간은 1080p까지 — 4K에선 건너뜀")   # 4K 보간 = 단가 4배(예산 밖) · 정직 스킵(운영자 260711)
+            if is4k:
+                edit_notes.append("60fps 보간은 1080p까지 — 4K에선 건너뜀")   # 4K급 보간 = 단가 4배(예산 밖) · 정직 스킵(운영자 260711 · 판별 = canvas_px)
             elif src_fps >= 59:
                 edit_notes.append("이미 60fps — 보간 건너뜀")
             elif est > 900:   # 잡 캡 보호(자막·배경음과 동일 잡 공존 예산 · 평의회2 260710)
@@ -823,7 +828,7 @@ def run(vid_id, video, outdir):
             + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
-    enc_base = 900 if max(canvas_w, canvas_h) <= 1920 else 2400   # 4K = 픽셀 4배(x264 veryfast 실단가 비례) → 백스톱 확장(180s 캡 기준 여유 · 260711)
+    enc_base = min(2400, int(900 * max(1.0, canvas_px / 2073600.0)))   # 백스톱 = 캔버스 픽셀 비례(x264 실단가 비례 · FHD 900 → 4K 2400 캡 · 세로 2340 = ~1015 — 이진 오분류 없음 · 평의회4)
     enc_to = enc_base + int(interp_est * 1.5)   # 60i 보간 예산(≤900s)만큼 백스톱 연장(1080p 최대 2250s · 4K 2400s) — 스텝 내 최악 스택{probe+Demucs 분리(≤780)+본 인코딩+음량(≤270)}은 컴포즈 스텝 60분 캡이 수용(P2평의회2 산술 + 4K 260711)
     def encode(c, to=None):   # 15분 백스톱(폴백은 600+보간 = 예산 스택 축소 · 평의회2·3) — 잡 하드킬 전에 우아하게 실패 기록
         to = enc_to if to is None else to

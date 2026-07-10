@@ -6,8 +6,9 @@
 #   일반(크롭·트림·스케일·fps다운) = 트림 후 유효 길이 300초(트래킹 분석 캡 선례)
 #   60fps 보간 = 120초 캡 + 발사 전 예산 가드 — minterpolate 기본 프리셋 실측 270ms/출력프레임@1080×1920(4vCPU=러너 동급)
 #     → 1080×1920 풀은 약 83초·720p급은 120초 풀까지(해상도 비례) = 초과 시 해상도/구간 안내 메시지로 정직 거절(키잉 예산 가드 문법).
-#   4K(운영자 260711): 입력 긴 변 3840까지 수용 · 출력 긴 변>1920(해상도 '원본' 통과) = MAX_4K_SEC(120초) 별도 캡 —
-#     픽셀 4배 = 인코딩 폭발이라 스텝 33분 내 보수 예산. 60i×4K는 기존 예산식이 자동 제한(약 19초). URL 소스는 워크플로가 1920 페치 유지 = 4K는 파일 업로드로.
+#   4K(운영자 260711): 입력 긴 변 3840까지 수용 · 4K급 출력(캔버스 픽셀 > FHD 2배 · 해상도 '원본' 통과) = MAX_4K_SEC(120초) 별도 캡 —
+#     픽셀 4배 = 인코딩 폭발이라 스텝 33분 내 보수 예산. 60i×4K는 기존 예산식이 자동 제한(약 20초). URL 소스는 워크플로가 1920 페치 유지 = 4K는 파일 업로드로.
+#     pad 캔버스 캡(res 결측) = min(3840, max(1920, 소스 긴 변)) — 소스≤1920은 종전 1920 스냅과 바이트 동일(회귀 0 · 평의회3·5).
 import json
 import math
 import os
@@ -103,7 +104,7 @@ def r2_upload(path, key):
         subprocess.run(["aws", "s3", "cp", path, f"s3://{bucket}/{key}",
                         "--endpoint-url", f"https://{acct}.r2.cloudflarestorage.com",
                         "--content-type", "video/mp4", "--only-show-errors"],
-                       check=True, env=env, timeout=240)   # conv 산출 = 수십~수백MB(키잉 GB급 아님) — 스텝 캡 내 백스톱 겹침 완화(평의회2)
+                       check=True, env=env, timeout=480)   # conv 산출 = 수십~수백MB · 4K(120s crf19)는 최대 ~2GB — 상향(평의회5·8 260711)
     except Exception as e:
         die("결과 업로드에 실패했어 — 잠시 후 다시 해줘.", f"R2 업로드 실패: {e}")
     return f"{pub}/{key}"
@@ -167,7 +168,9 @@ def main():
             pw, ph = cw, int(round(cw / pad_t))
         else:                                   # 원본이 목표보다 세로로 김 = 좌우 여백
             pw, ph = int(round(ch * pad_t)), ch
-        cap = min(MAX_LONG, RES[res]) if res else MAX_LONG
+        # 캔버스 캡: res 지정 = 그 캡 · res 결측(orig) = 소스 결속(단 하한 1920 = 종전 상수 복원 — MAX_LONG 3840을 그대로 쓰면
+        #   1080p 소스 pad가 1920×3412로 뻥튀기·표준 1080×1920 도달불가 = 평의회3·5 회귀 지적 → 소스≤1920은 종전과 바이트 동일)
+        cap = min(MAX_LONG, RES[res]) if res else min(MAX_LONG, max(1920, cw, ch))
         if max(pw, ph) > cap:                   # 캔버스 캡 = 목표비 정확 스냅(9:16 = 1080×1920처럼 떨어지게)
             if pw >= ph:
                 pw, ph = cap, max(2, int(round(cap / pad_t)) & ~1)
@@ -180,8 +183,10 @@ def main():
         k = RES[res] / max(cw, ch)
         sw, sh = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
     sw, sh = sw & ~1, sh & ~1
-    if max(pw or sw, ph or sh) > 1920 and eff > MAX_4K_SEC + 1:   # 4K 출력 예산(운영자 260711) — 해상도 '원본'으로 4K가 그대로 나가는 경우만
-        die(f"4K(원본) 변환은 {MAX_4K_SEC}초까지야(지금 구간 {int(eff)}초) — 해상도를 1080p로 내리거나 구간을 잘라줘.")
+    out_w, out_h = (pw or sw), (ph or sh)
+    # 4K급 판별 = 픽셀 수(FHD 2배 초과 — 긴 변>1920 판별은 세로 1080×2340(2.5MP)을 4K로 오분류 · 평의회4·5 교체) · 문구 = 실측 해상도 병기(2K 오라벨 방지)
+    if out_w * out_h > 2 * 2_073_600 and eff > MAX_4K_SEC + 1:
+        die(f"고해상도({out_w}×{out_h}) 변환은 {MAX_4K_SEC}초까지야(지금 구간 {int(eff)}초) — 해상도를 1080p로 내리거나 구간을 잘라줘(60fps 보간은 더 짧아).")
 
     # ── fps — 60i = minterpolate 보간(캡+예산 가드) · 30/24 = 다운 · keep = 그대로
     mode = opts.get("fps") if opts.get("fps") in ("keep", "60i", "30", "24") else "keep"

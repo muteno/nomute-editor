@@ -1,14 +1,19 @@
 // R2 직업로드 공용(편집기 edit.html · 변환 conv.html) — 32MB 균일 조각 멀티파트(api/upload 계약).
-// window.nmUpArm() → 가용 여부(세션 1회 핑 캐시 · 바인딩 없으면 false = 각 폼이 기존 30MB base64 경로 폴백 = 회귀 0)
+// window.nmUpArm() → 가용 여부(문서당 1회 핑 캐시 · 4s 타임아웃 = 핑 행이 로컬 파일 읽기를 못 막게 · 바인딩 없으면 false = 각 폼이 기존 30MB base64 경로 폴백 = 회귀 0)
 // window.nmUpload(file, onPct) → Promise<{key,size}> (진행률 0~100 콜백 · 실패 시 abort 후 throw)
+// window.nmUpDrop(key) → 미소비 완결 키 정리(fire-and-forget · 대체 선택·URL 발사 잔존 고아 방지)
 // XHR 사용 이유 = fetch는 업로드 진행 이벤트가 없음(조각별 %가 UX 핵심). 조각당 1회 재시도 = 일시 네트워크 흔들림 흡수.
 (function () {
   let armed = null;
   window.nmUpArm = async function () {
     if (armed !== null) return armed;
-    try { const r = await fetch('api/upload'); const j = await r.json(); armed = !!(r.ok && j.ok); }
+    try { const r = await fetch('api/upload', { signal: AbortSignal.timeout(4000) }); const j = await r.json(); armed = !!(r.ok && j.ok); }
     catch (e) { armed = false; }
     return armed;
+  };
+  window.nmUpDrop = function (key) {
+    if (!key) return;
+    try { fetch('api/upload', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'delete', key }) }); } catch (e) { /* 정리 실패 = 무해(수명규칙 백스톱) */ }
   };
 
   function putPart(url, blob, onLoaded) {

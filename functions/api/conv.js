@@ -48,7 +48,7 @@ export async function onRequestPost({ request, env }) {
   // R2 직업로드 키(대용량 ≤2GB · api/upload 발급) — 존재·크기 검증 후 러너에 r2_src로 전달(edit.js 동형)
   let r2src = '';
   if (!url && r2key) {
-    if (!/^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)$/.test(r2key)) return json({ error: '잘못된 업로드 키 — 파일을 다시 선택해줘' }, 400);
+    if (!/^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)$/.test(r2key) || /\s/.test(r2key)) return json({ error: '잘못된 업로드 키 — 파일을 다시 선택해줘' }, 400);   // \s = $ 후행 개행 봉합(평의회1)
     if (!env.R2) return json({ error: '대용량 업로드 미설정 — 파일을 다시 선택해줘' }, 501);
     const h = await env.R2.head(r2key);
     if (!h) return json({ error: '업로드 파일이 없어(만료·정리됨) — 다시 올려줘' }, 400);

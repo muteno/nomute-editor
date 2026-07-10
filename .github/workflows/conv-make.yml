@@ -39,7 +39,7 @@ permissions:
 jobs:
   conv:
     runs-on: ubuntu-latest
-    timeout-minutes: 38   # 60fps 보간 예산 25분(코드 INTERP_BUDGET) + 다운로드·인코딩·업로드 여유 — 무한 행만 차단(§9)
+    timeout-minutes: 58   # 최악 스택{환경 ~10 + R2 소스 8 + 변환 33(보간 예산 25분 포함)} + 우아한 실패·커밋 창 — 무한 행만 차단(§9 · R2 선스텝 재산정 평의회6 260711)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -93,7 +93,7 @@ jobs:
 
       - name: 소스 확보 (R2 직업로드 — 대용량 ≤2GB)
         if: ${{ inputs.r2_src != '' }}
-        timeout-minutes: 12
+        timeout-minutes: 8   # 2GB도 러너→R2 수십 MB/s면 수분 — 잡 캡 예산 압축(평의회6)
         env:
           R2_SRC: ${{ inputs.r2_src }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -102,8 +102,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
-          case "$R2_SRC" in up_src/*) ;; *) echo "::error::r2_src는 up_src/* 만 허용: $R2_SRC"; exit 1;; esac
-          case "$R2_SRC" in *..*|*' '*) echo "::error::잘못된 r2_src"; exit 1;; esac
+          [ -z "${CONV_SRC:-}" ] || { echo "이미 소스 확보 — 스킵(다중 입력 방어)"; exit 0; }
+          printf '%s' "$R2_SRC" | grep -Eqx 'up_src/[0-9]{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)' \
+            || { echo "::error::잘못된 r2_src: $R2_SRC"; exit 1; }   # api 정규식과 동형 자체 재검증(개행·탭·확장자·문자셋 — 상류 신뢰 대신 최후 방어선 · 평의회1)
           [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/conv_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
           EXT="${R2_SRC##*.}"
           export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
