@@ -252,7 +252,7 @@ def main():
                 png = tg.gemini_image(c["prompt"] + " " + CARD_STYLE)
                 if not png:
                     print("  ✗ 카드 {} 장면 생성 실패".format(c["n"])); continue
-                open(scene_local, "wb").write(png)   # 이미지 바이트(실측 = 보통 JPEG · 확장자 .jpg는 무관 — recompose는 Image.open 포맷불문)
+                open(scene_local, "wb").write(png)   # PNG 바이트(확장자 .jpg는 무관 — recompose는 Image.open 포맷불문)
                 print("  ✓ 카드 {} 장면 생성".format(c["n"]))
             # 2) 합성(card_news 로컬) — EDIT_TEXT 잔여 제거 후 텍스트 주입
             os.environ.pop("EDIT_TEXT", None)

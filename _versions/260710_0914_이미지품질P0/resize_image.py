@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import thumb_gen as tg   # gemini_image·r2_upload·R2_ON 재사용(단일 렌더 진입점)
 
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageFilter
 import numpy as np
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
@@ -149,8 +149,7 @@ def blur_pad(img, ar):
 
 def jpg_bytes(img, q=92):
     b = io.BytesIO()
-    # subsampling=0(4:4:4) — 기본 4:2:0 크로마 번짐 방지(솔리드/블러 무과금 경로 재압축 열화 최소화 · 분신11 260709)
-    img.convert("RGB").save(b, "JPEG", quality=q, subsampling=0, optimize=True)
+    img.convert("RGB").save(b, "JPEG", quality=q)
     return b.getvalue()
 
 
@@ -174,7 +173,7 @@ def main():
     if not rid or not os.path.isfile(src_path):
         print("::error::입력 없음 — id={} src={}".format(rid, src))
         sys.exit(1)
-    img = ImageOps.exif_transpose(Image.open(src_path)).convert("RGB")   # 폰 세로사진 EXIF 회전 적용(눕은 채 패딩 방지)
+    img = Image.open(src_path).convert("RGB")
     if ratio_ok(img.size, aspect):
         print("이미 목표 비율({}) — no-op".format(aspect))
         return
@@ -200,7 +199,7 @@ def main():
             else:
                 where, dirhint = "to its left and right", "to the left and to the right"
             base_prompt = P_PADFILL.format(where=where, dirhint=dirhint)
-            png, fb, qa_fail = None, "", False
+            png, fb = None, ""
             for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
                 p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
                                     "reason: \"" + fb + "\". Fix exactly that issue this time.") if fb else "")
@@ -215,18 +214,15 @@ def main():
                     continue
                 v = gemini_judge(cand)
                 if v is None or v[0]:   # 판정 스킵(fail-soft) 또는 PASS
-                    png, qa_fail = cand, False
+                    png = cand
                     break
-                png, fb, qa_fail = cand, v[1], True   # FAIL — 사유 피드백 재시도(최종 FAIL이면 아래서 폴백)
+                png, fb = cand, v[1]   # FAIL — 최종 후보로는 보관·사유 피드백 재시도
                 print("  QA t{}: FAIL — {}".format(attempt, fb), flush=True)
-            if png and qa_fail:   # 재시도까지 전부 FAIL = 불합격본 출력 금지 → 결정론 폴백(분신11 260709)
-                print("::warning::QA 최종 FAIL({}) — blur-pad 폴백".format(fb[:80]))
-                png = None
             if png:
                 out_img = pixel_lock(png, canvas.size, img, box) if lock else \
                     Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
             else:
-                print("::warning::Gemini 렌더/QA 실패 — blur-pad 폴백(항상 결과)")
+                print("::warning::Gemini 렌더 실패 — blur-pad 폴백(항상 결과)")
                 route = "blur_pad"
                 out_img = blur_pad(img, aspect)
 
