@@ -73,7 +73,7 @@
   .mseg:active { transform:scale(var(--press-m)); }
   .mseg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
   .mo-row { display:grid; grid-template-columns:76px 1fr 44px; align-items:center; gap:10px; margin:10px 0 2px; font-size:var(--fs-label); }
-  .mo-row[hidden], .poshint[hidden], #dlVid[hidden] { display:none; }   /* display:grid/flex가 UA [hidden]을 덮는 함정 가드(헤드리스 실측 260710 · track:120 전례) */
+  .mo-row[hidden], .poshint[hidden], #dlVid[hidden], .modeseg[hidden] { display:none; }   /* display:grid/flex가 UA [hidden]을 덮는 함정 가드(헤드리스 실측 260710 · track:120 전례) — .modeseg = 방식(segFit) 조건 표시용 */
   .mo-k { color:var(--fg); font-weight:var(--fw-b); }
   .mo-row input[type=range] { width:100%; accent-color:var(--accent); }
   .mo-v { text-align:right; color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
@@ -152,6 +152,10 @@
     <button class="mseg" data-v="4:5" role="tab" aria-selected="false">4:5</button>
     <button class="mseg" data-v="16:9" role="tab" aria-selected="false">16:9</button>
   </div>
+  <div class="modeseg" id="segFit" role="tablist" aria-label="비율 채움 방식" hidden><!-- 비율 선택 시만 · 자르기=크롭 / 여백=검정 레터박스 중앙(운영자 260710 승인 배치) -->
+    <button class="mseg on" data-v="crop" role="tab" aria-selected="true">자르기</button>
+    <button class="mseg" data-v="pad" role="tab" aria-selected="false">여백(검정)</button>
+  </div>
   <div class="mo-row" id="posRow" hidden><span class="mo-k">위치</span><input type="range" id="pos" min="0" max="100" step="1" value="50" aria-label="크롭 위치 — 0 좌/상 · 50 중앙 · 100 우/하"><span class="mo-v" id="posV">중앙</span></div>
   <div class="poshint" id="posBtnRow" hidden><button class="ghost" id="posPrev" type="button">위치 미리보기</button></div>
 
@@ -168,6 +172,12 @@
     <button class="mseg on" data-v="orig" role="tab" aria-selected="true">원본</button>
     <button class="mseg" data-v="1080" role="tab" aria-selected="false">1080p</button>
     <button class="mseg" data-v="720" role="tab" aria-selected="false">720p</button>
+  </div>
+
+  <label class="fl">음량</label><!-- 통일 = −14LUFS·피크 −1.5dB(0dB 절대 보장 마진)·좌우 모노합(shared/audio_norm.py) — 운영자 260710 승인 배치 -->
+  <div class="modeseg" id="segAudio" role="tablist" aria-label="음량">
+    <button class="mseg on" data-v="keep" role="tab" aria-selected="true">유지</button>
+    <button class="mseg" data-v="norm" role="tab" aria-selected="false">통일</button>
   </div>
 
   <div class="status" id="cstatus" role="status"></div>
@@ -195,7 +205,7 @@ const PEND_KEY='nm_conv_pend';
 const API='/api/conv';
 const BUDGET=1300;   // 폴 예산(초) — 하드 ×2 = 2600s ≥ 잡 캡 38분(2280)+디스패치+Pages 배포(평의회2: 뷰어가 잡보다 먼저 포기하던 상실창 봉합) · 재개 게이트는 24h 별도
 const AR_NUM={'9:16':9/16,'1:1':1,'4:5':4/5,'16:9':16/9};
-let OPT={fps:'keep', ar:'orig', pos:50, res:'orig'};
+let OPT={fps:'keep', ar:'orig', fit:'crop', pos:50, res:'orig', audio:'keep'};
 let FILE_B64='', FILE_NAME='', FILE_URL='';   // FILE_URL = objectURL(위치 미리보기용)
 let USER_ACT=false, _curStop=null, _dur=0, _pollLive=false;   // _pollLive = 대기 미리보기가 objectURL 사용 중(revoke 보류 신호 · 평의회5)
 
@@ -232,9 +242,11 @@ function segBind(id, key, after){
 }
 segBind('#segFps','fps');
 segBind('#segAr','ar',syncPos);
+segBind('#segFit','fit',syncPos);
 segBind('#segRes','res');
-function syncPos(){ const on=OPT.ar!=='orig'; $('#posRow').hidden=!on; syncPosPrev(); }
-function syncPosPrev(){ $('#posBtnRow').hidden=!(OPT.ar!=='orig'&&FILE_URL); }
+segBind('#segAudio','audio');
+function syncPos(){ const on=OPT.ar!=='orig'; $('#segFit').hidden=!on; const cropOn=on&&OPT.fit!=='pad'; $('#posRow').hidden=!cropOn; syncPosPrev(); if(!cropOn&&!$('#scrub').hidden) scrubClose(); }   // 여백(pad) = 항상 중앙이라 위치 슬라이더·미리보기 숨김 + 열려 있던 크롭 프리뷰도 방어 닫기(키보드 심층 경로 · 평의회3)
+function syncPosPrev(){ $('#posBtnRow').hidden=!(OPT.ar!=='orig'&&OPT.fit!=='pad'&&FILE_URL); }
 $('#pos').addEventListener('input',()=>{ OPT.pos=+$('#pos').value; $('#posV').textContent=OPT.pos===50?'중앙':(OPT.pos<50?'좌/상 ':'우/하 ')+Math.abs(OPT.pos-50)*2+'%'; });
 
 // ── 위치 미리보기(크롭 프레임 드래그 · 파일 선택 시) ──
@@ -311,8 +323,8 @@ function gaugeDone(btn){ if(btn) btn.classList.add('gdone'); }
 function gaugeClear(btn){ if(btn) btn.classList.remove('glive','firing','grun','gdone'); }
 
 function buildOpts(){
-  const o={fps:OPT.fps, ar:OPT.ar, res:OPT.res};
-  if(OPT.ar!=='orig') o.pos=Math.round(OPT.pos)/100;
+  const o={fps:OPT.fps, ar:OPT.ar, res:OPT.res, audio:OPT.audio};
+  if(OPT.ar!=='orig'){ o.fit=OPT.fit; if(OPT.fit!=='pad') o.pos=Math.round(OPT.pos)/100; }
   const t0=parseFloat($('#t0').value), t1=parseFloat($('#t1').value);
   if(Number.isFinite(t0)&&t0>0) o.t0=t0;
   if(Number.isFinite(t1)&&t1>0) o.t1=t1;
@@ -411,7 +423,7 @@ let RESULT_URL='';
 function showResult(d, sec){
   RESULT_URL=d.url||'';
   $('#cstatus').classList.remove('err');
-  $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(d.w?(' — '+d.w+'×'+d.h+' '+(d.fps||'')+'fps'):'');
+  $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(d.w?(' — '+d.w+'×'+d.h+' '+(d.fps||'')+'fps'):'')+(d.note?(' · '+esc(d.note)):'');   // note = 음량 통일/스킵 사유(침묵 금지)
   const vw=$('#vwrap'); vw.hidden=false;
   vw.innerHTML='<video controls playsinline preload="metadata" src="'+esc(d.url)+'"></video>';
   $('#dlVid').hidden=false;

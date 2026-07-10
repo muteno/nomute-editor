@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# 변환(conv) — ffmpeg 단일 파이프: 트림 → 비율 크롭 → 스케일 → fps(60 보간·다운) → h264+aac → R2 → video.json.
+# 변환(conv) — ffmpeg 단일 파이프: 트림 → 비율 크롭/여백(패드) → 스케일 → fps(60 보간·다운) → h264+aac
+#   (→ 음량 통일 = shared/audio_norm.py 후처리·비디오 copy) → R2 → video.json.
 # LLM 0콜·모델 0(순수 ffmpeg — 과금 = Actions 분 + R2). 실패 = /tmp/conv_err.txt → 워크플로 failure()가 error.log 커밋(트래킹 미러).
 # 캡·예산(운영자 260710 확정 + 실측 260710):
 #   일반(크롭·트림·스케일·fps다운) = 트림 후 유효 길이 300초(트래킹 분석 캡 선례)
@@ -12,6 +13,9 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timedelta, timezone
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "shared"))
+import audio_norm   # 음량 통일 SSOT(−14LUFS 2패스·L/R 모노합) — 자체 loudnorm 재구현 금지(§핵심명령식 단일정본)
 
 KST = timezone(timedelta(hours=9))
 MAX_SEC = 300            # 일반 캡(트림 후 유효 길이)
@@ -130,14 +134,20 @@ def main():
     if eff > MAX_SEC + 1:
         die(f"변환은 {MAX_SEC}초까지야(지금 구간 {int(eff)}초) — 구간을 잘라줘.")
 
-    # ── 비율 크롭 — pos = 잘리는 축의 팬 위치(0=좌/상 · 0.5=중앙 · 1=우/하) · 짝수 정렬 = 크로마 시프트 방지
+    # ── 비율 — fit=crop: 잘라서 맞춤(pos = 잘리는 축 팬 위치 0=좌/상 · 0.5=중앙 · 1=우/하) / fit=pad: 안 자르고
+    #    목표비 캔버스 중앙 배치 + 남는 축 검정 여백(운영자 260710 "위아래 검정 채워 9:16 · 영상은 가운데" — pos 미적용).
+    #    짝수 정렬 = 크로마 시프트 방지.
     ar = opts.get("ar") if opts.get("ar") in AR else None
+    fit = opts.get("fit") if opts.get("fit") in ("crop", "pad") else "crop"
     pos = _num(opts.get("pos"), 0, 1, 0.5)
     cw, ch, cx, cy = W, H, 0, 0
+    pad_t = 0.0   # 0 = 패드 없음(크롭 모드 또는 비율 미선택)
     if ar:
         target, cur = AR[ar], W / H
         if abs(target - cur) < 1e-3:
-            ar = None   # 이미 그 비율 = 크롭 생략
+            ar = None   # 이미 그 비율 = 크롭/패드 생략
+        elif fit == "pad":
+            pad_t = target
         elif target < cur:
             cw = max(2, int(H * target) & ~1)
             cx = int(pos * (W - cw)) & ~1
@@ -145,10 +155,25 @@ def main():
             ch = max(2, int(W / target) & ~1)
             cy = int(pos * (H - ch)) & ~1
 
-    # ── 해상도 스케일(다운만 — 업스케일 안 함) → 짝수
+    # ── 해상도 스케일(다운만 — 업스케일 안 함) → 짝수. 패드 모드 = 캔버스(출력) 긴 변 기준 캡 · 원본은 캔버스 안 contain.
     res = opts.get("res") if opts.get("res") in RES else None
     sw, sh = cw, ch
-    if res and max(cw, ch) > RES[res]:
+    pw = ph = 0   # 패드 캔버스(0 = 패드 없음)
+    if pad_t:
+        if cw / ch > pad_t:                     # 원본이 목표보다 옆으로 넓음 = 위아래 여백
+            pw, ph = cw, int(round(cw / pad_t))
+        else:                                   # 원본이 목표보다 세로로 김 = 좌우 여백
+            pw, ph = int(round(ch * pad_t)), ch
+        cap = min(MAX_LONG, RES[res]) if res else MAX_LONG
+        if max(pw, ph) > cap:                   # 캔버스 캡 = 목표비 정확 스냅(9:16 = 1080×1920처럼 떨어지게)
+            if pw >= ph:
+                pw, ph = cap, max(2, int(round(cap / pad_t)) & ~1)
+            else:
+                pw, ph = max(2, int(round(cap * pad_t)) & ~1), cap
+        pw, ph = max(2, pw & ~1), max(2, ph & ~1)
+        k = min(pw / cw, ph / ch, 1.0)          # 원본 contain(업스케일 없음)
+        sw, sh = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
+    elif res and max(cw, ch) > RES[res]:
         k = RES[res] / max(cw, ch)
         sw, sh = max(2, int(cw * k) & ~1), max(2, int(ch * k) & ~1)
     sw, sh = sw & ~1, sh & ~1
@@ -158,7 +183,7 @@ def main():
     vf = []
     if sar_fix:
         vf.append(sar_fix)
-    if ar:
+    if ar and not pad_t:
         vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
     if (sw, sh) != (cw, ch):
         vf.append(f"scale={sw}:{sh}")
@@ -179,6 +204,12 @@ def main():
         if fps > tgt + 0.5:
             vf.append(f"fps={mode}")
             out_fps = tgt
+    ow, oh = sw, sh   # 출력 치수(video.json 보고용)
+    if pw:   # 여백(패드) = fps 뒤(보간은 원본 픽셀만 계산 = 예산 산식 sw·sh 그대로 유효) · 오프셋 짝수 = 크로마 안전
+        px, py = max(0, (pw - sw) // 2) & ~1, max(0, (ph - sh) // 2) & ~1
+        vf.append(f"pad={pw}:{ph}:{px}:{py}:black")
+        vf.append("setsar=1")   # contain 짝수화가 남긴 미세 보정 SAR(≈0.25% 스퀴시) 제거 = 정사각픽셀 강제(평의회1 실측)
+        ow, oh = pw, ph
     vf.append("format=yuv420p")   # 재생 호환(브라우저·프리미어)
 
     out = "/tmp/conv_out.mp4"
@@ -194,12 +225,28 @@ def main():
         die("변환 시간 초과 — 구간·해상도를 줄여서 다시 해줘.")
     if r.returncode != 0 or not os.path.isfile(out) or os.path.getsize(out) < 1024:
         die("변환에 실패했어 — 영상을 mp4로 바꿔서 다시 올려줘.", f"ffmpeg rc={r.returncode}")
+
+    # ── 음량 통일(후처리·비디오 copy) — 실패/무음 = 원본 유지 + note로 사유 표면화(fail-soft·침묵 금지)
+    audio = opts.get("audio") if opts.get("audio") in ("keep", "norm") else "keep"
+    note = ""
+    if audio == "norm":
+        out_an = "/tmp/conv_out_an.mp4"
+        try:
+            ok_a, note = audio_norm.normalize(out, out_an)
+        except Exception as e:   # 이중 가드 — 헬퍼가 못 잡은 예외도 성공한 본 인코딩을 보존(fail-soft 완결 · 평의회5·6)
+            ok_a, note = False, "음량 통일 건너뜀(처리 실패)"
+            print("::warning::audio_norm 예외:", e, flush=True)
+        if ok_a:
+            out = out_an
+        print("음량:", note, flush=True)
     size_mb = os.path.getsize(out) / 1e6
-    print(f"변환 완료 {sw}×{sh} {out_fps:g}fps {eff:.1f}s · {time.time() - t_run:.0f}s · {size_mb:.0f}MB", flush=True)
+    print(f"변환 완료 {ow}×{oh} {out_fps:g}fps {eff:.1f}s · {time.time() - t_run:.0f}s · {size_mb:.0f}MB", flush=True)
 
     url = r2_upload(out, f"conv_res/{vid_id}/out.mp4") + f"?v={int(time.time())}"   # stable 키 + 캐시버스트(ly·track 불변)
-    doc = {"url": url, "w": sw, "h": sh, "fps": round(out_fps, 2), "dur": round(eff, 2),
+    doc = {"url": url, "w": ow, "h": oh, "fps": round(out_fps, 2), "dur": round(eff, 2),
            "size_mb": round(size_mb, 1), "ts": datetime.now(KST).isoformat(timespec="seconds")}
+    if note:
+        doc["note"] = note
     odir = os.path.join("viewer", "conv_out", vid_id)
     os.makedirs(odir, exist_ok=True)
     with open(os.path.join(odir, "video.json"), "w", encoding="utf-8") as f:
