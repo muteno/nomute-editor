@@ -8118,7 +8118,16 @@ const timeAccOut = c => {   // 아웃라이어면 시간항 하한(램프 블렌
 };
 // 누적(좌) 정렬 = cross 볼록가점 × 시간 가속감점(발행) × 연속보도(scFollow) × AI 경중(gradeW). 다수동시+최신+계속+양질=상단.
 const BREAKING_RANK_BOOST = 3.0;   // 누적 긴급 부스트 — 긴급(isBreaking) 사건은 누적칼럼서도 가시성↑(운영자 260628 "긴급할수록 가시성 높인다" 목적). **1.5→3.0(260628 A/B 분신술 10인·7일치 전수)**: ×1.5는 죽은 파라미터(churn0·대형재난 묻힘)였음 → ×3.0이 긴급 top20 2→3·일본강진 39→19·화성화재 15→3·베네수920 52→28. 안전 확증(옛긴급 top20진입 0[timeAcc가 누름]·비긴급오염 0[breaking에만 곱]·breaking오탐 0[grade≥2 게이트]·중요훼손 top20밖 96%). 조정 가능. ⏳후속(라운드2): 저cross 신선긴급=effective cross floor(#7)·老 대형재난(rc큰 g3 52h+)=g3한정 timeAcc 연장(#4/#5) — 곱셈만으론 timeAcc 못 이김.
-const scScore = c => crossConvex(c) * timeAccOut(c) * scFollow(c) * gradeW(c) * (isBreaking(c) ? BREAKING_RANK_BOOST : 1);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점[timeAccOut = 아웃라이어 감쇠하한 포함 · 비아웃라이어는 timeAcc 동일값] × AI경중 × [긴급이면 부스트]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트.
+const BOOST_RAMP_END_H = 48;   // 부스트 착지 나이(h) — 24h(BADGE_MAX_AGE_H)부터 여기까지 선형 하강(운영자 260710 "오래된 속보 부스트 다듬기" · 절벽 금지 = OUT z 램프와 동일 취지). 조정 가능.
+const brkBoost = c => {   // 긴급 부스트 나이 램프: <24h = ×3.0 그대로(260628 A/B 검증 창 무변) · 24~48h 선형 ×3.0→×1 · 48h+ = ×1(구 영구 부스트 폐지 — 부스트가 나이 무관 평생 ~10h 젊게 취급하던 것 종료 · 분신술 260710 감사 ⑧ · 운영자 승인). 나이축 = 배지·OUT과 동일 max(발행, 수집).
+  if (!isBreaking(c)) return 1;
+  const pubAge = (Date.now() - scTs(c)) / 3600000, fsT = Date.parse(c.first_seen || ''),
+    ageH = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);
+  if (ageH < BADGE_MAX_AGE_H) return BREAKING_RANK_BOOST;
+  if (ageH >= BOOST_RAMP_END_H) return 1;
+  return 1 + (BREAKING_RANK_BOOST - 1) * (BOOST_RAMP_END_H - ageH) / (BOOST_RAMP_END_H - BADGE_MAX_AGE_H);
+};
+const scScore = c => crossConvex(c) * timeAccOut(c) * scFollow(c) * gradeW(c) * brkBoost(c);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점[timeAccOut = 아웃라이어 감쇠하한 포함 · 비아웃라이어는 timeAcc 동일값] × AI경중 × [긴급이면 부스트(나이 램프)]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트.
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // pinB = 확정 breaking & 아직 안 픽이면 1(픽하면 0). 누적칼럼 강제핀은 260617 제거 — 이 값은 pinFresh(신규칼럼 최신속보 핀)에서만 씀.
 const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r.picked && !r.acked) ? 1 : 0; };   // 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619)
