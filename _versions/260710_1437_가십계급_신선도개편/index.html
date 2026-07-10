@@ -7848,8 +7848,7 @@ function renderScrap() {
       _scFoldN = 0;
       if (!q) {   // 검색 중엔 접기 비활성(브라우즈 중 = 전부 표시)
         const heldIds = new Set(arr.filter(c => c.grade == null && (c.cross || 0) <= 3 && (c.burst || 0) < 3
-          && !c.breaking && !c.breaking_candidate && !failRequeued(c) && !pickState(c)
-          && (Date.now() - scTs(c)) >= FRESH_UNFOLD_H * 3600000).map(candId));   // 갓 뜬(<1.5h) 기사 = 미채점이어도 접지 않음(운영자 260710 "30분 전 기사가 안 올라옴" — 실시간 이슈 = 핵심 기능인데 신선분이 전부 접힘 트레이에 갇혀 2~3h짜리만 보이던 근본. judge가 ~15분 내 채점하면 자연 재분류라 노이즈 노출 창 짧음·cross≥2는 이미 통과한 것들)
+          && !c.breaking && !c.breaking_candidate && !failRequeued(c) && !pickState(c)).map(candId));
         if (heldIds.size >= 4 && (arr.length - heldIds.size) >= 10) {   // 3건 이하면 접을 가치 없음(버튼이 더 시끄러움) · 접기 미발동 기준 = 검증대기 뺀 *활성 표시분*이 10건 미만이면 접지 않고 다 펼침(적은 날 = 활성 2건인데 검증대기만 접히면 칼럼이 "검증대기 +N 펼치기" 하나로 휑·기사 안 들어온 인상 → 활성이 적을수록 검증대기라도 채워 보여줌 · 접기 목적=활성 많은 날 스크롤 잠식 방지라 활성<10은 접을 이유 없음 · 운영자 260705)
           if (scFoldOpen) { arr = arr.filter(c => !heldIds.has(candId(c))).concat(arr.filter(c => heldIds.has(candId(c)))); _scFoldN = -heldIds.size; }
           else { arr = arr.filter(c => !heldIds.has(candId(c))); _scFoldN = heldIds.size; }
@@ -8045,7 +8044,6 @@ const scTs = c => {
 // ── 최신 게이트(scFast): 최신한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
 const BADGE_MAX_AGE_H = 24;   // 배지(⚡이슈)·OUT 완화 공용 소멸선(1일) — brkIssueKind(피드)·scBadgeType(수집함)·OUT_MAX_AGE_H 단일출처. 맨 리터럴 24가 두 곳에 이중 존재해 OUT만 바꾸면 "배지·완화 동시 소멸" 계약이 조용히 깨지던 드리프트 지뢰 봉합(분신술 10인 감사·260710). 조정 가능.
 const CROSS_MIN = 8;   // 누적 진입선 = 8개 매체 이상(운영자 260617: 5→8 엄선 — 어중간한 건 컷·DB엔 잔존). renderScrap(진입·OUT 통계)·fbJunk veto 공용 — 함수 로컬이던 것을 top-level 승격해 fbJunk의 맨 리터럴 8 제거(의미 같은 값 이중 정의 봉합·분신술 260710). 조정 가능.
-const FRESH_UNFOLD_H = 1.5;   // 신선 접기 면제 나이(h) — 이보다 어린 기사는 검증대기 접기 비대상(운영자 260710 "30분 전 기사" 실시간성 · 조정 가능)
 const FAST_MAX_H = 4, FAST_HALF_H = 2;   // ⏱ 신규↔누적 칼럼 경계 = 발생 4h(운영자 정본 260617: 최신=나이<4h=화면 '3시간 전'까지 / 누적=나이≥4h='4시간 전'부터). 자리(칼럼)=신규·누적 / 사건(배지)=긴급=속보[breaking] = 별개 축 — 긴급 사건은 나이 들면 *자리만* 신규→누적로 이동(개념 불변). 이 한 상수가 최신진입·누적진입·속보핀·토스트·배지(🚨긴급↔⚡이슈)를 전부 결정 = 단일출처(드리프트 차단). FAST_HALF_H=하강 반감기. 조정 가능.
 const scFast = c => isBreaking(c) || ((c.cross || 0) >= 2 && c.grade !== 0 && !fbJunk(c));   // 신규 진입: grade1(경미) 구제(운영자 260628) · grade0(비뉴스)만 fast-track 제외 + 피드백 잡음(fbJunk·아래 정의·grade=null 사각 홍보/청약/연예) 거르기(운영자 260701·구조게이팅이라 대형뉴스 무영향).
 const FOLLOW_W = 0.5;   // 연속보도 가점 가중 — 또 보도될수록↑(0.2→0.5·260628 Stage2 보름치 검증: §★ '연속보도 제일 무겁게'가 cross^POW에 묻히던 것 교정 — rank×연속보도 상관 0.098→0.162·호르무즈 선박 cr5·rc16이 26→12위). 조정 가능.
@@ -8115,14 +8113,8 @@ const timeAccOut = c => {   // 아웃라이어면 시간항 하한(램프 블렌
     ageH = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);   // 나이 = 배지(scBadgeType)와 동일 max(발행,수집)축 — "배지·완화 동시 소멸" 실보장(rep점프 first_seen 승계로 fs나이>발행나이 역전 264건 실측 — scTs 단독이면 배지 죽고 완화만 사는 비대칭)
   if (ageH >= OUT_MAX_AGE_H) return t;
   if ((c.report_count || 0) < FOLLOW_RC_MIN || !issCross(c)) return t;   // §★ '다매체 AND 계속보도' — rc<6 일회성 신디케이션은 압도적이어도 하한 없음(연속보도 동반 필수) + 이슈 배지 자격
-  const r = scRT[candId(c)] || {};   // 픽·확인 완료 = 처리물 — 하한 혜택 제외(운영자 260710 "12h+ 상단" 스샷 1위 = PICKED 21h·cr33: 이미 처리한 카드가 하한으로 상단 고정되던 것 → 정상 timeAcc로 자연 침몰. 리스트 잔존은 pickState 면제가 따로 보장 = 소실 0)
-  if (r.picked || r.acked) return t;
   const s = Math.min(1, Math.max(0, (((c._rankCross ?? (c.cross || 0)) - _outMed) / _outSd - OUT_Z0) / (OUT_Z1 - OUT_Z0)));
-  if (!s) return t;
-  const fl0 = 1 / (1 + Math.pow(OUT_AGE_CAP_H / ACC_T_HALF, ACC_T_POW)),      // 12h 값 .560
-    fl24 = 1 / (1 + Math.pow(OUT_MAX_AGE_H / ACC_T_HALF, ACC_T_POW)),         // 24h 정상값 .137
-    fv = ageH <= OUT_AGE_CAP_H ? fl0 : fl0 + (fl24 - fl0) * (ageH - OUT_AGE_CAP_H) / (OUT_MAX_AGE_H - OUT_AGE_CAP_H);   // 하한 나이 램프(운영자 260710 "12시간 이후 지난 것도 상단 — 더 감점"): 구 고정 .560이 21h 대형을 1위 고정 → 12h .560에서 24h .137로 선형 착지(압도적 다매체도 서서히 밀림). 덤 = 24h 경계 ÷4 절벽 소멸(fv가 24h에 정상 timeAcc와 연속 접합 · 분신술 260710 감사 ⑧ 지적 해소)
-  return t + s * Math.max(0, fv - t);
+  return s ? t + s * Math.max(0, 1 / (1 + Math.pow(OUT_AGE_CAP_H / ACC_T_HALF, ACC_T_POW)) - t) : t;
 };
 // 누적(좌) 정렬 = cross 볼록가점 × 시간 가속감점(발행) × 연속보도(scFollow) × AI 경중(gradeW). 다수동시+최신+계속+양질=상단.
 const BREAKING_RANK_BOOST = 3.0;   // 누적 긴급 부스트 — 긴급(isBreaking) 사건은 누적칼럼서도 가시성↑(운영자 260628 "긴급할수록 가시성 높인다" 목적). **1.5→3.0(260628 A/B 분신술 10인·7일치 전수)**: ×1.5는 죽은 파라미터(churn0·대형재난 묻힘)였음 → ×3.0이 긴급 top20 2→3·일본강진 39→19·화성화재 15→3·베네수920 52→28. 안전 확증(옛긴급 top20진입 0[timeAcc가 누름]·비긴급오염 0[breaking에만 곱]·breaking오탐 0[grade≥2 게이트]·중요훼손 top20밖 96%). 조정 가능. ⏳후속(라운드2): 저cross 신선긴급=effective cross floor(#7)·老 대형재난(rc큰 g3 52h+)=g3한정 timeAcc 연장(#4/#5) — 곱셈만으론 timeAcc 못 이김.
@@ -8184,7 +8176,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top"><span class="sc-metal">${[c.gossip ? '<span class="cat" style="color:var(--cat-cul)">가십</span>' : (catB ? catChip(catB) : ''), `<span class="sc-cross${lo}${c._mergeCount ? ' merged' : ''}"${c._mergeCount ? ` title="병합된 기사 ${c._mergeCount}건 — 탭 = 해제"` : ''}><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top"><span class="sc-metal">${[catB ? catChip(catB) : '', `<span class="sc-cross${lo}${c._mergeCount ? ' merged' : ''}"${c._mergeCount ? ` title="병합된 기사 ${c._mergeCount}건 — 탭 = 해제"` : ''}><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(scLinkUrl(c) || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
