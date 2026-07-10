@@ -1,0 +1,265 @@
+<!-- 트래킹/변환 렌더 대기 = 미리보기+진행 모션 플레이그라운드 (정본 골격 = docs/플레이그라운드_포터블.md §3 · 확립본 = 260706_언락밝기) -->
+<!-- ⚠ 내부 :root = viewer/track.html 인라인 팔레트 + tokens.css 구조토큰 사본(형식·재현 전용 — 값 정본은 언제나 해당 SSOT) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>렌더 대기 모션 — 만지는 시안</title>
+<style>
+  :root{
+    /* track.html 인라인 :root 사본 */
+    --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322;
+    /* tokens.css 구조토큰 사본 */
+    --r-s:9px; --r-l:16px; --r-pill:999px; --blur-s:8px; --fs-label:13px; --fw-b:700; --fw-x:800;
+    --ease:cubic-bezier(.2,.7,.3,1); --gauge-ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:#0b0c0e; color:var(--fg); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif; padding:18px; }
+  h1{ font-size:16px; margin:0 0 4px; } .sub{ color:var(--mut); font-size:12px; margin:0 0 16px; }
+  .wrap{ display:flex; flex-wrap:wrap; gap:22px; align-items:flex-start; justify-content:center; }
+
+  /* ── ① 실물 재현 — 폰 프레임(9:19) 안 영상 모달 STEP3 ── */
+  .stagewrap{ flex:none; }
+  .frame{ width:340px; height:672px; border-radius:34px; border:1px solid #33363c; background:#000; overflow:hidden; position:relative; box-shadow:0 18px 60px rgba(0,0,0,.55); }
+  .feedbg{ position:absolute; inset:0; background:
+    radial-gradient(120% 60% at 50% -5%, rgba(var(--accent-rgb),.05), transparent 55%), #101113;
+    filter:blur(2px) brightness(.5); }
+  .modal{ position:absolute; inset:12px 10px auto; bottom:12px; border-radius:22px; background:linear-gradient(165deg,rgba(24,25,28,.97),rgba(16,17,19,.985)); border:1px solid var(--line); overflow:hidden; display:flex; flex-direction:column; }
+  .mhead{ display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid var(--line); background:rgba(22,23,26,.5); }
+  .mhead b{ font-size:14px; } .mhead .mx{ margin-left:auto; width:24px; height:24px; border-radius:8px; border:1px solid var(--line); display:grid; place-items:center; color:var(--mut); }
+  .mtabs{ display:flex; gap:4px; padding:9px 12px; border-bottom:1px solid var(--line); font-size:12.5px; color:var(--mut); font-weight:var(--fw-b); }
+  .mtabs span{ padding:5px 10px; } .mtabs .on{ color:var(--accent); font-weight:var(--fw-x); }
+  .mbody{ padding:14px 14px 18px; overflow:hidden auto; flex:1; }
+  /* 스텝퍼(track.html 계승 축약) */
+  .stepper{ display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:11.5px; font-weight:var(--fw-x); }
+  .sdot{ width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:var(--on-accent); font-size:11px; flex:none; }
+  .snode{ display:flex; align-items:center; gap:5px; color:var(--fg); }
+  .sline{ flex:1; height:2px; background:var(--accent); border-radius:2px; }
+  /* vstage = track.html .vstage 계승 */
+  .vstage{ position:relative; width:100%; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); background:#000; aspect-ratio:16/9; }
+  /* 원본 미리보기 = CSS 합성 장면(영상 근사 · 각주 ⑤) */
+  .pv{ position:absolute; inset:0; opacity:0; }
+  .pv .sc{ position:absolute; inset:-6% -10%; background:
+    radial-gradient(60% 90% at 72% 30%, #3d4a52, transparent 60%),
+    radial-gradient(70% 100% at 25% 65%, #55423a, transparent 62%),
+    linear-gradient(180deg, #2c3138 0%, #171a1e 70%, #101214 100%); }
+  .pv .p1, .pv .p2{ position:absolute; bottom:-4%; width:34%; aspect-ratio:.62; background:
+    radial-gradient(50% 30% at 50% 12%, #d9c3ae 98%, transparent), linear-gradient(180deg, transparent 22%, #232a33 23%);
+    border-radius:40% 40% 8px 8px/34% 34% 0 0; }
+  .pv .p1{ left:14%; } .pv .p2{ right:12%; width:30%; background:
+    radial-gradient(50% 30% at 50% 12%, #c9a68f 98%, transparent), linear-gradient(180deg, transparent 22%, #3a2f3d 23%); }
+  .pv .cap7{ position:absolute; left:8%; right:8%; bottom:7%; height:9%; border-radius:6px; background:rgba(0,0,0,.55); }
+  .pv.play .sc{ animation:pvpan 7s linear infinite alternate; }
+  .pv.play .p2{ animation:pvbob 3.2s ease-in-out infinite alternate; }
+  @keyframes pvpan{ from{ transform:translateX(-1.5%);} to{ transform:translateX(1.5%);} }
+  @keyframes pvbob{ from{ transform:translateY(0);} to{ transform:translateY(-1.6%);} }
+  /* P1 수정중 오버레이 계승(index .reshooting 문법) — 스크림 rgba(8,15,11,α)+blur · 중앙 강조색 문구+gdots */
+  .scrim{ position:absolute; inset:0; opacity:0; background:rgba(8,15,11,var(--t-dim)); -webkit-backdrop-filter:blur(var(--t-blur)); backdrop-filter:blur(var(--t-blur)); }
+  .midmsg{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); opacity:0; font-size:var(--t-fs); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }
+  /* P2 스캔라인 계승(track .scanline 그대로 · 속도만 --t-scan) */
+  .scanline{ position:absolute; left:0; right:0; height:2px; opacity:0; background:linear-gradient(90deg,transparent,var(--accent),transparent); box-shadow:0 0 14px var(--accent); animation:scan var(--t-scan) var(--gauge-ease) infinite; animation-play-state:paused; }
+  @keyframes scan{ 0%{ top:6%;} 50%{ top:94%;} 100%{ top:6%;} }
+  /* P3 생성중 박스 계승(index .genstat.live) */
+  .genstat{ margin:12px 0 0; padding:13px 15px; border:1px solid rgba(var(--accent-rgb),.3); border-radius:16px; color:var(--accent); font-size:13px; font-weight:var(--fw-b); animation:pulse 1.6s ease-in-out infinite; display:none; }
+  @keyframes pulse{ 50%{ opacity:.45; } }
+  .gdots{ display:inline-block; width:1.1em; text-align:left; }
+  .gdots i{ font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2){ animation-delay:.22s; } .gdots i:nth-child(3){ animation-delay:.44s; }
+  @keyframes gdots{ 0%{ opacity:0; } 25%,70%{ opacity:1; } 95%,100%{ opacity:0; } }
+  /* 하단 캡션 = track .status 계승 */
+  .status{ margin-top:14px; font-size:13px; color:var(--mut); text-align:center; }
+  .status svg{ vertical-align:-2px; }
+  .ghostbtn{ margin-top:16px; display:inline-flex; align-items:center; background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--fg); font-weight:var(--fw-b); font-size:13px; padding:9px 15px; border-radius:var(--r-pill); }
+  .stagecap{ text-align:center; color:var(--mut); font-size:11.5px; margin-top:10px; }
+
+  /* ── 콘솔(② 프리셋 ③ 슬라이더 ④ 출력 ⑤ 각주) ── */
+  .console{ flex:1 1 320px; max-width:420px; min-width:290px; }
+  .csec{ border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; background:rgba(255,255,255,.02); }
+  .ct{ font-size:12px; font-weight:var(--fw-x); color:var(--fg); margin:0 0 10px; }
+  .ct em{ color:var(--accent); font-style:normal; }
+  .pills{ display:flex; flex-wrap:wrap; gap:8px; }
+  .pill{ padding:9px 13px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:12.5px; font-family:inherit; cursor:pointer; transition:transform .12s, color .15s, border-color .15s; }
+  .pill:active{ transform:scale(.95); }
+  .pill.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+  .pill small{ display:block; font-weight:var(--fw-b); font-size:10.5px; color:var(--mut); }
+  .srow{ display:grid; grid-template-columns:96px 1fr 58px; align-items:center; gap:10px; margin:9px 0; font-size:12px; }
+  .srow label{ color:var(--fg); font-weight:var(--fw-b); }
+  .srow input[type=range]{ width:100%; accent-color:var(--accent); }
+  .srow .v{ text-align:right; font-variant-numeric:tabular-nums; color:var(--accent); font-weight:var(--fw-x); }
+  .srow.off{ opacity:.35; pointer-events:none; }
+  .tgl{ display:flex; align-items:center; gap:10px; margin:9px 0; font-size:12px; }
+  .tgl button{ padding:7px 12px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:12px; font-family:inherit; cursor:pointer; }
+  .tgl button.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+  pre{ margin:0 0 10px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); font:11.5px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--fg); white-space:pre-wrap; word-break:break-all; }
+  #copy{ width:100%; padding:11px; border:none; border-radius:var(--r-pill); background:var(--accent); color:var(--on-accent); font-weight:var(--fw-x); font-size:13px; font-family:inherit; cursor:pointer; }
+  #copy:active{ transform:scale(.97); }
+  .note{ font-size:11.5px; color:var(--mut); line-height:1.75; }
+  .note b{ color:var(--fg); }
+  @media (prefers-reduced-motion:reduce){ .scanline,.genstat,.gdots i,.pv.play .sc,.pv.play .p2{ animation:none!important; } .gdots i{ opacity:1; } }
+</style>
+
+<h1>렌더 대기 = 미리보기 + 진행 모션 — 만지는 시안</h1>
+<p class="sub">트래킹 STEP3(+ 새 변환 탭 공용) 렌더 대기 화면. 전부 기존 자산 계승 — 새 모션 창작 0.</p>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame">
+      <div class="feedbg"></div>
+      <div class="modal">
+        <div class="mhead"><b>영상</b><span class="mx">×</span></div>
+        <div class="mtabs"><span>자막 생성기</span><span>영상 프롬프트</span><span class="on">트래킹</span></div>
+        <div class="mbody">
+          <div class="stepper">
+            <span class="snode"><span class="sdot">✓</span>영상 분석</span><span class="sline"></span>
+            <span class="snode"><span class="sdot">✓</span>인물 확정</span><span class="sline"></span>
+            <span class="snode"><span class="sdot">3</span>렌더</span>
+          </div>
+          <div class="vstage" id="app" style="--t-dim:.55; --t-blur:8px; --t-scan:1.5s; --t-fs:13px;">
+            <div class="pv" id="pv"><div class="sc"></div><div class="p1"></div><div class="p2"></div><div class="cap7"></div></div>
+            <div class="scrim" id="scrim"></div>
+            <div class="scanline" id="scan"></div>
+            <div class="midmsg" id="mid">모자이크 렌더 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+          </div>
+          <div class="genstat" id="gbox">모자이크 렌더 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+          <div class="status" id="cap"></div>
+          <span class="ghostbtn">다시 고르기</span>
+        </div>
+      </div>
+    </div>
+    <div class="stagecap">프리셋·슬라이더를 만지면 즉시 반영 — 경과초는 라이브로 흐름</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <div class="ct">프리셋 <em>— 전부 기존 자산 계승</em></div>
+      <div class="pills" id="presets"></div>
+    </div>
+    <div class="csec">
+      <div class="ct">미세조정</div>
+      <div class="tgl"><label style="font-weight:700">미리보기 재생</label>
+        <button type="button" id="tglLoop">저속 루프</button><button type="button" id="tglStill">정지 1프레임</button>
+        <span style="color:var(--mut);font-size:11px">실물 = 원본 muted 재생 여부</span></div>
+      <div id="sliders"></div>
+    </div>
+    <div class="csec">
+      <div class="ct">선택값 <em>— 복사해서 그대로 답장</em></div>
+      <pre id="out"></pre>
+      <button type="button" id="copy">선택값 복사</button>
+    </div>
+    <div class="csec note">
+      <b>재현 한계 각주</b><br>
+      · 미리보기 영상 = CSS 합성 장면 근사(실물 = 분석 원본 R2 영상의 실제 프레임 — 이미 STEP2 스크럽이 로드하는 소스 재사용·추가 다운로드 0)<br>
+      · '저속 루프' = 실물에선 <b>muted·loop 재생</b>(소리 0·폰 배터리 미미) / '정지'는 첫 프레임 poster<br>
+      · 하단 경과 캡션(시계 픽토그램+초)은 전 프리셋 공통 유지(현행 그대로) — 프리셋은 <b>박스 위 표현만</b> 바꿈<br>
+      · 스크림 색 rgba(8,15,11,α)·중앙 문구·gdots = index 카드 '수정중' 오버레이 정본 사본 / 스캔라인 = 이 화면 STEP1 분석 모션 정본 사본 / 생성중 박스 = index 카드뉴스 genstat.live 사본<br>
+      · reduced-motion(전정계 배려) = 모든 모션 정지(실물 규약 동일) · 폰트 = 시스템 폴백
+    </div>
+  </aside>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const app=$('#app'), pv=$('#pv'), scrim=$('#scrim'), scan=$('#scan'), mid=$('#mid'), gbox=$('#gbox');
+
+/* 계승 소스 실측(현행값) — 수정중 오버레이 .55/blur 8 · 스캔 1.5s · 문구 fs-label 13 */
+const SRC={ dim:.55, blur:8, scan:1.5, fs:13 };
+const DEFAULTS={ preset:'p0', dim:SRC.dim, blur:SRC.blur, scan:SRC.scan, fs:SRC.fs, loop:1 };
+
+const PRESETS=[
+  {id:'p0', nm:'현행', sub:'검정 박스+캡션', st:{}},
+  {id:'p1', nm:'수정중 오버레이', sub:'미리보기+스크림+중앙 문구', st:{}},
+  {id:'p2', nm:'스캔라인', star:'★', sub:'미리보기+분석 빔 계승', st:{dim:.3, blur:0}},
+  {id:'p3', nm:'생성중 박스', sub:'클린 미리보기+박스', st:{}},
+];
+const SLIDERS=[
+  {k:'dim',  nm:'딤(스크림) α', min:0,  max:.8, step:.01, use:['p1','p2']},
+  {k:'blur', nm:'스크림 블러',   min:0,  max:14, step:1,  unit:'px', use:['p1','p2']},
+  {k:'scan', nm:'스캔 속도',     min:.8, max:3,  step:.1, unit:'s',  use:['p2']},
+  {k:'fs',   nm:'중앙 문구 크기', min:11, max:16, step:.5, unit:'px', use:['p1']},
+];
+let state={...DEFAULTS};
+
+function buildPresets(){
+  const box=$('#presets'); box.innerHTML='';
+  for(const p of PRESETS){
+    const b=document.createElement('button'); b.type='button'; b.className='pill'; b.dataset.id=p.id;
+    b.innerHTML=(p.star?'<span style="color:var(--accent)">★</span> ':'')+p.nm+'<small>'+p.sub+'</small>';
+    b.addEventListener('click',()=>{ state={...DEFAULTS, ...p.st, preset:p.id, loop:state.loop}; apply(); });
+    box.appendChild(b);
+  }
+}
+function buildSliders(){
+  const box=$('#sliders'); box.innerHTML='';
+  for(const s of SLIDERS){
+    const row=document.createElement('div'); row.className='srow'; row.dataset.k=s.k;
+    row.innerHTML='<label>'+s.nm+'</label><input type="range" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'"><span class="v"></span>';
+    const inp=row.querySelector('input');
+    inp.addEventListener('input',()=>{ state[s.k]=parseFloat(inp.value); apply(); });
+    box.appendChild(row);
+  }
+}
+const near=(a,b,eps=.02)=>Math.abs(a-b)<eps;
+function tag(k){
+  if(k==='dim')  return near(state.dim,SRC.dim)?' [계승 = 수정중 오버레이 동값]':(state.preset==='p2'&&near(state.dim,.3)?' [스캔용 경감 추천값]':' → 갱신 후보');
+  if(k==='blur') return near(state.blur,SRC.blur)?' [계승 = --blur-s 동값]':(state.blur===0?' [블러 없음]':' → 갱신 후보');
+  if(k==='scan') return near(state.scan,SRC.scan)?' [계승 = 분석 스캔 동값]':' → 갱신 후보';
+  if(k==='fs')   return near(state.fs,SRC.fs)?' [계승 = --fs-label 동값]':' → 갱신 후보';
+  return '';
+}
+function buildOut(){
+  const p=PRESETS.find(x=>x.id===state.preset)||PRESETS[0];
+  const L=['[렌더 대기 모션 — 선택값]','프리셋: '+p.id+' '+p.nm+(p.star?' ★':''),
+    '미리보기: '+(state.preset==='p0'?'없음(현행)':(state.loop?'저속 루프(muted)':'정지 1프레임'))];
+  if(state.preset==='p1'||state.preset==='p2'){
+    L.push('딤 α: '+state.dim.toFixed(2)+'   [소스 실측 '+SRC.dim+']'+tag('dim'));
+    L.push('블러: '+state.blur+'px   [소스 실측 '+SRC.blur+'px]'+tag('blur'));
+  }
+  if(state.preset==='p2') L.push('스캔 속도: '+state.scan.toFixed(1)+'s   [분석 정본 '+SRC.scan+'s]'+tag('scan'));
+  if(state.preset==='p1') L.push('중앙 문구: '+state.fs+'px'+tag('fs'));
+  if(state.preset==='p3') L.push('박스: genstat.live 사본 그대로(pulse 1.6s+gdots) [계승]');
+  L.push('하단 경과 캡션: 현행 유지(전 프리셋 공통)');
+  $('#out').textContent=L.join('\n');
+}
+function apply(){
+  app.style.setProperty('--t-dim',state.dim);
+  app.style.setProperty('--t-blur',state.blur+'px');
+  app.style.setProperty('--t-scan',state.scan+'s');
+  app.style.setProperty('--t-fs',state.fs+'px');
+  const P=state.preset;
+  pv.style.opacity=P==='p0'?0:1;
+  pv.classList.toggle('play',!!state.loop&&P!=='p0');
+  scrim.style.opacity=(P==='p1'||P==='p2')?1:0;
+  mid.style.opacity=P==='p1'?1:0;
+  scan.style.opacity=P==='p2'?1:0;
+  scan.style.animationPlayState=P==='p2'?'running':'paused';
+  gbox.style.display=P==='p3'?'block':'none';
+  document.querySelectorAll('#presets .pill').forEach(b=>b.classList.toggle('on',b.dataset.id===P));
+  for(const s of SLIDERS){
+    const row=document.querySelector('.srow[data-k="'+s.k+'"]'); if(!row) continue;
+    row.classList.toggle('off',!s.use.includes(P));
+    row.querySelector('input').value=state[s.k];
+    row.querySelector('.v').textContent=(s.step<1?state[s.k].toFixed(2).replace(/0+$/,'').replace(/\.$/,''):state[s.k])+(s.unit||'');
+  }
+  $('#tglLoop').classList.toggle('on',!!state.loop);
+  $('#tglStill').classList.toggle('on',!state.loop);
+  buildOut();
+}
+$('#tglLoop').addEventListener('click',()=>{ state.loop=1; apply(); });
+$('#tglStill').addEventListener('click',()=>{ state.loop=0; apply(); });
+$('#copy').addEventListener('click',()=>{
+  const t=$('#out').textContent;
+  const done=()=>{ $('#copy').textContent='복사됨 ✓'; setTimeout(()=>$('#copy').textContent='선택값 복사',1200); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done).catch(()=>fb());
+  else fb();
+  function fb(){ const r=document.createRange(); r.selectNodeContents($('#out')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); try{ document.execCommand('copy'); done(); }catch(e){} s.removeAllRanges(); }
+});
+/* 경과 캡션 라이브(현행 문구 그대로) */
+const WAIT_SVG='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+let t0=Date.now()-26000;
+setInterval(()=>{ $('#cap').innerHTML=WAIT_SVG+' 모자이크 렌더 중… '+Math.round((Date.now()-t0)/1000)+'s (보통 2–5분)'; },1000);
+$('#cap').innerHTML=WAIT_SVG+' 모자이크 렌더 중… 26s (보통 2–5분)';
+
+buildPresets(); buildSliders();
+apply();   /* 첫 화면 = 현행(p0 · 비교 기준 고정 — 포터블 §6: 기본값 = 현행 실측) · 추천 ★ = 프리셋 1탭 */
+</script>
