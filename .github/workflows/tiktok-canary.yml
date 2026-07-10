@@ -1,0 +1,43 @@
+# 틱톡 인기 해시태그 카나리아 — workflow_dispatch 전용(§📰-e 카나리아 룰: 실측 성공 전 cron 금지)
+# 비공식 경로(Creative Center 헤드리스 렌더)라 깨짐 리스크 전제 · 전면 fail-soft(실패 = 산출 무변·warning).
+# 성공 실측되면 승격 검토(sns-trends 주기 편입 또는 별도 저빈도 cron — 운영자 확인 후).
+name: tiktok-canary
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sns-trends   # sns_trends.json 동시 기록 직렬화(같은 파일)
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Playwright (timeout 감쌈 · §9 — 카나리아 단발이라 캐시 생략·승격 시 runner-setup 캐시 편입)
+        run: |
+          timeout 300 pip install -q playwright || (sleep 5 && timeout 300 pip install -q playwright)
+          timeout 400 python3 -m playwright install --with-deps chromium
+
+      - name: Collect
+        run: timeout 420 python3 scraper/tiktok_trends.py
+
+      - name: Commit
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add viewer/sns_trends.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "산출 없음(카나리아 실패/무변) — 커밋 생략"; exit 0; }
+          git commit -m "tiktok-canary: 인기 해시태그 갱신"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::push 실패(재시도 소진)"
