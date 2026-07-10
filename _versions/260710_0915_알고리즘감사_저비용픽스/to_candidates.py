@@ -310,18 +310,6 @@ def main():
         if old_url not in fresh:
             merged.pop(old_url, None)
 
-    def _ts(s):   # 관용 타임스탬프 파서(daily_health 계열·260710) — Z 접미 허용·naive(구버전/외부 스탬프)는 KST 가정(자기 기록분).
-        t = datetime.fromisoformat(str(s).replace("Z", "+00:00"))   # 러너 파이썬 다운그레이드 시 '+0900' 무콜론 %z 파싱 실패로 전 엔트리가
-        return t if t.tzinfo else t.replace(tzinfo=KST)             #   TTL 영생/승격 전멸하던 취약면 축소(파서 정책을 daily_health와 통일).
-
-    # 캐리 강등 사각 픽스(분신술 260710): 이번 스크랩(fresh)에 없는 엔트리는 breaking_candidate 재계산(fresh 산정)이
-    # 없어 옛 True가 눌어붙음 → 아래 강등 루프가 영구 스킵 = "급증 끝나면 강등" 보장이 캐리 경로서 깨짐(isBreaking
-    # ×3.0 랭킹 부스트 좀비·TTL 240h까지). 리셋 → 아래 grade3 승격이 신선 대형은 재구제 → 강등 순서(승격 우선 불변).
-    # 일시 스크랩 누락으로 강등된 활성 사건은 재등장 시 burst 재계산으로 후보 복귀·rubric 비워져 1콜 재판정 = 자가치유.
-    for url, c in merged.items():
-        if url not in fresh and c.get("breaking_candidate"):
-            c["breaking_candidate"] = False
-
     # grade3 신선건 → 속보 후보 승격: burst<3 저속 새 사고(어린이집 황화수소 등 = 대형 경중인데 동시보도
     #   적어 velocity 게이트 못 넘던 건) 구제. 직전 사이클 gate_judge가 grade=3 도장 + first_seen<N시간이면
     #   breaking_candidate=True로 올려 breaking_judge 2차 내용판정 라인에 태운다(승격≠확정 — AI가 최종 결정).
@@ -329,9 +317,9 @@ def main():
     for c in merged.values():
         if (c.get("grade") or 0) >= 3 and not c.get("breaking_candidate") and not _is_mega(c):
             try:
-                fs = (now - _ts(c.get("first_seen") or nowiso)).total_seconds() / 3600
+                fs = (now - datetime.fromisoformat(c.get("first_seen") or nowiso)).total_seconds() / 3600
             except Exception:
-                fs = 999   # 실패 = 승격 스킵(보수) — TTL age_h의 0.0(보존)과 방향이 다르지만 각자 그 맥락의 안전측(아래 주석)
+                fs = 999
             if fs < GRADE3_PROMOTE_H:
                 c["breaking_candidate"] = True
 
@@ -346,10 +334,9 @@ def main():
     def age_h(c):   # TTL 기준 = last_report(마지막 실제 후속보도) — 별칭 상속한 '현재 보도 중' 카드가
         try:        #   옛 first_seen 때문에 즉시 만료되던 버그 차단. 후속 끊긴 죽은 건만 N시간 후 폐기.
             ref = c.get("last_report") or c.get("last_seen") or c.get("first_seen") or nowiso
-            return (now - _ts(ref)).total_seconds() / 3600
+            return (now - datetime.fromisoformat(ref)).total_seconds() / 3600
         except Exception:
-            return 0.0   # 실패 = 나이 0 = 보존 방향(의도적) — 만료 방향(999)이면 파서 전면 고장 시 풀 전체가 한 런에 증발.
-                         #   개별 손상 엔트리의 영생은 CAP(cross 정렬 상위 유지)이 바운드 · _ts 관용화가 실패 확률 자체를 축소(260710).
+            return 0.0
 
     kept = [c for c in merged.values()
             if age_h(c) <= TTL_HOURS and not is_excluded_title(c.get("title") or "")]   # 증권/시황 노이즈 = 기존 수집분도 정리(운영자 260701)
