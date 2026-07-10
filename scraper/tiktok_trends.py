@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 """틱톡 인기 해시태그 카나리아 — Creative Center 헤드리스 렌더 (운영자 260710 "틱톡만 끌어와도 좋음")
 
+🪦 도먼트(260711): 주 경로가 tikwm 무료 API(`sns_trends.py tiktok()` — 무키·stdlib·Playwright 불요·
+   인기 영상 videos)로 교체됨(운영자 외부 도구 이식). 이 카나리아는 dispatch 전용 보존(tikwm
+   죽으면 대안 축) — 산출 hashtags는 뷰어가 tiktok.videos 부재 시에만 폴백 표시.
 ⚠️ 카나리아(§📰-e): 비공식 경로(공식 trend API 없음 — 40101·웹 임베디드 빈 셸 실측 260710)라
    workflow_dispatch 전용으로 시작 — 러너 실측 성공 후에만 승격(cron 편입) 검토. 전면 fail-soft:
    실패 = warning 종료·산출 무변(sns_trends.json의 tiktok 필드는 마지막 성공분 유지).
