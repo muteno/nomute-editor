@@ -42,7 +42,7 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
         --model "$MODEL" \
         --effort max \
         --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \
-        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task" \
+        --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
         --max-turns 40 \
         2> "${OUTDIR}/stderr.log")"
   rc=$?

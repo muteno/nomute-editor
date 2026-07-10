@@ -101,7 +101,7 @@ for _try in 1 2 3 4; do
         --model "$MODEL" \
         --effort max \
         --allowedTools "Read,Glob,Grep" \
-        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
+        --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
         --max-turns 12 \
         2> "/tmp/revise-${FILE}.err")"
   rc=$?

@@ -65,7 +65,7 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
         --effort max \
         --safe-mode \
         --allowedTools "Read" \
-        --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Glob,Grep" \
+        --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Glob,Grep" \
         --max-turns "$MAXTURNS" \
         2> /tmp/track_cap_stderr.log)"
   rc=$?
