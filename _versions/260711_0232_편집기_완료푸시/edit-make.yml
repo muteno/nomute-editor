@@ -239,29 +239,6 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
-      # 편집 완료/실패 푸시 — 편집기 잡은 길다(60i 보간 수십 분) → 창 닫아도 완성·실패를 구독자(프로필 알림 ON)에게 통지.
-      #   thumb 제작완료 푸시 문법 계승(#done=<id> 딥링크 · 잡별 고유 tag = 알림 누적) + 실패도 통지(장시간 잡 = 부재 중 실패 표면화).
-      #   비치명(|| true 계열) · 운영자 260711 "웹푸시까지 해줘".
-      - name: 편집 완료 푸시 (pywebpush)
-        if: always()
-        env:
-          IN_ID: ${{ inputs.id }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
-        run: |
-          [ -n "$IN_ID" ] || exit 0
-          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
-          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
-          VJ="viewer/ly_out/${IN_ID}/video.json"; EL="viewer/ly_out/${IN_ID}/error.log"
-          OK=0; MSG=""
-          if [ -s "$VJ" ]; then
-            OK="$(python3 -c "import json;print(1 if json.load(open('$VJ')).get('url') else 0)" 2>/dev/null || echo 0)"
-            [ "$OK" = "1" ] || MSG="$(python3 -c "import json;d=json.load(open('$VJ'));print((d.get('error') or d.get('skip') or '')[:60])" 2>/dev/null || true)"
-          fi
-          if [ "$OK" != "1" ] && [ -z "$MSG" ] && [ -s "$EL" ]; then MSG="$(head -c 60 "$EL")"; fi
-          if [ "$OK" = "1" ]; then BODY="편집 완료 — 탭해서 확인"; else BODY="편집 실패 — ${MSG:-로그 확인}"; fi
-          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/edit.html#done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
-
       - name: 업로드 브랜치 정리
         if: ${{ always() && inputs.up_branch != '' }}
         env:
