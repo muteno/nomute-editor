@@ -72,6 +72,8 @@
   .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
   @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
   @media (prefers-reduced-motion:reduce){ .gdots i { animation:none; opacity:1; } }
+  .gtime { margin-left:var(--sp-1); font-variant-numeric:tabular-nums; font-weight:var(--fw-b); opacity:.8; }   /* '분석 중 · N:NN' 경과(운영자 260710 "여기에 그 시간을") — tabular = 자릿수 흔들림 0 · 색은 라벨 상속 */
+  .go.firing.wait { color:var(--on-accent); }   /* 게이지(accent 채움) 위 대기 라벨·시간 = on-accent — .wait 단독 mut가 소스순으로 이겨 터쿼이즈 위 회색(저대비)이 되는 것 교정 */
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
   .status.err { color:var(--danger); }
 
@@ -335,10 +337,20 @@ function errStatus(m){   // 전송 막힘 = 버튼 안 빨강 액티브 + 흔들
   g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
   g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); if(g.classList.contains('wait')) g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; else g.textContent=g.dataset.label; },1700);
 }
-function goWait(on){
+let _goTick=null,_goT0=0;   // 버튼 경과 타이머 — 누른 순간(업로드 전송)부터 분석 폴까지 한 타이머(운영자 260710 "분석 중…에 그 시간을 넣으면 — 버튼이 렉걸려 멈춘 것 같다")
+function goWait(on,t0){
   const g=$('#analyze'); if(!g) return;
-  if(on){ if(!g.dataset.label) g.dataset.label=g.textContent; g.classList.add('wait'); g.setAttribute('aria-busy','true'); g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; }
-  else { g.classList.remove('wait'); g.removeAttribute('aria-busy'); if(g.dataset.label) g.textContent=g.dataset.label; }
+  clearInterval(_goTick); _goTick=null;
+  if(on){
+    if(!g.dataset.label) g.dataset.label=g.textContent;
+    _goT0=t0||_goT0||Date.now();   // t0 미지정 재호출 = 기존 기점 유지(업로드→폴 전이·재개 클램프 연속)
+    g.classList.add('wait'); g.setAttribute('aria-busy','true');
+    const paint=()=>{ if(g._flash||g.classList.contains('err')) return;   // ✓ 접수 플래시·에러 문구(errStatus 1.7s 복귀)는 안 덮음
+      const tEl=g.querySelector('.gtime');
+      if(tEl){ tEl.textContent=fmtT((Date.now()-_goT0)/1000); return; }   // 시간만 갱신 = gdots DOM 유지(점모션 위상 리셋 0)
+      g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-_goT0)/1000)+'</span>'; };
+    paint(); _goTick=setInterval(paint,1000);
+  } else { _goT0=0; g.classList.remove('wait'); g.removeAttribute('aria-busy'); if(g.dataset.label) g.textContent=g.dataset.label; }
 }
 function goLbl(html){
   const g=$('#analyze'); if(!g) return;
@@ -358,20 +370,22 @@ $('#analyze').addEventListener('click',async()=>{
   USER_ACT=true;
   const status=$('#astatus'); status.classList.remove('err'); status.textContent='';
   const gb=$('#analyze'); gb.disabled=true;
+  const t0=Date.now();   // 경과 기점 = 누른 순간 — 업로드(≤30MB 전송 + GH 커밋 = 수십 초~수 분)가 최대 지연 구간인데 구판은 이 동안 라벨 무변화 = "렉걸려 멈춘 것 같다"(운영자 260710)
   gaugeStart(gb);   // 라이브 게이지 = 전송(업로드·디스패치) 응답까지 차오름 — 옛 0.72s 풀필+'보내는 중' 문구 폐지(운영자 260710 "게이지바로 다른거처럼" · index 전송 버튼 기틀)
+  goLbl(CHECK_SVG); gb._flash=true; setTimeout(()=>{ gb._flash=false; },600);   // 누른 즉시 ✓ 접수(운영자 260710 "일단 체크되고") — 0.6s 뒤 타이머 라벨로 전환
+  goWait(true,t0);   // '분석 중 · N:NN' 즉시 점등(업로드 내내 초 진행 = 멈춤 아님 어포던스) — 응답 후 pollAnalyze가 같은 t0로 이어받음
   try{
     const payload = url? {url} : {fileB64:FILE_B64, name:FILE_NAME};
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ gaugeClear(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
     TK.id=j.id; TK.sel=new Set(); TK.names={}; TK.invert=false; TK.scope={}; TK.resultUrl=''; TK.lastGot='';
     TK.keep=new Set(); TK.keepP=new Set(); TK.extra=[];   // 키잉·범위 선택도 영상 단위 — 미리셋 = 이전 영상 sid·pid·좌표 누출(평의회6 적발)
-    pendSet({id:j.id, st:'analyze', t0:Date.now()});
+    pendSet({id:j.id, st:'analyze', t0});   // t0 = 클릭 기점 그대로 — 재개 복원 시에도 경과 연속(클램프는 재개부가 처리)
     gaugeDone(gb);   // 응답 = 게이지 현위치→100% 급속 마무리
-    pollAnalyze('track_out/'+j.id+'/tracks.json', Date.now());
-    goLbl(CHECK_SVG);   // ✓ 접수 플래시(goWait의 대기 라벨을 잠깐 덮음 — 같은 틱이라 플리커 0)
-    setTimeout(()=>{ gaugeClear(gb); const g=$('#analyze'); if(g&&g.classList.contains('wait')) g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; },700);   // gdone(.3s) 채움이 눈에 따라온 뒤 대기 라벨 복귀
-  }catch(e){ gaugeClear(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
+    pollAnalyze('track_out/'+j.id+'/tracks.json', t0);   // 같은 t0 = 버튼·상태줄 경과가 업로드~분석 끊김 없이 이어짐(구판 = 응답 시점 리셋)
+    setTimeout(()=>{ gaugeClear(gb); },700);   // gdone(.3s) 채움이 눈에 따라온 뒤 게이지 정리(라벨은 goWait 타이머가 유지)
+  }catch(e){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ $('#analyze').disabled=false; }
 });
 
@@ -382,7 +396,7 @@ function pollAnalyze(outPath, t0){
   const budget=BUDGET;   // 분석 1~2분 + Pages 배포 1~3분 — 소프트 초과 후에도 계속(하드 ×2)
   const errPath=outPath.replace(/[^/]+$/,'error.log');
   let live=true; const stop=()=>{ live=false; clearInterval(disp); goWait(false); $('#filmstage').hidden=true; }; _curStop=stop;
-  goWait(true); $('#filmstage').hidden=false;
+  goWait(true,t0); $('#filmstage').hidden=false;   // t0 전달 = 버튼 경과가 클릭 기점 그대로 이어짐(업로드→분석 전이·재개 클램프 포함)
   const draw=()=>{
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
