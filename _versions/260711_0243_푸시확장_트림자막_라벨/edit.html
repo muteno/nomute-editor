@@ -203,7 +203,7 @@ const CARD={
   sub:{nm:'자막', grp:'자막', eta:210},
   bgm:{nm:'배경음 제거', grp:'소리', eta:300},
   cut:{nm:'컷 편집', grp:'컷·구간', eta:20, need:'sub'},
-  trim:{nm:'구간', grp:'컷·구간', eta:0},   // 자막과 동시 지원(260711 — 서버가 자막·전사 스팬을 트림 시간축으로 리맵)
+  trim:{nm:'구간', grp:'컷·구간', eta:0, not:'sub'},
   screen:{nm:'비율', grp:'화면', eta:0},
   res:{nm:'해상도', grp:'화면', eta:0},
   fps:{nm:'프레임', grp:'화면', eta:0},
@@ -260,7 +260,8 @@ function render(){
   const cards=ORDER.filter(k=>ON[k]);
   $('#stack').innerHTML = cards.length? cards.map((k,i)=>{
     const open=OPEN===k;
-    const warn = (k==='cut'&&!ON.sub)?'<div class="warnln">컷은 자막(전사)이 필요해 — 자막 카드를 추가해줘</div>':'';
+    const warn = (k==='trim'&&ON.sub)?'<div class="warnln">자막과 동시 미지원 — 발사 때 구간은 건너뜀</div>'
+      : (k==='cut'&&!ON.sub)?'<div class="warnln">컷은 자막(전사)이 필요해 — 자막 카드를 추가해줘</div>':'';
     return '<div class="scard"><div class="hd" data-open="'+k+'"><span class="no">'+(i+1)+'</span><span class="nm">'+CARD[k].nm+'</span><span class="sum">'+esc(sum(k))+'</span><button class="rm" type="button" data-rm="'+k+'" aria-label="'+CARD[k].nm+' 제거">'+X_SVG+'</button></div>'
       +warn+(open?'<div class="prm">'+prm(k)+'</div>':'')+'</div>';
   }).join('') : '<div class="empty-stack">적용할 처리가 없어 — 아래 [+ 처리 추가] 또는 위 레시피</div>';
@@ -274,6 +275,7 @@ function renderSheet(){
       return pc('add',k,false,dim,CARD[k].nm); }).join('')+'</div>');
   const why=[];   // 비활성 사유 = 행위 피드백 1줄(§디자인 빈 상태 예외 — dim만으론 이유를 모름)
   if(!ON.cut&&!ON.sub) why.push('컷 편집 = 자막(전사) 필요');
+  if(!ON.trim&&ON.sub) why.push('구간 = 자막과 동시 불가');
   $('#sheetbody').innerHTML = parts.length? parts.join('')+(why.length?'<div class="why">'+why.join(' · ')+'</div>':'') : '<div class="grp">전부 적용됨</div>';
 }
 $('#stack').addEventListener('click',e=>{
@@ -365,7 +367,7 @@ function buildOpts(){
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000; }
   if(ON.bgm) o.bgm=true;
   if(ON.cut&&ON.sub){ o.cut=true; o.cutlv=P.cutlv; }
-  if(ON.trim){ const a=parseFloat(P.t0), b=parseFloat(P.t1);   // 자막과 동시 OK(서버 리맵 · 260711)
+  if(ON.trim&&!ON.sub){ const a=parseFloat(P.t0), b=parseFloat(P.t1);
     if(Number.isFinite(a)&&a>0) o.vid_t0=a;
     if(Number.isFinite(b)&&b>0) o.vid_t1=b; }
   if(ON.screen){ o.vid_ar=P.ar; o.vid_fit=P.fit; if(P.fit==='crop') o.vid_pos=Math.round(P.vpos)/100; }
