@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # 피사체 키잉 렌더 — 선택 피사체만 남기고 나머지 전부 투명(알파). track_render.py mode='keying'에서
 #   lazy import로 위임(torch 스택 = 키잉 러너에서만 · 모자이크/핀셋 경로는 이 파일을 import조차 안 함).
-# env RENDER = {"mode":"keying","keep":[sid],"extra":[{"t":초,"x":0..1,"y":0..1}],"opts":{"feather":px}}
+# env RENDER = {"mode":"keying","keep":[sid],"keepP":[pid],"extra":[{"t":초,"x":0..1,"y":0..1}],"opts":{"feather":px}}
+#   keepP = 얼굴 단위 남기기(people[].pf/pb 프롬프트 · 260710) — keep(전신 피사체)과 별도 배열(keep 정수 계약 불변)
 # 파이프(정본 = apps/track/00_지침 §1.5):
 #   ① 프롬프트 계획 — keep 피사체 = 첫 양호 등장 프레임(pf)의 박스 프롬프트 · extra = 운영자 탭 포인트.
 #      SAM2는 전파 시작 후 새 객체 추가 금지(가드 실측) → 프롬프트 프레임 그룹별 멀티패스(그 프레임→끝).
 #      박스와 포인트는 한 콜에 섞으면 같은 객체로 접힘(_prepare_prompts cat dim=1) → 패스 = 박스 전용/포인트 전용.
+#      extra는 역패스([0,t0) 역재생 트림 · 512급 스케일) 추가 = 어느 장면에서 찍어도 앞뒤 전체 커버(운영자 승인).
 #   ② 패스별 세그 스트림 — ffmpeg 트림(-ss 정확탐색)+15fps 데시메이션본에 SAM2.1 tiny(512) 전파 → 마스크 PNG(/tmp).
 #      트림본은 회전 메타가 베이크되어 cv2/ffmpeg 로더 좌표 일치(원본 좌표 계약 = 분석과 동일 · 00_지침 좌표 불변).
 #   ③ 합성 — 원본 풀해상 순차 디코드 + 마스크 hold(세그 15fps → 원 fps) + 페더 → BGRA 두 파이프 동시 인코딩:
@@ -28,8 +30,8 @@ import thumb_gen as tg   # r2_upload · R2_ON 재사용(track_render와 동일)
 
 MODELS = os.environ.get("NOMUTE_TRACK_MODELS", os.path.expanduser("~/.cache/nomute-track"))
 SAM_CKPT = os.path.join(MODELS, "sam2.1_t.pt")
-KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 180s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
-KEY_MAX_OBJ = 4          # keep+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
+KEY_MAX_SEC = 90         # 키잉 길이 캡 · 분석/모자이크 300s 캡과 별개(실측 = 30fps·단일 패스 기준 90s ≈ 25분 — 평의회9 정직화)
+KEY_MAX_OBJ = 4          # keep+keepP+extra 합계 캡 — 3객체 1030ms/f 실측(객체당 +0.2s) · 총량은 아래 예산 가드가 최종 강제
 KEY_MAX_LONG = 1920      # 해상도 캡(긴 변) — 4K는 트림·마스크·인코딩·업로드 전 축 폭발(평의회9 F2 · 분석 DET_LONG 선례)
 KEY_BUDGET_SEC = 1620    # 발사 전 예상 전파 예산(27분) — 멀티패스 총량이 스텝 35분 캡을 못 넘게 사전 거절(평의회4·9)
 PASS_HARD_SEC = 1800     # 전파 루프 경과 백스톱(30분) — 예산 추정이 빗나가도 스텝 타임아웃 전에 정직 에러
@@ -37,6 +39,8 @@ SEG_S_1 = 0.63           # 실측 단가: 1객체 전파 s/세그프레임(512) 
 SEG_S_OBJ = 0.20         # 실측 단가: 추가 객체당 s/세그프레임
 TAIL_S_PF = 0.25         # 실측 단가: 합성+인코딩+업로드 꼬리 s/원본프레임(1080×1920 기준·해상도 비례) —
                          #   합성은 원 fps 전량 순회라 60fps = 꼬리 2배(재검증9: 예산에 미반영 시 통과 후 타임아웃)
+FACE_KEY_EXPAND = 1.3    # 얼굴(keepP) 박스 프롬프트 팽창 — 얼굴 검출 박스 그대로는 SAM2가 '떠 있는 얼굴 타원'만 물 수
+                         #   있어 머리카락·두상까지 포함 유도(260710) · 정직 한계: 두상 박스에서 상체까지 물 수 있음(지침 §3)
 SEG_FPS = 15.0           # 세그멘테이션 프레임레이트(원 30fps 대비 절반 = 비용 절반 · 마스크는 hold)
 IMGSZ = 512              # SAM2 입력 긴 변 — 1024는 3937ms/f로 불가(실측) · 512 마스크 오차 0.35%
 FEATHER_DFLT = 3         # 512 업스케일 계단 완화 기본 페더 px
@@ -88,31 +92,57 @@ def _sample_box(subj, f):
     return None
 
 
-def plan_passes(subjects, keep, extras, fps, W, H):
+def _expand_box(b, W, H, k):
+    """박스 [x,y,w,h] 중심 기준 k× 팽창 + 프레임 클램프 — 얼굴 프롬프트의 두상 포함 유도(260710)."""
+    cx, cy = b[0] + b[2] / 2, b[1] + b[3] / 2
+    w2, h2 = b[2] * k, b[3] * k
+    x0, y0 = max(0.0, cx - w2 / 2), max(0.0, cy - h2 / 2)
+    x1, y1 = min(float(W), cx + w2 / 2), min(float(H), cy + h2 / 2)
+    return [x0, y0, max(1.0, x1 - x0), max(1.0, y1 - y0)]
+
+
+def plan_passes(subjects, keep, people, keepP, extras, fps, W, H, total_f=0):
     """멀티패스 계획 — [{f0(프롬프트 프레임), kind:'box'|'point', prompts:[…]}] · 근접(≤0.5s) 박스는 한 패스.
-    수동 포인트는 프레임이 같아도 별도 패스(박스+포인트 혼합 = 같은 객체로 접히는 함정 회피)."""
+    수동 포인트는 프레임이 같아도 별도 패스(박스+포인트 혼합 = 같은 객체로 접히는 함정 회피).
+    keepP(얼굴 단위 · 260710) = people의 pf/pb 박스 프롬프트를 FACE_KEY_EXPAND 팽창해 subjects 박스와 동일 경로
+    편입(people segs도 {segs:[{kf}]} 동형이라 _sample_box 재사용)."""
     win = max(1, int(round(0.5 * fps)))
-    boxes = []   # (pf, subj)
+    boxes = []   # (pf, subj_like, expand)
     for s in subjects:
         if s["sid"] in keep:
-            boxes.append((int(s.get("pf") or 0), s))
+            boxes.append((int(s.get("pf") or 0), s, 1.0))
+    for p in people:
+        if p.get("pid") in keepP:
+            boxes.append((int(p.get("pf") or 0), p, FACE_KEY_EXPAND))
     boxes.sort(key=lambda x: x[0])
     passes = []
-    for pf, s in boxes:
+    for pf, s, ex in boxes:
         joined = False
         for p in passes:
             if p["kind"] == "box" and abs(pf - p["f0"]) <= win:
                 b = _sample_box(s, p["f0"]) or s.get("pb")   # 그룹 대표 프레임 시점의 실측 박스(없으면 자기 pf 박스)
                 if b:
+                    if ex != 1.0:
+                        b = _expand_box(b, W, H, ex)
                     p["prompts"].append([b[0], b[1], b[0] + b[2], b[1] + b[3]])
                     joined = True
                     break
         if not joined:
             b = s.get("pb") or [0, 0, W, H]
+            if ex != 1.0:
+                b = _expand_box(b, W, H, ex)
             passes.append({"f0": pf, "kind": "box", "prompts": [[b[0], b[1], b[0] + b[2], b[1] + b[3]]]})
-    for e in extras:   # 수동 지정 — 탭 프레임부터 끝까지 전파(앞 구간 미커버 = 정직 한계 · 뷰어에 힌트)
+    margin = int(round(0.7 * fps))
+    for e in extras:   # 수동 지정 — 순방향(탭→끝) + 역방향(탭→0 · 앞 구간 커버 = 어느 장면에서 찍어도 전체 추적 · 운영자 승인)
         f0 = max(0, int(round(float(e["t"]) * fps)))
-        passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
+        head_ok = f0 > margin                                     # 앞 구간 유의미(0.7초 초과)
+        tail_ok = (total_f <= 0) or (f0 < total_f - margin)       # 뒤 구간 유의미 — 탭=끝이면 순패스가 0프레임으로
+        if tail_ok or not head_ok:                                #   죽어 역패스까지 무산(평의회9 M1) → 대칭 생략·초단편은 순 폴백
+            passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
+        if head_ok:
+            # ⚠ 좌표는 정규(0..1)로 보관 — 역트림은 512급 스케일이라 원본 픽셀 좌표를 그대로 주면 프레임 밖/엉뚱한
+            #   세그먼트를 찍는다(E2E 실측 적발: 포인트가 트림 좌표계여야 함). 세그 직전에 트림 실해상으로 곱한다.
+            passes.append({"f0": f0, "kind": "point", "pt_norm": [[float(e["x"]), float(e["y"])]], "prompts": [], "rev": True})   # 커버 = [0, f0)
     passes.sort(key=lambda p: p["f0"])
     return passes
 
@@ -134,7 +164,8 @@ def run(vid_id, req, doc, outdir):
 
     meta = doc.get("meta") or {}
     subjects = doc.get("subjects") or []
-    if not subjects and not (req.get("extra") or []):
+    people = [p for p in (doc.get("people") or []) if isinstance(p, dict) and p.get("pid")]
+    if not subjects and not people and not (req.get("extra") or []):
         raise RuntimeError("이 분석엔 피사체 정보가 없어 — 처음(영상 분석)부터 다시 해줘.")
     dur = float(meta.get("dur") or 0)
     if dur > KEY_MAX_SEC + 1:
@@ -142,15 +173,20 @@ def run(vid_id, req, doc, outdir):
 
     all_sids = {s["sid"] for s in subjects}
     keep = {int(t) for t in (req.get("keep") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)} & all_sids
+    # keepP = 얼굴 단위(260710) — pb 없는 pid(구 v2 분석) 선택 = 명시 에러(조용한 무시 금지 · 정직)
+    keepP = {int(t) for t in (req.get("keepP") or []) if isinstance(t, (int, float)) and not isinstance(t, bool)} \
+        & {p["pid"] for p in people}
+    if any(not (isinstance(p.get("pb"), list) and len(p["pb"]) == 4) for p in people if p["pid"] in keepP):
+        raise RuntimeError("이 분석엔 얼굴 프롬프트가 없어(구 버전 분석) — 처음(영상 분석)부터 다시 해줘.")
     extras = []
     for e in (req.get("extra") or [])[:KEY_MAX_OBJ]:
         if not isinstance(e, dict):
             continue
-        t = _num(e.get("t"), 0, KEY_MAX_SEC, None)
+        t = _num(e.get("t"), 0, min(KEY_MAX_SEC, dur) if dur > 0 else KEY_MAX_SEC, None)   # dur 클램프 = 직접 dispatch 방어심층(평의회9 M2)
         x, y = _num(e.get("x"), 0, 1, None), _num(e.get("y"), 0, 1, None)
         if t is not None and x is not None and y is not None:
             extras.append({"t": t, "x": x, "y": y})
-    n_obj = len(keep) + len(extras)
+    n_obj = len(keep) + len(keepP) + len(extras)
     if n_obj < 1:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
     if n_obj > KEY_MAX_OBJ:
@@ -183,15 +219,16 @@ def run(vid_id, req, doc, outdir):
     if real_dur > KEY_MAX_SEC + 1:
         raise RuntimeError(f"키잉은 {KEY_MAX_SEC}초까지야 — 잘라서 해줘.")
 
-    passes = plan_passes(subjects, keep, extras, fps, W, H)
+    total_f = float(meta.get("frames") or 0) or (real_dur * fps)
+    passes = plan_passes(subjects, keep, people, keepP, extras, fps, W, H, total_f=total_f)   # total_f = 탭=끝 순패스 대칭 생략 판정(평의회9 M1)
     if not passes:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
     # 발사 전 총량 예산 가드 — 캡(90s·4객체)은 객체 수만 묶고 멀티패스 총량은 못 묶는다(평의회9 F1: 수동 4개
     #   분산 지정 = 4패스 = 56분 > 잡 40분). 예상 = 전파(패스별 실측 단가) + 꼬리(합성·인코딩·업로드 = 원 fps
     #   전량 순회라 fps·해상도 비례 — 재검증9: 전파만 계산하면 60fps 다객체가 통과 후 스텝 타임아웃).
-    total_f = float(meta.get("frames") or 0) or (real_dur * fps)
-    est_seg = sum(max(0.0, (total_f - p["f0"]) / fps) * SEG_FPS * (SEG_S_1 + SEG_S_OBJ * max(0, len(p["prompts"]) - 1))
-                  for p in passes)
+    est_seg = sum((min(float(p["f0"]), total_f) if p.get("rev") else max(0.0, total_f - p["f0"])) / fps
+                  * SEG_FPS * (SEG_S_1 + SEG_S_OBJ * max(0, len(p.get("pt_norm") or p["prompts"]) - 1))
+                  for p in passes)   # 역패스 커버 = [0, f0) — 예산에 자동 포함(직접 지정 1개 = 순+역 합이 영상 전체 1회분)
     est = est_seg + total_f * TAIL_S_PF * (W * H / 2_073_600.0)
     if est > KEY_BUDGET_SEC:
         raise RuntimeError(f"이 조합은 렌더가 너무 오래 걸려(예상 {int(est // 60)}분) — "
@@ -206,11 +243,30 @@ def run(vid_id, req, doc, outdir):
     for k, p in enumerate(passes):
         t0_sec = p["f0"] / fps
         trim = f"/tmp/keypass{k}.mp4"
-        r = subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ss", f"{t0_sec:.3f}",
-                            "-vf", f"fps={SEG_FPS:g}", "-an", "-c:v", "libx264", "-preset", "veryfast",
-                            "-crf", "18", trim], timeout=600)
+        if p.get("rev"):
+            # 역방향 트림 = [0, t0) 구간을 512 긴변으로 줄여 역재생 인코딩 — reverse 필터는 전 프레임 램 버퍼라
+            #   원해상이면 GB급 폭발(512급 ≈ 수백MB 안전). SAM2 입력이 어차피 512라 마스크 품질 동급 —
+            #   마스크만 합성에서 원해상 업스케일. 역재생 프레임 0 = 원본 t0 직전 = 프롬프트 좌표 그대로 유효.
+            vf = f"fps={SEG_FPS:g},scale='if(gt(iw,ih),{IMGSZ},-2)':'if(gt(iw,ih),-2,{IMGSZ})',reverse"
+            # ⚠ -t는 반드시 입력 옵션(-i 앞): reverse는 EOF까지 버퍼 후 역방출이라 출력측 -t는 '역재생의 앞
+            #   t0초 = 원본 꼬리'를 잘라 [T-t0,T]를 캡처한다(평의회 ffmpeg 실측 적발 — 의도 [0,t0)과 정반대).
+            #   입력측 -t = [0,t0)만 디코드 = 의미 정확 + reverse 버퍼도 그만큼만.
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-t", f"{t0_sec:.3f}", "-i", src,
+                   "-vf", vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", trim]
+        else:
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ss", f"{t0_sec:.3f}",
+                   "-vf", f"fps={SEG_FPS:g}", "-an", "-c:v", "libx264", "-preset", "veryfast",
+                   "-crf", "18", trim]
+        r = subprocess.run(cmd, timeout=600)
         if r.returncode != 0 or not os.path.isfile(trim) or os.path.getsize(trim) < 1024:
             raise RuntimeError("전처리(트림) 실패 — 다시 시도해줘.")
+        if p.get("rev"):   # 역패스 프롬프트 = 정규좌표 × 트림 실해상(512급) — 원본 픽셀 좌표는 좌표계 불일치(실측 적발)
+            tc = cv2.VideoCapture(trim)
+            tw, th = int(tc.get(cv2.CAP_PROP_FRAME_WIDTH)), int(tc.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            tc.release()
+            if tw < 2 or th < 2:
+                raise RuntimeError("전처리(트림) 실패 — 다시 시도해줘.")
+            p["prompts"] = [[nx * tw, ny * th] for nx, ny in p["pt_norm"]]
         mdir = os.path.join(mask_root, f"p{k}")
         os.makedirs(mdir, exist_ok=True)
         if predictor is None:
@@ -229,12 +285,16 @@ def run(vid_id, req, doc, outdir):
             m = None
             if res.masks is not None and len(res.masks.data):
                 m = (res.masks.data.any(0).cpu().numpy().astype(np.uint8)) * 255
-                if m.shape[:2] != (H, W):   # ffmpeg(트림)↔cv2(분석·합성) 회전 파리티 발산(90/270) = 정직 실패(평의회3)
+                mh, mw = m.shape[:2]
+                if p.get("rev"):   # 역패스 = 512급 스케일 트림 → 종횡비로 회전 파리티 검사(치수 직접 비교 불가)
+                    if abs(mw / max(1, mh) - W / max(1, H)) > 0.05 * (W / max(1, H)):
+                        raise RuntimeError("전처리 회전 불일치 — 영상을 mp4로 변환해 다시 올려줘.")
+                elif (mh, mw) != (H, W):   # 순패스 = 원해상 트림 — ffmpeg↔cv2 회전 파리티 발산(90/270) = 정직 실패(평의회3)
                     raise RuntimeError("전처리 회전 불일치 — 영상을 mp4로 변환해 다시 올려줘.")
                 if m.any():
                     live_masks += 1
             if m is None:
-                m = np.zeros((H, W), np.uint8)   # 객체 소실 프레임 = 빈 마스크(전부 투명) — 합성이 [:H2,:W2] 크롭
+                m = np.zeros(res.orig_shape[:2], np.uint8)   # 객체 소실 프레임 = 빈 마스크(트림 해상 = 저장 규격 통일)
             cv2.imwrite(os.path.join(mdir, f"{j:06d}.png"), m)
             n_masks = j + 1
             if j % 150 == 0:
@@ -283,13 +343,20 @@ def run(vid_id, req, doc, outdir):
             frame = frame[:H2, :W2]
             alpha = None
             for p in passes:
-                if f < p["f0"]:
-                    continue
-                j = min(p["n_masks"] - 1, int((f / fps - p["t0"]) * SEG_FPS + 1e-6))
-                if j < 0:
-                    continue
+                if p.get("rev"):   # 역패스 커버 = [0, f0) — 역재생이라 인덱스 뒤집기(원본 0초 = 마지막 마스크)
+                    if f >= p["f0"]:
+                        continue
+                    j = min(p["n_masks"] - 1, max(0, p["n_masks"] - 1 - int((f / fps) * SEG_FPS + 1e-6)))
+                else:
+                    if f < p["f0"]:
+                        continue
+                    j = min(p["n_masks"] - 1, int((f / fps - p["t0"]) * SEG_FPS + 1e-6))
+                    if j < 0:
+                        continue
                 if j != p["last_j"]:
                     m = cv2.imread(os.path.join(p["mdir"], f"{j:06d}.png"), cv2.IMREAD_GRAYSCALE)
+                    if m is not None and m.shape[:2] != (H, W):   # 역패스 512급 트림 마스크 = 원해상 업스케일(순패스는 원해상 그대로)
+                        m = cv2.resize(m, (W2, H2), interpolation=cv2.INTER_LINEAR)
                     p["cur"] = m if m is not None else None
                     p["last_j"] = j
                 if p["cur"] is not None:

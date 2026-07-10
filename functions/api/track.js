@@ -27,24 +27,25 @@ export async function onRequestPost({ request, env }) {
     const id = String(r.id || '').trim();
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(id)) return json({ error: '잘못된 작업 ID' }, 400);
     const mode = r.mode === 'pinset' ? 'pinset' : r.mode === 'keying' ? 'keying' : 'mosaic';
-    // ── 키잉 경로 — keep(피사체 sid) + extra(수동 지정 {t초, x·y 정규 0..1}) · py에서 재클램프 = 이중 방어
+    // ── 키잉 경로 — keep(피사체 sid) + keepP(얼굴 단위 pid · 260710) + extra(수동 지정 {t초, x·y 정규 0..1}) · py에서 재클램프 = 이중 방어
     if (mode === 'keying') {
       const keep = Array.isArray(r.keep) ? [...new Set(r.keep.filter(t => Number.isInteger(t) && t >= 1 && t <= 99))].slice(0, 4) : [];
+      const keepP = Array.isArray(r.keepP) ? [...new Set(r.keepP.filter(t => Number.isInteger(t) && t >= 1 && t <= 99))].slice(0, 4) : [];   // keep 산식 미러
       const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;
       const extra = [];
       if (Array.isArray(r.extra)) {
         for (const e of r.extra) {
           if (!e || typeof e !== 'object') continue;
-          const t = num(e.t, 0, 90), x = num(e.x, 0, 1), y = num(e.y, 0, 1);   // 90 = py KEY_MAX_SEC 정합(평의회5)
+          const t = num(e.t, 0, 90), x = num(e.x, 0, 1), y = num(e.y, 0, 1);   // 90 = py KEY_MAX_SEC 정합(평의회5) — 분석 300s 상향과 무관(키잉 캡 불변)
           if (t !== null && x !== null && y !== null) extra.push({ t: Math.round(t * 100) / 100, x: Math.round(x * 10000) / 10000, y: Math.round(y * 10000) / 10000 });
           if (extra.length >= 4) break;
         }
       }
-      if (keep.length + extra.length < 1) return json({ error: '남길 피사체를 골라줘' }, 400);
-      if (keep.length + extra.length > 4) return json({ error: '피사체는 최대 4개까지야' }, 400);
+      if (keep.length + keepP.length + extra.length < 1) return json({ error: '남길 피사체를 골라줘' }, 400);
+      if (keep.length + keepP.length + extra.length > 4) return json({ error: '피사체는 최대 4개까지야' }, 400);
       const kopts = {};
       const fe = num(r.opts && r.opts.feather, 0, 40); if (fe !== null) kopts.feather = Math.round(fe);
-      const payload = JSON.stringify({ mode, keep, extra, opts: kopts });
+      const payload = JSON.stringify({ mode, keep, keepP, extra, opts: kopts });
       if (payload.length > 4000) return json({ error: '선택이 너무 많아 — 줄여줘' }, 400);
       const rr = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
         ref: REF, inputs: { id, mode: 'render', render: payload },
@@ -69,6 +70,15 @@ export async function onRequestPost({ request, env }) {
         if (Object.keys(colors).length >= 32) break;
       }
     }
+    // 가림 범위(260710) — 'body'만 담아 전송('face' = 기본값 생략 = 4000자 컷 여유) · 렌더 py에서 재검증 = 이중
+    const scopes = {};
+    if (r.scopes && typeof r.scopes === 'object') {
+      for (const [k, v] of Object.entries(r.scopes)) {
+        if (!/^[0-9]{1,2}$/.test(k)) continue;
+        if (v === 'body') scopes[k] = 'body';
+        if (Object.keys(scopes).length >= 32) break;
+      }
+    }
     if (mode === 'mosaic' && !targets.length && !invert) return json({ error: '가릴 인물을 골라줘' }, 400);
     if (mode === 'pinset' && !Object.keys(names).length) return json({ error: '이름을 하나는 넣어줘' }, 400);
     // 모자이크 조절 옵션(운영자 260708) — 화이트리스트 수치 클램프(렌더 py에서 재클램프 = 이중 방어)
@@ -81,7 +91,7 @@ export async function onRequestPost({ request, env }) {
       const fe = num(r.opts.feather, 0, 40); if (fe !== null) opts.feather = Math.round(fe);   // 상한 40 = UI 정렬(평의회H)
       if (r.opts.shape === 'ellipse' || r.opts.shape === 'rect') opts.shape = r.opts.shape;
     }
-    const payload = JSON.stringify({ mode, targets, invert, names, colors, opts });
+    const payload = JSON.stringify({ mode, targets, invert, names, colors, opts, scopes });
     if (payload.length > 4000) return json({ error: '선택이 너무 많아 — 줄여줘' }, 400);
     const rr = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
       ref: REF, inputs: { id, mode: 'render', render: payload },
