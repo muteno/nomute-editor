@@ -156,23 +156,15 @@ def judge(items):
     if p is None:
         return {}, rc, err
     verdicts = {}
-    expected = {i for i, _ in items}   # 응답 idx 검증(260710 분신술) — 오번호 출력이 엉뚱한 사건에 breaking 오도장 + rubric 도장 고착되던 사각 봉합(gate_judge와 동일 패턴).
-    seen = set()
     for line in (p.stdout or "").splitlines():
         if "\t" not in line:
             continue
         k, _, v = line.partition("\t")
-        k = k.strip()
-        if not (k.isascii() and k.isdigit()):
-            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(isascii = gate_judge와 짝 일관)
-        if k not in expected or k in seen:   # 범위 밖·중복 idx = 매핑 어긋남 → 청크 통째 폐기(미도장 유지·다음 런 재시도)
-            return {}, -2, f"응답 idx 검증 실패(k={k!r} 범위밖/중복) — 오도장 방지 청크 폐기"
-        seen.add(k)
         v = v.strip().upper()
         if v.startswith("Y"):
-            verdicts[k] = True
+            verdicts[k.strip()] = True
         elif v.startswith("N"):
-            verdicts[k] = False
+            verdicts[k.strip()] = False
     return verdicts, p.returncode, p.stderr
 
 

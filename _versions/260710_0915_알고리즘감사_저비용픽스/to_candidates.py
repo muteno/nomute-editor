@@ -310,25 +310,6 @@ def main():
         if old_url not in fresh:
             merged.pop(old_url, None)
 
-    def _ts(s):   # 관용 타임스탬프 파서(260710) — Z 접미·naive(KST 가정 = 자기 기록분) 허용 + strptime %z 폴백.
-        s = str(s)                     # 실데이터 지배 포맷 = '+0900' 무콜론(9,000개 전수 실측): fromisoformat은 3.11+ 전용 문법이라
-        try:                           #   러너 파이썬 다운그레이드 시 전 엔트리 파싱 실패(TTL 영생·승격 전멸) → %z 폴백이 전 버전 커버(검증4).
-            t = datetime.fromisoformat(s.replace("Z", "+00:00"))
-        except ValueError:
-            t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
-        return t if t.tzinfo else t.replace(tzinfo=KST)
-
-    # 캐리 미판정 후보 정리(분신술 260710 · 10인 검증3R로 스코프 축소): 이번 스크랩(fresh)에 없는 엔트리는
-    # breaking_candidate 재계산이 없어 옛 True가 눌어붙음 → needs_judging 영구 잔류(창 이탈한 낡은 후보를 judge가
-    # 무의미 재노출·rubric 개정 시 재판정 폭탄 가담). fresh 이탈 = 통상 스크랩 창(24h) 만료라 "지금 긴급?" 판정 무의미.
-    # ⚠️ 확정 긴급(breaking=True 도장)은 제외 — §★ "긴급이었던 건 cross<8이어도 4h 후 누적 합류(운영자 260617 구멍
-    # 차단)"의 유일한 영속 매체가 breaking 필드(§7 organic 잔류 = 설계 성질)라, 깎으면 미픽·cr<8·rc<6 확정 긴급이
-    # ~24h에 누적 칼럼서 증발 = 기틀 위반(검증3R 불가 평결 → 미판정만 정리). ×3.0 부스트 잔존은 260628 A/B 실측상
-    # 무해(timeAcc가 누름) — 부스트 나이 램프는 별도 운영자 결정 축. 판정 NO 도장분(breaking=False)도 정리 대상(무해).
-    for url, c in merged.items():
-        if url not in fresh and c.get("breaking_candidate") and not c.get("breaking"):
-            c["breaking_candidate"] = False
-
     # grade3 신선건 → 속보 후보 승격: burst<3 저속 새 사고(어린이집 황화수소 등 = 대형 경중인데 동시보도
     #   적어 velocity 게이트 못 넘던 건) 구제. 직전 사이클 gate_judge가 grade=3 도장 + first_seen<N시간이면
     #   breaking_candidate=True로 올려 breaking_judge 2차 내용판정 라인에 태운다(승격≠확정 — AI가 최종 결정).
@@ -336,9 +317,9 @@ def main():
     for c in merged.values():
         if (c.get("grade") or 0) >= 3 and not c.get("breaking_candidate") and not _is_mega(c):
             try:
-                fs = (now - _ts(c.get("first_seen") or nowiso)).total_seconds() / 3600
+                fs = (now - datetime.fromisoformat(c.get("first_seen") or nowiso)).total_seconds() / 3600
             except Exception:
-                fs = 999   # 실패 = 승격 스킵(보수) — TTL age_h의 0.0(보존)과 방향이 다르지만 각자 그 맥락의 안전측(아래 주석)
+                fs = 999
             if fs < GRADE3_PROMOTE_H:
                 c["breaking_candidate"] = True
 
@@ -353,10 +334,9 @@ def main():
     def age_h(c):   # TTL 기준 = last_report(마지막 실제 후속보도) — 별칭 상속한 '현재 보도 중' 카드가
         try:        #   옛 first_seen 때문에 즉시 만료되던 버그 차단. 후속 끊긴 죽은 건만 N시간 후 폐기.
             ref = c.get("last_report") or c.get("last_seen") or c.get("first_seen") or nowiso
-            return (now - _ts(ref)).total_seconds() / 3600
+            return (now - datetime.fromisoformat(ref)).total_seconds() / 3600
         except Exception:
-            return 0.0   # 실패 = 나이 0 = 보존 방향(의도적) — 만료 방향(999)이면 파서 전면 고장 시 풀 전체가 한 런에 증발.
-                         #   개별 손상 엔트리의 영생은 CAP(cross 정렬 상위 유지)이 바운드 · _ts 관용화가 실패 확률 자체를 축소(260710).
+            return 0.0
 
     kept = [c for c in merged.values()
             if age_h(c) <= TTL_HOURS and not is_excluded_title(c.get("title") or "")]   # 증권/시황 노이즈 = 기존 수집분도 정리(운영자 260701)
