@@ -534,15 +534,17 @@ def main():
             for i, p in enumerate(people):
                 if p["emb"] is None:
                     continue
-                # 동시존재 veto — 같은 순간 각자 검출된 트랙 = 물리적으로 남남 확정(닮은 두 사람 동시 등장
-                #   케이스에서 코사인만으론 남남 병합 가능 → 결정적 증거로 차단 · body-link veto①과 동일 철학 260710)
-                if _tracks_overlap_sec([t], p["tracks"], fps) > BODY_LINK_OVL_TOL_SEC:
-                    continue
                 v = float(np.dot(t["emb"], p["emb"]))
                 # 2단 임계 — 양쪽 다 고품질 = 표준(0.48) / 한쪽이라도 소형 얼굴 = 보수(0.60 · 과병합 꼬리 차단)
                 th = SIM_MERGE if (t["hq"] and p["hq"]) else SIM_MERGE_LQ
                 if v >= th and v > best:
                     best, bi = v, i
+            # 동시존재 veto — 코사인 *최고* 후보가 물리적 공존(같은 순간 각자 검출 = 남남 확정)이면 병합
+            #   *포기*(새 person). 후보 루프 안 continue로 차선에 폴스루시키면 닮은 남남 오귀속(분열보다
+            #   나쁜 유일한 방향) 경로가 생김 — 과분할=무해 철학상 포기가 정본(평의회2 · body-link veto①
+            #   동일 지표·톨러런스 = 이 분열은 body-link로도 재봉합 안 됨이 설계 의도 · 260710)
+            if bi >= 0 and _tracks_overlap_sec([t], people[bi]["tracks"], fps) > BODY_LINK_OVL_TOL_SEC:
+                best, bi = 0.0, -1
         if bi >= 0:
             p = people[bi]
             p["tracks"].append(t)
