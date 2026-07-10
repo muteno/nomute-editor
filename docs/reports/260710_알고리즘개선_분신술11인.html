@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>알고리즘 개선 — 분신술 11인 감사 반영 (260710)</title>
+<style>
+  /* 색 = viewer :root 토큰값 복사 인라인(§작업표준 b — 일회성 스냅샷) */
+  body{background:#0b0d0c;color:#eef7f0;font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;line-height:1.65;margin:0;padding:20px 16px 48px;max-width:760px;margin-inline:auto;font-size:15px}
+  h1{font-size:20px;color:#00EED2;margin:8px 0 4px}
+  h2{font-size:16px;margin:28px 0 8px;color:#eef7f0;border-left:3px solid #00EED2;padding-left:10px}
+  .sub{color:#8a9490;font-size:13px;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0}
+  th,td{border:1px solid rgba(255,255,255,.12);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:rgba(0,238,210,.08);color:#00EED2;font-weight:700;white-space:nowrap}
+  td b{color:#00EED2}
+  .risk{color:#FFE13D}.bad{color:#ff7a6b}.ok{color:#2CF5A5}
+  .chip{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700;margin-right:4px}
+  .c-track{background:rgba(56,198,255,.15);color:#38C6FF}
+  .c-comp{background:rgba(255,225,61,.15);color:#FFE13D}
+  .c-k{background:rgba(172,92,255,.15);color:#AC5CFF}
+  .c-etc{background:rgba(255,255,255,.10);color:#8a9490}
+  code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 5px;font-size:12.5px}
+  .box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px 14px;margin:10px 0}
+  ul{padding-left:20px;margin:6px 0}
+  li{margin:3px 0}
+  .wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<h1>알고리즘 개선 — 분신술 11인 감사 반영</h1>
+<div class="sub">대상 = 프롬프팅(/k) · 합성기(comp/카드) · 트래킹(track) · 260710 · 검증 = 10인 평의회 만장일치(불가 0)</div>
+
+<h2>요약 — 무엇이 왜 바뀌었나</h2>
+<div class="box">
+  분신술 11인이 3축 알고리즘을 앵글별로 적대 감사해 <b>상급 7건 + KST 위반 1건</b>을 찾았고, 전부 수정했다.
+  핵심은 <b>트래킹 신원 노출 계열 4건</b>(모자이크가 뚫리거나 엉뚱한 데를 가리는 경로)과
+  합성기의 <b>침묵 오류 2건</b>(검사는 통과했는데 실렌더는 침범 · 재생성 1회 실패로 edit 전체 사망).
+</div>
+
+<h2>수정 내역 — 전/후 비교</h2>
+<div class="wrap"><table>
+<tr><th>축</th><th>파일</th><th>전 (문제)</th><th>후 (수정)</th></tr>
+<tr><td><span class="chip c-track">track</span></td><td>track_analyze.py</td><td>가려진 트랙의 정지 박스 자리로 딴 사람이 지나가면 IoU 0.25로 <b class="bad">흡수(ID 스위치)</b> → 임베딩 오염 → 군집 남남병합 방어 우회</td><td>미스 1스텝당 임계 +0.06(상한 0.50) — 오래 가려진 트랙일수록 새 얼굴 흡수 차단. 연속 검출 경로는 <b class="ok">비트 동일</b>(회귀 0)</td></tr>
+<tr><td><span class="chip c-track">track</span></td><td>track_analyze.py</td><td>닮은 두 사람이 동시 등장하면 코사인만으로 <b class="bad">남남 병합</b> 가능(= 엉뚱한 얼굴 모자이크)</td><td>동시존재 veto — 코사인 최고 후보가 물리적 공존(같은 순간 각자 검출)이면 병합 <b>포기</b>(차선 폴스루 금지 = 오귀속 경로 원천 차단)</td></tr>
+<tr><td><span class="chip c-track">track</span></td><td>track_render.py</td><td>진입 슬리버 역외삽에서 <code>max(1,dt)</code>가 속도 <b class="bad">부호 반전</b> — 모자이크 커버가 정반대 방향(수치: 참값 −45 vs 산출 +45)</td><td><code>dt=(k2-k1) or 1</code> 부호 보존 — 역방향 참좌표·순방향 픽셀 동일(검증가 수치 실측)</td></tr>
+<tr><td><span class="chip c-track">track</span></td><td>track_keying.py</td><td>패스 조인 시 미등장 프레임에 자기 박스를 시드 — SAM2가 <b class="bad">엉뚱한 물체를 끝까지 전파</b>(무증상 오출력)</td><td>실측 박스 없으면 조인 포기 → 자기 pf 별도 패스(초과 조합은 발사 전 명시 거절 = 정직)</td></tr>
+<tr><td><span class="chip c-comp">comp</span></td><td>thumb_gen.py<br>gen_cards.py</td><td>Gemini 안전거부(무이미지 200) = 재시도 0 즉사 · edit는 보존 장면이 있어도 <b class="bad">전체 하드실패</b></td><td>무이미지 1회 재시도(HTTP 상한 2콜 불변) + edit 폴백 = sync(텍스트 목적) 한정 — wish(이미지 목적)는 하드 실패 유지(침묵 강하 방지)</td></tr>
+<tr><td><span class="chip c-comp">comp</span></td><td>card_news.py</td><td>세로 검사가 FONT_SIZE(54) 근사 — 5줄 카드가 <b class="bad">검사만 통과, 실렌더는 SAFE_BOTTOM 침범</b>(실측 1317&gt;1310)</td><td>마지막 줄 실측 잉크 하단(getbbox) — 한글-온리 5줄(1308)은 계속 통과, 침범분만 차단(실폰트 픽셀 스캔 검증)</td></tr>
+<tr><td><span class="chip c-k">/k</span></td><td>k-make.md<br>모델프로필</td><td>veo 클립 상한 8s vs 분막 "항상 ≤15s 단일 생성" <b class="bad">정면 모순</b> — veo+12s 분막이 실제 발사됨</td><td>총합 &gt; 모델 클립 상한 = 클립 분막 승격 + 초과 구간 추가 분할 명시(최종 클립 전부 ≤상한 보장) · 골격 절 15s 스테일 동시 정정</td></tr>
+<tr><td><span class="chip c-etc">공통</span></td><td>feedback_record.py</td><td><code>utcnow()</code> — §표기표준 d 정면 위반(9h 어긋난 스탬프)</td><td>KST 강제(rate_record 정본 패턴 · 소비처 0 = 호환 무손상 확인)</td></tr>
+</table></div>
+
+<h2>장단점 · 효율성</h2>
+<div class="wrap"><table>
+<tr><th></th><th>내용</th></tr>
+<tr><td class="ok">장점</td><td>노출 사고 경로 4개 봉합(트래킹의 존재 이유 직결) · 침묵 오류 2건이 "명시 거절/경고"로 전환(운영자가 알 수 있게) · 정상 경로는 전부 비트/픽셀 동일(검증가 실측) = 회귀 0</td></tr>
+<tr><td class="ok">효율성</td><td>추가 비용 거의 0 — 미스 램프·veto = 산술 몇 줄(다인원 최악 수 초) · Gemini 재시도는 안전거부 시에만 +1콜(호출당 HTTP 상한 2 불변·usage 정직 기록)</td></tr>
+<tr><td class="risk">트레이드오프</td><td>① 트랙 분열이 소폭 늘 수 있음 = 과분할(동일인 카드 2장) — 이 레포 철학상 무해 방향 ② 키잉 별도 패스 증가 → 일부 조합이 예산 거절(틀린 출력 대신 정직 거절) ③ 라틴 디센더 5줄 카드 = 신규 차단(실제 침범이라 차단이 옳음)</td></tr>
+</table></div>
+
+<h2>품질저하 리스크 · 잔여</h2>
+<ul>
+  <li><b class="risk">잔여(기록)</b>: 캡 0.50의 흡수 창(정확히 겹쳐 서는 케이스) · veto 분열은 body-link로도 재봉합 안 됨(설계 일관 = 동일 지표) — 둘 다 과분할 방향이라 수용.</li>
+  <li><b class="risk">후속 후보(중급 미조치)</b>: 키잉 25분 vs 뷰어 폴 20분 · track analyze 스텝 timeout+cancelled error.log · comp-make 업로드 원본 main 누적 · 키잉 flicker EMA · edit 실패 status failed 기록 · pip 캐시 키 동결 · k 라이브러리 §10 표 패리티 게이트.</li>
+</ul>
+
+<h2>검증</h2>
+<div class="box">
+  10인 평의회(각기 다른 앵글 · 적대 감사 · READ-ONLY) → 주의 4건 전부 반영(veto 폴스루 금지·wish 하드실패·k 승격 갭·주석 정정) → 재감사 <b class="ok">만장일치 OK(불가 0)</b>.
+  기계 게이트 = py_compile·check_refs rc=0 · 로직 스모크(역외삽 수치·미스 램프 산식) · comp는 실폰트 Pillow 픽셀 스캔 실측.
+</div>
+</body>
+</html>
