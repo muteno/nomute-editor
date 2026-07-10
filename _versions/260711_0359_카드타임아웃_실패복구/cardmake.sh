@@ -23,11 +23,6 @@ source "$ROOT/shared/inject_guidelines.sh"
 source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 카드 claude콜 일시 과부하(5xx/Overloaded) 인라인 재시도용
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 카드 인라인 재시도 = 4계정 폴오버 체인 깊이(서브3까지 실호출) + 일시 과부하·버스트 카드 유실 차단(analyze·ask와 동일·260622·4계정 3→4)
-# 카드 본 생성 타임아웃(초) — 구 900 고정이 소요 성장(성공 실측 561→885s·출력 3.8만→6.2만tok)과 교차해 260710 연쇄 124
-# (900×2 재시도 전소 → failed 적체 6건 실측 · error.log의 trust/MultiEdit stderr는 무관 공지 노이즈였음 = 오진 주의).
-# 1500 = 관측 최대 885s 대비 +70% 헤드룸 · 스코프 = 본 생성·린트 재생성만(부분 작업 cov 보강·edit는 900 유지) ·
-# 잡 예산 = news-analyze card_plan timeout-minutes 150과 한 쌍 · 롤백 = env CARD_TIMEOUT=900.
-CARD_TIMEOUT="${CARD_TIMEOUT:-1500}"
 GVER="$(guidelines_version card)"
 GBLOCK="$(guidelines_block card)"
 echo "지침 버전(card): ${GVER} / MODE=${MODE}"
@@ -125,7 +120,7 @@ $(cat "queue/$stem.md" 2>/dev/null)
     EDIT_PROMPT="$(printf '%s' "$ap" | METER_SRC=card-edit METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
           --model "$MODEL" --effort max \
           --allowedTools "WebFetch,WebSearch" \
-          --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
+          --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
           --max-turns 20 2>"/tmp/editprompt_${stem}.err")"
     if [ -z "${EDIT_PROMPT// }" ]; then
       echo "::warning::이미지 프롬프트 작성 실패 — 기존 카드 프롬프트로 폴백"; EDIT_PROMPT=""
@@ -263,11 +258,11 @@ $(cat "$q")${disp_note}"
 "
     inline_delay=15
     for attempt in $(seq 1 "$INLINE_TRIES"); do
-      out="$(printf '%s' "$fp" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter "$CARD_TIMEOUT" \
+      out="$(printf '%s' "$fp" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
             --model "$MODEL" \
             --effort max \
             --allowedTools "WebFetch,WebSearch" \
-            --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
+            --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
             --max-turns 40 \
             2> "/tmp/${stem}.err")"
       rc=$?
@@ -285,12 +280,12 @@ $(cat "$q")${disp_note}"
         echo "  ⚠️ 양식 위반/폭주 추정($(printf '%s' "$out" | wc -l | tr -d ' ')줄·카드헤더 없음) — 출력규율 강제 프리픽스로 교정 재시도(${attempt}/${INLINE_TRIES})"
         fp="${STRICT_PREFIX}${fp_base}"; continue
       fi
-      # 생성 타임아웃(rc=124 = claude_meter CARD_TIMEOUT 상한 초과·무출력) 자동 재시도 1회 (운영자 260701).
+      # 생성 타임아웃(rc=124 = claude_meter 900s 상한 초과·무출력) 자동 재시도 1회 (운영자 260701).
       #   무거운 입력(전문 paste·재작성 + effort max·max-turns 40)이 15분을 넘겨 SIGTERM 종료되던 것 구제.
       #   is_transient(5xx/과부하 텍스트)엔 안 걸리는 순수 타임아웃/행이라 별도 처리 — 같은 입력이라도 API 상태·경로 편차로 2차 시도 성공 가능. 1회만(비용 바운드·잡 timeout 120분 내).
       if [ "$timeout_retried" -eq 0 ] && [ "$attempt" -lt "$INLINE_TRIES" ] && [ "$rc" -eq 124 ]; then
         timeout_retried=1
-        echo "  ⏳ 생성 타임아웃(rc=124 · ${CARD_TIMEOUT}s 초과·무출력) — ${inline_delay}s 후 1회 재시도(${attempt}/${INLINE_TRIES})"
+        echo "  ⏳ 생성 타임아웃(rc=124 · 900s 초과·무출력) — ${inline_delay}s 후 1회 재시도(${attempt}/${INLINE_TRIES})"
         SJ_RETRY=1 status_json "cards/$stem" "generating"; commit_push "cards: $stem 재시도 1회 ⏳"   # 뷰어 라이브 '재(1회)' 표식(generating 유지 · 성공/실패 시 최종 status_json이 retry 해제)
         sleep "$inline_delay"; continue
       fi
@@ -306,13 +301,8 @@ $(cat "$q")${disp_note}"
       ol=$(printf '%s' "$out" | wc -l | tr -d ' '); ob=$(printf '%s' "$out" | wc -c | tr -d ' ')
       if grep -qm1 '^CARDS_FAILED' <<<"$out"; then
         reason="$(grep -m1 '^CARDS_FAILED' <<<"$out" | cut -c1-200)"
-      elif [ $rc -eq 124 ]; then
-        # 타임아웃은 원인을 명시(260710 오진 재발방지 — stderr 첫 줄이 trust/MultiEdit 공지면 그게 원인처럼 박혀 열흘짜리 오진 유발).
-        reason="생성 타임아웃(${CARD_TIMEOUT}s 상한 초과·재시도 소진 — 생성 미완 kill·무출력)"
       elif [ $rc -ne 0 ]; then
-        # stderr 머리의 무해 공지(미신뢰 워크스페이스 permissions 무시·폐지 툴 이름 경고)는 원인 아님 → 걸러낸 첫 실질 줄만 박음.
-        errhead="$(grep -v -e '^Ignoring .* permissions' -e '^Permission deny rule' "/tmp/${stem}.err" 2>/dev/null | head -c 120 | tr '\n' ' ')"
-        reason="비정상 종료(exit $rc · ${errhead:-실질 stderr 없음(공지뿐)})"
+        reason="비정상 종료(exit $rc · $(head -c 120 "/tmp/${stem}.err" 2>/dev/null | tr '\n' ' '))"
       elif [ -z "${out// }" ]; then
         reason="빈 응답(모델 무출력)"
       elif ! grep -qm1 '^### \[카드 1\]' <<<"$out" && { [ "${ol:-0}" -gt 400 ] || [ "${ob:-0}" -gt 40000 ]; }; then
@@ -347,10 +337,10 @@ $(cat "$q")${disp_note}"
 ${lint_out}
 
 "
-      out2="$(printf '%s' "${LINT_PREFIX}${fp_base}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter "$CARD_TIMEOUT" \
+      out2="$(printf '%s' "${LINT_PREFIX}${fp_base}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
             --model "$MODEL" --effort max \
             --allowedTools "WebFetch,WebSearch" \
-            --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
+            --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
             --max-turns 40 2>/dev/null)"
       if [ -n "${out2// }" ] && grep -qm1 '^### \[카드 1\]' <<<"$out2"; then
         printf '%s\n' "$out2" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.retry"
@@ -396,7 +386,7 @@ ${cov_out}
 "
         out3="$(printf '%s' "${fp_base}${COV_SUFFIX}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
               --model "$MODEL" --effort max \
-              --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep,WebFetch,WebSearch" \
+              --disallowedTools "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,Glob,Grep,WebFetch,WebSearch" \
               --max-turns 40 2>/dev/null)" || true
         if [ -n "${out3//[[:space:]]/}" ] && grep -qm1 '^### \[카드 1\]' <<<"$out3"; then
           printf '%s\n' "$out3" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.cov"
