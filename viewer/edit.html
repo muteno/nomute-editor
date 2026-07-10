@@ -489,6 +489,26 @@ $('#dlVid').addEventListener('click',e=>{
   b.classList.add('dl-done');
 });
 
+/* ══ 완료 푸시 딥링크(#done=<id>) — 알림 탭 = 그 작업 결과로 직행(thumb #done 문법 · 발송 = edit-make 완료 푸시 스텝) ══ */
+(function(){
+  const m=(location.hash||'').match(/^#done=([0-9]{12}-[0-9a-f]{6})$/); if(!m) return;
+  const id=m[1]; EDIT_ID=id; USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
+  (async()=>{
+    const st=$('#cstatus');
+    try{
+      const r=await fetch('ly_out/'+id+'/video.json?t='+Date.now());
+      if(r.ok){ const tx=await r.text();
+        if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&d.url){ showResult(d,0); return; }
+          if(d&&(d.error||d.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); st.classList.add('err'); return; } } }
+      const er=await fetch('ly_out/'+id+'/error.log?t='+Date.now());
+      if(er.ok){ const em=await er.text();
+        if(em&&em.trim()&&!/^\s*</.test(em)){ st.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); st.classList.add('err'); return; } }
+      st.textContent='결과를 찾지 못했어 — 다시 발사해줘';
+    }catch(e){ st.textContent='결과 불러오기 실패 — 새로고침해줘'; }
+  })();
+})();
+
 /* ══ 재개(pend) — conv 문법(24h 게이트·폴 창 클램프·신선도 분리) ══ */
 (function(){
   const p=pendGet(); if(!p||!p.id||USER_ACT) return;
