@@ -33,7 +33,9 @@ if os.path.exists(cm):
         pm = re.search(r'\*\*이미지\s*프롬프트\*\*\s*```(?:text)?\s*([\s\S]*?)```', blk.group(1))
         prompt = pm.group(1).strip() if pm else ''
 
-ts = datetime.datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+# KST 강제(§표기표준 d — 러너는 UTC · rate_record.py 정본 패턴) — 구 utcnow()는 9h 어긋난 스탬프(260710 교정)
+KST = datetime.timezone(datetime.timedelta(hours=9))
+ts = datetime.datetime.now(KST).strftime('%Y%m%d-%H%M%S')
 rec = {'ts': ts, 'article': stem, 'card': n, 'vote': vote, 'aspect': aspect,
        'comment': comment, 'text': text, 'prompt': prompt}
 os.makedirs('feedback', exist_ok=True)

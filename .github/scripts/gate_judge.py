@@ -178,11 +178,18 @@ def judge(items):
     if p is None:
         return {}, {}, {}, rc, err
     grades, cats, trans = {}, {}, {}
+    expected = {i for i, _ in items}   # 응답 idx 검증(260710 분신술) — 입력측 탭 깨짐(_clean)만 방어하고 출력측은 무검증이라,
+    seen = set()                       #   모델이 번호를 밀려 내면 엉뚱한 기사에 grade 오도장 + rubric 도장으로 재판정 영영 차단되던 사각.
     for line in (p.stdout or "").splitlines():
         if "\t" not in line:
             continue
         cols = line.split("\t")
         k = cols[0].strip()
+        if not (k.isascii() and k.isdigit()):
+            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(기존 관용 유지 · isascii = 전각/유니코드 숫자가 청크 킬로 승격되는 이론 케이스 봉인)
+        if k not in expected or k in seen:   # 범위 밖·중복 idx = 매핑 어긋남 신호 → 청크 통째 폐기(미도장 유지 = 다음 런 재시도·기존 실패 경로 재사용)
+            return {}, {}, {}, -2, f"응답 idx 검증 실패(k={k!r} 범위밖/중복) — 오도장 방지 청크 폐기"
+        seen.add(k)
         m = re.match(r"\s*([0-3])(?![0-9])", cols[1]) if len(cols) > 1 else None   # 단일 0~3만('10'→'1' 2자리 오파싱 차단)
         if m:
             grades[k] = int(m.group(1))

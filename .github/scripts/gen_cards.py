@@ -187,11 +187,19 @@ def edit_one(stem, n):
             if wish:
                 prompt += "\n\n[EDIT REQUEST — 다음 수정 희망을 반영해 다시 그릴 것]: " + wish
         png = tg.gemini_image(prompt + " " + CARD_STYLE)
-        if not png:
-            print("::error::카드 {} 장면 생성 실패".format(n)); return 1
-        open(scene_local, "wb").write(png)
-        tag = " (Claude 지침 프롬프트)" if authored else (" (이미지 수정 반영)" if wish else (" (텍스트 반영)" if sync else ""))
-        print("  ✓ 카드 {} 장면 재생성{}".format(n, tag))
+        if png:
+            open(scene_local, "wb").write(png)
+            tag = " (Claude 지침 프롬프트)" if authored else (" (이미지 수정 반영)" if wish else (" (텍스트 반영)" if sync else ""))
+            print("  ✓ 카드 {} 장면 재생성{}".format(n, tag))
+        elif has_scene and not wish:
+            # 보존 장면 폴백 = sync(텍스트 반영) 한정 — 텍스트가 목적이라 장면 보존+새 문구가 정답.
+            #   wish(이미지 수정 요청)는 이미지가 목적 = 폴백하면 무변화 결과가 done으로 둔갑(침묵 강하 ·
+            #   평의회5) → 하드 실패 = Actions 런 실패(::error)로 표면화(edit 분기는 status failed·error.log 미기록 =
+            #   기존 배관 한계 · 후속 후보 = cardmake.sh edit 실패 시 status_json failed — 평의회9 · gemini_image 자체 1회 재시도가 성공률 보완 · 260710)
+            print("::warning::카드 {} 장면 재생성 실패 — 기존 장면 보존·문구만 반영".format(n))
+        else:
+            print("::error::카드 {} 장면 생성 실패{}".format(
+                n, " (이미지 수정 요청 미반영 — 다시 시도해줘)" if has_scene else " (보존 장면도 없음)")); return 1
     else:
         print("  ✓ 카드 {} 텍스트만 변경 — 장면 보존(제미나이 0)".format(n))
 

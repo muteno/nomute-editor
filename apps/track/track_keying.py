@@ -120,7 +120,10 @@ def plan_passes(subjects, keep, people, keepP, extras, fps, W, H, total_f=0):
         joined = False
         for p in passes:
             if p["kind"] == "box" and abs(pf - p["f0"]) <= win:
-                b = _sample_box(s, p["f0"]) or s.get("pb")   # 그룹 대표 프레임 시점의 실측 박스(없으면 자기 pf 박스)
+                # 그룹 대표 프레임 시점의 *실측* 박스만 조인 — 그 시점 미등장(None)이면 조인 포기 → 아래서
+                #   자기 pf 별도 패스. 구 `or s.get("pb")` 폴백은 등장 전 프레임의 그 좌표에 있던 딴 물체를
+                #   SAM2가 끝까지 전파하는 유령 시드(무증상 오출력 · 260710 제거)
+                b = _sample_box(s, p["f0"])
                 if b:
                     if ex != 1.0:
                         b = _expand_box(b, W, H, ex)
@@ -232,7 +235,7 @@ def run(vid_id, req, doc, outdir):
     est = est_seg + total_f * TAIL_S_PF * (W * H / 2_073_600.0)
     if est > KEY_BUDGET_SEC:
         raise RuntimeError(f"이 조합은 렌더가 너무 오래 걸려(예상 {int(est // 60)}분) — "
-                           f"피사체 수·영상 길이를 줄이거나(60fps면 더 짧게) 등장 시점이 비슷한 것끼리 골라줘.")
+                           f"피사체 수·영상 길이를 줄이거나(60fps면 더 짧게) 같은 시점에 함께 나오는 것끼리 골라줘.")
     fe = int(round(_num((req.get("opts") or {}).get("feather"), 0, 40, FEATHER_DFLT)))
 
     # ── ② 패스별 SAM2 전파 → 마스크 PNG ──
