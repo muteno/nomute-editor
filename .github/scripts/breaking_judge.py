@@ -163,8 +163,8 @@ def judge(items):
             continue
         k, _, v = line.partition("\t")
         k = k.strip()
-        if not k.isdigit():
-            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시
+        if not (k.isascii() and k.isdigit()):
+            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(isascii = gate_judge와 짝 일관)
         if k not in expected or k in seen:   # 범위 밖·중복 idx = 매핑 어긋남 → 청크 통째 폐기(미도장 유지·다음 런 재시도)
             return {}, -2, f"응답 idx 검증 실패(k={k!r} 범위밖/중복) — 오도장 방지 청크 폐기"
         seen.add(k)

@@ -310,9 +310,13 @@ def main():
         if old_url not in fresh:
             merged.pop(old_url, None)
 
-    def _ts(s):   # 관용 타임스탬프 파서(daily_health 계열·260710) — Z 접미 허용·naive(구버전/외부 스탬프)는 KST 가정(자기 기록분).
-        t = datetime.fromisoformat(str(s).replace("Z", "+00:00"))   # 러너 파이썬 다운그레이드 시 '+0900' 무콜론 %z 파싱 실패로 전 엔트리가
-        return t if t.tzinfo else t.replace(tzinfo=KST)             #   TTL 영생/승격 전멸하던 취약면 축소(파서 정책을 daily_health와 통일).
+    def _ts(s):   # 관용 타임스탬프 파서(260710) — Z 접미·naive(KST 가정 = 자기 기록분) 허용 + strptime %z 폴백.
+        s = str(s)                     # 실데이터 지배 포맷 = '+0900' 무콜론(9,000개 전수 실측): fromisoformat은 3.11+ 전용 문법이라
+        try:                           #   러너 파이썬 다운그레이드 시 전 엔트리 파싱 실패(TTL 영생·승격 전멸) → %z 폴백이 전 버전 커버(검증4).
+            t = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
+        return t if t.tzinfo else t.replace(tzinfo=KST)
 
     # 캐리 강등 사각 픽스(분신술 260710): 이번 스크랩(fresh)에 없는 엔트리는 breaking_candidate 재계산(fresh 산정)이
     # 없어 옛 True가 눌어붙음 → 아래 강등 루프가 영구 스킵 = "급증 끝나면 강등" 보장이 캐리 경로서 깨짐(isBreaking

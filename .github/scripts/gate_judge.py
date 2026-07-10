@@ -185,8 +185,8 @@ def judge(items):
             continue
         cols = line.split("\t")
         k = cols[0].strip()
-        if not k.isdigit():
-            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(기존 관용 유지)
+        if not (k.isascii() and k.isdigit()):
+            continue                   # 비숫자 키(머리말·산문 잔재) = 그 줄만 무시(기존 관용 유지 · isascii = 전각/유니코드 숫자가 청크 킬로 승격되는 이론 케이스 봉인)
         if k not in expected or k in seen:   # 범위 밖·중복 idx = 매핑 어긋남 신호 → 청크 통째 폐기(미도장 유지 = 다음 런 재시도·기존 실패 경로 재사용)
             return {}, {}, {}, -2, f"응답 idx 검증 실패(k={k!r} 범위밖/중복) — 오도장 방지 청크 폐기"
         seen.add(k)
