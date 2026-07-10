@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>변환 탭 — 음량 통일·9:16 검정 여백 (260710)</title>
+<style>
+  body { margin:0; background:#121212; color:#eef7f0; font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  .wrap { max-width:640px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:20px; margin:8px 0 4px; }
+  h2 { font-size:15px; margin:26px 0 8px; color:#00EED2; }
+  .sub { color:#8fa697; font-size:13px; margin:0 0 18px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid #2a2c31; vertical-align:top; }
+  th { color:#8fa697; font-weight:700; white-space:nowrap; }
+  td b { color:#00EED2; font-weight:800; }
+  .ok { color:#2CF5A5; font-weight:700; }
+  .warn { color:#FFE13D; }
+  .box { background:#16171a; border:1px solid #2a2c31; border-radius:12px; padding:12px 14px; margin:10px 0; font-size:13.5px; }
+  .num { font-variant-numeric:tabular-nums; }
+  code { background:#0e0f11; border:1px solid #2a2c31; border-radius:5px; padding:1px 5px; font-size:12px; }
+  .flow { display:flex; gap:8px; align-items:stretch; margin:10px 0; flex-wrap:wrap; }
+  .flow .st { flex:1; min-width:120px; background:#16171a; border:1px solid #2a2c31; border-radius:10px; padding:9px 10px; font-size:12.5px; text-align:center; }
+  .flow .st b { display:block; color:#00EED2; font-size:12px; margin-bottom:3px; }
+  ul { margin:6px 0; padding-left:18px; } li { margin:3px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>변환 탭 — 음량 통일 · 9:16 검정 여백</h1>
+  <p class="sub">260710 · 운영자 요청 3기능 중 2종 배선(60fps 보간은 이미 라이브) · 평의회 10인 수렴 "2단계" 1단계분</p>
+
+  <h2>전 / 후</h2>
+  <table>
+    <tr><th>축</th><th>전</th><th>후</th></tr>
+    <tr><td>비율</td><td>자르기(크롭)만 — 1:1을 9:16으로 만들면 좌우가 잘림</td><td><b>[자르기 | 여백(검정)]</b> 선택 — 여백 = 안 자르고 검정 레터박스 중앙(1:1 → 1080×1920)</td></tr>
+    <tr><td>음량</td><td>없음(원본 소리 그대로)</td><td><b>[유지 | 통일]</b> — 통일 = −14LUFS(인스타·유튜브 체감 표준)·피크 −1.5dB 제한(0dB 절대 불가침 마진)·좌우(L/R) 모노합 통일</td></tr>
+    <tr><td>60fps</td><td colspan="2">변화 없음 — 이미 라이브([60fps 보간] · 120초 캡·예산 가드)</td></tr>
+  </table>
+
+  <h2>처리 흐름 (음량 = 후처리라 빠름)</h2>
+  <div class="flow">
+    <div class="st"><b>본 인코딩</b>트림→크롭/스케일→fps→<u>패드</u></div>
+    <div class="st"><b>음량 후처리</b>비디오 copy(재인코딩 0)<br>오디오만 측정→2패스 loudnorm</div>
+    <div class="st"><b>R2 → 뷰어</b>완료줄에 <code>음량 통일(−14LUFS·L/R)</code> 표기</div>
+  </div>
+  <div class="box">엔진 = <code>shared/audio_norm.py</code> 단일정본(SSOT) — 곧 만들 통합 영상 편집기·자막 번인도 이걸 그대로 재사용(중복 원천 차단 · 평의회 4번 앵글 수렴).</div>
+
+  <h2>실측 (합성 클립 6케이스 + 단위)</h2>
+  <table>
+    <tr><th>케이스</th><th>결과</th></tr>
+    <tr><td>1:1 1080 → 9:16 여백+음량</td><td class="num"><span class="ok">1080×1920</span> · 음량 <span class="ok">−14.07 LUFS</span>(목표 −14) · 좌우 차 <span class="ok">−84dB</span>(완전 통일 — 원본은 왼쪽 채널만)</td></tr>
+    <tr><td>16:9 1920 → 9:16 여백(캡)</td><td class="num"><span class="ok">1080×1920 정확 스냅</span></td></tr>
+    <tr><td>크롭 회귀(기존 동작)</td><td class="num"><span class="ok">606×1080 무변</span></td></tr>
+    <tr><td>무음 영상 + 통일</td><td><span class="ok">건너뜀 + 사유 표기</span>(영상은 정상 산출 = fail-soft)</td></tr>
+    <tr><td>60fps 보간 + 여백 동시</td><td class="num"><span class="ok">60fps + 패드 동시 성립</span>(보간은 여백 픽셀 계산 안 함 = 예산 불변)</td></tr>
+    <tr><td>해상도 720 + 1:1 여백</td><td class="num"><span class="ok">720×720</span>(캡이 캔버스 기준으로 동작)</td></tr>
+  </table>
+
+  <h2>장단점 · 리스크 (정직)</h2>
+  <ul>
+    <li><b>장</b>: 업로드 그대로 한 번에 — 여백은 무손실(안 자름), 음량은 0dB 절대 안 넘음(TP 리미트). 조용한 영상은 크게, 과한 영상은 살짝 내려 영상끼리 체감 음량 동일.</li>
+    <li><span class="warn">단·리스크</span>: ① 음량 통일 시 오디오 aac 재인코딩 1세대 추가(160k→192k — 음성 콘텐츠 비가청 수준) ② 측정 실패 시 단일패스 폴백 = <code>근사(1패스)</code> 표기(여전히 정규화·정확도만 소폭↓) ③ 여백 모드는 영상 위치 중앙 고정(위/아래 치우침은 후속) ④ 스테레오 음악 소스는 좌우 통일로 공간감이 줄 수 있음(뉴스 인터뷰엔 무해·의도된 동작) ⑤ 무음·룸톤만·좌우 역위상 소스 = 건너뛰고 사유 표기(히스 증폭·상쇄 방지) ⑥ 순간 피크가 큰 소스는 0dB 제약이 우선이라 −14까지 못 올라갈 수 있고, 아주 큰 소스는 −14로 크게 내려감(통일이 목표).</li>
+    <li><b>효율</b>: 음량 후처리 = 비디오 무재인코딩(copy)이라 몇 초~수십 초. 러너 예산·기존 캡(일반 300초·보간 120초) 무변.</li>
+  </ul>
+
+  <h2>같이 확정된 방향 (평의회 10인 · 운영자 버튼 확답)</h2>
+  <div class="box">
+    <b>2단계 통합</b>: ① 지금 = 이 배선(변환 탭) ② 다음 = 새 <b>편집기</b> 탭 신설(자막+변환 통합 · 업로드 1번·1잡) — 메뉴 골격은 <b>레시피+카테고리</b> vs <b>레시피+처리 스택</b> 두 안을 만지는 플레이그라운드 시안으로 먼저 보고 결정. 자막 생성기 탭 토글은 편집기로 미룸(중복 UI 방지). 기존 탭은 병존 → 검증 후 정리. 트래킹·영상 프롬프트는 별도 유지.
+  </div>
+</div>
+</body>
+</html>
