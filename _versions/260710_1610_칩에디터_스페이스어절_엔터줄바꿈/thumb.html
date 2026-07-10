@@ -2235,24 +2235,8 @@ function renderEditChips() {
     const row = document.createElement('div'); row.className = 'ed-line'; row.dataset.li = li;
     if (line.length === 0) {
       const e = document.createElement('span'); e.className = 'ed-chip ed-empty'; e.contentEditable = 'true'; e.spellcheck = true; e.lang = 'ko';
-      e.oninput = ev => {   // 타이핑 중 스페이스 = 그 자리서 즉시 어절 분리(어절칩 oninput 세포분열과 동일 · IME 조합 중 제외 · 운영자 260710)
-        const raw = e.textContent, si = raw.search(/\s/);
-        if (si >= 0 && !ev.isComposing) {
-          const left = raw.slice(0, si).trim(), right = raw.slice(si + 1).trim();
-          if (left) { edLines[li] = [{ text: left, on: false }, { text: right, on: false }]; PENDING_EDIT = { li, wi: 1 }; renderEditChips(); return; }
-          e.textContent = right;   // 맨 앞 공백만 = 제거하고 계속
-          const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(e); r.collapse(false); sel.removeAllRanges(); sel.addRange(r);   // textContent 교체로 캐럿이 앞으로 튐 → 끝 복원
-        }
-        fitEditLines(wrap);
-      };
-      e.onkeydown = ev => {
-        if (ev.key === 'Enter') {   // 엔터 = 줄바꿈: 기존 커밋(blur=어절 분리·한도 클립) 후 아래 새 줄 + 커서(빈 입력은 기존 줄 정리 그대로 · 운영자 260710)
-          ev.preventDefault();
-          const filled = !!e.textContent.replace(/\s+/g, ' ').trim();
-          e.blur();
-          if (filled) addLineAfter(li);   // MAX_LINES 가드 = addLineAfter
-        }
-      };
+      e.oninput = () => fitEditLines(wrap);
+      e.onkeydown = ev => { if (ev.key === 'Enter') { ev.preventDefault(); e.blur(); } };
       e.onblur = () => {
         if (_edRendering || !e.isConnected) return;
         const nt = e.textContent.replace(/\s+/g, ' ').trim();
@@ -2281,13 +2265,7 @@ function renderEditChips() {
         chip.onclick = () => { if (chip.isContentEditable) return; if (wd.em) { wd.em = null; wd.on = true; renderEditChips(); return; } wd.on = !wd.on; chip.classList.toggle('on'); };
         chip.ondblclick = () => { chip.textContent = wd.text; chip.contentEditable = 'true'; chip.spellcheck = true; chip.lang = 'ko'; chip.classList.add('editing'); chip.focus(); window.getSelection()?.selectAllChildren(chip); };
         chip.onkeydown = ev => {
-          if (ev.key === 'Enter') {   // 엔터 = 커밋 + 줄바꿈(줄 끝 어절 입력 중 한정 = 타이핑 흐름 · 중간 어절 수정은 커밋만 · 운영자 260710)
-            ev.preventDefault();
-            const last = wi === edLines[li].length - 1, survive = !!chip.textContent.replace(/\s+/g, ' ').trim() || edLines[li].length > 1;
-            chip.blur();   // 기존 커밋 경로 그대로(분할·삭제·한도 클립)
-            if (last && survive) addLineAfter(li);   // 줄 자체가 사라지는 경우(마지막 어절 비움) 제외 · MAX_LINES 가드 = addLineAfter
-            return;
-          }
+          if (ev.key === 'Enter') { ev.preventDefault(); chip.blur(); return; }
           // 어절을 다 지운 뒤 백스페이스 = 앞 어절로 넘어가 이어서 지움(같은 줄 안에서만 · wi=0이면 멈춤=마지노선 · index.html 카드변경과 동일·council 검증 · 운영자 260630)
           if (ev.key === 'Backspace' && !ev.isComposing && wi > 0 && !chip.textContent.replace(/[\s\u200b\uFEFF\u2060]/g, '')) {
             ev.preventDefault();
