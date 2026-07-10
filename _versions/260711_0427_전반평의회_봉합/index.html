@@ -3196,19 +3196,16 @@ function sensChips(tags) {
 function progGauge(a) {
   const st = (a.cards && a.cards.state) || '';
   const segs = [['요약','n'], ['프롬프트','m'], ['카드','t']];
-  // 시간 초과 미완 = 멈춤 → 펄스 정지(무한 회전 방지·시간 기반 실패 로직). 임계 = 백엔드 상한 정합(cardSec stuck/genStuck과 동일 기준):
-  //   렌더(fired_partial) = 10분(운영자 260704) · 프롬프팅(generating) = 26분(CARD_TIMEOUT 25분+1 · 260711 동행 — 성공할 11~25분 카드 오표시 방지).
+  // 10분 초과 미완 = 멈춤 → 펄스 정지(무한 회전 방지·시간 기반 실패 로직 · 18→10분 운영자 260704 "모두 10분 안에 안되면 실패").
   const up = a.cards && a.cards.updated;
-  const upMin = up ? (Date.now() - Date.parse(up)) / 60000 : 0;
-  const stuck = up && upMin > 10;
-  const genStuckG = up && upMin > 26;
+  const stuck = up && (Date.now() - Date.parse(up)) / 60000 > 10;
   const hasMd = !!(a.cards && (a.cards.md || a.cards.has_md));   // 프롬프트(텍스트)까지 갔는지 → 실패 표식 위치 판정 (has_md = 경량 인덱스 플래그·md는 detail lazy)
   let done = 1, busy = false, fail = false;   // done=완료 세그먼트 수(요약은 큐 전건 완료)
   if (st === 'done') done = 3;
   // 멈춤(stuck)이면 '진행되다 깨짐' → 펄스 대신 그 세그먼트에 실패 표식(노랑 빗금·빨강 라벨), 재시도는 cardSec 버튼.
   else if (st === 'fired_partial') { done = 2; if (stuck) fail = true; else busy = true; }   // 카드 발사·이미지 대기
   else if (st === 'text_done') done = 2;                        // 프롬프트까지·카드 대기
-  else if (st === 'generating') { if (genStuckG) fail = true; else busy = true; }   // 카드 프롬프팅 중(26분 = CARD_TIMEOUT 정합)
+  else if (st === 'generating') { if (stuck) fail = true; else busy = true; }   // 카드 프롬프팅 중
   else if (st === 'failed') { fail = true; if (hasMd) done = 2; }   // 텍스트 있으면 카드 단계 실패(seg 카드)
   // 실패 이력(error.log 잔존) = 한 번이라도 깨진 흔적 → 해당 단계에 영속 흉터(scar). 재시도·성공해도 유지.
   const scarSeg = (a.cards && a.cards.failedOnce) ? (hasMd ? 2 : 1) : -1;
@@ -4335,13 +4332,10 @@ function cardSec(a) {
   // stale = 카드 제작 후 요약을 또 revise함(a.rev > 카드가 만들어진 회차 c.rev). 이미지 있는 카드(done/fired_partial)만 —
   // 이미지는 보존하고 '다시 제작'(앰버 버튼) 권유로 운영자가 새 요약 반영(text_done은 card_refresh가 자동 갱신하므로 제외).
   const stale = (st === 'done' || st === 'fired_partial') && (Number(a.rev || 0) > Number(c.rev || 0));
-  // 시간 기반 실패 감지 — 경고·재시도 버튼 노출용(progGauge와 동일 기준). 임계 = 그 백엔드 상한과 정합이 정본:
-  //   렌더(fired_partial) = 10분 유지(운영자 260704 "10분 안에 안되면 실패") · 프롬프팅(generating) = 26분
-  //   (= cardmake CARD_TIMEOUT 1500s(25분)+여유 1분 · 260711 900→1500 상향 동행 — 10분이면 이제 성공하는 11~25분
-  //   카드를 '실패(시간초과)'로 오표시 → 오인 재시도·중복 생성 유발[전반평의회③ P1]. 타임아웃 재시도 시 updated 재스탬프라 2차 시도도 커버).
+  // 10분 초과 미완 = 멈춤(시간 기반 실패 감지) — 경고·재시도 버튼 노출용(progGauge와 동일 기준 · 옛 18/15분 → 모두 10분 통일 · 운영자 260704 "모두 10분 안에 안되면 실패").
   const stuckMin = c.updated ? Math.floor((Date.now() - Date.parse(c.updated)) / 60000) : 999;   // updated 없으면 비정상(스탬프 안 됨) = stuck 취급
-  const stuck = stuckMin > 10;        // fired_partial(이미지 렌더) = 10분 유지
-  const genStuck = stuckMin > 26;     // generating(프롬프팅) = CARD_TIMEOUT(25분)+1 정합
+  const stuck = stuckMin > 10;        // fired_partial(이미지 렌더) 포함 10분 통일
+  const genStuck = stuckMin > 10;     // generating(프롬프팅)도 10분
   // 카드 phase 헤더에 상태 반영(접어도 보이게)
   const sumlabel = { '':'2. 카드 뉴스 프롬프트', generating:'2. 카드 뉴스 프롬프트 — 프롬프팅 중…', text_done:'2. 카드 뉴스 프롬프트',   // text_done '— 텍스트·프롬프트' 접미 제거(운영자 260629 "저 말 빼자")
     done:'2. 카드 뉴스 프롬프트', fired_partial:'2. 카드 뉴스 프롬프트 — 생성됨', failed:'2. 카드 뉴스 프롬프트 — 실패' };

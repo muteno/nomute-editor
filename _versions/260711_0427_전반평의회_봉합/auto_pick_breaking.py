@@ -139,7 +139,7 @@ def _ai_same(title, recent_titles):
     )
     p, rc, err = run_claude(
         ["claude", "-p", "--model", os.environ.get("AUTOPICK_MODEL", "claude-opus-4-8"), "--effort", "max",
-         "--disallowedTools", "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
+         "--disallowedTools", "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
          "--max-turns", "1"],
         prompt, timeout=120, source="autopick")
     if p is None or rc != 0:
