@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>이미지 제작 — 기기 간 공유·완료 알림 수리 (260711)</title>
+<style>
+/* 색·radius = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · CLAUDE.md §작업표준 b) */
+:root{--bg:#121212;--fg:#eef7f0;--mut:#8fa697;--accent:#00EED2;--warn:#FFE13D;--danger:#e23b2a;--line:rgba(255,255,255,.08);--r:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;line-height:1.6;padding:20px 14px 60px;max-width:760px;margin:0 auto;font-size:15px}
+h1{font-size:20px;margin:6px 0 4px}
+h2{font-size:16px;margin:28px 0 10px;color:var(--accent)}
+.sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+.card{border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin:10px 0;background:rgba(255,255,255,.02)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:8px 0}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:700;white-space:nowrap}
+.ok{color:var(--accent);font-weight:700}
+.warn{color:var(--warn);font-weight:700}
+.bad{color:var(--danger);font-weight:700}
+.mut{color:var(--mut)}
+code{background:rgba(255,255,255,.06);border-radius:5px;padding:1px 5px;font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+ul{padding-left:18px}
+li{margin:4px 0}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;margin:8px 0}
+.step{border:1px solid var(--line);border-radius:10px;padding:5px 10px;background:rgba(255,255,255,.03)}
+.arr{color:var(--mut)}
+.new{border-color:rgba(0,238,210,.45);color:var(--accent)}
+</style>
+</head>
+<body>
+<h1>이미지 제작 — 기기 간 공유·완료 알림 수리</h1>
+<div class="sub">260711 · 운영자 지시: 미리보기 기기 간 공유 + "배포가 끝나면 알림"(매우중요 기틀) · 검증 생략 지시로 평의회 미소환(자가 실측만)</div>
+
+<h2>무엇이 문제였나 (쉬운 설명)</h2>
+<div class="card">
+<ul>
+<li><b>알림이 결과보다 먼저 왔다</b> — 제작 완료 푸시가 커밋 직후 즉시 발사되는데, 결과 목록(thumb-hist.json)은 Pages 배포(30~90초 뒤)에야 라이브. 그래서 알림을 탭하면 <span class="bad">제작 메뉴만 열리고 이미지가 없는 "엥?"</span>이 생겼다. 재로그인이 끼면 딥링크(<code>#done</code>)가 해시라 유실돼 그냥 맨 화면.</li>
+<li><b>기기 간 공유가 앱마다 달랐다</b> — 썸네일(/1~/4)만 전 기기 이력에 병합되고, <span class="bad">카드뉴스(/5)는 미구현·리사이즈(/7)는 '세션만'</span>이라 다른 기기에서 안 보임. 맨 위 '결과' 미리보기도 그 기기 로컬 전용.</li>
+</ul>
+</div>
+
+<h2>전 → 후</h2>
+<table>
+<tr><th>항목</th><th>전</th><th>후</th></tr>
+<tr><td><b>완료 알림 시점</b></td><td>커밋 직후 즉시(배포 전) → 탭해도 결과 없음 가능</td><td class="ok">배포 게이트 — 커밋의 <code>Cloudflare Pages</code> 체크런 success 확인 후 발송 = 탭 시점엔 결과가 이미 라이브</td></tr>
+<tr><td><b>알림 딥링크</b></td><td><code>#done=&lt;id&gt;</code> 해시 — Access 재로그인에 유실</td><td class="ok"><code>?done=&lt;id&gt;</code> 쿼리(생존) · 구 해시도 호환 파싱</td></tr>
+<tr><td><b>기기 간 이력(이전 제작)</b></td><td>/1~/4만</td><td class="ok">+ 카드뉴스(/5 · comp_out 스캔) + 리사이즈(/7 · resize.json 병합 — 낮 '세션만' 번복 확정)</td></tr>
+<tr><td><b>맨 위 '결과' 미리보기(부팅)</b></td><td>이 기기 마지막 제작만</td><td class="ok">로컬·전 기기 중 <b>최신</b> 제작(접힌 채 · 12h·기록지우기 컷 준수 · 동률=로컬 승)</td></tr>
+<tr><td><b>기틀 기록</b></td><td>—</td><td class="ok">CLAUDE.md §9-3 <b>§완료알림</b> 신설(deploy-then-notify + 쿼리 딥링크 = 신규 제작 앱도 계승)</td></tr>
+</table>
+
+<div class="flow">
+<span class="step">렌더</span><span class="arr">→</span><span class="step">R2 업로드</span><span class="arr">→</span><span class="step">_meta.json 커밋</span><span class="arr">→</span><span class="step new">배포 게이트(체크런 폴링)</span><span class="arr">→</span><span class="step">완료 푸시 ?done=id</span><span class="arr">→</span><span class="step new">탭 = 이미지 즉시 복원·랜딩</span>
+</div>
+
+<h2>장단점 · 리스크</h2>
+<table>
+<tr><th>축</th><th>내용</th></tr>
+<tr><td class="ok">품질</td><td>"알림 탭 = 이미지 바로"가 구조로 보장(재시도 사다리는 폴백 안전망으로 유지). 미리보기·이력이 전 앱·전 기기 일관.</td></tr>
+<tr><td class="warn">트레이드오프</td><td>알림 도착이 배포 완료만큼 늦어짐(평시 +30~90초) — 운영자가 의도적으로 선택한 방향("배포가 끝나면 알림").</td></tr>
+<tr><td class="warn">잔여 리스크</td><td>① 게이트는 Pages GitHub 연동 체크런에 의존 — 미관측 시 180초 폴백 통과·상한 8분(이땐 클라 사다리가 커버) ② 카드뉴스는 이력 공유만, 수정 연필(src 스냅샷)은 후속 PR ③ 리사이즈 git-폴백 파일명(R2 장애 시)은 id 미추출=그룹 제외·표시만.</td></tr>
+<tr><td class="mut">효율성</td><td>러너 점유 +약 0.5~1.5분/제작(공개 레포 = 무료 분) · API 폴링 15초 간격(경량) · 뷰어 추가 fetch 0(기존 thumb-hist 파이프 재사용).</td></tr>
+</table>
+
+<h2>검증 (자가 실측 — 운영자 지시로 평의회 생략)</h2>
+<div class="card">
+<ul>
+<li>헤드리스 크로미움 3케이스: 부팅(전 기기 최신을 접힌 결과로 복원 ✅) · <code>?done=id</code>(펼쳐 즉시 표시 ✅) · 구 <code>#done=id</code>(호환 ✅) · JS 에러 0</li>
+<li>build-viewer 실데이터 실행: 리사이즈 항목 병합 ✅ + 합성 comp_out로 카드뉴스 경로 ✅(ts·정렬·48h 컷 정상)</li>
+<li>배포 게이트: 실 API로 체크런 신호 확정(<span class="mut">이 레포는 GitHub Deployment 미생성 — 체크런만 남김을 실측으로 확인 후 신호 교체</span>) · jq 필터 실응답 검증 · 목 gh로 성공/폴백 두 경로 rc=0</li>
+<li><code>check_refs</code> 전체 게이트 rc=0(27 ✅) · YAML/bash/node 구문 전부 통과</li>
+</ul>
+</div>
+
+<h2>운영자 확인 포인트</h2>
+<div class="card">
+<ul>
+<li>다음 이미지 제작 → 알림이 <b>1~2분쯤 늦게</b> 오는 대신, 탭하면 <b>그 이미지가 바로 맨 위에 펼쳐져</b> 있는지</li>
+<li>다른 기기에서 이미지 제작 메뉴 열었을 때 — 맨 위 접힌 '결과'가 <b>가장 최근 제작(기기 무관)</b>인지 · '이전 제작'에 <b>리사이즈·카드뉴스</b>도 섞여 나오는지(배포 1~2분 후)</li>
+</ul>
+</div>
+</body>
+</html>
