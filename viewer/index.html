@@ -660,6 +660,8 @@
   .trend-lbl { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 5px; }
   .trend-lbl::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }
   .trend-lbl:not(:first-child) { margin-top:11px; }
+  .trend-unit { color:var(--mut); font-weight:400; font-size:var(--fs-xs); }   /* 섹션 라벨 우측 단위 선언(열 헤더 원리 · 행 반복 0 · 평의회4 — "200+ 순위 오해" 지뢰 해소) */
+  .trend-time { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; margin:-2px 0 8px; }   /* 수집 시각 = "살아있냐" 한 줄(평의회10) */
   .trend-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }
   .trend-row:active { opacity:.7; }
   .trend-rank { color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; width:15px; flex:none; text-align:right; }
@@ -3711,7 +3713,8 @@ function thumbSec(a) {
   }
   const wrap = document.createElement('div'); wrap.className = 'thumbsec'; wrap.dataset.sig = thumbSecSig(a);
   const dlAllH = (search.length + gen.length) ? '<button type="button" class="sbtn cref-dlall dlbtn thsec-dlall" title="썸네일 후보 전체 저장" aria-label="썸네일 후보 전체 저장">' + DLSEQ_IC + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 제목 라인 우측(검색+AI생성 통합 · .dlbtn 표준 · 운영자 260622)
-  wrap.innerHTML = '<div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — 검색 · AI 생성</span>' + dlAllH + '</div>';
+  const secLbl = (search.length ? ['검색'] : []).concat(gen.length ? ['AI 생성'] : []).join(' · ');   // 헤더 = 실존 캐러셀만 표기 — AI 생성 스킵(no_thumb) 기사에 'AI 생성' 영구 오버-프로미스 방지(평의회 260711)
+  wrap.innerHTML = '<div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — ' + secLbl + '</span>' + dlAllH + '</div>';
   // 1) 검색 이미지(4:5 캐러셀) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
     // 좌측(회색 돋보기) = 기사 제목 검색(불변) · 키워드(한/영 + 토글)는 thumbStatic이 kwData로 처리(운영자 260622)
@@ -8556,19 +8559,23 @@ async function loadTrends() {
   } catch (e) { return; }
   renderSnsTrends();
 }
+// SNS 트렌드 = 완전 독립체(운영자 260711 "SNS는 뉴스 레거시에 영향 0 · 별개로 간다") — sns_trends.json만 읽어 표시.
+// 수집함(CANDS)·큐레이션 신호·임계·랭킹·판정 전부 무접촉(옛 수집함 매칭 칩 = 레거시 커플링이라 철거).
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
   const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], tk = ((d.tiktok || {}).hashtags) || [];
-  if (!gt.length && !yt.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지)
+  if (!gt.length && !yt.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(n || '');
+  const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
   let h = '<div class="soc-item soc-trend">';
-  if (gt.length) h += '<div class="trend-lbl">실시간 검색어</div>' + gt.slice(0, 8).map((g, i) => {
+  if (tm) h += `<div class="trend-time">${esc(tm)} 수집</div>`;
+  if (gt.length) h += '<div class="trend-lbl">구글 급상승 검색어 <span class="trend-unit">· 검색량≈</span></div>' + gt.slice(0, 8).map((g, i) => {   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10) + 단위 선언(평의회4)
     const u = (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));
     return `<a class="trend-row" href="${escUrl(u)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${esc(g.traffic || '')}</span></a>`;
   }).join('');
-  if (yt.length) h += '<div class="trend-lbl">유튜브 인기</div>' + yt.slice(0, 5).map((v, i) =>
+  if (yt.length) h += '<div class="trend-lbl">유튜브 인기 <span class="trend-unit">· 조회수</span></div>' + yt.slice(0, 5).map((v, i) =>
     `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join('');
-  if (tk.length) h += '<div class="trend-lbl">틱톡</div><div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>';
+  if (tk.length) h += '<div class="trend-lbl">틱톡 <span class="trend-unit">· 인기 해시태그</span></div><div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>';
   h += '</div>';
   box.innerHTML = h;
   const qs = box.querySelectorAll('.trend-q');   // 텍스트 = textContent 주입(XSS 안전 · soc-title 패턴 계승)
