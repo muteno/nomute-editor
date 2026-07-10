@@ -54,7 +54,7 @@ def recompose(scene_path, out_path, text):
 
     final = composited.convert('RGB')
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
-    final.save(out_path, format='JPEG', quality=95, subsampling=0, optimize=True)   # 4:4:4 — 강조색 크로마 번짐 방지(card_news와 동일)
+    final.save(out_path, format='JPEG', quality=95)
     print(f"로컬 합성 OK: {out_path} ({final.size}) — 장면 보존 · 제미나이/Cloud Run 0")
     return True
 
