@@ -1,0 +1,45 @@
+# SNS 트렌드 수집 — 유튜브 인기 급상승(공식 API·키 게이트) + 구글 트렌드 실시간 검색어(무키)
+# 운영자 260710 "틱톡·유튜브 끌어오기 ㄱㄱ 다" · 조사 정본 = docs/curation-algorithm.md §7 메이저 SNS 항목.
+# LLM 0콜·과금 0(유튜브 무료 쿼터 ~1%) · 큐레이션 신호·임계 0 접촉(표시 전용 신규 레인 · §1 보수성).
+# 틱톡은 별도 카나리아(tiktok-canary.yml·dispatch 전용)가 같은 JSON의 tiktok 필드를 채움.
+name: sns-trends
+on:
+  schedule:
+    - cron: '17,47 * * * *'   # 30분 주기(정각 러너 혼잡 회피 오프셋 · scrape 15분 주기와 별개 레인)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sns-trends
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Collect (stdlib만 — deps 0)
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # 미설정 = 유튜브 skip(no-op 스캐폴드·gtrends만 수집)
+        run: timeout 300 python3 scraper/sns_trends.py
+
+      - name: Commit
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add viewer/sns_trends.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "변동 없음 — 커밋 생략"; exit 0; }
+          git commit -m "sns-trends: 유튜브·트렌드 갱신"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::push 실패(재시도 소진) — 다음 주기 재수집"
+          # push = HEAD:main — checkout ref:main이라 통상 로컬 main 존재하나 img-resize detached 사고(260710) 계승 방어.
+          # 실패 = warning 종료(트렌드는 30분 뒤 재수집이라 유실 개념 없음 = resize류 exit 1 불요).
