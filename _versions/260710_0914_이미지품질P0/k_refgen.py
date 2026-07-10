@@ -69,7 +69,7 @@ def main():
             if png is None:
                 urls.append(None); continue
             key = "k_out/{}/ref.jpg".format(stem) if i == 1 else "k_out/{}/ref_{}.jpg".format(stem, i)   # 키 인덱스 = 범례 번호 고정(첫 장 = ref.jpg 하위호환 — 1번 실패 시 ref.jpg 미생성이나 뷰어는 ref.json 우선이라 무해)
-            url = tg.r2_upload(png, key, tg._img_type(png)[0] or "image/jpeg")   # Content-Type = 매직바이트 실측(Gemini는 보통 JPEG — 거짓 선언 방지 · 키는 하위호환 유지)
+            url = tg.r2_upload(png, key, "image/jpeg")
             urls.append(url)   # 실패 = None 그대로(슬롯 보존)
             if not url:
                 print("::warning::레퍼런스 {}번 R2 업로드 실패(슬롯 null 보존)".format(i))
