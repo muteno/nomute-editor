@@ -395,7 +395,7 @@
   /* ── 검색 = 상단 블러 그라데이션 + 검색바 상단 + 뒤 리스트 직접 필터(운영자 260710 플레이그라운드 재설계 · 구 전체딤+플로팅 결과목록[sovResults]+스포트라이트 폐지) ── */
   .sov-bg { position:absolute; left:0; right:0; top:0; height:186px; pointer-events:none; background:rgba(5,11,13,.29); backdrop-filter:blur(9px) saturate(1.3); -webkit-backdrop-filter:blur(9px) saturate(1.3); -webkit-mask:linear-gradient(180deg,rgba(0,0,0,1) 55%,transparent 100%); mask:linear-gradient(180deg,rgba(0,0,0,1) 55%,transparent 100%); opacity:0; transition:opacity .36s var(--ease); }   /* 상단만 블러+딤(아래로 그라데이션 페이드) = 헤더 가림·리스트는 통과해 보임 · 값=운영자 선택값(딤 .29·blur 9·saturate 1.3·높이 186px·불투명 55%→투명 100%·페이드인 .36s) · 잠금 딤 계열 rgba(5,11,13,*) 계승 */
   .sovl.ent .sov-bg { opacity:1; }
-  .sov-box { position:absolute; left:50%; top:15%; transform:translateX(-50%); width:min(278px,86vw); display:flex; flex-direction:column; align-items:stretch; pointer-events:auto; }   /* 검색바 상단 15%·폭 278(운영자 260710 재설계 선택값) · sovResults 폐지로 검색바 단독 · pointer-events auto = 검색바만 잡고 sovl은 통과(뒤 리스트 클릭) · 86vw = 초소형폰 안전망 */
+  .sov-box { position:absolute; left:50%; top:60px; transform:translateX(-50%); width:min(278px,86vw); display:flex; flex-direction:column; align-items:stretch; pointer-events:auto; }   /* 검색바 = 헤더(워드마크·타이틀) 영역 고정 60px(운영자 260710 "헤드라인으로 · 내용 라인 침범 말것") · 구 top:15% = 뷰포트 비례라 넓은 화면서 리스트 침범 → 헤더는 상단 고정 px(워드마크54·타이틀95·vh-row112)라 검색바도 고정 px로 정렬 · 폭 278 · pointer-events auto = 검색바만 잡고 sovl 통과(뒤 리스트 클릭) · 86vw = 초소형폰 안전망 */
   @media (min-width:640px){ .sov-box { width:344px; } }   /* PC = 검색바 폭 확대(278→344 · base 278보다 소스 후행·동일 특이도라 override 성립) · 운영자 260706 원안 유지(재설계 후에도) */
   .sovl.ent .sov-box { animation:sovRise .3s var(--ease) backwards; }   /* 검색바 슬라이드인 .3s(운영자 260710 선택) · sovResults 폐지로 검색바 단독 */
   /* (구 검색 결과카드 CSS[.sov-results·.sov-rcard·sovRPop·.rc-m/ag/t/hl·.sov-rempty] 폐지 — 재설계로 플로팅 결과목록 소멸, 결과 = 뒤 리스트 직접 필터 · 평의회8 260710) */
@@ -6812,7 +6812,10 @@ let _searchRender = false;   // 검색 타이핑발 렌더 표식 = 스태거(ca
 function searchActive() { _searchRender = true; try { if (CURTAB === 'scrap') renderScrap(); else if (CURTAB === 'sns') renderSns(); else render(); } finally { _searchRender = false; } }
 // (구 renderSovResults·sovHl[매칭 하이라이트] 폐지 — 재설계로 뒤 리스트[render/renderScrap/renderSns]가 직접 필터·결과 담당, 별도 플로팅 결과목록[sovResults] 소멸 · 평의회1·8 260710 · 뒤 리스트 하이라이트 이관은 후속 후보)
 let _searchDebT = null;
-$('#q').addEventListener('input', () => { clearTimeout(_searchDebT); _searchDebT = setTimeout(searchActive, 140); syncSearchBtn(); });   // 검색바=탭별: 레거시→후보 전반 / 뉴스요약→기사 / SNS→SNS. ⚡버퍼 260701(A1): 140ms 디바운스(뒤 리스트 직접 필터=renderScrap/render/renderSns) · 돋보기 점등(syncSearchBtn) · 구 sovPill.has 토글 폐지(소비 CSS 소멸·평의회8) · 구 renderSovResults(플로팅 결과목록) 폐지(운영자 260710 재설계 — 뒤 리스트가 결과)
+function sovXIcon() { const sx = $('#sovClr'); if (!sx) return; const has = !!$('#q').value; if (sx._xIcon === has) return; sx._xIcon = has;   // 우측 픽토그램: 빈=돋보기(검색)/입력=X(비우기·해제) · 아이콘 변경 시만 재대입(§디자인 o 번쩍 방지 · 운영자 260710 "검색어 입력하면 X로")
+  sx.innerHTML = has ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6 18 18M18 6 6 18"/></svg>' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>';
+  sx.setAttribute('aria-label', has ? '검색어 지우기' : '검색 종료'); }
+$('#q').addEventListener('input', () => { clearTimeout(_searchDebT); _searchDebT = setTimeout(searchActive, 140); syncSearchBtn(); sovXIcon(); });   // 검색바=탭별: 레거시→후보 전반 / 뉴스요약→기사 / SNS→SNS. ⚡버퍼 260701(A1): 140ms 디바운스(뒤 리스트 직접 필터=renderScrap/render/renderSns) · 돋보기 점등(syncSearchBtn) · 우측 아이콘 빈=돋보기/입력=X(sovXIcon) · 구 sovPill.has·renderSovResults 폐지(평의회8·재설계 260710)
 // 검색 = 중앙 오버레이(운영자 260706 5차 확정 — 인라인 펼침 폐지): 돋보기 → 딤·블러 + 중앙 글래스 필. 닫혀도 검색어·필터 유지(결과 탐색 · 버튼확답) — 완전 해제는 X로 비움. 닫기 = 바깥 탭/Enter/폰 뒤로가기(안내 산문 0 = §디자인 e)
 const topsearch = $('#topsearch'), searchToggle = $('#searchToggle'), sovl = $('#sovl'), sovPill = $('#sovPill');
 let _sovPushed = false, _sovPop = false;   // 폰 뒤로가기 = 오버레이 먼저 닫기(§🎨 pushState/popstate · qpop _qPushed 패턴 계승)
@@ -6822,7 +6825,7 @@ function openSearch() {
   closeOverlays('search');
   sovl.hidden = false; sovl.classList.remove('ent'); void sovl.offsetWidth; sovl.classList.add('ent');   // 재열림에도 라이즈 재생(reflow 재시작)
   document.body.classList.add('sov-open'); { const _ts = $('#topsearch'); if (_ts) _ts.inert = true; }   // 헤더 워드마크·타이틀 흐림 + 헤더 돋보기 숨김(운영자 260710) · inert = 키보드 Tab 포커스·SR 유령 잔존 차단(평의회5·9: opacity0+pe-none만으론 안 숨겨짐)
-  searchActive();   // 열 때 검색어 있으면 뒤 리스트(누적/신규) 필터 반영 — 구 renderSovResults·sovPill.has 토글 폐지(평의회8)
+  searchActive(); sovXIcon();   // 열 때 검색어 있으면 뒤 리스트(누적/신규) 필터 반영 + 우측 아이콘 상태 동기(빈=돋보기/입력=X) — 구 renderSovResults·sovPill.has 토글 폐지(평의회8)
   const q = $('#q'); q.tabIndex = 0;
   setTimeout(() => { try { q.focus({ preventScroll: true }); } catch {} }, 120);   // 라이즈(.25s) 중반 포커스 = OS 키보드 슬라이드와 겹침 완화
   if (!_sovPushed) { try { history.pushState({ sov: true }, ''); _sovPushed = true; } catch {} }
