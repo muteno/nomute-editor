@@ -220,6 +220,7 @@ jobs:
         if: failure()
         env:
           IN_ID: ${{ inputs.id }}
+          TRACK_MODE: ${{ inputs.mode }}
         run: |
           [ -n "$IN_ID" ] || exit 0
           case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
@@ -227,6 +228,13 @@ jobs:
           if [ -s /tmp/track_err.txt ]; then cp /tmp/track_err.txt "viewer/track_out/${IN_ID}/error.log";
           else echo "트래킹 작업 실패 — Actions 로그를 확인해줘." > "viewer/track_out/${IN_ID}/error.log"; fi
           echo "error.log: $(cat viewer/track_out/${IN_ID}/error.log)"
+          # 렌더 하드크래시(SIGKILL·OOM = fail-soft 우회)면 video.json도 error로 덮는다(검증 봉합 260711):
+          #   같은 id 재렌더는 직전 성공 video.json이 잔존 → 완료 푸시가 '렌더 완료' 오푸시 + 재개 폴이 스테일 결과 복원.
+          #   형식 = track_render fail-soft와 동일 {"error":…}(뷰어 소비 계약 불변) · analyze 실패엔 안 덮음(video.json = 렌더 산출).
+          if [ "$TRACK_MODE" = "render" ]; then
+            python3 -c "import json,os; d=os.path.join('viewer/track_out',os.environ['IN_ID']); err=open(os.path.join(d,'error.log'),encoding='utf-8').read().strip()[:200]; json.dump({'error': err or '렌더 실패'}, open(os.path.join(d,'video.json'),'w',encoding='utf-8'), ensure_ascii=False); print('video.json <- error 덮음(잔존 성공본 오표시 차단)')" \
+              || echo "::warning::video.json 덮기 실패(비치명 — error.log는 기록됨)"
+          fi
 
       - name: Commit output
         if: always()

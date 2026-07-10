@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 영상 자막 번인(자동 합성) + 편집기 컴포지터 — 자막 ASS 번인·무음 컷·배경음 제거에 더해 편집기(edit) 축
-#   {vid_ar/vid_fit(크롭·검정 여백)·vid_res·vid_fps(60i 보간·다운)·vid_t0/t1(트림·자막 없는 경로만)·aud_norm(음량 통일)}을
+#   {vid_ar/vid_fit(크롭·검정 여백)·vid_res·vid_fps(60i 보간·다운)·vid_t0/t1(트림 — 자막·컷과 동시 = 조각·word·스팬 동행 리맵 260711)·aud_norm(음량 통일)}을
 #   한 ffmpeg 파이프로 합성해 R2 업로드 → viewer/ly_out/<id>/video.json. 편집기 축 전부 결측 = 종전 ly 경로 그대로(회귀 0 · 260710).
 #   사용: ly_burn.py <id> <video_path>   (ly-make.yml 번인 스텝 + edit-make.yml 컴포즈 스텝 · ffmpeg+fonts-noto-cjk는 runner-setup가 설치)
 #   env: OPTS = 뷰어 버튼 설정 JSON(스타일·위치·크기·카라오케·키워드) · R2 5종 = thumb_gen 재사용(카드·썸네일·/k 동일 파이프)
@@ -147,10 +147,11 @@ def load_speech_spans(outdir, segs):
                     if sp:
                         spans.append(sp)
             if spans:
-                return spans
+                return spans, True    # True = segments.json 유래 = 원본(트림 전) 좌표
         except Exception as e:
             print("::warning::segments.json 파싱 실패 — 자막 타이밍으로 컷 계산 폴백:", e)
-    return [sp for sp in (_span(s.get("s"), s.get("e")) for s in segs) if sp]
+    # segs 폴백 = 호출 시점 segs 좌표(트림 리맵 후면 이미 트림 좌표) — 호출부가 재시프트하면 이중 시프트(검증9 봉합)
+    return [sp for sp in (_span(s.get("s"), s.get("e")) for s in segs) if sp], False
 
 
 def inject_words(segs, outdir):
@@ -649,36 +650,37 @@ def run(vid_id, video, outdir):
     #    자막 조각·word·(아래 컷 블록의) 전사 스팬을 전부 트림 좌표로 동행 리맵 = 컷 remap과 동일 정신(시간축 = 한 몸).
     trim = None
     if t0_req is not None or t1_req is not None:
-        a = min(max(0.0, t0_req or 0.0), dur if dur > 0 else 1e9)
-        b = min(t1_req, dur) if (t1_req is not None and dur > 0) else (t1_req if t1_req is not None else dur)
-        if b and b > a + 0.2:
-            trim = (a, b - a)
-            dur = b - a
-            if segs:
-                remapped = []
-                for sg in segs:
-                    ns, ne = float(sg["s"]) - trim[0], float(sg["e"]) - trim[0]
-                    if ne <= 0.05 or ns >= dur - 0.01:
-                        continue   # 구간 밖 조각 드롭 · 경계 걸친 조각 = 클립
-                    nsg = dict(sg, s=max(0.0, round(ns, 3)), e=min(dur, round(ne, 3)))
-                    if sg.get("w"):
-                        nw = []
-                        for wd in sg["w"]:
-                            try:
-                                ws, we = float(wd["s"]) - trim[0], float(wd["e"]) - trim[0]
-                            except Exception:
-                                continue
-                            if we > 0.02 and ws < dur:
-                                nw.append(dict(wd, s=round(max(0.0, ws), 3), e=round(min(dur, we), 3)))
-                        nsg["w"] = nw   # 전부 밖 = 빈 리스트 → _sync_cs 글자수 비례 폴백(컷 리맵과 동일 회귀 0)
-                    remapped.append(nsg)
-                segs = remapped
-                if not segs:
-                    edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")
-        elif dur <= 0:
-            edit_notes.append("영상 길이 미상 — 트림 건너뜀")   # probe N/A(webm 등) = 범위 검증 불가
+        if dur <= 0:   # probe N/A(webm 등) = 범위 검증 불가 — 무검증 -ss/-t는 t0>실길이면 빈 출력이라 트림 자체를 접는다(검증9 봉합)
+            edit_notes.append("영상 길이 미상 — 트림 건너뜀")
         else:
-            edit_notes.append("구간이 이상해 — 트림 건너뜀")
+            a = min(max(0.0, t0_req or 0.0), dur)
+            b = min(t1_req, dur) if t1_req is not None else dur
+            if b > a + 0.2:
+                trim = (a, b - a)
+                dur = b - a
+                if segs:
+                    remapped = []
+                    for sg in segs:
+                        ns, ne = float(sg["s"]) - trim[0], float(sg["e"]) - trim[0]
+                        if ne <= 0.05 or ns >= dur - 0.01:
+                            continue   # 구간 밖 조각 드롭 · 경계 걸친 조각 = 클립
+                        nsg = dict(sg, s=max(0.0, round(ns, 3)), e=min(dur, round(ne, 3)))
+                        if sg.get("w"):
+                            nw = []
+                            for wd in sg["w"]:
+                                try:
+                                    ws, we = float(wd["s"]) - trim[0], float(wd["e"]) - trim[0]
+                                except Exception:
+                                    continue
+                                if we > 0.02 and ws < dur:
+                                    nw.append(dict(wd, s=round(max(0.0, ws), 3), e=round(min(dur, we), 3)))
+                            nsg["w"] = nw   # 전부 밖 = 빈 리스트 → _sync_cs 글자수 비례 폴백(컷 리맵과 동일 회귀 0)
+                        remapped.append(nsg)
+                    segs = remapped
+                    if not segs:
+                        edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")
+            else:
+                edit_notes.append("구간이 이상해 — 트림 건너뜀")
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
     # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
@@ -696,8 +698,8 @@ def run(vid_id, video, outdir):
     segs_orig, dur_orig = segs, dur   # 컷 실패 폴백용(평의회6) — 재매핑 전 원본 타이밍·길이 보존
     if opts.get("cut") and dur > 0:
         pad, min_rm, max_ratio = cut_params(opts)   # 컷 강도(운영자 260708) — 살짝/기본/많이 → pad·min_remove·천장
-        spans = load_speech_spans(outdir, segs)
-        if trim:   # 전사 스팬(segments.json = 원본 좌표)도 트림 시간축으로 — 리맵된 segs와 동일 좌표계 보장(260711)
+        spans, spans_raw = load_speech_spans(outdir, segs)
+        if trim and spans_raw:   # segments.json(원본 좌표) 스팬만 트림 시간축으로 — segs 폴백은 이미 리맵된 좌표 = 재시프트 금지(260711)
             spans = [(max(0.0, x - trim[0]), min(dur, y - trim[0])) for x, y in spans if y > trim[0] and x < trim[0] + dur]
         keeps = cut_keeps(spans, dur, pad, min_rm)
         removed = dur - sum(b - a for a, b in keeps)
@@ -861,7 +863,7 @@ def run(vid_id, video, outdir):
                         f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
                     cut_note, dur = "무음 컷 실패 — 컷 없이 합성", dur_orig
                 if vocals:
-                    vocals, ins = "", tcut + ["-i", video]   # 트림(자막 없는 경로) 보존 — 폴백이 구간을 잃지 않게
+                    vocals, ins = "", tcut + ["-i", video]   # 트림 보존(-ss/-t 유지) — 폴백이 구간을 잃지 않게
                     bgm_note = "배경음 제거 실패 — 원본 소리로 합성"
                 ok, err = encode(plain_cmd(), 600 + int(interp_est * 1.5))
         else:
