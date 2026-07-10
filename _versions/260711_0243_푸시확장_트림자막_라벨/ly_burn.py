@@ -645,40 +645,6 @@ def run(vid_id, video, outdir):
         out_json(outdir, {"error": "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0
     if opts.get("cut") and not segs:
         edit_notes.append("무음 컷 건너뜀(자막 전사 필요)")   # 컷 기준 = STT 발화 스팬 — 자막 없는 편집 경로엔 원천이 없다
-    # ── 트림(구간) — 컷·자막보다 *먼저* 확정(운영자 260711 트림×자막 동시): 입력 -ss/-t가 시간축 원점을 옮기므로
-    #    자막 조각·word·(아래 컷 블록의) 전사 스팬을 전부 트림 좌표로 동행 리맵 = 컷 remap과 동일 정신(시간축 = 한 몸).
-    trim = None
-    if t0_req is not None or t1_req is not None:
-        a = min(max(0.0, t0_req or 0.0), dur if dur > 0 else 1e9)
-        b = min(t1_req, dur) if (t1_req is not None and dur > 0) else (t1_req if t1_req is not None else dur)
-        if b and b > a + 0.2:
-            trim = (a, b - a)
-            dur = b - a
-            if segs:
-                remapped = []
-                for sg in segs:
-                    ns, ne = float(sg["s"]) - trim[0], float(sg["e"]) - trim[0]
-                    if ne <= 0.05 or ns >= dur - 0.01:
-                        continue   # 구간 밖 조각 드롭 · 경계 걸친 조각 = 클립
-                    nsg = dict(sg, s=max(0.0, round(ns, 3)), e=min(dur, round(ne, 3)))
-                    if sg.get("w"):
-                        nw = []
-                        for wd in sg["w"]:
-                            try:
-                                ws, we = float(wd["s"]) - trim[0], float(wd["e"]) - trim[0]
-                            except Exception:
-                                continue
-                            if we > 0.02 and ws < dur:
-                                nw.append(dict(wd, s=round(max(0.0, ws), 3), e=round(min(dur, we), 3)))
-                        nsg["w"] = nw   # 전부 밖 = 빈 리스트 → _sync_cs 글자수 비례 폴백(컷 리맵과 동일 회귀 0)
-                    remapped.append(nsg)
-                segs = remapped
-                if not segs:
-                    edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")
-        elif dur <= 0:
-            edit_notes.append("영상 길이 미상 — 트림 건너뜀")   # probe N/A(webm 등) = 범위 검증 불가
-        else:
-            edit_notes.append("구간이 이상해 — 트림 건너뜀")
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
         segs = [{"s": s["s"], "e": s["e"], "ko": s.get("src") or s.get("ko") or "", "src": ""} for s in segs]
     # 무음 컷(운영자 260707 · 발화 기준): keep 계산 → 자막 타이밍 재매핑 → trim+concat.
@@ -697,8 +663,6 @@ def run(vid_id, video, outdir):
     if opts.get("cut") and dur > 0:
         pad, min_rm, max_ratio = cut_params(opts)   # 컷 강도(운영자 260708) — 살짝/기본/많이 → pad·min_remove·천장
         spans = load_speech_spans(outdir, segs)
-        if trim:   # 전사 스팬(segments.json = 원본 좌표)도 트림 시간축으로 — 리맵된 segs와 동일 좌표계 보장(260711)
-            spans = [(max(0.0, x - trim[0]), min(dur, y - trim[0])) for x, y in spans if y > trim[0] and x < trim[0] + dur]
         keeps = cut_keeps(spans, dur, pad, min_rm)
         removed = dur - sum(b - a for a, b in keeps)
         # 과잉 컷 천장(평의회3): 제거 비율이 강도별 천장 초과면 pad를 0.05씩 넓혀 되돌림(무음 많은 영상 보호) — 침묵 클램프 금지, note로 표면화
@@ -743,8 +707,22 @@ def run(vid_id, video, outdir):
             keeps = []
     elif opts.get("cut"):
         cut_note = "영상 길이 미상 — 무음 컷 건너뜀"   # dur=0(probe N/A) 침묵 스킵 표면화(평의회3·6 260709) — 조용한 무력화 금지
-    # ── 지오메트리 확정 — 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스(자막이 검정 여백 위에도 앉게 · 260710).
-    #    트림은 위에서 선확정(자막·스팬 동행 리맵 · 260711) — 여기선 tcut(입력 -ss/-t)로만 소비. 편집기 축 결측 = 종전 ly 캡·체인 그대로.
+    # ── 지오메트리 확정 — [트림(자막 없는 경로만)] → 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스
+    #    (자막이 검정 여백 위에도 앉게 = 패드 뒤 렌더 · 편집기 260710). 편집기 축 결측 = 종전 ly 캡(폭 1080)·체인 그대로.
+    trim = None
+    if t0_req is not None or t1_req is not None:
+        if segs:
+            edit_notes.append("구간은 자막과 동시 미지원 — 건너뜀")   # 트림 = 자막 타임라인 재매핑 필요(후속) — v1 정직 스킵
+        else:
+            a = min(max(0.0, t0_req or 0.0), dur if dur > 0 else 1e9)
+            b = min(t1_req, dur) if (t1_req is not None and dur > 0) else (t1_req if t1_req is not None else dur)
+            if b and b > a + 0.2:
+                trim = (a, b - a)
+                dur = b - a
+            elif dur <= 0:
+                edit_notes.append("영상 길이 미상 — 트림 건너뜀")   # probe N/A(webm 등) = 범위 검증 불가(P2평의회2 문구 정정)
+            else:
+                edit_notes.append("구간이 이상해 — 트림 건너뜀")
     cw, ch, cx, cy = w, h, 0, 0
     pad_t = 0.0
     if vid_ar:
