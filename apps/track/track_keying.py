@@ -114,7 +114,7 @@ def plan_passes(subjects, keep, extras, fps, W, H):
     for e in extras:   # 수동 지정 — 순방향(탭→끝) + 역방향(탭→0 · 앞 구간 커버 = 어느 장면에서 찍어도 전체 추적 · 운영자 승인)
         f0 = max(0, int(round(float(e["t"]) * fps)))
         passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
-        if f0 > int(round(0.7 * fps)):   # 앞 구간이 유의미할 때만 역패스(1초 미만 = 순패스 시작점과 사실상 동일)
+        if f0 > int(round(0.7 * fps)):   # 앞 구간이 유의미할 때만 역패스(0.7초 이하 = 순패스 시작점과 사실상 동일)
             # ⚠ 좌표는 정규(0..1)로 보관 — 역트림은 512급 스케일이라 원본 픽셀 좌표를 그대로 주면 프레임 밖/엉뚱한
             #   세그먼트를 찍는다(E2E 실측 적발: 포인트가 트림 좌표계여야 함). 세그 직전에 트림 실해상으로 곱한다.
             passes.append({"f0": f0, "kind": "point", "pt_norm": [[float(e["x"]), float(e["y"])]], "prompts": [], "rev": True})   # 커버 = [0, f0)
@@ -217,7 +217,10 @@ def run(vid_id, req, doc, outdir):
             #   원해상이면 GB급 폭발(512급 ≈ 수백MB 안전). SAM2 입력이 어차피 512라 마스크 품질 동급 —
             #   마스크만 합성에서 원해상 업스케일. 역재생 프레임 0 = 원본 t0 직전 = 프롬프트 좌표 그대로 유효.
             vf = f"fps={SEG_FPS:g},scale='if(gt(iw,ih),{IMGSZ},-2)':'if(gt(iw,ih),-2,{IMGSZ})',reverse"
-            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-t", f"{t0_sec:.3f}",
+            # ⚠ -t는 반드시 입력 옵션(-i 앞): reverse는 EOF까지 버퍼 후 역방출이라 출력측 -t는 '역재생의 앞
+            #   t0초 = 원본 꼬리'를 잘라 [T-t0,T]를 캡처한다(평의회 ffmpeg 실측 적발 — 의도 [0,t0)과 정반대).
+            #   입력측 -t = [0,t0)만 디코드 = 의미 정확 + reverse 버퍼도 그만큼만.
+            cmd = ["ffmpeg", "-y", "-loglevel", "error", "-t", f"{t0_sec:.3f}", "-i", src,
                    "-vf", vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", trim]
         else:
             cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", src, "-ss", f"{t0_sec:.3f}",
