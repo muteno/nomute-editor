@@ -41,8 +41,6 @@
 **`.jpg` 배관(전 경로)**: `thumb.js`(경로 ext=`wantImg?jpg:png`·R2 절대 URL) · `viewer/thumb.html`(다운로드 ext=`o.path`·R2 교차출처라 **blob 다운로드** `dlBlob`) · `build-viewer.mjs`(이전제작 = `_meta.json` 읽음).
 **저장 = R2 (260621 이전·기틀)**: `/1`~`/4`·헤더 출력 = **Cloudflare R2** 직접 업로드(`thumb-make.yml` `r2_upload`·키 `thumb_out/<id>/<file>`·베이스 `R2_BASE`=`thumb.js` 상수와 일치). **git 미커밋**(비대 0) · 업로드 **즉시 전세계 서빙**(Pages 배포 대기 0 = 포스트 "안 뜸" 근본 소멸·raw 폴백 불요). ⚠️ R2 업로드 실패 = **잡 실패**(git 폴백 안 함 — API가 R2 예측). 이전제작(전 기기) = 워크플로가 `viewer/thumb_out/<id>/_meta.json`(`[[file,R2url]]`·수KB git)만 커밋 → build-viewer가 읽어 `thumb-hist.json` 생성. 카드뉴스·뉴스카드도 R2. "R2 이미지" = git 아닌 R2의 이미지.
 **스크립트 불변**: `nomute_*.py`는 절대규칙1(불변·import/subprocess만) — 포맷은 워크플로 부품에서만 바꿈.
-**이전제작 기기간 공유 범위(260710 확장)**: thumb-hist.json = /1~/4(`thumb_out/_meta.json`) + **/5 카드뉴스(`comp_out/` git 스캔) + /7 리사이즈(`gen_out/resize.json` 병합 — 낮 '세션만' 결정 저녁 번복)**. 구 /6 자유생성(free.json·도먼트)만 미병합. 맨 위 `결과` 부팅 복원도 로컬·서버 중 **최신** 선택(cross-device·접힌 채).
-**완료 푸시 = 배포 게이트 + `?done=` 쿼리(§완료알림 기틀 · 260710)**: thumb-make가 Production 배포 success 확인 후 발송(상한 8분·비치명) → 알림 탭 시점엔 결과가 이미 라이브. 딥링크 해시(`#done`) 금지 = Access 재로그인에 유실(뷰어 `doneReq`는 구 해시 호환).
 
 ---
 
