@@ -89,7 +89,7 @@ def _sample_box(subj, f):
     return None
 
 
-def plan_passes(subjects, keep, extras, fps, W, H):
+def plan_passes(subjects, keep, extras, fps, W, H, total_f=0):
     """멀티패스 계획 — [{f0(프롬프트 프레임), kind:'box'|'point', prompts:[…]}] · 근접(≤0.5s) 박스는 한 패스.
     수동 포인트는 프레임이 같아도 별도 패스(박스+포인트 혼합 = 같은 객체로 접히는 함정 회피)."""
     win = max(1, int(round(0.5 * fps)))
@@ -111,10 +111,14 @@ def plan_passes(subjects, keep, extras, fps, W, H):
         if not joined:
             b = s.get("pb") or [0, 0, W, H]
             passes.append({"f0": pf, "kind": "box", "prompts": [[b[0], b[1], b[0] + b[2], b[1] + b[3]]]})
+    margin = int(round(0.7 * fps))
     for e in extras:   # 수동 지정 — 순방향(탭→끝) + 역방향(탭→0 · 앞 구간 커버 = 어느 장면에서 찍어도 전체 추적 · 운영자 승인)
         f0 = max(0, int(round(float(e["t"]) * fps)))
-        passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
-        if f0 > int(round(0.7 * fps)):   # 앞 구간이 유의미할 때만 역패스(0.7초 이하 = 순패스 시작점과 사실상 동일)
+        head_ok = f0 > margin                                     # 앞 구간 유의미(0.7초 초과)
+        tail_ok = (total_f <= 0) or (f0 < total_f - margin)       # 뒤 구간 유의미 — 탭=끝이면 순패스가 0프레임으로
+        if tail_ok or not head_ok:                                #   죽어 역패스까지 무산(평의회9 M1) → 대칭 생략·초단편은 순 폴백
+            passes.append({"f0": f0, "kind": "point", "prompts": [[float(e["x"]) * W, float(e["y"]) * H]]})
+        if head_ok:
             # ⚠ 좌표는 정규(0..1)로 보관 — 역트림은 512급 스케일이라 원본 픽셀 좌표를 그대로 주면 프레임 밖/엉뚱한
             #   세그먼트를 찍는다(E2E 실측 적발: 포인트가 트림 좌표계여야 함). 세그 직전에 트림 실해상으로 곱한다.
             passes.append({"f0": f0, "kind": "point", "pt_norm": [[float(e["x"]), float(e["y"])]], "prompts": [], "rev": True})   # 커버 = [0, f0)
@@ -151,7 +155,7 @@ def run(vid_id, req, doc, outdir):
     for e in (req.get("extra") or [])[:KEY_MAX_OBJ]:
         if not isinstance(e, dict):
             continue
-        t = _num(e.get("t"), 0, KEY_MAX_SEC, None)
+        t = _num(e.get("t"), 0, min(KEY_MAX_SEC, dur) if dur > 0 else KEY_MAX_SEC, None)   # dur 클램프 = 직접 dispatch 방어심층(평의회9 M2)
         x, y = _num(e.get("x"), 0, 1, None), _num(e.get("y"), 0, 1, None)
         if t is not None and x is not None and y is not None:
             extras.append({"t": t, "x": x, "y": y})
@@ -188,13 +192,13 @@ def run(vid_id, req, doc, outdir):
     if real_dur > KEY_MAX_SEC + 1:
         raise RuntimeError(f"키잉은 {KEY_MAX_SEC}초까지야 — 잘라서 해줘.")
 
-    passes = plan_passes(subjects, keep, extras, fps, W, H)
+    total_f = float(meta.get("frames") or 0) or (real_dur * fps)
+    passes = plan_passes(subjects, keep, extras, fps, W, H, total_f=total_f)   # total_f = 탭=끝 순패스 대칭 생략 판정(평의회9 M1)
     if not passes:
         raise RuntimeError("남길 피사체를 골라줘 — 카드 선택이나 직접 지정 후 렌더.")
     # 발사 전 총량 예산 가드 — 캡(90s·4객체)은 객체 수만 묶고 멀티패스 총량은 못 묶는다(평의회9 F1: 수동 4개
     #   분산 지정 = 4패스 = 56분 > 잡 40분). 예상 = 전파(패스별 실측 단가) + 꼬리(합성·인코딩·업로드 = 원 fps
     #   전량 순회라 fps·해상도 비례 — 재검증9: 전파만 계산하면 60fps 다객체가 통과 후 스텝 타임아웃).
-    total_f = float(meta.get("frames") or 0) or (real_dur * fps)
     est_seg = sum((min(float(p["f0"]), total_f) if p.get("rev") else max(0.0, total_f - p["f0"])) / fps
                   * SEG_FPS * (SEG_S_1 + SEG_S_OBJ * max(0, len(p.get("pt_norm") or p["prompts"]) - 1))
                   for p in passes)   # 역패스 커버 = [0, f0) — 예산에 자동 포함(직접 지정 1개 = 순+역 합이 영상 전체 1회분)
