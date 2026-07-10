@@ -226,7 +226,7 @@ def main():
                 out_img = pixel_lock(png, canvas.size, img, box) if lock else \
                     Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
             else:
-                print("::warning::Gemini 렌더 실패 — blur-pad 폴백(항상 결과)")
+                print("::warning::Gemini 렌더/QA 실패 — blur-pad 폴백(항상 결과)")
                 route = "blur_pad"
                 out_img = blur_pad(img, aspect)
 
