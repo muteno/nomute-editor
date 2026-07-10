@@ -378,7 +378,10 @@ def _md_has_imgsrc(path):
     paste(전문 붙여넣기)는 url이 없어도 image_sources로 검색이미지를 채우므로 이 경로도 백필 대상에 포함해야 한다(앵글3·J ISSUE-1)."""
     try:
         m = re.search(r'^\s*image_sources\s*:\s*(.+)', open(path, encoding="utf-8").read(2000), re.M)
-        return bool(m and m.group(1).strip())
+        # ⚠️ .strip('"') 필수 — 빈 따옴표 `image_sources: ""`를 실값으로 오판하면 main()은 백필 대상에 넣는데
+        # process_one 게이트(parse_md=따옴표 벗김)는 False → search.json 미기록 → 매 런 재적재 = 영구 좀비
+        # (no_thumb+url無+소스無 기사가 MAX_BATCH 슬롯 잠식 · 평의회 260711 P1 실측 3건). 두 게이트 판정 일치가 정본.
+        return bool(m and m.group(1).strip().strip('"').strip())
     except Exception:
         return False
 
@@ -863,7 +866,9 @@ def process_one(md, stem):
     # AI 생성 4화풍(260703 재편) — THUMB_AI_OFF(전역) 또는 no_thumb(이 기사·뷰어 '이미지' 토글 OFF)면 통째 생략(검색이미지만 채움).
     # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 photo_close sid는 STYLES에 없어 자동 드롭 · watercolor·cartoon은 260703 복귀).
     changed = False
-    no_thumb = _md_no_thumb(md)   # 이 기사만 제미나이 썸네일 생성 skip(뷰어 '이미지' 토글 OFF·검색 og:image는 위서 이미 채움·운영자 260702)
+    # no_thumb = 이 기사 제미나이 생성 skip(뷰어 '이미지' 토글 OFF 건별 + 전역 설정 OFF 도장 · 검색 og:image는 위서 이미 채움 · 운영자 260702·260710).
+    # 단 수동 '다시 만들기'(THUMB_ONLY=thumb-redo)는 no_thumb 우회 — 명시 재생성 의사 = 항상 AI(THUMB_AI_OFF의 '수동 redo는 항상 AI' 문서 정신과 동일 · 평의회 260711).
+    no_thumb = _md_no_thumb(md) and not os.environ.get("THUMB_ONLY", "").strip()
     if AI_OFF or no_thumb:
         print("  ⏸ AI 썸네일 생성 OFF({}) — 검색이미지만 처리(기존 썸네일·gen.json·토큰 영향 0)".format("THUMB_AI_OFF" if AI_OFF else "no_thumb"))
     else:

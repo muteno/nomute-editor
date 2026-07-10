@@ -8,8 +8,13 @@
       · 무료 쿼터 10,000units/일 중 런당 2units = 일 ~96units ≈ 1%)
   ② 구글 트렌드 실시간 인기 검색어 = RSS(무키 · trends.google.com/trending/rss?geo=KR
      · 260710 프로브 생존 실측 · 관련 기사 링크 동봉)
-  ③ 틱톡 = 이 스크립트가 안 채움 — 카나리아 `tiktok_trends.py`(헤드리스·dispatch 전용)가
-     같은 JSON의 tiktok 필드를 채우고, 여기선 기존 값 보존(마지막 성공분 유지).
+  ③ 틱톡 인기 피드 = tikwm 무료 공개 API(무키 · www.tikwm.com/api/feed/list — 틱톡 자체
+     API의 서명[X-Bogus·msToken] 검사를 대행 · 운영자 260711 외부 도구 이식 승인).
+     실측 260711: region=KR 파라미터는 실효 약함(콜당 실 KR 2~4개 글로벌 혼합 피드) →
+     수 콜 누적·dedup·조회수 정렬로 보완 · free tier 레이트리밋(4연속 콜 타임아웃 실측) →
+     콜 간 2s 간격 · 개별 콜 실패 무시(그때까지 누적분 사용). 실패/0건 = 기존 값 보존.
+     구 Playwright 카나리아(tiktok_trends.py·hashtags) = 도먼트(이 tikwm 경로가 주 —
+     뷰어는 tiktok.videos 우선 · hashtags 폴백).
 
 산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}}
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
@@ -20,6 +25,7 @@ import os
 import re
 import ssl
 import sys
+import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -84,6 +90,33 @@ def gtrends(limit=10):
         return []
 
 
+def tiktok(limit=15, calls=4):
+    """틱톡 인기 피드 — tikwm 무료 공개 API(무키·서명 대행 · 외부 도구 이식 260711).
+    피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup·조회수 정렬 상위 limit.
+    개별 콜 실패 = 무시(누적분 사용) · 전체 0건 = [] (fail-soft — main()이 기존 값 보존)."""
+    seen = {}
+    for i in range(calls):
+        if i:
+            time.sleep(2)   # free tier 레이트리밋(연속 콜 타임아웃 실측 260711)
+        try:
+            j = json.loads(_get("https://www.tikwm.com/api/feed/list?region=KR&count=20"))
+            if j.get("code") != 0:
+                continue
+            for v in (j.get("data") or []):
+                vid = v.get("video_id")
+                if not vid or vid in seen:
+                    continue
+                a = v.get("author") or {}
+                handle = a.get("unique_id") or ""
+                seen[vid] = {"title": (v.get("title") or "").strip(), "account": handle,
+                             "views": v.get("play_count") or 0, "likes": v.get("digg_count") or 0,
+                             "region": v.get("region") or "",
+                             "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::tiktok 콜{i + 1}/{calls} 실패(누적분 유지): {e}", file=sys.stderr)
+    return sorted(seen.values(), key=lambda t: t["views"], reverse=True)[:limit]
+
+
 def main():
     prev = {}
     if os.path.exists(OUT):
@@ -94,20 +127,24 @@ def main():
     yt_all = youtube(limit=15)
     yt_news = youtube(category_id=25, limit=10) if yt_all else []   # 키 없으면 둘 다 skip(콜 절약)
     gt = gtrends()
-    if not yt_all and not gt:
+    tk = tiktok()
+    if not yt_all and not gt and not tk:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
+    now = datetime.now(KST).isoformat(timespec="seconds")
     data = {
-        "updated": datetime.now(KST).isoformat(timespec="seconds"),
+        "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
         "youtube_news": yt_news or prev.get("youtube_news") or [],
         "gtrends": gt or prev.get("gtrends") or [],
-        "tiktok": prev.get("tiktok") or {},   # 카나리아(tiktok_trends.py) 산출 보존
+        # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
+        "tiktok": ({"updated": now, "videos": tk} if tk else prev.get("tiktok") or {}),
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(data, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}(뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {'유' if data['tiktok'] else '무'} · 유튜브키 {'있음' if YT_KEY else '없음(스킵)'}")
+    tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}(뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 유튜브키 {'있음' if YT_KEY else '없음(스킵)'}")
 
 
 if __name__ == "__main__":

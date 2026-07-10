@@ -355,11 +355,11 @@ const THH_OUT = 'viewer/thumb-hist.json';
 const thIdTs = (id) => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); if (!m) return 0; const t = Date.parse(`20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00`); return Number.isFinite(t) ? t : 0; };
 const thLabel = (f) => { const b = f.replace(/\.(png|jpe?g)$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // api/thumb.js 라벨 규칙과 맞춤
 const thHist = [];
+const thCut = Date.now() - 48 * 3600e3;   // 48h 보관(뷰어가 12h로 필터 · 여유분) — thumb/comp/resize 공용
 try {
   const troot = 'viewer/thumb_out';
-  const cut = Date.now() - 48 * 3600e3;   // 48h 보관(뷰어가 12h로 필터 · 여유분)
   for (const id of readdirSync(troot)) {
-    const ts = thIdTs(id); if (!ts || ts < cut) continue;
+    const ts = thIdTs(id); if (!ts || ts < thCut) continue;
     let meta;
     try { meta = JSON.parse(readFileSync(join(troot, id, '_meta.json'), 'utf8')); }   // 신규: [[file, R2url], ...] — 이미지 R2(git 미저장)·_meta.json만 git
     catch { try { meta = readdirSync(join(troot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort().map(f => [f, `thumb_out/${id}/${f}`]); } catch { continue; } }   // 레거시(R2 이전·_meta 없음): 옛 git 이미지 상대경로 폴백(여전히 Pages 서빙) = 기기간 이력 회귀 0
@@ -370,6 +370,24 @@ try {
     for (const [f, url] of meta) { const e = { url, dlname: `${id}_${f}`, cap: isPost ? '포스트' : thLabel(f), varStr: isPost ? ' · ' + thLabel(f) : '', ts }; if (src && src.app) e.src = src; thHist.push(e); }
   }
 } catch { /* thumb_out 없음 */ }
+// 카드뉴스(/5) — comp_out/<id>/card.jpg(git 커밋·Pages 서빙)도 기기 간 이력에 병합(운영자 260710 — 구 '로컬만' 미구현 보완 · src 스냅샷은 comp 파이프 미보존이라 연필 없음=후속)
+try {
+  const croot = 'viewer/comp_out';
+  for (const id of readdirSync(croot)) {
+    const ts = thIdTs(id); if (!ts || ts < thCut) continue;
+    let files; try { files = readdirSync(join(croot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort(); } catch { continue; }
+    for (const f of files) thHist.push({ url: `comp_out/${id}/${f}`, dlname: `${id}_${f}`, cap: '카드뉴스', varStr: '', ts });
+  }
+} catch { /* comp_out 없음 */ }
+// 리사이즈(/7) — gen_out/resize.json(캡 24 · R2 절대 url·ts=KST isoformat)도 병합(운영자 260710 저녁 — 낮 '세션만' 결정 번복 확정 · 뷰어 rszLoad는 잡 신호 전용 유지)
+try {
+  const rz = JSON.parse(readFileSync('viewer/gen_out/resize.json', 'utf8'));
+  for (const it of (Array.isArray(rz) ? rz : [])) {
+    const ts = Date.parse((it && it.ts) || ''); if (!it || !it.url || !Number.isFinite(ts) || ts < thCut) continue;
+    const akey = String(it.aspect || '').replace(':', 'x');
+    thHist.push({ url: it.url, dlname: `${it.id || 'resize'}_리사이즈${akey ? '_' + akey : ''}.jpg`, cap: '리사이즈', varStr: it.aspect ? ' · ' + it.aspect : '', ts });
+  }
+} catch { /* resize.json 없음 */ }
 thHist.sort((a, b) => b.ts - a.ts);
 writeFileSync(THH_OUT, JSON.stringify(thHist.slice(0, 400), null, 2));
 console.log(`viewer/thumb-hist.json 생성 — ${thHist.length}건`);

@@ -161,6 +161,25 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
+      # 변환 완료/실패 푸시 — 60i 보간(최대 25분) 등 긴 잡이라 창 닫아도 통지(편집기 완료 푸시와 동일 문법 · 운영자 260711).
+      #   탭 = /conv.html(진행 pend가 24h 내 결과 자동 복원) · 잡별 tag · 비치명.
+      - name: 변환 완료 푸시 (pywebpush)
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
+          VJ="viewer/conv_out/${IN_ID}/video.json"; EL="viewer/conv_out/${IN_ID}/error.log"
+          OK=0; MSG=""
+          if [ -s "$VJ" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$VJ')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
+          if [ "$OK" != "1" ] && [ -s "$EL" ]; then MSG="$(head -c 60 "$EL")"; fi
+          if [ "$OK" = "1" ]; then BODY="변환 완료 — 탭해서 확인"; else BODY="변환 실패 — ${MSG:-로그 확인}"; fi
+          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/conv.html" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
+
       - name: 업로드 브랜치 정리
         if: ${{ always() && inputs.up_branch != '' }}
         env:
