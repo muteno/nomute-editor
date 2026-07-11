@@ -48,9 +48,6 @@ export async function onRequestPost({ request, env }) {
   const pos = num(o.pos, 0, 100); if (pos !== null) opts.pos = Math.round(pos);          // 자막 세로 위치 %
   const bg = num(o.bg, 0, 100); if (bg !== null) opts.bg = Math.round(bg);               // 자막 배경 %
   const size = num(o.size, 0.02, 0.2); if (size !== null) opts.size = Math.round(size * 1000) / 1000;   // 자막 높이비
-  for (const k of ['outline', 'pad']) { const v = o[k]; if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 3) opts[k] = Math.round(v * 1000) / 1000; }   // 음영 크기(외곽선 배율·박스 패딩 계수 — ly.js 미러 · 의미 재클램프 = ly_burn coef · 260711)
-  if (typeof o.oc === 'string' && ['black', 'white', 'green', 'pink', 'blue', 'yellow', 'red'].includes(o.oc)) opts.oc = o.oc;           // 자막 음영 색(닫힌 집합 = ly_burn OC_BGR 짝 · 260711)
-  if (typeof o.font === 'string' && ['gothic', 'serif', 'nanum', 'pen'].includes(o.font)) opts.font = o.font;                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 — 러너 설치 폰트만 · 260711)
   const vpos = num(o.vid_pos, 0, 1); if (vpos !== null) opts.vid_pos = Math.round(vpos * 1000) / 1000;  // 크롭 팬
   const t0 = num(o.vid_t0, 0, 3600), t1 = num(o.vid_t1, 0, 3600);
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;

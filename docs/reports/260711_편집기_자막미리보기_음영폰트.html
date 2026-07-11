@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>편집기 자막 음영 3축(크기·색·폰트) — 최신 main 재이식판</title>
+<style>
+/* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+:root{ --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210; --danger:#e23b2a; --warn:#FFE13D; --green:#0FFD02; --pink:#FF5EC8; --blue:#3a6ddb; }
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR","Malgun Gothic",sans-serif; padding:20px 16px 60px; }
+.wrap{ max-width:720px; margin:0 auto; }
+h1{ font-size:20px; margin:4px 0 2px; } h1 b{ color:var(--accent); }
+.sub{ color:var(--mut); font-size:13px; margin:0 0 18px; }
+h2{ font-size:15px; color:var(--accent); margin:26px 0 8px; }
+p{ margin:6px 0; color:var(--mut); } b.w{ color:var(--fg); }
+table{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13px; }
+td,th{ border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top; }
+th{ color:var(--fg); background:rgba(255,255,255,.03); font-size:12.5px; white-space:nowrap; }
+td{ color:var(--mut); } td b{ color:var(--fg); font-weight:700; }
+.ok{ color:var(--accent); font-weight:800; }
+code{ background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:5px; padding:1px 5px; font:12px ui-monospace,Menlo,monospace; color:var(--fg); }
+.card{ border:1px solid var(--line); border-radius:14px; background:var(--pan); padding:13px 14px; margin:10px 0; }
+.tag{ display:inline-block; font-size:11px; font-weight:800; padding:2px 9px; border-radius:999px; border:1px solid rgba(var(--accent-rgb),.4); color:var(--accent); background:rgba(var(--accent-rgb),.08); margin-right:6px; }
+ul{ margin:6px 0 6px 2px; padding-left:18px; } li{ margin:4px 0; color:var(--mut); } li b{ color:var(--fg); }
+.swd{ display:inline-block; width:10px; height:10px; border-radius:50%; border:1px solid rgba(255,255,255,.25); vertical-align:-1px; margin-right:4px; }
+.foot{ margin-top:30px; color:var(--mut); font-size:12px; border-top:1px solid var(--line); padding-top:12px; }
+</style>
+</head>
+<body><div class="wrap">
+<h1>편집기 자막 — <b>음영 크기·색·폰트 3축</b> (최신 main 재이식판)</h1>
+<p class="sub">260711 v2 · 브랜치 <code>claude/video-editor-subtitle-features-05sxmx</code> · PR #1949 갱신</p>
+
+<h2>0. 재작업 맥락 (운영자 "변환 탭은 이미 삭제됐을 텐데, 그 외에 기존 기능 안 깨지게 다시")</h2>
+<div class="card">
+<p>확인 결과 그 사이 main이 크게 앞섰다 — <b class="w">변환 탭 도먼트·크롭 드래그 미리보기·자막 상세 편집기 이식·라이브 미리보기(실영상+자막 오버레이)·자막 프리셋 3칩(속보체/예능체/담백체)·길이 캡 차등 완화·4K/2GB 업로드</b>가 이미 들어가 있었다(구 브랜치를 그 위에 얹으면 신기능 파손 위험). → <b class="w">브랜치를 최신 main에서 재시작</b>하고, 아직 없는 것만 신기능 위에 재이식했다.</p>
+<p><span class="tag">남은 것 ①</span><b class="w">음영 3축</b> — 유일하게 미구현이던 운영자 요청. 이번에 엔드투엔드 배선.</p>
+<p><span class="tag">남은 것 ②</span><b class="w">비율 칩 버그(선존)</b> — <code>data-p</code>를 <code>split(':')</code>로 쪼개 <code>'9:16'</code>이 <code>'9'</code>로 오염 → 비율 칩을 클릭하면 비율 처리·프리뷰 캔버스가 통째 무시되던 main의 기존 버그. 첫 콜론만 분리로 수정(실측: 클릭 후 <code>P.ar='16:9'</code> 정상).</p>
+</div>
+
+<h2>1. 새 기능 — 자막 카드 3행 (기존 기능 불변 원칙)</h2>
+<table>
+<tr><th>축</th><th>내용</th><th>기존 기능 보존</th></tr>
+<tr><td><b>음영 크기</b></td><td>게이지 25~300% — 배경 0% = 글리프 외곽선 두께 · 배경 ON = 줄박스 패딩(한 손잡이 · 서버 클램프까지 미러)</td><td><b>기본 100% = 종전 렌더 바이트 그대로</b>(outline ×1.0·pad 0.10 = 미전송 기본과 동일 — 유닛 실측으로 스타일 라인 바이트 대조). ly 캡션 느낌은 50%로 내리면 됨</td></tr>
+<tr><td><b>음영 색</b></td><td>7칩: <span class="swd" style="background:#000"></span>검정(기본) <span class="swd" style="background:#fff"></span>흰 <span class="swd" style="background:var(--green)"></span>그린 <span class="swd" style="background:var(--pink)"></span>핑크 <span class="swd" style="background:var(--blue)"></span>블루 <span class="swd" style="background:var(--warn)"></span>레몬 <span class="swd" style="background:var(--danger)"></span>레드 — 외곽선·그림자·줄박스가 한 색</td><td>기본 검정 = 종전 하드코딩과 동일 · 닫힌 집합 3면(뷰어↔API↔러너) 1:1</td></tr>
+<tr><td><b>폰트</b></td><td>4칩: 기본(고딕)·명조·나눔고딕·손글씨(Nanum Pen Script) — 러너 실설치 폰트와 동명 구글 웹폰트를 미리보기에 지연 로드</td><td>기본 고딕 = 종전 Noto Sans CJK KR 그대로 · 미설치 = 고딕 폴백+note(fail-soft)</td></tr>
+</table>
+<ul>
+<li><b>라이브 미리보기 통합</b> — 신기능인 실영상 미리보기(#pv) 오버레이가 3축을 실시간 미러(음영 두께·색·폰트가 드래그 즉시 반영).</li>
+<li><b>재입히기 승계</b> — 다시 입히기(<code>lyOptsNow</code>→<code>/api/ly</code>)도 3축 그대로 통과(api/ly.js 화이트리스트 추가 = 가산적 · 자막 생성기 자체 동작은 무변경) · ly-make 러너에도 나눔 폰트 설치(재입히기 폰트 유지).</li>
+<li><b>자막 생성기(ly)·구형 요청 회귀 0</b> — oc/font 결측 = ASS 스타일 라인 바이트 동일(유닛 실측 · 기본 조합 4종 + 신축 + 미지값 폴백 전부 통과).</li>
+</ul>
+
+<h2>2. 검증(실측)</h2>
+<table>
+<tr><th>층</th><th>내용</th><th>결과</th></tr>
+<tr><td>서버 유닛</td><td>미전송(종전) ↔ 기본값 전송(sh100·검정·고딕) 스타일 라인 <b>바이트 동일</b> 4조합 · 신축(그린/펜·핑크 박스) · 미지값 폴백 · font_avail(설치 True/미설치 False)</td><td class="ok">전부 통과</td></tr>
+<tr><td>게이트</td><td>check_refs 전체(디자인 토큰 baseline 사유 기입·JS 구문·거울·자동완성 등)</td><td class="ok">전부 초록</td></tr>
+<tr><td>헤드리스 실클릭</td><td>3행 렌더·프리셋(SUBPRE) 공존·오버레이 미러(그린 외곽선 ×2·박스 패딩 클램프·손글씨 ff+웹폰트 링크)·<b>비율 16:9 클릭 정상 적용(버그픽스)</b>·buildOpts/lyOptsNow 4키</td><td class="ok">전부 통과 · JS 에러 0</td></tr>
+<tr><td>평의회</td><td>1차 10인(Opus·READ-ONLY) = OK 7·주의 3·불가 0 → 지적 반영. 재이식판(v2)은 신기능 통합·회귀 초점 재감사</td><td class="ok" id="c2">v2 재감사 결과는 작업이력 ④</td></tr>
+</table>
+
+<h2>3. 운영자 확인 포인트</h2>
+<ul>
+<li><b>배치(§디자인 j)</b>: 신규 3행 = 자막 카드 안, 기존 게이지(배경/위치/크기) 바로 아래{음영 게이지 → 음영 색 칩 → 폰트 칩}. 라이브 미리보기는 위(소스 아래)에 상시라 조작-확인 인접. 이대로 좋으면 PR #1949 머지.</li>
+<li>머지 후 확인: 편집기 자막 카드에 음영/음영 색/폰트 3행 · 음영 게이지 드래그 시 미리보기 외곽선 두께 변화 · 그린 선택 시 외곽선 그린 · 손글씨 선택 시 미리보기 글씨체 변화 · 비율 칩(1:1 등) 클릭이 미리보기 캔버스에 반영.</li>
+<li>참고: 음영 기본 100% = 지금까지 뽑던 결과와 동일. ly 자막기 특유의 얇은 외곽선 느낌 = 50%.</li>
+</ul>
+
+<div class="foot">산출: PR #1949(갱신) · 백업 <code>_versions/260711_1128_편집기_음영폰트3축_재이식/</code> · 변경: viewer/edit.html · functions/api/edit.js·ly.js · .github/scripts/ly_burn.py · edit-make.yml·ly-make.yml(apt) · check_refs baseline · 지침/CLAUDE.md · 이 보고서.</div>
+</div></body>
+</html>

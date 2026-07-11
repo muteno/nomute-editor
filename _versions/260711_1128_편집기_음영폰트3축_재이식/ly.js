@@ -36,8 +36,6 @@ export async function onRequestPost({ request, env }) {
     for (const k of ['pos', 'bg']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v)) o[k] = Math.max(0, Math.min(100, Math.round(v))); }   // 위치·배경 게이지 %(260707) — pos는 위 문자열 루프와 타입 상호배타(한 요청의 pos는 문자열이거나 숫자 둘 중 하나): 신 뷰어=숫자 여기서, 구 캐시 뷰어=문자열 위에서 통과(ly_burn 하위호환 매핑)
     for (const k of ['size', 'outline', 'pad']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 3) o[k] = Math.round(v * 1000) / 1000; }   // 연속 축(운영자 260707 선택값): size=높이비 소수(0.035) · outline·pad=계수 배율 — size 문자열(s/m/l)은 위 루프와 타입 상호배타 · 의미 범위 재클램프는 ly_burn(size_frac/coef)
     for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm', 'cutdel']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707) · cutdel = 삭제 컷 번인 게이트(토글 양방향 · 검증④ 260711)
-    if (typeof body.opts.oc === 'string' && ['black', 'white', 'green', 'pink', 'blue', 'yellow', 'red'].includes(body.opts.oc)) o.oc = body.opts.oc;           // 자막 음영 색(닫힌 집합 = ly_burn OC_BGR 짝 · 260711) — ly 뷰어는 미송신(무영향) · 편집기 재입히기(reburn) 경로가 사용
-    if (typeof body.opts.font === 'string' && ['gothic', 'serif', 'nanum', 'pen'].includes(body.opts.font)) o.font = body.opts.font;                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 · 러너 미설치 = 고딕 폴백+note · 260711)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
   // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
