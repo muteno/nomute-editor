@@ -38,10 +38,7 @@
      200 실측 260711 → R2 재호스팅 불요[서명 churn으로 git 델타 비대 = 알려진 트레이드오프 ·
      비대해지면 R2 재호스팅 후속] · 뷰어 no-referrer+onerror 관용구 · 인스타는 소형 변형 픽).
 
-  ⑤ 쇼츠·AI 영상(운영자 260711) = InnerTube 검색 파생(무키·쇼츠 = <4분 protobuf 필터·AI = 원본
-     AI_YT_QUERIES 4종 — 둘 다 조회수 정렬·주간·likes/cmts 없음 = 조회수 단일 지표).
-
-산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, shorts[], aivid[], subs{}}
+산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, subs{}}
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
@@ -97,27 +94,25 @@ def youtube(category_id=None, limit=15):
 
 # InnerTube 폴백 상수 — 업로드 도구(데일리 트렌드 뷰어) 검증 세트 계승(260711 2차 이식)
 IT_QUERIES = ["먹방", "브이로그", "예능 웃긴 영상", "뷰티 메이크업 패션", "영화 드라마 리뷰", "여행"]
-AI_QUERIES = ["AI 영상 제작", "AI 영상 생성", "sora ai video", "runway kling veo"]   # AI 영상 축 = 원본 도구 server.py AI_YT_QUERIES 그대로(운영자 260711 "원본으로 이어붙이되")
 IT_EXCLUDE = ("주 전", "개월 전", "년 전")   # 주간 필터 우회 추천 섹션 영상 걸러냄(게시일 텍스트 기준)
 
 
-def _it_params(period=3, shorts=False):
-    """InnerTube 검색 protobuf: 정렬=조회수(3) + 업로드 날짜(3=이번 주) + 동영상 타입(+쇼츠 = 4분 미만 길이 필터
-    0x18,0x01 — 원본 도구 build_search_params 이식)."""
+def _it_params(period=3):
+    """InnerTube 검색 protobuf: 정렬=조회수(3) + 업로드 날짜(3=이번 주) + 동영상 타입."""
     import base64
-    f = bytes([0x08, period, 0x10, 0x01]) + (bytes([0x18, 0x01]) if shorts else b"")
+    f = bytes([0x08, period, 0x10, 0x01])
     return base64.urlsafe_b64encode(bytes([0x08, 0x03, 0x12, len(f)]) + f).decode()
 
 
-def youtube_innertube(limit=15, queries=None, shorts=False):
-    """무키 InnerTube 검색(조회수순·이번 주·쿼리 머지). 기본 = 인기 폴백(IT_QUERIES · YT_KEY 있으면 미호출) ·
-    queries/shorts 지정 = 쇼츠·AI 영상 축(원본 도구 이식 260711 — 검색 파생 근사 딱지 동일).
+def youtube_innertube(limit=15):
+    """무키 폴백 — InnerTube 검색(조회수순·이번 주·카테고리 6쿼리 머지). YT_KEY 있으면 미호출.
+    ⚠️ 검색 파생 근사(진짜 인기 차트 아님·쿼리별 품질 가변 실측) — 키 등록 = 공식 자동 승격.
     개별 쿼리 실패 무시·전체 0건 = [] (fail-soft)."""
     seen, out = set(), []
-    for q in (queries or IT_QUERIES):
+    for q in IT_QUERIES:
         payload = {"context": {"client": {"clientName": "WEB", "clientVersion": "2.20250624.01.00",
                                           "hl": "ko", "gl": "KR"}},
-                   "query": q, "params": _it_params(shorts=shorts)}
+                   "query": q, "params": _it_params()}
         try:
             req = urllib.request.Request("https://www.youtube.com/youtubei/v1/search",
                                          data=json.dumps(payload).encode(),
@@ -445,9 +440,6 @@ def main():
         yt_src = "innertube" if yt_all else ""
     gt = gtrends()
     tk = tiktok()
-    # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
-    sh = youtube_innertube(limit=12, shorts=True)          # 쇼츠 = 인기 쿼리 + <4분 필터(원본 protobuf 이식)
-    ai = youtube_innertube(limit=12, queries=AI_QUERIES)   # AI 영상 = 원본 AI_YT_QUERIES 4종
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
     subs_new, acc = None, None
     if SUBS_ON:
@@ -458,7 +450,7 @@ def main():
         subs_new = {"x": x_subs(acc["x"], deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], deadline=dl),
                     "insta": insta_subs(acc["insta"], deadline=dl), "youtube": yt_subs(acc["youtube"], deadline=dl)}
     subs_any = bool(subs_new) and any(subs_new.values())
-    if not yt_all and not gt and not tk and not sh and not ai and not subs_any:
+    if not yt_all and not gt and not tk and not subs_any:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
@@ -468,8 +460,6 @@ def main():
     _annotate_rank(yt_news, prev.get("youtube_news"), lambda v: v.get("id"))
     _annotate_rank(gt, prev.get("gtrends"), lambda g: g.get("query"))
     _annotate_rank(tk, (prev.get("tiktok") or {}).get("videos"), lambda t: t.get("url"))
-    _annotate_rank(sh, prev.get("shorts"), lambda v: v.get("id"))
-    _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
     psubs = prev.get("subs") or {}
     subs = psubs
     if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
@@ -493,8 +483,6 @@ def main():
         "gtrends": gt or prev.get("gtrends") or [],
         # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
         "tiktok": ({"updated": now, "videos": tk} if tk else prev.get("tiktok") or {}),
-        "shorts": sh or prev.get("shorts") or [],   # ⑤ 쇼츠(검색 파생 근사 · 실패 = 직전분)
-        "aivid": ai or prev.get("aivid") or [],     # ⑤ AI 영상(원본 쿼리 세트 · 실패 = 직전분)
         "subs": subs,   # 구독 축(④) — {updated, x[], tiktok[], insta[], youtube[]} · 미수집 = 직전분/{}
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -503,7 +491,7 @@ def main():
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'}")
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'}")
 
 
 if __name__ == "__main__":
