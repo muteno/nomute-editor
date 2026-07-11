@@ -238,16 +238,16 @@
     <button class="invtg" id="invtg" type="button" aria-pressed="false">선택 빼고 다 가리기</button>
     <div class="mopts" id="mopts">
       <div class="mo-row"><span class="mo-k">모양</span>
-        <button class="opt2 on" type="button" data-shape="rect" aria-pressed="true">네모</button>
-        <button class="opt2" type="button" data-shape="ellipse" aria-pressed="false">타원</button>
+        <button class="opt2" type="button" data-shape="rect" aria-pressed="false">네모</button>
+        <button class="opt2 on" type="button" data-shape="ellipse" aria-pressed="true">타원</button>
       </div>
       <div class="mo-row"><span class="mo-k">블록 가로</span><input type="range" id="moPxw" min="4" max="20" step="1" value="9" aria-label="블록 가로 — 모자이크 가로 블록 수(적을수록 굵음)"><span class="mo-v" id="moPxwV">9</span></div>
       <div class="mo-row"><span class="mo-k">블록 세로</span><input type="range" id="moPxh" min="4" max="20" step="1" value="9" aria-label="블록 세로 — 모자이크 세로 블록 수(적을수록 굵음)"><span class="mo-v" id="moPxhV">9</span></div>
-      <div class="mo-row"><span class="mo-k">크기</span><input type="range" id="moSize" min="75" max="200" step="5" value="100" aria-label="크기 — 모자이크 커버 배율 %"><span class="mo-v" id="moSizeV">100%</span></div>
-      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="moFeather" min="0" max="40" step="1" value="0" aria-label="페더 — 모자이크 가장자리 부드러움 px"><span class="mo-v" id="moFeatherV">0</span></div>
+      <div class="mo-row"><span class="mo-k">크기</span><input type="range" id="moSize" min="75" max="200" step="5" value="115" aria-label="크기 — 모자이크 커버 배율 %"><span class="mo-v" id="moSizeV">100%</span></div>
+      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="moFeather" min="0" max="40" step="1" value="5" aria-label="페더 — 모자이크 가장자리 부드러움 px"><span class="mo-v" id="moFeatherV">0</span></div>
     </div>
     <div class="mopts" id="kopts" hidden>
-      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="keFeather" min="0" max="40" step="1" value="3" aria-label="페더 — 키잉 가장자리 부드러움 px"><span class="mo-v" id="keFeatherV">3</span></div>
+      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="keFeather" min="0" max="40" step="1" value="0" aria-label="페더 — 키잉 가장자리 부드러움 px"><span class="mo-v" id="keFeatherV">3</span></div>
     </div>
     <label class="fl" style="margin-top:0"><span id="glword">등장인물</span> <b style="color:var(--accent)" id="pcount">0명</b> <span class="mut2" id="dropnote"></span></label>
     <div class="grid" id="grid" data-mode="mosaic"></div>
@@ -790,10 +790,16 @@ $('#dlVid').addEventListener('click',e=>{
 });
 
 try{ const _xp=JSON.parse(localStorage.getItem('nm_track_preset')||'null');   // 편집 탭 기타 기능 핸드오프 프리셋(운영자 260711 3분류 — 일회용 소비)
-  if(_xp){ localStorage.removeItem('nm_track_preset');
-    if(['mosaic','pinset','keying'].includes(_xp.mode)) TK.mode=_xp.mode;
-    if(_xp.opts&&typeof _xp.opts==='object'){ TK.opts=Object.assign({},MO_DFLT,_xp.opts); ['pxw','pxh','size','feather'].forEach(k=>{ const n=+TK.opts[k]; TK.opts[k]=Number.isFinite(n)?n:MO_DFLT[k]; }); }
-    if(Number.isFinite(+_xp.kfe)) TK.kfe=Math.max(0,Math.min(40,+_xp.kfe));
+  if(_xp){ const _p=pendGet();
+    if(!(_p&&_p.st==='render')){   // 렌더 디스패치 진행 중만 미소비 보존(완료·뒤로 후 다음 로드서 적용) — 그 외 = 프리셋이 이김(방금 명시 의도 > 잔존 pend · 배선평의회5 ①)
+      localStorage.removeItem('nm_track_preset');
+      if(Date.now()-(+_xp.t0||0) < 30*60*1000){   // 신선도 30분 — 소비 실패 잔존물이 며칠 뒤 일반 로드를 오염시키는 것 차단(①-b)
+        if(['mosaic','pinset','keying'].includes(_xp.mode)) TK.mode=_xp.mode;
+        if(_xp.opts&&typeof _xp.opts==='object'){ TK.opts=Object.assign({},MO_DFLT,_xp.opts); ['pxw','pxh','size','feather'].forEach(k=>{ const n=+TK.opts[k]; TK.opts[k]=Number.isFinite(n)?n:MO_DFLT[k]; }); if(TK.opts.shape!=='ellipse'&&TK.opts.shape!=='rect') TK.opts.shape=MO_DFLT.shape; }
+        if(Number.isFinite(+_xp.kfe)) TK.kfe=Math.max(0,Math.min(40,+_xp.kfe));
+        if(_p&&_p.id) pendSet(Object.assign({}, _p, {mode:TK.mode, opts:TK.opts, kfe:TK.kfe}));   // pend에 프리셋 주입 = 아래 pend 복원(비동기 포함)이 프리셋 값을 실어나름 — 역전 원천 차단
+      }
+    }
   } }catch(e){}
 moSync();   // 부팅 1회 = MO_DFLT 단일 출처화(HTML value 속성과의 이중정의 드리프트 차단 · 평의회C F5)
 $('#keFeather').value=TK.kfe; $('#keFeatherV').textContent=TK.kfe;   // 키잉 페더 부팅 동기(운영자 260711 기본 0 — 구 HTML value=3 이중정의 차단 · moSync 대칭)
