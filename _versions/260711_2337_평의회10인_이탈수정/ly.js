@@ -39,7 +39,7 @@ export async function onRequestPost({ request, env }) {
     if (typeof body.opts.oc === 'string' && ['black', 'white', 'green', 'pink', 'blue', 'yellow', 'red'].includes(body.opts.oc)) o.oc = body.opts.oc;           // 자막 음영 색(닫힌 집합 = ly_burn OC_BGR 짝 · 260711) — ly 뷰어는 미송신(무영향) · 편집기 재입히기(reburn) 경로가 사용
     if (typeof body.opts.font === 'string' && ['gothic', 'serif', 'nanum', 'pen'].includes(body.opts.font)) o.font = body.opts.font;
     if (typeof body.opts.kwc === 'string' && ['green', 'white', 'pink', 'blue', 'yellow', 'red'].includes(body.opts.kwc)) o.kwc = body.opts.kwc;   // 키워드 강조색(운영자 260711 gimmick=open — 콘텐츠색 축 §핵심명령 3-b-1 · 기본 green = 종전 바이트 동일 · OC_BGR 닫힌 집합·black 제외 = 강조 무의미)
-    if (typeof body.opts.fg === 'string' && ['white', 'green', 'pink', 'blue', 'yellow', 'black'].includes(body.opts.fg)) o.fg = body.opts.fg;   // 자막 글자색(운영자 260711 subFg=open · 기본 white = 종전 · red 제거 = 뷰어 6칩과 대칭 — 평의회 260711 3차)                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 · 러너 미설치 = 고딕 폴백+note · 260711)
+    if (typeof body.opts.fg === 'string' && ['white', 'green', 'pink', 'blue', 'yellow', 'red', 'black'].includes(body.opts.fg)) o.fg = body.opts.fg;   // 자막 글자색(운영자 260711 subFg=open · 기본 white = 종전)                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 · 러너 미설치 = 고딕 폴백+note · 260711)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
   // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
