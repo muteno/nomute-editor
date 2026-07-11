@@ -64,7 +64,11 @@
   .scard .rm:active { transform:scale(var(--press-s)); }
   .scard .rm svg { width:11px; height:11px; }
   .scard .prm { padding:2px 13px 12px; border-top:1px solid rgba(255,255,255,.06); }
-  .empty-stack { color:var(--mut); font-size:var(--fs-sm); border:1px dashed var(--line); border-radius:var(--r-l); padding:12px; text-align:center; }
+  .empty-stack { color:var(--mut); font-size:var(--fs-sm); border:1px dashed var(--line); border-radius:var(--r-l); padding:12px; text-align:center; }   /* 도먼트(섹션 상시형 260712) */
+  .sech { display:flex; align-items:center; gap:8px; margin:var(--sp-3) 0 8px; padding-top:var(--sp-2); border-top:1px solid var(--line); font-weight:var(--fw-x); font-size:var(--fs-label); }   /* 번호 섹션 헤더 = 시안 3분류 뷰 계승(운영자 260712 — 1 리사이징·2 영상 편집·3 음향 편집) */
+  .sech:first-child { margin-top:0; padding-top:0; border-top:none; }
+  .sech .no { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .scard .hd.st { cursor:default; }   /* 상시형 = 접기 클릭 폐지 */
   .addbtn { margin-top:var(--sp-2); width:100%; height:42px; border-radius:var(--r-l); border:1px dashed var(--line); background:transparent; color:var(--accent); font:inherit; font-weight:var(--fw-x); font-size:var(--fs-label); cursor:pointer; transition:transform .12s; }
   .addbtn:active { transform:scale(var(--press-l)); }
 
@@ -353,9 +357,9 @@
     <button class="rec" type="button" data-rec="clip">쇼츠 클립</button>
   </div>
 
-  <label class="fl">처리 스택</label>
+<!-- '처리 스택' 소머리 폐지(260712 섹션 상시형 — 번호 섹션 헤더 .sech가 IA를 직접 표기) -->
   <div class="stack" id="stack"></div>
-  <button class="addbtn" id="addbtn" type="button">+ 처리 추가</button>
+  <button class="addbtn" id="addbtn" type="button" hidden>+ 처리 추가</button><!-- 섹션 상시형(260712 시안 IA)으로 시트 추가 경로 도먼트 — 복원 = hidden 제거 --->
 
   <div class="xtr" id="xtrsec"><!-- 기타 기능(운영자 260711 3분류 IA · trackOpts=inline) — 발사 옵션 아님(스택 밖) · 렌더는 트래킹 파이프(분석→확정→렌더) 재사용 · 3탭 축소(260711 3차) 후 트래킹 진입은 여기가 유일 -->
     <label class="fl">기타 기능<span class="xhint">복수 선택 — 트래킹에서 이어서</span></label>
@@ -520,16 +524,19 @@ function prm(k){
     +gauge('sh','음영',25,300,P.sh,'%')   // 주변부 음영 크기(운영자 260711) — bg=0 외곽선 두께·bg>0 줄박스 패딩 한 손잡이(100% = 종전 그대로 · 라이브 미리보기 실시간 미러)
     +'<div class="plbl">음영 색</div><div class="prow">'+Object.keys(OC_DEF).map(c=>pc('shc',c,P.shc===c,false,'<span class="swd" style="--sw:'+OC_DEF[c]+'"></span>'+OC_LBL[c])).join('')+'</div>'
     +'<div class="plbl">폰트</div><div class="prow">'+Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl)).join('')+'</div>';
-  if(k==='cut') return segs('cutlv',[['soft','살짝'],['std','기본'],['hard','많이']],P.cutlv)
-    +'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>';   // STT-only 노트(운영자 260711 cutSttNote=on — 평의회 260711 3차 복원)
-  if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
-  if(k==='screen') return '<div class="pvslot" id="pvSlot"></div>'   // 라이브 미리보기 = 비율 카드 귀속(운영자 260711 pvPlace=rsz — 자막 카드 이관으로 이주 · 영속 #pv 노드 render()가 관리)
-    +segs('ar',[['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']],P.ar)
-    +'<div class="plbl">방식</div>'+segs('fit',[['crop','자르기'],['pad','여백(검정)'],['blur','여백(블러)']],P.fit)
+  if(k==='cut') return segs('cutlv',[['off','끔'],['soft','살짝'],['std','기본'],['hard','많이']],ON.cut?P.cutlv:'off')
+    +(ON.cut?'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>':'');   // STT-only 노트(운영자 260711 cutSttNote=on · 켰을 때만 = 산문 최소)
+  if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝(비면 안 자름)" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
+  if(k==='screen') return '<div class="pvslot" id="pvSlot"></div>'   // 라이브 미리보기 = 리사이징 섹션 귀속(운영자 260711 pvPlace=rsz · 섹션 상시라 항상 표시)
+    +segs('ar',[['off','원본']].concat([['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']]),ON.screen?P.ar:'off')   // '원본' = 비율 변환 끔(운영자 260712 시안 정합 — 종전 카드 미장착과 동일)
+    +(ON.screen?('<div class="plbl">방식</div>'+segs('fit',[['crop','자르기'],['pad','여백(검정)'],['blur','여백(블러)']],P.fit)
     +'<div class="prow" style="margin-top:6px">'+pc('genfill','x',false,true,'여백(생성형) — 준비중')+'</div>'   // 생성형 채움 = 노출·비활성(운영자 260711 genfill=show·모델 Kling — 영상 생성 API 미보유 = 미배선 정직 · dim+disabled)
-    +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'');   // 크롭 위치 = 게이지만(운영자 260711 scrubBtn=off — 드래그 스크럽 코드는 보존·버튼만 미노출)
-  if(k==='res') return segs('res',[['src','원본(4K)'],['1080','1080p'],['720','720p']],P.res);   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711)
-  if(k==='fps') return segs('fps',[['60i','60fps 보간'],['30','30'],['24','24']],P.fps);
+    +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'')):'');   // 크롭 위치 = 게이지만(운영자 260711 scrubBtn=off — 드래그 스크럽 코드는 보존·버튼만 미노출)
+  if(k==='res') return segs('res',[['off','그대로'],['src','원본(4K)'],['1080','1080p'],['720','720p']],ON.res?P.res:'off');   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711)
+  if(k==='fps') return segs('fps',[['off','그대로'],['60i','60fps 보간'],['30','30'],['24','24']],ON.fps?P.fps:'off');
+  if(k==='clip') return segs('clip',[['off','끔'],['on','후보 스캔 3~5개 (단독 실행)']],ON.clip?'on':'off');
+  if(k==='bgm') return segs('bgm',[['off','끔'],['on','목소리만 남김']],ON.bgm?'on':'off');
+  if(k==='anorm') return segs('anorm',[['off','끔'],['on','−14LUFS·좌우 통일']],ON.anorm?'on':'off');
   return '';
 }
 function etaCalc(){
@@ -545,17 +552,16 @@ function setEta(){   // 예상 소요 병기 = 제거(운영자 260711 etaShow=o
   const g=$('#editGo'); if(!g) return;
   const e=g.querySelector('.eta'); if(e) e.remove();
 }
+/* 섹션 상시 노출 IA(운영자 260712 — 시안 3분류 뷰 정합: "1 리사이징"류 번호 섹션이 항상 펼쳐져 축 칩이 바로 보임 · 빈 스택+시트 추가형 폐지) — 기본 = 전 축 '원본/그대로/끔' = 발사 페이로드 종전 빈 스택과 동일(동작 무변화) · 칩 선택 = ON[k] 파생이라 buildOpts·etaCalc·레시피·클리퍼 배타 전부 불변 */
+const IA=[['리사이징',['screen','res','fps']],['영상 편집',['cut','trim','clip']],['음향 편집',['bgm','anorm']]];
 function render(){
   const _pv=document.getElementById('pv');   // 미리보기 노드 보존 — 슬롯(#pvSlot)이 #stack 안이라 innerHTML 교체 전에 반드시 분리(안 하면 video 파괴 = 매 칩 클릭 리로드 · 운영자 260711 3차 귀속)
   if(_pv&&$('#stack').contains(_pv)) document.body.appendChild(_pv);
-  const cards=ORDER.filter(k=>ON[k]);
-  $('#stack').innerHTML = cards.length? cards.map((k,i)=>{
-    const open=OPEN===k;
-    return '<div class="scard"><div class="hd" data-open="'+k+'"><span class="no">'+(i+1)+'</span><span class="nm">'+CARD[k].nm+'</span><span class="sum">'+esc(sum(k))+'</span><button class="rm" type="button" data-rm="'+k+'" aria-label="'+CARD[k].nm+' 제거">'+X_SVG+'</button></div>'
-      +(open?'<div class="prm">'+prm(k)+'</div>':'')+'</div>';
-  }).join('') : '<div class="empty-stack">적용할 처리가 없어 — 아래 [+ 처리 추가] 또는 위 레시피</div>';
+  $('#stack').innerHTML = IA.map((sec,si)=>
+    '<div class="sech"><span class="no">'+(si+1)+'</span><span class="nm">'+sec[0]+'</span></div>'
+    +sec[1].map(k=>'<div class="scard"><div class="hd st"><span class="nm">'+CARD[k].nm+'</span><span class="sum">'+(ON[k]?esc(sum(k)):'')+'</span></div><div class="prm">'+prm(k)+'</div></div>').join('')
+  ).join('');
   setEta();
-  renderSheet();
   pvSync();
 }
 // ── 라이브 미리보기(운영자 260711 풀 프리뷰 확정 — "업로드하면 미리보기 + 자막 위치 자동 + 비율 딱" · 배치 승인 = 소스 행 바로 아래) ──
@@ -615,7 +621,7 @@ $('#stack').addEventListener('input',e=>{
   const g=e.target.closest('[data-g]'); if(g){ P[g.dataset.g]=+g.value; g.parentElement.querySelector('.v').textContent=gvTxt(g.dataset.g,g.value,g.dataset.g==='size'?'‰':'%'); setEta(); pvSync(); return; }   // 게이지 = 미리보기 실시간 동기(260711) · 음영 100 = '기본'
   const t=e.target.closest('#t0,#t1'); if(t){ P[t.id]=t.value; }
 });
-$('#stack').addEventListener('change',e=>{ if(e.target.closest('#t0,#t1')) render(); });
+$('#stack').addEventListener('change',e=>{ if(e.target.closest('#t0,#t1')){ ON.trim=!!(String(P.t0||'').trim()||String(P.t1||'').trim()); if(ON.trim)ON.clip=false; render(); } });   // 구간 = 값 입력이 곧 켬(섹션 상시형 260712 — 비우면 끔)
 document.addEventListener('click',e=>{
   const p=e.target.closest('[data-p]'); if(!p||p.disabled) return;
   const _i=p.dataset.p.indexOf(':'), k=p.dataset.p.slice(0,_i), v=p.dataset.p.slice(_i+1);   // 첫 콜론만 분리 — 값에 콜론 포함(ar '9:16'/'1:1'/'4:5'/'16:9')이 split(':')로 '9'만 남아 비율 칩 클릭이 통째 무효(P.ar 오염 → api 화이트리스트 탈락·프리뷰 AR_NUM 미스)되던 선존 버그 수정(260711 실측)
@@ -624,12 +630,18 @@ document.addEventListener('click',e=>{
     ON[v]=true; ON.clip=false; OPEN=v; closeSheet(); render(); return;
   }
   if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } } render(); return; }   // 자막 프리셋 = 기존 토글·게이지 원탭 점등
+  // 섹션 상시형 ON 파생(운영자 260712 시안 IA) — '원본/그대로/끔' = 그 축 미적용(종전 카드 미장착과 발사 동일) · 값 선택 = ON 켬(클리퍼 배타는 종전 add 로직 계승)
+  if(k==='ar'){ if(v==='off'){ON.screen=false;} else {ON.screen=true;ON.clip=false;P.ar=v;} render(); return; }
+  if(k==='res'||k==='fps'){ if(v==='off'){ON[k]=false;} else {ON[k]=true;ON.clip=false;P[k]=v;} render(); return; }
+  if(k==='cutlv'){ if(v==='off'){ON.cut=false;} else {ON.cut=true;ON.clip=false;P.cutlv=v;} render(); return; }
+  if(k==='clip'){ if(v==='on'){ for(const kk in ON) ON[kk]=false; ON.clip=true; } else ON.clip=false; render(); return; }
+  if(k==='bgm'||k==='anorm'){ if(v==='on'){ON[k]=true;ON.clip=false;} else ON[k]=false; render(); return; }
   if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; }
   else P[k]=v;
   if(k==='fit'&&v!=='crop') scrubClose();   // 크롭 해제 = 열려 있던 미리보기 기준 낡음 → 방어 닫기(멱등 · conv syncPos 계승)
   render();
 });
-function openSheet(){ $('#sheet').hidden=false; $('#sheetdim').hidden=false; }
+function openSheet(){ renderSheet(); $('#sheet').hidden=false; $('#sheetdim').hidden=false; }   // 열 때마다 재렌더 = 초기 미렌더·상태 불일치 방어(260712 빈 시트 회귀 봉합)
 function closeSheet(){ $('#sheet').hidden=true; $('#sheetdim').hidden=true; }
 $('#addbtn').addEventListener('click',openSheet);
 $('#shx').addEventListener('click',closeSheet);
@@ -1643,7 +1655,7 @@ $('#dlVid').addEventListener('click',e=>{
   pollEdit(p.id, t0c, (p.t0||0)-90000, p.lbl||'편집 중', p.clip?'clip':'');
 })();
 
-// 첫 화면 = 빈 스택(운영자 260711 stackInit=empty — 구 recipe('reels') 프리필은 선택값 위반이라 제거 · 평의회 260711 3차 · 레시피는 칩 탭으로만)
+render();   // 초기 렌더(빈 스택 = 운영자 260711 stackInit=empty 유지) — ⚠ 구 recipe('reels') 제거 때 이 초기 렌더 트리거까지 사라져 '처리 추가' 시트가 빈 채 열리던 회귀(운영자 260712 스샷 실증) 봉합: 프리필 없이 render()만 복원(스택·시트·eta·요약 전부 이 호출이 첫 페인트)
 </script>
 </body>
 </html>
