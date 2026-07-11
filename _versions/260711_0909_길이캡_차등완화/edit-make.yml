@@ -150,22 +150,15 @@ jobs:
             || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/edit_err.txt; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
           echo "EDIT_SRC=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
 
-      - name: 길이 선게이트 (차등 캡 — 운영자 260711 "잘라서 10분 이하로" 확정. 트림 구간≤10분+전사 없음 = 원본 60분 · 자막/컷/클리퍼 = 원본 20분{STT가 원본 전체 전사 = 비용 원본 비례·Whisper turbo ~0.2−0.5×RT 추정 = 스텝 25분 내·초과 = 정직 실패} · 그 외 통짜 = 종전 10분)
+      - name: 길이 선게이트 (10분 캡 — 편집기는 영상이 곧 산출이라 정직 거절)
         env:
           IN_ID: ${{ inputs.id }}
-          OPTS: ${{ inputs.opts }}
         run: |
           set -e
           [ -n "${EDIT_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/edit_err.txt; echo "::error::EDIT_SRC 빈값"; exit 1; }
           DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"
-          SPAN="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');t1=o.get('vid_t1');print(int(float(t1)-float(o.get('vid_t0') or 0)) if t1 else -1)" 2>/dev/null || echo -1)"
-          STT="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');print(1 if (o.get('burn') or o.get('cut') or o.get('clip')) else 0)" 2>/dev/null || echo 9)"   # 파싱 실패 = 9(미상) → 아래 분기 전부 미적중 = 종전 10분 보수 폴백
-          if [ "$STT" = "1" ]; then CAP=1200; MSG="자막·컷·클리퍼는 20분 이하만(전사가 원본 전체를 돎) — 더 길면 구간만 자르거나 20분 이하로."
-          elif [ "$SPAN" -ge 0 ] && [ "$SPAN" -le 600 ] 2>/dev/null; then CAP=3600; MSG="구간 편집도 원본 60분까지야 — 더 길면 잘라서 올려줘."
-          else CAP=600; MSG="편집기는 10분 이하만(릴스/쇼츠용) — 긴 영상은 구간 카드로 잘라줘."
-          fi
-          if [ -n "$DUR" ] && [ "$DUR" -gt "$CAP" ] 2>/dev/null; then
-            echo "영상 $((DUR/60))분 — ${MSG}" > /tmp/edit_err.txt; echo "::error::길이 초과 ${DUR}s (캡 ${CAP}s)"; exit 1
+          if [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then
+            echo "영상 $((DUR/60))분 — 편집기는 10분 이하만(릴스/쇼츠용)." > /tmp/edit_err.txt; echo "::error::길이 초과 ${DUR}s"; exit 1
           fi
 
       - name: STT (자막·컷·클리퍼 — 오디오 추출 → Whisper)

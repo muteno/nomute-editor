@@ -731,13 +731,7 @@ $('#editGo').addEventListener('click',async()=>{
   if(!ORDER.some(k=>ON[k])) return errStatus('처리를 하나는 넣어줘');
   const o=buildOpts();
   if(o.vid_t0!==undefined&&o.vid_t1!==undefined&&o.vid_t1<=o.vid_t0) return errStatus('끝이 시작보다 커야 해');
-  if(_dur){   // 차등 길이 캡(운영자 260711 "잘라서 10분 이하로" — 서버 선게이트와 동형): 전사(자막·컷·클리퍼) = 20분 · 트림 구간≤10분 = 원본 60분 · 통짜 = 10분
-    const stt=!!(o.burn||o.cut||o.clip);
-    const span=(o.vid_t1!==undefined)? o.vid_t1-(o.vid_t0||0) : -1;
-    if(stt){ if(_dur>1201) return errStatus('자막·컷·클리퍼는 20분 이하만(전사가 전체를 돎) — 구간만 자르거나 20분 이하로'); }
-    else if(span>=0&&span<=600){ if(_dur>3601) return errStatus('구간 편집도 원본 60분까지 — 잘라서 올려줘'); }
-    else if(_dur>601) return errStatus('편집기는 10분 이하만(릴스/쇼츠용) — 긴 영상은 구간 카드로 잘라줘');
-  }
+  if(_dur&&_dur>601) return errStatus('편집기는 10분 이하만(릴스/쇼츠용)');
   if(o.vid_res==='src'&&!url&&_varea>2*2073600&&!o.cut){   // 4K 클라 선게이트(서버 180초 게이트 예고 · 컷은 길이가 줄어 서버 실측에 위임)
     const eff=(o.vid_t0!==undefined||o.vid_t1!==undefined)? Math.min(_dur||1e9, o.vid_t1||_dur||1e9)-(o.vid_t0||0) : _dur;
     if(eff&&eff>181) return errStatus('원본(4K) 유지는 3분까지 — 1080p로 내리거나 구간을 잘라줘');   // 181 = 서버(180+1)와 동일 · conv 대칭(평의회2)
