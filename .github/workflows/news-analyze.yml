@@ -172,6 +172,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           CARD_COV_GUARD: ${{ vars.CARD_COV_GUARD || '' }}   # 카드 커버리지 가드(고신호 증발 시 1회 회수) — 기본 OFF·repo 변수 '1'로 카나리아→승격(§파이프라인 e · 260705)
+          CARD_FAIL_RETRY_MAX: ${{ vars.CARD_FAIL_RETRY_MAX || '' }}   # 실패 카드 자동 재시도 캡(기본 3 = cardmake.sh) — repo 변수 '0'이면 자동 재시도 OFF 롤백(260711)
           # 🔒 Lock A — 이 잡엔 GDRIVE_SA_JSON·GEMINI_API_KEY env 자체가 없음(유료 생성 발사 불가). + cardmake text모드 unset(Lock B).
         run: |
           [ -n "${CLAUDE_CODE_OAUTH_TOKEN}" ] || { echo "토큰 없음 — 카드플랜 생략"; exit 0; }
@@ -213,26 +214,8 @@ jobs:
       - name: Sweep stuck generating (좀비 → failed)
         if: always()
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          swept=0
-          for s in cards/*/status.json; do
-            [ -f "$s" ] || continue
-            grep -qE '"state":[[:space:]]*"generating"' "$s" || continue   # json.dump=콜론뒤 공백 → 공백 허용(무공백 grep은 영구 미스=좀비 미수거, 260620 분신술 실증)
-            d="$(dirname "$s")"
-            echo "좀비 generating → failed: $d"
-            printf '{"state":"failed","updated":"%s","guidelines_version":""}\n' "$(date -u +%FT%TZ)" > "$s"
-            echo "잡 중단/크래시로 카드 생성 미완료(자동 스윕)" > "$d/error.log"
-            swept=$((swept+1))
-          done
-          [ "$swept" -eq 0 ] && { echo "좀비 없음"; exit 0; }
-          git add cards
-          git commit -m "cards: 좀비 generating ${swept}건 → failed(스윕)" || exit 0
-          for i in 1 2 3 4; do
-            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
-            git rebase --abort 2>/dev/null || true; sleep $((2**i))
-          done
-          echo "::warning::스윕 push 실패"
+          # 스윕 본문 = 공유 SSOT .github/scripts/sweep_stuck.sh(3 워크플로 공용 — 구 3벌 인라인이 fails·지침해시를 덮어쓰던 것 봉합 · 평의회 260711)
+          bash .github/scripts/sweep_stuck.sh
 
       # 큐레이션 즉시 전달 — 분석·카드 커밋 후 Cloudflare 재빌드 1회 트리거 → 피드에 바로 반영
       # (정기 빌드[deploy-hook 12h] 안 기다림). 픽은 드물어 빌드 한도 영향 미미. 시크릿 없으면 no-op(다음 정기빌드).
