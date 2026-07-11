@@ -699,19 +699,11 @@
   .tsort button { background:none; border:0; padding:2px; font:600 12px inherit; color:var(--mut); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .tsort button.on { color:var(--accent); font-weight:800; }
   .tsort button:active { transform:scale(var(--press-m,.9)); }
-  .trend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(158px,1fr)); gap:12px 8px; }   /* 커버 몰입 ★채택(운영자 260711 "응 그렇게 하고" — 플레이그라운드 2안) = 폰 2열 대형 커버·PC 자동 확장 · 구 104px 3열 */
-  .trend-grid.wd { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }   /* AI 가로 카드 = 기존 유지(몰입 스킨 비대상) */
+  .trend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:12px 8px; }   /* 세로 카드 그리드 = 폰 3열·PC 자동 확장(원본 4열급) */
   .tcard { display:block; text-decoration:none; color:var(--fg); min-width:0; -webkit-tap-highlight-color:transparent; }
   .tcard:active { opacity:.7; }
-  .tcard-cov { position:relative; display:block; aspect-ratio:3/4; border-radius:var(--r-l); overflow:hidden; background:var(--line); }   /* 몰입 = 대형화 라운드 --r-m→--r-l(최외곽 16px 문법 · 플레이그라운드 확정값) */
+  .tcard-cov { position:relative; display:block; aspect-ratio:3/4; border-radius:var(--r-m); overflow:hidden; background:var(--line); }
   .tcard-cov img { width:100%; height:100%; object-fit:cover; display:block; }
-  /* ── 커버 몰입 오버레이(2안 · 세로 커버 한정 — 커버 없는 폴백 .noc·가로 .wd·X 카드 비대상) : 텍스트가 커버 하단 스크림 위 = 프레임 제로 · 스크림 = .slide-no 흑 플레이트 계승(§🎨 n 예외축) ── */
-  .tcard-cov:not(.wd):not(.noc)::after { content:''; position:absolute; inset:auto 0 0; height:52%; background:linear-gradient(transparent,rgba(0,0,0,.66)); pointer-events:none; }
-  .tcard.imm { position:relative; }
-  .tcard.imm .tcard-t { position:absolute; left:8px; right:8px; bottom:36px; margin:0; -webkit-line-clamp:1; text-shadow:0 1px 3px rgba(0,0,0,.7); z-index:1; }
-  .tcard.imm .tcard-acc { position:absolute; left:8px; right:96px; bottom:6px; margin:0; z-index:1; }
-  .tcard.imm .tcard-m { position:absolute; right:8px; bottom:6px; margin:0; z-index:1; justify-content:flex-end; flex-wrap:nowrap; max-width:90px; overflow:hidden; }
-  .tcard.imm .tcard-m i:nth-child(n+3) { display:none; }   /* 오버레이 지표 = 2종 캡(과밀 방지 · 전체 지표는 임베드 모달에서) */
   .tcard-rank { position:absolute; top:5px; left:5px; display:inline-flex; align-items:center; height:18px; padding:0 7px; border-radius:var(--r-pill);
     background:rgba(0,0,0,.55); color:var(--fg); font-size:10.5px; font-weight:800; font-variant-numeric:tabular-nums; }   /* 순위 필 = 이미지 위 라벨/배지 솔리드 관례(.slide-no 톤 · §🎨 n 예외축) — 원본 빨강 필은 긴급 예약색과 충돌이라 무채+top3 강조색 */
   .tcard-rank.top { color:var(--accent); }
@@ -8738,9 +8730,8 @@ function renderSnsTrends() {
   const sortbar = (key, opts, cur) => `<div class="tsort" data-tsort="${key}">` + opts.map(o => `<button type="button" data-f="${o[0]}"${o[0] === cur ? ' class="on"' : ''}>${o[1]}</button>`).join('') + '</div>';
   const met = pairs => pairs.filter(p => p[1] > 0).map(p => `<i>${p[0]}<span>${vfmt(p[1])}</span></i>`).join('');   // 0 지표 = 미표기(릴스 조회 비공개 등)
   const card = (t, i, wd) =>   // 세로/가로(wd) 커버 카드 — 제목·계정 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조(빨강 = 긴급 예약색이라 미사용)
-    // 커버 몰입(2안 ★채택 260711): 세로+커버 있음 = .imm 오버레이(제목 1줄·계정·지표 2종이 스크림 위) · 커버 없음(.noc)·가로(wd) = 종전 하단 텍스트 폴백
-    `<a class="tcard${(!wd && t.cover) ? ' imm' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
-    `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
+    `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
+    `<span class="tcard-cov${wd ? ' wd' : ''}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
     `<span class="tcard-t"></span><span class="tcard-m">${met([[EYE_SVG, t.views], [HEART_SVG, t.likes], [CMT_SVG, t.cmts]])}</span><span class="tcard-acc"></span></a>`;
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
     `<a class="xcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
