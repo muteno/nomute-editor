@@ -55,9 +55,10 @@ push_main() {
 commit_push() {
   git add cards
   git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만(shoot 등 미터 부재 시 무해)
-  # messages.json = claude 시스템성 실패/복구 알림(프로필 점등) — gitignore·미추적이라 shoot 모드선 부재.
-  # 한 줄에 묶으면 부재 시 git add 전체가 fatal(=커밋 통째 누락) → 있을 때만 따로 add(슛 경로 커밋 보장).
-  [ -f viewer/messages.json ] && git add viewer/messages.json
+  # claude 시스템성 실패/복구 알림(프로필 점등) = msg.py 가 messages/<id>.json(git 추적 = 빌드 입력)에 씀
+  # → 배포 빌드가 viewer/messages.json 합성. -A = set/clear/prune 삭제까지 반영·부재해도 무해(|| true).
+  # (구 `viewer/messages.json` 직접 add 는 gitignore 산출물이라 조용히 무시 = 알림 미반영 버그 260711 복구)
+  git add -A messages 2>/dev/null || true
   git diff --cached --quiet && return 0
   git commit -m "$1"
   push_main || { echo "::error::push 실패: $1"; return 1; }

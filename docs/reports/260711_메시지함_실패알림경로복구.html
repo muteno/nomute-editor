@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>메시지함 실패알림 경로 복구 — 260711</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --card:#16181a; --card2:#1c1f22;
+    --fg:#eef7f0; --mut:#8b9992; --line:rgba(255,255,255,.09);
+    --accent:#00EED2; --red:#e23b2a; --lemon:#FFE13D; --sky:#38C6FF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+    line-height:1.6;font-size:15px;padding:22px 16px 60px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+  h1 .em{color:var(--accent)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 24px}
+  h2{font-size:16px;font-weight:800;margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.01em}
+  h2 .ic{color:var(--accent)}
+  p{margin:0 0 12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px}
+  .tl{color:var(--mut);font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+  code{background:var(--card2);padding:1px 6px;border-radius:6px;font-size:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#c8f5ee}
+  .bad{color:var(--red)} .good{color:var(--accent)} .warn{color:var(--lemon)}
+  table{width:100%;border-collapse:collapse;margin:2px 0 6px;font-size:13.5px;display:block;overflow-x:auto}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  td.k{color:var(--mut);white-space:nowrap;font-weight:700}
+  .flow{background:var(--card2);border-radius:12px;padding:14px 16px;font-size:13px;margin:0 0 8px;overflow-x:auto}
+  .flow .step{display:flex;gap:9px;align-items:flex-start;padding:3px 0}
+  .flow .n{color:var(--accent);font-weight:800;flex:none;width:18px}
+  .flow .x{color:var(--red);font-weight:800}
+  .flow .arrow{color:var(--mut);padding-left:27px;font-size:12px}
+  ul{margin:4px 0 12px;padding-left:20px} li{margin:5px 0}
+  .pill{display:inline-block;font-size:11px;font-weight:800;padding:2px 9px;border-radius:20px;vertical-align:middle}
+  .pill.before{background:rgba(226,59,42,.16);color:#ff8b7c}
+  .pill.after{background:rgba(0,238,210,.14);color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+  .lead{font-size:15.5px}
+  .files li code{font-size:12.5px}
+  .note{font-size:12.5px;color:var(--mut);margin-top:6px}
+  .verdict{border-left:3px solid var(--accent);padding-left:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>메시지함 <span class="em">실패 알림</span>이 안 들어오던 버그 — 경로 복구</h1>
+  <p class="sub">260711 · 대상: <code>shared/msg.py</code> · <code>build-viewer.mjs</code> · 워크플로 3곳</p>
+
+  <div class="card">
+    <p class="lead" style="margin:0">한 줄 요약 — 파이프라인(요약·분석) 실패 알림이 <b>메시지함에 안 뜨던</b> 원인은,
+    알림을 쓰는 <code>msg.py</code>가 <b>gitignore된 빌드 산출물</b>(<code>viewer/messages.json</code>)에 직접 써서
+    <b><code>git add</code>가 조용히 무시</b>되고 있었기 때문. 알림을 <b>git이 추적하는 입력 폴더(<code>messages/</code>)</b>로
+    옮겨 배포까지 실제로 반영되게 고쳤어.</p>
+  </div>
+
+  <h2><span class="ic">▍</span> 무슨 증상이었나</h2>
+  <p>운영자가 넣은 수동 테스트 메시지(<code>messages/260704_0725_test.md</code>)는 메시지함에 <b>정상으로 떴지만</b>,
+  정작 자동 파이프라인이 만드는 <b>실패 알림</b>(<code>fail-&lt;base&gt;</code>, 인증·쿼터 실패 등)은 <b>영영 안 들어왔음</b>.
+  두 메시지가 <b>서로 다른 경로</b>로 <code>viewer/messages.json</code>에 도달하려 했는데, 한쪽만 살아있었던 것.</p>
+
+  <h2><span class="ic">▍</span> 근본 원인</h2>
+  <p>커밋 <code>6375a3a</code>가 메시지 시스템을 <b>재설계</b>하면서:</p>
+  <ul>
+    <li><code>viewer/messages.json</code>을 <b>.gitignore</b>에 넣음 (= 빌드 <b>산출물</b>로 규정)</li>
+    <li><code>build-viewer.mjs</code>에 <code>messages/*.md|json → viewer/messages.json</code> <b>생성 경로</b>를 신설</li>
+    <li>그런데 <code>shared/msg.py</code>(실패 알림)는 <b>안 옮김</b> — 여전히 <code>viewer/messages.json</code>에 <b>직접</b> 씀</li>
+  </ul>
+  <p>결과: 러너에서 <code>msg.py</code>가 알림 파일을 만들어도, 워크플로의
+  <code>git add viewer/messages.json</code>이 <b>gitignore 규칙에 걸려 무시</b>됨. 실측 재현:</p>
+  <div class="flow">
+    <div class="step"><span class="x">✗</span><span><code>git add viewer/messages.json</code> → <span class="bad">"The following paths are ignored by one of your .gitignore files ... Use -f"</span> → 스테이징 안 됨</span></div>
+  </div>
+  <p>게다가 설령 커밋됐어도, 다음 배포 빌드가 <code>messages/*.md</code>에서 <b>재생성하며 덮어써</b> 이중으로 유실될 구조였음.
+  <span class="note">(워크플로 주석엔 <code>2>/dev/null || true</code>로 에러를 삼켜서 "있을 때만 커밋"이라 적혀 있었지만, 실제로는 <b>있어도</b> 무시되고 있었다.)</span></p>
+
+  <h2><span class="ic">▍</span> 전 / 후 비교</h2>
+  <table>
+    <tr><th>항목</th><th><span class="pill before">이전(깨짐)</span></th><th><span class="pill after">이후(복구)</span></th></tr>
+    <tr><td class="k">msg.py 출력</td>
+      <td><code>viewer/messages.json</code> 직접 upsert <span class="bad">(gitignore·미추적)</span></td>
+      <td><code>messages/&lt;id&gt;.json</code> 개별 파일 <span class="good">(git 추적·빌드 입력)</span></td></tr>
+    <tr><td class="k">커밋 반영</td>
+      <td><span class="bad">git add 무시 → 커밋·배포 안 됨</span></td>
+      <td><span class="good">git add -A messages → 커밋 → 배포 빌드가 합성</span></td></tr>
+    <tr><td class="k">t·level 필드</td>
+      <td>빌드가 <span class="bad">버림</span> (24h 만료·경고 점등 깨짐)</td>
+      <td>빌드가 <span class="good">보존</span> (만료·노란 점등 정상)</td></tr>
+    <tr><td class="k">정렬</td>
+      <td>ts 문자열 비교 <span class="warn">(형식 섞이면 오정렬)</span></td>
+      <td>t/ts <span class="good">시각 정규화</span> (뷰어와 동일 규칙)</td></tr>
+    <tr><td class="k">실패 알림</td>
+      <td><span class="bad">메시지함에 안 들어옴</span></td>
+      <td><span class="good">들어옴</span> (수동 md와 같은 정식 경로로 통일)</td></tr>
+  </table>
+
+  <h2><span class="ic">▍</span> 데이터 흐름 (복구 후)</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><span>파이프라인 실패 → <code>msg.py set fail-&lt;base&gt; "..." warn</code></span></div>
+    <div class="step arrow">↓ <code>messages/fail-&lt;base&gt;.json</code> <span style="color:var(--mut)">{id, text, ts, t, level}</span></div>
+    <div class="step"><span class="n">2</span><span>워크플로 Commit 스텝 <code>git add -A messages</code> → 커밋 → main push</span></div>
+    <div class="step arrow">↓</div>
+    <div class="step"><span class="n">3</span><span>Cloudflare Pages 배포 빌드 <code>build-viewer.mjs</code> → <code>messages/*</code> 합성 → <code>viewer/messages.json</code> (t·level 보존)</span></div>
+    <div class="step arrow">↓</div>
+    <div class="step"><span class="n">4</span><span>뷰어 <code>loadMessages</code> → 메시지함(.msgpop) 표시 + 프로필 노란 점등 + 웹푸시 딥링크 <code>/?msg=fail-&lt;base&gt;</code></span></div>
+  </div>
+  <p class="note">24h 지난 알림은 <code>msg.py</code> prune이 <code>messages/</code> 파일을 삭제(→ <code>-A</code>로 커밋) + 뷰어 필터가 2차로 숨김. 수동 <code>md</code>(t 없음)는 건드리지 않음.</p>
+
+  <h2><span class="ic">▍</span> 바뀐 파일</h2>
+  <ul class="files">
+    <li><code>shared/msg.py</code> — <code>viewer/messages.json</code> 직접쓰기 → <code>messages/&lt;id&gt;.json</code> set/clear + 24h prune (파일명 sanitize)</li>
+    <li><code>build-viewer.mjs</code> — 합성 시 <code>t</code>(만료 ms)·<code>level</code>(warn) 필드 보존 + 정렬을 시각 정규화(<code>msgMs</code>)로</li>
+    <li><code>.github/workflows/news-analyze.yml</code> · <code>news-ask.yml</code> — <code>git add viewer/messages.json</code> → <code>git add -A messages</code></li>
+    <li><code>.github/scripts/cardmake.sh</code> — 동일 교정</li>
+  </ul>
+
+  <div class="grid2">
+    <div class="card"><p class="tl good">장점</p>
+      <ul style="margin:0">
+        <li>실패 알림이 실제로 배포·표시됨 (버그 해소)</li>
+        <li>입력=<code>messages/</code>(추적) / 산출물=<code>messages.json</code>(gitignore) <b>단일 원칙</b>으로 정합</li>
+        <li>수동 메시지와 자동 알림이 <b>한 경로</b>로 통일</li>
+        <li>t·level·정렬까지 뷰어 로직과 일관</li>
+      </ul>
+    </div>
+    <div class="card"><p class="tl warn">단점 / 트레이드오프</p>
+      <ul style="margin:0">
+        <li>알림 1건 = <code>messages/</code>에 파일 1개 커밋 (봇 커밋에 섞임 — append라 무해)</li>
+        <li>id별 파일명 sanitize에 의존 (경로 안전화)</li>
+        <li>배포 빌드 1사이클 뒤 반영 (즉시 아님 — 기존 파이프라인과 동일 특성)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card"><p class="tl">효율성 · 품질저하 리스크</p>
+    <p style="margin:0 0 6px"><b>효율성</b> — 추가 비용 거의 0. LLM 호출 없음, 파일 I/O만. prune이 매 <code>set</code>마다 <code>messages/</code> 스캔하지만 파일 수가 적어 무시할 수준.</p>
+    <p style="margin:0"><b>품질저하 리스크</b> — 낮음. 기존 수동 <code>md</code>·배열 <code>json</code> 처리 100% 보존(빌드 로컬 재현 확인), 뷰어 렌더·배지·딥링크 인터페이스 <b>무변경</b>. msg.py 호출 시그니처(<code>set/clear id text level</code>) 유지 → 호출처(analyze.sh·ask.sh) 무수정.</p>
+  </div>
+
+  <h2><span class="ic">▍</span> 검증</h2>
+  <div class="card verdict">
+    <p style="margin:0 0 6px"><b>로컬 빌드 재현</b> — 가짜 <code>fail</code> 알림 <code>set</code> → <code>build-viewer.mjs</code> → <code>viewer/messages.json</code> 2건 합성, <b>t·level 보존</b> 확인, <b>정렬</b>(최신 위) 확인. <code>clear</code>·24h <code>prune</code>(만료만 삭제, 수동 md 보존) 확인.</p>
+    <p style="margin:0 0 6px"><code>python3 shared/check_refs.py</code> — <b>전 게이트 통과(rc=0)</b>.</p>
+    <p style="margin:0"><b class="good">10인 적대 평의회(Explore·opus·READ-ONLY) — 만장일치 OK, 불가 0.</b> 10개 앵글(데이터흐름·git add경로·만료·파일명보안·정렬·하위호환·렌더·다운스트림·워크플로·총괄) 전원이 <b>근본 두 곳(쓰기경로 + 손실성 빌드) 다 수리</b>로 확인.</p>
+  </div>
+
+  <h2><span class="ic">▍</span> 평의회 지적 → 조치</h2>
+  <table>
+    <tr><th>지적</th><th>처리</th></tr>
+    <tr><td class="k">문서/주석 재파종 리스크</td>
+      <td><span class="good">반영</span> — <code>analyze.sh:29</code> 낡은 주석(옛 경로 복원 유혹)·<code>docs/생성-타임아웃-정본.md</code> 정본 드리프트 현행화</td></tr>
+    <tr><td class="k">path_for 비단사 충돌</td>
+      <td><span class="good">반영</span> — <code>msg.py</code>에 가드레일 주석(현재 id는 안전 슬러그라 무발생, 자유입력 확장 시 해시 고유화)</td></tr>
+    <tr><td class="k warn">실패 푸시 배포 레이스 (d)</td>
+      <td><span class="warn">보류(운영자 판단)</span> — CLAUDE.md §완료알림이 "실패 알림 = 배포 게이트 <b>비대상·현행 유지</b>"로 이미 결정. 배포 직후 탭 시 <code>livePoll</code> 60s 자가치유. 임의로 게이트/재시도 넣으면 §기틀 보호 저촉이라 작업이력에 후속으로 남김</td></tr>
+    <tr><td class="k">재알림 공백·warn 판정식(7b·7d)</td>
+      <td><span class="warn">기록만</span> — 기존 뷰어 로직(내 변경 무관)·해피패스 정상(파이프는 항상 <code>level=warn</code>)·base 유니크라 실질 미발현. 이 PR 범위 밖</td></tr>
+  </table>
+
+</div>
+</body>
+</html>

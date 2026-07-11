@@ -409,23 +409,33 @@ for (const f of msgFiles) {
       for (const m of (Array.isArray(parsed) ? parsed : [parsed])) {
         const text = (m && m.text != null) ? String(m.text).trim() : '';
         if (!text) continue;
-        messages.push({ id: m.id != null ? String(m.id) : f, ts: m.ts != null ? String(m.ts) : '', text });
+        const o = { id: m.id != null ? String(m.id) : f, ts: m.ts != null ? String(m.ts) : '', text };
+        if (m.t != null && !isNaN(Number(m.t))) o.t = Number(m.t);   // 만료 타임스탬프(ms) 보존 → 뷰어 24h 필터·상대시간(msg.py 알림). 없으면 영구(수동 md 계열).
+        if (m.level) o.level = String(m.level);                       // 'warn' = 프로필 노란 점등·경고 구분 보존
+        messages.push(o);
       }
     } else {
       const { meta, body } = parseFrontmatter(raw);
       const text = (meta.text || body || '').trim();
       if (!text) continue;
-      messages.push({ id: meta.id || f.replace(/\.md$/i, ''), ts: meta.ts || meta.date || '', text });
+      const o = { id: meta.id || f.replace(/\.md$/i, ''), ts: meta.ts || meta.date || '', text };
+      if (meta.t != null && !isNaN(Number(meta.t))) o.t = Number(meta.t);   // 만료 타임스탬프(ms) 보존(있을 때만)
+      if (meta.level) o.level = String(meta.level);                          // 'warn' 점등 보존
+      messages.push(o);
     }
   } catch (e) {
     console.warn(`skip message ${f}: ${e.message}`);
   }
 }
-// 최신순: ts 내림차순(있을 때) → 없으면 id(파일명 보통 시간접두) 내림차순
-messages.sort((a, b) => {
-  const t = (b.ts || '').localeCompare(a.ts || '');
-  return t !== 0 ? t : (b.id || '').localeCompare(a.id || '');
-});
+// 최신순: t(ms) 우선, 없으면 ts 문자열 KST 파싱 → ms(뷰어 msgAgo 와 동일 로직 = 형식 섞여도 일관).
+// 옛 방식(ts 문자열 localeCompare)은 "2026-07-04 07:25"(수동 md)와 "07/11 14:30"(msg.py)이 섞이면
+// 자릿수 비교로 오정렬 → 시각 정규화로 교정. 동시각이면 id(파일명 보통 시간접두) 내림차순.
+const msgMs = (m) => {
+  if (m.t != null) return Number(m.t);
+  if (m.ts) { const p = Date.parse(String(m.ts).replace(' ', 'T') + (/[+Z]$/.test(m.ts) ? '' : '+09:00')); if (!isNaN(p)) return p; }
+  return 0;
+};
+messages.sort((a, b) => { const d = msgMs(b) - msgMs(a); return d !== 0 ? d : (b.id || '').localeCompare(a.id || ''); });
 writeFileSync(MSG_OUT, JSON.stringify(messages, null, 2));
 console.log(`viewer/messages.json 생성 — ${messages.length}건`);
 
