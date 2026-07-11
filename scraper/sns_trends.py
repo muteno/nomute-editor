@@ -24,7 +24,10 @@
      게이트(§📰-e 카나리아: dispatch 실측 승격 전 cron OFF). 계정 목록 = viewer/sns_accounts.json
      (뷰어 계정 모달 → functions/api/snsacc.js 커밋 · 플랫폼당 최대 15).
      가) X = 트위터 임베드 신디케이션(syndication.twitter.com · 무인증 · 컨테이너 실측 260711
-        20트윗+좋아요·RT — 댓글수 필드는 이 응답에 없음 = 정직). 정렬 = 좋아요.
+        20트윗+좋아요·RT·댓글(reply_count)·조회수(views.count 일부) — 파싱 = 업로드 도구
+        (데일리 트렌드 뷰어 server.py) 검증 로직 계승{tweetResult.result 변형 폴백 ·
+        favorite_count None = 광고성 엔트리 컷 · 동시 요청 많으면 빈 응답이라 직렬 1.2s}.
+        정렬 = 좋아요(뷰어 단일 지표 · 댓글·RT·조회수는 데이터 동봉).
      나) 틱톡 = tikwm /api/user/posts(③과 동일 창구·콜 간 2s). 정렬 = 조회수.
      다) 인스타 릴스 = 웹 내부 API web_profile_info(무인증·계정당 최근 12게시물 중 영상만 ·
         차단 리스크 최고 소스 → 콜 간 3s 보수 운용). 정렬 = 조회수(숨김 0은 좋아요 보조).
@@ -217,12 +220,22 @@ def x_subs(accounts, limit=20):
                 continue
             entries = ((json.loads(m.group(1)).get("props") or {}).get("pageProps") or {}).get("timeline") or {}
             for e in entries.get("entries") or []:
-                t = (e.get("content") or {}).get("tweet") or {}
+                c = e.get("content") or {}
+                t = c.get("tweet")
+                if not isinstance(t, dict):   # 응답 변형(tweetResult.result 래핑) 폴백 — 업로드 도구 검증 로직 계승
+                    tr = c.get("tweetResult") or {}
+                    t = tr.get("result") if isinstance(tr, dict) else None
+                t = t if isinstance(t, dict) else {}
+                if t.get("favorite_count") is None:   # 광고·비트윗 엔트리 컷(동 계승)
+                    continue
                 tid, txt = t.get("id_str") or "", (t.get("full_text") or t.get("text") or "").strip()
                 if not tid or not txt:
                     continue
+                vw = t.get("views")
                 out.append({"account": acc, "text": txt[:280], "likes": t.get("favorite_count") or 0,
-                            "rts": t.get("retweet_count") or 0, "time": t.get("created_at") or "",
+                            "rts": t.get("retweet_count") or 0, "cmts": t.get("reply_count") or 0,
+                            "views": int((vw.get("count") or 0)) if isinstance(vw, dict) else 0,
+                            "time": t.get("created_at") or "",
                             "url": "https://x.com/%s/status/%s" % (acc, tid)})
         except Exception as e:  # noqa: BLE001
             print(f"::warning::x @{acc} 실패(스킵): {e}", file=sys.stderr)
@@ -276,6 +289,7 @@ def insta_subs(accounts, limit=20):
                     continue
                 ce = ((n.get("edge_media_to_caption") or {}).get("edges") or [])
                 cap = (((ce[0] if ce else {}).get("node") or {}).get("text") or "").strip()
+                cap = cap.split("\n")[0]   # 캡션 첫 줄만(해시태그 덩어리 컷 — 업로드 도구 검증 트림 계승)
                 out.append({"account": acc, "title": cap[:120], "views": n.get("video_view_count") or 0,
                             "likes": (n.get("edge_liked_by") or {}).get("count") or 0,
                             "cmts": (n.get("edge_media_to_comment") or {}).get("count") or 0,
