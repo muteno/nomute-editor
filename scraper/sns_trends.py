@@ -188,9 +188,10 @@ def tiktok(limit=15, calls=4):
                 a = v.get("author") or {}
                 handle = a.get("unique_id") or ""
                 seen[vid] = {"title": (v.get("title") or "").strip(), "account": handle,
-                             "views": v.get("play_count") or 0, "likes": v.get("digg_count") or 0,
+                             "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
+                             "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
                              "region": v.get("region") or "",
-                             "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}
+                             "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok 콜{i + 1}/{calls} 실패(누적분 유지): {e}", file=sys.stderr)
     return sorted(seen.values(), key=lambda t: t["views"], reverse=True)[:limit]
