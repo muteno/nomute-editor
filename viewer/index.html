@@ -742,9 +742,13 @@
   .tv-open:active { color:var(--accent); }
   .tv-body { position:relative; background:#000; }   /* 임베드 레터박스 = 플레이어 관례 순수 흑(§🎨 마퀴 스티커 흑백 선례) */
   .tv-body iframe { display:block; width:100%; height:100%; border:0; position:absolute; inset:0; }
-  .tv-body.pt { aspect-ratio:9/16; max-height:76dvh; margin:0 auto; width:100%; }   /* 세로(틱톡·릴스·쇼츠) */
+  .tv-body.pt { aspect-ratio:9/16; max-height:70dvh; margin:0 auto; width:100%; }   /* 세로(틱톡·릴스·쇼츠) — 70dvh = 푸터 액션 행 자리 확보 */
   .tv-body.wd { aspect-ratio:16/9; }   /* 가로(유튜브) */
-  .tv-body.tw { height:64dvh; background:var(--bg); }   /* X 임베드 = 높이 가변 카드 → 고정 프레임 내부 스크롤 */
+  .tv-body.tw { height:58dvh; background:var(--bg); }   /* X 임베드 = 높이 가변 카드 → 고정 프레임 내부 스크롤 */
+  .tv-foot { flex:none; display:flex; align-items:center; gap:8px; padding:10px 12px; border-top:1px solid var(--line2); }   /* 액션 행(운영자 260711 "바로 다운로드·영상 소스·요약 요청") — 버튼 = .ed-go 글래스 고스트 계승·텍스트 단독 */
+  .tv-status { flex:1; min-width:0; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* 다운로드 진행·실패 1줄(행위 피드백 = §🎨 e-가 예외) */
+  .tv-status.err { color:var(--warn); }
+  .tv-foot .ed-go { min-width:0; padding:7px 12px; font-size:12px; }
   /* 구독 계정 관리 모달(#snsaccdlg) — 셸 = base dialog 상속(무채색 --modal-glass·::backdrop blur7·컨테이너 backdrop-filter 없음) + .modal-head/.modal-tabs 정본 띠 */
   #snsaccdlg { width:min(430px,94vw); display:flex; flex-direction:column; overflow:hidden; }
   #snsaccdlg:not([open]) { display:none; }   /* display:flex가 dialog 기본 display:none 덮는 유령 블록 차단(#tooldlg 1280 가드 계승) */
@@ -2910,6 +2914,7 @@ try {
 <dialog id="trviewdlg" aria-label="트렌드 보기">
   <div class="modal-head"><b id="tvTitle"></b><a class="tv-open" id="tvOpen" href="#" target="_blank" rel="noopener">원문</a><button class="tool-x dlg-x" type="button" id="tvX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="tv-body pt"><iframe id="tvFrame" title="임베드 콘텐츠" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe></div>
+  <div class="tv-foot"><span class="tv-status" id="tvStatus" role="status" aria-live="polite"></span><button class="ed-go" id="tvDl" type="button">다운로드</button><button class="ed-go" id="tvSrc" type="button">편집기</button><button class="ed-go" id="tvAsk" type="button">요약 요청</button></div>
 </dialog>
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
@@ -8818,13 +8823,69 @@ function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-
 function openTrView(emb, a) {
   const t = a.querySelector('.tcard-t, .xcard-h b, .trend-q');
   $('#tvTitle').textContent = ((t && t.textContent) || '').slice(0, 60) || '보기';
-  $('#tvOpen').href = hrefOk(a.getAttribute('href') || '#');   // '원문' = 새탭 폴백(임베드 실패·풀화면 원할 때)
+  _tvUrl = a.getAttribute('href') || '';
+  $('#tvOpen').href = hrefOk(_tvUrl || '#');   // '원문' = 새탭 폴백(임베드 실패·풀화면 원할 때)
+  tvReset();
   trviewdlg.querySelector('.tv-body').className = 'tv-body ' + emb.k;
   $('#tvFrame').src = emb.src;
   openComposeDlg(trviewdlg);
 }
 $('#tvX').addEventListener('click', () => trviewdlg.close());
-trviewdlg.addEventListener('close', () => { $('#tvFrame').src = 'about:blank'; });   // 닫힘 = 재생 정지·리소스 해제(백그라운드 오디오 잔존 방지)
+trviewdlg.addEventListener('close', () => { $('#tvFrame').src = 'about:blank'; tvReset(); });   // 닫힘 = 재생 정지·리소스 해제 + 다운로드 폴 정지(러너 산출은 계속 — 재열람 시 새 발사 = 정직 한계)
+// ── 모달 액션 3종(운영자 260711 "바로 다운로드·영상 소스에 넣기·뉴스 요약 요청에 넣기") ──
+let _tvUrl = '', _tvDlUrl = '', _tvPoll = 0, _tvTick = 0;
+function tvReset() {   // 열 때·닫을 때 공통 — 진행 폴 정지·버튼 원복(콘텐츠별 독립)
+  if (_tvPoll) { clearInterval(_tvPoll); _tvPoll = 0; }
+  if (_tvTick) { clearInterval(_tvTick); _tvTick = 0; }
+  _tvDlUrl = '';
+  const st = $('#tvStatus'); st.textContent = ''; st.classList.remove('err');
+  const b = $('#tvDl'); b.disabled = false; b.textContent = '다운로드';
+}
+$('#tvDl').addEventListener('click', async () => {
+  const b = $('#tvDl'), st = $('#tvStatus');
+  if (_tvDlUrl) { window.open('api/dl?u=' + encodeURIComponent(_tvDlUrl) + '&n=' + encodeURIComponent('trend-' + Date.now() + '.mp4'), '_blank'); return; }   // 완료 후 = 저장(api/dl 프록시 = R2 교차출처 정본)
+  if (!_tvUrl) return;
+  b.disabled = true; st.classList.remove('err'); st.textContent = '다운로드 준비중';
+  let id = '';
+  try {
+    const r = await fetch('/api/conv', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: _tvUrl, opts: {} }) });   // opts 기본값 = 무변환(원본 비율·해상도·fps·음량) — 변환 파이프 = 다운로드 러너로 재사용(yt-dlp→R2 · API·워크플로는 보존 상태 = 도구 탭 도먼트와 무관)
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error || !j.id) throw new Error(j.error || ('HTTP ' + r.status));
+    id = j.id;
+  } catch (e2) { st.textContent = '실패 — ' + (e2 && e2.message ? e2.message : '네트워크'); st.classList.add('err'); b.disabled = false; return; }
+  const t0 = Date.now(), outP = 'conv_out/' + id + '/video.json', errP = 'conv_out/' + id + '/error.log';
+  _tvTick = setInterval(() => { st.textContent = '받는 중 (' + Math.round((Date.now() - t0) / 1000) + 's)'; }, 1000);
+  _tvPoll = setInterval(async () => {
+    if (Date.now() - t0 > 420e3) { tvReset(); st.textContent = '시간 초과 — 잠시 후 다시'; st.classList.add('err'); return; }   // 420s = conv 일반 예산(300s)+여유
+    try {
+      const er = await fetch(errP + '?t=' + Date.now());
+      if (er.ok) { const em = await er.text(); if (em && em.trim() && !/^\s*</.test(em)) { tvReset(); st.textContent = '실패 — ' + em.trim().slice(0, 80); st.classList.add('err'); return; } }   // 러너 정직 실패(영상 없는 트윗·플랫폼 차단 등)
+    } catch (e3) {}
+    try {
+      const r2 = await fetch(outP + '?t=' + Date.now());
+      if (!r2.ok) return;
+      const tx = await r2.text(); if (/^\s*</.test(tx)) return;   // SPA 폴백 가드
+      const d2 = JSON.parse(tx);
+      if (d2 && d2.url) { const keep = d2.url; tvReset(); _tvDlUrl = keep; st.textContent = '완료 — 저장을 눌러'; $('#tvDl').textContent = '저장'; }
+    } catch (e4) {}
+  }, 5000);
+});
+$('#tvAsk').addEventListener('click', () => {   // 뉴스 요약 요청 프리필(기존 openAsk 흐름 그대로 — 제목+원 URL)
+  const pre = (($('#tvTitle').textContent || '') + '\n' + _tvUrl).trim();
+  trviewdlg.close();
+  openAsk({ prefill: pre });
+});
+$('#tvSrc').addEventListener('click', () => { const u = _tvUrl; trviewdlg.close(); openVideoSrc(u); });   // 영상 스튜디오(편집 탭) 소스로
+function openVideoSrc(url) {   // 영상 스튜디오 열고 활성 프레임 #url에 주입 — 부모가 same-origin iframe DOM 직접 배선(thumbTabBridge 선례 · edit/ly 무접촉) · 로드 타이밍 무관 폴 주입
+  if (!url) return;
+  openTool(null, '영상 스튜디오', CAP_TABS, 'cap');
+  let n = 0;
+  const iv = setInterval(() => {
+    let ok = false;
+    try { const fr = activeToolFrame(); const d2 = fr && fr.contentDocument; const u2 = d2 && d2.getElementById('url'); if (u2) { u2.value = url; u2.dispatchEvent(new Event('input', { bubbles: true })); ok = true; } } catch (e5) {}
+    if (ok || ++n > 40) clearInterval(iv);   // ≤10s 폴(로드 지연 여유) — 실패 = 조용(운영자가 붙여넣기 폴백)
+  }, 250);
+}
 // ── 트렌드 구독 계정 관리(운영자 260711 승인: 우상단 '계정' 필 버튼 → 관리 모달) — 스테이징 편집 후 저장 = /api/snsacc 1커밋(잦은 커밋 방지) · 수집 반영 = sns-trends 런(30분 주기 · SNS_SUBS 게이트 ON = 카나리아 승격 후·§📰-e) ──
 const snsaccdlg = $('#snsaccdlg');
 const ACC_RX = /^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$/;   // snsacc.js 서버 검증과 동일 규격(선반영 피드백 — 서버가 최종 정본)
