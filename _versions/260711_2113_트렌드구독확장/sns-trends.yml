@@ -7,11 +7,6 @@ on:
   schedule:
     - cron: '17,47 * * * *'   # 30분 주기(정각 러너 혼잡 회피 오프셋 · scrape 15분 주기와 별개 레인)
   workflow_dispatch:
-    inputs:
-      subs:
-        description: '구독 축(X·틱톡·릴스·유튜브 계정) 수집 — 1=ON (§📰-e 카나리아 · 러너 실측 승격 전 cron은 OFF)'
-        default: '1'
-        required: false
 
 permissions:
   contents: write
@@ -32,8 +27,7 @@ jobs:
       - name: Collect (stdlib만 — deps 0)
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # 미설정 = 유튜브 skip(no-op 스캐폴드·gtrends만 수집)
-          SNS_SUBS: ${{ inputs.subs || '' }}   # 구독 축 게이트 — cron = ''(OFF) · dispatch 기본 '1'(카나리아). 승격 = 이 줄을 '1' 고정(§📰-e)
-        run: timeout 420 python3 scraper/sns_trends.py   # 420 = 구독 축 소요(계정 간격 합 ~90s) 여유분
+        run: timeout 300 python3 scraper/sns_trends.py
 
       - name: Commit
         run: |
