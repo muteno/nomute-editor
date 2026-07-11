@@ -445,7 +445,7 @@ def main():
         acc = _load_accounts()
         # wall-clock 예산(기본 240s·env SNS_SUBS_BUDGET) — 최악(전 콜 타임아웃 직렬 ≈570s+)이 workflow timeout을
         # 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
-        dl = time.monotonic() + int(os.environ.get("SNS_SUBS_BUDGET") or "240")
+        dl = time.monotonic() + (_i(os.environ.get("SNS_SUBS_BUDGET")) or 240)   # 비수치 env = 240 폴백(파스 크래시 가드 · 재검증1)
         subs_new = {"x": x_subs(acc["x"], deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], deadline=dl),
                     "insta": insta_subs(acc["insta"], deadline=dl), "youtube": yt_subs(acc["youtube"], deadline=dl)}
     subs_any = bool(subs_new) and any(subs_new.values())
@@ -461,17 +461,19 @@ def main():
     _annotate_rank(tk, (prev.get("tiktok") or {}).get("videos"), lambda t: t.get("url"))
     psubs = prev.get("subs") or {}
     subs = psubs
-    if subs_any:
+    if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
         def carry(k):
-            # 직전분 유지 시 순위 배지(delta/isNew) 스트립 — 이전 런의 델타를 현재처럼 표시 금지(평의회1 정직성)
+            # 직전분 유지 시 순위 배지(delta/isNew) 스트립 — 이전 런의 델타를 현재처럼 표시 금지(평의회1 정직성 · 전멸 경로 포함)
             return [{f: v for f, v in it.items() if f not in ("delta", "isNew")}
                     for it in (psubs.get(k) or []) if isinstance(it, dict)]
-        for k in ("x", "tiktok", "insta", "youtube"):
-            _annotate_rank(subs_new[k], psubs.get(k),
-                           (lambda v: v.get("id")) if k == "youtube" else (lambda v: v.get("url")))
+        if subs_any:
+            for k in ("x", "tiktok", "insta", "youtube"):
+                _annotate_rank(subs_new[k], psubs.get(k),
+                               (lambda v: v.get("id")) if k == "youtube" else (lambda v: v.get("url")))
         # 플랫폼별 fail-soft: 이번 런 실패(빈) = 직전분 유지(배지 스트립) · 단 계정 목록 자체가 비면 즉시 []
         # (or 폴백이 '수집 실패 보존'과 '구독 전체 해제'를 구분 못해 옛 데이터가 영영 잔존하던 구멍 — 평의회8 F1)
-        subs = {"updated": now, **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube")}}
+        subs = {"updated": now if subs_any else (psubs.get("updated") or now),   # 전멸 런 = 직전 수집 시각 유지(신선 오표기 방지)
+                **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube")}}
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
