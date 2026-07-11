@@ -1,0 +1,271 @@
+name: edit-make
+
+# 뷰어 편집기 폼(Pages Function /api/edit)이 발사 — 업로드 1번·1잡: 영상(URL/업로드) → [자막 ON이면 STT+claude 의역]
+#   → ly_burn.py 단일 컴포지터{자막 번인·무음 컷·배경음 제거 + 편집기 축: 트림·비율 크롭/여백·해상도·fps(60i 보간)·음량 통일}
+#   → R2 ly_out/<id>/subbed.mp4 → viewer/ly_out/<id>/video.json 커밋(폼이 폴링). 골격 = ly-make 미러(스텝 게이트만 편집기화).
+#   기존 ly-make·conv-make 무접촉(평의회6 점진 이관 · 운영자 2단계 확정 260710).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6)'
+        type: string
+      url:
+        description: '영상 URL(yt-dlp)'
+        type: string
+        default: ''
+      file:
+        description: '업로드 영상 파일 경로(uploads/<id>/src.*)'
+        type: string
+        default: ''
+      up_branch:
+        description: '업로드 일회용 브랜치(up-<id> · 빈값=main 커밋 경로) — ly/track/conv 동일'
+        type: string
+        default: ''
+      opts:
+        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm} + 편집기 축{vid_ar,vid_fit,vid_pos,vid_res,vid_fps,vid_t0,vid_t1,aud_norm}'
+        type: string
+        default: '{}'
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth · 자막 의역용)'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: edit-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70   # 최악 스택(STT 25 + claude 35 + Demucs 22 + 컴포즈 45)은 백스톱 합이라 정상 런은 수 분 — 잡 캡 = 최후 보루(ly-make 문법)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # ── 자막 ON 경로 전용 준비(claude 의역) — burn:false 잡은 Node·claude 설치 안 함(러너 분 절약)
+      - name: Setup Node (자막)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Install claude-code (자막)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore python deps (site-packages 캐시 · 자막)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 캐시 공유(동일 키 = 재설치 0)
+
+      - name: STT 환경 (자막 = whisper+ffmpeg+한글폰트)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
+        timeout-minutes: 15
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/ly/setup.sh
+          whisper: 'true'
+          apt: ffmpeg fonts-noto-cjk
+
+      - name: 변환 환경 (자막 없음 = ffmpeg+yt-dlp만)
+        if: ${{ !contains(inputs.opts, '"burn":true') }}
+        timeout-minutes: 10
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/conv/setup.sh
+          apt: ffmpeg
+
+      - name: 소스 확보 (URL)
+        if: ${{ inputs.url != '' }}
+        timeout-minutes: 10
+        env:
+          URL: ${{ inputs.url }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+        run: |
+          set -e
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          python3 -m yt_dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" \
+            || { echo "영상 다운로드 실패 — 사이트가 봇을 막았을 수 있어. 파일 업로드로 해줘." > /tmp/edit_err.txt; echo "::error::yt-dlp 실패: $URL"; exit 1; }
+          SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
+          [ -n "$SRC" ] || { echo "영상 다운로드 실패 — 파일 업로드로 해줘." > /tmp/edit_err.txt; echo "::error::다운 산출 없음"; exit 1; }
+          echo "EDIT_SRC=$SRC" >> "$GITHUB_ENV"
+
+      - name: 소스 확보 (업로드 파일)
+        if: ${{ inputs.file != '' }}
+        env:
+          FILE: ${{ inputs.file }}
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          set -e
+          if [ -n "$UP_BRANCH" ]; then
+            case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
+            git fetch origin "$UP_BRANCH" --depth=1 || { echo "업로드 파일이 유실됐어 — 다시 올려줘." > /tmp/edit_err.txt; echo "::error::업로드 브랜치 fetch 실패: $UP_BRANCH"; exit 1; }
+            EXT="${FILE##*.}"
+            git show "FETCH_HEAD:$FILE" > "/tmp/upsrc.$EXT" || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/edit_err.txt; echo "::error::브랜치서 파일 회수 실패: $FILE"; exit 1; }
+            FILE="/tmp/upsrc.$EXT"
+          fi
+          [ -f "$FILE" ] || { echo "업로드 파일이 없어 — 다시 올려줘." > /tmp/edit_err.txt; echo "::error::업로드 파일 없음: $FILE"; exit 1; }
+          echo "EDIT_SRC=$FILE" >> "$GITHUB_ENV"
+
+      - name: 길이 선게이트 (10분 캡 — 편집기는 영상이 곧 산출이라 정직 거절)
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          set -e
+          [ -n "${EDIT_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/edit_err.txt; echo "::error::EDIT_SRC 빈값"; exit 1; }
+          DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"
+          if [ -n "$DUR" ] && [ "$DUR" -gt 600 ] 2>/dev/null; then
+            echo "영상 $((DUR/60))분 — 편집기는 10분 이하만(릴스/쇼츠용)." > /tmp/edit_err.txt; echo "::error::길이 초과 ${DUR}s"; exit 1
+          fi
+
+      - name: STT (자막 — 오디오 추출 → Whisper)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
+        timeout-minutes: 25
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          set -e
+          ffmpeg -y -i "$EDIT_SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
+            || { echo "오디오 추출 실패 — 소리 없는 영상이면 자막 카드를 빼고 다시." > /tmp/edit_err.txt; echo "::error::ffmpeg 오디오 추출 실패"; exit 1; }
+          SEGJSON="viewer/ly_out/${IN_ID}/segments.json"
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
+            || { echo "Whisper STT 실패 — 오디오 인식 불가. 자막 카드를 빼거나 다른 영상으로." > /tmp/edit_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+          echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
+
+      - name: 자막 의역 (claude)
+        if: ${{ contains(inputs.opts, '"burn":true') }}
+        timeout-minutes: 35
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
+          SUBS="$(cat /tmp/transcript.txt)"; export SUBS
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/lymake.sh "$IN_ID"
+
+      - name: Demucs 캐시 (배경음 제거)
+        if: ${{ contains(inputs.opts, '"bgm":true') }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/torch
+            ~/.cache/pip
+          key: nomute-ly-demucs-${{ runner.os }}-htdemucs-torch2121-demucs401-v1   # ly-make와 캐시 공유(동일 키)
+      - name: Demucs 설치 (배경음 제거)
+        if: ${{ contains(inputs.opts, '"bgm":true') }}
+        timeout-minutes: 12
+        run: |
+          ok=0
+          for i in 1 2; do
+            if timeout 120 python3 -m pip install -q --upgrade setuptools wheel \
+               && timeout 300 python3 -m pip install -q torch==2.12.1 torchaudio==2.11.0 torchcodec==0.14.0 --index-url https://download.pytorch.org/whl/cpu \
+               && timeout 300 python3 -m pip install -q demucs==4.0.1 soundfile==0.14.0; then ok=1; break; fi
+            sleep 5
+          done
+          [ "$ok" = 1 ] && python3 -c "import demucs.separate; print('demucs OK')" \
+            || echo "::warning::Demucs 설치 실패 — 배경음 제거 스킵(원본 소리로 합성)"
+
+      - name: 컴포즈 (ly_burn 단일 컴포지터 → R2 → video.json)
+        timeout-minutes: 55   # 내부 백스톱 최악 스택{probe 60 + Demucs 분리 780 + 인코딩 enc_to 2250 + 음량 270 + R2} ≈ 56분에 정렬(P2평의회2) — 잡 70분 캡 전 우아한 실패 기록 창 확보
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          python3 .github/scripts/ly_burn.py "$IN_ID" "${EDIT_SRC:-}"
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          mkdir -p "viewer/ly_out/${IN_ID}"
+          if [ -s /tmp/edit_err.txt ]; then cp /tmp/edit_err.txt "viewer/ly_out/${IN_ID}/error.log";
+          elif [ -s /tmp/ly_err.txt ]; then cp /tmp/ly_err.txt "viewer/ly_out/${IN_ID}/error.log";
+          elif [ ! -s "viewer/ly_out/${IN_ID}/error.log" ]; then echo "편집 실패 — Actions 로그를 확인해줘." > "viewer/ly_out/${IN_ID}/error.log"; fi
+          echo "error.log: $(cat viewer/ly_out/${IN_ID}/error.log)"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git rm -r "uploads/${IN_ID}" 2>/dev/null || true
+          git add "viewer/ly_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true
+          git commit -m "edit: ${IN_ID} 편집 출력" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
+
+      # 편집 완료/실패 푸시 — 편집기 잡은 길다(60i 보간 수십 분) → 창 닫아도 완성·실패를 구독자(프로필 알림 ON)에게 통지.
+      #   thumb 제작완료 푸시 문법 계승(#done=<id> 딥링크 · 잡별 고유 tag = 알림 누적) + 실패도 통지(장시간 잡 = 부재 중 실패 표면화).
+      #   비치명(|| true 계열) · 운영자 260711 "웹푸시까지 해줘".
+      - name: 편집 완료 푸시 (pywebpush)
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
+          VJ="viewer/ly_out/${IN_ID}/video.json"; EL="viewer/ly_out/${IN_ID}/error.log"
+          OK=0; MSG=""
+          if [ -s "$VJ" ]; then
+            OK="$(python3 -c "import json;print(1 if json.load(open('$VJ')).get('url') else 0)" 2>/dev/null || echo 0)"
+            [ "$OK" = "1" ] || MSG="$(python3 -c "import json;d=json.load(open('$VJ'));print((d.get('error') or d.get('skip') or '')[:60])" 2>/dev/null || true)"
+          fi
+          if [ "$OK" != "1" ] && [ -z "$MSG" ] && [ -s "$EL" ]; then MSG="$(head -c 60 "$EL")"; fi
+          if [ "$OK" = "1" ]; then BODY="편집 완료 — 탭해서 확인"; else BODY="편집 실패 — ${MSG:-로그 확인}"; fi
+          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/edit.html#done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
+
+      - name: 업로드 브랜치 정리
+        if: ${{ always() && inputs.up_branch != '' }}
+        env:
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
+          git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"

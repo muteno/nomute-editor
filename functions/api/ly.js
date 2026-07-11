@@ -2,6 +2,7 @@
 // 흐름: 브라우저가 자막 텍스트 POST → ly-make.yml 발사 → 러너가 claude -p(/ly 지침 Read)
 //        → viewer/ly_out/<id>/subs.md 커밋 → 폼이 폴링해 렌더(조각별 복사 버튼).
 // env: GH_TOKEN = comp/make-cards와 동일 PAT. 생성은 구독 OAuth(무료). v1=텍스트/SRT만.
+import { rateGate } from './_rate.js';
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
@@ -34,9 +35,14 @@ export async function onRequestPost({ request, env }) {
     for (const k of ['lang', 'tone', 'style', 'pos', 'size', 'cutlv']) { const v = body.opts[k]; if (typeof v === 'string' && /^[a-z]{1,10}$/.test(v)) o[k] = v; }   // cutlv = 컷 세기(soft/std/hard · 운영자 260708) — 미지 값은 ly_burn cut_params가 std 폴백
     for (const k of ['pos', 'bg']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v)) o[k] = Math.max(0, Math.min(100, Math.round(v))); }   // 위치·배경 게이지 %(260707) — pos는 위 문자열 루프와 타입 상호배타(한 요청의 pos는 문자열이거나 숫자 둘 중 하나): 신 뷰어=숫자 여기서, 구 캐시 뷰어=문자열 위에서 통과(ly_burn 하위호환 매핑)
     for (const k of ['size', 'outline', 'pad']) { const v = body.opts[k]; if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 3) o[k] = Math.round(v * 1000) / 1000; }   // 연속 축(운영자 260707 선택값): size=높이비 소수(0.035) · outline·pad=계수 배율 — size 문자열(s/m/l)은 위 루프와 타입 상호배타 · 의미 범위 재클램프는 ly_burn(size_frac/coef)
-    for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707)
+    for (const k of ['filler', 'burn', 'karaoke', 'keyword', 'pop', 'cut', 'bgm', 'cutdel']) { if (typeof body.opts[k] === 'boolean') o[k] = body.opts[k]; }   // pop = 어절 점등 강조(운영자 260707) · cut = 무음 갭 자동 컷(발화 기준) · bgm = 배경음 제거(보컬 분리 · 둘 다 = 배경음부터 · 운영자 260707) · cutdel = 삭제 컷 번인 게이트(토글 양방향 · 검증④ 260711)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
+  // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
+  if (reburn && !/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
+  if (!reburn && !subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
+  const rl = await rateGate(GH, env.GH_TOKEN, 'ly-make.yml');   // 발사 레이트리밋(reburn·신규 공통 초입 = 업로드 전 · fail-open · 260711)
+  if (rl) return json({ error: rl.error }, 429);
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
     // 편집분 번인(운영자 260710) — 뷰어 상세 편집기 조각(body.segs · 편집 있을 때만 옴)을 검증해 dispatch `subs`(reburn 시 미사용 슬롯 재활용)에 JSON으로 실음 → 러너 '편집 자막 반영' 스텝이 subs.json 대체. 빈값 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 · 기능평의회10 정직화). body.restore = 원본 의역 스냅샷 복원(초기화→다시 입히기 · 기능평의회2).
@@ -51,7 +57,16 @@ export async function onRequestPost({ request, env }) {
         out.push({ s: Math.round(ss * 100) / 100, e: Math.round(ee * 100) / 100, ko });
       }
       if (!out.length) return json({ error: '편집 자막이 전부 무효 — 타이밍·텍스트 확인해줘' }, 400);   // 전량 탈락 = 침묵 원본행 금지(기능평의회9 · 30KB 에러와 대칭)
-      esubs = JSON.stringify({ v: 1, segs: out });
+      // 대본 삭제 컷(운영자 260711 텍스트 컷) — body.del = 삭제 조각 [s,e] 쌍(원본 시간축 · 토글 ON일 때만 옴) → subs.json 'del'로 동봉(러너 ly_burn이 그 구간을 영상에서 실제 컷)
+      const edel = [];
+      if (Array.isArray(body.del) && body.del.length) {
+        for (const dd of body.del.slice(0, 400)) {   // 초과 = 슬라이스(컷은 부가 축 — 하드 거절이 자막 반영까지 막던 모순 정리 · 검증④)
+          const a = Number(Array.isArray(dd) ? dd[0] : NaN), b = Number(Array.isArray(dd) ? dd[1] : NaN);
+          if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0 || b <= a) continue;   // 불량 쌍 = 조용 드롭(컷은 부가 축 — 자막 반영은 계속)
+          edel.push([Math.round(a * 100) / 100, Math.round(b * 100) / 100]);
+        }
+      }
+      esubs = JSON.stringify(edel.length ? { v: 1, segs: out, del: edel } : { v: 1, segs: out });
       if (new TextEncoder().encode(esubs).length > 50000) return json({ error: '편집 자막이 너무 커(50KB 초과) — 조각을 줄여줘' }, 400);   // 바이트 실측(chars≠bytes · 한글 3B/자 — 기능평의회8) · dispatch 총예산 ~64KB 보호
     } else if (body.restore === 1 || body.restore === true) {
       esubs = 'RESTORE';   // 복원 센티널 — 러너가 subs.orig.json(첫 편집 반영 때 보존)으로 되돌림 · JSON 페이로드와 충돌 불가 문자열

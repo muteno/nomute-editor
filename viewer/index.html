@@ -671,9 +671,17 @@
   .trend-sec:not([open]) .trend-cnt { display:inline; }   /* 접힘일 때만 개수 배지 노출(펼침 = 행이 곧 개수) */
   .trend-unit { color:var(--mut); font-weight:400; font-size:var(--fs-xs); }   /* 섹션 라벨 우측 단위 선언(열 헤더 원리 · 행 반복 0 · 평의회4 — "200+ 순위 오해" 지뢰 해소) */
   .trend-time { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; margin:-2px 0 8px; }   /* 수집 시각 = "살아있냐" 한 줄(평의회10) */
+  .trend-time.stale { color:var(--warn); }   /* 수집 65분+ 밀림 = 정직 신호(크론 지연/사망 · 평의회6 · warn 의미색 계승) */
   .trend-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }
+  .trend-row.th { align-items:center; }   /* 썸네일 행만 세로중앙(유튜브 계열 · 평의회5) */
   .trend-row:active { opacity:.7; }
+  .trend-th { width:44px; height:26px; flex:none; border-radius:var(--r-s); object-fit:cover; background:var(--line); }   /* 유튜브 리딩 썸네일(ytimg 핫링크 자유 · lazy·no-referrer·onerror-hide 관용구 · 평의회5) */
   .trend-rank { color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; width:15px; flex:none; text-align:right; }
+  .trend-chg { flex:none; font-size:10px; font-weight:var(--fw-x); display:inline-flex; align-items:center; gap:1px; font-variant-numeric:tabular-nums; }   /* 순위 변동 배지(직전 스냅샷 대비 · 평의회4) */
+  .trend-chg svg { width:8px; height:8px; display:block; }
+  .trend-chg.nw { color:var(--hist-accent); font-family:var(--font-status); letter-spacing:.06em; }   /* NEW 진입 = 라임(.scrap.nw 선례 톤) */
+  .trend-chg.up { color:var(--accent); }   /* 상승 = 강조색(뜨는 중) */
+  .trend-chg.dn { color:var(--mut); }   /* 하락 = 회색(식는 중) */
   .trend-q { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .trend-traffic { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:none; }
   .trend-tags { display:flex; flex-wrap:wrap; gap:4px 8px; padding-top:2px; }
@@ -8565,34 +8573,47 @@ async function loadTrends() {
 }
 // SNS 트렌드 = 완전 독립체(운영자 260711 "SNS는 뉴스 레거시에 영향 0 · 별개로 간다") — sns_trends.json만 읽어 표시.
 // 수집함(CANDS)·큐레이션 신호·임계·랭킹·판정 전부 무접촉(옛 수집함 매칭 칩 = 레거시 커플링이라 철거).
+// 순위 변동 삼각형 = SVG 픽토그램(§🔒3-1 유니코드 ▲▼ 금지 = 정중앙 편심) · fill currentColor(배지 색 상속)
+const TRI_UP_SVG = '<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M6 3l4 6H2z"/></svg>';
+const TRI_DN_SVG = '<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M6 9L2 3h8z"/></svg>';
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
-  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], tkv = ((d.tiktok || {}).videos) || [], tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711 이식) · hashtags = 구 카나리아 폴백
-  if (!gt.length && !yt.length && !tkv.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
+  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], ytn = d.youtube_news || [], tkv = ((d.tiktok || {}).videos) || [], tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · hashtags = 구 카나리아 폴백 · youtube_news = 뉴스 카테고리(평의회10 사장데이터 결판)
+  if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(n || '');
   const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
-  // 섹션 접기(운영자 260711) = 네이티브 <details> — 토글 = 브라우저 처리(재렌더 0 = 통재빌드 플래시 없음 · 평의회8)
-  // 기억 = localStorage nm_trend_fold JSON 단일키(nomute_tab 관용구 · 평의회2·7) · 접힘 상태는 빌드 시점 open 속성으로 복원
+  let stale = false;   // 수집 65분+ 밀림 = 크론 지연/사망(정직 신호 · 평의회6 — 크론 주기 30분×2 + 지터 여유)
+  if (d.updated) { const am = (Date.now() - new Date(d.updated).getTime()) / 60000; stale = am > 65; }
+  // 순위 변동 배지(직전 스냅샷 대비 · 평의회4) — isNew=신규진입 / delta>0=상승 / delta<0=하락 / 유지=미표시
+  const chg = x => x.isNew ? '<span class="trend-chg nw">NEW</span>'
+    : (x.delta > 0 ? `<span class="trend-chg up">${TRI_UP_SVG}${x.delta}</span>`
+      : (x.delta < 0 ? `<span class="trend-chg dn">${TRI_DN_SVG}${-x.delta}</span>` : ''));
+  const row = (i, url, right, x, thumb) =>   // 공용 행(썸네일 유무) — 순서 = [썸네일] 랭크 제목 변동배지 수치
+    `<a class="trend-row${thumb ? ' th' : ''}" href="${escUrl(url)}" target="_blank" rel="noopener">` +
+    (thumb ? `<img class="trend-th" loading="lazy" referrerpolicy="no-referrer" src="${escUrl(thumb)}" onerror="this.style.display='none'" alt="">` : '') +
+    `<span class="trend-rank">${i + 1}</span><span class="trend-q"></span>${chg(x)}<span class="trend-traffic">${right}</span></a>`;
+  // 섹션 접기(운영자 260711) = 네이티브 <details> · 기억 = localStorage nm_trend_fold(nomute_tab 관용구 · 빌드 시점 open 복원)
   let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
   const sec = (key, lbl, unit, n, body) =>
     `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
   let h = '<div class="soc-item soc-trend">';
-  if (tm) h += `<div class="trend-time">${esc(tm)} 수집</div>`;
-  if (gt.length) h += sec('gt', '구글 급상승 검색어', '· 검색량≈', Math.min(gt.length, 8), gt.slice(0, 8).map((g, i) => {   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10) + 단위 선언(평의회4)
-    const u = (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));
-    return `<a class="trend-row" href="${escUrl(u)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${esc(g.traffic || '')}</span></a>`;
-  }).join(''));
+  if (tm) h += `<div class="trend-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</div>`;
+  if (gt.length) h += sec('gt', '구글 급상승 검색어', '· 검색량≈', Math.min(gt.length, 8), gt.slice(0, 8).map((g, i) =>   // 라벨 정명(구글 출처·옛 네이버 실검 오해 제거 · 평의회2·10)
+    row(i, (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), esc(g.traffic || ''), g, '')).join(''));
   if (yt.length) h += sec('yt', '유튜브 인기', '· 조회수', Math.min(yt.length, 5), yt.slice(0, 5).map((v, i) =>
-    `<a class="trend-row" href="${escUrl(v.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${v.views ? vfmt(v.views) : ''}</span></a>`).join(''));
-  if (tkv.length) h += sec('tk', '틱톡 인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>   // tikwm 인기 영상(글로벌 혼합·조회수 정렬 — 260711 이식)
-    `<a class="trend-row" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span><span class="trend-traffic">${t.views ? vfmt(t.views) : ''}</span></a>`).join(''));
+    row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join(''));   // 유튜브 = ytimg 썸네일(핫링크 자유 · 평의회5)
+  if (ytn.length) h += sec('ytn', '유튜브 뉴스', '· 조회수', Math.min(ytn.length, 5), ytn.slice(0, 5).map((v, i) =>   // 뉴스 카테고리 = 뉴스 소재 훑기 온-미션(평의회10 결판)
+    row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join(''));
+  if (tkv.length) h += sec('tk', '틱톡 인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>   // tikwm 인기 영상(글로벌 혼합·조회수 정렬)
+    row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) h += sec('tk', '틱톡', '· 인기 해시태그', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
   h += '</div>';
   box.innerHTML = h;
-  const qs = box.querySelectorAll('.trend-q');   // 텍스트 = textContent 주입(XSS 안전 · soc-title 패턴 계승)
+  const qs = box.querySelectorAll('.trend-q');   // 텍스트 = textContent 주입(XSS 안전 · soc-title 패턴 계승) · 순서 = gt→yt→ytn→tkv
   let k = 0;
   gt.slice(0, 8).forEach(g => { if (qs[k]) qs[k++].textContent = g.query || ''; });
   yt.slice(0, 5).forEach(v => { if (qs[k]) qs[k++].textContent = v.title || ''; });
+  ytn.slice(0, 5).forEach(v => { if (qs[k]) qs[k++].textContent = v.title || ''; });
   if (tkv.length) tkv.slice(0, 8).forEach(t => { if (qs[k]) qs[k++].textContent = t.title || ('@' + (t.account || '')); });   // 제목 없으면 @계정 폴백
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
   box.querySelectorAll('.trend-sec').forEach(dt => dt.addEventListener('toggle', () => {   // 접힘 기억(toggle = 사용자 탭에만 발화 · 초기 파싱 open은 미발화)
@@ -8758,7 +8779,7 @@ $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.too
     loadToolFrame(b.dataset.src);   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
   } });
 // 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스 요약·이미지·영상 고정 · 세부는 탭) · 운영자 260626
-const CAP_TABS = [{ src: '/edit.html', label: '편집기', icon: '' }, { src: '/ly.html', label: '자막', icon: '' }, { src: '/k.html', label: '프롬프트', icon: '' }, { src: '/track.html', label: '트래킹', icon: '' }, { src: '/conv.html', label: '변환', icon: '' }];   // 편집기 = 최좌측(차기 주력 · 운영자 260710 골격 B 확정 — 업로드 1번·1잡: 자막+컷+배경음+트림+비율 여백/크롭+해상도+60fps+음량 · 자막/변환 병존 → 검증 후 점진 이관 = 평의회6 D안) · 라벨 축약 260711(자막 생성기→자막·영상 프롬프트→프롬프트 — 5탭 셀 63px에서 두 줄 깨짐 390px 실측 · 정식명은 §📐 용어집 불변) · 변환 = 트래킹 우측(운영자 지정 배치 260710 — 60fps 보간·비율 크롭·트림·해상도)   // 트래킹 = 통합 플로우(분석→핀셋/모자이크 선택 · 운영자 260707 "합쳐서 거기서 정하게") · 탭 글자 앞 아이콘 폐지(운영자 260705 "세부메뉴 글자 앞 픽토그램 삭제") — 글자만·활성 강조색(.tooltab.on)은 유지 · thumb 내부 탭(텍스트 단독·260704)과 일관 · §📐 헤더 텍스트·SVG 공존 금지 부합
+const CAP_TABS = [{ src: '/edit.html', label: '편집기', icon: '' }, { src: '/ly.html', label: '자막', icon: '' }, { src: '/k.html', label: '프롬프트', icon: '' }, { src: '/track.html', label: '트래킹', icon: '' }];   // 편집기 = 최좌측(차기 주력 · 운영자 260710 골격 B 확정 — 업로드 1번·1잡: 자막+컷+배경음+트림+비율 여백/크롭+해상도+60fps+음량) · **변환 탭 = 진입로 도먼트(운영자 260711 "미리보기 이식 후 제거" — 편집기가 완전 상위집합·크롭 드래그 미리보기 이식 완료)**: 코드·파이프(conv.html·api/conv·conv-make) 보존 = 완료 푸시 딥링크(/conv.html)·pend 재개 유효 · 복원 = `{ src: '/conv.html', label: '변환', icon: '' }` 재추가 한 줄 · 자막 탭 = 유지(다시 입히기·상세 어절 편집·삭제 컷·SRT 입력·조각 복사 5종 = 편집기 미탑재 — 이식 후 재검토) · 라벨 축약 260711(정식명은 §📐 용어집 불변)   // 트래킹 = 통합 플로우(분석→핀셋/모자이크 선택 · 운영자 260707 "합쳐서 거기서 정하게") · 탭 글자 앞 아이콘 폐지(운영자 260705 "세부메뉴 글자 앞 픽토그램 삭제") — 글자만·활성 강조색(.tooltab.on)은 유지 · thumb 내부 탭(텍스트 단독·260704)과 일관 · §📐 헤더 텍스트·SVG 공존 금지 부합
 // 이미지(thumb) 탭 = 영상처럼 부모 탭바로 승격(3단 셸 통일 · 260704). 영상은 탭마다 src 다르나(ly/k) thumb 5탭은 전부 /thumb.html 동일 → app 키로 식별(썸네일2·저작권3·카드뉴스5·생성6·리사이즈7, thumb.html .tab data-app 계승) · 클릭 = iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존). 아이콘 = thumb.html .tab svg 계승. (합성 탭 comp.html = 카드뉴스 탭과 중복이라 진입로 폐지 260710 — 전용 프레임 'comp' 로직도 제거)
 const THUMB_TABS = [{ src: '/thumb.html', app: '2', label: '썸네일', icon: '' }, { src: '/thumb.html', app: '3', label: '저작권', icon: '' }, { src: '/thumb.html', app: '5', label: '카드뉴스', icon: '' }, { src: '/thumb.html', app: '7', label: '리사이즈', icon: '' }];   // 탭 글자 앞 아이콘 폐지(운영자 260705) — 글자만·활성 강조색 유지 · thumb 내부 탭과 일관 · 리사이즈7 등재(운영자 260709). ⚠ 합성 탭(comp.html) = 카드뉴스와 중복이라 진입로 폐지(운영자 260710 · comp 도먼트) · 구 생성6(제미나이 자유 생성)도 운영자 260710 제거 — 부족분 채움은 리사이즈(3층 라우팅 2층 Gemini 아웃페인팅+픽셀락)가 담당·자유 생성 경로(genidlg free·thumb genJob·imggen free)는 도먼트 = 재추가 시 탭 행+리스너만 복원
 $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem[data-act]'); if (!b) return; e.preventDefault();
@@ -10500,6 +10521,8 @@ try { const _lt = localStorage.getItem('nomute_tab'); showTab(['feed', 'scrap', 
 
 // ── 픽셀 펫(게) — 운영자 260710(업로드 캐릭터 영상 → 아틀라스): 가끔 좌하단에 페이드인 → 60fps 배회 → 페이드아웃. CSS #petcrab 주석 = 설계 정본. ──
 (() => {
+  const PETCRAB_ON = false;   // 하단 픽셀 펫 = 보관(도먼트) — 운영자 요청 미출현 · 로직·자산·아틀라스 전부 보존 · 되살리기 = true 한 글자
+  if (!PETCRAB_ON) return;
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;   // 장식 = 접근성 우선 미출현
   const PET = { tw: 132, th: 120, frames: 82, cols: 10, rows: 9, fps: 30, scale: 0.75 };   // 아틀라스 지오메트리 단일출처(빌드 스크립트 산출값)
   const W = PET.tw * PET.scale, H = PET.th * PET.scale;
