@@ -176,26 +176,6 @@ def tiktok(limit=15, calls=4):
     return sorted(seen.values(), key=lambda t: t["views"], reverse=True)[:limit]
 
 
-def _annotate_rank(cur, prev, keyfn):
-    """직전 스냅샷(prev) 대비 순위 변동을 cur 각 항목에 주입(운영자 260711 평의회4 채택).
-    delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
-    prev 없음(첫 수집·소스 전환) = 주입 스킵(전부 NEW 노이즈 방지). 30분 1스텝 비교 = 한계 명시."""
-    if not prev:
-        return cur
-    pmap = {keyfn(x): i for i, x in enumerate(prev) if keyfn(x)}
-    for i, x in enumerate(cur):
-        k = keyfn(x)
-        if not k:
-            continue
-        if k in pmap:
-            dl = pmap[k] - i
-            if dl:
-                x["delta"] = dl   # 유지(0)는 미표기 = 배지 없음(뷰어 깔끔)
-        else:
-            x["isNew"] = True
-    return cur
-
-
 def main():
     prev = {}
     if os.path.exists(OUT):
@@ -215,11 +195,6 @@ def main():
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
-    # 순위 변동 주입(직전 스냅샷 대비 · 표시 전용) — 키: 유튜브=id · gtrends=query · 틱톡=url(고유)
-    _annotate_rank(yt_all, prev.get("youtube"), lambda v: v.get("id"))
-    _annotate_rank(yt_news, prev.get("youtube_news"), lambda v: v.get("id"))
-    _annotate_rank(gt, prev.get("gtrends"), lambda g: g.get("query"))
-    _annotate_rank(tk, (prev.get("tiktok") or {}).get("videos"), lambda t: t.get("url"))
     now = datetime.now(KST).isoformat(timespec="seconds")
     data = {
         "updated": now,
