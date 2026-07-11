@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>썸네일 저작권 통합 — 동작 플레이그라운드</title>
+<style>
+  /* ── 값 = viewer/thumb.html :root + tokens.css 실측 사본(형식 전용·값 정본은 viewer) ── */
+  :root{
+    --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210;
+    --danger:#e23b2a; --danger-rgb:226,59,42; --amber:#FFE13D;
+    --fmt-post:#1fd6ee;   /* .ovfmt.post = 시안(포스트) — 실존색 계승 */
+    --fmt-reels:#e7ff2e;  /* .ovfmt.reels = 레몬(릴스) — 실존색 계승 */
+    --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+    --fs-label:13px; --fs-sm:12px; --fs-xs:11px;
+    --fw-b:700; --fw-x:800;
+    --ease:cubic-bezier(.2,.7,.3,1); --press-m:.9;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; }
+  body{ background:#070908; color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif;
+    padding:22px 16px 60px; }
+  .hd{ max-width:1080px; margin:0 auto 20px; }
+  .hd h1{ font-size:19px; margin:0 0 8px; font-weight:800; letter-spacing:-.01em; }
+  .hd h1 b{ color:var(--accent); }
+  .hd p{ font-size:13px; color:var(--mut); margin:4px 0; line-height:1.7; }
+  .hd .flow{ font-size:12px; color:var(--mut); margin-top:10px; padding:9px 12px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px; line-height:1.9; }
+  .hd .flow b{ color:var(--fg); font-weight:700; }
+  .hd .flow .a{ color:var(--fmt-reels); font-weight:700; }
+  .hd .flow .b{ color:var(--fmt-post); font-weight:700; }
+
+  .wrap{ max-width:1080px; margin:0 auto; display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+  .stagewrap{ flex:0 0 auto; }
+
+  /* ── 폰 프레임 (9:18 실사용 화면비) ── */
+  .frame{ position:relative; width:322px; height:644px; border-radius:32px;
+    background:var(--bg); border:1px solid #23262a; overflow:hidden;
+    box-shadow:0 30px 70px rgba(0,0,0,.6), inset 0 0 0 5px #0e1011; }
+  .frame::before{ content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+    filter:brightness(1.15) saturate(1.05);
+    background:
+      radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.10), transparent 55%),
+      radial-gradient(90% 60% at 80% 110%, rgba(var(--accent-rgb),.05), transparent 60%),
+      linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.42)),
+      repeating-linear-gradient(135deg, #0d0f0e 0 3px, #0b0d0c 3px 6px), var(--bg); }
+  .screen{ position:absolute; inset:0; z-index:1; overflow-y:auto; overflow-x:hidden;
+    padding:16px 15px 40px; -webkit-overflow-scrolling:touch; }
+  .screen::-webkit-scrollbar{ width:0; }
+
+  /* 모달 헤더 흉내 */
+  .m-head{ display:flex; align-items:center; justify-content:space-between; margin:2px 2px 14px; }
+  .m-head .t{ font-size:15px; font-weight:800; }
+  .m-head .x{ width:28px; height:28px; display:grid; place-items:center; color:var(--mut);
+    border:1px solid var(--line); border-radius:8px; }
+  /* 3탭 */
+  .tabs{ display:flex; justify-content:center; gap:30px; margin-bottom:22px; }
+  .tab{ background:none; border:none; padding:4px 2px; font-weight:600; font-size:13px; color:var(--mut); }
+  .tab.on{ color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
+
+  /* ── 폼 요소 (thumb 실측 계승) ── */
+  .csec{ display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x);
+    color:var(--fg); margin:16px 0 9px; }
+  .csec::before{ content:'•'; color:var(--accent); font-weight:var(--fw-b); }
+  .ovsep{ color:var(--mut); font-weight:400; }
+  .ovfmt{ cursor:pointer; font-weight:800; padding:3px 5px; margin-top:-3px; margin-bottom:-3px;
+    -webkit-user-select:none; user-select:none; transition:color .15s, transform .1s; }
+  .ovfmt.post{ color:var(--fmt-post); } .ovfmt.reels{ color:var(--fmt-reels); }
+  .ovfmt:active{ transform:scale(var(--press-m)); }
+
+  .cf{ width:100%; padding:11px 12px; background:rgba(14,15,17,.55); border:1px solid var(--line);
+    border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:90%; margin-bottom:8px; }
+  .cf::placeholder{ color:var(--mut); }
+  .cf-title{ color:var(--accent); }
+  .covrow{ display:flex; gap:8px; }
+  .covta{ flex:2; min-height:80px; padding:11px 12px; background:rgba(14,15,17,.55);
+    border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:90%; resize:none; }
+  .covta::placeholder{ color:var(--mut); }
+  .covimg{ flex:1; min-height:80px; border:1px dashed var(--line); border-radius:var(--r-s);
+    display:grid; place-items:center; color:var(--mut); }
+  .covimg svg{ width:24px; height:24px; }
+
+  /* 옵션줄 (gospec) */
+  .optHead{ margin-top:18px; }
+  .gospec{ margin:8px 2px 0; font-size:12.5px; color:var(--mut); text-align:left; line-height:1.9; }
+  .gospec .gs-lbl{ color:var(--mut); font-weight:700; }
+  .gospec .gs-v{ color:var(--mut); }
+  .gospec .gs-v.on{ color:var(--accent); font-weight:700; }
+  .gospec .gs-tog{ cursor:pointer; padding:0 1px; }
+  .gsInline{ }   /* 인라인 저작권 슬롯 */
+
+  /* ── 신설: 저작권 3단 토글 ── */
+  .cp3wrap{ display:inline-flex; align-items:center; gap:5px; }
+  .cp3wrap.blockrow{ display:flex; margin:13px 2px 0; font-size:12.5px; color:var(--mut); line-height:1.8; }
+  .cp3wrap .cpLabel{ color:var(--mut); font-weight:700; }
+  .cp3{ cursor:pointer; font-weight:800; font-size:12px; letter-spacing:.03em; padding:3px 6px;
+    color:var(--mut); -webkit-user-select:none; user-select:none; transition:color .18s, transform .1s;
+    border-radius:6px; }
+  .cp3:active{ transform:scale(var(--press-m)); }
+  .cp3.st-reels{ color:var(--fmt-reels); }
+  .cp3.st-post{ color:var(--fmt-post); }
+  .cp3.mono.st-reels, .cp3.mono.st-post{ color:var(--accent); }
+  .cp3.pulse{ animation:cpPulse .3s var(--ease); }
+  @keyframes cpPulse{ 0%{ transform:scale(1); } 45%{ transform:scale(1.14); } 100%{ transform:scale(1); } }
+
+  /* ── 문구 편집 UI (.cphline 실측 계승) ── */
+  .cphline{ position:relative; display:flex; flex-wrap:wrap; align-items:baseline;
+    font-size:14px; color:var(--fg); line-height:2;
+    --t-gap:11px; --t-uline:.45;
+    opacity:0; max-height:0; margin-top:0; overflow:hidden;
+    transition:opacity .2s var(--ease), max-height .28s var(--ease), margin-top .28s var(--ease), transform .28s var(--ease);
+    transform:translateY(-6px); }
+  .cphline.show{ opacity:1; max-height:120px; margin-top:var(--t-gap); transform:none; }
+  .cphline[data-anim=fade]{ transition:opacity .2s var(--ease), max-height .01s, margin-top .01s; transform:none; }
+  .cphline[data-anim=none]{ transition:none; transform:none; }
+  .cphline .cph-st{ color:var(--fg); white-space:pre; }
+  .cph-br{ flex-basis:100%; height:0; }
+  .cph-ed{ color:var(--accent); font-weight:600; cursor:text; padding:0 3px; min-width:1.1em; outline:none;
+    border-bottom:1px dashed rgba(var(--accent-rgb),var(--t-uline));
+    transition:color .15s, border-color .15s, background .15s; }
+  .cph-ed:hover{ border-bottom-color:var(--accent); }
+  .cph-ed:focus{ border-bottom-style:solid; border-bottom-color:var(--accent);
+    background:rgba(var(--accent-rgb),.08); border-radius:4px; }
+  .cph-yr{ font-variant-numeric:tabular-nums; min-width:1.6em; }
+  .cph-plat{ cursor:pointer; color:var(--accent); font-weight:600; padding:1px 4px;
+    border-bottom:1px dashed rgba(var(--accent-rgb),var(--t-uline)); -webkit-user-select:none; user-select:none;
+    transition:color .15s, border-color .15s; }
+  .cph-plat:hover{ border-bottom-color:var(--accent); }
+  .cph-ed.cph-def:not(:focus), .cph-plat.cph-def{ color:var(--mut); border-bottom-color:var(--line); }
+  /* 플랫폼 팝업 (.platpop 촤르륵 계승) */
+  .platpop{ position:absolute; top:100%; left:0; margin-top:6px; z-index:9; display:flex; gap:6px; padding:7px;
+    background:linear-gradient(150deg, rgba(42,44,48,.7), rgba(12,13,15,.82));
+    backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2);
+    border:1px solid rgba(255,255,255,.12); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.4); }
+  .platpop.none{ display:none; }
+  .platpop:not(.none){ transform-origin:top left; animation:pp .2s var(--ease); }
+  @keyframes pp{ from{ opacity:0; transform:translateY(-5px) scale(.9); } to{ opacity:1; transform:none; } }
+  .platpop:not(.none) .ppbtn{ animation:ppb .26s both cubic-bezier(.2,.8,.3,1); }
+  .platpop:not(.none) .ppbtn:nth-child(1){ animation-delay:.02s; }
+  .platpop:not(.none) .ppbtn:nth-child(2){ animation-delay:.05s; }
+  .platpop:not(.none) .ppbtn:nth-child(3){ animation-delay:.08s; }
+  .platpop:not(.none) .ppbtn:nth-child(4){ animation-delay:.11s; }
+  .platpop:not(.none) .ppbtn:nth-child(5){ animation-delay:.14s; }
+  .platpop:not(.none) .ppbtn:nth-child(6){ animation-delay:.17s; }
+  @keyframes ppb{ from{ opacity:0; transform:translateX(-9px) scale(.78); } to{ opacity:1; transform:none; } }
+  .ppbtn{ min-width:34px; height:32px; display:grid; place-items:center; padding:0 8px;
+    background:linear-gradient(165deg, rgba(44,46,50,.42), rgba(16,17,19,.52));
+    border:1px solid rgba(255,255,255,.09); border-radius:var(--r-s); color:var(--mut);
+    cursor:pointer; font:inherit; font-weight:600; font-size:11px; }
+  .ppbtn.on{ border-color:rgba(var(--accent-rgb),.5); color:var(--accent);
+    background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); }
+  .ppbtn:active{ transform:scale(var(--press-m)); }
+
+  /* 안내문 행(guide=on일 때) */
+  .guideRow{ display:none; align-items:center; gap:6px; margin:13px 2px 0; font-size:12.5px;
+    color:var(--fg); font-weight:800; }
+  .guideRow::before{ content:'•'; color:var(--accent); font-weight:700; }
+  .guideRow .onoff{ color:var(--mut); font-weight:800; font-size:12px; padding:3px 5px; cursor:pointer; }
+
+  /* 제작 버튼 */
+  .go{ width:100%; margin-top:20px; padding:15px; border:none; border-radius:var(--r-l);
+    background:rgba(255,255,255,.05); color:var(--accent); font-weight:800; font-size:14px; cursor:pointer;
+    border:1px solid rgba(var(--accent-rgb),.22); }
+
+  .stagecap{ width:322px; text-align:center; font-size:11.5px; color:var(--mut); margin-top:11px; line-height:1.7; }
+  .stagecap b{ color:var(--fmt-reels); }
+
+  /* ── 콘솔 ── */
+  .console{ flex:1 1 380px; min-width:320px; display:flex; flex-direction:column; gap:14px; }
+  .pg-sec{ background:rgba(255,255,255,.025); border:1px solid var(--line); border-radius:14px; padding:14px 15px; }
+  .pg-sec > h3{ margin:0 0 11px; font-size:12px; font-weight:800; color:var(--mut); letter-spacing:.04em;
+    text-transform:uppercase; }
+  .pg-view{ display:flex; flex-wrap:wrap; gap:7px; }
+  .pg-view button{ padding:7px 12px; background:rgba(255,255,255,.04); border:1px solid var(--line);
+    border-radius:999px; color:var(--fg); font:inherit; font-size:12.5px; cursor:pointer; font-weight:700;
+    transition:border-color .15s, color .15s, background .15s; }
+  .pg-view button.on{ border-color:rgba(var(--accent-rgb),.55); color:var(--accent);
+    background:rgba(var(--accent-rgb),.09); }
+
+  .pg-presets{ display:flex; flex-wrap:wrap; gap:8px; }
+  .pg-presets button{ padding:9px 13px; background:rgba(255,255,255,.04); border:1px solid var(--line);
+    border-radius:10px; color:var(--fg); font:inherit; font-size:12.5px; cursor:pointer; font-weight:700;
+    display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-width:96px; }
+  .pg-presets button.on{ border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+  .pg-presets button .sub{ font-size:10.5px; color:var(--mut); font-weight:500; }
+  .pg-presets button.on .sub{ color:var(--accent); }
+  .pg-presets button .star{ color:var(--amber); }
+
+  .grp-lbl{ font-size:11px; color:var(--mut); font-weight:800; letter-spacing:.05em; margin:14px 0 7px;
+    text-transform:uppercase; }
+  .grp-lbl:first-child{ margin-top:0; }
+  .seg-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; }
+  .seg-row .nm{ font-size:12.5px; color:var(--fg); flex:0 0 auto; }
+  .seg-row .nm .tok{ display:block; font-size:10px; color:var(--mut); font-weight:400; margin-top:1px; }
+  .seg{ display:inline-flex; gap:4px; background:rgba(0,0,0,.28); padding:3px; border-radius:9px; flex-wrap:wrap; }
+  .seg button{ padding:6px 9px; background:transparent; border:none; border-radius:6px; color:var(--mut);
+    font:inherit; font-size:11.5px; cursor:pointer; font-weight:700; white-space:nowrap; }
+  .seg button.on{ background:rgba(var(--accent-rgb),.14); color:var(--accent); }
+  .seg button .st{ color:var(--amber); }
+
+  .sld-row{ margin:12px 0; }
+  .sld-row .top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+  .sld-row .nm{ font-size:12.5px; color:var(--fg); }
+  .sld-row .nm .tok{ font-size:10px; color:var(--mut); font-weight:400; margin-left:6px; }
+  .sld-row .val{ font-size:12.5px; color:var(--accent); font-weight:800; font-variant-numeric:tabular-nums; }
+  .sld-row .val .cur{ color:var(--mut); font-weight:400; font-size:11px; margin-left:5px; }
+  input[type=range]{ width:100%; height:22px; -webkit-appearance:none; appearance:none; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:999px;
+    background:linear-gradient(90deg, var(--accent) var(--p,40%), rgba(255,255,255,.12) var(--p,40%)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--accent); margin-top:-5.5px; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  input[type=range]::-moz-range-track{ height:4px; border-radius:999px; background:rgba(255,255,255,.12); }
+  input[type=range]::-moz-range-thumb{ width:15px; height:15px; border:none; border-radius:50%; background:var(--accent); }
+
+  .pg-out pre{ margin:0; font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    color:var(--fg); white-space:pre-wrap; word-break:break-word; }
+  .pg-out pre .g{ color:var(--accent); } .pg-out pre .m{ color:var(--mut); }
+  .pg-out pre .w{ color:var(--amber); }
+  .copy{ margin-top:12px; width:100%; padding:12px; background:rgba(var(--accent-rgb),.1);
+    border:1px solid rgba(var(--accent-rgb),.4); border-radius:10px; color:var(--accent); font:inherit;
+    font-weight:800; font-size:13px; cursor:pointer; }
+  .copy.done{ background:rgba(var(--accent-rgb),.2); }
+  .note{ font-size:11.5px; color:var(--mut); line-height:1.85; }
+  .note b{ color:var(--fg); font-weight:700; }
+  .note ul{ margin:6px 0 0; padding-left:16px; } .note li{ margin:3px 0; }
+
+  @media (max-width:760px){ .frame{ width:300px; height:600px; } .stagewrap{ margin:0 auto; }
+    .stagecap{ width:300px; } .wrap{ justify-content:center; } }
+</style>
+</head>
+<body>
+  <div class="hd">
+    <h1><b>썸네일 저작권 통합</b> — 동작 플레이그라운드</h1>
+    <p>저작권 도구(<b>/3</b>)의 문구 제작 기능을 <b>썸네일 옵션</b>으로 이관. 포맷 토글 + ON/OFF를 <b>한 개의 3단 토글</b>로 합침.</p>
+    <div class="flow">
+      <b>저작권 3단 순환</b> &nbsp;·&nbsp; <span class="m" style="color:var(--mut)">OFF</span> → <span class="a">릴스</span> → <span class="b">포스트</span> → <span class="m" style="color:var(--mut)">OFF</span><br>
+      <b>릴스/포스트</b>일 때만 &nbsp;<span style="color:var(--fg)">ⓒ 2026. (대상)((매체)). all rights reserved.</span>&nbsp; 편집 UI 등장 → 제작 시 저작권 이미지 동반 발사
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- ── 미리보기 ── -->
+    <div class="stagewrap">
+      <div class="frame">
+        <div class="screen">
+          <div class="m-head"><span class="t">이미지</span><span class="x">✕</span></div>
+          <div class="tabs">
+            <button class="tab on">썸네일</button>
+            <button class="tab">저작권</button>
+            <button class="tab">카드뉴스</button>
+          </div>
+
+          <div class="csec">헤더</div>
+          <input class="cf cf-sub" placeholder="부제" disabled>
+          <input class="cf cf-title" placeholder="제목" disabled>
+
+          <div class="csec">오버레이 <span class="ovsep">|</span> <span class="ovfmt post">포스트</span></div>
+          <div class="covrow">
+            <textarea class="covta" placeholder="강조는 별표로, 최대 3줄 가능" disabled></textarea>
+            <div class="covimg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></div>
+          </div>
+
+          <div class="csec optHead">옵션</div>
+          <div class="gospec" id="gospec">
+            <span class="gs-lbl">배경</span>: <span class="gs-v gs-tog">OFF</span> &nbsp;&nbsp;
+            <span class="gs-lbl">OPA</span> <span class="gs-v on gs-tog">60</span> <span class="gs-v gs-tog">+30</span>
+            <span style="color:var(--mut)"> | </span><span class="gs-v">합성본</span> &nbsp;&nbsp;
+            <span class="gs-lbl">축약</span>: <span class="gs-v on gs-tog">ON</span><span class="gsInline" id="gsInline"></span>
+          </div>
+
+          <!-- 저작권 별도 줄 슬롯 -->
+          <div id="blockSlot"></div>
+          <!-- 문구 UI (under 위치) 슬롯 -->
+          <div id="underSlot"></div>
+
+          <!-- 저작권 3단 토글(JS가 슬롯 이동) -->
+          <span class="cp3wrap blockrow" id="cp3wrap">
+            <span class="cpLabel" id="cpLabel">저작권</span>: <span class="cp3 st-off" id="cp3" role="button" tabindex="0" title="탭 = OFF→릴스→포스트">OFF</span>
+          </span>
+
+          <!-- 문구 편집 UI (저작권 탭 .cphline 그대로 이관) -->
+          <div class="cphline" id="cphline" data-anim="slide">
+            <span class="cph-st">ⓒ&nbsp;</span><span class="cph-ed cph-yr cph-def" id="cphYear" contenteditable="true" inputmode="numeric" spellcheck="false">2026</span><span class="cph-st">.&nbsp;</span><span class="cph-ed cph-nm cph-def" id="cphName" contenteditable="true" spellcheck="false">Anonymous</span><span class="cph-st">(</span><span class="cph-plat cph-def" id="cphPlat" role="button" tabindex="0">instagram</span><span class="cph-st">).</span><span class="cph-br"></span><span class="cph-st">all rights reserved.</span>
+            <div class="platpop none" id="platpop">
+              <button class="ppbtn" data-plat="youtube">YT</button>
+              <button class="ppbtn on" data-plat="instagram">IG</button>
+              <button class="ppbtn" data-plat="threads">Th</button>
+              <button class="ppbtn" data-plat="X">X</button>
+              <button class="ppbtn" data-plat="facebook">Fb</button>
+              <button class="ppbtn" data-plat="custom"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+            </div>
+          </div>
+
+          <!-- 안내문 행 (guide=on) -->
+          <div class="guideRow" id="guideRow">안내문 <span class="onoff">OFF</span></div>
+
+          <!-- 문구 UI (bottom 위치) 슬롯 -->
+          <div id="bottomSlot"></div>
+
+          <button class="go" id="goBtn">이미지 제작</button>
+        </div>
+      </div>
+      <div class="stagecap">미리보기 안의 <b>저작권 토글·연도·이름·플랫폼</b>을 직접 눌러봐 — 실물처럼 작동</div>
+    </div>
+
+    <!-- ── 콘솔 ── -->
+    <aside class="console">
+      <div class="pg-sec">
+        <h3>미리보기 상태</h3>
+        <div class="pg-view" id="viewToggle">
+          <button data-cp="off">저작권 OFF</button>
+          <button data-cp="reels" class="on">릴스 저작권</button>
+          <button data-cp="post">포스트 저작권</button>
+        </div>
+      </div>
+
+      <div class="pg-sec">
+        <h3>프리셋</h3>
+        <div class="pg-presets" id="presets"></div>
+      </div>
+
+      <div class="pg-sec">
+        <h3>결정 축</h3>
+        <div id="controls"></div>
+      </div>
+
+      <div class="pg-sec pg-out">
+        <h3>선택값</h3>
+        <pre id="out"></pre>
+        <button class="copy" id="copy">선택값 복사</button>
+      </div>
+
+      <div class="pg-sec note">
+        <h3 style="margin-bottom:8px">재현 한계 각주</h3>
+        <ul>
+          <li><b>동작 시안</b> — UI·상호작용만 재현. 실제 발사(job dispatch)는 미배선(승인 후 배선).</li>
+          <li><b>배경</b> — <code>feed_bg.png</code>(외부 자산·CSP)를 못 받아 대각 노이즈+글로우로 근사. 실물은 피드 실크 블러.</li>
+          <li><b>폰트</b> — 시스템 폴백(실물 = Pretendard/Noto). 자간·줄높이 미세차 있을 수 있음.</li>
+          <li><b>문구 UI</b>·<b>플랫폼 팝업</b> = 저작권 탭 <code>.cphline</code>/<code>.platpop</code> 실측 계승(색·모션·촤르륵 스태거 동일).</li>
+          <li>미리보기 상단 입력칸(부제·제목·자막)은 <code>disabled</code> 목업 — 결정 대상 아님.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const app = $('.screen');
+
+  // ── 결정 축 정의 ──
+  const D = { place:'block', labelText:'저작권', labelColor:'fmt', phrasePos:'under',
+              phraseAnim:'slide', guide:'off', gap:11, uline:45 };
+  const SEGS = [
+    { k:'place', nm:'저작권 항목 배치', grp:'배치', tok:'.gospec 형제 .csec / .gospec 안 인라인',
+      opts:[['block','별도 줄','★'],['inline','옵션줄 인라인','']] },
+    { k:'labelText', nm:'라벨 텍스트', grp:'배치', tok:'',
+      opts:[['저작권','저작권',''],['저작권 문구','저작권 문구',''],['ⓒ','ⓒ 저작권','']] },
+    { k:'labelColor', nm:'3단 라벨 색', grp:'토글', tok:'.ovfmt 계승(릴스 레몬·포스트 시안)',
+      opts:[['fmt','포맷색 계승','★'],['mono','단색(accent)','']] },
+    { k:'phrasePos', nm:'문구 UI 위치', grp:'문구', tok:'',
+      opts:[['under','토글 바로 아래','★'],['bottom','제작버튼 위','']] },
+    { k:'phraseAnim', nm:'문구 등장 모션', grp:'문구', tok:'--ease .28s',
+      opts:[['slide','슬라이드+페이드','★'],['fade','페이드','',],['none','즉시','']] },
+    { k:'guide', nm:'안내문 함께 이관', grp:'범위', tok:'/3 안내문(경고·AI·자유문구)',
+      opts:[['off','저작권만','★'],['on','안내문도 함께','']] },
+  ];
+  const SLIDERS = [
+    { k:'gap', nm:'문구 UI 상단 간격', grp:'미세', d:'.cphline margin-top', min:4, max:20, step:1, unit:'px', base:11 },
+    { k:'uline', nm:'편집부 밑줄 알파', grp:'미세', d:'--accent-rgb 알파변주(자유)', min:20, max:90, step:5, unit:'%', base:45 },
+  ];
+  const PRESETS = [
+    { id:'p0', nm:'현행', sub:'저작권 없음', st:{...D, place:'none'} },
+    { id:'p1', nm:'인라인', sub:'옵션줄 끝·단색', st:{...D, place:'inline', labelColor:'mono', phraseAnim:'fade'} },
+    { id:'p2', nm:'별도 줄', sub:'포맷색·슬라이드', star:true, st:{...D} },
+    { id:'p3', nm:'풀', sub:'안내문 포함·버튼위', st:{...D, phrasePos:'bottom', guide:'on'} },
+  ];
+
+  let state = {...D};
+  let cpState = 'reels';   // 미리보기 저작권 상태(결정 축 아님)
+  const CP_LABEL = { off:'OFF', reels:'릴스', post:'포스트' };
+
+  // ── DOM refs ──
+  const cp3wrap = $('#cp3wrap'), cp3 = $('#cp3'), cpLabel = $('#cpLabel');
+  const cphline = $('#cphline'), guideRow = $('#guideRow');
+  const gsInline = $('#gsInline'), blockSlot = $('#blockSlot');
+  const underSlot = $('#underSlot'), bottomSlot = $('#bottomSlot');
+
+  // ── 저작권 3단 렌더 ──
+  function renderCp(){
+    cp3.textContent = CP_LABEL[cpState];
+    cp3.className = 'cp3 st-' + cpState + (state.labelColor === 'mono' ? ' mono' : '');
+    // 문구 UI show 여부
+    cphline.dataset.anim = state.phraseAnim;
+    if (state.place === 'none') { cphline.classList.remove('show'); return; }
+    cphline.classList.toggle('show', cpState !== 'off');
+  }
+
+  // ── 레이아웃 반영 ──
+  function apply(){
+    // 저작권 항목 배치
+    if (state.place === 'none') {
+      cp3wrap.style.display = 'none';
+    } else if (state.place === 'inline') {
+      cp3wrap.style.display = 'inline-flex';
+      cp3wrap.classList.remove('blockrow');
+      gsInline.innerHTML = ' <span style="color:var(--mut)"> | </span>';
+      gsInline.appendChild(cp3wrap);
+    } else { // block
+      cp3wrap.style.display = 'flex';
+      cp3wrap.classList.add('blockrow');
+      gsInline.innerHTML = '';
+      blockSlot.appendChild(cp3wrap);
+    }
+    // 문구 UI 위치
+    (state.phrasePos === 'bottom' ? bottomSlot : underSlot).appendChild(cphline);
+    // 라벨 텍스트
+    cpLabel.textContent = state.labelText === 'ⓒ' ? 'ⓒ 저작권' : state.labelText;
+    // 안내문
+    guideRow.style.display = state.guide === 'on' ? 'flex' : 'none';
+    // 미세
+    cphline.style.setProperty('--t-gap', state.gap + 'px');
+    cphline.style.setProperty('--t-uline', (state.uline/100).toFixed(2));
+    renderCp();
+    syncControls();
+    buildOut();
+  }
+
+  // ── 콘솔: 프리셋 ──
+  const presetsEl = $('#presets');
+  function renderPresets(){
+    presetsEl.innerHTML = '';
+    PRESETS.forEach(p => {
+      const b = document.createElement('button');
+      b.dataset.id = p.id;
+      b.innerHTML = '<span>' + p.nm + (p.star ? ' <span class="star">★</span>' : '') + '</span><span class="sub">' + p.sub + '</span>';
+      b.onclick = () => { state = {...p.st}; if (state.place === 'none') { cpState = 'off'; } else if (cpState === 'off') { cpState = 'reels'; } apply(); syncView(); };
+      presetsEl.appendChild(b);
+    });
+  }
+  function matchPreset(){
+    return (PRESETS.find(p => Object.keys(D).every(k => p.st[k] === state[k])) || {}).id || null;
+  }
+
+  // ── 콘솔: 컨트롤 ──
+  const ctrl = $('#controls');
+  function renderControls(){
+    ctrl.innerHTML = '';
+    let curGrp = '';
+    SEGS.forEach(s => {
+      if (s.grp !== curGrp) { curGrp = s.grp; const g = document.createElement('div'); g.className = 'grp-lbl'; g.textContent = s.grp; ctrl.appendChild(g); }
+      const row = document.createElement('div'); row.className = 'seg-row';
+      const nm = document.createElement('div'); nm.className = 'nm';
+      nm.innerHTML = s.nm + (s.tok ? '<span class="tok">' + s.tok + '</span>' : '');
+      const seg = document.createElement('div'); seg.className = 'seg'; seg.dataset.k = s.k;
+      s.opts.forEach(o => {
+        const btn = document.createElement('button'); btn.dataset.v = o[0];
+        btn.innerHTML = o[1] + (o[2] ? ' <span class="st">' + o[2] + '</span>' : '');
+        btn.onclick = () => { state[s.k] = o[0]; if (s.k === 'place' && o[0] !== 'none' && cpState === 'off') cpState = 'reels'; apply(); syncView(); };
+        seg.appendChild(btn);
+      });
+      row.appendChild(nm); row.appendChild(seg); ctrl.appendChild(row);
+    });
+    // 슬라이더
+    const g = document.createElement('div'); g.className = 'grp-lbl'; g.textContent = '미세'; ctrl.appendChild(g);
+    SLIDERS.forEach(s => {
+      const row = document.createElement('div'); row.className = 'sld-row'; row.dataset.k = s.k;
+      row.innerHTML = '<div class="top"><span class="nm">' + s.nm + '<span class="tok">' + s.d + '</span></span>' +
+        '<span class="val"><span class="num"></span>' + s.unit + '<span class="cur">현행 ' + s.base + s.unit + '</span></span></div>' +
+        '<input type="range" min="' + s.min + '" max="' + s.max + '" step="' + s.step + '">';
+      const inp = row.querySelector('input');
+      inp.oninput = () => { state[s.k] = +inp.value; apply(); syncView(); };
+      ctrl.appendChild(row);
+    });
+  }
+  function syncControls(){
+    ctrl.querySelectorAll('.seg').forEach(seg => {
+      seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === String(state[seg.dataset.k])));
+    });
+    SLIDERS.forEach(s => {
+      const row = ctrl.querySelector('.sld-row[data-k=' + s.k + ']'); if (!row) return;
+      const inp = row.querySelector('input'), num = row.querySelector('.num');
+      inp.value = state[s.k]; num.textContent = state[s.k];
+      inp.style.setProperty('--p', ((state[s.k]-s.min)/(s.max-s.min)*100).toFixed(1) + '%');
+    });
+  }
+
+  // ── 보기 토글 & 프리셋 하이라이트 ──
+  const viewEl = $('#viewToggle');
+  viewEl.querySelectorAll('button').forEach(b => b.onclick = () => {
+    cpState = b.dataset.cp;
+    if (cpState !== 'off' && state.place === 'none') { state.place = 'block'; }
+    apply(); syncView();
+  });
+  function syncView(){
+    viewEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.cp === cpState));
+    const mid = matchPreset();
+    presetsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.id === mid));
+  }
+
+  // ── 미리보기 실물 배선 ──
+  cp3.onclick = () => {
+    if (state.place === 'none') return;
+    cpState = cpState === 'off' ? 'reels' : cpState === 'reels' ? 'post' : 'off';
+    cp3.classList.add('pulse'); setTimeout(() => cp3.classList.remove('pulse'), 320);
+    apply(); syncView();
+  };
+  cp3.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cp3.onclick(); } };
+
+  // 연도·이름 편집 (cph-def 토글)
+  const yr = $('#cphYear'), nm = $('#cphName'), plat = $('#cphPlat');
+  function updDef(){
+    yr.classList.toggle('cph-def', (yr.textContent || '').trim() === '2026' || !(yr.textContent||'').trim());
+    nm.classList.toggle('cph-def', (nm.textContent || '').trim() === 'Anonymous' || !(nm.textContent||'').trim());
+    plat.classList.toggle('cph-def', plat.dataset.plat === 'instagram' || plat.textContent === 'instagram');
+  }
+  yr.addEventListener('input', updDef); nm.addEventListener('input', updDef);
+  nm.addEventListener('focus', () => { if ((nm.textContent||'').trim() === 'Anonymous') nm.textContent = ''; });
+  nm.addEventListener('blur', () => { if (!(nm.textContent||'').trim()) nm.textContent = 'Anonymous'; updDef(); });
+
+  // 플랫폼 팝업 — .cphline이 등장 애니용 overflow:hidden이라, 팝업 열 때만 overflow:visible로 풀어 잘림 방지
+  const pop = $('#platpop');
+  function setPop(open){ pop.classList.toggle('none', !open); cphline.style.overflow = open ? 'visible' : ''; }
+  plat.onclick = e => { e.stopPropagation(); setPop(pop.classList.contains('none')); };
+  pop.querySelectorAll('.ppbtn').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const p = b.dataset.plat;
+    pop.querySelectorAll('.ppbtn').forEach(x => x.classList.remove('on')); b.classList.add('on');
+    if (p !== 'custom') { plat.textContent = p; plat.dataset.plat = p; }
+    else { plat.textContent = '직접'; plat.dataset.plat = 'custom'; }
+    setPop(false); updDef();
+  });
+  document.addEventListener('click', e => { if (!pop.contains(e.target) && e.target !== plat) setPop(false); });
+
+  $('#goBtn').onclick = () => {};
+
+  // ── 선택값 출력 ──
+  function buildOut(){
+    const placeTxt = { none:'항목 없음(현행)', block:'별도 줄(옵션 아래)', inline:'옵션줄 인라인 끝' }[state.place];
+    const colorTxt = state.labelColor === 'fmt' ? '포맷색 계승(릴스 레몬 #e7ff2e·포스트 시안 #1fd6ee)' : '단색(accent #00EED2)';
+    const posTxt = state.phrasePos === 'under' ? '저작권 토글 바로 아래' : '제작버튼 위';
+    const animTxt = { slide:'슬라이드+페이드(.28s --ease)', fade:'페이드(.2s)', none:'즉시' }[state.phraseAnim];
+    const guideTxt = state.guide === 'on' ? '안내문(경고·AI·자유문구)도 함께 이관' : '저작권만 이관';
+    const gapNote = state.gap === 11 ? '<span class="m">= 현행 계승</span>' : '<span class="w">→ 조정</span>';
+    const ulNote = state.uline === 45 ? '<span class="m">= 현행 계승</span>' : '<span class="m">알파변주(자유)</span>';
+    const lab = state.labelText === 'ⓒ' ? 'ⓒ 저작권' : state.labelText;
+
+    let o = '<span class="g">[썸네일 저작권 통합 — 선택]</span>\n';
+    o += '배치     : ' + placeTxt + '  <span class="m">[현행: 항목 없음]</span>\n';
+    o += '라벨     : "' + lab + '"\n';
+    o += '3단 색   : ' + colorTxt + '\n';
+    if (state.place === 'none') {
+      o += '\n<span class="m">→ 현행(저작권 항목 없음)을 기준으로 위 결정과 비교</span>\n';
+    } else {
+      o += '문구위치 : ' + posTxt + '\n';
+      o += '등장모션 : ' + animTxt + '\n';
+      o += '범위     : ' + guideTxt + '\n';
+      o += '상단간격 : ' + state.gap + 'px  ' + gapNote + '\n';
+      o += '밑줄알파 : .' + state.uline + '  ' + ulNote + '\n';
+      o += '\n<span class="g">── 배선 스펙 ──</span>\n';
+      o += '<span class="m">· 3단 토글 = /3 #cpFmtTog(포맷) + #copyTog(ON/OFF)를 1개로 합침</span>\n';
+      o += '<span class="m">   OFF→릴스→포스트→OFF (기본 OFF)</span>\n';
+      o += '<span class="m">· 문구 UI = /3 .cphline 그대로 이관</span>\n';
+      o += '<span class="m">   (#cphYear·#cphName·#cphPlat·#platpop)</span>\n';
+      o += '<span class="m">· 발사 = 썸네일 job + 저작권 job(app3·포맷=3단값) 동시 dispatch</span>\n';
+      o += '<span class="m">· 흰=고정/백엔드 불변 — nomute_copyright.py·/api/thumb 무변경</span>\n';
+      o += '\n<span class="w">⚠ 새 요소 \'저작권 항목\' 옵션 등장 = §디자인 j) 배치 승인</span>\n';
+      o += '<span class="w">  → 이 시안 회신값이 그 배치 승인</span>';
+    }
+    $('#out').innerHTML = o;
+  }
+
+  // 복사
+  $('#copy').onclick = () => {
+    const txt = $('#out').textContent;
+    const done = () => { const b = $('#copy'); b.textContent = '복사됨 ✓'; b.classList.add('done'); setTimeout(() => { b.textContent = '선택값 복사'; b.classList.remove('done'); }, 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, done);
+    else { const r = document.createRange(); r.selectNode($('#out')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand('copy'); } catch(_){} s.removeAllRanges(); done(); }
+  };
+
+  // ── 초기화 ──
+  renderPresets(); renderControls();
+  state = {...PRESETS[2].st};   // 추천(별도 줄)로 오픈
+  updDef(); apply(); syncView();
+})();
+</script>
+</body>
+</html>
