@@ -439,24 +439,12 @@ messages.sort((a, b) => { const d = msgMs(b) - msgMs(a); return d !== 0 ? d : (b
 writeFileSync(MSG_OUT, JSON.stringify(messages, null, 2));
 console.log(`viewer/messages.json 생성 — ${messages.length}건`);
 
-// ── 자막·편집 작업 내역 인덱스(viewer/ly_out/index.json) — 자막 생성기 '작업 내역' 게시판(운영자 260707) + 편집기 제작 라이브러리(운영자 260712 "이미지 생성기처럼") 공용 데이터.
-// 스캔 = ly_out/<id>/{subs.md·video.json·clips.json·error.log} → {id, t(subs.md 첫 # 타이틀 · 없으면 video.json edit_opts 레시피 요약 = 편집 잡 라벨), ts(완료 = video.json.ts · 없으면 id의 KST yymmddHHMMSS 접두 = 시작 시각), st(done 번인완성/subs 자막만/clip 클립 후보/fail 실패/gen 진행중), d(영상 길이 초 · 있을 때만)}.
-// 갱신 = push마다 Pages 빌드(ly-make·edit-make 산출 커밋이 곧 push) — 별도 워크플로 0. 소비 = ly.html·edit.html 게시판(추가 필드는 구 소비자에 무해).
+// ── 자막 작업 내역 인덱스(viewer/ly_out/index.json) — 자막 생성기 '작업 내역' 게시판 데이터(운영자 260707).
+// 스캔 = ly_out/<id>/{subs.md·video.json·error.log} → {id, t(subs.md 첫 # 타이틀), ts(완료 = video.json.ts · 없으면 id의 KST yymmddHHMMSS 접두 = 시작 시각), st(done 번인완성/subs 자막만/fail 실패/gen 진행중)}.
+// 갱신 = push마다 Pages 빌드(ly-make 산출 커밋이 곧 push) — 별도 워크플로 0.
 const LY_ROOT = 'viewer/ly_out';
 if (existsSync(LY_ROOT)) {
   const idTs = id => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); return m ? `20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00` : ''; };   // id = KST 접두(§📐)
-  const EO_FIT = { pad: '여백', blur: '블러 채움', crop: '크롭' };   // 라벨 어휘 = edit.html 비율 카드 문구 계승
-  const eoLabel = eo => {   // 편집 잡 라벨 폴백 — 운영자가 고른 레시피 요약(자막 없는 편집 산출이 '(제목 없음)'으로 뜨던 것 정정 · ly_burn EDIT_KEYS 스냅샷 소비)
-    if (!eo || typeof eo !== 'object') return '';
-    const p = [];
-    if (eo.vid_ar) p.push(String(eo.vid_ar));
-    if (EO_FIT[eo.vid_fit]) p.push(EO_FIT[eo.vid_fit]);
-    if (eo.vid_res) p.push(eo.vid_res === 'src' ? '원본 화질' : (/^\d+$/.test(String(eo.vid_res)) ? eo.vid_res + 'p' : String(eo.vid_res)));
-    if (eo.vid_fps) p.push(eo.vid_fps === '60i' ? '60fps 보간' : (/^\d+$/.test(String(eo.vid_fps)) ? eo.vid_fps + 'fps' : String(eo.vid_fps)));
-    if (eo.vid_t0 != null || eo.vid_t1 != null) p.push('구간 컷');
-    if (eo.aud_norm) p.push('음량 통일');
-    return p.join(' · ');
-  };
   const lyJobs = [];
   for (const id of readdirSync(LY_ROOT)) {
     const dir = join(LY_ROOT, id);
@@ -466,16 +454,11 @@ if (existsSync(LY_ROOT)) {
     if (existsSync(subsP)) { const m = readFileSync(subsP, 'utf8').match(/^#\s+(.+)$/m); if (m) title = m[1].trim(); }
     let v = null;
     if (existsSync(join(dir, 'video.json'))) { try { v = JSON.parse(readFileSync(join(dir, 'video.json'), 'utf8')); } catch { v = null; } }
-    let clip = false;   // 클리퍼 스캔 산출(후보 목록만·영상 산출 없음) — 판독은 필요할 때만(done/subs가 아닐 때)
-    if (!(v && v.url) && !existsSync(subsP) && existsSync(join(dir, 'clips.json'))) { try { clip = Array.isArray(JSON.parse(readFileSync(join(dir, 'clips.json'), 'utf8')).clips); } catch { clip = false; } }
     let st = 'gen';                                                        // 산출물 조합 → 상태(실패 표기 = 운영자 요구)
     if (v && v.url) st = 'done';                                           // 번인 완성
     else if (existsSync(subsP)) st = 'subs';                               // 자막만(합성 스킵/실패·구작업 포함 — 자막은 살아있음)
-    else if (clip) st = 'clip';                                            // 클립 후보 대기(구 'gen' 영구 오표기 정정 · 260712)
     else if ((v && (v.error || v.skip)) || existsSync(join(dir, 'error.log'))) st = 'fail';   // 산출물 없이 에러 기록만
-    if (!title && v) title = eoLabel(v.edit_opts);
-    const d = v && Number.isFinite(v.dur) ? Math.round(v.dur) : 0;
-    lyJobs.push({ id, t: title, ts: (v && v.ts) || idTs(id), st, ...(d ? { d } : {}) });
+    lyJobs.push({ id, t: title, ts: (v && v.ts) || idTs(id), st });
   }
   lyJobs.sort((a, b) => (b.id || '').localeCompare(a.id || ''));           // 최신순(id = 시간 접두)
   writeFileSync(join(LY_ROOT, 'index.json'), JSON.stringify(lyJobs));

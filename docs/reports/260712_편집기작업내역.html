@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>편집 탭 작업 내역(제작 라이브러리) — 260712</title>
+<style>
+/* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+:root{ --bg:#0b0d0c; --fg:#eef7f0; --mut:#8a9490; --accent:#00EED2; --danger:#e23b2a; --warn:#FFE13D; --line:rgba(255,255,255,.08); --pan:rgba(255,255,255,.03); --r:16px; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ background:var(--bg); color:var(--fg); font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif; line-height:1.6; padding:28px 18px 60px; max-width:760px; margin:0 auto; font-size:15px; }
+h1{ font-size:21px; margin-bottom:4px; }
+.sub{ color:var(--mut); font-size:13px; margin-bottom:26px; }
+h2{ font-size:15px; font-weight:800; margin:30px 0 10px; }
+h2 b{ color:var(--accent); font-weight:700; }
+p{ margin-bottom:8px; }
+.mut{ color:var(--mut); }
+.card{ background:var(--pan); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:12px; }
+table{ width:100%; border-collapse:collapse; font-size:13.5px; margin:8px 0; }
+th,td{ text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th{ color:var(--mut); font-weight:700; white-space:nowrap; }
+code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; background:rgba(255,255,255,.06); border-radius:5px; padding:1px 5px; }
+.ok{ color:var(--accent); font-weight:800; } .bad{ color:var(--danger); font-weight:800; } .wr{ color:var(--warn); font-weight:800; }
+/* 게시판 실물 재현 목업(edit.html .lyjob 규격 복사) */
+.mock{ border:1px solid var(--line); border-radius:var(--r); padding:14px 14px 6px; margin:10px 0; background:rgba(255,255,255,.02); }
+.mock .fl{ display:block; font-size:13px; font-weight:800; margin-bottom:6px; }
+.mock .fl::before{ content:'• '; color:var(--accent); font-weight:700; }
+.mjob{ display:flex; align-items:center; gap:10px; width:100%; padding:10px 2px; border-top:1px solid var(--line); font-size:13px; }
+.mjob:last-child{ border-bottom:1px solid var(--line); }
+.mjob .jts{ flex:none; color:var(--mut); font-variant-numeric:tabular-nums; font-size:12px; }
+.mjob .jt{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+.mjob .jst{ flex:none; font-size:12px; font-weight:800; color:var(--mut); }
+.mjob .jst.done{ color:var(--accent); } .mjob .jst.fail{ color:var(--danger); }
+ul{ padding-left:18px; } li{ margin-bottom:5px; }
+</style>
+</head>
+<body>
+<h1>편집 탭 · 작업 내역(제작 라이브러리)</h1>
+<div class="sub">영상 편집기 과거 산출 상시 재열람 — 자막 탭 게시판 계승 · 인덱스 확장 · 260712</div>
+
+<h2><b>•</b> 무엇이 문제였나 (쉬운 설명)</h2>
+<div class="card">
+<p>편집 탭에서 만든 영상은 <b>발사 직후 화면</b>, <b>24시간 안의 재접속</b>, <b>완료 푸시 알림 탭</b> — 이 세 경로로만 볼 수 있었어. 시간이 지나거나 새 작업을 발사하면 이전 제작물을 여는 버튼이 화면 어디에도 없었지.</p>
+<p class="mut">정작 산출물(영상 mp4 + 작업 기록)은 서버에 영구 보존되고 있었다 — 순수하게 UI에 입구만 없던 것.</p>
+</div>
+
+<h2><b>•</b> 전 → 후</h2>
+<table>
+<tr><th></th><th>전</th><th>후</th></tr>
+<tr><td><b>과거 산출 접근</b></td><td>발사 폴 · pend 24h(직전 1건) · 푸시 딥링크뿐 → 시간 지나면 <span class="bad">접근 불가</span></td><td>폼 끝 <b>작업 내역</b> 게시판 — 최근·기존 제작물 <span class="ok">상시 재열람</span>(시간 무관)</td></tr>
+<tr><td><b>기기간</b></td><td>pend = 그 기기 localStorage 한정</td><td>서버측 인덱스(<code>ly_out/index.json</code>) = <span class="ok">폰·PC 공유</span></td></tr>
+<tr><td><b>행 탭 동작</b></td><td>—</td><td>완료 = 영상 재생+다운로드+자막 편집기 재진입 · 클립 후보 = 목록 복원 · 실패 = 사유 표시</td></tr>
+<tr><td><b>편집 잡 라벨</b></td><td>자막 없는 편집 잡 = 인덱스에 <span class="bad">빈 제목</span></td><td>레시피 요약 자동 라벨 <span class="ok">"16:9 · 블러 채움 · 60fps 보간 · 음량 통일"</span> + 영상 길이</td></tr>
+<tr><td><b>클리퍼 스캔 잡</b></td><td>인덱스 상태 <span class="bad">'진행중' 영구 오표기</span></td><td><span class="ok">'클립 후보'</span> 정확 표기(자막 탭 게시판도 동일 정정)</td></tr>
+</table>
+
+<h2><b>•</b> 실물 모습 (편집 탭 폼 끝 · 실데이터 재현)</h2>
+<div class="mock">
+<span class="fl">작업 내역</span>
+<div class="mjob"><span class="jts">07-12 06:15</span><span class="jt">16:9 · 블러 채움 · 60fps 보간 · 음량 통일</span><span class="jts">0:10</span><span class="jst done">완료</span></div>
+<div class="mjob"><span class="jts">07-12 01:20</span><span class="jt">원본 화질 · 60fps 보간</span><span class="jts">0:03</span><span class="jst done">완료</span></div>
+<div class="mjob"><span class="jts">07-11 13:32</span><span class="jt">We'll be right back — 잠시 후 돌아올게요</span><span class="jts">0:02</span><span class="jst done">완료</span></div>
+<div class="mjob"><span class="jts">07-11 11:14</span><span class="jt">편집 영상</span><span class="jts"></span><span class="jst fail">실패</span></div>
+<div class="mjob"><span class="jts">07-10 11:13</span><span class="jt">여행객의 10만원 — 경제는 순환이다</span><span class="jts">2:05</span><span class="jst done">완료</span></div>
+</div>
+<p class="mut">자막 탭의 작업 내역 게시판(운영자 260707 "게시판처럼 리스트" 확정 컴포넌트)을 원문 그대로 계승 — 행 = 일시(KST)·라벨·길이·상태, 탭 = 그 작업 결과 직행. 신규 CSS 0(포크 때 이미 있던 스타일 재사용).</p>
+
+<h2><b>•</b> 장단점 · 효율성</h2>
+<div class="card">
+<ul>
+<li><span class="ok">장점</span> — 재열람이 탭 1번 · 서버측 인덱스라 기기 무관·만료 없음 · 완료 푸시 딥링크와 <b>같은 경로(openJob)</b>를 재사용해 신규 렌더 코드 0 · 자막-전용 잡은 제외해 자막 탭과 역할 중복 0.</li>
+<li><span class="ok">효율</span> — 데이터는 이미 매 배포마다 생성되던 인덱스에 필드만 추가(별도 워크플로·API·과금 0) · 게시판 로드 = fetch 1회.</li>
+<li><span class="wr">한계</span> — 인덱스 갱신 = Pages 빌드 시점이라 <b>방금 발사한 잡은 완성 커밋 배포 후에야</b> 게시판에 붙음(발사 직후 진행 표시는 기존 폴이 전담 = 역할 분리·중복 없음).</li>
+</ul>
+</div>
+
+<h2><b>•</b> 품질저하 리스크</h2>
+<div class="card">
+<ul>
+<li>기존 폴·재개(pend)·딥링크·발사 경로 = <b>무변경</b>(게시판은 추가물).</li>
+<li>인덱스 추가 필드(<code>d</code>·<code>clip</code>·라벨 폴백)는 기존 소비자(자막 탭 게시판·[1] 제작본 불러오기)가 안 읽는 키라 무해 — 헤드리스 실클릭으로 자막 탭 회귀 0 확인.</li>
+<li>생성 진행 중엔 행 탭 차단(진행 UI 보호 = 자막 탭 게이트 계승).</li>
+</ul>
+</div>
+
+<h2><b>•</b> 검증 (자가검증 + CI)</h2>
+<table>
+<tr><th>check_refs</th><td>전 게이트 <span class="ok">rc=0</span> (토큰·소머리·자동완성·JS 구문 포함)</td></tr>
+<tr><th>인덱스 실측</th><td>16건 생성 — 편집 잡 레시피 라벨·길이·done/subs/fail 분리 정상</td></tr>
+<tr><th>헤드리스 실클릭</th><td>게시판 12행(자막 전용 4건 제외) · 완료 행 탭 = R2 영상+다운로드 표시 · 실패 행 탭 = error.log 사유 · 자막 탭 16행 회귀 0 · JS 에러 0</td></tr>
+</table>
+<p class="mut">변경 파일: viewer/edit.html · viewer/ly.html(1행) · build-viewer.mjs · viewer/ly_out/index.json(신선화) · apps/edit/00_지침 §1-f · 백업 = _versions/260712_0638_편집기작업내역/</p>
+</body>
+</html>

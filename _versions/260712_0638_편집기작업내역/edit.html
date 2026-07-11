@@ -412,11 +412,6 @@
     <button class="lyreset" id="lyReset" type="button" hidden>편집 초기화 (처음 받아쓴 자막으로)</button>
   </div>
   <div class="out" id="out"></div>
-  <!-- 작업 내역(제작 라이브러리 · 운영자 260712 "이미지 생성기처럼 라이브러리화") — 데이터 = ly_out/index.json(build-viewer 스캔 · 서버측 인덱스 = 기기간 공유·만료 없음) · 자막 탭 게시판 원문 계승 · 탭 = 그 작업 결과 열기(openJob = 완료 푸시 딥링크와 동일 경로) · 자막-전용(st=subs) 잡은 자막 탭 전담이라 제외 · 비었으면 섹션째 숨김 -->
-  <div class="lyjobs" id="lyJobs" hidden>
-    <label class="fl">작업 내역</label>
-    <div id="lyJobList"></div>
-  </div>
 </div>
 
 <div class="firebar"><div class="inner"><button class="go" id="editGo" type="button">편집 시작<span class="eta" id="etaT"></span></button></div></div>
@@ -446,7 +441,7 @@ const X_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 const PEND_KEY='nm_edit_pend';
 const API='/api/edit';
 const BUDGET=2700;   // 폴 예산(초) — 하드 ×2 = 5400s ≥ 잡 캡 85분(5100 · 4K+R2 선스텝 재산정 260711)+디스패치+배포 · 재개 게이트 24h 별도(conv 문법)
-let FILE_B64='', FILE_NAME='', FILE_URL='', _dur=0, USER_ACT=false, _curStop=null, _pollLive=false, _polling=false, EDIT_ID='', RESULT_URL='';   // _polling = 생성 진행 UI 보호 게이트(작업 내역 탭 차단 · 자막 탭 LY_GEN 계승)
+let FILE_B64='', FILE_NAME='', FILE_URL='', _dur=0, USER_ACT=false, _curStop=null, _pollLive=false, EDIT_ID='', RESULT_URL='';
 let FILE_R2='', _lastFile=null, _varea=0;   // FILE_R2 = R2 직업로드 키(일회용 — 발사 소진 · _lastFile로 재업로드) · _varea = 원본 픽셀 수(4K급 판별 = 서버 is4k와 동형 — 긴 변 판별은 세로 1080×2340 오거절 · 재검증 260711)
 
 const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
@@ -886,8 +881,8 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   const wclear=()=>{ vw.innerHTML=''; vw.hidden=true; };
   const outPath='ly_out/'+id+'/'+(kind==='clip'?'clips.json':'video.json');
   const errPath='ly_out/'+id+'/error.log';
-  _pollLive=!!wsrc; _polling=true;
-  let live=true; const stop=()=>{ live=false; _pollLive=false; _polling=false; clearInterval(disp); goWait(false); }; _curStop=stop;
+  _pollLive=!!wsrc;
+  let live=true; const stop=()=>{ live=false; _pollLive=false; clearInterval(disp); goWait(false); }; _curStop=stop;
   const draw=()=>{
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
@@ -1627,33 +1622,28 @@ $('#dlVid').addEventListener('click',e=>{
   b.classList.add('dl-done');
 });
 
-/* ══ 과거 작업 열기(openJob) — 완료 푸시 딥링크(#done=<id>)와 작업 내역 게시판 공용(260712) · video.json → 결과 표시(+자막 편집기 활성) / clips.json → 클립 후보 목록 / error.log → 사유 표시 · 반환 = 볼거리(영상·후보)를 열었는지 ══ */
-async function openJob(id){
-  EDIT_ID=id;
-  const st=$('#cstatus');
-  try{
-    const r=await fetch('ly_out/'+id+'/video.json?t='+Date.now());
-    if(r.ok){ const tx=await r.text();
-      if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
-        if(d&&d.url){ showResult(d,0); editSubsInit(id); return true; }   // 과거 잡도 자막 편집기 활성(B-2 딥링크 동일)
-        if(d&&(d.error||d.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); st.classList.add('err'); return false; } } }
-    const rc=await fetch('ly_out/'+id+'/clips.json?t='+Date.now());   // 클리퍼 잡 — 후보 목록 직행(260711)
-    if(rc.ok){ const tc=await rc.text();
-      if(tc&&!/^\s*</.test(tc)){ let dc=null; try{ dc=JSON.parse(tc); }catch(e){}
-        if(dc&&Array.isArray(dc.clips)){ showClips(dc); return true; } } }
-    const er=await fetch('ly_out/'+id+'/error.log?t='+Date.now());
-    if(er.ok){ const em=await er.text();
-      if(em&&em.trim()&&!/^\s*</.test(em)){ st.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); st.classList.add('err'); return false; } }
-    st.textContent='결과를 못 찾았어 — 진행 중이면 완성 후 다시 열어줘';
-  }catch(e){ st.textContent='결과 불러오기 실패 — 새로고침해줘'; }
-  return false;
-}
-
 /* ══ 완료 푸시 딥링크(#done=<id>) — 알림 탭 = 그 작업 결과로 직행(thumb #done 문법 · 발송 = edit-make 완료 푸시 스텝) ══ */
 (function(){
   const m=(location.hash||'').match(/^#done=([0-9]{12}-[0-9a-f]{6})$/); if(!m) return;
-  USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
-  openJob(m[1]);
+  const id=m[1]; EDIT_ID=id; USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
+  (async()=>{
+    const st=$('#cstatus');
+    try{
+      const r=await fetch('ly_out/'+id+'/video.json?t='+Date.now());
+      if(r.ok){ const tx=await r.text();
+        if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&d.url){ showResult(d,0); editSubsInit(id); return; }   // 딥링크도 자막 편집기 활성(B-2)
+          if(d&&(d.error||d.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); st.classList.add('err'); return; } } }
+      const rc=await fetch('ly_out/'+id+'/clips.json?t='+Date.now());   // 클리퍼 딥링크(#done) — 후보 목록 직행(260711)
+      if(rc.ok){ const tc=await rc.text();
+        if(tc&&!/^\s*</.test(tc)){ let dc=null; try{ dc=JSON.parse(tc); }catch(e){}
+          if(dc&&Array.isArray(dc.clips)){ showClips(dc); return; } } }
+      const er=await fetch('ly_out/'+id+'/error.log?t='+Date.now());
+      if(er.ok){ const em=await er.text();
+        if(em&&em.trim()&&!/^\s*</.test(em)){ st.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); st.classList.add('err'); return; } }
+      st.textContent='결과를 찾지 못했어 — 다시 발사해줘';
+    }catch(e){ st.textContent='결과 불러오기 실패 — 새로고침해줘'; }
+  })();
 })();
 
 /* ══ 재개(pend) — conv 문법(24h 게이트·폴 창 클램프·신선도 분리) ══ */
@@ -1666,40 +1656,6 @@ async function openJob(id){
 })();
 
 render();   // 초기 렌더(빈 스택 = 운영자 260711 stackInit=empty 유지) — ⚠ 구 recipe('reels') 제거 때 이 초기 렌더 트리거까지 사라져 '처리 추가' 시트가 빈 채 열리던 회귀(운영자 260712 스샷 실증) 봉합: 프리필 없이 render()만 복원(스택·시트·eta·요약 전부 이 호출이 첫 페인트)
-
-// ── 작업 내역 게시판(운영자 260712 "이미지 생성기처럼 최근·기존 제작 라이브러리화" · 자막 탭 260707 게시판 원문 계승) — ly_out/index.json(서버측 = 기기간 공유·만료 없음) 로드 · 행 = 일시(KST)·라벨·길이·상태 · 탭 = openJob(과거 산출 상시 재열람 — 종전엔 pend 24h·푸시 딥링크뿐이라 시간 지나면 접근 불가였던 공백 봉합) · 자막-전용(subs) 잡 = 자막 탭 전담이라 제외 ──
-(async function(){
-  try{
-    const r=await fetch('ly_out/index.json?t='+Date.now()); if(!r.ok) return;
-    const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
-    if(ct.includes('text/html')||/^\s*</.test(tx)) return;   // SPA 폴백(HTML 200) 무시 = poll 동일 가드
-    const jobs=JSON.parse(tx); if(!Array.isArray(jobs)) return;
-    const vids=jobs.filter(j=>j&&j.st!=='subs');   // 영상 산출·클립 후보·실패·진행만(자막-전용 잡 제외)
-    if(!vids.length) return;   // 빈 목록 = 조용한 공백(§디자인 빈 상태)
-    const box=$('#lyJobs'), list=$('#lyJobList'); if(!box||!list) return;
-    const ST={done:'완료',clip:'클립 후보',fail:'실패',gen:'진행중'};
-    vids.slice(0,20).forEach(j=>{
-      if(!/^[A-Za-z0-9_-]+$/.test(j.id||'')) return;   // 경로 화이트리스트(복원 정규식과 동일 정신)
-      const b=document.createElement('button'); b.type='button'; b.className='lyjob';
-      const ts=String(j.ts||'');
-      b.innerHTML='<span class="jts"></span><span class="jt"></span><span class="jts jdur"></span><span class="jst"></span>';
-      b.querySelector('.jts').textContent=ts.length>=16? ts.slice(5,10)+' '+ts.slice(11,16):'';   // KST 도장 ISO를 문자열 절단 = 'MM-DD HH:MM'(TZ 재해석 함정 0 · §📐 KST)
-      b.querySelector('.jt').textContent=j.t||'편집 영상';
-      b.querySelector('.jdur').textContent=j.d? mmss(j.d):'';   // 길이 = 시각과 동급 보조정보(.jts 스타일 재사용 = 신규 CSS 0)
-      const stEl=b.querySelector('.jst'); stEl.textContent=ST[j.st]||'진행중'; if(ST[j.st]) stEl.classList.add(j.st);
-      b.onclick=async()=>{
-        if(_polling) return;   // 생성 진행 중 = 진행 UI 보호(자막 탭 LY_GEN 게이트 계승)
-        USER_ACT=true;
-        if(await openJob(j.id)){   // 결과는 게시판보다 위(vwrap·cliplist)에 그려짐 — 열린 곳으로 시선 이동
-          const tgt=(!$('#vwrap').hidden && $('#vwrap'))||(!$('#cliplist').hidden && $('#cliplist'))||null;
-          if(tgt) tgt.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'});
-        }
-      };
-      list.appendChild(b);
-    });
-    if(list.children.length) box.hidden=false;
-  }catch(e){}
-})();
 </script>
 </body>
 </html>
