@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>편집 탭 — 발사 버튼 · 대기 표시 · 모자이크 섹션 (만지는 시안)</title>
+<style>
+/* ═ 포터블 §3 골격 계승(직전본 260711_영상통합3분류 복제·축소 = 재설계 0) · 값 = viewer :root 실측 복사(자기완결 = §핵심명령 3-c 복사=계승) ═ */
+:root{
+  --bg:#121212; --pan:#16171a; --line:#2a2c31; --line2:rgba(255,255,255,.06); --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+  --danger:#e23b2a; --danger-rgb:226,59,42; --warn:#FFE13D;
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-body:15px; --fw-b:700; --fw-x:800;
+  --btn:34px; --btn-sm:30px; --ease:cubic-bezier(.2,.7,.3,1); --dur-fast:.12s;
+  --gauge-ease:cubic-bezier(.22,.61,.36,1);
+  --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:#0c0d0f; color:var(--fg); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif; }
+.wrap{ display:flex; flex-wrap:wrap; gap:20px; max-width:1120px; margin:0 auto; padding:18px 14px 60px; justify-content:center; }
+h1{ flex-basis:100%; font-size:17px; margin:2px 4px 0; }
+h1 small{ color:var(--mut); font-weight:400; font-size:12.5px; display:block; }
+
+/* ── 폰 프레임(실사용 화면비 · 372×742) ── */
+.stagewrap{ flex:0 0 auto; position:sticky; top:10px; align-self:flex-start; }
+.frame{ width:372px; height:742px; border:1px solid #33363c; border-radius:34px; overflow:hidden; background:var(--bg); position:relative; box-shadow:0 18px 60px rgba(0,0,0,.5); }
+.app{ position:absolute; inset:0; display:flex; flex-direction:column; overflow:hidden;
+  /* --t-* 튜닝 스코프 · 기본값 = 현행 실측(오늘 머지본 = 전/후 비교 기준) */
+  --t-fireH:40px; --t-fireR:9px; --t-fireFs:15px; --t-ckSize:20px; --t-fillMs:720ms;
+  --t-waitFs:13px; --t-waitInX:12px; --t-waitInY:10px; --t-scrimA:.48;
+  --t-padX:16px; --t-gapSec:18px; --t-chipH:34px; --t-chipR:9px; --t-cardR:9px; --t-fsHead:13px; --t-fsChip:13px;
+  --t-onA:.04; --t-dimOff:.32; --t-recA:.04; --t-glassA:.03; }
+.stagecap{ text-align:center; color:var(--mut); font-size:12px; margin-top:8px; max-width:372px; }
+
+/* ── 도구 모달 셸 재현(헤더 띠·탭 띠 = viewer #tooldlg 계승) ── */
+.mhead{ flex:none; display:flex; align-items:center; gap:8px; padding:11px var(--t-padX); background:rgba(24,25,28,.5); border-bottom:1px solid var(--line2); }
+.mhead .tit{ font-weight:var(--fw-x); font-size:15px; }
+.mhead .x{ margin-left:auto; width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center; border-radius:var(--r-s); border:1px solid var(--line2); background:rgba(255,255,255,.04); color:var(--fg); cursor:pointer; }
+.mhead .x svg{ width:14px; height:14px; }
+.tooltabs{ display:grid; grid-auto-flow:column; gap:6px; padding:9px 13px; background:rgba(24,25,28,.5); border-bottom:1px solid var(--line2); }
+.tooltab{ height:37px; display:flex; align-items:center; justify-content:center; border-radius:var(--r-s); border:1px solid transparent; background:transparent; color:var(--mut); font:inherit; font-size:13px; font-weight:var(--fw-x); }
+.tooltab.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.06); }
+.body{ flex:1; overflow-y:auto; padding:12px var(--t-padX) 10px; scrollbar-width:none; }
+.body::-webkit-scrollbar{ display:none; }
+
+/* 소머리(edit label.fl 계승) */
+.fl{ display:block; font-size:var(--t-fsHead); font-weight:var(--fw-x); color:var(--fg); margin:var(--t-gapSec) 0 6px; }
+.fl::before{ content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+.fl .xhint{ color:var(--mut); font-weight:var(--fw-b); font-size:var(--fs-xs); margin-left:7px; }
+.fl:first-child{ margin-top:2px; }
+
+/* 소스 행(edit .srcrow 계승 · 목업) */
+.srcrow{ display:flex; gap:10px; align-items:stretch; }
+.filebx{ flex:0 0 84px; display:grid; place-items:center; padding:8px; border-radius:var(--r-s); color:var(--fg); text-align:center; }
+.filebx .ftype{ display:inline-grid; place-items:center; min-width:42px; height:22px; padding:0 7px; border-radius:6px; background:rgba(var(--accent-rgb),.14); color:var(--accent); font-size:11px; font-weight:var(--fw-x); }
+.filebx .fname{ font-size:11px; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; margin-top:3px; color:var(--fg); }
+.uin{ flex:1; min-height:52px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--mut); font-size:12.5px; display:flex; align-items:center; }
+
+/* 레시피(edit .rec 계승) */
+.recrow{ display:flex; gap:6px; flex-wrap:wrap; margin:var(--sp-1) 0 var(--sp-2); }
+.rec{ height:var(--btn-sm); padding:0 13px; display:inline-flex; align-items:center; border-radius:var(--t-chipR); border:1px solid rgba(var(--accent-rgb),.3); background:rgba(var(--accent-rgb),var(--t-recA)); color:var(--fg); font-weight:var(--fw-x); font-size:var(--fs-label); }
+
+/* 번호 섹션·스택 카드(edit .sech/.scard 계승) */
+.sech{ display:flex; align-items:center; gap:8px; margin:var(--t-gapSec) 0 8px; padding-top:var(--sp-2); border-top:1px solid var(--line); font-weight:var(--fw-x); font-size:var(--t-fsHead); }
+.sech .no{ color:var(--accent); font-variant-numeric:tabular-nums; }
+.stack{ display:flex; flex-direction:column; gap:var(--sp-2); }
+.scard{ border:1px solid var(--line); border-radius:var(--t-cardR); background:rgba(255,255,255,var(--t-glassA)); }
+.scard .hd{ display:flex; align-items:center; gap:9px; padding:8px 13px; }
+.scard .nm{ font-weight:var(--fw-x); font-size:var(--fs-label); flex:none; }
+.scard .sum{ color:var(--mut); font-size:var(--fs-xs); margin-left:auto; text-align:right; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; opacity:.4; }
+.scard .prm{ padding:2px 13px 12px; border-top:1px solid rgba(255,255,255,.06); }
+
+/* 칩·세그·게이지(edit .pc/.prow/.grow 계승) */
+.prow{ display:flex; gap:5px; flex-wrap:wrap; margin-top:9px; }
+.prow.al-c{ justify-content:center; }
+.prow.al-s .pc{ flex:1; justify-content:center; }
+.plbl{ flex-basis:100%; color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-x); margin-top:9px; }
+.pc{ height:var(--t-chipH); padding:0 11px; display:inline-flex; align-items:center; border-radius:var(--t-chipR); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--t-fsChip); font-family:inherit; cursor:pointer; user-select:none; transition:transform var(--dur-fast), color .15s, border-color .15s, background .15s; }
+.pc:active{ transform:scale(var(--press-m)); }
+.pc.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),var(--t-onA)); }
+.pc.dim{ opacity:var(--t-dimOff); }
+.grow{ display:grid; grid-template-columns:52px 1fr 44px; align-items:center; gap:9px; margin-top:9px; font-size:var(--fs-xs); }
+.grow .k{ color:var(--mut); font-weight:var(--fw-b); }
+.grow input[type=range]{ width:100%; accent-color:var(--accent); }
+.grow .v{ text-align:right; color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
+
+/* 기타 기능 — 이어서 버튼(ghost/accent 2안) + 노트 */
+.xgo{ margin-top:9px; width:100%; padding:9px 15px; border-radius:var(--t-chipR); font:inherit; font-size:var(--t-fsChip); font-weight:var(--fw-b); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform var(--dur-fast); }
+.xgo:active{ transform:scale(var(--press-l)); }
+.xgo.ghost{ background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--fg); }
+.xgo.acc{ background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.4); color:var(--accent); font-weight:var(--fw-x); }
+.xnote{ margin-top:6px; color:var(--mut); font-size:var(--fs-xs); line-height:1.5; }
+
+/* 대기 스테이지(edit .vstage 계승) — 위치·크기·마진 튜닝 축 */
+.vstage{ position:relative; width:100%; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); background:var(--bg); min-height:150px; margin-top:var(--t-gapSec); }
+.vstage[hidden]{ display:none; }
+.vstage .scene{ position:absolute; inset:0; background:linear-gradient(160deg,#20313a 0%,#101b21 55%,#0a1114 100%); }
+.vstage .scene::after{ content:''; position:absolute; inset:0; background:radial-gradient(90px 60px at 32% 40%, rgba(255,255,255,.14), transparent 70%), radial-gradient(150px 95px at 66% 62%, rgba(0,238,210,.10), transparent 70%); }
+.vstage .scene.dark{ background:#000; } .vstage .scene.dark::after{ content:none; }
+.vstage .wscrim{ position:absolute; inset:0; background:rgba(8,15,11,var(--t-scrimA)); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); }
+.scanline{ position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); box-shadow:0 0 14px var(--accent); animation:scan 1.4s var(--gauge-ease) infinite; }
+@keyframes scan{ 0%{ top:6%; } 50%{ top:94%; } 100%{ top:6%; } }
+.wmsg{ position:absolute; z-index:2; font-size:var(--t-waitFs); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }
+.wmsg.bl{ left:var(--t-waitInX); bottom:var(--t-waitInY); }
+.wmsg.bc{ left:50%; transform:translateX(-50%); bottom:var(--t-waitInY); }
+.wmsg.cc{ left:50%; top:50%; transform:translate(-50%,-50%); }
+.wmsg.tl{ left:var(--t-waitInX); top:var(--t-waitInY); }
+.wmsg .wsec{ color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }
+.gdots{ display:inline-block; width:1.1em; text-align:left; }
+.gdots i{ font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+.gdots i:nth-child(2){ animation-delay:.22s; } .gdots i:nth-child(3){ animation-delay:.44s; }
+@keyframes gdots{ 0%{ opacity:0; } 25%,70%{ opacity:1; } 95%,100%{ opacity:0; } }
+
+/* 발사 버튼(edit .go 계승 + thumb 전송 상태머신 정본) */
+.firewrap{ padding:14px 0 6px; }
+.fire{ width:100%; height:var(--t-fireH); padding:0 13px; border-radius:var(--t-fireR); font:inherit; font-weight:var(--fw-x); font-size:var(--t-fireFs); cursor:pointer; position:relative; overflow:hidden; transition:transform var(--dur-fast); }
+.fire:active{ transform:scale(var(--press-m)); }
+.fire.dim{ background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.4); color:var(--accent); }
+.fire.glass{ background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--accent); }
+.fire.firing{ color:var(--on-accent); pointer-events:none;
+  background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+  animation:goFill var(--t-fillMs) var(--gauge-ease) forwards; }
+@keyframes goFill{ from{ background-size:0% 100%, 100% 100%; } to{ background-size:100% 100%, 100% 100%; } }
+.fire.okdone{ background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+.fire.checking{ display:grid; place-items:center; }
+.fire .gck{ width:var(--t-ckSize); height:var(--t-ckSize); }
+.fire .gck path{ fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
+@keyframes goTick{ to{ stroke-dashoffset:0; } }
+.fire.oldwait{ color:var(--mut); }
+@media (prefers-reduced-motion:reduce){ .fire.firing{ animation-duration:.2s; } .fire .gck path{ animation:none; stroke-dashoffset:0; } .scanline{ animation:none; top:50%; } .gdots i{ animation:none; opacity:1; } }
+
+/* ── 콘솔(직전본 계승) ── */
+.console{ flex:1 1 420px; max-width:560px; min-width:320px; display:flex; flex-direction:column; gap:12px; }
+.csec{ background:#131417; border:1px solid #26282d; border-radius:14px; padding:12px 14px; }
+.csec h3{ margin:0 0 8px; font-size:12.5px; color:var(--mut); font-weight:var(--fw-x); letter-spacing:.3px; display:flex; align-items:center; }
+.viewrow,.presetrow{ display:flex; gap:6px; flex-wrap:wrap; }
+.vbtn,.pbtn{ padding:8px 13px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:12.5px; font-weight:var(--fw-x); cursor:pointer; transition:transform var(--dur-fast); }
+.vbtn:active,.pbtn:active{ transform:scale(var(--press-m)); }
+.vbtn.on,.pbtn.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.grp-t{ margin:14px 0 4px; color:#7d8f85; font-size:11px; font-weight:var(--fw-x); letter-spacing:.4px; border-top:1px solid #1d1f23; padding-top:10px; }
+.grp-t:first-child{ margin-top:0; border-top:none; padding-top:0; }
+.axis{ display:grid; grid-template-columns:118px 1fr 66px; align-items:center; gap:8px; margin:5px 0; font-size:12px; }
+.axis .k{ color:var(--fg); font-weight:var(--fw-b); line-height:1.25; }
+.axis .k .w{ color:var(--warn); margin-left:3px; display:none; }
+.axis.warn .k .w{ display:inline; }
+.axis input[type=range]{ width:100%; accent-color:var(--accent); }
+.axis .v{ text-align:right; color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; font-size:11.5px; }
+.axis .segs{ display:flex; gap:4px; flex-wrap:wrap; grid-column:2/4; }
+.axis .segs button{ flex:1 1 auto; min-width:0; padding:6px 7px; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:11px; font-weight:var(--fw-x); cursor:pointer; white-space:nowrap; }
+.axis .segs button.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.07); }
+.axis input[type=text]{ grid-column:2/4; width:100%; padding:7px 10px; background:#0e0f11; border:1px solid var(--line); border-radius:8px; color:var(--fg); font:inherit; font-size:12px; }
+.warncount{ color:var(--warn); font-size:11.5px; font-weight:var(--fw-x); margin-left:auto; }
+#out{ margin:0; background:#0e0f11; border:1px solid #24262b; border-radius:10px; padding:10px 12px; font:11px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfe0d6; white-space:pre; overflow-x:auto; max-height:340px; overflow-y:auto; }
+#copy{ margin-top:8px; width:100%; padding:10px; border-radius:10px; border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.12); color:var(--accent); font:inherit; font-weight:var(--fw-x); cursor:pointer; }
+.note{ color:var(--mut); font-size:11.5px; line-height:1.65; }
+.cnt{ color:var(--mut); font-size:11px; font-weight:var(--fw-b); margin-left:8px; }
+.cmodal{ position:fixed; inset:0; background:rgba(8,9,10,.7); display:flex; align-items:center; justify-content:center; z-index:50; }
+.cmodal[hidden]{ display:none; }
+.cmodal .box{ width:min(430px,88vw); background:#17181b; border:1px solid #2c2e33; border-radius:var(--r-modal); padding:18px; }
+.cmodal h4{ margin:0 0 8px; font-size:14px; }
+.cmodal .lst{ color:var(--warn); font-size:12px; margin:0 0 12px; line-height:1.6; }
+.cmodal .acts{ display:flex; gap:8px; flex-wrap:wrap; }
+.cmodal .acts button{ flex:1; min-width:100px; padding:10px 8px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-size:12px; font-weight:var(--fw-x); cursor:pointer; }
+.cmodal .acts .pri{ border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.12); color:var(--accent); }
+@media (prefers-reduced-motion:reduce){ *{ transition-duration:0s!important; } }
+@media (max-width:400px){ .frame{ width:100%; max-width:372px; } .stagewrap{ width:100%; display:flex; flex-direction:column; align-items:center; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>편집 탭 — 발사 버튼 · 대기 표시 · 모자이크 섹션 <small>오늘 머지본이 「현행」 기준 · 폰 프레임 안을 직접 탭해봐(발사 버튼 = 전송 시퀀스 재생 · 모자이크 칩 = 설정 열림 · 음량 세그 실동작) · 문구는 콘솔에서 직접 타이핑 → 그대로 미리보기 반영</small></h1>
+
+  <div class="stagewrap">
+    <div class="frame"><div class="app" id="app"></div></div>
+    <div class="stagecap" id="cap"></div>
+  </div>
+
+  <aside class="console">
+    <div class="csec"><h3>보기(화면 상태)</h3>
+      <div class="viewrow" id="views">
+        <button type="button" class="vbtn" data-v="idle">평시(발사 전)</button>
+        <button type="button" class="vbtn on" data-v="wait">대기 화면(편집 중)</button>
+        <button type="button" class="vbtn" data-v="old">구판 재현(첨부 상태 · 비교)</button>
+      </div>
+    </div>
+    <div class="csec"><h3>프리셋</h3><div class="presetrow" id="presets"></div></div>
+    <div class="csec"><h3>조정 <span class="cnt" id="axn"></span><span class="warncount" id="wc" hidden></span></h3><div id="axes"></div></div>
+    <div class="csec"><h3>선택값</h3><pre id="out"></pre><button type="button" id="copy">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계(각주)</b> — ① 발사 = 접수 시퀀스만 목업(실제 업로드·디스패치·폴링 없음 · 시퀀스 타이밍은 실물 코드와 동일 산식) ② 대기 화면 장면 = CSS 그라데 목업(실물 = 첨부 원본 영상 비침) · 경과 초 = 17s부터 시연 ③ 편집 스택 = 축약 재현(카드 2장 접힘 + 음량 카드만 실동작 — 실물 카드 파라미터 전체는 라이브 그대로) ④ 모자이크 「항상 펼침/카드 승격」 안은 <b style="color:var(--warn)">신규 배선</b>(선택 시 별도 작업 · 칩 켤 때만 = 현행 배선 그대로) ⑤ 트래킹 핸드오프(분석→카드 선택)는 이동 후 화면이라 이 시안 밖 — 이어서 버튼까지만 재현 ⑥ 폰트 = 시스템 폴백 근사 ⑦ 레포 계승 틀 축(지오메트리 사다리·알파 변주·전송 리듬 fillMs/체크 크기/유지 시간) = 운영자 확정 "안 바꿈"으로 콘솔서 제외 · 값은 현행 고정(코드 보존 = 재노출 한 줄).</div>
+  </aside>
+</div>
+
+<div class="cmodal" id="cmodal" hidden>
+  <div class="box">
+    <h4>기틀 이탈 축이 있어</h4>
+    <div class="lst" id="clist"></div>
+    <div style="color:var(--mut);font-size:11.5px;margin-bottom:12px">이대로 복사하면 <b>🔁 기틀 갱신 역제안</b> 블록이 포함돼 — 회신하면 그 값으로 전 앱 동일 축을 바꾸는 승인 정문으로 감.</div>
+    <div class="acts">
+      <button type="button" class="pri" id="cInc">역제안 포함 복사</button>
+      <button type="button" id="cOnly">계승분만 복사</button>
+      <button type="button" id="cNo">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const X_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ══ 콘솔 상태 — 기본값 = 현행 실측(오늘 머지본 260712) ══ */
+const DEFAULTS={ view:'wait',
+  /* ★ 모자이크 섹션 */ xtrExpose:'chip', xtrPlace:'stack', xtrTitle:'기타 기능', xtrHintShow:'on', xtrHint:'복수 선택 — 트래킹에서 이어서', xtrChipAlign:'left', xtrGoStyle:'ghost', xtrGoLbl:'트래킹에서 이어서 — 분석 → 확정 → 렌더', xtrNoteShow:'on', xtrNote:'설정을 갖고 트래킹 화면으로 넘어가 · 거기서 영상 지정 → 분석 1회 → 인물·피사체 카드에서 가릴 대상 선택(얼굴만|전신) · 돌아오기 = 상단 편집 탭',
+  /* 발사 버튼 */ fireLbl:'편집 시작', sendLbl:'전송 중…', sentLbl:'전송됨', fireH:40, fireR:9, fireStyle:'dim', fireFs:15, fillMs:720, ckSize:20, sentHold:850,
+  /* 대기 화면 */ waitLbl:'편집 중', clipLbl:'클립 후보 찾는 중', waitPos:'bl', waitTimeFmt:'s', waitDots:'on', waitFs:13, waitInX:12, waitInY:10, scanShow:'on', scrimA:.48, waitVideo:'on',
+  /* 음향 기본 */ anormDef:'on', anormSum:'−14LUFS·좌우 통일',
+  /* 지오메트리 */ padX:16, gapSec:18, chipH:34, chipR:9, cardR:9, fsHead:13, fsChip:13,
+  /* 알파 변주 */ onA:.04, dimOff:.32, recA:.04, glassA:.03 };
+const LAD={ fireH:[40,44,48,50], fireR:[9,11,16,22,999], fireFs:[13,14,15], fillMs:[200,420,720,900], ckSize:[18,20,26], sentHold:[560,850], waitFs:[11,12,13,15], padX:[12,16,18,24], gapSec:[12,18,24], chipH:[22,26,30,34], chipR:[9,11,16,22,999], cardR:[9,11,16,22], fsHead:[12,13,15], fsChip:[11,12,13] };
+const CSSPX=['fireH','fireR','fireFs','ckSize','waitFs','waitInX','waitInY','padX','gapSec','chipH','chipR','cardR','fsHead','fsChip'];
+const CSSA=['scrimA','onA','dimOff','recA','glassA'];
+
+/* 축 정의 — sg=[[값,라벨]…] · tx=문구 입력 · lad=실존값 사다리(이탈 ⚠) · tok=대응 토큰 메모 */
+const AXES=[
+ /* ── ★ 모자이크(기타 기능) 섹션 ── */
+ {k:'xtrExpose',nm:'설정 노출 방식',grp:'★ 모자이크(기타 기능) 섹션',sg:[['chip','칩 켜야 펼침(현행)'],['always','항상 펼침'],['card','「4 기타 기능」 카드 승격']],nx:1,nxv:['always','card']},
+ {k:'xtrPlace',nm:'섹션 위치',grp:'★ 모자이크(기타 기능) 섹션',sg:[['stack','스택 아래(현행)'],['src','소스 바로 아래']],nx:1,nxv:['src']},
+ {k:'xtrTitle',nm:'섹션 제목 문구',grp:'★ 모자이크(기타 기능) 섹션',tx:1},
+ {k:'xtrHintShow',nm:'제목 옆 힌트',grp:'★ 모자이크(기타 기능) 섹션',sg:[['on','표시(현행)'],['off','없음']]},
+ {k:'xtrHint',nm:'힌트 문구',grp:'★ 모자이크(기타 기능) 섹션',tx:1},
+ {k:'xtrChipAlign',nm:'칩 정렬',grp:'★ 모자이크(기타 기능) 섹션',sg:[['left','좌(현행)'],['center','중앙'],['stretch','균등 폭']]},
+ {k:'xtrGoStyle',nm:'이어서 버튼 스타일',grp:'★ 모자이크(기타 기능) 섹션',sg:[['ghost','고스트(현행)'],['acc','강조(발사류)']]},
+ {k:'xtrGoLbl',nm:'이어서 버튼 문구',grp:'★ 모자이크(기타 기능) 섹션',tx:1},
+ {k:'xtrNoteShow',nm:'안내 노트',grp:'★ 모자이크(기타 기능) 섹션',sg:[['on','표시(현행)'],['off','없음']]},
+ {k:'xtrNote',nm:'노트 문구',grp:'★ 모자이크(기타 기능) 섹션',tx:1},
+ /* ── 발사 버튼 ── */
+ {k:'fireLbl',nm:'평시 라벨',grp:'발사 버튼(문구·기하)',tx:1},
+ {k:'sendLbl',nm:'전송 중 문구',grp:'발사 버튼(문구·기하)',tx:1},
+ {k:'sentLbl',nm:'접수 완료 문구',grp:'발사 버튼(문구·기하)',tx:1},
+ {k:'fireStyle',nm:'바탕 스타일',grp:'발사 버튼(문구·기하)',sg:[['dim','민트 틴트(현행)'],['glass','글래스(이미지 제작풍)']]},
+ {k:'fireH',nm:'높이',grp:'발사 버튼(문구·기하)',min:34,max:56,step:1,u:'px',lad:'fireH',tok:'실측 40(운영자 260711 fireH)'},
+ {k:'fireR',nm:'라운드',grp:'발사 버튼(문구·기하)',min:6,max:999,step:1,u:'px',lad:'fireR',tok:'--r-s(9) · 이미지 제작 = 999'},
+ {k:'fireFs',nm:'글자 크기',grp:'발사 버튼(문구·기하)',min:12,max:16,step:.5,u:'px',lad:'fireFs',tok:'실측 15(font:inherit)'},
+ /* ── 대기 화면 ── */
+ {k:'waitLbl',nm:'대기 문구',grp:'대기 화면(문구·위치·정렬)',tx:1},
+ {k:'clipLbl',nm:'클립 스캔 문구',grp:'대기 화면(문구·위치·정렬)',tx:1},
+ {k:'waitPos',nm:'문구 위치',grp:'대기 화면(문구·위치·정렬)',sg:[['bl','좌하(현행)'],['bc','중앙 하단'],['cc','정중앙'],['tl','좌상']]},
+ {k:'waitTimeFmt',nm:'경과 표기',grp:'대기 화면(문구·위치·정렬)',sg:[['s','(17s) 현행'],['mmss','0:17'],['off','없음']]},
+ {k:'waitDots',nm:'점 모션',grp:'대기 화면(문구·위치·정렬)',sg:[['on','표시(현행)'],['off','없음']]},
+ {k:'waitFs',nm:'문구 크기',grp:'대기 화면(문구·위치·정렬)',min:10,max:16,step:.5,u:'px',lad:'waitFs',tok:'--fs-label(13)'},
+ {k:'waitInX',nm:'좌우 여백',grp:'대기 화면(문구·위치·정렬)',min:0,max:40,step:1,u:'px'},
+ {k:'waitInY',nm:'상하 여백',grp:'대기 화면(문구·위치·정렬)',min:0,max:40,step:1,u:'px'},
+ {k:'scanShow',nm:'스캔 빔',grp:'대기 화면(문구·위치·정렬)',sg:[['on','표시(현행)'],['off','없음']]},
+ {k:'scrimA',nm:'장면 딤 알파',grp:'대기 화면(문구·위치·정렬)',min:0,max:.8,step:.01},
+ {k:'waitVideo',nm:'원본 비침',grp:'대기 화면(문구·위치·정렬)',sg:[['on','비침(현행)'],['off','검정']]},
+ /* ── 음향 기본 ── */
+ {k:'anormDef',nm:'음량 보정 기본',grp:'음향 기본값',sg:[['on','보정 ON(현행·오늘 반영)'],['off','끔(구판)']]},
+ {k:'anormSum',nm:'음량 요약 문구',grp:'음향 기본값',tx:1},
+];
+const PRESETS=[
+ {id:'p0',nm:'현행(오늘 머지본 · 비교 기준)',st:{}},
+ {id:'p1',nm:'모자이크 상시 카드(「4 기타 기능」 승격)',star:'★',st:{xtrExpose:'card',xtrGoStyle:'acc'}},
+ {id:'p2',nm:'이미지 제작 동형 발사(필 · 글래스)',st:{fireStyle:'glass',fireR:999,fireH:50,fireFs:14}},
+ {id:'p3',nm:'대기 중앙 강조(0:17)',st:{waitPos:'bc',waitTimeFmt:'mmss',waitFs:15}},
+];
+let state={...DEFAULTS};
+const D={ mosaic:false, pinset:false, keying:false, shape:'ellipse', size:115, feather:5, kfe:0, anorm:true, fired:false };
+const D0=JSON.parse(JSON.stringify(D));
+
+/* ══ 미리보기 렌더(edit.html 재현 · 축약) ══ */
+let WSEC=17, WTICK=null;
+function stopTick(){ clearInterval(WTICK); WTICK=null; }
+function wsecTxt(){ if(state.waitTimeFmt==='off') return '';
+  if(state.waitTimeFmt==='mmss'){ const m=Math.floor(WSEC/60), s=String(WSEC%60).padStart(2,'0'); return ' '+m+':'+s; }
+  return ' ('+WSEC+'s)'; }
+function wmsgHtml(lbl){ return '<div class="wmsg '+state.waitPos+'">'+esc(lbl)
+  +(state.waitDots==='on'?'<span class="gdots"><i>.</i><i>.</i><i>.</i></span>':'')
+  +'<span class="wsec">'+wsecTxt()+'</span></div>'; }
+function xtrOptsHtml(full){
+  const showMo=full||D.mosaic, showKe=full||D.keying;
+  let h='';
+  if(showMo) h+='<div class="plbl">가림 모양</div><div class="prow" style="margin-top:5px">'
+    +[['rect','네모'],['ellipse','타원']].map(([v,l])=>'<button type="button" class="pc'+(D.shape===v?' on':'')+'" data-dshape="'+v+'">'+l+'</button>').join('')+'</div>'
+    +'<div class="grow"><span class="k">크기</span><input type="range" min="75" max="200" step="1" value="'+D.size+'" data-dg="size"><span class="v">'+D.size+'%</span></div>'
+    +'<div class="grow"><span class="k">페더</span><input type="range" min="0" max="40" step="1" value="'+D.feather+'" data-dg="feather"><span class="v">'+D.feather+'</span></div>';
+  if(showKe) h+='<div class="grow"><span class="k">키잉 페더</span><input type="range" min="0" max="40" step="1" value="'+D.kfe+'" data-dg="kfe"><span class="v">'+D.kfe+'</span></div>';
+  h+='<button type="button" class="xgo '+(state.xtrGoStyle==='acc'?'acc':'ghost')+'">'+esc(state.xtrGoLbl)+'</button>';
+  if(state.xtrNoteShow==='on') h+='<div class="xnote">'+esc(state.xtrNote)+'</div>';
+  return h;
+}
+function xtrChips(){
+  const al=state.xtrChipAlign==='center'?' al-c':state.xtrChipAlign==='stretch'?' al-s':'';
+  return '<div class="prow'+al+'" style="margin-top:5px">'+[['mosaic','모자이크'],['pinset','트래킹(핀셋 이름표)'],['keying','키잉']]
+    .map(([k,l])=>'<button type="button" class="pc'+(D[k]?' on':'')+'" data-dx="'+k+'">'+l+'</button>').join('')+'</div>';
+}
+function xtrSec(){
+  const any=D.mosaic||D.pinset||D.keying;
+  return '<div class="xtr"><span class="fl">'+esc(state.xtrTitle)+(state.xtrHintShow==='on'?'<span class="xhint">'+esc(state.xtrHint)+'</span>':'')+'</span>'
+    +xtrChips()
+    +(state.xtrExpose==='always'? xtrOptsHtml(true) : (any? xtrOptsHtml(false) : ''))
+    +'</div>';
+}
+function xtrCardSec(){
+  return '<div class="sech"><span class="no">4</span><span class="nm">'+esc(state.xtrTitle)+'</span>'+(state.xtrHintShow==='on'?'<span class="sum" style="margin-left:auto;color:var(--mut);font-size:var(--fs-xs);font-weight:400;opacity:.6">'+esc(state.xtrHint)+'</span>':'')+'</div>'
+    +'<div class="stack">'
+    +'<div class="scard"><div class="hd"><span class="nm">모자이크</span><span class="sum">'+(D.mosaic?(D.shape==='ellipse'?'타원':'네모')+' · '+D.size+'% · 페더 '+D.feather:'끔')+'</span></div>'
+    +'<div class="prm"><div class="prow" style="margin-top:5px">'+[['off','끔'],['on','가림 적용']].map(([v,l])=>'<button type="button" class="pc'+((v==='on')===D.mosaic?' on':'')+'" data-dmo="'+v+'">'+l+'</button>').join('')+'</div>'
+    +(D.mosaic?'<div class="plbl">가림 모양</div><div class="prow" style="margin-top:5px">'+[['rect','네모'],['ellipse','타원']].map(([v,l])=>'<button type="button" class="pc'+(D.shape===v?' on':'')+'" data-dshape="'+v+'">'+l+'</button>').join('')+'</div>'
+    +'<div class="grow"><span class="k">크기</span><input type="range" min="75" max="200" step="1" value="'+D.size+'" data-dg="size"><span class="v">'+D.size+'%</span></div>'
+    +'<div class="grow"><span class="k">페더</span><input type="range" min="0" max="40" step="1" value="'+D.feather+'" data-dg="feather"><span class="v">'+D.feather+'</span></div>':'')
+    +'</div></div>'
+    +'<div class="scard"><div class="hd"><span class="nm">트래킹(핀셋 이름표)</span><span class="sum">'+(D.pinset?'켬':'끔')+'</span></div></div>'
+    +'<div class="scard"><div class="hd"><span class="nm">키잉</span><span class="sum">'+(D.keying?'페더 '+D.kfe:'끔')+'</span></div></div>'
+    +'<div><button type="button" class="xgo '+(state.xtrGoStyle==='acc'?'acc':'ghost')+'">'+esc(state.xtrGoLbl)+'</button>'
+    +(state.xtrNoteShow==='on'?'<div class="xnote">'+esc(state.xtrNote)+'</div>':'')+'</div>'
+    +'</div>';
+}
+function vstageHtml(){
+  const waiting=state.view==='wait'||D.fired;
+  if(!waiting) return '<div class="vstage" hidden></div>';
+  return '<div class="vstage"><div class="scene'+(state.waitVideo==='off'?' dark':'')+'"></div><div class="wscrim"></div>'
+    +(state.scanShow==='on'?'<div class="scanline"></div>':'')
+    +wmsgHtml(state.waitLbl)+'</div>';
+}
+function fireHtml(){
+  return '<div class="firewrap"><button type="button" class="fire '+(state.fireStyle==='glass'?'glass':'dim')+'" id="demoGo">'+esc(state.fireLbl)+'</button></div>';
+}
+function oldComposite(){
+  return '<span class="fl" style="margin-top:2px">소스</span>'
+    +'<div class="srcrow"><div class="filebx"><span class="ftype">MP4</span><span class="fname">20260711_15…</span></div><div class="uin">https://… 또는 파일(≤2GB)</div></div>'
+    +'<div class="vstage"><div class="scene"></div><div class="wscrim"></div><div class="scanline"></div>'
+    +'<div class="wmsg bl" style="font-size:13px">60fps 보간 중 <span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="wsec"> (17s)</span></div></div>'
+    +'<div class="firewrap"><button type="button" class="fire dim oldwait">편집 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span> <span style="font-weight:var(--fw-b);font-variant-numeric:tabular-nums">0:22</span></button></div>'
+    +'<div class="xnote" style="text-align:center">구판 재현(첨부 실측) — 버튼 상주 라벨 + 추정 멘트 + 게이지 3중첩 · 튜닝 무반영 비교 기준</div>';
+}
+function render(){
+  const app=$('#app');
+  const bd0=app.querySelector('.body'); const keepY=bd0?bd0.scrollTop:0;   // 콘솔 조작 재렌더 = 보던 위치 보존(운영자 260712 "수정하면 목업이 기본형으로 돌아감" 수리 — 명시 이동은 scrollToStage만)
+  const shell=inner=>'<div class="mhead"><span class="tit">영상 스튜디오</span><span class="x">'+X_SVG+'</span></div>'
+    +'<div class="tooltabs"><div class="tooltab on">편집</div><div class="tooltab">자막</div><div class="tooltab">프롬프팅</div></div>'
+    +'<div class="body">'+inner+'</div>';
+  if(state.view==='old'){ app.innerHTML=shell(oldComposite()); const bo=app.querySelector('.body'); if(bo) bo.scrollTop=keepY; syncCap(); return; }
+  const xtrInline=(state.xtrExpose!=='card');
+  const inner=
+    '<span class="fl" style="margin-top:2px">소스</span>'
+    +'<div class="srcrow"><div class="filebx"><span class="ftype">MP4</span><span class="fname">20260711_15…</span></div><div class="uin">https://… 또는 파일(≤2GB)</div></div>'
+    +(state.xtrPlace==='src'? (xtrInline? xtrSec() : xtrCardSec()) : '')
+    +'<div class="recrow"><span class="rec">릴스 완성</span><span class="rec">포맷만</span><span class="rec">화질만</span><span class="rec">쇼츠 클립</span></div>'
+    +'<div class="sech" style="margin-top:4px"><span class="no">1</span><span class="nm">리사이징</span></div>'
+    +'<div class="stack"><div class="scard"><div class="hd"><span class="nm">비율</span><span class="sum">9:16 여백(블러)</span></div></div>'
+    +'<div class="scard"><div class="hd"><span class="nm">프레임</span><span class="sum"></span></div></div></div>'
+    +'<div class="sech"><span class="no">2</span><span class="nm">영상 편집</span></div>'
+    +'<div class="stack"><div class="scard"><div class="hd"><span class="nm">컷 편집</span><span class="sum"></span></div></div></div>'
+    +'<div class="sech"><span class="no">3</span><span class="nm">음향 편집</span></div>'
+    +'<div class="stack"><div class="scard"><div class="hd"><span class="nm">음량 통일</span><span class="sum">'+(D.anorm?esc(state.anormSum):'')+'</span></div>'
+    +'<div class="prm"><div class="prow" style="margin-top:5px">'+[['off','끔'],['on',esc(state.anormSum)]].map(([v,l])=>'<button type="button" class="pc'+((v==='on')===D.anorm?' on':'')+'" data-dan="'+v+'">'+l+'</button>').join('')+'</div></div></div></div>'
+    +(state.xtrPlace==='stack'? (xtrInline? xtrSec() : xtrCardSec()) : '')
+    +vstageHtml()
+    +fireHtml();
+  app.innerHTML=shell(inner);
+  const bd=app.querySelector('.body'); if(bd) bd.scrollTop=keepY;
+  if(state.view==='wait'||D.fired){ startTick(); } else stopTick();
+  syncCap();
+}
+function startTick(){ stopTick(); WTICK=setInterval(()=>{ WSEC++; const w=$('#app .wmsg .wsec'); if(w) w.textContent=wsecTxt(); },1000); }
+function scrollToStage(){ const bd=$('#app .body'); const vs=$('#app .vstage:not([hidden])')||$('#app .firewrap'); if(bd&&vs) requestAnimationFrame(()=>{ bd.scrollTop=Math.max(0, vs.offsetTop-150); }); }   // 보기 전환·발사 때만(슬라이더 조작 중 스크롤 납치 금지)
+function syncCap(){ $('#cap').textContent= state.view==='old'? '구판(첨부 상태) 재현 — 신판과 번갈아 비교해봐'
+  : (state.view==='wait'||D.fired? '대기 화면 — 문구·위치·경과 표기를 콘솔에서 바꿔봐' : '발사 버튼을 직접 탭 = 전송 시퀀스 재생(풀필 → ✓ → 접수 문구 → 원복 → 대기 화면 등장)'); }
+
+/* 미리보기 실물 조작(칩·세그·게이지·발사) */
+let FIRE_T=[];
+const clearFire=()=>{ FIRE_T.forEach(clearTimeout); FIRE_T=[]; };
+$('#app').addEventListener('click',e=>{
+  const dx=e.target.closest('[data-dx]'); if(dx){ D[dx.dataset.dx]=!D[dx.dataset.dx]; render(); buildOut(); return; }
+  const ds=e.target.closest('[data-dshape]'); if(ds){ D.shape=ds.dataset.dshape; render(); buildOut(); return; }
+  const dm=e.target.closest('[data-dmo]'); if(dm){ D.mosaic=dm.dataset.dmo==='on'; render(); buildOut(); return; }
+  const da=e.target.closest('[data-dan]'); if(da){ D.anorm=da.dataset.dan==='on'; render(); buildOut(); return; }
+  const g=e.target.closest('#demoGo'); if(g){ playFire(g); return; }
+});
+$('#app').addEventListener('input',e=>{
+  const dg=e.target.closest('[data-dg]'); if(!dg) return;
+  D[dg.dataset.dg]=+dg.value; const v=dg.parentElement.querySelector('.v'); if(v) v.textContent=dg.value+(dg.dataset.dg==='size'?'%':'');
+  buildOut();
+});
+function playFire(g){
+  if(g.classList.contains('firing')||g.classList.contains('okdone')) return;
+  clearFire();
+  g.classList.remove('okdone','checking'); void g.offsetWidth;
+  g.classList.add('firing'); g.textContent=state.sendLbl; g.setAttribute('aria-busy','true');
+  FIRE_T.push(setTimeout(()=>{
+    const g1=$('#demoGo')||g;   // 재렌더로 노드가 갈려도 시퀀스 지속(운영자 260712 수리)
+    g1.classList.remove('firing'); g1.classList.add('okdone','checking');
+    g1.innerHTML='<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
+    g1.removeAttribute('aria-busy');
+    FIRE_T.push(setTimeout(()=>{
+      const g2=$('#demoGo')||g1;
+      g2.classList.remove('firing'); g2.classList.add('okdone'); g2.classList.remove('checking'); g2.textContent=state.sentLbl;
+      FIRE_T.push(setTimeout(()=>{
+        const g3=$('#demoGo')||g2;
+        g3.classList.remove('okdone','checking','firing'); g3.textContent=state.fireLbl;
+        D.fired=true; WSEC=0; render(); buildOut(); scrollToStage();
+      }, state.sentHold));
+    },560));
+  }, Math.max(600, state.fillMs+180)));
+}
+
+/* ══ 콘솔 빌드·동기(양방향 §7-1-2 · ⚠ 실시간 §7-2-1) ══ */
+function buildAxes(){
+  let html='',last='';
+  for(const a of AXES){
+    if(a.grp!==last){ html+='<div class="grp-t">'+a.grp+'</div>'; last=a.grp; }
+    if(a.sg) html+='<div class="axis" data-ax="'+a.k+'"><span class="k">'+a.nm+(a.nx?'<span class="w" style="display:inline;color:var(--warn);font-size:10px"> ⚠신규</span>':'')+'</span><span class="segs">'+a.sg.map(s=>'<button type="button" data-seg="'+a.k+':'+s[0]+'">'+s[1]+'</button>').join('')+'</span></div>';
+    else if(a.tx) html+='<div class="axis" data-ax="'+a.k+'"><span class="k">'+a.nm+'</span><input type="text" data-tx="'+a.k+'" value="'+esc(state[a.k])+'"></div>';
+    else{
+      const lid=a.lad?('lad-'+a.k):'';
+      html+='<div class="axis" data-ax="'+a.k+'"><span class="k">'+a.nm+'<span class="w">⚠</span></span><input type="range" min="'+a.min+'" max="'+a.max+'" step="'+a.step+'" value="'+state[a.k]+'" data-sl="'+a.k+'"'+(lid?' list="'+lid+'"':'')+'>'+(lid?'<datalist id="'+lid+'">'+LAD[a.lad].map(v=>'<option value="'+v+'"></option>').join('')+'</datalist>':'')+'<span class="v"></span></div>';
+    }
+  }
+  $('#axes').innerHTML=html;
+  $('#axn').textContent='축 '+AXES.length+'개 + 프레임 실물 컨트롤(칩·세그·게이지·발사)';
+}
+function buildPresets(){ $('#presets').innerHTML=PRESETS.map(p=>'<button type="button" class="pbtn" data-p="'+p.id+'">'+(p.star?'★ ':'')+p.nm+'</button>').join(''); }
+const near=(a,b,eps=.26)=>Math.abs(a-b)<eps;
+const warnAxes=()=>AXES.filter(a=>a.lad&&!LAD[a.lad].some(v=>near(+state[a.k],v)));
+const newAxes=()=>AXES.filter(a=>a.nx&&a.nxv&&a.nxv.includes(String(state[a.k])));
+function syncPresets(){ $$('#presets .pbtn').forEach(b=>{ const p=PRESETS.find(x=>x.id===b.dataset.p); const full={...DEFAULTS,...p.st}; b.classList.toggle('on',Object.keys(full).every(k=>k==='view'||String(full[k])===String(state[k]))); }); }
+function applyAll(){
+  const app=$('#app');
+  for(const k of CSSPX) app.style.setProperty('--t-'+k, state[k]+'px');
+  for(const k of CSSA) app.style.setProperty('--t-'+k, state[k]);
+  app.style.setProperty('--t-fillMs', state.fillMs+'ms');
+  for(const a of AXES){ const row=document.querySelector('[data-ax="'+a.k+'"]'); if(!row) continue;
+    if(a.sg) row.querySelectorAll('[data-seg]').forEach(b=>b.classList.toggle('on',b.dataset.seg.slice(b.dataset.seg.indexOf(':')+1)===String(state[a.k])));
+    else if(a.tx){ const t=row.querySelector('input'); if(t&&t.value!==state[a.k]&&document.activeElement!==t) t.value=state[a.k]; }
+    else{ const sl=row.querySelector('input'); if(sl&&+sl.value!==+state[a.k]) sl.value=state[a.k];
+      row.querySelector('.v').textContent=(+state[a.k])+(a.u||'');
+      row.classList.toggle('warn',!!(a.lad&&!LAD[a.lad].some(x=>near(+state[a.k],x)))); }
+  }
+  const ws=warnAxes(); const wc=$('#wc'); wc.hidden=!ws.length; wc.textContent='⚠ 기틀 이탈 '+ws.length+'축';
+  $$('#views .vbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===state.view));
+  syncPresets(); render(); buildOut();
+}
+$('#views').addEventListener('click',e=>{ const b=e.target.closest('.vbtn'); if(!b) return; state.view=b.dataset.v; D.fired=false; clearFire(); if(state.view==='wait') WSEC=17; applyAll(); scrollToStage(); });
+$('#presets').addEventListener('click',e=>{ const b=e.target.closest('.pbtn'); if(!b) return; const p=PRESETS.find(x=>x.id===b.dataset.p); const v=state.view; state={...DEFAULTS,...p.st,view:v}; Object.assign(D,JSON.parse(JSON.stringify(D0))); D.anorm=state.anormDef==='on'; clearFire(); applyAll(); });
+$('#axes').addEventListener('click',e=>{ const s=e.target.closest('[data-seg]'); if(!s) return; const i=s.dataset.seg.indexOf(':'); const k=s.dataset.seg.slice(0,i), v=s.dataset.seg.slice(i+1); state[k]=v; if(k==='anormDef') D.anorm=(v==='on'); applyAll(); });
+$('#axes').addEventListener('input',e=>{
+  const s=e.target.closest('[data-sl]'); if(s){ state[s.dataset.sl]=+s.value; applyAll(); return; }
+  const t=e.target.closest('[data-tx]'); if(t){ state[t.dataset.tx]=t.value; render(); buildOut(); syncPresets(); }
+});
+
+/* ══ 선택값 출력(§3-4 · 한글 2칸 폭 열맞춤 §7-1-5) ══ */
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>0x1100?2:1),0);
+const padK=(s,w)=>s+' '.repeat(Math.max(0,w-kw(s)));
+function segLbl(a,v){ const f=a.sg.find(s=>s[0]===String(v)); return f?f[1]:v; }
+function buildOut(){
+  const L=[]; const grpDone=new Set();
+  L.push('[편집 탭 발사·대기·모자이크 — 선택값]');
+  for(const a of AXES){
+    if(!grpDone.has(a.grp)){ L.push(''); L.push('■ '+a.grp); grpDone.add(a.grp); }
+    if(a.sg){ const cur=segLbl(a,state[a.k]), def=segLbl(a,DEFAULTS[a.k]); const ch=String(state[a.k])!==String(DEFAULTS[a.k]);
+      const nxOn=a.nx&&a.nxv&&a.nxv.includes(String(state[a.k]));
+      L.push(padK(a.nm,20)+': '+cur+' ('+a.k+'='+state[a.k]+')'+(ch?'   [현행 '+def+']':'   [현행값]')+(nxOn?' ⚠신규 배선 필요':''));
+    } else if(a.tx){ const ch=state[a.k]!==DEFAULTS[a.k];
+      L.push(padK(a.nm,20)+': "'+state[a.k]+'"'+(ch?'   [현행 "'+DEFAULTS[a.k]+'"] → 문구 변경':'   [현행 문구]'));
+    } else { const inLad=a.lad?LAD[a.lad].some(v=>near(+state[a.k],v)):true;
+      L.push(padK(a.nm,20)+': '+state[a.k]+(a.u||'')+' ('+a.k+')   [현행 '+DEFAULTS[a.k]+(a.u||'')+']'+(a.lad?(inLad?' (계승'+(a.tok?' · '+a.tok:'')+')':' ⚠갱신 후보'):''));
+    }
+  }
+  L.push('');
+  L.push('■ 프레임 런타임 예시(참고용 — 스펙 아님 · 미리보기에서 실탭한 값)');
+  L.push('보기 = '+({idle:'평시',wait:'대기 화면',old:'구판 재현'})[state.view]+' · 기타 기능 = '+(['mosaic','pinset','keying'].filter(k=>D[k]).map(k=>({mosaic:'모자이크',pinset:'핀셋',keying:'키잉'})[k]).join('·')||'없음')+(D.mosaic?'('+(D.shape==='ellipse'?'타원':'네모')+' '+D.size+'% 페더'+D.feather+')':'')+' · 음량 보정 = '+(D.anorm?'ON':'OFF'));
+  const nx=newAxes();
+  if(nx.length){ L.push(''); L.push('■ ⚠신규 배선 필요(현행 파이프에 없음 — 선택 시 별도 작업)'); nx.forEach(a=>L.push('· '+a.nm+' = '+segLbl(a,state[a.k]))); }
+  $('#out').textContent=L.join('\n');
+}
+
+/* ══ 복사(§3-2′③ 알림창·역제안 · 클립보드 폴백) ══ */
+function doCopy(txt){ const fin=()=>{ const b=$('#copy'); b.textContent='✓ 복사됨'; setTimeout(()=>b.textContent='선택값 복사',900); };
+  const fb=t=>{ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(fin).catch(()=>{ fb(txt); fin(); }); else{ fb(txt); fin(); } }
+const counterBlock=ws=>'\n[🔁 기틀 갱신 역제안]\n'+ws.map(a=>'· '+a.nm+': 현행 '+DEFAULTS[a.k]+(a.u||'')+' → 제안 '+state[a.k]+(a.u||'')+' (적용 범위 = 전 앱 동일 축'+(a.tok?' · '+a.tok:'')+')').join('\n');
+$('#copy').addEventListener('click',()=>{ const ws=warnAxes();
+  if(!ws.length){ doCopy($('#out').textContent); return; }
+  $('#clist').innerHTML='이탈 축 '+ws.length+'개: '+ws.map(a=>a.nm+'('+state[a.k]+(a.u||'')+')').join(' · ');
+  $('#cmodal').hidden=false; });
+$('#cInc').addEventListener('click',()=>{ doCopy($('#out').textContent+'\n'+counterBlock(warnAxes())); $('#cmodal').hidden=true; });
+$('#cOnly').addEventListener('click',()=>{ const ks=warnAxes().map(a=>a.k); const tmp={...state}; ks.forEach(k=>state[k]=DEFAULTS[k]); buildOut(); doCopy($('#out').textContent); state=tmp; buildOut(); $('#cmodal').hidden=true; });
+$('#cNo').addEventListener('click',()=>{ $('#cmodal').hidden=true; });
+
+buildPresets(); buildAxes(); applyAll(); scrollToStage();   // 첫 화면 = 논점(대기 화면) 오픈(§7-1-3)
+</script>
+</body>
+</html>
