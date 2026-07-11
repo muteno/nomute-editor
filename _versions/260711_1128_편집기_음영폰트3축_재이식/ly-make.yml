@@ -91,7 +91,7 @@ jobs:
         if: ${{ inputs.reburn == '1' }}
         run: |
           timeout 300 sudo apt-get update -qq || true
-          timeout 300 sudo apt-get install -y -qq ffmpeg fonts-noto-cjk fonts-nanum fonts-nanum-extra || { echo "::error::ffmpeg/폰트 설치 실패"; exit 1; }   # 나눔 2종 = 편집기 재입히기(reburn)의 폰트 축(nanum·pen) — 이 스텝이 reburn 유일 경로라 STT 스텝(186행)만으론 미도달(평의회 260711 적발 · 미설치 = 고딕 강등)
+          timeout 300 sudo apt-get install -y -qq ffmpeg fonts-noto-cjk || { echo "::error::ffmpeg/폰트 설치 실패"; exit 1; }
           fc-list | grep -qi "noto sans cjk" || { echo "::error::Noto Sans CJK 미탐지 — 두부 번인 차단"; exit 1; }
 
       # 재합성 소스 회수 — 기존 video.json의 src(R2 원본 보관본) → /tmp (subs.json 의역은 checkout에 이미 포함)
@@ -183,7 +183,7 @@ jobs:
         with:
           setup: apps/ly/setup.sh
           whisper: 'true'
-          apt: ffmpeg fonts-noto-cjk fonts-nanum fonts-nanum-extra   # ffmpeg+한글폰트(자막 번인 libass용) .deb 7일 캐시 → 매 런 재다운·미러행 차단 · 나눔 2종 = edit-make와 apt 문자열 통일(캐시 키 공유 = 재다운 1회 합산 · ly fresh는 font 미송신이라 현재 미사용 = 선제 설치 — ⚠ 재입히기(reburn)는 이 스텝을 안 탄다(url·file 공백 게이트) → reburn 폰트는 94행 재합성 스텝이 담당 · v2평의회3 260711)
+          apt: ffmpeg fonts-noto-cjk   # ffmpeg+한글폰트(자막 번인 libass용) .deb 7일 캐시 → 매 런 재다운·미러행 차단
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}
