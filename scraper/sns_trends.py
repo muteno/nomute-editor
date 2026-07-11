@@ -30,10 +30,13 @@
         정렬 = 좋아요(뷰어 단일 지표 · 댓글·RT·조회수는 데이터 동봉).
      나) 틱톡 = tikwm /api/user/posts(③과 동일 창구·콜 간 2s). 정렬 = 조회수.
      다) 인스타 릴스 = 웹 내부 API web_profile_info(무인증·계정당 최근 12게시물 중 영상만 ·
-        차단 리스크 최고 소스 → 콜 간 3s 보수 운용). 정렬 = 조회수(숨김 0은 좋아요 보조).
-     라) 유튜브 채널 = 채널 RSS(무키·조회수 포함·최근 14일 필터). @핸들 → channelId 해석.
+        차단 리스크 최고 소스 → 콜 간 6s 보수 운용·429 = 잔여 중단). 정렬 = 조회수(숨김 0은 좋아요 보조).
+     라) 유튜브 채널 = 채널 RSS(무키·조회수 포함·최근 14일 필터). @핸들 → channelId 해석(+1콜).
+     공통: 플랫폼당 limit 10 저장(뷰어 표시 8 + 순위 델타 여유 · 과적재 방지 평의회8) · wall-clock
+     예산 SNS_SUBS_BUDGET(기본 240s) 초과 = 잔여 계정 스킵(레거시 수집분 보존 · 평의회2·9).
      커버/썸네일 = CDN 직링(서명 URL — 30분 재수집이 만료보다 짧아 상시 신선 · 무리퍼러 로드
-     200 실측 260711 → R2 재호스팅 불요 · 뷰어 no-referrer+onerror 관용구).
+     200 실측 260711 → R2 재호스팅 불요[서명 churn으로 git 델타 비대 = 알려진 트레이드오프 ·
+     비대해지면 R2 재호스팅 후속] · 뷰어 no-referrer+onerror 관용구 · 인스타는 소형 변형 픽).
 
 산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, subs{}}
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
@@ -193,23 +196,60 @@ def tiktok(limit=15, calls=4):
     return sorted(seen.values(), key=lambda t: t["views"], reverse=True)[:limit]
 
 
+_ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
+
+
 def _load_accounts():
-    """구독 계정 목록(viewer/sns_accounts.json) — 없음/파손 = 전 플랫폼 빈 목록(fail-soft).
-    @ 접두 제거·플랫폼당 15 상한(snsacc.js 검증과 동일 — 러너 소요 상한 보호)."""
+    """구독 계정 목록(viewer/sns_accounts.json) — 없음/파손/타입 오염 = 해당 분 빈 목록(fail-soft ·
+    평의회1: 본문 전체 try + isinstance 가드 = 파손 파일이 전 소스를 못 죽임).
+    RX 형식검증·대소문자 dedup·@ 접두 제거·플랫폼당 15 상한 = snsacc.js cleanList와 대칭."""
+    out = {k: [] for k in ("x", "tiktok", "insta", "youtube")}
     try:
-        j = json.load(open(ACC, encoding="utf-8")) or {}
-    except Exception:
-        j = {}
-    def norm(xs):
-        return [re.sub(r"^@", "", str(x).strip()) for x in (xs or []) if str(x).strip()][:15]
-    return {k: norm(j.get(k)) for k in ("x", "tiktok", "insta", "youtube")}
+        j = json.load(open(ACC, encoding="utf-8"))
+        if not isinstance(j, dict):
+            j = {}
+        for k in out:
+            xs, seen = j.get(k), set()
+            for x in (xs if isinstance(xs, list) else []):
+                if not isinstance(x, str) or not _ACC_RX.match(x.strip()):
+                    continue
+                v = re.sub(r"^@", "", x.strip())
+                if v.lower() in seen:
+                    continue
+                seen.add(v.lower())
+                out[k].append(v)
+                if len(out[k]) >= 15:
+                    break
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::sns_accounts 로드 실패(빈 목록 폴백): {e}", file=sys.stderr)
+    return out
 
 
-def x_subs(accounts, limit=20):
-    """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 1.2s.
-    응답 = __NEXT_DATA__ JSON(계정당 ~20트윗·좋아요/RT 포함·댓글수 없음). 정렬 = 좋아요."""
-    out = []
+def _i(v):
+    """수치 강제(int) — 상류 API가 문자열·콤마 수치를 실어도 항목/계정 단위로 안전(평의회1·6)."""
+    if isinstance(v, int):
+        return v
+    try:
+        return int(re.sub(r"[^\d]", "", str(v)) or 0)
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def _over(deadline):
+    """구독 축 wall-clock 예산 초과 판정 — 초과 시 잔여 계정 스킵(수집분은 사용 · 평의회9:
+    최악(전 콜 타임아웃 직렬)이 timeout을 넘겨 레거시 수집분까지 버리는 시나리오 차단)."""
+    return deadline is not None and time.monotonic() > deadline
+
+
+def x_subs(accounts, limit=10, deadline=None):
+    """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 1.2s
+    (동시 요청 많으면 빈 응답 = 직렬 유지). 크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8).
+    정렬 = 좋아요."""
+    out, seen_tid = [], set()
     for i, acc in enumerate(accounts):
+        if _over(deadline):
+            print("::warning::x 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            break
         if i:
             time.sleep(1.2)
         try:
@@ -229,12 +269,13 @@ def x_subs(accounts, limit=20):
                 if t.get("favorite_count") is None:   # 광고·비트윗 엔트리 컷(동 계승)
                     continue
                 tid, txt = t.get("id_str") or "", (t.get("full_text") or t.get("text") or "").strip()
-                if not tid or not txt:
+                if not tid or not txt or tid in seen_tid:   # tid dedup = 같은 리트윗의 다계정 중복 노출 차단
                     continue
+                seen_tid.add(tid)
                 vw = t.get("views")
-                out.append({"account": acc, "text": txt[:280], "likes": t.get("favorite_count") or 0,
-                            "rts": t.get("retweet_count") or 0, "cmts": t.get("reply_count") or 0,
-                            "views": int((vw.get("count") or 0)) if isinstance(vw, dict) else 0,
+                out.append({"account": acc, "text": txt[:280], "likes": _i(t.get("favorite_count")),
+                            "rts": _i(t.get("retweet_count")), "cmts": _i(t.get("reply_count")),
+                            "views": _i(vw.get("count")) if isinstance(vw, dict) else 0,
                             "time": t.get("created_at") or "",
                             "url": "https://x.com/%s/status/%s" % (acc, tid)})
         except Exception as e:  # noqa: BLE001
@@ -242,11 +283,14 @@ def x_subs(accounts, limit=20):
     return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
 
 
-def tiktok_subs(accounts, limit=20):
+def tiktok_subs(accounts, limit=10, deadline=None):
     """틱톡 구독 계정 최신 영상 — tikwm /api/user/posts(인기 피드와 동일 창구·무키).
     직전 tiktok() 콜 연장선이라 매 콜 앞 2s(free tier 레이트리밋 실측 계승). 정렬 = 조회수."""
     out = []
     for acc in accounts:
+        if _over(deadline):
+            print("::warning::tiktok 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            break
         time.sleep(2)
         try:
             j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=10" % urllib.parse.quote(acc)))
@@ -259,8 +303,8 @@ def tiktok_subs(accounts, limit=20):
                     continue
                 handle = (v.get("author") or {}).get("unique_id") or acc
                 out.append({"account": handle, "title": (v.get("title") or "").strip()[:120],
-                            "views": v.get("play_count") or 0, "likes": v.get("digg_count") or 0,
-                            "cmts": v.get("comment_count") or 0, "cover": v.get("cover") or "",
+                            "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
+                            "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
                             "time": v.get("create_time") or 0,
                             "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)})
         except Exception as e:  # noqa: BLE001
@@ -268,13 +312,16 @@ def tiktok_subs(accounts, limit=20):
     return sorted(out, key=lambda t: t["views"], reverse=True)[:limit]
 
 
-def insta_subs(accounts, limit=20):
+def insta_subs(accounts, limit=10, deadline=None):
     """인스타 구독 계정 최신 릴스 — 웹 내부 API web_profile_info(무인증·계정당 최근 12게시물).
     차단 리스크 최고 소스 → 콜 간 6s 보수 운용·계정별 fail-soft·429 = 잔여 중단(IP 단위 리밋이라
     연타 무의미 · 컨테이너 실측 260711 — 그때까지 수집분 사용·실패런은 main()이 직전분 보존).
     영상만 · 정렬 = 조회수(숨김 0 = 좋아요 보조)."""
     out = []
     for i, acc in enumerate(accounts):
+        if _over(deadline):
+            print("::warning::insta 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            break
         if i:
             time.sleep(6)
         try:
@@ -290,10 +337,16 @@ def insta_subs(accounts, limit=20):
                 ce = ((n.get("edge_media_to_caption") or {}).get("edges") or [])
                 cap = (((ce[0] if ce else {}).get("node") or {}).get("text") or "").strip()
                 cap = cap.split("\n")[0]   # 캡션 첫 줄만(해시태그 덩어리 컷 — 업로드 도구 검증 트림 계승)
-                out.append({"account": acc, "title": cap[:120], "views": n.get("video_view_count") or 0,
-                            "likes": (n.get("edge_liked_by") or {}).get("count") or 0,
-                            "cmts": (n.get("edge_media_to_comment") or {}).get("count") or 0,
-                            "cover": n.get("thumbnail_src") or n.get("display_url") or "",
+                # 커버 = 소형 변형 우선(thumbnail_resources ≥240px · 표시 슬롯 33×44라 640px 원본은 셀룰러 낭비 — 평의회9)
+                cover = n.get("thumbnail_src") or n.get("display_url") or ""
+                for tr in (n.get("thumbnail_resources") or []):
+                    if isinstance(tr, dict) and _i(tr.get("config_width")) >= 240 and tr.get("src"):
+                        cover = tr["src"]
+                        break
+                out.append({"account": acc, "title": cap[:120], "views": _i(n.get("video_view_count")),
+                            "likes": _i((n.get("edge_liked_by") or {}).get("count")),
+                            "cmts": _i((n.get("edge_media_to_comment") or {}).get("count")),
+                            "cover": cover,
                             "time": n.get("taken_at_timestamp") or 0,
                             "url": "https://www.instagram.com/reel/%s/" % n.get("shortcode")})
         except urllib.error.HTTPError as e:
@@ -306,12 +359,15 @@ def insta_subs(accounts, limit=20):
     return sorted(out, key=lambda t: (t["views"], t["likes"]), reverse=True)[:limit]
 
 
-def yt_subs(accounts, limit=20, fresh_days=14):
+def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     """유튜브 구독 채널 최신 영상 — 채널 RSS(무키·media:statistics 조회수 포함·채널당 최근 15개).
-    @핸들 = 채널페이지 HTML서 channelId 해석(런당 1회). 최근 fresh_days일 필터 · 정렬 = 조회수."""
+    @핸들 = 채널페이지 HTML서 channelId 해석(계정당 +1콜). 최근 fresh_days일 필터 · 정렬 = 조회수."""
     import html as _html
     out, cutoff = [], datetime.now(timezone.utc) - timedelta(days=fresh_days)
     for i, acc in enumerate(accounts):
+        if _over(deadline):
+            print("::warning::yt 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            break
         if i:
             time.sleep(1)
         try:
@@ -339,7 +395,7 @@ def yt_subs(accounts, limit=20, fresh_days=14):
                 except Exception:
                     pass
                 vw = re.search(r'<media:statistics views="(\d+)"', s)
-                out.append({"id": vid, "account": acc, "title": _html.unescape(tag("title")),
+                out.append({"id": vid, "account": acc, "title": _html.unescape(tag("title"))[:120],
                             "views": int(vw.group(1)) if vw else 0, "published": pub,
                             "thumb": "https://i.ytimg.com/vi/%s/mqdefault.jpg" % vid,
                             "url": "https://www.youtube.com/watch?v=" + vid})
@@ -384,11 +440,14 @@ def main():
     gt = gtrends()
     tk = tiktok()
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
-    subs_new = None
+    subs_new, acc = None, None
     if SUBS_ON:
-        a = _load_accounts()
-        subs_new = {"x": x_subs(a["x"]), "tiktok": tiktok_subs(a["tiktok"]),
-                    "insta": insta_subs(a["insta"]), "youtube": yt_subs(a["youtube"])}
+        acc = _load_accounts()
+        # wall-clock 예산(기본 240s·env SNS_SUBS_BUDGET) — 최악(전 콜 타임아웃 직렬 ≈570s+)이 workflow timeout을
+        # 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
+        dl = time.monotonic() + int(os.environ.get("SNS_SUBS_BUDGET") or "240")
+        subs_new = {"x": x_subs(acc["x"], deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], deadline=dl),
+                    "insta": insta_subs(acc["insta"], deadline=dl), "youtube": yt_subs(acc["youtube"], deadline=dl)}
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not subs_any:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
@@ -403,11 +462,16 @@ def main():
     psubs = prev.get("subs") or {}
     subs = psubs
     if subs_any:
+        def carry(k):
+            # 직전분 유지 시 순위 배지(delta/isNew) 스트립 — 이전 런의 델타를 현재처럼 표시 금지(평의회1 정직성)
+            return [{f: v for f, v in it.items() if f not in ("delta", "isNew")}
+                    for it in (psubs.get(k) or []) if isinstance(it, dict)]
         for k in ("x", "tiktok", "insta", "youtube"):
             _annotate_rank(subs_new[k], psubs.get(k),
                            (lambda v: v.get("id")) if k == "youtube" else (lambda v: v.get("url")))
-        # 플랫폼별 fail-soft: 이번 런 실패(빈) 플랫폼은 직전 성공분 유지
-        subs = {"updated": now, **{k: subs_new[k] or psubs.get(k) or [] for k in ("x", "tiktok", "insta", "youtube")}}
+        # 플랫폼별 fail-soft: 이번 런 실패(빈) = 직전분 유지(배지 스트립) · 단 계정 목록 자체가 비면 즉시 []
+        # (or 폴백이 '수집 실패 보존'과 '구독 전체 해제'를 구분 못해 옛 데이터가 영영 잔존하던 구멍 — 평의회8 F1)
+        subs = {"updated": now, **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube")}}
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
@@ -419,7 +483,8 @@ def main():
         "subs": subs,   # 구독 축(④) — {updated, x[], tiktok[], insta[], youtube[]} · 미수집 = 직전분/{}
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    json.dump(data, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    # errors=replace = 상류 lone-surrogate가 encode 크래시로 런 전체를 버리는 엣지 차단(평의회6 — 극귀·해당 문자만 ? 치환)
+    json.dump(data, open(OUT, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube")) if sb else "OFF"

@@ -2,7 +2,8 @@
 // settings.js 패턴 계승(GH_TOKEN·originOk·sha 경합 재시도). 운영자 260711 승인(구독 축 = 기존 레인 아래 · '계정' 버튼 → 관리 모달).
 //   GET  → { x[], tiktok[], insta[], youtube[] }   (main 즉시 정합 — 정적 파일은 Pages 배포 지연이라 API 경유)
 //   POST → { patch:{ x?[], tiktok?[], insta?[], youtube?[] } } 온 키만 통째 교체(모달 = 스테이징 편집 후 저장 1커밋).
-// 수집 반영 = 다음 sns-trends 런(30분 주기)부터. 플랫폼당 15 상한 = 러너 소요 보호(scraper/sns_trends._load_accounts와 동일 규격).
+// 수집 반영 = sns-trends 런(30분 주기 · SNS_SUBS 게이트 ON 전제 = 카나리아 승격 후 §📰-e — 승격 전엔 저장만 되고 수집 무발동).
+// 플랫폼당 15 상한 = 러너 소요 보호(scraper/sns_trends._load_accounts와 동일 규격).
 const REPO = 'muteno/nomute-editor', FILE = 'viewer/sns_accounts.json';
 const KEYS = ['x', 'tiktok', 'insta', 'youtube'];
 const RX = /^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$/;   // 핸들 관용 규격(X 15자·인스타 30자·틱톡 24자 합집합 — 형식만 거르는 느슨 상한 · 실존 여부는 수집기가 fail-soft 스킵)
