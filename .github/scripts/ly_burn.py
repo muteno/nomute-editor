@@ -735,8 +735,8 @@ def run(vid_id, video, outdir):
     _EK_LBL = {"vid_ar": "비율", "vid_fit": "채움", "vid_pos": "위치", "vid_res": "해상도", "vid_fps": "프레임", "vid_t0": "구간", "vid_t1": "구간", "aud_norm": "음량"}
     edit_notes = (["이전 편집 설정 승계(" + "·".join(dict.fromkeys(_EK_LBL[k] for k in inherited)) + ")"] if inherited else [])   # 실승계 축만 표기(침묵 금지·과대 표기 금지 · 검증3)
     f_key = opts.get("font")
-    if f_key and f_key in FONT_FAMILY and f_key != "gothic" and not font_avail(FONT_FAMILY[f_key]):
-        opts["font"] = "gothic"   # 폰트 미설치 = 기본 폴백(fail-soft · 260711) — 이후 전 build_ass 호출(컷 실패 폴백 포함)이 이 opts를 봄
+    if segs and not no_burn and f_key and f_key in FONT_FAMILY and f_key != "gothic" and not font_avail(FONT_FAMILY[f_key]):
+        opts["font"] = "gothic"   # 폰트 미설치 = 기본 폴백(fail-soft · 260711) — 이후 전 build_ass 호출(컷 실패 폴백 포함)이 이 opts를 봄 · 게이트 = 번인 실행 경로(segs·not no_burn)에만(컷 단독·전사 없음 = fc-list 불요·오해 note 차단 · v2평의회1 F2)
         edit_notes.append("선택 폰트 미설치 — 기본 고딕으로 합성")
     if not segs and not (has_vid or aud_on or opts.get("bgm")):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합)
         out_json(outdir, {"error": "전사가 안 돼 컷 불가 — 소리 있는 영상인지 확인해줘" if opts.get("cut")

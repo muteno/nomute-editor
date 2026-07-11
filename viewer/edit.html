@@ -494,7 +494,8 @@ function sum(k){
 }
 const pc=(k,v,on,dim,txt)=>'<button class="pc'+(on?' on':'')+(dim?' dim':'')+'" type="button" data-p="'+k+':'+v+'" aria-pressed="'+(on?'true':'false')+'"'+(dim?' disabled':'')+'>'+txt+'</button>';   // aria-pressed = 토글 상태 SR 공지(P2평의회5 a11y)
 function segs(k, arr, cur, dim){ return '<div class="prow">'+arr.map(a=>pc(k,a[0],String(cur)===a[0],dim,a[1])).join('')+'</div>'; }
-function gauge(k, lbl, min, max, val, unit){ return '<div class="grow"><span class="k">'+lbl+'</span><input type="range" min="'+min+'" max="'+max+'" step="1" value="'+val+'" data-g="'+k+'" aria-label="'+lbl+'"><span class="v">'+val+unit+'</span></div>'; }
+const gvTxt=(k,v,u)=>(k==='sh'&&+v===100)?'기본':(v+u);   // 음영 100% = '기본'(불변 상태 명시 — 트랙 27% 지점이라 숫자만으론 기준선 인지 불가 · v2평의회9)
+function gauge(k, lbl, min, max, val, unit){ return '<div class="grow"><span class="k">'+lbl+'</span><input type="range" min="'+min+'" max="'+max+'" step="1" value="'+val+'" data-g="'+k+'" aria-label="'+lbl+'"><span class="v">'+gvTxt(k,val,unit)+'</span></div>'; }
 function prm(k){
   if(k==='sub') return '<div class="plbl">프리셋</div><div class="prow">'+Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm)).join('')+'</div>'
     +'<div class="plbl">언어</div>'+segs('lang',[['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']],P.lang)
@@ -592,7 +593,7 @@ $('#stack').addEventListener('click',e=>{
   const hd=e.target.closest('[data-open]'); if(hd){ OPEN=OPEN===hd.dataset.open?'':hd.dataset.open; render(); return; }
 });
 $('#stack').addEventListener('input',e=>{
-  const g=e.target.closest('[data-g]'); if(g){ P[g.dataset.g]=+g.value; g.parentElement.querySelector('.v').textContent=g.value+(g.dataset.g==='size'?'‰':'%'); setEta(); pvSync(); return; }   // 게이지 = 미리보기 실시간 동기(260711)
+  const g=e.target.closest('[data-g]'); if(g){ P[g.dataset.g]=+g.value; g.parentElement.querySelector('.v').textContent=gvTxt(g.dataset.g,g.value,g.dataset.g==='size'?'‰':'%'); setEta(); pvSync(); return; }   // 게이지 = 미리보기 실시간 동기(260711) · 음영 100 = '기본'
   const t=e.target.closest('#t0,#t1'); if(t){ P[t.id]=t.value; }
 });
 $('#stack').addEventListener('change',e=>{ if(e.target.closest('#t0,#t1')) render(); });
