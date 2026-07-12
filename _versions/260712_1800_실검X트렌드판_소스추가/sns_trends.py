@@ -78,9 +78,6 @@ ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
 REDDIT_ON = (os.environ.get("SNS_REDDIT") or "").strip() == "1"   # ⑥ 레딧 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
 BSKY_ON = (os.environ.get("SNS_BSKY") or "").strip() == "1"       # ⑦ 블루스카이 게이트(동일)
-SIG_ON = (os.environ.get("SNS_SIGNAL") or "").strip() == "1"      # ⑨ 시그널 실검 게이트(§📰-e 카나리아 · 운영자 260712)
-XTR_ON = (os.environ.get("SNS_XTRENDS") or "").strip() == "1"     # ⑩ X 실시간 트렌드 게이트(동일)
-PANN_ON = (os.environ.get("SNS_PANN") or "").strip() == "1"       # ⑪ 네이트판 톡커선택 게이트(동일)
 
 
 def _get(url, timeout=15):
@@ -547,70 +544,6 @@ def bsky_hot(limit=12):
         return []
 
 
-def signal_kw(limit=10):
-    """⑨ 시그널 실시간 검색어(운영자 260712 버튼 승인 · 구 네이버 실검의 실질 대체재) — api.signal.bz
-    순수 JSON(무키·파싱 리스크 최소 · 컨테이너 실측 260712 top10 정상). 구글 검색어(RSS 저단위 버킷)의
-    국내 실검 보완축. 실패 = [] (fail-soft — main()이 직전분 보존). 항목 = {query, state}."""
-    try:
-        j = json.loads(_get("https://api.signal.bz/news/realtime"))
-        out = []
-        for t in (j.get("top10") or [])[:limit]:
-            q = (t.get("keyword") or "").strip()
-            if q:
-                out.append({"query": q, "state": (t.get("state") or "")})
-        return out
-    except Exception as e:  # noqa: BLE001
-        print(f"::warning::signal 수집 실패(스킵): {e}", file=sys.stderr)
-        return []
-
-
-def x_trends(limit=15):
-    """⑩ X(트위터) 한국 실시간 트렌드(운영자 260712 버튼 승인) — trends24.in 주 · getdaytrends.com 폴백
-    (X 공식 트렌드 API = 유료 → 서드파티 집계 HTML 파싱 · 컨테이너 실측 260712 두 곳 교차 일치 =
-    상호 검증). 계정 구독(subs.x)과 별개 축 = '지금 X에서 뜨는 말' 키워드. 실패 = [] (fail-soft)."""
-    for url, pat in (("https://trends24.in/korea/", r'<li[^>]*><a[^>]*>([^<]{2,40})</a>'),
-                     ("https://getdaytrends.com/korea/", r'<a[^>]*class="[^"]*string[^"]*"[^>]*>([^<]{2,40})</a>')):
-        try:
-            b = _get(url)
-            seen, out = set(), []
-            for m in re.finditer(pat, b):
-                q = re.sub(r"\s+", " ", m.group(1)).strip()
-                if not q or q.lower() in seen:
-                    continue
-                seen.add(q.lower())
-                out.append({"query": q})
-                if len(out) >= limit:
-                    break
-            if out:
-                return out
-        except Exception as e:  # noqa: BLE001
-            print(f"::warning::x_trends {url.split('/')[2]} 실패(다음 폴백): {e}", file=sys.stderr)
-    return []
-
-
-PANN_BLOCK = ("av", "야동", "섹스", "조건만남", "유흥", "19금", "성인물")   # 명백 성인 소재 1차 컷(보수 최소 · 완벽 필터 아님 — 운영자 260712 "필터 달고" 승인 · 과필터 방지 위해 짧게)
-
-
-def pann_hot(limit=10):
-    """⑪ 네이트판 톡커들의 선택(운영자 260712 버튼 승인 · ⚠ 수위·논란 소재 혼입 실측 → PANN_BLOCK 1차 컷) —
-    HTML 파싱(무키 · 컨테이너 실측 260712 72KB 정상). 커뮤니티 핫글 축. 실패 = [] (fail-soft)."""
-    try:
-        b = _get("https://pann.nate.com/talk/ranking")
-        seen, out = set(), []
-        for m in re.finditer(r'<a[^>]*href="(/talk/\d+)[^"]*"[^>]*>([^<]{5,80})</a>', b):
-            u, t = "https://pann.nate.com" + m.group(1), re.sub(r"\s+", " ", m.group(2)).strip()
-            if not t or u in seen or any(w in t.lower() for w in PANN_BLOCK):
-                continue
-            seen.add(u)
-            out.append({"title": t, "url": u})
-            if len(out) >= limit:
-                break
-        return out
-    except Exception as e:  # noqa: BLE001
-        print(f"::warning::pann 수집 실패(스킵): {e}", file=sys.stderr)
-        return []
-
-
 def _annotate_rank(cur, prev, keyfn):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
@@ -687,9 +620,6 @@ def main():
     # ⑥⑦ 레딧·블루스카이(운영자 260712 "레딧은 좋음"·"다른거 ㄱㄱ") — 게이트 OFF = 완전 무접촉(§📰-e 카나리아)
     rd = reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()]) if REDDIT_ON else []
     bs = bsky_hot() if BSKY_ON else []
-    sig = signal_kw() if SIG_ON else []      # ⑨ 시그널 실검(카나리아 게이트 · 운영자 260712)
-    xtr = x_trends() if XTR_ON else []       # ⑩ X 실시간 트렌드(동일)
-    pn = pann_hot() if PANN_ON else []       # ⑪ 네이트판 톡커선택(동일 · PANN_BLOCK 1차 컷)
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
     subs_new, acc = None, None
     if SUBS_ON:
@@ -731,9 +661,6 @@ def main():
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
     _annotate_rank(rd, prev.get("reddit"), lambda t: t.get("url"))   # ⑥⑦ 신규 축도 델타·이력 규격 동일(표시 전용)
     _annotate_rank(bs, prev.get("bsky"), lambda t: t.get("url"))
-    _annotate_rank(sig, prev.get("signal"), lambda t: t.get("query"))   # ⑨⑩⑪ 동일 규격(운영자 260712)
-    _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
-    _annotate_rank(pn, prev.get("pann"), lambda t: t.get("url"))
     psubs = prev.get("subs") or {}
     subs = psubs
     if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
@@ -764,9 +691,6 @@ def main():
         "subs": subs,   # 구독 축(④⑧) — {updated, x[], tiktok[], insta[], youtube[], threads[]} · 미수집 = 직전분/{}
         "reddit": rd or prev.get("reddit") or [],   # ⑥ 레딧(게이트 OFF/실패 = 직전분)
         "bsky": bs or prev.get("bsky") or [],       # ⑦ 블루스카이(게이트 OFF/실패 = 직전분)
-        "signal": sig or prev.get("signal") or [],  # ⑨ 시그널 실검(게이트 OFF/실패 = 직전분 · 운영자 260712)
-        "xtrends": xtr or prev.get("xtrends") or [],   # ⑩ X 실시간 트렌드(동일)
-        "pann": pn or prev.get("pann") or [],       # ⑪ 네이트판 톡커선택(동일 · PANN_BLOCK 1차 컷)
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # errors=replace = 상류 lone-surrogate가 encode 크래시로 런 전체를 버리는 엣지 차단(평의회6 — 극귀·해당 문자만 ? 치환)
@@ -774,7 +698,7 @@ def main():
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 판 {len(data['pann'])}{'' if PANN_ON else '(OFF)'}")
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'}")
 
 
 if __name__ == "__main__":
