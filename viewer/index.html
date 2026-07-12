@@ -773,6 +773,16 @@
   .tbrief-t { margin:0; font-size:var(--fs-sm); line-height:1.85; color:var(--fg); word-break:break-word; white-space:pre-line; }   /* 줄간격 확대·요점별 개행 보존(white-space:pre-line) — 운영자 260712 #7 */
   .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 강조색 굵게(핵심 포인트·수치) */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
+  .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
+  /* ── 브리프 스크랩 팝업(#trefdlg — 운영자 260712 "지금 창 위에 바로·보도자료 기사처럼") : 셸 = #trviewdlg 미러(base dialog 무채 글래스 + .modal-head 정본) ── */
+  #trefdlg { width:min(480px,94vw); padding:0; display:flex; flex-direction:column; overflow:hidden; }
+  #trefdlg:not([open]) { display:none; }   /* 유령 블록 차단(#tooldlg 가드 계승) */
+  @media (max-width:640px) { #trefdlg { width:94vw; height:max-content; max-height:92dvh; margin:auto; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); } }   /* 전역 모바일 dialog 되받아치기(#trviewdlg 미러) */
+  #trefdlg .modal-head b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px; }
+  .tref-img { width:100%; max-height:min(46vw,250px); object-fit:cover; display:block; background:var(--line); }   /* 기사 대표 이미지(og:image · 핫링크 no-referrer·onerror 숨김 관용구) */
+  .tref-bd { padding:13px 16px 16px; overflow-y:auto; min-height:0; }
+  .tref-ttl { display:block; font-size:var(--fs-h3); font-weight:var(--fw-b); line-height:1.4; word-break:break-word; }
+  .tref-body { margin:8px 0 0; font-size:var(--fs-sm); line-height:1.8; color:var(--fg); white-space:pre-line; word-break:break-word; }   /* 보도자료체 본문(뉴스 요약 문법 계승) */
   .tbrief-tm { display:block; margin-top:5px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
   .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 46px 64px 58px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수·시간 시작 x 일렬 · 선 없음 = 내부 선 투명 · 5열 = +시간(운영자 260712 "모든 것에 시간" · 46/64 = 구 58/78 실측 재배분: 플랫폼 최장 "유튜브"·조회수 vfmt 만단위·모바일 제목폭 보존) */
@@ -3037,6 +3047,13 @@ try {
   <div class="modal-head"><b id="tvTitle"></b><a class="tv-open" id="tvOpen" href="#" target="_blank" rel="noopener">원문</a><button class="tool-x dlg-x" type="button" id="tvX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="tv-body pt"><iframe id="tvFrame" title="임베드 콘텐츠" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><!-- referrerpolicy = strict-origin-when-cross-origin(브라우저 기본): 유튜브 임베드 플레이어는 부모 origin(referrer)로 도메인 임베드 허가를 검증 → no-referrer면 referrer 통째 제거돼 '오류 153 동영상 플레이어 구성 오류'로 재생 불가(운영자 260712 스샷 실측·수리). strict-origin은 경로는 감추고 origin(https://apps.nomute.kr)만 전송 = 도메인 검증 충족하면서 타 플랫폼(틱톡·릴스·X) 임베드 무영향(원래 referrer 안 봄). --><div class="tv-swz" id="tvSwz" aria-hidden="true"></div><div class="tv-nav" id="tvNavBox" hidden><button class="tv-nv" id="tvPrev" type="button" aria-label="이전 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button><button class="tv-nv" id="tvNext" type="button" aria-label="다음 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div></div>
   <div class="tv-foot"><span class="tv-status" id="tvStatus" role="status" aria-live="polite"></span><button class="ed-go" id="tvDl" type="button">다운로드</button><button class="ed-go" id="tvSrc" type="button">편집기</button><button class="ed-go" id="tvAsk" type="button">요약 요청</button></div>
+</dialog>
+
+<!-- 브리프 스크랩 팝업(운영자 260712 "AI 요약 속 참고 기사 = 지금 창 위 팝업 · 뉴스 요약처럼 이미지+보도자료체") — 셸 = base dialog 무채 글래스 상속 + .modal-head 정본 · 데이터 = sns_brief.json refs(생성 시 동봉 · og:image 후처리) · 열기 = openComposeDlg(pushState 폰 뒤로가기) -->
+<dialog id="trefdlg" aria-label="참고자료 스크랩">
+  <div class="modal-head"><b id="trefSrc">스크랩</b><a class="tv-open" id="trefOpen" href="#" target="_blank" rel="noopener">원문</a><button class="tool-x dlg-x" type="button" id="trefX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <img class="tref-img" id="trefImg" alt="" referrerpolicy="no-referrer" hidden><!-- eager 고정: lazy+hidden = 교차 없음 → 영원히 미로드 데드락(실측 260712) · 모달 단일 이미지라 eager 비용 0 -->
+  <div class="tref-bd"><b class="tref-ttl" id="trefTtl"></b><p class="tref-body" id="trefBody"></p></div>
 </dialog>
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
@@ -8922,7 +8939,9 @@ function renderSnsTrends() {
     bt.textContent = '';
     const txt = BRIEF.text || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
     const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
-    const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a = document.createElement('a'); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = label; bt.appendChild(a); } catch { addText(label); } };
+    const refKey = u => String(u || '').replace(/[)\].,!?"']+$/, '').replace(/\/+$/, '');   // URL 매칭 정규화(꼬리 구두점·슬래시 관용 — LLM 출력 편차 흡수)
+    const REFM = {}; (BRIEF.refs || []).forEach((r, i) => { if (r && r.url) REFM[refKey(r.url)] = i; });   // 스크랩 카드 짝(url → refs 인덱스 · 운영자 260712 "참고 기사 = 인앱 팝업")
+    const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a = document.createElement('a'); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = label; const ri2 = REFM[refKey(u.href)]; if (ri2 !== undefined) { a.classList.add('tbrief-ref'); a.dataset.tref = ri2; }; bt.appendChild(a); } catch { addText(label); } };
     let last = 0, m;
     while ((m = TOK.exec(txt))) {
       addText(txt.slice(last, m.index)); last = TOK.lastIndex;
@@ -8959,6 +8978,8 @@ function renderSnsTrends() {
   if (!box._trBound) {   // 위임 1핸들러 = box 유지·innerHTML만 교체라 1회 바인딩(중복 누적 방지)
     box._trBound = true;
     box.addEventListener('click', e => {
+      const rf = e.target.closest('a.tbrief-ref');   // 브리프 스크랩 토픽 = 인앱 팝업(운영자 260712 "창 이동 없이 지금 창 위에") — 새탭 이동 대신 #trefdlg · 롱프레스/새탭 = href 보존 폴백
+      if (rf) { e.preventDefault(); openTref(+rf.dataset.tref); return; }
       const ri = e.target.closest('.trail-i');   // 책갈피 레일 = 그룹 점프(TOP = 최상단 · scroll-margin-top 계승)
       if (ri) { const g2 = ri.dataset.tg; if (g2 === 'top') window.scrollTo({ top: 0, behavior: 'smooth' }); else { const el2 = document.getElementById('tg-' + g2); if (el2) { if (!el2.open) el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } return; }   // 레일 점프 = 접힌 섹션이면 펼치며(촤르륵 애니 + toggle이 nm_trend_gfold 기억) 스크롤·IO 점등 = 좌측 네비 동시작동(운영자 260712 #2)
       const mb = e.target.closest('.tsk-more, .tstk-bk, .tstk-seg button');   // 스택 컨트롤(더보기·처음/중간) = 앵커보다 선처리
@@ -9082,6 +9103,22 @@ function renderSnsTrends() {
 }
 // ── 인앱 임베드 뷰어(운영자 260711 "웹앱 내 팝업 모달로 관련 링크") — 카드/행 탭 = 플랫폼 임베드 전용 URL iframe · 셸 = base dialog + .modal-head 정본 · 폰 뒤로가기 = openComposeDlg 스택 ──
 const trviewdlg = $('#trviewdlg');
+// ── 브리프 스크랩 팝업(#trefdlg — 운영자 260712 "참고 기사 = 뉴스 요약처럼 이미지+보도자료체 · 지금 창 위에") ──
+const trefdlg = $('#trefdlg');
+function openTref(i) {
+  const r = ((BRIEF && BRIEF.refs) || [])[i]; if (!r) return;
+  $('#trefSrc').textContent = (r.source || '스크랩').slice(0, 40);   // 헤더 = 출처(매체·채널) — textContent = XSS 안전
+  $('#trefTtl').textContent = (r.title || r.term || '').slice(0, 120);
+  $('#trefBody').textContent = (r.body || '').slice(0, 900);
+  $('#trefOpen').href = hrefOk(r.url || '#');   // 원문 = 새탭(임베드 아님 — 기사 페이지)
+  const im = $('#trefImg'); im.hidden = true; im.removeAttribute('src');
+  if (r.image && /^https?:\/\//.test(r.image)) { im.onerror = () => { im.hidden = true; }; im.onload = () => { im.hidden = false; }; im.src = hrefOk(r.image); }   // og:image = 핫링크(no-referrer·onerror 숨김 관용구 · 없으면 텍스트만)
+  openComposeDlg(trefdlg);   // showModal + pushState(폰 뒤로가기 = 팝업만 닫힘) + 잠금 가드
+}
+if (trefdlg) {
+  $('#trefX').addEventListener('click', () => trefdlg.close());
+  trefdlg.addEventListener('close', () => { const im = $('#trefImg'); im.hidden = true; im.removeAttribute('src'); });   // 닫힘 = 이미지 해제(다음 열림 잔상 방지)
+}
 function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-Options로 못 띄우므로 필수 · 매치 없음 = null(종전 새 탭)
   let m;
   if ((m = url.match(/youtube\.com\/watch\?v=([\w-]{6,})/))) return { src: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&playsinline=1', k: 'wd' };
@@ -11027,7 +11064,7 @@ loadPending();      // eager — 대기열 처리중 건수 배지 초기 표시
 // 🔧 유지보수 규칙(필수): 새 폴링·자동갱신·setTimeout/setInterval·render 경로가 *모달 뒤 DOM*을 건드리면 반드시 이 가드로 감쌀 것
 //                  (moreImgGo tick의 thumbsec 교체도 이 가드 적용 = 분신술7 발견분). 새 작성 모달 만들면 id를 아래 목록에 추가. (정본=이 주석 + docs/작업이력.md §2)
 function isComposingModalOpen() {
-  return ['#revdlg', '#crevdlg', '#tredodlg', '#askdlg', '#pastedlg', '#editdlg', '#pubdlg', '#pindlg', '#genidlg', '#snsaccdlg', '#trviewdlg'].some(s => { const d = $(s); return !!(d && d.open); });   // #pindlg=발행본 잠금 PIN(pubpop 위 top-layer) → 폰 뒤로가기 시 pindlg만 닫고 pubpop 유지·over-close 차단(평의회 260702) · #genidlg=이미지 생성 팝업(옵션 고르는 중 배경 재렌더 보류 · 260707) · #snsaccdlg=구독 계정 모달(누락 시 시계·폴 갱신마다 ::backdrop 재샘플 셔머 — 평의회 260711)
+  return ['#revdlg', '#crevdlg', '#tredodlg', '#askdlg', '#pastedlg', '#editdlg', '#pubdlg', '#pindlg', '#genidlg', '#snsaccdlg', '#trviewdlg', '#trefdlg'].some(s => { const d = $(s); return !!(d && d.open); });   // #pindlg=발행본 잠금 PIN(pubpop 위 top-layer) → 폰 뒤로가기 시 pindlg만 닫고 pubpop 유지·over-close 차단(평의회 260702) · #genidlg=이미지 생성 팝업(옵션 고르는 중 배경 재렌더 보류 · 260707) · #snsaccdlg=구독 계정 모달(누락 시 시계·폴 갱신마다 ::backdrop 재샘플 셔머 — 평의회 260711)
 }
 // 요약 리더(#dlg) 폰 뒤로가기 = 모달 먼저 닫기(lbox/tooldlg/merge 패턴 계승·§🎨·260630 QA ③). 상위 오버레이(컴포즈·라이트박스·도구·대기열·병합)·컴포즈 자기칸 회수 back은 그쪽 몫 → #dlg over-close 차단.
 window.addEventListener('popstate', () => {
