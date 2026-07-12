@@ -16,6 +16,14 @@ on:
         description: 'AI 브리프(비서 페르소나 1콜·opus 4.8 max·입력 동일 = 스킵) — 1=ON (§📰-e 카나리아 · 실측 승격 전 cron은 OFF)'
         default: '0'
         required: false
+      reddit:
+        description: '레딧 핫(⑥ 무키 .json · 운영자 260712) — 1=ON (§📰-e 카나리아 · 러너 IP 403/429 실측 승격 전 cron은 OFF)'
+        default: '1'
+        required: false
+      bsky:
+        description: '블루스카이 인기(⑦ 무키 공개 AppView · 운영자 260712) — 1=ON (§📰-e 카나리아 · 실측 승격 전 cron은 OFF)'
+        default: '1'
+        required: false
 
 permissions:
   contents: write
@@ -38,6 +46,9 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # 미설정 = 유튜브 skip(no-op 스캐폴드·gtrends만 수집)
           SNS_SUBS: ${{ inputs.subs || '1' }}   # 구독 축 = 기본 ON 승격(§📰-e 이행 완료 — 카나리아 run 29153925931 실측 260711: rc=0·65s·틱톡10·유튜브10·레거시 무손상·커밋 eab3bc5). schedule = inputs 없음 → '1'(social-scan 관용구) · dispatch subs='0'=일시 OFF. X·인스타 = 러너 IP 429 실측(런마다 IP 로터리 = 확률 수집·빈 런 = 직전분 보존 fail-soft) — 지속 0건이면 폰 수집 경로 후속. 롤백 = || '' 복귀
           SNS_SUBS_BUDGET: '480'   # 한국/세계 2군 확장분(구 기본 240 · 지역별 상한 x20·tk15·ig10·yt15 = 최악 직렬 ≈460s 커버 · 운영자 260712)
+          SNS_REDDIT: ${{ inputs.reddit || '0' }}   # ⑥ 레딧 = §📰-e 카나리아(schedule = inputs 없음 → '0' OFF · dispatch 기본 '1' = 카나리아 ON) — 러너 실측 rc=0·수집건수 확인 후 || '1' 승격
+          SNS_BSKY: ${{ inputs.bsky || '0' }}       # ⑦ 블루스카이 = 동일 카나리아(승격 = || '1')
+          # REDDIT_SUBS: 'popular,korea,worldnews'  # 서브레딧 노브(코드 기본과 동일 — 바꿀 때만 주석 해제)
         run: timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
