@@ -351,16 +351,15 @@ console.log(`viewer/triage-state.json 생성 — ${triage.length}건`);
 
 // ── 썸네일 제작 이력 cross-device: viewer/thumb_out/<id>/<file>.png(이미 커밋·전기기 서빙) 스캔 → viewer/thumb-hist.json ──
 // 썸네일 생성기 '이전 제작'을 기기 간 공유(localStorage=내 기기 / 이 파일=전 기기 제작분). 이미지는 이미 repo에 있어 URL만 모음(운영자 260621).
-// 시간 컷 없음 = 전체 보관(운영자 260712 "기기·시간 무관 항상 기존 작업분" — 구 48h 컷 폐지) · 상한 = 최신 THH_CAP장(오래된 순 절단 · 초과분은 로그로 정직 고지).
 const THH_OUT = 'viewer/thumb-hist.json';
-const THH_CAP = 400;
 const thIdTs = (id) => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); if (!m) return 0; const t = Date.parse(`20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00`); return Number.isFinite(t) ? t : 0; };
 const thLabel = (f) => { const b = f.replace(/\.(png|jpe?g)$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // api/thumb.js 라벨 규칙과 맞춤
 const thHist = [];
+const thCut = Date.now() - 48 * 3600e3;   // 48h 보관(뷰어가 12h로 필터 · 여유분) — thumb/comp/resize 공용
 try {
   const troot = 'viewer/thumb_out';
   for (const id of readdirSync(troot)) {
-    const ts = thIdTs(id); if (!ts) continue;
+    const ts = thIdTs(id); if (!ts || ts < thCut) continue;
     let meta;
     try { meta = JSON.parse(readFileSync(join(troot, id, '_meta.json'), 'utf8')); }   // 신규: [[file, R2url], ...] — 이미지 R2(git 미저장)·_meta.json만 git
     catch { try { meta = readdirSync(join(troot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort().map(f => [f, `thumb_out/${id}/${f}`]); } catch { continue; } }   // 레거시(R2 이전·_meta 없음): 옛 git 이미지 상대경로 폴백(여전히 Pages 서빙) = 기기간 이력 회귀 0
@@ -375,7 +374,7 @@ try {
 try {
   const croot = 'viewer/comp_out';
   for (const id of readdirSync(croot)) {
-    const ts = thIdTs(id); if (!ts) continue;
+    const ts = thIdTs(id); if (!ts || ts < thCut) continue;
     let files; try { files = readdirSync(join(croot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort(); } catch { continue; }
     for (const f of files) thHist.push({ url: `comp_out/${id}/${f}`, dlname: `${id}_${f}`, cap: '카드뉴스', varStr: '', ts });
   }
@@ -384,14 +383,14 @@ try {
 try {
   const rz = JSON.parse(readFileSync('viewer/gen_out/resize.json', 'utf8'));
   for (const it of (Array.isArray(rz) ? rz : [])) {
-    const ts = Date.parse((it && it.ts) || ''); if (!it || !it.url || !Number.isFinite(ts)) continue;   // 시간 컷 없음(resize.json 자체 캡 24가 상한)
+    const ts = Date.parse((it && it.ts) || ''); if (!it || !it.url || !Number.isFinite(ts) || ts < thCut) continue;
     const akey = String(it.aspect || '').replace(':', 'x');
     thHist.push({ url: it.url, dlname: `${it.id || 'resize'}_리사이즈${akey ? '_' + akey : ''}.jpg`, cap: '리사이즈', varStr: it.aspect ? ' · ' + it.aspect : '', ts });
   }
 } catch { /* resize.json 없음 */ }
 thHist.sort((a, b) => b.ts - a.ts);
-writeFileSync(THH_OUT, JSON.stringify(thHist.slice(0, THH_CAP), null, 2));
-console.log(`viewer/thumb-hist.json 생성 — ${Math.min(thHist.length, THH_CAP)}건${thHist.length > THH_CAP ? ` (전체 ${thHist.length}건 중 최신 ${THH_CAP}장만 — 오래된 ${thHist.length - THH_CAP}건 절단)` : ''}`);
+writeFileSync(THH_OUT, JSON.stringify(thHist.slice(0, 400), null, 2));
+console.log(`viewer/thumb-hist.json 생성 — ${thHist.length}건`);
 
 // ── 알림·메시지: messages/*.md|json → viewer/messages.json (최신순 [{id, ts, text}]) ──
 // 저장은 git 누적(messages/ 에 파일로 쌓임). 비어 있으면 [] 로 둔다(뷰어가 조용히 배지·테두리 숨김).
