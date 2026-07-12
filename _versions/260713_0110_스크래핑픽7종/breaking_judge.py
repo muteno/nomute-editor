@@ -142,11 +142,11 @@ RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건
 RUBRIC_VER = hashlib.sha256(RUBRIC.encode("utf-8")).hexdigest()[:12]
 
 
-REJUDGE_MAX_H = float(os.environ.get("BREAKING_REJUDGE_MAX_H", "48"))   # rubric 변경 재판정 창(h) — 72→48 축소(운영자 260713 승인 · gate와 짝 · 속보는 시간 민감이라 48h+ 재판정 무의미 · 롤백 = env 72)
+REJUDGE_MAX_H = float(os.environ.get("BREAKING_REJUDGE_MAX_H", "72"))   # rubric 변경 재판정 창(h) — 운영자 260710 '쿼터 절감' 승인
 
 
 def _fresh_for_rejudge(c):
-    """rubric 변경 *재*판정은 최근 REJUDGE_MAX_H(기본 48h·first_seen)만 — '지금 긴급?'은 시간 민감 판정이라
+    """rubric 변경 *재*판정은 최근 REJUDGE_MAX_H(기본 72h·first_seen)만 — '지금 긴급?'은 시간 민감 판정이라
     묵은 후보를 새 rubric으로 재판정하는 건 결과 자체가 무의미한 쿼터 낭비(gate_judge와 짝 · 운영자 260710).
     미판정(도장 없음) = 나이 무관 True(첫 판정 커버리지 = *judge 단독 기준* 불변 — 파이프라인 전체론
     to_candidates 캐리 정리가 fresh 이탈한 무도장 후보를 선행 차단 = 실효 첫판정 창 ≈ fresh 체류기간 ·
@@ -258,8 +258,6 @@ def main():
         verdicts.update(v)
     if not verdicts:
         # 전 청크 실패 = 도장 안 찍음 → 다음 디스패치에서 재시도(조용한 누락 방지).
-        if swept:
-            _write(cands)   # EXCLUDE 스윕 유실 봉합(260713 평의회3) — 판정 전멸이어도 제외 소급(breaking→False 보수 강등)은 즉시 반영(구: pending 있으면 이 분기서 스윕이 디스크 미기록 = 하류 push·autopick 노출 창)
         print("::warning::속보 판정 전 청크 실패 — 다음 런 재시도")
         sys.exit(0)
     nbreak = 0
