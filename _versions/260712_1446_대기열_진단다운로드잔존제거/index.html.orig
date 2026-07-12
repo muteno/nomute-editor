@@ -1402,6 +1402,10 @@
   .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:default; }
   .qgo:not(.go-gray):active { transform:scale(var(--press-m,.9)); }
   @media (prefers-reduced-motion:reduce){ .qgo svg.ic-arrow .qsrc-shaft, .qgo svg.ic-arrow .qsrc-tip { animation:none; } }   /* 대기열 이동버튼 화살표 모션 = ic-arrow(공용 reduced-motion 블록서 정지) · 옛 qfly 폐지(운영자 260705) */
+  .qdl { flex:none; width:28px; height:26px; display:grid; place-items:center; padding:0; cursor:pointer;
+    color:#ff9b8f; background:rgba(255,107,91,.1); border:1px solid rgba(255,107,91,.32); border-radius:7px; transition:background .15s; }
+  .qdl:hover { background:rgba(255,107,91,.22); }
+  .qdl svg { width:15px; height:15px; stroke:currentColor; fill:none; }
   .qpage { flex:none; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap; min-height:30px; }   /* min-height = 페이저 비어도(단일페이지·빈상태) 높이 예약 → 팝업 크기 항상 동일(1·다·빈 상태 모두 같은 높이) · 운영자 260622 */
   .qpg, .qpg-nav { min-width:30px; height:30px; padding:0 7px; display:grid; place-items:center; font-size:12px; font-weight:800;
     color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:7px; cursor:pointer; transition:color .15s, background .15s; }
@@ -7301,6 +7305,9 @@ function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | 
 function qRetryBtn(title) {   // ✨요약요청 실패 재시도 = arm(레몬) ↻ · 클릭 = api/askget 으로 전문 복원 → 요약창 재오픈(askRetry)
   return '<button class="qgo go-arm qretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
 }
+function qDlBtn(title) {   // 실패 진단 MD(5W1H·원인·복구 — 클로드 전달용) 다운로드 버튼 · 배선=renderQueuePage forEach(.qdl→qDownload) · 함수=qDownload · 셀=.qact(마진·간격=팝업정렬 2034 틀 자동상속)
+  return '<button class="qdl" type="button" title="' + title + '">' + DOWNLOAD_SVG + '</button>';
+}
 function qRowHtml(it) {
   const url = /^https?:\/\//i.test(String(it.alt1 || it.key || ''));   // 활성 게이트 = 목적지(alt1‖key)와 동일 소스(게이트-목적지 갈림 차단 · 평의회7 V-1)
   // 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면(Pages 빌드 랙) 사실상 미준비 →
@@ -7314,7 +7321,7 @@ function qRowHtml(it) {
     status = '<span class="qb-failt">실패</span>';
     const isAsk = it.via === '요약요청';   // ✨요약요청 실패 = 원문 링크(URL 없음) 대신 '재시도' = 붙여넣은 전문 복원 → 요약창 재오픈(운영자 260704)
     action = isAsk ? qRetryBtn('재시도 — 요청 내용을 복원해 다시 요약')
-           : url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에 자동저장(다운로드 버튼 없음 — 옛 진단 다운로드 잔존 260712 완전제거)
+           : url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에도 자동저장 + 진단 MD 다운로드 버튼(qDlBtn·dlCell) 병행(운영자 260712 부활)
   } else if (eff === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
     status = '<span class="qico s-retry spin" title="API 일시 과부하 — 자동 재시도 중' + (it.tries ? ' (' + it.tries + '회)' : '') + '">' + Q_REFR + '</span>' + (it.tries ? '<span class="qcnt">' + it.tries + '</span>' : '');
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 — 원문 링크 없음');
@@ -7325,7 +7332,8 @@ function qRowHtml(it) {
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위)
   const _am = it.t ? (Date.now() - it.t) / 60000 : 1e9;   // 경과(분)
   const tnew = _am <= 60 ? ' qt-new' : _am <= 240 ? ' qt-mid' : '';   // ≤1h 메인 강조 / 1~4h 노랑 / 그외 기본(운영자 260622)
-  return '<div class="qrow q-' + eff + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
+  const dlCell = eff === 'fail' ? '<span class="qact">' + qDlBtn('실패 진단 다운로드 — 원인·복구 5W1H(클로드 전달용)') + '</span>' : '';   // 실패 행만 진단 MD 다운로드 셀 = 주액션(원문/재시도) 왼쪽 · .qact 셀이라 팝업정렬 틀(qact 30·gap10·최우측=X아래) 자동상속 → 주액션 최우측 유지·다운로드 그 왼쪽 등간격(운영자 260712 "대기열 너 식대로 유지·마진·간격만 맞춤")
+  return '<div class="qrow q-' + eff + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span>' + dlCell + '<span class="qact">' + action + '</span></div>';
 }
 function pagerHtml(pages, cur) {   // 5개/페이지 · 페이지번호 슬라이딩 윈도우(최대 5개)
   if (pages <= 1) return '';
@@ -7345,6 +7353,7 @@ function renderQueuePage() {
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
     const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = go.classList.contains('qretry') ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
+    const dl = row.querySelector('.qdl'); if (dl) dl.onclick = (e) => { e.stopPropagation(); qDownload(it); };
   });
   if (pg) {
     pg.innerHTML = pagerHtml(pages, QPAGE);
@@ -7412,6 +7421,65 @@ function qFlash(msg, iconSvg) {   // 짧은 토스트(링크 빌드 랙 안내) 
   if (iconSvg) t.innerHTML = iconSvg + ' ' + esc(msg); else t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function qDownload(it) {   // FAIL 진단 MD(5W1H·입출력·원인·식별자 — 클로드 전달용) 생성·다운로드
+  const enteredK = it.t ? new Date(it.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '?';
+  const nowK = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  const d = it.diag || {};
+  if (d.kind === 'ask-failed' || d.kind === 'ask-stuck') {   // ✨요약요청(ask) = asks/ 경로 전용 진단(pending .txt 아님). ask-failed=asks/failed/격리·로그有 / ask-stuck=asks/ 잔류·20분+ 미처리(로그無 — 옛 일반 stuck 경로로 새 pending/*.txt 오문구 차단·260701)
+    const stuckAsk = d.kind === 'ask-stuck';
+    const A = [];
+    A.push('# ✨요약 요청 ' + (stuckAsk ? '미처리(stuck) 진단' : '처리 실패 진단') + ' — ' + qTitle(it));
+    A.push('', '> 자동 생성(뷰어 대기열). 이 파일을 클로드에게 전달하면 원인 분석·복구에 사용합니다.', '');
+    A.push('## 요약 (5W1H)');
+    A.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK + (stuckAsk && d.mins != null ? ' · 경과 약 ' + d.mins + '분' : ''));
+    A.push('- **무엇(What)**: ✨요약 요청(자연어' + (d.reqText ? '+캡처 가능' : '') + ') — `news-ask` 트랙(`pending/` analyze와 별개).');
+    A.push('- **어디서(Where)**: ' + (stuckAsk ? '`asks/' + it.id + '.json`(미처리 잔류 — 아직 asks/failed/ 이동 전)' : '`asks/failed/' + it.id + '.json`(+`.log`)로 격리') + '.');
+    A.push('- **왜(Why·추정)**: ' + (stuckAsk ? 'news-ask 워크플로 미완/미발동(20분+ 잔류) — 단발 런이라 자가재시도 없음. Actions run 확인.' : 'ask.sh 처리 실패(빈 요청/Claude 해석 실패/커밋 실패 — 아래 로그).'));
+    A.push('', '## 입력 (요청문)', '', '````', d.reqText || '(텍스트 없음 — 캡처만일 수 있음)', '````');
+    if (d.log) A.push('', '## 실패 로그', '', '````', d.log, '````');
+    A.push('', '## 진단 힌트 (클로드용)');
+    A.push('- 확인: GitHub Actions `news-ask` 최근 run → `Run ask` / `Surface failures` 스텝 로그.');
+    A.push('- 복구: `news-ask` workflow_dispatch 재실행(account 선택)' + (stuckAsk ? '.' : ' — 단 `asks/failed/`의 json을 `asks/`로 되돌려야 재처리.'));
+    A.push('- 입력 식별자(grep용): `' + it.id + '`');
+    const aa = document.createElement('a');
+    aa.href = URL.createObjectURL(new Blob([A.join('\n')], { type: 'text/markdown;charset=utf-8' }));
+    aa.download = (stuckAsk ? '요약요청미처리_' : '요약요청실패_') + it.id + '.md';
+    document.body.appendChild(aa); aa.click(); aa.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(aa.href); } catch {} }, 1500);
+    return;
+  }
+  const mins = d.mins != null ? d.mins : (it.t ? Math.round((Date.now() - it.t) / 60000) : '?');
+  const failed = d.kind === 'failed';
+  const L = [];
+  L.push('# 대기열 처리 실패 진단 — ' + qTitle(it));
+  L.push('', '> 자동 생성(뷰어 대기열). 이 파일을 클로드에게 전달하면 원인 분석·복구에 사용합니다.', '');
+  L.push('## 요약 (5W1H)');
+  L.push('- **언제(When)**: 제출 ' + enteredK + ' (KST) · 진단 ' + nowK + ' · 경과 약 ' + mins + '분');
+  L.push('- **무엇(What)**: ' + qTitle(it) + (it.src ? ' · 출처 ' + it.src : ''));
+  L.push('- **어떻게(How)**: 전달방식 ' + (it.via || '?') + (/-pick-/.test(it.id) ? ' · 수집함 PICK' : ' · 폰 공유') + ' · pending 파일 `' + it.id + '.txt`');
+  L.push('- **어디서(Where)**: ' + (failed ? '`pending/failed/`(분석 실패 격리)' : '`pending/`(미처리 잔류)'));
+  L.push('- **누가(Who)**: 운영자 제출');
+  L.push('- **왜(Why·추정)**: ' + (failed ? '분석 단계 실패(아래 로그 참조)' : 'analyze 워크플로 미완/실패 또는 Commit 실패(20분+ 미처리). 단 직렬 배치면 분석이 아직 진행 중일 수도 있음 — Actions run 확인.'));
+  L.push('', '## 입력 (Input)');
+  L.push('- pending 파일: `' + it.id + '.txt`');
+  L.push('- line1: `' + (d.line1 || (it.via === '전문' ? 'paste:…' : (it.src || '?'))) + '`');
+  L.push('- 본문 동봉: ' + (d.hasBody ? '예' : '아니오'));
+  if (d.bodyHead) L.push('', '본문 일부:', '', '````', d.bodyHead, '````');   // 4백틱 펜스 = 본문 내 ``` 충돌 방지
+  L.push('', '## 출력/현황 (Output)');
+  L.push('- 상태: ' + (failed ? 'FAIL — 분석 단계 실패' : 'FAIL — stuck(pending 잔류·미완)'));
+  if (d.log) L.push('- 실패 로그:', '', '````', d.log, '````');
+  else L.push('- queue 생성/피드 반영: 없음(미완)');
+  L.push('', '## 진단 힌트 (클로드용)');
+  L.push('- pending 잔류 = `news-analyze` 워크플로 미완 또는 `Commit results` 실패.');
+  L.push('- 확인: GitHub Actions `news-analyze` 최근 run → `Analyze pending articles`/`Commit results` 스텝 로그.');
+  L.push('- 복구: `news-analyze` workflow_dispatch 재실행.');
+  L.push('- 입력 식별자(grep용): `' + it.id + '`');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/markdown;charset=utf-8' }));
+  a.download = '대기열실패_' + it.id + '.md';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 1500);
 }
 $('#qpopX').addEventListener('click', e => { e.stopPropagation(); closeQueueUser(); });   // 닫기(작은 ✕ → 직접 닫기, 재오픈 플래그 해제)
 window.addEventListener('pageshow', () => { try { if (sessionStorage.getItem('nomute_q_open') === '1' && qpop.hidden) openQueue(); } catch {} });   // 외부 링크(↗) 갔다 뒤로가기로 복귀 시 대기열 자동 재오픈 — 열어둔 채 떠났을 때만(직접 닫으면 플래그 해제됨) · 운영자 260622
@@ -7800,7 +7868,7 @@ function openFailMenu(c, anchor) {
   const f0 = m.querySelector('.failmenu-it'); if (f0) f0.focus();   // 키보드 접근성 — 첫 항목 포커스(Tab/Enter 도달)
 }
 function closeFailMenu() { const m = $('#failmenu'); if (m && !m.hidden) m.hidden = true; }
-// 실패 사유(#failmenu) = 왜 실패했는지 다음에 조치할 수 있게 육하원칙으로 정리한 진단 MD — 클릭 시 바로 다운로드(표시 X).
+// 실패 사유 = 왜 실패했는지 다음에 조치할 수 있게 육하원칙으로 정리한 진단 MD(대기열 qDownload 와 동일 결) — 클릭 시 바로 다운로드(표시 X).
 function failDownload(c) {
   if (!c) return;
   const nowK = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
