@@ -130,7 +130,7 @@ def build_filter(o, kind):
 
 def run(src, opts, out_dir):
     """크로마키 실행 — src 영상에서 opts 색을 투명화 → out_dir/chroma.mov(마스터)+chroma_preview.webm.
-    반환 = {"master","preview","w","h","fps","dur"} (경로 = out_dir 상대 아님·절대/전달값 그대로 · 업로드는 콜러 몫)."""
+    반환 = {"master","preview","w","h","fps","dur","kind","opts"} (opts = 해소값+t0/t1 에코 · 업로드는 콜러 몫)."""
     o = dict(DEFAULTS)
     o["color"] = _hex_color((opts or {}).get("color"), DEFAULTS["color"])
     o["similarity"] = _num((opts or {}).get("similarity"), 0.01, 0.5, DEFAULTS["similarity"])
@@ -191,7 +191,7 @@ def main():
     ap = argparse.ArgumentParser(description="크로마키(색상 키잉) 모듈 — MODULES.md 계약")
     ap.add_argument("--src", required=True, help="입력 영상 경로")
     ap.add_argument("--out-dir", required=True, help="산출 폴더(chroma.mov·chroma_preview.webm)")
-    ap.add_argument("--opts", default="{}", help='JSON {"color":"#00FF00","similarity":0.15,"blend":0.05,"despill":0.5,"choke":0,"feather":1,"t0":s,"t1":s}')
+    ap.add_argument("--opts", default="{}", help='JSON {"color":"#00FF00","similarity":0.15,"blend":0.05,"despill":0.5,"choke":0,"feather":1,"edge":"fast|high","t0":s,"t1":s}')
     a = ap.parse_args()
     try:
         opts = json.loads(a.opts or "{}")
