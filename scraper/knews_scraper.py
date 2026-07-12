@@ -86,13 +86,21 @@ def log(msg):
 
 # ── 피드 로딩 ────────────────────────────────────────────────────────
 def load_feeds(csv_path, categories):
-    """feeds.csv → 대상 피드 목록. categories=None 이면 전체."""
+    """feeds.csv → 대상 피드 목록. categories=None 이면 전체.
+    행별 가드(260713 평의회1) — 수기 유지 CSV라 한 행 결손(컬럼 누락·비따옴표 콤마)이 KeyError로
+    런 전체를 0건 산출로 죽이던 것을 결손 행 skip+경고로 격리(fetch_feed의 피드 단위 격리와 짝)."""
     feeds = []
     with open(csv_path, encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            cats = set(row["categories"].split("|"))
-            if categories is None or (cats & categories):
-                feeds.append(row)
+        for i, row in enumerate(csv.DictReader(f), start=2):   # 2 = 헤더 다음 실제 행번호
+            try:
+                if not (row.get("publisher") and (row.get("url") or "").startswith("http")):
+                    log(f"feeds.csv {i}행 결손 skip(publisher/url): {dict(row)}")
+                    continue
+                cats = set((row.get("categories") or "").split("|"))
+                if categories is None or (cats & categories):
+                    feeds.append(row)
+            except Exception as e:  # noqa: BLE001 — 행 단위 격리(전체 크래시 방지)
+                log(f"feeds.csv {i}행 파싱 실패 skip: {e}")
     return feeds
 
 

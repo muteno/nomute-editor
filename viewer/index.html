@@ -8451,7 +8451,7 @@ const issGrade = c => c.grade == null || c.grade >= 2;   // 🚨긴급(isBreakin
 const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건(코스피 폭락 등)이면 컷 면제
 const BJ_MKT = /(증시|코스피|코스닥|환율|유가(?!족)|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '환율마감'만 다뤄 '출발'류 보강 · '유가족…마감' 오컷 방지 lookahead = 10인 검증5)
 const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — JUNK_HEAD와 달리 칼럼엔 잔존)
-const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용 · ⚠️'공시' 제외 = 공시가격[부동산 정책]·공공시설[복지]·공시송달[사법] substring 오컷 실증 → 기업공시는 '지분율' 등이 커버 · 10인 검증5)
+const BJ_PR = /^(?!.*(대통령|방사청|국방부|방산|잠수함|전투기|호위함|군함)).*(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용 · ⚠️'공시' 제외 = 공시가격[부동산 정책]·공공시설[복지]·공시송달[사법] substring 오컷 실증 → 기업공시는 '지분율' 등이 커버 · 10인 검증5 · ⚠️선두 ^(?!…) 정치·방산 면제 = '수주' substring이 국가 계약 대형(李 잠수함 수주 cr19·g2 등 매칭 45%가 정치·방산 실측)까지 배지 박탈하던 오컷 봉합[260713 평의회8 · ^ 앵커 필수 — 무앵커 lookahead는 test()가 중간 위치서 재시도해 무력] · build-viewer와 바이트 동일 = check_refs 패리티)
 const badgeJunk = c => { const t = c.title || ''; return (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t); };
 const issCross = c => ((c.cross || 0) >= ISS_CROSS_MIN || (c.grade === 3 && (c.cross || 0) >= 8)) && issGrade(c) && !badgeJunk(c);   // 이슈 배지 cross 경로 — grade3(AI확정 대형)만 옛 임계 8 유지(인플레 보정 예외: 저cross 국제 대형재난[미얀마 내전·베네수엘라 강진]이 배지 잃던 비대칭 구제 = §1 "중요한 게 묻히면 안 됨" · 10인 검증6). aged-breaking 경로는 별도(isBreaking이 grade 게이트 내장).
 const scBadgeType = c => {

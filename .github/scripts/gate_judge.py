@@ -146,11 +146,11 @@ def cat_rescue(c):
             and not surfaced(c))
 
 
-REJUDGE_MAX_H = float(os.environ.get("GATE_REJUDGE_MAX_H", "72"))   # rubric 변경 재채점 창(h) — 운영자 260710 '쿼터 절감' 승인
+REJUDGE_MAX_H = float(os.environ.get("GATE_REJUDGE_MAX_H", "48"))   # rubric 변경 재채점 창(h) — 72→48 축소(운영자 260713 승인 · 룰북 잦은 편집×72h = 재판정 폭풍이 쿼터 최대 낭비원[평의회7] · 48h+는 timeAcc ~.02 = 재채점 이득 0 · 롤백 = env 72)
 
 
 def _fresh_for_rejudge(c, stamp_key):
-    """rubric 변경 *재*채점은 최근 REJUDGE_MAX_H(기본 72h·first_seen)만 — 룰북 한 줄 수정이 노출권 전량(수천 건)
+    """rubric 변경 *재*채점은 최근 REJUDGE_MAX_H(기본 48h·first_seen)만 — 룰북 한 줄 수정이 노출권 전량(수천 건)
     재채점 폭탄(§7 260704 실측: 39→3,000 부활 서지)이 되던 것을 '최근 3일치만'으로 제한. 3일+ 기사는 timeAcc가
     이미 바닥(48h=.02)이라 재채점 이득 0 = 구버전 도장 유지. 미채점(도장 없음) = 나이 무관 True(첫 채점 커버리지
     불변) · first_seen 없음/파싱 실패 = True(보수 = 채점 쪽)."""
