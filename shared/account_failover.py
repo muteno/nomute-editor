@@ -79,6 +79,43 @@ def _set_var(name, value, token):
             raise
 
 
+def _del_var(name, token):
+    """변수 삭제(self-test 정리용)."""
+    _req("DELETE", "/" + name, token)
+
+
+def selftest():
+    """GH_VARS_TOKEN 이 Variables 를 실제로 읽고/쓰고/지울 수 있는지 실측(PAT 권한 확인).
+    ⚠️ 활성 계정(ACTIVE_ACCOUNT)·카운터(ACTIVE_QUOTA_HITS)는 안 건드린다 — 전용 probe 변수만 왕복.
+    통과 = rc0 / 권한·설정 문제 = rc1(승격 main 과 달리 fail-soft 아님 = 테스트라 실패를 드러냄)."""
+    token = (os.environ.get("GH_VARS_TOKEN") or "").strip()
+    if not token:
+        print("❌ GH_VARS_TOKEN 미설정 — Secrets 탭에 등록됐는지 확인(이름 철자 GH_VARS_TOKEN).")
+        return 1
+    active = (os.environ.get("ACTIVE_ACCOUNT") or "MUTENO").strip()
+    print("현재 활성 계정(ACTIVE_ACCOUNT) = %s · 체인 = %s" % (active, "→".join(CHAIN)))
+    probe = "ACCOUNT_FAILOVER_SELFTEST"
+    try:
+        _set_var(probe, "probe-write-ok", token)
+        print("  ✅ 쓰기(POST/PATCH) 성공 — %s 생성/갱신" % probe)
+        v = _get_var(probe, token)
+        print("  ✅ 읽기(GET) 성공 — 값 = %r" % v)
+        _del_var(probe, token)
+        print("  ✅ 삭제(DELETE) 성공 — %s 정리" % probe)
+        hits = _get_var("ACTIVE_QUOTA_HITS", token)
+        print("  ℹ️ 현재 ACTIVE_QUOTA_HITS = %r (없으면 아직 승격 카운트 0)" % hits)
+        print("🎉 PAT 실측 통과 — Variables read/write/delete 전부 정상. 승격 준비 완료(ACTIVE_ACCOUNT 무손상).")
+        return 0
+    except urllib.error.HTTPError as e:
+        print("  ❌ 실패 — HTTP %s %s" % (e.code, getattr(e, "reason", "")))
+        if e.code in (403, 404):
+            print("     → PAT 에 'Variables: Read and write' 권한이 없거나 이 레포 접근이 없음. 토큰 권한을 확인해.")
+        return 1
+    except Exception as e:   # noqa: BLE001
+        print("  ❌ 실패 — %s" % e)
+        return 1
+
+
 def main():
     token = (os.environ.get("GH_VARS_TOKEN") or "").strip()
     if not token:
@@ -123,6 +160,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())   # PAT 실측(실패 = rc1 노출)
     try:
         sys.exit(main())
     except Exception as e:   # noqa: BLE001  최후 방어 — 승격은 파이프라인을 절대 안 깬다
