@@ -46,10 +46,13 @@ def _num(v, lo, hi, dflt):
 
 
 def _hex_color(v, dflt="#00FF00"):
-    s = str(v or "").strip()
+    """6자리 hex 전용 — 미지정 = 기본 그린 · 형식 이상(#F00 축약·8자리 등) = 정직 에러(조용한 그린 폴백 = 엉뚱한 색 키잉 풋건 · 평의회2)."""
+    if v is None or str(v).strip() == "":
+        return dflt
+    s = str(v).strip()
     if re.fullmatch(r"#?[0-9a-fA-F]{6}", s):
         return "#" + s.lstrip("#").upper()
-    return dflt
+    die(f"키 색은 6자리 hex로 줘(#RRGGBB — 지금 {s[:12]!r}).")
 
 
 def _kind(color):
@@ -64,10 +67,10 @@ def _kind(color):
 
 
 def probe(src):
-    """ffprobe → (W, H, fps, dur) — 회전 표시 치수 스왑 + SAR 정규화 판정(conv_run 미러 · 좌표 공간 = 표시)."""
+    """ffprobe → (W, H, fps, dur) — 회전 표시 치수 스왑(conv_run probe 미러). SAR = 의도적 생략(색 키잉은 픽셀당 색 연산 = 좌표·비율 무관 · 마스터가 입력 SAR 그대로 전파 = 프리미어 네이티브 해석 · 평의회3)."""
     try:
         r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
-                            "-show_entries", "stream=width,height,sample_aspect_ratio,avg_frame_rate,duration,side_data_list",
+                            "-show_entries", "stream=width,height,avg_frame_rate,duration,side_data_list",
                             "-show_entries", "format=duration", "-of", "json", src],
                            capture_output=True, text=True, timeout=120, check=True)
         d = json.loads(r.stdout or "{}")
@@ -175,6 +178,7 @@ def run(src, opts, out_dir):
         die("프리뷰 인코딩 실패 — 다시 시도해줘.", f"preview rc={r2.returncode}")
     print(f"크로마키 완료 {W}×{H} {eff:.1f}s · kind={kind} · {time.time() - t_run:.0f}s "
           f"· 마스터 {os.path.getsize(out_mov) // 1_000_000}MB", flush=True)
+    o["t0"], o["t1"] = round(t0, 2), round(t1, 2)   # 해소된 트림창 에코(dur = 트림 후 유효 길이 · 평의회2)
     return {"master": out_mov, "preview": out_webm, "w": W, "h": H, "fps": round(fps, 2),
             "dur": round(eff, 2), "kind": kind, "opts": o}
 
