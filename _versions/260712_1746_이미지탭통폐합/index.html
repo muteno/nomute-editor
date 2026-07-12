@@ -689,7 +689,6 @@
   .trend-tag { color:var(--accent); font-size:var(--fs-sm); }
   /* ── 트렌드 구독 축(운영자 260711 배치 승인 = 기존 레인 아래 동일 컴포넌트·'계정' 버튼 → 관리 모달) ── */
   .trend-head { display:flex; align-items:center; gap:8px; margin:-2px 0 8px; }   /* 수집시각 + 계정 버튼 한 행 */
-  .trend-regseg button.on { color:var(--accent); }   /* 지역 세그 on = 패밀리 on 값(강조색 점등 · §🎨 k) — 셸은 .tstk-seg 글래스 필 그대로 계승 */
   .trend-accbtn { margin-left:auto; display:grid; place-items:center; height:24px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
     border-radius:var(--r-s); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }   /* 카드 위 단독 텍스트 컨트롤 = 수집함 .sc-tg 글래스 필 값 정확 계승(§🎨 k — 행 flex:1만 맥락 제외 · 피드 .sbtn은 아이콘 전용이라 텍스트 필 정본 = .sc-tg · radius 9px = --r-s 토큰 동값 계승) */
@@ -8773,13 +8772,7 @@ const TR_LOGO = {
 const TR_PCOL = { gg: 'var(--cat-eco)', yt: 'var(--cat-intl)', tk: 'var(--cat-soc)', ig: 'var(--cat-cul)', x: 'var(--cat-pol)' };   // 플랫폼 구분자 색 = cat 팔레트 재지정(운영자 260712 플레이그라운드 회신 = 기틀 갱신 승인 · 구글=레몬 --cat-eco[260712 2차 · 구 코랄서 분리 — 유튜브와 색 구분]·유튜브=코랄·틱톡=민트·인스타=핑크·X=스카이) — §디자인 d 캡슐 예외 등재·CII 정합
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
-  const TRREG = localStorage.getItem('nm_trend_region') === 'gl' ? 'gl' : 'kr';   // 지역 모드 = 국내 기본(운영자 260712) · 월드 = 국내 포함 병합(gtrends_gl·youtube_gl = 주요국 KR 제외분)
-  const d = TRENDS || {};
-  const mrg = (a3, b3, key) => { const s3 = new Set(a3.map(key)), o3 = a3.slice(); (b3 || []).forEach(x3 => { const k3 = key(x3); if (k3 && !s3.has(k3)) { s3.add(k3); o3.push(x3); } }); return o3; };
-  const gt = TRREG === 'kr' ? (d.gtrends || []) : mrg(d.gtrends || [], d.gtrends_gl, g3 => (g3.query || '').toLowerCase());
-  const yt = TRREG === 'kr' ? (d.youtube || []) : mrg(d.youtube || [], d.youtube_gl, v3 => v3.id).sort((a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, 15);
-  const ytn = d.youtube_news || [];   // 뉴스 카테고리 = 국내 축(뉴스 소재 훑기 온-미션 · 모드 무관 표시)
-  const tkvA = ((d.tiktok || {}).videos) || [], tkv = TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA, tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · hashtags = 구 카나리아 폴백
+  const d = TRENDS || {}, gt = d.gtrends || [], yt = d.youtube || [], ytn = d.youtube_news || [], tkv = ((d.tiktok || {}).videos) || [], tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · hashtags = 구 카나리아 폴백 · youtube_news = 뉴스 카테고리(평의회10 사장데이터 결판)
   const sb = d.subs || {}, sx = sb.x || [], stk = sb.tiktok || [], sre = sb.insta || [], syt = sb.youtube || [];   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트)
   const shv = d.shorts || [], aiv = d.aivid || [];   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되")
   if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지)
@@ -8835,7 +8828,6 @@ function renderSnsTrends() {
   const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
   const tkS = sortOf('tk', ['views', 'likes', 'cmts'], 'views'), tkL = tkCov ? bySort(tkv, tkS).slice(0, 10) : [];
   const REGN = { kr: '한국', gl: '세계' }, byReg = (arr, r) => (arr || []).filter(t => (t.region === 'kr') === (r === 'kr'));   // 구독 한국/세계 접이 분리(운영자 260712 "한국 전용·세계 전용") — region 미도장(구 데이터) = 세계
-  const REGS = TRREG === 'kr' ? ['kr'] : ['kr', 'gl'];   // 국내 모드 = 구독 한국군만 표시 · 월드 = 양군(운영자 260712 2모드)
   const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
   const stkS = sortOf('stk', ['views', 'likes', 'cmts'], 'views'), stkR = { kr: bySort(byReg(stk, 'kr'), stkS).slice(0, 10), gl: bySort(byReg(stk, 'gl'), stkS).slice(0, 10) };
   const sreS = sortOf('sre', ['views', 'likes', 'cmts'], 'views'), sreR = { kr: bySort(byReg(sre, 'kr'), sreS).slice(0, 10), gl: bySort(byReg(sre, 'gl'), sreS).slice(0, 10) };
@@ -8864,24 +8856,22 @@ function renderSnsTrends() {
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="tpg">' + ytnZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // 동일 적용(운영자 "뉴스도 마찬가지") · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid">' + shL.map((t, i) => card(t, i)).join('') + '</div>');
   if (aiL.length) gYT += sec('ai', 'AI 영상', '· 조회수', aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
-  REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
+  ['kr', 'gl'].forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
     row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
   if (tkv.length && tkCov) gTK += sec('tk', '인기', '', tkL.length, sortbar('tk', V3, tkS) + '<div class="trend-grid">' + tkL.map((t, i) => card(t, i)).join('') + '</div>');   // (t,i)=>card = wd 미전달 → 3/4 쇼츠식 통일(구 .map(card)는 Array.map 3번째 인자=배열을 wd로 흘려 세로영상이 16:9 가로크롭 = #6 중구난방 원인 · 운영자 260712)
   else if (tkv.length) gTK += sec('tk', '인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
-  REGS.forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '구독', '· ' + REGN[r], L.length, sortbar('stk', V3, stkS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
-  REGS.forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '구독 릴스', '· ' + REGN[r], L.length, sortbar('sre', V3, sreS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
-  REGS.forEach(r => { const L = sxR[r]; if (L.length) gX += sec('sx-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });   // 한국/세계 2군
+  ['kr', 'gl'].forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '구독', '· ' + REGN[r], L.length, sortbar('stk', V3, stkS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
+  ['kr', 'gl'].forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '구독 릴스', '· ' + REGN[r], L.length, sortbar('sre', V3, sreS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
+  ['kr', 'gl'].forEach(r => { const L = sxR[r]; if (L.length) gX += sec('sx-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });   // 한국/세계 2군
   const GRPS = [['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX]].filter(g => g[2]);
   // ── 조립: 좌측 책갈피 레일(soc-item 밖 = backdrop-filter 조상 회피 → fixed가 뷰포트 기준 · §디자인 h) + 카드(헤드 → TOP 10 → 순번 플랫폼 그룹) ──
   let h = '';
   if (GRPS.length > 1) h += '<nav class="trail" id="trendRail" aria-label="플랫폼 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
     GRPS.map(g => `<button type="button" class="trail-i" data-tg="${g[0]}" aria-label="${g[1]}">${TR_LOGO[g[0]] || g[1][0]}</button>`).join('') + '</nav>';   // 라벨 = 플랫폼 로고 픽토그램(운영자 260712 — TR_LOGO 단색 currentColor) · TOP = SVG 위화살(totop 픽토 계승)
   h += '<div class="soc-item soc-trend">';
-  h += '<div class="trend-head"><div class="tstk-seg trend-regseg" role="group" aria-label="지역 범위">' +
-    `<button type="button" data-reg="kr"${TRREG === 'kr' ? ' class="on"' : ''}>국내</button><i></i><button type="button" data-reg="gl"${TRREG === 'gl' ? ' class="on"' : ''}>월드</button>` +
-    '</div><button class="trend-accbtn" type="button" aria-label="구독 계정 관리">계정</button></div>';   // 헤드 행 = 좌 [국내|월드] 세그(운영자 260712 헤더 세그 승인 · 국내 기본 · tstk-seg 글래스 필 계승) + 우 '계정'(ml:auto)
+  h += '<div class="trend-head"><button class="trend-accbtn" type="button" aria-label="구독 계정 관리">계정</button></div>';   // 헤드 행 = 우측 '계정'만(구독 관리 · 260711 배치 승인) — 수집시각은 TOP 10 타이틀 옆 이주(운영자 260712 "top 10 옆 간격 확보·높이 중앙정렬")
   // 최상위 단위(운영자 260712 "블릿 위 단위 = 접을 수 있게 + 글래스 + 도형 얹힘") = [AI 요약][실시간 TOP 10][각 플랫폼] 전부 details 접기 · 전역 순번 · 헤더 = 글래스 필(타이틀이 도형 위에 얹힘 · .sc-tg 값 계승) · 기억 = nm_trend_gfold
   let TGF = {}; try { TGF = JSON.parse(localStorage.getItem('nm_trend_gfold') || '{}') || {}; } catch { TGF = {}; }
   let gno = 0, gfirst = true;
@@ -8929,11 +8919,6 @@ function renderSnsTrends() {
   fillT('ai', '.tcard-t', aiL.map(t => t.title || ''));   // 업로더(.tcard-acc) 전 섹션 제거(운영자 260712 #6) — 제목만
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
   const ab = box.querySelector('.trend-accbtn'); if (ab) ab.addEventListener('click', openSnsAcc);   // 렌더마다 재바인딩(innerHTML 재구축)
-  const rg = box.querySelector('.trend-regseg'); if (rg) rg.addEventListener('click', e => {   // 국내↔월드 전환 = 기억(nm_trend_region) + 즉시 재렌더(접힘·정렬 기억 보존)
-    const b3 = e.target.closest('button'); if (!b3 || b3.classList.contains('on')) return;
-    try { localStorage.setItem('nm_trend_region', b3.dataset.reg); } catch {}
-    renderSnsTrends();
-  });
   if (!box._trBound) {   // 위임 1핸들러 = box 유지·innerHTML만 교체라 1회 바인딩(중복 누적 방지)
     box._trBound = true;
     box.addEventListener('click', e => {
@@ -9311,7 +9296,7 @@ function renderToolTabs(tabs) {   // 탭 묶음 렌더(openTool·restoreTool 공
   if (tabs && tabs.length) {
     tooldlg.classList.add('has-tabs');
     tt.style.gridTemplateColumns = 'repeat(' + tabs.length + ',minmax(0,1fr))';   // minmax(0,…) = 컬럼이 라벨 min-content 아래로도 균등 축소(keep-all 짝 — 없으면 6탭 폰폭서 그리드가 컨테이너 밖으로 넘침)
-    const isThumb = curToolKey === 'thumb';   // 이미지 묶음(thumb 2탭 · 260712 2차 통폐합) = 동일-src 탭 → app 키로 식별(src-유일성 회피). 영상 = 탭마다 src 다름.
+    const isThumb = curToolKey === 'thumb';   // 이미지 묶음(thumb 4탭) = 동일-src 탭 → app 키로 식별(src-유일성 회피). 영상 = 탭마다 src 다름.
     const meta = curToolKey && toolMeta[curToolKey];
     const act = isThumb ? ((meta && meta.app) || tabs[0].app) : ((meta && meta.src) || tabs[0].src);
     tt.innerHTML = tabs.map(t => {
@@ -9366,7 +9351,7 @@ function openTool(src, title, tabs, key) {
 // 도구 탭 클릭 = iframe 스왑(영상: src 스왑) / thumb: iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존) · 모달 유지·히스토리 칸 안 늘림
 $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
   $('#toolTabs').querySelectorAll('.tooltab').forEach(x => x.classList.toggle('on', x === b));
-  if (curToolKey === 'thumb') {   // 이미지 묶음(thumb 2탭 · 260712 2차 통폐합) — 탭 = 동일 문서 내부 전환 selApp(same-origin·리로드0·폼/이미지슬롯 DOM·IDB초안 보존)
+  if (curToolKey === 'thumb') {   // 이미지 묶음(thumb 4탭) — 탭 = 동일 문서 내부 전환 selApp(same-origin·리로드0·폼/이미지슬롯 DOM·IDB초안 보존)
     const app = b.dataset.app;
     if (toolMeta.thumb) toolMeta.thumb.app = app; else toolMeta.thumb = { title: '이미지', tabs: THUMB_TABS, src: '/thumb.html', app: app };   // 방어 — thumb 메타 소실 시 재구성
     try { const w = activeToolFrame().contentWindow; if (w && w.selApp) w.selApp(app); else loadToolFrame('/thumb.html'); } catch (_) {}       // 방어 — thumb 프레임이 빈 신생 클론이면 로드(bridge sync가 하이라이트 재정합)
@@ -9376,8 +9361,8 @@ $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.too
   } });
 // 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스 요약·이미지·영상 고정 · 세부는 탭) · 운영자 260626
 const CAP_TABS = [{ src: '/edit.html', label: '편집', icon: '' }, { src: '/ly.html', label: '자막', icon: '' }, { src: '/k.html', label: '프롬프팅', icon: '' }];   // 운영자 260711 3차 "영상 통합 3분류" 확정 — 2차 선택값(trackEntry=tab4·convTab=restore)의 5탭을 뒤집고 진짜 3탭{편집·자막·프롬프팅}: 트래킹 = 편집 탭 기타 기능 → 핸드오프 서브뷰(아래 nmToolTab 폴백 · 탭 없음) · 변환 = 재도먼트(축 전부 편집 카드{비율·해상도·프레임·음량}가 전담 · conv.html·api/conv.js·conv-make.yml 보존 = 복원은 이 행에 탭 1개 추가) · 라벨 = 축약형(정식명 §📐 불변) · 진입 = 항상 첫 탭(openTool realSrc=tabs[0] = menuMemory off)   // 편집기 = 최좌측(차기 주력 · 운영자 260710 골격 B 확정 — 업로드 1번·1잡) · 탭 글자 앞 아이콘 폐지(운영자 260705) — 글자만·활성 강조색(.tooltab.on) 유지 · thumb 내부 탭(텍스트 단독·260704)과 일관 · §📐 헤더 텍스트·SVG 공존 금지 부합
-// 이미지(thumb) 탭 = 영상처럼 부모 탭바로 승격(3단 셸 통일 · 260704). 영상은 탭마다 src 다르나(ly/k) thumb 탭은 전부 /thumb.html 동일 → app 키로 식별(제작·합성2·편집8 = 2탭 · 260712 2차 통폐합 — 저작권3·카드뉴스5·리사이즈7 = 내부 토글/도먼트 · 생성6 폐지 260710, thumb.html .tab data-app 계승) · 클릭 = iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존). 아이콘 = thumb.html .tab svg 계승. (합성 탭 comp.html = 카드뉴스 탭과 중복이라 진입로 폐지 260710 — 전용 프레임 'comp' 로직도 제거)
-const THUMB_TABS = [{ src: '/thumb.html', app: '2', label: '제작·합성', icon: '' }, { src: '/thumb.html', app: '8', label: '편집', icon: '' }];   // 탭 통폐합 2탭(운영자 260712 2차 "기존 이미지를 합치는 거") — ① 구 썸네일 라벨 → 제작·합성 개명(app='2' id 불변 · 포스트|카드뉴스 ON 토글 포함 그대로) ② 구 제작·합성(app7 리사이즈/비율 재구성 · 아웃페인팅) 별도 탭 폐지 = 편집 탭 안 '리사이즈 ON/OFF' 토글(thumb #rszTogRow)로 흡수{운영자 "편집에 합침·ON/OFF 토글" · app7 발사·잡·이력·복원 로직 전부 불변 = 진입로만 이동 · 탭 하이라이트 = 7→편집(8) 매핑(thumb selApp → thumbTabBridge 역동기)} ③ 편집(app8 피사체 모자이크 · apps/imgedit) = 무변경 · 복원 = 이 행 탭 1개 + thumb #tabs 1행 + #rszTogRow 제거 · 카드뉴스5 탭 도먼트(운영자 260712 — 썸네일 탭 안 토글이 전담 · app5 로직/cardBox 보존 · 260717 잔여 정리 예정) · 저작권3 탭 폐지(운영자 260712 메뉴 삭제) — 썸네일 저작권 통합(260711 cpThumb 3단·#cpBlock 공유·app3/4 payload 동일)이 전담 · thumb app3 발사/복원 로직은 도먼트 보존   // 탭 글자 앞 아이콘 폐지(운영자 260705) — 글자만·활성 강조색 유지 · ⚠ 합성 탭(comp.html) = 카드뉴스와 중복이라 진입로 폐지(운영자 260710 · comp 도먼트) · 구 생성6도 운영자 260710 제거(자유 생성 경로 도먼트)
+// 이미지(thumb) 탭 = 영상처럼 부모 탭바로 승격(3단 셸 통일 · 260704). 영상은 탭마다 src 다르나(ly/k) thumb 4탭은 전부 /thumb.html 동일 → app 키로 식별(썸네일2·저작권3·카드뉴스5·리사이즈7 — 생성6 폐지 260710, thumb.html .tab data-app 계승) · 클릭 = iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존). 아이콘 = thumb.html .tab svg 계승. (합성 탭 comp.html = 카드뉴스 탭과 중복이라 진입로 폐지 260710 — 전용 프레임 'comp' 로직도 제거)
+const THUMB_TABS = [{ src: '/thumb.html', app: '2', label: '썸네일', icon: '' }, { src: '/thumb.html', app: '8', label: '편집', icon: '' }, { src: '/thumb.html', app: '7', label: '제작·합성', icon: '' }];   // 카드뉴스5 탭 도먼트(운영자 260712 — 썸네일 탭 안 '포스트|카드뉴스 ON' 토글이 전담·중복 진입로 제거 · app5 로직/cardBox = 토글이 사용하므로 보존 · 운영자 재요청 없으면 260717 잔여 정리 예정 · 재추가 = 이 행에 탭 1개 + thumb #tabs 1행 복원) · app='8' 편집 = 피사체 모자이크(운영자 260712 · apps/imgedit) · 리사이즈 탭 개명(운영자 260712 "제작·합성" — 비율 재구성/아웃페인팅 = 이미지 제작·합성 카테고리 · app='7' id 불변) · 저작권3 탭 폐지(운영자 260712 메뉴 삭제) — 썸네일 저작권 통합(260711 cpThumb 3단·#cpBlock 공유·app3/4 payload 동일)이 전담 · thumb app3 발사/복원 로직은 도먼트 보존   // 탭 글자 앞 아이콘 폐지(운영자 260705) — 글자만·활성 강조색 유지 · ⚠ 합성 탭(comp.html) = 카드뉴스와 중복이라 진입로 폐지(운영자 260710 · comp 도먼트) · 구 생성6도 운영자 260710 제거(자유 생성 경로 도먼트)
 $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem[data-act]'); if (!b) return; e.preventDefault();
   bpop.hidden = true; bpop.classList.remove('open'); const _tf = $('#toolfab'); if (_tf) _tf.classList.remove('open');   // 라디얼 닫고
   const a = b.dataset.act;
