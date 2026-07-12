@@ -152,6 +152,22 @@
   .hrow.on .t { color:var(--accent); }
   .hrow .eq { color:var(--accent); font-size:10px; font-weight:var(--fw-x); align-self:center; }
   .hrow .m { grid-column:1/-1; font-size:10.5px; color:var(--mut); font-variant-numeric:tabular-nums; }
+
+  /* 음성 클로닝(운영자 260712 · 벤치 판정 후 Replicate RVC 승인) — 파일 슬롯 = ly .filerow/.file 정본 계승(§디자인 u) */
+  .filerow { display:flex; gap:10px; align-items:stretch; margin-top:10px; }
+  .filerow .file { flex:1.4 1 0; min-width:0; }
+  .filerow .go { flex:1 1 0; width:auto; margin-top:0; white-space:nowrap; }
+  .file { display:flex; align-items:center; justify-content:center; margin:0; padding:12px; border:1px dashed transparent; border-radius:var(--r-s); color:var(--accent); cursor:pointer; background:transparent; overflow:hidden; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, border-color .15s ease, color .15s ease; }   /* 빈 상태 = 플레이트 없는 픽토그램만(ly 정본) */
+  .file svg { width:26px; height:26px; display:block; flex:none; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
+  .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(블록 전체 X · ly 계승) */
+  .file.has { border-color:var(--accent); border-style:solid; animation:fileIn .42s ease; }
+  .file .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; margin-left:8px; font-size:12px; font-weight:var(--fw-b); }
+  @keyframes fileIn { 0% { transform:scale(.965); box-shadow:0 0 0 0 rgba(var(--accent-rgb),.45); } 45% { transform:scale(1.025); box-shadow:0 0 0 6px rgba(var(--accent-rgb),.10); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } }
+  @media (prefers-reduced-motion:reduce) { .file.has { animation:none; } }
+  #vName { margin-top:10px; }
+  .consln { margin-top:10px; text-align:center; }   /* 동의 = 텍스트 토글(.selv 계승) — 파괴적/법적 확인은 §디자인 e 허용축 */
+  .consln .selv { margin:0; }
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
@@ -223,10 +239,23 @@
     <div class="rhead"><label class="fl">완성곡</label></div>
     <div class="rbox" id="lTitle"></div>
     <audio id="lAud" controls preload="metadata"></audio>
-    <div class="footer"><button class="ghost dlbtn" id="lDl" aria-label="곡 저장" title="곡 저장"></button></div>
+    <div class="footer"><button class="ghost" id="vApply" hidden>보이스 입히기</button><button class="ghost dlbtn" id="lDl" aria-label="곡 저장" title="곡 저장"></button></div>
     <div class="rhead"><label class="fl">가사</label><button class="cpy" type="button" data-k="llyr" aria-label="가사 복사"></button></div>
     <div class="rbox" id="lLyr"></div>
     <div class="rmeta" id="lMeta"></div>
+  </div>
+
+  <div class="selwrap" id="vcsec">
+    <label class="fl">음성 클로닝 <button type="button" class="selv" id="vcV" aria-haspopup="true">없음</button></label>
+    <div class="selpop none" id="vcPop"></div>
+    <input type="text" id="vName" placeholder="보이스 이름 — 예: 내 목소리" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <div class="filerow">
+      <label class="file" id="vfLab" aria-label="보이스 소스 선택" title="보이스 소스 (1~5분 오디오)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg><span class="fname" id="vfName"></span>
+        <input type="file" accept="audio/*" id="vFile" style="display:none">
+      </label>
+      <button class="go" id="trainGo" data-wl="보이스 학습 중">보이스 학습</button>
+    </div>
+    <div class="consln"><button type="button" class="selv" id="consBtn" aria-pressed="false">동의 — 본인·권리 보유 음성만 (실존 타인 금지)</button></div>
   </div>
 </div>
 
@@ -241,7 +270,9 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PEND_KEY='nm_song_pend';
 const API='/api/song';
+const API_VOICE='/api/voice';
 const BUDGET=1000;   // 폴 예산(초) — 하드 ×2 = 2000s ≥ 잡 캡 25분(1500s)+디스패치+Pages 배포(conv 문법 · 재개 게이트는 24h 별도)
+const BUDGETS={voice:2600,'voice-train':5400};   // 클로닝 = Replicate 대기(apply 폴 ≤25분 · train ≤70분 + 잡 캡 85분) — 모드별 예산
 let USER_ACT=false, _curStop=null, RES=null, OPTS=[], PICK=null, SONG_ID='';
 
 const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
@@ -288,33 +319,35 @@ function statusWait(on,t0,label){
     paint(); _stTick=setInterval(paint,1000);
   } else { st.classList.remove('wait'); }
 }
-const WL={options:'옵션 생성 중',suno:'프롬프트 생성 중',lyria:'곡 만드는 중'};
+const WL={options:'옵션 생성 중',suno:'프롬프트 생성 중',lyria:'곡 만드는 중',voice:'보이스 입히는 중'};
 function gaugeStart(btn){ if(!btn) return; btn.classList.add('glive','firing'); requestAnimationFrame(()=>requestAnimationFrame(()=>btn.classList.add('grun'))); }
 function gaugeDone(btn){ if(btn) btn.classList.add('gdone'); }
 function gaugeClear(btn){ if(btn) btn.classList.remove('glive','firing','grun','gdone'); }
 function flashCheck(g){ if(!g.dataset.label) g.dataset.label=g.textContent; g.innerHTML=CHECK_SVG; g._flash=true; setTimeout(()=>{ g._flash=false; if(!g.classList.contains('err')&&!g.classList.contains('wait')) g.textContent=g.dataset.label; },600); }   // 접수 ✓ 후 라벨 원복(썸네일 상태머신)
 
-// ── 발사(모드 공용) ──
-async function fire(mode, gb){
-  const story=$('#story').value.trim();
-  if(!story) return btnErr(gb,'스토리(대사나 상황)를 적어줘');
+// ── 발사(모드 공용 — POST+게이지 골격 = fireApi 1곳 · 음원/클로닝 공용) ──
+async function fireApi(gb, url, payload, onAccept){
   USER_ACT=true;
   const status=$('#sstatus'); status.classList.remove('err','wait'); status.textContent='';
   gb.disabled=true;
   const t0=Date.now();
   gaugeStart(gb); flashCheck(gb);
   try{
-    const payload={ mode, genre:getGen(), express:getExp(), story:story.slice(0,1500) };
-    if(mode!=='options'&&PICK) payload.pick=PICK;
-    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
     if(!res.ok||j.error){ gaugeClear(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
-    pendSet({id:j.id, mode, t0, story:story.slice(0,1500)});
-    gaugeDone(gb);   // 접수 성공 = 풀필→✓(flashCheck)→라벨 원복 · 대기는 상태줄(statusWait — pollSong이 켬)
-    pollSong(j.id, mode, t0, t0-90000, gb);
+    onAccept(j, t0);
+    gaugeDone(gb);   // 접수 성공 = 풀필→✓(flashCheck)→라벨 원복 · 대기는 상태줄(statusWait — 폴이 켬)
     setTimeout(()=>{ gaugeClear(gb); },700);
   }catch(e){ gaugeClear(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ gb.disabled=false; }
+}
+function fire(mode, gb){
+  const story=$('#story').value.trim();
+  if(!story) return btnErr(gb,'스토리(대사나 상황)를 적어줘');
+  const payload={ mode, genre:getGen(), express:getExp(), story:story.slice(0,1500) };
+  if(mode!=='options'&&PICK) payload.pick=PICK;
+  fireApi(gb, API, payload, (j,t0)=>{ pendSet({id:j.id, mode, t0, story:story.slice(0,1500)}); pollSong(j.id, mode, t0, t0-90000, gb); });
 }
 $('#optGo').addEventListener('click',()=>fire('options',$('#optGo')));
 $('#sunoGo').addEventListener('click',()=>fire('suno',$('#sunoGo')));
@@ -324,14 +357,16 @@ $('#lyriaGo').addEventListener('click',()=>fire('lyria',$('#lyriaGo')));
 function pollSong(id, mode, t0, minTs, gb){
   if(_curStop)_curStop();
   SONG_ID=id;
+  const status=$('#sstatus');   // ⚠️ 스코프 필수 — 없으면 window.status(문자열)로 새서 에러·타임아웃 표면화가 조용히 죽음(260712 회귀 실측·수리)
   statusWait(true, t0, WL[mode]||'생성 중');   // 대기 = 상태줄 정중앙(버튼 원복 = 썸네일 상태머신 계승)
   const outPath='song_out/'+id+'/'+(mode==='options'?'options.json':'song.json');
   const errPath='song_out/'+id+'/error.log';
   let live=true; const stop=()=>{ live=false; statusWait(false); }; _curStop=stop;
-  const need=mode==='options'?'options':'lyrics';   // 완료 판정 필드(모드별)
+  const need=mode==='options'?'options':(mode==='voice'?'url':'lyrics');   // 완료 판정 필드(모드별) — 커버는 오디오(url)가 본질
+  const budget=BUDGETS[mode]||BUDGET;
   const tick=async()=>{
     if(!live) return;
-    if(Date.now()-t0>BUDGET*2000){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    if(Date.now()-t0>budget*2000){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
     try{
       const er=await fetch(errPath+'?t='+Date.now());
       if(!live) return;
@@ -358,7 +393,7 @@ function pollSong(id, mode, t0, minTs, gb){
             if(!isNaN(ts)&&ts>=minTs){   // 원 디스패치 이후 산출만(과거 오인 차단 · ts=KST ISO)
               stop(); pendClear();
               if(mode==='options') renderOptions(d, Math.round((Date.now()-t0)/1000));
-              else if(d.engine==='lyria') showLyria(d, Math.round((Date.now()-t0)/1000));
+              else if(d.engine==='lyria'||d.engine==='rvc'||d.url) showLyria(d, Math.round((Date.now()-t0)/1000));   // 오디오 있는 산출 = 완성곡 뷰(lyria·rvc 커버)
               else showSuno(d, Math.round((Date.now()-t0)/1000));
               return;
             }
@@ -410,6 +445,7 @@ function showSuno(d, sec){
   $('#rLyrics').textContent=d.lyrics||'';
   $('#rExcl').textContent=d.exclude||'';
   $('#rMeta').textContent=(d.genre||'자동')+' · '+(d.express||'자동')+' · 목표 '+(d.target||'60초 미만');
+  vcRender();   // 텍스트 산출 = 오디오 없음 → [보이스 입히기] 숨김 동기화
   const out=$('#out'); out.hidden=false;
   try{ out.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
 }
@@ -421,8 +457,11 @@ function showLyria(d, sec){
   $('#lTitle').textContent=d.title||'';
   const aud=$('#lAud'); aud.src=d.url||'';
   $('#lLyr').textContent=d.sung||d.lyrics||'';
-  $('#lMeta').textContent='Lyria 3'+(d.model?(' · '+d.model):'')+(d.sung&&d.lyrics&&d.sung!==d.lyrics?' · 실제 부른 가사 기준':'');
+  $('#lMeta').textContent=(d.engine==='rvc'
+    ?('보이스 커버'+(d.voice_name?(' · '+d.voice_name):''))
+    :('Lyria 3'+(d.model?(' · '+d.model):'')))+(d.sung&&d.lyrics&&d.sung!==d.lyrics?' · 실제 부른 가사 기준':'');
   $('#lDl').classList.remove('dl-done');
+  vcRender();   // 보이스 선택 + 오디오 有 = [보이스 입히기] 노출 갱신
   const lo=$('#lout'); lo.hidden=false;
   try{ lo.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
 }
@@ -463,7 +502,7 @@ let PLIST=[], PIDX=-1;
 const hpop=$('#hpop');
 function hRow(s,i){
   const d=(s.ts||'').slice(5,16).replace('T',' ');
-  return '<button class="hrow'+(i===PIDX?' on':'')+'" data-i="'+i+'" type="button"><span class="t">'+esc(s.title||'(무제)')+'</span>'+(i===PIDX?'<span class="eq">재생 중</span>':'<span></span>')+'<span class="m">'+esc(d)+' · '+esc(s.engine==='lyria'?'구글':(s.engine||''))+(s.genre?(' · '+esc(s.genre)):'')+'</span></button>';
+  return '<button class="hrow'+(i===PIDX?' on':'')+'" data-i="'+i+'" type="button"><span class="t">'+esc(s.title||'(무제)')+'</span>'+(i===PIDX?'<span class="eq">재생 중</span>':'<span></span>')+'<span class="m">'+esc(d)+' · '+esc(s.engine==='lyria'?'구글':(s.engine==='rvc'?'보이스':(s.engine||'')))+(s.genre?(' · '+esc(s.genre)):'')+'</span></button>';
 }
 function renderList(){ $('#hlist').innerHTML=PLIST.map((s,i)=>hRow(s,i)).join(''); }
 async function openHist(){
@@ -490,13 +529,109 @@ async function playIdx(i,autoplay){
 $('#hlist').addEventListener('click',e=>{ const b=e.target.closest('.hrow'); if(!b) return; playIdx(+b.dataset.i,true); });
 $('#lAud').addEventListener('ended',()=>{ if(PIDX>=0&&PIDX+1<PLIST.length) playIdx(PIDX+1,true); });
 
+// ── 음성 클로닝(운영자 260712 · Replicate RVC — svc-bench 판정: Seed-VC CPU 탈락 → 전환 승인) ──
+//    train: 소스(1~5분)+동의 → /api/voice → voice_out/<vid>/voice.json 폴 · apply: 완성곡+보이스 → 커버 = pollSong 'voice'
+//    동의 게이트 = 본인·권리 보유 음성만(실존 타인 금지 · 운영자 제약) — 없인 발사 불가(api·워크플로 이중 거절).
+let VOICES=[], VSEL=null, VFILE=null, VFNAME='';
+function vcRender(){
+  const cur=VOICES.find(x=>x.id===VSEL)||null;
+  if(!cur) VSEL=null;
+  const v=$('#vcV');
+  v.textContent=cur?(cur.name||'보이스'):'없음';
+  v.classList.toggle('on',!!cur);
+  $('#vcPop').innerHTML='<button type="button" class="spbtn'+(VSEL?'':' on')+'" data-v="">없음</button>'
+    +VOICES.map(x=>'<button type="button" class="spbtn'+(x.id===VSEL?' on':'')+'" data-v="'+esc(x.id)+'">'+esc(x.name||'보이스')+'</button>').join('');
+  $('#vApply').hidden=!(VSEL&&RES&&RES.url);   // 보이스 선택 + 오디오 있는 결과에서만
+}
+async function vcLoad(){
+  try{
+    const r=await fetch('voice_out/index.json?t='+Date.now());
+    if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ VOICES=j; vcRender(); } } }
+  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+}
+$('#vcV').addEventListener('click',()=>{ const pop=$('#vcPop'); const opening=pop.classList.contains('none'); closeSelPops(pop); pop.classList.toggle('none',!opening); if(opening) vcLoad(); });
+$('#vcPop').addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if(!b) return; VSEL=b.dataset.v||null; vcRender(); $('#vcPop').classList.add('none'); });
+$('#consBtn').addEventListener('click',e=>{ const b=e.currentTarget; const on=!b.classList.contains('on'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
+$('#vFile').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if(f.size>20*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 ≤20MB — 1~5분 mp3/m4a'); }
+  try{
+    await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ VFILE=r.result; res(); }; r.onerror=()=>rej(r.error||new Error('읽기 실패')); r.readAsDataURL(f); });
+    VFNAME=f.name; $('#vfName').textContent=f.name; $('#vfLab').classList.add('has');
+  }catch(err){ VFILE=null; VFNAME=''; $('#vfName').textContent=''; $('#vfLab').classList.remove('has'); btnErr($('#trainGo'),'파일 읽기 실패 — 다시'); }
+});
+$('#trainGo').addEventListener('click',()=>{
+  const gb=$('#trainGo');
+  if(!VFILE) return btnErr(gb,'보이스 소스(1~5분)를 올려줘');
+  if(!$('#consBtn').classList.contains('on')) return btnErr(gb,'동의 먼저 — 본인·권리 보유 음성만');
+  fireApi(gb, API_VOICE, {mode:'train', name:$('#vName').value.trim().slice(0,24), consent:true, fileB64:VFILE, fname:VFNAME},
+    (j,t0)=>{ pendSet({id:j.id, mode:'voice-train', t0}); pollVoice(j.id, t0, t0-90000); });
+});
+$('#vApply').addEventListener('click',()=>{
+  const gb=$('#vApply');
+  if(!(VSEL&&SONG_ID&&RES&&RES.url)) return;
+  fireApi(gb, API_VOICE, {mode:'apply', src:SONG_ID, vid:VSEL},
+    (j,t0)=>{ pendSet({id:j.id, mode:'voice', t0}); pollSong(j.id, 'voice', t0, t0-90000, gb); });
+});
+function pollVoice(id, t0, minTs){   // 학습 폴 — pollSong 미러(voice_out 루트 · 완료 = model_url · 학습은 길어서 10s 간격)
+  if(_curStop)_curStop();
+  const status=$('#sstatus');
+  statusWait(true, t0, '보이스 학습 중');
+  const outPath='voice_out/'+id+'/voice.json', errPath='voice_out/'+id+'/error.log';
+  let live=true; const stop=()=>{ live=false; statusWait(false); }; _curStop=stop;
+  const budget=BUDGETS['voice-train'];
+  const tick=async()=>{
+    if(!live) return;
+    if(Date.now()-t0>budget*2000){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    try{
+      const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
+      if(er.ok){
+        const ect=(er.headers.get('content-type')||'').toLowerCase();
+        const em=await er.text();
+        if(!live) return;
+        const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
+        if(em&&em.trim()&&!eHtml){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,300)); status.classList.add('err'); return; }
+      }
+    }catch(e){ /* 재시도 */ }
+    try{
+      const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
+      if(r.ok){
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const tx=await r.text();
+        if(!live) return;
+        const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
+        if(tx&&tx.trim()&&!isHtml){
+          let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&d.model_url){
+            const ts=Date.parse(d.ts||'');
+            if(!isNaN(ts)&&ts>=minTs){   // 원 디스패치 이후 산출만(과거 오인 차단)
+              stop(); pendClear();
+              status.classList.remove('err');
+              status.innerHTML=OK_SVG+' 보이스 학습 완료 — '+esc(d.name||'보이스');
+              VSEL=id; vcLoad();   // 새 보이스 자동 선택 + 목록 갱신([보이스 입히기] 활성)
+              return;
+            }
+          }
+        }
+      }
+    }catch(e){ /* 재시도 */ }
+    if(live) setTimeout(tick,10000);
+  };
+  tick();
+}
+vcLoad();   // 부팅 로드 — 플레이리스트 재생만 해도 [보이스 입히기]가 뜨게
+
 // ── 재개(pend) — 리로드/재진입 시 진행 중 생성 폴 이어받기(conv 문법 · 24h 게이트) ──
 (function(){
   const p=pendGet(); if(!p||!p.id||USER_ACT) return;
   if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
   if(p.story&&!$('#story').value) $('#story').value=p.story;   // 후속 발사 재료 복원(칩은 기본 유지 — 옵션/가사엔 story+pick이 본질)
-  if(p.mode!=='options'){ $('#optwrap').hidden=false; updateGoSpec(); }   // 엔진 진행 표시 위해 행 노출
-  const t0c=Math.max(p.t0||0, Date.now()-BUDGET*1000);   // 경과·타임아웃 기점 클램프 = 재개마다 폴 창 확보 · 신선도는 원 t0 기준(분리)
+  if(p.mode==='voice-train'){ const t0c=Math.max(p.t0||0, Date.now()-BUDGETS['voice-train']*1000); pollVoice(p.id, t0c, (p.t0||0)-90000); return; }
+  if(p.mode!=='options'&&p.mode!=='voice'){ $('#optwrap').hidden=false; updateGoSpec(); }   // 엔진 진행 표시 위해 행 노출(커버 재개는 폼 노이즈 없이)
+  const t0c=Math.max(p.t0||0, Date.now()-(BUDGETS[p.mode]||BUDGET)*1000);   // 경과·타임아웃 기점 클램프 = 재개마다 폴 창 확보 · 신선도는 원 t0 기준(분리)
   pollSong(p.id, p.mode||'suno', t0c, (p.t0||0)-90000, null);
 })();
 </script>
