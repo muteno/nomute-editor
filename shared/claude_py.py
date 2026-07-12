@@ -30,6 +30,18 @@ def is_quota(text):
     return bool(_QUOTA.search(head))
 
 
+def _mark_active_quota():
+    """활성 계정(체인 첫 계정)이 이번 런에 쿼터로 폴오버됐음을 신호 파일에 남긴다(best-effort).
+    account_failover.py(활성 계정 자동 승격)가 이 파일 존재를 보고 누적 카운트한다.
+    shared/claude_transient.sh 의 _claude_mark_active_quota 와 같은 신호(파이썬 judge 경로판)."""
+    try:
+        sig = os.environ.get("NOMUTE_QUOTA_SIGNAL") or os.path.join(
+            os.environ.get("GITHUB_WORKSPACE", "/tmp"), ".nomute_active_quota")
+        Path(sig).write_text("1")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _arg_val(args, flag):
     """args 리스트에서 `--flag value` 의 value 추출(없으면 "")."""
     try:
@@ -111,6 +123,8 @@ def run_claude(args, prompt, timeout=300, source=None):
                 os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_ALT2") if _swap_n == 1 else (
                 os.environ.get("CLAUDE_CODE_OAUTH_TOKEN_ALT3") if _swap_n == 2 else None))
             if nxt:
+                if _swap_n == 0:
+                    _mark_active_quota()   # 활성 계정 쿼터 신호(sticky 승격 · account_failover.py)
                 os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = nxt
                 _swap_n += 1
                 print("  🔄 계정 사용량 한도 — 서브%d 계정으로 전환 후 재시도(account failover %d/3)" % (_swap_n, _swap_n), flush=True)

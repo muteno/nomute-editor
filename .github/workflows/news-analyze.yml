@@ -82,6 +82,16 @@ jobs:
           s="$(tr '\n' ' ' < /tmp/force_regen_files.txt 2>/dev/null || true)"
           echo "stems=${s}" >> "$GITHUB_OUTPUT"
 
+      # 활성 계정(vars.ACTIVE_ACCOUNT)이 이번 런에 쿼터로 폴오버됐으면 누적 카운트 → 2회+ 면 체인 다음
+      # 계정으로 자동 전진(sticky failover). GH_VARS_TOKEN(Variables 쓰기 PAT) 없으면 no-op = 라이브 무해.
+      # 수동 실행(inputs.account 오버라이드)은 변수 안 건드림(스킵). 정본 = docs/oauth_계정_자동승격_이식가이드.md
+      - name: 활성 계정 자동 승격(쿼터 누적 시)
+        if: ${{ always() && !inputs.account }}
+        env:
+          GH_VARS_TOKEN: ${{ secrets.GH_VARS_TOKEN }}
+          ACTIVE_ACCOUNT: ${{ vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+        run: python3 shared/account_failover.py
+
       # viewer 빌드 스텝 없음(의도) — Cloudflare Pages가 push마다 `node build-viewer.mjs`를 직접 실행.
       # 커밋이 분석 직후·무조건이라 빌드류 실패가 Opus 분석물을 증발시킬 수 없다(run#2 교훈).
       - name: Commit results
