@@ -769,6 +769,7 @@
   .tbrief-lbl { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--accent); letter-spacing:.02em; margin-bottom:3px; }
   .tbrief-t { margin:0; font-size:var(--fs-sm); line-height:1.85; color:var(--fg); word-break:break-word; white-space:pre-line; }   /* 줄간격 확대·요점별 개행 보존(white-space:pre-line) — 운영자 260712 #7 */
   .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 강조색 굵게(핵심 포인트·수치) */
+  .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-tm { display:block; margin-top:5px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
   .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 58px 78px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수 시작 x 일렬 · 선 없음 = 내부 선 투명 */
@@ -8916,7 +8917,20 @@ function renderSnsTrends() {
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
   box.querySelectorAll('#tg-top .tlr-t').forEach((el2, i) => { el2.textContent = top[i] ? top[i].t : ''; });
   const bt = box.querySelector('.tbrief-t');   // 단위 헤더 'AI 요약'이 라벨 겸함(판 내부 중복 라벨 제거 · §디자인 e)
-  if (bt && BRIEF) { bt.textContent = ''; (BRIEF.text || '').split(/(\*[^*\n]+\*)/).forEach(seg => { if (!seg) return; if (/^\*[^*\n]+\*$/.test(seg)) { const b = document.createElement('b'); b.textContent = seg.slice(1, -1); bt.appendChild(b); } else bt.appendChild(document.createTextNode(seg)); }); }   // *별표* → <b> 강조(split과 동일 정규식으로 판정 = 단일줄 *...*만 볼드·양끝 별표+내부개행 통짜볼드 방지 · 텍스트노드만 = XSS 안전) · 줄바꿈은 white-space:pre-line이 렌더
+  if (bt && BRIEF) {   // *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line
+    bt.textContent = '';
+    const txt = BRIEF.text || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+    const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
+    const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a = document.createElement('a'); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = label; bt.appendChild(a); } catch { addText(label); } };
+    let last = 0, m;
+    while ((m = TOK.exec(txt))) {
+      addText(txt.slice(last, m.index)); last = TOK.lastIndex;
+      if (m[1]) { const b = document.createElement('b'); b.textContent = m[1].slice(1, -1); bt.appendChild(b); }
+      else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+      else if (m[3]) { addLink(m[3], m[3]); }
+    }
+    addText(txt.slice(last));
+  }
   fillT('gt', '.trend-q', gt.slice(0, 8).map(g => g.query || ''));
   fillT('yt', '.tpc-t', ytZ.map(z => z[0].title || ''));
   fillT('ytn', '.tpc-t', ytnZ.map(z => z[0].title || ''));
