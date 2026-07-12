@@ -505,28 +505,3 @@ if (existsSync(LY_ROOT)) {
     console.log(`viewer/song_out/index.json 생성 — ${songs.length}건`);
   }
 }
-
-// ── 자료(nb_out) 인덱스 — 「자료 목록」(운영자 260712 유튜브 자료화) · song_out 인덱스 미러 ──
-//    검색 표면 필드만 인덱스에(제목·채널·길이·주제) · 무거운 본문(전사·논점)은 note.json에만(평의회 앵글9).
-{
-  const NB_ROOT = 'viewer/nb_out';
-  if (existsSync(NB_ROOT)) {
-    const notes = [];
-    for (const id of readdirSync(NB_ROOT)) {
-      const dir = join(NB_ROOT, id);
-      try { if (!statSync(dir).isDirectory()) continue; } catch { continue; }
-      const p = join(dir, 'note.json');
-      if (!existsSync(p)) continue;
-      let n = null;
-      try { n = JSON.parse(readFileSync(p, 'utf8')); } catch { continue; }
-      if (!n || !n.summary) continue;
-      const s = n.src || {};
-      notes.push({ id, ts: n.ts || '', t: s.title || '', ch: s.channel || '', d: s.dur || 0,
-                   src: n.tr_src || '', tp: (n.topics || []).slice(0, 4) });
-    }
-    notes.sort((a, b) => (b.id || '').localeCompare(a.id || ''));          // 최신순(id = 시간 접두)
-    if (notes.length > 500) notes.length = 500;                            // 캡(인덱스 비대 방지 · 원본 note.json은 불변 — 초과 누적 시 샤딩 후속)
-    writeFileSync(join(NB_ROOT, 'index.json'), JSON.stringify(notes));
-    console.log(`viewer/nb_out/index.json 생성 — ${notes.length}건`);
-  }
-}
