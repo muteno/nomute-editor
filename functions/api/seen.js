@@ -30,7 +30,10 @@ export async function onRequestPost({ request, env }) {
     }
     const merge = (old, add) => { const s = [...new Set([...(Array.isArray(old) ? old : []), ...add])]; return s.slice(-CAP); };
     const next = { t: merge(cur.t, addT), f: merge(cur.f, addF) };
-    if (JSON.stringify(next) === JSON.stringify({ t: cur.t || [], f: cur.f || [] })) return json({ ok: true, noop: true });
+    // fresh = 이번에 *처음* 기록된 id — 클라 선점(claim) 판정용: fresh에 있으면 그 기기가 첫 표시권(운영자 260712 "같은 알림 2번 금지" = 표시 전 선점·정확히 1회)
+    const had = { t: new Set(cur.t || []), f: new Set(cur.f || []) };
+    const fresh = { t: addT.filter(x => !had.t.has(x)), f: addF.filter(x => !had.f.has(x)) };
+    if (!fresh.t.length && !fresh.f.length) return json({ ok: true, noop: true, fresh });
 
     const bytes = new TextEncoder().encode(JSON.stringify(next));
     let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
@@ -38,8 +41,8 @@ export async function onRequestPost({ request, env }) {
       method: 'PUT', headers: H,
       body: JSON.stringify({ message: `seen: 토스트 계정 seen 동기(t+${addT.length}·f+${addF.length})`, content: btoa(bin), branch: 'main', ...(sha ? { sha } : {}) }),
     });
-    if (put.ok) return json({ ok: true });
-    if (put.status === 409) continue;   // sha 경합(동시 기기) → 재시도
+    if (put.ok) return json({ ok: true, fresh });
+    if (put.status === 409) continue;   // sha 경합(동시 기기) → 재읽기·재판정(선점 원자성의 핵심 — 진 쪽은 fresh서 빠짐)
     return json({ error: `GitHub write ${put.status}` }, 502);
   }
   return json({ error: '경합 — 재시도 실패' }, 409);
