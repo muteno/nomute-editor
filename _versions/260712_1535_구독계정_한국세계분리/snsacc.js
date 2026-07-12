@@ -1,36 +1,29 @@
 // Cloudflare Pages Function — 트렌드(메뉴4) 구독 계정 목록 저장/조회 → viewer/sns_accounts.json 커밋(GitHub Contents API).
 // settings.js 패턴 계승(GH_TOKEN·originOk·sha 경합 재시도). 운영자 260711 승인(구독 축 = 기존 레인 아래 · '계정' 버튼 → 관리 모달).
-//   GET  → { x:{kr[],gl[]}, tiktok:{…}, insta:{…}, youtube:{…} }   (main 즉시 정합 — 정적 파일은 Pages 배포 지연이라 API 경유)
-//   POST → { patch:{ x?:{kr[],gl[]}, … } } 온 키만 통째 교체(모달 = 스테이징 편집 후 저장 1커밋 · 구 평면 배열 = 세계(gl) 흡수).
+//   GET  → { x[], tiktok[], insta[], youtube[] }   (main 즉시 정합 — 정적 파일은 Pages 배포 지연이라 API 경유)
+//   POST → { patch:{ x?[], tiktok?[], insta?[], youtube?[] } } 온 키만 통째 교체(모달 = 스테이징 편집 후 저장 1커밋).
 // 수집 반영 = sns-trends 런(30분 주기 · SNS_SUBS 게이트 ON 전제 = 카나리아 승격 후 §📰-e — 승격 전엔 저장만 되고 수집 무발동).
-// 지역(한국/세계)별 상한 CAP = 러너 소요 보호(scraper/sns_trends._REG_CAP와 동일 규격 · 운영자 260712 한국/세계 분리).
+// 플랫폼당 15 상한 = 러너 소요 보호(scraper/sns_trends._load_accounts와 동일 규격).
 const REPO = 'muteno/nomute-editor', FILE = 'viewer/sns_accounts.json';
 const KEYS = ['x', 'tiktok', 'insta', 'youtube'];
-const CAP = { x: 20, tiktok: 15, insta: 10, youtube: 15 };   // 지역별 상한(인스타 = 6s/콜 최중이라 최소)
 const RX = /^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$/;   // 핸들 관용 규격(X 15자·인스타 30자·틱톡 24자 합집합 — 형식만 거르는 느슨 상한 · 실존 여부는 수집기가 fail-soft 스킵)
 
-function cleanList(xs, cap, seen) {
-  const out = [];
+function cleanList(xs) {
+  const seen = new Set(), out = [];
   for (let v of Array.isArray(xs) ? xs : []) {
     v = String(v || '').trim().replace(/^@/, '');
     if (!v || !RX.test(v)) continue;
     const k = v.toLowerCase();
-    if (seen.has(k)) continue;   // 대소문자 무시 dedup(지역 교차 공유 = kr 우선)
+    if (seen.has(k)) continue;   // 대소문자 무시 dedup
     seen.add(k); out.push(v);
-    if (out.length >= cap) break;
+    if (out.length >= 15) break;
   }
   return out;
 }
-function cleanPlat(v, k) {   // 한국/세계 2군(운영자 260712) — 구 평면 배열 = 세계(gl) 흡수(하위호환) · 지역 교차 dedup(kr 우선)
-  if (Array.isArray(v)) v = { gl: v };
-  if (!v || typeof v !== 'object') v = {};
-  const seen = new Set();
-  return { kr: cleanList(v.kr, CAP[k], seen), gl: cleanList(v.gl, CAP[k], seen) };
-}
-function clean(raw) { const o = {}; for (const k of KEYS) o[k] = cleanPlat(raw && raw[k], k); return o; }
+function clean(raw) { const o = {}; for (const k of KEYS) o[k] = cleanList(raw && raw[k]); return o; }
 function pickPatch(patch) {   // 온 키만(부분 갱신) — 무효 항목은 조용히 걸러 기존 규격 보존
   const o = {};
-  for (const k of KEYS) if (Array.isArray(patch[k]) || (patch[k] && typeof patch[k] === 'object')) o[k] = cleanPlat(patch[k], k);
+  for (const k of KEYS) if (Array.isArray(patch[k])) o[k] = cleanList(patch[k]);
   return o;
 }
 
