@@ -84,6 +84,15 @@
   .pc.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.04); }   /* 켜짐 틴트 .04(운영자 260711 onA — 같은 토큰 알파 변주) */
   .pc.dim { opacity:.32; }   /* 비활성 흐림(운영자 260711 dimOff) */
   .pc .swd { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; background:var(--sw,rgba(0,0,0,1)); border:1px solid rgba(255,255,255,.25); }   /* 자막 음영 색 칩 견본 점(.pc 소확장 · 색 = 콘텐츠 var 참조만 · 260711) */
+  /* ── 순환값 문법(운영자 260712 5문법 — 도형/필 폐지 · 한 카테고리 = 값 하나·탭=한 바퀴 순환 · ovfmt 정본 결) ── */
+  .scard.cyc .hd { gap:6px; flex-wrap:wrap; cursor:default; }
+  .cyv { color:var(--accent); font-weight:var(--fw-x); font-size:var(--fs-label); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .14s, transform .1s; }
+  .cyv.off { color:var(--mut); }   /* 원본/그대로/끔 = 미적용(mut) · 실값 = 강조(accent) */
+  .cyv:active { transform:scale(var(--press-m)); }
+  .cysep { color:var(--mut); opacity:.45; font-weight:400; }
+  .cyrow { display:flex; gap:8px; }   /* 반폭 페어 = 남는 공간 활용(운영자 260712 "행 반만 쓰니 반으로 잘라 둘 다") */
+  .cyrow > .scard { flex:1 1 0; min-width:0; }
+  .cnote { padding:2px 13px 10px; font-size:var(--fs-xs); color:var(--mut); line-height:1.5; }   /* 카드 하단 STT/클립 노트(켰을 때만 · 산문 최소) */
   .grow { display:grid; grid-template-columns:52px 1fr 44px; align-items:center; gap:9px; margin-top:9px; font-size:var(--fs-xs); }
   .grow .k { color:var(--mut); font-weight:var(--fw-b); }
   .grow input[type=range] { width:100%; accent-color:var(--accent); }
@@ -618,12 +627,42 @@ function setEta(){   // 예상 소요 병기 = 제거(운영자 260711 etaShow=o
 }
 /* 섹션 상시 노출 IA(운영자 260712 — 시안 3분류 뷰 정합: "1 리사이징"류 번호 섹션이 항상 펼쳐져 축 칩이 바로 보임 · 빈 스택+시트 추가형 폐지) — 기본 = 음량 통일만 ON(운영자 260712 보정 기본)·나머지 축 '원본/그대로/끔' · 칩 선택 = ON[k] 파생이라 buildOpts·etaCalc·레시피·클리퍼 배타 전부 불변 */
 const IA=[['리사이징',['screen','res','fps']],['영상 편집',['cut','trim','clip']],['음향 편집',['bgm','anorm']]];
+/* ── 순환값 문법(운영자 260712 5문법 — 잔여 선택지 나열 폐지 · 탭=한 바퀴 · 단일축 카드 = 반폭 페어) ── */
+const CYC={ ar:['off','9:16','1:1','4:5','16:9'], fit:['crop','pad','blur'], res:['off','src','1080','720'], fps:['off','60i','30'], cutlv:['off','soft','std','hard'], clip:['off','on'], bgm:['off','on'], anorm:['off','on'] };   // 24fps 삭제(운영자 260712)
+const CYL={ ar:{off:'원본','9:16':'9:16','1:1':'1:1','4:5':'4:5','16:9':'16:9'}, fit:{crop:'자르기',pad:'검정 여백',blur:'블러 여백'}, res:{off:'그대로',src:'원본(4K)','1080':'1080p','720':'720p'}, fps:{off:'그대로','60i':'60fps 보간','30':'30fps'}, cutlv:{off:'끔',soft:'살짝',std:'기본',hard:'많이'}, clip:{off:'끔',on:'후보 스캔'}, bgm:{off:'끔',on:'목소리만'}, anorm:{off:'끔',on:'ON'} };
+const HALF=new Set(['res','fps','bgm','anorm']);   // 반폭 페어 대상(단일 순환축 = 해상도|프레임 / 배경음|음량)
+const AXNM={ ar:'비율', fit:'방식', res:'해상도', fps:'프레임', cutlv:'컷 세기', clip:'클리퍼', bgm:'배경음', anorm:'음량' };   // 축 이름(a11y — CARD 키와 별개: ar/fit/cutlv는 CARD에 없음)
+function curCyc(k){ if(k==='ar')return ON.screen?P.ar:'off'; if(k==='res')return ON.res?P.res:'off'; if(k==='fps')return ON.fps?P.fps:'off'; if(k==='cutlv')return ON.cut?P.cutlv:'off'; if(k==='clip')return ON.clip?'on':'off'; if(k==='bgm')return ON.bgm?'on':'off'; if(k==='anorm')return ON.anorm?'on':'off'; if(k==='fit')return P.fit; return P[k]; }
+function cyv(k){ const v=curCyc(k); return '<span class="cyv'+(v==='off'?' off':'')+'" data-cyc="'+k+'" role="button" tabindex="0" aria-label="'+(AXNM[k]||k)+'">'+esc(CYL[k][v]||v)+'</span>'; }
+function setAxis(k,v){   // 축 상태 단일 정본(순환값·잔존 chip 공유 — buildOpts/etaCalc/레시피/클리퍼 배타 계약 불변)
+  if(k==='ar'){ if(v==='off')ON.screen=false; else {ON.screen=true;ON.clip=false;P.ar=v;} return; }
+  if(k==='res'||k==='fps'){ if(v==='off')ON[k]=false; else {ON[k]=true;ON.clip=false;P[k]=v;} return; }
+  if(k==='cutlv'){ if(v==='off')ON.cut=false; else {ON.cut=true;ON.clip=false;P.cutlv=v;} return; }
+  if(k==='clip'){ if(v==='on'){ for(const kk in ON) ON[kk]=false; ON.clip=true; } else { ON.clip=false; ON.anorm=true; } return; }   // 클립 = 배타 스캔 · 끔 = 기본(음량 보정) 복귀
+  if(k==='bgm'||k==='anorm'){ if(v==='on'){ON[k]=true;ON.clip=false;} else ON[k]=false; return; }
+  if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } } return; }
+  if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; return; }
+  P[k]=v; if(k==='fit'&&v!=='crop') scrubClose();
+}
+const CARDAX={ res:'res', fps:'fps', cut:'cutlv', clip:'clip', bgm:'bgm', anorm:'anorm' };   // 카드 키 → 순환 축 키(컷 = cutlv · 그 외 동일 · screen/trim 별도)
+function cardHtml(k,half){   // 한 줄 순환값 헤더 + 잔여(위치 게이지·구간 입력·노트)만 아래
+  let vals='';
+  if(k==='screen'){ vals='<span class="cysep">|</span>'+cyv('ar'); if(ON.screen) vals+=' <span class="cysep">|</span>'+cyv('fit'); }   // fit = 비율 켜졌을 때만(조건부 등장 5문법)
+  else if(CARDAX[k]) vals='<span class="cysep">|</span>'+cyv(CARDAX[k]);
+  let body='';
+  if(k==='screen'&&ON.screen&&P.fit==='crop') body='<div class="prm">'+gauge('vpos','위치',0,100,P.vpos,'%')+'</div>';   // 위치 = 자르기일 때만(게이지 = 순환 불가라 아래)
+  else if(k==='cut'&&ON.cut) body='<div class="cnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>';
+  else if(k==='clip'&&ON.clip) body='<div class="cnote">하이라이트 후보 3~5개 · 단독 실행</div>';
+  else if(k==='trim') body='<div class="prm"><div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝(비면 안 자름)" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div></div>';
+  return '<div class="scard cyc'+(half?' half':'')+'"><div class="hd st"><span class="nm">'+CARD[k].nm+'</span>'+vals+'</div>'+body+'</div>';
+}
+function secCards(ks){ let out='',i=0; while(i<ks.length){ const k=ks[i]; if(HALF.has(k)&&i+1<ks.length&&HALF.has(ks[i+1])){ out+='<div class="cyrow">'+cardHtml(k,true)+cardHtml(ks[i+1],true)+'</div>'; i+=2; } else { out+=cardHtml(k,false); i++; } } return out; }
 function render(){
   const _pv=document.getElementById('pv');   // 미리보기 노드 보존 — 슬롯(#pvSlot)이 #stack 안이라 innerHTML 교체 전에 반드시 분리(안 하면 video 파괴 = 매 칩 클릭 리로드 · 운영자 260711 3차 귀속)
   if(_pv&&$('#stack').contains(_pv)) document.body.appendChild(_pv);
   $('#stack').innerHTML = IA.map((sec,si)=>
     '<div class="sech"><span class="no">'+(si+1)+'</span><span class="nm">'+sec[0]+'</span></div>'
-    +sec[1].map(k=>'<div class="scard"><div class="hd st"><span class="nm">'+CARD[k].nm+'</span><span class="sum">'+(ON[k]?esc(sum(k)):'')+'</span></div><div class="prm">'+prm(k)+'</div></div>').join('')
+    +secCards(sec[1])
   ).join('');
   setEta();
   pvSync();
@@ -751,18 +790,12 @@ document.addEventListener('click',e=>{
     if(v==='clip'){ for(const kk in ON) ON[kk]=false; ON.clip=true; OPEN=''; closeSheet(); render(); return; }   // 클리퍼 = 배타 스캔(서버 정규화와 계약 일치)
     ON[v]=true; ON.clip=false; OPEN=v; closeSheet(); render(); return;
   }
-  if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } } render(); return; }   // 자막 프리셋 = 기존 토글·게이지 원탭 점등
-  // 섹션 상시형 ON 파생(운영자 260712 시안 IA) — '원본/그대로/끔' = 그 축 미적용(종전 카드 미장착과 발사 동일) · 값 선택 = ON 켬(클리퍼 배타는 종전 add 로직 계승)
-  if(k==='ar'){ if(v==='off'){ON.screen=false;} else {ON.screen=true;ON.clip=false;P.ar=v;} render(); return; }
-  if(k==='res'||k==='fps'){ if(v==='off'){ON[k]=false;} else {ON[k]=true;ON.clip=false;P[k]=v;} render(); return; }
-  if(k==='cutlv'){ if(v==='off'){ON.cut=false;} else {ON.cut=true;ON.clip=false;P.cutlv=v;} render(); return; }
-  if(k==='clip'){ if(v==='on'){ for(const kk in ON) ON[kk]=false; ON.clip=true; } else { ON.clip=false; ON.anorm=true; } render(); return; }   // 클립 끔 = 기본 상태 복귀(음량 보정 ON · 260712)
-  if(k==='bgm'||k==='anorm'){ if(v==='on'){ON[k]=true;ON.clip=false;} else ON[k]=false; render(); return; }
-  if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; }
-  else P[k]=v;
-  if(k==='fit'&&v!=='crop') scrubClose();   // 크롭 해제 = 열려 있던 미리보기 기준 낡음 → 방어 닫기(멱등 · conv syncPos 계승)
-  render();
+  setAxis(k,v); render();   // 축 상태 = setAxis 단일 정본(순환값 data-cyc와 공유 · 자막 chip·기타옵션 pc 잔존 경유 · 260712 5문법 — 잔여 선택지 나열 폐지)
 });
+/* 순환값 탭 = 다음 값으로 한 바퀴(운영자 260712 5문법) — setAxis 공유(기능 100% 보존) · 수동 = 프리셋 '종합' 복귀 */
+function doCyc(el){ const k=el.dataset.cyc, list=CYC[k]; if(!list) return; const cur=curCyc(k); const i=(list.indexOf(cur)+1)%list.length; if(typeof _preManual==='function') _preManual(); setAxis(k,list[i]); render(); }
+document.addEventListener('click',e=>{ const c=e.target.closest('[data-cyc]'); if(c) doCyc(c); });
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ const c=e.target.closest&&e.target.closest('[data-cyc]'); if(c){ e.preventDefault(); doCyc(c); } } });
 function openSheet(){ renderSheet(); $('#sheet').hidden=false; $('#sheetdim').hidden=false; }   // 열 때마다 재렌더 = 초기 미렌더·상태 불일치 방어(260712 빈 시트 회귀 봉합)
 function closeSheet(){ $('#sheet').hidden=true; $('#sheetdim').hidden=true; }
 $('#addbtn').addEventListener('click',openSheet);
