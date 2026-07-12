@@ -84,6 +84,19 @@
   input:focus, textarea:focus, select:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
   input::placeholder, textarea::placeholder { color:var(--mut); }
   textarea { min-height:96px; resize:none; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
+  /* app='8' 편집 = 피사체 모자이크(운영자 260712) — 이미지 위 검출 박스 탭 지정 · 결과 미리보기 */
+  .ie-hint { margin:10px 2px; color:var(--mut); font-size:var(--fs-label); line-height:1.5; }
+  .ie-hint b { color:var(--fg); font-weight:var(--fw-x); }
+  .ie-stage { position:relative; width:100%; margin-top:8px; border-radius:var(--r-s); overflow:hidden; background:var(--bg); }
+  .ie-img { display:block; width:100%; height:auto; }
+  .ie-box { position:absolute; border:2px solid var(--mut); border-radius:var(--r-s); background:transparent; cursor:pointer; padding:0; -webkit-tap-highlight-color:transparent; transition:border-color .12s, background .12s; }
+  .ie-box:active { transform:scale(var(--press-s,.97)); }
+  .ie-box .ie-bn { position:absolute; top:2px; left:2px; min-width:16px; height:16px; padding:0 3px; display:inline-flex; align-items:center; justify-content:center; font-size:var(--fs-xs); font-weight:var(--fw-x); border-radius:var(--r-s); background:var(--bg); color:var(--mut); }
+  .ie-box.on { border-color:var(--accent); background:rgba(var(--accent-rgb),.14); }
+  .ie-box.on .ie-bn { background:var(--accent); color:var(--on-accent); }
+  .ie-result { margin-top:12px; position:relative; }
+  .ie-res-img { display:block; width:100%; border-radius:var(--r-s); }
+  .ie-res-dl { position:absolute; top:8px; right:8px; }
   .row { display:flex; gap:8px; }
   .row > * { flex:1; }
   .hint { font-size:12px; color:var(--mut); margin-top:5px; }
@@ -655,6 +668,7 @@
     <div class="tab" data-app="2">썸네일</div>
     <!-- (구 /3 저작권 탭 = 운영자 260712 메뉴 삭제 — 썸네일 저작권 통합(260711 cpThumb 3단·#cpBlock 공유)이 전담. app3 폼(#copyBox = #cpBlock 홈)·발사·복원 로직은 도먼트 보존 = 재추가 시 이 자리 탭 1행 + index THUMB_TABS 1행만 복원) -->
     <div class="tab" data-app="5">카드뉴스</div>
+    <div class="tab" data-app="8">편집</div><!-- app='8' 편집 = 피사체 모자이크(운영자 260712 · 백엔드 apps/imgedit) — 이미지 도구 내 편집류 탭(영상 스튜디오 편집과 진입 경로 별개) -->
     <div class="tab" data-app="7">제작·합성</div><!-- 리사이즈 탭 개명(운영자 260712 "제작·합성" · app='7' id 불변 · 편집류는 별도 편집 탭) · 비율 재구성(운영자 260708 배치 승인) — api/resize→img-resize.yml(3층 라우팅: 단색패드→Gemini 아웃페인팅 채움+픽셀락→블러 폴백). 구 '생성' 탭(제미나이 자유 생성 · 260707)은 운영자 260710 제거 — 부족분 채움 = 리사이즈 2층 담당·자유 생성 코드는 도먼트(genJob·genidlg free) -->
   </div>
 
@@ -672,6 +686,19 @@
         <span class="rsep" aria-hidden="true">|</span>
         <button type="button" class="ropt on" id="rszLock" aria-pressed="true">원본 보존</button>
       </div>
+    </div>
+
+    <!-- app='8' 편집 = 단일 이미지 피사체 모자이크(백엔드 apps/imgedit · track 미러 · 운영자 260712) — 이미지(공용 #imgBox)+피사체 찾기 → 박스 탭 지정 → 모자이크. 발사 = 공유 #go(찾기↔모자이크 문맥) -->
+    <div id="imgeditBox" class="none">
+      <div class="csec">피사체 모자이크</div>
+      <div class="ie-hint" id="ieHint">이미지를 넣고 아래 <b>피사체 찾기</b>를 눌러줘 · 찾은 피사체를 탭해서 가릴 것만 골라</div>
+      <div class="ie-stage none" id="ieStage" aria-label="검출된 피사체 — 탭해서 지정"></div>
+      <div class="gospec none" id="ieOpts">
+        <span class="gs-lbl">굵기</span>: <span class="gs-v gs-tog ie-px" role="button" tabindex="0" data-px="6">굵게</span> <span class="gs-v gs-tog on ie-px" role="button" tabindex="0" data-px="9">보통</span> <span class="gs-v gs-tog ie-px" role="button" tabindex="0" data-px="14">곱게</span>
+        <span style="color:var(--mut)"> | </span> <span class="gs-lbl">모양</span>: <span class="gs-v gs-tog on" id="ieShape" role="button" tabindex="0" title="탭=타원↔네모">타원</span>
+        <span style="color:var(--mut)"> | </span> <span class="gs-lbl">정밀</span>: <span class="gs-v gs-tog" id="iePrecise" role="button" tabindex="0" title="탭=윤곽에 딱 맞게(SAM2·느림)">OFF</span>
+      </div>
+      <div class="ie-result none" id="ieResult"></div>
     </div>
 
     <!-- /5 카드뉴스 배경 이미지 = 제작 버튼과 한 행으로 이동(ly .filerow 통일·260628) -->
@@ -886,7 +913,7 @@ function selApp(a) {
   APP = a;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.app === a));
   // 표시 토글
-  $('#imgBox').classList.toggle('none', a !== '5' && a !== '7');   // 배경 = /5 카드뉴스 + /7 리사이즈(원본 이미지 공용 슬롯·260708)
+  $('#imgBox').classList.toggle('none', a !== '5' && a !== '7' && a !== '8');   // 원본 이미지 공용 슬롯 = /5 카드뉴스 · /7 제작·합성 · /8 편집(피사체 모자이크 · 260712)
   $('#linesBox').classList.toggle('none', a !== '1');   // 텍스트 = /1 포스트만 (/5는 칩 에디터)
   $('#cardBox').classList.toggle('none', a !== '5');                    // 카드뉴스 = /5 인라인 칩 에디터
   $('#reelsBox').classList.toggle('none', a !== '2');
@@ -895,8 +922,10 @@ function selApp(a) {
   $('#opaBox').classList.toggle('none', a !== '1');   // OPA = /1 포스트만
   // /6 = 전용 상단 박스 없음 — 결과·이전 제작 표준 흐름이 담당(260710 축11 그리드 폐지)
   $('#rszBox').classList.toggle('none', a !== '7');   // 리사이즈 = /7(비율 재구성 · 운영자 260708 배치 승인)
+  $('#imgeditBox').classList.toggle('none', a !== '8');   // 편집(피사체 모자이크) = /8(운영자 260712)
   rszWait();                                          // /7 변환 중 점등 = 탭 전환 재동기(변환 중이면 /7 복귀 시 재점등·타 탭 숨김)
-  if (IMG.b64 && (a === '5' || a === '7') && $('#fileLab')._set) $('#fileLab')._set(IMG.b64, IMG.name);   // 공유 이미지 슬롯(#fileLab)을 현재 앱에 맞게 재렌더: /7 확장 미리보기 ↔ /5 4:5 썸네일(운영자 260710)
+  if (IMG.b64 && (a === '5' || a === '7' || a === '8') && $('#fileLab')._set) $('#fileLab')._set(IMG.b64, IMG.name);   // 공유 이미지 슬롯(#fileLab)을 현재 앱에 맞게 재렌더: /7 확장 미리보기 ↔ /5 4:5 썸네일 ↔ /8 편집(운영자 260710·260712)
+  if (a === '8' && typeof ieRender === 'function') ieRender();   // 편집 = 검출 박스 오버레이·옵션·결과 재동기
   // (linesMax 폐지 — 포스트 설명줄을 postSpec 축약 명세로 대체)
   if (a === '5') { if (!edLines.length) edLines = [[]]; renderEditChips(); }   // 인라인 칩 에디터 init/refresh
   if (a === '1') updateTrkHint('lines', 'linesTrk', 'post');                   // 실시간 자간
@@ -910,6 +939,7 @@ function selApp(a) {
   const gb = $('#go');                                                         // 버튼 문구 = '이미지 제작'(맞춤법 교정은 기능 유지·문구만 간소화·운영자 260629)
   if (gb) { const lbl = a === '7' ? '리사이즈' : '이미지 제작'; gb.dataset.label = lbl;   // /7 = 비율 재구성 발사(구 /6 '이미지 생성' 분기 = 탭 제거로 폐지 260710)
     if (!gb.classList.contains('firing') && !gb.classList.contains('okdone') && !gb.classList.contains('spell-arm') && !gb.classList.contains('rszbusy')) gb.textContent = lbl; }
+  if (a === '8' && typeof ieSyncGo === 'function') ieSyncGo();   // 편집 = 발사 버튼 문맥 라벨(찾기↔모자이크)
   updateGoSpec();
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => { selApp(t.dataset.app); window.scrollTo({ top: 0, behavior: 'smooth' }); });   // 탭 전환 = 맨 위로(새 탭 처음부터 · 운영자 260626)
@@ -2932,12 +2962,113 @@ function applySpellReview() {   // 2차 누름 = 점등된 교정만 적용. _sp
   _applyingSpell = false;
   clearSpellReview();
 }
+// ── 편집(app='8') 피사체 모자이크 — apps/imgedit 백엔드(track 미러) · 검출 → 이미지 위 박스 탭 지정 → 모자이크 2티어(운영자 260712) ──
+const IE = { id: '', items: [], sel: new Set(), meta: null, phase: 'idle', busy: false, poll: null, lastImg: '', pxw: 9, shape: 'ellipse', precise: false };
+function ieReset() {   // 결과·검출 초기화(새 이미지·탭 재진입)
+  IE.id = ''; IE.items = []; IE.sel.clear(); IE.meta = null; IE.phase = 'idle'; IE.busy = false;
+  if (IE.poll) { clearInterval(IE.poll); IE.poll = null; }
+  const rz = $('#ieResult'); if (rz) { rz.classList.add('none'); rz.innerHTML = ''; }
+  ieRender();
+}
+function ieSyncGo() {
+  if (APP !== '8') return;
+  const gb = $('#go'); if (!gb) return;
+  let lbl;
+  if (IE.busy) lbl = IE.phase === 'finding' ? '피사체 찾는 중…' : '모자이크 만드는 중…';
+  else if (!IMG.b64) lbl = '이미지를 넣어줘';
+  else if (!IE.items.length) lbl = '피사체 찾기';
+  else lbl = IE.sel.size ? ('모자이크 만들기 (' + IE.sel.size + ')') : '가릴 피사체를 탭해';
+  gb.dataset.label = lbl; gb.textContent = lbl;
+  gb.classList.toggle('rszbusy', !!IE.busy);   // 발사 버튼 펄스(app7 리사이즈 busy 시각 계승 · rszWait은 APP==='7'만 작동 = 간섭 0)
+}
+function ieRender() {
+  if (APP !== '8') return;
+  if (IMG.b64 && IMG.b64 !== IE.lastImg) {   // 새 이미지 첨부 = 검출 초기화(스테일 박스 차단)
+    IE.lastImg = IMG.b64; IE.items = []; IE.sel.clear(); IE.meta = null; IE.phase = 'idle';
+    const rz = $('#ieResult'); if (rz) { rz.classList.add('none'); rz.innerHTML = ''; }
+  }
+  const stage = $('#ieStage'), hint = $('#ieHint'), opts = $('#ieOpts');
+  hint.classList.toggle('none', !!(IMG.b64 && IE.items.length));
+  if (!IMG.b64 || !IE.items.length) { stage.classList.add('none'); stage.innerHTML = ''; opts.classList.add('none'); ieSyncGo(); return; }
+  const mw = (IE.meta && IE.meta.w) || 1, mh = (IE.meta && IE.meta.h) || 1;
+  let h = '<img class="ie-img" src="' + (IMG.b64.startsWith('data:') ? IMG.b64 : 'data:image/jpeg;base64,' + IMG.b64) + '" alt="">';
+  IE.items.forEach(it => {
+    const b = it.box, on = IE.sel.has(it.id);
+    h += '<button type="button" class="ie-box' + (on ? ' on' : '') + '" data-id="' + it.id + '" title="' + it.label + '" style="left:' + (b[0] / mw * 100).toFixed(2) + '%;top:' + (b[1] / mh * 100).toFixed(2) + '%;width:' + (b[2] / mw * 100).toFixed(2) + '%;height:' + (b[3] / mh * 100).toFixed(2) + '%"><span class="ie-bn">' + it.id + '</span></button>';
+  });
+  stage.innerHTML = h; stage.classList.remove('none');
+  stage.querySelectorAll('.ie-box').forEach(el => el.onclick = () => { const id = +el.dataset.id; if (IE.sel.has(id)) IE.sel.delete(id); else IE.sel.add(id); ieRender(); });
+  opts.classList.remove('none');
+  ieSyncGo();
+}
+function ieBusy(on, phase) { IE.busy = on; if (phase) IE.phase = phase; ieSyncGo(); }
+function ieGo() {
+  if (IE.busy) return;
+  if (!IMG.b64) return errStatus('이미지를 넣어줘');
+  if (!IE.items.length) return ieFind();
+  return ieRenderGo();
+}
+async function ieFind() {
+  ieBusy(true, 'finding');
+  try {
+    const r = await fetch('/api/imgedit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fileB64: IMG.b64, name: IMG.name }) }).then(x => x.json());
+    if (!r.ok) { ieBusy(false, 'idle'); return errStatus(r.error || '검출 발사 실패'); }
+    IE.id = r.id; iePoll('boxes');
+  } catch { ieBusy(false, 'idle'); errStatus('네트워크 오류 — 다시 시도해줘'); }
+}
+async function ieRenderGo() {
+  if (!IE.sel.size) return errStatus('가릴 피사체를 탭해줘', 'warn');
+  ieBusy(true, 'rendering');
+  const opts = { pxw: IE.pxw, pxh: IE.pxw, size: 1.15, feather: 5, shape: IE.shape };
+  try {
+    const r = await fetch('/api/imgedit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ render: { id: IE.id, targets: [...IE.sel], opts, precise: IE.precise } }) }).then(x => x.json());
+    if (!r.ok) { ieBusy(false, 'found'); return errStatus(r.error || '모자이크 발사 실패'); }
+    iePoll('result');
+  } catch { ieBusy(false, 'found'); errStatus('네트워크 오류 — 다시 시도해줘'); }
+}
+function iePoll(kind) {
+  if (IE.poll) clearInterval(IE.poll);
+  const t0 = Date.now(), file = kind === 'boxes' ? 'boxes.json' : 'result.json';
+  IE.poll = setInterval(async () => {
+    if (Date.now() - t0 > 300000) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus('시간 초과 — 다시 시도해줘'); }
+    try { const er = await fetch('imgedit_out/' + IE.id + '/error.log?t=' + Date.now()); if (er.ok) { const tx = (await er.text()).trim(); if (tx && tx[0] !== '<') { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus(tx.slice(0, 120)); } } } catch { /* 폴 지속 */ }
+    try {
+      const r = await fetch('imgedit_out/' + IE.id + '/' + file + '?t=' + Date.now()); if (!r.ok) return; const j = await r.json();
+      if (kind === 'boxes') {
+        if (!Array.isArray(j.items)) return;
+        clearInterval(IE.poll); IE.poll = null;
+        IE.items = j.items; IE.meta = j.meta || {}; IE.sel = new Set(j.items.filter(i => i.kind === 'face').map(i => i.id)); ieBusy(false, 'found');
+        if (!IE.items.length) errStatus('피사체를 못 찾았어 — 다른 이미지로 해봐', 'warn');
+        ieRender();
+      } else {
+        if (j.error) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, 'found'); return errStatus(String(j.error).slice(0, 120)); }
+        if (!j.url) return;
+        clearInterval(IE.poll); IE.poll = null; ieBusy(false, 'done'); ieShowResult(j.url);
+      }
+    } catch { /* 폴 지속 */ }
+  }, 5000);
+}
+function ieShowResult(url) {
+  const u = /^https?:/.test(url) ? url : (url + '?t=' + Date.now());
+  $('#ieResult').innerHTML = '<img class="ie-res-img" src="' + u + '" alt="모자이크 결과"><a class="dlbtn imgdl ie-res-dl" href="' + u + '" download="모자이크.jpg" target="_blank" rel="noopener" aria-label="저장">' + DOWNLOAD_SVG + '</a>';
+  $('#ieResult').classList.remove('none');
+  $('#ieResult').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+(function () {   // 편집 옵션 핸들러(굵기·모양·정밀) + 새 이미지 첨부 재동기
+  document.querySelectorAll('.ie-px').forEach(el => el.addEventListener('click', () => { IE.pxw = +el.dataset.px; document.querySelectorAll('.ie-px').forEach(x => x.classList.toggle('on', x === el)); }));
+  const sh = $('#ieShape'); if (sh) sh.addEventListener('click', () => { IE.shape = IE.shape === 'ellipse' ? 'rect' : 'ellipse'; sh.textContent = IE.shape === 'ellipse' ? '타원' : '네모'; sh.classList.toggle('on', IE.shape === 'ellipse'); });
+  const pr = $('#iePrecise'); if (pr) pr.addEventListener('click', () => { IE.precise = !IE.precise; pr.textContent = IE.precise ? 'ON' : 'OFF'; pr.classList.toggle('on', IE.precise); });
+  const fi = $('#file'); if (fi) fi.addEventListener('change', () => setTimeout(() => { if (APP === '8') ieRender(); }, 220));   // 새 이미지 = 박스 초기화 재렌더(FileReader 처리 후)
+  document.querySelectorAll('.ie-px, #ieShape, #iePrecise').forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }));
+})();
+
 $('#go').onclick = async () => {
   // (구 /6 생성 = 부모 genidlg 자유 생성 팝업 열기 분기 → 운영자 260710 탭 제거로 폐지 · 자유 생성 코드 도먼트)
   if (_goLock) return; _goLock = true;   // 맞춤법 await 동안 잠금 유지(더블탭 = 중복 교정·디스패치 차단) → finally서 해제
   try {
   // firing(전송 상태머신)은 실제 전송 시점(dispatchJob)에서만 — 검증 실패 시 헛발사 방지
   const status = $('#status'); status.classList.remove('err'); status.textContent = '';
+  if (APP === '8') { ieGo(); return; }   // 편집(피사체 모자이크) = 문맥 발사(찾기↔모자이크) · 폼/맞춤법/snapForm 무관(운영자 260712)
   // 맞춤법 리뷰 게이트(대상 앱만) — 1차=검사→칩 점등(생성 안 함) / 2차=점등분 적용 후 아래 생성. (운영자 260623)
   _spellApplied = false;
   if (spellTargets().length) {
