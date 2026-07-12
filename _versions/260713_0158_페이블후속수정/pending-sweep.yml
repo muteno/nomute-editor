@@ -81,13 +81,12 @@ jobs:
         run: |
           nb=$(python3 .github/scripts/breaking_judge.py --count 2>/dev/null || echo 0)
           ng=$(python3 .github/scripts/gate_judge.py --count 2>/dev/null || echo 0)
-          gg=$(python3 .github/scripts/group_judge.py --count 2>/dev/null || echo 0)   # 사건 묶기 백로그도 합산 — scrape.yml 계상과 짝(fable검3 B⑤ 커버리지 갭 봉합)
-          n=$(( ${nb:-0} + ${ng:-0} + ${gg:-0} ))
+          n=$(( ${nb:-0} + ${ng:-0} ))
           if [ "$n" -le 0 ]; then echo "미판정 없음 — 백스톱 생략"; exit 0; fi
           active=$(gh run list --workflow=breaking-judge.yml --limit 20 --json status \
                    -q '[.[] | select(.status=="in_progress" or .status=="queued")] | length' 2>/dev/null || echo 0)
           if [ "${active:-0}" -gt 0 ]; then echo "breaking-judge 이미 활성(${active}) — 생략(처리 중)"; exit 0; fi
-          echo "미판정 ${n}건(속보 ${nb} · 경중 ${ng} · 묶기 ${gg}) · judge 비활성 → 백스톱 재디스패치"
+          echo "미판정 ${n}건(속보 ${nb} · 경중 ${ng}) · judge 비활성 → 백스톱 재디스패치"
           ok=0
           for i in 1 2 3; do
             if gh workflow run breaking-judge.yml; then ok=1; break; fi

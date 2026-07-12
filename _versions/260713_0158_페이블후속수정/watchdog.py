@@ -22,7 +22,6 @@
 """
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -33,7 +32,6 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 CAND = os.path.join(ROOT, "viewer", "candidates.json")
 SNS = os.path.join(ROOT, "viewer", "sns_trends.json")
 STATE = os.path.join(ROOT, "scraper", "obs", "watchdog_state.json")
-SUBS_LEDGER = os.path.join(ROOT, "push", "subscriptions.json")   # 발송 사전 체크용(인덱스 의존 금지)
 LEDGERS = [os.path.join(ROOT, "push", p) for p in ("sent.json", "autopick.json", "subscriptions.json")]
 
 FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "90"))
@@ -75,10 +73,6 @@ def check_backlog():
             out = subprocess.run([sys.executable, os.path.join(ROOT, ".github", "scripts", name), "--count"],
                                  capture_output=True, text=True, timeout=120,
                                  env={**os.environ, "TRANS_ON": os.environ.get("TRANS_ON", "1")})
-            if out.returncode != 0:   # judge 크래시를 "0 = 정상"으로 위장하던 구멍 봉합(fable검5 R1) — 스킵+경고
-                parts.append(f"{name.split('_')[0]} ?")
-                print(f"::warning::watchdog {name} --count rc={out.returncode} — 카운트 스킵(judge 레인 자체 점검 필요)")
-                continue
             n = int((out.stdout or "0").strip().splitlines()[-1])
             total += n
             parts.append(f"{name.split('_')[0]} {n}")
@@ -160,40 +154,22 @@ def main():
         return
     st = _load_state()
     now = datetime.now(KST)
-
-    def _cool_age(k):
-        a = _age_min(st.get(k, ""))
-        return a if a is not None else 1e9   # 0.0분도 유효값(or-falsy 함정 금지 — fable검5 R4·check_collect과 동일 원칙)
-
-    due = {k: m for k, m in alerts.items() if _cool_age(k) > COOLDOWN_MIN}
+    due = {k: m for k, m in alerts.items()
+           if (_age_min(st.get(k, "")) or 1e9) > COOLDOWN_MIN}
     if not due:
         print(f"워치독: 이상 {len(alerts)}건 전부 쿨다운({COOLDOWN_MIN:.0f}분) 내 — 재알림 억제")
         return
-    # 발송 가능 사전 체크(fable검5 R2) — push_send는 구독자 0·VAPID 없음도 rc=0 "생략"이라,
-    # 미발송인데 쿨다운 도장을 찍고 6h 억제하던 semantics 오류 봉합: 불가 상태 = 도장 없이 로그만.
-    try:
-        _subs_ok = bool(json.load(open(SUBS_LEDGER, encoding="utf-8")))
-    except Exception:  # noqa: BLE001
-        _subs_ok = False
-    if not _subs_ok or not (os.environ.get("VAPID_PRIVATE_KEY") or "").strip():
-        print(f"워치독: 이상 {len(due)}건 — 구독자/VAPID 부재로 발송 불가(도장 미기록·다음 런 재시도)")
-        return
     body = " / ".join(due.values())[:110]
-    try:
-        out = subprocess.run([sys.executable, os.path.join(ROOT, ".github", "scripts", "push_send.py"),
-                              "--notify", "🩺 파이프라인 이상", body, "--tag", "nomute-watchdog", "--url", "/"],
-                             capture_output=True, text=True, timeout=180)
-    except subprocess.TimeoutExpired:   # fable검5 R5 — 타임아웃 트레이스백으로 잡 red 방지(도장 미기록 = 안전측)
-        print("::warning::watchdog 알림 발송 타임아웃(180s) — 도장 안 찍음(다음 런 재시도)")
-        return
-    m = re.search(r"발송: (\d+)/", out.stdout or "")   # push_send 최종 요약 줄 = 발송 성공 계약(≥1이라야 실발송)
-    if out.returncode == 0 and m and int(m.group(1)) >= 1:
+    rc = subprocess.run([sys.executable, os.path.join(ROOT, ".github", "scripts", "push_send.py"),
+                         "--notify", "🩺 파이프라인 이상", body, "--tag", "nomute-watchdog", "--url", "/"],
+                        timeout=180).returncode
+    if rc == 0:
         for k in due:
             st[k] = now.isoformat(timespec="seconds")
         _save_state(st)
         print(f"워치독: 알림 발송 {len(due)}건 + 쿨다운 도장")
     else:
-        print(f"::warning::watchdog 알림 미발송(rc={out.returncode} · {(out.stdout or '').strip()[-80:]}) — 도장 안 찍음(다음 런 재시도)")
+        print(f"::warning::watchdog 알림 발송 실패(rc={rc}) — 도장 안 찍음(다음 런 재시도)")
 
 
 if __name__ == "__main__":
