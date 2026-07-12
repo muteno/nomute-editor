@@ -174,12 +174,9 @@ def gtrends(limit=10):
         return []
 
 
-def tiktok(limit=15, calls=6):
+def tiktok(limit=15, calls=4):
     """틱톡 인기 피드 — tikwm 무료 공개 API(무키·서명 대행 · 외부 도구 이식 260711).
-    피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup 상위 limit.
-    정렬 = KR 우선(운영자 260712 "한국 제일 핫한" — region=KR 파라미터가 실효 약해 글로벌 혼합
-    [상위5 = US·GB·CH·PK·US 실측 260712]인 것을 항목 region 필드로 후정렬 보완 · KR끼리/글로벌끼리 = 조회수)
-    · calls 4→6 = KR 누적 풀 확대(콜당 실 KR 2~4개 · +4s).
+    피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup·조회수 정렬 상위 limit.
     개별 콜 실패 = 무시(누적분 사용) · 전체 0건 = [] (fail-soft — main()이 기존 값 보존)."""
     seen = {}
     for i in range(calls):
@@ -204,7 +201,7 @@ def tiktok(limit=15, calls=6):
                              "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok 콜{i + 1}/{calls} 실패(누적분 유지): {e}", file=sys.stderr)
-    return sorted(seen.values(), key=lambda t: (t["region"] != "KR", -t["views"]))[:limit]   # KR 우선 → 조회수(운영자 260712) — KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
+    return sorted(seen.values(), key=lambda t: t["views"], reverse=True)[:limit]
 
 
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
