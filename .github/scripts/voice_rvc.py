@@ -64,7 +64,7 @@ def rep_create(model, inp, pin_env=""):
     """예측 생성 — 1) 버전 핀(env) 2) models/{m}/predictions(최신) 3) latest_version 조회 폴백. 4xx = 정직 거절."""
     pin = os.environ.get(pin_env) or ""
     last = ""
-    for attempt in range(3):   # 5xx·네트워크만 재시도
+    for attempt in range(6):   # 5xx·네트워크·429(스로틀)만 재시도 — 4xx 나머지 = 즉시 정직 거절
         try:
             if pin:
                 return _req("https://api.replicate.com/v1/predictions", "POST", {"version": pin, "input": inp})
@@ -78,17 +78,26 @@ def rep_create(model, inp, pin_env=""):
                     return _req("https://api.replicate.com/v1/predictions", "POST", {"version": ver, "input": inp})
                 raise
         except urllib.error.HTTPError as e:
+            body = ""
             try:
-                last = "HTTP {} — {}".format(e.code, e.read().decode("utf-8", "replace")[:400])
+                body = e.read().decode("utf-8", "replace")[:400]
             except Exception:
-                last = "HTTP {}".format(e.code)
+                pass
+            last = "HTTP {} — {}".format(e.code, body)
+            if e.code == 429:   # 스로틀 = retry_after 존중 재시도(무결제 계정 분당 6회 실측 · 카나리아 #2 260712)
+                wait = 12
+                try:
+                    wait = min(60, int(json.loads(body).get("retry_after") or 12) + 2)
+                except Exception:
+                    pass
+                print("  ⏳ 스로틀(429) — {}s 대기 후 재시도({}/6)".format(wait, attempt + 1)); time.sleep(wait); continue
             if e.code < 500:
                 fail("Replicate 호출 거절(토큰·크레딧·입력 확인)", last)
         except Exception as e:
             last = str(e)[:300]
-        if attempt < 2:
-            print("  ⏳ Replicate 일시 오류 — 15s 후 재시도({}/3): {}".format(attempt + 1, last)); time.sleep(15 * (attempt + 1))
-    fail("Replicate 호출 실패(3회)", last)
+        if attempt < 5:
+            print("  ⏳ Replicate 일시 오류 — 재시도({}/6): {}".format(attempt + 1, last)); time.sleep(15 * (attempt + 1))
+    fail("Replicate 호출 실패(재시도 소진)", last)
 
 
 def rep_poll(pred, budget_sec, tag):
