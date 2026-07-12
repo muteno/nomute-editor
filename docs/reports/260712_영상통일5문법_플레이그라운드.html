@@ -68,6 +68,12 @@
   .card-r{display:flex;align-items:center;gap:6px;padding:0 11px 10px 24px}
   .chiprow.inh{display:inline-flex;gap:5px;margin:0;flex-wrap:wrap}
   .chiprow.inh .chip{padding:3px 9px;font-size:10.5px}
+  .stickyTop{position:sticky;top:0;z-index:3;background:#08090b;padding-bottom:4px}
+  .preblk{margin-left:auto;display:inline-flex;align-items:center}
+  .prelbl{color:var(--mut);font-size:9.5px;letter-spacing:.09em;font-weight:700}
+  .preval{display:inline-block;width:72px;text-align:left;margin-left:10px}   /* 고정폭+좌측정렬 = 어절 길이 바뀌어도 PRESET·값 시작점 불변(투명선 개념) */
+  .attr{margin-top:5px;font-size:10.5px;color:var(--mut);font-weight:600}
+  .attr b{color:var(--accent);font-weight:700}
   .note{font-size:10.5px;color:var(--mut);margin-top:10px;line-height:1.6}
   .bad{color:var(--danger)}.good{color:var(--accent)}
   .go{display:block;width:100%;margin-top:12px;height:38px;border-radius:var(--r-s);border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.1);color:var(--accent);font:800 13px/1 inherit;cursor:pointer}
@@ -130,8 +136,15 @@
     <!-- ── (영상 후) 5문법 적용 ── -->
     <div class="pane">
       <div class="pane-h">영상 · 편집 탭 <span class="tag new">통일 (후)</span></div>
-      <div class="csec">소스</div>
-      <input class="fld" value="clip_260712.mp4 · 148MB" readonly>
+      <div id="nSrcSec">
+        <div class="csec">소스</div>
+        <button class="fld" id="nUp" style="cursor:pointer;text-align:left;color:var(--mut)">파일 선택 — 탭하면 업로드 시뮬</button>
+      </div>
+      <div id="nPrevSec" class="stickyTop" style="display:none">
+        <div class="csec">PREVIEW <span class="preblk"><span class="prelbl">PRESET</span><span class="preval val" id="nPre" role="button" title="탭=종합→릴스 완성→포맷만→화질만 순환">종합</span></span></div>
+        <div class="stage-box" id="nBox" style="height:150px"><div class="stage" id="nStage" style="aspect-ratio:9/16"><div class="grad"></div></div></div>
+        <div class="attr" id="nAttr"></div>
+      </div>
       <div class="card flat" id="nC1">
         <div class="card-h">비율 <span class="sep">|</span> <span class="val" id="nAr" role="button" title="탭=9:16→1:1→4:5→16:9 순환">9:16</span> <span class="sep">|</span> <span class="val" id="nFit" role="button" title="탭=여백(블러)↔자르기">여백(블러)</span> <span class="onoff" id="nPos" role="button" style="display:none">위치</span><span class="x">×</span></div>
       </div>
@@ -140,10 +153,6 @@
       </div>
       <div class="card flat" id="nC3">
         <div class="card-h">음량 <span class="sep">|</span> <span class="onoff on" id="nAud" role="button">ON</span><div class="gauge" style="max-width:110px"><i></i></div><span style="font-size:10.5px;color:var(--mut)">60%</span><span class="x">×</span></div>
-      </div>
-      <div class="prev">
-        <div class="popts" id="nPop"><span class="ropt on" data-k="src">원본</span><span class="ropt" data-k="out">결과 9:16</span></div>
-        <div class="stage-box" id="nBox" style="height:140px"><div class="stage" id="nStage" style="aspect-ratio:16/9"><div class="grad"></div></div></div>
       </div>
       <button class="go">편집 시작</button>
       <p class="note"><span class="good">적용 결과(운영자 조정 2차)</span> — 선택지 = 도형(필) 0 · 한 카테고리 = 값 하나로 뭉침·탭 = 순환(ovfmt 정본: 9:16→1:1→4:5→16:9 / 여백↔자르기 / 60↔30 / 1080↔4K) · 24fps 삭제 · 카드 = 전부 한 줄(펼침·칩 나열 폐지) · 조건부 등장/소멸(위치=자르기·보간=60+비4K) · 게이지 인라인 · 미리보기 고정+변형 칩</p>
@@ -185,19 +194,23 @@ function iPrev(){ var pop=$('#iPop'); pop.innerHTML= iOn?'<span class="ropt on">
 document.querySelectorAll('[data-t]').forEach(h=>h.addEventListener('click',e=>{ if(e.target.closest('.pill,.onoff,.val,.chip'))return; var c=document.getElementById(h.dataset.t); c.classList.toggle('open'); }));
 document.querySelectorAll('[data-p]').forEach(p=>p.onclick=e=>{ e.stopPropagation(); p.classList.toggle('on'); p.textContent=p.classList.contains('on')?'ON':'P'; });
 // (영상 후) 5문법 인터랙션
-// 순환 값(ovfmt 정본 — 도형 0·탭=한 바퀴) — 잔여 선택지 비노출
-function cyc(id,list,after){ var el=$(id); el.onclick=function(){ var i=(list.indexOf(el.textContent)+1)%list.length; el.textContent=list[i]; if(after)after(list[i]); }; }
-cyc('#nAr',['9:16','1:1','4:5','16:9'],()=>nPrev());
-cyc('#nFit',['여백(블러)','자르기'],v=>{ $('#nPos').style.display=v==='자르기'?'':'none'; });   // 조건부 등장: 위치 = 자르기일 때만
+// 순환 값(ovfmt 정본 — 도형 0·탭=한 바퀴) · 수동 조정 = 프리셋 '종합' 복귀 · 모든 변경 = PREVIEW 속성줄 갱신
 function nItpSync(){ $('#nItp').style.display=($('#nFps').textContent==='60fps'&&$('#nRes').textContent!=='4K')?'':'none'; }
+function cyc(id,list,after){ var el=$(id); el.onclick=function(){ var i=(list.indexOf(el.textContent)+1)%list.length; el.textContent=list[i]; if(after)after(list[i]); manual(); }; }
+cyc('#nAr',['9:16','1:1','4:5','16:9']);
+cyc('#nFit',['여백(블러)','자르기'],v=>{ $('#nPos').style.display=v==='자르기'?'':'none'; });   // 조건부: 위치 = 자르기
 cyc('#nFps',['60fps','30fps'],nItpSync);   // 24fps 삭제(운영자 260712)
 cyc('#nRes',['1080','4K'],nItpSync);       // 4K = 보간 소멸
 $('#nPos').onclick=e=>{ e.stopPropagation(); e.target.classList.toggle('on'); };
-$('#nItp').onclick=e=>{ e.stopPropagation(); var t=e.target; t.classList.toggle('on'); };
-$('#nAud').onclick=e=>{ e.stopPropagation(); var t=e.target; t.classList.toggle('on'); t.textContent=t.classList.contains('on')?'ON':'OFF'; };
-$('#nPop').onclick=e=>{ var r=e.target.closest('.ropt'); if(!r)return; $('#nPop').querySelectorAll('.ropt').forEach(x=>x.classList.remove('on')); r.classList.add('on'); nPrev(r.dataset.k); };
-function nPrev(k){ k=k||($('#nPop .ropt.on')||{}).dataset.k||'src'; var st=$('#nStage'), box=$('#nBox');
-  var ar=$('#nAr').textContent.replace(':','/');
-  if(k==='out'){ st.style.aspectRatio=ar; box.style.height='240px'; }
-  else { st.style.aspectRatio='16/9'; box.style.height='140px'; } }
+$('#nItp').onclick=e=>{ e.stopPropagation(); var t=e.target; t.classList.toggle('on'); manual(); };
+$('#nAud').onclick=e=>{ e.stopPropagation(); var t=e.target; t.classList.toggle('on'); t.textContent=t.classList.contains('on')?'ON':'OFF'; manual(); };
+$('#nUp').onclick=()=>{ $('#nSrcSec').style.display='none'; var s=$('#nPrevSec'); s.style.display=''; s.classList.add('a2in'); nSync(); };   // 소스 → 업로드 = PREVIEW 전환(상단 고정·이후 상시)
+var PRE=[['종합',null],['릴스 완성',{ar:'9:16',fit:'여백(블러)',aud:1}],['포맷만',{ar:'9:16',fit:'여백(블러)',aud:0}],['화질만',{fps:'60fps',res:'1080',aud:1}]];
+$('#nPre').onclick=function(){ var i=(PRE.findIndex(p=>p[0]===this.textContent)+1)%PRE.length; this.textContent=PRE[i][0]; var c=PRE[i][1];
+  if(c){ if(c.ar)$('#nAr').textContent=c.ar; if(c.fit){$('#nFit').textContent=c.fit;$('#nPos').style.display='none';} if(c.fps)$('#nFps').textContent=c.fps; if(c.res)$('#nRes').textContent=c.res; if('aud' in c){var a=$('#nAud');a.classList.toggle('on',!!c.aud);a.textContent=c.aud?'ON':'OFF';} nItpSync(); } nSync(); };
+function manual(){ $('#nPre').textContent='종합'; nSync(); }
+function nSync(){ $('#nStage').style.aspectRatio=$('#nAr').textContent.replace(':','/');   // 캔버스 = 선택 비율 라이브(설정마다 프리뷰 반영)
+  var a=[$('#nAr').textContent, $('#nFit').textContent, $('#nFps').textContent+(($('#nItp').style.display!=='none'&&$('#nItp').classList.contains('on'))?' 보간':''), $('#nRes').textContent];
+  if($('#nAud').classList.contains('on')) a.push('음량');
+  $('#nAttr').innerHTML='<b>'+a.join('</b> · <b>')+'</b>'; }
 </script>
