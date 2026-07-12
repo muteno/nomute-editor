@@ -755,24 +755,6 @@ def main():
         # (or 폴백이 '수집 실패 보존'과 '구독 전체 해제'를 구분 못해 옛 데이터가 영영 잔존하던 구멍 — 평의회8 F1)
         subs = {"updated": now if subs_any else (psubs.get("updated") or now),   # 전멸 런 = 직전 수집 시각 유지(신선 오표기 방지)
                 **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube", "threads")}}
-    # 소스별 헬스 원장(260713 평의회5 P1 — 전역 updated 하나가 죽은 소스를 가리던 은폐 봉합) — ok = "이번 런
-    # 신선 수집 성공"(아래 data의 prev 폴백 사용과 구분 = raw 수집값 기준) · last_ok = 마지막 성공 시각(실패 런
-    # = 직전 값 승계) · 게이트 OFF 소스 = off 도장(실패와 구분). 데이터 필드 전용 — 뷰어 표시는 §디자인 j 배치
-    # 승인 후 별도(워치독 scraper/watchdog.py가 1차 소비).
-    _hprev = prev.get("health") or {}
-    def _hh(key, cur, on=True):
-        ok = bool(cur)
-        h = {"ok": ok, "n": (len(cur) if isinstance(cur, (list, dict)) else 0),
-             "last_ok": now if ok else ((_hprev.get(key) or {}).get("last_ok") or "")}
-        if not on:
-            h["off"] = True
-        return h
-    health = {"youtube": _hh("youtube", yt_all), "gtrends": _hh("gtrends", gt), "tiktok": _hh("tiktok", tk),
-              "shorts": _hh("shorts", sh), "aivid": _hh("aivid", ai),
-              "reddit": _hh("reddit", rd, REDDIT_ON), "bsky": _hh("bsky", bs, BSKY_ON),
-              "signal": _hh("signal", sig, SIG_ON), "xtrends": _hh("xtrends", xtr, XTR_ON),
-              "pann": _hh("pann", pn, PANN_ON),
-              "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
@@ -791,7 +773,6 @@ def main():
         "signal": sig or prev.get("signal") or [],  # ⑨ 시그널 실검(게이트 OFF/실패 = 직전분 · 운영자 260712)
         "xtrends": xtr or prev.get("xtrends") or [],   # ⑩ X 실시간 트렌드(동일)
         "pann": pn or prev.get("pann") or [],       # ⑪ 네이트판 톡커선택(동일 · PANN_BLOCK 1차 컷)
-        "health": health,   # 소스별 {ok, n, last_ok[, off]} — 죽은 소스 가시화(260713 · 표시 전용 데이터 · 워치독 소비)
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # errors=replace = 상류 lone-surrogate가 encode 크래시로 런 전체를 버리는 엣지 차단(평의회6 — 극귀·해당 문자만 ? 치환)
