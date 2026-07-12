@@ -653,6 +653,22 @@
   .snsview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }      /* SNS = 첫 글래스 블록(소셜 카드) 시작선을 feed·scrap과 통일(pt 2→10 · 운영자 260627 점1) */
   .trendview { max-width:860px; margin:0 auto; padding:10px 36px 64px; }    /* 트렌드(메뉴4) = 세로 시작점(pt 10)·최대폭·중앙정렬 = snsview 계승 불변 · 좌우 36 = 좌측 책갈피 레일 차선 + 대칭(운영자 260712 IA 재편 — 비대칭 붙음 금지 정합) */
   .wrap, .scrapview, .snsview, .trendview { min-height:72vh; }   /* 로딩(빈 상태)에도 뷰가 화면을 채워 푸터가 상단으로 솟지 않게 */
+  /* PC 전폭 = 트렌드 탭 한정 폰프레임(860) 해제 → 넓은 화면 좌우 여백을 *콘텐츠로* 채움(운영자 260712 "PC 여백 다 쓰셈" · 실물 렌더 확인): 폭만 늘리면 컨테이너만 넓고 콘텐츠가 왼쪽 몰림 = 실패 → 카드 그리드(auto-fill 열 자동증가)·단일열 리스트/X카드(2·3열 분할)·TOP10 매거진 스택(리스트와 좌우 2단)·AI 요약(2단 신문 흐름)을 넓은 폭에 맞춰 재배치 · 헤더도 동폭 정렬 · 좌측 레일 재앵커 · 배너 없음(topbanner.slim = bannerframe display:none) */
+  @media (min-width:900px){
+    body[data-tab="trend"] .topbanner,
+    body[data-tab="trend"] .viewhead,
+    body[data-tab="trend"] .trendview { max-width:1600px; }
+    body[data-tab="trend"] .trail { left:max(calc(4px + env(safe-area-inset-left,0px)), calc(50vw - 834px)); }   /* 콘텐츠 박스 좌변 −34px 차선(레일폭 28+간격 6) = 800(1600/2)+34 · 860일 때 464=430+34 계승 규칙(box-sizing:border-box라 패딩 무관) */
+    /* 급상승검색어·구독 등 단일열 리스트·X카드 = 넓은 폭에서 열 분할(행 늘리기 방지 = 여백을 콘텐츠로 채움) */
+    body[data-tab="trend"] .sec-body:has(> .trend-row) { display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sp-4); align-content:start; }   /* .sec-body div = details 열림콘텐츠(::details-content 익명박스)를 우회해 row가 grid 트랙에 직접 오르게 함 */
+    body[data-tab="trend"] .xgrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    /* TOP 10 = 리스트(넓게 2열) | 매거진 스택(360) 좌우 2단 → 스택이 왼쪽에 뭉쳐 생기던 오른쪽 대형 공백을 리스트로 채움 */
+    body[data-tab="trend"] .tg-topbody { display:grid; grid-template-columns:minmax(0,1fr) 360px; column-gap:var(--sp-4); align-items:stretch; }
+    body[data-tab="trend"] .tg-topbody .tlist { display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sp-4); align-content:space-between; margin-bottom:0; }   /* 리스트 5행을 우측 매거진 스택 높이만큼 세로 분산 → 아래 라인 일치(운영자 260712 "5개 2열 라인에 맞춰") */
+    body[data-tab="trend"] .tstk-g { max-width:none; }   /* 매거진 스택 = 우측 360 컬럼 폭 채움(구 340 고정 해제) */
+    /* AI 요약 = 2단 신문 흐름(전폭 한 줄 = 가독 나쁨 → 두 단으로 나눠 폭 채우며 줄길이 회복) */
+    body[data-tab="trend"] .tbrief-t { column-count:2; column-gap:var(--sp-4); column-rule:1px solid var(--line2); }
+  }
   /* SNS 탭 = 소셜 버스트(커뮤니티 비정치 공론화) 레인 — 시안 테마 카드. social_candidates.json 렌더(renderSns). 정본 설계 = docs/social-burst.md */
   #snsList { display:flex; flex-direction:column; gap:11px; }
   /* 트렌드 레인(메뉴4 트렌드 탭 · 운영자 260710 배치 승인·260711 메뉴4 이동) — 카드 = .soc-item 실크 글래스 그대로 계승 · 라벨 = 소머리 표준(§표기표준: 텍스트 --fg·fw-x·블릿 --accent·fw-b·--fs-label) · 수치 = tabular-nums · 신규 색 0(전부 토큰) */
@@ -709,7 +725,7 @@
     background:rgba(0,0,0,.55); color:var(--fg); font-size:10.5px; font-weight:800; font-variant-numeric:tabular-nums; }   /* 순위 필 = 이미지 위 라벨/배지 솔리드 관례(.slide-no 톤 · §🎨 n 예외축) — 원본 빨강 필은 긴급 예약색과 충돌이라 무채+top3 강조색 */
   .tcard-rank.top { color:var(--accent); }
   .tcard-cov .trend-chg { position:absolute; top:6px; right:6px; padding:1px 5px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); }   /* 순위 변동 배지 = 커버 우상단(가독 플레이트) */
-  .tcard-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:6px; font-size:var(--fs-sm); line-height:1.35; word-break:break-word; min-height:calc(1.35em * 2); }   /* 제목행 = 무조건 2줄 취급(min-height = line-height 1.35×2줄 예약 · 기하 산식) — 1줄 제목도 메타행(.tcard-m) 시작 y 통일(운영자 260712 "넘든 안넘든 부수 요소 맞춰") */
+  .tcard-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:6px; font-size:var(--fs-sm); line-height:1.35; word-break:break-word; }
   .tcard-m { display:flex; flex-wrap:wrap; gap:2px 8px; align-items:center; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tcard-m i { font-style:normal; display:inline-flex; align-items:center; gap:3px; }
   .tcard-m svg { width:11px; height:11px; display:block; opacity:.85; }
@@ -759,7 +775,7 @@
   .tpc-new { position:absolute; top:5px; right:5px; color:var(--hist-accent); font-size:9.5px; font-weight:var(--fw-x); letter-spacing:.06em; font-family:var(--font-status); padding:1px 5px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); }   /* 변동 = NEW만(운영자 260712 "+1 필요없음" — ▲▼·스파크 폐지·rh 수집은 유지) */
   .tpc-bd { display:block; margin-top:6px; min-width:0; }
   .tpc-cat { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); margin-bottom:2px; }   /* 구분자행 = 플랫폼(색 = TR_PCOL cat 재지정 · fs11 = --fs-xs 계승) */
-  .tpc-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-xs); line-height:1.35; word-break:break-word; font-weight:400; min-height:calc(1.35em * 2); }   /* 제목 2줄 11px(운영자 선택 = --fs-xs 계승) · min-height = 2줄 예약 — 1줄 제목도 메타행(.tpc-m) 시작 y 통일(운영자 260712) */
+  .tpc-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-xs); line-height:1.35; word-break:break-word; font-weight:400; }   /* 제목 2줄 11px(운영자 선택 = --fs-xs 계승) */
   .tpc-m { display:flex; flex-wrap:wrap; align-items:baseline; gap:1px 6px; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tpc-m > span { white-space:nowrap; }   /* CJK 중간 꺾임 가드(플레이그라운드 실측) */
   .tpc-tm { margin-left:auto; flex:none; }   /* 우측 = N시간 전(relAge 공통 사다리 · 회색) */
@@ -769,7 +785,6 @@
   .tbrief-lbl { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--accent); letter-spacing:.02em; margin-bottom:3px; }
   .tbrief-t { margin:0; font-size:var(--fs-sm); line-height:1.85; color:var(--fg); word-break:break-word; white-space:pre-line; }   /* 줄간격 확대·요점별 개행 보존(white-space:pre-line) — 운영자 260712 #7 */
   .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 강조색 굵게(핵심 포인트·수치) */
-  .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-tm { display:block; margin-top:5px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
   .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 58px 78px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수 시작 x 일렬 · 선 없음 = 내부 선 투명 */
@@ -801,7 +816,6 @@
   .tsk-cov b { color:var(--mut); display:grid; place-items:center; }
   .tsk-cov b svg { width:18px; height:18px; display:block; }
   .tsk-cov img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-  .tsk .tpc-t { min-height:0; }   /* 매거진 스택 = 2줄 예약 비대상(히어로 = 3줄 오버레이·미니 = 1줄 clamp 별도 문법 — .tpc-t 기본 min-height 상속 차단) */
   .tsk .tpc-t.one { -webkit-line-clamp:1; }
   .tsk .tpc-bd { display:block; margin-top:6px; min-width:0; }
   .tsk.mini .tpc-bd { margin-top:5px; }
@@ -8840,7 +8854,7 @@ function renderSnsTrends() {
   // 섹션 접기(운영자 260711) = 네이티브 <details> · 기억 = localStorage nm_trend_fold(nomute_tab 관용구 · 빌드 시점 open 복원)
   let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
   const sec = (key, lbl, unit, n, body) =>
-    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
+    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary><div class="sec-body">${body}</div></details>`;
   let TSORT = {}; try { TSORT = JSON.parse(localStorage.getItem('nm_trend_sort') || '{}') || {}; } catch { TSORT = {}; }
   const sortOf = (key, fields, def) => fields.indexOf(TSORT[key]) >= 0 ? TSORT[key] : def;
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
@@ -8908,9 +8922,9 @@ function renderSnsTrends() {
   const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || ++gno}</i>${ttl}</summary>${body}</details>`; };
   if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span></div>`);
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
-    '<div class="tlist">' + top.map((it, i) =>
+    '<div class="tg-topbody"><div class="tlist">' + top.map((it, i) =>
       `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span></a>`).join('') + '</div>' +
-    '<div class="tstk-wrap" id="tstk"></div>');
+    '<div class="tstk-wrap" id="tstk"></div></div>');
   h += GRPS.map(g => gsec(g[0], g[1], g[2])).join('');
   h += '</div>';
   box.innerHTML = h;
@@ -8918,20 +8932,7 @@ function renderSnsTrends() {
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
   box.querySelectorAll('#tg-top .tlr-t').forEach((el2, i) => { el2.textContent = top[i] ? top[i].t : ''; });
   const bt = box.querySelector('.tbrief-t');   // 단위 헤더 'AI 요약'이 라벨 겸함(판 내부 중복 라벨 제거 · §디자인 e)
-  if (bt && BRIEF) {   // *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line
-    bt.textContent = '';
-    const txt = BRIEF.text || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
-    const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
-    const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a = document.createElement('a'); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = label; bt.appendChild(a); } catch { addText(label); } };
-    let last = 0, m;
-    while ((m = TOK.exec(txt))) {
-      addText(txt.slice(last, m.index)); last = TOK.lastIndex;
-      if (m[1]) { const b = document.createElement('b'); b.textContent = m[1].slice(1, -1); bt.appendChild(b); }
-      else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
-      else if (m[3]) { addLink(m[3], m[3]); }
-    }
-    addText(txt.slice(last));
-  }
+  if (bt && BRIEF) { bt.textContent = ''; (BRIEF.text || '').split(/(\*[^*\n]+\*)/).forEach(seg => { if (!seg) return; if (/^\*[^*\n]+\*$/.test(seg)) { const b = document.createElement('b'); b.textContent = seg.slice(1, -1); bt.appendChild(b); } else bt.appendChild(document.createTextNode(seg)); }); }   // *별표* → <b> 강조(split과 동일 정규식으로 판정 = 단일줄 *...*만 볼드·양끝 별표+내부개행 통짜볼드 방지 · 텍스트노드만 = XSS 안전) · 줄바꿈은 white-space:pre-line이 렌더
   fillT('gt', '.trend-q', gt.slice(0, 8).map(g => g.query || ''));
   fillT('yt', '.tpc-t', ytZ.map(z => z[0].title || ''));
   fillT('ytn', '.tpc-t', ytnZ.map(z => z[0].title || ''));
