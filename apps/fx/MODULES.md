@@ -32,7 +32,7 @@
 ### 2-1. CH1 파이프라인 (한 버튼 · 첫 실배선)
 - 발사: `functions/api/framethumb.js`(rateGate·up-브랜치 업로드 = conv.js 미러) → `.github/workflows/framethumb-make.yml`(workflow_dispatch 전용 = 자동 트리거 0) → `.github/scripts/framethumb.py`.
 - 체인: fx_chain{베스트 프레임→업스케일 · 토큰 0} → [옵션 `ar≠off`+`GEMINI_API_KEY`] Gemini 비율 확장(수동 발사 유료 = 슛류 §📰 · 렌더 진입점 = `thumb_gen.gemini_image` 단일 · 확장 실패 = 업스케일본 폴백 정직 표기) → R2 `ft_out/<id>/`(없으면 git 폴백) → `viewer/ft_out/<id>/frames.json` 폴링 계약{state done/failed · frames[{t,url,kind}]}.
-- UI 버튼 = 배치 승인 후 별건(이 파이프는 버튼 없이도 workflow_dispatch·API로 발사 가능).
+- UI 버튼 = **배선 완료(운영자 260713 배치 확정)**: 영상 스튜디오 편집 탭 PREVIEW 헤더 우측 `베스트컷`(`viewer/edit.html #ftGo` · n=2·ar=4:5 고정 v1) → 스틸 스트립 `.ftres`+저장(`api/dl` 프록시). v1 한계 = 30MB 이하 첨부 파일 전용(대용량 R2 직업로드·URL 소스 = 후속 · framethumb.js도 r2key 미수용 동기화 상태). 러너 카나리아 = run #1 success 실측(Gemini 확장·R2·up-브랜치 삭제).
 
 ## 3. 부착 후보 (나중 배선 — 전부 배치 승인 후)
 
