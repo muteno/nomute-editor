@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>트렌드 슬라이드 — 20안 만지는 갤러리 (하나 골라줘)</title>
+<style>
+/* ═ 포터블 §3 골격 · 값 = viewer/index.html :root 실측 복사(자기완결 = §핵심명령 3-c) ═ */
+:root{
+  --bg:#121212; --pan:#16171a; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06); --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+  --cat-intl:#ff7a6b; --cat-soc:#2CF5A5; --cat-cul:#FF5EC8; --cat-pol:#38C6FF; --warn:#FFE13D;
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-h2:15px; --fw-b:700; --fw-x:800;
+  --blur-s:8px; --blur-m:14px; --blur-l:22px; --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s;
+  --press-m:.9; --press-l:.95;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:#0c0d0f; color:var(--fg); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif; }
+.wrap{ display:flex; flex-wrap:wrap; gap:20px; max-width:1180px; margin:0 auto; padding:18px 14px 60px; justify-content:center; }
+h1{ flex-basis:100%; font-size:17px; margin:2px 4px 0; }
+h1 small{ color:var(--mut); font-weight:400; font-size:12.5px; display:block; margin-top:3px; }
+
+/* 폰 프레임(실사용 화면비) */
+.stagewrap{ flex:0 0 auto; position:sticky; top:10px; align-self:flex-start; }
+.frame{ width:372px; height:742px; border:1px solid #33363c; border-radius:34px; overflow:hidden; background:var(--bg); position:relative; box-shadow:0 18px 60px rgba(0,0,0,.5); }
+.app{ position:absolute; inset:0; display:flex; flex-direction:column; overflow-y:auto; scrollbar-width:none; background:radial-gradient(120% 60% at 50% -6%, rgba(var(--accent-rgb),.06), transparent 55%), var(--bg); }
+.app::-webkit-scrollbar{ display:none; }
+.stagecap{ text-align:center; color:var(--mut); font-size:12px; margin-top:8px; max-width:372px; line-height:1.5; }
+.tophd{ padding:14px 16px 6px; }
+.tophd .wm{ font-size:20px; font-weight:800; letter-spacing:-.3px; }
+.tophd .sub{ color:var(--mut); font-size:12px; margin-top:2px; }
+.vname{ margin:10px 16px 8px; display:flex; align-items:baseline; gap:8px; }
+.vname b{ font-size:var(--fs-h2); font-weight:800; color:var(--accent); }
+.vname span{ color:var(--mut); font-size:var(--fs-xs); }
+.vstage{ padding:4px 14px 30px; flex:1; }
+
+/* ── 공통 카드 부품(viewer .tsk/.tpc 계승) ── */
+.c{ position:relative; display:block; text-decoration:none; color:var(--fg); min-width:0; }
+.c-cov{ position:relative; display:grid; place-items:center; border-radius:var(--r-s); overflow:hidden; }
+.c-cov::after{ content:''; position:absolute; inset:0; background:var(--cvg); }
+.c-cov .rk{ position:absolute; top:8px; left:8px; z-index:2; min-width:16px; height:15px; padding:0 5px; display:grid; place-items:center; border-radius:var(--r-pill); font-size:10px; font-weight:800; color:#fff; background:rgba(0,0,0,.5); font-variant-numeric:tabular-nums; }
+.c-cov .rk.top{ color:var(--accent); }
+.c-cov .lg{ position:relative; z-index:1; color:rgba(255,255,255,.9); display:grid; place-items:center; }
+.c-cov .lg svg{ width:20px; height:20px; }
+.c-bd{ display:block; margin-top:6px; }
+.c-cat{ display:block; font-size:var(--fs-xs); font-weight:800; margin-bottom:2px; }
+.c-t{ display:block; font-size:var(--fs-sm); font-weight:700; line-height:1.32; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.c-t.one{ -webkit-line-clamp:1; }
+.c-m{ display:flex; gap:6px; align-items:baseline; margin-top:3px; }
+.c-m b{ font-size:var(--fs-xs); font-weight:800; color:var(--fg); font-variant-numeric:tabular-nums; }
+.c-m span{ font-size:var(--fs-xs); color:var(--mut); font-variant-numeric:tabular-nums; }
+
+/* ══ 20 변형 레이아웃 — .st-N 컨테이너별 그리드/트랜스폼 ══ */
+.deck{ position:relative; }
+.roll .c{ animation:cIn .38s cubic-bezier(.22,.61,.36,1) backwards; }
+.roll .c:nth-child(2){ animation-delay:.05s; } .roll .c:nth-child(3){ animation-delay:.1s; }
+.roll .c:nth-child(4){ animation-delay:.15s; } .roll .c:nth-child(5){ animation-delay:.2s; } .roll .c:nth-child(6){ animation-delay:.25s; }
+@keyframes cIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+
+/* 1 현행(2×2 · 1·2 tall / 3·4 low) */
+.st1{ display:grid; grid-template-columns:1fr 1fr; gap:12px 8px; }
+.st1 .c:nth-child(-n+2) .c-cov{ aspect-ratio:3/4; border-radius:var(--r-l); }
+.st1 .c:nth-child(1)::before{ content:''; position:absolute; top:-6px; left:8px; right:8px; height:14px; border-radius:var(--r-m); background:rgba(255,255,255,.05); border:1px solid var(--line); }
+.st1 .c:nth-child(1)::after{ content:''; position:absolute; top:-11px; left:16px; right:16px; height:12px; border-radius:var(--r-m); background:rgba(255,255,255,.03); border:1px solid var(--line2); }
+.st1 .c:nth-child(n+3) .c-cov{ aspect-ratio:16/10; }
+
+/* 2 히어로 + 우측 세로 리스트 */
+.st2{ display:grid; grid-template-columns:1.35fr 1fr; gap:10px; }
+.st2 .c:first-child .c-cov{ aspect-ratio:3/4; border-radius:var(--r-l); }
+.st2 .col{ display:flex; flex-direction:column; gap:9px; }
+.st2 .col .c{ display:grid; grid-template-columns:56px 1fr; gap:8px; align-items:center; }
+.st2 .col .c-cov{ aspect-ratio:1; }
+.st2 .col .c-t{ -webkit-line-clamp:2; font-size:var(--fs-xs); }
+
+/* 3 히어로 + 하단 필름스트립 */
+.st3 .c:first-child .c-cov{ aspect-ratio:16/10; border-radius:var(--r-l); }
+.st3 .strip{ display:flex; gap:8px; margin-top:10px; overflow-x:auto; scrollbar-width:none; }
+.st3 .strip::-webkit-scrollbar{ display:none; }
+.st3 .strip .c{ flex:0 0 110px; }
+.st3 .strip .c-cov{ aspect-ratio:1; }
+
+/* 4 단일 캐러셀(스냅) */
+.st4{ display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; margin:0 -14px; padding:0 14px; }
+.st4::-webkit-scrollbar{ display:none; }
+.st4 .c{ flex:0 0 78%; scroll-snap-align:center; }
+.st4 .c-cov{ aspect-ratio:4/5; border-radius:var(--r-l); }
+
+/* 5 커버플로우(중앙 크게·양옆 기울) */
+.st5{ display:flex; align-items:center; justify-content:center; gap:-10px; height:340px; perspective:900px; }
+.st5 .c{ transition:transform .4s var(--ease); width:150px; margin:0 -18px; }
+.st5 .c-cov{ aspect-ratio:3/4; border-radius:var(--r-l); box-shadow:0 12px 30px rgba(0,0,0,.5); }
+.st5 .c:nth-child(1){ transform:rotateY(38deg) translateX(20px) scale(.82); z-index:1; }
+.st5 .c:nth-child(2){ transform:scale(1.08); z-index:3; }
+.st5 .c:nth-child(3){ transform:rotateY(-38deg) translateX(-20px) scale(.82); z-index:1; }
+.st5 .c:nth-child(n+4){ display:none; }
+
+/* 6 앨범 덱(중첩·뒷장 보임) */
+.st6{ position:relative; height:360px; }
+.st6 .c{ position:absolute; left:50%; top:10px; width:210px; transform:translateX(-50%); transition:transform .4s var(--ease); }
+.st6 .c-cov{ aspect-ratio:3/4; border-radius:var(--r-l); box-shadow:0 14px 34px rgba(0,0,0,.5); }
+.st6 .c:nth-child(1){ z-index:4; }
+.st6 .c:nth-child(2){ z-index:3; transform:translateX(-50%) translateY(14px) scale(.94); filter:brightness(.8); }
+.st6 .c:nth-child(3){ z-index:2; transform:translateX(-50%) translateY(28px) scale(.88); filter:brightness(.62); }
+.st6 .c:nth-child(4){ z-index:1; transform:translateX(-50%) translateY(42px) scale(.82); filter:brightness(.45); }
+.st6 .c:nth-child(n+5){ display:none; }
+
+/* 7 히어로 + peek(다음 살짝) */
+.st7{ display:grid; grid-template-columns:1fr 46px; gap:8px; }
+.st7 .c:first-child .c-cov{ aspect-ratio:4/5; border-radius:var(--r-l); }
+.st7 .peek{ display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+.st7 .peek .c-cov{ aspect-ratio:3/4; border-radius:var(--r-s) 0 0 var(--r-s); opacity:.6; }
+.st7 .peek .c-bd{ display:none; }
+
+/* 8 세로 스토리 릴(풀블리드) */
+.st8 .c:first-child{ position:relative; }
+.st8 .c:first-child .c-cov{ aspect-ratio:9/13; border-radius:var(--r-l); }
+.st8 .c:first-child .c-cov::before{ content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(transparent 45%, rgba(0,0,0,.72)); }
+.st8 .ov{ position:absolute; left:12px; right:12px; bottom:12px; z-index:2; }
+.st8 .ov .c-t{ color:#fff; font-size:var(--fs-label); }
+.st8 .ov .c-cat{ color:#fff; opacity:.9; }
+.st8 .dots{ display:flex; gap:5px; justify-content:center; margin-top:10px; }
+.st8 .dots i{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+.st8 .dots i:first-child{ background:var(--accent); width:16px; border-radius:3px; }
+.st8 .c:nth-child(n+2){ display:none; }
+
+/* 9 3열 균등 */
+.st9{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.st9 .c-cov{ aspect-ratio:3/4; }
+.st9 .c:nth-child(n+7){ display:none; }
+.st9 .c-t{ font-size:var(--fs-xs); }
+
+/* 10 매거진(대형 좌·오버레이) */
+.st10 .c:first-child{ position:relative; }
+.st10 .c:first-child .c-cov{ aspect-ratio:16/11; border-radius:var(--r-l); }
+.st10 .c:first-child .c-cov::before{ content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(90deg, rgba(0,0,0,.7) 20%, transparent); }
+.st10 .mov{ position:absolute; left:14px; top:50%; transform:translateY(-50%); z-index:2; max-width:60%; }
+.st10 .mov .c-t{ color:#fff; font-size:var(--fs-h2); -webkit-line-clamp:3; }
+.st10 .mov .c-cat{ color:var(--accent); }
+.st10 .row{ display:flex; gap:8px; margin-top:10px; }
+.st10 .row .c{ flex:1; }
+.st10 .row .c-cov{ aspect-ratio:1; }
+.st10 .row .c-bd{ display:none; }
+.st10 .c:nth-child(n+5){ display:none; }
+
+/* 11 계단식 오프셋 */
+.st11{ position:relative; padding-left:20px; }
+.st11 .c{ margin-bottom:-30px; margin-left:calc(var(--i,0) * 22px); width:180px; transition:transform .3s; }
+.st11 .c-cov{ aspect-ratio:16/10; border-radius:var(--r-m); box-shadow:0 8px 22px rgba(0,0,0,.45); }
+.st11 .c:nth-child(n+6){ display:none; }
+.st11 .c:last-child{ margin-bottom:0; }
+
+/* 12 탭형(썸 스트립 + 대형) */
+.st12 .big .c-cov{ aspect-ratio:16/10; border-radius:var(--r-l); }
+.st12 .thumbs{ display:flex; gap:7px; margin-top:10px; }
+.st12 .thumbs .t{ flex:1; aspect-ratio:1; border-radius:var(--r-s); position:relative; overflow:hidden; opacity:.55; cursor:pointer; }
+.st12 .thumbs .t::after{ content:''; position:absolute; inset:0; background:var(--cvg); }
+.st12 .thumbs .t.on{ opacity:1; outline:2px solid var(--accent); }
+
+/* 13 부채꼴 팬 */
+.st13{ position:relative; height:330px; display:flex; justify-content:center; align-items:flex-end; }
+.st13 .c{ position:absolute; bottom:20px; width:130px; transform-origin:bottom center; transition:transform .4s var(--ease); }
+.st13 .c-cov{ aspect-ratio:3/4; border-radius:var(--r-m); box-shadow:0 10px 26px rgba(0,0,0,.5); }
+.st13 .c:nth-child(1){ transform:rotate(-24deg) translateX(-70px); z-index:1; }
+.st13 .c:nth-child(2){ transform:rotate(-8deg) translateX(-24px); z-index:2; }
+.st13 .c:nth-child(3){ transform:rotate(8deg) translateX(24px); z-index:2; }
+.st13 .c:nth-child(4){ transform:rotate(24deg) translateX(70px); z-index:1; }
+.st13 .c-bd{ display:none; }
+.st13 .c:nth-child(n+5){ display:none; }
+
+/* 14 포커스(중앙 크게·상하 흐림) */
+.st14{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+.st14 .c{ width:88%; }
+.st14 .c-cov{ aspect-ratio:16/9; border-radius:var(--r-m); }
+.st14 .c:nth-child(2){ width:100%; }
+.st14 .c:nth-child(2) .c-cov{ aspect-ratio:16/11; border-radius:var(--r-l); }
+.st14 .c:not(:nth-child(2)){ opacity:.4; transform:scale(.92); }
+.st14 .c:not(:nth-child(2)) .c-bd{ display:none; }
+.st14 .c:nth-child(n+4){ display:none; }
+
+/* 15 균등 2×2(전부 동일) */
+.st15{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.st15 .c-cov{ aspect-ratio:1; border-radius:var(--r-m); }
+
+/* 16 리스트+미니썸(현재 tlist 강화) */
+.st16{ display:flex; flex-direction:column; }
+.st16 .c{ display:grid; grid-template-columns:20px 44px 1fr auto; gap:9px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line2); }
+.st16 .c-cov{ aspect-ratio:1; border-radius:var(--r-s); }
+.st16 .rkn{ font-size:var(--fs-label); font-weight:800; color:var(--mut); text-align:center; font-variant-numeric:tabular-nums; }
+.st16 .rkn.top{ color:var(--accent); }
+.st16 .c-t{ -webkit-line-clamp:1; font-size:var(--fs-sm); }
+.st16 .c-bd{ margin:0; min-width:0; }
+.st16 .c-cat{ display:inline; margin:0 6px 0 0; }
+.st16 .c-m{ margin:0; }
+.st16 .rt{ text-align:right; }
+
+/* 17 폴라로이드 스택(회전) */
+.st17{ position:relative; height:360px; }
+.st17 .c{ position:absolute; left:50%; top:20px; width:190px; transform:translateX(-50%); padding:8px 8px 20px; background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:var(--r-s); box-shadow:0 12px 30px rgba(0,0,0,.5); transition:transform .4s var(--ease); }
+.st17 .c-cov{ aspect-ratio:1; border-radius:2px; }
+.st17 .c-bd{ margin-top:6px; }
+.st17 .c-cat,.st17 .c-m{ display:none; }
+.st17 .c-t{ font-size:var(--fs-xs); text-align:center; }
+.st17 .c:nth-child(1){ z-index:4; transform:translateX(-50%) rotate(-4deg); }
+.st17 .c:nth-child(2){ z-index:3; transform:translateX(-42%) rotate(5deg) translateY(6px); }
+.st17 .c:nth-child(3){ z-index:2; transform:translateX(-58%) rotate(-8deg) translateY(10px); }
+.st17 .c:nth-child(n+4){ display:none; }
+
+/* 18 풀블리드 배경 + 하단 카드행 */
+.st18{ position:relative; border-radius:var(--r-l); overflow:hidden; min-height:360px; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; }
+.st18::before{ content:''; position:absolute; inset:0; background:var(--cvg,linear-gradient(160deg,#20313a,#0a1114)); filter:brightness(.6) saturate(1.1); }
+.st18::after{ content:''; position:absolute; inset:0; background:linear-gradient(transparent 30%, rgba(0,0,0,.75)); }
+.st18 .hero{ position:relative; z-index:2; margin-bottom:10px; }
+.st18 .hero .c-t{ color:#fff; font-size:18px; font-weight:800; }
+.st18 .hero .c-cat{ color:var(--accent); }
+.st18 .row{ position:relative; z-index:2; display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+.st18 .row::-webkit-scrollbar{ display:none; }
+.st18 .row .c{ flex:0 0 84px; }
+.st18 .row .c-cov{ aspect-ratio:1; border-radius:var(--r-s); }
+.st18 .row .c-bd{ display:none; }
+.st18 .c:first-child .c-cov{ display:none; }
+
+/* 19 좌우 2대형 나란히 */
+.st19{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.st19 .c:nth-child(-n+2) .c-cov{ aspect-ratio:3/4; border-radius:var(--r-l); }
+.st19 .c:nth-child(n+3){ display:none; }
+
+/* 20 자동 슬라이드쇼(페이드·1장 풀) */
+.st20{ position:relative; }
+.st20 .c{ position:absolute; inset:0; opacity:0; transition:opacity .6s; }
+.st20 .c:first-child{ position:relative; }
+.st20 .c.cur{ opacity:1; }
+.st20 .c-cov{ aspect-ratio:4/5; border-radius:var(--r-l); }
+.st20 .c-cov::before{ content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(transparent 50%, rgba(0,0,0,.7)); }
+.st20 .ov{ position:absolute; left:12px; right:12px; bottom:12px; z-index:2; }
+.st20 .ov .c-t{ color:#fff; font-size:var(--fs-label); }
+.st20 .prog{ position:absolute; top:8px; left:12px; right:12px; z-index:3; display:flex; gap:4px; }
+.st20 .prog i{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.3); overflow:hidden; }
+.st20 .prog i.on::after{ content:''; display:block; height:100%; background:#fff; animation:sw 3s linear; }
+@keyframes sw{ from{ width:0; } to{ width:100%; } }
+
+/* ── 콘솔 ── */
+.console{ flex:1 1 460px; max-width:600px; min-width:320px; display:flex; flex-direction:column; gap:12px; }
+.csec{ background:#131417; border:1px solid #26282d; border-radius:14px; padding:12px 14px; }
+.csec h3{ margin:0 0 10px; font-size:12.5px; color:var(--mut); font-weight:800; letter-spacing:.3px; }
+.vgrid{ display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+.vbtn{ text-align:left; padding:9px 11px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.03); color:var(--fg); font:inherit; cursor:pointer; transition:transform .12s, border-color .15s, background .15s; }
+.vbtn:active{ transform:scale(var(--press-m)); }
+.vbtn.on{ border-color:rgba(var(--accent-rgb),.6); background:rgba(var(--accent-rgb),.08); }
+.vbtn b{ display:block; font-size:12.5px; font-weight:800; }
+.vbtn b i{ font-style:normal; color:var(--accent); margin-right:5px; }
+.vbtn span{ display:block; color:var(--mut); font-size:11px; margin-top:2px; line-height:1.4; }
+.vbtn.on b i{ color:var(--accent); }
+.tags{ display:inline-flex; gap:4px; margin-top:4px; }
+.tags em{ font-style:normal; font-size:9.5px; padding:1px 6px; border-radius:var(--r-pill); background:rgba(255,255,255,.06); color:var(--mut); }
+.pick{ margin-top:10px; display:flex; gap:8px; align-items:center; }
+.pickbtn{ flex:1; padding:11px; border-radius:10px; border:1px solid rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); color:var(--accent); font:inherit; font-weight:800; cursor:pointer; }
+.pickbtn:active{ transform:scale(var(--press-l)); }
+#out{ margin:0; background:#0e0f11; border:1px solid #24262b; border-radius:10px; padding:11px 13px; font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfe0d6; white-space:pre-wrap; }
+.ctl{ display:flex; gap:7px; flex-wrap:wrap; }
+.ctl button{ padding:7px 12px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.ctl button.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); }
+.note{ color:var(--mut); font-size:11.5px; line-height:1.65; }
+@media (prefers-reduced-motion:reduce){ *{ transition-duration:0s!important; animation-duration:0s!important; } }
+@media (max-width:420px){ .frame{ width:100%; max-width:372px; } .stagewrap{ width:100%; } .vgrid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>트렌드 슬라이드 — 20안 만지는 갤러리 <small>운영자 "슬라이드가 내 의도대로 구현이 안됨 · 가능성 있는거까지 20개 줘봐, 하나 골라줌" · 폰 프레임 = 실시간 미리보기(전환 애니 재생·실물 TOP 데이터 근사) · 우측에서 20안 눌러 비교 → [이 안으로] 로 회신하면 그대로 배선</small></h1>
+
+  <div class="stagewrap">
+    <div class="frame"><div class="app" id="app"></div></div>
+    <div class="stagecap" id="cap"></div>
+  </div>
+
+  <aside class="console">
+    <div class="csec"><h3>재생·데이터</h3>
+      <div class="ctl" id="ctl">
+        <button type="button" data-c="cover" class="on">커버 있음</button>
+        <button type="button" data-c="nocover">커버 없음(로고 폴백)</button>
+        <button type="button" data-c="replay">전환 다시</button>
+      </div>
+    </div>
+    <div class="csec"><h3>20안 <span style="color:var(--mut);font-weight:400;font-size:11px">(현재 라이브 = 1안)</span></h3>
+      <div class="vgrid" id="vgrid"></div>
+      <div class="pick"><button class="pickbtn" id="pickbtn" type="button">이 안으로 결정 (1안)</button></div>
+      <pre id="out">고른 안: (아직 없음)</pre>
+    </div>
+    <div class="csec note"><b>재현 한계</b> — ① 커버 = CSS 그라데 목업(실물 = 유튜브/틱톡 썸네일) ② 스와이프/자동순환 등 인터랙션은 각 안의 <b>대표 정지 배치 + 전환 애니</b>로 재현(실제 제스처 배선은 채택 후) ③ 값 = viewer :root 토큰 사본 · 카드 부품 = .tsk/.tpc 계승 ④ 20안은 "슬라이드 = 무엇이었나"의 가능성 스펙트럼 — 레이아웃(정적 배치)과 모션(전환/제스처)을 조합해 폭넓게 펼침 · 하나 고르면 그 방향으로 실배선(제스처·자동순환·데이터 연결).</div>
+  </aside>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LG={ yt:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8A26 26 0 0 0 2 12a26 26 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.8 1.8c1.6.4 7.8.4 7.8.4s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8A26 26 0 0 0 22 12a26 26 0 0 0-.4-4.8zM10 15.2V8.8L15.5 12z"/></svg>',
+  tk:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 5.6a4.9 4.9 0 0 1-1.1-3.1h-3.1v12.7a2.66 2.66 0 1 1-2.66-2.66c.28 0 .55.05.81.13V9.5a5.9 5.9 0 0 0-.81-.06 5.76 5.76 0 1 0 5.76 5.76V9.7a7.8 7.8 0 0 0 4.51 1.42V8a4.8 4.8 0 0 1-3.4-2.4z"/></svg>',
+  gg:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.7v3h4.5c-.2 1.2-1.5 3.4-4.5 3.4a5.1 5.1 0 0 1 0-10.2c1.6 0 2.6.7 3.2 1.2l2.2-2.1A8 8 0 0 0 12 3.9a8.1 8.1 0 1 0 0 16.2c4.7 0 7.8-3.3 7.8-7.9 0-.5 0-.9-.1-1.5H12z"/></svg>' };
+const PCOL={ yt:'var(--cat-intl)', tk:'var(--cat-soc)', gg:'var(--cat-intl)' };
+const CVG=['linear-gradient(150deg,#3a4d8a,#141b3a)','linear-gradient(150deg,#7a3a5a,#2a1420)','linear-gradient(150deg,#2a6a5a,#0a2a24)','linear-gradient(150deg,#8a6a2a,#2a1e0a)','linear-gradient(150deg,#5a3a7a,#1e1030)','linear-gradient(150deg,#2a5a7a,#0a1e2a)','linear-gradient(150deg,#7a4a2a,#2a1608)','linear-gradient(150deg,#3a7a4a,#0e2a16)','linear-gradient(150deg,#6a2a4a,#240e1a)','linear-gradient(150deg,#4a4a6a,#16161e)'];
+const DATA=[
+ {p:'틱톡',mono:'tk',t:'academyoflovemasters 사랑 마스터 클래스 하이라이트',rv:'8,970만',ago:'2일 전'},
+ {p:'유튜브',mono:'yt',t:'The beautiful game — FIFA World Cup 결승 리캡',rv:'4,349만',ago:'1일 전'},
+ {p:'틱톡',mono:'tk',t:'LIVEFEST 2026 유료 파트너십 무대 비하인드',rv:'3,617만',ago:'3일 전'},
+ {p:'유튜브',mono:'yt',t:'RESCENE Pretty Girl 스페셜 퍼포먼스 영상',rv:'946만',ago:'12시간 전'},
+ {p:'유튜브',mono:'yt',t:'MSI LYON 대 HLE e스포츠 경기 풀 하이라이트',rv:'87만',ago:'5시간 전'},
+ {p:'구글',mono:'gg',t:'우지 짜장라면 출시 — 검색 급상승',rv:'63만+',ago:'방금'},
+ {p:'틱톡',mono:'tk',t:'KNN 중국 복 뺏기 미신 비판 클립',rv:'86만',ago:'1일 전'},
+ {p:'유튜브',mono:'yt',t:'캐나다 한국 방산 배제 논란 브리핑',rv:'41만',ago:'8시간 전'},
+ {p:'유튜브',mono:'yt',t:'위기의 올림도 — 드라마 예고편 공개',rv:'55만',ago:'2일 전'},
+ {p:'틱톡',mono:'tk',t:'강지영 포켓몬고 챌린지 모음',rv:'200만+',ago:'1일 전'}];
+
+let COVER=true, CUR=1, PICK=0;
+const cov=(i)=>COVER?`--cvg:${CVG[i%CVG.length]}`:'--cvg:rgba(255,255,255,.04)';
+function card(it,i,cls=''){
+  return `<a class="c ${cls}" href="#" onclick="return false" style="${cov(i)}">`
+    +`<span class="c-cov"><span class="lg">${!COVER?(LG[it.mono]||''):''}</span><span class="rk${i<3?' top':''}">${i+1}</span></span>`
+    +`<span class="c-bd"><span class="c-cat" style="color:${PCOL[it.mono]||'var(--mut)'}">${it.p}</span>`
+    +`<span class="c-t">${esc(it.t)}</span><span class="c-m"><b>${esc(it.rv)}</b><span>${esc(it.ago)}</span></span></span></a>`;
+}
+// 각 안 = .app 무대 innerHTML 생성
+const VARIANTS=[
+ {n:1,nm:'현행 2×2 앨범',d:'1·2 세로 대형 / 3·4 납작 · 뒤 앨범 엣지 2겹',tag:['현행'],r:()=>`<div class="deck st1 roll">${DATA.slice(0,4).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:2,nm:'히어로 + 우측 리스트',d:'1위 대형 좌 · 2~4 미니 세로 리스트 우',tag:['정보밀도'],r:()=>`<div class="deck st2 roll">${card(DATA[0],0)}<div class="col">${DATA.slice(1,4).map((x,i)=>card(x,i+1)).join('')}</div></div>`},
+ {n:3,nm:'히어로 + 필름스트립',d:'1위 와이드 · 하단 가로 스크롤 썸네일',tag:['가로넘김'],r:()=>`<div class="deck st3 roll">${card(DATA[0],0)}<div class="strip">${DATA.slice(1,7).map((x,i)=>card(x,i+1)).join('')}</div></div>`},
+ {n:4,nm:'단일 캐러셀(스냅)',d:'한 장씩 좌우 스와이프·중앙 스냅',tag:['스와이프'],r:()=>`<div class="deck st4 roll">${DATA.map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:5,nm:'커버플로우',d:'중앙 크게·양옆 3D 기울어 겹침',tag:['3D','스와이프'],r:()=>`<div class="deck st5 roll">${DATA.slice(0,3).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:6,nm:'앨범 덱(중첩)',d:'뒷장 살짝 보임·위로 넘기면 다음',tag:['카드덱','스와이프'],r:()=>`<div class="deck st6 roll">${DATA.slice(0,4).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:7,nm:'히어로 + Peek',d:'1위 대형 · 우측에 다음 카드 살짝',tag:['peek'],r:()=>`<div class="deck st7 roll">${card(DATA[0],0)}<div class="peek">${DATA.slice(1,3).map((x,i)=>card(x,i+1)).join('')}</div></div>`},
+ {n:8,nm:'세로 스토리 릴',d:'풀블리드 1장·위아래 스와이프·인스타 스토리풍',tag:['풀블리드','세로넘김'],r:()=>`<div class="deck st8 roll">${DATA.slice(0,1).map((x,i)=>`<a class="c" style="${cov(i)}"><span class="c-cov"><span class="lg">${!COVER?LG[x.mono]:''}</span><span class="rk top">1</span></span><span class="ov"><span class="c-cat">${x.p}</span><span class="c-t">${esc(x.t)}</span></span></a>`).join('')}<div class="dots"><i></i><i></i><i></i><i></i></div></div>`},
+ {n:9,nm:'3열 균등 그리드',d:'6~9위까지 촘촘·매거진 인덱스풍',tag:['밀도'],r:()=>`<div class="deck st9 roll">${DATA.slice(0,6).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:10,nm:'매거진 오버레이',d:'1위 와이드+제목 좌측 오버레이 · 하단 3 미니',tag:['매거진'],r:()=>`<div class="deck st10 roll"><a class="c" style="${cov(0)}"><span class="c-cov"><span class="lg">${!COVER?LG[DATA[0].mono]:''}</span></span><span class="mov"><span class="c-cat">${DATA[0].p} · 1위</span><span class="c-t">${esc(DATA[0].t)}</span></span></a><div class="row">${DATA.slice(1,4).map((x,i)=>card(x,i+1)).join('')}</div></div>`},
+ {n:11,nm:'계단식 오프셋',d:'카드가 대각선으로 겹쳐 흐름',tag:['레이어'],r:()=>`<div class="deck st11 roll">${DATA.slice(0,5).map((x,i)=>`<a class="c" style="${cov(i)};--i:${i}"><span class="c-cov"><span class="lg">${!COVER?LG[x.mono]:''}</span><span class="rk${i<3?' top':''}">${i+1}</span></span></a>`).join('')}</div>`},
+ {n:12,nm:'탭형(썸+대형)',d:'상단 대형 · 하단 썸네일 탭으로 전환',tag:['탭전환'],r:()=>`<div class="deck st12 roll"><div class="big">${card(DATA[0],0)}</div><div class="thumbs">${DATA.slice(0,4).map((x,i)=>`<div class="t${i===0?' on':''}" style="${cov(i)}"></div>`).join('')}</div></div>`},
+ {n:13,nm:'부채꼴 팬',d:'카드 4장 부채처럼 펼침',tag:['카드덱'],r:()=>`<div class="deck st13 roll">${DATA.slice(0,4).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:14,nm:'포커스(상하 흐림)',d:'중앙 1장 선명·상하 흐릿 = 초점',tag:['세로넘김'],r:()=>`<div class="deck st14 roll">${DATA.slice(0,3).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:15,nm:'균등 2×2',d:'4장 같은 크기·정갈한 격자',tag:['심플'],r:()=>`<div class="deck st15 roll">${DATA.slice(0,4).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:16,nm:'리스트+미니썸',d:'현재 TOP10 리스트에 썸네일 얹기',tag:['현행+','밀도'],r:()=>`<div class="deck st16 roll">${DATA.map((x,i)=>`<a class="c" style="${cov(i)}"><span class="rkn${i<3?' top':''}">${i+1}</span><span class="c-cov"><span class="lg">${!COVER?LG[x.mono]:''}</span></span><span class="c-bd"><span class="c-t">${esc(x.t)}</span><span class="c-m"><span class="c-cat" style="color:${PCOL[x.mono]}">${x.p}</span></span></span><span class="rt"><b class="c-m" style="display:block"><b>${esc(x.rv)}</b></b></span></a>`).join('')}</div>`},
+ {n:17,nm:'폴라로이드 스택',d:'사진 프레임 카드가 회전 겹침',tag:['카드덱','감성'],r:()=>`<div class="deck st17 roll">${DATA.slice(0,3).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:18,nm:'풀블리드 배경+행',d:'1위가 배경 전체·하단 미니 카드행',tag:['풀블리드','몰입'],r:()=>`<div class="deck st18 roll" style="${cov(0)}"><div class="hero"><span class="c-cat">${DATA[0].p} · 실시간 1위</span><span class="c-t">${esc(DATA[0].t)}</span></div><div class="row">${DATA.slice(0,6).map((x,i)=>card(x,i)).join('')}</div></div>`},
+ {n:19,nm:'좌우 2대형',d:'1·2위 동급 대형 나란히',tag:['심플','대형'],r:()=>`<div class="deck st19 roll">${DATA.slice(0,2).map((x,i)=>card(x,i)).join('')}</div>`},
+ {n:20,nm:'자동 슬라이드쇼',d:'1장씩 페이드 전환·상단 진행바(스토리)',tag:['자동','풀블리드'],r:()=>`<div class="deck st20 roll"><div class="prog">${DATA.slice(0,5).map((x,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div>${DATA.slice(0,5).map((x,i)=>`<a class="c${i===0?' cur':''}" style="${cov(i)}"><span class="c-cov"><span class="lg">${!COVER?LG[x.mono]:''}</span></span><span class="ov"><span class="c-cat">${x.p} · ${i+1}위</span><span class="c-t">${esc(x.t)}</span></span></a>`).join('')}</div>`}
+];
+let _ss=null;
+function draw(){
+  const v=VARIANTS.find(x=>x.n===CUR);
+  $('#app').innerHTML=`<div class="tophd"><div class="wm">Trends</div><div class="sub">실시간 인기 · 09:44 수집</div></div>`
+    +`<div class="vname"><b>${CUR}안 · ${v.nm}</b><span>${v.d}</span></div>`
+    +`<div class="vstage">${v.r()}</div>`;
+  // 자동 슬라이드쇼(20안) 페이드 데모
+  if(_ss){ clearInterval(_ss); _ss=null; }
+  if(CUR===20){ let k=0; const cs=()=>$$('#app .st20 .c'); const ps=()=>$$('#app .st20 .prog i');
+    _ss=setInterval(()=>{ const c=cs(),p=ps(); if(!c.length){clearInterval(_ss);return;} c[k].classList.remove('cur'); p[k].classList.remove('on'); k=(k+1)%c.length; c[k].classList.add('cur'); p[k].classList.add('on'); },3000); }
+  $('#cap').textContent=`${CUR}안 — ${v.nm} · ${v.d}`;
+  $$('#vgrid .vbtn').forEach(b=>b.classList.toggle('on',+b.dataset.v===CUR));
+  $('#pickbtn').textContent=`이 안으로 결정 (${CUR}안 · ${v.nm})`;
+}
+$('#vgrid').innerHTML=VARIANTS.map(v=>`<button type="button" class="vbtn${v.n===1?' on':''}" data-v="${v.n}"><b><i>${v.n}안</i>${v.nm}</b><span>${v.d}</span><span class="tags">${v.tag.map(t=>`<em>${t}</em>`).join('')}</span></button>`).join('');
+$('#vgrid').addEventListener('click',e=>{ const b=e.target.closest('.vbtn'); if(!b) return; CUR=+b.dataset.v; draw(); });
+$('#ctl').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.c==='cover'){ COVER=true; } else if(b.dataset.c==='nocover'){ COVER=false; }
+  if(b.dataset.c!=='replay'){ $$('#ctl button[data-c=cover],#ctl button[data-c=nocover]').forEach(x=>x.classList.toggle('on', x===b)); }
+  draw();
+});
+$('#pickbtn').addEventListener('click',()=>{ PICK=CUR; const v=VARIANTS.find(x=>x.n===CUR);
+  const txt=`[트렌드 슬라이드 — 고른 안]\n${CUR}안 · ${v.nm}\n배치: ${v.d}\n특성: ${v.tag.join(' · ')}\n→ 이 방향으로 실배선(제스처·자동순환·실데이터 연결)`;
+  $('#out').textContent=txt;
+  try{ navigator.clipboard.writeText(txt); }catch(e){}
+  const b=$('#pickbtn'); const o=b.textContent; b.textContent='✓ 복사됨 — 이대로 회신'; setTimeout(()=>{ b.textContent=`이 안으로 결정 (${CUR}안 · ${v.nm})`; },1400);
+});
+draw();
+</script>
+</body>
+</html>
