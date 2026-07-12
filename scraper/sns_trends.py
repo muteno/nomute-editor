@@ -72,11 +72,11 @@ def _get(url, timeout=15):
     return urllib.request.urlopen(req, timeout=timeout, context=CTX).read().decode("utf-8", "ignore")
 
 
-def youtube(category_id=None, limit=15):
-    """KR 인기 급상승 — 공식 API(키 게이트). 실패/무키 = [] (fail-soft)."""
+def youtube(category_id=None, limit=15, region="KR"):
+    """인기 급상승 — 공식 API(키 게이트 · region 파라미터화 = 월드 축 · 운영자 260712). 실패/무키 = [] (fail-soft)."""
     if not YT_KEY:
         return []
-    q = {"part": "snippet,statistics", "chart": "mostPopular", "regionCode": "KR",
+    q = {"part": "snippet,statistics", "chart": "mostPopular", "regionCode": region,
          "maxResults": str(limit), "key": YT_KEY}
     if category_id:
         q["videoCategoryId"] = str(category_id)
@@ -151,10 +151,10 @@ def youtube_innertube(limit=15, queries=None, shorts=False):
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
-def gtrends(limit=10):
-    """구글 트렌드 KR 실시간 인기 검색어 RSS(무키). 실패 = [] (fail-soft)."""
+def gtrends(limit=10, geo="KR"):
+    """구글 트렌드 실시간 인기 검색어 RSS(무키 · geo 파라미터화 = 월드 축 · 운영자 260712). 실패 = [] (fail-soft)."""
     try:
-        body = _get("https://trends.google.com/trending/rss?geo=KR")
+        body = _get("https://trends.google.com/trending/rss?geo=" + urllib.parse.quote(geo))
         out = []
         for m in re.finditer(r"<item>(.*?)</item>", body, re.S):
             it = m.group(1)
@@ -477,6 +477,28 @@ def main():
         yt_src = "innertube" if yt_all else ""
     gt = gtrends()
     tk = tiktok()
+    # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
+    # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
+    W_GEOS = [g2.strip() for g2 in (os.environ.get("SNS_WORLD_GEOS") or "US,JP,GB").split(",") if g2.strip()]
+    gt_gl, _seen_q = [], {(g2.get("query") or "").lower() for g2 in gt}
+    for _gg in W_GEOS:
+        for g2 in gtrends(geo=_gg):
+            _qk = (g2.get("query") or "").lower()
+            if not _qk or _qk in _seen_q:
+                continue
+            _seen_q.add(_qk)
+            g2["geo"] = _gg
+            gt_gl.append(g2)
+    yt_gl, _seen_v = [], {v.get("id") for v in (yt_all or [])}
+    if YT_KEY and yt_all:
+        for _gg in W_GEOS:
+            for v in youtube(limit=15, region=_gg):
+                if not v.get("id") or v["id"] in _seen_v:
+                    continue
+                _seen_v.add(v["id"])
+                v["geo"] = _gg
+                yt_gl.append(v)
+        yt_gl = sorted(yt_gl, key=lambda v: v["views"], reverse=True)[:20]
     # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
     sh = youtube_innertube(limit=12, shorts=True)          # 쇼츠 = 인기 쿼리 + <4분 필터(원본 protobuf 이식)
     ai = youtube_innertube(limit=12, queries=AI_QUERIES)   # AI 영상 = 원본 AI_YT_QUERIES 4종
@@ -492,6 +514,19 @@ def main():
         for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
             for it in items:
                 it["region"] = accreg.get(k2, {}).get((it.get("account") or "").lower(), "gl")
+        # 폰 수집 우선 채택(운영자 260712 "ㄱ") — X·인스타 = 러너 IP 429 로터리라 폰(가정 IP · scripts/phone_subs.sh 크론)이
+        # 밀어넣은 sns_subs_phone.json이 신선(기본 90분 · env PHONE_FRESH_MIN)하면 그 두 축만 교체. 파일 없음/파손/스테일 = 러너 수집분 그대로(fail-soft).
+        try:
+            _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
+            _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
+            if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
+                for k2 in ("x", "insta"):
+                    _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
+                    if _pl:
+                        subs_new[k2] = _pl
+                        print(f"phone-subs 채택: {k2} {len(_pl)}건({_pm:.0f}분 전 수집)")
+        except Exception:
+            pass
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not sh and not ai and not subs_any:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
@@ -526,6 +561,8 @@ def main():
         "youtube_src": yt_src or prev.get("youtube_src") or "",   # "api"(공식 차트)/"innertube"(검색 파생) 정직 표기
         "youtube_news": yt_news or prev.get("youtube_news") or [],
         "gtrends": gt or prev.get("gtrends") or [],
+        "gtrends_gl": gt_gl or prev.get("gtrends_gl") or [],   # 월드 축(KR 제외 주요국 병합 · 실패 = 직전분 · 운영자 260712)
+        "youtube_gl": yt_gl or prev.get("youtube_gl") or [],   # 월드 축(공식 API 경로만 · 실패/무키 = 직전분)
         # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
         "tiktok": ({"updated": now, "videos": tk} if tk else prev.get("tiktok") or {}),
         "shorts": sh or prev.get("shorts") or [],   # ⑤ 쇼츠(검색 파생 근사 · 실패 = 직전분)
