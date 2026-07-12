@@ -25,14 +25,8 @@
 | FX8 | `fx_cutout.py` | `cutout` | 포토샵 피사체 선택(누끼)·배경 교체 | 이미지 | PNG(투명)/합성본 | `--engine auto/rembg/grabcut` `--bg-color` `--bg-img` `--bg-blur` | 투명 산출 = .png만 · grabcut = 품질 낮음 정직 표기 | OpenCV(+옵션 rembg) |
 | FX9 | `fx_erase.py` | `erase` | 콘텐츠 어웨어 필(소형) | 이미지+마스크/rect | 이미지 | `--mask`(흰=지움) `--rect x,y,w,h` `--method telea/ns` `--radius 6` | 영역 0 거절 · 대형 영역 품질 한계(고품질 = imgedit 제미나이 경로) | OpenCV |
 | FX10 | `fx_upscale.py` | `upscale` | 이미지 업스케일 | 이미지 | 이미지 | `--scale 2/3/4` `--engine auto/fsrcnn/lanczos` | 산출 ≤6000² · FSRCNN 모델 없으면 Lanczos+언샤프 | OpenCV |
-| CH1 | `fx_chain.py` | `chain` | 베스트컷 썸네일 체인(FX7→FX10 합성) | 영상 | PNG N장+JSON | `--n 1~3` `--scale 2/3` | FX7·FX10 캡 상속 | OpenCV |
 
 공통: `fx_common.py`(러너·probe·캡·JSON 계약) · 성공 stdout 마지막 줄 = `{"module":"FXn","out":...}` JSON.
-
-### 2-1. CH1 파이프라인 (한 버튼 · 첫 실배선)
-- 발사: `functions/api/framethumb.js`(rateGate·up-브랜치 업로드 = conv.js 미러) → `.github/workflows/framethumb-make.yml`(workflow_dispatch 전용 = 자동 트리거 0) → `.github/scripts/framethumb.py`.
-- 체인: fx_chain{베스트 프레임→업스케일 · 토큰 0} → [옵션 `ar≠off`+`GEMINI_API_KEY`] Gemini 비율 확장(수동 발사 유료 = 슛류 §📰 · 렌더 진입점 = `thumb_gen.gemini_image` 단일 · 확장 실패 = 업스케일본 폴백 정직 표기) → R2 `ft_out/<id>/`(없으면 git 폴백) → `viewer/ft_out/<id>/frames.json` 폴링 계약{state done/failed · frames[{t,url,kind}]}.
-- UI 버튼 = 배치 승인 후 별건(이 파이프는 버튼 없이도 workflow_dispatch·API로 발사 가능).
 
 ## 3. 부착 후보 (나중 배선 — 전부 배치 승인 후)
 
