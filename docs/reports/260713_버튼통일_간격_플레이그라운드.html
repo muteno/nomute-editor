@@ -1,0 +1,229 @@
+<!-- 자기완결 플레이그라운드 — 이미지 생성(#genidlg) 생성버튼 통일 + 요약근접 + 리드간격/구분선 (운영자 260713) · viewer :root 실측 사본 · 외부요청 0 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>생성버튼 통일 · 간격 튜닝 · 플레이그라운드</title>
+<style>
+  :root{
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6; --accent-dim:rgba(0,238,210,.13);
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --modal-glass:rgba(17,18,20,.64); --on-accent:#032322;
+    --r-modal:22px; --r-s:9px; --r-pill:999px;
+    --fs-label:13px; --fs-sm:12px; --lh-base:1.6; --sp-3:18px;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    /* 튜닝 변수(실시간) */
+    --sum-gap:3px;      /* 요약 ↔ 주문칸 간격 (현행 8) */
+    --lead-gap:14px;    /* 리드 ↔ 스크롤 첫 항목 간격 (현행 6) */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#0a0b0c;color:var(--fg);padding:16px 13px 40px;
+    font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:440px;margin:0 auto}
+  h1{font-size:18px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 14px;line-height:1.55}
+  .sub b{color:var(--accent);font-weight:700}
+
+  /* ── 폰 프레임 + 모달 미리보기 ── */
+  .phone{width:100%;max-width:380px;margin:0 auto 4px;aspect-ratio:9/16;background:linear-gradient(180deg,#161a1f,#0e1113);
+    border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:11px;position:relative;
+    box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  .feedbg{position:absolute;inset:11px;border-radius:18px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.028) 0 44px,transparent 44px 88px);opacity:.5}
+  .dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 26px);height:calc(100% - 34px);
+    display:flex;flex-direction:column;background:var(--modal-glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+    border:1px solid var(--line);border-radius:var(--r-modal);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .dlg-h{flex:none;display:flex;align-items:center;justify-content:space-between;padding:11px 13px 7px;background:rgba(24,25,28,.5);border-bottom:1px solid var(--line2)}
+  .dlg-h b{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+  .dlg-h .spark{color:var(--accent)}
+  .dlg-h .x{width:24px;height:24px;display:grid;place-items:center;color:var(--mut)}
+
+  .lead{flex:none;padding:8px var(--sp-3) 10px;border-bottom:1px solid var(--line2)}
+  .lead.divhi{border-bottom-width:1px;box-shadow:0 1px 0 0 rgba(var(--accent-rgb),.14)}
+  .body{padding:var(--lead-gap) var(--sp-3) 14px;overflow-y:auto;flex:1 1 auto;min-height:0}
+  .sechead{display:flex;align-items:center;gap:8px;padding:12px 0 2px}
+  .sechead .lbl{font-size:var(--fs-label);font-weight:800;color:var(--fg)}
+  .sechead .lbl::before{content:'• ';color:var(--accent);font-weight:700}
+  .sechead .chev{margin-left:auto;color:var(--mut)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line2)}
+  .row:first-child{border-top:none;padding-top:4px}
+  .publ{font-size:var(--fs-label);font-weight:700;color:var(--fg);white-space:nowrap}
+  .opts{display:flex;flex-wrap:wrap;gap:3px 4px;justify-content:flex-end}
+  .opt{padding:5px 6px;font-size:var(--fs-label);font-weight:700;color:var(--mut);white-space:nowrap}
+  .opt.on{color:var(--accent);font-weight:800}
+  .opt.dd::after{content:' ▾';opacity:.7;font-size:10px}
+  textarea.in{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--fg);
+    font:700 var(--fs-label) inherit;padding:6px 10px;resize:none;line-height:var(--lh-base);display:block}
+  textarea.in::placeholder{color:var(--mut);opacity:.75}
+  .wishrow{display:flex;align-items:flex-start;gap:8px;padding:4px 0 0;border:none}
+  .wishrow .publ{padding-top:6px}
+  .wishrow textarea{flex:1 1 auto}
+  .sum{color:var(--mut);font-size:var(--fs-sm);font-weight:700;line-height:1.5;padding:var(--sum-gap) 2px 8px;text-align:right;font-variant-numeric:tabular-nums}
+  .sum b{color:var(--fg);font-weight:700}
+  .sum .sl{opacity:.5}
+
+  /* ── 생성 버튼 4안 (전부 pill·padding14·fs14·fw800 = 크기 통일, 톤만 다름) ── */
+  .go{display:block;width:100%;padding:13px;margin-top:2px;border-radius:var(--r-pill);font:800 14px inherit;text-align:center;transition:.18s}
+  .go.v-cur{background:rgba(0,0,0,.34);border:1px solid rgba(var(--accent-rgb),.36);color:var(--fg)}       /* A 현행 = 검정글래스+accent강테두리 */
+  .go.v-uni{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--accent)}            /* B 통일★ = thumb/edit .go 정본 */
+  .go.v-tint{background:var(--accent-dim);border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent)} /* C 틴트 = xtr .xgo */
+  .go.v-quiet{background:transparent;border:1px solid rgba(var(--accent-rgb),.22);color:var(--accent)}     /* D 차분 = 텍스트 위주 */
+
+  .badge{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:800;line-height:16px;text-align:center;margin-left:6px}
+
+  /* ── 컨트롤 패널 ── */
+  .ctl{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:16px;padding:14px 15px;margin:12px 0 0}
+  .ctl h3{margin:0 0 3px;font-size:12.5px;font-weight:800;color:var(--accent)}
+  .ctl .cd{color:var(--mut);font-size:11.5px;margin:0 0 10px;line-height:1.5}
+  .segrow{display:flex;gap:5px;flex-wrap:wrap}
+  .segrow button{flex:1 1 auto;min-width:calc(50% - 3px);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;
+    padding:9px 8px;color:var(--mut);font:700 12px inherit;cursor:pointer;transition:.15s;text-align:left;-webkit-tap-highlight-color:transparent;line-height:1.35}
+  .segrow button.on{border-color:rgba(var(--accent-rgb),.6);background:rgba(var(--accent-rgb),.07);color:var(--fg)}
+  .segrow button b{display:block;font-weight:800;font-size:12.5px;margin-bottom:1px}
+  .segrow button.on b{color:var(--accent)}
+  .segrow button .star{color:var(--accent-bright)}
+  .slider{margin:12px 0 0}
+  .slider label{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--fg);margin-bottom:6px}
+  .slider label .v{color:var(--accent);font-variant-numeric:tabular-nums}
+  .slider label .v .cur{color:var(--mut);font-weight:700}
+  input[type=range]{width:100%;margin:0;height:22px;-webkit-appearance:none;appearance:none;background:none;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:rgba(255,255,255,.14)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);margin-top:-6px;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:rgba(255,255,255,.14)}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:none}
+  .toggle{display:flex;align-items:center;justify-content:space-between;margin:14px 0 0;font-size:12.5px;font-weight:700}
+  .toggle button{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--mut);font:800 12px inherit;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .toggle button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+  .out{background:#0d0f11;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:14px 0 0;font-size:11.5px;color:var(--mut);line-height:1.7}
+  .out b{color:var(--fg)}
+  .out .k{color:var(--accent)}
+  .copybtn{display:block;width:100%;margin-top:12px;padding:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);color:var(--accent);font:800 13px inherit;cursor:pointer;transition:.15s}
+  .copybtn.done{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .note{margin:14px 0 0;padding:12px 15px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:14px}
+  .note h3{margin:0 0 6px;font-size:12px;font-weight:800;color:var(--accent)}
+  .note ul{margin:0;padding-left:15px;color:var(--mut);font-size:11.5px;line-height:1.65}
+  .note li b{color:var(--fg);font-weight:700}
+  code{background:rgba(255,255,255,.06);padding:1px 4px;border-radius:4px;font-size:11px}
+</style>
+<body>
+<div class="wrap">
+  <h1>생성 버튼 통일 · 간격 튜닝</h1>
+  <p class="sub">아래 컨트롤을 만지면 위 미리보기가 <b>실시간</b>으로 바뀜. 맘에 드는 조합 정한 뒤 <b>선택값 복사</b>해서 답장 주면 그대로 반영할게.</p>
+
+  <!-- 미리보기 -->
+  <div class="phone">
+    <div class="feedbg"></div>
+    <div class="dlg">
+      <div class="dlg-h"><b><span class="spark">✦</span> Image Studio</b><span class="x">✕</span></div>
+      <div class="lead" id="lead">
+        <div class="sechead"><span class="lbl">내용</span></div>
+        <div class="wishrow"><span class="publ">주문</span><textarea class="in" rows="3" placeholder="필수 · 그릴 장면·상황을 설명"></textarea></div>
+        <div class="sum"><b>극화·웹툰화</b> <span class="sl">/</span> <b>4:5 · FHD · 3장 · PNG</b> <span class="sl">/</span> <b>무드 자동</b></div>
+        <div class="go v-uni" id="goBtn">생성</div>
+      </div>
+      <div class="body">
+        <div class="sechead"><span class="lbl">카메라 · 구도</span><span class="badge">0</span><span class="chev">⌄</span></div>
+        <div class="sechead"><span class="lbl">개요</span></div>
+        <div class="row"><span class="publ">해상도</span><span class="opts"><span class="opt">720p</span><span class="opt on">FHD</span><span class="opt">2K</span><span class="opt">4K</span></span></div>
+        <div class="row"><span class="publ">비율</span><span class="opts"><span class="opt on">4:5</span><span class="opt">9:16</span><span class="opt">16:9</span><span class="opt dd">직접</span></span></div>
+        <div class="row"><span class="publ">장수</span><span class="opts"><span class="opt">1장</span><span class="opt">2장</span><span class="opt on">3장</span><span class="opt">4장</span></span></div>
+        <div class="row"><span class="publ">품질</span><span class="opts"><span class="opt on">PNG</span><span class="opt">JPG 90</span></span></div>
+        <div class="sechead"><span class="lbl">표현</span></div>
+        <div class="row"><span class="publ">화풍</span><span class="opts"><span class="opt on">극화</span><span class="opt">수채</span><span class="opt">실사</span><span class="opt dd">기타</span></span></div>
+        <div class="row"><span class="publ">세부 화풍</span><span class="opts"><span class="opt on">자동</span><span class="opt dd">직접</span></span></div>
+        <div class="row"><span class="publ">무드</span><span class="opts"><span class="opt on">자동</span><span class="opt">직접</span></span></div>
+        <div class="row"><span class="publ">문구</span><span class="opts"><span class="opt">살리기</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ① 생성 버튼 4안 -->
+  <div class="ctl">
+    <h3>① 생성 버튼 톤 <span style="color:var(--mut);font-weight:700">(어그로 낮춰 통일)</span></h3>
+    <p class="cd">전부 크기(pill·padding·글자)는 같음 — <b>배경·테두리 톤</b>만 다름.</p>
+    <div class="segrow" id="segGo">
+      <button data-v="cur"><b>A · 현행</b>검정 글래스 + 강한 accent 테두리</button>
+      <button data-v="uni" class="on"><b>B · 통일 <span class="star">★</span></b>썸네일 제작 버튼과 동일(은은한 흰 글래스 + 중립 테두리)</button>
+      <button data-v="tint"><b>C · 틴트</b>연한 accent 배경(.13) + accent 글자</button>
+      <button data-v="quiet"><b>D · 차분</b>배경 없음 + 얇은 테두리(제일 조용)</button>
+    </div>
+  </div>
+
+  <!-- ② 요약 근접 + ③ 간격/구분선 -->
+  <div class="ctl">
+    <h3>② 요약(극화·웹툰화) ↔ 주문칸 간격</h3>
+    <p class="cd">주문 텍스트박스에 <b>더 가깝게</b> 붙임.</p>
+    <div class="slider">
+      <label><span>위쪽 간격</span><span class="v"><span id="sumV">3</span>px <span class="cur">(현행 8)</span></span></label>
+      <input type="range" id="sumR" min="0" max="10" step="1" value="3">
+    </div>
+
+    <h3 style="margin-top:18px">③ 리드(생성) ↔ 스크롤 첫 항목 간격 + 구분선</h3>
+    <p class="cd"><b>스크롤 영역 첫 항목(카메라·구도)</b>과 위 고정 리드 사이 간격. 최상단에서 확인.</p>
+    <div class="slider">
+      <label><span>간격</span><span class="v"><span id="leadV">14</span>px <span class="cur">(현행 6 · 2배 ≈ 12)</span></span></label>
+      <input type="range" id="leadR" min="6" max="24" step="1" value="14">
+    </div>
+    <div class="toggle"><span>리드 구분선 강조(accent 미세 라인 1줄 추가)</span><button id="divBtn">OFF</button></div>
+  </div>
+
+  <!-- 선택값 -->
+  <div class="out" id="out"></div>
+  <button class="copybtn" id="copy">선택값 복사</button>
+
+  <div class="note">
+    <h3>참고 · 재현 한계</h3>
+    <ul>
+      <li><b>추천 B ★</b> = 운영자가 260712에 <code>이미지 기준</code>으로 확정한 썸네일 제작 발사 버튼(<code>.go</code>) 톤 그대로 = 플랫폼 전체 발사 버튼과 <b>진짜 통일</b>.</li>
+      <li>버튼 <b>크기·전송 게이지·✓ 팝 상태머신</b>은 4안 공통 유지(색 톤만 교체) — 발사 피드백 안 깨짐.</li>
+      <li>③은 <b>스크롤 안 한 최상단</b>에서 효과 보임(리드는 고정이라 스크롤 중엔 바로 아래 콘텐츠가 붙음 = sticky 본질). 원하는 "구분선 위치"가 여기 말고 <b>다른 지점</b>이면 콕 집어줘.</li>
+      <li>색·간격·radius = viewer <code>:root</code> 실측 사본 · 폰트는 시스템 폴백(실서비스 Pretendard).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  var root=document.documentElement, goBtn=document.getElementById('goBtn'), lead=document.getElementById('lead');
+  var VN={cur:'A 현행',uni:'B 통일★',tint:'C 틴트',quiet:'D 차분'};
+  var VCSS={
+    cur:'background:rgba(0,0,0,.34); border:1px solid rgba(var(--accent-rgb),.36); color:var(--fg)',
+    uni:'background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--accent)  ← 썸네일 .go 정본',
+    tint:'background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.4); color:var(--accent)',
+    quiet:'background:transparent; border:1px solid rgba(var(--accent-rgb),.22); color:var(--accent)'
+  };
+  var st={go:'uni',sum:3,lead:14,div:false};
+
+  function render(){
+    goBtn.className='go v-'+st.go;
+    root.style.setProperty('--sum-gap',st.sum+'px');
+    root.style.setProperty('--lead-gap',st.lead+'px');
+    lead.classList.toggle('divhi',st.div);
+    document.getElementById('sumV').textContent=st.sum;
+    document.getElementById('leadV').textContent=st.lead;
+    document.getElementById('out').innerHTML=
+      '<b>선택값</b><br>'+
+      '① 생성버튼 = <span class="k">'+VN[st.go]+'</span><br>'+
+      '&nbsp;&nbsp;<code style="font-size:10.5px">'+VCSS[st.go]+'</code><br>'+
+      '② 요약↔주문 간격 = <span class="k">'+st.sum+'px</span> (현행 8)<br>'+
+      '③ 리드↔콘텐츠 간격 = <span class="k">'+st.lead+'px</span> (현행 6) · 구분선강조 = <span class="k">'+(st.div?'ON':'OFF')+'</span>';
+  }
+  document.getElementById('segGo').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    [].forEach.call(this.children,function(x){x.classList.toggle('on',x===b)});
+    st.go=b.dataset.v; render();
+  });
+  document.getElementById('sumR').addEventListener('input',function(){st.sum=+this.value;render()});
+  document.getElementById('leadR').addEventListener('input',function(){st.lead=+this.value;render()});
+  document.getElementById('divBtn').addEventListener('click',function(){st.div=!st.div;this.textContent=st.div?'ON':'OFF';this.classList.toggle('on',st.div);render()});
+  document.getElementById('copy').addEventListener('click',function(){
+    var t='이미지 생성 버튼/간격 선택값\n① 생성버튼: '+VN[st.go]+'\n② 요약↔주문 간격: '+st.sum+'px (현행 8)\n③ 리드↔콘텐츠 간격: '+st.lead+'px (현행 6) · 구분선강조: '+(st.div?'ON':'OFF');
+    var self=this;
+    (navigator.clipboard&&navigator.clipboard.writeText(t)||Promise.reject()).then(function(){self.textContent='✓ 복사됨 — 답장에 붙여넣기';self.classList.add('done');setTimeout(function(){self.textContent='선택값 복사';self.classList.remove('done')},2200)}).catch(function(){
+      var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');self.textContent='✓ 복사됨';self.classList.add('done');setTimeout(function(){self.textContent='선택값 복사';self.classList.remove('done')},2200)}catch(e){}document.body.removeChild(ta);
+    });
+  });
+  render();
+</script>
+</body>
