@@ -505,26 +505,3 @@ if (existsSync(LY_ROOT)) {
     console.log(`viewer/song_out/index.json 생성 — ${songs.length}건`);
   }
 }
-
-// ── 보이스(voice_out) 인덱스 — 음성 클로닝 보이스 목록(운영자 260712) · song_out 인덱스 미러 ──
-//    학습 완료(model_url) 보이스만 — 동의 도장(consent) 없는 항목은 제외(본인·권리 보유 음성 게이트).
-{
-  const VOICE_ROOT = 'viewer/voice_out';
-  if (existsSync(VOICE_ROOT)) {
-    const voices = [];
-    for (const id of readdirSync(VOICE_ROOT)) {
-      const dir = join(VOICE_ROOT, id);
-      try { if (!statSync(dir).isDirectory()) continue; } catch { continue; }
-      const p = join(dir, 'voice.json');
-      if (!existsSync(p)) continue;
-      let v = null;
-      try { v = JSON.parse(readFileSync(p, 'utf8')); } catch { continue; }
-      if (!v || !v.model_url || v.consent !== true) continue;
-      voices.push({ id, ts: v.ts || '', name: v.name || '', src_sec: v.src_sec || 0 });
-    }
-    voices.sort((a, b) => (b.id || '').localeCompare(a.id || ''));          // 최신순(id = 시간 접두)
-    if (voices.length > 50) voices.length = 50;
-    writeFileSync(join(VOICE_ROOT, 'index.json'), JSON.stringify(voices));
-    console.log(`viewer/voice_out/index.json 생성 — ${voices.length}건`);
-  }
-}
