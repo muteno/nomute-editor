@@ -176,20 +176,20 @@
   .profile img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
   .profile:hover { transform:translateY(-2px) scale(1.03); }
   .profile:active { transform:scale(var(--press-l,.97)); }
-  /* (도먼트 260712 — 운영자 "메시지 왔다고 굳이 알림 필요 없음 · 숫자 배지 싫음") 기어 메시지 점등(링+숫자 배지) 전면 소등 — 클래스 토글 JS(renderMsgBadge)·메시지함(msgpop) 기능은 보존 · 재점등 = 아래 hasmsg/shc-bad/haswarn 규칙 원값 복원(git 이력 = 260712 도먼트 직전) */
+  /* 메시지 1개+ 일 때만: 프로필 둘레 아주 얇고 은은한 강조 테두리 + 숫자 배지(0이면 둘 다 숨김) */
   /* (옛 아바타 hasmsg 링 box-shadow 삭제 — 기어(.vh-acts .profile.hasmsg 토큰형)가 대체·완전 사문·raw accent 2개 회수 = baseline 83→81 · 평의회4 260706. 아바타 잔여 CSS는 배너 복귀 대비 도먼트 유지·hasmsg .pbadge 표시 규칙은 아래 존치) */
   .pbadge { position:absolute; top:-5px; right:-5px; z-index:7; min-width:18px; height:18px; padding:0 5px;
     display:none; align-items:center; justify-content:center; border-radius:999px;
     font:800 11px/1 "Pretendard Variable", Pretendard, sans-serif; color:var(--on-accent);
     background:linear-gradient(135deg,var(--accent-bright),var(--accent)); border:1.5px solid var(--bg);
     box-shadow:0 2px 6px rgba(0,0,0,.4); }
-  .profile.hasmsg .pbadge { display:none; }   /* 도먼트(운영자 260712 "저 알람 없애셈") — 구 display:flex */
-  /* 메뉴별 프로필 강조색 폐지 — 전 탭 무조건 메인 강조색 통일(운영자 260705). 메시지 도착 점등(터쿼이즈 링·노란 링·숫자 배지) = 260712 도먼트 · 픽실패 빨강 펄스(body.has-pickfail profFail·아래 1089대)는 별개 축 = 유지. */
-  /* (도먼트 260712) 구 맞춤법 검사기 고장 = 프로필 노란 링 + 노란 배지(운영자 260623) — 현행 = 소등(아래 규칙 none) */
-  .profile.shc-bad { box-shadow:none !important; }   /* 도먼트(260712) — 구 맞춤법 노란 링(원값 = git 이력) */
-  .profile.shc-bad .pbadge { display:none; background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }   /* 도먼트 — display만 소등(warn 그라데 보존 = 재점등 대비) */
-  /* (도먼트 260712) 구 수집 실패 메시지 = 프로필 노란 링 + 노란 배지(운영자 260623) — 현행 = 소등 · 실패 인지는 웹푸시·메시지함·대기열 빨강 */
-  .profile.hasmsg.haswarn { box-shadow:none !important; }   /* 도먼트(260712) — 구 수집실패 노란 링(원값 = git 이력) */
+  .profile.hasmsg .pbadge { display:flex; }
+  /* 메뉴별 프로필 강조색 폐지 — 전 탭 무조건 메인 강조색 통일(운영자 260705). 상태 링(긴급 빨강 펄스·맞춤법 노랑)은 의미색이라 유지. */
+  /* 맞춤법 검사기 고장 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·정상화되면 자동 소멸 · 운영자 260623) */
+  .profile.shc-bad { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
+  .profile.shc-bad .pbadge { display:flex; background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
+  /* 수집 실패(대기열 미등록) 메시지 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·메시지 지우면 소멸 · 운영자 260623) */
+  .profile.hasmsg.haswarn { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
   .profile.hasmsg.haswarn .pbadge { background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
   .msgrow.flash { animation:msgFlash 1.6s ease; }          /* 푸시 딥링크(/?msg=)로 들어왔을 때 해당 메시지 행 잠깐 노랗게 강조 · 경고색은 .msgrow.q-warn .qmain(아래) */
   @keyframes msgFlash { 0%,100%{ background:transparent; } 18%{ background:rgba(var(--warn-rgb),.18); } }
@@ -957,8 +957,8 @@
   @media (hover:hover){ .vh-acts .profile:hover { transform:scale(1.18); } }   /* .ts-toggle hover 계승 */
   .vh-acts .profile:active { transform:none; }   /* 눌림 회전은 기틀 ic-spin 위임(ts-rf 동일 — 축소+회전 동시 투박 방지) */
   .vh-acts .profile:active .ts-ico, .vh-acts .profile.on .ts-ico { stroke:var(--accent); filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.45)); }   /* 누르면·메뉴 열림 = 강조색(운영자 "누르면 강조색" + vh-fbtn.on 패턴 계승) */
-  .vh-acts .profile.hasmsg { box-shadow:none; }   /* 도먼트(운영자 260712 "메시지 왔다고 알림 필요 없음") — 구 강조색 메시지 링(원값 = git 이력 260712 도먼트 직전) */
-  .vh-acts .profile.shc-bad, .vh-acts .profile.hasmsg.haswarn { box-shadow:none !important; }   /* 도먼트(260712) — 구 맞춤법/수집실패 노란 링 · 실패 표면화는 웹푸시(notify_fail)·대기열 빨강 유지 */
+  .vh-acts .profile.hasmsg { box-shadow:0 0 0 1.5px rgba(var(--accent-rgb),.55), 0 0 10px rgba(var(--accent-rgb),.28); }   /* 메시지 링 시그널 유지(아바타 드롭섀도 항만 제거) · 신규 선언은 토큰형(--accent-rgb) — raw 재유입 0 */
+  .vh-acts .profile.shc-bad, .vh-acts .profile.hasmsg.haswarn { box-shadow:0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }   /* 맞춤법/수집실패 노란 링 유지 */
   .vh-acts .ts-rf { display:none; }   /* 새로고침 픽토그램 = 도먼트(운영자 260706 3차 "우상단 검색만") · DOM·JS 보존(재점등 = 이 줄 삭제) */
   /* 설정(기어=.profile) = 260710 재활성 = 헤더 최우측 톱니바퀴로 부활(운영자 "대기열 자리에 설정 톱니바퀴 고정") · 클릭 = 설정 메뉴(linkpop) 헤더 아래 우측 촤르륵 · 위 .profile{display:grid}가 살아나 표시 · 260712 도먼트(PR 2022) = 지시 오해석(제거 대상 = 알람안 · 미머지)이라 같은 날 원복(운영자 "설정 버튼 가져오셈") — 재도먼트는 운영자 재확인 후에만 */
   .viewhead .pmenu { right:calc(var(--btn-sm) + var(--sp-1)); top:38px; }   /* 설정 메뉴 = 가시 클러스터(.vh-acts) 우변과 정렬(옛 right:16 = 도먼트 기어 슬롯 스테일 앵커 = 클러스터보다 20px 돌출 → 36 토큰으로 정합) · 현 도먼트(기어 display:none · lpSettings가 linkfab 기준 재앵커라 라이브 영향0이나 정리·분신술10 260707) */
