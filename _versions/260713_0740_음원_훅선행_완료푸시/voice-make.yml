@@ -169,31 +169,6 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
-      # 클로닝 완료 푸시(학습 = 수십 분 잡이라 필수 · 입히기 동반) — track-make 푸시 문법 미러 · 비치명
-      - name: 완료 푸시 (pywebpush)
-        if: always()
-        env:
-          IN_ID: ${{ inputs.id }}
-          VC_MODE: ${{ inputs.mode }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
-        run: |
-          [ -n "$IN_ID" ] || exit 0
-          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
-          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
-          if [ "$VC_MODE" = "train" ]; then
-            D="viewer/voice_out/${IN_ID}"; OK=0; NM=""
-            if [ -s "$D/voice.json" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$D/voice.json')).get('model_url') else 0)" 2>/dev/null || echo 0)"; NM="$(python3 -c "import json;print(json.load(open('$D/voice.json')).get('name',''))" 2>/dev/null || true)"; fi
-            if [ "$OK" = "1" ]; then BODY="보이스 학습 완료 — ${NM:-보이스}"; else
-              MSG=""; [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"; BODY="보이스 학습 실패 — ${MSG:-로그 확인}"; fi
-          else
-            D="viewer/song_out/${IN_ID}"; OK=0
-            if [ -s "$D/song.json" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$D/song.json')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
-            if [ "$OK" = "1" ]; then BODY="보이스 커버 완성 — 탭해서 듣기"; else
-              MSG=""; [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"; BODY="보이스 입히기 실패 — ${MSG:-로그 확인}"; fi
-          fi
-          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/song.html" --tag "nomute-voice-${IN_ID}-${VC_MODE}" || echo "::warning::완료 푸시 실패(비치명)"
-
       # 업로드 일회용 브랜치 삭제(성공·실패 무관) — track/ly-make 동일(가드 = up-* 만)
       - name: 업로드 브랜치 정리
         if: ${{ always() && inputs.up_branch != '' }}
