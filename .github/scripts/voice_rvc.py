@@ -54,7 +54,8 @@ if not TOKEN:
 def _req(url, method="GET", payload=None, timeout=60):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     r = urllib.request.Request(url, data=data, method=method, headers={
-        "authorization": "Bearer {}".format(TOKEN), "content-type": "application/json"})
+        "authorization": "Bearer {}".format(TOKEN), "content-type": "application/json",
+        "accept": "application/json", "user-agent": "nomute-actions/1.0"})   # UA 필수 — urllib 기본 UA = Cloudflare 1010 차단(카나리아 #1 실측 260712)
     with urllib.request.urlopen(r, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
