@@ -414,8 +414,6 @@
   .job .jretry:active { transform:scale(var(--press-l,.95)); }
   .job .jretry svg { display:block; width:12px; height:12px; }
   .job .jretry[disabled] { opacity:.5; pointer-events:none; }
-  .job .jmore { color:var(--accent); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.34); }   /* 한 장 더(성공 생성 잡 재생성) = .jretry 기하 계승 + 강조색 알파 변주(같은 토큰 변주 = 자유 · §🎨) · 운영자 260713 승인 */
-  .job .jmore:hover { background:rgba(var(--accent-rgb),.18); color:var(--fg); border-color:rgba(var(--accent-rgb),.6); }
   /* 실패 잡 삭제(휴지통) = 우측·세로중앙 글래스 아이콘(운영자 260622) */
   .job .jdel { flex:none; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; color:rgba(255,255,255,.6); cursor:pointer; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; transition:transform .12s, background .15s, color .15s, border-color .15s; }
   .job .jdel:hover { background:rgba(var(--danger-rgb),.18); color:var(--danger); border-color:rgba(var(--danger-rgb),.5); }
@@ -1780,7 +1778,6 @@ async function dlAllSeq(btn, urls, namer) {
   }, 1050);
 }
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
-const PLUS_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';   // 한 장 더(잡 카드) — 대칭 viewBox 픽토그램(§🔒 3-1) · nm-svg 19종 밖 신규 로컬(RETRY_SVG 선례)
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 const ERASE_UNDO_MS = 10000;   // 지움 후 되돌리기 노출 시간(~10초) → 지나면 원래 지우개로
 async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
@@ -2107,23 +2104,6 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     sv.onclick = e => { e.stopPropagation(); dlAllSeq(e.currentTarget, _saves.map(s => s.url), i => _saves[i].dlname).then(() => { job._dled = 1; }); };   // index 핸들러 1:1 — 부가 = job._dled(잡 재렌더·복원 시 받음색(mut) 유지용) 한 줄뿐
     if (job._dled) sv.classList.add('dl-done');   // 전체 받은 잡 = mut 유지(재렌더 복원·운영자 260701·색 260706)
     svRow.appendChild(sv);   // append는 아래 배치에서(변형 있으면 같은 띠 우측·없으면 단독 우측)
-  }
-  if (job.status === 'done' && job.gfree && job.payload && job.endpoint) {   // 성공 생성 잡 = '한 장 더' 원탭(운영자 260713 승인 — 같은 설정, 장수만 1 고정) · .jretry 기하 계승+.jmore 강조색 변주 · 새 표준 잡 카드로 합류(genRefire in-place와 달리 이 완료 카드·결과는 보존) · payload 미동봉(구 캐시) = 미노출(.jretry 게이트 동일)
-    const mr = document.createElement('button'); mr.type = 'button'; mr.className = 'jretry jmore'; mr.title = '같은 설정으로 한 장 더 생성';
-    mr.innerHTML = PLUS_SVG + '<span>한 장 더</span>';
-    mr.onclick = async () => {
-      mr.disabled = true;   // 요청 왕복 동안 연타 차단(이중 과금 방지) — 성공 후 재활성 = 한 번 더 탭하면 +1장(의도)
-      const opts = Object.assign({}, job.payload.opts, { count: 1 });
-      try {
-        goFire();   // 발사 피드백 = genRefire 선례 그대로
-        const r = await fetch('/api/genimg', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ free: true, opts }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok || j.error) { mr.innerHTML = WARN_SVG + '<span>실패 · 다시</span>'; mr.disabled = false; return; }   // 실패 = 버튼 자체가 상태 표기(재탭 = 재시도)
-        genJob(1, opts);   // 새 잡 카드(맨 위 prepend) — 매칭은 표준 h8 그룹핑(동시 다발 = 기존 근사 한계 그대로)
-        mr.innerHTML = PLUS_SVG + '<span>한 장 더</span>'; mr.disabled = false;
-      } catch (e) { mr.innerHTML = WARN_SVG + '<span>실패 · 다시</span>'; mr.disabled = false; }
-    };
-    row.append(mr);
   }
   if (job.status === 'err' && ((job.payload && job.endpoint) || (job.batch && job.batch.length))) {   // 실패 = 같은 설정 재발사(단일=payload·배치=batch · 운영자 260620 아이디어 3·260625)
     const rt = document.createElement('button'); rt.type = 'button'; rt.className = 'jretry'; rt.title = '같은 설정으로 다시 제작';
