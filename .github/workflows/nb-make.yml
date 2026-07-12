@@ -61,6 +61,7 @@ jobs:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
           NB_MAX_SEC: ${{ vars.NB_MAX_SEC || 14400 }}
           NB_STT_MAX_SEC: ${{ vars.NB_STT_MAX_SEC || 3600 }}
+          NB_LIST_MAX: ${{ vars.NB_LIST_MAX || 200 }}
         run: |
           set -e
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
@@ -70,15 +71,55 @@ jobs:
           timeout 180 pip3 install -q yt-dlp || { sleep 3; timeout 180 pip3 install -q yt-dlp; }   # 네트워크 op 타임아웃(§인프라 b)
           COOKIES=""
           if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
-          # ── 메타(제목·채널·길이·자막 유무) — 봇 인증 실패 = ly와 동일 안내
+          # ── 1차 flat 판정(운영자 260712 3차 "채널 넣으면 유튜브 다 긁어지게") — 채널/재생목록 = entries만 초고속 추출(영상 메타 전수 긁기·스크롤링 0)
+          python3 -m yt_dlp --flat-playlist --skip-download --socket-timeout 30 $COOKIES --dump-single-json "$URL" > /tmp/nb_flat.json \
+            || { echo "유튜브 정보 조회 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구하거나 링크가 잘못됐어. (운영자: YT_COOKIES 시크릿 등록 시 안정)" > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::yt-dlp flat 판정 실패: $URL"; exit 1; }
+          NB_LIST_MAX="${NB_LIST_MAX:-200}" IN_ID="$IN_ID" python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          y = json.load(open("/tmp/nb_flat.json", encoding="utf-8"))
+          if y.get("_type") != "playlist":
+              raise SystemExit(0)   # 단건 영상 = 기존 노트 파이프 계속
+          cap = int(os.environ.get("NB_LIST_MAX", "200"))
+          items = []
+          def walk(entries):   # 채널 루트는 {Videos/Shorts/Live} 하위 목록이 중첩 playlist로 옴 — 평탄화
+              for e in entries or []:
+                  if not isinstance(e, dict):
+                      continue
+                  if e.get("_type") == "playlist":
+                      walk(e.get("entries"))
+                      continue
+                  vid = e.get("id") or ""
+                  if not vid or any(x["id"] == vid for x in items):
+                      continue
+                  items.append({"id": vid, "url": e.get("url") if str(e.get("url", "")).startswith("http") else f"https://www.youtube.com/watch?v={vid}",
+                                "t": (e.get("title") or "")[:200], "d": int(e.get("duration") or 0)})
+                  if len(items) >= cap:
+                      return
+          walk(y.get("entries"))
+          try:
+              from zoneinfo import ZoneInfo
+              ts = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+          except Exception:
+              ts = datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")
+          doc = {"v": 1, "ts": ts, "kind": "list",
+                 "src": {"url": y.get("webpage_url") or "", "title": (y.get("title") or "")[:200], "channel": (y.get("channel") or y.get("uploader") or "")[:100]},
+                 "n": len(items), "items": items}
+          d = f"viewer/nb_out/{os.environ['IN_ID']}"
+          os.makedirs(d, exist_ok=True)
+          tmp = d + "/list.json.tmp"
+          json.dump(doc, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+          os.replace(tmp, d + "/list.json")   # 원자 교체 = 레포 표준
+          open("/tmp/nb_islist.txt", "w").write("1")
+          print(f"채널/목록 감지 — 영상 {len(items)}개 목록화(캡 {cap})")
+          PY
+          if [ -f /tmp/nb_islist.txt ]; then echo "NB_LIST=1" >> "$GITHUB_ENV"; echo "목록 모드 — 노트 생성 스킵(운영자가 목록서 골라 발사)"; exit 0; fi
+          # ── 메타(제목·채널·길이·자막 유무) — 단건 영상(봇 인증 실패 = ly와 동일 안내)
           python3 -m yt_dlp --skip-download --no-playlist --socket-timeout 30 $COOKIES --dump-single-json "$URL" > /tmp/nb_yt.json \
             || { echo "유튜브 정보 조회 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구하거나 링크가 잘못됐어. (운영자: YT_COOKIES 시크릿 등록 시 안정)" > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::yt-dlp 메타 실패: $URL"; exit 1; }
           python3 - <<'PY'
           import json, os, sys
           y = json.load(open("/tmp/nb_yt.json", encoding="utf-8"))
-          if y.get("_type") == "playlist":   # --no-playlist에도 순수 재생목록 URL은 playlist로 옴 = 단건만 지원
-              open("/tmp/nb_gate.txt", "w").write("재생목록 링크야 — 영상 1개 링크로 줘.")
-              sys.exit(0)
           up = y.get("upload_date") or ""
           meta = {
               "yt_id": y.get("id") or "", "url": y.get("webpage_url") or "",
@@ -154,6 +195,7 @@ jobs:
           echo "STT 전사 $(python3 -c "import json;print(len(json.load(open('/tmp/nb_tr.json')).get('rows') or []))")줄"
 
       - name: 자료 노트 생성 (claude 1콜 — 전사 패스스루)
+        if: ${{ env.NB_LIST != '1' }}
         timeout-minutes: 25
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
