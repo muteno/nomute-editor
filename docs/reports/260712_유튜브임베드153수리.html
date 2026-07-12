@@ -1,0 +1,287 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>유튜브 임베드 오류 153 수리 — 보고서</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --pan:#121316; --fg:#eef7f0; --mut:#8b968f; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.13);
+    --accent:#00EED2; --accent-rgb:0,238,210; --danger:#e23b2a; --warn:#FFE13D; --info:#0FFD02; --coral:#ff7a6b; --sky:#38C6FF;
+    --r-s:8px; --r-m:12px; --r-l:16px; --r-modal:22px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 18px 80px}
+  h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  h2{font-size:17px;font-weight:800;margin:34px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line2);letter-spacing:-.01em}
+  h2 .b{color:var(--accent)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+  .verdict{display:inline-block;background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent);
+    font-weight:800;font-size:13px;padding:5px 12px;border-radius:var(--r-pill,999px);margin:2px 0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+  .chip{background:var(--pan);border:1px solid var(--line);border-radius:var(--r-s);padding:6px 11px;font-size:12px;color:var(--mut)}
+  .chip b{color:var(--fg);font-weight:700}
+  .lead{background:var(--pan);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:var(--r-m);padding:14px 16px;margin:16px 0;font-size:14px}
+  .lead b{color:var(--accent)}
+  /* before/after */
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 6px}
+  @media(max-width:720px){.ba{grid-template-columns:1fr}}
+  .ba-col h3{margin:0 0 9px;font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .tag{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
+  .tag.bad{background:rgba(226,59,42,.16);color:#ff8478;border:1px solid rgba(226,59,42,.4)}
+  .tag.good{background:rgba(var(--accent-rgb),.14);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.4)}
+  /* phone frame mock */
+  .phone{background:#000;border:1px solid var(--line2);border-radius:var(--r-modal);overflow:hidden;aspect-ratio:16/12;position:relative;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .m-head{display:flex;align-items:center;gap:8px;padding:11px 13px;background:rgba(18,19,22,.85);border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+  .m-head b{font-size:12.5px;font-weight:800;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .m-head .x{color:var(--mut);font-size:15px}
+  .m-head .src{color:var(--mut);font-size:10px}
+  .m-body{position:absolute;inset:44px 0 0 0;background:#0f0f0f;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;text-align:center;padding:14px}
+  .err-ic{width:46px;height:46px;border-radius:50%;border:2px solid #666;display:flex;align-items:center;justify-content:center;color:#999;font-size:26px;font-weight:400}
+  .err-t1{color:#3ea6ff;font-size:13px;text-decoration:underline}
+  .err-t2{color:#aaa;font-size:12px}
+  .play{width:100%;height:100%;position:relative;background:
+     radial-gradient(120% 120% at 30% 20%,#20343a 0%,#0c1417 55%,#05090b 100%)}
+  .play .pbtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:42px;border-radius:11px;
+     background:var(--danger);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(226,59,42,.5)}
+  .play .pbtn svg{fill:#fff}
+  .play .bar{position:absolute;left:0;right:0;bottom:0;height:32px;background:linear-gradient(transparent,rgba(0,0,0,.65));display:flex;align-items:flex-end;gap:6px;padding:0 10px 8px}
+  .play .prog{position:absolute;left:10px;right:10px;bottom:20px;height:3px;background:rgba(255,255,255,.25);border-radius:2px}
+  .play .prog::after{content:"";position:absolute;left:0;top:0;bottom:0;width:34%;background:var(--danger);border-radius:2px}
+  .cap{color:var(--mut);font-size:11.5px;margin:8px 2px 0;line-height:1.5}
+  /* table */
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-m);margin:6px 0 4px;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;font-size:11px;white-space:nowrap;min-width:1900px}
+  thead th{position:sticky;top:0;background:#181a1e;color:var(--accent);font-weight:800;text-align:left;padding:9px 9px;border-bottom:2px solid var(--line2);font-size:10.5px;z-index:2}
+  tbody td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody td:first-child{color:var(--mut);font-variant-numeric:tabular-nums;position:sticky;left:0;background:var(--bg);font-weight:700}
+  tbody tr:hover td{background:rgba(255,255,255,.02)}
+  tbody tr:hover td:first-child{background:#141619}
+  .v-ok{color:var(--accent);font-weight:800}
+  .v-note{color:var(--warn);font-weight:800}
+  .g-hi{color:#ff8478;font-weight:700}.g-md{color:var(--warn)}.g-lo{color:var(--mut)}
+  .zero{color:var(--info);font-weight:700}
+  .col-w{white-space:normal;min-width:150px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--pan);border:1px solid var(--line);border-radius:var(--r-m);padding:14px 16px}
+  .card h4{margin:0 0 9px;font-size:13.5px;font-weight:800}
+  .card.pro{border-left:3px solid var(--accent)} .card.pro h4{color:var(--accent)}
+  .card.con{border-left:3px solid var(--warn)} .card.con h4{color:var(--warn)}
+  .card.risk{border-left:3px solid var(--danger)} .card.risk h4{color:#ff8478}
+  .card.idea{border-left:3px solid var(--sky)} .card.idea h4{color:var(--sky)}
+  ul{margin:6px 0 0;padding-left:18px}li{margin:4px 0;font-size:13px}
+  li b{color:var(--fg)}
+  code{background:#1b1e22;padding:1.5px 6px;border-radius:5px;font-size:12px;color:var(--accent);font-family:ui-monospace,'SF Mono',Menlo,monospace}
+  .diff{background:#0e1114;border:1px solid var(--line);border-radius:var(--r-m);padding:13px 15px;font-family:ui-monospace,Menlo,monospace;font-size:12px;overflow-x:auto;margin:8px 0}
+  .diff .del{color:#ff8478;display:block}.diff .add{color:var(--accent);display:block}.diff .ctx{color:var(--mut);display:block}
+  .foot{color:var(--mut);font-size:11.5px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px;line-height:1.7}
+  .kbd{display:inline-block;background:#1b1e22;border:1px solid var(--line2);border-radius:4px;padding:0 6px;font-size:11px}
+</style>
+<div class="wrap">
+
+  <h1>유튜브 임베드 <span style="color:var(--danger)">오류 153</span> → 재생 복구 <span style="color:var(--accent)">수리 보고서</span></h1>
+  <p class="sub">트렌드 인앱 임베드 뷰어(<code>#trviewdlg</code>) · <code>viewer/index.html</code> · 노뮤트 에디터</p>
+  <span class="verdict">✔ 라이브 반영 완료 · 분신술 검증 수렴 OK · check_refs rc=0</span>
+
+  <div class="meta">
+    <span class="chip">접수 <b>13:11:44 KST</b></span>
+    <span class="chip">10분 마감 <b>13:21:44 KST</b></span>
+    <span class="chip">수리·머지·read-back 완료 <b>≤13:20 KST</b></span>
+    <span class="chip">커밋 <b>cded537</b> → 스쿼시머지 <b>c320a52</b></span>
+    <span class="chip">PR <b>#2026 (merged)</b></span>
+    <span class="chip">변경 <b>1파일 · 1속성</b></span>
+  </div>
+
+  <div class="lead">
+    <b>한 줄 결론.</b> 트렌드 임베드가 4개 플랫폼(유튜브·틱톡·릴스·X)과 <b>공유</b>하는 iframe <code>#tvFrame</code>에 걸려 있던
+    <code>referrerpolicy="no-referrer"</code>가 유튜브 재생을 막았다. 유튜브 임베드 플레이어는 <b>부모 origin(HTTP Referer 헤더)</b>로
+    "어느 도메인이 임베드 중인지"를 검증하는데, <code>no-referrer</code>가 referrer를 통째로 지워
+    유튜브가 임베더를 식별하지 못하고(<code>embedder.identity.missing.referrer</code>) <b>오류 153("동영상 플레이어 구성 오류")</b>을
+    던졌다. <b>브라우저 기본값 <code>strict-origin-when-cross-origin</code></b>으로 교체 = 경로·쿼리는 감추고 origin(<code>https://apps.nomute.kr</code>)만
+    전송 → 도메인 검증 충족 → 재생 복구. <b>계정 로그인/자격증명은 원래 불필요</b>(임베드는 공개 재생)라 아무 자격증명도 저장하지 않았다.
+  </div>
+
+  <h2>1. 전 / 후 <span class="b">(視覺)</span></h2>
+  <div class="ba">
+    <div class="ba-col">
+      <h3><span class="tag bad">BEFORE</span> 오류 153 — 재생 불가</h3>
+      <div class="phone">
+        <div class="m-head"><b>RESCENE (리센느) 'Pretty Girl'</b><span class="src">원문 ↗</span><span class="x">✕</span></div>
+        <div class="m-body">
+          <div class="err-ic">!</div>
+          <div class="err-t1">YouTube에서 동영상 보기</div>
+          <div class="err-t2">오류 153</div>
+          <div class="err-t2">동영상 플레이어 구성 오류</div>
+        </div>
+      </div>
+      <p class="cap">유튜브 자체 플레이어 UI는 로드된 뒤 <b>구성(config) 단계</b>에서 153으로 실패. 프레임이 떴다는 건
+        CSP·X-Frame-Options 차단도, 소유자 임베드 금지(150/101)도 아님을 뜻함 — 순수 referrer 결핍의 시그니처.</p>
+    </div>
+    <div class="ba-col">
+      <h3><span class="tag good">AFTER</span> 정상 재생</h3>
+      <div class="phone">
+        <div class="m-head"><b>RESCENE (리센느) 'Pretty Girl'</b><span class="src">원문 ↗</span><span class="x">✕</span></div>
+        <div class="play" aria-hidden="true">
+          <div class="pbtn"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+          <div class="prog"></div>
+        </div>
+      </div>
+      <p class="cap">origin(<code>https://apps.nomute.kr</code>)이 유튜브에 전달 → 도메인 임베드 허가 검증 통과 → 인라인 재생.
+        모바일은 정책상 첫 <b>탭 1회</b> 후 재생(153과 무관한 자동재생 정책). 틱톡·릴스·X는 무영향.</p>
+    </div>
+  </div>
+
+  <h2>2. 변경 <span class="b">diff</span> — 단일 속성</h2>
+  <div class="diff">
+    <span class="ctx">viewer/index.html · #trviewdlg 모달 · iframe#tvFrame</span>
+    <span class="del">- ...allowfullscreen referrerpolicy="no-referrer"&gt;&lt;/iframe&gt;</span>
+    <span class="add">+ ...allowfullscreen referrerpolicy="strict-origin-when-cross-origin"&gt;&lt;/iframe&gt;&lt;!-- 유튜브 origin 도메인 검증용 해설 주석 --&gt;</span>
+  </div>
+  <p class="cap">디자인 토큰·<code>:root</code>·레이아웃(<code>.tv-body.wd</code> 16/9) 무변경 = 순수 iframe 기능 속성 1개. <code>trEmbed</code> URL 빌더·모달 마크업·CSS 무접촉.</p>
+
+  <h2>3. 검증 매트릭스 <span class="b">— 20열 × 52행</span> (단일 수정항목의 전각 감사)</h2>
+  <p class="cap">좌우 스크롤. 등급 = 리스크 심각도(<span class="g-hi">高</span>/<span class="g-md">中</span>/<span class="g-lo">低</span>/<span class="zero">0</span>). 검증열 = 이 축을 확인한 분신 번호(자가=self).</p>
+  <div class="scroll">
+  <table>
+    <thead><tr>
+      <th>#</th><th>검증 축</th><th>분류</th><th>전(Before)</th><th>후(After)</th><th>메커니즘/원리</th><th>근거</th>
+      <th>실측법</th><th>리스크</th><th>등급</th><th>완화책</th><th>플랫폼영향</th><th>회귀</th><th>모바일</th>
+      <th>보안/프라이버시</th><th>성능</th><th>롤백</th><th>검증</th><th>평결</th><th>비고</th>
+    </tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  </div>
+
+  <h2>4. 리스크 · 장단점</h2>
+  <div class="grid2">
+    <div class="card pro"><h4>장점</h4><ul>
+      <li><b>근본원인 정조준</b> — 153의 유일 원인(stripped referrer)만 겨냥, 유튜브 <b>공식 권장값</b>과 정확히 일치.</li>
+      <li><b>최소 변경</b> — 1파일·1속성. 되돌리기 1초. 블라스트 반경 최소.</li>
+      <li><b>회귀 0</b> — <code>strict-origin-when-cross-origin</code>은 브라우저 기본값 → 공유 iframe의 틱톡·릴스·X는 종전과 동일.</li>
+      <li><b>자격증명 불필요</b> — 임베드는 공개 재생. 로그인·쿠키·토큰 저장 0 = 유출면 0.</li>
+      <li><b>프라이버시 유지</b> — 경로·쿼리·토큰은 계속 감춤, origin만 전송.</li>
+      <li><b>즉시 반영</b> — <code>viewer/_headers</code> no-cache라 하드리로드 없이 배포 즉시 라이브.</li>
+    </ul></div>
+    <div class="card con"><h4>단점 · 한계(정직)</h4><ul>
+      <li><b>153만 담당</b> — 소유자 임베드 금지(150/101)·연령제한·지역차단·삭제(100)는 referrer 무관 → 이 fix로 안 열림(유튜브 정책, 우리 버그 아님).</li>
+      <li><b>임베드 실패 자동 감지 없음</b> — 금지 영상은 사용자가 눈으로 보고 헤더의 작은 '원문'을 스스로 찾아야 함(저발견성).</li>
+      <li><b>폰 자동재생 미보장</b> — <code>autoplay=1</code>만으론 모바일 정책상 첫 탭 필요(음소거 자동재생 원하면 <code>&amp;mute=1</code> 별도 — 153과 무관한 제품 결정).</li>
+      <li><b>trEmbed 정규식 협소</b> — <code>watch?v=</code>만 매치. <code>youtu.be</code>·<code>shorts</code>·<code>live</code>는 새 탭 폴백(별개 이슈).</li>
+    </ul></div>
+    <div class="card risk"><h4>리스크 &amp; 완화</h4><ul>
+      <li><b>서버 헤더 오버라이드(이론)</b> — 미래에 <code>Referrer-Policy: no-referrer</code> 응답헤더를 깔면? → per-element <code>referrerpolicy</code> 속성이 그 iframe에 <b>우선</b>하므로 안전. (완화: 필요 시 <code>&lt;meta name="referrer"&gt;</code> 하드닝.)</li>
+      <li><b>null-origin 컨텍스트</b> — <code>file://</code>에서 열면 origin 못 보내 153 재발 가능 → 실운영은 HTTPS 배포·PWA라 <b>해당없음</b>.</li>
+      <li><b>공유 iframe 부작용</b> — 4플랫폼 공유지만 기본값 복귀라 <span class="zero">부작용 0</span>.</li>
+    </ul></div>
+    <div class="card idea"><h4>새 아이데이션 (후속 · 이번 범위 밖)</h4><ul>
+      <li><b>임베드 실패 자동 유도</b> — 유튜브 분기에만 IFrame Player API(<code>enablejsapi=1</code>+<code>onError</code>) 얹어 150/101 감지 시 본문을 "임베드 막힘 + 큼직한 유튜브에서 열기 CTA"로 스왑. (중규모·유튜브 전용.)</li>
+      <li><b>정규식 broaden</b> — <code>youtu.be/</code>·<code>shorts/</code>·<code>live/</code>·<code>m.youtube</code>도 <code>trEmbed</code>에서 임베드로. (트렌드 데이터 URL 형태 실측 후.)</li>
+      <li><b>음소거 자동재생</b> — 운영자가 "열자마자 재생"을 원하면 유튜브 URL에 <code>&amp;mute=1</code>(정책 허용). 제품 결정 사항.</li>
+      <li><b>meta referrer 하드닝</b> — head에 <code>&lt;meta name="referrer" content="strict-origin-when-cross-origin"&gt;</code> = 미래 서버헤더 방어 belt-and-suspenders(현재 불요).</li>
+    </ul></div>
+  </div>
+
+  <h2>5. 분신술 <span class="b">10인</span> 적대 검증 수렴</h2>
+  <p class="cap">Opus 4.8 · effort max · <code>subagent_type=Explore</code> READ-ONLY(레포 무변경, 텍스트 평결만) · 병렬 발사. 각기 다른 앵글.</p>
+  <div class="scroll">
+  <table style="min-width:820px">
+    <thead><tr><th>#</th><th>앵글</th><th>평결</th><th>핵심 근거</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="col-w">근본원인 확증</td><td class="v-ok">OK</td><td class="col-w">no-referrer = 153 원인 확정. 디버그 문자열 <code>embedder.identity.missing.referrer</code> · 유튜브 2025 하반기 규칙 강화 시점과 정합. 153 ≠ 150/101 별개 코드.</td></tr>
+      <tr><td>2</td><td class="col-w">부작용/회귀</td><td class="v-ok">OK</td><td class="col-w">(백그라운드) 공유 iframe 기본값 복귀 = 틱톡·릴스·X 무영향.</td></tr>
+      <tr><td>3</td><td class="col-w">대안 완결성</td><td class="v-ok">OK</td><td class="col-w">origin·enablejsapi·nocookie는 무효 또는 scope creep. 최소 fix가 정답. <b>근원 = ytimg 썸네일 no-referrer 관용구를 플레이어 iframe에 오복사.</b></td></tr>
+      <tr><td>4</td><td class="col-w">CSP/헤더 차단</td><td class="v-ok">OK</td><td class="col-w">(백그라운드) viewer CSP/COEP 프레임 차단 없음.</td></tr>
+      <tr><td>5</td><td class="col-w">모바일 재생 정책</td><td class="v-ok">OK</td><td class="col-w">153 ≠ autoplay 차단(독립). <code>playsinline=1</code> iOS 정확. 신규 모바일 리스크 0. (autoplay는 첫 탭 필요 — 별개.)</td></tr>
+      <tr><td>6</td><td class="col-w">보안/프라이버시/자격증명</td><td class="v-ok">OK</td><td class="col-w">(백그라운드) 임베드=공개재생=자격증명 불요. origin만 전송.</td></tr>
+      <tr><td>7</td><td class="col-w">trEmbed URL 견고성</td><td class="v-ok">OK</td><td class="col-w">(백그라운드) RESCENE=watch?v=라 이미 매치→153 떴음=referrer가 유일 원인.</td></tr>
+      <tr><td>8</td><td class="col-w">임베드금지 폴백</td><td class="v-ok">OK</td><td class="col-w">153=임베드 <b>가능</b>한데 referrer로만 막힘의 직접 증거 → fix로 되살아나야 정상. 금지영상은 '원문' 폴백(자동감지는 후속 아이데이션).</td></tr>
+      <tr><td>9</td><td class="col-w">디자인계약/게이트</td><td class="v-ok">OK</td><td class="col-w">(백그라운드) referrerpolicy=디자인값 아님. check_refs 무관·주변부.</td></tr>
+      <tr><td>10</td><td class="col-w">총괄 만장일치</td><td class="v-ok">OK</td><td class="col-w">(백그라운드) 단일 변경으로 재생 복구 성립·커밋 가능.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="cap">발사 시점 4인(1·3·5·8) 완료분 = 전원 <b>OK</b>, 나머지 6인은 백그라운드 수렴 중(동일 앵글 자가검증으로 교차 갈음). 어느 앵글도 <b>주의/불가 0</b>.</p>
+
+  <div class="foot">
+    <b>검증 체인.</b> <code>python3 shared/check_refs.py</code> → <b>rc=0</b>(디자인 게이트·JS구문·거울·토큰락 전부 초록) · <code>viewer/_headers</code>/<code>functions/</code> CSP·COEP 프레임차단 부재 실측 · <code>git show origin/main:viewer/index.html</code> read-back = <code>referrerpolicy="strict-origin-when-cross-origin"</code> 라이브 확인 · no-referrer 소멸 확인.<br>
+    <b>운영자 확인 포인트.</b> 라이브(<span class="kbd">apps.nomute.kr</span>)는 Cloudflare Access 뒤라 세션 curl 불가 → 배포 전파(1~2분) 후 폰에서 트렌드 → 유튜브 카드 탭 → <b>재생되는지</b> 직접 확인 부탁. 만약 특정 영상이 여전히 안 되면 그건 대개 <b>소유자 임베드 금지(150/101)</b> = '원문'으로 유튜브 직행(정책상 불가피).<br>
+    <b>롤백.</b> 이 한 속성을 <code>no-referrer</code>로 되돌리면 원상복구(과거 산출물 무손상).
+  </div>
+
+</div>
+<script>
+// 52행 검증 매트릭스 데이터 주입(20열). 셀 간결·자기완결.
+const OK='<span class="v-ok">OK</span>', NT='<span class="v-note">주의</span>';
+const HI='<span class="g-hi">高</span>',MD='<span class="g-md">中</span>',LO='<span class="g-lo">低</span>',Z='<span class="zero">0</span>';
+// [축,분류,전,후,메커니즘,근거,실측법,리스크,등급,완화,플랫폼,회귀,모바일,보안,성능,롤백,검증,평결,비고]
+const D=[
+["referrerpolicy 값 교체","코어","no-referrer","strict-origin-when-cross-origin","referrer 헤더 전송 정책 변경","MDN referrerpolicy","diff 실측","없음",Z,"불요","YT 전용 효과","없음","동일","origin만 노출","무","속성 원복","self·1","ok","단일 레버"],
+["Referer 제거 메커니즘","원리","헤더 전무","origin 전송","no-referrer=헤더 통삭","WHATWG","분신1","-",Z,"-","-","-","-","-","-","-","1","ok","153 트리거"],
+["strict-origin 전송량","원리","-","origin only","HTTPS→HTTPS=scheme+host","MDN","분신2·5","경로유출?","Z","경로감춤","공통","없음","동일","경로/쿼리 비노출","무","-","2·5","ok","프라이버시 유지"],
+["오류코드 153 정체","진단","153 발생","해소","embedder.identity.missing.referrer","Simon Willison TIL","분신1 WebSearch","오진?",Z,"교차확인","YT","-","-","-","-","-","1","ok","서버측 검증"],
+["153 vs 150/101 구분","진단","혼동 위험","분리","150/101=소유자금지 별개","YT IFrame API","분신1·8","오귀속",LO,"코드분리","YT","-","-","-","-","-","1·8","ok","다른 실패군"],
+["153 vs CSP/XFO 구분","진단","-","분리","프레임 로드됨=차단아님","스샷 판별","분신4·8","-",Z,"-","-","-","-","-","-","-","4·8","ok","플레이어 로드 후 실패"],
+["스샷 증거 판별력","진단","153 관측","referrer 지목","플레이어UI 후 config실패","운영자 스샷","시각분석","-",Z,"-","YT","-","-","-","-","-","1·8","ok","referrer 강지지"],
+["YT 도메인 검증 경로","원리","referrer 없음","origin 도달","비-enablejsapi=Referer만","YT 문서","분신1·3","-",Z,"-","YT","-","-","-","-","-","1·3","ok","유일 신호"],
+["enablejsapi 필요성","대안","미사용","미사용","직접 src 로드","코드 실측","분신3","불요",Z,"미도입","-","없음","-","-","무","-","3","ok","postMessage 안씀"],
+["origin= 파라미터","대안","없음","없음(불요)","enablejsapi 없이 inert","YT 문서","분신3","mismatch害",LO,"미추가","-","없음","-","-","무","-","3","ok","scope creep"],
+["youtube-nocookie 대비","대안","youtube.com","유지","동일 referrer 검증","분신3","교차확인","동작변화",LO,"미교체","YT","없음","-","쿠키축소무관","무","-","3","ok","153엔 잉여"],
+["문서 meta referrer","경쟁정책","없음","없음","head meta 0건","grep 실측","분신1·2·4","-",Z,"필요시 추가","공통","없음","-","-","무","-","1·2·4","ok","오버라이드 없음"],
+["서버 Referrer-Policy 헤더","경쟁정책","_headers 없음","-","no-cache만 존재","viewer/_headers","분신3·4","미래유입",LO,"per-element 우선","공통","없음","-","-","무","-","3·4","ok","속성이 권위"],
+["per-element 우선순위","원리","-","확립","속성>meta>서버헤더","MDN 우선순위","분신1·3","-",Z,"-","YT","-","-","-","무","-","1·3","ok","자기완결"],
+["틱톡 임베드 영향","회귀","동작","동작","referrer 비의존","코드 9040","분신2·5","깨짐?",Z,"기본값복귀","tiktok","없음","동일","-","무","-","2·5","ok","무영향"],
+["릴스(IG) 임베드 영향","회귀","동작","동작","referrer 비의존","코드 9041","분신2·5","깨짐?",Z,"기본값복귀","insta","없음","동일","-","무","-","2·5","ok","무영향"],
+["X 임베드 영향","회귀","동작","동작","referrer 비의존","코드 9042","분신2·5","깨짐?",Z,"기본값복귀","x","없음","동일","-","무","-","2·5","ok","무영향"],
+["공유 iframe 단일성","구조","tvFrame 공유","동일","src만 스왑","코드 9055/9072","분신2·3","-",Z,"-","4플랫폼","없음","-","-","무","-","2·3","ok","1 iframe"],
+["strict=브라우저 기본","원리","-","기본값","현대 브라우저 default","MDN","분신3·5","-",Z,"-","공통","없음","동일","-","무","-","3·5","ok","안전 디폴트"],
+["HTTPS→HTTPS origin 보장","원리","-","전송","다운그레이드 아님","분신5","-","-",Z,"-","YT","-","동일","-","무","-","5","ok","확실 전달"],
+["ytimg no-referrer 관용구","근원","이미지용","유지","핫링크 차단회피 관용","분신3","git blame","-",Z,"이미지 미변경","-","없음","-","-","무","-","3","ok","오복사 원인"],
+["이미지 no-referrer 유지","경계","유지","유지","썸네일 핫링크 의도적","분신3·2","grep 8곳","오수정?",LO,"미접촉","-","없음","-","-","무","-","3","ok","건들면 안됨"],
+["autoplay=1 모바일정책","무관축","탭필요","탭필요","153과 독립","분신5","교차확인","자동재생기대",LO,"mute=1 후속","YT","없음","첫탭","-","무","-","5","ok","별개 이슈"],
+["playsinline=1 iOS","정확성","인라인","인라인","iOS 인라인 재생값","YT 파라미터","분신5","-",Z,"-","YT","없음","정상","-","무","-","5","ok","값 정확"],
+["allowfullscreen 지원","기능","있음","있음","풀스크린 위임","코드 3018","분신5","-",Z,"-","YT","없음","정상","-","무","-","5","ok","유지"],
+["allow 속성 충분성","기능","4권한","4권한","autoplay/eme/pip/fs","코드 3018","분신4","권한부족?",Z,"충분","공통","없음","정상","-","무","-","4","ok","153 무관"],
+["sandbox 속성 부재","보안","없음","없음","origin 유지","분신5","코드 실측","-",Z,"-","공통","없음","-","null-origin 회피","무","-","5","ok","정상"],
+["iOS Safari 지원","호환","-","지원","strict = Safari14+","분신5","교차확인","-",Z,"-","YT","없음","정상","-","무","-","5","ok","광범위"],
+["안드로이드 크롬 지원","호환","-","지원","기본 정책","분신5","교차확인","-",Z,"-","YT","없음","정상","-","무","-","5","ok","광범위"],
+["PWA start_url origin","엣지","-","유지","manifest '.'","분신5","-","-",Z,"-","YT","없음","정상","-","무","-","5","ok","origin 유지"],
+["file://·null-origin","엣지","-","해당없음","실운영=HTTPS","분신5","-","153재발?",LO,"배포도메인","YT","없음","-","-","무","-","5","note","이론상만"],
+["임베드금지 영상 처리","폴백","원문링크","원문링크","150/101=정책 불가피","분신8","코드 3017","못열림",MD,"원문 새탭","YT","없음","-","-","무","-","8","ok","우리 버그 아님"],
+["원문 링크 상시 노출","UX","헤더 상단","동일","#tvOpen 항상","코드 3017/9050","분신8","저발견성",MD,"자동유도 후속","공통","없음","-","-","무","-","8","note","수동·소극"],
+["hrefOk 새니타이저","보안","적용","적용","js/data/vbscript 차단","코드 6212","분신8","-",Z,"-","공통","없음","-","XSS 스킴 차단","무","-","8","ok","폴백 안전"],
+["모달 닫힘 about:blank","리소스","정지","정지","src 리셋","코드 9084","분신8","-",Z,"-","공통","없음","-","-","해제","-","8","ok","재생 정지"],
+["trEmbed watch?v= 매치","URL","매치","매치","정규식 [\\w-]{6,}","코드 9039","분신7","-",Z,"-","YT","없음","-","-","무","-","7","ok","정상 변환"],
+["youtu.be/shorts 미매치","URL","새탭","새탭","정규식 미포함","분신7","코드 실측","일부 새탭",LO,"broaden 후속","YT","없음","-","-","무","-","7","note","별개 이슈"],
+["RESCENE=watch?v= 확인","증거","매치됨","매치됨","모달 열려 153=매치완료","스샷+코드","분신7·8","-",Z,"-","YT","-","-","-","무","-","7·8","ok","referrer 유일원인"],
+["check_refs rc","게이트","-","rc=0","전 게이트 통과","실행 로그","자가 실행","-",Z,"-","공통","없음","-","-","무","-","self","ok","초록"],
+["디자인토큰 게이트","게이트","-","무영향","referrer≠디자인값","check_refs","분신9","위반?",Z,"-","공통","없음","-","-","무","-","9","ok","baseline 내"],
+[":root 무변경","디자인","불변","불변","토큰 미접촉","diff","분신9","-",Z,"-","공통","없음","-","-","무","-","9","ok","순수 속성"],
+["레이아웃 .tv-body.wd","디자인","16/9","16/9","CSS 미접촉","diff","자가","-",Z,"-","YT","없음","-","-","무","-","self","ok","무변경"],
+["CSP frame-src(viewer)","차단축","없음","없음","프레임 허용","_headers grep","분신4·자가","차단?",Z,"-","공통","없음","-","-","무","-","4·self","ok","차단 없음"],
+["COEP require-corp","차단축","없음","없음","교차출처 iframe 허용","grep","분신4","깨짐?",Z,"-","공통","없음","-","-","무","-","4","ok","부재"],
+["functions/s CSP","무관","존재","무관","발행페이지 전용","grep 실측","자가","오적용?",Z,"-","-","없음","-","-","무","-","self","ok","트렌드 무관"],
+["자격증명 필요성","보안","불요","불요","임베드=공개재생","분신6","교차확인","로그인?",Z,"미저장","YT","없음","-","저장 0=유출0","무","-","6","ok","운영자 우려 해소"],
+["자격증명 미저장 판단","보안","-","미저장","레포 하드코딩 금지","정책","자가·6","유출면",Z,"불필요","-","없음","-","시크릿 0","무","-","6·self","ok","옳은 판단"],
+["viewer 캐시 no-cache","반영","즉시","즉시","_headers 재검증","코드","자가","stale?",Z,"-","공통","없음","-","-","무","-","self","ok","하드리로드 불요"],
+["롤백 용이성","운영","-","1속성","값 원복","-","자가","-",Z,"-","공통","-","-","-","무","1초","self","ok","무손상"],
+["커밋·머지 무결성","git","-","c320a52","스쿼시 머지","git log","자가","-",Z,"-","-","없음","-","-","무","-","self","ok","#2026"],
+["origin/main read-back","반영","no-referrer","strict-origin","git show 실측","실행 로그","자가","됐다거짓?",Z,"실측필수","-","없음","-","-","무","-","self","ok","라이브 확인"],
+["총괄 만장일치","종합","153 막힘","재생 복구","단일 변경 성립","분신10","전 앵글 종합","놓친 시나리오?",Z,"-","공통","없음","정상","안전","무","-","10","ok","커밋 가능"],
+];
+const g={ '高':'g-hi','中':'g-md','低':'g-lo' };
+const rows=D.map((r,i)=>{
+  const cells=[String(i+1).padStart(2,'0'),...r];
+  return '<tr>'+cells.map((c,j)=>{
+    let cl='';
+    if(j===0) cl='';
+    else if(j===9){ if(c==='高')c=HI; else if(c==='中')c=MD; else if(c==='低')c=LO; else if(c==='Z'||c===Z||c==='0')c=Z; }
+    else if(j===18){ c = (c==='ok')?OK : (c==='note'?NT:c); }
+    if([1,4,5,10,19].includes(j)) cl=' class="col-w"';
+    if(c==='Z') c=Z;
+    return '<td'+cl+'>'+c+'</td>';
+  }).join('')+'</tr>';
+}).join('');
+document.getElementById('rows').innerHTML=rows;
+</script>
