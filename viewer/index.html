@@ -737,6 +737,12 @@
     mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat; }   /* 접기 체브론 = .trend-sec 디스클로저 동일 mask 계승 */
   .tgroup:not([open]) .tgroup-h::after { transform:rotate(-90deg); }
   .tgroup:not([open]) .tgroup-h { margin-bottom:0; }
+  /* 접기/펼치기 부드러운 애니(운영자 260712 #1 "촤르륵") — CSS-only 프로그레시브 인핸스먼트: ::details-content 미지원 브라우저는 종전 스냅(회귀 0) */
+  .tgroup { interpolate-size:allow-keywords; }   /* auto 높이 보간 허용 — 이 서브트리 한정(전역 부작용 차단) */
+  .tgroup::details-content { block-size:0; overflow:clip; transition:block-size .32s var(--ease), content-visibility .32s allow-discrete; }
+  .tgroup[open]::details-content { block-size:auto; }
+  .tgroup-h { transition:margin-bottom .32s var(--ease); }   /* 헤더 하단 간격도 동반 슬라이드(펼침 14→0 스냅 방지) */
+  @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .tgroup-h { transition:none; } }
   .tgroup-h .tdash-time { margin-left:12px; margin-right:auto; }   /* 수집시각 = 타이틀 옆 유지 · 체브론(ml:auto)과 공존 = 시각이 좌측군 */
   .tgroup-h i { font-style:normal; color:var(--accent); font-variant-numeric:tabular-nums; }   /* 단위 순번(1 AI 요약·2 TOP 10·3+ 플랫폼) = 랭크 강조색 문법(.trend-rank) 계승 */
   /* ── TOP 카드 레일(.tpg/.tpc — 운영자 260712 플레이그라운드 선택값 배선: 레일 2행(1~5/6~10)·카드 148·1:1 커버 r-s·순위 필 h15/fs10·구분자행(cat 재지정)→제목 2줄 11px→원시 조회+우측 시간(relAge)·NEW만·로테이션 글로우) — 구 .tdr 행 리스트 폐지 ── */
@@ -8923,7 +8929,7 @@ function renderSnsTrends() {
     box._trBound = true;
     box.addEventListener('click', e => {
       const ri = e.target.closest('.trail-i');   // 책갈피 레일 = 그룹 점프(TOP = 최상단 · scroll-margin-top 계승)
-      if (ri) { const g2 = ri.dataset.tg; if (g2 === 'top') window.scrollTo({ top: 0, behavior: 'smooth' }); else { const el2 = document.getElementById('tg-' + g2); if (el2) el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+      if (ri) { const g2 = ri.dataset.tg; if (g2 === 'top') window.scrollTo({ top: 0, behavior: 'smooth' }); else { const el2 = document.getElementById('tg-' + g2); if (el2) { if (!el2.open) el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } return; }   // 레일 점프 = 접힌 섹션이면 펼치며(촤르륵 애니 + toggle이 nm_trend_gfold 기억) 스크롤·IO 점등 = 좌측 네비 동시작동(운영자 260712 #2)
       const mb = e.target.closest('.tsk-more, .tstk-bk, .tstk-seg button');   // 스택 컨트롤(더보기·처음/중간) = 앵커보다 선처리
       if (mb) { e.preventDefault(); if (mb.classList.contains('tsk-more')) { box._tsMore = true; box._tsO = 10; } else { box._tsO = +(mb.dataset.go || 0); } box._tsLast = Date.now(); if (box._tsDraw) box._tsDraw(); return; }
       if (box._tsSw) { box._tsSw = 0; e.preventDefault(); return; }   // 스와이프 직후 클릭 = 항행 오탭 억제
