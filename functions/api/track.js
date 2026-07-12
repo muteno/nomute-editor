@@ -34,26 +34,47 @@ export async function onRequestPost({ request, env }) {
     const r = body.render;
     const id = String(r.id || '').trim();
     if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(id)) return json({ error: '잘못된 작업 ID' }, 400);
-    const mode = r.mode === 'pinset' ? 'pinset' : r.mode === 'keying' ? 'keying' : 'mosaic';
-    // ── 키잉 경로 — keep(피사체 sid) + keepP(얼굴 단위 pid · 260710) + extra(수동 지정 {t초, x·y 정규 0..1}) · py에서 재클램프 = 이중 방어
-    if (mode === 'keying') {
+    const mode = r.mode === 'pinset' ? 'pinset' : r.mode === 'keying' ? 'keying' : r.mode === 'maskfx' ? 'maskfx' : r.mode === 'chroma' ? 'chroma' : 'mosaic';
+    const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;
+    // ── 크로마키(M3) — 대상 선택 없음(색만) · 노출 노브 = 색·강도·테두리·부드럽게(운영자 260712) · 나머지 = 서버 고정 주입 · py에서 재클램프 = 이중 방어
+    if (mode === 'chroma') {
+      const o = (r.opts && typeof r.opts === 'object') ? r.opts : {};
+      const copts = { despill: 0.5, blend: 0.05, edge: 'high' };   // 고정 = 그린물 제거·경계 전이·테두리 우선(속도 대가 수용 — 운영자 "테두리" 우선)
+      const CKC = { green: '#00FF00', blue: '#0000FF' };   // 뷰어 = 키워드만(디자인 게이트 hex 0) → 여기서 hex 해석 · 직접 hex도 허용(직접 dispatch)
+      copts.color = CKC[o.color] || ((typeof o.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(o.color)) ? o.color : CKC.green);
+      const si = num(o.similarity, 0.01, 0.5); copts.similarity = si === null ? 0.18 : Math.round(si * 100) / 100;
+      const ch = num(o.choke, -4, 4); copts.choke = ch === null ? 0 : Math.round(ch);
+      const fe = num(o.feather, 0, 10); copts.feather = fe === null ? 1 : Math.round(fe);
+      const payload = JSON.stringify({ mode, opts: copts });
+      const rr = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
+        ref: REF, inputs: { id, mode: 'render', render: payload },
+      });
+      if (rr.status === 204) return json({ ok: true, id, out: `track_out/${id}/video.json` });
+      return json({ error: `렌더 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);
+    }
+    // ── 키잉·실루엣(M4) 경로 — keep(피사체 sid) + keepP(얼굴 단위 pid · 260710) + extra(수동 지정 {t초, x·y 정규 0..1}) · py에서 재클램프 = 이중 방어
+    if (mode === 'keying' || mode === 'maskfx') {
       const keep = Array.isArray(r.keep) ? [...new Set(r.keep.filter(t => Number.isInteger(t) && t >= 1 && t <= 99))].slice(0, 4) : [];
       const keepP = Array.isArray(r.keepP) ? [...new Set(r.keepP.filter(t => Number.isInteger(t) && t >= 1 && t <= 99))].slice(0, 4) : [];   // keep 산식 미러
-      const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;
       const extra = [];
       if (Array.isArray(r.extra)) {
         for (const e of r.extra) {
           if (!e || typeof e !== 'object') continue;
-          const t = num(e.t, 0, 90), x = num(e.x, 0, 1), y = num(e.y, 0, 1);   // 90 = py KEY_MAX_SEC 정합(평의회5) — 분석 300s 상향과 무관(키잉 캡 불변)
+          const t = num(e.t, 0, 90), x = num(e.x, 0, 1), y = num(e.y, 0, 1);   // 90 = py KEY_MAX_SEC 정합(평의회5) — 분석 300s 상향과 무관(키잉·실루엣 캡 불변)
           if (t !== null && x !== null && y !== null) extra.push({ t: Math.round(t * 100) / 100, x: Math.round(x * 10000) / 10000, y: Math.round(y * 10000) / 10000 });
           if (extra.length >= 4) break;
         }
       }
-      if (keep.length + keepP.length + extra.length < 1) return json({ error: '남길 피사체를 골라줘' }, 400);
+      if (keep.length + keepP.length + extra.length < 1) return json({ error: mode === 'maskfx' ? '가릴 피사체를 골라줘' : '남길 피사체를 골라줘' }, 400);
       if (keep.length + keepP.length + extra.length > 4) return json({ error: '피사체는 최대 4개까지야' }, 400);
       const kopts = {};
       const fe = num(r.opts && r.opts.feather, 0, 40); if (fe !== null) kopts.feather = Math.round(fe);
-      const payload = JSON.stringify({ mode, keep, keepP, extra, opts: kopts });
+      const base = { mode, keep, keepP, extra, opts: kopts };
+      if (mode === 'maskfx') {   // 채움 = 블록 픽셀레이트 ↔ 내장 가면(경로 아닌 프리셋명만 — py 화이트리스트와 이중)
+        base.fill = r.fill === 'image' ? 'image' : 'mosaic';
+        if (base.fill === 'image') base.preset = ['smile', 'black', 'heart'].includes(r.preset) ? r.preset : 'smile';
+      }
+      const payload = JSON.stringify(base);
       if (payload.length > 4000) return json({ error: '선택이 너무 많아 — 줄여줘' }, 400);
       const rr = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
         ref: REF, inputs: { id, mode: 'render', render: payload },
