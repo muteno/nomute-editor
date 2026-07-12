@@ -207,34 +207,6 @@ jobs:
                   produced.append(emit(ov, image, fmt1, base, flags))
           else:
               sys.exit(f'::error::알 수 없는 app: {app}')
-          # ── 저작권(+안내문) 합성(운영자 260712 "어차피 합칠 내용이면 합쳐서") — params.copyright 있을 때만 /1·/2 산출 파일 자체에 2K 알파합성. 파일 수·경로·라벨 불변(기존 발사 무접촉) · nomute_*.py 스크립트 불변(import·subprocess 조합만) · 실패 = 경고 후 원본 유지(fail-soft = 렌더 자체는 절대 안 죽임). ──
-          _cr = params.get('copyright')
-          if app in ('1', '2') and isinstance(_cr, dict) and produced:
-              try:
-                  from PIL import Image as _I9
-                  from nomute_copyright import SCALE as _MCS
-                  fmtc = 'reels' if app == '2' else params.get('fmt', 'post')   # 산출물 포맷 = 합성 캔버스 포맷(프론트가 cpThumb 일치 payload에만 동봉)
-                  crp = '/tmp/_crmerge.png'
-                  subprocess.run(['python3', 'apps/thumbnail/nomute_copyright.py', crp, fmtc,
-                                  str(_cr.get('year', '2026')), str(_cr.get('name', '')), str(_cr.get('platform', ''))], check=True)
-                  layer = _I9.open(crp).convert('RGBA')     # 스크립트 원본 출력 = 2K(다운스케일 전) → /1·/2 산출물(2160×3840/2700)과 픽셀 동일 크기
-                  for gi, gl in enumerate(params.get('guide') or []):   # 안내문 동반 — 저작권(y100) 아래 46px 리듬 스택(app4 계승)
-                      gtmp = f'/tmp/_crguide{gi}.png'
-                      subprocess.run(['python3', 'apps/thumbnail/nomute_copyright.py', gtmp, fmtc, '--raw', gl], check=True)
-                      gpart = _I9.open(gtmp).convert('RGBA')
-                      layer.paste(gpart, (0, (gi + 1) * 46 * _MCS), gpart)
-                  for f in list(produced):
-                      base = _I9.open(f)
-                      if base.size != layer.size:
-                          print(f'::warning::저작권 합성 크기 불일치 {base.size} != {layer.size} — {f} 원본 유지'); continue
-                      merged = _I9.alpha_composite(base.convert('RGBA'), layer)
-                      if f.endswith('.jpg'):
-                          save_jpg(merged, f)
-                      else:
-                          merged.save(f, optimize=True)
-                      print(f'MERGED copyright -> {f}')
-              except Exception as _e:
-                  print(f'::warning::저작권 합성 실패({_e}) — 원본 산출 유지')
           from PIL import Image
           for f in produced:
               im = Image.open(f)

@@ -77,16 +77,6 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  // 저작권(+안내문) 합성 동봉(운영자 260712 "어차피 합칠 내용이면 합쳐서") — /1·/2 산출물 위 2K 알파합성용 파라미터. 검증 = app3와 동일 규칙 · 미충족 = 조용히 드롭(발사 자체는 유지 = fail-soft · outs 경로/개수 불변 = 기존 무접촉).
-  if ((app === '1' || app === '2') && p.copyright && typeof p.copyright === 'object') {
-    const year = clip(p.copyright.year, 8), name = clip(p.copyright.name, 60), platform = clip(p.copyright.platform, 60);
-    if (year && name && platform && /^\d{1,8}$/.test(year)) {
-      params.copyright = { year, name, platform };
-      const guide = cleanLines(p.guide).slice(0, 2);   // 안내문 동반 = 최대 2줄(경고문 UI 캡과 동기)
-      if (guide.length) params.guide = guide;
-    }
-  }
-
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙 · build-viewer thIdTs가 +09:00로 파싱 = 제작시각 정확) · -rand=동초 충돌 방지
 
   // 배경 이미지 업로드(uploads/<id>/src.*) — /1·/2 오버레이 모두 옵션(이미지 있을 때만 업로드)
