@@ -40,19 +40,8 @@
 
   ⑤ 쇼츠·AI 영상(운영자 260711) = InnerTube 검색 파생(무키·쇼츠 = <4분 protobuf 필터·AI = 원본
      AI_YT_QUERIES 4종 — 둘 다 조회수 정렬·주간·likes/cmts 없음 = 조회수 단일 지표).
-  ⑥ 레딧 = 서브레딧 핫 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음") — env `SNS_REDDIT`
-     게이트(§📰-e 카나리아: dispatch 실측 승격 전 cron OFF). 서브레딧 = env `REDDIT_SUBS`(기본
-     popular,korea,worldnews — popular = NSFW/격리 제외 인기 자동축·korea/worldnews = 해외 반응축).
-     ⚠️ 러너(데이터센터 IP) 403/429 가능 = 카나리아가 판정 · 실패 = [](직전분 보존).
-  ⑦ 블루스카이 = 공개 AppView What's Hot 피드(무키 · public.api.bsky.app — AT프로토콜 공개 설계
-     = 데이터센터 IP 친화·IP당 5분 3천req) — env `SNS_BSKY` 게이트(동일 카나리아). 스레드가
-     주려던 텍스트SNS 인기글의 러너 무료축(운영자 260712 검토 승인 흐름).
-  ⑧ 스레드 구독(운영자 260712 "맥에서 크롬 통해 접근 가능") = ④ 구독 축의 5번째 플랫폼.
-     ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너는 수집 안 함(subs.threads = 폰/맥
-     가정 IP 경로 scripts/phone_subs.py 전용 — X·인스타 폰 채택 관용구에 편승). 계정 목록 =
-     sns_accounts.json "threads" 키(스키마 동일 · 모달 탭 UI = 배치 승인 후 후속 §디자인 j).
 
-산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, shorts[], aivid[], subs{}, reddit[], bsky[]}
+산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, shorts[], aivid[], subs{}}
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
@@ -76,8 +65,6 @@ CTX = ssl.create_default_context()
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
-REDDIT_ON = (os.environ.get("SNS_REDDIT") or "").strip() == "1"   # ⑥ 레딧 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
-BSKY_ON = (os.environ.get("SNS_BSKY") or "").strip() == "1"       # ⑦ 블루스카이 게이트(동일)
 
 
 def _get(url, timeout=15):
@@ -223,7 +210,7 @@ def tiktok(limit=15, calls=6):
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
 
 
-_REG_CAP = {"x": 20, "tiktok": 15, "insta": 10, "youtube": 15, "threads": 10}   # 지역(한국/세계)별 상한 — snsacc.js CAP와 대칭(인스타 = 6s/콜 최중이라 최소 · 운영자 260712 "계정 최대한" · 스레드 = 인스타와 동일 Meta 벽이라 보수 10)
+_REG_CAP = {"x": 20, "tiktok": 15, "insta": 10, "youtube": 15}   # 지역(한국/세계)별 상한 — snsacc.js CAP와 대칭(인스타 = 6s/콜 최중이라 최소 · 운영자 260712 "계정 최대한")
 
 
 def _load_accounts():
@@ -232,7 +219,7 @@ def _load_accounts():
     없음/파손/타입 오염 = 해당 분 빈 목록(fail-soft · 평의회1: 본문 전체 try + isinstance 가드).
     RX 형식검증·대소문자 dedup(지역 교차 = kr 우선)·지역별 상한(_REG_CAP) = snsacc.js cleanPlat과 대칭.
     반환 = (플랫폼별 평면 핸들 목록[kr 먼저 = 수집 우선순위], 지역 맵 dict[k][handle.lower()]='kr'|'gl')."""
-    out = {k: [] for k in ("x", "tiktok", "insta", "youtube", "threads")}
+    out = {k: [] for k in ("x", "tiktok", "insta", "youtube")}
     reg = {k: {} for k in out}
     try:
         j = json.load(open(ACC, encoding="utf-8"))
@@ -442,108 +429,6 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
-def threads_subs(accounts, limit=10, deadline=None):
-    """⑧ 스레드 구독 계정 최신 포스트 — 프로필 HTML 임베드 JSON(무인증 게스트 · 운영자 260712).
-    ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너 미호출(폰/맥 가정 IP = phone_subs.py 전용).
-    파싱 = doc_id 하드코딩(썩음) 대신 data-sjs 스크립트 전부 json.loads → 재귀 walk로
-    {code·caption·like_count} 포스트 노드 채집(innertube walk 관용구 — 레이아웃 이동 내성).
-    계정별 fail-soft·콜 간 4s(x_subs 실측 계승 — Meta 연타 = 전멸 유발). 정렬 = 좋아요."""
-    out, seen = [], set()
-    for i, acc in enumerate(accounts):
-        if _over(deadline):
-            print("::warning::threads 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
-            break
-        if i:
-            time.sleep(4)
-        try:
-            h = _get("https://www.threads.com/@" + urllib.parse.quote(acc))
-            posts = []
-
-            def walk(n):
-                if isinstance(n, dict):
-                    if n.get("code") and isinstance(n.get("caption"), dict) and "like_count" in n:
-                        posts.append(n)
-                    for v in n.values():
-                        walk(v)
-                elif isinstance(n, list):
-                    for v in n:
-                        walk(v)
-            for m in re.finditer(r'<script type="application/json"[^>]*data-sjs[^>]*>(.*?)</script>', h, re.S):
-                try:
-                    walk(json.loads(m.group(1)))
-                except Exception:  # noqa: BLE001
-                    continue   # 비JSON·파셜 블롭 = 개별 스킵(다른 블롭 계속)
-            if not posts:
-                print(f"::warning::threads @{acc} 포스트 노드 0(레이아웃 변경·로그인월·차단 가능 — 스킵)", file=sys.stderr)
-            for p in posts:
-                code = p.get("code") or ""
-                txt = ((p.get("caption") or {}).get("text") or "").strip()
-                if not code or not txt or code in seen:
-                    continue
-                seen.add(code)
-                user = ((p.get("user") or {}).get("username")) or acc
-                tpa = p.get("text_post_app_info") if isinstance(p.get("text_post_app_info"), dict) else {}
-                out.append({"account": user, "text": txt[:280], "likes": _i(p.get("like_count")),
-                            "cmts": _i(tpa.get("direct_reply_count")), "time": p.get("taken_at") or 0,
-                            "url": "https://www.threads.com/@%s/post/%s" % (user, code)})
-        except Exception as e:  # noqa: BLE001
-            print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
-    return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
-
-
-def reddit_hot(subreddits, limit=12, per=8):
-    """⑥ 레딧 서브레딧 핫 — 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음").
-    서브레딧별 fail-soft·콜 간 2s · sticky(공지)·NSFW 컷 · 교차 dedup. 정렬 = 스코어.
-    ⚠️ 러너 데이터센터 IP 403/429 가능 — §📰-e 카나리아가 판정(실패 = [] = 직전분 보존)."""
-    out, seen = [], set()
-    for i, sr in enumerate(subreddits):
-        if i:
-            time.sleep(2)
-        try:
-            j = json.loads(_get("https://www.reddit.com/r/%s/hot.json?limit=%d&raw_json=1" % (urllib.parse.quote(sr), per)))
-            for c in ((j.get("data") or {}).get("children") or []):
-                d = c.get("data") or {}
-                pid = d.get("id") or ""
-                if not pid or pid in seen or d.get("stickied") or d.get("over_18"):
-                    continue
-                seen.add(pid)
-                th = d.get("thumbnail") or ""
-                out.append({"sub": d.get("subreddit") or sr, "title": (d.get("title") or "").strip()[:200],
-                            "score": _i(d.get("score")), "cmts": _i(d.get("num_comments")),
-                            "thumb": th if th.startswith("http") else "",   # "self"/"default" 플레이스홀더 문자열 컷
-                            "time": int(d.get("created_utc") or 0),
-                            "url": "https://www.reddit.com" + (d.get("permalink") or "")})
-        except Exception as e:  # noqa: BLE001
-            print(f"::warning::reddit r/{sr} 실패(스킵): {e}", file=sys.stderr)
-    return sorted(out, key=lambda t: t["score"], reverse=True)[:limit]
-
-
-def bsky_hot(limit=12):
-    """⑦ 블루스카이 인기 — 공개 AppView What's Hot 피드(무키 · AT프로토콜 공개 설계 = 데이터센터
-    IP 친화·IP당 5분 3천req). 단일 콜·fail-soft(실패 = [] = 직전분 보존). 정렬 = 좋아요."""
-    try:
-        j = json.loads(_get("https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed?feed=" +
-                            urllib.parse.quote("at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot") +
-                            "&limit=30"))
-        out, seen = [], set()
-        for e in j.get("feed") or []:
-            p = e.get("post") or {}
-            uri, rec, a = p.get("uri") or "", p.get("record") or {}, p.get("author") or {}
-            txt = (rec.get("text") or "").strip()
-            if not uri or not txt or uri in seen:
-                continue
-            seen.add(uri)
-            hd = a.get("handle") or ""
-            out.append({"account": hd, "name": (a.get("displayName") or "").strip()[:40], "text": txt[:280],
-                        "likes": _i(p.get("likeCount")), "rts": _i(p.get("repostCount")), "cmts": _i(p.get("replyCount")),
-                        "time": rec.get("createdAt") or "",
-                        "url": "https://bsky.app/profile/%s/post/%s" % (hd, uri.rsplit("/", 1)[-1])})
-        return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
-    except Exception as e:  # noqa: BLE001
-        print(f"::warning::bsky 실패(스킵): {e}", file=sys.stderr)
-        return []
-
-
 def _annotate_rank(cur, prev, keyfn):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
@@ -617,9 +502,6 @@ def main():
     # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
     sh = youtube_innertube(limit=12, shorts=True)          # 쇼츠 = 인기 쿼리 + <4분 필터(원본 protobuf 이식)
     ai = youtube_innertube(limit=12, queries=AI_QUERIES)   # AI 영상 = 원본 AI_YT_QUERIES 4종
-    # ⑥⑦ 레딧·블루스카이(운영자 260712 "레딧은 좋음"·"다른거 ㄱㄱ") — 게이트 OFF = 완전 무접촉(§📰-e 카나리아)
-    rd = reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()]) if REDDIT_ON else []
-    bs = bsky_hot() if BSKY_ON else []
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
     subs_new, acc = None, None
     if SUBS_ON:
@@ -628,8 +510,7 @@ def main():
         # workflow timeout을 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
         dl = time.monotonic() + (_i(os.environ.get("SNS_SUBS_BUDGET")) or 240)   # 비수치 env = 240 폴백(파스 크래시 가드 · 재검증1)
         subs_new = {"x": x_subs(acc["x"], limit=20, deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], limit=20, deadline=dl),
-                    "insta": insta_subs(acc["insta"], limit=20, deadline=dl), "youtube": yt_subs(acc["youtube"], limit=20, deadline=dl),
-                    "threads": []}   # ⑧ 스레드 = 러너 미수집(Meta 데센 IP 차단 — 인스타 동류) · 폰/맥 채택(아래)이 유일 공급원
+                    "insta": insta_subs(acc["insta"], limit=20, deadline=dl), "youtube": yt_subs(acc["youtube"], limit=20, deadline=dl)}
         for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
             for it in items:
                 it["region"] = accreg.get(k2, {}).get((it.get("account") or "").lower(), "gl")
@@ -639,7 +520,7 @@ def main():
             _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
             _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
             if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
-                for k2 in ("x", "insta", "threads"):   # 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
+                for k2 in ("x", "insta"):
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
                     if _pl:
                         subs_new[k2] = _pl
@@ -647,7 +528,7 @@ def main():
         except Exception:
             pass
     subs_any = bool(subs_new) and any(subs_new.values())
-    if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs:
+    if not yt_all and not gt and not tk and not sh and not ai and not subs_any:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
@@ -659,8 +540,6 @@ def main():
     _annotate_rank(tk, (prev.get("tiktok") or {}).get("videos"), lambda t: t.get("url"))
     _annotate_rank(sh, prev.get("shorts"), lambda v: v.get("id"))
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
-    _annotate_rank(rd, prev.get("reddit"), lambda t: t.get("url"))   # ⑥⑦ 신규 축도 델타·이력 규격 동일(표시 전용)
-    _annotate_rank(bs, prev.get("bsky"), lambda t: t.get("url"))
     psubs = prev.get("subs") or {}
     subs = psubs
     if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
@@ -669,13 +548,13 @@ def main():
             return [{f: v for f, v in it.items() if f not in ("delta", "isNew")}
                     for it in (psubs.get(k) or []) if isinstance(it, dict)]
         if subs_any:
-            for k in ("x", "tiktok", "insta", "youtube", "threads"):
+            for k in ("x", "tiktok", "insta", "youtube"):
                 _annotate_rank(subs_new[k], psubs.get(k),
                                (lambda v: v.get("id")) if k == "youtube" else (lambda v: v.get("url")))
         # 플랫폼별 fail-soft: 이번 런 실패(빈) = 직전분 유지(배지 스트립) · 단 계정 목록 자체가 비면 즉시 []
         # (or 폴백이 '수집 실패 보존'과 '구독 전체 해제'를 구분 못해 옛 데이터가 영영 잔존하던 구멍 — 평의회8 F1)
         subs = {"updated": now if subs_any else (psubs.get("updated") or now),   # 전멸 런 = 직전 수집 시각 유지(신선 오표기 방지)
-                **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube", "threads")}}
+                **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube")}}
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
@@ -688,17 +567,15 @@ def main():
         "tiktok": ({"updated": now, "videos": tk} if tk else prev.get("tiktok") or {}),
         "shorts": sh or prev.get("shorts") or [],   # ⑤ 쇼츠(검색 파생 근사 · 실패 = 직전분)
         "aivid": ai or prev.get("aivid") or [],     # ⑤ AI 영상(원본 쿼리 세트 · 실패 = 직전분)
-        "subs": subs,   # 구독 축(④⑧) — {updated, x[], tiktok[], insta[], youtube[], threads[]} · 미수집 = 직전분/{}
-        "reddit": rd or prev.get("reddit") or [],   # ⑥ 레딧(게이트 OFF/실패 = 직전분)
-        "bsky": bs or prev.get("bsky") or [],       # ⑦ 블루스카이(게이트 OFF/실패 = 직전분)
+        "subs": subs,   # 구독 축(④) — {updated, x[], tiktok[], insta[], youtube[]} · 미수집 = 직전분/{}
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # errors=replace = 상류 lone-surrogate가 encode 크래시로 런 전체를 버리는 엣지 차단(평의회6 — 극귀·해당 문자만 ? 치환)
     json.dump(data, open(OUT, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
-    sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'}")
+    sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube")) if sb else "OFF"
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'}")
 
 
 if __name__ == "__main__":
