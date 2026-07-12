@@ -6097,6 +6097,7 @@ const ROCKET_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 const STAR_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9z"/></svg>';   // ★ 평점
 const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>';   // 🔗 출처·⛓ 교차
 const FIRE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-2.5C9 9 9 11 11 11c0-2-1-4 1-9z"/><path d="M8.5 13a5.5 5.5 0 1 0 7 0c0 2-1.5 3-1.5 3s.5-3-2-5c-1 2-3 3-3 7z"/></svg>';   // 🔥 burst
+const AISPARK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M12 2c.5 4.2 1.9 5.6 6 6-4.1.4-5.5 1.8-6 6-.5-4.2-1.9-5.6-6-6 4.1-.4 5.5-1.8 6-6z"/><path d="M19 12.5c.25 2 .95 2.75 3 3-2.05.25-2.75.95-3 3-.25-2-.95-2.75-3-3 2.05-.25 2.75-.95 3-3z"/></svg>';   // ✨ AI(요약 그룹 픽토그램 · 운영자 260712)
 const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M6 9l6 6 6-6"/></svg>';   // ▾ 더보기(접기=회전 클래스)
 // 소스칩 픽토그램(SNS 네이버 계열) — 카페=☕컵(정면·커뮤니티) · 블로그=✒️펜(1인 창작). 지식iN은 픽토 없이 이름만. 크기는 .soc-chip .ico svg가 11px로. 운영자 260704.
 const CAFE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 11.3a2 2 0 0 1-2 1.7H9a2 2 0 0 1-2-1.7L6 8z"/><path d="M4.5 8h15"/><path d="M9.2 2.8c-.6 1 .6 1.8 0 2.8M14.2 2.8c-.6 1 .6 1.8 0 2.8"/></svg>';   // ☕ 컵 정면 + 김
@@ -8912,8 +8913,9 @@ function renderSnsTrends() {
   h += '<div class="trend-head"><button class="trend-accbtn" type="button" aria-label="구독 계정 관리">계정</button></div>';   // 헤드 행 = 우측 '계정'만(구독 관리 · 260711 배치 승인) — 수집시각은 TOP 10 타이틀 옆 이주(운영자 260712 "top 10 옆 간격 확보·높이 중앙정렬")
   // 최상위 단위(운영자 260712 "블릿 위 단위 = 접을 수 있게 + 글래스 + 도형 얹힘") = [AI 요약][실시간 TOP 10][각 플랫폼] 전부 details 접기 · 전역 순번 · 헤더 = 글래스 필(타이틀이 도형 위에 얹힘 · .sc-tg 값 계승) · 기억 = nm_trend_gfold
   let TGF = {}; try { TGF = JSON.parse(localStorage.getItem('nm_trend_gfold') || '{}') || {}; } catch { TGF = {}; }
-  let gno = 0;
-  const gsec = (id, ttl, body) => `<details class="tgroup${gno === 0 ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i>${++gno}</i>${ttl}</summary>${body}</details>`;
+  let gno = 0, gfirst = true;
+  const GPIC = { brief: AISPARK_SVG, top: FIRE_SVG };   // AI 요약·TOP 10 = 숫자 대신 픽토그램("0" 의미 = 순번 밖) · 플랫폼 그룹부터 1,2,3 (운영자 260712)
+  const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || ++gno}</i>${ttl}</summary>${body}</details>`; };
   if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span></div>`);
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
     '<div class="tg-topbody"><div class="tlist">' + top.map((it, i) =>
