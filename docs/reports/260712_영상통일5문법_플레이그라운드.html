@@ -1,0 +1,216 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>영상 스튜디오 통일 5문법 — 이미지·영상 전·영상 후</title>
+<style>
+  :root{ /* viewer :root 사본(스냅샷 · 값 정본 = viewer/index.html) */
+    --bg:#0b0d0c;--panel:#121316;--fg:#eef7f0;--mut:#8fa697;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.14);
+    --accent:#00EED2;--accent-rgb:0,238,210;--accent-dim:rgba(0,238,210,.13);--green:#0FFD02;--warn:#FFE13D;--danger:#e23b2a;
+    --r-s:9px;--r-m:11px;--r-l:16px;--r-pill:999px;--fs-label:13px;--fw-x:800;--fw-b:700;--ease:cubic-bezier(.22,.61,.36,1);}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1280px;margin:0 auto;padding:22px 14px 80px}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.3px}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 14px}
+  .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:980px){.cols{grid-template-columns:1fr}}
+  .pane{background:#08090b;border:1px solid var(--line2);border-radius:20px;padding:14px 12px 16px}
+  .pane-h{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;margin:0 0 11px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .pane-h .tag{padding:2px 9px;border-radius:var(--r-pill);font-size:10.5px}
+  .tag.ref{color:var(--accent);background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.4)}
+  .tag.old{color:var(--danger);background:rgba(226,59,42,.1);border:1px solid rgba(226,59,42,.4)}
+  .tag.new{color:var(--warn);background:rgba(255,225,61,.08);border:1px solid rgba(255,225,61,.4)}
+  /* 소머리 행(계승) */
+  .csec{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;margin:13px 0 7px;min-height:19px}
+  .csec::before{content:'•';color:var(--accent);font-weight:700}
+  .csec .sep{color:var(--mut);opacity:.5;font-weight:400}
+  .val{color:#1fd6ee;cursor:pointer;font-weight:800}
+  .val:active{transform:scale(.9)}
+  .onoff{position:relative;top:-.3px;margin-block:-3px;padding:3px 5px;font-size:11px;font-weight:800;color:var(--mut);cursor:pointer;user-select:none;transition:color .14s;-webkit-tap-highlight-color:transparent}
+  .onoff.on{color:var(--accent)}
+  .onoff:active{transform:scale(.9)}
+  .fld{width:100%;background:rgba(5,12,8,.4);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--fg);padding:8px 10px;font-size:13px;font-family:inherit}
+  .covrow{display:flex;gap:8px;align-items:stretch;margin-top:4px}
+  .imgslot{flex:1;display:grid;place-items:center;min-height:46px;background:rgba(5,12,8,.4);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--accent)}
+  .imgslot svg{width:22px;height:22px}
+  .ed-chips{flex:2 1 0;min-width:0;display:flex;flex-direction:column;gap:5px;padding:6px;background:rgba(5,12,8,.4);border:1px dashed var(--line2);border-radius:var(--r-s);min-height:74px}
+  .ed-line{display:flex;flex-wrap:wrap;gap:5px}
+  .ed-chip{font-size:13px;padding:2px 6px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--line2);cursor:pointer;user-select:none;transition:.12s}
+  .ed-chip.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:800;box-shadow:0 0 8px rgba(var(--accent-rgb),.3)}
+  .ta{flex:2 1 0;min-width:0;min-height:74px;resize:none}
+  .a2in{animation:a2in .32s var(--ease) both}
+  @keyframes a2in{from{opacity:0;transform:translateX(var(--dx,44px))}to{opacity:1;transform:none}}
+  /* 미리보기(고정) + 변형 칩 */
+  .prev{margin-top:12px}
+  .popts{display:flex;gap:6px;margin-bottom:5px}
+  .ropt{padding:3px 10px;border-radius:var(--r-pill);border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--mut);font-size:11px;font-weight:700;cursor:pointer}
+  .ropt.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.08)}
+  .stage-box{position:relative;width:100%;background:#121212;border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden;display:flex;justify-content:center;transition:height .25s var(--ease)}
+  .stage{position:relative;background:linear-gradient(160deg,#33454f,#0c1216);height:100%;overflow:hidden}
+  .stage .grad{position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.9))}
+  .stage .txt{position:absolute;left:8%;right:9%;bottom:14%;font-size:12px;font-weight:800;line-height:1.55}
+  .stage .txt .em{color:var(--green)}
+  /* 영상 스택 카드 */
+  .card{border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.015);border-radius:var(--r-s);margin-top:8px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:6px;padding:9px 11px;font-size:12px;font-weight:800;cursor:pointer;user-select:none;min-height:38px}
+  .card-h::before{content:'•';color:var(--accent);font-weight:700}
+  .card-h .x{margin-left:auto;color:var(--mut);font-weight:400;font-size:14px}
+  .card-b{padding:0 11px 11px;display:none}
+  .card.open .card-b{display:block;animation:a2in .26s var(--ease) both;--dx:0px}
+  .pill{margin-left:auto;padding:2px 10px;border-radius:var(--r-pill);border:1px solid var(--line2);font-size:10px;color:var(--mut);cursor:pointer}
+  .pill.on{color:#032322;background:var(--accent);border-color:var(--accent)}
+  .gauge{flex:1;height:5px;border-radius:var(--r-pill);background:rgba(255,255,255,.12);position:relative;margin:0 6px}
+  .gauge i{position:absolute;left:0;top:0;bottom:0;width:60%;border-radius:var(--r-pill);background:var(--accent)}
+  .chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .chip{padding:5px 11px;border-radius:var(--r-pill);border:1px solid var(--line2);font-size:11px;font-weight:700;color:var(--mut);cursor:pointer;transition:.12s}
+  .chip.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.1)}
+  .chip.dim{opacity:.35;cursor:not-allowed}
+  .card.flat .card-h{cursor:default}
+  .card-r{display:flex;align-items:center;gap:6px;padding:0 11px 10px 24px}
+  .chiprow.inh{display:inline-flex;gap:5px;margin:0;flex-wrap:wrap}
+  .chiprow.inh .chip{padding:3px 9px;font-size:10.5px}
+  .stickyTop{position:sticky;top:0;z-index:3;background:#08090b;padding-bottom:4px}
+  .preblk{margin-left:auto;display:inline-flex;align-items:center}
+  .prelbl{color:var(--mut);font-size:9.5px;letter-spacing:.09em;font-weight:700}
+  .preval{display:inline-block;width:72px;text-align:left;margin-left:10px}   /* 고정폭+좌측정렬 = 어절 길이 바뀌어도 PRESET·값 시작점 불변(투명선 개념) */
+  .attr{margin-top:5px;font-size:10.5px;color:var(--mut);font-weight:600}
+  .attr b{color:var(--accent);font-weight:700}
+  .note{font-size:10.5px;color:var(--mut);margin-top:10px;line-height:1.6}
+  .bad{color:var(--danger)}.good{color:var(--accent)}
+  .go{display:block;width:100%;margin-top:12px;height:38px;border-radius:var(--r-s);border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.1);color:var(--accent);font:800 13px/1 inherit;cursor:pointer}
+  .go:active{transform:scale(.98)}
+  h2{font-size:15px;margin:26px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line2)}
+  table{border-collapse:collapse;font-size:11.5px;width:100%}
+  th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--accent);font-size:11px}
+  .foot{color:var(--mut);font-size:11px;line-height:1.65;margin-top:10px}
+</style>
+<div class="wrap">
+  <h1>영상 스튜디오 통일 — 5문법 적용 전/후 (전부 실작동)</h1>
+  <p class="sub">좌 = 이번에 확립한 이미지 문법(기준) · 중 = 영상 편집 탭 현재(중구난방 재현) · 우 = 5문법 적용 후. 셋 다 직접 탭·토글해봐 — 모션·조건부 등장·미리보기 전부 산다.</p>
+  <div class="cols">
+
+    <!-- ── (이미지) 확립본 ── -->
+    <div class="pane">
+      <div class="pane-h">이미지 · 썸네일 탭 <span class="tag ref">확립 기준</span></div>
+      <div class="csec">헤더</div>
+      <input class="fld" value="8일, 오월드에서 사라진 늑구" readonly>
+      <div class="csec">오버레이 <span class="sep">|</span> <span class="val" id="iFmt">포스트</span> <span class="sep" id="iSep">|</span> <span id="iCnL">카드뉴스</span> <span class="onoff" id="iCn" role="button">OFF</span></div>
+      <div class="covrow" id="iRow">
+        <textarea class="fld ta" id="iTa" readonly>연락이 끊긴 닷새간 늑구는
+*보문산에서 체력을 유지했다*</textarea>
+        <div class="ed-chips" id="iChips" style="display:none">
+          <div class="ed-line"><span class="ed-chip">연락이</span><span class="ed-chip">끊긴</span><span class="ed-chip">닷새간</span></div>
+          <div class="ed-line"><span class="ed-chip on">보문산에서</span><span class="ed-chip on">체력을</span></div>
+        </div>
+        <div class="imgslot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></div>
+      </div>
+      <div class="csec">저작권 <span class="onoff" id="iCp" role="button">OFF</span></div>
+      <div class="prev">
+        <div class="popts" id="iPop"><span class="ropt on" data-k="hdr">흰칸</span><span class="ropt" data-k="body">자막</span></div>
+        <div class="stage-box" id="iBox" style="height:210px"><div class="stage" id="iStage" style="aspect-ratio:9/16">
+          <div class="grad"></div><div class="txt">연락이 끊긴 닷새간 늑구는<br><span class="em">보문산에서 체력을 유지했다</span></div>
+        </div></div>
+      </div>
+      <p class="note"><span class="good">확립 5문법</span> — ① 한 줄 위계(라벨|1차값|하위토글) ② 조건부 등장(포스트일 때만 카드뉴스) ③ .onoff 워드토글(accent/mut·광학보정) ④ 행 좌표 불변(위젯 교체에도 아래 안 출렁) ⑤ 미리보기 자리 고정+변형 칩(세로변 자동)</p>
+    </div>
+
+    <!-- ── (영상 전) 현재 ── -->
+    <div class="pane">
+      <div class="pane-h">영상 · 편집 탭 <span class="tag old">현재 (전)</span></div>
+      <div class="csec">소스</div>
+      <input class="fld" value="clip_260712.mp4 · 148MB" readonly>
+      <div class="card" id="oC1"><div class="card-h" data-t="oC1">비율<span class="x">×</span></div>
+        <div class="card-b">
+          <div class="chiprow"><span class="chip on">9:16</span><span class="chip">1:1</span><span class="chip">4:5</span><span class="chip">16:9</span></div>
+          <div class="chiprow"><span class="chip">자르기</span><span class="chip on">여백(블러)</span><span class="chip dim">생성형 채움</span></div>
+          <div class="prev"><div class="stage-box" style="height:150px"><div class="stage" style="aspect-ratio:9/16"><div class="grad"></div></div></div>
+          <p class="note bad">미리보기가 카드 안 = 접으면 소멸</p></div>
+        </div></div>
+      <div class="card" id="oC2"><div class="card-h" data-t="oC2">프레임<span class="pill" data-p>P</span><span class="x">×</span></div>
+        <div class="card-b"><div class="chiprow"><span class="chip on">60fps 보간</span><span class="chip">30</span><span class="chip">24</span></div><p class="note bad">4K여도 켜짐 → 발사 후 note로 스킵 통보</p></div></div>
+      <div class="card" id="oC3"><div class="card-h" data-t="oC3">음량<span class="pill on" data-p>ON</span><span class="x">×</span></div>
+        <div class="card-b"><div style="display:flex;align-items:center"><span class="note" style="margin:0">강도</span><div class="gauge"><i></i></div><span class="note" style="margin:0">60%</span></div></div></div>
+      <p class="note"><span class="bad">중구난방 지점</span> — 접힌 카드 헤더에 상태 정보 0(펼쳐야 보임) · 토글 문법 3종 혼재(P필·ON필·게이지) · 전제 안 맞는 컨트롤이 dim 상주 · 미리보기 = 비율 카드 귀속 · 펼침·토글마다 아래 카드 출렁</p>
+    </div>
+
+    <!-- ── (영상 후) 5문법 적용 ── -->
+    <div class="pane">
+      <div class="pane-h">영상 · 편집 탭 <span class="tag new">통일 (후)</span></div>
+      <div id="nSrcSec">
+        <div class="csec">소스</div>
+        <button class="fld" id="nUp" style="cursor:pointer;text-align:left;color:var(--mut)">파일 선택 — 탭하면 업로드 시뮬</button>
+      </div>
+      <div id="nPrevSec" class="stickyTop" style="display:none">
+        <div class="csec">PREVIEW <span class="preblk"><span class="prelbl">PRESET</span><span class="preval val" id="nPre" role="button" title="탭=종합→릴스 완성→포맷만→화질만 순환">종합</span></span></div>
+        <div class="stage-box" id="nBox" style="height:150px"><div class="stage" id="nStage" style="aspect-ratio:9/16"><div class="grad"></div></div></div>
+        <div class="attr" id="nAttr"></div>
+      </div>
+      <div class="card flat" id="nC1">
+        <div class="card-h">비율 <span class="sep">|</span> <span class="val" id="nAr" role="button" title="탭=9:16→1:1→4:5→16:9 순환">9:16</span> <span class="sep">|</span> <span class="val" id="nFit" role="button" title="탭=여백(블러)↔자르기">여백(블러)</span> <span class="onoff" id="nPos" role="button" style="display:none">위치</span><span class="x">×</span></div>
+      </div>
+      <div class="card flat" id="nC2">
+        <div class="card-h">프레임 <span class="sep">|</span> <span class="val" id="nFps" role="button" title="탭=60↔30 순환(24 삭제)">60fps</span> <span class="onoff on" id="nItp" role="button">보간</span> <span class="sep">|</span> <span class="val" id="nRes" role="button" title="탭=1080↔4K">1080</span><span class="x">×</span></div>
+      </div>
+      <div class="card flat" id="nC3">
+        <div class="card-h">음량 <span class="sep">|</span> <span class="onoff on" id="nAud" role="button">ON</span><div class="gauge" style="max-width:110px"><i></i></div><span style="font-size:10.5px;color:var(--mut)">60%</span><span class="x">×</span></div>
+      </div>
+      <button class="go">편집 시작</button>
+      <p class="note"><span class="good">적용 결과(운영자 조정 2차)</span> — 선택지 = 도형(필) 0 · 한 카테고리 = 값 하나로 뭉침·탭 = 순환(ovfmt 정본: 9:16→1:1→4:5→16:9 / 여백↔자르기 / 60↔30 / 1080↔4K) · 24fps 삭제 · 카드 = 전부 한 줄(펼침·칩 나열 폐지) · 조건부 등장/소멸(위치=자르기·보간=60+비4K) · 게이지 인라인 · 미리보기 고정+변형 칩</p>
+    </div>
+  </div>
+
+  <h2>5문법 매핑 — 전/후 무엇이 바뀌나</h2>
+  <table>
+    <tr><th>#</th><th>문법(이미지 확립)</th><th>영상 전</th><th>영상 후</th><th>계승원</th></tr>
+    <tr><td>1</td><td>한 줄 위계 `• 라벨 | 1차값 | 하위토글`</td><td>헤더 = 이름만(상태 은닉)</td><td>`• 비율 | 9:16 | 블러` — 접힌 채 전 상태 가독</td><td>썸네일 오버레이 csec</td></tr>
+    <tr><td>2</td><td>조건부 하위 토글 등장/소멸</td><td>dim 상주(생성형 채움)·발사 후 스킵 통보(4K 보간)</td><td>전제 충족 시만 등장(위치=자르기 · 보간=1080 이하)</td><td>카드뉴스 토글(포스트 전제)</td></tr>
+    <tr><td>3</td><td>.onoff 워드토글(-3px·-.3px 보정)</td><td>P필·ON필·칩 3문법 혼재</td><td>.onoff 단일(픽셀 보정 상속)</td><td>.onoff 정본</td></tr>
+    <tr><td>4</td><td>행 좌표 불변</td><td>토글·전환마다 출렁</td><td>헤더 min-height 고정·위젯 높이 매칭</td><td>111px 보정 정신</td></tr>
+    <tr><td>5</td><td>미리보기 고정 + 변형 칩</td><td>비율 카드 귀속(접으면 소멸)</td><td>폼 하단 고정 · [원본|결과] 칩 · 세로변 자동</td><td>#cpPrev 변형 체계</td></tr>
+  </table>
+  <p class="foot">재현 한계 — 실제 edit.html은 카드 8종·레시피 칩·업로드 파이프까지 있으나 여기선 문법 시연에 필요한 3카드만 재현. 값은 보고서 스냅샷(정본 = viewer :root). 이 시안 승인 = edit.html 배선 스펙(자막·프롬프팅 탭은 편집 탭 확정 후 동일 문법 전개). 게이지·레시피 칩 등 영상 고유 축은 유지(문법만 통일).</p>
+</div>
+<script>
+var $=s=>document.querySelector(s);
+// (이미지) 확립본 인터랙션
+var iOn=false;
+$('#iFmt').onclick=function(){ var post=this.textContent==='포스트'; this.textContent=post?'릴스':'포스트';
+  var show=!post?true:false; // 릴스로 바뀌면 카드뉴스 숨김+OFF
+  if(post){ if(iOn) iCnToggle(); ['#iSep','#iCnL','#iCn'].forEach(s=>$(s).style.display='none'); }
+  else ['#iSep','#iCnL','#iCn'].forEach(s=>$(s).style.display='');
+  iPrev(); };
+function iCnToggle(){ iOn=!iOn; var t=$('#iCn'); t.classList.toggle('on',iOn); t.textContent=iOn?'ON':'OFF';
+  var ta=$('#iTa'), ch=$('#iChips'); var inEl=iOn?ch:ta, outEl=iOn?ta:ch;
+  outEl.style.display='none'; inEl.style.display=iOn?'flex':'block';
+  inEl.classList.remove('a2in'); void inEl.offsetWidth; inEl.style.setProperty('--dx',iOn?'44px':'-44px'); inEl.classList.add('a2in');
+  iPrev(); }
+$('#iCn').onclick=iCnToggle;
+$('#iCp').onclick=function(){ this.classList.toggle('on'); this.textContent=this.classList.contains('on')?'ON':'OFF'; };
+$('#iChips').onclick=e=>{ if(e.target.classList.contains('ed-chip')) e.target.classList.toggle('on'); };
+function iPrev(){ var pop=$('#iPop'); pop.innerHTML= iOn?'<span class="ropt on">카드뉴스</span>':'<span class="ropt on">흰칸</span><span class="ropt">자막</span>';
+  var st=$('#iStage'), box=$('#iBox');
+  st.style.aspectRatio=iOn?'4/5':'9/16'; box.style.height=iOn?'260px':'210px'; }
+// (영상 전) 카드 펼침 + 토글
+document.querySelectorAll('[data-t]').forEach(h=>h.addEventListener('click',e=>{ if(e.target.closest('.pill,.onoff,.val,.chip'))return; var c=document.getElementById(h.dataset.t); c.classList.toggle('open'); }));
+document.querySelectorAll('[data-p]').forEach(p=>p.onclick=e=>{ e.stopPropagation(); p.classList.toggle('on'); p.textContent=p.classList.contains('on')?'ON':'P'; });
+// (영상 후) 5문법 인터랙션
+// 순환 값(ovfmt 정본 — 도형 0·탭=한 바퀴) · 수동 조정 = 프리셋 '종합' 복귀 · 모든 변경 = PREVIEW 속성줄 갱신
+function nItpSync(){ $('#nItp').style.display=($('#nFps').textContent==='60fps'&&$('#nRes').textContent!=='4K')?'':'none'; }
+function cyc(id,list,after){ var el=$(id); el.onclick=function(){ var i=(list.indexOf(el.textContent)+1)%list.length; el.textContent=list[i]; if(after)after(list[i]); manual(); }; }
+cyc('#nAr',['9:16','1:1','4:5','16:9']);
+cyc('#nFit',['여백(블러)','자르기'],v=>{ $('#nPos').style.display=v==='자르기'?'':'none'; });   // 조건부: 위치 = 자르기
+cyc('#nFps',['60fps','30fps'],nItpSync);   // 24fps 삭제(운영자 260712)
+cyc('#nRes',['1080','4K'],nItpSync);       // 4K = 보간 소멸
+$('#nPos').onclick=e=>{ e.stopPropagation(); e.target.classList.toggle('on'); };
+$('#nItp').onclick=e=>{ e.stopPropagation(); var t=e.target; t.classList.toggle('on'); manual(); };
+$('#nAud').onclick=e=>{ e.stopPropagation(); var t=e.target; t.classList.toggle('on'); t.textContent=t.classList.contains('on')?'ON':'OFF'; manual(); };
+$('#nUp').onclick=()=>{ $('#nSrcSec').style.display='none'; var s=$('#nPrevSec'); s.style.display=''; s.classList.add('a2in'); nSync(); };   // 소스 → 업로드 = PREVIEW 전환(상단 고정·이후 상시)
+var PRE=[['종합',null],['릴스 완성',{ar:'9:16',fit:'여백(블러)',aud:1}],['포맷만',{ar:'9:16',fit:'여백(블러)',aud:0}],['화질만',{fps:'60fps',res:'1080',aud:1}]];
+$('#nPre').onclick=function(){ var i=(PRE.findIndex(p=>p[0]===this.textContent)+1)%PRE.length; this.textContent=PRE[i][0]; var c=PRE[i][1];
+  if(c){ if(c.ar)$('#nAr').textContent=c.ar; if(c.fit){$('#nFit').textContent=c.fit;$('#nPos').style.display='none';} if(c.fps)$('#nFps').textContent=c.fps; if(c.res)$('#nRes').textContent=c.res; if('aud' in c){var a=$('#nAud');a.classList.toggle('on',!!c.aud);a.textContent=c.aud?'ON':'OFF';} nItpSync(); } nSync(); };
+function manual(){ $('#nPre').textContent='종합'; nSync(); }
+function nSync(){ $('#nStage').style.aspectRatio=$('#nAr').textContent.replace(':','/');   // 캔버스 = 선택 비율 라이브(설정마다 프리뷰 반영)
+  var a=[$('#nAr').textContent, $('#nFit').textContent, $('#nFps').textContent+(($('#nItp').style.display!=='none'&&$('#nItp').classList.contains('on'))?' 보간':''), $('#nRes').textContent];
+  if($('#nAud').classList.contains('on')) a.push('음량');
+  $('#nAttr').innerHTML='<b>'+a.join('</b> · <b>')+'</b>'; }
+</script>

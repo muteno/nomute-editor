@@ -177,6 +177,14 @@
   .pvslot:empty { display:none; }
   .pvsec { position:sticky; top:0; z-index:6; padding:4px 0 6px; }   /* PREVIEW = 유일한 상단 고정(운영자 260712 "따라다니는 건 프리뷰만") · 구 --bg 그라데 배경 = 검은 띠로 읽혀 제거(운영자 260712 3차 "PREVIEW 상단 영역까지 검정 재확인") — 고정 시작부터는 아래 .stuck 글래스 필이 담당 */
   .pvsec[hidden] { display:none; }
+  .pvsec > .fl { display:flex; align-items:center; }   /* PRESET 우상단 정렬(블릿 ::before = 첫 인라인 박스 유지) */
+  .preblk { margin-left:auto; display:inline-flex; align-items:center; }
+  .prelbl { color:var(--mut); font-size:9.5px; letter-spacing:.09em; font-weight:var(--fw-b,700); }
+  .preval { display:inline-block; width:76px; text-align:left; margin-left:10px; background:none; border:0; padding:3px 0; font:800 12px/1 inherit; color:var(--accent); cursor:pointer; -webkit-tap-highlight-color:transparent; }   /* 고정폭+좌측정렬 = 어절 길이 바뀌어도 PRESET·값 시작점 불변(운영자 260712 4차) */
+  .preval:active { transform:scale(var(--press-m,.9)); }
+  .pvattr { margin-top:5px; font-size:var(--fs-xs,11px); color:var(--mut); font-weight:600; }
+  .pvattr b { color:var(--accent); font-weight:var(--fw-b,700); }
+  #pvPre { display:none; }   /* 구 좌하단 Preset 여닫이 = 도먼트(우상단 순환값으로 대체 · 운영자 260712 4차 · 복원 = 이 행 제거) */
   .pvsec .fl { margin:2px 0 6px -12px; display:inline-flex; align-items:center; padding:7px 12px; border-radius:var(--r-pill); border:1px solid transparent; background:transparent; transition:background .22s var(--ease), border-color .22s var(--ease), box-shadow .22s var(--ease); }   /* ⚠️ 치수(패딩·마진·보더) = 평시·stuck 동일 고정 — 전환이 높이를 바꾸면 sticky 경계서 레이아웃 튐+라벨 실종 왕복(운영자 260712 4차 "중구난방으로 움직여" 원인) → 전환 = 페인트(배경·그림자·보더색)만 · margin-left:-12px = 텍스트 시작점 불변(알약 배경만 좌로 확장·wrap 16px 내 안전) */
   .pvsec.stuck .fl { background:linear-gradient(150deg, rgba(42,44,48,.7), rgba(12,13,15,.82)); -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.2); backdrop-filter:blur(var(--blur-m)) saturate(1.2); border-color:rgba(255,255,255,.12); box-shadow:0 8px 24px rgba(0,0,0,.35); }   /* 고정 시작부터 글래스 필(예타 미러 · thumb .platpop 무채 톤 사본·blur = --blur-m 근접 계승 = §핵심명령 2-a) — 페인트 전용 = 레이아웃 불변 */
   .pvstage { background:var(--bg); }   /* 스테이지 여백만 --bg(스포티파이 블랙) 오버라이드 — 캔버스(순검정)와 경계 구분(운영자 260711 "어디까지가 영상인지") */
@@ -405,7 +413,7 @@
   </div>
 
   <!-- PREVIEW 섹션(운영자 260712 "소스와 같은 등급 소머리 · 상단 고정은 프리뷰만") — 파일 첨부 시에만 표시(빈 상태 = 조용한 공백 §디자인 e-가) -->
-  <div class="pvsec" id="pvsec" hidden><label class="fl">PREVIEW</label><div class="pvslot" id="pvSlot"></div></div>
+  <div class="pvsec" id="pvsec" hidden><label class="fl">PREVIEW<span class="preblk"><span class="prelbl">PRESET</span><button type="button" class="preval" id="pvPreV" title="탭=종합→릴스 완성→포맷만→화질만→쇼츠 클립 순환 · 수동 조정 = 종합 복귀">종합</button></span></label><div class="pvslot" id="pvSlot"></div><div class="pvattr" id="pvAttr"></div></div><!-- PRESET = 우상단 'PRESET|값' 고정폭 순환(운영자 260712 4차 — 어절 길이 지터 0 = 값 구간 좌측정렬·투명선 개념) · 속성 명세줄 = 설정마다 갱신(pvSync) · 구 #pvPre 좌하단 여닫이 = 도먼트(display:none) -->
   <div class="pvstage" id="pv" hidden><div class="pvbox" id="pvBox"><div class="pvbg" id="pvBg" hidden></div><video id="pvVid" playsinline muted loop preload="metadata" aria-label="첨부 영상 미리보기"></video><div class="pvsub" id="pvSub" hidden><span id="pvSubTx">자막 위치 미리보기</span></div></div><div class="pvpre" id="pvPre"><button type="button" class="pvpre-t" id="pvPreT" title="원탭 프리셋 펼치기">Preset</button><span class="pvpre-row" id="pvPreRow" hidden><button type="button" class="pvpre-i" data-rec="reels">릴스 완성</button><button type="button" class="pvpre-i" data-rec="fmt">포맷만</button><button type="button" class="pvpre-i" data-rec="hq">화질만</button><button type="button" class="pvpre-i" data-rec="clip">쇼츠 클립</button></span></div></div><!-- 영속 미리보기 노드(주차 위치) — 표시는 위 PREVIEW 섹션 #pvSlot 이주로만(운영자 260712 — 구 비율 카드 귀속 폐지 · pvSync/render가 이주 관리 · video 노드 재생성 0) · .pvbg = 여백(블러) 질감 연출(프레임 스냅샷) -->
 
   <!-- 레시피 행 = 프리뷰 좌하단 Preset 오버레이(#pvPre)로 이관(운영자 260712 2차 "프리뷰 위에 오버레이·여닫이") — .recrow/.rec CSS는 도먼트 보존(롤백 = 이 행 복원) · 첨부 전엔 프리뷰가 없어 프리셋도 비노출(첨부 후 흐름 전제) -->
@@ -589,7 +597,7 @@ function prm(k){
     +'<div class="prow">'+[['crop','자르기'],['pad','검정 여백'],['blur','블러 여백']].map(a=>pc('fit',a[0],P.fit===a[0],false,a[1])).join('')+pc('genfill','x',false,true,'생성형')+'</div>'   // 검정/블러 여백 개명 + 생성형(dim·'준비중' 산문 제거) 같은 행 가로 배치(운영자 260712 3차 · 비활성 = 영상 생성 API 미보유 정직 불변)
     +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'')):'');   // 크롭 위치 = 게이지만(운영자 260711 scrubBtn=off — 드래그 스크럽 코드는 보존·버튼만 미노출)
   if(k==='res') return segs('res',[['off','그대로'],['src','원본(4K)'],['1080','1080p'],['720','720p']],ON.res?P.res:'off');   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711)
-  if(k==='fps') return segs('fps',[['off','그대로'],['60i','60fps 보간'],['30','30'],['24','24']],ON.fps?P.fps:'off');
+  if(k==='fps') return segs('fps',[['off','그대로'],['60i','60fps 보간'],['30','30']],ON.fps?P.fps:'off');   // 24fps 삭제(운영자 260712 통일 5문법)
   if(k==='clip') return segs('clip',[['off','끔'],['on','후보 스캔 3~5개 (단독 실행)']],ON.clip?'on':'off');
   if(k==='bgm') return segs('bgm',[['off','끔'],['on','목소리만 남김']],ON.bgm?'on':'off');
   if(k==='anorm') return segs('anorm',[['off','끔'],['on','음량 강도 · 좌우 밸런스 보정']],ON.anorm?'on':'off');
@@ -630,9 +638,12 @@ function pvSync(){
   const vv=$('#pvVid');
   const slot=document.getElementById('pvSlot');   // 미리보기 = 상단 PREVIEW 섹션 귀속(운영자 260712 "소스와 같은 등급 · 상단 고정은 프리뷰만" — 구 비율 카드 귀속 폐지)
   const sec=document.getElementById('pvsec');
-  if(!FILE_URL || !slot || _pollLive){ pv.hidden=true; if(sec) sec.hidden=true; if(!FILE_URL && vv.getAttribute('src')){ vv.removeAttribute('src'); vv.load(); } return; }   // _pollLive 게이트 = 대기 표시 중 재렌더가 미리보기 부활시키던 중복 화면 차단
+  if(!FILE_URL || !slot || _pollLive){ pv.hidden=true; if(sec) sec.hidden=true; const _sr0=document.querySelector('.srcrow'); if(_sr0) _sr0.style.display=''; if(!FILE_URL && vv.getAttribute('src')){ vv.removeAttribute('src'); vv.load(); } return; }   // _pollLive 게이트 = 대기 표시 중 재렌더가 미리보기 부활시키던 중복 화면 차단 · 소스 행 복원(첨부 해제 시)
   if(pv.parentElement!==slot) slot.appendChild(pv);   // 영속 노드 이주(재렌더에도 video 리로드 0)
   pv.hidden=false; if(sec) sec.hidden=false;
+  const _sr=document.querySelector('.srcrow'); if(_sr) _sr.style.display='none';   // 소스 행 → PREVIEW가 대체(운영자 260712 4차 "영상 입력하면 PREVIEW로 바뀜·항상 상단 고정" — 소스 전제라 빈 편집 없음)
+  const _pa=document.getElementById('pvAttr');   // 속성 명세줄 = 설정마다 갱신(선택한 속성이 프리뷰에 붙음)
+  if(_pa){ const _t=ORDER.filter(x=>ON[x]).map(x=>x==='anorm'?'음량':x==='bgm'?'배경음 제거':sum(x)); _pa.innerHTML=_t.length?('<b>'+_t.map(esc).join('</b> · <b>')+'</b>'):''; }
   if(vv.getAttribute('src')!==FILE_URL){ vv.src=FILE_URL; if(vv.play) vv.play().catch(()=>{}); }
   else if(vv.paused&&vv.getAttribute('src')){ vv.play().catch(()=>{}); }   // DOM 이주는 재생을 멈춤(스펙) → 재개(muted 루프)
   requestAnimationFrame(()=>{
@@ -721,9 +732,20 @@ $('#stack').addEventListener('input',e=>{
   const g=e.target.closest('[data-g]'); if(g){ P[g.dataset.g]=+g.value; g.parentElement.querySelector('.v').textContent=gvTxt(g.dataset.g,g.value,g.dataset.g==='size'?'‰':'%'); setEta(); pvSync(); return; }   // 게이지 = 미리보기 실시간 동기(260711) · 음영 100 = '기본'
   const t=e.target.closest('#t0,#t1'); if(t){ P[t.id]=t.value; }
 });
+/* PRESET 우상단 순환(운영자 260712 4차 — ovfmt 결: 값 하나·탭=한 바퀴 · 수동 조정 = '종합' 복귀) — 적용은 기존 recipe() 재사용 */
+let _preN='종합';
+function _preSet(n){ _preN=n; const el=document.getElementById('pvPreV'); if(el) el.textContent=n; }
+function _preManual(){ if(_preN!=='종합') _preSet('종합'); }
+(function(){ const PREC=[['종합',null],['릴스 완성','reels'],['포맷만','fmt'],['화질만','hq'],['쇼츠 클립','clip']];
+  const b=document.getElementById('pvPreV'); if(!b) return;
+  b.addEventListener('click',()=>{ const i=(PREC.findIndex(p=>p[0]===_preN)+1)%PREC.length; const [nm,rec]=PREC[i];
+    if(rec) recipe(rec); _preSet(nm); });   // recipe가 render 호출 → 라벨은 그 뒤 확정(종합 = 상태 무변경 순환 통과)
+})();
+document.addEventListener('input',e=>{ if(e.target && e.target.closest && e.target.closest('[data-g]')) _preManual(); },true);   // 게이지 수동 조정 = 종합
 $('#stack').addEventListener('change',e=>{ if(e.target.closest('#t0,#t1')){ ON.trim=!!(String(P.t0||'').trim()||String(P.t1||'').trim()); if(ON.trim)ON.clip=false; render(); } });   // 구간 = 값 입력이 곧 켬(섹션 상시형 260712 — 비우면 끔)
 document.addEventListener('click',e=>{
   const p=e.target.closest('[data-p]'); if(!p||p.disabled) return;
+  if(typeof _preManual==='function') _preManual();   // 카드 수동 조정 = 프리셋 '종합' 복귀(운영자 260712 4차)
   const _i=p.dataset.p.indexOf(':'), k=p.dataset.p.slice(0,_i), v=p.dataset.p.slice(_i+1);   // 첫 콜론만 분리 — 값에 콜론 포함(ar '9:16'/'1:1'/'4:5'/'16:9')이 split(':')로 '9'만 남아 비율 칩 클릭이 통째 무효(P.ar 오염 → api 화이트리스트 탈락·프리뷰 AR_NUM 미스)되던 선존 버그 수정(260711 실측)
   if(k==='add'){
     if(v==='clip'){ for(const kk in ON) ON[kk]=false; ON.clip=true; OPEN=''; closeSheet(); render(); return; }   // 클리퍼 = 배타 스캔(서버 정규화와 계약 일치)

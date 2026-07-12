@@ -1,0 +1,307 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>썸네일↔카드뉴스 세그 전환 — 만지는 플레이그라운드</title>
+<style>
+  :root{
+    /* viewer :root 토큰 사본(보고서 스냅샷 · viewer 동기 의무 없음) */
+    --bg:#0b0d0c; --panel:#121316; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.14);
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+    --green:#0FFD02; --danger:#e23b2a; --danger-rgb:226,59,42; --warn:#FFE13D;
+    --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px; --r-modal:22px;
+    --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+    --fs-label:13px; --fs-body:15px; --fw-b:700; --fw-x:800;
+    --ease:cubic-bezier(.22,.61,.36,1); --dur:.22s; --dur-fast:.14s;
+    --blur-s:8px; --blur-m:16px;
+    /* ── 튜닝 변수(--t-*) — 아래 슬라이더가 실시간 조작 · 기본값 = 현행 선례 실측 ── */
+    --t-dur:320ms;        /* histIn .32s 계승 */
+    --t-dist:44px;        /* 슬라이드 진입 거리 */
+    --t-blur:16px;        /* 글래스 blur = --blur-m 계승 */
+    --t-glassa:.66;       /* 글래스 배경 알파 */
+    --t-ease:cubic-bezier(.22,.61,.36,1);  /* histIn 커브 계승 */
+    --t-stag:26ms;        /* 칩/필드 스태거 간격 = ppbtn nth 계승(.02~.03s) */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:22px 16px 90px}
+  h1{font-size:21px;margin:0 0 4px;letter-spacing:-.3px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 12px}
+  h2{font-size:16px;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line2)}
+  .soremeori{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;margin:16px 0 8px}
+  .soremeori::before{content:'•';color:var(--accent);font-weight:700}
+  .layout{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+  @media(max-width:800px){.layout{grid-template-columns:1fr}}
+  .stagecol{position:sticky;top:14px}
+  @media(max-width:800px){.stagecol{position:static}}
+
+  /* ── 폰 프레임 (실물 재현) ── */
+  .phone{background:#08090b;border:1px solid var(--line2);border-radius:24px;padding:16px 14px 18px;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  .ph-head{font-size:12px;color:var(--mut);text-align:center;margin-bottom:10px}
+  /* 세그 [• 썸네일 | • 카드뉴스] = .sc-tg 글래스 필 계승 */
+  .modeseg{display:flex;gap:6px;background:rgba(8,15,11,.34);border:1px solid var(--line2);border-radius:var(--r-pill);padding:4px;backdrop-filter:blur(var(--blur-s));-webkit-backdrop-filter:blur(var(--blur-s))}
+  .msg-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:32px;border-radius:var(--r-pill);
+    font-size:12.5px;font-weight:800;color:var(--mut);cursor:pointer;user-select:none;transition:color var(--dur),background var(--dur);border:1px solid transparent}
+  .msg-btn .bul{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
+  .msg-btn.on{color:var(--accent);background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.5)}
+  .msg-btn.on .bul{opacity:1;box-shadow:0 0 7px rgba(var(--accent-rgb),.7)}
+  .msg-btn:active{transform:scale(.96)}
+
+  /* ── 슬롯 = 유닛이 좌우 슬라이드로 갈아끼워지는 무대 ── */
+  .slot{position:relative;margin-top:10px;overflow:hidden;border-radius:var(--r-m);min-height:196px}
+  .unit{position:absolute;inset:0;padding:12px;border-radius:var(--r-m);
+    background:linear-gradient(165deg,rgba(30,32,35,calc(var(--t-glassa) * .95)),rgba(14,15,17,var(--t-glassa)));
+    border:1px solid var(--line2);backdrop-filter:blur(var(--t-blur)) saturate(1.2);-webkit-backdrop-filter:blur(var(--t-blur)) saturate(1.2);
+    transition:transform var(--t-dur) var(--t-ease),opacity var(--t-dur) var(--t-ease);will-change:transform,opacity}
+  .unit.pos{transform:none;opacity:1;z-index:2}
+  .unit.hideL{transform:translateX(calc(-1 * var(--t-dist)));opacity:0;z-index:1;pointer-events:none}
+  .unit.hideR{transform:translateX(var(--t-dist));opacity:0;z-index:1;pointer-events:none}
+  .csec{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;margin:0 0 7px}
+  .csec::before{content:'•';color:var(--accent);font-weight:700}
+  .fld{width:100%;background:rgba(5,12,8,.4);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--fg);padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px}
+  .fld.ta{min-height:56px;resize:none;display:block}
+  .fld::placeholder{color:var(--mut)}
+  /* 칩 에디터 = 카드뉴스 정본 계승 */
+  .ed-chips{display:flex;flex-direction:column;gap:5px;padding:6px;background:rgba(5,12,8,.4);border:1px dashed var(--line2);border-radius:var(--r-s);margin-bottom:8px}
+  .ed-line{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+  .ed-chip{font-size:14px;padding:2px 6px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--fg);cursor:pointer;user-select:none;transition:.12s}
+  .ed-chip.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:800;box-shadow:0 0 8px rgba(var(--accent-rgb),.3)}
+  .ed-add{width:18px;height:22px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font:800 14px/1 inherit;color:var(--accent);background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.42)}
+  /* 이미지 슬롯 = 카드뉴스 makerow #imgBox 픽토그램 계승 */
+  .imgrow{display:flex;gap:8px;align-items:stretch}
+  .imgslot{flex:1.4;display:grid;place-items:center;min-height:40px;background:rgba(5,12,8,.4);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--accent);cursor:pointer}
+  .imgslot svg{width:24px;height:24px}
+  .imgslot.has{background:linear-gradient(160deg,#2a3b44,#0e1417);color:transparent}
+  /* 칩/필드 스태거 등장 = platpop ppbtn-in 계승 */
+  .unit.pos.entering .ed-chip,.unit.pos.entering .fld,.unit.pos.entering .imgrow{animation:stagIn .3s both cubic-bezier(.2,.8,.3,1)}
+  .unit.pos.entering .st1{animation-delay:calc(var(--t-stag) * 1)}
+  .unit.pos.entering .st2{animation-delay:calc(var(--t-stag) * 2)}
+  .unit.pos.entering .st3{animation-delay:calc(var(--t-stag) * 3)}
+  .unit.pos.entering .st4{animation-delay:calc(var(--t-stag) * 4)}
+  @keyframes stagIn{from{opacity:0;transform:translateX(-9px) scale(.88)}to{opacity:1;transform:none}}
+
+  /* ── 실시간 합성 미리보기 = #cpPrev .cpprev-stage 계승 ── */
+  .cpprev{margin-top:12px}
+  .cpprev-box{position:relative;width:100%;aspect-ratio:4/5;background:#121212;border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden}
+  .cpv-bg{position:absolute;inset:0;background:linear-gradient(160deg,#33454f,#0c1216)}
+  .cpv-scrim{position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.82))}
+  .cpv-txt{position:absolute;left:8%;right:9%;bottom:16%;font-size:15px;font-weight:800;line-height:1.5;white-space:pre-wrap}
+  .cpv-txt .em{color:var(--green)}
+  .cpv-hdr{position:absolute;left:8%;top:9%;font-size:11px;color:rgba(255,255,255,.85);font-weight:700}
+  .prev-cap{font-size:11px;color:var(--mut);margin-top:6px;text-align:center}
+
+  /* ── 컨트롤 ── */
+  .ctl{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-l);padding:14px 15px;margin-bottom:14px}
+  .presets{display:flex;flex-wrap:wrap;gap:7px}
+  .pre{padding:7px 13px;border-radius:var(--r-pill);border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--fg);font-size:12px;font-weight:700;cursor:pointer;transition:.14s}
+  .pre.on{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.1)}
+  .pre .star{color:var(--warn)}
+  .row{display:flex;align-items:center;gap:10px;margin:11px 0}
+  .row label{flex:0 0 96px;font-size:12px;color:var(--mut)}
+  .row input[type=range]{flex:1;accent-color:var(--accent)}
+  .row .val{flex:0 0 62px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;color:var(--accent)}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:var(--r-pill);overflow:hidden}
+  .seg span{padding:5px 11px;font-size:11.5px;font-weight:700;color:var(--mut);cursor:pointer;transition:.12s}
+  .seg span.on{background:rgba(var(--accent-rgb),.14);color:var(--accent)}
+  .out{background:#0e1013;border:1px solid var(--line);border-radius:var(--r-m);padding:12px;font-size:11.5px;line-height:1.7;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;color:var(--fg)}
+  .out .keep{color:var(--accent)}.out .upd{color:var(--warn)}
+  .cpy{margin-top:8px;padding:8px 16px;border-radius:var(--r-pill);border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.1);color:var(--accent);font-weight:800;font-size:12.5px;cursor:pointer}
+  .cpy:active{transform:scale(.96)}
+  .foot{color:var(--mut);font-size:11.5px;line-height:1.65;margin-top:10px}
+  code{background:rgba(255,255,255,.07);border-radius:4px;padding:1px 5px;font-size:11px}
+  ul{margin:6px 0;padding-left:17px}li{margin:4px 0;font-size:12.5px}
+  .warnbox{background:rgba(255,225,61,.08);border:1px solid rgba(255,225,61,.35);border-radius:var(--r-m);padding:11px 13px;font-size:12.5px;margin:12px 0}
+</style>
+<div class="wrap">
+  <h1>썸네일 ↔ 카드뉴스 — 세그 전환 만지는 시안</h1>
+  <p class="sub">[• 썸네일 | • 카드뉴스] 세그를 <b>탭</b>하면 입력 유닛이 통째로 좌우 슬라이드 + 페이드 + 글래스모피즘으로 갈아끼워진다. 카드뉴스 모드엔 이미지 삽입 + 실시간 합성 미리보기. 파라미터를 만져서 느낌을 고르면 그 선택값이 곧 구현 스펙.</p>
+
+  <div class="warnbox">
+    <b>이 시안이 재현하는 것</b> = 네가 말한 <b>“릴스/포스트 입력창이 카드뉴스 입력창으로 순간 대체 · 통으로 갈아끼워짐 · 좌우 슬라이드 카드 글래스모피즘 · 촤르륵 페이드”</b>. 아래 폰 프레임의 세그를 직접 눌러봐. 오른쪽 슬라이더로 방향·속도·글래스·거리·스태거를 조절하면 전환이 실시간으로 바뀐다.
+  </div>
+
+  <div class="layout">
+    <!-- ── 무대 ── -->
+    <div class="stagecol">
+      <div class="phone">
+        <div class="ph-head">이미지 스튜디오 · 오버레이 생성기</div>
+        <div class="modeseg" id="modeseg">
+          <div class="msg-btn on" data-mode="thumb"><span class="bul"></span>썸네일</div>
+          <div class="msg-btn" data-mode="card"><span class="bul"></span>카드뉴스</div>
+        </div>
+        <div class="slot" id="slot">
+          <!-- 썸네일 유닛 (단순입력) -->
+          <div class="unit pos" id="uThumb">
+            <div class="csec st1">헤더</div>
+            <input class="fld st1" value="8일, 오월드에서 사라진 늑구" readonly>
+            <div class="csec st2">오버레이</div>
+            <textarea class="fld ta st2" readonly>연락이 끊긴 닷새간 늑구는
+*보문산에서 체력을 유지하고 있었다.*</textarea>
+          </div>
+          <!-- 카드뉴스 유닛 (칩 + 이미지) -->
+          <div class="unit hideR" id="uCard">
+            <div class="csec st1">텍스트 및 이미지</div>
+            <div class="ed-chips st2">
+              <div class="ed-line"><span class="ed-chip">연락이</span><span class="ed-chip">끊긴</span><span class="ed-chip">닷새간</span><span class="ed-chip">늑구는</span><span class="ed-add">+</span></div>
+              <div class="ed-line"><span class="ed-chip on">보문산에서</span><span class="ed-chip on">체력을</span><span class="ed-chip on">유지하고</span><span class="ed-chip on">있었다</span><span class="ed-add">+</span></div>
+            </div>
+            <div class="imgrow st3">
+              <div class="imgslot has" title="배경 이미지"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <!-- 실시간 미리보기 -->
+        <div class="cpprev">
+          <div class="cpprev-box">
+            <div class="cpv-bg"></div>
+            <div class="cpv-scrim" id="pvScrim"></div>
+            <div class="cpv-hdr" id="pvHdr">8일, 오월드에서 사라진 늑구</div>
+            <div class="cpv-txt" id="pvTxt">연락이 끊긴 닷새간 늑구는<br><span class="em">보문산에서 체력을 유지하고 있었다</span></div>
+          </div>
+          <div class="prev-cap" id="pvCap">▲ 실시간 합성 미리보기 (썸네일 오버레이 근사)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 컨트롤 ── -->
+    <div class="ctlcol">
+      <p class="soremeori">프리셋 <span style="color:var(--mut);font-weight:400;font-size:11px">— 현행 포함 · ★ 추천</span></p>
+      <div class="ctl">
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <p class="soremeori">미세조정</p>
+      <div class="ctl">
+        <div class="row"><label>전환 방향</label>
+          <div class="seg" id="segDir" data-k="dir">
+            <span data-v="lr">좌우</span><span data-v="ud">상하</span><span data-v="fade">페이드만</span>
+          </div>
+        </div>
+        <div class="row"><label>속도(dur)</label><input type="range" id="s_dur" min="120" max="600" step="10"><span class="val" id="v_dur"></span></div>
+        <div class="row"><label>슬라이드 거리</label><input type="range" id="s_dist" min="0" max="120" step="2"><span class="val" id="v_dist"></span></div>
+        <div class="row"><label>글래스 blur</label><input type="range" id="s_blur" min="0" max="30" step="1"><span class="val" id="v_blur"></span></div>
+        <div class="row"><label>글래스 알파</label><input type="range" id="s_glassa" min="30" max="95" step="1"><span class="val" id="v_glassa"></span></div>
+        <div class="row"><label>스태거 간격</label><input type="range" id="s_stag" min="0" max="70" step="2"><span class="val" id="v_stag"></span></div>
+        <div class="row"><label>이징</label>
+          <div class="seg" id="segEase" data-k="ease">
+            <span data-v="hist">histIn</span><span data-v="soft">부드럽게</span><span data-v="snap">스냅</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="soremeori">선택값 (계승/갱신 자동 표기)</p>
+      <div class="ctl">
+        <div class="out" id="out"></div>
+        <button class="cpy" id="cpy" onclick="copyOut()">선택값 복사 → 이게 곧 구현 스펙</button>
+      </div>
+    </div>
+  </div>
+
+  <h2>계승원 · 재현 한계</h2>
+  <p class="soremeori">전부 기존 컴포넌트 계승 (raw 창작 0)</p>
+  <ul>
+    <li>세그 [썸네일|카드뉴스] = <code>.sc-tg</code> 글래스 필 계승 (on=<code>--accent</code>/off=<code>--mut</code>)</li>
+    <li>좌우 슬라이드 = <code>.cartrack</code>/<code>.carslide</code>(scroll-snap) + <code>histIn</code>/<code>histOut</code> 촤르륵 커브 계승</li>
+    <li>칩 스태거 등장 = <code>platpop</code> <code>ppbtn-in</code>(좌→우 translateX) nth 딜레이 계승</li>
+    <li>칩 에디터 = 카드뉴스 <code>.ed-chips</code> 정본 · 이미지 슬롯 = <code>#imgBox</code> <code>.file</code> 픽토그램 계승</li>
+    <li>실시간 미리보기 = <code>#cpPrev</code> <code>.cpprev-stage</code>/<code>.cpv-scrim</code>/<code>.cpv-bg</code> 정본 계승(이미 존재 · 카드뉴스에 연결만)</li>
+    <li>글래스모피즘 = 모달셸 <code>--modal-glass</code> 톤 · 강조색 = 콘텐츠 상수 <code>#0FFD02</code>(§핵심명령 3-b-1)</li>
+  </ul>
+  <p class="foot">
+    <b>재현 한계</b> — ① 미리보기 배경은 실제 첨부 대신 그라데 플레이스홀더(실사진은 라이브 <code>#cpPrev</code>가 <code>.cpv-bg</code> img로 렌더). ② 칩 형태소 분할·자간/937px 폭검증·따옴표 들여쓰기는 라이브 JS(<code>renderEditChips</code>/<code>card_news.py</code>) 담당 — 여기선 시각만. ③ 실배선 시 §CII 규칙1: 입력 위 <code>backdrop-filter</code>는 타이핑 flicker → 전환 <b>중에만</b> 글래스 blur 얹고 정착 후 제거(카드뉴스 정본 flicker-safe 계승). ④ 색은 보고서 스냅샷(viewer 동기 의무 없음).
+    <br><br><b>배선 주의(만장일치 불변)</b> — 썸네일 <code>/api/thumb</code> vs 카드뉴스 <code>/api/compose</code>는 다른 엔진. 세그 전환은 <b>입력 UI만</b> 갈아끼우고 발사 경로·<code>card_news.py</code>는 무접촉. thumb <code>#cardBox</code> ↔ index <code>#edChips</code> 쌍둥이 동시 반영.
+  </p>
+</div>
+
+<script>
+// ── 상태 ──
+var DEF={dir:'lr',dur:320,dist:44,blur:16,glassa:66,stag:26,ease:'hist'};
+var EASES={hist:'cubic-bezier(.22,.61,.36,1)',soft:'cubic-bezier(.4,0,.2,1)',snap:'cubic-bezier(.2,.9,.3,1.2)'};
+var PRESETS=[
+  {name:'현행(순간교체)',st:{dir:'fade',dur:120,dist:0,blur:0,glassa:66,stag:0,ease:'soft'}},
+  {name:'좌우 슬라이드 ★',star:1,st:{dir:'lr',dur:320,dist:44,blur:16,glassa:66,stag:26,ease:'hist'}},
+  {name:'페이드+스케일',st:{dir:'fade',dur:280,dist:0,blur:18,glassa:72,stag:22,ease:'soft'}},
+  {name:'촤르륵 강조',st:{dir:'lr',dur:380,dist:60,blur:22,glassa:70,stag:34,ease:'snap'}}
+];
+var st=Object.assign({},DEF), mode='thumb';
+
+function near(a,b,t){return Math.abs(a-b)<=(t||0.5);}
+function setVar(){var r=document.documentElement.style;
+  r.setProperty('--t-dur',st.dur+'ms'); r.setProperty('--t-dist',st.dist+'px');
+  r.setProperty('--t-blur',st.blur+'px'); r.setProperty('--t-glassa',(st.glassa/100).toFixed(2));
+  r.setProperty('--t-stag',st.stag+'ms'); r.setProperty('--t-ease',EASES[st.ease]);
+}
+function apply(){
+  setVar();
+  // 슬라이더 UI 동기
+  S('dur',st.dur,'ms'); S('dist',st.dist,'px'); S('blur',st.blur,'px');
+  S('glassa',st.glassa,'%'); S('stag',st.stag,'ms');
+  segUI('segDir',st.dir); segUI('segEase',st.ease);
+  // 프리셋 대조
+  var pi=PRESETS.findIndex(function(p){return JSON.stringify(p.st)===JSON.stringify(st);});
+  document.querySelectorAll('.pre').forEach(function(el,i){el.classList.toggle('on',i===pi);});
+  buildOut();
+}
+function S(k,v,u){var el=document.getElementById('s_'+k); if(el)el.value=v; var l=document.getElementById('v_'+k); if(l)l.textContent=v+u;}
+function segUI(id,v){document.querySelectorAll('#'+id+' span').forEach(function(s){s.classList.toggle('on',s.dataset.v===v);});}
+
+function buildOut(){
+  function tag(cond,keep){return cond?'<span class="keep">'+keep+' 계승</span>':'<span class="upd">갱신 후보</span>';}
+  var o='';
+  o+='mode 전환 = 세그 [썸네일 | 카드뉴스]\n';
+  o+='--t-dir   : '+st.dir+'   '+(st.dir==='lr'?'<span class="keep">cartrack 좌우 계승</span>':st.dir==='fade'?'<span class="keep">페이드 계승</span>':'<span class="upd">상하=신규</span>')+'\n';
+  o+='--t-dur   : '+st.dur+'ms   '+tag(near(st.dur,320,20),'histIn .32s')+'\n';
+  o+='--t-dist  : '+st.dist+'px   '+(st.dist===0?'<span class="keep">거리0=페이드</span>':'<span class="upd">슬라이드 거리(신규 축)</span>')+'\n';
+  o+='--t-blur  : '+st.blur+'px   '+tag(near(st.blur,16,1),'--blur-m 16')+'\n';
+  o+='--t-glassa: '+(st.glassa/100).toFixed(2)+'   '+tag(near(st.glassa,66,2),'--modal-glass .64~.66')+'\n';
+  o+='--t-stag  : '+st.stag+'ms   '+tag(near(st.stag,26,4),'ppbtn nth .02~.03s')+'\n';
+  o+='--t-ease  : '+st.ease+'   '+(st.ease==='hist'?'<span class="keep">histIn 커브 계승</span>':'<span class="upd">'+st.ease+'=조정</span>')+'\n';
+  o+='\n대상 파일 = viewer/thumb.html (세그 신설 = §디자인 j 배치 승인 대상)';
+  document.getElementById('out').innerHTML=o;
+}
+function copyOut(){var t=document.getElementById('out').innerText;
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){flash('복사됨 ✓');},function(){
+    var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');flash('복사됨 ✓');}catch(e){flash('길게 눌러 복사');}ta.remove();});}
+function flash(m){var b=document.getElementById('cpy');var o=b.textContent;b.textContent=m;setTimeout(function(){b.textContent=o;},1200);}
+
+// ── 세그 전환 ──
+function switchMode(target){
+  if(target===mode)return;
+  var uT=document.getElementById('uThumb'), uC=document.getElementById('uCard');
+  var incoming=target==='card'?uC:uT, outgoing=target==='card'?uT:uC;
+  var dir=st.dir;
+  // exit
+  outgoing.classList.remove('pos','entering');
+  outgoing.classList.add(dir==='lr'?(target==='card'?'hideL':'hideR'):dir==='ud'?'hideL':'hideR');
+  if(dir==='ud'){outgoing.style.transform=''; }
+  // enter: 시작 위치 세팅 후 리플로우 → pos
+  incoming.classList.remove('hideL','hideR','pos');
+  incoming.classList.add(dir==='lr'?(target==='card'?'hideR':'hideL'):dir==='ud'?'hideR':'hideL');
+  void incoming.offsetWidth;
+  incoming.classList.remove('hideL','hideR');
+  incoming.classList.add('pos','entering');
+  setTimeout(function(){incoming.classList.remove('entering');},420);
+  mode=target;
+  document.querySelectorAll('.msg-btn').forEach(function(b){b.classList.toggle('on',b.dataset.mode===target);});
+  syncPreview();
+}
+function syncPreview(){
+  var hdr=document.getElementById('pvHdr'), cap=document.getElementById('pvCap'), scrim=document.getElementById('pvScrim');
+  if(mode==='card'){ hdr.style.display='none'; scrim.style.height='62%'; cap.textContent='▲ 실시간 합성 미리보기 (카드뉴스 1080×1350 근사)'; }
+  else { hdr.style.display=''; scrim.style.height='62%'; cap.textContent='▲ 실시간 합성 미리보기 (썸네일 오버레이 근사)'; }
+}
+
+// ── 바인딩 ──
+var pc=document.getElementById('presets');
+PRESETS.forEach(function(p,i){var b=document.createElement('div');b.className='pre';
+  b.innerHTML=p.name.replace('★','<span class="star">★</span>');
+  b.onclick=function(){st=Object.assign({},p.st);apply();};pc.appendChild(b);});
+['dur','dist','blur','glassa','stag'].forEach(function(k){
+  document.getElementById('s_'+k).addEventListener('input',function(e){st[k]=+e.target.value;apply();});});
+document.querySelectorAll('#segDir span').forEach(function(s){s.onclick=function(){st.dir=s.dataset.v;apply();};});
+document.querySelectorAll('#segEase span').forEach(function(s){s.onclick=function(){st.ease=s.dataset.v;apply();};});
+document.querySelectorAll('.msg-btn').forEach(function(b){b.onclick=function(){switchMode(b.dataset.mode);};});
+document.getElementById('uCard').addEventListener('click',function(e){if(e.target.classList.contains('ed-chip'))e.target.classList.toggle('on');});
+apply();
+</script>
