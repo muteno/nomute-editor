@@ -176,20 +176,20 @@
   .profile img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
   .profile:hover { transform:translateY(-2px) scale(1.03); }
   .profile:active { transform:scale(var(--press-l,.97)); }
-  /* (도먼트 260712 — 운영자 "메시지 왔다고 굳이 알림 필요 없음 · 숫자 배지 싫음") 기어 메시지 점등(링+숫자 배지) 전면 소등 — 클래스 토글 JS(renderMsgBadge)·메시지함(msgpop) 기능은 보존 · 재점등 = 아래 hasmsg/shc-bad/haswarn 규칙 원값 복원(git 이력 = 260712 도먼트 직전) */
+  /* 메시지 1개+ 일 때만: 프로필 둘레 아주 얇고 은은한 강조 테두리 + 숫자 배지(0이면 둘 다 숨김) */
   /* (옛 아바타 hasmsg 링 box-shadow 삭제 — 기어(.vh-acts .profile.hasmsg 토큰형)가 대체·완전 사문·raw accent 2개 회수 = baseline 83→81 · 평의회4 260706. 아바타 잔여 CSS는 배너 복귀 대비 도먼트 유지·hasmsg .pbadge 표시 규칙은 아래 존치) */
   .pbadge { position:absolute; top:-5px; right:-5px; z-index:7; min-width:18px; height:18px; padding:0 5px;
     display:none; align-items:center; justify-content:center; border-radius:999px;
     font:800 11px/1 "Pretendard Variable", Pretendard, sans-serif; color:var(--on-accent);
     background:linear-gradient(135deg,var(--accent-bright),var(--accent)); border:1.5px solid var(--bg);
     box-shadow:0 2px 6px rgba(0,0,0,.4); }
-  .profile.hasmsg .pbadge { display:none; }   /* 도먼트(운영자 260712 "저 알람 없애셈") — 구 display:flex */
-  /* 메뉴별 프로필 강조색 폐지 — 전 탭 무조건 메인 강조색 통일(운영자 260705). 메시지 도착 점등(터쿼이즈 링·노란 링·숫자 배지) = 260712 도먼트 · 픽실패 빨강 펄스(body.has-pickfail profFail·아래 1089대)는 별개 축 = 유지. */
-  /* (도먼트 260712) 구 맞춤법 검사기 고장 = 프로필 노란 링 + 노란 배지(운영자 260623) — 현행 = 소등(아래 규칙 none) */
-  .profile.shc-bad { box-shadow:none !important; }   /* 도먼트(260712) — 구 맞춤법 노란 링(원값 = git 이력) */
-  .profile.shc-bad .pbadge { display:none; background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }   /* 도먼트 — display만 소등(warn 그라데 보존 = 재점등 대비) */
-  /* (도먼트 260712) 구 수집 실패 메시지 = 프로필 노란 링 + 노란 배지(운영자 260623) — 현행 = 소등 · 실패 인지는 웹푸시·메시지함·대기열 빨강 */
-  .profile.hasmsg.haswarn { box-shadow:none !important; }   /* 도먼트(260712) — 구 수집실패 노란 링(원값 = git 이력) */
+  .profile.hasmsg .pbadge { display:flex; }
+  /* 메뉴별 프로필 강조색 폐지 — 전 탭 무조건 메인 강조색 통일(운영자 260705). 상태 링(긴급 빨강 펄스·맞춤법 노랑)은 의미색이라 유지. */
+  /* 맞춤법 검사기 고장 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·정상화되면 자동 소멸 · 운영자 260623) */
+  .profile.shc-bad { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
+  .profile.shc-bad .pbadge { display:flex; background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
+  /* 수집 실패(대기열 미등록) 메시지 = 프로필 노란 링 + 노란 배지(탭 색 위에 덮어씀·메시지 지우면 소멸 · 운영자 260623) */
+  .profile.hasmsg.haswarn { box-shadow:0 10px 22px rgba(0,0,0,.5), 0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }
   .profile.hasmsg.haswarn .pbadge { background:linear-gradient(135deg,var(--warn),var(--amber)) !important; }
   .msgrow.flash { animation:msgFlash 1.6s ease; }          /* 푸시 딥링크(/?msg=)로 들어왔을 때 해당 메시지 행 잠깐 노랗게 강조 · 경고색은 .msgrow.q-warn .qmain(아래) */
   @keyframes msgFlash { 0%,100%{ background:transparent; } 18%{ background:rgba(var(--warn-rgb),.18); } }
@@ -684,7 +684,6 @@
   .trend-chg.dn { color:var(--mut); }   /* 하락 = 회색(식는 중) */
   .trend-q { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .trend-traffic { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:none; }
-  .trend-tm { flex:none; min-width:52px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 행 우측 끝 시간 열(고정폭 우정렬 = 전 행 끝 x 일렬 · relAge 사다리 계승 · 운영자 260712 "모든 것에 시간 기록") */
   .trend-tags { display:flex; flex-wrap:wrap; gap:4px 8px; padding-top:2px; }
   .trend-tag { color:var(--accent); font-size:var(--fs-sm); }
   /* ── 트렌드 구독 축(운영자 260711 배치 승인 = 기존 레인 아래 동일 컴포넌트·'계정' 버튼 → 관리 모달) ── */
@@ -711,21 +710,20 @@
   .tcard-rank.top { color:var(--accent); }
   .tcard-cov .trend-chg { position:absolute; top:6px; right:6px; padding:1px 5px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); }   /* 순위 변동 배지 = 커버 우상단(가독 플레이트) */
   .tcard-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:6px; font-size:var(--fs-sm); line-height:1.35; word-break:break-word; min-height:calc(1.35em * 2); }   /* 제목행 = 무조건 2줄 취급(min-height = line-height 1.35×2줄 예약 · 기하 산식) — 1줄 제목도 메타행(.tcard-m) 시작 y 통일(운영자 260712 "넘든 안넘든 부수 요소 맞춰") */
-  .tcard-m { display:flex; flex-wrap:wrap; gap:2px 8px; align-items:center; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; min-height:calc(var(--fs-xs)*var(--lh-base)); }   /* min-height = 메타행 1줄 예약(지표·시간 결측 카드도 행 자체 유지 → 이웃 카드와 y 일렬 · 운영자 260712 "시간행·제목행 유지") */
-  .tcard-m .tcard-ago { margin-left:auto; }   /* 시간 = 항상 우측 끝(.tpc-tm 문법 계승 · 운영자 260712 "기록된 방식 기준 통일") */
+  .tcard-m { display:flex; flex-wrap:wrap; gap:2px 8px; align-items:center; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tcard-m i { font-style:normal; display:inline-flex; align-items:center; gap:3px; }
   .tcard-m svg { width:11px; height:11px; display:block; opacity:.85; }
   .tcard-ago { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* N일전 = 조회수 우측(뉴스식 메타 · 운영자 260712 #6 · 구 .tcard-acc 업로더 폐지) */
   /* X 트윗 카드 — 전문 + 지표(원본급) · 무채 글래스 셸(soc-item 톤 축소·색 창작 0) */
   .xgrid { display:grid; grid-template-columns:1fr; gap:8px; }
   @media (min-width:560px) { .xgrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-  .xcard { display:flex; flex-direction:column; text-decoration:none; color:var(--fg); min-width:0; padding:10px 12px; border-radius:var(--r-m); background:rgba(255,255,255,.04); border:1px solid var(--line); -webkit-tap-highlight-color:transparent; }   /* flex 컬럼 = 메타행 바닥 고정(2열 그리드에서 본문 줄수 달라도 옆 카드와 메타 y 일렬 · 운영자 260712 "삐뚤하면 안 됨") */
+  .xcard { display:block; text-decoration:none; color:var(--fg); min-width:0; padding:10px 12px; border-radius:var(--r-m); background:rgba(255,255,255,.04); border:1px solid var(--line); -webkit-tap-highlight-color:transparent; }
   .xcard:active { opacity:.7; }
   .xcard-h { display:flex; align-items:center; gap:7px; margin-bottom:5px; min-width:0; }
   .xcard-h b { font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .xcard-h .tcard-rank, .xcard-h .trend-chg { position:static; flex:none; }   /* X 카드 = 커버 없음 → 랭크·변동 배지 헤더 인라인 */
   .xcard-tx { display:-webkit-box; -webkit-line-clamp:7; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-sm); line-height:1.5; white-space:pre-line; word-break:break-word; }
-  .xcard .tcard-m { margin-top:auto; padding-top:7px; }   /* auto = 바닥 고정(구 7px 고정 간격은 padding으로 보존) */
+  .xcard .tcard-m { margin-top:7px; }
   .tcard-cov.wd { aspect-ratio:16/9; }   /* 가로 영상(AI 영상) 카드 변형 */
   /* ── 플랫폼 IA 재편(운영자 260712 "플랫폼별 묶음·순위·변동·점프") = 통합 TOP 10 대시보드 + 플랫폼 대분류 + 좌측 책갈피 레일 · 구 소스칩(.trend-srcbar) 폐지(점프 = 레일 이관 · nm_trend_src 키 고아) ── */
   .tgroup { margin-top:32px; padding-top:32px; border-top:1px solid var(--line); scroll-margin-top:8px; }   /* 최상위 단위 경계 = 32px×2 + 헤어라인 — 운영자 260712 플레이그라운드 선택값(--sp 사다리 밖 raw 승인 · 구 --sp-4 24) */
@@ -762,7 +760,7 @@
   .tpc-bd { display:block; margin-top:6px; min-width:0; }
   .tpc-cat { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); margin-bottom:2px; }   /* 구분자행 = 플랫폼(색 = TR_PCOL cat 재지정 · fs11 = --fs-xs 계승) */
   .tpc-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-xs); line-height:1.35; word-break:break-word; font-weight:400; min-height:calc(1.35em * 2); }   /* 제목 2줄 11px(운영자 선택 = --fs-xs 계승) · min-height = 2줄 예약 — 1줄 제목도 메타행(.tpc-m) 시작 y 통일(운영자 260712) */
-  .tpc-m { display:flex; flex-wrap:wrap; align-items:baseline; gap:1px 6px; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; min-height:calc(var(--fs-xs)*var(--lh-base)); }   /* min-height = 메타행 1줄 예약(결측에도 행 유지 = 카드 간 y 일렬 · 운영자 260712) */
+  .tpc-m { display:flex; flex-wrap:wrap; align-items:baseline; gap:1px 6px; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tpc-m > span { white-space:nowrap; }   /* CJK 중간 꺾임 가드(플레이그라운드 실측) */
   .tpc-tm { margin-left:auto; flex:none; }   /* 우측 = N시간 전(relAge 공통 사다리 · 회색) */
   .tpc.live .tpc-cov { outline-color:rgba(var(--accent-rgb),.55); box-shadow:0 0 14px rgba(var(--accent-rgb),.30); }   /* 로테이션 액티브 = 테두리 글로우(알파 .55 = 운영자 선택 · 같은 토큰 알파 변주) */
@@ -774,13 +772,12 @@
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-tm { display:block; margin-top:5px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
-  .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 46px 64px 58px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수·시간 시작 x 일렬 · 선 없음 = 내부 선 투명 · 5열 = +시간(운영자 260712 "모든 것에 시간" · 46/64 = 구 58/78 실측 재배분: 플랫폼 최장 "유튜브"·조회수 vfmt 만단위·모바일 제목폭 보존) */
+  .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 58px 78px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수 시작 x 일렬 · 선 없음 = 내부 선 투명 */
   .tlr:active { opacity:.7; }
   .tlr .trend-rank { width:auto; }   /* 폭 = grid 컬럼이 담당(숫자 우측정렬 = 자릿수 정렬 유지) */
   .tlr-t { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* 잘림 = … (운영자 명시) */
   .tlr-p { justify-self:start; font-size:var(--fs-xs); font-weight:var(--fw-x); white-space:nowrap; }   /* 플랫폼 컬럼 = 좌측 정렬(제목에 안 붙고 고정 컬럼서 시작 · TR_PCOL cat 재지정 승인 260712) */
   .tlr-v { justify-self:start; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 조회수 컬럼 = 좌측 정렬(tabular) */
-  .tlr-tm { justify-self:start; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 시간 컬럼 = 좌측 정렬(.tlr-v 문법 계승 · relAge · 결측 = 빈 칸 유지 = 열 불변) */
   .tstk-bar { display:flex; justify-content:flex-end; align-items:center; height:24px; margin:0 0 8px; }   /* 복귀 행(높이 고정 = 점프 방지 · O=0이면 visibility 숨김) */
   .tstk-bk, .tstk-seg button { display:grid; place-items:center; height:24px; padding:0 10px; font-size:12px; font-weight:600; cursor:pointer; color:rgba(255,255,255,.78);
     border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); border-radius:var(--r-pill); backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); font-family:inherit; -webkit-tap-highlight-color:transparent; }   /* .sc-tg 글래스 필 계승(운영자 "기존 디자인 유지") */
@@ -789,14 +786,7 @@
   .tstk-seg button { border:0; background:none; backdrop-filter:none; -webkit-backdrop-filter:none; border-radius:0; }   /* 버튼 하나·선택 둘(처음|중간 · 운영자 260712) */
   .tstk-seg i { width:1px; height:12px; background:rgba(255,255,255,.18); }
   /* 매거진 오버레이(운영자 260712 20안 中 10안 채택) = 히어로(1위 와이드+좌측 오버레이 제목) + 미니 행(2·3·4위) · 순환/스와이프/자동은 앨범 스택 로직 그대로 보존(레이아웃만 교체) */
-  .tstk-g { display:flex; flex-direction:column; gap:10px; max-width:340px; touch-action:pan-y; }   /* pan-y = 세로 제스처를 페이지 스크롤에 반환(운영자 260712 "위아래로 하니 스크롤 안 먹음" 봉합) · 전환 = 가로 스와이프(JS) */
-  @media (min-width:640px) {   /* 와이드 = 우측 공백 소거(운영자 260712 "가득 사용") — 히어로 좌 44% + 미니 우 3열 등고 밴토 · 행높이 = 히어로 16/10이 결정·미니 커버가 stretch로 따라감 · 모바일(340 캡·세로 스택) 불변 · 값 = 기존 토큰/비율 계승(신규 raw 0) */
-    .tstk-g { max-width:none; flex-direction:row; align-items:stretch; }
-    .tsk.mag { flex:0 0 44%; min-width:0; }
-    .tstk-mini { flex:1; min-width:0; }
-    .tsk.mini { display:flex; flex-direction:column; }
-    .tsk.mini .tsk-cov { aspect-ratio:auto; flex:1; min-height:150px; }
-  }
+  .tstk-g { display:flex; flex-direction:column; gap:10px; max-width:340px; touch-action:pan-x; }
   .tsk { position:relative; display:block; text-decoration:none; color:var(--fg); min-width:0; -webkit-tap-highlight-color:transparent; }
   .tsk-cov { position:relative; z-index:1; display:grid; place-items:center; border-radius:var(--r-s); overflow:hidden; background:var(--line); }
   .tsk.mag .tsk-cov { aspect-ratio:16/10; border-radius:var(--r-l); }   /* 히어로 = 와이드 커버 */
@@ -967,8 +957,8 @@
   @media (hover:hover){ .vh-acts .profile:hover { transform:scale(1.18); } }   /* .ts-toggle hover 계승 */
   .vh-acts .profile:active { transform:none; }   /* 눌림 회전은 기틀 ic-spin 위임(ts-rf 동일 — 축소+회전 동시 투박 방지) */
   .vh-acts .profile:active .ts-ico, .vh-acts .profile.on .ts-ico { stroke:var(--accent); filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.45)); }   /* 누르면·메뉴 열림 = 강조색(운영자 "누르면 강조색" + vh-fbtn.on 패턴 계승) */
-  .vh-acts .profile.hasmsg { box-shadow:none; }   /* 도먼트(운영자 260712 "메시지 왔다고 알림 필요 없음") — 구 강조색 메시지 링(원값 = git 이력 260712 도먼트 직전) */
-  .vh-acts .profile.shc-bad, .vh-acts .profile.hasmsg.haswarn { box-shadow:none !important; }   /* 도먼트(260712) — 구 맞춤법/수집실패 노란 링 · 실패 표면화는 웹푸시(notify_fail)·대기열 빨강 유지 */
+  .vh-acts .profile.hasmsg { box-shadow:0 0 0 1.5px rgba(var(--accent-rgb),.55), 0 0 10px rgba(var(--accent-rgb),.28); }   /* 메시지 링 시그널 유지(아바타 드롭섀도 항만 제거) · 신규 선언은 토큰형(--accent-rgb) — raw 재유입 0 */
+  .vh-acts .profile.shc-bad, .vh-acts .profile.hasmsg.haswarn { box-shadow:0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }   /* 맞춤법/수집실패 노란 링 유지 */
   .vh-acts .ts-rf { display:none; }   /* 새로고침 픽토그램 = 도먼트(운영자 260706 3차 "우상단 검색만") · DOM·JS 보존(재점등 = 이 줄 삭제) */
   /* 설정(기어=.profile) = 260710 재활성 = 헤더 최우측 톱니바퀴로 부활(운영자 "대기열 자리에 설정 톱니바퀴 고정") · 클릭 = 설정 메뉴(linkpop) 헤더 아래 우측 촤르륵 · 위 .profile{display:grid}가 살아나 표시 · 260712 도먼트(PR 2022) = 지시 오해석(제거 대상 = 알람안 · 미머지)이라 같은 날 원복(운영자 "설정 버튼 가져오셈") — 재도먼트는 운영자 재확인 후에만 */
   .viewhead .pmenu { right:calc(var(--btn-sm) + var(--sp-1)); top:38px; }   /* 설정 메뉴 = 가시 클러스터(.vh-acts) 우변과 정렬(옛 right:16 = 도먼트 기어 슬롯 스테일 앵커 = 클러스터보다 20px 돌출 → 36 토큰으로 정합) · 현 도먼트(기어 display:none · lpSettings가 linkfab 기준 재앵커라 라이브 영향0이나 정리·분신술10 260707) */
@@ -8755,8 +8745,7 @@ function renderSnsTrends() {
   const sb = d.subs || {}, sx = sb.x || [], stk = sb.tiktok || [], sre = sb.insta || [], syt = sb.youtube || [];   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트)
   const shv = d.shorts || [], aiv = d.aivid || [];   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되")
   if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지)
-  const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n < 1e5 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') : String(Math.round(n / 1e4))) + '만' : n > 0 ? (n / 1e4).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '만' : '';   // 전 지표 만단위 통일(운영자 260712 "모두 만단위") — 10만 미만 = 소수1(1.6만) · 1만 미만 = 소수2(0.05만) = 정상 수집이면 미도달(잔존 = 수집 저단위 신호·gtrends RSS 이슈 보고 260712)
-  const tfmt = s => { const n2 = parseInt(String(s || '').replace(/[^0-9]/g, ''), 10); return n2 > 0 ? vfmt(n2) + '+' : ''; };   // 구글 검색량 문자열 "20,000+"→"2만+" 만단위 통일 — 천단위 원값은 RSS approx_traffic 저단위 버킷(수집기 교체 검토 = 운영자 결정 대기)
+  const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(n || '');
   const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
   let stale = false;   // 수집 65분+ 밀림 = 크론 지연/사망(정직 신호 · 평의회6 — 크론 주기 30분×2 + 지터 여유)
   if (d.updated) { const am = (Date.now() - new Date(d.updated).getTime()) / 60000; stale = am > 65; }
@@ -8766,14 +8755,6 @@ function renderSnsTrends() {
       : (x.delta < 0 ? `<span class="trend-chg dn">${TRI_DN_SVG}${-x.delta}</span>` : ''));
   const cma = n => String(n || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');   // (미사용 260712 #6 — TOP 10 조회수도 vfmt 000만 통일 · 정의는 폴백 보존)
   const relH = p => p ? (Date.now() - new Date(p).getTime()) / 3600e3 : NaN;   // 발행 → 경과 h → relAge(공통 상대시간 사다리 계승)
-  const relP = p => {   // 발행값 관용 파서(소스별 포맷 지옥 실측 260712): ISO/RFC 문자열(yt·tk·subs) · epoch 초/밀리초(subs.tk 숫자) · 기성 상대문자열("5일 전" — shorts/aivid 수집 원문) = 그대로 통과 · 무효 = '' (truthy-invalid가 폴백 막던 버그 봉합)
-    if (p == null || p === '') return '';
-    if (typeof p === 'number' || /^\d{9,13}$/.test(String(p))) { const n = +p; return relAge((Date.now() - (n < 1e12 ? n * 1000 : n)) / 3600e3); }
-    const h2 = (Date.now() - new Date(p).getTime()) / 3600e3;
-    if (isFinite(h2)) return relAge(h2);
-    return /전$|^방금$/.test(String(p).trim()) ? String(p).trim() : '';
-  };
-  const relT = x => relP(x.published) || relP(x.time) || relP(x.first_seen);   // 시간 표기 공통(운영자 260712 "모든 것에 시간 기록") = published(영상 발행) ∥ time(구독 X·틱톡) ∥ first_seen(수집기 최초관측 도장 — 실검 등 무발행 소스 폴백)
   const zig = arr => { const hh = Math.ceil(arr.length / 2), o = []; for (let z = 0; z < hh; z++) { o.push(arr[z]); if (arr[z + hh]) o.push(arr[z + hh]); } return o; };   // 레일 2행 = grid-auto-flow:column(세로 우선) → [1,6,2,7,…] 인터리브로 윗줄 1~5·아랫줄 6~10 보장(운영자 선택값 · 스모크 시각 실측 260712)
   const tpc = (it, i, cat) =>   // TOP 카드(운영자 260712 선택값: 1:1 커버·r-s·순위 필 h15/fs10·구분자행(cat색)→제목 2줄→원시 조회+우측 시간 · 변동 = NEW만) — 제목 = textContent 후주입(XSS 안전) · 로고 = img 밑층 폴백
     `<a class="tpc" data-ri="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener">` +
@@ -8784,7 +8765,7 @@ function renderSnsTrends() {
   const row = (i, url, right, x, thumb, pt) =>   // 공용 행(썸네일 유무·pt=세로 커버) — 순서 = [썸네일] 랭크 제목 변동배지 수치
     `<a class="trend-row${thumb ? ' th' : ''}" href="${escUrl(url)}" target="_blank" rel="noopener">` +
     (thumb ? `<img class="trend-th${pt ? ' pt' : ''}" loading="lazy" referrerpolicy="no-referrer" src="${escUrl(thumb)}" onerror="this.style.display='none'" alt="">` : '') +
-    `<span class="trend-rank">${i + 1}</span><span class="trend-q"></span>${chg(x)}<span class="trend-traffic">${right}</span><span class="trend-tm">${relT(x)}</span></a>`;   // 시간 열 = 우측 끝 고정폭(운영자 260712 "모든 것에" · 결측 = 빈 칸 유지)
+    `<span class="trend-rank">${i + 1}</span><span class="trend-q"></span>${chg(x)}<span class="trend-traffic">${right}</span></a>`;
   // 섹션 접기(운영자 260711) = 네이티브 <details> · 기억 = localStorage nm_trend_fold(nomute_tab 관용구 · 빌드 시점 open 복원)
   let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
   const sec = (key, lbl, unit, n, body) =>
@@ -8797,11 +8778,11 @@ function renderSnsTrends() {
   const card = (t, i, wd) =>   // 통일 카드(운영자 260712 #6 "쇼츠형 중구난방 해소") — 썸네일(쇼츠식 커버 크롭) + 아래에 [제목 → 조회수(vfmt 000만) · N일전] · 업로더 제거·오버레이 제목 폐지(제목/메타 항상 커버 아래 = 뉴스식 배치) · 제목 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조
     `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
-    `<span class="tcard-t"></span><span class="tcard-m">${t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : ''}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에")
+    `<span class="tcard-t"></span><span class="tcard-m">${t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : ''}${t.published ? `<span class="tcard-ago">${relAge(relH(t.published))}</span>` : ''}</span></a>`;
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
     `<a class="xcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
-    `<span class="xcard-tx"></span><span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)
+    `<span class="xcard-tx"></span><span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}</span></a>`;
   const V3 = [['views', '조회수'], ['likes', '좋아요'], ['cmts', '댓글']];
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
@@ -8815,19 +8796,19 @@ function renderSnsTrends() {
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
   const lane = (plat, mono, arr, n, f) => { const s = arr.slice(0, n), L = s.length; s.forEach((x, r) => { const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };
-  lane('구글', 'gg', gt, 8, g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) }));   // 검색어 = 검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백) · 시간 = first_seen 도장(수집기 260712 — 도장 전 구 데이터 = 공란)
-  lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
-  lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
-  lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relT(v) }));
-  lane('틱톡', 'tk', tkv, 10, v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) }));   // published = 수집기 create_time(260712 추가) — 구 데이터 = first_seen 폴백
+  lane('구글', 'gg', gt, 8, g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: g.traffic || '', th: g.picture || '', ago: '' }));   // 검색어 = 검색량 문자열·수집기 picture 커버(핫링크 · onerror 로고 폴백)
+  lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relAge(relH(v.published)) }));
+  lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relAge(relH(v.published)) }));
+  lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relAge(relH(v.published)) }));
+  lane('틱톡', 'tk', tkv, 10, v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relAge(relH(v.published)) }));   // published = 수집기 create_time(260712 추가) — 구 데이터 = 공란
   pool.sort((a, b2) => (b2.sc - a.sc) || (b2.ht - a.ht));
   const top = [], pcap = {};
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
   if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 8), gt.slice(0, 8).map((g, i) =>
-    row(i, (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), tfmt(g.traffic), g, '')).join(''));
-  const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relT(v) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
+    row(i, (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), esc(g.traffic || ''), g, '')).join(''));
+  const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relAge(relH(v.published)) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
   const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnZ = zig(ytn.slice(0, 10).map((v, i) => [v, i]));
   if (yt.length) gYT += sec('yt', '인기', '· 조회수', Math.min(yt.length, 10), '<div class="tpg">' + ytZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // TOP 10과 동일 카드·10위(운영자 260712) · ytimg 핫링크 자유(평의회5)
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="tpg">' + ytnZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // 동일 적용(운영자 "뉴스도 마찬가지") · 뉴스 소재 훑기 온-미션(평의회10 결판)
@@ -8857,7 +8838,7 @@ function renderSnsTrends() {
   if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span></div>`);
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
     '<div class="tlist">' + top.map((it, i) =>
-      `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span><span class="tlr-tm">${esc(it.ago || '')}</span></a>`).join('') + '</div>' +
+      `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span></a>`).join('') + '</div>' +
     '<div class="tstk-wrap" id="tstk"></div>');
   h += GRPS.map(g => gsec(g[0], g[1], g[2])).join('');
   h += '</div>';
@@ -8978,21 +8959,19 @@ function renderSnsTrends() {
     const adv = d => { box._tsO = box._tsO + d; box._tsLast = Date.now(); box._tsDraw(); };
     if (!stkEl._bound) {
       stkEl._bound = 1;
-      let tx = 0, ty0 = 0, tm2 = 0;
-      stkEl.addEventListener('touchstart', e2 => { const m2 = e2.target.closest('.tsk.main'); if (!m2) { tx = 0; return; } tx = e2.touches[0].clientX; ty0 = e2.touches[0].clientY; tm2 = Date.now(); }, { passive: true });
-      stkEl.addEventListener('touchend', e2 => {   // main 위 가로 스와이프 = 한 칸(좌 = 다음 · 우 = 이전) — 운영자 260712 "좌우로 넘기면 메인 창" · 세로는 touch-action:pan-y가 페이지 스크롤로 반환("스크롤 안 먹음" 봉합)
-        if (!tx) return; const dx = e2.changedTouches[0].clientX - tx, dy2 = e2.changedTouches[0].clientY - ty0; tx = 0;
-        if (Math.abs(dx) < 28 || Math.abs(dx) <= Math.abs(dy2) * 1.2 || Date.now() - tm2 > 900) return;   // 세로 우세 = 스크롤 의도(전환 오발 차단)
-        box._tsSw = 1; adv(dx < 0 ? 1 : -1);
+      let ty = 0, tm2 = 0;
+      stkEl.addEventListener('touchstart', e2 => { const m2 = e2.target.closest('.tsk.main'); if (!m2) { ty = 0; return; } ty = e2.touches[0].clientY; tm2 = Date.now(); }, { passive: true });
+      stkEl.addEventListener('touchend', e2 => {   // main 위 세로 스와이프 = 한 칸(위 = 다음 · 아래 = 이전)
+        if (!ty) return; const dy = e2.changedTouches[0].clientY - ty; ty = 0;
+        if (Math.abs(dy) < 28 || Date.now() - tm2 > 900) return;
+        box._tsSw = 1; adv(dy < 0 ? 1 : -1);
       }, { passive: true });
       let wl = 0;
-      stkEl.addEventListener('wheel', e2 => {   // 데스크톱 = main 호버 트랙패드 가로 스와이프(deltaX 우세일 때만) — 세로휠 무간섭 통과 = 페이지 스크롤 보전(운영자 260712)
+      stkEl.addEventListener('wheel', e2 => {   // 데스크톱 = main 호버 휠(운영자 "호버(마우스)")
         if (!e2.target.closest('.tsk.main')) return;
-        const ax = Math.abs(e2.deltaX), ay = Math.abs(e2.deltaY);
-        if (ax <= ay || ax < 12) return;
         e2.preventDefault();
-        const n2 = Date.now(); if (n2 - wl < 450) return; wl = n2;
-        adv(e2.deltaX > 0 ? 1 : -1);
+        const n2 = Date.now(); if (n2 - wl < 450 || Math.abs(e2.deltaY) < 12) return; wl = n2;
+        adv(e2.deltaY > 0 ? 1 : -1);
       }, { passive: false });
     }
     if (box._trRot) { clearInterval(box._trRot); box._trRot = null; }
