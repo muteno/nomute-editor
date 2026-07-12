@@ -338,7 +338,17 @@ ${extracted}"
         fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 소스 결함(원문이 막혔거나 본문이 비어 내용을 못 가져옴)\n\n→ 같은 사건의 본문 충실한 기사(통신사·속보 말고 종합지)를 열어 본문을 전체선택→복사해서 다시 보내줘.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
       fi
     fi
-    emit_fail_msg "$base" "$fail_body"   # 메시지함(노란 점등)+푸시 — 분석 실패 사유별 통지(운영자 260623)
+    # 관련 기사 링크 무조건 동봉(운영자 260712) — 본문에 링크가 이미 있으면(SUGGEST·url-mode 에코) 생략 · 없으면(전문 paste 등) 입력 첫 조각으로 구글뉴스 유추 검색 합성(비-LLM·토큰 0 · fail-soft)
+    _ref="$(NM_T="${fail_body}" python3 -c '
+import os, re, urllib.parse
+t = os.environ.get("NM_T") or ""
+if re.search(r"https?://\S{8,}", t): print("")
+else:
+    q = re.sub(r"\s+", " ", re.sub(r"[\[\]⚠→]", " ", t.split("[내가 보낸 내용]")[-1]))[:60].strip()
+    print("https://news.google.com/search?q=" + urllib.parse.quote(q) + "&hl=ko&gl=KR&ceid=KR:ko" if q else "")
+' 2>/dev/null || true)"
+    [ -n "${_ref// }" ] && fail_body="${fail_body}"$'\n\n'"[관련 기사 — 유추 검색]"$'\n'"${_ref}"
+    emit_fail_msg "$base" "$fail_body"   # 메시지함(노란 점등)+푸시 — 분석 실패 사유별 통지(운영자 260623) · 260712부터 관련 기사 링크 상시 동봉
     echo "실패 → pending/failed/${base}"
     echo "::endgroup::"; continue
   fi
