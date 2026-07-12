@@ -3,8 +3,7 @@
 # 페르소나 = "세웅에게 짚어주는 친한 트렌드 애널리스트 · 친근 인사(KST) · SNS 결과→WebSearch로 원인·이상치 딥다이브·관련 링크 · 팬픽 문체 자연스러움 · 뉴스 신뢰선 사수".
 # 게이트 3중: ① SNS_BRIEF=1(§📰-e 카나리아 — 기본 OFF 머지 → dispatch 실측 → 승격) ② 입력 다이제스트 동일 = 스킵(토큰 0 · 운영자 "내용 변화 없으면 낭비 말고 그대로") ③ 실패 = fail-soft(직전 brief 유지 · rc 0 — 뷰어는 파일 없으면 블록 미표시).
 # 모델 = PIPE_MODEL(opus 4.8 · shared/model_env.sh — §🤖 생성/하드작업 축) · effort max · turns 8(리서치 = 원인·링크 다회 왕복) · timeout 600.
-# --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장 도구는 활성 유지 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
-# ⚠️ WebSearch/WebFetch = --allowedTools 명시 필수(analyze.sh·ask.sh·cardmake.sh 선례): 헤드리스는 미허용 도구를 '권한 대기'가 아니라 '즉시 거부(권한 없음)'로 처리 → 빠지면 원인 역추적이 6회 다 튕겨 '권한 열어줘' 반쪽 브리프만 나옴(실측 260713). --safe-mode는 도구를 켤 뿐 승인을 대신하지 않음.
+# --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장 도구 WebSearch/WebFetch는 정상 = 원인 역추적 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
 set -u
 [ "${SNS_BRIEF:-0}" = "1" ] || { echo "brief: OFF(SNS_BRIEF!=1) — 스킵"; exit 0; }
 cd "$(git rev-parse --show-toplevel)"
@@ -114,7 +113,6 @@ $BODY"
 out=""
 for _try in 1 2 3 4; do
   out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
-    --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/brief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
     if claude_failover "$out$(cat /tmp/brief.err 2>/dev/null)"; then continue; fi   # 쿼터 = 4계정 체인 1단씩(§📰-f)
