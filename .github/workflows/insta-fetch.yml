@@ -1,0 +1,38 @@
+# 인스타 직결 수집 — Meta Instagram API(Instagram Login) · LLM 0콜 · 시크릿 미등록 = no-op 스캐폴드
+# 정본 = apps/insta/00_지침_컨설턴트_인스타_v1.md §1-2 · 세팅/토큰 재발급 = docs/인스타_직결_세팅.md
+# 롤백 = schedule 블록 제거(수동 전용) 또는 파일 삭제 · 수집분(apps/insta/data/)은 잔존.
+name: insta-fetch
+on:
+  schedule:
+    - cron: '25 21 * * *'   # 06:25 KST 일 1회(:17/:47·정각 크론 봇 혼잡 회피 오프셋)
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: insta-fetch
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 수집(시크릿 게이트 · stdlib only = 설치 0)
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ vars.IG_USER_ID }}
+        run: python3 .github/scripts/insta_fetch.py
+      - name: 커밋
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add apps/insta/data 2>/dev/null || true
+          git diff --cached --quiet && { echo "변동 없음(또는 no-op) — 커밋 생략"; exit 0; }
+          git commit -m "insta: 계정 인사이트 스냅샷 (bot)"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::push 실패(재시도 소진) — 다음 주기 재수집"

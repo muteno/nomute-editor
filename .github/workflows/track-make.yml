@@ -28,7 +28,7 @@ on:
         type: string
         default: ''
       render:
-        description: '렌더 페이로드 JSON {"mode":"mosaic|pinset|keying",…} — mosaic/pinset={targets,invert,names,colors,opts{pxw,pxh,size,feather,shape},scopes{pid:"body"}} · keying={keep:[sid],keepP:[pid],extra:[{t,x,y}],opts:{feather}} — render 전용(scopes/keepP = 260710 전신 폴백·얼굴 단위)'
+        description: '렌더 페이로드 JSON {"mode":"mosaic|pinset|keying|maskfx|chroma",…} — mosaic/pinset={targets,invert,names,colors,opts{pxw,pxh,size,feather,shape},scopes{pid:"body"}} · keying/maskfx={keep:[sid],keepP:[pid],extra:[{t,x,y}],opts:{feather}} + maskfx 추가={fill:"mosaic|image",preset:"smile|black|heart"} · chroma={opts:{color,similarity,choke,feather,despill,blend,edge}} — render 전용(scopes/keepP = 260710 전신 폴백·얼굴 단위 · maskfx/chroma = 260712 배선)'
         type: string
         default: ''
       cap:
@@ -49,9 +49,9 @@ jobs:
     timeout-minutes: 40   # 분석 300s캡 ~4.5분 · 모자이크/핀셋 300s = 30fps ~9분·60fps 최악 ~17분(프레임수 비례 — 180s/30fps ~5분 실측 외삽 · 평의회7 정정 260710) · 키잉 90s캡 ≈25분(실측 260709) + 콜드런 deps 여유 — 무한 행만 차단(§9)
     env:
       TRACK_MODE: ${{ inputs.mode }}   # 셸엔 env로만 전달(run 블록 ${{ }} 생보간 금지 = 인젝션 차단 · ly-make 관례 · 평의회1 H-1) · setup.sh 모델 스킵 분기용
-      # 키잉 = 헤비 스택(torch+ultralytics+SAM2) 신호 — contains 러프 매칭(모자이크 이름에 'keying'이 든 극단 케이스 = 불필요 설치뿐·동작 무해).
+      # 키잉·실루엣(maskfx) = 헤비 스택(torch+ultralytics+SAM2) 신호 — contains 러프 매칭(모자이크 이름에 'keying'이 든 극단 케이스 = 불필요 설치뿐·동작 무해). chroma = ffmpeg 단독이라 제외.
       #   fromJSON은 render 빈값(analyze)·수동 오타 디스패치에서 큐 시점 표현식 에러 = 채택 안 함(정직 트레이드오프).
-      TRACK_HEAVY: ${{ (inputs.mode == 'render' && contains(inputs.render, 'keying')) && '1' || '' }}
+      TRACK_HEAVY: ${{ (inputs.mode == 'render' && (contains(inputs.render, 'keying') || contains(inputs.render, 'maskfx'))) && '1' || '' }}
     steps:
       - name: mode 가드
         run: |

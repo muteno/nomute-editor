@@ -426,6 +426,80 @@ def resolve_src(meta, vid_id, outdir):
     return None
 
 
+MASK_PRESETS = {"smile": {"clip": False}, "black": {"clip": True}, "heart": {"clip": False}}   # 내장 가면(운영자 260712 승인) — black = 실루엣 재단 완전가림 · 경로 = 이 파일 옆 assets/masks(임의 경로 주입 차단)
+
+
+def run_maskfx(vid_id, req, doc, outdir):
+    """실루엣 채움(M4) 위임 — track_maskfx.run(로컬 in→out)에 {src 회수 → 업로드 → video.json}만 얹는다(키잉 미러)."""
+    meta = doc.get("meta") or {}
+    src = resolve_src(meta, vid_id, outdir)
+    if not src:
+        raise RuntimeError("원본 보관본을 못 가져왔어 — 처음(영상 분석)부터 다시 해줘.")
+    fill = "image" if req.get("fill") == "image" else "mosaic"
+    m4 = {"keep": req.get("keep") or [], "keepP": req.get("keepP") or [], "extra": req.get("extra") or [],
+          "fill": fill, "mosaic": {"block": 0},
+          "feather": (req.get("opts") or {}).get("feather", 8)}
+    if fill == "image":
+        preset = req.get("preset") if req.get("preset") in MASK_PRESETS else "smile"
+        m4["image"] = {"path": os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "masks", f"{preset}.png"),
+                       "scale": 1.15, "clip": MASK_PRESETS[preset]["clip"]}
+    import track_maskfx   # lazy — torch 스택은 heavy 러너에서만(키잉 관례)
+    out_mp4 = "/tmp/maskfx_out.mp4"
+    try:
+        res = track_maskfx.run(src, doc, m4, out_mp4)
+    except SystemExit as e:   # 모듈 계약 = die(SystemExit(JSON)) — fail-soft 래퍼는 Exception만 잡아서 여기서 변환
+        msg = "실루엣 렌더 실패 — 다시 시도해줘."
+        try:
+            msg = json.loads(str(e.code)).get("error") or msg
+        except Exception:
+            pass
+        raise RuntimeError(msg)
+    bust = int(time.time())
+    url = _r2_upload_file(out_mp4, f"track_res/{vid_id}/maskfx.mp4", "video/mp4")
+    if not url:
+        if os.path.getsize(out_mp4) <= GIT_FALLBACK_MAX:
+            import shutil
+            shutil.copyfile(out_mp4, os.path.join(outdir, "result-maskfx.mp4"))
+            url = f"track_out/{vid_id}/result-maskfx.mp4"
+        else:
+            raise RuntimeError("결과 업로드 실패(R2) — 잠시 후 다시 렌더해줘.")
+    out_json(outdir, {"url": f"{url}?v={bust}", "mode": "maskfx", "fill": fill,
+                      "n": len(m4["keep"]) + len(m4["keepP"]) + len(m4["extra"]), "frames": res.get("frames")})
+
+
+def run_chroma(vid_id, req, doc, outdir):
+    """크로마키(M3) 위임 — track_chroma.run(로컬 in→out) + 업로드·기록(키잉 산출 계약 미러 = MOV 마스터+webm 프리뷰)."""
+    meta = doc.get("meta") or {}
+    src = resolve_src(meta, vid_id, outdir)
+    if not src:
+        raise RuntimeError("원본 보관본을 못 가져왔어 — 처음(영상 분석)부터 다시 해줘.")
+    import track_chroma   # lazy(표준 라이브러리 100%지만 관례 통일)
+    try:
+        res = track_chroma.run(src, req.get("opts") or {}, "/tmp/chroma_out")
+    except SystemExit as e:
+        msg = "크로마키 실패 — 다시 시도해줘."
+        try:
+            msg = json.loads(str(e.code)).get("error") or msg
+        except Exception:
+            pass
+        raise RuntimeError(msg)
+    bust = int(time.time())
+    import shutil
+    url = _r2_upload_file(res["master"], f"track_res/{vid_id}/chroma.mov", "video/quicktime")
+    prev = _r2_upload_file(res["preview"], f"track_res/{vid_id}/chroma_preview.webm", "video/webm")
+    if not url and os.path.getsize(res["master"]) <= GIT_FALLBACK_MAX:
+        shutil.copyfile(res["master"], os.path.join(outdir, "result-chroma.mov"))
+        url = f"track_out/{vid_id}/result-chroma.mov"
+    if not prev and os.path.getsize(res["preview"]) <= GIT_FALLBACK_MAX:
+        shutil.copyfile(res["preview"], os.path.join(outdir, "result-chroma.webm"))
+        prev = f"track_out/{vid_id}/result-chroma.webm"
+    if not url and not prev:
+        raise RuntimeError("결과 업로드 실패(R2) — 잠시 후 다시 렌더해줘.")
+    out_json(outdir, {"url": (f"{url}?v={bust}" if url else ""), "preview": (f"{prev}?v={bust}" if prev else ""),
+                      "mode": "chroma", "note": (None if url else "master-lost"), "kind": res.get("kind"),
+                      "opts": {k: res.get("opts", {}).get(k) for k in ("color", "similarity", "choke", "feather", "edge")}})
+
+
 def main():
     vid_id = sys.argv[1] if len(sys.argv) > 1 else ""
     if not re.match(r"^[0-9]{12}-[0-9a-f]{6}$", vid_id):   # 인-스크립트 자체 방어(워크플로 가드와 이중 · ly_burn 문법 · 평의회4)
@@ -443,10 +517,16 @@ def main():
         req = {}
     if not isinstance(req, dict):   # 유효 JSON이지만 객체가 아님(리스트·수) — AttributeError 방지(평의회4)
         req = {}
-    mode = req.get("mode") if req.get("mode") in ("mosaic", "pinset", "keying") else "mosaic"
+    mode = req.get("mode") if req.get("mode") in ("mosaic", "pinset", "keying", "maskfx", "chroma") else "mosaic"
     if mode == "keying":   # 키잉 = 별도 모듈 위임(lazy import — torch 스택은 키잉 러너에서만 · 모자이크/핀셋 경로 무영향)
         import track_keying
         track_keying.run(vid_id, req, doc, outdir)   # 예외 = 아래 fail-soft 래퍼가 video.json{error}로 기록
+        return
+    if mode == "maskfx":   # 실루엣 채움(M4) = 키잉과 동일 러너(TRACK_HEAVY) · 위임 래퍼가 src 회수·업로드·기록
+        run_maskfx(vid_id, req, doc, outdir)
+        return
+    if mode == "chroma":   # 크로마키(M3) = ffmpeg 단독(torch 불요 · 경량 러너) — 대상 선택 없음(색만)
+        run_chroma(vid_id, req, doc, outdir)
         return
     names = {str(k): str(v)[:24] for k, v in (req.get("names") or {}).items() if str(v).strip()}
     colors = {str(k): str(v) for k, v in (req.get("colors") or {}).items()}

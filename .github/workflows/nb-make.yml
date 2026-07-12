@@ -1,0 +1,245 @@
+name: nb-make
+
+# 뷰어 자료 탭(Pages Function /api/nb)이 발사 — 유튜브 자료화 v1(운영자 260712 · 평의회 11인 수렴):
+#   유튜브 URL → 자막 우선(영상 다운로드 없이 자막만 = 경량) → 없으면 오디오만 받아 Whisper STT(ly 레일)
+#   → claude 1콜(분석 노트만 — 전사는 nb_sub.py 산출 기계 삽입 = 패스스루) → viewer/nb_out/<id>/note.json.
+#   골격 = song-make 미러(+ ly-make STT 레일 조건부). LLM = 영상당 1콜(구독 OAuth · 과금 0).
+#   캡 = 자막 경로 4시간(NB_MAX_SEC) · STT 폴백 1시간(NB_STT_MAX_SEC) — 정직 거절(error.log).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6)'
+        type: string
+      url:
+        description: '유튜브(영상) URL — yt-dlp 지원 사이트'
+        type: string
+      ask:
+        description: '운영자 정리 지시(선택 — 관점·초점)'
+        type: string
+        default: ''
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: nb-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  nb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75   # 자막 경로 ≈3~6분 · STT 폴백(1h 오디오 whisper) 백스톱 포함
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # claude CLI — song-make 미러(노트 생성이 무조건 claude 1콜 = 무조건 설치)
+      - name: Setup Node (claude)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 메타·자막 추출 (yt-dlp — 영상 다운로드 없음)
+        timeout-minutes: 12
+        env:
+          URL: ${{ inputs.url }}
+          IN_ID: ${{ inputs.id }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          NB_MAX_SEC: ${{ vars.NB_MAX_SEC || 14400 }}
+          NB_STT_MAX_SEC: ${{ vars.NB_STT_MAX_SEC || 3600 }}
+          NB_LIST_MAX: ${{ vars.NB_LIST_MAX || 200 }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          [ -n "$URL" ] || { echo "::error::url 없음"; exit 1; }
+          mkdir -p "viewer/nb_out/${IN_ID}"
+          timeout 180 pip3 install -q yt-dlp || { sleep 3; timeout 180 pip3 install -q yt-dlp; }   # 네트워크 op 타임아웃(§인프라 b)
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          # ── 1차 flat 판정(운영자 260712 3차 "채널 넣으면 유튜브 다 긁어지게") — 채널/재생목록 = entries만 초고속 추출(영상 메타 전수 긁기·스크롤링 0)
+          python3 -m yt_dlp --flat-playlist --skip-download --socket-timeout 30 $COOKIES --dump-single-json "$URL" > /tmp/nb_flat.json \
+            || { echo "유튜브 정보 조회 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구하거나 링크가 잘못됐어. (운영자: YT_COOKIES 시크릿 등록 시 안정)" > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::yt-dlp flat 판정 실패: $URL"; exit 1; }
+          NB_LIST_MAX="${NB_LIST_MAX:-200}" IN_ID="$IN_ID" python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          y = json.load(open("/tmp/nb_flat.json", encoding="utf-8"))
+          if y.get("_type") != "playlist":
+              raise SystemExit(0)   # 단건 영상 = 기존 노트 파이프 계속
+          cap = int(os.environ.get("NB_LIST_MAX", "200"))
+          items = []
+          def walk(entries):   # 채널 루트는 {Videos/Shorts/Live} 하위 목록이 중첩 playlist로 옴 — 평탄화
+              for e in entries or []:
+                  if not isinstance(e, dict):
+                      continue
+                  if e.get("_type") == "playlist":
+                      walk(e.get("entries"))
+                      continue
+                  vid = e.get("id") or ""
+                  if not vid or any(x["id"] == vid for x in items):
+                      continue
+                  items.append({"id": vid, "url": e.get("url") if str(e.get("url", "")).startswith("http") else f"https://www.youtube.com/watch?v={vid}",
+                                "t": (e.get("title") or "")[:200], "d": int(e.get("duration") or 0)})
+                  if len(items) >= cap:
+                      return
+          walk(y.get("entries"))
+          try:
+              from zoneinfo import ZoneInfo
+              ts = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+          except Exception:
+              ts = datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")
+          doc = {"v": 1, "ts": ts, "kind": "list",
+                 "src": {"url": y.get("webpage_url") or "", "title": (y.get("title") or "")[:200], "channel": (y.get("channel") or y.get("uploader") or "")[:100]},
+                 "n": len(items), "items": items}
+          d = f"viewer/nb_out/{os.environ['IN_ID']}"
+          os.makedirs(d, exist_ok=True)
+          tmp = d + "/list.json.tmp"
+          json.dump(doc, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+          os.replace(tmp, d + "/list.json")   # 원자 교체 = 레포 표준
+          open("/tmp/nb_islist.txt", "w").write("1")
+          print(f"채널/목록 감지 — 영상 {len(items)}개 목록화(캡 {cap})")
+          PY
+          if [ -f /tmp/nb_islist.txt ]; then echo "NB_LIST=1" >> "$GITHUB_ENV"; echo "목록 모드 — 노트 생성 스킵(운영자가 목록서 골라 발사)"; exit 0; fi
+          # ── 메타(제목·채널·길이·자막 유무) — 단건 영상(봇 인증 실패 = ly와 동일 안내)
+          python3 -m yt_dlp --skip-download --no-playlist --socket-timeout 30 $COOKIES --dump-single-json "$URL" > /tmp/nb_yt.json \
+            || { echo "유튜브 정보 조회 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구하거나 링크가 잘못됐어. (운영자: YT_COOKIES 시크릿 등록 시 안정)" > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::yt-dlp 메타 실패: $URL"; exit 1; }
+          python3 - <<'PY'
+          import json, os, sys
+          y = json.load(open("/tmp/nb_yt.json", encoding="utf-8"))
+          up = y.get("upload_date") or ""
+          meta = {
+              "yt_id": y.get("id") or "", "url": y.get("webpage_url") or "",
+              "title": (y.get("title") or "")[:300], "channel": (y.get("channel") or y.get("uploader") or "")[:100],
+              "uploaded": f"{up[:4]}-{up[4:6]}-{up[6:8]}" if len(up) == 8 else "",
+              "dur": int(y.get("duration") or 0), "lang": (y.get("language") or "")[:8],
+          }
+          if y.get("is_live"):
+              open("/tmp/nb_gate.txt", "w").write("라이브 방송 중이야 — 방송 끝난 뒤(다시보기) 링크로 줘.")
+          cap = int(os.environ.get("NB_MAX_SEC", "14400"))
+          if meta["dur"] and meta["dur"] > cap:
+              open("/tmp/nb_gate.txt", "w").write(f"영상 {meta['dur']//60}분 — {cap//60}분 이하만 지원해(자료화 상한).")
+          man = set((y.get("subtitles") or {}).keys())
+          auto = set((y.get("automatic_captions") or {}).keys())
+          meta["has_subs"] = bool(man) or bool(auto)
+          json.dump(meta, open("/tmp/nb_meta.json", "w", encoding="utf-8"), ensure_ascii=False)
+          print("메타:", meta["title"][:60], "·", meta["dur"], "s · 수동자막", len(man), "· 자동자막", len(auto))
+          PY
+          if [ -s /tmp/nb_gate.txt ]; then cat /tmp/nb_gate.txt > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::게이트: $(cat /tmp/nb_gate.txt)"; exit 1; fi
+          # ── 자막 2패스(수동 → 자동 · 디렉터리 분리 = 출처 라벨 확정) — 영상 다운로드 없음
+          #    언어 우선순위 = 원어(meta.lang) > ko > en — 다운로드·선택 둘 다 이 순서(외국어 영상 원어 자막 우선 · 자동번역 자막 회피)
+          LANGP="$(python3 -c "import json;m=json.load(open('/tmp/nb_meta.json'));l=m.get('lang') or '';print((l+','+l.split('-')[0]+',' if l else '')+'ko,en')")"
+          mkdir -p /tmp/nbsub_man /tmp/nbsub_auto
+          python3 -m yt_dlp --skip-download --no-playlist --socket-timeout 30 $COOKIES \
+            --write-subs --no-write-auto-subs --sub-langs "$LANGP" --sub-format "vtt/srt/best" \
+            -o "/tmp/nbsub_man/x.%(ext)s" "$URL" || true
+          python3 .github/scripts/nb_sub.py --vtt /tmp/nbsub_man "$LANGP" subs > /tmp/nb_tr.json || echo '{"src":"","rows":[]}' > /tmp/nb_tr.json
+          ROWS="$(python3 -c "import json;print(len(json.load(open('/tmp/nb_tr.json')).get('rows') or []))")"
+          if [ "$ROWS" -lt 5 ]; then
+            python3 -m yt_dlp --skip-download --no-playlist --socket-timeout 30 $COOKIES \
+              --write-auto-subs --no-write-subs --sub-langs "$LANGP" --sub-format "vtt/srt/best" \
+              -o "/tmp/nbsub_auto/x.%(ext)s" "$URL" || true
+            python3 .github/scripts/nb_sub.py --vtt /tmp/nbsub_auto "$LANGP" subs-auto > /tmp/nb_tr.json || echo '{"src":"","rows":[]}' > /tmp/nb_tr.json
+            ROWS="$(python3 -c "import json;print(len(json.load(open('/tmp/nb_tr.json')).get('rows') or []))")"
+          fi
+          echo "자막 전사 ${ROWS}줄"
+          if [ "$ROWS" -lt 5 ]; then
+            DUR="$(python3 -c "import json;print(json.load(open('/tmp/nb_meta.json')).get('dur') or 0)")"
+            if [ "$DUR" -gt "${NB_STT_MAX_SEC}" ] 2>/dev/null; then
+              echo "자막이 없는 영상인데 ${DUR%%.*}초(길이)라 STT 상한(${NB_STT_MAX_SEC}s)을 넘어 — 자막 있는 영상이나 더 짧은 영상으로." > "viewer/nb_out/${IN_ID}/error.log"
+              echo "::error::자막 없음 + STT 상한 초과"; exit 1
+            fi
+            echo "NB_NEED_STT=1" >> "$GITHUB_ENV"
+            echo "자막 없음 → Whisper STT 폴백 예정"
+          fi
+
+      # 자막 없는 영상만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시(ly 레일 그대로)
+      - name: STT 환경 (자막 없음 폴백)
+        if: ${{ env.NB_NEED_STT == '1' }}
+        timeout-minutes: 15
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/ly/setup.sh
+          whisper: 'true'
+          apt: ffmpeg
+
+      - name: STT (오디오만 다운 → Whisper 전사)
+        if: ${{ env.NB_NEED_STT == '1' }}
+        timeout-minutes: 45
+        env:
+          URL: ${{ inputs.url }}
+          IN_ID: ${{ inputs.id }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+        run: |
+          set -e
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          python3 -m yt_dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
+            || { echo "유튜브 다운로드 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구해. (운영자: YT_COOKIES 시크릿 등록 시 안정)" > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::yt-dlp 오디오 실패: $URL"; exit 1; }
+          python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "" > /tmp/nb_stt.txt \
+            || { echo "Whisper STT 실패 — 오디오 인식 불가. 자막 있는 영상으로 해줘." > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::Whisper STT 실패"; exit 1; }
+          python3 .github/scripts/nb_sub.py --stt /tmp/nb_stt.txt > /tmp/nb_tr.json
+          echo "STT 전사 $(python3 -c "import json;print(len(json.load(open('/tmp/nb_tr.json')).get('rows') or []))")줄"
+
+      - name: 자료 노트 생성 (claude 1콜 — 전사 패스스루)
+        if: ${{ env.NB_LIST != '1' }}
+        timeout-minutes: 25
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          IN_ID: ${{ inputs.id }}
+          NB_ASK: ${{ inputs.ask }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          export NB_GV="$(sha256sum prompts/nb-make.md | cut -c1-12)"   # 지침 도장(드리프트 추적 — §📰 정신)
+          bash .github/scripts/nbmake.sh "$IN_ID"
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          mkdir -p "viewer/nb_out/${IN_ID}"
+          [ -s "viewer/nb_out/${IN_ID}/error.log" ] || echo "자료화 실패 — Actions 로그를 확인해줘." > "viewer/nb_out/${IN_ID}/error.log"
+          echo "error.log: $(cat viewer/nb_out/${IN_ID}/error.log)"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/nb_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true
+          git commit -m "nb: ${IN_ID} 자료 노트" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }

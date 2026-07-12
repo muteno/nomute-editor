@@ -20,7 +20,7 @@ import subprocess
 from pathlib import Path
 
 # 쿼터·레이트리밋(429)만 — 5xx 과부하·인증죽음 제외(claude_transient.sh is_quota 와 동일 정규식)
-_QUOTA = re.compile(r'usage limit|weekly limit|hit your.{0,20}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)', re.I)   # 신규 'weekly limit'·'hit your … limit'·'limit … resets' 추가(260629 · claude_transient.sh is_quota 동기)
+_QUOTA = re.compile(r'usage limit|weekly limit|hit your.{0,20}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)|failed to authenticate|api error:? 403', re.I)   # 'weekly limit'류(260629) + 'Failed to authenticate·API Error: 403'(260712 실측 — 대화형 과부하 시 활성 계정 국한 인증 403 = 계정 전환이 정확한 처방 · claude_transient.sh is_quota 동기)
 _swap_n = 0   # 프로세스 전환 횟수(0→1→2→3 · 4계정 체인: 서브1=ALT, 서브2=ALT2, 서브3=ALT3)
 _KST = datetime.timezone(datetime.timedelta(hours=9))   # §📐 시각=KST
 

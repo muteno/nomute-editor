@@ -17,7 +17,9 @@ is_quota() {
   local s; s="$(printf '%s\n' "${1:-}" | head -n 8)"
   # ⚠️ 'weekly limit'·'hit your … limit'·'limit … resets <날짜>' 추가(260629·동시세션 합본) = Claude Code 주간 한도 메시지 "You've hit your weekly limit · resets Jul 3" 포착.
   #   이게 빠져 있어 주간한도 시 failover가 안 걸리고 활성계정에서 즉시 실패(서브계정 미시도)했음 — ask/analyze/card 전부 영향(SSOT).
-  grep -qiE 'usage limit|weekly limit|hit your .{0,40}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)' <<<"$s"
+  # + 'Failed to authenticate|API Error: 403' 추가(260712 실측 · pending/failed/260712-135654 — 운영자가 같은 OAuth 계정을 대화형으로 몰아 쓸 때 활성 계정이 쿼터 문구 없이 403 socket-close 인증 실패를 뱉음 → 미포착 = 서브계정 미시도 즉사 = "요약이 막힌다").
+  #   위 15줄 '인증죽음 전환 무의미' 전제는 *전 계정 공통 고장* 가정 — 403은 활성 계정 국한(사용량 상관)이라 전환이 정확한 처방. 진짜 전 계정 고장이면 체인 소진 후 종전과 동일 실패 = 부작용 0.
+  grep -qiE 'usage limit|weekly limit|hit your .{0,40}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)|failed to authenticate|api error:? 403' <<<"$s"
 }
 
 # _claude_mark_active_quota(): 활성 계정(체인 첫 계정)이 이번 런에 쿼터로 폴오버됐음을 신호 파일에 남긴다.

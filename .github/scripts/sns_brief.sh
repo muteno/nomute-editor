@@ -3,7 +3,8 @@
 # 페르소나 = "세웅에게 짚어주는 친한 트렌드 애널리스트 · 친근 인사(KST) · SNS 결과→WebSearch로 원인·이상치 딥다이브·관련 링크 · 팬픽 문체 자연스러움 · 뉴스 신뢰선 사수".
 # 게이트 3중: ① SNS_BRIEF=1(§📰-e 카나리아 — 기본 OFF 머지 → dispatch 실측 → 승격) ② 입력 다이제스트 동일 = 스킵(토큰 0 · 운영자 "내용 변화 없으면 낭비 말고 그대로") ③ 실패 = fail-soft(직전 brief 유지 · rc 0 — 뷰어는 파일 없으면 블록 미표시).
 # 모델 = PIPE_MODEL(opus 4.8 · shared/model_env.sh — §🤖 생성/하드작업 축) · effort max · turns 8(리서치 = 원인·링크 다회 왕복) · timeout 600.
-# --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장 도구 WebSearch/WebFetch는 정상 = 원인 역추적 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
+# --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장 도구는 활성 유지 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
+# ⚠️ WebSearch/WebFetch = --allowedTools 명시 필수(analyze.sh·ask.sh·cardmake.sh 선례): 헤드리스는 미허용 도구를 '권한 대기'가 아니라 '즉시 거부(권한 없음)'로 처리 → 빠지면 원인 역추적이 6회 다 튕겨 '권한 열어줘' 반쪽 브리프만 나옴(실측 260713). --safe-mode는 도구를 켤 뿐 승인을 대신하지 않음.
 set -u
 [ "${SNS_BRIEF:-0}" = "1" ] || { echo "brief: OFF(SNS_BRIEF!=1) — 스킵"; exit 0; }
 cd "$(git rev-parse --show-toplevel)"
@@ -58,7 +59,7 @@ L.append('[유튜브 뉴스] ' + ' / '.join((v.get('title') or '')[:40] for v in
 L.append('[쇼츠] ' + ' / '.join((v.get('title') or '')[:40] for v in sh[:5]))
 L.append('[틱톡] ' + ' / '.join(((t.get('title') or ('@' + (t.get('account') or '')))[:40]) for t in tk[:5]))
 body = '\n'.join(L)
-PVER = 'brief-v6-260712'   # 캐시 1회 무효화 = v6: 리서치 기반 원인 역추적(WebSearch로 SNS 트렌드 원인·이상치 영상 딥다이브·관련 링크) + KST 인사·친근 톤(세웅) + v5 팬픽 문체·표준편차 강조·fmt_view 만단위 (운영자 260712)
+PVER = 'brief-v7-260712-refs'   # 캐시 1회 무효화 = v7: 참고자료 스크랩 카드 동봉(본문 링크와 짝 JSON — 뷰어 인앱 팝업 원료 · 운영자 260712 "참고 기사 = 지금 창 위 팝업") + v6 리서치 원인 역추적·KST 인사·팬픽 문체 유지
 print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print(body)
 PY
@@ -100,12 +101,20 @@ PROMPT="너는 ${BRIEF_TO}에게 지금 소셜 트렌드를 짚어주는 친한 
 - 가장 크게 튄 주제·수치는 *별표*로 강조(표준편차 벗어나는 것만 · 별표 사이 줄바꿈 금지).
 - 관련 링크는 [보이는 텍스트](URL) 형식 또는 URL 그대로 붙여라. 헤더·번호목록·마크다운 제목·이모지 금지.
 
+[참고자료 스크랩 카드 — 본문 링크와 짝 (매번)]
+본문에 [보이는 텍스트](URL)로 붙인 참고 기사·어려운 키워드·딥다이브 주제 각각에 대해, 응답 맨 끝에 '===참고자료===' 한 줄을 쓰고 그 아래 **한 줄에 카드 하나씩** JSON으로 적어라(블록 안에 다른 텍스트·마크다운 금지):
+{\"url\":\"본문 링크와 완전히 동일한 URL\",\"term\":\"본문에서 링크로 쓴 보이는 텍스트 그대로\",\"title\":\"기사/영상 원제목\",\"source\":\"매체·채널명\",\"body\":\"보도자료 리드문처럼 사실 위주 3~5문장. 누가·언제·무엇을·왜가 담기게, WebSearch/WebFetch로 확인한 내용만.\"}
+- url이 본문 링크와 다르면 짝이 안 맞아 카드가 안 뜬다 — 반드시 동일하게.
+- 확인 못 한 항목은 카드를 만들지 마라(날조 금지). 카드 1~4개.
+- body는 뉴스 요약 톤(담백·사실)으로 — 본문 산문의 팬픽 톤과 달리 건조하게.
+
 [데이터 = SNS 결과(여기서 원인을 역추적)]
 $BODY"
 
 out=""
 for _try in 1 2 3 4; do
   out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
+    --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/brief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
     if claude_failover "$out$(cat /tmp/brief.err 2>/dev/null)"; then continue; fi   # 쿼터 = 4계정 체인 1단씩(§📰-f)
@@ -116,15 +125,54 @@ done
 [ -z "$out" ] && { echo "::warning::brief 빈 출력 — 직전 유지"; exit 0; }
 
 BRIEF_TEXT="$out" BRIEF_SHA="$SHA" python3 - <<'PY'
-import json, os, datetime, re
+import json, os, datetime, re, ssl, urllib.request
 KST = datetime.timezone(datetime.timedelta(hours=9))
-t = (os.environ.get('BRIEF_TEXT') or '').strip()
+raw = (os.environ.get('BRIEF_TEXT') or '').strip()
+# ── 참고자료 스크랩 카드 분리(v7 · 운영자 260712 "참고 기사 = 인앱 팝업") — 관용 3층(§📰-c 정신):
+#    구분자 유무·JSON 줄 파손 전부 fail-soft(파손 줄 스킵 · 블록 전체 실패 = refs [] · 본문은 항상 산다)
+body_txt, refs = raw, []
+m = re.split(r'\n=+\s*참고자료\s*=+\s*\n?', raw, maxsplit=1)
+if len(m) == 2:
+    body_txt = m[0]
+    for ln in m[1].splitlines():
+        ln = ln.strip().lstrip('-').strip()
+        if not (ln.startswith('{') and ln.endswith('}')):
+            continue
+        try:
+            r = json.loads(ln)
+        except Exception:
+            continue
+        u = str(r.get('url') or '')
+        if not u.startswith(('http://', 'https://')):
+            continue
+        refs.append({'url': u[:500], 'term': str(r.get('term') or '')[:80], 'title': str(r.get('title') or '')[:160],
+                     'source': str(r.get('source') or '')[:60], 'body': str(r.get('body') or '')[:900]})
+        if len(refs) >= 4:
+            break
+# ── og:image 후처리(결정론 · 모델 부담 0) — 기사 대표 이미지: 실패 = 이미지 없이(fail-soft · 데이터센터 403 매체 상정) ──
+CTX = ssl.create_default_context()
+UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+      'Accept-Language': 'ko-KR,ko;q=0.9'}
+for r in refs:
+    try:
+        req = urllib.request.Request(r['url'], headers=UA)
+        html = urllib.request.urlopen(req, timeout=8, context=CTX).read(400_000).decode('utf-8', 'ignore')
+        im = re.search(r'<meta[^>]+property=["\']og:image(?::secure_url)?["\'][^>]+content=["\']([^"\']+)["\']', html) \
+            or re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image(?::secure_url)?["\']', html)
+        if im:
+            u = im.group(1).strip()
+            if u.startswith('//'):
+                u = 'https:' + u
+            if u.startswith(('http://', 'https://')):
+                r['image'] = u[:600]
+    except Exception:
+        pass   # 이미지 = 있으면 좋고(뷰어 onerror 숨김) — 실패가 브리프를 못 죽임
 # 줄바꿈 보존(요점별 개행 = 운영자 요구 · 구 ' '.join(split())는 개행 뭉갬) — 줄별 trim + 빈줄 3+ → 1 + 상한
-lines = [ln.rstrip() for ln in t.replace('\r\n', '\n').split('\n')]
-t = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()[:1600]   # 독해 상한(원인+딥다이브 = 길어짐 · 과출력 가드)
+lines = [ln.rstrip() for ln in body_txt.replace('\r\n', '\n').split('\n')]
+t = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()[:1600]   # 독해 상한(원인+딥다이브 = 길어짐 · 과출력 가드 · refs 분리 후 본문에만 적용)
 json.dump({'text': t, 'updated': datetime.datetime.now(KST).isoformat(timespec='seconds'),
-           'src_hash': os.environ.get('BRIEF_SHA') or ''},
+           'src_hash': os.environ.get('BRIEF_SHA') or '', 'refs': refs},
           open('viewer/sns_brief.json', 'w', encoding='utf-8'), ensure_ascii=False)
-print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄')
+print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄', '· refs', len(refs), '개(이미지', sum(1 for r in refs if r.get('image')), ')')
 PY
 echo "brief: 갱신 완료($SHA)"

@@ -40,8 +40,21 @@
 
   ⑤ 쇼츠·AI 영상(운영자 260711) = InnerTube 검색 파생(무키·쇼츠 = <4분 protobuf 필터·AI = 원본
      AI_YT_QUERIES 4종 — 둘 다 조회수 정렬·주간·likes/cmts 없음 = 조회수 단일 지표).
+  ⑥ 레딧 = 서브레딧 핫 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음") — env `SNS_REDDIT`
+     게이트. 서브레딧 = env `REDDIT_SUBS`(기본 popular,korea,worldnews — popular = NSFW/격리
+     제외 인기 자동축·korea/worldnews = 해외 반응축).
+     ⚠️ 러너 = 403 Blocked 확정(카나리아 run 29197039475 실측 260713: 3서브레딧 전부 차단 =
+     레딧의 데이터센터 IP 정책) → **주 공급 = 폰/맥 가정 IP(phone_subs.py) 채택**(스레드와
+     동일 경로 편승 · main()의 폰 신선분 채택 블록). 러너 게이트는 재시도용 잔존 · 실패 = [](직전분 보존).
+  ⑦ 블루스카이 = 공개 AppView What's Hot 피드(무키 · public.api.bsky.app — AT프로토콜 공개 설계
+     = 데이터센터 IP 친화·IP당 5분 3천req) — env `SNS_BSKY` 게이트(동일 카나리아). 스레드가
+     주려던 텍스트SNS 인기글의 러너 무료축(운영자 260712 검토 승인 흐름).
+  ⑧ 스레드 구독(운영자 260712 "맥에서 크롬 통해 접근 가능") = ④ 구독 축의 5번째 플랫폼.
+     ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너는 수집 안 함(subs.threads = 폰/맥
+     가정 IP 경로 scripts/phone_subs.py 전용 — X·인스타 폰 채택 관용구에 편승). 계정 목록 =
+     sns_accounts.json "threads" 키(스키마 동일 · 모달 탭 UI = 배치 승인 후 후속 §디자인 j).
 
-산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, shorts[], aivid[], subs{}}
+산출: viewer/sns_trends.json {updated, youtube[], youtube_news[], gtrends[], tiktok{}, shorts[], aivid[], subs{}, reddit[], bsky[]}
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
@@ -65,6 +78,16 @@ CTX = ssl.create_default_context()
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
+REDDIT_ON = (os.environ.get("SNS_REDDIT") or "").strip() == "1"   # ⑥ 레딧 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
+BSKY_ON = (os.environ.get("SNS_BSKY") or "").strip() == "1"       # ⑦ 블루스카이 게이트(동일)
+SIG_ON = (os.environ.get("SNS_SIGNAL") or "").strip() == "1"      # ⑨ 시그널 실검 게이트(§📰-e 카나리아 · 운영자 260712)
+XTR_ON = (os.environ.get("SNS_XTRENDS") or "").strip() == "1"     # ⑩ X 실시간 트렌드 게이트(동일)
+PANN_ON = (os.environ.get("SNS_PANN") or "").strip() == "1"       # ⑪ 네이트판 톡커선택 게이트(동일)
+HN_ON = (os.environ.get("SNS_HN") or "").strip() == "1"          # ⑫ 해커뉴스 게이트(무키 Firebase · 운영자 260713)
+FIN_ON = (os.environ.get("SNS_FIN") or "").strip() == "1"        # ⑬ 금융(환율+코인) 게이트(무키 · 운영자 260713)
+SAFETY_KEY = (os.environ.get("SAFETY_KEY") or "").strip()        # ⑭ 재난문자 = 공공데이터포털 키(없으면 no-op 스캐폴드 · 운영자 260713)
+KOBIS_KEY = (os.environ.get("KOBIS_KEY") or "").strip()          # ⑮ KOBIS 박스오피스 키(없으면 no-op · 운영자 260713)
+EX_KEY = (os.environ.get("EX_KEY") or "").strip()                # ⑯ 도로공사 돌발상황 키(없으면 no-op · 운영자 260713 "대량 사고 감지")
 
 
 def _get(url, timeout=15):
@@ -210,7 +233,7 @@ def tiktok(limit=15, calls=6):
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
 
 
-_REG_CAP = {"x": 20, "tiktok": 15, "insta": 10, "youtube": 15}   # 지역(한국/세계)별 상한 — snsacc.js CAP와 대칭(인스타 = 6s/콜 최중이라 최소 · 운영자 260712 "계정 최대한")
+_REG_CAP = {"x": 20, "tiktok": 15, "insta": 10, "youtube": 15, "threads": 10}   # 지역(한국/세계)별 상한 — snsacc.js CAP와 대칭(인스타 = 6s/콜 최중이라 최소 · 운영자 260712 "계정 최대한" · 스레드 = 인스타와 동일 Meta 벽이라 보수 10)
 
 
 def _load_accounts():
@@ -219,7 +242,7 @@ def _load_accounts():
     없음/파손/타입 오염 = 해당 분 빈 목록(fail-soft · 평의회1: 본문 전체 try + isinstance 가드).
     RX 형식검증·대소문자 dedup(지역 교차 = kr 우선)·지역별 상한(_REG_CAP) = snsacc.js cleanPlat과 대칭.
     반환 = (플랫폼별 평면 핸들 목록[kr 먼저 = 수집 우선순위], 지역 맵 dict[k][handle.lower()]='kr'|'gl')."""
-    out = {k: [] for k in ("x", "tiktok", "insta", "youtube")}
+    out = {k: [] for k in ("x", "tiktok", "insta", "youtube", "threads")}
     reg = {k: {} for k in out}
     try:
         j = json.load(open(ACC, encoding="utf-8"))
@@ -429,6 +452,334 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
+def threads_subs(accounts, limit=10, deadline=None):
+    """⑧ 스레드 구독 계정 최신 포스트 — 프로필 HTML 임베드 JSON(무인증 게스트 · 운영자 260712).
+    ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너 미호출(폰/맥 가정 IP = phone_subs.py 전용).
+    파싱 = doc_id 하드코딩(썩음) 대신 data-sjs 스크립트 전부 json.loads → 재귀 walk로
+    {code·caption·like_count} 포스트 노드 채집(innertube walk 관용구 — 레이아웃 이동 내성).
+    계정별 fail-soft·콜 간 4s(x_subs 실측 계승 — Meta 연타 = 전멸 유발). 정렬 = 좋아요.
+    ⚠️ env THREADS_COOKIE(운영자 260713 "부계 세션쿠키") = 있으면 로그인 상태로 요청(비공개/더 많은
+    포스트 노출 가능) · 없으면 게스트 그대로. 부계 전용 권장(자동화 감지 밴 리스크 = 본계 금지)."""
+    ck = (os.environ.get("THREADS_COOKIE") or "").strip()   # 부계 세션쿠키(선택 · 폰 crontab env로 주입 = 레포 커밋 0)
+    out, seen = [], set()
+    for i, acc in enumerate(accounts):
+        if _over(deadline):
+            print("::warning::threads 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            break
+        if i:
+            time.sleep(4)
+        try:
+            if ck:
+                _rq = urllib.request.Request("https://www.threads.com/@" + urllib.parse.quote(acc), headers={**UA, "Cookie": ck})
+                h = urllib.request.urlopen(_rq, timeout=15, context=CTX).read().decode("utf-8", "ignore")
+            else:
+                h = _get("https://www.threads.com/@" + urllib.parse.quote(acc))
+            posts = []
+
+            def walk(n):
+                if isinstance(n, dict):
+                    if n.get("code") and isinstance(n.get("caption"), dict) and "like_count" in n:
+                        posts.append(n)
+                    for v in n.values():
+                        walk(v)
+                elif isinstance(n, list):
+                    for v in n:
+                        walk(v)
+            for m in re.finditer(r'<script type="application/json"[^>]*data-sjs[^>]*>(.*?)</script>', h, re.S):
+                try:
+                    walk(json.loads(m.group(1)))
+                except Exception:  # noqa: BLE001
+                    continue   # 비JSON·파셜 블롭 = 개별 스킵(다른 블롭 계속)
+            if not posts:
+                print(f"::warning::threads @{acc} 포스트 노드 0(레이아웃 변경·로그인월·차단 가능 — 스킵)", file=sys.stderr)
+            for p in posts:
+                code = p.get("code") or ""
+                txt = ((p.get("caption") or {}).get("text") or "").strip()
+                if not code or not txt or code in seen:
+                    continue
+                seen.add(code)
+                user = ((p.get("user") or {}).get("username")) or acc
+                tpa = p.get("text_post_app_info") if isinstance(p.get("text_post_app_info"), dict) else {}
+                out.append({"account": user, "text": txt[:280], "likes": _i(p.get("like_count")),
+                            "cmts": _i(tpa.get("direct_reply_count")), "time": p.get("taken_at") or 0,
+                            "url": "https://www.threads.com/@%s/post/%s" % (user, code)})
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
+    return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
+
+
+def reddit_hot(subreddits, limit=12, per=8):
+    """⑥ 레딧 서브레딧 핫 — 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음").
+    서브레딧별 fail-soft·콜 간 2s · sticky(공지)·NSFW 컷 · 교차 dedup. 정렬 = 스코어.
+    ⚠️ 러너 데이터센터 IP 403/429 가능 — §📰-e 카나리아가 판정(실패 = [] = 직전분 보존)."""
+    out, seen = [], set()
+    for i, sr in enumerate(subreddits):
+        if i:
+            time.sleep(2)
+        try:
+            j = json.loads(_get("https://www.reddit.com/r/%s/hot.json?limit=%d&raw_json=1" % (urllib.parse.quote(sr), per)))
+            for c in ((j.get("data") or {}).get("children") or []):
+                d = c.get("data") or {}
+                pid = d.get("id") or ""
+                if not pid or pid in seen or d.get("stickied") or d.get("over_18"):
+                    continue
+                seen.add(pid)
+                th = d.get("thumbnail") or ""
+                out.append({"sub": d.get("subreddit") or sr, "title": (d.get("title") or "").strip()[:200],
+                            "score": _i(d.get("score")), "cmts": _i(d.get("num_comments")),
+                            "thumb": th if th.startswith("http") else "",   # "self"/"default" 플레이스홀더 문자열 컷
+                            "time": int(d.get("created_utc") or 0),
+                            "url": "https://www.reddit.com" + (d.get("permalink") or "")})
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::reddit r/{sr} 실패(스킵): {e}", file=sys.stderr)
+    return sorted(out, key=lambda t: t["score"], reverse=True)[:limit]
+
+
+def bsky_hot(limit=12):
+    """⑦ 블루스카이 인기 — 공개 AppView What's Hot 피드(무키 · AT프로토콜 공개 설계 = 데이터센터
+    IP 친화·IP당 5분 3천req). 단일 콜·fail-soft(실패 = [] = 직전분 보존). 정렬 = 좋아요."""
+    try:
+        j = json.loads(_get("https://public.api.bsky.app/xrpc/app.bsky.feed.getFeed?feed=" +
+                            urllib.parse.quote("at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot") +
+                            "&limit=30"))
+        out, seen = [], set()
+        for e in j.get("feed") or []:
+            p = e.get("post") or {}
+            uri, rec, a = p.get("uri") or "", p.get("record") or {}, p.get("author") or {}
+            txt = (rec.get("text") or "").strip()
+            if not uri or not txt or uri in seen:
+                continue
+            seen.add(uri)
+            hd = a.get("handle") or ""
+            out.append({"account": hd, "name": (a.get("displayName") or "").strip()[:40], "text": txt[:280],
+                        "likes": _i(p.get("likeCount")), "rts": _i(p.get("repostCount")), "cmts": _i(p.get("replyCount")),
+                        "time": rec.get("createdAt") or "",
+                        "url": "https://bsky.app/profile/%s/post/%s" % (hd, uri.rsplit("/", 1)[-1])})
+        return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::bsky 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
+def signal_kw(limit=10):
+    """⑨ 시그널 실시간 검색어(운영자 260712 버튼 승인 · 구 네이버 실검의 실질 대체재) — api.signal.bz
+    순수 JSON(무키·파싱 리스크 최소 · 컨테이너 실측 260712 top10 정상). 구글 검색어(RSS 저단위 버킷)의
+    국내 실검 보완축. 실패 = [] (fail-soft — main()이 직전분 보존). 항목 = {query, state}."""
+    try:
+        j = json.loads(_get("https://api.signal.bz/news/realtime"))
+        out = []
+        for t in (j.get("top10") or [])[:limit]:
+            q = (t.get("keyword") or "").strip()
+            if q:
+                out.append({"query": q, "state": (t.get("state") or "")})
+        return out
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::signal 수집 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
+def x_trends(limit=15):
+    """⑩ X(트위터) 한국 실시간 트렌드(운영자 260712 버튼 승인) — trends24.in 주 · getdaytrends.com 폴백
+    (X 공식 트렌드 API = 유료 → 서드파티 집계 HTML 파싱 · 컨테이너 실측 260712 두 곳 교차 일치 =
+    상호 검증). 계정 구독(subs.x)과 별개 축 = '지금 X에서 뜨는 말' 키워드. 실패 = [] (fail-soft)."""
+    for url, pat in (("https://trends24.in/korea/", r'<li[^>]*><a[^>]*>([^<]{2,40})</a>'),
+                     ("https://getdaytrends.com/korea/", r'<a[^>]*class="[^"]*string[^"]*"[^>]*>([^<]{2,40})</a>')):
+        try:
+            b = _get(url)
+            seen, out = set(), []
+            for m in re.finditer(pat, b):
+                q = re.sub(r"\s+", " ", m.group(1)).strip()
+                if not q or q.lower() in seen:
+                    continue
+                seen.add(q.lower())
+                out.append({"query": q})
+                if len(out) >= limit:
+                    break
+            if out:
+                return out
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::x_trends {url.split('/')[2]} 실패(다음 폴백): {e}", file=sys.stderr)
+    return []
+
+
+PANN_BLOCK = ("av", "야동", "섹스", "조건만남", "유흥", "19금", "성인물")   # 명백 성인 소재 1차 컷(보수 최소 · 완벽 필터 아님 — 운영자 260712 "필터 달고" 승인 · 과필터 방지 위해 짧게)
+
+
+def pann_hot(limit=10):
+    """⑪ 네이트판 톡커들의 선택(운영자 260712 버튼 승인 · ⚠ 수위·논란 소재 혼입 실측 → PANN_BLOCK 1차 컷) —
+    HTML 파싱(무키 · 컨테이너 실측 260712 72KB 정상). 커뮤니티 핫글 축. 실패 = [] (fail-soft)."""
+    try:
+        b = _get("https://pann.nate.com/talk/ranking")
+        seen, out = set(), []
+        for m in re.finditer(r'<a[^>]*href="(/talk/\d+)[^"]*"[^>]*>([^<]{5,80})</a>', b):
+            u, t = "https://pann.nate.com" + m.group(1), re.sub(r"\s+", " ", m.group(2)).strip()
+            if not t or u in seen or any(w in t.lower() for w in PANN_BLOCK):
+                continue
+            seen.add(u)
+            out.append({"title": t, "url": u})
+            if len(out) >= limit:
+                break
+        return out
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::pann 수집 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
+def hackernews(limit=10):
+    """⑫ 해커뉴스 톱스토리 — Firebase 공식 무키 API(hacker-news.firebaseio.com · 데이터센터 IP 친화).
+    topstories.json(id 배열) → 상위 N개 item 조회(N+1콜·Firebase는 레이트리밋 관대). 정렬 = 스코어.
+    글로벌 테크/AI 화제 선행 신호(AI 영상 축과 궁합 · 운영자 260713). 실패 = [] (fail-soft)."""
+    try:
+        ids = json.loads(_get("https://hacker-news.firebaseio.com/v0/topstories.json"))
+        out = []
+        for i in (ids or [])[:limit * 2]:   # story 아닌 항목(Ask/Job) 스킵 여유분
+            if len(out) >= limit:
+                break
+            try:
+                it = json.loads(_get("https://hacker-news.firebaseio.com/v0/item/%d.json" % int(i)))
+            except Exception:  # noqa: BLE001
+                continue
+            if not isinstance(it, dict) or it.get("type") != "story" or not it.get("title") or it.get("dead") or it.get("deleted"):
+                continue
+            out.append({"title": (it.get("title") or "")[:200], "score": _i(it.get("score")),
+                        "cmts": _i(it.get("descendants")), "time": _i(it.get("time")),
+                        "url": it.get("url") or ("https://news.ycombinator.com/item?id=%d" % int(i)),
+                        "hn": "https://news.ycombinator.com/item?id=%d" % int(i)})
+        return sorted(out, key=lambda t: t["score"], reverse=True)[:limit]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::hackernews 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
+def finance():
+    """⑬ 금융 = 환율(open.er-api.com 무키·USD 베이스 → 원화 환산) + 암호화폐(Upbit 무키 KRW 시세).
+    각 독립 fail-soft. 반환 {rates:[{code,name,krw}], coins:[{code,krw,chg}]}. 운영자 260713 "주식·환율"."""
+    rates, coins = [], []
+    try:
+        j = json.loads(_get("https://open.er-api.com/v6/latest/USD"))
+        r = j.get("rates") or {}
+        krw = r.get("KRW")
+        if krw:
+            for code, name in (("USD", "미국 달러"), ("EUR", "유로"), ("JPY", "일본 엔"), ("CNY", "중국 위안")):
+                rate = r.get(code)
+                if code == "USD":
+                    rates.append({"code": code, "name": name, "krw": round(krw, 2)})
+                elif rate:
+                    rates.append({"code": code, "name": name, "krw": round(krw / rate, 4)})   # 1단위당 원화(엔·위안 = 소수)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::환율 실패(스킵): {e}", file=sys.stderr)
+    try:
+        j = json.loads(_get("https://api.upbit.com/v1/ticker?markets=KRW-BTC,KRW-ETH,KRW-XRP,KRW-SOL"))
+        for c in (j if isinstance(j, list) else []):
+            if not isinstance(c, dict):
+                continue
+            coins.append({"code": (c.get("market") or "").replace("KRW-", ""), "krw": _i(c.get("trade_price")),
+                          "chg": round((c.get("signed_change_rate") or 0) * 100, 2)})   # 24h 변동률 %
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::코인 실패(스킵): {e}", file=sys.stderr)
+    return {"rates": rates, "coins": coins}
+
+
+def disaster(limit=10):
+    """⑭ 재난문자 — 행정안전부 공공데이터포털 API(env SAFETY_KEY 필수 · 없으면 [] no-op 스캐폴드).
+    속보 판정보다 빠른 팩트 신호(지진·화재·재난 · 운영자 260713). 공식 JSON 엔드포인트 · 최신순.
+    ⚠️ 스키마·엔드포인트는 키 발급 후 카나리아 실측으로 최종 확정(§📰-e). 실패 = [] (fail-soft)."""
+    if not SAFETY_KEY:
+        return []
+    try:
+        # 재난문자 발령현황 표준 엔드포인트(서비스키 = 이미 URL 인코딩된 값 전제 · 최신 페이지)
+        u = ("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=" + SAFETY_KEY +
+             "&returnType=json&pageNo=1&numOfRows=" + str(limit))
+        j = json.loads(_get(u))
+        body = (j.get("body") or j.get("data") or j.get("DSSP-IF-00247") or [])
+        out = []
+        for it in (body if isinstance(body, list) else []):
+            if not isinstance(it, dict):
+                continue
+            msg = (it.get("MSG_CN") or it.get("msg") or "").strip()
+            if not msg:
+                continue
+            out.append({"title": msg[:200], "area": it.get("RCPTN_RGN_NM") or it.get("area") or "",
+                        "level": it.get("EMRG_STEP_NM") or "", "time": it.get("CRT_DT") or it.get("REG_YMD") or "",
+                        "url": "https://www.safetykorea.kr/"})   # 원문 개별 링크 부재 = 안전포털 홈
+        return out[:limit]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::재난문자 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
+def kobis(limit=10):
+    """⑮ KOBIS 일별 박스오피스 — 영화진흥위 공식 무료 API(env KOBIS_KEY 필수 · 없으면 [] no-op).
+    문화 축 = 카드뉴스·릴스 소재(운영자 260713). 어제자 순위. 실패 = [] (fail-soft)."""
+    if not KOBIS_KEY:
+        return []
+    try:
+        ymd = (datetime.now(KST) - timedelta(days=1)).strftime("%Y%m%d")
+        u = ("https://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json?key=" +
+             KOBIS_KEY + "&targetDt=" + ymd)   # https 필수(카나리아 run 29202920202 실측: http = 러너서 timeout · 260713)
+        j = json.loads(_get(u, timeout=25))
+        lst = (((j.get("boxOfficeResult") or {}).get("dailyBoxOfficeList")) or [])
+        out = []
+        for it in (lst if isinstance(lst, list) else [])[:limit]:
+            if not isinstance(it, dict):
+                continue
+            out.append({"title": (it.get("movieNm") or "").strip()[:120], "rank": _i(it.get("rank")),
+                        "audi": _i(it.get("audiAcc")), "chg": _i(it.get("rankInten")),
+                        "new": it.get("rankOldAndNew") == "NEW",
+                        "url": "https://www.kobis.or.kr/kobis/business/main/main.do"})
+        return out
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::kobis 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
+# ⑯ 돌발 유형 필터 — 사고성만(대량 사고 감지가 목적 · 운영자 260713) · 공사/정체/행사 = 일상 노이즈 컷
+EX_ACCIDENT = ("사고", "전복", "추돌", "화재", "낙하", "역주행", "다중")
+EX_NOISE = ("공사", "작업", "정체", "행사", "청소", "제설", "점검")
+
+
+def expressway(limit=10):
+    """⑯ 고속도로 돌발상황 — 한국도로공사 공공데이터(data.ex.co.kr · env EX_KEY 필수 · 없으면 [] no-op).
+    대량 연쇄추돌 등 사고성 이벤트만 필터(EX_ACCIDENT 포함 or EX_NOISE 제외 실패 시 보수 컷).
+    ⚠️ 엔드포인트 = 기본값(burstInfo/realTimeIncidentInfo)이 카나리아 run 29202920202 실측 404 —
+    정확한 요청주소는 운영자가 data.ex.co.kr 로그인 화면에서 복사 → env EX_URL로 주입(워크플로 env ·
+    §📰-e 1회 확정 설계). 파싱 래퍼 관용이라 URL만 맞으면 무수정 동작 기대 · 필드 미스는 진단 경고가 잡음.
+    파싱 = 래퍼 관용(list/data/최상위 배열) + 필드 다중 폴백. 실패 = [] (fail-soft)."""
+    if not EX_KEY:
+        return []
+    try:
+        u = (os.environ.get("EX_URL") or "https://data.ex.co.kr/openapi/burstInfo/realTimeIncidentInfo") \
+            + "?key=" + urllib.parse.quote(EX_KEY) + "&type=json"
+        body = _get(u)
+        j = json.loads(body)
+        lst = j if isinstance(j, list) else ((j.get("list") or j.get("data") or j.get("realTimeIncidentInfoList") or []) if isinstance(j, dict) else [])
+        out = []
+        for it in (lst if isinstance(lst, list) else []):
+            if not isinstance(it, dict):
+                continue
+            # 필드 다중 폴백(도로공사 API 표기 편차 대비)
+            txt = (it.get("incidentContent") or it.get("content") or it.get("incidentTitle") or it.get("eventContent") or "").strip()
+            typ = (it.get("eventType") or it.get("incidentType") or it.get("type") or "").strip()
+            route = (it.get("routeName") or it.get("roadName") or it.get("route") or "").strip()
+            hay = txt + typ
+            if not txt:
+                continue
+            if not any(k in hay for k in EX_ACCIDENT):
+                continue   # 사고성 아닌 것 컷(보수 — 목적 = 대량 사고 신호)
+            if any(k in typ for k in EX_NOISE):
+                continue
+            out.append({"title": txt[:200], "route": route[:40], "type": typ[:20],
+                        "time": (it.get("occurDate") or "") + (it.get("occurTime") or it.get("startDate") or ""),
+                        "url": "http://www.roadplus.co.kr/"})   # 개별 딥링크 부재 = 로드플러스 홈
+        if not out and lst == [] and isinstance(j, dict):
+            # 래퍼 미스매치 진단(카나리아 1회 확정용) — 응답 앞 200자만(키 미포함 안전)
+            print(f"::warning::expressway 래퍼 미스매치 의심 — 응답 헤드: {body[:200]}", file=sys.stderr)
+        return out[:limit]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::expressway 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
 def _annotate_rank(cur, prev, keyfn):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
@@ -502,6 +853,17 @@ def main():
     # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
     sh = youtube_innertube(limit=12, shorts=True)          # 쇼츠 = 인기 쿼리 + <4분 필터(원본 protobuf 이식)
     ai = youtube_innertube(limit=12, queries=AI_QUERIES)   # AI 영상 = 원본 AI_YT_QUERIES 4종
+    # ⑥⑦ 레딧·블루스카이(운영자 260712 "레딧은 좋음"·"다른거 ㄱㄱ") — 게이트 OFF = 완전 무접촉(§📰-e 카나리아)
+    rd = reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()]) if REDDIT_ON else []
+    bs = bsky_hot() if BSKY_ON else []
+    sig = signal_kw() if SIG_ON else []      # ⑨ 시그널 실검(카나리아 게이트 · 운영자 260712)
+    xtr = x_trends() if XTR_ON else []       # ⑩ X 실시간 트렌드(동일)
+    pn = pann_hot() if PANN_ON else []       # ⑪ 네이트판 톡커선택(동일 · PANN_BLOCK 1차 컷)
+    hn = hackernews() if HN_ON else []       # ⑫ 해커뉴스(무키 · 운영자 260713)
+    fin = finance() if FIN_ON else {}        # ⑬ 금융 환율+코인(무키 · dict {rates,coins})
+    dis = disaster() if SAFETY_KEY else []   # ⑭ 재난문자(키 게이트 = 키 있을 때만 · no-op 스캐폴드)
+    kob = kobis() if KOBIS_KEY else []       # ⑮ KOBIS 박스오피스(키 게이트)
+    exw = expressway() if EX_KEY else []     # ⑯ 고속도로 돌발·사고(키 게이트 · 운영자 260713 "대량 사고")
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
     subs_new, acc = None, None
     if SUBS_ON:
@@ -510,7 +872,8 @@ def main():
         # workflow timeout을 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
         dl = time.monotonic() + (_i(os.environ.get("SNS_SUBS_BUDGET")) or 240)   # 비수치 env = 240 폴백(파스 크래시 가드 · 재검증1)
         subs_new = {"x": x_subs(acc["x"], limit=20, deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], limit=20, deadline=dl),
-                    "insta": insta_subs(acc["insta"], limit=20, deadline=dl), "youtube": yt_subs(acc["youtube"], limit=20, deadline=dl)}
+                    "insta": insta_subs(acc["insta"], limit=20, deadline=dl), "youtube": yt_subs(acc["youtube"], limit=20, deadline=dl),
+                    "threads": []}   # ⑧ 스레드 = 러너 미수집(Meta 데센 IP 차단 — 인스타 동류) · 폰/맥 채택(아래)이 유일 공급원
         for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
             for it in items:
                 it["region"] = accreg.get(k2, {}).get((it.get("account") or "").lower(), "gl")
@@ -520,15 +883,20 @@ def main():
             _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
             _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
             if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
-                for k2 in ("x", "insta"):
+                for k2 in ("x", "insta", "threads"):   # 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
                     if _pl:
                         subs_new[k2] = _pl
                         print(f"phone-subs 채택: {k2} {len(_pl)}건({_pm:.0f}분 전 수집)")
+                _pr = [it for it in (_ph.get("reddit") or []) if isinstance(it, dict)]   # ⑥ 레딧 = 러너 403 Blocked 실측(run 29197039475) → 폰 신선분이 주 공급(게이트 무관 채택)
+                if _pr:
+                    rd = _pr
+                    print(f"phone-subs 채택: reddit {len(_pr)}건({_pm:.0f}분 전 수집)")
         except Exception:
             pass
+    fin_any = bool(fin) and (bool(fin.get("rates")) or bool(fin.get("coins")))
     subs_any = bool(subs_new) and any(subs_new.values())
-    if not yt_all and not gt and not tk and not sh and not ai and not subs_any:
+    if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs and not hn and not fin_any and not dis and not kob and not exw:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
@@ -540,6 +908,15 @@ def main():
     _annotate_rank(tk, (prev.get("tiktok") or {}).get("videos"), lambda t: t.get("url"))
     _annotate_rank(sh, prev.get("shorts"), lambda v: v.get("id"))
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
+    _annotate_rank(rd, prev.get("reddit"), lambda t: t.get("url"))   # ⑥⑦ 신규 축도 델타·이력 규격 동일(표시 전용)
+    _annotate_rank(bs, prev.get("bsky"), lambda t: t.get("url"))
+    _annotate_rank(sig, prev.get("signal"), lambda t: t.get("query"))   # ⑨⑩⑪ 동일 규격(운영자 260712)
+    _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
+    _annotate_rank(pn, prev.get("pann"), lambda t: t.get("url"))
+    _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
+    _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
+    _annotate_rank(kob, prev.get("kobis"), lambda t: t.get("title"))
+    _annotate_rank(exw, prev.get("expressway"), lambda t: t.get("title"))   # ⑯ 동일 규격
     psubs = prev.get("subs") or {}
     subs = psubs
     if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
@@ -548,13 +925,34 @@ def main():
             return [{f: v for f, v in it.items() if f not in ("delta", "isNew")}
                     for it in (psubs.get(k) or []) if isinstance(it, dict)]
         if subs_any:
-            for k in ("x", "tiktok", "insta", "youtube"):
+            for k in ("x", "tiktok", "insta", "youtube", "threads"):
                 _annotate_rank(subs_new[k], psubs.get(k),
                                (lambda v: v.get("id")) if k == "youtube" else (lambda v: v.get("url")))
         # 플랫폼별 fail-soft: 이번 런 실패(빈) = 직전분 유지(배지 스트립) · 단 계정 목록 자체가 비면 즉시 []
         # (or 폴백이 '수집 실패 보존'과 '구독 전체 해제'를 구분 못해 옛 데이터가 영영 잔존하던 구멍 — 평의회8 F1)
         subs = {"updated": now if subs_any else (psubs.get("updated") or now),   # 전멸 런 = 직전 수집 시각 유지(신선 오표기 방지)
-                **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube")}}
+                **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube", "threads")}}
+    # 소스별 헬스 원장(260713 평의회5 P1 — 전역 updated 하나가 죽은 소스를 가리던 은폐 봉합) — ok = "이번 런
+    # 신선 수집 성공"(아래 data의 prev 폴백 사용과 구분 = raw 수집값 기준) · last_ok = 마지막 성공 시각(실패 런
+    # = 직전 값 승계) · 게이트 OFF 소스 = off 도장(실패와 구분). 데이터 필드 전용 — 뷰어 표시는 §디자인 j 배치
+    # 승인 후 별도(워치독 scraper/watchdog.py가 1차 소비).
+    _hprev = prev.get("health") or {}
+    def _hh(key, cur, on=True):
+        ok = bool(cur)
+        h = {"ok": ok, "n": (len(cur) if isinstance(cur, (list, dict)) else 0),
+             "last_ok": now if ok else ((_hprev.get(key) or {}).get("last_ok") or "")}
+        if not on:
+            h["off"] = True
+        return h
+    health = {"youtube": _hh("youtube", yt_all), "gtrends": _hh("gtrends", gt), "tiktok": _hh("tiktok", tk),
+              "shorts": _hh("shorts", sh), "aivid": _hh("aivid", ai),
+              "reddit": _hh("reddit", rd, REDDIT_ON), "bsky": _hh("bsky", bs, BSKY_ON),
+              "signal": _hh("signal", sig, SIG_ON), "xtrends": _hh("xtrends", xtr, XTR_ON),
+              "pann": _hh("pann", pn, PANN_ON),
+              "hackernews": _hh("hackernews", hn, HN_ON), "finance": _hh("finance", (fin.get("rates") or []) + (fin.get("coins") or []) if fin else [], FIN_ON),
+              "disaster": _hh("disaster", dis, bool(SAFETY_KEY)), "kobis": _hh("kobis", kob, bool(KOBIS_KEY)),
+              "expressway": _hh("expressway", exw, bool(EX_KEY)),
+              "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
@@ -567,15 +965,26 @@ def main():
         "tiktok": ({"updated": now, "videos": tk} if tk else prev.get("tiktok") or {}),
         "shorts": sh or prev.get("shorts") or [],   # ⑤ 쇼츠(검색 파생 근사 · 실패 = 직전분)
         "aivid": ai or prev.get("aivid") or [],     # ⑤ AI 영상(원본 쿼리 세트 · 실패 = 직전분)
-        "subs": subs,   # 구독 축(④) — {updated, x[], tiktok[], insta[], youtube[]} · 미수집 = 직전분/{}
+        "subs": subs,   # 구독 축(④⑧) — {updated, x[], tiktok[], insta[], youtube[], threads[]} · 미수집 = 직전분/{}
+        "reddit": rd or prev.get("reddit") or [],   # ⑥ 레딧(게이트 OFF/실패 = 직전분)
+        "bsky": bs or prev.get("bsky") or [],       # ⑦ 블루스카이(게이트 OFF/실패 = 직전분)
+        "signal": sig or prev.get("signal") or [],  # ⑨ 시그널 실검(게이트 OFF/실패 = 직전분 · 운영자 260712)
+        "xtrends": xtr or prev.get("xtrends") or [],   # ⑩ X 실시간 트렌드(동일)
+        "pann": pn or prev.get("pann") or [],       # ⑪ 네이트판 톡커선택(동일 · PANN_BLOCK 1차 컷)
+        "hackernews": hn or prev.get("hackernews") or [],   # ⑫ 해커뉴스(게이트 OFF/실패 = 직전분 · 운영자 260713)
+        "finance": (fin if fin_any else (prev.get("finance") or {})),   # ⑬ 금융 {rates,coins}(실시간 시세 = 직전분 폴백)
+        "disaster": dis or prev.get("disaster") or [],   # ⑭ 재난문자(키 없으면 [] · 있으면 최신)
+        "kobis": kob or prev.get("kobis") or [],     # ⑮ KOBIS 박스오피스(키 게이트)
+        "expressway": exw or prev.get("expressway") or [],   # ⑯ 고속도로 돌발·사고(키 게이트 · 사고성만 필터)
+        "health": health,   # 소스별 {ok, n, last_ok[, off]} — 죽은 소스 가시화(260713 · 표시 전용 데이터 · 워치독 소비)
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # errors=replace = 상류 lone-surrogate가 encode 크래시로 런 전체를 버리는 엣지 차단(평의회6 — 극귀·해당 문자만 ? 치환)
     json.dump(data, open(OUT, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
-    sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'}")
+    sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 판 {len(data['pann'])}{'' if PANN_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
 
 
 if __name__ == "__main__":

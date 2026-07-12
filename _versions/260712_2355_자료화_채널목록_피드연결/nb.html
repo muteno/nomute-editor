@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>자료</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외) — song/conv/ly/k 동일 계승. 인라인 :root가 팔레트 오버라이드 -->
+<style>
+  /* 팔레트·폼 = song.html(도구 뷰어) 계승 verbatim · 구조토큰은 tokens.css
+     자료화 v1(운영자 260712 · 평의회 11인 수렴) = 유튜브 URL → 전사(자막/STT 패스스루) + claude 분석 노트
+     노트 흐름 = 역피라미드: 메타·한줄 → 요약 → 논점 → 타임라인 → 발언 → (팩트·용어 접기) → 전사(접힘·맨 아래) */
+  :root{
+    --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322;
+    --danger:#e23b2a; --danger-rgb:226,59,42;
+    --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95;
+  }
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  html.inmodal, html.inmodal body { background:transparent; }
+  .wrap { max-width:600px; margin:0 auto; padding:16px 16px 40px; position:relative; }
+
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 6px; }
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+  textarea, input[type=text] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; }
+  textarea { min-height:72px; resize:vertical; line-height:1.55; }
+  textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  #note[hidden] { display:none; }
+
+  /* 발사 버튼 = song .go(전송 게이지 glive) 계승 verbatim */
+  .go { width:100%; padding:13px; margin-top:18px; background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.4); border-radius:var(--r-s);
+    color:var(--accent); font:inherit; font-weight:var(--fw-x); cursor:pointer; transition:transform .12s; position:relative; overflow:hidden; }
+  .go:active { transform:scale(var(--press-m)); }
+  .go:disabled { opacity:.45; cursor:default; }
+  .go.err { color:var(--danger); border-color:rgba(var(--danger-rgb),.5); }
+  .go.shake { animation:shake .32s; }
+  @keyframes shake { 20%{ transform:translateX(-5px);} 45%{ transform:translateX(4px);} 70%{ transform:translateX(-3px);} 90%{ transform:translateX(2px);} }
+  .go.glive.firing { animation:none;
+    background-image:linear-gradient(90deg, rgba(var(--accent-rgb),.34), rgba(var(--accent-rgb),.34)), linear-gradient(90deg, var(--accent-dim), var(--accent-dim));
+    background-size:0% 100%, 100% 100%; background-repeat:no-repeat;
+    transition:background-size 3.6s var(--gauge-ease); }   /* ⚠️ 2번 레이어 크기 명시(100% 100%) — 생략 = 보간 불가 90% 스냅(index 실측 함정) */
+  .go.glive.firing.grun { background-size:90% 100%, 100% 100%; }
+  .go.glive.firing.gdone { background-size:100% 100%, 100% 100%; transition:background-size .3s linear; }
+  @media (prefers-reduced-motion:reduce) { .go.glive.firing, .go.glive.firing.gdone { transition-duration:.12s; } }
+  .gdots { display:inline-block; width:1.1em; text-align:left; }   /* 처리중 점모션(§디자인 g · index 정본 계승) */
+  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
+  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
+
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
+  .status.wait { font-size:var(--fs-body); color:var(--accent); font-weight:var(--fw-x); }   /* 대기 = 상태줄 정중앙(song/edit 260712 계승) */
+  .status .gtime { margin-left:7px; color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }
+  .status.err { color:var(--danger); }
+  .status svg { vertical-align:-2px; }
+
+  /* 결과 노트 — 소머리 라벨 + 우측 복사(song .rhead/.cpy 계승) */
+  .rhead { display:flex; align-items:center; gap:8px; margin:20px 0 6px; }
+  .rhead label { margin:0; flex:1; }
+  .rhead .cnt { font-size:11px; color:var(--mut); font-variant-numeric:tabular-nums; }
+  .cpy { display:grid; place-items:center; width:26px; height:26px; padding:0; opacity:.75; position:relative;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .cpy::before { content:""; position:absolute; inset:-8px; }
+  .cpy svg { display:block; width:13px; height:13px; }
+  .cpy:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .cpy:active { transform:scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .dlbtn { background:rgba(var(--accent-rgb),.10)!important; color:var(--accent)!important; border:1px solid rgba(var(--accent-rgb),.34)!important; }
+  .dlbtn.dl-done { color:var(--mut)!important; }
+  .cpy.dlbtn { opacity:1; }
+
+  /* 노트 본문 블록 */
+  .ntitle { font-size:var(--fs-h1); font-weight:var(--fw-x); line-height:1.35; margin:18px 0 4px; }
+  .nmeta { font-size:12px; color:var(--mut); }
+  .nmeta a { color:var(--mut); text-decoration:underline; text-underline-offset:2px; }
+  .nchips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .nchip { font-size:11px; font-weight:var(--fw-b); color:var(--mut); border:1px solid var(--line); border-radius:var(--r-pill); padding:2px 9px; background:rgba(255,255,255,.03); }
+  .nchip.kind { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }
+  .srcnote { margin-top:8px; font-size:11.5px; color:var(--mut); }   /* 신뢰도 배너 — 자동자막/STT = 오인식 가능(평의회 앵글7 필수) */
+  .one { margin:14px 0 0; padding:12px; background:rgba(var(--accent-rgb),.07); border:1px solid rgba(var(--accent-rgb),.25); border-radius:var(--r-s); font-weight:var(--fw-b); }
+  .rbox { padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); font-size:14px; line-height:1.65; white-space:pre-wrap; word-break:break-word; }
+  ul.pts { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  ul.pts li { padding:11px 12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); font-size:14px; line-height:1.55; }
+  ul.pts .pc { font-weight:var(--fw-b); }
+  ul.pts .pg, ul.pts .px { margin-top:4px; font-size:12.5px; color:var(--mut); }
+  ul.pts .px::before { content:'↔ '; }
+  .tlink { color:var(--accent); text-decoration:none; font-size:12px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tlink:active { opacity:.6; }
+  .chap { margin:0; padding:0; list-style:none; font-size:13.5px; }
+  .chap li { display:flex; gap:10px; padding:6px 2px; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .chap li:last-child { border-bottom:0; }
+  .qt { padding:11px 12px; background:#0e0f11; border:1px solid var(--line); border-left:3px solid rgba(var(--accent-rgb),.5); border-radius:var(--r-s); font-size:14px; margin-bottom:8px; }
+  .qt .qw { margin-top:5px; font-size:12px; color:var(--mut); }
+  .qt .qwarn { color:var(--danger); font-size:11px; margin-left:6px; }   /* 전사 기계 대조 실패 = 원본 확인 필요 */
+  .kv { font-size:13.5px; line-height:1.6; }
+  .kv div { padding:5px 0; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .kv div:last-child { border-bottom:0; }
+  .kv b { font-weight:var(--fw-b); }
+  .fine { margin-top:14px; font-size:12px; color:var(--mut); }
+
+  /* 접기 섹션(팩트·용어·전사) — 네이티브 details · 전사는 기본 접힘 + 자수 배지(모바일 비대 억제 = 평의회 앵글8) */
+  details.fold { border:1px solid var(--line); border-radius:var(--r-s); background:rgba(255,255,255,.02); margin-top:6px; }
+  details.fold > summary { list-style:none; cursor:pointer; padding:10px 12px; font-size:13px; font-weight:var(--fw-b); color:var(--mut); display:flex; align-items:center; gap:8px; }
+  details.fold > summary::-webkit-details-marker { display:none; }
+  details.fold > summary .chev { width:12px; height:12px; transition:transform .2s var(--ease); }
+  details.fold[open] > summary .chev { transform:rotate(90deg); }
+  details.fold > summary .cnt { margin-left:auto; font-variant-numeric:tabular-nums; font-size:11px; }
+  details.fold > .fbody { padding:2px 12px 12px; }
+  .tr { font-size:13.5px; line-height:1.7; }
+  .tr p { margin:0 0 2px; }
+  .tr .tlink { margin-right:7px; opacity:.85; }
+
+  /* 히스토리(자료 목록) = song .histbtn/.hpop 계승(메시지함 무채 글래스 · §디자인 f·i) */
+  .histbtn { position:absolute; top:10px; right:12px; z-index:6; display:grid; place-items:center; width:28px; height:28px; padding:0;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .histbtn:active { transform:scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .histbtn svg { width:14px; height:14px; }
+  .hpop { position:fixed; top:12px; right:12px; width:min(86vw,340px); max-height:min(70vh,480px); z-index:30; border-radius:var(--r-l); border:1px solid rgba(255,255,255,.12);
+    background:linear-gradient(165deg,rgba(24,25,28,.9),rgba(16,17,19,.94)); -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
+    transform-origin:top right; animation:hUnfold .22s var(--gauge-ease); display:flex; flex-direction:column; overflow:hidden; }
+  .hpop[hidden] { display:none; }
+  @keyframes hUnfold { 0% { transform:scale(.6); opacity:0; } 100% { transform:scale(1); opacity:1; } }
+  .hpop .hh { display:flex; align-items:center; gap:8px; padding:12px 12px 10px 14px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .hpop .ht { flex:1; font-size:var(--fs-label); font-weight:var(--fw-x); }
+  .hpop .hx { display:grid; place-items:center; width:26px; height:26px; padding:0; border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; }
+  .hpop .hx:active { transform:scale(var(--press-s)); }
+  .hpop .hx svg { width:12px; height:12px; }
+  .hpop .hl { overflow-y:auto; padding:6px 8px 10px; }
+  .hrow { display:grid; grid-template-columns:1fr; gap:2px; width:100%; text-align:left; padding:9px 10px; border:0; border-radius:var(--r-s); background:transparent; color:var(--fg); font:inherit; cursor:pointer; transition:background .15s; }
+  .hrow:active { background:rgba(255,255,255,.05); }
+  .hrow.on { background:rgba(var(--accent-rgb),.08); }
+  .hrow .t { font-size:13px; font-weight:var(--fw-b); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hrow.on .t { color:var(--accent); }
+  .hrow .m { font-size:10.5px; color:var(--mut); font-variant-numeric:tabular-nums; }
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <button class="histbtn" id="histBtn" type="button" aria-label="자료 목록"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></button>
+
+  <label class="fl" for="url">영상 URL</label>
+  <input type="text" id="url" inputmode="url" placeholder="유튜브 링크 — 자막 우선, 없으면 음성 인식(1시간 이내)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+
+  <label class="fl" for="ask">정리 지시 <span style="font-weight:400;color:var(--mut)">(선택)</span></label>
+  <textarea id="ask" placeholder="예: 부동산 규제 관점으로. 수치 위주로." autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+
+  <button class="go" id="go">자료화</button>
+  <div class="status" id="sstatus" role="status"></div>
+
+  <div id="note" hidden></div>
+</div>
+
+<div class="hpop" id="hpop" hidden>
+  <div class="hh"><div class="ht">자료 목록</div><button class="hx" id="hpopX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="hl" id="hlist"></div><!-- 빈 상태 = 조용한 공백(§디자인 e-가 — 필러 문구 금지) -->
+</div>
+
+<script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — COPY/CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PEND_KEY='nm_nb_pend';
+const API='/api/nb';
+const BUDGET=2400;   // 폴 예산(초) — 하드 ×2 = 4800s ≥ 잡 캡 75분(STT 폴백 포함)+디스패치+Pages 배포(song 문법)
+let USER_ACT=false, _curStop=null, NOTE=null, NB_ID='', HL=[], HIDX=-1;
+
+const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
+const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
+const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
+
+const fmtT=s=>{ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+const mmss=s=>{ s=Math.max(0,Math.floor(+s||0)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return h? h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0') : String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); };
+const SRC_LB={ 'subs':'업로더 자막', 'subs-auto':'자동 생성 자막', 'stt':'Whisper 음성 인식' };
+
+// ── 발사(song fire 문법 계승 — 접수 ✓ 후 라벨 원복 · 대기 = 상태줄) ──
+function btnErr(g,m){
+  if(!g.dataset.label) g.dataset.label=g.textContent;
+  clearTimeout(g._errT); g.classList.remove('firing');
+  g.textContent=m; g.setAttribute('aria-live','assertive');
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); g.textContent=g.dataset.label; },1700);
+}
+let _stTick=null;
+function statusWait(on,t0,label){
+  const st=$('#sstatus');
+  clearInterval(_stTick); _stTick=null;
+  if(on){
+    st.classList.remove('err'); st.classList.add('wait');
+    const paint=()=>{ st.innerHTML=esc(label||'자료화 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-t0)/1000)+'</span>'; };
+    paint(); _stTick=setInterval(paint,1000);
+  } else { st.classList.remove('wait'); }
+}
+function gaugeStart(btn){ btn.classList.add('glive','firing'); requestAnimationFrame(()=>requestAnimationFrame(()=>btn.classList.add('grun'))); }
+function flashCheck(g){ if(!g.dataset.label) g.dataset.label=g.textContent; g.innerHTML=CHECK_SVG; setTimeout(()=>{ if(!g.classList.contains('err')) g.textContent=g.dataset.label; },600); }
+
+async function fire(){
+  const gb=$('#go');
+  const url=$('#url').value.trim();
+  if(!url) return btnErr(gb,'영상 URL을 넣어줘');
+  if(!/^https?:\/\//i.test(url)) return btnErr(gb,'URL은 http(s)로 시작');
+  USER_ACT=true;
+  const status=$('#sstatus'); status.classList.remove('err','wait'); status.textContent='';
+  gb.disabled=true;
+  const t0=Date.now();
+  gaugeStart(gb); flashCheck(gb);
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url, ask:$('#ask').value.trim().slice(0,500)})});
+    const j=await res.json();
+    if(!res.ok||j.error){ gaugeClear(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    pendSet({id:j.id, t0, url});
+    gb.classList.add('gdone');
+    pollNote(j.id, t0, t0-90000);
+    setTimeout(()=>{ gaugeClear(gb); },700);
+  }catch(e){ gaugeClear(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
+  finally{ gb.disabled=false; }
+}
+function gaugeClear(btn){ btn.classList.remove('glive','firing','grun','gdone'); }
+$('#go').addEventListener('click',fire);
+$('#url').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); fire(); } });
+
+// ── 폴(song pollSong 문법 계승: error.log 즉시 보고 · SPA-HTML 가드 · ts>=minTs 신선도) ──
+function pollNote(id, t0, minTs){
+  if(_curStop)_curStop();
+  NB_ID=id;
+  statusWait(true, t0, '자료화 중');
+  const outPath='nb_out/'+id+'/note.json';
+  const errPath='nb_out/'+id+'/error.log';
+  const status=$('#sstatus');
+  let live=true; const stop=()=>{ live=false; statusWait(false); }; _curStop=stop;
+  const tick=async()=>{
+    if(!live) return;
+    if(Date.now()-t0>BUDGET*2000){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    try{
+      const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
+      if(er.ok){
+        const ect=(er.headers.get('content-type')||'').toLowerCase();
+        const em=await er.text();
+        if(!live) return;
+        const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
+        if(em&&em.trim()&&!eHtml){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,300)); status.classList.add('err'); return; }
+      }
+    }catch(e){ /* 재시도 */ }
+    try{
+      const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
+      if(r.ok){
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const tx=await r.text();
+        if(!live) return;
+        const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
+        if(tx&&tx.trim()&&!isHtml){
+          let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&d.summary){
+            const ts=Date.parse(d.ts||'');
+            if(!isNaN(ts)&&ts>=minTs){
+              stop(); pendClear();
+              status.classList.remove('err');
+              status.innerHTML=OK_SVG+' 완료 ('+Math.round((Date.now()-t0)/1000)+'s)';
+              renderNote(d);
+              return;
+            }
+          }
+        }
+      }
+    }catch(e){ /* 재시도 */ }
+    if(live) setTimeout(tick,5000);
+  };
+  tick();
+}
+
+// ── 노트 렌더(평의회 수렴 역피라미드 · 전사 = 접힘 + 전문 복사·txt) ──
+function ytT(d,s){ const u=(d.src&&d.src.url)||''; if(!u) return ''; return u+(u.includes('?')?'&':'?')+'t='+Math.max(0,Math.floor(+s||0))+'s'; }
+function tl(d,s){ const u=ytT(d,s); const lb=esc(mmss(s));
+  return u? '<a class="tlink" href="'+esc(u)+'" target="_blank" rel="noopener">['+lb+']</a>' : '<span class="tlink">['+lb+']</span>'; }
+function sect(key,lb,cnt){ return '<div class="rhead"><label class="fl">'+esc(lb)+'</label>'+(cnt?('<span class="cnt">'+esc(cnt)+'</span>'):'')+'<button class="cpy" type="button" data-k="'+key+'" aria-label="'+esc(lb)+' 복사"></button></div>'; }
+function renderNote(d){
+  NOTE=d;
+  const s=d.src||{};
+  const durLb=s.dur? mmss(s.dur):'';
+  const meta=[s.channel, s.uploaded, durLb].filter(Boolean).map(esc).join(' · ');
+  const srcLb=SRC_LB[d.tr_src]||'전사';
+  const warn=(d.tr_src==='subs-auto'||d.tr_src==='stt')? ' — 고유명사·수치 오인식 가능(원문 대조 전 인용 주의)':'';
+  const trTxt=(d.transcript||[]).map(r=>'['+mmss(r.s)+'] '+r.t).join('\n');
+  let h='';
+  h+='<div class="ntitle">'+esc(s.title||'(제목 없음)')+'</div>';
+  h+='<div class="nmeta">'+meta+(s.url?(' · <a href="'+esc(s.url)+'" target="_blank" rel="noopener">원본 보기</a>'):'')+'</div>';
+  h+='<div class="nchips"><span class="nchip kind">'+esc(d.kind||'일반')+'</span><span class="nchip">'+esc(srcLb)+'</span>'
+    +(d.topics||[]).map(t=>'<span class="nchip">'+esc(t)+'</span>').join('')+'</div>';
+  h+='<div class="srcnote">전사 출처: '+esc(srcLb)+esc(warn)+'</div>';
+  if(d.one) h+='<div class="one">'+esc(d.one)+'</div>';
+  h+=sect('summary','요약')+'<div class="rbox">'+esc(d.summary||'')+'</div>';
+  if((d.points||[]).length){
+    h+=sect('points','핵심 논점',d.points.length+'개')+'<ul class="pts">'+d.points.map(p=>
+      '<li><div class="pc">'+esc(p.c)+' '+tl(d,p.t)+'</div>'
+      +(p.g?('<div class="pg">근거: '+esc(p.g)+'</div>'):'')
+      +(p.x?('<div class="px">'+esc(p.x)+'</div>'):'')+'</li>').join('')+'</ul>';
+  }
+  if((d.chapters||[]).length){
+    h+=sect('chapters','타임라인',d.chapters.length+'구간')+'<ul class="chap">'+d.chapters.map(c=>
+      '<li>'+tl(d,c.t)+'<span>'+esc(c.h)+'</span></li>').join('')+'</ul>';
+  }
+  if((d.quotes||[]).length){
+    h+=sect('quotes','주목 발언',d.quotes.length+'개')+d.quotes.map(q=>
+      '<div class="qt">&ldquo;'+esc(q.q)+'&rdquo;<div class="qw">'+esc(q.w||'화자 미상')+' '+tl(d,q.t)
+      +(q.v===false?'<span class="qwarn">⚠ 전사 대조 실패 — 원본 확인</span>':'')+'</div></div>').join('');
+  }
+  if((d.facts||[]).length){
+    h+='<details class="fold"><summary>'+CHEV_R_SVG_INLINE()+'팩트·수치<span class="cnt">'+d.facts.length+'건</span></summary><div class="fbody kv">'
+      +d.facts.map(f=>'<div>'+esc(f.f)+' '+tl(d,f.t)+'</div>').join('')+'</div></details>';
+  }
+  if((d.terms||[]).length){
+    h+='<details class="fold"><summary>'+CHEV_R_SVG_INLINE()+'인물·용어<span class="cnt">'+d.terms.length+'건</span></summary><div class="fbody kv">'
+      +d.terms.map(t=>'<div><b>'+esc(t.n)+'</b> — '+esc(t.d)+'</div>').join('')+'</div></details>';
+  }
+  if((d.use||[]).length) h+=sect('use','활용 포인트')+'<div class="rbox">'+esc(d.use.join('\n'))+'</div>';
+  // 전체 전사 — 기본 접힘 + 자수 배지 · 전문 복사/.txt(펼치지 않고 반출 = 평의회 앵글8)
+  h+='<div class="rhead"><label class="fl">전체 전사</label><span class="cnt">'+trTxt.length.toLocaleString()+'자</span>'
+    +'<button class="cpy" type="button" data-k="tr" aria-label="전사 전문 복사"></button>'
+    +'<button class="cpy dlbtn" type="button" id="trDl" aria-label="전사 .txt 저장"></button></div>';
+  h+='<details class="fold" id="trFold"><summary>'+CHEV_R_SVG_INLINE()+'펼쳐 보기<span class="cnt">'+(d.transcript||[]).length+'줄</span></summary><div class="fbody tr">'
+    +(d.transcript||[]).map(r=>'<p>'+tl(d,r.s)+esc(r.t)+'</p>').join('')+'</div></details>';
+  const fine=[];
+  if(d.coverage) fine.push('반영 범위: '+d.coverage);
+  if(d.ask) fine.push('지시: '+d.ask);
+  if(d.ts) fine.push('생성 '+String(d.ts).slice(0,16).replace('T',' '));
+  if(fine.length) h+='<div class="fine">'+esc(fine.join(' · '))+'</div>';
+  const el=$('#note'); el.innerHTML=h; el.hidden=false;
+  $$('#note .cpy:not(.dlbtn)').forEach(b=>{ b.innerHTML=COPY_SVG; });
+  const dl=$('#trDl'); if(dl){ dl.innerHTML=DOWNLOAD_SVG; dl.addEventListener('click',()=>{
+    const name='transcript_'+((d.src&&d.src.yt_id)||d.id||'nb')+'.txt';
+    const head=(s.title||'')+'\n'+(s.url||'')+'\n전사 출처: '+srcLb+'\n\n';
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([head+trTxt],{type:'text/plain;charset=utf-8'})); a.download=name;
+    document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); a.remove();
+    dl.classList.add('dl-done');
+  }); }
+  try{ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+}
+function CHEV_R_SVG_INLINE(){ return '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'; }
+
+// ── 섹션 복사(클립보드 + CHECK 플래시 · 실패 = 무표식[거짓 체크 금지]) ──
+function noteTxt(k){
+  const d=NOTE; if(!d) return '';
+  const s=d.src||{};
+  if(k==='summary') return d.summary||'';
+  if(k==='points') return (d.points||[]).map(p=>'- '+p.c+' ['+mmss(p.t)+']'+(p.g?('\n  근거: '+p.g):'')+(p.x?('\n  반론·뉘앙스: '+p.x):'')).join('\n');
+  if(k==='chapters') return (d.chapters||[]).map(c=>'['+mmss(c.t)+'] '+c.h).join('\n');
+  if(k==='quotes') return (d.quotes||[]).map(q=>'"'+q.q+'" — '+(q.w||'화자 미상')+' ['+mmss(q.t)+']'+(q.v===false?' (전사 대조 실패)':'')).join('\n');
+  if(k==='use') return (d.use||[]).join('\n');
+  if(k==='tr') return (s.title||'')+'\n'+(s.url||'')+'\n\n'+(d.transcript||[]).map(r=>'['+mmss(r.s)+'] '+r.t).join('\n');
+  return '';
+}
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('.cpy'); if(!b||b.classList.contains('dlbtn')) return;
+  const v=noteTxt(b.dataset.k); if(!v) return;
+  let ok=false;
+  try{ await navigator.clipboard.writeText(v); ok=true; }
+  catch(err){
+    try{ const ta=document.createElement('textarea'); ta.value=v; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove(); }catch(e2){}
+  }
+  clearTimeout(b._t);
+  b.innerHTML=ok?CHECK_SVG:COPY_SVG;
+  if(ok){ b._t=setTimeout(()=>{ b.innerHTML=COPY_SVG; },900); }
+});
+
+// ── 자료 목록 — song hpop 계승 · index.json = 빌드 산출 · 행 탭 = note.json 로드 렌더 ──
+const hpop=$('#hpop');
+function hRow(n,i){
+  const dt=(n.ts||'').slice(5,16).replace('T',' ');
+  return '<button class="hrow'+(i===HIDX?' on':'')+'" data-i="'+i+'" type="button"><span class="t">'+esc(n.t||'(무제)')+'</span><span class="m">'+esc(dt)+(n.ch?(' · '+esc(n.ch)):'')+(n.d?(' · '+esc(mmss(n.d))):'')+'</span></button>';
+}
+function renderList(){ $('#hlist').innerHTML=HL.map((n,i)=>hRow(n,i)).join(''); }
+async function openHist(){
+  hpop.hidden=false; renderList();
+  try{
+    const r=await fetch('nb_out/index.json?t='+Date.now());
+    if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ HL=j; renderList(); } } }
+  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+}
+$('#histBtn').addEventListener('click',()=>{ if(hpop.hidden) openHist(); else hpop.hidden=true; });
+$('#hpopX').addEventListener('click',()=>{ hpop.hidden=true; });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!hpop.hidden) hpop.hidden=true; });
+document.addEventListener('pointerdown',e=>{ if(!hpop.hidden&&!e.target.closest('.hpop')&&!e.target.closest('.histbtn')) hpop.hidden=true; },{capture:true});
+$('#hlist').addEventListener('click',async e=>{
+  const b=e.target.closest('.hrow'); if(!b) return;
+  const i=+b.dataset.i, n=HL[i]; if(!n) return;
+  HIDX=i; renderList();
+  try{
+    const r=await fetch('nb_out/'+encodeURIComponent(n.id)+'/note.json?t='+Date.now());
+    if(r.ok){ const tx=await r.text(); if(!/^\s*</.test(tx)){ const d=JSON.parse(tx); if(d&&d.summary){ NB_ID=n.id; $('#sstatus').textContent=''; renderNote(d); hpop.hidden=true; } } }
+  }catch(e2){ /* 실패 = 조용히(다음 탭 재시도) */ }
+});
+
+// ── 재개(pend) — 리로드/재진입 시 진행 중 자료화 폴 이어받기(song 문법 · 24h 게이트) ──
+(function(){
+  const p=pendGet(); if(!p||!p.id||USER_ACT) return;
+  if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
+  if(p.url&&!$('#url').value) $('#url').value=p.url;
+  const t0c=Math.max(p.t0||0, Date.now()-BUDGET*1000);
+  pollNote(p.id, t0c, (p.t0||0)-90000);
+})();
+</script>
+</body>
+</html>
