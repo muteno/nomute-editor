@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>음원 탭 v2 플레이그라운드</title>
+<style>
+/* ── 플레이그라운드 셸(§플레이그라운드 §3 골격) — 시안 자기완결 · 외부 요청 0 ── */
+:root{ --bg:#0b0d0c; --fg:#eef7f0; --mut:#98a29c; --accent:#00EED2; --accent-rgb:0,238,210; --warn:#FFE13D; --danger:#e23b2a; --line:rgba(255,255,255,.09); --pan:rgba(24,25,28,.66); }
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:var(--bg); color:var(--fg); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; padding:14px; }
+h1{ font-size:18px; margin:2px 0 2px; } .sub{ color:var(--mut); font-size:12px; margin-bottom:12px; }
+.pgwrap{ display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+.stagewrap{ flex:0 0 auto; position:sticky; top:10px; }
+.frame{ width:344px; height:640px; border:1px solid var(--line); border-radius:26px; overflow:hidden; background:#121212; position:relative; box-shadow:0 18px 60px rgba(0,0,0,.5); }
+.app{ position:absolute; inset:0; overflow-y:auto; overscroll-behavior:contain; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, #121212; }
+.stagecap{ color:var(--mut); font-size:11.5px; margin-top:8px; max-width:344px; }
+.console{ flex:1 1 400px; min-width:340px; max-width:560px; }
+.csec{ background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px; }
+.ct{ font-weight:800; font-size:12.5px; margin-bottom:8px; } .ct .n{ color:var(--mut); font-weight:600; }
+.ct::before{ content:'• '; color:var(--accent); font-weight:700; }
+.pill{ display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; margin:0 6px 6px 0; transition:transform .12s,color .15s,border-color .15s; }
+.pill:active{ transform:scale(.9); }
+.pill.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.grp{ margin:12px 0 4px; font-size:11.5px; font-weight:800; color:var(--mut); letter-spacing:.4px; }
+.row{ display:grid; grid-template-columns:118px 1fr auto; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dashed rgba(255,255,255,.05); }
+.row:last-child{ border-bottom:0; }
+.rk{ font-size:12px; font-weight:700; } .rk .sn{ display:block; font-size:10px; color:var(--mut); font-weight:600; }
+.rv{ min-width:52px; text-align:right; font-variant-numeric:tabular-nums; font-size:12px; color:var(--accent); font-weight:800; }
+.rv .cur{ display:block; font-size:10px; color:var(--mut); font-weight:600; }
+.warnb{ color:var(--warn); font-weight:800; margin-left:4px; }
+input[type=range]{ width:100%; accent-color:var(--accent); }
+.seg{ display:flex; gap:5px; flex-wrap:wrap; }
+.seg button{ flex:1 0 auto; min-width:44px; padding:7px 9px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:11.5px; font-weight:800; cursor:pointer; transition:transform .12s,color .15s,border-color .15s; }
+.seg button:active{ transform:scale(.9); }
+.seg button.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+pre#out{ background:#0e0f11; border:1px solid var(--line); border-radius:10px; padding:11px; font:11px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap; word-break:break-all; color:var(--fg); max-height:300px; overflow:auto; }
+#copy{ width:100%; padding:12px; margin-top:8px; border-radius:10px; border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.13); color:var(--accent); font:inherit; font-weight:800; cursor:pointer; }
+#copy:active{ transform:scale(.97); }
+.note{ font-size:11.5px; color:var(--mut); } .note b{ color:var(--fg); }
+.devi{ font-size:11.5px; color:var(--warn); font-weight:800; }
+/* 복사 모달(§3-2′ ③) */
+#mdl{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:50; }
+#mdl.on{ display:flex; }
+#mdl .box{ width:min(92vw,430px); background:#16171a; border:1px solid var(--line); border-radius:16px; padding:18px; }
+#mdl h3{ margin:0 0 8px; font-size:14px; } #mdl .lst{ font-size:12px; color:var(--warn); margin-bottom:12px; white-space:pre-wrap; }
+#mdl button{ padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-weight:800; cursor:pointer; margin-right:8px; margin-top:4px; }
+#mdl button.pr{ border-color:rgba(var(--accent-rgb),.45); color:var(--accent); background:rgba(var(--accent-rgb),.1); }
+
+/* ── 미리보기 재현(실물 = viewer/song.html 팔레트·컴포넌트 사본 · 튜닝 축만 --t-*) ── */
+.app{ --t-chipgap:8px; --t-secgap:14px; --t-gopad:13px; --t-lblfs:13px; --t-cardr:9px; --t-cardpad:10px; --t-advr:11px; --t-advgap:10px; --t-storyh:120px; color:#eef7f0; font:13.5px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+.pv{ padding:14px 14px 40px; }
+.pv .fl{ display:block; font-size:var(--t-lblfs); font-weight:800; margin:var(--t-secgap) 0 6px; }
+.pv .fl::before{ content:'• '; color:var(--accent); font-weight:700; }
+.pv .ms{ display:flex; gap:var(--t-chipgap); flex-wrap:wrap; margin-bottom:4px; }
+.pv .ms button{ flex:1; min-width:50px; padding:9px 7px; text-align:center; border-radius:999px; border:1px solid #2a2c31; background:rgba(255,255,255,.04); color:#8fa697; font:inherit; font-size:12px; font-weight:800; }
+.pv .ms button.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.pv textarea{ width:100%; min-height:var(--t-storyh); padding:11px; background:#0e0f11; border:1px solid #2a2c31; border-radius:9px; color:#eef7f0; font:inherit; resize:none; }
+.pv .go{ width:100%; padding:var(--t-gopad); margin-top:16px; background:rgba(var(--accent-rgb),.13); border:1px solid rgba(var(--accent-rgb),.4); border-radius:9px; color:var(--accent); font:inherit; font-weight:800; }
+.pv .erow{ display:flex; gap:10px; } .pv .erow.v{ flex-direction:column; gap:8px; }
+.pv .erow .go{ flex:1; margin-top:12px; } .pv .erow.v .go{ margin-top:0; }
+.pv .erow .pr{ display:block; font-size:10px; color:#8fa697; font-weight:600; margin-top:2px; }
+.pv .og{ display:grid; grid-template-columns:repeat(var(--t-optcols,2),1fr); gap:8px; }
+.pv .oc{ text-align:left; padding:var(--t-cardpad) 12px; border-radius:var(--t-cardr); border:1px solid #2a2c31; background:rgba(255,255,255,.04); color:#eef7f0; font:inherit; }
+.pv .oc.on{ border-color:rgba(var(--accent-rgb),.6); background:rgba(var(--accent-rgb),.08); }
+.pv .oc .nm{ font-weight:800; font-size:13px; } .pv .oc.on .nm{ color:var(--accent); }
+.pv .oc .wy{ font-size:11px; color:#8fa697; margin-top:1px; } .pv .oc .mt{ font-size:10px; color:#8fa697; margin-top:3px; font-variant-numeric:tabular-nums; }
+.pv .adv{ margin-top:var(--t-secgap); border:1px solid #2a2c31; border-radius:var(--t-advr); background:rgba(255,255,255,.025); overflow:hidden; }
+.pv .advh{ display:flex; align-items:center; gap:7px; padding:10px 12px; font-size:12.5px; font-weight:800; color:#eef7f0; cursor:pointer; user-select:none; }
+.pv .advh svg{ width:13px; height:13px; transition:transform .18s; } .pv .adv.open .advh svg{ transform:rotate(90deg); }
+.pv .advb{ display:none; padding:2px 12px 12px; } .pv .adv.open .advb{ display:block; }
+.pv .adv.flat .advh{ display:none; } .pv .adv.flat .advb{ display:block; padding-top:10px; }
+.pv .arow{ margin:var(--t-advgap) 0 0; }
+.pv .ak{ font-size:11.5px; font-weight:800; color:#8fa697; margin-bottom:5px; }
+.pv .ak::before{ content:'• '; color:var(--accent); font-weight:700; }
+.pv .ms.sm button{ padding:7px 6px; min-width:40px; font-size:11px; }
+.pv .srow{ display:grid; grid-template-columns:1fr 44px; gap:8px; align-items:center; }
+.pv .srow input[type=range]{ width:100%; accent-color:var(--accent); }
+.pv .srow .v{ text-align:right; font-size:11px; color:var(--accent); font-weight:800; font-variant-numeric:tabular-nums; }
+.pv input.ex{ width:100%; padding:9px 11px; background:#0e0f11; border:1px solid #2a2c31; border-radius:9px; color:#eef7f0; font:inherit; font-size:12px; }
+.pv .st{ margin-top:14px; font-size:12px; color:#8fa697; text-align:center; }
+.pv .rbx{ padding:11px; background:#0e0f11; border:1px solid #2a2c31; border-radius:var(--t-cardr); font-size:12.5px; white-space:pre-wrap; }
+.pv audio{ width:100%; margin:10px 0 4px; }
+.pv .hookb{ display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:rgba(var(--accent-rgb),.12); color:var(--accent); font-size:9.5px; font-weight:800; vertical-align:1px; }
+</style>
+</head>
+<body>
+<h1>음원 탭 v2 — 수노 대응 컨트롤 플레이그라운드</h1>
+<div class="sub">260712 · 좌 = 실물 재현(만져짐 — 칩·옵션 카드·접이 전부 동작) · 우 = 콘솔. [선택값 복사] 답장 = 그대로 구현 스펙.</div>
+<div class="pgwrap">
+  <div class="stagewrap">
+    <div class="frame"><div class="app" id="app"></div></div>
+    <div class="stagecap" id="cap">미리보기 속 칩·카드·고급 패널 헤더도 실제로 눌린다. 보기: 입력 화면 ⇄ 결과 화면은 콘솔 상단 토글.</div>
+  </div>
+  <aside class="console">
+    <div class="csec"><div class="ct">보기</div><div class="seg" id="viewseg"></div></div>
+    <div class="csec"><div class="ct">프리셋 <span class="n">— 현행 = 비교 기준 · ★ = 추천</span></div><div id="presets"></div><div class="devi" id="devi"></div></div>
+    <div class="csec"><div class="ct">축 콘솔 <span class="n" id="axn"></span></div><div id="axes"></div></div>
+    <div class="csec"><div class="ct">선택값</div><pre id="out"></pre><button id="copy">선택값 복사</button></div>
+    <div class="csec note" id="foot">
+      <b>재현 한계 각주(정직)</b><br>
+      · 시안 = 배선 전 목업 — 여기서 발사는 안 됨(엔진 버튼 = 데모 플래시). 실제 생성 결과는 배선 후 카나리아로 검증.<br>
+      · <b>창의도·스타일 준수·제외 스타일·에너지·BPM = 리리아에 전용 파라미터가 없음</b> → 클로드가 생성 프롬프트에 서술로 녹이는 근사(수노 슬라이더와 1:1 아님 · 효과 보장은 청음 카나리아가 함). 수노 경로에선 Weirdness/Style Influence/Exclude 필드에 그대로 대응.<br>
+      · 훅 선행·구간 연출·60초 마감 = 리리아 공식 타임스탬프 프롬프팅(<code>[00:00]…[end]</code>) 지원 = 근사 아님.<br>
+      · 오디오 업로드·음성 클론(Voices)·스템 12분리·구간 교체 = <b>리리아 불가</b>라 축 자체를 안 둠(스템 2분리는 레포 Demucs 후처리로 대체 가능 — 후속 별건).<br>
+      · 팔레트·컴포넌트 = viewer/song.html(도구 톤) 사본 · 폰트 = 시스템 폴백 — 실기기와 렌더 미세 차이 가능.
+    </div>
+  </aside>
+</div>
+<div id="mdl"><div class="box"><h3>기틀 이탈 축이 있어</h3><div class="lst" id="mlst"></div>
+  <button class="pr" id="mAll">역제안 포함 복사</button><button id="mSafe">계승분만 복사</button><button id="mX">취소</button>
+</div></div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+/* 실존값 사다리(실측 — tokens.css + 컴포넌트 로컬값) · §3-2′ ① */
+const LAD={ r:[9,11,13,14,16,22], gap:[4,6,8,10,12,14,18,24], fs:[11,12,12.5,13,13.5,14,15], pad:[9,10,11,12,13,14] };
+const near=(a,l)=>l.some(x=>Math.abs(a-x)<.26);
+
+/* ── 현행 실측 = DEFAULTS(v1 라이브 그대로 · §3-2 ★) ── */
+const DEFAULTS={ view:'input',
+  advStruct:0,advVocal:0,advStyle:0,advLyr:0,advEng:0, advMode:'fold',foldOpen:0,advPos:'below',
+  len:'60',hook:'std',timed:0,ending:'clean',
+  vocal:'auto',tone:'auto',backing:0,enHook:0,
+  weird:50,styleF:70,bpmAuto:1,bpm:100,energy:60,exclOn:0,
+  lyrMode:'auto',hookRep:'1',
+  model:'pro',takes:'1',price:0,imgIn:0,
+  optN:10,optCols:2,whyOn:1,metaOn:1,
+  cardR:9,chipGap:8,secGap:14,goPad:13,lblFs:13,cardPad:10,advR:11,advGap:10,storyH:120,btnRow:'h' };
+
+const PRESETS=[
+ {id:'p0',nm:'현행 (v1)',st:{}},
+ {id:'p1',nm:'컴팩트',st:{advStruct:1,advVocal:1,advMode:'fold',foldOpen:0,hook:'lead',timed:1}},
+ {id:'p2',nm:'풀 콘솔',star:1,st:{advStruct:1,advVocal:1,advStyle:1,advLyr:1,advEng:1,advMode:'fold',foldOpen:1,hook:'lead',timed:1,price:1,exclOn:1}},
+ {id:'p3',nm:'릴스 특화',st:{advStruct:1,advStyle:1,advMode:'flat',hook:'lead',timed:1,len:'60',optN:8,energy:78}},
+];
+
+/* ── 축 정의(§3-2′ · suno=대응 표기 · lad=실존 사다리 · tok=배선 메모) ── */
+const AXES=[
+ {g:'노출 세트 (뭘 폼에 올릴까)'},
+ {k:'advStruct',nm:'곡 구조 그룹',t:'tg',suno:'—',d:'길이·훅·연출·엔딩'},
+ {k:'advVocal',nm:'보컬 그룹',t:'tg',suno:'성별태그+Voices 대응',d:'보컬·음색·백킹'},
+ {k:'advStyle',nm:'스타일 그룹',t:'tg',suno:'슬라이더 3종 대응',d:'창의도·준수·BPM·제외'},
+ {k:'advLyr',nm:'가사 그룹',t:'tg',suno:'Custom Lyrics 대응',d:'자동/직접·훅 반복'},
+ {k:'advEng',nm:'엔진 그룹',t:'tg',suno:'모델 선택 대응',d:'Pro/Clip·N테이크'},
+ {k:'advMode',nm:'고급 배치',t:'seg',o:[['fold','접이'],['flat','상시 노출']],suno:'Advanced Options 대응'},
+ {k:'foldOpen',nm:'접이 기본',t:'seg',o:[['0','닫힘'],['1','열림']],dep:s=>s.advMode==='fold'},
+ {k:'advPos',nm:'고급 위치',t:'seg',o:[['below','옵션 아래'],['above','스토리 아래']]},
+ {g:'곡 구조'},
+ {k:'len',nm:'길이',t:'seg',o:[['30','30s'],['45','45s'],['60','60s'],['90','90s'],['180','3분']],suno:'수노 = 직접 지정 불가(우리 우위)',d:'30s = Clip $0.04 · 나머지 Pro $0.08'},
+ {k:'hook',nm:'훅 위치',t:'seg',o:[['lead','선행(코러스 시작)'],['std','표준(빌드업)']],suno:'수노 = 불가(우리 우위)'},
+ {k:'timed',nm:'구간 연출',t:'tg',suno:'수노 = 불가(우리 우위)',d:'[00:00] 타임스탬프 설계 = 리리아 공식'},
+ {k:'ending',nm:'마감',t:'seg',o:[['clean','클린 엔딩'],['fade','페이드(후처리)']]},
+ {g:'보컬'},
+ {k:'vocal',nm:'보컬',t:'seg',o:[['auto','자동'],['f','여'],['m','남'],['duet','듀엣'],['rap','랩'],['inst','없음']],suno:'성별태그·Instrumental 대응'},
+ {k:'tone',nm:'음색',t:'seg',o:[['auto','자동'],['clear','청아'],['husky','허스키'],['power','파워'],['whisper','위스퍼']],suno:'프롬프트 서술(수노보다 세밀)'},
+ {k:'backing',nm:'백킹 코러스',t:'tg',suno:'수노 = 태그 요행 · 리리아 = 공식 지원'},
+ {k:'enHook',nm:'영어 훅 허용',t:'tg'},
+ {g:'스타일 제어'},
+ {k:'weird',nm:'창의도',t:'sl',min:0,max:100,step:5,unit:'%',suno:'Weirdness 근사(프롬프트 서술)'},
+ {k:'styleF',nm:'스타일 준수',t:'sl',min:0,max:100,step:5,unit:'%',suno:'Style Influence 근사'},
+ {k:'bpmAuto',nm:'BPM 자동',t:'tg'},
+ {k:'bpm',nm:'BPM 지정',t:'sl',min:60,max:180,step:2,dep:s=>!s.bpmAuto},
+ {k:'energy',nm:'에너지',t:'sl',min:0,max:100,step:5,unit:'%'},
+ {k:'exclOn',nm:'제외 스타일 칸',t:'tg',suno:'Exclude Styles 대응(리리아 = 부정 서술 근사)'},
+ {g:'가사'},
+ {k:'lyrMode',nm:'가사',t:'seg',o:[['auto','자동 작사'],['manual','직접 입력']],suno:'Simple/Custom 대응'},
+ {k:'hookRep',nm:'훅 반복',t:'seg',o:[['1','1회'],['2','2회']]},
+ {g:'엔진'},
+ {k:'model',nm:'구글 모델',t:'seg',o:[['pro','Pro $0.08'],['clip','Clip 30s $0.04']],suno:'모델 피커 대응'},
+ {k:'takes',nm:'N테이크',t:'seg',o:[['1','1곡'],['2','2곡(×2과금)']],suno:'Alternates 근사(비결정성 활용)'},
+ {k:'price',nm:'버튼 가격 표기',t:'tg'},
+ {k:'imgIn',nm:'이미지→곡 슬롯',t:'tg',suno:'수노 없음(리리아 전용 · 최대 10장)',d:'v2.1 후보 — 켜면 첨부행 노출'},
+ {g:'옵션 카드'},
+ {k:'optN',nm:'옵션 수',t:'sl',min:6,max:12,step:1},
+ {k:'optCols',nm:'옵션 열',t:'seg',o:[['1','1열'],['2','2열']]},
+ {k:'whyOn',nm:'이유 줄',t:'tg'},
+ {k:'metaOn',nm:'보컬·BPM 줄',t:'tg'},
+ {g:'지오메트리 (기틀 사다리 인지)'},
+ {k:'cardR',nm:'카드 라운드',t:'sl',min:6,max:24,step:1,unit:'px',lad:'r',tok:'--r-s 9'},
+ {k:'advR',nm:'고급 패널 라운드',t:'sl',min:6,max:24,step:1,unit:'px',lad:'r',tok:'--r-m 11'},
+ {k:'chipGap',nm:'칩 간격',t:'sl',min:4,max:18,step:1,unit:'px',lad:'gap'},
+ {k:'secGap',nm:'섹션 간격',t:'sl',min:8,max:26,step:1,unit:'px',lad:'gap'},
+ {k:'advGap',nm:'고급 행 간격',t:'sl',min:6,max:18,step:1,unit:'px',lad:'gap'},
+ {k:'goPad',nm:'발사 버튼 두께',t:'sl',min:9,max:16,step:1,unit:'px',lad:'pad'},
+ {k:'cardPad',nm:'카드 패딩',t:'sl',min:7,max:16,step:1,unit:'px',lad:'pad'},
+ {k:'lblFs',nm:'라벨 크기',t:'sl',min:11,max:15,step:.5,unit:'px',lad:'fs',tok:'--fs-label 13'},
+ {k:'storyH',nm:'스토리 높이',t:'sl',min:80,max:200,step:5,unit:'px'},
+ {k:'btnRow',nm:'엔진 버튼 배열',t:'seg',o:[['h','가로 2열'],['v','세로 스택']]},
+];
+
+let state={...DEFAULTS};
+const OPTS=[['레트로 신스팝','자조 유머에 네온 감성','여성',112],['새벽 발라드','새벽 버스 정서 직격','남성',72],['붐뱁 힙합','월급 한탄 펀치라인','랩',90],['개러지 록','분노를 웃음으로','남성',140],['시티팝','도시 야경 무드','여성',104],['세미 트로트','직장인 애환 훅','남성',120],['로파이 재즈','담담한 독백 톤','여성',80],['포크 어쿠스틱','혼잣말 감성','남성',95],['퓨처 베이스','훅 드랍 후킹','여성',150],['시네마틱 팝','출근길 서사시화','듀엣',100],['신스웨이브','새벽 질주감','여성',118],['알앤비 슬로잼','늦은 밤 미열','남성',68]];
+const CHEV='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+
+/* ── 미리보기 렌더(재렌더 = 스크롤 보존 §7-1-6) ── */
+function segHtml(k,opts,cur,cls){ return '<div class="ms '+(cls||'')+'" data-ax="'+k+'">'+opts.map(o=>'<button data-v="'+o[0]+'" class="'+(String(cur)===o[0]?'on':'')+'">'+o[1]+'</button>').join('')+'</div>'; }
+function advGroups(s){
+  let h='';
+  if(s.advStruct){ h+='<div class="arow"><div class="ak">곡 구조</div>'
+    +segHtml('len',AXES.find(a=>a.k==='len').o,s.len,'sm')
+    +segHtml('hook',[['lead','훅 선행'],['std','표준']],s.hook,'sm')
+    +segHtml('timed',[['1','구간 연출 ON'],['0','OFF']],s.timed?'1':'0','sm')+'</div>'; }
+  if(s.advVocal){ h+='<div class="arow"><div class="ak">보컬</div>'
+    +segHtml('vocal',AXES.find(a=>a.k==='vocal').o,s.vocal,'sm')
+    +segHtml('tone',AXES.find(a=>a.k==='tone').o,s.tone,'sm')+'</div>'; }
+  if(s.advStyle){ h+='<div class="arow"><div class="ak">스타일</div>'
+    +'<div class="srow"><input type="range" data-ax="weird" min="0" max="100" step="5" value="'+s.weird+'"><span class="v">'+s.weird+'%</span></div>'
+    +'<div class="srow"><input type="range" data-ax="energy" min="0" max="100" step="5" value="'+s.energy+'"><span class="v">'+s.energy+'%</span></div>'
+    +(s.exclOn?'<input class="ex" placeholder="제외 스타일 — 예: muddy mix, autotune" readonly>':'')+'</div>'; }
+  if(s.advLyr){ h+='<div class="arow"><div class="ak">가사</div>'+segHtml('lyrMode',[['auto','자동 작사'],['manual','직접 입력']],s.lyrMode,'sm')+(s.lyrMode==='manual'?'<input class="ex" placeholder="[Chorus] 내 가사 그대로…" readonly>':'')+'</div>'; }
+  if(s.advEng){ h+='<div class="arow"><div class="ak">엔진</div>'+segHtml('model',[['pro','구글 Pro'],['clip','구글 Clip 30s']],s.model,'sm')+segHtml('takes',[['1','1곡'],['2','2곡']],s.takes,'sm')+(s.imgIn?'<input class="ex" placeholder="이미지 첨부(최대 10장) — 이미지→곡" readonly>':'')+'</div>'; }
+  return h;
+}
+function render(){
+  const s=state, app=$('#app');
+  for(const [k,v] of [['optcols',s.optCols],['cardr',s.cardR+'px'],['chipgap',s.chipGap+'px'],['secgap',s.secGap+'px'],['gopad',s.goPad+'px'],['lblfs',s.lblFs+'px'],['cardpad',s.cardPad+'px'],['advr',s.advR+'px'],['advgap',s.advGap+'px'],['storyh',s.storyH+'px']]) app.style.setProperty('--t-'+k,v);
+  const anyAdv=s.advStruct||s.advVocal||s.advStyle||s.advLyr||s.advEng;
+  const advHtml=anyAdv?('<div class="adv '+(s.advMode==='flat'?'flat':(s.foldOpen?'open':''))+'" id="pvAdv"><div class="advh" id="pvAdvH">'+CHEV+'세부 설정</div><div class="advb">'+advGroups(s)+'</div></div>'):'';
+  const opts=OPTS.slice(0,s.optN).map((o,i)=>'<button class="oc'+(i===1?' on':'')+'"><div class="nm">'+o[0]+'</div>'+(s.whyOn?'<div class="wy">'+o[1]+'</div>':'')+(s.metaOn?'<div class="mt">'+o[2]+' · '+o[3]+' bpm</div>':'')+'</button>').join('');
+  const engine='<div class="erow '+(s.btnRow==='v'?'v':'')+'"><button class="go">수노 프롬프트'+(s.price?'<span class="pr">무료 · 복붙</span>':'')+'</button><button class="go">구글 곡 생성'+(s.price?'<span class="pr">'+(s.model==='clip'?'$0.04 · 30초':'$0.08 · '+(s.len==='180'?'3분':s.len+'초'))+(s.takes==='2'?' ×2':'')+'</span>':'')+'</button></div>';
+  let body;
+  if(s.view==='result'){
+    body='<label class="fl">완성곡'+(s.hook==='lead'?'<span class="hookb">훅 선행</span>':'')+'</label><div class="rbx">그래도 내일도</div>'
+    +'<audio controls></audio><label class="fl">가사</label><div class="rbx">[Chorus]\n그래도 나는 내일 또 갈게\n불빛 사이 또 하루를 건너…</div>'
+    +'<div class="st">Lyria 3 · '+(s.model==='clip'?'30초':(s.len==='180'?'~3분':'~'+s.len+'초'))+'</div>';
+  } else {
+    body='<label class="fl">장르</label>'+segHtml('__g',[['a','자동'],['b','발라드'],['h','힙합'],['r','록'],['rb','R&B'],['d','댄스'],['t','트로트'],['j','재즈'],['ak','어쿠스틱'],['o','OST'],['c','직접']],'a')
+    +'<label class="fl">표현방식</label>'+segHtml('__e',[['a','자동'],['g','감성'],['p','풍자'],['w','웅장'],['d','담담'],['s','신나는'],['m','몽환'],['b','분노'],['c','직접']],'a')
+    +'<label class="fl">스토리</label><textarea readonly>야근 끝나고 새벽 버스에서 월급명세서를 보는데 웃음만 나온다</textarea>'
+    +(s.advPos==='above'?advHtml:'')
+    +'<button class="go">스타일 옵션 뽑기</button>'
+    +'<label class="fl">스타일 옵션</label><div class="og">'+opts+'</div>'
+    +(s.advPos==='below'?advHtml:'')
+    +engine
+    +'<div class="st">옵션 '+s.optN+'개 — 골라서 아래 버튼으로</div>';
+  }
+  const y=app.scrollTop;                       // ★ 스크롤 보존(§7-1-6 · 안티패턴 방지)
+  app.innerHTML='<div class="pv">'+body+'</div>';
+  app.scrollTop=y;
+  const h=$('#pvAdvH'); if(h) h.onclick=()=>{ if(state.advMode!=='fold') return; state.foldOpen=state.foldOpen?0:1; syncAll(); };   // 실물 트리거 배선(§7-1-4)
+  app.querySelectorAll('.oc').forEach(b=>b.onclick=()=>{ app.querySelectorAll('.oc').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  app.querySelectorAll('.ms[data-ax] button').forEach(b=>{ b.onclick=()=>{ const ax=b.parentElement.dataset.ax; if(ax.startsWith('__')){ b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); return; }
+    state[ax]=(typeof DEFAULTS[ax]==='number')?+b.dataset.v:b.dataset.v; syncAll(); }; });
+  app.querySelectorAll('input[data-ax]').forEach(r=>{ r.oninput=()=>{ state[r.dataset.ax]=+r.value; syncAll(); }; });
+}
+
+/* ── 콘솔 ── */
+function buildConsole(){
+  $('#viewseg').innerHTML='<button data-v="input" class="'+(state.view==='input'?'on':'')+'">입력 화면</button><button data-v="result" class="'+(state.view==='result'?'on':'')+'">결과 화면</button>';
+  $$('#viewseg button').forEach(b=>b.onclick=()=>{ state.view=b.dataset.v; syncAll(); });
+  $('#presets').innerHTML=PRESETS.map(p=>'<button class="pill" data-p="'+p.id+'">'+(p.star?'★ ':'')+p.nm+'</button>').join('');
+  $$('#presets .pill').forEach(b=>b.onclick=()=>{ const p=PRESETS.find(x=>x.id===b.dataset.p); state={...DEFAULTS,...p.st,view:state.view}; syncAll(); });
+  let h='',n=0;
+  for(const a of AXES){
+    if(a.g){ h+='<div class="grp">'+a.g+'</div>'; continue; }
+    n++;
+    const sn=(a.suno?'<span class="sn">'+a.suno+'</span>':'')+(a.d?'<span class="sn">'+a.d+'</span>':'');
+    if(a.t==='sl'){
+      h+='<div class="row" data-row="'+a.k+'"><div class="rk">'+a.nm+sn+'</div><div><input type="range" data-k="'+a.k+'" min="'+a.min+'" max="'+a.max+'" step="'+a.step+'"'+(a.lad?' list="l'+a.k+'"':'')+'>'+(a.lad?'<datalist id="l'+a.k+'">'+LAD[a.lad].map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')+'</div><div class="rv" data-v="'+a.k+'"></div></div>';
+    } else if(a.t==='seg'){
+      h+='<div class="row" data-row="'+a.k+'"><div class="rk">'+a.nm+sn+'</div><div class="seg" data-k="'+a.k+'">'+a.o.map(o=>'<button data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div><div class="rv" data-v="'+a.k+'"></div></div>';
+    } else {
+      h+='<div class="row" data-row="'+a.k+'"><div class="rk">'+a.nm+sn+'</div><div class="seg" data-k="'+a.k+'"><button data-v="0">끔</button><button data-v="1">켬</button></div><div class="rv" data-v="'+a.k+'"></div></div>';
+    }
+  }
+  $('#axes').innerHTML=h; $('#axn').textContent='— '+n+'축';
+  $$('#axes input[type=range]').forEach(r=>r.oninput=()=>{ state[r.dataset.k]=+r.value; syncAll(); });
+  $$('#axes .seg').forEach(sg=>sg.querySelectorAll('button').forEach(b=>b.onclick=()=>{ const k=sg.dataset.k; const a=AXES.find(x=>x.k===k);
+    state[k]=(a.t==='tg'||typeof DEFAULTS[k]==='number')?+b.dataset.v:b.dataset.v; syncAll(); }));
+}
+function warnAxes(){
+  const w=[];
+  for(const a of AXES){ if(!a.k||!a.lad) continue; if(!near(state[a.k],LAD[a.lad])) w.push(a.nm+' '+state[a.k]+(a.unit||'')+' (사다리 '+LAD[a.lad].join('/')+' 밖'+(a.tok?' · '+a.tok:'')+')'); }
+  return w;
+}
+function syncConsole(){
+  for(const a of AXES){ if(!a.k) continue;
+    const row=$('#axes [data-row="'+a.k+'"]'); if(!row) continue;
+    const dis=a.dep&&!a.dep(state); row.style.opacity=dis?.35:1; row.style.pointerEvents=dis?'none':'auto';
+    const rv=row.querySelector('.rv'); const cur=DEFAULTS[a.k]; const v=state[a.k];
+    let disp; if(a.t==='sl'){ row.querySelector('input').value=v; disp=v+(a.unit||''); }
+    else { row.querySelectorAll('.seg button').forEach(b=>b.classList.toggle('on',String(v)===b.dataset.v)); disp=a.t==='tg'?(v?'켬':'끔'):((a.o.find(o=>o[0]===String(v))||['',v])[1]); }
+    const warn=a.lad&&!near(v,LAD[a.lad]);
+    rv.innerHTML=disp+(warn?'<span class="warnb">⚠</span>':'')+(String(v)!==String(cur)?'<span class="cur">현행 '+(a.t==='tg'?(cur?'켬':'끔'):cur+(a.unit||''))+'</span>':'<span class="cur">= 현행</span>');
+  }
+  const match=PRESETS.find(p=>{ const t={...DEFAULTS,...p.st}; return Object.keys(DEFAULTS).every(k=>k==='view'||String(t[k])===String(state[k])); });
+  $$('#presets .pill').forEach(b=>b.classList.toggle('on',!!match&&b.dataset.p===match.id));
+  const w=warnAxes(); $('#devi').textContent=w.length?('기틀 이탈 '+w.length+'축 ⚠'):'';
+}
+function buildOut(){
+  const L=[]; L.push('[음원 탭 v2 — 선택값]');
+  const gset=['advStruct','advVocal','advStyle','advLyr','advEng'].filter(k=>state[k]).map(k=>AXES.find(a=>a.k===k).nm.replace(' 그룹',''));
+  L.push('노출 그룹: '+(gset.length?gset.join('·'):'없음(=현행 v1)')+' / 배치 '+(state.advMode==='flat'?'상시':'접이('+(state.foldOpen?'기본 열림':'기본 닫힘')+')')+' / 위치 '+(state.advPos==='above'?'스토리 아래':'옵션 아래'));
+  for(const a of AXES){ if(!a.k||['advStruct','advVocal','advStyle','advLyr','advEng','advMode','foldOpen','advPos'].includes(a.k)) continue;
+    if(a.dep&&!a.dep(state)) continue;
+    const v=state[a.k],c=DEFAULTS[a.k]; if(String(v)===String(c)) continue;
+    const disp=a.t==='tg'?(v?'켬':'끔'):(a.t==='seg'?(a.o.find(o=>o[0]===String(v))||['',v])[1]:v+(a.unit||''));
+    const cd=a.t==='tg'?(c?'켬':'끔'):(a.t==='seg'?(a.o.find(o=>o[0]===String(c))||['',c])[1]:c+(a.unit||''));
+    const warn=a.lad&&!near(v,LAD[a.lad]);
+    L.push('· '+a.nm+': '+disp+'   [현행 '+cd+']'+(a.lad?(warn?' ⚠기틀 갱신 후보':' = 실존값 계승'):'')+(a.tok?' ('+a.tok+')':''));
+  }
+  if(L.length===2) L.push('· (전 축 현행 동일)');
+  $('#out').textContent=L.join('\n');
+}
+function syncAll(){ render(); syncConsole(); buildOut(); }
+
+/* 복사 — ⚠ 있으면 모달(§3-2′ ③) · 클립보드 폴백 */
+function doCopy(txt){ const done=()=>{ $('#copy').textContent='복사됨'; setTimeout(()=>$('#copy').textContent='선택값 복사',900); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>{ fb(); done(); }); } else { fb(); done(); }
+  function fb(){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove(); } }
+$('#copy').onclick=()=>{
+  const w=warnAxes();
+  if(!w.length) return doCopy($('#out').textContent);
+  $('#mlst').textContent=w.map(x=>'⚠ '+x).join('\n')+'\n\n역제안 = 이 값으로 기틀(전 앱 동일 축)을 바꾸는 승인 요청이 된다.';
+  $('#mdl').classList.add('on');
+};
+$('#mAll').onclick=()=>{ $('#mdl').classList.remove('on'); doCopy($('#out').textContent+'\n\n[🔁 기틀 갱신 역제안]\n'+warnAxes().map(x=>'· '+x+' → 전 앱 동축 일괄 적용 승인 요청').join('\n')); };
+$('#mSafe').onclick=()=>{ $('#mdl').classList.remove('on'); doCopy($('#out').textContent+'\n(⚠ 이탈 축 제외 = 계승분만)'); };
+$('#mX').onclick=()=>$('#mdl').classList.remove('on');
+
+/* 논점 상태로 오픈(§7-1-3): ★추천 프리셋 적용 — 현행 비교는 프리셋 1탭 */
+state={...DEFAULTS,...PRESETS[2].st};
+buildConsole(); syncAll();
+</script>
+</body>
+</html>

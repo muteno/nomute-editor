@@ -54,7 +54,7 @@ export async function onRequestGet({ request, env }) {
   catch { return new Response('fetch failed', { status: 502 }); }
   if (!up.ok) return new Response('upstream ' + up.status, { status: 502 });   // 리다이렉트(3xx/0)·4xx·5xx 전부 !up.ok로 차단
   const ct = up.headers.get('content-type') || 'application/octet-stream';
-  if (!/^(image|video)\//i.test(ct) && ct !== 'application/octet-stream') return new Response('not an image', { status: 415 });   // video/* = 자막 번인 완성영상(R2) 다운로드 경유(260707) — attachment+nosniff 불변이라 인라인 실행면 동일
+  if (!/^(image|video|audio)\//i.test(ct) && ct !== 'application/octet-stream') return new Response('unsupported type', { status: 415 });   // video/* = 자막 번인 완성영상(R2) 다운로드 경유(260707) · audio/* = 음원(Lyria 곡 R2 mp3/wav) 다운로드 경유(260712) — attachment+nosniff 불변이라 인라인 실행면 동일
   const h = new Headers();
   h.set('content-type', ct);
   h.set('content-disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(name));

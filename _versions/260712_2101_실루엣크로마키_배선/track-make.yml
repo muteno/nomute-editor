@@ -1,0 +1,294 @@
+name: track-make
+
+# 뷰어 트래킹 폼(Pages Function /api/track)이 발사 — 2모드 단일 워크플로:
+#   analyze = 영상(URL/업로드) → 얼굴 검출+트랙+군집 → viewer/track_out/<id>/tracks.json+crops 커밋(폼이 폴링)
+#   render  = tracks.json 타임라인 + 선택 페이로드 → 모자이크/핀셋 번인 · 키잉 알파(MOV+webm) → R2 → video.json 커밋
+# LLM = 분석 캡션 보조 1콜뿐(opus 4.8 max · TRACK_CAP 게이트 · 전면 fail-soft — 운영자 260710 승인) · 렌더/검출/군집 = 순수 OpenCV·PIL·ffmpeg.
+#   과금 = Actions 분 + R2 + 캡션 1콜(구독 OAuth·무료). 골격 = ly-make 미러.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프) — analyze가 발급, render는 같은 id 재사용(분석 1회=렌더 N회)'
+        type: string
+      mode:
+        description: 'analyze | render'
+        type: string
+        default: 'analyze'
+      url:
+        description: '영상 URL(yt-dlp) — analyze 전용'
+        type: string
+        default: ''
+      file:
+        description: '업로드 영상 파일 경로(uploads/<id>/src.*) — analyze 전용'
+        type: string
+        default: ''
+      up_branch:
+        description: '업로드 일회용 브랜치(up-<id> · 빈값=main 커밋 경로) — ly-make 동일(히스토리 비대 0)'
+        type: string
+        default: ''
+      render:
+        description: '렌더 페이로드 JSON {"mode":"mosaic|pinset|keying",…} — mosaic/pinset={targets,invert,names,colors,opts{pxw,pxh,size,feather,shape},scopes{pid:"body"}} · keying={keep:[sid],keepP:[pid],extra:[{t,x,y}],opts:{feather}} — render 전용(scopes/keepP = 260710 전신 폴백·얼굴 단위)'
+        type: string
+        default: ''
+      cap:
+        description: '카드 캡션+동일인 병합 힌트(1=ON · opus 4.8 max · analyze 전용) — 카나리아 통과 후 기본 ON 승격(§📰 e · run 29058611158 실측) · 롤백 = default를 빈값으로'
+        type: string
+        default: '1'
+
+concurrency:
+  group: track-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40   # 분석 300s캡 ~4.5분 · 모자이크/핀셋 300s = 30fps ~9분·60fps 최악 ~17분(프레임수 비례 — 180s/30fps ~5분 실측 외삽 · 평의회7 정정 260710) · 키잉 90s캡 ≈25분(실측 260709) + 콜드런 deps 여유 — 무한 행만 차단(§9)
+    env:
+      TRACK_MODE: ${{ inputs.mode }}   # 셸엔 env로만 전달(run 블록 ${{ }} 생보간 금지 = 인젝션 차단 · ly-make 관례 · 평의회1 H-1) · setup.sh 모델 스킵 분기용
+      # 키잉 = 헤비 스택(torch+ultralytics+SAM2) 신호 — contains 러프 매칭(모자이크 이름에 'keying'이 든 극단 케이스 = 불필요 설치뿐·동작 무해).
+      #   fromJSON은 render 빈값(analyze)·수동 오타 디스패치에서 큐 시점 표현식 에러 = 채택 안 함(정직 트레이드오프).
+      TRACK_HEAVY: ${{ (inputs.mode == 'render' && contains(inputs.render, 'keying')) && '1' || '' }}
+    steps:
+      - name: mode 가드
+        run: |
+          case "$TRACK_MODE" in analyze|render) ;; *) echo "::error::잘못된 mode: $TRACK_MODE"; exit 1;; esac
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # site-packages 캐시 — opencv-python-headless(~60MB) 재설치 회피(ly pydeps 패턴) · setup.sh 해시 = dep 변경 시 자동 재빌드(평의회1 L-6)
+      #   키 h 접미 = 헤비(키잉 torch+ultralytics ~1.6GB)/경량 캐시 분리 — 분석·모자이크 경로가 헤비 복원 비용을 안 냄
+      - name: Restore python deps (site-packages 캐시)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-track-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/track/setup.sh') }}-h${{ env.TRACK_HEAVY }}-v1
+
+      # 검출·임베딩 모델 캐시 — analyze = YuNet 232KB+SFace 37MB · 키잉 = SAM2.1 tiny 149MB(키 분리 = 상호 복원 비용 0)
+      #   모자이크/핀셋 렌더 = 모델 불사용 = 스킵(평의회1 L-5)
+      - name: 모델 캐시
+        if: ${{ inputs.mode == 'analyze' || env.TRACK_HEAVY == '1' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/nomute-track
+          key: nomute-track-models-${{ hashFiles('apps/track/setup.sh') }}-h${{ env.TRACK_HEAVY }}-v1
+
+      - name: 트래킹 환경 (ffmpeg+opencv+모델)
+        timeout-minutes: 12   # 백스톱 — 콜드런 pip+모델 다운 여유(이후 캐시히트 즉시)
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/track/setup.sh
+          apt: ffmpeg fonts-noto-cjk   # ffmpeg(인코딩)+한글폰트(핀셋 이름표 PIL) .deb 7일 캐시
+
+      - name: 소스 확보 (analyze · URL)
+        if: ${{ inputs.mode == 'analyze' && inputs.url != '' }}
+        env:
+          URL: ${{ inputs.url }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+        run: |
+          set -e
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          python3 -m yt_dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" \
+            || { echo "영상 다운로드 실패 — 사이트가 봇을 막았을 수 있어. 파일 업로드로 해줘." > /tmp/track_err.txt; echo "::error::yt-dlp 실패: $URL"; exit 1; }
+          SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
+          [ -n "$SRC" ] || { echo "영상 다운로드 실패 — 파일 업로드로 해줘." > /tmp/track_err.txt; echo "::error::다운 산출 없음"; exit 1; }
+          echo "TRACK_SRC=$SRC" >> "$GITHUB_ENV"
+
+      - name: 소스 확보 (analyze · 업로드 파일)
+        if: ${{ inputs.mode == 'analyze' && inputs.file != '' }}
+        env:
+          FILE: ${{ inputs.file }}
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          set -e
+          # 일회용 업로드 브랜치(up-<id>) = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 삭제) — ly-make 동일
+          if [ -n "$UP_BRANCH" ]; then
+            case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
+            git fetch origin "$UP_BRANCH" --depth=1 || { echo "업로드 파일이 유실됐어 — 다시 올려줘." > /tmp/track_err.txt; echo "::error::업로드 브랜치 fetch 실패: $UP_BRANCH"; exit 1; }
+            EXT="${FILE##*.}"
+            git show "FETCH_HEAD:$FILE" > "/tmp/upsrc.$EXT" || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/track_err.txt; echo "::error::브랜치서 파일 회수 실패: $FILE"; exit 1; }
+            FILE="/tmp/upsrc.$EXT"
+          fi
+          [ -f "$FILE" ] || { echo "업로드 파일이 없어 — 다시 올려줘." > /tmp/track_err.txt; echo "::error::업로드 파일 없음: $FILE"; exit 1; }
+          echo "TRACK_SRC=$FILE" >> "$GITHUB_ENV"
+
+      - name: 인물 분석 (검출+트랙+군집 → tracks.json)
+        if: ${{ inputs.mode == 'analyze' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          [ -n "${TRACK_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/track_err.txt; echo "::error::TRACK_SRC 빈값"; exit 1; }
+          python3 apps/track/track_analyze.py "$IN_ID" "$TRACK_SRC"
+
+      # 조기 tracks.json 커밋(cap=1 한정) — 캡션(최대 12분)이 분석 산출 공개를 블로킹 안 하게 선공개(ly 조기 subs 패턴 · 평의회1 F2·평의회2 F2)
+      #   best-effort exit 0 · cap OFF면 종전 단일 커밋 그대로. 캡션 병합본은 최종 Commit output이 2차 커밋(첫 세션은 캡션 없이 볼 수 있음 = 수용 트레이드오프·지침 한계 기재)
+      - name: 조기 tracks.json 커밋 (캡션 전 선공개)
+        if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/track_out/${IN_ID}" 2>/dev/null || true
+          git commit -m "track: ${IN_ID} analyze 조기 커밋 (캡션 전 선공개)" || exit 0
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
+              echo "조기 푸시 완료 → 카드 먼저 표시"; exit 0
+            fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*2))
+          done
+          echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함(무해)"; exit 0
+
+      # 카드 캡션 + 동일인 병합 힌트 — opus 4.8 max(운영자 260710) · TRACK_CAP 게이트(카나리아 → 승격) · 전면 fail-soft
+      #   (스크립트가 어떤 실패도 exit 0 = error.log 미기록 → 분석 산출·뷰어 폴 무영향 · || echo = 이중 안전벨트)
+      - name: Setup Node (캡션)
+        if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true   # 캡션 축 전체 = fail-soft(실패해도 분석 산출 무영향 · 평의회1 F3)
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24   # ly-make 핀 정합
+
+      - name: Install claude-code (캡션)
+        if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true   # 설치 실패 = 캡션만 스킵(잡 실패 금지 · 평의회1 F1)
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 카드 캡션 + 병합 힌트 (opus 4.8 max · fail-soft)
+        if: ${{ inputs.mode == 'analyze' && inputs.cap == '1' }}
+        continue-on-error: true   # ⚠️ 필수 불변(평의회1 F1) — 스텝 타임아웃 SIGKILL은 스크립트 exit 0을 우회 → 이게 없으면 failure() 스텝이 error.log를 커밋해 성공한 분석을 뷰어에 실패로 오염(pollAnalyze는 error.log 우선)
+        timeout-minutes: 12
+        env:
+          TRACK_CAP: '1'
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA · ly-make 동일)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
+          ACTIVE_ACCOUNT: ${{ vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::warning::OAuth 시크릿 빈값 — 캡션 스킵(fail-soft)"; exit 0; }
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/track_caption.sh "$IN_ID" || echo "::warning::캡션 실패(fail-soft) — 분석 산출 무영향"
+
+      - name: 렌더 (모자이크/핀셋 번인·키잉 알파 → R2 → video.json)
+        if: ${{ inputs.mode == 'render' }}
+        timeout-minutes: 35   # 스텝 자체 캡 — 잡 40분 하드캔슬 전에 failure() error.log 표면화(평의회H · 키잉 90s ≈25분 실측 여유)
+        env:
+          IN_ID: ${{ inputs.id }}
+          RENDER: ${{ inputs.render }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          # 실패도 video.json에 사유 기록 후 rc 0(fail-soft — 뷰어 헛폴 차단 · ly_burn 동일).
+          # 네이티브 크래시(세그폴트·OOM)만 스텝 실패 → 아래 failure()가 error.log 기록 → 뷰어 렌더 폴이
+          #   error.log 기준선 감시로 잡음(track.html pollRender · 의도 설계 = || echo 가드 불필요 · 평의회1 M-4 답변)
+          python3 apps/track/track_render.py "$IN_ID"
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+          TRACK_MODE: ${{ inputs.mode }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          mkdir -p "viewer/track_out/${IN_ID}"
+          if [ -s /tmp/track_err.txt ]; then cp /tmp/track_err.txt "viewer/track_out/${IN_ID}/error.log";
+          else echo "트래킹 작업 실패 — Actions 로그를 확인해줘." > "viewer/track_out/${IN_ID}/error.log"; fi
+          echo "error.log: $(cat viewer/track_out/${IN_ID}/error.log)"
+          # 렌더 하드크래시(SIGKILL·OOM = fail-soft 우회)면 video.json도 error로 덮는다(검증 봉합 260711):
+          #   같은 id 재렌더는 직전 성공 video.json이 잔존 → 완료 푸시가 '렌더 완료' 오푸시 + 재개 폴이 스테일 결과 복원.
+          #   형식 = track_render fail-soft와 동일 {"error":…}(뷰어 소비 계약 불변) · analyze 실패엔 안 덮음(video.json = 렌더 산출).
+          if [ "$TRACK_MODE" = "render" ]; then
+            python3 -c "import json,os; d=os.path.join('viewer/track_out',os.environ['IN_ID']); err=open(os.path.join(d,'error.log'),encoding='utf-8').read().strip()[:200]; json.dump({'error': err or '렌더 실패'}, open(os.path.join(d,'video.json'),'w',encoding='utf-8'), ensure_ascii=False); print('video.json <- error 덮음(잔존 성공본 오표시 차단)')" \
+              || echo "::warning::video.json 덮기 실패(비치명 — error.log는 기록됨)"
+          fi
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git rm -r "uploads/${IN_ID}" 2>/dev/null || true   # 업로드 원본 = R2 보관 후 불필요(git 비대화 방지 · ly 동일)
+          git add "viewer/track_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 캡션 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만(ly-make 동일)
+          git commit -m "track: ${IN_ID} ${TRACK_MODE} 출력" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
+
+      # 트래킹 완료/실패 푸시 — 분석(캡션 포함 최대 십수 분)·렌더(키잉 ~25분) 긴 잡 통지(편집기 완료 푸시와 동일 문법 · 운영자 260711).
+      #   탭 = /track.html(재개 게이트 24h가 결과 복원) · 잡별 tag · 비치명.
+      - name: 트래킹 완료 푸시 (pywebpush)
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          TRACK_MODE: ${{ inputs.mode }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
+          D="viewer/track_out/${IN_ID}"; OK=0; MSG=""
+          if [ "$TRACK_MODE" = "analyze" ]; then
+            [ -s "$D/tracks.json" ] && OK=1
+            if [ "$OK" = "1" ]; then BODY="트래킹 분석 완료 — 인물 골라 렌더해줘"; fi
+          else
+            if [ -s "$D/video.json" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$D/video.json')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
+            if [ "$OK" = "1" ]; then BODY="트래킹 렌더 완료 — 탭해서 확인"; fi
+          fi
+          if [ "$OK" != "1" ]; then
+            [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"
+            BODY="트래킹 실패 — ${MSG:-로그 확인}"
+          fi
+          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/track.html" --tag "nomute-make-${IN_ID}-${TRACK_MODE}" || echo "::warning::완료 푸시 실패(비치명)"
+
+      # 업로드 일회용 브랜치 삭제(성공·실패 무관) — ly-make 동일(가드 = up-* 만)
+      - name: 업로드 브랜치 정리
+        if: ${{ always() && inputs.up_branch != '' }}
+        env:
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
+          git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"
