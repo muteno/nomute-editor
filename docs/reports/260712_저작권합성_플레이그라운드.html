@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>저작권 합성 — 합성 키 + 드래그 합성 플레이그라운드</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210;
+    --danger:#e23b2a; --danger-rgb:226,59,42; --amber:#FFE13D;
+    --fmt-post:#1fd6ee; --fmt-reels:#e7ff2e;
+    --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+    --fs-label:13px; --fw-b:700; --fw-x:800;
+    --ease:cubic-bezier(.2,.7,.3,1); --press-m:.9;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; }
+  body{ background:#070908; color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif;
+    padding:22px 16px 60px; }
+  .hd{ max-width:1120px; margin:0 auto 16px; }
+  .hd h1{ font-size:19px; margin:0 0 8px; font-weight:800; }
+  .hd h1 b{ color:var(--accent); }
+  .hd p{ font-size:13px; color:var(--mut); margin:4px 0; line-height:1.7; }
+  .hd .rec{ font-size:12.5px; color:var(--fg); margin-top:10px; padding:10px 13px;
+    background:rgba(var(--accent-rgb),.06); border:1px solid rgba(var(--accent-rgb),.25); border-radius:10px; line-height:1.85; }
+  .hd .rec b{ color:var(--accent); }
+
+  /* 탭바 */
+  .tabbar{ max-width:1120px; margin:0 auto 18px; display:flex; gap:8px; }
+  .tabbar button{ padding:10px 18px; background:rgba(255,255,255,.03); border:1px solid var(--line);
+    border-radius:11px; color:var(--mut); font:inherit; font-size:13.5px; font-weight:800; cursor:pointer; }
+  .tabbar button.on{ border-color:rgba(var(--accent-rgb),.55); color:var(--accent); background:rgba(var(--accent-rgb),.08); }
+
+  .wrap{ max-width:1120px; margin:0 auto; display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+  .stagewrap{ flex:0 0 auto; }
+  .pane{ display:none; }
+  .pane.on{ display:contents; }
+
+  /* 폰 프레임 */
+  .frame{ position:relative; width:322px; height:644px; border-radius:32px;
+    background:var(--bg); border:1px solid #23262a; overflow:hidden;
+    box-shadow:0 30px 70px rgba(0,0,0,.6), inset 0 0 0 5px #0e1011; }
+  .frame::before{ content:''; position:absolute; inset:0; z-index:0; pointer-events:none;
+    filter:brightness(1.15) saturate(1.05);
+    background:
+      radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.10), transparent 55%),
+      linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.42)),
+      repeating-linear-gradient(135deg, #0d0f0e 0 3px, #0b0d0c 3px 6px), var(--bg); }
+  .screen{ position:absolute; inset:0; z-index:1; overflow-y:auto; overflow-x:hidden;
+    padding:16px 15px 40px; touch-action:pan-y; }
+  .screen::-webkit-scrollbar{ width:0; }
+  .m-head{ display:flex; align-items:center; justify-content:space-between; margin:2px 2px 14px; }
+  .m-head .t{ font-size:15px; font-weight:800; }
+  .m-head .x{ width:28px; height:28px; display:grid; place-items:center; color:var(--mut);
+    border:1px solid var(--line); border-radius:8px; }
+
+  /* ── 폼 요소(탭1) ── */
+  .csec{ display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x);
+    color:var(--fg); margin:15px 0 8px; flex-wrap:wrap; }
+  .csec::before{ content:'•'; color:var(--accent); font-weight:var(--fw-b); }
+  .gospec{ margin:8px 2px 0; font-size:12.5px; color:var(--mut); line-height:1.9; }
+  .gospec .l{ color:var(--mut); font-weight:700; } .gospec .v{ color:var(--mut); }
+  .gospec .v.on{ color:var(--accent); font-weight:700; }
+  .ovfmt{ font-weight:800; padding:2px 5px; }
+  .ovfmt.reels{ color:var(--fmt-reels); } .ovfmt.post{ color:var(--fmt-post); } .ovfmt.off{ color:var(--mut); }
+  .cf{ width:100%; padding:10px 12px; background:rgba(14,15,17,.55); border:1px solid var(--line);
+    border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:90%; margin-bottom:7px; }
+  .cf::placeholder{ color:var(--mut); }
+  .cf-t{ color:var(--accent); }
+  .imgrow{ display:flex; gap:8px; align-items:stretch; }
+  .imgrow .ph{ flex:1; min-height:52px; border:1px dashed var(--line); border-radius:var(--r-s);
+    display:grid; place-items:center; color:var(--mut); font-size:11px; text-align:center; }
+  .imgrow .ph.has{ border-style:solid; border-color:rgba(var(--accent-rgb),.4);
+    background:linear-gradient(135deg,#2a3b52,#48607f); color:#cfe; }
+
+  /* 합성 키 위젯 변형 */
+  .cpline{ display:flex; align-items:center; gap:6px; margin:13px 2px 0; font-size:12.5px; font-weight:800; }
+  .cpline::before{ content:'•'; color:var(--accent); font-weight:700; }
+  .merge-seg{ display:inline-flex; gap:2px; margin-left:4px; background:rgba(0,0,0,.28); padding:2px; border-radius:7px; }
+  .merge-seg button{ padding:3px 9px; background:transparent; border:none; border-radius:5px; color:var(--mut);
+    font:inherit; font-size:11.5px; font-weight:800; cursor:pointer; }
+  .merge-seg button.on{ background:rgba(var(--accent-rgb),.16); color:var(--accent); }
+  .merge-badge{ margin-left:6px; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px;
+    background:rgba(var(--accent-rgb),.13); color:var(--accent); cursor:pointer; border:1px solid rgba(var(--accent-rgb),.3); }
+  .merge-badge.sep{ background:rgba(143,166,151,.13); color:var(--mut); border-color:var(--line); }
+  .gospec .merge-inline{ }
+  .cphline{ margin-top:9px; font-size:13.5px; color:var(--fg); line-height:1.9; }
+  .cphline .ed{ color:var(--accent); border-bottom:1px dashed rgba(var(--accent-rgb),.55); padding:0 3px; }
+  .go{ width:100%; margin-top:18px; padding:14px; border:none; border-radius:var(--r-l);
+    background:rgba(255,255,255,.05); color:var(--accent); font-weight:800; font-size:14px;
+    border:1px solid rgba(var(--accent-rgb),.22); cursor:pointer; }
+  .go .sub{ display:block; font-size:10.5px; color:var(--mut); font-weight:600; margin-top:3px; }
+
+  /* 미리보기 결과 안내(합성 결과) */
+  .outnote{ margin-top:14px; padding:10px 12px; border:1px dashed var(--line); border-radius:10px;
+    font-size:11.5px; color:var(--mut); line-height:1.7; }
+  .outnote b{ color:var(--fg); } .outnote .g{ color:var(--accent); }
+
+  /* ── 결과 카드(탭2 드래그) ── */
+  .r-hd{ font-size:13px; font-weight:800; margin:4px 2px 12px; color:var(--fg); }
+  .r-hd small{ display:block; color:var(--mut); font-weight:500; font-size:11px; margin-top:3px; }
+  .rgrid{ display:flex; flex-wrap:wrap; gap:12px; justify-content:center; padding:4px 0 10px; }
+  .rcard{ position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line);
+    cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none;
+    transition:transform .12s, box-shadow .15s; background:#111; }
+  .rcard:active{ cursor:grabbing; }
+  .rcard.reels{ width:84px; height:149px; } .rcard.post{ width:120px; height:150px; }
+  .rcard .thumbimg{ position:absolute; inset:0; }
+  .rcard .lbl{ position:absolute; left:5px; top:5px; z-index:3; font-size:9px; font-weight:800;
+    padding:2px 6px; border-radius:5px; background:var(--bg); color:var(--accent); }
+  .rcard .dim{ position:absolute; right:5px; bottom:5px; z-index:3; font-size:8.5px; font-weight:700;
+    padding:1px 5px; border-radius:4px; background:rgba(0,0,0,.6); color:#cfe; font-variant-numeric:tabular-nums; }
+  .rcard.dragging{ opacity:.92; box-shadow:0 16px 40px rgba(0,0,0,.6); z-index:100; }
+  .rcard.shake{ animation:shk .42s var(--ease); }
+  @keyframes shk{ 0%,100%{ transform:translateX(0); } 15%{ transform:translateX(-8px) rotate(-2deg); }
+    30%{ transform:translateX(7px) rotate(2deg); } 45%{ transform:translateX(-6px) rotate(-1.5deg); }
+    60%{ transform:translateX(5px) rotate(1deg); } 75%{ transform:translateX(-3px); } }
+  .rcard.droptarget{ box-shadow:0 0 0 2px var(--accent), 0 0 20px rgba(var(--accent-rgb),.4); }
+  .rcard.badtarget{ box-shadow:0 0 0 2px var(--danger); }
+  .rcard.born{ animation:born .5s var(--ease); }
+  @keyframes born{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
+  /* 썸네일 흉내 = 사진 그라디언트 + 제목 */
+  .ti-photo{ position:absolute; inset:0; background:linear-gradient(150deg,#3a5168,#22303f 60%,#1a2530); }
+  .ti-photo.warm{ background:linear-gradient(150deg,#5a4636,#3f2f22 60%,#2a2016); }
+  .ti-title{ position:absolute; left:6px; right:6px; bottom:16px; z-index:2; font-size:11px; font-weight:900;
+    color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.7); line-height:1.15; }
+  .ti-title em{ color:var(--fmt-reels); font-style:normal; }
+  /* 저작권 흉내 = 체크무늬(투명) + ⓒ */
+  .ti-alpha{ position:absolute; inset:0;
+    background-image:linear-gradient(45deg,#1a1c1e 25%,transparent 25%),linear-gradient(-45deg,#1a1c1e 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a1c1e 75%),linear-gradient(-45deg,transparent 75%,#1a1c1e 75%);
+    background-size:12px 12px; background-position:0 0,0 6px,6px -6px,-6px 0; background-color:#0d0e0f; }
+  .ti-cr{ position:absolute; left:0; right:0; top:14px; z-index:2; text-align:center; font-size:8px; color:#fff; font-weight:700; }
+  .rcard.merged .ti-alpha{ display:none; }
+  .stagecap{ width:322px; text-align:center; font-size:11.5px; color:var(--mut); margin-top:11px; line-height:1.7; }
+  .stagecap b{ color:var(--fmt-reels); }
+  /* 토스트 */
+  .toast{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.9); z-index:200;
+    padding:11px 18px; border-radius:12px; background:rgba(20,21,24,.94); border:1px solid var(--danger);
+    color:#fff; font-size:12.5px; font-weight:800; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+    box-shadow:0 12px 40px rgba(0,0,0,.5); text-align:center; }
+  .toast.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .toast.ok{ border-color:var(--accent); }
+  .ghost{ position:fixed; z-index:9999; pointer-events:none; border-radius:10px; overflow:hidden;
+    opacity:.9; box-shadow:0 16px 40px rgba(0,0,0,.6); }
+
+  /* ── 콘솔 ── */
+  .console{ flex:1 1 380px; min-width:320px; display:flex; flex-direction:column; gap:14px; }
+  .pg-sec{ background:rgba(255,255,255,.025); border:1px solid var(--line); border-radius:14px; padding:14px 15px; }
+  .pg-sec > h3{ margin:0 0 11px; font-size:12px; font-weight:800; color:var(--mut); letter-spacing:.04em; text-transform:uppercase; }
+  .pg-presets{ display:flex; flex-direction:column; gap:8px; }
+  .pg-presets button{ padding:11px 13px; background:rgba(255,255,255,.04); border:1px solid var(--line);
+    border-radius:10px; color:var(--fg); font:inherit; font-size:12.5px; cursor:pointer; text-align:left;
+    display:flex; flex-direction:column; gap:3px; }
+  .pg-presets button.on{ border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+  .pg-presets button .nm{ font-weight:800; } .pg-presets button.on .nm{ color:var(--accent); }
+  .pg-presets button .nm .star{ color:var(--amber); }
+  .pg-presets button .sub{ font-size:11px; color:var(--mut); font-weight:500; line-height:1.5; }
+  .grp-lbl{ font-size:11px; color:var(--mut); font-weight:800; letter-spacing:.05em; margin:14px 0 7px; text-transform:uppercase; }
+  .grp-lbl:first-child{ margin-top:0; }
+  .seg-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:9px 0; }
+  .seg-row .nm{ font-size:12.5px; color:var(--fg); }
+  .seg-row .nm .tok{ display:block; font-size:10px; color:var(--mut); font-weight:400; margin-top:1px; }
+  .seg{ display:inline-flex; gap:4px; background:rgba(0,0,0,.28); padding:3px; border-radius:9px; flex-wrap:wrap; }
+  .seg button{ padding:6px 9px; background:transparent; border:none; border-radius:6px; color:var(--mut);
+    font:inherit; font-size:11.5px; cursor:pointer; font-weight:700; white-space:nowrap; }
+  .seg button.on{ background:rgba(var(--accent-rgb),.14); color:var(--accent); }
+  .sld-row{ margin:11px 0; }
+  .sld-row .top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+  .sld-row .nm{ font-size:12.5px; } .sld-row .val{ font-size:12.5px; color:var(--accent); font-weight:800; font-variant-numeric:tabular-nums; }
+  input[type=range]{ width:100%; height:22px; -webkit-appearance:none; appearance:none; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:4px; border-radius:999px;
+    background:linear-gradient(90deg, var(--accent) var(--p,40%), rgba(255,255,255,.12) var(--p,40%)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--accent); margin-top:-5.5px; }
+  input[type=range]::-moz-range-thumb{ width:15px; height:15px; border:none; border-radius:50%; background:var(--accent); }
+  .pg-out pre{ margin:0; font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--fg); white-space:pre-wrap; word-break:break-word; }
+  .pg-out pre .g{ color:var(--accent); } .pg-out pre .m{ color:var(--mut); } .pg-out pre .w{ color:var(--amber); }
+  .copy{ margin-top:12px; width:100%; padding:12px; background:rgba(var(--accent-rgb),.1);
+    border:1px solid rgba(var(--accent-rgb),.4); border-radius:10px; color:var(--accent); font:inherit; font-weight:800; font-size:13px; cursor:pointer; }
+  .copy.done{ background:rgba(var(--accent-rgb),.2); }
+  .note{ font-size:11.5px; color:var(--mut); line-height:1.85; }
+  .note b{ color:var(--fg); } .note ul{ margin:6px 0 0; padding-left:16px; } .note li{ margin:3px 0; }
+  @media (max-width:820px){ .frame{ width:300px; height:600px; } .stagewrap{ margin:0 auto; } .stagecap{ width:300px; } .wrap{ justify-content:center; } }
+</style>
+</head>
+<body>
+  <div class="hd">
+    <h1><b>저작권 합성</b> — 합성 키 + 드래그 합성 플레이그라운드</h1>
+    <p>저작권/안내문 오버레이를 썸네일과 <b>합쳐서</b> 낼지 <b>따로</b> 낼지. 두 방식 = 발사 전 <b>합성 키</b>(백엔드 합성) · 발사 후 <b>드래그로 붙이기</b>(클라 합성).</p>
+    <div class="rec">💡 <b>추천</b> — ① 합성 키는 <b>「자동 + 오버라이드」</b>(배경 이미지 있으면 합침 디폴트·탭해서 따로): 저작권은 배경 있을 때만 합칠 대상이 생기니 자동이 자연스러움. ② 드래그 합성은 <b>이력 그리드</b>에서(캐러셀 스와이프와 충돌 회피) · 크기 판정 = 포맷(9:16↔4:5). 둘은 상호보완이니 같이 넣는 걸 권해.</div>
+  </div>
+
+  <div class="tabbar">
+    <button id="tabA" class="on">① 합성 키 (발사 전)</button>
+    <button id="tabB">② 드래그 합성 (발사 후)</button>
+  </div>
+
+  <!-- ══ 탭 A: 합성 키 ══ -->
+  <div class="wrap pane on" id="paneA">
+    <div class="stagewrap">
+      <div class="frame"><div class="screen">
+        <div class="m-head"><span class="t">이미지</span><span class="x">✕</span></div>
+        <div class="csec">오버레이 <span style="color:var(--mut);font-weight:400"> | </span><span class="ovfmt reels">릴스</span></div>
+        <div class="cf cf-t" style="color:var(--mut)">제목: 속보 — 무슨 무슨 사건</div>
+        <div class="csec">배경 이미지</div>
+        <div class="imgrow"><div class="ph has" id="bgph">사진 첨부됨 ✓</div></div>
+
+        <div class="csec">옵션</div>
+        <div class="gospec">
+          <span class="l">배경</span>: <span class="v">OFF</span> &nbsp; <span class="l">OPA</span> <span class="v on">60</span> &nbsp; <span class="l">축약</span>: <span class="v on">ON</span><span class="merge-inline" id="mergeInline"></span>
+        </div>
+
+        <!-- 저작권 3단 줄 + (프리셋 위치에 따라) 합성 키 -->
+        <div class="cpline" id="cpRow">저작권 <span class="ovfmt reels">릴스</span><span id="mergeAtCp"></span></div>
+        <div class="cphline">ⓒ 2026. <span class="ed">nomute</span>(<span class="ed">instagram</span>). all rights reserved.</div>
+
+        <div id="mergeBlock"></div>
+
+        <button class="go" id="goBtn">이미지 제작<span class="sub" id="goSub">썸네일 + 저작권 따로 2장</span></button>
+        <div class="outnote" id="outNote"></div>
+      </div></div>
+      <div class="stagecap">미리보기 안 <b>합성 키</b>를 눌러 합침↔따로 전환 — 프리셋마다 위치가 달라</div>
+    </div>
+
+    <aside class="console">
+      <div class="pg-sec">
+        <h3>합성 키 위치 — 4안</h3>
+        <div class="pg-presets" id="presetsA"></div>
+      </div>
+      <div class="pg-sec">
+        <h3>결정 축</h3>
+        <div id="controlsA"></div>
+      </div>
+      <div class="pg-sec pg-out"><h3>선택값</h3><pre id="outA"></pre><button class="copy" id="copyA">선택값 복사</button></div>
+      <div class="pg-sec note">
+        <h3 style="margin-bottom:8px">참고</h3>
+        <ul>
+          <li><b>합성 키 = 발사 전 결정</b> → 켜지면 워크플로가 <code>nomute_compose.py</code> <code>compose()</code>로 저작권/안내문을 썸네일 위에 알파 합성 → <b>1장</b>으로 산출.</li>
+          <li>크기 = 렌더 캔버스(2K)에서 픽셀 완전 일치(2160×3840). 저작권 다운스케일 한 줄만 스킵하면 됨 = 스크립트 소폭 추가.</li>
+          <li>⚠️ 이건 <b>백엔드 수정</b>(흰=고정 원칙 예외) = §기틀 보호 → 승인 후. 합성 안 켜면 종전대로 따로 = 회귀 0.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ══ 탭 B: 드래그 합성 ══ -->
+  <div class="wrap pane" id="paneB">
+    <div class="stagewrap">
+      <div class="frame"><div class="screen" id="screenB">
+        <div class="m-head"><span class="t">이전 제작</span><span class="x">✕</span></div>
+        <div class="r-hd">결과<small>저작권을 썸네일 위로 끌어 놓아봐 — 같은 크기면 합성, 다르면 거부</small></div>
+        <div class="rgrid" id="rgrid"></div>
+        <div class="toast" id="toast"></div>
+      </div></div>
+      <div class="stagecap"><b>저작권 릴스</b>를 <b>썸네일 릴스</b>에 끌어 놓기 = 합성 ✓ · <b>포스트</b>에 놓기 = 사이즈 다름 ✕</div>
+    </div>
+
+    <aside class="console">
+      <div class="pg-sec">
+        <h3>동작</h3>
+        <div class="note" style="line-height:1.9">
+          <b>1.</b> 결과 카드를 끌어(드래그) 다른 카드에 놓는다.<br>
+          <b>2.</b> 두 크기(포맷)가 <b>같으면</b> → 겹쳐서 <span style="color:var(--accent)">합성</span> → 새 결과 카드 생성.<br>
+          <b>3.</b> <b>다르면</b> → <span style="color:var(--danger)">"사이즈가 다릅니다"</span> + 끌던 카드가 흔들리며 제자리로.
+        </div>
+      </div>
+      <div class="pg-sec">
+        <h3>결정 축</h3>
+        <div id="controlsB"></div>
+      </div>
+      <div class="pg-sec pg-out"><h3>선택값</h3><pre id="outB"></pre><button class="copy" id="copyB">선택값 복사</button></div>
+      <div class="pg-sec note">
+        <h3 style="margin-bottom:8px">참고</h3>
+        <ul>
+          <li><b>드래그 합성 = 발사 후·클라 canvas</b> → <code>api/dl</code> 프록시로 CORS 회피 → <code>drawImage</code> 2장 → <code>carAppend</code>로 새 결과. <b>백엔드 완전 불변</b>.</li>
+          <li>크기 판정 = 결과 <code>naturalWidth/Height</code> 비교(선례 <code>rszMeasure</code>) 또는 포맷 태그(9:16↔4:5).</li>
+          <li>⚠️ 캐러셀은 스와이프(스크롤)와 겹쳐 = 이력 그리드를 소스/타겟으로 쓰는 게 안전(조사 실측).</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+
+  // 탭 전환
+  const paneA = $('#paneA'), paneB = $('#paneB');
+  $('#tabA').onclick = () => { $('#tabA').classList.add('on'); $('#tabB').classList.remove('on'); paneA.classList.add('on'); paneB.classList.remove('on'); };
+  $('#tabB').onclick = () => { $('#tabB').classList.add('on'); $('#tabA').classList.remove('on'); paneB.classList.add('on'); paneA.classList.remove('on'); initB(); };
+
+  /* ═══ 탭 A: 합성 키 ═══ */
+  // where: 'cp'=저작권 옆 서브세그 · 'opt'=옵션줄 인라인 · 'block'=저작권 아래 독립 줄 · 'auto'=자동 배지
+  const DA = { where:'auto', label:'합침/따로', dflt:'merge', autoBg:true };
+  const PA = [
+    { id:'a0', nm:'현행(합성 키 없음)', sub:'저작권 늘 따로 PNG · 합성 불가', st:{...DA, where:'none'} },
+    { id:'a1', nm:'저작권 옆 서브세그', sub:'「저작권 릴스 · [합침|따로]」 — 저작권 켤 때만 노출', st:{...DA, where:'cp'} },
+    { id:'a2', nm:'옵션줄 인라인 토글', sub:'「배경·OPA·축약 · 합성: 합침」 — 배경/축약과 한 줄', st:{...DA, where:'opt'} },
+    { id:'a3', nm:'자동 + 오버라이드', sub:'배경 이미지 있으면 합침 자동(배지)·탭해서 따로', star:true, st:{...DA, where:'auto'} },
+  ];
+  const CA_SEG = [
+    { k:'where', nm:'합성 키 위치', grp:'배치', opts:[['auto','자동 배지 ★'],['cp','저작권 옆'],['opt','옵션줄'],['block','아래 독립 줄'],['none','없음']] },
+    { k:'dflt', nm:'기본값', grp:'동작', opts:[['merge','합침'],['sep','따로 ★']], tok:'배경 有=합침 자연' },
+    { k:'autoBg', nm:'배경 없으면 자동 잠금', grp:'동작', opts:[[true,'ON ★'],[false,'OFF']], tok:'배경 無=합칠 대상 0 → 따로 강제' },
+  ];
+  let sa = {...PA[3].st}, mergeState = 'merge';
+
+  function renderMergeKey(){
+    // 초기화
+    $('#mergeAtCp').innerHTML=''; $('#mergeInline').innerHTML=''; $('#mergeBlock').innerHTML='';
+    const bgHas = $('#bgph').classList.contains('has');
+    const locked = sa.autoBg && !bgHas;   // 배경 없으면 따로 강제
+    const eff = locked ? 'sep' : mergeState;
+    const segHtml = `<span class="merge-seg" data-role="seg"><button data-m="merge" class="${eff==='merge'?'on':''}">합침</button><button data-m="sep" class="${eff==='sep'?'on':''}">따로</button></span>`;
+    const badgeHtml = `<span class="merge-badge ${eff==='sep'?'sep':''}" data-role="badge">${eff==='merge'?'합침'+(sa.where==='auto'?' (자동)':''):'따로'}</span>`;
+
+    if (sa.where==='cp') $('#mergeAtCp').innerHTML = ' '+segHtml;
+    else if (sa.where==='opt') $('#mergeInline').innerHTML = ` &nbsp; <span class="l">합성</span>: <span class="v ${eff==='merge'?'on':''}" data-role="badge" style="cursor:pointer">${eff==='merge'?'합침':'따로'}</span>`;
+    else if (sa.where==='block') $('#mergeBlock').innerHTML = `<div class="cpline" style="color:var(--fg)">합성 ${badgeHtml}</div>`;
+    else if (sa.where==='auto') $('#mergeAtCp').innerHTML = ' '+badgeHtml;
+    // none = 아무것도
+
+    // 배선
+    $$('[data-role=seg] button').forEach(b=> b.onclick=()=>{ if(locked) return; mergeState=b.dataset.m; renderMergeKey(); buildOutA(); });
+    $$('[data-role=badge]').forEach(b=> b.onclick=()=>{ if(locked) return; mergeState = mergeState==='merge'?'sep':'merge'; renderMergeKey(); buildOutA(); });
+
+    // 제작 버튼 서브라벨
+    const goSub = $('#goSub');
+    if (sa.where==='none') goSub.textContent='썸네일 + 저작권 따로 2장';
+    else if (eff==='merge') goSub.innerHTML='<span style="color:var(--accent)">썸네일 = 저작권 합쳐 1장</span>';
+    else goSub.textContent='썸네일 + 저작권 따로 2장';
+    // 결과 안내
+    const on=$('#outNote');
+    if (sa.where==='none') on.innerHTML='<b>현행</b> — 저작권은 항상 투명 PNG로 <b>따로</b> 나와. 합칠 방법 없음(탭②에서 드래그로만 가능).';
+    else if (locked) on.innerHTML='배경 이미지가 없어 <b>합칠 대상이 없음</b> → <span class="g">따로</span> 자동 고정(잠금).';
+    else if (eff==='merge') on.innerHTML='발사 = <span class="g">1장</span>: 워크플로가 저작권을 썸네일 위에 <code>compose()</code> 합성.';
+    else on.innerHTML='발사 = <b>2장</b>: 썸네일 · 저작권(투명 PNG) 각각. 나중에 탭②로 붙일 수 있음.';
+  }
+
+  const presetsA=$('#presetsA');
+  PA.forEach(p=>{ const b=document.createElement('button'); b.dataset.id=p.id;
+    b.innerHTML=`<span class="nm">${p.nm}${p.star?' <span class="star">★</span>':''}</span><span class="sub">${p.sub}</span>`;
+    b.onclick=()=>{ sa={...p.st}; if(sa.where!=='none'&&mergeState==='sep'&&sa.dflt==='merge')mergeState='merge'; renderMergeKey(); syncCtrlA(); buildOutA(); }; presetsA.appendChild(b); });
+
+  const ctrlA=$('#controlsA');
+  function renderCtrlA(){ ctrlA.innerHTML=''; let g='';
+    CA_SEG.forEach(s=>{ if(s.grp!==g){g=s.grp;const d=document.createElement('div');d.className='grp-lbl';d.textContent=g;ctrlA.appendChild(d);}
+      const row=document.createElement('div');row.className='seg-row';
+      row.innerHTML=`<div class="nm">${s.nm}${s.tok?`<span class="tok">${s.tok}</span>`:''}</div>`;
+      const seg=document.createElement('div');seg.className='seg';seg.dataset.k=s.k;
+      s.opts.forEach(o=>{const btn=document.createElement('button');btn.dataset.v=String(o[0]);btn.textContent=o[1];
+        btn.onclick=()=>{ sa[s.k]=(o[0]===true)?true:(o[0]===false)?false:o[0]; renderMergeKey(); syncCtrlA(); buildOutA(); };seg.appendChild(btn);});
+      row.appendChild(seg);ctrlA.appendChild(row); });
+  }
+  function syncCtrlA(){ ctrlA.querySelectorAll('.seg').forEach(seg=>{ seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===String(sa[seg.dataset.k]))); });
+    presetsA.querySelectorAll('button').forEach(b=>{ const p=PA.find(x=>x.id===b.dataset.id); b.classList.toggle('on', p&&Object.keys(DA).every(k=>p.st[k]===sa[k])); }); }
+  function buildOutA(){
+    const W={auto:'자동 배지(배경 있으면 합침·탭해서 따로)',cp:'저작권 토글 옆 [합침|따로] 세그',opt:'옵션줄 인라인 「합성: 합침」',block:'저작권 아래 독립 줄',none:'없음(현행)'}[sa.where];
+    let o='<span class="g">[저작권 합성 키 — 선택]</span>\n';
+    o+='위치     : '+W+'\n';
+    o+='기본값   : '+(sa.dflt==='merge'?'합침':'따로')+'\n';
+    o+='자동잠금 : '+(sa.autoBg?'배경 없으면 따로 강제(ON)':'항상 수동(OFF)')+'\n';
+    if(sa.where==='none'){ o+='\n<span class="m">→ 합성 키 없음 = 저작권 늘 따로. 합치려면 탭② 드래그.</span>'; }
+    else{
+      o+='\n<span class="g">── 배선 스펙 ──</span>\n';
+      o+='<span class="m">· 합침 = 발사 시 워크플로가 저작권/안내문을 썸네일 위</span>\n';
+      o+='<span class="m">  nomute_compose.py compose()로 알파 합성 → 1장</span>\n';
+      o+='<span class="m">· 크기 = 2K 캔버스 픽셀 일치(저작권 ÷2 스킵)</span>\n';
+      o+='<span class="m">· 따로 = 종전대로 별도 PNG(회귀 0)</span>\n';
+      o+='<span class="w">⚠ 백엔드(thumb-make.yml·스크립트) 수정 = §기틀 보호 승인 후</span>';
+    }
+    $('#outA').innerHTML=o;
+  }
+  $('#bgph').onclick=()=>{ $('#bgph').classList.toggle('has'); $('#bgph').textContent=$('#bgph').classList.contains('has')?'사진 첨부됨 ✓':'사진 없음 (탭해서 토글)'; renderMergeKey(); buildOutA(); };
+  $('#copyA').onclick=()=>copyOut($('#outA'),$('#copyA'));
+
+  /* ═══ 탭 B: 드래그 합성 ═══ */
+  const DB = { source:'both', judge:'format', after:'new', shake:42 };
+  const CB_SEG = [
+    { k:'source', nm:'드래그 소스', grp:'인터랙션', opts:[['both','결과+이력'],['hist','이력만 ★'],['car','캐러셀도']], tok:'캐러셀=스와이프 충돌' },
+    { k:'judge', nm:'크기 판정', grp:'인터랙션', opts:[['format','포맷(9:16↔4:5) ★'],['px','실제 px']], tok:'naturalWidth 비교' },
+    { k:'after', nm:'합성 후', grp:'동작', opts:[['new','새 결과 추가 ★'],['replace','원본 교체']] },
+  ];
+  const CB_SLD = [ { k:'shake', nm:'거부 흔들림 세기', grp:'피드백', min:0, max:100, unit:'%', base:42 } ];
+  let sb = {...DB};
+
+  const CARDS = [
+    { id:'th', kind:'thumb', fmt:'reels', lbl:'썸네일', dim:'9:16' },
+    { id:'cp', kind:'cr', fmt:'reels', lbl:'저작권', dim:'9:16' },
+    { id:'po', kind:'thumb', fmt:'post', lbl:'포스트', dim:'4:5', warm:true },
+  ];
+  function cardHtml(c){
+    const inner = c.kind==='thumb'
+      ? `<div class="ti-photo ${c.warm?'warm':''}"></div><div class="ti-title">속보 <em>사건</em>이<br>터졌다</div>`
+      : `<div class="ti-alpha"></div><div class="ti-cr">ⓒ 2026. nomute(instagram).</div>`;
+    return `<div class="rcard ${c.fmt}" data-id="${c.id}" data-fmt="${c.fmt}" data-kind="${c.kind}"><div class="thumbimg">${inner}</div><span class="lbl">${c.lbl}</span><span class="dim">${c.dim}</span></div>`;
+  }
+  let bInit=false;
+  function initB(){ if(bInit) return; bInit=true; renderGrid(); renderCtrlB(); syncCtrlB(); buildOutB(); }
+  function renderGrid(){ $('#rgrid').innerHTML = CARDS.map(cardHtml).join(''); bindDrag(); }
+
+  function bindDrag(){
+    let drag=null, ghost=null, ox=0, oy=0;
+    $$('#rgrid .rcard').forEach(card=>{
+      card.addEventListener('pointerdown', e=>{
+        if(card.dataset.kind!=='cr' && card.dataset.merged) {} // 합성본도 끌 수 있게 허용
+        drag=card; const r=card.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top;
+        ghost=card.cloneNode(true); ghost.className='rcard '+card.dataset.fmt+' ghost dragging';
+        ghost.style.width=r.width+'px'; ghost.style.height=r.height+'px';
+        ghost.style.left=r.left+'px'; ghost.style.top=r.top+'px'; document.body.appendChild(ghost);
+        card.style.opacity='.3'; card.setPointerCapture(e.pointerId); e.preventDefault();
+      });
+      card.addEventListener('pointermove', e=>{
+        if(drag!==card||!ghost) return;
+        ghost.style.left=(e.clientX-ox)+'px'; ghost.style.top=(e.clientY-oy)+'px';
+        const t=targetUnder(e.clientX,e.clientY,card);
+        $$('#rgrid .rcard').forEach(c=>c.classList.remove('droptarget','badtarget'));
+        if(t){ const same=judgeSame(card,t); t.classList.add(same?'droptarget':'badtarget'); }
+      });
+      card.addEventListener('pointerup', e=>{
+        if(drag!==card) return;
+        const t=targetUnder(e.clientX,e.clientY,card);
+        if(ghost){ ghost.remove(); ghost=null; }
+        card.style.opacity='';
+        $$('#rgrid .rcard').forEach(c=>c.classList.remove('droptarget','badtarget'));
+        if(t){ if(judgeSame(card,t)) doMerge(card,t); else reject(card); }
+        drag=null;
+      });
+      card.addEventListener('pointercancel', ()=>{ if(ghost){ghost.remove();ghost=null;} card.style.opacity=''; drag=null; });
+    });
+  }
+  function targetUnder(x,y,self){
+    return $$('#rgrid .rcard').find(c=>{ if(c===self) return false; const r=c.getBoundingClientRect(); return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; });
+  }
+  function judgeSame(a,b){ return sb.judge==='format' ? a.dataset.fmt===b.dataset.fmt : a.dataset.fmt===b.dataset.fmt; /* px도 데모선 포맷과 동치 */ }
+
+  function doMerge(src,tgt){
+    // src(저작권/오버레이)을 tgt(썸네일) 위에 = tgt에 ⓒ 얹은 새 카드
+    const base = tgt.dataset.kind==='thumb'?tgt:src, ov = tgt.dataset.kind==='thumb'?src:tgt;
+    toast('합성 완료 ✓', true);
+    const nc = document.createElement('div');
+    nc.className='rcard '+base.dataset.fmt+' merged born'; nc.dataset.fmt=base.dataset.fmt; nc.dataset.kind='thumb'; nc.dataset.merged='1'; nc.dataset.id='m'+Date.now();
+    nc.innerHTML = `<div class="thumbimg"><div class="ti-photo ${base.querySelector('.warm')?'warm':''}"></div><div class="ti-title">속보 <em>사건</em>이<br>터졌다</div><div class="ti-cr" style="top:auto;bottom:34px">ⓒ 2026. nomute(instagram).</div></div><span class="lbl" style="color:var(--fmt-reels)">합성본</span><span class="dim">${base.dataset.fmt==='reels'?'9:16':'4:5'}</span>`;
+    if(sb.after==='replace'){ tgt.replaceWith(nc); if(src!==tgt&&src.parentNode) src.remove(); }
+    else { $('#rgrid').appendChild(nc); }
+    bindDrag();
+    buildOutB();
+  }
+  function reject(card){
+    card.style.setProperty('--dur', (sb.shake/100).toFixed(2));
+    if(sb.shake>0){ card.classList.add('shake'); setTimeout(()=>card.classList.remove('shake'), 460); }
+    toast('사이즈가 다릅니다', false);
+  }
+  let toastT;
+  function toast(msg, ok){ const t=$('#toast'); t.textContent=msg; t.classList.toggle('ok',ok); t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'), 1400); }
+
+  const ctrlB=$('#controlsB');
+  function renderCtrlB(){ ctrlB.innerHTML=''; let g='';
+    CB_SEG.forEach(s=>{ if(s.grp!==g){g=s.grp;const d=document.createElement('div');d.className='grp-lbl';d.textContent=g;ctrlB.appendChild(d);}
+      const row=document.createElement('div');row.className='seg-row';
+      row.innerHTML=`<div class="nm">${s.nm}${s.tok?`<span class="tok">${s.tok}</span>`:''}</div>`;
+      const seg=document.createElement('div');seg.className='seg';seg.dataset.k=s.k;
+      s.opts.forEach(o=>{const btn=document.createElement('button');btn.dataset.v=o[0];btn.textContent=o[1];
+        btn.onclick=()=>{ sb[s.k]=o[0]; syncCtrlB(); buildOutB(); };seg.appendChild(btn);});
+      row.appendChild(seg);ctrlB.appendChild(row); });
+    const gl=document.createElement('div');gl.className='grp-lbl';gl.textContent='피드백';ctrlB.appendChild(gl);
+    CB_SLD.forEach(s=>{ const row=document.createElement('div');row.className='sld-row';row.dataset.k=s.k;
+      row.innerHTML=`<div class="top"><span class="nm">${s.nm}</span><span class="val"><span class="num"></span>${s.unit}</span></div><input type="range" min="${s.min}" max="${s.max}" step="1">`;
+      const inp=row.querySelector('input'); inp.oninput=()=>{ sb[s.k]=+inp.value; syncCtrlB(); buildOutB(); }; ctrlB.appendChild(row); });
+  }
+  function syncCtrlB(){ ctrlB.querySelectorAll('.seg').forEach(seg=>{ seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===String(sb[seg.dataset.k]))); });
+    CB_SLD.forEach(s=>{ const row=ctrlB.querySelector('.sld-row[data-k='+s.k+']'); if(!row)return; const inp=row.querySelector('input'),num=row.querySelector('.num'); inp.value=sb[s.k]; num.textContent=sb[s.k]; inp.style.setProperty('--p',((sb[s.k]-s.min)/(s.max-s.min)*100).toFixed(1)+'%'); }); }
+  function buildOutB(){
+    const SRC={both:'결과+이력 둘 다',hist:'이력 그리드만(스와이프 충돌 회피)',car:'캐러셀 포함(주의: 스와이프 충돌)'}[sb.source];
+    let o='<span class="g">[드래그 합성 — 선택]</span>\n';
+    o+='소스     : '+SRC+'\n';
+    o+='크기판정 : '+(sb.judge==='format'?'포맷(9:16↔4:5)':'실제 px(naturalWidth)')+'\n';
+    o+='합성 후  : '+(sb.after==='new'?'새 결과 추가':'원본 교체')+'\n';
+    o+='흔들림   : '+sb.shake+'%\n';
+    o+='\n<span class="g">── 배선 스펙 ──</span>\n';
+    o+='<span class="m">· 드래그(pointer) → drop 대상과 포맷/px 비교</span>\n';
+    o+='<span class="m">· 같음 = api/dl 프록시 fetch → canvas drawImage 2장</span>\n';
+    o+='<span class="m">  → toBlob → carAppend(새 결과·백엔드 불변)</span>\n';
+    o+='<span class="m">· 다름 = "사이즈가 다릅니다" 토스트 + shake 복귀</span>';
+    $('#outB').innerHTML=o;
+  }
+  $('#copyB').onclick=()=>copyOut($('#outB'),$('#copyB'));
+
+  function copyOut(pre,btn){ const txt=pre.textContent; const done=()=>{btn.textContent='복사됨 ✓';btn.classList.add('done');setTimeout(()=>{btn.textContent='선택값 복사';btn.classList.remove('done');},1400);};
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,done);
+    else{const r=document.createRange();r.selectNode(pre);const s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');}catch(_){}s.removeAllRanges();done();} }
+
+  // 초기화
+  renderMergeKey(); renderCtrlA(); syncCtrlA(); buildOutA();
+})();
+</script>
+</body>
+</html>
