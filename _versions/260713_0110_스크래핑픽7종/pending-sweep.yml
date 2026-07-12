@@ -1,0 +1,127 @@
+name: pending-sweep
+
+# orphan pending 자가복구 (260620 분신술 ⓐ②) — pending/*.txt 가 N분+ 잔류 = news-analyze 트리거 누락.
+#   push→analyze 트리거가 concurrency eviction·dispatch silent-fail 등으로 새면 그 기사는 영영 미분석(고아).
+#   이 워크플로가 주기적으로 orphan 을 감지해 news-analyze 를 재디스패치(트리거 구멍 근본).
+# ⚠️ workflow_dispatch 는 GITHUB_TOKEN 으로도 새 run 을 만든다(재귀방지 예외) → actions:write 로 디스패치 가능.
+on:
+  schedule:
+    - cron: '*/20 * * * *'   # 20분마다(고아 회복 지연 ≤ ~20분 + analyze 처리시간)
+  workflow_dispatch:
+
+permissions:
+  contents: write            # 260707: read→write — 고아 up-* 업로드 브랜치 삭제 + ly 좀비 error.log 백필 커밋(260709 평의회6 · main push는 백필 한정)
+  actions: write             # news-analyze 디스패치 위해 신설(이 워크플로 한정)
+
+concurrency:
+  group: pending-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Detect orphan pending and redispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          THRESH_MIN: '15'   # 이 분 이상 잔류 = 고아(트리거 누락). analyze 가 보통 수분 내 소진하므로 보수적.
+        run: |
+          now=$(date +%s)
+          orphans=0
+          shopt -s nullglob
+          for f in pending/*.txt; do
+            base=$(basename "$f")
+            # 파일명 YYMMDD-HHMMSS… → epoch(KST). 형식 안 맞으면 mtime 폴백.
+            if [[ "$base" =~ ^([0-9]{2})([0-9]{2})([0-9]{2})-([0-9]{2})([0-9]{2})([0-9]{2}) ]]; then
+              ts=$(date -d "20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}+09:00" +%s 2>/dev/null || echo 0)
+            else
+              ts=0
+            fi
+            if [ "$ts" = 0 ]; then
+              # 파일명에 타임스탬프 없음/파싱불가 = 정체불명. checkout-mtime는 클론시각이라 신뢰 불가 →
+              # fresh로 흘리면 영구 미검출(silent-drop 사각·분신술4 I-3) → 무조건 고아로 간주(방어 우선).
+              echo "orphan(무타임스탬프): $base"; orphans=$((orphans + 1)); continue
+            fi
+            age=$(( (now - ts) / 60 ))
+            if [ "$age" -ge "${THRESH_MIN}" ]; then
+              echo "orphan: $base (${age}분)"; orphans=$((orphans + 1))
+            fi
+          done
+          shopt -u nullglob
+          if [ "$orphans" -eq 0 ]; then echo "orphan 없음 — 정상"; exit 0; fi
+
+          # news-analyze 가 이미 활성(진행/대기)이면 디스패치 생략 — concurrency 가 직렬화하지만 중복 run 절제.
+          active=$(gh run list --workflow=news-analyze.yml --limit 20 --json status \
+                   -q '[.[] | select(.status=="in_progress" or .status=="queued")] | length' 2>/dev/null || echo 0)
+          if [ "${active:-0}" -gt 0 ]; then
+            echo "news-analyze 이미 활성(${active}) — 디스패치 생략(처리 중)"; exit 0
+          fi
+
+          echo "orphan ${orphans}건 · news-analyze 비활성 → 재디스패치"
+          ok=0
+          for i in 1 2 3; do                       # 단발 silent-fail 방지 — pick.yml 패턴 계승(분신술4 I-2)
+            if gh workflow run news-analyze.yml; then ok=1; break; fi
+            sleep $((i * 3))
+          done
+          [ "$ok" = 1 ] || echo "::warning::news-analyze 디스패치 3회 실패(다음 sweep 재시도)"
+
+      # 고아 up-* 업로드 브랜치 스윕(260707 평의회 백스톱) — ly-make 잡 하드킬·러너 유실이면 always() 정리 스텝도 못 돌아
+      #   일회용 업로드 브랜치(≤20MB 블롭 = reachable = 클론 비대 재발)가 잔존한다. 6시간 경과 up-* 일괄 삭제(정상 경로는 ly-make가 즉시 삭제).
+      - name: 고아 up-* 업로드 브랜치 스윕
+        if: always()
+        run: |
+          now=$(date +%s)
+          git ls-remote origin 'refs/heads/up-*' | while read -r sha ref; do
+            b="${ref#refs/heads/}"
+            case "$b" in up-*) ;; *) continue;; esac   # up-* 밖 삭제 원천 차단
+            git fetch -q origin "$sha" --depth=1 2>/dev/null || continue
+            ts=$(git show -s --format=%ct "$sha" 2>/dev/null || echo 0)
+            age=$(( now - ts ))
+            if [ "$ts" -gt 0 ] && [ "$age" -gt 21600 ]; then
+              git push origin --delete "$b" && echo "고아 삭제: $b ($((age/3600))h 경과)" || echo "삭제 실패(무해·다음 sweep): $b"
+            fi
+          done
+          echo "up-* 스윕 완료"
+
+      # ly 좀비 '진행중' 스윕(260709 평의회6) — early-segments 커밋 후 러너 하드킬/유실이면 ly_out에 segments.json만 남고
+      #   완결물(subs.md·video.json·error.log)이 없어 뷰어 index가 영구 '진행중' 표기. 6시간+ 경과 미완결 디렉터리에
+      #   error.log를 백필해 실패로 표면화(디렉터리명 = KST 스탬프 YYMMDDHHMMSS-* → 나이 판정 · orphan pending 스텝과 동일 규약).
+      - name: ly 좀비 진행중 스윕 (error.log 백필)
+        if: always()
+        run: |
+          shopt -s nullglob
+          now=$(date +%s)
+          TODO=(); N=0
+          for d in viewer/ly_out/*/; do
+            id=$(basename "$d")
+            { [ -f "${d}subs.md" ] || [ -f "${d}video.json" ] || [ -f "${d}error.log" ]; } && continue
+            if [[ "$id" =~ ^([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})-[0-9a-f]{6}$ ]]; then   # 끝 앵커+hex = ly.js 서버 규격만(비규격 dir = 셸 메타문자 여지 → 스킵 · 재평의회7)
+              ts=$(TZ='Asia/Seoul' date -d "20${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}" +%s 2>/dev/null || echo 0)
+            else
+              ts=0
+            fi
+            [ "$ts" -gt 0 ] || continue
+            age=$(( now - ts ))
+            if [ "$age" -gt 21600 ]; then
+              echo "자막 생성이 중단됐어(러너 유실 추정) — 다시 시도해줘." > "${d}error.log"
+              TODO+=("${d}error.log"); N=$((N+1))
+              echo "좀비 백필: $id ($((age/3600))h 경과)"
+            fi
+          done
+          [ "${#TODO[@]}" -gt 0 ] || { echo "ly 좀비 없음"; exit 0; }
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          for i in 1 2 3; do   # 얕은 체크아웃이라 rebase 대신 최신 main 위 재커밋(경쟁 시 재시도)
+            git fetch origin main 2>/dev/null && git checkout -B main FETCH_HEAD 2>/dev/null || true
+            git add -- "${TODO[@]}"   # 배열+인용 = 워드분할·글로브 확장 원천 차단(재평의회7)
+            git commit -m "ly: 좀비 진행중 ${N}건 error.log 백필(sweep)" >/dev/null || { echo "커밋할 것 없음"; exit 0; }
+            if git push origin HEAD:main; then echo "백필 push 완료(${N}건)"; exit 0; fi
+            git reset --mixed HEAD~1 >/dev/null 2>&1 || true
+            sleep $((i*3))
+          done
+          echo "::warning::ly 좀비 백필 push 실패(다음 sweep 재시도)"

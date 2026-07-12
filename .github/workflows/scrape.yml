@@ -100,7 +100,12 @@ jobs:
           n=$(( ${nb:-0} + ${ng:-0} + ${gg:-0} ))
           if [ "${n}" -gt 0 ]; then
             echo "미판정 속보 ${nb}건 · 경중 ${ng}건 — breaking-judge(속보+경중) 디스패치"
-            gh workflow run breaking-judge.yml || echo "::warning::breaking-judge 디스패치 실패(다음 scrape 재시도)"
+            ok=0
+            for i in 1 2 3; do                       # 단발 silent-fail 방지 — pending-sweep/pick.yml 3회 관용구 계승(260713 평의회6: 판정 레인 유일 기동 경로가 단발이던 최약체 봉합)
+              if gh workflow run breaking-judge.yml; then ok=1; break; fi
+              sleep $((i * 3))
+            done
+            [ "$ok" = 1 ] || echo "::warning::breaking-judge 디스패치 3회 실패(다음 scrape·pending-sweep 백스톱 재시도)"
           else
             echo "미판정 후보 없음 — 디스패치 생략"
           fi

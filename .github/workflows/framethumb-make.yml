@@ -1,0 +1,165 @@
+name: framethumb-make
+
+# 베스트컷 썸네일 한 버튼 파이프 — 영상(URL/업로드) → fx_chain{베스트 프레임→업스케일 · 토큰 0}
+#   → [옵션] Gemini 비율 확장(수동 발사 유료 = 슛류 · 자동 트리거 0 · §📰) → R2(폴백 git) → viewer/ft_out/<id>/frames.json.
+# 골격 = conv-make 미러(소스 확보·up-브랜치·커밋 재시도). 발사 = functions/api/framethumb.js 또는 workflow_dispatch(카나리아).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6)'
+        type: string
+      url:
+        description: '영상 URL(yt-dlp)'
+        type: string
+        default: ''
+      file:
+        description: '업로드 영상 파일 경로(uploads/<id>/src.*)'
+        type: string
+        default: ''
+      up_branch:
+        description: '업로드 일회용 브랜치(up-<id> · 빈값=main 경로)'
+        type: string
+        default: ''
+      r2_src:
+        description: 'R2 직업로드 키(up_src/<id>.<ext> · 대용량 ≤2GB — api/upload 발급 · 빈값=미사용 · 잡 끝 삭제)'
+        type: string
+        default: ''
+      opts:
+        description: '옵션 JSON {"n":1..3,"scale":2|3,"ar":"4:5|9:16|1:1|16:9|off"}'
+        type: string
+        default: '{}'
+
+concurrency:
+  group: framethumb-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: FX 환경 (ffmpeg+cv2)
+        timeout-minutes: 10
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/fx/setup.sh
+          apt: ffmpeg
+
+      - name: 소스 확보 (URL)
+        if: ${{ inputs.url != '' }}
+        timeout-minutes: 8
+        env:
+          URL: ${{ inputs.url }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+        run: |
+          set -e
+          timeout 180 pip install -q yt-dlp || { sleep 3; timeout 180 pip install -q yt-dlp; }
+          COOKIES=""
+          if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          python3 -m yt_dlp -f "bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" \
+            || { echo "::error::yt-dlp 실패: $URL"; exit 1; }
+          SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"
+          [ -n "$SRC" ] || { echo "::error::다운 산출 없음"; exit 1; }
+          echo "FT_SRC=$SRC" >> "$GITHUB_ENV"
+
+      - name: 소스 확보 (업로드 파일)
+        if: ${{ inputs.file != '' }}
+        env:
+          FILE: ${{ inputs.file }}
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          set -e
+          if [ -n "$UP_BRANCH" ]; then
+            case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
+            git fetch origin "$UP_BRANCH" --depth=1 || { echo "::error::업로드 브랜치 fetch 실패: $UP_BRANCH"; exit 1; }
+            EXT="${FILE##*.}"
+            git show "FETCH_HEAD:$FILE" > "/tmp/upsrc.$EXT" || { echo "::error::브랜치서 파일 회수 실패: $FILE"; exit 1; }
+            FILE="/tmp/upsrc.$EXT"
+          fi
+          [ -f "$FILE" ] || { echo "::error::업로드 파일 없음: $FILE"; exit 1; }
+          echo "FT_SRC=$FILE" >> "$GITHUB_ENV"
+
+      - name: 소스 확보 (R2 직업로드 — 대용량 ≤2GB)
+        if: ${{ inputs.r2_src != '' }}
+        timeout-minutes: 8
+        env:
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          [ -z "${FT_SRC:-}" ] || { echo "이미 소스 확보 — 스킵(다중 입력 방어)"; exit 0; }
+          printf '%s' "$R2_SRC" | grep -Eqx 'up_src/[0-9]{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)' \
+            || { echo "::error::잘못된 r2_src: $R2_SRC"; exit 1; }   # api 정규식과 동형 자체 재검증(conv 평의회1 계승)
+          [ -n "$R2_BUCKET" ] || { echo "::error::R2 시크릿 미설정"; exit 1; }
+          EXT="${R2_SRC##*.}"
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          aws s3 cp "s3://$R2_BUCKET/$R2_SRC" "/tmp/upsrc.$EXT" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+            || { echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
+          echo "FT_SRC=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
+
+      - name: 체인 실행 (프레임→업스케일→[확장]→R2/폴백)
+        env:
+          FT_ID: ${{ inputs.id }}
+          FT_OPTS: ${{ inputs.opts }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python3 .github/scripts/framethumb.py
+
+      - name: 결과 커밋 (frames.json + git 폴백 PNG)
+        if: always()
+        env:
+          FT_ID: ${{ inputs.id }}
+        run: |
+          set -e
+          [ -d "viewer/ft_out/$FT_ID" ] || { echo "산출 없음 — 커밋 스킵"; exit 0; }
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "viewer/ft_out/$FT_ID"
+          git diff --cached --quiet && { echo "변경 없음"; exit 0; }
+          git commit -m "ft: 베스트컷 썸네일 산출 ($FT_ID)"
+          for i in 1 2 3 4; do
+            git push origin HEAD:main && break || { git pull --rebase origin main; sleep $((i*2)); }
+          done
+
+      - name: 업로드 브랜치 정리
+        if: ${{ always() && inputs.up_branch != '' }}
+        env:
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: git push origin --delete "$UP_BRANCH" 2>/dev/null || echo "up-브랜치 정리 스킵(이미 없음)"
+
+      - name: R2 원본 삭제 (일회용 — 클라는 키 소진 처리·재발사 = 재업로드)
+        if: ${{ always() && inputs.r2_src != '' }}
+        env:
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          case "$R2_SRC" in up_src/*) ;; *) echo "up_src/* 아님 — 스킵"; exit 0;; esac
+          case "$R2_SRC" in *..*|*' '*) exit 0;; esac
+          [ -n "$R2_BUCKET" ] || exit 0
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          aws s3 rm "s3://$R2_BUCKET/$R2_SRC" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+            || echo "원본 정리 실패(무해 — 수동 정리 대상): $R2_SRC"

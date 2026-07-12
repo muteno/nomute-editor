@@ -1,0 +1,64 @@
+# 파이프라인 무인 워치독(운영자 260713 "신설 ㄱ") — 수집 정지·판정 backlog·SNS stale·원장 파손 4지표를
+# 30분마다 기계 점검, 임계 초과만 웹푸시(push_send --notify 재사용). 정본 = scraper/watchdog.py 헤더.
+# 배경: 감시가 수동 daily_health 1점 집중이라 외부 cron-job.org 타이머(수집 15분 정본) 정지·judge 적체를
+#   아무도 모르던 사각(260713 평의회6·9 P1 · 실측 미판정 최근 40%). LLM 0콜·과금 0(읽기 전용 점검).
+# §📰-e 카나리아: schedule = WATCHDOG_NOTIFY '0'(관측·로그만 = 라이브 무영향 머지) → dispatch notify=1
+#   실측(발송·쿨다운 도장 확인) → 승격은 아래 env를 || '1'로(롤백 = || '0' 복귀).
+name: watchdog
+on:
+  schedule:
+    - cron: '9,39 * * * *'   # 30분 주기(:09/:39 = 정각·:17/:47[sns-trends]·:20배수[pending-sweep]·:07[metrics-rollup 짝수시] 전부 회피 — fable검5 R6: 구 :07이 metrics-rollup `7 */2`와 정면 겹침이라 이동)
+  workflow_dispatch:
+    inputs:
+      notify:
+        description: '이상 시 웹푸시 발송 — 1=ON (§📰-e 카나리아: schedule은 관측 모드[0] · dispatch 실측 후 승격)'
+        default: '1'
+        required: false
+
+permissions:
+  contents: write   # 쿨다운 원장(scraper/obs/watchdog_state.json) 커밋
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: pywebpush (발송 모드 한정 — 관측 모드 = 설치 0)
+        env:
+          WATCHDOG_NOTIFY: ${{ inputs.notify || '0' }}
+        run: |
+          if [ "$WATCHDOG_NOTIFY" = "1" ]; then
+            timeout 120 pip install -q pywebpush || echo "::warning::pywebpush 설치 실패 — push_send가 fail-soft 생략"
+          else
+            echo "관측 모드 — 설치 생략"
+          fi
+
+      - name: 4지표 점검(±알림)
+        env:
+          WATCHDOG_NOTIFY: ${{ inputs.notify || '0' }}   # 카나리아 게이트(§📰-e) — 승격 = || '1'
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: timeout 420 python3 scraper/watchdog.py
+
+      - name: 쿨다운 원장 커밋(변동 시만)
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add scraper/obs/watchdog_state.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "원장 변동 없음 — 커밋 생략"; exit 0; }
+          git commit -m "watchdog: 경보 쿨다운 도장"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::watchdog 원장 push 실패(재시도 소진) — 다음 주기 재도장"
+          # -X ours 미사용(260713 메인 실측 M01: rebase -X ours = upstream 우선 의미 반전 함정 — 이 원장은
+          # 이 워크플로 단독 기록자라 충돌 자체가 없어야 정상 · 실패 = warning 종료[쿨다운 원장이라 유실 무해]).
