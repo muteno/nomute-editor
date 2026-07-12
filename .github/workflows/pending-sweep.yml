@@ -70,6 +70,30 @@ jobs:
           done
           [ "$ok" = 1 ] || echo "::warning::news-analyze 디스패치 3회 실패(다음 sweep 재시도)"
 
+      # 판정(judge) 백로그 백스톱(260713 평의회6 P1) — breaking-judge 기동이 scrape.yml 디스패치 *한 곳*뿐이라
+      #   그 단발이 실패·유실되면 미판정 적체가 다음 신규 유입까지 방치되던 사각. 미판정>0 AND judge 비활성일 때만
+      #   재디스패치(빈 런 no-op · concurrency 'breaking-judge'가 직렬화 · 실측 260713: 미판정 최근 40%가 이 정황).
+      - name: 판정 백로그 백스톱 — breaking-judge 재디스패치
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRANS_ON: '1'   # 외신 번역 편승 계상 — scrape.yml --count env와 짝(계상 일관 · 롤백 시 같이 제거)
+        run: |
+          nb=$(python3 .github/scripts/breaking_judge.py --count 2>/dev/null || echo 0)
+          ng=$(python3 .github/scripts/gate_judge.py --count 2>/dev/null || echo 0)
+          n=$(( ${nb:-0} + ${ng:-0} ))
+          if [ "$n" -le 0 ]; then echo "미판정 없음 — 백스톱 생략"; exit 0; fi
+          active=$(gh run list --workflow=breaking-judge.yml --limit 20 --json status \
+                   -q '[.[] | select(.status=="in_progress" or .status=="queued")] | length' 2>/dev/null || echo 0)
+          if [ "${active:-0}" -gt 0 ]; then echo "breaking-judge 이미 활성(${active}) — 생략(처리 중)"; exit 0; fi
+          echo "미판정 ${n}건(속보 ${nb} · 경중 ${ng}) · judge 비활성 → 백스톱 재디스패치"
+          ok=0
+          for i in 1 2 3; do
+            if gh workflow run breaking-judge.yml; then ok=1; break; fi
+            sleep $((i * 3))
+          done
+          [ "$ok" = 1 ] || echo "::warning::breaking-judge 백스톱 디스패치 3회 실패(다음 sweep 재시도)"
+
       # 고아 up-* 업로드 브랜치 스윕(260707 평의회 백스톱) — ly-make 잡 하드킬·러너 유실이면 always() 정리 스텝도 못 돌아
       #   일회용 업로드 브랜치(≤20MB 블롭 = reachable = 클론 비대 재발)가 잔존한다. 6시간 경과 up-* 일괄 삭제(정상 경로는 ly-make가 즉시 삭제).
       - name: 고아 up-* 업로드 브랜치 스윕
