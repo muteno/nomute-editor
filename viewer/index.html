@@ -868,7 +868,11 @@
   #snsaccdlg .tooltab { flex:1; }
   @media (max-width:640px) { #snsaccdlg { width:94vw; height:max-content; max-height:88dvh; margin:auto; border-radius:var(--r-modal); border:1px solid rgba(255,255,255,.13); } }   /* 전역 모바일 dialog(100dvh·직각·margin:0) 되받아치기 = #tooldlg 모바일 오버라이드 미러(없으면 좌상단 풀시트 쏠림 · 평의회3·9 260711) */
   .acc-body { padding:14px 16px 16px; display:flex; flex-direction:column; gap:12px; min-height:0; }
-  .acc-chips { display:flex; flex-wrap:wrap; gap:6px; overflow-y:auto; max-height:38vh; }
+  .acc-chips { display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:38vh; }   /* 한국/세계 그룹 세로 적층(운영자 260712) — 칩 랩은 .acc-grow가 담당 */
+  .acc-glbl { display:flex; align-items:baseline; gap:6px; color:var(--fg); font-size:var(--fs-label); font-weight:var(--fw-x); }   /* 소머리 표준 계승(§📐 마-가: 텍스트 흰 800·블릿 형광) */
+  .acc-glbl::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }
+  .acc-glbl i { font-style:normal; color:var(--mut); font-size:var(--fs-xs); font-weight:400; font-variant-numeric:tabular-nums; }
+  .acc-grow { display:flex; flex-wrap:wrap; gap:6px; }
   .acc-chip { display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 8px; font-size:12px; font-weight:600; color:rgba(255,255,255,.78);
     border:1px solid rgba(255,255,255,.14); border-radius:var(--r-pill); background:rgba(8,15,11,.34); cursor:pointer; transition:transform .1s, border-color .14s; }   /* 계정 칩 = .sc-tg 글래스 필 치수·톤 계승(높이 24·패딩 0 8 동값 — 평의회7 정렬) · pill 라운드만 칩 문법 · 탭 = 삭제(SVG × 어포던스) */
   .acc-chip svg { width:10px; height:10px; display:block; color:var(--mut); }
@@ -3010,6 +3014,9 @@ try {
   <div class="modal-head"><b>구독 계정</b><span class="pin-busy" id="accBusy" hidden>저장중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></span><button class="tool-x dlg-x" type="button" id="accX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="modal-tabs" id="accTabs" role="tablist">
     <div class="tooltab on" data-p="x" role="tab">X</div><div class="tooltab" data-p="tiktok" role="tab">틱톡</div><div class="tooltab" data-p="insta" role="tab">릴스</div><div class="tooltab" data-p="youtube" role="tab">유튜브</div>
+  </div>
+  <div class="modal-tabs acc-regs" id="accRegs" role="group" aria-label="추가 대상 지역"><!-- 한국/세계 2군(운영자 260712) — 탭 띠 정본 계승 · 선택 = 추가 대상 지역 -->
+    <div class="tooltab on" data-r="kr" role="tab">한국</div><div class="tooltab" data-r="gl" role="tab">세계</div>
   </div>
   <div class="acc-body">
     <div class="acc-chips" id="accChips"></div>
@@ -8820,9 +8827,11 @@ function renderSnsTrends() {
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
   const tkS = sortOf('tk', ['views', 'likes', 'cmts'], 'views'), tkL = tkCov ? bySort(tkv, tkS).slice(0, 10) : [];
-  const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxL = bySort(sx, sxS).slice(0, 10);
-  const stkS = sortOf('stk', ['views', 'likes', 'cmts'], 'views'), stkL = bySort(stk, stkS).slice(0, 10);
-  const sreS = sortOf('sre', ['views', 'likes', 'cmts'], 'views'), sreL = bySort(sre, sreS).slice(0, 10);
+  const REGN = { kr: '한국', gl: '세계' }, byReg = (arr, r) => (arr || []).filter(t => (t.region === 'kr') === (r === 'kr'));   // 구독 한국/세계 접이 분리(운영자 260712 "한국 전용·세계 전용") — region 미도장(구 데이터) = 세계
+  const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
+  const stkS = sortOf('stk', ['views', 'likes', 'cmts'], 'views'), stkR = { kr: bySort(byReg(stk, 'kr'), stkS).slice(0, 10), gl: bySort(byReg(stk, 'gl'), stkS).slice(0, 10) };
+  const sreS = sortOf('sre', ['views', 'likes', 'cmts'], 'views'), sreR = { kr: bySort(byReg(sre, 'kr'), sreS).slice(0, 10), gl: bySort(byReg(sre, 'gl'), sreS).slice(0, 10) };
+  const sytR = { kr: byReg(syt, 'kr').slice(0, 8), gl: byReg(syt, 'gl').slice(0, 8) };
   const shL = shv.slice(0, 12).map(t => ({ ...t, cover: t.thumb, account: t.channel }));
   const aiL = aiv.slice(0, 12).map(t => ({ ...t, cover: t.thumb, account: t.channel }));
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
@@ -8847,15 +8856,15 @@ function renderSnsTrends() {
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="tpg">' + ytnZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // 동일 적용(운영자 "뉴스도 마찬가지") · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid">' + shL.map((t, i) => card(t, i)).join('') + '</div>');
   if (aiL.length) gYT += sec('ai', 'AI 영상', '· 조회수', aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
-  if (syt.length) gYT += sec('syt', '구독', '· 조회수', Math.min(syt.length, 8), syt.slice(0, 8).map((v, i) =>
-    row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join(''));
+  ['kr', 'gl'].forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
+    row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
   if (tkv.length && tkCov) gTK += sec('tk', '인기', '', tkL.length, sortbar('tk', V3, tkS) + '<div class="trend-grid">' + tkL.map((t, i) => card(t, i)).join('') + '</div>');   // (t,i)=>card = wd 미전달 → 3/4 쇼츠식 통일(구 .map(card)는 Array.map 3번째 인자=배열을 wd로 흘려 세로영상이 16:9 가로크롭 = #6 중구난방 원인 · 운영자 260712)
   else if (tkv.length) gTK += sec('tk', '인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
-  if (stk.length) gTK += sec('stk', '구독', '', stkL.length, sortbar('stk', V3, stkS) + '<div class="trend-grid">' + stkL.map((t, i) => card(t, i)).join('') + '</div>');   // 3/4 쇼츠식 통일(구 .map(card) 16:9 버그 교정 · #6)
-  if (sre.length) gIG += sec('sre', '구독 릴스', '', sreL.length, sortbar('sre', V3, sreS) + '<div class="trend-grid">' + sreL.map((t, i) => card(t, i)).join('') + '</div>');   // 3/4 쇼츠식 통일(구 .map(card) 16:9 버그 교정 · #6)
-  if (sx.length) gX += sec('sx', '구독 게시물', '', sxL.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + sxL.map(xcard).join('') + '</div>');
+  ['kr', 'gl'].forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '구독', '· ' + REGN[r], L.length, sortbar('stk', V3, stkS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
+  ['kr', 'gl'].forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '구독 릴스', '· ' + REGN[r], L.length, sortbar('sre', V3, sreS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
+  ['kr', 'gl'].forEach(r => { const L = sxR[r]; if (L.length) gX += sec('sx-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });   // 한국/세계 2군
   const GRPS = [['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX]].filter(g => g[2]);
   // ── 조립: 좌측 책갈피 레일(soc-item 밖 = backdrop-filter 조상 회피 → fixed가 뷰포트 기준 · §디자인 h) + 카드(헤드 → TOP 10 → 순번 플랫폼 그룹) ──
   let h = '';
@@ -8898,12 +8907,14 @@ function renderSnsTrends() {
   fillT('yt', '.tpc-t', ytZ.map(z => z[0].title || ''));
   fillT('ytn', '.tpc-t', ytnZ.map(z => z[0].title || ''));
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT)
-  fillT('syt', '.trend-q', syt.slice(0, 8).map(v => v.title || ''));
+  ['kr', 'gl'].forEach(r => fillT('syt-' + r, '.trend-q', sytR[r].map(v => v.title || '')));
   if (tkL.length) { fillT('tk', '.tcard-t', tkL.map(t => t.title || ('@' + (t.account || '')))); }   // 업로더(.tcard-acc) 제거(운영자 260712 #6 "누가 올렸는지 필요없음") — 제목만 주입
-  fillT('sx', '.xcard-h b', sxL.map(t => '@' + (t.account || '')));
-  fillT('sx', '.xcard-tx', sxL.map(t => t.text || ''));
-  fillT('stk', '.tcard-t', stkL.map(t => t.title || ('@' + (t.account || ''))));
-  fillT('sre', '.tcard-t', sreL.map(t => t.title || ('@' + (t.account || ''))));
+  ['kr', 'gl'].forEach(r => {   // 구독 한국/세계 2군 주입(운영자 260712)
+    fillT('sx-' + r, '.xcard-h b', sxR[r].map(t => '@' + (t.account || '')));
+    fillT('sx-' + r, '.xcard-tx', sxR[r].map(t => t.text || ''));
+    fillT('stk-' + r, '.tcard-t', stkR[r].map(t => t.title || ('@' + (t.account || ''))));
+    fillT('sre-' + r, '.tcard-t', sreR[r].map(t => t.title || ('@' + (t.account || ''))));
+  });
   fillT('sh', '.tcard-t', shL.map(t => t.title || ''));
   fillT('ai', '.tcard-t', aiL.map(t => t.title || ''));   // 업로더(.tcard-acc) 전 섹션 제거(운영자 260712 #6) — 제목만
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
@@ -9126,35 +9137,40 @@ function openVideoSrc(url) {   // 영상 스튜디오 열고 활성 프레임 #u
 // ── 트렌드 구독 계정 관리(운영자 260711 승인: 우상단 '계정' 필 버튼 → 관리 모달) — 스테이징 편집 후 저장 = /api/snsacc 1커밋(잦은 커밋 방지) · 수집 반영 = sns-trends 런(30분 주기 · SNS_SUBS 게이트 ON = 카나리아 승격 후·§📰-e) ──
 const snsaccdlg = $('#snsaccdlg');
 const ACC_RX = /^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$/;   // snsacc.js 서버 검증과 동일 규격(선반영 피드백 — 서버가 최종 정본)
-let SNS_ACC = null, _accTab = 'x';
+let SNS_ACC = null, _accTab = 'x', _accReg = 'kr';   // _accReg = 추가 대상 지역(한국/세계 · 운영자 260712)
+const ACC_CAP = { x: 20, tiktok: 15, insta: 10, youtube: 15 };   // 지역별 상한 — snsacc.js CAP·scraper _REG_CAP와 3면 대칭
 const _accDirty = new Set();   // 편집된 플랫폼 키 — 저장 활성(미저장 시각신호) + POST는 dirty 키만(타 기기 lost-update 창 축소 · 평의회4)
+function accPlat(p) { return Array.isArray(p) ? { kr: [], gl: p.slice() } : { kr: (p && p.kr) || [], gl: (p && p.gl) || [] };  }   // 구 평면 배열 = 세계(gl) 흡수(서버 cleanPlat 미러)
 function renderAccChips() {
   const box = $('#accChips'); if (!box || !SNS_ACC) return;
   $('#accTabs').querySelectorAll('.tooltab').forEach(t => t.classList.toggle('on', t.dataset.p === _accTab));
-  const list = SNS_ACC[_accTab] || [];
-  box.innerHTML = list.map((a, i) => `<button class="acc-chip" type="button" data-i="${i}">@<span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg></button>`).join('');
-  box.querySelectorAll('.acc-chip').forEach((c, i) => { c.querySelector('span').textContent = list[i] || ''; c.setAttribute('aria-label', '@' + (list[i] || '') + ' 삭제'); });   // textContent 주입(XSS 안전 관용구)
+  $('#accRegs').querySelectorAll('.tooltab').forEach(t => t.classList.toggle('on', t.dataset.r === _accReg));
+  const P = SNS_ACC[_accTab] || { kr: [], gl: [] };
+  box.innerHTML = ['kr', 'gl'].map(r => `<div class="acc-glbl">${r === 'kr' ? '한국' : '세계'}<i>${(P[r] || []).length}/${ACC_CAP[_accTab]}</i></div><div class="acc-grow">` +
+    (P[r] || []).map((a, i) => `<button class="acc-chip" type="button" data-r="${r}" data-i="${i}">@<span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg></button>`).join('') + '</div>').join('');
+  ['kr', 'gl'].forEach(r => { const L = P[r] || []; box.querySelectorAll(`.acc-chip[data-r=${r}]`).forEach((c, i) => { c.querySelector('span').textContent = L[i] || ''; c.setAttribute('aria-label', '@' + (L[i] || '') + ' 삭제'); }); });   // textContent 주입(XSS 안전 관용구)
   $('#accSave').disabled = !_accDirty.size;   // 저장 = 편집 있을 때만 활성(dim = 미저장 어포던스 · §🎨 e)
 }
 async function openSnsAcc() {
   $('#accErr').textContent = '';
-  try { const r = await fetch('/api/snsacc'); const j = await r.json(); if (r.ok && !j.error) { SNS_ACC = { x: j.x || [], tiktok: j.tiktok || [], insta: j.insta || [], youtube: j.youtube || [] }; _accDirty.clear(); } } catch {}   // 열 때마다 재조회(타 기기 편집 정합·미저장 스테이징은 파기) · 실패 = 직전 스테이징/빈 목록 폴백
-  if (!SNS_ACC) SNS_ACC = { x: [], tiktok: [], insta: [], youtube: [] };
+  try { const r = await fetch('/api/snsacc'); const j = await r.json(); if (r.ok && !j.error) { SNS_ACC = { x: accPlat(j.x), tiktok: accPlat(j.tiktok), insta: accPlat(j.insta), youtube: accPlat(j.youtube) }; _accDirty.clear(); } } catch {}   // 열 때마다 재조회(타 기기 편집 정합·미저장 스테이징은 파기) · 실패 = 직전 스테이징/빈 목록 폴백
+  if (!SNS_ACC) SNS_ACC = { x: accPlat(null), tiktok: accPlat(null), insta: accPlat(null), youtube: accPlat(null) };
   renderAccChips();
   openComposeDlg(snsaccdlg);   // 폰 뒤로가기 = 모달만 닫힘(컴포즈 스택 계승)
 }
 $('#accX').addEventListener('click', () => snsaccdlg.close());
 $('#accTabs').addEventListener('click', e => { const t = e.target.closest('.tooltab'); if (!t) return; _accTab = t.dataset.p; renderAccChips(); });
-$('#accChips').addEventListener('click', e => { const c = e.target.closest('.acc-chip'); if (!c || !SNS_ACC) return; (SNS_ACC[_accTab] || []).splice(+c.dataset.i, 1); _accDirty.add(_accTab); renderAccChips(); });
+$('#accRegs').addEventListener('click', e => { const t = e.target.closest('.tooltab'); if (!t) return; _accReg = t.dataset.r; renderAccChips(); });   // 지역 전환 = 추가 대상(칩은 두 군 상시 표시)
+$('#accChips').addEventListener('click', e => { const c = e.target.closest('.acc-chip'); if (!c || !SNS_ACC) return; ((SNS_ACC[_accTab] || {})[c.dataset.r] || []).splice(+c.dataset.i, 1); _accDirty.add(_accTab); renderAccChips(); });
 function addAccIn() {
   const inp = $('#accIn'), err = $('#accErr'), v = (inp.value || '').trim().replace(/^@/, '');
   if (!SNS_ACC) return;
-  const list = SNS_ACC[_accTab] = SNS_ACC[_accTab] || [];
+  const P = SNS_ACC[_accTab] = SNS_ACC[_accTab] || { kr: [], gl: [] }, list = P[_accReg] = P[_accReg] || [];
   err.textContent = '';
   if (!v) return;
   if (!ACC_RX.test(v)) { err.textContent = '형식이 안 맞아 (영문·숫자·._- 30자 이내)'; return; }
-  if (list.some(x => x.toLowerCase() === v.toLowerCase())) { err.textContent = '이미 있는 계정'; return; }
-  if (list.length >= 15) { err.textContent = '플랫폼당 최대 15개'; return; }
+  if ((P.kr || []).concat(P.gl || []).some(x => x.toLowerCase() === v.toLowerCase())) { err.textContent = '이미 있는 계정'; return; }
+  if (list.length >= ACC_CAP[_accTab]) { err.textContent = `${_accReg === 'kr' ? '한국' : '세계'}군 최대 ${ACC_CAP[_accTab]}개`; return; }
   list.push(v); inp.value = ''; _accDirty.add(_accTab); renderAccChips();
 }
 $('#accPlus').addEventListener('click', addAccIn);   // id accPlus = 'accAdd'가 전부 16진수 문자라 hex 게이트 오탐(§🎨 정규식) → 비-hex 문자 포함 id 선택

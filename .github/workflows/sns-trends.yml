@@ -27,7 +27,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 16   # 구독 2군(한국/세계) 확장분(예산 480s) 수용 — 운영자 260712
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +37,8 @@ jobs:
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # 미설정 = 유튜브 skip(no-op 스캐폴드·gtrends만 수집)
           SNS_SUBS: ${{ inputs.subs || '1' }}   # 구독 축 = 기본 ON 승격(§📰-e 이행 완료 — 카나리아 run 29153925931 실측 260711: rc=0·65s·틱톡10·유튜브10·레거시 무손상·커밋 eab3bc5). schedule = inputs 없음 → '1'(social-scan 관용구) · dispatch subs='0'=일시 OFF. X·인스타 = 러너 IP 429 실측(런마다 IP 로터리 = 확률 수집·빈 런 = 직전분 보존 fail-soft) — 지속 0건이면 폰 수집 경로 후속. 롤백 = || '' 복귀
-        run: timeout 540 python3 scraper/sns_trends.py   # 540 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 240s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
+          SNS_SUBS_BUDGET: '480'   # 한국/세계 2군 확장분(구 기본 240 · 지역별 상한 x20·tk15·ig10·yt15 = 최악 직렬 ≈460s 커버 · 운영자 260712)
+        run: timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
         if: ${{ (inputs.brief || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0'

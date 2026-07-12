@@ -207,30 +207,44 @@ def tiktok(limit=15, calls=4):
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
 
 
+_REG_CAP = {"x": 20, "tiktok": 15, "insta": 10, "youtube": 15}   # 지역(한국/세계)별 상한 — snsacc.js CAP와 대칭(인스타 = 6s/콜 최중이라 최소 · 운영자 260712 "계정 최대한")
+
+
 def _load_accounts():
-    """구독 계정 목록(viewer/sns_accounts.json) — 없음/파손/타입 오염 = 해당 분 빈 목록(fail-soft ·
-    평의회1: 본문 전체 try + isinstance 가드 = 파손 파일이 전 소스를 못 죽임).
-    RX 형식검증·대소문자 dedup·@ 접두 제거·플랫폼당 15 상한 = snsacc.js cleanList와 대칭."""
+    """구독 계정 목록(viewer/sns_accounts.json) — 한국/세계 2군 스키마 {"x":{"kr":[],"gl":[]},…}
+    (운영자 260712 "한국 전용·세계 전용 분리" · 구 평면 배열 = 세계(gl)로 흡수 = 하위호환).
+    없음/파손/타입 오염 = 해당 분 빈 목록(fail-soft · 평의회1: 본문 전체 try + isinstance 가드).
+    RX 형식검증·대소문자 dedup(지역 교차 = kr 우선)·지역별 상한(_REG_CAP) = snsacc.js cleanPlat과 대칭.
+    반환 = (플랫폼별 평면 핸들 목록[kr 먼저 = 수집 우선순위], 지역 맵 dict[k][handle.lower()]='kr'|'gl')."""
     out = {k: [] for k in ("x", "tiktok", "insta", "youtube")}
+    reg = {k: {} for k in out}
     try:
         j = json.load(open(ACC, encoding="utf-8"))
         if not isinstance(j, dict):
             j = {}
         for k in out:
-            xs, seen = j.get(k), set()
-            for x in (xs if isinstance(xs, list) else []):
-                if not isinstance(x, str) or not _ACC_RX.match(x.strip()):
-                    continue
-                v = re.sub(r"^@", "", x.strip())
-                if v.lower() in seen:
-                    continue
-                seen.add(v.lower())
-                out[k].append(v)
-                if len(out[k]) >= 15:
-                    break
+            v, seen = j.get(k), set()
+            if isinstance(v, list):
+                v = {"gl": v}   # 구 평면 스키마 = 세계
+            if not isinstance(v, dict):
+                v = {}
+            for r in ("kr", "gl"):
+                n = 0
+                for x in (v.get(r) if isinstance(v.get(r), list) else []):
+                    if not isinstance(x, str) or not _ACC_RX.match(x.strip()):
+                        continue
+                    h = re.sub(r"^@", "", x.strip())
+                    if h.lower() in seen:
+                        continue
+                    seen.add(h.lower())
+                    out[k].append(h)
+                    reg[k][h.lower()] = r
+                    n += 1
+                    if n >= _REG_CAP[k]:
+                        break
     except Exception as e:  # noqa: BLE001
         print(f"::warning::sns_accounts 로드 실패(빈 목록 폴백): {e}", file=sys.stderr)
-    return out
+    return out, reg
 
 
 def _i(v):
@@ -250,16 +264,16 @@ def _over(deadline):
 
 
 def x_subs(accounts, limit=10, deadline=None):
-    """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 1.2s
-    (동시 요청 많으면 빈 응답 = 직렬 유지). 크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8).
-    정렬 = 좋아요."""
+    """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 4s
+    (분신 실측 260712: 1.2s 간격 = 16연속 429 · 4s = 전원 회복 — 짧은 간격이 되레 전멸 유발).
+    크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8). 정렬 = 좋아요."""
     out, seen_tid = [], set()
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::x 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
             break
         if i:
-            time.sleep(1.2)
+            time.sleep(4)
         try:
             h = _get("https://syndication.twitter.com/srv/timeline-profile/screen-name/" + urllib.parse.quote(acc))
             m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', h, re.S)
@@ -466,12 +480,15 @@ def main():
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
     subs_new, acc = None, None
     if SUBS_ON:
-        acc = _load_accounts()
-        # wall-clock 예산(기본 240s·env SNS_SUBS_BUDGET) — 최악(전 콜 타임아웃 직렬 ≈570s+)이 workflow timeout을
-        # 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
+        acc, accreg = _load_accounts()
+        # wall-clock 예산(기본 240s·env SNS_SUBS_BUDGET — 워크플로가 480 지정 = 지역 2군 확장분) — 최악(전 콜 타임아웃 직렬)이
+        # workflow timeout을 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
         dl = time.monotonic() + (_i(os.environ.get("SNS_SUBS_BUDGET")) or 240)   # 비수치 env = 240 폴백(파스 크래시 가드 · 재검증1)
-        subs_new = {"x": x_subs(acc["x"], deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], deadline=dl),
-                    "insta": insta_subs(acc["insta"], deadline=dl), "youtube": yt_subs(acc["youtube"], deadline=dl)}
+        subs_new = {"x": x_subs(acc["x"], limit=20, deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], limit=20, deadline=dl),
+                    "insta": insta_subs(acc["insta"], limit=20, deadline=dl), "youtube": yt_subs(acc["youtube"], limit=20, deadline=dl)}
+        for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
+            for it in items:
+                it["region"] = accreg.get(k2, {}).get((it.get("account") or "").lower(), "gl")
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not sh and not ai and not subs_any:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
