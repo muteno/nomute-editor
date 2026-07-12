@@ -715,9 +715,9 @@ def kobis(limit=10):
         return []
     try:
         ymd = (datetime.now(KST) - timedelta(days=1)).strftime("%Y%m%d")
-        u = ("http://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json?key=" +
-             KOBIS_KEY + "&targetDt=" + ymd)
-        j = json.loads(_get(u))
+        u = ("https://www.kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json?key=" +
+             KOBIS_KEY + "&targetDt=" + ymd)   # https 필수(카나리아 run 29202920202 실측: http = 러너서 timeout · 260713)
+        j = json.loads(_get(u, timeout=25))
         lst = (((j.get("boxOfficeResult") or {}).get("dailyBoxOfficeList")) or [])
         out = []
         for it in (lst if isinstance(lst, list) else [])[:limit]:
@@ -741,8 +741,9 @@ EX_NOISE = ("공사", "작업", "정체", "행사", "청소", "제설", "점검"
 def expressway(limit=10):
     """⑯ 고속도로 돌발상황 — 한국도로공사 공공데이터(data.ex.co.kr · env EX_KEY 필수 · 없으면 [] no-op).
     대량 연쇄추돌 등 사고성 이벤트만 필터(EX_ACCIDENT 포함 or EX_NOISE 제외 실패 시 보수 컷).
-    ⚠️ 엔드포인트·응답 스키마 = 문서 페이지가 외부 fetch 차단이라 통설 기본값 + env EX_URL 노브
-    (§📰-e: 카나리아 로그의 응답 앞부분 진단 출력으로 1회에 확정 — 미스매치면 EX_URL만 교체).
+    ⚠️ 엔드포인트 = 기본값(burstInfo/realTimeIncidentInfo)이 카나리아 run 29202920202 실측 404 —
+    정확한 요청주소는 운영자가 data.ex.co.kr 로그인 화면에서 복사 → env EX_URL로 주입(워크플로 env ·
+    §📰-e 1회 확정 설계). 파싱 래퍼 관용이라 URL만 맞으면 무수정 동작 기대 · 필드 미스는 진단 경고가 잡음.
     파싱 = 래퍼 관용(list/data/최상위 배열) + 필드 다중 폴백. 실패 = [] (fail-soft)."""
     if not EX_KEY:
         return []
