@@ -71,7 +71,15 @@
   .erow { display:flex; gap:10px; }
   .erow .go { flex:1; margin-top:14px; }
 
+  /* goSpec = 결과물 명세 readout(썸네일 §3 기틀 계승 — 라벨 mut·값 점등 accent·구분 | ·90% 한 줄·버튼 위) */
+  .gospec { margin:14px 0 0; font-size:90%; white-space:nowrap; overflow-x:auto; color:var(--mut); text-align:center; }
+  .gospec .gs-v { font-weight:var(--fw-b); }
+  .gospec .gs-v.on { color:var(--accent); font-weight:var(--fw-x); }
+  .gospec .gs-sep { opacity:.5; margin:0 6px; }
+
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
+  .status.wait { font-size:var(--fs-body); color:var(--accent); font-weight:var(--fw-x); }   /* 대기 = 버튼 아닌 상태줄 정중앙(edit wmsg 260712 선택값 계승) */
+  .status .gtime { margin-left:7px; color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }
   .status.err { color:var(--danger); }
   .status svg { vertical-align:-2px; }
   .sronly { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }   /* SR 전용(§디자인 e 접근성 라벨) */
@@ -170,6 +178,7 @@
   <div id="optwrap" hidden>
     <label class="fl">스타일 옵션</label>
     <div class="optgrid" id="optgrid"></div>
+    <div class="gospec" id="goSpec"></div><!-- 결과물 명세 readout(썸네일 goSpec 기틀 계승 · §표기표준 .gospec 예외 = 의도적 회색) -->
     <div class="erow">
       <button class="go" id="sunoGo" data-wl="프롬프트 생성 중">수노 프롬프트</button>
       <button class="go" id="lyriaGo" data-wl="곡 만드는 중">구글 곡 생성</button>
@@ -245,48 +254,45 @@ function btnErr(g,m){
   clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
   g.textContent=m; g.setAttribute('aria-live','assertive');
   g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
-  g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); if(g.classList.contains('wait')) g.innerHTML=esc(g.dataset.wl||'생성 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; else g.textContent=g.dataset.label; },1700);
+  g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); g.textContent=g.dataset.label; },1700);
 }
-function btnWait(g,on,t0){
-  if(!g) return;
-  clearInterval(g._tick); g._tick=null;
+// 대기 표기 = 버튼 아닌 상태줄(썸네일 발사 상태머신 계승 260712 — 버튼 = 풀필→접수 ✓→라벨 원복 · 상주 라벨 폐지)
+let _stTick=null;
+function statusWait(on,t0,label){
+  const st=$('#sstatus');
+  clearInterval(_stTick); _stTick=null;
   if(on){
-    if(!g.dataset.label) g.dataset.label=g.textContent;
-    g._t0=t0||g._t0||Date.now();
-    g.classList.add('wait'); g.setAttribute('aria-busy','true');
-    const paint=()=>{ if(g._flash||g.classList.contains('err')) return;
-      const tEl=g.querySelector('.gtime');
-      if(tEl){ tEl.textContent=fmtT((Date.now()-g._t0)/1000); return; }
-      g.innerHTML=esc(g.dataset.wl||'생성 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-g._t0)/1000)+'</span>'; };
-    paint(); g._tick=setInterval(paint,1000);
-  } else { g._t0=0; g.classList.remove('wait'); g.removeAttribute('aria-busy'); if(g.dataset.label) g.textContent=g.dataset.label; }
+    st.classList.remove('err'); st.classList.add('wait');
+    const paint=()=>{ st.innerHTML=esc(label||'생성 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-t0)/1000)+'</span>'; };
+    paint(); _stTick=setInterval(paint,1000);
+  } else { st.classList.remove('wait'); }
 }
-function btnWaitAllOff(){ ['#optGo','#sunoGo','#lyriaGo'].forEach(s=>btnWait($(s),false)); }
+const WL={options:'옵션 생성 중',suno:'프롬프트 생성 중',lyria:'곡 만드는 중'};
 function gaugeStart(btn){ if(!btn) return; btn.classList.add('glive','firing'); requestAnimationFrame(()=>requestAnimationFrame(()=>btn.classList.add('grun'))); }
 function gaugeDone(btn){ if(btn) btn.classList.add('gdone'); }
 function gaugeClear(btn){ if(btn) btn.classList.remove('glive','firing','grun','gdone'); }
-function flashCheck(g){ if(!g.dataset.label) g.dataset.label=g.textContent; g.innerHTML=CHECK_SVG; g._flash=true; setTimeout(()=>{ g._flash=false; },600); }   // 누른 즉시 ✓ 접수(track 계승)
+function flashCheck(g){ if(!g.dataset.label) g.dataset.label=g.textContent; g.innerHTML=CHECK_SVG; g._flash=true; setTimeout(()=>{ g._flash=false; if(!g.classList.contains('err')&&!g.classList.contains('wait')) g.textContent=g.dataset.label; },600); }   // 접수 ✓ 후 라벨 원복(썸네일 상태머신)
 
 // ── 발사(모드 공용) ──
 async function fire(mode, gb){
   const story=$('#story').value.trim();
   if(!story) return btnErr(gb,'스토리(대사나 상황)를 적어줘');
   USER_ACT=true;
-  const status=$('#sstatus'); status.classList.remove('err'); status.textContent='';
+  const status=$('#sstatus'); status.classList.remove('err','wait'); status.textContent='';
   gb.disabled=true;
   const t0=Date.now();
-  gaugeStart(gb); flashCheck(gb); btnWait(gb,true,t0);
+  gaugeStart(gb); flashCheck(gb);
   try{
     const payload={ mode, genre:segVal('#segGenre','#genreIn'), express:segVal('#segExp','#expIn'), story:story.slice(0,1500) };
     if(mode!=='options'&&PICK) payload.pick=PICK;
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ gaugeClear(gb); btnWait(gb,false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    if(!res.ok||j.error){ gaugeClear(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
     pendSet({id:j.id, mode, t0, story:story.slice(0,1500)});
-    gaugeDone(gb);
+    gaugeDone(gb);   // 접수 성공 = 풀필→✓(flashCheck)→라벨 원복 · 대기는 상태줄(statusWait — pollSong이 켬)
     pollSong(j.id, mode, t0, t0-90000, gb);
     setTimeout(()=>{ gaugeClear(gb); },700);
-  }catch(e){ gaugeClear(gb); btnWait(gb,false); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
+  }catch(e){ gaugeClear(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ gb.disabled=false; }
 }
 $('#optGo').addEventListener('click',()=>fire('options',$('#optGo')));
@@ -297,11 +303,10 @@ $('#lyriaGo').addEventListener('click',()=>fire('lyria',$('#lyriaGo')));
 function pollSong(id, mode, t0, minTs, gb){
   if(_curStop)_curStop();
   SONG_ID=id;
-  const status=$('#sstatus'); status.classList.remove('err');
-  status.innerHTML='<span class="sronly">'+esc(mode==='options'?'옵션 생성 중':'생성 중')+'</span>';
+  statusWait(true, t0, WL[mode]||'생성 중');   // 대기 = 상태줄 정중앙(버튼 원복 = 썸네일 상태머신 계승)
   const outPath='song_out/'+id+'/'+(mode==='options'?'options.json':'song.json');
   const errPath='song_out/'+id+'/error.log';
-  let live=true; const stop=()=>{ live=false; btnWaitAllOff(); }; _curStop=stop;
+  let live=true; const stop=()=>{ live=false; statusWait(false); }; _curStop=stop;
   const need=mode==='options'?'options':'lyrics';   // 완료 판정 필드(모드별)
   const tick=async()=>{
     if(!live) return;
@@ -346,12 +351,23 @@ function pollSong(id, mode, t0, minTs, gb){
 }
 
 // ── 렌더 ──
+function updateGoSpec(){   // 결과물 명세 readout — 썸네일 goSpec 표기 관례(라벨 mut·값 점등·`|` 구분·대괄호 없음)
+  const gs=$('#goSpec'); if(!gs) return;
+  const v=(x,on)=>'<span class="gs-v'+(on?' on':'')+'">'+esc(x)+'</span>';
+  const sep='<span class="gs-sep">|</span>';
+  gs.innerHTML='스타일 '+v(PICK?PICK.name:'자동',!!PICK)
+    +sep+'보컬 '+v(PICK&&PICK.vocal?PICK.vocal:'자동',!!(PICK&&PICK.vocal))
+    +(PICK&&PICK.bpm?(sep+'BPM '+v(PICK.bpm,true)):'')
+    +sep+'길이 '+v('60초 미만',true)
+    +sep+'훅 '+v('15초 내',true);
+}
 function renderOptions(d, sec){
   OPTS=d.options||[]; PICK=null;
   $('#out').hidden=true; $('#lout').hidden=true;
   $('#sstatus').classList.remove('err');
   $('#sstatus').innerHTML=OK_SVG+' 옵션 '+OPTS.length+'개'+(sec?(' ('+sec+'s)'):'')+' — 골라서 아래 버튼으로';
   $('#optgrid').innerHTML=OPTS.map((o,i)=>'<button type="button" class="optcard" data-i="'+i+'"><div class="optname">'+esc(o.name||'')+'</div><div class="optwhy">'+esc(o.why||'')+'</div><div class="optmeta">'+esc(o.vocal||'')+(o.bpm?(' · '+o.bpm+' bpm'):'')+'</div></button>').join('');
+  updateGoSpec();
   const ow=$('#optwrap'); ow.hidden=false;
   try{ ow.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
 }
@@ -360,8 +376,8 @@ $('#optgrid').addEventListener('click',e=>{
   const i=+b.dataset.i;
   const was=b.classList.contains('on');
   $$('#optgrid .optcard').forEach(x=>x.classList.remove('on'));
-  if(was){ PICK=null; return; }   // 재탭 = 해제(자동)
-  b.classList.add('on'); PICK=OPTS[i]||null;
+  if(was){ PICK=null; updateGoSpec(); return; }   // 재탭 = 해제(자동)
+  b.classList.add('on'); PICK=OPTS[i]||null; updateGoSpec();
 });
 function showSuno(d, sec){
   RES=d;
@@ -458,11 +474,9 @@ $('#lAud').addEventListener('ended',()=>{ if(PIDX>=0&&PIDX+1<PLIST.length) playI
   const p=pendGet(); if(!p||!p.id||USER_ACT) return;
   if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
   if(p.story&&!$('#story').value) $('#story').value=p.story;   // 후속 발사 재료 복원(칩은 기본 유지 — 옵션/가사엔 story+pick이 본질)
-  const btn={options:'#optGo',suno:'#sunoGo',lyria:'#lyriaGo'}[p.mode]||'#optGo';
-  if(p.mode!=='options') $('#optwrap').hidden=false;   // 엔진 진행 표시 위해 행 노출
+  if(p.mode!=='options'){ $('#optwrap').hidden=false; updateGoSpec(); }   // 엔진 진행 표시 위해 행 노출
   const t0c=Math.max(p.t0||0, Date.now()-BUDGET*1000);   // 경과·타임아웃 기점 클램프 = 재개마다 폴 창 확보 · 신선도는 원 t0 기준(분리)
-  btnWait($(btn), true, t0c);
-  pollSong(p.id, p.mode||'suno', t0c, (p.t0||0)-90000, $(btn));
+  pollSong(p.id, p.mode||'suno', t0c, (p.t0||0)-90000, null);
 })();
 </script>
 </body>
