@@ -1,0 +1,449 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>설정창·팝업 액션버튼 통일 — 플레이그라운드</title>
+<style>
+  /* ── 미리보기 재현용 토큰 사본 (viewer/index.html :root 실측 · 각주 ⑤ 참조) ── */
+  :root{
+    --bg:#0e1626; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210;
+    --warn:#FFE13D; --danger:#e23b2a; --danger-rgb:226,59,42;
+    --accent-4:#FFE13D;
+    --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.07);
+    --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+    --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+    --btn:34px; --btn-sm:30px; --btn-xs:22px;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    /* 앵커 팝업 글래스 셸(근사) */
+    --anchor-glass:rgba(22,24,28,.86);
+    /* 콘솔 크롬 */
+    --ink:#0b1120; --panel:#131a29; --edge:rgba(255,255,255,.09);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; }
+  body{
+    background:#070b13; color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",Pretendard,"Malgun Gothic",system-ui,sans-serif;
+    font-size:14px; line-height:1.5; padding:14px; -webkit-font-smoothing:antialiased;
+  }
+  h1{ font-size:16px; font-weight:800; margin:0 0 2px; letter-spacing:.2px; }
+  .sub{ color:var(--mut); font-size:12px; margin:0 0 14px; }
+  .sub b{ color:var(--accent); font-weight:700; }
+
+  .wrap{ display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+
+  /* ── 좌: 미리보기 스테이지 ── */
+  .stagewrap{ flex:1 1 340px; min-width:300px; position:sticky; top:14px; }
+  .frame{
+    background:
+      radial-gradient(120% 80% at 20% 0%, #1c2a48 0%, #10192e 46%, #0a1120 100%);
+    border-radius:26px; border:1px solid rgba(255,255,255,.08);
+    padding:16px 12px; height:74vh; max-height:760px; overflow-y:auto; overflow-x:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+    scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.18) transparent;
+  }
+  .frame::-webkit-scrollbar{ width:7px; }
+  .frame::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:9px; }
+  .wm{ font:600 15px/1.1 -apple-system,system-ui,sans-serif; letter-spacing:1.5px; color:#cfe; opacity:.85; padding:2px 4px 1px; }
+  .wm .vt{ display:block; font-size:11px; letter-spacing:2px; color:var(--accent); margin-top:5px; font-weight:700; }
+  .stagecap{ color:var(--mut); font-size:11.5px; text-align:center; margin-top:8px; line-height:1.5; }
+  .stagecap b{ color:var(--accent); }
+
+  /* 미리보기 튜닝 스코프 ─ 모든 팝업이 이 변수를 공유 = 한 축 → 전부 통일 */
+  .app{
+    --t-btn:30px;      /* 헤더 액션버튼 크기 (현행 --btn-sm 30) */
+    --t-ico:15px;      /* 버튼 안 픽토그램 svg (현행 15) */
+    --t-icw:1.8;       /* 픽토 stroke (현행 1.8) */
+    --t-gap:4px;       /* 버튼 간 간격 (현행 헤더 클러스터 4) */
+    --t-cell:30px;     /* 항목 행 액션셀 폭 (현행 --btn-sm 30) */
+    --t-pr:6px;        /* 컨테이너 우측 안쪽 여백 = 우측 마진 (현행 padding 6) */
+    --t-pl:6px;        /* 컨테이너 좌측 안쪽 여백 = 좌측 마진 (현행 padding 6) */
+    --t-ph:9px;        /* 헤더 세로 패딩 */
+    --t-rad:16px;      /* 컨테이너 라운드 (현행 --r-l 16) */
+    --t-plate:0;       /* 0=배경없음(현행) 1=글래스 2=불투명 — JS가 클래스로 반영 */
+    margin-top:18px; display:flex; flex-direction:column; gap:16px;
+  }
+
+  /* 앵커 팝업 셸(정본 계승) */
+  .pop{
+    background:var(--anchor-glass);
+    -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 24px 56px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+    border-radius:var(--t-rad);
+    padding:6px var(--t-pr) 6px var(--t-pl);
+    position:relative;
+  }
+  .pop.baseline{ opacity:.4; filter:saturate(.6); }
+  .poptag{ position:absolute; top:-9px; left:12px; font-size:9.5px; letter-spacing:.5px; text-transform:uppercase; color:var(--mut); background:#0d1524; padding:1px 6px; border-radius:999px; border:1px solid var(--edge); }
+
+  /* 헤더: 제목 + 부가 + 액션 클러스터(우측 auto) */
+  .qh{ display:flex; align-items:center; gap:8px; padding:var(--t-ph) 4px; }
+  .qh b{ font-size:15px; font-weight:800; color:var(--fg); }
+  .qc{ font-size:11px; color:var(--mut); font-variant-numeric:tabular-nums; }
+  .qc .tn{ color:var(--accent); font-weight:800; }
+  .hx{ margin-left:auto; display:flex; align-items:center; gap:var(--t-gap); }
+
+  /* 액션 버튼 표준 (닫기X·새로고침·설정 유틸 공통) */
+  .ab{
+    width:var(--t-btn); height:var(--t-btn); flex:none;
+    display:grid; place-items:center;
+    color:var(--mut); background:none; border:1px solid transparent; border-radius:9px;
+    cursor:pointer; padding:0; transition:transform .3s var(--ease), color .18s, background .18s, border-color .18s;
+  }
+  .ab svg{ width:var(--t-ico); height:var(--t-ico); }
+  .ab svg [stroke]{ stroke-width:var(--t-icw); }
+  .ab svg{ stroke-width:var(--t-icw); }
+  .ab:hover{ color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }
+  .ab:active{ transform:scale(.9); color:var(--accent); }
+  /* 플레이트 변주(세그) */
+  .app.plate1 .ab{ background:rgba(255,255,255,.06); border-color:var(--line); }
+  .app.plate2 .ab{ background:var(--bg); border-color:transparent; }
+
+  /* 항목 리스트 */
+  .qlist{ display:flex; flex-direction:column; }
+  .qrow{
+    display:flex; align-items:center; gap:8px;
+    padding:9px 4px; border-radius:8px;
+    border-top:1px solid var(--line2);
+  }
+  .qrow:first-child{ border-top:0; }
+  .qtime{ font-size:11px; color:var(--accent-4); font-weight:700; flex:none; width:44px; }
+  .qtime.rd{ color:var(--warn); }
+  .qmain{ flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qmain.dim{ color:var(--mut); }
+  .qact{ flex:none; width:var(--t-cell); display:flex; align-items:center; justify-content:center; }
+  .qact .ib{ color:var(--mut); background:none; border:0; cursor:pointer; display:grid; place-items:center; width:var(--t-btn); height:var(--t-btn); border-radius:9px; transition:transform .3s var(--ease), color .18s; }
+  .qact .ib svg{ width:var(--t-ico); height:var(--t-ico); stroke-width:var(--t-icw); }
+  .qact .ib.rm:hover{ color:var(--danger); }
+  .qact .ib.lk:hover,.qact .ib.go:hover{ color:var(--accent); }
+  .qact .ib:active{ transform:scale(.85); }
+  .app.plate1 .qact .ib{ background:rgba(255,255,255,.06); }
+  .app.plate2 .qact .ib{ background:var(--bg); }
+  /* 게이지(발행/픽 데모) */
+  .gauge{ margin:8px 4px 4px; height:26px; border-radius:9px; border:1px dashed rgba(var(--accent-rgb),.5); display:grid; place-items:center; font-size:10.5px; letter-spacing:2px; color:var(--accent); font-weight:800; }
+
+  /* ── 우: 콘솔 ── */
+  .console{ flex:1 1 360px; min-width:300px; display:flex; flex-direction:column; gap:12px; }
+  .csec{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:13px 14px; }
+  .csec h3{ margin:0 0 10px; font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--mut); font-weight:700; }
+  .csec h3 .warncnt{ color:var(--warn); margin-left:8px; text-transform:none; letter-spacing:0; }
+
+  .pills{ display:flex; flex-wrap:wrap; gap:7px; }
+  .pill{ padding:7px 12px; border-radius:999px; border:1px solid var(--edge); background:rgba(255,255,255,.03); color:var(--fg); font-size:12.5px; cursor:pointer; transition:.15s; }
+  .pill:hover{ border-color:rgba(var(--accent-rgb),.4); }
+  .pill.on{ background:rgba(var(--accent-rgb),.16); border-color:rgba(var(--accent-rgb),.6); color:var(--accent); font-weight:700; }
+  .pill .st{ color:var(--warn); }
+
+  .seg{ display:flex; gap:0; border:1px solid var(--edge); border-radius:9px; overflow:hidden; }
+  .seg button{ flex:1; padding:8px 6px; background:none; border:0; border-right:1px solid var(--edge); color:var(--mut); font-size:12px; cursor:pointer; transition:.15s; }
+  .seg button:last-child{ border-right:0; }
+  .seg button.on{ background:rgba(var(--accent-rgb),.16); color:var(--accent); font-weight:700; }
+  .segwrap+.segwrap{ margin-top:10px; }
+  .segwrap label{ display:block; font-size:12px; color:var(--fg); margin-bottom:6px; }
+  .segwrap .hint{ color:var(--mut); font-size:11px; }
+
+  .row{ display:flex; align-items:center; gap:10px; padding:7px 0; }
+  .row .nm{ flex:1 1 auto; font-size:12.5px; }
+  .row .nm .tk{ color:var(--mut); font-size:10.5px; display:block; margin-top:1px; }
+  .row input[type=range]{ flex:2 1 130px; accent-color:var(--accent); min-width:110px; }
+  .row .val{ flex:none; width:56px; text-align:right; font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:700; }
+  .row.warn .val{ color:var(--warn); }
+  .row .badge{ flex:none; font-size:9.5px; padding:1px 5px; border-radius:5px; border:1px solid var(--edge); color:var(--mut); width:34px; text-align:center; }
+  .row.warn .badge{ color:var(--warn); border-color:rgba(var(--warn),.5); }
+  .row.ok .badge{ color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }
+
+  pre#out{ margin:0; white-space:pre-wrap; word-break:break-word; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:#cfe6dc; background:#0a1120; border:1px solid var(--edge); border-radius:10px; padding:11px 12px; max-height:230px; overflow:auto; }
+  .btnrow{ display:flex; gap:8px; margin-top:10px; }
+  button.act{ flex:1; padding:11px; border-radius:10px; border:1px solid rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); color:var(--accent); font-weight:800; font-size:13px; cursor:pointer; transition:.15s; }
+  button.act:hover{ background:rgba(var(--accent-rgb),.22); }
+  button.act.ghost{ background:none; border-color:var(--edge); color:var(--mut); font-weight:600; flex:none; padding:11px 14px; }
+  .note{ color:var(--mut); font-size:11.5px; line-height:1.6; }
+  .note b{ color:var(--fg); }
+  .note code{ background:#0a1120; padding:1px 5px; border-radius:4px; color:#cfe6dc; font-size:11px; }
+
+  /* 복사 모달 */
+  .modal{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; place-items:center; z-index:50; padding:18px; }
+  .modal.on{ display:grid; }
+  .modal .box{ background:var(--panel); border:1px solid var(--edge); border-radius:16px; padding:18px; max-width:440px; width:100%; box-shadow:0 24px 56px rgba(0,0,0,.6); }
+  .modal h4{ margin:0 0 8px; font-size:14px; }
+  .modal .rp{ background:#0a1120; border:1px solid rgba(var(--warn),.4); border-radius:10px; padding:10px 12px; font-size:11.5px; color:#e9dfae; margin:10px 0; white-space:pre-wrap; }
+</style>
+
+<h1>설정창·팝업 액션버튼 통일 플레이그라운드</h1>
+<p class="sub">메시지함·발행본·대기열 세 창이 <b>같은 축을 공유</b>한다 — 슬라이더 하나를 움직이면 세 창의 버튼이 <b>동시에 통일</b>된다. 이 값을 못박으면 새 창 만들 때마다 어긋나던 게 SSOT로 고정된다. 좌측 흐린 창 = 현행(비교 기준).</p>
+
+<div class="wrap">
+  <!-- 좌: 미리보기 -->
+  <div class="stagewrap">
+    <div class="frame" id="frame">
+      <div class="wm">NEWS CURATION<span class="vt">LEGACY NEWS</span></div>
+
+      <div class="app" id="app">
+        <!-- 메시지함 -->
+        <div class="pop" data-pop>
+          <span class="poptag">메시지함</span>
+          <div class="qh"><b>메시지</b><span class="qc">1건</span>
+            <span class="hx"><button class="ab" title="닫기">${X}</button></span>
+          </div>
+          <div class="qlist">
+            <div class="qrow"><span class="qtime rd">7분 전</span><span class="qmain" style="color:var(--warn)">⚠ 대기열 등록 후 분석 실패</span><span class="qact"><button class="ib rm">${T}</button></span></div>
+          </div>
+        </div>
+
+        <!-- 발행본 (다중 액션: 잠금·공유·삭제) -->
+        <div class="pop" data-pop>
+          <span class="poptag">발행본</span>
+          <div class="qh"><b>발행본</b><span class="qc">Today <span class="tn">3</span> · 누적 128</span>
+            <span class="hx"><button class="ab" title="닫기">${X}</button></span>
+          </div>
+          <div class="qlist">
+            <div class="qrow"><span class="qmain">한동훈 가담 혐의 관련 브리핑</span>
+              <span class="qact"><button class="ib lk">${L}</button></span>
+              <span class="qact"><button class="ib go">${S}</button></span>
+              <span class="qact"><button class="ib rm">${T}</button></span>
+            </div>
+            <div class="qrow"><span class="qmain dim" style="text-decoration:line-through">환율 방어 실탄 소진 논란</span>
+              <span class="qact"><button class="ib lk">${L}</button></span>
+              <span class="qact"><button class="ib go">${S}</button></span>
+              <span class="qact"><button class="ib rm">${T}</button></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 대기열 (이동↗·삭제) -->
+        <div class="pop" data-pop>
+          <span class="poptag">대기열</span>
+          <div class="qh"><b>대기열</b><span class="qc">2건</span>
+            <span class="hx"><button class="ab" title="새로고침">${R}</button><button class="ab" title="닫기">${X}</button></span>
+          </div>
+          <div class="qlist">
+            <div class="qrow"><span class="qmain">국무회의 의결 안건 정리</span>
+              <span class="qact"><button class="ib go">${G}</button></span>
+              <span class="qact"><button class="ib rm">${T}</button></span>
+            </div>
+          </div>
+          <div class="gauge">PICKED</div>
+        </div>
+      </div>
+    </div>
+    <div class="stagecap">위 3창의 버튼은 <b>단일 축</b>을 공유 — 통일 상태를 그대로 눈으로 검수</div>
+  </div>
+
+  <!-- 우: 콘솔 -->
+  <aside class="console">
+    <div class="csec">
+      <h3>프리셋</h3>
+      <div class="pills" id="presets"></div>
+    </div>
+
+    <div class="csec">
+      <h3>픽토 배경 플레이트 <span class="hint" style="font-weight:400;text-transform:none;letter-spacing:0">— 헤더X는 현행 무배경</span></h3>
+      <div class="seg" id="plateSeg">
+        <button data-v="0" class="on">무배경 (현행)</button>
+        <button data-v="1">글래스</button>
+        <button data-v="2">불투명 plate</button>
+      </div>
+    </div>
+
+    <div class="csec">
+      <h3>버튼 <span class="warncnt" id="wc"></span></h3>
+      <div id="sliders"></div>
+    </div>
+
+    <div class="csec">
+      <h3>선택값</h3>
+      <pre id="out"></pre>
+      <div class="btnrow">
+        <button class="act" id="copy">선택값 복사</button>
+        <button class="act ghost" id="reset">현행</button>
+      </div>
+    </div>
+
+    <div class="csec note">
+      <b>재현 한계 각주</b><br>
+      · 미리보기 글래스·배경은 앵커 셸(<code>--modal-glass-anchor</code>) <b>근사</b>다 — 실제 blur·채도는 라이브가 정본.<br>
+      · 픽토그램은 대표 3~4종(닫기·휴지통·잠금·공유·이동·새로고침)만 재현. 실제 SVG는 <code>_TRASHSVG</code> 등 정본.<br>
+      · <code>--t-ico 15</code>·<code>--t-icw 1.8</code>·라운드 사다리는 <b>확립 축</b> — 사다리 밖으로 나가면 ⚠(기틀 갱신 후보).<br>
+      · 좌측 흐린 층은 없다(공간 절약) — 대신 각 값에 <b>[현행]</b>을 병기해 전/후를 잰다.
+    </div>
+  </aside>
+</div>
+
+<!-- 복사 모달 -->
+<div class="modal" id="modal">
+  <div class="box">
+    <h4 id="mtitle">기틀 이탈 축이 있어</h4>
+    <div class="rp" id="mrp"></div>
+    <div class="note" style="margin-bottom:12px">회신하면 이 값으로 <b>전 앱 동일 축(모든 팝업 헤더/액션 버튼)</b>을 일괄 갱신한다 — <code>--btn-sm</code>·픽토 15·라운드 사다리 등 SSOT 변경 정문 경로.</div>
+    <div class="btnrow">
+      <button class="act" id="mAll">역제안 포함 복사</button>
+      <button class="act ghost" id="mKeep">계승분만</button>
+      <button class="act ghost" id="mCancel">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SVG 픽토그램 (정본 계승) ──
+const SVG = {
+  X:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>',
+  T:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>',
+  L:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  S:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+  G:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>',
+  R:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v5h-5"/></svg>'
+};
+// 템플릿 자리(${X}…)를 실제 svg로
+document.getElementById('app').innerHTML =
+  document.getElementById('app').innerHTML.replace(/\$\{(\w)\}/g, (_,k)=>SVG[k]||'');
+
+const app = document.getElementById('app');
+const frame = document.getElementById('frame');
+const out = document.getElementById('out');
+const wc = document.getElementById('wc');
+
+// ── 축 정의 ── (k: 변수, nm, tok: 대응 토큰, 단위 px, 사다리 ladder, warn 판정)
+const DEF = { btn:30, ico:15, icw:1.8, gap:4, cell:30, pr:6, pl:6, ph:9, rad:16 };
+const SLIDERS = [
+  {k:'btn', nm:'버튼 크기',        tok:'--btn-sm 30',      min:22, max:40, step:1, u:'px', grp:'버튼', lad:[22,30,34]},
+  {k:'ico', nm:'픽토그램 크기',    tok:'svg 15 (확립)',    min:12, max:20, step:1, u:'px', grp:'버튼', lad:[15], firm:1},
+  {k:'icw', nm:'픽토그램 두께',    tok:'stroke 1.8 (확립)',min:1.2,max:2.6,step:.1, u:'', grp:'버튼', lad:[1.8], firm:1},
+  {k:'gap', nm:'버튼 간 간격',     tok:'헤더 클러스터 gap',min:0,  max:14, step:1, u:'px', grp:'간격', lad:[4,6]},
+  {k:'cell',nm:'행 액션셀 폭',     tok:'.qact 30',         min:24, max:48, step:1, u:'px', grp:'간격', lad:[30,44]},
+  {k:'pr',  nm:'우측 마진 (안쪽)', tok:'padding-right 6',  min:0,  max:18, step:1, u:'px', grp:'마진', lad:[6,12]},
+  {k:'pl',  nm:'좌측 마진 (안쪽)', tok:'padding-left 6',   min:0,  max:18, step:1, u:'px', grp:'마진', lad:[6,12]},
+  {k:'ph',  nm:'헤더 세로 패딩',   tok:'--sp 근사',        min:4,  max:16, step:1, u:'px', grp:'마진', lad:[6,9,12]},
+  {k:'rad', nm:'컨테이너 라운드',  tok:'--r-l 16 (확립)',  min:8,  max:24, step:1, u:'px', grp:'컨테이너', lad:[9,11,16,22], firm:1}
+];
+
+let state = {...DEF};
+let plate = 0;
+
+const PRESETS = [
+  {id:'cur', nm:'현행', st:{...DEF}},
+  {id:'cmp', nm:'컴팩트', st:{...DEF, btn:26, gap:2, cell:26, ph:6, pr:4, pl:4}},
+  {id:'roomy', nm:'넉넉', st:{...DEF, btn:34, gap:6, cell:34, ph:12, pr:12, pl:12}},
+  {id:'rec', nm:'통일 표준 ★', star:1, st:{...DEF, btn:30, ico:15, icw:1.8, gap:6, cell:30, ph:9, pr:6, pl:6, rad:16}}
+];
+
+// ── 빌드 프리셋 ──
+const presetsEl = document.getElementById('presets');
+PRESETS.forEach(p=>{
+  const b=document.createElement('button'); b.className='pill'; b.dataset.id=p.id;
+  b.innerHTML = p.nm + (p.star?' <span class="st">★</span>':'');
+  b.onclick=()=>{ state={...DEF,...p.st}; buildSliders(); apply(true); };
+  presetsEl.appendChild(b);
+});
+
+// ── 빌드 슬라이더 (그룹 헤더 포함) ──
+const slidersEl = document.getElementById('sliders');
+function buildSliders(){
+  slidersEl.innerHTML=''; let lastGrp='';
+  SLIDERS.forEach(s=>{
+    if(s.grp!==lastGrp){ const h=document.createElement('div'); h.style.cssText='font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);margin:12px 0 2px;font-weight:700'; h.textContent=s.grp; slidersEl.appendChild(h); lastGrp=s.grp; }
+    const row=document.createElement('div'); row.className='row'; row.dataset.k=s.k;
+    row.innerHTML =
+      '<span class="nm">'+s.nm+'<span class="tk">'+s.tok+'</span></span>'+
+      '<input type="range" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'" value="'+state[s.k]+'" list="lad_'+s.k+'">'+
+      '<datalist id="lad_'+s.k+'">'+s.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>'+
+      '<span class="val"></span><span class="badge"></span>';
+    const inp=row.querySelector('input');
+    inp.oninput=()=>{ state[s.k]=parseFloat(inp.value); markCustom(); apply(false); };
+    slidersEl.appendChild(row);
+  });
+}
+
+const near=(a,b,e)=>Math.abs(a-b)<(e||.001);
+function isLadder(s,v){ return s.lad.some(x=>near(x,v, s.step<1?.05:.5)); }
+
+function markCustom(){
+  // 프리셋 재매칭
+  presetsEl.querySelectorAll('.pill').forEach(b=>{
+    const p=PRESETS.find(x=>x.id===b.dataset.id); const st={...DEF,...p.st};
+    b.classList.toggle('on', SLIDERS.every(s=>near(st[s.k],state[s.k], s.step<1?.05:.5)));
+  });
+}
+
+function apply(reflow){
+  const y = frame.scrollTop;               // 스크롤 보존
+  // 변수 반영
+  for(const k in state) app.style.setProperty('--t-'+k, state[k] + (k==='icw'?'':'px'));
+  app.style.setProperty('--t-icw', state.icw); // 무단위
+  // 플레이트 클래스
+  app.classList.remove('plate1','plate2'); if(plate) app.classList.add('plate'+plate);
+  // 슬라이더 UI 동기 + 사다리/이탈 판정
+  let warn=0;
+  SLIDERS.forEach(s=>{
+    const row=slidersEl.querySelector('.row[data-k="'+s.k+'"]'); if(!row) return;
+    const inp=row.querySelector('input'); inp.value=state[s.k];
+    const on=isLadder(s,state[s.k]);
+    const off = s.firm && !on;               // 확립 축이 사다리 밖 = ⚠
+    row.querySelector('.val').textContent = state[s.k] + (s.u?s.u:'');
+    row.classList.toggle('warn', !!off);
+    row.classList.toggle('ok', s.firm && on);
+    row.querySelector('.badge').textContent = s.firm ? (on?'계승':'⚠갱신') : (on?'계승':'조정');
+    if(off) warn++;
+  });
+  wc.textContent = warn ? ('· 기틀 이탈 '+warn+'축 ⚠') : '';
+  buildOut(warn);
+  if(!reflow) frame.scrollTop=y; else frame.scrollTop=0;
+}
+
+function buildOut(warn){
+  const L=[];
+  L.push('[설정창·팝업 액션버튼 — 통일 선택값]');
+  L.push('');
+  const line=(nm,v,def,firm)=>{
+    const same=near(v,def,firm?.05:.5);
+    return nm+' : '+v+'  [현행 '+def+']'+(same?'  = 계승':(firm?'  ⚠ 기틀 갱신 후보':'  → 조정'));
+  };
+  L.push(line('버튼 크기   ', state.btn, DEF.btn));
+  L.push(line('픽토 크기   ', state.ico, DEF.ico, 1));
+  L.push(line('픽토 두께   ', state.icw, DEF.icw, 1));
+  L.push(line('버튼 간격   ', state.gap, DEF.gap));
+  L.push(line('행 액션셀   ', state.cell, DEF.cell));
+  L.push(line('우측 마진   ', state.pr, DEF.pr));
+  L.push(line('좌측 마진   ', state.pl, DEF.pl));
+  L.push(line('헤더 패딩   ', state.ph, DEF.ph));
+  L.push(line('라운드      ', state.rad, DEF.rad, 1));
+  L.push('플레이트    : '+['무배경(현행)','글래스','불투명'][plate]+(plate?'  → 변경':'  = 계승'));
+  if(warn){ L.push(''); L.push('⚠ 기틀 이탈 '+warn+'축 — 복사 시 「전 앱 동축 일괄 갱신」 역제안 동봉'); }
+  out.textContent=L.join('\n');
+}
+
+// ── 플레이트 세그 ──
+const plateSeg=document.getElementById('plateSeg');
+plateSeg.querySelectorAll('button').forEach(b=>{
+  b.onclick=()=>{ plate=parseInt(b.dataset.v); plateSeg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); apply(false); };
+});
+
+// ── 복사 (⚠ 있으면 모달) ──
+const modal=document.getElementById('modal');
+function firmWarns(){ return SLIDERS.filter(s=>s.firm && !isLadder(s,state[s.k])); }
+function doCopy(txt){
+  navigator.clipboard?.writeText(txt).catch(()=>{
+    const t=document.createElement('textarea'); t.value=txt; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch(e){} t.remove();
+  });
+  const c=document.getElementById('copy'); const o=c.textContent; c.textContent='복사됨 ✓'; setTimeout(()=>c.textContent=o,1200);
+}
+document.getElementById('copy').onclick=()=>{
+  const w=firmWarns();
+  if(w.length){
+    document.getElementById('mrp').textContent =
+      w.map(s=>'· '+s.nm+' : 현행 '+DEF[s.k]+' → '+state[s.k]+'  (적용 범위 = 전 앱 동축)').join('\n');
+    modal.classList.add('on');
+  } else doCopy(out.textContent);
+};
+document.getElementById('mAll').onclick=()=>{ modal.classList.remove('on'); doCopy(out.textContent+'\n\n[🔁 기틀 갱신 역제안 = 전 앱 동일 축 일괄]\n'+firmWarns().map(s=>'· '+s.tok+' : '+DEF[s.k]+' → '+state[s.k]).join('\n')); };
+document.getElementById('mKeep').onclick=()=>{ modal.classList.remove('on'); const w=firmWarns().map(s=>s.k); const keep={...state}; w.forEach(k=>keep[k]=DEF[k]); const bak={...state}; state=keep; buildOut(0); doCopy(out.textContent); state=bak; buildOut(firmWarns().length); };
+document.getElementById('mCancel').onclick=()=>modal.classList.remove('on');
+modal.onclick=e=>{ if(e.target===modal) modal.classList.remove('on'); };
+
+document.getElementById('reset').onclick=()=>{ state={...DEF}; plate=0; plateSeg.querySelectorAll('button').forEach((x,i)=>x.classList.toggle('on',i===0)); buildSliders(); apply(true); };
+
+// ── init ──
+buildSliders();
+markCustom();
+apply(false);
+</script>
