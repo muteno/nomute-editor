@@ -4,7 +4,7 @@
 // env: GH_TOKEN(기존 PAT 재사용). 옵션 화이트리스트 = 러너(resize_image.py)와 이중 검증(genimg 계승).
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
-const ASPECTS = ['16:9', '9:16', '4:5', '1:1', '21:9'];   // 21:9 = 비율 순환 신설(운영자 260713 · 러너 resize_image.py ASPECTS와 한 쌍)
+const ASPECTS = ['16:9', '9:16', '4:5', '1:1'];
 const SIZES = ['1K', '2K'];
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
