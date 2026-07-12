@@ -45,6 +45,7 @@
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
+import html
 import json
 import os
 import re
@@ -65,6 +66,7 @@ CTX = ssl.create_default_context()
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
+XTR_ON = (os.environ.get("SNS_XTR") or "").strip() == "1"   # X 국가별 트렌드 게이트(운영자 260712 "국가별 가능한지 → ㄱ" · §📰-e 카나리아 — 승격 전 cron OFF)
 
 
 def _get(url, timeout=15):
@@ -412,6 +414,42 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
+X_TREND_REGIONS = [("ww", ""), ("kr", "korea"), ("us", "united-states"), ("jp", "japan"),
+                   ("br", "brazil"), ("uk", "united-kingdom"), ("in", "india")]   # 종합 + 문화권 6(운영자 260712 — 한국 + 대륙별: 북미·동아시아·남미·유럽·남아시아 · 중동 교체 = 슬록 추가)
+
+
+def x_trends(deadline=None):
+    """X(트위터) 국가별 실시간 트렌드 — trends24.in 무키 스크레이프(운영자 260712 · 공식 API 유료라 대체 소스).
+    페이지 첫 <ol …trend-card__list> = 최신 타임스탬프 카드 → trend-link 상위 10(dedup — 동일 워드 연속 중복 실측).
+    ⚠ 문자열 split("trend-card__list") 금지 — 첫 매치가 <style> 안 Tailwind CSS 셀렉터(.trend-card__list>:not…)라 CSS에 착지 = 0건(실측 260712) → <ol> 요소 검색으로 슬라이스.
+    지역별 fail-soft(개별 실패 = 그 지역만 스킵) · 전멸 = None(main이 직전분 보존) · 컨테이너 200 실측 260712(러너 IP = 카나리아 확인)."""
+    out = {}
+    for key, slug in X_TREND_REGIONS:
+        if _over(deadline):
+            warn("x_trends 예산 소진 — 잔여 지역 스킵(수집분 사용)")
+            break
+        try:
+            h = _get("https://trends24.in/%s" % (slug + "/" if slug else ""))
+            mm = re.search(r'<ol[^>]*trend-card__list', h)
+            if not mm:
+                continue
+            seg = h[mm.start():mm.start() + 20000]
+            items, seen = [], set()
+            for m in re.finditer(r'href="(https?://(?:twitter|x)\.com/search\?q=[^"]+)"[^>]*>([^<]+)</a>(?:<span class=tweet-count data-count="([^"]*)")?', seg):
+                t = html.unescape(m.group(2)).strip()
+                if not t or t.lower() in seen:
+                    continue
+                seen.add(t.lower())
+                items.append({"t": t, "url": m.group(1).replace("twitter.com/", "x.com/"), "n": _i(m.group(3) or 0)})
+                if len(items) >= 10:
+                    break
+            if items:
+                out[key] = items
+        except Exception as e:
+            warn("x_trends %s: %s" % (slug or "ww", e))
+    return out or None
+
+
 def _annotate_rank(cur, prev, keyfn):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
@@ -466,6 +504,9 @@ def main():
         dl = time.monotonic() + (_i(os.environ.get("SNS_SUBS_BUDGET")) or 240)   # 비수치 env = 240 폴백(파스 크래시 가드 · 재검증1)
         subs_new = {"x": x_subs(acc["x"], deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], deadline=dl),
                     "insta": insta_subs(acc["insta"], deadline=dl), "youtube": yt_subs(acc["youtube"], deadline=dl)}
+    xtr_new = None
+    if XTR_ON:
+        xtr_new = x_trends(deadline=time.monotonic() + (_i(os.environ.get("SNS_XTR_BUDGET")) or 90))   # 7페이지 정적 fetch — 90s 자체 예산(레거시 dump 보호 = subs 회계 동형)
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not sh and not ai and not subs_any:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
@@ -505,6 +546,8 @@ def main():
         "shorts": sh or prev.get("shorts") or [],   # ⑤ 쇼츠(검색 파생 근사 · 실패 = 직전분)
         "aivid": ai or prev.get("aivid") or [],     # ⑤ AI 영상(원본 쿼리 세트 · 실패 = 직전분)
         "subs": subs,   # 구독 축(④) — {updated, x[], tiktok[], insta[], youtube[]} · 미수집 = 직전분/{}
+        # ⑥ X 국가별 트렌드(운영자 260712) — {updated, ww[], kr[], us[], jp[], br[], uk[], in[]} · 항목 = {t 원문, url x검색, n 게시수(0 흔함), ko 한글, topic 주제(xtr_judge 후주입)} · OFF/실패 = 직전분 보존
+        "xtrends": ({"updated": now, **xtr_new} if xtr_new else prev.get("xtrends") or {}),
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # errors=replace = 상류 lone-surrogate가 encode 크래시로 런 전체를 버리는 엣지 차단(평의회6 — 극귀·해당 문자만 ? 치환)
@@ -512,7 +555,7 @@ def main():
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'}")
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · X트렌드 {sum(len(v) for k2, v in (data['xtrends'] or {}).items() if isinstance(v, list))}건{'' if XTR_ON else '(게이트 OFF)'}")
 
 
 if __name__ == "__main__":
