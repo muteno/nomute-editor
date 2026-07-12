@@ -12,10 +12,6 @@ on:
         description: '구독 축(X·틱톡·릴스·유튜브 계정) 수집 — 1=ON (§📰-e 카나리아 · 러너 실측 승격 전 cron은 OFF)'
         default: '1'
         required: false
-      brief:
-        description: 'AI 브리프(비서 페르소나 1콜·opus 4.8 max·입력 동일 = 스킵) — 1=ON (§📰-e 카나리아 · 실측 승격 전 cron은 OFF)'
-        default: '0'
-        required: false
 
 permissions:
   contents: write
@@ -39,20 +35,11 @@ jobs:
           SNS_SUBS: ${{ inputs.subs || '1' }}   # 구독 축 = 기본 ON 승격(§📰-e 이행 완료 — 카나리아 run 29153925931 실측 260711: rc=0·65s·틱톡10·유튜브10·레거시 무손상·커밋 eab3bc5). schedule = inputs 없음 → '1'(social-scan 관용구) · dispatch subs='0'=일시 OFF. X·인스타 = 러너 IP 429 실측(런마다 IP 로터리 = 확률 수집·빈 런 = 직전분 보존 fail-soft) — 지속 0건이면 폰 수집 경로 후속. 롤백 = || '' 복귀
         run: timeout 540 python3 scraper/sns_trends.py   # 540 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 240s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
-      - name: AI 브리프(비서 페르소나 · 운영자 260712) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft)
-        env:
-          SNS_BRIEF: ${{ inputs.brief || '0' }}   # §📰-e 카나리아 — 기본 OFF 머지 → dispatch brief=1 실측 → 승격 시 || '1'
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA · news-analyze 관용구)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
-          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
-        run: bash .github/scripts/sns_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 수집 커밋 비차단)
-
       - name: Commit
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add viewer/sns_trends.json viewer/sns_brief.json 2>/dev/null || true
+          git add viewer/sns_trends.json 2>/dev/null || true
           git diff --cached --quiet && { echo "변동 없음 — 커밋 생략"; exit 0; }
           git commit -m "sns-trends: 유튜브·트렌드 갱신"
           for i in 1 2 3 4; do
