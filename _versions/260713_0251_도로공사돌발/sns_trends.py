@@ -87,7 +87,6 @@ HN_ON = (os.environ.get("SNS_HN") or "").strip() == "1"          # ⑫ 해커뉴
 FIN_ON = (os.environ.get("SNS_FIN") or "").strip() == "1"        # ⑬ 금융(환율+코인) 게이트(무키 · 운영자 260713)
 SAFETY_KEY = (os.environ.get("SAFETY_KEY") or "").strip()        # ⑭ 재난문자 = 공공데이터포털 키(없으면 no-op 스캐폴드 · 운영자 260713)
 KOBIS_KEY = (os.environ.get("KOBIS_KEY") or "").strip()          # ⑮ KOBIS 박스오피스 키(없으면 no-op · 운영자 260713)
-EX_KEY = (os.environ.get("EX_KEY") or "").strip()                # ⑯ 도로공사 돌발상황 키(없으면 no-op · 운영자 260713 "대량 사고 감지")
 
 
 def _get(url, timeout=15):
@@ -733,52 +732,6 @@ def kobis(limit=10):
         return []
 
 
-# ⑯ 돌발 유형 필터 — 사고성만(대량 사고 감지가 목적 · 운영자 260713) · 공사/정체/행사 = 일상 노이즈 컷
-EX_ACCIDENT = ("사고", "전복", "추돌", "화재", "낙하", "역주행", "다중")
-EX_NOISE = ("공사", "작업", "정체", "행사", "청소", "제설", "점검")
-
-
-def expressway(limit=10):
-    """⑯ 고속도로 돌발상황 — 한국도로공사 공공데이터(data.ex.co.kr · env EX_KEY 필수 · 없으면 [] no-op).
-    대량 연쇄추돌 등 사고성 이벤트만 필터(EX_ACCIDENT 포함 or EX_NOISE 제외 실패 시 보수 컷).
-    ⚠️ 엔드포인트·응답 스키마 = 문서 페이지가 외부 fetch 차단이라 통설 기본값 + env EX_URL 노브
-    (§📰-e: 카나리아 로그의 응답 앞부분 진단 출력으로 1회에 확정 — 미스매치면 EX_URL만 교체).
-    파싱 = 래퍼 관용(list/data/최상위 배열) + 필드 다중 폴백. 실패 = [] (fail-soft)."""
-    if not EX_KEY:
-        return []
-    try:
-        u = (os.environ.get("EX_URL") or "https://data.ex.co.kr/openapi/burstInfo/realTimeIncidentInfo") \
-            + "?key=" + urllib.parse.quote(EX_KEY) + "&type=json"
-        body = _get(u)
-        j = json.loads(body)
-        lst = j if isinstance(j, list) else ((j.get("list") or j.get("data") or j.get("realTimeIncidentInfoList") or []) if isinstance(j, dict) else [])
-        out = []
-        for it in (lst if isinstance(lst, list) else []):
-            if not isinstance(it, dict):
-                continue
-            # 필드 다중 폴백(도로공사 API 표기 편차 대비)
-            txt = (it.get("incidentContent") or it.get("content") or it.get("incidentTitle") or it.get("eventContent") or "").strip()
-            typ = (it.get("eventType") or it.get("incidentType") or it.get("type") or "").strip()
-            route = (it.get("routeName") or it.get("roadName") or it.get("route") or "").strip()
-            hay = txt + typ
-            if not txt:
-                continue
-            if not any(k in hay for k in EX_ACCIDENT):
-                continue   # 사고성 아닌 것 컷(보수 — 목적 = 대량 사고 신호)
-            if any(k in typ for k in EX_NOISE):
-                continue
-            out.append({"title": txt[:200], "route": route[:40], "type": typ[:20],
-                        "time": (it.get("occurDate") or "") + (it.get("occurTime") or it.get("startDate") or ""),
-                        "url": "http://www.roadplus.co.kr/"})   # 개별 딥링크 부재 = 로드플러스 홈
-        if not out and lst == [] and isinstance(j, dict):
-            # 래퍼 미스매치 진단(카나리아 1회 확정용) — 응답 앞 200자만(키 미포함 안전)
-            print(f"::warning::expressway 래퍼 미스매치 의심 — 응답 헤드: {body[:200]}", file=sys.stderr)
-        return out[:limit]
-    except Exception as e:  # noqa: BLE001
-        print(f"::warning::expressway 실패(스킵): {e}", file=sys.stderr)
-        return []
-
-
 def _annotate_rank(cur, prev, keyfn):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
@@ -862,7 +815,6 @@ def main():
     fin = finance() if FIN_ON else {}        # ⑬ 금융 환율+코인(무키 · dict {rates,coins})
     dis = disaster() if SAFETY_KEY else []   # ⑭ 재난문자(키 게이트 = 키 있을 때만 · no-op 스캐폴드)
     kob = kobis() if KOBIS_KEY else []       # ⑮ KOBIS 박스오피스(키 게이트)
-    exw = expressway() if EX_KEY else []     # ⑯ 고속도로 돌발·사고(키 게이트 · 운영자 260713 "대량 사고")
     # 구독 축(④) — SNS_SUBS=1일 때만 수집(§📰-e 카나리아). OFF/실패 = 기존 subs 보존.
     subs_new, acc = None, None
     if SUBS_ON:
@@ -895,7 +847,7 @@ def main():
             pass
     fin_any = bool(fin) and (bool(fin.get("rates")) or bool(fin.get("coins")))
     subs_any = bool(subs_new) and any(subs_new.values())
-    if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs and not hn and not fin_any and not dis and not kob and not exw:
+    if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs and not hn and not fin_any and not dis and not kob:
         # 전 소스 실패(네트워크 등) = 기존 파일 보존·무커밋(no-op) — 빈 파일로 덮어 유실 방지
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
@@ -915,7 +867,6 @@ def main():
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
     _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
     _annotate_rank(kob, prev.get("kobis"), lambda t: t.get("title"))
-    _annotate_rank(exw, prev.get("expressway"), lambda t: t.get("title"))   # ⑯ 동일 규격
     psubs = prev.get("subs") or {}
     subs = psubs
     if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
@@ -950,7 +901,6 @@ def main():
               "pann": _hh("pann", pn, PANN_ON),
               "hackernews": _hh("hackernews", hn, HN_ON), "finance": _hh("finance", (fin.get("rates") or []) + (fin.get("coins") or []) if fin else [], FIN_ON),
               "disaster": _hh("disaster", dis, bool(SAFETY_KEY)), "kobis": _hh("kobis", kob, bool(KOBIS_KEY)),
-              "expressway": _hh("expressway", exw, bool(EX_KEY)),
               "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
     data = {
         "updated": now,
@@ -974,7 +924,6 @@ def main():
         "finance": (fin if fin_any else (prev.get("finance") or {})),   # ⑬ 금융 {rates,coins}(실시간 시세 = 직전분 폴백)
         "disaster": dis or prev.get("disaster") or [],   # ⑭ 재난문자(키 없으면 [] · 있으면 최신)
         "kobis": kob or prev.get("kobis") or [],     # ⑮ KOBIS 박스오피스(키 게이트)
-        "expressway": exw or prev.get("expressway") or [],   # ⑯ 고속도로 돌발·사고(키 게이트 · 사고성만 필터)
         "health": health,   # 소스별 {ok, n, last_ok[, off]} — 죽은 소스 가시화(260713 · 표시 전용 데이터 · 워치독 소비)
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
@@ -983,7 +932,7 @@ def main():
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 판 {len(data['pann'])}{'' if PANN_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 판 {len(data['pann'])}{'' if PANN_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'}")
 
 
 if __name__ == "__main__":
