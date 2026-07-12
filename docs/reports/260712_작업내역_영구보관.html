@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>작업 내역 영구 보관 + 영상 접힘 토글 — 260712</title>
+<style>
+/* 색 = viewer :root 토큰값 복사 인라인(보고서 = 일회성 스냅샷 · §작업표준 b) */
+:root{ --bg:#0b0d0c; --fg:#eef7f0; --mut:#8a9490; --accent:#00EED2; --danger:#e23b2a; --warn:#FFE13D; --hist:#d8ff3d; --line:rgba(255,255,255,.08); --pan:rgba(255,255,255,.03); --r:16px; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ background:var(--bg); color:var(--fg); font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif; line-height:1.6; padding:28px 18px 60px; max-width:760px; margin:0 auto; font-size:15px; }
+h1{ font-size:21px; margin-bottom:4px; }
+.sub{ color:var(--mut); font-size:13px; margin-bottom:26px; }
+h2{ font-size:15px; font-weight:800; margin:30px 0 10px; }
+h2 b{ color:var(--accent); font-weight:700; }
+p{ margin-bottom:8px; }
+.mut{ color:var(--mut); }
+.card{ background:var(--pan); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:12px; }
+table{ width:100%; border-collapse:collapse; font-size:13.5px; margin:8px 0; }
+th,td{ text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th{ color:var(--mut); font-weight:700; white-space:nowrap; }
+.tw{ overflow-x:auto; }
+code{ font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; background:rgba(255,255,255,.06); border-radius:5px; padding:1px 5px; }
+.ok{ color:var(--accent); font-weight:800; } .bad{ color:var(--danger); font-weight:800; } .wr{ color:var(--warn); font-weight:800; }
+ul{ padding-left:18px; } li{ margin-bottom:5px; }
+/* 접힘 토글 실물 재현 목업(edit/ly .lyjobs-h 규격 복사) */
+.mock{ border:1px solid var(--line); border-radius:var(--r); padding:10px 14px; margin:10px 0; background:rgba(255,255,255,.02); }
+.mh{ display:flex; align-items:center; gap:8px; padding:10px 2px; font-size:13px; font-weight:700; }
+.mh .bul{ color:var(--hist); font-weight:700; }
+.mh .cnt{ color:var(--mut); font-weight:600; font-size:12px; }
+.mh svg{ margin-left:auto; color:var(--hist); }
+.mh.open .ttl{ color:var(--accent); text-shadow:0 0 10px rgba(0,238,210,.45); }
+.mh.open svg{ transform:rotate(180deg); color:var(--accent); }
+.mjob{ display:flex; align-items:center; gap:10px; padding:10px 2px; border-top:1px solid var(--line); font-size:13px; animation:histIn .32s cubic-bezier(.22,.61,.36,1) both; }
+.mjob:nth-child(2){ animation-delay:.06s } .mjob:nth-child(3){ animation-delay:.12s }
+@keyframes histIn{ from{ opacity:0; transform:translateY(10px) scale(.985);} to{ opacity:1; transform:none; } }
+.mjob .jts{ flex:none; color:var(--mut); font-variant-numeric:tabular-nums; font-size:12px; }
+.mjob .jt{ flex:1; font-weight:700; } .mjob .jst{ flex:none; font-size:12px; font-weight:800; color:var(--accent); }
+@media (prefers-reduced-motion:reduce){ .mjob{ animation:none; } }
+</style>
+</head>
+<body>
+<h1>작업 내역 영구 보관 + 영상 접힘 토글</h1>
+<div class="sub">이미지·영상 작업 내역 = 기기·시간 무관 항상 · 최근작 접힌 복원 상시 · 영상 = 이미지 접기 문법 계승 · 260712</div>
+
+<h2><b>0.</b> 로그 조사 결론 — "묻힌" 게 아니라 만료였다</h2>
+<div class="card">
+<p><b>가장 최근 이미지가 접혀서 위에 머무는 기능</b>은 코드에 온전히 살아있었어(최근 저작권 통합·합성 미리보기 커밋 전후 diff 동일 — 다른 섹션이 덮은 것 아님). 사라져 보인 진짜 원인 = <b class="bad">만료 창 3중</b>:</p>
+<ul>
+<li>로컬 최근 제작(<code>THUMB_LAST</code>) = <b>12시간 만료</b> → 12h 지나면 접힌 결과 미복원</li>
+<li>이전 제작 서버분 = <b>12시간 표시 필터</b> → 어느 기기든 12h 지난 건 안 보임</li>
+<li>빌드 인덱스(<code>thumb-hist.json</code>) = <b>48시간 컷</b> → 애초에 이틀치만 실림</li>
+</ul>
+<p class="mut">데이터는 전부 잔존(thumb_out 349건 = 260615부터 한 달치 · comp_out · resize.json · ly_out 17건) — 표시 창만 좁았던 것. 참고로 접기 강조색 = 이력색 라임옐로(<code>--hist-accent #d8ff3d</code>).</p>
+</div>
+
+<h2><b>1.</b> 전 → 후</h2>
+<div class="tw"><table>
+<tr><th></th><th>전</th><th>후</th></tr>
+<tr><td><b>이미지 이전 제작</b></td><td>최근 12h만 · 그 뒤 섹션째 소멸</td><td class="ok">전 기기·전체 보관(최신 400장 캡) — 한 달치 실측 400건</td></tr>
+<tr><td><b>최근작 접힌 결과</b></td><td>12h 지나면 미복원(= "묻힘" 체감)</td><td class="ok">시간 무관 항상 접힌 채 위에 · 타 기기 최신이 더 새로우면 그걸로 · 서버 src 있으면 연필(수정)도 활성</td></tr>
+<tr><td><b>영상 작업 내역(편집·자막)</b></td><td>펼쳐진 평면 리스트 20행</td><td class="ok">기본 접힘 토글(라임 블릿+개수+쉐브론) · 펼치면 촤르륵 스태거 · 60행</td></tr>
+<tr><td><b>시각 표기</b></td><td>오늘/어제만(이틀+ = 맨 시각)</td><td class="ok">이틀+ = <code>M/D</code> 날짜 접두</td></tr>
+</table></div>
+<div class="mock">
+<div class="mh open"><span class="ttl"><span class="bul">•</span> 작업 내역 <span class="cnt">(17)</span></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+<div class="mjob"><span class="jts">07-11 22:41</span><span class="jt">9:16 · 블러 채움 · 음량 통일</span><span class="jst">완료</span></div>
+<div class="mjob"><span class="jts">07-10 14:02</span><span class="jt">뉴스 릴스 자막</span><span class="jst">완료</span></div>
+<div class="mjob"><span class="jts">07-07 06:00</span><span class="jt">쇼츠 클립 후보</span><span class="jst">완료</span></div>
+</div>
+<p class="mut">↑ 펼침 순간 실물 재현(행 스태거 촤르륵 · 열면 타이틀 터쿼이즈 점등 · 접힘 마커 = 라임)</p>
+
+<h2><b>2.</b> 장단점</h2>
+<div class="card">
+<ul>
+<li><b class="ok">장점</b> — 어느 폰·PC·네트워크든 같은 라이브러리(서버 인덱스가 정본·localStorage는 배포랙 1분 브리지로만) · 최근작 상시 접힌 복원 = 이어서 작업 감각 유지 · 영상·이미지 접기 문법 통일(계승 = 재설계 0) · 폼 하단 점유 최소(기본 접힘)</li>
+<li><b class="wr">트레이드오프</b> — 인덱스 400건 ≈ 80~100KB 매 진입 재검증(이미지는 lazy = 스크롤한 만큼만) · 캡 밖(401장째~·리사이즈 25건째~) 구항목은 표면에서만 소실(데이터 잔존 = 캡 상향 한 줄)</li>
+</ul>
+</div>
+
+<h2><b>3.</b> 효율성</h2>
+<p>신규 네트워크 요청 0(기존 인덱스 fetch 그대로 · 창만 확장) · 애니는 CSS 키프레임 재사용(histIn/histOut 원값 복사) · 빌드 로그가 캡 절단분 정직 고지(<code>전체 454건 중 최신 400장</code>).</p>
+
+<h2><b>4.</b> 품질 저하 리스크 (정직)</h2>
+<div class="card">
+<ul>
+<li>죽은 R2/git 이미지 = 기존 404 방어가 슬롯 자동 철거(전멸 시 유령 캐러셀 통째 철거) — 전체 보관로 구항목 노출이 늘며 발동 빈도도 늘 수 있음(의도 동작)</li>
+<li><b>기록 지우기</b>는 종전대로 "그 기기에서 지운 시점 이전 전부 숨김" — 이제 라이브러리 전체가 대상이라 실수 탭 시 통째 숨어 보임(복구 = 그 기기 localStorage <code>nomute_thumb_hist_cleared</code> 제거)</li>
+<li>영상 인덱스는 원래 만료 없음이라 회귀 축 없음 · 토글은 표시층만(openJob·발사·폴 무접촉)</li>
+</ul>
+</div>
+
+<h2><b>5.</b> 검증 (자가 + CI)</h2>
+<ul>
+<li><code>check_refs</code> 전 게이트 rc=0 · 3파일 JS 구문 + build-viewer 구문 OK</li>
+<li>빌드 드라이런 = 400건 생성(260618~260711) 실측</li>
+<li>헤드리스 실클릭 — ly·edit: 기본 접힘·개수·펼침 스태거·aria·닫힘 촤르륵→hidden 전부 통과 / thumb: 부팅 접힌 결과 복원(헤더만·내용 접힘)·이전 제작 399건·M/D 접두·JS 에러 0</li>
+<li>PR #1982(편집 작업내역 라이브러리)와 충돌 0 — 그 산출 위에 토글만 얹음(openJob·인덱스 로직 무접촉)</li>
+</ul>
+<p class="mut">라이브 확인 포인트: 도구 모달 열고 ① 썸네일 탭 맨 위 "• 결과 (N)" 접힌 헤더가 떠 있는지 ② "이전 제작" 펼치면 옛날 것까지 나오는지(일주일 전 포함) ③ 편집·자막 탭 맨 아래 "• 작업 내역 (N)" 접힘 → 탭하면 촤르륵.</p>
+</body>
+</html>
