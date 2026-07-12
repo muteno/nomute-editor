@@ -416,10 +416,14 @@ def _annotate_rank(cur, prev, keyfn):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
     rh = 최근 순위 배열(직전 항목의 rh에 이어붙임 · 최대 16점 = 30분 크론 ×16 ≈ 8h — 뷰어 TOP 10 스파크라인 원료·표시 전용·랭킹 무영향).
+    first_seen = 항목 최초 관측 시각(KST ISO · 운영자 260712 "모든 것에 시간 기록") — 신규 진입·씨앗 = 지금, 기존 = 직전값 승계(구 스냅샷 무필드 = 지금 도장 best-effort).
+    발행시각 없는 소스(gtrends 실검 등)의 뷰어 상대시간(relAge) 폴백 원천 = 표시 전용·랭킹 무영향.
     prev 없음(첫 수집·소스 전환) = 배지 스킵(전부 NEW 노이즈 방지)·rh 씨앗만."""
+    now_iso = datetime.now(KST).isoformat(timespec="seconds")
     if not prev:
         for i, x in enumerate(cur):
             x["rh"] = [i + 1]
+            x["first_seen"] = now_iso
         return cur
     pmap = {keyfn(x): (i, x) for i, x in enumerate(prev) if keyfn(x)}
     for i, x in enumerate(cur):
@@ -433,9 +437,11 @@ def _annotate_rank(cur, prev, keyfn):
                 x["delta"] = dl   # 유지(0)는 미표기 = 배지 없음(뷰어 깔끔)
             ph = px.get("rh") if isinstance(px, dict) else None   # 구 스냅샷(rh 없음) = 직전 순위 1점 폴백
             x["rh"] = (ph or [pi + 1])[-15:] + [i + 1]
+            x["first_seen"] = (px.get("first_seen") if isinstance(px, dict) else None) or now_iso
         else:
             x["isNew"] = True
             x["rh"] = [i + 1]
+            x["first_seen"] = now_iso
     return cur
 
 
