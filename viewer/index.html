@@ -653,6 +653,18 @@
   .snsview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }      /* SNS = 첫 글래스 블록(소셜 카드) 시작선을 feed·scrap과 통일(pt 2→10 · 운영자 260627 점1) */
   .trendview { max-width:860px; margin:0 auto; padding:10px 36px 64px; }    /* 트렌드(메뉴4) = 세로 시작점(pt 10)·최대폭·중앙정렬 = snsview 계승 불변 · 좌우 36 = 좌측 책갈피 레일 차선 + 대칭(운영자 260712 IA 재편 — 비대칭 붙음 금지 정합) */
   .wrap, .scrapview, .snsview, .trendview { min-height:72vh; }   /* 로딩(빈 상태)에도 뷰가 화면을 채워 푸터가 상단으로 솟지 않게 */
+  /* PC 전폭 = 트렌드 탭 한정 폰프레임(860) 해제 → 넓은 화면 좌우 여백 활용(운영자 260712 "PC 여백 다 쓰셈" · 분신술 5인 검증): 카드 그리드(.trend-grid auto-fill)는 폭 따라 열 자동 증가 · 단일열 리스트/X카드는 2·3열 분할로 채워 행 팽창 방지 · 헤더(워드마크·타이틀·검색)도 동폭 정렬 · 좌측 책갈피 레일 좌변 재앵커 · 배너 없음(topbanner.slim = bannerframe display:none이라 왜곡 무관) */
+  @media (min-width:900px){
+    body[data-tab="trend"] .topbanner,
+    body[data-tab="trend"] .viewhead,
+    body[data-tab="trend"] .trendview { max-width:1600px; }
+    body[data-tab="trend"] .trail { left:max(calc(4px + env(safe-area-inset-left,0px)), calc(50vw - 834px)); }   /* 콘텐츠 박스 좌변 −34px 차선(레일폭 28+간격 6) = 800(1600/2)+34 · 860일 때 464=430+34 계승 규칙(box-sizing:border-box라 패딩 무관) */
+    /* 단일열 리스트·X카드 = 넓은 폭에서 열 분할(행 늘리기 방지 = 여백을 콘텐츠로 채움 · 분신술 그리드리스트 앵글) */
+    body[data-tab="trend"] .tlist,
+    body[data-tab="trend"] .trend-sec:has(> .trend-row) { display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sp-4); align-content:start; }
+    body[data-tab="trend"] .trend-sec:has(> .trend-row) > summary { grid-column:1 / -1; }
+    body[data-tab="trend"] .xgrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  }
   /* SNS 탭 = 소셜 버스트(커뮤니티 비정치 공론화) 레인 — 시안 테마 카드. social_candidates.json 렌더(renderSns). 정본 설계 = docs/social-burst.md */
   #snsList { display:flex; flex-direction:column; gap:11px; }
   /* 트렌드 레인(메뉴4 트렌드 탭 · 운영자 260710 배치 승인·260711 메뉴4 이동) — 카드 = .soc-item 실크 글래스 그대로 계승 · 라벨 = 소머리 표준(§표기표준: 텍스트 --fg·fw-x·블릿 --accent·fw-b·--fs-label) · 수치 = tabular-nums · 신규 색 0(전부 토큰) */
@@ -737,12 +749,12 @@
     mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat; }   /* 접기 체브론 = .trend-sec 디스클로저 동일 mask 계승 */
   .tgroup:not([open]) .tgroup-h::after { transform:rotate(-90deg); }
   .tgroup:not([open]) .tgroup-h { margin-bottom:0; }
-  /* 접기/펼치기 부드러운 애니(운영자 260712 #1 "촤르륵") — CSS-only 프로그레시브 인핸스먼트: ::details-content 미지원 브라우저는 종전 스냅(회귀 0) */
-  .tgroup { interpolate-size:allow-keywords; }   /* auto 높이 보간 허용 — 이 서브트리 한정(전역 부작용 차단) */
-  .tgroup::details-content { block-size:0; overflow:clip; transition:block-size .32s var(--ease), content-visibility .32s allow-discrete; }
-  .tgroup[open]::details-content { block-size:auto; }
+  /* 접기/펼치기 부드러운 애니(운영자 260712 #1 "촤르륵 둘다") — 최상위 .tgroup + 하위 소머리 .trend-sec 양쪽 · CSS-only 프로그레시브 인핸스먼트(::details-content 미지원=종전 스냅·회귀0) */
+  .tgroup, .trend-sec { interpolate-size:allow-keywords; }   /* auto 높이 보간 허용 — 서브트리 한정(전역 부작용 차단) */
+  .tgroup::details-content, .trend-sec::details-content { block-size:0; overflow:clip; transition:block-size .32s var(--ease), content-visibility .32s allow-discrete; }
+  .tgroup[open]::details-content, .trend-sec[open]::details-content { block-size:auto; }
   .tgroup-h { transition:margin-bottom .32s var(--ease); }   /* 헤더 하단 간격도 동반 슬라이드(펼침 14→0 스냅 방지) */
-  @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .tgroup-h { transition:none; } }
+  @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .trend-sec::details-content, .tgroup-h { transition:none; } }
   .tgroup-h .tdash-time { margin-left:12px; margin-right:auto; }   /* 수집시각 = 타이틀 옆 유지 · 체브론(ml:auto)과 공존 = 시각이 좌측군 */
   .tgroup-h i { font-style:normal; color:var(--accent); font-variant-numeric:tabular-nums; }   /* 단위 순번(1 AI 요약·2 TOP 10·3+ 플랫폼) = 랭크 강조색 문법(.trend-rank) 계승 */
   /* ── TOP 카드 레일(.tpg/.tpc — 운영자 260712 플레이그라운드 선택값 배선: 레일 2행(1~5/6~10)·카드 148·1:1 커버 r-s·순위 필 h15/fs10·구분자행(cat 재지정)→제목 2줄 11px→원시 조회+우측 시간(relAge)·NEW만·로테이션 글로우) — 구 .tdr 행 리스트 폐지 ── */
@@ -949,7 +961,7 @@
   .vh-acts .topsearch { position:relative; right:auto; bottom:auto; top:auto; height:auto; margin:0; z-index:auto; }   /* 배너 시절 absolute 앵커·z6 해제 → 행 플로우(평의회1 잔재 정리) */
   /* (구 .vh-acts .topsearch input 펼침 앵커 삭제 — 검색 = 중앙 오버레이(#sovl) 전환 · 260706 5차) */
   /* 설정(기어) 버튼 = 옛 프로필 아바타 대체(운영자 260706 "프로필 버튼을 설정 픽토그램으로") — id·메뉴·배지·상태링 JS 전부 불변, 외형만 .ts-toggle 패밀리 편입 */
-  .vh-acts .profile { position:relative; right:auto; bottom:auto; z-index:auto; width:var(--btn-sm); height:var(--btn-sm); padding:0; border:none; border-radius:50%; background:none; box-shadow:none; overflow:visible; display:grid; place-items:center; transition:transform var(--dur) var(--ease); }   /* right/bottom auto = 아바타 시절 absolute 오프셋 잔상 차단 · box = --btn-sm(평의회4 토큰 배선) */
+  .vh-acts .profile { position:relative; right:auto; bottom:auto; z-index:auto; width:var(--btn-sm); height:var(--btn-sm); padding:0; border:none; border-radius:50%; background:none; box-shadow:none; overflow:visible; display:none; place-items:center; transition:transform var(--dur) var(--ease); }   /* 설정 톱니 = 도먼트(운영자 260712 "설정 톱니 없애 다") — 새로고침(.ts-rf)과 동일 패턴 · DOM·메뉴·배지·상태링 JS 전부 보존(재점등 = display:grid) · box = --btn-sm(평의회4 토큰 배선) */
   .vh-acts .profile::after { content:''; position:absolute; inset:-7px; border-radius:50%; background:none; z-index:auto; }   /* 아바타 그라데 링 → 탭영역 확장 패드로 전용(vh-fbtn ::after 계승) */
   .vh-acts .profile:hover { transform:none; }   /* 아바타 시절 translateY 해제 */
   @media (hover:hover){ .vh-acts .profile:hover { transform:scale(1.18); } }   /* .ts-toggle hover 계승 */
@@ -958,7 +970,7 @@
   .vh-acts .profile.hasmsg { box-shadow:0 0 0 1.5px rgba(var(--accent-rgb),.55), 0 0 10px rgba(var(--accent-rgb),.28); }   /* 메시지 링 시그널 유지(아바타 드롭섀도 항만 제거) · 신규 선언은 토큰형(--accent-rgb) — raw 재유입 0 */
   .vh-acts .profile.shc-bad, .vh-acts .profile.hasmsg.haswarn { box-shadow:0 0 0 1.6px rgba(var(--warn-rgb),.95), 0 0 14px rgba(var(--warn-rgb),.55) !important; }   /* 맞춤법/수집실패 노란 링 유지 */
   .vh-acts .ts-rf { display:none; }   /* 새로고침 픽토그램 = 도먼트(운영자 260706 3차 "우상단 검색만") · DOM·JS 보존(재점등 = 이 줄 삭제) */
-  /* 설정(기어=.profile) = 260710 재활성 = 헤더 최우측 톱니바퀴로 부활(운영자 "대기열 자리에 설정 톱니바퀴 고정") · 클릭 = 설정 메뉴(linkpop) 헤더 아래 우측 촤르륵 · 위 .profile{display:grid}가 살아나 표시 */
+  /* 설정(기어=.profile) = 260710 부활 → 260712 재도먼트(운영자 "설정 톱니 없애 다") · 위 .profile{display:none} · DOM·메뉴(linkpop)·배지·상태링 JS 보존(재부활 = display:grid) */
   .viewhead .pmenu { right:calc(var(--btn-sm) + var(--sp-1)); top:38px; }   /* 설정 메뉴 = 가시 클러스터(.vh-acts) 우변과 정렬(옛 right:16 = 도먼트 기어 슬롯 스테일 앵커 = 클러스터보다 20px 돌출 → 36 토큰으로 정합) · 현 도먼트(기어 display:none · lpSettings가 linkfab 기준 재앵커라 라이브 영향0이나 정리·분신술10 260707) */
   /* (구 .vh-title 18px/800 행내 타이틀 규칙 삭제 — 260706 3차 워드마크 서브 이주 · 정본 = .topbanner.slim .vh-title 9px PGSans) */
   .vh-sub { font-size:12.5px; color:var(--mut); line-height:1.5; margin:0; }
@@ -3015,7 +3027,7 @@ try {
 <!-- 트렌드 인앱 임베드 뷰어 — 운영자 260711 "웹앱 내 팝업 모달로 관련 링크" · 카드/행 탭 = 플랫폼 임베드 전용 URL(유튜브 embed·틱톡 embed/v2·릴스 /embed/·X platform embed) iframe · 임베드 불가 소스(실검 뉴스 등) = 종전 새 탭 · '원문' = 새탭 폴백(릴스 로그인벽 등 임베드 변덕 대비) -->
 <dialog id="trviewdlg" aria-label="트렌드 보기">
   <div class="modal-head"><b id="tvTitle"></b><a class="tv-open" id="tvOpen" href="#" target="_blank" rel="noopener">원문</a><button class="tool-x dlg-x" type="button" id="tvX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
-  <div class="tv-body pt"><iframe id="tvFrame" title="임베드 콘텐츠" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe><div class="tv-swz" id="tvSwz" aria-hidden="true"></div><div class="tv-nav" id="tvNavBox" hidden><button class="tv-nv" id="tvPrev" type="button" aria-label="이전 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button><button class="tv-nv" id="tvNext" type="button" aria-label="다음 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div></div>
+  <div class="tv-body pt"><iframe id="tvFrame" title="임베드 콘텐츠" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><!-- referrerpolicy = strict-origin-when-cross-origin(브라우저 기본): 유튜브 임베드 플레이어는 부모 origin(referrer)로 도메인 임베드 허가를 검증 → no-referrer면 referrer 통째 제거돼 '오류 153 동영상 플레이어 구성 오류'로 재생 불가(운영자 260712 스샷 실측·수리). strict-origin은 경로는 감추고 origin(https://apps.nomute.kr)만 전송 = 도메인 검증 충족하면서 타 플랫폼(틱톡·릴스·X) 임베드 무영향(원래 referrer 안 봄). --><div class="tv-swz" id="tvSwz" aria-hidden="true"></div><div class="tv-nav" id="tvNavBox" hidden><button class="tv-nv" id="tvPrev" type="button" aria-label="이전 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button><button class="tv-nv" id="tvNext" type="button" aria-label="다음 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div></div>
   <div class="tv-foot"><span class="tv-status" id="tvStatus" role="status" aria-live="polite"></span><button class="ed-go" id="tvDl" type="button">다운로드</button><button class="ed-go" id="tvSrc" type="button">편집기</button><button class="ed-go" id="tvAsk" type="button">요약 요청</button></div>
 </dialog>
 
@@ -8959,6 +8971,8 @@ function renderSnsTrends() {
     let st = {}; try { st = JSON.parse(localStorage.getItem('nm_trend_gfold') || '{}') || {}; } catch { st = {}; }
     if (dt.open) delete st[dt.dataset.g]; else st[dt.dataset.g] = 1;
     try { localStorage.setItem('nm_trend_gfold', JSON.stringify(st)); } catch {}
+    const rail0 = box.querySelector('#trendRail');   // 접을/펼칠 때 좌측 레일도 그 섹션 점등 = 네비 싱크(운영자 260712 #2 "접을 때 동시작동" 방향)
+    if (rail0) { const gid = dt.dataset.g === 'brief' ? 'top' : dt.dataset.g; rail0.querySelectorAll('.trail-i').forEach(b2 => b2.classList.toggle('on', b2.dataset.tg === gid)); }
   }));
   // 레일 스크롤스파이 = IntersectionObserver(현재 그룹 점등 · 상단 12~42% 밴드) — 재렌더마다 구 관측 해제(누수 방지)
   if (box._trIO) { try { box._trIO.disconnect(); } catch {} box._trIO = null; }
