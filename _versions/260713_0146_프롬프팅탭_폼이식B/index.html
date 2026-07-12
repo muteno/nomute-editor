@@ -1729,10 +1729,7 @@
   .askhost { flex:1; min-height:0; overflow-y:auto; background:var(--modal-tabs-bg); }   /* 요약 요청 가상 탭 = iframe 자리와 동일 표면(내용부 = 탭 띠 색 통일 · 운영자 260712) */
   .askhost .askwrap { padding-top:20px; }   /* 첫 요소 화면선 = 영상 셸 첫 소머리와 정렬(실측 175.6 vs 177.6 = +2px 보정 · §디자인 y 연쇄 — 탭바 높이 바뀌면 재실측) */
   .askhost[hidden] { display:none; }
-  .askhost .askhead { display:none; }   /* 이식된 askwrap의 자체 헤더(제목·−·X) = 도구 셸 헤더(tool-h)와 중복 → 숨김(도구 모달 = 헤더 1개 표준) */
-  .genihost { position:relative; display:flex; flex-direction:column; overflow:hidden; }   /* 프롬프팅 이식 탭(운영자 260713 B — askhost 표면 계승 + 다이얼로그 flex column 문법 유지 = 바디 스크롤·푸터 고정) · relative = .geni-dd 앵커 기준(다이얼로그 :modal 역할 대체) · [hidden]은 .askhost[hidden](0-2-0)이 이김 */
-  .genihost .dlg-h { display:none; }   /* 이식된 자체 헤더(이미지 생성·X) = 도구 셸 헤더와 중복 → 숨김(.askhost .askhead 선례) */
-  .genihost .geni-body { padding-top:20px; }   /* 첫 소머리 화면선 = askhost 20px 계승(§디자인 y 연쇄 — 탭바 높이 바뀌면 재실측) */   /* 도구 iframe — 다중 도구(이미지·영상) = 활성 1개만 .active(표시)·나머지 보존(display:none) · 운영자 260628 · 내용부 표면 = 탭 띠(--modal-tabs-bg)와 통일(옛 투명=글래스 비침 → 내용이 안 보여 폐지 · 헤더 띠는 그대로 · 운영자 260704) */
+  .askhost .askhead { display:none; }   /* 이식된 askwrap의 자체 헤더(제목·−·X) = 도구 셸 헤더(tool-h)와 중복 → 숨김(도구 모달 = 헤더 1개 표준) */   /* 도구 iframe — 다중 도구(이미지·영상) = 활성 1개만 .active(표시)·나머지 보존(display:none) · 운영자 260628 · 내용부 표면 = 탭 띠(--modal-tabs-bg)와 통일(옛 투명=글래스 비침 → 내용이 안 보여 폐지 · 헤더 띠는 그대로 · 운영자 260704) */
   #tooldlg .toolfr.active { display:block; }   /* 활성 프레임만 노출 */
   #tooldlg.frame-ready .toolfr.active { opacity:1; }   /* load 완료 = 페이드인(로드 중엔 다크 글래스만) */
   /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
@@ -3232,7 +3229,6 @@ try {
   <div class="tool-tabs" id="toolTabs"></div>
   <iframe id="toolframe" class="toolfr" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write; fullscreen"></iframe><!-- fullscreen = 자막 완성영상·프리뷰 전체화면(안드로이드 크롬 Fullscreen API · 260707) -->
   <div id="askHost" class="askhost" hidden></div><!-- 요약 요청 가상 탭 호스트(운영자 260712 — 요약도 이미지·영상과 동일 도구 셸) = #askdlg .askwrap을 통째 이식(reparent · 폼·전송·첨부 로직 무복제 = 드리프트 0) · 닫힘/최소화 시 askdlg로 원복 -->
-  <div id="geniHost" class="askhost genihost" hidden></div><!-- 프롬프팅 이식 탭 호스트(운영자 260713 B "B로 간다" — askHost 선례 미러) = #genidlg 자식(헤더·바디·푸터)을 통째 이식(무복제 = 드리프트 0) · 기사 카러셀 + 경로는 팝업 유지(이중 홈 · 닫힘/최소화/발사 시 genidlg로 원복) -->
 </dialog>
 <!-- 제작 도구 최소화 복원 ▲ — fixed 고z 버튼(JS reparentNav가 열린 풀스크린 모달[요약리더#dlg·라이트박스] 안으로 옮겨 그 위에도 부유). 평시 탭=펼침 / 길게 눌러 "닫기" 뜨면 한 번 더 탭=완전종료. accent 그린(첨부1 우하단 특수버튼색 계승). -->
 <button id="toolRestore" class="tool-restore" type="button" aria-label="제작 도구 펼치기 (길게 누르면 닫기)" title="탭하면 펼치기 · 길게 누르면 닫기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg></button>
@@ -4204,13 +4200,12 @@ function geniStyleKo(v) { const hit = GENI_ALL_STYLES.find(x => x[0] === v); ret
 function geniSubKo(v) { if (v === 'auto') return '자동'; const hit = (GENI_SUB[_geniSel.style] || []).find(x => x[0] === v); return hit ? hit[1] : v; }
 function geniArVal() { const w = parseInt(_geniSel.arW, 10), h = parseInt(_geniSel.arH, 10); return (w >= 1 && w <= 99 && h >= 1 && h <= 99 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : null; }   // 직접 비율 유효값 — 각 1~99 + 비율 1:4~4:1(극단값 후처리 병리 차단 · 평의회3) = 서버·python 3층 동일 계약
 function geniAspect() { return _geniSel.aspect === 'custom' ? geniArVal() : _geniSel.aspect; }   // 발사 비율 — 직접 미완성 = null(게이트가 막음)
-function geniRoot() { const h = $('#geniHost'); return (h && !h.hidden) ? h : $('#genidlg'); }   // 폼 뿌리 단일점(이중 홈 · 운영자 260713 B) — 이식 탭 표시 중 = geniHost · 그 외(팝업·보관) = genidlg. 스코프 질의·선택박스 앵커 전부 이걸 경유
 // ── 선택박스(드롭다운) — 무채 크롬 목록(§디자인 i) · '기타 화풍'/'세부 화풍 직접' 공용(운영자 260710 "선택 박스 열어서") ──
 function geniDDClose() { if (_geniDD) { try { _geniDD._anchor.setAttribute('aria-expanded', 'false'); } catch {} _geniDD.remove(); _geniDD = null; document.removeEventListener('pointerdown', geniDDDoc, true); } }
 function geniDDDoc(e) { if (_geniDD && !_geniDD.contains(e.target) && !(_geniDD._anchor && _geniDD._anchor.contains(e.target))) geniDDClose(); }   // 바깥 탭 = 닫기(앵커 자체는 클릭 토글에 맡김)
 function geniDDOpen(anchor, list, cur, pick) {
   if (_geniDD) { const same = _geniDD._anchor === anchor; geniDDClose(); if (same) return; }   // 같은 버튼 재탭 = 토글 닫기 · 다른 버튼 = 갈아끼움
-  const host = geniRoot();   // 폼 뿌리 직속 앵커(6인 검증 P2 · 이식 탭 = geniHost relative 기준 · 260713 B) — 구 .geni-body 자식 = 스크롤 박스에 클리핑 + scroll=닫힘이라 잘린 항목 도달 불가 → 뿌리(:modal/relative = positioned) 기준이면 바디 스크롤 무관·클립 여유 최대
+  const host = $('#genidlg');   // 다이얼로그 직속 앵커(6인 검증 P2) — 구 .geni-body 자식 = 스크롤 박스에 클리핑 + scroll=닫힘이라 잘린 항목 도달 불가 → dialog(:modal = positioned) 기준이면 바디 스크롤 무관·클립 여유 최대
   const dd = document.createElement('div'); dd.className = 'geni-dd'; dd.setAttribute('role', 'listbox');
   dd.innerHTML = list.map(([v, ko]) => '<button type="button" class="geni-dd-it' + (v === cur ? ' on' : '') + '" role="option" aria-selected="' + (v === cur) + '" data-v="' + v + '">' + ko + '</button>').join('');
   dd.addEventListener('click', e => { const b = e.target.closest('.geni-dd-it'); if (!b) return; e.stopPropagation(); geniDDClose(); pick(b.dataset.v); });
@@ -4232,14 +4227,14 @@ function geniDDPlace(dd, anchor, host) {   // 배치 단일점(열기+스크롤 
 }
 function geniDDSync() {   // 바디 스크롤 = 닫기 아닌 앵커 추적 재배치 — 클릭 직전 스크롤 이벤트가 다음 프레임에 늦게 와 방금 연 목록을 닫던 레이스 수리(실측 260710) · 앵커가 가시영역 밖으로 나가면 그때 닫기
   if (!_geniDD) return;
-  const host = geniRoot(), body = host.querySelector('.geni-body');
+  const host = $('#genidlg'), body = host.querySelector('.geni-body');
   const ar = _geniDD._anchor.getBoundingClientRect(), br = body.getBoundingClientRect();
   if (ar.bottom < br.top + 6 || ar.top > br.bottom - 6) { geniDDClose(); return; }
   geniDDPlace(_geniDD, _geniDD._anchor, host);
 }
 function geniAccordion(el, open) { if (!el) return; el.classList.toggle('open', !!open); if (open) el.removeAttribute('inert'); else el.setAttribute('inert', ''); }   // 아코디언 = class+inert 한 쌍(camsub 계승 — 접힘 시 tab-order·SR 제거)
 function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on · 선택박스 라벨 · 아코디언 · 게이지 · 요약 리드백 · 게이트)
-  geniRoot().querySelectorAll('.geni-opts[data-k]').forEach(box => {
+  document.querySelectorAll('#genidlg .geni-opts[data-k]').forEach(box => {
     const k = box.dataset.k;
     box.querySelectorAll('.geni-opt').forEach(b => b.classList.toggle('on', b.dataset.v === _geniSel[k]));
   });
@@ -4295,7 +4290,7 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
 }
 function geniInit() {
   if (_geniInited) return; _geniInited = true;
-  geniRoot().querySelectorAll('.geni-opts[data-k]').forEach(box => {
+  document.querySelectorAll('#genidlg .geni-opts[data-k]').forEach(box => {
     const k = box.dataset.k;
     box.innerHTML = GENI_DICT[k].map(([v, ko]) => '<button type="button" class="geni-opt"' + (k === 'aspect' || k === 'size' || k === 'count' ? ' data-num="1"' : '') + ' data-v="' + v + '">' + ko + '</button>').join('');
     box.addEventListener('click', e => {
@@ -4377,8 +4372,7 @@ function geniInit() {
       try {
         const r = await fetch('api/genimg', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ free: true, opts }) });
         if (!r.ok) throw 0;
-        if (!$('#geniHost').hidden) geniLeave();   // 이식 모드 발사 = 폼 원복 + 작업내역(iframe) 노출(잡 카드 진행 가시 · genfree-fired가 selApp 6 유지 · 260713 B)
-        else $('#genidlg').close();
+        $('#genidlg').close();
         document.querySelectorAll('#tooldlg .toolfr').forEach(f => { try { f.contentWindow.postMessage({ nm: 'genfree-fired', count: opts.count, opts }, '*'); } catch (err) {} });   // count·opts 동봉 = /6 표준 잡 카드(장수·재시도) 재료(운영자 260710 축11 작업내역 합류 · 구 thumb 캐시는 무시해도 무해)
       } catch (err) { if (typeof _flashBtn === 'function') _flashBtn(gb, 'err'); }
       finally { gb.disabled = false; }
@@ -4392,7 +4386,7 @@ window.addEventListener('message', e => {   // 도구 iframe(/6 생성 탭) → 
   if (!e.data || e.data.nm !== 'genfree') return;
   const frs = Array.from(document.querySelectorAll('#tooldlg .toolfr'));
   if (!frs.some(f => f.contentWindow === e.source)) return;
-  geniMount();   // 스튜디오 표면(작업내역 화면 버튼) = 이식 탭으로(팝업 아님 · 운영자 260713 B — 표면당 한 방식: 스튜디오=탭 콘텐츠·기사 카러셀=팝업)
+  openGenIdlg(null);
 });
 function geniGate() {   // 발사 게이트 — 자유모드 = 주문 필수 · 직접 비율 = 유효 N:N 필수(사후 에러 대신 사전 disabled 어포던스)
   const go = $('#geniGo'); if (!go) return;
@@ -4404,7 +4398,7 @@ function geniVV() {   // 키보드로 축소된 visual viewport에 팝업 높이
   const dlg = $('#genidlg'); if (!dlg || !dlg.open || !window.visualViewport) return;
   dlg.style.maxHeight = Math.round(window.visualViewport.height * 0.92) + 'px';
 }
-function geniPrep(file, wrap, btn) {   // 상태 준비 공통부(팝업 openGenIdlg·이식 geniMount 겸용 분리 · 운영자 260713 B)
+function openGenIdlg(file, wrap, btn) {
   geniInit();
   _geniCtx = { file, wrap, btn, free: !file };   // free = 기사 컨텍스트 없음(이미지 제작 도구 /6 생성 탭 · 운영자 260707)
   const _free = !file;
@@ -4436,32 +4430,9 @@ function geniPrep(file, wrap, btn) {   // 상태 준비 공통부(팝업 openGen
   const _fold = $('#geniCamHead'), _sub = $('#geniCamSub');
   if (_fold) _fold.setAttribute('aria-expanded', _camOpen ? 'true' : 'false');
   if (_sub) { if (_camOpen) _sub.removeAttribute('inert'); else _sub.setAttribute('inert', ''); }
-  return _free;
-}
-function openGenIdlg(file, wrap, btn) {   // 기사 카러셀 + = 팝업 홈(이중 홈 정본 · 운영자 260713 B — 스튜디오 탭 홈 = geniMount)
-  geniUnmount();   // 이식 잔류 방어 — 폼 노드가 호스트에 남았으면 회수(다이얼로그 = 보관함)
-  const _free = geniPrep(file, wrap, btn);
   openComposeDlg($('#genidlg'));   // showModal + 폰 뒤로가기 칸(컴포즈 모달 표준)
   if (_free) setTimeout(() => { try { const w = $('#geniWish'); w.focus(); if (w.value) w.select(); } catch {} }, 80);   // 자유모드 = 주문칸 진입점(필수 입력이 곧 시작점 · 지연 = 모달 애니 후) · 복원값 전체선택 = 새 장면은 즉시 덮어쓰기·이어쓰기는 탭 한 번(260709)
 }
-function geniMount() {   // 프롬프팅 탭 = genidlg 폼을 탭 콘텐츠로 이식(운영자 260713 B "B로 간다" — askMount 선례 미러 · 팝업 한 겹 없이 폼이 바로 화면 · 발사·이탈·닫힘 = 원복)
-  const h = $('#geniHost'), gdlg = $('#genidlg'); if (!h || !gdlg || gdlg.open) return;   // 팝업(모달) 열림 중 = 불가(뒤 탭 클릭 물리 불가 — 방어선)
-  geniPrep(null);   // 자유 모드 상태 준비(옵션·장면 복원·placeholder·게이트) — 재진입 복원값 = 이탈 시점 스냅샷이라 왕복 무손실
-  while (gdlg.firstChild) h.appendChild(gdlg.firstChild);   // 통째 이식(무복제 = 드리프트 0 · askwrap 선례) — 노드 거처 불변식: 호스트에 있음 ⇔ 호스트 표시 중
-  document.querySelectorAll('#tooldlg .toolfr').forEach(f => f.classList.remove('active'));   // iframe 숨김(보존 · askMount 동일)
-  const ah = $('#askHost'); if (ah) ah.hidden = true;   // 호스트 슬롯 상호 배타(방어)
-  h.hidden = false;
-  setTimeout(() => { try { const w = $('#geniWish'); w.focus(); if (w.value) w.select(); } catch {} }, 80);   // 팝업과 동일 진입점(주문칸)
-}
-function geniUnmount() {   // 원복(탭 이탈·닫기·최소화·발사·팝업 열기 직전) — DOM 이동 = 입력값 보존 · 기사 팝업 경로가 폼을 되찾음(askUnmount 선례)
-  const h = $('#geniHost'); if (!h) return;
-  if (!h.hidden && _geniCtx && _geniCtx.free) { try { localStorage.setItem('GENI_FREE_TXT', JSON.stringify({ wish: $('#geniWish').value })); } catch {} }   // 보이던 이식 폼 = 장면 스냅샷(다이얼로그 close 저장점 미러 — 재진입 geniPrep 복원과 한 쌍)
-  geniDDClose();
-  const gdlg = $('#genidlg');
-  while (h.firstChild) gdlg.appendChild(h.firstChild);
-  h.hidden = true;
-}
-function geniLeave() { const h = $('#geniHost'); if (h && !h.hidden) { geniUnmount(); activateToolFrame(curToolKey); } }   // 셸 유지 이탈(타 탭 클릭·발사) = 원복 + 이 도구 iframe 재활성(ask 이탈 선례)
 // 캐러셀 PC 드래그 — 마우스로 잡아끌어 좌우 슬라이드(터치는 overflow-x 네이티브 스와이프 유지). feedtrack 드래그와 동일 패턴.
 function attachCarouselDrag(track) {
   if (!track || track._dragInit) return; track._dragInit = true;
@@ -8480,7 +8451,7 @@ const issGrade = c => c.grade == null || c.grade >= 2;   // 🚨긴급(isBreakin
 const BJ_CRASH = /(폭락|급락|폭등|급등|서킷브레이커|사이드카|붕괴|패닉|쇼크)/;   // 사건어 가드 — 시황 정형이어도 진짜 사건(코스피 폭락 등)이면 컷 면제
 const BJ_MKT = /(증시|코스피|코스닥|환율|유가(?!족)|나스닥|다우|뉴욕증시).{0,20}(출발|개장|마감|장중)/;   // 정례 시황(개장·마감 — JUNK_HEAD ⑤가 '환율마감'만 다뤄 '출발'류 보강 · '유가족…마감' 오컷 방지 lookahead = 10인 검증5)
 const BJ_HEAD = /^\[(포토|사진|사설|기고|칼럼|만평|증시|시황|특징주)/;   // 연성 머리표(배지만 컷 — JUNK_HEAD와 달리 칼럼엔 잔존)
-const BJ_PR = /^(?!.*(대통령|방사청|국방부|방산|잠수함|전투기|호위함|군함)).*(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용 · ⚠️'공시' 제외 = 공시가격[부동산 정책]·공공시설[복지]·공시송달[사법] substring 오컷 실증 → 기업공시는 '지분율' 등이 커버 · 10인 검증5 · ⚠️선두 ^(?!…) 정치·방산 면제 = '수주' substring이 국가 계약 대형(李 잠수함 수주 cr19·g2 등 매칭 45%가 정치·방산 실측)까지 배지 박탈하던 오컷 봉합[260713 평의회8 · ^ 앵커 필수 — 무앵커 lookahead는 test()가 중간 위치서 재시도해 무력] · build-viewer와 바이트 동일 = check_refs 패리티)
+const BJ_PR = /(수주|공급\s*계약|계약\s*체결|지분.{0,6}(취득|매각|확보|인수)|지분율|자사주|합작사|출자)/;   // 기업 PR 정형구(다매체 동시배포 = cross 높게 잡히는 홍보성 — FB_HOLBO 어휘공백 보완 · 배지 전용이라 fbJunk의 cross≥8 veto 미적용 · ⚠️'공시' 제외 = 공시가격[부동산 정책]·공공시설[복지]·공시송달[사법] substring 오컷 실증 → 기업공시는 '지분율' 등이 커버 · 10인 검증5)
 const badgeJunk = c => { const t = c.title || ''; return (BJ_MKT.test(t) && !BJ_CRASH.test(t)) || BJ_HEAD.test(t) || BJ_PR.test(t); };
 const issCross = c => ((c.cross || 0) >= ISS_CROSS_MIN || (c.grade === 3 && (c.cross || 0) >= 8)) && issGrade(c) && !badgeJunk(c);   // 이슈 배지 cross 경로 — grade3(AI확정 대형)만 옛 임계 8 유지(인플레 보정 예외: 저cross 국제 대형재난[미얀마 내전·베네수엘라 강진]이 배지 잃던 비대칭 구제 = §1 "중요한 게 묻히면 안 됨" · 10인 검증6). aged-breaking 경로는 별도(isBreaking이 grade 게이트 내장).
 const scBadgeType = c => {
@@ -9576,8 +9547,7 @@ $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.too
     const app = b.dataset.app;
     if (toolMeta.thumb) toolMeta.thumb.app = app; else toolMeta.thumb = { title: 'Image Studio', tabs: THUMB_TABS, src: '/thumb.html', app: app };   // 방어 — thumb 메타 소실 시 재구성
     try { const w = activeToolFrame().contentWindow; if (w && w.selApp) w.selApp(app); else loadToolFrame('/thumb.html'); } catch (_) {}       // 방어 — thumb 프레임이 빈 신생 클론이면 로드(bridge sync가 하이라이트 재정합)
-    if (app === '6') geniMount();   // 프롬프팅 탭 = genidlg 폼을 탭 콘텐츠로 이식(운영자 260713 B "B로 간다" — 구 팝업 즉시(같은날 1차)를 ask 가상 탭 문법으로 재정렬 = 3도구 폼 거처 통일 · 발사 = 원복+작업내역 노출 · 기사 카러셀 + = 팝업 유지(이중 홈) · selApp 역동기·복원은 클릭 아님 = 미격발)
-    else geniLeave();   // 프롬프팅 이탈(제작·합성/편집 클릭) = 폼 원복 + iframe 재활성(ask 이탈 선례 · 노드 거처 불변식 유지)
+    if (app === '6') openGenIdlg(null);   // 프롬프팅 탭 = #genidlg 자유 생성 팝업 즉시 열기(운영자 260713 "메뉴 따라 바로 이동" — 구 {탭 화면 → '이미지 생성' 버튼 → 팝업} 중간 단계 생략 · 탭 화면(작업내역)은 뒤에 유지 = 팝업 닫으면 노출 · 재열기 = 탭 재탭 or 화면 버튼(genfree 경로 불변) · 팝업 셸·옵션 = 기존 계승 무변경 · selApp 역동기(genfree-fired 탭 전환)는 클릭 아님 = 미격발)
     if (curToolKey && toolMeta[curToolKey]) toolMeta[curToolKey].src = b.dataset.src;   // 활성 서브탭 기억(복원 시 하이라이트 정합)
     if (b.dataset.src === '#ask') { askMount(); return; }   // 요약 요청 가상 탭 = askwrap 재표시(iframe 보존 · 리로드 0)
     const h = $('#askHost'); if (h && !h.hidden) { h.hidden = true; activateToolFrame(curToolKey); }   // 가상 탭 이탈 = 호스트 숨김 + 이 도구 프레임 재활성(askwrap은 남겨둠 = 입력 보존 · 원복은 닫기/최소화 때)
@@ -9608,7 +9578,6 @@ $('#toolX').addEventListener('click', () => tooldlg.close());
 if ($('#toolMin')) $('#toolMin').addEventListener('click', () => minimizeTool());
 tooldlg.addEventListener('close', () => {
   askUnmount();                                                                  // 요약 가상 탭 원복(최소화 포함 — DOM 이동 = 입력값 보존 · 복원 시 askMount 재이식)
-  geniUnmount();                                                                 // 프롬프팅 이식 탭 원복(최소화 포함 · 260713 B) — 기사 카러셀 팝업 경로가 언제든 폼을 되찾게(보관함 = genidlg)
   tooldlg.classList.remove('no-tin');                                           // 복원-생략 플래그 해제 → 다음 정규 오픈은 toolIn 페이드 정상(운영자 260627)
   if (toolMinimizing) {                                                          // ★ 최소화 경로 = iframe·탭·{tool}칸 보존(파괴·history.back 스킵)
     toolMinimizing = false;
@@ -9680,7 +9649,6 @@ function restoreTool(key) {
   setToolTitle(meta.title);
   renderToolTabs(meta.tabs);                                                    // 타이틀·탭 복원(활성 서브탭 포함)
   if (((meta.src || '')[0]) === '#') askMount();                                // 요약 가상 탭이었으면 askwrap 재이식(close 때 원복됐던 것 · 입력값 보존)
-  if (key === 'thumb' && ((toolMeta.thumb || {}).app) === '6') geniMount();     // 프롬프팅 이식 탭이었으면 재이식(askMount 미러 · 260713 B — 장면은 GENI_FREE_TXT 스냅샷 복원)
   tooldlg.classList.add('frame-ready');                                         // 보존 프레임 = load 이벤트 없음 → 즉시 보이게(opacity 1)
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   flyGhost('out', () => {                                                       // 고스트가 이미 모달 크기로 펼침 → 모달은 그 자리에 즉시 등장(toolIn 재페이드 생략 · 운영자 260627)
