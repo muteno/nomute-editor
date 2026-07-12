@@ -749,12 +749,12 @@
     mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat; }   /* 접기 체브론 = .trend-sec 디스클로저 동일 mask 계승 */
   .tgroup:not([open]) .tgroup-h::after { transform:rotate(-90deg); }
   .tgroup:not([open]) .tgroup-h { margin-bottom:0; }
-  /* 접기/펼치기 부드러운 애니(운영자 260712 #1 "촤르륵") — CSS-only 프로그레시브 인핸스먼트: ::details-content 미지원 브라우저는 종전 스냅(회귀 0) */
-  .tgroup { interpolate-size:allow-keywords; }   /* auto 높이 보간 허용 — 이 서브트리 한정(전역 부작용 차단) */
-  .tgroup::details-content { block-size:0; overflow:clip; transition:block-size .32s var(--ease), content-visibility .32s allow-discrete; }
-  .tgroup[open]::details-content { block-size:auto; }
+  /* 접기/펼치기 부드러운 애니(운영자 260712 #1 "촤르륵 둘다") — 최상위 .tgroup + 하위 소머리 .trend-sec 양쪽 · CSS-only 프로그레시브 인핸스먼트(::details-content 미지원=종전 스냅·회귀0) */
+  .tgroup, .trend-sec { interpolate-size:allow-keywords; }   /* auto 높이 보간 허용 — 서브트리 한정(전역 부작용 차단) */
+  .tgroup::details-content, .trend-sec::details-content { block-size:0; overflow:clip; transition:block-size .32s var(--ease), content-visibility .32s allow-discrete; }
+  .tgroup[open]::details-content, .trend-sec[open]::details-content { block-size:auto; }
   .tgroup-h { transition:margin-bottom .32s var(--ease); }   /* 헤더 하단 간격도 동반 슬라이드(펼침 14→0 스냅 방지) */
-  @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .tgroup-h { transition:none; } }
+  @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .trend-sec::details-content, .tgroup-h { transition:none; } }
   .tgroup-h .tdash-time { margin-left:12px; margin-right:auto; }   /* 수집시각 = 타이틀 옆 유지 · 체브론(ml:auto)과 공존 = 시각이 좌측군 */
   .tgroup-h i { font-style:normal; color:var(--accent); font-variant-numeric:tabular-nums; }   /* 단위 순번(1 AI 요약·2 TOP 10·3+ 플랫폼) = 랭크 강조색 문법(.trend-rank) 계승 */
   /* ── TOP 카드 레일(.tpg/.tpc — 운영자 260712 플레이그라운드 선택값 배선: 레일 2행(1~5/6~10)·카드 148·1:1 커버 r-s·순위 필 h15/fs10·구분자행(cat 재지정)→제목 2줄 11px→원시 조회+우측 시간(relAge)·NEW만·로테이션 글로우) — 구 .tdr 행 리스트 폐지 ── */
@@ -8971,6 +8971,8 @@ function renderSnsTrends() {
     let st = {}; try { st = JSON.parse(localStorage.getItem('nm_trend_gfold') || '{}') || {}; } catch { st = {}; }
     if (dt.open) delete st[dt.dataset.g]; else st[dt.dataset.g] = 1;
     try { localStorage.setItem('nm_trend_gfold', JSON.stringify(st)); } catch {}
+    const rail0 = box.querySelector('#trendRail');   // 접을/펼칠 때 좌측 레일도 그 섹션 점등 = 네비 싱크(운영자 260712 #2 "접을 때 동시작동" 방향)
+    if (rail0) { const gid = dt.dataset.g === 'brief' ? 'top' : dt.dataset.g; rail0.querySelectorAll('.trail-i').forEach(b2 => b2.classList.toggle('on', b2.dataset.tg === gid)); }
   }));
   // 레일 스크롤스파이 = IntersectionObserver(현재 그룹 점등 · 상단 12~42% 밴드) — 재렌더마다 구 관측 해제(누수 방지)
   if (box._trIO) { try { box._trIO.disconnect(); } catch {} box._trIO = null; }
