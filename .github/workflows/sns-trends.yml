@@ -39,13 +39,13 @@ jobs:
           SNS_SUBS: ${{ inputs.subs || '1' }}   # 구독 축 = 기본 ON 승격(§📰-e 이행 완료 — 카나리아 run 29153925931 실측 260711: rc=0·65s·틱톡10·유튜브10·레거시 무손상·커밋 eab3bc5). schedule = inputs 없음 → '1'(social-scan 관용구) · dispatch subs='0'=일시 OFF. X·인스타 = 러너 IP 429 실측(런마다 IP 로터리 = 확률 수집·빈 런 = 직전분 보존 fail-soft) — 지속 0건이면 폰 수집 경로 후속. 롤백 = || '' 복귀
         run: timeout 540 python3 scraper/sns_trends.py   # 540 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 240s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
-      - name: Install Claude Code CLI (브리프 ON일 때만 — LLM 0콜 수집 레인에 상시 설치 낭비 방지)
-        if: ${{ (inputs.brief || '0') == '1' }}   # 승격 시 이 조건도 || '1'로 동기(카나리아 실측 rc=127 = CLI 부재 · 260712)
+      - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
+        if: ${{ (inputs.brief || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: AI 브리프(비서 페르소나 · 운영자 260712) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft)
         env:
-          SNS_BRIEF: ${{ inputs.brief || '0' }}   # §📰-e 카나리아 — 기본 OFF 머지 → dispatch brief=1 실측 → 승격 시 || '1'
+          SNS_BRIEF: ${{ inputs.brief || '1' }}   # 기본 ON 승격(§📰-e 이행 완료 — 카나리아 2차 run 실측 260712: 브리프 626자·sha 8d8d8af9·fail-soft/스킵 게이트 정상 · schedule = inputs 없음 → '1') · dispatch brief='0' = 일시 OFF · 롤백 = || '0'
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA · news-analyze 관용구)
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
