@@ -41,9 +41,11 @@
   ⑤ 쇼츠·AI 영상(운영자 260711) = InnerTube 검색 파생(무키·쇼츠 = <4분 protobuf 필터·AI = 원본
      AI_YT_QUERIES 4종 — 둘 다 조회수 정렬·주간·likes/cmts 없음 = 조회수 단일 지표).
   ⑥ 레딧 = 서브레딧 핫 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음") — env `SNS_REDDIT`
-     게이트(§📰-e 카나리아: dispatch 실측 승격 전 cron OFF). 서브레딧 = env `REDDIT_SUBS`(기본
-     popular,korea,worldnews — popular = NSFW/격리 제외 인기 자동축·korea/worldnews = 해외 반응축).
-     ⚠️ 러너(데이터센터 IP) 403/429 가능 = 카나리아가 판정 · 실패 = [](직전분 보존).
+     게이트. 서브레딧 = env `REDDIT_SUBS`(기본 popular,korea,worldnews — popular = NSFW/격리
+     제외 인기 자동축·korea/worldnews = 해외 반응축).
+     ⚠️ 러너 = 403 Blocked 확정(카나리아 run 29197039475 실측 260713: 3서브레딧 전부 차단 =
+     레딧의 데이터센터 IP 정책) → **주 공급 = 폰/맥 가정 IP(phone_subs.py) 채택**(스레드와
+     동일 경로 편승 · main()의 폰 신선분 채택 블록). 러너 게이트는 재시도용 잔존 · 실패 = [](직전분 보존).
   ⑦ 블루스카이 = 공개 AppView What's Hot 피드(무키 · public.api.bsky.app — AT프로토콜 공개 설계
      = 데이터센터 IP 친화·IP당 5분 3천req) — env `SNS_BSKY` 게이트(동일 카나리아). 스레드가
      주려던 텍스트SNS 인기글의 러너 무료축(운영자 260712 검토 승인 흐름).
@@ -714,6 +716,10 @@ def main():
                     if _pl:
                         subs_new[k2] = _pl
                         print(f"phone-subs 채택: {k2} {len(_pl)}건({_pm:.0f}분 전 수집)")
+                _pr = [it for it in (_ph.get("reddit") or []) if isinstance(it, dict)]   # ⑥ 레딧 = 러너 403 Blocked 실측(run 29197039475) → 폰 신선분이 주 공급(게이트 무관 채택)
+                if _pr:
+                    rd = _pr
+                    print(f"phone-subs 채택: reddit {len(_pr)}건({_pm:.0f}분 전 수집)")
         except Exception:
             pass
     subs_any = bool(subs_new) and any(subs_new.values())

@@ -16,11 +16,12 @@ import sns_trends as st  # noqa: E402
 
 acc, reg = st._load_accounts()
 out = {"x": st.x_subs(acc["x"], limit=20), "insta": st.insta_subs(acc["insta"], limit=20),
-       "threads": st.threads_subs(acc["threads"], limit=20)}   # ⑧ 스레드(운영자 260712) — 계정 미등록 = [] no-op
-for k, items in out.items():   # 지역 도장 = 러너 수집과 동일 규격(뷰어 한국/세계 접이 축)
-    for it in items:
+       "threads": st.threads_subs(acc["threads"], limit=20),   # ⑧ 스레드(운영자 260712) — 계정 미등록 = [] no-op
+       "reddit": st.reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()])}   # ⑥ 레딧(운영자 260713) — 러너 403 Blocked 실측 → 가정 IP가 주 공급(소비 = sns_trends main 폰 채택)
+for k in ("x", "insta", "threads"):   # 지역 도장 = 러너 수집과 동일 규격(뷰어 한국/세계 접이 축 · 레딧 = 계정축 아님 = 무도장)
+    for it in out[k]:
         it["region"] = reg.get(k, {}).get((it.get("account") or "").lower(), "gl")
 out["updated"] = st.datetime.now(st.KST).isoformat()   # KST(§📐 — 소비측 신선도 판정 기준)
 p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "viewer", "sns_subs_phone.json")
 json.dump(out, open(p, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
-print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건")
+print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건 · reddit {len(out['reddit'])}건")
