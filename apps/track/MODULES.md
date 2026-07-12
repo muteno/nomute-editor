@@ -61,6 +61,6 @@
 - 한계(정직): 세그 15fps hold(급모션 엣지 1프레임 지연 — 키잉 동일) · 가면 = bbox 정렬(회전·원근 추종 없음 — 후속 = 얼굴 랜드마크 정렬) · 자동 블록 = 첫 등장 크기 기준(원근 급변 시 block 명시 권장) · **박스 대상(keep/keepP) = 순방향 전용 [pf, 끝)** — 첫 양호 등장 이전 [0, pf) 구간은 미채움(익명화 용도면 노출창 · extra 탭 = 양방향이라 앞 구간까지 커버 — 앞 구간 필요 시 extra 병용) · keep/keepP는 tracks.json(M1) 필수(없으면 공집합 = 정직 거절 · extra만 = tracks 생략 가능) · block 수동 = 4~64px 클램프(0 = 자동).
 
 ## 붙일 때 (후속 배선 체크리스트)
-- 워크플로: track-make 미러(업로드 회수 → 모듈 호출 → R2 업로드 → out.json 커밋 → error.log failure()) — conv-make가 최신 골격(r2_src 직업로드 포함).
-- 뷰어: 결과 계약 = video.json{url, preview?, ts} + 대기 화면 = 운영자 픽(p2 스캔라인) 계승.
+- **M3·M4 = 뷰어 배선 완료(260712 2차 · 운영자 배치 승인)**: 트래킹 서브뷰 확정 단계 모드 4·5번째 버튼(실루엣·크로마키) → `api/track.js` 검증 → `track-make.yml`(maskfx = TRACK_HEAVY 편입 · chroma = 경량) → `track_render.py` 위임 래퍼(`run_maskfx`/`run_chroma` — src 회수·R2/git 업로드·video.json · SystemExit→RuntimeError 변환) — 상세 = `00_지침` §1.6. 가면 프리셋 = `assets/masks/{smile,black,heart}.png`(py `MASK_PRESETS`·api 화이트리스트 이중).
+- 새 표면(편집기 카드 등)에 또 붙일 때: 워크플로 = track-make 미러(업로드 회수 → 모듈 호출 → R2 업로드 → out.json 커밋 → error.log failure()) — conv-make가 최신 골격(r2_src 직업로드 포함) · 뷰어 결과 계약 = video.json{url, preview?, ts} + 대기 화면 = 운영자 픽(p2 스캔라인) 계승.
 - 캡 완화·노브 범위 변경 = 기틀(운영자 확인 · 00_지침 §2 관례).
