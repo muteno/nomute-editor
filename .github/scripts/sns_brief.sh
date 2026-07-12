@@ -48,7 +48,8 @@ L.append('[유튜브 뉴스] ' + ' / '.join((v.get('title') or '')[:40] for v in
 L.append('[쇼츠] ' + ' / '.join((v.get('title') or '')[:40] for v in sh[:5]))
 L.append('[틱톡] ' + ' / '.join(((t.get('title') or ('@' + (t.get('account') or '')))[:40]) for t in tk[:5]))
 body = '\n'.join(L)
-print(hashlib.sha256(body.encode()).hexdigest()[:16])
+PVER = 'brief-v2-260712'   # 프롬프트 개정 시 올림 = 입력 동일해도 캐시 1회 무효화(줄바꿈·별표강조·만단위 반올림 페르소나)
+print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print(body)
 PY
 )" || { echo "::warning::brief 다이제스트 실패 — 직전 유지"; exit 0; }
@@ -61,9 +62,15 @@ if [ -n "$SHA" ] && [ "$SHA" = "$PREV" ]; then
   exit 0
 fi
 
-PROMPT="너는 가장 효과적으로 아래 SNS 트렌드 내용을 사장에게 보고하는 비서다. 사장이 1분 안에 읽고 놓침 없이 파악하도록: 지금 어느 흐름이 보이는지, 무엇이 가장 이슈인지, 플랫폼별로 뭐가 유행 중인지(예: 유튜브에서는 ~가 유행인데 특히 ~ / 전반적 흐름은 ~ / 구글 트렌드는 ~) 대화형 브리핑 산문으로 일목요연하게 정리하라.
-규칙: 한국어 · 3~6문장 · 아래 데이터에 있는 사실만(날조·과장 금지 · 데이터 밖 배경지식 추정 금지) · 수치는 데이터 그대로 · 특수기호/헤더/목록 없이 순수 산문만 출력.
+PROMPT="너는 사장에게 SNS 트렌드를 브리핑하는 유능하고 감각 있는 비서다. 사장이 1분 안에 흐름·최대 이슈·플랫폼별 유행을 놓침 없이 파악하게 하라.
+말투 = 딱딱한 보고서 말고 곁에서 짚어주는 비서 톤(간결하되 생기·과하지 않은 위트 · '사장님,'으로 시작해도 좋다). 단 사실은 데이터에 있는 것만 — 날조·과장·데이터 밖 배경지식 추정 절대 금지.
+형식(엄수):
+- 요점별로 줄을 바꿔라(한 줄에 몰아쓰지 말 것). 총 4~7줄.
+- 가장 중요한 포인트·핵심 수치는 *별표*로 감싸 강조하라(예: *조회 8,970만*, *틱톡이 압도*).
+- 수치는 만 단위로 반올림해 표기(예: 8,970만 · 1.2억 · 63만+). 원시 숫자(89,697,957) 금지.
+- 헤더·번호목록·마크다운 제목·이모지는 쓰지 마라. 줄바꿈과 *별표 강조*만 허용.
 
+[데이터]
 $BODY"
 
 out=""
@@ -79,13 +86,15 @@ done
 [ -z "$out" ] && { echo "::warning::brief 빈 출력 — 직전 유지"; exit 0; }
 
 BRIEF_TEXT="$out" BRIEF_SHA="$SHA" python3 - <<'PY'
-import json, os, datetime
+import json, os, datetime, re
 KST = datetime.timezone(datetime.timedelta(hours=9))
 t = (os.environ.get('BRIEF_TEXT') or '').strip()
-t = ' '.join(t.split())[:700]   # 1분 독해 상한(과출력 가드 · 산문 1문단)
+# 줄바꿈 보존(요점별 개행 = 운영자 요구 · 구 ' '.join(split())는 개행 뭉갬) — 줄별 trim + 빈줄 3+ → 1 + 상한
+lines = [ln.rstrip() for ln in t.replace('\r\n', '\n').split('\n')]
+t = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()[:1000]   # 1분 독해 상한(과출력 가드)
 json.dump({'text': t, 'updated': datetime.datetime.now(KST).isoformat(timespec='seconds'),
            'src_hash': os.environ.get('BRIEF_SHA') or ''},
           open('viewer/sns_brief.json', 'w', encoding='utf-8'), ensure_ascii=False)
-print('brief 저장:', len(t), '자')
+print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄')
 PY
 echo "brief: 갱신 완료($SHA)"
