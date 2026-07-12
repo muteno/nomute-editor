@@ -1080,11 +1080,7 @@
   .nm-toast .tg svg { display:block; }   /* 인라인 vertical-align 잔상 무효화 → inline-flex 시각중심 정렬(§디자인 y) */
   .nm-toast b { color:#ffd9cf; }
   .nm-toast .ft-msg { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }   /* 본문이 남는 폭 채움 → ✓·↻ 버튼 우측 정렬(운영자 260622) · 길면 두 줄 금지 = 첫 줄 … 말줄임(운영자 260712) */
-  .nm-toast .ft-act { flex:none; width:var(--btn-xs); height:28px; background:none; border:none; border-radius:0; backdrop-filter:none; -webkit-backdrop-filter:none; }   /* 버튼 플레이트 폐지 = 맨 픽토그램만(운영자 260712 "버튼 없애고 svg만 · 줄어든 만큼 글자") — 폭 28→--btn-xs(22 계승)·세로 28 = 투명 히트박스 유지 · .sbtn 마크업·아이콘 모션 위임은 불변 */
-  .nm-toast .ft-act:hover:not(:disabled) { background:none; }   /* .sbtn hover 플레이트 소등 */
-  .nm-toast .ft-act:active { transform:none; }
-  .nm-toast .ft-act:active svg { transform:scale(var(--press-pico,.72)); }   /* 픽토-온리 눌림 = --press-pico 티어(:active svg만 · 기틀 사다리 — 플레이트 없는 버튼 정본) */
-  .nm-toast .ft-act.ok { background:none; border-color:transparent; color:var(--accent); }   /* ✓ 확인 플래시 = 플레이트 대신 아이콘 강조색 */
+  .nm-toast .ft-act { flex:none; width:28px; height:28px; }   /* ✓확인·↻재시도·↗이동 = 28px(게이지 버튼 .sc-got/.unmerge-go 계승 높이) → 하단 토스트 액션 버튼 높이 정렬(운영자 260702). .sbtn 기틀(눌림 scale·.ok 플래시·ic-spin) 계승 */
   .nm-toast .ft-act svg { width:14px; height:14px; }   /* Q_ARR(원문·크기 미지정)·CHECK 아이콘 크기 통일 = 14(토스트 기존 유지) */
   /* 긴급 토스트 PICK = 수집함 [PICK] 이식(운영자 260702) · 초록 게이지 goFill→✓ = .sc-got firing/okdone 상태머신 계승(색은 var 토큰) */
   /* 긴급/실패 토스트 이동 버튼(↗) 색 = 상태 표시 · .ft-act(.sbtn) 계승 + 색만(운영자 260702 · PICK 폐지) */
@@ -1111,7 +1107,7 @@
     box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(var(--accent-4-rgb),.22); }
   .nm-toast.fail .tg { color:var(--accent-4); background:#0a0d07; border-color:var(--accent-4); box-shadow:0 0 9px rgba(var(--accent-4-rgb),.45); }   /* FAIL 배지 가시성 = 검정 전경 + 네온레몬 테두리·글자·글로우(옛 라임배경+흰글자 뭉개짐 교체) · 긴급 .tg 결 계승(border 1.5px는 727) · 운영자 260705 */
   .nm-toast.fail b { color:#f0ffd6; }
-  /* (도먼트 260712 — miniToast = qFlash 위임·마크업 생성처 0) 구 범용 미니 토스트 초록 변형 — 재도입 대비 보존 · 운영자 260625 */
+  /* 병합 완료 등 범용 미니 토스트 — nm-toast 계승·초록(액션색) · 운영자 260625 */
   .nm-toast.mini { background:linear-gradient(135deg, rgba(13,40,18,.95), rgba(9,20,12,.95)); border-color:rgba(0,238,210,.45);
     box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(0,238,210,.18); cursor:pointer; }
   .nm-toast.mini .tg { background:linear-gradient(135deg, var(--accent-bright), var(--accent)); color:var(--on-accent); box-shadow:0 0 8px rgba(0,238,210,.5); }
@@ -7526,7 +7522,7 @@ function showToast(c, total) {
   _toastC = c;
   const move = () => { brkToastMark(c); failOpen(c); setTimeout(detectBreaking, 60); };   // ↗공유·본체 탭 = 원문 기사 고정(운영자 260712 — 구 goBreaking 요약 분기 폐지) + 로컬 seen + 다음 건
   t.onclick = move;   // 본체 탭 = ↗과 동일
-  const title = esc(((scKoTitle(c) || c.title) || '').slice(0, 60));   // 외신 긴급이면 번역 제목으로 토스트 · 34→60자(버튼 플레이트 폐지분 = 글자 몫 · 실폭은 1줄 말줄임이 재단 · 운영자 260712)
+  const title = esc(((scKoTitle(c) || c.title) || '').slice(0, 34));   // 외신 긴급이면 번역 제목으로 토스트
   t.innerHTML = `<span class="tg">${BELL_SVG}</span><span class="ft-msg">${title || '속보'}</span>`
     + `<button class="sbtn ft-act" type="button" data-bt="ack" data-motion="check" aria-label="확인 — 봤음" title="확인 — 봤음(수집함 확인✓ 동기화 · 다음 건으로)">${CHECK_SVG}</button>`
     + `<button class="sbtn ft-act go-ready" type="button" data-bt="go" data-motion="arrow" aria-label="기사 원문" title="기사 원문 확인(새 탭)">${Q_ARR}</button>`;
@@ -7748,7 +7744,7 @@ function showFailToast(n, sample) {
     document.body.appendChild(t);
   }
   _failToastC = sample || null;
-  const title = sample ? esc((sample.title || '').slice(0, 60)) : '';   // 34→60자(플레이트 폐지분 = 글자 몫 · 운영자 260712)
+  const title = sample ? esc((sample.title || '').slice(0, 34)) : '';
   t.innerHTML = `<span class="tg">${WARN_SVG}</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''}</span>`
     + `<button class="sbtn ft-act" type="button" data-fa="ack" data-motion="check" aria-label="확인 — 실패 이해" title="확인 — 실패 알았고 재시도 안 함(없던 일로 · 알림 끄기)">${CHECK_SVG}</button>`
     + `<button class="sbtn ft-act" type="button" data-fa="retry" aria-label="재시도 — 재분석" title="재시도 — 원인은 됐고 다시 분석(대기열 재투입)">${REFRESH_SVG}</button>`
@@ -8177,12 +8173,17 @@ function doMerge() {
   }
   M[anchor] = { members: [...set].filter(x => x !== anchor), at: kstNow() };
   if (!saveMerges(M)) { miniToast('저장 공간이 부족해 병합 실패.'); return; }   // 거짓 성공 토스트 차단(분신술7·9)
+  const cnt = M[anchor].members.length;
   exitMerge(); renderScrap();
-  // (병합 완료 안내 토스트 폐지 — 운영자 260712 "해당 건은 없애자" · 카드가 눈앞에서 묶이는 것 자체가 어포던스 = §디자인 e · 구 cnt 계산도 토스트 전용이라 동반 정리)
+  miniToast(`기사 ${cnt + 1}건을 묶었어 — 픽하면 종합 요약돼.`);
 }
 let _miniToastT;
-function miniToast(msg) {   // (도먼트 위임 260712 — 운영자 "관련 건 모두 qFlash로 전환") 미니 토스트(초록 ✓) 폐지 → 전 호출(병합 취소·실패·해제·링크 복사) = qFlash 무채 안내로 · 병합 *완료* 안내는 호출 자체 폐지 · 구 초록 본문·#nmMiniToast·.nm-toast.mini CSS = 도먼트(재도입 = git 이력 260712 직전)
-  qFlash(msg);
+function miniToast(msg) {   // 범용 미니 토스트(nm-toast 계승·초록·자동 사라짐). 병합 완료 안내 등.
+  let t = document.getElementById('nmMiniToast');
+  if (!t) { t = document.createElement('div'); t.id = 'nmMiniToast'; t.className = 'nm-toast mini'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); t.addEventListener('click', () => t.classList.remove('show')); }   // 미니 알림(병합완료 등) = SR announce(분신술10 260704)
+  t.innerHTML = `<span class="ft-msg">${esc(msg)}</span>`;   // 태그 칩 폐지(가족 픽토 = 긴급 BELL·실패 WARN 둘만 · 운영자 260712) — 초록 정체성 = 컨테이너 색 담당
+  t.classList.add('show');
+  clearTimeout(_miniToastT); _miniToastT = setTimeout(() => t.classList.remove('show'), 2500);   // 2800→2500(운영자 260712 회신)
 }
 function unmergeAnchor(c) {   // 실제 해제(저장·재렌더). 확인 UI는 openUnmergePop이 담당(오발 방지 2탭·게이지·운영자 260626).
   const M = mergesAll(), id = candId(c);
