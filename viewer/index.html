@@ -691,6 +691,14 @@
   .trend-q { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .trend-traffic { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:none; }
   .trend-tm { flex:none; min-width:52px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 행 우측 끝 시간 열(고정폭 우정렬 = 전 행 끝 x 일렬 · relAge 사다리 계승 · 운영자 260712 "모든 것에 시간 기록") */
+  .fin-rows { display:flex; flex-direction:column; gap:2px; }   /* ⑬ 금융 시세 행(운영자 260713) — 통화·시세·변동률 · trend-row 리듬 계승 */
+  .fin-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; font-size:var(--fs-sm); color:var(--fg); }
+  .fin-nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fin-v { flex:none; font-variant-numeric:tabular-nums; font-weight:var(--fw-b); }
+  .fin-v i { color:var(--mut); font-style:normal; font-size:var(--fs-xs); margin-left:1px; }
+  .fin-chg { flex:none; min-width:52px; text-align:right; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; color:var(--mut); }
+  .fin-chg.up { color:var(--accent-3); }   /* 상승 = 레드(한국 관례) · 하락 = 딥블루 */
+  .fin-chg.dn { color:var(--bias-l2); }
   .trend-tags { display:flex; flex-wrap:wrap; gap:4px 8px; padding-top:2px; }
   .trend-tag { color:var(--accent); font-size:var(--fs-sm); }
   /* ── 트렌드 구독 축(운영자 260711 배치 승인 = 기존 레인 아래 동일 컴포넌트·'계정' 버튼 → 관리 모달) ── */
@@ -8908,6 +8916,7 @@ function renderSnsTrends() {
   const shv = d.shorts || [], aiv = d.aivid || [];   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되")
   const sig = d.signal || [], xtr = d.xtrends || [], pn = d.pann || [];   // ⑨⑩⑪ 시그널 실검·X 실시간 트렌드·네이트판(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시)
   const rdd = d.reddit || [], bsk = d.bsky || [], sth = sb.threads || [];   // ⑥⑦⑧ 레딧·블루스카이·스레드 구독(운영자 260713 "추천대로" 배치 승인 — 레딧 = 커뮤니티 그룹 · 블스·스레드 = 새 그룹)
+  const hnl = d.hackernews || [], finc = d.finance || {}, finR = finc.rates || [], finC = finc.coins || [], dsl = d.disaster || [], kob = d.kobis || [];   // ⑫⑬⑭⑮ 해커뉴스·금융(환율/코인)·재난문자·박스오피스(운영자 260713 "ㄱ" · 데이터 있을 때만 그룹 등장 = 조용한 공백)
   if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length && !sig.length && !xtr.length && !pn.length && !rdd.length && !bsk.length && !sth.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n < 1e5 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') : String(Math.round(n / 1e4))) + '만' : n > 0 ? (n / 1e4).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '만' : '';   // 전 지표 만단위 통일(운영자 260712 "모두 만단위") — 10만 미만 = 소수1(1.6만) · 1만 미만 = 소수2(0.05만) = 정상 수집이면 미도달(잔존 = 수집 저단위 신호·gtrends RSS 이슈 보고 260712)
   const tfmt = s => { const n2 = parseInt(String(s || '').replace(/[^0-9]/g, ''), 10); return n2 > 0 ? vfmt(n2) + '+' : ''; };   // 구글 검색량 문자열 "20,000+"→"2만+" 만단위 통일 — 천단위 원값은 RSS approx_traffic 저단위 버킷(수집기 교체 검토 = 운영자 결정 대기)
@@ -9014,7 +9023,17 @@ function renderSnsTrends() {
   let gTH = '';   // ⑧ 스레드 그룹(운영자 260713 "추천대로" = 새 그룹 · 구독 게시물 = X 구독 문법 · 공급 = 폰/맥 phone_subs 전용)
   const sthS = sortOf('sth', ['likes', 'cmts'], 'likes'), sthR = { kr: bySort(byReg(sth, 'kr'), sthS).slice(0, 10), gl: bySort(byReg(sth, 'gl'), sthS).slice(0, 10) };
   REGS.forEach(r => { const L = sthR[r]; if (L.length) gTH += sec('sth-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sth', [['likes', '좋아요'], ['cmts', '댓글']], sthS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });
-  const GRPS = [['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['bsk', '블루스카이', gBS], ['sth', '스레드', gTH], ['comm', '커뮤니티', gCM]].filter(g => g[2]);   // 블스·스레드 = X 뒤 신설(운영자 260713 "추천대로") · 레일 = TR_LOGO 없으면 첫 글자 폴백(comm 관용구)
+  let gHN = '';   // ⑫ 해커뉴스 그룹(운영자 260713 · row 문법·우측 = 스코어 만단위·클릭 = 원문/HN)
+  const hnL = hnl.slice(0, 12);
+  if (hnL.length) gHN += sec('hn', '톱 스토리', '· 해커뉴스', hnL.length, hnL.map((p2, i) => row(i, p2.url || p2.hn || '#', p2.score ? '▲' + p2.score.toLocaleString() : '', p2, '')).join(''));   // HN 스코어 = 원값(만단위 변환 부적합 = 점수대 낮음)
+  let gFI = '';   // ⑬ 금융 그룹(환율·코인 = 시세 행 · sec 문법 · 표시 전용) — 순위/변동배지 무의미 = 커스텀 행
+  if (finR.length) gFI += sec('fin-fx', '환율', '· 원화', finR.length, '<div class="fin-rows">' + finR.map(x => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(x.krw >= 100 ? Math.round(x.krw).toLocaleString() : x.krw)}<i>원</i></span></div>`).join('') + '</div>');
+  if (finC.length) gFI += sec('fin-cc', '암호화폐', '· 업비트', finC.length, '<div class="fin-rows">' + finC.map(c => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(Math.round(c.krw).toLocaleString())}<i>원</i></span><span class="fin-chg ${c.chg > 0 ? 'up' : c.chg < 0 ? 'dn' : ''}">${c.chg > 0 ? '+' : ''}${esc(c.chg)}%</span></div>`).join('') + '</div>');
+  let gSF = '';   // ⑭ 재난·안전 그룹(재난문자 = 팩트 신호 · 키 게이트라 키 없으면 미등장)
+  if (dsl.length) gSF += sec('dis', '재난문자', '· 안전', Math.min(dsl.length, 10), dsl.slice(0, 10).map((p2, i) => row(i, p2.url || '#', esc(p2.area || ''), p2, '')).join(''));
+  let gMV = '';   // ⑮ 문화 그룹(박스오피스 = 카드뉴스·릴스 소재 · 키 게이트)
+  if (kob.length) gMV += sec('kob', '박스오피스', '· 어제', Math.min(kob.length, 10), kob.slice(0, 10).map((p2, i) => row(i, p2.url || '#', p2.audi ? vfmt(p2.audi) + '명' : '', p2, '')).join(''));
+  const GRPS = [['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['bsk', '블루스카이', gBS], ['sth', '스레드', gTH], ['fin', '금융', gFI], ['hn', '해커뉴스', gHN], ['mv', '문화', gMV], ['sf', '안전', gSF], ['comm', '커뮤니티', gCM]].filter(g => g[2]);   // 신규 5종(운영자 260713 "ㄱ") = X·SNS 뒤 · 데이터 구동 = 빈 그룹 자동 제외 · 레일 = 첫 글자 폴백
   // ── 조립: 좌측 책갈피 레일(soc-item 밖 = backdrop-filter 조상 회피 → fixed가 뷰포트 기준 · §디자인 h) + 카드(헤드 → TOP 10 → 순번 플랫폼 그룹) ──
   let h = '';
   if (GRPS.length > 1) h += '<nav class="trail" id="trendRail" aria-label="플랫폼 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
@@ -9077,6 +9096,11 @@ function renderSnsTrends() {
   fillT('rdd', '.trend-q', rdd.slice(0, 10).map(p2 => (p2.sub ? '[r/' + p2.sub + '] ' : '') + (p2.title || '')));   // ⑥ 레딧 — 서브레딧 접두(textContent 주입 = XSS 안전)
   fillT('bsk', '.xcard-h b', bskL.map(t => '@' + (t.account || '')));   // ⑦ 블루스카이
   fillT('bsk', '.xcard-tx', bskL.map(t => t.text || ''));
+  fillT('hn', '.trend-q', hnL.map(t => t.title || ''));   // ⑫ 해커뉴스(textContent 주입 = XSS 안전)
+  fillT('dis', '.trend-q', dsl.slice(0, 10).map(t => t.title || ''));   // ⑭ 재난문자
+  fillT('kob', '.trend-q', kob.slice(0, 10).map(t => (t.rank ? t.rank + '. ' : '') + (t.title || '')));   // ⑮ 박스오피스 — 순위 접두
+  { const nm = box.querySelectorAll('[data-sec=fin-fx] .fin-nm'); finR.forEach((x, i) => { if (nm[i]) nm[i].textContent = x.name || x.code; }); }   // ⑬ 환율 통화명(XSS 안전)
+  { const nm = box.querySelectorAll('[data-sec=fin-cc] .fin-nm'); finC.forEach((c, i) => { if (nm[i]) nm[i].textContent = c.code; }); }   // ⑬ 코인 심볼
   fillT('sh', '.tcard-t', shL.map(t => t.title || ''));
   fillT('ai', '.tcard-t', aiL.map(t => t.title || ''));   // 업로더(.tcard-acc) 전 섹션 제거(운영자 260712 #6) — 제목만
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
