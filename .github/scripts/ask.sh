@@ -138,6 +138,17 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
     else
       _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 내용 분석 결함(입력이 비었거나 불충분).\n\n→ 대기열에서 “재시도”를 누르거나 입력을 확인하고 다시 요청해줘.')"
     fi
+    # 관련 기사 링크 무조건 동봉(운영자 260712 "실패 시 관련 기사 무조건 링크 + 알림") — 직접 요약요청은 공유 링크가 안 잡힐 수 있음 → 입력이 URL이면 원문 · 텍스트뿐이면 첫 조각 구글뉴스 유추 검색(비-LLM·토큰 0 · 실패 시 무동봉 fail-soft)
+    _ref="$(NM_T="${text}" python3 -c '
+import os, re, urllib.parse
+t = (os.environ.get("NM_T") or "").strip()
+m = re.search(r"https?://\S{8,}", t)
+if m: print(m.group(0)[:400])
+else:
+    q = re.sub(r"\s+", " ", t)[:60].strip()
+    print("https://news.google.com/search?q=" + urllib.parse.quote(q) + "&hl=ko&gl=KR&ceid=KR:ko" if q else "")
+' 2>/dev/null || true)"
+    [ -n "${_ref// }" ] && _fbody="${_fbody}"$'\n\n'"[관련 기사 — 어떤 기사인지 확인]"$'\n'"${_ref}"
     python3 shared/msg.py set "fail-${base}" "$_fbody" warn 2>/dev/null || true
     printf '%s\n' "$base" >> /tmp/analyzed_fail_msgs.txt
     echo "실패 → asks/failed/${base}"; echo "::endgroup::"; continue
