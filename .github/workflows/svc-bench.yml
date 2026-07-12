@@ -1,0 +1,91 @@
+name: svc-bench
+
+# 가창 음색 변환(SVC) CPU 벤치 카나리아(운영자 260712 음성 클로닝 승인 · 1회성 진단 전용) —
+#   목적 = "무GPU Actions에서 Demucs 분리 + Seed-VC 제로샷 변환이 몇 분 걸리나" 실측(품질 아님 · 타이밍만).
+#   레포 무접촉(커밋 0 · 산출 = 로그뿐) · 신규 키 0(전부 로컬 모델) · 결과로 {Seed-VC 채택 | Replicate RVC(키 1) 전환} 판정.
+#   타깃 레퍼런스 = 분리된 보컬 앞 15초(자기 자신 = 품질 무의미·속도 실측엔 유효).
+#   ⚠ 판정 완료(260712 run#2 실측): Demucs 35s 합격 · Seed-VC 변환 = 스텝당 506s → 45분 캡 킬(완주 추정 3.5h) = CPU 탈락 — 재실행 불요(결론 정본 = docs/작업이력.md).
+on:
+  workflow_dispatch:
+    inputs:
+      src:
+        description: '테스트 곡 URL(mp3 — 기본 = 260712 카나리아 곡)'
+        type: string
+        default: 'https://pub-83f8cf3892ae44c38bebf1805c954508.r2.dev/song_out/260712204726-706a23/song.mp3'
+      steps:
+        description: 'Seed-VC 디퓨전 스텝(가창 권장 30~50 · 벤치 기본 25)'
+        type: string
+        default: '25'
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 준비 (torch CPU + demucs)
+        timeout-minutes: 25
+        run: |
+          set -e
+          T0=$(date +%s)
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null   # 러너 기본 미탑재(벤치 1차 rc=127 실측 — 본 배선 땐 runner-setup apt 캐시로)
+          pip install -q torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -q demucs soundfile
+          echo "SVCB install_base_sec=$(( $(date +%s) - T0 ))"
+
+      - name: 소스 확보 + 60초 트림
+        env:
+          SRC: ${{ inputs.src }}
+        run: |
+          set -e
+          case "$SRC" in https://*) ;; *) echo "::error::https URL만"; exit 1;; esac
+          curl -sSL --max-time 120 -o song.mp3 "$SRC"
+          ffmpeg -v error -i song.mp3 -t 60 -ac 2 -ar 44100 song60.wav
+          ls -la song60.wav
+
+      - name: Demucs 분리 (htdemucs 표준 · 2스템)
+        timeout-minutes: 30
+        run: |
+          set -e
+          T0=$(date +%s)
+          python -m demucs --two-stems=vocals -n htdemucs -o sep song60.wav
+          echo "SVCB demucs_sec=$(( $(date +%s) - T0 ))"
+          ls -la sep/htdemucs/song60/
+          ffmpeg -v error -i sep/htdemucs/song60/vocals.wav -t 15 ref15.wav
+
+      - name: Seed-VC 설치
+        timeout-minutes: 25
+        run: |
+          set -e
+          T0=$(date +%s)
+          git clone --depth 1 https://github.com/Plachtaa/seed-vc
+          cd seed-vc
+          pip install -q -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu || pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+          echo "SVCB install_seedvc_sec=$(( $(date +%s) - T0 ))"
+
+      - name: Seed-VC 제로샷 변환 (가창 · f0 조건 · 속도 실측)
+        timeout-minutes: 45
+        env:
+          DSTEPS: ${{ inputs.steps }}
+        run: |
+          set -e
+          cd seed-vc
+          case "$DSTEPS" in *[!0-9]*) DSTEPS=25;; esac
+          T0=$(date +%s)
+          python inference.py --source ../sep/htdemucs/song60/vocals.wav --target ../ref15.wav \
+            --output ../svc_out --diffusion-steps "$DSTEPS" --f0-condition True --auto-f0-adjust False
+          echo "SVCB seedvc_convert_sec=$(( $(date +%s) - T0 )) (steps=$DSTEPS · 60s 보컬 기준)"
+          ls -la ../svc_out/ || true
+
+      - name: 판정 요약
+        if: always()
+        run: |
+          echo "SVCB 요약 — 위 SVCB 라인들이 실측치. 판정 기준(운영자 보고용):"
+          echo "  demucs+convert 합계 ≤ 10분 = Seed-VC 채택 유력(키 0) · 10~25분 = 조건부 · 초과/실패 = Replicate RVC(키 1 · 곡당 ~\$0.04) 전환 권고"
