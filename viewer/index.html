@@ -653,17 +653,21 @@
   .snsview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }      /* SNS = 첫 글래스 블록(소셜 카드) 시작선을 feed·scrap과 통일(pt 2→10 · 운영자 260627 점1) */
   .trendview { max-width:860px; margin:0 auto; padding:10px 36px 64px; }    /* 트렌드(메뉴4) = 세로 시작점(pt 10)·최대폭·중앙정렬 = snsview 계승 불변 · 좌우 36 = 좌측 책갈피 레일 차선 + 대칭(운영자 260712 IA 재편 — 비대칭 붙음 금지 정합) */
   .wrap, .scrapview, .snsview, .trendview { min-height:72vh; }   /* 로딩(빈 상태)에도 뷰가 화면을 채워 푸터가 상단으로 솟지 않게 */
-  /* PC 전폭 = 트렌드 탭 한정 폰프레임(860) 해제 → 넓은 화면 좌우 여백 활용(운영자 260712 "PC 여백 다 쓰셈" · 분신술 5인 검증): 카드 그리드(.trend-grid auto-fill)는 폭 따라 열 자동 증가 · 단일열 리스트/X카드는 2·3열 분할로 채워 행 팽창 방지 · 헤더(워드마크·타이틀·검색)도 동폭 정렬 · 좌측 책갈피 레일 좌변 재앵커 · 배너 없음(topbanner.slim = bannerframe display:none이라 왜곡 무관) */
+  /* PC 전폭 = 트렌드 탭 한정 폰프레임(860) 해제 → 넓은 화면 좌우 여백을 *콘텐츠로* 채움(운영자 260712 "PC 여백 다 쓰셈" · 실물 렌더 확인): 폭만 늘리면 컨테이너만 넓고 콘텐츠가 왼쪽 몰림 = 실패 → 카드 그리드(auto-fill 열 자동증가)·단일열 리스트/X카드(2·3열 분할)·TOP10 매거진 스택(리스트와 좌우 2단)·AI 요약(2단 신문 흐름)을 넓은 폭에 맞춰 재배치 · 헤더도 동폭 정렬 · 좌측 레일 재앵커 · 배너 없음(topbanner.slim = bannerframe display:none) */
   @media (min-width:900px){
     body[data-tab="trend"] .topbanner,
     body[data-tab="trend"] .viewhead,
     body[data-tab="trend"] .trendview { max-width:1600px; }
     body[data-tab="trend"] .trail { left:max(calc(4px + env(safe-area-inset-left,0px)), calc(50vw - 834px)); }   /* 콘텐츠 박스 좌변 −34px 차선(레일폭 28+간격 6) = 800(1600/2)+34 · 860일 때 464=430+34 계승 규칙(box-sizing:border-box라 패딩 무관) */
-    /* 단일열 리스트·X카드 = 넓은 폭에서 열 분할(행 늘리기 방지 = 여백을 콘텐츠로 채움 · 분신술 그리드리스트 앵글) */
-    body[data-tab="trend"] .tlist,
-    body[data-tab="trend"] .trend-sec:has(> .trend-row) { display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sp-4); align-content:start; }
-    body[data-tab="trend"] .trend-sec:has(> .trend-row) > summary { grid-column:1 / -1; }
+    /* 급상승검색어·구독 등 단일열 리스트·X카드 = 넓은 폭에서 열 분할(행 늘리기 방지 = 여백을 콘텐츠로 채움) */
+    body[data-tab="trend"] .sec-body:has(> .trend-row) { display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sp-4); align-content:start; }   /* .sec-body div = details 열림콘텐츠(::details-content 익명박스)를 우회해 row가 grid 트랙에 직접 오르게 함 */
     body[data-tab="trend"] .xgrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    /* TOP 10 = 리스트(넓게 2열) | 매거진 스택(360) 좌우 2단 → 스택이 왼쪽에 뭉쳐 생기던 오른쪽 대형 공백을 리스트로 채움 */
+    body[data-tab="trend"] .tg-topbody { display:grid; grid-template-columns:minmax(0,1fr) 360px; column-gap:var(--sp-4); align-items:start; }
+    body[data-tab="trend"] .tg-topbody .tlist { display:grid; grid-template-columns:1fr 1fr; column-gap:var(--sp-4); margin-bottom:0; }
+    body[data-tab="trend"] .tstk-g { max-width:none; }   /* 매거진 스택 = 우측 360 컬럼 폭 채움(구 340 고정 해제) */
+    /* AI 요약 = 2단 신문 흐름(전폭 한 줄 = 가독 나쁨 → 두 단으로 나눠 폭 채우며 줄길이 회복) */
+    body[data-tab="trend"] .tbrief-t { column-count:2; column-gap:var(--sp-4); column-rule:1px solid var(--line2); }
   }
   /* SNS 탭 = 소셜 버스트(커뮤니티 비정치 공론화) 레인 — 시안 테마 카드. social_candidates.json 렌더(renderSns). 정본 설계 = docs/social-burst.md */
   #snsList { display:flex; flex-direction:column; gap:11px; }
@@ -8845,7 +8849,7 @@ function renderSnsTrends() {
   // 섹션 접기(운영자 260711) = 네이티브 <details> · 기억 = localStorage nm_trend_fold(nomute_tab 관용구 · 빌드 시점 open 복원)
   let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
   const sec = (key, lbl, unit, n, body) =>
-    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
+    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl">${lbl} <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary><div class="sec-body">${body}</div></details>`;
   let TSORT = {}; try { TSORT = JSON.parse(localStorage.getItem('nm_trend_sort') || '{}') || {}; } catch { TSORT = {}; }
   const sortOf = (key, fields, def) => fields.indexOf(TSORT[key]) >= 0 ? TSORT[key] : def;
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
@@ -8912,9 +8916,9 @@ function renderSnsTrends() {
   const gsec = (id, ttl, body) => `<details class="tgroup${gno === 0 ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i>${++gno}</i>${ttl}</summary>${body}</details>`;
   if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span></div>`);
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
-    '<div class="tlist">' + top.map((it, i) =>
+    '<div class="tg-topbody"><div class="tlist">' + top.map((it, i) =>
       `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span></a>`).join('') + '</div>' +
-    '<div class="tstk-wrap" id="tstk"></div>');
+    '<div class="tstk-wrap" id="tstk"></div></div>');
   h += GRPS.map(g => gsec(g[0], g[1], g[2])).join('');
   h += '</div>';
   box.innerHTML = h;
