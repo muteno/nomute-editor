@@ -29,8 +29,6 @@ export async function onRequestPost({ request, env }) {
   const story = clean(body.story).slice(0, 1500);
   const genre = line(body.genre, 40) || '자동';
   const express = line(body.express, 40) || '자동';
-  const mood = line(body.mood, 40) || '자동';
-  const theme = line(body.theme, 40) || '자동';
   if (!story) return json({ error: '스토리(대사나 상황)를 적어줘' }, 400);
 
   // 선택 스타일(옵션 카드 1개) — 문자열 필드 화이트리스트만 통과
@@ -49,7 +47,7 @@ export async function onRequestPost({ request, env }) {
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/song-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, mode, genre, express, mood, theme, story, pick },
+    ref: REF, inputs: { id, mode, genre, express, story, pick },
   });
   if (r.status === 204) return json({ ok: true, id, mode, out: `song_out/${id}/${mode === 'options' ? 'options.json' : 'song.json'}` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);

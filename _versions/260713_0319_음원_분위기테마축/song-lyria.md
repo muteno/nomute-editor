@@ -8,7 +8,7 @@
   - **총량 = 60초 미만 분량**(위 구조 상한을 넘기지 마라 — 길면 릴스에 못 쓴다).
   - 스토리가 대사면 그 말투·결정적 문장을 훅에 그대로 살리고, 상황이면 화자 시점을 정해 서사로.
 - `prompt` = **Lyria 3에 보낼 생성 프롬프트 전문**(이 텍스트가 그대로 API `input`이 된다). 구성 순서:
-  1. 영문 스타일 지시 1~2문장: 선택 스타일의 장르 태그·무드·보컬(성별)·대략 BPM·핵심 악기·프로덕션 질감. 분위기 힌트가 `자동`이 아니면 무드로 번역해 반영, 테마 힌트가 `자동`이 아니면 가사 소재 프레임으로 쓴다.
+  1. 영문 스타일 지시 1~2문장: 선택 스타일의 장르 태그·무드·보컬(성별)·대략 BPM·핵심 악기·프로덕션 질감.
   2. 영문 구조·길이 지시: `A complete song under 60 seconds: short intro, verse, a strong hook chorus arriving early, and a clean resolved ending. Korean vocals.`
   3. `Sing exactly these Korean lyrics:` 다음 줄부터 `lyrics` 전문을 섹션 마커 포함 그대로.
 - `title` = 한국어 곡 제목(20자 이내 · 낚시 금지).
