@@ -264,16 +264,16 @@ def _over(deadline):
 
 
 def x_subs(accounts, limit=10, deadline=None):
-    """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 1.2s
-    (동시 요청 많으면 빈 응답 = 직렬 유지). 크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8).
-    정렬 = 좋아요."""
+    """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 4s
+    (분신 실측 260712: 1.2s 간격 = 16연속 429 · 4s = 전원 회복 — 짧은 간격이 되레 전멸 유발).
+    크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8). 정렬 = 좋아요."""
     out, seen_tid = [], set()
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::x 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
             break
         if i:
-            time.sleep(1.2)
+            time.sleep(4)
         try:
             h = _get("https://syndication.twitter.com/srv/timeline-profile/screen-name/" + urllib.parse.quote(acc))
             m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', h, re.S)
