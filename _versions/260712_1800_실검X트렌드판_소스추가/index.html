@@ -8787,8 +8787,7 @@ function renderSnsTrends() {
   const tkvA = ((d.tiktok || {}).videos) || [], tkv = TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA, tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · hashtags = 구 카나리아 폴백
   const sb = d.subs || {}, sx = sb.x || [], stk = sb.tiktok || [], sre = sb.insta || [], syt = sb.youtube || [];   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트)
   const shv = d.shorts || [], aiv = d.aivid || [];   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되")
-  const sig = d.signal || [], xtr = d.xtrends || [], pn = d.pann || [];   // ⑨⑩⑪ 시그널 실검·X 실시간 트렌드·네이트판(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시)
-  if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length && !sig.length && !xtr.length && !pn.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지)
+  if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지)
   const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n < 1e5 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') : String(Math.round(n / 1e4))) + '만' : n > 0 ? (n / 1e4).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '만' : '';   // 전 지표 만단위 통일(운영자 260712 "모두 만단위") — 10만 미만 = 소수1(1.6만) · 1만 미만 = 소수2(0.05만) = 정상 수집이면 미도달(잔존 = 수집 저단위 신호·gtrends RSS 이슈 보고 260712)
   const tfmt = s => { const n2 = parseInt(String(s || '').replace(/[^0-9]/g, ''), 10); return n2 > 0 ? vfmt(n2) + '+' : ''; };   // 구글 검색량 문자열 "20,000+"→"2만+" 만단위 통일 — 천단위 원값은 RSS approx_traffic 저단위 버킷(수집기 교체 검토 = 운영자 결정 대기)
   const tm = d.updated ? String(d.updated).slice(11, 16) : '';   // "HH:MM 수집"(살아있냐 신호 · 평의회10)
@@ -8879,14 +8878,7 @@ function renderSnsTrends() {
   REGS.forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '구독', '· ' + REGN[r], L.length, sortbar('stk', V3, stkS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
   REGS.forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '구독 릴스', '· ' + REGN[r], L.length, sortbar('sre', V3, sreS) + '<div class="trend-grid">' + L.map((t, i) => card(t, i)).join('') + '</div>'); });   // 한국/세계 2군 · 3/4 쇼츠식 통일(#6)
   REGS.forEach(r => { const L = sxR[r]; if (L.length) gX += sec('sx-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });   // 한국/세계 2군
-  if (sig.length) gGG += sec('sig', '실시간 검색어', '· 시그널', Math.min(sig.length, 10), sig.slice(0, 10).map((g, i) =>
-    row(i, 'https://www.google.com/search?q=' + encodeURIComponent(g.query || ''), '', g, '')).join(''));   // ⑨ 시그널 실검(운영자 260712 · 기존 그룹 안 배치 승인) — 클릭 = 구글 검색(기존 검색어 폴백 관용구)
-  if (xtr.length) gX += sec('xtr', '실시간 트렌드', '', Math.min(xtr.length, 15), xtr.slice(0, 15).map((g, i) =>
-    row(i, 'https://x.com/search?q=' + encodeURIComponent(g.query || ''), '', g, '')).join(''));   // ⑩ X 실시간 트렌드 — 클릭 = X 검색(새 탭 · 임베드 비대상)
-  let gCM = '';   // ⑪ 커뮤니티 그룹(신설 접이 · 운영자 260712 배치 승인 — 기존 접이·순번 문법 그대로 · 레일 아이콘 = 텍스트 폴백)
-  if (pn.length) gCM += sec('pann', '네이트판 톡커선택', '', Math.min(pn.length, 10), pn.slice(0, 10).map((p2, i) =>
-    row(i, p2.url || '#', '', p2, '')).join(''));
-  const GRPS = [['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['comm', '커뮤니티', gCM]].filter(g => g[2]);
+  const GRPS = [['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX]].filter(g => g[2]);
   // ── 조립: 좌측 책갈피 레일(soc-item 밖 = backdrop-filter 조상 회피 → fixed가 뷰포트 기준 · §디자인 h) + 카드(헤드 → TOP 10 → 순번 플랫폼 그룹) ──
   let h = '';
   if (GRPS.length > 1) h += '<nav class="trail" id="trendRail" aria-label="플랫폼 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
@@ -8927,9 +8919,6 @@ function renderSnsTrends() {
     addText(txt.slice(last));
   }
   fillT('gt', '.trend-q', gt.slice(0, 8).map(g => g.query || ''));
-  fillT('sig', '.trend-q', sig.slice(0, 10).map(g => g.query || ''));   // ⑨ 시그널 실검(운영자 260712)
-  fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.query || ''));   // ⑩ X 실시간 트렌드
-  fillT('pann', '.trend-q', pn.slice(0, 10).map(p2 => p2.title || ''));   // ⑪ 네이트판 톡커선택
   fillT('yt', '.tpc-t', ytZ.map(z => z[0].title || ''));
   fillT('ytn', '.tpc-t', ytnZ.map(z => z[0].title || ''));
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT)
