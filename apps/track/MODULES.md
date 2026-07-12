@@ -42,11 +42,23 @@
 | `despill` | 0~1(.5) | 스필 억제 | 가장자리 초록물 제거(그린/블루만) |
 | `choke` | −4~4(0) | 가장자리 줄이기 | 매트 수축(+)/팽창(−) px |
 | `feather` | 0~10(1) | 부드럽게 | 매트 블러 px |
+| `edge` | fast\|high(fast) | — | high = 키잉 전 yuv444 승격(테두리 계단 완화 · 속도 대가 — 운영자 260712 `테두리` 우선) |
 | `t0`/`t1` | 초 | 구간 | 트림(선택) |
 
 - 엔진 분기: 그린/블루 계열 = `chromakey`(YUV·압축 그린스크린 경계 우수)+`despill` · 임의 색 = `colorkey`(RGB · despill 비적용 = 정직 한계).
 - 실측(260712 · 4vCPU): 640×360 3s = 3~4s(이중 인코딩 포함) · 판별 E2E = 그린 키 불투명 11.38%(이론 11.1)·choke 수축·feather 경계 증가·임의 색 88.89% 전부 통과.
 - 한계(정직): 균일 조명 스크린 전제(얼룩 조명 = similarity 상향 → 피사체 침식 트레이드오프) · 임의 색 키 = despill 없음 · 반투명 소재(유리·연기)는 blend로 근사 · despill 경로 = 내부 8bit ARGB 경유(마스터 10bit 컨테이너는 ProRes 4444 규격상 불가피 — 8bit 소스 = 무손실·10bit 소스+despill = 8bit 강하) · 444 크로마 = 업샘플 보간(엣지 복구 아님) · 색 = 6자리 hex 전용(축약 #F00 등 = 정직 에러) · 길이 캡 실측 게이트 = 300+1s 슬랙 · SAR = 무정규화 통과(색 연산 = 좌표 무관 · 마스터가 입력 SAR 전파).
+
+## M4. 세그 트래킹 채움 (픽셀 실루엣 추종 모자이크·가면) — `track_maskfx.py` (신규 260712)
+> 운영자: "트래킹되면서 모자이크가 따라가는 게 중요 · 얼굴만/전신 분리 · 픽셀 단위 부위를 모자이크 · 가면도" — M2(박스 모자이크)와 별개 축: SAM2 마스크가 실루엣 그대로 프레임마다 따라감. 전파 코어 = 키잉(M2-b) 단일 출처 import(plan_passes·캡 상수).
+- 호출(CLI): `python3 apps/track/track_maskfx.py --src in.mp4 --tracks tracks.json --req '{…}' --out out.mp4` → 마지막 stdout 줄 = 결과 JSON
+- 호출(함수): `run(src, tracks|None, req, out_path) → {"out","w","h","fps","frames","fill"}` — 실패 = `SystemExit` 전파(chroma 관례)
+- req 계약: `{keep:[sid](전신·사물), keepP:[pid](얼굴 — 분석 후 렌더 시점에 부위 선택), extra:[{t,x,y}](탭·양방향 전파), fill:"mosaic"|"image", mosaic:{block:0=자동(첫 bbox 짧은변/9·하한 8px 익명성)|px}, image:{path(PNG·RGBA), scale:.3~3, clip:bool(실루엣 클리핑)}, feather:0~40(8)}`
+- 채움: mosaic = 마스크 영역만 픽셀레이트{블록 = 전 구간 고정(지터 방지) · 코어-강제(내부 반투명 노출 차단 = M2 커버 보증 계승) · 페더 = 경계 링} · image = 가면을 마스크 bbox 등비 fit·중심 정렬 알파 합성(clip = 실루엣 모양으로 재단)
+- 출력: h264 mp4 번인(+원본 오디오) — 알파 불요(웹 재생 그대로)
+- 캡 = 키잉과 동일(90s·keep+keepP+extra 4객체·긴 변 1920·발사 전 예산 가드 — 상수 import = 완화도 한 곳)
+- 실측(260712 · 4vCPU): 640×360 6s 2패스(순+역) = 63~69s · 판별 E2E = 이동 텍스처 원 전체 블록화(시각 실증)·가면 중심픽셀 = 가면색(역커버 t=0.5 포함)·지나간 자리 = 원본 유지(배경 무손)
+- 한계(정직): 세그 15fps hold(급모션 엣지 1프레임 지연 — 키잉 동일) · 가면 = bbox 정렬(회전·원근 추종 없음 — 후속 = 얼굴 랜드마크 정렬) · 자동 블록 = 첫 등장 크기 기준(원근 급변 시 block 명시 권장) · **박스 대상(keep/keepP) = 순방향 전용 [pf, 끝)** — 첫 양호 등장 이전 [0, pf) 구간은 미채움(익명화 용도면 노출창 · extra 탭 = 양방향이라 앞 구간까지 커버 — 앞 구간 필요 시 extra 병용) · keep/keepP는 tracks.json(M1) 필수(없으면 공집합 = 정직 거절 · extra만 = tracks 생략 가능) · block 수동 = 4~64px 클램프(0 = 자동).
 
 ## 붙일 때 (후속 배선 체크리스트)
 - 워크플로: track-make 미러(업로드 회수 → 모듈 호출 → R2 업로드 → out.json 커밋 → error.log failure()) — conv-make가 최신 골격(r2_src 직업로드 포함).

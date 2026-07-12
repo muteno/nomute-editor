@@ -27,6 +27,7 @@ DEFAULTS = {
     "despill": 0.5,       # 스필 제거(0~1 · 그린/블루 계열만) — 피사체 가장자리 초록물 빼기
     "choke": 0,           # 매트 수축/팽창 px(−4~+4) — 프리미어 '가장자리 줄이기'. +수축 = 후광 제거
     "feather": 1,         # 매트 페더 px(0~10) — 가장자리 부드럽게
+    "edge": "fast",       # fast | high — high = 키잉 전 yuv444 승격(테두리 계단 완화 · 속도 대가)
 }
 
 
@@ -105,6 +106,8 @@ def build_filter(o, kind):
     """키잉 필터그래프 문자열 — 마스터/프리뷰 분기 전 공통 구간(알파 완성까지)."""
     col = "0x" + o["color"].lstrip("#")
     steps = []
+    if o.get("edge") == "high":
+        steps.append("format=yuv444p")   # 키잉 전 풀크로마 승격 — 420 크로마 계단(테두리 얽힘) 완화(평의회1 · 운영자 260712 테두리 우선) · 비용 = 속도
     if kind in ("green", "blue"):
         steps.append(f"chromakey={col}:{o['similarity']:.3f}:{o['blend']:.3f}")   # YUV 키 = 압축 그린스크린 경계 우수
         if o["despill"] > 0:
@@ -127,7 +130,7 @@ def build_filter(o, kind):
 
 def run(src, opts, out_dir):
     """크로마키 실행 — src 영상에서 opts 색을 투명화 → out_dir/chroma.mov(마스터)+chroma_preview.webm.
-    반환 = {"master","preview","w","h","fps","dur"} (경로 = out_dir 상대 아님·절대/전달값 그대로 · 업로드는 콜러 몫)."""
+    반환 = {"master","preview","w","h","fps","dur","kind","opts"} (opts = 해소값+t0/t1 에코 · 업로드는 콜러 몫)."""
     o = dict(DEFAULTS)
     o["color"] = _hex_color((opts or {}).get("color"), DEFAULTS["color"])
     o["similarity"] = _num((opts or {}).get("similarity"), 0.01, 0.5, DEFAULTS["similarity"])
@@ -135,6 +138,7 @@ def run(src, opts, out_dir):
     o["despill"] = _num((opts or {}).get("despill"), 0, 1, DEFAULTS["despill"])
     o["choke"] = int(_num((opts or {}).get("choke"), -4, 4, DEFAULTS["choke"]))
     o["feather"] = _num((opts or {}).get("feather"), 0, 10, DEFAULTS["feather"])
+    o["edge"] = "high" if (opts or {}).get("edge") == "high" else "fast"   # high = 키잉 전 yuv444(테두리 우선 · 속도 대가)
     t0 = _num((opts or {}).get("t0"), 0, 1e9, 0.0)
     t1 = _num((opts or {}).get("t1"), 0, 1e9, 0.0)
 
@@ -187,7 +191,7 @@ def main():
     ap = argparse.ArgumentParser(description="크로마키(색상 키잉) 모듈 — MODULES.md 계약")
     ap.add_argument("--src", required=True, help="입력 영상 경로")
     ap.add_argument("--out-dir", required=True, help="산출 폴더(chroma.mov·chroma_preview.webm)")
-    ap.add_argument("--opts", default="{}", help='JSON {"color":"#00FF00","similarity":0.15,"blend":0.05,"despill":0.5,"choke":0,"feather":1,"t0":s,"t1":s}')
+    ap.add_argument("--opts", default="{}", help='JSON {"color":"#00FF00","similarity":0.15,"blend":0.05,"despill":0.5,"choke":0,"feather":1,"edge":"fast|high","t0":s,"t1":s}')
     a = ap.parse_args()
     try:
         opts = json.loads(a.opts or "{}")
