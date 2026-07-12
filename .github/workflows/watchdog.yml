@@ -33,7 +33,7 @@ jobs:
 
       - name: pywebpush (발송 모드 한정 — 관측 모드 = 설치 0)
         env:
-          WATCHDOG_NOTIFY: ${{ inputs.notify || '0' }}
+          WATCHDOG_NOTIFY: ${{ inputs.notify || '1' }}   # 승격(운영자 260713 "그냥 하고 경고로 오게" — 카나리아 run#1 success·심야 갭 실측 75분<임계 120분 = 오탐 마진 확보) · 롤백 = || '0'
         run: |
           if [ "$WATCHDOG_NOTIFY" = "1" ]; then
             timeout 120 pip install -q pywebpush || echo "::warning::pywebpush 설치 실패 — push_send가 fail-soft 생략"
@@ -43,7 +43,7 @@ jobs:
 
       - name: 4지표 점검(±알림)
         env:
-          WATCHDOG_NOTIFY: ${{ inputs.notify || '0' }}   # 카나리아 게이트(§📰-e) — 승격 = || '1'
+          WATCHDOG_NOTIFY: ${{ inputs.notify || '1' }}   # 승격 완료(§📰-e 이행 · 운영자 260713 — 절차 생략 없음: dispatch 카나리아 run#1 success + 관측 실측 4지표 정상 + 심야 갭 실측 후 임계 120 상향). 롤백 = || '0'(관측 모드 복귀)
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: timeout 420 python3 scraper/watchdog.py
