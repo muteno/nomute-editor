@@ -9568,6 +9568,7 @@ window.addEventListener('popstate', () => { if (_composeRecovering) return; if (
 // 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
 // iframe 로드 = location.replace(.src 대신 = 세션 히스토리에 항목 안 쌓음 · 폰 백버튼 빈화면 차단 · 운영자 260623) + 캐시버스트(stale 방지 · _headers no-cache 한 쌍)
 function loadToolFrame(src) {
+  if (!src) return;   // 빈 src 가드 — undefined 유입이 frame-ready만 벗기고 TypeError(src.indexOf)로 중단하면 load 재부여가 없어 iframe이 영구 opacity 0(빈 화면 · 실측 260713) → 벗기기 전에 차단
   tooldlg.classList.remove('frame-ready');   // 로드 시작 = iframe 숨김(흰 프레임 차단) → 아래 load 리스너가 페이드인
   const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   const _fr = activeToolFrame(); try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
@@ -9599,11 +9600,13 @@ $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.too
     try { const w = activeToolFrame().contentWindow; if (w && w.selApp) w.selApp(app); else loadToolFrame('/thumb.html'); } catch (_) {}       // 방어 — thumb 프레임이 빈 신생 클론이면 로드(bridge sync가 하이라이트 재정합)
     if (app === '6') geniMount();   // 프롬프팅 탭 = genidlg 폼을 탭 콘텐츠로 이식(운영자 260713 B "B로 간다" — 구 팝업 즉시(같은날 1차)를 ask 가상 탭 문법으로 재정렬 = 3도구 폼 거처 통일 · 발사 = 원복+작업내역 노출 · 기사 카러셀 + = 팝업 유지(이중 홈) · selApp 역동기·복원은 클릭 아님 = 미격발)
     else geniLeave();   // 프롬프팅 이탈(제작·합성/편집 클릭) = 폼 원복 + iframe 재활성(ask 이탈 선례 · 노드 거처 불변식 유지)
-    if (curToolKey && toolMeta[curToolKey]) toolMeta[curToolKey].src = b.dataset.src;   // 활성 서브탭 기억(복원 시 하이라이트 정합)
-    if (b.dataset.src === '#ask') { askMount(); return; }   // 요약 요청 가상 탭 = askwrap 재표시(iframe 보존 · 리로드 0)
-    const h = $('#askHost'); if (h && !h.hidden) { h.hidden = true; activateToolFrame(curToolKey); }   // 가상 탭 이탈 = 호스트 숨김 + 이 도구 프레임 재활성(askwrap은 남겨둠 = 입력 보존 · 원복은 닫기/최소화 때)
-    loadToolFrame(b.dataset.src);   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
-  } });
+    return;   // 이미지 묶음 = 내부 전환(selApp)으로 끝(리로드 0 계약) — 아래 공통부로 흐르면 thumb 탭 버튼엔 data-src가 없어 loadToolFrame(undefined)가 frame-ready만 벗기고 TypeError로 중단 = iframe 영구 opacity 0(스튜디오 빈 화면 · 실측 260713). 260712 8차 재편 때 이 블록이 공통부까지 삼키며(닫는 중괄호 위치 회귀) 영상·요약 셸 탭 전환도 죽었었음 — 공통부는 블록 밖이 정본.
+  }
+  if (curToolKey && toolMeta[curToolKey]) toolMeta[curToolKey].src = b.dataset.src;   // 활성 서브탭 기억(복원 시 하이라이트 정합)
+  if (b.dataset.src === '#ask') { askMount(); return; }   // 요약 요청 가상 탭 = askwrap 재표시(iframe 보존 · 리로드 0)
+  const h = $('#askHost'); if (h && !h.hidden) { h.hidden = true; activateToolFrame(curToolKey); }   // 가상 탭 이탈 = 호스트 숨김 + 이 도구 프레임 재활성(askwrap은 남겨둠 = 입력 보존 · 원복은 닫기/최소화 때)
+  loadToolFrame(b.dataset.src);   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
+});
 // 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스 요약·이미지·영상 고정 · 세부는 탭) · 운영자 260626
 const ASK_TABS = [{ src: '#ask', label: '요약 요청', icon: '' }, { src: '/nb.html', label: '미디어 요약', icon: '' }];   // 요약 셸 2탭(운영자 260712 "요약 요청 = 이미지와 동일 UIUX · 기본 요약 요청(뉴스) / 2번째 미디어 요약") — #ask = 가상 탭(askdlg 폼 이식 · iframe 아님) · 미디어 요약 = nb.html(유튜브 자료화 · 구 영상 스튜디오 자료 탭서 이동 = 진입로 단일화)
 const CAP_TABS = [{ src: '/edit.html', label: '편집', icon: '' }, { src: '/ly.html', label: '자막', icon: '' }, { src: '/k.html', label: '프롬프팅', icon: '' }, { src: '/song.html', label: '음원', icon: '' }];   // 자료 탭 = 요약 셸 '미디어 요약'으로 이동(운영자 260712 재배치 — 복원은 이 행에 {src:'/nb.html',label:'자료'} 1개 추가) · 음원 = 4탭째 추가(운영자 260712 "+>영상>음원 제작" 지시 — 수노 규격 가사·스타일 프롬프팅 B안 · 오디오 생성 아님) · 운영자 260711 3차 "영상 통합 3분류" 확정 — 2차 선택값(trackEntry=tab4·convTab=restore)의 5탭을 뒤집고 진짜 3탭{편집·자막·프롬프팅}: 트래킹 = 편집 탭 기타 기능 → 핸드오프 서브뷰(아래 nmToolTab 폴백 · 탭 없음) · 변환 = 재도먼트(축 전부 편집 카드{비율·해상도·프레임·음량}가 전담 · conv.html·api/conv.js·conv-make.yml 보존 = 복원은 이 행에 탭 1개 추가) · 라벨 = 축약형(정식명 §📐 불변) · 진입 = 항상 첫 탭(openTool realSrc=tabs[0] = menuMemory off)   // 편집기 = 최좌측(차기 주력 · 운영자 260710 골격 B 확정 — 업로드 1번·1잡) · 탭 글자 앞 아이콘 폐지(운영자 260705) — 글자만·활성 강조색(.tooltab.on) 유지 · thumb 내부 탭(텍스트 단독·260704)과 일관 · §📐 헤더 텍스트·SVG 공존 금지 부합

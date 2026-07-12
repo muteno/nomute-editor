@@ -36,7 +36,7 @@ STATE = os.path.join(ROOT, "scraper", "obs", "watchdog_state.json")
 SUBS_LEDGER = os.path.join(ROOT, "push", "subscriptions.json")   # 발송 사전 체크용(인덱스 의존 금지)
 LEDGERS = [os.path.join(ROOT, "push", p) for p in ("sent.json", "autopick.json", "subscriptions.json")]
 
-FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "90"))
+FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시 상향 · 실측 260713: 최근 7일 최대 무신규 갭 75분[심야]·90분 초과 0회 — 심야 소강 오탐 마진 확보 = 경고 신뢰 우선·감지 지연 +30분 수용)
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
 COOLDOWN_MIN = float(os.environ.get("WD_COOLDOWN_MIN", "360"))
