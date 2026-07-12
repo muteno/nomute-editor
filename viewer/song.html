@@ -96,11 +96,38 @@
   .dlbtn { background:rgba(var(--accent-rgb),.10)!important; color:var(--accent)!important; border:1px solid rgba(var(--accent-rgb),.34)!important; }
   .dlbtn.dl-done { color:var(--mut)!important; }
   .ghost.dlbtn { margin-left:auto; width:38px; height:38px; padding:0; justify-content:center; }
+
+  /* 만든 노래(플레이리스트) — 메시지함(.msgpop) 계승: 무채색 글래스·우상단 unfold(§디자인 f) · 뒤 비침 차단 알파 .9+(§디자인 i) */
+  .wrap { position:relative; }
+  .histbtn { position:absolute; top:10px; right:12px; z-index:6; display:grid; place-items:center; width:28px; height:28px; padding:0;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .histbtn:active { transform:scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .histbtn svg { width:14px; height:14px; }
+  .hpop { position:fixed; top:12px; right:12px; width:min(86vw,340px); max-height:min(70vh,480px); z-index:30; border-radius:var(--r-l); border:1px solid rgba(255,255,255,.12);
+    background:linear-gradient(165deg,rgba(24,25,28,.9),rgba(16,17,19,.94)); -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
+    transform-origin:top right; animation:hUnfold .22s var(--gauge-ease); display:flex; flex-direction:column; overflow:hidden; }
+  .hpop[hidden] { display:none; }
+  @keyframes hUnfold { 0% { transform:scale(.6); opacity:0; } 100% { transform:scale(1); opacity:1; } }
+  .hpop .hh { display:flex; align-items:center; gap:8px; padding:12px 12px 10px 14px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .hpop .ht { flex:1; font-size:var(--fs-label); font-weight:var(--fw-x); }
+  .hpop .hx { display:grid; place-items:center; width:26px; height:26px; padding:0; border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; }
+  .hpop .hx:active { transform:scale(var(--press-s)); }
+  .hpop .hx svg { width:12px; height:12px; }
+  .hpop .hl { overflow-y:auto; padding:6px 8px 10px; }
+  .hrow { display:grid; grid-template-columns:1fr auto; gap:2px 8px; width:100%; text-align:left; padding:9px 10px; border:0; border-radius:var(--r-s); background:transparent; color:var(--fg); font:inherit; cursor:pointer; transition:background .15s; }
+  .hrow:active { background:rgba(255,255,255,.05); }
+  .hrow.on { background:rgba(var(--accent-rgb),.08); }
+  .hrow .t { font-size:13px; font-weight:var(--fw-b); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hrow.on .t { color:var(--accent); }
+  .hrow .eq { color:var(--accent); font-size:10px; font-weight:var(--fw-x); align-self:center; }
+  .hrow .m { grid-column:1/-1; font-size:10.5px; color:var(--mut); font-variant-numeric:tabular-nums; }
 </style>
 <script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
 </head>
 <body>
 <div class="wrap">
+  <button class="histbtn" id="histBtn" type="button" aria-label="만든 노래 목록"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h11M3 18h7"/><circle cx="18.5" cy="16.5" r="2.5"/><path d="M21 16.5V7.5l-3 1"/></svg></button>
   <label class="fl">장르</label>
   <div class="modeseg" id="segGenre" role="tablist" aria-label="장르 힌트">
     <button class="mseg on" data-v="자동" role="tab" aria-selected="true">자동</button>
@@ -172,6 +199,11 @@
     <div class="rbox" id="lLyr"></div>
     <div class="rmeta" id="lMeta"></div>
   </div>
+</div>
+
+<div class="hpop" id="hpop" hidden>
+  <div class="hh"><div class="ht">만든 노래</div><button class="hx" id="hpopX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="hl" id="hlist"></div><!-- 빈 상태 = 조용한 공백(§디자인 e-가 — 필러 문구 금지) -->
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — COPY/CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
@@ -387,6 +419,39 @@ $('#lDl').addEventListener('click',e=>{
   document.body.appendChild(a); a.click(); a.remove();
   b.classList.add('dl-done');
 });
+
+// ── 만든 노래(플레이리스트) — 메시지함(msgpop) 계승 팝업 · index.json = 빌드 산출(운영자 260712) ──
+//    행 탭 = 그 곡 로드+재생 · 곡 끝 = 다음 곡 자동(마지막 = 정지) · 빈 상태 = 조용한 공백(§디자인 e-가)
+let PLIST=[], PIDX=-1;
+const hpop=$('#hpop');
+function hRow(s,i){
+  const d=(s.ts||'').slice(5,16).replace('T',' ');
+  return '<button class="hrow'+(i===PIDX?' on':'')+'" data-i="'+i+'" type="button"><span class="t">'+esc(s.title||'(무제)')+'</span>'+(i===PIDX?'<span class="eq">재생 중</span>':'<span></span>')+'<span class="m">'+esc(d)+' · '+esc(s.engine==='lyria'?'구글':(s.engine||''))+(s.genre?(' · '+esc(s.genre)):'')+'</span></button>';
+}
+function renderList(){ $('#hlist').innerHTML=PLIST.map((s,i)=>hRow(s,i)).join(''); }
+async function openHist(){
+  hpop.hidden=false; renderList();
+  try{
+    const r=await fetch('song_out/index.json?t='+Date.now());
+    if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ PLIST=j; renderList(); } } }
+  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+}
+$('#histBtn').addEventListener('click',()=>{ if(hpop.hidden) openHist(); else hpop.hidden=true; });
+$('#hpopX').addEventListener('click',()=>{ hpop.hidden=true; });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!hpop.hidden) hpop.hidden=true; });
+document.addEventListener('pointerdown',e=>{ if(!hpop.hidden&&!e.target.closest('.hpop')&&!e.target.closest('.histbtn')) hpop.hidden=true; },{capture:true});
+async function playIdx(i,autoplay){
+  const s=PLIST[i]; if(!s) return;
+  PIDX=i; renderList();
+  let d=null;
+  try{ const r=await fetch('song_out/'+encodeURIComponent(s.id)+'/song.json?t='+Date.now()); if(r.ok){ const tx=await r.text(); if(!/^\s*</.test(tx)) d=JSON.parse(tx); } }catch(e){}
+  if(!d||!d.url) d={title:s.title,url:s.url,engine:s.engine,lyrics:''};   // 폴백 = 인덱스 값만으로 재생(가사 없이)
+  SONG_ID=s.id; showLyria(d,0);
+  if(autoplay){ try{ await $('#lAud').play(); }catch(e){ /* 자동재생 차단 = 플레이어 노출로 갈음 */ } }
+}
+$('#hlist').addEventListener('click',e=>{ const b=e.target.closest('.hrow'); if(!b) return; playIdx(+b.dataset.i,true); });
+$('#lAud').addEventListener('ended',()=>{ if(PIDX>=0&&PIDX+1<PLIST.length) playIdx(PIDX+1,true); });
 
 // ── 재개(pend) — 리로드/재진입 시 진행 중 생성 폴 이어받기(conv 문법 · 24h 게이트) ──
 (function(){
