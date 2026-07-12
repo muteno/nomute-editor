@@ -1375,6 +1375,7 @@ function bindFile(inp, lab, store) {
     lab.classList.remove('has');
     lab.innerHTML = '<span class="filepic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span><input type="file" accept="image/*" style="display:none">';
     rebindInput();
+    if (APP === '8' && typeof ieRender === 'function') ieRender();   // 편집 = 이미지 삭제 시 검출·결과 초기화 재동기(기틀검증3 §6)
   };
   const applyImg = (b64, name) => {   // b64+이름 → 미리보기 렌더(파일선택·수정복원 공용)
     store.b64 = b64; store.name = name || '';
@@ -1390,6 +1391,7 @@ function bindFile(inp, lab, store) {
     rebindInput();   // innerHTML 교체로 사라진 input 재바인드 + id 복원(FAB getElementById('file') 유지)
     const rm = lab.querySelector('.filerm');   // 휴지통 = 라벨 클릭(파일창 열림) 안 타게 차단 후 삭제
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
+    if (APP === '8' && typeof ieRender === 'function') ieRender();   // 편집 = 새 이미지 첨부 시 검출 초기화 재동기(2번째 교체 오발 봉합 · 기틀검증3 §6 · input 노드 교체로 change 리스너 유실 우회)
   };
   const handler = e => {
     const f = e.target.files[0]; if (!f) return;
@@ -3019,6 +3021,10 @@ async function ieFind() {
 async function ieRenderGo() {
   if (!IE.sel.size) return errStatus('가릴 피사체를 탭해줘', 'warn');
   ieBusy(true, 'rendering');
+  // 재렌더 신선도 가드(스테일 result.json/error.log 오표시 차단 · 기틀검증 C1·C2) — 발사 직전 직전본 스냅 → 폴에서 이보다 새 것만 인정(같은 id 재사용이라 필수)
+  IE.preTs = ''; IE.preErr = '';
+  try { const pr = await fetch('imgedit_out/' + IE.id + '/result.json?t=' + Date.now()); if (pr.ok) { const pj = await pr.json(); IE.preTs = pj.ts || ''; } } catch { /* 직전본 없음 = 첫 렌더 */ }
+  try { const pe = await fetch('imgedit_out/' + IE.id + '/error.log?t=' + Date.now()); if (pe.ok) { const t = (await pe.text()).trim(); if (t && t[0] !== '<') IE.preErr = t; } } catch { /* 없음 */ }
   const opts = { pxw: IE.pxw, pxh: IE.pxw, size: 1.15, feather: 5, shape: IE.shape };
   try {
     const r = await fetch('/api/imgedit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ render: { id: IE.id, targets: [...IE.sel], opts, precise: IE.precise } }) }).then(x => x.json());
@@ -3031,7 +3037,8 @@ function iePoll(kind) {
   const t0 = Date.now(), file = kind === 'boxes' ? 'boxes.json' : 'result.json';
   IE.poll = setInterval(async () => {
     if (Date.now() - t0 > 300000) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus('시간 초과 — 다시 시도해줘'); }
-    try { const er = await fetch('imgedit_out/' + IE.id + '/error.log?t=' + Date.now()); if (er.ok) { const tx = (await er.text()).trim(); if (tx && tx[0] !== '<') { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus(tx.slice(0, 120)); } } } catch { /* 폴 지속 */ }
+    // error.log — boxes(새 id) = 항상 인정 / result(같은 id 재렌더) = 발사 전 스냅(preErr)과 다를 때만 인정(스테일 실패 고정 차단 · C1)
+    try { const er = await fetch('imgedit_out/' + IE.id + '/error.log?t=' + Date.now()); if (er.ok) { const tx = (await er.text()).trim(); if (tx && tx[0] !== '<' && (kind === 'boxes' || tx !== IE.preErr)) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus(tx.slice(0, 120)); } } } catch { /* 폴 지속 */ }
     try {
       const r = await fetch('imgedit_out/' + IE.id + '/' + file + '?t=' + Date.now()); if (!r.ok) return; const j = await r.json();
       if (kind === 'boxes') {
@@ -3041,9 +3048,11 @@ function iePoll(kind) {
         if (!IE.items.length) errStatus('피사체를 못 찾았어 — 다른 이미지로 해봐', 'warn');
         ieRender();
       } else {
-        if (j.error) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, 'found'); return errStatus(String(j.error).slice(0, 120)); }
-        if (!j.url) return;
-        clearInterval(IE.poll); IE.poll = null; ieBusy(false, 'done'); ieShowResult(j.url);
+        if (!j.ts || j.ts === IE.preTs) return;   // 스테일(직전본·구본) = 새 산출 대기(C2) · 신 산출은 ts != preTs
+        clearInterval(IE.poll); IE.poll = null;
+        if (j.error) { ieBusy(false, 'found'); return errStatus(String(j.error).slice(0, 120)); }
+        if (!j.url) { ieBusy(false, 'found'); return errStatus('결과 URL 없음 — 다시 시도해줘'); }
+        ieBusy(false, 'done'); ieShowResult(j.url);
       }
     } catch { /* 폴 지속 */ }
   }, 5000);
@@ -3058,7 +3067,7 @@ function ieShowResult(url) {
   document.querySelectorAll('.ie-px').forEach(el => el.addEventListener('click', () => { IE.pxw = +el.dataset.px; document.querySelectorAll('.ie-px').forEach(x => x.classList.toggle('on', x === el)); }));
   const sh = $('#ieShape'); if (sh) sh.addEventListener('click', () => { IE.shape = IE.shape === 'ellipse' ? 'rect' : 'ellipse'; sh.textContent = IE.shape === 'ellipse' ? '타원' : '네모'; sh.classList.toggle('on', IE.shape === 'ellipse'); });
   const pr = $('#iePrecise'); if (pr) pr.addEventListener('click', () => { IE.precise = !IE.precise; pr.textContent = IE.precise ? 'ON' : 'OFF'; pr.classList.toggle('on', IE.precise); });
-  const fi = $('#file'); if (fi) fi.addEventListener('change', () => setTimeout(() => { if (APP === '8') ieRender(); }, 220));   // 새 이미지 = 박스 초기화 재렌더(FileReader 처리 후)
+  // (새 이미지 재동기 = applyImg/reset 말미 app8 훅이 전담 — input 노드 교체 무관 · 기틀검증3 §6)
   document.querySelectorAll('.ie-px, #ieShape, #iePrecise').forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }));
 })();
 
@@ -3292,7 +3301,7 @@ loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기�
     if (APP === '5') { var fi = slot && slot.querySelector('input[type=file]'); if (fi) fi.click(); }   // 카드뉴스 = #fileLab 내부 input 직접 클릭(applyImg/reset로 id 교체돼도 영속·운영자 260628 버그#2 봉합)
     else { var f = imgInput(); if (f) f.click(); } });
   if (gen) gen.addEventListener('click', function(e){ e.stopPropagation(); keepFab(); var g = document.getElementById('go'); if (g) g.click(); });   // ▶ = 이미지 제작 트리거(ly lyGenFab→#go 패턴·운영자 260628)
-  b4.addEventListener('click', function(e){ e.stopPropagation(); keepFab(); var o = ['2','5','7'], i = o.indexOf(APP); selApp(o[(i + 1 + o.length) % o.length]); refresh();   // 폐지된 저작권 탭(3) 순환 제거 + 실재 탭 집합 [2,5,7] 정렬 = 유령 app3 진입로 봉인·리사이즈(7) 도달 복구(THUMB_TABS 일치·indexOf -1 가드 · 운영자 260712 저작권 app2 통합 · 분신술 10인 검증 1·7·9)
+  b4.addEventListener('click', function(e){ e.stopPropagation(); keepFab(); var o = ['2','5','8','7'], i = o.indexOf(APP); selApp(o[(i + 1 + o.length) % o.length]); refresh();   // 실재 탭 집합 [2,5,8,7] = THUMB_TABS 일치(편집8 추가 · 폐지 app3 봉인 · indexOf -1 가드 · 운영자 260712 · 기틀검증1 지적)
     window.scrollTo({ top: 0, behavior: 'smooth' }); });   // 도구 전환 = 맨 위로(새 탭 처음부터 보이게 · 카드뉴스 포함 · 운영자 260626)
   document.querySelectorAll('.tab').forEach(function(t){ t.addEventListener('click', function(){ setTimeout(refresh, 0); }); });
   refresh();

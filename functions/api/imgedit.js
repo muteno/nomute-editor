@@ -70,7 +70,7 @@ export async function onRequestPost({ request, env }) {
   const name = String(body.name || '');
   const dm = fileB64.match(/^data:[^;,]*;base64,(.+)$/);   // data URL 프리픽스 벗기기(미매치 시 잔존 → GH PUT 422)
   if (dm) fileB64 = dm[1];
-  if (!fileB64 || fileB64.length > 40_000_000) return json({ error: '이미지는 ≤30MB' }, 400);
+  if (!fileB64 || fileB64.length > 20_000_000) return json({ error: '이미지는 ≤15MB' }, 400);   // base64 ~20MB = 원본 ~15MB — CF Function 메모리·GitHub Contents API PUT 한계 여유(기틀검증5 H1 · 이미지엔 충분)
   const ext = imgExt(fileB64);
   if (!ext) return json({ error: '지원 형식은 JPG·PNG·WEBP야' }, 400);
 

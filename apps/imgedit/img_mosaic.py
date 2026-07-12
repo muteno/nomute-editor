@@ -26,12 +26,13 @@ from img_detect import load_image_bgr, OUT_ROOT   # 검출↔렌더 동일 EXIF 
 
 
 def fail(iid, user_msg, log_msg=""):
-    """렌더 실패 = result.json{error} 기록 후 exit 0(fail-soft — 뷰어 헛폴 차단 · ly_burn/track_render 동일)."""
+    """렌더 실패 = result.json{error,ts} 기록 후 exit 0(fail-soft — 뷰어 헛폴 차단 · ly_burn/track_render 동일).
+    ts 필수 = 뷰어 재렌더 신선도 가드(C1·C2)가 성공·실패 result 모두 ts로 스테일 판정."""
     outdir = os.path.join(OUT_ROOT, iid)
     try:
         os.makedirs(outdir, exist_ok=True)
         with open(os.path.join(outdir, "result.json"), "w", encoding="utf-8") as f:
-            json.dump({"error": user_msg}, f, ensure_ascii=False)
+            json.dump({"error": user_msg, "ts": tr.kst_now()}, f, ensure_ascii=False)
     except Exception:
         pass
     print(f"::warning::{log_msg or user_msg}", flush=True)
@@ -94,6 +95,11 @@ def mosaic_by_mask(img, mask, pxw, pxh, feather):
 def main():
     iid = sys.argv[1]
     outdir = os.path.join(OUT_ROOT, iid)
+    for stale in ("error.log", "result.json"):   # 재렌더 시작 = 직전 산출 제거(스테일 오표시 방지 · C1·C2 서버 위생 · Commit git add -A가 삭제 반영)
+        try:
+            os.remove(os.path.join(outdir, stale))
+        except OSError:
+            pass
     bpath = os.path.join(outdir, "boxes.json")
     if not os.path.isfile(bpath):
         fail(iid, "분석 정보가 없어 — 이미지를 다시 올려줘.", "no boxes.json")

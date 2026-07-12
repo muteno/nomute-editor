@@ -45,5 +45,8 @@ fi
 
 # YuNet(검출) — 경량·정밀 공통 필요
 fetch_model "face_detection_yunet/face_detection_yunet_2023mar.onnx" "yunet_2023mar.onnx" "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
+# SFace — 단일 이미지 검출엔 rec 미사용이나, 재사용하는 track_analyze.load_models가 YuNet+SFace 둘 다 없으면 apps/track/setup.sh를
+#   서브프로세스로 재실행(SFace 37MB+yt-dlp 콜드 다운). 여기서 미리 받아 그 재실행·불필요 다운을 차단(기틀검증1·2·4 지적).
+fetch_model "face_recognition_sface/face_recognition_sface_2021dec.onnx" "sface_2021dec.onnx" "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
 
-echo "[setup] imgedit env ready (opencv+numpy+pillow+YuNet${IMG_HEAVY:+ +torch+sam2.1_t})"
+echo "[setup] imgedit env ready (opencv+numpy+pillow+YuNet+SFace${IMG_HEAVY:+ +torch+sam2.1_t})"

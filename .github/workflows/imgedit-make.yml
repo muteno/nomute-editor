@@ -140,12 +140,14 @@ jobs:
           [ -n "$IN_ID" ] || exit 0
           case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
           mkdir -p "viewer/imgedit_out/${IN_ID}"
+          # img_detect가 재사용하는 track_analyze.die는 /tmp/track_err.txt에 씀(모델 준비 실패 경로) → 폴백으로 함께 확인(기틀검증2·4 지적)
           if [ -s /tmp/imgedit_err.txt ]; then cp /tmp/imgedit_err.txt "viewer/imgedit_out/${IN_ID}/error.log";
+          elif [ -s /tmp/track_err.txt ]; then cp /tmp/track_err.txt "viewer/imgedit_out/${IN_ID}/error.log";
           else echo "편집 작업 실패 — Actions 로그를 확인해줘." > "viewer/imgedit_out/${IN_ID}/error.log"; fi
           echo "error.log: $(cat viewer/imgedit_out/${IN_ID}/error.log)"
-          # 렌더 하드크래시(SIGKILL·OOM = fail-soft 우회)면 result.json도 error로 덮음(스테일 성공본 오표시 차단 · track 봉합 계승)
+          # 렌더 하드크래시(SIGKILL·OOM = fail-soft 우회)면 result.json도 error+ts로 덮음(스테일 성공본 오표시 차단 · ts = 재렌더 신선도 가드 C1·C2)
           if [ "$IMG_MODE" = "render" ]; then
-            python3 -c "import json,os; d=os.path.join('viewer/imgedit_out',os.environ['IN_ID']); err=open(os.path.join(d,'error.log'),encoding='utf-8').read().strip()[:200]; json.dump({'error': err or '렌더 실패'}, open(os.path.join(d,'result.json'),'w',encoding='utf-8'), ensure_ascii=False)" \
+            python3 -c "import json,os,time; d=os.path.join('viewer/imgedit_out',os.environ['IN_ID']); err=open(os.path.join(d,'error.log'),encoding='utf-8').read().strip()[:200]; json.dump({'error': err or '렌더 실패', 'ts': str(time.time())}, open(os.path.join(d,'result.json'),'w',encoding='utf-8'), ensure_ascii=False)" \
               || echo "::warning::result.json 덮기 실패(비치명)"
           fi
 
@@ -160,7 +162,7 @@ jobs:
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
           git rm -r "uploads/${IN_ID}" 2>/dev/null || true   # 업로드 원본 = R2 보관 후 불필요(git 비대 방지 · track 동일)
-          git add "viewer/imgedit_out/${IN_ID}" 2>/dev/null || true
+          git add -A "viewer/imgedit_out/${IN_ID}" 2>/dev/null || true   # -A = 렌더 시작 시 제거한 스테일 error.log/result.json 삭제도 반영(C1·C2 위생)
           git commit -m "imgedit: ${IN_ID} ${IMG_MODE} 출력" || { echo "커밋할 것 없음"; exit 0; }
           pushed=0
           for i in 1 2 3 4 5; do
