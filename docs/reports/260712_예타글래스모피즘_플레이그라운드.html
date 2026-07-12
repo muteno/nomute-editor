@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>예타 글래스모피즘 — 노뮤트 반영 플레이그라운드</title>
+<style>
+/* ═ 포터블 §3 골격 · 값 = viewer/index.html :root 실측 복사(자기완결 = §핵심명령 3-c) ═ */
+:root{
+  --bg:#121212; --pan:#16171a; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06); --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-h2:15px; --fw-b:700; --fw-x:800;
+  --sp-2:12px; --sp-3:18px; --press-m:.9; --press-l:.95;
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body{ margin:0; background:#0c0d0f; color:var(--fg); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Malgun Gothic",sans-serif; }
+.wrap{ display:flex; flex-wrap:wrap; gap:20px; max-width:1180px; margin:0 auto; padding:18px 14px 60px; justify-content:center; }
+h1{ flex-basis:100%; font-size:17px; margin:2px 4px 0; }
+h1 small{ color:var(--mut); font-weight:400; font-size:12.5px; display:block; margin-top:3px; }
+
+.stagewrap{ flex:0 0 auto; position:sticky; top:10px; align-self:flex-start; }
+.frame{ width:372px; height:742px; border:1px solid #33363c; border-radius:34px; overflow:hidden; position:relative; box-shadow:0 18px 60px rgba(0,0,0,.5);
+  /* --g-* = 글래스 튜닝 스코프 · 기본값 = viewer :root 현행 실측(전/후 비교 기준) */
+  --g-blur:22px; --g-bg:.64; --g-sat:1; --g-bord:.08; --g-gloss:0; --g-tint:0; --g-shadow:.32; --g-rad:22px; --g-noise:0; }
+/* 배경 = 글래스가 비칠 컬러풀 콘텐츠(피드 이미지 근사) */
+.bgart{ position:absolute; inset:0; background:
+  radial-gradient(60% 40% at 22% 18%, rgba(255,94,200,.5), transparent 60%),
+  radial-gradient(50% 40% at 82% 30%, rgba(56,198,255,.5), transparent 60%),
+  radial-gradient(70% 50% at 50% 92%, rgba(0,238,210,.4), transparent 60%),
+  radial-gradient(40% 30% at 90% 80%, rgba(255,225,61,.4), transparent 60%),
+  linear-gradient(160deg,#1a1030,#0a1420); }
+.bgart .ph{ position:absolute; border-radius:14px; background:rgba(255,255,255,.06); }
+.bgart .ph:nth-child(1){ left:22px; top:70px; width:150px; height:190px; background:linear-gradient(150deg,#6a3a8a,#241040); }
+.bgart .ph:nth-child(2){ right:22px; top:120px; width:150px; height:190px; background:linear-gradient(150deg,#2a6a7a,#0a2430); }
+.bgart .txt{ position:absolute; left:22px; top:280px; right:22px; color:rgba(255,255,255,.5); font-size:12px; line-height:1.8; }
+.app{ position:absolute; inset:0; overflow:hidden; }
+.stagecap{ text-align:center; color:var(--mut); font-size:12px; margin-top:8px; max-width:372px; line-height:1.5; }
+
+/* ── 글래스 표면 = --g-* 파생(실물 .modal-glass/.msgpop/.bnav 계승 + 예타풍 gloss/tint 확장) ── */
+.glass{ background:linear-gradient(rgba(17,18,20,var(--g-bg)), rgba(17,18,20,var(--g-bg))), rgba(var(--accent-rgb), calc(var(--g-tint) * .5));
+  -webkit-backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter:blur(var(--g-blur)) saturate(var(--g-sat));
+  border:1px solid rgba(255,255,255,var(--g-bord)); box-shadow:0 10px 30px rgba(0,0,0,var(--g-shadow)); position:relative; }
+.glass.gloss::before{ content:''; position:absolute; inset:0 0 auto 0; height:45%; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(rgba(255,255,255,calc(var(--g-gloss) * .12)), transparent); }
+.glass.noise::after{ content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; opacity:var(--g-noise); mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* 대표 컴포넌트 4종 배치(모달·팝업 메뉴·버블·하단바) */
+.demo-modal{ position:absolute; left:20px; right:20px; top:44px; border-radius:var(--g-rad); padding:14px; }
+.demo-modal .mh{ display:flex; align-items:center; gap:8px; margin:-14px -14px 10px; padding:11px 14px; border-radius:var(--g-rad) var(--g-rad) 0 0; border-bottom:1px solid var(--line2);
+  background:rgba(24,25,28,.5); backdrop-filter:blur(var(--blur-l,22px)); -webkit-backdrop-filter:blur(var(--blur-l,22px)); }
+.demo-modal .mh b{ font-size:var(--fs-h2); font-weight:800; }
+.demo-modal .mh .x{ margin-left:auto; width:26px; height:26px; display:grid; place-items:center; border-radius:var(--r-s); border:1px solid var(--line2); color:var(--fg); }
+.demo-modal .mh .x svg{ width:13px; height:13px; }
+.demo-modal p{ margin:0 0 8px; font-size:var(--fs-sm); color:var(--fg); line-height:1.5; }
+.demo-modal .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.demo-modal .ch{ height:30px; padding:0 12px; display:inline-flex; align-items:center; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-size:var(--fs-sm); font-weight:700; }
+.demo-modal .ch.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.06); }
+
+.demo-menu{ position:absolute; right:20px; top:240px; width:180px; border-radius:var(--r-l); padding:6px; }
+.demo-menu a{ display:block; padding:9px 12px; border-radius:var(--r-s); color:var(--fg); font-size:var(--fs-sm); font-weight:600; text-decoration:none; }
+.demo-menu a.on{ color:var(--accent); background:rgba(var(--accent-rgb),.08); }
+
+/* 예타풍 채팅 버블(첨부2 참고) */
+.demo-chat{ position:absolute; left:20px; top:410px; right:20px; display:flex; flex-direction:column; gap:8px; }
+.demo-chat .bub{ max-width:78%; padding:9px 13px; border-radius:16px; font-size:var(--fs-sm); line-height:1.45; }
+.demo-chat .bub.me{ align-self:flex-end; background:linear-gradient(rgba(var(--accent-rgb),.9),rgba(var(--accent-rgb),.9)); color:var(--on-accent); font-weight:600; border-radius:16px 16px 4px 16px; }
+.demo-chat .bub.ai{ align-self:flex-start; border-radius:16px 16px 16px 4px; color:var(--fg); }
+
+.demo-nav{ position:absolute; left:20px; right:20px; bottom:20px; height:56px; border-radius:var(--r-pill); display:flex; align-items:center; justify-content:space-around; padding:0 10px; }
+.demo-nav .ni{ width:34px; height:34px; display:grid; place-items:center; border-radius:50%; color:var(--mut); }
+.demo-nav .ni.on{ color:var(--accent); background:rgba(var(--accent-rgb),.12); }
+.demo-nav .ni svg{ width:20px; height:20px; }
+.demo-nav .fab{ width:44px; height:44px; border-radius:50%; background:rgba(var(--accent-rgb),.9); color:var(--on-accent); display:grid; place-items:center; }
+.demo-nav .fab svg{ width:22px; height:22px; }
+
+.only-modal .demo-menu,.only-modal .demo-chat,.only-modal .demo-nav{ display:none; }
+.only-modal .demo-modal{ top:120px; }
+
+/* ── 콘솔 ── */
+.console{ flex:1 1 440px; max-width:580px; min-width:320px; display:flex; flex-direction:column; gap:12px; }
+.csec{ background:#131417; border:1px solid #26282d; border-radius:14px; padding:12px 14px; }
+.csec h3{ margin:0 0 8px; font-size:12.5px; color:var(--mut); font-weight:800; letter-spacing:.3px; display:flex; align-items:center; }
+.presetrow,.viewrow{ display:flex; gap:6px; flex-wrap:wrap; }
+.pbtn,.vbtn{ padding:8px 13px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:12.5px; font-weight:800; cursor:pointer; }
+.pbtn.on,.vbtn.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+.axis{ display:grid; grid-template-columns:120px 1fr 62px; align-items:center; gap:8px; margin:6px 0; font-size:12px; }
+.axis .k{ color:var(--fg); font-weight:700; line-height:1.2; }
+.axis .k .w{ color:var(--warn,#FFE13D); margin-left:3px; display:none; }
+.axis.warn .k .w{ display:inline; }
+.axis input[type=range]{ width:100%; accent-color:var(--accent); }
+.axis .v{ text-align:right; color:var(--accent); font-weight:800; font-variant-numeric:tabular-nums; font-size:11.5px; }
+.warncount{ color:#FFE13D; font-size:11.5px; font-weight:800; margin-left:auto; }
+#out{ margin:0; background:#0e0f11; border:1px solid #24262b; border-radius:10px; padding:11px 13px; font:11.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace; color:#cfe0d6; white-space:pre-wrap; max-height:320px; overflow:auto; }
+#copy{ margin-top:8px; width:100%; padding:10px; border-radius:10px; border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.12); color:var(--accent); font:inherit; font-weight:800; cursor:pointer; }
+.note{ color:var(--mut); font-size:11.5px; line-height:1.65; }
+.grp-t{ margin:12px 0 4px; color:#7d8f85; font-size:11px; font-weight:800; border-top:1px solid #1d1f23; padding-top:9px; }
+.grp-t:first-child{ border-top:0; padding-top:0; margin-top:0; }
+@media (prefers-reduced-motion:reduce){ *{ transition-duration:0s!important; } }
+@media (max-width:420px){ .frame{ width:100%; max-width:372px; } .stagewrap{ width:100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>예타 글래스모피즘 → 노뮤트 반영 <small>운영자 "예타앱(첨부2)이 글래스모피즘 제일 잘 깔림 · 반영할 부분 있는지 플레이그라운드로" · 폰 프레임 = 컬러 콘텐츠 위 실물 표면 4종(모달·팝업 메뉴·채팅 버블·하단바) 재현 · 우측 축을 밀어 유리 강도·투명도·광택·틴트 튜닝 → [선택값 복사]로 회신하면 배선</small></h1>
+
+  <div class="stagewrap">
+    <div class="frame" id="frame">
+      <div class="bgart"><div class="ph"></div><div class="ph"></div><div class="txt">뒤 콘텐츠(피드·이미지) — 유리 너머로 얼마나 비치고 흐려지는지가 글래스모피즘의 핵심</div></div>
+      <div class="app" id="app">
+        <div class="glass demo-modal" id="dModal">
+          <div class="mh"><b>뉴스 요약</b><span class="x"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></span></div>
+          <p>유리 표면 위 텍스트 가독 + 뒤 콘텐츠 비침의 균형을 본다.</p>
+          <div class="chips"><span class="ch on">감성 의역</span><span class="ch">담백 직역</span><span class="ch">키워드</span></div>
+        </div>
+        <div class="glass demo-menu" id="dMenu"><a class="on">긴급 속보 알림</a><a>구독 관리</a><a>설정</a></div>
+        <div class="demo-chat" id="dChat"><div class="glass bub ai gloss">…흥. 부끄럽긴. 물에 들어가면 이 좋은 김 다 뺏긴다니까.</div><div class="bub me">왕~ 같이 탕에 들어가면 좋잖아</div></div>
+        <div class="glass demo-nav" id="dNav"><span class="ni on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></span><span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></span><span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="ni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span></div>
+      </div>
+    </div>
+    <div class="stagecap" id="cap"></div>
+  </div>
+
+  <aside class="console">
+    <div class="csec"><h3>보기(표면)</h3>
+      <div class="viewrow" id="views"><button type="button" class="vbtn on" data-v="all">전체 4종</button><button type="button" class="vbtn" data-v="modal">모달만 크게</button></div>
+    </div>
+    <div class="csec"><h3>프리셋</h3><div class="presetrow" id="presets"></div></div>
+    <div class="csec"><h3>글래스 조정 <span class="warncount" id="wc" hidden></span></h3><div id="axes"></div></div>
+    <div class="csec"><h3>선택값</h3><pre id="out"></pre><button type="button" id="copy">선택값 복사</button></div>
+    <div class="csec note"><b>재현 한계</b> — ① 뒤 콘텐츠 = 컬러 그라데 목업(실물 = 피드 이미지) ② <b>backdrop-filter 실동작</b>이라 실제 브라우저와 동일 원리 · 단 §디자인 규칙1: 입력칸 담은 컨테이너엔 blur 얹으면 타이핑마다 재샘플 번쩍 → 실배선 시 입력 없는 표면(팝업·하단바·헤더 띠)만 강화 ③ <b>글래스 토큰(--modal-glass·--blur-*·--line)은 기틀</b> = 이탈 시 ⚠ + 복사에 「기틀 갱신 역제안」(§핵심명령 갱신 정문) ④ 색 = 팔레트 폐쇄(틴트 = accent 알파 변주만 · 자유 hex 금지) ⑤ gloss(상단 광택)·noise(질감)는 예타풍 <b>신규 축</b> = 배선 시 컴포넌트별 승인.</div>
+  </aside>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const DEF={ blur:22, bg:.64, sat:1, bord:.08, gloss:0, tint:0, shadow:.32, rad:22, noise:0 };
+const LAD={ blur:[7,8,14,22,30], bg:[.42,.55,.64,.9,1], rad:[9,11,16,22], bord:[.06,.08,.14] };
+const AX=[
+ {k:'blur',nm:'흐림(blur)',grp:'유리 강도',min:0,max:40,step:1,u:'px',lad:'blur',tok:'--blur-l(22 · 모달 헤더 띠)'},
+ {k:'bg',nm:'불투명도',grp:'유리 강도',min:.2,max:1,step:.01,lad:'bg',tok:'--modal-glass(.64)'},
+ {k:'sat',nm:'채도(saturate)',grp:'유리 강도',min:.6,max:2,step:.05,tok:'뒤 색 생생함(예타풍 1.4~1.6)'},
+ {k:'bord',nm:'테두리 밝기',grp:'윤곽·깊이',min:0,max:.3,step:.01,lad:'bord',tok:'--line(.08)'},
+ {k:'gloss',nm:'상단 광택 ⚠신규',grp:'윤곽·깊이',min:0,max:1,step:.05,tok:'예타풍 유리 반사(신규 축)'},
+ {k:'shadow',nm:'그림자 깊이',grp:'윤곽·깊이',min:0,max:.6,step:.02,tok:'0 10 30 rgba(.32)'},
+ {k:'rad',nm:'모서리',grp:'윤곽·깊이',min:9,max:26,step:1,u:'px',lad:'rad',tok:'--r-modal(22)'},
+ {k:'tint',nm:'강조 틴트(알파)',grp:'색(팔레트 폐쇄)',min:0,max:.4,step:.01,tok:'accent 알파 변주(신규색 아님·자유)'},
+ {k:'noise',nm:'질감 노이즈 ⚠신규',grp:'색(팔레트 폐쇄)',min:0,max:.3,step:.01,tok:'예타풍 프로스트 질감(신규 축)'},
+];
+const PRE=[
+ {id:'p0',nm:'현행(비교 기준)',st:{}},
+ {id:'p1',nm:'예타풍 강화 ★',st:{blur:26,bg:.5,sat:1.5,bord:.14,gloss:.8,shadow:.42,tint:.06,noise:.08}},
+ {id:'p2',nm:'딥 프로스트',st:{blur:30,bg:.72,sat:1.2,bord:.1,gloss:.4,shadow:.5}},
+ {id:'p3',nm:'미니멀 클린',st:{blur:14,bg:.82,sat:1,bord:.06,gloss:0,shadow:.22}},
+ {id:'p4',nm:'라이트 틴트',st:{blur:22,bg:.55,sat:1.3,bord:.1,gloss:.5,tint:.1}},
+];
+let state={...DEF};
+const near=(a,b,e=.02)=>Math.abs(a-b)<e;
+const warnAx=()=>AX.filter(a=>a.lad&&!LAD[a.lad].some(v=>near(+state[a.k],v, a.k==='blur'||a.k==='rad'?.6:.02)));
+function buildAxes(){ let h='',last='';
+  for(const a of AX){ if(a.grp!==last){ h+=`<div class="grp-t">${a.grp}</div>`; last=a.grp; }
+    const lid=a.lad?`lad-${a.k}`:'';
+    h+=`<div class="axis" data-ax="${a.k}"><span class="k">${a.nm}<span class="w">⚠</span></span><input type="range" min="${a.min}" max="${a.max}" step="${a.step}" value="${state[a.k]}" data-sl="${a.k}"${lid?` list="${lid}"`:''}>${lid?`<datalist id="${lid}">${LAD[a.lad].map(v=>`<option value="${v}">`).join('')}</datalist>`:''}<span class="v"></span></div>`;
+  }
+  $('#axes').innerHTML=h;
+}
+$('#presets').innerHTML=PRE.map(p=>`<button type="button" class="pbtn" data-p="${p.id}">${p.nm.includes('★')?'':''}${p.nm}</button>`).join('');
+function apply(){
+  const f=$('#frame');
+  f.style.setProperty('--g-blur',state.blur+'px'); f.style.setProperty('--g-bg',state.bg); f.style.setProperty('--g-sat',state.sat);
+  f.style.setProperty('--g-bord',state.bord); f.style.setProperty('--g-gloss',state.gloss); f.style.setProperty('--g-shadow',state.shadow);
+  f.style.setProperty('--g-rad',state.rad+'px'); f.style.setProperty('--g-tint',state.tint); f.style.setProperty('--g-noise',state.noise);
+  $$('.glass').forEach(g=>{ g.classList.toggle('gloss',state.gloss>0||g.classList.contains('bub')); g.classList.toggle('noise',state.noise>0); });
+  for(const a of AX){ const row=$(`[data-ax="${a.k}"]`); if(!row) continue; const sl=row.querySelector('input'); if(+sl.value!==+state[a.k]) sl.value=state[a.k];
+    row.querySelector('.v').textContent=(+state[a.k]).toFixed(a.step<.1?2:0)+(a.u||''); row.classList.toggle('warn',!!(a.lad&&!LAD[a.lad].some(v=>near(+state[a.k],v,a.k==='blur'||a.k==='rad'?.6:.02)))); }
+  const ws=warnAx(); const wc=$('#wc'); wc.hidden=!ws.length; wc.textContent='⚠ 기틀 이탈 '+ws.length+'축';
+  $$('#presets .pbtn').forEach(b=>{ const p=PRE.find(x=>x.id===b.dataset.p); const full={...DEF,...p.st}; b.classList.toggle('on',Object.keys(full).every(k=>near(+full[k],+state[k],.001))); });
+  buildOut();
+}
+$('#axes').addEventListener('input',e=>{ const s=e.target.closest('[data-sl]'); if(!s) return; state[s.dataset.sl]=+s.value; apply(); });
+$('#presets').addEventListener('click',e=>{ const b=e.target.closest('.pbtn'); if(!b) return; const p=PRE.find(x=>x.id===b.dataset.p); state={...DEF,...p.st}; apply(); });
+$('#views').addEventListener('click',e=>{ const b=e.target.closest('.vbtn'); if(!b) return; $$('#views .vbtn').forEach(x=>x.classList.toggle('on',x===b)); $('#app').classList.toggle('only-modal',b.dataset.v==='modal'); $('#cap').textContent=b.dataset.v==='modal'?'모달 표면 확대 — 뒤 콘텐츠 비침·헤더 띠 blur 확인':'대표 표면 4종 — 모달·팝업·채팅 버블·하단바'; });
+function buildOut(){
+  const L=['[예타 글래스모피즘 → 노뮤트 — 선택값]',''];
+  for(const a of AX){ const ch=!near(+state[a.k],+DEF[a.k],.001); const inLad=a.lad?LAD[a.lad].some(v=>near(+state[a.k],v,a.k==='blur'||a.k==='rad'?.6:.02)):true;
+    L.push(a.nm.replace(' ⚠신규','').padEnd(14)+': '+(+state[a.k]).toFixed(a.step<.1?2:0)+(a.u||'')+(ch?`  [현행 ${DEF[a.k]}${a.u||''}]`:'  [현행값]')+(a.lad?(inLad?`  (계승 · ${a.tok})`:'  ⚠갱신 후보'):(a.tok.includes('신규')?'  ⚠신규 축(배선 승인)':'')));
+  }
+  const ws=warnAx();
+  if(ws.length){ L.push(''); L.push('[🔁 기틀 갱신 역제안 — 전 앱 동일 축 일괄]'); ws.forEach(a=>L.push(`· ${a.nm}: 현행 ${DEF[a.k]}${a.u||''} → 제안 ${state[a.k]}${a.u||''} (${a.tok})`)); }
+  L.push(''); L.push('반영 후보 컴포넌트: 모달 헤더 띠 · 앵커 팝업(메뉴/메시지함) · 하단 네비 · 트렌드 그룹 헤더 · (채팅 버블 = 예타 전용)');
+  L.push('주의(§디자인 규칙1): 입력칸 담은 컨테이너 blur는 타이핑 flicker → 입력 없는 표면만 강화');
+  $('#out').textContent=L.join('\n');
+}
+$('#copy').addEventListener('click',()=>{ const t=$('#out').textContent; try{ navigator.clipboard.writeText(t); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(_){} ta.remove(); }
+  const b=$('#copy'); b.textContent='✓ 복사됨'; setTimeout(()=>b.textContent='선택값 복사',900); });
+buildAxes(); apply(); $('#cap').textContent='대표 표면 4종 — 모달·팝업·채팅 버블·하단바';
+</script>
+</body>
+</html>
