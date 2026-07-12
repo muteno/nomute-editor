@@ -7733,7 +7733,7 @@ function detectPickFail() {
   const seen = pfSeen();
   const fresh = pickFailNow().filter(c => !seen.has(candId(c)));
   document.body.classList.toggle('has-pickfail', fresh.length > 0);   // 점등 = 전 탭. 해제 = 수집함 진입(markPickFailSeen).
-  if (fresh.length && CURTAB !== 'scrap') showFailToast(fresh.length, fresh[0]);
+  if (fresh.length && CURTAB !== 'scrap') showFailToast(fresh.length, fresh[0]);   // 개별 회전 — 첫 건만 표시(처리/만료 시 재호출로 다음 건 · 집계 N건 폐지 = 운영자 260712)
 }
 function markPickFailSeen() {
   const seen = pfSeen();
@@ -7741,27 +7741,32 @@ function markPickFailSeen() {
   try { localStorage.setItem(PF_SKEY, JSON.stringify([...seen])); } catch {}
   document.body.classList.remove('has-pickfail');
 }
+function markPickFailSeenOne(c) {   // 개별 seen(운영자 260712 "모든 실패 건 개별로") — 그 건만 기록 · 다음 건은 detectPickFail 회전이 표시 · bulk(markPickFailSeen)는 수집함 진입 일괄 해제용으로 유지
+  if (!c) return;
+  const seen = pfSeen(); seen.add(candId(c));
+  try { localStorage.setItem(PF_SKEY, JSON.stringify([...seen])); } catch {}
+}
 let _failToastT, _failToastC = null;
-function showFailToast(n, sample) {
+function showFailToast(n, sample) {   // 개별 알림(운영자 260712 "모든 실패 건 개별로 — N건 집계 폐지") — 한 번에 한 건·제목만 · 처리(✓↻↗·본체·8s 만료) = *그 건만* seen → detectPickFail 회전이 다음 건 표시(마를 때까지) · n 인자 = 호출처 호환용(미사용)
   let t = document.getElementById('nmFailToast');
   if (!t) {
     t = document.createElement('div'); t.id = 'nmFailToast'; t.className = 'nm-toast fail'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite');   // 픽 실패 알림 = SR announce(분신술10 260704)
-    t.onclick = () => { markPickFailSeen(); t.classList.remove('show'); failSrcOpen(_failToastC); };   // 본체 탭 = 원문(URL 없으면 유추 관련기사 무조건 링크 · 운영자 260712) + 로컬 seen
+    t.onclick = () => { markPickFailSeenOne(_failToastC); t.classList.remove('show'); failSrcOpen(_failToastC); setTimeout(detectPickFail, 250); };   // 본체 탭 = 원문(URL 없으면 유추 관련기사) + 그 건 seen + 다음 건
     document.body.appendChild(t);
   }
   _failToastC = sample || null;
-  const title = sample ? esc((sample.title || '').slice(0, 60)) : '';   // 34→60자(플레이트 폐지분 = 글자 몫 · 운영자 260712)
-  t.innerHTML = `<span class="tg">${WARN_SVG}</span><span class="ft-msg">${n}건${title ? ' · ' + title + '…' : ''}</span>`
-    + `<button class="sbtn ft-act" type="button" data-fa="ack" data-motion="check" aria-label="확인 — 실패 이해" title="확인 — 실패 알았고 재시도 안 함(없던 일로 · 알림 끄기)">${CHECK_SVG}</button>`
+  const title = sample ? esc((sample.title || '').slice(0, 60)) : '';   // 60자(플레이트 폐지분 = 글자 몫 · 운영자 260712)
+  t.innerHTML = `<span class="tg">${WARN_SVG}</span><span class="ft-msg">${title ? title + '…' : '분석 실패'}</span>`
+    + `<button class="sbtn ft-act" type="button" data-fa="ack" data-motion="check" aria-label="확인 — 실패 이해" title="확인 — 실패 알았고 재시도 안 함(없던 일로 · 이 건 알림 끄기)">${CHECK_SVG}</button>`
     + `<button class="sbtn ft-act" type="button" data-fa="retry" aria-label="재시도 — 재분석" title="재시도 — 원인은 됐고 다시 분석(대기열 재투입)">${REFRESH_SVG}</button>`
     + `<button class="sbtn ft-act go-wait" type="button" data-fa="src" data-motion="arrow" aria-label="기사 확인" title="어떤 기사인지 확인(원문 · 없으면 유추 관련기사)">${Q_ARR}</button>`;
-  // 태그 = WARN 픽토그램 단독(텍스트 FAIL 폐지 · 운영자 260712) · 버튼 의미(운영자 확정): ✓=실패 이해·무시 / ↻=재시도 / ↗=기사 확인(URL 없으면 관련기사) · 3버튼 다 로컬 seen + 사라짐 · stopPropagation 분리.
+  // 버튼 의미(운영자 확정): ✓=실패 이해·무시 / ↻=재시도 / ↗=기사 확인 · 전 처리 = 그 건만 seen + 다음 건 회전(집계 폐지 260712) · stopPropagation 분리.
   const _ack = t.querySelector('[data-fa="ack"]'), _rt = t.querySelector('[data-fa="retry"]'), _sr = t.querySelector('[data-fa="src"]');
-  if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeen(); clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 300); };   // 확인 = 실패 이해(초록 플래시 후 사라짐·추가 동작 없음)
-  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) failRetry(_failToastC, { noOpen: true }); };   // 재시도 = 자동 재분석만(새 탭 X = 원문 버튼이 담당) + 사라짐
-  if (_sr) _sr.onclick = e => { e.stopPropagation(); markPickFailSeen(); clearTimeout(_failToastT); t.classList.remove('show'); failSrcOpen(_failToastC); };   // ↗ = 어떤 기사인지 확인(원문 · URL 없으면 유추 관련기사 새 탭) + 사라짐
+  if (_ack) _ack.onclick = e => { e.stopPropagation(); _ack.classList.add('ok'); markPickFailSeenOne(_failToastC); clearTimeout(_failToastT); _failToastT = setTimeout(() => { t.classList.remove('show'); setTimeout(detectPickFail, 250); }, 300); };   // 확인 = 초록 플래시 후 이 건 끄고 다음 건
+  if (_rt) _rt.onclick = e => { e.stopPropagation(); markPickFailSeenOne(_failToastC); clearTimeout(_failToastT); t.classList.remove('show'); if (_failToastC) failRetry(_failToastC, { noOpen: true }); setTimeout(detectPickFail, 250); };   // 재시도 = 재분석 + 다음 건
+  if (_sr) _sr.onclick = e => { e.stopPropagation(); markPickFailSeenOne(_failToastC); clearTimeout(_failToastT); t.classList.remove('show'); failSrcOpen(_failToastC); setTimeout(detectPickFail, 250); };   // ↗ = 기사 확인 + 다음 건
   requestAnimationFrame(() => t.classList.add('show'));
-  clearTimeout(_failToastT); _failToastT = setTimeout(() => t.classList.remove('show'), 8000);   // 7000→8000(운영자 260712 회신)
+  clearTimeout(_failToastT); _failToastT = setTimeout(() => { markPickFailSeenOne(_failToastC); t.classList.remove('show'); setTimeout(detectPickFail, 300); }, 8000);   // 8s 만료 = 그 건 seen + 다음 건 회전
 }
 // 실패 기사 열기 = 원문 URL 우선 · 없으면(직접 준 전문 = paste) 유추 관련기사(pickAlt = 같은 사건 타매체) 무조건 링크(운영자 260712 "실패 시 관련 기사 무조건 링크") · 그마저 없으면 수집함으로
 function failSrcOpen(c) {
