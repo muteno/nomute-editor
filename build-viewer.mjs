@@ -482,3 +482,26 @@ if (existsSync(LY_ROOT)) {
   writeFileSync(join(LY_ROOT, 'index.json'), JSON.stringify(lyJobs));
   console.log(`viewer/ly_out/index.json 생성 — ${lyJobs.length}건`);
 }
+
+// ── 음원(song_out) 인덱스 — 「만든 노래」 플레이리스트(운영자 260712) · ly_out 인덱스 미러 ──
+//    빌드 = 단일 작성자라 경합 0 · 오디오(url) 있는 완성곡만(수노 텍스트 산출 제외 — 운영자 "오디오 만든 거").
+{
+  const SONG_ROOT = 'viewer/song_out';
+  if (existsSync(SONG_ROOT)) {
+    const songs = [];
+    for (const id of readdirSync(SONG_ROOT)) {
+      const dir = join(SONG_ROOT, id);
+      try { if (!statSync(dir).isDirectory()) continue; } catch { continue; }
+      const p = join(dir, 'song.json');
+      if (!existsSync(p)) continue;
+      let s = null;
+      try { s = JSON.parse(readFileSync(p, 'utf8')); } catch { continue; }
+      if (!s || !s.url) continue;
+      songs.push({ id, ts: s.ts || '', title: s.title || '', engine: s.engine || '', url: s.url, genre: s.genre || '' });
+    }
+    songs.sort((a, b) => (b.id || '').localeCompare(a.id || ''));          // 최신순(id = 시간 접두)
+    if (songs.length > 200) songs.length = 200;                            // 캡(인덱스 비대 방지 · 원본 song.json은 불변)
+    writeFileSync(join(SONG_ROOT, 'index.json'), JSON.stringify(songs));
+    console.log(`viewer/song_out/index.json 생성 — ${songs.length}건`);
+  }
+}
