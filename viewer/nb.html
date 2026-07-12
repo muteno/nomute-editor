@@ -141,6 +141,11 @@
   /* 노트 → 뉴스 요약 연결(운영자 260712 3차 "가장 효용적으로 뭉치기") — 발사 버튼 .go 계승 · 접수 후 mut 영속(.dlbtn dl-done 정신) */
   .go.fed { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.03); cursor:default; }
 
+  /* 최근 자료 리스트(운영자 260713) — 행 = .vrow 계승 · 행 탭 = 노트 열기 · 우측 = 노트 .md 다운로드(.dlbtn) */
+  #recent .vrow { cursor:pointer; }
+  #recent .vt b { display:block; font-weight:var(--fw-b); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #recent .vt .m { font-size:10.5px; color:var(--mut); font-variant-numeric:tabular-nums; }
+
   /* 히스토리(자료 목록) = song .histbtn/.hpop 계승(메시지함 무채 글래스 · §디자인 f·i) */
   .histbtn { position:absolute; top:10px; right:12px; z-index:6; display:grid; place-items:center; width:28px; height:28px; padding:0;
     border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
@@ -181,6 +186,7 @@
   <div class="status" id="sstatus" role="status"></div>
 
   <div id="note" hidden></div>
+  <div id="recent" hidden></div><!-- 최근 자료 리스트(운영자 260713 "리스트에 저장되게") — 탭 초기 화면 상시 노출 · 노트/목록 렌더 시 숨김 · 원천 = nb_out/index.json(빌드 산출) -->
 </div>
 
 <div class="hpop" id="hpop" hidden>
@@ -349,7 +355,8 @@ function renderNote(d){
   // 전체 전사 — 기본 접힘 + 자수 배지 · 전문 복사/.txt(펼치지 않고 반출 = 평의회 앵글8)
   h+='<div class="rhead"><label class="fl">전체 전사</label><span class="cnt">'+trTxt.length.toLocaleString()+'자</span>'
     +'<button class="cpy" type="button" data-k="tr" aria-label="전사 전문 복사"></button>'
-    +'<button class="cpy dlbtn" type="button" id="trDl" aria-label="전사 .txt 저장"></button></div>';
+    +'<button class="cpy dlbtn" type="button" id="mdDl" aria-label="노트 파일(.md) 저장" title="노트 전체 .md"></button>'
+    +'<button class="cpy dlbtn" type="button" id="trDl" aria-label="전사 .txt 저장" title="전사만 .txt"></button></div>';
   h+='<details class="fold" id="trFold"><summary>'+CHEV_R_SVG_INLINE()+'펼쳐 보기<span class="cnt">'+(d.transcript||[]).length+'줄</span></summary><div class="fbody tr">'
     +(d.transcript||[]).map(r=>'<p>'+tl(d,r.s)+esc(r.t)+'</p>').join('')+'</div></details>';
   // 뉴스 요약 연결(운영자 260712 3차 "효용적으로 뭉치기") — 이 노트를 기존 요약 요청 파이프(api/submit → news-ask)로 승격 = 피드 카드·카드뉴스·X·영상 다운스트림 전부 기존 동선 재사용
@@ -361,13 +368,15 @@ function renderNote(d){
   if(d.ts) fine.push('생성 '+String(d.ts).slice(0,16).replace('T',' '));
   if(fine.length) h+='<div class="fine">'+esc(fine.join(' · '))+'</div>';
   const el=$('#note'); el.innerHTML=h; el.hidden=false;
+  $('#recent').hidden=true;   // 노트 표시 중 = 최근 리스트 숨김(초기 화면 전용)
   $$('#note .cpy:not(.dlbtn)').forEach(b=>{ b.innerHTML=COPY_SVG; });
   const dl=$('#trDl'); if(dl){ dl.innerHTML=DOWNLOAD_SVG; dl.addEventListener('click',()=>{
     const name='transcript_'+((d.src&&d.src.yt_id)||d.id||'nb')+'.txt';
     const head=(s.title||'')+'\n'+(s.url||'')+'\n전사 출처: '+srcLb+'\n\n';
-    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([head+trTxt],{type:'text/plain;charset=utf-8'})); a.download=name;
-    document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); a.remove();
-    dl.classList.add('dl-done');
+    saveBlob(head+trTxt,name,'text/plain'); dl.classList.add('dl-done');
+  }); }
+  const md=$('#mdDl'); if(md){ md.innerHTML=DOWNLOAD_SVG; md.addEventListener('click',()=>{
+    saveBlob(buildNoteMd(d),'note_'+((d.src&&d.src.yt_id)||d.id||'nb')+'.md','text/markdown'); md.classList.add('dl-done');
   }); }
   try{ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
 }
@@ -388,6 +397,7 @@ function renderVlist(d){
     +(v.d?('<span class="vm">'+esc(mmss(v.d))+'</span>'):'')
     +'<button class="vgo" type="button" data-i="'+i+'">자료화</button></div>').join('')+'</div>';
   const el=$('#note'); el.innerHTML=h; el.hidden=false;
+  $('#recent').hidden=true;   // 목록 표시 중 = 최근 리스트 숨김
   $$('#note .cpy').forEach(b=>{ b.innerHTML=COPY_SVG; });
   try{ el.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
 }
@@ -445,6 +455,39 @@ function noteTxt(k){
   return '';
 }
 function vlistTxt(){ return VLIST? (VLIST.items||[]).map(v=>v.url).join('\n') : ''; }   // 채널 목록 전체 URL 복사(운영자 구 개발자모드 추출 대체)
+function saveBlob(txt,name,mime){   // 파일 다운로드 공용(같은 출처 Blob = api/dl 불요)
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:mime+';charset=utf-8'})); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); a.remove();
+}
+function buildNoteMd(d){   // 노트 전체 → 마크다운(.md — NotebookLM식 반출 · 운영자 260713 "바로 파일 다운로드")
+  const s=d.src||{}, L=[];
+  L.push('# '+(s.title||'(제목 없음)'));
+  L.push('');
+  L.push('- 채널: '+(s.channel||'')+(s.uploaded?(' · 업로드 '+s.uploaded):'')+(s.dur?(' · '+mmss(s.dur)):''));
+  if(s.url) L.push('- 원본: '+s.url);
+  L.push('- 유형: '+(d.kind||'일반')+' · 전사 출처: '+(SRC_LB[d.tr_src]||'전사')+((d.tr_src==='subs-auto'||d.tr_src==='stt')?' (고유명사·수치 오인식 가능)':'')+' · 생성: '+String(d.ts||'').slice(0,16).replace('T',' '));
+  if((d.topics||[]).length) L.push('- 주제: '+d.topics.join(' · '));
+  if(d.one){ L.push(''); L.push('> '+d.one); }
+  L.push(''); L.push('## 요약'); L.push(''); L.push(d.summary||'');
+  if((d.points||[]).length){ L.push(''); L.push('## 핵심 논점'); L.push('');
+    d.points.forEach(p=>{ L.push('- '+p.c+' ['+mmss(p.t)+']');
+      if(p.g) L.push('  - 근거: '+p.g);
+      if(p.x) L.push('  - 반론·뉘앙스: '+p.x); }); }
+  if((d.chapters||[]).length){ L.push(''); L.push('## 타임라인'); L.push('');
+    d.chapters.forEach(c=>L.push('- ['+mmss(c.t)+'] '+c.h)); }
+  if((d.quotes||[]).length){ L.push(''); L.push('## 주목 발언'); L.push('');
+    d.quotes.forEach(q=>L.push('- "'+q.q+'" — '+(q.w||'화자 미상')+' ['+mmss(q.t)+']'+(q.v===false?' (⚠ 전사 대조 실패)':''))); }
+  if((d.facts||[]).length){ L.push(''); L.push('## 팩트·수치'); L.push('');
+    d.facts.forEach(x=>L.push('- '+x.f+' ['+mmss(x.t)+']')); }
+  if((d.terms||[]).length){ L.push(''); L.push('## 인물·용어'); L.push('');
+    d.terms.forEach(t=>L.push('- **'+t.n+'** — '+t.d)); }
+  if((d.use||[]).length){ L.push(''); L.push('## 활용 포인트'); L.push('');
+    d.use.forEach(u=>L.push('- '+u)); }
+  if(d.coverage){ L.push(''); L.push('_반영 범위: '+d.coverage+'_'); }
+  L.push(''); L.push('## 전체 전사'); L.push('');
+  (d.transcript||[]).forEach(r=>L.push('['+mmss(r.s)+'] '+r.t));
+  return L.join('\n');
+}
 document.addEventListener('click',async e=>{
   const b=e.target.closest('.cpy'); if(!b||b.classList.contains('dlbtn')) return;
   const v=b.dataset.k==='vurls'? vlistTxt() : noteTxt(b.dataset.k); if(!v) return;
@@ -477,15 +520,47 @@ $('#histBtn').addEventListener('click',()=>{ if(hpop.hidden) openHist(); else hp
 $('#hpopX').addEventListener('click',()=>{ hpop.hidden=true; });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!hpop.hidden) hpop.hidden=true; });
 document.addEventListener('pointerdown',e=>{ if(!hpop.hidden&&!e.target.closest('.hpop')&&!e.target.closest('.histbtn')) hpop.hidden=true; },{capture:true});
+async function fetchNote(id){   // 저장 노트 로드 공용(목록 팝업·최근 리스트·행 다운로드)
+  try{
+    const r=await fetch('nb_out/'+encodeURIComponent(id)+'/note.json?t='+Date.now());
+    if(r.ok){ const tx=await r.text(); if(!/^\s*</.test(tx)){ const d=JSON.parse(tx); if(d&&d.summary) return d; } }
+  }catch(e){}
+  return null;
+}
+async function openNoteId(id){ const d=await fetchNote(id); if(d){ NB_ID=id; $('#sstatus').textContent=''; renderNote(d); } return !!d; }
 $('#hlist').addEventListener('click',async e=>{
   const b=e.target.closest('.hrow'); if(!b) return;
   const i=+b.dataset.i, n=HL[i]; if(!n) return;
   HIDX=i; renderList();
-  try{
-    const r=await fetch('nb_out/'+encodeURIComponent(n.id)+'/note.json?t='+Date.now());
-    if(r.ok){ const tx=await r.text(); if(!/^\s*</.test(tx)){ const d=JSON.parse(tx); if(d&&d.summary){ NB_ID=n.id; $('#sstatus').textContent=''; renderNote(d); hpop.hidden=true; } } }
-  }catch(e2){ /* 실패 = 조용히(다음 탭 재시도) */ }
+  if(await openNoteId(n.id)) hpop.hidden=true;   // 실패 = 조용히(다음 탭 재시도)
 });
+
+// ── 최근 자료 리스트(운영자 260713 "리스트에 저장되게") — 초기 화면 상시 · 행 탭 = 열기 · 우측 = .md 다운로드 ──
+let RECENT=[];
+function renderRecent(){
+  const el=$('#recent');
+  if(!RECENT.length){ el.hidden=true; el.innerHTML=''; return; }   // 빈 상태 = 조용한 공백(§디자인 e-가 — 필러 문구 금지)
+  el.innerHTML='<div class="rhead"><label class="fl">최근 자료</label><span class="cnt">'+RECENT.length+'건</span></div>'
+    +RECENT.slice(0,12).map(n=>'<div class="vrow" data-id="'+esc(n.id)+'"><div class="vt"><b>'+esc(n.t||'(무제)')+'</b><span class="m">'
+      +esc((n.ts||'').slice(5,16).replace('T',' '))+(n.ch?(' · '+esc(n.ch)):'')+(n.d?(' · '+esc(mmss(n.d))):'')+'</span></div>'
+      +'<button class="cpy dlbtn" type="button" data-dl="'+esc(n.id)+'" aria-label="노트 파일(.md) 저장" title="노트 .md"></button></div>').join('');
+  el.querySelectorAll('.cpy.dlbtn').forEach(b=>{ b.innerHTML=DOWNLOAD_SVG; });
+  el.hidden=false;
+}
+async function loadRecent(){
+  try{
+    const r=await fetch('nb_out/index.json?t='+Date.now());
+    if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ RECENT=j; } } }
+  }catch(e){ /* 미배포·오프라인 = 조용한 공백 */ }
+  if($('#note').hidden) renderRecent();   // 노트/목록 먼저 떠 있으면(재개 등) 안 덮음
+}
+$('#recent').addEventListener('click',async e=>{
+  const dl=e.target.closest('.cpy.dlbtn');
+  if(dl){ const d=await fetchNote(dl.dataset.dl); if(d){ saveBlob(buildNoteMd(d),'note_'+((d.src&&d.src.yt_id)||d.id||'nb')+'.md','text/markdown'); dl.classList.add('dl-done'); } return; }
+  const row=e.target.closest('.vrow'); if(row) openNoteId(row.dataset.id);
+});
+loadRecent();
 
 // ── 재개(pend) — 리로드/재진입 시 진행 중 자료화 폴 이어받기(song 문법 · 24h 게이트) ──
 (function(){
