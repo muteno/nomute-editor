@@ -192,9 +192,11 @@ def tiktok(limit=15, calls=4):
                     continue
                 a = v.get("author") or {}
                 handle = a.get("unique_id") or ""
+                ct = _i(v.get("create_time"))   # 발행시각 → 뷰어 카드 "N시간 전"(relAge) 원료(운영자 260712 · 없으면 공란 fail-soft)
                 seen[vid] = {"title": (v.get("title") or "").strip(), "account": handle,
                              "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
                              "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
+                             "published": (datetime.fromtimestamp(ct, KST).isoformat() if ct else ""),
                              "region": v.get("region") or "",
                              "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백)
         except Exception as e:  # noqa: BLE001
