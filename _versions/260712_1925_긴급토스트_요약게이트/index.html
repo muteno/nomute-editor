@@ -7488,9 +7488,10 @@ async function loadSocial() {
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 🚨배지·핀·최신 공용(grade≥2) — 'grade1 경미인데 ⚡이슈' 모순 차단(260617). ⚠️ 토스트·점등은 isAlert(grade≥3)로 분리(운영자 260622).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
 const isAlert = c => !!c.breaking && c.grade != null && c.grade >= 3;   // 📢 화면알림(점등·토스트)·앱푸시·자동요약 공용 = breaking AND grade≥3(대형/엄중) · 운영자 260622 3단위계: 앱푸시긴급(grade≥3·알림류)⊂긴급(grade≥2·🚨배지·핀)⊂일반 · 이슈(⚡)는 별개 개념 · 미채점(null)=제외.
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && pickState(c) !== 'failed' && !brkToastSeen(c) && !!scFeedArticle(c); });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·수집함 처리분·경중<3·failed(fail 토스트 담당)·로컬 seen 제외. ⚠️ scFeedArticle 게이트(운영자 260712 "적어도 내용을 알 수 있을 때 긴급을 띄우셈 · 10분 전후 늦어도 OK") = 자동요약이 피드에 실제 등장(has_body·분석+배포 완료)한 뒤에만 토스트 — 구 260702 '분석중에도 뜸' 폐지 · 즉시 인지 = 웹푸시(백엔드 독립)·수집함 🚨배지 담당 · 미요약 긴급(자동픽 컷·일캡)은 토스트 생략(배지·푸시만 = 정직 한계).
+const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && pickState(c) !== 'failed' && !brkToastSeen(c); });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·수집함 처리분(action/score/picked/dismissed/acked)·AI 경중<3 제외. ⚠️ 자동픽으로 분석중(picking)·완료(settled)여도 토스트는 뜸 = 긴급 알림 + 이동 버튼(회색 원문/초록 요약) 제공(운영자 260702). failed만 제외(fail 토스트가 담당) · brkToastSeen = 이 기기 토스트 체크/이동한 건(핀·원장 무영향 로컬 seen).
 function detectBreaking() {
-  // 미처리 긴급 큐 = breakingNow()(isAlert·grade≥3·<4h·미픽/미확인/미패스 · 요약 피드 등장 후 = 운영자 260712 게이트). 한 건씩 토스트(8s 자동닫힘 = 로컬 seen).
+  // 미처리 긴급 큐 = breakingNow()(isAlert·grade≥3·<4h·미픽/미확인/미패스). 한 건씩 상주 토스트로.
+  // '체크(확인) 전까진 계속'(운영자 260702) = 처리(ack/pick/pass)돼 큐서 빠질 때까지 유지 · 나이 4h↑면 자연 소멸.
   const q = breakingNow();
   if (q.length && CURTAB !== 'scrap') showToast(q[0], q.length);   // 첫 건 집중(+N=나머지) · 토스트는 수집함 밖에서만
   else hideToast();
