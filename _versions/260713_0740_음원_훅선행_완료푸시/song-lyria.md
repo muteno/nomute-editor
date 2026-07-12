@@ -4,14 +4,12 @@
 
 ## 산출 규칙
 - `lyrics` = **한국어 가사 전문**. 섹션 마커 영어 대괄호(`[Intro]` `[Verse]` `[Pre-Chorus]` `[Chorus]` `[Outro]`).
-  - 용도 = **릴스(60초 미만) 후킹용이면서 그 자체로 완결된 노래** → 기승전결: 기 `[Verse]`(**2~3줄 — 더 길면 훅이 늦는다. 실측: Verse 4줄 = 훅 31초 도달 = 릴스 실패**) → 승 `[Pre-Chorus]`(0~1줄·선택) → 전 `[Chorus]`(3~4줄 · **훅 — 늦어도 15초 안에 도달. 이게 최우선 제약**) → 결 `[Outro]`(1줄 · 매듭). `[Intro]` = 기본 생략.
+  - 용도 = **릴스(60초 미만) 후킹용이면서 그 자체로 완결된 노래** → 기승전결: 기 `[Verse]`(3~4줄) → 승 `[Pre-Chorus]`(1~2줄·선택) → 전 `[Chorus]`(3~4줄 · **훅 — 곡 시작 15초 안에 도달할 밀도로 앞을 짧게**) → 결 `[Outro]`(1줄 · 매듭). `[Intro]`는 0~1줄만.
   - **총량 = 60초 미만 분량**(위 구조 상한을 넘기지 마라 — 길면 릴스에 못 쓴다).
   - 스토리가 대사면 그 말투·결정적 문장을 훅에 그대로 살리고, 상황이면 화자 시점을 정해 서사로.
 - `prompt` = **Lyria 3에 보낼 생성 프롬프트 전문**(이 텍스트가 그대로 API `input`이 된다). 구성 순서:
   1. 영문 스타일 지시 1~2문장: 선택 스타일의 장르 태그·무드·보컬(성별)·대략 BPM·핵심 악기·프로덕션 질감. 분위기 힌트가 `자동`이 아니면 무드로 번역해 반영, 테마 힌트가 `자동`이 아니면 가사 소재 프레임으로 쓴다.
-  2. 영문 구조·길이 지시: `A complete song under 60 seconds: one short verse, then the hook chorus arriving within the first 15 seconds, and a clean resolved ending. Korean vocals.`
-  2-1. 타임스탬프 타임라인(Lyria 공식 지원 — 훅 타이밍을 시간으로 못박기): 구조 지시 다음 줄에
-     `[00:00] Short verse` / `[00:12] Hook chorus` / `[00:40] Final chorus into outro` / `[00:55] end` 형태로 3~4줄(가사 분량에 맞게 ±수 초 조정 가능 · 총 60초 미만 유지).
+  2. 영문 구조·길이 지시: `A complete song under 60 seconds: short intro, verse, a strong hook chorus arriving early, and a clean resolved ending. Korean vocals.`
   3. `Sing exactly these Korean lyrics:` 다음 줄부터 `lyrics` 전문을 섹션 마커 포함 그대로.
 - `title` = 한국어 곡 제목(20자 이내 · 낚시 금지).
 - **금기**: 실존 가수·그룹·곡명 지칭 금지(Lyria 안전필터가 차단한다 — 아티스트 모방 요청·저작권 가사 인용 금지). 실명 비방·혐오·선정 금지. 선택 스타일이 없으면(자동) 스토리에 가장 어울리는 스타일을 너가 정한다.
