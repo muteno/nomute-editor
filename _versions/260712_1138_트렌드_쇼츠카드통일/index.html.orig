@@ -704,7 +704,13 @@
   .tcard:active { opacity:.7; }
   .tcard-cov { position:relative; display:block; aspect-ratio:3/4; border-radius:var(--r-l); overflow:hidden; background:var(--line); }   /* 몰입 = 대형화 라운드 --r-m→--r-l(최외곽 16px 문법 · 플레이그라운드 확정값) */
   .tcard-cov img { width:100%; height:100%; object-fit:cover; display:block; }
-  /* ── 커버 몰입 오버레이(구 .imm 2안·스크림) 폐지 = 제목/메타 항상 커버 아래(운영자 260712 #6 "썸네일 안에 제목 vs 업로더 = 중구난방" 통일 · 제목 위치 일관 = 아래) ── */
+  /* ── 커버 몰입 오버레이(2안 · 세로 커버 한정 — 커버 없는 폴백 .noc·가로 .wd·X 카드 비대상) : 텍스트가 커버 하단 스크림 위 = 프레임 제로 · 스크림 = .slide-no 흑 플레이트 계승(§🎨 n 예외축) ── */
+  .tcard-cov:not(.wd):not(.noc)::after { content:''; position:absolute; inset:auto 0 0; height:52%; background:linear-gradient(transparent,rgba(0,0,0,.66)); pointer-events:none; }
+  .tcard.imm { position:relative; }
+  .tcard.imm .tcard-t { position:absolute; left:8px; right:8px; bottom:36px; margin:0; -webkit-line-clamp:1; text-shadow:0 1px 3px rgba(0,0,0,.7); z-index:1; }
+  .tcard.imm .tcard-acc { position:absolute; left:8px; right:96px; bottom:6px; margin:0; z-index:1; }
+  .tcard.imm .tcard-m { position:absolute; right:8px; bottom:6px; margin:0; z-index:1; justify-content:flex-end; flex-wrap:nowrap; max-width:90px; overflow:hidden; }
+  .tcard.imm .tcard-m i:nth-child(n+3) { display:none; }   /* 오버레이 지표 = 2종 캡(과밀 방지 · 전체 지표는 임베드 모달에서) */
   .tcard-rank { position:absolute; top:5px; left:5px; display:inline-flex; align-items:center; height:18px; padding:0 7px; border-radius:var(--r-pill);
     background:rgba(0,0,0,.55); color:var(--fg); font-size:10.5px; font-weight:800; font-variant-numeric:tabular-nums; }   /* 순위 필 = 이미지 위 라벨/배지 솔리드 관례(.slide-no 톤 · §🎨 n 예외축) — 원본 빨강 필은 긴급 예약색과 충돌이라 무채+top3 강조색 */
   .tcard-rank.top { color:var(--accent); }
@@ -713,7 +719,7 @@
   .tcard-m { display:flex; flex-wrap:wrap; gap:2px 8px; align-items:center; margin-top:3px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .tcard-m i { font-style:normal; display:inline-flex; align-items:center; gap:3px; }
   .tcard-m svg { width:11px; height:11px; display:block; opacity:.85; }
-  .tcard-ago { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* N일전 = 조회수 우측(뉴스식 메타 · 운영자 260712 #6 · 구 .tcard-acc 업로더 폐지) */
+  .tcard-acc { display:block; margin-top:2px; color:var(--mut); font-size:var(--fs-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   /* X 트윗 카드 — 전문 + 지표(원본급) · 무채 글래스 셸(soc-item 톤 축소·색 창작 0) */
   .xgrid { display:grid; grid-template-columns:1fr; gap:8px; }
   @media (min-width:560px) { .xgrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -1253,11 +1259,9 @@
   .bnav { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-nav); display:flex; justify-content:space-around; align-items:flex-end;
     padding:0 8px max(6px, env(safe-area-inset-bottom));   /* 세로패딩 축소 = 네비 높이 ~85%(운영자 260704 "네비바 높이 85%") · calc(6px+inset)→max() = 폰 제스처 inset을 기본 6px에 *가산*하지 않고 *흡수* — 가산이 폰에서만 라벨 아래 빈 띠(위 15.6 vs 아래 20px+)를 만들던 것 교정(운영자 260706 "하단부에 여백"), inset이 6px 넘는 기기는 inset만큼 확보 = 펄 침범 0 */
     background:rgba(0,0,0,.30);   /* 검정 30% 반투명(기틀 검정 오버레이 플레이트 계승) — backdrop blur 글래스와 겹쳐 은은한 어둠(운영자 260704 "아래 네비에도 투명도 30%") */
-    backdrop-filter:blur(var(--blur-xl)) saturate(1.9); -webkit-backdrop-filter:blur(var(--blur-xl)) saturate(1.9);   /* 예타풍 글래스 강화(운영자 260712 플레이그라운드 회신 = blur 30·채도 1.9 · 구 blur-l 22/1.35) — 뒤 콘텐츠 더 흐리고 색 생생 = 유리감↑. ⚠️ position:fixed 고정바라 스크롤 렉 시 --blur-l(22)로 복귀(한 줄) */
-    border-top:1px solid rgba(255,255,255,.06); box-shadow:0 -10px 30px rgba(0,0,0,.46);   /* 테두리 얇게·그림자 깊게(예타풍 회신값 .06/.46 · 구 .12/.4 · 알파 변주 = 신규색 아님) */
+    backdrop-filter:blur(var(--blur-l)) saturate(1.35); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);   /* 글래스모피즘 복원(운영자 260703 "글래스 최대한 살려·가시성 확보됨") — 260701에 스크롤 jank로 뺐던 backdrop blur 재도입(옛 26px raw→--blur-l 22px 토큰·index 글래스 정합). ⚠️ position:fixed 고정바라 스크롤 시 미세 렉 가능 = 폰 실측서 거슬리면 --blur-m(14px)로 낮춤. */
+    border-top:1px solid rgba(255,255,255,.12); box-shadow:0 -10px 30px rgba(0,0,0,.4);
     transition:background .2s ease, border-color .2s ease, box-shadow .2s ease; }   /* 라디얼 열림 = 일체형 크롬 해제(rad-scrim 블록)와 부드럽게 넘어가기(운영자 260705) */
-  .bnav::before { content:''; position:absolute; inset:0 0 auto 0; height:60%; pointer-events:none; z-index:0; border-radius:inherit;
-    background:linear-gradient(rgba(255,255,255,.08), transparent 78%); }   /* 상단 광택(예타풍 gloss · 운영자 260712 상단 광택 .30 회신) = 페이드 그라데(seam 0 · 전폭 바라 코너 이음새 없음 = 첨부1 "도형 주변 살짝 남은 부분" 원천 차단) · 콘텐츠(.bnav-i·.bnav-fab position:relative) 아래 */
   .bnav-i { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     min-height:39px; margin:0 0 4px; padding:9px 4px 0; background:none; border:none; color:var(--mut); font:inherit; font-size:var(--fs-label); font-weight:700;   /* padding-top 9 = 라벨을 바 세로중앙으로(border-box라 높이 불변 · 옛 0 4px는 39px 셀 안 중앙 = 아래 margin4+바 padding6 몫만큼 위로 치우쳐 하단이 비어 보임 → 운영자 260705 "네비 하단 빈 공간" 교정 · FAB·라디얼·스크림 기하 불변) */
     letter-spacing:-.2px; cursor:pointer; text-decoration:none; }   /* 아이콘 제거·글자 메뉴(운영자 260703) · min-height 52+mb 16 = FAB 값 재사용 → 글자가 중앙 FAB 원 세로중앙에 정렬 · color transition 제거 = 탭 누르자마자 색 즉시 전환(운영자 260621) */
@@ -1319,7 +1323,6 @@
   @keyframes radBreath { from { opacity:.35; } to { opacity:1; } }
   /* 일체형 네비 — 라디얼 열림 동안 네비의 구획 크롬(경계선·유리·그림자) 제거 → 스크림 그라데이션이 네비까지 한 장(운영자 260705 확정). 스크림이 네비 뒤를 불투명(--bg)으로 받쳐 blur 소실은 비가시. 닫으면 원복. */
   body:has(.radmenu.open) .bnav { background:transparent; border-top-color:transparent; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; }
-  body:has(.radmenu.open) .bnav::before { opacity:0; }   /* 라디얼 열림 = 광택도 동반 해제(크롬 일체 소거) */
   @media (prefers-reduced-motion:reduce){ .rad-scrim { transition:none; } .radmenu.open ~ .rad-scrim::after { animation:none; opacity:.5; } }   /* 전정계 배려 = 브리딩 무효·중간 밝기 고정 */
   /* (구 @media max-width:600px 스크림 뷰포트 분기 = 폐지 260711) 라디얼 버튼은 px 고정(뷰포트 무관)이라 스크림도 뷰포트별로 갈리면 안 된다 → 기본값을 라디얼 덮는 150/340으로 승격하고 분기 제거 = PC·모바일 단일값. 분기하면 한쪽만 조정돼 재발했다{260710 모바일만 98→150·293→340 올리고 PC(데스크탑)는 98/293 방치 → PC서 라디얼(147px)이 밴드(98) 밖 페이드 구간에 걸쳐 주변 검정 안개}. */
   .bpop { position:fixed; z-index:var(--z-remote); min-width:140px; max-width:230px;   /* translateX(-50%) 제거 = fixed+translateX iOS 히트테스트 누수(탭이 뒤 요소로 샘) 차단 → 가운데정렬은 JS(popAt/openQueue)가 좌변 직접 지정(운영자 260622) */
@@ -8810,7 +8813,7 @@ function renderSnsTrends() {
   const chg = x => x.isNew ? '<span class="trend-chg nw">NEW</span>'
     : (x.delta > 0 ? `<span class="trend-chg up">${TRI_UP_SVG}${x.delta}</span>`
       : (x.delta < 0 ? `<span class="trend-chg dn">${TRI_DN_SVG}${-x.delta}</span>` : ''));
-  const cma = n => String(n || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');   // (미사용 260712 #6 — TOP 10 조회수도 vfmt 000만 통일 · 정의는 폴백 보존)
+  const cma = n => String(n || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');   // 조회 원시 표기(콤마 · 운영자 260712 선택값)
   const relH = p => p ? (Date.now() - new Date(p).getTime()) / 3600e3 : NaN;   // 발행 → 경과 h → relAge(공통 상대시간 사다리 계승)
   const zig = arr => { const hh = Math.ceil(arr.length / 2), o = []; for (let z = 0; z < hh; z++) { o.push(arr[z]); if (arr[z + hh]) o.push(arr[z + hh]); } return o; };   // 레일 2행 = grid-auto-flow:column(세로 우선) → [1,6,2,7,…] 인터리브로 윗줄 1~5·아랫줄 6~10 보장(운영자 선택값 · 스모크 시각 실측 260712)
   const tpc = (it, i, cat) =>   // TOP 카드(운영자 260712 선택값: 1:1 커버·r-s·순위 필 h15/fs10·구분자행(cat색)→제목 2줄→원시 조회+우측 시간 · 변동 = NEW만) — 제목 = textContent 후주입(XSS 안전) · 로고 = img 밑층 폴백
@@ -8832,10 +8835,11 @@ function renderSnsTrends() {
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
   const sortbar = (key, opts, cur) => `<div class="tsort" data-tsort="${key}">` + opts.map(o => `<button type="button" data-f="${o[0]}"${o[0] === cur ? ' class="on"' : ''}>${o[1]}</button>`).join('') + '</div>';
   const met = pairs => pairs.filter(p => p[1] > 0).map(p => `<i>${p[0]}<span>${vfmt(p[1])}</span></i>`).join('');   // 0 지표 = 미표기(릴스 조회 비공개 등)
-  const card = (t, i, wd) =>   // 통일 카드(운영자 260712 #6 "쇼츠형 중구난방 해소") — 썸네일(쇼츠식 커버 크롭) + 아래에 [제목 → 조회수(vfmt 000만) · N일전] · 업로더 제거·오버레이 제목 폐지(제목/메타 항상 커버 아래 = 뉴스식 배치) · 제목 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조
-    `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
+  const card = (t, i, wd) =>   // 세로/가로(wd) 커버 카드 — 제목·계정 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조(빨강 = 긴급 예약색이라 미사용)
+    // 커버 몰입(2안 ★채택 260711): 세로+커버 있음 = .imm 오버레이(제목 1줄·계정·지표 2종이 스크림 위) · 커버 없음(.noc)·가로(wd) = 종전 하단 텍스트 폴백
+    `<a class="tcard${(!wd && t.cover) ? ' imm' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
-    `<span class="tcard-t"></span><span class="tcard-m">${t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : ''}${t.published ? `<span class="tcard-ago">${relAge(relH(t.published))}</span>` : ''}</span></a>`;
+    `<span class="tcard-t"></span><span class="tcard-m">${met([[EYE_SVG, t.views], [HEART_SVG, t.likes], [CMT_SVG, t.cmts]])}</span><span class="tcard-acc"></span></a>`;
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
     `<a class="xcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
@@ -8854,10 +8858,10 @@ function renderSnsTrends() {
   const pool = [], seenU = new Set();
   const lane = (plat, mono, arr, n, f) => { const s = arr.slice(0, n), L = s.length; s.forEach((x, r) => { const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };
   lane('구글', 'gg', gt, 8, g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: g.traffic || '', th: g.picture || '', ago: '' }));   // 검색어 = 검색량 문자열·수집기 picture 커버(핫링크 · onerror 로고 폴백)
-  lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relAge(relH(v.published)) }));
-  lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relAge(relH(v.published)) }));
-  lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relAge(relH(v.published)) }));
-  lane('틱톡', 'tk', tkv, 10, v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relAge(relH(v.published)) }));   // published = 수집기 create_time(260712 추가) — 구 데이터 = 공란
+  lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? cma(v.views) : '', th: v.thumb || '', v: v.views, ago: relAge(relH(v.published)) }));
+  lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? cma(v.views) : '', th: v.thumb || '', v: v.views, ago: relAge(relH(v.published)) }));
+  lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? cma(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relAge(relH(v.published)) }));
+  lane('틱톡', 'tk', tkv, 10, v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? cma(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relAge(relH(v.published)) }));   // published = 수집기 create_time(260712 추가) — 구 데이터 = 공란
   pool.sort((a, b2) => (b2.sc - a.sc) || (b2.ht - a.ht));
   const top = [], pcap = {};
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
@@ -8865,7 +8869,7 @@ function renderSnsTrends() {
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
   if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 8), gt.slice(0, 8).map((g, i) =>
     row(i, (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), esc(g.traffic || ''), g, '')).join(''));
-  const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relAge(relH(v.published)) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
+  const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? cma(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relAge(relH(v.published)) });
   const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnZ = zig(ytn.slice(0, 10).map((v, i) => [v, i]));
   if (yt.length) gYT += sec('yt', '인기', '· 조회수', Math.min(yt.length, 10), '<div class="tpg">' + ytZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // TOP 10과 동일 카드·10위(운영자 260712) · ytimg 핫링크 자유(평의회5)
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="tpg">' + ytnZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // 동일 적용(운영자 "뉴스도 마찬가지") · 뉴스 소재 훑기 온-미션(평의회10 결판)
@@ -8908,13 +8912,13 @@ function renderSnsTrends() {
   fillT('ytn', '.tpc-t', ytnZ.map(z => z[0].title || ''));
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT)
   fillT('syt', '.trend-q', syt.slice(0, 8).map(v => v.title || ''));
-  if (tkL.length) { fillT('tk', '.tcard-t', tkL.map(t => t.title || ('@' + (t.account || '')))); }   // 업로더(.tcard-acc) 제거(운영자 260712 #6 "누가 올렸는지 필요없음") — 제목만 주입
+  if (tkL.length) { fillT('tk', '.tcard-t', tkL.map(t => t.title || ('@' + (t.account || '')))); fillT('tk', '.tcard-acc', tkL.map(t => t.account ? '@' + t.account : '')); }
   fillT('sx', '.xcard-h b', sxL.map(t => '@' + (t.account || '')));
   fillT('sx', '.xcard-tx', sxL.map(t => t.text || ''));
-  fillT('stk', '.tcard-t', stkL.map(t => t.title || ('@' + (t.account || ''))));
-  fillT('sre', '.tcard-t', sreL.map(t => t.title || ('@' + (t.account || ''))));
-  fillT('sh', '.tcard-t', shL.map(t => t.title || ''));
-  fillT('ai', '.tcard-t', aiL.map(t => t.title || ''));   // 업로더(.tcard-acc) 전 섹션 제거(운영자 260712 #6) — 제목만
+  fillT('stk', '.tcard-t', stkL.map(t => t.title || ('@' + (t.account || '')))); fillT('stk', '.tcard-acc', stkL.map(t => t.account ? '@' + t.account : ''));
+  fillT('sre', '.tcard-t', sreL.map(t => t.title || ('@' + (t.account || '')))); fillT('sre', '.tcard-acc', sreL.map(t => t.account ? '@' + t.account : ''));
+  fillT('sh', '.tcard-t', shL.map(t => t.title || '')); fillT('sh', '.tcard-acc', shL.map(t => t.account || ''));   // 쇼츠·AI = 채널명(@ 아님)
+  fillT('ai', '.tcard-t', aiL.map(t => t.title || '')); fillT('ai', '.tcard-acc', aiL.map(t => t.account || ''));
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });
   const ab = box.querySelector('.trend-accbtn'); if (ab) ab.addEventListener('click', openSnsAcc);   // 렌더마다 재바인딩(innerHTML 재구축)
   if (!box._trBound) {   // 위임 1핸들러 = box 유지·innerHTML만 교체라 1회 바인딩(중복 누적 방지)
