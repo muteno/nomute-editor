@@ -799,10 +799,6 @@
   .tref-bd { padding:13px 16px 16px; overflow-y:auto; min-height:0; }
   .tref-ttl { display:block; font-size:var(--fs-h3); font-weight:var(--fw-b); line-height:1.4; word-break:break-word; }
   .tref-body { margin:8px 0 0; font-size:var(--fs-sm); line-height:1.8; color:var(--fg); white-space:pre-line; word-break:break-word; }   /* 보도자료체 본문(뉴스 요약 문법 계승) */
-  .tref-vid { margin:var(--sp-2) 0 0; border-radius:var(--r-m); overflow:hidden; background:var(--bg); }   /* 영상 임베드 = 요약 아래 인라인(운영자 260713 "요약 아래에 쇼츠 같이") · 간격·라운드 = 근접 토큰 계승 · 배경 = --bg(레터박스, 팔레트 밖 색 0) */
-  .tref-vid.pt { aspect-ratio:9/16; height:min(62dvh,560px); max-width:100%; margin-inline:auto; }   /* 쇼츠·틱톡·릴스 = 원본 세로비 9:16 그대로(운영자 "쇼츠는 원본크기") · 높이 = 뷰포트 캡(모달 92dvh 안에서 헤더·요약과 공존, 폭은 비율 자동) */
-  .tref-vid.wd { width:100%; aspect-ratio:16/9; }   /* 유튜브 일반 = 16:9 비율 유지한 채 팝업 폭에 맞춤(운영자 "16대9는 그 크기에 맞춰 화면에 맞추기") */
-  .tref-vid iframe { display:block; width:100%; height:100%; border:0; }
   .tbrief-tm { display:block; margin-top:5px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   /* AI요약 = 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 버튼 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당 */
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
@@ -3098,7 +3094,7 @@ try {
 <dialog id="trefdlg" aria-label="참고자료 스크랩">
   <div class="modal-head"><b id="trefSrc">스크랩</b><a class="tv-open" id="trefOpen" href="#" target="_blank" rel="noopener">원문</a><button class="tool-x dlg-x" type="button" id="trefX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <img class="tref-img" id="trefImg" alt="" referrerpolicy="no-referrer" hidden><!-- eager 고정: lazy+hidden = 교차 없음 → 영원히 미로드 데드락(실측 260712) · 모달 단일 이미지라 eager 비용 0 -->
-  <div class="tref-bd"><b class="tref-ttl" id="trefTtl"></b><p class="tref-body" id="trefBody"></p><div class="tref-vid" id="trefVid" hidden></div><!-- 영상 refs(쇼츠·틱톡·릴스·유튜브) = 요약 아래 인라인 임베드(운영자 260713) · iframe은 열 때 생성·닫을 때 제거 = 백그라운드 재생 0 --></div>
+  <div class="tref-bd"><b class="tref-ttl" id="trefTtl"></b><p class="tref-body" id="trefBody"></p></div>
 </dialog>
 
 <!-- 카드 개별 변경(2차 팝업) — 이미지 보며 텍스트(어절칩 강조)·이미지 희망 입력 → 변경(1b) -->
@@ -9265,25 +9261,16 @@ function openTref(i) {
   $('#trefBody').textContent = (r.body || '').slice(0, 900);
   $('#trefOpen').href = hrefOk(r.url || '#');   // 원문 = 새탭(임베드 아님 — 기사 페이지)
   const im = $('#trefImg'); im.hidden = true; im.removeAttribute('src');
-  const vb = $('#trefVid'); vb.hidden = true; vb.textContent = '';   // 열 때 초기화 = 직전 임베드 잔여 재생 차단(close 해제와 짝)
-  const emb = trEmbed(r.url || '');   // 영상 플랫폼 refs = 요약 아래 인라인 임베드(운영자 260713 "요약 아래에 쇼츠 같이") · 트윗(tw)·기사(null) = 종전 그대로
-  if (emb && emb.k !== 'tw') {
-    vb.className = 'tref-vid ' + (/youtube\.com\/shorts\/|tiktok\.com\/|instagram\.com\/reel\//.test(r.url || '') ? 'pt' : 'wd');   // 쇼츠·틱톡·릴스 = 원본 세로(9:16) / 유튜브 일반 = 16:9 폭맞춤(운영자 지시 2분기 · watch URL은 비율 미상이라 16:9 기본)
-    const f = document.createElement('iframe');
-    f.title = '임베드 콘텐츠'; f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.setAttribute('allowfullscreen', ''); f.referrerPolicy = 'strict-origin-when-cross-origin';   // #tvFrame 속성 1:1 계승 — strict-origin = 유튜브 '오류 153' 방지(트렌드 임베드 뷰어 주석 정본)
-    f.src = emb.src;   // trEmbed 재사용(autoplay·playsinline 동일) — id = 정규식 [\w-] 추출이라 주입 안전
-    vb.appendChild(f); vb.hidden = false;
-  } else if (r.image && /^https?:\/\//.test(r.image)) { im.onerror = () => { im.hidden = true; }; im.onload = () => { im.hidden = false; }; im.src = hrefOk(r.image); }   // og:image = 핫링크(no-referrer·onerror 숨김 관용구 · 없으면 텍스트만) · 영상이 뜨면 이미지 생략 = 이중 미디어 방지
+  if (r.image && /^https?:\/\//.test(r.image)) { im.onerror = () => { im.hidden = true; }; im.onload = () => { im.hidden = false; }; im.src = hrefOk(r.image); }   // og:image = 핫링크(no-referrer·onerror 숨김 관용구 · 없으면 텍스트만)
   openComposeDlg(trefdlg);   // showModal + pushState(폰 뒤로가기 = 팝업만 닫힘) + 잠금 가드
 }
 if (trefdlg) {
   $('#trefX').addEventListener('click', () => trefdlg.close());
-  trefdlg.addEventListener('close', () => { const im = $('#trefImg'); im.hidden = true; im.removeAttribute('src'); const v = $('#trefVid'); v.hidden = true; v.textContent = ''; });   // 닫힘 = 이미지·임베드 해제(잔상·백그라운드 재생 방지 — iframe 제거 = 소리 정지)
+  trefdlg.addEventListener('close', () => { const im = $('#trefImg'); im.hidden = true; im.removeAttribute('src'); });   // 닫힘 = 이미지 해제(다음 열림 잔상 방지)
 }
 function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-Options로 못 띄우므로 필수 · 매치 없음 = null(종전 새 탭)
   let m;
   if ((m = url.match(/youtube\.com\/watch\?v=([\w-]{6,})/))) return { src: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&playsinline=1', k: 'pt' };   // 유튜브도 세로 프레임 통일(운영자 260712 "창 다 다름 · 어차피 안 넓게 봄 · 세로면 제목 오버레이가 영상 안 덮음") — 16:9 = 세로 프레임 중앙 레터박스·임베드 제목 오버레이 = 상단 검정띠에 얹힘 · 구 k:'wd'는 유튜브 일반만 가로라 쇼츠·틱톡과 창 이원화 + pt 마커 못 받은 쇼츠가 16:9 속 좌우 필러박스("가운데만")로 보이던 원인
-  if ((m = url.match(/youtube\.com\/shorts\/([\w-]{6,})/))) return { src: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&playsinline=1', k: 'pt' };   // 쇼츠 원형 URL(브리프 refs = 비정규화 원형 보존 · 260713) — 대시보드 레인은 watch?v= 정규화라 기존 data-pt 경로 무영향·추가 매치는 순증(구 null=새탭 → 인앱)
   if ((m = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/))) return { src: 'https://www.tiktok.com/embed/v2/' + m[1], k: 'pt' };
   if ((m = url.match(/instagram\.com\/reel\/([\w-]+)/))) return { src: 'https://www.instagram.com/reel/' + m[1] + '/embed/', k: 'pt' };   // 릴스 임베드 = 간헐 로그인벽(임베드 변덕) — '원문' 새탭이 폴백
   if ((m = url.match(/x\.com\/[^/]+\/status\/(\d+)/))) return { src: 'https://platform.twitter.com/embed/Tweet.html?dnt=true&theme=dark&id=' + m[1], k: 'tw' };
