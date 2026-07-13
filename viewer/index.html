@@ -691,6 +691,7 @@
   .trend-q { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .trend-traffic { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:none; }
   .trend-tm { flex:none; min-width:52px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 행 우측 끝 시간 열(고정폭 우정렬 = 전 행 끝 x 일렬 · relAge 사다리 계승 · 운영자 260712 "모든 것에 시간 기록") */
+  .fin-split { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); align-items:start; }   /* ⑬ 환율(좌)·암호화폐(우) 좌우 2열(운영자 260713) — 동일 폭·대칭 여백 */
   .fin-rows { display:flex; flex-direction:column; gap:2px; }   /* ⑬ 금융 시세 행(운영자 260713) — 통화·시세·변동률 · trend-row 리듬 계승 */
   .fin-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; font-size:var(--fs-sm); color:var(--fg); }
   .fin-nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -742,6 +743,13 @@
   .xcard-h b { font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .xcard-h .tcard-rank, .xcard-h .trend-chg { position:static; flex:none; }   /* X 카드 = 커버 없음 → 랭크·변동 배지 헤더 인라인 */
   .xcard-tx { display:-webkit-box; -webkit-line-clamp:7; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-sm); line-height:1.5; white-space:pre-line; word-break:break-word; }
+  /* ⑦ 블루스카이 번역 카드(운영자 260713) — 부제(주제) → 제목(번역) → 계정·원문(mut) · 셋 간격 = 계정↔원문 5px 계승 · xcard 셸 상속 */
+  .bcard-topic { display:flex; align-items:center; gap:7px; margin-bottom:5px; min-width:0; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--accent); }
+  .bcard-topic b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .bcard-topic:empty { display:none; }
+  .bcard-title { margin-bottom:5px; font-size:var(--fs-sm); line-height:1.5; color:var(--fg); font-weight:var(--fw-b); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+  .bcard-src { font-size:var(--fs-xs); line-height:1.5; color:var(--mut); display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+  .bcard-src b { color:var(--fg); font-weight:var(--fw-b); }   /* @계정 = 흰색 강조 · 원문 = mut */
   .xcard .tcard-m { margin-top:auto; padding-top:7px; }   /* auto = 바닥 고정(구 7px 고정 간격은 padding으로 보존) */
   .tcard-cov.wd { aspect-ratio:16/9; }   /* 가로 영상(AI 영상) 카드 변형 */
   /* ── 플랫폼 IA 재편(운영자 260712 "플랫폼별 묶음·순위·변동·점프") = 통합 TOP 10 대시보드 + 플랫폼 대분류 + 좌측 책갈피 레일 · 구 소스칩(.trend-srcbar) 폐지(점프 = 레일 이관 · nm_trend_src 키 고아) ── */
@@ -8997,6 +9005,11 @@ function renderSnsTrends() {
     `<a class="xcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
     `<span class="xcard-tx"></span><span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)
+  const bcard = (t, i) =>   // ⑦ 블루스카이 번역 카드(운영자 260713) — [순위]주제(부제) → 번역(제목) → @계정·원문(mut) → 메타 · 미번역(ko 없음) = 원문 폴백 · xcard 셸 상속
+    `<a class="xcard bcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
+    `<span class="bcard-topic"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
+    `<span class="bcard-title"></span><span class="bcard-src"><b></b><span class="bcard-orig"></span></span>` +
+    `<span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;
   const V3 = [['views', '조회수'], ['likes', '좋아요'], ['cmts', '댓글']];
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
@@ -9051,7 +9064,7 @@ function renderSnsTrends() {
     row(i, p2.url || '#', p2.score ? vfmt(p2.score) : '', p2, p2.thumb || '')).join(''));   // ⑥ 레딧(운영자 260713 "추천대로" = 커뮤니티 그룹 슬롯) — 우측 수치 = 스코어 만단위 · 제목 = [r/서브] 접두 주입
   let gBS = '';   // ⑦ 블루스카이 그룹(운영자 260713 "추천대로" = 새 그룹 · X xcard 문법 계승 · 러너 무키 수집)
   const bskS = sortOf('bsk', ['likes', 'rts', 'cmts'], 'likes'), bskL = bySort(bsk, bskS).slice(0, 10);
-  if (bskL.length) gBS += sec('bsk', '인기 게시물', '', bskL.length, sortbar('bsk', [['likes', '좋아요'], ['rts', '리포스트'], ['cmts', '댓글']], bskS) + '<div class="xgrid">' + bskL.map(xcard).join('') + '</div>');
+  if (bskL.length) gBS += sec('bsk', '인기 게시물', '', bskL.length, sortbar('bsk', [['likes', '좋아요'], ['rts', '리포스트'], ['cmts', '댓글']], bskS) + '<div class="xgrid">' + bskL.map(bcard).join('') + '</div>');   // 번역 카드(bcard) — 주제·번역·원문(운영자 260713)
   let gTH = '';   // ⑧ 스레드 그룹(운영자 260713 "추천대로" = 새 그룹 · 구독 게시물 = X 구독 문법 · 공급 = 폰/맥 phone_subs 전용)
   const sthS = sortOf('sth', ['likes', 'cmts'], 'likes'), sthR = { kr: bySort(byReg(sth, 'kr'), sthS).slice(0, 10), gl: bySort(byReg(sth, 'gl'), sthS).slice(0, 10) };
   REGS.forEach(r => { const L = sthR[r]; if (L.length) gTH += sec('sth-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sth', [['likes', '좋아요'], ['cmts', '댓글']], sthS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });
@@ -9059,8 +9072,9 @@ function renderSnsTrends() {
   const hnL = hnl.slice(0, 12);
   if (hnL.length) gHN += sec('hn', '톱 스토리', '· 해커뉴스', hnL.length, hnL.map((p2, i) => row(i, p2.url || p2.hn || '#', p2.score ? '▲' + p2.score.toLocaleString() : '', p2, '')).join(''));   // HN 스코어 = 원값(만단위 변환 부적합 = 점수대 낮음)
   let gFI = '';   // ⑬ 금융 그룹(환율·코인 = 시세 행 · sec 문법 · 표시 전용) — 순위/변동배지 무의미 = 커스텀 행
-  if (finR.length) gFI += sec('fin-fx', '환율', '· 원화', finR.length, '<div class="fin-rows">' + finR.map(x => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(x.krw >= 100 ? Math.round(x.krw).toLocaleString() : x.krw)}<i>원</i></span></div>`).join('') + '</div>');
-  if (finC.length) gFI += sec('fin-cc', '암호화폐', '· 업비트', finC.length, '<div class="fin-rows">' + finC.map(c => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(Math.round(c.krw).toLocaleString())}<i>원</i></span><span class="fin-chg ${c.chg > 0 ? 'up' : c.chg < 0 ? 'dn' : ''}">${c.chg > 0 ? '+' : ''}${esc(c.chg)}%</span></div>`).join('') + '</div>');
+  const fxSec = finR.length ? sec('fin-fx', '환율', '· 원화', finR.length, '<div class="fin-rows">' + finR.map(x => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(x.krw >= 100 ? Math.round(x.krw).toLocaleString() : x.krw)}<i>원</i></span></div>`).join('') + '</div>') : '';
+  const ccSec = finC.length ? sec('fin-cc', '암호화폐', '· 업비트', finC.length, '<div class="fin-rows">' + finC.map(c => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(Math.round(c.krw).toLocaleString())}<i>원</i></span><span class="fin-chg ${c.chg > 0 ? 'up' : c.chg < 0 ? 'dn' : ''}">${c.chg > 0 ? '+' : ''}${esc(c.chg)}%</span></div>`).join('') + '</div>') : '';
+  gFI = (fxSec && ccSec) ? '<div class="fin-split">' + fxSec + ccSec + '</div>' : fxSec + ccSec;   // 환율(좌)·암호화폐(우) 좌우 2열(운영자 260713) — 둘 다 있을 때만 반갈, 하나면 그대로
   let gSF = '';   // ⑭⑯ 재난·안전 그룹(재난문자·고속도로 돌발 = 팩트 신호 · 키 게이트라 키 없으면 미등장)
   if (dsl.length) gSF += sec('dis', '재난문자', '· 안전', Math.min(dsl.length, 10), dsl.slice(0, 10).map((p2, i) => row(i, p2.url || '#', esc(p2.area || ''), p2, '')).join(''));
   if (exw.length) gSF += sec('exw', '고속도로 돌발', '· 사고', Math.min(exw.length, 10), exw.slice(0, 10).map((p2, i) => row(i, p2.url || '#', esc(p2.route || ''), p2, '')).join(''));   // ⑯ 도로공사(운영자 260713 "대량 사고") — 우측 = 노선명
@@ -9126,8 +9140,10 @@ function renderSnsTrends() {
     fillT('sth-' + r, '.xcard-tx', sthR[r].map(t => t.text || ''));
   });
   fillT('rdd', '.trend-q', rdd.slice(0, 10).map(p2 => (p2.sub ? '[r/' + p2.sub + '] ' : '') + (p2.title || '')));   // ⑥ 레딧 — 서브레딧 접두(textContent 주입 = XSS 안전)
-  fillT('bsk', '.xcard-h b', bskL.map(t => '@' + (t.account || '')));   // ⑦ 블루스카이
-  fillT('bsk', '.xcard-tx', bskL.map(t => t.text || ''));
+  fillT('bsk', '.bcard-topic b', bskL.map(t => t.topic || ''));   // ⑦ 블루스카이 주제(부제) — 미번역 = 빈 값(랭크만)
+  fillT('bsk', '.bcard-title', bskL.map(t => t.ko || t.text || ''));   // 번역(제목) · 미번역 = 원문 폴백
+  fillT('bsk', '.bcard-src b', bskL.map(t => '@' + (t.account || '')));   // @계정(흰색)
+  fillT('bsk', '.bcard-orig', bskL.map(t => t.ko ? (t.text || '') : ''));   // 원문(mut) — 번역 있을 때만 병기(미번역 시 title이 원문이라 중복 방지)
   fillT('hn', '.trend-q', hnL.map(t => t.title || ''));   // ⑫ 해커뉴스(textContent 주입 = XSS 안전)
   fillT('dis', '.trend-q', dsl.slice(0, 10).map(t => t.title || ''));   // ⑭ 재난문자
   fillT('exw', '.trend-q', exw.slice(0, 10).map(t => t.title || ''));   // ⑯ 고속도로 돌발
