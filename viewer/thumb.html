@@ -279,9 +279,9 @@
   #cpThumbSlot #cpBlock { margin-top:4px; opacity:0; transform:translateY(-6px); transition:opacity .2s var(--ease), transform .28s var(--ease); }   /* 상단간격 4px·등장 전(운영자 260711 선택값) */
   #cpThumbSlot #cpBlock.cpshow { opacity:1; transform:none; }
   /* ── 합성 미리보기(운영자 260712) — 포스트(4:5) 가득 · 릴스(9:16) 필러박스. 스테이지 안 텍스트 색 = 콘텐츠 산출물 색 미러(PIL WHITE/GREEN · §핵심명령 1-3-b-1 콘텐츠 축 = UI 팔레트 아님·JS 상수) ── */
-  .cpprev { margin:14px 2px 0; }
+  .cpprev { margin:0 2px 6px; position:sticky; top:0; z-index:6; background:var(--bg); }   /* 상단 고정(운영자 260713 "미리보기 항상 위·상단 고정 · 영상 스튜디오 따라가기") = edit .pvsec 패턴 계승(position:sticky;top:0) · --bg 불투명 = 아래 입력 스크롤 시 깔끔 커버(검은 띠 아님 = 프리뷰 박스가 영역 채움) · z-index 6 = 컴포넌트 로컬(§디자인 예외 1~8) · margin-top 14→0(맨 위 이주) */
   .cpprev-opts { margin-bottom:4px; }
-  .cpprev-box { position:relative; width:100%; aspect-ratio:4/5; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }   /* 필러박스 = 운영자 지정 '스포티파이 블랙'(18,18,18 · thumb 무토큰 표면 raw = baseline 사유 등재) */
+  .cpprev-box { position:relative; height:min(46vh,340px); height:min(46svh,340px); width:auto; max-width:100%; margin-inline:auto; aspect-ratio:4/5; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }   /* 필러박스 = 운영자 지정 '스포티파이 블랙'(18,18,18 · thumb 무토큰 표면 raw = baseline 사유 등재) · 높이 캡 = 46svh(edit pvSync maxH innerHeight*.46 미러) 또는 340px = "작게 보여도됨"(운영자 260713) · ⚠️ svh 필수 = 주소창 숨김에 고정(안 변함) → 첫 스크롤 리플로우 '덜컹' 차단(운영자 260713 실측 · 구 vh는 매 프레임 재계산 = 덜컹 · vh 선언은 svh 미지원 구형 폴백) · width:auto+aspect 4:5 = 비율 유지 중앙정렬 */
   .cpprev-stage { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); background:#000; overflow:hidden; }   /* 순수 흑 = 산출 배경 관례(트랙뷰어 레터박스 #000 선례) · -50% = 기하값 */
   .cpprev-stage.post { width:100%; }
   .cpprev-stage.reels { aspect-ratio:9/16; height:100%; width:auto; }
@@ -692,6 +692,16 @@
   </div>
 
   <div class="panel">
+
+    <!-- 합성 미리보기 = 패널 최상단 상단 고정(운영자 260713 "미리보기 항상 위·상단 고정 느낌 · 영상 스튜디오 .pvsec 따라가기") — DOM 위치만 맨 위로 이주(구 makeRow 위) · 표시 토글(renderCpPrev·selApp a!=='2' .none)·id 전부 불변 · sticky/높이캡 = 위 .cpprev/.cpprev-box CSS · 빈 상태(.none=display:none) = 조용한 공백 -->
+    <div class="cpprev none" id="cpPrev">
+      <div class="rsz-opts cpprev-opts none" id="cpPrevOpts"></div>
+      <div class="cpprev-box">
+        <div class="cpprev-stage post" id="cpPrevStage"></div>
+        <div class="cpprev-wait" id="cpPrevWait" hidden>합성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="cpw-sec" id="cpPrevSec"></span></div>
+      </div>
+    </div>
+
     <!-- (구 /6 생성 = 제미나이 자유 생성 → 운영자 260710 탭 제거 · 관련 JS(genJob·freeLoad·genRefire)는 도먼트 보존 = 재추가 시 진입로만 복원) -->
 
     <!-- (구 편집 탭 사진 홈 #ieSlotHome + 비율·모자이크 블록 = app2 옵션 구역으로 이식 · 운영자 260713 — 아래 #goSpec 다음 자리 참조. 사진 = app2 오버레이 슬롯(#cImgSlot·CIMG) 하나로 단일화 = 공용 슬롯(#imgBox) DOM 이동 폐지) -->
@@ -796,14 +806,7 @@
       <div class="csec gsec" id="guideSec">안내문 <span class="onoff" id="guideTog" role="button" tabindex="0" aria-pressed="false" title="탭=OFF→경고→AI→자유문구 순환">OFF</span></div><!-- 종류 = 순환값(운영자 260712 팝업 폐지 — 잔여 선택지 나열 대신 탭=한 바퀴 · 구 #guidePop 도먼트 제거) -->
       <textarea id="warnLines" class="none" placeholder="안내문 텍스트"></textarea>
     </div>
-    <!-- 합성 미리보기(운영자 260712) — 4:5(포스트) 가득 · 9:16(릴스) = 필러박스 · 입력(첨부·헤더·자막·저작권·안내문)의 산출 근사 시안(정밀 = 제작기 PIL) · 미리볼 게 있을 때만(빈 상태 = 조용한 공백 §디자인 e-가) · 제작 발사 = '합성 중' 딤(edit wmsg 계승 §디자인 g) -->
-    <div class="cpprev none" id="cpPrev">
-      <div class="rsz-opts cpprev-opts none" id="cpPrevOpts"></div>
-      <div class="cpprev-box">
-        <div class="cpprev-stage post" id="cpPrevStage"></div>
-        <div class="cpprev-wait" id="cpPrevWait" hidden>합성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="cpw-sec" id="cpPrevSec"></span></div>
-      </div>
-    </div>
+    <!-- 합성 미리보기(운영자 260712) = 패널 최상단으로 이주(운영자 260713 상단 고정 · 위 <div class="panel"> 직후) — 여기는 이주 흔적(구 makeRow 위 원위치) -->
     <div class="makerow" id="makeRow">
       <!-- 카드뉴스 배경 이미지(/5만 표시) — 제작 버튼과 한 행(ly 통일·260628) -->
       <div id="imgBox" class="none">
@@ -1463,6 +1466,17 @@ function _opaToggle(which) {
 // ---- 릴스 자막 OPA → 켜진 슬롯값(60 고정 / 보조=조절) 배열, 최소 [60] ----
 function getComboOpas() { const out = []; if (cOpa1on) out.push(60); if (cOpa2on) out.push(cOpa2val); const u = [...new Set(out)]; return u.length ? u : [60]; }
 
+// ---- 붙여넣기(Ctrl+V) 이미지 공통 헬퍼 = 전 이미지 첨부 슬롯 공통(운영자 260713 "붙여넣기 핸들러가 모든 곳에 다 들어가야함") ----
+function _imgFromClipboard(e) {   // paste 이벤트 → 첫 이미지 File(없으면 null)
+  const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData) || {}).items || [];
+  for (const it of items) { if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) return f; } }
+  return null;
+}
+function bindImgPaste(el, onImg) {   // el(입력칸·슬롯)에서 Ctrl+V 이미지 → onImg(file)
+  if (!el || el._imgPasteBound) return; el._imgPasteBound = true;   // 이중 바인딩 가드
+  el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
+}
+
 // ---- 파일 (재사용 바인더 — #file=/1·/5 배경) ----
 function bindFile(inp, lab, store) {
   // 빈 상태 = 플레이트 없는 픽토그램만(ly .file 통일) · 누름 피드백은 CSS .file:active svg 축소뿐.
@@ -1502,6 +1516,12 @@ function bindFile(inp, lab, store) {
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
   inp.onchange = handler;
+  document.addEventListener('paste', e => {   // 붙여넣기(Ctrl+V) = 카드뉴스 배경 이미지(운영자 260713 "모든 곳에 다") — label은 포커스 불가라 문서 위임 + 이 슬롯이 노출(app5·#imgBox:not(.none))일 때만
+    if (!lab.offsetParent) return;   // 슬롯 숨김(#imgBox.none = 비-app5)이면 무시 = 타 탭 슬롯과 충돌 0
+    const f = _imgFromClipboard(e); if (!f) return;
+    e.preventDefault();
+    const r = new FileReader(); r.onload = () => applyImg(r.result, f.name || '붙여넣기.png'); r.readAsDataURL(f);
+  });
   lab._reset = reset;   // 수정 복원 시 이미지 위젯 비우기(외부 호출용)
   lab._set = applyImg;   // 수정 복원 시 원본 이미지 주입(외부 호출용)
   lab._setRef = applyRef;   // 수정 복원 시 합성본 빗금 참고본(원본 없음·타 기기)
@@ -1519,12 +1539,15 @@ function bindSlotImg(slotSel, inputSel, store, onChange) {   // onChange(has) = 
     if (!slot.classList.contains('has')) inp.click();   // 빈 슬롯 = 파일 선택(채운 상태는 X로만 비우고 재선택)
   });
   slot.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !slot.classList.contains('has')) { e.preventDefault(); inp.click(); } });
-  inp.onchange = e => {
-    const f = e.target.files[0]; if (!f) return;
+  const read = (f) => {   // 파일 → store·미리보기(파일선택·붙여넣기 공용 · 운영자 260713)
+    if (!f || !/^image\//.test(f.type || '')) return;
     const r = new FileReader();
-    r.onload = () => { store.b64 = r.result; store.name = f.name; filled(r.result, Math.round(f.size / 1024)); };
+    r.onload = () => { store.b64 = r.result; store.name = f.name || '붙여넣기.png'; filled(r.result, Math.round(f.size / 1024)); };
     r.readAsDataURL(f);
   };
+  inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); };
+  bindImgPaste(slot, read);   // 붙여넣기(Ctrl+V) = 슬롯 포커스 상태 클립보드 이미지(운영자 260713 "모든 곳에 다")
+  const _cr = slot.closest('.covrow'); const _ta = _cr && _cr.querySelector('textarea'); if (_ta) bindImgPaste(_ta, read);   // 짝 텍스트칸(covta·lines/cLines)에 붙여넣기 = askText 선례
   slot._reset = () => { store.b64 = ''; store.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
   slot._set = (b64, name) => { store.b64 = b64; store.name = name || ''; filled(b64); };   // 수정 복원 시 원본 이미지 주입(외부 호출용)
   slot._setRef = (url) => {   // 합성본 빗금 참고본(원본 없음·타 기기) — store 비움(재렌더 시 재선택 필요). X=비우기·재선택.
