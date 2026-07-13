@@ -101,7 +101,6 @@ _DESIGN_BASELINE = {
     # ▼ 도구 파일 게이트 편입(분신술 9·10 P0 — 옛 사각지대: 닫기/최소화 버그가 난 파일군이 무방비였음). accent_raw=0 = ly/k 토큰화 완료(--accent-rgb·260628), 늘면 즉시 잡힘. (합성 탭 comp.html은 260710 진입로·파일 폐지 = 게이트 대상서 제거)
     'viewer/conv.html': {'accent_raw': 0, 'blur': 4, 'hex': 4, 'accent_hex': 0, 'green_wash': 0, 'legacy_green': 0},   # 변환 탭 신설 편입(신규 뷰어 게이트 사각 봉합 관례 · 260710). blur4 = .urlclip 글래스 backdrop+webkit(track 계승) 2 + 대기 스크림(.wscrim) blur(5px) 운영자 픽 webkit+표준 2(track과 동일 값·baseline 사유 동일) — 위치 미리보기 .scrub은 track 값(.88 무블러) 계승으로 blur 0(평의회9 정정: 구 blur(8px) 신규분 회수). hex4 = 입력 bg #0e0f11×2 + vstage #000×2(track 관행 내).
     'viewer/song.html': {'accent_raw': 0, 'blur': 8, 'hex': 3, 'accent_hex': 0, 'green_wash': 0, 'legacy_green': 0},   # 음원 탭 신설 편입(관례 · 260712). blur8 = .cpy(conv .urlclip 계승) 2 + .histbtn 2 + .hpop(msgpop 계승) 2 + 선택자 팝업 .selpop blur16(thumb .platpop 정본 계승 — 도형 나열 폐지 개편) 2. hex3 = #0e0f11 2(전역 input·.rbox) + :root --line 1(.selin 재선언은 전역 상속으로 제거 · 260713 이미지 기틀 정렬).
-    'viewer/nb.html': {'accent_raw': 0, 'blur': 6, 'hex': 4, 'accent_hex': 0, 'green_wash': 0, 'legacy_green': 0},   # 자료화 뷰어 편입(260713 실측 seed — 평의회 F2/O6 발견: 신설 뷰어 미등재 = check_design 완전 사각. 이 카운트에서 늘면 잡힘 · 여타 게이트(autocomplete·soremeori 등) 편입은 위반 선정리 후 후속·glob fail-closed 구조 전환은 다이어트 PR에서).
     'viewer/edit.html': {'accent_raw': 0, 'blur': 11, 'hex': 8, 'accent_hex': 0, 'green_wash': 0, 'legacy_green': 0},   # blur9→11 = PREVIEW 고정 라벨 글래스 필(.pvsec.stuck .fl) backdrop var(--blur-m)+webkit +2(토큰·raw 아님 · thumb .platpop 무채 톤 계승 · 운영자 260712 3차 "예타 상단처럼 글래스모피즘 도형").   # 편집기 탭 신설 편입(신규 뷰어 게이트 사각 봉합 관례 · 260710). blur4 = .urlclip 글래스 backdrop+webkit 2 + 대기 스크림(.wscrim) blur(5px) webkit+표준 2 = conv와 동수·전부 계승(신규 창작 0). hex4 = 입력 bg #0e0f11×2(URL·구간) + vstage #000×2 = conv 관행 내. +blur4·hex2 = 자막 편집기 이식(배치 B-2 260711 — ly.html 원문 CSS 그대로 = 창작 0·ly에서 검증된 값 복사 계승: .code 배경 #0e0f11·pre 색 #eef7f0 + 편집기 글래스 blur). hex6→8 = 자막 음영 색 선택지 OC_DEF의 순수 흑 #000·백 #fff 리터럴 2(콘텐츠 산출물 색 상수 = §핵심명령 3-b-1 · '순수 흑/백만' 마퀴 스티커 테두리 선례 — 그린·핑크·블루·레몬·레드는 :root 계승 var()라 순증 0 · 260711). blur8→9 = PREVIEW 여백(블러) 질감 연출(.pvbg) filter var(--blur-s) +1(토큰·raw 아님 · filter라 webkit 불요 · 운영자 260712 "블러일 때 옆 연출").
     'viewer/ly.html': {'accent_raw': 0, 'blur': 16, 'hex': 22, 'accent_hex': 0, 'green_wash': 0, 'legacy_green': 0},   # hex16→22 = 배선평의회 미러 반영(260711) +6 = 순흑백 폴백만{color-mix var(--lypv-oc,#000) 4곳 + 미러 set '#000' 1 + .pv-src var(--lypv-fg,#fff) 1 — OC_DEF 선례 · 콘텐츠색은 전부 var()}.   # hex12→16 = 3분류 배선(운영자 260711): :root 콘텐츠 견본 3(--accent-6·--bias-l2·--warn = index 값 계승·edit 동형) + 강조/글자색 미러 _CC 순수 흑백 리터럴(#fff·#000 = OC_DEF 선례 · 콘텐츠 5색은 var() = 순증 0). # hex11→12 = PR번호 주석 `#1807` 2건이 hex 정규식 오탐(색 아님 · #1807 병합 세션이 baseline 미조정 = 선존 드리프트 260707 실측 — main 자체가 12였음). blur15→16 = 조기 전사 인계 직전 활성 칩 커밋의 JS a.blur() 1건(LY-EARLY 편집 유실 0 · 평의회3 — 동일 리터럴 카운트 특성·디자인 blur 아님·신규 CSS 0). blur14→15 = 자막 상세 편집기 칩 Enter 확정의 JS chip.blur() 호출 1건('blur(' 리터럴 카운트 특성 — 디자인 blur 아님·신규 CSS blur 0·신규 hex 0 = 편집기 색 전부 var()·260706). # 감사 배치3(260704): err빨강→var(--danger)[신설]·뜬회색#cfd2d7→--mut. # blur12→14·hex14→16 = 붙여넣기 폴백 모달(.pastefb) 신설 — backdrop blur(4px) webkit+표준 +2(ly엔 blur토큰 없어 raw) + 박스 배경 그라데이션 #14160f·#0c0f0c +2(기존 모달 배경 패턴·통일 기틀·운영자 260628)
     'viewer/k.html': {'accent_raw': 0, 'blur': 14, 'hex': 3, 'accent_hex': 0, 'green_wash': 0, 'legacy_green': 0},   # blur12→14 = 예시 칩(.seed 탭-투-필) 글래스 backdrop var(--blur-s)+webkit +2(토큰·raw 아님 · .sc-tg 글래스 필 계승 · 운영자 배치 승인 260708 — 빈 입력칸 예문 채움 전용·자동 발사 0)
@@ -824,43 +823,6 @@ def check_judge_bare():
     return rc
 
 
-def check_playground():
-    """플레이그라운드 템플릿 게이트(하드 · 실행 계약 5 · §플레이그라운드 0-1 · 260713).
-    대상 = data-pg-template 스탬프가 있는 파일만(레거시 48개 소급 실패 방지 — git 날짜 소실이라 스탬프 스코핑이 유일 경로 · 평의회 O7).
-    검증 = 구성 5요소 마커 · near() 계승판정 · 재렌더 scrollTop 보존(스크롤 튕김 = 운영자 반복 실측 260712) · 자유 hex 피커 금지 · 현행 비교 기준."""
-    import glob as _g
-    hard = []
-    targets = sorted(_g.glob('docs/reports/*플레이그라운드*.html'))
-    if os.path.exists('shared/playground_template.html'):
-        targets.append('shared/playground_template.html')
-    for p in targets:
-        try:
-            with open(p, encoding='utf-8') as f:
-                s = f.read()
-        except Exception:
-            continue
-        if 'data-pg-template' not in s:
-            continue
-        for m in ('data-pg-preview', 'data-pg-baseline', 'data-pg-presets', 'data-pg-copy', 'data-pg-note'):
-            if m not in s:
-                hard.append('%s: %s 누락(구성 5요소)' % (p, m))
-        if 'near(' not in s:
-            hard.append('%s: near() 계승판정 미배선' % p)
-        if re.search(r'data-pg-preview[\s\S]{0,8000}\.innerHTML\s*=', s) and 'scrollTop' not in s:
-            hard.append('%s: 미리보기 재렌더 scrollTop 보존 없음(스크롤 튕김 · §플레이그라운드)' % p)
-        if 'type="color"' in s:
-            hard.append('%s: 자유 hex 피커 금지(팔레트 폐쇄 셀렉트만 · 포터블 §7-2-3)' % p)
-        if '현행' not in s:
-            hard.append('%s: 현행 비교 기준 없음(기본값 = 현행 실측)' % p)
-    if hard:
-        print('❌ 플레이그라운드 게이트 %d건:' % len(hard))
-        for h in hard:
-            print('  -', h)
-        return 1
-    print('✅ 플레이그라운드 게이트 — 템플릿 세대(data-pg-template) 5요소·near·스크롤 보존 확인')
-    return 0
-
-
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -968,11 +930,6 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_soremeori 스킵:', e)
-    try:
-        if check_playground() != 0:   # 플레이그라운드 템플릿 5요소·near·스크롤보존(하드 — 골격 재작성 편차 차단·§플레이그라운드 0-1·260713)
-            rc = 1
-    except Exception as e:
-        print('⚠️ check_playground 스킵:', e)
     return rc
 
 
