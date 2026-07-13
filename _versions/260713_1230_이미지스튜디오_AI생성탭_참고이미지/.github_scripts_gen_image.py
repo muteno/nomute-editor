@@ -234,18 +234,11 @@ def load_opts():
     point = o.get("point") if o.get("point") in POINT_CODES else "auto"
     light = o.get("light") if o.get("light") in LIGHT_CODES else "auto"
     place = o.get("place") if o.get("place") in PLACE_FRAG else "auto"
-    ref_b64 = str(o.get("refB64", "") or "")   # 참고 이미지 base64(운영자 260713 · 뷰어 512px 다운스케일 JPEG) — 형식·길이 게이트(genimg.js와 이중) · 미첨부/부적격 = 빈값
-    if not re.fullmatch(r"[A-Za-z0-9+/=]{16,60000}", ref_b64):
-        ref_b64 = ""
-    ref_mode = o.get("refMode") if o.get("refMode") in ("keep", "ref") else ""   # 원본 유지(keep) / 참고(ref)
-    if not ref_b64:
-        ref_mode = ""
     return {"style": style, "aspect": aspect, "size": size, "count": count, "fmt": fmt,
             "mood": mood, "mood_ax": mood_ax, "font": font, "text": text,
             "texton": o.get("textOn") is True, "wish": wish,
             "sub": sub, "angle": angle, "point": point, "light": light, "place": place,
-            "shot": shot, "expr": expr, "kweb": bool(o.get("kweb")),
-            "ref_b64": ref_b64, "ref_mode": ref_mode}
+            "shot": shot, "expr": expr, "kweb": bool(o.get("kweb"))}
 
 
 
@@ -495,25 +488,9 @@ def main():
     if (o["text"] or o["texton"]) and render_size == "1K":
         render_size = "2K"   # 문구 렌더 = 2K 플로어(1K는 한글 자모 뭉개짐 · 목표 px는 불변 = 다운스케일이 글자를 오히려 조여줌)
     render_aspect = o["aspect"] if o["aspect"] in NATIVE_ASPECTS else nearest_native(o["aspect"])   # 커스텀 N:N = 근접 네이티브 렌더 → post_process 정확 크롭
-    ref_png = None   # 참고 이미지(운영자 260713 · base64 dispatch 경유) — 미첨부면 None = 현행 렌더와 바이트 동일(무회귀) · 원본유지/참고 둘 다 ref_png 공통, 프롬프트 지시만 분기
-    if o.get("ref_b64"):
-        try:
-            ref_png = base64.b64decode(o["ref_b64"])
-            if len(ref_png) < 64:
-                ref_png = None
-        except Exception:
-            ref_png = None
-    if ref_png:
-        if o.get("ref_mode") == "keep":
-            prompt = ("[REFERENCE IMAGE — 원본 유지] The attached image is the source. Faithfully preserve its people, faces, "
-                      "composition and key elements; re-render only into the requested art style and quality. Do not swap the scene or subject.\n\n") + prompt
-        else:
-            prompt = ("[REFERENCE IMAGE — 참고] Use the attached image as visual reference for subject, framing and mood; "
-                      "compose a fresh image guided by it.\n\n") + prompt
-        print("🖼 참고 이미지 = {} · {}B".format(o.get("ref_mode") or "ref", len(ref_png)), flush=True)
     new_items = []
     for i in range(o["count"]):
-        png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect, ref_png=ref_png)
+        png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect)
         if not png:
             print("::warning::{}번째 렌더 실패(fail-soft — 나머지 계속)".format(i + 1), flush=True)
             continue
