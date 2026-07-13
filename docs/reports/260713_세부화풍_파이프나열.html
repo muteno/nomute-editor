@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>세부 화풍 인라인 파이프 나열 전환 — 260713</title>
+<style>
+  :root{ --bg:#0b0d0c; --fg:#eef7f0; --mut:#8b9591; --accent:#00EED2; --warn:#FFE13D; --danger:#e23b2a; --line:rgba(255,255,255,.09); --pan:rgba(24,25,28,.66); }
+  *{box-sizing:border-box}
+  body{ margin:0; padding:18px 14px 60px; background:var(--bg); color:var(--fg); font-family:'Pretendard','Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif; font-size:14px; line-height:1.55; }
+  h1{ font-size:19px; margin:4px 0 2px; } h2{ font-size:15px; margin:26px 0 8px; color:var(--accent); }
+  .sub{ color:var(--mut); font-size:12px; margin-bottom:14px; }
+  .panel{ background:var(--pan); border:1px solid var(--line); border-radius:14px; padding:12px; margin:10px 0; }
+  .lbl{ font-size:12px; font-weight:800; color:var(--mut); margin-bottom:8px; }
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line); }
+  .row:first-of-type{ border-top:none; }
+  .pl{ font-size:13px; font-weight:700; color:var(--fg); white-space:nowrap; }
+  .opts{ display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }
+  .opt{ background:none; border:none; padding:6px 7px; font:700 13px inherit; color:var(--mut); cursor:pointer; white-space:nowrap; font-family:inherit; }
+  .opt.on{ color:var(--accent); font-weight:800; }
+  .subit{ display:inline-flex; align-items:center; gap:4px; }
+  .sep{ font-size:13px; font-weight:700; color:var(--mut); opacity:.35; }
+  .ddbtn::after{ content:''; display:inline-block; width:.7em; height:.7em; margin-left:.3em; background:currentColor; -webkit-mask:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>') center/contain no-repeat; mask:url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>') center/contain no-repeat; opacity:.7; }
+  .cap{ font-size:11.5px; color:var(--mut); margin-top:6px; }
+  .good{ color:var(--accent); } .bad{ color:var(--danger); } .wr{ color:var(--warn); }
+  ul{ margin:6px 0; padding-left:18px; } li{ margin:3px 0; }
+  .tbwrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; }
+  table{ border-collapse:collapse; font-size:11px; min-width:2150px; }
+  th,td{ border-bottom:1px solid var(--line); border-right:1px solid rgba(255,255,255,.04); padding:4px 6px; text-align:left; white-space:nowrap; vertical-align:top; }
+  th{ position:sticky; top:0; background:#14171a; color:var(--accent); font-size:10.5px; }
+  td:first-child{ color:var(--mut); font-variant-numeric:tabular-nums; }
+  tr:nth-child(even) td{ background:rgba(255,255,255,.015); }
+  @keyframes subIn{ from{opacity:0; transform:translateY(7px);} to{opacity:1; transform:none;} }
+  @keyframes subOut{ to{opacity:0; transform:translateY(-6px);} }
+  #demoSub .subit{ animation:subIn .22s cubic-bezier(.22,.61,.36,1) backwards; animation-delay:calc(var(--i,0)*.04s); }
+  #demoSub.out .subit{ animation:subOut .14s cubic-bezier(.22,.61,.36,1) forwards; animation-delay:calc(var(--i,0)*.025s); }
+</style>
+</head>
+<body>
+<h1>프롬프팅 · 세부 화풍 = 인라인 파이프(|) 나열 전환</h1>
+<div class="sub">260713 · viewer/index.html(#geniSub) · 운영자 지시 = "선택기 말고 우측정렬로 글자만 쭉 나열 · 사이사이 | · 화풍 바꾸면 촤르륵·페이드아웃"</div>
+
+<h2>1. 전 / 후</h2>
+<div class="panel">
+  <div class="lbl">BEFORE — '직접' 선택박스(드롭다운)를 열어야 세부 화풍이 보임</div>
+  <div class="row"><span class="pl">화풍</span><span class="opts"><span class="opt on">극화</span><span class="opt">수채</span><span class="opt">실사</span><span class="opt ddbtn">기타</span></span></div>
+  <div class="row"><span class="pl">세부 화풍</span><span class="opts"><span class="opt on">자동</span><span class="opt ddbtn">직접</span></span></div>
+  <div class="cap">세부 선택지가 숨어 있어 한 번 더 탭해야 목록 확인 — "극화인데 다음 선택지가 없네" 계열 발견성 문제.</div>
+</div>
+<div class="panel">
+  <div class="lbl">AFTER — 세부 전부 인라인 노출 · 우측정렬 · 사이 | 구분자 (실동 데모: 화풍을 눌러봐)</div>
+  <div class="row"><span class="pl">화풍</span><span class="opts" id="demoStyle"></span></div>
+  <div class="row"><span class="pl">세부 화풍</span><span class="opts" id="demoSub"></span></div>
+  <div class="cap">화풍 전환 시 = 기존 목록 페이드아웃 촤르륵(위로 -6px) → 300ms 스왑 → 새 목록 촤르륵 등장(아래서 7px · camsub cardIn 결 계승). 선택 = 강조색 <b class="good">on</b> 워드칩(기존 .geni-opt 그대로).</div>
+</div>
+
+<h2>2. 장단점 · 효율 · 품질 리스크</h2>
+<div class="panel">
+  <ul>
+    <li><b class="good">장점</b> — 세부 화풍 발견성 즉시(탭 1회 절감 · 드롭다운 열기/닫기/스크롤 폐지) · 현 화풍의 선택 폭이 항상 가시 · 기존 워드칩(.geni-opt)·우측정렬(.geni-opts flex-end) 100% 계승 = 이 행만 이질감 0.</li>
+    <li><b class="wr">단점·리스크</b> — 항목 6개 화풍(극화·수채)은 좁은 폰에서 2줄 랩(줄바꿈은 구분자+글자 묶음 단위라 어색한 고아 | 없음) · 행 세로 높이 소폭 증가 · 300ms 스왑 지연 동안 세부 클릭 불가(아웃 중) = 의도된 모션 비용.</li>
+    <li><b class="good">효율</b> — 신규 의존 0 · innerHTML 재구성은 화풍 전환 시에만(동일 화풍 geniApply 재호출 = on 토글만 · data-style 가드) · 선택박스 코드(geniDD*)는 '기타 화풍'용으로 존치 = 삭제 리스크 0.</li>
+    <li><b class="good">품질 저하 방지</b> — 발사 페이로드(style·sub 키)·서버 STYLE_SUB 계약·요약 리드백·미보유 세부 auto 강하 로직 전부 불변. reduced-motion = 애니 제거 등재. 연타 레이스(clearTimeout·A→B→A 복귀) 가드.</li>
+  </ul>
+</div>
+
+<h2>3. 새 아이데이션 (제안 · 미적용)</h2>
+<div class="panel">
+  <ul>
+    <li>무드 '직접' 게이지 아코디언처럼, 세부 화풍 각 항목에 길게 누르면 1줄 미리보기 설명(게키카 = 거친 펜선 극화체…) 팝 — 어포던스 부족 시에만.</li>
+    <li>화풍 워드칩에도 동일 촤르륵을 확장해 '기타' 선택 시 기타 화풍명이 칩으로 승격되는 전환 모션 통일.</li>
+    <li>세부 화풍 사용 빈도 로컬 누적 → 자주 쓰는 세부를 자동 다음 순서로 재배열(폐쇄 목록 내 정렬만이라 계약 무변).</li>
+  </ul>
+</div>
+
+<h2>4. 인덱싱 — 20열 × 57행 (수정 항목: 세부 화풍 행 전환 1건)</h2>
+<div class="tbwrap"><table id="tb"><thead></thead><tbody></tbody></table></div>
+
+<script>
+const COLS = ['#','구분','파일','위치','유형','전(Before)','후(After)','트리거·조건','화풍키','표시값','토큰·계승원','애니','지연','a11y','서버계약','리스크','완화','검증','근거규칙','비고'];
+const F = 'viewer/index.html';
+const SUBS = [
+  ['webtoon','극화',['게키카','하드보일드','시대극','순정','명랑']],
+  ['photo','실사',['필름','흑백','시네다큐','뉴스릴']],
+  ['watercolor','수채',['번짐','세밀','수묵','과슈','유화']],
+  ['cartoon','만평',['붓선','플랫','판화']],
+  ['cinematic','시네마틱',['누아르','네온','35mm','표현주의']],
+  ['illust','일러스트',['리소','페이퍼','애니','레트로80']],
+  ['iso3d','3D',['클레이','로우폴리','디오라마']],
+  ['pictogram','픽토',['라인','청사진']]
+];
+let rows = [];
+SUBS.forEach(([k,ko,list]) => list.forEach((s,i) => rows.push(
+  ['노출 항목',F,'GENI_SUB('+k+')','노출 전환','직접 드롭다운 수납(숨김)','인라인 상시 노출','화풍='+ko+' 선택 시',k,s,'.geni-opt 워드칩','geniSubIn 촤르륵','--i 순번 '+(i+1),'button data-v','키 불변(STYLE_SUB 동일)','랩 줄바꿈','묶음 단위 랩','데모 실클릭','§디자인 a) 계승','목록 데이터 무변']
+)));
+const tech = [
+  ['컨트롤 전환',F,'#geniSub','구조','자동+직접(선택박스)','자동+세부 전부 인라인','항상','전체','—','.geni-opts flex-end','—','—','listbox 폐지','payload 무변','발견성→행 높이↑','묶음 랩','check_refs rc=0','운영자 260713 지시','핵심 변경'],
+  ["'자동' 항목",F,'geniSubHTML','유지','자동 칩','자동 칩(첫 위치·기본)','상시','전체','자동','.geni-opt on 관례','동일 촤르륵','--i 0','button','sub=auto 동일','—','—','on 토글 확인','기존 기본값 보존','라벨 자동 통일'],
+  ['파이프 구분자',F,'.geni-sep','신설','없음(버튼 나열)','항목 사이 | 텍스트','항목 2개↑','전체','|','--mut 알파 .35 변주','촤르륵 동반','묶음 --i','aria-hidden','—','장식 오독','장식 명시','시각 확인','§핵심명령 4-나 알파 자유','표지판 도형 아님'],
+  ['항목 묶음',F,'.geni-subit','신설','—','구분자+글자 inline-flex gap 4px','랩 시','전체','—','.geni-opts gap 4px 계승','스태거 단위','—','—','—','고아 | 줄머리','묶음 동반 랩','랩 시뮬','§디자인 s) 간격 재사용','줄바꿈 품질'],
+  ['우측정렬','기존','.geni-opts','계승','flex-end','flex-end 그대로','상시','전체','—','기존 규칙 무변','—','—','—','—','없음','—','CSS 무변 확인','운영자 "우측정렬"','변경 0'],
+  ['인 애니',F,'@keyframes geniSubIn','신설','—','opacity 0→1·Y 7px→0','스왑 직후 신노드','전체','—','cardIn 결 축소 계승','geniSubIn .22s','--i×.04s','reduced 제거','—','과진폭','7px 광학 보정','데모 재생','camsub 스태거 계승','촤르륵'],
+  ['아웃 애니',F,'@keyframes geniSubOut','신설','즉시 교체','opacity→0·Y -6px','화풍 전환 시','전체','—','var(--ease) 동일 커브','geniSubOut .14s','--i×.025s','reduced 제거','—','잔상','forwards 유지','데모 재생','운영자 "페이드아웃"','퇴장 촤르륵'],
+  ['스태거 순번',F,'style="--i:n"','신설','—','묶음별 CSS 변수','렌더 시','전체','—','camsub nth-child 대체','delay calc','최장 .2s','—','—','—','가변 목록 대응','인라인 확인','가변 항목 수','6항목까지'],
+  ['스왑 타이머',F,'geniSubRender','신설','—','300ms 후 innerHTML 교체','아웃 시작 후','전체','—','—','아웃 완주(.265s)<300ms','300ms','—','—','지연 체감','최장 아웃과 짝','타이밍 계산','모션 한 쌍 주석','의도 비용'],
+  ['연타 가드',F,'_geniSubT','신설','—','clearTimeout 재예약','전환 연타','전체','—','—','—','—','—','—','이중 스왑','타이머 단일','로직 검토','레이스 방지','버그 가드'],
+  ['복귀 연타',F,'geniSubRender 가드','신설','—','A→B→A = 스왑 취소+재등장','아웃 중 복귀','전체','—','—','out 해제=인 재생','—','—','—','상태·화면 불일치','dataset.style 비교','시나리오 검토','정합 가드','핵심 엣지'],
+  ['reduced-motion',F,'@media prefers-reduced','등재','미등재','subit 인/아웃 animation:none','OS 설정','전체','—','기존 목록에 추가','제거','—','접근성','—','멀미','전면 제거','셀렉터 확인','기존 관례 계승','a11y'],
+  ['geniApply 통합',F,'geniApply','교체','subBtn 라벨·on 5줄','geniSubRender() 1줄','모든 상태 반영','전체','—','단일 반영점 유지','—','—','—','—','다발 호출 비용','data-style 가드 no-op','게이지 드래그 무해','단일점 관례','성능 가드'],
+  ['geniInit 구축',F,'geniInit','교체','innerHTML 정적 2버튼','geniSubRender() 즉시 구축','최초 1회','전체','—','—','최초 무애니','즉시','—','—','—','cur 빈값 분기','초기 렌더 확인','—','초기화'],
+  ['클릭 핸들러',F,'#geniSub click','교체','dd-btn 분기+auto 고정','data-v 위임 선택','항목 탭','전체','—','위임 1핸들러 관례','—','—','button','sub=키 전송','—','—','핸들러 검토','§디자인 r) 위임 정신','간결화'],
+  ['선택박스 존치',F,'geniDD*','유지','화풍·세부 공용','기타 화풍 전용','기타 탭','기타 5종','—','무채 크롬(§디자인 i)','msgUnfold 계열','—','listbox','—','오삭제','존치+주석 정정','기타 열기 확인','기존 기능 보존','회귀 0'],
+  ['auto 강하',F,'#geniStyle 핸들러','불변','미보유 세부=auto','동일','화풍 전환','전체','—','—','—','—','—','유효 sub만 전송','—','기존 로직','코드 무변','서버 계약','불변 확인'],
+  ['요약 리드백',F,'geniSum','불변','극화·게키카 표기','동일(subOn 유지)','발사 전','전체','—','—','—','—','—','—','—','—','subOn 변수 보존','표기 확인','리드백 관례','불변'],
+  ['발사 페이로드',F,'geniGo opts','불변','style·sub 키','동일','생성 클릭','전체','—','—','—','—','—','api/genimg STYLE_SUB','—','—','키 대조','3층 계약','무변'],
+  ['HTML 주석',F,'3185행','갱신','드롭다운 설명','인라인 나열 설명','—','—','—','—','—','—','—','—','문서 드리프트','주석 동기','읽기 확인','§기록SSOT','드리프트 방지'],
+  ['JS 주석 2곳',F,'_geniDD·geniDDOpen','갱신','공용 표기','기타 전용 표기','—','—','—','—','—','—','—','—','오독','정정','읽기 확인','§기록SSOT','드리프트 방지'],
+  ['백업','_versions','260713_1050_세부화풍_파이프나열','생성','—','수정 전 index.html 보존','수정 전','—','—','—','—','—','—','—','롤백 불가','폴더 백업','존재 확인','§수정 모드 b)','롤백 지점'],
+  ['게이트','shared','check_refs.py','실행','—','전 게이트 초록(rc=0)','커밋 전','—','—','—','—','—','—','—','회귀','하드게이트','실행 로그','§수정 모드 d)','통과'],
+  ['디자인 토큰','CSS','--mut·--ease·--fs-label·--fw-b','계승','—','raw 신설 0(모션 px = 안무 예외)','—','—','—',':root 토큰','—','—','—','—','raw 창작','토큰만 사용','게이트 초록','§핵심명령 1','준수'],
+  ['탭타깃',F,'.geni-opt padding 6·7','계승','—','기존 24px+ 유지','터치','전체','—','평의회 상향분','—','—','터치 타깃','—','밀집 오탭','기존 패딩','—','기존 결정 존중','무변'],
+  ['상태색',F,'.geni-opt.on','계승','—','선택=accent·굵기 800','선택 시','전체','—','on 관례(의미색 예외)','color .15s','—','—','—','—','—','시각 확인','§디자인 k) on 계승','무변'],
+  ['눌림 피드백',F,'.geni-opt:active','계승','—','scale(--press-m)','탭','전체','—','press 토큰 사다리','—','—','—','—','—','—','—','가이드북 계승','무변']
+];
+rows = rows.concat(tech);
+document.querySelector('#tb thead').innerHTML = '<tr>' + COLS.map(c => '<th>'+c+'</th>').join('') + '</tr>';
+document.querySelector('#tb tbody').innerHTML = rows.map((r,i) => '<tr><td>'+(i+1)+'</td>'+r.map(c => '<td>'+c+'</td>').join('')+'</tr>').join('');
+
+// ── 실동 데모(본편 로직 축소판) ──
+const DSUB = { webtoon:['게키카','하드보일드','시대극','순정','명랑'], watercolor:['번짐','세밀','수묵','과슈','유화'], photo:['필름','흑백','시네다큐','뉴스릴'], cartoon:['붓선','플랫','판화'] };
+const DSTY = [['webtoon','극화'],['watercolor','수채'],['photo','실사'],['cartoon','만평']];
+let dSty = 'webtoon', dSub = 'auto', dT = 0;
+const dS = document.getElementById('demoStyle'), dB = document.getElementById('demoSub');
+dS.innerHTML = DSTY.map(([v,ko]) => '<button type="button" class="opt" data-v="'+v+'">'+ko+'</button>').join('');
+function dHTML(){ const items = ['자동', ...DSUB[dSty]]; return items.map((ko,i) => '<span class="subit" style="--i:'+i+'">'+(i?'<span class="sep" aria-hidden="true">|</span>':'')+'<button type="button" class="opt" data-v="'+(i?ko:'auto')+'">'+ko+'</button></span>').join(''); }
+function dOn(){ dS.querySelectorAll('.opt').forEach(b=>b.classList.toggle('on',b.dataset.v===dSty)); dB.querySelectorAll('.opt').forEach(b=>b.classList.toggle('on',b.dataset.v===dSub)); }
+function dRender(anim){ clearTimeout(dT); const swap=()=>{ dB.innerHTML=dHTML(); dB.classList.remove('out'); dOn(); }; if(anim){ dB.classList.add('out'); dT=setTimeout(swap,300); } else swap(); }
+dS.addEventListener('click',e=>{ const b=e.target.closest('.opt'); if(!b||b.dataset.v===dSty) return; dSty=b.dataset.v; dSub='auto'; dOn(); dRender(true); });
+dB.addEventListener('click',e=>{ const b=e.target.closest('.opt'); if(!b) return; dSub=b.dataset.v; dOn(); });
+dRender(false);
+</script>
+</body>
+</html>
