@@ -18,9 +18,6 @@
     'background:#23252b;' +
     'transition:background .25s,width .15s;will-change:transform;}' +
     '.cscroll.act i{background:#3a3d44;width:5px;}' +
-    '.cscroll.cscroll-el{position:absolute;}' +   // 요소 부착 모드 = 호스트 내 absolute(top/height는 update가 실측 주입 · fixed 금지 = top-layer·backdrop-filter 컨테이닝 함정 §디자인 h)
-    '.cscroll-host{scrollbar-width:none;-ms-overflow-style:none;}' +
-    '.cscroll-host::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}' +
     '@media (prefers-reduced-motion:reduce){.cscroll{transition:none;}}';
   (doc.head || root).appendChild(st);
 
@@ -52,33 +49,4 @@
   window.addEventListener('load', update);
   try { new MutationObserver(update).observe(root, { childList: true, subtree: true, characterData: true }); } catch (e) {}
   setTimeout(update, 250); setTimeout(update, 800);   // 비동기 렌더(이미지·결과) 후 재측정
-
-  // ── 요소 부착 모드(운영자 260713 "다 같게" — window가 아니라 내부 컨테이너가 스크롤하는 표면용 · 첫 사용처 = 프롬프팅 .geni-body) ──
-  // 바 = 가까운 positioned 호스트(.genihost/dialog) 안 absolute(rect 실측 배치) · 부착 요소 네이티브 바 = .cscroll-host로 숨김
-  // DOM 이식(팝업 #genidlg ↔ 탭 #geniHost)에도 update가 호스트 재귀속 · 시각·거동(24~64 알약·act 밝힘·불투명 다크)은 window 모드와 동일 상수.
-  window.cscrollAttach = function (el) {
-    if (!el || el.__cscrollEl) return; el.__cscrollEl = 1;
-    el.classList.add('cscroll-host');
-    var b = doc.createElement('div'); b.className = 'cscroll cscroll-el';
-    var t = doc.createElement('i'); b.appendChild(t);
-    function upd() {
-      var host = el.closest('.genihost') || el.closest('dialog') || el.parentElement;
-      if (!host) return;
-      if (b.parentNode !== host) host.appendChild(b);
-      var sh = el.scrollHeight, ch = el.clientHeight, sp = el.scrollTop;
-      if (!el.offsetParent || sh <= ch + 2) { b.classList.remove('on'); return; }   // 숨김(display:none 체인)·스크롤 불필요 = 미표시
-      var er = el.getBoundingClientRect(), hr = host.getBoundingClientRect();
-      b.style.top = Math.round(er.top - hr.top) + 'px'; b.style.height = Math.round(er.height) + 'px';   // rect 차 = offsetParent 체인 무관 정확 배치
-      b.classList.add('on');
-      var th = Math.max(24, Math.min(64, ch * ch / sh));
-      t.style.height = th + 'px';
-      t.style.transform = 'translateY(' + Math.round((sp / (sh - ch)) * (ch - th)) + 'px)';
-    }
-    var aT;
-    el.addEventListener('scroll', function () { upd(); b.classList.add('act'); clearTimeout(aT); aT = setTimeout(function () { b.classList.remove('act'); }, 700); }, { passive: true });
-    window.addEventListener('resize', upd);
-    doc.addEventListener('click', function () { setTimeout(upd, 60); }, true);   // 무변이 가시성 전환(탭 이식·팝업 열림) 재측정 — 캡처·경량(rect 산술뿐)
-    try { new MutationObserver(upd).observe(el, { childList: true, subtree: true, characterData: true, attributes: true }); } catch (e) {}
-    upd(); setTimeout(upd, 250); setTimeout(upd, 800);
-  };
 })();
