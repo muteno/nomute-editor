@@ -140,7 +140,7 @@ def enrich(post, fetched):
     feats = naming_features(name)
     band = next(b for lo, hi, b in HOUR_BANDS if lo <= ts_kst.hour < hi)
     return {
-        'id': post.get('id'), 'date_kst': ts_kst.strftime('%m/%d %H시'), 'name': name[:60],
+        'id': post.get('id'), 'date_kst': ts_kst.strftime('%m/%d %H시'), 'iso': ts_kst.strftime('%Y-%m-%d'), 'name': name[:60],   # iso = 뷰어 심층 모달 최신순 정렬 키(연 경계 안전)
         'format': '릴스' if post.get('media_product_type') == 'REELS' else '피드',
         'style': naming_style(name, feats), 'feats': feats,
         'cat': category(name), 'cat_src': 'kw+news',   # 뉴스 CAT_KW 계승 병합(260713)
@@ -383,7 +383,7 @@ def main():
     try:
         daily = [json.loads(l) for l in open(os.path.join(DATA, 'insights_daily.jsonl'), encoding='utf-8') if l.strip()]
         last = daily[-1] if daily else {}
-        posts = [{k: p.get(k) for k in ('date_kst', 'format', 'style', 'name', 'views', 'score', 'share_pm', 'save_pm', 'permalink')} for p in sig['posts'][:12]]
+        posts = [{k: p.get(k) for k in ('date_kst', 'iso', 'format', 'style', 'cat', 'era', 'name', 'views', 'score', 'share_pm', 'save_pm', 'permalink')} for p in sig['posts'][:100]]   # 100개+cat·era·iso = 심층 모달(게시물 탐색 — 정렬·포맷/주제 필터) 재료(운영자 260713 "앱 내에서 볼 경로")
         med = json.load(open(os.path.join(DATA, 'media_latest.json'), encoding='utf-8'))
         thumbs = [{'th': m.get('thumbnail_url') or m.get('media_url'), 'u': m.get('permalink'),
                    't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
