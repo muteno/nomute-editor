@@ -1,0 +1,151 @@
+<!-- 자기완결 플레이그라운드 — ① 의미색/위계 버튼 통일 여부 ② 게이지 기틀(goFire vs glive) 실제 재생 (운영자 260713) · viewer :root 값 복사 · 외부요청 0 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>의미색 · 게이지 기틀 · 플레이그라운드</title>
+<style>
+  :root{
+    --accent:#00EED2;--accent-rgb:0,238,210;--accent-bright:#5AFFE6;--on-accent:#032322;
+    --bg:#121212;--fg:#eef7f0;--mut:#8fa697;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.06);
+    --warn:#FFE13D;--warn-rgb:255,225,61;--danger:#e23b2a;--danger-rgb:226,59,42;--amber:#FFE13D;
+    --r-pill:999px;--r-m:11px;--r-s:9px;--gauge-ease:cubic-bezier(.4,.9,.3,1)
+  }
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:#0a0b0c;color:var(--fg);padding:16px 13px 44px;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:440px;margin:0 auto}
+  h1{font-size:18px;font-weight:800;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 16px;line-height:1.55}
+  .sub b{color:var(--accent);font-weight:700}
+  h2{font-size:14px;font-weight:800;margin:22px 0 4px;color:var(--accent)}
+  .cd{color:var(--mut);font-size:11.5px;margin:0 0 11px;line-height:1.5}
+
+  .stage{background:#0d1416;border:1px solid var(--line);border-radius:16px;padding:16px 15px;margin:0 0 10px}
+  /* 공통 버튼 = 정렬 근본 */
+  .btn{display:grid;place-items:center;line-height:1;position:relative;overflow:hidden;width:100%;
+    border-radius:var(--r-m);font-weight:800;font-size:14px;padding:11px;cursor:pointer;transition:.15s;margin-bottom:9px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--accent)}
+  .btn:last-child{margin-bottom:0}
+  .btn .lb{position:relative;z-index:2}
+  .blabel{font-size:10.5px;font-weight:800;color:var(--mut);margin:0 0 5px}
+
+  /* ── 섹션 A: 위계 톤 ── */
+  /* 유지 모드 = 각자 의미색 */
+  .keep .b-final{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .keep .b-sub{background:none;border-color:transparent;color:var(--accent)}
+  .keep .b-warn{background:rgba(var(--warn-rgb),.08);border-color:rgba(var(--warn-rgb),.5);color:var(--warn)}
+  .keep .b-danger{background:rgba(var(--danger-rgb),.08);border-color:rgba(var(--danger-rgb),.5);color:#ff8a7a}
+  /* 통일 모드 = 전부 흰글래스(danger만 글자색 유지 옵션) */
+  .unify .btn{background:rgba(255,255,255,.02);border-color:var(--line);color:var(--accent)}
+  .unify .b-danger{color:#ff8a7a}
+
+  .seg{display:flex;gap:0;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;padding:3px;margin:0 0 10px}
+  .seg button{flex:1;background:none;border:none;padding:9px 8px;border-radius:999px;color:var(--mut);font:800 12.5px inherit;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .seg button.on{background:var(--accent);color:var(--on-accent)}
+
+  /* ── 섹션 B: 게이지 재생 ── */
+  .gbtn{background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--accent)}
+  .gbtn::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;z-index:0}
+  /* goFire = 고정 .72s */
+  .gbtn.gofire.run::before{animation:gofill .72s var(--gauge-ease) forwards}
+  @keyframes gofill{to{transform:scaleX(1)}}
+  .gbtn.gofire.run{color:var(--on-accent);border-color:var(--accent)}
+  /* glive = 점근 90% → 응답 시 100% */
+  .gbtn.glive.run::before{transform:scaleX(.9);transition:transform 3.6s var(--gauge-ease)}
+  .gbtn.glive.done::before{transform:scaleX(1);transition:transform .3s linear}
+  .gbtn.glive.run{color:var(--on-accent);border-color:var(--accent)}
+  .gbtn .ack{position:absolute;inset:0;display:grid;place-items:center;z-index:3;opacity:0}
+  .gbtn.checked .ack{opacity:1;animation:ackpop .4s cubic-bezier(.18,1.5,.4,1)}
+  .gbtn.checked .lb{opacity:0}
+  @keyframes ackpop{0%{transform:scale(0)}100%{transform:scale(1)}}
+  .ack svg{width:20px;height:20px;stroke:var(--on-accent);stroke-width:2.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .greplay{display:block;width:100%;margin-top:2px;background:none;border:none;color:var(--mut);font:700 11.5px inherit;cursor:pointer;padding:5px}
+
+  .out{background:#0d0f11;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:16px 0 0;font-size:11.5px;color:var(--mut);line-height:1.75}
+  .out b{color:var(--fg)}.out .k{color:var(--accent)}
+  .copybtn{display:grid;place-items:center;line-height:1;width:100%;margin-top:12px;padding:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);color:var(--accent);font-weight:800;font-size:13px;cursor:pointer}
+  .copybtn.ok{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .note{margin:14px 0 0;padding:12px 15px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:14px}
+  .note ul{margin:0;padding-left:15px;color:var(--mut);font-size:11.5px;line-height:1.7}
+  .note li b{color:var(--fg)} code{background:rgba(255,255,255,.06);padding:1px 4px;border-radius:4px;font-size:11px}
+</style>
+<body>
+<div class="wrap">
+  <h1>의미색 · 게이지 기틀</h1>
+  <p class="sub">두 결정을 눈으로 — <b>①</b> 위계/의미색 버튼을 유지할지 다 통일할지, <b>②</b> 발사 게이지를 <b>실제로 눌러</b> goFire vs glive 느낌 비교. 각각 골라서 맨 밑 복사.</p>
+
+  <h2>① 위계·의미색 버튼</h2>
+  <p class="cd">최종 렌더(강조)·보조 액션·경고·파괴 4종. 세그로 <b>유지 ↔ 통일</b> 전환해서 비교.</p>
+  <div class="seg" id="segTone">
+    <button data-v="keep" class="on">위계 유지</button>
+    <button data-v="unify">전부 흰글래스</button>
+  </div>
+  <div class="stage keep" id="toneStage">
+    <p class="blabel">최종 렌더 (track — 지금 solid accent)</p>
+    <button class="btn b-final"><span class="lb">모자이크 렌더</span></button>
+    <p class="blabel">보조 액션 (edit 베스트컷 — 지금 맨텍스트)</p>
+    <button class="btn b-sub"><span class="lb">베스트컷</span></button>
+    <p class="blabel">경고 (병합 해제 — 지금 앰버)</p>
+    <button class="btn b-warn"><span class="lb">병합 해제 실행</span></button>
+    <p class="blabel">파괴 (기록 지우기 — 지금 danger)</p>
+    <button class="btn b-danger"><span class="lb">기록 지우기</span></button>
+  </div>
+
+  <h2>② 게이지 기틀 — 눌러봐</h2>
+  <p class="cd">둘 다 [초록 풀필 → ✓]지만 <b>차오르는 방식</b>이 달라. 버튼 눌러서 비교.</p>
+  <div class="stage">
+    <p class="blabel">goFire — 고정 0.72초 풀필 (edit·thumb·ly·song 현재)</p>
+    <button class="btn gbtn gofire" id="gA"><span class="lb">전송</span><span class="ack"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+    <button class="greplay" data-for="gA">↻ 다시 재생</button>
+    <p class="blabel" style="margin-top:12px">glive — 응답까지 라이브 점근 (index·track·conv·nb 현재)</p>
+    <button class="btn gbtn glive" id="gB"><span class="lb">전송</span><span class="ack"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+    <button class="greplay" data-for="gB">↻ 다시 재생 (응답 ~1.6초 시뮬)</button>
+  </div>
+
+  <div class="out" id="out"></div>
+  <button class="copybtn" id="copy"><span>선택값 복사</span></button>
+
+  <div class="note">
+    <ul>
+      <li><b>goFire</b> = 고정 0.72초라 항상 같은 속도로 시원하게 참(응답이 더 늦어도 게이지는 먼저 끝). <b>glive</b> = 응답 올 때까지 90%에서 천천히 차다가 응답 오면 100%+✓(실제 대기시간 반영).</li>
+      <li>①에서 <b>파괴(기록 지우기)</b>는 통일 모드에서도 글자만 빨강 유지 권장(실수 방지).</li>
+      <li>고른 값 <b>복사</b>해서 답장 주면: 의미색 방식대로 톤 마무리 + 게이지 기틀은 고른 쪽으로 <b>Opus 5인 교차검증(§기틀검증)</b> 후 전 뷰어 통일 + 누락 8곳 배선.</li>
+      <li>색·모션 = viewer <code>:root</code> 실측 사본 · 폰트 시스템 폴백.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  var st={tone:'keep',gauge:null};
+  var toneStage=document.getElementById('toneStage');
+  document.getElementById('segTone').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b)});st.tone=b.dataset.v;toneStage.className='stage '+st.tone;render()});
+
+  function playGofire(btn){
+    btn.classList.remove('run','checked','done');void btn.offsetWidth;
+    btn.classList.add('run');
+    setTimeout(function(){btn.classList.add('checked')},740);
+    setTimeout(function(){btn.classList.remove('run','checked')},1900);
+  }
+  function playGlive(btn){
+    btn.classList.remove('run','checked','done');void btn.offsetWidth;
+    btn.classList.add('run');
+    setTimeout(function(){btn.classList.add('done');},1600);
+    setTimeout(function(){btn.classList.add('checked')},1950);
+    setTimeout(function(){btn.classList.remove('run','checked','done')},3100);
+  }
+  var gA=document.getElementById('gA'),gB=document.getElementById('gB');
+  gA.addEventListener('click',function(){st.gauge='gofire';playGofire(gA);render()});
+  gB.addEventListener('click',function(){st.gauge='glive';playGlive(gB);render()});
+  document.querySelectorAll('.greplay').forEach(function(r){r.addEventListener('click',function(){var t=document.getElementById(this.dataset.for);if(this.dataset.for==='gA'){st.gauge='gofire';playGofire(t)}else{st.gauge='glive';playGlive(t)}render()})});
+
+  function render(){
+    document.getElementById('out').innerHTML='<b>선택값</b><br>① 의미색 = <span class="k">'+(st.tone==='keep'?'위계·의미색 유지':'전부 흰글래스')+'</span><br>② 게이지 기틀 = <span class="k">'+(st.gauge==='gofire'?'goFire(고정 .72s)':st.gauge==='glive'?'glive(라이브 점근)':'— 눌러서 골라 —')+'</span>';
+  }
+  document.getElementById('copy').addEventListener('click',function(){
+    var t='버튼 통일 마무리 선택값\n① 의미색 버튼: '+(st.tone==='keep'?'위계·의미색 유지(최종발사·보조·경고·파괴 톤 보존)':'전부 흰글래스로 통일')+'\n② 게이지 기틀: '+(st.gauge==='gofire'?'goFire(고정 .72초)로 통일':st.gauge==='glive'?'glive(라이브 점근)로 통일':'미선택');
+    var self=this,sp=self.querySelector('span');
+    (navigator.clipboard&&navigator.clipboard.writeText(t)||Promise.reject()).then(function(){sp.textContent='✓ 복사됨 — 답장에 붙여넣기';self.classList.add('ok');setTimeout(function(){sp.textContent='선택값 복사';self.classList.remove('ok')},2200)}).catch(function(){
+      var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');sp.textContent='✓ 복사됨';self.classList.add('ok');setTimeout(function(){sp.textContent='선택값 복사';self.classList.remove('ok')},2200)}catch(e){}document.body.removeChild(ta);
+    });
+  });
+  render();
+</script>
+</body>
