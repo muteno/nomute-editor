@@ -152,6 +152,18 @@ def main():
             print(f"⚠ [{key}] {msg}")
         else:
             print(f"✅ [{key}] 정상")
+    # SNS stale 메시지함 점등/해제(운영자 260714 승인 한 수) — 웹푸시(쿨다운 6h)와 별개로 뷰어 프로필에
+    #   상시 상태 표시: stale이면 단일 슬롯(wd-sns) set(재실행 = 덮어쓰기 = 스팸 0) · 정상 복귀면 clear.
+    #   fail-soft(메시지함 실패가 점검·발송을 못 죽임) · 커밋은 워크플로 원장 스텝이 messages/ 동반 add.
+    if NOTIFY:
+        try:
+            mp = os.path.join(ROOT, "shared", "msg.py")
+            if alerts.get("sns"):
+                subprocess.run([sys.executable, mp, "set", "wd-sns", alerts["sns"], "warn"], timeout=30)
+            else:
+                subprocess.run([sys.executable, mp, "clear", "wd-sns"], timeout=30)
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::watchdog 메시지함 점등 실패(무시): {e}")
     if not alerts:
         print("워치독: 전 지표 정상")
         return
