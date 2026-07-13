@@ -7,7 +7,7 @@ export async function onRequestPost({ env }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
   if (!env.GH_TOKEN) return json({ error: 'GH_TOKEN 미설정' }, 500);
 
-  const ts = Date.now();   // 지우는 시점(epoch ms) — 이 이전 제작은 전 기기서 숨김. epoch 비교 전용이라 KST 변환 불요.
+  const now = Date.now();   // 지우는 시점(epoch ms) — 이 이전 제작은 전 기기서 숨김. epoch 비교 전용이라 KST 변환 불요.
   const H = {
     authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json',
     'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28',
@@ -15,12 +15,13 @@ export async function onRequestPost({ env }) {
   const url = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    // 현재 파일 sha 읽기(없으면 첫 생성)
-    let sha;
+    // 현재 파일 sha·ts 읽기(없으면 첫 생성)
+    let sha, cur = 0;
     const g = await fetch(`${url}?ref=main`, { headers: H });
-    if (g.ok) { const j = await g.json(); sha = j.sha; }
+    if (g.ok) { const j = await g.json(); sha = j.sha; try { cur = +JSON.parse(atob((j.content || '').replace(/\n/g, ''))).ts || 0; } catch {} }
     else if (g.status !== 404) return json({ error: `GitHub read ${g.status}` }, 502);
 
+    const ts = Math.max(now, cur);   // 단조 = 동시 지우기·409 리오더링에도 clr 후퇴 방지(작은 ts로 덮어써 지운 구간 되살아나던 것 차단)
     const bytes = new TextEncoder().encode(JSON.stringify({ ts }));
     let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
     const put = await fetch(url, {
