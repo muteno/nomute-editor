@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>이미지 스튜디오(AI 생성) — 커스터마이징 플레이그라운드</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  노뮤트 플레이그라운드 (shared/playground_template.html v1 복사 · §플레이그라운드 0-1)
+  ─ 대상: 이미지 생성 팝업(#genidlg = "Image Studio" AI 생성 탭) 레이아웃 커스터마이징
+  ─ 축(운영자 지시): 들여쓰기 · 마진(간격) · 높이 · 폰트 크기(기본만) · 효과
+  ─ 동결 엔진(수정 금지): 컨트롤 빌더 · near() 계승판정 · 프리셋 동기 ·
+    선택값 복사 모달(역제안) · 재렌더 scrollTop 보존 · 한글 열맞춤.
+  ─ 색·값: 아래 --pg-*는 viewer/index.html :root 실측 사본(자기완결 · §핵심명령 3-c).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer :root 실측 사본(값 복사 = 계승 · 임의 창작 금지) */
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px; --pg-r-modal:22px;
+}
+*{box-sizing:border-box;margin:0} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--pg-bg);color:var(--pg-fg);font:14px/1.5 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;padding:14px}
+h1{font-size:17px}.sub{color:var(--pg-mut);font-size:11.5px;margin:3px 0 12px}
+.wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stagewrap{position:sticky;top:10px;flex:0 0 300px}
+.frame{width:300px;height:560px;border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow-y:auto;overflow-x:hidden;background:#0d1012;position:relative}
+.frame .app,.frame .baseline{min-height:100%}
+.frame .baseline{display:none}
+.frame.showcur .app{display:none}.frame.showcur .baseline{display:block}
+.stagebar{display:flex;gap:6px;margin-top:8px;align-items:center}
+.vseg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font-size:11.5px}
+.vseg button{padding:5px 12px;color:var(--pg-mut)}
+.vseg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.finfo{color:var(--pg-mut);font-size:10.5px;font-variant-numeric:tabular-nums}
+.console{flex:1;min-width:320px;max-width:560px}
+.csec{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.csec>h2{font-size:12.5px;font-weight:800;margin-bottom:9px}
+.csec>h2 .b{color:var(--pg-accent)}
+.pill{display:inline-block;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--pg-mut);margin:0 6px 6px 0}
+.pill.on{border-color:rgba(var(--pg-accent-rgb),.55);color:var(--pg-accent);background:rgba(var(--pg-accent-rgb),.08)}
+.pill .st{color:var(--pg-warn)}
+/* 변형 갤러리 = 부품 1개당 방식 N개를 실물로 나란히 */
+.gal{margin-bottom:10px}
+.gal-t{font-size:11.5px;color:var(--pg-mut);margin-bottom:7px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid rgba(255,255,255,.11);border-radius:var(--pg-r-m);padding:10px 8px 8px;text-align:center;cursor:pointer;position:relative;background:rgba(255,255,255,.02)}
+.gcard.on{border-color:rgba(var(--pg-accent-rgb),.6);background:rgba(var(--pg-accent-rgb),.06)}
+.gcard .gnm{font-size:11px;margin-top:8px}
+.gcard .gtag{font-size:9.5px;color:var(--pg-mut);margin-top:2px}
+.gcard.on .gnm{color:var(--pg-accent)}
+.gcard .demo{min-height:44px;display:flex;align-items:center;justify-content:center}
+/* 축 컨트롤 */
+.grp-t{font-size:10.5px;color:var(--pg-mut);letter-spacing:.06em;margin:12px 0 6px;text-transform:uppercase}
+.axis{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;flex-wrap:wrap}
+.axis .nm{flex:0 0 96px}
+.axis input[type=range]{flex:1;min-width:110px;accent-color:var(--pg-accent)}
+.axis .v{font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--pg-accent)}
+.axis .v.warn{color:var(--pg-warn)}
+.axis .tok{flex-basis:100%;font-size:10px;color:var(--pg-mut);padding-left:96px}
+.axis .seg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.axis .seg button{padding:4px 10px;font-size:11px;color:var(--pg-mut)}
+.axis .seg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.axis select{background:#14171a;color:var(--pg-fg);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:4px 8px;font-size:11.5px}
+/* 출력·복사 */
+#outtxt{white-space:pre-wrap;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0d1012;border:1px solid rgba(255,255,255,.1);border-radius:var(--pg-r-m);padding:10px;max-height:260px;overflow:auto}
+.copybtn{margin-top:8px;border:1px solid rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent);border-radius:999px;padding:7px 16px;font-size:12px}
+.copybtn.done{border-color:rgba(255,255,255,.2);color:var(--pg-mut)}
+.note{font-size:11px;color:var(--pg-mut);line-height:1.6}
+/* 복사 경고 모달(역제안) */
+#cmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
+#cmodal.on{display:flex}
+#cmodal .box{background:#14171a;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-modal);padding:16px;max-width:340px;font-size:12.5px}
+#cmodal .box h3{font-size:13px;margin-bottom:8px}
+#cmodal .box .ls{color:var(--pg-warn);font-size:11.5px;margin-bottom:10px;white-space:pre-wrap}
+#cmodal .box .row{display:flex;gap:8px;flex-wrap:wrap}
+#cmodal .box button{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:11.5px}
+#cmodal .box button.pri{border-color:rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}
+/* ── 샘플 미리보기 전용(세션이 renderPreview와 함께 교체하는 영역) ── */
+.mock{padding:14px;font-size:13px}
+.mock .mh{display:flex;justify-content:space-between;align-items:center;color:var(--pg-mut);font-size:11px;margin-bottom:12px}
+.mock .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.mock .inrow{display:flex;gap:8px;align-items:flex-end}
+.mock .fakein{flex:1;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-m);padding:9px 10px;color:var(--pg-mut);font-size:12px;min-height:38px}
+.sendbtn{position:relative;overflow:hidden;border-radius:var(--pg-r-m);padding:9px 14px;min-width:64px;
+  font-size:var(--t-fs,13px);letter-spacing:var(--t-ls,0em);opacity:var(--t-op,1);
+  transform:translateY(var(--t-posY,0px));
+  border:1px solid rgba(var(--pg-accent-rgb),var(--t-line,.35));color:var(--pg-accent);
+  background:rgba(var(--pg-accent-rgb),.10);transition:transform .12s ease}
+.sendbtn:active{transform:translateY(var(--t-posY,0px)) scale(var(--t-fx,.94))}
+.sendbtn.v-gauge::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--pg-accent)}
+.sendbtn.v-gauge.go::after{animation:pgGauge .72s ease forwards}
+@keyframes pgGauge{to{width:100%}}
+.sendbtn.v-pop.go{animation:pgPop .3s ease}
+@keyframes pgPop{40%{transform:translateY(var(--t-posY,0px)) scale(.85)}}
+.sendbtn.v-ring.go::before{content:'';position:absolute;inset:-2px;border-radius:inherit;border:2px solid rgba(var(--pg-accent-rgb),.7);animation:pgRing .5s ease forwards}
+@keyframes pgRing{to{inset:-10px;opacity:0}}
+.sendbtn.v-check.go .lb{visibility:hidden}
+.sendbtn.v-check.go::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;animation:pgCheck .4s ease}
+@keyframes pgCheck{from{transform:scale(.4);opacity:0}}
+.sendbtn.v-glow.go{animation:pgGlow .6s ease}
+@keyframes pgGlow{40%{box-shadow:0 0 18px rgba(var(--pg-accent-rgb),.55)}}
+.mock .blurpanel{margin-top:12px;border-radius:var(--pg-r-m);padding:10px;font-size:11px;color:var(--pg-mut);
+  background:rgba(255,255,255,.05);backdrop-filter:blur(var(--t-blur,14px));-webkit-backdrop-filter:blur(var(--t-blur,14px));border:1px solid rgba(255,255,255,var(--t-line,.12))}
+</style>
+</head>
+<body data-pg-template="v1">
+<h1>이미지 스튜디오 <span style="color:var(--pg-accent)">AI 생성 탭</span> 커스터마이징</h1>
+<p class="sub">#genidlg 폼 실물 근사 → 들여쓰기·마진·높이·폰트·효과 7축 미세조정 → 선택값 복사. 기본값 = 현행 실측 · 골격 = 동결(config만 교체).</p>
+<div class="wrap">
+  <section class="stagewrap">
+    <div class="frame" data-pg-scrollhost id="frame">
+      <div class="app" data-pg-preview id="pv"></div>
+      <div class="baseline" data-pg-baseline id="bl"></div>
+    </div>
+    <div class="stagebar">
+      <div class="vseg" id="vseg"><button data-v="prop" class="on">제안</button><button data-v="cur">현행(비교)</button></div>
+      <span class="finfo" id="finfo"></span>
+    </div>
+  </section>
+  <aside class="console">
+    <section class="csec" id="psec"><h2><span class="b">•</span> 프리셋</h2><div id="presets" data-pg-presets></div></section>
+    <section class="csec"><h2><span class="b">•</span> 변형 갤러리 — 부품별 방식 선택</h2><div id="gallery"></div></section>
+    <section class="csec"><h2><span class="b">•</span> 미세조정 (7축)</h2><div id="axes" data-pg-controls></div></section>
+    <section class="csec" data-pg-copy><h2><span class="b">•</span> 선택값 <span id="warnN" style="color:var(--pg-warn);font-size:10.5px"></span></h2>
+      <pre id="outtxt"></pre><button class="copybtn" id="copy">선택값 복사</button></section>
+    <section class="csec" data-pg-note><h2><span class="b">•</span> 재현 한계 각주</h2><div class="note" id="notes"></div></section>
+  </aside>
+</div>
+<div id="cmodal" data-pg-warnmodal><div class="box">
+  <h3>⚠ 확립 사다리 밖 값 포함</h3><div class="ls" id="cmLs"></div>
+  <div class="row"><button class="pri" id="cInc">역제안 포함 복사</button><button id="cOnly">계승분만 복사</button><button id="cNo">취소</button></div>
+</div></div>
+
+<script>
+/* ═══════════ 동결 엔진 v1 — 여기부터 CONFIG 전까지 수정 금지 ═══════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const near=(a,b,eps)=>Math.abs((+a)-(+b))<=((eps==null)?.26:eps);          // 계승판정(축별 eps)
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>127?2:1),0);   // 한글 2칸 폭
+const padK=(s,w)=>String(s)+' '.repeat(Math.max(0,w-kw(s)));
+const state={v:{},a:{}};
+function scrollGuard(fn){const h=$('#frame');const y=h?h.scrollTop:0;fn();if(h)h.scrollTop=y;} // 재렌더 스크롤 보존(§7-1-6)
+function initState(){CONFIG.AXES.forEach(ax=>state.a[ax.k]=CONFIG.DEFAULTS[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=CONFIG.DEFAULTS['v_'+g.comp]);}
+function fmt(ax,v){return (ax.step&&ax.step<1)?(+v).toFixed(ax.step<.01?3:2):String(v)}
+function applyAll(structural){
+  const pv=$('#pv');
+  CONFIG.AXES.forEach(ax=>pv.style.setProperty('--t-'+ax.k, state.a[ax.k]+(ax.u||'')));
+  if(structural){scrollGuard(()=>{pv.innerHTML=CONFIG.renderPreview(state);});}
+  syncPresets(); warnAxes(); buildOut();
+}
+function buildGallery(){
+  $('#gallery').innerHTML=CONFIG.GALLERY.map(g=>
+    '<div class="gal"><div class="gal-t">'+g.nm+(g.desc?' — '+g.desc:'')+'</div><div class="gal-grid">'+
+    g.variants.map(v=>'<div class="gcard'+(state.v[g.comp]===v.id?' on':'')+'" data-comp="'+g.comp+'" data-id="'+v.id+'">'+
+      '<div class="demo">'+v.r(state)+'</div><div class="gnm">'+v.nm+(v.id===(CONFIG.DEFAULTS['v_'+g.comp])?' <span style="color:var(--pg-mut)">(현행)</span>':'')+'</div>'+
+      (v.tag?'<div class="gtag">'+v.tag+'</div>':'')+'</div>').join('')+'</div></div>').join('');
+}
+function buildControls(){
+  let html='',grp='';
+  CONFIG.AXES.forEach(ax=>{
+    if(ax.grp!==grp){grp=ax.grp;html+='<div class="grp-t">'+grp+'</div>';}
+    html+='<div class="axis" data-k="'+ax.k+'"><span class="nm">'+ax.nm+'</span>';
+    if(ax.type==='seg'){html+='<div class="seg">'+ax.sg.map(o=>'<button data-val="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>';}
+    else if(ax.type==='select'){html+='<select>'+ (ax.pal||[]).map(o=>'<option value="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';}
+    else{const lid=ax.lad?('lad-'+ax.k):'';
+      html+='<input type="range" min="'+ax.min+'" max="'+ax.max+'" step="'+(ax.step||1)+'" value="'+state.a[ax.k]+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+ax.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')
+        +'<span class="v">'+fmt(ax,state.a[ax.k])+(ax.u||'')+'</span>';}
+    if(ax.tok)html+='<span class="tok">'+ax.tok+'</span>';
+    html+='</div>';});
+  $('#axes').innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
+}
+function presetMatch(p){
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
+  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+    && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
+}
+function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
+function offLadder(ax,v){return ax.lad&&!ax.lad.some(l=>near(l,v,ax.eps));}
+function warnAxes(){
+  const ws=[];
+  CONFIG.AXES.forEach(ax=>{const v=state.a[ax.k];
+    const el=$('#axes .axis[data-k="'+ax.k+'"] .v');
+    const off=offLadder(ax,v);
+    if(el){el.classList.toggle('warn',!!off);el.textContent=fmt(ax,v)+(ax.u||'');}
+    if(off)ws.push({ax,v});});
+  $('#warnN').textContent=ws.length?('⚠ 사다리 밖 '+ws.length+'축'):'';
+  return ws;
+}
+function lineOut(ax){
+  const v=state.a[ax.k], cur=CONFIG.DEFAULTS[ax.k];
+  let judge;
+  if(ax.tokv!=null&&near(v,ax.tokv,ax.eps)) judge='계승 var('+ax.tokn+')';
+  else if(ax.lad&&!offLadder(ax,v)) judge='계승(확립 사다리)';
+  else if(ax.free) judge='자유(알파 변주)';
+  else judge='갱신 후보 ⚠';
+  return padK(ax.k,10)+': '+fmt(ax,v)+(ax.u||'')+'  [현행 '+fmt(ax,cur)+(ax.u||'')+'] · '+judge;
+}
+function buildOut(){
+  const L=['# '+CONFIG.META.label+' — 선택값 ('+new Date().toISOString().slice(0,10)+')','## 방식(변형 갤러리)'];
+  CONFIG.GALLERY.forEach(g=>{const v=g.variants.find(x=>x.id===state.v[g.comp]);
+    L.push(padK(g.comp,10)+': '+(v?v.nm:'-')+(state.v[g.comp]===CONFIG.DEFAULTS['v_'+g.comp]?'  [현행 유지]':'  [변경]'));});
+  L.push('## 미세조정(7축)');
+  CONFIG.AXES.forEach(ax=>L.push(lineOut(ax)));
+  $('#outtxt').textContent=L.join('\n');
+}
+function counterBlock(ws){
+  return '\n## ⚠ 기틀 갱신 역제안(사다리 밖 값 — 회신 = (갱신) 승인 정문)\n'+
+    ws.map(w=>'- '+w.ax.nm+'('+w.ax.k+') = '+fmt(w.ax,w.v)+(w.ax.u||'')+' — 근접: '+(w.ax.lad?w.ax.lad.join('/'):'-')+(w.ax.u||'')).join('\n');
+}
+function doCopy(txt,btn){
+  const done=()=>{btn.classList.add('done');btn.textContent='복사됨 ✓';setTimeout(()=>{btn.classList.remove('done');btn.textContent='선택값 복사';},1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));}
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();}
+/* 이벤트 위임(동결) */
+$('#gallery').addEventListener('click',e=>{const c=e.target.closest('.gcard');if(!c)return;
+  state.v[c.dataset.comp]=c.dataset.id;buildGallery();applyAll(true);});
+$('#gallery').addEventListener('pointerdown',e=>{const d=e.target.closest('.gcard .demo>*');if(d){d.classList.remove('go');void d.offsetWidth;d.classList.add('go');}});
+$('#axes').addEventListener('input',e=>{const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis')?.dataset.k);if(!ax)return;
+  state.a[ax.k]=e.target.value;applyAll(false);});
+$('#axes').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+  const ax=CONFIG.AXES.find(a=>a.k===b.closest('.axis').dataset.k);state.a[ax.k]=b.dataset.val;buildControls();applyAll(true);});
+$('#axes').addEventListener('change',e=>{if(e.target.tagName!=='SELECT')return;
+  const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis').dataset.k);state.a[ax.k]=e.target.value;applyAll(true);});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;
+  const p=CONFIG.PRESETS[+b.dataset.p];Object.assign(state.a,{},CONFIG.DEFAULTS,p.st||{});
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});CONFIG.AXES.forEach(ax=>state.a[ax.k]=st[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]);
+  buildGallery();buildControls();applyAll(true);});
+$('#vseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#frame').classList.toggle('showcur',b.dataset.v==='cur');});
+$('#copy').addEventListener('click',()=>{
+  const ws=warnAxes(), base=$('#outtxt').textContent;
+  if(!ws.length){doCopy(base,$('#copy'));return;}
+  $('#cmLs').textContent=ws.map(w=>w.ax.nm+' = '+fmt(w.ax,w.v)+(w.ax.u||'')+' (사다리: '+(w.ax.lad||[]).join('/')+')').join('\n');
+  $('#cmodal').classList.add('on');
+  $('#cInc').onclick=()=>{doCopy(base+counterBlock(ws),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cOnly').onclick=()=>{doCopy(base.split('\n').filter(l=>!l.includes('갱신 후보')).join('\n'),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cNo').onclick=()=>$('#cmodal').classList.remove('on');
+});
+function boot(){initState();buildPresets();buildGallery();buildControls();
+  $('#bl').innerHTML=CONFIG.renderBaseline?CONFIG.renderBaseline():CONFIG.renderPreview(Object.assign({},{v:Object.fromEntries(CONFIG.GALLERY.map(g=>[g.comp,CONFIG.DEFAULTS['v_'+g.comp]])),a:Object.assign({},CONFIG.DEFAULTS)}));
+  $('#notes').innerHTML=(CONFIG.META.notes||[]).map(n=>'· '+n).join('<br>');
+  $('#finfo').textContent=CONFIG.META.frame.w+'×'+CONFIG.META.frame.h+' · SSOT='+CONFIG.META.ssot;
+  applyAll(true);}
+/* ═══════════ CONFIG — 세션이 채우는 전부(#genidlg 이미지 생성 폼) ═══════════ */
+const CONFIG={
+  META:{label:'이미지 스튜디오(AI 생성)', frame:{w:300,h:560}, ssot:'viewer/index.html :root + #genidlg',
+    notes:[
+      '미리보기 = #genidlg 폼 근사 재현(값 정본 = viewer/index.html :root · #genidlg CSS). 실제 폭 = min(420px,92vw) · 도구 셸(Image Studio)로 이식되면 더 넓음 — 프레임 300px는 폰 근사.',
+      '실제 폼 순서 = 내용(고정 리드) → 카메라·구도(접이식) → 개요(해상도·비율·개수·품질) → 표현(화풍·세부·웹툰화·무드·문구). 스크린샷은 일부만 보였고 여기선 전 구조를 재현.',
+      '화풍·세부 화풍 = 실제는 가로 드래그 레일(전광판식). 미리보기는 정적 근사(끌기 생략 · 넘치면 가로 스크롤).',
+      '눌림 효과는 옵션·생성 버튼을 실제 눌러 체감(:active). 변형 갤러리 카드도 눌러 방식 비교 가능.',
+      '자간·블러·라인·색 등 다른 축은 이 폼에 별도로 존재하나, 운영자 요청(들여쓰기·마진·높이·폰트·효과) 5종에 집중해 7축으로 추렸다.',
+      '폰트 크기(fs)는 라벨·옵션·소머리 공통 적용(현행 13px = --fs-label). "거의 그대로" 요청대로 기본만 제공 — 크게 흔들면 --fs-* 사다리 밖 경고.',
+    ]},
+  GALLERY:[ // 부품 = 옵션/버튼 눌림 효과(발산). 카드를 눌러 실물 체감. 값 축(fx)은 scale 깊이, 이 갤러리는 효과 종류.
+    {comp:'pressfx', nm:'눌림·발사 효과 — 옵션/생성 버튼', desc:'탭해서 체감', variants:[
+      {id:'none',  nm:'무모션', tag:'효과 없음', r:()=>'<button class="sendbtn"><span class="lb">생성</span></button>'},
+      {id:'scale', nm:'스케일 눌림', tag:'현행 · scale(--t-fx)', r:()=>'<button class="sendbtn"><span class="lb">생성</span></button>'},
+      {id:'pop',   nm:'스케일 팝', tag:'눌림 과장', r:()=>'<button class="sendbtn v-pop"><span class="lb">생성</span></button>'},
+      {id:'glow',  nm:'글로우 펄스', tag:'형광 섀도', r:()=>'<button class="sendbtn v-glow"><span class="lb">생성</span></button>'},
+    ]},
+  ],
+  AXES:[ // 운영자 5축(들여쓰기·마진·높이·폰트·효과)을 7축으로 · lad=확립 사다리 · tokn/tokv=대응 토큰 · eps=계승판정 오차
+    {k:'padX',    nm:'콘텐츠 좌우 여백', grp:'들여쓰기', type:'range', min:8, max:32, step:1, u:'px', lad:[6,12,18,24], tokn:'--sp-3', tokv:18, tok:'--sp-* 사다리(6/12/18/24) · 폼 좌우 인셋 = 들여쓰기', eps:0.5},
+    {k:'rowY',    nm:'행 세로 간격', grp:'간격(마진)', type:'range', min:2, max:18, step:1, u:'px', lad:[4,6,8,10,12,14], tok:'geni-row padding 세로(raw · 현행 8) · 항목 사이 숨통', eps:0.5},
+    {k:'secGap',  nm:'소머리 위 간격', grp:'간격(마진)', type:'range', min:4, max:28, step:1, u:'px', lad:[6,12,18,24], tokn:'--sp-2', tokv:12, tok:'--sp-* 사다리 · 섹션(• 소머리) 위 여백', eps:0.5},
+    {k:'optPadY', nm:'옵션 버튼 높이', grp:'높이', type:'range', min:2, max:14, step:1, u:'px', lad:[4,5,6,7,8], tok:'geni-opt 세로 padding(raw · 현행 6) · 탭 타깃 높이', eps:0.5},
+    {k:'leadBot', nm:'고정 리드 하단 여백', grp:'높이', type:'range', min:8, max:36, step:1, u:'px', lad:[12,16,18,22,24,28], tok:'geni-lead padding-bottom(raw · 현행 22) · 생성 버튼↔구분선', eps:0.5},
+    {k:'fs',      nm:'폰트 크기(라벨·옵션)', grp:'타이포', type:'range', min:11, max:16, step:0.5, u:'px', lad:[11,12,13,14,15], tokn:'--fs-label', tokv:13, tok:'--fs-* 사다리 · "거의 그대로"(기본 13) 유지 권장', eps:0.26},
+    {k:'fx',      nm:'눌림 깊이(scale)', grp:'효과', type:'range', min:0.72, max:1, step:0.01, u:'', lad:[0.95,0.9,0.85,0.82,0.72], tokn:'--press-m', tokv:0.9, tok:'--press-*(l .95 / m .9 / s .85 / xs .82 / pico .72)', eps:0.005},
+  ],
+  DEFAULTS:{padX:18, rowY:8, secGap:12, optPadY:6, leadBot:22, fs:13, fx:0.9, v_pressfx:'scale'}, // ★ 현행 실측값
+  PRESETS:[
+    {nm:'현행(비교 기준)', st:{}},
+    {nm:'컴팩트(밀도↑)', st:{padX:12, rowY:5, secGap:8, optPadY:4, leadBot:16, fs:12}},
+    {nm:'추천 — 탭 편함', star:1, st:{optPadY:7, leadBot:20}},
+    {nm:'여유(숨통)', st:{padX:24, rowY:12, secGap:18, optPadY:8, leadBot:28, fs:14}},
+  ],
+  renderPreview(s){
+    const fx=(s&&s.v?s.v.pressfx:state.v.pressfx)||'scale';
+    const opt=(k,ko,on)=>'<button class="gopt'+(on?' on':'')+'" onclick="this.classList.remove(\'go\');void this.offsetWidth;this.classList.add(\'go\')">'+ko+'</button>';
+    const row=(lab,opts)=>'<div class="grow"><span class="lab">'+lab+'</span><span class="gopts">'+opts+'</span></div>';
+    const rail=(lab,opts)=>'<div class="grow"><span class="lab">'+lab+'</span><span class="grail">'+opts+'</span></div>';
+    const style='<style>'
+      +'#pv .gwrap{background:#0d0f10;border-radius:16px;overflow:hidden}'
+      +'#pv .ghead{display:flex;align-items:center;justify-content:space-between;padding:13px var(--t-padX,18px) 11px}'
+      +'#pv .ghead b{font-size:14px;font-weight:800;display:flex;align-items:center;gap:6px}'
+      +'#pv .ghead .spark{color:var(--pg-accent)}'
+      +'#pv .ghbtns{display:flex;gap:6px}'
+      +'#pv .ghbtns i{width:28px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:8px;color:var(--pg-mut);display:grid;place-items:center;font-style:normal;font-size:13px}'
+      +'#pv .gtabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06)}'
+      +'#pv .gtab{flex:1;text-align:center;padding:12px;font-size:13px;font-weight:700;color:var(--pg-mut)}'
+      +'#pv .gtab.on{color:var(--pg-accent);font-weight:800}'
+      +'#pv .glead{padding:8px var(--t-padX,18px) var(--t-leadBot,22px);border-bottom:2px solid rgba(255,255,255,.06)}'
+      +'#pv .gbody{padding:15px var(--t-padX,18px) 12px}'
+      +'#pv .gsec{display:flex;align-items:center;gap:8px;padding:var(--t-secGap,12px) 0 6px;border-bottom:1px solid rgba(255,255,255,.06);font-size:var(--t-fs,13px);font-weight:800;color:var(--pg-fg)}'
+      +'#pv .gsec .bul{color:var(--pg-accent);font-weight:700}'
+      +'#pv .gsec .chev{margin-left:auto;color:var(--pg-mut);font-size:11px}'
+      +'#pv .grow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:var(--t-rowY,8px) 0}'
+      +'#pv .grow .lab{flex:none;font-size:var(--t-fs,13px);font-weight:700;color:var(--pg-fg);white-space:nowrap}'
+      +'#pv .gopts{display:flex;flex-wrap:wrap;gap:3px 4px;justify-content:flex-end;min-width:0}'
+      +'#pv .grail{display:flex;gap:4px;overflow-x:auto;min-width:0;flex:1;border-left:1px solid rgba(255,255,255,.06);padding-left:6px;scrollbar-width:none}'
+      +'#pv .grail::-webkit-scrollbar{display:none}'
+      +'#pv .gopt{padding:var(--t-optPadY,6px) 7px;font-size:var(--t-fs,13px);font-weight:700;color:var(--pg-mut);white-space:nowrap;border-radius:6px;transition:color .15s,transform .12s,box-shadow .3s;background:none;flex:none}'
+      +'#pv .gopt.on{color:var(--pg-accent);font-weight:800}'
+      +'#pv .gwish{display:flex;gap:8px;align-items:stretch;padding:var(--t-rowY,8px) 0}'
+      +'#pv .gta{flex:2;min-height:60px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:6px 10px;color:var(--pg-mut);font-size:var(--t-fs,13px)}'
+      +'#pv .gref{flex:1;display:flex;align-items:flex-start;justify-content:flex-end;padding:12px 16px 0 0;color:var(--pg-accent)}'
+      +'#pv .gref svg{width:26px;height:26px}'
+      +'#pv .gsum{text-align:right;font-size:12px;color:var(--pg-mut);padding:8px 2px;line-height:1.5}'
+      +'#pv .gsum b{color:var(--pg-fg);font-weight:700}'
+      +'#pv .ggo{display:block;width:100%;margin-top:2px;padding:10px;border-radius:11px;background:rgba(var(--pg-accent-rgb),.10);border:1px solid rgba(var(--pg-accent-rgb),.35);color:var(--pg-accent);font-weight:800;font-size:var(--t-fs,13px);text-align:center;transition:transform .12s,box-shadow .3s}'
+      +'#pv .gtog{padding:var(--t-optPadY,6px) 7px;font-size:var(--t-fs,13px);font-weight:800;color:var(--pg-accent)}'
+      /* 눌림 효과 방식 */
+      +'#pv.fx-scale .gopt:active,#pv.fx-scale .ggo:active{transform:scale(var(--t-fx,.9))}'
+      +'#pv.fx-pop .gopt.go,#pv.fx-pop .ggo:active{animation:gPop .3s ease}'
+      +'@keyframes gPop{40%{transform:scale(var(--t-fx,.9))}}'
+      +'#pv.fx-glow .gopt.go,#pv.fx-glow .ggo:active{animation:gGlow .55s ease}'
+      +'@keyframes gGlow{40%{box-shadow:0 0 14px rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}}'
+      +'</style>';
+    return style+'<div class="gwrap fx-'+fx+'">'
+      +'<div class="ghead"><b><span class="spark">✦</span> Image Studio</b><span class="ghbtns"><i>—</i><i>×</i></span></div>'
+      +'<div class="gtabs"><div class="gtab">편집</div><div class="gtab on">AI 생성</div></div>'
+      +'<div class="glead">'
+        +'<div class="gsec"><span class="bul">•</span> 내용</div>'
+        +'<div class="gwish"><div class="gta">선택 · 자유 요청 한 줄</div>'
+          +'<div class="gref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></div></div>'
+        +'<div class="gsum"><b>수채·번짐</b>·한국웹툰화 / 4:5 · FHD · 1개 · PNG / 무드 자동</div>'
+        +'<button class="ggo" onclick="this.classList.remove(\'go\');void this.offsetWidth;this.classList.add(\'go\')">생성</button>'
+      +'</div>'
+      +'<div class="gbody">'
+        +'<div class="gsec"><span class="bul">•</span> 카메라 · 구도 <span class="chev">﹀</span></div>'
+        +'<div class="gsec"><span class="bul">•</span> 개요</div>'
+        +row('해상도', opt('720p','720p')+opt('FHD','FHD',1)+opt('2K','2K')+opt('4K','4K'))
+        +row('비율', opt('4:5','4:5',1)+opt('9:16','9:16')+opt('16:9','16:9')+opt('1:1','1:1')+opt('21:9','21:9')+opt('custom','직접'))
+        +row('개수', opt('1','1개',1)+opt('2','2개')+opt('3','3개')+opt('4','4개'))
+        +row('품질', opt('png','PNG',1))
+        +'<div class="gsec"><span class="bul">•</span> 표현</div>'
+        +rail('화풍', opt('webtoon','극화')+opt('watercolor','수채',1)+opt('photo','실사')+opt('cartoon','만평')+opt('cinematic','시네마틱')+opt('illust','일러스트')+opt('iso3d','3D')+opt('pictogram','픽토'))
+        +rail('세부 화풍', opt('auto','자동')+opt('bleed','번짐',1)+opt('fine','세밀')+opt('sumuk','수묵')+opt('gouache','과슈')+opt('oil','유화'))
+        +'<div class="grow"><span class="lab">한국웹툰화</span><span class="gopts"><button class="gtog gopt on">ON</button></span></div>'
+        +row('무드', opt('auto','자동',1)+opt('manual','직접'))
+        +'<div class="grow"><span class="lab">문구</span><span class="gopts"><button class="gopt">OFF</button></span></div>'
+      +'</div>'
+      +'</div>';
+  },
+};
+boot();
+</script>
+</body>
+</html>
