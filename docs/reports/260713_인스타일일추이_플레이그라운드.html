@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>인스타 일일 추이 — 채널 요약 차트 플레이그라운드 (실데이터 8개월)</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   인스타 일일 추이 차트 플레이그라운드 (메뉴4 채널 요약) — 실데이터판
+   · 값 SSOT = viewer/index.html :root 토큰 사본(자기완결 = 값 복사 = 계승 · §핵심명령 3-c)
+   · 데이터 = apps/insta/data/insta_history.json(대시보드 CSV 8개월 · 2025-11-01~2026-07-12 실측) 임베드
+   · dataviz 계약: stat-tile(값·델타·스파크) · 단일축 · 텍스트=잉크색·마크만 팔레트색 · 2px 라인 · area ~10% · hairline 그리드
+   · 예울프로모 순수 SVG 로직 계승 + 노뮤트 토큰 재작성 + 진짜 날짜축 + 결측 gap = 선 끊김
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root{
+  --bg:#121212;
+  --glass2:rgba(18,19,22,.55);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13);
+  --accent-2:#d8ff3d; --accent-2-rgb:216,255,61;
+  --accent-3:#e23b2a; --accent-3-rgb:226,59,42;
+  --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
+  --accent-5:#0FFD02; --accent-5-rgb:15,253,2;
+  --accent-6:#FF5EC8;
+  --accent-bright:#5AFFE6;
+  --bias-l1:#38C6FF; --bias-l1-rgb:56,198,255;
+  --fg:#eef7f0; --mut:#8fa697;
+  --danger:var(--accent-3); --warn:var(--accent-4);
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-display:22px; --fs-h1:19px; --fs-h2:15px; --fs-h3:14px; --fs-label:13px;
+  --fs-body:15px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
+  --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; }
+body{ background:#0a0b0a; color:var(--fg); font-family:var(--font-status); font-size:var(--fs-body); line-height:var(--lh-base); -webkit-font-smoothing:antialiased; padding:18px; }
+h1.pgtitle{ font-size:18px; font-weight:var(--fw-x); margin:0 0 4px; letter-spacing:.2px; }
+p.pgsub{ margin:0 0 18px; color:var(--mut); font-size:var(--fs-sm); max-width:940px; }
+p.pgsub b{ color:var(--accent); font-weight:var(--fw-b); }
+
+.wrap{ display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+.stagewrap{ flex:0 0 auto; }
+.stagecap{ color:var(--mut); font-size:var(--fs-xs); margin-top:8px; text-align:center; max-width:340px; }
+.frame{ width:340px; height:680px; border-radius:30px; overflow:hidden; background:var(--bg); border:1px solid var(--line); box-shadow:0 12px 40px rgba(0,0,0,.55); position:relative; }
+.appview{ height:100%; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.18) transparent; }
+.appview::-webkit-scrollbar{ width:6px; }
+.appview::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:99px; }
+.topbanner{ padding:22px 16px 0; }
+.brandmark{ display:block; margin:0; text-align:center; line-height:1; white-space:nowrap; font-family:var(--font-status); font-size:20px; font-weight:400; letter-spacing:.9px; color:var(--fg); text-shadow:0 1px 8px rgba(0,0,0,.45); }
+.vh-title{ display:block; margin:12px 0 0; text-align:center; line-height:1; white-space:nowrap; font-family:var(--font-status); font-size:15.3px; font-weight:400; letter-spacing:.612px; color:var(--accent-bright); -webkit-text-stroke:.5px var(--accent-bright); text-shadow:0 0 9px rgba(var(--accent-rgb),.6), 0 0 20px rgba(var(--accent-rgb),.2); }
+
+/* 채널 요약 뷰 (viewer/index.html:797-821 원문 계승) */
+.chanview{ padding:14px 10px 28px; }
+.ch-card{ background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:var(--r-l); padding:12px 14px; margin:0 0 12px; }
+.ch-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.ch-head b{ font-size:var(--fs-h2); font-weight:var(--fw-x); }
+.ch-upd{ margin-left:auto; color:var(--mut); font-size:var(--fs-xs); }
+.ch-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.ch-st{ display:flex; flex-direction:column; gap:2px; padding:8px 10px; background:rgba(255,255,255,.03); border-radius:var(--r-m); position:relative; overflow:hidden; }
+.ch-st b{ font-size:var(--fs-h2); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
+.ch-st span.lb{ color:var(--mut); font-size:var(--fs-xs); }
+.ch-lbl{ display:block; color:var(--fg); font-weight:var(--fw-x); font-size:var(--fs-label); margin:14px 2px 8px; }
+.ch-lbl::before{ content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+
+/* stat-tile 확장(델타 + 스파크) — 튜닝 대상 */
+.ch-delta{ font-size:var(--fs-xs); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }
+.ch-strow{ display:flex; align-items:baseline; gap:5px; flex-wrap:wrap; }
+.ch-sparkwrap{ margin-top:4px; }
+.ch-sparkwrap svg{ display:block; width:100%; }
+
+/* 큰 라인차트 섹션 — 튜닝 대상 */
+.ch-metricseg{ display:flex; gap:5px; flex-wrap:wrap; margin:0 2px 9px; }
+.ch-mchip{ font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:var(--r-pill); padding:4px 10px; cursor:pointer; transition:all var(--dur-fast) var(--ease); display:flex; align-items:center; gap:5px; }
+.ch-mchip .dotk{ width:8px; height:8px; border-radius:99px; flex:none; background:var(--mut); }
+.ch-mchip.on{ color:var(--fg); background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.16); }
+.ch-rangeseg{ display:flex; gap:0; margin-left:auto; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }
+.ch-rangeseg button{ font:inherit; font-size:10px; font-weight:var(--fw-b); color:var(--mut); background:transparent; border:none; padding:3px 8px; cursor:pointer; border-right:1px solid var(--line); }
+.ch-rangeseg button:last-child{ border-right:none; }
+.ch-rangeseg button.on{ color:#032322; background:var(--accent); }
+.ch-chartbox{ background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:var(--r-l); padding:12px 12px 8px; position:relative; }
+.ch-charttop{ display:flex; align-items:baseline; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
+.ch-charttop .ct-v{ font-size:var(--fs-h1); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
+.ch-charttop .ct-u{ font-size:var(--fs-xs); color:var(--mut); }
+.ch-svgwrap{ position:relative; width:100%; }
+.ch-svgwrap svg{ display:block; width:100%; height:auto; }
+.ch-tip{ position:absolute; pointer-events:none; background:var(--glass2); backdrop-filter:blur(8px); border:1px solid var(--line); border-radius:var(--r-s); padding:6px 8px; font-size:var(--fs-xs); color:var(--fg); white-space:nowrap; opacity:0; transition:opacity var(--dur-fast); z-index:5; transform:translate(-50%,-118%); }
+.ch-tip .tv{ font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
+.ch-tip .tl{ color:var(--mut); font-size:10px; }
+
+/* 콘솔 */
+.console{ flex:1 1 460px; min-width:340px; max-width:640px; }
+.csec{ background:#131513; border:1px solid var(--line); border-radius:14px; padding:14px 15px; margin-bottom:12px; }
+.csec > .cslbl{ display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--accent); letter-spacing:.04em; text-transform:uppercase; margin-bottom:10px; }
+.cgrp-h{ font-size:10px; font-weight:var(--fw-x); color:var(--mut); letter-spacing:.05em; text-transform:uppercase; margin:12px 0 7px; padding-top:9px; border-top:1px dashed rgba(255,255,255,.07); }
+.cgrp:first-of-type .cgrp-h{ border-top:none; padding-top:0; margin-top:2px; }
+.presets{ display:flex; flex-wrap:wrap; gap:7px; }
+.preset{ font:inherit; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:var(--r-pill); padding:6px 13px; cursor:pointer; transition:all var(--dur-fast) var(--ease); }
+.preset:hover{ color:var(--fg); }
+.preset.on{ color:#032322; background:var(--accent); border-color:var(--accent); }
+.preset .star{ color:var(--accent-4); }
+.preset.on .star{ color:#032322; }
+.seg{ display:inline-flex; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }
+.seg button{ font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--mut); background:transparent; border:none; padding:5px 11px; cursor:pointer; border-right:1px solid var(--line); }
+.seg button:last-child{ border-right:none; }
+.seg button.on{ color:#032322; background:var(--accent); }
+.sl{ display:grid; grid-template-columns:132px 1fr 62px; align-items:center; gap:10px; margin:9px 0; }
+.sl label{ font-size:var(--fs-sm); color:var(--fg); }
+.sl label .tok{ display:block; font-size:9px; color:var(--mut); font-variant-numeric:tabular-nums; }
+.sl input[type=range]{ -webkit-appearance:none; appearance:none; height:4px; border-radius:99px; background:linear-gradient(90deg,var(--accent) var(--p,50%),rgba(255,255,255,.12) var(--p,50%)); outline:none; }
+.sl input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.5); }
+.sl input[type=range]::-moz-range-thumb{ width:15px; height:15px; border:none; border-radius:50%; background:var(--accent); cursor:pointer; }
+.sl .val{ font-size:var(--fs-sm); color:var(--fg); font-variant-numeric:tabular-nums; text-align:right; }
+.sl .val.warn{ color:var(--warn); }
+.wf{ color:var(--warn); }
+.sl.togrow, .sl.selrow{ grid-template-columns:132px 1fr; }
+.toggle{ position:relative; width:42px; height:23px; border-radius:99px; background:rgba(255,255,255,.12); cursor:pointer; transition:background var(--dur) var(--ease); justify-self:start; flex:none; }
+.toggle::after{ content:''; position:absolute; top:2px; left:2px; width:19px; height:19px; border-radius:50%; background:#fff; transition:transform var(--dur) var(--ease); }
+.toggle.on{ background:var(--accent); }
+.toggle.on::after{ transform:translateX(19px); }
+.swatchrow{ display:flex; gap:6px; flex-wrap:wrap; }
+.swatch{ width:26px; height:26px; border-radius:7px; cursor:pointer; border:2px solid transparent; }
+.swatch.on{ border-color:#fff; }
+.out{ font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace; font-size:12px; line-height:1.65; color:var(--fg); background:#0c0d0c; border:1px solid var(--line); border-radius:10px; padding:12px 13px; white-space:pre; overflow-x:auto; margin:0 0 10px; }
+.btnrow{ display:flex; gap:8px; flex-wrap:wrap; }
+.cbtn{ font:inherit; font-size:var(--fs-sm); font-weight:var(--fw-b); padding:9px 15px; border-radius:var(--r-m); cursor:pointer; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--fg); transition:all var(--dur-fast); }
+.cbtn.primary{ background:var(--accent); color:#032322; border-color:var(--accent); }
+.cbtn:active{ transform:scale(.96); }
+.warncount{ font-size:var(--fs-xs); color:var(--warn); margin-left:auto; align-self:center; font-weight:var(--fw-b); }
+.warncount.hide{ display:none; }
+.note{ color:var(--mut); font-size:var(--fs-xs); line-height:1.75; }
+.note b{ color:var(--fg); }
+.note ul{ margin:6px 0 0; padding-left:16px; }
+.modal-scrim{ position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+.modal-scrim.on{ display:flex; }
+.modal-box{ background:#15181a; border:1px solid var(--line); border-radius:var(--r-modal); padding:20px 22px; max-width:440px; width:100%; }
+.modal-box h3{ margin:0 0 10px; font-size:var(--fs-h2); font-weight:var(--fw-x); }
+.modal-box .rep{ font-family:ui-monospace,monospace; font-size:11px; color:var(--warn); background:#0c0d0c; border-radius:8px; padding:10px; white-space:pre-wrap; margin:8px 0 14px; }
+</style>
+</head>
+<body>
+<h1 class="pgtitle">인스타 일일 추이 — 채널 요약 차트 시안 (실데이터 8개월)</h1>
+<p class="pgsub">메뉴4 <b>채널 요약</b>에 일일 추이를 얹는 시안. 데이터 = 네가 내보낸 대시보드 CSV의 <b>진짜 254일</b>(2025-11-01~2026-07-12). 스탯 타일에 <b>델타 + 스파크라인</b>, 아래에 <b>지표·기간 선택형 라인차트</b>(도달의 빈 구간은 선 끊김으로 정직 표시). 프리셋 고르고 슬라이더로 다듬은 뒤 <b>[선택값 복사]</b> 회신 = 곧 구현 스펙.</p>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame">
+      <div class="appview" id="appview">
+        <div class="topbanner">
+          <div class="brandmark">News Curation</div>
+          <div class="vh-title">채널 요약</div>
+        </div>
+        <div class="chanview"><div id="chanBox"></div></div>
+      </div>
+    </div>
+    <div class="stagecap">폰 프레임 = 실제 뷰어 화면비 · 차트 위 드래그/탭 = 날짜별 값 툴팁 · 지표 칩·기간 세그로 전환</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <span class="cslbl">프리셋 <span style="color:var(--mut);text-transform:none;font-weight:400">— 현행 포함 · ★ 추천</span></span>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="csec">
+      <span class="cslbl">미세조정</span>
+      <div id="sliders"></div>
+    </div>
+    <div class="csec">
+      <span class="cslbl">선택값</span>
+      <pre class="out" id="out"></pre>
+      <div class="btnrow">
+        <button class="cbtn primary" id="copyBtn">선택값 복사</button>
+        <button class="cbtn" id="resetBtn">현행으로</button>
+        <span class="warncount hide" id="warnCount"></span>
+      </div>
+    </div>
+    <div class="csec note">
+      <span class="cslbl" style="color:var(--mut)">재현 한계 각주</span>
+      <b>① 실데이터</b> — 차트 값 = 대시보드 CSV 내보내기 실측(2025-11-01~2026-07-12 · Instagram 축만). 07-13부터는 봇이 매일 이어붙임.
+      <ul>
+        <li><b>② 도달 빈 구간</b> — 2026-01-01~06-14는 내보내기에 없어 선이 끊긴다(명세표 참조 — 채우면 자동 연결).</li>
+        <li><b>③ 게시수·공유·저장 스파크 없음</b> — 일별 이력이 아직 없음(게시수 = 봇이 내일부터 차분 수집 · API 백필 후속 가능). 타일 큰 숫자는 현행 누적 그대로.</li>
+        <li><b>④ 팔로워 타일 스파크 = 일별 신규 팔로우</b>(언팔 차감 전 신규 유입 — CSV·API 동일 정의).</li>
+        <li><b>⑤ 폰트</b> — 헤더 <code>PGSans</code> 미임베드 = 시스템폰트 폴백(실물과 자간 미세 차이).</li>
+        <li><b>⑥ SVG 재현</b> — 예울프로모 순수 SVG 로직 계승 + 노뮤트 토큰 재작성. 실배선 시 <code>renderChan</code>에 동일 함수 이식.</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="modal-scrim" id="scrim">
+  <div class="modal-box">
+    <h3>⚠ 기틀 이탈 축이 있어</h3>
+    <p style="font-size:var(--fs-sm);color:var(--mut);margin:0 0 4px">아래 축은 노뮤트 실존값 사다리 밖 값이야. 이대로 복사하면 <b>「🔁 기틀 갱신 역제안」</b> 블록이 붙어. 회신 = 전 앱 동일 축 일괄 변경 승인 경로.</p>
+    <div class="rep" id="repBlock"></div>
+    <div class="btnrow">
+      <button class="cbtn primary" id="copyRep">역제안 포함 복사</button>
+      <button class="cbtn" id="copyInh">계승분만 복사</button>
+      <button class="cbtn" id="copyCancel">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+/* ── 실데이터 (insta_history.json 임베드 · 빌드 시 주입) ─────────────── */
+const RAW = {"dates":["2025-11-01","2025-11-02","2025-11-03","2025-11-04","2025-11-05","2025-11-06","2025-11-07","2025-11-08","2025-11-09","2025-11-10","2025-11-11","2025-11-12","2025-11-13","2025-11-14","2025-11-15","2025-11-16","2025-11-17","2025-11-18","2025-11-19","2025-11-20","2025-11-21","2025-11-22","2025-11-23","2025-11-24","2025-11-25","2025-11-26","2025-11-27","2025-11-28","2025-11-29","2025-11-30","2025-12-01","2025-12-02","2025-12-03","2025-12-04","2025-12-05","2025-12-06","2025-12-07","2025-12-08","2025-12-09","2025-12-10","2025-12-11","2025-12-12","2025-12-13","2025-12-14","2025-12-15","2025-12-16","2025-12-17","2025-12-18","2025-12-19","2025-12-20","2025-12-21","2025-12-22","2025-12-23","2025-12-24","2025-12-25","2025-12-26","2025-12-27","2025-12-28","2025-12-29","2025-12-30","2025-12-31","2026-01-01","2026-01-02","2026-01-03","2026-01-04","2026-01-05","2026-01-06","2026-01-07","2026-01-08","2026-01-09","2026-01-10","2026-01-11","2026-01-12","2026-01-13","2026-01-14","2026-01-15","2026-01-16","2026-01-17","2026-01-18","2026-01-19","2026-01-20","2026-01-21","2026-01-22","2026-01-23","2026-01-24","2026-01-25","2026-01-26","2026-01-27","2026-01-28","2026-01-29","2026-01-30","2026-01-31","2026-02-01","2026-02-02","2026-02-03","2026-02-04","2026-02-05","2026-02-06","2026-02-07","2026-02-08","2026-02-09","2026-02-10","2026-02-11","2026-02-12","2026-02-13","2026-02-14","2026-02-15","2026-02-16","2026-02-17","2026-02-18","2026-02-19","2026-02-20","2026-02-21","2026-02-22","2026-02-23","2026-02-24","2026-02-25","2026-02-26","2026-02-27","2026-02-28","2026-03-01","2026-03-02","2026-03-03","2026-03-04","2026-03-05","2026-03-06","2026-03-07","2026-03-08","2026-03-09","2026-03-10","2026-03-11","2026-03-12","2026-03-13","2026-03-14","2026-03-15","2026-03-16","2026-03-17","2026-03-18","2026-03-19","2026-03-20","2026-03-21","2026-03-22","2026-03-23","2026-03-24","2026-03-25","2026-03-26","2026-03-27","2026-03-28","2026-03-29","2026-03-30","2026-03-31","2026-04-01","2026-04-02","2026-04-03","2026-04-04","2026-04-05","2026-04-06","2026-04-07","2026-04-08","2026-04-09","2026-04-10","2026-04-11","2026-04-12","2026-04-13","2026-04-14","2026-04-15","2026-04-16","2026-04-17","2026-04-18","2026-04-19","2026-04-20","2026-04-21","2026-04-22","2026-04-23","2026-04-24","2026-04-25","2026-04-26","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-16","2026-05-17","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-23","2026-05-24","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-05-30","2026-05-31","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06","2026-06-07","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-13","2026-06-14","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-19","2026-06-20","2026-06-21","2026-06-22","2026-06-23","2026-06-24","2026-06-25","2026-06-26","2026-06-27","2026-06-28","2026-06-29","2026-06-30","2026-07-01","2026-07-02","2026-07-03","2026-07-04","2026-07-05","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-11","2026-07-12"],"views":[65,68,2,10,4,5,4,3,0,0,20,252,5,2,8,11,16,6,25,13,3436,15253,54184,2949380,4982021,3874139,3038651,739559,1321234,951689,1392873,2727334,1746372,3290659,5463600,10661015,4949732,1643810,1540755,7180915,5567968,3753005,2352155,4404783,1427478,1255532,2255602,4563721,3965275,1784538,5057231,6517040,4844936,4753581,4903505,2784465,3005113,3933108,1357734,1864442,4904028,3847310,1725514,4614918,4664331,6484229,3900274,3390757,2329707,1253595,10919480,5463224,3276245,3404122,1686269,2221422,7298125,5003197,2159018,2380881,6142302,6427030,3515652,2715607,4612074,7386604,4738705,2606299,2572117,2181245,2157194,2075425,2304679,2979705,4325327,2550397,3715228,6398480,4677944,6812735,3145108,5122355,3019118,2289163,2894826,5420425,6807102,4289217,5309288,5398818,6753112,6988917,7461852,7429615,6386626,4423823,4358173,2054644,2404437,9643767,6477985,4618569,3510967,2987368,3425139,2144130,3165664,7299621,8435814,4130137,4817360,4631871,2821139,3417564,2138904,1380693,5080993,3966321,5126804,6570228,8670348,8207741,7480028,5542279,4569801,6232593,5197655,10683211,10419031,5203411,4193193,4651401,4095204,2967662,6376770,6351599,5135820,3159642,5608927,4392020,3183125,2207072,4199260,12910269,4197894,3617671,2039488,4079983,8085465,9072625,12504099,3700523,3742674,3345457,2914288,2867322,4511931,4708417,3371159,3577793,7207580,4225041,3745459,7472805,8550102,2975738,1074408,927467,839180,519283,718820,856134,721720,1019610,849787,1467121,2581944,2960533,1959243,1146810,972142,1461557,1588345,1852406,1615053,2113740,2414790,1049790,892429,1046088,1225361,1118603,1090139,818716,1599822,292080,1336305,541855,1142917,260831,146463,583148,272944,315564,439316,429849,498103,564938,434545,884529,779380,530007,585424,257638,648806,385184,249739,459276,605749,566872,2101228,1409097,780991,584281,435615,571582,609767,261024,71839,45215,70921,732986,2947661,2677036],"reach":[0,60,0,0,0,0,0,0,0,0,15,227,0,0,0,0,0,0,0,0,2369,10625,42364,1982495,2917898,2303831,1858302,443195,820124,661660,819585,1516819,953505,1611456,2652895,4324197,2577939,890780,869262,3471509,3307626,2068246,1318731,2298078,824531,800982,1190256,2259323,2310019,1044888,2789362,3652016,2511095,2686080,2867139,1577377,1825136,2484770,842109,1202367,2837280,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,192248,156097,142081,301326,334500,185778,227305,97846,267245,142937,96043,149008,179899,163954,856469,559913,222146,167092,112922,225162,234689,101990,34461,23968,36145,401423,1520111,1474668],"profile_views":[2,3,0,0,3,5,3,3,1,1,1,2,1,1,0,0,0,1,0,0,16,80,230,12166,20555,14796,9791,2514,8206,3781,5440,10612,7715,13681,29447,49742,17873,8654,8052,24020,17126,15699,9771,17886,5066,4258,11637,21749,23514,6930,16253,30109,25720,40870,29187,15677,16563,18435,7004,5892,16832,15935,8791,27795,21513,19780,14691,16029,8819,6313,73099,22266,10708,8372,6122,5753,31288,22046,8928,6508,22432,24412,10571,10030,10459,29835,15365,7088,8409,7544,5937,5399,6646,12310,16545,8351,23217,30532,18649,14715,7705,9894,5495,4535,6650,12362,11915,6413,14194,9764,9175,10466,16440,16357,12175,8469,8705,5468,6669,28483,20681,16225,9112,6351,4685,3573,8145,12642,15127,8770,11053,9010,5382,4979,3520,2922,5870,5195,6390,7780,10343,10310,21890,8398,7424,14626,16149,13760,21477,9785,6994,7918,6295,4169,9445,8533,7483,4858,8746,8483,6502,4186,9267,33109,6369,5656,2796,3795,12416,14258,24097,5235,5618,4444,3474,4103,5374,4256,3876,3900,10834,4381,3965,6273,12640,3844,1552,1542,1483,2022,2376,1403,1195,1515,1280,1315,3027,4036,4163,2571,1831,1572,1764,1779,1786,4239,3010,1166,1411,1206,1372,1116,1342,1025,3695,822,2622,1097,2123,674,396,834,434,403,1215,1169,782,994,682,1485,1013,553,757,553,1145,675,422,551,1256,1129,3875,1782,800,656,438,731,878,387,233,240,241,1268,5117,6118],"interactions":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,26,966,10370,72942,203792,259255,99124,25397,47111,38301,59226,100786,123594,175679,271585,287940,126474,61221,62251,193734,97874,89458,68803,139521,36896,33220,88722,193846,169783,59935,164487,324018,309621,178232,137388,98570,117683,154690,47200,37803,73439,91902,50541,226991,202319,149327,112144,73764,46366,31092,301938,207159,108963,157725,91135,91782,237538,158420,73690,101590,402830,356997,142142,100824,149612,369982,286546,126375,118935,99354,73082,64530,71132,119095,133895,117996,285937,369991,204828,148993,83196,100147,53812,66869,74600,175787,137170,84462,110209,88601,96688,289293,242159,269220,143575,107040,126380,126395,178836,798115,284975,133769,98463,85865,106298,61956,101855,183259,288626,138997,189738,141535,68689,81805,70804,46624,105153,94331,179162,229972,260387,229316,238183,130885,139428,409941,378946,414338,458700,224272,137002,160425,123958,87152,170145,136039,175608,124947,225648,168459,100969,93926,165222,1223456,131245,125763,58812,178245,317554,297940,665699,150010,168305,150459,79691,72929,129403,93026,144358,150669,166315,86907,93138,185335,607528,153646,60137,26387,22135,14273,31441,24404,20501,25718,16375,24827,42922,54365,42736,35373,30582,31242,28974,22494,44489,51815,57450,20769,27370,26077,49701,25580,18279,12100,30134,5840,54726,10985,29345,4597,2949,29360,8412,3607,9769,9304,7779,8791,8095,20363,12291,5060,6959,5659,21302,13470,4807,7976,28204,29372,63721,23037,16824,12933,4611,16171,14804,3980,1456,998,2114,43857,115036,96598],"follows":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,3,13,290,357,446,418,71,216,155,229,363,198,306,386,746,346,143,167,504,726,505,264,634,141,132,237,365,762,177,272,498,636,884,671,294,530,676,145,210,492,458,191,1260,461,372,325,491,272,188,1835,845,294,242,168,174,618,459,228,219,638,574,352,429,435,797,480,258,214,250,183,177,175,276,355,229,508,991,801,572,300,446,277,193,227,341,470,335,402,395,518,467,756,956,716,449,511,246,359,1984,1574,989,533,495,301,283,370,694,961,421,402,391,224,262,234,196,358,355,435,481,770,793,1067,737,610,531,538,772,1674,772,524,469,398,279,530,527,514,300,696,729,916,295,411,1086,328,909,231,305,594,734,2071,387,298,308,219,287,343,257,230,213,1633,411,243,345,424,132,78,43,61,48,45,46,45,45,50,51,142,188,88,61,61,49,62,67,69,92,121,49,48,70,81,52,48,66,107,28,178,76,86,36,28,61,28,32,54,69,39,41,38,60,72,32,40,39,67,47,24,24,30,42,115,107,43,31,28,29,52,27,21,18,20,55,299,null]};
+const N = RAW.dates.length;
+const METRICS = {
+  views:        { lb:'조회수',      unit:'회',   pal:'bias-l1'  },
+  reach:        { lb:'도달',        unit:'계정', pal:'accent-2' },
+  profile_views:{ lb:'프로필 방문', unit:'회',   pal:'accent-6' },
+  interactions: { lb:'상호작용',    unit:'회',   pal:'accent-5' },
+  follows:      { lb:'신규 팔로우', unit:'명',   pal:'accent'   },
+};
+const MKEYS = Object.keys(METRICS);
+// 스탯 타일(현행 renderChan 6개 그대로 = 비교 기준) — big = 현행 누적 실측 · series = 일별(있는 것만)
+const TILES = [
+  { key:'follows',       lb:'팔로워',      big:62942 },
+  { key:'views',         lb:'조회수',      big:4228466 },
+  { key:'reach',         lb:'도달',        big:2066261 },
+  { key:null,            lb:'공유',        big:61525 },
+  { key:null,            lb:'저장',        big:2808 },
+  { key:'profile_views', lb:'프로필 방문', big:7296 },
+];
+const vf = n => n == null ? '—' : n >= 1e8 ? (n/1e8).toFixed(1)+'억' : n >= 1e4 ? (n/1e4).toFixed(1).replace(/\.0$/,'')+'만' : String(n);
+const fmtK = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e4 ? (n/1e3).toFixed(0)+'K' : Math.round(n).toLocaleString();
+
+const PAL = [
+  { id:'accent',  nm:'터쿼이즈(코어)', hex:'#00EED2', rgb:'0,238,210',  tok:'--accent' },
+  { id:'accent-5',nm:'형광그린',       hex:'#0FFD02', rgb:'15,253,2',   tok:'--accent-5' },
+  { id:'bias-l1', nm:'스카이시안',     hex:'#38C6FF', rgb:'56,198,255', tok:'--bias-l1' },
+  { id:'accent-2',nm:'라임옐로',       hex:'#d8ff3d', rgb:'216,255,61', tok:'--accent-2' },
+  { id:'accent-6',nm:'네온핑크',       hex:'#FF5EC8', rgb:'255,94,200', tok:'--accent-6' },
+  { id:'accent-4',nm:'골드레몬',       hex:'#FFE13D', rgb:'255,225,61', tok:'--accent-4' },
+];
+const palOf = id => PAL.find(p => p.id === id) || PAL[0];
+
+/* ── 튜닝 상태 ─────────────────────────────────────────────────────── */
+const DEFAULTS = {
+  spark:1, delta:1, chart:1, tileStyle:'inline', defMetric:'views', range:'30',
+  sparkH:26, sparkW:1.8, sparkDot:2.6, sparkArea:10, sparkCurve:'0', sparkColorMode:'accent', sparkDays:14,
+  deltaBase:'prev', deltaUpColor:'accent', deltaDnColor:'mut',
+  chartH:150, lineW:2, curve:'1', area:10, marker:'end', endDot:8,
+  yZero:'0', grid:1, gridN:3, ylabel:1, xlabel:1, endLabel:1, crosshair:1,
+  titleSize:13, secGap:14, lineColor:'accent', chartColorMode:'metric',
+};
+const LADDER = {
+  sparkH:   { toks:{'미니 22':22,'표준 26':26,'큰 34':34} },
+  sparkW:   { toks:{'예울 1.8':1.8,'dataviz 2':2} },
+  lineW:    { toks:{'예울 2':2,'dataviz 2':2,'강조 2.6':2.6} },
+  endDot:   { toks:{'dataviz ≥8':8}, floor:8 },
+  titleSize:{ toks:{'--fs-xs':11,'--fs-sm':12,'--fs-label':13,'--fs-h3':14} },
+  chartH:   { toks:{'컴팩트 120':120,'표준 150':150,'큰 190':190} },
+  secGap:   { toks:{'현행 .ch-lbl 14':14,'--sp-2':12,'--sp-3':18,'--sp-4':24} },
+  sparkDays:{ toks:{'dataviz 12':12,'2주 14':14,'한달 30':30} },
+};
+let state = {...DEFAULTS};
+
+const PRESETS = [
+  { id:'p0', nm:'현행', st:{ spark:0, delta:0, chart:0 } },
+  { id:'p1', nm:'스파크 타일', st:{ spark:1, delta:1, chart:0 } },
+  { id:'p2', nm:'추이 차트', star:1, st:{} },
+  { id:'p3', nm:'컴팩트', st:{ sparkH:22, chartH:120, area:7, gridN:2, curve:'0', range:'7', marker:'all' } },
+  { id:'p4', nm:'큰 차트만', st:{ spark:0, chartH:190, area:13, gridN:4, range:'all', endLabel:0, marker:'none' } },
+];
+
+const CONTROLS = [
+  { grp:'구성 (무엇을 보일지)' },
+  { k:'spark',  t:'toggle', nm:'타일 스파크라인' },
+  { k:'delta',  t:'toggle', nm:'타일 델타(전일 대비)' },
+  { k:'chart',  t:'toggle', nm:'큰 라인차트 섹션' },
+  { k:'tileStyle', t:'seg', nm:'델타 위치', opts:[['inline','값 옆'],['below','라벨 옆']] },
+  { k:'defMetric', t:'seg', nm:'차트 기본 지표', opts:[['views','조회'],['reach','도달'],['profile_views','방문'],['interactions','상호'],['follows','팔로우']] },
+  { k:'range', t:'seg', nm:'차트 기본 기간', opts:[['7','7일'],['30','30일'],['90','90일'],['all','전체']] },
+
+  { grp:'스파크라인 (타일 미니 추이)' },
+  { k:'sparkDays', t:'range', nm:'스파크 기간', min:7, max:60, step:1, unit:'일', ladder:'sparkDays' },
+  { k:'sparkH',    t:'range', nm:'스파크 높이', min:16, max:40, step:1, unit:'px', ladder:'sparkH' },
+  { k:'sparkW',    t:'range', nm:'스파크 선두께', min:1, max:3, step:.1, unit:'px', ladder:'sparkW' },
+  { k:'sparkDot',  t:'range', nm:'스파크 끝점', min:0, max:4, step:.2, unit:'px' },
+  { k:'sparkArea', t:'range', nm:'스파크 면 채움', min:0, max:22, step:1, unit:'%', note:'알파 변주=자유' },
+  { k:'sparkCurve',t:'seg',   nm:'스파크 곡선', opts:[['0','직선'],['1','부드럽게']] },
+  { k:'sparkColorMode', t:'seg', nm:'스파크 색', opts:[['accent','코어 통일'],['metric','지표색'],['trend','상승·하락']] },
+
+  { grp:'델타 배지 (전일 대비)' },
+  { k:'deltaBase', t:'seg', nm:'비교 기준', opts:[['prev','전일'],['avg','최근 7일 평균']] },
+  { k:'deltaUpColor', t:'color', nm:'상승 색' },
+  { k:'deltaDnColor', t:'color', nm:'하락 색' },
+
+  { grp:'큰 라인차트 — 형태' },
+  { k:'chartH',  t:'range', nm:'차트 높이', min:100, max:220, step:2, unit:'px', ladder:'chartH' },
+  { k:'lineW',   t:'range', nm:'선 두께', min:1, max:3.5, step:.1, unit:'px', ladder:'lineW' },
+  { k:'curve',   t:'seg',   nm:'선 곡선', opts:[['0','직선'],['1','부드럽게']] },
+  { k:'area',    t:'range', nm:'면 채움 알파', min:0, max:24, step:1, unit:'%', note:'알파 변주=자유' },
+  { k:'marker',  t:'seg',   nm:'점 마커', opts:[['end','끝점만'],['all','전체'],['none','없음']] },
+  { k:'endDot',  t:'range', nm:'끝점 크기', min:4, max:12, step:1, unit:'px', ladder:'endDot' },
+  { k:'yZero',   t:'seg',   nm:'Y축 시작', opts:[['0','0 기준'],['1','데이터 밀착']] },
+
+  { grp:'큰 라인차트 — 축·라벨·격자' },
+  { k:'grid',    t:'toggle', nm:'격자선' },
+  { k:'gridN',   t:'range',  nm:'격자 개수', min:2, max:5, step:1, unit:'개' },
+  { k:'ylabel',  t:'toggle', nm:'Y축 값 라벨' },
+  { k:'xlabel',  t:'toggle', nm:'X축 날짜 라벨' },
+  { k:'endLabel',t:'toggle', nm:'끝값 라벨' },
+  { k:'crosshair',t:'toggle',nm:'크로스헤어 툴팁' },
+  { k:'titleSize',t:'range', nm:'섹션 제목 크기', min:11, max:15, step:1, unit:'px', ladder:'titleSize' },
+  { k:'secGap',  t:'range',  nm:'섹션 간격', min:8, max:28, step:2, unit:'px', ladder:'secGap' },
+
+  { grp:'색 (팔레트 폐쇄 셀렉트)' },
+  { k:'chartColorMode', t:'seg', nm:'차트 선 색 모드', opts:[['metric','지표별 고정색'],['single','단일색(아래 선택)']] },
+  { k:'lineColor', t:'color', nm:'단일색 지정', note:'팔레트 안 재지정 = 자유·표기' },
+];
+
+/* ── 시리즈 유틸 ───────────────────────────────────────────────────── */
+function sliceIdx(){
+  const n = state.range === 'all' ? N : Math.min(N, parseInt(state.range, 10));
+  return N - n;   // 시작 인덱스
+}
+function lastVal(key, k){ // 마지막 k개 비null
+  const arr = RAW[key] || [];
+  const out = [];
+  for(let i = N-1; i >= 0 && out.length < k; i--) if(arr[i] != null) out.unshift(arr[i]);
+  return out;
+}
+function deltaFor(key){
+  const v = lastVal(key, 9);
+  if(v.length < 2) return null;
+  const cur = v[v.length-1];
+  const base = state.deltaBase === 'avg'
+    ? v.slice(0,-1).reduce((a,b)=>a+b,0) / (v.length-1)
+    : v[v.length-2];
+  if(!base) return null;
+  const pct = Math.round((cur-base)/base*100);
+  return { up: cur >= base, txt: (cur >= base ? '▲' : '▼') + Math.abs(pct) + '%' };
+}
+function colVar(id){
+  if(id === 'mut') return 'var(--mut)';
+  if(id === 'fg') return 'var(--fg)';
+  const p = PAL.find(x => x.id === id);
+  return p ? 'var(' + p.tok + ')' : 'var(--accent)';
+}
+function chartPal(key){
+  return state.chartColorMode === 'metric' ? palOf(METRICS[key].pal) : palOf(state.lineColor);
+}
+
+/* ── 곡선 path (직선 / Catmull-Rom 스무딩) ─────────────────────────── */
+function pathD(pts, curve){
+  if(!curve || pts.length < 3) return pts.map((q,i) => (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  let d = 'M'+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1);
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||pts[i+1];
+    d += ' C'+(p1[0]+(p2[0]-p0[0])/6).toFixed(1)+' '+(p1[1]+(p2[1]-p0[1])/6).toFixed(1)
+       + ' '+(p2[0]-(p3[0]-p1[0])/6).toFixed(1)+' '+(p2[1]-(p3[1]-p1[1])/6).toFixed(1)
+       + ' '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+  }
+  return d;
+}
+
+/* ── 스파크라인 (예울 _anaSpark 계승 · gap 무시 압축 = 비null만) ────── */
+function nmSpark(key){
+  const arr = lastVal(key, state.sparkDays);
+  if(arr.length < 2) return '';
+  const W=120, H=state.sparkH, pad=3;
+  let mn=Math.min(...arr), mx=Math.max(...arr); if(mx-mn < 1) mx = mn+1;
+  const X = i => pad + (W-2*pad)*i/(arr.length-1);
+  const Y = v => H-pad - (H-2*pad)*(v-mn)/(mx-mn);
+  const pts = arr.map((v,i) => [X(i), Y(v)]);
+  let col = 'var(--accent)', rgb = '0,238,210';
+  if(state.sparkColorMode === 'metric'){ const p = palOf(METRICS[key].pal); col='var('+p.tok+')'; rgb=p.rgb; }
+  else if(state.sparkColorMode === 'trend'){ const up = arr[arr.length-1] >= arr[0]; col = up?'var(--accent)':'var(--mut)'; rgb = up?'0,238,210':'143,166,151'; }
+  const line = pathD(pts, +state.sparkCurve);
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" height="'+H+'" preserveAspectRatio="none" aria-hidden="true">';
+  if(state.sparkArea > 0){
+    s += '<path d="'+line+' L'+pts[pts.length-1][0].toFixed(1)+' '+(H-pad)+' L'+pts[0][0].toFixed(1)+' '+(H-pad)+' Z" fill="rgba('+rgb+','+(state.sparkArea/100).toFixed(3)+')" stroke="none"/>';
+  }
+  s += '<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="'+state.sparkW+'" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+  if(state.sparkDot > 0){
+    const last = pts[pts.length-1];
+    s += '<circle cx="'+last[0].toFixed(1)+'" cy="'+last[1].toFixed(1)+'" r="'+state.sparkDot+'" fill="'+col+'"/>';
+  }
+  return s + '</svg>';
+}
+
+/* ── 큰 라인차트 (진짜 날짜축 · 결측 gap = 선 끊김 · 예울 로직 계승) ── */
+let HIT = [];   // 툴팁 히트 포인트
+function nmLineChart(key){
+  const i0 = sliceIdx();
+  const dates = RAW.dates.slice(i0), arr = (RAW[key]||[]).slice(i0);
+  const n = dates.length;
+  const W=600, H=state.chartH, mL=46, mR=16, mT=14, mB=state.xlabel?26:12;
+  const pw=W-mL-mR, ph=H-mT-mB;
+  const vals = arr.filter(v => v != null);
+  if(vals.length < 2) return '<svg viewBox="0 0 600 60"><text x="300" y="34" text-anchor="middle" font-size="12" fill="var(--mut)">이 기간 데이터 없음</text></svg>';
+  let mn = (state.yZero === '0') ? 0 : Math.max(0, Math.min(...vals) - (Math.max(...vals)-Math.min(...vals))*0.12);
+  let mx = Math.max(...vals); mx += (mx-mn)*0.08; if(mx-mn < 1) mx = mn+1;
+  const X = i => mL + pw * (n === 1 ? 0 : i/(n-1));   // 날짜 연속(일별) = 인덱스 비례 = 진짜 날짜축
+  const Y = v => mT + ph * (1 - (v-mn)/(mx-mn));
+  // 결측 gap → 연속 구간 분할
+  const segs = []; let cur = [];
+  arr.forEach((v,i) => { if(v == null){ if(cur.length) segs.push(cur); cur = []; } else cur.push([X(i), Y(v), v, dates[i]]); });
+  if(cur.length) segs.push(cur);
+  HIT = segs.flat().map(p => ({x:p[0], y:p[1], v:p[2], day:p[3]}));
+  const pal = chartPal(key), col = 'var('+pal.tok+')', rgb = pal.rgb;
+  let s = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto" preserveAspectRatio="none">';
+  if(state.grid){
+    for(let g=0; g<=state.gridN; g++){
+      const v = mn + (mx-mn)*g/state.gridN, y = Y(v);
+      s += '<line x1="'+mL+'" y1="'+y.toFixed(1)+'" x2="'+(W-mR)+'" y2="'+y.toFixed(1)+'" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+      if(state.ylabel) s += '<text x="'+(mL-6)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--mut)">'+fmtK(v)+'</text>';
+    }
+  }
+  segs.forEach(seg => {
+    const pts = seg.map(p => [p[0], p[1]]);
+    if(pts.length === 1){
+      s += '<circle cx="'+pts[0][0].toFixed(1)+'" cy="'+pts[0][1].toFixed(1)+'" r="2.5" fill="'+col+'"/>';
+      return;
+    }
+    const line = pathD(pts, +state.curve);
+    if(state.area > 0)
+      s += '<path d="'+line+' L'+pts[pts.length-1][0].toFixed(1)+' '+(H-mB)+' L'+pts[0][0].toFixed(1)+' '+(H-mB)+' Z" fill="rgba('+rgb+','+(state.area/100).toFixed(3)+')" stroke="none"/>';
+    s += '<path d="'+line+'" fill="none" stroke="'+col+'" stroke-width="'+state.lineW+'" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+    if(state.marker === 'all')
+      pts.forEach(q => { s += '<circle cx="'+q[0].toFixed(1)+'" cy="'+q[1].toFixed(1)+'" r="3" fill="'+col+'" stroke="var(--bg)" stroke-width="2"/>'; });
+  });
+  if(state.marker !== 'none' && HIT.length && state.endDot > 0){
+    const last = HIT[HIT.length-1];
+    s += '<circle cx="'+last.x.toFixed(1)+'" cy="'+last.y.toFixed(1)+'" r="'+(state.endDot/2)+'" fill="'+col+'" stroke="var(--bg)" stroke-width="2"/>';
+  }
+  if(state.xlabel){
+    s += '<text x="'+mL+'" y="'+(H-7)+'" font-size="9" fill="var(--mut)">'+dates[0].slice(2).replace(/-/g,'/')+'</text>';
+    s += '<text x="'+(W-mR)+'" y="'+(H-7)+'" text-anchor="end" font-size="9" fill="var(--mut)">'+dates[n-1].slice(2).replace(/-/g,'/')+'</text>';
+  }
+  if(state.endLabel && HIT.length){
+    const last = HIT[HIT.length-1];
+    s += '<text x="'+(last.x-5).toFixed(1)+'" y="'+(last.y-8).toFixed(1)+'" text-anchor="end" font-size="11" font-weight="800" fill="var(--fg)">'+last.v.toLocaleString()+'</text>';
+  }
+  return s + '</svg>';
+}
+
+/* ── 채널 요약 렌더 (현행 renderChan 계승 + 추이 확장) ──────────────── */
+function renderChan(){
+  const box = $('#chanBox');
+  let h = '<div class="ch-card"><div class="ch-head"><b>@no_mute</b><span class="ch-upd">07-13 16:12 수집</span></div><div class="ch-stats">';
+  TILES.forEach(t => {
+    const d = state.delta && t.key ? deltaFor(t.key) : null;
+    const dHtml = d ? '<span class="ch-delta" style="color:'+(d.up?colVar(state.deltaUpColor):colVar(state.deltaDnColor))+'">'+d.txt+'</span>' : '';
+    let inner = '';
+    if(state.tileStyle === 'inline'){
+      inner += '<div class="ch-strow"><b>'+vf(t.big)+'</b>'+dHtml+'</div><span class="lb">'+esc(t.lb)+'</span>';
+    } else {
+      inner += '<b>'+vf(t.big)+'</b><span class="lb">'+esc(t.lb)+' '+dHtml+'</span>';
+    }
+    if(state.spark && t.key){
+      const sp = nmSpark(t.key);
+      if(sp) inner += '<div class="ch-sparkwrap">'+sp+'</div>';
+    }
+    h += '<div class="ch-st">'+inner+'</div>';
+  });
+  h += '</div></div>';
+
+  if(state.chart){
+    const key = state.defMetric, m = METRICS[key];
+    h += '<div class="ch-chartsec" style="margin-top:'+state.secGap+'px">';
+    h += '<span class="ch-lbl" style="font-size:'+state.titleSize+'px">일일 추이</span>';
+    h += '<div class="ch-metricseg" id="metricSeg">';
+    MKEYS.forEach(k => {
+      const on = k === key, p = chartPal(k);
+      h += '<button class="ch-mchip'+(on?' on':'')+'" data-m="'+k+'"><span class="dotk" style="'+(on?'background:var('+p.tok+')':'')+'"></span>'+esc(METRICS[k].lb)+'</button>';
+    });
+    h += '<div class="ch-rangeseg" id="rangeSeg">'
+       + [['7','7일'],['30','30일'],['90','90일'],['all','전체']].map(r =>
+           '<button data-r="'+r[0]+'"'+(state.range===r[0]?' class="on"':'')+'>'+r[1]+'</button>').join('')
+       + '</div></div>';
+    const last = lastVal(key, 1)[0];
+    const d = deltaFor(key);
+    h += '<div class="ch-chartbox">';
+    h += '<div class="ch-charttop"><span class="ct-v">'+(last!=null?last.toLocaleString():'—')+'</span><span class="ct-u">'+esc(m.unit)+' · 최근일</span>'
+       + (d ? '<span class="ch-delta" style="margin-left:auto;font-size:var(--fs-sm);color:'+(d.up?colVar(state.deltaUpColor):colVar(state.deltaDnColor))+'">'+d.txt+'</span>' : '') + '</div>';
+    h += '<div class="ch-svgwrap" id="svgWrap">'+nmLineChart(key)+'<div class="ch-tip" id="tip"></div></div>';
+    h += '</div></div>';
+  }
+  box.innerHTML = h;
+  wireChart();
+}
+
+function preserveScroll(fn){
+  const av = $('#appview'); const y = av ? av.scrollTop : 0;
+  fn();
+  if(av) av.scrollTop = y;
+}
+
+function wireChart(){
+  const seg = $('#metricSeg');
+  if(seg) seg.querySelectorAll('.ch-mchip').forEach(b => b.addEventListener('click', () => {
+    state.defMetric = b.dataset.m; apply();
+  }));
+  const rs = $('#rangeSeg');
+  if(rs) rs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    state.range = b.dataset.r; apply();
+  }));
+  const wrap = $('#svgWrap'), tip = $('#tip');
+  if(!wrap || !tip || !state.crosshair) return;
+  const move = ev => {
+    if(!HIT.length) return;
+    const r = wrap.getBoundingClientRect();
+    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const px = (cx - r.left) / r.width * 600;
+    let best = HIT[0], bd = 1e9;
+    HIT.forEach(p => { const dd = Math.abs(p.x - px); if(dd < bd){ bd = dd; best = p; } });
+    tip.style.left = (best.x/600*r.width) + 'px';
+    tip.style.top = (best.y/state.chartH*r.height) + 'px';
+    tip.innerHTML = '<span class="tv">'+best.v.toLocaleString()+' '+esc(METRICS[state.defMetric].unit)+'</span><br><span class="tl">'+esc(best.day)+'</span>';
+    tip.style.opacity = '1';
+  };
+  wrap.addEventListener('pointermove', move);
+  wrap.addEventListener('pointerleave', () => tip.style.opacity = '0');
+  wrap.addEventListener('touchmove', move, {passive:true});
+}
+
+/* ── apply: state → 재렌더(스크롤 보존) + 컨트롤 동기 + 출력 ───────── */
+function apply(){
+  preserveScroll(renderChan);
+  syncControls();
+  buildOut();
+}
+
+/* ── 컨트롤 UI ─────────────────────────────────────────────────────── */
+function buildControls(){
+  const box = $('#sliders'); let h = '';
+  CONTROLS.forEach(c => {
+    if(c.grp){ h += '<div class="cgrp"><div class="cgrp-h">'+esc(c.grp)+'</div></div>'; return; }
+    if(c.t === 'toggle'){
+      h += '<div class="sl togrow"><label>'+esc(c.nm)+'</label><div class="toggle" data-k="'+c.k+'"></div></div>';
+    } else if(c.t === 'seg'){
+      h += '<div class="sl selrow"><label>'+esc(c.nm)+(c.note?'<span class="tok">'+esc(c.note)+'</span>':'')+'</label><div class="seg" data-k="'+c.k+'">'
+        + c.opts.map(o => '<button data-v="'+o[0]+'">'+esc(o[1])+'</button>').join('') + '</div></div>';
+    } else if(c.t === 'color'){
+      h += '<div class="sl selrow"><label>'+esc(c.nm)+(c.note?'<span class="tok">'+esc(c.note)+'</span>':'')+'</label><div class="swatchrow" data-k="'+c.k+'">'
+        + PAL.map(p => '<div class="swatch" data-v="'+p.id+'" title="'+esc(p.nm)+' '+p.hex+'" style="background:'+p.hex+'"></div>').join('')
+        + (c.k !== 'lineColor' ? '<div class="swatch" data-v="mut" title="중간회색 --mut" style="background:#8fa697"></div>' : '')
+        + '</div></div>';
+    } else {
+      const lad = c.ladder ? '<span class="tok" data-tok="'+c.k+'"></span>' : (c.note?'<span class="tok">'+esc(c.note)+'</span>':'');
+      h += '<div class="sl"><label>'+esc(c.nm)+lad+'</label><input type="range" data-k="'+c.k+'" min="'+c.min+'" max="'+c.max+'" step="'+c.step+'"><span class="val" data-vk="'+c.k+'"></span></div>';
+    }
+  });
+  box.innerHTML = h;
+  box.querySelectorAll('input[type=range]').forEach(inp => inp.addEventListener('input', () => {
+    state[inp.dataset.k] = parseFloat(inp.value); apply();
+  }));
+  box.querySelectorAll('.toggle').forEach(tg => tg.addEventListener('click', () => {
+    state[tg.dataset.k] = state[tg.dataset.k] ? 0 : 1; apply();
+  }));
+  box.querySelectorAll('.seg').forEach(sg => sg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    state[sg.dataset.k] = b.dataset.v; apply();
+  })));
+  box.querySelectorAll('.swatchrow').forEach(sw => sw.querySelectorAll('.swatch').forEach(s => s.addEventListener('click', () => {
+    state[sw.dataset.k] = s.dataset.v; apply();
+  })));
+}
+
+function syncControls(){
+  CONTROLS.forEach(c => {
+    if(!c.k) return;
+    if(c.t === 'toggle'){ const el = document.querySelector('.toggle[data-k="'+c.k+'"]'); if(el) el.classList.toggle('on', !!state[c.k]); }
+    else if(c.t === 'seg'){ const sg = document.querySelector('.seg[data-k="'+c.k+'"]'); if(sg) sg.querySelectorAll('button').forEach(b => b.classList.toggle('on', String(state[c.k]) === b.dataset.v)); }
+    else if(c.t === 'color'){ const sw = document.querySelector('.swatchrow[data-k="'+c.k+'"]'); if(sw) sw.querySelectorAll('.swatch').forEach(s => s.classList.toggle('on', state[c.k] === s.dataset.v)); }
+    else {
+      const inp = document.querySelector('input[data-k="'+c.k+'"]');
+      if(inp){ inp.value = state[c.k]; const p = (state[c.k]-c.min)/(c.max-c.min)*100; inp.style.setProperty('--p', p+'%'); }
+      const vk = document.querySelector('.val[data-vk="'+c.k+'"]');
+      if(vk){ vk.textContent = state[c.k] + (c.unit || ''); vk.classList.toggle('warn', c.ladder ? isWarn(c.k) : false); }
+      const tk = document.querySelector('.tok[data-tok="'+c.k+'"]');
+      if(tk && c.ladder) tk.innerHTML = ladderNote(c.k);
+    }
+  });
+  updateWarnCount();
+}
+
+function isWarn(k){
+  const L = LADDER[k]; if(!L) return false;
+  if(L.floor && state[k] < L.floor) return true;
+  return !Object.values(L.toks).some(v => Math.abs(v - state[k]) < 0.05);
+}
+function ladderNote(k){
+  const L = LADDER[k];
+  const hit = Object.entries(L.toks).find(([n,v]) => Math.abs(v - state[k]) < 0.05);
+  if(hit) return '<span style="color:var(--accent)">계승 '+esc(hit[0])+'</span>';
+  if(L.floor && state[k] < L.floor) return '<span class="wf">⚠ 최소 '+L.floor+' 미만</span>';
+  return '<span class="wf">⚠ 사다리 밖(갱신 후보)</span>';
+}
+function warnAxes(){
+  return CONTROLS.filter(c => c.ladder && isWarn(c.k));
+}
+function updateWarnCount(){
+  const w = warnAxes(), el = $('#warnCount');
+  if(w.length){ el.textContent = '⚠ 기틀 이탈 '+w.length+'축'; el.classList.remove('hide'); }
+  else el.classList.add('hide');
+}
+
+/* ── 프리셋 (양방향 동기 · 포터블 §7-1-2) ─────────────────────────── */
+function buildPresets(){
+  const box = $('#presets');
+  PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'preset'; b.dataset.id = p.id;
+    b.innerHTML = (p.star ? '<span class="star">★</span> ' : '') + esc(p.nm);
+    b.addEventListener('click', () => { state = {...DEFAULTS, ...p.st}; apply(); });
+    box.appendChild(b);
+  });
+}
+function matchPreset(){
+  let hit = null;
+  PRESETS.forEach(p => {
+    const merged = {...DEFAULTS, ...p.st};
+    if(Object.keys(DEFAULTS).every(k => String(merged[k]) === String(state[k]))) hit = p.id;
+  });
+  document.querySelectorAll('.preset').forEach(b => b.classList.toggle('on', b.dataset.id === hit));
+}
+
+/* ── 선택값 출력 (현행 병기 + 계승/갱신 자동 표기) ──────────────────── */
+function tag(k){
+  const L = LADDER[k]; if(!L) return '';
+  const hit = Object.entries(L.toks).find(([n,v]) => Math.abs(v - state[k]) < 0.05);
+  return hit ? ' 계승('+hit[0]+')' : ' ⚠갱신 후보';
+}
+function colName(id){
+  if(id === 'mut') return '중간회색(--mut)';
+  if(id === 'fg') return '흰색(--fg)';
+  const p = PAL.find(x => x.id === id);
+  return p ? p.nm+'('+p.tok+')' : id;
+}
+function buildOut(){
+  const on = v => v ? 'ON' : 'OFF';
+  const L = [];
+  L.push('[인스타 일일 추이 — 채널 요약 차트 선택값]');
+  L.push('');
+  L.push('■ 구성');
+  L.push('  타일 스파크    : '+on(state.spark)+'  (기간 '+state.sparkDays+'일'+tag('sparkDays')+')');
+  L.push('  타일 델타      : '+on(state.delta)+'  (기준 '+(state.deltaBase==='avg'?'최근 7일 평균':'전일')+')');
+  L.push('  큰 라인차트    : '+on(state.chart)+'  (기본 '+METRICS[state.defMetric].lb+' · 기간 '+(state.range==='all'?'전체':state.range+'일')+')');
+  L.push('  델타 위치      : '+(state.tileStyle==='inline'?'값 옆':'라벨 옆'));
+  L.push('');
+  L.push('■ 스파크라인');
+  L.push('  높이           : '+state.sparkH+'px'+tag('sparkH'));
+  L.push('  선두께         : '+state.sparkW+'px'+tag('sparkW')+'   끝점 '+state.sparkDot+'px');
+  L.push('  면채움         : '+state.sparkArea+'% (알파변주=계승)   곡선 '+(+state.sparkCurve?'부드럽게':'직선'));
+  L.push('  색             : '+(state.sparkColorMode==='metric'?'지표색':state.sparkColorMode==='accent'?'코어 통일':'상승·하락'));
+  L.push('');
+  L.push('■ 큰 라인차트');
+  L.push('  높이           : '+state.chartH+'px'+tag('chartH')+'   선두께 '+state.lineW+'px'+tag('lineW'));
+  L.push('  곡선           : '+(+state.curve?'부드럽게':'직선')+'   면채움 '+state.area+'% (알파변주=계승)');
+  L.push('  마커           : '+(state.marker==='end'?'끝점만':state.marker==='all'?'전체':'없음')+'   끝점 '+state.endDot+'px'+tag('endDot'));
+  L.push('  Y축            : '+(state.yZero==='0'?'0 기준':'데이터 밀착')+'   격자 '+on(state.grid)+'('+state.gridN+'개)');
+  L.push('  라벨           : Y '+on(state.ylabel)+' · X '+on(state.xlabel)+' · 끝값 '+on(state.endLabel)+' · 툴팁 '+on(state.crosshair));
+  L.push('  섹션제목       : '+state.titleSize+'px'+tag('titleSize')+'   섹션간격 '+state.secGap+'px'+tag('secGap'));
+  L.push('');
+  L.push('■ 색 (팔레트 폐쇄)');
+  L.push('  차트 선 색     : '+(state.chartColorMode==='metric'
+    ? '지표별 고정색(조회 스카이시안 · 도달 라임옐로 · 방문 네온핑크 · 상호 형광그린 · 팔로우 코어)'
+    : '단일 '+colName(state.lineColor)));
+  L.push('  델타 상승/하락 : '+colName(state.deltaUpColor)+' / '+colName(state.deltaDnColor));
+  const w = warnAxes();
+  if(w.length){ L.push(''); L.push('⚠ 기틀 이탈 '+w.length+'축 = '+w.map(c=>c.nm).join(' · ')+' → 복사 시 역제안'); }
+  $('#out').textContent = L.join('\n');
+  matchPreset();
+}
+
+/* ── 복사 (⚠ 있으면 역제안 모달 · 포터블 §3-2′-③) ─────────────────── */
+function doCopy(withRep){
+  let txt = $('#out').textContent;
+  if(withRep){
+    txt += '\n\n🔁 기틀 갱신 역제안 (회신 = 전 앱 동일 축 일괄 변경 승인)\n';
+    warnAxes().forEach(c => {
+      const first = Object.entries(LADDER[c.k].toks)[0];
+      txt += '  · '+c.nm+' : 사다리 '+first[0]+' → 제안 '+state[c.k]+(c.unit||'')+' · 적용범위 = 채널요약 차트 전역\n';
+    });
+  }
+  const fb = () => {
+    const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand('copy'); }catch(e){} ta.remove();
+  };
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(fb); else fb();
+  const b = $('#copyBtn'), o = b.textContent;
+  b.textContent = '복사됨 ✓'; setTimeout(() => b.textContent = o, 1400);
+}
+$('#copyBtn').addEventListener('click', () => {
+  const w = warnAxes();
+  if(w.length){
+    $('#repBlock').textContent = w.map(c => c.nm+' : '+state[c.k]+(c.unit||'')+' (사다리 밖)').join('\n');
+    $('#scrim').classList.add('on');
+  } else doCopy(false);
+});
+$('#copyRep').addEventListener('click', () => { doCopy(true); $('#scrim').classList.remove('on'); });
+$('#copyInh').addEventListener('click', () => { doCopy(false); $('#scrim').classList.remove('on'); });
+$('#copyCancel').addEventListener('click', () => $('#scrim').classList.remove('on'));
+$('#resetBtn').addEventListener('click', () => { state = {...DEFAULTS, ...PRESETS[0].st}; apply(); });
+
+/* ── 부트 = 논점 상태(★추천 프리셋)로 오픈 (포터블 §7-1-3) ─────────── */
+buildPresets();
+buildControls();
+state = {...DEFAULTS, ...PRESETS[2].st};
+apply();
+</script>
+</body>
+</html>

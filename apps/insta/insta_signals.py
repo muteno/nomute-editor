@@ -218,32 +218,56 @@ def fmt_lift(b):
 
 
 def _daily_timeseries(daily):
-    """insights_daily.jsonl(append 로그) → 일일 추이 배선용 시계열 2종.
-    - series: 하루 1점(같은 KST 날짜는 마지막 스냅샷 = 그날 최종 누적) · 누적 지표 원형 보존
-      → 뷰어(추이 차트)가 media_count·profile_views·reach·views를 인접 차분해 일일값 도출(차분은 뷰어 몫).
-    - follower_daily: API가 준 follower_count 일별 순증(end_time 날짜 dedup · 최신 스냅샷 우선).
-    누적 원천을 뷰어까지 손실 없이 전달만 한다(운영자 260713 · 이력은 연결 시점부터 누적)."""
-    keep = ('views', 'reach', 'profile_views', 'accounts_engaged')
-    by_date = {}
+    """일일값 시계열 병합 → (daily_series, meta). 운영자 260713 일일 추이 배선.
+    합성 = 과거 시드(insta_history.json — 대시보드 CSV 8개월 · insta_history_import.py 산출)
+         ∪ 봇 수집(insights_daily.jsonl): follower_count_series → follows(일별 신규 팔로우) ·
+           account_daily(time_series·있으면) → views/reach/profile_views/interactions ·
+           media_count 인접일 차분 → posts(일일 게시수 · 연속한 날만 = gap 과대귀속 방지).
+    규칙: 과거 시드 우선 · 봇은 빈 날짜만 채움(결정적) · 봇 time_series는 수집일 이전 날짜만(부분일 제외) ·
+          결측 = 키 없음(gap 유지 = 차트가 선 끊어 정직 표시). 출력 = 날짜 오름차순 [{date, ...지표}]."""
+    hist = jload('insta_history.json')
+    merged = {}
+    def put(d, k, v):
+        if v is None or len(d) != 10:
+            return
+        merged.setdefault(d, {}).setdefault(k, v)   # 선점자 우선(과거 시드 → 봇 순서로 호출)
+    for r in (hist.get('daily') or []):
+        d = r.get('date') or ''
+        for k in ('views', 'reach', 'profile_views', 'interactions', 'follows'):
+            put(d, k, r.get(k))
+    for row in daily:
+        fd = (row.get('fetched_kst') or '')[:10]
+        for p in (row.get('follower_count_series') or []):
+            put((p.get('end_time') or '')[:10], 'follows', p.get('value'))
+        ts = row.get('account_daily') or {}
+        for k_api, k_out in (('views', 'views'), ('reach', 'reach'), ('profile_views', 'profile_views'),
+                             ('total_interactions', 'interactions'), ('accounts_engaged', 'engaged')):
+            arr = ts.get(k_api)
+            if isinstance(arr, list):
+                for p in arr:
+                    et = (p.get('end_time') or '')[:10]
+                    if et and et < fd:   # 수집일 당일 = 진행 중 부분값 → 제외
+                        put(et, k_out, p.get('value'))
+    # 일일 게시수 = media_count 인접일 차분(하루 마지막 스냅샷 기준 · 연속한 날만)
+    mc = {}
     for row in daily:
         d = (row.get('fetched_kst') or '')[:10]
-        if len(d) != 10:
+        v = (row.get('profile') or {}).get('media_count')
+        if len(d) == 10 and v is not None:
+            mc[d] = v   # 나중 스냅샷이 덮음 = 그날 마지막
+    md = sorted(mc)
+    for i in range(1, len(md)):
+        a, b = md[i - 1], md[i]
+        try:
+            gap = (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days
+        except ValueError:
             continue
-        prof = row.get('profile') or {}
-        acc = row.get('account_day') or {}
-        pt = {'date': d, 'followers': prof.get('followers_count'), 'media_count': prof.get('media_count')}
-        for k in keep:
-            pt[k] = acc.get(k)
-        by_date[d] = pt   # 나중 스냅샷이 앞 것 덮음 = 그날 최종 누적
-    series = [by_date[d] for d in sorted(by_date)]
-    fol = {}
-    for row in daily:
-        for p in (row.get('follower_count_series') or []):
-            et = (p.get('end_time') or '')[:10]
-            if len(et) == 10:
-                fol[et] = p.get('value')
-    follower_daily = [{'date': d, 'value': fol[d]} for d in sorted(fol)]
-    return series, follower_daily
+        if gap == 1:
+            put(b, 'posts', max(mc[b] - mc[a], 0))
+    series = [dict({'date': d}, **merged[d]) for d in sorted(merged)]
+    meta = {'history': hist.get('metrics') or {}, 'history_cut': hist.get('cut_partial_day'),
+            'note': '일별값 · 과거 = 대시보드 CSV 시드 · 이후 = 봇 수집 · 결측 = gap 유지'}
+    return series, meta
 
 
 def main():
@@ -268,10 +292,10 @@ def main():
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
                 'online_peak_kst': sig['audience_overlay']['online_peak_kst']}
-        # 일일 추이 배선(운영자 260713) — append 로그 시계열을 뷰어까지 전달(차트는 후속·플레이그라운드)
-        series_daily, follower_daily = _daily_timeseries(daily)
+        # 일일 추이 배선(운영자 260713) — 과거 CSV 시드 ∪ 봇 수집 일별값을 뷰어까지 전달(차트는 후속·플레이그라운드)
+        series_daily, daily_meta = _daily_timeseries(daily)
         vdoc['daily_series'] = series_daily
-        vdoc['follower_daily'] = follower_daily
+        vdoc['daily_meta'] = daily_meta
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
             json.dump(vdoc, f, ensure_ascii=False, indent=1)
