@@ -10,7 +10,6 @@ Usage:
 - 폰트: NotoSansCJK-Regular 29px, 흰색 (#FFFFFF)
 - 위치: Y=100, 수평 중앙 정렬
 - 템플릿: ⓒ {년도}. {이름}({플랫폼}). all rights reserved.
-          이름 미입력 = 이름·괄호 생략 → ⓒ {년도}. {플랫폼}. all rights reserved. (운영자 260713)
 """
 
 import sys
@@ -56,16 +55,9 @@ def main():
             print("ERROR: <년도> <이름> <플랫폼> 3개 인수 필요")
             sys.exit(1)
         year = rest[0]
-        name = rest[1].strip()
-        platform = rest[2].strip()
-        # 이름 미입력 = 이름·괄호 생략(운영자 260713 "입력 안 하면 내용 없게") · 뷰어 renderCpPrev와 동일 로직
-        if name and platform:
-            attr = f"{name}({platform})"
-        elif name:
-            attr = name
-        else:
-            attr = platform   # 이름 없음 = 플랫폼만(둘 다 없으면 귀속 통째 생략)
-        text = f"ⓒ {year}. {attr}. all rights reserved." if attr else f"ⓒ {year}. all rights reserved."
+        name = rest[1]
+        platform = rest[2]
+        text = f"ⓒ {year}. {name}({platform}). all rights reserved."
 
     spec = SPECS[fmt]
     canvas_w = spec["w"] * SCALE
