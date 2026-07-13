@@ -112,7 +112,7 @@ function originOk(request) {
   if (!origin) return true;
   try {
     const h = new URL(origin).host, self = new URL(request.url).host;
-    return h === self || h.endsWith('.pages.dev') || h === 'nomute.kr' || h.endsWith('.nomute.kr')
+    return h === self || h === 'nomute-editor.pages.dev' || h.endsWith('.nomute-editor.pages.dev') || h === 'nomute.kr' || h.endsWith('.nomute.kr')
       || h === 'localhost' || h.startsWith('localhost:') || h.startsWith('127.0.0.1');
   } catch { return false; }
 }

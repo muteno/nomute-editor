@@ -38,7 +38,7 @@ function parseFrontmatter(raw) {
   if (!m && /^---\s*\n/.test(raw)) {
     const lines = raw.replace(/^---\s*\n/, '').split('\n');
     let i = 0;
-    while (i < lines.length && /^[A-Za-z_][A-Za-z0-9_]*:\s/.test(lines[i])) i++;
+    while (i < lines.length && /^[A-Za-z_][A-Za-z0-9_]*:/.test(lines[i])) i++;   // 콜론 뒤 공백 요구 제거 = 아래 필드파서(:\s* 관용)와 경계 일치 — 빈 값 필드(`reporter:`)에서 스캔이 멈춰 후속 url까지 body로 새던 것 봉합(평의회 260713 ⑧)
     if (i > 0) m = [null, lines.slice(0, i).join('\n'), lines.slice(i).join('\n')];   // 필드가 하나라도 있을 때만(진짜 본문만 있는 파일은 raw 그대로)
   }
   if (!m) return { meta: {}, body: raw };
@@ -259,7 +259,7 @@ for (const a of articles) {
     // ?v=mtime = 캐시버스트: 재발사로 같은 파일명·새 내용일 때 브라우저가 새 이미지를 받게.
     // R2(gen_cards) = status.images의 공개 URL 직접(고정키 덮어쓰기라 ?v=updated로 재슛 캐시 버스트) / 로컬 = 복사본+mtime.
     images: r2Imgs.length
-      ? r2Imgs.map(u => u + (status.updated ? `?v=${Date.parse(status.updated) || 0}` : ''))
+      ? r2Imgs.map(u => u + (status.updated ? `${u.includes('?') ? '&' : '?'}v=${Date.parse(status.updated) || 0}` : ''))
       : images.map(n => `cards/${stem}/${n}${bust(join(dir, n))}`),
     versions,   // 버전 히스토리(앞뒤축) — 비어있으면 {}
   };
