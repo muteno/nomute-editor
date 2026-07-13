@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
 function originOk(request) {   // spellcheck.js originOk 계승 — 상태변경 POST는 동일출처(apps.nomute.kr·*.nomute.kr·*.pages.dev)만 허용(CSRF·폼 POST 차단)
   const o = request.headers.get('origin');
   if (!o) return false;
-  try { const h = new URL(o).hostname; return h === 'apps.nomute.kr' || h.endsWith('.nomute.kr') || h.endsWith('.pages.dev'); } catch { return false; }
+  try { const h = new URL(o).hostname; return h === 'apps.nomute.kr' || h.endsWith('.nomute.kr') || h === 'nomute-editor.pages.dev' || h.endsWith('.nomute-editor.pages.dev'); } catch { return false; }
 }
 async function sha256hex(s) {
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));

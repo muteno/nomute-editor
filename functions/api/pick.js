@@ -2,6 +2,11 @@
 // env: GH_TOKEN = GitHub fine-grained PAT(이 레포, Actions: Read and write) — make-cards/feedback/rate와 동일 토큰.
 // ⚠️ 발동 비용 = Opus(구독 토큰) 분석 1건. make-cards(유료 '슛')가 암호게이트 제거된 것과 동일 정책
 //    (운영자가 지출을 직접 모니터링 — 260614 결정). 공개 엔드포인트라 스팸 시 구독 한도 소모 주의.
+import { rateGate } from './_rate.js';   // 발사 레이트리밋 소급(평의회 260713 ⑦) — ⚠️ 캡 8 = 운영자 정상 연속 픽(아침 4~5건 큐잉)은 절대 안 걸리는 여유폭·연타 폭주만 차단(fail-open · 캡 낮추면 정상 픽 429 = 품질 저하)
+const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/muteno/nomute-editor/${path}`, {
+  method, headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28' },
+  ...(body ? { body: JSON.stringify(body) } : {}),
+});
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
     new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
@@ -56,6 +61,9 @@ export async function onRequestPost({ request, env }) {
     if (put.status === 201 || put.status === 200) return json({ ok: true, body: true });
     return json({ error: `GitHub ${put.status}: ${(await put.text().catch(() => '')).slice(0, 300)}` }, 502);
   }
+
+  const rl = await rateGate(GH, env.GH_TOKEN, 'pick.yml', 8);   // 뷰어 = pickCard·트리아지·failRetry 전부 !r.ok 롤백+표면화 처리(260713) = 429 정직 노출
+  if (rl) return json({ error: rl.error }, 429);
 
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/pick.yml/dispatches',

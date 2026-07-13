@@ -52,7 +52,7 @@ export async function onRequestPost({ request, env }) {
 function originOk(request) {   // spellcheck.js originOk 계승 — 상태변경 POST는 동일출처만(CSRF·폼 POST 차단)
   const o = request.headers.get('origin');
   if (!o) return false;
-  try { const h = new URL(o).hostname; return h === 'apps.nomute.kr' || h.endsWith('.nomute.kr') || h.endsWith('.pages.dev'); } catch { return false; }
+  try { const h = new URL(o).hostname; return h === 'apps.nomute.kr' || h.endsWith('.nomute.kr') || h === 'nomute-editor.pages.dev' || h.endsWith('.nomute-editor.pages.dev'); } catch { return false; }
 }
 async function sha256hex(s) {   // relock.js·publish.js 동일 해시식(pin+':'+slug) — 잠긴 발행본 삭제 PIN 검증용
   const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
