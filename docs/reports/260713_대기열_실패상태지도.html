@@ -1,0 +1,361 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>대기열 상태·버튼 지도</title>
+<style>
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --danger:#e23b2a; --danger-rgb:226,59,42;
+  --amber:#FFE13D; --amber-rgb:255,225,61;   /* amber=warn=arm=accent-4 (재시도·원문 동색, 아이콘으로 구분) */
+  --arm:#FFE13D; --arm-rgb:255,225,61;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --btn-sm:30px; --press-m:.9;
+  --r-s:9px; --r-m:11px; --r-modal:22px;
+  --fs-h2:15px; --fw-x:800; --fw-b:700;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s;
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; }
+body{
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(0,238,210,.05), transparent 60%),
+    var(--bg);
+  color:var(--fg);
+  font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  line-height:1.5; padding:26px 16px 60px; -webkit-font-smoothing:antialiased;
+}
+.wrap{ max-width:760px; margin:0 auto; }
+h1{ font-size:24px; font-weight:800; letter-spacing:-.4px; margin:0 0 6px; }
+.sub{ color:var(--mut); font-size:13.5px; margin:0 0 22px; }
+h2{ font-size:16px; font-weight:800; margin:34px 0 12px; letter-spacing:-.2px;
+    display:flex; align-items:center; gap:8px; }
+h2 .n{ width:22px; height:22px; border-radius:7px; display:grid; place-items:center;
+    background:rgba(0,238,210,.14); color:var(--accent); font-size:12px; font-weight:800; }
+.note{ font-size:12.5px; color:var(--mut); margin:6px 2px 0; }
+.hl{ color:var(--accent); font-weight:700; }
+.hl-a{ color:var(--amber); font-weight:700; }
+.hl-r{ color:var(--danger); font-weight:700; }
+
+/* ── 실물 재현 대기열 팝업(.qpop 계승) ── */
+.stage{ display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; }
+.qpop{
+  width:min(100%,440px); flex:1 1 380px; min-width:300px;
+  border-radius:var(--r-modal); padding:11px 11px 11px 16px; overflow:hidden;
+  background:linear-gradient(165deg, rgba(26,27,31,.9), rgba(17,18,21,.94));
+  backdrop-filter:blur(24px) saturate(1.05); -webkit-backdrop-filter:blur(24px) saturate(1.05);
+  border:1px solid var(--line); box-shadow:0 18px 50px rgba(0,0,0,.5);
+}
+.qh{ display:flex; align-items:center; gap:8px; padding:2px 2px 6px; }
+.qh b{ font-size:var(--fs-h2); font-weight:var(--fw-x); }
+.qh svg{ width:17px; height:17px; stroke:var(--fg); fill:none; }
+.qh .xcell{ margin-left:auto; width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center;
+    border-radius:var(--r-s); }
+.qh .xcell svg{ width:16px; height:16px; stroke:var(--mut); stroke-width:1.8; }
+.qlist{ margin-top:4px; }
+.qrow{ display:flex; align-items:center; gap:10px; padding:9px 0 9px 3px; border-top:1px solid var(--line2);
+    animation:cardIn .34s var(--ease) both; }
+.qrow:first-child{ border-top:none; }
+.qrow.dim{ opacity:.5; }
+.qt{ flex:none; width:60px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap; }
+.qt.qt-new{ color:var(--accent); }
+.qmain{ flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.qst{ flex:none; width:56px; display:flex; align-items:center; justify-content:flex-start; }
+.qact{ flex:none; width:var(--btn-sm); display:flex; align-items:center; justify-content:center; }
+.qb-done{ color:var(--accent); font-size:12.5px; font-weight:800; }
+.qb-failt{ color:var(--danger); font-size:12.5px; font-weight:800; }
+.qico{ display:grid; place-items:center; color:var(--amber); }
+.qico svg{ width:16px; height:16px; }
+.qico.spin svg{ animation:qspin 1.05s linear infinite; transform-origin:50% 50%; }
+.qcnt{ font-size:12px; font-weight:900; color:var(--amber); margin-left:3px; }
+
+/* ── 액션 버튼(.qgo 계승) ── */
+.qgo{ width:30px; height:30px; display:grid; place-items:center; border-radius:8px;
+    border:1px solid var(--line); background:transparent; cursor:pointer; color:var(--fg);
+    transition:transform var(--dur) var(--ease), background var(--dur), border-color var(--dur); }
+.qgo svg{ width:17px; height:17px; fill:none; stroke:currentColor; }
+.qgo.go-green{ color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
+.qgo.go-amber{ color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
+.qgo.go-arm{ color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }
+.qgo.go-gray{ color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:not-allowed; }
+.qgo:not(.go-gray):active{ transform:scale(var(--press-m)); }
+.qgo.go-arm.press{ animation:tap .26s var(--ease); }
+.qgo.go-green.press,.qgo.go-amber.press{ animation:tap .26s var(--ease); }
+
+/* 아이콘 누름 모션 = 실제 위임 핸들러 계승(↻=ic-spin 회전 / ↗=ic-arrow) */
+.ic-spin{ animation:icspin .5s var(--ease); }
+.ic-arrow .qsrc-shaft{ stroke-dasharray:1; animation:arrShaft .34s var(--ease); }
+.ic-arrow .qsrc-tip{ animation:arrTip .44s var(--ease) .07s both; }
+@keyframes qspin{ to{ transform:rotate(360deg); } }
+@keyframes icspin{ from{ transform:rotate(0); } to{ transform:rotate(360deg); } }
+@keyframes arrShaft{ from{ stroke-dashoffset:1; } to{ stroke-dashoffset:0; } }
+@keyframes arrTip{ 0%{ opacity:.2; transform:translate(-2px,2px); } 60%{ opacity:1; transform:translate(1px,-1px); } 100%{ transform:none; } }
+@keyframes cardIn{ from{ opacity:0; transform:translateY(12px) scale(.985); } to{ opacity:1; transform:none; } }
+@keyframes tap{ 0%{ transform:scale(1); } 40%{ transform:scale(.86); } 100%{ transform:scale(1); } }
+
+.hint{ font-size:12.5px; color:var(--mut); margin:12px 2px 0; padding:9px 12px;
+  border:1px dashed var(--line); border-radius:var(--r-m); background:rgba(255,255,255,.02); }
+.hint b{ color:var(--fg); }
+
+/* ── 이동처 패널 ── */
+.dest{ flex:1 1 300px; min-width:280px; border-radius:var(--r-modal); padding:16px 18px;
+  border:1px solid var(--line); background:rgba(255,255,255,.025); min-height:220px; }
+.dest .ph{ color:var(--mut); font-size:13px; display:flex; align-items:center; gap:8px; height:100%;
+  min-height:186px; justify-content:center; text-align:center; }
+.dest-card{ animation:destIn .3s var(--ease) both; }
+@keyframes destIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+.dc-h{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:800; margin-bottom:4px; }
+.dc-badge{ font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; }
+.dc-arrow{ font-size:13px; color:var(--mut); margin:10px 0 4px; }
+.dc-arrow b{ color:var(--fg); }
+.dc-to{ margin-top:10px; padding:12px 14px; border-radius:var(--r-m); border:1px solid var(--line);
+  background:rgba(0,0,0,.25); font-size:13px; }
+.dc-to .t1{ font-weight:800; margin-bottom:3px; display:flex; align-items:center; gap:7px; }
+.dc-to .t2{ color:var(--mut); font-size:12px; }
+.dc-code{ font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:11.5px;
+  color:var(--accent); background:rgba(0,238,210,.08); padding:1px 6px; border-radius:5px; }
+.miniwin{ margin-top:12px; border-radius:12px; overflow:hidden; border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(30,32,36,.9),rgba(18,19,22,.95)); }
+.miniwin .mw-h{ padding:8px 12px; font-size:11.5px; font-weight:700; border-bottom:1px solid var(--line2);
+  display:flex; align-items:center; gap:6px; }
+.miniwin .mw-b{ padding:11px 12px; font-size:11.5px; color:var(--mut); }
+.miniwin .mw-b .ln{ height:7px; border-radius:4px; background:rgba(255,255,255,.08); margin:5px 0; }
+.miniwin .mw-b .ln.s{ width:60%; } .miniwin .mw-b .ln.m{ width:85%; }
+
+/* ── 범례 ── */
+.legend{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+.lg{ display:flex; align-items:flex-start; gap:11px; padding:12px 14px; border-radius:var(--r-m);
+  border:1px solid var(--line); background:rgba(255,255,255,.02); }
+.lg .b{ flex:none; width:30px; height:30px; border-radius:8px; display:grid; place-items:center; border:1px solid var(--line); }
+.lg .b svg{ width:17px; height:17px; fill:none; stroke:currentColor; }
+.lg .tx b{ font-size:13px; } .lg .tx .d{ font-size:12px; color:var(--mut); margin-top:2px; }
+
+/* ── 상태 지도 표 ── */
+.tbl{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:4px; }
+.tbl th,.tbl td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--line2); vertical-align:top; }
+.tbl th{ color:var(--mut); font-weight:700; font-size:11.5px; }
+.tbl td .st{ font-weight:800; white-space:nowrap; }
+.tbl .go{ white-space:nowrap; font-weight:700; }
+.tbl-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--r-m); }
+.tag{ display:inline-block; font-size:10.5px; font-weight:800; padding:1px 7px; border-radius:999px;
+  background:rgba(0,238,210,.14); color:var(--accent); margin-left:6px; vertical-align:middle; }
+
+/* ── 하이라이트(이번 수정) ── */
+.split{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media(max-width:560px){ .split{ grid-template-columns:1fr; } }
+.ba{ border-radius:var(--r-m); border:1px solid var(--line); padding:14px 15px; }
+.ba.before{ border-color:rgba(var(--danger-rgb),.3); background:rgba(var(--danger-rgb),.05); }
+.ba.after{ border-color:rgba(var(--accent-rgb),.3); background:rgba(var(--accent-rgb),.05); }
+.ba h4{ margin:0 0 8px; font-size:12.5px; font-weight:800; letter-spacing:.3px; }
+.ba.before h4{ color:var(--danger); } .ba.after h4{ color:var(--accent); }
+.ba .mini{ display:flex; align-items:center; gap:9px; padding:8px 0; border-top:1px solid var(--line2); font-size:12px; }
+.ba .mini:first-of-type{ border-top:none; }
+.ba .mini .g{ flex:none; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; border:1px solid var(--line); }
+.ba .mini .g svg{ width:15px; height:15px; fill:none; stroke:currentColor; }
+
+/* 토스트 재현 */
+.qflash{ position:fixed; left:50%; bottom:32px; transform:translateX(-50%) translateY(20px);
+  background:linear-gradient(165deg,rgba(26,27,31,.95),rgba(17,18,21,.97)); backdrop-filter:blur(20px);
+  border:1px solid var(--line); border-radius:999px; padding:11px 20px; font-size:13px; font-weight:600;
+  box-shadow:0 12px 40px rgba(0,0,0,.5); opacity:0; pointer-events:none; z-index:50;
+  transition:opacity .28s, transform .28s var(--ease); max-width:90vw; }
+.qflash.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.foot{ margin-top:40px; padding-top:16px; border-top:1px solid var(--line2); font-size:11.5px; color:var(--mut); }
+</style>
+
+<div class="wrap">
+  <h1>대기열 상태·버튼 지도</h1>
+  <p class="sub">폰 공유·요약요청이 <b style="color:var(--fg)">대기열(＋ &gt; 대기열)</b>에서 어떤 상태로 뜨고, 각 버튼을 누르면 어디로 가는지 — 실패 케이스와 이번에 추가한 <span class="hl-a">재시도</span> 포함. 실제 뷰어 토큰·CSS·아이콘 그대로 재현.</p>
+
+  <h2><span class="n">1</span>눌러보는 대기열</h2>
+  <div class="stage">
+    <div class="qpop">
+      <div class="qh">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <b>대기열</b>
+        <span class="xcell"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6 18 18M18 6 6 18" stroke="currentColor" stroke-linecap="round"/></svg></span>
+      </div>
+      <div class="qlist" id="qlist">
+        <!-- 행은 JS로 생성 -->
+      </div>
+    </div>
+
+    <div class="dest" id="dest">
+      <div class="ph" id="destPh">← 왼쪽 대기열의 <b style="color:var(--fg);margin:0 4px">↻ / ↗</b> 버튼을 눌러봐<br>액티브 모션과 “어디로 가는지”가 여기 떠</div>
+    </div>
+  </div>
+  <div class="hint">💡 <b>재시도 ↻</b>와 <b>원문 ↗</b>는 <b>같은 레몬색(#FFE13D)</b> — 색이 아니라 <b>아이콘(회전/화살표)</b>으로 구분해. 완료·뉴스요약은 <b class="hl">터쿼이즈</b>, 실패 글자는 <b class="hl-r">빨강</b>.</div>
+
+  <h2><span class="n">2</span>버튼 범례</h2>
+  <div class="legend">
+    <div class="lg"><span class="b go-green" style="color:var(--accent);border-color:rgba(0,238,210,.5);background:rgba(0,238,210,.1)"><svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g><path pathLength="1" d="M7 17 17 7"/><path d="M8.5 7H17v8.5"/></g></svg></span><div class="tx"><b>초록 ↗ — 뉴스요약 열기</b><div class="d">분석 완료돼 피드에 뜬 기사. 누르면 뉴스요약 모달.</div></div></div>
+    <div class="lg"><span class="b go-arm" style="color:var(--arm);border-color:rgba(255,225,61,.55);background:rgba(255,225,61,.1)"><svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></span><div class="tx"><b>레몬 ↻ — 재시도</b><div class="d">실패한 기사 다시 분석/요약. <span class="tag">이번 추가</span></div></div></div>
+    <div class="lg"><span class="b go-amber" style="color:var(--amber);border-color:rgba(255,225,61,.55);background:rgba(255,225,61,.1)"><svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g><path pathLength="1" d="M7 17 17 7"/><path d="M8.5 7H17v8.5"/></g></svg></span><div class="tx"><b>레몬 ↗ — 기사 원문</b><div class="d">처리중·자동재시도 때 원문 새 탭.</div></div></div>
+    <div class="lg"><span class="b go-gray" style="color:var(--mut);border-color:var(--line);background:rgba(255,255,255,.04)"><svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g><path pathLength="1" d="M7 17 17 7"/><path d="M8.5 7H17v8.5"/></g></svg></span><div class="tx"><b>회색 ↗ — 비활성</b><div class="d">원문 링크가 없어 갈 곳 없음(클릭 불가).</div></div></div>
+  </div>
+
+  <h2><span class="n">3</span>상황 → 상태 → 버튼 → 이동처</h2>
+  <div class="tbl-wrap">
+  <table class="tbl">
+    <tr><th>상황</th><th>상태(qst)</th><th>버튼</th><th>누르면 이동</th></tr>
+    <tr><td>분석 완료 + 피드 반영</td><td><span class="st" style="color:var(--accent)">완료</span></td><td class="go" style="color:var(--accent)">↗ 초록</td><td>뉴스요약 모달 열기<br><span style="color:var(--mut)">feedOpenBy → 피드 탭 + 요약 팝업</span></td></tr>
+    <tr><td>분석 중(처리중)</td><td><span class="st" style="color:var(--amber)">◠ 스피너</span></td><td class="go" style="color:var(--amber)">↗ 레몬</td><td>기사 원문 새 탭<br><span style="color:var(--mut)">원문 없으면 회색 비활</span></td></tr>
+    <tr><td>API 과부하 자동 재시도</td><td><span class="st" style="color:var(--amber)">↻ 스피너 +횟수</span></td><td class="go" style="color:var(--amber)">↗ 레몬</td><td>기사 원문 새 탭<br><span style="color:var(--mut)">자동 재시도 중 = 손 안 대도 됨</span></td></tr>
+    <tr><td><b>실패 · URL 공유 기사</b><span class="tag">고침</span></td><td><span class="st" style="color:var(--danger)">실패</span></td><td class="go" style="color:var(--arm)">↻ 레몬</td><td><b style="color:var(--arm)">재시도 → 다시 분석</b><br><span style="color:var(--mut)">api/pick 재발사 → 처리중으로</span></td></tr>
+    <tr><td>실패 · 요약요청</td><td><span class="st" style="color:var(--danger)">실패</span></td><td class="go" style="color:var(--arm)">↻ 레몬</td><td>재시도 → 요약 요청창<br><span style="color:var(--mut)">전문 복원해 다시 요약</span></td></tr>
+    <tr><td>실패 · 전문 붙여넣기</td><td><span class="st" style="color:var(--danger)">실패</span></td><td class="go" style="color:var(--mut)">↗ 회색</td><td>비활(갈 곳 없음)<br><span style="color:var(--mut)">원문·전문이 뷰어에 없어 재시도 불가</span></td></tr>
+  </table>
+  </div>
+
+  <h2><span class="n">4</span>이번 수정 — URL 실패 재시도</h2>
+  <div class="split">
+    <div class="ba before">
+      <h4>BEFORE — 재시도 없음</h4>
+      <div class="mini"><span class="g" style="color:var(--danger)"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 8v5M12 16h.01" stroke-linecap="round"/><circle cx="12" cy="12" r="9"/></svg></span><div>URL 공유 기사 분석 실패 → <b style="color:var(--amber)">원문 ↗</b>만 뜸.<br><span style="color:var(--mut);font-size:11.5px">다시 분석할 방법이 화면에 없었음.</span></div></div>
+    </div>
+    <div class="ba after">
+      <h4>AFTER — 재시도 ↻</h4>
+      <div class="mini"><span class="g go-arm" style="color:var(--arm);border-color:rgba(255,225,61,.55);background:rgba(255,225,61,.1)"><svg viewBox="0 0 24 24" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></span><div><b style="color:var(--arm)">재시도 ↻</b> 노출 → 누르면 다시 분석.<br><span style="color:var(--mut);font-size:11.5px">수집함 Failed→✓ 재시도와 같은 경로.</span></div></div>
+    </div>
+  </div>
+  <p class="note"><b class="hl-r">한계</b> — <b>전문(붙여넣기)</b> 실패는 원문 URL·전문이 뷰어에 안 남아 재시도를 못 붙였어(백엔드에만 있음). 이 경우만 회색 비활 유지 + “전문 다시 붙여넣어줘” 안내. 위 대기열의 <b>전문 실패</b> 행 ↗를 눌러보면 그 안내가 떠.</p>
+
+  <div class="foot">
+    실제 뷰어 <code style="color:var(--accent)">viewer/index.html</code>의 <code style="color:var(--accent)">:root</code> 토큰·<code style="color:var(--accent)">.qpop/.qrow/.qgo</code> CSS·아이콘(Q_REFR/Q_SPIN/Q_ARR) 그대로 복사한 자기완결 재현본(값 정본은 항상 viewer :root). 이동은 데모라 실제 화면 전환 대신 목적지를 시각화. ic-arrow 화살표 모션은 근사(실제는 shaft 슉+tip 플레어). · 260713 KST
+  </div>
+</div>
+
+<div class="qflash" id="flash"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g class="qsrc-arrow"><path class="qsrc-shaft" pathLength="1" d="M7 17 17 7"/><path class="qsrc-tip" d="M8.5 7H17v8.5"/></g></svg>';
+const REFR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>';
+const SPIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>';
+
+// 대기열 행 데이터 — 실제 qRowHtml 상태 그대로
+const ROWS = [
+  { id:'succ', t:'12분 전', tnew:true, title:'국무회의 “민생 예산 우선”…추경 편성 논의', st:'<span class="qb-done">완료</span>', go:'green', ico:ARR, dest:'green' },
+  { id:'proc', t:'3분 전', tnew:true, title:'서울 도심 집중호우…퇴근길 지하차도 통제', st:'<span class="qico spin">'+SPIN+'</span>', go:'amber', ico:ARR, dest:'amber' },
+  { id:'retry', t:'8분 전', title:'국제유가 급등, WTI 배럴당 90달러 돌파', st:'<span class="qico spin">'+REFR+'</span><span class="qcnt">2</span>', go:'amber', ico:ARR, dest:'amber' },
+  { id:'failurl', t:'21분 전', title:'[속보] 이란, 중동 내 미군 표적 공격…공습경보', st:'<span class="qb-failt">실패</span>', go:'arm', ico:REFR, dest:'pickretry', tag:true },
+  { id:'failask', t:'33분 전', title:'요약요청 — 붙여넣은 칼럼 전문', st:'<span class="qb-failt">실패</span>', go:'arm', ico:REFR, dest:'askretry' },
+  { id:'failpaste', t:'40분 전', title:'전문 붙여넣기 — 조선일보 사회면', st:'<span class="qb-failt">실패</span>', go:'gray', ico:ARR, dest:'gray' },
+];
+
+const qlist = $('#qlist');
+ROWS.forEach((r,i) => {
+  const row = document.createElement('div');
+  row.className = 'qrow' + (r.id==='failpaste'?'':'');
+  row.style.animationDelay = (i*0.05)+'s';
+  row.innerHTML =
+    '<span class="qt'+(r.tnew?' qt-new':'')+'">'+r.t+'</span>'+
+    '<span class="qmain">'+r.title+'</span>'+
+    '<span class="qst">'+r.st+'</span>'+
+    '<span class="qact"><button class="qgo go-'+r.go+'" data-dest="'+r.dest+'" data-id="'+r.id+'" aria-label="액션">'+r.ico+'</button></span>';
+  qlist.appendChild(row);
+});
+
+function flash(msg){
+  const f = $('#flash'); f.textContent = msg; f.classList.add('show');
+  clearTimeout(f._h); f._h = setTimeout(()=>f.classList.remove('show'), 2400);
+}
+
+const DEST = {
+  green: {
+    badge:['완료','#00EED2'], title:'뉴스요약 모달 열기', icon:ARR, color:'var(--accent)',
+    arrow:'대기열 <b>↗</b> → 피드 탭 전환 + 요약 팝업',
+    to:['📰 뉴스요약 (메뉴3)','분석 완료된 기사의 AI 요약·카드를 그 자리에서 펼침'],
+    fn:'feedOpenBy() → showTab(\'feed\') → open(a)',
+    win:{h:'📰 뉴스요약',lines:['AI 헤드라인','요약 본문…','카드 프롬프트']}
+  },
+  amber: {
+    badge:['원문','#FFE13D'], title:'기사 원문 새 탭', icon:ARR, color:'var(--amber)',
+    arrow:'대기열 <b>↗</b> → 외부 원문 링크',
+    to:['🔗 기사 원문 (새 탭)','아직 분석 중/자동 재시도 중 — 원문 먼저 보기'],
+    fn:'failOpen({url}) → 앵커 클릭 새 탭',
+    win:{h:'🔗 언론사 원문',lines:['기사 제목','본문 문단…','']}
+  },
+  pickretry: {
+    badge:['재시도','#FFE13D'], title:'다시 분석 (대기열 재투입)', icon:REFR, color:'var(--arm)',
+    arrow:'대기열 <b>↻</b> → api/pick 재발사',
+    to:['⟳ 처리중으로 전환','같은 기사를 분석 파이프라인에 다시 넣음 (대체 매체 url 동반 = 403 우회)'],
+    fn:'qPickRetry(it) → fetch api/pick → loadQueue()',
+    win:{h:'⟳ 재분석 접수',lines:['실패 → 처리중','스피너 도는 중…','']},
+    special:'pickretry'
+  },
+  askretry: {
+    badge:['재시도','#FFE13D'], title:'요약 요청창 재오픈', icon:REFR, color:'var(--arm)',
+    arrow:'대기열 <b>↻</b> → 전문 복원 → 요약창',
+    to:['✍ 요약 요청 (모달)','붙여넣었던 전문을 복원해 입력칸에 채워 다시 요청'],
+    fn:'askRetry(it) → api/askget → openAsk({prefill})',
+    win:{h:'✍ 요약 요청',lines:['복원된 전문…','','[다시 요약]']}
+  },
+  gray: {
+    badge:['비활','#8fa697'], title:'갈 곳 없음', icon:ARR, color:'var(--mut)',
+    arrow:'전문 붙여넣기 실패 = 원문 URL 없음',
+    to:['⛔ 재시도 불가','원문 URL·전문이 뷰어에 없어(백엔드에만) 다시 못 쏨 → 안내만'],
+    fn:'“전문 다시 붙여넣어줘” 토스트',
+    win:null,
+    gray:true
+  },
+};
+
+qlist.addEventListener('click', e => {
+  const b = e.target.closest('.qgo'); if(!b) return;
+  const d = DEST[b.dataset.dest];
+  // 액티브 모션
+  b.classList.remove('press'); void b.offsetWidth; b.classList.add('press');
+  const svg = b.querySelector('svg');
+  const motion = b.dataset.dest==='pickretry' || b.dataset.dest==='askretry' ? 'ic-spin' : 'ic-arrow';
+  if(svg){ svg.classList.remove('ic-spin','ic-arrow'); void svg.offsetWidth; if(!d.gray) svg.classList.add(motion); }
+
+  if(d.gray){ flash('원문 링크가 없어 다시 분석 못 해 — 전문을 다시 붙여넣어줘'); }
+
+  renderDest(d);
+
+  // 특별 연출: URL 재시도 = 실패행이 처리중으로 전환
+  if(d.special==='pickretry'){
+    flash('다시 분석 요청했어 — 잠시 뒤 처리중으로 바뀌어');
+    transitionToProcessing(b);
+  }
+});
+
+function renderDest(d){
+  const el = $('#dest');
+  let win = '';
+  if(d.win){
+    win = '<div class="miniwin"><div class="mw-h">'+d.win.h+'</div><div class="mw-b">'+
+      d.win.lines.map(l => l ? (l.startsWith('[')? '<div style="color:'+d.color+';font-weight:700">'+l+'</div>' : '<div>'+l+'</div>') : '<div class="ln m"></div><div class="ln s"></div>').join('')+'</div></div>';
+  }
+  el.innerHTML = '<div class="dest-card">'+
+    '<div class="dc-h"><span style="color:'+d.color+';width:20px;display:inline-grid;place-items:center">'+d.icon.replace('width="17"','')+'</span>'+d.title+
+      ' <span class="dc-badge" style="background:'+hexA(d.badge[1],.16)+';color:'+d.badge[1]+'">'+d.badge[0]+'</span></div>'+
+    '<div class="dc-arrow">'+d.arrow+'</div>'+
+    '<div class="dc-to"><div class="t1">'+d.to[0]+'</div><div class="t2">'+d.to[1]+'</div></div>'+
+    win+
+    '<div class="dc-arrow" style="margin-top:12px;font-size:11.5px">코드 경로 · <span class="dc-code">'+d.fn+'</span></div>'+
+  '</div>';
+  // 아이콘 색 보정
+  const ic = el.querySelector('.dc-h svg'); if(ic){ ic.style.stroke=d.color; ic.style.width='18px'; ic.style.height='18px'; }
+}
+
+function hexA(hex,a){
+  if(hex.startsWith('#')){ const n=parseInt(hex.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+  return 'rgba(143,166,151,'+a+')';
+}
+
+function transitionToProcessing(btn){
+  const row = btn.closest('.qrow');
+  const orig = row.innerHTML;
+  setTimeout(()=>{
+    const st = row.querySelector('.qst');
+    const act = row.querySelector('.qact');
+    if(st) st.innerHTML = '<span class="qico spin">'+SPIN+'</span>';
+    if(act) act.innerHTML = '<button class="qgo go-amber" data-dest="amber" data-id="failurl2" aria-label="원문">'+ARR+'</button>';
+    row.style.transition='background .3s'; row.style.background='rgba(255,225,61,.05)';
+  }, 700);
+  // 6초 뒤 원상복구 = 반복 시연 가능
+  setTimeout(()=>{ row.innerHTML = orig; row.style.background=''; }, 6000);
+}
+</script>
