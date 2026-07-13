@@ -96,7 +96,7 @@
 ④ 플랫폼 공용 불변 정본 = 이 라우터. 뉴스 콘텐츠·파이프라인 룰 정본 = `apps/news/`. 사본·충돌 발견 = 라우터 우선.
 
 **제11조(표기·앵커 호환)**
-① 계층 = 장-조-항(①)-호(1.)-목(가.). 조 신설 = 제N조의2 방식, 삭제 = 결번 명시(번호 재부여 금지).
+① 계층 = 장-조-항(①)-호(1.)-목(가.). 조 신설 = 제N조의2 방식, 삭제 = 결번 명시(번호 재부여 금지). 각 조의 내용 배열 = {요지 → 규칙 → 예외 → 강제(게이트) → 정본 위치} 순(구 절 공통 틀 승계). 비법령 신규 문서의 넘버링 = 구 규약(`1.`→`1)`→`a)`→`가)`) 유지.
 ② 괄호 = 겹칠 때 바깥부터 { [ ( ) ] }, 한 겹이면 소괄호. 따옴표·강조 = 백틱과 별표만(코드·경로·정규식 원문 예외).
 ③ 본문 날짜 스탬프(yymmdd) 금지 — 결정 경위 = `docs/작업이력.md` 원장. 파일명·브랜치명·백업 폴더명 등 식별자 속 날짜 = 유지.
 ④ 구 §앵커 = 조 제목·장의 별칭으로 존속(§디자인=제8장 · §수정 모드=제6장 · §검증=제36조 등 각 조 제목 병기). 구 이모지 앵커 = {🎨=디자인 ✅=검증 🥷=분신술 🧪=기틀검증 🔒=기틀 보호 📐=표기표준 🤖=모델 ✂️=수정 모드 🔔=선택질문 🖼=미디어첨부 📰=파이프라인 🩺=일일점검 🧭=라우팅 🧠=기록SSOT 🎯=작업표준 🚨=속보(제67조)}. 구 `N절`·`절대명령 N`·하위기호(`§작업표준 e-1`류) 참조 = 해설원장 매핑표로 해석. 구 실행 계약 1~7 = 제1~7조 동일 순서(번호 호환).
@@ -118,7 +118,7 @@
 **제14조(정당 raw — 이 명령 대상 아님)**
 1. 기하·수학값(중앙 `-50%`·원 `50%`·빈 게이지 `0`) · 키프레임 안무 % · 1회성 광학 보정 px · OS/서드파티 강제(`env()`·`-webkit-*`) · 컴포넌트 로컬 z-index(1~8·드롭다운 20~22) · 아직 토큰 없는 축(box-shadow 등)
 2. 표면별 독립 팔레트: thumb/ly/k/comp 4뷰어는 색 공유 안 함 — index로 통일(재색칠) = **영구금지**(제42조②).
-3. 콘텐츠 산출물 색 상수 = UI 팔레트와 별개 축(영구 비동행): `nomute_overlay/reels2` GREEN=(15,253,2) · `card_news` 형광그린 #0FFD02는 발행 콘텐츠 브랜드색 — UI 팔레트 개편에 절대 동행 스왑 금지. 변경 = 운영자가 *콘텐츠 색*을 콕 집어 지시할 때만.
+3. 콘텐츠 산출물 색 상수 = UI 팔레트와 별개 축(영구 비동행): `nomute_overlay/reels2` GREEN=(15,253,2) · `card_news` 형광그린 #0FFD02(`COLOR_HIGHLIGHT`)는 발행 콘텐츠 브랜드색 — UI 팔레트 개편에 절대 동행 스왑 금지. 변경 = 운영자가 *콘텐츠 색*을 콕 집어 지시할 때만.
 4. 자기완결 템플릿(CSP로 `var()` 불가) = 값 **복사 = 계승**.
 5. 이들은 사다리·`check_refs` baseline을 따른다(매 px·%마다 안 물음).
 
@@ -216,11 +216,11 @@
 | `gate_judge.py`·`breaking_judge.py`(기계 분류) | `claude-sonnet-5` · effort 미사용 | LLM 콜의 81%·다층 보정이 경계오차 흡수 = 쿼터 50~65% 절감. env `GATE_MODEL`·`BREAKING_MODEL`(breaking-judge.yml). 외신 제목 번역 편승(`TRANS_ON`·`title_ko` 표시 전용·RUBRIC 해시 밖) |
 | judge 호출 모드 | `--safe-mode` | cache_creation −97.2% 실측 · 제60조④ |
 | 생성·하드작업(analyze·ask·revise·cardmake·kmake·lymake·more_images) | opus 4.8 | 날조 가드·창작 품질 직결. 롤백 = workflow env 두 줄 제거. effort: ask·analyze = **high**(검색 도구 왕복 — max = 타임아웃 유발 · env `PIPE_SEARCH_EFFORT`) / 수정·카드·영상·자막 = **max** |
-| track-cap(트래킹 카드 캡션·병합 힌트) | opus 4.8 max | `shared/model_env.sh` PIPE_MODEL · 전면 fail-soft · 정본 `apps/track/00_지침` §1-1-d |
-| clipmake(쇼츠 클리퍼 구간픽) | opus 4.8 max | turns=1·영상당 1콜·전 도구 disallow · 정본 `apps/edit/00_지침` §1-b-1 |
+| track-cap(트래킹 카드 캡션·병합 힌트) | opus 4.8 max | `shared/model_env.sh` PIPE_MODEL · 전면 fail-soft · 롤백 = track-make `cap` 게이트 · 정본 `apps/track/00_지침` §1-1-d |
+| clipmake(쇼츠 클리퍼 구간픽) | opus 4.8 max | PIPE_MODEL · turns=1·영상당 1콜·전 도구 disallow · 롤백 = 클리퍼 카드 미사용(opt-in) · 정본 `apps/edit/00_지침` §1-b-1 |
 | 음원 songmake(프롬프팅·가사·스타일) | opus 4.8 effort max | PIPE_MODEL · 구독 = 과금 0 |
 | 음원 곡 생성 | 구글 Lyria 3 Pro(`lyria-3-pro-preview`) | `song_lyria.py` · GEMINI_API_KEY 공용 · 곡당 ~$0.08 |
-| 음성 클로닝 | Replicate RVC | 학습 ~$0.32/보이스·입히기 ~$0.04/곡 · `REPLICATE_API_TOKEN` · 동의 게이트 = 본인·권리 보유 음성만 |
+| 음성 클로닝 | Replicate RVC | 학습 `replicate/train-rvc-model` ~$0.32/보이스 · 입히기 `zsxkib/realistic-voice-cloning` ~$0.04/곡 · `REPLICATE_API_TOKEN` · 동의 게이트 = 본인·권리 보유 음성만 |
 
 ③ 음원 3종 = 수동 발사 전용(자동 경로 부착 금지 = 제62조 유료 잠금). 정본 = `.github/scripts/{songmake.sh,song_lyria.py,voice_rvc.py}`.
 
@@ -283,7 +283,7 @@
 ③ 주변부(문구·임계값) = 자유. 단 큐레이션 임계 = 실질 변경(제9조5호) · 기존 라이브 값 추출(토큰화) = 픽셀 회귀 0 = 자유.
 
 **제35조(기틀검증 · §기틀검증 — 기틀 변경 = Opus 5인 교차검증)**
-① 대상 = 제34조① 동일 범위 + 라우터 구조 · 플랫폼 공용 불변 · 환경 Setup script/env 변수 · 라이브러리 SSOT 구조·build 파이프라인 · 앱 지침의 출력 포맷 골격/INVARIANTS. (주변부 = 제외·자유.)
+① 대상 = 제34조① 동일 범위 + 라우터 구조 · 플랫폼 공용 불변(수정 모드·모델·기틀 보호·표기표준) · 환경 Setup script/env 변수 · 라이브러리 SSOT 구조·build 파이프라인 · 앱 지침의 출력 포맷 골격/INVARIANTS. (주변부 = 제외·자유.)
 ② 절차 = 제34조 사용자 확인 *먼저* → 확정 전 독립 Opus 5명 병렬(동일 후보 적대적 감사·레포 실측) → 수렴 확인 — **전원 APPROVE 아니면 STOP·재설계**(이견 = 다수결 맹종 말고 근거로 해소·기각 사유 기록) → 통과 후에만 제31조 절차 전체로 확정.
 ③ 한계(정직) = 소프트 룰. 교차검증은 ground-truth 영역(구조·스크립트·참조정합)에서 값함 — 순수 문구·톤은 효용 작음.
 
@@ -295,7 +295,7 @@
   3. **제사 금지**: 평의회는 결정을 가르는 도구지, 이미 완성한 결과물을 둘러앉아 추인하는 사후 의식이 아니다. 검증이 목적이면 자가+CI가 그 일을 한다.
   4. 국소 뷰어 손질(단일 `viewer/*` UI/UX·동작·구조 영향 작음·기틀 아님) = 자가로 끊는다.
   5. 10인 미만 감축 = 제24조로 명시 승인 후에만(무응답 = 10인 유지).
-  6. 순수 시각/목업 = 평의회 완전 면제 → 자가 시각확인. 경계 = 로직·동작·상태·데이터 한 줄이라도 끼면 면제 아님(`:root`·핸들러·렌더 분기 = 동작). 시각 제안 기본 = 바로 반영 후 라이브 확인(시안 남발 금지 — 폰 PNG = 한글 두부 실측). 시안 필요 시(대규모 구조·새 인터랙션·비가역) = 제28조 HTML(PNG 금지·한글 폰트 폴백 필수).
+  6. 순수 시각/목업 = 평의회 완전 면제 → 자가 시각확인. 경계 = 로직·동작·상태·데이터 한 줄이라도 끼면 면제 아님(`:root`·핸들러·렌더 분기·파이프라인·전환 애니메이션[배너 크로스페이드] = 동작 = 국소여도 티어 재판정). 시각 제안 기본 = 바로 반영 후 라이브 확인(시안 남발 금지 — 폰 PNG = 한글 두부 실측). 시안 필요 시(대규모 구조·새 인터랙션·비가역) = 제28조 HTML(PNG 금지·한글 폰트 폴백 필수).
 ③ 어느 쪽이든 각기 다른 앵글 적대 감사(메커니즘·호환성·헤더/보안·모바일·메모리·에러처리·다운스트림·버전·통합·총괄). 추측 금지 = 레포·소스·라이브 실측 근거.
 ④ READ-ONLY 하드 계약: 평의회/분신술 에이전트 = 분석·보고만 — 레포 1바이트도 못 바꿈. 전면 금지 = git add/commit/push/branch/merge·PR 생성/머지·Edit/Write/NotebookEdit·파일 생성/삭제. 산출 = 텍스트만. 메인 루프가 레포 변경의 유일 행위자. 강제 3중:
   1. 소환 프롬프트 첫 줄: `READ-ONLY: 어떤 git/파일 변경·커밋·브랜치·PR·머지도 하지 마라. 발견은 텍스트로만 보고하라. 모든 변경은 메인이 한다`
@@ -354,7 +354,7 @@
 ② 빈 상태 = 조용한 공백이 디폴트: 필러/설명 문자열(`곧 표시됩니다` 류) 전면 금지 — 그냥 빈 화면. 예외 = 사용자 행위 피드백 1줄만(검색 `결과 없음`·`불러오는 중…`·에러). 문구 넣고 싶어지면 = 어포던스 부족 신호 → 화면을 고친다.
 
 **제42조(3계층 · 거울 · CI)**
-① 값 SSOT = `viewer/index.html` `:root` — 색·반지름(`--r-s/m/l/pill`)·간격(`--sp-1~4`)·blur(`--blur-s/m/l/xl`)·버튼(`--btn`/`--btn-sm`/`--btn-xs`)·타이포(`--fs-*`·`--fw-*`·`--lh-base`·`--font-status`)·모션(`--ease`/`--dur`/`--dur-fast`)·z 레이어(`--z-nav`/`--z-remote`/`--z-remote-pop`/`--z-float`/`--z-toast`/`--z-reason`/`--z-min`·`--z-min-pop`·`--z-min-shield`·`--z-min-chip`·`--z-min-ghost` = 최소화>리모컨>내용 명문화·컴포넌트 내부 1~8·드롭다운 20~22 = 로컬 raw 유지). 값은 여기서만 정의(라우터·문서에 hex/px 복붙 금지 = 충돌원). 신규 CSS = `var()`(없으면 근접, 정 없으면 토큰부터).
+① 값 SSOT = `viewer/index.html` `:root` — 색·반지름(`--r-s/m/l/pill`)·간격(`--sp-1~4`)·blur(`--blur-s/m/l/xl`)·버튼(`--btn`/`--btn-sm`/`--btn-xs`)·타이포(`--fs-*`·`--fw-*`·`--lh-base`·`--font-status`[구 Orbitron 폐지·현 Pretendard 렌더·호환 유지])·모션(`--ease`/`--dur`/`--dur-fast`)·z 레이어(`--z-nav`/`--z-remote`/`--z-remote-pop`/`--z-float`/`--z-toast`/`--z-reason`/`--z-min`·`--z-min-pop`·`--z-min-shield`·`--z-min-chip`·`--z-min-ghost` = 최소화>리모컨>내용 명문화 · 모달 top-layer만 reparentNav 처리·컴포넌트 내부 1~8·드롭다운 20~22 = 로컬 raw 유지). 값은 여기서만 정의(라우터·문서에 hex/px 복붙 금지 = 충돌원). 신규 CSS = `var()`(없으면 근접, 정 없으면 토큰부터).
 ② `viewer/tokens.css`·`구성도/base.css` = build 산출 거울 — 직접 수정 금지(다음 build가 덮음). 4뷰어(thumb/ly/k/comp) = 의도적 독립 팔레트(thumb `--bg #0b0d0c`·4뷰어 `--mut`/`--line`/`--pan` = 차분한 툴톤 · 색 공유 안 함 = 각 inline `:root` 정체성·`--fg`만 전 뷰 #eef7f0 단일) · 공유 = 구조 토큰 48개(반지름·간격·blur·버튼·타이포·모션·`--z-*`·`--press-*`)만. tokens.css = 색 금지(hex/rgba 유입 = rc=1). **색 통일·전체 :root 상속 = 영구 금지**(재색칠 회귀).
 ③ `구성도/` = 사람이 보는 인터랙티브 사인오프 단일정본 체계(9 HTML+`base.css`+공통규약 md). base.css `AUTO-MIRROR` = `shared/build_design_mirror.py build`가 :root 통째 복사. 드리프트 처분 = 항상 viewer `:root`가 정본(구성도를 맞춤·반대 아님). 새 구성도 = :root 대조검증 후.
 ④ 닫힌 루프: `:root` 한 줄 수정 → build → 거울·9데모 자동 동기. 거울 정합·참조·JS구문 = check_refs 하드게이트(rc=1) + CI(`.github/workflows/check-refs.yml` PR마다). 브랜치보호 required 토글 = 미적용 유지(봇이 main 직푸시 — 켜면 봇 막힘·재추가 금지).
@@ -469,9 +469,9 @@
 ② 개념·룰 변경 = 즉시 curation §방향·§8에 반영(= SSOT 누적 — 제일 중요). 기틀(신호 구조·두 컬럼·AI검증 2층·보수성) = 항상 보수 유지(불만 하나에 기틀 흔들지 말 것).
 
 **제58조(두 축 — 자리·사건)**
-① 누적 ≠ 긴급 = 두 축. 자리(시간 칼럼) = 신규(나이<4h)/누적(≥4h) — 경계 `FAST_MAX_H=4` 단일상수(최신·누적 진입·핀·토스트·배지 전부 결정).
+① 누적 ≠ 긴급 = 두 축. 자리(시간 칼럼) = 신규(나이<4h)/누적(≥4h) — 화면 = `3시간 전`까지 신규·`4시간 전`부터 누적 · 경계 `FAST_MAX_H=4` 단일상수(최신·누적 진입·핀·토스트·배지 전부 결정).
 ② 사건(배지) = 긴급=속보 = `isBreaking` = AI 2층: `breaking_judge.py` 급발(방금 터진 대형·다수피해·전국주목 — 개별 형사 선고 제외·엄선) AND `gate_judge.py` grade≥2(정본 경로 = `.github/scripts/`). 긴급 사건도 나이 들면 자리만 이동(배지 = 긴급<4h ↔ 이슈 4h~24h · 1일+ = 무배지).
-③ 누적 진입 = 4h + {cross≥8 OR 긴급(breaking) OR 연속보도 보조진입(cross≥4 AND report_count≥6 AND grade≠0)}. grade = 긴급탐지지 경중 아님 → 랭킹·진입 = 발행량 우선(gradeW floor 0.5 · CROSS_POW 1.3 · FOLLOW_W 0.5 · 긴급부스트 ×3.0). 긴급이었던 건 cross<8이어도 4h 후 누적 합류. 연속보도(`report_count`→`scFollow`) = 제일 무거운 가점(양 칼럼 곱).
+③ 누적 진입 = 4h + {cross≥8 OR 긴급(breaking) OR 연속보도 보조진입(cross≥4 AND report_count≥6 AND grade≠0 = grade1 구제)}. grade = 긴급탐지지 경중 아님 → 랭킹·진입 = 발행량 우선(gradeW floor 0.5 · CROSS_POW 1.3 · FOLLOW_W 0.5 · 긴급부스트 ×3.0). 긴급이었던 건 cross<8이어도 4h 후 누적 합류. 연속보도(`report_count`→`scFollow`) = 제일 무거운 가점(양 칼럼 곱).
 ④ 라벨 확정: 칼럼 = 누적/신규 · 배지 = 긴급(breaking·신규<4h)/이슈 = `([cross≥10(grade3만 8) AND grade(null 또는 ≥2) AND !badgeJunk] OR aged-breaking) AND 4h≤나이<24h`(신규엔 안 뜸). 옛 최신/속보/누적 폐기.
 ⑤ 이슈 배지 게이트 3종: cross≥10(grade3 = 옛 8 유지 = 저cross 국제 대형재난 구제) + grade 게이트(null 관용) + badgeJunk(시황출발·연성머리표·기업PR 정형구·사건어 가드 — `공시`·`유가족` substring 오컷 방지). 글로우(scLit 16) 동일 게이트 상속. **배지 표시 전용** — 누적 진입 cross≥8·랭킹·fbJunk veto 불변(컷 = 강조 해제일 뿐 칼럼 잔존). 정본 = `viewer/index.html` `issCross`·`scLit` + `build-viewer.mjs` `issEligible` = `check_refs.check_issue_badge_parity()` 하드게이트. 정적 10 확정(동적 임계 = 기각 묘비 · 감시 = daily_health 배지계기판 기준 13~20·30+ 재인플레 경보·0 과조임 경보 · **새 수집 소스 투입 머지일 = 임계 재검토 의무**).
 ⑥ 아웃라이어 감쇠하한(OUT): 강건 z(중앙값+MAD·병합 후 랭킹축 풀 cross≥8) 2.5~3.5 램프 AND 이슈 배지 자격(issCross) AND rc≥6 AND 나이<24h → 누적 랭킹 시간항(timeAcc)에 하한 = 나이 램프(12h까지 .560 → 24h 정상 timeAcc 선형 착지). 픽·확인 완료 카드 = 하한 제외 · 콜드스타트 풀<15 = OFF · 감시 = daily_health OUT 계기판. 정본 = curation §5·§8.
@@ -499,7 +499,7 @@
 ⑤ 저장 = Cloudflare R2 공개 URL(`R2_ACCOUNT_ID`·`R2_BUCKET`·`R2_PUBLIC_BASE`·`R2_ACCESS_KEY_ID`·`R2_SECRET_ACCESS_KEY` 5 시크릿·egress 0). 5개 다 없으면 git 폴백(로컬 PNG 커밋).
 
 **제63조(card_plan 계약)**
-① concurrency group=`card-make`(같은 `cards/` 직렬화) · `MAX_BATCH=3` 최신 먼저 · 좀비 `generating` always-sweep(영구 `프롬프팅 중` 차단) · 헤드리스 무중단(`--disallowedTools`/`--max-turns`) · 이미지 대기 적응형 상한 15분(정본 `apps/news/03_자동화_레퍼런스.md`).
+① concurrency group=`card-make`(같은 `cards/` 직렬화) · `MAX_BATCH=3` 최신 먼저 · 좀비 `generating` always-sweep(`sweep_stuck.sh`·영구 `프롬프팅 중` 차단) · 헤드리스 무중단(`--disallowedTools`/`--max-turns`) · 이미지 대기 적응형 상한 15분(정본 `apps/news/03_자동화_레퍼런스.md`).
 ② 건당 생성 타임아웃 = `CARD_TIMEOUT`(cardmake.sh 기본 1500s) ↔ news-analyze·news-ask card_plan `timeout-minutes: 165` = 한 쌍(비대칭 = 한쪽발 카드만 하드킬 림보 · 롤백 = env 900). error.log의 `workspace not trusted`·`MultiEdit` stderr = 무관 공지 노이즈(오진 주의 — reason 분기가 124 = 타임아웃 명시).
 ③ failed 카드 자동 재시도 = 3회(`CARD_FAIL_RETRY_MAX` env·`0`=끔·vars 노브): 실패 시 status.json `fails`+1(텍스트·렌더·좀비 스윕·수동 실패 전부 카운트·generating 전이 시 보존) → fails 1~3 AND 이미지 0장 = GVER 동일해도 all 배치 재편입(렌더 실패 = 장면 이미지 잔존 = 자연 제외 = 재슛은 운영자만). 4회째 = 수동(뷰어 ✓ 재시도 = 캡 무관 단일 지정). 성공 = fails 소멸. `fails` 부재 구 failed = 특례 소급 없음(GVER 부재·stale = 종전 게이트 그대로). 구 failed 복구 = status.json의 guidelines_version 제거. 수집함 실패 카드 버튼 = ✓ 체크 = 재시도(`fireFailRetry`) / Failed 칩 = 끄기(`requeueFail`).
 
@@ -578,7 +578,7 @@
 | `_versions/` · `_산출/` | 시스템 백업(수정 모드) · 뉴스 산출물 보관 | — |
 | `docs/` | `news-pipeline.md`(파이프 입구)·`디자인기틀_SSOT.md`(규칙2)·`CII_컴포넌트계승인덱스.md`·`curation-algorithm.md`·`작업이력.md`·`요구사항_큐.md`·`라우터_해설원장.md`(구본 동결)·`플레이그라운드_포터블.md`·`기틀_복제팩_마스터라우터.md`(타 레포 이식 = 이 1개)·`픽토그램_세로가로정렬_기틀_이식팩.md`·`디자인토큰_제1핵심명령_복제전문.md`·시행착오로그·폰재구축플레이북·`termux-share.sh`·확립본들(`reports/`) | 각 문서 |
 | `구성도/` | 사인오프 9 HTML+`base.css`(거울)+공통규약+버튼 가이드북 | 제42조 |
-| `shared/` | `attach.py`(제70조)·`audio_norm.py`(음량 SSOT·재구현 금지)·`check_refs.py`(커밋 전 게이트)·`check_env.sh`·`profile_session.py`·`claude_transient.sh`/`claude_py.py`(제61조)·`inject_guidelines.sh`(제60조)·`build_library.py`·`build_design_mirror.py`(거울+lock)·`report_render.py`(20열 정본)·`model_env.sh`(PIPE_MODEL)·`playground_template.html`(제28조 동결 골격)·`smoke_geni.js`(**genidlg·도구 셸·thumb 잡 카드 구조 변경 = 커밋 전 실행** — check_refs 정적과 한 쌍·폼 개편 = SEL 표만 갱신) | 각 파일 헤더 |
+| `shared/` | `attach.py`(제70조)·`audio_norm.py`(음량 SSOT = −14LUFS·TP−1.5·재구현 금지)·`check_refs.py`(커밋 전 게이트)·`check_env.sh`·`profile_session.py`·`claude_transient.sh`/`claude_py.py`(제61조)·`inject_guidelines.sh`(제60조)·`build_library.py`·`build_design_mirror.py`(거울+lock)·`report_render.py`(20열 정본)·`model_env.sh`(PIPE_MODEL)·`playground_template.html`(제28조 동결 골격)·`smoke_geni.js`(**genidlg·도구 셸·thumb 잡 카드 구조 변경 = 커밋 전 실행** — check_refs 정적과 한 쌍·폼 개편 = SEL 표만 갱신) | 각 파일 헤더 |
 | `scraper/` | `knews_scraper.py`(burst)·`to_candidates.py`·`auto_pick_breaking.py`·`daily_health.py`·`compare_collected.py` | 제55·67조 |
 | `viewer/` | 뷰어(index+도구 HTML+`sw.js`+`cscroll.js`+`_headers`)·빌드 = `build-viewer.mjs`(index.html 미변환) | 제42·66조 |
 
