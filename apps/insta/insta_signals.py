@@ -217,6 +217,35 @@ def fmt_lift(b):
             f"조회속도 ×{lf['vpd']} (n={b['n']}){tag}")
 
 
+def _daily_timeseries(daily):
+    """insights_daily.jsonl(append 로그) → 일일 추이 배선용 시계열 2종.
+    - series: 하루 1점(같은 KST 날짜는 마지막 스냅샷 = 그날 최종 누적) · 누적 지표 원형 보존
+      → 뷰어(추이 차트)가 media_count·profile_views·reach·views를 인접 차분해 일일값 도출(차분은 뷰어 몫).
+    - follower_daily: API가 준 follower_count 일별 순증(end_time 날짜 dedup · 최신 스냅샷 우선).
+    누적 원천을 뷰어까지 손실 없이 전달만 한다(운영자 260713 · 이력은 연결 시점부터 누적)."""
+    keep = ('views', 'reach', 'profile_views', 'accounts_engaged')
+    by_date = {}
+    for row in daily:
+        d = (row.get('fetched_kst') or '')[:10]
+        if len(d) != 10:
+            continue
+        prof = row.get('profile') or {}
+        acc = row.get('account_day') or {}
+        pt = {'date': d, 'followers': prof.get('followers_count'), 'media_count': prof.get('media_count')}
+        for k in keep:
+            pt[k] = acc.get(k)
+        by_date[d] = pt   # 나중 스냅샷이 앞 것 덮음 = 그날 최종 누적
+    series = [by_date[d] for d in sorted(by_date)]
+    fol = {}
+    for row in daily:
+        for p in (row.get('follower_count_series') or []):
+            et = (p.get('end_time') or '')[:10]
+            if len(et) == 10:
+                fol[et] = p.get('value')
+    follower_daily = [{'date': d, 'value': fol[d]} for d in sorted(fol)]
+    return series, follower_daily
+
+
 def main():
     media = jload('media_latest.json')
     if not media:
@@ -239,6 +268,10 @@ def main():
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
                 'online_peak_kst': sig['audience_overlay']['online_peak_kst']}
+        # 일일 추이 배선(운영자 260713) — append 로그 시계열을 뷰어까지 전달(차트는 후속·플레이그라운드)
+        series_daily, follower_daily = _daily_timeseries(daily)
+        vdoc['daily_series'] = series_daily
+        vdoc['follower_daily'] = follower_daily
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
             json.dump(vdoc, f, ensure_ascii=False, indent=1)
