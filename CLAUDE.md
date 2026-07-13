@@ -129,7 +129,7 @@
   3. 닫힌 집합 ≠ 동결 — 진짜 새 색 슬롯 필요 = (갱신) 정문으로 넓힌다.
 
 **제16조(강제 게이트)**
-① 하드차단(rc=1) = raw 강조색(`accent_raw`·`accent_hex`) · 구 코어 그린 재유입(`legacy_green`) · 초록 워시(`green_wash`) · 거울 비동기 · `design-tokens.lock` 신토큰.
+① 하드차단(rc=1) = raw 강조색{`accent_raw`(rgba(0,238,210)·`accent_hex`(#00EED2)} · 구 코어 그린 재유입{`legacy_green`(rgba(15,253,2·#0FFD02)} · 초록 워시(`green_wash`) · 거울 비동기 · `design-tokens.lock` 신토큰.
 ② design_gate diff 게이트: Edit/Write로 *추가된 줄*의 font-size·letter-spacing·radius·gap·padding·margin·blur() raw = 즉시 차단(exit 2) + 가장 가까운 토큰 자동 제안. 기존분 관용(diff 기반 = 상쇄 게이밍 면역). `/* raw-ok: 사유 */` 동일 줄 주석 = 광학 보정 유일 통로. 제외 = 순수 흑/백·`:root`·`@keyframes`·`<script>`(자기완결 템플릿)·env()·calc()·음수 margin.
 ③ 잔존 기존 raw·토큰 없는 축(그림자·모션) = 소프트룰. **`check_refs` 초록 ≠ 이 장 완전 준수.**
 ④ 이 계약은 SessionStart 디자인훅이 매 세션 기계 주입. 타 레포 복제 = `docs/디자인토큰_제1핵심명령_복제전문.md`(일반형 규칙+바인딩표 9슬롯).
@@ -423,7 +423,7 @@
 
 **제51조(용어집)**
 ① 앱명 정본 라벨: `news=에디터_뉴스` · `x=에디터_엑스` · `k=에디터_클링` · `1=썸네일_포스트` · `2=썸네일_릴스` · `3=오버레이_저작권` · `4=오버레이_경고문` · `th=썸네일과오버레이` · `comp=합성기_카드뉴스` · `ly=자막기` · `q=큐적재` · `insta=컨설턴트_인스타` · `track=트래킹` · `conv=변환` · `edit=편집기` · `nb=자료화`(track·conv·edit·nb = 뷰어 도구 탭·스킬 없음). 정본 spot = 이 표·스킬·지침 제목(본문 설명체 자유).
-② 뷰어 메뉴(운영자 확정 · 쌍 구조): 메뉴1[scrap]=`LEGACY MEDIA`(레거시·수집함) · 메뉴2[feed]=`뉴스 요약`(요약·구 Top Picks) · 메뉴3[trend·id `linkfab` 불변]=`SNS DIGEST`(SNS — 그룹① `국내 커뮤니티` = 구 소셜 다이제스트+네이트판 병합[정렬 = 버스트 축·판 = 중위 버스트 85% 감쇠·캡 5]·위치 = TOP 레일과 구글 검색 사이) · 메뉴4[chan]=`채널 요약`(채널 — 데이터 = `viewer/insta_data.json`·수치 정본 = insta_signals·빈 상태 = 공백). 쌍 = {1 매체 수집↔2 뉴스 요약}·{3 소셜 수집↔4 채널 요약}. 하단 네비 시각 순서 = 레거시·SNS·뉴스 요약·채널 요약(＋FAB 가운데·기본 착지 = feed 불변·메뉴 번호 체계 = 코드 참조 정본 = 시각 순서와 별개 축). 구 sns 딥링크·복원 = trend 자동 매핑. 구 표기(Legacy News·Social Digest·Top Picks·Trends) = 이력 문서 전용.
+② 뷰어 메뉴(운영자 확정 · 쌍 구조): 메뉴1[scrap]=`LEGACY MEDIA`(레거시·수집함) · 메뉴2[feed]=`뉴스 요약`(요약·구 Top Picks) · 메뉴3[trend·id `linkfab` 불변]=`SNS DIGEST`(SNS — 그룹① `국내 커뮤니티` = 구 소셜 다이제스트+네이트판 병합[정렬 = 버스트 축·판 = 중위 버스트 85% 감쇠·캡 5·`soc-item` 문법 계승·무게이지]·위치 = TOP 레일과 구글 검색 사이) · 메뉴4[chan]=`채널 요약`(채널 — 데이터 = `viewer/insta_data.json`·수치 정본 = insta_signals·빈 상태 = 공백). 쌍 = {1 매체 수집↔2 뉴스 요약}·{3 소셜 수집↔4 채널 요약}. 하단 네비 시각 순서 = 레거시·SNS·뉴스 요약·채널 요약(＋FAB 가운데·기본 착지 = feed 불변·메뉴 번호 체계 = 코드 참조 정본 = 시각 순서와 별개 축). 구 sns 딥링크·복원 = trend 자동 매핑. 구 표기(Legacy News·Social Digest·Top Picks·Trends) = 이력 문서 전용.
 
 **제52조(인덱싱·머리표)**
 ① 표기: 숫자 ID = 2자리 zero-pad(`L01`·`S01`·`ENV01` — `L1` 금지) · 코드 범위 = en-dash(`L01–L19`) · 하위 연속 = `~`(`01a~e`) · 비연속 나열 = `·`(`S-1·2·3`) · 화풍 애드덤 = `S-N`(하이픈)·샷 크기 = `S01`(무하이픈).
