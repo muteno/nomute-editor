@@ -2316,8 +2316,7 @@ async function loadServerHist() {
   if (!CARSLIDES.length && !RESTORED && !doneReq().on) {   // 부팅 자동 복원 = 접힌 '결과'(운영자 260710 "결과 기본 접힘") · 딥링크(done)는 스킵→maybeOpenHist가 펼침(교차기기 오프리뷰/깜빡 회귀 차단 · QA2 260706)
     const loc = localLastResult();   // 로컬 마지막(이 기기 · src 보유=수정 가능)
     let pick = loc;
-    const clr = histClearedCut();   // 기록 지우기 시점만 존중 — 12h 창 폐지 = 가장 최근 제작이 시간 무관 항상 접힌 채 위에 머묾(운영자 260712 · 이전 제작 표시 규칙과 동일)
-    const s = (SRV_HIST || []).find(e => e && e.url && (e.ts || 0) > clr && thIdOf(e.url));   // 서버 최신(전 기기 · SRV는 최신순 정렬)
+    const s = (SRV_HIST || []).find(e => e && e.url && thIdOf(e.url));   // 서버 최신(전 기기 · clr 미적용 = 지운 시점 무관 공통 · SRV는 최신순 정렬 · 운영자 260713 "모든 기기서 보이게")
     if (s && (!pick || (s.ts || 0) > (pick.ts || 0))) { const sp = findResultById(thIdOf(s.url)); if (sp && sp.items && sp.items.length) pick = sp; }   // 타 기기 제작이 더 최신이면 그걸로 = '최근꺼 미리보기' 기기 간 공유(운영자 260710 — RESTORED_TS 주석의 cross-device 최신비교 실배선 · 동률은 로컬 승=src 보존)
     if (pick) doRestore(pick, true);
   }
@@ -2368,10 +2367,11 @@ function histTime(ts) { const d = new Date(ts); let h = d.getHours(); const m = 
   return pre + ap + ' ' + h + ':' + String(m).padStart(2, '0'); }   // 제작 시각 = 오늘/어제 오전/오후 H:MM(운영자 260621)
 function renderHist() {
   const local = histPrune(histLoad()); histSave(local);   // 로컬 만료분(12h↑) 정리 — 빌드·배포 랙 브리지 전용(그 뒤는 서버 인덱스가 이어받음)
-  const seen = new Set(local.map(e => histKey(e.url)));
-  const clr = histClearedCut();   // 기록 지우기 시점 — 로컬·서버 모두 이 이전은 숨김
-  const srv = (SRV_HIST || []).filter(e => e && e.url && !seen.has(histKey(e.url)));   // 타 기기 제작분(로컬 중복 제외) = 만료 없음(운영자 260712 "기기·시간 무관 항상 기존 작업분" — 구 12h 표시창 폐지 · 상한 = 인덱스 캡 400) — 카드뉴스(/5)·리사이즈(/7)도 build-viewer가 thumb-hist에 병합(운영자 260710 저녁 기기간 공유 확정 = 낮 축6 '세션만' 번복) · 구 /6 자유생성(free.json·도먼트)만 미병합
-  let a = local.concat(srv).filter(e => (e.ts || 0) > clr).sort((x, y) => (y.ts || 0) - (x.ts || 0));   // 로컬+서버 병합 · 지운 시점 이후만 · 최신 먼저
+  const clr = histClearedCut();   // 기록 지우기 시점 = 로컬 브리지에만 적용 · 서버 공통은 미적용 = 모든 기기 항상 표시(운영자 260713 "일단 모든 기기서 보이게" — 기록지우기 전기기 공용화 = 서버 승격 후속 2/2)
+  const localF = local.filter(e => (e.ts || 0) > clr);   // 로컬(이 기기 브리지)만 지운 시점 컷 — 서버에도 있는 제작이면 아래 srv로 복귀 표시(안 사라짐 = 지워도 서버 공통은 다시 옴)
+  const seen = new Set(localF.map(e => histKey(e.url)));   // 표시되는 로컬만 중복 기준 → clr로 잘린 로컬이 서버에 있으면 srv서 살아남음
+  const srv = (SRV_HIST || []).filter(e => e && e.url && !seen.has(histKey(e.url)));   // 서버 공통(전 기기 · clr 미적용 = 지운 시점 무관 항상 · 만료 없음 운영자 260712 · 로컬 중복만 제외) — 썸네일·카드뉴스(/5)·리사이즈(/7) build-viewer 병합 · 자유생성(free.json·도먼트)만 미병합
+  let a = localF.concat(srv).sort((x, y) => (y.ts || 0) - (x.ts || 0));   // 로컬(clr 컷)+서버(전량) 병합 · 최신 먼저
   if (RESTORED_URLS.size) a = a.filter(e => !RESTORED_URLS.has(histKey(e.url)));   // 맨 위로 복원된 최근 제작은 '이전(previous) 제작'서 제외 = 위에만(운영자 260622)
   const hist = $('#hist'); if (!hist) return;
   if (!a.length) { hist.hidden = true; return; }
