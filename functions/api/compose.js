@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
 
   // ② 워크플로 발사
   const r = await GH(env.GH_TOKEN, 'actions/workflows/comp-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, image: imgPath, image_sha: imgSha, lines: JSON.stringify(lines) },
+    ref: REF, inputs: { id, image: imgPath, image_sha: imgSha, lines: JSON.stringify(lines), src_json: (body.src ? JSON.stringify(body.src) : '') },   // src_json = 제작 조건 스냅샷 → comp-make가 _src.json 커밋(기기 간 카드뉴스 '수정' 복원 · 260713)
   });
   if (r.status === 204) return json({ ok: true, id, out: `comp_out/${id}/card.jpg` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);

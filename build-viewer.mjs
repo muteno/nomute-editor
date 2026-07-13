@@ -379,7 +379,8 @@ try {
   for (const id of readdirSync(croot)) {
     const ts = thIdTs(id); if (!ts) continue;
     let files; try { files = readdirSync(join(croot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort(); } catch { continue; }
-    for (const f of files) thHist.push({ url: `comp_out/${id}/${f}`, dlname: `${id}_${f}`, cap: '카드뉴스', varStr: '', ts });
+    let csrc = null; try { csrc = JSON.parse(readFileSync(join(croot, id, '_src.json'), 'utf8')); } catch {}   // 카드뉴스 제작 조건 스냅샷 — 있으면 기기 간 '수정'(연필) 복원(comp 파이프 src 보존 260713)
+    for (const f of files) { const e = { url: `comp_out/${id}/${f}`, dlname: `${id}_${f}`, cap: '카드뉴스', varStr: '', ts }; if (csrc && csrc.app) e.src = csrc; thHist.push(e); }
   }
 } catch { /* comp_out 없음 */ }
 // 리사이즈(/7) — gen_out/resize.json(캡 24 · R2 절대 url·ts=KST isoformat)도 병합(운영자 260710 저녁 — 낮 '세션만' 결정 번복 확정 · 뷰어 rszLoad는 잡 신호 전용 유지)
