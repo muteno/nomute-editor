@@ -60,14 +60,15 @@ def _load_news_cat():
 
 
 def _build_cats():
-    """신 주제 사전 = 뉴스 6버킷(정치·사회·경제·국제·문화·테크) + 구 인스타 사전 병합 + 스포츠 버킷 유지."""
+    """신 주제 사전 = 6버킷 확정(정치·사회·경제·국제·문화·테크 — 운영자 260713 · 스포츠/가십류 = 문화로 편성)."""
     base = {k: list(v) for k, v in _load_news_cat().items()}
     if not base:
         return CATS   # 뉴스 분류기 로드 실패 = 구 사전 폴백
     for old_k, new_k in (('정치', '정치'), ('사회사건', '사회'), ('연예문화', '문화'), ('국제', '국제'), ('테크경제', '테크')):
         if new_k in base:
             base[new_k] += [w for w in CATS.get(old_k, []) if w not in base[new_k]]
-    base['스포츠'] = list(CATS.get('스포츠', []))
+    if '문화' in base:   # 스포츠 버킷 폐지 → 키워드는 문화로 흡수(운영자 "스포츠는 다 문화로")
+        base['문화'] += [w for w in CATS.get('스포츠', []) if w not in base['문화']]
     return base
 
 
