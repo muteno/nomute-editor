@@ -129,6 +129,16 @@ def cap_len_band(n):
     return '36자+'
 
 
+_CAT_OVR = None   # 운영자 수동 라벨 오버라이드(data/cat_overrides.json = {media_id: 주제} · 라벨링 도구 회신 배선 — 없으면 no-op)
+
+
+def cat_override(media_id, fallback):
+    global _CAT_OVR
+    if _CAT_OVR is None:
+        _CAT_OVR = jload('cat_overrides.json') or {}
+    return _CAT_OVR.get(str(media_id)) or fallback
+
+
 def enrich(post, fetched):
     ins = post.get('insights') or {}
     views = ins.get('views') or 0
@@ -143,7 +153,7 @@ def enrich(post, fetched):
         'id': post.get('id'), 'date_kst': ts_kst.strftime('%m/%d %H시'), 'iso': ts_kst.strftime('%Y-%m-%d'), 'name': name[:60],   # iso = 뷰어 심층 모달 최신순 정렬 키(연 경계 안전)
         'format': '릴스' if post.get('media_product_type') == 'REELS' else '피드',
         'style': naming_style(name, feats), 'feats': feats,
-        'cat': category(name), 'cat_src': 'kw+news',   # 뉴스 CAT_KW 계승 병합(260713)
+        'cat': cat_override(post.get('id'), category(name)), 'cat_src': 'kw+news+ovr',   # 뉴스 CAT_KW 계승 병합 + 운영자 수동 라벨 우선(260713)
         'era': algo_era(ts_kst.date().isoformat()),
         'hour_band': band, 'dow': DOW[ts_kst.weekday()], 'len_band': cap_len_band(len(name)),
         'views': views, 'vpd': views / age_d,
