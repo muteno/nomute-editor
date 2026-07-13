@@ -9862,7 +9862,7 @@ function renderSns() {
 
 // ── 채널 요약(메뉴4 · 운영자 260713) — 인스타 직결 신호 뷰: 데이터 = insta_data.json(insta-fetch 봇 일 1회) · 수치 정본 = insta_signals 모듈(지침 §4-7 분업 — 여기선 표시만·재계산 금지)
 //    대시보드 확장(운영자 260713 2차): 일일 추이 SVG 차트(예울프로모 로직 계승·시안 = docs/reports/260713_인스타일일추이_플레이그라운드) · 타일 = 평균 대비 델타+스파크 · 포맷/주제/3기 요약 · 실크 글래스 = 메뉴3 계승 ──
-let CHAN = null, CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30';
+let CHAN = null, CHANB = null, CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30';   // CHANB = 채널 AI 브리프(chan_brief.json · insta-fetch 봇 — SNS sns_brief와 별개 축)
 const CH_MET = { views: ['조회수', '회'], reach: ['도달', '계정'], profile_views: ['방문', '회'], interactions: ['상호작용', '회'], follows: ['팔로우', '명'], posts: ['게시', '개'] };
 const chFmtK = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(0) + 'K' : Math.round(n).toLocaleString();
 const chVf = n => n == null ? '—' : n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') + '만' : String(n);   // 한국어 만 단위(타일·심층 모달 공용)
@@ -9942,7 +9942,11 @@ async function loadChan() {
   if (CHAN_LOADING) return;
   if (CHAN && Date.now() - CHAN_AT < 300e3) { renderChan(); return; }
   CHAN_LOADING = true;
-  try { const r = await fetch('insta_data.json?ts=' + Date.now()); if (r.ok) { CHAN = await r.json(); CHAN_AT = Date.now(); } } catch {}
+  try {
+    const [r, rb] = await Promise.all([fetch('insta_data.json?ts=' + Date.now()), fetch('chan_brief.json?ts=' + Date.now()).catch(() => null)]);   // 브리프 = 병행 fetch·실패 무해(파일 없음 = 유닛 미표시 = 조용한 공백)
+    if (r.ok) { CHAN = await r.json(); CHAN_AT = Date.now(); }
+    if (rb && rb.ok) CHANB = await rb.json();
+  } catch {}
   finally { CHAN_LOADING = false; if (CURTAB === 'chan') renderChan(); }
 }
 function renderChan() {
@@ -9966,9 +9970,12 @@ function renderChan() {
   const DEFF = { sig: 1, recent: 1 };   // 첫 방문 기본 접힘 = 데이터 큰 꼬리 유닛(⑥호응 신호·⑧최근 게시물 — 운영자 260713 "기본 접힘 ㄱ") · nm_chan_gfold 기억값 있으면 그게 우선
   const RLAB = { prof: '프로필', daily: '일일 추이', fmt: '릴스·피드', topic: '주제별 반응', era: '알고리즘 3기', sig: '호응 신호', tpost: 'TOP 게시물', recent: '최근 게시물' };   // 책갈피 레일 aria 라벨(운영자 260713 "레일 여기도 · 일치할수록 좋아")
   const RAIL = [];   // 렌더된 단위 수집(순번 = 헤더 배지와 자동 동기 · 데이터 결측 유닛 = 레일서도 자동 제외) → 좌측 책갈피 레일
+  const GPIC = { brief: AISPARK_SVG };   // ✨ AI 요약 = 숫자 대신 픽토그램·순번 밖·레일 제외(메뉴3 GPIC 문법 미러)
   let gno = 0, gfirst = true;
-  const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; RAIL.push({ id, n: ++gno, lab: RLAB[id] || id }); const op = CGF[id] !== undefined ? !CGF[id] : !DEFF[id]; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="cg-${id}"${op ? ' open' : ''}><summary class="tgroup-h"><i>${gno}</i>${ttl}</summary>${body}</details>`; };
-  let h = gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(String(d.generated_kst || '').slice(5, 16).replace('T', ' '))} 수집</span>`, '<div class="ch-stats">' +
+  const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; if (!GPIC[id]) RAIL.push({ id, n: ++gno, lab: RLAB[id] || id }); const op = CGF[id] !== undefined ? !CGF[id] : !DEFF[id]; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="cg-${id}"${op ? ' open' : ''}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || gno}</i>${ttl}</summary>${body}</details>`; };
+  let h = '';
+  if (CHANB && CHANB.text) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`);   // 채널 브리프(성장 서사+현황+전략 · 운영자 260714 "이래야겠네 전략이 뿅뿅") — 셸·라벨·항상 전문 펼침 = 메뉴3 AI 요약 원문 계승 · 접기 = tgroup 체브론
+  h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(String(d.generated_kst || '').slice(5, 16).replace('T', ' '))} 수집</span>`, '<div class="ch-stats">' +
     st('팔로워', vf(p.followers_count), 'follows') + st('조회수', vf(a.views), 'views') + st('도달', vf(a.reach), 'reach') +
     st('공유', vf(a.shares)) + st('저장', vf(a.saves)) + st('프로필 방문', vf(a.profile_views), 'profile_views') + '</div>');
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
@@ -10014,6 +10021,21 @@ function renderChan() {
   box.innerHTML = (RAIL.length > 1 ? '<div class="trailwrap"><nav class="trail" id="chanRail" aria-label="단위 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
     RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + h;
   box.querySelector('.ch-nm').textContent = '@' + (p.username || '');
+  const bt = box.querySelector('.tbrief-t');   // 브리프 본문 주입 = *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href 검증만 = XSS 안전 · 메뉴3 파서 미러 — 스크랩 refs 축만 제외 · 줄바꿈 = .tbrief-t pre-line)
+  if (bt && CHANB) {
+    bt.textContent = '';
+    const txt = CHANB.text || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+    const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
+    const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a2 = document.createElement('a'); a2.href = u.href; a2.target = '_blank'; a2.rel = 'noopener noreferrer'; a2.textContent = label; bt.appendChild(a2); } catch { addText(label); } };
+    let last = 0, m;
+    while ((m = TOK.exec(txt))) {
+      addText(txt.slice(last, m.index)); last = TOK.lastIndex;
+      if (m[1]) { const b2 = document.createElement('b'); b2.textContent = m[1].slice(1, -1); bt.appendChild(b2); }
+      else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+      else if (m[3]) { addLink(m[3], m[3]); }
+    }
+    addText(txt.slice(last));
+  }
   const pts = box.querySelectorAll('.ch-pt'); posts.forEach((x, i) => { if (pts[i]) pts[i].textContent = x.name || '(무캡션)'; });
   // 호응 신호 버킷명 = textContent 주입(XSS 안전 관용구) — data-bk 훅으로 신호 행만 지정(포맷·3기 ch-bk는 esc로 이미 채움)
   const sigBks = box.querySelectorAll('.ch-bk[data-bk]'); let si = 0;
@@ -10047,8 +10069,8 @@ function renderChan() {
     let f2 = {}; try { f2 = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { f2 = {}; }
     if (dt.open === !DEFF[g]) delete f2[g]; else f2[g] = dt.open ? 0 : 1;   // 기본과 같으면 기록 삭제(원장 최소·구 1-기록 데이터 호환)
     try { localStorage.setItem('nm_chan_gfold', JSON.stringify(f2)); } catch {}
-    const rail0 = box.querySelector('#chanRail');   // 접기/펼치기 시 레일 그 단위 점등 = 네비 싱크(메뉴3 미러)
-    if (rail0) rail0.querySelectorAll('.trail-i').forEach(b2 => b2.classList.toggle('on', b2.dataset.tg === g));
+    const rail0 = box.querySelector('#chanRail');   // 접기/펼치기 시 레일 그 단위 점등 = 네비 싱크(메뉴3 미러 · 브리프 = 레일 제외 → 1 프로필 매핑)
+    if (rail0) { const gm = g === 'brief' ? 'prof' : g; rail0.querySelectorAll('.trail-i').forEach(b2 => b2.classList.toggle('on', b2.dataset.tg === gm)); }
   }));
   const rl = box.querySelector('#chanRail');   // 레일 점프 = 접힌 단위면 펼치며(toggle이 nm_chan_gfold 기억) 스크롤 · TOP = 최상단 · scroll-margin-top = .tgroup 계승(메뉴3 동작 그대로)
   if (rl) rl.addEventListener('click', e => {
@@ -10063,7 +10085,7 @@ function renderChan() {
     const mark = id => rl.querySelectorAll('.trail-i').forEach(b2 => b2.classList.toggle('on', b2.dataset.tg === id));
     box._chIO = new IntersectionObserver(es => {
       const v2 = es.filter(x => x.isIntersecting).sort((a2, b2) => b2.intersectionRatio - a2.intersectionRatio)[0];
-      if (v2) mark((v2.target.id || '').replace('cg-', ''));
+      if (v2) { const gid = (v2.target.id || '').replace('cg-', ''); mark(gid === 'brief' ? 'prof' : gid); }   // 브리프 = 레일 제외 → 최상단 구간 = 1(프로필) 점등(메뉴3 brief→top 매핑 미러)
     }, { rootMargin: '-12% 0px -58% 0px' });
     box.querySelectorAll('details.tgroup').forEach(g3 => box._chIO.observe(g3));
   }
