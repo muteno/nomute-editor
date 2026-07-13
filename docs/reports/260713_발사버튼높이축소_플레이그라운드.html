@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>발사 버튼 높이 축소 시안 — 9→6 줄어든 만큼(33%)</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322; --accent-bright:#5AFFE6;
+    --r-pill:999px; --r-l:16px; --r-m:11px; --fw-x:800;
+    --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+    --gauge-ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:#0b0d0c; color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Pretendard Variable",sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .hd{ padding:20px 18px 8px; max-width:1080px; margin:0 auto; }
+  .hd h1{ font-size:19px; font-weight:800; margin:0 0 4px; letter-spacing:-.01em; }
+  .hd .sub{ font-size:13px; color:var(--mut); margin:0; }
+  .hd .sub b{ color:var(--accent); font-weight:700; }
+  .wrap{ display:flex; flex-wrap:wrap; gap:20px; padding:14px 18px 40px; max-width:1080px; margin:0 auto; align-items:flex-start; }
+
+  /* ── 좌: 실물 재현 미리보기 (9:18 폰 프레임) ── */
+  .stagewrap{ flex:1 1 320px; min-width:300px; }
+  .frame{
+    width:100%; max-width:340px; margin:0 auto; aspect-ratio:9/18;
+    background:var(--bg); border:1px solid var(--line); border-radius:26px;
+    padding:16px 14px; overflow:hidden; position:relative;
+    display:flex; flex-direction:column;
+    box-shadow:0 8px 40px rgba(0,0,0,.5);
+  }
+  .fk-title{ font-size:12px; color:var(--mut); font-weight:700; margin:2px 2px 10px; }
+  .fk-body{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:9px; }
+  .fk-card{ background:rgba(255,255,255,.03); border:1px solid var(--line2); border-radius:var(--r-l); padding:12px; opacity:.5; }
+  .fk-card .l{ height:9px; width:60%; background:rgba(255,255,255,.14); border-radius:5px; margin-bottom:7px; }
+  .fk-card .l.s{ width:38%; }
+  .cmp-lbl{ font-size:11px; color:var(--mut); font-weight:700; margin:4px 2px -2px; display:flex; justify-content:space-between; }
+  .cmp-lbl b{ color:var(--fg); font-weight:800; font-variant-numeric:tabular-nums; }
+
+  /* 현행 52px 고스트 박스 — 튜닝 버튼이 이 안에서 얼마나 줄었나 시각화 */
+  .gobox{ border:1px dashed rgba(255,255,255,.16); border-radius:var(--r-pill); display:flex; align-items:center; min-height:52px; }
+  .gobox.cur{ min-height:0; border-style:solid; border-color:var(--line); }
+
+  /* 발사 버튼 실물 계승 (viewer .go 정본) */
+  .go{
+    width:100%; padding:var(--t-pad,18px);
+    background:rgba(255,255,255,.02); color:var(--accent);
+    border:1px solid var(--line); border-radius:var(--r-pill);
+    font-weight:var(--fw-x); font-size:14px; line-height:1; font-family:inherit;
+    cursor:pointer; position:relative; overflow:hidden; user-select:none;
+    transition:padding .2s var(--gauge-ease), transform .12s ease;
+  }
+  .gobox.cur .go{ --t-pad:18px; }
+  .go:active{ transform:scale(.955); }
+  .go .lbl{ position:relative; z-index:1; }
+  .go.firing{ color:var(--on-accent); pointer-events:none; }
+  .go.firing::before{ content:''; position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left; z-index:0; animation:gfill .8s var(--gauge-ease) forwards; }
+  @keyframes gfill{ to{ transform:scaleX(1); } }
+
+  .gallery{ display:flex; flex-direction:column; gap:7px; margin-top:2px; }
+  .gallery .glab{ font-size:10px; color:var(--mut); font-weight:700; margin-bottom:1px; }
+  .gallery .go{ font-size:13px; }
+  .stagecap{ font-size:11px; color:var(--mut); text-align:center; margin-top:10px; }
+
+  /* ── 우: 콘솔 ── */
+  .console{ flex:1 1 360px; min-width:300px; display:flex; flex-direction:column; gap:16px; }
+  .csec{ background:rgba(255,255,255,.02); border:1px solid var(--line2); border-radius:var(--r-l); padding:14px; }
+  .csec > .h{ font-size:12px; font-weight:800; color:var(--fg); margin:0 0 10px; display:flex; align-items:center; gap:6px; }
+  .csec > .h::before{ content:'•'; color:var(--accent); font-weight:700; }
+
+  .presets{ display:flex; flex-wrap:wrap; gap:7px; }
+  .pill{ border:1px solid var(--line); background:rgba(255,255,255,.02); color:var(--fg); border-radius:var(--r-pill); padding:7px 13px; font-size:12px; font-weight:700; cursor:pointer; transition:.15s; font-family:inherit; }
+  .pill:hover{ background:rgba(255,255,255,.05); }
+  .pill.on{ background:rgba(var(--accent-rgb),.14); border-color:var(--accent); color:var(--accent); }
+  .pill .star{ color:var(--accent-bright); }
+
+  .slrow{ margin-bottom:2px; }
+  .slrow .sh{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+  .slrow .sh .nm{ font-size:12px; font-weight:700; }
+  .slrow .sh .vv{ font-size:12px; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .slrow .sh .vv .warn{ color:var(--accent-bright); }
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:999px; background:linear-gradient(90deg,var(--accent) var(--p,66%),rgba(255,255,255,.1) var(--p,66%)); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--fg); border:3px solid var(--accent); cursor:pointer; }
+  input[type=range]::-moz-range-thumb{ width:15px; height:15px; border-radius:50%; background:var(--fg); border:3px solid var(--accent); cursor:pointer; }
+  .ticks{ display:flex; justify-content:space-between; font-size:9.5px; color:var(--mut); margin-top:5px; font-variant-numeric:tabular-nums; }
+  .ticks span.tk{ position:relative; }
+  .ticks span.on{ color:var(--accent); font-weight:800; }
+
+  .metrics{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .met{ background:rgba(255,255,255,.025); border:1px solid var(--line2); border-radius:var(--r-m); padding:9px 11px; }
+  .met .k{ font-size:10px; color:var(--mut); font-weight:700; }
+  .met .v{ font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .met .v small{ font-size:11px; color:var(--mut); font-weight:600; }
+  .met.accent .v{ color:var(--accent); }
+
+  pre.out{ background:#08100e; border:1px solid var(--line2); border-radius:var(--r-m); padding:12px; font-size:11.5px; line-height:1.65; color:var(--fg); white-space:pre-wrap; word-break:break-all; margin:0 0 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums; }
+  .copy{ width:100%; border:1px solid var(--accent); background:rgba(var(--accent-rgb),.12); color:var(--accent); border-radius:var(--r-pill); padding:11px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; transition:.15s; }
+  .copy:active{ transform:scale(.98); }
+  .copy.ok{ background:var(--accent); color:var(--on-accent); }
+  .note{ font-size:11px; color:var(--mut); line-height:1.7; }
+  .note b{ color:var(--fg); font-weight:700; }
+  .note ul{ margin:6px 0 0; padding-left:16px; }
+  .note li{ margin-bottom:3px; }
+</style>
+</head>
+<body>
+  <div class="hd">
+    <h1>발사 버튼 높이 축소 시안</h1>
+    <p class="sub">8뷰어 전폭 발사버튼 <b>.go</b> — 모달버튼이 <b>9→6px(⅔·33%↓)</b>로 줄어든 그 <b>비율만큼</b> padding 축소. 현행 <b>18px(높이 52)</b> → 추천 <b>12px(높이 40)</b>. 버튼 눌러 게이지도 확인.</p>
+  </div>
+
+  <div class="wrap">
+    <!-- 좌: 미리보기 -->
+    <div class="stagewrap">
+      <div class="frame">
+        <div class="fk-title">Image Studio · 발사바 재현</div>
+        <div class="fk-body">
+          <div class="fk-card"><div class="l"></div><div class="l s"></div></div>
+
+          <div class="cmp-lbl"><span>현행 (padding 18)</span><b>높이 52px</b></div>
+          <div class="gobox cur"><button class="go" data-fire><span class="lbl">이미지 제작</span></button></div>
+
+          <div class="cmp-lbl"><span>축소안 (점선 = 현행 52 자리)</span><b id="hLbl">높이 40px</b></div>
+          <div class="gobox"><button class="go" id="tuneGo" data-fire><span class="lbl">이미지 제작</span></button></div>
+
+          <div class="gallery" id="gallery">
+            <div class="glab">↓ 8뷰어 전부 이 높이로 통일 (라벨 길이 무관)</div>
+          </div>
+        </div>
+        <div class="stagecap"></div>
+      </div>
+      <div class="stagecap">점선 박스 = 현행 52px 자리 · 안쪽 버튼 = 축소 높이 · 클릭 = 발사 게이지 데모</div>
+    </div>
+
+    <!-- 우: 콘솔 -->
+    <aside class="console">
+      <div class="csec">
+        <div class="h">프리셋</div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="csec">
+        <div class="h">미세조정 — 세로 padding</div>
+        <div class="slrow">
+          <div class="sh"><span class="nm">padding</span><span class="vv" id="padV">12px</span></div>
+          <input type="range" id="pad" min="6" max="18" step="0.5" value="12">
+          <div class="ticks">
+            <span class="tk" data-t="6">6 <small>sp-1</small></span>
+            <span class="tk" data-t="9">9</span>
+            <span class="tk" data-t="12">12 <small>sp-2</small></span>
+            <span class="tk" data-t="15">15</span>
+            <span class="tk" data-t="18">18 <small>sp-3</small></span>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="met accent"><div class="k">버튼 높이</div><div class="v" id="mH">40px <small>/52</small></div></div>
+          <div class="met"><div class="k">padding 감소 <small>(9→6 기준)</small></div><div class="v" id="mPad">33%</div></div>
+          <div class="met"><div class="k">높이 감소</div><div class="v" id="mHr">23%</div></div>
+          <div class="met"><div class="k">토큰 판정</div><div class="v" id="mTok" style="font-size:13px">sp-2 계승</div></div>
+        </div>
+      </div>
+
+      <div class="csec">
+        <div class="h">선택값</div>
+        <pre class="out" id="out"></pre>
+        <button class="copy" id="copy">선택값 복사</button>
+      </div>
+
+      <div class="csec">
+        <div class="h">재현 한계 · 메모</div>
+        <div class="note">
+          <ul>
+            <li><b>실물 계승</b>: viewer <code>:root</code> 토큰 사본 + <code>.go</code> 정본 CSS(글래스 .02·--line·pill·14px 800·line-height:1) 그대로. 게이지 채움 곡선도 <code>--gauge-ease</code> 계승.</li>
+            <li><b>18→12 = 토큰 사다리 안착</b>: 현행 18px=<code>--sp-3</code>, 12px=<code>--sp-2</code> → raw 창작 0, 배선 시 <code>padding:var(--sp-2)</code>로 계승. (13·15 등은 토큰 밖 = 갱신후보 ⚠.)</li>
+            <li><b>"9→6 줄어든 만큼"</b> = padding 33%↓ 기준(모달버튼 논리 직계승). 버튼 <i>전체 높이</i>는 글자·테두리가 고정이라 23%↓(52→40). 두 수치 다 표기 — 어느 기준인지 골라줘.</li>
+            <li><b>스코프</b>: 8뷰어 전폭 <code>.go</code>만(thumb·edit·conv·track·song·nb·k·ly). index 모달버튼(전송·수정·발행·생성·기록)은 이미 6px 통일 반영 완료 = 별개 위계.</li>
+            <li>실제 폰트·안티에일리어싱은 기기별 상이 — 높이·비율 수치가 판단 기준.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+  var LABELS = ['이미지 제작','편집 시작','변환','자료화','트래킹','음원 생성','생성','자막 생성'];
+  var SP = {6:'sp-1',12:'sp-2',18:'sp-3',24:'sp-4'};
+  var PRESETS = [
+    {id:'cur', nm:'현행 18', pad:18},
+    {id:'p33', nm:'padding 33%↓', star:'★', pad:12},
+    {id:'h33', nm:'높이 33%↓', pad:9.5},
+    {id:'half', nm:'절반 50%↓', pad:9}
+  ];
+  var app = document.querySelector('.frame');
+  var tuneGo = document.getElementById('tuneGo');
+  var padEl = document.getElementById('pad');
+  var state = {pad:12};
+
+  // 갤러리(8뷰어 라벨) 생성
+  var gal = document.getElementById('gallery');
+  LABELS.forEach(function(t){
+    var b = document.createElement('button');
+    b.className = 'go'; b.setAttribute('data-fire','');
+    b.innerHTML = '<span class="lbl">'+t+'</span>';
+    gal.appendChild(b);
+  });
+
+  // 프리셋 필
+  var presetsEl = document.getElementById('presets');
+  PRESETS.forEach(function(p){
+    var b = document.createElement('button');
+    b.className = 'pill'; b.dataset.pad = p.pad;
+    b.innerHTML = p.nm + (p.star? ' <span class="star">'+p.star+'</span>':'');
+    b.onclick = function(){ state.pad = p.pad; apply(); };
+    presetsEl.appendChild(b);
+  });
+
+  function measureH(){
+    // 높이 = 14(글자 line-height:1) + 2×padding + 2(border) · 헤드리스 실측 검증(pad18→52·pad12→40) · transition(padding .2s) 중 즉시 getBoundingClientRect는 옛값 반환하므로 계산식 채택
+    return Math.round(16 + 2*state.pad);
+  }
+  function tokNote(pad){
+    if (SP[pad]) return 'var(--'+SP[pad]+') 계승';
+    return 'raw '+pad+'px = 갱신후보 ⚠';
+  }
+  function apply(){
+    var pad = state.pad;
+    // 모든 튜닝 버튼(현행 cur 제외)에 padding 반영
+    document.querySelectorAll('.gobox:not(.cur) .go, .gallery .go').forEach(function(el){
+      el.style.setProperty('--t-pad', pad+'px');
+    });
+    padEl.value = pad;
+    var pct = (pad-6)/(18-6)*100;
+    padEl.style.setProperty('--p', pct+'%');
+    document.getElementById('padV').innerHTML = pad+'px' + (SP[pad]? ' <span style="color:var(--mut);font-size:10px">'+SP[pad]+'</span>':'');
+
+    var h = measureH();
+    var padCut = Math.round((18-pad)/18*100);
+    var hCut = Math.round((52-h)/52*100);
+    document.getElementById('hLbl').textContent = '높이 '+h+'px';
+    document.getElementById('mH').innerHTML = h+'px <small>/52</small>';
+    document.getElementById('mPad').textContent = padCut+'%';
+    document.getElementById('mHr').textContent = hCut+'%';
+    var tokEl = document.getElementById('mTok');
+    tokEl.textContent = SP[pad]? SP[pad]+' 계승' : 'raw ⚠';
+    tokEl.style.color = SP[pad]? 'var(--accent)' : 'var(--accent-bright)';
+
+    // 프리셋 on 표시
+    document.querySelectorAll('.pill').forEach(function(x){ x.classList.toggle('on', parseFloat(x.dataset.pad)===pad); });
+
+    // 출력
+    document.getElementById('out').textContent =
+      '[발사버튼 .go — 선택값]\n' +
+      'padding  : '+pad+'px    (현행 18px)   = '+tokNote(pad)+'\n' +
+      '버튼높이  : '+h+'px    (현행 52px)\n' +
+      'padding 감소 : '+padCut+'%   ← "9→6" 논리(모달버튼 기준)\n' +
+      '높이 감소    : '+hCut+'%\n' +
+      '적용 : 8뷰어 전폭 .go\n' +
+      '       (thumb·edit·conv·track·song·nb·k·ly)';
+  }
+
+  padEl.addEventListener('input', function(){ state.pad = parseFloat(padEl.value); apply(); });
+
+  // 발사 게이지 데모
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('.go[data-fire], .gallery .go');
+    if(!b || b.classList.contains('firing')) return;
+    b.classList.add('firing');
+    setTimeout(function(){ b.classList.remove('firing'); }, 1100);
+  });
+
+  // 복사
+  document.getElementById('copy').onclick = function(){
+    var t = document.getElementById('out').textContent;
+    var done = function(){ var c=this||document.getElementById('copy'); };
+    var c = document.getElementById('copy');
+    function ok(){ c.classList.add('ok'); c.textContent='복사됨 ✓'; setTimeout(function(){ c.classList.remove('ok'); c.textContent='선택값 복사'; },1400); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(ok, fallback);
+    } else fallback();
+    function fallback(){
+      var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); ok(); }catch(e){} document.body.removeChild(ta);
+    }
+  };
+
+  apply();
+</script>
+</body>
+</html>
