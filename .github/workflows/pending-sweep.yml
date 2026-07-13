@@ -6,7 +6,7 @@ name: pending-sweep
 # ⚠️ workflow_dispatch 는 GITHUB_TOKEN 으로도 새 run 을 만든다(재귀방지 예외) → actions:write 로 디스패치 가능.
 on:
   schedule:
-    - cron: '*/20 * * * *'   # 20분마다(고아 회복 지연 ≤ ~20분 + analyze 처리시간)
+    - cron: '*/10 * * * *'   # 10분마다(고아 회복 지연 ≤ ~10분 + analyze 처리시간 · 20→10 전수감사 260713 — orphan 없으면 즉시 exit라 비용 ≈ 0)
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
       - name: Detect orphan pending and redispatch
         env:
           GH_TOKEN: ${{ github.token }}
-          THRESH_MIN: '15'   # 이 분 이상 잔류 = 고아(트리거 누락). analyze 가 보통 수분 내 소진하므로 보수적.
+          THRESH_MIN: '10'   # 이 분 이상 잔류 = 고아(트리거 누락). analyze 가 보통 수분 내 소진하므로 보수적. 15→10(전수감사 260713 — 고아 회복 지연 단축 짝 = cron */10)
         run: |
           now=$(date +%s)
           orphans=0
