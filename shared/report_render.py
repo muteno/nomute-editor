@@ -32,6 +32,9 @@ TSV = 탭 구분 · 1행 = 헤더(무시·자리표시) · 셀 안 개행은 `\\
 검증(FAIL = 산출 없이 exit 1): ①열 수 20 미달 ②4열(목적) 공란 행 ③2열 공란인데 상속 표기도 없는 행.
 패딩 감사(경고·말미 블록에 자동 기재): 인접 행 3셀 이상 동일 = 복붙 의심 · {5,9,16}열 전부 공란 = 앵커 없는 행.
 파일명 = {YYYYMMDD}_{HHMMSS}_{라벨}_v{N}.html (KST · 같은 라벨 기존 v 최대+1 = 덮어쓰기 금지 · §작업표준 f).
+Q↔커밋 자동 링크(§작업표준 e-3 · 운영자 260713): 커밋 메시지에 `[Qnn]` 태그를 달면 렌더 시 git log(최근 300)를
+스캔해 행ID(1열)에 같은 Qnn이 있는 행의 19열(처분·커밋)에 sha를 자동 병기 — 운영자 문단→결과물 왕복 1클릭.
+한계(정직) = Q번호는 작업 블록 로컬(날짜 무관 재사용)이라 최근 로그 범위에서만 유효.
 """
 import sys
 import os
@@ -85,6 +88,39 @@ def audit(rows):
     miss = sum(1 for r in rows if '미달' in r[19])
     notes.append('목적 미달 자기판정 행: %d' % miss)
     return notes
+
+
+def git_qmap(limit=300):
+    """git log에서 `[Qnn]` 태그 커밋을 수집 → {'Q01': ['sha', ...]} (실패 = 빈 dict · 비차단)."""
+    import subprocess
+    try:
+        out = subprocess.run(['git', 'log', '-%d' % limit, '--format=%h\x01%s'],
+                             capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return {}
+    m = {}
+    for line in out.splitlines():
+        sha, _, subj = line.partition('\x01')
+        for q in re.findall(r'\[Q(\d{1,3})\]', subj):
+            m.setdefault('Q%02d' % int(q), []).append(sha)
+    return m
+
+
+def link_commits(rows):
+    """행ID(1열)의 Qnn ↔ 커밋 [Qnn] 태그 자동 매칭 — 19열(처분·커밋)에 sha 병기. 매칭 행 수 반환."""
+    qmap = git_qmap()
+    if not qmap:
+        return 0
+    n = 0
+    for r in rows:
+        shas = []
+        for q in re.findall(r'Q\d{1,3}', r[0]):
+            key = 'Q%02d' % int(q[1:])
+            shas += [s for s in qmap.get(key, []) if s not in shas and s not in r[18]]
+        if shas:
+            r[18] = (r[18] + ' · ' if r[18] else '') + 'git:' + ','.join(shas)
+            n += 1
+    return n
 
 
 def next_ver(outdir, label):
@@ -168,11 +204,13 @@ def main(argv):
         for f in fails[:20]:
             print('  -', f)
         return 1
+    linked = link_commits(rows)
     now = kst_now()
     ver = next_ver(outdir, label)
     name = '%s_%s_%s_v%d.html' % (now.strftime('%Y%m%d'), now.strftime('%H%M%S'), label, ver)
     path = os.path.join(outdir, name)
-    doc = render(rows, label, now.strftime('%Y-%m-%d %H:%M:%S'), audit(rows), expect50)
+    notes = audit(rows) + ['Q태그 커밋 자동 매칭: %d행 (§작업표준 e-3 [Qnn] 규약)' % linked]
+    doc = render(rows, label, now.strftime('%Y-%m-%d %H:%M:%S'), notes, expect50)
     os.makedirs(outdir, exist_ok=True)
     with open(path, 'w', encoding='utf-8') as f:
         f.write(doc)
