@@ -690,7 +690,7 @@ def disaster(limit=10):
         # 재난문자 발령현황 표준 엔드포인트(서비스키 = 이미 URL 인코딩된 값 전제 · 최신 페이지)
         u = ("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=" + SAFETY_KEY +
              "&returnType=json&pageNo=1&numOfRows=" + str(limit))
-        j = json.loads(_get(u, timeout=25))   # 기본 15s는 러너서 timeout(카나리아 run 29222854324 실측 260713: <urlopen error timed out> · 키 전달·인증은 정상) → 형제 KOBIS(25)와 동일 상향(safetydata.go.kr = 느린 정부 포털)
+        j = json.loads(_get(u))
         body = (j.get("body") or j.get("data") or j.get("DSSP-IF-00247") or [])
         out = []
         for it in (body if isinstance(body, list) else []):
