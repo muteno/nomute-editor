@@ -204,7 +204,7 @@ def compute(media_doc, audience=None):
         'n_posts': len(posts), 'span': [span[0], span[-1]],
         'weights': W, 'global_median': {k: round(v, 3) for k, v in g_med.items()},
         'axes': axes,
-        'posts': sorted(posts, key=lambda p: -p['score']),
+        'posts': sorted(posts, key=lambda p: -p['score'])[:100],   # 저장 cap(전체 표본은 axes에 반영 · 비대 방지)
         'audience_overlay': {'online_peak_kst': online_peak_kst(audience or {})},
         'flags': flags,
     }
@@ -248,7 +248,29 @@ def _daily_timeseries(daily):
                     et = (p.get('end_time') or '')[:10]
                     if et and et < fd:   # 수집일 당일 = 진행 중 부분값 → 제외
                         put(et, k_out, p.get('value'))
-    # 일일 게시수 = media_count 인접일 차분(하루 마지막 스냅샷 기준 · 연속한 날만)
+    # 일일 게시수 ① 정본 = 전 게시물 백필 타임스탬프 일별 집계(KST · 수집일 = 진행 중 → 제외)
+    mall = jload('media_all.json')
+    if mall and mall.get('media'):
+        cnt = {}
+        for m in mall['media']:
+            ts = m.get('timestamp')
+            if not ts:
+                continue
+            try:
+                d = datetime.datetime.fromisoformat(ts.replace('+0000', '+00:00')).astimezone(KST).date().isoformat()
+            except ValueError:
+                continue
+            cnt[d] = cnt.get(d, 0) + 1
+        fetch_d = (mall.get('fetched_kst') or '')[:10]
+        lo = min(merged) if merged else '0000-00-00'   # 지표 시계열 범위 안만(계정 초기 잔재로 축 안 늘림)
+        for d in sorted(cnt):
+            if lo <= d < fetch_d:
+                put(d, 'posts', cnt[d])
+        if cnt:   # 범위 내 게시 0일 = 명시적 0(백필 = 전수라 0이 사실 · 결측 아님)
+            for d in list(merged):
+                if d < fetch_d and 'posts' not in merged[d]:
+                    merged[d]['posts'] = 0
+    # ② 보충 = media_count 인접일 차분(백필 없을 때 · 연속한 날만)
     mc = {}
     for row in daily:
         d = (row.get('fetched_kst') or '')[:10]
@@ -271,8 +293,28 @@ def _daily_timeseries(daily):
     return series, meta
 
 
+def _avg_signals(series):
+    """평균 신호(운영자 260713 — 실사용 핵심 ①): 지표별 {전 기간 일평균 · 최근 7일 평균 · 배율 · 표본일}.
+    posts 포함 = *평균적으로 몇 개 올렸나* + *요즘이 평소 대비 어디냐*를 수치로."""
+    out = {}
+    for k in ('posts', 'views', 'reach', 'profile_views', 'interactions', 'follows'):
+        vals = [r[k] for r in series if r.get(k) is not None]
+        if len(vals) < 8:
+            continue
+        avg_all = statistics.mean(vals)
+        avg_7 = statistics.mean(vals[-7:])
+        out[k] = {'avg_all': round(avg_all, 2), 'avg_7d': round(avg_7, 2),
+                  'ratio_7d': round(avg_7 / avg_all, 2) if avg_all else None, 'n_days': len(vals)}
+    return out
+
+
 def main():
-    media = jload('media_latest.json')
+    # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악") 우선 — 인사이트 유표본 30 미만 = 최근 25개 폴백
+    mall = jload('media_all.json')
+    media = None
+    if mall and sum(1 for m in (mall.get('media') or []) if (m.get('insights') or {}).get('views')) >= 30:
+        media = mall
+    media = media or jload('media_latest.json')
     if not media:
         print('데이터 없음 — insta-fetch 수집분(apps/insta/data/media_latest.json)부터 필요')
         return 1
@@ -297,6 +339,7 @@ def main():
         series_daily, daily_meta = _daily_timeseries(daily)
         vdoc['daily_series'] = series_daily
         vdoc['daily_meta'] = daily_meta
+        vdoc['avg'] = _avg_signals(series_daily)   # 평균 게시량·평균 대비 현재(운영자 실사용 핵심)
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
             json.dump(vdoc, f, ensure_ascii=False, indent=1)
