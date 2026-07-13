@@ -1,0 +1,230 @@
+<!-- 자기완결 플레이그라운드 — 생성버튼(B통일 기준) + 리드 하단 구분선 + 간격 세밀 튜닝 (운영자 260713) · viewer :root 실측 사본 · 외부요청 0 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>버튼·구분선·간격 세밀 · 플레이그라운드</title>
+<style>
+  :root{
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6; --accent-dim:rgba(0,238,210,.13);
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --modal-glass:rgba(17,18,20,.64); --on-accent:#032322;
+    --r-modal:22px; --r-s:9px; --r-m:11px; --r-pill:999px;
+    --fs-label:13px; --fs-sm:12px; --lh-base:1.6; --sp-3:18px;
+    /* 튜닝 변수(실시간) — 기본 = 현행 확정값 */
+    --go-bg:.05;        /* 버튼 배경 흰 알파 (현행 .05) */
+    --go-bd:var(--line);/* 버튼 테두리 색 (현행 중립 --line) */
+    --go-pad:12px;      /* 버튼 세로 여백 (현행 sp-2=12) */
+    --go-rad:999px;     /* 버튼 radius (현행 pill) */
+    --div-col:var(--line2); /* 리드 구분선 색 (현행 --line2) */
+    --div-w:1px;        /* 구분선 두께 (현행 1) */
+    --gap-bd:10px;      /* 버튼 ↔ 구분선 (현행 lead pb 10) */
+    --gap-ct:11px;      /* 구분선 ↔ 콘텐츠 (현행 body pt 11) */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#0a0b0c;color:var(--fg);padding:16px 13px 40px;
+    font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:440px;margin:0 auto}
+  h1{font-size:18px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 14px;line-height:1.55}
+  .sub b{color:var(--accent);font-weight:700}
+
+  /* 미리보기 */
+  .phone{width:100%;max-width:380px;margin:0 auto 4px;aspect-ratio:9/15;background:linear-gradient(180deg,#161a1f,#0e1113);
+    border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:11px;position:relative;
+    box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  .feedbg{position:absolute;inset:11px;border-radius:18px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.028) 0 44px,transparent 44px 88px);opacity:.5}
+  .dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 26px);height:calc(100% - 34px);
+    display:flex;flex-direction:column;background:var(--modal-glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+    border:1px solid var(--line);border-radius:var(--r-modal);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .dlg-h{flex:none;display:flex;align-items:center;justify-content:space-between;padding:11px 13px 7px;background:rgba(24,25,28,.5);border-bottom:1px solid var(--line2)}
+  .dlg-h b{font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:6px}
+  .dlg-h .spark{color:var(--accent)}
+  .dlg-h .x{width:24px;height:24px;display:grid;place-items:center;color:var(--mut)}
+
+  .lead{flex:none;padding:8px var(--sp-3) var(--gap-bd);border-bottom:var(--div-w) solid var(--div-col)}
+  .body{padding:var(--gap-ct) var(--sp-3) 14px;overflow-y:auto;flex:1 1 auto;min-height:0}
+  .sechead{display:flex;align-items:center;gap:8px;padding:12px 0 2px}
+  .sechead:first-child{padding-top:2px}
+  .sechead .lbl{font-size:var(--fs-label);font-weight:800;color:var(--fg)}
+  .sechead .lbl::before{content:'• ';color:var(--accent);font-weight:700}
+  .sechead .chev{margin-left:auto;color:var(--mut)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line2)}
+  .publ{font-size:var(--fs-label);font-weight:700;color:var(--fg)}
+  .opts{display:flex;flex-wrap:wrap;gap:3px 4px;justify-content:flex-end}
+  .opt{padding:5px 6px;font-size:var(--fs-label);font-weight:700;color:var(--mut)}
+  .opt.on{color:var(--accent);font-weight:800}
+  textarea.in{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--fg);
+    font:700 var(--fs-label) inherit;padding:6px 10px;resize:none;line-height:var(--lh-base);display:block}
+  textarea.in::placeholder{color:var(--mut);opacity:.75}
+  .wishrow{padding:4px 0 0}
+  .sum{color:var(--mut);font-size:var(--fs-sm);font-weight:700;line-height:1.5;padding:8px 2px;text-align:right;font-variant-numeric:tabular-nums}
+  .sum b{color:var(--fg);font-weight:700}
+  .sum .sl{opacity:.5}
+  .go{display:block;width:100%;margin-top:2px;border-radius:var(--go-rad);font:800 14px inherit;text-align:center;color:var(--accent);
+    background:rgba(255,255,255,var(--go-bg));border:1px solid var(--go-bd);padding:var(--go-pad);transition:.15s}
+  .badge{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--on-accent);font-size:10px;font-weight:800;line-height:16px;text-align:center;margin-left:6px}
+
+  /* 컨트롤 */
+  .ctl{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:16px;padding:14px 15px;margin:12px 0 0}
+  .ctl h3{margin:0 0 10px;font-size:12.5px;font-weight:800;color:var(--accent)}
+  .ctl h3 .mini{color:var(--mut);font-weight:700;font-size:11px}
+  .slider{margin:0 0 13px}
+  .slider:last-child{margin-bottom:0}
+  .slider label{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--fg);margin-bottom:6px}
+  .slider label .v{color:var(--accent);font-variant-numeric:tabular-nums}
+  .slider label .v .cur{color:var(--mut);font-weight:700;font-size:11px}
+  input[type=range]{width:100%;margin:0;height:20px;-webkit-appearance:none;appearance:none;background:none;cursor:pointer}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:rgba(255,255,255,.14)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);margin-top:-6px;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:rgba(255,255,255,.14)}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:none}
+  .seglbl{font-size:12px;font-weight:700;color:var(--fg);margin:0 0 6px}
+  .segrow{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px}
+  .segrow:last-child{margin-bottom:0}
+  .segrow button{flex:1 1 auto;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;
+    padding:8px 6px;color:var(--mut);font:700 11.5px inherit;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
+  .segrow button.on{border-color:rgba(var(--accent-rgb),.6);background:rgba(var(--accent-rgb),.08);color:var(--accent)}
+
+  .out{background:#0d0f11;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:14px 0 0;font-size:11.5px;color:var(--mut);line-height:1.75}
+  .out b{color:var(--fg)}.out .k{color:var(--accent)}
+  .copybtn{display:block;width:100%;margin-top:12px;padding:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);color:var(--accent);font:800 13px inherit;cursor:pointer;transition:.15s}
+  .copybtn.done{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .reset{display:block;width:100%;margin-top:8px;padding:9px;background:none;border:1px solid var(--line2);border-radius:var(--r-pill);color:var(--mut);font:700 12px inherit;cursor:pointer}
+  .note{margin:14px 0 0;padding:12px 15px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:14px}
+  .note ul{margin:0;padding-left:15px;color:var(--mut);font-size:11.5px;line-height:1.65}
+  .note li b{color:var(--fg);font-weight:700}
+  code{background:rgba(255,255,255,.06);padding:1px 4px;border-radius:4px;font-size:11px}
+</style>
+<body>
+<div class="wrap">
+  <h1>버튼 · 구분선 · 간격 세밀</h1>
+  <p class="sub">방금 통일한 <b>B 버튼</b> 기준으로 더 만져봐 — 버튼 톤/높이, 그 아래 <b>구분선</b>, 그리고 <b>간격</b> 2개. 아래 파란 경계선 근처를 집중해서 봐.</p>
+
+  <div class="phone">
+    <div class="feedbg"></div>
+    <div class="dlg">
+      <div class="dlg-h"><b><span class="spark">✦</span> Image Studio</b><span class="x">✕</span></div>
+      <div class="lead" id="lead">
+        <div class="sechead"><span class="lbl">내용</span></div>
+        <div class="wishrow"><textarea class="in" rows="3" placeholder="필수 · 그릴 장면·상황을 설명"></textarea></div>
+        <div class="sum"><b>극화·웹툰화</b> <span class="sl">/</span> <b>4:5 · FHD · 3장 · PNG</b> <span class="sl">/</span> <b>무드 자동</b></div>
+        <div class="go" id="goBtn">생성</div>
+      </div>
+      <div class="body">
+        <div class="sechead"><span class="lbl">카메라 · 구도</span><span class="badge">0</span><span class="chev">⌄</span></div>
+        <div class="sechead"><span class="lbl">개요</span></div>
+        <div class="row"><span class="publ">해상도</span><span class="opts"><span class="opt">720p</span><span class="opt on">FHD</span><span class="opt">2K</span><span class="opt">4K</span></span></div>
+        <div class="row"><span class="publ">비율</span><span class="opts"><span class="opt on">4:5</span><span class="opt">9:16</span><span class="opt">16:9</span></span></div>
+        <div class="row"><span class="publ">장수</span><span class="opts"><span class="opt">1장</span><span class="opt">2장</span><span class="opt on">3장</span><span class="opt">4장</span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ① 버튼 -->
+  <div class="ctl">
+    <h3>① 생성 버튼 <span class="mini">(B통일 미세조정)</span></h3>
+    <div class="slider"><label><span>배경 진하기</span><span class="v"><span id="bgV">5</span>% <span class="cur">(현행 5)</span></span></label><input type="range" id="bgR" min="2" max="14" step="1" value="5"></div>
+    <div class="slider"><label><span>세로 높이(여백)</span><span class="v"><span id="padV">12</span>px <span class="cur">(현행 12)</span></span></label><input type="range" id="padR" min="9" max="18" step="1" value="12"></div>
+    <p class="seglbl">테두리 색</p>
+    <div class="segrow" id="segBd">
+      <button data-v="line" class="on">중립(현행)</button>
+      <button data-v="a25">accent 약</button>
+      <button data-v="a45">accent 강</button>
+    </div>
+    <p class="seglbl">모서리</p>
+    <div class="segrow" id="segRad">
+      <button data-v="pill" class="on">pill(현행)</button>
+      <button data-v="r11">둥근(11)</button>
+      <button data-v="r9">약간(9)</button>
+    </div>
+  </div>
+
+  <!-- ② 구분선 -->
+  <div class="ctl">
+    <h3>② 버튼 아래 구분선</h3>
+    <p class="seglbl">색·진하기</p>
+    <div class="segrow" id="segDiv">
+      <button data-v="none">없음</button>
+      <button data-v="l2" class="on">기본(현행)</button>
+      <button data-v="l1">뚜렷</button>
+      <button data-v="acc">accent 미세</button>
+    </div>
+    <p class="seglbl">두께</p>
+    <div class="segrow" id="segW">
+      <button data-v="1" class="on">1px(현행)</button>
+      <button data-v="2">2px</button>
+    </div>
+  </div>
+
+  <!-- ③ 간격 -->
+  <div class="ctl">
+    <h3>③ 간격</h3>
+    <div class="slider"><label><span>버튼 ↔ 구분선</span><span class="v"><span id="gbV">10</span>px <span class="cur">(현행 10)</span></span></label><input type="range" id="gbR" min="4" max="22" step="1" value="10"></div>
+    <div class="slider"><label><span>구분선 ↔ 아래 콘텐츠</span><span class="v"><span id="gcV">11</span>px <span class="cur">(현행 11)</span></span></label><input type="range" id="gcR" min="4" max="22" step="1" value="11"></div>
+  </div>
+
+  <div class="out" id="out"></div>
+  <button class="copybtn" id="copy">선택값 복사</button>
+  <button class="reset" id="reset">현행값으로 되돌리기</button>
+
+  <div class="note">
+    <ul>
+      <li>기본값 = <b>지금 라이브 확정값</b> — 손대는 만큼만 바뀜.</li>
+      <li>버튼 <b>글자·크기·전송 게이지·✓팝</b>은 불변(톤·높이·모서리만 조정).</li>
+      <li>맘에 드는 조합 <b>선택값 복사</b>해서 답장 주면 그대로 반영·머지할게.</li>
+      <li>색·간격 = viewer <code>:root</code> 실측 사본 · 폰트는 시스템 폴백(실서비스 Pretendard).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  var root=document.documentElement, lead=document.getElementById('lead'), go=document.getElementById('goBtn');
+  var BD={line:'var(--line)',a25:'rgba(var(--accent-rgb),.25)',a45:'rgba(var(--accent-rgb),.45)'};
+  var BDN={line:'중립 --line',a25:'accent .25',a45:'accent .45'};
+  var RAD={pill:'999px',r11:'11px',r9:'9px'};
+  var DIV={none:'transparent',l2:'var(--line2)',l1:'var(--line)',acc:'rgba(var(--accent-rgb),.16)'};
+  var DIVN={none:'없음',l2:'--line2(현행)',l1:'--line 뚜렷',acc:'accent .16'};
+  var st={bg:5,pad:12,bd:'line',rad:'pill',div:'l2',w:1,gb:10,gc:11};
+
+  function render(){
+    root.style.setProperty('--go-bg',(st.bg/100));
+    root.style.setProperty('--go-pad',st.pad+'px');
+    root.style.setProperty('--go-bd',BD[st.bd]);
+    root.style.setProperty('--go-rad',RAD[st.rad]);
+    root.style.setProperty('--div-col',DIV[st.div]);
+    root.style.setProperty('--div-w',st.w+'px');
+    root.style.setProperty('--gap-bd',st.gb+'px');
+    root.style.setProperty('--gap-ct',st.gc+'px');
+    document.getElementById('bgV').textContent=st.bg;
+    document.getElementById('padV').textContent=st.pad;
+    document.getElementById('gbV').textContent=st.gb;
+    document.getElementById('gcV').textContent=st.gc;
+    document.getElementById('out').innerHTML=
+      '<b>선택값</b><br>'+
+      '① 버튼: 배경 <span class="k">'+st.bg+'%</span> · 높이 <span class="k">'+st.pad+'px</span> · 테두리 <span class="k">'+BDN[st.bd]+'</span> · 모서리 <span class="k">'+RAD[st.rad]+'</span><br>'+
+      '② 구분선: <span class="k">'+DIVN[st.div]+'</span> · 두께 <span class="k">'+st.w+'px</span><br>'+
+      '③ 간격: 버튼↔구분선 <span class="k">'+st.gb+'px</span> · 구분선↔콘텐츠 <span class="k">'+st.gc+'px</span>';
+  }
+  function segwire(id,key){document.getElementById(id).addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b)});st[key]=b.dataset.v;render()})}
+  segwire('segBd','bd');segwire('segRad','rad');segwire('segDiv','div');segwire('segW','w');
+  function slwire(id,key){document.getElementById(id).addEventListener('input',function(){st[key]=+this.value;render()})}
+  slwire('bgR','bg');slwire('padR','pad');slwire('gbR','gb');slwire('gcR','gc');
+  document.getElementById('reset').addEventListener('click',function(){
+    st={bg:5,pad:12,bd:'line',rad:'pill',div:'l2',w:1,gb:10,gc:11};
+    document.getElementById('bgR').value=5;document.getElementById('padR').value=12;document.getElementById('gbR').value=10;document.getElementById('gcR').value=11;
+    [['segBd','line'],['segRad','pill'],['segDiv','l2'],['segW','1']].forEach(function(p){var box=document.getElementById(p[0]);[].forEach.call(box.children,function(x){x.classList.toggle('on',x.dataset.v===p[1])})});
+    render();
+  });
+  document.getElementById('copy').addEventListener('click',function(){
+    var t='이미지 생성 버튼·구분선·간격 세밀 선택값\n① 버튼: 배경 '+st.bg+'% · 높이 '+st.pad+'px · 테두리 '+BDN[st.bd]+' · 모서리 '+RAD[st.rad]+'\n② 구분선: '+DIVN[st.div]+' · 두께 '+st.w+'px\n③ 간격: 버튼↔구분선 '+st.gb+'px · 구분선↔콘텐츠 '+st.gc+'px';
+    var self=this;
+    (navigator.clipboard&&navigator.clipboard.writeText(t)||Promise.reject()).then(function(){self.textContent='✓ 복사됨 — 답장에 붙여넣기';self.classList.add('done');setTimeout(function(){self.textContent='선택값 복사';self.classList.remove('done')},2200)}).catch(function(){
+      var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');self.textContent='✓ 복사됨';self.classList.add('done');setTimeout(function(){self.textContent='선택값 복사';self.classList.remove('done')},2200)}catch(e){}document.body.removeChild(ta);
+    });
+  });
+  render();
+</script>
+</body>
