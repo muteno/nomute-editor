@@ -11,6 +11,10 @@ on:
         description: '전 게시물 백필(페이지네이션+인사이트 확장 · 약 20~40콜)'
         type: boolean
         default: false
+      brief:
+        description: '채널 AI 브리프(chan_brief.sh · 1=생성) — §📰-e 카나리아: 기본 OFF 머지 → dispatch 실측 → 승격'
+        type: string
+        default: '0'
 permissions:
   contents: write
 concurrency:
@@ -19,7 +23,7 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20   # 10→20: 채널 브리프(claude 1콜 timeout 600s + CLI 설치) 수용 — 브리프 OFF 시 종전과 동일 소요
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,11 +41,22 @@ jobs:
         run: python3 .github/scripts/insta_backfill.py
       - name: 신호 계산(뷰어 소비본 포함 · fail-soft)
         run: python3 apps/insta/insta_signals.py || true
+      - name: Install Claude Code CLI (채널 브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기 · sns-trends.yml 관용구)
+        if: ${{ (inputs.brief || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 29263671640 실측 260714: rc=0·브리프 1,355자 생성·chan_brief.json 커밋 00:51 KST 6d958cd) · 롤백 = || '0'
+        run: npm install -g @anthropic-ai/claude-code
+      - name: 채널 AI 브리프(메뉴4 · 성장 서사+전략 · 운영자 260714) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft) · SNS 트렌드 브리프와 별개 축
+        env:
+          CHAN_BRIEF: ${{ inputs.brief || '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 29263671640 실측 260714: 성장 서사+전략 4줄 정상 · schedule = inputs 없음 → '1') · dispatch brief='0' = 일시 OFF · 롤백 = || '0'
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA · sns-trends 관용구)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
+        run: bash .github/scripts/chan_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 수집 커밋 비차단)
       - name: 커밋
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add apps/insta/data viewer/insta_data.json 2>/dev/null || true
+          git add apps/insta/data viewer/insta_data.json viewer/chan_brief.json 2>/dev/null || true
           git diff --cached --quiet && { echo "변동 없음(또는 no-op) — 커밋 생략"; exit 0; }
           git commit -m "insta: 계정 인사이트 스냅샷 (bot)"
           for i in 1 2 3 4; do
