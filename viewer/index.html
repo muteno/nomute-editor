@@ -12020,11 +12020,13 @@ try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 't
   let sy = 0, sx = 0, active = false, engaged = false, dist = 0, armed = false, firing = false;
   const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
   // 비활성 조건: 발동중 · <dialog> 열림 · 비-dialog 팝업(hidden 토글) 열림(상단 앵커 pmenu·msgpop 위 오발동 차단 — 분신술3·10 + 재검증2)
-  const fmOpen = () => { const f = document.getElementById('failmenu'); return !!f && !f.hidden; };
+  // ⚠️ 열림판정 = `el && !el.hidden` (존재 && 안숨김) — 참조 팝업이 후에 폐지돼 el=null이어도 throw 대신 '안 열림'으로 처리(제스처 생존). 옛 `!el.hidden`은 filterpop 폐지(260710) 후 undefined.hidden 예외로 PTR 전멸시킴(운영자 260713 "위 잡아당겨도 새로고침 안 됨" 원인) → 방어형 전환.
+  const open = el => !!el && !el.hidden;
+  const fmOpen = () => open(document.getElementById('failmenu'));
   const blocked = () => firing || !!document.querySelector('dialog[open]') ||
-    !pmenu.hidden || !msgpop.hidden || !bpop.hidden || !linkpop.hidden || !qpop.hidden || fmOpen() ||
-    !filterpop.hidden ||   // 필터 모피즘 오버레이(상단 앵커) 열림 = PTR 오발동 차단(closeOverlays 관리셋과 동기 · 운영자 260628)
-    !sovl.hidden;   // blocked() ⊇ closeOverlays 관리셋 = 갭 0(재검증·최종검증) · 검색 = 중앙 오버레이 열림으로 판정(260706 5차)
+    open(pmenu) || open(msgpop) || open(bpop) || open(linkpop) || open(qpop) || fmOpen() ||
+    // 필터 = 설정>필터 아코디언(#filterSub)으로 이관(260710) → linkpop 안에 종속 = open(linkpop)이 이미 커버(구 filterpop 팝업 폐지 = 참조 삭제)
+    open(sovl);   // blocked() ⊇ closeOverlays 관리셋 = 갭 0(재검증·최종검증) · 검색 = 중앙 오버레이 열림으로 판정(260706 5차)
   function reset(soft) {
     active = false; engaged = false; dist = 0; armed = false;
     ptr.style.transition = soft ? 'transform .24s var(--ease), opacity .24s var(--ease)' : 'none';
