@@ -138,6 +138,24 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           python3 .github/scripts/breaking_judge.py
 
+      # 속보 조기 커밋(전수감사 260713) — 종전엔 breaking 확정이 경중 채점(최대 200건·~30분)+묶기 뒤 단일 커밋에 볼모
+      #   → 속보의 뷰어·푸시 반영이 최악 +35분 지연. 판정 직후 breaking 필드만 먼저 push해 지연을 ~수분으로 단축.
+      #   변동 없으면 생략 · 아래 최종 Commit(경중·묶기 포함)은 그대로 잔여분을 커밋(이중 커밋 무해 = diff 없으면 skip).
+      - name: Commit (속보 조기 반영)
+        if: steps.chk.outputs.pending != '0'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add viewer/candidates.json 2>/dev/null || true
+          if git diff --cached --quiet; then echo "속보 변동 없음 — 조기 커밋 생략"; exit 0; fi
+          git commit -m "AI 판정: 속보 breaking 조기 반영"
+          for i in 1 2 3 4; do
+            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep $((2**i))
+          done
+          echo "::warning::속보 조기 push 실패 — 최종 커밋 스텝이 회수"; exit 0
+
       - name: 경중 채점 (claude -p · AI 게이트 · 외신 번역 편승)
         if: steps.chk.outputs.pending != '0'
         env:
