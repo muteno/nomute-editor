@@ -1,0 +1,147 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>이미지 스튜디오 미리보기 상단 고정 — 전/후 보고서</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --line:#2a2c31; --r-s:10px; --r-l:16px; --sp-2:10px; --sp-3:14px;
+    --card:#121417; --card2:#15181c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:22px 16px 60px;max-width:860px;margin:0 auto}
+  h1{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:0 0 4px}
+  h2{font-size:15px;font-weight:800;margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:8px}
+  h2 .b{color:var(--accent)}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 18px}
+  .quote{background:var(--card);border-left:3px solid var(--accent);border-radius:0 var(--r-s) var(--r-s) 0;
+    padding:12px 14px;margin:0 0 8px;font-size:13.5px;color:#d7e6dd}
+  .lead{background:rgba(var(--accent-rgb),.07);border:1px solid rgba(var(--accent-rgb),.25);border-radius:var(--r-s);
+    padding:13px 15px;font-size:13.5px;margin:6px 0 4px}
+  .lead b{color:var(--accent)}
+  /* ── 전/후 인터랙티브 목업 ── */
+  .demo{display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 4px}
+  .col{flex:1 1 240px;min-width:230px}
+  .col > .cap{font-size:12px;font-weight:800;margin:0 0 8px;display:flex;align-items:center;gap:6px}
+  .col.old .cap{color:var(--mut)} .col.new .cap{color:var(--accent)}
+  .tag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;letter-spacing:.03em}
+  .old .tag{background:#2a2c31;color:var(--mut)} .new .tag{background:rgba(var(--accent-rgb),.16);color:var(--accent)}
+  .phone{border:1px solid var(--line);border-radius:20px;background:#000;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .bar{height:5px;width:44px;background:#33363c;border-radius:999px;margin:2px auto 8px}
+  .scr{height:360px;overflow-y:auto;border-radius:12px;background:var(--bg);position:relative;padding:0 10px 14px;
+    scrollbar-width:thin;scrollbar-color:rgba(var(--accent-rgb),.3) transparent}
+  .scr::-webkit-scrollbar{width:6px} .scr::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),.3);border-radius:9px}
+  .scr .hd{font-size:10px;color:var(--mut);letter-spacing:.08em;font-weight:700;padding:12px 2px 8px;position:sticky;top:0;background:var(--bg);z-index:9}
+  /* 미리보기 미니 박스 */
+  .pv{margin:0 auto;border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden;
+    background:linear-gradient(150deg,#1c2f2b,#0e1614);position:relative;display:grid;place-items:center}
+  .pv .txt{position:absolute;left:8px;bottom:8px;font-size:10px;font-weight:800;color:var(--fg);text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .pv .sub2{position:absolute;left:8px;bottom:22px;font-size:8px;font-weight:800;color:var(--accent);text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .pv .ic{color:rgba(var(--accent-rgb),.5);font-size:22px}
+  /* 구(비고정·전폭·맨아래) 미리보기 */
+  .old .pv{width:100%;aspect-ratio:4/5;margin-top:12px}
+  /* 신(고정·작게·맨위) 미리보기 */
+  .new .pvwrap{position:sticky;top:26px;z-index:6;background:var(--bg);padding:8px 0 6px;margin:0 -2px}
+  .new .pv{height:150px;aspect-ratio:4/5;width:auto}
+  /* 입력 더미 */
+  .inp{margin-top:9px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--card);padding:9px 11px}
+  .inp .l{font-size:10px;font-weight:800;color:var(--fg);margin-bottom:5px}
+  .inp .l::before{content:"• ";color:var(--accent)}
+  .inp .f{height:11px;border-radius:5px;background:#22252a;margin:5px 0}
+  .inp .f.s{width:60%} .inp .f.m{width:85%}
+  .go{margin-top:10px;height:34px;border-radius:var(--r-s);background:rgba(var(--accent-rgb),.14);
+    border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent);font-size:11px;font-weight:800;display:grid;place-items:center}
+  .note{font-size:11px;color:var(--mut);margin:8px 2px 0;text-align:center;line-height:1.5}
+  .new .note b{color:var(--accent)}
+  /* 표 */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:4px 0}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:var(--card);color:var(--accent);font-weight:800;font-size:11.5px;white-space:nowrap}
+  td code{background:#000;color:#a9f5e9;padding:1px 5px;border-radius:4px;font-size:11px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .tbl-wrap{overflow-x:auto;border-radius:var(--r-s)}
+  .pro{color:#7ff0d6} .con{color:#ffcf8a} .risk{color:#ff9d8f}
+  .pill{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px}
+  .pill.ok{background:rgba(var(--accent-rgb),.15);color:var(--accent)}
+  .pill.mid{background:rgba(255,225,61,.14);color:#ffe13d}
+  .pill.low{background:rgba(255,157,143,.14);color:#ff9d8f}
+  ul.id{margin:6px 0;padding-left:20px} ul.id li{margin:5px 0;font-size:13px}
+  .foot{margin-top:26px;font-size:11px;color:var(--mut);border-top:1px solid var(--line);padding-top:12px;line-height:1.7}
+  .foot b{color:#c7d6cd}
+</style>
+
+<h1>이미지 스튜디오 미리보기 상단 고정</h1>
+<p class="sub">viewer/thumb.html · 영상 스튜디오(edit.html) <code style="font-size:11px">.pvsec</code> 패턴 계승 · 260713 · 브랜치 claude/image-studio-preview-pin-pcpmw7 · PR #2195(draft)</p>
+
+<div class="quote">"이미지 스튜디오 미리보기가 항상 위에 보이게. 비율상 어쩔 수 없는데 작게 보여도 됨. 그거를 상단 고정하는 느낌으로. 지금 영상 스튜디오에 미리보기 구현해놨는데 그거 따라가면 됨."</div>
+
+<div class="lead">한 줄 요약 — 합성 미리보기(<code>#cpPrev</code>)를 <b>패널 맨 아래 → 맨 위로 옮기고 <code>position:sticky; top:0</code>로 상단 고정</b>했다. 크기는 영상 스튜디오와 같은 <b>46vh(≤340px) 상한</b>으로 작게. 아래 목업을 <b>직접 스크롤</b>해보면 구(舊)는 미리보기가 사라지고, 신(新)은 계속 위에 붙어있다.</div>
+
+<h2><span class="b">1.</span> 전 / 후 — 스크롤해보세요 👆</h2>
+<div class="demo">
+  <div class="col old">
+    <div class="cap"><span class="tag">BEFORE</span> 미리보기가 맨 아래</div>
+    <div class="phone"><div class="bar"></div>
+      <div class="scr">
+        <div class="hd">이미지 스튜디오</div>
+        <div class="inp"><div class="l">투명도 (OPA)</div><div class="f m"></div></div>
+        <div class="inp"><div class="l">텍스트</div><div class="f m"></div><div class="f s"></div></div>
+        <div class="inp"><div class="l">헤더 · 오버레이</div><div class="f m"></div><div class="f s"></div></div>
+        <div class="inp"><div class="l">저작권 · 안내문</div><div class="f s"></div></div>
+        <div class="pv"><span class="ic">▦</span><span class="sub2">부제</span><span class="txt">제목 미리보기</span></div>
+        <div class="go">이미지 제작</div>
+      </div>
+    </div>
+    <p class="note">텍스트를 고치는 동안 미리보기는 <b style="color:var(--mut)">화면 밖 아래</b>에 있어 결과를 못 봄 → 매번 스크롤 왕복.</p>
+  </div>
+  <div class="col new">
+    <div class="cap"><span class="tag">AFTER</span> 상단 고정 · 작게</div>
+    <div class="phone"><div class="bar"></div>
+      <div class="scr">
+        <div class="hd">이미지 스튜디오</div>
+        <div class="pvwrap"><div class="pv"><span class="ic">▦</span><span class="sub2">부제</span><span class="txt">제목 미리보기</span></div></div>
+        <div class="inp"><div class="l">투명도 (OPA)</div><div class="f m"></div></div>
+        <div class="inp"><div class="l">텍스트</div><div class="f m"></div><div class="f s"></div></div>
+        <div class="inp"><div class="l">헤더 · 오버레이</div><div class="f m"></div><div class="f s"></div></div>
+        <div class="inp"><div class="l">저작권 · 안내문</div><div class="f s"></div></div>
+        <div class="go">이미지 제작</div>
+      </div>
+    </div>
+    <p class="note">미리보기가 <b>항상 상단에 붙어</b> 입력을 고치면서 결과를 실시간으로 확인. 4:5 유지·중앙정렬·<b>작게</b>.</p>
+  </div>
+</div>
+
+<h2><span class="b">2.</span> 변경 상세 <span style="font-weight:400;color:var(--mut);font-size:12px">(viewer/thumb.html 단일 파일)</span></h2>
+<div class="tbl-wrap"><table>
+  <tr><th>#</th><th>축</th><th>구(舊)</th><th>신(新)</th><th>근거·계승원</th></tr>
+  <tr><td>1</td><td>DOM 위치</td><td><code>#cpPrev</code> = 패널 맨 아래(<code>#makeRow</code> 위)</td><td><code>&lt;div class="panel"&gt;</code> 직후 = 맨 위(<code>#opaBox</code> 위)</td><td>영상 스튜디오 = 소스 다음 최상단에 PREVIEW</td></tr>
+  <tr><td>2</td><td>고정</td><td>없음(일반 흐름 = 스크롤 시 사라짐)</td><td><code>position:sticky; top:0; z-index:6</code></td><td>edit.html <code>.pvsec{position:sticky;top:0;z-index:6}</code> 미러</td></tr>
+  <tr><td>3</td><td>배경</td><td>투명</td><td><code>background:var(--bg)</code> 불투명</td><td>아래 입력 스크롤 시 깔끔 커버(검은 띠 아님)</td></tr>
+  <tr><td>4</td><td>크기</td><td><code>width:100%; aspect 4/5</code> = 폰서 ~475px 큼</td><td><code>height:min(46vh,340px); width:auto</code> 중앙정렬</td><td>edit <code>pvSync maxH=innerHeight*.46</code> 미러 = "작게"</td></tr>
+  <tr><td>5</td><td>마진</td><td><code>margin:14px 2px 0</code></td><td><code>margin:0 2px 6px</code>(top 14→0)</td><td>맨 위 이주 = 상단 여백 불요</td></tr>
+</table></div>
+
+<h2><span class="b">3.</span> 장점 · 단점 · 효율성 · 품질저하 리스크</h2>
+<div class="tbl-wrap"><table>
+  <tr><th>구분</th><th>내용</th><th>평가</th></tr>
+  <tr><td class="pro">장점</td><td>입력을 고치면서 결과 미리보기를 <b>항상 눈앞에서</b> 확인 → 스크롤 왕복 제거. 영상 스튜디오와 <b>UX 일관성</b>.</td><td><span class="pill ok">큼</span></td></tr>
+  <tr><td class="pro">장점</td><td>id·JS·표시 토글 전부 불변 = <b>동작 무변경</b>(순수 배치·CSS). 회귀 표면 최소.</td><td><span class="pill ok">안전</span></td></tr>
+  <tr><td class="con">단점</td><td>고정 미리보기가 화면 상단 ~46vh를 상시 점유 → 세로 편집 공간이 그만큼 줄어듦(운영자 "작게 보여도 됨"으로 수용).</td><td><span class="pill mid">수용됨</span></td></tr>
+  <tr><td>효율성</td><td>CSS 3속성 + DOM 이동뿐. 신규 토큰·JS·리스너 0. 렌더 비용 무증가(sticky = GPU 합성).</td><td><span class="pill ok">경량</span></td></tr>
+  <tr><td class="risk">품질저하 리스크</td><td>매우 낮음. sticky 스크롤 컨테이너 = 영상 스튜디오와 동일 iframe·구조(검증). 최악의 경우도 "고정 안 됨"이지 깨짐 아님.</td><td><span class="pill low">낮음</span></td></tr>
+  <tr><td class="risk">품질저하 리스크</td><td>비율/모자이크 서브모드 프리뷰(<code>#iePrev</code>)는 미적용(의도) → 그 모드만 상단고정 안 됨(불일치는 있으나 기능 정상).</td><td><span class="pill low">경미</span></td></tr>
+</table></div>
+
+<h2><span class="b">4.</span> 아이데이션 (후속 제안)</h2>
+<ul class="id">
+  <li><b>비율/모자이크 프리뷰(<code>#iePrev</code>)도 동일 상단고정</b> — 지금은 크롭 위치를 풀사이즈로 봐야 해서 제외했지만, 원하면 같은 sticky+캡을 붙여 전 모드 일관 가능.</li>
+  <li><b>고정 시 글래스 필(.stuck)</b> — 영상 스튜디오는 스크롤이 시작되면 헤더에 글래스 배경을 입힌다. 이미지 프리뷰는 헤더가 없어 생략했지만, 원하면 sentinel+글래스로 "떠 있는 느낌"을 더 줄 수 있음.</li>
+  <li><b>높이 캡 미세조정</b> — 현재 46vh(≤340px). 더 작게(예: 38vh) 원하면 한 값만 바꾸면 됨(운영자 취향 = 플레이그라운드로 튜닝 가능).</li>
+</ul>
+
+<div class="foot">
+<b>재현 한계 각주</b> — 위 목업은 실제 <code>thumb.html</code>이 아니라 동일 토큰(<code>--bg #0b0d0c</code>·<code>--accent #00EED2</code> 등)으로 재현한 <b>동작 시연용 스키매틱</b>이다(미리보기 박스 = 실제론 첨부 이미지+PIL 텍스트 합성 근사). 실제 반영은 <b>구조 검증</b>(<code>#cpPrev</code>가 <code>&lt;div class="panel"&gt;</code> 직후로 이주·sticky CSS 존재) + <b><code>check_refs.py</code> RC 0</b> + 영상 스튜디오와 동일 iframe 스크롤 구조로 확인했다. 라이브 렌더는 Cloudflare Access 게이트 뒤라 세션 curl 불가 = 머지 후 운영자 눈 확인 권장.<br>
+<b>확인 포인트</b> — 이미지 스튜디오(+ → 이미지) 진입 → 사진 첨부·텍스트 입력 → 미리보기가 <b>맨 위에 작게 고정</b>돼 스크롤해도 따라오는지.
+</div>
