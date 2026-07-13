@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark"><!-- 부모(index)와 color-scheme 일치 필수 — 불일치면 크로미움이 투명 iframe에 불투명 흰 캔버스 강제 → 글래스 전부 회색 파손(운영자 260705 실측 · index color-scheme dark 도입과 한 쌍) -->
+<title>트래킹</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외) — ly.html·k.html 동일 계승. 인라인 :root가 팔레트 오버라이드 -->
+<style>
+  /* 팔레트 = ly.html(영상 도구) 계승 · 구조토큰(radius·폰트·굵기·모션 계열)은 tokens.css · 인물색 정본 = JS PALETTE(렌더 py와 짝) */
+  :root{
+    --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322;
+    --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(ly :root 동기) */
+    --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95;
+  }
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  /* 스크롤바 표준 = 제작·합성(thumb) 이식(운영자 260713 "다 같게") · 실제 보이는 바 = cscroll.js 오버레이(네이티브는 no-JS 폴백 · 색 변경 = viewer/cscroll.js) */
+  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
+  [hidden] { display:none !important; }   /* hidden 속성 = 무조건 승(기저 가드) — 클래스 display(flex/grid/block)가 UA hidden을 이겨 유령 노출되던 계열(#carDl·#carbar·#pushrow·ly 버튼 3종 실측 260710) 원천 종식 · 퇴장 애니는 hidden을 애니 종료 후 부여라 무영향 */
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안 = 투명 → 부모 #tooldlg 글래스 비침(ly.html 정본) */
+  .wrap { max-width:600px; margin:0 auto; padding:16px 16px 40px; }
+
+  /* ── ly.html 폼 컴포넌트 계승(verbatim) ── */
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 6px; }
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+  input[type=url], input[type=text] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; }
+  input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  input::placeholder { color:var(--mut); }
+  .urlwrap { position:relative; }
+  .urlclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .urlclip::before { content:""; position:absolute; inset:-8px; }   /* 히트슬롭 42px(ly 정본 계승 · 평의회7) */
+  .urlclip svg { display:block; width:13px; height:13px; }
+  .urlclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .urlclip:active { transform:translateY(-50%) scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .orsep { text-align:center; color:var(--mut); font-size:12px; margin:13px 0; }
+  .file { display:block; padding:12px; border:1px dashed transparent; border-radius:var(--r-s); text-align:center; color:var(--accent); cursor:pointer; background:transparent; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease; }
+  .file svg { width:26px; height:26px; display:block; margin:0 auto; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
+  .file:active svg { transform:scale(var(--press-xs)); }
+  .file.has { color:var(--accent); border-color:var(--accent); border-style:solid; }
+  .filerow { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
+  .filerow .file { flex:1.4 1 0; min-width:0; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; }
+  .filerow .go { flex:1 1 0; width:auto; margin-top:0; white-space:nowrap; }
+  #fileTxt { display:flex; align-items:center; justify-content:center; min-width:0; max-width:100%; }
+  #fileTxt .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .ftype { display:inline-block; flex:none; font-size:11px; font-weight:800; line-height:1; padding:4px 9px; border-radius:999px; margin-right:7px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(8px); }
+  .go { width:100%; padding:18px; background:rgba(255,255,255,.02); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; line-height:1; cursor:pointer; position:relative; overflow:hidden; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }   /* 배경 .05→.02(운영자 260713 B) · padding 18 + line-height:1 = thumb .go 발사 게이지바 정본 계승(글자 정중앙 dy0·높이 52 · 사용자 260713 8뷰어 통일 · glive 게이지 로직 불변) */
+  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s var(--gauge-ease) forwards; }
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
+  @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  /* 라이브 게이지(.glive) = 전송(업로드·디스패치) 응답까지 점근 진행 — index glive 기틀 계승(운영자 260702 · 260710 "보내는 중 = 게이지바로 다른거처럼") · 옛 0.72s 풀필+'보내는 중' gdots 문구 폐지. ⚠️ 2번 레이어도 크기 명시(100% 100%) — 생략 = auto라 background-size 보간 불가 → 90% 스냅(index 실측 함정) */
+  .go.glive.firing { animation:none;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim)) left/100% 100% no-repeat;
+    transition:background-size 3.6s var(--gauge-ease); }
+  .go.glive.firing.grun { background-size:90% 100%, 100% 100%; }   /* 2중 rAF 트리거 = 0→90% 센 ease-out 점근(응답 대기 커버) */
+  .go.glive.firing.gdone { background-size:100% 100%, 100% 100%; transition:background-size .3s linear; }   /* 응답 = 현위치→100% 급속 마무리 */
+  @media (prefers-reduced-motion:reduce) { .go.glive.firing, .go.glive.firing.gdone { transition-duration:.12s; } }
+  .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(ly·thumb .go 통일) */
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  .go.err { background:rgba(var(--danger-rgb),.14); color:var(--danger); border-color:var(--danger); }
+  .go.wait { color:var(--mut); }
+  .gdots { display:inline-block; width:1.1em; text-align:left; }   /* 처리중 점모션(§디자인 g · index 정본 계승) */
+  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
+  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
+  @media (prefers-reduced-motion:reduce){ .gdots i { animation:none; opacity:1; } }
+  .gtime { margin-left:var(--sp-1); font-variant-numeric:tabular-nums; font-weight:var(--fw-b); opacity:.8; }   /* '분석 중 · N:NN' 경과(운영자 260710 "여기에 그 시간을") — tabular = 자릿수 흔들림 0 · 색은 라벨 상속 */
+  .go.firing.wait { color:var(--on-accent); }   /* 게이지(accent 채움) 위 대기 라벨·시간 = on-accent — .wait 단독 mut가 소스순으로 이겨 터쿼이즈 위 회색(저대비)이 되는 것 교정 */
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
+  .sronly { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }   /* SR 전용 개시 공지(§디자인 e 접근성 라벨 · 평의회7) */
+  .status.err { color:var(--danger); }
+
+  /* ── 3계층 = 단계 스텝퍼(순차 진행 표시 · 노드 = 실제 button → 키보드·SR 도달 · 평의회7) ── */
+  .stepper { display:flex; align-items:center; padding:4px 2px 18px; }
+  .snode { display:flex; align-items:center; gap:9px; cursor:pointer; min-width:0; background:none; border:0; padding:0; font:inherit; color:inherit; position:relative; }
+  .snode::before { content:""; position:absolute; inset:-8px; }   /* 히트슬롭(28px 점 → 44px 유효 · 평의회7) */
+  .snode:disabled { cursor:default; }
+  .sdot { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:var(--fw-x);
+    background:rgba(255,255,255,.05); color:var(--mut); border:1px solid var(--line); flex:none; font-variant-numeric:tabular-nums; transition:all .18s var(--gauge-ease); }
+  .sdot svg { width:14px; height:14px; }
+  .slabel { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); white-space:nowrap; transition:color .18s; }
+  .snode:active .sdot { transform:scale(var(--press-m)); }
+  .snode:disabled:active .sdot { transform:none; }
+  .snode.done .sdot { background:var(--accent-dim); color:var(--accent); border-color:rgba(var(--accent-rgb),.45); }
+  .snode.done .slabel { color:var(--fg); }
+  .snode.cur .sdot { background:var(--accent); color:var(--on-accent); border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-dim); }
+  .snode.cur .slabel { color:var(--accent); font-weight:var(--fw-x); }
+  .sline { flex:1; height:2px; background:var(--line); margin:0 10px; border-radius:2px; min-width:14px; transition:background .18s; }
+  .sline.fill { background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.4); }
+  @media (max-width:520px){ .snode:not(.cur) .slabel{ display:none; } .sline{ margin:0 6px; } }
+
+  .pane { display:none; }
+  .pane.on { display:block; animation:fade .28s var(--gauge-ease); }
+  @keyframes fade { from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+
+  /* 분석 스캔 */
+  .filmstage { position:relative; width:100%; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); aspect-ratio:16/9; background:#0a1a0d; margin-top:8px; }
+  .scanline { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); box-shadow:0 0 14px var(--accent); animation:scan 1.5s var(--gauge-ease) infinite; }
+  @keyframes scan { 0%{ top:6%;} 50%{ top:94%;} 100%{ top:6%;} }
+  @media (prefers-reduced-motion:reduce){ .scanline { animation:none; top:50%; } .pane.on { animation:none; } }
+
+  /* 모드 선택(모자이크|핀셋) — 단독 토글 = 그 표면 버튼 패밀리(글래스 필) 계승(§디자인 k) */
+  .modeseg { display:flex; gap:8px; margin:0 0 12px; }
+  .mseg { flex:1; padding:11px 2px; text-align:center; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); font-family:inherit; cursor:pointer; user-select:none; white-space:nowrap; transition:transform .12s, color .15s, border-color .15s, background .15s; }   /* 좌우 2px = 5모드(실루엣·크로마키 260712) 좁은 폰 수용 — 값 미세조정(계승 축) */
+  .mseg:active { transform:scale(var(--press-m)); }
+  .mseg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
+  .invtg { display:inline-flex; align-items:center; gap:7px; margin:0 0 12px; padding:8px 14px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-b); font-family:inherit; cursor:pointer; user-select:none; position:relative; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .invtg::before { content:""; position:absolute; inset:-6px; }   /* 히트슬롭(평의회7) */
+  .invtg:active { transform:scale(var(--press-m)); }
+  .invtg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
+  /* 모자이크 조절(운영자 260708 "강도·픽셀 가로세로·페더·크기") — 게이지 행 = ly 옵션 게이지(.lyopt-row) 계승 */
+  .mopts { display:flex; flex-direction:column; gap:8px; margin:0 0 12px; }
+  .mopts[hidden], .invtg[hidden], #dlVid[hidden], .grid[hidden], label.fl[hidden] { display:none; }   /* ⚠️ display:flex/grid가 UA [hidden]을 덮는 함정 — ly.html:123 전례 봉합(평의회C F1·F2) · grid/fl = 크로마키 카드 축 숨김(260712) */
+  .mo-row { display:flex; align-items:center; gap:10px; }
+  .mo-k { flex:none; width:60px; color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-b); }
+  .mo-row input[type=range] { flex:1; min-width:60px; accent-color:var(--accent); }
+  .mo-v { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:36px; text-align:right; color:var(--fg); }
+  .opt2 { flex:none; padding:0 12px; height:28px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-family:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .opt2:active { transform:scale(var(--press-m)); }
+  .opt2.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.45); background:var(--accent-dim); }
+
+  /* 인물 카드(step2) — 실검출 크롭 · minmax 136 = 320px 폰에서도 2열(평의회7) */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(136px,1fr)); gap:12px; }
+  .card { background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:var(--r-l); padding:12px; position:relative; transition:border-color .18s, box-shadow .18s, opacity .18s; }
+  .card.named { border-color:color-mix(in srgb,var(--pc) 55%, transparent); box-shadow:0 0 0 1px color-mix(in srgb,var(--pc) 22%,transparent); }
+  .card.sel { border-color:rgba(var(--accent-rgb),.55); box-shadow:0 0 0 1px rgba(var(--accent-rgb),.25); }
+  #grid[data-mode=mosaic] .card { cursor:pointer; }
+  #grid[data-mode=mosaic] .nrow { display:none; }
+  #grid[data-mode=pinset] .selchk { display:none; }
+  .avatar { width:100%; aspect-ratio:1/1.05; border-radius:var(--r-m); position:relative; overflow:hidden; margin-bottom:10px; display:grid; place-items:center; background:radial-gradient(120% 120% at 50% 22%, rgba(255,255,255,.1), rgba(255,255,255,.02)); }
+  .avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  #grid[data-mode=mosaic] .avatar { margin-bottom:0; }
+  .selchk { position:absolute; top:7px; right:7px; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:var(--on-accent); box-shadow:0 2px 10px rgba(var(--accent-rgb),.45); opacity:0; transform:scale(.6); transition:opacity .15s, transform .15s var(--gauge-ease); }
+  .selchk svg { width:13px; height:13px; }
+  .card.sel .selchk { opacity:1; transform:scale(1); }
+  .hint { position:absolute; bottom:7px; right:7px; font-size:10px; font-weight:var(--fw-b); color:var(--mut); background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.1); padding:2px 7px; border-radius:var(--r-pill); }
+  .rng { position:absolute; bottom:7px; left:7px; font-size:10px; font-weight:var(--fw-b); color:var(--fg); background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.1); padding:2px 7px; border-radius:var(--r-pill); font-variant-numeric:tabular-nums; }
+  .nrow { display:flex; align-items:center; gap:8px; }
+  .dot { width:11px; height:11px; border-radius:50%; background:var(--pc); flex:none; box-shadow:0 0 8px color-mix(in srgb,var(--pc) 60%,transparent); }
+  .nin { flex:1; min-width:0; background:#0e0f11; border:1px solid var(--line); color:var(--fg); font-size:14px; font-weight:var(--fw-b); font-family:inherit; padding:8px 10px; border-radius:var(--r-s); outline:none; transition:border-color .18s; }
+  .nin::placeholder { color:var(--mut); font-weight:500; } .nin:focus { border-color:var(--pc); }
+  .scoperow { display:flex; gap:8px; margin-top:10px; }   /* 가림 범위 토글(얼굴만|전신 · 260710) — 버튼 = 기존 .opt2 글래스 필 계승(신규 raw 0) · body 있는 카드만 노출 */
+  .scoperow .opt2 { flex:1; }
+  .scoperow + .nrow { margin-top:8px; }   /* 핀셋 = 토글↔이름칸 간격(.cardcap + .nrow 미러 — 캡션 없을 때 밀착 방지) */
+  .cardcap { margin-top:8px; font-size:var(--fs-xs); color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* AI 카드 캡션(묘사 한 줄) — 운영자 260710 승인 배치(크롭 아래 회색 한 줄) · 없으면 미표시 · 단일줄이라 line-height 미지정(평의회6) */
+  .cardcap + .nrow { margin-top:8px; }   /* 핀셋 = 캡션↔이름칸 간격(캡션 없을 땐 avatar mb10 그대로) */
+  .mghint { position:absolute; top:7px; left:7px; max-width:calc(100% - 14px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; font-weight:var(--fw-b); color:var(--fg); background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.1); padding:2px 7px; border-radius:var(--r-pill); }   /* 동일인 병합 힌트 = .hint/.rng 무채색 글래스 패밀리 계승(§디자인 i) · 인물 카드 전용(키잉 subj-lb와 슬롯 비충돌) · 폭 방어 = cardcap 대칭(평의회5) */
+  .nofaces { grid-column:1/-1; text-align:center; color:var(--mut); font-size:13px; padding:26px 0; }   /* 행위 피드백 1줄(결과 없음) — §디자인 e-가 예외 */
+  .mut2 { color:var(--mut); font-weight:var(--fw-b); font-size:12px; }
+
+  /* 키잉(step2) — 피사체 카드 라벨·직접 지정·스크럽 오버레이(전부 토큰·기존 패밀리 계승 · §디자인) */
+  .subj-lb { position:absolute; top:7px; left:7px; font-size:10px; font-weight:var(--fw-b); color:var(--fg); background:rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.1); padding:2px 7px; border-radius:var(--r-pill); }
+  #grid[data-mode=keying] .nrow { display:none; }
+  #grid[data-mode=keying] .avatar { margin-bottom:0; }
+  .exav { color:var(--mut); } .exav svg { width:30px; height:30px; }
+  .card.ex .selchk { background:var(--danger); color:var(--fg); box-shadow:0 2px 10px rgba(var(--danger-rgb),.45); opacity:1; transform:scale(1); }   /* 직접 지정 카드 = 탭이 제거라 X 배지 상시 · X색 = 흰(danger 위 on-accent 상속 부정합 정리 · 평의회7) */
+  .exadd { display:block; width:100%; margin-top:12px; padding:11px 10px; text-align:center; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
+  .exadd:active { transform:scale(var(--press-m)); }
+  .exadd[hidden] { display:none; }   /* display:block이 UA [hidden] 덮는 함정 봉합(ly.html:123 전례) */
+  .scrub { position:fixed; inset:0; z-index:var(--z-float); background:rgba(8,9,10,.88); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:18px; }
+  .scrub[hidden] { display:none; }
+  .scrub-stage { position:relative; max-width:100%; max-height:60vh; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); background:var(--bg); }
+  .scrub-stage video { display:block; max-width:100%; max-height:60vh; }
+  .scrub-dot { position:absolute; width:18px; height:18px; border-radius:50%; border:2px solid var(--accent); background:rgba(var(--accent-rgb),.25); box-shadow:0 0 10px rgba(var(--accent-rgb),.6); transform:translate(-50%,-50%); pointer-events:none; }
+  .scrub-bar { width:100%; max-width:520px; display:flex; align-items:center; gap:10px; }
+  .scrub-bar input[type=range] { flex:1; min-width:60px; accent-color:var(--accent); }
+  .scrub-t { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:44px; text-align:right; color:var(--fg); }
+  .scrub-acts { display:flex; gap:10px; }
+
+  /* 결과(step3) */
+  .vstage { position:relative; width:100%; border-radius:var(--r-l); overflow:hidden; border:1px solid var(--line); background:#000; min-height:120px; }
+  .vstage video { width:100%; display:block; max-height:62vh; background:#000; }
+  .vstage.alpha { background:repeating-conic-gradient(var(--line) 0% 25%, var(--pan) 0% 50%) 0 0/22px 22px; }   /* 투명 표시 체커보드(키잉 승인 배치 ④ · 근접 토큰 계승) */
+  .vstage.alpha video { background:transparent; }
+  /* 렌더 대기 = 원본 미리보기(muted 저속 루프) + 스캔 빔 + 프리뷰 안 하단 상태문구(운영자 픽 260710 = 플레이그라운드 p2 스캔라인 ★ · 딤.48·블러5·스캔1.4s · 캡션은 아래줄→프리뷰 안 이동 + ' (NNNs)' 경과) */
+  .vstage .wscrim { position:absolute; inset:0; background:rgba(8,15,11,.48); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); }   /* 스크림 색 = index 수정중 오버레이(8,15,11) 계승 · 알파 변주 = 운영자 픽 .48 */
+  .vstage .wscan { animation-duration:1.4s; }   /* 렌더 스캔 = 운영자 픽 1.4s(STEP1 분석 스캔 1.5s와 별개 인스턴스) */
+  .vstage .wmsg { position:absolute; left:12px; bottom:10px; z-index:2; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 상태문구 = index .reshoot-badge 문법(강조색+섀도) · 좌하단 = 운영자 스크린샷 위치 */
+
+  .footer { display:flex; align-items:center; gap:12px; margin-top:20px; padding-top:16px; border-top:1px solid var(--line); }
+  .stat2 { font-size:12px; color:var(--mut); font-weight:var(--fw-b); } .stat2 b { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .ghost { background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--fg); font-weight:var(--fw-b); font-size:14px; font-family:inherit; padding:10px 16px; border-radius:var(--r-pill); cursor:pointer; display:flex; align-items:center; gap:7px; transition:transform .12s; }
+  .ghost:active { transform:scale(var(--press-l)); } .ghost svg { width:15px; height:15px; }
+  .cta { margin-left:auto; background:var(--accent); color:var(--on-accent); font-weight:var(--fw-x); font-size:14px; font-family:inherit; border:none; border-radius:var(--r-pill); padding:11px 22px; cursor:pointer; transition:transform .12s, opacity .18s; box-shadow:0 6px 20px rgba(var(--accent-rgb),.22); }
+  .cta:active { transform:scale(var(--press-l)); } .cta:disabled { opacity:.38; box-shadow:none; cursor:not-allowed; }
+  .dlbtn { background:rgba(var(--accent-rgb),.10)!important; color:var(--accent)!important; border:1px solid rgba(var(--accent-rgb),.34)!important; }
+  .dlbtn.dl-done { color:var(--mut)!important; }   /* 받음 = mut(전 앱 공통 기틀 · 운영자 260706) */
+  .ghost.dlbtn { margin-left:auto; width:38px; height:38px; padding:0; justify-content:center; }   /* 아이콘 단독(§표기 라 텍스트·SVG 공존 금지 · 평의회6) */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <!-- 3계층 = 스텝퍼(부모 알약탭과 시각 분리) — 분석 1회 → 확정에서 핀셋/모자이크/키잉 선택 → 렌더 N회(운영자 확정: 통합 플로우) -->
+  <div class="stepper" id="stepper" aria-label="진행 단계">
+    <button type="button" class="snode cur" data-s="0" aria-current="step"><span class="sdot">1</span><span class="slabel">영상 분석</span></button>
+    <div class="sline" data-l="0"></div>
+    <button type="button" class="snode locked" data-s="1" disabled><span class="sdot">2</span><span class="slabel">인물 확정</span></button>
+    <div class="sline" data-l="1"></div>
+    <button type="button" class="snode locked" data-s="2" disabled><span class="sdot">3</span><span class="slabel">렌더</span></button>
+  </div>
+
+  <!-- STEP 1 = ly.html 폼 계승(URL·파일·버튼) -->
+  <div class="pane on" id="p0">
+    <label class="fl" for="url">URL</label>
+    <div class="urlwrap">
+      <input type="url" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      <button class="urlclip" id="urlClip" type="button" aria-label="붙여넣기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>
+    </div>
+    <div class="orsep">— 또는 —</div>
+    <label class="fl">파일</label>
+    <div class="filerow">
+      <label class="file" id="fileLab" aria-label="영상 파일 선택" title="영상 파일 선택"><span id="fileTxt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span>
+        <input type="file" accept="video/*" id="file" style="display:none">
+      </label>
+      <button class="go" id="analyze">인물 분석</button>
+    </div>
+    <div class="filmstage" id="filmstage" hidden><div class="scanline"></div></div>
+    <div class="status" id="astatus" role="status"></div>
+  </div>
+
+  <!-- STEP 2 = 확정 + 모드(모자이크/핀셋/키잉) — 모자이크 = 카드 탭 · 핀셋 = 이름 입력 · 키잉 = 피사체 다중선택+직접 지정 -->
+  <div class="pane" id="p1">
+    <div class="modeseg" role="tablist" aria-label="렌더 모드">
+      <button class="mseg on" data-m="mosaic" role="tab" aria-selected="true">모자이크</button>
+      <button class="mseg" data-m="pinset" role="tab" aria-selected="false">핀셋</button>
+      <button class="mseg" data-m="keying" role="tab" aria-selected="false">키잉</button>
+      <button class="mseg" data-m="maskfx" role="tab" aria-selected="false">실루엣</button>
+      <button class="mseg" data-m="chroma" role="tab" aria-selected="false">크로마키</button>
+    </div>
+    <button class="invtg" id="invtg" type="button" aria-pressed="false">선택 빼고 다 가리기</button>
+    <div class="mopts" id="mopts">
+      <div class="mo-row"><span class="mo-k">모양</span>
+        <button class="opt2" type="button" data-shape="rect" aria-pressed="false">네모</button>
+        <button class="opt2 on" type="button" data-shape="ellipse" aria-pressed="true">타원</button>
+      </div>
+      <div class="mo-row"><span class="mo-k">블록 가로</span><input type="range" id="moPxw" min="4" max="20" step="1" value="9" aria-label="블록 가로 — 모자이크 가로 블록 수(적을수록 굵음)"><span class="mo-v" id="moPxwV">9</span></div>
+      <div class="mo-row"><span class="mo-k">블록 세로</span><input type="range" id="moPxh" min="4" max="20" step="1" value="9" aria-label="블록 세로 — 모자이크 세로 블록 수(적을수록 굵음)"><span class="mo-v" id="moPxhV">9</span></div>
+      <div class="mo-row"><span class="mo-k">크기</span><input type="range" id="moSize" min="75" max="200" step="5" value="115" aria-label="크기 — 모자이크 커버 배율 %"><span class="mo-v" id="moSizeV">100%</span></div>
+      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="moFeather" min="0" max="40" step="1" value="5" aria-label="페더 — 모자이크 가장자리 부드러움 px"><span class="mo-v" id="moFeatherV">0</span></div>
+    </div>
+    <div class="mopts" id="kopts" hidden>
+      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="keFeather" min="0" max="40" step="1" value="0" aria-label="페더 — 키잉 가장자리 부드러움 px"><span class="mo-v" id="keFeatherV">3</span></div>
+    </div>
+    <div class="mopts" id="fopts" hidden><!-- 실루엣(M4·운영자 260712 승인 배치) — 채움 = 블록 픽셀레이트 ↔ 내장 가면 칩 · 선택 축은 키잉과 동일(인물=얼굴 · 피사체=전신/사물 · 직접 탭) -->
+      <div class="mo-row"><span class="mo-k">채움</span>
+        <button class="opt2 on" type="button" data-fill="mosaic" aria-pressed="true">모자이크</button>
+        <button class="opt2" type="button" data-fill="image" aria-pressed="false">가면</button>
+      </div>
+      <div class="mo-row" id="fmaskrow" hidden><span class="mo-k">가면</span>
+        <button class="opt2 on" type="button" data-preset="smile" aria-pressed="true">스마일</button>
+        <button class="opt2" type="button" data-preset="black" aria-pressed="false">가림</button>
+        <button class="opt2" type="button" data-preset="heart" aria-pressed="false">하트</button>
+      </div>
+      <div class="mo-row"><span class="mo-k">페더</span><input type="range" id="sgFeather" min="0" max="40" step="1" value="8" aria-label="페더 — 실루엣 가장자리 부드러움 px"><span class="mo-v" id="sgFeatherV">8</span></div>
+    </div>
+    <div class="mopts" id="copts" hidden><!-- 크로마키(M3·운영자 260712 승인 배치) — 색·강도·테두리 노브만(despill·blend·edge=high = 서버 고정) · 카드 무관 -->
+      <div class="mo-row"><span class="mo-k">색상</span><!-- 키워드만 전송 — hex 변환 = api(엔진 키 컬러 = 콘텐츠 파라미터·UI 색 아님 · 디자인 게이트 hex 0 유지) -->
+        <button class="opt2 on" type="button" data-ckc="green" aria-pressed="true">그린</button>
+        <button class="opt2" type="button" data-ckc="blue" aria-pressed="false">블루</button>
+      </div>
+      <div class="mo-row"><span class="mo-k">강도</span><input type="range" id="ckSim" min="1" max="50" step="1" value="18" aria-label="강도 — 색 허용 오차(높을수록 넓게 뺌)"><span class="mo-v" id="ckSimV">18</span></div>
+      <div class="mo-row"><span class="mo-k">테두리</span><input type="range" id="ckChoke" min="-4" max="4" step="1" value="0" aria-label="테두리 다듬기 — +줄이기 −늘리기 px"><span class="mo-v" id="ckChokeV">0</span></div>
+      <div class="mo-row"><span class="mo-k">부드럽게</span><input type="range" id="ckFeather" min="0" max="10" step="1" value="1" aria-label="부드럽게 — 매트 블러 px"><span class="mo-v" id="ckFeatherV">1</span></div>
+    </div>
+    <label class="fl" style="margin-top:0"><span id="glword">등장인물</span> <b style="color:var(--accent)" id="pcount">0명</b> <span class="mut2" id="dropnote"></span></label>
+    <div class="grid" id="grid" data-mode="mosaic"></div>
+    <button class="exadd" id="exAdd" type="button" hidden>누락 피사체 직접 지정</button>
+    <div class="footer">
+      <button class="ghost" id="back1">다시 분석</button>
+      <div class="stat2"><b id="cnt">0</b> / <span id="tot">0</span> <span id="statlbl">가림</span></div>
+      <button class="cta" id="toRender" disabled>모자이크 렌더</button>
+    </div>
+    <div class="status" id="r2status" role="status"></div>
+  </div>
+
+  <!-- STEP 3 = 렌더 결과 -->
+  <div class="pane" id="p2">
+    <div class="vstage" id="vwrap"></div>
+    <div class="status" id="rstatus" role="status"></div>
+    <div class="footer">
+      <button class="ghost" id="back2">다시 고르기</button>
+      <button class="ghost dlbtn" id="dlVid" hidden aria-label="저장" title="저장"></button>
+    </div>
+  </div>
+</div>
+
+<!-- 누락 피사체 직접 지정 — 원본 스크럽 + 탭(키잉 승인 배치 ③) · 양방향 전파 = 어느 장면에서 찍어도 앞뒤 전체 커버(역패스 편입) -->
+<div class="scrub" id="scrub" hidden>
+  <div class="scrub-stage" id="scrubStage"><video id="scrubVid" playsinline muted preload="metadata"></video></div>
+  <div class="scrub-bar"><input type="range" id="scrubT" min="0" max="10" step="0.05" value="0" aria-label="장면 위치"><span class="scrub-t" id="scrubTv">0:00</span></div>
+  <div class="scrub-acts"><!-- 힌트 폐지 — 역방향 전파 편입으로 '처음 장면' 제약 해소 = 어느 장면이든 앞뒤 전체 커버(§디자인 e 산문 최소화 복귀) -->
+    <button class="ghost" id="scrubCancel" type="button">취소</button>
+    <button class="cta" id="scrubOk" type="button" disabled>이 피사체 지정</button>
+  </div>
+</div>
+
+<script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — CHECK/OK/ERR/WAIT/WARN/DOWNLOAD_SVG -->
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// 인물 색 = 브랜드 팔레트 값 순환 — apps/track/track_render.py PALETTE와 순서 1:1(짝 규약 · 어긋나면 카드색≠영상색)
+const PALETTE=['#00EED2','#e23b2a','#d8ff3d','#0FFD02','#38C6FF','#FF5EC8','#FFE13D','#AC5CFF','#2CF5A5','#ff7a6b','#3a6ddb','#eef7f0'];
+const PEND_KEY='nm_track_pend';
+const API='/api/track';
+const BUDGET=600;   // 분석 폴 소프트 예산(초) — 하드 = ×2 · 재개 클램프도 이 값(300s 분석 ~4.5분 + 배포 커버)
+const RENDER_BUDGET=900;   // 렌더 폴 소프트 예산 — 300s 모자이크(60fps 최악 ~17분·스텝캡 35분)에 하드 ×2=30분이 근접 커버(구 600 = 20분 포기 → 라이브 추적 상실 · 평의회7 ⑥)
+const MO_DFLT={shape:'ellipse',pxw:9,pxh:9,size:115,feather:5};   // 기본 = 타원·크기 115%·페더 5(운영자 260711 3분류 선택값 — 구 rect·100·0)   // 모자이크 조절 기본값 — 커버 영역은 종전과 동일·타일 분할만 종횡 독립(세로 = 높이 기준 · 평의회F 정직 정정)
+let TK={ id:'', meta:null, people:[], subjects:[], mode:'mosaic', sel:new Set(), keep:new Set(), keepP:new Set(), extra:[], kfe:0, invert:false, names:{}, scope:{}, resultUrl:'', lastGot:'', opts:{...MO_DFLT}, fill:'mosaic', preset:'smile', sfe:8, ck:{color:'green', similarity:18, choke:0, feather:1} };   // fill/preset/sfe = 실루엣(M4) · ck = 크로마키 노브(색 = 키워드 — hex 해석은 api · 260712 배선)   // keep/keepP/extra/kfe = 키잉(keepP = 얼굴 단위 · 260710) · scope = 가림 범위(pid→'body'만 기록 · 기본 face) · lastGot = 낡은 결과 배제 기준선(resultUrl은 다운로드 전용 — master-lost로 ''가 돼도 기준선 유지 · 평의회6·8)
+let FILE_B64='', FILE_NAME='';
+let USER_ACT=false;   // 사용자 발사 개시 = 늦게 도착한 pend 복원이 새 작업을 격침 못 하게(평의회5 · ly LY_GEN 등가)
+const unlocked=[true,false,false];
+let step=0, _curStop=null;
+
+function go(s){
+  step=s;
+  $$('.pane').forEach((p,i)=>p.classList.toggle('on', i===s));
+  $$('.snode').forEach((t,i)=>{
+    const lock=i>s&&!unlocked[i];
+    t.classList.toggle('cur',i===s); t.classList.toggle('done',i<s); t.classList.toggle('locked',lock);
+    t.disabled=lock;
+    if(i===s)t.setAttribute('aria-current','step'); else t.removeAttribute('aria-current');
+    const d=t.querySelector('.sdot'); d.innerHTML=(i<s)?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>':(i+1);
+  });
+  $$('.sline').forEach((l,i)=>l.classList.toggle('fill', i<s));
+  const wv=$('#vwrap .wv');   // 렌더 대기 미리보기 = STEP3 밖에선 정지(숨은 페인 무한 루프 디코딩 방지 · 평의회7)
+  if(wv){ if(s===2){ if(!matchMedia('(prefers-reduced-motion:reduce)').matches) wv.play().catch(()=>{}); } else { try{ wv.pause(); }catch(e){} } }
+  if(s===1)recount();   // 재진입 시 CTA·카운트 재평가(평의회5 — 렌더 후 back 잠김 방지)
+}
+$('#stepper').addEventListener('click',e=>{const t=e.target.closest('.snode'); if(t&&!t.disabled)go(+t.dataset.s)});
+
+const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
+const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
+const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
+const pendReady=()=>pendSet({id:TK.id, st:'ready', t0:Date.now(), mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names, scope:TK.scope, opts:TK.opts, keep:[...TK.keep], keepP:[...TK.keepP], extra:TK.extra, kfe:TK.kfe, fill:TK.fill, preset:TK.preset, sfe:TK.sfe, ck:TK.ck, lastGot:TK.lastGot});   // 인물 확정 상태 영속(키잉·범위 선택 포함) · lastGot 영속 = 리로드 후 재렌더 스테일 오latch 차단(재검증3·6)
+
+// ── STEP1 입력 (ly 문법 계승) ──
+const FILE_ICON=$('#fileTxt').innerHTML;   // 빈 슬롯 픽토그램 원본(초과 리셋 복원용)
+$('#file').addEventListener('change',()=>{
+  const f=$('#file').files[0]; if(!f) return;
+  FILE_B64=''; FILE_NAME='';   // 새 선택 즉시 이전 파일 무효화 — 읽는 중 발사 = 옛 파일 전송 레이스 차단(평의회5)
+  if(f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
+  FILE_NAME=f.name;
+  const btn=$('#analyze'); btn.disabled=true;   // 읽는 동안 발사 잠금(불완전 B64 전송 차단)
+  const rd=new FileReader();
+  rd.onload=()=>{ FILE_B64=String(rd.result||''); btn.disabled=false; $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
+  rd.onerror=()=>{ btn.disabled=false; FILE_NAME=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; errStatus('파일을 못 읽었어 — 다시'); };
+  rd.readAsDataURL(f);
+});
+$('#urlClip').addEventListener('click',async()=>{ try{ const t=await navigator.clipboard.readText(); if(t)$('#url').value=t.trim(); }catch(e){} });
+
+function errStatus(m){   // 전송 막힘 = 버튼 안 빨강 액티브 + 흔들림(ly/thumb errStatus 통일)
+  const g=$('#analyze'); if(!g) return;
+  if(!g.dataset.label) g.dataset.label=g.textContent;
+  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
+  g.textContent=m; g.setAttribute('aria-live','assertive');
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); if(g.classList.contains('wait')) g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; else g.textContent=g.dataset.label; },1700);
+}
+let _goTick=null,_goT0=0;   // 버튼 경과 타이머 — 누른 순간(업로드 전송)부터 분석 폴까지 한 타이머(운영자 260710 "분석 중…에 그 시간을 넣으면 — 버튼이 렉걸려 멈춘 것 같다")
+function goWait(on,t0){
+  const g=$('#analyze'); if(!g) return;
+  clearInterval(_goTick); _goTick=null;
+  if(on){
+    if(!g.dataset.label) g.dataset.label=g.textContent;
+    _goT0=t0||_goT0||Date.now();   // t0 미지정 재호출 = 기존 기점 유지(업로드→폴 전이·재개 클램프 연속)
+    g.classList.add('wait'); g.setAttribute('aria-busy','true');
+    const paint=()=>{ if(g._flash||g.classList.contains('err')) return;   // ✓ 접수 플래시·에러 문구(errStatus 1.7s 복귀)는 안 덮음
+      const tEl=g.querySelector('.gtime');
+      if(tEl){ tEl.textContent=fmtT((Date.now()-_goT0)/1000); return; }   // 시간만 갱신 = gdots DOM 유지(점모션 위상 리셋 0)
+      g.innerHTML='분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-_goT0)/1000)+'</span>'; };
+    paint(); _goTick=setInterval(paint,1000);
+  } else { _goT0=0; g.classList.remove('wait'); g.removeAttribute('aria-busy'); if(g.dataset.label) g.textContent=g.dataset.label; }
+}
+function goLbl(html){
+  const g=$('#analyze'); if(!g) return;
+  if(!g.dataset.label) g.dataset.label=g.textContent;
+  if(html===null){ g.innerHTML=''; g.textContent=g.dataset.label; g.removeAttribute('aria-busy'); }
+  else { g.setAttribute('aria-busy','true'); g.innerHTML=html; }
+}
+// 라이브 게이지 헬퍼 = index gaugeStart/Done/Clear 정본 계승(전송 내내 점근 진행 · 운영자 260702)
+function gaugeStart(btn){ if(!btn) return; btn.classList.add('glive','firing'); requestAnimationFrame(()=>requestAnimationFrame(()=>btn.classList.add('grun'))); }   // 2중 rAF = 0% 한 프레임 페인트 후 90% 트리거(같은 프레임이면 transition 무시)
+function gaugeDone(btn){ if(btn) btn.classList.add('gdone'); }
+function gaugeClear(btn){ if(btn) btn.classList.remove('glive','firing','grun','gdone'); }
+
+$('#analyze').addEventListener('click',async()=>{
+  const url=$('#url').value.trim();
+  if(!url && !FILE_B64) return errStatus('영상 URL이나 파일을 넣어줘');
+  if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
+  USER_ACT=true;
+  const status=$('#astatus'); status.classList.remove('err'); status.textContent='';
+  const gb=$('#analyze'); gb.disabled=true;
+  const t0=Date.now();   // 경과 기점 = 누른 순간 — 업로드(≤30MB 전송 + GH 커밋 = 수십 초~수 분)가 최대 지연 구간인데 구판은 이 동안 라벨 무변화 = "렉걸려 멈춘 것 같다"(운영자 260710)
+  gaugeStart(gb);   // 라이브 게이지 = 전송(업로드·디스패치) 응답까지 차오름 — 옛 0.72s 풀필+'보내는 중' 문구 폐지(운영자 260710 "게이지바로 다른거처럼" · index 전송 버튼 기틀)
+  goLbl(CHECK_SVG); gb._flash=true; setTimeout(()=>{ gb._flash=false; },600);   // 누른 즉시 ✓ 접수(운영자 260710 "일단 체크되고") — 0.6s 뒤 타이머 라벨로 전환
+  goWait(true,t0);   // '분석 중 · N:NN' 즉시 점등(업로드 내내 초 진행 = 멈춤 아님 어포던스) — 응답 후 pollAnalyze가 같은 t0로 이어받음
+  try{
+    const payload = url? {url} : {fileB64:FILE_B64, name:FILE_NAME};
+    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const j=await res.json();
+    if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    TK.id=j.id; TK.sel=new Set(); TK.names={}; TK.invert=false; TK.scope={}; TK.resultUrl=''; TK.lastGot='';
+    TK.keep=new Set(); TK.keepP=new Set(); TK.extra=[];   // 키잉·범위 선택도 영상 단위 — 미리셋 = 이전 영상 sid·pid·좌표 누출(평의회6 적발)
+    pendSet({id:j.id, st:'analyze', t0});   // t0 = 클릭 기점 그대로 — 재개 복원 시에도 경과 연속(클램프는 재개부가 처리)
+    gaugeDone(gb);   // 응답 = 게이지 현위치→100% 급속 마무리
+    pollAnalyze('track_out/'+j.id+'/tracks.json', t0);   // 같은 t0 = 버튼·상태줄 경과가 업로드~분석 끊김 없이 이어짐(구판 = 응답 시점 리셋)
+    setTimeout(()=>{ gaugeClear(gb); },700);   // gdone(.3s) 채움이 눈에 따라온 뒤 게이지 정리(라벨은 goWait 타이머가 유지)
+  }catch(e){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
+  finally{ $('#analyze').disabled=false; }
+});
+
+// ── 분석 폴 (ly poll 문법 계승: error.log 우선·SPA 폴백 HTML 가드·연/경성 예산·await 후 live 재확인) ──
+function pollAnalyze(outPath, t0){
+  if(_curStop)_curStop();
+  const status=$('#astatus');
+  const budget=BUDGET;   // 분석 1~2분 + Pages 배포 1~3분 — 소프트 초과 후에도 계속(하드 ×2)
+  const errPath=outPath.replace(/[^/]+$/,'error.log');
+  let live=true; const stop=()=>{ live=false; clearInterval(disp); goWait(false); $('#filmstage').hidden=true; }; _curStop=stop;
+  goWait(true,t0); $('#filmstage').hidden=false;   // t0 전달 = 버튼 경과가 클릭 기점 그대로 이어짐(업로드→분석 전이·재개 클램프 포함)
+  const draw=()=>{
+    if(!live) return;
+    const sec=Math.round((Date.now()-t0)/1000);
+    if(sec>budget*2){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지 = 문구 약속 그대로(재개 클램프가 이어받음 · 평의회7)
+    if(sec>budget){ status.innerHTML=WAIT_SVG+' 아직 분석 중… '+sec+'s (오래 걸리는 중 — 닫아도 나중에 이어받아)'; return; }
+    status.innerHTML=WAIT_SVG+' 얼굴 찾고 따라가는 중… '+sec+'s (보통 2–6분)';
+  };
+  const disp=setInterval(draw,1000); draw();
+  const tick=async()=>{
+    if(!live) return;
+    try{   // 1) 실패 먼저 — error.log 뜨면 즉시(무한 폴 차단)
+      const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
+      if(er.ok){
+        const ect=(er.headers.get('content-type')||'').toLowerCase();
+        const em=await er.text();
+        if(!live) return;
+        const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
+        if(em&&em.trim()&&!eHtml){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
+      }
+    }catch(e){ /* 재시도 */ }
+    try{   // 2) 결과(tracks.json)
+      const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
+      if(r.ok){
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const tx=await r.text();
+        if(!live) return;
+        const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
+        if(tx&&tx.trim()&&!isHtml){
+          let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&Array.isArray(d.people)){
+            stop();
+            status.innerHTML=OK_SVG+' 완료 ('+Math.round((Date.now()-t0)/1000)+'s)';
+            TK.meta=d.meta||{}; TK.people=d.people; TK.subjects=Array.isArray(d.subjects)?d.subjects:[];
+            buildCards(); unlocked[1]=true; go(1);
+            pendReady();   // pendClear 아님 — 서브탭 전환(iframe 리로드)에도 step2 복원(평의회5 상⑨)
+            return;
+          }
+        }
+      }
+    }catch(e){ /* 재시도 */ }
+    if(live) setTimeout(tick,5000);
+  };
+  tick();
+}
+
+// ── STEP2: 카드 + 모드 ──
+function fmtT(s){ s=Math.max(0,Math.round(s||0)); return ((s/60)|0)+':'+String(s%60).padStart(2,'0'); }
+const PLUS_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+function keyFaceP(){ return TK.people.filter(p=>p&&Array.isArray(p.pb)); }   // 키잉 얼굴 단위 카드 대상(pb = v3 분석 · 구 v2 = 카드 미노출 = 하위호환 · 260710)
+function buildKeyCards(){   // 키잉 = 피사체(전신·사물) + 얼굴 단위(keepP) 카드 다중선택 + 직접 지정 카드(탭 = 제거)
+  const g=$('#grid'); g.innerHTML='';
+  const faceP=keyFaceP();
+  $('#glword').textContent='피사체';
+  $('#pcount').textContent=(TK.subjects.length+faceP.length+TK.extra.length)+'개';
+  $('#dropnote').textContent=(TK.meta&&TK.meta.subj_dropped)?('+'+TK.meta.subj_dropped+' 생략'):'';
+  if(!TK.subjects.length&&!faceP.length&&!TK.extra.length){ g.innerHTML='<div class="nofaces">감지된 피사체 없음</div>'; }   // 지시절 없음 — 아래 직접 지정 버튼이 어포던스(§디자인 e-가 · 평의회7)
+  TK.subjects.forEach(s=>{
+    const sid=s.sid|0;
+    const color=PALETTE[(sid-1+PALETTE.length*8)%PALETTE.length];
+    const c=document.createElement('div'); c.className='card'; c.style.setProperty('--pc',color); c.dataset.sid=sid;
+    const img=s.crop?('track_out/'+TK.id+'/'+s.crop+'?v='+encodeURIComponent((TK.meta&&TK.meta.made)||'')):'';
+    c.innerHTML='<div class="avatar">'+(img?('<img alt="피사체 '+sid+'" loading="lazy" src="'+esc(img)+'">'):'')
+      +'<span class="selchk">'+CHECK_SVG+'</span><span class="subj-lb">'+esc(s.label||'피사체')+'</span>'
+      +'<span class="rng">'+fmtT(s.first)+'–'+fmtT(s.last)+'</span><span class="hint">#'+sid+'</span></div>'
+      +(s.cap?('<div class="cardcap">'+esc(s.cap)+'</div>'):'');   // AI 캡션(PR 1890 병합)
+    g.appendChild(c);
+    const im=c.querySelector('.avatar img');
+    if(im){ let tries=0; im.addEventListener('error',function h(){ tries++; if(tries===1){ setTimeout(()=>{ im.src=img+'&r='+Date.now(); },4000); } else { im.removeEventListener('error',h); im.remove(); } }); }
+    const toggle=()=>{
+      if(TK.keep.has(sid)) TK.keep.delete(sid); else TK.keep.add(sid);
+      const on=TK.keep.has(sid);
+      c.classList.toggle('sel',on); c.setAttribute('aria-pressed',on?'true':'false'); recount(); if(TK.id)pendReady();
+    };
+    c.addEventListener('click',toggle);
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+    c.setAttribute('role','button'); c.tabIndex=0;
+    if(TK.keep.has(sid)){ c.classList.add('sel'); c.setAttribute('aria-pressed','true'); }
+  });
+  faceP.forEach(p=>{   // 얼굴 단위 카드(keepP · 260710) — 전신 피사체와 동일 탭 토글 · '얼굴' 라벨 + #p힌트로 구분
+    const pid=p.pid|0;
+    const color=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length];
+    const c=document.createElement('div'); c.className='card'; c.style.setProperty('--pc',color); c.dataset.kpid=pid;
+    const img=p.crop?('track_out/'+TK.id+'/'+p.crop+'?v='+encodeURIComponent((TK.meta&&TK.meta.made)||'')):'';
+    c.innerHTML='<div class="avatar">'+(img?('<img alt="얼굴 '+pid+'" loading="lazy" src="'+esc(img)+'">'):'')
+      +'<span class="selchk">'+CHECK_SVG+'</span><span class="subj-lb">얼굴</span>'
+      +'<span class="rng">'+fmtT(p.first)+'–'+fmtT(p.last)+'</span><span class="hint">#p'+pid+'</span></div>'
+      +(p.cap?('<div class="cardcap">'+esc(p.cap)+'</div>'):'');   // AI 캡션 = subjects 카드와 동일 표기(PR 1890 병합 일관)
+    g.appendChild(c);
+    const im=c.querySelector('.avatar img');
+    if(im){ let tries=0; im.addEventListener('error',function h(){ tries++; if(tries===1){ setTimeout(()=>{ im.src=img+'&r='+Date.now(); },4000); } else { im.removeEventListener('error',h); im.remove(); } }); }
+    const toggle=()=>{
+      if(TK.keepP.has(pid)) TK.keepP.delete(pid); else TK.keepP.add(pid);
+      const on=TK.keepP.has(pid);
+      c.classList.toggle('sel',on); c.setAttribute('aria-pressed',on?'true':'false'); recount(); if(TK.id)pendReady();
+    };
+    c.addEventListener('click',toggle);
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+    c.setAttribute('role','button'); c.tabIndex=0;
+    if(TK.keepP.has(pid)){ c.classList.add('sel'); c.setAttribute('aria-pressed','true'); }
+  });
+  TK.extra.forEach((e,i)=>{   // 직접 지정 카드 — 탭 = 제거(X 배지 상시 = 어포던스)
+    const c=document.createElement('div'); c.className='card ex sel'; c.setAttribute('role','button'); c.tabIndex=0; c.setAttribute('aria-label','직접 지정 '+fmtT(e.t)+' 제거');   // 탭=파괴적 제거 — SR에 의미 전달(평의회7)
+    c.innerHTML='<div class="avatar"><span class="exav">'+PLUS_SVG+'</span>'
+      +'<span class="selchk">'+ERR_SVG+'</span>'   // X = nm-svg ERR_SVG 재사용(닫기 X path 정본 · 아이콘 SSOT)
+      +'<span class="subj-lb">직접 지정</span><span class="rng">'+fmtT(e.t)+'</span></div>';
+    const rm=()=>{ TK.extra.splice(i,1); buildKeyCards(); recount(); if(TK.id)pendReady(); };
+    c.addEventListener('click',rm);
+    c.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); rm(); } });
+    g.appendChild(c);
+  });
+  applyMode();
+}
+const keyLike=()=>TK.mode==='keying'||TK.mode==='maskfx';   // 실루엣 = 키잉과 동일 선택 축(인물=얼굴·피사체=전신/사물·직접 탭 — 운영자 260712 승인)
+function buildCards(){
+  if(keyLike()) return buildKeyCards();
+  const g=$('#grid'); g.innerHTML='';
+  $('#glword').textContent='등장인물';
+  $('#pcount').textContent=TK.people.length+'명';
+  $('#dropnote').textContent=(TK.meta&&TK.meta.dropped)?('+'+TK.meta.dropped+' 생략'):'';
+  if(!TK.people.length){ g.innerHTML='<div class="nofaces">감지된 얼굴 없음</div>'; }
+  const same=(TK.meta&&Array.isArray(TK.meta.same_hint))?TK.meta.same_hint.filter(pr=>Array.isArray(pr)&&pr.length===2&&(pr[0]|0)!==(pr[1]|0)):[];   // AI 병합 힌트(확실 쌍만 · 자기쌍 컷 · 없으면 미표시 · 평의회5)
+  TK.people.forEach(p=>{
+    const pid=p.pid|0;   // 서버 정수 계약 + 방어 강제(평의회5)
+    const color=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length];
+    const c=document.createElement('div'); c.className='card'; c.style.setProperty('--pc',color); c.dataset.pid=pid;
+    const img=p.crop?('track_out/'+TK.id+'/'+p.crop+'?v='+encodeURIComponent((TK.meta&&TK.meta.made)||'')):'';
+    const hasBody=Array.isArray(p.body)&&p.body.length>0;   // 전신 데이터(v3) 있는 카드만 범위 토글 노출 — 구 v2 분석 = 미노출 = 구 동작 그대로(하위호환 · 260710)
+    const isBody=TK.scope[pid]==='body';
+    const mate=same.find(pr=>(pr[0]|0)===pid||(pr[1]|0)===pid);
+    const mg=mate?('<span class="mghint">#'+esc(String((mate[0]|0)===pid?(mate[1]|0):(mate[0]|0)))+' 같을 수도</span>'):'';
+    c.innerHTML='<div class="avatar">'+(img?('<img alt="인물 '+pid+'" loading="lazy" src="'+esc(img)+'">'):'')
+      +'<span class="selchk">'+CHECK_SVG+'</span>'+mg
+      +'<span class="rng">'+fmtT(p.first)+'–'+fmtT(p.last)+'</span><span class="hint">#'+pid+'</span></div>'
+      +(hasBody?('<div class="scoperow" role="group" aria-label="가림 범위">'
+        +'<button type="button" class="opt2'+(isBody?'':' on')+'" data-scope="face" aria-pressed="'+(isBody?'false':'true')+'">얼굴만</button>'
+        +'<button type="button" class="opt2'+(isBody?' on':'')+'" data-scope="body" aria-pressed="'+(isBody?'true':'false')+'">전신</button></div>'):'')
+      +(p.cap?('<div class="cardcap">'+esc(p.cap)+'</div>'):'')
+      +'<div class="nrow"><span class="dot"></span><input class="nin" placeholder="이름 입력" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="'+esc(TK.names[pid]||'')+'"></div>';
+    g.appendChild(c);
+    const srow=c.querySelector('.scoperow');
+    if(srow) srow.addEventListener('click',e=>{   // 카드 선택 토글과 이벤트 분리(.nin 가드와 동일 문법)
+      const b=e.target.closest('.opt2'); if(!b) return;
+      if(b.dataset.scope==='body') TK.scope[pid]='body'; else delete TK.scope[pid];   // 'face' = 기본값이라 저장 안 함(페이로드 절약)
+      const body=TK.scope[pid]==='body';
+      srow.querySelectorAll('.opt2').forEach(x=>{ const on=(x.dataset.scope==='body')===body; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+      if(TK.id)pendReady();
+    });
+    const im=c.querySelector('.avatar img');
+    if(im){ let tries=0; im.addEventListener('error',function h(){ tries++; if(tries===1){ setTimeout(()=>{ im.src=img+'&r='+Date.now(); },4000); } else { im.removeEventListener('error',h); im.remove(); } }); }   // 배포 전파 지연 = 1회 재시도 · 최종 실패 = 제거(#pid·시간범위 플레이스홀더 잔존 · 평의회7)
+    const inp=c.querySelector('.nin');
+    inp.addEventListener('input',()=>{ TK.names[pid]=inp.value.trim(); c.classList.toggle('named',!!inp.value.trim()); recount(); });
+    const toggle=()=>{
+      if(TK.mode!=='mosaic') return;   // 핀셋 = 이름 입력만(카드 탭 무동작)
+      if(TK.sel.has(pid)) TK.sel.delete(pid); else TK.sel.add(pid);
+      const on=TK.sel.has(pid);
+      c.classList.toggle('sel',on); c.setAttribute('aria-pressed',on?'true':'false'); recount();
+    };
+    c.addEventListener('click',e=>{ if(e.target.closest('.nin')||e.target.closest('.scoperow')) return; toggle(); });
+    c.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&!e.target.closest('.nin')&&!e.target.closest('.scoperow')){ e.preventDefault(); toggle(); } });   // 키보드 선택(평의회7)
+    if(TK.sel.has(pid)) c.classList.add('sel');
+    if(TK.names[pid]) c.classList.add('named');
+  });
+  applyMode();
+}
+function applyMode(){
+  $('#grid').dataset.mode=TK.mode;
+  $$('.mseg').forEach(b=>{ const on=b.dataset.m===TK.mode; b.classList.toggle('on',on); b.setAttribute('aria-selected',on?'true':'false'); });
+  const iv=$('#invtg'); iv.hidden=TK.mode!=='mosaic'; iv.classList.toggle('on',TK.invert); iv.setAttribute('aria-pressed',TK.invert?'true':'false');
+  $('#mopts').hidden=TK.mode!=='mosaic';   // 조절 게이지 = 모자이크 전용
+  $('#kopts').hidden=TK.mode!=='keying';   // 페더 게이지 = 키잉 전용
+  $('#fopts').hidden=TK.mode!=='maskfx';   // 채움·가면·페더 = 실루엣 전용(승인 배치 260712)
+  $('#copts').hidden=TK.mode!=='chroma';   // 색·강도·테두리 = 크로마키 전용(승인 배치 260712)
+  $('#fmaskrow').hidden=TK.fill!=='image';
+  $('#exAdd').hidden=!keyLike();   // 직접 지정 = 키잉·실루엣(승인 배치 ③ · 실루엣 = 동일 축 260712)
+  const ch=TK.mode==='chroma';   // 크로마키 = 대상 선택 없음(색만) — 카드 그리드·라벨·카운터 숨김
+  $('#grid').hidden=ch; $('#glword').closest('label').hidden=ch; $('#exAdd').hidden=$('#exAdd').hidden||ch;
+  const s2=$('.stat2'); if(s2) s2.style.visibility=ch?'hidden':'';   // 슬롯 유지(발사 버튼 위치 불변 — §디자인 w visibility 관례)
+  if(!keyLike()) $$('#grid .card').forEach(c=>{   // 모자이크 = 카드 토글 / 핀셋 = 입력칸만(키잉·실루엣 카드는 buildKeyCards가 자체 배선)
+    if(TK.mode==='mosaic'){ c.setAttribute('role','button'); c.tabIndex=0; c.setAttribute('aria-pressed', c.classList.contains('sel')?'true':'false'); }
+    else { c.removeAttribute('role'); c.removeAttribute('aria-pressed'); c.tabIndex=-1; }
+  });
+  $('#toRender').textContent=TK.mode==='mosaic'?'모자이크 렌더':(TK.mode==='pinset'?'핀셋 렌더':(TK.mode==='keying'?'키잉 렌더':(TK.mode==='maskfx'?'실루엣 렌더':'크로마키 렌더')));
+  $('#statlbl').textContent=TK.mode==='mosaic'?'가림':(TK.mode==='pinset'?'이름':(TK.mode==='keying'?'유지':'가림'));
+  recount();
+}
+function recount(){
+  const total=keyLike()?(TK.subjects.length+keyFaceP().length+TK.extra.length):TK.people.length;
+  const srcLost=!!(TK.meta&&TK.meta.src_note==='src-lost');   // 원본 보관 실패 = 렌더 불가 선표시(평의회9)
+  const st=$('#r2status');
+  let n, over=false, durOver=false;
+  if(TK.mode==='mosaic'){
+    n=TK.invert?(total-TK.sel.size):TK.sel.size;
+    $('#toRender').disabled=!total||n<=0||srcLost;
+  }else if(TK.mode==='pinset'){
+    n=TK.people.filter(p=>(TK.names[p.pid|0]||'').trim()).length;
+    $('#toRender').disabled=n===0||srcLost;
+  }else if(TK.mode==='chroma'){
+    n=1;   // 대상 선택 없음(색만) — 소스·길이 게이트만
+    durOver=!!(TK.meta&&+TK.meta.dur>301);   // 크로마키 캡 300s(py 실측 게이트 300+1s 정합)
+    $('#toRender').disabled=srcLost||durOver;
+  }else{
+    n=TK.keep.size+TK.keepP.size+TK.extra.length;
+    over=n>4;   // 실측 상한(api·py와 3중 방어 · keepP 합산) — 4객체 90s ≈ 잡 캡 상한선
+    durOver=!!(TK.meta&&+TK.meta.dur>91);   // 분석 300s 상향으로 새로 생긴 막다른 길 선차단(키잉·실루엣 캡 90s 불변 · py KEY_MAX_SEC+1 정합 · 260710)
+    $('#toRender').disabled=n===0||over||srcLost||durOver;
+  }
+  $('#cnt').textContent=n; $('#tot').textContent=total;
+  if(st&&!st.classList.contains('err')) st.textContent = srcLost?'원본 보관 실패 — 처음부터 다시 분석해줘':(durOver?(TK.mode==='chroma'?'크로마키는 300초까지야 — 잘라서 분석해줘':(TK.mode==='maskfx'?'실루엣은 90초까지야 — 잘라서 분석해줘':'키잉은 90초까지야 — 잘라서 분석해줘')):(over?'피사체는 최대 4개까지':(TK.mode==='mosaic'&&TK.invert&&total&&n<=0?'전원 선택 = 가릴 사람이 없어':'')));
+}
+$$('.mseg').forEach(b=>b.addEventListener('click',()=>{ const was=TK.mode; TK.mode=b.dataset.m; if((was==='keying'||was==='maskfx')!==keyLike()) buildCards(); else applyMode(); }));   // 키잉계 ↔ 인물 = 카드 데이터 축이 달라 그리드 재구성(실루엣 = 키잉 축 공유)
+$('#invtg').addEventListener('click',()=>{ TK.invert=!TK.invert; applyMode(); });
+// ── 모자이크 조절(운영자 260708) — 값 = TK.opts(렌더 페이로드·pend 영속) ──
+const moWire=(id,key,fmt)=>{ const el=$('#'+id), v=$('#'+id+'V'); el.addEventListener('input',()=>{ TK.opts[key]=+el.value; v.textContent=fmt(+el.value); if(step===1&&TK.id)pendReady(); }); };   // 편집 즉시 pend 재저장 = 서브탭 전환에도 미발사 조절값 생존(평의회B N3)
+moWire('moPxw','pxw',String); moWire('moPxh','pxh',String); moWire('moSize','size',n=>n+'%'); moWire('moFeather','feather',String);
+$('#keFeather').addEventListener('input',()=>{ TK.kfe=+$('#keFeather').value; $('#keFeatherV').textContent=TK.kfe; if(step===1&&TK.id)pendReady(); });   // 키잉 페더(moWire 대칭 · pend 영속)
+$$('#mopts .opt2').forEach(b=>b.addEventListener('click',()=>{
+  TK.opts.shape=b.dataset.shape;
+  $$('#mopts .opt2').forEach(x=>{ const on=x.dataset.shape===TK.opts.shape; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  if(step===1&&TK.id)pendReady();
+}));
+function moSync(){   // TK.opts → 게이지 UI(복원 경로) — 오염 pend 방어 = 숫자 강제(moWire와 대칭 · 평의회C F3)
+  TK.opts=Object.assign({},MO_DFLT,TK.opts||{});
+  ['pxw','pxh','size','feather'].forEach(k=>{ const n=+TK.opts[k]; TK.opts[k]=Number.isFinite(n)?n:MO_DFLT[k]; });
+  if(TK.opts.shape!=='ellipse') TK.opts.shape='rect';
+  $('#moPxw').value=TK.opts.pxw; $('#moPxwV').textContent=TK.opts.pxw;
+  $('#moPxh').value=TK.opts.pxh; $('#moPxhV').textContent=TK.opts.pxh;
+  $('#moSize').value=TK.opts.size; $('#moSizeV').textContent=TK.opts.size+'%';
+  $('#moFeather').value=TK.opts.feather; $('#moFeatherV').textContent=TK.opts.feather;
+  $$('#mopts .opt2').forEach(x=>{ const on=x.dataset.shape===TK.opts.shape; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+}
+// ── 실루엣(M4)·크로마키(M3) 노브 — moWire 대칭·pend 영속(운영자 260712 승인 배치) ──
+$$('#fopts .opt2[data-fill]').forEach(b=>b.addEventListener('click',()=>{
+  TK.fill=b.dataset.fill==='image'?'image':'mosaic';
+  $$('#fopts .opt2[data-fill]').forEach(x=>{ const on=x.dataset.fill===TK.fill; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  $('#fmaskrow').hidden=TK.fill!=='image';
+  if(step===1&&TK.id)pendReady();
+}));
+$$('#fmaskrow .opt2[data-preset]').forEach(b=>b.addEventListener('click',()=>{
+  TK.preset=['smile','black','heart'].includes(b.dataset.preset)?b.dataset.preset:'smile';
+  $$('#fmaskrow .opt2[data-preset]').forEach(x=>{ const on=x.dataset.preset===TK.preset; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  if(step===1&&TK.id)pendReady();
+}));
+$('#sgFeather').addEventListener('input',()=>{ TK.sfe=+$('#sgFeather').value; $('#sgFeatherV').textContent=TK.sfe; if(step===1&&TK.id)pendReady(); });
+$$('#copts .opt2[data-ckc]').forEach(b=>b.addEventListener('click',()=>{
+  TK.ck.color=b.dataset.ckc==='blue'?'blue':'green';
+  $$('#copts .opt2[data-ckc]').forEach(x=>{ const on=x.dataset.ckc===TK.ck.color; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  if(step===1&&TK.id)pendReady();
+}));
+const ckWire=(id,key)=>{ const el=$('#'+id), v=$('#'+id+'V'); el.addEventListener('input',()=>{ TK.ck[key]=+el.value; v.textContent=el.value; if(step===1&&TK.id)pendReady(); }); };
+ckWire('ckSim','similarity'); ckWire('ckChoke','choke'); ckWire('ckFeather','feather');
+function fxSync(){   // 실루엣·크로마 상태 → UI(복원 경로 · moSync 대칭 — 오염 pend 방어 숫자 강제)
+  TK.fill=TK.fill==='image'?'image':'mosaic';
+  TK.preset=['smile','black','heart'].includes(TK.preset)?TK.preset:'smile';
+  TK.sfe=Number.isFinite(+TK.sfe)?Math.max(0,Math.min(40,+TK.sfe)):8;
+  TK.ck=Object.assign({color:'green',similarity:18,choke:0,feather:1},(TK.ck&&typeof TK.ck==='object')?TK.ck:{});
+  TK.ck.color=TK.ck.color==='blue'?'blue':'green';
+  TK.ck.similarity=Number.isFinite(+TK.ck.similarity)?Math.max(1,Math.min(50,+TK.ck.similarity)):18;
+  TK.ck.choke=Number.isFinite(+TK.ck.choke)?Math.max(-4,Math.min(4,+TK.ck.choke)):0;
+  TK.ck.feather=Number.isFinite(+TK.ck.feather)?Math.max(0,Math.min(10,+TK.ck.feather)):1;
+  $$('#fopts .opt2[data-fill]').forEach(x=>{ const on=x.dataset.fill===TK.fill; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  $$('#fmaskrow .opt2[data-preset]').forEach(x=>{ const on=x.dataset.preset===TK.preset; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  $('#fmaskrow').hidden=TK.fill!=='image';
+  $('#sgFeather').value=TK.sfe; $('#sgFeatherV').textContent=TK.sfe;
+  $$('#copts .opt2[data-ckc]').forEach(x=>{ const on=x.dataset.ckc===TK.ck.color; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  $('#ckSim').value=TK.ck.similarity; $('#ckSimV').textContent=TK.ck.similarity;
+  $('#ckChoke').value=TK.ck.choke; $('#ckChokeV').textContent=TK.ck.choke;
+  $('#ckFeather').value=TK.ck.feather; $('#ckFeatherV').textContent=TK.ck.feather;
+}
+$('#back1').addEventListener('click',()=>{ if(_curStop)_curStop(); pendClear(); unlocked[1]=false; unlocked[2]=false; go(0); });
+$('#back2').addEventListener('click',()=>{ go(1); });   // 렌더 폴은 유지(진행 중이면 완료가 step3에 준비됨) — go(1)이 recount로 CTA 재활성
+
+// ── 직접 지정(누락 피사체) — 원본 스크럽 + 탭 → 정규좌표 {t,x,y}(승인 배치 ③) ──
+//   좌표 계약: <video>는 회전 메타를 표시에 반영 = cv2 ORIENTATION_AUTO 공간과 일치(00_지침 좌표 불변) ·
+//   video 요소는 내용 종횡비로 자체 축소라 요소 박스 = 콘텐츠 박스(레터박스 보정 불요).
+let SCRUB={x:null,y:null};
+function srcPlayUrl(){
+  const s=(TK.meta&&TK.meta.src)||'';
+  if(/^https:\/\//.test(s)) return s;
+  const rel=s.replace(/^\//,'');
+  return rel.startsWith('track_out/')?rel:'';   // git 폴백 = 동일출처 상대경로
+}
+$('#exAdd').addEventListener('click',()=>{
+  const u=srcPlayUrl(), st=$('#r2status');
+  if(!u){ if(st&&!st.classList.contains('err')) st.textContent='원본 재생 불가 — 처음부터 다시 분석해줘'; return; }
+  const v=$('#scrubVid');
+  if(v.dataset.src!==u){ v.src=u; v.dataset.src=u; }
+  SCRUB={x:null,y:null};
+  const dot=$('#scrubStage .scrub-dot'); if(dot) dot.remove();
+  $('#scrubOk').disabled=true;
+  const r=$('#scrubT'); r.max=Math.max(1,(TK.meta&&TK.meta.dur)||10); r.value=0; $('#scrubTv').textContent=fmtT(0);
+  try{ v.currentTime=0; }catch(e){}
+  $('#scrub').hidden=false;
+  $('#scrubCancel').focus();   // 열 때 포커스 오버레이 안으로(최소 a11y · 평의회7)
+});
+$('#scrubT').addEventListener('input',()=>{ const t=+$('#scrubT').value; try{ $('#scrubVid').currentTime=t; }catch(e){} $('#scrubTv').textContent=fmtT(t); });
+$('#scrubStage').addEventListener('click',e=>{
+  const v=$('#scrubVid');
+  if(!v.videoWidth) return;   // 메타 미로드 = 무시
+  const rc=v.getBoundingClientRect();
+  const x=(e.clientX-rc.left)/rc.width, y=(e.clientY-rc.top)/rc.height;
+  if(!(x>=0&&x<=1&&y>=0&&y<=1)) return;
+  SCRUB={x:Math.round(x*1e4)/1e4, y:Math.round(y*1e4)/1e4};
+  let dot=$('#scrubStage .scrub-dot');
+  if(!dot){ dot=document.createElement('span'); dot.className='scrub-dot'; $('#scrubStage').appendChild(dot); }
+  dot.style.left=(x*100)+'%'; dot.style.top=(y*100)+'%';
+  $('#scrubOk').disabled=false;
+});
+$('#scrubCancel').addEventListener('click',()=>{ $('#scrub').hidden=true; try{ $('#scrubVid').pause(); }catch(e){} });
+$('#scrubOk').addEventListener('click',()=>{
+  if(SCRUB.x===null) return;
+  if(TK.keep.size+TK.keepP.size+TK.extra.length>=4){   // 정확히 4에서 추가 시 무피드백 폐기 방지 — 직접 표기(평의회6: over 문구는 n>4만 켜짐 · keepP 합산)
+    $('#scrub').hidden=true; try{ $('#scrubVid').pause(); }catch(e){}
+    const st=$('#r2status'); if(st&&!st.classList.contains('err')) st.textContent='피사체는 최대 4개까지';
+    return;
+  }
+  TK.extra.push({t:Math.round((+$('#scrubT').value)*100)/100, x:SCRUB.x, y:SCRUB.y});
+  $('#scrub').hidden=true; try{ $('#scrubVid').pause(); }catch(e){}
+  buildKeyCards(); if(TK.id)pendReady();
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#scrub').hidden){ $('#scrub').hidden=true; try{ $('#scrubVid').pause(); }catch(_){} } });   // 최소 a11y(평의회7) — dialog 승격·백버튼은 부모 tooldlg pushState 중첩이라 후속(지침 한계)
+
+// ── 렌더 발사 + 폴 ──
+$('#toRender').addEventListener('click',async()=>{
+  USER_ACT=true;
+  const btn=$('#toRender'), st=$('#r2status'); st.classList.remove('err'); st.textContent='';
+  btn.disabled=true;
+  const names={}, colors={};
+  TK.people.forEach(p=>{ const pid=p.pid|0; colors[pid]=PALETTE[(pid-1+PALETTE.length*8)%PALETTE.length]; const nm=(TK.names[pid]||'').trim(); if(nm) names[pid]=nm; });
+  const payload={render: TK.mode==='keying'
+    ? {id:TK.id, mode:'keying', keep:[...TK.keep], keepP:[...TK.keepP], extra:TK.extra, opts:{feather:TK.kfe}}
+    : TK.mode==='maskfx'
+    ? {id:TK.id, mode:'maskfx', keep:[...TK.keep], keepP:[...TK.keepP], extra:TK.extra, fill:TK.fill, preset:TK.preset, opts:{feather:TK.sfe}}
+    : TK.mode==='chroma'
+    ? {id:TK.id, mode:'chroma', opts:{color:TK.ck.color, similarity:TK.ck.similarity/100, choke:TK.ck.choke, feather:TK.ck.feather}}
+    : {id:TK.id, mode:TK.mode, targets:[...TK.sel], invert:TK.invert, names, colors, scopes:TK.scope,
+       opts:{shape:TK.opts.shape, pxw:TK.opts.pxw, pxh:TK.opts.pxh, size:TK.opts.size/100, feather:TK.opts.feather}}};
+  const prevUrl=TK.lastGot||'';   // 직전 결과 배제 기준선 = 마지막 수신 got(프리뷰 포함 — resultUrl은 master-lost 시 ''라 기준선 무력화 · 평의회6·8)
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const j=await res.json();
+    if(!res.ok||j.error){ st.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); st.classList.add('err'); recount(); return; }
+    const t0=Date.now();
+    pendSet({id:TK.id, st:'render', t0, mode:TK.mode, sel:[...TK.sel], invert:TK.invert, names:TK.names, scope:TK.scope, opts:TK.opts, keep:[...TK.keep], keepP:[...TK.keepP], extra:TK.extra, kfe:TK.kfe, fill:TK.fill, preset:TK.preset, sfe:TK.sfe, ck:TK.ck, lastGot:TK.lastGot});
+    unlocked[2]=true; go(2); pollRender(t0, prevUrl, t0-90000, TK.mode);
+  }catch(e){ st.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; st.classList.add('err'); recount(); }
+});
+
+function pollRender(t0, prevUrl, minTs, wantMode){
+  if(_curStop)_curStop();
+  const status=$('#rstatus'); status.classList.remove('err');
+  $('#vwrap').classList.remove('alpha'); $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');   // alpha 제거 = 대기 중 빈 체커보드 잔존 차단(평의회6)
+  // 렌더 대기 = 원본 미리보기(muted 저속 루프)+스캔 빔+프리뷰 안 상태문구(운영자 픽 260710 — 아래 캡션이 프리뷰 안 좌하단으로 · ' (NNNs)' 경과 병기)
+  const wsrc=(TK.meta&&TK.meta.src)||'';
+  const wlbl=(wantMode==='pinset'?'핀셋':wantMode==='keying'?'키잉':wantMode==='maskfx'?'실루엣':wantMode==='chroma'?'크로마키':'모자이크')+' 렌더 중';
+  $('#vwrap').innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
+    +'<div class="wscrim"></div><div class="scanline wscan"></div>'
+    +'<div class="wmsg">'+esc(wlbl)+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="wsec"></span></div>';
+  status.innerHTML='<span class="sronly">'+esc(wlbl)+'</span>';   // SR 개시 공지 — 시각은 빈 캡션(운영자 픽) 유지·role=status 1회 낭독(평의회7 a11y)
+  const wv=$('#vwrap .wv');
+  if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }   // 전정계 배려 = 정지 1프레임(시킹으로 첫 프레임 페인트 강제 — preload=metadata 미보장 · 평의회7)
+  const wclear=()=>{ $('#vwrap').innerHTML=''; };   // 에러·타임아웃 = 대기 스테이지 정리(스캔·비디오 잔존 차단)
+  const outPath='track_out/'+TK.id+'/video.json';
+  const errPath='track_out/'+TK.id+'/error.log';
+  const budget=RENDER_BUDGET;
+  let live=true, prevErr=null; const stop=()=>{ live=false; clearInterval(disp); }; _curStop=stop;
+  const draw=()=>{
+    if(!live) return;
+    const sec=Math.round((Date.now()-t0)/1000);
+    if(sec>budget*2){ stop(); wclear(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지(재개 클램프가 이어받음)
+    const ws=$('#vwrap .wsec'); if(ws) ws.textContent=' ('+sec+'s)';   // 경과 = 프리뷰 안 병기(아래 캡션 폐지 — 운영자 260710)
+  };
+  const disp=setInterval(draw,1000); draw();
+  const fresh=ts=>{ const t=Date.parse(ts||''); return !isNaN(t) && t>=minTs; };   // 이번 디스패치 이후 산출만(과거 video.json 오인 차단 · ts=KST ISO) — 재개 시 minTs=원 디스패치 기준(늦은 완성도 수신)
+  const tick=async()=>{
+    if(!live) return;
+    try{   // 워크플로 자체 사망(render 스텝 전) = error.log — 내용 변화 기준선(과거 실패 잔존 무시 · lyPollVideo 문법 · 동일 문구 재실패는 미검출 = 수용 트레이드오프·하드 타임아웃이 백스톱)
+      const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
+      if(er.ok){
+        const ect=(er.headers.get('content-type')||'').toLowerCase();
+        const em=await er.text();
+        if(!live) return;
+        const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
+        if(em&&em.trim()&&!eHtml){
+          if(prevErr===null) prevErr=em.trim();
+          else if(em.trim()!==prevErr){ stop(); wclear(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(em.trim()); status.classList.add('err'); return; }
+        }else if(prevErr===null) prevErr='';
+      }else if(prevErr===null) prevErr='';
+    }catch(e){ /* 재시도 */ }
+    try{
+      const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
+      if(r.ok){
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const tx=await r.text();
+        if(!live) return;
+        const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
+        if(tx&&tx.trim()&&!isHtml){
+          let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&fresh(d.ts)){
+            if(d.error){ stop(); wclear(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(String(d.error)); status.classList.add('err'); return; }
+            const got=d.url||d.preview||'';   // 키잉 master-lost(마스터 유실·프리뷰만)도 결과 — url만 보면 영영 못 받음(헤드리스 실측 적발)
+            const modeOk=!wantMode||!d.mode||d.mode===wantMode;   // 발사 모드 불일치 = 직전 다른 모드 결과 오인 차단(평의회8 · 구 video.json엔 mode 없을 수 있어 관용)
+            if(got&&got!==prevUrl&&modeOk){ stop(); pendReady(); TK.lastGot=got; showResult(d, Math.round((Date.now()-t0)/1000)); return; }
+          }
+        }
+      }
+    }catch(e){ /* 재시도 */ }
+    if(live) setTimeout(tick,5000);
+  };
+  tick();
+}
+
+function showResult(d, sec){
+  TK.resultUrl=d.url||'';
+  const keying=d.mode==='keying'||d.mode==='chroma';   // 크로마키 = 키잉과 동일 알파 산출 계약(MOV 마스터+webm 프리뷰 · 260712)
+  $('#rstatus').classList.remove('err');
+  $('#rstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(keying&&d.note==='master-lost'?' — 마스터(MOV) 업로드 실패라 프리뷰만':'');
+  $('#vwrap').classList.toggle('alpha',keying);   // 투명 표시 체커보드(승인 배치 ④)
+  const play=keying?(d.preview||d.url):d.url;   // 키잉·크로마 재생 = VP9 알파 webm(브라우저는 ProRes 재생 불가) · 저장 = MOV 마스터
+  $('#vwrap').innerHTML='<video controls playsinline preload="metadata" src="'+esc(play)+'"></video>';
+  const b=$('#dlVid'); b.dataset.mode=d.mode||TK.mode;
+  if(keying&&!d.url){ b.hidden=true; TK.resultUrl=''; }
+  else b.hidden=false;
+}
+$('#dlVid').innerHTML=DOWNLOAD_SVG;   // 아이콘 단독(§표기 라 · nm-svg SSOT)
+$('#dlVid').addEventListener('click',e=>{
+  const b=e.currentTarget, u=TK.resultUrl;
+  if(!u||!/^(https:\/\/|\/?track_out\/)/.test(u)) return;   // 스킴 화이트리스트(ly 문법 · 평의회5)
+  const ext=(u.split('?')[0].match(/\.(mov|webm|mp4)$/i)||[,'mp4'])[1].toLowerCase();   // 키잉 마스터 = .mov(알파)
+  const name='track_'+TK.id+'_'+(b.dataset.mode||'mosaic')+'.'+ext;
+  const a=document.createElement('a');
+  a.href=/^https:/.test(u)?('api/dl?u='+encodeURIComponent(u)+'&n='+encodeURIComponent(name)):u;   // R2 교차출처 = api/dl 프록시(직접 fetch는 CORS 실패 · 동기 클릭 = iOS 제스처 보존 — ly 정본) / git 폴백 = 동일출처 직접
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  b.classList.add('dl-done');
+});
+
+try{ const _xp=JSON.parse(localStorage.getItem('nm_track_preset')||'null');   // 편집 탭 기타 기능 핸드오프 프리셋(운영자 260711 3분류 — 일회용 소비)
+  if(_xp){ const _p=pendGet();
+    if(!(_p&&_p.st==='render')){   // 렌더 디스패치 진행 중만 미소비 보존(완료·뒤로 후 다음 로드서 적용) — 그 외 = 프리셋이 이김(방금 명시 의도 > 잔존 pend · 배선평의회5 ①)
+      localStorage.removeItem('nm_track_preset');
+      if(Date.now()-(+_xp.t0||0) < 30*60*1000){   // 신선도 30분 — 소비 실패 잔존물이 며칠 뒤 일반 로드를 오염시키는 것 차단(①-b)
+        if(['mosaic','pinset','keying','maskfx','chroma'].includes(_xp.mode)) TK.mode=_xp.mode;   // 실루엣·크로마키 = 260712 배선(편집기 카드 5종 동기 · 260712 2차)
+        if(_xp.opts&&typeof _xp.opts==='object'){ TK.opts=Object.assign({},MO_DFLT,_xp.opts); ['pxw','pxh','size','feather'].forEach(k=>{ const n=+TK.opts[k]; TK.opts[k]=Number.isFinite(n)?n:MO_DFLT[k]; }); if(TK.opts.shape!=='ellipse'&&TK.opts.shape!=='rect') TK.opts.shape=MO_DFLT.shape; }
+        if(Number.isFinite(+_xp.kfe)) TK.kfe=Math.max(0,Math.min(40,+_xp.kfe));
+        if(_xp.fill!==undefined){ TK.fill=_xp.fill; TK.preset=_xp.preset; TK.sfe=_xp.sfe; TK.ck=_xp.ck; }   // 실루엣·크로마 프리셋(편집기 카드 260712 2차) — 오염 방어·클램프 = 아래 fxSync 부팅 호출이 일괄
+        if(_p&&_p.id) pendSet(Object.assign({}, _p, {mode:TK.mode, opts:TK.opts, kfe:TK.kfe, fill:TK.fill, preset:TK.preset, sfe:TK.sfe, ck:TK.ck}));   // pend에 프리셋 주입 = 아래 pend 복원(비동기 포함)이 프리셋 값을 실어나름 — 역전 원천 차단
+      }
+    }
+  } }catch(e){}
+moSync();   // 부팅 1회 = MO_DFLT 단일 출처화(HTML value 속성과의 이중정의 드리프트 차단 · 평의회C F5)
+fxSync();   // 실루엣·크로마 부팅 동기(moSync 대칭 · 260712)
+$('#keFeather').value=TK.kfe; $('#keFeatherV').textContent=TK.kfe;   // 키잉 페더 부팅 동기(운영자 260711 기본 0 — 구 HTML value=3 이중정의 차단 · moSync 대칭)
+
+// ── 진행 이어받기(리로드·서브탭 전환·재진입) — pend 단계별 복원(0 유실 · 평의회5 상⑨) ──
+// analyze: t0을 소프트 예산 직전으로 클램프 — draw()의 하드 타임아웃이 tick()보다 먼저 걸려 완성 결과를
+//   영영 못 받던 구멍 봉합(평의회7 상1 · ly 1434 "창 밖 = 1회 확인" 등가·더 단순).
+// render: 예산은 클램프하되 ts 신선도(minTs)는 *원* 디스패치 기준 — 늦게 완성된 결과도 수신.
+// ready: 분석 완료본 재조립(step2 복원 · 선택 상태 포함).
+(function(){
+  const P=pendGet(); if(!P||!P.id) return;
+  if(Date.now()-(P.t0||0)>24*3600e3){ pendClear(); return; }   // 실효 1일 — 영원 재확인 방지
+  TK.id=P.id;
+  if(P.st==='analyze'){
+    pollAnalyze('track_out/'+P.id+'/tracks.json', Math.max(P.t0||0, Date.now()-BUDGET*1000));
+    return;
+  }
+  if(P.st!=='ready'&&P.st!=='render'){ pendClear(); return; }
+  TK.mode=['pinset','keying','maskfx','chroma'].includes(P.mode)?P.mode:'mosaic';
+  TK.sel=new Set((P.sel||[]).map(n=>n|0)); TK.invert=!!P.invert; TK.names=P.names||{};
+  TK.keep=new Set((Array.isArray(P.keep)?P.keep:[]).map(n=>n|0));   // 비배열 오염 pend = .map TypeError로 복원 전체 붕괴 방지(extra 가드와 대칭 · 평의회6)
+  TK.keepP=new Set((Array.isArray(P.keepP)?P.keepP:[]).map(n=>n|0));   // 얼굴 단위(260710) — keep 가드 미러 · 구 pend(키 없음) = 빈 Set = 기본값(양방향 호환)
+  TK.scope=(P.scope&&typeof P.scope==='object'&&!Array.isArray(P.scope))?Object.fromEntries(Object.entries(P.scope).filter(([k,v])=>v==='body'&&/^[0-9]{1,2}$/.test(k))):{};   // 'body'만 유효(오염 pend 방어)
+  TK.extra=Array.isArray(P.extra)?P.extra.filter(e=>e&&typeof e==='object'&&Number.isFinite(+e.t)&&Number.isFinite(+e.x)&&Number.isFinite(+e.y)).slice(0,4):[];   // 오염 pend 방어(moSync 대칭)
+  TK.kfe=Number.isFinite(+P.kfe)?Math.max(0,Math.min(40,+P.kfe)):0;   // 키잉 페더 기본 0(운영자 260711)
+  TK.lastGot=(typeof P.lastGot==='string')?P.lastGot:'';   // 리로드에도 스테일 배제 기준선 유지(재검증3·6 잔여 봉합)
+  $('#keFeather').value=TK.kfe; $('#keFeatherV').textContent=TK.kfe;
+  TK.fill=P.fill; TK.preset=P.preset; TK.sfe=P.sfe; TK.ck=P.ck; fxSync();   // 실루엣·크로마 복원 — 오염 방어·기본값 = fxSync가 일괄(260712)
+  TK.opts=(P.opts&&typeof P.opts==='object')?P.opts:{...MO_DFLT}; moSync();
+  fetch('track_out/'+P.id+'/tracks.json?t='+Date.now())
+    .then(r=>r.ok?r.text():null)
+    .then(tx=>{
+      if(USER_ACT) return;   // 사용자가 이미 새 작업 개시 = 복원 양보(늦은 복원의 격침 방지 · 평의회5)
+      let d=null; try{ d=tx&&JSON.parse(tx); }catch(e){}
+      if(!(d&&Array.isArray(d.people))){ pendClear(); return; }
+      TK.meta=d.meta||{}; TK.people=d.people; TK.subjects=Array.isArray(d.subjects)?d.subjects:[]; buildCards(); unlocked[1]=true;
+      if(P.st==='render'){ unlocked[2]=true; go(2); pollRender(Math.max(P.t0||0, Date.now()-RENDER_BUDGET*1000), TK.lastGot||'', (P.t0||0)-90000, TK.mode); }
+      else go(1);
+    }).catch(()=>{ /* 다음 열 때 재시도(pend 유지) */ });
+})();
+</script>
+<script src="cscroll.js"></script><!-- 커스텀 오버레이 스크롤바 = 제작·합성(thumb)·ly·k와 동일 표준(운영자 260713 "다 같게") -->
+</body>
+</html>
