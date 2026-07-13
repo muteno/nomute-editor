@@ -1,0 +1,164 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>도구 창 글로우 테두리 시안</title>
+<style>
+  :root{
+    --accent-rgb:0,238,210; --accent:#00EED2; --bg:#0b0d0c; --fg:#eef7f0; --mut:#8b9691;
+    --modal-glass:rgba(20,23,26,.9); --line:rgba(255,255,255,.13); --line2:rgba(255,255,255,.07);
+    --r-modal:22px; --r-s:9px; --font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+    /* 튜닝 변수(기본 = 추천 프리셋) */
+    --gb-blur:24px; --gb-ring:1px; --gb-ringA:.30; --gb-glowA:.20; --gb-spd:4.5s; --gb-min:.48;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.5;padding:16px 14px 60px;max-width:760px;margin:0 auto;-webkit-text-size-adjust:100%}
+  h1{font-size:18px;font-weight:800;margin-bottom:2px}
+  .sub{color:var(--mut);font-size:12.5px;margin-bottom:16px}
+  h2{font-size:13px;font-weight:800;color:var(--accent);margin:20px 0 9px;text-transform:uppercase;letter-spacing:.05em}
+
+  /* ── 실물 재현: 피드 위 도구 모달 ── */
+  .stage{position:relative;border-radius:16px;overflow:hidden;padding:34px 18px;
+    background:linear-gradient(135deg,#1a2430,#12181c 60%,#0d1412);min-height:300px;display:grid;place-items:center}
+  .stage::before{content:'';position:absolute;inset:0;background:
+    radial-gradient(circle at 25% 30%,rgba(0,238,210,.05),transparent 40%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 46px);pointer-events:none}
+  .mock{position:relative;width:min(360px,100%);border:1px solid var(--line);border-radius:var(--r-modal);
+    background:var(--modal-glass);box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden}
+  /* ★ 글로우 테두리 레이어 = 모달 밖으로 새는 발광(opacity 호흡 = GPU 저비용) */
+  .mock::after{content:'';position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+    box-shadow:0 0 0 var(--gb-ring) rgba(var(--accent-rgb),var(--gb-ringA)), 0 0 var(--gb-blur) rgba(var(--accent-rgb),var(--gb-glowA));
+    animation:gbBreath var(--gb-spd) ease-in-out infinite;}
+  .mock.static::after{animation:none;opacity:1}
+  .mock.off::after{display:none}
+  @keyframes gbBreath{0%,100%{opacity:var(--gb-min)}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.mock::after{animation:none}}
+  .m-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line2)}
+  .m-head b{font-size:14px;font-weight:800}.m-head .sp{color:var(--accent);margin-right:5px}
+  .m-x{width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--line);border-radius:var(--r-s);color:var(--mut);font-size:14px}
+  .m-tabs{display:grid;grid-template-columns:1fr 1fr;padding:9px 12px;gap:0;background:rgba(255,255,255,.03);border-bottom:1px solid var(--line2)}
+  .m-tab{padding:9px 4px;text-align:center;color:var(--mut);font-weight:700;font-size:12.5px;border:1px solid var(--line2)}
+  .m-tab:first-child{border-radius:var(--r-s) 0 0 var(--r-s)}
+  .m-tab:last-child{border-radius:0 var(--r-s) var(--r-s) 0;border-left:none}
+  .m-tab.on{color:var(--accent);font-weight:800;text-shadow:0 0 11px rgba(var(--accent-rgb),.55)}
+  .m-body{padding:14px}
+  .m-go{width:100%;padding:12px;text-align:center;border:1px solid var(--line);border-radius:999px;color:var(--accent);font-weight:800;font-size:13px;background:rgba(255,255,255,.02);margin-bottom:12px}
+  .m-row{display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line2);font-size:12px}
+  .m-row .l{color:var(--fg);font-weight:700}.m-row .v{color:var(--accent);font-weight:800}.m-row .v .o{color:var(--mut);font-weight:600}
+
+  /* ── 프리셋 ── */
+  .presets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:6px}
+  .pre{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.03);color:var(--fg);font-size:12.5px;font-weight:700;cursor:pointer}
+  .pre.on{border-color:var(--accent);color:var(--accent);background:rgba(0,238,210,.08)}
+  .pre .star{color:var(--accent)}
+
+  /* ── 슬라이더 ── */
+  .ctrl{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin-top:8px}
+  .crow{display:grid;grid-template-columns:88px 1fr 52px;align-items:center;gap:10px;padding:6px 0}
+  .crow label{font-size:12px;font-weight:700;color:var(--fg)}
+  .crow .val{font-size:12px;font-weight:800;color:var(--accent);text-align:right;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent);height:22px}
+
+  /* ── 출력 ── */
+  .out{background:#05100e;border:1px solid rgba(0,238,210,.2);border-radius:12px;padding:12px 14px;margin-top:10px}
+  .out pre{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#bfeee6;overflow-x:auto;white-space:pre;line-height:1.5}
+  .copy{margin-top:10px;padding:9px 16px;border:1px solid var(--accent);border-radius:999px;background:rgba(0,238,210,.1);color:var(--accent);font-weight:800;font-size:12.5px;cursor:pointer;width:100%}
+  .copy.ok{background:var(--accent);color:#032}
+  .note{color:var(--mut);font-size:11.5px;margin-top:14px;padding-top:10px;border-top:1px solid var(--line);line-height:1.6}
+  .note b{color:var(--fg)}
+</style>
+
+<h1>도구 창(이미지·영상 스튜디오) 글로우 테두리</h1>
+<div class="sub">이미지/영상 제작 모달에 "이징되는 테두리 빛 발광"(배너 호흡 글로우 계승) · 세기·속도 골라줘 · 값 복사 = 곧 스펙</div>
+
+<div class="stage"><div class="mock" id="mock">
+  <div class="m-head"><b><span class="sp">✦</span>Image Studio</b><span class="m-x">×</span></div>
+  <div class="m-tabs"><div class="m-tab">편집</div><div class="m-tab on">AI 생성</div></div>
+  <div class="m-body">
+    <div class="m-go">이미지 생성</div>
+    <div class="m-row"><span class="l">비율</span><span class="v">4:5 <span class="o">· 9:16 · 16:9 · 1:1 · 21:9</span></span></div>
+    <div class="m-row"><span class="l">개수</span><span class="v">1개</span></div>
+    <div class="m-row"><span class="l">품질</span><span class="v">PNG</span></div>
+  </div>
+</div></div>
+
+<h2>프리셋</h2>
+<div class="presets" id="presets">
+  <button class="pre" data-p="off">현행(없음)</button>
+  <button class="pre on" data-p="soft"><span class="star">★</span> 은은한 호흡</button>
+  <button class="pre" data-p="clear">뚜렷한 호흡</button>
+  <button class="pre" data-p="strong">강렬</button>
+  <button class="pre" data-p="staticg">정적 글로우</button>
+</div>
+
+<h2>미세 조정</h2>
+<div class="ctrl">
+  <div class="crow"><label>글로우 퍼짐</label><input type="range" id="s-blur" min="0" max="60" step="2"><span class="val" id="v-blur"></span></div>
+  <div class="crow"><label>링 세기</label><input type="range" id="s-ring" min="0" max="60" step="2"><span class="val" id="v-ring"></span></div>
+  <div class="crow"><label>발광 농도</label><input type="range" id="s-glow" min="0" max="45" step="2"><span class="val" id="v-glow"></span></div>
+  <div class="crow"><label>호흡 속도</label><input type="range" id="s-spd" min="0" max="80" step="5"><span class="val" id="v-spd"></span></div>
+  <div class="crow"><label>호흡 깊이</label><input type="range" id="s-min" min="20" max="100" step="4"><span class="val" id="v-min"></span></div>
+</div>
+
+<h2>선택값 (복사 = 스펙)</h2>
+<div class="out"><pre id="out"></pre></div>
+<button class="copy" id="copy">선택값 복사</button>
+
+<div class="note">
+<b>재현 한계·반영 시 처리</b>: 이 시안은 <code>::after</code> 글로우 레이어의 <b>opacity 호흡</b>(GPU 저비용)으로 구현 — 실제 <code>#tooldlg</code> 반영도 동일 방식(모달 자체 filter 애니는 <code>::backdrop</code> blur 재계산 스내그 위험이라 회피). <b>reduced-motion = 호흡 정지</b>(정적 글로우 유지)·<b>최소화 복원(no-tin)</b>도 글로우 보존 처리. 색 = <code>--accent</code> 폐쇄(팔레트 밖 raw 금지). 적용 범위 = 이미지·영상 스튜디오 공용 <code>#tooldlg</code> 창 프레임.
+</div>
+
+<script>
+  const R=document.documentElement, mock=document.getElementById('mock');
+  const P={
+    off:    {blur:0, ring:0, glow:0, spd:0, min:100},
+    soft:   {blur:24,ring:1, glow:20,spd:45, min:48},
+    clear:  {blur:34,ring:1, glow:30,spd:35, min:34},
+    strong: {blur:48,ring:2, glow:42,spd:30, min:28},
+    staticg:{blur:28,ring:1, glow:26,spd:0,  min:100},
+  };
+  const S={blur:0,ring:0,glow:0,spd:0,min:100};
+  function apply(){
+    R.style.setProperty('--gb-blur',S.blur+'px');
+    R.style.setProperty('--gb-ring',S.ring+'px');
+    R.style.setProperty('--gb-ringA',(S.ring?0.30:0).toFixed(2));
+    R.style.setProperty('--gb-glowA',(S.glow/100).toFixed(2));
+    R.style.setProperty('--gb-spd',(S.spd/10)+'s');
+    R.style.setProperty('--gb-min',(S.min/100).toFixed(2));
+    mock.classList.toggle('off', S.blur===0 && S.ring===0 && S.glow===0);
+    mock.classList.toggle('static', S.spd===0 && !(S.blur===0&&S.glow===0));
+    ['blur','ring','glow','spd','min'].forEach(k=>{document.getElementById('s-'+k).value=S[k]});
+    document.getElementById('v-blur').textContent=S.blur+'px';
+    document.getElementById('v-ring').textContent=S.ring?'ON':'—';
+    document.getElementById('v-glow').textContent=(S.glow/100).toFixed(2);
+    document.getElementById('v-spd').textContent=S.spd===0?'정지':(S.spd/10)+'s';
+    document.getElementById('v-min').textContent=(S.min/100).toFixed(2);
+    render();
+  }
+  function setPre(p){Object.assign(S,P[p]);document.querySelectorAll('.pre').forEach(b=>b.classList.toggle('on',b.dataset.p===p));apply()}
+  function clearPre(){document.querySelectorAll('.pre').forEach(b=>b.classList.remove('on'))}
+  document.getElementById('presets').addEventListener('click',e=>{const b=e.target.closest('.pre');if(b)setPre(b.dataset.p)});
+  ['blur','ring','glow','spd','min'].forEach(k=>{
+    document.getElementById('s-'+k).addEventListener('input',e=>{S[k]=+e.target.value;clearPre();apply()});
+  });
+  function render(){
+    const off = S.blur===0&&S.ring===0&&S.glow===0;
+    if(off){document.getElementById('out').textContent='/* 글로우 없음 = 현행 유지 */';return}
+    const breath = S.spd>0;
+    const css =
+`/* #tooldlg 글로우 테두리 (docs/reports 시안값) */
+#tooldlg::after{ content:''; position:absolute; inset:-1px;
+  border-radius:inherit; pointer-events:none; z-index:1;
+  box-shadow:0 0 0 ${S.ring}px rgba(var(--accent-rgb),${S.ring?0.30:0}),
+             0 0 ${S.blur}px rgba(var(--accent-rgb),${(S.glow/100).toFixed(2)});`
++ (breath?`\n  animation:tglGlow ${(S.spd/10)}s ease-in-out infinite; }`:`  }`)
++ (breath?`\n@keyframes tglGlow{ 0%,100%{opacity:${(S.min/100).toFixed(2)}} 50%{opacity:1} }`:``)
++ `\n@media (prefers-reduced-motion:reduce){ #tooldlg::after{animation:none} }`;
+    document.getElementById('out').textContent=css;
+  }
+  const cp=document.getElementById('copy');
+  cp.addEventListener('click',()=>{const t=document.getElementById('out').textContent;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{cp.textContent='복사됨 ✓';cp.classList.add('ok');setTimeout(()=>{cp.textContent='선택값 복사';cp.classList.remove('ok')},1400)}).catch(()=>{
+      const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');cp.textContent='복사됨 ✓';cp.classList.add('ok');setTimeout(()=>{cp.textContent='선택값 복사';cp.classList.remove('ok')},1400)}catch(e){}ta.remove();});
+  });
+  setPre('soft');
+</script>
