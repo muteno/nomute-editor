@@ -228,6 +228,24 @@ def main():
         return 1
     with open(os.path.join(DATA, 'signals.json'), 'w', encoding='utf-8') as f:
         json.dump(sig, f, ensure_ascii=False, indent=1)
+    # 뷰어 소비본(채널 요약 탭 · 운영자 260713) — 슬림 병합 1파일 = viewer/insta_data.json
+    try:
+        daily = [json.loads(l) for l in open(os.path.join(DATA, 'insights_daily.jsonl'), encoding='utf-8') if l.strip()]
+        last = daily[-1] if daily else {}
+        posts = [{k: p.get(k) for k in ('date_kst', 'format', 'style', 'name', 'views', 'score', 'share_pm', 'save_pm', 'permalink')} for p in sig['posts'][:12]]
+        med = json.load(open(os.path.join(DATA, 'media_latest.json'), encoding='utf-8'))
+        thumbs = [{'th': m.get('thumbnail_url') or m.get('media_url'), 'u': m.get('permalink'),
+                   't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
+        vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
+                'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
+                'online_peak_kst': sig['audience_overlay']['online_peak_kst']}
+        vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
+        with open(vp, 'w', encoding='utf-8') as f:
+            json.dump(vdoc, f, ensure_ascii=False, indent=1)
+        print('뷰어 소비본 OK → viewer/insta_data.json')
+    except Exception as e2:
+        print(f'뷰어 소비본 실패(비치명 · 세션/뷰어는 구본 유지): {e2}')
+
     print(f"■ 인스타 신호 요약 — n={sig['n_posts']} · {sig['span'][0]}~{sig['span'][1]} · 기준 = 전체 중앙값 대비 상대 lift")
     label = {'format': '포맷', 'naming_style': '네이밍 스타일', 'naming_feature': '네이밍 특징(중복 허용)',
              'category_kw': '카테고리(kw)', 'hour_band': '업로드 시간대', 'dow': '요일', 'caption_len': '네이밍 길이'}
