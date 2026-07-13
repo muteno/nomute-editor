@@ -2743,8 +2743,8 @@
   .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(2){ animation-delay:.03s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(3){ animation-delay:.06s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(4){ animation-delay:.09s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(5){ animation-delay:.12s } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row:nth-child(6){ animation-delay:.15s }
   .geni-n { flex:none; min-width:16px; height:16px; padding:0 4px; border-radius:var(--r-pill); background:var(--accent); color:var(--on-accent); font-size:10px; font-weight:var(--fw-x); line-height:16px; text-align:center; font-variant-numeric:tabular-nums; }   /* 접힘 활성 개수 배지 = .qbadge 값 계승(숫자만 = §디자인 e · aria = 부모 버튼 aria-label로) */
   @media (prefers-reduced-motion:reduce){ .geni-camsub, .geni-chev svg, .geni-arwrap, .geni-moodsub { transition:none; } .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row, .geni-moodsub.open .geni-gg, .geni-dd, #geniSub .geni-subit, #geniSub.out .geni-subit { animation:none; } }
-  .geni-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:8px 0; }   /* 항목 행 = 무줄 — 구분선은 소머리(.geni-sechead) 밑줄이 전담(운영자 260713 "소머리 밑줄이 구분선 전담·섹션 위 선 금지" 완성 = 항목마다 남아 있던 윗줄 잔존분 제거 → 레벨별 라인 통일) · .pub-row 문법 계승(옵션 다열이라 세로만 컴팩트) */
-  .geni-row:first-child { padding-top:4px; }
+  .geni-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:8px 0; border-top:1px solid var(--line2); }   /* .pub-row 문법 계승(옵션 다열이라 세로만 컴팩트) */
+  .geni-row:first-child { border-top:none; padding-top:4px; }
   .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }   /* 랩 밀집 오탭 완화(평의회 — 구 1px 2px) */
   .geni-opt { background:none; border:none; padding:6px 7px;   /* 탭 타깃 상향(구 4px 6px = 24px 미달 · 평의회) */ font:var(--fw-b) var(--fs-label) inherit; color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* 워드칩 = .pub-vis 문법 계승(밝기·색으로 on/off) */
   .geni-opt:active { transform:scale(var(--press-m)); }
@@ -2797,7 +2797,7 @@
   .geni-ar-in { flex:0 0 46px; text-align:center; font-variant-numeric:tabular-nums; }
   .geni-ar-c { color:var(--mut); font-weight:var(--fw-x); }
   .geni-ar-out { color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; min-width:76px; text-align:right; }
-  .geni-gg { padding:9px 0; }   /* 게이지 1축 = 동일 패딩 그리드(운영자 260710 "게이지바·라벨 서로 간 간격 유지") · 무줄 = 항목 레벨 라인 통일(구분선은 소머리 밑줄 전담 · 운영자 260713) */
+  .geni-gg { padding:9px 0; border-top:1px solid var(--line2); }   /* 게이지 1축 = 동일 패딩 그리드(운영자 260710 "게이지바·라벨 서로 간 간격 유지") */
   .geni-moodsub.open .geni-gg { animation:cardIn .22s var(--ease) backwards; }   /* 촤르륵 = camsub 스태거 계승 */
   .geni-moodsub.open .geni-gg:nth-child(2) { animation-delay:.03s; } .geni-moodsub.open .geni-gg:nth-child(3) { animation-delay:.06s; } .geni-moodsub.open .geni-gg:nth-child(4) { animation-delay:.09s; }
   .geni-gg-h { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
@@ -4348,15 +4348,6 @@ function geniSubRender() {   // 세부 화풍 인라인 나열 단일 렌더점 
   if (cur) { sb.classList.add('out'); _geniSubT = setTimeout(swap, 300); } else swap();   // 최초(빈 목록) = 즉시 · 이후 = 페이드아웃 완주 뒤 교체
 }
 let _geniRef = null;   // 참고 이미지 { b64, url }(운영자 260713) — 세션 한정(미저장) · geniGo에 refB64/refMode 동봉 · 닫기·재선택 시 정리
-function _imgFromClipboard(e) {   // paste 이벤트 → 첫 이미지 File(없으면 null) — askText 선례(#askText paste) 공통화
-  const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData) || {}).items || [];
-  for (const it of items) { if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) return f; } }
-  return null;
-}
-function bindImgPaste(el, onImg) {   // el(입력칸·슬롯·모달)에서 Ctrl+V 이미지 → onImg(file) · 전 이미지 첨부 슬롯 공통 배선(운영자 260713 "붙여넣기 핸들러가 모든 곳에 다 들어가야함")
-  if (!el || el._imgPasteBound) return; el._imgPasteBound = true;   // 이중 바인딩 가드(재호출·reparent 대비)
-  el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
-}
 function geniRefClear() {   // 참고 이미지 해제 = 상태·미리보기·X버튼·토글행·파일입력 원복(covimg 복제 — 빈 슬롯 = 픽토그램만)
   if (_geniRef && _geniRef.url) { try { URL.revokeObjectURL(_geniRef.url); } catch {} }
   _geniRef = null;
@@ -4504,8 +4495,6 @@ function geniInit() {
     });
     rfBtn.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !_geniRef) { e.preventDefault(); rfFile.click(); } });   // role=button 키보드 페어(label→div 전환분 · thumb 슬롯 role 문법 동일)
     rfFile.addEventListener('change', () => { const f = rfFile.files && rfFile.files[0]; if (f) geniRefPick(f); rfFile.value = ''; });   // value 리셋 = 같은 파일 재선택 허용
-    bindImgPaste($('#geniWish'), geniRefPick);   // 붙여넣기(Ctrl+V) = 주문칸에 클립보드 이미지 → 참고 이미지(askText 선례 이식 · 운영자 260713 "모든 곳에 다")
-    bindImgPaste(rfBtn, geniRefPick);            // 슬롯 포커스 상태 붙여넣기도(non-editable div 폴백)
   }
   const rfMode = $('#geniRefMode'); if (rfMode) rfMode.addEventListener('click', e => { const b = e.target.closest('.geni-opt'); if (!b) return; _geniSel.refMode = b.dataset.v === 'keep' ? 'keep' : 'ref'; geniApply(); });
   const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => {
@@ -7313,7 +7302,6 @@ $('#edWish').addEventListener('input', edDisarm);   // wish 바뀌면 arm 해제
 // 사진 첨부(4:5)→합성 배선 — #edFile 선택=addEditScene(4:5 검증·미리보기) / #edAttach 재클릭(첨부됨)=합성 발사(파일선택 가로채기)
 $('#edFile').addEventListener('change', e => { addEditScene(e.target.files && e.target.files[0]); e.target.value = ''; });
 $('#edAttach').addEventListener('click', edAttachClick);
-bindImgPaste($('#editdlg'), f => addEditScene(f));   // 붙여넣기(Ctrl+V) = 편집 모달 어디서든 클립보드 이미지 → 장면 첨부(edWish disabled 대비 모달 레벨 · 텍스트 붙여넣기는 통과 · 운영자 260713 "모든 곳에 다")
 $('#editdlg .ed-img').addEventListener('click', () => { edToggleBaf(); });   // 첨부 시 상단 미리보기 탭 = 전/후 비교(원본↔첨부 · 운영자 260627). 취소는 첨부 버튼 탭.
 $('#editdlg .ed-baf').addEventListener('click', e => { e.stopPropagation(); edToggleBaf(); });   // 전/후 배지 탭도 전환
 const edBody = $('#editdlg .ed-body'), edTop = $('#edtop');
