@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>음원</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외) — conv/ly/k/track 동일 계승. 인라인 :root가 팔레트 오버라이드 -->
+<style>
+  /* 팔레트·폼 = conv.html(영상 도구) 계승 verbatim · 구조토큰은 tokens.css
+     음원 v1(운영자 260712) = 상황 → 스타일 옵션 10개 → {수노 프롬프팅(무료) | 구글 Lyria 3 곡 생성(유료)} */
+  :root{
+    --bg:#121212; --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322;
+    --danger:#e23b2a; --danger-rgb:226,59,42;
+    --press-pico:.55; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95;
+  }
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  /* 스크롤바 표준 = 제작·합성(thumb) 이식(운영자 260713 "다 같게") · 실제 보이는 바 = cscroll.js 오버레이(네이티브는 no-JS 폴백 · 색 변경 = viewer/cscroll.js) */
+  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  html.inmodal, html.inmodal body { background:transparent; }
+  .wrap { max-width:600px; margin:0 auto; padding:18px 16px 40px; }   /* 상단 18 = 도구 모달 첫 소머리 화면선(ly·k 기준 · §표기표준 나) */
+
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:16px 0 9px; }   /* 소머리 리듬 = thumb .csec(16/9) 계승 — 운영자 260713 이미지 기틀 정렬 */
+  .wrap > .selwrap:first-child label { margin-top:0; }   /* 첫 소머리 = 화면선(ly·k label:first-of-type 문법) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }
+  label.fl::before { content:'•'; margin-right:6px; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿→글자 간격 6px = 이미지 탭 .csec(gap:6px) 시각 등가(운영자 260713 "블릿 간격 전부" — 공백식 '• '≈3.3px보다 넓음) */
+  textarea, input[type=text] { width:100%; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; }
+  textarea { min-height:120px; resize:vertical; line-height:1.55; }
+  textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  #optwrap[hidden], #out[hidden], #lout[hidden] { display:none; }
+
+  /* 선택자 = 도형 나열 폐지 → 소머리 줄 인라인 텍스트 값 + 촤르륵 팝업(썸네일 .onoff/.platpop/.gpbtn 기틀 계승 · 운영자 260712) */
+  .selwrap { position:relative; }
+  .selv { cursor:pointer; font:inherit; font-size:12px; font-weight:var(--fw-x); letter-spacing:.03em; color:var(--mut); background:none; border:0; padding:3px 5px; margin:-3px 0;
+    -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:color .15s, transform .1s; }   /* thumb .onoff 계승 — 패딩 = 폰 탭영역·마이너스 마진 = 행높이 상쇄 */
+  .selv { position:relative; top:-.3px; }   /* 광학 보정 = thumb .onoff 동일(fs12 글리프가 fs13 라벨 대비 내려앉음 · 1회성 px = §핵심명령 3-a) */
+  .selv.on { color:var(--accent); }
+  .selv:active { transform:scale(var(--press-m,.92)); }
+  .selpop { position:absolute; top:100%; left:0; margin-top:6px; z-index:9; display:flex; flex-wrap:wrap; gap:10px 6px; padding:7px; max-width:min(92vw,360px);   /* row-gap 10 = 히트 확장 상쇄(k 칩 규약) */
+    background:linear-gradient(150deg, rgba(42,44,48,.7), rgba(12,13,15,.82)); backdrop-filter:blur(16px) saturate(1.2); -webkit-backdrop-filter:blur(16px) saturate(1.2);
+    border:1px solid rgba(255,255,255,.12); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.4); }   /* thumb .platpop 계승(무채 글래스) */
+  .selpop.none { display:none; }
+  .selpop:not(.none) { transform-origin:top left; animation:selpop-in .2s var(--ease); }
+  @keyframes selpop-in { from { opacity:0; transform:translateY(-5px) scale(.9); } to { opacity:1; transform:none; } }
+  .selpop:not(.none) .spbtn { animation:spbtn-in .26s both cubic-bezier(.2,.8,.3,1); }
+  .selpop:not(.none) .spbtn:nth-child(1) { animation-delay:.02s; } .selpop:not(.none) .spbtn:nth-child(2) { animation-delay:.05s; }
+  .selpop:not(.none) .spbtn:nth-child(3) { animation-delay:.08s; } .selpop:not(.none) .spbtn:nth-child(4) { animation-delay:.11s; }
+  .selpop:not(.none) .spbtn:nth-child(5) { animation-delay:.14s; } .selpop:not(.none) .spbtn:nth-child(6) { animation-delay:.17s; }
+  .selpop:not(.none) .spbtn:nth-child(7) { animation-delay:.2s; } .selpop:not(.none) .spbtn:nth-child(8) { animation-delay:.23s; }
+  .selpop:not(.none) .spbtn:nth-child(9) { animation-delay:.26s; } .selpop:not(.none) .spbtn:nth-child(10) { animation-delay:.29s; }
+  .selpop:not(.none) .spbtn:nth-child(11) { animation-delay:.32s; } .selpop:not(.none) .spbtn:nth-child(12) { animation-delay:.35s; }
+  .selpop:not(.none) .spbtn:nth-child(13) { animation-delay:.38s; } .selpop:not(.none) .spbtn:nth-child(14) { animation-delay:.41s; }
+  .selpop:not(.none) .spbtn:nth-child(15) { animation-delay:.44s; } .selpop:not(.none) .spbtn:nth-child(16) { animation-delay:.47s; }
+  .selpop:not(.none) .spbtn:nth-child(17) { animation-delay:.5s; } .selpop:not(.none) .spbtn:nth-child(18) { animation-delay:.53s; }
+  @keyframes spbtn-in { from { opacity:0; transform:translateX(-9px) scale(.78); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce) { .selpop:not(.none), .selpop:not(.none) .spbtn { animation:none; } }
+  .spbtn { min-width:auto; height:32px; padding:0 13px; display:grid; place-items:center; background:linear-gradient(165deg, rgba(44,46,50,.42), rgba(16,17,19,.52));
+    border:1px solid rgba(255,255,255,.09); border-radius:var(--r-s); color:var(--mut); cursor:pointer; font:inherit; font-weight:600; font-size:12px; transition:border-color .15s, background .15s, color .15s; }   /* thumb .gpbtn 계승 */
+  .spbtn:hover { color:var(--fg); border-color:rgba(255,255,255,.2); }
+  .spbtn.on { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); background:linear-gradient(165deg, rgba(var(--accent-rgb),.16), rgba(var(--accent-rgb),.05)); }
+  .spbtn { position:relative; }
+  .spbtn::before { content:''; position:absolute; inset:-4px 0; }   /* 세로 히트 확장 = 실효 40px(k .axchip 규약 §16 계승) */
+  .spbtn:active { transform:scale(var(--press-m,.9)); }
+  .selin { flex-basis:100%; }
+  .selin input { padding:8px 11px; font-size:12px; }   /* 배경·테두리 = 전역 input 규칙 상속(중복 raw 제거 · 260713 이미지 기틀 정렬) */
+
+  /* 스타일 옵션 카드 — 칩 패밀리 계승(선택 on = accent) */
+  .optgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .optcard { text-align:left; padding:10px 12px; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--fg); font:inherit; cursor:pointer; transition:transform .12s, border-color .15s, background .15s; }
+  .optcard:active { transform:scale(var(--press-m)); }
+  .optcard.on { border-color:rgba(var(--accent-rgb),.6); background:rgba(var(--accent-rgb),.08); }
+  .optname { font-weight:var(--fw-x); font-size:14px; }
+  .optcard.on .optname { color:var(--accent); }
+  .optwhy { font-size:12px; color:var(--mut); margin-top:2px; }
+  .optmeta { font-size:11px; color:var(--mut); margin-top:4px; font-variant-numeric:tabular-nums; }
+
+  /* 발사 버튼 = thumb .go(=index .mkbtn 통일) verbatim 계승 — 글래스 고스트·pill·풀필 게이지·체크 드로우(운영자 260713 "버튼도 다 계승") */
+  .go { width:100%; margin-top:16px; padding:18px; background:rgba(255,255,255,.02); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; line-height:1; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }   /* 배경 .05→.02(운영자 260713 B) · padding 18 + line-height:1 = thumb .go 발사 게이지바 정본 계승(글자 정중앙 dy0·높이 52 · 사용자 260713 8뷰어 통일) */
+  /* hover 전경 fill 없음·:active만 피드백(index .mkbtn 계승 · 터치 stuck-hover 차단) — scale = 게이지 화이트리스트 예외(CII) */
+  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.err { background:rgba(var(--danger-rgb),.14); color:var(--danger); border-color:var(--danger); }
+  .go.shake { animation:shake .42s; }
+  @keyframes shake { 20%{ transform:translateX(-5px);} 45%{ transform:translateX(4px);} 70%{ transform:translateX(-3px);} 90%{ transform:translateX(2px);} }
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
+  .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s var(--gauge-ease) forwards; }   /* 누르면 초록이 좌→우 풀필(구성도 .send.is-fire 정본) */
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
+  @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .go.checking { display:grid; place-items:center; }
+  .go .gck { width:26px; height:26px; }
+  .go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
+  @keyframes goTick { to { stroke-dashoffset:0; } }
+  @media (prefers-reduced-motion:reduce) { .go .gck path { animation:none; stroke-dashoffset:0; } }
+  .footer .go { width:auto; flex:1; margin-top:0; padding:10px 15px; font-size:13px; }   /* 보이스 입히기 = 발사 패밀리 합류(footer 행 안 짧은 필) */
+  .gdots { display:inline-block; width:1.1em; text-align:left; }   /* 처리중 점모션(§디자인 g · index 정본 계승) */
+  .gdots i { font-style:normal; opacity:0; animation:gdots 1.4s infinite; }
+  .gdots i:nth-child(2) { animation-delay:.22s; } .gdots i:nth-child(3) { animation-delay:.44s; }
+  @keyframes gdots { 0% { opacity:0; } 25%,70% { opacity:1; } 95%,100% { opacity:0; } }
+  .erow { display:flex; gap:10px; }
+  .erow .go { flex:1; margin-top:14px; }
+
+  /* goSpec = 결과물 명세 readout — thumb #goSpec 실물 계승(검정 패널·좌정렬·11.25px·라벨 .gs-lbl mut 700 · 운영자 260713 이미지 기틀 정렬) */
+  .gospec { margin:14px 0 0; padding:10px 13px; background:rgba(0,0,0,.32); border:1px solid var(--line); border-radius:var(--r-m);
+    font-size:11.25px; white-space:nowrap; overflow-x:auto; color:var(--mut); text-align:left; }
+  .gospec .gs-lbl { color:var(--mut); font-weight:var(--fw-b); }
+  .gospec .gs-v { color:var(--mut); }
+  .gospec .gs-v.on { color:var(--accent); font-weight:var(--fw-b); }
+  .gospec .gs-sep { margin:0 5px; }
+
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
+  .status.wait { font-size:var(--fs-body); color:var(--accent); font-weight:var(--fw-x); }   /* 대기 = 버튼 아닌 상태줄 정중앙(edit wmsg 260712 선택값 계승) */
+  .status .gtime { margin-left:7px; color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }
+  .status.err { color:var(--danger); }
+  .status svg { vertical-align:-2px; }
+  .sronly { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }   /* SR 전용(§디자인 e 접근성 라벨) */
+
+  /* 결과 블록 — 소머리 라벨 + 우측 복사(글래스 원형 = conv .urlclip 계승·인라인 배치) */
+  .rhead { display:flex; align-items:center; margin:18px 0 6px; }
+  .rhead label { margin:0; flex:1; }
+  .cpy { display:grid; place-items:center; width:26px; height:26px; padding:0; opacity:.6; position:relative;   /* 26px·opacity .6 = CII 클립 버튼 명세(.iobtn-edge 패밀리) */
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .cpy::before { content:""; position:absolute; inset:-8px; }
+  .cpy svg { display:block; width:13px; height:13px; }
+  .cpy:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .cpy:active { transform:scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .rbox { padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); font-size:14px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+  .rbox.en { color:var(--mut); }   /* 영문 태그(스타일·제외) = 보조 톤 — 가사·제목은 본문 흰색 */
+  .rmeta { margin-top:14px; font-size:12px; color:var(--mut); text-align:center; }
+  audio { width:100%; margin:10px 0 2px; }
+  .footer { display:flex; align-items:center; gap:12px; margin-top:10px; }
+  .ghost { background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--fg); font-weight:var(--fw-b); font-size:13px; font-family:inherit; padding:9px 15px; border-radius:var(--r-pill); cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:transform .12s; }
+  .ghost:active { transform:scale(var(--press-l)); } .ghost svg { width:14px; height:14px; }
+  .dlbtn { background:rgba(var(--accent-rgb),.10)!important; color:var(--accent)!important; border:1px solid rgba(var(--accent-rgb),.34)!important; }
+  .dlbtn.dl-done { color:var(--mut)!important; }
+  .ghost.dlbtn { margin-left:auto; width:38px; height:38px; padding:0; justify-content:center; }
+
+  /* 만든 노래(플레이리스트) — 메시지함(.msgpop) 계승: 무채색 글래스·우상단 unfold(§디자인 f) · 뒤 비침 차단 알파 .9+(§디자인 i) */
+  .wrap { position:relative; }
+  .histbtn { position:absolute; top:10px; right:12px; z-index:6; display:grid; place-items:center; width:var(--btn-sm); height:var(--btn-sm); padding:0;   /* --btn-sm(30) = 우상단 픽토그램 크기 토큰(28 raw 폐지 · 260713 버튼 계승) */
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); transition:transform .12s, color .15s, border-color .15s; }
+  .histbtn:active { transform:scale(var(--press-s)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .histbtn svg { width:14px; height:14px; }
+  .hpop { position:fixed; top:12px; right:12px; width:min(86vw,340px); max-height:min(70vh,480px); z-index:30; border-radius:var(--r-l); border:1px solid rgba(255,255,255,.12);
+    background:linear-gradient(165deg,rgba(24,25,28,.9),rgba(16,17,19,.94)); -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
+    transform-origin:top right; animation:hUnfold .22s var(--gauge-ease); display:flex; flex-direction:column; overflow:hidden; }
+  .hpop[hidden] { display:none; }
+  @keyframes hUnfold { 0% { transform:scale(.6); opacity:0; } 100% { transform:scale(1); opacity:1; } }
+  .hpop .hh { display:flex; align-items:center; gap:8px; padding:12px 12px 10px 14px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .hpop .ht { flex:1; font-size:var(--fs-label); font-weight:var(--fw-x); }
+  .hpop .hx { display:grid; place-items:center; width:var(--btn-sm); height:var(--btn-sm); padding:0; border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; }   /* 닫기 X = .tool-x 패밀리 크기 토큰(--btn-sm) */
+  .hpop .hx:active { transform:scale(var(--press-s)); }
+  .hpop .hx svg { width:12px; height:12px; }
+  .hpop .hl { overflow-y:auto; padding:6px 8px 10px; }
+  .hrow { display:grid; grid-template-columns:1fr auto; gap:2px 8px; width:100%; text-align:left; padding:9px 10px; border:0; border-radius:var(--r-s); background:transparent; color:var(--fg); font:inherit; cursor:pointer; transition:background .15s; }
+  .hrow:active { background:rgba(255,255,255,.05); }
+  .hrow.on { background:rgba(var(--accent-rgb),.08); }
+  .hrow .t { font-size:13px; font-weight:var(--fw-b); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hrow.on .t { color:var(--accent); }
+  .hrow .eq { color:var(--accent); font-size:10px; font-weight:var(--fw-x); align-self:center; }
+  .hrow .m { grid-column:1/-1; font-size:10.5px; color:var(--mut); font-variant-numeric:tabular-nums; }
+
+  /* 음성 클로닝(운영자 260712 · 벤치 판정 후 Replicate RVC 승인) — 파일 슬롯 = ly .filerow/.file 정본 계승(§디자인 u) */
+  .filerow { display:flex; gap:10px; align-items:stretch; margin-top:10px; }
+  .filerow .file { flex:1.4 1 0; min-width:0; }
+  .filerow .go { flex:1 1 0; width:auto; margin-top:0; white-space:nowrap; }
+  .file { display:flex; align-items:center; justify-content:center; margin:0; padding:12px; border:1px dashed transparent; border-radius:var(--r-s); color:var(--accent); cursor:pointer; background:transparent; overflow:hidden; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, border-color .15s ease, color .15s ease; }   /* 빈 상태 = 플레이트 없는 픽토그램만(ly 정본) */
+  .file svg { width:26px; height:26px; display:block; flex:none; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
+  .file:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(블록 전체 X · ly 계승) */
+  .file.has { border-color:var(--accent); border-style:solid; animation:fileIn .42s ease; }
+  .file .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; margin-left:8px; font-size:12px; font-weight:var(--fw-b); }
+  @keyframes fileIn { 0% { transform:scale(.965); box-shadow:0 0 0 0 rgba(var(--accent-rgb),.45); } 45% { transform:scale(1.025); box-shadow:0 0 0 6px rgba(var(--accent-rgb),.10); } 100% { transform:scale(1); box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } }
+  @media (prefers-reduced-motion:reduce) { .file.has { animation:none; } }
+  #vName { margin-top:10px; }
+  .consln { margin-top:10px; text-align:center; }   /* 동의 = 텍스트 토글(.selv 계승) — 파괴적/법적 확인은 §디자인 e 허용축 */
+  .consln .selv { margin:0; }
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <button class="histbtn" id="histBtn" type="button" aria-label="만든 노래 목록"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h11M3 18h7"/><circle cx="18.5" cy="16.5" r="2.5"/><path d="M21 16.5V7.5l-3 1"/></svg></button>
+  <div class="selwrap">
+    <label class="fl">장르 <button type="button" class="selv" id="genV" aria-haspopup="true">자동</button></label>
+    <div class="selpop none" id="genPop">
+      <button type="button" class="spbtn on" data-v="자동">자동</button>
+      <button type="button" class="spbtn" data-v="발라드">발라드</button>
+      <button type="button" class="spbtn" data-v="힙합">힙합</button>
+      <button type="button" class="spbtn" data-v="록">록</button>
+      <button type="button" class="spbtn" data-v="R&B">R&amp;B</button>
+      <button type="button" class="spbtn" data-v="댄스·EDM">댄스</button>
+      <button type="button" class="spbtn" data-v="트로트">트로트</button>
+      <button type="button" class="spbtn" data-v="재즈">재즈</button>
+      <button type="button" class="spbtn" data-v="어쿠스틱">어쿠스틱</button>
+      <button type="button" class="spbtn" data-v="OST·시네마틱">OST</button>
+      <button type="button" class="spbtn" data-v="시티팝">시티팝</button>
+      <button type="button" class="spbtn" data-v="신스팝">신스팝</button>
+      <button type="button" class="spbtn" data-v="로파이">로파이</button>
+      <button type="button" class="spbtn" data-v="인디 포크">포크</button>
+      <button type="button" class="spbtn" data-v="펑크·디스코">디스코</button>
+      <button type="button" class="spbtn" data-v="국악 퓨전">국악</button>
+      <div class="selin"><input type="text" id="genreIn" placeholder="직접 입력 — 예: 시티팝" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></div>
+    </div>
+  </div>
+
+  <div class="selwrap">
+    <label class="fl">분위기 <button type="button" class="selv" id="moodV" aria-haspopup="true">자동</button></label>
+    <div class="selpop none" id="moodPop">
+      <button type="button" class="spbtn on" data-v="자동">자동</button>
+      <button type="button" class="spbtn" data-v="신나는">신나는</button>
+      <button type="button" class="spbtn" data-v="잔잔한">잔잔한</button>
+      <button type="button" class="spbtn" data-v="웅장한">웅장한</button>
+      <button type="button" class="spbtn" data-v="몽환적">몽환적</button>
+      <button type="button" class="spbtn" data-v="어두운">어두운</button>
+      <button type="button" class="spbtn" data-v="따뜻한">따뜻한</button>
+      <button type="button" class="spbtn" data-v="쓸쓸한">쓸쓸한</button>
+      <button type="button" class="spbtn" data-v="긴장감">긴장감</button>
+      <button type="button" class="spbtn" data-v="희망찬">희망찬</button>
+      <button type="button" class="spbtn" data-v="새벽 감성">새벽</button>
+      <button type="button" class="spbtn" data-v="장난스러운">장난</button>
+      <div class="selin"><input type="text" id="moodIn" placeholder="직접 입력 — 예: 비 오는 밤" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></div>
+    </div>
+  </div>
+
+  <div class="selwrap">
+    <label class="fl">테마 <button type="button" class="selv" id="themeV" aria-haspopup="true">자동</button></label>
+    <div class="selpop none" id="themePop">
+      <button type="button" class="spbtn on" data-v="자동">자동</button>
+      <button type="button" class="spbtn" data-v="사랑">사랑</button>
+      <button type="button" class="spbtn" data-v="이별">이별</button>
+      <button type="button" class="spbtn" data-v="응원·위로">응원</button>
+      <button type="button" class="spbtn" data-v="추억·향수">추억</button>
+      <button type="button" class="spbtn" data-v="성장">성장</button>
+      <button type="button" class="spbtn" data-v="우정·가족">가족</button>
+      <button type="button" class="spbtn" data-v="사회 풍자">풍자</button>
+      <button type="button" class="spbtn" data-v="계절">계절</button>
+      <button type="button" class="spbtn" data-v="여행">여행</button>
+      <button type="button" class="spbtn" data-v="성공·야망">성공</button>
+      <button type="button" class="spbtn" data-v="일상">일상</button>
+      <div class="selin"><input type="text" id="themeIn" placeholder="직접 입력 — 예: 첫 출근" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></div>
+    </div>
+  </div>
+
+  <div class="selwrap">
+    <label class="fl">표현방식 <button type="button" class="selv" id="expV" aria-haspopup="true">자동</button></label>
+    <div class="selpop none" id="expPop">
+      <button type="button" class="spbtn on" data-v="자동">자동</button>
+      <button type="button" class="spbtn" data-v="감성 서정">감성</button>
+      <button type="button" class="spbtn" data-v="유머·풍자">풍자</button>
+      <button type="button" class="spbtn" data-v="웅장·시네마틱">웅장</button>
+      <button type="button" class="spbtn" data-v="담담한 내레이션">담담</button>
+      <button type="button" class="spbtn" data-v="신나는 훅">신나는</button>
+      <button type="button" class="spbtn" data-v="몽환">몽환</button>
+      <button type="button" class="spbtn" data-v="분노·비판">분노</button>
+      <div class="selin"><input type="text" id="expIn" placeholder="직접 입력 — 예: 새벽 감성 위스퍼" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></div>
+    </div>
+  </div>
+
+  <label class="fl" for="story">스토리</label>
+  <textarea id="story" placeholder="" aria-label="스토리" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+
+  <button class="go" id="optGo">스타일 옵션 뽑기</button>
+
+  <div id="optwrap" hidden>
+    <label class="fl">스타일 옵션</label>
+    <div class="optgrid" id="optgrid"></div>
+    <div class="gospec" id="goSpec"></div><!-- 결과물 명세 readout(썸네일 goSpec 기틀 계승 · §표기표준 .gospec 예외 = 의도적 회색) -->
+    <div class="erow">
+      <button class="go" id="sunoGo">수노 프롬프트</button>
+      <button class="go" id="lyriaGo">구글 곡 생성</button>
+    </div>
+  </div>
+
+  <div class="status" id="sstatus" role="status"></div>
+
+  <div id="out" hidden>
+    <div class="rhead"><label class="fl">제목 (Title)</label><button class="cpy" type="button" data-k="title" aria-label="제목 복사"></button></div>
+    <div class="rbox" id="rTitle"></div>
+    <div class="rhead"><label class="fl">스타일 (Styles)</label><button class="cpy" type="button" data-k="style" aria-label="스타일 복사"></button></div>
+    <div class="rbox en" id="rStyle"></div>
+    <div class="rhead"><label class="fl">가사 (Lyrics)</label><button class="cpy" type="button" data-k="lyrics" aria-label="가사 복사"></button></div>
+    <div class="rbox" id="rLyrics"></div>
+    <div class="rhead"><label class="fl">제외 (Exclude Styles)</label><button class="cpy" type="button" data-k="exclude" aria-label="제외 스타일 복사"></button></div>
+    <div class="rbox en" id="rExcl"></div>
+    <div class="rmeta" id="rMeta"></div>
+  </div>
+
+  <div id="lout" hidden>
+    <div class="rhead"><label class="fl">완성곡</label></div>
+    <div class="rbox" id="lTitle"></div>
+    <audio id="lAud" controls preload="metadata"></audio>
+    <div class="footer"><button class="go" id="vApply" hidden>보이스 입히기</button><button class="ghost dlbtn" id="lDl" aria-label="곡 저장" title="곡 저장"></button></div>
+    <div class="rhead"><label class="fl">가사</label><button class="cpy" type="button" data-k="llyr" aria-label="가사 복사"></button></div>
+    <div class="rbox" id="lLyr"></div>
+    <div class="rmeta" id="lMeta"></div>
+  </div>
+
+  <div class="selwrap" id="vcsec">
+    <label class="fl">음성 클로닝 <button type="button" class="selv" id="vcV" aria-haspopup="true">없음</button></label>
+    <div class="selpop none" id="vcPop"></div>
+    <input type="text" id="vName" placeholder="" aria-label="보이스 이름" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <div class="filerow">
+      <label class="file" id="vfLab" aria-label="보이스 소스 선택" title="보이스 소스 (1~5분 오디오)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg><span class="fname" id="vfName"></span>
+        <input type="file" accept="audio/*" id="vFile" style="display:none">
+      </label>
+      <button class="go" id="trainGo">보이스 학습</button>
+    </div>
+    <div class="consln"><button type="button" class="selv" id="consBtn" aria-pressed="false">동의 — 본인·권리 보유 음성만 (실존 타인 금지)</button></div>
+  </div>
+</div>
+
+<div class="hpop" id="hpop" hidden>
+  <div class="hh"><div class="ht">만든 노래</div><button class="hx" id="hpopX" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="hl" id="hlist"></div><!-- 빈 상태 = 조용한 공백(§디자인 e-가 — 필러 문구 금지) -->
+</div>
+
+<script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — COPY/CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const PEND_KEY='nm_song_pend';
+const API='/api/song';
+const API_VOICE='/api/voice';
+const BUDGET=1000;   // 폴 예산(초) — 하드 ×2 = 2000s ≥ 잡 캡 25분(1500s)+디스패치+Pages 배포(conv 문법 · 재개 게이트는 24h 별도)
+const BUDGETS={voice:2600,'voice-train':5400};   // 클로닝 = Replicate 대기(apply 폴 ≤25분 · train ≤70분 + 잡 캡 85분) — 모드별 예산
+let USER_ACT=false, _curStop=null, RES=null, OPTS=[], PICK=null, SONG_ID='';
+
+const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
+const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
+const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
+
+// ── 선택자 = 인라인 텍스트 값 + 촤르륵 팝업(썸네일 .onoff/.platpop 기틀 계승 — 도형 나열 폐지 · 운영자 260712) ──
+function closeSelPops(except){ $$('.selpop').forEach(p=>{ if(p!==except) p.classList.add('none'); }); }
+function selCtl(vId, popId, inId, def){
+  const v=$(vId), pop=$(popId), inp=$(inId);
+  let val=def;
+  const set=x=>{ val=((x||'').trim()||def).slice(0,40);
+    v.textContent=val; v.classList.toggle('on',val!==def);
+    pop.querySelectorAll('.spbtn').forEach(b=>{ const on=b.dataset.v===val; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });   // aria-pressed = k 칩 하우스 패턴(CII)
+  };
+  set(val);   // 초기 정규화(aria 포함)
+  v.addEventListener('click',()=>{ const opening=pop.classList.contains('none'); closeSelPops(pop); pop.classList.toggle('none',!opening);
+    if(opening&&inp){ const preset=[...pop.querySelectorAll('.spbtn')].some(b=>b.dataset.v===val); inp.value=(val!==def&&!preset)?val:''; } });
+  pop.addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if(!b) return; set(b.dataset.v); pop.classList.add('none'); });
+  if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); set(inp.value); pop.classList.add('none'); } });
+  return ()=>val;
+}
+const getGen=selCtl('#genV','#genPop','#genreIn','자동');
+const getMood=selCtl('#moodV','#moodPop','#moodIn','자동');
+const getTheme=selCtl('#themeV','#themePop','#themeIn','자동');
+const getExp=selCtl('#expV','#expPop','#expIn','자동');
+document.addEventListener('pointerdown',e=>{ if(!e.target.closest('.selpop')&&!e.target.closest('.selv')) closeSelPops(); },{capture:true});
+
+// ── 버튼 상태(conv 게이지·에러 문법 계승 — 버튼 3개 공용화) ──
+const fmtT=s=>{ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+function btnErr(g,m){
+  if(!g) return;
+  if(!g.dataset.label) g.dataset.label=g.textContent;
+  clearTimeout(g._errT); clearTimeout(g._fT1); clearTimeout(g._fT2); clearTimeout(g._fT3);
+  g.classList.remove('firing','okdone','checking'); g.removeAttribute('aria-busy');
+  g.textContent=m; g.setAttribute('aria-live','assertive');
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); g.textContent=g.dataset.label; },1700);
+}
+// 대기 표기 = 버튼 아닌 상태줄(썸네일 발사 상태머신 계승 260712 — 버튼 = 풀필→접수 ✓→라벨 원복 · 상주 라벨 폐지)
+let _stTick=null;
+function statusWait(on,t0,label){
+  const st=$('#sstatus');
+  clearInterval(_stTick); _stTick=null;
+  if(on){
+    st.classList.remove('err'); st.classList.add('wait');
+    const paint=()=>{ st.innerHTML=esc(label||'생성 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-t0)/1000)+'</span>'; };
+    paint(); _stTick=setInterval(paint,1000);
+  } else { st.classList.remove('wait'); }
+}
+const WL={options:'옵션 생성 중',suno:'프롬프트 생성 중',lyria:'곡 만드는 중',voice:'보이스 입히는 중'};
+// 발사 상태머신 = thumb goFire verbatim 계승('전송 중…' 풀필 → ✓ 스트로크 드로우 → '전송됨' → 라벨 원복 · 운영자 260713 "버튼도 다 계승")
+function goFire(gb){
+  if(!gb.dataset.label) gb.dataset.label=gb.textContent;
+  clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); clearTimeout(gb._errT);
+  gb.classList.remove('firing','okdone','checking','err','shake'); void gb.offsetWidth;   // 리플로우 = 게이지 재시작
+  gb.classList.add('firing'); gb.textContent='전송 중…'; gb.setAttribute('aria-busy','true');
+  gb._fT1=setTimeout(()=>{
+    gb.classList.remove('firing'); gb.classList.add('okdone','checking');
+    gb.innerHTML='<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
+    gb.removeAttribute('aria-busy');
+    gb._fT2=setTimeout(()=>{
+      gb.classList.remove('checking'); gb.textContent='전송됨';
+      gb._fT3=setTimeout(()=>{ gb.classList.remove('okdone'); gb.textContent=gb.dataset.label||''; },850);
+    },560);
+  },900);
+}
+function goIdle(gb){ if(!gb) return; clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); gb.classList.remove('firing','okdone','checking'); gb.removeAttribute('aria-busy'); if(gb.dataset.label) gb.textContent=gb.dataset.label; }   // 접수 실패 = 게이지 회수·라벨 원복(에러는 상태줄·btnErr가 표시)
+
+// ── 발사(모드 공용 — POST+게이지 골격 = fireApi 1곳 · 음원/클로닝 공용) ──
+async function fireApi(gb, url, payload, onAccept){
+  USER_ACT=true;
+  const status=$('#sstatus'); status.classList.remove('err','wait'); status.textContent='';
+  const t0=Date.now();
+  goFire(gb);   // thumb 문법 — 재발사 방어 = .firing pointer-events:none(+서버 rateGate)
+  try{
+    const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const j=await res.json();
+    if(!res.ok||j.error){ goIdle(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    onAccept(j, t0);   // 접수 성공 — 버튼은 goFire 시퀀스가 ✓→전송됨→원복 · 대기는 상태줄(statusWait — 폴이 켬)
+  }catch(e){ goIdle(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
+}
+function fire(mode, gb){
+  const story=$('#story').value.trim();
+  if(!story) return btnErr(gb,'스토리(대사나 상황)를 적어줘');
+  const payload={ mode, genre:getGen(), express:getExp(), mood:getMood(), theme:getTheme(), story:story.slice(0,1500) };
+  if(mode!=='options'&&PICK) payload.pick=PICK;
+  fireApi(gb, API, payload, (j,t0)=>{ pendSet({id:j.id, mode, t0, story:story.slice(0,1500)}); pollSong(j.id, mode, t0, t0-90000, gb); });
+}
+$('#optGo').addEventListener('click',()=>fire('options',$('#optGo')));
+$('#sunoGo').addEventListener('click',()=>fire('suno',$('#sunoGo')));
+$('#lyriaGo').addEventListener('click',()=>fire('lyria',$('#lyriaGo')));
+
+// ── 폴(conv pollConv 문법 계승: error.log 즉시 보고 · SPA-HTML 가드 — 빌드 전 200을 완료로 오인 금지) ──
+function pollSong(id, mode, t0, minTs, gb){
+  if(_curStop)_curStop();
+  SONG_ID=id;
+  const status=$('#sstatus');   // ⚠️ 스코프 필수 — 없으면 window.status(문자열)로 새서 에러·타임아웃 표면화가 조용히 죽음(260712 회귀 실측·수리)
+  statusWait(true, t0, WL[mode]||'생성 중');   // 대기 = 상태줄 정중앙(버튼 원복 = 썸네일 상태머신 계승)
+  const outPath='song_out/'+id+'/'+(mode==='options'?'options.json':'song.json');
+  const errPath='song_out/'+id+'/error.log';
+  let live=true; const stop=()=>{ live=false; statusWait(false); }; _curStop=stop;
+  const need=mode==='options'?'options':(mode==='voice'?'url':'lyrics');   // 완료 판정 필드(모드별) — 커버는 오디오(url)가 본질
+  const budget=BUDGETS[mode]||BUDGET;
+  const tick=async()=>{
+    if(!live) return;
+    if(Date.now()-t0>budget*2000){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    try{
+      const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
+      if(er.ok){
+        const ect=(er.headers.get('content-type')||'').toLowerCase();
+        const em=await er.text();
+        if(!live) return;
+        const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
+        if(em&&em.trim()&&!eHtml){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,300)); status.classList.add('err'); return; }
+      }
+    }catch(e){ /* 재시도 */ }
+    try{
+      const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
+      if(r.ok){
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const tx=await r.text();
+        if(!live) return;
+        const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
+        if(tx&&tx.trim()&&!isHtml){
+          let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&d[need]){
+            const ts=Date.parse(d.ts||'');
+            if(!isNaN(ts)&&ts>=minTs){   // 원 디스패치 이후 산출만(과거 오인 차단 · ts=KST ISO)
+              stop(); pendClear();
+              if(mode==='options') renderOptions(d, Math.round((Date.now()-t0)/1000));
+              else if(d.engine==='lyria'||d.engine==='rvc'||d.url) showLyria(d, Math.round((Date.now()-t0)/1000));   // 오디오 있는 산출 = 완성곡 뷰(lyria·rvc 커버)
+              else showSuno(d, Math.round((Date.now()-t0)/1000));
+              return;
+            }
+          }
+        }
+      }
+    }catch(e){ /* 재시도 */ }
+    if(live) setTimeout(tick,5000);
+  };
+  tick();
+}
+
+// ── 렌더 ──
+function updateGoSpec(){   // 결과물 명세 readout — 썸네일 goSpec 표기 관례(라벨 mut·값 점등·`|` 구분·대괄호 없음)
+  const gs=$('#goSpec'); if(!gs) return;
+  const v=(x,on)=>'<span class="gs-v'+(on?' on':'')+'">'+esc(x)+'</span>';
+  const sep='<span class="gs-sep">|</span>';
+  const mo=getMood(), th=getTheme();
+  const L=x=>'<span class="gs-lbl">'+x+'</span> ';
+  gs.innerHTML=L('스타일')+v(PICK?PICK.name:'자동',!!PICK)
+    +sep+L('보컬')+v(PICK&&PICK.vocal?PICK.vocal:'자동',!!(PICK&&PICK.vocal))
+    +(PICK&&PICK.bpm?(sep+L('BPM')+v(PICK.bpm,true)):'')
+    +(mo!=='자동'?(sep+L('분위기')+v(mo,true)):'')
+    +(th!=='자동'?(sep+L('테마')+v(th,true)):'')
+    +sep+L('길이')+v('60초 미만',true)
+    +sep+L('훅')+v('15초 내',true);
+}
+function renderOptions(d, sec){
+  OPTS=d.options||[]; PICK=null;
+  $('#out').hidden=true; $('#lout').hidden=true;
+  $('#sstatus').classList.remove('err');
+  $('#sstatus').innerHTML=OK_SVG+' 옵션 '+OPTS.length+'개'+(sec?(' ('+sec+'s)'):'')+' — 골라서 아래 버튼으로';
+  $('#optgrid').innerHTML=OPTS.map((o,i)=>'<button type="button" class="optcard" data-i="'+i+'"><div class="optname">'+esc(o.name||'')+'</div><div class="optwhy">'+esc(o.why||'')+'</div><div class="optmeta">'+esc(o.vocal||'')+(o.bpm?(' · '+o.bpm+' bpm'):'')+'</div></button>').join('');
+  updateGoSpec();
+  const ow=$('#optwrap'); ow.hidden=false;
+  try{ ow.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+}
+$('#optgrid').addEventListener('click',e=>{
+  const b=e.target.closest('.optcard'); if(!b) return;
+  const i=+b.dataset.i;
+  const was=b.classList.contains('on');
+  $$('#optgrid .optcard').forEach(x=>x.classList.remove('on'));
+  if(was){ PICK=null; updateGoSpec(); return; }   // 재탭 = 해제(자동)
+  b.classList.add('on'); PICK=OPTS[i]||null; updateGoSpec();
+});
+function showSuno(d, sec){
+  RES=d;
+  $('#lout').hidden=true;
+  $('#sstatus').classList.remove('err');
+  $('#sstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+' — 수노 커스텀 모드에 칸별로 붙여넣기';
+  $('#rTitle').textContent=d.title||'';
+  $('#rStyle').textContent=d.style||'';
+  $('#rLyrics').textContent=d.lyrics||'';
+  $('#rExcl').textContent=d.exclude||'';
+  $('#rMeta').textContent=(d.genre||'자동')+' · '+(d.express||'자동')+' · 목표 '+(d.target||'60초 미만');
+  vcRender();   // 텍스트 산출 = 오디오 없음 → [보이스 입히기] 숨김 동기화
+  const out=$('#out'); out.hidden=false;
+  try{ out.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+}
+function showLyria(d, sec){
+  RES=d;
+  $('#out').hidden=true;
+  $('#sstatus').classList.remove('err');
+  $('#sstatus').innerHTML=OK_SVG+' 완성곡'+(sec?(' ('+sec+'s)'):'');
+  $('#lTitle').textContent=d.title||'';
+  const aud=$('#lAud'); aud.src=d.url||'';
+  $('#lLyr').textContent=d.sung||d.lyrics||'';
+  $('#lMeta').textContent=(d.engine==='rvc'
+    ?('보이스 커버'+(d.voice_name?(' · '+d.voice_name):''))
+    :('Lyria 3'+(d.model?(' · '+d.model):'')))+(d.sung&&d.lyrics&&d.sung!==d.lyrics?' · 실제 부른 가사 기준':'');
+  $('#lDl').classList.remove('dl-done');
+  vcRender();   // 보이스 선택 + 오디오 有 = [보이스 입히기] 노출 갱신
+  const lo=$('#lout'); lo.hidden=false;
+  try{ lo.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+}
+
+// ── 복사(클립보드 + CHECK 플래시 · nm-svg SSOT) ──
+$$('.cpy').forEach(b=>{ b.innerHTML=COPY_SVG; });
+const CPV={ title:()=>RES&&RES.title, style:()=>RES&&RES.style, lyrics:()=>RES&&RES.lyrics, exclude:()=>RES&&RES.exclude, llyr:()=>RES&&(RES.sung||RES.lyrics) };
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('.cpy'); if(!b) return;
+  const get=CPV[b.dataset.k]; const v=String((get&&get())||''); if(!v) return;
+  let ok=false;
+  try{ await navigator.clipboard.writeText(v); ok=true; }
+  catch(err){
+    try{ const ta=document.createElement('textarea'); ta.value=v; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove(); }catch(e2){}
+  }
+  clearTimeout(b._t);
+  b.innerHTML=ok?CHECK_SVG:COPY_SVG;
+  if(ok){ b._t=setTimeout(()=>{ b.innerHTML=COPY_SVG; },900); }
+});
+
+// ── 곡 저장(교차출처 R2 = api/dl 프록시 · git 폴백 = 같은 출처 직다운) ──
+$('#lDl').innerHTML=DOWNLOAD_SVG;
+$('#lDl').addEventListener('click',e=>{
+  const b=e.currentTarget, u=(RES&&RES.url)||'';
+  if(!u) return;
+  const ext=/\.wav(\?|$)/i.test(u)?'.wav':'.mp3';
+  const name='song_'+(SONG_ID||Date.now())+ext;
+  const a=document.createElement('a');
+  if(/^https:\/\//i.test(u)) a.href='api/dl?u='+encodeURIComponent(u)+'&n='+encodeURIComponent(name);   // R2 교차출처 = api/dl 프록시(ly/track 정본 · audio 통과 260712)
+  else { a.href=u; a.download=name; }
+  document.body.appendChild(a); a.click(); a.remove();
+  b.classList.add('dl-done');
+});
+
+// ── 만든 노래(플레이리스트) — 메시지함(msgpop) 계승 팝업 · index.json = 빌드 산출(운영자 260712) ──
+//    행 탭 = 그 곡 로드+재생 · 곡 끝 = 다음 곡 자동(마지막 = 정지) · 빈 상태 = 조용한 공백(§디자인 e-가)
+let PLIST=[], PIDX=-1;
+const hpop=$('#hpop');
+function hRow(s,i){
+  const d=(s.ts||'').slice(5,16).replace('T',' ');
+  return '<button class="hrow'+(i===PIDX?' on':'')+'" data-i="'+i+'" type="button"><span class="t">'+esc(s.title||'(무제)')+'</span>'+(i===PIDX?'<span class="eq">재생 중</span>':'<span></span>')+'<span class="m">'+esc(d)+' · '+esc(s.engine==='lyria'?'구글':(s.engine==='rvc'?'보이스':(s.engine||'')))+(s.genre?(' · '+esc(s.genre)):'')+'</span></button>';
+}
+function renderList(){ $('#hlist').innerHTML=PLIST.map((s,i)=>hRow(s,i)).join(''); }
+async function openHist(){
+  hpop.hidden=false; renderList();
+  try{
+    const r=await fetch('song_out/index.json?t='+Date.now());
+    if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ PLIST=j; renderList(); } } }
+  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+}
+$('#histBtn').addEventListener('click',()=>{ if(hpop.hidden) openHist(); else hpop.hidden=true; });
+$('#hpopX').addEventListener('click',()=>{ hpop.hidden=true; });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(!hpop.hidden) hpop.hidden=true; closeSelPops(); } });
+document.addEventListener('pointerdown',e=>{ if(!hpop.hidden&&!e.target.closest('.hpop')&&!e.target.closest('.histbtn')) hpop.hidden=true; },{capture:true});
+async function playIdx(i,autoplay){
+  const s=PLIST[i]; if(!s) return;
+  PIDX=i; renderList();
+  let d=null;
+  try{ const r=await fetch('song_out/'+encodeURIComponent(s.id)+'/song.json?t='+Date.now()); if(r.ok){ const tx=await r.text(); if(!/^\s*</.test(tx)) d=JSON.parse(tx); } }catch(e){}
+  if(!d||!d.url) d={title:s.title,url:s.url,engine:s.engine,lyrics:''};   // 폴백 = 인덱스 값만으로 재생(가사 없이)
+  SONG_ID=s.id; showLyria(d,0);
+  if(autoplay){ try{ await $('#lAud').play(); }catch(e){ /* 자동재생 차단 = 플레이어 노출로 갈음 */ } }
+}
+$('#hlist').addEventListener('click',e=>{ const b=e.target.closest('.hrow'); if(!b) return; playIdx(+b.dataset.i,true); });
+$('#lAud').addEventListener('ended',()=>{ if(PIDX>=0&&PIDX+1<PLIST.length) playIdx(PIDX+1,true); });
+
+// ── 음성 클로닝(운영자 260712 · Replicate RVC — svc-bench 판정: Seed-VC CPU 탈락 → 전환 승인) ──
+//    train: 소스(1~5분)+동의 → /api/voice → voice_out/<vid>/voice.json 폴 · apply: 완성곡+보이스 → 커버 = pollSong 'voice'
+//    동의 게이트 = 본인·권리 보유 음성만(실존 타인 금지 · 운영자 제약) — 없인 발사 불가(api·워크플로 이중 거절).
+let VOICES=[], VSEL=null, VFILE=null, VFNAME='';
+function vcRender(){
+  const cur=VOICES.find(x=>x.id===VSEL)||null;
+  if(!cur) VSEL=null;
+  const v=$('#vcV');
+  v.textContent=cur?(cur.name||'보이스'):'없음';
+  v.classList.toggle('on',!!cur);
+  $('#vcPop').innerHTML='<button type="button" class="spbtn'+(VSEL?'':' on')+'" aria-pressed="'+(VSEL?'false':'true')+'" data-v="">없음</button>'
+    +VOICES.map(x=>'<button type="button" class="spbtn'+(x.id===VSEL?' on':'')+'" aria-pressed="'+(x.id===VSEL?'true':'false')+'" data-v="'+esc(x.id)+'">'+esc(x.name||'보이스')+'</button>').join('');
+  $('#vApply').hidden=!(VSEL&&RES&&RES.url);   // 보이스 선택 + 오디오 있는 결과에서만
+}
+async function vcLoad(){
+  try{
+    const r=await fetch('voice_out/index.json?t='+Date.now());
+    if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ VOICES=j; vcRender(); } } }
+  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+}
+$('#vcV').addEventListener('click',()=>{ const pop=$('#vcPop'); const opening=pop.classList.contains('none'); closeSelPops(pop); pop.classList.toggle('none',!opening); if(opening) vcLoad(); });
+$('#vcPop').addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if(!b) return; VSEL=b.dataset.v||null; vcRender(); $('#vcPop').classList.add('none'); });
+$('#consBtn').addEventListener('click',e=>{ const b=e.currentTarget; const on=!b.classList.contains('on'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
+$('#vFile').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if(f.size>20*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 ≤20MB — 1~5분 mp3/m4a'); }
+  try{
+    await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ VFILE=r.result; res(); }; r.onerror=()=>rej(r.error||new Error('읽기 실패')); r.readAsDataURL(f); });
+    VFNAME=f.name; $('#vfName').textContent=f.name; $('#vfLab').classList.add('has');
+  }catch(err){ VFILE=null; VFNAME=''; $('#vfName').textContent=''; $('#vfLab').classList.remove('has'); btnErr($('#trainGo'),'파일 읽기 실패 — 다시'); }
+});
+$('#trainGo').addEventListener('click',()=>{
+  const gb=$('#trainGo');
+  if(!VFILE) return btnErr(gb,'보이스 소스(1~5분)를 올려줘');
+  if(!$('#consBtn').classList.contains('on')) return btnErr(gb,'동의 먼저 — 본인·권리 보유 음성만');
+  fireApi(gb, API_VOICE, {mode:'train', name:$('#vName').value.trim().slice(0,24), consent:true, fileB64:VFILE, fname:VFNAME},
+    (j,t0)=>{ pendSet({id:j.id, mode:'voice-train', t0}); pollVoice(j.id, t0, t0-90000); });
+});
+$('#vApply').addEventListener('click',()=>{
+  const gb=$('#vApply');
+  if(!(VSEL&&SONG_ID&&RES&&RES.url)) return;
+  fireApi(gb, API_VOICE, {mode:'apply', src:SONG_ID, vid:VSEL},
+    (j,t0)=>{ pendSet({id:j.id, mode:'voice', t0}); pollSong(j.id, 'voice', t0, t0-90000, gb); });
+});
+function pollVoice(id, t0, minTs){   // 학습 폴 — pollSong 미러(voice_out 루트 · 완료 = model_url · 학습은 길어서 10s 간격)
+  if(_curStop)_curStop();
+  const status=$('#sstatus');
+  statusWait(true, t0, '보이스 학습 중');
+  const outPath='voice_out/'+id+'/voice.json', errPath='voice_out/'+id+'/error.log';
+  let live=true; const stop=()=>{ live=false; statusWait(false); }; _curStop=stop;
+  const budget=BUDGETS['voice-train'];
+  const tick=async()=>{
+    if(!live) return;
+    if(Date.now()-t0>budget*2000){ stop(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    try{
+      const er=await fetch(errPath+'?t='+Date.now());
+      if(!live) return;
+      if(er.ok){
+        const ect=(er.headers.get('content-type')||'').toLowerCase();
+        const em=await er.text();
+        if(!live) return;
+        const eHtml=ect.includes('text/html')||/^\s*<!doctype/i.test(em)||/<html[\s>]/i.test(em.slice(0,300));
+        if(em&&em.trim()&&!eHtml){ stop(); pendClear(); status.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,300)); status.classList.add('err'); return; }
+      }
+    }catch(e){ /* 재시도 */ }
+    try{
+      const r=await fetch(outPath+'?t='+Date.now());
+      if(!live) return;
+      if(r.ok){
+        const ct=(r.headers.get('content-type')||'').toLowerCase();
+        const tx=await r.text();
+        if(!live) return;
+        const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
+        if(tx&&tx.trim()&&!isHtml){
+          let d=null; try{ d=JSON.parse(tx); }catch(e){}
+          if(d&&d.model_url){
+            const ts=Date.parse(d.ts||'');
+            if(!isNaN(ts)&&ts>=minTs){   // 원 디스패치 이후 산출만(과거 오인 차단)
+              stop(); pendClear();
+              status.classList.remove('err');
+              status.innerHTML=OK_SVG+' 보이스 학습 완료 — '+esc(d.name||'보이스');
+              VSEL=id; vcLoad();   // 새 보이스 자동 선택 + 목록 갱신([보이스 입히기] 활성)
+              return;
+            }
+          }
+        }
+      }
+    }catch(e){ /* 재시도 */ }
+    if(live) setTimeout(tick,10000);
+  };
+  tick();
+}
+vcLoad();   // 부팅 로드 — 플레이리스트 재생만 해도 [보이스 입히기]가 뜨게
+
+// ── 재개(pend) — 리로드/재진입 시 진행 중 생성 폴 이어받기(conv 문법 · 24h 게이트) ──
+(function(){
+  const p=pendGet(); if(!p||!p.id||USER_ACT) return;
+  if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
+  if(p.story&&!$('#story').value) $('#story').value=p.story;   // 후속 발사 재료 복원(칩은 기본 유지 — 옵션/가사엔 story+pick이 본질)
+  if(p.mode==='voice-train'){ const t0c=Math.max(p.t0||0, Date.now()-BUDGETS['voice-train']*1000); pollVoice(p.id, t0c, (p.t0||0)-90000); return; }
+  if(p.mode!=='options'&&p.mode!=='voice'){ $('#optwrap').hidden=false; updateGoSpec(); }   // 엔진 진행 표시 위해 행 노출(커버 재개는 폼 노이즈 없이)
+  const t0c=Math.max(p.t0||0, Date.now()-(BUDGETS[p.mode]||BUDGET)*1000);   // 경과·타임아웃 기점 클램프 = 재개마다 폴 창 확보 · 신선도는 원 t0 기준(분리)
+  pollSong(p.id, p.mode||'suno', t0c, (p.t0||0)-90000, null);
+})();
+</script>
+<script src="cscroll.js"></script><!-- 커스텀 오버레이 스크롤바 = 제작·합성(thumb)·ly·k와 동일 표준(운영자 260713 "다 같게") -->
+</body>
+</html>

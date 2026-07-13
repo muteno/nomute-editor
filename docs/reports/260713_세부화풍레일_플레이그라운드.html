@@ -1,0 +1,179 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="color-scheme" content="dark">
+<title>세부 화풍 가로 레일 — 만지는 목업</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --fs-label:13px; --fw-b:700; --fw-x:800; --r-m:11px; --r-s:9px; --sp-2:12px;
+    --ease:cubic-bezier(.2,.7,.3,1);
+    --fadeW:22px;      /* 끝선 페이드 폭 */
+    --arrow:1;         /* PC 화살표 표시 */
+    --edge:1;          /* 좌측 경계선 */
+  }
+  *{box-sizing:border-box}
+  body{background:#0b0d0c;color:var(--fg);margin:0;padding:18px 14px 60px;
+    font-family:-apple-system,'Apple SD Gothic Neo','Pretendard','Malgun Gothic','Noto Sans KR',sans-serif;font-size:14px;line-height:1.6}
+  h1{font-size:17px;margin:0 0 3px}h1 b{color:var(--accent)}
+  .sub{color:var(--mut);font-size:12px;margin-bottom:16px}
+  .phone{max-width:420px;margin:0 auto;border:1px solid var(--line);border-radius:20px;
+    background:var(--bg);padding:16px 14px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .phead{font-size:12px;color:var(--mut);margin:0 0 12px;display:flex;align-items:center;gap:6px}
+  .phead .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+  /* ── 레일 행 = 라벨 + 스크롤 레일 (+PC 화살표) ── */
+  .geni-row{display:flex;align-items:center;gap:var(--sp-2);padding:9px 0;border-top:1px solid var(--line2)}
+  .geni-row:first-of-type{border-top:none}
+  .pub-l{font-size:var(--fs-label);font-weight:var(--fw-b);color:var(--fg);white-space:nowrap;flex:0 0 auto}
+  .railwrap{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:2px;position:relative}
+  .railwrap.edge{border-left:1px solid var(--line2);padding-left:8px}   /* 좌측 경계선(구분라인) */
+
+  .rail{flex:1 1 0;min-width:0;display:flex;flex-wrap:nowrap;align-items:center;gap:2px;
+    overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;
+    -ms-overflow-style:none;scrollbar-width:none;
+    /* 양 끝선 페이드(마진) — 스크롤 위치 무관 상시 마진 */
+    -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--fadeW),#000 calc(100% - var(--fadeW)),transparent 100%);
+    mask-image:linear-gradient(90deg,transparent 0,#000 var(--fadeW),#000 calc(100% - var(--fadeW)),transparent 100%);
+    cursor:grab;touch-action:pan-x}
+  .rail::-webkit-scrollbar{display:none}
+  .rail.grabbing{cursor:grabbing}
+  .rail.atStart{-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - var(--fadeW)),transparent 100%);
+    mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - var(--fadeW)),transparent 100%)}
+  .rail.atEnd{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--fadeW),#000 100%);
+    mask-image:linear-gradient(90deg,transparent 0,#000 var(--fadeW),#000 100%)}
+  .rail.atStart.atEnd{-webkit-mask-image:none;mask-image:none}
+
+  .subit{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto}
+  .sep{font-size:var(--fs-label);font-weight:var(--fw-b);color:var(--mut);opacity:.35;pointer-events:none}
+  .opt{background:none;border:none;padding:6px 7px;font-weight:var(--fw-b);font-size:var(--fs-label);
+    color:var(--mut);cursor:pointer;white-space:nowrap;transition:color .15s;font-family:inherit;-webkit-tap-highlight-color:transparent}
+  .opt.on{color:var(--accent);font-weight:var(--fw-x)}
+  .opt:active{transform:scale(.9)}
+
+  /* PC 화살표 ‹ › — 우측 마진(구분자 자리), 글자영역 밖 · PC(hover 가능)만 */
+  .navs{display:none;flex:0 0 auto;align-items:center;gap:1px;margin-left:2px}
+  @media (hover:hover) and (pointer:fine){ .railwrap[data-arrow="1"] .navs{display:flex} }
+  .nav{width:17px;height:22px;display:grid;place-items:center;background:none;border:none;
+    color:var(--mut);cursor:pointer;padding:0;border-radius:5px;transition:color .15s,background .15s;-webkit-tap-highlight-color:transparent}
+  .nav:hover{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+  .nav:active{transform:scale(.86)}
+  .nav svg{width:11px;height:11px}
+  .nav[disabled]{opacity:.28;pointer-events:none}
+
+  /* ── 컨트롤 ── */
+  .ctl{max-width:420px;margin:22px auto 0;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:rgba(255,255,255,.02)}
+  .ctl h2{font-size:13px;color:var(--accent);margin:0 0 12px}
+  .crow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line2)}
+  .crow:first-of-type{border-top:none}
+  .crow label{font-size:12px;color:var(--fg)}
+  .crow .v{font-size:12px;color:var(--mut);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+  input[type=range]{width:150px;accent-color:var(--accent)}
+  .seg{display:flex;gap:4px}
+  .seg button{background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--mut);
+    font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:rgba(var(--accent-rgb),.14);border-color:rgba(var(--accent-rgb),.4);color:var(--accent)}
+  .note{max-width:420px;margin:16px auto 0;color:var(--mut);font-size:11.5px;line-height:1.7}
+  .note b{color:var(--fg)}
+  code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:11px}
+</style>
+
+<h1>세부 화풍 = <b>한 줄 가로 레일</b> · 만지는 목업</h1>
+<div class="sub">폰: 항목을 <b>잡고 좌우로 끌기</b> · PC: 우측 <b>‹ ›</b> 화살표 · 끝선 페이드 · 260713</div>
+
+<div class="phone">
+  <div class="phead"><span class="dot"></span>Image Studio — 표현</div>
+
+  <!-- 화풍 -->
+  <div class="geni-row">
+    <span class="pub-l">화풍</span>
+    <div class="railwrap" data-arrow="1">
+      <div class="rail" id="railStyle"></div>
+      <div class="navs"><button class="nav" data-dir="-1" aria-label="이전"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><button class="nav" data-dir="1" aria-label="다음"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+    </div>
+  </div>
+
+  <!-- 세부 화풍 -->
+  <div class="geni-row">
+    <span class="pub-l">세부 화풍</span>
+    <div class="railwrap" data-arrow="1">
+      <div class="rail" id="railSub"></div>
+      <div class="navs"><button class="nav" data-dir="-1" aria-label="이전"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><button class="nav" data-dir="1" aria-label="다음"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+    </div>
+  </div>
+</div>
+
+<div class="ctl">
+  <h2>만지기</h2>
+  <div class="crow"><label>끝선 페이드 폭</label><div style="display:flex;align-items:center;gap:8px"><input type="range" id="fade" min="0" max="40" value="22"><span class="v" id="fadeV">22px</span></div></div>
+  <div class="crow"><label>좌측 경계선(구분라인)</label><div class="seg" id="edgeSeg"><button data-v="1" class="on">있음</button><button data-v="0">없음</button></div></div>
+  <div class="crow"><label>PC ‹ › 화살표</label><div class="seg" id="arrowSeg"><button data-v="1" class="on">붙임</button><button data-v="0">뗌</button></div></div>
+  <div class="crow"><label>순서</label><div class="seg" id="ordSeg"><button data-v="freq" class="on">사용빈도순(예시)</button><button data-v="fixed">고정순</button></div></div>
+</div>
+
+<div class="note">
+  <b>W6 사용빈도순</b> = 제작(이미지 생성)에 쓰인 <b>누적 횟수</b> 내림차순 — 자주 쓰는 화풍이 왼쪽(초기 노출). 위 <code>사용빈도순(예시)</code>은 임의 카운트로 순서만 시연.<br>
+  · <b>자동/기본은 항상 선두 고정</b>(빈도 무관 — 리셋 앵커).<br>
+  · 구현: 제작 발사 시 <code>localStorage</code> 카운트 +1 → 렌더 시 정렬. 서버·동기화 0(가벼움). 한계 = 기기별 집계(폰↔PC 따로).<br>
+  · <b>PC</b>는 마우스 드래그도 되지만 어려우니 우측 ‹ › 클릭이 주 조작. <b>폰</b>은 잡고 끌기(네이티브).
+</div>
+
+<script>
+const STYLE=[['webtoon','극화',12],['watercolor','수채',7],['photo','실사',20],['cartoon','만평',3],['cinematic','시네마틱',9],['illust','일러스트',5],['iso3d','3D',1],['pictogram','픽토',2]];
+const SUB=[['auto','자동',0],['gekiga','게키카',8],['hardboiled','하드보일드',2],['jidai','시대극',5],['sunjung','순정',3],['chibi','명랑',6]];
+let ORD='freq', pickStyle='photo', pickSub='auto';
+function ordered(list){
+  if(ORD==='fixed') return list.slice();
+  const head=list.filter(x=>x[0]==='auto');
+  const rest=list.filter(x=>x[0]!=='auto').sort((a,b)=>b[2]-a[2]);   // 빈도 내림차순
+  return [...head,...rest];
+}
+function render(rail,list,pick,onPick){
+  const items=ordered(list);
+  rail.innerHTML=items.map(([v,ko],i)=>'<span class="subit">'+(i?'<span class="sep" aria-hidden="true">|</span>':'')+'<button type="button" class="opt'+(v===pick?' on':'')+'" data-v="'+v+'">'+ko+'</button></span>').join('');
+  rail.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{ onPick(b.dataset.v); }));
+  updEdges(rail);
+}
+function paint(){
+  render(railStyle,STYLE,pickStyle,v=>{pickStyle=v;paint();});
+  render(railSub,SUB,pickSub,v=>{pickSub=v;paint();});
+}
+const railStyle=document.getElementById('railStyle'), railSub=document.getElementById('railSub');
+
+// 끝선 페이드 클래스(atStart/atEnd) 토글
+function updEdges(rail){
+  const max=rail.scrollWidth-rail.clientWidth;
+  rail.classList.toggle('atStart',rail.scrollLeft<=1);
+  rail.classList.toggle('atEnd',rail.scrollLeft>=max-1);
+  const wrap=rail.closest('.railwrap'); if(wrap){ const [p,n]=wrap.querySelectorAll('.nav'); if(p)p.disabled=rail.scrollLeft<=1; if(n)n.disabled=rail.scrollLeft>=max-1; }
+}
+// 마우스 드래그 스크롤(PC) + 클릭 구분
+function dragify(rail){
+  let down=false,moved=false,sx=0,sl=0;
+  rail.addEventListener('pointerdown',e=>{ if(e.pointerType!=='mouse')return; down=true;moved=false;sx=e.clientX;sl=rail.scrollLeft;rail.classList.add('grabbing'); });
+  rail.addEventListener('pointermove',e=>{ if(!down)return; const dx=e.clientX-sx; if(Math.abs(dx)>4)moved=true; rail.scrollLeft=sl-dx; });
+  const end=()=>{ down=false;rail.classList.remove('grabbing'); };
+  rail.addEventListener('pointerup',end); rail.addEventListener('pointerleave',end);
+  rail.addEventListener('click',e=>{ if(moved){e.preventDefault();e.stopPropagation();} },true);   // 드래그 후 오클릭 방지
+  rail.addEventListener('scroll',()=>updEdges(rail),{passive:true});
+}
+[railStyle,railSub].forEach(dragify);
+// PC 화살표
+document.querySelectorAll('.navs').forEach(nv=>{
+  const rail=nv.closest('.railwrap').querySelector('.rail');
+  nv.querySelectorAll('.nav').forEach(btn=>btn.addEventListener('click',()=>{
+    rail.scrollBy({left:(+btn.dataset.dir)*Math.max(110,rail.clientWidth*0.7),behavior:'smooth'});
+  }));
+});
+// 컨트롤
+const root=document.documentElement;
+fade.addEventListener('input',()=>{ root.style.setProperty('--fadeW',fade.value+'px'); fadeV.textContent=fade.value+'px'; });
+function seg(id,fn){ const box=document.getElementById(id); box.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ box.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); fn(b.dataset.v); })); }
+seg('edgeSeg',v=>document.querySelectorAll('.railwrap').forEach(w=>w.classList.toggle('edge',v==='1')));
+seg('arrowSeg',v=>document.querySelectorAll('.railwrap').forEach(w=>w.dataset.arrow=v));
+seg('ordSeg',v=>{ORD=v;paint();});
+document.querySelectorAll('.railwrap').forEach(w=>w.classList.add('edge'));   // 경계선 기본 on
+paint();
+requestAnimationFrame(()=>[railStyle,railSub].forEach(updEdges));
+addEventListener('resize',()=>[railStyle,railSub].forEach(updEdges));
+</script>

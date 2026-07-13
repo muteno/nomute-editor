@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<!-- 전역 버튼 탭 햅틱 = 폐지(운영자 260706 5차 "PIN 입력 빼고는 진동 넣지 마" — 진동은 index PIN 키패드만) --><!-- 부모(index)와 color-scheme 일치 필수 — 불일치면 크로미움이 투명 iframe에 불투명 흰 캔버스 강제 → 글래스 전부 회색 파손(운영자 260705 실측 · index color-scheme dark 도입과 한 쌍) -->
+<title>영상 프롬프트</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
+<style>
+  :root { --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(index 동일·감사 260704) */ --warn:#FFE13D;   /* 역할색 warn = 골드레몬(=index accent-4 값 · thumb:15 선례 계승 — 뷰어별 인라인 팔레트 방식·tokens.css 색 제외 · 검증9 260708) */   /* index :root 동기 — raw rgba(0,238,210) 박기 차단(분신술 4·8) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322; }   /* --press-* = tokens.css 상속(인라인 이중정의 제거·감사 260704·comp 기준·회귀0) */
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 무효화 = 로컬(tokens.css엔 없음·comp 기준) */
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* 모바일 기본 하늘색 탭 하이라이트 박스 제거 = index:78·thumb:15 전역 계승(체크박스 라벨 등 탭 시 시안 박스 차단·운영자 260629) */
+  [hidden] { display:none !important; }   /* hidden 속성 = 무조건 승(기저 가드) — 클래스 display(flex/grid/block)가 UA hidden을 이겨 유령 노출되던 계열(#carDl·#carbar·#pushrow·ly 버튼 3종 실측 260710) 원천 종식 · 퇴장 애니는 hidden을 애니 종료 후 부여라 무영향 */
+  /* 키보드 포커스 링 — 도구앱 접근성 P0(분신술 10·규약 §8 "2px accent 링") · :focus-visible라 마우스엔 안 뜸 */
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  /* 스크롤바 = 반투명 검정(중립) — 뉴스 뷰어 통일(index 계승 · 운영자 260626) */
+  html { scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
+    border:2px solid var(--bg); background-clip:padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; padding:18px 16px 70px; }
+  h1 { font-size:18px; margin:6px 0 4px; } h1 b { color:var(--accent); }
+  .eng { color:var(--accent); font-weight:600; font-size:var(--fs-label); margin-left:9px; }   /* 엔진명 형광 인라인 태그 — 현행 사용처 = 참조 이미지 행(Gemini)뿐(스토리 구성의 비디오 엔진 태그는 개편 P1에서 모델 선택기로 승격 이동 · 재감사10) */
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 6px; }   /* 비-소머리 라벨 베이스(.chk 등) · 소머리는 .fl(흰색800+형광블릿) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) */
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 뉴스 정본 content:'• ' 동일 */
+  label:first-of-type { margin-top:0; }
+  textarea { width:100%; min-height:96px; padding:12px; background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; resize:none; }   /* 리사이즈 핸들 제거(운영자 260629 · 전역) */
+  textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  /* 붙여넣기 = 2A 동그라미, 입력칸 상단 우측 테두리에 중앙정렬 걸침(뉴스요약·썸네일과 통일 · 운영자 260625) */
+  .scnwrap { position:relative; }
+  .scnclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6;   /* 스토리 구성 복사/붙여넣기 = opacity 60%(운영자 260625) */
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    -webkit-backdrop-filter:blur(13px) saturate(1.3); backdrop-filter:blur(13px) saturate(1.3); -webkit-tap-highlight-color:transparent; transition:transform .12s, color .15s, border-color .15s; }   /* G1 글래스모피즘(260625) */
+  .scnclip svg { display:block; width:13px; height:13px; }
+  .scnclip::before { content:""; position:absolute; inset:-8px; }
+  .scnclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .scnclip:active { transform:translateY(-50%) scale(var(--press-s,.85)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .scnclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
+  .scnclip.scn-pp { right:46px; }                       /* 붙여넣기 = 지우개 좌측·항상 노출(복사로 안 바뀜) · 운영자 260627 */
+  .scn-copy { right:78px; }                             /* 복사 = 내용 있을 때만 붙여넣기 좌측에 별도 노출 (운영자 260628 3버튼 분리) */
+  .scn-hide { display:none; }                           /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
+  .scn-erase { right:14px; }                            /* 지우개 = 최우측 · 누르면 입력 비움→~10초 되돌리기 */
+  .scn-erase.scn-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 흐리게·비활성 */
+  .scn-erase.scn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
+  /* 생성 버튼 = 카드/썸네일 생성 버튼과 통일 = 글래스 고스트(.mkbtn 정합·운영자 260622) */
+  .go { width:100%; margin-top:16px; padding:18px; background:rgba(255,255,255,.02); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; line-height:1; cursor:pointer; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }   /* 배경 .05→.02(운영자 260713 B) · padding 18 + line-height:1 = thumb .go 발사 게이지바 정본 계승(글자 정중앙 dy0·높이 52 · 사용자 260713 8뷰어 통일) */
+  /* .go:hover 제거 — 메인 버튼(index .mkbtn) 계승: hover 전경 fill 없음·:active만 피드백(운영자 260629 "마우스 올리면 버튼 전경 뜸" 차단 + 터치 stuck-hover 동시 차단) */
+  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.shake { animation:edshake .42s; }   /* 내용 미입력 = 좌우 흔들림(thumb .go 통일·운영자 260622) */
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
+  .go.err { background:rgba(var(--danger-rgb),.14); color:var(--danger); border-color:var(--danger); }   /* 미입력 메시지를 버튼 안에 빨강 액티브로 표시(thumb .go.err 통일·운영자 260622) */
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s var(--gauge-ease) forwards; }   /* 누르면 버튼 전체를 초록이 좌→우로 채움(구성도 .send.is-fire 정본·260622) */
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }   /* 0%(퍼센트)+명시 from = 부드러운 보간(0 길이면 끝에서 툭 튐) */
+  @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  .chk { display:flex; align-items:center; gap:9px; margin-top:12px; font-size:14px; font-weight:400; color:var(--mut); cursor:pointer; }   /* 옵션 토글 라벨 = 미선택 MUT(섹션 소머리 아님 → 600 아닌 400 · 선택 시 .chk:has(:checked)로 accent · 운영자 260629) */
+  /* 레퍼런스 체크 = 수집함 확인 토글(.sc-tg.ack) 체크표시 그대로 계승 — 안 누름 −(회색) → 누름 ✓(초록·한 획 드로우-인) + 글래스 박스 초록 틴트 + 눌림 scale(운영자 260622) */
+  .chk input { position:absolute; left:0; width:18px; height:18px; margin:0; opacity:0; cursor:pointer; }
+  .chk .cbox { flex:none; width:24px; height:24px; display:grid; place-items:center; border-radius:var(--r-s);
+    border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.5);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s; }
+  .chk .cbox .ackm { width:15px; height:15px; display:block; }
+  .chk .cbox .ackm path { transition:opacity .16s ease, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1); }
+  .chk .cbox .sc-dash { stroke:var(--mut); opacity:1; }                                   /* 안 누름 = −(회색·트리아지 .sc-tg.ack 그대로) */
+  .chk .cbox .sc-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }   /* 누름 = ✓ 한 획 드로우-인(강조 stroke) */
+  .chk input:checked + .cbox { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); color:var(--accent); }   /* 체크 = 강조 틴트 박스(− → ✓ · 트리아지 통일·운영자 260622) */
+  .chk input:checked + .cbox .sc-dash { opacity:0; }
+  .chk input:checked + .cbox .sc-chk { opacity:1; stroke-dashoffset:0; }
+  .chk:has(input:checked) { color:var(--accent); }   /* 체크 시 라벨도 강조색 */
+  .chk:active .cbox { transform:scale(var(--press-m,.9)); }
+  .chk input:focus-visible + .cbox { box-shadow:0 0 0 2px rgba(var(--accent-rgb),.45); }
+  @media (prefers-reduced-motion:reduce) { .chk .cbox .ackm path { transition:none; } }
+  /* 예시 칩(탭-투-필) — 수집함 .sc-tg 글래스 필 계승(배치 승인 · 운영자 260708): 탭 = 빈 입력칸에 예문 채움(발사 없음·편집 전제) / 내용 있으면 흔들림만(덮어쓰기 방지) */
+  .seedrow { display:flex; gap:6px; margin-top:8px; }
+  .seed { flex:1; min-width:0; display:grid; place-items:center; height:24px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
+    border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
+    backdrop-filter:blur(var(--blur-s)) ; -webkit-backdrop-filter:blur(var(--blur-s)); transition:background .14s, transform .1s, color .14s, border-color .14s;   /* blur = 구조토큰(--blur-s 8px — .sc-tg 원본 blur8과 동값 계승·raw 증가 0) */
+    font-family:inherit; -webkit-tap-highlight-color:transparent; }
+  .seed:active { transform:scale(var(--press-m,.9)); color:var(--accent); border-color:rgba(var(--accent-rgb),.5); }
+  .seed.shake { animation:edshake .42s; }
+  @media (prefers-reduced-motion:reduce){ .seed.shake { animation:none; } }
+  /* 모델 선택기 + 설정 축(개편 P1 · 운영자 260710 상세 스펙) — .seed(.sc-tg 글래스 필) 패밀리 계승·on=강조 틴트(신규 색 0)
+     축 순서 = 비율→화질→프레임→길이(+직접 게이지·장면 분막)→표현1→표현2(+한국웹툰)→표현3 네거티브→오디오(+대사) · 구도/카메라/조명/환경 = AI 전담(축 없음)
+     행간 = var(--sp-4)(운영자 "블릿 선택자끼리 간격 더 벌려" — 구 14px→24px) · 값 칩 = 필 / 표현 계열 = 네모 .sq(운영자 "동그라미 말고 네모") */
+  .axrow .opt { color:var(--mut); font-weight:400; font-size:var(--fs-sm); margin-left:7px; }   /* 보조 단위 정보(§🎨 e 예외 · '나머지 자동') — .fl .opt 데드 절 제거·11→12px 가독 상향(재감사6·7) */
+  .mgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .mchip { position:relative; display:grid; place-items:center; height:var(--btn); padding:0 6px; font-size:12px; font-weight:var(--fw-b); cursor:pointer;
+    border-radius:var(--r-s); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78); font-family:inherit;
+    -webkit-tap-highlight-color:transparent; transition:transform .1s, color .14s, border-color .14s, background .14s; }   /* 높이 = var(--btn)(모델 = 1차 결정 · 감사5 토큰화) · 평면 반투명 필 = 다수 칩 blur 리페인트 절감 의도(.seed 글래스와 구분·감사5 F4) */
+  .mchip::before { content:""; position:absolute; inset:-3px 0; }   /* 세로 히트 34→40px(규약 §16 · 모델 1행뿐이라 겹침 0 · 재감사7 F7-3) */
+  .mchip:active { transform:scale(var(--press-m,.9)); }
+  .mchip.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); }
+  .axrow, .axmodel { margin-top:var(--sp-4); }   /* 선택자 행간 확대(운영자 260710 1번 — 모델 라벨 포함 동일 리듬) */
+  .axrow label.fl { margin:0 0 7px; }
+  .axrow .chk { margin-top:0; }   /* 분막 토글 = 행 리듬은 .axrow가 담당(.chk 기본 12px 상쇄) */
+  .axchips { display:flex; flex-wrap:wrap; column-gap:6px; row-gap:10px; }   /* row-gap 10 = ::before ±5px 확장 정확 상쇄(행간 히트 겹침 0 · 재감사7 F7-2) */
+  .axchip { position:relative; display:grid; place-items:center; height:var(--btn-sm); padding:0 11px; font-size:12px; font-weight:600; cursor:pointer;
+    border-radius:var(--r-pill); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78); font-family:inherit;
+    -webkit-tap-highlight-color:transparent; transition:transform .1s, color .14s, border-color .14s, background .14s; }   /* var(--btn-sm) 30px(감사5·6 토큰화) */
+  .axchip::before { content:""; position:absolute; inset:-5px 0; }   /* 세로 히트 확장 = 40px(규약 §16) */
+  .axchip:active { transform:scale(var(--press-m,.9)); }
+  .axchip.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); }
+  .axchip.sq { border-radius:var(--r-s); }   /* 표현 계열 = 네모(더 많이 들어감 · 운영자 260710 2번) */
+  /* 길이 = 게이지 상시 + 레일 위 프리셋 라벨 · 직접 = 값 골드레몬(운영자 260710) */
+  .lenslide { display:none; align-items:center; gap:10px; margin:10px 2px 0; }
+  .lenslide.show { display:flex; }
+  .lenslide b.direct { color:var(--warn); }   /* 직접(비프리셋) 값 = 골드레몬 강조 */
+  .lmarks { position:relative; height:24px; margin:12px 44px 0 2px; }   /* 우측 44 = 값표시(b 32)+gap 근사 = 레일 폭 정렬 */
+  .lmark { position:absolute; top:0; transform:translateX(-50%); padding:2px 9px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-size:11px; font-weight:var(--fw-x); font-family:inherit; cursor:pointer; transition:color .15s, border-color .15s, background .15s; }
+  .lmark.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+  .lmark:active { transform:translateX(-50%) scale(var(--press-m)); }
+  .lenslide input[type=range] { flex:1; accent-color:var(--accent); }
+  .lenslide b { font-variant-numeric:tabular-nums; color:var(--accent); font-size:var(--fs-label); min-width:32px; text-align:right; }
+  /* 네거티브 다중선택 선택박스(.ksel/.kdd) — 표현2는 칩 그리드로 이행(운영자 260711 3분류)·이 블록은 네거티브 전용 잔존 · index #genidlg .geni-dd 문법 값 복사 = §핵심명령 3-c · 화살표 = SVG 데이터URI(색 = --mut 사본 — data:엔 var() 불가) */
+  .ksel { width:100%; padding:11px 38px 11px 12px; background:var(--pan); border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:14px; text-align:left; cursor:pointer; -webkit-tap-highlight-color:transparent;   /* 배경 = 근접 토큰 --pan 계승(§핵심명령 2-a) · button 트리거 공용(text-align 명시) */
+    appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238fa697' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
+  .ksel:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  .axrow { position:relative; }   /* 선택박스(.kdd) 앵커 기준 — 행 바로 아래 전폭 전개 */
+  .kdd { position:absolute; left:0; right:0; z-index:21; margin-top:4px; max-height:280px; overflow-y:auto; padding:4px;
+    background:rgba(24,25,28,.97); border:1px solid var(--line); border-radius:var(--r-m);
+    box-shadow:0 12px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+    transform-origin:top center; animation:kddIn .16s var(--ease); }   /* 무채 크롬(§디자인 i) · 고불투명 .97 = index .geni-dd 동값 사본 · z = 로컬 드롭다운 관례(20~22) */
+  @keyframes kddIn { from { opacity:0; transform:scale(.97) translateY(-4px); } to { opacity:1; transform:none; } }
+  .kdd-it { display:block; width:100%; background:none; border:none; text-align:left; padding:10px 12px; border-radius:7px;
+    font:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s, background .15s; -webkit-tap-highlight-color:transparent; }
+  .kdd-it:hover { background:rgba(255,255,255,.05); color:var(--fg); }
+  .kdd-it:active { transform:scale(var(--press-l,.95)); }   /* 리스트 아이템 티어(.geni-dd-it 동일) */
+  .kdd-it.on { color:var(--accent); font-weight:var(--fw-x); }
+  @media (prefers-reduced-motion:reduce) { .kdd { animation:none; } }
+  /* 한국웹툰 토글(표현2 = 극화·수채화일 때만 노출) = .refmulti 글자 토글 계승 */
+  .ktg { display:none; background:none; border:none; padding:9px 0; margin:2px 0 0; font:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--mut); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .15s ease, transform .12s ease; }
+  .ktg.show { display:block; }
+  .ktg.on { color:var(--accent); }
+  .ktg:active { transform:scale(var(--press-s,.85)); }
+  /* 장면 분막(운영자 260710 7·8번 — ON/OFF·기본 OFF·ON 시 아래로 펼침 = 다른 옵션 밀림) */
+  .bunmak { display:none; border-left:2px solid rgba(var(--accent-rgb),.25); padding-left:11px; margin:12px 0 0 3px; }
+  .bunmak.show { display:block; }
+  .sg { margin-top:12px; }
+  .sg:first-child { margin-top:0; }
+  .sghead { display:flex; align-items:center; gap:10px; font-size:var(--fs-sm); color:var(--mut); margin-bottom:6px; }
+  .sghead b { color:var(--accent); font-variant-numeric:tabular-nums; font-weight:var(--fw-b); }
+  .sghead b.sgb-full { color:var(--warn); }   /* 마지막 구간 = 끝이 총길이 도달(~15s) → 골드레몬 강조(운영자 260710 "15초에 다다르면 노란색") */
+  /* 구간 시간 스크럽(운영자 260710 2차 — "호버하거나 모바일로 누른 상태로 위아래" = 끝 시간 조정·시작점은 앞 구간에 자동 연쇄) */
+  .sgrng { display:inline-flex; align-items:center; gap:4px; cursor:ns-resize; touch-action:none; user-select:none; -webkit-user-select:none;
+    padding:8px 8px; margin:-8px -2px -8px -4px; border-radius:var(--r-s); transition:background .14s, color .14s; }   /* 세로 패딩 = 탭 히트 ≥40px(규약 §16) · touch-action:none = 드래그 중 페이지 스크롤 차단 */
+  .sgrng svg { color:var(--mut); flex:none; }
+  .sgrng:active { background:rgba(var(--accent-rgb),.10); }
+  .sgstep { position:relative; display:grid; place-items:center; width:var(--btn-sm); height:var(--btn-sm); padding:0; border-radius:var(--r-s); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78); cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; transition:transform .1s, color .14s, border-color .14s; }   /* 30px(--btn-sm)+세로 확장 = 히트 40px(규약 §16 · 재감사7 F7-1) */
+  .sgstep::before { content:""; position:absolute; inset:-5px 0; }
+  .sgstep svg { display:block; width:12px; height:12px; }
+  .sgstep:active { transform:scale(var(--press-m,.9)); color:var(--accent); }
+  .sgstep:disabled { opacity:.3; pointer-events:none; }
+  .sgx { margin-left:auto; }
+  .sg textarea { min-height:54px; font-size:13px; }
+  .sgadd { display:block; background:none; border:none; padding:9px 0; margin-top:2px; font:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--mut); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .15s ease, transform .12s ease; }
+  .sgadd:active { transform:scale(var(--press-s,.85)); color:var(--accent); }
+  .sgadd:disabled { opacity:.3; pointer-events:none; }
+  /* 대사 입력(오디오 = 대사 삽입일 때 노출 — 비우면 AI 제안 · 운영자 260710) */
+  .dialwrap { display:none; margin-top:12px; }
+  .dialwrap.show { display:block; }
+  .dialwrap textarea { min-height:54px; font-size:13px; }
+  .gospec { margin-top:var(--sp-4); font-size:var(--fs-sm); color:var(--mut); line-height:1.7; }   /* 결과물 명세 readout = thumb .gospec 계승(의도적 회색·값만 점등 = §📐 소머리 예외) */
+  .gospec b { color:var(--accent); font-weight:var(--fw-b); }
+  .ref { margin:0 0 16px; }
+  .ref img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }
+  .ref.multi img { margin-bottom:8px; }   /* 다장 = 세로 나열(첨부 순서 = 🔗 범례 순 · 260708) */
+  .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }
+  .refmiss { color:var(--warn); font-size:12px; border:1px dashed var(--line); border-radius:var(--r-s); padding:8px 10px; margin:0 0 8px; }   /* 레퍼런스 부재/실패 = 무음 숨김 폐지 → 슬롯 자리 경고 칩(범례 번호 보존 · 운영자 260708 · 검증1) */
+  /* 다장 레퍼런스 토글 = 체크박스 아닌 글자·on=강조색(운영자 260708 지정) — 참조 이미지 생성 켰을 때만 노출 */
+  .refmulti { display:block; background:none; border:none; padding:10px 0; margin:0 0 0 33px; font:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--mut); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .15s ease, transform .12s ease; }   /* 세로 패딩 = 탭 히트 ≥40px(규약 §16 · 검증9) · 좌 33px = cbox 24+gap 9 광학정렬 */
+  .refmulti[hidden] { display:none; }
+  .refmulti.on { color:var(--accent); }
+  .refmulti:active { transform:scale(var(--press-s,.85)); }
+  /* 리롤 행 = "한 변수만" 미니 고스트 필(.go 패밀리 축소판 — §9-9 한 변수 원칙의 뷰어 실장 · 운영자 260708) */
+  .rrrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:18px 0 4px; }
+  .rrlbl { font-size:var(--fs-label); color:var(--mut); font-weight:var(--fw-x); }
+  .rrbtn { padding:10px 14px; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; color:var(--accent); font-size:var(--fs-label); font-weight:var(--fw-x); font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform .12s ease, background .15s ease, border-color .15s ease; }   /* 세로 패딩 = 탭 히트 ~40px(검증9) */
+  .rrbtn:active { transform:scale(var(--press-s,.85)); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  /* AI 표기 오버레이 동봉(운영자 260708) — 법정 가시 표시 자산을 결과에서 바로 저장 */
+  .ovlrow { margin:16px 0 4px; padding:10px 12px; background:var(--pan); border:1px solid var(--line); border-radius:var(--r-s); }
+  .ovlrow .cap { color:var(--mut); font-size:12px; margin-bottom:8px; }
+  .ovla { display:inline-flex; align-items:center; gap:8px; margin-right:14px; color:var(--accent); font-size:var(--fs-label); font-weight:var(--fw-x); text-decoration:none; -webkit-tap-highlight-color:transparent; }
+  .ovla img { height:44px; width:auto; border:1px solid var(--line); border-radius:var(--r-s); background:rgba(255,255,255,.04); display:block; }
+  .ovla:active { opacity:.7; }
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; }
+  .status.err { color:var(--danger); }
+  .out { margin-top:18px; }
+  .out h1.t { font-size:20px; color:var(--fg); margin:18px 0 6px; }
+  .out h2 { font-size:16px; color:var(--accent); margin:18px 0 6px; }
+  .out h3 { font-size:14px; color:var(--fg); margin:16px 0 6px; }
+  .out p { margin:6px 0; color:var(--mut); }
+  .out p.legend { color:var(--fg); }   /* @ 순서 범례 = 흰색(--fg) — 어느 @가 어떤 이미지인지가 복붙 정확도 직결이라 본문 mut와 분리(260707 2차) */
+  .code { position:relative; background:#0e0f11; border:1px solid var(--line); border-radius:10px; margin:8px 0 14px; }
+  .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#eef7f0; }
+  .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-s); cursor:pointer;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
+  .code button svg { display:block; }
+  .code button:hover { background:rgba(255,255,255,.16); }
+  .code button:active { transform:scale(var(--press-s,.85)); }
+  .code button.copied { color:var(--mut); border-color:rgba(255,255,255,.08); }   /* 복사 완료 영속 표식 = 흰→mut(.dl-done 기틀 계승 · 세션 단위 · 재렌더=새 생성이라 리셋 정상 · 260707 2차) — .done 플래시가 뒤 규칙이라 1.5s간 우선 */
+  .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 반투명 글래스 비침 */
+  /* 빠른메뉴 = 이미지/자막 도구(#rfab) 계승 — 영상 프롬프트에도: 코어(+) 펼치면 웹 렌더 생성 · 코어 위 '-' 최소화(엄지존·iframe→부모 minimizeTool) · 운영자 260628 */
+  #rfab { position:fixed; right:18px; bottom:34%; z-index:70; width:0; height:0; }
+  #rfab .rc { position:absolute; right:0; bottom:0; width:54px; height:54px; border-radius:50%; cursor:pointer;
+    background:rgba(0,0,0,.34); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.4); display:grid; place-items:center;
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    box-shadow:0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
+    transition:transform .25s; -webkit-tap-highlight-color:transparent; }
+  #rfab.open .rc { transform:rotate(135deg); }
+  #rfab .rc svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
+  #rfab .ro { position:absolute; right:7px; bottom:7px; width:35px; height:35px; border-radius:50%; cursor:pointer; color:var(--accent);
+    background:rgba(0,0,0,.34); border:1px solid rgba(var(--accent-rgb),.4); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    display:grid; place-items:center; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+    opacity:0; transform:translate(0,0) scale(.3); pointer-events:none;
+    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
+  #rfab .ro svg { width:18px; height:18px; stroke:currentColor; stroke-width:1.9; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  #rfab .ro[hidden] { display:none; }   /* ⚠️ hidden 봉합 — #rfab .ro{display:grid}가 UA [hidden]{display:none}을 명시도로 이겨 무력화 → kGenFab 등 hidden 토글 정합(명시도 1,2,0>1,1,0·!important 불요·평의회 260628·thumb/ly 통일) */
+  /* 3버튼 반원 아크(이미지 메뉴 thumb #rfab 동일) — 9시=입력포커스 · 10:30=생성 · 12시=탭전환(운영자 260628) */
+  #rfab #kFocusFab { --rp:translate(-66px,-2.5px); }
+  #rfab #kGenFab   { --rp:translate(-47.4px,-47.4px); }
+  #rfab #kTabFab   { --rp:translate(-2.5px,-66px); }
+  #rfab.open .ro { opacity:1; pointer-events:auto; transform:var(--rp,translate(0,-66px)) scale(1); }
+  #rfab.open #kGenFab { transition-delay:.06s; }
+  #rfab.open #kTabFab { transition-delay:.12s; }
+  #rfab .ro:active { transform:var(--rp,translate(0,-66px)) scale(var(--press-m,.9)); }
+  #rfab .rmin { position:absolute; right:13px; bottom:62px; width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--accent);
+    background:rgba(0,0,0,.34); border:0; display:grid; place-items:center;
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }   /* 테두리·box-shadow 제거 + 누름=픽토그램 축소(thumb/ly 260628 패턴 동기화 · 분신술 8) */
+  #rfab .rmin svg { width:15px; height:15px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }
+  #rfab .rmin:active svg { transform:scale(var(--press-pico,.72)); }
+  #rfab.open .rmin { opacity:0; transform:translateY(8px) scale(.3); pointer-events:none; }
+  @media (prefers-reduced-motion:reduce){ #rfab .rc,#rfab .ro,#rfab .rmin { transition:opacity .15s; } #rfab.open .ro{ transform:var(--rp,translate(0,-66px)); } #rfab.open .rmin{ transform:none; } #rfab .rmin:active svg{ transition:transform .09s; } }
+  @media (hover:hover) and (pointer:fine) { #rfab { display:none; } }   /* PC(마우스) = 엄지 빠른메뉴 불필요 → 숨김 */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+</head>
+<body>
+<div class="wrap">
+  <label class="fl">스토리 구성</label><!-- 구 엔진 인라인 태그(.eng Kling 3.0 Omni) = 모델 선택기로 승격 이동(개편 P1 · 260709) -->
+  <div class="scnwrap"><textarea id="scene" maxlength="8000" aria-label="스토리 구성" placeholder=""></textarea><!-- maxlength = api/k.js slice(0,8000)와 정합(초과분 무경고 절단 방지 · B2 #8) --><button class="scnclip" id="sceneClip" type="button" aria-label="붙여넣기"></button></div>
+  <div class="seedrow" style="display:none" aria-hidden="true"><!-- 예시 칩 = 도먼트(운영자 260711 선택값 seedChips=off · 복원 = style 제거) --><!-- 예시 칩 = 배치 승인(운영자 260708) · 채우기 전용(자동 발사 금지) -->
+    <button class="seed" type="button" data-k="satire">풍자 단막</button>
+    <button class="seed" type="button" data-k="news">기사 각색</button>
+    <button class="seed" type="button" data-k="real">실사 장면</button>
+    <button class="seed" type="button" data-k="dial">대사 지정</button>
+  </div>
+  <!-- 모델 선택기 + 설정 축(개편 P1 · 운영자 260710 스펙: 비율→화질→프레임→길이(직접·분막)→표현1/2/3→오디오 · 구도/카메라 = AI 전담 · 축 행은 JS 생성) -->
+  <label class="fl axmodel">비디오 모델</label>
+  <div class="mgrid" id="mgrid" role="group" aria-label="비디오 모델"></div>
+  <div id="axes"></div>
+  <label class="chk"><input type="checkbox" id="refimage" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 참조 이미지 생성 <span class="eng">Gemini 3.1 flash image</span></label>
+  <button class="refmulti" id="refmulti" type="button" aria-pressed="false" hidden>다장 — 인물·배경별 1장씩 (장수만큼 과금)</button>
+  <div class="gospec" id="gospec" aria-live="polite"></div><!-- 스펙 리드아웃 = 발사 전 "뭐가 지정·뭐가 자동" 가시화(개편 P1) -->
+  <button class="go" id="go">영상 프롬프트 생성</button>
+
+  <div class="status" id="status"></div>
+  <div class="out" id="out"></div>
+</div>
+
+<!-- 빠른메뉴(이미지/자막 도구 #rfab 계승) — 코어(+) 펼치면 웹 렌더 생성 · 코어 위 '-' 최소화 -->
+<div id="rfab" aria-label="빠른 메뉴">
+  <button class="ro" id="kFocusFab" type="button" title="입력칸으로 (커서 활성화)"><svg viewBox="0 0 24 24"><path d="M7 10l5-5 5 5M7 14l5 5 5-5"/></svg></button>
+  <button class="ro" id="kGenFab" type="button" title="영상 프롬프트 생성"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9z"/></svg></button>
+  <button class="ro" id="kTabFab" type="button" title="다음 도구 탭으로 전환"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></button>
+  <button class="rc" id="rfabCore" type="button" aria-label="빠른 메뉴 열기"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="rmin" id="rfabMin" type="button" aria-label="최소화" title="최소화 (창 접기)"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+</div>
+
+<script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1·운영자 260628) — 인라인 복제 폐지·단일정본 -->
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+// 상태문구 픽토그램(§🎨 이모지 금지 · 인라인 vertical-align) — 동적문자열은 esc() 동반 innerHTML만(XSS 가드·운영자 260628)
+const PHOTO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg>';
+// 스토리 구성 칸 = [복사][붙여넣기][지우개] 3버튼 분리 (썸네일 attachCopyPaste 동작 통일·운영자 260628 · 복사=내용시 / 붙여넣기=항상 / 지우개=비움→~10초 되돌리기)
+(function () {
+  const ta = $('#scene'), b = $('#sceneClip'); if (!ta || !b) return;
+  b.classList.add('scn-pp');   // 붙여넣기 = 지우개 좌측(46)·항상 붙여넣기(복사로 안 바뀜)
+  const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'scnclip scn-copy scn-hide';   // 복사 = 내용 있을 때만 좌측(78) 별도 노출
+  cp.setAttribute('aria-label', '복사'); cp.title = '복사'; b.parentNode.appendChild(cp);
+  const er = document.createElement('button'); er.type = 'button'; er.className = 'scnclip scn-erase'; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기';
+  b.parentNode.appendChild(er);
+  let undoTimer = null, undoVal = '', prog = false;   // prog = 프로그램적 변경(지움/복원) = 되돌리기창 종료 트리거 아님
+  const setIcon = (el, svg, key) => { if (el._icon !== key) { el.innerHTML = svg; el._icon = key; } };   // 동일 아이콘 재대입 안 함 = 타이핑마다 SVG 재생성(번쩍) 차단(분신술 A4·운영자 260628)
+  const upd = () => {
+    const f = (ta.value || '').trim().length > 0;
+    if (!b.classList.contains('ok')) { setIcon(b, PASTE_SVG, 'paste'); b.setAttribute('aria-label', '붙여넣기'); b.title = '붙여넣기'; }   // 붙여넣기 항상
+    if (!cp.classList.contains('ok')) { setIcon(cp, COPY_SVG, 'copy'); cp.classList.toggle('scn-hide', !f); }   // 복사 = 내용 있을 때만 노출
+    if (!er.classList.contains('scn-undo')) { setIcon(er, ERASE_SVG, 'erase'); er.classList.toggle('scn-off', !f); }
+  };
+  const exitUndo = () => { if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; } er.classList.remove('scn-undo'); er.innerHTML = ERASE_SVG; er.setAttribute('aria-label', '입력 지우기'); er.title = '입력 지우기'; upd(); };
+  er.addEventListener('click', e => { e.preventDefault();
+    if (er.classList.contains('scn-undo')) { prog = true; ta.value = undoVal; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {} exitUndo(); return; }
+    if (!(ta.value || '').length) return;
+    undoVal = ta.value; prog = true; ta.value = ''; ta.dispatchEvent(new Event('input', { bubbles: true })); prog = false; try { ta.focus(); } catch {}
+    er.classList.remove('scn-off'); er.classList.add('scn-undo'); er.innerHTML = UNDO_SVG; er.setAttribute('aria-label', '되돌리기'); er.title = '되돌리기 (직전 입력 복원)';
+    if (undoTimer) clearTimeout(undoTimer); undoTimer = setTimeout(exitUndo, 10000);
+  });
+  cp.addEventListener('click', async e => { e.preventDefault();   // 복사 전용(붙여넣기 안 건드림)
+    try { await navigator.clipboard.writeText(ta.value); cp.innerHTML = CHECK_SVG; cp._icon = 'check'; cp.classList.add('ok'); setTimeout(() => { cp.classList.remove('ok'); upd(); }, 1200); } catch {}
+  });
+  b.addEventListener('click', async e => { e.preventDefault();   // 붙여넣기 전용(기존: 교체)
+    const selS = ta.selectionStart, selE = ta.selectionEnd;   // await 전 캐럿 스냅
+    try { const t = await navigator.clipboard.readText(); if (t) { if (typeof ta.setRangeText === 'function' && typeof selS === 'number') ta.setRangeText(t, selS, selE, 'end'); else ta.value += t; ta.dispatchEvent(new Event('input', { bubbles: true })); } } catch {} upd();   // 캐럿 삽입(덮어쓰기 폐지·운영자 260702)
+  });
+  // 입력 드래프트 영속(260707 2차): 도구모달 닫기 = iframe 리로드로 입력 증발(최소화만 생존) → localStorage 미러·재진입 시 복원(지우개로 비우면 ''가 저장 = 의도 반영·undo 복원도 input 이벤트로 재저장 = 자가 정합)
+  const DKEY = 'k_scene_draft'; let saveT = null;
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(DKEY, ta.value); } catch (e) {} }, 400); };
+  const flush = () => { clearTimeout(saveT); try { localStorage.setItem(DKEY, ta.value); } catch (e) {} };   // 디바운스 꼬리 유실 방지(마지막 타이핑 400ms 내 모달 닫기 · B2 #6)
+  addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  try { const d = localStorage.getItem(DKEY); if (d && !ta.value.trim()) ta.value = d; } catch (e) {}
+  ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); save(); upd(); }); upd();
+})();
+
+// 예시 칩(탭-투-필 · 배치 승인 260708): 빈 칸 = 예문 채움+포커스(편집 전제 — 의도가 잘 담긴 입력의 모범 골격: 로그라인+인물+톤+비율) / 내용 있음 = 흔들림(덮어쓰기 방지 · blank-page 해소가 용도)
+(function () {
+  const SEEDS = {
+    satire: '김정은이 편의점 야간 알바를 하다 진상 손님을 만난다 — 3등신 데포르메 화풍, 코믹 톤, 9:16, 15초',
+    news: '아래 기사를 풍자 단막극으로 각색해줘 — 핵심 인물 1명+리액터 1명, 화풍치환(데포르메), 9:16.\n\n(여기에 기사 붙여넣기)',
+    real: '실사 뉴스룩: 국회 본회의장, 의원들이 몸싸움 직전까지 가는 긴장 장면 — 대사 없이 앰비언트만, 16:9',
+    dial: '편의점 대치 코미디, 이 대사 그대로 — A: "이거 유통기한 지났는데요?" / B: "어제까지였으면 오늘도 괜찮아요." — 9:16'
+  };
+  document.querySelectorAll('.seed').forEach(b => b.addEventListener('click', () => {
+    const ta = $('#scene'); if (!ta) return;
+    if ((ta.value || '').trim()) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); return; }
+    ta.value = SEEDS[b.dataset.k] || ''; ta.dispatchEvent(new Event('input', { bubbles: true })); try { ta.focus(); } catch (e) {}
+  }));
+})();
+// 모델·설정(개편 P1 · 운영자 260710 상세 스펙): 축 순서 = 비율→화질→프레임→길이(+직접 게이지·장면 분막)→표현1→표현2(+한국웹툰)→표현3 네거티브→오디오(+대사).
+// 구도·앵글·무브·조명·환경 = 축 없음 = AI 전담(운영자 "구도는 사용자가 아예 정하지 못하게 — 네가 제일 적합한 구도 선택").
+// K_VALS = functions/api/k.js K_SET·apps/k/01_모델프로필_영상엔진.md 절과 3면 동기(check_refs check_k_models — 한쪽만 고치면 커밋 rc=1).
+const K_MODELS = [
+  { id: 'kling', nm: 'Kling 3.0 Omni' },
+  { id: 'veo', nm: 'Veo 3.1', draft: true },
+  { id: 'seedance', nm: 'Seedance 2.5', draft: true }
+];   // 버전명 = 260709 웹 검색 실측(3.0 계열 최신 · Veo 3.1 · Seedance 2.5) · draft = 실측 전 초안 → 리드아웃 🟡 캡션(감사10)
+// ⚠️ K_VALS 리터럴 구조(닫기 0칸·작은따옴표) = check_k_models 정규식 의존 — 재포맷 금지(재감사9).
+const K_VALS = {
+  '비율': ['9:16', '16:9', '1:1'],
+  '화질': ['720p', '1080p', '2K', '4K'],
+  '프레임': ['60fps', '30fps'],
+  '길이': ['8s', '10s', '15s'],
+  '표현1': ['실사 시네마틱', '포토 에디토리얼'],
+  '표현2': ['없음', '데포르메 3등신', '극화', '수채화', '3D 애니', '미니어처 디오라마', '뉴스릴 빈티지', '인포그래픽', '시사만평'],
+  '세부': ['기본', '게키카', '하드보일드', '시대극', '순정', '명랑', '번짐', '세밀', '수묵', '과슈', '유화', '붓선', '플랫', '판화', '클레이', '로우폴리', '라인', '청사진'],
+  '네거티브': ['AI 티 제거', '손 왜곡 방지', '얼굴 유지', '글자 왜곡 방지', '과장 미소 방지', '배경 고정', '워터마크 방지'],
+  '오디오': ['의성어만', '대사 삽입', '음악 무드']
+};
+const K_DEF = { '비율': '9:16', '화질': '4K', '프레임': '60fps', '길이': '10s', '표현1': '실사 시네마틱', '표현2': '없음', '세부': '기본', '오디오': '의성어만' };   // 운영자 확정 기본값(260710 의성어만 · 260711 화질 4K — 3분류 선택값)
+// 표현2별 세부 화풍(운영자 260710 3차 "극화인데 다음 선택지가 없네" — 이미지 생성 GENI_SUB 개념 이식) · K_VALS['세부'] = 이 전체 합집합(api 패리티 축) · 미등재 화풍 = 세부 행 자체 숨김
+const K_SUB = { '극화': ['기본', '게키카', '하드보일드', '시대극', '순정', '명랑'], '수채화': ['기본', '번짐', '세밀', '수묵', '과슈', '유화'], '시사만평': ['기본', '붓선', '플랫', '판화'], '3D 애니': ['기본', '클레이', '로우폴리'], '인포그래픽': ['기본', '라인', '청사진'] };
+let kModel = 'kling', kSet = Object.assign({}, K_DEF), kNeg = K_VALS['네거티브'].slice(), kLen = 12, kWebtoon = true, kDial = '', kSegOn = false, kSegs = [{ s: 3, txt: '' }, { s: 0, txt: '' }];   // 네거티브 = 기본 전체 선택(운영자 260710 "있으면 다 좋은 것" — 전부 방지 계열·상충 0·Avoid 블록 합류)
+// 분막 산수(마지막 구간 = 나머지 자동 · 구간 최소 3s · 운영자 예 15s = 3+12) — go 핸들러도 써서 최상위 정의
+const segTotal = () => (kSet['길이'] === '직접' ? kLen : parseInt(kSet['길이'], 10));
+const segFixed = () => kSegs.slice(0, -1).reduce((a, g) => a + g.s, 0);
+const segLast = () => segTotal() - segFixed();
+function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이트리스트 재검증)
+  const set = Object.assign({}, kSet);
+  if (set['길이'] === '직접') set['길이'] = segTotal() + 's';
+  if (kSet['표현2'] === '극화' || kSet['표현2'] === '수채화') set['웹툰'] = kWebtoon ? 'ON' : 'OFF';
+  if (!(K_SUB[set['표현2']] || []).includes(set['세부']) || set['세부'] === '기본') delete set['세부'];   // 세부 = 보유 화풍 + 비기본일 때만 전송(기본·비적용 = 마커 노이즈 0)
+  set['네거티브'] = kNeg.slice();
+  return { model: kModel, set,
+    dial: kSet['오디오'] === '대사 삽입' ? kDial.trim() : '',
+    seg: kSegOn ? kSegs.map((g, i) => ({ s: i === kSegs.length - 1 ? segLast() : g.s, txt: g.txt })) : [] };
+}
+(function () {
+  const mg = $('#mgrid'), axes = $('#axes'), spec = $('#gospec');
+  if (!mg || !axes || !spec) return;
+  const KEY = 'k_form2';   // 선택 영속(k_scene_draft 패턴 · 스키마 v2 — 구 k_model/k_set v1 키는 미사용 = 자연 소멸) · 복원 = 화이트리스트 재검증(스테일·주입 차단)
+  const SG_MINUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>';
+  const SG_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>';
+  const SG_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기 X 정본 path
+  const SG_UD = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>';   // 상하 스크럽 어포던스(SVG only)
+  function updateSegBadges() {   // 제스처 중 in-place 갱신 — 재구축은 드래그 대상 노드를 파괴하므로 금지(배지 텍스트만 연쇄 재계산)
+    const bm = document.getElementById('bunmak'); if (!bm) return;
+    let acc = 0;
+    bm.querySelectorAll('b[data-sgb]').forEach(el => {
+      const i = +el.dataset.sgb, last = i === kSegs.length - 1, len = last ? segLast() : kSegs[i].s;
+      el.textContent = acc + '~' + (acc + len) + 's'; acc += len;
+    });
+  }
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (K_MODELS.some(x => x.id === s.m)) kModel = s.m;
+    if (s.set && typeof s.set === 'object') Object.keys(K_VALS).forEach(k => { if (k === '네거티브') return; const v = s.set[k]; if (K_VALS[k].includes(v) || (k === '길이' && v === '직접')) kSet[k] = v; });
+    if (!(K_SUB[kSet['표현2']] || []).includes(kSet['세부'])) kSet['세부'] = '기본';   // 복원 교차검증 — 세부는 현 표현2 보유분만(스테일 조합 봉합)
+    if (s.sv !== 2) kSet['화질'] = K_DEF['화질'];   // 화질 4K 승격(운영자 260711 3분류) 1회 마이그레이션 — 구 저장분(첫 render save()가 1080p를 전 폰에 영속시킨 상태)의 화질만 신 기본으로, 나머지 선택 전부 보존(negV2 선례 · 배선평의회4 ③)
+    if (Array.isArray(s.negV2)) kNeg = s.negV2.filter(v => K_VALS['네거티브'].includes(v)).slice(0, 7);   // negV2 = 기본 전체 선택 개편(운영자 260710) 마이그레이션 — 구 s.neg(부분 선택 저장분)는 1회 무시해 신 기본이 적용되게, 이후 사용자 조정은 영속
+    if (Number.isInteger(s.len) && s.len >= 3 && s.len <= 15) kLen = s.len;
+    if (typeof s.wt === 'boolean') kWebtoon = s.wt;
+    if (typeof s.dial === 'string') kDial = s.dial.slice(0, 300);
+    if (Array.isArray(s.segs) && s.segs.length >= 2 && s.segs.length <= 5 && s.segs.every((g, i) => g && Number.isInteger(g.s) && typeof g.txt === 'string' && (i === s.segs.length - 1 ? g.s >= 0 : g.s >= 3))) kSegs = s.segs.map(g => ({ s: g.s, txt: g.txt.slice(0, 500) }));   // 비-마지막 구간 = 3s 하한 재검증(최종감사2 #4)
+    if (s.segOn === true && segTotal() >= 6) kSegOn = true;
+  } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ m: kModel, set: kSet, negV2: kNeg, len: kLen, wt: kWebtoon, dial: kDial, segOn: kSegOn, segs: kSegs, sv: 2 })); } catch (e) {} };   // sv = 설정 세대 마커(2 = 화질 4K 승격 완료 · 260711)
+  const segValid = () => {   // 길이 축소 시 구간 정합: 뒤 고정 구간부터 걷어 마지막(나머지) ≥3s 확보 · 그래도 안 되면 2구간 리셋
+    while (kSegs.length > 2 && segLast() < 3) kSegs.splice(kSegs.length - 2, 1);
+    if (segLast() < 3) { const t0 = kSegs[0].txt, t1 = kSegs[kSegs.length - 1].txt; kSegs = [{ s: 3, txt: t0 }, { s: 0, txt: t1 }]; }
+    if (segTotal() < 6) kSegOn = false;   // 6s 미만 = 분막 성립 불가(구간 최소 3s×2)
+  };
+  segValid();   // 복원 직후 교차 불변식 강제 — 위조/스테일 저장값의 구간합>총길이(음수 나머지) 봉합(최종감사2 #1 · 유기적 경로는 전 핸들러가 이미 호출)
+  const ta3 = (ph) => { const t = document.createElement('textarea'); t.placeholder = ph; t.setAttribute('autocapitalize', 'off'); t.setAttribute('autocorrect', 'off'); t.setAttribute('spellcheck', 'false'); return t; };
+  let kFocusKey = null;   // 재렌더 포커스 복원(키보드/SR — innerHTML 재구축이 activeElement를 body로 떨굼 · 재감사7 F5-3)
+  const refocus = () => { if (!kFocusKey) return; const el = document.querySelector('[data-fk="' + kFocusKey + '"]'); kFocusKey = null; if (el) try { el.focus({ preventScroll: true }); } catch (e) {} };
+  const chipBtn = (cls, txt, on, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls + (on ? ' on' : ''); b.textContent = txt; b.setAttribute('aria-pressed', String(!!on)); b.dataset.fk = cls + '|' + txt; b.addEventListener('click', () => { kFocusKey = b.dataset.fk; fn(); }); return b; };   // 상태 노출 = aria-pressed(.refmulti 하우스 패턴 — radio 롤 폐기 · 감사6)
+  const rowEl = (name) => { const w = document.createElement('div'); w.className = 'axrow'; const lb = document.createElement('label'); lb.className = 'fl'; lb.textContent = name; w.appendChild(lb); return w; };
+  // 선택박스(.kdd) 라이프사이클 — index .geni-dd 문법 사본(§핵심명령 3-c): 바깥 탭 닫기(캡처)·ESC·재탭 토글 · render()가 행을 재구축하므로 render 진입 시 정리
+  const kddClose = () => { const dd = document.querySelector('.kdd'); if (dd) { const b = dd.parentElement.querySelector('.ksel'); if (b) b.setAttribute('aria-expanded', 'false'); dd.remove(); } document.removeEventListener('pointerdown', kddDoc, true); };
+  const kddDoc = (e) => { const dd = document.querySelector('.kdd'); if (dd && !dd.contains(e.target) && !e.target.closest('.ksel')) kddClose(); };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') kddClose(); });
+  function drawSpec() {   // 리드아웃(발사 전 전체 스펙 가시화 — esc = 고정 배열값이지만 innerHTML 싱크 방어 일관)
+    const m = K_MODELS.find(x => x.id === kModel) || K_MODELS[0];
+    const parts = ['<b>' + esc(m.nm) + '</b>', esc(kSet['비율']), esc(kSet['화질']), esc(kSet['프레임']), esc(kSet['길이'] === '직접' ? segTotal() + 's' : kSet['길이']), esc(kSet['표현1'])];
+    if (kSet['표현2'] !== '없음') parts.push(esc(kSet['표현2']) + (((K_SUB[kSet['표현2']] || []).includes(kSet['세부']) && kSet['세부'] !== '기본') ? '·' + esc(kSet['세부']) : '') + ((kSet['표현2'] === '극화' || kSet['표현2'] === '수채화') ? '(웹툰 ' + (kWebtoon ? 'ON' : 'OFF') + ')' : ''));   // 리드아웃 = 극화·게키카(웹툰 ON) 꼴
+    parts.push(esc(kSet['오디오']));
+    if (kNeg.length) parts.push('네거 ' + kNeg.length + '종');
+    if (kSegOn) parts.push('분막 ' + kSegs.length + '구간');
+    spec.innerHTML = parts.join(' · ') + ' · 구도·카메라 AI 최적';   // 🟡 초안 캡션 제거(운영자 260711 draftBadge=off — K_MODELS draft 데이터는 보존)
+  }
+  function renderSegs() {   // 분막 패널 — 구조 변경 시에만 재구축(textarea input은 state만 갱신 = 포커스 보존)
+    const bm = document.getElementById('bunmak'); if (!bm) return;
+    bm.classList.toggle('show', kSegOn);
+    bm.innerHTML = ''; if (!kSegOn) return;
+    let acc = 0;
+    kSegs.forEach((g, i) => {
+      const last = i === kSegs.length - 1, len = last ? segLast() : g.s;
+      const sg = document.createElement('div'); sg.className = 'sg';
+      const hd = document.createElement('div'); hd.className = 'sghead';
+      // 시간 배지: 비-마지막 = 스크럽(위아래 드래그/휠 = 이 구간 '끝 시간' 조정 — 시작점은 앞 구간 끝에 자동 연쇄·구간1 = 0s 고정·운영자 260710 2차) / 마지막 = 끝 = 총길이 고정(나머지 자동)
+      const rng = document.createElement('span'); if (!last) rng.className = 'sgrng';
+      rng.appendChild(document.createTextNode('구간' + (i + 1) + ' '));
+      const bEl = document.createElement('b'); bEl.dataset.sgb = i; bEl.textContent = acc + '~' + (acc + len) + 's'; if (last) bEl.className = 'sgb-full'; rng.appendChild(bEl);   // 마지막 = 총길이 도달 배지 = warn 골드레몬(운영자 260710)
+      if (!last) {
+        rng.insertAdjacentHTML('beforeend', SG_UD);
+        rng.title = '위아래 드래그 = 이 구간 끝 시간 조정'; rng.setAttribute('role', 'slider'); rng.setAttribute('tabindex', '0');
+        rng.setAttribute('aria-label', '구간 ' + (i + 1) + ' 끝 시간'); rng.setAttribute('aria-valuemin', '3'); rng.setAttribute('aria-valuenow', String(acc + len)); rng.setAttribute('aria-valuemax', String(segTotal() - 3 * (kSegs.length - 1 - i)));
+        let dr = null;
+        const commit = () => { renderSegs(); drawSpec(); save(); };
+        rng.addEventListener('pointerdown', e => { e.preventDefault(); try { rng.setPointerCapture(e.pointerId); } catch (x) {} dr = { y: e.clientY, s0: g.s, free: segLast() }; });
+        rng.addEventListener('pointermove', e => {
+          if (!dr) return;
+          const d = Math.round((dr.y - e.clientY) / 7);   // 위로 7px = +1s(끝 시간 연장 → 다음 구간 시작 자동 이동)
+          const ns = Math.max(3, Math.min(dr.s0 + dr.free - 3, dr.s0 + d));   // 이 구간 ≥3s · 마지막(나머지) ≥3s
+          if (ns !== g.s) { g.s = ns; updateSegBadges(); drawSpec(); }
+        });
+        const end = () => { if (!dr) return; dr = null; commit(); };
+        rng.addEventListener('pointerup', end); rng.addEventListener('pointercancel', end);
+        rng.addEventListener('wheel', e => {   // PC 호버+휠 = 1s 단위
+          e.preventDefault(); const dir = e.deltaY < 0 ? 1 : -1;
+          if (dir > 0 ? segLast() > 3 : g.s > 3) { g.s += dir; updateSegBadges(); drawSpec(); clearTimeout(rng._wt); rng._wt = setTimeout(commit, 350); }
+        }, { passive: false });
+        rng.addEventListener('keydown', e => {   // 키보드 = 화살표(슬라이더 롤 계약)
+          const dir = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1 : (e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -1 : 0);
+          if (!dir) return; e.preventDefault();
+          if (dir > 0 ? segLast() > 3 : g.s > 3) { g.s += dir; kFocusKey = 'sgrng' + i; commit(); }
+        });
+        rng.dataset.fk = 'sgrng' + i;
+      }
+      hd.appendChild(rng);
+      if (last) { const op = document.createElement('span'); op.className = 'opt'; op.textContent = '나머지 자동'; hd.appendChild(op); }
+      const mk = (svg, dis, fn, lab, fk) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'sgstep'; b.innerHTML = svg; b.disabled = dis; b.setAttribute('aria-label', lab); b.title = lab; b.dataset.fk = 'sg' + i + '|' + fk; b.addEventListener('click', () => { kFocusKey = b.dataset.fk; fn(); }); return b; };
+      if (!last) {
+        hd.appendChild(mk(SG_MINUS, g.s <= 3, () => { g.s--; renderSegs(); drawSpec(); save(); }, '구간 1초 줄임 (최소 3초)', 'm'));
+        hd.appendChild(mk(SG_PLUS, segLast() <= 3, () => { g.s++; renderSegs(); drawSpec(); save(); }, '구간 1초 늘림 (나머지 최소 3초 유지)', 'p'));
+      }
+      if (kSegs.length > 2) { const x = mk(SG_X, false, () => { kSegs.splice(i, 1); renderSegs(); drawSpec(); save(); }, '구간 삭제', 'x'); x.classList.add('sgx'); hd.appendChild(x); }   // 마지막 구간도 삭제 가능(운영자 260710 "구간3도 삭제") — 삭제 시 이전 구간이 새 '나머지 자동'(불변식: 이전 s≥3라 새 나머지 ≥3 항상 성립)
+      sg.appendChild(hd);
+      const t = ta3(last ? '이 구간 내용 — 비우면 AI 재량' : '이 구간에서 벌어질 내용');
+      t.value = g.txt; t.setAttribute('aria-label', '구간 ' + (i + 1) + ' 서술'); t.addEventListener('input', () => { g.txt = t.value.slice(0, 500); save(); });   // 라벨 정합(재감사7 F5-2)
+      sg.appendChild(t); bm.appendChild(sg); acc += len;
+    });
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'sgadd'; add.textContent = '+ 구간 추가';
+    add.disabled = !(segLast() >= 6 && kSegs.length < 5);   // 나머지에서 3s 떼고도 3s 남아야(≤5구간)
+    add.title = add.disabled ? '나머지가 6초 이상일 때 추가 가능 (최대 5구간)' : '나머지에서 3초를 떼어 새 구간';   // 비활성 사유(재감사7 F2-2)
+    add.addEventListener('click', () => { kSegs.splice(kSegs.length - 1, 0, { s: 3, txt: '' }); renderSegs(); drawSpec(); save(); });
+    bm.appendChild(add);
+    refocus();
+  }
+  function render() {   // 전체 재구축(칩·구조 변경 시 — 슬라이더 드래그·타이핑은 부분 갱신)
+    kddClose();   // 열린 선택박스 정리(행 재구축으로 DOM은 사라져도 문서 pointerdown 리스너가 잔존하는 것 방지)
+    mg.innerHTML = '';
+    K_MODELS.forEach(m => mg.appendChild(chipBtn('mchip', m.nm, kModel === m.id, () => { kModel = m.id; render(); })));   // ★ 표기 제거(운영자 260710) — 선택 상태는 칩 on이 전담
+    axes.innerHTML = '';
+    { const gl = document.createElement('label'); gl.className = 'fl kgrp'; gl.textContent = '영상 개요'; axes.appendChild(gl); }   // 그룹 소머리(운영자 원 스펙 3)영상 개요{비율·화질·프레임·길이} · 시안 M3 정합 260712)
+    ['비율', '화질', '프레임'].forEach(k => {
+      const w = rowEl(k), ch = document.createElement('div'); ch.className = 'axchips';
+      K_VALS[k].forEach(v => ch.appendChild(chipBtn('axchip', v, kSet[k] === v, () => { kSet[k] = v; render(); })));
+      w.appendChild(ch); axes.appendChild(w);
+    });
+    { // 길이 = 게이지 상시 + 레일 위 프리셋 라벨(8s/10s/15s 클릭) · 직접 드래그 = 라벨 해제 + 값 골드레몬(운영자 260710 "항상 보여지게·라벨 클릭·직접은 노란색") — 칩 행 폐지
+      const w = rowEl('길이');
+      const PRE = [8, 10, 15];
+      const marks = document.createElement('div'); marks.className = 'lmarks';
+      const curT = segTotal(), isDir = kSet['길이'] === '직접';
+      PRE.forEach(v => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'lmark' + (!isDir && curT === v ? ' on' : ''); b.textContent = v + 's';
+        b.style.left = ((v - 3) / 12 * 100) + '%'; b.setAttribute('aria-pressed', String(!isDir && curT === v));
+        b.addEventListener('click', () => { kSet['길이'] = v + 's'; kLen = v; segValid(); render(); });
+        marks.appendChild(b);
+      });
+      const sl = document.createElement('div'); sl.className = 'lenslide show';
+      const rg = document.createElement('input'); rg.type = 'range'; rg.min = '3'; rg.max = '15'; rg.step = '1'; rg.value = String(curT); rg.setAttribute('aria-label', '길이(초)');
+      const bv = document.createElement('b'); bv.textContent = curT + 's'; if (isDir) bv.classList.add('direct');
+      rg.addEventListener('input', () => {   // 드래그 = 재렌더 없이 부분 갱신(끊김 방지 계승) · 프리셋 값에 오면 라벨 자동 점등(직접 해제)
+        const v = +rg.value;
+        if (PRE.includes(v)) { kSet['길이'] = v + 's'; } else { kSet['길이'] = '직접'; kLen = v; }
+        bv.textContent = v + 's'; bv.classList.toggle('direct', kSet['길이'] === '직접');
+        marks.querySelectorAll('.lmark').forEach(m => { const on = kSet['길이'] !== '직접' && parseInt(m.textContent, 10) === v; m.classList.toggle('on', on); m.setAttribute('aria-pressed', String(on)); });
+        segValid(); if (!kSegOn) { const c = document.getElementById('bmcb'); if (c) c.checked = false; } renderSegs(); drawSpec(); save();
+      });
+      sl.appendChild(rg); sl.appendChild(bv); w.appendChild(marks); w.appendChild(sl); axes.appendChild(w);
+    }
+    { // 장면 분막(별개 ON/OFF · 기본 OFF · ON = 아래로 펼침 → 다른 옵션 밀림 · 운영자 260710 7·8번)
+      const w = document.createElement('div'); w.className = 'axrow';
+      const lb = document.createElement('label'); lb.className = 'chk';   // 라벨 강조 = :has(input:checked) 기존 규칙이 담당(데드클래스 제거·최종감사2 #5)
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = 'bmcb'; cb.checked = kSegOn;
+      lb.appendChild(cb);
+      const box = document.createElement('span'); box.className = 'cbox'; box.setAttribute('aria-hidden', 'true');
+      box.innerHTML = '<svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg>';
+      lb.appendChild(box); lb.appendChild(document.createTextNode(' 장면 분막 — 구간별 서술'));
+      cb.addEventListener('change', () => {
+        if (cb.checked && segTotal() < 6) {   // 거부 사유 = 토글 바로 아래 인라인(.refmiss 계승 — 폼 하단 go 버튼은 화면 밖일 수 있음 · 재감사7 F2-1)
+          cb.checked = false;
+          if (!w.querySelector('.refmiss')) { const d = document.createElement('div'); d.className = 'refmiss'; d.textContent = '분막은 6초부터 — 구간 최소 3초 × 2'; lb.after(d); setTimeout(() => d.remove(), 2200); }
+          return;
+        }
+        if (cb.checked) segValid();   // ON 직전 교차 불변식 정리(복원 잔재 [8,0]@10s류 — 최종감사2 반례 B)
+        kSegOn = cb.checked; renderSegs(); drawSpec(); save();
+      });
+      const bm = document.createElement('div'); bm.className = 'bunmak'; bm.id = 'bunmak';
+      w.appendChild(lb); w.appendChild(bm); axes.appendChild(w);
+    }
+    { // 표현1 = 실사 베이스 룩(네모 칩 · 기본 실사 시네마틱)
+      const w = rowEl('표현1 — 실사 베이스'), ch = document.createElement('div'); ch.className = 'axchips';
+      K_VALS['표현1'].forEach(v => ch.appendChild(chipBtn('axchip sq', v, kSet['표현1'] === v, () => { kSet['표현1'] = v; render(); })));
+      w.appendChild(ch); axes.appendChild(w);
+    }
+    { // 표현2 = 칩 그리드 전체 노출(운영자 260711 선택값 ex2UI=chips — 구 드롭다운 .ksel/.kdd 폐지 · 값·전송 계약 = K_VALS 불변) · 세부 = 보유 화풍일 때 칩 행 · 웹툰 토글 = 종전 그대로
+      const w = rowEl('표현2 — 화풍 치환'), ch = document.createElement('div'); ch.className = 'axchips';
+      K_VALS['표현2'].forEach(v => ch.appendChild(chipBtn('axchip', v === '없음' ? '없음' : v, kSet['표현2'] === v, () => { kSet['표현2'] = v; if (!(K_SUB[v] || []).includes(kSet['세부'])) kSet['세부'] = '기본'; render(); })));
+      w.appendChild(ch);
+      const subs = K_SUB[kSet['표현2']] || [];
+      if (subs.length) { const l2 = document.createElement('label'); l2.className = 'fl'; l2.textContent = '세부 화풍'; l2.style.marginTop = '8px'; w.appendChild(l2);
+        const ch2 = document.createElement('div'); ch2.className = 'axchips';
+        subs.forEach(v => ch2.appendChild(chipBtn('axchip', v, kSet['세부'] === v, () => { kSet['세부'] = v; render(); })));
+        w.appendChild(ch2); }
+      const wt = kSet['표현2'] === '극화' || kSet['표현2'] === '수채화';
+      const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'ktg' + (wt ? ' show' : '') + (kWebtoon ? ' on' : ''); tg.dataset.fk = 'ktg';
+      tg.textContent = '한국웹툰 스타일 ' + (kWebtoon ? 'ON' : 'OFF'); tg.setAttribute('aria-pressed', String(kWebtoon));
+      tg.addEventListener('click', () => { kWebtoon = !kWebtoon; kFocusKey = 'ktg'; render(); });
+      w.appendChild(tg); axes.appendChild(w);
+    }
+    { // 표현3 = 네거티브 — 표현2와 동일 선택박스(운영자 260710 2차 "동일한 방식·다중선택") · 다중 = 메뉴 유지 토글(1택 표현2와 차이) · Avoid·🚫 블록 합류 · 매핑 = k-make.md
+      const w = rowEl('표현3 — 네거티브');
+      const negLbl = () => kNeg.length === K_VALS['네거티브'].length ? '전체 — 7종' : (kNeg.length ? kNeg.length + '종 선택' : '없음');
+      const sel = document.createElement('button'); sel.type = 'button'; sel.className = 'ksel'; sel.dataset.fk = 'kneg';
+      sel.setAttribute('aria-label', '네거티브 다중선택'); sel.setAttribute('aria-haspopup', 'listbox'); sel.setAttribute('aria-expanded', 'false');
+      sel.textContent = negLbl();
+      sel.addEventListener('click', () => {
+        if (w.querySelector('.kdd')) { kddClose(); return; }   // 재탭 = 토글 닫기
+        kddClose();
+        const dd = document.createElement('div'); dd.className = 'kdd'; dd.setAttribute('role', 'listbox'); dd.setAttribute('aria-multiselectable', 'true');
+        K_VALS['네거티브'].forEach(v => {
+          const it = document.createElement('button'); it.type = 'button'; it.className = 'kdd-it' + (kNeg.includes(v) ? ' on' : '');
+          it.setAttribute('role', 'option'); it.setAttribute('aria-selected', String(kNeg.includes(v))); it.textContent = v;
+          it.addEventListener('click', e => {   // 다중선택 = 메뉴 안 닫고 색 토글 · 라벨·리드아웃·저장 즉시 동기(전체 render는 메뉴를 부수므로 부분 갱신)
+            e.stopPropagation();
+            kNeg = kNeg.includes(v) ? kNeg.filter(x => x !== v) : kNeg.concat(v);
+            const on = kNeg.includes(v); it.classList.toggle('on', on); it.setAttribute('aria-selected', String(on));
+            sel.textContent = negLbl(); drawSpec(); save();
+          });
+          dd.appendChild(it);
+        });
+        w.appendChild(dd); sel.setAttribute('aria-expanded', 'true');
+        setTimeout(() => { document.addEventListener('pointerdown', kddDoc, true); try { (dd.querySelector('.on') || dd.firstElementChild).focus({ preventScroll: true }); } catch (e) {} }, 0);
+      });
+      w.appendChild(sel); axes.appendChild(w);
+    }
+    { // 오디오(기본 의성어만 = 한글 정확도 · 대사 삽입 = 입력칸 노출[비우면 AI 제안·📌 표시] · 운영자 260710)
+      const w = rowEl('오디오'), ch = document.createElement('div'); ch.className = 'axchips';
+      K_VALS['오디오'].forEach(v => ch.appendChild(chipBtn('axchip', v === '의성어만' ? '의성어만 — 한글 정확도' : v, kSet['오디오'] === v, () => { kSet['오디오'] = v; render(); })));
+      w.appendChild(ch);
+      const dw = document.createElement('div'); dw.className = 'dialwrap' + (kSet['오디오'] === '대사 삽입' ? ' show' : '');
+      const dt = ta3('대사 원문 그대로 — 비우면 장면에 맞는 한국어 대사를 AI가 제안(📌에 표시)'); dt.value = kDial; dt.setAttribute('aria-label', '대사 입력');
+      dt.addEventListener('input', () => { kDial = dt.value.slice(0, 300); save(); });
+      dw.appendChild(dt); w.appendChild(dw); axes.appendChild(w);
+    }
+    // 다장 레퍼런스 = kling 전용(비Kling = @ 문법 없음 → 🔗 범례 캡션과 어긋남 · 감사7 F2)
+    const rm = $('#refmulti'), ri = $('#refimage');
+    if (rm && ri) { const ok = kModel === 'kling'; rm.hidden = !ri.checked || !ok; if (!ok) { rm.classList.remove('on'); rm.setAttribute('aria-pressed', 'false'); } }
+    renderSegs(); drawSpec(); save(); refocus();
+  }
+  render();
+})();
+// 최소 마크다운 렌더: ``` 펜스 = 코드블록(복사 버튼), 그 외 #/##/### 헤딩 + 문단.
+function renderMd(md) {
+  const parts = md.split('```');
+  const unbal = parts.length % 2 === 0;   // 펜스 홀수(닫힘 누락·산문 속 리터럴 ```) = 마지막 세그먼트를 코드 취급하면 이후 문서 전체가 pre로 붕괴 → 텍스트로 강등(260707 2차)
+  let html = '';
+  parts.forEach((part, i) => {
+    if (i % 2 === 1 && !(unbal && i === parts.length - 1)) {                    // 코드블록
+      let code = part;
+      const nl = code.indexOf('\n');
+      const first = nl >= 0 ? code.slice(0, nl).trim() : '';
+      if (nl >= 0 && (first === '' || (first.length <= 24 && /^[a-zA-Z][a-zA-Z0-9 .:+_-]*$/.test(first)))) code = code.slice(nl + 1);   // 인포스트링 줄 제거 — ```text 외에 ```text 9:16(태그 잔여 복사 누출)·``` 단독(선행 빈 줄)까지 방어(260707 2차 · 실프롬프트 첫 줄은 한국어/@라 오탐 없음, 24자 상한 = 영문 테일 문장 보호)
+      code = code.replace(/\s+$/, '');
+      const enc = encodeURIComponent(code);
+      html += `<div class="code"><button data-c="${enc}" aria-label="복사" title="복사">${COPY_SVG}</button><pre>${esc(code)}</pre></div>`;
+    } else {
+      part.split('\n').forEach(line => {
+        const t = line.trim();
+        if (!t) return;
+        if (t.startsWith('### ')) html += `<h3>${esc(t.slice(4))}</h3>`;
+        else if (t.startsWith('## ')) html += `<h2>${esc(t.slice(3))}</h2>`;
+        else if (t.startsWith('# ')) html += `<h1 class="t">${esc(t.slice(2))}</h1>`;
+        else if (t.startsWith('@ 순서')) html += `<p class="legend">${esc(t)}</p>`;   // @ 범례 = 본문 mut보다 또렷하게(--fg · k-make.md @절과 짝 · 260707 2차)
+        else {
+          // 금지 문법 누출 폴백(k-make.md가 표·굵게를 금지하나 소프트 지시 — 모델이 흘리면 raw 노출 대신 읽히게 · 260707)
+          let txt = t;
+          if (/^\|.*\|$/.test(txt)) txt = txt.replace(/^\||\|$/g, '').split('|').map(s => s.trim()).filter(Boolean).join(' · ');
+          txt = txt.replace(/\*\*([^*]+)\*\*/g, '$1');
+          html += `<p>${esc(txt)}</p>`;
+        }
+      });
+    }
+  });
+  return html;
+}
+
+// 복사 표식 영속(260707 2차): DLED(.dl-done) 기틀의 k판 — 키 = 블록 원문 해시. localStorage 백킹이라 재열람 복원(restoreLast) 후에도 "이미 붙인 샷" 표식이 산다(새 생성 = poll 성공 시 리셋).
+const CKEY = 'k_copied';
+const ckHash = s => { let x = 5381; for (let i = 0; i < s.length; i++) x = (x * 33 ^ s.charCodeAt(i)) >>> 0; return x.toString(36); };
+const ckLoad = () => { try { return new Set(JSON.parse(localStorage.getItem(CKEY) || '[]')); } catch (e) { return new Set(); } };
+const ckAdd = k => { try { const s = ckLoad(); s.add(k); localStorage.setItem(CKEY, JSON.stringify([...s])); } catch (e) {} };
+function wireCopy() {
+  const seen = ckLoad();
+  document.querySelectorAll('.code button').forEach(b => {
+    const txt = decodeURIComponent(b.dataset.c), key = ckHash(txt);
+    if (seen.has(key)) b.classList.add('copied');   // 재렌더·재열람 복원
+    b.onclick = () => {
+      const ok = () => { b.innerHTML = CHECK_SVG; b.classList.add('done', 'copied'); ckAdd(key);   // copied = 영속 mut 표식(멀티샷 왕복 중 붙인 샷 추적 · .dl-done 전 앱 기틀 계승 = 전 흰색·후 mut)
+        setTimeout(() => { b.innerHTML = COPY_SVG; b.classList.remove('done'); }, 1500); };
+      navigator.clipboard.writeText(txt).then(ok).catch(() => {   // iframe/권한 거부 = execCommand 폴백(지침 §9 HTML 산출물과 동일 패턴) — 실패를 성공처럼 두지 않음
+        try { const t = document.createElement('textarea'); t.value = txt; t.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(t); t.focus(); t.select();
+          const done = document.execCommand('copy'); t.remove(); if (done) ok(); } catch (e) { /* 폴백도 실패 = 무표식(거짓 체크 금지) */ }
+      });
+    };
+  });
+}
+
+const LKEY = 'k_last_out';   // 재열람 키(260707 2차): 닫기·새로고침 = iframe 파기로 결과 증발 → 마지막 결과 경로를 저장해 재진입 복원(부모 최소화 복원이 못 덮는 갭 계층 · index REVISING/loadRevising 선례)
+async function renderOut(md, refPath, outEl) {   // 결과 렌더 공통(폴 성공·재열람 재사용 · 260707 2차)
+  let html = renderMd(md);
+  if (refPath) {
+    // 직영 레퍼런스: R2 URL(ref.json — urls 배열 = 다장·url 단수 = 하위호환) 우선 · 없으면 git 폴백(ref.jpg). (Apps Script/Drive 제거·260621 · 다장 260708)
+    let srcs = [refPath];
+    try { const jr = await fetch(refPath.replace(/ref\.jpg$/, 'ref.json') + '?t=' + Date.now()); if (jr.ok) { const j = await jr.json(); if (j && Array.isArray(j.urls) && j.urls.length) srcs = j.urls; else if (j && j.url) srcs = [j.url]; } } catch (e) { /* 폴백 */ }
+    const cells = srcs.map((u, ix) => {
+      if (!u) return '<div class="refmiss">레퍼런스 ' + (ix + 1) + '번 생성/업로드 실패 — 🔗 범례 순서는 유지(이 장만 빼고 첨부)</div>';   // null 슬롯 = 범례 번호 보존(검증1 — 압축 금지)
+      const bust = u.includes('?') ? '' : '?t=' + Date.now();
+      const rs = (u + bust).replace(/"/g, '%22');   // 속성 인젝션 싱크 봉합(자체 R2라 실위험 낮음 — 방어적 · B2 #7)
+      return '<img src="' + rs + '" data-ix="' + (ix + 1) + '">';
+    }).join('');
+    const okN = srcs.filter(Boolean).length;   // 결손 시 "1:1" 단언 금지 — 정직 캡션(검증7)
+    html = '<div class="ref' + (srcs.length > 1 ? ' multi' : '') + '">' + cells + '<div class="cap">' + PHOTO_SVG + ' 레퍼런스 이미지' + (srcs.length > 1 ? (okN === srcs.length ? ' ×' + srcs.length + ' — 첨부 순서 = 🔗 범례와 1:1' : ' ' + okN + '/' + srcs.length + '장 — 실패 슬롯 자리 표시(범례 번호 기준·수동 보충)') : '') + '</div></div>' + html;
+  }
+  // AI 표기 오버레이 동봉(운영자 260708) — ⚙️ 비율에 맞는 PNG(불명·둘 다 언급 = 둘 다 · 정본 apps/k/assets → build-viewer 사본 viewer/assets/k)
+  const has916 = /9\s*:\s*16/.test(md), has169 = /16\s*:\s*9/.test(md);
+  const ovs = has916 === has169 ? ['916', '169'] : (has916 ? ['916'] : ['169']);
+  const OVL_V = '?v=260708';   // 정적 버스트 — 오버레이(법정 문구)는 고정 파일명·거의 불변이라 캐시 OK, make_overlay 재생성 시에만 이 상수 bump(지침 §8-1 런북 · 검증8)
+  html += '<div class="ovlrow"><div class="cap">' + PHOTO_SVG + ' AI 표기 오버레이 — CapCut 최상단 레이어(가시 표시 의무)</div>' + ovs.map(v => '<a class="ovla" download href="assets/k/ai_overlay_' + v + '.png' + OVL_V + '"><img src="assets/k/ai_overlay_' + v + '.png' + OVL_V + '" alt="AI 표기 오버레이 ' + (v === '916' ? '9:16' : '16:9') + '"><span>' + (v === '916' ? '9:16' : '16:9') + ' 저장</span></a>').join('') + '</div>';
+  outEl.innerHTML = html;
+  wireCopy();
+  // 레퍼런스 로드 실패 = 그 장 자리에 경고 칩(공유 캡션 오염 금지 — 검증4 B · 리스너는 innerHTML 직후 동일 틱 부착이라 레이스 없음)
+  outEl.querySelectorAll('.ref img').forEach(im => im.addEventListener('error', () => { const d = document.createElement('div'); d.className = 'refmiss'; d.textContent = '레퍼런스 ' + (im.dataset.ix || '') + '번 이미지 없음/로드 실패 — @ 첨부 주의'; im.replaceWith(d); }, { once: true }));
+  // 리롤 행 — "한 변수만"(§9-9) 원탭 재발사: 같은 장면 + [리롤: 축] 마커(api 화이트리스트 · 운영자 260708)
+  const rr = document.createElement('div'); rr.className = 'rrrow';
+  rr.innerHTML = '<span class="rrlbl">다시 뽑기 — 한 변수만:</span>' + ['카메라', '조명', '액션', '화풍', '오디오'].map(a => '<button type="button" class="rrbtn" data-ax="' + a + '">' + a + '</button>').join('');
+  outEl.appendChild(rr);
+  rr.querySelectorAll('.rrbtn').forEach(b => b.onclick = () => {
+    const g = $('#go');
+    if (!g || g.disabled || _curStop) return;   // 진행 중·연타 = stale 축 잔류 봉합(detach된 행의 잔여 핸들러 경로 · 검증5 F3)
+    if (!$('#scene').value.trim()) { errStatus('내용을 입력해주세요'); return; }   // 빈 입력 리롤 = 복원 결과 소거 사고 차단(검증4 ⑥ — 재열람 화면 보존)
+    _reroll = b.dataset.ax; g.click(); try { g.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  });
+}
+let _curStop = null;   // 현재 진행 폴 중단 핸들 — 재시도(재클릭)로 새 폴 시작 시 옛 폴 멈춰 상태표시 충돌·중복 폴 차단
+let _fired = false;    // 이번 세션 발사 이력 — restoreLast가 발사 요청 await 창(아직 _curStop 미설정)에 지난 결과를 덮어그리는 잔여 레이스 봉합(최종감사2 #2)
+function poll(outPath, refPath) {
+  if (_curStop) _curStop();   // 재시도: 이전 폴 중단
+  const t0 = Date.now(), status = $('#status'), out = $('#out');
+  const budget = 1800;   // 컴팩트 백스톱 — 실패는 error.log로 즉시(아래) → budget은 '워크플로 증발'만 대비. 1800s = 잡 상한 30분과 통일(비-ref도 타임아웃 폴오버·재시도 붙으면 960s 초과 성공 가능 — B2 실측 · 초과 유실은 재열람(restoreLast)이 2차 안전망 · 260707 2차)
+  const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = kmake 실패 메시지(있으면 즉시 표시 — budget 다 안 기다림·260619)
+  let live = true; const stop = () => { live = false; clearInterval(disp); status.removeAttribute('aria-busy'); if (_curStop === stop) _curStop = null; }; _curStop = stop;   // 종료 시 잔존 핸들 해제 — 완료 후 재클릭·리롤이 '생성 중' 재확인 암으로 오인되는 것 차단(암은 진행 중에만 · 260708)
+  status.setAttribute('aria-busy', 'true');   // 생성 폴 진행 표식(ly goWait 짝) — 부모 뷰어 자동잠금이 '제작중'으로 읽어 보류(운영자 260707) · 해제 = stop(완료·실패·초과·재시도 전 경로)
+  const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
+    if (!live) return;
+    const sec = Math.round((Date.now() - t0) / 1000);
+    if (sec > budget) { stop(); status.textContent = '표시 시간 초과 — 생성은 계속 돌고 있을 수 있어. 잠시 뒤 다시 열어봐(바로 재클릭 = 이중 발사 · Actions 로그로 확인 가능)'; status.classList.add('err'); return; }
+    status.innerHTML = WAIT_SVG + ' /k 생성 중… ' + sec + 's' + (refPath ? ' (레퍼런스 이미지 포함 — 최대 ~15분)' : ' (보통 1–3분)');
+  };
+  const disp = setInterval(draw, 1000); draw();
+  const tick = async () => {
+    if (!live) return;
+    // 1) 실패 먼저 — error.log 뜨면 즉시 에러 표시(budget 다 안 기다림). SPA 폴백(index.html) HTML은 무시.
+    try {
+      const er = await fetch(errPath + '?t=' + Date.now());
+      if (er.ok) {
+        const ect = (er.headers.get('content-type') || '').toLowerCase();
+        const em = await er.text();
+        const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
+        if (em && em.trim() && !eHtml) { stop(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = ''; return; }
+      }
+    } catch (e) { /* 재시도 */ }
+    // 2) 결과 확인
+    try {
+      const r = await fetch(outPath + '?t=' + Date.now());
+      if (r.ok) {
+        const ct = (r.headers.get('content-type') || '').toLowerCase();
+        const md = await r.text();
+        // 결과 md가 아직 없으면 Pages가 index.html(SPA 폴백·200)을 줌 → 결과로 오인 시 '완료 (0s)'에
+        // 페이지 HTML 덤프됨. HTML 응답은 무시하고 진짜 마크다운만 통과.
+        const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
+        if (md && md.trim() && !isHtml) {
+          stop();
+          status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)';
+          try { localStorage.removeItem(CKEY); } catch (e) {}   // 새 생성 = 복사 표식 리셋(옛 표식이 새 결과 오염 방지 · 재열람 복원은 유지)
+          if (refPath) _lastRef = refPath;   // 직전 참조 이월 슬롯(리롤이 재사용 · 검증5 F1)
+          await renderOut(md, refPath, out);
+          try { localStorage.setItem(LKEY, JSON.stringify({ out: outPath, ref: refPath || null, ts: Date.now() })); } catch (e) {}   // 재열람용 마지막 결과 경로(260707 2차)
+          try { out.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}   // 완료 = 결과 첫머리로(대기 중 스크롤 이탈 복귀 · 260707 2차)
+          return;
+        }
+      }
+    } catch (e) { /* 아직 — 재시도 */ }
+    if (live) setTimeout(tick, 5000);
+  };
+  tick();
+}
+
+function errStatus(m) {   // 전송 막힘 = 메시지를 버튼 안에 빨강 액티브로 띄우며 흔들고 1.7s 뒤 원복(thumb errStatus 통일·운영자 260622)
+  const s = $('#status'); if (s) { s.textContent = ''; s.classList.remove('err'); }   // 버튼 밑 별도 메시지 폐지 — 버튼 안에 표시
+  const g = document.getElementById('go'); if (!g) return;
+  if (!g.dataset.label) g.dataset.label = g.textContent;   // 원래 라벨 보존
+  clearTimeout(g._errT); g.classList.remove('firing'); g.removeAttribute('aria-busy');
+  g.textContent = m; g.setAttribute('aria-live', 'assertive');   // 메시지 = 버튼 안에
+  g.classList.add('err'); g.classList.remove('shake'); void g.offsetWidth; g.classList.add('shake');
+  g._errT = setTimeout(() => { g.classList.remove('err', 'shake'); g.textContent = g.dataset.label; }, 1700);
+}
+// 다장 레퍼런스 토글(운영자 260708 — 체크박스 아닌 글자·on=강조색) + 리롤 축 전달 슬롯 + 직전 참조 이월(리롤 재사용)
+let _reroll = '', _lastRef = null;
+(function () {
+  const ri = $('#refimage'), rm = $('#refmulti'); if (!ri || !rm) return;
+  try { const v = localStorage.getItem('k_refimg'); if (v === '0' || v === '1') ri.checked = v === '1'; } catch (e) {}   // 영속 복원(기본 = HTML checked ON · 저장분 = 그 선택 존중 · 별도 키 = k_form2 save 재작성과 절연 · 260711)
+  ri.addEventListener('change', () => { rm.hidden = !ri.checked || kModel !== 'kling'; if (rm.hidden) { rm.classList.remove('on'); rm.setAttribute('aria-pressed', 'false'); }
+    try { localStorage.setItem('k_refimg', ri.checked ? '1' : '0'); } catch (e) {} });   // 체크 영속 = 별도 키(k_form2는 render마다 save()가 새 객체로 재작성 = 편승 시 씻김)   // 참조 생성 꺼지면 다장도 접힘·해제 + 다장 = kling 전용(감사7 F2) · 체크상태 영속(운영자 OFF가 재오픈에 유지 — 기본 ON 불변 · 과금 함정 봉합 · 배선평의회4 ④)
+  rm.addEventListener('click', () => { const on = rm.classList.toggle('on'); rm.setAttribute('aria-pressed', String(on)); });
+  ri.dispatchEvent(new Event('change'));   // 부팅 동기 — 참조 생성 기본 ON(운영자 260711 refimgDef=on · 세션 단위)이라 다장 노출을 모델에 맞춰 정렬
+})();
+$('#go').onclick = async () => {
+  const status = $('#status'); const g = document.getElementById('go');
+  // 폴 진행 중 재클릭 = 재확인 암(260707 2차 · armCancelThumb 재확인 계승): 1탭 = 경고 라벨 4s, 그 안 2탭 = 진짜 재발사(옛 잡은 서버서 계속 돌아 이중 산출 가능 — 오타 수정 재발사 탈출구는 유지)
+  if (_curStop && !g._arm) { if (!g.dataset.label) g.dataset.label = g.textContent; g.textContent = '생성 중 — 다시 누르면 재발사'; g._arm = setTimeout(() => { g._arm = null; g.textContent = g.dataset.label; }, 4000); return; }
+  if (g._arm) { clearTimeout(g._arm); g._arm = null; g.textContent = g.dataset.label || g.textContent; }
+  status.classList.remove('err'); $('#out').innerHTML = '';
+  const reroll = _reroll; _reroll = '';   // 읽는 즉시 비움 — 검증 실패·다음 일반 발사에 축 마커 잔류 오염 방지(260708)
+  const scene = $('#scene').value.trim();
+  if (!scene) return errStatus('내용을 입력해주세요');   // 빈 입력 = 버튼 안 빨강+흔들림(thumb 통일·운영자 문구)
+  { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(헛발사 방지·thumb 통일)
+  $('#go').disabled = true; status.textContent = '생성 중…'; _fired = true;   // await 전 동기 세팅(재열람 레이스 가드 · 최종감사2 #2)
+  try {
+    const isReroll = !!reroll;
+    const refimage = !isReroll && $('#refimage').checked;   // 리롤 = 참조 재생성 강제 off(Gemini 재과금 + 재생성 = 다른 얼굴 → 정체성 앵커 파괴 — §9-9 ⓒ 정신 · 검증5 F1)
+    const refmulti = refimage && $('#refmulti').classList.contains('on');   // 다장 = 참조 생성 on일 때만 유효(api가 마커 부착)
+    const res = await fetch('/api/k', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ scene, refimage, refmulti, reroll }, kPayload())) });   // 모델·설정·대사·분막(개편 P1) — 서버가 화이트리스트 재검증 후 마커 부착
+    const j = await res.json();
+    if (!res.ok || j.error) { status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); return; }
+    poll(j.out, isReroll ? _lastRef : (j.refimage ? j.ref : null));   // 리롤 결과엔 직전 참조를 이월 표시(첫 생성분 재사용 — R2 URL 안정 · 검증5 F1 스펙A)
+  } catch (e) {
+    status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err');
+  } finally { $('#go').disabled = false; }
+};
+// 재열람(260707 2차): 닫기·새로고침 = iframe 파기로 결과 증발 → 마지막 결과(TTL 24h)를 재진입 시 복원(index REVISING/loadRevising 선례 · 새 생성 시작 전까지만 — 화면 요소 신설 0·기존 #out/#status 재사용)
+(async function restoreLast() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LKEY) || 'null');
+    if (!s || !s.out || Date.now() - (s.ts || 0) > 86400e3) return;
+    const r = await fetch(s.out + '?t=' + Date.now()); if (!r.ok) return;
+    const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
+    const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));   // SPA 폴백(index.html) 오인 차단 = poll과 동일 가드
+    if (!md || !md.trim() || isHtml) return;
+    if (_fired || _curStop || $('#out').innerHTML) return;   // 새 생성이 이미 시작·표시됐으면 양보(레이스 가드 — _fired = 발사 await 창 커버·최종감사2 #2)
+    const d = new Date(s.ts), p2 = n => String(n).padStart(2, '0');
+    $('#status').innerHTML = OK_SVG + ' 지난 결과 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ' (새로 생성하면 대체)';
+    if (s.ref) _lastRef = s.ref;   // 재열람 참조도 이월 슬롯에(리롤 재사용 · 검증5 F1)
+    await renderOut(md, s.ref, $('#out'));
+  } catch (e) { /* 재열람은 보조 — 실패 무시(다음 생성에 영향 0) */ }
+})();
+// 빠른메뉴(thumb/ly #rfab 계승): 코어(+) 토글 · 생성 = 웹 렌더 생성(#go) · '-' = iframe→부모 minimizeTool(동일출처)
+(function(){
+  const rfab = $('#rfab'), core = $('#rfabCore'), gen = $('#kGenFab'), focusFab = $('#kFocusFab'), tabFab = $('#kTabFab'), rmin = $('#rfabMin');
+  if (!rfab || !core) return;
+  core.addEventListener('click', e => { e.stopPropagation(); rfab.classList.toggle('open'); });
+  document.addEventListener('click', e => { if (!rfab.contains(e.target)) rfab.classList.remove('open'); });
+  if (focusFab) focusFab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); const s = $('#scene'); if (s) { try { s.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {} try { s.focus(); } catch (_) {} } });   // 입력칸 커서 활성화(thumb #rfab2 계승)
+  if (gen) gen.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); const g = $('#go'); if (g) g.click(); });   // 생성 = 화면 주요 액션(웹 렌더)
+  if (tabFab) { if (window.parent === window) { tabFab.style.display = 'none'; }   // 단독(모달 아님) = 탭 없음 → 숨김
+    else tabFab.addEventListener('click', e => { e.stopPropagation(); rfab.classList.remove('open'); try { const tabs = [...parent.document.querySelectorAll('#toolTabs .tooltab')]; const i = tabs.findIndex(t => t.classList.contains('on')); const next = tabs[(i + 1) % tabs.length]; if (next) next.click(); } catch (_) {} }); }   // 탭전환 = 다음 탭 순환(구 find 첫-비활성은 3탭 체제서 track 도달 불가 — B2 #9 · 260707 2차)
+  if (rmin) { if (window.parent === window) { rmin.style.display = 'none'; }   // 단독(모달 아님) = 최소화 무의미 → 숨김
+    else rmin.addEventListener('click', e => { e.stopPropagation(); try { if (parent.minimizeTool) parent.minimizeTool(); } catch (_) {} }); }
+})();
+</script>
+<script src="cscroll.js"></script>
+</body>
+</html>
