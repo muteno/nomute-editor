@@ -8635,21 +8635,7 @@ const brkBoost = c => {   // 긴급 부스트 나이 램프: <24h = ×3.0 그대
   if (ageH >= BOOST_RAMP_END_H) return 1;
   return 1 + (BREAKING_RANK_BOOST - 1) * (BOOST_RAMP_END_H - ageH) / (BOOST_RAMP_END_H - BADGE_MAX_AGE_H);
 };
-// ── 나이 하드 감쇠(ageMul · 운영자 260713 "24시간 넘으면 그건 news 아님"): 12h 조금씩 → 16h 기울기 강화 → 24h+ 수집매체 무관 상단 배제 ──
-//    문제(스샷): cross^1.3 볼록가점이 timeAcc를 압도 — cr59·24h(통일부 대북협조)가 누적 1위 점유. timeAcc(24h)=.137인데 crossConvex(59)≈200으로 신규 다매체(cross~10=20)의 10배 → 시간이 매체수를 못 이김.
-//    timeAcc(발행 Hill)와 별개 곱셈축: timeAcc는 <12h 완만 감점 담당(불변) · ageMul은 12h 후 가속·24h 붕괴 전담(cross·OUT하한을 곱으로 눌러 이김). OUT은 12~16h 대형 보호 유지, 16h+는 ageMul이 크러시(역할 분리).
-//    ≤12h=1(신규존·12h이하 무영향 = 기존 <12h 튜닝 회귀 0) · 12~16h 로그이징(1→.90 조금씩) · 16h+ 지수붕괴(.90→24h .08→이후 계속 반감).
-//    실측(rank_sim 260713): cr59·24h 92.1→7.4(스샷 최상위→4위·기준선 48.8 밑) · 시간표 16h 211·18h 90·20h 39·24h 7.4 · 극단 cr100·24h=15.2·cr80속보 26h=9.7 전부 기준선 밑(≤24h 속보만 brkBoost×3로 ~2h 잔류=긴급 가시성 260628 의도·26h 침몰). 신규 칼럼(fastScore)·진입·배지·글로우·표시 cross 0 변경 = 누적 랭킹 시간항 전용(§8 260713).
-const AGE_SOFT_H = 12, AGE_STEEP_H = 16, AGE_HARD_H = 24, AGE_STEEP_MUL = 0.90, AGE_HARD_MUL = 0.08;   // 감점시작·급이징시작·하드배제 도달선(운영자 12/16/24) · 16h배율(조금씩 착지)·24h배율(수집매체 무관 침몰 착지). 조정 가능(§8 260713).
-const _ageK = Math.log(AGE_HARD_MUL / AGE_STEEP_MUL) / (AGE_HARD_H - AGE_STEEP_H);   // 지수붕괴 상수 = 16h→24h가 STEEP_MUL→HARD_MUL 정확 통과하게 유도(앵커 바꾸면 자동 정합·매직값 아님)
-const ageMul = c => {   // 누적 랭킹 나이 배율 ∈(0,1] — scScore 곱셈항. 나이축 = 배지·OUT·부스트와 동일 max(발행,수집) — first_seen 승계 역전 방어(§5 ②-b).
-  const fsT = Date.parse(c.first_seen || ''), pubAge = Math.max(0, (Date.now() - scTs(c)) / 3600000);
-  const a = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);
-  if (a <= AGE_SOFT_H) return 1;
-  if (a <= AGE_STEEP_H) return 1 - (1 - AGE_STEEP_MUL) * Math.log2(1 + (a - AGE_SOFT_H) / (AGE_STEEP_H - AGE_SOFT_H));   // 12~16h 로그이징(초반 완만 = 운영자 "조금씩")
-  return AGE_STEEP_MUL * Math.exp(_ageK * (a - AGE_STEEP_H));   // 16h+ 지수붕괴(24h AGE_HARD_MUL 통과·이후 계속 = 운영자 "24h 넘으면 수집매체 관계없이 안 뜨게")
-};
-const scScore = c => crossConvex(c) * timeAccOut(c) * scFollow(c) * gradeW(c) * brkBoost(c) * ageMul(c);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점[timeAccOut = 아웃라이어 감쇠하한 포함 · 비아웃라이어는 timeAcc 동일값] × AI경중 × [긴급이면 부스트(나이 램프)] × 나이 하드 감쇠[ageMul = 12h조금→16h급→24h+ 수집매체 무관 침몰 · 운영자 260713]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트, 24h+는 매체수 무관 후퇴.
+const scScore = c => crossConvex(c) * timeAccOut(c) * scFollow(c) * gradeW(c) * brkBoost(c);   // 누적(좌) = 중요(cross 볼록 × 연속보도) × 최신감점[timeAccOut = 아웃라이어 감쇠하한 포함 · 비아웃라이어는 timeAcc 동일값] × AI경중 × [긴급이면 부스트(나이 램프)]. 목적 2축(중요·긴급)을 한 점수에 — 신규=핀, 누적=발행량+긴급부스트.
 let scRT = {};   // 정렬 중 픽 상태 참조용(renderScrap이 채움)
 // pinB = 확정 breaking & 아직 안 픽이면 1(픽하면 0). 누적칼럼 강제핀은 260617 제거 — 이 값은 pinFresh(신규칼럼 최신속보 핀)에서만 씀.
 const pinB = c => { const r = scRT[candId(c)] || {}; return (isBreaking(c) && !r.picked && !r.acked) ? 1 : 0; };   // 확인(✓)·픽 = 핀 해제(상단 고정 안 함 — 확인=처리됨, 운영자 260619)
