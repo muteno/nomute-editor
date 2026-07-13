@@ -8253,8 +8253,17 @@ function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대
 // 실패 카드 두 버튼 배선(운영자 260711 스왑 — 체크가 '진행'처럼 읽혀 애매하던 것 교정: ✓ = 재시도(진행) · Failed 칩 = 끄기(무시)).
 function wireFailChip(fb, c) {   // Failed 칩 = 끄기(무시): 탭 = 트레이서 빼고 수집함 칼럼 제자리 복귀(requeueFail · Failed 딱지·원문 링크 유지). 구 2탭 재시도 상태머신은 ✓ 체크(fireFailRetry)로 이동.
   if (!fb) return;
+  // 컨텍스트 메뉴 진입점 복원(전수감사 260713) — #failmenu 마크업 주석 스펙 = "길게 누르거나(480ms) 우클릭"인데
+  //   260711 칩 스왑 리워크 때 호출부만 증발 → 실패 사유(진단 MD)·내용 입력(403 매체 전문 붙여넣기 재분석)이 도달 불가였음.
+  //   패턴 = qFeedBtn 롱프레스 계승(pointerdown 타이머·이동 8px 취소·contextmenu = PC 우클릭).
+  let _lpT = null, _lpFired = false;
+  fb.addEventListener('pointerdown', () => { _lpFired = false; clearTimeout(_lpT); _lpT = setTimeout(() => { _lpFired = true; openFailMenu(c, fb); }, 480); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fb.addEventListener(ev, () => clearTimeout(_lpT)));
+  fb.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(_lpT); });
+  fb.addEventListener('contextmenu', e => { e.preventDefault(); openFailMenu(c, fb); });
   fb.onclick = e => {
     e.stopPropagation();
+    if (_lpFired || Date.now() - _failMenuAt < 350) { _lpFired = false; return; }   // 롱프레스 직후 합성 click = 끄기 오발 차단(_failMenuAt 타임스탬프 가드 소비 복원)
     if (fb.classList.contains('picking') || FIRE_INFLIGHT.has(candId(c))) return;   // 재분석 중·옆 ✓ 발사 중 = 무시(발사-끄기 레이스 차단 · 평의회⑤ P2)
     requeueFail(c);
   };
@@ -8293,6 +8302,21 @@ function openFailMenu(c, anchor) {
   const f0 = m.querySelector('.failmenu-it'); if (f0) f0.focus();   // 키보드 접근성 — 첫 항목 포커스(Tab/Enter 도달)
 }
 function closeFailMenu() { const m = $('#failmenu'); if (m && !m.hidden) m.hidden = true; }
+(() => {   // #failmenu 항목·바깥탭·ESC 배선(전수감사 260713) — 진입점 복원과 짝(종전 소비 코드 증발분). diag = 진단 MD 다운로드 · paste = 전문 붙여넣기 재분석.
+  const m = $('#failmenu'); if (!m) return;
+  m.querySelectorAll('.failmenu-it').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const c = _failMenuC; closeFailMenu();
+    if (!c) return;
+    if (b.dataset.act === 'diag') failDownload(c); else if (b.dataset.act === 'paste') openPaste(c);
+  });
+  document.addEventListener('click', e => {
+    const mm = $('#failmenu'); if (!mm || mm.hidden) return;
+    if (Date.now() - _failMenuAt < 350) return;   // 롱프레스 뗌 직후 합성 click이 메뉴를 즉시 닫던 것 억제(오픈 가드와 동일 창)
+    if (!mm.contains(e.target)) closeFailMenu();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFailMenu(); });
+})();
 // 실패 사유(#failmenu) = 왜 실패했는지 다음에 조치할 수 있게 육하원칙으로 정리한 진단 MD — 클릭 시 바로 다운로드(표시 X).
 function failDownload(c) {
   if (!c) return;
