@@ -99,6 +99,13 @@ def main():
         period='day', metric_type='total_value')
     fc, _ = insights(f'{uid}/insights', ['follower_count'], period='day')
     onl, _ = insights(f'{uid}/insights', ['online_followers'], period='lifetime')
+    # 일별 버킷(time_series · 운영자 260713 일일 추이) — since/until 명시 = 진짜 달력일 배열.
+    # 지난 3일 창 = 결측일 자가치유 · 미지원 지표 = insights() 낱개 폴백이 dropped 기록 = fail-soft(기존 수집 무접촉).
+    now_ep = int(datetime.datetime.now(KST).timestamp())
+    ts, drop3 = insights(
+        f'{uid}/insights',
+        ['views', 'reach', 'profile_views', 'accounts_engaged', 'total_interactions'],
+        period='day', metric_type='time_series', since=str(now_ep - 3 * 86400), until=str(now_ep))
 
     demo, drop2 = {}, []
     for br in ('age,gender', 'country', 'city'):
@@ -124,10 +131,11 @@ def main():
         items.append(mm)
 
     stamp = now_kst()
-    dropped = drop1 + drop2
+    dropped = drop1 + drop2 + drop3
     with open(f'{OUT}/insights_daily.jsonl', 'a', encoding='utf-8') as f:
         f.write(json.dumps({'fetched_kst': stamp, 'profile': prof, 'account_day': acc,
                             'follower_count_series': fc.get('follower_count'),
+                            'account_daily': ts,
                             'dropped': dropped}, ensure_ascii=False) + '\n')
     with open(f'{OUT}/media_latest.json', 'w', encoding='utf-8') as f:
         json.dump({'fetched_kst': stamp, 'media_error': merr, 'media': items}, f, ensure_ascii=False, indent=1)
