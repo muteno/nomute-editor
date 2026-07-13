@@ -1,0 +1,364 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>나이 감쇠 곡선 플레이그라운드 — 260713</title>
+<style>
+:root{--bg:#0b0d0c;--pan:#121316;--pan2:#16181c;--fg:#eef7f0;--mut:#8b94a0;--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.16);
+--acc:#00EED2;--acc-rgb:0,238,210;--amber:#FFE13D;--red:#e23b2a;--sky:#38C6FF;--pink:#FF5EC8;--r:14px;--r-s:9px;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);
+font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:20px 14px 60px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.stagewrap{flex:1.5;min-width:340px}
+.console{flex:1;min-width:300px;position:sticky;top:12px;max-height:96vh;overflow-y:auto;background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+h1{font-size:18px;margin:0 0 2px;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:12px;margin:0 0 12px}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;margin:0 0 14px}
+.ct{font-size:12px;color:var(--mut);font-weight:700;margin:0 0 8px;letter-spacing:.04em}
+.ct b{color:var(--acc)}
+svg{display:block;width:100%;height:auto;touch-action:none}
+.legend{display:flex;gap:14px;font-size:11.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+.sw{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:5px;border-radius:2px}
+.stagecap{color:var(--mut);font-size:11.5px;margin-top:8px}
+.csec{border-top:1px solid var(--line);padding:11px 0}
+.csec:first-child{border-top:0;padding-top:2px}
+.grp{font-size:11px;color:var(--mut);font-weight:700;letter-spacing:.05em;margin:0 0 7px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:1px solid var(--line2);background:transparent;color:var(--fg);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.pill.on{border-color:var(--acc);color:var(--acc);background:rgba(var(--acc-rgb),.08)}
+.pill:active{transform:scale(.95)}
+.srow{display:grid;grid-template-columns:96px 1fr 58px;gap:8px;align-items:center;margin:7px 0;font-size:12.5px}
+.srow .lb{color:var(--fg)}
+.srow .lb small{display:block;color:var(--mut);font-size:10.5px;line-height:1.3}
+.srow .val{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--acc);font-size:12px}
+.srow .val.warn{color:var(--amber)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,var(--acc) var(--p,50%),rgba(255,255,255,.14) var(--p,50%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--fg);border:2.5px solid var(--acc);margin-top:-6.5px}
+.seg{display:flex;border:1px solid var(--line2);border-radius:var(--r-s);overflow:hidden}
+.seg button{flex:1;background:transparent;border:0;color:var(--mut);padding:6px 4px;font-size:12px;cursor:pointer;font-family:inherit}
+.seg button.on{background:rgba(var(--acc-rgb),.12);color:var(--acc)}
+pre{background:#0006;border:1px solid var(--line);border-radius:var(--r-s);padding:10px;font-size:11px;line-height:1.6;overflow-x:auto;
+font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#cfe;margin:0 0 8px;white-space:pre}
+.btn{width:100%;background:rgba(var(--acc-rgb),.12);border:1px solid var(--acc);color:var(--acc);border-radius:var(--r-s);
+padding:10px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.note{font-size:11px;color:var(--mut);line-height:1.6}
+.note b{color:var(--fg)}
+ol.rank{list-style:none;margin:0;padding:0;font-size:12.5px}
+ol.rank li{display:grid;grid-template-columns:22px 1fr auto auto;gap:8px;padding:5px 6px;border-bottom:1px solid var(--line);border-radius:6px;align-items:baseline}
+ol.rank li .no{color:var(--mut);font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+ol.rank li .meta{color:var(--mut);font-size:10.5px;white-space:nowrap}
+ol.rank li .sc{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--acc);min-width:46px;text-align:right}
+ol.rank li.hot{background:rgba(255,225,61,.06)}
+ol.rank li.hot .nm{color:var(--amber)}
+ol.rank li.base .nm{color:var(--sky)}
+table.tt{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+table.tt th,table.tt td{padding:4px 6px;text-align:right;border-bottom:1px solid var(--line);font-family:ui-monospace,Menlo,monospace}
+table.tt th{color:var(--mut);font-weight:600;font-size:10.5px}
+table.tt td:first-child,table.tt th:first-child{text-align:left;font-family:inherit}
+dialog{background:var(--pan2);color:var(--fg);border:1px solid var(--line2);border-radius:var(--r);max-width:420px;padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog .btn{margin-top:8px}
+dialog .btn.ghost{background:transparent;border-color:var(--line2);color:var(--mut)}
+@media(max-width:720px){.console{position:static;max-height:none}}
+</style></head><body><div class="wrap">
+
+<div class="stagewrap">
+<h1>나이 감쇠 곡선 — 직접 만지는 튜너</h1>
+<p class="sub">누적 랭킹 <code>ageMul</code>(시그모이드·경계 0) · 운영자 260713 "특정 시간 명시 없이 이징 곡선으로 · 직접 기울기 조정"</p>
+
+<div class="card">
+<div class="ct">① 감쇠 곡선 — <b>다이아 핸들 3개를 직접 드래그</b> (M=변곡 시각 · S=기울기 · F=잔존 하한)</div>
+<svg id="chart" viewBox="0 0 640 340" aria-label="나이 감쇠 곡선 차트">
+  <g id="grid"></g>
+  <polyline id="cvTA" fill="none" stroke="#5b6472" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <polyline id="cvBASE" fill="none" stroke="#8b94a0" stroke-width="1.2" stroke-dasharray="2 5" opacity=".55"/>
+  <polyline id="cvEFF" fill="none" stroke="#FFE13D" stroke-width="1.8" opacity=".8"/>
+  <polyline id="cvSIG" fill="none" stroke="#00EED2" stroke-width="2.8"/>
+  <g id="hM" class="hd" cursor="grab"><rect x="-14" y="-14" width="28" height="28" fill="transparent"/><path d="M0 -7 7 0 0 7 -7 0Z" fill="#00EED2"/><text y="-11" fill="#00EED2" font-size="10" text-anchor="middle">M</text></g>
+  <g id="hS" class="hd" cursor="grab"><rect x="-14" y="-14" width="28" height="28" fill="transparent"/><path d="M0 -7 7 0 0 7 -7 0Z" fill="#38C6FF"/><text y="-11" fill="#38C6FF" font-size="10" text-anchor="middle">S</text></g>
+  <g id="hF" class="hd" cursor="grab"><rect x="-14" y="-14" width="28" height="28" fill="transparent"/><path d="M0 -7 7 0 0 7 -7 0Z" fill="#FF5EC8"/><text y="-11" fill="#FF5EC8" font-size="10" text-anchor="middle">F</text></g>
+</svg>
+<div class="legend">
+  <span><span class="sw" style="border-color:#00EED2"></span>ageMul(선택 중)</span>
+  <span><span class="sw" style="border-color:#8b94a0;border-top-style:dotted"></span>현행 배선값(비교 기준)</span>
+  <span><span class="sw" style="border-color:#5b6472;border-top-style:dashed"></span>timeAcc(기존 시간축)</span>
+  <span><span class="sw" style="border-color:#FFE13D"></span>실효 = timeAcc×ageMul</span>
+</div>
+<div class="stagecap">가로축 = 기사 나이 0~40h · 세로축 = 배율 0~1. 어느 점에서도 절벽 없음 = 1시간 차이가 넘사가 되지 않는 구조.</div>
+</div>
+
+<div class="card">
+<div class="ct">② 점수 곡선(cross별 4겹) — <b>z축 필요 여부의 실증</b></div>
+<svg id="chart2" viewBox="0 0 640 300" aria-label="cross별 점수 곡선">
+  <g id="grid2"></g>
+  <line id="baseln" stroke="#38C6FF" stroke-width="1.4" stroke-dasharray="6 4" opacity=".8"/>
+  <polyline id="sc10" fill="none" stroke="#8b94a0" stroke-width="1.6"/>
+  <polyline id="sc30" fill="none" stroke="#FFE13D" stroke-width="1.8"/>
+  <polyline id="sc59" fill="none" stroke="#00EED2" stroke-width="2.4"/>
+  <polyline id="sc100" fill="none" stroke="#FF5EC8" stroke-width="1.8"/>
+</svg>
+<div class="legend">
+  <span><span class="sw" style="border-color:#8b94a0"></span>cr10</span>
+  <span><span class="sw" style="border-color:#FFE13D"></span>cr30</span>
+  <span><span class="sw" style="border-color:#00EED2"></span>cr59(통일부형)</span>
+  <span><span class="sw" style="border-color:#FF5EC8"></span>cr100</span>
+  <span><span class="sw" style="border-color:#38C6FF;border-top-style:dashed"></span>신규 기준선(cr10·5h)</span>
+</div>
+<div class="stagecap" id="zNote">점수 = cross항 × 나이곡선의 <b>곱 분해</b>라 네 곡선은 (로그 눈금에서) 세로 평행이동일 뿐 모양이 같다 → 나이×매체수 <b>z축(3D) 불요</b>, 이 2D 겹침이 전체 정보. 유일한 상호작용(대형일수록 늦게 감쇠)은 OUT 하한이 이미 12~16h 국소 담당.</div>
+</div>
+
+<div class="card">
+<div class="ct">③ 순위 시뮬 — 스샷 카드 + 대표 케이스 (곡선 반영 실시간)</div>
+<ol class="rank" id="rank"></ol>
+<div class="stagecap">노랑 = 24h+ 老카드(통일부·속보대형) · 하늘 = 신규 기준선. 곡선을 만지면 즉시 재정렬.</div>
+</div>
+
+<div class="card">
+<div class="ct">④ 시간표 — 주요 나이별 배율·통일부(cr59) 점수</div>
+<table class="tt"><thead><tr><th>나이</th><th>8h</th><th>12h</th><th>16h</th><th>18h</th><th>20h</th><th>22h</th><th>24h</th><th>28h</th><th>36h</th></tr></thead>
+<tbody><tr id="rowMul"><td>ageMul</td></tr><tr id="rowEff"><td>실효</td></tr><tr id="rowSc"><td>cr59 점수</td></tr></tbody></table>
+</div>
+</div>
+
+<aside class="console">
+<div class="csec">
+<div class="grp">보기</div>
+<div class="seg" id="segLog"><button data-v="0" class="on">점수 선형</button><button data-v="1">점수 로그</button></div>
+</div>
+<div class="csec">
+<div class="grp">프리셋</div>
+<div class="pills" id="presets"></div>
+</div>
+<div class="csec" id="sliders">
+<div class="grp">감쇠 곡선 (이번 튜닝 대상)</div>
+</div>
+<div class="csec" id="sliders2">
+<div class="grp">timeAcc 참고축 <span style="color:var(--amber)">⚠ 승인 기틀(13·3.0) — 이탈 시 역제안</span></div>
+</div>
+<div class="csec">
+<div class="grp">선택값 <span id="drift"></span></div>
+<pre id="out"></pre>
+<button class="btn" id="copy">선택값 복사</button>
+</div>
+<div class="csec note">
+<b>⑤ 재현 한계(정직)</b><br>
+· 점수식 = 라이브 공식 충실 재현(cross^1.3·timeAcc·연속보도·grade·긴급부스트·ageMul) — 단 <b>OUT 아웃라이어 하한·병합 댐핑·scDedup은 미재현</b>(방향 근사·라이브 순위와 ±1~2위 오차 가능).<br>
+· 카드 풀 = 스샷 4장 + 대표 가정 4장(실데이터 스냅샷 아님).<br>
+· 긴급부스트·배지의 24h 경계는 <b>배지 축</b>(운영자 "분류엔 시간 기준 OK")이라 이 곡선과 별개.<br>
+· 연속 곡선의 본질상 ≤12h도 완만 감점(기본값 12h −5.4%) — 경계 0의 대가·나이 오름차 감점이라 방향 정합.<br>
+· z축 결론 = ② 참조(곱 분해 = 불요 · 상호작용 원하면 그때 OUT 확장이 정문).
+</div>
+</aside>
+
+</div>
+<dialog id="warnDlg">
+<div style="font-weight:700;margin-bottom:8px">⚠ timeAcc 기틀 이탈</div>
+<div class="note" id="warnBody" style="margin-bottom:6px"></div>
+<button class="btn" id="cpAll">역제안 포함 복사</button>
+<button class="btn ghost" id="cpSafe">감쇠 곡선만 복사</button>
+<button class="btn ghost" id="cpCancel">취소</button>
+</dialog>
+
+<script>
+'use strict';
+/* ── 현행 배선값(viewer/index.html · 운영자 260713 회신 13·3.8·.12 배선 완료) = 비교 기준 ── */
+const CUR = { mid: 13, st: 3.8, fl: 0.12, th: 13, tp: 3.0 };
+let S = { ...CUR };
+const $ = s => document.querySelector(s);
+
+/* ── 라이브 공식 재현 ── */
+const sig = (a, p = S) => p.fl + (1 - p.fl) / (1 + Math.exp((a - p.mid) / p.st));
+const tAcc = (a, p = S) => 1 / (1 + Math.pow(a / p.th, p.tp));
+const fol = rc => 1 + .5 * Math.log2(1 + rc);
+const GW = { 0: .5, 1: .7, 2: 1, 3: 1.8 };
+const boost = (brk, a) => !brk ? 1 : a < 24 ? 3 : a >= 48 ? 1 : 1 + 2 * (48 - a) / 24;
+const score = c => Math.pow(c.cr, 1.3) * tAcc(c.a) * sig(c.a) * fol(c.rc) * (GW[c.g] ?? 1) * boost(c.brk, c.a);
+
+const CARDS = [
+  { n: '통일부 대북협조', cr: 59, a: 24, rc: 25, g: 2, hot: 1 },
+  { n: '속보대형(부스트 중첩)', cr: 40, a: 25, rc: 20, g: 3, brk: 1, hot: 1 },
+  { n: '명태균 여론조사', cr: 18, a: 9, rc: 14, g: 2 },
+  { n: '홈플러스 파산', cr: 14, a: 5, rc: 10, g: 2 },
+  { n: '베네수엘라 지진', cr: 11, a: 10, rc: 12, g: 3 },
+  { n: '신규 기준선', cr: 10, a: 5, rc: 8, g: 2, base: 1 },
+  { n: '중형 신선', cr: 13, a: 6, rc: 9, g: 2 },
+  { n: '중형 반나절', cr: 12, a: 11, rc: 10, g: 2 },
+];
+
+/* ── 프리셋(현행 = 첫째·비교 기준) ── */
+const PRESETS = [
+  { nm: '현행 배선값(회신 13·3.8)', st: { ...CUR } },
+  { nm: '초판(18·2.2)', st: { ...CUR, mid: 18, st: 2.2 } },
+  { nm: '더 이르게', st: { ...CUR, mid: 11, st: 3.5 } },
+  { nm: '잔존 두껍게', st: { ...CUR, fl: 0.22 } },
+];
+const SLIDERS = [
+  { k: 'mid', nm: '변곡 시각', d: '기울기 최대 지점(h)', min: 10, max: 30, step: .5, grp: 1, tok: 'AGE_MID_H' },
+  { k: 'st', nm: '기울기', d: '시상수 — 작을수록 가파름', min: .8, max: 6, step: .1, grp: 1, tok: 'AGE_STEEP' },
+  { k: 'fl', nm: '잔존 하한', d: '"바닥까지는 아니고" 두께', min: 0, max: .5, step: .01, grp: 1, tok: 'AGE_FLOOR' },
+  { k: 'th', nm: '반값 나이', d: 'timeAcc HALF(기틀 13)', min: 8, max: 24, step: .5, grp: 2, tok: 'ACC_T_HALF', gate: 13 },
+  { k: 'tp', nm: '가속 지수', d: 'timeAcc POW(기틀 3.0)', min: 1.5, max: 5, step: .1, grp: 2, tok: 'ACC_T_POW', gate: 3.0 },
+];
+
+/* ── 차트 좌표계 ── */
+const X0 = 44, X1 = 620, YT = 22, YB = 306, AMAX = 40;
+const xOf = a => X0 + a / AMAX * (X1 - X0);
+const yOf = f => YT + (1 - f) * (YB - YT);
+const Y2T = 18, Y2B = 268;
+let logScale = false, SCMAX = 700;
+const y2Of = v => { const m = SCMAX;
+  if (!logScale) return Y2T + (1 - Math.min(v, m) / m) * (Y2B - Y2T);
+  const lv = Math.log10(Math.max(v, 1)), lm = Math.log10(m);
+  return Y2T + (1 - Math.min(lv, lm) / lm) * (Y2B - Y2T); };
+
+function grid() {
+  let g = '';
+  for (const f of [0, .25, .5, .75, 1]) g += `<line x1="${X0}" y1="${yOf(f)}" x2="${X1}" y2="${yOf(f)}" stroke="rgba(255,255,255,${f % .5 ? .05 : .12})"/><text x="${X0 - 6}" y="${yOf(f) + 3.5}" fill="#8b94a0" font-size="10" text-anchor="end">${f}</text>`;
+  for (let a = 0; a <= AMAX; a += 4) g += `<line x1="${xOf(a)}" y1="${YT}" x2="${xOf(a)}" y2="${YB}" stroke="rgba(255,255,255,.04)"/><text x="${xOf(a)}" y="${YB + 16}" fill="#8b94a0" font-size="10" text-anchor="middle">${a}h</text>`;
+  $('#grid').innerHTML = g;
+  let g2 = '';
+  for (let a = 0; a <= AMAX; a += 4) g2 += `<line x1="${xOf(a)}" y1="${Y2T}" x2="${xOf(a)}" y2="${Y2B}" stroke="rgba(255,255,255,.04)"/><text x="${xOf(a)}" y="${Y2B + 16}" fill="#8b94a0" font-size="10" text-anchor="middle">${a}h</text>`;
+  $('#grid2').innerHTML = g2;
+}
+
+const pts = fn => { let s = ''; for (let a = 0; a <= AMAX; a += .5) s += `${xOf(a).toFixed(1)},${fn(a)} `; return s.trim(); };
+
+function draw() {
+  $('#cvSIG').setAttribute('points', pts(a => yOf(sig(a)).toFixed(1)));
+  $('#cvBASE').setAttribute('points', pts(a => yOf(sig(a, CUR)).toFixed(1)));
+  $('#cvTA').setAttribute('points', pts(a => yOf(tAcc(a)).toFixed(1)));
+  $('#cvEFF').setAttribute('points', pts(a => yOf(tAcc(a) * sig(a)).toFixed(1)));
+  const my = sig(S.mid);
+  $('#hM').setAttribute('transform', `translate(${xOf(S.mid)},${yOf(my)})`);
+  $('#hS').setAttribute('transform', `translate(${xOf(Math.min(S.mid + 4, AMAX))},${yOf(sig(S.mid + 4))})`);
+  $('#hF').setAttribute('transform', `translate(${xOf(38)},${yOf(sig(38))})`);
+  /* 점수 4겹 */
+  const mk = cr => pts(a => y2Of(Math.pow(cr, 1.3) * tAcc(a) * sig(a) * fol(cr >= 59 ? 25 : cr >= 30 ? 15 : 8)).toFixed(1));
+  $('#sc10').setAttribute('points', mk(10)); $('#sc30').setAttribute('points', mk(30));
+  $('#sc59').setAttribute('points', mk(59)); $('#sc100').setAttribute('points', mk(100));
+  const bl = score({ ...CARDS[5] }); const yb = y2Of(bl);
+  const b = $('#baseln'); b.setAttribute('x1', X0); b.setAttribute('x2', X1); b.setAttribute('y1', yb); b.setAttribute('y2', yb);
+}
+
+function rank() {
+  const el = $('#rank'), y = el.scrollTop;   // 스크롤 보존(§7-1-6)
+  const rows = CARDS.map(c => ({ c, s: score(c) })).sort((a, b) => b.s - a.s);
+  el.innerHTML = rows.map((r, i) =>
+    `<li class="${r.c.hot ? 'hot' : ''}${r.c.base ? ' base' : ''}"><span class="no">${i + 1}</span><span class="nm">${r.c.n}</span><span class="meta">cr${r.c.cr}·${r.c.a}h</span><span class="sc">${r.s.toFixed(1)}</span></li>`).join('');
+  el.scrollTop = y;
+}
+
+function tableRows() {
+  const ages = [8, 12, 16, 18, 20, 22, 24, 28, 36];
+  const f = (fn, dp) => ages.map(a => `<td>${fn(a).toFixed(dp)}</td>`).join('');
+  $('#rowMul').innerHTML = '<td>ageMul</td>' + f(a => sig(a), 3);
+  $('#rowEff').innerHTML = '<td>실효</td>' + f(a => tAcc(a) * sig(a), 3);
+  $('#rowSc').innerHTML = '<td>cr59 점수</td>' + f(a => score({ cr: 59, a, rc: 25, g: 2 }), 1);
+}
+
+/* ── 콘솔 ── */
+function buildSliders() {
+  for (const s of SLIDERS) {
+    const host = $(s.grp === 1 ? '#sliders' : '#sliders2');
+    const row = document.createElement('div'); row.className = 'srow';
+    row.innerHTML = `<span class="lb">${s.nm}<small>${s.d}</small></span><input type="range" min="${s.min}" max="${s.max}" step="${s.step}" data-k="${s.k}"><span class="val" data-v="${s.k}"></span>`;
+    host.appendChild(row);
+    row.querySelector('input').addEventListener('input', e => { S[s.k] = +e.target.value; markPreset(); apply(); });
+  }
+}
+function buildPresets() {
+  const host = $('#presets');
+  PRESETS.forEach((p, i) => {
+    const b = document.createElement('button'); b.className = 'pill'; b.textContent = p.nm; b.dataset.i = i;
+    b.onclick = () => { S = { ...p.st }; apply(); };
+    host.appendChild(b);
+  });
+}
+function markPreset() {
+  document.querySelectorAll('#presets .pill').forEach(b => {
+    const p = PRESETS[+b.dataset.i];
+    b.classList.toggle('on', Object.keys(p.st).every(k => Math.abs(p.st[k] - S[k]) < 1e-9));
+  });
+}
+const drift = () => SLIDERS.filter(s => s.gate != null && Math.abs(S[s.k] - s.gate) > 1e-9);
+
+function buildOut() {
+  const ln = (tok, v, cur, gate) => {
+    const same = Math.abs(v - cur) < 1e-9;
+    return `${tok.padEnd(11)}= ${String(v).padEnd(6)} [현행 ${cur}${same ? ' · 계승' : gate ? ' · ⚠기틀 이탈' : ' → 갱신 후보'}]`;
+  };
+  const d = drift();
+  $('#out').textContent =
+`[나이 감쇠 곡선 — 선택값]
+${ln('AGE_MID_H', S.mid, CUR.mid)}
+${ln('AGE_STEEP', S.st, CUR.st)}
+${ln('AGE_FLOOR', S.fl, CUR.fl)}
+${ln('ACC_T_HALF', S.th, CUR.th, d.some(x => x.k === 'th'))}
+${ln('ACC_T_POW', S.tp, CUR.tp, d.some(x => x.k === 'tp'))}
+sig(a) = FLOOR+(1-FLOOR)/(1+e^((a-MID)/STEEP))
+※ 전 축 = curation 기틀(§8) — 이 회신 = 반영 스펙`;
+  $('#drift').textContent = d.length ? `⚠ 기틀 이탈 ${d.length}축` : '';
+  $('#drift').style.color = d.length ? 'var(--amber)' : '';
+}
+
+function apply() {
+  for (const s of SLIDERS) {
+    const inp = document.querySelector(`input[data-k="${s.k}"]`), val = document.querySelector(`.val[data-v="${s.k}"]`);
+    inp.value = S[s.k];
+    inp.style.setProperty('--p', ((S[s.k] - s.min) / (s.max - s.min) * 100) + '%');
+    val.textContent = S[s.k].toFixed(s.step < .1 ? 2 : 1);
+    val.classList.toggle('warn', s.gate != null && Math.abs(S[s.k] - s.gate) > 1e-9);
+  }
+  markPreset(); draw(); rank(); tableRows(); buildOut();
+}
+
+/* ── 드래그 핸들: M=가로(변곡) · S=세로(기울기 역산) · F=세로(잔존) ── */
+function dragify(id, onMove) {
+  const el = $(id), svg = $('#chart');
+  const pt = e => { const r = svg.getBoundingClientRect(), t = e.touches ? e.touches[0] : e;
+    return { x: (t.clientX - r.left) / r.width * 640, y: (t.clientY - r.top) / r.height * 340 }; };
+  let on = false;
+  const mv = e => { if (!on) return; e.preventDefault(); onMove(pt(e)); markPreset(); apply(); };
+  const dn = e => { on = true; e.preventDefault(); };
+  el.addEventListener('pointerdown', dn); el.addEventListener('touchstart', dn, { passive: false });
+  addEventListener('pointermove', mv); addEventListener('touchmove', mv, { passive: false });
+  addEventListener('pointerup', () => on = false); addEventListener('touchend', () => on = false);
+}
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+dragify('#hM', p => { S.mid = clamp(Math.round(((p.x - X0) / (X1 - X0) * AMAX) * 2) / 2, 10, 30); });
+dragify('#hS', p => {   // MID+4h 지점의 y를 잡고 STEEP 역산: y = fl+(1-fl)/(1+e^(4/st)) → st = 4/ln((1-fl)/(y-fl)-1)
+  const y = clamp(1 - (p.y - YT) / (YB - YT), S.fl + .02, S.fl + (1 - S.fl) * .47);
+  const r = (1 - S.fl) / (y - S.fl) - 1;
+  if (r > 1.0001) S.st = clamp(Math.round(4 / Math.log(r) * 10) / 10, .8, 6);
+});
+dragify('#hF', p => { S.fl = clamp(Math.round((1 - (p.y - YT) / (YB - YT)) * 100) / 100, 0, .5); });
+
+/* ── 보기 토글·복사 ── */
+$('#segLog').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  logScale = b.dataset.v === '1';
+  document.querySelectorAll('#segLog button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
+function doCopy(txt) {
+  const done = () => { const b = $('#copy'), o = b.textContent; b.textContent = '복사됨 ✓'; setTimeout(() => b.textContent = o, 1200); };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done).catch(() => fallback(txt, done)); else fallback(txt, done);
+}
+function fallback(txt, done) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+$('#copy').onclick = () => {
+  const d = drift();
+  if (!d.length) return doCopy($('#out').textContent);
+  $('#warnBody').innerHTML = `timeAcc는 승인 기틀(13·3.0 — §★·check_refs 문서정합 게이트 등재)이라 변경 = 전 랭킹 파급.<br><b>이탈:</b> ` +
+    d.map(s => `${s.tok} ${s.gate}→${S[s.k]}`).join(' · ') + `<br>역제안 포함 회신 = 기틀 갱신 승인 정문 경로.`;
+  $('#warnDlg').showModal();
+};
+$('#cpAll').onclick = () => { $('#warnDlg').close();
+  doCopy($('#out').textContent + '\n🔁 기틀 갱신 역제안: ' + drift().map(s => `${s.tok} ${s.gate}→${S[s.k]}(전 랭킹 동축)`).join(' · ')); };
+$('#cpSafe').onclick = () => { $('#warnDlg').close(); const t = { ...S }; S.th = CUR.th; S.tp = CUR.tp; buildOut();
+  doCopy($('#out').textContent); S = t; buildOut(); };
+$('#cpCancel').onclick = () => $('#warnDlg').close();
+
+grid(); buildSliders(); buildPresets(); apply();
+</script>
+</body></html>

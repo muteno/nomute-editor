@@ -1,0 +1,157 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>누적 랭킹 나이 하드 감쇠 — 260713</title>
+<style>
+:root{--bg:#0b0d0c;--pan:#121316;--pan2:#171a1e;--fg:#eef7f0;--mut:#8b94a0;--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.15);
+--acc:#00EED2;--acc-d:#0aa; --amber:#FFE13D;--red:#e23b2a;--r:14px;}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);
+font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:26px 18px 60px}
+h1{font-size:23px;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+h2{font-size:16px;margin:30px 0 12px;padding-left:11px;border-left:3px solid var(--acc)}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:var(--r);padding:16px 17px;margin:12px 0}
+.lead{background:linear-gradient(160deg,rgba(0,238,210,.07),rgba(0,238,210,.02));border:1px solid rgba(0,238,210,.22)}
+p{margin:8px 0}
+b{color:#fff}
+code{background:#0006;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.9em;
+font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--acc)}
+.quote{color:var(--amber);font-style:normal;border-left:2px solid var(--amber);padding-left:10px;margin:10px 0}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{padding:8px 11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--mut);font-weight:600;border-bottom:1px solid var(--line2);font-size:12px}
+.num{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace}
+.hi{color:var(--acc);font-weight:700}.lo{color:var(--red);font-weight:700}.dim{color:var(--mut)}
+.up{color:var(--acc)}.down{color:var(--red)}
+.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line2);color:var(--mut);margin:0 4px 4px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.grid2{grid-template-columns:1fr}}
+ul{margin:6px 0;padding-left:20px}li{margin:5px 0}
+.good::before{content:"▲ ";color:var(--acc)}.risk::before{content:"⚠ ";color:var(--amber)}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:18px;font-size:12.5px;color:var(--mut);margin-top:6px;flex-wrap:wrap}
+.sw{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+.foot{color:var(--mut);font-size:12px;margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+</style></head><body><div class="wrap">
+
+<h1>누적 랭킹 — 나이 하드 감쇠(ageMul)</h1>
+<p class="sub">수집함 누적 칼럼 · <code>viewer/index.html</code> · 운영자 260713 지시 · 자가검증(실측)+check_refs rc=0</p>
+
+<div class="card lead">
+<p class="quote">"아무리 59개(매체)라지만 수집이 너무 많아져서 상단에 위치해버린다. 12시간 조금씩 감점(로그이징) / 16시간 넘으면 기울기 강하게 / 24시간 넘으면 수집 매체 관계없이 상위엔 안 뜨게 — 24시간 지나면 그건 뉴스가 아니잖아(new)."</p>
+<p><b>근본 원인.</b> 누적 점수 <code>scScore = cross^1.3 × timeAcc × 연속보도 × AI경중 × 긴급부스트</code> 에서 <b>매체수 항(<code>cross^1.3</code>)이 시간 항(<code>timeAcc</code>)을 압도</b>했다. 24h 시점 <code>timeAcc=0.137</code> 인데 <code>59^1.3 ≈ 200</code> — 신규 다매체(cross~10 → 20)의 <b>10배</b>라, 하루가 지나도 통일부 기사가 1위를 점유. "시간이 매체수를 못 이기는" 구조.</p>
+<p><b>처방.</b> <code>timeAcc</code> 밑에 <b>나이 배율 <code>ageMul</code></b> 을 한 겹 더 곱한다 — 12h 조금씩(로그이징) → 16h부터 급강(지수붕괴) → 24h엔 매체수와 무관하게 바닥. 곱셈이라 아무리 큰 <code>cross</code>도 이긴다.</p>
+</div>
+
+<h2>① 감쇠 곡선 — 전(timeAcc) vs 후(timeAcc×ageMul)</h2>
+<div class="card">
+<svg viewBox="0 0 600 280" role="img" aria-label="시간 감쇠 곡선 비교">
+  <!-- 24h+ 배제 존 -->
+  <rect x="400" y="30" width="180" height="220" fill="rgba(226,59,42,.08)"/>
+  <text x="490" y="46" fill="rgba(226,59,42,.75)" font-size="11" text-anchor="middle">24h+ 상위 배제</text>
+  <!-- y grid -->
+  <line x1="40" y1="30" x2="580" y2="30" stroke="rgba(255,255,255,.08)"/>
+  <line x1="40" y1="140" x2="580" y2="140" stroke="rgba(255,255,255,.06)" stroke-dasharray="3 4"/>
+  <line x1="40" y1="250" x2="580" y2="250" stroke="rgba(255,255,255,.15)"/>
+  <text x="34" y="34" fill="#8b94a0" font-size="10.5" text-anchor="end">1.0</text>
+  <text x="34" y="144" fill="#8b94a0" font-size="10.5" text-anchor="end">0.5</text>
+  <text x="34" y="252" fill="#8b94a0" font-size="10.5" text-anchor="end">0</text>
+  <!-- knee lines 12/16/24 -->
+  <g stroke="rgba(255,255,255,.22)" stroke-dasharray="2 4">
+    <line x1="220" y1="30" x2="220" y2="250"/><line x1="280" y1="30" x2="280" y2="250"/><line x1="400" y1="30" x2="400" y2="250"/>
+  </g>
+  <text x="220" y="266" fill="#8b94a0" font-size="11" text-anchor="middle">12h 조금씩</text>
+  <text x="280" y="266" fill="#FFE13D" font-size="11" text-anchor="middle">16h 급강</text>
+  <text x="400" y="266" fill="#e23b2a" font-size="11" text-anchor="middle">24h 붕괴</text>
+  <!-- old curve -->
+  <polyline fill="none" stroke="#6b7280" stroke-width="2" stroke-dasharray="5 4" points="40.0,30.0 55.0,30.1 70.0,30.8 85.0,32.7 100.0,36.2 115.0,41.8 130.0,49.7 145.0,59.7 160.0,71.6 175.0,84.8 190.0,98.8 205.0,113.0 220.0,126.9 235.0,140.0 250.0,152.2 265.0,163.3 280.0,173.2 295.0,182.0 310.0,189.8 325.0,196.6 340.0,202.6 355.0,207.8 370.0,212.4 385.0,216.4 400.0,219.8 415.0,222.9 430.0,225.6 445.0,227.9 460.0,230.0 475.0,231.8 490.0,233.4 505.0,234.9 520.0,236.2 535.0,237.3 550.0,238.4 565.0,239.3 580.0,240.1"/>
+  <!-- new curve -->
+  <polyline fill="none" stroke="#00EED2" stroke-width="2.6" points="40.0,30.0 55.0,30.1 70.0,30.8 85.0,32.7 100.0,36.2 115.0,41.8 130.0,49.7 145.0,59.7 160.0,71.6 175.0,84.8 190.0,98.8 205.0,113.0 220.0,126.9 235.0,143.5 250.0,157.9 265.0,170.3 280.0,180.9 295.0,204.8 310.0,220.4 325.0,230.6 340.0,237.3 355.0,241.6 370.0,244.5 385.0,246.4 400.0,247.6 415.0,248.4 430.0,248.9 445.0,249.3 460.0,249.5 475.0,249.7 490.0,249.8 505.0,249.9 520.0,249.9 535.0,249.9 550.0,250.0 565.0,250.0 580.0,250.0"/>
+  <!-- x ticks -->
+  <g fill="#8b94a0" font-size="10" text-anchor="middle">
+    <text x="40" y="278">0h</text><text x="130" y="278">6h</text><text x="340" y="278">18h</text><text x="490" y="278">30h</text><text x="580" y="278">36h</text>
+  </g>
+</svg>
+<div class="legend">
+  <span><span class="sw" style="border-color:#6b7280;border-top-style:dashed"></span>전 — timeAcc 단독(24h=.14로 완만)</span>
+  <span><span class="sw" style="border-color:#00EED2"></span>후 — timeAcc×ageMul(20h부터 급강·24h≈0)</span>
+</div>
+<p class="dim" style="font-size:12.5px;margin-top:10px"><b style="color:#fff">12h 이하 두 곡선 완전 일치</b> = 신규존·젊은 기사 튜닝 회귀 0. 갈라지는 건 16h부터, 20h에 확 꺾여 24h에 바닥.</p>
+</div>
+
+<h2>② 스크린샷 누적 칼럼 — 전/후 순위 (실측)</h2>
+<div class="card">
+<div class="scroll"><table>
+<thead><tr><th>기사</th><th>매체</th><th>나이</th><th>전 점수</th><th>전 순위</th><th>후 점수</th><th>후 순위</th></tr></thead>
+<tbody>
+<tr><td>통일부 대북협조 <span class="dim">(정치)</span></td><td class="num">59</td><td class="num">24h</td><td class="num">92.1</td><td class="num hi">최상위</td><td class="num lo">7.4</td><td class="num down">4위 ▼</td></tr>
+<tr><td>명태균 여론조사 <span class="dim">(정치)</span></td><td class="num">18</td><td class="num">9h</td><td class="num">95.0</td><td class="num">1위</td><td class="num">95.0</td><td class="num">1위 =</td></tr>
+<tr><td>홈플러스 견련파산 <span class="dim">(경제)</span></td><td class="num">14</td><td class="num">5h</td><td class="num">79.8</td><td class="num">3위</td><td class="num">79.8</td><td class="num up">2위 ▲</td></tr>
+<tr><td>베네수엘라 지진 <span class="dim">(국제)</span></td><td class="num">11</td><td class="num">10h</td><td class="num">79.6</td><td class="num">4위</td><td class="num">79.6</td><td class="num up">3위 ▲</td></tr>
+</tbody></table></div>
+<p style="font-size:13px"><b>통일부(cr59·24h)만</b> 최상위 tier(92.1) → <b class="lo">4위(7.4)</b> 로 침몰. 나머지 젊은 기사들 점수는 <b>1도 안 변함</b>(순위만 자연 상승). 통일부는 리스트에서 사라지지 않고 <b>아래로 내려갈 뿐</b> — 운영자 "상위엔 안 뜨게"에 정확히 대응(삭제 아님).</p>
+</div>
+
+<h2>③ 효과 시간표 — 통일부형(cr59·rc25·g2) 나이별</h2>
+<div class="card">
+<div class="scroll"><table>
+<thead><tr><th>나이</th><th>timeAcc</th><th>ageMul</th><th>실효(곱)</th><th>전 점수</th><th>후 점수</th><th></th></tr></thead>
+<tbody>
+<tr><td class="num">6h</td><td class="num">.910</td><td class="num">1.000</td><td class="num">.911</td><td class="num">611.6</td><td class="num">611.6</td><td class="dim">무변</td></tr>
+<tr><td class="num">12h</td><td class="num">.560</td><td class="num">1.000</td><td class="num">.560</td><td class="num">376.0</td><td class="num">376.0</td><td class="dim">무변</td></tr>
+<tr><td class="num">16h</td><td class="num">.349</td><td class="num hi">.900</td><td class="num">.314</td><td class="num">234.5</td><td class="num">211.1</td><td class="dim">조금씩 −10%</td></tr>
+<tr><td class="num">18h</td><td class="num">.274</td><td class="num">.491</td><td class="num">.135</td><td class="num">183.8</td><td class="num">90.3</td><td class="up">급강</td></tr>
+<tr><td class="num">20h</td><td class="num">.215</td><td class="num">.268</td><td class="num">.058</td><td class="num">144.7</td><td class="num">38.8</td><td class="up">−73%</td></tr>
+<tr><td class="num">22h</td><td class="num">.171</td><td class="num">.147</td><td class="num">.025</td><td class="num">114.9</td><td class="num">16.8</td><td class="up"></td></tr>
+<tr style="background:rgba(226,59,42,.06)"><td class="num lo">24h</td><td class="num">.137</td><td class="num lo">.080</td><td class="num">.011</td><td class="num">92.1</td><td class="num lo">7.4</td><td class="down">붕괴</td></tr>
+<tr><td class="num">26h</td><td class="num">.111</td><td class="num">.044</td><td class="num">.005</td><td class="num">74.6</td><td class="num">3.3</td><td class="down"></td></tr>
+<tr><td class="num">36h</td><td class="num">.045</td><td class="num">.002</td><td class="num">.0001</td><td class="num">30.2</td><td class="num">0.1</td><td class="down">소멸</td></tr>
+</tbody></table></div>
+<p style="font-size:13px"><span class="chip">신규 기준선</span> cross10·5h·rc8·g2 = <b class="num">48.8</b> — 통일부는 20h(38.8)에서 이미 이 밑, 24h(7.4)엔 한참 밑.</p>
+</div>
+
+<h2>④ 극단 방어 — "매체 무관"이 진짜인가</h2>
+<div class="card">
+<p style="font-size:13px">cross를 훨씬 키워도 24h+엔 기준선(48.8)을 못 넘는지 실측:</p>
+<div class="scroll"><table>
+<thead><tr><th>가정</th><th>24h 후점수</th><th>26h 후점수</th><th>기준선 대비</th></tr></thead>
+<tbody>
+<tr><td>cr80·rc44·g3</td><td class="num">22.0</td><td class="num">9.7</td><td class="hi">✔ 밑</td></tr>
+<tr><td>cr100·rc30·g2</td><td class="num">15.2</td><td class="num">6.7</td><td class="hi">✔ 밑</td></tr>
+<tr><td>cr80·rc44·g3 <b class="lo">속보</b></td><td class="num lo">66.1</td><td class="num">9.7</td><td class="dim">24h만 위 → 26h 밑</td></tr>
+</tbody></table></div>
+<p class="risk" style="font-size:13px"><b>속보(breaking) 예외 명시.</b> 긴급 부스트(<code>brkBoost ×3</code>, 260628 "긴급할수록 가시성↑")가 살아있어 <b>속보 대형은 24h 근처 ~2시간 잔류</b>(66)했다가 26h에 침몰(9.7). 비속보(통일부류)는 24h에 즉시 침몰이라 이번 지시엔 부합. 속보까지 완전 배제하고 싶으면 <code>ageMul</code>을 <code>!isBreaking</code>일 때만 곱하는 <b>1줄 튜닝</b>으로 전환 가능 — 운영자 결정 대기.</p>
+</div>
+
+<h2>⑤ 장단점 · 효율성 · 품질저하 리스크</h2>
+<div class="grid2">
+<div class="card"><b>장점</b><ul>
+<li class="good">"24h = news 아님" 지시를 곱셈 1항으로 정확 구현 — 아무리 큰 cross도 이김.</li>
+<li class="good">12h 이하 <b>회귀 0</b> — 신규존·젊은 기사 순위 불변(기존 수개월 튜닝 보존).</li>
+<li class="good">앵커 3개(12/16/24)+배율 2개가 운영자 멘탈모델 그대로 = 재조정 쉬움. <code>_ageK</code>는 앵커서 자동유도(매직값 0).</li>
+<li class="good">삭제 아닌 <b>후퇴</b> — 카드는 누적에 잔존(찾기 가능), 상위만 비움.</li>
+</ul></div>
+<div class="card"><b>단점 · 리스크</b><ul>
+<li class="risk">속보 대형이 24h 근처 ~2h 잔류(위 ④) — 의도(긴급 가시성)이자 잠재 불만점. 1줄로 전환 가능.</li>
+<li class="risk">OUT(아웃라이어 하한)이 16~24h 들어올리려는 힘과 ageMul이 상충 — <b>ageMul이 곱으로 이기게</b> 설계(실측 확인). OUT은 12~16h 보호에만 실효.</li>
+<li class="risk">진짜 하루 넘게 이어지는 대형 사건(연속보도 rc↑)도 24h+엔 후퇴 — 운영자 철학("옛 기사 후퇴는 맞게 동작" 260706)과 정합이나, 초대형 지속사건은 관찰 필요.</li>
+</ul></div>
+</div>
+<div class="card"><b>효율성 · 품질</b>
+<p style="font-size:13px;margin:6px 0"><b>연산비용 0급.</b> 카드당 <code>Date.parse</code>×1 + 산술 몇 줄(정렬 시 Schwartzian으로 1회 사전계산). 신호·수집·판정·LLM 호출 <b>0 변경</b> = 파이프라인 무접촉. <b>품질저하 리스크 낮음</b> — 순수 누적 랭킹 <b>표시 순서</b>만 바뀌고, 진입·배지·글로우·표시 cross·신규 칼럼은 불변. 롤백 = <code>scScore</code>에서 <code>× ageMul(c)</code> 한 조각 제거(1줄).</p>
+</div>
+
+<h2>손잡이 (§8 260713 정본)</h2>
+<div class="card">
+<p><span class="chip">AGE_SOFT_H = 12</span><span class="chip">AGE_STEEP_H = 16</span><span class="chip">AGE_HARD_H = 24</span><span class="chip">AGE_STEEP_MUL = 0.90</span><span class="chip">AGE_HARD_MUL = 0.08</span></p>
+<p style="font-size:13px">더 세게 = <code>AGE_HARD_MUL</code> ↓(예 .05) 또는 <code>AGE_STEEP_H</code> ↓. 더 완만 = 반대. 앵커만 바꾸면 붕괴상수 자동 정합. 정본 = <code>viewer/index.html</code>(<code>ageMul</code>) · <code>docs/curation-algorithm.md</code> §5 ②-c·§8 260713.</p>
+</div>
+
+<p class="foot">자가검증: <code>scratchpad/rank_sim.mjs</code> 공식 충실 재현(실측) + <code>python3 shared/check_refs.py</code> rc=0(JS구문·큐레이션 상수 정합 통과). 원인 자명(측정 확정)·국소 곱셈 1항·1줄 롤백 = 평의회 비대상(§검증 게이트). 라이브 확정은 머지 후 <code>git show origin/main:viewer/index.html</code> read-back으로.</p>
+
+</div></body></html>
