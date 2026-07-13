@@ -6770,6 +6770,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// 강제(하드) 새로고침 = SW 셸 캐시(SWR) 우회 → 옛 셸(직전판) 아닌 최신 index를 즉시 로드(§파이프라인 5-a · sw.js `?nosw=1` 탈출구). Access 자가치유(위 nosw replace 6767)와 동일 검증된 패턴 재사용 · 상단 강제새로고침 버튼·당겨서새로고침 공용(운영자 260713 "위 잡아당기면 강제 새로고침"). replace = 히스토리 미적재(뒤로가기 스택 청결) · 탭은 localStorage로 복원.
+function hardReload() {
+  try { const u = new URL(location.href); u.searchParams.set('nosw', '1'); location.replace(u.href); }
+  catch { location.reload(); }   // URL 파싱 불가 등 = 일반 리로드 폴백(SWR 캐시 맞을 수 있음)
+}
+
 // ── 긴급 속보 웹푸시(구독) — service worker(sw.js) + PushManager. 발송 = push_send.py. VAPID 공개키 박음(비밀 아님). 정본 = CLAUDE.md §🚨 ──
 const VAPID_PUB = 'BORNTh3cNd05vsxi2fZ-BykxM0NwKGTvIETz81g757RVFL6cDu29aAv5I7uit0WbGOmiZ4hlyMOEvb8B2HptU-I';
 const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -6915,7 +6921,7 @@ document.addEventListener('click', e => {
   closeFilterPop();   // 스크롤하면 필터 오버레이도 닫힘(pmenu·msgpop과 동일 · 운영자 260627)
 }, { passive: true }));
 $('#refresh').addEventListener('click', () => { hidePmenu(); load(); loadMessages(); loadCandidates(); loadPickFails(); loadHealth(true); });
-$('#topRefresh').addEventListener('click', () => { setTimeout(() => location.reload(), 420); });   // 강제 하드 새로고침(코드+데이터 · 탭은 localStorage 복원). 위임 ic-spin(누름 회전)이 한 바퀴 보이고 리로드 — 즉시 reload면 스핀이 안 보임(운영자 260629·260619).
+$('#topRefresh').addEventListener('click', () => { setTimeout(hardReload, 420); });   // 강제 하드 새로고침(코드+데이터 · SW 셸 캐시 우회 = 진짜 최신 셸 · 탭은 localStorage 복원). 위임 ic-spin(누름 회전)이 한 바퀴 보이고 리로드 — 즉시 reload면 스핀이 안 보임(운영자 260629·260619 · 260713 hardReload=nosw 우회로 강제화).
 // (🚨 긴급 확인 버튼 핸들러 폐지 — 운영자 260620: 프로필 긴급 점등·확인 루틴 제거. 토스트 재알림 de-dup은 수집함 진입(showTab scrap)으로 이전.)
 // 메시지·발행본·잠금 팝업 위치 = 링크 메뉴(#linkfab) 위 앵커(운영자 260707 "열린 메뉴 가까이" — 진입로가 linkpop으로 이관됐는데 앵커만 구 프로필에 남아 딴 데서 뜨던 것 교정)
 function vhAnchor() { const p = $('#profile'); return (p && p.getClientRects().length) ? p : $('#searchToggle'); }   // 구 프로필 앵커 = linkfab 부재 시 최후 폴백으로만 잔존(기어 도먼트 260706 3차)
@@ -11936,7 +11942,7 @@ window.addEventListener('pageshow', e => { if (e.persisted) { try { if (CURTAB =
 setViewhead('feed');   // 기본 탭=뉴스요약 헤더 초기화
 try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 'trend' : _lt0; showTab(['feed', 'scrap', 'trend', 'chan'].includes(_lt) ? _lt : 'scrap'); } catch { try { showTab('scrap'); } catch {} }   // 새로고침 = 보던 탭 그대로 복원(feed·scrap·sns·trend 전부) · 저장 없으면 기본 홈=수집함(운영자 260623)
 
-// ── 당겨서 새로고침(커스텀 링) — 네이티브 끄고 현재 탭색 링을 직접 그림. '원'만 메뉴색 = 주소창/상태바 불변(운영자 260623). 새로고침은 location.reload() = 탭은 localStorage로 복원(현재 페이지 유지).
+// ── 당겨서 새로고침(커스텀 링) — 네이티브 끄고 현재 탭색 링을 직접 그림. '원'만 메뉴색 = 주소창/상태바 불변(운영자 260623). 새로고침은 hardReload()(SW 셸 캐시 우회 = 최신 셸 즉시 · 운영자 260713) = 탭은 localStorage로 복원(현재 페이지 유지).
 (function () {
   if (!('ontouchstart' in window)) return;            // 터치 기기 전용(데스크탑은 네이티브 새로고침/바운스 보존)
   document.documentElement.classList.add('ptr-on');   // CSS 네이티브차단(html.ptr-on)을 JS와 동일 게이트로 묶음 — 비대칭 제거(분신술10)
@@ -11990,7 +11996,7 @@ try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 't
       ptr.style.transition = 'transform .2s var(--ease)';
       ptr.style.transform = 'translate(-50%, 42px) scale(1)'; ring.style.transform = '';
       ptr.classList.add('spin');
-      setTimeout(() => location.reload(), 360);                                 // 새로고침 — 탭은 복원 로직이 유지
+      setTimeout(hardReload, 360);                                             // 강제 새로고침(SW 셸 캐시 우회 = 최신 셸 즉시 · §파이프라인 5-a) — 탭은 복원 로직이 유지
     } else reset(true);
   }
   addEventListener('touchend', end, { passive: true });
