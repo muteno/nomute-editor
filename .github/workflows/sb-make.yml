@@ -1,0 +1,92 @@
+name: sb-make
+
+# 뷰어 콘티 폼(Pages Function /api/sb)이 발사 → 이야기 입력으로 claude -p(감독 모델 스위치 · storyboard-v1 스킬 런타임 Read)
+#   → 텍스트 콘티 md → viewer/sb_out/<id>/board.md 커밋(폼이 폴링).
+# 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료, k-make와 동일). 시트 이미지·영상 생성 없음(0크레딧 초안 게이트).
+# 감독(연출) 모델 = director 입력(opus|fable) — 촬영(클링/시댄스)과 2축 분리(apps/storyboard/260714_설계확정_2축분리_v1.md).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '출력 id(타임스탬프)'
+        type: string
+      story:
+        description: '이야기/기사 입력 텍스트'
+        type: string
+      director:
+        description: '감독 모델(연출 축)'
+        type: choice
+        default: fable
+        options:
+          - fable
+          - opus
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: sb-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Make storyboard
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(k-make와 동일 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리)
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          STORY: ${{ inputs.story }}
+          DIRECTOR: ${{ inputs.director }}
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1
+          fi
+          # OAuth를 조용히 덮어쓰는 변수 방어적 제거(k-make와 동일)
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/sbmake.sh "$IN_ID"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/sb_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true   # 토큰 계측 shard(claude_meter) 동반 커밋 — 있을 때만
+          git commit -m "sb: ${IN_ID} 콘티 출력" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
