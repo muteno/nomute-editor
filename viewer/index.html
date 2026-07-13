@@ -905,6 +905,9 @@
   .tstk-seg i { width:1px; height:12px; background:rgba(255,255,255,.18); }
   /* 매거진 오버레이(운영자 260712 20안 中 10안 채택) = 히어로(1위 와이드+좌측 오버레이 제목) + 미니 행(2·3·4위) · 순환/스와이프/자동은 앨범 스택 로직 그대로 보존(레이아웃만 교체) */
   .tstk-g { display:flex; flex-direction:column; gap:10px; max-width:340px; touch-action:pan-y; }   /* pan-y = 세로 제스처를 페이지 스크롤에 반환(운영자 260712 "위아래로 하니 스크롤 안 먹음" 봉합) · 전환 = 가로 스와이프(JS) */
+  .tstk-g { position:relative; }   /* 좌우 넘김 화살표(.feednav) 앵커(운영자 260713) — 별도 규칙 = 확립 간격 줄 무변경(diff 오인 회피) */
+  .tstk-g > .feednav { display:none; z-index:4; }   /* TOP 스택 좌우 넘김 화살표 = .feednav 정본 계승(원형 글래스·CHEV SVG SSOT) · z4 = mag-ov(z3) 위 · 모바일 숨김(스와이프 전담) */
+  @media (hover:hover) and (pointer:fine) { .tstk-g > .feednav { display:grid; } }   /* PC 노출(.feednav·.geni-nav "PC 화살표+모바일 스와이프" 관례 계승) · display:grid = SVG 정중앙 유지 */
   @media (min-width:640px) {   /* 와이드 = 우측 공백 소거(운영자 260712 "가득 사용") — 히어로 좌 44% + 미니 우 3열 등고 밴토 · 행높이 = 히어로 16/10이 결정·미니 커버가 stretch로 따라감 · 모바일(340 캡·세로 스택) 불변 · 값 = 기존 토큰/비율 계승(신규 raw 0) */
     .tstk-g { max-width:none; flex-direction:row; align-items:stretch; }
     .tsk.mag { flex:0 0 44%; min-width:0; }
@@ -9464,6 +9467,8 @@ function renderSnsTrends() {
       if (rgb) { if (!rgb.classList.contains('on')) { try { localStorage.setItem('nm_trend_region', rgb.dataset.reg); } catch {} renderSnsTrends(); } return; }
       const ri = e.target.closest('.trail-i');   // 책갈피 레일 = 그룹 점프(TOP = 최상단 · scroll-margin-top 계승)
       if (ri) { const g2 = ri.dataset.tg; if (g2 === 'top') window.scrollTo({ top: 0, behavior: 'smooth' }); else { const el2 = document.getElementById('tg-' + g2); if (el2) { if (!el2.open) el2.open = true; el2.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } return; }   // 레일 점프 = 접힌 섹션이면 펼치며(촤르륵 애니 + toggle이 nm_trend_gfold 기억) 스크롤·IO 점등 = 좌측 네비 동시작동(운영자 260712 #2)
+      const nv = e.target.closest('.feednav[data-nav]');   // TOP 스택 좌우 넘김 화살표(운영자 260713) = 앵커·컨트롤보다 선처리 · adv(±1) 동작 인라인(box 스코프 = 스와이프 pointerup과 동일 상태 갱신)
+      if (nv) { e.preventDefault(); box._tsO += +(nv.dataset.nav || 0); box._tsLast = Date.now(); if (box._tsDraw) box._tsDraw(); return; }
       const mb = e.target.closest('.tsk-more, .tstk-bk, .tstk-seg button');   // 스택 컨트롤(더보기·처음/중간) = 앵커보다 선처리
       if (mb) { e.preventDefault(); if (mb.classList.contains('tsk-more')) { box._tsMore = true; box._tsO = 10; } else { box._tsO = +(mb.dataset.go || 0); } box._tsLast = Date.now(); if (box._tsDraw) box._tsDraw(); return; }
       if (box._tsSw) { box._tsSw = 0; e.preventDefault(); return; }   // 스와이프 직후 클릭 = 항행 오탭 억제
@@ -9540,7 +9545,8 @@ function renderSnsTrends() {
         ? '<div class="tstk-seg" role="group" aria-label="위치 이동"><button type="button" data-go="0">처음</button><i></i><button type="button" data-go="9">중간</button></div>'
         : '<button class="tstk-bk" type="button" data-go="0">처음</button>');   // 복귀(운영자 260712) — 더보기 후 11위+ = 2택 세그(처음=TOP1·중간=TOP10) · 글래스 필 계승
       stkEl.innerHTML = `<div class="tstk-bar"${back ? '' : ' style="visibility:hidden"'}>${back}</div>` +
-        `<div class="tstk-g">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(sAt(O + 1), sIdx(O + 1), 'mini')}${skCard(sAt(O + 2), sIdx(O + 2), 'mini')}${skCard(sAt(O + 3), sIdx(O + 3), 'mini')}</div></div>`;
+        `<div class="tstk-g">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(sAt(O + 1), sIdx(O + 1), 'mini')}${skCard(sAt(O + 2), sIdx(O + 2), 'mini')}${skCard(sAt(O + 3), sIdx(O + 3), 'mini')}</div>` +
+        `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button><button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button></div>`;   // 좌우 넘김 화살표(운영자 260713) = .feednav 정본 계승 · 순환 스택이라 disabled 없음(무한 랩) · 클릭 = box 위임(adv ±1)
       const ts2 = [sAt(O), sAt(O + 1), sAt(O + 2), sAt(O + 3)];
       stkEl.querySelectorAll('.tsk-t').forEach((el2, k2) => { el2.textContent = ts2[k2] ? ts2[k2].t : ''; });
       const g = stkEl.querySelector('.tstk-g');
@@ -9550,8 +9556,9 @@ function renderSnsTrends() {
     const adv = d => { box._tsO = box._tsO + d; box._tsLast = Date.now(); box._tsDraw(); };
     if (!stkEl._bound) {
       stkEl._bound = 1;
+      const swBlock = t => t.closest('.tsk-more, .tstk-bk, .tstk-seg, .feednav');   // 컨트롤·화살표 위 = 스와이프 제외(클릭 전용) · 그 외 스택 전역 드래그(운영자 260713 "이 영역 밀면" — 구 .tsk.main 히어로 한정 확대 = 미니·빈영역도 넘김)
       let tx = 0, ty0 = 0, tm2 = 0;
-      stkEl.addEventListener('touchstart', e2 => { const m2 = e2.target.closest('.tsk.main'); if (!m2) { tx = 0; return; } tx = e2.touches[0].clientX; ty0 = e2.touches[0].clientY; tm2 = Date.now(); }, { passive: true });
+      stkEl.addEventListener('touchstart', e2 => { if (swBlock(e2.target)) { tx = 0; return; } tx = e2.touches[0].clientX; ty0 = e2.touches[0].clientY; tm2 = Date.now(); }, { passive: true });
       stkEl.addEventListener('touchend', e2 => {   // main 위 가로 스와이프 = 한 칸(좌 = 다음 · 우 = 이전) — 운영자 260712 "좌우로 넘기면 메인 창" · 세로는 touch-action:pan-y가 페이지 스크롤로 반환("스크롤 안 먹음" 봉합)
         if (!tx) return; const dx = e2.changedTouches[0].clientX - tx, dy2 = e2.changedTouches[0].clientY - ty0; tx = 0;
         if (Math.abs(dx) < 28 || Math.abs(dx) <= Math.abs(dy2) * 1.2 || Date.now() - tm2 > 900) return;   // 세로 우세 = 스크롤 의도(전환 오발 차단)
@@ -9559,7 +9566,7 @@ function renderSnsTrends() {
       }, { passive: true });
       let wl = 0;
       stkEl.addEventListener('wheel', e2 => {   // 데스크톱 = main 호버 트랙패드 가로 스와이프(deltaX 우세일 때만) — 세로휠 무간섭 통과 = 페이지 스크롤 보전(운영자 260712)
-        if (!e2.target.closest('.tsk.main')) return;
+        if (swBlock(e2.target)) return;
         const ax = Math.abs(e2.deltaX), ay = Math.abs(e2.deltaY);
         if (ax <= ay || ax < 12) return;
         e2.preventDefault();
@@ -9568,7 +9575,7 @@ function renderSnsTrends() {
       }, { passive: false });
       stkEl.addEventListener('pointerdown', e2 => {   // PC 마우스 드래그 = 가로 슬라이드(운영자 260712 "PC에서도 좌우로 슬라이드") — 포인터 캡처 = up이 요소 밖/교차여도 stkEl로 정확 수신(네이티브 드래그·요소 교차 변수 제거) · 터치 = 기존 touch 핸들러 전담(중복 방지)
         if (e2.pointerType !== 'mouse' || e2.button !== 0) return;
-        const m2 = e2.target.closest('.tsk.main'); if (!m2) { box._tsMx = 0; return; }
+        if (swBlock(e2.target)) { box._tsMx = 0; return; }
         box._tsMx = e2.clientX; box._tsMy = e2.clientY; box._tsMt = Date.now();
         try { stkEl.setPointerCapture(e2.pointerId); } catch {}
         e2.preventDefault();   // 이미지 고스트 드래그·텍스트 선택 차단(클릭은 그대로 발화 · 28px 미만 = 링크 클릭 유지)
