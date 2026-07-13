@@ -266,7 +266,8 @@ def _daily_timeseries(daily):
             put(b, 'posts', max(mc[b] - mc[a], 0))
     series = [dict({'date': d}, **merged[d]) for d in sorted(merged)]
     meta = {'history': hist.get('metrics') or {}, 'history_cut': hist.get('cut_partial_day'),
-            'note': '일별값 · 과거 = 대시보드 CSV 시드 · 이후 = 봇 수집 · 결측 = gap 유지'}
+            'note': '일별값 · 과거 = 대시보드 CSV 시드 · 이후 = 봇 수집 · 결측 = gap 유지',
+            'events': (jload('insta_events.json') or {}).get('events') or []}   # 운영자 관측 변곡 마커(차트 세로선)
     return series, meta
 
 

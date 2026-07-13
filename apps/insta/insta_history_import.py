@@ -28,7 +28,8 @@ DATA = os.path.join(HERE, 'data')
 KST = ZoneInfo('Asia/Seoul')
 
 # 파일명 접두 → 출력 지표 키 (없는 접두 = 스킵)
-METRIC_OF = {'조회수': 'views', '도달': 'reach', '방문': 'profile_views', '상호 작용': 'interactions', '팔로우': 'follows'}
+METRIC_OF = {'조회수': 'views', '도달': 'reach', '방문': 'profile_views', '상호 작용': 'interactions', '팔로우': 'follows',
+             '조회 계정': 'viewed_accounts'}   # viewed_accounts = 정체 미확정(운영자 확인 대기) — 보존 임포트만·뷰어 비표면
 
 
 def parse_csv(raw):
@@ -52,15 +53,17 @@ def parse_csv(raw):
 
 
 def main():
-    zpath = sys.argv[1] if len(sys.argv) > 1 else 'Shared.zip'
-    if not os.path.exists(zpath):
-        print(f'zip 없음: {zpath}')
+    import glob as _glob
+    zpaths = sys.argv[1:] or sorted(_glob.glob('Shared*.zip'))   # 멀티 zip = 운영자 추가 내보내기 취합(260713 2차)
+    if not zpaths:
+        print('zip 없음: Shared*.zip')
         return 1
-    z = zipfile.ZipFile(zpath)
-    # 지표별 후보 시리즈 수집
+    # 지표별 후보 시리즈 수집(전 zip 풀링)
     cand = {}   # metric -> [(fname, label, series)]
     skipped = []
-    for n in z.namelist():
+    entries = [(zp, n) for zp in zpaths for n in zipfile.ZipFile(zp).namelist()]
+    for zp, n in entries:
+        z = zipfile.ZipFile(zp)
         try:
             fname = n.encode('cp437').decode('euc-kr')
         except Exception:
@@ -116,7 +119,7 @@ def main():
     daily = []
     for d in dates:
         row = {'date': d}
-        for mkey in ('views', 'reach', 'profile_views', 'interactions', 'follows'):
+        for mkey in ('views', 'reach', 'profile_views', 'interactions', 'follows', 'viewed_accounts'):
             if d in merged.get(mkey, {}):
                 row[mkey] = merged[mkey][d]
         daily.append(row)
