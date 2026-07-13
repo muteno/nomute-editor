@@ -326,6 +326,7 @@
   - 나) **방향성 아이콘(↗ ↻ ▶) viewBox 편심** — 대칭 아이콘(X·휴지통·＋)은 path 시각중심=viewBox 중심이라 편심 0(§디자인 c 표지판 SVG와 짝), 방향성 아이콘은 편심 → `getBBox` 시각중심 측정해 `transform:translate(±N)` 보정 또는 대칭 viewBox로 path 재정의.
   - 다) **정렬 값 SSOT 미묶음** → 헤더/행 padding·셀폭이 제각각 다른 목적(제목 여백·행 리듬·히트영역)으로 조정될 때마다 정렬이 부수 피해.
   - **규칙**: ① 맞출 셀들 = 동일 토큰 폭 + `place-items:center`(크기 달라도 중심 일치 — X 15·휴지통 16px 굳이 통일 불요) · ② 헤더 우측 기준 = 행 우측 기준(padding 연쇄 일치) · ③ 정렬 값(컨/헤더/행 padding·셀폭) = **연쇄 SSOT · 하나 바꾸면 전부 재검증**(독립 변경 금지) · ④ **검증 = 눈짐작·스크린샷 금지 → 픽셀 실측**{`svg` 요소 박스 아닌 **path `getBBox` 시각중심**을 절대좌표 환산 → 헤드리스 좌표 비교 ±1px 이내(서브픽셀 0.2~0.5px 잔여 = 홀짝 픽셀 반올림이라 불가피 · 1px 초과만 원인 추적)}. 아무 UI 작업이든 정렬 대상 근처 padding/셀폭/아이콘 건드리면 이 체크 필수 — 상세 원인·검증 코드(`pathCenterX`)·이식 절차 전부 = 이식팩 md.
+- z) **스크롤바 = `viewer/cscroll.js` 커스텀 오버레이 단일 표준 (전 표면 · 운영자 260713 "다 같게")**: 모든 뷰어 표면(index 메인·트렌드 포함 전 탭 + thumb·edit·ly·k·song·track·nb iframe)은 `<script src="cscroll.js">`를 싣는다 — 보이는 바 = 오버레이(불투명 다크 알약 24~64px·스크롤 중 밝힘·pointer-events:none·모바일 포함 동일) · 네이티브 `::-webkit-scrollbar` 규칙은 no-JS 폴백으로만 유지(색 변경 = cscroll.js가 정본 — 네이티브 규칙 만져도 화면 안 바뀜 · 260626 고질). **window가 아닌 내부 컨테이너 스크롤**(모달 이식 탭 등)은 `cscrollAttach(el)` 요소 부착 모드{가까운 positioned 호스트에 absolute — fixed 금지 = top-layer·backdrop-filter 컨테이닝 함정 h) · 첫 사용처 = 프롬프팅 `.geni-body`(팝업↔이식 탭 DOM 이동 동행)}. 새 뷰어 HTML = 폴백 블록+스크립트 두 줄 계승 필수(누락 = 크롬 기본 투박 바 = 드리프트) · 예외 = 의도적 숨김 가로 레일(`.tpg`·`.feedtrack`·`.cartrack` 등 `scrollbar-width:none`)은 그대로.
 
 **이 절·`:root` 토큰 구조 변경 = 기틀**(§기틀 보호·§기틀검증) → 사용자 확인 + (기틀이면) 분신술 10인. 단 *기존 라이브 값 추출(토큰화)*은 픽셀 회귀 0.
 
