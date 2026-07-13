@@ -313,7 +313,7 @@
 
 ### 4) CII — 컴포넌트 계승 인덱스
 - a) 아래 인벤토리의 기계가독 표 승격판 = **`docs/CII_컴포넌트계승인덱스.md`**. 새 버튼·입력칸·모달·아이콘 제작·이식 = 그 표의 정본 셀렉터 계승(재설계 금지) · 표에 없으면 만들고 **행 추가(등재)**.
-- b) 드리프트 근원 2가지[4뷰어의 index :root 토큰 미상속 · 컴포넌트 4중 복제]와 핵심 규칙[닫기/최소화 묶음 우측 `margin-left:auto`는 *래퍼*에 · 이미지위 오버레이=불투명 `--bg`(구 검정20% 폐지·260709) · 누름 scale 맥락별 계승 · 아이콘 SVG만]을 표로 박음. 강제 = check_refs check_design(9뷰어 raw baseline — index·thumb + 도구 7뷰어 전부 편입 완료 260708~13 · 구 `5파일` 표기는 stale이었음[평의회 9번·한 수 제안이 이 문구를 믿고 헛짚은 실증 260713] — 신규 뷰어 생기면 실측 seed로 즉시 편입이 관례) + build_design_mirror(거울). 상세 감사 = `docs/reports/260628_UIUX_기틀_분신술10인.html`. 후속 로드맵{P1 SVG 공유·이모지→SVG / P2 tokens.css 공유 / P3 구성도 시각본·표↔코드 게이트} = CII 문서.
+- b) 드리프트 근원 2가지[4뷰어의 index :root 토큰 미상속 · 컴포넌트 4중 복제]와 핵심 규칙[닫기/최소화 묶음 우측 `margin-left:auto`는 *래퍼*에 · 이미지위 오버레이=불투명 `--bg`(구 검정20% 폐지·260709) · 누름 scale 맥락별 계승 · 아이콘 SVG만]을 표로 박음. 강제 = check_refs check_design(5파일 raw baseline) + build_design_mirror(거울). 상세 감사 = `docs/reports/260628_UIUX_기틀_분신술10인.html`. 후속 로드맵{P1 SVG 공유·이모지→SVG / P2 tokens.css 공유 / P3 구성도 시각본·표↔코드 게이트} = CII 문서.
 
 ### 5) 정본 컴포넌트 인벤토리 (`viewer/index.html` — 이식·신규 시 그대로 계승)
 - a) **모달·팝업 셸 (정본)**: 모든 모달/팝업이 계승하는 단일 셸. 헤더 띠 `.modal-head`[배경 `--modal-head-bg`.5+blur `--blur-l`+border-bottom `--line2`] · 탭 띠 `.modal-tabs`[배경 `--modal-tabs-bg`.4·세부메뉴 있을 때만] · 내용=투명(컨테이너 글래스 비침). 컨테이너 = 중앙 모달[`<dialog>`·딤 있음]=`--modal-glass`(.64) / 앵커 팝업[`div`·딤 없음]=`--modal-glass-anchor`(.75·비침보호). **값 SSOT = `:root` 셸토큰 4종**(이것만 계승·raw 창작 금지). **컨테이너 프로스트 규칙 = 예외 0**(같은 레벨 무조건 통일·오류 안 나는 방법·논외=감염):
