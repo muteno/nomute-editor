@@ -38,6 +38,40 @@ CATS = {
 }
 HOUR_BANDS = [(0, 6, '새벽0-6'), (6, 11, '오전6-11'), (11, 14, '점심11-14'),
               (14, 18, '오후14-18'), (18, 22, '저녁18-22'), (22, 24, '밤22-24')]
+
+# 알고리즘 3기(운영자 관측 = insta_events.json과 짝 · 5/7 꺾임 · 7/11 회복) — 게시일(KST) 기준
+def algo_era(d):
+    if d <= '2026-05-07':
+        return '부흥기(~5/7)'
+    if d <= '2026-07-10':
+        return '침체기(5/8~7/10)'
+    return '회복기(7/11~)'
+
+
+def _load_news_cat():
+    """뉴스 주제 분류기(CAT_KW 222개 · scraper/to_candidates.py) 재사용 — 텍스트 파싱(모듈 실행 회피 ·
+    단방향 의존 = 큐레이션 무접촉 · 운영자 260713 "이미 있는 주제 분류기 찾아서 보완"). 실패 = 빈 사전."""
+    try:
+        src = open(os.path.join(DATA, '..', '..', '..', 'scraper', 'to_candidates.py'), encoding='utf-8').read()
+        m = re.search(r'CAT_KW\s*=\s*(\{.*?\n\})', src, re.S)
+        return __import__('ast').literal_eval(m.group(1)) if m else {}
+    except Exception:
+        return {}
+
+
+def _build_cats():
+    """신 주제 사전 = 뉴스 6버킷(정치·사회·경제·국제·문화·테크) + 구 인스타 사전 병합 + 스포츠 버킷 유지."""
+    base = {k: list(v) for k, v in _load_news_cat().items()}
+    if not base:
+        return CATS   # 뉴스 분류기 로드 실패 = 구 사전 폴백
+    for old_k, new_k in (('정치', '정치'), ('사회사건', '사회'), ('연예문화', '문화'), ('국제', '국제'), ('테크경제', '테크')):
+        if new_k in base:
+            base[new_k] += [w for w in CATS.get(old_k, []) if w not in base[new_k]]
+    base['스포츠'] = list(CATS.get('스포츠', []))
+    return base
+
+
+CATS2 = _build_cats()
 DOW = ['월', '화', '수', '목', '금', '토', '일']
 
 
@@ -78,7 +112,7 @@ def naming_style(name, feats):
 
 def category(name):
     best, hits = '기타', 0
-    for cat, kws in CATS.items():
+    for cat, kws in CATS2.items():
         h = sum(1 for k in kws if k in name)
         if h > hits:
             best, hits = cat, h
@@ -109,7 +143,8 @@ def enrich(post, fetched):
         'id': post.get('id'), 'date_kst': ts_kst.strftime('%m/%d %H시'), 'name': name[:60],
         'format': '릴스' if post.get('media_product_type') == 'REELS' else '피드',
         'style': naming_style(name, feats), 'feats': feats,
-        'cat': category(name), 'cat_src': 'kw',
+        'cat': category(name), 'cat_src': 'kw+news',   # 뉴스 CAT_KW 계승 병합(260713)
+        'era': algo_era(ts_kst.date().isoformat()),
         'hour_band': band, 'dow': DOW[ts_kst.weekday()], 'len_band': cap_len_band(len(name)),
         'views': views, 'vpd': views / age_d,
         'share_pm': pm('shares'), 'save_pm': pm('saved'), 'cmt_pm': pm('comments'), 'like_pm': pm('likes'),
@@ -193,9 +228,28 @@ def compute(media_doc, audience=None):
         'hour_band': bucket_lifts(posts, lambda p: p['hour_band'], g_med),
         'dow': bucket_lifts(posts, lambda p: p['dow'], g_med),
         'caption_len': bucket_lifts(posts, lambda p: p['len_band'], g_med),
+        'algo_era': bucket_lifts(posts, lambda p: p['era'], g_med),
     }
+    def seg_summary(key_fn):
+        segs = {}
+        for p in posts:
+            segs.setdefault(key_fn(p), []).append(p)
+        out = {}
+        for k, grp in segs.items():
+            vs = [p['views'] for p in grp]
+            out[k] = {'n': len(grp), 'views_avg': round(statistics.mean(vs)), 'views_med': round(statistics.median(vs)),
+                      'share_pm_med': round(med([p['share_pm'] for p in grp]), 2),
+                      'save_pm_med': round(med([p['save_pm'] for p in grp]), 2),
+                      'cmt_pm_med': round(med([p['cmt_pm'] for p in grp]), 2),
+                      'like_pm_med': round(med([p['like_pm'] for p in grp]), 2)}
+        return out
+    # 절대 요약 3종(운영자 260713 — 릴스 평균·포스트 평균 / 주제별 반응률 / 3기 대비)
+    fmt_sum = seg_summary(lambda p: p['format'])
+    topic_sum = seg_summary(lambda p: p['cat'])
+    era_sum = seg_summary(lambda p: p['era'])
     span = sorted(p['date_kst'] for p in posts)
-    flags = ['율·속도 기반 = 누적 편향 완화(통제 실험 아님 · 관찰 신호)',
+    flags = ['시간대·요일 축 = 게시 몰림 편향 주의(운영자 자가 보고 260713: 휴식기에 몰아 올려 쏠림 — 인과 해석 금지)',
+             '율·속도 기반 = 누적 편향 완화(통제 실험 아님 · 관찰 신호)',
              f'n<{MIN_N} 버킷 = low_sample=true → 결론 금지·후속 표본 대기',
              '카테고리 = 키워드 휴리스틱(cat_src=kw) — 세션이 오분류 재라벨 가능']
     return {
@@ -204,6 +258,7 @@ def compute(media_doc, audience=None):
         'n_posts': len(posts), 'span': [span[0], span[-1]],
         'weights': W, 'global_median': {k: round(v, 3) for k, v in g_med.items()},
         'axes': axes,
+        'format_summary': fmt_sum, 'topic_summary': topic_sum, 'era_summary': era_sum,
         'posts': sorted(posts, key=lambda p: -p['score'])[:100],   # 저장 cap(전체 표본은 axes에 반영 · 비대 방지)
         'audience_overlay': {'online_peak_kst': online_peak_kst(audience or {})},
         'flags': flags,
@@ -340,6 +395,9 @@ def main():
         vdoc['daily_series'] = series_daily
         vdoc['daily_meta'] = daily_meta
         vdoc['avg'] = _avg_signals(series_daily)   # 평균 게시량·평균 대비 현재(운영자 실사용 핵심)
+        vdoc['fmt'] = sig.get('format_summary')    # 릴스·피드 절대 요약
+        vdoc['topics'] = sig.get('topic_summary')  # 주제별 반응률(뉴스 분류기 계승)
+        vdoc['eras'] = sig.get('era_summary')      # 알고리즘 3기 대비
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
             json.dump(vdoc, f, ensure_ascii=False, indent=1)
