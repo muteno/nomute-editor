@@ -4348,15 +4348,6 @@ function geniSubRender() {   // 세부 화풍 인라인 나열 단일 렌더점 
   if (cur) { sb.classList.add('out'); _geniSubT = setTimeout(swap, 300); } else swap();   // 최초(빈 목록) = 즉시 · 이후 = 페이드아웃 완주 뒤 교체
 }
 let _geniRef = null;   // 참고 이미지 { b64, url }(운영자 260713) — 세션 한정(미저장) · geniGo에 refB64/refMode 동봉 · 닫기·재선택 시 정리
-function _imgFromClipboard(e) {   // paste 이벤트 → 첫 이미지 File(없으면 null) — askText 선례(#askText paste) 공통화
-  const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData) || {}).items || [];
-  for (const it of items) { if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) return f; } }
-  return null;
-}
-function bindImgPaste(el, onImg) {   // el(입력칸·슬롯·모달)에서 Ctrl+V 이미지 → onImg(file) · 전 이미지 첨부 슬롯 공통 배선(운영자 260713 "붙여넣기 핸들러가 모든 곳에 다 들어가야함")
-  if (!el || el._imgPasteBound) return; el._imgPasteBound = true;   // 이중 바인딩 가드(재호출·reparent 대비)
-  el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
-}
 function geniRefClear() {   // 참고 이미지 해제 = 상태·미리보기·X버튼·토글행·파일입력 원복(covimg 복제 — 빈 슬롯 = 픽토그램만)
   if (_geniRef && _geniRef.url) { try { URL.revokeObjectURL(_geniRef.url); } catch {} }
   _geniRef = null;
@@ -4504,8 +4495,6 @@ function geniInit() {
     });
     rfBtn.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !_geniRef) { e.preventDefault(); rfFile.click(); } });   // role=button 키보드 페어(label→div 전환분 · thumb 슬롯 role 문법 동일)
     rfFile.addEventListener('change', () => { const f = rfFile.files && rfFile.files[0]; if (f) geniRefPick(f); rfFile.value = ''; });   // value 리셋 = 같은 파일 재선택 허용
-    bindImgPaste($('#geniWish'), geniRefPick);   // 붙여넣기(Ctrl+V) = 주문칸에 클립보드 이미지 → 참고 이미지(askText 선례 이식 · 운영자 260713 "모든 곳에 다")
-    bindImgPaste(rfBtn, geniRefPick);            // 슬롯 포커스 상태 붙여넣기도(non-editable div 폴백)
   }
   const rfMode = $('#geniRefMode'); if (rfMode) rfMode.addEventListener('click', e => { const b = e.target.closest('.geni-opt'); if (!b) return; _geniSel.refMode = b.dataset.v === 'keep' ? 'keep' : 'ref'; geniApply(); });
   const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => {
@@ -7313,7 +7302,6 @@ $('#edWish').addEventListener('input', edDisarm);   // wish 바뀌면 arm 해제
 // 사진 첨부(4:5)→합성 배선 — #edFile 선택=addEditScene(4:5 검증·미리보기) / #edAttach 재클릭(첨부됨)=합성 발사(파일선택 가로채기)
 $('#edFile').addEventListener('change', e => { addEditScene(e.target.files && e.target.files[0]); e.target.value = ''; });
 $('#edAttach').addEventListener('click', edAttachClick);
-bindImgPaste($('#editdlg'), f => addEditScene(f));   // 붙여넣기(Ctrl+V) = 편집 모달 어디서든 클립보드 이미지 → 장면 첨부(edWish disabled 대비 모달 레벨 · 텍스트 붙여넣기는 통과 · 운영자 260713 "모든 곳에 다")
 $('#editdlg .ed-img').addEventListener('click', () => { edToggleBaf(); });   // 첨부 시 상단 미리보기 탭 = 전/후 비교(원본↔첨부 · 운영자 260627). 취소는 첨부 버튼 탭.
 $('#editdlg .ed-baf').addEventListener('click', e => { e.stopPropagation(); edToggleBaf(); });   // 전/후 배지 탭도 전환
 const edBody = $('#editdlg .ed-body'), edTop = $('#edtop');

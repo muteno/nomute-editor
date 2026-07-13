@@ -1462,17 +1462,6 @@ function _opaToggle(which) {
 // ---- 릴스 자막 OPA → 켜진 슬롯값(60 고정 / 보조=조절) 배열, 최소 [60] ----
 function getComboOpas() { const out = []; if (cOpa1on) out.push(60); if (cOpa2on) out.push(cOpa2val); const u = [...new Set(out)]; return u.length ? u : [60]; }
 
-// ---- 붙여넣기(Ctrl+V) 이미지 공통 헬퍼 = 전 이미지 첨부 슬롯 공통(운영자 260713 "붙여넣기 핸들러가 모든 곳에 다 들어가야함") ----
-function _imgFromClipboard(e) {   // paste 이벤트 → 첫 이미지 File(없으면 null)
-  const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData) || {}).items || [];
-  for (const it of items) { if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) return f; } }
-  return null;
-}
-function bindImgPaste(el, onImg) {   // el(입력칸·슬롯)에서 Ctrl+V 이미지 → onImg(file)
-  if (!el || el._imgPasteBound) return; el._imgPasteBound = true;   // 이중 바인딩 가드
-  el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
-}
-
 // ---- 파일 (재사용 바인더 — #file=/1·/5 배경) ----
 function bindFile(inp, lab, store) {
   // 빈 상태 = 플레이트 없는 픽토그램만(ly .file 통일) · 누름 피드백은 CSS .file:active svg 축소뿐.
@@ -1512,12 +1501,6 @@ function bindFile(inp, lab, store) {
     if (rm) rm.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); reset(); };
   };
   inp.onchange = handler;
-  document.addEventListener('paste', e => {   // 붙여넣기(Ctrl+V) = 카드뉴스 배경 이미지(운영자 260713 "모든 곳에 다") — label은 포커스 불가라 문서 위임 + 이 슬롯이 노출(app5·#imgBox:not(.none))일 때만
-    if (!lab.offsetParent) return;   // 슬롯 숨김(#imgBox.none = 비-app5)이면 무시 = 타 탭 슬롯과 충돌 0
-    const f = _imgFromClipboard(e); if (!f) return;
-    e.preventDefault();
-    const r = new FileReader(); r.onload = () => applyImg(r.result, f.name || '붙여넣기.png'); r.readAsDataURL(f);
-  });
   lab._reset = reset;   // 수정 복원 시 이미지 위젯 비우기(외부 호출용)
   lab._set = applyImg;   // 수정 복원 시 원본 이미지 주입(외부 호출용)
   lab._setRef = applyRef;   // 수정 복원 시 합성본 빗금 참고본(원본 없음·타 기기)
@@ -1535,15 +1518,12 @@ function bindSlotImg(slotSel, inputSel, store, onChange) {   // onChange(has) = 
     if (!slot.classList.contains('has')) inp.click();   // 빈 슬롯 = 파일 선택(채운 상태는 X로만 비우고 재선택)
   });
   slot.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !slot.classList.contains('has')) { e.preventDefault(); inp.click(); } });
-  const read = (f) => {   // 파일 → store·미리보기(파일선택·붙여넣기 공용 · 운영자 260713)
-    if (!f || !/^image\//.test(f.type || '')) return;
+  inp.onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => { store.b64 = r.result; store.name = f.name || '붙여넣기.png'; filled(r.result, Math.round(f.size / 1024)); };
+    r.onload = () => { store.b64 = r.result; store.name = f.name; filled(r.result, Math.round(f.size / 1024)); };
     r.readAsDataURL(f);
   };
-  inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); };
-  bindImgPaste(slot, read);   // 붙여넣기(Ctrl+V) = 슬롯 포커스 상태 클립보드 이미지(운영자 260713 "모든 곳에 다")
-  const _cr = slot.closest('.covrow'); const _ta = _cr && _cr.querySelector('textarea'); if (_ta) bindImgPaste(_ta, read);   // 짝 텍스트칸(covta·lines/cLines)에 붙여넣기 = askText 선례
   slot._reset = () => { store.b64 = ''; store.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
   slot._set = (b64, name) => { store.b64 = b64; store.name = name || ''; filled(b64); };   // 수정 복원 시 원본 이미지 주입(외부 호출용)
   slot._setRef = (url) => {   // 합성본 빗금 참고본(원본 없음·타 기기) — store 비움(재렌더 시 재선택 필요). X=비우기·재선택.
