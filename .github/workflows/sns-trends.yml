@@ -5,7 +5,11 @@
 name: sns-trends
 on:
   schedule:
-    - cron: '17,47 * * * *'   # 30분 주기(:17/:47 = 정각·:30 크론 봇들과 혼잡 회피 오프셋 · 뉴스 수집과 별개 레인)
+    - cron: '17,47 * * * *'   # 백스톱 전용 — GitHub schedule = best-effort(피크시 1~4h 드롭·실측 260713: run 간격 09:13→13:04=3h51m·13:04→16:42=3h38m = "지연" 배지 근본원인). 주 하트비트는 아래 push(폰). :30 봇 혼잡 회피 오프셋 유지.
+  push:
+    branches: [main]
+    paths:
+      - 'viewer/sns_subs_phone.json'   # 폰(muteno-phone·실기기 PAT) 구독수집 커밋 = 실측 ~30분 규칙 하트비트 — 실기기 cron이라 GitHub schedule 드롭과 무관 → 트렌드 수집이 편승(지연 근본해소 260713). 폰 전용 파일만 감시 = 봇 GITHUB_TOKEN 커밋·자기 산출(sns_trends/brief) 재트리거 0(무한루프 없음). 근접 중복 발사는 Collect 선두 신선도 게이트가 차단.
   workflow_dispatch:
     inputs:
       subs:
@@ -81,7 +85,11 @@ jobs:
           KOBIS_KEY: ${{ secrets.KOFIC_NOMUTE_ID || secrets.KOFIC_NOMUTE }}   # ⑮ KOBIS 박스오피스 — 실측(260713): KOFIC_NOMUTE로 10건 수집 성공(run 03:20 KST)·_ID는 미존재였음 → 운영자 구두명(_ID)·실존명 양쪽 폴백(어느 이름이든 동작)
           EX_KEY: ${{ secrets.KOFIC_NOMUTE_EX }}    # ⑯ 도로공사 돌발·사고 — 운영자 시크릿명 = KOFIC_NOMUTE_EX(260713 등록 실측 · EX_URL env로 엔드포인트 교체 가능)
           # REDDIT_SUBS: 'popular,korea,worldnews'  # 서브레딧 노브(코드 기본과 동일 — 바꿀 때만 주석 해제)
-        run: timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
+        run: |
+          # 신선도 게이트 — sns_trends 최근 28분 내 갱신이면 이번 트리거 수집 스킵(push·schedule 근접 발사 중복·과금·IP차단 위험 차단). exit 0(성공) → 후속 브리프/번역/커밋이 '입력 동일·무변동' 스킵으로 캐스케이드(추가 손질 0). 파일 없음·파싱 실패·미래시각(음수 el) = 수집 진행(fail-safe = 백스톱 절대 불차단). 1680s=28분 < schedule 30분 = 백스톱 발사는 항상 통과.
+          FRESH=$(python3 -c "import json,datetime as dt; u=json.load(open('viewer/sns_trends.json'))['updated']; t=dt.datetime.fromisoformat(u); el=(dt.datetime.now(t.tzinfo)-t).total_seconds(); print(1 if 0<=el<1680 else 0)" 2>/dev/null || echo 0)
+          if [ "$FRESH" = "1" ]; then echo "::notice::sns_trends 최근 28분 내 갱신 — 이번 트리거 수집 스킵(중복 방지)"; exit 0; fi
+          timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
         if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)도 CLI 필요(운영자 260713 · 미포함 시 카나리아 rc=127)
