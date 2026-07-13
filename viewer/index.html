@@ -863,7 +863,9 @@
   .chp-row { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--r-m); background:rgba(255,255,255,.03); text-decoration:none; color:var(--fg); }   /* raw-ok: 행 = .ch-post 원문 계승 복사 */
   .chp-row:active { transform:scale(var(--press-s,.97)); }
   .chp-tt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--fs-sm); }
-  .chp-ct { flex:none; color:var(--mut); font-size:var(--fs-xs); border:1px solid var(--line); border-radius:var(--r-pill); padding:1px 6px; }   /* raw-ok: 주제 칩 = 미니 캡슐 광학 패딩 */
+  .chp-ct { flex:none; color:var(--mut); font-size:var(--fs-xs); border:1px solid var(--line); border-radius:var(--r-pill); padding:1px 6px; font-variant-numeric:tabular-nums; }   /* raw-ok: 주제 칩 = 미니 캡슐 광학 패딩 */
+  .chp-ct i { font-style:normal; color:var(--mut); }   /* 주제 중앙값 대비 배율 — ×10+ = 특출(상태색 = 의미색 · 분포 실측 임계) */
+  .chp-ct i.hot { color:var(--accent); font-weight:var(--fw-b); }
   .chp-mt { flex:none; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .ch-tip b { font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
   .ch-bar { position:relative; height:9px; border-radius:var(--r-pill); background:rgba(255,255,255,.08); overflow:hidden; flex:1; }   /* raw-ok: 게이지 = .gauge(트렌드) 원문 계승 복사(높이 9px) */
@@ -10038,7 +10040,12 @@ function renderChPost() {
   $('#chpSort').innerHTML = [['views', '조회수'], ['share_pm', '공유율'], ['save_pm', '저장률'], ['new', '최신']].map(s0 => `<button type="button" data-s="${s0[0]}"${CHP.sort === s0[0] ? ' class="on"' : ''}>${s0[1]}</button>`).join('');
   let list = all.filter(x => (CHP.fmt === '전체' || x.format === CHP.fmt) && (CHP.cat === '전체' || x.cat === CHP.cat));
   list = list.slice().sort((a, b) => CHP.sort === 'new' ? String(b.iso || '').localeCompare(String(a.iso || '')) : (b[CHP.sort] || 0) - (a[CHP.sort] || 0));
-  $('#chpList').innerHTML = list.map((x, i) => `<a class="chp-row" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="chp-tt" data-nm></span><span class="chp-ct">${esc(x.cat || '—')}</span><span class="chp-mt">${chVf(x.views)} · 공유 ${x.share_pm != null ? (+x.share_pm).toFixed(1) : '—'}</span></a>`).join('');
+  const tmed = (CHAN || {}).topics || {};
+  $('#chpList').innerHTML = list.map((x, i) => {
+    const tm = tmed[x.cat], ratio = tm && tm.views_med ? x.views / tm.views_med : null;   // 주제 중앙값 대비 배율(운영자 260713 한 수 ㄱㄱ) — 같은 주제 안 특출도
+    const rt = ratio != null ? ` <i class="${ratio >= 10 ? 'hot' : ''}">×${ratio.toFixed(1)}</i>` : '';   // hot = ×10+(TOP100 분포 실측 p90 17.4·중앙 2.3 — 상위 20%만 점등)
+    return `<a class="chp-row" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="chp-tt" data-nm></span><span class="chp-ct">${esc(x.cat || '—')}${rt}</span><span class="chp-mt">${chVf(x.views)} · 공유 ${x.share_pm != null ? (+x.share_pm).toFixed(1) : '—'}</span></a>`;
+  }).join('');
   const nms = $('#chpList').querySelectorAll('[data-nm]'); list.forEach((x, i) => { if (nms[i]) nms[i].textContent = x.name || '(무캡션)'; });   // 캡션 = textContent 주입(XSS 안전 관용구)
   $('#chpN').textContent = list.length + '/' + all.length;
 }
