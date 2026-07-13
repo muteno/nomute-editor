@@ -1,0 +1,147 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>이란 속보 Failed(3) 고착 — 근본원인·조치 보고서</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --panel:#121316; --panel2:#16181c; --fg:#eef7f0; --mut:#8a938d;
+    --accent:#00EED2; --danger:#e23b2a; --warn:#FFE13D; --info:#0FFD02; --line:rgba(255,255,255,.09);
+    --coral:#ff7a6b; --sky:#38C6FF;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+    line-height:1.6;font-size:15px;-webkit-text-size-adjust:100%}
+  .wrap{max-width:940px;margin:0 auto;padding:22px 16px 60px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:6px 0 2px}
+  h2{font-size:17px;font-weight:800;margin:30px 0 10px;padding-left:10px;border-left:3px solid var(--accent)}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:4px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 16px;margin:12px 0}
+  .kpi{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+  .kpi>div{flex:1 1 150px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .kpi b{display:block;font-size:12px;color:var(--mut);font-weight:600}
+  .kpi span{font-size:18px;font-weight:800}
+  .red{color:var(--danger)} .grn{color:var(--accent)} .yl{color:var(--warn)} .sky{color:var(--sky)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px}
+  th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);color:var(--mut);font-weight:700;white-space:nowrap;position:sticky;top:0}
+  td.n{white-space:nowrap;color:var(--mut);font-variant-numeric:tabular-nums}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0;font-size:13px}
+  .flow .b{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-weight:700}
+  .flow .a{color:var(--accent);font-weight:800}
+  .flow .bad{border-color:rgba(226,59,42,.5);color:var(--coral)}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid}
+  .t-fix{color:var(--accent);border-color:rgba(0,238,210,.4);background:rgba(0,238,210,.08)}
+  .t-root{color:var(--coral);border-color:rgba(255,122,107,.4);background:rgba(255,122,107,.08)}
+  .t-todo{color:var(--warn);border-color:rgba(255,225,61,.4);background:rgba(255,225,61,.08)}
+  ul{margin:8px 0;padding-left:20px} li{margin:3px 0}
+  .foot{color:var(--mut);font-size:12px;margin-top:26px;border-top:1px solid var(--line);padding-top:12px}
+  .big{font-size:14px}
+</style>
+<div class="wrap">
+  <div class="sub">노뮤트 · 수정 모드 보고서 · 2026-07-13 13:54 KST</div>
+  <h1>이란 속보 <span class="red">Failed(3)</span> 영구 고착 — 근본원인·조치</h1>
+  <div class="sub">대상: <code>[속보] 이란, 중동 내 미군 표적 공격…카타르·UAE·바레인 공습경보</code> (etoday 2602767) · PR <a style="color:var(--accent)" href="https://github.com/muteno/nomute-editor/pull/2190">#2190</a></div>
+
+  <div class="kpi">
+    <div><b>착수→완료</b><span class="grn">13:46:21 → 13:54</span></div>
+    <div><b>제한</b><span>15분 이내 ✓</span></div>
+    <div><b>실패 런</b><span class="red">#341·338·335·334·333</span></div>
+    <div><b>제거 고아</b><span class="grn">3건</span></div>
+  </div>
+
+  <h2>한 줄 요약</h2>
+  <div class="card big">
+    이란 속보가 <b>07-12 자동픽</b>됐지만 news-analyze 분석이 <b class="red">생성 타임아웃(exit 124·1500s)</b>으로 계속 죽어,
+    픽 파일이 <code>pending/</code>에 <b>고아로 잔류</b> → <code>api/pending</code>이 20분+ 잔류를 <b class="red">fail</b>로 표시 →
+    뷰어가 <b class="red">Failed</b> 배지. 재시도할 때마다 재적재 → 분석 또 죽음 = <b>스스로 안 풀리는 무한 실패 루프</b>("죽을 때까지" 고착).
+    <b class="grn">→ 죽은 고아 3건 제거로 루프 차단·표시 해소.</b> 이란은 dedup 원장 등재라 <b>재픽 안 됨 = 영구 해소.</b>
+  </div>
+
+  <h2>근본원인 — 로그 실측 체인</h2>
+  <div class="flow">
+    <span class="b">07-12 11:24 자동픽<br>breaking·grade3·cross5</span><span class="a">→</span>
+    <span class="b">pending/*.txt 적재</span><span class="a">→</span>
+    <span class="b bad">news-analyze 실패<br>exit124 타임아웃</span><span class="a">→</span>
+    <span class="b bad">pending 고아 잔류<br>(failed/로 이동 못함)</span><span class="a">→</span>
+    <span class="b bad">api/pending = fail</span><span class="a">→</span>
+    <span class="b bad">뷰어 Failed</span>
+  </div>
+  <div class="flow">
+    <span class="b">사용자 재시도 ✓</span><span class="a">→</span>
+    <span class="b">pending 재적재</span><span class="a">→</span>
+    <span class="b bad">분석 또 타임아웃</span><span class="a">→</span>
+    <span class="b bad">Failed(1→2→3)</span><span class="a">↺</span>
+    <span class="b bad">pending-sweep 20분마다 재디스패치 → 또 실패 = 무한 루프</span>
+  </div>
+
+  <h2>증거 — news-analyze 최근 런 (실측)</h2>
+  <div class="scroll"><table>
+    <tr><th>런</th><th>시각(UTC)</th><th>이벤트</th><th>결론</th><th>비고</th></tr>
+    <tr><td class="n">#341</td><td class="n">07-13 00:57</td><td>push</td><td class="red">failure</td><td>이 고아들 처리했어야 할 런 — 실패</td></tr>
+    <tr><td class="n">#338</td><td class="n">07-13 00:08</td><td>auto-pick</td><td class="red">failure</td><td>긴급 grade≥3 자동분석</td></tr>
+    <tr><td class="n">#335</td><td class="n">07-12 04:56</td><td>pick</td><td class="red">failure</td><td></td></tr>
+    <tr><td class="n">#334</td><td class="n">07-12 03:50</td><td>pick</td><td class="red">failure</td><td></td></tr>
+    <tr><td class="n">#333</td><td class="n">07-12 02:24</td><td>auto-pick</td><td class="red">failure</td><td></td></tr>
+    <tr><td class="n">#340·339·337</td><td class="n">07-12~13</td><td>pick/auto</td><td class="yl">cancelled</td><td>동시성/eviction</td></tr>
+  </table></div>
+  <div class="sub">카드 error.log 실측: <code>reason: 생성 타임아웃(1500s 상한 초과·재시도 소진) · exit_code 124 · out_lines 0</code>. (stderr의 <code>workspace not trusted</code>·<code>MultiEdit</code>는 CLAUDE.md 확인된 <b>무관 노이즈</b> — 오진 주의.)</div>
+
+  <h2>인덱싱 상세 — 조사·조치 전 항목</h2>
+  <div class="scroll"><table>
+    <tr><th>#</th><th>항목</th><th>실측 내용</th><th>판정</th><th>상태</th></tr>
+    <tr><td class="n">01</td><td>대상 식별</td><td>수집함 상단 Failed(3) = etoday 2602767, first_seen 07-12 11:21, 1일2시간전 = 화면 일치</td><td>확정</td><td>—</td></tr>
+    <tr><td class="n">02</td><td>Failed 표시 원천</td><td><code>picks-failed.json</code> 부재 → <code>api/pending</code>의 <code>fail</code> 경로(pendStatus)</td><td>확정</td><td>—</td></tr>
+    <tr><td class="n">03</td><td>pending 잔존</td><td><code>pending/260713-093020-pick-2104.txt</code> 등 3건 top-level 잔류(4h+)</td><td>고아</td><td><span class="tag t-fix">제거</span></td></tr>
+    <tr><td class="n">04</td><td>api/pending 판정</td><td>STUCK_MIN=20분 + 런 비활성 → <code>status=fail</code>. 나이 4h+ = 확정 fail</td><td>정상동작</td><td>—</td></tr>
+    <tr><td class="n">05</td><td>뷰어 배지 계산</td><td><code>failCount=1+재시도</code>, (3)=최초1+로컬재시도2회(<code>nm_fail_retries</code> localStorage)</td><td>확정</td><td>—</td></tr>
+    <tr><td class="n">06</td><td>자동복구 실패 이유</td><td><code>pickInFeed</code> 미충족(큐 미생성)→ pickSettled 안 됨 → 영구 Failed</td><td>확정</td><td>—</td></tr>
+    <tr><td class="n">07</td><td>분석 실패 원인</td><td>news-analyze exit 124 생성 타임아웃(1500s). 런 #333~#341 연속 failure</td><td class="red">근본</td><td><span class="tag t-todo">구조</span></td></tr>
+    <tr><td class="n">08</td><td>고아 미이동</td><td>잡 timeout kill → per-item 실패핸들러 미실행 → <code>pending/failed/</code>로 못 옮김</td><td class="red">근본</td><td><span class="tag t-todo">구조</span></td></tr>
+    <tr><td class="n">09</td><td>재시도 루프</td><td>fireFailRetry→재적재→또 타임아웃. pending-sweep(20분) 재디스패치도 또 실패</td><td class="red">근본</td><td><span class="tag t-todo">구조</span></td></tr>
+    <tr><td class="n">10</td><td>재자동픽 방지</td><td><code>push/autopick.json</code>에 2602767 등재(07-12 11:24) = 영구 dedup, 실패해도 재픽 X</td><td>안전</td><td>확인</td></tr>
+    <tr><td class="n">11</td><td>동반 고아 A</td><td><code>093118-pick-3fc4</code> 김하수 청도군수(yna) 픽 — 같은 실패런 산물</td><td>고아</td><td><span class="tag t-fix">제거</span></td></tr>
+    <tr><td class="n">12</td><td>동반 고아 B</td><td><code>095750-21948</code> 김하수 전문 붙여넣기(paste) — 같은 실패런 산물</td><td>고아</td><td><span class="tag t-fix">제거</span></td></tr>
+    <tr><td class="n">13</td><td>pending-sweep 존재</td><td>cron */20 · THRESH_MIN 15 · 고아 재디스패치 설계됨 — 그러나 분석이 죽어 무효</td><td>갭</td><td><span class="tag t-todo">구조</span></td></tr>
+    <tr><td class="n">14</td><td>check_refs 게이트</td><td>커밋 시 자동 통과(참조·거울·토큰·패리티 전부 ✓)</td><td>통과</td><td>—</td></tr>
+    <tr><td class="n">15</td><td>커밋</td><td><code>c2175fd</code> 고아 3건 제거</td><td>완료</td><td><span class="tag t-fix">푸시</span></td></tr>
+    <tr><td class="n">16</td><td>브랜치 배포</td><td>Cloudflare Pages c2175fd Deploy successful(브랜치 프리뷰)</td><td>확인</td><td>—</td></tr>
+    <tr><td class="n">17</td><td>PR</td><td>#2190 draft 생성·자동 구독</td><td>완료</td><td>—</td></tr>
+    <tr><td class="n">18</td><td>디자인 영향</td><td>백엔드 데이터 정리 — UI/UX 변경 0(전·후 이미지 대상 아님)</td><td>없음</td><td>—</td></tr>
+    <tr><td class="n">19</td><td>기틀 영향</td><td>파이프라인 구조 무변경(고아 데이터만 제거) — §기틀 보호 비대상</td><td>없음</td><td>—</td></tr>
+    <tr><td class="n">20</td><td>잔여 리스크</td><td>구조적 루프 미봉합 → 미래 대형 속보도 동일 고착 가능 → #21 권고</td><td class="yl">주의</td><td><span class="tag t-todo">승인대기</span></td></tr>
+  </table></div>
+
+  <h2>전 / 후</h2>
+  <div class="scroll"><table>
+    <tr><th>지표</th><th>전</th><th>후(머지 시)</th></tr>
+    <tr><td>pending top-level 고아</td><td class="red">3건 (4h+ 잔류)</td><td class="grn">0</td></tr>
+    <tr><td>이란 카드 상태</td><td class="red">Failed(3) 영구</td><td class="grn">해소 (dedup으로 재픽 X)</td></tr>
+    <tr><td>재디스패치 루프</td><td class="red">20분마다 재실패</td><td class="grn">차단</td></tr>
+    <tr><td>파이프라인 정상 흐름</td><td>무손상</td><td>무손상</td></tr>
+  </table></div>
+
+  <h2><span class="tag t-todo">권고</span> 남은 구조적 근본 (운영자 승인 필요)</h2>
+  <div class="card">
+    이번 제거는 <b>이 카드의 영구 해소</b>지만, <b>루프 자체</b>는 남아 있다 — 대형 속보(6+개 alt·거대 클러스터)는 분석 타임아웃이 반복돼 또 고아가 될 수 있다.
+    <ul>
+      <li><b class="sky">권고 A (핵심)</b> — <code>pending-sweep</code>에 <b>재디스패치 횟수 캡</b>: 같은 고아를 K회(예 3회) 초과 재디스패치하면 <code>pending/failed/</code>로 park + 실패로그 기록 → <b>무한 루프 원천 차단</b> + 뷰어가 정상 Failed(끄기 가능)로 표시.</li>
+      <li><b class="sky">권고 B</b> — 대형 속보 분석 타임아웃 상향 또는 alt 개수 캡(생성 입력 축소)으로 exit 124 자체 감소.</li>
+    </ul>
+    둘 다 <b>파이프라인 기틀(§기틀 보호)</b>이라 임의 변경하지 않고 승인 후 보강. <span class="mut">승인하면 A부터 착수 권장(작고 방어적).</span>
+  </div>
+
+  <h2>운영자 확인 포인트</h2>
+  <div class="card">
+    PR <a style="color:var(--accent)" href="https://github.com/muteno/nomute-editor/pull/2190">#2190</a> <b>머지</b>하면 라이브 반영 → 수집함 상단 Failed(3) 카드 사라짐(라이브는 Access 뒤라 세션 curl 불가 = 머지 후 폰에서 새로고침 확인).
+    구조 보강(권고 A/B) 진행 여부 알려줘.
+  </div>
+
+  <div class="foot">
+    정본 커밋 <code>c2175fd</code> · 브랜치 <code>claude/debug-failed-task-logs-49jaeh</code> ·
+    조사 근거: <code>viewer/candidates.json</code>, <code>pending/</code>, <code>push/autopick.json</code>, <code>functions/api/pending.js</code>, <code>viewer/index.html</code>(pickState), news-analyze 런 30건, 카드 error.log.
+  </div>
+</div>
