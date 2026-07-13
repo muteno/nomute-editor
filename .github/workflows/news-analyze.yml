@@ -108,6 +108,11 @@ jobs:
           fi
           TITLES=$(cat /tmp/analyzed_titles.txt 2>/dev/null | paste -sd'; ' - || echo "기사")
           git commit -m "analyze: ${TITLES:-기사}"
+          # 커밋 범위(queue·pending·metrics·messages) 밖 잔여 변경 = pull --rebase 사전 거부 원인
+          # (260714 04:08 run 실측: "cannot pull with rebase: You have unstaged changes"로 4회 전패 → 분석물 로컬 커밋째 유실·pending 잔존).
+          # 커밋은 이미 끝났으니 잔여물은 stash 대피(러너 일회용 = 폐기 무해) — 정체는 status 로그로 관측(재발 시 원인 파일 특정).
+          echo "── 커밋 범위 밖 잔여물(있으면 아래 목록 = 유실 원인 후보) ──"; git status --porcelain | head -20
+          git stash --include-untracked 2>/dev/null || true
           # 동시 푸시 경합 대비 rebase 재시도.
           # -X theirs = rebase 충돌 시 이 run의 분석 결과 우선(분석물 보존 최우선).
           # 실패하면 rebase --abort로 깨끗이 되돌린 뒤 재시도 — abort 없이 pull만 반복하면
