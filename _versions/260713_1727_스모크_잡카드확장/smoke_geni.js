@@ -4,13 +4,10 @@
 //
 // 원커맨드:  node shared/smoke_geni.js        (레포 루트 어디서든 · 종료코드 0=전부 PASS · 1=실패/중단)
 //
-// 무엇을 검증하나 — viewer/index.html의 genidlg 이중 홈(팝업↔이식 탭) 전 생명주기 + thumb 잡 카드 흐름 13시나리오:
+// 무엇을 검증하나 — viewer/index.html의 genidlg 이중 홈(팝업↔이식 탭) 전 생명주기 9시나리오:
 //   S2 라디얼 +>이미지 셸 → S3 프롬프팅 탭 이식 6항 → S6 이식 모드 폼 상호작용(칩→요약 리드백)
 //   → S4 타 탭 이탈 원복 → S5 재진입 장면·화풍 보존 → S9 발사 실패(404) 강건성
-//   → S10 발사 성공(API 스텁) = 폼 원복+iframe 잡 카드 합류 → S11 완료 카드 '한 장 더' 노출
-//   → S12 한 장 더 = 새 잡 카드(같은 설정·1장) → S13 한 장 더 실패 = 버튼 상태 표기
 //   → S7 닫기 완전 원복 → S8 팝업 홈 무결 → S1 페이지 에러 0
-//   (S10~13 = 운영자 260713 "그 아이디어도 ㄱ" — api/genimg만 fetch 스텁 · 나머지 = 실코드 경로 그대로)
 //
 // 동작: 자체적으로 ① playwright-core 없으면 OS 임시 캐시에 1회 자동 설치(레포 무접촉·package.json 안 만듦)
 //       ② python3 http.server로 viewer/ 정적 서빙(포트 충돌 시 +1 재시도) ③ 끝나면 서버 종료(잔류 0).
@@ -75,17 +72,7 @@ const SEL = {
   host: '#geniHost', dlg: '#genidlg', lead: '.geni-lead', body: '.geni-body', dlgH: '.dlg-h',
   go: '#geniGo', wish: '#geniWish', sum: '#geniSum', style: '#geniStyle', frActive: '#tooldlg .toolfr.active',
   styleAlt: '.geni-opt[data-v="watercolor"]', styleAltKo: '수채',
-  thumbFrame: '/thumb.html', jobs: '#jobs', job: '#jobs .job', jmore: '.jmore',   // 잡 카드(iframe 내부 · S10~13)
 };
-
-// fetch 스텁 토글(부모/iframe 공용 주입) — api/genimg만 성공 흉내·그 외 원본 통과(라이브 코드 무접촉 · 테스트 페이지 한정)
-const STUB_FN = `(on) => {
-  const w = window;
-  if (!w.__ofetch) w.__ofetch = w.fetch;
-  w.fetch = on ? ((u, o) => String(u).includes('api/genimg')
-    ? Promise.resolve(new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }))
-    : w.__ofetch(u, o)) : w.__ofetch;
-}`;
 
 (async () => {
   const R = []; const errs = [];
@@ -144,47 +131,6 @@ const STUB_FN = `(on) => {
     await pg.waitForTimeout(900);
     const s9 = await pg.evaluate(S => ({ hostShown: !document.querySelector(S.host).hidden, goEnabled: !document.querySelector(S.go).disabled }), SEL);
     ok('S9 발사 실패(로컬 404) 강건성(폼 유지·버튼 재활성·크래시 0)', Object.values(s9).every(Boolean), JSON.stringify(s9));
-
-    // ── S10~13 잡 카드 흐름(운영자 260713 "그 아이디어도 ㄱ") — api/genimg만 스텁 · 발사→합류→한 장 더→실패 전 경로 실코드 ──
-    const tf = pg.frames().find(f => f.url().includes(SEL.thumbFrame));
-    if (!tf) throw new Error('thumb iframe 미발견 — 잡 카드 검증 불가(셸 로드 순서 확인)');
-    await pg.evaluate('(' + STUB_FN + ')(true)');   // 부모 발사 성공 흉내(genfree-fired 실경로 격발)
-    await pg.evaluate(S => document.querySelector(S.host + ' ' + S.go).click(), SEL);
-    await pg.waitForTimeout(700);
-    await pg.evaluate('(' + STUB_FN + ')(false)');
-    const s10p = await pg.evaluate(S => ({ hostHidden: document.querySelector(S.host).hidden, frameActive: !!document.querySelector(S.frActive) }), SEL);
-    const s10f = await tf.evaluate(S => {
-      const jobs = document.querySelectorAll(S.job); const t = document.querySelector('.tab.on');
-      return { n: jobs.length, run: JOBS.length ? JOBS[0].status === 'run' : false, tab: t ? t.dataset.app : '' };
-    }, SEL);
-    ok('S10 발사 성공 = 폼 원복+프롬프팅 탭 잡 카드 합류(run)', s10p.hostHidden && s10p.frameActive && s10f.n >= 1 && s10f.run && s10f.tab === '6', JSON.stringify({ ...s10p, ...s10f }));
-
-    const s11 = await tf.evaluate(S => {
-      const j = JOBS[0]; if (!j) return { ok: false };
-      j.status = 'done'; j.done = (j.outs || [{}]).map(() => true); renderJob(j);   // 완료 전이 시뮬(렌더 경로 실코드)
-      const mr = document.getElementById('job-' + j.n).querySelector(S.jmore);
-      return { ok: !!mr, label: mr ? mr.textContent.trim() : '', gated: !!(j.payload && j.endpoint && j.gfree) };
-    }, SEL);
-    ok('S11 완료 카드 = 한 장 더 노출(payload 게이트 충족)', s11.ok && s11.label.indexOf('한 장 더') >= 0 && s11.gated, JSON.stringify(s11));
-
-    await tf.evaluate('(' + STUB_FN + ')(true)');   // iframe 발사 성공 흉내
-    const s12 = await tf.evaluate(async S => {
-      const before = JOBS.length;
-      document.querySelector(S.job + ' ' + S.jmore).click();
-      await new Promise(r => setTimeout(r, 450));
-      return { before, after: JOBS.length, newRun: JOBS[0] && JOBS[0].status === 'run', newCount: JOBS[0] ? JOBS[0].outs.length : 0 };
-    }, SEL);
-    ok('S12 한 장 더 = 새 잡 카드(같은 설정·1장·run·원본 보존)', s12.after === s12.before + 1 && s12.newRun && s12.newCount === 1, JSON.stringify(s12));
-
-    await tf.evaluate('(' + STUB_FN + ')(false)');   // 스텁 해제 = 실서버(POST 미지원) 실패 경로
-    const s13 = await tf.evaluate(async S => {
-      const j = JOBS[0]; j.status = 'done'; j.done = j.outs.map(() => true); renderJob(j);
-      const mr = document.getElementById('job-' + j.n).querySelector(S.jmore);
-      mr.click();
-      await new Promise(r => setTimeout(r, 600));
-      return { txt: mr.textContent.trim(), enabled: !mr.disabled };
-    }, SEL);
-    ok('S13 한 장 더 실패 = 버튼 상태 표기(실패·다시)+재활성', s13.txt.indexOf('실패') >= 0 && s13.enabled, JSON.stringify(s13));
 
     await pg.click(SEL.toolX); await pg.waitForTimeout(450);
     const s7 = await pg.evaluate(S => ({ dlgBack: document.querySelector(S.dlg).childElementCount >= 3, hostHidden: document.querySelector(S.host).hidden, toolClosed: !document.querySelector(S.tooldlg).open }), SEL);
