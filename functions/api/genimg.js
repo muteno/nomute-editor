@@ -2,6 +2,11 @@
 // env: GH_TOKEN = GitHub fine-grained PAT(이 레포, Actions: Read and write) — pick/make-cards/moreimg 공용.
 // ⚠️ 발동 비용 = Claude(Opus 4.8·effort max, 구독 토큰) 프롬프트 1콜 + Gemini 렌더(종량제 GEMINI_API_KEY, 장수만큼).
 //    공개 엔드포인트라 스팸 시 지출 주의(moreimg·make-cards와 동일 정책 — 운영자가 지출 모니터링) → 장수 1~4 캡.
+import { rateGate } from './_rate.js';   // 발사 레이트리밋 소급(평의회 260713 ⑦ — 종량제 Gemini 파이프인데 게이트 없던 공백 · 캡 4 = 정상 연속 생성 여유·연타 폭주만 차단)
+const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/muteno/nomute-editor/${path}`, {
+  method, headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28' },
+  ...(body ? { body: JSON.stringify(body) } : {}),
+});
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
     new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
@@ -58,6 +63,9 @@ export async function onRequestPost({ request, env }) {
   if (!opts.refB64) opts.refMode = '';   // 미첨부 = 모드 무의미(gen_image도 이중 게이트)
 
   if (free && !opts.wish && !opts.text) return json({ error: '자유 생성 = 주문 또는 문구 필수' }, 400);   // 장면 소재 0 방지(뷰어도 동일 가드 · gen_image.py 3중)
+
+  const rl = await rateGate(GH, env.GH_TOKEN, 'imggen.yml', 4);   // 뷰어는 429 error 표기 기존 처리(thumb.html 발사부) = 클라 무변경
+  if (rl) return json({ error: rl.error }, 429);
 
   const r = await fetch(
     'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/imggen.yml/dispatches',

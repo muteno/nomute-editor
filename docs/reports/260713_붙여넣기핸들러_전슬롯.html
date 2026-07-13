@@ -1,0 +1,63 @@
+<meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>260713 붙여넣기(Ctrl+V) 이미지 핸들러 — 전 슬롯 배선</title>
+<style>
+:root{--bg:#0b0d0c;--fg:#eef7f0;--mut:#9aa8a0;--accent:#00EED2;--line:rgba(255,255,255,.14);--line2:rgba(255,255,255,.09);--warn:#FFE13D;--danger:#e23b2a}
+body{background:var(--bg);color:var(--fg);font:14px/1.65 -apple-system,'Apple SD Gothic Neo','Pretendard','Noto Sans KR','Malgun Gothic',sans-serif;margin:0;padding:22px 16px 60px}
+h1{font-size:19px;margin:0 0 4px}h1 b{color:var(--accent)}
+h2{font-size:15px;margin:30px 0 10px;color:var(--accent)}
+.meta{color:var(--mut);font-size:12px;margin-bottom:16px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid var(--line2);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:#131715;color:var(--accent);white-space:nowrap}
+tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+td:last-child{color:var(--accent);font-weight:700}
+.panel{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:rgba(255,255,255,.02);margin:10px 0}
+ul{margin:6px 0;padding-left:18px}li{margin:4px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.pro li b{color:var(--accent)}.con li b{color:var(--warn)}
+code{background:rgba(255,255,255,.07);border-radius:5px;padding:1px 5px;font-size:12px}
+.pass{display:inline-block;background:rgba(0,238,210,.12);color:var(--accent);border:1px solid rgba(0,238,210,.3);border-radius:99px;padding:2px 12px;font-weight:800;font-size:12px}
+</style>
+<h1>붙여넣기(Ctrl+V) 이미지 핸들러 = <b>전 이미지 첨부 슬롯 배선</b> · 260713</h1>
+<div class="meta">운영자 "붙여넣기 핸들러 누락 · 모든 곳에 다 들어가야함" · 대상 viewer/index.html·thumb.html · 머지 1ed75dc · <span class="pass">헤드리스 실측 5/5 PASS · 에러 0</span></div>
+
+<h2>1. 진단 — 무엇이 누락이었나</h2>
+<div class="panel">클립보드 이미지 <code>paste</code> 핸들러가 <b>요약요청(#askText) 한 곳에만</b> 있었다. 전수 조사 결과 뷰어 이미지 첨부 슬롯 6곳 중 5곳(geni 참고·편집 첨부·포스트 배경·자막·카드뉴스 배경)에 붙여넣기 핸들러가 없어, 파일 선택으로만 이미지를 넣을 수 있었다. 운영자 지적 정확.
+<br><br>영상·오디오 파일 슬롯(conv·edit·track·ly·song)은 클립보드에 그 바이너리가 담기지 않아 이미지 paste 대상이 아님 → 스코프 제외(이미지 첨부 슬롯 전수만).</div>
+
+<h2>2. 슬롯별 배선 · 실측 (6곳)</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>슬롯</th><th>파일</th><th>셀렉터</th><th>핸들러</th><th>기존 paste</th><th>배선 방식(후)</th><th>실측 대상</th><th>결과</th></tr></thead><tbody>
+<tr><td>1</td><td>요약요청 이미지</td><td>index</td><td>#askAttach ↔ #askText</td><td>addAskImages</td><td>이미 있음(기준 선례)</td><td>—</td><td>유지(무접촉)</td><td>PASS(기존)</td></tr>
+<tr><td>2</td><td>geni 참고 이미지</td><td>index</td><td>#geniRefBtn ↔ #geniWish</td><td>geniRefPick</td><td>없음</td><td>#geniWish textarea + 슬롯 자체</td><td>geni 참고 슬롯 채움</td><td>PASS</td></tr>
+<tr><td>3</td><td>편집 모달 첨부</td><td>index</td><td>#edAttach / #editdlg</td><td>addEditScene</td><td>없음</td><td>#editdlg 모달 레벨(edWish disabled 대비)</td><td>addEditScene 호출(×1)</td><td>PASS</td></tr>
+<tr><td>4</td><td>포스트 배경</td><td>thumb</td><td>#pImgSlot ↔ #lines</td><td>bindSlotImg read</td><td>없음</td><td>#lines(covta) + 슬롯</td><td>pImgSlot.has</td><td>PASS</td></tr>
+<tr><td>5</td><td>자막 이미지</td><td>thumb</td><td>#cImgSlot ↔ #cLines</td><td>bindSlotImg read</td><td>없음</td><td>#cLines(covta) + 슬롯</td><td>cImgSlot.has</td><td>PASS</td></tr>
+<tr><td>6</td><td>카드뉴스 배경</td><td>thumb</td><td>#fileLab / #file (app5)</td><td>bindFile applyImg</td><td>없음</td><td>app5 노출 시 document 위임(label 포커스 불가)</td><td>fileLab.has</td><td>PASS</td></tr>
+</tbody></table></div>
+
+<h2>3. 방식 — askText 선례를 공통 헬퍼로</h2>
+<div class="panel"><ul>
+<li><b>공통 헬퍼</b>(각 파일 1쌍): <code>_imgFromClipboard(e)</code> = paste에서 첫 이미지 File 추출 · <code>bindImgPaste(el, onImg)</code> = el에서 Ctrl+V 이미지면 <code>onImg(file)</code> 호출. 이미지 아닌 paste·텍스트는 통과(<code>preventDefault</code>는 이미지일 때만) · 이중 바인딩 가드(<code>_imgPasteBound</code>).</li>
+<li><b>짝 입력칸이 있는 슬롯</b>(geni·포스트·자막): 그 textarea에 배선 = #askText 선례 그대로. <code>bindSlotImg</code>는 <code>read(f)</code> 경로를 추출해 파일선택·붙여넣기 공용화 → 포스트·자막 두 슬롯 동시 커버.</li>
+<li><b>짝 입력칸이 없는 슬롯</b>(편집·카드뉴스 배경): 편집은 모달(<code>#editdlg</code>) 레벨 — 모달 안 어디서 Ctrl+V해도 이미지면 첨부(edWish가 disabled 돼도 커버) · 카드뉴스 배경은 label이라 포커스 불가 → app5 노출(<code>#imgBox:not(.none)</code>)일 때만 document 위임(타 탭 슬롯과 충돌 0).</li>
+</ul></div>
+
+<h2>4. 장점 / 리스크</h2>
+<div class="grid">
+<div class="panel pro"><h3 style="margin-top:0;color:var(--accent);font-size:13px">장점</h3><ul>
+<li><b>일관 입력</b> — 이제 모든 이미지 슬롯에서 스크린샷 Ctrl+V 한 번으로 첨부(파일 저장→선택 왕복 제거).</li>
+<li><b>단일 헬퍼</b> — 슬롯마다 제각각 로직 창작 0, askText 선례 공통화 = 드리프트 축 없음.</li>
+<li><b>안전 통과</b> — 이미지 아닌 붙여넣기(텍스트·URL)는 그대로 통과 = 기존 텍스트 붙여넣기 무영향.</li></ul></div>
+<div class="panel con"><h3 style="margin-top:0;color:var(--warn);font-size:13px">리스크·한계</h3><ul>
+<li><b>모바일</b> — Ctrl+V는 데스크톱 주 대상. 모바일 길게눌러 붙여넣기는 입력칸(textarea)에서 동작, 슬롯 자체는 브라우저별 차이 → textarea가 주 경로·슬롯은 폴백.</li>
+<li><b>non-editable 슬롯</b> — div/label 자체 paste는 브라우저마다 안 올 수 있어 폴백으로만 의존, 주 경로는 짝 textarea·모달·document 위임(전부 실측 PASS).</li>
+<li><b>품질저하 리스크</b> — 기존 파일선택·삭제·미리보기 경로 전부 무접촉(read 경로 공용화만) = 회귀 0.</li></ul></div>
+</div>
+
+<h2>5. 검증</h2>
+<div class="panel"><ul>
+<li><b>실측</b>: Playwright chromium 헤드리스 — 각 슬롯에 <code>DataTransfer→ClipboardEvent('paste')</code> dispatch → 슬롯 채움/핸들러 호출 확인. 5슬롯 전부 PASS · 페이지 에러 0. (geni 최초 false = geniInit lazy 미호출 false-negative → init 태우고 재실측 PASS)</li>
+<li><b>게이트</b>: <code>check_refs</code> rc=0(8뷰어 JS 구문 통과) · 백업 <code>_versions/260713_1648_붙여넣기핸들러_전슬롯/</code></li>
+<li><b>운영자 확인</b>: 라이브에서 이미지 첨부 슬롯(요약요청·이미지 스튜디오 참고·썸네일 포스트/자막·카드뉴스 배경·카드 편집)에 스크린샷 복사 후 Ctrl+V(데스크톱) 붙여넣기 되는지.</li>
+</ul></div>

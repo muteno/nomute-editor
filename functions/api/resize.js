@@ -2,6 +2,7 @@
 // 흐름: 브라우저 base64 이미지+옵션 POST → ① uploads/<id>/src.ext 레포 커밋(contents API·SHA 회수)
 //        → ② img-resize.yml dispatch(src_sha 레이스 가드) → 러너 3층 라우팅 → viewer/gen_out/resize.json → 뷰어 폴링.
 // env: GH_TOKEN(기존 PAT 재사용). 옵션 화이트리스트 = 러너(resize_image.py)와 이중 검증(genimg 계승).
+import { rateGate } from './_rate.js';   // 발사 레이트리밋(파이프 공통 문법 · 평의회 260713 ⑦ 소급 — 연타 = 고아 업로드+런 낭비 차단)
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
 const ASPECTS = ['16:9', '9:16', '4:5', '1:1', '21:9'];   // 21:9 = 비율 순환 신설(운영자 260713 · 러너 resize_image.py ASPECTS와 한 쌍)
@@ -40,6 +41,9 @@ export async function onRequestPost({ request, env }) {
   const isPng = head.charCodeAt(0) === 0x89 && head.slice(1, 4) === 'PNG';
   const isWebp = head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WEBP';
   if (!isJpg && !isPng && !isWebp) return json({ error: '이미지 형식 오류(JPG/PNG/WEBP만)' }, 400);
+
+  const rl = await rateGate(GH, env.GH_TOKEN, 'img-resize.yml', 4);   // 업로드 *전* 게이트(_rate.js 원칙 ① — 업로드 후 거절 = 고아 커밋) · 캡 4 = 정상 연속 사용 여유·남용만 차단(fail-open)
+  if (rl) return json({ error: rl.error }, 429);
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
   const imgPath = `uploads/${id}/src${ext}`;
