@@ -4289,11 +4289,12 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
 }
 // 이미지 받아오기 공통기 — api 발사(moreimg 재검색·genimg 제미나이 생성 공용 · 운영자 260707) ·
 // 맨 좌측 반투명 로딩 슬라이드 · articles.json 폴링(~25s×ticks)으로 thumb_search 늘면 thumbsec 재렌더(새 이미지 좌측·번호 갱신).
-async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 문구), ticks }
-  const track = wrap.querySelector('.cref-track'); if (!track) return;
-  if (track.querySelector('.cref-loading')) return;   // 이미 진행 중(중복 발사 가드)
+async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 문구), ticks, field(완료 폴링 대상) }
+  const track = wrap.querySelector('.cref-track'); if (!track) return false;
+  const field = o.field || 'thumb_search';   // 완료 감지 대상 = moreimg(재검색)=thumb_search / genimg(생성)=thumb_gen (운영자 260713 정합 봉합 — genimg가 thumb_search 폴링해 완료 영영 미감지=로딩 잔류·화면 이상 버그)
+  if (track.querySelector('.cref-loading')) return 'busy';   // 이미 진행 중(중복 발사 가드) — 발사측이 조용히 처리
   const a0 = DATA.find(x => x && x.file === file);
-  const before = ((a0 && a0.cards && a0.cards.thumb_search) || []).length;   // 기준 = 현재 검색이미지 수
+  const before = ((a0 && a0.cards && a0.cards[field]) || []).length;   // 기준 = 현재 해당 카러셀(검색/생성) 이미지 수
   // 로딩 슬라이드를 await 전에 먼저(동기) 꽂는다 = .cref-loading 가드 즉시 작동 → 연타 레이스 차단(평의회 검증·260622)
   const ph = document.createElement('div'); ph.className = 'cref-slot cref-loading';   // 맨 좌측 반투명 로딩(N장 추가 예정 의미)
   ph.innerHTML = '<div class="cref-ld"><span class="cref-ld-sp"></span><span class="cref-ld-tx">' + esc(o.ld) + '</span></div>';
@@ -4303,7 +4304,7 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
   let ok = false;
   try { const r = await fetch(o.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(o.body) }); ok = !!((await r.json().catch(() => ({})) || {}).ok); } catch {}
   if (btn) setTimeout(() => { btn.classList.remove('busy'); btn.disabled = false; }, 2500);   // 버튼은 곧 풀어줌(중복은 .cref-loading 가드)
-  if (!ok) { ph.remove(); if (btn && typeof _flashBtn === 'function') _flashBtn(btn, 'err'); return; }   // 실패 = 로딩 제거(가드 해제)
+  if (!ok) { ph.remove(); if (btn && typeof _flashBtn === 'function') _flashBtn(btn, 'err'); return false; }   // 실패 = 로딩 제거(가드 해제)
   let n = 0;
   const ticks = o.ticks || 10;
   const tick = async () => {
@@ -4312,7 +4313,7 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
     try {
       const rr = await fetch('articles.json?_=' + Date.now()); const j = await rr.json();
       const a = (j.articles || []).find(x => x && x.file === file);
-      const now = ((a && a.cards && a.cards.thumb_search) || []).length;
+      const now = ((a && a.cards && a.cards[field]) || []).length;
       if (a && now > before) {   // 새 이미지 도착 → DATA 갱신 + 열린 모달이면 thumbsec 통째 재렌더(로딩 슬라이드 자동 소거·새 이미지 좌측·번호 갱신)
         await ensureDetail(a);   // 경량 인덱스라 body/md 빈 채 → CUR_A/DATA 교체 전 detail 복원(다운로드 카드·출처 유실 방지 · 평의회 260624)
         const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) DATA[idx] = a;
@@ -4324,9 +4325,10 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
     else { const tx = ph.querySelector('.cref-ld-tx'); if (tx) tx.textContent = '곧 반영 — 새로고침'; }   // 타임아웃(빌드 지연/0장) = 소프트 안내
   };
   setTimeout(tick, 25000);
+  return true;   // 접수 성공 = 발사측(#geniGo) 게이지 완료(gaugeDone)·✓ 판정 신호(thumbRedo 미러)
 }
-function moreImgGo(file, wrap, btn) { return imgFetchGo(file, wrap, btn, { url: 'api/moreimg', body: { file }, ld: '5장 받아오는 중…', ticks: 10 }); }   // 실사진 재검색(기존 경로 그대로)
-function genImgGo(file, wrap, btn, opts) { geniFreqBump('style', _geniSel.style); geniFreqBump('sub', _geniSel.sub); return imgFetchGo(file, wrap, btn, { url: 'api/genimg', body: { file, opts }, ld: '생성 중…', ticks: 14 }); }   // 제미나이 생성(Opus 프롬프트 1~2분 + 렌더 → 여유 폴) · 발사 = 화풍·세부 제작빈도 +1(다음 열림 좌측 정렬)
+function moreImgGo(file, wrap, btn) { return imgFetchGo(file, wrap, btn, { url: 'api/moreimg', body: { file }, ld: '5장 받아오는 중…', ticks: 10 }); }   // 실사진 재검색(기존 경로 그대로 · field 생략 = thumb_search 기본)
+function genImgGo(file, wrap, btn, opts) { geniFreqBump('style', _geniSel.style); geniFreqBump('sub', _geniSel.sub); return imgFetchGo(file, wrap, btn, { url: 'api/genimg', body: { file, opts }, ld: '생성 중…', ticks: 14, field: 'thumb_gen' }); }   // 제미나이 생성(Opus 프롬프트 1~2분 + 렌더 → 여유 폴) · field:thumb_gen = 생성물 카러셀 폴링(완료 감지 정합·운영자 260713) · 발사 = 화풍·세부 제작빈도 +1(다음 열림 좌측 정렬)
 
 // ── 이미지 생성 팝업(#genidlg) — 버튼이 곧 프롬프팅 · 3부 재편(운영자 260710: 개요{해상도·비율·장수·품질} → 표현{화풍·세부·웹툰화·무드} → 내용{주문·문구}) ──
 // 라벨 = 평문 한국어 · 값 = 백엔드 화이트리스트 키(genimg.js·gen_image.py와 동일 집합 · '품질' = PNG/JPG 포맷 행 = 운영자 명명 260710).
@@ -4632,7 +4634,7 @@ function geniInit() {
   wishEl.addEventListener('focus', () => { geniVV(); setTimeout(() => { try { wishEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 90); });
   if (window.visualViewport) window.visualViewport.addEventListener('resize', geniVV);
   const gdlg = $('#genidlg'); if (gdlg) {
-    gdlg.addEventListener('close', () => { gdlg.style.maxHeight = ''; geniDDClose(); _geniMoodScrollY = null; geniRefClear(); if (_geniCtx && _geniCtx.free) { try { localStorage.setItem('GENI_FREE_TXT', JSON.stringify({ wish: $('#geniWish').value })); } catch {} } });   // 키보드 클램프 복원 + 선택박스 정리 + 자유모드 장면 스냅샷(발사·X·백버튼 전부 close 경유 = 단일 저장점 · 260709)
+    gdlg.addEventListener('close', () => { gdlg.style.maxHeight = ''; geniDDClose(); _geniMoodScrollY = null; geniRefClear(); const _gb = $('#geniGo'); if (_gb) { gaugeClear(_gb); askHideCheck(_gb); _gb.disabled = false; } if (_geniCtx && _geniCtx.free) { try { localStorage.setItem('GENI_FREE_TXT', JSON.stringify({ wish: $('#geniWish').value })); } catch {} } });   // 키보드 클램프 복원 + 선택박스 정리 + 발사 게이지 원복(다음 열림 = 깨끗 · thumbRedo close 미러) + 자유모드 장면 스냅샷(발사·X·백버튼 전부 close 경유 = 단일 저장점 · 260709)
     gdlg.addEventListener('scroll', geniDDSync, true);   // 바디 스크롤 = 앵커 추적 재배치(가시영역 이탈 시에만 닫기 · 캡처 = geni-body 스크롤 수신 — 닫기 즉발은 클릭 직전 스크롤 잔이벤트 레이스로 자폭했음 · 실측 260710)
     const gh0 = $('#geniHost'); if (gh0) gh0.addEventListener('scroll', geniDDSync, true);   // 이식 탭 홈에도 동일 캡처(운영자 260713 "품질 저하 없이" QA — 이식 모드선 바디 스크롤이 다이얼로그를 안 지나 선택박스가 앵커 추적을 못 받았음 · geniDDSync는 DD 없으면 no-op = 이중 바인딩 무해)
     gdlg.addEventListener('cancel', e => { if (_geniDD) { e.preventDefault(); geniDDClose(); } });   // ESC = 선택박스만 먼저 닫기(팝업 통째 닫힘 방지 · 6인 검증 a11y)
@@ -4669,8 +4671,19 @@ function geniInit() {
       finally { gb.disabled = false; }
       return;
     }
-    $('#genidlg').close();
-    genImgGo(c.file, c.wrap, c.btn, opts);
+    // 기사 모드 발사 = 이미지 편집(thumbRedo #tredoSend) 게이지·✓·후닫기 정본 계승(운영자 260713 버그수정: 게이지 무동작 + 즉시 close 튕김 + thumb_gen 폴링 미스매치 3봉합) — #geniGo는 .asksend 보유라 게이지 CSS 계승, 그간 gaugeStart 호출만 없었음
+    const gb = $('#geniGo'); if (gb.disabled) return;
+    gb.disabled = true; askHideCheck(gb); gaugeStart(gb);   // 게이지 = 발사 즉시·응답까지 진행(thumbRedo 미러)
+    let r = false;
+    try { r = await genImgGo(c.file, c.wrap, c.btn, opts); } catch {}
+    if (r === true) {
+      gaugeDone(gb); setTimeout(() => askShowCheck(gb), 300);   // 게이지 현위치→100%→✓ 팝(멈칫 제거)
+      setTimeout(() => $('#genidlg').close(), 1600);            // 피드백 후 닫기(즉시 close 폐지 = 버튼만 화면 튕김 차단 · close 핸들러가 게이지·disabled 원복)
+    } else {
+      gaugeClear(gb); gb.disabled = false;
+      if (r === 'busy') $('#genidlg').close();                  // 이미 진행 중 = 조용히 닫기(에러 아님 · 여러 발사 대기열은 후속 유닛)
+      else if (typeof _flashBtn === 'function') _flashBtn(gb, 'err');
+    }
   });
 }
 window.addEventListener('message', e => {   // 도구 iframe(/6 생성 탭) → 자유 생성 팝업 열기 — same-origin 도구 iframe만 신뢰(source 대조). ⚠ 부트 등록 필수(geniInit 밖): geniInit은 팝업 최초 열림 때야 도는데 이 리스너가 그 안에 있으면 '생성 탭 → 버튼'이 첫 경로일 땐 수신자 0 = 버튼 무반응(닭-달걀 · 260709 수리)
