@@ -7431,6 +7431,9 @@ function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | 
 function qRetryBtn(title) {   // ✨요약요청 실패 재시도 = arm(레몬) ↻ · 클릭 = api/askget 으로 전문 복원 → 요약창 재오픈(askRetry)
   return '<button class="qgo go-arm qretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
 }
+function qPickRetryBtn(title) {   // URL 픽/분석 실패 재시도 = arm(레몬) ↻ · 클릭 = api/pick 재발사(qPickRetry) — askget 복원(요약요청)과 별개 = pending URL 항목용 · 운영자 260713
+  return '<button class="qgo go-arm qpretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
+}
 function qRowHtml(it) {
   const url = /^https?:\/\//i.test(String(it.alt1 || it.key || ''));   // 활성 게이트 = 목적지(alt1‖key)와 동일 소스(게이트-목적지 갈림 차단 · 평의회7 V-1)
   // 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면(Pages 빌드 랙) 사실상 미준비 →
@@ -7444,7 +7447,8 @@ function qRowHtml(it) {
     status = '<span class="qb-failt">실패</span>';
     const isAsk = it.via === '요약요청';   // ✨요약요청 실패 = 원문 링크(URL 없음) 대신 '재시도' = 붙여넣은 전문 복원 → 요약창 재오픈(운영자 260704)
     action = isAsk ? qRetryBtn('재시도 — 요청 내용을 복원해 다시 요약')
-           : url ? qGoBtn('amber', '기사 원문(실패해도 원문은 가능)') : qGoBtn('gray', '원문 링크 없음');   // 실패 보고서는 깃에 자동저장(다운로드 버튼 없음 — 옛 진단 다운로드 잔존 260712 완전제거)
+           : url ? qPickRetryBtn('재시도 — 다시 분석(대기열 재투입)')   // URL 실패 = 재분석 재발사(api/pick) — 요약요청과 대칭 재시도 제공(운영자 260713 · 구 amber 원문 대체 = 재시도 우선 · 수집함 Failed→✓ 재시도와 일관)
+           : qGoBtn('gray', '원문 링크 없음');   // 전문(paste) 실패 = key='' (url無)라 재발사 복원 경로 없음 → 재시도 불가(현행 유지). 실패 보고서는 깃에 자동저장.
   } else if (eff === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
     status = '<span class="qico s-retry spin" title="API 일시 과부하 — 자동 재시도 중' + (it.tries ? ' (' + it.tries + '회)' : '') + '">' + Q_REFR + '</span>' + (it.tries ? '<span class="qcnt">' + it.tries + '</span>' : '');
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 — 원문 링크 없음');
@@ -7474,7 +7478,7 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = go.classList.contains('qretry') ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
+    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = (go.classList.contains('qretry') || go.classList.contains('qpretry')) ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('qpretry')) qPickRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
   });
   if (pg) {
     pg.innerHTML = pagerHtml(pages, QPAGE);
@@ -7535,6 +7539,13 @@ async function askRetry(it) {   // ✨요약요청(ask) 실패 재시도 — api
     else if (!text) st.textContent = '원문 복원 실패 — 직접 붙여넣어 재시도해줘';
     else if (imgs) st.textContent = '캡처 ' + imgs + '장은 다시 첨부해줘(텍스트만 복원됨)';
   }
+}
+async function qPickRetry(it) {   // URL 픽/분석 실패 재시도 — api/pick 로 재분석 재발사(대기열 재투입). askRetry(요약요청·askget 전문복원)와 별개 = pending URL 항목 전용(운영자 260713).
+  const u = String(it.key || it.alt1 || '');
+  if (!/^https?:\/\//i.test(u)) { qFlash('원문 링크가 없어 다시 분석 못 해 — 전문을 다시 붙여넣어줘'); return; }   // 전문(paste) 실패 = url無(복원 경로 없음)
+  try { await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: u, title: it.title || '', alt: (it.alt1 && it.alt1 !== u) ? [it.alt1] : [] }) }); } catch {}   // 수집함 failRetry와 동일 재발사(alt=대체 매체로 원매체 403 우회)
+  qFlash('다시 분석 요청했어 — 잠시 뒤 처리중으로 바뀌어');
+  setTimeout(loadQueue, 1200); setTimeout(loadQueue, 4000);   // 재발사 후 대기열 갱신(실패행→처리중 · submit 패턴 계승)
 }
 function qFlash(msg, iconSvg) {   // 짧은 토스트(링크 빌드 랙 안내) · iconSvg 주면 픽토그램+esc(메시지) innerHTML(XSS 가드)
   let t = document.getElementById('qFlash');
