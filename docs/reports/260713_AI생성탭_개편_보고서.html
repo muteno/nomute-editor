@@ -1,0 +1,120 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>AI 생성 탭 개편 보고서</title>
+<style>
+  :root{
+    --bg:#0b0d0c; --card:#14181a; --card2:#1a1f22; --line:rgba(255,255,255,.10); --line2:rgba(255,255,255,.06);
+    --fg:#eef7f0; --mut:#8b9691; --accent:#00EED2; --accent-3:#e23b2a; --amber:#FFE13D; --info:#0FFD02;
+    --font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.6;padding:18px 14px 60px;max-width:900px;margin:0 auto;-webkit-text-size-adjust:100%}
+  h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:20px}
+  h2{font-size:15px;font-weight:800;color:var(--accent);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  .card{background:var(--card);border:1px solid var(--line2);border-radius:14px;padding:14px 15px;margin-bottom:10px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+  .badge{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .b-ok{background:rgba(0,238,210,.14);color:var(--accent)}
+  .b-fix{background:rgba(255,225,61,.16);color:var(--amber)}
+  .b-blk{background:rgba(226,59,42,.18);color:#ff8a7d}
+  .b-ask{background:rgba(255,255,255,.08);color:var(--mut)}
+  .num{font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  @media(max-width:560px){.ba{grid-template-columns:1fr}}
+  .ba>div{background:var(--card2);border-radius:9px;padding:9px 11px;font-size:13px}
+  .ba .k{font-size:10px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .before .k{color:#c98}
+  .after .k{color:var(--accent)}
+  del{color:var(--mut);text-decoration:line-through;opacity:.7}
+  ins{color:var(--fg);text-decoration:none}
+  .flow{background:var(--card2);border-radius:10px;padding:12px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-x:auto;white-space:nowrap;color:var(--fg)}
+  .flow .a{color:var(--accent)} .flow .m{color:var(--mut)} .flow .r{color:#ff8a7d}
+  ul{list-style:none;padding:0} li{padding:5px 0 5px 20px;position:relative;font-size:13.5px}
+  li::before{content:'•';position:absolute;left:4px;color:var(--accent);font-weight:800}
+  li.risk::before{content:'⚠';color:var(--amber);font-size:11px;left:2px}
+  li.win::before{content:'▲';color:var(--info);font-size:9px;left:4px;top:8px}
+  .pill{font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
+  code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent)}
+  .foot{margin-top:24px;padding-top:12px;border-top:1px solid var(--line);color:var(--mut);font-size:12px}
+</style>
+
+<h1>AI 생성(이미지 스튜디오) 탭 개편</h1>
+<div class="sub">운영자 지시 10건 · PR #2177 · 커밋 e9a9322→6ffbfde · 5인 평의회 검증 완료</div>
+
+<h2>① 한눈에 — 무엇이 바뀌었나</h2>
+<div class="card">
+<div class="row" style="gap:6px"><span class="num">10</span>개 요구 전부 반영 · <span class="b-ok badge">기능 OK</span> · 평의회가 <span class="b-blk badge">서버 블로커 1건</span> 잡아 수정 · <span class="b-fix badge">실행결함 4건</span> 보정.</div>
+<p style="margin-top:8px;font-size:13.5px;color:var(--mut)">한 문장: 무드 게이지 열릴 때 화면이 개수 행까지 부드럽게 올라오고, 개수·PNG·비율(1:1·21:9 추가)·문구 토글이 정리됐고, <b style="color:var(--fg)">내용칸 우측에 참고 이미지를 붙여 "원본 유지/참고"로 생성</b>할 수 있게 됐고, 탭 이름이 <b style="color:var(--fg)">편집 · AI 생성</b>으로 바뀜.</p>
+</div>
+
+<h2>② 항목별 전 → 후</h2>
+
+<div class="card"><div class="row"><span class="num">1</span> <b>무드 게이지 이징 스크롤</b> <span class="b-ok badge">신규</span></div>
+<div class="ba"><div class="before"><div class="k">전</div>직접 눌러도 화면 그대로 → 게이지가 화면 밖 아래에 열려 안 보임</div>
+<div class="after"><div class="k">후</div>직접 = 개수 행이 상단으로 <b>이징하며 올라옴</b>(게이지 노출) · 자동 = 원위치 복귀</div></div>
+<div class="pill" style="margin-top:6px">평의회1: 확장 전 높이로 클램프돼 덜 올라오던 언더슛 → 확장 완료 후 재발행으로 정확 착지. reduced-motion 감쇠 추가.</div></div>
+
+<div class="card"><div class="row"><span class="num">2</span> <b>문구 살리기</b> <span class="b-ask badge">확인 요청</span></div>
+<div class="ba"><div class="before"><div class="k">전</div>버튼 <code>살리기</code> — 켜짐 상태가 색만</div>
+<div class="after"><div class="k">후</div>ON = <code>살리기 ON</code>+강조 / 재탭 = OFF(<code>살리기</code>·중립)</div></div>
+<div class="pill" style="margin-top:6px">⚠ "ON으로 태깅하면 OFF" 해석: 지금은 <b>상태 표시</b>(ON일 때 'ON'). 혹시 <b>버튼이 'OFF'로 바뀌길</b> 원했으면 1줄 수정 가능.</div></div>
+
+<div class="card"><div class="row"><span class="num">3</span> <b>품질 PNG 단일</b> <span class="b-ok badge">OK</span></div>
+<div class="ba"><div class="before"><div class="k">전</div><del>PNG</del> <del>JPG 90</del> 2택</div>
+<div class="after"><div class="k">후</div><ins>PNG</ins> 단일</div></div>
+<div class="pill" style="margin-top:6px">근거: JPG는 Gemini 렌더 <b>후처리 재인코딩</b> = API(토큰) 비용 동일 → 선택지 무의미. jpg 경로는 도먼트 보존.</div></div>
+
+<div class="card"><div class="row"><span class="num">4</span> <b>장수 → 개수</b> <span class="b-ok badge">OK</span></div>
+<div class="ba"><div class="before"><div class="k">전</div>라벨 <del>장수</del> · <del>1장·2장·3장·4장</del></div>
+<div class="after"><div class="k">후</div>라벨 <ins>개수</ins> · <ins>1개·2개·3개·4개</ins></div></div>
+<div class="pill" style="margin-top:6px">값(1~4)·서버 계약 불변 = 표기만.</div></div>
+
+<div class="card"><div class="row"><span class="num">5</span> <b>비율 순서·집합</b> <span class="b-ok badge">OK</span></div>
+<div class="ba"><div class="before"><div class="k">전</div>4:5 · 9:16 · 16:9 · 직접</div>
+<div class="after"><div class="k">후</div>4:5 · 9:16 · 16:9 · <ins>1:1</ins> · <ins>21:9</ins> · 직접 <span class="pill">(3:4 제외)</span></div></div>
+<div class="pill" style="margin-top:6px">1:1·21:9 = 서버 NATIVE 비율 내 = 무손실. 평의회3: 21:9 프롬프트 문구도 격상(이미지는 이미 정확했음).</div></div>
+
+<div class="card"><div class="row"><span class="num">6</span> <b>내용칸 설명문구 제거</b> <span class="b-ok badge">OK</span></div>
+<div class="ba"><div class="before"><div class="k">전</div><del>필수 · 그릴 장면·상황을 설명</del></div>
+<div class="after"><div class="k">후</div>(빈 칸) — 발사 게이트가 미입력 방어</div></div></div>
+
+<div class="card"><div class="row"><span class="num">7·8</span> <b>참고 이미지 첨부 + 원본유지/참고</b> <span class="b-blk badge">블로커→수정</span></div>
+<div class="ba"><div class="before"><div class="k">전</div>이미지 첨부 경로 없음</div>
+<div class="after"><div class="k">후</div>내용칸 <b>우측 첨부 슬롯</b> → 첨부 시 <code>원본 유지 | 참고</code> 토글</div></div>
+<div class="flow" style="margin-top:8px"><span class="m">뷰어</span> 512px축소·JPEG·base64 <span class="a">→</span> <span class="m">genimg.js</span> 화이트리스트 <span class="a">→</span> dispatch opts <span class="a">→</span> <span class="m">gen_image.py</span> <span class="a">ref_png</span> <span class="a">→</span> Gemini 렌더</div>
+<div class="pill" style="margin-top:6px"><b style="color:#ff8a7d">평의회2·5 블로커:</b> <code>gen_image.py</code>에 <code>import base64</code> 누락 → 첨부해도 서버서 <b>무음 폐기</b>되던 결함 발견·수정·런타임 실증 통과. 원본유지=피사체 충실 재현 / 참고=레퍼런스로 신규 구성.</div></div>
+
+<div class="card"><div class="row"><span class="num">9·10</span> <b>탭 라벨</b> <span class="b-ok badge">OK</span></div>
+<div class="ba"><div class="before"><div class="k">전</div><del>제작·합성</del> | <del>프롬프팅</del></div>
+<div class="after"><div class="k">후</div><ins>편집</ins> | <ins>AI 생성</ins></div></div>
+<div class="pill" style="margin-top:6px">평의회4: 최소화 칩이 iframe 내부 라벨을 읽어 옛 이름 새던 것 → thumb.html 내부 탭도 동반 개명.</div></div>
+
+<h2>③ 장단점 · 효율 · 품질저하 리스크</h2>
+<div class="card"><ul>
+<li class="win"><b>일관성·계승</b>: 첨부 슬롯·토글·픽토그램 전부 기존 컴포넌트(오버레이 첨부·<code>.geni-opt</code>·SVG) 계승 = raw 창작 0, 토큰 게이트 통과.</li>
+<li class="win"><b>무회귀 설계</b>: 참고 이미지는 <b>가산적</b> — 미첨부면 발사·렌더가 바이트 동일. R2·업로드 인프라 무접촉(base64 dispatch 경유).</li>
+<li class="win"><b>효율</b>: PNG 단일화로 무의미한 선택 제거 · postMessage에서 48KB base64 제외(브로드캐스트 경량화).</li>
+<li class="risk"><b>참고 이미지 512px 상한</b>: dispatch 입력 한도(65535자) 때문에 참고 이미지는 512px로 축소 전송 → 미세 디테일 참고엔 충분하나 초고해상 원본 보존은 아님(참고/재구성 용도라 적정).</li>
+<li class="risk"><b>라이브 렌더 미검증</b>: 세션이 Cloudflare Access 뒤라 실제 Gemini 렌더는 못 돌림 — 서버 로직은 런타임 실증했으나, <b>머지 후 폰에서 실제 첨부→생성 1회 확인 필요</b>.</li>
+<li class="risk"><b>원본유지 시맨틱</b>: 둘 다 이미지를 Gemini에 전달·프롬프트 지시만 분기하는 v1 해석. "원본 그대로"가 "생성 없이 원본 그대로 쓰기"였다면 별도 조정 필요.</li>
+</ul></div>
+
+<h2>④ 5인 평의회 검증 (Opus·적대적·읽기전용)</h2>
+<div class="card"><ul>
+<li><b>1 무드스크롤</b> 주의 → 언더슛·이식탭 리셋 <b style="color:var(--amber)">수정됨</b></li>
+<li><b>2 참고이미지</b> <b style="color:#ff8a7d">불가(블로커)</b> → <code>import base64</code> <b style="color:var(--amber)">수정됨</b></li>
+<li><b>3 서버계약</b> OK → 21:9 문구·개수·PNG·게이트 정합 (문구 OFF 라벨만 확인 요청)</li>
+<li><b>4 탭/CSS</b> 주의 → 최소화 칩 라벨 <b style="color:var(--amber)">수정됨</b> · 토큰·레이아웃 OK</li>
+<li><b>5 총괄</b> 불가(블로커 재확인) → 라이프사이클·reduced-motion·postMessage <b style="color:var(--amber)">전부 수정됨</b></li>
+</ul>
+<p style="margin-top:8px;font-size:13px;color:var(--mut)">전원 지적 사항 반영 후 <code>check_refs</code> 통과 · <code>py_compile</code> OK · 서버 참고이미지 경로 <b>런타임 실증</b> 통과.</p></div>
+
+<h2>⑤ 확인 필요 (운영자)</h2>
+<div class="card"><ul>
+<li class="risk"><b>문구 토글</b>: 지금 ON=<code>살리기 ON</code> 방식. "OFF로 바뀌게"를 원했으면 알려줘(1줄).</li>
+<li class="risk"><b>라이브 확인</b>: 머지 후 폰에서 <b>참고 이미지 첨부 → 생성</b> 한 번 돌려 실제 반영 확인 부탁(세션에선 Access 게이트로 렌더 검증 불가).</li>
+</ul></div>
+
+<div class="foot">단일파일 자기완결 보고서 · 색은 뷰어 :root 토큰 복사(일회성 스냅샷) · 값 정본은 viewer/index.html :root</div>
