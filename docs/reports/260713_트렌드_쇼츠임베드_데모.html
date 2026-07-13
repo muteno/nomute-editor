@@ -1,0 +1,105 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>데모 — 참고자료 팝업 쇼츠 임베드 (클릭해봐)</title>
+<!-- 자기완결 데모: 라이브 viewer/index.html의 #trefdlg 셸·토큰 값 복사(보고서 스냅샷 = var 복사 계승 · §핵심명령 3-c). 유튜브 iframe = 실제 임베드(브라우저에서 열면 재생 · 채팅 미리보기 패널은 외부 프레임이 막힐 수 있음 → 그땐 파일을 브라우저로). -->
+<style>
+  :root { color-scheme:dark; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:26px 14px 80px; background:#0b0d0c; color:#eef7f0; font-family:'Pretendard','Noto Sans KR','Malgun Gothic',sans-serif; line-height:1.6; }
+  .wrap { max-width:560px; margin:0 auto; }
+  h1 { font-size:17px; margin:0 0 2px; }
+  .sub { color:#9fb4ab; font-size:12.5px; margin:0 0 18px; }
+  .lbl { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:800; margin:22px 0 9px; }
+  .lbl::before { content:'•'; color:#00EED2; font-weight:700; }
+  /* 지역 세그 데모(실물 .tstk-seg 값 복사) — 탭해서 on/off 전환 체험 */
+  .seg { display:inline-flex; align-items:center; height:24px; border:1px solid rgba(255,255,255,.14); border-radius:999px; background:rgba(8,15,11,.34); overflow:hidden; }
+  .seg button { display:grid; place-items:center; height:24px; padding:0 10px; border:0; background:none; color:rgba(255,255,255,.78); cursor:pointer; }
+  .seg i { width:1px; height:12px; background:rgba(255,255,255,.18); }
+  .seg button.on { color:#00EED2; }
+  .seg button svg { width:15px; height:15px; display:block; }
+  .seg button:not(.on) svg { opacity:.5; filter:grayscale(1); }
+  .seg button:active { transform:scale(.9); }
+  /* 참고자료 링크(브리프 속 밑줄 링크 모사) */
+  .refs a { display:block; color:#FFE13D; text-decoration:underline; font-size:14px; margin:7px 0; cursor:pointer; width:fit-content; }
+  .refs a small { color:#9fb4ab; text-decoration:none; margin-left:6px; font-size:11.5px; }
+  /* ── #trefdlg 실물 셸 복사 ── */
+  dialog { width:min(480px,94vw); max-height:92dvh; padding:0; margin:auto; border:1px solid rgba(255,255,255,.13); border-radius:22px;
+    background:linear-gradient(165deg,rgba(24,25,28,.97),rgba(16,17,19,.99)); color:#eef7f0; display:flex; flex-direction:column; overflow:hidden; }
+  dialog:not([open]) { display:none; }
+  dialog::backdrop { background:rgba(0,0,0,.45); backdrop-filter:blur(7px); }
+  .modal-head { display:flex; align-items:center; gap:8px; padding:13px 14px; border-bottom:1px solid rgba(255,255,255,.10); background:rgba(20,24,23,.5); }
+  .modal-head b { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14.5px; }
+  .tv-open { flex:none; color:#9fb4ab; font-size:11px; font-weight:600; text-decoration:none; }
+  .x { flex:none; display:grid; place-items:center; width:30px; height:30px; border:0; border-radius:10px; background:rgba(255,255,255,.06); color:#eef7f0; cursor:pointer; }
+  .x:active { transform:scale(.88); }
+  .bd { padding:13px 16px 16px; overflow-y:auto; min-height:0; }
+  .ttl { display:block; font-size:15.5px; font-weight:700; line-height:1.4; word-break:break-word; }
+  .body { margin:8px 0 0; font-size:13.5px; line-height:1.8; white-space:pre-line; word-break:break-word; }
+  /* ── 신설 .tref-vid 실물 값 그대로 ── */
+  .tref-vid { margin:12px 0 0; border-radius:11px; overflow:hidden; background:#0b0d0c; }
+  .tref-vid.pt { aspect-ratio:9/16; height:min(62dvh,560px); max-width:100%; margin-inline:auto; }
+  .tref-vid.wd { width:100%; aspect-ratio:16/9; }
+  .tref-vid iframe { display:block; width:100%; height:100%; border:0; }
+  .note { margin-top:26px; padding:11px 13px; border:1px solid rgba(255,255,255,.12); border-radius:14px; background:rgba(18,30,34,.35); font-size:12px; color:#9fb4ab; }
+  .note b { color:#eef7f0; }
+</style>
+<div class="wrap">
+  <h1>참고자료 팝업 — 쇼츠 인라인 임베드 데모</h1>
+  <p class="sub">아래 링크를 <b>직접 클릭</b>하면 라이브와 동일한 팝업이 뜬다(같은 셸·같은 값). 닫기 = X·바깥 탭·ESC.</p>
+
+  <div class="lbl">지역 세그 — 태극 픽토그램 (탭해서 전환)</div>
+  <div class="seg" id="seg">
+    <button type="button" class="on" aria-label="국내" title="국내"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 0 1 18 0a4.5 4.5 0 0 1-9 0a4.5 4.5 0 0 0-9 0Z" fill="#e23b2a"/><path d="M3 12a4.5 4.5 0 0 1 9 0a4.5 4.5 0 0 0 9 0a9 9 0 0 1-18 0Z" fill="#3a6ddb"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".3" stroke-width="1"/></svg></button>
+    <i></i>
+    <button type="button" aria-label="월드" title="월드"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><ellipse cx="12" cy="12" rx="3.5" ry="8.2"/><path d="M4.4 9.3h15.2M4.4 14.7h15.2"/></svg></button>
+  </div>
+
+  <div class="lbl">참고자료 링크 (클릭 = 팝업)</div>
+  <div class="refs" id="refs"></div>
+
+  <div class="note"><b>재현 한계 각주</b> — ① 이 파일은 값 복사 스냅샷(정본 = viewer :root·#trefdlg). ② 유튜브 임베드는 브라우저에서 열어야 재생(채팅 미리보기 패널·오프라인은 외부 프레임 차단 가능 → 회색이면 파일을 크롬으로). ③ 라이브 실물 = 트렌드 탭 → AI 요약 속 참고자료 링크.</div>
+</div>
+
+<dialog id="dlg">
+  <div class="modal-head"><b id="src"></b><a class="tv-open" id="open" href="#" target="_blank" rel="noopener">원문 ↗</a><button class="x" onclick="dlg.close()" aria-label="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+  <div class="bd"><b class="ttl" id="ttl"></b><p class="body" id="body"></p><div class="tref-vid" id="vid" hidden></div></div>
+</dialog>
+
+<script>
+// 실물 trEmbed 축약 복사(변환 규칙 동일) + openTref 신설 분기 동일
+const REFS = [
+  { url:'https://www.youtube.com/shorts/BTQgxfGY8Dw', tag:'쇼츠 → 9:16 원본비(세로·중앙)', source:'유튜브 · ENHYPEN(빌리프랩)', title:'@ENHYPENOFFICIAL #SUNOO is ICONIC👊 #ENHYPEN #ILLIT #WONHEE #ICONICBYMISTAKE',
+    body:"엔하이픈 선우와 아일릿 원희가 함께 'Iconic by Mistake' 챌린지를 소화한 숏폼으로, 두 그룹의 소속사 빌리프랩 채널을 통해 확산됐다. 틱톡·쇼츠 통합 트렌드에서 1,714만 조회로 1위에 올랐다. 'Iconic by Mistake'는 하이브 걸그룹 르세라핌·아일릿·캣츠아이가 2026년 6월 12일 발표한 합작 싱글로, 온라인의 악플과 조롱마저 화제성으로 삼아 얼떨결에 상징적 존재가 된다는 메시지를 담았다. 선우와 원희가 같은 소속사 동료라는 점이 영상 확산에 힘을 실었다." },
+  { url:'https://www.youtube.com/watch?v=E1d8dVSs0Bg', tag:'유튜브 일반 → 16:9 폭맞춤', source:'유튜브 · 채널', title:'유튜브 일반(16:9) 영상 케이스',
+    body:'유튜브 일반(가로) 영상은 16:9 비율 그대로 팝업 폭에 맞춰 요약 아래에 나온다.' },
+  { url:'https://www.wikitree.co.kr/articles/1134027', tag:'일반 기사 → 종전 그대로(영상 없음)', source:'위키트리', title:'2026 제헌절 공휴일 확정…18년 만에 돌아온 빨간 날',
+    body:'2026년 7월 17일 금요일 제헌절이 2007년 이후 처음으로 법정공휴일이 된다. 영상 플랫폼이 아니면 팝업은 종전 그대로 — 텍스트(+대표 이미지)만.' },
+];
+function trEmbed(url){ let m;
+  if ((m=url.match(/youtube\.com\/watch\?v=([\w-]{6,})/)))  return {src:'https://www.youtube.com/embed/'+m[1]+'?autoplay=1&playsinline=1', k:'pt'};
+  if ((m=url.match(/youtube\.com\/shorts\/([\w-]{6,})/)))   return {src:'https://www.youtube.com/embed/'+m[1]+'?autoplay=1&playsinline=1', k:'pt'};
+  if ((m=url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/)))   return {src:'https://www.tiktok.com/embed/v2/'+m[1], k:'pt'};
+  if ((m=url.match(/instagram\.com\/reel\/([\w-]+)/)))      return {src:'https://www.instagram.com/reel/'+m[1]+'/embed/', k:'pt'};
+  return null;
+}
+const $ = s => document.querySelector(s);
+const dlg = $('#dlg');
+REFS.forEach((r,i)=>{ const a=document.createElement('a'); a.textContent=r.title.slice(0,42)+'…'; a.innerHTML+=`<small>${r.tag}</small>`; a.onclick=()=>openTref(i); $('#refs').appendChild(a); });
+function openTref(i){
+  const r = REFS[i];
+  $('#src').textContent = r.source; $('#ttl').textContent = r.title; $('#body').textContent = r.body;
+  $('#open').href = r.url;
+  const vb = $('#vid'); vb.hidden = true; vb.textContent = '';
+  const emb = trEmbed(r.url || '');
+  if (emb && emb.k !== 'tw') {
+    vb.className = 'tref-vid ' + (/youtube\.com\/shorts\/|tiktok\.com\/|instagram\.com\/reel\//.test(r.url||'') ? 'pt' : 'wd');
+    const f = document.createElement('iframe');
+    f.title='임베드 콘텐츠'; f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen'; f.setAttribute('allowfullscreen',''); f.referrerPolicy='strict-origin-when-cross-origin';
+    f.src = emb.src; vb.appendChild(f); vb.hidden = false;
+  }
+  dlg.showModal();
+}
+dlg.addEventListener('close', ()=>{ const v=$('#vid'); v.hidden=true; v.textContent=''; });   // 닫힘 = 재생 정지(실물과 동일)
+dlg.addEventListener('click', e=>{ if (e.target===dlg) dlg.close(); });
+$('#seg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; $('#seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); });
+</script>
