@@ -2326,11 +2326,21 @@ async function loadServerHist() {
   }
   maybeOpenHist();   // 제작완료 알림(?done=<id> · 구 #done)로 들어왔으면 서버 병합 후 그 결과를 맨 위로(restoreById)
 }
-async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(PWA)이 타 기기 제작을 새로고침 없이 받게 · 목록만 갱신(부팅복원 미재발동 = 고스트 주입 안 함)
-  if (document.hidden) return;
-  try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch {}
-  try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) { SRV_CLEAR = Math.max(SRV_CLEAR, +j.ts); try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} } } } catch {}
-  renderHist();
+let _histPolling = false, _histSig = '';   // in-flight 가드 + 변경감지 시그니처(무변경 재빌드 차단)
+async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(PWA)이 타 기기 제작을 새로고침 없이 받게 · 변경감지 게이트+in-flight 가드로 무변경 재빌드(깜빡임·죽은항목 404 재스팸)·중복 fetch 차단 · 부팅복원 미재발동(고스트 안 함)
+  if (document.hidden || _histPolling) return;   // in-flight 가드 = focus+visibilitychange 동시 발동 코얼레싱(중복 fetch 0)
+  _histPolling = true;
+  try {
+    let hist = null, clr = SRV_CLEAR;
+    try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) hist = d; } } catch {}
+    try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) clr = Math.max(clr, +j.ts); } } catch {}
+    const sig = (hist ? hist.length + ':' + ((hist[0] || {}).url || '') + ':' + ((hist[hist.length - 1] || {}).url || '') : 'x') + '|' + clr;   // 목록 길이+첫/끝 url+clr = append/prepend/절단/지우기 감지
+    if (sig === _histSig) return;   // 무변경 = 재빌드 skip(깜빡임·죽은 404 항목 재생성/자삭 반복 스팸 차단 · 회귀 봉합)
+    _histSig = sig;
+    if (hist) SRV_HIST = hist;
+    if (clr > SRV_CLEAR) { SRV_CLEAR = clr; try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} }
+    renderHist();
+  } finally { _histPolling = false; }
 }
 // 제작완료 푸시 탭 → /thumb.html?done=<id>(구 #done 호환) 진입 시 그 결과를 맨 위로 복원·랜딩(완성 결과가 바로 보이게).
 let _histRetry = false, _histTimer = 0;   // 단일 재시도 사다리 가드 — 진입점 다중(init·loadServerHist·hashchange)이라도 중복 fetch 0(평의회 FIX-1)
