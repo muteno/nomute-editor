@@ -1,31 +1,31 @@
 # 🚢 불탄 우리 화물선에 트럼프가 건넨 말 "이제 참전할 때"
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 트럼프식 거래 동맹의 문법을 해부하는 외교·안보 사안이라 무게·사실성·고발 톤이 맞다
-- 분위기: 검붉게 불타는 배의 긴장과 곧장 날아든 냉정한 청구서의 대비, 이틀 새 뒤집힌 반전이 주는 곤혹과 씁쓸함
-- 연출 방향: 독자훅 = 피해(불길) 위에 위로 대신 얹힌 참전 요청의 부조리다. 불길 주황 1색을 사건 상징색으로 깔아 '피해=지렛대'를 시선에 강제하고, 거대한 힘(다국적 작전·동맹의 요구) 앞에 왜소한 우리(선원·배 한 척)의 규모 대비로 곤혹을 시각화한다. 얼굴을 앞세우기보다 난간 붙든 손·스크린 든 손·물러나는 함대 마커·그을린 배의 실루엣으로 '거래가 오간 이틀'을 드러내는 게 이 사건의 강조점 — thumb_dispatch(역광 실루엣의 검붉은 정조·규모 압도)에서 조명 톤과 무게감만 키노트로 잇고, 버드아이·규모샷 코드는 카드마다 분산한다.
-- 독자 동선: 起 카드1 → 承 카드2·카드4 → 轉 카드3(피크)·카드5(반전) → 結 카드6 · 훅=카드1 끝(단서형 자연 훅: '왜 우리 배가 거기서') + 카드5 반전 · 감정 피크=카드3(위로 대신 참전 요청) · 착지 한 줄 요지 = 불탄 배가 동맹의 가격표를 처음 들이밀었다
-- 연속성 앵커: (없음) — 국가 간 사안이라 반복 주인공이 없다. 대신 '검붉게 불타는(카드6은 그을린) 대형 HMM 화물선'을 반복 오브젝트로 카드1·3·6 Scene에 일관 서술한다. 인물은 실존 정치인 닮은꼴을 피해 손·실루엣 등 제너릭으로만.
+- 화풍: B 극화 — 외교·권력의 무게와 압박을 사실적 긴장으로 고발하는 사안이라, 한국 웹툰 극화로 친숙하되 무겁게.
+- 분위기: 불안·곤혹. 남의 전쟁 수역에서 홀로 불탄 우리 배, 그 위로 도착한 동맹의 압박. 어둑한 해질녘 톤에 desaturated 베이스 + 화재의 붉은 불빛 1점.
+- 연출 방향: 독자가 멈추는 지점 = 우리 배가 불탔는데 위로 대신 참전 요구가 먼저 온 곤혹. 거대한 지정학(미국 작전·이란·호르무즈) 앞에 왜소한 우리 배 한 척의 대비로 '남의 전쟁에 끌려들까'라는 불안을 시각화한다. 얼굴을 세우기보다 역광·실루엣·구도로 상황이 말하게 해 담담한 무게를 준다.
+- 독자 동선: 起 카드1→承 카드2·3→轉 카드4→承/結 카드5→結 카드6 · 훅=카드1 끝(시간 단서 '같은 날')+카드2 끝(명분 뒤 반전 예고) · 감정 피크=카드4 · 착지=불탄 배 한 척이 동맹의 진짜 가격표를 처음으로 들이민 하루
+- 연속성 앵커: (없음) — 각 카드가 독립 장면(불탄 배/함대/발언/청구/거절/여운)이라 반복 주인공이 없다. 화풍·붉은 악센트·해질녘 톤만 전 카드가 공유한다.
 
 ### [카드 1]
 **텍스트**
 ```text
-5월 4일, 호르무즈 해협 앞바다
-정박해 있던 한국 HMM 화물선이
-굉음과 함께 검은 연기를 뿜었다
-*남의 분쟁 수역 한복판이었다*
+지난 5월 4일
+세계 원유의 길목 호르무즈
+정박한 우리 화물선이
+*불길에 휩싸였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a lone sailor seen from behind, both hands gripping the ship's deck railing, shoulders drawn tight as he stares out at the burning vessel. A large cargo ship at anchor lists and belches thick black smoke, orange fire glowing along its dark hull on an oily sea. The vast empty water of a foreign strait stretches around the small human figure, dwarfing him. Non-Korean setting: the sea off the Strait of Hormuz at dusk.
-Camera: extreme long shot from eye-level directly behind the figure, back shot, shot on 20mm wide lens
-Lighting/mood: cold blue pre-dawn tone over the water, desolate stillness, the ship's fire the only warm source, a faint trembling tension
-Accent: monochrome desaturated base with a single ember-orange fire accent (#FF6A00) marking the burning hull, film-noir low-key lighting, deep shadows
-Text handling: keep every surface free of writing; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a single cargo ship ablaze, listing alone on a vast darkening sea. Thick black smoke pours from its deck against a blood-red dusk horizon, and the oil-slicked water mirrors the burning hull. The lone vessel looks tiny and abandoned in the enormous empty strait, dwarfed by the open water on every side.
+Camera: extreme long shot from eye-level, shot on 20mm wide lens
+Lighting/mood: cold blue pre-dawn dusk over the water, desolate stillness, the fire the only source of warmth
+Accent: monochrome desaturated base with a single fiery ember-orange accent on the flames and their reflection, film-noir low-key lighting, deep shadows
+Text handling: no signage, no letters on the hull; scale is carried by the empty sea and the smoke, not by any rendered words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark sea) extending edge to edge from top to bottom of the frame. The main subject, the sailor at the railing, is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the open sea) extending edge to edge from top to bottom of the frame. The burning ship is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Hormuz cargo ship fire
+Strait of Hormuz cargo ship fire
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-같은 날 미국은 상선 호위 작전
-*'프로젝트 프리덤'을 시작했다*
-페르시아만에 갇힌 87개국 민간인
-2만3000명을 빼내겠다고 했다
+그리고 같은 날
+미국은 상선 호위 작전
+'*프로젝트 프리덤*'을 열었다
+갇힌 민간인 2만 3천 명을 위해
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the anxious, weary faces of a dense crowd of stranded civilians of many nationalities waiting at a harbor quay, clutching bags, looking out to sea. Behind and above them the grey bulk of warships stands guard on the water, escorting merchant vessels through the gulf. The people are small against the scale of the naval operation. Non-Korean setting: a port on the Persian Gulf.
-Camera: medium shot from a high angle looking down over the crowd, shot on 24mm wide lens
-Lighting/mood: overcast diffused daylight, flat soft shadows, a muted somber and uneasy mood
-Accent: monochrome desaturated base with a single ember-orange accent (#FF6A00) glinting on a distant warning light at sea, muted daylight contrast
-Text handling: keep signage and hulls free of writing; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a towering gray naval warship cutting through the Persian Gulf, its steel hull looming over the small civilian cargo ships trailing in its shadow. A military helicopter hovers above the convoy. The merchant vessels huddle close behind the warship for protection, tiny against its bulk, as a massive escort operation gets underway at sea.
+Camera: wide shot from a low angle looking up, shot on 24mm wide lens
+Lighting/mood: overcast diffused gray daylight over the gulf, flat hard sea, somber institutional tone
+Accent: monochrome desaturated base with a single ember-orange accent on a warning light of the warship, muted daylight contrast
+Text handling: no hull numbers, no lettered flags, no signage; scale reads through the warship's bulk over the small convoy.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the harbor quay) extending edge to edge from top to bottom of the frame. The main subject, the waiting crowd, is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the sea surface) extending edge to edge from top to bottom of the frame. The warship is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,27 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Persian Gulf naval convoy escort
+US Navy warship Persian Gulf escort convoy
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-*피해국에 온 건 위로가 아니었다*
-트럼프는 증거도 없이 이란을 지목하며
-"이제 한국이 합류할 때"라고 적었다
+트럼프는 증거도 없이
+이란을 배후로 지목했다
+그러곤 불탄 배 앞에서
+"*이제 한국이 합류할 때*"
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a cold, steady hand calmly typing a short message on a glowing phone screen, unbothered and detached. Through a dark window just beyond the hand, the charred silhouette of the same burning cargo ship still smoulders on the night sea. The indifferent gesture in the foreground and the distant disaster sit in one frame, exposing the gap between them. manhwa emphasis lines radiating toward the phone, no panel border. Generic hand only, no identifiable face.
-Camera: medium close-up from eye-level on the hand and screen, three-quarter angle, shot on 85mm portrait lens
-Lighting/mood: cold blue screen under-glow lighting the hand from below in a dark room, restless unease, deepest shadows of the sequence, highest contrast
-Accent: monochrome desaturated base with a single ember-orange accent (#FF6A00) burning on the distant ship through the window, film-noir low-key lighting, deep shadows
-Text handling: no readable text on the phone screen, only glowing light; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a powerful backlit head of state at a podium, one index finger stabbing forward in accusation while his face stays sunk in shadow. Behind him a large glowing screen shows a social media post kept deliberately blurred and unreadable. His other hand hangs open and conspicuously empty, pointing without proof. He looms with commanding, intimidating presence, a red necktie the only vivid color on him.
+Camera: medium close-up from a low angle looking up, shot on 50mm standard lens
+Lighting/mood: sinister under-lighting from below the face, inverted eerie shadows, tense and menacing
+Accent: monochrome desaturated base with a single red accent on the necktie and the faint screen glow, film-noir low-key lighting, deep shadows
+Text handling: the post on the screen stays blurred and illegible; no readable letters, no words rendered anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark interior by the window) extending edge to edge from top to bottom of the frame. The main subject, the hand with the phone, is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the shadowed backdrop behind the figure) extending edge to edge from top to bottom of the frame. The pointing figure is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -96,28 +97,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Trump Truth Social post
+Trump Truth Social Iran statement podium
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-한국 정부는 즉답을 피했다
-참여를 "검토 중"이라고만 밝혔고
-외신은 이를 *정중한 거절*로 읽었다
-원유와 교민 안전을 셈한 거리두기였다
+불탄 배 앞에 도착한 건
+위로가 아니라
+*참전 청구서였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the tightly pressed lips and guarded, non-committal expression of a Korean government spokesperson standing at a podium, jaw set, choosing words carefully. One hand rests flat on the lectern beside a single microphone; a plain podium banner and an abstract emblem sit behind. The composure reads as deliberate distance, not comfort. Korean government briefing room.
-Camera: medium shot from eye-level, front-on, shot on 50mm standard lens
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, an emotionless institutional feel
-Accent: monochrome desaturated base with a single ember-orange accent (#FF6A00) on a small warning indicator light at the lectern, film-noir low-key lighting, deep shadows
-Text handling: podium banner and emblem carry no legible writing; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a soot-stained, trembling hand reaching out open-palmed for help, but instead of comfort a stiff document is thrust into it by a cold firm hand emerging from the dark. Extreme close-up on the two hands at the instant of the handover, the burned hand receiving what looks like an invoice. Everything around drowns in black; only the paper and the scorched fingers catch the light.
+Camera: extreme close-up from a high angle looking down, shot on 100mm macro lens
+Lighting/mood: harsh single overhead light pooling on the hands, deep surrounding black, oppressive pressure
+Accent: monochrome desaturated base with a single red stamped seal on the document, film-noir low-key lighting, deep shadows
+Text handling: the document shows only a red seal and blank ruled lines; no readable words, no numbers rendered.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the briefing-room wall behind the podium) extending edge to edge from top to bottom of the frame. The main subject, the spokesperson, is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (a dark table top) extending edge to edge from top to bottom of the frame. The exchanging hands are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-South Korea foreign ministry briefing spokesperson
+Trump South Korea join mission Hormuz pressure
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그런데 상황은 하루 만에 뒤집혔다
-5월 5일, 트럼프는 협상 진전을 이유로
-작전을 일시 중단한다고 발표했다
-*전날의 참전 촉구가 무색해졌다*
+한국은 "검토 중"이라며 선을 그었다
+그리고 하루 만에
+트럼프는 *작전마저 접었다*
+협상이 풀린다는 이유로
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a hand sweeping naval markers backward across a large tactical wall map of the gulf, the operation visibly folding away. The advancing arrows of the day before now pull back; the room feels abruptly deflated. A single generic officer's silhouette watches from the side. The reversal is read in the retreating pieces, not in any face. Non-Korean setting: a military situation room.
-Camera: wide shot from a Dutch tilt angle, canted frame, shot on 35mm lens
-Lighting/mood: cold blue dim interior light, heavy and unsettled, the tension draining out
-Accent: monochrome desaturated base with a single ember-orange accent (#FF6A00) fading on the map as the markers withdraw, film-noir low-key lighting, deep shadows
-Text handling: the map bears no legible labels; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a South Korean official standing with arms folded, taking a deliberate half-step back from a conference table, his guarded face turned slightly away in noncommittal caution. Through the tall window behind him a military operation flag is already being lowered at dusk, the campaign folding as fast as it flared. His posture holds the whole room at a careful distance.
+Camera: medium shot from eye-level, shot on 50mm standard lens
+Lighting/mood: cold blue dusk light falling through the window, fading and desolate, the day winding down
+Accent: monochrome desaturated base with a single ember-orange accent on the lowering flag's edge, film-noir low-key lighting, deep shadows
+Text handling: the flag carries no letters, the table holds no readable documents; the step-back posture tells the story.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the tactical wall map) extending edge to edge from top to bottom of the frame. The main subject, the hand withdrawing the markers, is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office interior) extending edge to edge from top to bottom of the frame. The official is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,28 +158,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Trump Iran ceasefire announcement
+한국 정부 파병 검토 호르무즈
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-이틀 새, 피해도 지렛대가 되고
-군사작전마저 협상 카드가 됐다
-불탄 배 한 척이 우리 눈앞에
-*동맹의 가격표를 처음으로 들이밀었다*
+불탄 배 한 척이
+*동맹의 진짜 가격표를*
+우리 눈앞에 처음으로 들이밀었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the charred, smoke-blackened silhouette of the cargo ship viewed head-on across a calm morning sea, still and quiet after the fire. Above and behind it hangs the faint symbolic outline of a blank hanging price tag, wordless, casting a thin shadow over the hull. The image faces the viewer directly, settling the story. Non-Korean setting: the Strait of Hormuz at first light.
-Camera: full shot from eye-level, front-on direct view, shot on 40mm lens
-Lighting/mood: warm soft morning light, gentle and quiet, a faint lingering melancholy, the tension released
-Accent: monochrome desaturated base with a single ember-orange accent (#FF6A00) of dying embers still glowing on the hull, muted daylight contrast
-Text handling: the price tag stays blank with no numbers or letters; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the scarred, burned-out cargo ship sitting silent in calm dawn water, facing the viewer head-on, its hull marked with the black wounds of the fire. The vast empty strait stretches quiet behind it now that the storm of demands has passed. A single ember-orange light lingers low on the horizon. It is the morning after, and the ship bears the cost alone.
+Camera: medium shot from eye-level facing front, shot on 35mm lens
+Lighting/mood: warm soft morning light, gentle and quiet, a faint melancholy afterglow
+Accent: monochrome desaturated base with a single ember-orange accent on the lingering horizon light, muted low contrast
+Text handling: no signage, no numbers on the hull; the scars and the empty sea carry the meaning.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the sea) extending edge to edge from top to bottom of the frame. The main subject, the charred ship, is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the calm sea) extending edge to edge from top to bottom of the frame. The burned ship is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,5 +188,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Strait of Hormuz oil tanker chokepoint
+cargo ship fire damage aftermath burnt hull
 ```
