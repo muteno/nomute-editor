@@ -1,0 +1,212 @@
+<!-- 자기완결 플레이그라운드 — 이미지 생성 프롬프팅(#genidlg) 주문 상단 고정 NAV 재배치 (운영자 260713) · viewer :root 실측값 사본 · 외부요청 0 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>주문 고정 NAV 재배치 · 플레이그라운드</title>
+<style>
+  :root{
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6;
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --modal-glass:rgba(17,18,20,.64); --on-accent:#032322;
+    --r-modal:22px; --r-s:9px; --r-m:11px; --r-pill:999px;
+    --fs-label:13px; --fs-sm:12px; --fw-b:700; --fw-x:800; --lh-base:1.6; --sp-3:18px;
+    --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:#0a0b0c; color:var(--fg); padding:18px 14px 40px;
+    font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  .wrap{max-width:440px;margin:0 auto}
+  h1{font-size:19px;font-weight:800;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 16px;line-height:1.55}
+  .sub b{color:var(--accent);font-weight:700}
+
+  /* 세그(전/후) */
+  .seg{display:flex;gap:0;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);padding:3px;margin:0 0 8px}
+  .seg button{flex:1;background:none;border:none;padding:9px 8px;border-radius:var(--r-pill);color:var(--mut);font:800 13px inherit;cursor:pointer;transition:.18s;-webkit-tap-highlight-color:transparent}
+  .seg button.on{background:var(--accent);color:var(--on-accent)}
+  .hint{color:var(--mut);font-size:11.5px;text-align:center;margin:0 0 14px;opacity:.85}
+  .hint b{color:var(--accent-bright);font-weight:700}
+
+  /* 폰 프레임 */
+  .phone{width:100%;max-width:390px;margin:0 auto;aspect-ratio:9/17.5;background:linear-gradient(180deg,#161a1f,#0e1113);
+    border:1px solid rgba(255,255,255,.10);border-radius:30px;padding:12px;position:relative;
+    box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden}
+  .feedbg{position:absolute;inset:12px;border-radius:20px;overflow:hidden;background:
+    repeating-linear-gradient(180deg,rgba(255,255,255,.028) 0 46px,transparent 46px 92px);opacity:.5}
+
+  /* 모달 셸 = genidlg 계승 */
+  .dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 30px);height:calc(100% - 40px);
+    display:flex;flex-direction:column;background:var(--modal-glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);
+    border:1px solid var(--line);border-radius:var(--r-modal);overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .dlg-h{flex:none;display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;background:rgba(24,25,28,.5);border-bottom:1px solid var(--line2)}
+  .dlg-h b{font-size:14px;font-weight:800;display:flex;align-items:center;gap:6px}
+  .dlg-h .spark{color:var(--accent)}
+  .dlg-h .x{width:26px;height:26px;display:grid;place-items:center;color:var(--mut)}
+
+  /* 리드/바디/푸터 = 실 클래스 미러 */
+  .lead{flex:none;padding:8px var(--sp-3) 10px;border-bottom:1px solid var(--line2)}
+  .lead.hl{box-shadow:inset 0 0 0 2px rgba(var(--accent-rgb),.55);border-radius:12px;background:rgba(var(--accent-rgb),.05)}
+  .body{padding:6px var(--sp-3) 14px;overflow-y:auto;flex:1 1 auto;min-height:0}
+  .foot{flex:none;padding:10px var(--sp-3) 16px;border-top:1px solid var(--line2)}
+  .foot.hl{box-shadow:inset 0 0 0 2px rgba(255,120,120,.5)}
+
+  .sechead{display:flex;align-items:center;gap:8px;padding:12px 0 2px}
+  .sechead .lbl{font-size:var(--fs-label);font-weight:800;color:var(--fg)}
+  .sechead .lbl::before{content:'• ';color:var(--accent);font-weight:700}
+  .sechead .chev{margin-left:auto;color:var(--mut)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line2)}
+  .row:first-child{border-top:none;padding-top:4px}
+  .publ{font-size:var(--fs-label);font-weight:700;color:var(--fg);white-space:nowrap}
+  .opts{display:flex;flex-wrap:wrap;gap:3px 4px;justify-content:flex-end;min-width:0}
+  .opt{padding:6px 7px;font-size:var(--fs-label);font-weight:700;color:var(--mut);white-space:nowrap}
+  .opt.on{color:var(--accent);font-weight:800}
+  .opt.dd::after{content:' ▾';opacity:.7;font-size:10px}
+  textarea.in,.in{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:var(--r-s);color:var(--fg);
+    font:700 var(--fs-label) inherit;padding:6px 10px;resize:none;line-height:var(--lh-base);display:block}
+  textarea.in::placeholder{color:var(--mut);opacity:.75}
+  .wishrow{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-top:1px solid var(--line2)}
+  .wishrow.top{border-top:none;padding-top:4px}
+  .wishrow .publ{padding-top:6px}
+  .wishrow textarea{flex:1 1 auto}
+
+  .sum{color:var(--mut);font-size:var(--fs-sm);font-weight:700;line-height:1.5;padding:8px 2px;font-variant-numeric:tabular-nums}
+  .sum.right{text-align:right}
+  .sum b{color:var(--fg);font-weight:700}
+  .sum .sl{opacity:.5}
+  .go{display:block;width:100%;padding:11px;margin-top:2px;border:1px solid rgba(var(--accent-rgb),.55);border-radius:var(--r-pill);
+    background:rgba(var(--accent-rgb),.08);color:var(--accent-bright);font:800 14px inherit;text-align:center}
+
+  /* 접힘 카메라 서브 */
+  .camsub{overflow:hidden;max-height:0;transition:max-height .28s var(--ease)}
+  .camsub.open{max-height:340px}
+  .badge{min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--on-accent);
+    font-size:10px;font-weight:800;line-height:16px;text-align:center;margin-left:6px}
+
+  .scrolltag{position:absolute;right:20px;bottom:16px;background:rgba(var(--accent-rgb),.14);color:var(--accent-bright);
+    font-size:10.5px;font-weight:800;padding:5px 9px;border-radius:999px;pointer-events:none;transition:opacity .3s;border:1px solid rgba(var(--accent-rgb),.3)}
+
+  .note{margin:16px 0 0;padding:13px 15px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:14px}
+  .note h3{margin:0 0 7px;font-size:12.5px;font-weight:800;color:var(--accent)}
+  .note ul{margin:0;padding-left:16px;color:var(--mut);font-size:12px;line-height:1.7}
+  .note li b{color:var(--fg);font-weight:700}
+  .legend{display:flex;gap:14px;justify-content:center;margin:10px 0 0;font-size:11px;color:var(--mut);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .chip-a{width:22px;height:10px;border-radius:3px;box-shadow:inset 0 0 0 2px rgba(var(--accent-rgb),.55);background:rgba(var(--accent-rgb),.05)}
+  .chip-r{width:22px;height:10px;border-radius:3px;box-shadow:inset 0 0 0 2px rgba(255,120,120,.5)}
+</style>
+<body>
+<div class="wrap">
+  <h1>주문 = 상단 고정 NAV 재배치</h1>
+  <p class="sub">이미지 생성 <b>프롬프팅</b> 탭(Image Studio) — 미리보기 안을 <b>실제로 스크롤</b>해봐. 신규안은 <b>내용·주문·요약·생성</b>이 위에 딱 붙어 따라오고, 아래만 스크롤돼.</p>
+
+  <div class="seg" id="seg">
+    <button data-v="after" class="on">신규 · 고정 NAV ★</button>
+    <button data-v="before">현행 · 3부 스크롤</button>
+  </div>
+  <p class="hint" id="hint">👆 미리보기 안에서 <b>위아래로 밀어봐</b> — 상단 주문·생성이 안 움직임</p>
+
+  <div class="phone">
+    <div class="feedbg"></div>
+
+    <!-- ===== 신규안 (AFTER) ===== -->
+    <div class="dlg" id="pv-after">
+      <div class="dlg-h"><b><span class="spark">✦</span> Image Studio</b><span class="x">✕</span></div>
+      <!-- 고정 리드 -->
+      <div class="lead hl">
+        <div class="sechead"><span class="lbl">내용</span></div>
+        <div class="wishrow top"><span class="publ">주문</span><textarea class="in" rows="3" placeholder="필수 · 그릴 장면·상황을 설명"></textarea></div>
+        <div class="sum right"><b>극화·웹툰화</b> <span class="sl">/</span> <b>4:5 · FHD · 3장 · PNG</b> <span class="sl">/</span> <b>무드 자동</b></div>
+        <div class="go">생성</div>
+      </div>
+      <!-- 스크롤 바디 -->
+      <div class="body" id="body-after">
+        <div class="sechead" style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('open');var b=this.querySelector('.badge');"><span class="lbl">카메라 · 구도</span><span class="badge">0</span><span class="chev">⌄</span></div>
+        <div class="camsub">
+          <div class="row"><span class="publ">거리</span><span class="opts"><span class="opt on">자동</span><span class="opt">클로즈업</span><span class="opt">상반신</span><span class="opt">전신</span></span></div>
+          <div class="row"><span class="publ">표정</span><span class="opts"><span class="opt on">자동</span><span class="opt">슬픔</span><span class="opt">분노</span><span class="opt">결연</span></span></div>
+          <div class="row"><span class="publ">앵글</span><span class="opts"><span class="opt on">자동</span><span class="opt">눈높이</span><span class="opt">부감</span></span></div>
+          <div class="row"><span class="publ">조명</span><span class="opts"><span class="opt on">자동</span><span class="opt">골든아워</span><span class="opt">역광</span></span></div>
+        </div>
+        <div class="sechead"><span class="lbl">개요</span></div>
+        <div class="row"><span class="publ">해상도</span><span class="opts"><span class="opt">720p</span><span class="opt on">FHD</span><span class="opt">2K</span><span class="opt">4K</span></span></div>
+        <div class="row"><span class="publ">비율</span><span class="opts"><span class="opt on">4:5</span><span class="opt">9:16</span><span class="opt">16:9</span><span class="opt dd">직접</span></span></div>
+        <div class="row"><span class="publ">장수</span><span class="opts"><span class="opt">1장</span><span class="opt">2장</span><span class="opt on">3장</span><span class="opt">4장</span></span></div>
+        <div class="row"><span class="publ">품질</span><span class="opts"><span class="opt on">PNG</span><span class="opt">JPG 90</span></span></div>
+        <div class="sechead"><span class="lbl">표현</span></div>
+        <div class="row"><span class="publ">화풍</span><span class="opts"><span class="opt on">극화</span><span class="opt">수채</span><span class="opt">실사</span><span class="opt dd">기타</span></span></div>
+        <div class="row"><span class="publ">세부 화풍</span><span class="opts"><span class="opt on">자동</span><span class="opt dd">직접</span></span></div>
+        <div class="row"><span class="publ">웹툰화</span><span class="opts"><span class="opt on">한국웹툰식</span></span></div>
+        <div class="row"><span class="publ">무드</span><span class="opts"><span class="opt on">자동</span><span class="opt">직접</span></span></div>
+        <div class="row"><span class="publ">문구</span><span class="opts"><span class="opt">살리기</span></span></div>
+      </div>
+    </div>
+
+    <!-- ===== 현행 (BEFORE) ===== -->
+    <div class="dlg" id="pv-before" style="display:none">
+      <div class="dlg-h"><b><span class="spark">✦</span> Image Studio</b><span class="x">✕</span></div>
+      <div class="body" id="body-before">
+        <div class="sechead"><span class="lbl">개요</span></div>
+        <div class="row"><span class="publ">해상도</span><span class="opts"><span class="opt">720p</span><span class="opt on">FHD</span><span class="opt">2K</span><span class="opt">4K</span></span></div>
+        <div class="row"><span class="publ">비율</span><span class="opts"><span class="opt on">4:5</span><span class="opt">9:16</span><span class="opt">16:9</span><span class="opt dd">직접</span></span></div>
+        <div class="row"><span class="publ">장수</span><span class="opts"><span class="opt">1장</span><span class="opt">2장</span><span class="opt on">3장</span><span class="opt">4장</span></span></div>
+        <div class="row"><span class="publ">품질</span><span class="opts"><span class="opt on">PNG</span><span class="opt">JPG 90</span></span></div>
+        <div class="sechead"><span class="lbl">표현</span></div>
+        <div class="row"><span class="publ">화풍</span><span class="opts"><span class="opt on">극화</span><span class="opt">수채</span><span class="opt">실사</span><span class="opt dd">기타</span></span></div>
+        <div class="row"><span class="publ">세부 화풍</span><span class="opts"><span class="opt on">자동</span><span class="opt dd">직접</span></span></div>
+        <div class="row"><span class="publ">웹툰화</span><span class="opts"><span class="opt on">한국웹툰식</span></span></div>
+        <div class="row"><span class="publ">무드</span><span class="opts"><span class="opt on">자동</span><span class="opt">직접</span></span></div>
+        <div class="sechead"><span class="lbl">카메라 · 구도</span><span class="badge">0</span><span class="chev">⌄</span></div>
+        <div class="sechead"><span class="lbl">내용</span></div>
+        <div class="wishrow"><span class="publ">주문</span><textarea class="in" rows="3" placeholder="선택 · 자유 요청 한 줄"></textarea></div>
+        <div class="row"><span class="publ">문구</span><span class="opts"><span class="opt">살리기</span></span></div>
+      </div>
+      <div class="foot hl">
+        <div class="sum"><b>극화·웹툰화</b> <span class="sl">/</span> <b>4:5 · FHD · 3장 · PNG</b> <span class="sl">/</span> <b>무드 자동</b></div>
+        <div class="go">생성</div>
+      </div>
+    </div>
+
+    <div class="scrolltag" id="stag">↓ 스크롤</div>
+  </div>
+
+  <div class="legend">
+    <span><i class="chip-a"></i> 고정(따라옴)</span>
+    <span><i class="chip-r"></i> 구 하단 고정 푸터</span>
+  </div>
+
+  <div class="note">
+    <h3>바뀐 점 · 재현 한계</h3>
+    <ul>
+      <li><b>고정 리드</b> = 내용 소머리 + 주문칸 + 우측하단 선택요약 + 생성 버튼 → 스크롤 내려도 상시 상단 고정.</li>
+      <li><b>구분선</b> = <code>border-bottom · var(--line2)</code> 계승(레포 헤더 띠·행 구분선 동일 문법).</li>
+      <li><b>스크롤 영역</b> = 카메라·구도(구분선 아래 첫 항목) → 개요 → 표현 → <b>문구(맨 아래)</b>.</li>
+      <li>구 <b>하단 고정 푸터</b>(요약+생성)는 폐지 — 상단 리드로 이전.</li>
+      <li>재현 한계: 실 <code>#genidlg</code>는 backdrop-blur·아코디언 촤르륵 모션·드롭다운 선택박스·무드 게이지 4축이 더 있음(여기선 정적 근사). 색·간격·radius는 viewer <code>:root</code> 실측 사본. 폰트는 시스템 폴백(실서비스 Pretendard).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  var seg=document.getElementById('seg'), hint=document.getElementById('hint');
+  var pvA=document.getElementById('pv-after'), pvB=document.getElementById('pv-before');
+  var stag=document.getElementById('stag');
+  seg.addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    [].forEach.call(seg.children,function(x){x.classList.toggle('on',x===b)});
+    var after=b.dataset.v==='after';
+    pvA.style.display=after?'':'none'; pvB.style.display=after?'none':'';
+    hint.innerHTML=after?'👆 미리보기 안에서 <b>위아래로 밀어봐</b> — 상단 주문·생성이 안 움직임'
+                        :'👆 현행 = 전체가 함께 스크롤 · 생성은 <b>맨 아래 고정 푸터</b>';
+  });
+  // 스크롤 태그 = 스크롤하면 사라짐(양쪽 body 공통)
+  ['body-after','body-before'].forEach(function(id){
+    var el=document.getElementById(id);
+    el.addEventListener('scroll',function(){ stag.style.opacity = el.scrollTop>8?'0':'1'; });
+  });
+</script>
+</body>

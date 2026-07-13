@@ -1,0 +1,179 @@
+name: voice-make
+
+# 음성 클로닝(운영자 260712 승인 · 벤치 판정 = docs/작업이력.md: Seed-VC CPU 탈락 → Replicate RVC) —
+#   train: 업로드 보이스(1~5분 · up-<id> 브랜치) → ffmpeg 정규화 → Demucs 보컬 정제(실측 60s곡 35s) → 10s 조각 zip
+#          → R2 → replicate/train-rvc-model(유료 ~$0.32/보이스 · 조사값) → 가중치 R2 보관 → voice_out/<id>/voice.json
+#   apply: 완성곡(song_out/<src>) + 보이스(voice_out/<vid>) → zsxkib/realistic-voice-cloning(유료 ~$0.04/곡 · 조사값)
+#          → song_out/<id>/song.json {engine:'rvc'} — 플레이리스트에 자동 합류(build-viewer 인덱스).
+#   게이트: REPLICATE_API_TOKEN 미등록 = error.log 정직 표면화(무음 no-op 금지) · 동의(consent=1) 없으면 train 거절.
+#   수동 발사 전용(뷰어 /api/voice) — 자동 경로 부착 금지(§📰 유료 잠금 사상). 골격 = track-make(업로드 브랜치)+song-make 미러.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6) — train=보이스 id · apply=새 곡 id'
+        type: string
+      mode:
+        description: '모드 — train(보이스 학습) / apply(곡에 입히기)'
+        type: choice
+        default: train
+        options:
+          - train
+          - apply
+      file:
+        description: '업로드 보이스 경로(uploads/<id>/voice.*) — train 전용'
+        type: string
+        default: ''
+      up_branch:
+        description: '일회용 업로드 브랜치(up-<id>) — train 전용'
+        type: string
+        default: ''
+      name:
+        description: '보이스 이름(≤24자) — train 전용'
+        type: string
+        default: ''
+      consent:
+        description: '동의 도장(1 = 본인·권리 보유 음성 · 실존 타인 금지) — train 필수'
+        type: string
+        default: ''
+      src:
+        description: '원곡 id(song_out) — apply 전용'
+        type: string
+        default: ''
+      vid:
+        description: '보이스 id(voice_out) — apply 전용'
+        type: string
+        default: ''
+
+concurrency:
+  group: voice-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 85   # train = Demucs(CPU 수분) + Replicate 학습 폴(≤70분) · apply = 폴 ≤25분
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 소스 확보 (train · 업로드 브랜치 회수)
+        if: ${{ inputs.mode == 'train' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          FILE: ${{ inputs.file }}
+          UP_BRANCH: ${{ inputs.up_branch }}
+          CONSENT: ${{ inputs.consent }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          mkdir -p "viewer/voice_out/${IN_ID}"
+          # 동의 게이트(운영자 제약: 실존 타인 음성 금지 · 본인/권리 보유만) — api가 강제하지만 이중 방어
+          [ "$CONSENT" = "1" ] || { echo "동의 없이 학습 불가 — 본인·권리 보유 음성만 학습할 수 있어." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::consent 없음"; exit 1; }
+          # 일회용 업로드 브랜치(up-<id>) = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 삭제) — track-make 동일
+          [ -n "$UP_BRANCH" ] || { echo "업로드 파일이 없어 — 보이스 소스를 다시 올려줘." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::up_branch 없음"; exit 1; }
+          case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
+          git fetch origin "$UP_BRANCH" --depth=1 || { echo "업로드 파일이 유실됐어 — 다시 올려줘." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::업로드 브랜치 fetch 실패"; exit 1; }
+          EXT="${FILE##*.}"
+          git show "FETCH_HEAD:$FILE" > "/tmp/vsrc.$EXT" || { echo "업로드 파일 회수 실패 — 다시 올려줘." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::브랜치서 파일 회수 실패: $FILE"; exit 1; }
+          echo "VSRC=/tmp/vsrc.$EXT" >> "$GITHUB_ENV"
+
+      - name: 준비 (train · ffmpeg + torch CPU + demucs — svc-bench 실측 53s)
+        if: ${{ inputs.mode == 'train' }}
+        timeout-minutes: 20
+        run: |
+          set -e
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg zip > /dev/null
+          pip install -q torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -q demucs soundfile
+
+      - name: 데이터셋 제작 (train · 정규화 → Demucs 보컬 정제 → 10s 조각 zip)
+        if: ${{ inputs.mode == 'train' }}
+        timeout-minutes: 25
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          set -e
+          E="viewer/voice_out/${IN_ID}/error.log"
+          # 정규화(어떤 포맷이든 wav 44.1k 스테레오) + 5.5분 캡(운영자 스펙 = 1~5분)
+          ffmpeg -v error -i "$VSRC" -t 330 -ac 2 -ar 44100 /tmp/vnorm.wav || { echo "오디오를 못 읽었어 — mp3/m4a/wav로 다시 올려줘." > "$E"; exit 1; }
+          DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 /tmp/vnorm.wav | cut -d. -f1)
+          echo "소스 길이: ${DUR}s"
+          [ "${DUR:-0}" -ge 30 ] || { echo "보이스 소스가 30초 미만이야 — 1~5분 분량으로 올려줘(짧으면 음색 학습이 안 돼)." > "$E"; exit 1; }
+          echo "VC_SRC_SEC=$DUR" >> "$GITHUB_ENV"
+          # Demucs 보컬 정제(배경음·잡음 분리 — 말소리/노래 모두 vocals 스템으로 수렴 · 60s당 ~35s 실측)
+          python -m demucs --two-stems=vocals -n htdemucs -o /tmp/sep /tmp/vnorm.wav
+          # 10s 조각(트레이너 데이터셋 관례 = wav 조각 폴더 zip · 공식 가이드 260712)
+          mkdir -p /tmp/ds/dataset
+          ffmpeg -v error -i /tmp/sep/htdemucs/vnorm/vocals.wav -f segment -segment_time 10 -c:a pcm_s16le /tmp/ds/dataset/split_%03d.wav
+          ( cd /tmp/ds && zip -q -r /tmp/dataset.zip dataset )
+          ls -la /tmp/dataset.zip
+
+      - name: Replicate 실행 (train=학습 · apply=입히기)
+        timeout-minutes: 78
+        env:
+          VC_MODE: ${{ inputs.mode }}
+          IN_ID: ${{ inputs.id }}
+          VC_NAME: ${{ inputs.name }}
+          VC_SRC: ${{ inputs.src }}
+          VC_VID: ${{ inputs.vid }}
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          python3 .github/scripts/voice_rvc.py
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+          VC_MODE: ${{ inputs.mode }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          if [ "$VC_MODE" = "train" ]; then D="viewer/voice_out/${IN_ID}"; else D="viewer/song_out/${IN_ID}"; fi
+          mkdir -p "$D"
+          [ -s "$D/error.log" ] || echo "음성 클로닝 실패 — Actions 로그를 확인해줘." > "$D/error.log"
+          echo "error.log: $(cat "$D/error.log")"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          VC_MODE: ${{ inputs.mode }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git rm -r "uploads/${IN_ID}" 2>/dev/null || true   # 업로드 main 폴백분 정리(브랜치 생성 실패 케이스 · track 동일)
+          git add "viewer/voice_out/${IN_ID}" 2>/dev/null || true
+          git add "viewer/song_out/${IN_ID}" 2>/dev/null || true
+          git commit -m "voice: ${IN_ID} 클로닝 출력(${VC_MODE})" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
+
+      # 업로드 일회용 브랜치 삭제(성공·실패 무관) — track/ly-make 동일(가드 = up-* 만)
+      - name: 업로드 브랜치 정리
+        if: ${{ always() && inputs.up_branch != '' }}
+        env:
+          UP_BRANCH: ${{ inputs.up_branch }}
+        run: |
+          case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
+          git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"

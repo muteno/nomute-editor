@@ -1,0 +1,145 @@
+<!-- 자기완결 플레이그라운드 — 레포 버튼 톤 통일(생성·수정·발행·전송·재생성) + 발사 게이지 대비 확인 (운영자 260713) · viewer :root 실측 사본 · 외부요청 0 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>버튼 톤 통일 · 재생성 · 플레이그라운드</title>
+<style>
+  :root{
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6; --on-accent:#032322;
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --r-modal:22px; --r-m:11px; --r-s:9px; --r-pill:999px; --fs-label:13px; --sp-3:18px;
+    /* 실시간 톤 변수 */
+    --btn-bg:rgba(255,255,255,.02); --btn-bd:var(--line); --btn-col:var(--accent);
+    --ico-bg:var(--bg); --ico-col:var(--accent);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#0a0b0c;color:var(--fg);padding:16px 13px 40px;
+    font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  .wrap{max-width:440px;margin:0 auto}
+  h1{font-size:18px;font-weight:800;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 14px;line-height:1.55}
+  .sub b{color:var(--accent);font-weight:700}
+
+  /* 갤러리 무대 */
+  .stage{background:#0d1416;border:1px solid var(--line);border-radius:20px;padding:18px 16px;margin:0 0 4px}
+  .glabel{font-size:10.5px;font-weight:800;color:var(--mut);margin:0 0 7px}
+  .glabel:not(:first-child){margin-top:16px}
+  /* 텍스트 CTA 버튼 = 정렬 근본 계승 */
+  .btn{display:grid;place-items:center;line-height:1;position:relative;overflow:hidden;
+    background:var(--btn-bg);border:1px solid var(--btn-bd);border-radius:var(--r-m);color:var(--btn-col);
+    font-weight:800;font-size:14px;padding:9px 16px;cursor:pointer;transition:.15s}
+  .btn.full{width:100%}
+  .btnrow{display:flex;gap:8px}
+  .btnrow .btn{flex:1}
+  /* firing 게이지(초록 채움) — 대비 확인용 */
+  .btn.fire{color:var(--on-accent);border-color:var(--accent)}
+  .btn.fire::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(.62);transform-origin:left;z-index:0}
+  .btn.fire span{position:relative;z-index:1}
+  /* 이미지 위 아이콘 버튼(재생성·저장) */
+  .imgbar{display:flex;gap:8px;justify-content:flex-end;background:linear-gradient(135deg,#2a3138,#1a1f24);
+    border-radius:12px;padding:10px;height:76px;align-items:flex-start;position:relative}
+  .imgbar::after{content:'이미지';position:absolute;left:12px;bottom:10px;font-size:10px;color:rgba(255,255,255,.3);font-weight:800}
+  .ibtn{width:30px;height:30px;border-radius:var(--r-s);display:grid;place-items:center;background:var(--ico-bg);border:1px solid var(--btn-bd);color:var(--ico-col);cursor:pointer;transition:.15s}
+  .ibtn svg{width:15px;height:15px}
+  .tag{display:inline-block;font-size:9.5px;font-weight:800;color:var(--mut);margin-left:5px;vertical-align:1px}
+
+  /* 톤 프리셋 세그 */
+  .ctl{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:16px;padding:14px 15px;margin:12px 0 0}
+  .ctl h3{margin:0 0 3px;font-size:12.5px;font-weight:800;color:var(--accent)}
+  .ctl .cd{color:var(--mut);font-size:11px;margin:0 0 12px;line-height:1.5}
+  .opts{display:grid;gap:8px}
+  .opt{position:relative;border:1px solid var(--line2);border-radius:12px;padding:11px 13px;cursor:pointer;transition:.15s;background:rgba(255,255,255,.015);-webkit-tap-highlight-color:transparent}
+  .opt.on{border-color:rgba(var(--accent-rgb),.6);background:rgba(var(--accent-rgb),.06)}
+  .opt .on-name{font-size:12.5px;font-weight:800;color:var(--mut)}
+  .opt.on .on-name{color:var(--accent)}
+  .opt .on-name .star{color:var(--accent-bright)}
+  .opt .on-desc{font-size:11px;color:var(--mut);margin-top:3px;line-height:1.45}
+  .opt .gwarn{color:#ff5ec8;font-weight:700}
+
+  .out{background:#0d0f11;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:14px 0 0;font-size:11.5px;color:var(--mut);line-height:1.75}
+  .out b{color:var(--fg)}.out .k{color:var(--accent)}
+  .copybtn{display:grid;place-items:center;line-height:1;width:100%;margin-top:12px;padding:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);color:var(--accent);font-weight:800;font-size:13px;cursor:pointer;transition:.15s}
+  .copybtn.done{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  .note{margin:14px 0 0;padding:12px 15px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:14px}
+  .note ul{margin:0;padding-left:15px;color:var(--mut);font-size:11.5px;line-height:1.7}
+  .note li b{color:var(--fg);font-weight:700} .note li .w{color:#ff5ec8;font-weight:700} code{background:rgba(255,255,255,.06);padding:1px 4px;border-radius:4px;font-size:11px}
+</style>
+<body>
+<div class="wrap">
+  <h1>버튼 톤 통일 + 재생성</h1>
+  <p class="sub">레포에 흩어진 버튼들(생성·수정·발행·전송 + 재생성 아이콘)을 <b>한 톤</b>으로. 아래 방식 골라 — 맨 밑 <b>전송(게이지)</b>은 발사 중 상태라 <b>초록 대비</b> 확인용.</p>
+
+  <div class="stage">
+    <p class="glabel">텍스트 CTA (모달 발사류)</p>
+    <button class="btn full"><span>생성</span></button>
+    <div class="btnrow" style="margin-top:8px"><button class="btn"><span>수정</span></button><button class="btn"><span>발행</span></button></div>
+    <p class="glabel">이미지 위 액션</p>
+    <div class="imgbar">
+      <button class="ibtn" title="재생성"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg></button>
+      <button class="ibtn" title="저장"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5M5 21h14"/></svg></button>
+    </div>
+    <p class="glabel">전송 <span class="tag">← 발사 중(초록 게이지) 대비 확인</span></p>
+    <button class="btn full fire"><span>전송 중…</span></button>
+  </div>
+
+  <div class="ctl">
+    <h3>톤 통일 방식</h3>
+    <p class="cd">전부 <b>정렬 근본</b>(방금 반영)은 공통. 배경·테두리 톤만.</p>
+    <div class="opts" id="opts"></div>
+  </div>
+
+  <div class="out" id="out"></div>
+  <button class="copybtn" id="copy"><span>선택값 복사</span></button>
+
+  <div class="note">
+    <ul>
+      <li><b class="w">⚠️ 게이지 대비</b>: 지금 <code>.asksend</code>가 <b>검정 글래스</b>인 건 발사 중 <b>초록 게이지가 또렷하게</b> 차오르라고 그런 거야(맨 밑 전송 버튼). 흰 글래스로 바꾸면 대비가 약해져 — 그래서 <b>B(흰글래스)</b>냐 <b>C(검정 유지)</b>냐가 핵심 갈림.</li>
+      <li>재생성·저장 <b>아이콘 버튼</b>은 이미지 위라 <b>불투명 플레이트</b>가 기본(뒤 사진에 안 묻힘) — 톤만 테두리·글자색으로 맞춰.</li>
+      <li>고른 방식 <b>선택값 복사</b> → 레포 전반 해당 버튼 일괄 통일할게(꽤 많으니 한 번에).</li>
+      <li>색 = viewer <code>:root</code> 실측 · 폰트 시스템 폴백.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  var root=document.documentElement;
+  var OPT=[
+    {id:'cur', name:'A · 현행 유지', desc:'생성만 흰글래스 · 수정/발행/전송은 검정글래스 · 재생성 불투명 (지금 상태 — 안 통일)',
+     btnbg:'rgba(0,0,0,.34)', btnbd:'rgba(var(--accent-rgb),.36)', btncol:'var(--accent)', icobg:'var(--bg)'},
+    {id:'white', name:'B · 얇은 흰글래스 통일 ★', desc:'전부 생성 톤(흰글래스 .02 + 중립 테두리)으로 간결 통일 · <span class="gwarn">게이지 대비 약간↓</span>',
+     btnbg:'rgba(255,255,255,.02)', btnbd:'var(--line)', btncol:'var(--accent)', icobg:'var(--bg)'},
+    {id:'dark', name:'C · 검정글래스 통일', desc:'전부 검정글래스(생성도 되돌림) · 게이지 대비 최상 · 살짝 무거움',
+     btnbg:'rgba(0,0,0,.34)', btnbd:'rgba(var(--accent-rgb),.36)', btncol:'var(--accent)', icobg:'var(--bg)'},
+    {id:'outline', name:'D · 아웃라인 통일', desc:'전부 투명 배경 + accent 테두리만 · 제일 가벼움 · 게이지 대비 중간',
+     btnbg:'transparent', btnbd:'rgba(var(--accent-rgb),.4)', btncol:'var(--accent)', icobg:'var(--bg)'},
+    {id:'soft', name:'E · 소프트 틴트 통일', desc:'전부 accent 은은한 배경(.08) · 통일감 강하고 눈에 띔',
+     btnbg:'rgba(var(--accent-rgb),.08)', btnbd:'transparent', btncol:'var(--accent)', icobg:'var(--bg)'}
+  ];
+  var st='white';
+  var box=document.getElementById('opts');
+  box.innerHTML=OPT.map(function(o){
+    return '<div class="opt'+(o.id==='white'?' on':'')+'" data-id="'+o.id+'"><div class="on-name">'+o.name.replace('★','<span class="star">★</span>')+'</div><div class="on-desc">'+o.desc+'</div></div>';
+  }).join('');
+  function cur(){return OPT.filter(function(o){return o.id===st})[0]}
+  function render(){
+    var o=cur();
+    root.style.setProperty('--btn-bg',o.btnbg);
+    root.style.setProperty('--btn-bd',o.btnbd);
+    root.style.setProperty('--btn-col',o.btncol);
+    root.style.setProperty('--ico-bg',o.icobg);
+    document.getElementById('out').innerHTML='<b>선택값</b><br>버튼 톤 = <span class="k">'+o.name+'</span><br><span style="opacity:.8">'+o.desc.replace(/<[^>]+>/g,'')+'</span>';
+  }
+  box.addEventListener('click',function(e){var el=e.target.closest('.opt');if(!el)return;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===el)});st=el.dataset.id;render()});
+  document.getElementById('copy').addEventListener('click',function(){
+    var o=cur();var t='레포 버튼 톤 통일 선택값\n방식: '+o.name+'\n('+o.desc.replace(/<[^>]+>/g,'')+')\n대상: 생성·수정·발행·전송 등 .asksend + 재생성/저장 아이콘';
+    var self=this,sp=self.querySelector('span');
+    (navigator.clipboard&&navigator.clipboard.writeText(t)||Promise.reject()).then(function(){sp.textContent='✓ 복사됨 — 답장에 붙여넣기';self.classList.add('done');setTimeout(function(){sp.textContent='선택값 복사';self.classList.remove('done')},2200)}).catch(function(){
+      var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');sp.textContent='✓ 복사됨';self.classList.add('done');setTimeout(function(){sp.textContent='선택값 복사';self.classList.remove('done')},2200)}catch(e){}document.body.removeChild(ta);
+    });
+  });
+  render();
+</script>
+</body>

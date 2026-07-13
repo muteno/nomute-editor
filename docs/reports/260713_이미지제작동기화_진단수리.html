@@ -1,0 +1,124 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>썸네일 이력 동기화 — 진단·수리 보고</title>
+<style>
+  :root{ --bg:#0b0d0c; --fg:#eef7f0; --mut:#8a938d; --accent:#00EED2; --red:#e23b2a; --lemon:#FFE13D;
+    --line:rgba(255,255,255,.10); --card:rgba(255,255,255,.03); --card2:rgba(255,255,255,.05); }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;line-height:1.62;padding:20px 16px 60px;-webkit-text-size-adjust:100%}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 22px}
+  h2{font-size:16px;font-weight:800;margin:30px 0 12px;padding-left:10px;border-left:3px solid var(--accent)}
+  h3{font-size:14px;font-weight:700;margin:18px 0 8px;color:var(--fg)}
+  p{margin:8px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
+  .grid2{display:flex;gap:10px;flex-wrap:wrap}
+  .grid2>.col{flex:1;min-width:220px}
+  .ba{border-radius:12px;padding:12px 14px;font-size:13.5px}
+  .before{background:rgba(226,59,42,.09);border:1px solid rgba(226,59,42,.35)}
+  .after{background:rgba(0,238,210,.08);border:1px solid rgba(0,238,210,.38)}
+  .tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;margin-bottom:6px}
+  .tag.b{background:rgba(226,59,42,.2);color:#ff9d92}
+  .tag.a{background:rgba(0,238,210,.16);color:var(--accent)}
+  code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:5px;font-size:12.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:12px}
+  .big{font-size:30px;font-weight:800;color:var(--accent);line-height:1.1}
+  .big.red{color:var(--red)}
+  .muted{color:var(--mut);font-size:12.5px}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;border:1px solid var(--line);margin:2px 4px 2px 0}
+  .pill.done{border-color:rgba(0,238,210,.5);color:var(--accent)}
+  .pill.wait{border-color:rgba(255,225,61,.45);color:var(--lemon)}
+  .note{font-size:12.5px;color:var(--mut);border-top:1px dashed var(--line);margin-top:10px;padding-top:8px}
+  .ok{color:var(--accent);font-weight:700}
+  ul{margin:8px 0;padding-left:20px}li{margin:4px 0}
+</style>
+<div class="wrap">
+  <h1>썸네일 '이전 제작' 이력 — 진단·수리 보고</h1>
+  <p class="sub">기기(플랫폼)마다 이력이 다르게 조회되는 문제 · 260713 · <span class="ok">1/N차 반영 완료</span></p>
+
+  <h2>1. 무슨 문제였나</h2>
+  <div class="card">
+    <p><b>①</b> 지금 만든 게 '이전 제작' 목록에 <b>간헐적으로만 제대로 쌓임</b></p>
+    <p><b>②</b> <b>폰·PC 등 접속 기기마다 이력이 다르게 보임</b> — "시간은 같이 흐르는데 계정값이 다른 것 마냥". 항상 똑같이(동기화) 보여야 함</p>
+    <p class="note">뿌리 = 썸네일 이력이 <b>서버 공통 파일(<code>thumb-hist.json</code>)</b> + <b>기기별 브라우저 저장(localStorage·IndexedDB)</b> 두 곳에 나뉘어, 합칠 때 기기마다 어긋남.</p>
+  </div>
+
+  <h2>2. 이번에 확실히 잡은 것</h2>
+
+  <h3>ⓐ 라벨 오분류 교정 — 기기 간 이름 일치 <span class="pill done">반영됨</span></h3>
+  <div class="grid2">
+    <div class="col ba before">
+      <span class="tag b">전 (오분류)</span>
+      <p>서버가 <b>파일 이름</b>으로만 종류를 추측 → 릴스의 흰칸(<code>box</code>)·투명도(<code>opa</code>) 산출물을 <b>'포스트'로 잘못 표기</b>. 만든 기기(로컬)는 '릴스'라 부르는데 다른 기기(서버)는 '포스트'로 → 같은 제작이 기기마다 다른 이름.</p>
+    </div>
+    <div class="col ba after">
+      <span class="tag a">후 (통일)</span>
+      <p>제작 설정(<code>_src.json</code>의 <code>app</code>)을 기준으로 <b>앱명 통일</b>(포스트/릴스/저작권/경고문). 어느 기기서 봐도 같은 이름.</p>
+    </div>
+  </div>
+  <div class="card" style="text-align:center">
+    <div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap;align-items:flex-end">
+      <div><div class="big red">150건</div><div class="muted">릴스 207건 중 구코드에서<br>'포스트'로 오분류됐던 수</div></div>
+      <div style="font-size:26px;color:var(--mut);align-self:center">→</div>
+      <div><div class="big">0건</div><div class="muted">교정 후 오분류<br>(전부 '릴스')</div></div>
+    </div>
+  </div>
+
+  <h3>ⓑ 중복 판정 안전망 — 주소 형식 통일 <span class="pill done">반영됨</span></h3>
+  <div class="card">
+    <p>같은 제작인지 판정하는 기준을 <b>주소 문자열 통짜 비교</b>에서 <b>경로만 비교</b>(호스트·캐시버스트 제거)로 바꿈. R2 전체주소든 상대주소든 같은 제작이면 한 번만 표시.</p>
+    <p class="note"><b>정직한 한계:</b> 현행 데이터를 실측하니 서버 인덱스 400건에 <b>중복 0건</b> — 카드뉴스·신규 썸네일은 이미 형식이 일치해 원래도 안 갈렸음. 즉 이 변경은 <b>미래 형식 변화·관측 안 되는 기기별 옛 잔재를 막는 안전망</b>이지, 지금 활성 중복을 없앴다고 단정하진 않음. (초기 "카드뉴스가 갈렸다"는 내 추정은 실측으로 정정)</p>
+  </div>
+
+  <h2>3. 검증</h2>
+  <div class="card">
+    <p>Opus 5인 적대적 교차검증 + 자체 실측:</p>
+    <p><span class="pill done">✓ dedup 정규식</span><span class="pill done">✓ 주소 분리(로드 404 회귀 0)</span><span class="pill done">✓ 라벨 파급</span><span class="pill done">✓ 복원 짝정합</span><span class="pill wait">△ 총괄(안전하나 근거 정직성 지적)</span></p>
+    <ul>
+      <li>코드 안전성 4인 <span class="ok">OK</span> — 이미지 로드 회귀 0, 복원·삭제 로직 정합, 오히려 옛 유령 잔재 제거 개선</li>
+      <li>총괄 1인이 "누적 봉합 단정은 과장"이라 지적 → <b>PR 본문·이 보고서에 정직하게 반영</b></li>
+      <li><code>check_refs</code> 전체 게이트 통과 · main(<code>1ea9607</code>) read-back 실측 확인</li>
+    </ul>
+  </div>
+
+  <h2>4. 아직 남은 '기기마다 다름'의 원인 (다음 판단 필요)</h2>
+  <p class="muted">라벨은 잡았지만, 동기화를 완전히 이루려면 아래가 남음. 각각 수리 방향·규모가 달라서 방향을 정하고 진행하려 함.</p>
+  <table>
+    <tr><th>원인</th><th>내용</th><th>수리 방향 / 규모</th></tr>
+    <tr>
+      <td><b>기록 지우기</b><br><span class="muted">(핵심)</span></td>
+      <td>'기록 지우기'를 누른 시점이 <b>그 기기에만</b> 저장돼, 전 기기 공통인 서버 목록까지 <b>그 기기에서만 가림</b>. "계정값 다른 것 마냥"의 주범.</td>
+      <td>서버 공통 목록엔 안 가리게(작음) <b>또는</b> 전 기기 공통 삭제로 승격(서버 기능 추가·큼). <b>UX 결정 필요</b></td>
+    </tr>
+    <tr>
+      <td><b>배포 랙</b></td>
+      <td>새로 만들면 <b>만든 기기엔 즉시</b> 뜨지만, 다른 기기엔 서버 재빌드·배포(30~90초) <b>후에야</b> 뜸. 그 사이 다름.</td>
+      <td>구조적(비동기 배포) — 시간 지나면 저절로 동기화. 실시간화는 큰 작업</td>
+    </tr>
+    <tr>
+      <td><b>연필(수정) 복원</b></td>
+      <td>업로드 원본 이미지는 <b>만든 기기 안에만</b> 저장 → 다른 기기선 설정만 복원되고 이미지는 빗금 참고본.</td>
+      <td>원본을 서버 보존(용량·비용 검토) — 별도</td>
+    </tr>
+    <tr>
+      <td><span class="muted">별개 버그</span></td>
+      <td>뉴스 피드 카드의 '생성'/'+N장'은 서버 파일에 <b>끝없이 쌓임</b>(캡 없음). 단 <b>서버 공통이라 기기 무관</b> — 이번 증상②와 다른 축.</td>
+      <td>캡·중복제거 도입 — 별도 PR</td>
+    </tr>
+  </table>
+
+  <div class="card">
+    <h3 style="margin-top:0">다음 결정 — 하나만 짚어줘</h3>
+    <p>"기기마다 다름"이 실제로 어떤 상황이야?</p>
+    <ul>
+      <li><b>제작 직후 잠깐만</b> 다르고 곧 같아짐 → <b>배포 랙</b>(구조적, 정상 동작에 가까움)</li>
+      <li><b>시간이 지나도 계속</b> 다름 / 특정 제작이 한 기기에만 빠짐 → <b>기록 지우기·구조</b> 손봐야 함</li>
+    </ul>
+    <p class="note">이걸 알면 잔여 원인을 정확히 타격함. 아니면 "서버 공통을 진실원본으로 완전 통일"(기록지우기 포함)하는 근본 수리를 바로 진행할 수도 있음 — 방향만 정해줘.</p>
+  </div>
+
+  <p class="muted" style="margin-top:24px">반영: PR #2176 → main <code>1ea960...</code> squash 머지 · 라이브는 배포 1~2분 후 · 폰·PC 양쪽서 릴스 라벨이 '릴스'로 같게 뜨는지 확인해줘.</p>
+</div>

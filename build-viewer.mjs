@@ -356,6 +356,7 @@ const THH_OUT = 'viewer/thumb-hist.json';
 const THH_CAP = 400;
 const thIdTs = (id) => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); if (!m) return 0; const t = Date.parse(`20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00`); return Number.isFinite(t) ? t : 0; };
 const thLabel = (f) => { const b = f.replace(/\.(png|jpe?g)$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // api/thumb.js 라벨 규칙과 맞춤
+const APP_CAP = { '1': '포스트', '2': '릴스', '3': '저작권', '4': '경고문' };   // _src.json app → 로컬 스튜디오 캡션과 통일된 앱명(§표기표준). 서버 인덱스가 파일명 파생 라벨만 쓰던 것 → 기기 간 캡션 일치 + 릴스 box '포스트' 오분류 봉합(운영자 260713)
 const thHist = [];
 try {
   const troot = 'viewer/thumb_out';
@@ -368,7 +369,8 @@ try {
     let src = null;   // 제작 조건 스냅샷(문구·설정) — 있으면 기기 간 '수정' 복원 가능(연필 버튼·thumb.html). 없으면(구버전·미전달) 생략.
     try { src = JSON.parse(readFileSync(join(troot, id, '_src.json'), 'utf8')); } catch {}
     const isPost = meta.some(([f]) => /^(opa\d+|box|nobg)\.(png|jpe?g)$/i.test(f));   // 포스트(/1) = opa/box/nobg 산출 → '포스트' 타입 라벨(로컬 cap='포스트 #N'과 통일). 릴스/저작권/경고문=out.png은 파일명으론 구분 불가 → 백엔드 마커 후속(운영자 260622)
-    for (const [f, url] of meta) { const e = { url, dlname: `${id}_${f}`, cap: isPost ? '포스트' : thLabel(f), varStr: isPost ? ' · ' + thLabel(f) : '', ts }; if (src && src.app) e.src = src; thHist.push(e); }
+    const appName = src && src.app && APP_CAP[src.app];   // app 있으면 로컬과 통일된 앱명 · 없으면(레거시 _src 부재) isPost 파일명 추정 폴백
+    for (const [f, url] of meta) { const e = { url, dlname: `${id}_${f}`, cap: appName || (isPost ? '포스트' : thLabel(f)), varStr: (appName || isPost) ? ' · ' + thLabel(f) : '', ts }; if (src && src.app) e.src = src; thHist.push(e); }
   }
 } catch { /* thumb_out 없음 */ }
 // 카드뉴스(/5) — comp_out/<id>/card.jpg(git 커밋·Pages 서빙)도 기기 간 이력에 병합(운영자 260710 — 구 '로컬만' 미구현 보완 · src 스냅샷은 comp 파이프 미보존이라 연필 없음=후속)
@@ -377,7 +379,8 @@ try {
   for (const id of readdirSync(croot)) {
     const ts = thIdTs(id); if (!ts) continue;
     let files; try { files = readdirSync(join(croot, id)).filter(n => /\.(png|jpe?g)$/i.test(n)).sort(); } catch { continue; }
-    for (const f of files) thHist.push({ url: `comp_out/${id}/${f}`, dlname: `${id}_${f}`, cap: '카드뉴스', varStr: '', ts });
+    let csrc = null; try { csrc = JSON.parse(readFileSync(join(croot, id, '_src.json'), 'utf8')); } catch {}   // 카드뉴스 제작 조건 스냅샷 — 있으면 기기 간 '수정'(연필) 복원(comp 파이프 src 보존 260713)
+    for (const f of files) { const e = { url: `comp_out/${id}/${f}`, dlname: `${id}_${f}`, cap: '카드뉴스', varStr: '', ts }; if (csrc && csrc.app) e.src = csrc; thHist.push(e); }
   }
 } catch { /* comp_out 없음 */ }
 // 리사이즈(/7) — gen_out/resize.json(캡 24 · R2 절대 url·ts=KST isoformat)도 병합(운영자 260710 저녁 — 낮 '세션만' 결정 번복 확정 · 뷰어 rszLoad는 잡 신호 전용 유지)

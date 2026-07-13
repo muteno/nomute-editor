@@ -22,6 +22,14 @@ is_quota() {
   grep -qiE 'usage limit|weekly limit|hit your .{0,40}limit|rate.?limit|rate_limit|429|too many requests|quota|limit reached|limit.{0,40}reset|resets? (at|in)|failed to authenticate|api error:? 403' <<<"$s"
 }
 
+# _claude_mark_active_quota(): 활성 계정(체인 첫 계정)이 이번 런에 쿼터로 폴오버됐음을 신호 파일에 남긴다.
+#   account_failover.py(활성 계정 자동 승격)가 이 파일 존재를 보고 누적 카운트 → 임계 시 vars.ACTIVE_ACCOUNT 전진(sticky failover).
+#   best-effort(실패 무시) · n==0(활성→서브1) 첫 스왑에서만 호출 = '활성 계정이 이번 런에 막혔다'는 뜻(서브 쿼터는 신호 안 냄).
+#   정본 문서 = docs/oauth_계정_자동승격_이식가이드.md.
+_claude_mark_active_quota() {
+  : > "${NOMUTE_QUOTA_SIGNAL:-${GITHUB_WORKSPACE:-/tmp}/.nomute_active_quota}" 2>/dev/null || true
+}
+
 # claude_failover(): 출력이 쿼터 한도면 *대체 계정 토큰*으로 1단계씩 전환(4계정 체인 = 메인1 + 세부3).
 #   1차 = CLAUDE_CODE_OAUTH_TOKEN_ALT(서브1) · 2차 = CLAUDE_CODE_OAUTH_TOKEN_ALT2(서브2) · 3차 = CLAUDE_CODE_OAUTH_TOKEN_ALT3(서브3).
 #   전환함=0(호출부가 같은 프롬프트로 재시도) / 못 함(쿼터 아님·다음 대체 없음·체인 소진)=1.
@@ -30,6 +38,7 @@ claude_failover() {
   is_quota "${1:-}" || return 1
   local n="${_CLAUDE_SWAPPED:-0}"
   if [ "$n" = "0" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}" ]; then
+    _claude_mark_active_quota   # 활성 계정 쿼터 신호(sticky 승격용 · account_failover.py 가 읽음)
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_ALT"; _CLAUDE_SWAPPED=1
     echo "  🔄 계정 사용량 한도 — 서브1 계정으로 전환 후 재시도(account failover 1/3)"
     return 0

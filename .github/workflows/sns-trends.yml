@@ -44,6 +44,10 @@ on:
         description: '금융 환율+코인(⑬ 무키 open.er-api+Upbit · 운영자 260713) — 1=ON (동일 카나리아)'
         default: '1'
         required: false
+      bsky_tr:
+        description: '블루스카이 인기글 자동 번역(⑦ topic·ko · opus high 1콜 · 증분 carry · 운영자 260713) — 1=ON (§📰-e 카나리아 · dispatch 실측 승격 전 cron은 OFF)'
+        default: '0'
+        required: false
 
 permissions:
   contents: write
@@ -73,13 +77,14 @@ jobs:
           SNS_PANN: ${{ inputs.pann || '1' }}       # ⑪ 네이트판 = 기본 ON 승격(동일 실측) · 롤백 = || '0'
           SNS_HN: ${{ inputs.hn || '1' }}           # ⑫ 해커뉴스 = 기본 ON 승격(§📰-e 이행 — 카나리아 run 29201946896 실측 260713: rc=0·HN 10건·Firebase 정상) · 롤백 = || '0'
           SNS_FIN: ${{ inputs.fin || '1' }}         # ⑬ 금융 = 기본 ON 승격(동일 run 실측: 환율 4·코인 4 · open.er-api+Upbit 정상) · 롤백 = || '0'
-          SAFETY_KEY: ${{ secrets.SAFETY_KEY }}     # ⑭ 재난문자 = 공공데이터포털 키(미설정 = no-op 스캐폴드 · 발급 후 자동 활성)
-          KOBIS_KEY: ${{ secrets.KOBIS_KEY }}       # ⑮ KOBIS 박스오피스 키(미설정 = no-op)
+          SAFETY_KEY: ${{ secrets.KOFIC_NOMUTE_JAENAN || secrets.SAFETY_KEY }}   # ⑭ 재난문자 = 공공데이터포털 키 — 운영자 시크릿명 = KOFIC_nomute_jaenan(260713 발급·등록 실측 · 구 SAFETY_KEY 스캐폴드명 폴백 유지 · GitHub 시크릿명 대소문자 무관 → 대문자 참조로 해석). KOBIS·EX와 동일 폴백 패턴
+          KOBIS_KEY: ${{ secrets.KOFIC_NOMUTE_ID || secrets.KOFIC_NOMUTE }}   # ⑮ KOBIS 박스오피스 — 실측(260713): KOFIC_NOMUTE로 10건 수집 성공(run 03:20 KST)·_ID는 미존재였음 → 운영자 구두명(_ID)·실존명 양쪽 폴백(어느 이름이든 동작)
+          EX_KEY: ${{ secrets.KOFIC_NOMUTE_EX }}    # ⑯ 도로공사 돌발·사고 — 운영자 시크릿명 = KOFIC_NOMUTE_EX(260713 등록 실측 · EX_URL env로 엔드포인트 교체 가능)
           # REDDIT_SUBS: 'popular,korea,worldnews'  # 서브레딧 노브(코드 기본과 동일 — 바꿀 때만 주석 해제)
         run: timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
-        if: ${{ (inputs.brief || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0'
+        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)도 CLI 필요(운영자 260713 · 미포함 시 카나리아 rc=127)
         run: npm install -g @anthropic-ai/claude-code
 
       - name: AI 브리프(비서 페르소나 · 운영자 260712) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft)
@@ -90,6 +95,15 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
           CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
         run: bash .github/scripts/sns_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 수집 커밋 비차단)
+
+      - name: 블루스카이 번역(⑦ topic·ko · 증분 carry · 번역대상 0=스킵 · 실패=carry 유지 · 운영자 260713)
+        env:
+          BSKY_TR: ${{ inputs.bsky_tr || '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 29222700305 실측 260713: BSKY_TR=1·번역 대상 12건 전건 병합·저장·커밋 f802b56·rc=0 · 증분 carry로 재번역 0) · schedule=inputs 없음→'1' · dispatch bsky_tr='0'=일시 OFF · 롤백 = || '0' · sns_trends.json 직접 병합(Commit git add 커버)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
+        run: bash .github/scripts/bsky_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
 
       - name: Commit
         run: |

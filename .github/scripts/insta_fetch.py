@@ -109,7 +109,7 @@ def main():
         drop2 += dr
 
     media, merr = api(f'{uid}/media',
-                      fields='id,caption,media_type,media_product_type,timestamp,permalink,like_count,comments_count',
+                      fields='id,caption,media_type,media_product_type,timestamp,permalink,like_count,comments_count,media_url,thumbnail_url',
                       limit='25')
     items = []
     for m in (media or {}).get('data', []):

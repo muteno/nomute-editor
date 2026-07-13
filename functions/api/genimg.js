@@ -57,7 +57,10 @@ export async function onRequestPost({ request, env }) {
     kweb: o.kweb === true,   // 한국웹툰식 토글(전 화풍 · 운영자 260707)
     text: String(o.text || '').replace(/\s+/g, ' ').trim().slice(0, 60),
     wish: String(o.wish || '').replace(/\s+/g, ' ').trim().slice(0, 300),
+    refB64: (typeof o.refB64 === 'string' && /^[A-Za-z0-9+/=]{16,60000}$/.test(o.refB64)) ? o.refB64 : '',   // 참고 이미지 base64(운영자 260713) — 뷰어 512px 다운스케일 JPEG · dispatch input 상한(65535자) 여유 안 · gen_image가 ref_png으로 사용(원본유지/참고)
+    refMode: (o.refMode === 'keep' || o.refMode === 'ref') ? o.refMode : '',   // 원본 유지(keep) / 참고(ref)
   };
+  if (!opts.refB64) opts.refMode = '';   // 미첨부 = 모드 무의미(gen_image도 이중 게이트)
 
   if (free && !opts.wish && !opts.text) return json({ error: '자유 생성 = 주문 또는 문구 필수' }, 400);   // 장면 소재 0 방지(뷰어도 동일 가드 · gen_image.py 3중)
 
@@ -77,6 +80,6 @@ export async function onRequestPost({ request, env }) {
       body: JSON.stringify({ ref: 'main', inputs: { stem, opts: JSON.stringify(opts), free: free ? '1' : '0' } }),
     },
   );
-  if (r.status === 204) return json({ ok: true, opts });
+  if (r.status === 204) return json({ ok: true, opts: { ...opts, refB64: opts.refB64 ? '(첨부됨)' : '' } });   // 응답 에코서 base64 원문 제외(경량)
   return json({ error: `GitHub ${r.status}: ${(await r.text().catch(() => '')).slice(0, 300)}` }, 502);
 }

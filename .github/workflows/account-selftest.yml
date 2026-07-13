@@ -1,0 +1,23 @@
+name: account-selftest
+
+# GH_VARS_TOKEN(Variables 쓰기 PAT)이 실제로 Repository Variables 를 읽고/쓰고/지울 수 있는지
+# 실측하는 수동 테스트. Actions 탭 → account-selftest → Run workflow 로 실행.
+# ⚠️ 활성 계정(ACTIVE_ACCOUNT)·카운터(ACTIVE_QUOTA_HITS)는 안 건드림 — 전용 probe 변수만 왕복.
+# 정본 = docs/oauth_계정_자동승격_이식가이드.md · 승격 엔진 = shared/account_failover.py.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Variables API PAT 실측(read/write/delete)
+        env:
+          GH_VARS_TOKEN: ${{ secrets.GH_VARS_TOKEN }}
+          ACTIVE_ACCOUNT: ${{ vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+        run: python3 shared/account_failover.py --selftest

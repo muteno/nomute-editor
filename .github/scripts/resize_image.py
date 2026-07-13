@@ -29,7 +29,7 @@ import numpy as np
 KST = datetime.timezone(datetime.timedelta(hours=9))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
-ASPECTS = ("16:9", "9:16", "4:5", "1:1")
+ASPECTS = ("16:9", "9:16", "4:5", "1:1", "21:9")   # 21:9 신설(운영자 260713 비율 순환 · api/resize ASPECTS와 한 쌍 · Gemini 실패 시 3층 라우팅 폴백(blur_pad)이 결정론 커버)
 SIZES = ("1K", "2K")
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
 

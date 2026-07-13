@@ -1,0 +1,150 @@
+name: song-make
+
+# 뷰어 음원 탭(Pages Function /api/song)이 발사 — 모드 3종(운영자 260712 v1):
+#   options = 상황 → 스타일 옵션 10개(options.json · claude 구독 = 과금 0)
+#   suno    = 수노 커스텀 모드 복붙용 가사·Styles(song.json · 과금 0)
+#   lyria   = 가사·프롬프트 생성 후 **구글 Lyria 3 Pro가 실제 곡 생성**(유료 · 공식 가격표 $0.08/곡 260712 실측)
+#             → R2(폴백 git) → song.json{url}. GEMINI_API_KEY = 썸네일과 동일 시크릿 재사용.
+#   골격 = edit-make 미러(업로드·STT·컴포즈 없음 = 최경량). 수동 발사 전용 — 자동 경로 부착 금지(§📰 유료 잠금 사상).
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6)'
+        type: string
+      mode:
+        description: '모드 — options(스타일 10개) / suno(프롬프트) / lyria(구글 곡 생성 · 유료)'
+        type: choice
+        default: suno
+        options:
+          - options
+          - suno
+          - lyria
+      genre:
+        description: '장르 힌트(칩 라벨 또는 직접 입력 · 빈값=자동)'
+        type: string
+        default: '자동'
+      express:
+        description: '표현방식 힌트(빈값=자동)'
+        type: string
+        default: '자동'
+      mood:
+        description: '분위기 힌트(빈값=자동)'
+        type: string
+        default: '자동'
+      theme:
+        description: '테마 힌트(빈값=자동)'
+        type: string
+        default: '자동'
+      story:
+        description: '스토리(대사 또는 상황) — 가사·옵션 소재'
+        type: string
+      pick:
+        description: '선택 스타일 JSON({name,style,vocal,bpm} · 빈값=자동)'
+        type: string
+        default: ''
+      account:
+        description: '이 실행에 쓸 계정(구독 OAuth)'
+        type: choice
+        default: MUTENO
+        options:
+          - NOMUTEFB
+          - MUTENO
+          - EMS1130G
+
+concurrency:
+  group: song-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  song:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25   # claude 1콜(텍스트) + [lyria면 오디오 생성 대기] + 커밋 — STT·인코딩 없음(폴오버 백오프·Lyria 재시도 여유 포함)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # claude CLI 설치 — edit-make Setup Node 미러(전 모드가 claude 1콜 사용 = 무조건 설치).
+      #   누락 시 rc=127 'claude: No such file or directory' = 카나리아 #1 실측(260712) — 이 스텝이 그 수리.
+      - name: Setup Node (claude)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install claude-code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 텍스트 생성 (claude — 옵션/가사/프롬프트)
+        timeout-minutes: 12
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          IN_ID: ${{ inputs.id }}
+          MODE: ${{ inputs.mode }}
+          GENRE: ${{ inputs.genre }}
+          EXPRESS: ${{ inputs.express }}
+          MOOD: ${{ inputs.mood }}
+          THEME: ${{ inputs.theme }}
+          STORY: ${{ inputs.story }}
+          PICK: ${{ inputs.pick }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/songmake.sh "$IN_ID"
+
+      - name: 구글 곡 생성 (Lyria 3 Pro · 유료 곡당 $0.08)
+        if: ${{ inputs.mode == 'lyria' }}
+        timeout-minutes: 10
+        env:
+          SONG_ID: ${{ inputs.id }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          [ -n "$SONG_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$SONG_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          python3 .github/scripts/song_lyria.py
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          mkdir -p "viewer/song_out/${IN_ID}"
+          [ -s "viewer/song_out/${IN_ID}/error.log" ] || echo "음원 생성 실패 — Actions 로그를 확인해줘." > "viewer/song_out/${IN_ID}/error.log"
+          echo "error.log: $(cat viewer/song_out/${IN_ID}/error.log)"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/song_out/${IN_ID}" 2>/dev/null || true
+          git add metrics 2>/dev/null || true
+          git commit -m "song: ${IN_ID} 음원 출력(${{ inputs.mode }})" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }

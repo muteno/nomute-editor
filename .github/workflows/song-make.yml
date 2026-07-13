@@ -28,6 +28,14 @@ on:
         description: '표현방식 힌트(빈값=자동)'
         type: string
         default: '자동'
+      mood:
+        description: '분위기 힌트(빈값=자동)'
+        type: string
+        default: '자동'
+      theme:
+        description: '테마 힌트(빈값=자동)'
+        type: string
+        default: '자동'
       story:
         description: '스토리(대사 또는 상황) — 가사·옵션 소재'
         type: string
@@ -83,6 +91,8 @@ jobs:
           MODE: ${{ inputs.mode }}
           GENRE: ${{ inputs.genre }}
           EXPRESS: ${{ inputs.express }}
+          MOOD: ${{ inputs.mood }}
+          THEME: ${{ inputs.theme }}
           STORY: ${{ inputs.story }}
           PICK: ${{ inputs.pick }}
         run: |
@@ -118,6 +128,23 @@ jobs:
           mkdir -p "viewer/song_out/${IN_ID}"
           [ -s "viewer/song_out/${IN_ID}/error.log" ] || echo "음원 생성 실패 — Actions 로그를 확인해줘." > "viewer/song_out/${IN_ID}/error.log"
           echo "error.log: $(cat viewer/song_out/${IN_ID}/error.log)"
+
+      # 곡 완성 푸시(lyria만 — 옵션/수노 텍스트는 수초 내라 노이즈) · track-make 푸시 문법 미러 · 비치명
+      - name: 완료 푸시 (pywebpush)
+        if: ${{ always() && inputs.mode == 'lyria' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
+          D="viewer/song_out/${IN_ID}"; OK=0
+          if [ -s "$D/song.json" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$D/song.json')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
+          if [ "$OK" = "1" ]; then BODY="곡 완성 — 탭해서 듣기"; else
+            MSG=""; [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"; BODY="곡 생성 실패 — ${MSG:-로그 확인}"; fi
+          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/song.html" --tag "nomute-song-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
 
       - name: Commit output
         if: always()

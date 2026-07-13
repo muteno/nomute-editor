@@ -5,7 +5,7 @@
 import { rateGate } from './_rate.js';   // 발사 레이트리밋(파이프 공통 문법 · 평의회 260713 ⑦ 소급 — 연타 = 고아 업로드+런 낭비 차단)
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
-const ASPECTS = ['16:9', '9:16', '4:5', '1:1'];
+const ASPECTS = ['16:9', '9:16', '4:5', '1:1', '21:9'];   // 21:9 = 비율 순환 신설(운영자 260713 · 러너 resize_image.py ASPECTS와 한 쌍)
 const SIZES = ['1K', '2K'];
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
