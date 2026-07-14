@@ -9,13 +9,14 @@
 //
 // 2티어 구조(정직 신고):
 //   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 상시 프레임+힌트(Q03② 승격 260714) · 첨부→미리보기 등장 ·
-//          토글 상호작용 재렌더 · 스테이지 패널 내(수평) · 폰트 = 노토 실로드+적용(Q03③ 승격 260714) · 로고 자산 가시(Q03④ 승격 260714)
+//          토글 상호작용 재렌더 · 스테이지 패널 내(수평) · 폰트 = 노토 실로드+적용(Q03③ 승격 260714) · 로고 자산 가시(Q03④ 승격 260714) ·
+//          동일 런 픽셀 프로브 3점(첨부 실페인트·로고 잉크·글자 잉크 = 잉크메트릭 · Q07 260714 — 색·이미지 내용 사각 절반 보강)
 //   [대기] Q03 큐 잔여('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — ① 옆 샘(운영자 재현 조건 대기 · 실물 픽스처·2뷰포트 미재현)
 //          오늘은 FAIL이어도 exit 0 · 리포트에 현황만 실측(눈→기계 이관 로그)
 //          Q03 항목이 하나 반영될 때마다 그 어서션을 코어로 승격하는 게 운영 규약 — 대기가 PASS로 뒤집히면 XPASS 승격 경고가 자동 출력(망각 = 기계가 잡음 · 평의회⑥).
 //
 // 리스크 통제(운영자 "리스크 없는지 검증하고 진행"):
-//   · 기하(포함/겹침 rect) + computedStyle만 어서션 — 스크린샷 픽셀 diff 금지(폰트 AA·환경차 플레이크 원천 차단)
+//   · 기하(포함/겹침 rect) + computedStyle + 동일 런 픽셀 프로브(캔버스 잉크메트릭 · 베이스라인 0) — 환경 간 스크린샷 베이스라인 diff 금지(폰트 AA·환경차 플레이크 원천 차단)
 //   · 애니메이션 감쇠 대기(settle) 후 측정 · 동일 런 2회 결과 동일해야 결정론 인정(2회 = 내장 고정 · 매 페이지 = 새 newPage 컨텍스트가 결정론 전제 — launchPersistentContext 전환 금지{pagehide draftSave가 런2 오염 · 평의회⑤})
 //   · 라이브 코드 무접촉(주입 = CIMG·renderCpPrev 등 페이지 전역 실호출 = smoke_geni 선례) · 서버 자체 종료(잔류 0)
 // 유지보수: 셀렉터·어서션 = 아래 SEL/CHK 표만 갱신(산탄 금지).
@@ -141,6 +142,28 @@ async function runOnce(pg, reqLog) {
   // C7(코어 · Q03④ 승격 260714) 로고 = 릴스2 베이스 실자산 가시+로드 실증
   const r3 = await pg.evaluate(S => { const el = document.querySelector(S.logo); return { vis: !!(el && el.getBoundingClientRect().height), nw: el ? (el.naturalWidth || 0) : 0 }; }, SEL);
   core('C7 로고 베이스 가시+로드(Q03④)', r3.vis && r3.nw > 0, JSON.stringify(r3));
+
+  // C8(코어 · Q07 260714 "go") 동일 런 픽셀 프로브 3점 — 잉크메트릭 결(260703 편심 실측 계보) · 베이스라인 0 = 플레이크 0(CLAUDE.md [15] '동일 런 픽셀 프로브' 허용 축)
+  //   P1 첨부 실페인트(카드 변형 cpv-bg = 픽스처 그라데가 진짜 칠해졌나 — 검은 캔버스·디코드 깨짐 검출)
+  //   P2 로고 잉크(베이스 = 세로 그라데라 행내 균일 — 로고 글리프가 행을 깨뜨리는 행 수 ≥ 1)
+  //   P3 글자 잉크(로드된 노토로 오프스크린 렌더 → 잉크 비율 정상 대역 = 빈 렌더·통짜 뭉개짐 검출)
+  const c8 = await pg.evaluate(S => {
+    const draw = (img, w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h); return cx.getImageData(0, 0, w, h).data; };
+    const probe = {};
+    const chips = [...document.querySelectorAll('#cpPrevOpts .ropt')];
+    const card = chips.find(b => b.textContent === '카드뉴스'); if (card) card.click();   // P1 = 첨부가 보이는 카드 변형에서 실측
+    const bg = document.querySelector(S.stage + ' img.cpv-bg:not([data-logo])');
+    if (bg && bg.complete) { const d = draw(bg, 54, 67); let mn = 255, mx = 0; for (let i = 0; i < d.length; i += 4) { const l = (d[i] + d[i + 1] + d[i + 2]) / 3; if (l < mn) mn = l; if (l > mx) mx = l; } probe.p1 = Math.round(mx - mn); }
+    const back = chips.find(b => b.textContent === '흰칸'); if (back) back.click();       // 원복 = 후속 어서션 결정론 유지
+    const lg = document.querySelector(S.logo);
+    if (lg && lg.complete) { const W = 90, H = 160, d = draw(lg, W, H); let rows = 0; for (let y = 0; y < H; y += 2) { let rmn = 255, rmx = 0; for (let x = 0; x < W; x++) { const i = (y * W + x) * 4, l = (d[i] + d[i + 1] + d[i + 2]) / 3; if (l < rmn) rmn = l; if (l > rmx) rmx = l; } if (rmx - rmn > 40) rows++; } probe.p2 = rows; }
+    const cv = document.createElement('canvas'); cv.width = 240; cv.height = 48; const cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.fillStyle = '#000'; cx.fillRect(0, 0, 240, 48); cx.fillStyle = '#fff'; cx.font = '700 32px "' + (typeof CP_PREV_FONT !== 'undefined' ? CP_PREV_FONT : 'sans-serif') + '"'; cx.textBaseline = 'middle'; cx.fillText('큐에이 제목', 4, 24);
+    const d3 = cx.getImageData(0, 0, 240, 48).data; let ink = 0; for (let i = 0; i < d3.length; i += 4) if (d3[i] > 127) ink++;
+    probe.p3 = Math.round(ink / (240 * 48) * 1000) / 10;
+    return probe;
+  }, SEL);
+  core('C8 픽셀 프로브 3점(첨부 실페인트·로고 잉크·글자 잉크)', (c8.p1 || 0) > 30 && (c8.p2 || 0) >= 1 && c8.p3 > 0.5 && c8.p3 < 60, JSON.stringify(c8));
 
   // C4 상호작용 = 합성 토글 → 재렌더(스테이지 갱신) · 크래시 0
   const c4 = await pg.evaluate(S => {
