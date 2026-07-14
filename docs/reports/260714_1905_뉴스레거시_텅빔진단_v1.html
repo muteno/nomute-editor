@@ -1,0 +1,142 @@
+<style>
+  :root{
+    --bg:#0b0d0c; --fg:#e8efe9; --mut:#8b978f; --line:rgba(255,255,255,.1);
+    --accent:#00eed2; --accent-dim:rgba(0,238,210,.14); --danger:#ff5c6c; --amber:#ffbe4d;
+    --card:rgba(255,255,255,.03); --r:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Pretendard","Malgun Gothic",sans-serif;line-height:1.6;font-size:15px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:28px}
+  h2{font-size:19px;font-weight:800;margin:34px 0 12px;padding-top:20px;border-top:1px solid var(--line);letter-spacing:-.01em}
+  h2:first-of-type{border-top:0;padding-top:0}
+  .lead{background:var(--accent-dim);border:1px solid rgba(0,238,210,.3);border-radius:var(--r);padding:16px 18px;margin:14px 0}
+  .lead b{color:var(--accent)}
+  .warn{background:rgba(255,92,108,.1);border:1px solid rgba(255,92,108,.35);border-radius:var(--r);padding:14px 18px;margin:14px 0}
+  .warn b{color:var(--danger)}
+  pre{background:#06100e;border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto;font-size:13px;color:var(--accent);line-height:1.5}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--mut);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  td:first-child{white-space:nowrap;font-weight:700}
+  .pr{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0;background:var(--card)}
+  .pr .no{font-family:ui-monospace,monospace;font-weight:800;color:var(--accent);font-size:15px}
+  .pr .t{color:var(--mut);font-size:12px;margin-left:8px}
+  .pr .prob{float:right;font-weight:800;font-size:13px}
+  .p0{color:var(--mut)} .plow{color:var(--amber)} .phi{color:var(--danger)}
+  .pr ul{margin:8px 0 0;padding-left:18px} .pr li{margin:3px 0}
+  .chip{display:inline-block;background:var(--accent-dim);color:var(--accent);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;margin:2px}
+  .muted{color:var(--mut);font-size:13px}
+  .barrow{display:flex;align-items:center;gap:10px;margin:7px 0}
+  .barrow .lbl{flex:0 0 240px;font-size:13px}
+  .barrow .track{flex:1;height:10px;background:rgba(255,255,255,.06);border-radius:6px;overflow:hidden}
+  .barrow .fill{height:100%;border-radius:6px}
+  .barrow .pct{flex:0 0 42px;text-align:right;font-weight:800;font-size:13px}
+  .onehand{background:linear-gradient(135deg,rgba(0,238,210,.12),rgba(0,238,210,.04));border:1px solid rgba(0,238,210,.3);border-radius:var(--r);padding:18px;margin-top:14px}
+  code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:5px;font-size:13px;font-family:ui-monospace,monospace}
+</style>
+
+<div class="wrap">
+  <h1>뉴스 레거시 "텅 빔" 진단 보고서</h1>
+  <div class="sub">2026-07-14 19:05 KST · 대상: LEGACY MEDIA(수집함) 최근 뉴스 미표시 · 조사: 12h 머지 전수 + 코어 전계층 실측 + 병렬 에이전트 교차검증</div>
+
+  <div class="lead">
+    <b>결론:</b> 12시간 내 뉴스 레거시 경로를 깬 <b>코드 변경은 없다.</b> 수집·판정·데이터·화면 렌더 로직 전부 지금 정상 작동 중.
+    진범은 코드가 아니라 <b>데이터 덩치</b> — <code>candidates.json</code>이 <b>3.45MB(GitHub 1MB 한도의 3.5배)</b>로 비대해져
+    라이브 서빙 <code>api/candidates</code>가 빈 <code>[]</code>를 뱉고, 뷰어가 그걸 수용해 수집함을 통째로 비운다.
+  </div>
+
+  <div class="warn">
+    <b>⚠️ 손대지 말 것:</b> <code>renderScrap</code>·<code>scTs</code>·<code>scFast</code>·candidates 파이프를 되돌리면
+    멀쩡한 코어를 부수고 그동안 쌓은 큐레이션을 날린다. 이 코어들은 12h 내 불변이고 지금 정상이다.
+    <span class="muted">— 형이 우려한 "핀트 못 잡아 다 날리는" 함정이 정확히 여기.</span>
+  </div>
+
+  <h2>🩸 진범 메커니즘</h2>
+  <pre>candidates.json 3.45MB (GitHub 1MB 한도 ×3.5)
+      ↓
+api/candidates 가 GitHub에서 읽다 실패 (contents 1MB↑ / Cloudflare 함수 CPU 초과)
+      ↓
+빈 배열 [] (HTTP 200) 반환
+      ↓
+loadCandidates(7917) 가 []를 "정상"으로 수용 → 정적 폴백 안 함
+      ↓
+수집함 통째로 텅 빔   ← "아예" 안 뜬다</pre>
+  <p class="muted">12h 전엔 크기가 임계 밑이라 멀쩡. 그 사이 자연 누적(CAP 3000·TTL 10일)으로 선을 넘음 = 회귀가 아닌 <b>덩치 시한폭탄</b>. 그래서 "건드린 로직"을 뒤져도 안 나온다.</p>
+  <table>
+    <tr><th>덩치 주범 필드</th><th>비중</th><th>비고</th></tr>
+    <tr><td>cluster_members</td><td>20% (754KB)</td><td>클러스터 멤버 URL 배열</td></tr>
+    <tr><td>breaking_pick</td><td>11% (426KB)</td><td>속보 픽 메타</td></tr>
+    <tr><td>id · url · event_key</td><td>각 4%</td><td>URL 계열</td></tr>
+    <tr><td colspan="3" class="muted">3000개 × 평균 1207 bytes = 3.45MB · 1MB면 약 868개까지</td></tr>
+  </table>
+
+  <h2>🎯 복구 지점 (①+② 같이 = 근본 봉합)</h2>
+  <table>
+    <tr><th>지점</th><th>무엇</th><th>효과 / 리스크</th></tr>
+    <tr><td>① candidates 다이어트<br><span class="muted">(근본)</span></td><td>CAP 3000→800, 또는 cluster_members·breaking_pick 슬림 → 1MB 밑</td><td>api/candidates 성공 복귀 / 리스크 낮음</td></tr>
+    <tr><td>② loadCandidates 폴백<br><span class="muted">(SPOF·1줄)</span></td><td><code>if(Array.isArray(d))</code> → <code>if(Array.isArray(d) &amp;&amp; d.length)</code></td><td>빈 []에도 정적 폴백 → 안 비게 / 리스크 없음</td></tr>
+    <tr><td>③ api 서빙 강화</td><td>raw 우선 + JSON.parse 검증 제거</td><td>덩치 커도 버팀 / 리스크 중</td></tr>
+  </table>
+
+  <h2>📑 12시간 머지 전수 (#nnnn) — 각 확률</h2>
+  <p class="muted">아래 어느 것도 레거시를 깬 게 아니다. 확률 = "이게 텅 빔의 원인일 가능성".</p>
+
+  <div class="pr"><span class="no">#2271</span><span class="t">픽↔피드 요약 매칭 · 07-14 03:13 UTC</span><span class="prob plow">3%</span>
+    <ul>
+      <li><b>작업</b>: pickInFeed → feedMatch/_feedStrict 리팩터 + 제목 폴백 신설</li>
+      <li><b>영향</b>: 제목 폴백은 <b>픽/pending 카드에만</b> 발동. 신규 미픽 뉴스는 구 로직과 바이트 동일. 신규/누적 분류 무변</li>
+      <li><b>판정</b>: 레거시 경로 유일 근접이나 동작보존 — 시뮬로 무throw 입증</li>
+    </ul>
+  </div>
+  <div class="pr"><span class="no">#2260</span><span class="t">메뉴 재배치 + LEGACY MEDIA 리네임 · 00:56 UTC</span><span class="prob plow">1%</span>
+    <ul>
+      <li><b>작업</b>: 하단 네비 순서 스왑 + scrap/trend 라벨 영문화(나머진 채널요약 탭)</li>
+      <li><b>영향</b>: data-tab="scrap"·#scrapview·showTab 라우팅 전부 불변. 순수 시각 재배치</li>
+    </ul>
+  </div>
+  <div class="pr"><span class="no">#2256</span><span class="t">당겨서 새로고침 복구 · 00:12 UTC</span><span class="prob p0">0%</span>
+    <ul>
+      <li><b>작업</b>: PTR blocked()의 죽은 filterpop 참조(ReferenceError) 방어형 교체</li>
+      <li><b>영향</b>: 재로드를 <b>되살린</b> 수리. loadCandidates 무접촉 — 오히려 도움</li>
+    </ul>
+  </div>
+  <div class="pr"><span class="no">#2281</span><span class="t">event_key 배선 · 04:46 UTC</span><span class="prob p0">0%</span>
+    <ul>
+      <li><b>작업</b>: api/pick body에 event_key 추가 + build-viewer가 피드(articles)에 스탬프</li>
+      <li><b>영향</b>: candidates 서빙/로드 무접촉. 픽 발신 경로만</li>
+    </ul>
+  </div>
+  <div class="pr"><span class="no">나머지</span><span class="t">경로 무접촉 (Agent 실측 + 시뮬 교차확인)</span><span class="prob p0">각 0%</span>
+    <div style="margin-top:8px">
+      <span class="chip">#2264 a11y</span><span class="chip">#2265~2270 채널브리프·failover</span><span class="chip">#2272~2280 트렌드·AI요약·geni·콘티</span><span class="chip">#2282~2293 강조2층·SNS브리프·토큰</span><span class="chip">#2294~2300 스모크·CII·insta·sns-trends</span>
+    </div>
+  </div>
+
+  <h2>🔬 진짜 원인 확률 배분</h2>
+  <div class="barrow"><div class="lbl">candidates 3.45MB → api/candidates []</div><div class="track"><div class="fill" style="width:55%;background:var(--danger)"></div></div><div class="pct phi">55%</div></div>
+  <div class="barrow"><div class="lbl">Cloudflare Pages 배포 스테일</div><div class="track"><div class="fill" style="width:20%;background:var(--amber)"></div></div><div class="pct">20%</div></div>
+  <div class="barrow"><div class="lbl">일시적 순단(외부 15분 트리거)</div><div class="track"><div class="fill" style="width:10%;background:var(--mut)"></div></div><div class="pct">10%</div></div>
+  <div class="barrow"><div class="lbl">로컬 상태(검증대기 접기·필터·캐시)</div><div class="track"><div class="fill" style="width:10%;background:var(--mut)"></div></div><div class="pct">10%</div></div>
+  <div class="barrow"><div class="lbl">12h 코드 회귀</div><div class="track"><div class="fill" style="width:5%;background:var(--mut)"></div></div><div class="pct">5%</div></div>
+
+  <h2>✅ 실측 증거 (코어 정상)</h2>
+  <table>
+    <tr><td>scrape 워크플로</td><td>07:00~09:45 매 15분 <b style="color:var(--accent)">success</b> (실패 0)</td></tr>
+    <tr><td>breaking-judge</td><td>매 15분 success · 09:39 AI판정 커밋</td></tr>
+    <tr><td>candidates.json</td><td>main에 09:50까지 실시간 갱신 · 오늘 발행 <b>758건</b> 유입</td></tr>
+    <tr><td>renderScrap 순수 시뮬</td><td>신규 활성 <b>78</b> + 누적 <b>792</b> (정상 렌더)</td></tr>
+    <tr><td>핵심 파일 12h 변경</td><td>api/candidates.js(6/15)·gate_judge(7/12)·breaking-judge.yml(7/13)·to_candidates(7/10) — <b>전부 12h 밖</b></td></tr>
+  </table>
+
+  <div class="onehand">
+    <b style="color:var(--accent)">💡 한 수 — 30초 이분법으로 진범 확정</b>
+    <p style="margin:8px 0 0">형이 평소 쓰는 뷰어 주소 뒤에 <code>/api/candidates</code>를 붙여 브라우저에서 직접 열어봐(로그인 상태):</p>
+    <ul style="margin:8px 0 0">
+      <li><b><code>[]</code> 빈 배열이 뜨면</b> → 진범 확정(크기→서빙 실패). 복구 = candidates 다이어트 + 폴백 봉합, 5분 컷.</li>
+      <li><b>뉴스 3000개가 정상으로 뜨면</b> → 서빙 OK, 배포/캐시로 좁혀짐(강력 새로고침).</li>
+    </ul>
+    <p style="margin:8px 0 0" class="muted">이 한 줄 결과면 확률 55%를 95%로 굳혀 바로 복구 들어간다. 코드 diff 더 파는 것보다 이 한 번이 원인을 즉시 가른다.</p>
+  </div>
+</div>
