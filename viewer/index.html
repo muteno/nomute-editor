@@ -4318,7 +4318,7 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
       const now = ((a && a.cards && a.cards[field]) || []).length;
       if (a && now > before) {   // 새 이미지 도착 → DATA 갱신 + 열린 모달이면 thumbsec 통째 재렌더(로딩 슬라이드 자동 소거·새 이미지 좌측·번호 갱신)
         await ensureDetail(a);   // 경량 인덱스라 body/md 빈 채 → CUR_A/DATA 교체 전 detail 복원(다운로드 카드·출처 유실 방지 · 평의회 260624)
-        const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) DATA[idx] = a;
+        const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) { DATA[idx] = a; _feedIdxRef = null; }   // 같은 배열참조·요소 교체 = feedMatch 색인 강제 재구축(다음 조회 시 346회·~0ms) — 인덱스 필드 in-place 변경 대비 구조적 보험(병렬검증 성능 한 수)
         if (CUR_A && CUR_A.file === file) { CUR_A = a; const old = $('#mdbody .thumbsec'), fresh = thumbSec(a); if (old && fresh) old.replaceWith(fresh); }
         return;   // 완료
       }
@@ -8044,7 +8044,7 @@ function pickAlt(c) {
   return [...new Set([major, ...((c.cluster_members || []).map(_normU))])].filter(u => u && u !== rep);
 }
 const pfKeyOf = c => [_normU(c.url), ...((c.cluster_members || []).map(_normU))].find(u => u && PFAIL.has(u)) || '';
-const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
+const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeedStrict(c);   // ⚠️ Strict(url+event_key) — 제목 폴백으로 서버실패를 무관 동일제목 요약에 잘못 은폐하는 것 차단(병렬검증 R1). 드리프트 성공 복구는 build가 큐된 url을 picks-failed서 빼며 자연 해소.
 const pfReason = c => (PFAIL.get(pfKeyOf(c)) || {}).reason || '';
 let PFAIL_LOADING = false;   // in-flight 가드 = 부팅 eager(9069) + enterScrap(7359) 동시호출 중복 fetch 차단(loadCandidates 패턴 · 운영자 260705 로딩 진단)
 async function loadPickFails() {
@@ -8059,16 +8059,17 @@ async function loadPickFails() {
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
 const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pickFailedShow(c) && !failRequeued(c); });   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃(체크로 제자리 복귀한 건 = 확인처리라 알림 제외)
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
-// ── 픽↔피드 요약 매칭 단일 SSOT(feedMatch) — url(rep+cluster) 1차 → event_key 2차 → 정규화 제목 3차 폴백. ──
+// ── 픽↔피드 요약 매칭 — url(rep+cluster) 1차 → event_key 2차 = 강한 식별(_feedStrict) · 정규화 제목 3차 = 표시 재연결(feedMatch). ──
 //   url 드리프트(막힌 매체 403 우회·리다이렉트·재클러스터링)로 분석 url이 후보 url군 밖으로 새면 요약이 피드에
-//   멀쩡히 있어도 pickInFeed가 false → 후보가 영영 Picking→Failed에 갇히고 카드 탭이 요약창 대신 원문으로 새던
-//   버그("픽되도 요약창 안뜸") 근본봉합(운영자 260714). ⚠️ 품질 무손상 3원칙:
-//     ① url 매칭은 종전 100% 동일(needBody 계승) = 정상 경로 무변경(폴백은 url 실패 시에만 발동).
-//     ② event_key·제목 폴백은 **반드시 has_body**(실제 요약본만 링크 — 스텁·분석미완 제외 → 빈 요약창 0).
-//     ③ 제목 폴백 = 정규화 완전일치 + JUNK_HEAD(보일러플레이트 머리표) 제외 + 12h 창(scDedup 보수 규칙 계승 = 오접 사실상 불가).
+//   멀쩡히 있어도 후보가 영영 Picking→Failed에 갇히고 카드 탭이 요약창 대신 원문으로 새던 버그("픽되도 요약창 안뜸")
+//   근본봉합(운영자 260714 · 병렬검증 5인 하드닝 반영). ⚠️ 품질 무손상 설계:
+//     ① _feedStrict(url+event_key) = **안전게이트(실패은폐·긴급·트리아지) 전용** = 종전 동작 그대로(오탐 0).
+//     ② 제목 폴백(feedMatch)은 **표시·요약창 열기 전용** + 5중 가드: has_body(요약본만)·내가 픽한 카드(픽의도)만·
+//        한국어 제목만(JUNK_HEAD 한글전용 사각 봉합·외신 false-match 차단)·JUNK_HEAD 제외·발행시각 12h 창(scDedup 클럭 일치)·최근접 1건.
+//     ③ 서버 분석실패(PFAIL) 등록분은 제목 폴백 제외 = 실패를 무관 동일제목 요약으로 은폐 금지(병렬검증 R1/#3).
 //   event_key 티어는 피드 기사에 event_key가 실릴 때만 발동 = 지금은 휴면(후속 파이프라인 배선 시 자동 활성).
 const _feedTitleKey = t => String(t || '').replace(/\s+/g, '').toLowerCase();   // scDedup scTitleKey 와 동일 규칙(제목 완전일치=같은 기사)
-const FEED_MATCH_WINDOW = 12 * 3600000;   // 제목 폴백 시간창 = scDedup SC_DUP_WINDOW 계승(밖 동일제목 = 다른 날 보일러플레이트 = 다른 사건)
+const FEED_MATCH_WINDOW = 12 * 3600000;   // 제목 폴백 발행시각 창 = scDedup SC_DUP_WINDOW 계승(밖 동일제목 = 다른 날 보일러플레이트 = 다른 사건)
 let _feedIdxRef = null, _feedUrlAny = null, _feedUrlBody = null, _feedTitleMap = null, _feedEkMap = null;   // DATA 참조 바뀔 때만 재구축(O(1) 조회 = 카드 수백장 렌더 렉 0)
 function _buildFeedIdx() {
   if (_feedIdxRef === DATA) return;   // 같은 DATA면 재사용(load()마다 1회만 구축)
@@ -8082,21 +8083,32 @@ function _buildFeedIdx() {
     if (x.event_key) { const e = _normU(x.event_key); if (e && !_feedEkMap.has(e)) _feedEkMap.set(e, x); }
   }
 }
-function feedMatch(c, needBody) {   // 후보 c ↔ 피드 요약 기사(없으면 null). needBody=true면 has_body 요약본만(빈 모달 차단).
+function _feedStrict(c, needBody) {   // 강한 식별만: url(rep+cluster) → event_key. 안전게이트 전용(제목 폴백 없음·종전 동작 100% 보존).
   if (!c) return null;
   _buildFeedIdx();
-  const um = needBody ? _feedUrlBody : _feedUrlAny;   // 1차 url(rep+cluster) — 종전 동작 그대로
+  const um = needBody ? _feedUrlBody : _feedUrlAny;
   for (const u of [_normU(c.url), ...((c.cluster_members || []).map(_normU))]) { if (u && um.has(u)) return um.get(u); }
-  // ↓ 폴백 = url 실패 시에만 + 반드시 요약본(has_body 색인만 조회)
-  if (c.event_key) { const a = _feedEkMap.get(_normU(c.event_key)); if (a) return a; }   // 2차 event_key(휴면 — 피드에 실릴 때 활성)
-  const tk = _feedTitleKey(c.title);   // 3차 정규화 제목 완전일치 + JUNK_HEAD 제외 + 12h 창
-  if (tk && !JUNK_HEAD.test(c.title || '')) {
+  if (c.event_key) { const a = _feedEkMap.get(_normU(c.event_key)); if (a) return a; }   // event_key(휴면 — 피드에 실릴 때 활성)
+  return null;
+}
+function feedMatch(c, needBody) {   // 표시용: 강한 식별 → 제목 폴백(가드 5중). needBody=true면 has_body 요약본만(빈 모달 차단).
+  const s = _feedStrict(c, needBody); if (s) return s;
+  if (!c) return null;
+  const tk = _feedTitleKey(c.title);   // 3차 정규화 제목 폴백 = url/event_key로 못 이은 드리프트 요약만 사건동일성으로 재연결
+  // 가드: 한국어 제목(JUNK_HEAD 한글전용 사각 봉합) · JUNK_HEAD 제외 · 서버실패(PFAIL) 아님 · 내가 픽한 카드(로컬 픽 or 파이프라인 진행) = 미픽 트리아지 카드 오PICKED 차단
+  if (tk && /[가-힣]/.test(c.title) && !JUNK_HEAD.test(c.title) && !pfKeyOf(c)
+      && ((ratingsAll()[candId(c)] || {}).picked || pendStatus(c))) {
     const arr = _feedTitleMap.get(tk);
-    if (arr) { const cts = scTs(c); for (const x of arr) { if (Math.abs((Date.now() - feedAgeH(x) * 3600000) - cts) < FEED_MATCH_WINDOW) return x; } }
+    if (arr) {   // 발행시각 12h 창 안에서 최근접 1건(충돌 시 가장 가까운 사건으로 수렴)
+      const cts = scTs(c); let best = null, bestD = FEED_MATCH_WINDOW;
+      for (const x of arr) { const d = Math.abs((Date.now() - articleAgeH(x) * 3600000) - cts); if (d < bestD) { bestD = d; best = x; } }
+      if (best) return best;
+    }
   }
   return null;
 }
-const pickInFeed = c => !!feedMatch(c, false);   // 픽 결과가 피드(3번 메뉴)에 등장했나 — feedMatch(url 1차 → event_key → 제목 폴백). 막힌 매체(403)·리다이렉트·재클러스터링 url 드리프트로 후보 url군 밖으로 샌 요약도 사건 동일성으로 재연결(영구 Picking·요약창 고아 차단·260619·260714)
+const pickInFeedStrict = c => !!_feedStrict(c, false);   // 실패은폐·긴급 게이트 전용 = 강한 식별만(제목 폴백 오탐 차단 · 병렬검증 R1/R2 봉합)
+const pickInFeed = c => !!feedMatch(c, false);   // 픽 결과가 피드(3번 메뉴)에 등장했나 = 표시·PICKED 배지·라우팅. url 1차→event_key→제목 폴백. 막힌 매체(403)·리다이렉트·재클러스터링 url 드리프트로 후보 url군 밖으로 샌 요약도 사건 동일성으로 재연결(영구 Picking·요약창 고아 차단·260619·260714)
 const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 종결 = 피드 등장 OR 실패복구 해소 → 둘 다 'Picking' 탈출(해소된 픽이 영구 Picking에 갇히던 버그 차단·260618)
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
