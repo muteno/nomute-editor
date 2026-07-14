@@ -8,7 +8,7 @@
 //           SMOKE_PREVIEW_STRICT=1 node …           (예약 어서션까지 합격 요구 — Q03 ①③④ 반영 후 상비 전환)
 //
 // 2티어 구조(정직 신고):
-//   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 조용한 공백 · 첨부→미리보기 등장 ·
+//   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 상시 프레임+힌트(Q03② 승격 260714) · 첨부→미리보기 등장 ·
 //          토글 상호작용 재렌더 · 미리보기 스테이지가 패널 밖으로 안 나감(수평 뷰포트 계약)
 //   [대기] Q03 큐(⬜) 대기 어서션('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — ① 옆 샘(이웃 요소와 겹침 0) ③ 폰트 통일(스테이지 폰트 = 제작 PIL 정본 선언값)
 //          ④ 로고 상시(스테이지에 로고 노드) — 오늘은 FAIL이어도 exit 0 · 리포트에 현황만 실측(눈→기계 이관 로그)
@@ -79,9 +79,9 @@ async function runOnce(pg, reqLog) {
 
   await pg.waitForTimeout(1500);   // 부팅·복원·애니 settle
 
-  // C1 빈 상태 = 조용한 공백(§디자인 e-가) — 첨부 전 미리보기 숨김
-  const c1 = await pg.evaluate(S => document.querySelector(S.prev).classList.contains('none'), SEL);
-  core('C1 빈 상태 = 미리보기 조용한 공백', c1, 'none=' + c1);
+  // C1 상시 미리보기(Q03② 승격 완료 260714) — 빈 상태에도 프레임+저채도 힌트 가시(운영자 "뭘 하지 않더라도 미리 떠있어서")
+  const c1 = await pg.evaluate(S => { const p = document.querySelector(S.prev); return { shown: !p.classList.contains('none'), hint: !!p.querySelector('.cpv-empty') }; }, SEL);
+  core('C1 빈 상태 = 상시 프레임+힌트 가시(Q03②)', c1.shown && c1.hint, JSON.stringify(c1));
 
   // C0.5 전역 계약 — 참조 전역·함수 실존(개명·삭제 = 조용한 무효화 차단 · 평의회④)
   const g0 = await pg.evaluate(() => ['CIMG', 'ieSrcSync', 'A2M', 'renderCpPrev', 'syncCpMerge', 'cpMerge'].filter(k => { try { return eval('typeof ' + k) === 'undefined'; } catch (_) { return true; } }));

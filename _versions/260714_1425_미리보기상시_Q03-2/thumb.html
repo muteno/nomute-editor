@@ -292,7 +292,6 @@
   .cpprev-stage .cpv-band { position:absolute; left:0; right:0; background:rgb(255,255,255); }   /* 흰칸(영상자리) 미러 = 콘텐츠 순백 */
   .cpprev-wait { position:absolute; inset:0; z-index:3; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.26); font-size:var(--fs-body); font-weight:var(--fw-x); color:var(--accent); }   /* edit vstage wmsg 계승(정중앙·--fs-body·딤 .26) */
   .cpprev-wait .cpw-sec { color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; margin-left:5px; }
-  .cpprev-stage .cpv-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); text-align:center; padding:0 var(--sp-3); }   /* 상시 미리보기 빈 상태 힌트(운영자 260714 Q03②) — cpprev-wait 결 계승(정중앙 플렉스) · mut 저채도 = 조용한 공백의 톤 유지 · 좌우 = sp-3 계승 */
   .csec.gsec { position:relative; }   /* 안내문 팝업(.gpop) 기준 */
   /* 저작권 = 자연스러운 한 문장. 정적(.cph-st) + 탭 수정(연도·이름=.cph-ed) + 플랫폼(.cph-plat) · 'all rights…'는 편집화면만 줄바꿈 */
   .cphline { position:relative; display:flex; flex-wrap:wrap; align-items:baseline; margin-top:11px; font-size:14px; color:var(--fg); line-height:2; transition:opacity .15s; }
@@ -953,7 +952,7 @@ function selApp(a) {
   $('#cpThumbRow').classList.toggle('none', !fam2);                            // 썸네일 저작권 3단 줄 = 제작·합성 패밀리(운영자 260711·260713 편집 모드 폼 유지)
   $('#gdArea').classList.toggle('none', !fam2);                                // 안내문 = 제작·합성 패밀리 상시(저작권 온오프 무관 · 운영자 260712)
   if (fam2) { syncCpThumb(); syncGuide(); } else { updateCpMount(); }          // 패밀리 = 3단+안내문+합성 동기 / 타 탭 = #cpBlock 홈 복귀(운영자 260712)
-  const _cp = $('#cpPrev'); if (_cp && a !== '2') _cp.classList.add('none'); else if (_cp) renderCpPrev();   // 합성 미리보기 = app2 순정 전용(편집 모드 7·8 = 하단 #iePrev가 대체 — 이중 미리보기 방지 · renderCpPrev 자체 가드와 한 쌍) · app2 진입·부팅 = 즉시 렌더(상시 표시 Q03② — 구 첫 상호작용 전 공백 제거 · 호이스팅 함수라 안전)
+  const _cp = $('#cpPrev'); if (_cp && a !== '2') _cp.classList.add('none');   // 합성 미리보기 = app2 순정 전용(편집 모드 7·8 = 하단 #iePrev가 대체 — 이중 미리보기 방지 · renderCpPrev 자체 가드와 한 쌍)
   // /6·/7 = 탭 진입 로드 없음 — 결과·과거분은 표준 잡 흐름(결과·이전 제작)이 담당(260709~10 작업내역 합류·그리드 폐지)
   clearSpellReview();                                                          // 앱 바뀌면 진행 중이던 교정 리뷰 폐기
   const gb = $('#go');                                                         // 버튼 문구 = '이미지 제작'(맞춤법 교정은 기능 유지·문구만 간소화·운영자 260629)
@@ -1126,17 +1125,11 @@ function cpPrevVariants() {   // 현재 입력으로 발사될 변형 목록(미
   else if (gpvOn && (!cpMerge || !v.some(x => x.fmt === gpvFmt))) v.push({ k: 'cr', lbl: '안내문', fmt: gpvFmt });   // 저작권 OFF·안내문만 = 안내문 단독 장 미리보기(독립)
   return { v, csub, ctitle, lines };
 }
-function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03② "뭘 하지 않더라도 미리 떠있어서 이질감을 줄이자" — 구 '빈 상태 = 조용한 공백' 계약을 이 표면 한정 대체) · 칩 = 변형 2개+일 때만
+function renderCpPrev() {   // 미리볼 게 있을 때만 표시(빈 상태 = 조용한 공백) · 칩 = 변형 2개+일 때만
   const pane = $('#cpPrev'); if (!pane) return;
   if (APP !== '2') { pane.classList.add('none'); return; }
   const { v, csub, ctitle, lines } = cpPrevVariants();
-  if (!v.length) {   // 빈 상태 = 프레임 상시 + 저채도 힌트(cpprev-wait 결 계승 정중앙 · mut = 조용함 유지)
-    pane.classList.remove('none');
-    $('#cpPrevOpts').classList.add('none');
-    const st0 = $('#cpPrevStage'); st0.className = 'cpprev-stage post';
-    if (!st0.querySelector('.cpv-empty')) st0.innerHTML = '<div class="cpv-empty">미리보기 — 사진·문구를 넣으면 실시간 반영</div>';
-    return;
-  }
+  if (!v.length) { pane.classList.add('none'); return; }
   pane.classList.remove('none');
   if (cpPrevSel >= v.length) cpPrevSel = 0;
   const opts = $('#cpPrevOpts');
