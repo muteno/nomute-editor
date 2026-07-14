@@ -58,7 +58,7 @@
 
 [15] 웹앱 구조 (레포 고유 — 타 레포 이식 시 이 절만 갈아끼운다. 세부 규칙 전문 = docs/라우터_법령전문.md, 필요할 때만 연다)
 - viewer/ = 라이브 웹앱. index.html = 메인 뷰어 + :root 디자인 토큰 SSOT · 스튜디오 = edit(영상 편집)·song·track(트래킹)·nb(자료화)·ly(가사)·k·conv·thumb .html
-- apps/ = 앱별 두뇌(지침) · shared/ = 기계 게이트·빌더(check_refs.py = 커밋 전 rc=0 필수 · build_design_mirror.py = 토큰 거울·락 · smoke_*.js = UI 표면 상비 실측{눈검사의 기계화 · 운영자 260714 Q04} — 그 표면 코드 변경 시 실행 rc=0 · 어서션 = 기하 포함/겹침·computedStyle만{스크린샷 픽셀 diff 금지 = 플레이크 원천 차단} · 미구현 예정 항목 = '예약' 티어로 현황만 실측{구현 반영 시 코어 승격} · 정본 = smoke_geni.js·smoke_preview.js)
+- apps/ = 앱별 두뇌(지침) · shared/ = 기계 게이트·빌더(check_refs.py = 커밋 전 rc=0 필수 · build_design_mirror.py = 토큰 거울·락 · smoke_*.js = UI 표면 상비 실측{배치·계약 회귀의 기계화 · 운영자 260714 Q04} — 담당 표면(각 파일 헤더 선언) 변경 시 커밋 전 실행 rc=0 필수 · 어서션 = 기하·computedStyle·동일 런 픽셀 프로브만{환경 간 스크린샷 베이스라인 diff 금지} · '대기' 티어 세칙·승격 = 파일 헤더{승격 커밋 = 도구 정비 · [9] 평의회 비대상} · 훅·pre-commit 편입 금지{수동 실행 전용 — 저장·커밋마다 브라우저 부팅 사고 차단} · 정본 = smoke_geni.js·smoke_preview.js)
 - docs/ = 기틀·원장{요구사항_큐.md = 지시 원장 · 작업이력.md = 작업 원장(append-only) · reports/ = 보고서·플레이그라운드}
 - _versions/ = 수정 전 백업 · 구성도/ = 가이드북·거울(build 산출 파일 직접 수정 금지)
 
