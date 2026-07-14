@@ -9542,9 +9542,9 @@ function renderSnsTrends() {
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
   box.querySelectorAll('#tg-top .tlr-t').forEach((el2, i) => { el2.textContent = top[i] ? top[i].t : ''; });
   const bt = box.querySelector('.tbrief-t');   // 단위 헤더 'AI 요약'이 라벨 겸함(판 내부 중복 라벨 제거 · §디자인 e)
-  if (bt && BRIEF) {   // *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line
+  if (bt && BRIEF) {   // **별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line · 채널 브리프(renderChan parseInto)와 강조 2층 통일(운영자 260714 "모두 통일")
     bt.textContent = '';
-    const txt = BRIEF.text || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+    const txt = BRIEF.text || '', TOK = /(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;   // ⚠ 더블스타를 싱글 앞에 = 같은 위치서 먼저 매칭(2층 강조)
     const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
     const refKey = u => String(u || '').replace(/[)\].,!?"']+$/, '').replace(/\/+$/, '');   // URL 매칭 정규화(꼬리 구두점·슬래시 관용 — LLM 출력 편차 흡수)
     const REFM = {}; (BRIEF.refs || []).forEach((r, i) => { if (r && r.url) REFM[refKey(r.url)] = i; });   // 스크랩 카드 짝(url → refs 인덱스 · 운영자 260712 "참고 기사 = 인앱 팝업")
@@ -9552,9 +9552,10 @@ function renderSnsTrends() {
     let last = 0, m;
     while ((m = TOK.exec(txt))) {
       addText(txt.slice(last, m.index)); last = TOK.lastIndex;
-      if (m[1]) { const b = document.createElement('b'); b.textContent = m[1].slice(1, -1); bt.appendChild(b); }
-      else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
-      else if (m[3]) { addLink(m[3], m[3]); }
+      if (m[1]) { const b = document.createElement('b'); b.className = 'tb-em'; b.textContent = m[1].slice(2, -2); bt.appendChild(b); }   // **2층** = 강조색 없이 볼드만
+      else if (m[2]) { const b = document.createElement('b'); b.textContent = m[2].slice(1, -1); bt.appendChild(b); }   // *1층* = 강조색 볼드
+      else if (m[3]) { const mm = m[3].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+      else if (m[4]) { addLink(m[4], m[4]); }
     }
     addText(txt.slice(last));
   }
