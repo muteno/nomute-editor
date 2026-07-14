@@ -898,6 +898,18 @@
   .tref-vid.wd { width:100%; aspect-ratio:16/9; }   /* 유튜브 일반 = 16:9 비율 유지한 채 팝업 폭에 맞춤(운영자 "16대9는 그 크기에 맞춰 화면에 맞추기") */
   .tref-vid iframe { display:block; width:100%; height:100%; border:0; }
   .tbrief-tm { display:block; margin-top:5px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
+  /* ── 이미 다룬 이슈 접이(운영자 260714 "그렇게 하는것도 좋을듯") — 이슈 원장(sns_brief.json issues) 가시화: 감쇠로 조용히 빠진 이슈가 누락 아닌 '의도'임을 보이게. 판 분리 = .tbrief-prop 결(상단 line2 선) · 체브론 = CHEVRON_SVG 회전(.pm-chev 아코디언 계승) · 프레스 = 형제 디스클로저(.pmenu-sns·.geni-fold) 동일 무스케일 ── */
+  .tbrief-led { margin:var(--sp-2) 0 0; padding-top:var(--sp-1); border-top:1px solid var(--line2); }
+  .tbrief-led-h { position:relative; display:flex; align-items:center; gap:4px; /* raw-ok: 체브론-라벨 광학 간격(sp-1=6 과대 · .geni-n 결) */ padding:2px 0; margin:0; background:none; border:0; cursor:pointer; font-family:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--mut); }
+  .tbrief-led-h::after { content:''; position:absolute; inset:-10px 0; }   /* 히트 영역 세로 ≥40 확장(시각 비대 없이 · 위 tm 줄과는 led 상단 여백 안이라 무겹침·아래는 비인터랙티브 목록) */
+  .tbrief-led-h:hover { color:var(--accent); }   /* hover = .morebtn 결 계승 */
+  .tbrief-led-h b { font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
+  .tbrief-led-h svg { transition:transform .26s var(--ease); }   /* 펼침 회전 = .pm-chev(.26s) 동기 계승 */
+  .tbrief-led-h[aria-expanded="true"] svg { transform:rotate(180deg); }
+  .tbrief-led-l { margin:var(--sp-1) 0 0; padding:0; list-style:none; }
+  .tbrief-led-l li { display:flex; justify-content:space-between; gap:var(--sp-2); margin:var(--sp-1) 0; font-size:var(--fs-xs); line-height:1.6; color:var(--mut); word-break:break-word; }
+  .tbrief-led-l .tbl-m { flex:none; font-variant-numeric:tabular-nums; }
+  @media (prefers-reduced-motion:reduce){ .tbrief-led-h svg { transition:none; } }
   /* AI요약 = 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 버튼 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당 */
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
   .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 46px 64px 58px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수·시간 시작 x 일렬 · 선 없음 = 내부 선 투명 · 5열 = +시간(운영자 260712 "모든 것에 시간" · 46/64 = 구 58/78 실측 재배분: 플랫폼 최장 "유튜브"·조회수 vfmt 만단위·모바일 제목폭 보존) */
@@ -9512,7 +9524,7 @@ function renderSnsTrends() {
   let gno = 0, gfirst = true;
   const GPIC = { brief: AISPARK_SVG, top: TRENDUP_SVG };   // AI 요약·TOP 10 = 숫자 대신 픽토그램("0" 의미 = 순번 밖) · 플랫폼 그룹부터 1,2,3 (운영자 260712) · TOP = 🔥→📈 우상향 차트(운영자 260714 "불꽃 어색" · FIRE_SVG는 soc-burst 급등 배지로 존치 = 의미 별개)
   const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || ++gno}</i>${ttl}</summary>${body}</details>`; };
-  if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span></div>`);   // 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당
+  if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span><div class="tbrief-led" hidden><button class="tbrief-led-h" type="button" aria-expanded="false" aria-controls="tbLedL"><span>이미 다룬 이슈 <b class="tbrief-led-n"></b>건</span>${CHEVRON_SVG}</button><ul class="tbrief-led-l" id="tbLedL" hidden></ul></div></div>`);   // 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당 · 말미 접이 = 이슈 원장(재탕 감쇠로 뺀 이슈 가시화 · 운영자 260714 · issues 없으면 hidden 유지)
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
     '<div class="tlist">' + top.map((it, i) =>
       `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span><span class="tlr-tm">${esc(it.ago || '')}</span></a>`).join('') + '</div>' +
@@ -9541,6 +9553,24 @@ function renderSnsTrends() {
       else if (m[3]) { addLink(m[3], m[3]); }
     }
     addText(txt.slice(last));
+  }
+  // 이슈 원장 접이 주입(운영자 260714) — issues = 브리프 감쇠 기억장치(장기 투숙 이슈 1·2·3회 규칙)의 가시화. textContent만 = XSS 안전 · 없으면 hidden 유지(빈 접이 노이즈 0) · 접기 상태 = 렌더마다 접힘 초기화(마이크로 접이 = 비영속·tgroup localStorage 축과 별개)
+  const led = box.querySelector('.tbrief-led');
+  if (led && BRIEF) {
+    const lx = (Array.isArray(BRIEF.issues) ? BRIEF.issues : []).filter(x => x && x.key).slice(0, 24);
+    if (lx.length) {
+      led.hidden = false;
+      led.querySelector('.tbrief-led-n').textContent = lx.length;
+      const lu = led.querySelector('.tbrief-led-l');
+      lx.forEach(x => {
+        const li = document.createElement('li'), k = document.createElement('span'), m2 = document.createElement('span');
+        k.textContent = String(x.key); m2.className = 'tbl-m';
+        m2.textContent = `${Math.max(1, x.n | 0)}회` + (x.last ? ` · ${String(x.last).slice(5, 10).replace('-', '/')}` : '');
+        li.append(k, m2); lu.appendChild(li);
+      });
+      const lh = led.querySelector('.tbrief-led-h');
+      lh.addEventListener('click', () => { const op = lh.getAttribute('aria-expanded') === 'true'; lh.setAttribute('aria-expanded', String(!op)); lu.hidden = op; });
+    }
   }
   fillT('gt', '.trend-q', gt.slice(0, 8).map(g => g.query || ''));
   fillT('sig', '.trend-q', sig.slice(0, 10).map(g => g.query || ''));   // ⑨ 시그널 실검(운영자 260712)
