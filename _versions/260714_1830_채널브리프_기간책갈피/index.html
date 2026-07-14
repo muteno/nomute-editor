@@ -880,10 +880,6 @@
   .tbrief-t b.tb-em, .tbrief-prop li b.tb-em { color:var(--fg); font-weight:var(--fw-b); }   /* **별표2** 강조 = 강조색 없이 볼드만(2층 = 어느정도 중요 · 본문색 유지·700 = 강조색 800보다 한 단 아래 · 운영자 260714 "강조색 볼드만큼은 아니지만 볼드로") */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
-  /* ── 채널 브리프 기간 책갈피(운영자 260714 "3일·7일·28일·3개월·전체 우상단 세그 · 3일 기본·선택 강조 · 마인드셋") — 세그 = 일일추이 .ch-rangeseg 정본 계승(일치) · 우측 정렬 = 카드 우상단 ── */
-  .tb-segrow { display:flex; justify-content:flex-end; margin:0 0 var(--sp-2); }   /* 세그 행 = 우상단(운영자) · 하단 리듬 = 분석시각과 sp-2 */
-  .tb-div { border-top:1px solid var(--line2); margin:var(--sp-2) 0; }   /* 구분선 = .tbrief-prop 상단선(line2) 문법 계승 — 운영자 "구분선" 명시 요소 */
-  .tb-allwrap[hidden] { display:none; }   /* (3) 전체 총론 = '전체' 탭 선택 시 (2)와 중복 → 숨김(JS hidden 토글) */
   /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
   .tbrief-prop { margin:var(--sp-2) 0 0; padding-top:var(--sp-2); border-top:1px solid var(--line2); }
   .tbrief-prop ul { margin:var(--sp-1) 0 0; padding:0; list-style:none; }
@@ -10114,17 +10110,9 @@ function renderChan() {
   // + 기간 구분 탭(운영자 260714 "7일·14일·28일·3개월·전체 총론 구분해서 요약") — sections 있으면 칩 세그(.ch-mchip 정본 계승·data-bs 축) · 구 단일 text JSON = 칩 없이 종전 렌더(하위호환 fail-soft)
   const bsecs = (CHANB && Array.isArray(CHANB.sections) && CHANB.sections.length >= 2) ? CHANB.sections : null;
   if (bsecs && !bsecs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsecs[0].k;   // 결측 섹션 방어(생성분이 일부만 와도 첫 탭으로)
-  const bhasAll = bsecs && bsecs.some(s => s.k === 'all');   // 전체 총론 섹션 유무 = (3) 고정 판 노출 근거
   if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', 'AI 요약', `<div class="tbrief">` +
-    // ① 기간 책갈피 세그(우상단 · 운영자 260714 "3일|7일|28일|3개월|전체 · 3일 기본·선택 강조") = .ch-rangeseg 정본 계승(일일추이와 일치) · .tb-seg 마커로 data-bs 핸들러 분기
-    (bsecs ? `<div class="tb-segrow"><span class="ch-rangeseg tb-seg">${bsecs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</span></div>` : '') +
-    // ② 분석 시각 → ③ 구분선 → ④ (2) 선택 기간 총론+제안(기간 스왑)
-    `<span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span>` +
-    (bsecs ? `<div class="tb-div"></div>` : '') +
-    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div>` +
-    // ⑤ (3) 전체 총론 = 항상 고정 노출(운영자 260714 "기간 바꿔도 안 달라지는 페이지 · 마인드셋") · '전체' 탭 선택 시 (2)와 중복이라 숨김
-    (bhasAll ? `<div class="tb-allwrap"${CHAN_BSEC === 'all' ? ' hidden' : ''}><div class="tb-div"></div><span class="tbrief-lbl">전체 총론</span><p class="tbrief-t tb-allt"></p></div>` : '') +
-    `</div>`, null, chanStale);   // null = extra(심층필) 없음 · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭)
+    (bsecs ? `<div class="ch-seg">${bsecs.map(s => `<button class="ch-mchip${s.k === CHAN_BSEC ? ' on' : ''}" type="button" data-bs="${esc(s.k)}">${esc(s.label === '전체 총론' ? '총론' : s.label)}</button>`).join('')}</div>` : '') +
+    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`, null, chanStale);   // null = extra(심층필) 없음 · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭 · 운영자 260714)   // 클로신의 제안 = 전략 줄('→ ') 분리 판(운영자 260714 "위 = 분석 / 아래 = 왓투두 블릿") — 전략 줄 없으면 hidden 유지
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(String(d.generated_kst || '').slice(5, 16).replace('T', ' '))} 수집</span>`, '<div class="ch-stats">' +
     st('팔로워', vf(p.followers_count), 'follows') + st('조회수', vf(a.views), 'views') + st('도달', vf(a.reach), 'reach') +
     st('공유', vf(a.shares)) + st('저장', vf(a.saves)) + st('프로필 방문', vf(a.profile_views), 'profile_views') + '</div>');
@@ -10216,9 +10204,6 @@ function renderChan() {
         li.appendChild(act); pu.appendChild(li);
       });
     }
-    // (3) 전체 총론 고정 판(운영자 260714 "기간 바꿔도 안 달라지는 페이지 · 마인드셋") — all 섹션 본문 통째 주입(→ 줄 포함 = 큰 그림·제안 분리 안 함) · '전체' 탭이면 HTML서 tb-allwrap hidden이라 tb-allt 부재(주입 스킵)
-    const ballt = box.querySelector('.tb-allt');
-    if (ballt && bsecs) { const ball = bsecs.find(s => s.k === 'all'); if (ball) parseInto(ballt, (ball.text || '').replace(/\n{3,}/g, '\n\n').trim()); }
   }
   const pts = box.querySelectorAll('.ch-pt'); posts.forEach((x, i) => { if (pts[i]) pts[i].textContent = x.name || '(무캡션)'; });
   // 호응 신호 버킷명 = textContent 주입(XSS 안전 관용구) — data-bk 훅으로 신호 행만 지정(포맷·3기 ch-bk는 esc로 이미 채움)
@@ -10226,8 +10211,8 @@ function renderChan() {
   AXL.forEach(ax => (axes[ax[0]] || []).slice(0, 3).forEach(b => { const el = sigBks[si++]; if (el) el.textContent = b.bucket; }));
   // 추이 차트 배선(지표 칩·기간 세그·crosshair 툴팁 — 재렌더 = 스크롤 보존)
   box.querySelectorAll('.ch-mchip[data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // [data-m] 한정 — 브리프 기간 칩(data-bs)이 CHAN_MET을 undefined로 오염 방지(260714)
-  box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체 · 운영자 260714 세그=.tb-seg 계승) — [data-bs] 통합 셀렉터(칩→세그 전환 무관) · 재렌더·스크롤 보존
-  box.querySelectorAll('.ch-rangeseg:not(.tb-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그(data-r 없음)가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
+  box.querySelectorAll('.ch-mchip[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 탭(7일~총론 · 운영자 260714) — 지표 칩과 동일 재렌더·스크롤 보존 관용구
+  box.querySelectorAll('.ch-rangeseg button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));
   const wrap = $('#chChartWrap'), tip = $('#chTip');
   if (wrap && tip) {
     const move = ev => {
