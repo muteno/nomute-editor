@@ -205,7 +205,7 @@ ${PREV_BLOCK}
 [데이터 = 이 채널의 실제 지표]
 $BODY"
 
-out=""
+out=""; _to_tried=0   # _to_tried = 타임아웃(rc=124) 강제 계정 전환 1회 소진 플래그(analyze.sh 계승)
 for _try in 1 2 3 4; do
   # 누적 벽시계 캡(평의회6 260714 · analyze.sh ANALYZE_JOB_DEADLINE 관용구 계승): 산술 최악 4×600s=40분 > 잡 timeout 20분 —
   # 15분 소진 후의 재시도는 성공해도 잡 하드킬로 수집 데이터 커밋까지 동반 유실될 운명이라, 브리프만 곱게 포기(fail-soft·직전 유지)하고 커밋 스텝을 살린다. 평상시 무영향(쿼터 실패 = 초 단위 반환).
@@ -215,6 +215,8 @@ for _try in 1 2 3 4; do
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/chanbrief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
     if claude_failover "$out$(cat /tmp/chanbrief.err 2>/dev/null)"; then continue; fi   # 쿼터 = 4계정 체인 1단씩(§📰-f)
+    # 타임아웃(rc=124)은 출력이 비어 is_quota가 못 잡는 사각지대 → *딱 1회* 강제 계정 전환 후 재시도(analyze.sh:292 계승 · 운영자 260714 Q12 "막히면 대기 말고 바로 다른 계정 · 몇 번 돌리면 해결"). 서브2 지연(rc=124)에서 멈춰 서브3 미도달하던 것 봉합. 1회 제한 = 타임아웃 대개 입력바운드라 무한 전환은 시간·쿼터만 소진(평의회 260704).
+    if [ $rc -eq 124 ] && [ "$_to_tried" = "0" ] && claude_failover_force; then _to_tried=1; continue; fi
     echo "::warning::chan-brief 생성 실패(rc=$rc) — 직전 brief 유지(fail-soft)"; exit 0
   fi
   break
