@@ -261,14 +261,16 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
   function drawSpec() {   // 우측 선택요약 = index #geniSum 리드백 문법('/' 구분·b 값 강조 — 예: 극화·한국웹툰화 / 4:5 · FHD · 1개)
     const d = SB_DIRECTORS.find(x => x.id === sbDirector) || SB_DIRECTORS[0];
     const sh = SB_SHOOTS.find(x => x.id === sbShoot) || SB_SHOOTS[0];
-    // 예상 비용(운영자 260714 5·7차): 클로드 = 토큰 수 00.0k(구독 0원) / GPT = $ 환산(실측 후 보정) / 시댄스 = get_cost 실측 매트릭스(260714 · 720p·std 4.5cr/s · fast 3.5 · 1080p 9) × 울트라 환산
-    const SB_VID_CR = { '6~8s': [27, 36], '10~12s': [45, 54], '15s': [67.5, 67.5], '20~30s': [90, 135] };   // Seedance 2.0 · 720p · std 실측(15s 초과 = 2세그 체이닝 합산)
+    // 예상 비용(운영자 260714 5·7·8차): 클로드 = 토큰 수 00.0k(구독 0원) / GPT = $ 환산(실측 후 보정) / 시댄스 = get_cost 실측 법칙(720p·std 4.5cr/s) × 운영자 비용 규칙 × 울트라 환산
+    // 운영자 비용 규칙(260714 8차 "더 많은 거를 잡으면 됨"): 최소 제작 5s · ≤8s = 전부 8s 비용 · 9s = 10s 비용 · 10~15s = 초당 선형(각각 변함) · 애매하면 위로(보수)
+    const vidCr = s => s <= 8 ? 36 : s <= 9 ? 45 : s <= 15 ? 45 + (s - 10) * 4.5 : s * 4.5;   // 실측 검증점: 8s=36 · 10s=45 · 12s=54 · 15s=67.5 · 30s=135(세그 체이닝 합산)
+    const SB_LEN_S = { '6~8s': 8, '10~12s': 12, '15s': 15, '20~30s': 30 };   // 구간 칩 = 상한 초 대표(보수 표기 — 확정은 콘티의 실제 초로 M2 게이트 재산출)
     const CR_WON = 46.2;   // 크레딧→원화: 울트라 연결제 $99/3,000cr ≈ $0.033/cr × 환율 1,400(운영자 260714 "울트라 기준")
     const won = n => '₩' + Math.round(n * CR_WON).toLocaleString('ko-KR');
     const dcost = sbDirector === 'gpt' ? '감독 ~$1.2' : '감독 ~35.0k tok · 0원';
-    const vr = SB_VID_CR[sbSet['길이']] || [67.5, 67.5];
+    const vc = vidCr(SB_LEN_S[sbSet['길이']] || 15);
     const scost = sbShoot === 'seedance'
-      ? '촬영 ' + (vr[0] === vr[1] ? vr[0] : vr[0] + '~' + vr[1]) + 'cr ≈ ' + (vr[0] === vr[1] ? won(vr[0]) : won(vr[0]) + '~' + won(vr[1])) + ' <span title="Seedance 2.0 · 720p·std 실측(get_cost 260714) — 확정 견적은 생성 직전 실시간 재확인">720p 기준</span>'
+      ? '촬영 ' + vc + 'cr ≈ ' + won(vc) + ' <span title="Seedance 2.0 · 720p·std 실측 기반 보수 추정(구간 상한 초 기준 · ≤8s 동일가·9s=10s가·10~15s 선형) — 확정 견적은 생성 직전 실시간 재확인">720p 기준</span>'
       : '촬영 0원 · 클링 구독';
     const rows = [   // 항목별 줄바꿈(운영자 260714 6차) — 감독 / 촬영 / 규격 / 비용 각 1줄
       '감독 <b>' + esc(d.nm) + '</b> · ' + esc(d.hint),
