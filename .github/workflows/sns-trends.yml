@@ -63,7 +63,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 16   # 구독 2군(한국/세계) 확장분(예산 480s) 수용 — 운영자 260712
+    timeout-minutes: 20   # 수집 840s(14분) + 브리프/번역 LLM 스텝 여유(운영자 260714 "데이터 잘 받아오게" — 16분은 수집 성공 후 LLM 단계서 job timeout→cancelled 상습·실측 12:38 run 정확히 16분 사망 → 수집분까지 유실). 구독 2군 확장분(예산 480s) 수용(260712)
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,6 +90,19 @@ jobs:
           FRESH=$(python3 -c "import json,datetime as dt; u=json.load(open('viewer/sns_trends.json'))['updated']; t=dt.datetime.fromisoformat(u); el=(dt.datetime.now(t.tzinfo)-t).total_seconds(); print(1 if 0<=el<1680 else 0)" 2>/dev/null || echo 0)
           if [ "$FRESH" = "1" ]; then echo "::notice::sns_trends 최근 28분 내 갱신 — 이번 트리거 수집 스킵(중복 방지)"; exit 0; fi
           timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
+
+      # ── 수집분 즉시 커밋(1차) — 뒤 LLM 브리프/번역 스텝이 job timeout으로 죽어도 수집 데이터(TOP 10·트렌드)는 이미 라이브 확보(운영자 260714 "데이터 잘 받아오게 설계" · 근본원인 = 맨끝 단일 Commit이라 중간 LLM 단계 timeout 시 수집분 동반 유실 · 실측 12:04~13:45 = 세 run 연쇄 cancelled 102분 갭). sns_trends.json은 push paths(sns_subs_phone.json) 미감시 = 재트리거 0. 브리프/번역 갱신분은 맨끝 Commit이 2차로 마저 커밋(입력 동일 스킵 캐스케이드로 무변동 시 생략).
+      - name: Commit 수집분(1차 · 유실 방지)
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add viewer/sns_trends.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "수집 변동 없음 — 1차 커밋 생략(신선도 게이트 스킵 등)"; exit 0; }
+          git commit -m "sns-trends: 수집 갱신"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "1차 push 재시도 $i"; sleep $((2**i)); }
+          done
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
         if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)도 CLI 필요(운영자 260713 · 미포함 시 카나리아 rc=127)
