@@ -20,7 +20,7 @@ DST = ROOT / "viewer" / "candidates.json"
 # 용어 통일: 수집 수(긁은 기사 총량, knews_scraper) · 사건 수(중복 합친 distinct, 아래 kept) ·
 #            보관한도(수집함에 들고 있는 최대 사건 수=CAP) · 보관기간(마지막 후속보도 후 폐기까지=TTL).
 TTL_HOURS = int(os.environ.get("CAND_TTL_HOURS", "240"))  # 보관기간: 마지막 후속보도(last_report) 후 N시간 지나면 폐기(240=10일 · 260618 first_seen→last_report)
-CAP = int(os.environ.get("CAND_CAP", "3000"))             # 보관한도: 수집함 최대 사건 수(10일치 여유 — 실제 컷은 보관기간이 함)
+CAP = int(os.environ.get("CAND_CAP", "800"))              # 보관한도: 수집함 최대 사건 수. 3000=3.45MB로 api/candidates가 GitHub 1MB 한도 초과→빈 [] 반환→수집함 텅빔 실측(260714) → 800≈0.9MB로 감량(1MB 서빙 한도 방어). 표시는 신규<4h+누적 상위라 CAP 근처 미사용=손실0. 실제 컷은 보관기간(TTL)이 함.
 MIN_CROSS = int(os.environ.get("CAND_MIN_CROSS", "2"))    # 교차등장 최소 매체 수(2=2개 이상 매체에 뜬 것만 = 뉴스성)
 # ── 속보(velocity·태그) 1차 게이트 — burst(15분 내 동시 매체) OR [속보] 제목 태그. 2차 내용판정은 별도(Claude breaking_judge). ──
 BREAKING_BURST = int(os.environ.get("BREAKING_BURST", "3"))          # 속보 후보: burst 이 값 이상(다수 동시 보도)

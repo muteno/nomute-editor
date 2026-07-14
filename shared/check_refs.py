@@ -861,6 +861,21 @@ def check_playground():
     return 0
 
 
+def check_candidates_size():
+    """viewer/candidates.json 크기 가드(WARN-only·260714) — 3000개(3.45MB)로 비대해져 라이브 서빙
+    api/candidates(GitHub contents 1MB 한도·Cloudflare 함수 부담)가 빈 [](HTTP 200)을 뱉어 뷰어가
+    수집함을 통째로 비우던 사고. CAP(to_candidates CAND_CAP)로 감량하되, 슬금슬금 다시 1MB를
+    넘으면 커밋 전 눈에 띄게. WARN-only = candidates.json은 scrape 자동커밋이라 rc=1이면 자동화가 깨짐."""
+    p = os.path.join(ROOT, 'viewer', 'candidates.json')
+    try:
+        sz = os.path.getsize(p)
+    except OSError:
+        return 0
+    if sz > 1024 * 1024:
+        print('⚠️ candidates.json %.2fMB > 1MB — api/candidates 서빙 실패(빈 [] 반환)로 수집함 텅빔 위험. CAND_CAP 낮춰 감량 권장(260714).' % (sz / 1048576))
+    return 0   # WARN-only
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
     rc = 0
@@ -904,6 +919,10 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_design 스킵:', e)
+    try:
+        check_candidates_size()   # candidates.json 크기 WARN(1MB↑ = api/candidates 빈[] 서빙실패로 수집함 텅빔 위험·260714)
+    except Exception as e:
+        print('⚠️ candidates 크기 check 스킵:', e)
     try:
         if check_sens_vocab() != 0:   # 민감 통제어휘 미러 정합(하드 게이트 — 5↔7 드리프트·DRUG_RE 따로놀기 차단·260625)
             rc = 1
