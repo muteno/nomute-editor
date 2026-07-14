@@ -9,9 +9,9 @@
 //
 // 2티어 구조(정직 신고):
 //   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 상시 프레임+힌트(Q03② 승격 260714) · 첨부→미리보기 등장 ·
-//          토글 상호작용 재렌더 · 미리보기 스테이지가 패널 밖으로 안 나감(수평 뷰포트 계약)
-//   [대기] Q03 큐(⬜) 대기 어서션('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — ① 옆 샘(이웃 요소와 겹침 0) ③ 폰트 통일(스테이지 폰트 = 제작 PIL 정본 선언값)
-//          ④ 로고 상시(스테이지에 로고 노드) — 오늘은 FAIL이어도 exit 0 · 리포트에 현황만 실측(눈→기계 이관 로그)
+//          토글 상호작용 재렌더 · 스테이지 패널 내(수평) · 폰트 = 노토 실로드+적용(Q03③ 승격 260714) · 로고 자산 가시(Q03④ 승격 260714)
+//   [대기] Q03 큐 잔여('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — ① 옆 샘(운영자 재현 조건 대기 · 실물 픽스처·2뷰포트 미재현)
+//          오늘은 FAIL이어도 exit 0 · 리포트에 현황만 실측(눈→기계 이관 로그)
 //          Q03 항목이 하나 반영될 때마다 그 어서션을 코어로 승격하는 게 운영 규약 — 대기가 PASS로 뒤집히면 XPASS 승격 경고가 자동 출력(망각 = 기계가 잡음 · 평의회⑥).
 //
 // 리스크 통제(운영자 "리스크 없는지 검증하고 진행"):
@@ -68,7 +68,7 @@ async function startServer() {
 // ── 셀렉터 SSOT ──
 const SEL = {
   prev: '#cpPrev', stage: '#cpPrevStage', box: '#cpPrev .cpprev-box', panel: '.panel',
-  logo: '#cpPrevStage [data-logo], #cpPrevStage .cp-logo',   // Q03④ 반영 시 실셀렉터로 확정
+  logo: '#cpPrevStage img[data-logo]',   // 릴스2 베이스 실자산(Q03④ 확정 260714)
 };
 // 첨부 픽스처 = 실물 비율 540×675(1080×1350 축소판)·비단색 그라데 — 1×1 퇴화 픽스처는 샘·기하 미재현(평의회⑥⑨ 260714). 페이지 내 캔버스로 생성 = 외부 바이너리 0.
 
@@ -95,8 +95,9 @@ async function runOnce(pg, reqLog) {
     cx.fillStyle = '#e8eef4'; cx.fillRect(40, 60, 460, 220);   // 밝은 블록 = 비단색 보장(픽셀 프로브 표본)
     CIMG.b64 = cv.toDataURL('image/png'); CIMG.name = 'qa.png';
     ieSrcSync(true);
-    A2M = 'c';   // 카드뉴스 변형 = CIMG만으로 성립(1120행 계약) → 결정론 변형 1개 보장
-    renderCpPrev();
+    A2M = 'c';   // 카드뉴스 변형 = CIMG만으로 성립(1120행 계약)
+    document.querySelector('#cSub').value = '큐에이 부제'; document.querySelector('#cTitle').value = '큐에이 제목'; document.querySelector('#cLines').value = '큐에이 자막';   // hdr 변형(첫 선택) = 로고 베이스+텍스트 3축 결정론 생성(Q03③④ 승격 픽스처)
+    cpPrevSel = 0; renderCpPrev();
   });
   await pg.waitForTimeout(600);   // 렌더·이미지 디코드 settle
 
@@ -126,19 +127,20 @@ async function runOnce(pg, reqLog) {
   resv('R1[Q03①] 옆 샘 = 스테이지가 이웃과 겹침 0·컨테이너 내', g.ovlStage <= 1 && g.stage.l >= g.boxR.l - 1 && g.stage.r <= g.boxR.r + 1 && g.stage.t >= g.boxR.t - 1 && g.stage.b <= g.boxR.b + 1,
     JSON.stringify({ ovlStage: Math.round(g.ovlStage), 박스내: [Math.round(g.stage.l - g.boxR.l), Math.round(g.boxR.r - g.stage.r), Math.round(g.stage.t - g.boxR.t), Math.round(g.boxR.b - g.stage.b)], 이웃: String(g.sibTag).slice(0, 30) }));
 
-  // R2(예약·Q03③) 폰트 통일 = 스테이지 텍스트 폰트가 제작 PIL 정본 선언값과 일치
-  const r2 = await pg.evaluate(S => {
+  // C6(코어 · Q03③ 승격 260714) 폰트 = 스테이지 전 텍스트가 노토(PIL 정본 미러) 실로드+적용
+  const r2 = await pg.evaluate(async S => {
     const t = document.querySelector(S.stage + ' .cpv');   // 텍스트 레이어 표본(첫 * = cpv-bg img — 평의회④ 교정)
     const fam = t ? getComputedStyle(t).fontFamily : '';
-    const decl = (typeof CP_PREV_FONT !== 'undefined') ? CP_PREV_FONT : null;   // Q03③에서 선언 상수 신설 예정
-    const loaded = decl ? document.fonts.check('16px "' + decl + '"') : false;   // 선언 비교 아님 = 실로드 검사(평의회⑨ 치명 D)
+    const decl = (typeof CP_PREV_FONT !== 'undefined') ? CP_PREV_FONT : null;
+    if (decl) { try { await document.fonts.load('16px "' + decl + '"'); await document.fonts.load('700 16px "' + decl + '"'); } catch (_) {} }   // 명시 load = 실 fetch·파싱 강제(swap 지연·미사용 얼굴 무관 — check만으론 '사용된 얼굴'만 true · 평의회⑨ 치명 D의 강화판)
+    const loaded = decl ? (document.fonts.check('16px "' + decl + '"') && document.fonts.check('700 16px "' + decl + '"')) : false;   // 400(저작권)·700(제목·자막) 두 얼굴 실로드
     return { fam: fam.slice(0, 60), decl, loaded };
   }, SEL);
-  resv('R2[Q03③] 폰트 = PIL 정본 선언+실로드', !!(r2.decl && r2.fam.includes(r2.decl) && r2.loaded), 'stage=' + (r2.fam || '(텍스트 레이어 없음)') + ' · 선언=' + (r2.decl || '(미선언 — Q03③ CP_PREV_FONT 예정)') + ' · 실로드=' + r2.loaded);
+  core('C6 폰트 = 노토 선언+실로드+적용(Q03③)', !!(r2.decl && r2.fam.includes(r2.decl) && r2.loaded), 'stage=' + (r2.fam || '(텍스트 레이어 없음)') + ' · 선언=' + (r2.decl || '(미선언)') + ' · 실로드=' + r2.loaded);
 
-  // R3(예약·Q03④) 로고 상시 = 스테이지에 로고 노드 가시
-  const r3 = await pg.evaluate(S => { const el = document.querySelector(S.logo); return !!(el && el.getBoundingClientRect().height); }, SEL);
-  resv('R3[Q03④] 로고 노드 가시', r3, r3 ? '있음' : '없음(Q03④ 대기)');
+  // C7(코어 · Q03④ 승격 260714) 로고 = 릴스2 베이스 실자산 가시+로드 실증
+  const r3 = await pg.evaluate(S => { const el = document.querySelector(S.logo); return { vis: !!(el && el.getBoundingClientRect().height), nw: el ? (el.naturalWidth || 0) : 0 }; }, SEL);
+  core('C7 로고 베이스 가시+로드(Q03④)', r3.vis && r3.nw > 0, JSON.stringify(r3));
 
   // C4 상호작용 = 합성 토글 → 재렌더(스테이지 갱신) · 크래시 0
   const c4 = await pg.evaluate(S => {
@@ -157,6 +159,7 @@ async function runOnce(pg, reqLog) {
 (async () => {
   let srv = null, browser = null; let fail = 0;
   try {
+    try { fs.cpSync(path.join(ROOT, 'assets/fonts'), path.join(VIEWER, 'assets/fonts'), { recursive: true }); fs.cpSync(path.join(ROOT, 'assets/brand'), path.join(VIEWER, 'assets/brand'), { recursive: true }); } catch (_) {}   // 빌드 미러(build-viewer.mjs 23~26행 동일 복사) — viewer/assets = .gitignore 경로(빌드 산출)라 레포 무접촉 불변 · 프로드와 동일 경로로 폰트·로고 서빙
     const { chromium } = loadPlaywright();
     const st = await startServer(); srv = st.srv;
     browser = await chromium.launch({ executablePath: chromiumPath() });
@@ -181,7 +184,7 @@ async function runOnce(pg, reqLog) {
 
     console.log('── [코어] (합격 필수)');
     a.core.forEach(x => { if (!x.c) fail++; console.log((x.c ? 'PASS' : 'FAIL') + ' | ' + x.n + (x.d ? ' | ' + x.d : '')); });
-    console.log('── [대기 = Q03 ①③④ — 현황 실측' + (STRICT ? ' · STRICT = 합격 요구' : ' · exit 미반영') + ']');
+    console.log('── [대기 = Q03 ① 잔여 — 현황 실측' + (STRICT ? ' · STRICT = 합격 요구' : ' · exit 미반영') + ']');
     a.resv.forEach(x => { if (STRICT && !x.c) fail++; console.log((x.c ? (STRICT ? 'PASS' : 'XPASS') : (STRICT ? 'FAIL' : '대기')) + ' | ' + x.n + (x.d ? ' | ' + x.d : '')); });
     const xp = a.resv.filter(x => x.c);
     if (!STRICT && xp.length) console.log('⚠ 승격 신호(XPASS) ' + xp.length + '건 — 코어 승격 또는 픽스처 재현력 점검(평의회⑥): ' + xp.map(x => x.n.split(' ')[0]).join('·'));
