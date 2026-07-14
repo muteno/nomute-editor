@@ -768,7 +768,14 @@
   @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .trend-sec::details-content, .tgroup-h { transition:none; } }
   .tgroup-h .tdash-time { margin-left:12px; margin-right:auto; }   /* 수집시각 = 타이틀 옆 유지 · 체브론(ml:auto)과 공존 = 시각이 좌측군 */
   .tgroup-h i { flex:none; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:rgba(var(--accent-rgb),.13); border:1px solid rgba(var(--accent-rgb),.34); font-style:normal; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--accent); font-variant-numeric:tabular-nums; }   /* 단위 순번(1 AI요약·2 TOP·3+ 플랫폼) = 도형 배지(운영자 260713 "구분마다 도형으로 감싸기") · SNS soc-chip tint+border 도형감 계승(원형 필) · 색 = 강조색(.trend-rank 계승) */
-  .tgroup-h .gpic svg { width:14px; height:14px; display:block; }   /* ✨AI요약·🔥TOP 픽토그램 = 배지 원 중앙 정렬 */
+  .tgroup-h .gpic { background:none; border:none; }   /* ✨AI요약·📈TOP 픽토그램 = 원 배지 탈피(운영자 260714 "원 도형 빼줘") — 24px 플렉스 박스는 유지 = 형제(순번 원 배지) 타이틀 좌측 정렬선 보존 */
+  .tgroup-h .gpic svg { width:16px; height:16px; display:block; overflow:visible; }   /* 14→16 = 원 소거 광학 보정(배지 무게 감쇠분 복원) · overflow = 라이트 라운드캡 에지 클립 방지 */
+  /* 픽토그램 라인 라이트 트레이스(운영자 260714 "강조색이 빛처럼 쭉 이징하면서 도는") = lk-okring PIN 스윕(stroke-dash 둘레 1바퀴·--ease)+tvSweep(빛 조각 주행) 결 계승 — 아이콘 자기 선 위를 --accent-bright 조각(16/100)이 --ease 순환 · 상시 미세모션 = AI 분석·실시간 수집 '살아있음' 신호(bannerbreath·segCurGlow 상시 결) */
+  .gpic .gpic-lt { stroke:var(--accent-bright); stroke-width:2.2; fill:none; stroke-linecap:round; stroke-dasharray:16 84; animation:gpicTrace 2.7s var(--ease) infinite; }
+  .gpic .gpic-lts { stroke-width:2.7; }   /* ✨ 스파크 = fill 아이콘 위 궤도라 라이트 안쪽 절반이 동색 fill에 먹힘 → 획 보정으로 바깥 할로 보전(평의회⑧ 실측 0.73→0.93px = 차트 라이트와 시각 강도 균형) */
+  @keyframes gpicTrace { to { stroke-dashoffset:-100; } }
+  .tgroup-h:has(.tdash-time.stale) .gpic .gpic-lt { animation-play-state:paused; opacity:.28; }   /* 수집 지연(stale 65분+) = 빛도 멎어 흐려짐(평의회⑦ 치명 봉합 = 크론 사망 중 '살아있음' 거짓신호 차단) · :has 기사용(160·1224) · .tdash-time.stale warn(680)과 동축 = 정직 신호 2차 강화 · TOP 헤더만 tdash-time 보유라 자동 스코프(AI요약 무영향) */
+  @media (prefers-reduced-motion:reduce) { .gpic .gpic-lt { animation:none; opacity:0; } }
   /* ── TOP 카드 레일(.tpg/.tpc — 운영자 260712 플레이그라운드 선택값 배선: 레일 2행(1~5/6~10)·카드 148·1:1 커버 r-s·순위 필 h15/fs10·구분자행(cat 재지정)→제목 2줄 11px→원시 조회+우측 시간(relAge)·NEW만·로테이션 글로우) — 구 .tdr 행 리스트 폐지 ── */
   .tpg { display:grid; grid-auto-flow:column; grid-template-rows:auto auto; grid-auto-columns:148px; gap:13px 6px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; margin:0; padding:0 0 4px; }   /* 카드 레일 = soc-item 좌우 0 통일과 짝 → 마진 상쇄 불필요(콘텐츠 좌·우변 = 글래스 안쪽 = 타 블록과 동일선 · §디자인 y 연쇄 SSOT) */
   .tpg::-webkit-scrollbar { display:none; }
@@ -4326,7 +4333,7 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
       const now = ((a && a.cards && a.cards[field]) || []).length;
       if (a && now > before) {   // 새 이미지 도착 → DATA 갱신 + 열린 모달이면 thumbsec 통째 재렌더(로딩 슬라이드 자동 소거·새 이미지 좌측·번호 갱신)
         await ensureDetail(a);   // 경량 인덱스라 body/md 빈 채 → CUR_A/DATA 교체 전 detail 복원(다운로드 카드·출처 유실 방지 · 평의회 260624)
-        const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) DATA[idx] = a;
+        const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) { DATA[idx] = a; _feedIdxRef = null; }   // 같은 배열참조·요소 교체 = feedMatch 색인 강제 재구축(다음 조회 시 346회·~0ms) — 인덱스 필드 in-place 변경 대비 구조적 보험(병렬검증 성능 한 수)
         if (CUR_A && CUR_A.file === file) { CUR_A = a; const old = $('#mdbody .thumbsec'), fresh = thumbSec(a); if (old && fresh) old.replaceWith(fresh); }
         return;   // 완료
       }
@@ -6498,7 +6505,8 @@ const ROCKET_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 const STAR_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9z"/></svg>';   // ★ 평점
 const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>';   // 🔗 출처·⛓ 교차
 const FIRE_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-2.5C9 9 9 11 11 11c0-2-1-4 1-9z"/><path d="M8.5 13a5.5 5.5 0 1 0 7 0c0 2-1.5 3-1.5 3s.5-3-2-5c-1 2-3 3-3 7z"/></svg>';   // 🔥 burst
-const AISPARK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M12 2c.5 4.2 1.9 5.6 6 6-4.1.4-5.5 1.8-6 6-.5-4.2-1.9-5.6-6-6 4.1-.4 5.5-1.8 6-6z"/><path d="M19 12.5c.25 2 .95 2.75 3 3-2.05.25-2.75.95-3 3-.25-2-.95-2.75-3-3 2.05-.25 2.75-.95 3-3z"/></svg>';   // ✨ AI(요약 그룹 픽토그램 · 운영자 260712)
+const AISPARK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M12 2c.5 4.2 1.9 5.6 6 6-4.1.4-5.5 1.8-6 6-.5-4.2-1.9-5.6-6-6 4.1-.4 5.5-1.8 6-6z"/><path d="M19 12.5c.25 2 .95 2.75 3 3-2.05.25-2.75.95-3 3-.25-2-.95-2.75-3-3 2.05-.25 2.75-.95 3-3z"/><path class="gpic-lt gpic-lts" d="M12 2c.5 4.2 1.9 5.6 6 6-4.1.4-5.5 1.8-6 6-.5-4.2-1.9-5.6-6-6 4.1-.4 5.5-1.8 6-6z" pathLength="100" fill="none"/></svg>';   // ✨ AI(요약 그룹 픽토그램 · 운영자 260712) + .gpic-lt = 큰 스파크 윤곽 라이트 트레이스 궤도(260714 · fill=none이라 .gpic 밖 자체 비표시 = soc 등 타 사용처 무영향 · .gpic-lts = fill 잠식 할로 보정)
+const TRENDUP_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M2 17.5 8.5 10.5l5 5L22 6.5"/><path d="M16 6.5h6v6"/><path class="gpic-lt" d="M2 17.5 8.5 10.5l5 5L22 6.5" pathLength="100" fill="none" stroke="none"/></svg>';   // 📈 우상향 차트(TOP 10 그룹 픽토그램 · 운영자 260714 "불꽃 어색 → 차트/우상향") — 본선+화살촉 · .gpic-lt = 본선만 라이트 궤도(촉 제외 = 빛이 상승선만 주행) · stroke=none 인라인 = .gpic 밖 재사용 시 본선 이중선 차단(CSS accent-bright가 이김 = .gpic 안 무영향 · AISPARK fill=none 대칭 · 평의회⑤⑨)
 const CHEVRON_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M6 9l6 6 6-6"/></svg>';   // ▾ 더보기(접기=회전 클래스)
 // 소스칩 픽토그램(SNS 네이버 계열) — 카페=☕컵(정면·커뮤니티) · 블로그=✒️펜(1인 창작). 지식iN은 픽토 없이 이름만. 크기는 .soc-chip .ico svg가 11px로. 운영자 260704.
 const CAFE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 11.3a2 2 0 0 1-2 1.7H9a2 2 0 0 1-2-1.7L6 8z"/><path d="M4.5 8h15"/><path d="M9.2 2.8c-.6 1 .6 1.8 0 2.8M14.2 2.8c-.6 1 .6 1.8 0 2.8"/></svg>';   // ☕ 컵 정면 + 김
@@ -8052,7 +8060,7 @@ function pickAlt(c) {
   return [...new Set([major, ...((c.cluster_members || []).map(_normU))])].filter(u => u && u !== rep);
 }
 const pfKeyOf = c => [_normU(c.url), ...((c.cluster_members || []).map(_normU))].find(u => u && PFAIL.has(u)) || '';
-const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeed(c);
+const pfailHas = c => !!pfKeyOf(c) && !pfResolved().has(candId(c)) && !pfResubActive(candId(c)) && !pickInFeedStrict(c);   // ⚠️ Strict(url+event_key) — 제목 폴백으로 서버실패를 무관 동일제목 요약에 잘못 은폐하는 것 차단(병렬검증 R1). 드리프트 성공 복구는 build가 큐된 url을 picks-failed서 빼며 자연 해소.
 const pfReason = c => (PFAIL.get(pfKeyOf(c)) || {}).reason || '';
 let PFAIL_LOADING = false;   // in-flight 가드 = 부팅 eager(9069) + enterScrap(7359) 동시호출 중복 fetch 차단(loadCandidates 패턴 · 운영자 260705 로딩 진단)
 async function loadPickFails() {
@@ -8067,7 +8075,56 @@ async function loadPickFails() {
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
 const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pickFailedShow(c) && !failRequeued(c); });   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃(체크로 제자리 복귀한 건 = 확인처리라 알림 제외)
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
-const pickInFeed = c => { const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean)); return DATA.some(a => a && a.url && us.has(_normU(a.url))); };   // 픽 결과가 피드(3번 메뉴)에 등장했나 — 후보 url *또는 cluster_members*(같은 사건 타 매체) 매칭. 막힌 매체(403)는 분석기가 다른 클러스터 멤버 url로 분석해 정확 url 불일치 → 영구 Picking 갇히던 버그 차단(260619)
+// ── 픽↔피드 요약 매칭 — url(rep+cluster) 1차 → event_key 2차 = 강한 식별(_feedStrict) · 정규화 제목 3차 = 표시 재연결(feedMatch). ──
+//   url 드리프트(막힌 매체 403 우회·리다이렉트·재클러스터링)로 분석 url이 후보 url군 밖으로 새면 요약이 피드에
+//   멀쩡히 있어도 후보가 영영 Picking→Failed에 갇히고 카드 탭이 요약창 대신 원문으로 새던 버그("픽되도 요약창 안뜸")
+//   근본봉합(운영자 260714 · 병렬검증 5인 하드닝 반영). ⚠️ 품질 무손상 설계:
+//     ① _feedStrict(url+event_key) = **안전게이트(실패은폐·긴급·트리아지) 전용** = 종전 동작 그대로(오탐 0).
+//     ② 제목 폴백(feedMatch)은 **표시·요약창 열기 전용** + 5중 가드: has_body(요약본만)·내가 픽한 카드(픽의도)만·
+//        한국어 제목만(JUNK_HEAD 한글전용 사각 봉합·외신 false-match 차단)·JUNK_HEAD 제외·발행시각 12h 창(scDedup 클럭 일치)·최근접 1건.
+//     ③ 서버 분석실패(PFAIL) 등록분은 제목 폴백 제외 = 실패를 무관 동일제목 요약으로 은폐 금지(병렬검증 R1/#3).
+//   event_key 티어는 피드 기사에 event_key가 실릴 때만 발동 = 지금은 휴면(후속 파이프라인 배선 시 자동 활성).
+const _feedTitleKey = t => String(t || '').replace(/\s+/g, '').toLowerCase();   // scDedup scTitleKey 와 동일 규칙(제목 완전일치=같은 기사)
+const FEED_MATCH_WINDOW = 12 * 3600000;   // 제목 폴백 발행시각 창 = scDedup SC_DUP_WINDOW 계승(밖 동일제목 = 다른 날 보일러플레이트 = 다른 사건)
+let _feedIdxRef = null, _feedUrlAny = null, _feedUrlBody = null, _feedTitleMap = null, _feedEkMap = null;   // DATA 참조 바뀔 때만 재구축(O(1) 조회 = 카드 수백장 렌더 렉 0)
+function _buildFeedIdx() {
+  if (_feedIdxRef === DATA) return;   // 같은 DATA면 재사용(load()마다 1회만 구축)
+  _feedIdxRef = DATA;
+  _feedUrlAny = new Map(); _feedUrlBody = new Map(); _feedTitleMap = new Map(); _feedEkMap = new Map();
+  for (const x of (DATA || [])) {
+    if (!x) continue;
+    if (x.url) { const u = _normU(x.url); if (u) { if (!_feedUrlAny.has(u)) _feedUrlAny.set(u, x); if (x.has_body && !_feedUrlBody.has(u)) _feedUrlBody.set(u, x); } }
+    if (!x.has_body) continue;   // 폴백(제목·event_key)은 실제 요약본만 색인
+    for (const t of [x.title, x.title_orig]) { const k = _feedTitleKey(t); if (k) { const arr = _feedTitleMap.get(k); if (arr) arr.push(x); else _feedTitleMap.set(k, [x]); } }
+    if (x.event_key) { const e = _normU(x.event_key); if (e && !_feedEkMap.has(e)) _feedEkMap.set(e, x); }
+  }
+}
+function _feedStrict(c, needBody) {   // 강한 식별만: url(rep+cluster) → event_key. 안전게이트 전용(제목 폴백 없음·종전 동작 100% 보존).
+  if (!c) return null;
+  _buildFeedIdx();
+  const um = needBody ? _feedUrlBody : _feedUrlAny;
+  for (const u of [_normU(c.url), ...((c.cluster_members || []).map(_normU))]) { if (u && um.has(u)) return um.get(u); }
+  if (c.event_key) { const a = _feedEkMap.get(_normU(c.event_key)); if (a) return a; }   // event_key(휴면 — 피드에 실릴 때 활성)
+  return null;
+}
+function feedMatch(c, needBody) {   // 표시용: 강한 식별 → 제목 폴백(가드 5중). needBody=true면 has_body 요약본만(빈 모달 차단).
+  const s = _feedStrict(c, needBody); if (s) return s;
+  if (!c) return null;
+  const tk = _feedTitleKey(c.title);   // 3차 정규화 제목 폴백 = url/event_key로 못 이은 드리프트 요약만 사건동일성으로 재연결
+  // 가드: 한국어 제목(JUNK_HEAD 한글전용 사각 봉합) · JUNK_HEAD 제외 · 서버실패(PFAIL) 아님 · 내가 픽한 카드(로컬 픽 or 파이프라인 진행) = 미픽 트리아지 카드 오PICKED 차단
+  if (tk && /[가-힣]/.test(c.title) && !JUNK_HEAD.test(c.title) && !pfKeyOf(c)
+      && ((ratingsAll()[candId(c)] || {}).picked || pendStatus(c))) {
+    const arr = _feedTitleMap.get(tk);
+    if (arr) {   // 발행시각 12h 창 안에서 최근접 1건(충돌 시 가장 가까운 사건으로 수렴)
+      const cts = scTs(c); let best = null, bestD = FEED_MATCH_WINDOW;
+      for (const x of arr) { const d = Math.abs((Date.now() - articleAgeH(x) * 3600000) - cts); if (d < bestD) { bestD = d; best = x; } }
+      if (best) return best;
+    }
+  }
+  return null;
+}
+const pickInFeedStrict = c => !!_feedStrict(c, false);   // 실패은폐·긴급 게이트 전용 = 강한 식별만(제목 폴백 오탐 차단 · 병렬검증 R1/R2 봉합)
+const pickInFeed = c => !!feedMatch(c, false);   // 픽 결과가 피드(3번 메뉴)에 등장했나 = 표시·PICKED 배지·라우팅. url 1차→event_key→제목 폴백. 막힌 매체(403)·리다이렉트·재클러스터링 url 드리프트로 후보 url군 밖으로 샌 요약도 사건 동일성으로 재연결(영구 Picking·요약창 고아 차단·260619·260714)
 const pickSettled = c => pickInFeed(c) || pfResolved().has(candId(c));   // 픽 종결 = 피드 등장 OR 실패복구 해소 → 둘 다 'Picking' 탈출(해소된 픽이 영구 Picking에 갇히던 버그 차단·260618)
 // 무응답 타임아웃 — 픽 후 PICK_TIMEOUT_MS 지나도 피드 미등장·서버 실패기록(picks-failed)도 없음 = '무응답 실패'로 표시(운영자: 길게 안 끌기).
 // ⚠ 비파괴 = client 표시일 뿐(pending/failed 안 만듦) → 늦게 피드 뜨면 pickInFeed로 PICKED 자동복구. 백엔드 analyze는 최대 ~15분(900s 모델+빌드/배포)이라 10분은 '대부분 끝남' 지점(드물게 느린 건 자동복구).
@@ -8376,14 +8433,12 @@ function openPaste(c) {
   setTimeout(() => $('#pasteText').focus(), 60);
 }
 // PICKED 클릭 → 피드(메뉴3) 이동 + 해당 기사 팝업. 픽 결과가 피드에 떴으니(pickInFeed) url/클러스터로 매칭해 open(a).
-function pickedOpen(c) {   // PICKED → 피드 이동+모달. url/cluster 매칭, 없으면 load() 후 재매칭(feedOpenBy 공용)
-  const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean));
-  feedOpenBy(() => DATA.find(x => x && x.url && x.has_body && us.has(_normU(x.url))));   // has_body 필수 — body 없는 stub 매치 시 빈 모달 대신 feedOpenBy가 '피드 반영 중' 안내(scFeedArticle 게이트와 일관·260630)
+function pickedOpen(c) {   // PICKED → 피드 이동+모달. feedMatch(url→event_key→제목 폴백), 없으면 load() 후 재매칭(feedOpenBy 공용)
+  feedOpenBy(() => feedMatch(c, true));   // has_body 필수(needBody) — body 없는 stub 매치 시 빈 모달 대신 feedOpenBy가 '피드 반영 중' 안내(scFeedArticle 게이트와 일관·260630)
 }
 function scFeedArticle(c) {   // 이 후보가 요약돼 피드(DATA=articles.json)에 떠 있나 → 그 기사 객체(없으면 null).
   // 카드 탭 라우팅에 사용: 있으면 뉴스 요약으로, 없으면 기사 전문으로(요약 안된 빈 요약 목업 차단 · 운영자 260621).
-  const us = new Set([_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean));
-  return us.size ? (DATA.find(x => x && x.url && x.has_body && us.has(_normU(x.url))) || null) : null;   // ⚠️ has_body 필수 — 요약 body가 *실제로 있는* 피드 기사만 매치(픽됐으나 분석 미완·실패로 body 없는 stub은 제외 → 클릭이 빈 요약 모달 대신 기사 원문으로 폴백·운영자 260630 재발버그)
+  return feedMatch(c, true);   // ⚠️ has_body 필수(needBody) — 요약 body가 *실제로 있는* 피드 기사만 매치(픽됐으나 분석 미완·실패로 body 없는 stub은 제외 → 클릭이 빈 요약 모달 대신 기사 원문으로 폴백·운영자 260630 재발버그) · url 실패 시 event_key·제목 폴백으로 드리프트 요약 재연결(260714)
 }
 // 보관한도(데이터)는 크게(10일·수천 건) 두되, 화면은 컬럼당 SC_PAGE장만 그려 가볍게 유지.
 // 전량 렌더 + 매 탭마다 재렌더는 수백 장 넘으면 모바일이 버벅임 → 청크 추가 렌더.
@@ -9451,7 +9506,7 @@ function renderSnsTrends() {
   // 최상위 단위(운영자 260712 "블릿 위 단위 = 접을 수 있게 + 글래스 + 도형 얹힘") = [AI 요약][실시간 TOP 10][각 플랫폼] 전부 details 접기 · 전역 순번 · 헤더 = 글래스 필(타이틀이 도형 위에 얹힘 · .sc-tg 값 계승) · 기억 = nm_trend_gfold
   let TGF = {}; try { TGF = JSON.parse(localStorage.getItem('nm_trend_gfold') || '{}') || {}; } catch { TGF = {}; }
   let gno = 0, gfirst = true;
-  const GPIC = { brief: AISPARK_SVG, top: FIRE_SVG };   // AI 요약·TOP 10 = 숫자 대신 픽토그램("0" 의미 = 순번 밖) · 플랫폼 그룹부터 1,2,3 (운영자 260712)
+  const GPIC = { brief: AISPARK_SVG, top: TRENDUP_SVG };   // AI 요약·TOP 10 = 숫자 대신 픽토그램("0" 의미 = 순번 밖) · 플랫폼 그룹부터 1,2,3 (운영자 260712) · TOP = 🔥→📈 우상향 차트(운영자 260714 "불꽃 어색" · FIRE_SVG는 soc-burst 급등 배지로 존치 = 의미 별개)
   const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || ++gno}</i>${ttl}</summary>${body}</details>`; };
   if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span></div>`);   // 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
