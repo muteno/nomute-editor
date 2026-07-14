@@ -59,6 +59,8 @@ def append_ledger(root, sid, segs, stamp):
 
 
 def main():
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        sys.exit(0)   # 러너 가드(260714): 파이프 봇의 claude -p 프롬프트(명령 어미 다수)가 다중 지시로 오탐돼 요구사항_큐.md를 수정 → analyze push 거부·분석물 유실의 근본 사슬(04:08 run 실측 잔여물 = M docs/요구사항_큐.md). 러너엔 T0 주입·원장 캡처 둘 다 무의미 = 무주입 통과.
     try:
         data = json.load(sys.stdin)
     except Exception:
