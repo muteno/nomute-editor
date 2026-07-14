@@ -17,6 +17,7 @@ export async function onRequestPost({ request, env }) {
 
   const url = String(body.url || '').trim().slice(0, 400);
   const title = String(body.title || '').replace(/[\r\n]+/g, ' ').slice(0, 300);   // 개행 평탄화 = 가짜 '# body:'/'# alt:' 마커 라인 주입 차단(pending 파일 한 줄 보장)
+  const event_key = String(body.event_key || '').replace(/[\r\n"]+/g, ' ').trim().slice(0, 300);   // 후보 event_key(사건 그룹라벨) — 개행·따옴표 평탄화(pending '# ekey:' 한 줄 + frontmatter YAML 안전) · 분석 산출 frontmatter까지 흘려 피드 event_key 티어 활성(260714)
   if (!/^https?:\/\/\S+$/.test(url)) return json({ error: '잘못된 url' }, 400);
   // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체 차단(403) 시 분석기 대체 fetch 소스(item3).
   // ⚠️ 공개 엔드포인트라 alt 를 그대로 믿으면 러너發 SSRF(메타데이터 169.254.x·내부망)·글로브 확장 위험.
@@ -51,7 +52,7 @@ export async function onRequestPost({ request, env }) {
     const rnd = Math.random().toString(16).slice(2, 6);
     const path = `pending/${stamp}-pick-${rnd}.txt`;
     // # force: 1 = 운영자 명시 재제출(전문 직접 입력) → analyze 가 GVER 일치해도 재분석(기존 빈약/오분석 카드 덮어쓰기 = silent dedup drop 차단·운영자 260628). 헤더(# body: 이전)에만 두어 본문이 우연히 같은 마커를 가져도 무관.
-    const fileContent = `${url}\n` + (title ? `# title: ${title}\n` : '') + (alt ? `# alt: ${alt}\n` : '') + `# force: 1\n` + `# body:\n${bodyText}\n`;
+    const fileContent = `${url}\n` + (title ? `# title: ${title}\n` : '') + (alt ? `# alt: ${alt}\n` : '') + (event_key ? `# ekey: ${event_key}\n` : '') + `# force: 1\n` + `# body:\n${bodyText}\n`;
     const bytes = new TextEncoder().encode(fileContent);
     let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
     const put = await fetch(`https://api.github.com/repos/muteno/nomute-editor/contents/${path}`, {
@@ -70,7 +71,7 @@ export async function onRequestPost({ request, env }) {
     {
       method: 'POST',
       headers: H,
-      body: JSON.stringify({ ref: 'main', inputs: { url, title, alt } }),
+      body: JSON.stringify({ ref: 'main', inputs: { url, title, alt, event_key } }),
     },
   );
   if (r.status === 204) return json({ ok: true });

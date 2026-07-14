@@ -110,6 +110,9 @@ for f in "${files[@]}"; do
   # 선택: '# alt: …'(픽 경로가 심은 cluster_members url — 공백구분). 원매체 fetch 가 막히면(403)
   # 같은 사건의 접근 가능한 다른 매체를 *직접 fetch* 하는 대체 소스. 폰공유/자동분엔 없음(빈값·item3).
   alt_urls="$(grep -m1 '^# alt: ' "$f" 2>/dev/null | sed 's/^# alt: //' | tr -d '\r\n')"
+  # 선택: '# ekey: …'(픽 경로가 심은 후보 event_key = 사건 그룹라벨). 산출 frontmatter 에 event_key 로 박아
+  #   뷰어 feedMatch 의 event_key 티어(url 드리프트 요약을 제목폴백보다 먼저 강한 식별로 재연결)를 활성. 폰공유/자동분 빈값=무주입(하위호환).
+  ekey_val="$(grep -m1 '^# ekey: ' "$f" 2>/dev/null | sed 's/^# ekey: //' | tr -d '\r\n"')"   # 따옴표 제거 = YAML `event_key: "…"` 주입 안전(값은 보통 url·alias)
   # 본문 우선순위 재배열 — 통신사·제목스텁(뉴시스·연합 등)을 뒤로, 본문 풍부한 신문사를 앞으로.
   #   대표(rep)는 '최초보도' 기준이라 통신사가 자주 뽑히는데(가장 빨리 송고) 본문이 빈약 → 더 완전한
   #   같은사건 신문사 기사를 먼저 fetch·모델에 제시(아래 본문폴백·프롬프트 alt목록 둘 다 이 순서 사용).
@@ -382,6 +385,15 @@ else:
     out="$(printf '%s\n' "$out" | awk -v a="$alt_urls" \
           '!ad && /^---[[:space:]]*$/{print; print "alt_urls: \"" a "\""; ad=1; next} {print}')"
     echo "  검색 유사 보강 — alt_urls 주입($(printf '%s' "$alt_urls" | wc -w)개 매체)"   # 가시성(Actions 로그)
+  fi
+
+  # event_key 도장 — 픽이 심은 '# ekey:'(후보 event_key)를 frontmatter event_key 로 주입(alt_urls 와 동일 awk·첫 --- 직후).
+  #   뷰어 build-viewer 가 meta.event_key 를 기사에 패스스루 → feedMatch event_key 티어 활성(url 드리프트 요약 재연결·260714).
+  #   빈값이면 무주입(자동픽·폰공유·전문붙여넣기 무마커 = 하위호환). no_thumb 보다 *앞*에서 주입 → 최종 frontmatter 상 no_thumb 아래 = no_thumb 2행 윈도 불변.
+  if [ -n "${ekey_val// }" ]; then
+    out="$(printf '%s\n' "$out" | awk -v ek="$ekey_val" \
+          '!ek_d && /^---[[:space:]]*$/{print; print "event_key: \"" ek "\""; ek_d=1; next} {print}')"
+    echo "  event_key 도장 주입 — 피드 사건매칭 티어 활성용"   # 가시성(Actions 로그)
   fi
 
   # AI 썸네일 전역 OFF(설정 genImgOn=false) → no_thumb 도장(ask.sh 건별 주입과 동일 awk) — thumb_gen 이 제미나이 생성만
