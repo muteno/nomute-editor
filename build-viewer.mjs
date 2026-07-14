@@ -59,7 +59,8 @@ try {
 } catch { /* queue 없음 */ }
 
 // 수집함 cross 인덱스(이슈 판정용) — viewer/candidates.json url→cross 맵. 직접공유분(매칭 없음)은 cross 0 → issue false(운영자: 직접은 어쩔 수 없음).
-const CROSS = new Map(), BRK = new Map(), CAT = new Map(), GRADE = new Map(), CTITLE = new Map(), KOTITLE = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계) · GRADE·CTITLE = 이슈 배지 게이트용(260702 옵션2) · KOTITLE = 외신 번역 제목 폴백(260703)
+const CROSS = new Map(), BRK = new Map(), CAT = new Map(), GRADE = new Map(), CTITLE = new Map(), KOTITLE = new Map(), EKEY = new Map();   // BRK = AI 긴급 판정 전파 · CAT = 후보 카테고리(gate_judge AI 분류 → 픽 기사 frontmatter category 빈값 시 승계) · GRADE·CTITLE = 이슈 배지 게이트용(260702 옵션2) · KOTITLE = 외신 번역 제목 폴백(260703) · EKEY = 사건 그룹라벨(event_key) → 피드 기사 스탬프(뷰어 feedMatch event_key 티어 = 제목폴백보다 강한 사건매칭 활성 · 260714)
+const _normEk = u => String(u || '').trim().replace(/\/+$/, '');   // 뷰어 _normU 와 동일(끝슬래시만) — event_key 맵 키 정규화(rep url·cluster_member url 표기흔들림 흡수)
 try {
   const cj = JSON.parse(readFileSync('viewer/candidates.json', 'utf8'));
   for (const c of (Array.isArray(cj) ? cj : (cj.candidates || []))) if (c.url) {
@@ -69,6 +70,8 @@ try {
     GRADE.set(c.url, c.grade == null ? null : c.grade);   // 이슈 배지 grade 게이트(null=미채점 관용)
     CTITLE.set(c.url, c.title || '');   // 이슈 배지 정형·홍보컷은 후보 원제목 기준(요약 제목 아님)
     if (c.title_ko && c.title_ko_of === c.title) KOTITLE.set(c.url, c.title_ko);   // 외신 번역 도장(gate 편승) — frontmatter title_ko 없는 픽 기사(프롬프트 이전 분석·LLM 누락)의 피드 제목 폴백(뷰어 scKoTitle 동일 술어)
+    // event_key = rep url + cluster_members url 전부에 매핑(첫 등장 우선) → 분석 url이 rep든 대체매체든(403 우회·리다이렉트) 같은 event_key 스탬프 = rep 드리프트 넘어 사건 동일성 보존. 값 표기흔들림은 뷰어가 _normU로 흡수.
+    if (c.event_key) { const ek = String(c.event_key); for (const u of [c.url, ...((c.cluster_members) || [])]) { const k = _normEk(u); if (k && !EKEY.has(k)) EKEY.set(k, ek); } }
   }
 } catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
 
@@ -135,6 +138,7 @@ for (const f of files) {
       category: meta.category || CAT.get(meta.url || '') || '',   // frontmatter category 우선 → 없으면 후보 cat(gate_judge AI 분류) 승계 → 둘 다 없으면 뷰어 articleCat 키워드 폴백(미술관 흉기난동=사회 교정·260626)
       breaking: BRK.has(meta.url || '') ? BRK.get(meta.url || '') : /\[\s*(속보|긴급)\s*\]|긴급\s*속보/.test(meta.title || ''),   // 긴급 = 매칭되면 AI breaking_judge 판정 따름(AI가 NO면 제목 [속보]여도 X) · 미매칭(직접공유)만 제목 표식 폴백.
       cross: CROSS.get(meta.url || '') || 0,                    // 수집함 매칭 매체 수(직접공유=0)
+      event_key: meta.event_key || EKEY.get(_normEk(meta.url)) || '',   // 사건 그룹라벨 — frontmatter 우선(후속 파이프 배선 시) → 없으면 candidates url/cluster 매칭 스탬프. 뷰어 feedMatch event_key 티어(url 드리프트 요약을 제목폴백 전에 강한 식별로 재연결·260714) · 직접공유·미매칭은 빈 문자열(티어 자동 스킵)
       issue: issEligible(meta.url),                             // index3: 이슈여부 = cross≥10 AND grade(null‖≥2) AND !badgeJunk(260702 옵션2 — 옛 cross≥8 단독은 홍보·시황이 다매체 동시배포만으로 배지 획득·수집확대 인플레로 남발). 직접공유분은 매칭 없어 false.
       summary: meta.summary || '',
       guidelines_version: meta.guidelines_version || '',
