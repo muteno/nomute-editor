@@ -870,6 +870,13 @@
   .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 강조색 굵게(핵심 포인트·수치) */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
+  /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
+  .tbrief-prop { margin:var(--sp-2) 0 0; padding-top:var(--sp-2); border-top:1px solid var(--line2); }
+  .tbrief-prop ul { margin:var(--sp-1) 0 0; padding:0; list-style:none; }
+  .tbrief-prop li { position:relative; padding-left:15px; /* raw-ok: 블릿 점(left2+지름5)과 본문 광학 간격 8 — sp 사다리 밖 1회성 */ margin:var(--sp-1) 0; font-size:var(--fs-sm); line-height:1.7; /* raw-ok: 본문 1.85와 태그행 사이 밀도(전략 줄 = 단문) */ color:var(--fg); word-break:break-word; }
+  .tbrief-prop li::before { content:''; position:absolute; left:2px; top:.6em; width:5px; height:5px; border-radius:50%; background:var(--accent); box-shadow:0 0 6px rgba(var(--accent-rgb),.5); }   /* 블릿 = 강조색 점(문자 블릿 × — §디자인 3-1 회피·CSS 도형) */
+  .tbrief-prop li b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 본문(.tbrief-t b)과 동일 결 */
+  .tbrief-act { display:inline-block; margin-left:var(--sp-1); vertical-align:1px; text-decoration:none; }   /* 행동 필(피크 예약) = .ch-mchip 칩 정본을 앵커로 계승 — 탭하면 캘린더 템플릿 */
   /* ── 브리프 스크랩 팝업(#trefdlg — 운영자 260712 "지금 창 위에 바로·보도자료 기사처럼") : 셸 = #trviewdlg 미러(base dialog 무채 글래스 + .modal-head 정본) ── */
   #trefdlg { width:min(480px,94vw); padding:0; display:flex; flex-direction:column; overflow:hidden; }
   #trefdlg:not([open]) { display:none; }   /* 유령 블록 차단(#tooldlg 가드 계승) */
@@ -10007,7 +10014,7 @@ function renderChan() {
   if (bsecs && !bsecs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsecs[0].k;   // 결측 섹션 방어(생성분이 일부만 와도 첫 탭으로)
   if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', 'AI 요약', `<div class="tbrief">` +
     (bsecs ? `<div class="ch-seg">${bsecs.map(s => `<button class="ch-mchip${s.k === CHAN_BSEC ? ' on' : ''}" type="button" data-bs="${esc(s.k)}">${esc(s.label === '전체 총론' ? '총론' : s.label)}</button>`).join('')}</div>` : '') +
-    `<p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`);
+    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`);   // 클로신의 제안 = 전략 줄('→ ') 분리 판(운영자 260714 "위 = 분석 / 아래 = 왓투두 블릿") — 전략 줄 없으면 hidden 유지
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(String(d.generated_kst || '').slice(5, 16).replace('T', ' '))} 수집</span>`, '<div class="ch-stats">' +
     st('팔로워', vf(p.followers_count), 'follows') + st('조회수', vf(a.views), 'views') + st('도달', vf(a.reach), 'reach') +
     st('공유', vf(a.shares)) + st('저장', vf(a.saves)) + st('프로필 방문', vf(a.profile_views), 'profile_views') + '</div>');
@@ -10058,17 +10065,44 @@ function renderChan() {
   if (bt && CHANB) {
     bt.textContent = '';
     const bcur = bsecs ? bsecs.find(s => s.k === CHAN_BSEC) : null;   // 기간 탭 선택분(운영자 260714) — sections 없으면 종전 전문(text)
-    const txt = (bcur ? bcur.text : CHANB.text) || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
-    const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
-    const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a2 = document.createElement('a'); a2.href = u.href; a2.target = '_blank'; a2.rel = 'noopener noreferrer'; a2.textContent = label; bt.appendChild(a2); } catch { addText(label); } };
-    let last = 0, m;
-    while ((m = TOK.exec(txt))) {
-      addText(txt.slice(last, m.index)); last = TOK.lastIndex;
-      if (m[1]) { const b2 = document.createElement('b'); b2.textContent = m[1].slice(1, -1); bt.appendChild(b2); }
-      else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
-      else if (m[3]) { addLink(m[3], m[3]); }
+    const parseInto = (el, s) => {   // 인라인 파서(*별표*→<b> · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러)
+      const TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+      const addText = z => { if (z) el.appendChild(document.createTextNode(z)); };
+      const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a2 = document.createElement('a'); a2.href = u.href; a2.target = '_blank'; a2.rel = 'noopener noreferrer'; a2.textContent = label; el.appendChild(a2); } catch { addText(label); } };
+      let last = 0, m;
+      while ((m = TOK.exec(s))) {
+        addText(s.slice(last, m.index)); last = TOK.lastIndex;
+        if (m[1]) { const b2 = document.createElement('b'); b2.textContent = m[1].slice(1, -1); el.appendChild(b2); }
+        else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+        else if (m[3]) { addLink(m[3], m[3]); }
+      }
+      addText(s.slice(last));
+    };
+    // 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿") — '→ ' 전략 줄을 본문에서 떼어 분리 판으로 · 전략 줄 없는 기간 탭 = 판 hidden 유지
+    const rawTxt = (bcur ? bcur.text : CHANB.text) || '', props = [], bodyLn = [];
+    rawTxt.split('\n').forEach(ln => { const t2 = ln.trim(); if (/^→/.test(t2)) props.push(t2.replace(/^→\s*/, '')); else bodyLn.push(ln); });
+    parseInto(bt, bodyLn.join('\n').replace(/\n{3,}/g, '\n\n').trim());
+    const pb = box.querySelector('.tbrief-prop'), pu = pb ? pb.querySelector('ul') : null;
+    if (pu && props.length) {
+      pb.hidden = false;
+      // 행동 필(운영자 260714 승인 "한수 진행") = 전략 줄마다 게시 예약 — 팔로워 접속 피크(KST · insta_data online_peak_kst 1위) 시각으로 구글 캘린더 템플릿 · 피크 데이터 없으면 다음 정시(시각 날조 금지 = 라벨서 '피크' 문구 제외)
+      const peakH = (() => { const pk = (d.online_peak_kst || [])[0]; const n2 = parseInt(pk, 10); return Number.isInteger(n2) && n2 >= 0 && n2 <= 23 ? n2 : null; })();
+      const nowK = new Date(Date.now() + (540 + new Date().getTimezoneOffset()) * 60000);   // KST 벽시계(기기 TZ 무관 · 캘린더 ctz=Asia/Seoul와 정합)
+      const st = new Date(nowK); st.setMinutes(0, 0, 0);
+      if (peakH != null) { st.setHours(peakH); if (st <= nowK) st.setDate(st.getDate() + 1); } else st.setHours(st.getHours() + 1);
+      const fmtG = d2 => `${d2.getFullYear()}${String(d2.getMonth() + 1).padStart(2, '0')}${String(d2.getDate()).padStart(2, '0')}T${String(d2.getHours()).padStart(2, '0')}0000`;
+      const en2 = new Date(st.getTime() + 30 * 60000);
+      const dayLb = st.getDate() === nowK.getDate() ? '오늘' : '내일';
+      props.forEach(tx => {
+        const li = document.createElement('li'); parseInto(li, tx);
+        const act = document.createElement('a'); act.className = 'ch-mchip tbrief-act';
+        act.href = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('[노뮤트] ' + tx.replace(/\*/g, '').split('—')[0].trim().slice(0, 60)) +
+          '&dates=' + fmtG(st) + '/' + fmtG(en2) + '&ctz=Asia/Seoul&details=' + encodeURIComponent(tx.replace(/\*/g, '') + (peakH != null ? '\n(팔로워 접속 피크 ' + peakH + '시 KST — 노뮤트 채널 요약)' : '\n(노뮤트 채널 요약)'));
+        act.target = '_blank'; act.rel = 'noopener noreferrer';
+        act.textContent = `${dayLb} ${st.getHours()}시 예약`;
+        li.appendChild(act); pu.appendChild(li);
+      });
     }
-    addText(txt.slice(last));
   }
   const pts = box.querySelectorAll('.ch-pt'); posts.forEach((x, i) => { if (pts[i]) pts[i].textContent = x.name || '(무캡션)'; });
   // 호응 신호 버킷명 = textContent 주입(XSS 안전 관용구) — data-bk 훅으로 신호 행만 지정(포맷·3기 ch-bk는 esc로 이미 채움)
