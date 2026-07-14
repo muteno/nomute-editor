@@ -58,7 +58,7 @@ td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:#cfd8d3;
 <!-- ─────────────────────────── ② 클립보드/캡쳐 → 드라이브 ─────────────────────────── -->
 <h2>② 폰 클립보드/캡쳐 → 공유드라이브 (폰 → PC) <span class="tag">폰 Termux</span></h2>
 <div class="card">
-<div class="k">지금은 Termux가 <code>gdrive:Shared</code>(내 드라이브/Shared)를 <b>받기</b>만 한다(<code>drive-gallery-sync.sh</code>). 여기선 <b>같은 리모트에 올려서</b> PC가 받게 한다 = 정확히 반대 방향. 새 스크립트 = <code>docs/termux-to-drive.sh</code>.</div>
+<div class="k">지금은 Termux가 <code>gdrive:Shared</code>(ems1130g@gmail.com · 전 PC 저장경로가 여기로 자동 동기화)를 <b>받기</b>만 한다(<code>drive-gallery-sync.sh</code>). 여기선 <b>같은 리모트에 폰이 자동으로 올려서</b> 모든 PC가 받게 한다 = 정확히 반대 방향(텔레그램 우회 제거). 정본 스크립트 = <code>docs/termux-drive-gallery-upsync.sh</code>(갤러리) · <code>docs/termux-drive-clipboard-upsync.sh</code>(클립보드). <b>루프 차단·베이스라인·오프라인 아웃박스 내장.</b></div>
 </div>
 
 <div class="card" style="border-color:rgba(255,225,61,.35)">
@@ -67,25 +67,11 @@ td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:#cfd8d3;
 <div class="note">브라우저 뜨면 전체 권한으로 동의. 이후 받기·보내기 둘 다 됨. (이미 <code>drive</code> 전체로 잡았으면 이 단계 건너뜀.)</div>
 </div>
 
-<h3>설치 (1회 · 폰 Termux · 레포 루트에서)</h3>
-<div class="field"><code id="w2">pkg install rclone termux-api
-cp docs/termux-to-drive.sh ~/bin/to-drive && chmod +x ~/bin/to-drive
-mkdir -p ~/.shortcuts
-ln -sf ~/bin/to-drive ~/.shortcuts/클립보드→드라이브
-printf '#!/data/data/com.termux/files/usr/bin/bash\n~/bin/to-drive shot\n' > ~/.shortcuts/최근캡쳐→드라이브
-chmod +x ~/.shortcuts/*
-cp ~/bin/to-drive ~/bin/termux-url-opener</code><button onclick="cp('w2',this)">복사</button></div>
-<div class="note">Termux:API 앱 + Termux:Widget 앱도 스토어/F-Droid에서 설치돼 있어야 위젯·클립보드가 동작.</div>
-
-<h3>사용</h3>
-<table>
-<tr><th>하고 싶은 것</th><th>방법</th></tr>
-<tr><td>복사한 <b>클립보드 텍스트</b> 올리기</td><td>홈 화면 <b>Termux:Widget</b> → <code>클립보드→드라이브</code> 탭</td></tr>
-<tr><td>방금 찍은 <b>캡쳐</b> 올리기</td><td><b>Termux:Widget</b> → <code>최근캡쳐→드라이브</code> 탭 (Screenshots 폴더 최신 1장)</td></tr>
-<tr><td>아무 <b>텍스트/URL 공유</b>로 올리기</td><td>공유 시트 → <b>Termux</b> 선택</td></tr>
-<tr><td>특정 파일 올리기</td><td><code>to-drive /sdcard/경로/파일</code></td></tr>
-</table>
-<div class="note">성공·실패는 알림 + <code>~/.to-drive.log</code>. 확인: <code>rclone lsf gdrive:Shared</code> 에 올린 파일 뜨면 자리 정상 → PC "내 드라이브 스트림"이면 <code>G:\내 드라이브\Shared</code>에 곧 나타남.</div>
+<h3>설치 = 단계별 순서도가 정본</h3>
+<div class="k">복사 버튼·성공신호까지 있는 <b>순서도</b>로 깔아 → <code>docs/reports/260713_폰설치순서도_업싱크스레드.html</code>(A 갤러리 · B 클립보드 · C 스레드). 두 스크립트를 <code>~/.termux/tasker/</code>에 두고 Tasker에 문다: <b>갤러리</b>=DriveSync 작업에 액션 추가(3분·잠금 공유) · <b>클립보드</b>=ClipSync 작업 + "클립보드 변경" 이벤트(안드10+는 Tasker에 <code>READ_LOGS</code> 1회).</div>
+<h3>확인</h3>
+<div class="field"><code id="w2">rclone lsf -R gdrive:Shared/FromPhone; tail -5 ~/.upsync.log; tail -5 ~/.clipsync.log</code><button onclick="cp('w2',this)">복사</button></div>
+<div class="note"><code>UP</code>=올림 · <code>PASS(traveled/dup)</code>=오고간·중복 스킵 · <code>baseline</code>=첫 등록. PC "내 드라이브 스트림"이면 <code>G:\내 드라이브\Shared\FromPhone</code>에 곧 나타남.</div>
 
 <!-- ─────────────────────────── ③ 윈도우 CapsLock 맥방식 ─────────────────────────── -->
 <h2>③ 윈도우 CapsLock 맥처럼 <span class="tag">Windows</span></h2>
@@ -123,7 +109,7 @@ cp ~/bin/to-drive ~/bin/termux-url-opener</code><button onclick="cp('w2',this)">
 <li><b>PowerToys</b> Keyboard Manager — 단순 CapsLock→한영 매핑만. 탭/길게 구분 ✕.</li>
 </ul>
 
-<div class="sub" style="margin-top:26px">정본 파일 = <code>docs/termux-to-drive.sh</code> · <code>docs/pc-downloader/CapsLock_한영_맥방식.ahk</code> · <code>docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md §9</code> · <code>scripts/phone_subs.sh</code>(THREADS_COOKIE 주석). 이 가이드는 세션 증발 대비 SSOT.</div>
+<div class="sub" style="margin-top:26px">정본 파일 = <code>docs/termux-drive-gallery-upsync.sh</code> · <code>docs/termux-drive-clipboard-upsync.sh</code> · <code>docs/pc-downloader/CapsLock_한영_맥방식.ahk</code> · <code>docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md §9</code> · <code>scripts/phone_subs.sh</code>(THREADS_COOKIE) · 단계별 = <code>docs/reports/260713_폰설치순서도_업싱크스레드.html</code>. 이 가이드는 세션 증발 대비 SSOT.</div>
 
 <script>
 function cp(id,btn){
