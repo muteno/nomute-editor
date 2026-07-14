@@ -1,30 +1,31 @@
 # 📱 공화도 민주도 '16세 미만 SNS 금지'…미국 56% 찬성
 
 **[프롬프트 설계]**
-- 화풍: A 수채화 — 걱정하는 부모와 취약한 아이의 정서가 사건의 심장이라 따뜻한 파스텔의 호소력이 맞다(휴먼·공감 = A, 카드 전 장 고정).
-- 분위기: 한밤 화면 불빛의 서늘함과 낮의 따뜻한 양육이 교차하는 톤 — 불안과 안도가 함께 도는 정서. 데이터(56%·초당적)조차 '사람들의 마음'으로 번역해 공감으로 착지.
-- 연출 방향: 뉴스 안 보는 부모도 '내 아이 얘기네' 하고 멈추게 — 아이 얼굴을 파랗게 물들이는 화면 불빛(이 사건의 결정적 상징)을 각 카드가 다른 거리에서 응시한다. 그 서늘한 파란빛이 뒤로 갈수록 따뜻한 빛에 자리를 내주는 색의 변화로 '차단이 아닌 관리'라는 결론을 시각으로 풀어낸다.
-- 독자 동선: 起 카드1 → 承 카드2·3·4 → 轉 카드5 → 承 카드6 → 結 카드7 · 훅=카드1 끝(질문형)+카드2 끝(예고형) · 감정 피크=카드4(공감) · 착지=위험은 막되 세상과 끊지 않는 '관리'의 줄타기
-- 연속성 앵커: 아이 = `Recurring subject — a Korean child around twelve years old with a round face and short bob hair, wearing a loose pale hoodie`(카드1·4·5·7) / 부모 = `Recurring subject — a Korean parent in their late thirties with gentle tired eyes, wearing a soft beige cardigan`(카드1·4·5·7) / 장소 = 같은 소박한 한국 가정 실내. 해당 카드 Scene 맺힘점 문장 다음에 그대로 복사.
+- 화풍: A 한국 웹툰 수채화 — 범인 잡는 고발극이 아니라 밤마다 아이 걱정하는 부모의 마음이 뼈대라, 따뜻한 파스텔이 정조에 맞다.
+- 분위기: 걱정과 안도가 겹친 야심한 밤빛 — 차가운 폰 불빛이 따뜻한 집 안을 파고드는 대비로 '남 얘기가 아닌 내 얘기'를 만든다.
+- 연출 방향: 독자(밤마다 아이 폰을 지켜보는 30·40대 부모)가 멈추는 이유는 "내 걱정이 유난이 아니었다"는 확인이다 — 그래서 통계(56%·초당적·부모 최고)를 숫자 표가 아니라 *한 가족의 밤 풍경*으로 번역해 보여준다. 강조점 = 캄캄한 방을 밝히는 단 하나의 파란 화면 불빛(사건 상징색). 전 카드가 이 파란빛을 공유하되, 마지막에 그 빛이 작게 길들여지며 착지한다.
+- 독자 동선: 起 카드1(밤의 걱정) → 承 카드2~4(56%·초당적·왜 위험한가) → 轉 카드5~6(차단이 아니라 관리·세계로 번짐) → 結 카드7(줄타기의 답) · 훅=카드1 끝(예고형: "품었을 걱정"→카드2 "혼자만의 게 아니었다"로 회수)+카드3→4(질문형 1회: "왜 이렇게까지"→카드4가 즉답) · 감정 피크=카드4(파란빛에 잠식된 아이 = 부모의 공포) · 착지 한 줄: 아이를 지키되 세상과 끊지도 않는 줄타기, 그 답을 세계가 쓰는 중.
+- 연속성 앵커: Recurring subject — a Korean woman in her late 30s with a low ponytail, wearing a soft cream cardigan (카드1·4·5·7) · Recurring subject — a Korean child around 12 with short dark hair, wearing pale blue pajamas (카드1·4·5·7) · Recurring place — a modest Korean apartment home, at night.
 
 ### [카드 1]
 **텍스트**
 ```text
-밤마다 화면 불빛에 붙들린 아이
-그 모습을 지켜보던 부모의 걱정
-이게 *나 혼자만의 유난*이었을까
+한밤중, 이불을 뒤집어쓴
+아이의 얼굴 위로 푸른 불빛
+잠든 줄 알았던 방을 지켜본
+*부모라면, 한 번쯤 품었을 걱정*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a child's vacant, unfocused eyes washed pale by the cold blue glow of a phone screen in the dark. Recurring subject — a Korean child around twelve years old with a round face and short bob hair, wearing a loose pale hoodie, curled under a blanket at night, the glowing phone held close to the face. In the doorway behind stands a watching parent — Recurring subject — a Korean parent in their late thirties with gentle tired eyes, wearing a soft beige cardigan, quietly worried. The child's gaze drifts toward the right edge, nose room on the right; the blue screen light is the only bright thing in the room.
-Camera: wide shot from eye-level, shot on 35mm lens
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: a single cold blue phone-screen glow as the one saturated color against a desaturated muted base, film-noir low-key lighting, deep shadows
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: the mother's quietly worried eyes catching the cold blue glow on her child's face from the doorway. Recurring subject — a Korean woman in her late 30s with a low ponytail, wearing a soft cream cardigan; she stands at the bedroom doorway, one hand resting on the frame, her gaze directed toward the right edge of the frame. Recurring subject — a Korean child around 12 with short dark hair, wearing pale blue pajamas; curled under a blanket on the bed, a smartphone lighting the small face from below in the otherwise dark room.
+Camera: MS from over-the-shoulder, shot on 85mm portrait lens
+Lighting/mood: cold blue smartphone screen-glow lighting the child from below, warm hall light spilling softly behind the mother, quiet nighttime tension
+Accent: a single cold-blue screen glow as the story's symbolic color, pooling against the warm pastel base
+Text handling: convey everything through imagery only, no signage, no numbers or letters rendered anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dim bedroom wall and bedding) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the bed and bedroom floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -34,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-child smartphone dark bedroom
+child smartphone bedroom night
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-*혼자가 아니었다*
-퓨리서치가 성인 9,750명에게 묻자
-56%가 '16세 미만 SNS 금지'에 찬성
-반대는 21%뿐, 근데 더 놀라운 게 있다
+그 걱정은 혼자만의 게 아니었다
+미국 성인 9,750명에게 물었더니
+*56%가 '16세 미만 SNS 금지'*
+반대는 21%뿐이었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: seen from directly overhead, a large crowd of ordinary adults splits — well over half stand bathed in warm light, having turned away from the cold blue phone-glow, while a smaller cluster of about one in five stays lit cold blue. The warm majority reads clearly as the far larger share, a shared leaning made visible in the two pools of light. No charts, no numbers, only the crowd. The gathering fills the frame edge to edge from a bird's-eye view.
-Camera: extreme long shot from a bird's-eye overhead angle, shot on 20mm wide lens
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: muted warm pastel base with a single cold blue phone-glow as the only vivid color point, soft daylight contrast
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: an ordinary American father in the front row, calm and resolute, gently lowering a glowing phone with one hand. Behind him a broad crowd of diverse adults of many ages fills the open plaza, and more than half of them are quietly reaching to lower or set down glowing phones while a much smaller group stands apart. Their collective posture reads as a clear majority making up its mind together. The setting is a bright open public plaza in daytime, a non-Korean civic space.
+Camera: WS from high angle, shot on 20mm wide lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, calm civic mood
+Accent: scattered cold-blue phone screens as the single symbolic color being gently lowered, against the muted daylight base
+Text handling: convey the majority through the crowd's gesture only, no signage, no numbers or letters rendered.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the open public plaza ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the plaza ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -71,22 +72,22 @@ Pew Research social media survey
 ### [카드 3]
 **텍스트**
 ```text
-놀라운 건, 편이 갈리지 않았다
-공화당도 59%, 민주당도 54%
-정치가 모든 걸 가르는 나라에서
-이 문제만은 *한목소리*였다
+놀랍게도 진영도 가리지 않았다
+공화 59%, 민주 54% 나란히 찬성
+그중 어린 자녀를 둔 부모는
+*65%로 가장 앞장섰다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: two crowds that normally stand apart — one washed in muted warm red, the other in muted blue — both turn their faces the same way, toward a single glowing phone at the upper center. The two groups approach from opposite sides of the frame yet their gazes converge on one point, an unexpected agreement between opposites. No banners, no logos, no lettering — only the two soft color washes marking the groups apart. The meeting point holds in the upper-center of the frame.
-Camera: wide shot from eye-level, shot on 24mm wide lens
-Lighting/mood: bright high-key light, clean white ambience, minimal shadow, hopeful and open
-Accent: desaturated base with only two soft color washes — muted red and muted blue, the story's symbolic political colors — as the sole accents, gentle daylight contrast
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: two ordinary parents from opposite political sides — one dressed in warm muted red tones, one in cool muted blue tones — standing shoulder to shoulder with the very same protective, worried expression. Around them adults from both color groups nod in quiet agreement instead of facing off. In the very front, a mother and father hold their young child's hand, and their earnest concern is the strongest note in the frame. The setting is a neutral civic space in soft daylight, a non-Korean crowd.
+Camera: MS two-shot from eye-level, shot on 50mm standard lens
+Lighting/mood: bright high-key light, clean open ambience, hopeful agreement
+Accent: muted red and blue as the story's symbolic tones meeting at the center where the two parents touch shoulders, softly held within the warm pastel base
+Text handling: convey the two sides through clothing color only, no flags, no logos, no letters or numbers rendered.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the open plaza ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the civic plaza ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -96,28 +97,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Republican Democrat voters
+bipartisan agreement parents crowd
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-특히 절실했던 이들이 있다
-어린 자녀 키우는 30·40대가 63%
-자녀 둔 부모 65%, 없는 응답자 52%
-걱정은 *양육 현장의 체감*이었다
+왜 이렇게까지 걱정할까
+밤잠을 앗고, 남과 비교하게 만들고
+불안과 우울로 밀어 넣는다
+*그래서 'SNS는 디지털 코카인'이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a parent's tender, worried eyes meeting the child's, one hand resting gently on the child's shoulder while the other softly lowers a small glowing phone. Recurring subject — a Korean parent in their late thirties with gentle tired eyes, wearing a soft beige cardigan, leaning close. Recurring subject — a Korean child around twelve years old with a round face and short bob hair, wearing a loose pale hoodie, looking up at the parent. Warm afternoon light fills the living room; the phone's cold blue glow is small now, held at the edge, no longer dominating.
-Camera: medium close-up from eye-level, shot on 85mm portrait lens
-Lighting/mood: soft wraparound key light, gentle falloff, tender warm intimacy
-Accent: warm pastel base with a single small cold blue phone-glow as the one point of saturated color, soft daylight contrast
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: the child's tired, unfocused eyes with faint dark circles, pale and washed in cold blue screen-light, a vacant thousand-yard stare drifting past the phone. Recurring subject — a Korean child around 12 with short dark hair, wearing pale blue pajamas; alone and hunched in a dark room, the smartphone the only light source, lighting the face from below. Sleeplessness and unease sit heavy in the slumped posture.
+Camera: tight close-up from eye-level, shot on 85mm portrait lens
+Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless unease, the deepest shadows of the whole sequence
+Accent: the cold-blue screen glow at its strongest as the single symbolic color, all but swallowing the warm base
+Text handling: no app names, no brand marks, no drug names, no letters or numbers rendered on the screen or anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the warm living-room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the bed in the dark room) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +128,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-parent child smartphone
+teen social media addiction anxiety
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그런데 원한 건 *'차단'이 아니었다*
-계정 부모 동의 85%, 시간 관리 87%
-나이 인증엔 78%가 찬성했다
-완전 금지보다 '관리'에 공감이 컸다
+그런데 원하는 건
+*완전한 차단이 아니었다*
+부모 동의 85%, 시간제한 87%
+막기보다 '함께 관리하기'에 공감했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a single hand turning the phone's cold blue glow down to a dim, gentle warmth rather than switching it off — the exact instant between too much and none. Recurring subject — a Korean parent in their late thirties with gentle tired eyes, wearing a soft beige cardigan, and beside them the recurring child around twelve with a round face and short bob hair in a loose pale hoodie, watching calmly. Tight on the hand and the softening screen light, the child's face easing at the edge. The gesture is measured, a boundary drawn, not slammed shut.
-Camera: close-up from a slight high angle, shot on 100mm macro lens
-Lighting/mood: warm soft desk-lamp light, quiet wistful tone
-Accent: the cold blue phone-glow softening toward warm as the single color accent against a muted pastel base, gentle low light
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: two hands meeting gently over a smartphone being set down on a bedside charging spot — the mother's hand (a soft cream cardigan sleeve) guiding, the child's smaller hand agreeing, the phone lowered rather than snatched away. A small bedside clock sits warmly beside them. The gesture reads as a shared household rule, not a punishment. The setting is a calm home tabletop under a warm lamp.
+Camera: extreme close-up of the hands from high angle, shot on 100mm macro lens
+Lighting/mood: warm soft desk-lamp light, calm and reassuring, the tension of the night easing
+Accent: the phone's cold-blue glow now dimmed to a small tamed point as the single symbolic color, warm lamp light gathered around it
+Text handling: no app icons, no brand marks, no numbers or letters rendered on the phone or the clock.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the living-room floor and low table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the tabletop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -164,22 +165,22 @@ parental controls screen time
 ### [카드 6]
 **텍스트**
 ```text
-세계는 이미 선을 긋고 있다
-호주가 작년 12월 16세 미만을 막았고
-영국·캐나다·브라질이 뒤따랐다
-'디지털 코카인' 경계가 *국경을 넘는다*
+미국만의 얘기가 아니다
+호주가 2025년 12월 문을 닫았고
+영국·캐나다·브라질도 뒤따랐다
+*아이 SNS 규제는 세계의 기본값이 됐다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: across a long row of rooftops at dusk, the cold blue glow in one window after another gives way to warm lamplight, spreading home to home. The nearest houses have already turned warm while distant ones still flicker cold blue, a wave of change moving across the horizon. Tiny silhouettes of families are faintly visible inside the warm windows. The row of homes stretches edge to edge under a wide twilight sky.
-Camera: establishing wide shot from eye-level, shot on 20mm wide lens
-Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
-Accent: warm golden lamplight replacing the fading cold blue window-glow, the receding blue as the single retreating accent against a warm pastel base
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: a sweeping night skyline of apartment homes where cold-blue window glows are dimming one by one into warm amber, like a wave of lights-out crossing the world. In the far distance faint silhouettes of different city skylines suggest several countries under the same night sky. No people are visible — only the softly glowing windows telling the story. The setting is an ultra-wide nighttime cityscape spanning a distant horizon.
+Camera: extreme long shot from a high wide vantage, shot on 14mm ultra-wide lens
+Lighting/mood: cold blue pre-dawn city light warming to amber, vast and quiet transition
+Accent: the cold-blue window glows dimming to warm amber as the single symbolic color spreading across the skyline
+Text handling: no city names, no signage, no numbers or letters rendered on any building.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the twilight sky over a row of rooftops) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the night skyline) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,28 +190,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Australia social media ban teenagers
+Australia under 16 social media ban
 ```
 
 ### [카드 7]
 **텍스트**
 ```text
-개인의 몫이던 아이의 화면이
-'어디에 선을 그을까'의 문제가 됐다
-답은 차단이 아니라, 위험은 막되
-세상과 끊지 않는 *줄타기*였다
+완전히 끊어낼 수도
+그냥 둘 수도 없다
+*아이를 지키되 세상과 잇는 길*
+그 답을 세계가 쓰고 있다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a child pauses at a half-open garden gate, warm daylight spilling through the gap, a parent's hand resting on the gate — neither locking it shut nor flinging it wide. Recurring subject — a Korean child around twelve years old with a round face and short bob hair, wearing a loose pale hoodie, standing at the threshold facing forward. Recurring subject — a Korean parent in their late thirties with gentle tired eyes, wearing a soft beige cardigan, one hand on the gate. The child looks directly out, centered and calm; the gate held at a measured middle position.
-Camera: medium shot from eye-level, front-on, shot on 40mm lens
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: warm pastel throughout with only a faint whisper of cold blue remaining, a single gentle color point, soft daylight
-Text handling: avoid all rendered text, no signage words, no logos, no brand marks; convey meaning through composition and pictogram detail only.
+Scene: Emotional focal point: a small calm smile passing between mother and child in soft morning light, the smartphone dimmed and set aside within easy reach on the low table — neither snatched away nor clutched. Recurring subject — a Korean woman in her late 30s with a low ponytail, wearing a soft cream cardigan, and Recurring subject — a Korean child around 12 with short dark hair, wearing pale blue pajamas; they sit close together, both facing gently toward the viewer.
+Camera: MS two-shot from eye-level, front-on, shot on 50mm standard lens
+Lighting/mood: warm soft morning light, gentle and hopeful, a quiet release after the long night
+Accent: the tamed cold-blue phone glow reduced to a tiny point on the table, warm morning tones dominant, a single symbolic accent at rest
+Text handling: no signage, no app marks, no numbers or letters rendered anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the garden path and gate) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the living room floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -220,5 +221,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-child garden gate
+family digital parenting balance
 ```
