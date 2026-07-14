@@ -1,0 +1,228 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">
+<title>폰·PC 통합 순서도 — 업싱크 2종 + 스레드 + 윈도우 CapsLock</title><style>
+:root{color-scheme:dark}
+body{margin:0;padding:18px 12px 70px;background:#0b0d0c;color:#eef7f0;font-family:'Pretendard','Noto Sans KR','Malgun Gothic',system-ui,sans-serif;font-size:14px;line-height:1.55}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:15px;margin:24px 0 8px;color:#00EED2}
+.meta{color:#9fb3ab;font-size:12px;margin-bottom:10px}
+.wrap{overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:16px;margin-bottom:6px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;min-width:720px}
+th,td{border-bottom:1px solid rgba(255,255,255,.07);padding:8px 8px;text-align:left;vertical-align:top}
+th{background:#14171a;color:#00EED2;font-size:11px;white-space:nowrap}
+td.n{color:#9fb3ab;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.wh{font-weight:700;min-width:120px}td.ok{color:#9fb3ab;font-size:12px;min-width:130px}
+.w{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.tx{background:rgba(56,198,255,.14);color:#38C6FF}.tk{background:rgba(255,225,61,.14);color:#FFE13D}
+.ph{background:rgba(255,94,200,.14);color:#FF5EC8}.pc{background:rgba(255,255,255,.10);color:#eef7f0}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#5AFFE6;word-break:break-all}
+button.cp{background:rgba(0,238,210,.12);color:#00EED2;border:1px solid rgba(0,238,210,.35);border-radius:10px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px}
+button.cp:active{transform:scale(.93)}
+.note{background:rgba(24,25,28,.66);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;font-size:12.5px;margin:8px 0;color:#cfe3da}
+.note b{color:#FFE13D}
+pre.src{display:none}
+</style></head><body>
+<h1>폰·PC 통합 순서도 — 갤러리·클립보드 업싱크 + 스레드 + 윈도우 CapsLock</h1>
+<div class="meta">2026-07-13 21:53 KST · 위에서부터 순서대로 · [복사] 버튼 = 그 단계 명령 전체가 클립보드로(Termux에 길게 눌러 붙여넣기 → 엔터) · 배지 = 어느 앱에서 하는지</div>
+<h2>0. 준비 (1회 · 2분)</h2><div class='note'>0-1이 통과면 0-2는 건너뛴다. PR 머지(1)는 레포 기록용 — 폰 동작 자체는 이 페이지 복사 버튼만으로 됨.</div><div class='wrap'><table><tr><th>순서</th><th>어디서</th><th>뭘 한다</th><th>어떻게 (입력·터치 그대로)</th><th>성공 신호</th></tr><tr><td class='n'>0-1</td><td><span class='w tx'>Termux</span></td><td class='wh'>rclone 쓰기 권한 점검</td><td>명령 실행 → 결과 확인 <button class='cp' data-t='scope'>복사</button></td><td class='ok'><code>scope = drive</code>거나 아무것도 안 나오면 통과 → 1로. <code>drive.readonly</code>가 보이면 0-2</td></tr><tr><td class='n'>0-2</td><td><span class='w tx'>Termux</span></td><td class='wh'>(readonly일 때만) 전체 권한 재연결</td><td>명령 2줄 실행 → 브라우저 동의 창에서 허용 <button class='cp' data-t='scopefix'>복사</button></td><td class='ok'><code>rclone lsf gdrive:Shared</code> 목록 정상</td></tr><tr><td class='n'>1</td><td><span class='w ph'>브라우저</span></td><td class='wh'>PR 머지(레포 기록용 · 폰 동작과 무관)</td><td>github.com/muteno/nomute-editor/pull/2211 → Ready for review → Merge </td><td class='ok'>머지됨 표시</td></tr></table></div>
+<h2>A. 갤러리 → 드라이브 (약 2분)</h2><div class='wrap'><table><tr><th>순서</th><th>어디서</th><th>뭘 한다</th><th>어떻게 (입력·터치 그대로)</th><th>성공 신호</th></tr><tr><td class='n'>A-1</td><td><span class='w tx'>Termux</span></td><td class='wh'>갤러리 스크립트 설치+1회 실행 (원페이스트)</td><td>[복사] → Termux 화면 길게 눌러 붙여넣기 → 엔터 <button class='cp' data-t='gal'>복사</button></td><td class='ok'>마지막 줄에 <code>baseline: N files registered, no upload</code></td></tr><tr><td class='n'>A-2</td><td><span class='w tk'>Tasker</span></td><td class='wh'>DriveSync 작업에 액션 2 추가</td><td>작업 탭 → <b>DriveSync</b> 열기 → ＋ → 플러그인 ▸ <b>Termux:Tasker</b> → 연필 → Executable = <code>/data/data/com.termux/files/home/.termux/tasker/drive-gallery-upsync.sh</code> · Arguments 비움 · Terminal session·Wait for result 해제 → 뒤로(저장) </td><td class='ok'>DriveSync 액션이 2개</td></tr><tr><td class='n'>A-3</td><td><span class='w ph'>폰 화면</span></td><td class='wh'>동작 확인</td><td>스크린샷 1장 찍고 화면 잠갔다 풀기(또는 3분 대기) </td><td class='ok'>A-4 명령에 파일 보임</td></tr><tr><td class='n'>A-4</td><td><span class='w tx'>Termux</span></td><td class='wh'>드라이브 확인</td><td>명령 실행 <button class='cp' data-t='galchk'>복사</button></td><td class='ok'>방금 스크린샷 파일명 표시</td></tr></table></div>
+<h2>B. 클립보드 → 드라이브 (약 5분)</h2><div class='note'><b>B-2가 관문.</b> 글자가 뜨면 B-3·B-3′·B-4 전부 건너뛰고 B-5로. ⚠️ 비밀번호·OTP 복사도 올라가니 민감할 땐 Tasker에서 ClipSync 프로필만 잠깐 끄기.</div><div class='wrap'><table><tr><th>순서</th><th>어디서</th><th>뭘 한다</th><th>어떻게 (입력·터치 그대로)</th><th>성공 신호</th></tr><tr><td class='n'>B-1</td><td><span class='w ph'>폰 화면</span></td><td class='wh'>아무 텍스트 복사해두기</td><td>아무 글자 길게 눌러 복사 </td><td class='ok'>—</td></tr><tr><td class='n'>B-2</td><td><span class='w tk'>Tasker</span></td><td class='wh'>Tasker가 클립을 읽는지 선판별</td><td>작업 탭 → ＋ → 이름 <code>클립시험</code> → ＋ → 알림 ▸ <b>플래시</b> → 텍스트 칸에 <code>%CLIP</code> → 뒤로 → ▶ 실행 </td><td class='ok'>방금 복사한 글자가 화면에 뜸 → <b>B-5로 점프</b>. 빈칸/그대로 %CLIP이면 B-3</td></tr><tr><td class='n'>B-3</td><td><span class='w pc'>PC</span></td><td class='wh'>(택1) READ_LOGS 1회 부여 — PC</td><td>USB 디버깅 켜고 연결 후 [복사] 명령 실행 <button class='cp' data-t='adbpc'>복사</button></td><td class='ok'>에러 없이 끝남</td></tr><tr><td class='n'>B-3′</td><td><span class='w tx'>Termux</span></td><td class='wh'>(택1) READ_LOGS 1회 부여 — PC 없이</td><td>[복사] → 무선 디버깅 페어링하며 순서대로 실행 <button class='cp' data-t='adbtx'>복사</button></td><td class='ok'><code>grant</code> 줄이 에러 없이 끝남</td></tr><tr><td class='n'>B-4</td><td><span class='w tk'>Tasker</span></td><td class='wh'>재시험</td><td>Tasker 다시 열고 B-2 재실행 </td><td class='ok'>복사한 글자가 뜸</td></tr><tr><td class='n'>B-5</td><td><span class='w tx'>Termux</span></td><td class='wh'>클립보드 스크립트 설치+1회 실행 (원페이스트)</td><td>[복사] → Termux에 붙여넣기 → 엔터 <button class='cp' data-t='clip'>복사</button></td><td class='ok'><code>~/.clipsync.log</code> 생성(QUEUE/UP 또는 조용히 종료)</td></tr><tr><td class='n'>B-6</td><td><span class='w tk'>Tasker</span></td><td class='wh'>작업 ClipSync 만들기</td><td>작업 탭 → ＋ → 이름 <code>ClipSync</code> → 액션① 파일 ▸ <b>파일 쓰기</b>{파일 <code>Documents/nomute_clips/staging.txt</code> · 텍스트 <code>%CLIP</code> · '추가' 체크 해제} → 액션② 플러그인 ▸ <b>Termux:Tasker</b>{Executable = <code>/data/data/com.termux/files/home/.termux/tasker/drive-clipboard-upsync.sh</code> · 체크들 해제} </td><td class='ok'>액션 2개</td></tr><tr><td class='n'>B-7</td><td><span class='w tk'>Tasker</span></td><td class='wh'>트리거 프로필 만들기</td><td>프로필 탭 → ＋ → <b>이벤트</b> → 검색창에 <code>클립</code>(clip) → <b>클립보드 변경</b> 선택 → 뒤로 → 작업 = <b>ClipSync</b> </td><td class='ok'>프로필 ON(초록)</td></tr><tr><td class='n'>B-8</td><td><span class='w tk'>Tasker</span></td><td class='wh'>(권장) DriveSync에 액션 3</td><td>DriveSync 작업 → ＋ → Termux:Tasker → Executable = 위 클립보드 스크립트 경로 </td><td class='ok'>액션 3개 = 오프라인 대기분 자동 재시도</td></tr><tr><td class='n'>B-9</td><td><span class='w ph'>폰 화면</span></td><td class='wh'>권한 확인</td><td>안드 설정 → 앱 → Tasker → 권한 → 파일/미디어 = <b>모든 파일 접근 허용</b> </td><td class='ok'>—</td></tr><tr><td class='n'>B-10</td><td><span class='w tx'>Termux</span></td><td class='wh'>최종 확인</td><td>아무 텍스트 복사 → 몇 초 뒤 명령 실행 <button class='cp' data-t='clipchk'>복사</button></td><td class='ok'><code>clip_*.txt</code> 보임 + 로그에 UP</td></tr></table></div>
+<h2>C. 스레드(Threads) 구독 — 어제 하던 것 마무리 (약 5분)</h2><div class='note'>코드·뷰어·API는 전부 라이브 완료 상태. <b>막혀 있는 건 딱 하나 = 스레드 계정이 0개</b>(C-1). C-2·C-3 가계정 쿠키는 선택이지만 강권(게스트 파싱은 로그인월로 불안정 — 그래서 가계정 방식으로 만든 것 · 본계정 쿠키 금지 = 밴 리스크).</div><div class='wrap'><table><tr><th>순서</th><th>어디서</th><th>뭘 한다</th><th>어떻게 (입력·터치 그대로)</th><th>성공 신호</th></tr><tr><td class='n'>C-1</td><td><span class='w ph'>뷰어</span></td><td class='wh'>스레드 구독 계정 등록 (현재 0개 = 이게 없어서 수집 안 돎)</td><td>뷰어(<a href="https://apps.nomute.kr" target="_blank" rel="noopener" style="color:#38C6FF">apps.nomute.kr</a>) → SNS 탭 → 구독 섹션 <b>계정</b> 버튼 → 모달 → <b>스레드</b> 탭 → 보고 싶은 계정 핸들 추가·저장 (또는 채팅으로 핸들 목록 주면 내가 등록) </td><td class='ok'>모달에 계정 목록 표시</td></tr><tr><td class='n'>C-2</td><td><span class='w ph'>브라우저</span></td><td class='wh'>가계정(부계) 세션쿠키 복사</td><td><b>가계정으로</b> <a href="https://www.threads.com" target="_blank" rel="noopener" style="color:#38C6FF">threads.com</a> 로그인(PC 크롬 권장) → F12 → Network → 아무 요청 클릭 → Request Headers → <code>cookie:</code> 값 <b>전체</b> 복사(sessionid 포함) </td><td class='ok'>쿠키 문자열 확보</td></tr><tr><td class='n'>C-3</td><td><span class='w tx'>Termux</span></td><td class='wh'>쿠키를 폰 환경파일에 저장</td><td>[복사] → <code>여기에…</code> 자리에 쿠키 붙여넣고 실행 (쿠키는 git에 절대 안 올라감 · 폰 로컬 전용) <button class='cp' data-t='thcookie'>복사</button></td><td class='ok'><code>cat ~/.nomute_phone_env</code>에 줄 존재</td></tr><tr><td class='n'>C-4</td><td><span class='w tx'>Termux</span></td><td class='wh'>30분 크론 설치 여부 확인</td><td>명령 실행 — 어제 설치가이드대로 했으면 '크론 있음' <button class='cp' data-t='cronchk'>복사</button></td><td class='ok'>크론 있음 OK</td></tr><tr><td class='n'>C-5</td><td><span class='w tx'>Termux</span></td><td class='wh'>(없을 때만) 크론 설치</td><td>[복사] → 실행 (레포 클론 경로 다르면 그 부분만 수정) <button class='cp' data-t='croninst'>복사</button></td><td class='ok'><code>crontab -l</code>에 phone_subs 줄</td></tr><tr><td class='n'>C-6</td><td><span class='w tx'>Termux</span></td><td class='wh'>즉시 1회 수동 수집 확인</td><td>명령 실행 <button class='cp' data-t='thchk'>복사</button></td><td class='ok'>로그에 <code>threads N건</code>(N≥1) → 뷰어 SNS 탭 스레드 그룹 등장</td></tr></table></div>
+<h2>D. 윈도우 CapsLock 맥처럼 (약 3분 · PC)</h2><div class='note'>짧게 탭 = <b>한/영</b> · 길게 = 진짜 <b>CapsLock</b>(대문자 고정). Shift+알파벳 대문자는 윈도우 기본이라 손 안 대도 됨. PowerToys는 탭/길게 구분이 안 돼서 부족 → <b>AutoHotkey</b>가 정답.</div><div class='wrap'><table><tr><th>순서</th><th>어디서</th><th>뭘 한다</th><th>어떻게 (입력·터치 그대로)</th><th>성공 신호</th></tr><tr><td class='n'>D-1</td><td><span class='w ph'>브라우저</span></td><td class='wh'>AutoHotkey v2 설치</td><td><a href="https://www.autohotkey.com" target="_blank" rel="noopener">autohotkey.com</a> → Download → <b>v2.0</b> 설치</td><td class='ok'>설치 완료</td></tr><tr><td class='n'>D-2</td><td><span class='w pc'>PC</span></td><td class='wh'>스크립트 저장+실행</td><td>[복사] → 메모장 붙여넣기 → <code>capslock.ahk</code>로 저장(파일 형식 = 모든 파일) → 더블클릭 <button class='cp' data-t='ahk'>복사</button></td><td class='ok'>트레이에 초록 <b>H</b> 아이콘 · CapsLock 짧게=한영 / 길게=대문자</td></tr><tr><td class='n'>D-3</td><td><span class='w pc'>PC</span></td><td class='wh'>부팅 자동실행</td><td><code>Win+R</code> → <code>shell:startup</code> → 열린 폴더에 그 <code>.ahk</code>(또는 바로가기) 넣기</td><td class='ok'>재부팅해도 유지</td></tr><tr><td class='n'>D-4</td><td><span class='w pc'>PC</span></td><td class='wh'>(한영 안 되면) 키 교체</td><td>스크립트의 <code>{vk15sc138}</code>를 <code>{RAlt}</code> 또는 <code>{vk15}</code>로 바꿔 저장·재실행 · 길게 임계값은 <code>250</code>(ms) 조절</td><td class='ok'>한/영 전환됨</td></tr></table></div>
+<div class="note">전부 끝나면: 사진·스크린샷·영상·복사 텍스트 = 전자동 드라이브행(PC에서 G:\내 드라이브\Shared\FromPhone) · 스레드 구독 = 30분마다 폰이 수집해 뷰어 SNS 탭에 표시 · 윈도우(D) = CapsLock 짧게 한/영·길게 대문자. 문제 생기면 플레이북 §5 진단 ①~⑧ · §6 표 순서대로.</div>
+<pre class='src' id='scope'>rclone config show gdrive | grep -i scope</pre><pre class='src' id='scopefix'>rclone config update gdrive scope drive
+rclone config reconnect gdrive:</pre><pre class='src' id='gal'>cat &gt; ~/.termux/tasker/drive-gallery-upsync.sh &lt;&lt; &#x27;NMEOF&#x27;
+#!/data/data/com.termux/files/usr/bin/sh
+# ============================================================================
+# drive-gallery-upsync.sh — 갤러리 → gdrive:Shared 역방향 자동 업로드
+# drive-gallery-sync.sh(내려받기)의 쌍. 정본 문서 = docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md §1-2
+# 폰 설치 위치 = ~/.termux/tasker/drive-gallery-upsync.sh (Tasker가 3분+잠금해제마다 실행)
+#
+# 핵심 룰: &quot;오고간 적 있는 파일은 패스&quot;
+#   · 풀러가 내려받은 것 = Pictures/DriveSync 제외 + ~/.drivesync.seen 이름 대조로 안 올림
+#   · 드라이브에 같은 이름이 이미 있으면 안 올림(등록만)
+#   · 업로드 성공분은 ~/.drivesync.seen 에 선등록 → 풀러가 도로 안 내려받음(루프 차단)
+# 첫 실행 = 베이스라인: 현재 갤러리 전량을 &#x27;본 것&#x27;으로 등록만(업로드 0) → 이후 새 파일만 올라감.
+# ============================================================================
+REMOTE=&quot;gdrive:Shared&quot;                    # 풀러와 같은 공간(내 드라이브/Shared)
+UP_SUB=&quot;FromPhone&quot;                        # 업로드 착지 하위 폴더(빈값 = Shared 루트)
+SRC_DIRS=&quot;/sdcard/DCIM /sdcard/Pictures&quot;  # 갤러리 스캔 대상(공백 구분)
+EXCLUDES=&quot;/sdcard/Pictures/DriveSync&quot;     # 풀러 착지점 = 재업로드 금지(공백 구분 복수 가능)
+EXTS=&#x27;jpg|jpeg|png|gif|webp|heic|heif|dng|mp4|mov|webm|mkv|3gp|m4v&#x27;
+MAX_MB=0                                  # 0=무제한 · N=N MB 초과 파일 스킵(로그 남김)
+WIFI_ONLY=0                               # 1=와이파이에서만 업로드(termux-api 필요)
+UPSEEN=&quot;$HOME/.upsync.seen&quot;               # 업로드축 원장(로컬 경로)
+PULLSEEN=&quot;$HOME/.drivesync.seen&quot;          # 풀러 원장(원격 경로) = 양방향 공용 열쇠
+LOG=&quot;$HOME/.upsync.log&quot;
+STAMP=&quot;$HOME/.upsync.last&quot;
+LIST=&quot;$HOME/.upsync.scan&quot;; NEWL=&quot;$HOME/.upsync.new&quot;; RNOW=&quot;$HOME/.upsync.rnow&quot;; TRAV=&quot;$HOME/.upsync.trav&quot;
+[ -f &quot;$HOME/.upsync.conf&quot; ] &amp;&amp; . &quot;$HOME/.upsync.conf&quot;   # 값 덮어쓰기용(선택)
+
+# 0) 120초 디바운스(풀러와 동일 관례) + 로그 로테이션
+T=$(date +%s)
+if [ -f &quot;$STAMP&quot; ] &amp;&amp; [ $((T - $(cat &quot;$STAMP&quot;))) -lt 120 ]; then exit 0; fi
+echo &quot;$T&quot; &gt; &quot;$STAMP&quot;
+[ -f &quot;$LOG&quot; ] &amp;&amp; [ &quot;$(wc -l &lt; &quot;$LOG&quot;)&quot; -gt 2000 ] &amp;&amp; { tail -n 1000 &quot;$LOG&quot; &gt; &quot;$LOG.t&quot; &amp;&amp; mv &quot;$LOG.t&quot; &quot;$LOG&quot;; }
+
+# 1) 스캔(로컬만·네트워크 0): 대상 확장자, 숨김(.trashed-* 등 닷파일) 제외, EXCLUDES 제외
+{ for d in $SRC_DIRS; do [ -d &quot;$d&quot; ] &amp;&amp; find &quot;$d&quot; -type f -not -path &#x27;*/.*&#x27; 2&gt;/dev/null; done; } \
+  | grep -iE &quot;\.($EXTS)\$&quot; &gt; &quot;$LIST&quot; || true
+for ex in $EXCLUDES; do grep -vF &quot;$ex/&quot; &quot;$LIST&quot; &gt; &quot;$LIST.t&quot;; mv &quot;$LIST.t&quot; &quot;$LIST&quot;; done
+
+# 2) 첫 실행 베이스라인: 전량 등록만·업로드 0 (기존 사진첩 통째 업로드 폭탄 방지)
+touch &quot;$UPSEEN&quot;
+if [ ! -s &quot;$UPSEEN&quot; ]; then
+  { echo &quot;__init__&quot;; cat &quot;$LIST&quot;; } &gt; &quot;$UPSEEN&quot;
+  echo &quot;$(date &#x27;+%F %T&#x27;) baseline: $(wc -l &lt; &quot;$LIST&quot;) files registered, no upload&quot; &gt;&gt; &quot;$LOG&quot;
+  exit 0
+fi
+
+# 3) 새 파일만 추출(풀러와 같은 awk diff — UPSEEN에 없는 로컬 경로)
+awk &#x27;FNR==NR{s[$0]=1;next} !($0 in s)&#x27; &quot;$UPSEEN&quot; &quot;$LIST&quot; &gt; &quot;$NEWL&quot;
+[ -s &quot;$NEWL&quot; ] || exit 0
+
+# 4) 와이파이 게이트(옵션) — 원장 소비 전에 빠져나가야 나중에 다시 시도됨
+if [ &quot;$WIFI_ONLY&quot; = &quot;1&quot; ] &amp;&amp; command -v termux-wifi-connectioninfo &gt;/dev/null 2&gt;&amp;1; then
+  termux-wifi-connectioninfo 2&gt;/dev/null | grep -q &#x27;&quot;supplicant_state&quot;: *&quot;COMPLETED&quot;&#x27; \
+    || { echo &quot;$(date &#x27;+%F %T&#x27;) skip: wifi only&quot; &gt;&gt; &quot;$LOG&quot;; exit 0; }
+fi
+
+# 5) 원격 현황 1회 조회 → &#x27;오고간 이름&#x27; 집합 = 원격 목록 + 풀러 원장
+rclone lsf -R --files-only &quot;$REMOTE&quot; &gt; &quot;$RNOW&quot; 2&gt;&gt;&quot;$LOG&quot; || exit 1
+touch &quot;$PULLSEEN&quot;
+cat &quot;$RNOW&quot; &quot;$PULLSEEN&quot; &gt; &quot;$TRAV&quot;
+
+# 6) 새 파일 처리: 오고간 이름 = 패스(원장 등록만) / 아니면 업로드
+while IFS= read -r f; do
+  [ -f &quot;$f&quot; ] || { echo &quot;$f&quot; &gt;&gt; &quot;$UPSEEN&quot;; continue; }   # 스캔 후 삭제된 파일 = 등록만
+  b=$(basename &quot;$f&quot;)
+  if [ -n &quot;$UP_SUB&quot; ]; then rpath=&quot;$UP_SUB/$b&quot;; else rpath=&quot;$b&quot;; fi
+  # 오고간 적 있는 이름(원격 존재 or 풀러가 내려준 것) → 패스
+  if grep -qxF &quot;$b&quot; &quot;$TRAV&quot; || grep -qF &quot;/$b&quot; &quot;$TRAV&quot;; then
+    echo &quot;$f&quot; &gt;&gt; &quot;$UPSEEN&quot;
+    grep -qxF &quot;$rpath&quot; &quot;$PULLSEEN&quot; || echo &quot;$rpath&quot; &gt;&gt; &quot;$PULLSEEN&quot;
+    echo &quot;$(date &#x27;+%F %T&#x27;) PASS(traveled) $b&quot; &gt;&gt; &quot;$LOG&quot;
+    continue
+  fi
+  # 크기 상한(옵션)
+  if [ &quot;$MAX_MB&quot; -gt 0 ]; then
+    sz=$(wc -c &lt; &quot;$f&quot; 2&gt;/dev/null || echo 0)
+    if [ &quot;$sz&quot; -gt $((MAX_MB*1048576)) ]; then
+      echo &quot;$(date &#x27;+%F %T&#x27;) SKIP big(${sz}B) $f&quot; &gt;&gt; &quot;$LOG&quot;; echo &quot;$f&quot; &gt;&gt; &quot;$UPSEEN&quot;; continue
+    fi
+  fi
+  # 풀러 원장에 &#x27;선등록&#x27; → 업로드 완료 직후 풀러 lsf에 떠도 재다운 안 함(루프 차단)
+  echo &quot;$rpath&quot; &gt;&gt; &quot;$PULLSEEN&quot;
+  if rclone copyto &quot;$f&quot; &quot;$REMOTE/$rpath&quot; --inplace --log-file &quot;$LOG&quot; --log-level INFO; then
+    echo &quot;$f&quot; &gt;&gt; &quot;$UPSEEN&quot;
+    echo &quot;$b&quot; &gt;&gt; &quot;$TRAV&quot;                                  # 같은 런 내 동명 중복 차단
+    echo &quot;$(date &#x27;+%F %T&#x27;) UP $b&quot; &gt;&gt; &quot;$LOG&quot;
+  else
+    grep -vxF &quot;$rpath&quot; &quot;$PULLSEEN&quot; &gt; &quot;$PULLSEEN.t&quot;; mv &quot;$PULLSEEN.t&quot; &quot;$PULLSEEN&quot;   # 선등록 롤백
+    echo &quot;$(date &#x27;+%F %T&#x27;) FAIL $b (다음 런 재시도)&quot; &gt;&gt; &quot;$LOG&quot;
+  fi
+done &lt; &quot;$NEWL&quot;
+NMEOF
+chmod +x ~/.termux/tasker/drive-gallery-upsync.sh
+bash ~/.termux/tasker/drive-gallery-upsync.sh
+tail -3 ~/.upsync.log</pre><pre class='src' id='galchk'>rclone lsf -R gdrive:Shared/FromPhone</pre><pre class='src' id='adbpc'>adb shell pm grant net.dinglisch.android.taskerm android.permission.READ_LOGS
+adb shell am force-stop net.dinglisch.android.taskerm</pre><pre class='src' id='adbtx'>pkg install -y android-tools
+# 안드 설정 &gt; 개발자옵션 &gt; 무선 디버깅 ON &gt; &#x27;페어링 코드로 기기 페어링&#x27; 열어두고:
+adb pair localhost:페어링포트   # 6자리 코드 입력
+adb connect localhost:연결포트  # 무선 디버깅 메인 화면의 포트
+adb shell pm grant net.dinglisch.android.taskerm android.permission.READ_LOGS
+adb shell am force-stop net.dinglisch.android.taskerm</pre><pre class='src' id='clip'>cat &gt; ~/.termux/tasker/drive-clipboard-upsync.sh &lt;&lt; &#x27;NMEOF&#x27;
+#!/data/data/com.termux/files/usr/bin/sh
+# ============================================================================
+# drive-clipboard-upsync.sh — 클립보드 텍스트 → gdrive:Shared/FromPhone/clips 자동 업로드
+# 갤러리 업싱크(drive-gallery-upsync.sh)의 텍스트판. 정본 문서 = docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md §1-3
+# 폰 설치 위치 = ~/.termux/tasker/drive-clipboard-upsync.sh
+#
+# 입구 2개(하나의 스크립트가 둘 다 처리):
+#   ① Tasker &quot;클립보드 변경&quot; 이벤트 → Tasker가 %CLIP을 STAGE 파일로 저장 → 이 스크립트 실행 (자동 · 정본)
+#   ② 포그라운드 실행(Termux 위젯/수동) → STAGE가 비어 있으면 termux-clipboard-get으로 직접 읽음 (폴백)
+#      ※ 안드로이드 10+에서 &quot;백그라운드&quot; 클립보드 읽기는 OS가 막는다 — 그래서 ①은 Tasker(READ_LOGS)로 읽고,
+#        ②의 직접 읽기는 포그라운드에서만 정상. 백그라운드 호출 시 빈 값 = 조용히 통과(정상).
+#
+# 패스 룰: 같은 내용(md5) 재복사 = 패스 · 공백뿐 = 패스 · CLIP_MAX_KB 초과 = 패스(로그).
+# 오프라인 = OUTBOX에 대기 → 다음 실행(클립 이벤트·DriveSync 3분/잠금해제 액션)에서 재시도.
+# 업로드 직전 하행 원장(.drivesync.seen)에 선등록 → 풀러가 도로 안 내려받음(갤러리판과 동일 · 실패 시 롤백).
+# ============================================================================
+REMOTE=&quot;gdrive:Shared&quot;                                # 풀러와 같은 공간
+UP_SUB=&quot;FromPhone/clips&quot;                              # 착지 하위 폴더
+STAGE=&quot;/sdcard/Documents/nomute_clips/staging.txt&quot;    # Tasker가 %CLIP을 써두는 곳
+OUTBOX=&quot;$HOME/.clipsync.outbox&quot;                       # 업로드 대기(오프라인 재시도)
+SEEN=&quot;$HOME/.clipsync.seen&quot;                           # 내용 md5 원장 = 같은 텍스트 재업로드 패스
+PULLSEEN=&quot;$HOME/.drivesync.seen&quot;                      # 풀러 원장(재다운 루프 차단)
+LOG=&quot;$HOME/.clipsync.log&quot;
+CLIP_MAX_KB=512                                       # 초과 = 스킵(사고성 초대형 복사 방지)
+[ -f &quot;$HOME/.clipsync.conf&quot; ] &amp;&amp; . &quot;$HOME/.clipsync.conf&quot;   # 값 덮어쓰기용(선택)
+
+mkdir -p &quot;$OUTBOX&quot; &quot;$(dirname &quot;$STAGE&quot;)&quot;
+touch &quot;$SEEN&quot; &quot;$PULLSEEN&quot;
+[ -f &quot;$LOG&quot; ] &amp;&amp; [ &quot;$(wc -l &lt; &quot;$LOG&quot;)&quot; -gt 1000 ] &amp;&amp; { tail -n 500 &quot;$LOG&quot; &gt; &quot;$LOG.t&quot; &amp;&amp; mv &quot;$LOG.t&quot; &quot;$LOG&quot;; }
+TMP=&quot;$HOME/.clipsync.tmp&quot;; : &gt; &quot;$TMP&quot;
+
+# 1) 수집: STAGE(Tasker 이벤트 경로) 우선 → 소비 후 비움 / 없으면 클립보드 직접(포그라운드 한정 유효)
+if [ -s &quot;$STAGE&quot; ]; then
+  cat &quot;$STAGE&quot; &gt; &quot;$TMP&quot;; : &gt; &quot;$STAGE&quot;
+elif command -v termux-clipboard-get &gt;/dev/null 2&gt;&amp;1; then
+  termux-clipboard-get &gt; &quot;$TMP&quot; 2&gt;&gt;&quot;$LOG&quot; || : &gt; &quot;$TMP&quot;
+fi
+
+# 2) 적재: 공백뿐/중복(md5)/과대 = 패스 · 새 내용 = OUTBOX에 clip_{시각}_{md5앞4}.txt 로 확정
+if grep -q &#x27;[^[:space:]]&#x27; &quot;$TMP&quot; 2&gt;/dev/null; then
+  KB=$(( $(wc -c &lt; &quot;$TMP&quot;) / 1024 ))
+  if [ &quot;$KB&quot; -gt &quot;$CLIP_MAX_KB&quot; ]; then
+    echo &quot;$(date &#x27;+%F %T&#x27;) SKIP big(${KB}KB &gt; ${CLIP_MAX_KB}KB)&quot; &gt;&gt; &quot;$LOG&quot;
+  else
+    H=$(md5sum &quot;$TMP&quot; | cut -d&#x27; &#x27; -f1); H4=$(echo &quot;$H&quot; | cut -c1-4)
+    if grep -qxF &quot;$H&quot; &quot;$SEEN&quot;; then
+      echo &quot;$(date &#x27;+%F %T&#x27;) PASS(dup) $H4&quot; &gt;&gt; &quot;$LOG&quot;
+    else
+      N=&quot;clip_$(date +%Y%m%d_%H%M%S)_${H4}.txt&quot;
+      cp &quot;$TMP&quot; &quot;$OUTBOX/$N&quot;
+      echo &quot;$H&quot; &gt;&gt; &quot;$SEEN&quot;
+      echo &quot;$(date &#x27;+%F %T&#x27;) QUEUE $N&quot; &gt;&gt; &quot;$LOG&quot;
+    fi
+  fi
+fi
+rm -f &quot;$TMP&quot;
+
+# 3) 아웃박스 플러시: 성공 = 삭제 · 실패 = 남겨서 다음 실행에 재시도 (비어 있으면 네트워크 0)
+for f in &quot;$OUTBOX&quot;/*.txt; do
+  [ -f &quot;$f&quot; ] || continue
+  b=$(basename &quot;$f&quot;); rpath=&quot;$UP_SUB/$b&quot;
+  grep -qxF &quot;$rpath&quot; &quot;$PULLSEEN&quot; || echo &quot;$rpath&quot; &gt;&gt; &quot;$PULLSEEN&quot;      # 선등록(재다운 루프 차단)
+  if rclone copyto &quot;$f&quot; &quot;$REMOTE/$rpath&quot; --inplace --log-file &quot;$LOG&quot; --log-level ERROR; then
+    rm -f &quot;$f&quot;
+    echo &quot;$(date &#x27;+%F %T&#x27;) UP $b&quot; &gt;&gt; &quot;$LOG&quot;
+  else
+    grep -vxF &quot;$rpath&quot; &quot;$PULLSEEN&quot; &gt; &quot;$PULLSEEN.t&quot;; mv &quot;$PULLSEEN.t&quot; &quot;$PULLSEEN&quot;   # 선등록 롤백
+    echo &quot;$(date &#x27;+%F %T&#x27;) FAIL $b (아웃박스 대기)&quot; &gt;&gt; &quot;$LOG&quot;
+  fi
+done
+NMEOF
+chmod +x ~/.termux/tasker/drive-clipboard-upsync.sh
+bash ~/.termux/tasker/drive-clipboard-upsync.sh
+tail -3 ~/.clipsync.log</pre><pre class='src' id='clipchk'>rclone lsf gdrive:Shared/FromPhone/clips
+tail -5 ~/.clipsync.log</pre><pre class='src' id='thcookie'>echo &quot;export THREADS_COOKIE=&#x27;여기에_가계정_쿠키_전체_붙여넣기&#x27;&quot; &gt;&gt; ~/.nomute_phone_env</pre><pre class='src' id='cronchk'>crontab -l | grep phone_subs &amp;&amp; echo &#x27;크론 있음 OK&#x27; || echo &#x27;크론 없음 - 아래 설치 블록 실행&#x27;</pre><pre class='src' id='croninst'>pkg install -y python cronie termux-services &amp;&amp; sv-enable crond
+(crontab -l 2&gt;/dev/null; echo &#x27;*/30 * * * * bash ~/nomute-editor/scripts/phone_subs.sh &gt;&gt; ~/phone_subs.log 2&gt;&amp;1&#x27;) | crontab -
+# 레포 클론 경로가 ~/nomute-editor 아니면 그 부분만 고쳐서
+crontab -l</pre><pre class='src' id='thchk'>bash ~/nomute-editor/scripts/phone_subs.sh
+tail -3 ~/phone_subs.log   # &#x27;threads N건&#x27;이 1 이상이면 성공</pre><pre class='src' id='ahk'>#Requires AutoHotkey v2.0
+#SingleInstance Force
+
+*CapsLock:: {
+    st := A_TickCount
+    KeyWait "CapsLock"
+    if (A_TickCount - st &lt; 250)
+        Send "{vk15sc138}"
+    else
+        SetCapsLockState !GetKeyState("CapsLock", "T")
+}</pre>
+<script>
+document.querySelectorAll('button.cp').forEach(b=>{b.addEventListener('click',async()=>{
+const t=document.getElementById(b.dataset.t).textContent;
+try{await navigator.clipboard.writeText(t);}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}
+const o=b.textContent;b.textContent='복사됨 ✓';setTimeout(()=>b.textContent=o,1400);});});
+</script></body></html>
