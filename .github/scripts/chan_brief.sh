@@ -178,6 +178,9 @@ $BODY"
 
 out=""
 for _try in 1 2 3 4; do
+  # 누적 벽시계 캡(평의회6 260714 · analyze.sh ANALYZE_JOB_DEADLINE 관용구 계승): 산술 최악 4×600s=40분 > 잡 timeout 20분 —
+  # 15분 소진 후의 재시도는 성공해도 잡 하드킬로 수집 데이터 커밋까지 동반 유실될 운명이라, 브리프만 곱게 포기(fail-soft·직전 유지)하고 커밋 스텝을 살린다. 평상시 무영향(쿼터 실패 = 초 단위 반환).
+  [ "$SECONDS" -gt 900 ] && { echo "::warning::chan-brief 시간 예산 소진(${SECONDS}s>900s) — 직전 brief 유지(fail-soft)"; exit 0; }
   out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/chanbrief.err)"; rc=$?
