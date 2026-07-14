@@ -133,7 +133,7 @@
   #wavebg { position:fixed; inset:0; z-index:-1; pointer-events:none; display:block; width:100%; height:100%; }
   #wavebg.off { display:none; }
   /* (피드 전용 글로우 배경 제거 — 글로우 OFF·배경은 위 .bgfx로 3탭 공통 통합 · 운영자 260625) */
-  /* ── 당겨서 새로고침 = 커스텀 링(탭색) ── 네이티브(theme-color 링)를 끄고 직접 그림 → '원'만 메뉴색·주소창/상태바 불변(운영자 260623). 스피너는 .cref-ld-sp 패턴 계승. */
+  /* ── 당겨서 새로고침 = 커스텀 링(강조색1) ── 네이티브(theme-color 링)를 끄고 직접 그림 → '원'만 메뉴색·주소창/상태바 불변(운영자 260623). 스피너는 .cref-ld-sp 패턴 계승. 링 색 = --accent 고정(운영자 260714). */
   html.ptr-on { overscroll-behavior-y:contain; }   /* 네이티브 당겨서새로고침 차단 — 터치기기(JS가 .ptr-on 부여)에서만 = CSS차단·JS핸들러 생사 단일게이트(데스크탑 네이티브 새로고침/바운스 보존) */
   #ptr { position:fixed; top:max(8px,env(safe-area-inset-top)); left:50%; z-index:var(--z-toast);
     width:36px; height:36px; border-radius:50%; display:grid; place-items:center;
@@ -142,10 +142,10 @@
     box-shadow:0 6px 18px rgba(0,0,0,.45);
     transform:translate(-50%,-54px) scale(.9); opacity:0; pointer-events:none; }   /* will-change는 제스처 중에만 JS가 토글(idle 레이어 0) */
   #ptr.show { opacity:1; }
-  #ptr.armed { box-shadow:0 6px 22px rgba(0,0,0,.5), 0 0 16px rgba(var(--ptr-rgb,0,238,210),.45); }
+  #ptr.armed { box-shadow:0 6px 22px rgba(0,0,0,.5), 0 0 16px rgba(var(--accent-rgb),.45); }
   #ptr .ptr-ring { width:20px; height:20px; border-radius:50%;
-    border:2.5px solid rgba(var(--ptr-rgb,0,238,210),.22); border-top-color:var(--ptr-c,var(--accent));
-    box-shadow:0 0 9px rgba(var(--ptr-rgb,0,238,210),.5); }   /* .cref-ld-sp 계승(2.5px·border-top-color·둥근) + 탭색 글로우 */
+    border:2.5px solid rgba(var(--accent-rgb),.22); border-top-color:var(--accent);
+    box-shadow:0 0 9px rgba(var(--accent-rgb),.5); }   /* .cref-ld-sp 계승(2.5px·border-top-color·둥근) + 강조색1(--accent) 글로우 — 예전 링 그대로·탭별 색 우회 폐지·토큰 직결(운영자 260714 "예전 거로 통일 강조색1") */
   #ptr.spin .ptr-ring { animation:crefspin .7s linear infinite; }   /* 기존 crefspin 키프레임 재사용 */
   @media (prefers-reduced-motion:reduce) { #ptr.spin .ptr-ring { animation-duration:1.1s; } }
   .wrap { max-width:860px; margin:0 auto; padding:0 16px 48px; }
@@ -12015,7 +12015,6 @@ try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 't
   const ptr = document.createElement('div'); ptr.id = 'ptr'; ptr.setAttribute('aria-hidden', 'true'); ptr.innerHTML = '<div class="ptr-ring"></div>';
   document.body.appendChild(ptr);
   const ring = ptr.querySelector('.ptr-ring');
-  const COL = { feed: ['var(--accent)', 'var(--accent-rgb)'], scrap: ['var(--accent)', 'var(--accent-rgb)'], sns: ['var(--accent)', 'var(--accent-rgb)'] };   // 당겨새로고침 링 = 전 탭 강조색 통일(탭별 색 폐지 · 운영자 260705)
   const TRIG = 70, MAXP = 130;                         // 발동 임계 · 최대 당김(px)
   let sy = 0, sx = 0, active = false, engaged = false, dist = 0, armed = false, firing = false;
   const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
@@ -12036,8 +12035,7 @@ try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 't
   addEventListener('touchstart', e => {
     if (active || blocked() || !atTop() || e.touches.length !== 1) return;
     sy = e.touches[0].clientY; sx = e.touches[0].clientX; active = true; engaged = false; dist = 0; armed = false;
-    const [c, rgb] = COL[CURTAB] || COL.scrap; ptr.style.setProperty('--ptr-c', c); ptr.style.setProperty('--ptr-rgb', rgb);
-    ptr.style.transition = 'none'; ptr.style.willChange = 'transform, opacity';   // 제스처 중에만 합성 레이어 승격
+    ptr.style.transition = 'none'; ptr.style.willChange = 'transform, opacity';   // 제스처 중에만 합성 레이어 승격 (링 색 = CSS서 --accent 직결 · 구 탭별 --ptr-c/--ptr-rgb setProperty 폐지 260714)
   }, { passive: true });
   addEventListener('touchmove', e => {
     if (!active) return;
