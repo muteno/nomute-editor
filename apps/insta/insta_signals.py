@@ -200,12 +200,19 @@ def bucket_lifts(posts, key_fn, g_med):
 
 
 def online_peak_kst(audience):
-    """online_followers(UTC 시간대 히스토그램) → KST 피크 상위 3시간. 형식 방어적 파싱."""
+    """online_followers(UTC 시간대 히스토그램) → KST 피크 상위 3시간. 형식 방어적 파싱.
+    API는 일 버킷 리스트로 회신 — 첫 버킷만 읽던 구버그를 전 버킷 합산으로 수리(빈 value 버킷 = 자연 무시)."""
     try:
         raw = audience.get('online_followers')
         if isinstance(raw, list):
-            raw = raw[0].get('value') if raw else None
-        if not isinstance(raw, dict):
+            merged = {}
+            for b in raw:
+                v = (b or {}).get('value')
+                if isinstance(v, dict):
+                    for h, c in v.items():
+                        merged[h] = merged.get(h, 0) + (c or 0)
+            raw = merged or None
+        if not isinstance(raw, dict) or not raw:
             return None
         kst_hours = {}
         for h, c in raw.items():
@@ -214,6 +221,27 @@ def online_peak_kst(audience):
         return [f'{h}시(KST)' for h, _ in top]
     except Exception:
         return None
+
+
+def audience_overlay(audience):
+    """접속 시간대 오버레이 — API(online_followers) 우선 · 공회신(260713~ 빈 value 실측)이면
+    운영자 수기 실측(audience_manual.json = 인사이트 '팔로워 활동 시간' 스크린샷) 폴백. 출처 딱지 동봉 = 브리프가 근거를 밝힘."""
+    peak = online_peak_kst(audience or {})
+    if peak:
+        return {'online_peak_kst': peak, 'online_src': 'api'}
+    man = (audience or {}).get('manual') or {}
+    hours = man.get('online_hours_kst')
+    try:
+        if isinstance(hours, dict) and hours:
+            hs = sorted(((int(h), v or 0) for h, v in hours.items()), key=lambda x: x[0])
+            top = sorted(hs, key=lambda x: -x[1])[:3]
+            return {'online_peak_kst': [f'{h}시(KST)' for h, _ in top],
+                    'online_src': f"manual({man.get('as_of') or ''})",
+                    'online_hours_kst': {str(h): v for h, v in hs},
+                    'online_note': str(man.get('note') or '')[:160]}
+    except Exception:
+        pass
+    return {'online_peak_kst': peak}
 
 
 def compute(media_doc, audience=None):
@@ -271,7 +299,7 @@ def compute(media_doc, audience=None):
         'axes': axes,
         'format_summary': fmt_sum, 'topic_summary': topic_sum, 'era_summary': era_sum,
         'posts': sorted(posts, key=lambda p: -p['score'])[:100],   # 저장 cap(전체 표본은 axes에 반영 · 비대 방지)
-        'audience_overlay': {'online_peak_kst': online_peak_kst(audience or {})},
+        'audience_overlay': audience_overlay(audience),
         'flags': flags,
     }
 
@@ -384,7 +412,11 @@ def main():
     if not media:
         print('데이터 없음 — insta-fetch 수집분(apps/insta/data/media_latest.json)부터 필요')
         return 1
-    sig = compute(media, jload('audience.json'))
+    aud = jload('audience.json') or {}
+    man = jload('audience_manual.json')   # 운영자 수기 실측(API online_followers 공회신 폴백 — audience_overlay 참조)
+    if man:
+        aud['manual'] = man
+    sig = compute(media, aud)
     if 'error' in sig:
         print(sig['error'])
         return 1
@@ -400,7 +432,7 @@ def main():
                    't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
-                'online_peak_kst': sig['audience_overlay']['online_peak_kst']}
+                **sig['audience_overlay']}   # online_peak_kst(+수기 폴백 시 online_src·online_hours_kst·online_note) — 뷰어 예약 필·chan_brief 다이제스트 공용
         # 일일 추이 배선(운영자 260713) — 과거 CSV 시드 ∪ 봇 수집 일별값을 뷰어까지 전달(차트는 후속·플레이그라운드)
         series_daily, daily_meta = _daily_timeseries(daily)
         vdoc['daily_series'] = series_daily
