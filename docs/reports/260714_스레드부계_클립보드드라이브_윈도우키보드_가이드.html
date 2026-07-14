@@ -1,0 +1,136 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>260714 폰 3종 가이드 — 스레드 부계 · 클립보드→드라이브 · 윈도우 CapsLock 맥방식</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{background:#0b0d0c;color:#eef7f0;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;margin:0;padding:20px 14px 60px;line-height:1.6;font-size:15px;max-width:860px;margin:0 auto}
+h1{font-size:20px;margin:6px 0 2px;color:#00EED2}
+h2{font-size:16.5px;margin:30px 0 6px;color:#eef7f0;border-left:3px solid #00EED2;padding-left:10px}
+h3{font-size:14px;margin:18px 0 6px;color:#00EED2}
+.sub{color:#9aa7a1;font-size:12.5px;margin-bottom:8px}
+.card{background:rgba(18,19,22,.55);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin:12px 0}
+.warn{color:#FFE13D}.good{color:#00EED2}.bad{color:#ff7a6b}.k{color:#9aa7a1}
+ol{margin:6px 0;padding-left:22px}li{margin:6px 0}
+ul{margin:6px 0;padding-left:20px}
+a{color:#38C6FF;word-break:break-all}
+.step{counter-reset:none}
+.field{display:flex;gap:8px;align-items:stretch;margin:7px 0}
+.field code{flex:1;background:#14171a;border:1px solid rgba(0,238,210,.22);border-radius:9px;padding:9px 11px;font-size:12.5px;font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;color:#cfe;white-space:pre-wrap;word-break:break-all;overflow-x:auto}
+.field button{flex:0 0 auto;background:rgba(0,238,210,.12);border:1px solid rgba(0,238,210,.35);color:#00EED2;border-radius:9px;padding:0 13px;font-size:12px;font-weight:700;cursor:pointer}
+.field button:active{transform:scale(.96)}
+.field button.done{background:#00EED2;color:#04120f}
+pre{background:#14171a;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 13px;overflow-x:auto;font-size:12.5px;line-height:1.5}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11.5px;margin:2px 4px 2px 0;background:rgba(0,238,210,.1);color:#00EED2;border:1px solid rgba(0,238,210,.28)}
+.tag{font-size:11px;color:#04120f;background:#00EED2;border-radius:6px;padding:1px 7px;font-weight:800;vertical-align:middle}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:8px}
+th{background:#14171a;color:#00EED2;text-align:left;padding:8px 10px;border-bottom:1px solid rgba(0,238,210,.3)}
+td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:#cfd8d3;vertical-align:top}
+.note{font-size:12px;color:#9aa7a1;margin-top:6px}
+</style>
+
+<h1>폰 3종 프로세스 가이드</h1>
+<div class="sub">260714 · ① 스레드 부계(가계정) 연결 · ② 폰 클립보드/캡쳐 → 공유드라이브 · ③ 윈도우 CapsLock 맥처럼 · <span class="k">코드 오른쪽 <b>복사</b> 버튼 = 탭하면 클립보드로</span></div>
+
+<!-- ─────────────────────────── ① 스레드 부계 ─────────────────────────── -->
+<h2>① 스레드 부계(가계정) 연결 <span class="tag">폰 Termux</span></h2>
+<div class="card">
+<div class="k">뭐냐 — 스레드는 인스타랑 같은 Meta라 <b class="warn">GitHub 서버 IP를 차단</b>한다. 그래서 스레드만은 서버 말고 <b>네 폰(가정 IP)</b>에서 30분마다 긁어(<code>phone_subs.sh</code>). 게스트(비로그인)로도 긁히지만, <b>부계로 로그인한 세션쿠키(<code>THREADS_COOKIE</code>)</b>를 넣어주면 더 안정적으로·더 많이 보인다. <span class="bad">본계 말고 반드시 부계</span>(자동화 감지 밴 리스크).</div>
+</div>
+
+<h3>A. 부계 세션쿠키 뽑기 (PC 크롬이 제일 쉬움)</h3>
+<ol>
+<li><a href="https://www.threads.com">https://www.threads.com</a> 에 <b>부계정으로 로그인</b>.</li>
+<li><b>F12</b>(개발자도구) → 상단 <b>Network</b> 탭 → 페이지 <b>새로고침(F5)</b>.</li>
+<li>맨 위 <code>threads.com</code> 요청 클릭 → <b>Headers</b> → <b>Request Headers</b>의 <code>cookie:</code> 줄 값을 통째로 복사. (최소한 <code>sessionid=…</code> 은 꼭 포함)</li>
+</ol>
+<div class="note">폰만 있으면: <b>Kiwi 브라우저</b>(안드로이드 · 크롬 확장/F12 지원)로 같은 과정. 단 <code>sessionid</code>는 httpOnly라 <code>document.cookie</code>(북마클릿)로는 안 나온다 → 반드시 Network/Application 패널에서 복사.</div>
+
+<h3>B. 폰 Termux에 쿠키 심기 <span class="k">(레포에 안 올라감 · 폰 로컬 시크릿)</span></h3>
+<div class="field"><code id="c1">echo "export THREADS_COOKIE='여기에_복사한_쿠키_붙여넣기'" >> ~/.nomute_phone_env</code><button onclick="cp('c1',this)">복사</button></div>
+<div class="note"><code>~/.nomute_phone_env</code> = 크론이 매번 <code>source</code> 하는 폰 전용 비밀파일(재난문자 <code>SAFETY_KEY</code>랑 같은 자리). git 커밋 0. 넣고 나면 다음 30분 크론부터 로그인 상태로 수집.</div>
+
+<h3>C. 수집할 스레드 계정 등록 <span class="k">(누구 걸 긁을지 — 부계 로그인과 별개)</span></h3>
+<div class="k">웹앱 → <b>트렌드 탭 → 계정 버튼 → 스레드 탭</b>에서 대상 핸들 추가(권장). 최대 10개. 등록 즉시 다음 크론부터 수집.</div>
+<div class="note">확인: 폰에서 아래 실행 → <code>threads N건</code> 뜨면 성공.</div>
+<div class="field"><code id="c2">cd ~/nomute-editor && bash scripts/phone_subs.sh; tail -3 ~/phone_subs.log</code><button onclick="cp('c2',this)">복사</button></div>
+
+<!-- ─────────────────────────── ② 클립보드/캡쳐 → 드라이브 ─────────────────────────── -->
+<h2>② 폰 클립보드/캡쳐 → 공유드라이브 (폰 → PC) <span class="tag">폰 Termux</span></h2>
+<div class="card">
+<div class="k">지금은 Termux가 <code>gdrive:Shared</code>(내 드라이브/Shared)를 <b>받기</b>만 한다(<code>drive-gallery-sync.sh</code>). 여기선 <b>같은 리모트에 올려서</b> PC가 받게 한다 = 정확히 반대 방향. 새 스크립트 = <code>docs/termux-to-drive.sh</code>.</div>
+</div>
+
+<div class="card" style="border-color:rgba(255,225,61,.35)">
+<b class="warn">⚠️ 딱 하나 걸림돌 — 쓰기 권한.</b> 드라이브싱크를 <code>scope=drive.readonly</code>로 잡았으면 <b>받기만 되고 올리기는 막힌다</b>. 한 번만 아래로 <b>scope <code>drive</code>(전체)</b> 재동의:
+<div class="field" style="margin-top:8px"><code id="w1">rclone config reconnect gdrive:</code><button onclick="cp('w1',this)">복사</button></div>
+<div class="note">브라우저 뜨면 전체 권한으로 동의. 이후 받기·보내기 둘 다 됨. (이미 <code>drive</code> 전체로 잡았으면 이 단계 건너뜀.)</div>
+</div>
+
+<h3>설치 (1회 · 폰 Termux · 레포 루트에서)</h3>
+<div class="field"><code id="w2">pkg install rclone termux-api
+cp docs/termux-to-drive.sh ~/bin/to-drive && chmod +x ~/bin/to-drive
+mkdir -p ~/.shortcuts
+ln -sf ~/bin/to-drive ~/.shortcuts/클립보드→드라이브
+printf '#!/data/data/com.termux/files/usr/bin/bash\n~/bin/to-drive shot\n' > ~/.shortcuts/최근캡쳐→드라이브
+chmod +x ~/.shortcuts/*
+cp ~/bin/to-drive ~/bin/termux-url-opener</code><button onclick="cp('w2',this)">복사</button></div>
+<div class="note">Termux:API 앱 + Termux:Widget 앱도 스토어/F-Droid에서 설치돼 있어야 위젯·클립보드가 동작.</div>
+
+<h3>사용</h3>
+<table>
+<tr><th>하고 싶은 것</th><th>방법</th></tr>
+<tr><td>복사한 <b>클립보드 텍스트</b> 올리기</td><td>홈 화면 <b>Termux:Widget</b> → <code>클립보드→드라이브</code> 탭</td></tr>
+<tr><td>방금 찍은 <b>캡쳐</b> 올리기</td><td><b>Termux:Widget</b> → <code>최근캡쳐→드라이브</code> 탭 (Screenshots 폴더 최신 1장)</td></tr>
+<tr><td>아무 <b>텍스트/URL 공유</b>로 올리기</td><td>공유 시트 → <b>Termux</b> 선택</td></tr>
+<tr><td>특정 파일 올리기</td><td><code>to-drive /sdcard/경로/파일</code></td></tr>
+</table>
+<div class="note">성공·실패는 알림 + <code>~/.to-drive.log</code>. 확인: <code>rclone lsf gdrive:Shared</code> 에 올린 파일 뜨면 자리 정상 → PC "내 드라이브 스트림"이면 <code>G:\내 드라이브\Shared</code>에 곧 나타남.</div>
+
+<!-- ─────────────────────────── ③ 윈도우 CapsLock 맥방식 ─────────────────────────── -->
+<h2>③ 윈도우 CapsLock 맥처럼 <span class="tag">Windows</span></h2>
+<div class="card">
+<div class="k">원하는 것: <b>짧게 탭 = 한/영</b>, <b>길게 = 진짜 CapsLock(대문자 고정)</b> — 맥 한글 키보드 그대로. <br><b class="good">Shift + 알파벳 = 대문자</b>는 윈도우 <b>기본 동작</b>이라 아무것도 안 해도 된다(자동). 우리가 흉내낼 건 CapsLock의 <b>탭/길게 이중 역할</b>뿐.</div>
+</div>
+
+<h3 class="good">추천 = AutoHotkey v2 (탭/길게 이중 동작을 정확히 재현 · 무료)</h3>
+<div class="k">PowerToys로도 CapsLock→한영 <i>매핑</i>은 되지만 <b>탭/길게 구분은 안 된다</b> → 이 요구엔 부족. AutoHotkey가 정답.</div>
+<ol>
+<li><a href="https://www.autohotkey.com">https://www.autohotkey.com</a> → <b>AutoHotkey v2.0</b> 설치.</li>
+<li>레포의 완성 스크립트 <code>docs/pc-downloader/CapsLock_한영_맥방식.ahk</code> 를 <b>더블클릭</b> → 즉시 동작(트레이 'H').</li>
+<li>부팅 자동 실행 = 시작프로그램 폴더에 넣기:
+<div class="field"><code id="a1">Win+R → shell:startup</code><button onclick="cp('a1',this)">복사</button></div>
+열린 폴더에 위 <code>.ahk</code>(또는 바로가기)를 복사.</li>
+</ol>
+
+<h3>스크립트 전문 <span class="k">(파일 그대로 · 메모장 붙여넣고 <code>이름.ahk</code>로 저장해도 됨)</span></h3>
+<pre>#Requires AutoHotkey v2.0
+#SingleInstance Force
+
+*CapsLock:: {
+    st := A_TickCount
+    KeyWait "CapsLock"                                  ; 손 뗄 때까지
+    if (A_TickCount - st &lt; 250)                         ; 250ms 미만 = 짧은 탭
+        Send "{vk15sc138}"                             ; → 한/영 전환
+    else                                                ; 길게 = 진짜 CapsLock 토글
+        SetCapsLockState !GetKeyState("CapsLock", "T")
+}</pre>
+<div class="note">한/영이 안 바뀌면 <code>Send "{vk15sc138}"</code>를 <code>Send "{RAlt}"</code> 또는 <code>Send "{vk15}"</code>로 바꿔 시도(키보드·IME 편차). 길게 임계값은 <code>250</code>(ms) 숫자를 늘리/줄이면 됨.</div>
+
+<h3>대안 (참고)</h3>
+<ul>
+<li><b>CapsLockIME</b> (<a href="https://github.com/iolate/CapsLockIME">github.com/iolate/CapsLockIME</a>) — CapsLock→한영 + 키보드 LED 제어 전용 도구. 단 <span class="warn">정식 릴리스 없음</span>(reg/ahk 수동) · 탭/길게 이중동작은 위 AHK가 더 확실.</li>
+<li><b>PowerToys</b> Keyboard Manager — 단순 CapsLock→한영 매핑만. 탭/길게 구분 ✕.</li>
+</ul>
+
+<div class="sub" style="margin-top:26px">정본 파일 = <code>docs/termux-to-drive.sh</code> · <code>docs/pc-downloader/CapsLock_한영_맥방식.ahk</code> · <code>docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md §9</code> · <code>scripts/phone_subs.sh</code>(THREADS_COOKIE 주석). 이 가이드는 세션 증발 대비 SSOT.</div>
+
+<script>
+function cp(id,btn){
+  var t=document.getElementById(id).innerText;
+  navigator.clipboard.writeText(t).then(function(){
+    var o=btn.innerText;btn.innerText='복사됨 ✓';btn.classList.add('done');
+    setTimeout(function(){btn.innerText=o;btn.classList.remove('done')},1400);
+  });
+}
+</script>

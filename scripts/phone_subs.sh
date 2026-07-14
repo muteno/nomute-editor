@@ -12,6 +12,9 @@ set -e
 cd "$(dirname "$0")/.."
 # 폰 로컬 시크릿(git 밖 · cron은 .bashrc 미로드라 여기서 source) — 재난문자 등 키 필요 소스용.
 # 1회 설정(폰):  echo "export SAFETY_KEY='발급받은_재난문자_서비스키'" > ~/.nomute_phone_env
+# 스레드 부계(가계정) 연결 = 같은 파일에 세션쿠키 한 줄 추가(레포 커밋 0 · 부계 전용 = 밴 리스크):
+#   echo "export THREADS_COOKIE='sessionid=...; ds_user_id=...'" >> ~/.nomute_phone_env
+#   (쿠키 = threads.com에 부계로 로그인한 브라우저 F12 → Application/Network의 Cookie 헤더. threads_subs가 있으면 로그인 상태로 요청.)
 [ -f "$HOME/.nomute_phone_env" ] && . "$HOME/.nomute_phone_env"
 git fetch origin main -q 2>/dev/null || true
 git pull -q --rebase origin main 2>/dev/null || true   # 최신 계정 목록(sns_accounts.json) 동기
