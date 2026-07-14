@@ -221,7 +221,7 @@ def main():
             seen_events.append({"ts": stamp, "title": title, "key": (ekeys(c) or [url])[0]})
             n += 1
             continue
-        env = dict(os.environ, PICK_URL=url, PICK_TITLE=title, PICK_ALT=alt)
+        env = dict(os.environ, PICK_URL=url, PICK_TITLE=title, PICK_ALT=alt, PICK_EKEY=(c.get("event_key") or ""))   # 자동픽도 event_key 흘림 → 피드 event_key 티어 활성(수동픽과 동일 · 260714)
         out = subprocess.run([sys.executable, str(PICK)], env=env, capture_output=True, text=True)
         sys.stderr.write(out.stderr)
         if out.returncode != 0:   # pick_pending 크래시(deps·IO) = 미처리 → 원장 기록 X = 다음 런 재시도(크래시는 pending 미작성 = 과금 0 · 48h 무분석 차단 방지)

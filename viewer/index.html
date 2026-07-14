@@ -8306,7 +8306,7 @@ function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대
   const alt = pickAlt(c);   // 같은 사건 타매체(메이저 우선·가까운 관련기사)
   if (c.url) {   // ① 재분석 재발사(body 없이 → fetch 재시도 · alt 동반) = 다시 대기열(pending)로 · Failed→Picking(pfResubActive)
     const id = candId(c); saveRating(id, { picked: true, pickedAt: Date.now() }); pfAddResub(id);
-    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) })
+    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, event_key: c.event_key || '' }) })
       .then(async r => { if (r.ok) return;   // 서버 거절(GH_TOKEN 회귀·429 등) = 낙관 Picking 회수 + 표면화(무통보 유실 차단 · pickCard 8624 패턴 · 평의회 260713 ⑦)
         const j = await r.json().catch(() => ({}));
         saveRating(id, { picked: false }); pfRemoveResub(id); if (CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
@@ -9057,7 +9057,7 @@ async function pickCard(c) {
     // alt = 같은 사건 타매체(cluster_members) — 분석기 대체fetch + 썸네일 검색이미지 '유사' 보강 소스(applyTriage와 동일·주 픽 경로 누락 복구)
     const alt = pickAlt(c).slice(0, 8);
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ url: c.url, title: c.title || '', alt }) });
+      body: JSON.stringify({ url: c.url, title: c.title || '', alt, event_key: c.event_key || '' }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
   } catch (e) {
@@ -9168,7 +9168,7 @@ function applyTriage(act, c, el, reason, text) {
     // alt = 같은 사건 다른 매체 url(cluster_members) — 원매체가 막힌 매체(403)면 분석기가 접근 가능한
     // 대체매체로 본문 확보(item3). 원 url 제외·정규화 중복제거·최대 8개(dispatch 페이로드 절제).
     const alt = pickAlt(c).slice(0, 8);
-    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt }) })
+    fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, event_key: c.event_key || '' }) })
       .then(async r => { if (r.ok) return;   // 서버 거절 = 낙관 Picking 회수 + 표면화(시크릿 회귀 시 전 픽 무통보 유실 차단 · pickCard 패턴 · 평의회 260713 ⑦)
         const j = await r.json().catch(() => ({}));
         saveRating(id, { picked: false }); postRate({ id, url: c.url || '', title: c.title || '', score: cur.score || 0, picked: false });
@@ -10873,7 +10873,7 @@ $('#pasteSend').addEventListener('click', async () => {
   const btn = $('#pasteSend'); btn.disabled = true; $('#pasteStatus').textContent = '보내는 중…';
   const alt = pickAlt(c).slice(0, 8);   // 대체 fetch 후보(메이저 우선·원매체 403 우회 보조)
   try {
-    const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, body: text }) });
+    const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, body: text, event_key: c.event_key || '' }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
       $('#pasteStatus').innerHTML = OK_SVG + ' 재분석 시작 — 곧 Picking…으로, 완료되면 PICKED';
