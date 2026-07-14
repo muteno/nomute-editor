@@ -38,6 +38,20 @@ done
 prompt="$(cat "$PROMPT_FILE")
 ${STORY}"
 
+if [ "${DIRECTOR:-}" = "gpt" ]; then
+  # ── GPT 감독 레인(운영자 260714 "지피티도 가능하게") — OpenAI API 직호출(구독 OAuth 없음 = API 키 종량 · 설계확정 §0-2) ──
+  [ -n "${OPENAI_API_KEY:-}" ] || { echo "::error::OPENAI_API_KEY 시크릿 미등록 — GPT 감독 발사 불가"; echo "GPT 감독: OPENAI_API_KEY 시크릿 미등록 — 레포 Settings→Actions secrets에 등록 필요" > "$OUTDIR/error.log"; exit 1; }
+  # GPT는 파일시스템 Read 불가 → 스킬 전문 인라인(프리플라이트가 실존 보장 · 합 ~17KB = 토큰 부담 미미)
+  prompt="${prompt}
+
+[GPT 레인 특례 — 파일 Read 불가: 아래 인라인 전문이 절차 1·2의 그 파일들이다. Read 시도 없이 이 본문을 정본으로 따르라]
+=== .claude/skills/storyboard-v1/SKILL.md 전문 ===
+$(cat .claude/skills/storyboard-v1/SKILL.md)
+=== .claude/skills/master-sheet-v2/SKILL.md 전문 ===
+$(cat .claude/skills/master-sheet-v2/SKILL.md)"
+  out="$(printf '%s' "$prompt" | OPENAI_MODEL="${OPENAI_MODEL:-gpt-5.6-sol}" python3 .github/scripts/sb_gpt.py 2> "${OUTDIR}/stderr.log")"
+  rc=$?
+else
 # 허용 도구 = Read/Glob/Grep(스킬 런타임 로드) + WebFetch/WebSearch(리서치).
 # Write/Edit/Bash/Task 불허 = 헤드리스 무중단(kmake와 동일).
 inline_delay=15
@@ -62,8 +76,9 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
   fi
   break
 done
+fi   # ── 감독 분기 끝(gpt = OpenAI 직호출 / 클로드 = 구독 OAuth + 폴오버 SSOT) ──
 
-# 실패 판정: 비정상 종료 / 빈 출력 / 실패 신호 / '#' 제목 부재 (kmake 동일)
+# 실패 판정: 비정상 종료 / 빈 출력 / 실패 신호 / '#' 제목 부재 (kmake 동일 · 감독 무관 공통)
 if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^SBMAKE_FAILED' <<<"$out" || ! grep -qm1 '^#' <<<"$out"; then
   {
     echo "exit_code: $rc"

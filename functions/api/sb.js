@@ -29,13 +29,13 @@ export async function onRequestPost({ request, env }) {
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · k.js 규칙)
   // 화이트리스트 = 임의 문자열 주입 차단(k.js 패턴 계승 — 키는 서버 목록만 순회 = 사용자 키 자체를 안 읽음).
   // 값 2면 동기: 이 표 = viewer/sb.html SB_DIRECTORS/SB_SHOOTS/SB_VALS.
-  const SB_DIRECTORS = ['fable', 'opus'];
+  const SB_DIRECTORS = ['fable', 'opus', 'gpt'];   // gpt = OpenAI API 레인(운영자 260714 "지피티도 가능하게" — 러너 시크릿 OPENAI_API_KEY 필요 · sbmake.sh 분기)
   const SB_SHOOTS = ['kling', 'seedance'];
   const SB_SET = {
     '비율': ['9:16', '16:9', '1:1'],
     '길이': ['6~8s', '10~12s', '15s', '20~30s'],
   };
-  const DIRECTOR_NM = { fable: '페이블 5', opus: '오퍼스 4.8' };
+  const DIRECTOR_NM = { fable: '페이블 5', opus: '오퍼스 4.8', gpt: 'GPT 5.6 Sol' };
   const director = SB_DIRECTORS.includes(body.director) ? body.director : 'fable';
   const shoot = SB_SHOOTS.includes(body.shoot) ? body.shoot : 'kling';
   story += '\n\n[감독: ' + DIRECTOR_NM[director] + ']';   // 에코용 마커(모델 스위치는 워크플로 director 입력이 전담)
