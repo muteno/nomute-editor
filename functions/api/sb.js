@@ -49,9 +49,11 @@ export async function onRequestPost({ request, env }) {
   }
   if (pairs.length) story += '\n\n[설정: ' + pairs.join(' · ') + ']';
   if (body.ad === true || body.ad === 'true') story += '\n\n[광고: ON]';   // 광고 모드 = 마지막 컷 키비주얼 의무(storyboard-v1 하드룰)
+  // 변형(운영자 260714 5차 — 작업 내역에서 이전 콘티 기반 재설계): 경로 화이트리스트 정규식 = sb_out 산출물만(임의 파일 읽기 차단)
+  const base = (typeof body.base === 'string' && /^sb_out\/[0-9]{12}-[0-9a-f]{6}\/board\.md$/.test(body.base)) ? body.base : '';
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/sb-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, story, director },
+    ref: REF, inputs: { id, story, director, base },
   });
   if (r.status === 204) return json({ ok: true, id, out: `sb_out/${id}/board.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);

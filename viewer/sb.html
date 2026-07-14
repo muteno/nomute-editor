@@ -73,6 +73,26 @@
   .geni-opt:disabled { opacity:.28; pointer-events:none; }   /* 배선 대기 칩(GPT 5.6 — OpenAI 키 미배선) = index .geni-nav[disabled] 동일값 계승 */
   .geni-sum { color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); line-height:1.5; padding:8px 2px; text-align:right; font-variant-numeric:tabular-nums; }   /* raw-ok: index .geni-sum 동일값 계승(padding 8·2 — 우측 선택요약 리드백) */
   .geni-sum b { color:var(--fg); font-weight:var(--fw-b); }
+  /* ── 작업 내역 = thumb.html .jobs/.job 동일값 계승(운영자 260714 5차 "이미지 배선과 동일 — 최신 1건 우선 + 아래 아카이빙 + 변형") ── */
+  .jobs { display:flex; flex-direction:column; gap:var(--sp-1); margin:10px 0 0; }   /* raw-ok: thumb .jobs 동일값 계승(margin 10) */
+  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* raw-ok: thumb .job 동일값 계승(gap8·padding 8/11·fs12) */
+  .job .jlab { font-weight:800; color:var(--accent); cursor:pointer; }   /* 라벨 탭 = 그 결과 불러오기(아카이브 재열람) */
+  .job .jlab:active { transform:scale(var(--press-l,.95)); }
+  .job .jvar { color:var(--fg); font-weight:400; }   /* 감독·촬영 캡션 = thumb .jvar 문법(흰색·일반체) */
+  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }   /* raw-ok: thumb .jst 동일값 계승(gap5) */
+  .job .jst svg { display:block; width:14px; height:14px; flex:none; }
+  .job .jst .jspin { animation:sbspin .9s linear infinite; }
+  @keyframes sbspin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .job .jst .jspin { animation:none; } }
+  .job.done .jst { color:var(--accent); }
+  .job.err { border-color:rgba(var(--danger-rgb),.4); } .job.err .jst { color:var(--danger); }
+  .job .jmore { flex:none; display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:10.5px; line-height:1; cursor:pointer; white-space:nowrap; border-radius:var(--r-pill); padding:6px 11px; backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); transition:transform .12s, background .15s, color .15s, border-color .15s; color:var(--accent); background:rgba(var(--accent-rgb),.08); border:1px solid rgba(var(--accent-rgb),.34); }   /* raw-ok: thumb .jretry 기하+.jmore 강조 동일값 계승(fs10.5·padding 6/11) — 변형 버튼 */
+  .job .jmore:hover { background:rgba(var(--accent-rgb),.18); color:var(--fg); border-color:rgba(var(--accent-rgb),.6); }
+  .job .jmore:active { transform:scale(var(--press-l,.95)); }
+  .job .jdel { flex:none; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; color:rgba(255,255,255,.6); cursor:pointer; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; transition:transform .12s, background .15s, color .15s, border-color .15s; }   /* raw-ok: thumb .jdel 동일값 계승(28px·r8) */
+  .job .jdel:hover { background:rgba(var(--danger-rgb),.18); color:var(--danger); border-color:rgba(var(--danger-rgb),.5); }
+  .job .jdel:active { transform:scale(var(--press-s,.85)); }
+  .job .jdel svg { display:block; width:14px; height:14px; }
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; }   /* raw-ok: k.html .status 동일값 계승(margin 16) */
   .status.err { color:var(--danger); }
   .out { margin-top:var(--sp-3); }
@@ -143,7 +163,9 @@
   <div class="geni-row"><span class="pub-l">광고 모드</span><span class="geni-opts"><button type="button" class="geni-opt" id="adTg" aria-pressed="false" title="ON = 마지막 컷을 제품·슬로건 키비주얼로 (storyboard-v1 하드룰)">OFF</button></span></div>
 
   <div class="status" id="status"></div>
-  <div class="out" id="out"></div>
+  <div class="out" id="out"></div><!-- 최신 결과 = 여기 크게 1건 우선 표시(운영자 260714 5차 — Image Studio 배선 미러) -->
+  <div class="geni-sechead" id="jobsHead" hidden><span class="cref-lbl">작업 내역</span></div>
+  <div class="jobs" id="jobs"></div><!-- 아카이브 = thumb #jobs 문법(누적·라벨 탭 = 재열람·변형 = 그 콘티 기반 재설계) -->
 </div>
 
 <!-- 빠른메뉴(k.html #rfab 바이트 계승) — 코어(+) 펼치면 생성 · 코어 위 '-' 최소화 -->
@@ -238,7 +260,9 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
   function drawSpec() {   // 우측 선택요약 = index #geniSum 리드백 문법('/' 구분·b 값 강조 — 예: 극화·한국웹툰화 / 4:5 · FHD · 1개)
     const d = SB_DIRECTORS.find(x => x.id === sbDirector) || SB_DIRECTORS[0];
     const sh = SB_SHOOTS.find(x => x.id === sbShoot) || SB_SHOOTS[0];
-    spec.innerHTML = '감독 <b>' + esc(d.nm) + '</b>·' + esc(d.hint) + ' / 촬영 <b>' + esc(sh.nm) + '</b> / ' + esc(sbSet['비율']) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' / 광고 막컷 키비주얼' : '');
+    // 예상 비용(운영자 260714 5차): 클로드 = 토큰 수 00.0k 표기(구독 = 0원) / GPT = $ 환산(설계확정 §0-2 추정 — 실측 후 보정) / 촬영(시댄스)비 = 단가 수신 대기 · M2 get_cost 실시간 견적이 정본
+    const cost = sbDirector === 'gpt' ? '감독비 ~$1.2' : '감독 ~35.0k tok · 0원';
+    spec.innerHTML = '감독 <b>' + esc(d.nm) + '</b>·' + esc(d.hint) + ' / 촬영 <b>' + esc(sh.nm) + '</b> / ' + esc(sbSet['비율']) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' / 광고 막컷 키비주얼' : '') + ' / <span title="실측 전 추정 — 첫 발사 실측 후 보정. 촬영(시댄스) 크레딧은 M2 생성 게이트에서 실시간 견적.">' + cost + '</span>';
   }
   function render() {
     dg.innerHTML = '';
@@ -310,14 +334,63 @@ function wireCopy() {
   });
 }
 
-const LKEY = 'sb_last_out';   // 재열람 키(k LKEY 기틀 계승 — 닫기·새로고침 = iframe 파기 대비)
 async function renderOut(md, outEl) {   // 결과 렌더 공통(폴 성공·재열람 재사용) — sb = 텍스트 콘티만(레퍼런스·오버레이 없음 = 0크레딧 단계)
   outEl.innerHTML = renderMd(md);
   wireCopy();
 }
+// ── 작업 내역(운영자 260714 5차 — Image Studio 배선 미러): 발사마다 누적 · 최신 done = #out에 우선 표시 · 라벨 탭 = 재열람 · 변형 = 그 콘티 기반 재설계 ──
+const JKEY = 'sb_jobs';
+const jload = () => { try { const a = JSON.parse(localStorage.getItem(JKEY) || '[]'); return Array.isArray(a) ? a.slice(0, 30) : []; } catch (e) { return []; } };   // 상한 30건(스토리지 보호)
+const jsave = a => { try { localStorage.setItem(JKEY, JSON.stringify(a.slice(0, 30))); } catch (e) {} };
+function jupd(id, patch) { const a = jload(); const j = a.find(x => x.id === id); if (j) { Object.assign(j, patch); jsave(a); } renderJobs(); }
+let sbBase = null;   // 변형 모드: {out, label} — 발사 시 base로 전달·발사 후 해제
+const DNM = { fable: '페이블 5', opus: '오퍼스 4.8', gpt: 'GPT 5.6' }, SNM = { kling: 'Kling', seedance: 'Seedance' };
+const JOB_SPIN = '<svg class="jspin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></svg>';
+const JOB_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기/삭제 X = SVG 정본(문자 × 금지 게이트)
+async function loadJob(j) {   // 아카이브 재열람 — SPA 폴백 가드는 poll과 동일
+  try {
+    const r = await fetch(j.out + '?t=' + Date.now()); if (!r.ok) return false;
+    const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
+    if (!md || !md.trim() || ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300))) return false;
+    const d = new Date(j.ts), p2 = n => String(n).padStart(2, '0');
+    $('#status').innerHTML = OK_SVG + ' ' + esc(j.label) + ' · ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+    $('#status').classList.remove('err');
+    await renderOut(md, $('#out'));
+    return true;
+  } catch (e) { return false; }
+}
+function renderJobs() {
+  const box = $('#jobs'), head = $('#jobsHead'); if (!box || !head) return;
+  const a = jload();
+  head.hidden = !a.length; box.innerHTML = '';
+  a.forEach(j => {
+    const row = document.createElement('div'); row.className = 'job' + (j.status === 'done' ? ' done' : j.status === 'err' ? ' err' : '');
+    const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = j.label; lab.title = '탭 = 이 콘티 불러오기'; lab.setAttribute('role', 'button'); lab.setAttribute('tabindex', '0');
+    lab.addEventListener('click', () => { if (j.status === 'run') { poll(j.out, j.id); } else { loadJob(j); } try { $('#out').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} });
+    const v = document.createElement('span'); v.className = 'jvar'; v.textContent = (DNM[j.d] || j.d) + ' · ' + (SNM[j.sh] || j.sh) + (j.base ? ' · 변형' : '');
+    const st = document.createElement('span'); st.className = 'jst';
+    const d = new Date(j.ts), p2 = n => String(n).padStart(2, '0');
+    st.innerHTML = j.status === 'done' ? CHECK_SVG + ' 완료 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) : j.status === 'err' ? ERR_SVG + ' 실패' : JOB_SPIN + ' 설계 중';
+    row.appendChild(lab); row.appendChild(v);
+    if (j.status === 'done') {   // 변형 = 이 콘티를 기반으로 변경 지시만 반영(전체 재창작 금지 — sb-make.md 변형 규칙)
+      const m = document.createElement('button'); m.type = 'button'; m.className = 'jmore'; m.textContent = '변형';
+      m.title = '이 콘티 기반 변형 — 입력칸에 바꿀 점만 쓰고 생성';
+      m.addEventListener('click', () => {
+        sbBase = { out: j.out, label: j.label };
+        $('#status').classList.remove('err');
+        $('#status').innerHTML = OK_SVG + ' 변형 모드: ' + esc(j.label) + ' — 입력칸에 바꿀 점만 쓰고 생성 (다시 누르면 해제)';
+        try { $('#scene').focus(); $('#scene').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+      });
+      row.appendChild(m);
+    }
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'jdel'; del.innerHTML = JOB_X; del.setAttribute('aria-label', '내역 삭제'); del.title = '내역에서 삭제(생성물 파일은 유지)';
+    del.addEventListener('click', () => { jsave(jload().filter(x => x.id !== j.id)); if (sbBase && sbBase.out === j.out) sbBase = null; renderJobs(); });
+    row.appendChild(del); row.appendChild(st); box.appendChild(row);
+  });
+}
 let _curStop = null;   // 진행 폴 중단 핸들(k 계승)
 let _fired = false;    // 발사 이력 — restoreLast 레이스 가드(k 계승)
-function poll(outPath) {
+function poll(outPath, jid) {
   if (_curStop) _curStop();
   const t0 = Date.now(), status = $('#status'), out = $('#out');
   const budget = 1800;   // 워크플로 증발 백스톱(k 계승 — 초과 유실은 재열람이 2차 안전망)
@@ -339,7 +412,7 @@ function poll(outPath) {
         const ect = (er.headers.get('content-type') || '').toLowerCase();
         const em = await er.text();
         const eHtml = ect.includes('text/html') || /^\s*<!doctype/i.test(em) || /<html[\s>]/i.test(em.slice(0, 300));
-        if (em && em.trim() && !eHtml) { stop(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = ''; return; }
+        if (em && em.trim() && !eHtml) { stop(); status.innerHTML = ERR_SVG + ' ' + esc(em.trim()); status.classList.add('err'); out.innerHTML = ''; if (jid) jupd(jid, { status: 'err' }); return; }
       }
     } catch (e) { /* 재시도 */ }
     try {   // 2) 결과 확인(SPA 폴백 오인 차단 = k 계승)
@@ -353,7 +426,7 @@ function poll(outPath) {
           status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)';
           try { localStorage.removeItem(CKEY); } catch (e) {}   // 새 생성 = 복사 표식 리셋(k 계승)
           await renderOut(md, out);
-          try { localStorage.setItem(LKEY, JSON.stringify({ out: outPath, ts: Date.now() })); } catch (e) {}
+          if (jid) jupd(jid, { status: 'done' });   // 작업 내역 완료 반영(아카이브 = 재열람 정본 · 구 LKEY 재열람 대체)
           try { out.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
           return;
         }
@@ -384,28 +457,24 @@ $('#go').onclick = async () => {
   { const gb = document.getElementById('go'); gb.classList.remove('firing'); void gb.offsetWidth; gb.classList.add('firing'); setTimeout(() => gb.classList.remove('firing'), 760); }   // 누름 게이지 = 검증 통과 후(k 계승)
   $('#go').disabled = true; status.textContent = '설계 중…'; _fired = true;
   try {
-    const res = await fetch('/api/sb', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ story }, sbPayload())) });
+    const base = sbBase ? sbBase.out : '';   // 변형 모드 = 이전 콘티 경로 동봉(서버 화이트리스트 재검증)
+    const res = await fetch('/api/sb', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ story, base }, sbPayload())) });
     const j = await res.json();
     if (!res.ok || j.error) { status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); return; }
-    poll(j.out);
+    const a = jload(); a.unshift({ id: j.id, out: j.out, ts: Date.now(), d: sbDirector, sh: sbShoot, base: !!base, label: story.replace(/\s+/g, ' ').slice(0, 16) + (story.length > 16 ? '…' : ''), status: 'run' }); jsave(a); renderJobs();   // 발사 즉시 내역 적립(최신 = 맨 위 · Image Studio 미러)
+    sbBase = null;   // 변형 모드 = 1회용(발사 후 해제)
+    poll(j.out, j.id);
   } catch (e) {
     status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err');
   } finally { $('#go').disabled = false; }
 };
-// 재열람 — k restoreLast 바이트 계승(TTL 24h · 새 생성 시작 전까지만)
-(async function restoreLast() {
-  try {
-    const s = JSON.parse(localStorage.getItem(LKEY) || 'null');
-    if (!s || !s.out || Date.now() - (s.ts || 0) > 86400e3) return;
-    const r = await fetch(s.out + '?t=' + Date.now()); if (!r.ok) return;
-    const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
-    const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
-    if (!md || !md.trim() || isHtml) return;
-    if (_fired || _curStop || $('#out').innerHTML) return;   // 레이스 가드(k 계승)
-    const d = new Date(s.ts), p2 = n => String(n).padStart(2, '0');
-    $('#status').innerHTML = OK_SVG + ' 지난 결과 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ' (새로 생성하면 대체)';
-    await renderOut(md, $('#out'));
-  } catch (e) { /* 재열람은 보조 — 실패 무시 */ }
+// 부팅 재열람(운영자 260714 5차 — 구 sb_last_out 단건 재열람을 작업 내역이 대체): 최신 done = #out 우선 표시 · 진행 중이던 잡 = 폴 재개
+(async function bootJobs() {
+  renderJobs();
+  const a = jload(); if (!a.length) return;
+  if (_fired || _curStop || $('#out').innerHTML) return;   // 새 생성 시작했으면 양보(레이스 가드 · k restoreLast 계승)
+  if (a[0].status === 'run') { poll(a[0].out, a[0].id); return; }   // 리로드로 끊긴 진행 잡 = 폴 재개(완료돼 있으면 즉시 done 전환)
+  const done = a.find(x => x.status === 'done'); if (done) await loadJob(done);
 })();
 // 빠른메뉴 — k.html #rfab 블록 바이트 계승(코어 토글·생성·탭 순환·최소화)
 (function(){

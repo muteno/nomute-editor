@@ -38,6 +38,17 @@ done
 prompt="$(cat "$PROMPT_FILE")
 ${STORY}"
 
+# 변형 모드(운영자 260714 5차): BASE = 이전 콘티 경로(api/sb.js 화이트리스트 통과분) → 전문 동봉(클로드·GPT 양 레인 공통 = 인라인 통일)
+if [ -n "${BASE:-}" ] && [ -f "viewer/${BASE}" ]; then
+  prompt="${prompt}
+
+[변형 모드 — 아래 이전 콘티가 기준이다. 이야기 입력의 변경 지시만 반영하고 나머지(캐릭터 락·구조·유지 컷)는 보존하라. 전체 재창작 금지 · 바뀐 컷에 📌 표기]
+=== 이전 콘티(기준) ===
+$(cat "viewer/${BASE}")"
+elif [ -n "${BASE:-}" ]; then
+  echo "::warning::변형 기준 콘티 부재(viewer/${BASE}) — 신규 설계로 진행"
+fi
+
 if [ "${DIRECTOR:-}" = "gpt" ]; then
   # ── GPT 감독 레인(운영자 260714 "지피티도 가능하게") — OpenAI API 직호출(구독 OAuth 없음 = API 키 종량 · 설계확정 §0-2) ──
   [ -n "${OPENAI_API_KEY:-}" ] || { echo "::error::OPENAI_API_KEY 시크릿 미등록 — GPT 감독 발사 불가"; echo "GPT 감독: OPENAI_API_KEY 시크릿 미등록 — 레포 Settings→Actions secrets에 등록 필요" > "$OUTDIR/error.log"; exit 1; }
