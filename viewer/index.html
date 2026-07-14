@@ -874,7 +874,8 @@
   .tbrief { margin:0 0 14px; padding:10px 12px; border-radius:var(--r-m); background:rgba(255,255,255,.04); border:1px solid var(--line); }   /* 무채 인셋 판(xcard 톤 계승) */
   .tbrief-lbl { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--accent); letter-spacing:.02em; margin-bottom:3px; }
   .tbrief-t { margin:0; font-size:var(--fs-sm); line-height:1.85; color:var(--fg); word-break:break-word; white-space:pre-line; }   /* 줄간격 확대·요점별 개행 보존(white-space:pre-line) — 운영자 260712 #7 */
-  .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 강조색 굵게(핵심 포인트·수치) */
+  .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표1* 강조 = 강조색 굵게(1층 = 제일 중요·핵심 포인트·수치) */
+  .tbrief-t b.tb-em, .tbrief-prop li b.tb-em { color:var(--fg); font-weight:var(--fw-b); }   /* **별표2** 강조 = 강조색 없이 볼드만(2층 = 어느정도 중요 · 본문색 유지·700 = 강조색 800보다 한 단 아래 · 운영자 260714 "강조색 볼드만큼은 아니지만 볼드로") */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
   /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
@@ -10159,16 +10160,17 @@ function renderChan() {
   if (bt && CHANB) {
     bt.textContent = '';
     const bcur = bsecs ? bsecs.find(s => s.k === CHAN_BSEC) : null;   // 기간 탭 선택분(운영자 260714) — sections 없으면 종전 전문(text)
-    const parseInto = (el, s) => {   // 인라인 파서(*별표*→<b> · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러)
-      const TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+    const parseInto = (el, s) => {   // 인라인 파서(**별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러) · ⚠ 더블스타를 싱글 앞에 = 같은 위치서 먼저 매칭(운영자 260714 2층 강조)
+      const TOK = /(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
       const addText = z => { if (z) el.appendChild(document.createTextNode(z)); };
       const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a2 = document.createElement('a'); a2.href = u.href; a2.target = '_blank'; a2.rel = 'noopener noreferrer'; a2.textContent = label; el.appendChild(a2); } catch { addText(label); } };
       let last = 0, m;
       while ((m = TOK.exec(s))) {
         addText(s.slice(last, m.index)); last = TOK.lastIndex;
-        if (m[1]) { const b2 = document.createElement('b'); b2.textContent = m[1].slice(1, -1); el.appendChild(b2); }
-        else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
-        else if (m[3]) { addLink(m[3], m[3]); }
+        if (m[1]) { const b2 = document.createElement('b'); b2.className = 'tb-em'; b2.textContent = m[1].slice(2, -2); el.appendChild(b2); }   // **2층** = 강조색 없이 볼드만
+        else if (m[2]) { const b2 = document.createElement('b'); b2.textContent = m[2].slice(1, -1); el.appendChild(b2); }   // *1층* = 강조색 볼드
+        else if (m[3]) { const mm = m[3].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+        else if (m[4]) { addLink(m[4], m[4]); }
       }
       addText(s.slice(last));
     };
