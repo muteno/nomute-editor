@@ -63,6 +63,8 @@
     --arm:var(--accent-4); --arm-rgb:var(--accent-4-rgb); --on-arm:#241C02; --thumb:var(--accent-4);   /* arm/thumb=accent-4(운영자 260704) · on-arm = 오렌지 딥 셰이드(on-amber 동일 · 260705) */
     /* 모션 토큰 — 곳곳 인라인 .18s/.15s 점진 이관용(신규/수정 CSS는 이거 참조). */
     --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
+    /* 아코디언 접이 전용(체브론 회전 + 개폐 전이 동기) — 4중 복제 .26s 승격(평의회 260714 기틀 지적 · 운영자 "토큰 승격 ㄱㄱ"). 사용처 = .pmenu-sub/.pm-chev(설정) · .geni-chev/.geni-camsub/.geni-arwrap/.geni-moodsub(이미지 생성) · .tbrief-led-h/.tbrief-led-w(이슈 원장 접이). 등장 팝업 .26s(msgUnfold 등)는 별개 축 = 이 토큰 비대상. */
+    --dur-acc:.26s;
     /* 게이지 채움 곡선 = 센 ease-out(초반 빠르게·끝 완만 = 응답 점프 최소)이되 *눈에 보이는* 감속 = 하우스 곡선(cardIn·bnav 계승). 옛 (.12,.9,.22,1)은 시간 10%에 55% 도달 = 0.72s 게이지서 첫 몇 프레임에 화면 중반 텔레포트 → '중간에서 시작·이징 안 먹힘' 착시 → 폐기. 처음부터 쓸려오르며 감속(가시성)+응답시점 71% 프론트로드(점프 완화) 양립. 전 게이지바(glive·pickGauge·goFill) 공통 SSOT — 새 게이지도 이거 계승(제각각 금지). 260704 */
     --gauge-ease:cubic-bezier(.22,.61,.36,1);
     /* 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). var(--font-status)는 호환 위해 유지. */
@@ -339,9 +341,9 @@
   .pmenu a:hover, .pmenu button:hover { color:var(--accent); }   /* hover=강조색(링크 메뉴 .bpop a:hover 통일 · 선택 어포던스 = 뭘 고르는지 표시 · 운영자 260705, 옛 260629 무채색 뒤집음) · 배경 박스 없음 유지 */
   .pmenu .pmenu-sns { display:flex; align-items:center; gap:6px; }   /* SNS/설정 = 2차 토글 + 우측 V자 쉐브론(운영자 260704 재도입 "V자 우측 정렬" — 같은 날 오전 제거분 뒤집음) */
   .pmenu-sns .pm-chev { margin-left:auto; margin-right:-6px; flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* V자 = 우측 정렬 · 박스 30px = 헤더 X 버튼 미러 → margin -6(pmenu padding 기하 보정)으로 V자 중심 = X 버튼 정중앙 세로축(운영자 260704 "X 가로 정렬·가운데점에 맞춰") */
-  .pmenu-sns .pm-chev svg { display:block; transition:transform .26s var(--ease); }   /* 펼침 = 아코디언(.26s)과 동기 회전 */
+  .pmenu-sns .pm-chev svg { display:block; transition:transform var(--dur-acc) var(--ease); }   /* 펼침 = 아코디언(.26s)과 동기 회전 */
   .pmenu-sns[aria-expanded="true"] .pm-chev svg { transform:rotate(180deg); }
-  .pmenu-sub { overflow:hidden; max-height:0; transition:max-height .26s var(--ease); }   /* 아코디언 — 펼침 시 4개 링크 슬라이드 */
+  .pmenu-sub { overflow:hidden; max-height:0; transition:max-height var(--dur-acc) var(--ease); }   /* 아코디언 — 펼침 시 4개 링크 슬라이드 */
   .pmenu-sub.open { max-height:220px; }
   .pmenu-sub.open > * { animation:cardIn .3s cubic-bezier(.22,.61,.36,1) both; }   /* 설정 아코디언 펼침 = 행 촤르륵(cardIn 계승) — max-height 슬라이드에 스태거 중첩(운영자 260707 "펼쳐질 때 촤르륵") · .open 제거(접힘)면 셀렉터 해제 = 재펼침마다 재생 */
   .pmenu-sub.open > :nth-child(2) { animation-delay:.07s }
@@ -774,7 +776,7 @@
   .gpic .gpic-lt { stroke:var(--accent-bright); stroke-width:2.2; fill:none; stroke-linecap:round; stroke-dasharray:16 84; animation:gpicTrace 2.7s var(--ease) infinite; }
   .gpic .gpic-lts { stroke-width:2.7; }   /* ✨ 스파크 = fill 아이콘 위 궤도라 라이트 안쪽 절반이 동색 fill에 먹힘 → 획 보정으로 바깥 할로 보전(평의회⑧ 실측 0.73→0.93px = 차트 라이트와 시각 강도 균형) */
   @keyframes gpicTrace { to { stroke-dashoffset:-100; } }
-  .tgroup-h:has(.tdash-time.stale) .gpic .gpic-lt { animation-play-state:paused; opacity:.28; }   /* 수집 지연(stale 65분+) = 빛도 멎어 흐려짐(평의회⑦ 치명 봉합 = 크론 사망 중 '살아있음' 거짓신호 차단) · :has 기사용(160·1224) · .tdash-time.stale warn(680)과 동축 = 정직 신호 2차 강화 · TOP 헤더만 tdash-time 보유라 자동 스코프(AI요약 무영향) */
+  .tgroup-h:has(.tdash-time.stale) .gpic .gpic-lt, .tgroup-h.hdr-stale .gpic .gpic-lt { animation-play-state:paused; opacity:.28; }   /* 수집 지연(stale 65분+) = 빛도 멎어 흐려짐(평의회⑦ 치명 봉합 = 크론 사망 중 '살아있음' 거짓신호 차단) · :has 기사용(160·1224) · .tdash-time.stale warn(680)과 동축 = 정직 신호 2차 강화 · TOP = tdash-time.stale 자동 / AI 요약 = 같은 트렌드 수집(d) 공유라 hdr-stale 플래그로 대칭 멎음(운영자 260714 "빛멎음 ㄱㄱ" — 브리프는 내용 무변 시 스킵되니 자체 시각 아닌 기반 데이터 d.stale로 판정) */
   @media (prefers-reduced-motion:reduce) { .gpic .gpic-lt { animation:none; opacity:0; } }
   /* ── TOP 카드 레일(.tpg/.tpc — 운영자 260712 플레이그라운드 선택값 배선: 레일 2행(1~5/6~10)·카드 148·1:1 커버 r-s·순위 필 h15/fs10·구분자행(cat 재지정)→제목 2줄 11px→원시 조회+우측 시간(relAge)·NEW만·로테이션 글로우) — 구 .tdr 행 리스트 폐지 ── */
   .tpg { display:grid; grid-auto-flow:column; grid-template-rows:auto auto; grid-auto-columns:148px; gap:13px 6px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; margin:0; padding:0 0 4px; }   /* 카드 레일 = soc-item 좌우 0 통일과 짝 → 마진 상쇄 불필요(콘텐츠 좌·우변 = 글래스 안쪽 = 타 블록과 동일선 · §디자인 y 연쇄 SSOT) */
@@ -874,7 +876,8 @@
   .tbrief { margin:0 0 14px; padding:10px 12px; border-radius:var(--r-m); background:rgba(255,255,255,.04); border:1px solid var(--line); }   /* 무채 인셋 판(xcard 톤 계승) */
   .tbrief-lbl { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--accent); letter-spacing:.02em; margin-bottom:3px; }
   .tbrief-t { margin:0; font-size:var(--fs-sm); line-height:1.85; color:var(--fg); word-break:break-word; white-space:pre-line; }   /* 줄간격 확대·요점별 개행 보존(white-space:pre-line) — 운영자 260712 #7 */
-  .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표* 강조 = 강조색 굵게(핵심 포인트·수치) */
+  .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표1* 강조 = 강조색 굵게(1층 = 제일 중요·핵심 포인트·수치) */
+  .tbrief-t b.tb-em, .tbrief-prop li b.tb-em { color:var(--fg); font-weight:var(--fw-b); }   /* **별표2** 강조 = 강조색 없이 볼드만(2층 = 어느정도 중요 · 본문색 유지·700 = 강조색 800보다 한 단 아래 · 운영자 260714 "강조색 볼드만큼은 아니지만 볼드로") */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
   /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
@@ -901,15 +904,18 @@
   /* ── 이미 다룬 이슈 접이(운영자 260714 "그렇게 하는것도 좋을듯") — 이슈 원장(sns_brief.json issues) 가시화: 감쇠로 조용히 빠진 이슈가 누락 아닌 '의도'임을 보이게. 판 분리 = .tbrief-prop 결(상단 line2 선) · 체브론 = CHEVRON_SVG 회전(.pm-chev 아코디언 계승) · 프레스 = 형제 디스클로저(.pmenu-sns·.geni-fold) 동일 무스케일 ── */
   .tbrief-led { margin:var(--sp-2) 0 0; padding-top:var(--sp-1); border-top:1px solid var(--line2); }
   .tbrief-led-h { position:relative; display:flex; align-items:center; gap:4px; /* raw-ok: 체브론-라벨 광학 간격(sp-1=6 과대 · .geni-n 결) */ padding:2px 0; margin:0; background:none; border:0; cursor:pointer; font-family:inherit; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--mut); }
-  .tbrief-led-h::after { content:''; position:absolute; inset:-10px 0; }   /* 히트 영역 세로 ≥40 확장(시각 비대 없이 · 위 tm 줄과는 led 상단 여백 안이라 무겹침·아래는 비인터랙티브 목록) */
+  .tbrief-led-h::after { content:''; position:absolute; inset:-10px 0 -5px; }   /* 히트 영역 세로 확장(시각 비대 없이) — 상방 = led 상단 여백 안(tm 줄 무겹침 실측) · 하방 -5 = 목록 상단 패딩(6px) 안 = 첫 행 무겹침(평의회 회귀·UX 봉합) */
   .tbrief-led-h:hover { color:var(--accent); }   /* hover = .morebtn 결 계승 */
+  .tbrief-led-h:focus-visible { outline:none; box-shadow:0 0 0 2px rgba(var(--accent-rgb),.5); }   /* 키보드 포커스 링 = .tgroup-h 정본 계승(WCAG 2.4.7 · 평의회 a11y 봉합) */
   .tbrief-led-h b { font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
-  .tbrief-led-h svg { transition:transform .26s var(--ease); }   /* 펼침 회전 = .pm-chev(.26s) 동기 계승 */
+  .tbrief-led-h svg { transition:transform var(--dur-acc) var(--ease); }   /* 펼침 회전 = .pm-chev(.26s) 동기 계승 */
   .tbrief-led-h[aria-expanded="true"] svg { transform:rotate(180deg); }
-  .tbrief-led-l { margin:var(--sp-1) 0 0; padding:0; list-style:none; }
-  .tbrief-led-l li { display:flex; justify-content:space-between; gap:var(--sp-2); margin:var(--sp-1) 0; font-size:var(--fs-xs); line-height:1.6; color:var(--mut); word-break:break-word; }
+  .tbrief-led-w { display:grid; grid-template-rows:0fr; transition:grid-template-rows var(--dur-acc) var(--ease); }   /* 개폐 = .geni-camsub grid-rows 아코디언 계승(구 hidden 스냅 → 체브론과 동결 · 평의회 UX 봉합) · 접힘 SR/tab 제거 = inert(JS 토글) */
+  .tbrief-led-h[aria-expanded="true"] + .tbrief-led-w { grid-template-rows:1fr; }
+  .tbrief-led-l { margin:0; padding:0; list-style:none; overflow:hidden; }   /* overflow = grid 트랙 클립(.geni-camsub-in 계승) · 상단 간격 = 첫 li 마진(내부 마진 = 접힘 시 동반 클립 · ul 패딩은 0fr 밖에 잔존해 접힘 6px 유령 — 헤드리스 실측 봉합) */
+  .tbrief-led-l li { display:flex; justify-content:space-between; gap:var(--sp-2); margin:var(--sp-1) 0; font-size:var(--fs-xs); line-height:var(--lh-base); color:var(--mut); word-break:break-word; }
   .tbrief-led-l .tbl-m { flex:none; font-variant-numeric:tabular-nums; }
-  @media (prefers-reduced-motion:reduce){ .tbrief-led-h svg { transition:none; } }
+  @media (prefers-reduced-motion:reduce){ .tbrief-led-h svg, .tbrief-led-w { transition:none; } }
   /* AI요약 = 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 버튼 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당 */
   .tlist { display:flex; flex-direction:column; margin:0 0 12px; }   /* 개요 리스트 = 순위·제목·플랫폼·조회수(실검 문법) */
   .tlr { display:grid; grid-template-columns:18px minmax(0,1fr) 46px 64px 58px; column-gap:8px; align-items:baseline; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }   /* 표 컬럼 고정(운영자 260712 "표처럼·내부 선 투명·좌측 정렬 — 인덱싱 중구난방 해소") = 전 행 플랫폼·조회수·시간 시작 x 일렬 · 선 없음 = 내부 선 투명 · 5열 = +시간(운영자 260712 "모든 것에 시간" · 46/64 = 구 58/78 실측 재배분: 플랫폼 최장 "유튜브"·조회수 vfmt 만단위·모바일 제목폭 보존) */
@@ -2815,9 +2821,9 @@
   .geni-sechead + .geni-row { border-top:none; }   /* 소머리 밑줄이 구분선 전담 — 바로 다음 행 border-top 중복(이중선) 제거(운영자 260713 구분선 위치 교정과 한 쌍) */
   .geni-fold { cursor:pointer; }
   .geni-chev { margin-left:auto; flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* V자 = .pm-chev 계승(우측 정렬·30px 박스) */
-  .geni-chev svg { display:block; transition:transform .26s var(--ease); }
+  .geni-chev svg { display:block; transition:transform var(--dur-acc) var(--ease); }
   .geni-fold[aria-expanded="true"] .geni-chev svg { transform:rotate(180deg); }
-  .geni-camsub { display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s var(--ease); }   /* 아코디언 = grid-rows 0fr↔1fr(적대검증B·C: 구 max-height:900 하드코딩 = 접힘 140ms 무동작·잠재 클리핑 → grid-rows로 지연0·내용무관·클리핑0) */
+  .geni-camsub { display:grid; grid-template-rows:0fr; transition:grid-template-rows var(--dur-acc) var(--ease); }   /* 아코디언 = grid-rows 0fr↔1fr(적대검증B·C: 구 max-height:900 하드코딩 = 접힘 140ms 무동작·잠재 클리핑 → grid-rows로 지연0·내용무관·클리핑0) */
   .geni-camsub-in { overflow:hidden; }   /* grid-rows 트랙 클립 래퍼(inert는 부모 .geni-camsub에 JS 토글 = 접힘 시 tab-order·SR 제거 · 원본 .pmenu-sub[hidden] 계승의 핵심 복원) */
   .geni-fold[aria-expanded="true"] + .geni-camsub { grid-template-rows:1fr; }
   .geni-fold[aria-expanded="true"] + .geni-camsub .geni-row { animation:cardIn .22s var(--ease) backwards; }   /* 촤르륵 스태거 복원(적대검증B: 운영자 260707 명시 요구였는데 드롭됨 · .pmenu-sub cardIn 계승) */
@@ -2887,7 +2893,7 @@
   .geni-dd-btn::after { content:''; display:inline-block; width:.72em; height:.72em; margin-left:.3em; vertical-align:-.04em; opacity:.7; background:currentColor;
     -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat;
     mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat; }   /* 선택박스 어포던스 = 장식 pseudo SVG(텍스트+픽토 공존 예외 = .pmenu 외부링크 ::after 문법 계승 · §표기 e-라) */
-  .geni-arwrap, .geni-moodsub { display:grid; grid-template-rows:0fr; transition:grid-template-rows .26s var(--ease); }   /* 아코디언 = .geni-camsub grid-rows 0fr↔1fr 계승 */
+  .geni-arwrap, .geni-moodsub { display:grid; grid-template-rows:0fr; transition:grid-template-rows var(--dur-acc) var(--ease); }   /* 아코디언 = .geni-camsub grid-rows 0fr↔1fr 계승 */
   .geni-arin, .geni-moodsub-in { overflow:hidden; }
   .geni-arwrap.open, .geni-moodsub.open { grid-template-rows:1fr; }
   .geni-ar-row { border-top:none; padding-top:2px; }
@@ -9523,8 +9529,8 @@ function renderSnsTrends() {
   let TGF = {}; try { TGF = JSON.parse(localStorage.getItem('nm_trend_gfold') || '{}') || {}; } catch { TGF = {}; }
   let gno = 0, gfirst = true;
   const GPIC = { brief: AISPARK_SVG, top: TRENDUP_SVG };   // AI 요약·TOP 10 = 숫자 대신 픽토그램("0" 의미 = 순번 밖) · 플랫폼 그룹부터 1,2,3 (운영자 260712) · TOP = 🔥→📈 우상향 차트(운영자 260714 "불꽃 어색" · FIRE_SVG는 soc-burst 급등 배지로 존치 = 의미 별개)
-  const gsec = (id, ttl, body) => { const first = gfirst; gfirst = false; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || ++gno}</i>${ttl}</summary>${body}</details>`; };
-  if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span><div class="tbrief-led" hidden><button class="tbrief-led-h" type="button" aria-expanded="false" aria-controls="tbLedL"><span>이미 다룬 이슈 <b class="tbrief-led-n"></b>건</span>${CHEVRON_SVG}</button><ul class="tbrief-led-l" id="tbLedL" hidden></ul></div></div>`);   // 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당 · 말미 접이 = 이슈 원장(재탕 감쇠로 뺀 이슈 가시화 · 운영자 260714 · issues 없으면 hidden 유지)
+  const gsec = (id, ttl, body, hstale) => { const first = gfirst; gfirst = false; return `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="tg-${id}"${TGF[id] ? '' : ' open'}><summary class="tgroup-h${hstale ? ' hdr-stale' : ''}"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || ++gno}</i>${ttl}</summary>${body}</details>`; };   // hstale = 픽토 라이트 멎음(수집 죽음 국면 · 시각 텍스트 비노출 = 겉면 불변 · 운영자 260714 빛멎음)
+  if (BRIEF && BRIEF.text && top.length) h += gsec('brief', 'AI 요약', `<div class="tbrief"><p class="tbrief-t"></p><span class="tbrief-tm">${esc(String(BRIEF.updated || '').slice(11, 16))} 분석</span><div class="tbrief-led" hidden><button class="tbrief-led-h" type="button" aria-expanded="false" aria-controls="tbLedL" title="이전 브리핑에서 이미 다뤄 오늘 요약에서 뺐거나 줄인 이슈"><span>이미 다룬 이슈 <b class="tbrief-led-n"></b>건</span>${CHEVRON_SVG.replace('<svg ', '<svg aria-hidden="true" ')}</button><div class="tbrief-led-w" inert><ul class="tbrief-led-l" id="tbLedL"></ul></div></div></div>`, stale);   // 항상 전문 펼침(운영자 260713 "항상 펼쳐줘") — 구 리드 4줄 peek·더보기 폐지 · 접기는 상위 tgroup 헤더 체브론(촤르륵)이 담당 · 말미 접이 = 이슈 원장(재탕 감쇠로 뺀 이슈 가시화 · 운영자 260714 · issues 없으면 hidden 유지) · stale = TOP 공유 트렌드 수집 죽음 → 스파크 빛 대칭 멎음(#2286 합류)
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)} 수집${stale ? ' · 지연' : ''}</span>` : ''}`,
     '<div class="tlist">' + top.map((it, i) =>
       `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span><span class="tlr-tm">${esc(it.ago || '')}</span></a>`).join('') + '</div>' +
@@ -9538,9 +9544,9 @@ function renderSnsTrends() {
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
   box.querySelectorAll('#tg-top .tlr-t').forEach((el2, i) => { el2.textContent = top[i] ? top[i].t : ''; });
   const bt = box.querySelector('.tbrief-t');   // 단위 헤더 'AI 요약'이 라벨 겸함(판 내부 중복 라벨 제거 · §디자인 e)
-  if (bt && BRIEF) {   // *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line
+  if (bt && BRIEF) {   // **별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line · 채널 브리프(renderChan parseInto)와 강조 2층 통일(운영자 260714 "모두 통일")
     bt.textContent = '';
-    const txt = BRIEF.text || '', TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+    const txt = BRIEF.text || '', TOK = /(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;   // ⚠ 더블스타를 싱글 앞에 = 같은 위치서 먼저 매칭(2층 강조)
     const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
     const refKey = u => String(u || '').replace(/[)\].,!?"']+$/, '').replace(/\/+$/, '');   // URL 매칭 정규화(꼬리 구두점·슬래시 관용 — LLM 출력 편차 흡수)
     const REFM = {}; (BRIEF.refs || []).forEach((r, i) => { if (r && r.url) REFM[refKey(r.url)] = i; });   // 스크랩 카드 짝(url → refs 인덱스 · 운영자 260712 "참고 기사 = 인앱 팝업")
@@ -9548,9 +9554,10 @@ function renderSnsTrends() {
     let last = 0, m;
     while ((m = TOK.exec(txt))) {
       addText(txt.slice(last, m.index)); last = TOK.lastIndex;
-      if (m[1]) { const b = document.createElement('b'); b.textContent = m[1].slice(1, -1); bt.appendChild(b); }
-      else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
-      else if (m[3]) { addLink(m[3], m[3]); }
+      if (m[1]) { const b = document.createElement('b'); b.className = 'tb-em'; b.textContent = m[1].slice(2, -2); bt.appendChild(b); }   // **2층** = 강조색 없이 볼드만
+      else if (m[2]) { const b = document.createElement('b'); b.textContent = m[2].slice(1, -1); bt.appendChild(b); }   // *1층* = 강조색 볼드
+      else if (m[3]) { const mm = m[3].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+      else if (m[4]) { addLink(m[4], m[4]); }
     }
     addText(txt.slice(last));
   }
@@ -9564,12 +9571,12 @@ function renderSnsTrends() {
       const lu = led.querySelector('.tbrief-led-l');
       lx.forEach(x => {
         const li = document.createElement('li'), k = document.createElement('span'), m2 = document.createElement('span');
-        k.textContent = String(x.key); m2.className = 'tbl-m';
+        k.textContent = String(x.key).slice(0, 80); m2.className = 'tbl-m';   // 길이 캡 = 모델 산출 방어(평의회 보안 — DOM 비대 차단)
         m2.textContent = `${Math.max(1, x.n | 0)}회` + (x.last ? ` · ${String(x.last).slice(5, 10).replace('-', '/')}` : '');
         li.append(k, m2); lu.appendChild(li);
       });
-      const lh = led.querySelector('.tbrief-led-h');
-      lh.addEventListener('click', () => { const op = lh.getAttribute('aria-expanded') === 'true'; lh.setAttribute('aria-expanded', String(!op)); lu.hidden = op; });
+      const lh = led.querySelector('.tbrief-led-h'), lw = led.querySelector('.tbrief-led-w');
+      lh.addEventListener('click', () => { const op = lh.getAttribute('aria-expanded') === 'true'; lh.setAttribute('aria-expanded', String(!op)); lw.toggleAttribute('inert', op); });   // 개폐 = grid-rows CSS 전이 · inert = 접힘 시 SR/tab 제거(.geni-camsub 계승) · ⚠ 채널 브리프로 이식 시 id=tbLedL 파생 필수(tbLedL-chan 등 — 평의회 호환성)
     }
   }
   fillT('gt', '.trend-q', gt.slice(0, 8).map(g => g.query || ''));
@@ -10095,15 +10102,17 @@ function renderChan() {
   const RAIL = [];   // 렌더된 단위 수집(순번 = 헤더 배지와 자동 동기 · 데이터 결측 유닛 = 레일서도 자동 제외) → 좌측 책갈피 레일
   const GPIC = { brief: AISPARK_SVG };   // ✨ AI 요약 = 숫자 대신 픽토그램·순번 밖·레일 제외(메뉴3 GPIC 문법 미러)
   let gno = 0, gfirst = true;
-  const gsec = (id, ttl, body, extra) => { const first = gfirst; gfirst = false; if (!GPIC[id]) RAIL.push({ id, n: ++gno, lab: RLAB[id] || id }); const op = CGF[id] !== undefined ? !CGF[id] : !DEFF[id]; const core = `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="cg-${id}"${op ? ' open' : ''}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || gno}</i>${ttl}</summary>${body}</details>`; return extra ? `<div class="chu">${core}${extra}</div>` : core; };   // extra = 헤더 우측 심층 필(summary 밖 형제 = 인터랙티브 중첩 해소 · 평의회7-①) — 시각 위치는 .chu absolute가 담당
+  const gsec = (id, ttl, body, extra, hstale) => { const first = gfirst; gfirst = false; if (!GPIC[id]) RAIL.push({ id, n: ++gno, lab: RLAB[id] || id }); const op = CGF[id] !== undefined ? !CGF[id] : !DEFF[id]; const core = `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="cg-${id}"${op ? ' open' : ''}><summary class="tgroup-h${hstale ? ' hdr-stale' : ''}"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || gno}</i>${ttl}</summary>${body}</details>`; return extra ? `<div class="chu">${core}${extra}</div>` : core; };   // hstale = 픽토 라이트 멎음(수집 죽음 · 메뉴3 .hdr-stale CSS 공유 = 추가 0 · 운영자 260714 빛멎음)   // extra = 헤더 우측 심층 필(summary 밖 형제 = 인터랙티브 중첩 해소 · 평의회7-①) — 시각 위치는 .chu absolute가 담당
   let h = '';
+  let chanStale = false;   // insta 수집(하루 1회 · generated_kst ISO+09:00) 26h+ 밀림 = 하루치 통째 거름 → AI 요약 빛 멎음(정상이면 계속 돎 = 운영자 260714 "자주 돌수록 좋지") · 메뉴3 트렌드 65분과 다른 기준 = 수집 주기 차이(트렌드 30분×N vs insta 1일)
+  if (d.generated_kst) { const _ah = (Date.now() - new Date(d.generated_kst).getTime()) / 3600000; chanStale = _ah > 26; }
   // 채널 브리프(성장 서사+현황+전략 · 운영자 260714 "이래야겠네 전략이 뿅뿅") — 셸·라벨·항상 전문 펼침 = 메뉴3 AI 요약 원문 계승 · 접기 = tgroup 체브론
   // + 기간 구분 탭(운영자 260714 "7일·14일·28일·3개월·전체 총론 구분해서 요약") — sections 있으면 칩 세그(.ch-mchip 정본 계승·data-bs 축) · 구 단일 text JSON = 칩 없이 종전 렌더(하위호환 fail-soft)
   const bsecs = (CHANB && Array.isArray(CHANB.sections) && CHANB.sections.length >= 2) ? CHANB.sections : null;
   if (bsecs && !bsecs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsecs[0].k;   // 결측 섹션 방어(생성분이 일부만 와도 첫 탭으로)
   if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', 'AI 요약', `<div class="tbrief">` +
     (bsecs ? `<div class="ch-seg">${bsecs.map(s => `<button class="ch-mchip${s.k === CHAN_BSEC ? ' on' : ''}" type="button" data-bs="${esc(s.k)}">${esc(s.label === '전체 총론' ? '총론' : s.label)}</button>`).join('')}</div>` : '') +
-    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`);   // 클로신의 제안 = 전략 줄('→ ') 분리 판(운영자 260714 "위 = 분석 / 아래 = 왓투두 블릿") — 전략 줄 없으면 hidden 유지
+    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`, null, chanStale);   // null = extra(심층필) 없음 · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭 · 운영자 260714)   // 클로신의 제안 = 전략 줄('→ ') 분리 판(운영자 260714 "위 = 분석 / 아래 = 왓투두 블릿") — 전략 줄 없으면 hidden 유지
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(String(d.generated_kst || '').slice(5, 16).replace('T', ' '))} 수집</span>`, '<div class="ch-stats">' +
     st('팔로워', vf(p.followers_count), 'follows') + st('조회수', vf(a.views), 'views') + st('도달', vf(a.reach), 'reach') +
     st('공유', vf(a.shares)) + st('저장', vf(a.saves)) + st('프로필 방문', vf(a.profile_views), 'profile_views') + '</div>');
@@ -10156,16 +10165,17 @@ function renderChan() {
   if (bt && CHANB) {
     bt.textContent = '';
     const bcur = bsecs ? bsecs.find(s => s.k === CHAN_BSEC) : null;   // 기간 탭 선택분(운영자 260714) — sections 없으면 종전 전문(text)
-    const parseInto = (el, s) => {   // 인라인 파서(*별표*→<b> · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러)
-      const TOK = /(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
+    const parseInto = (el, s) => {   // 인라인 파서(**별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러) · ⚠ 더블스타를 싱글 앞에 = 같은 위치서 먼저 매칭(운영자 260714 2층 강조)
+      const TOK = /(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;
       const addText = z => { if (z) el.appendChild(document.createTextNode(z)); };
       const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a2 = document.createElement('a'); a2.href = u.href; a2.target = '_blank'; a2.rel = 'noopener noreferrer'; a2.textContent = label; el.appendChild(a2); } catch { addText(label); } };
       let last = 0, m;
       while ((m = TOK.exec(s))) {
         addText(s.slice(last, m.index)); last = TOK.lastIndex;
-        if (m[1]) { const b2 = document.createElement('b'); b2.textContent = m[1].slice(1, -1); el.appendChild(b2); }
-        else if (m[2]) { const mm = m[2].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
-        else if (m[3]) { addLink(m[3], m[3]); }
+        if (m[1]) { const b2 = document.createElement('b'); b2.className = 'tb-em'; b2.textContent = m[1].slice(2, -2); el.appendChild(b2); }   // **2층** = 강조색 없이 볼드만
+        else if (m[2]) { const b2 = document.createElement('b'); b2.textContent = m[2].slice(1, -1); el.appendChild(b2); }   // *1층* = 강조색 볼드
+        else if (m[3]) { const mm = m[3].match(/^\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)$/); addLink(mm[1], mm[2]); }
+        else if (m[4]) { addLink(m[4], m[4]); }
       }
       addText(s.slice(last));
     };
