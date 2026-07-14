@@ -119,6 +119,29 @@ def youtube(category_id=None, limit=15, region="KR"):
         return []
 
 
+def yt_comments(items, top_n=3, per=3):
+    """조회수 상위 영상에 인기 댓글 주입 — 공식 API commentThreads(기존 키 재사용 · 1unit/콜 = 과금 0 유지 · 운영자 260714
+    "가장 좋은 건 댓글 반응"). 레인당 top_n건 × 3레인 = 최악 9콜/런 ≈ 일 ~430unit(무료 쿼터 ~4%) — §1 보수성 내.
+    무키 = no-op · 영상별 실패(댓글 중지 403 등) = 그 영상만 스킵(fail-soft · comments 필드 자체가 옵션)."""
+    if not YT_KEY:
+        return
+    for it in sorted([x for x in items if x.get("id")], key=lambda v: v.get("views") or 0, reverse=True)[:top_n]:
+        q = {"part": "snippet", "videoId": it["id"], "maxResults": str(per), "order": "relevance",
+             "textFormat": "plainText", "key": YT_KEY}
+        try:
+            j = json.loads(_get("https://www.googleapis.com/youtube/v3/commentThreads?" + urllib.parse.urlencode(q)))
+            cs = []
+            for c in j.get("items", []):
+                s = ((c.get("snippet") or {}).get("topLevelComment") or {}).get("snippet") or {}
+                t = re.sub(r"\s+", " ", str(s.get("textDisplay") or "")).strip()[:90]
+                if t:
+                    cs.append({"text": t, "likes": int(s.get("likeCount") or 0)})
+            if cs:
+                it["comments"] = cs
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::yt_comments {it.get('id')} 실패(스킵): {e}", file=sys.stderr)
+
+
 # InnerTube 폴백 상수 — 업로드 도구(데일리 트렌드 뷰어) 검증 세트 계승(260711 2차 이식)
 IT_QUERIES = ["먹방", "브이로그", "예능 웃긴 영상", "뷰티 메이크업 패션", "영화 드라마 리뷰", "여행"]
 AI_QUERIES = ["AI 영상 제작", "AI 영상 생성", "sora ai video", "runway kling veo"]   # AI 영상 축 = 원본 도구 server.py AI_YT_QUERIES 그대로(운영자 260711 "원본으로 이어붙이되")
@@ -854,6 +877,9 @@ def main():
     # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
     sh = youtube_innertube(limit=12, shorts=True)          # 쇼츠 = 인기 쿼리 + <4분 필터(원본 protobuf 이식)
     ai = youtube_innertube(limit=12, queries=AI_QUERIES)   # AI 영상 = 원본 AI_YT_QUERIES 4종
+    # 인기 댓글 주입(운영자 260714 — 브리프 이상치 딥다이브 재료 "누가 올렸나·댓글 반응") — 쇼츠·인기·뉴스 상위 3건씩 · 키 게이트 no-op
+    for _lane in (sh, yt_all, yt_news):
+        yt_comments(_lane)
     # ⑥⑦ 레딧·블루스카이(운영자 260712 "레딧은 좋음"·"다른거 ㄱㄱ") — 게이트 OFF = 완전 무접촉(§📰-e 카나리아)
     rd = reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()]) if REDDIT_ON else []
     bs = bsky_hot() if BSKY_ON else []
