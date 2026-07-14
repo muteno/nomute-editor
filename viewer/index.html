@@ -10102,15 +10102,17 @@ function renderChan() {
   const RAIL = [];   // 렌더된 단위 수집(순번 = 헤더 배지와 자동 동기 · 데이터 결측 유닛 = 레일서도 자동 제외) → 좌측 책갈피 레일
   const GPIC = { brief: AISPARK_SVG };   // ✨ AI 요약 = 숫자 대신 픽토그램·순번 밖·레일 제외(메뉴3 GPIC 문법 미러)
   let gno = 0, gfirst = true;
-  const gsec = (id, ttl, body, extra) => { const first = gfirst; gfirst = false; if (!GPIC[id]) RAIL.push({ id, n: ++gno, lab: RLAB[id] || id }); const op = CGF[id] !== undefined ? !CGF[id] : !DEFF[id]; const core = `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="cg-${id}"${op ? ' open' : ''}><summary class="tgroup-h"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || gno}</i>${ttl}</summary>${body}</details>`; return extra ? `<div class="chu">${core}${extra}</div>` : core; };   // extra = 헤더 우측 심층 필(summary 밖 형제 = 인터랙티브 중첩 해소 · 평의회7-①) — 시각 위치는 .chu absolute가 담당
+  const gsec = (id, ttl, body, extra, hstale) => { const first = gfirst; gfirst = false; if (!GPIC[id]) RAIL.push({ id, n: ++gno, lab: RLAB[id] || id }); const op = CGF[id] !== undefined ? !CGF[id] : !DEFF[id]; const core = `<details class="tgroup${first ? ' dash' : ''}" data-g="${id}" id="cg-${id}"${op ? ' open' : ''}><summary class="tgroup-h${hstale ? ' hdr-stale' : ''}"><i${GPIC[id] ? ' class="gpic" aria-hidden="true"' : ''}>${GPIC[id] || gno}</i>${ttl}</summary>${body}</details>`; return extra ? `<div class="chu">${core}${extra}</div>` : core; };   // hstale = 픽토 라이트 멎음(수집 죽음 · 메뉴3 .hdr-stale CSS 공유 = 추가 0 · 운영자 260714 빛멎음)   // extra = 헤더 우측 심층 필(summary 밖 형제 = 인터랙티브 중첩 해소 · 평의회7-①) — 시각 위치는 .chu absolute가 담당
   let h = '';
+  let chanStale = false;   // insta 수집(하루 1회 · generated_kst ISO+09:00) 26h+ 밀림 = 하루치 통째 거름 → AI 요약 빛 멎음(정상이면 계속 돎 = 운영자 260714 "자주 돌수록 좋지") · 메뉴3 트렌드 65분과 다른 기준 = 수집 주기 차이(트렌드 30분×N vs insta 1일)
+  if (d.generated_kst) { const _ah = (Date.now() - new Date(d.generated_kst).getTime()) / 3600000; chanStale = _ah > 26; }
   // 채널 브리프(성장 서사+현황+전략 · 운영자 260714 "이래야겠네 전략이 뿅뿅") — 셸·라벨·항상 전문 펼침 = 메뉴3 AI 요약 원문 계승 · 접기 = tgroup 체브론
   // + 기간 구분 탭(운영자 260714 "7일·14일·28일·3개월·전체 총론 구분해서 요약") — sections 있으면 칩 세그(.ch-mchip 정본 계승·data-bs 축) · 구 단일 text JSON = 칩 없이 종전 렌더(하위호환 fail-soft)
   const bsecs = (CHANB && Array.isArray(CHANB.sections) && CHANB.sections.length >= 2) ? CHANB.sections : null;
   if (bsecs && !bsecs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsecs[0].k;   // 결측 섹션 방어(생성분이 일부만 와도 첫 탭으로)
   if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', 'AI 요약', `<div class="tbrief">` +
     (bsecs ? `<div class="ch-seg">${bsecs.map(s => `<button class="ch-mchip${s.k === CHAN_BSEC ? ' on' : ''}" type="button" data-bs="${esc(s.k)}">${esc(s.label === '전체 총론' ? '총론' : s.label)}</button>`).join('')}</div>` : '') +
-    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`);   // 클로신의 제안 = 전략 줄('→ ') 분리 판(운영자 260714 "위 = 분석 / 아래 = 왓투두 블릿") — 전략 줄 없으면 hidden 유지
+    `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div><span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span></div>`, null, chanStale);   // null = extra(심층필) 없음 · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭 · 운영자 260714)   // 클로신의 제안 = 전략 줄('→ ') 분리 판(운영자 260714 "위 = 분석 / 아래 = 왓투두 블릿") — 전략 줄 없으면 hidden 유지
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(String(d.generated_kst || '').slice(5, 16).replace('T', ' '))} 수집</span>`, '<div class="ch-stats">' +
     st('팔로워', vf(p.followers_count), 'follows') + st('조회수', vf(a.views), 'views') + st('도달', vf(a.reach), 'reach') +
     st('공유', vf(a.shares)) + st('저장', vf(a.saves)) + st('프로필 방문', vf(a.profile_views), 'profile_views') + '</div>');
