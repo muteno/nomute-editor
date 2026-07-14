@@ -66,16 +66,17 @@
   .geni-row { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2); padding:8px 0; }   /* raw-ok: index .geni-row 동일값 계승(padding 8 — 라벨 좌·값 우 baseline) */
   .pub-l { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }   /* 항목 라벨 = index .pub-l 동일값 */
   .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }   /* raw-ok: index .geni-opts 동일값 계승(gap 3·4 — 우측 정렬 워드칩) */
-  .geni-opt { background:none; border:none; padding:6px 7px; font:var(--fw-b) var(--fs-label) inherit; color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* raw-ok: index .geni-opt 동일값 계승(padding 6·7 — 워드칩 = 밝기·색으로 on/off) */
+  .geni-opt { background:none; border:none; padding:6px 7px; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); cursor:pointer; white-space:nowrap; transition:color .15s; -webkit-tap-highlight-color:transparent; }   /* raw-ok: index .geni-opt 동일값 계승(padding 6·7) · font 축약형→명시 분해 = 'inherit' 혼입 축약이 무효화돼 15px 상속되던 것 교정(폰트 단일 크기 통일 — 운영자 260714 6차 실측) */
   .geni-opt:active { transform:scale(var(--press-m)); }
   .geni-opt.on { color:var(--accent); font-weight:var(--fw-x); }
   .geni-opt[data-num] { font-variant-numeric:tabular-nums; }
   .geni-opt:disabled { opacity:.28; pointer-events:none; }   /* 배선 대기 칩(GPT 5.6 — OpenAI 키 미배선) = index .geni-nav[disabled] 동일값 계승 */
-  .geni-sum { color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); line-height:1.5; padding:8px 2px; text-align:right; font-variant-numeric:tabular-nums; }   /* raw-ok: index .geni-sum 동일값 계승(padding 8·2 — 우측 선택요약 리드백) */
+  .geni-sum { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); line-height:1.5; padding:8px 2px; text-align:right; font-variant-numeric:tabular-nums; }   /* raw-ok: index .geni-sum 동일값 계승(padding 8·2) · fs-sm→fs-label = 폼 폰트 단일 크기 통일(운영자 260714 6차 "폰트 제각각 금지") */
   .geni-sum b { color:var(--fg); font-weight:var(--fw-b); }
+  .geni-sum .gs-row { display:block; }   /* 항목별 줄바꿈(운영자 260714 6차 "감독·촬영 각각 나누자") — 우측 정렬 유지 */
   /* ── 작업 내역 = thumb.html .jobs/.job 동일값 계승(운영자 260714 5차 "이미지 배선과 동일 — 최신 1건 우선 + 아래 아카이빙 + 변형") ── */
   .jobs { display:flex; flex-direction:column; gap:var(--sp-1); margin:10px 0 0; }   /* raw-ok: thumb .jobs 동일값 계승(margin 10) */
-  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* raw-ok: thumb .job 동일값 계승(gap8·padding 8/11·fs12) */
+  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:var(--fs-label); padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* raw-ok: thumb .job 동일값 계승(gap8·padding 8/11) · fs 12→fs-label = 콘티 탭 폰트 단일 크기 통일(운영자 260714 6차 · sb 스코프 한정 상향) */
   .job .jlab { font-weight:800; color:var(--accent); cursor:pointer; }   /* 라벨 탭 = 그 결과 불러오기(아카이브 재열람) */
   .job .jlab:active { transform:scale(var(--press-l,.95)); }
   .job .jvar { color:var(--fg); font-weight:400; }   /* 감독·촬영 캡션 = thumb .jvar 문법(흰색·일반체) */
@@ -260,9 +261,22 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
   function drawSpec() {   // 우측 선택요약 = index #geniSum 리드백 문법('/' 구분·b 값 강조 — 예: 극화·한국웹툰화 / 4:5 · FHD · 1개)
     const d = SB_DIRECTORS.find(x => x.id === sbDirector) || SB_DIRECTORS[0];
     const sh = SB_SHOOTS.find(x => x.id === sbShoot) || SB_SHOOTS[0];
-    // 예상 비용(운영자 260714 5차): 클로드 = 토큰 수 00.0k 표기(구독 = 0원) / GPT = $ 환산(설계확정 §0-2 추정 — 실측 후 보정) / 촬영(시댄스)비 = 단가 수신 대기 · M2 get_cost 실시간 견적이 정본
-    const cost = sbDirector === 'gpt' ? '감독비 ~$1.2' : '감독 ~35.0k tok · 0원';
-    spec.innerHTML = '감독 <b>' + esc(d.nm) + '</b>·' + esc(d.hint) + ' / 촬영 <b>' + esc(sh.nm) + '</b> / ' + esc(sbSet['비율']) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' / 광고 막컷 키비주얼' : '') + ' / <span title="실측 전 추정 — 첫 발사 실측 후 보정. 촬영(시댄스) 크레딧은 M2 생성 게이트에서 실시간 견적.">' + cost + '</span>';
+    // 예상 비용(운영자 260714 5·7차): 클로드 = 토큰 수 00.0k(구독 0원) / GPT = $ 환산(실측 후 보정) / 시댄스 = get_cost 실측 매트릭스(260714 · 720p·std 4.5cr/s · fast 3.5 · 1080p 9) × 울트라 환산
+    const SB_VID_CR = { '6~8s': [27, 36], '10~12s': [45, 54], '15s': [67.5, 67.5], '20~30s': [90, 135] };   // Seedance 2.0 · 720p · std 실측(15s 초과 = 2세그 체이닝 합산)
+    const CR_WON = 46.2;   // 크레딧→원화: 울트라 연결제 $99/3,000cr ≈ $0.033/cr × 환율 1,400(운영자 260714 "울트라 기준")
+    const won = n => '₩' + Math.round(n * CR_WON).toLocaleString('ko-KR');
+    const dcost = sbDirector === 'gpt' ? '감독 ~$1.2' : '감독 ~35.0k tok · 0원';
+    const vr = SB_VID_CR[sbSet['길이']] || [67.5, 67.5];
+    const scost = sbShoot === 'seedance'
+      ? '촬영 ' + (vr[0] === vr[1] ? vr[0] : vr[0] + '~' + vr[1]) + 'cr ≈ ' + (vr[0] === vr[1] ? won(vr[0]) : won(vr[0]) + '~' + won(vr[1])) + ' <span title="Seedance 2.0 · 720p·std 실측(get_cost 260714) — 확정 견적은 생성 직전 실시간 재확인">720p 기준</span>'
+      : '촬영 0원 · 클링 구독';
+    const rows = [   // 항목별 줄바꿈(운영자 260714 6차) — 감독 / 촬영 / 규격 / 비용 각 1줄
+      '감독 <b>' + esc(d.nm) + '</b> · ' + esc(d.hint),
+      '촬영 <b>' + esc(sh.nm) + '</b>',
+      esc(sbSet['비율']) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' · 광고 막컷 키비주얼' : ''),
+      '<span title="감독비 = 실측 전 추정(첫 발사 후 보정) · 콘티 텍스트 단계 자체는 크레딧 0">비용 ' + dcost + ' · ' + scost + '</span>'
+    ];
+    spec.innerHTML = rows.map(r => '<span class="gs-row">' + r + '</span>').join('');
   }
   function render() {
     dg.innerHTML = '';
