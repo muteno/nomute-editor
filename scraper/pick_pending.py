@@ -45,6 +45,9 @@ def main():
     # 통과(IP리터럴·비도메인 거부 → analyze 의 fetch 가 SSRF·글로브 타깃 받는 것 차단).
     alt_re = re.compile(r"^https?://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:[:/]|$)")
     alt = " ".join(t for t in (os.environ.get("PICK_ALT") or "").split() if alt_re.match(t))[:1500]
+    # ekey = 후보 event_key(사건 그룹라벨) — analyze 가 frontmatter event_key 로 박아 피드 event_key 티어(제목폴백보다 강한 사건매칭) 활성.
+    #   개행·따옴표 제거(한 줄 보장 + frontmatter YAML `event_key: "…"` 주입 안전). 없으면 줄 생략(하위호환·자동픽/폰공유도 무해).
+    ekey = " ".join((os.environ.get("PICK_EKEY") or "").split()).replace('"', "")[:300]
     if not url.startswith(("http://", "https://")):
         print("PICK_URL 없음/무효 — 스킵", file=sys.stderr)
         print("NEW=0")
@@ -63,7 +66,7 @@ def main():
     name = f"{stamp}-pick-{os.urandom(2).hex()}.txt"   # 동시 픽 충돌 방지 random 접미
     # 1줄 = URL(불변·dedup·analyze 가 head -n1 로 읽음), 2줄 = '# title: …'(선택·analyze 단서),
     # 3줄 = '# alt: …'(선택·대체 fetch url). 폰공유/스크래퍼 자동분은 2·3줄이 없어 동작 동일(하위호환).
-    body = url + "\n" + (f"# title: {title}\n" if title else "") + (f"# alt: {alt}\n" if alt else "")
+    body = url + "\n" + (f"# title: {title}\n" if title else "") + (f"# alt: {alt}\n" if alt else "") + (f"# ekey: {ekey}\n" if ekey else "")
     (PENDING / name).write_text(body, encoding="utf-8")
     with LEDGER.open("a", encoding="utf-8") as f:
         f.write(key + "\n")
