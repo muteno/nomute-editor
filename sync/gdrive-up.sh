@@ -15,7 +15,11 @@ export TZ='Asia/Seoul'                 # 폰·러너 무관 KST 강제 (CLAUDE.m
 # ── 채울 값 3개 (딱 한 번, nano ~/bin/gdrive-up 로 수정) ───────────────────
 REMOTE="gdrive"                        # rclone listremotes 결과에서 콜론(:) 뺀 이름
 GDRIVE_DIR="__여기_채워__"             # 내려받기가 바라보는 그 GDRIVE 폴더와 '똑같이'
-PHONE_DIR="__여기_채워__"              # 올릴 갤러리 폴더 (예: /storage/emulated/0/DCIM/GDrive)
+# 올릴 갤러리 폴더들 — 캡처·카메라 등 여러 개 OK. 여기 담긴 게 폰↔PC '공용 창고'가 됨.
+PHONE_DIRS=(
+  "/storage/emulated/0/DCIM/Screenshots"   # 캡처(스크린샷)
+  "/storage/emulated/0/DCIM/Camera"        # 카메라 사진
+)
 # ─────────────────────────────────────────────────────────────────────────
 
 MODE="${1:-all}"                       # all=사진+클립(3분 트리거) · clip=클립만 즉시(홈 위젯 탭)
@@ -26,23 +30,24 @@ notify(){ termux-notification -t "$1" -c "$2" 2>/dev/null || true; }
 log(){ echo "$(date '+%y-%m-%d %H:%M:%S') | $1" >> "$LOG"; }
 
 # 값 미기입 방어 — 플레이스홀더 남아 있으면 실행 거부(엉뚱한 곳에 안 꽂히게)
-case "$GDRIVE_DIR$PHONE_DIR" in
-  *__여기_채워__*) notify "설정 미완료 ⚙️" "gdrive-up 상단 3개 값 채워"; log "SETUP_INCOMPLETE"; exit 1;;
+case "$GDRIVE_DIR" in
+  *__여기_채워__*) notify "설정 미완료 ⚙️" "gdrive-up 상단 REMOTE·GDRIVE_DIR 채워"; log "SETUP_INCOMPLETE"; exit 1;;
 esac
 command -v rclone >/dev/null 2>&1 || { notify "업로드 실패 ❌" "rclone 없음"; log "NO_RCLONE"; exit 1; }
 
-# 1) 사진: 폰 폴더 → GDRIVE (copy = 이미 있으면 스킵 · 삭제 전파 안 함) — clip 모드면 건너뜀
-if [ "$MODE" != "clip" ] && [ -d "$PHONE_DIR" ]; then
-  if rclone copy "$PHONE_DIR" "$REMOTE:$GDRIVE_DIR" \
-        --exclude "clip_*.txt" \
-        --transfers 4 --checkers 8 --min-age 10s \
-        --log-file "$LOG" --log-level INFO; then
-    log "PHOTO_OK $PHONE_DIR -> $REMOTE:$GDRIVE_DIR"
-  else
-    notify "사진 업로드 실패 ❌" "tail ~/gdrive-up.log"; log "PHOTO_FAIL"
-  fi
-else
-  log "NO_PHONE_DIR $PHONE_DIR"
+# 1) 갤러리(사진·캡처): 여러 폴더 → GDRIVE (copy = 이미 있으면 스킵 · 삭제 전파 안 함) — clip 모드면 건너뜀
+if [ "$MODE" != "clip" ]; then
+  for d in "${PHONE_DIRS[@]}"; do
+    [ -d "$d" ] || { log "SKIP_NODIR $d"; continue; }
+    if rclone copy "$d" "$REMOTE:$GDRIVE_DIR" \
+          --exclude "clip_*.txt" \
+          --transfers 4 --checkers 8 --min-age 10s \
+          --log-file "$LOG" --log-level INFO; then
+      log "PHOTO_OK $d"
+    else
+      notify "사진 업로드 실패 ❌" "tail ~/gdrive-up.log"; log "PHOTO_FAIL $d"
+    fi
+  done
 fi
 
 # 2) 클립보드: 텍스트가 있고 & 직전과 다를 때만 파일로 올림 (텍스트 전용 — 이미지 복사는 미지원)
