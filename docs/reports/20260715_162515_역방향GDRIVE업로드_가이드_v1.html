@@ -1,0 +1,173 @@
+<meta charset="utf-8">
+<title>역방향 동기화 — 폰 갤러리(사진·캡처) → GDRIVE 공용 창고</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --line:#262b36; --fg:#e7ebf2; --mut:#8b93a3;
+    --accent:#5b9dff; --ok:#41d18a; --warn:#ffb454; --code:#0b0d12; --r:14px;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#f6f7f9; --card:#fff; --line:#e6e8ee; --fg:#1a1d24; --mut:#697082;
+           --accent:#2f6bff; --code:#f0f2f6; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+       -webkit-font-smoothing:antialiased;padding:22px 16px 60px;}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:14px;margin:0 0 20px}
+  .flow{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+        padding:14px 16px;margin:0 0 14px;font-size:14px;line-height:1.9}
+  .flow b{color:var(--accent)} .flow .ar{color:var(--mut);padding:0 4px}
+  .big{background:linear-gradient(90deg,rgba(91,157,255,.10),rgba(65,209,138,.08));
+       border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin:0 0 22px;font-size:13.5px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:0 0 14px}
+  .step.opt{border-style:dashed;opacity:.92}
+  .step h2{font-size:16px;margin:0 0 10px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;
+     background:var(--accent);color:#fff;font-size:13px;font-weight:700;flex:none}
+  .n.g{background:var(--ok)}
+  p{margin:8px 0} .mut{color:var(--mut);font-size:13.5px}
+  .cbox{position:relative;margin:10px 0}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;
+      padding:12px 14px;margin:0;overflow-x:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .copy{position:absolute;top:8px;right:8px;background:var(--line);color:var(--fg);
+        border:0;border-radius:8px;padding:5px 11px;font-size:12px;cursor:pointer;font-weight:600}
+  .copy:active{transform:scale(.94)} .copy.done{background:var(--ok);color:#04150c}
+  .tag{display:inline-block;font-size:11.5px;color:var(--mut);background:var(--code);
+       border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+  .note{border-left:3px solid var(--warn);background:rgba(255,180,84,.08);
+        border-radius:0 8px 8px 0;padding:9px 13px;margin:11px 0;font-size:13.5px}
+  .note.ok{border-left-color:var(--ok);background:rgba(65,209,138,.08)}
+  a{color:var(--accent)} kbd{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px}
+</style>
+<div class="wrap">
+  <h1>역방향 동기화 — 폰 갤러리(사진·캡처) → GDRIVE</h1>
+  <p class="sub">내려받기(GDRIVE→폰)의 짝. 캡처·사진이 <b>알아서 GDRIVE로</b> 올라가면, 구글 드라이브 데스크톱이 그걸 PC로 내려주니 <b>갤러리·GDRIVE가 폰↔PC 공용 창고</b>가 됨. · 20260715_162515 KST · v1</p>
+
+  <div class="flow">
+    <b>폰 갤러리</b>(캡처·사진) <span class="ar">──rclone copy──▶</span> <b>GDRIVE 공유폴더</b> <span class="ar">──구글 드라이브 자동──▶</span> <b>PC 폴더</b>
+  </div>
+  <div class="big">✅ <b>PC쪽은 할 일 없음.</b> 사진·캡처는 그냥 파일이라, 네 PC의 구글 드라이브 데스크톱이 그 폴더를 <b>자동으로 동기화</b>해서 캡처가 알아서 PC에 나타나. 우리가 세팅할 건 <b>폰 → GDRIVE</b> 한 구간뿐.</div>
+
+  <!-- STEP 0 -->
+  <div class="step">
+    <h2><span class="n">0</span> 값 확인 (제일 중요)</h2>
+    <p class="mut">스크립트에 넣을 <b>rclone 이름 · GDRIVE 폴더</b>를 알아낸다. 터먹스에서:</p>
+    <div class="cbox"><pre id="c0a">rclone listremotes            # 이름 확인(콜론 뺀 게 REMOTE, 보통 gdrive)
+rclone lsd gdrive:            # GDRIVE 폴더 목록 — 내려받기가 쓰던 그 폴더가 GDRIVE_DIR</pre><button class="copy" data-t="c0a">복사</button></div>
+    <p class="mut">그리고 <b>올릴 갤러리 폴더</b> 확인(캡처·카메라):</p>
+    <div class="cbox"><pre id="c0b">ls /storage/emulated/0/DCIM/          # Screenshots(캡처) · Camera(사진) 있는지
+# 캡처가 Pictures 밑이면: ls /storage/emulated/0/Pictures/</pre><button class="copy" data-t="c0b">복사</button></div>
+    <div class="note">아직 <code>~/storage</code> 접근이 안 되면 <code>termux-setup-storage</code> 한 번(팝업 허용) 후 다시.</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <h2><span class="n">1</span> 스크립트 설치 <span class="tag">둘 중 아무거나</span></h2>
+    <p class="mut"><b>A. 리포에서 뽑기</b> (폰 로컬 안 건드림 — 추천):</p>
+    <div class="cbox"><pre id="c1a">cd ~/nomute-editor
+git fetch origin claude/clipboard-photos-sync-scg4zn
+git show origin/claude/clipboard-photos-sync-scg4zn:sync/gdrive-up.sh > ~/bin/gdrive-up
+chmod +x ~/bin/gdrive-up</pre><button class="copy" data-t="c1a">복사</button></div>
+    <p class="mut" style="margin-top:14px"><b>B. 그냥 복붙</b>:</p>
+    <div class="cbox"><pre id="c1b">mkdir -p ~/bin; cat > ~/bin/gdrive-up &lt;&lt; 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+export TZ='Asia/Seoul'
+# ── 채울 값 ──
+REMOTE="gdrive"
+GDRIVE_DIR="__여기_채워__"
+PHONE_DIRS=(
+  "/storage/emulated/0/DCIM/Screenshots"   # 캡처
+  "/storage/emulated/0/DCIM/Camera"        # 사진
+)
+# ────────────
+MODE="${1:-all}"                     # all=사진+클립 · clip=클립만(위젯)
+CLIP_STATE="$HOME/.gdrive_clip_last"; LOG="$HOME/gdrive-up.log"
+notify(){ termux-notification -t "$1" -c "$2" 2>/dev/null || true; }
+log(){ echo "$(date '+%y-%m-%d %H:%M:%S') | $1" >> "$LOG"; }
+case "$GDRIVE_DIR" in *__여기_채워__*) notify "설정 미완료 ⚙️" "REMOTE·GDRIVE_DIR 채워"; log "SETUP_INCOMPLETE"; exit 1;; esac
+command -v rclone >/dev/null 2>&1 || { notify "업로드 실패 ❌" "rclone 없음"; log "NO_RCLONE"; exit 1; }
+if [ "$MODE" != "clip" ]; then
+  for d in "${PHONE_DIRS[@]}"; do
+    [ -d "$d" ] || { log "SKIP_NODIR $d"; continue; }
+    if rclone copy "$d" "$REMOTE:$GDRIVE_DIR" --exclude "clip_*.txt" --transfers 4 --checkers 8 --min-age 10s --log-file "$LOG" --log-level INFO; then
+      log "PHOTO_OK $d"; else notify "사진 업로드 실패 ❌" "tail ~/gdrive-up.log"; log "PHOTO_FAIL $d"; fi
+  done
+fi
+CLIP="$(termux-clipboard-get 2>/dev/null)"
+if [ -n "$CLIP" ] && [ "$CLIP" != "$(cat "$CLIP_STATE" 2>/dev/null)" ]; then
+  TS="$(date +%Y%m%d_%H%M%S)"; TMP="$HOME/clip_$TS.txt"; printf '%s\n' "$CLIP" > "$TMP"
+  if rclone copy "$TMP" "$REMOTE:$GDRIVE_DIR" --log-file "$LOG" --log-level INFO; then
+    printf '%s' "$CLIP" > "$CLIP_STATE"; notify "클립보드 올림 ✅" "clip_$TS.txt"; log "CLIP_OK clip_$TS.txt"
+  else notify "클립보드 업로드 실패 ❌" "tail ~/gdrive-up.log"; log "CLIP_FAIL"; fi
+  rm -f "$TMP"
+fi
+EOF
+chmod +x ~/bin/gdrive-up</pre><button class="copy" data-t="c1b">복사</button></div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <h2><span class="n">2</span> 값 채우기</h2>
+    <div class="cbox"><pre id="c2">nano ~/bin/gdrive-up   # REMOTE / GDRIVE_DIR / PHONE_DIRS 확인·수정. 저장 Ctrl+O→Enter→Ctrl+X</pre><button class="copy" data-t="c2">복사</button></div>
+    <div class="note"><code>GDRIVE_DIR</code>의 <code>__여기_채워__</code>는 꼭 실제 폴더로(안 채우면 안전장치가 실행을 막음). <code>PHONE_DIRS</code>는 캡처·사진 폴더가 맞는지 0번에서 본 경로로 맞춰 — 폴더 더 넣어도 됨(한 줄씩).</div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <h2><span class="n">3</span> 손으로 테스트</h2>
+    <div class="cbox"><pre id="c3">~/bin/gdrive-up          # 직접 한 번
+tail ~/gdrive-up.log     # PHOTO_OK 보이면 성공</pre><button class="copy" data-t="c3">복사</button></div>
+    <p class="mut">→ 캡처 하나 찍고 다시 돌려서, GDRIVE 그 폴더 + <b>PC의 구글 드라이브 폴더</b>에 그 캡처가 나타나면 전 구간 관통 🎉</p>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <h2><span class="n">4</span> Tasker 자동 실행 (잠금해제 / 3분마다)</h2>
+    <p class="mut">이미 <b>내려받기</b>를 도는 그 Tasker 작업에 <b>액션 하나만</b> 더 — 받고 나서 바로 올림.</p>
+    <div class="cbox"><pre id="c4">mkdir -p ~/.termux/tasker && cp ~/bin/gdrive-up ~/.termux/tasker/gdrive-up && chmod +x ~/.termux/tasker/gdrive-up</pre><button class="copy" data-t="c4">복사</button></div>
+    <p class="mut">Tasker에서 내려받기 Task 열기 → ➕ → <b>플러그인 → Termux:Tasker</b> → Executable <code>gdrive-up</code> · Arguments 비움 · Wait for result 해제. <span class="mut">(또는 내려받기 스크립트 맨 끝에 <code>~/bin/gdrive-up</code> 한 줄.)</span></p>
+    <div class="note ok">잠금해제·3분 트리거는 <b>내려받기가 이미 가진 걸 재활용</b>. 새 트리거 X.</div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <h2><span class="n g">5</span> PC에서 받기 — 할 일 없음 ✨</h2>
+    <p class="mut">PC에 구글 드라이브 데스크톱이 깔려 있으니, GDRIVE 그 폴더가 <b>PC에 자동 동기화</b>돼. 폰서 캡처하면 몇 초 뒤 <b>PC의 <code>내 드라이브\…</code> 폴더에 그 이미지가 그대로</b> 생김. 별도 스크립트·설정 없음.</p>
+    <div class="note">혹시 폰↔PC 폴더가 안 맞으면: PC 구글 드라이브 설정에서 그 폴더가 '동기화 대상'인지, '스트리밍'이면 오프라인 사용으로 바꾸면 로컬에 실물 파일로 내려옴.</div>
+  </div>
+
+  <!-- 옵션: 클립보드 -->
+  <div class="step opt">
+    <h2><span class="n">＋</span> (옵션) 텍스트도 즉시 — 홈 위젯 <span class="tag">없어도 됨</span></h2>
+    <p class="mut">가끔 <b>텍스트</b>도 PC로 바로 넘기고 싶으면(뉴스 요약 등), 복사 후 위젯 한 번 탭 → <code>clip_시각.txt</code>로 GDRIVE행. 위젯 설치:</p>
+    <div class="cbox"><pre id="c5">mkdir -p ~/.shortcuts
+cat > ~/.shortcuts/클립올리기 &lt;&lt; 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+~/bin/gdrive-up clip
+EOF
+chmod +x ~/.shortcuts/클립올리기</pre><button class="copy" data-t="c5">복사</button></div>
+    <p class="mut">홈 길게 눌러 → 위젯 → <b>Termux:Widget</b> → <code>클립올리기</code>. 텍스트는 파일로 가니 PC에선 그 <code>.txt</code>를 열어 보면 됨(클립보드 자동주입까지는 이번 범위 밖 — 필요해지면 그때).</p>
+  </div>
+
+  <!-- 각주 -->
+  <div class="step">
+    <h2>⚠️ 알아둘 것</h2>
+    <p><b>무한 왕복 걱정 X.</b> 받기·올리기 둘 다 <code>copy</code>라 이미 있는 건 스킵. 폰서 지워도 드라이브 원본은 유지. <span class="mut">단 GDRIVE에서 지운 사진이 폰에 남아 있으면 다시 올라올 수 있음 — 지울 땐 양쪽, 또는 올릴 폴더를 캡처/카메라 위주로.</span></p>
+    <p><b>추적.</b> 매 실행이 <code>~/gdrive-up.log</code>에 남아 — <code>tail ~/gdrive-up.log</code>로 OK/FAIL·어느 폴더 올렸는지 확인.</p>
+  </div>
+
+  <p class="mut" style="text-align:center;margin-top:20px">rclone · <a href="https://rclone.org/commands/rclone_copy/">rclone.org/commands/rclone_copy</a> &nbsp;|&nbsp; Termux:API · <a href="https://wiki.termux.com/wiki/Termux:API">wiki.termux.com/wiki/Termux:API</a></p>
+</div>
+<script>
+  document.querySelectorAll('.copy').forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=document.getElementById(b.dataset.t).innerText;
+      var done=function(){b.textContent='복사됨 ✓';b.classList.add('done');setTimeout(function(){b.textContent='복사';b.classList.remove('done')},1400)};
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){fallback(t,done)})}
+      else fallback(t,done);
+    });
+  });
+  function fallback(t,done){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');done()}catch(e){}document.body.removeChild(a)}
+</script>
