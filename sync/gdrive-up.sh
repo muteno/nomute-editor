@@ -18,6 +18,7 @@ GDRIVE_DIR="__여기_채워__"             # 내려받기가 바라보는 그 GD
 PHONE_DIR="__여기_채워__"              # 올릴 갤러리 폴더 (예: /storage/emulated/0/DCIM/GDrive)
 # ─────────────────────────────────────────────────────────────────────────
 
+MODE="${1:-all}"                       # all=사진+클립(3분 트리거) · clip=클립만 즉시(홈 위젯 탭)
 CLIP_STATE="$HOME/.gdrive_clip_last"   # 직전 클립보드 기억(중복 업로드 차단)
 LOG="$HOME/gdrive-up.log"
 
@@ -30,8 +31,8 @@ case "$GDRIVE_DIR$PHONE_DIR" in
 esac
 command -v rclone >/dev/null 2>&1 || { notify "업로드 실패 ❌" "rclone 없음"; log "NO_RCLONE"; exit 1; }
 
-# 1) 사진: 폰 폴더 → GDRIVE (copy = 이미 있으면 스킵 · 삭제 전파 안 함)
-if [ -d "$PHONE_DIR" ]; then
+# 1) 사진: 폰 폴더 → GDRIVE (copy = 이미 있으면 스킵 · 삭제 전파 안 함) — clip 모드면 건너뜀
+if [ "$MODE" != "clip" ] && [ -d "$PHONE_DIR" ]; then
   if rclone copy "$PHONE_DIR" "$REMOTE:$GDRIVE_DIR" \
         --exclude "clip_*.txt" \
         --transfers 4 --checkers 8 --min-age 10s \
