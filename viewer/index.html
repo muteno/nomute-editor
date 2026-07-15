@@ -2852,8 +2852,8 @@
   .geni-railwrap { flex:1 1 0; min-width:0; display:flex; align-items:center; }
   .geni-railwrap.edge { border-left:1px solid var(--line2); padding-left:var(--sp-1); }   /* 좌측 경계선(구분라인) */
   .geni-railrow .pub-l { flex:0 0 max(80px, calc(4em + 12px)); }   /* raw-ok: 라벨 고정 칼럼(화풍·세부 화풍 공통 · 운영자 260714 "첫 키워드 시작점 = 구 수채 자리로 좌측정렬 · 둘 다 항상") — 라벨 길이 무관 두 레일의 경계선·첫 키워드가 한 세로선(첫 키워드 x = 80+gap12+선1+sp-1+칩패딩7 ≈ 106px = 구 수채 자리 · 칩 박스 좌단 기준 99px 실측) · 최장 라벨 '세부 화풍'(≈56px) 수용 · max(80px, 4em+12px) = 기본 13px에선 4em+12=64<80이라 정확히 80px 불변, OS 텍스트 전용 확대(안드로이드 크롬 등)에서만 글자 따라 성장 = nowrap 라벨의 경계선·첫 칩 침범 차단(평의회①③ 260714 · 두 행 동일식이라 확대 시에도 한 세로선 유지) */
-  #geniStyle.geni-rail, #geniSub.geni-rail { flex:1 1 0; min-width:0; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; overflow-y:hidden; -ms-overflow-style:none; scrollbar-width:none; cursor:grab; touch-action:pan-x; --rail-fade:22px; -webkit-mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black calc(100% - var(--rail-fade)),transparent 100%); mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black calc(100% - var(--rail-fade)),transparent 100%); }   /* nowrap 한 줄 + 양 끝선 페이드(마진) · mask 알파는 black 키워드(hex 아님) · id 특이도로 .geni-opts wrap/flex-end 오버라이드 */
-  #geniStyle.geni-rail::-webkit-scrollbar, #geniSub.geni-rail::-webkit-scrollbar { display:none; }
+  #geniStyle.geni-rail, #geniSub.geni-rail, #chMetRail.geni-rail { flex:1 1 0; min-width:0; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; overflow-y:hidden; -ms-overflow-style:none; scrollbar-width:none; cursor:grab; touch-action:pan-x; --rail-fade:22px; -webkit-mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black calc(100% - var(--rail-fade)),transparent 100%); mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black calc(100% - var(--rail-fade)),transparent 100%); }   /* nowrap 한 줄 + 양 끝선 페이드(마진) · mask 알파는 black 키워드(hex 아님) · id 특이도로 .geni-opts wrap/flex-end 오버라이드 · #chMetRail = 일일추이 지표 레일 계승(운영자 260715 "화풍처럼") */
+  #geniStyle.geni-rail::-webkit-scrollbar, #geniSub.geni-rail::-webkit-scrollbar, #chMetRail.geni-rail::-webkit-scrollbar { display:none; }
   .geni-rail.grabbing { cursor:grabbing; }
   .geni-rail.atStart { -webkit-mask-image:linear-gradient(90deg,black 0,black calc(100% - var(--rail-fade)),transparent 100%); mask-image:linear-gradient(90deg,black 0,black calc(100% - var(--rail-fade)),transparent 100%); }   /* 좌측 끝 = 첫 항목 선명(경계선에 딱) */
   .geni-rail.atEnd { -webkit-mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black 100%); mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black 100%); }
@@ -10153,7 +10153,9 @@ function renderChan() {
     const events = (d.daily_meta || {}).events || [];
     const lastV = (() => { for (let i = series.length - 1; i >= 0; i--) if (series[i][CHAN_MET] != null) return series[i][CHAN_MET]; return null; })();
     h += gsec('daily', '일일 추이', '<div class="ch-seg">' +
-      Object.keys(CH_MET).map(k => `<button class="ch-mchip${k === CHAN_MET ? ' on' : ''}" type="button" data-m="${k}">${CH_MET[k][0]}</button>`).join('') +
+      '<div class="geni-railwrap"><span class="geni-opts geni-rail" id="chMetRail">' +   // 지표 선택 = 화풍 레일 계승(운영자 260715 "동그란 칩 → +동영상 화풍처럼") · | 구분·활성 강조색·‹›/드래그·끝선 페이드
+      Object.keys(CH_MET).map((k, i) => `<span class="geni-subit">${i ? '<span class="geni-sep" aria-hidden="true">|</span>' : ''}<button class="geni-opt${k === CHAN_MET ? ' on' : ''}" type="button" data-m="${k}">${CH_MET[k][0]}</button></span>`).join('') +
+      '</span><div class="geni-navs"><button type="button" class="geni-nav" data-dir="-1" aria-label="이전"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><button type="button" class="geni-nav" data-dir="1" aria-label="다음"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div></div>' +
       `<span class="ch-rangeseg">` + [['7', '7일'], ['30', '30일'], ['90', '90일'], ['all', '전체']].map(r => `<button type="button" data-r="${r[0]}"${CHAN_RANGE === r[0] ? ' class="on"' : ''}>${r[1]}</button>`).join('') + '</span></div>' +
       `<div class="ch-charttop"><span class="ct-v">${lastV != null ? lastV.toLocaleString() : '—'}</span><span class="ct-u">${CH_MET[CHAN_MET][1]} · 최근일</span></div>` +
       `<div class="ch-chartwrap" id="chChartWrap">${chChart(series, CHAN_MET, events)}<div class="ch-tip" id="chTip"></div><div class="ch-dot" id="chDot"></div></div>`,
@@ -10245,7 +10247,8 @@ function renderChan() {
   const sigBks = box.querySelectorAll('.ch-bk[data-bk]'); let si = 0;
   AXL.forEach(ax => (axes[ax[0]] || []).slice(0, 3).forEach(b => { const el = sigBks[si++]; if (el) el.textContent = b.bucket; }));
   // 추이 차트 배선(지표 칩·기간 세그·crosshair 툴팁 — 재렌더 = 스크롤 보존)
-  box.querySelectorAll('.ch-mchip[data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // [data-m] 한정 — 브리프 기간 칩(data-bs)이 CHAN_MET을 undefined로 오염 방지(260714)
+  box.querySelectorAll('#chMetRail [data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 지표 레일(#chMetRail) 옵션 = 화풍 .geni-opt 계승 · [data-m] 한정(브리프 data-bs 오염 방지 260714)
+  geniRailSetup('#chMetRail'); geniRailUpd($('#chMetRail'));   // 지표 레일 = 화풍 레일 배선 계승(드래그·‹›·끝선 페이드 · geniRailSetup 범용 재사용 · 재렌더마다 새 노드라 _railSet 가드 자동 통과)
   box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체 · 운영자 260714 세그=.tb-seg 계승) — [data-bs] 통합 셀렉터(칩→세그 전환 무관) · 재렌더·스크롤 보존
   box.querySelectorAll('.ch-rangeseg:not(.tb-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그(data-r 없음)가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
   const wrap = $('#chChartWrap'), tip = $('#chTip'), dot = $('#chDot');
