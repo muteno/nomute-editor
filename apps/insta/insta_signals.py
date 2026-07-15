@@ -286,6 +286,18 @@ def compute(media_doc, audience=None):
     fmt_sum = seg_summary(lambda p: p['format'])
     topic_sum = seg_summary(lambda p: p['cat'])
     era_sum = seg_summary(lambda p: p['era'])
+    # 반응 지문(fp) + 확장문 딱지(exp) — 회초리 브리프 재료(운영자 260715 Q02·Q03)
+    # fp = 채널 중앙 대비 1.5배↑로 튄 지배 반응축(게시물 단위 표본의 대리 지표 — IG API는 게시물별 인구통계 미제공)
+    # exp = 주력(볼륨 1위) 주제 밖 + 그 주제 평소 조회 중앙의 1.5배↑ + 저장 강세(채널 중앙 1.3배↑) = 기존 팔로워 밖 새 표본 유입 신호
+    FP_LB = {'share_pm': '공유형', 'save_pm': '저장형', 'cmt_pm': '댓글형', 'like_pm': '좋아요형'}
+    vol_top = max(topic_sum, key=lambda k: topic_sum[k]['n']) if topic_sum else None
+    for p in posts:
+        ratios = {f: p[f] / g_med[f] for f in FP_LB if g_med.get(f)}
+        fdom = max(ratios, key=ratios.get) if ratios else None
+        p['fp'] = FP_LB[fdom] if fdom and ratios[fdom] >= 2.0 else None   # 2배↑만 = 지문(탑 표본은 원래 1.5배쯤 튀어 변별력 없음 실측 260715)
+        tmed = (topic_sum.get(p['cat']) or {}).get('views_med') or 0
+        p['exp'] = bool(vol_top and p['cat'] not in (vol_top, '기타') and tmed and p['views'] >= 2.0 * tmed
+                        and g_med.get('save_pm') and p['save_pm'] >= 1.5 * g_med['save_pm'])
     span = sorted(p['date_kst'] for p in posts)
     flags = ['시간대·요일 축 = 게시 몰림 편향 주의(운영자 자가 보고 260713: 휴식기에 몰아 올려 쏠림 — 인과 해석 금지)',
              '율·속도 기반 = 누적 편향 완화(통제 실험 아님 · 관찰 신호)',
@@ -402,6 +414,94 @@ def _avg_signals(series):
     return out
 
 
+def _corr(a, b):
+    """피어슨 상관(표본 부족·분산 0 = None) — 게시-팔로워 인과 실측용."""
+    if len(a) != len(b) or len(a) < 30:
+        return None
+    ma, mb = statistics.mean(a), statistics.mean(b)
+    den = (sum((x - ma) ** 2 for x in a) * sum((y - mb) ** 2 for y in b)) ** .5
+    return round(sum((x - ma) * (y - mb) for x, y in zip(a, b)) / den, 2) if den else None
+
+
+def _timing_stats(series):
+    """게시-팔로워 인과 실측(운영자 260715 Q02 — 회초리 브리프의 '왜냐면' 근거).
+    핵심 실측(260715 분석 보고서 계승): 팔로워는 게시 *행위*가 아니라 당일 *조회수*를 따른다."""
+    rows = [r for r in series if isinstance(r.get('follows'), int) and isinstance(r.get('posts'), int)]
+    while rows and rows[-1]['follows'] == 0:   # 말미 0 연속 = 봇 미수집 결측(placeholder) — 진짜 0과 구분 불가라 실측창에서 제외
+        rows.pop()
+    if len(rows) < 30:
+        return None
+    F = [r['follows'] for r in rows]
+    P = [r['posts'] for r in rows]
+    V = [r.get('views') or 0 for r in rows]
+    rest = [r['follows'] for r in rows if r['posts'] == 0]
+    postd = [r['follows'] for r in rows if r['posts'] > 0]
+    # 휴식일 상대 지표(시대 교란 보정): 그날 증가 / 직전 3일 평균 — 절대 중앙값은 부흥기 휴식일이 끌어올려 오독 위험(실측 260715)
+    rest_rel = []
+    for i, r in enumerate(rows):
+        if r['posts'] == 0 and i >= 3:
+            prev = statistics.mean(x['follows'] for x in rows[i - 3:i])
+            if prev > 0:
+                rest_rel.append(r['follows'] / prev)
+    era_fp = {}
+    for r in rows:
+        e = algo_era(r['date'])
+        d = era_fp.setdefault(e, {'f': 0, 'p': 0})
+        d['f'] += r['follows']; d['p'] += r['posts']
+    return {
+        'n_days': len(rows), 'from': rows[0]['date'], 'to': rows[-1]['date'],
+        'corr_views_follows': _corr(V, F),          # 당일 조회↔팔로워 증가
+        'corr_posts_follows': _corr(P, F),          # 당일 게시 수↔팔로워 증가
+        'corr_views_follows_next': _corr(V[:-1], F[1:]),   # 조회 D일↔팔로워 D+1일(24~48h 시차)
+        'rest_day_med': round(statistics.median(rest)) if rest else None,
+        'post_day_med': round(statistics.median(postd)) if postd else None,
+        'rest_days_n': len(rest),
+        'rest_rel_med': round(statistics.median(rest_rel), 2) if rest_rel else None,   # 휴식일 증가 = 직전 3일 평균 대비 배율 중앙(1 미만 = 쉬면 꺼짐)
+        'rest_rel_med_ex_viral': round(statistics.median([x for x in rest_rel if x < 3]), 2) if [x for x in rest_rel if x < 3] else None,
+        'follows_per_post_by_era': {k: round(v['f'] / v['p']) for k, v in era_fp.items() if v['p']},
+        'note': '휴식일 증가 사례는 직전 게시물 지연 바이럴(예: 7/11 무게시 +299 = 전일까지 릴스 재배급 조회 295만) — 휴식 자체가 증가 요인인 적 없음',
+    }
+
+
+def _audience_sample(aud):
+    """팔로워 표본(계정 단위 인구통계 + 운영자 자가 보고 노트 · 운영자 260715 Q03).
+    게시물 단위 인구통계는 IG API 미제공 — 게시물 표본은 posts의 fp(반응 지문)가 대리."""
+    fd = (aud or {}).get('follower_demographics') or {}
+    out = {}
+    def top(axis, n):
+        blk = fd.get(axis) or []
+        res = (blk[0].get('results') or []) if blk else []
+        tot = sum(r.get('value') or 0 for r in res)
+        if not tot:
+            return None
+        return [{'k': '·'.join(r['dimension_values']), 'pct': round(r['value'] / tot * 100, 1)}
+                for r in sorted(res, key=lambda r: -(r.get('value') or 0))[:n]]
+    for axis, key, n in (('age,gender', 'age_gender_top', 5), ('country', 'country_top', 3), ('city', 'city_top', 3)):
+        v = top(axis, n)
+        if v:
+            out[key] = v
+    note = ((aud or {}).get('manual') or {}).get('operator_audience_note')
+    if note:
+        out['operator_note'] = note
+    return out or None
+
+
+def _echo_block(topic_sum, man):
+    """알고리즘 협착(운영자 260715 Q05 가설) — 주제 간 실측 증거 + 운영자 노트.
+    실측 = 정치: 1천뷰당 좋아요 전 주제 최고 vs 조회 최저권(협착 패턴 일치) · 게시물 단위 선형 관계는 미확인(가설 유지)."""
+    note = (man or {}).get('operator_algo_note')
+    if not note:
+        return None
+    ev = None
+    pol, soc = (topic_sum or {}).get('정치'), (topic_sum or {}).get('사회')
+    if pol and soc and soc.get('views_med'):
+        like_rank = sorted(topic_sum, key=lambda k: -(topic_sum[k].get('like_pm_med') or 0)).index('정치') + 1
+        ev = {'pol_like_pm_med': pol.get('like_pm_med'), 'pol_like_rank': like_rank,
+              'pol_views_med': pol.get('views_med'), 'soc_views_med': soc.get('views_med'),
+              'pol_vs_soc_views_pct': round(pol['views_med'] / soc['views_med'] * 100)}
+    return {'note': note, 'evidence': ev}
+
+
 def main():
     # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악") 우선 — 인사이트 유표본 30 미만 = 최근 25개 폴백
     mall = jload('media_all.json')
@@ -426,7 +526,7 @@ def main():
     try:
         daily = [json.loads(l) for l in open(os.path.join(DATA, 'insights_daily.jsonl'), encoding='utf-8') if l.strip()]
         last = daily[-1] if daily else {}
-        posts = [{k: p.get(k) for k in ('date_kst', 'iso', 'format', 'style', 'cat', 'era', 'name', 'views', 'score', 'share_pm', 'save_pm', 'permalink')} for p in sig['posts'][:100]]   # 100개+cat·era·iso = 심층 모달(게시물 탐색 — 정렬·포맷/주제 필터) 재료(운영자 260713 "앱 내에서 볼 경로")
+        posts = [{k: p.get(k) for k in ('date_kst', 'iso', 'format', 'style', 'cat', 'era', 'name', 'views', 'score', 'share_pm', 'save_pm', 'fp', 'exp', 'permalink')} for p in sig['posts'][:100]]   # 100개+cat·era·iso = 심층 모달(게시물 탐색 — 정렬·포맷/주제 필터) 재료(운영자 260713 "앱 내에서 볼 경로")
         med = json.load(open(os.path.join(DATA, 'media_latest.json'), encoding='utf-8'))
         thumbs = [{'th': m.get('thumbnail_url') or m.get('media_url'), 'u': m.get('permalink'),
                    't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
@@ -441,6 +541,9 @@ def main():
         vdoc['fmt'] = sig.get('format_summary')    # 릴스·피드 절대 요약
         vdoc['topics'] = sig.get('topic_summary')  # 주제별 반응률(뉴스 분류기 계승)
         vdoc['eras'] = sig.get('era_summary')      # 알고리즘 3기 대비
+        vdoc['timing'] = _timing_stats(series_daily)       # 게시-팔로워 인과 실측(회초리 근거 · 운영자 260715 Q02)
+        vdoc['audience_sample'] = _audience_sample(aud)    # 팔로워 표본(인구통계+운영자 노트 · 운영자 260715 Q03)
+        vdoc['echo'] = _echo_block(sig.get('topic_summary'), man)   # 알고리즘 협착 가설+실측(운영자 260715 Q05)
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
             json.dump(vdoc, f, ensure_ascii=False, indent=1)
