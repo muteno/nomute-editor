@@ -8,10 +8,10 @@
 //           SMOKE_PREVIEW_STRICT=1 node …           (예약 어서션까지 합격 요구 — Q03 ①③④ 반영 후 상비 전환)
 //
 // 2티어 구조(정직 신고):
-//   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 상시 프레임+힌트(Q03② 승격 260714) · 첨부→미리보기 등장 ·
-//          토글 상호작용 재렌더 · 스테이지 패널 내(수평) · 폰트 = 노토 실로드+적용(Q03③ 승격 260714) · 로고 자산 가시(Q03④ 승격 260714) ·
+//   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 상시 프레임+사진 픽토그램 진입점(Q03② 승격 260714 · 내용물 개정 260715 "문구 대신 그걸") · 첨부→미리보기 등장 ·
+//          토글 상호작용 재렌더 · 스테이지 패널 내(수평) · 옆 샘 = 스테이지 컨테이너 내(Q03① 승격 260715 — 전면꽉·슬릿 봉합 반영 XPASS → C9) · 폰트 = 노토 실로드+적용(Q03③ 승격 260714) · 로고 자산 가시(Q03④ 승격 260714) ·
 //          동일 런 픽셀 프로브 3점(첨부 실페인트·로고 잉크·글자 잉크 = 잉크메트릭 · Q07 260714 — 색·이미지 내용 사각 절반 보강)
-//   [대기] Q03 큐 잔여('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — ① 옆 샘(운영자 재현 조건 대기 · 실물 픽스처·2뷰포트 미재현)
+//   [대기] Q03 큐 잔여('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — 잔여 0(① 옆 샘 = 260715 C9 코어 승격 완료)
 //          오늘은 FAIL이어도 exit 0 · 리포트에 현황만 실측(눈→기계 이관 로그)
 //          Q03 항목이 하나 반영될 때마다 그 어서션을 코어로 승격하는 게 운영 규약 — 대기가 PASS로 뒤집히면 XPASS 승격 경고가 자동 출력(망각 = 기계가 잡음 · 평의회⑥).
 //
@@ -80,9 +80,9 @@ async function runOnce(pg, reqLog) {
 
   await pg.waitForTimeout(1500);   // 부팅·복원·애니 settle
 
-  // C1 상시 미리보기(Q03② 승격 완료 260714) — 빈 상태에도 프레임+저채도 힌트 가시(운영자 "뭘 하지 않더라도 미리 떠있어서")
-  const c1 = await pg.evaluate(S => { const p = document.querySelector(S.prev); return { shown: !p.classList.contains('none'), hint: !!p.querySelector('.cpv-empty') }; }, SEL);
-  core('C1 빈 상태 = 상시 프레임+힌트 가시(Q03②)', c1.shown && c1.hint, JSON.stringify(c1));
+  // C1 상시 미리보기(Q03② 승격 완료 260714 · 260715 내용물 개정 "문구 대신 그걸 넣어서" — 힌트 문구 → 사진 픽토그램 진입점(#cFile 위임)) — 빈 상태에도 프레임+진입점 가시
+  const c1 = await pg.evaluate(S => { const p = document.querySelector(S.prev); return { shown: !p.classList.contains('none'), hint: !!p.querySelector('.cpv-empty'), pbtn: !!p.querySelector('.cpv-photobtn') }; }, SEL);
+  core('C1 빈 상태 = 상시 프레임+사진 픽토그램 진입점(Q03②·개정 260715)', c1.shown && c1.hint && c1.pbtn, JSON.stringify(c1));
 
   // C0.5 전역 계약 — 참조 전역·함수 실존(개명·삭제 = 조용한 무효화 차단 · 평의회④)
   const g0 = await pg.evaluate(() => ['CIMG', 'ieSrcSync', 'A2M', 'renderCpPrev', 'syncCpMerge', 'cpMerge'].filter(k => { try { return eval('typeof ' + k) === 'undefined'; } catch (_) { return true; } }));
@@ -124,8 +124,8 @@ async function runOnce(pg, reqLog) {
   core('C3 기하 = 스테이지 수평 뷰포트·패널 내(±1px)', g.stage.l >= g.panel.l - 1 && g.stage.r <= g.panel.r + 1,
     JSON.stringify({ sL: Math.round(g.stage.l), sR: Math.round(g.stage.r), pL: Math.round(g.panel.l), pR: Math.round(g.panel.r) }));
 
-  // R1(대기·Q03①) 옆 샘 = 자식(stage) rect 기준 — 부모 border-box는 자식 overflow를 안 담아 false-PASS(평의회⑨ 치명 C 봉합)
-  resv('R1[Q03①] 옆 샘 = 스테이지가 이웃과 겹침 0·컨테이너 내', g.ovlStage <= 1 && g.stage.l >= g.boxR.l - 1 && g.stage.r <= g.boxR.r + 1 && g.stage.t >= g.boxR.t - 1 && g.stage.b <= g.boxR.b + 1,
+  // C9(코어 승격 260715 — Q03① 옆 샘: 전면꽉+슬릿 봉합 반영으로 XPASS 전환 → 헤더 승격 규약 이행) 옆 샘 = 자식(stage) rect 기준 — 부모 border-box는 자식 overflow를 안 담아 false-PASS(평의회⑨ 치명 C 봉합)
+  core('C9[Q03①·구 R1] 옆 샘 = 스테이지가 이웃과 겹침 0·컨테이너 내', g.ovlStage <= 1 && g.stage.l >= g.boxR.l - 1 && g.stage.r <= g.boxR.r + 1 && g.stage.t >= g.boxR.t - 1 && g.stage.b <= g.boxR.b + 1,
     JSON.stringify({ ovlStage: Math.round(g.ovlStage), 박스내: [Math.round(g.stage.l - g.boxR.l), Math.round(g.boxR.r - g.stage.r), Math.round(g.stage.t - g.boxR.t), Math.round(g.boxR.b - g.stage.b)], 이웃: String(g.sibTag).slice(0, 30) }));
 
   // C6(코어 · Q03③ 승격 260714) 폰트 = 스테이지 전 텍스트가 노토(PIL 정본 미러) 실로드+적용
