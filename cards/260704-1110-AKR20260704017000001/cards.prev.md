@@ -1,31 +1,31 @@
 # ⚖️ 감옥 다녀와도 남는 장사…이준석, 사이버렉카 '돈줄' 겨눴다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 사이버렉카 범죄·법리·구조 고발이라 무거움·사실성으로 간다(한국 웹툰 극화의 서슬).
-- 분위기: 차갑고 무거운 밤. 화면빛 언더글로우의 편집증적 냉기(thumb_dispatch LGT11 톤 계승)와, 그 돈줄을 끊으려는 법의 긴장이 맞선다.
-- 연출 방향: 독자가 멈추는 이유는 '처벌받고도 돈은 그대로 남는다'는 사법의 구멍에 대한 분노다(독자훅). 전하려는 건 '남는 장사라는 계산 자체를 깨겠다'는 관점(💡시사점). 그래서 강조점은 '돈'(화면빛에 번들거리는 지폐·멈추지 않는 조회수 카운터)과 그걸 끊는 '손'에 쏠린다 — 어두운 방의 수익 대 공적 공간의 입법을 낙차로 보여준다. 악센트는 돈·신호의 초록빛으로 시선을 강제한다.
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형 — 처벌받았는데 영상은 아직 돈 번다)+카드3 끝(단서·30일 의무) · 감정 피크=카드4('남는 장사' 냉소) · 착지 요지=처벌로 자리는 비었어도 지금도 그 영상은 돈을 번다.
-- 연속성 앵커: Recurring subject — a Korean man in his early 30s, dark hoodie, face half in shadow, unremarkable features, hunched over a glowing monitor in a dark room (카드1·카드4에 동일 문자열로 삽입 · 표정·눈빛만 카드별 단계). 반복 장소 = the same cluttered dark desk/room. 입법자(카드2)·국회(카드5)는 단발 등장.
+- 화풍: B 극화(한국 웹툰) — 범죄수익 구조를 파고드는 법리·고발 소재라 무거운 극화가 맞다.
+- 분위기: 차가운 화면빛과 밤, 처벌 뒤에도 돌아가는 '남는 장사'의 냉소, 그리고 그 돈줄을 끊으려는 결기가 맞선다.
+- 연출 방향: 독자가 멈추는 지점은 "감옥 갔는데도 그 영상은 돈을 번다"는 사법의 구멍이다(분노). 화면빛에 번들거리는 돈과 텅 빈 의자로 '돈은 남는다'를 보여주고, 네온그린(#0FFD02)을 돈·화면빛의 유일한 악센트로 전 카드에 관통시켜 '끊어야 할 돈줄'에 시선을 못 박는다. 전하려는 건 그 계산을 깨려는 법과 '영리 목적' 경계라는 관건.
+- 독자 동선: 起 카드1(구멍 노출)→承 카드2(법이 겨눔)→轉 카드3(감정 피크·"남는 장사")→承 카드4(여야 합류)→結 카드5(경계 관건·착지) · 훅=카드1 끝(단서형: 영상은 아직 돈을 번다)+카드2(예고: 돈줄을 끊는다) · 감정 피크=카드3 · 착지 요지=처벌 뒤에 남는 그 조회수 · 마지막 카드 톤=②양가(피해자 보호 vs 표현의 자유).
+- 연속성 앵커: Recurring subject A — a Korean man in his 30s, short cropped hair, dark hooded jacket, lit by a computer screen's glow (카드1·3) / Recurring subject B — a Korean man in his early 40s, short side-parted hair, dark suit (카드2·4) / 반복 장소 — a dark screen-lit room (카드1·3·5).
 
 ### [카드 1]
 **텍스트**
 ```text
-구독자 1300만 쯔양을 협박한 구제역.
-지난 3월 *징역 3년이 확정됐다.*
-그런데 그가 올린 폭로 영상은
-아직도 조회수와 광고비를 쌓는다.
+구독자 1300만 쯔양을 협박한
+사이버렉카 구제역은
+지난 3월 징역 3년을 확정받았다
+그런데 그 영상은 *아직도 돈을 번다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the cold, unbothered indifference on his half-lit face, a fleeting flicker of a smirk as green screen-light reflects in his eyes. Recurring subject — a Korean man in his early 30s, dark hoodie, face half in shadow, unremarkable features, hunched over a glowing monitor in a dark room. He sits alone at a cluttered desk watching a paused video whose glowing view-counter keeps climbing, one hand resting near a phone, back turned to the closed door, a Korean interior at late night.
-Camera: MS from a high angle looking down, shot on 70mm short telephoto lens
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease, deep shadows
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on the glowing view-counter and screen light, film-noir low-key lighting, deep shadows
-Keep the face, eyes and the glowing counter in the upper-center, clear of the lower area. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the cold green glow of a rising revenue arrow still climbing on an abandoned computer screen high in a dark room. Recurring subject A — a Korean man in his 30s, short cropped hair, dark hooded jacket, lit by a computer screen's glow — is led away by a uniformed officer in the shadowed background, his back to us and head bowed. In the foreground the monitor keeps playing to an empty chair, a single green upward arrow glowing on it while the rest of the room falls into deep shadow. A cramped dark room, slight nose room on the right toward the glowing screen.
+Camera: wide shot from a high angle, shot on 35mm lens
+Lighting/mood: LGT11 cold blue screen under-glow lighting the room from a monitor, restless unease, low-key
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: convey all meaning through pictograms (the glowing green revenue arrow), render no letters or numbers, no signage text, no screen text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark room interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark room floor and desk surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-쯔양 구제역 협박
+구제역 사이버렉카 재판
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그 돈줄을 끊겠다고 이준석이 나섰다.
-여야 의원 9명과 7월 4일 낸 개정안은
-돈 벌 목적의 폭로로 유죄가 나면
-*범죄수익을 몰수한다.*
+*그 구멍을 이준석이 겨눴다*
+7월 4일 정보통신망법 개정안을 냈다
+유죄가 확정되면 그 수익을 몰수하고
+30일 안에 유튜브가 광고를 끊는다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the resolute set of his jaw and steady forward eyes as he holds up a bound legal document. A Korean male lawmaker in his 40s, dark suit, generic non-specific features, stands at a rostrum in a parliamentary hall, one hand raised presenting the amendment bill toward the front, rows of other lawmakers seated in tiered semicircular arcs behind him, a Korean National Assembly interior.
-Camera: MCU from eye-level, shot on 50mm standard lens
-Lighting/mood: overcast diffused daylight through tall assembly windows, flat soft shadows, muted somber institutional mood
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on the raised document's key clause, muted daylight contrast
-Keep the face, eyes and the raised document in the upper-center, clear of the lower area. no garbled or fake script, no meaningless letters, no random characters, no dense text on the paper.
+Scene: Emotional focal point: a legislator's steady, resolute eyes as he raises a bill document at the podium, jaw firm. Recurring subject B — a Korean man in his early 40s, short side-parted hair, dark suit — stands at the National Assembly rostrum holding the document up with both hands. In the foreground a stream of glowing green coins flowing out of a dark video screen is being severed by one clean cut, the money-flow stopped mid-air. The semicircular tiered seats of the assembly chamber rise behind him.
+Camera: medium shot from eye level, shot on 50mm lens
+Lighting/mood: LGT08 overcast diffused institutional light, flat and muted, sober
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: convey all meaning through pictograms (the green coin-stream, the clean cut), render no letters or numbers, no signage text, no screen text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the parliamentary hall interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the assembly chamber floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,89 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-이준석 법안 발의
+이준석 정보통신망법 개정안
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-여기에 더해, 유죄가 확정되면
-유튜브 같은 큰 플랫폼은 *30일 안에*
-그 콘텐츠의 광고 수익화를
-직접 끊어야 할 의무를 진다.
+"감옥 다녀와도 수익이 남으면
+렉카질은 *남는 장사*"
+처벌로도 안 깨지던 계산을 노렸다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the decisive tension of a hand gripping and severing a thick glowing cable that feeds money into a screen. A single small silhouetted figure at the base reaches up to cut a luminous green revenue-cord running into a towering wall of stacked monitors, the cord snapping, coins of light scattering upward, set inside a vast dim server hall.
-Camera: WS from a low angle looking up, shot on 24mm wide lens
-Lighting/mood: cold blue dim interior light, heavy and suffocating, a single hard light pooling on the severed cord, deep shadows
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on the glowing revenue-cord being cut, film-noir low-key lighting, deep shadows
-Keep the cutting hand and the snapping cord in the upper-center, clear of the lower area. no garbled or fake script, no meaningless letters, no random characters, no dense text on the screens.
+Scene: Emotional focal point: a cold, calculating half-smirk on the cyber-wrecker's face, one mouth corner tightened, his eyes lit from below by a screen's glow. Recurring subject A — a Korean man in his 30s, short cropped hair, dark hooded jacket, lit by a computer screen's glow — thumbs through a thick stack of cash in the foreground, the bills catching a green sheen. At the very edge of the frame a thin blade of green light presses inward toward the money, poised but not yet cutting. Deep black swallows everything else, only his face and the cash lit.
+Camera: tight close-up from a high angle, shot on 85mm lens
+Lighting/mood: LGT15 single hard pool of light isolating the figure in surrounding blackness, claustrophobic, cold screen under-glow
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: convey all meaning through pictograms and the green-lit cash, render no letters or numbers, no signage text, no screen text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the towering monitor wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark room) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+사이버렉카 유튜브 수익구조
+```
+
+### [카드 4]
+**텍스트**
+```text
+법안엔 여야 9명이 이름을 올렸다
+진영을 안 가르는 드문 장면이었다
+이 대표는 권력자 비판은 열되
+*영리 목적 폭로만 겨눈다*고 했다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: lawmakers from rival parties standing shoulder to shoulder in a rare united front, their faces resolute. Recurring subject B — a Korean man in his early 40s, short side-parted hair, dark suit — speaks at a press-conference podium with a firm expression. Behind and beside him a row of other lawmakers in dark suits stand flanking him in solidarity, a cluster of microphones before them. A clean press-conference backdrop fills the frame.
+Camera: medium shot from eye level, shot on 35mm lens
+Lighting/mood: LGT16 clean high-key institutional light, even and open, a rare hopeful clarity
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: keep the backdrop and microphones text-free, render no letters or numbers, no signage text, no banner text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the press-conference stage floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+이준석 안철수 공동발의
+```
+
+### [카드 5]
+**텍스트**
+```text
+하지만 그 '영리 목적'의 경계가
+이 법의 관건으로 남는다
+구제역 영상이 아직 도는 지금
+법이 겨눈 건 *처벌 뒤에 남는 그 조회수다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a lone computer screen still glowing high in an empty dark room, a single green upward revenue arrow climbing on it, the machine running on with no one there. A thin blade of green light hovers over the money-stream flowing from the screen, poised but its aim uncertain, not yet cutting. The chair before the screen sits empty, facing the viewer. Cold pre-dawn stillness fills the deserted room.
+Camera: wide shot from eye level, shot on 35mm lens
+Lighting/mood: LGT02 cold blue pre-dawn desolate stillness, the lone green screen glow the only light, low-key
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: convey all meaning through pictograms (the green revenue arrow, the hovering blade), render no letters or numbers, no signage text, no screen text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the dark room floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -98,65 +159,4 @@ NEGATIVE — strictly avoid:
 **검색어**
 ```text
 유튜브 광고 수익화
-```
-
-### [카드 4]
-**텍스트**
-```text
-이준석은 이렇게 못 박았다.
-"감옥 다녀와도 수익이 남으면
-*렉카질은 남는 장사다.*"
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the same cold face now curled into a faint bitter smirk, the green light of cash glinting in his half-lidded eyes. Recurring subject — a Korean man in his early 30s, dark hoodie, face half in shadow, unremarkable features, hunched over a glowing monitor in a dark room. He slowly fans a thin stack of banknotes lit by the screen glow, a paused video still ticking up revenue behind him, utterly unbothered, alone at the same cluttered desk.
-Camera: tight close-up from a high angle looking down, shot on 85mm portrait lens
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, deep chiaroscuro shadows, tense suffocating atmosphere
-Accent: monochrome desaturated base with a single intense neon green #0FFD02 accent on the cash and screen glow, film-noir low-key lighting, deepest shadows
-Keep the smirking eyes and the money in the upper-center, clear of the lower area. no garbled or fake script, no meaningless letters, no random characters, no dense text, no legible currency numerals.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark room interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-사이버렉카 유튜버
-```
-
-### [카드 5]
-**텍스트**
-```text
-같은 칼끝은 두 곳을 겨눈다.
-돈 노린 폭로냐, 권력 겨눈 폭로냐 —
-그 경계는 아직 안 그어졌다.
-*지금도 그 영상은 돈을 벌고 있다.*
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the quiet dread of a monitor still glowing alone in an emptied dark room, its view-counter climbing with no one there. An abandoned desk chair sits empty and slightly turned away, the paused video's green light pulsing onto the vacant seat, the room otherwise cold and still, the screen facing the viewer head-on and centered.
-Camera: WS from eye-level, front-on symmetrical composition, shot on 35mm lens
-Lighting/mood: cold blue pre-dawn tone, desolate stillness, a faint lone glow from the single screen, deep shadows
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on the still-glowing view-counter, film-noir low-key lighting, deep shadows
-Keep the glowing screen and the empty chair in the upper-center, clear of the lower area. no garbled or fake script, no meaningless letters, no random characters, no dense text, no legible numerals on the counter.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark room interior) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-국회 본회의장
 ```
