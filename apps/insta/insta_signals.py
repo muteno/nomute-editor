@@ -486,6 +486,22 @@ def _audience_sample(aud):
     return out or None
 
 
+def _echo_block(topic_sum, man):
+    """알고리즘 협착(운영자 260715 Q05 가설) — 주제 간 실측 증거 + 운영자 노트.
+    실측 = 정치: 1천뷰당 좋아요 전 주제 최고 vs 조회 최저권(협착 패턴 일치) · 게시물 단위 선형 관계는 미확인(가설 유지)."""
+    note = (man or {}).get('operator_algo_note')
+    if not note:
+        return None
+    ev = None
+    pol, soc = (topic_sum or {}).get('정치'), (topic_sum or {}).get('사회')
+    if pol and soc and soc.get('views_med'):
+        like_rank = sorted(topic_sum, key=lambda k: -(topic_sum[k].get('like_pm_med') or 0)).index('정치') + 1
+        ev = {'pol_like_pm_med': pol.get('like_pm_med'), 'pol_like_rank': like_rank,
+              'pol_views_med': pol.get('views_med'), 'soc_views_med': soc.get('views_med'),
+              'pol_vs_soc_views_pct': round(pol['views_med'] / soc['views_med'] * 100)}
+    return {'note': note, 'evidence': ev}
+
+
 def main():
     # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악") 우선 — 인사이트 유표본 30 미만 = 최근 25개 폴백
     mall = jload('media_all.json')
@@ -527,6 +543,7 @@ def main():
         vdoc['eras'] = sig.get('era_summary')      # 알고리즘 3기 대비
         vdoc['timing'] = _timing_stats(series_daily)       # 게시-팔로워 인과 실측(회초리 근거 · 운영자 260715 Q02)
         vdoc['audience_sample'] = _audience_sample(aud)    # 팔로워 표본(인구통계+운영자 노트 · 운영자 260715 Q03)
+        vdoc['echo'] = _echo_block(sig.get('topic_summary'), man)   # 알고리즘 협착 가설+실측(운영자 260715 Q05)
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
             json.dump(vdoc, f, ensure_ascii=False, indent=1)
