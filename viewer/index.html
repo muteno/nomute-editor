@@ -9518,7 +9518,7 @@ function renderSnsTrends() {
   const ggZ = zig(gt.slice(0, 10).map((g, i) => [g, i]));
   if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 10), '<div class="tpg">' + ggZ.map(z => tpc(mkgg(z[0]), z[1], 0)).join('') + '</div>');   // 구 텍스트 행 → tpg 2행 카드 레일(유튜브 '인기' 원문 계승 · 운영자 260716) · 순위 = zig 인터리브에도 원순위(z[1]) 유지 · 10위(운영자 260717 "10위까지" — 수집은 10개 상존·8캡이 범인이었음 · 유튜브 '인기' 10위와 동렬)
   const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relT(v) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
-  const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = ytn.slice(0, 10).map(v => ({ ...v, cover: v.thumb, account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 — cover:thumb
+  const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = ytn.slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   if (yt.length) gYT += sec('yt', '인기', '· 조회수', Math.min(yt.length, 10), '<div class="tpg">' + ytZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // TOP 10과 동일 카드·10위(운영자 260712) · ytimg 핫링크 자유(평의회5)
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="trend-grid">' + ytnL.map((t, i) => card(t, i)).join('') + '</div>');   // 뉴스 = 쇼츠 카드 완전 동일(운영자 260717 "뉴스 썸네일 쇼츠랑 동일하게" — 구 tpg 1:1 레일은 세로 쇼츠 썸네일 레터박스 노출 · .tcard 3/4 커버 크롭 계승) · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid">' + shL.map((t, i) => card(t, i)).join('') + '</div>');
@@ -9642,6 +9642,12 @@ function renderSnsTrends() {
   fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.query || ''));   // ⑩ X 실시간 트렌드
   fillT('yt', '.tpc-t', ytZ.map(z => z[0].title || ''));
   fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서)
+  document.querySelectorAll('[data-sec=ytn] .tcard-cov img').forEach(im => {   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03 — 스크래퍼 무접촉·뷰어 단독): oar 404(=가로 영상)나 200인데 가로/플레이스홀더면 mq 복귀 + wd(16:9 · .tcard-cov.wd = AI 영상 정본 계승) · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
+    const mq = im.src.replace('oardefault', 'mqdefault');
+    const wide = () => { im.onerror = () => { im.style.display = 'none'; }; im.onload = null; im.closest('.tcard-cov').classList.add('wd'); if (im.src !== mq) im.src = mq; };
+    im.onerror = wide;
+    im.onload = () => { if (im.naturalWidth >= im.naturalHeight) wide(); };   // 세로원본(720×1280~) = 통과 · 가로 = wd 분기(치수 실측 게이트 — 404 아닌 회색 플레이스홀더 200까지 방어)
+  });
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT)
   ['kr', 'gl'].forEach(r => fillT('syt-' + r, '.trend-q', sytR[r].map(v => v.title || '')));
   if (tkL.length) { fillT('tk', '.tpc-t', tkZ.map(z => z[0].title || ('@' + (z[0].account || '')))); }   // 틱톡 카드 레일 제목 = zig 순서 동승(운영자 260716 "유튜브처럼" — 구 .tcard-t 그리드 주입 폐지)
