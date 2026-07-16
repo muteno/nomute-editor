@@ -739,52 +739,114 @@ def hackernews(limit=10):
         return []
 
 
-def finance():
-    """⑬ 금융 = 환율(open.er-api.com 무키·USD 베이스 → 원화 환산 · 등락률 = Frankfurter 직전 거래일 종가 대비) + 암호화폐(Upbit 무키 KRW 시세 · 전일 종가 대비).
-    각 독립 fail-soft. 반환 {rates:[{code,name,krw,chg?}], coins:[{code,krw,chg}]}. 운영자 260713 "주식·환율" · 260716 등락률·기준점 부착."""
-    rates, coins = [], []
-    # 환율 등락률(기준점 = 직전 거래일 종가) — 표시값은 er-api 유지하고 등락만 Frankfurter(ECB·무키·주말/공휴일 자동 스킵)
-    # 시계열 마지막 2거래일로 산출. 값·등락 소스를 섞으면 소스 격차가 가짜 등락으로 새므로, 등락은 동일 소스(Frankfurter) 2일 비교로 격리(운영자 260716).
-    fx_chg = {}
+# 네이버 금융 무키 JSON(모바일 API) — 환율(하나은행 고시)·지수·개별종목 공통. iPhone UA+Referer 실측 통과(260717).
+NAVER_HDR = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari/604.1",
+             "Referer": "https://m.stock.naver.com/"}
+
+
+def _naver_json(url):
+    req = urllib.request.Request(url, headers=NAVER_HDR)
+    return json.loads(urllib.request.urlopen(req, timeout=12, context=CTX).read().decode("utf-8", "ignore"))
+
+
+def _fnum(s):
+    """콤마 포함 수치 문자열 → float("1,480.80"→1480.8). 실패 = None(_i는 정수 전용이라 소수에서 자릿수 깨짐 → 분리)."""
     try:
-        since = (datetime.now(KST) - timedelta(days=7)).strftime("%Y-%m-%d")
-        fj = json.loads(_get(f"https://api.frankfurter.dev/v1/{since}..?base=USD&symbols=KRW,EUR,JPY,CNY"))
-        series = fj.get("rates") or {}
-        days = sorted(series)
-        if len(days) >= 2:
-            cur_d, prv_d = series[days[-1]], series[days[-2]]
-            def _kpu(d, code):   # 통화 1단위당 원화(USD 베이스 → KRW/해당통화)
-                k = d.get("KRW")
-                if not k:
-                    return None
-                if code == "USD":
-                    return k
-                rt = d.get(code)
-                return (k / rt) if rt else None
-            for code in ("USD", "EUR", "JPY", "CNY"):
-                a, b = _kpu(cur_d, code), _kpu(prv_d, code)
-                if a and b:
-                    fx_chg[code] = round((a - b) / b * 100, 2)
-    except Exception as e:  # noqa: BLE001
-        print(f"::warning::환율 등락 실패(스킵): {e}", file=sys.stderr)
-    try:
-        j = json.loads(_get("https://open.er-api.com/v6/latest/USD"))
-        r = j.get("rates") or {}
-        krw = r.get("KRW")
-        if krw:
-            for code, name in (("USD", "미국 달러"), ("EUR", "유로"), ("JPY", "일본 엔"), ("CNY", "중국 위안")):
-                rate = r.get(code)
-                if code == "USD":
-                    row = {"code": code, "name": name, "krw": round(krw, 2)}
-                elif rate:
-                    row = {"code": code, "name": name, "krw": round(krw / rate, 4)}   # 1단위당 원화(엔·위안 = 소수)
-                else:
+        return float(str(s).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _kr_mkt_open(now):
+    """국내 증시 개장 판정 = 평일(월~금) 09:00~15:30 KST. 공휴일은 별도 캘린더 없이 마감가 고정으로 자연 처리(장중 아닌 값=직전 종가)."""
+    if now.weekday() >= 5:
+        return False
+    hm = now.hour * 60 + now.minute
+    return 540 <= hm <= 930   # 09:00(540) ~ 15:30(930)
+
+
+def finance(prev_fin=None):
+    """⑬ 금융 = 환율·코인·국내증시(지수)·주요종목 — 전부 무키. 소스: 네이버 금융(환율 하나은행·코스피/코스닥·개별종목) + 업비트(코인).
+    갱신 주기 throttle(운영자 260717 "너무 자주 필요 없음"): 환율 3h · 지수/종목 1h(장중만 · 마감 시 종가 고정) · 코인 매 run(실시간).
+    prev_fin의 _ts(그룹별 마지막 수집 KST) 참조해 주기 안이면 직전값 유지(네이버 과호출 억제). 각 그룹 독립 fail-soft(실패=직전값).
+    반환 {rates:[{code,name,krw,chg?}], coins:[{code,krw,chg}], indices:[{code,name,val,chg?}], stocks:[{code,name,val,chg?}], _ts:{그룹:iso}}."""
+    prev_fin = prev_fin or {}
+    now = datetime.now(KST)
+    now_iso = now.isoformat()
+    prev_ts = prev_fin.get("_ts") or {}
+    out_ts = dict(prev_ts)
+
+    def _stale(key, hours):   # 직전 수집 후 hours 경과(또는 최초·타임스탬프 파손) = 재수집 대상
+        ts = prev_ts.get(key)
+        if not ts:
+            return True
+        try:
+            return (now - datetime.fromisoformat(ts)).total_seconds() >= hours * 3600
+        except (ValueError, TypeError):
+            return True
+
+    # ── 환율(네이버 하나은행 고시 · 값+등락률 장중 갱신 · 전일 종가 대비) — 3h throttle(운영자 260717 "환율 3시간") ──
+    rates = list(prev_fin.get("rates") or [])
+    if not rates or _stale("rates", 3):
+        got = []
+        for code, rc, name, div in (("USD", "FX_USDKRW", "미국 달러", 1), ("EUR", "FX_EURKRW", "유로", 1),
+                                     ("JPY", "FX_JPYKRW", "일본 엔", 100), ("CNY", "FX_CNYKRW", "중국 위안", 1)):
+            try:
+                info = _naver_json(f"https://api.stock.naver.com/marketindex/exchange/{rc}").get("exchangeInfo") or {}
+                v, chg = _fnum(info.get("closePrice")), _fnum(info.get("fluctuationsRatio"))
+                if v is None:
                     continue
-                if code in fx_chg:
-                    row["chg"] = fx_chg[code]   # 직전 거래일 종가 대비 %(전일 대비)
-                rates.append(row)
-    except Exception as e:  # noqa: BLE001
-        print(f"::warning::환율 실패(스킵): {e}", file=sys.stderr)
+                v = v / div   # JPY = 100엔 고시 → 1엔당 원화로 환산(표시 관례 유지)
+                row = {"code": code, "name": name, "krw": round(v, 2) if v >= 100 else round(v, 4)}
+                if chg is not None:
+                    row["chg"] = round(chg, 2)   # 전일 종가 대비 %
+                got.append(row)
+            except Exception as e:  # noqa: BLE001
+                print(f"::warning::환율 {code} 실패(스킵): {e}", file=sys.stderr)
+        if got:
+            rates, out_ts["rates"] = got, now_iso
+
+    mkt_open = _kr_mkt_open(now)
+    # ── 국내증시 지수(코스피·코스닥) — 장중 1h throttle · 마감 시 마지막 종가 고정(운영자 260717) · 최초 1회는 마감이어도 종가 씨앗 ──
+    indices = list(prev_fin.get("indices") or [])
+    if not indices or (mkt_open and _stale("indices", 1)):
+        got = []
+        for code, name in (("KOSPI", "코스피"), ("KOSDAQ", "코스닥")):
+            try:
+                j = _naver_json(f"https://m.stock.naver.com/api/index/{code}/basic")
+                v, chg = _fnum(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))
+                if v is None:
+                    continue
+                row = {"code": code, "name": name, "val": round(v, 2)}
+                if chg is not None:
+                    row["chg"] = round(chg, 2)
+                got.append(row)
+            except Exception as e:  # noqa: BLE001
+                print(f"::warning::지수 {code} 실패(스킵): {e}", file=sys.stderr)
+        if got:
+            indices, out_ts["indices"] = got, now_iso
+
+    # ── 주요종목(삼성전자·SK하이닉스 = 반도체) — 지수와 동일 주기(운영자 260717 "네이버 경제 1일1회 보던 것 통합") ──
+    stocks = list(prev_fin.get("stocks") or [])
+    if not stocks or (mkt_open and _stale("stocks", 1)):
+        got = []
+        for code, name in (("005930", "삼성전자"), ("000660", "SK하이닉스")):
+            try:
+                j = _naver_json(f"https://m.stock.naver.com/api/stock/{code}/basic")
+                v, chg = _i(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))   # 종목가 = 정수 원(콤마 문자열 → _i)
+                if not v:
+                    continue
+                row = {"code": code, "name": name, "val": v}
+                if chg is not None:
+                    row["chg"] = round(chg, 2)
+                got.append(row)
+            except Exception as e:  # noqa: BLE001
+                print(f"::warning::종목 {code} 실패(스킵): {e}", file=sys.stderr)
+        if got:
+            stocks, out_ts["stocks"] = got, now_iso
+
+    # ── 코인(업비트 · 실시간 · 매 run) ──
+    coins = []
     try:
         j = json.loads(_get("https://api.upbit.com/v1/ticker?markets=KRW-BTC,KRW-ETH,KRW-XRP,KRW-SOL"))
         for c in (j if isinstance(j, list) else []):
@@ -794,7 +856,15 @@ def finance():
                           "chg": round((c.get("signed_change_rate") or 0) * 100, 2)})   # 전일 종가 대비 %(업비트 signed_change_rate)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::코인 실패(스킵): {e}", file=sys.stderr)
-    return {"rates": rates, "coins": coins}
+
+    result = {"rates": rates, "coins": coins}
+    if indices:
+        result["indices"] = indices
+    if stocks:
+        result["stocks"] = stocks
+    if out_ts:
+        result["_ts"] = out_ts
+    return result
 
 
 def disaster(limit=10):
@@ -995,7 +1065,7 @@ def main():
     sig = signal_kw() if SIG_ON else []      # ⑨ 시그널 실검(카나리아 게이트 · 운영자 260712)
     xtr = x_trends() if XTR_ON else []       # ⑩ X 실시간 트렌드(동일)
     hn = hackernews() if HN_ON else []       # ⑫ 해커뉴스(무키 · 운영자 260713)
-    fin = finance() if FIN_ON else {}        # ⑬ 금융 환율+코인(무키 · dict {rates,coins})
+    fin = finance(prev.get("finance")) if FIN_ON else {}        # ⑬ 금융 환율+코인+국내증시+종목(무키 · throttle 상태 = prev.finance._ts 승계)
     dis = disaster() if (SAFETY_KEY and SAFETY_RUNNER) else []   # ⑭ 재난문자 = 러너 기본 OFF(safetydata.go.kr 러너 IP 차단·타임아웃 실측 260713) → 폰(scripts/phone_subs) 신선분 채택이 주 공급(아래 폰 채택 블록) · SAFETY_RUNNER=1 = 러너도 시도
     kob = kobis() if KOBIS_KEY else []       # ⑮ KOBIS 박스오피스(키 게이트)
     exw = expressway() if EX_KEY else []     # ⑯ 고속도로 돌발·사고(키 게이트 · 운영자 260713 "대량 사고")

@@ -1,0 +1,53 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# smoke-nightly.yml — 상비 UI 스모크 4종(smoke_all) 야간 무인 실행 (운영자 260717 Q07 "ㄱㄱ")
+# 왜: 스모크는 세션이 손으로 돌릴 때만 살아있다 — 크론 자동커밋·타 세션이 흘린 드리프트가
+#     다음 사람 실행 전까지 깜깜한 사각의 봉합. 매일 03:30 KST 1회 main에서 smoke_all을 돌리고
+#     결과를 scraper/obs/smoke_last.json 관측 산출물로 커밋 → 30분 watchdog ⑥지표(check_smoke)가
+#     rc≠0/정체를 읽어 웹푸시(발송 = 기존 watchdog 경로 재사용 = 중복 구현 0 · §📰-e).
+# 불변: 뷰어·데이터 무접촉(관측 파일만 커밋) · LLM 0콜 · 과금 0 · 실패해도 다음 크론에 자연 재시도.
+# 환경: ubuntu 러너 = google-chrome 내장(chromiumPath which 폴백) · playwright-core = 스모크가
+#       tmp 캐시에 1회 자동 설치 · 워크플로 자체는 알림 안 쏨(알림 축 = watchdog 단일화).
+# ═══════════════════════════════════════════════════════════════════════════════
+name: smoke-nightly
+on:
+  schedule:
+    - cron: '30 18 * * *'   # 18:30 UTC = 03:30 KST(§📐 KST 환산 명기 · 크론 소강 시간대)
+  workflow_dispatch: {}      # 수동 실측(카나리아·환경 검증)용
+concurrency:
+  group: smoke-nightly
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25   # 로컬 실측 ~13s · CI 콜드(playwright-core 설치) 수 분 — 하드킬 사각(⑤ 사고 교훈)은 watchdog 나이 감지가 커버
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: smoke_all 4종 실행 → 관측 산출물 기록
+        run: |
+          set +e
+          bash shared/smoke_all.sh > smoke.log 2>&1; RC=$?
+          echo "── smoke_all rc=$RC ── 로그 꼬리:"
+          tail -30 smoke.log
+          FAIL=$(grep -E '^❌' smoke.log | head -4 | tr '\n' ' | ' | cut -c1-360)
+          mkdir -p scraper/obs
+          RC="$RC" FAIL="$FAIL" python3 -c "
+          import json, os
+          from datetime import datetime, timedelta, timezone
+          KST = timezone(timedelta(hours=9))
+          json.dump({'updated': datetime.now(KST).isoformat(timespec='seconds'), 'rc': int(os.environ['RC']), 'fail': os.environ.get('FAIL', '').strip()}, open('scraper/obs/smoke_last.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+          "
+          echo "RC=$RC" >> "$GITHUB_ENV"
+      - name: 관측 커밋(변동 시만 · watchdog 쿨다운 원장 문법 계승)
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add scraper/obs/smoke_last.json
+          git diff --cached --quiet && { echo "변동 없음 — 커밋 생략"; exit 0; }
+          git commit -m "watchdog: smoke_last 관측 갱신 (bot)"
+          git pull --rebase origin main && git push || echo "::warning::관측 커밋 푸시 실패 — 다음 크론에 재기록(fail-soft)"
+      - name: 결과 반영(FAIL = 런 붉게 · 알림은 watchdog ⑥이 담당)
+        run: exit "$RC"
