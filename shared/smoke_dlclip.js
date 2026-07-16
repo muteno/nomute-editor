@@ -128,12 +128,17 @@ async function runOnce(br, port) {
   // 다운로드 패밀리 parity — .dlbtn = 크로마 데코레이터(크기 = 호스트 소관 · 260717 실측로 스코프 확정)
   const dp = parity(dls, ['color', 'bg', 'radius']);
   C('C2 .dlbtn 크로마 {글자·배경·radius} 8뷰어 동일', dp.ok, JSON.stringify(dp.det).slice(0, 300));
-  // 대기 — 260717 초기 실측 드리프트 백로그(수정 트리거 = "트윈 통일 ㄱ"): ① index 클립 blur 없음(타뷰어 blur13·sat1.3)
-  // ② thumb 클립 보더 2px(타뷰어 1px) ③ dlbtn 보더 알파 .22군(index·thumb·ly·edit) vs .34군(conv·track·song·nb)
-  const cb = parity(clips, ['blur', 'border']);
-  W('W1 클립 버튼 {blur·border} 동일(드리프트 ①②)', cb.ok, JSON.stringify(cb.det).slice(0, 300));
+  // C3 blur — index askclip 제외 = 의도 예외(2555행 명문: 입력칸 오버레이 blur = 타이핑마다 밑 텍스트 재샘플
+  // 번쩍 방지 · 운영자 260701·분신술 260704 — revdlg .iobtn-edge도 동축). 260717 드리프트 오판정 교정 = 예외 각인.
+  const cb2 = parity(clips.filter(([n]) => n !== 'index'), ['blur']);
+  C('C3 클립 blur13 동일(askclip = 번쩍 방지 의도 예외)', cb2.ok, JSON.stringify(cb2.det).slice(0, 200));
+  // C4 = 260717 "ㄱㄱ" 통일(4뷰어 .34→정본 .22) 반영과 동시 대기→코어 승격
   const db2 = parity(dls, ['bcol']);
-  W('W2 .dlbtn 보더색 동일(드리프트 ③ .22 vs .34)', db2.ok, JSON.stringify(db2.det).slice(0, 300));
+  C('C4 .dlbtn 보더색 동일(정본 .22 = index/thumb)', db2.ok, JSON.stringify(db2.det).slice(0, 300));
+  // 대기 — 보더 굵기: 원조(thumb·G1 글래스 확립처 260625) = 2px vs 다수(7뷰어) = 1px — 어느 쪽이 의도인지
+  // 운영자 판정 대기(정본 파일 vs 다수결 상충 = 임의 통일 금지). 판정 후 승격.
+  const cb = parity(clips, ['border']);
+  W('W1 클립 보더 굵기 동일(판정 대기: thumb 2px vs 다수 1px)', cb.ok, JSON.stringify(cb.det).slice(0, 250));
   return { core, resv };
 }
 

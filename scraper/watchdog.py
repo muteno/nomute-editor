@@ -16,6 +16,10 @@
   ⑤ 채널 브리프 정체 — chan_brief.json updated 나이 > WD_BRIEF_MIN(기본 2160분=36h · 일 1회 06:25 크론
      1회 결번 + 12h 여유 · 운영자 260717 "감시 ㄱ" — 브리프 스텝 하드킬 3연속·이틀 정지를 눈으로만
      발견한 사고 봉합. cancelled 런은 실패 알림조차 안 남는 사각 = 산출물 나이로 감지가 정공)
+  ⑥ UI 스모크 실패/정체 — scraper/obs/smoke_last.json(smoke-nightly.yml 관측 산출물)의 rc≠0 = 즉시,
+     updated 나이 > WD_SMOKE_MIN(기본 1560분=26h · 일 1회 03:30 크론 1결번+2h 여유) = 정체 경보
+     (운영자 260717 Q07 "ㄱㄱ" — 상비 스모크 4종은 세션이 손으로 돌릴 때만 살아있던 사각의 봉합.
+      브리프 ⑤와 동일 정공법 = 산출물 나이·결과 감지)
 
 알림: WATCHDOG_NOTIFY=1 일 때만 push_send.py --notify 재사용(중복 구현 0 · §📰-e 카나리아 —
   워크플로 schedule 기본 '0' = 관측/로그만 · dispatch 실측 후 승격). 지표별 쿨다운
@@ -44,6 +48,8 @@ FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
+SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
+SMOKE_MIN = float(os.environ.get("WD_SMOKE_MIN", "1560"))   # 26h = 일 1회(03:30 크론) 1결번 + 2h 여유(⑤ 산정 문법 계승)
 COOLDOWN_MIN = float(os.environ.get("WD_COOLDOWN_MIN", "360"))
 NOTIFY = (os.environ.get("WATCHDOG_NOTIFY") or "").strip() == "1"
 
@@ -130,6 +136,24 @@ def check_brief():
     return None
 
 
+def check_smoke():
+    """⑥ UI 스모크 실패/정체 — smoke-nightly가 커밋한 관측 파일로 감지(⑤ check_brief 관용구 미러).
+    rc≠0 = 스모크 FAIL(드리프트·회귀 검출) 즉시 경보 · 나이 초과 = 나이틀리 레인 자체 사망(cancelled 사각) 경보."""
+    try:
+        d = json.load(open(SMOKE, encoding="utf-8"))
+        age = _age_min(d.get("updated"))
+        if d.get("rc") not in (0, "0"):
+            return f"UI 스모크 FAIL(rc={d.get('rc')}) — {str(d.get('fail') or '')[:160]} (smoke-nightly 런 로그 확인)"
+        if age is None or age > SMOKE_MIN:
+            return (f"UI 스모크 정체 {('%.0f시간' % (age / 60)) if age is not None else '나이 불명'}"
+                    f"(임계 {SMOKE_MIN / 60:.0f}h) — smoke-nightly.yml 레인(cancelled/타임아웃) 확인")
+    except FileNotFoundError:
+        return None   # 초기 상태(첫 나이틀리 전) = 경보 아님(⑤ 관용구)
+    except Exception as e:  # noqa: BLE001
+        return f"smoke_last.json 파싱 실패({type(e).__name__})"
+    return None
+
+
 def check_ledgers():
     """④ 원장 파손 — 존재하는데 JSON 깨짐 = 무음 리셋(dedup 전멸·예산 재개방) 위험 신호."""
     bad = []
@@ -162,7 +186,7 @@ def _save_state(st):
 
 def main():
     checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "ledger": check_ledgers,
-              "brief": check_brief}
+              "brief": check_brief, "smoke": check_smoke}
     alerts = {}
     for key, fn in checks.items():
         try:
