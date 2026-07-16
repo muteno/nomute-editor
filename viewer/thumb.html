@@ -812,6 +812,9 @@
     <!-- 모자이크 옵션 행 — ON = selApp('8')·비율 원본 강제 / 비율 선택 = 모자이크 자동 OFF(cnTog 릴스 자동 OFF 선례 = 발사 축 단일화) · 표시 문법 = #cnTog 계승 · ON이면 발사 버튼이 피사체 찾기 문맥으로 -->
     <div class="csec none" id="ieTogRow">모자이크 <span class="onoff" id="ieTog" role="button" tabindex="0" aria-pressed="false" title="탭=피사체 모자이크 켜기/끄기 — ON이면 발사가 피사체 찾기→모자이크(비율은 원본 유지) · 사진 첨부 후 활성">OFF</span></div>
 
+    <!-- 화질(업스케일 · app9 신설) 옵션 행 — 순환값(원본→2배→4배) · 비율 순환 문법 계승 · 사진 게이트(.ie-off) · 발사 = /api/upscale(FX10 Real-ESRGAN>FSRCNN>Lanczos) · ↑글리프 회피(§3-1 방향화살표 유니코드 금지)=배율값이 방향성 전달 -->
+    <div class="csec none" id="upsRow">화질 <span class="onoff on" id="upsCyc" role="button" tabindex="0" aria-pressed="true" title="탭=원본→2배→4배 순환 · 원본 = 변환 없음 · 저화질 이미지를 AI로 또렷하게 · 사진 첨부 후 활성">원본</span></div>
+
     <!-- app='8' 모자이크 = 옵션 기능(백엔드 apps/imgedit · track 미러 · 운영자 260712 · 260713부터 제작·합성 옵션 진입) — 이미지(app2 첨부)+피사체 찾기 → 박스 탭 지정 → 모자이크. 발사 = 공유 #go(찾기↔모자이크 문맥) · 소머리 = #ieTogRow 토글 행이 겸함 -->
     <div id="imgeditBox" class="none">
       <!-- 사용법 힌트 줄 = 폐지(운영자 260712 도형·블릿 점검 턴 — §디자인 e 설명 산문 금지 · 발사 버튼 문맥 라벨('이미지를 넣어줘'→'피사체 찾기'→'가릴 피사체를 탭해')이 단계 어포던스 전담 · .ie-hint CSS = 도먼트) -->
@@ -948,11 +951,84 @@ const CIMG = { b64: '', name: '' };   // /2 릴스 자막 배경(옵션)
 const PIMG = { b64: '', name: '' };   // /1 포스트 배경(옵션·슬롯) — 카드뉴스 IMG와 분리(위젯 desync 방지·260624)
 
 // ---- 탭 ----
-const isFam2 = a => a === '2' || a === '7' || a === '8';   // 제작·합성 패밀리 = app2 + 편집 모드(7 리사이즈·8 모자이크) — 폼은 그대로, 발사 축만 전환(운영자 260713 편집 탭 폐지·옵션 이식)
+const isFam2 = a => a === '2' || a === '7' || a === '8' || a === '9';   // 제작·합성 패밀리 = app2 + 편집 모드(7 리사이즈·8 모자이크·9 화질) — 폼은 그대로, 발사 축만 전환(운영자 260713 편집 탭 폐지·옵션 이식 · 9 = 화질 업스케일 260717)
+
+// ── 화질(업스케일 · app9) = 순환값(원본→2배→4배) · 비율(app7) 순환/잡 문법 계승 · 발사 = /api/upscale(FX10 Real-ESRGAN>FSRCNN>Lanczos) ──
+// (state·함수를 selApp 앞에 선언 = selApp/게이트가 upsScale·upsApply 참조 · TDZ 안전. 발사·폴링부는 런타임만 호출이라 전방참조 무해.)
+const UPS_ORDER = ['orig', '2', '4'];   // 원본→2배→4배(2배 균형·4배 최대 · 러너 upscale_image.py SCALES 부분집합 · §3-1 ↑글리프 회피=배율값이 방향성)
+let upsV = 'orig';
+function upsScale() { return UPS_ORDER.indexOf(upsV) >= 0 ? upsV : 'orig'; }
+function upsLabel(v) { return v === 'orig' ? '원본' : v + '배'; }
+function upsApply(v) { upsV = UPS_ORDER.indexOf(v) >= 0 ? v : 'orig'; const t = $('#upsCyc'); if (t) t.textContent = upsLabel(upsV); }
+(function () {
+  const trig = $('#upsCyc'); if (!trig) return;
+  const cyc = () => {
+    if (!CIMG.b64) return;   // 사진 게이트(.ie-off pointer-events 1차 차단·키보드 경로 보강)
+    const nx = UPS_ORDER[(UPS_ORDER.indexOf(upsV) + 1) % UPS_ORDER.length];
+    if (nx !== 'orig') rszApply('orig');   // 화질 선택 = 비율 원본 강제(발사 축 단일화 · 모자이크는 selApp이 APP≠8로 자동 OFF)
+    upsApply(nx);
+    const want = nx === 'orig' ? '2' : '9';   // 원본 = 제작(2) 복귀 · 배율 = 화질 축(app9)
+    if (APP !== want) selApp(want);
+  };
+  trig.addEventListener('click', e => { e.stopPropagation(); cyc(); });
+  trig.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cyc(); } });
+})();
+async function upsLoad() {   // upscale.json 로드(잡 완료 신호 전용 · rszLoad 계승) — 항목 = {url,id,ts,scale,engine,…}
+  try {
+    const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : null;
+    const r = await fetch('gen_out/upscale.json?t=' + Date.now(), sig ? { signal: sig } : undefined);
+    if (!r.ok) return [];
+    const tx = await r.text();
+    if (/^\s*</.test(tx)) return [];   // SPA 폴백(HTML 200) 가드 = rszLoad 동일
+    const items = JSON.parse(tx);
+    return Array.isArray(items) ? items : [];
+  } catch (e) { return []; }
+}
+function upsJob(rid, payload) {   // 발사 1건 = 표준 잡 카드(rszJob 미러 · 출력 URL 해시라 upscale.json id 매칭 tick · 카드·캐러셀·다운로드 정본 재사용)
+  const o = { path: '', label: payload.scale + '배' };
+  const job = { n: ++JOBSEQ, label: '화질 (' + payload.scale + '배)', t0: Date.now(), outs: [o], done: [false], status: 'run', msg: '', rid, payload, endpoint: '/api/upscale' };
+  JOBS.unshift(job); renderJob(job); jobUiPulse(job);
+  const SOFT_S = 150, HARD_S = 360;   // 150s 큐 대기 안내 · 6분 실패 판정(rszJob 계승)
+  const tick = async () => {
+    if (job._timer) { clearTimeout(job._timer); job._timer = null; }
+    if (job.status !== 'run' || job._polling) return;
+    job._polling = 1;
+    try {
+      const el = Math.round((Date.now() - job.t0) / 1000);
+      if (el > HARD_S) { job.status = 'err'; job.msg = '시간 초과(6분) — 러너 큐 혼잡/실패 가능, 재시도 가능'; renderJob(job); if (!rszRunning()) rszWait(false); return; }
+      job._queued = el > SOFT_S;
+      renderJob(job);
+      const hit = (await upsLoad()).find(i => i && i.id === job.rid && i.url);
+      if (hit) {
+        o.path = hit.url;
+        job.done[0] = true; job.status = 'done';
+        carAppend(hit.url + (hit.url.indexOf('?') < 0 ? '?t=' + Date.now() : ''), dlStamp(job.t0) + '_화질_' + pad3(job.n) + '_x' + payload.scale + '.jpg', '화질 #' + job.n, job, ' · ' + payload.scale + '배', o, false, payload.name || ('화질 #' + job.n));
+        renderJob(job);
+        if (!rszRunning()) rszWait(false);
+        return;
+      }
+      job._timer = setTimeout(tick, 25000);   // 폴 주기 25s(rszJob 계승)
+    } finally { job._polling = 0; }
+  };
+  job._tick = tick;
+  tick();
+}
+async function upsRefire(job) {   // 실패 화질 재발사 = 같은 설정·같은 행 in-place(rszRefire 미러 · endpoint /api/upscale)
+  goFire();
+  try {
+    const r = await fetch('/api/upscale', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(job.payload) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) { job.msg = j.error || ('서버 ' + r.status); renderJob(job); return; }
+    job.rid = j.id; job.t0 = Date.now(); job.status = 'run'; job.done = [false]; job.msg = ''; delete job._queued;
+    job.outs[0].path = '';
+    renderJob(job); jobUiPulse(job); rszWait(true); if (job._tick) job._tick();
+  } catch (e) { job.msg = '요청 실패: ' + e.message; renderJob(job); }
+}
 function selApp(a) {
   APP = a;
   if (a === '2' && rszAspect() !== 'orig') rszApply('orig');   // 제작(2) 직진입(부모 탭 클릭·복원) = 비율 잔존 무장 해제(비율≠원본인데 발사='이미지 제작' 불일치 차단 — cyc/ieTog 경로는 원본일 때만 2로 옴 = 무영향)
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.app === a || ((a === '7' || a === '8') && t.dataset.app === '2')));   // 편집 모드(7·8) = 제작·합성 탭 안 옵션(운영자 260713 이식) → 하이라이트 = 제작·합성(2) 유지(내부 #tabs + thumbTabBridge 부모 역동기 동일 매핑)
+  if (a !== '9' && upsScale() !== 'orig') upsApply('orig');   // 화질(9) 아닌 앱 전환 = 업스케일 잔존 무장 해제(비율·모자이크·제작 진입 시 화질 원본 복귀 = 발사 축 단일화 · rszApply 선례)
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.app === a || ((a === '7' || a === '8' || a === '9') && t.dataset.app === '2')));   // 편집 모드(7·8·9) = 제작·합성 탭 안 옵션(운영자 260713 이식) → 하이라이트 = 제작·합성(2) 유지(내부 #tabs + thumbTabBridge 부모 역동기 동일 매핑)
   // 표시 토글
   const fam2 = isFam2(a);
   $('#imgBox').classList.toggle('none', a !== '5');   // 원본 이미지 공용 슬롯 = /5 직탭(도먼트)만 — 편집(비율·모자이크) 소스는 app2 첨부(CIMG)로 이관(운영자 260713 · 구 편집 탭 #ieSlotHome DOM 이동 폐지 = 사진 입구 단일화)
@@ -966,6 +1042,7 @@ function selApp(a) {
   $('#rszBox').classList.toggle('none', !fam2);   // 비율 행 = 제작·합성 옵션 구역 상시(사진 게이트 = ieGateSync · 운영자 260713)
   $('#imgeditBox').classList.toggle('none', a !== '8');   // 모자이크 UI = 옵션 ON(app8)일 때만 펼침(운영자 260712 3차)
   $('#ieTogRow').classList.toggle('none', !fam2);   // 모자이크 옵션 행 = 제작·합성 옵션 구역 상시(운영자 260713)
+  $('#upsRow').classList.toggle('none', !fam2);   // 화질(업스케일) 옵션 행 = 제작·합성 옵션 구역 상시(사진 게이트 = ieGateSync · 260717)
   syncIeTog(); rszOrigSync(); ieGateSync(); iePrevSync();            // 토글 표시 + 원본 칩 상태(락/구분자 숨김) + 사진 전 컨트롤 잠금·하단 미리보기 노출 = APP·비율·첨부 동기(운영자 260713)
   rszWait();                                          // /7 변환 중 점등 = 탭 전환 재동기(변환 중이면 /7 복귀 시 재점등·타 탭 숨김)
   if (IMG.b64 && a === '5' && $('#fileLab')._set) $('#fileLab')._set(IMG.b64, IMG.name);   // 공유 이미지 슬롯(#fileLab) 재렌더 = /5 직탭(도먼트)만 — 편집 소스는 CIMG 이관(운영자 260713)
@@ -982,7 +1059,7 @@ function selApp(a) {
   // /6·/7 = 탭 진입 로드 없음 — 결과·과거분은 표준 잡 흐름(결과·이전 제작)이 담당(260709~10 작업내역 합류·그리드 폐지)
   clearSpellReview();                                                          // 앱 바뀌면 진행 중이던 교정 리뷰 폐기
   const gb = $('#go');                                                         // 버튼 문구 = '이미지 제작'(맞춤법 교정은 기능 유지·문구만 간소화·운영자 260629)
-  if (gb) { const lbl = a === '6' ? '이미지 생성' : a === '7' ? '리사이즈' : '이미지 제작'; gb.dataset.label = lbl;   // /6 = 팝업 열기 발사(부모 genidlg · 프롬프팅 부활 260712 8차) · /7 = 비율 재구성 발사
+  if (gb) { const lbl = a === '6' ? '이미지 생성' : a === '7' ? '리사이즈' : a === '9' ? '화질 올리기' : '이미지 제작'; gb.dataset.label = lbl;   // /6 = 팝업 열기 발사(부모 genidlg · 프롬프팅 부활 260712 8차) · /7 = 비율 재구성 · /9 = 화질 업스케일 발사
     if (!gb.classList.contains('firing') && !gb.classList.contains('okdone') && !gb.classList.contains('spell-arm') && !gb.classList.contains('rszbusy')) gb.textContent = lbl; }
   if (a === '8' && typeof ieSyncGo === 'function') ieSyncGo();   // 모자이크 = 발사 버튼 문맥 라벨(찾기↔모자이크)
   updateGoSpec();
@@ -992,10 +1069,12 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => { selApp(t.data
 // ── 편집 옵션 사진 게이트(운영자 260713 "사진 유첨 시 활성 — 그 전에는 OFF·읽기전용") — 기준 = app2 첨부(CIMG) · 사진 전 = 비율·모자이크 행 .ie-off 잠금(dim = .hlock 계승)+표시값 OFF · 사진 후 = 기본값 노출(비율 원본·모자이크 OFF) ──
 function ieGateSync() {
   const off = isFam2(APP) && !CIMG.b64;
-  const r = $('#rszBox'), t = $('#ieTogRow');
+  const r = $('#rszBox'), t = $('#ieTogRow'), u = $('#upsRow');
   if (r) r.classList.toggle('ie-off', off);
   if (t) t.classList.toggle('ie-off', off);
+  if (u) u.classList.toggle('ie-off', off);   // 화질 행도 사진 전 잠금(260717)
   const c = $('#rszCyc'); if (c) { c.textContent = off ? 'OFF' : (rszV === 'orig' ? '원본' : rszV); c.classList.toggle('on', !off); }   // 잠금 = OFF 읽기전용(mut) / 해제 = 원본(기본)·선택 비율(강조) — 운영자 260713 "그 전에는 OFF"
+  const uc = $('#upsCyc'); if (uc) { uc.textContent = off ? 'OFF' : upsLabel(upsV); uc.classList.toggle('on', !off); }   // 화질 = 잠금 OFF / 해제 원본·배율(강조) — rszCyc 문법 계승
 }
 function iePrevSync() {   // 하단 미리보기 노출 동기 — 편집 모드(7·8)+사진일 때만(app2 순정 = #cpPrev 합성 미리보기 전담) · app8 검출 박스(ieStage) 등장 시엔 ieRender()가 직접 숨김(원본+박스가 미리보기 대체 · IE는 후단 정의라 여기선 미참조 = TDZ 안전)
   const p = $('#iePrev'); if (!p) return;
@@ -1003,7 +1082,7 @@ function iePrevSync() {   // 하단 미리보기 노출 동기 — 편집 모드
 }
 function ieSrcSync(has) {   // 편집(비율·모자이크) 소스 = app2 첨부 사진(CIMG) 첨부/삭제 훅(#cImgSlot 바인더) — 첨부 = 치수 실측→게이트 해제 / 삭제 = 기본값 복귀(비율 원본·모자이크 OFF)+제작 축(운영자 260713)
   if (has && CIMG.b64) rszMeasure(CIMG.b64);
-  else { RSZ.w = RSZ.h = 0; rszApply('orig'); if (APP === '7' || APP === '8') { selApp('2'); return; } }   // 편집 모드 중 삭제 = 제작(2) 복귀(selApp이 게이트·미리보기 재동기 전담 · IE 검출 초기화는 다음 첨부의 lastImg 비교가 전담)
+  else { RSZ.w = RSZ.h = 0; rszApply('orig'); upsApply('orig'); if (APP === '7' || APP === '8' || APP === '9') { selApp('2'); return; } }   // 편집 모드 중 삭제 = 제작(2) 복귀(selApp이 게이트·미리보기 재동기 전담 · IE 검출 초기화는 다음 첨부의 lastImg 비교가 전담 · 화질(9) 포함 260717)
   ieGateSync(); iePrevSync();
   if (APP === '8' && typeof ieRender === 'function') ieRender();
 }
@@ -2228,7 +2307,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   if (job.status === 'err' && ((job.payload && job.endpoint) || (job.batch && job.batch.length))) {   // 실패 = 같은 설정 재발사(단일=payload·배치=batch · 운영자 260620 아이디어 3·260625)
     const rt = document.createElement('button'); rt.type = 'button'; rt.className = 'jretry'; rt.title = '같은 설정으로 다시 제작';
     rt.innerHTML = RETRY_SVG + '<span>재시도</span>';
-    rt.onclick = () => { rt.disabled = true; if (job.rid) rszRefire(job); else if (job.gfree) genRefire(job); else if (job.batch && job.batch.length) dispatchBatch(job.batch, job.label, job.src, job); else dispatchJob(job.endpoint, job.payload, job.label, job.src, job); };   // reuse=job → 새 큐 생성 대신 이 실패 잡을 그 자리서 재발사·갱신(운영자 260630) · 리사이즈/생성 = 전용 재발사(응답 형식 다름 · 260710 축10)
+    rt.onclick = () => { rt.disabled = true; if (job.rid) (job.endpoint === '/api/upscale' ? upsRefire : rszRefire)(job); else if (job.gfree) genRefire(job); else if (job.batch && job.batch.length) dispatchBatch(job.batch, job.label, job.src, job); else dispatchJob(job.endpoint, job.payload, job.label, job.src, job); };   // reuse=job → 새 큐 생성 대신 이 실패 잡을 그 자리서 재발사·갱신(운영자 260630) · 리사이즈/화질/생성 = 전용 재발사(rid 잡 endpoint 분기 · 응답 형식 다름 · 260710 축10 · 화질 260717)
     row.append(rt);
   }
   if (job.status === 'err') {   // 실패 = 우측 휴지통(삭제) · 세로중앙(.job align-items:center) · 사유는 행 tooltip
@@ -3398,6 +3477,22 @@ $('#go').onclick = async () => {
       if (!r.ok || j.error) return errStatus(j.error || '발사 실패 — 잠시 후 다시');   // errStatus가 goFire 타이머·클래스 정리(기존 계약)
       rszWait(true);   // '변환 중' 점등(genstat live) — 이 잡 완료/실패 시 rszJob이 소등 · 옛 #status 안내 산문 폐지(§디자인 e)
       rszJob(j.id, payload);   // 결과 = 표준 잡 흐름 합류: 잡 카드+캐러셀+이전 제작(운영자 260709 "다른 메뉴들하고 동일하게 작업내역으로")
+    } catch (err) {
+      return errStatus('네트워크 오류 — 다시 눌러줘');
+    }
+    return;
+  }
+  if (APP === '9') {   // 화질 업스케일 = /api/upscale (FX10 Real-ESRGAN>FSRCNN>Lanczos · 발사 후 upscale.json 폴링 · 소스 = app2 첨부 CIMG) — app7 분기 미러
+    if (!CIMG.b64) return errStatus('이미지를 선택해주세요');
+    if (upsScale() === 'orig') return errStatus('배율을 골라줘(2배·4배)');   // 원본 = 변환 없음(발사할 작업 없음)
+    goFire();
+    const payload = { imageB64: CIMG.b64, name: CIMG.name, scale: Number(upsScale()) };   // 발사 스냅샷 + 재시도 보관(rszJob 선례)
+    try {
+      const r = await fetch('/api/upscale', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) return errStatus(j.error || '발사 실패 — 잠시 후 다시');
+      rszWait(true);   // '변환 중' 점등(upsJob 완료/실패 시 소등 · rszWait는 rid 잡 공용)
+      upsJob(j.id, payload);   // 결과 = 표준 잡 흐름 합류(잡 카드+캐러셀+다운로드)
     } catch (err) {
       return errStatus('네트워크 오류 — 다시 눌러줘');
     }
