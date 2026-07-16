@@ -7949,7 +7949,7 @@ async function loadSocial() {
 // ⚡ 유효 breaking = backend 속보확정(breaking) AND 경중 게이트가 잡음/경미(grade 0·1)로 깐 게 아님(미채점 null=유보 통과). 🚨배지·핀·최신 공용(grade≥2) — 'grade1 경미인데 ⚡이슈' 모순 차단(260617). ⚠️ 토스트·점등은 isAlert(grade≥3)로 분리(운영자 260622).
 const isBreaking = c => !!c.breaking && (c.grade == null || c.grade >= 2);
 const isAlert = c => !!c.breaking && c.grade != null && c.grade >= 3;   // 📢 화면알림(점등·토스트)·앱푸시·자동요약 공용 = breaking AND grade≥3(대형/엄중) · 운영자 260622 3단위계: 앱푸시긴급(grade≥3·알림류)⊂긴급(grade≥2·🚨배지·핀)⊂일반 · 이슈(⚡)는 별개 개념 · 미채점(null)=제외.
-const breakingNow = () => CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(ratingsAll()[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && pickState(c) !== 'failed' && !brkToastSeen(c) && !!scFeedArticle(c); });   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·수집함 처리분·경중<3·failed(fail 토스트 담당)·로컬 seen 제외. ⚠️ scFeedArticle 게이트(운영자 260712 "적어도 내용을 알 수 있을 때 긴급을 띄우셈 · 10분 전후 늦어도 OK") = 자동요약이 피드에 실제 등장(has_body·분석+배포 완료)한 뒤에만 토스트 — 구 260702 '분석중에도 뜸' 폐지 · 즉시 인지 = 웹푸시(백엔드 독립)·수집함 🚨배지 담당 · 미요약 긴급(자동픽 컷·일캡)은 토스트 생략(배지·푸시만 = 정직 한계).
+const breakingNow = () => { const RA = ratingsAll(); return CANDS.filter(c => { const r = { ...(srvTriage(c) || {}), ...(RA[candId(c)] || {}) }; return isAlert(c) && !JUNK_HEAD.test(c.title || '') && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000 && !r.dismissed && !r.action && !r.score && !r.picked && !r.acked && pickState(c) !== 'failed' && !brkToastSeen(c) && !!scFeedArticle(c); }); };   // RA 호이스트(운영자 260717 "호이스트 ㄱ" · 평의회G 실측) — ratingsAll() = localStorage 통파싱이라 필터 내 건당 호출 = 800회/폴 → 밖 1회(동기 루프라 결과 동일·비용만 소거)   // 토스트·점등=최신 *알림긴급*만(breaking AND grade≥3·<FAST_MAX_H=4h · 🚨배지/핀은 grade≥2로 별개). JUNK_HEAD·수집함 처리분·경중<3·failed(fail 토스트 담당)·로컬 seen 제외. ⚠️ scFeedArticle 게이트(운영자 260712 "적어도 내용을 알 수 있을 때 긴급을 띄우셈 · 10분 전후 늦어도 OK") = 자동요약이 피드에 실제 등장(has_body·분석+배포 완료)한 뒤에만 토스트 — 구 260702 '분석중에도 뜸' 폐지 · 즉시 인지 = 웹푸시(백엔드 독립)·수집함 🚨배지 담당 · 미요약 긴급(자동픽 컷·일캡)은 토스트 생략(배지·푸시만 = 정직 한계).
 let _brkClaiming = false;
 function detectBreaking() {
   // 미처리 긴급 큐 = breakingNow()(isAlert·grade≥3·<4h·미픽/미확인/미패스 · 요약 피드 등장 게이트). 표시 전 계정 선점(claimSeen) = 처음 선점한 기기만 표시(운영자 260712 "같은 알림 2번 금지" = 크로스 플랫폼 정확히 1회) · 표시 중 건은 자기 8s 타이머가 닫음(폴이 조기 종료 안 함).
@@ -8139,7 +8139,7 @@ async function loadPickFails() {
   detectPickFail();
 }
 // 알림 대상 = 내가 픽함(로컬 ratings) + 실패목록에 있음(같은 기기서 픽→실패 인지).
-const pickFailNow = () => CANDS.filter(c => { const r = ratingsAll()[candId(c)] || {}; return r.picked && pickFailedShow(c) && !failRequeued(c); });   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃(체크로 제자리 복귀한 건 = 확인처리라 알림 제외)
+const pickFailNow = () => { const RA = ratingsAll(); return CANDS.filter(c => { const r = RA[candId(c)] || {}; return r.picked && pickFailedShow(c) && !failRequeued(c); }); };   // 링/토스트 알림 대상 = 서버실패 OR 무응답 타임아웃(체크로 제자리 복귀한 건 = 확인처리라 알림 제외) · RA 호이스트 = breakingNow와 동일 축(건당 localStorage 통파싱 → 폴당 1회 · 260717)
 // ── 픽 후 'Picking…'(분석 중) → 뉴스요약(피드)에 떴으면 PICKED · 실패면 '분석 실패' ──
 // ── 픽↔피드 요약 매칭 — url(rep+cluster) 1차 → event_key 2차 = 강한 식별(_feedStrict) · 정규화 제목 3차 = 표시 재연결(feedMatch). ──
 //   url 드리프트(막힌 매체 403 우회·리다이렉트·재클러스터링)로 분석 url이 후보 url군 밖으로 새면 요약이 피드에
