@@ -9503,8 +9503,10 @@ function renderSnsTrends() {
     `<span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;
   const V3 = [['views', '조회수'], ['likes', '좋아요'], ['cmts', '댓글']];
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
-  const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
-  const tkS = sortOf('tk', ['views', 'likes', 'cmts'], 'views'), tkL = tkCov ? bySort(tkv, tkS).slice(0, 10) : [];
+  const tkCov = tkvA.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백 · 전체(tkvA) 기준 = 국내 보충분(해외) 커버도 판정
+  const tkS = sortOf('tk', ['views', 'likes', 'cmts'], 'views');
+  // 인기 = 국내 모드에서 한국 틱톡 희소(틱톡은 유튜브·구글과 달리 '한국 인기' 공식 통로 없음 · tikwm region=KR 실효 약해 콜당 KR 2~4개) → 한국 우선 + 부족분 해외로 10개 채움(운영자 260716 "틱톡 7개밖에" · 유튜브·구글 인기 10개와 시각 균형) · 세계 모드 = 현행(전체 지표순) · TOP10 풀·구독은 무접촉(국내 순수성 유지)
+  const tkL = tkCov ? (TRREG === 'kr' ? [...bySort(tkvA.filter(t3 => t3.region === 'KR'), tkS), ...bySort(tkvA.filter(t3 => t3.region !== 'KR'), tkS)] : bySort(tkvA, tkS)).slice(0, 10) : [];
   const REGN = { kr: '한국', gl: '세계' }, byReg = (arr, r) => (arr || []).filter(t => (t.region === 'kr') === (r === 'kr'));   // 구독 한국/세계 접이 분리(운영자 260712 "한국 전용·세계 전용") — region 미도장(구 데이터) = 세계
   const REGS = TRREG === 'kr' ? ['kr'] : ['kr', 'gl'];   // 국내 모드 = 구독 한국군만 표시 · 월드 = 양군(운영자 260712 2모드)
   const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
@@ -9540,7 +9542,7 @@ function renderSnsTrends() {
     row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
   const mktk = t => ({ url: t.url || '', t: t.title || ('@' + (t.account || '')), rv: t.views ? vfmt(t.views) : '', th: t.cover || '', mono: 'tk', plat: '틱톡', x: t, ago: relT(t), pt: 1 });   // 틱톡 = 유튜브와 동일 카드 레일(운영자 260716 "틱톡도 유튜브처럼") — TOP 10 lane 매핑 미러 · pt = 세로 커버 표식(TOP 문법)
   const tkZ = zig(tkL.map((t, i) => [t, i]));
-  if (tkv.length && tkCov) gTK += sec('tk', '인기', '· 조회수', tkL.length, sortbar('tk', V3, tkS) + '<div class="tpg">' + tkZ.map(z => tpc(mktk(z[0]), z[1], 0)).join('') + '</div>');   // 구 3/4 쇼츠 그리드 → tpg 2행 카드 레일(유튜브 '인기' 원문 계승 · 운영자 260716) · 정렬바 존치 · 단위 라벨 = '· 조회수'(유튜브 동일)
+  if (tkL.length) gTK += sec('tk', '인기', '· 조회수', tkL.length, sortbar('tk', V3, tkS) + '<div class="tpg">' + tkZ.map(z => tpc(mktk(z[0]), z[1], 0)).join('') + '</div>');   // 구 3/4 쇼츠 그리드 → tpg 2행 카드 레일(유튜브 '인기' 원문 계승 · 운영자 260716) · 정렬바 존치 · 단위 라벨 = '· 조회수'(유튜브 동일) · 개수 = tkL(한국 우선+국내 보충)
   else if (tkv.length) gTK += sec('tk', '인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
