@@ -5,6 +5,7 @@
 #       도구 제약·PIPE_MODEL·effort)으로 N개 기사에 나란히 돌리고, 기사당 눈가림 심판 1명이 4축
 #       {원문 밖 사실 전수·커버리지 손실·표기 노이즈·종합 요약 스킬} 판정 → 승패 집계 리포트.
 # 왜: "증명 없이 프롬프트 안 만진다" — 260717 「교차 사실 출처 규율」 채택 선례(눈가림 3판 전승 후 반영)의 도구화.
+# 산출: REPORT.md(승패 집계) + DIFF_<i>.md(전/후 실물 = 섹션별 前현행/後실험군 + 괄호주석 신규·삭제 = 채택 전 눈으로 볼 실물).
 # 사용: bash shared/prompt_ab.sh <규칙후보.txt> [--dry] [--n N] [URL ...]
 #   · URL 미지정 = viewer/candidates.json 최신 수집함에서 카테고리 다양하게 N개(기본 3) 자동 선별
 #   · ⚠️ 후보 규칙이 '무는' 기사 유형이면 URL 직접 지정이 정확 — 무관 기사에선 런 편차만 측정됨
@@ -147,4 +148,65 @@ rep.append(''); rep.append(tot)
 open(f'{out}/REPORT.md', 'w', encoding='utf-8').write('\n'.join(rep))
 print('\n'.join(rep))
 print(f'\n산출물·심판 전문 = {out}/ (res_*·judge_*) · 채택 시 = 규칙 자구 그대로 prompts/news-analysis.md + 원장 기록')
+PY
+
+# ── 6) 전/후 실물 diff — 섹션 정렬(前=현행 A / 後=실험군 B) + 괄호주석 신규·삭제(출처병기류 규칙의 실물 흔적) ──
+python3 - "$OUT" "$N" <<'PY'
+import re, sys
+out, n = sys.argv[1], int(sys.argv[2])
+
+def sections(t):
+    # ##/### 헤더로 분절 → [(원헤더, 정규화키, 본문)] · 키 = 숫자·기호 제거(약725자↔약767자 동일 정렬)
+    secs, cur = [], None
+    for ln in t.splitlines():
+        if re.match(r'^#{2,3}\s', ln):
+            if cur: secs.append(cur)
+            key = re.sub(r'[\d\W_]+', ' ', ln).strip()
+            cur = [ln.strip(), key, []]
+        elif cur is not None:
+            cur[2].append(ln)
+    if cur: secs.append(cur)
+    return secs
+
+PARE = re.compile(r'\(([^)]{1,40})\)')                       # 괄호주석 = (매체명) 등 = 규칙의 실물 신호
+SHOW = ['fact', '자유요약', 'ig', 'thread', '시사점', '한줄', '한 줄']   # 사람이 눈으로 볼 핵심 섹션
+def want(key):
+    k = key.lower()
+    return any(s in k for s in SHOW)
+
+pointers = []
+for i in range(1, n + 1):
+    try:
+        A = open(f'{out}/res_{i}_A.md', encoding='utf-8').read()   # 前 = 현행(규칙 없음)
+        B = open(f'{out}/res_{i}_B.md', encoding='utf-8').read()   # 後 = 실험군(규칙 적용)
+    except Exception:
+        continue
+    sa, sb = sections(A), sections(B)
+    bmap = {}
+    for h, k, body in sb: bmap.setdefault(k, (h, '\n'.join(body).strip()))
+    md = [f'# 전/후 실물 diff — 기사 {i}', '', '전(前) = 현행(규칙 없음) · 후(後) = 실험군(규칙 적용)', '']
+    # 괄호주석 변화 = 규칙 흔적 요약(맨 위 = 한눈에)
+    norm = lambda s: re.sub(r'\s+', '', s)                   # 공백만 다른 괄호(부정수급이↔부정 수급이) = 동일 취급
+    pa = {norm(m.group(0)): m.group(0) for m in PARE.finditer(A)}
+    pb = {norm(m.group(0)): m.group(0) for m in PARE.finditer(B)}
+    only_b = [pb[k] for k in pb if k not in pa][:8]           # 표시 상한 8(노이즈 억제)
+    only_a = [pa[k] for k in pa if k not in pb][:8]
+    md += ['## 🔎 괄호주석 변화(규칙 실물 흔적 · 출처병기류는 여기 뜬다)',
+           '- 🆕 후에만 등장: ' + (' · '.join(only_b) if only_b else '없음'),
+           '- ➖ 전에만 있음: ' + (' · '.join(only_a) if only_a else '없음'), '']
+    # 섹션 정렬 전후
+    for h, k, body in sa:
+        if not want(k): continue
+        ba = '\n'.join(body).strip()
+        bh, bb = bmap.get(k, ('(후에 해당 섹션 없음)', ''))
+        md += [h, '**전(前):**', '```', ba or '(비어있음)', '```',
+               '**후(後):**', '```', bb or '(비어있음)', '```', '']
+    open(f'{out}/DIFF_{i}.md', 'w', encoding='utf-8').write('\n'.join(md))
+    tag = f'🆕{len(only_b)} ➖{len(only_a)}' if (only_b or only_a) else '괄호변화 없음'
+    pointers.append(f'  기사{i}: DIFF_{i}.md (괄호주석 {tag})')
+
+if pointers:
+    print('\n▶ 전/후 실물 diff 생성:')
+    print('\n'.join(pointers))
+    print(f'  → 열람: cat {out}/DIFF_<i>.md (섹션별 前/後 + 괄호주석 신규·삭제)')
 PY
