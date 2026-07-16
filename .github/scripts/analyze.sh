@@ -270,6 +270,7 @@ ${extracted}"
   #   ⚠️ 성공·ANALYSIS_FAILED(입력 막다른길)는 즉시 탈출(쿼터 낭비 차단). 타임아웃(rc=124)은 계정 1회 강제전환 후 격리(force·아래), 빈출력은 재시도 안 함.
   inline_delay=15
   claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 4계정 체인 예산 보존(평의회 260704 Q5)
+  claude_preflight "$MODEL" 2>/dev/null || true # 본선(≤900s) 직전 60s 핑으로 산 계정 선탑승 — 죽은 활성계정 침묵 행이 본선 timeout(최대 900s)을 통째로 태우던 공회전 소거(preflight SSOT를 브리프→본선으로 확장 배선 260717 · reset 후 호출 = 계정 복원 뒤 산 계정 선별 · fail-soft: 전 계정 무응답이면 마지막 계정으로 그대로 강행)
   _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   _empty_tried=0                                # 빈 출력/무프레임 1회 한정 재시도 플래그(전수감사 260713 — 모델 1회성 소화 실패가 즉시 격리되던 것)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
