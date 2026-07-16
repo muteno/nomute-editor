@@ -13,7 +13,7 @@
 //   → 재고장에도 침묵(경계 진동 플리커 가드 = 재무장 히스테리시스) → S5 확실 회복(≥임계×2) = ack 자동 해제
 //   → 재고장 = 재발화 → S6 ✗ 접속 숨김 + 확실 회복 후 재고장 = 재발화(뮤트 재무장)
 //   → S7 가족 토스트(#nmToast.show) 점유 = 양보 소등·해제 = 재점등 → S8 수집함 탭 = 소등·이탈 = 재점등
-//   → S9 야간(KST 03시) = 표시 억제(ack 무접촉 = 야간≠회복) → S10 계정 ack(api/seen s축) = 억제·rearm 페어 = 재발화(운영자 260717 계정 종속)
+//   → S9 야간(KST 03시) = 표시 억제(ack 무접촉 = 야간≠회복) → S10 계정 ack(api/seen s축) = 억제·rearm 페어 = 재발화(운영자 260717 계정 종속) → S11 rearm 발송 계약(1발·낙관add·덮어쓰기 재발송 0·fail-soft)
 //
 // 동작: smoke_geni.js 하네스 원문 계승 — ① playwright-core OS 임시 캐시 부트스트랩(레포 무접촉)
 //       ② python3 http.server 정적 서빙(포트 8801~8805 = 상비 스모크 포트대와 분리) ③ 종료 시 서버 킬.
@@ -98,8 +98,11 @@ async function startServer() {
     ['nmToast', 'nmFailToast'].forEach(id => { const t = document.getElementById(id); if (t) t.classList.remove('show'); });
     try { _toastC = null; } catch (e) {}
     try { _failToastC = null; } catch (e) {}
-    try { localStorage.removeItem('nmFreshAck'); } catch (e) {}
+    try { localStorage.removeItem('nmFreshAck'); localStorage.removeItem('nmRearmPost'); } catch (e) {}
     _freshMute = false; _freshAckTs = 0;
+    try { _lastRearmPost = 0; } catch (e) {}
+    TF_SRV = { t: new Set(), f: new Set(), s: new Set() };   // ⚠ 필수(평의회⑦ 최중대): 정적 서버가 라이브 toast-seen.json을 그대로 서빙 — 운영자가 실사이트서 ✓ 누른 지 12h 내면 s축 계정 ack가 S2를 억제 = 코드 무관 위양성 FAIL
+    try { loadToastSeen = async () => {}; } catch (e) {}   // 60s 폴 재적재가 시나리오 주입분(TF_SRV)을 덮는 저확률 레이스 봉합(평의회⑦)
     CURTAB = 'feed';   // 정적 부트가 수집함 탭으로 떨어짐(실측 260717) → 수집함 탭 게이트(정상 억제)가 테스트를 먹지 않게 피드로 고정(직접 대입 = 렌더 부작용 0 · S8이 이 게이트를 명시 검증)
     const pre = document.getElementById('sysFreshToast'); if (pre) pre.remove();   // 부트 발화분 제거 = 전체 빌드 경로 재검증
     window.__mk = (p, n, ageMs) => Array.from({ length: n }, (_, i) => ({ title: p + i, url: 'https://ex.com/' + p + i, published: new Date(Date.now() - ageMs - i * 1000).toISOString() }));
@@ -112,7 +115,7 @@ async function startServer() {
 
   // S2 발화 — 전량 낡음(발행 5h+) 120건·주간 = 문구·버튼·픽토·기하
   const s2 = await page.evaluate(() => {
-    CANDS = window.__mk('s', 120, 5 * 3600e3);
+    CANDS = window.__mk('s', 120, (FAST_MAX_H + 1) * 3600e3);
     checkFreshLane();
     return new Promise(res => setTimeout(() => {
       const el = window.__el(); const r = el ? el.getBoundingClientRect() : null;
@@ -139,7 +142,7 @@ async function startServer() {
   // S4 부분 회복(신선 6 = 임계 5↑·히스테리시스 10 미만) = 소등하되 ack 유지 → 재고장에도 침묵(플리커 가드)
   const s4 = await page.evaluate(() => {
     const stale = CANDS;
-    CANDS = stale.concat(window.__mk('p', 6, 60e3));
+    CANDS = stale.concat(window.__mk('p', FRESH_ALERT_MIN + 1, 60e3));
     checkFreshLane();
     const ackKept = localStorage.getItem('nmFreshAck') !== null;
     const hidOnPartial = !window.__show();
@@ -152,7 +155,7 @@ async function startServer() {
   // S5 확실 회복(신선 12 ≥ 임계×2) = ack 자동 해제(재무장) → 재고장 = 재발화
   const s5 = await page.evaluate(() => {
     const stale = CANDS;
-    CANDS = stale.concat(window.__mk('f', 12, 60e3));
+    CANDS = stale.concat(window.__mk('f', FRESH_ALERT_MIN * 2 + 2, 60e3));
     checkFreshLane();
     const ackGone = localStorage.getItem('nmFreshAck') === null;
     CANDS = stale;
@@ -168,7 +171,7 @@ async function startServer() {
     checkFreshLane();
     const silent = !window.__show();
     const stale = CANDS;
-    CANDS = stale.concat(window.__mk('g', 12, 60e3)); checkFreshLane();   // 확실 회복 = _freshMute 해제
+    CANDS = stale.concat(window.__mk('g', FRESH_ALERT_MIN * 2 + 2, 60e3)); checkFreshLane();   // 확실 회복 = _freshMute 해제
     CANDS = stale; checkFreshLane();
     return new Promise(res => setTimeout(() => res({ hid, silent, refireAfterRecover: window.__show() }), 350));
   });
@@ -202,7 +205,7 @@ async function startServer() {
   // S9 야간 게이트 — KST 03시 = 표시 억제 + ack 무접촉(야간≠회복 · 평의회A) · 주간 복귀 = 재점등
   const s9 = await page.evaluate(() => {
     window.__setKstH(3);
-    CANDS = window.__mk('n', 120, 5 * 3600e3);   // ⚠ 야간 시계로 재주조 필수 — 되감긴 시계엔 낮 주조분이 '미래 발행'(음수 나이) = 신선 120건 오판 → 히스테리시스 재무장 오발(시계 아티팩트·실측 260717)
+    CANDS = window.__mk('n', 120, (FAST_MAX_H + 1) * 3600e3);   // ⚠ 야간 시계로 재주조 필수 — 되감긴 시계엔 낮 주조분이 '미래 발행'(음수 나이) = 신선 120건 오판 → 히스테리시스 재무장 오발(시계 아티팩트·실측 260717)
     localStorage.setItem('nmFreshAck', String(Date.now() - 13 * 3600e3));   // 만료된 ack 심기 — 야간 분기가 이걸 지우면 안 됨(야간≠회복 · 평의회A)
     checkFreshLane();
     const hidAtNight = !window.__show();
@@ -226,6 +229,23 @@ async function startServer() {
     return new Promise(res => setTimeout(() => res({ silentBySrvAck, refireAfterRearm: window.__show() }), 350));
   });
   ok('S10 계정 ack = 억제·rearm = 재발화', s10.silentBySrvAck && s10.refireAfterRearm, JSON.stringify(s10));
+
+  // S11 rearm 발송 계약(평의회⑦) — 확실 회복 = rearm POST 정확 1발 + 낙관 add(srvFreshAckTs 즉시 0) · 배포 지연 덮어쓰기 재현에도 rate-limit로 재발송 0 · fetch 거절 = fail-soft(무예외)
+  const s11 = await page.evaluate(() => {
+    let posts = 0; const f0 = window.fetch;
+    window.fetch = (u, o) => String(u).includes('api/seen') ? (posts++, Promise.reject(new Error('down'))) : f0(u, o);
+    _lastRearmPost = 0; _freshMute = false; _freshAckTs = 0;
+    try { localStorage.removeItem('nmFreshAck'); localStorage.removeItem('nmRearmPost'); } catch (e) {}
+    TF_SRV.s = new Set(['ack:' + (Date.now() - 3600e3)]);   // 타 기기 ✓(계정 ack 활성)
+    CANDS = window.__mk('r', 120, (FAST_MAX_H + 1) * 3600e3).concat(window.__mk('rf', FRESH_ALERT_MIN * 2 + 2, 60e3));   // 확실 회복 상태
+    checkFreshLane();
+    const oneShot = posts === 1 && srvFreshAckTs() === 0;   // rearm 1발 + 낙관 add로 계정 ack 즉시 중화
+    TF_SRV.s = new Set(['ack:' + (Date.now() - 3600e3)]);   // 배포 지연 창 재현: loadToastSeen이 낙관 add를 덮음(stale 계정 ack 재양성)
+    checkFreshLane();
+    window.fetch = f0;
+    return new Promise(res => setTimeout(() => res({ oneShot, rateLimited: posts === 1 }), 250));
+  });
+  ok('S11 rearm 1발·낙관add·덮어쓰기 재발송 0', s11.oneShot && s11.rateLimited, JSON.stringify(s11));
 
   ok('S1b 시나리오 주행 중 JS예외 0', jsErrs.length === 0, JSON.stringify(jsErrs));
 
