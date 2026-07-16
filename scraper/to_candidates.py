@@ -20,8 +20,9 @@ DST = ROOT / "viewer" / "candidates.json"
 # 용어 통일: 수집 수(긁은 기사 총량, knews_scraper) · 사건 수(중복 합친 distinct, 아래 kept) ·
 #            보관한도(수집함에 들고 있는 최대 사건 수=CAP) · 보관기간(마지막 후속보도 후 폐기까지=TTL).
 TTL_HOURS = int(os.environ.get("CAND_TTL_HOURS", "240"))  # 보관기간: 마지막 후속보도(last_report) 후 N시간 지나면 폐기(240=10일 · 260618 first_seen→last_report)
-CAP = int(os.environ.get("CAND_CAP", "800"))              # 보관한도: 수집함 최대 사건 수. 3000=3.45MB로 api/candidates가 GitHub 1MB 한도 초과→빈 [] 반환→수집함 텅빔 실측(260714) → 800≈0.9MB로 감량(1MB 서빙 한도 방어). 표시는 신규<4h+누적 상위라 CAP 근처 미사용=손실0. 실제 컷은 보관기간(TTL)이 함.
+CAP = int(os.environ.get("CAND_CAP", "800"))              # 보관한도: 수집함 최대 사건 수. 3000=3.45MB로 api/candidates가 GitHub 1MB 한도 초과→빈 [] 반환→수집함 텅빔 실측(260714) → 800≈0.9MB로 감량(1MB 서빙 한도 방어). ⚠️ 800 = TTL(10일) 풀보다 작아 상시 포화 — cross 단독 컷이면 하한이 6까지 올라 갓 발행(cross 2~5) 사건이 진입 즉시 잘려 '신규<4h' 레인 아사 실측(260716) → FRESH_KEEP_H 1군 보호와 반드시 세트.
 MIN_CROSS = int(os.environ.get("CAND_MIN_CROSS", "2"))    # 교차등장 최소 매체 수(2=2개 이상 매체에 뜬 것만 = 뉴스성)
+FRESH_KEEP_H = int(os.environ.get("CAND_FRESH_KEEP_H", "6"))  # CAP 컷 1군 보호창(h): 발행 N시간 내 신선건은 cross 낮아도 컷 면제 — 신규<4h 레인 공급 보장(4h 창 + 판정·전이 여유 2h · 260716 신규 아사 봉합).
 # ── 속보(velocity·태그) 1차 게이트 — burst(15분 내 동시 매체) OR [속보] 제목 태그. 2차 내용판정은 별도(Claude breaking_judge). ──
 BREAKING_BURST = int(os.environ.get("BREAKING_BURST", "3"))          # 속보 후보: burst 이 값 이상(다수 동시 보도)
 BREAKING_TAG = re.compile(r"\[\s*(속보|상보|긴급)\s*\]")             # 제목 태그 = 1~2매체여도 속보 후보 → AI 내용검증(언론고시 기자 = 낚시 안 씀)
@@ -360,7 +361,12 @@ def main():
 
     kept = [c for c in merged.values()
             if age_h(c) <= TTL_HOURS and not is_excluded_title(c.get("title") or "")]   # 증권/시황 노이즈 = 기존 수집분도 정리(운영자 260701)
-    kept.sort(key=lambda c: (c.get("cross") or 0, c.get("published") or ""), reverse=True)
+    def fresh_tier(c):   # CAP 컷 1군(=1) = 발행 FRESH_KEEP_H 내 신선건 — cross 낮아도(2~5) 컷 면제해 '신규<4h' 레인 공급 보장(260716 아사 봉합: CAP 800 상시포화 + cross 단독컷 = 하한 6 → 신규 즉시 탈락이던 회귀).
+        try:             #   기준 = published(뷰어 신규 판정 scTs와 동축 · 결측 시 first_seen 폴백 = 갓 진입건 보호 · 미래 오기록[KST+00 매체]은 신선 취급 = 최대 9h 점유로 유계·무해) · 파싱 실패 = 구군(보수 — 손상 published의 1군 영구 점유 차단).
+            return 1 if (now - _ts(c.get("published") or c.get("first_seen") or nowiso)).total_seconds() / 3600 < FRESH_KEEP_H else 0
+        except Exception:
+            return 0
+    kept.sort(key=lambda c: (fresh_tier(c), c.get("cross") or 0, c.get("published") or ""), reverse=True)   # 1군(신선) 먼저 생존 → 2군 = 종전 cross·발행 내림차(누적 상위 유지 불변) — CAP 컷은 2군 꼬리만 침
     kept = kept[:CAP]
 
     nbreak = sum(1 for c in kept if c.get("breaking_candidate"))
