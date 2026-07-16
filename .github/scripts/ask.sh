@@ -98,6 +98,7 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
   #   성공·ANALYSIS_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0). 과부하 신호일 때만 재시도(is_transient).
   inline_delay=15
   claude_reset_force_swap 2>/dev/null || true   # 앞 기사가 타임아웃으로 강제전환(force)한 계정을 쿼터 확정 위치로 복원 → 쿼터 4계정 체인 예산 보존(평의회 260704 Q5)
+  claude_preflight "$MODEL" 2>/dev/null || true # 본선(≤600s) 직전 60s 핑으로 산 계정 선탑승 — 죽은 활성계정 침묵 행이 본선 timeout을 통째로 태우던 공회전 소거(preflight SSOT 본선 확장 배선 260717 · fail-soft)
   _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
     out="$(printf '%s' "$prompt" | METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$ASK_TIMEOUT" \
