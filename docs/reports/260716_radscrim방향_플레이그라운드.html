@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rad-scrim 방향 플레이그라운드 · 260716</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-bright:#5AFFE6;
+    --bias-l2-rgb:58,109,219; --bias-l1-rgb:56,198,255;
+    --line:rgba(255,255,255,.08);
+    --panel:#171a18; --panel2:#1e2320;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#0c0e0d;color:var(--fg);
+    font:400 14px/1.55 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  header.top{padding:18px 20px 8px;max-width:1120px;margin:0 auto;}
+  header.top h1{margin:0 0 4px;font-size:20px;font-weight:800;letter-spacing:-.3px;}
+  header.top p{margin:0;color:var(--mut);font-size:13px;}
+  .note{max-width:1120px;margin:10px auto 0;padding:0 20px;}
+  .note .meas{background:rgba(0,238,210,.07);border:1px solid rgba(0,238,210,.28);
+    border-radius:12px;padding:11px 13px;font-size:12.5px;color:#cfeee7;}
+  .note .meas b{color:var(--accent-bright);}
+  .wrap{max-width:1120px;margin:14px auto 60px;padding:0 20px;
+    display:grid;grid-template-columns:1fr;gap:18px;}
+
+  /* ── sticky 미리보기 ── */
+  .previewwrap{position:sticky;top:10px;z-index:5;}
+  .stage-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+  .seg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .seg button{background:transparent;border:0;color:var(--mut);padding:7px 13px;font:700 12px/1 inherit;cursor:pointer;}
+  .seg button.on{background:rgba(0,238,210,.16);color:var(--accent-bright);}
+  .stage-tools .lbl{color:var(--mut);font-size:12px;font-weight:700;margin-right:2px;}
+
+  .stage{margin:0 auto;position:relative;overflow:hidden;border:1px solid var(--line);
+    border-radius:16px;background:var(--bg);box-shadow:0 12px 40px rgba(0,0,0,.5);
+    height:520px;transition:width .22s ease;}
+  .stage.pc{width:100%;}
+  .stage.mo{width:390px;max-width:100%;}
+  /* 배경 = .bgfx 오션 워시 정본 재현(브라이트닝 포함) */
+  .bgfx{position:absolute;inset:0;filter:brightness(1.2) saturate(1.05);
+    background:linear-gradient(165deg,rgba(var(--bias-l2-rgb),.20),rgba(var(--bias-l1-rgb),.10) 45%,rgba(0,0,0,0) 78%),var(--bg);}
+  /* 피드 텍스트 근사(사용자 스샷 = SNS DIGEST 텍스트 피드) */
+  .feed{position:absolute;inset:0;padding:22px 24px 0;color:#c7d3cc;font-size:13.5px;line-height:1.7;}
+  .feed .lead{color:#dfe9e3;}
+  .feed a{color:var(--accent-bright);text-decoration:none;font-weight:700;}
+  .feed p{margin:0 0 13px;}
+  .feed .dim{color:#9fb0a8;}
+
+  /* ── 조절되는 스크림 ── */
+  .scrim{position:absolute;left:0;right:0;bottom:0;pointer-events:none;
+    height:calc(var(--fade) * 1px);}
+  /* 방향 A = 현재(측정본): 아래 진함 → 위 투명 */
+  .stage[data-dir="A"] .scrim{
+    background:linear-gradient(to top,
+      rgba(18,18,18,var(--op)) 0,
+      rgba(18,18,18,var(--op)) calc(var(--solid) * 1px),
+      transparent calc(var(--fade) * 1px));}
+  /* 방향 B = 뒤집기: 위 진함 → 아래 투명 */
+  .stage[data-dir="B"] .scrim{
+    background:linear-gradient(to bottom,
+      rgba(18,18,18,var(--op)) 0,
+      rgba(18,18,18,var(--op)) calc(var(--solid) * 1px),
+      transparent calc(var(--fade) * 1px));}
+  /* 시안 브리딩 틴트(::after 정본 재현) — 방향 따라감 */
+  .scrim::after{content:"";position:absolute;inset:0;opacity:var(--tint);}
+  .stage[data-dir="A"] .scrim::after{
+    background:linear-gradient(to top,rgba(var(--bias-l1-rgb),.24),transparent 75%);}
+  .stage[data-dir="B"] .scrim::after{
+    background:linear-gradient(to bottom,rgba(var(--bias-l1-rgb),.24),transparent 75%);}
+
+  /* ── 라디얼 메뉴 목업(스크림 앞) ── */
+  .radrow{position:absolute;left:0;right:0;bottom:96px;display:flex;justify-content:center;
+    align-items:flex-end;gap:60px;pointer-events:none;}
+  .raditem{display:flex;flex-direction:column;align-items:center;gap:9px;}
+  .radbtn{width:52px;height:52px;border-radius:50%;
+    background:linear-gradient(165deg,rgba(18,19,22,.34),rgba(18,19,22,.52));
+    display:grid;place-items:center;color:var(--accent);}
+  .radbtn.img{transform:translateY(-30px);}
+  .radbtn.film{color:#ff5fd0;}
+  .radbtn svg{width:22px;height:22px;}
+  .radlab{font-size:11px;font-weight:800;color:var(--fg);text-shadow:0 1px 5px rgba(0,0,0,.85);}
+  .radlab.img{transform:translateY(-30px);}
+  .xbtn{position:absolute;left:50%;transform:translateX(-50%);bottom:46px;width:40px;height:40px;border-radius:50%;
+    background:linear-gradient(165deg,rgba(34,36,40,.6),rgba(19,20,23,.68));display:grid;place-items:center;
+    color:rgba(255,255,255,.92);box-shadow:0 0 0 4px rgba(255,255,255,.14);}
+  .xbtn svg{width:18px;height:18px;}
+  /* ── 하단 탭바 목업 ── */
+  .bnav{position:absolute;left:0;right:0;bottom:0;height:64px;display:flex;justify-content:space-around;
+    align-items:center;color:var(--mut);font-size:12px;font-weight:800;letter-spacing:.2px;
+    border-top:1px solid rgba(255,255,255,.10);}
+  .bnav .t.active{color:var(--accent);}
+  .bnav .t{position:relative;}
+  .bnav .t.active::before{content:"";position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+    width:26px;height:3px;border-radius:0 0 4px 4px;background:var(--accent);}
+
+  /* ── 컨트롤 ── */
+  .controls{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;}
+  .row{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .row:last-child{border-bottom:0;}
+  .row .k{width:120px;flex:none;font-weight:800;font-size:13px;color:#d7e2dc;}
+  .row .k small{display:block;color:var(--mut);font-weight:600;font-size:11px;}
+  .row input[type=range]{flex:1;min-width:180px;accent-color:var(--accent);}
+  .row .v{width:74px;text-align:right;font-variant-numeric:tabular-nums;font-weight:800;color:var(--accent-bright);}
+  .dirbtns{display:flex;gap:10px;flex-wrap:wrap;}
+  .dirbtns button{flex:1;min-width:220px;text-align:left;background:var(--panel2);border:1.5px solid var(--line);
+    border-radius:12px;padding:12px 14px;color:var(--fg);cursor:pointer;transition:border-color .15s,background .15s;}
+  .dirbtns button .h{font-weight:800;font-size:13.5px;}
+  .dirbtns button .s{color:var(--mut);font-size:11.5px;margin-top:3px;}
+  .dirbtns button.on{border-color:var(--accent);background:rgba(0,238,210,.10);}
+  .dirbtns button.on .h{color:var(--accent-bright);}
+  .tagcur{display:inline-block;margin-left:6px;font-size:10px;font-weight:800;color:#0c1512;
+    background:var(--accent-bright);border-radius:6px;padding:1px 6px;vertical-align:middle;}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;}
+  .presets button{background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:#cfe;
+    padding:8px 12px;font-weight:700;font-size:12px;cursor:pointer;}
+  .presets button:hover{border-color:var(--accent);}
+  .out{background:#0a0c0b;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:4px;}
+  .out code{display:block;white-space:pre-wrap;word-break:break-word;font:600 12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a8f0e2;}
+  .copybtn{margin-top:10px;background:var(--accent);border:0;color:#032322;font-weight:800;border-radius:10px;
+    padding:10px 16px;cursor:pointer;font-size:13px;}
+  .copybtn:active{transform:scale(.97);}
+  .foot{max-width:1120px;margin:0 auto 50px;padding:0 20px;color:var(--mut);font-size:12px;line-height:1.7;}
+  .foot b{color:#bfd0c8;}
+  .foot ul{margin:6px 0 0;padding-left:18px;}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>rad-scrim 방향 플레이그라운드</h1>
+  <p>＋ 라디얼 열림 시 뒤 피드 가림막(<code>.rad-scrim</code>)의 방향·세기를 실물 위에서 고르는 도구 · 260716</p>
+</header>
+<div class="note">
+  <div class="meas">🔬 <b>Playwright 실렌더 실측(PC·모바일·넓은화면 4뷰포트)</b> 결과 — 현재 코드는
+    <b>아래가 진하고 위로 갈수록 투명(위로 흐려짐)</b>으로 이미 렌더됨. 즉 "위로 갈수록 흐려진다"는
+    지금 상태와 일치. 그래서 무작정 뒤집으면 <b>메뉴 뒤가 밝아져 아이콘·라벨 가독이 나빠지는 회귀</b>가 돼서,
+    아래에서 원하는 방향을 정확히 짚어줘.</div>
+</div>
+
+<div class="wrap">
+  <div class="previewwrap">
+    <div class="stage-tools">
+      <span class="lbl">미리보기 폭</span>
+      <span class="seg" id="wseg">
+        <button data-w="pc" class="on">PC (넓게)</button>
+        <button data-w="mo">모바일 390</button>
+      </span>
+      <span class="lbl" style="margin-left:8px;">＋ 라디얼 열림 상태 고정</span>
+    </div>
+    <div class="stage pc" id="stage" data-dir="A"
+         style="--op:1;--solid:150;--fade:340;--tint:.7;">
+      <div class="bgfx"></div>
+      <div class="feed">
+        <p class="lead">소비 쪽 신호로 하나. '반품'이 급상승 200+로 뜬 건 대형 마켓들의
+          <a href="#">[무료반품 전쟁]</a>이 배경으로 보인다 — G마켓이 8월부터 단순변심 반품비까지
+          떠안겠다 나섰고, 21일엔 전자상거래법 개정도 대기 중이거든.</p>
+        <p>이상치 하나. 틱톡 seoul8803 계정이 '노인건강' 해시태그만 잔뜩 단 클립으로 47만을 찍었는데 —
+          채널명 그대로 시니어 건강정보 계정이고, 캡션이 죄다 해시태그뿐이라 정체는 거기까지만 짚었다.</p>
+        <p>정책 쪽도 하나. 전자상거래법 개정안이 21일 국무회의에 오르는데, 플랫폼 반품 책임 강화가
+          핵심이라 마켓들이 선제적으로 움직이는 정황이 곳곳에서 잡힌다.</p>
+        <p class="dim">끝으로 어제 뜨겁던 것들 — 이동국이며 배 나라, 액컬러스 트레이드셜, 인도-잉글랜드
+          크리켓 — 여진은 아직 검색어에 남았더라. 하나씩 짚고 넘어간다.</p>
+      </div>
+      <div class="scrim"></div>
+      <div class="radrow">
+        <div class="raditem">
+          <div class="radbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.2 5.6L20 10l-5.8 1.4L12 17l-2.2-5.6L4 10l5.8-1.4z"/></svg></div>
+          <div class="radlab">요약 요청</div>
+        </div>
+        <div class="raditem">
+          <div class="radbtn img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-8 8"/></svg></div>
+          <div class="radlab img">이미지</div>
+        </div>
+        <div class="raditem">
+          <div class="radbtn film"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M8 6v12"/></svg></div>
+          <div class="radlab">영상</div>
+        </div>
+      </div>
+      <div class="xbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></div>
+      <div class="bnav">
+        <span class="t">LEGACY MEDIA</span>
+        <span class="t">뉴스 요약</span>
+        <span class="t active">SNS DIGEST</span>
+        <span class="t">채널 요약</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row" style="align-items:stretch;">
+      <div class="k">방향<small>흐려지는 쪽</small></div>
+      <div class="dirbtns" style="flex:1;">
+        <button data-dir="A" class="on">
+          <div class="h">A · 아래 진함 → 위 투명 <span class="tagcur">현재 측정본</span></div>
+          <div class="s">메뉴/탭 뒤를 어둡게 받쳐 아이콘·라벨 또렷 · 위로 갈수록 흐려짐</div>
+        </button>
+        <button data-dir="B">
+          <div class="h">B · 위 진함 → 아래 투명 (뒤집기)</div>
+          <div class="s">피드 위쪽을 어둡게 · 메뉴/탭은 밝은 피드 위에 뜸(가독 주의)</div>
+        </button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="k">불투명도<small>진한 쪽 시작</small></div>
+      <input type="range" id="op" min="0.4" max="1" step="0.02" value="1">
+      <div class="v" id="opv">1.00</div>
+    </div>
+    <div class="row">
+      <div class="k">진한 밴드 끝<small>--scrim-solid</small></div>
+      <input type="range" id="solid" min="40" max="240" step="2" value="150">
+      <div class="v" id="solidv">150px</div>
+    </div>
+    <div class="row">
+      <div class="k">완전 투명 끝<small>--scrim-fade</small></div>
+      <input type="range" id="fade" min="200" max="460" step="2" value="340">
+      <div class="v" id="fadev">340px</div>
+    </div>
+    <div class="row">
+      <div class="k">시안 틴트<small>브리딩 ::after</small></div>
+      <input type="range" id="tint" min="0" max="1" step="0.05" value="0.7">
+      <div class="v" id="tintv">0.70</div>
+    </div>
+    <div class="row">
+      <div class="k">프리셋</div>
+      <div class="presets">
+        <button data-p="cur">현재값 복원</button>
+        <button data-p="soft">은은하게(op .82)</button>
+        <button data-p="flip">뒤집기 체험</button>
+      </div>
+    </div>
+    <div class="out">
+      <code id="css"></code>
+      <button class="copybtn" id="copy">선택값 CSS 복사</button>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <b>정본·한계 각주</b>
+  <ul>
+    <li>색·워시는 <b>정본 토큰 실값</b> 사용: <code>--bg #121212</code>, 오션 워시 <code>bias-l2/l1</code>, 브리딩 시안 <code>bias-l1</code>.</li>
+    <li>실제 뒤 배경 <code>#wavebg</code>(무채색 물결 셰이더 애니메이션)은 여기선 정적 워시로 근사 — 방향 판단엔 영향 없음(진한 밴드는 어차피 불투명이라 배경을 덮음).</li>
+    <li>라디얼 아이콘·X·탭바는 <b>위치·크기 근사 목업</b>(실앱 좌표와 미세 차이 가능). 스크림 방향·세기 판단 전용.</li>
+    <li>측정 근거: Playwright(<code>/opt/pw-browsers/chromium</code>) 실렌더로 PC 1280 · 모바일 390 · 넓은화면 1680/1280 4뷰포트에서 스크림을 흰 배경 격리 + 실제 합성으로 캡처 → 4곳 모두 <b>아래 불투명·위 투명</b> 확인.</li>
+    <li>확정 시 실제 반영 위치 = <code>viewer/index.html</code> <code>.rad-scrim</code> 블록(값만 교체, :root 토큰·구조 무접촉 → 단순 디자인 변경).</li>
+  </ul>
+</div>
+
+<script>
+  const stage=document.getElementById('stage');
+  const $=id=>document.getElementById(id);
+  const state={dir:'A',op:1,solid:150,fade:340,tint:.7,w:'pc'};
+  function apply(){
+    stage.dataset.dir=state.dir;
+    stage.style.setProperty('--op',state.op);
+    stage.style.setProperty('--solid',state.solid);
+    stage.style.setProperty('--fade',state.fade);
+    stage.style.setProperty('--tint',state.tint);
+    stage.className='stage '+state.w;
+    $('opv').textContent=Number(state.op).toFixed(2);
+    $('solidv').textContent=state.solid+'px';
+    $('fadev').textContent=state.fade+'px';
+    $('tintv').textContent=Number(state.tint).toFixed(2);
+    // 방향 버튼 on
+    document.querySelectorAll('.dirbtns button').forEach(b=>b.classList.toggle('on',b.dataset.dir===state.dir));
+    // css 출력
+    const grad=state.dir==='A'?'to top':'to bottom';
+    const dirko=state.dir==='A'?'/* A · 아래 진함 → 위 투명(현재 방향) */':'/* B · 위 진함 → 아래 투명(뒤집기) */';
+    $('css').textContent=
+`.rad-scrim {
+  --scrim-op:${Math.round(state.op*100)/100};
+  --scrim-solid:${state.solid}px;
+  --scrim-fade:${state.fade}px;
+  ${dirko}
+  background:linear-gradient(${grad},
+    color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 100%), transparent) 0,
+    color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 100%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom)),
+    transparent);
+}`;
+  }
+  // 방향
+  document.querySelectorAll('.dirbtns button').forEach(b=>b.onclick=()=>{state.dir=b.dataset.dir;apply();});
+  // 슬라이더
+  $('op').oninput=e=>{state.op=+e.target.value;apply();};
+  $('solid').oninput=e=>{state.solid=+e.target.value;apply();};
+  $('fade').oninput=e=>{state.fade=+e.target.value;apply();};
+  $('tint').oninput=e=>{state.tint=+e.target.value;apply();};
+  // 폭 토글
+  document.querySelectorAll('#wseg button').forEach(b=>b.onclick=()=>{
+    state.w=b.dataset.w;
+    document.querySelectorAll('#wseg button').forEach(x=>x.classList.toggle('on',x===b));
+    apply();
+  });
+  // 프리셋
+  document.querySelectorAll('.presets button').forEach(b=>b.onclick=()=>{
+    const p=b.dataset.p;
+    if(p==='cur'){Object.assign(state,{dir:'A',op:1,solid:150,fade:340,tint:.7});}
+    if(p==='soft'){Object.assign(state,{dir:'A',op:.82,solid:130,fade:320,tint:.6});}
+    if(p==='flip'){Object.assign(state,{dir:'B',op:1,solid:150,fade:340,tint:.7});}
+    $('op').value=state.op;$('solid').value=state.solid;$('fade').value=state.fade;$('tint').value=state.tint;
+    apply();
+  });
+  // 복사
+  $('copy').onclick=()=>{
+    navigator.clipboard.writeText($('css').textContent).then(()=>{
+      $('copy').textContent='복사됨 ✓';setTimeout(()=>$('copy').textContent='선택값 CSS 복사',1400);
+    });
+  };
+  apply();
+</script>
+</body>
+</html>
