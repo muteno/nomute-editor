@@ -6,13 +6,16 @@
 판정 backlog·SNS 트렌드 stale·원장 파손을 "아무도 모르는 구간"이 구조적으로 열려 있었다(실측:
 미판정 최근 40%). 이 스크립트가 4지표를 기계 점검해 임계 초과만 웹푸시로 알린다.
 
-지표 4종(전부 읽기 전용 · LLM 0콜 · 과금 0):
+지표 5종(전부 읽기 전용 · LLM 0콜 · 과금 0):
   ① 수집 신선도 — candidates.json 최신 last_seen 나이 > WD_FRESH_MIN(기본 90분 = 15분 주기 6연속 실패)
   ② 판정 backlog — gate/breaking --count 합 > WD_BACKLOG(기본 250 · SSOT 재사용 = 자체 카운트 로직 0)
   ③ SNS stale — sns_trends.json updated 나이 > WD_SNS_MIN(기본 90분 = 30분 주기 3연속 실패)
      (+소스별 health.last_ok 24h+ 소스는 로그만 — 경보는 전체 파일 stale 한정 = 알림 피로 방지)
   ④ 원장 파손 — push/sent.json·autopick.json·subscriptions.json 존재하는데 JSON 파싱 실패
      (파손 = dedup 전멸·예산 재개방 계열 무음 리셋 위험[평의회9])
+  ⑤ 채널 브리프 정체 — chan_brief.json updated 나이 > WD_BRIEF_MIN(기본 2160분=36h · 일 1회 06:25 크론
+     1회 결번 + 12h 여유 · 운영자 260717 "감시 ㄱ" — 브리프 스텝 하드킬 3연속·이틀 정지를 눈으로만
+     발견한 사고 봉합. cancelled 런은 실패 알림조차 안 남는 사각 = 산출물 나이로 감지가 정공)
 
 알림: WATCHDOG_NOTIFY=1 일 때만 push_send.py --notify 재사용(중복 구현 0 · §📰-e 카나리아 —
   워크플로 schedule 기본 '0' = 관측/로그만 · dispatch 실측 후 승격). 지표별 쿨다운
@@ -32,6 +35,7 @@ KST = timezone(timedelta(hours=9))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 CAND = os.path.join(ROOT, "viewer", "candidates.json")
 SNS = os.path.join(ROOT, "viewer", "sns_trends.json")
+BRIEF = os.path.join(ROOT, "viewer", "chan_brief.json")
 STATE = os.path.join(ROOT, "scraper", "obs", "watchdog_state.json")
 SUBS_LEDGER = os.path.join(ROOT, "push", "subscriptions.json")   # 발송 사전 체크용(인덱스 의존 금지)
 LEDGERS = [os.path.join(ROOT, "push", p) for p in ("sent.json", "autopick.json", "subscriptions.json")]
@@ -39,6 +43,7 @@ LEDGERS = [os.path.join(ROOT, "push", p) for p in ("sent.json", "autopick.json",
 FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시 상향 · 실측 260713: 최근 7일 최대 무신규 갭 75분[심야]·90분 초과 0회 — 심야 소강 오탐 마진 확보 = 경고 신뢰 우선·감지 지연 +30분 수용)
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
+BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
 COOLDOWN_MIN = float(os.environ.get("WD_COOLDOWN_MIN", "360"))
 NOTIFY = (os.environ.get("WATCHDOG_NOTIFY") or "").strip() == "1"
 
@@ -108,6 +113,23 @@ def check_sns():
     return None
 
 
+def check_brief():
+    """⑤ 채널 브리프 정체 — 산출물(chan_brief.json) 나이로 감지(260717 사고: 브리프 스텝이 잡 timeout
+    하드킬(cancelled)로 3연속 죽으면 실패 알림도 fail-soft 로그도 안 남아 이틀 정지를 운영자 눈이 발견).
+    정체 원인은 두 갈래 다 커버: 생성 레인 사망 or 인스타 수집 정지(입력 동일 = 스킵이 계속) — 둘 다 점검 대상."""
+    try:
+        d = json.load(open(BRIEF, encoding="utf-8"))
+        age = _age_min(d.get("updated"))
+        if age is None or age > BRIEF_MIN:
+            return (f"채널 브리프 정체 {('%.0f시간' % (age / 60)) if age is not None else '나이 불명'}"
+                    f"(임계 {BRIEF_MIN / 60:.0f}h) — insta-fetch 브리프 스텝(cancelled/타임아웃)·인스타 수집 확인")
+    except FileNotFoundError:
+        return None   # 파일 자체가 없는 초기 상태 = 경보 아님(check_sns 관용구)
+    except Exception as e:  # noqa: BLE001
+        return f"chan_brief.json 파싱 실패({type(e).__name__})"
+    return None
+
+
 def check_ledgers():
     """④ 원장 파손 — 존재하는데 JSON 깨짐 = 무음 리셋(dedup 전멸·예산 재개방) 위험 신호."""
     bad = []
@@ -139,7 +161,8 @@ def _save_state(st):
 
 
 def main():
-    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "ledger": check_ledgers}
+    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "ledger": check_ledgers,
+              "brief": check_brief}
     alerts = {}
     for key, fn in checks.items():
         try:
