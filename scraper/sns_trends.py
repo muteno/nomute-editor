@@ -220,6 +220,64 @@ def gtrends(limit=10, geo="KR"):
         return []
 
 
+def gtrends_api(geo="KR", hours=24):
+    """구글 '트렌딩 나우' 내부 API(batchexecute · 무키 POST 1방) — RSS 10개 상한 돌파(운영자 260717 Q05 실사격 = KR 202개).
+    반환 = [{"query","vol"(검색량 버킷 int·100~100000),"started"(iso KST)}] · 순서 = 트렌드 페이지 기본 노출순(관련도 블렌드).
+    ⚠ 비공식 API = 예고 없는 변동 리스크 → 어떤 실패든 [] (fail-soft — merge_gtrends가 RSS 단독 종전 동작으로 폴백 = 급상승 공백 불가)."""
+    try:
+        inner = json.dumps([None, None, geo, 0, "ko", hours, 1])
+        body = "f.req=" + urllib.parse.quote(json.dumps([[["i0OFE", inner, None, "generic"]]]))
+        req = urllib.request.Request("https://trends.google.com/_/TrendsUi/data/batchexecute",
+                                     data=body.encode("utf-8"),
+                                     headers={**UA, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"})
+        raw = urllib.request.urlopen(req, timeout=15, context=CTX).read().decode("utf-8", "ignore")
+        out = []
+        for line in raw.splitlines():                      # 봉투 = )]}' 프리픽스 + 라인별 JSON 청크 → wrb.fr 라인만
+            line = line.strip()
+            if not line.startswith('[["wrb.fr"'):
+                continue
+            data = json.loads(json.loads(line)[0][2])      # [0][2] = 페이로드(JSON 문자열 이중 인코딩)
+            for it in (data[1] or []):
+                ts = it[3][0] if it[3] else 0
+                out.append({"query": (it[0] or "").strip(), "vol": int(it[6] or 0),
+                            "started": datetime.fromtimestamp(ts, KST).isoformat(timespec="seconds") if ts else ""})
+            break
+        return [o for o in out if o["query"]]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::gtrends_api 수집 실패(RSS 단독 폴백): {e}", file=sys.stderr)
+        return []
+
+
+def merge_gtrends(rss, api, keep=25):
+    """하이브리드 병합(운영자 260717 Q06 "기존의 부분에서 이미지만 가져와서 대응") —
+    · 1~10위 = RSS 종전 순위·커버(picture)·뉴스 그대로 계승(시각 무회귀 · og 백필도 이 축 그대로 동작)
+    · 매칭분(query 소문자 일치) = API 정밀 검색량 승급("200+" 저단위 → "20000+" → 뷰어 tfmt "2만+" 무수정 호환)
+    · 11위~keep = API 노출순 꼬리 확장(커버 무 = 뷰어 로고 타일·검색 링크 기존 폴백)
+    · pool = API 전량 콤팩트(q·vol·started) — 실검 교차 부스트 원료(소비처 생기기 전 = 데이터 축만)
+    · API 죽으면 (rss, []) = 종전과 바이트 동일."""
+    if not api:
+        return rss, []
+    byq = {a["query"].lower(): a for a in api}
+    seen, out = set(), []
+    for g in rss:
+        a = byq.get((g.get("query") or "").lower())
+        if a:
+            if a["vol"] > 0:
+                g["traffic"] = "%d+" % a["vol"]
+            g["vol"], g["started"] = a["vol"], a["started"]
+        seen.add((g.get("query") or "").lower())
+        out.append(g)
+    for a in api:
+        if len(out) >= keep:
+            break
+        if a["query"].lower() in seen:
+            continue
+        seen.add(a["query"].lower())
+        out.append({"query": a["query"], "traffic": ("%d+" % a["vol"]) if a["vol"] else "",
+                    "picture": "", "news": [], "vol": a["vol"], "started": a["started"]})
+    return out, [{"q": a["query"], "vol": a["vol"], "started": a["started"]} for a in api]
+
+
 def og_image(url, timeout=6):
     """기사 og:image 1회 추출 — 구글 검색어 관련이미지(picture) 결측 백필용(운영자 260716 "백필 ㄱ").
     property/name · content 선후 양어순 매치 · //스킴·상대경로 보정 · 실패 = "" (fail-soft · 백필이 수집을 못 깨뜨림)."""
@@ -874,7 +932,8 @@ def main():
     if not yt_all:
         yt_all = youtube_innertube()   # 무키 폴백(검색 파생 근사) — 키 등록 시 이 줄 미도달 = 공식 자동 승격
         yt_src = "innertube" if yt_all else ""
-    gt = gtrends(limit=20)   # KR 상한 완화(운영자 260717 "최대한 수집") — RSS 원천 실측 10개 = 이미 전량 수용·구글이 늘리면 자동 추종(월드 축 = 종전 10)
+    gt_rss = gtrends(limit=20)   # 종전 RSS 축 = 이미지·뉴스 도너 + API 사망 시 단독 폴백 본체(운영자 260717 "최대한 수집" — RSS 원천 10개 상한)
+    gt, gt_pool = merge_gtrends(gt_rss, gtrends_api())   # 하이브리드(운영자 260717 Q06) — RSS 커버 계승 + API 검색량 승급·25위 꼬리·전량 풀(월드 축 = 종전 RSS)
     tk = tiktok()
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
@@ -1026,6 +1085,7 @@ def main():
         "youtube_src": yt_src or prev.get("youtube_src") or "",   # "api"(공식 차트)/"innertube"(검색 파생) 정직 표기
         "youtube_news": yt_news or prev.get("youtube_news") or [],
         "gtrends": gt or prev.get("gtrends") or [],
+        "gtrends_pool": gt_pool or prev.get("gtrends_pool") or [],   # 트렌딩나우 API 전량 풀(~200 · q·vol·started 콤팩트) — 실검 교차 부스트 원료(운영자 260717 · 실패 = 직전분)
         "gtrends_gl": gt_gl or prev.get("gtrends_gl") or [],   # 월드 축(KR 제외 주요국 병합 · 실패 = 직전분 · 운영자 260712)
         "youtube_gl": yt_gl or prev.get("youtube_gl") or [],   # 월드 축(공식 API 경로만 · 실패/무키 = 직전분)
         # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
