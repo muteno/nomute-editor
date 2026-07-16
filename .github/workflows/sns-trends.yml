@@ -59,7 +59,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20   # 수집 840s(14분) + 브리프/번역 LLM 스텝 여유(운영자 260714 "데이터 잘 받아오게" — 16분은 수집 성공 후 LLM 단계서 job timeout→cancelled 상습·실측 12:38 run 정확히 16분 사망 → 수집분까지 유실). 구독 2군 확장분(예산 480s) 수용(260712)
+    timeout-minutes: 33   # 20→33(260717 · chan_brief 이틀 정지 사고 미러): 스텝 상한 합 실산 = 수집 840s + 브리프 자기제한 ~10.5분(600s 타임아웃 1회 = fail-soft) + 번역 300s + 커밋·설치 ≈ 31.7분 > 종전 20분 = 최악 경로에서 LLM 스텝·2차 커밋 하드킬 사각(12:38 3연쇄 cancelled 실증 · 01:47 런 브리프 완료 +14분 실측 = 턱밑). 33 = 합+여유 · 30분 주기 초과분 ≤3분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한(600/300s)·품질 노브 전부 무접촉. 구독 2군 확장분(예산 480s) 수용(260712)
     steps:
       - uses: actions/checkout@v4
         with:
