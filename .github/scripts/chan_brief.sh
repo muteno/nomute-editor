@@ -255,10 +255,11 @@ $BODY"
 
 out=""; _to_tried=0   # _to_tried = 타임아웃(rc=124) 강제 계정 전환 1회 소진 플래그(analyze.sh 계승)
 for _try in 1 2 3 4; do
-  # 누적 벽시계 캡(평의회6 260714 · analyze.sh ANALYZE_JOB_DEADLINE 관용구 계승): 산술 최악 4×600s=40분 > 잡 timeout 20분 —
-  # 15분 소진 후의 재시도는 성공해도 잡 하드킬로 수집 데이터 커밋까지 동반 유실될 운명이라, 브리프만 곱게 포기(fail-soft·직전 유지)하고 커밋 스텝을 살린다. 평상시 무영향(쿼터 실패 = 초 단위 반환).
-  [ "$SECONDS" -gt 900 ] && { echo "::warning::chan-brief 시간 예산 소진(${SECONDS}s>900s) — 직전 brief 유지(fail-soft)"; exit 0; }
-  out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
+  # 누적 벽시계 캡(평의회6 260714 · analyze.sh ANALYZE_JOB_DEADLINE 관용구 계승 · 260717 예산 재산정): 정상 생성 실측 ~9분(260714 성공 런 9m07s)이라
+  # 종전 시도당 600s = 무여유 → v9 프롬프트 비대 후 시도1 타임아웃 → 재시도 중 잡 20분 하드킬 3연속(cancelled · run 29455365666 실측) = 브리프 이틀 정지 사고.
+  # 재산정 = 시도당 900s · 캡 960s(풀타임아웃 후 재시도 1회 보장: 시도1 종료 ~905s < 960) · 최악 959+900=31분 < 잡 timeout 35분 = fail-soft·커밋 스텝 생존. 평상시 무영향(쿼터 실패 = 초 단위 반환).
+  [ "$SECONDS" -gt 960 ] && { echo "::warning::chan-brief 시간 예산 소진(${SECONDS}s>960s) — 직전 brief 유지(fail-soft)"; exit 0; }
+  out="$(printf '%s' "$PROMPT" | timeout 900 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/chanbrief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
