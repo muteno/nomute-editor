@@ -10,7 +10,7 @@ export async function onRequestPost({ request, env }) {
 
   let body; try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
   const clean = a => Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x).map(x => x.slice(0, 200)))].slice(0, 50) : [];
-  const AXES = ['t', 'f', 's', 'mr', 'md'];   // t=긴급 seen · f=실패 seen · s=시스템 경보 이벤트 · mr=메시지 읽음 · md=메시지 치움(계정 종속 소급 감사 260717 — CLAUDE.md [4] 룰) — 축 추가 = 이 배열에만
+  const AXES = ['t', 'f', 's', 'mr', 'md', 'pr'];   // t=긴급 seen · f=실패 seen · s=시스템 경보 이벤트 · mr=메시지 읽음 · md=메시지 치움 · pr=픽실패 해소(계정 종속 소급 감사 260717 — CLAUDE.md [4] 룰) — 축 추가 = 이 배열에만
   const _sCap = Date.now() + 5 * 60e3;   // s축 미래 epoch 클램프(평의회③) — 시계 빠른 기기·악의 주입의 '미래 ack 폭탄'(rearm이 영원히 못 이겨 전 기기 영구 침묵)을 서버 수신 시각+5분으로 치환(클라 +30분 무효 스킵과 이중 방어)
   const add = {};
   for (const k of AXES) add[k] = clean(body[k]);
