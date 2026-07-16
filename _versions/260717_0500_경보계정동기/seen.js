@@ -10,8 +10,8 @@ export async function onRequestPost({ request, env }) {
 
   let body; try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
   const clean = a => Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x).map(x => x.slice(0, 200)))].slice(0, 50) : [];
-  const addT = clean(body.t), addF = clean(body.f), addS = clean(body.s);   // s = 시스템 경보 이벤트(ack:<epoch>·rearm:<epoch> — 계정 종속 일반화 · 운영자 260717)
-  if (!addT.length && !addF.length && !addS.length) return json({ error: '추가할 항목 없음' }, 400);
+  const addT = clean(body.t), addF = clean(body.f);
+  if (!addT.length && !addF.length) return json({ error: '추가할 항목 없음' }, 400);
 
   const H = {
     authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json',
@@ -29,17 +29,17 @@ export async function onRequestPost({ request, env }) {
       return json({ error: `GitHub read ${g.status}` }, 502);
     }
     const merge = (old, add) => { const s = [...new Set([...(Array.isArray(old) ? old : []), ...add])]; return s.slice(-CAP); };
-    const next = { t: merge(cur.t, addT), f: merge(cur.f, addF), s: merge(cur.s, addS) };
+    const next = { t: merge(cur.t, addT), f: merge(cur.f, addF) };
     // fresh = 이번에 *처음* 기록된 id — 클라 선점(claim) 판정용: fresh에 있으면 그 기기가 첫 표시권(운영자 260712 "같은 알림 2번 금지" = 표시 전 선점·정확히 1회)
-    const had = { t: new Set(cur.t || []), f: new Set(cur.f || []), s: new Set(cur.s || []) };
-    const fresh = { t: addT.filter(x => !had.t.has(x)), f: addF.filter(x => !had.f.has(x)), s: addS.filter(x => !had.s.has(x)) };
-    if (!fresh.t.length && !fresh.f.length && !fresh.s.length) return json({ ok: true, noop: true, fresh });
+    const had = { t: new Set(cur.t || []), f: new Set(cur.f || []) };
+    const fresh = { t: addT.filter(x => !had.t.has(x)), f: addF.filter(x => !had.f.has(x)) };
+    if (!fresh.t.length && !fresh.f.length) return json({ ok: true, noop: true, fresh });
 
     const bytes = new TextEncoder().encode(JSON.stringify(next));
     let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
     const put = await fetch(url, {
       method: 'PUT', headers: H,
-      body: JSON.stringify({ message: `seen: 토스트 계정 seen 동기(t+${addT.length}·f+${addF.length}·s+${addS.length})`, content: btoa(bin), branch: 'main', ...(sha ? { sha } : {}) }),
+      body: JSON.stringify({ message: `seen: 토스트 계정 seen 동기(t+${addT.length}·f+${addF.length})`, content: btoa(bin), branch: 'main', ...(sha ? { sha } : {}) }),
     });
     if (put.ok) return json({ ok: true, fresh });
     if (put.status === 409) continue;   // sha 경합(동시 기기) → 재읽기·재판정(선점 원자성의 핵심 — 진 쪽은 fresh서 빠짐)
