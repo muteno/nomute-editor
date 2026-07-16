@@ -238,9 +238,15 @@ def gtrends_api(geo="KR", hours=24):
                 continue
             data = json.loads(json.loads(line)[0][2])      # [0][2] = 페이로드(JSON 문자열 이중 인코딩)
             for it in (data[1] or []):
-                ts = it[3][0] if it[3] else 0
-                out.append({"query": (it[0] or "").strip(), "vol": int(it[6] or 0),
-                            "started": datetime.fromtimestamp(ts, KST).isoformat(timespec="seconds") if ts else ""})
+                try:   # 항목 단위 fail-soft(평의회 260717 폴백신뢰성) — 1건 스키마 파손이 전량 유실로 안 번지게
+                    ts = it[3][0] if it[3] else 0
+                    vol = int(it[6] or 0)
+                    if not 0 <= vol <= 2000000:   # 검색량 버킷 새니티 — 스키마 시프트(int→int 인덱스 이동)가 '조용한 오표기' 대신 해당 건 드랍으로 강등
+                        continue
+                    out.append({"query": (it[0] or "").strip(), "vol": vol,
+                                "started": datetime.fromtimestamp(ts, KST).isoformat(timespec="seconds") if ts else ""})
+                except Exception:  # noqa: BLE001
+                    continue
             break
         return [o for o in out if o["query"]]
     except Exception as e:  # noqa: BLE001
@@ -253,10 +259,15 @@ def merge_gtrends(rss, api, keep=25):
     · 1~10위 = RSS 종전 순위·커버(picture)·뉴스 그대로 계승(시각 무회귀 · og 백필도 이 축 그대로 동작)
     · 매칭분(query 소문자 일치) = API 정밀 검색량 승급("200+" 저단위 → "20000+" → 뷰어 tfmt "2만+" 무수정 호환)
     · 11위~keep = API 노출순 꼬리 확장(커버 무 = 뷰어 로고 타일·검색 링크 기존 폴백)
-    · pool = API 전량 콤팩트(q·vol·started) — 실검 교차 부스트 원료(소비처 생기기 전 = 데이터 축만)
-    · API 죽으면 (rss, []) = 종전과 바이트 동일."""
+    · pool = API 콤팩트(q·vol·started · vol≥500 또는 6h내 신선분만 = 저신호 오탄착 원료·json 비대 절감 · 평의회 260717) — 실검 교차 부스트 원료
+    · API 죽으면 (rss, []) → gtrends 키 = 종전 동일(풀 키는 호출측 prev 승계) · RSS 죽으면 ([], pool) = 종전 직전분 보존 폴백 유지(하루누적 꼬리가 '급상승' 행세 차단 · 평의회 컨센서스)."""
     if not api:
         return rss, []
+    _fresh6 = (datetime.now(KST) - timedelta(hours=6)).isoformat(timespec="seconds")
+    pool = [{"q": a["query"], "vol": a["vol"], "started": a["started"]}
+            for a in api if a["vol"] >= 500 or (a["started"] and a["started"] >= _fresh6)]
+    if not rss:
+        return [], pool
     byq = {a["query"].lower(): a for a in api}
     seen, out = set(), []
     for g in rss:
@@ -275,7 +286,7 @@ def merge_gtrends(rss, api, keep=25):
         seen.add(a["query"].lower())
         out.append({"query": a["query"], "traffic": ("%d+" % a["vol"]) if a["vol"] else "",
                     "picture": "", "news": [], "vol": a["vol"], "started": a["started"]})
-    return out, [{"q": a["query"], "vol": a["vol"], "started": a["started"]} for a in api]
+    return out, pool
 
 
 def og_image(url, timeout=6):
@@ -1102,7 +1113,14 @@ def main():
     # 순위 변동 주입(직전 스냅샷 대비 · 표시 전용) — 키: 유튜브=id · gtrends=query · 틱톡=url(고유)
     _annotate_rank(yt_all, prev.get("youtube"), lambda v: v.get("id"))
     _annotate_rank(yt_news, prev.get("youtube_news"), lambda v: v.get("id"))
-    _annotate_rank(gt, prev.get("gtrends"), lambda g: g.get("query"))
+    _annotate_rank(gt, prev.get("gtrends"), lambda g: (g.get("query") or "").lower())   # lower 규약 = 병합 매칭과 통일(평의회 260717 — 표기 케이스 갈림의 가짜 NEW·first_seen 리셋 소거)
+    # NEW 배지 시맨틱 보정(평의회 260717 데이터시맨틱 · 중요) — NEW = '표시구간(톱10) 신규 진입' 종전 의미 유지:
+    # 비표시 꼬리(11~25위)에 있던 검색어가 톱10 진입 시 pmap 매칭돼 isNew 억제되는 오염 → prev 톱10 밖 = NEW 복원(first_seen 승계는 전체 원장 기준 그대로).
+    if prev.get("gtrends"):   # prev 없음(첫 수집·소스 전환) = 배지 스킵 원설계 유지(전부 NEW 노이즈 방지)
+        _prev10 = {(g.get("query") or "").lower() for g in (prev.get("gtrends") or [])[:10]}
+        for _g in gt[:10]:
+            if (_g.get("query") or "").lower() not in _prev10:
+                _g["isNew"] = True
     _annotate_rank(tk, (prev.get("tiktok") or {}).get("videos"), lambda t: t.get("url"))
     _annotate_rank(sh, prev.get("shorts"), lambda v: v.get("id"))
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
@@ -1141,7 +1159,7 @@ def main():
         if not on:
             h["off"] = True
         return h
-    health = {"youtube": _hh("youtube", yt_all), "gtrends": _hh("gtrends", gt), "tiktok": _hh("tiktok", tk),
+    health = {"youtube": _hh("youtube", yt_all), "gtrends": _hh("gtrends", gt), "gtrends_api": _hh("gtrends_api", gt_pool), "tiktok": _hh("tiktok", tk),
               "shorts": _hh("shorts", sh), "aivid": _hh("aivid", ai),
               "reddit": _hh("reddit", rd, REDDIT_ON), "bsky": _hh("bsky", bs, BSKY_ON),
               "signal": _hh("signal", sig, SIG_ON), "xtrends": _hh("xtrends", xtr, XTR_ON),
@@ -1155,7 +1173,8 @@ def main():
         "youtube_src": yt_src or prev.get("youtube_src") or "",   # "api"(공식 차트)/"innertube"(검색 파생) 정직 표기
         "youtube_news": yt_news or prev.get("youtube_news") or [],
         "gtrends": gt or prev.get("gtrends") or [],
-        "gtrends_pool": gt_pool or prev.get("gtrends_pool") or [],   # 트렌딩나우 API 전량 풀(~200 · q·vol·started 콤팩트) — 실검 교차 부스트 원료(운영자 260717 · 실패 = 직전분)
+        "gtrends_pool": gt_pool or prev.get("gtrends_pool") or [],   # 트렌딩나우 API 풀(vol≥500 또는 6h내 신선 · q·vol·started 콤팩트) — 실검 교차 부스트 원료(운영자 260717 · 실패 = 직전분)
+        "gtrends_pool_updated": (now if gt_pool else prev.get("gtrends_pool_updated") or ""),   # 풀 신선도 마커(평의회 260717) — 미래 소비처의 스테일 게이트 원천 + API 축 사망 가시화(health.gtrends_api와 교차 판독)
         "gtrends_gl": gt_gl or prev.get("gtrends_gl") or [],   # 월드 축(KR 제외 주요국 병합 · 실패 = 직전분 · 운영자 260712)
         "youtube_gl": yt_gl or prev.get("youtube_gl") or [],   # 월드 축(공식 API 경로만 · 실패/무키 = 직전분)
         # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
