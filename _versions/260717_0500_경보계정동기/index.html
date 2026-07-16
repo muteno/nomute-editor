@@ -7968,12 +7968,8 @@ function detectBreaking() {
 // 긴급 토스트 seen = 로컬(brkTSeen·즉시) + 계정(TF_SRV·viewer/toast-seen.json) 이중 — 운영자 260712 "한번 뜬 거는 플랫폼 바꿔서 접속해도 안 떠야 · 뜬 거/체크 = 계정 종속".
 //   ✓체크 = 확인 = 수집함 acked 동기화(ratings acked + postRate 원장 · toggleAck 불변) + 계정 seen · 만료/이동도 계정 seen 기록.
 //   계정 축 전파 = api/seen 직접 커밋 → Pages 배포(1~2분) — 그 사이 타 기기 1회 중복 표시는 허용 오차(로컬이 그 기기 재알림은 차단).
-let TF_SRV = { t: new Set(), f: new Set(), s: new Set() };   // 계정 seen(t=긴급·f=실패·s=시스템 경보 ack:/rearm: 이벤트) — toast-seen.json 적재
-async function loadToastSeen() { try { const r = await fetch('toast-seen.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); TF_SRV = { t: new Set(d.t || []), f: new Set(d.f || []), s: new Set(d.s || []) }; } } catch { /* 없으면 로컬만 */ } }
-// 시스템 경보 계정 ack(운영자 260717 "계정 종속이 이런 거에 모두 걸려야" — 260712 계정 종속 확립의 일반화): 이벤트형(append-only 롤링) 스키마에 '상태+재무장'을 싣기 위해
-//   ack:<epochMs>(✓ 처리 완료)·rearm:<epochMs>(확실 회복 = 재무장) 페어로 기록 — 유효 계정 ack = 최신 ack가 최신 rearm보다 뒤일 때만(삭제 없는 스토어에서 상태 되돌림 표현).
-const srvFreshAckTs = () => { let a = 0, r = 0; TF_SRV.s.forEach(v => { const m = /^(ack|rearm):(\d+)$/.exec(v); if (!m) return; const e = +m[2]; if (m[1] === 'ack') { if (e > a) a = e; } else if (e > r) r = e; }); return a > r ? a : 0; };
-function postSysSeen(kind) { const v = kind + ':' + Date.now(); TF_SRV.s.add(v); fetch('api/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ s: [v] }) }).catch(() => {}); }   // fire-and-forget·낙관 add(postSeen 문법 계승) — 불통 = 로컬 ack가 이 기기는 커버(fail-soft)
+let TF_SRV = { t: new Set(), f: new Set() };   // 계정 seen(t=긴급·f=실패) — toast-seen.json 적재
+async function loadToastSeen() { try { const r = await fetch('toast-seen.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); TF_SRV = { t: new Set(d.t || []), f: new Set(d.f || []) }; } } catch { /* 없으면 로컬만 */ } }
 function postSeen(kind, c) { const id = candId(c); if (!id || TF_SRV[kind].has(id)) return; TF_SRV[kind].add(id); fetch('api/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [kind]: [id] }) }).catch(() => {}); }   // fire-and-forget(fail-soft = 로컬이 커버) · 낙관 add = 세션 내 재발송 0
 async function claimSeen(kind, c) {   // 표시 전 선점(운영자 260712 "같은 알림 2번 뜨는 건 무조건 막아야") — 서버가 sha 원자 병합으로 '처음 기록' 판정(fresh) → 처음 선점한 기기만 표시 = 크로스 플랫폼 정확히 1회. API 불통 = fail-open(알림 놓침 방지 우선 — 그 순간만 중복 가능성 감수·주석 정직)
   const id = candId(c); if (!id) return true;
@@ -8048,10 +8044,10 @@ function checkFreshLane() {
   const kstH = new Date(Date.now() + 9 * 3600000).getUTCHours();   // 브라우저 로컬 tz 무관 KST 시(naive Date 금지 축과 무관한 산술 시프트)
   const n = CANDS.filter(c => (Date.now() - scTs(c)) < FAST_MAX_H * 3600000).length;   // scTs = 발행(미래 오기록 = first_seen 폴백) — 신규 칼럼 판정과 동축
   const laneBad = CANDS.length > 100 && n < FRESH_ALERT_MIN;   // 건강 판정 = 야간·탭 게이트와 분리(평의회A "야간 게이트 ≠ 회복" — 융합 시 자정마다 ack 무단 리셋)
-  if (CANDS.length > 100 && n >= FRESH_ALERT_MIN * 2) { try { localStorage.removeItem(FRESH_ACK_KEY); } catch {} _freshMute = false; _freshAckTs = 0; if (srvFreshAckTs()) postSysSeen('rearm'); }   // 재무장 = 확실 회복(임계×2 히스테리시스)만 — 경계 진동(4↔6건 = 주간 12.9% 체류 실측)이 ✓·✗를 10~30분마다 지우던 플리커 봉합(평의회B). ✗(접속 숨김)도 확실 회복 후 재고장 = 새 사건이라 재표시(의도). 계정 ack 활성 시 rearm 이벤트 1회 동기(낙관 add로 srvFreshAckTs 즉시 0 = 매 폴 재발송 차단·운영자 260717 계정 종속 일반화).
+  if (CANDS.length > 100 && n >= FRESH_ALERT_MIN * 2) { try { localStorage.removeItem(FRESH_ACK_KEY); } catch {} _freshMute = false; _freshAckTs = 0; }   // 재무장 = 확실 회복(임계×2 히스테리시스)만 — 경계 진동(4↔6건 = 주간 12.9% 체류 실측)이 ✓·✗를 10~30분마다 지우던 플리커 봉합(평의회B). ✗(접속 숨김)도 확실 회복 후 재고장 = 새 사건이라 재표시(의도).
   if (!laneBad || kstH < 8 || CURTAB === 'scrap') { if (el) el.classList.remove('show'); return; }   // 소등만(ack·mute 무접촉): 회복 완충대(5~9건)·야간(08시 전 = 새벽 발행 저조 오탐 가드)·수집함 탭(빈 신규 칼럼을 직접 보는 중 = 잔소리 0 — 긴급 토스트 CURTAB!=='scrap' 관례 계승 · 평의회B)
   let ack = 0; try { ack = +localStorage.getItem(FRESH_ACK_KEY) || 0; } catch {}
-  if (_freshMute || Date.now() - Math.max(ack, _freshAckTs, srvFreshAckTs()) < FRESH_ACK_MS) { if (el) el.classList.remove('show'); return; }   // 억제 = 로컬(기기 즉시) ∪ 계정(타 기기 ✓ — 폰에서 처리하면 PC도 조용 · 운영자 260717)
+  if (_freshMute || Date.now() - Math.max(ack, _freshAckTs) < FRESH_ACK_MS) { if (el) el.classList.remove('show'); return; }
   if (_toastC || document.querySelector('#nmToast.show, #nmFailToast.show')) { if (el) el.classList.remove('show'); return; }   // 긴급·실패 토스트 우선(상태변수+DOM 실측 이중) — 표시 중이던 경보도 즉시 소등(같은 자리·같은 z 겹침 차폐 차단 · 평의회C — 가족 내려간 다음 폴에 재점등)
   if (el && el.classList.contains('show')) { el.title = '발행 ' + FAST_MAX_H + '시간 내 ' + n + '건 (기준 ' + FRESH_ALERT_MIN + '건 미만) — 수집 파이프라인 점검 필요'; return; }   // 이미 표시 중 = 수치만 갱신 — 60s 폴마다 innerHTML 재구축 시 role=alert 라이브영역이 매분 재낭독(SR 잔소리)·탭 순간 노드 교체 유실 방지
   let t = el;
@@ -8060,7 +8056,7 @@ function checkFreshLane() {
   t.innerHTML = '<span class="tg">' + WARN_SVG + '</span><span class="ft-msg">신규 뉴스가 안 들어오고 있어요.</span>'
     + '<button class="sbtn ft-act" type="button" data-bt="ack" data-motion="check" aria-label="처리 완료" title="처리 완료 — 12시간 조용히(신규가 회복되면 자동 재무장)">' + CHECK_SVG + '</button>'
     + '<button class="sbtn ft-act" type="button" data-bt="x" aria-label="닫기" title="닫기 — 이번 접속 동안만 숨김">' + X_TOAST_SVG + '</button>';
-  t.querySelector('[data-bt="ack"]').onclick = ev => { ev.stopPropagation(); _freshAckTs = Date.now(); try { localStorage.setItem(FRESH_ACK_KEY, String(_freshAckTs)); } catch {} postSysSeen('ack'); t.classList.remove('show'); };   // 메모리 미러 선기록 = 저장 실패해도 이 접속에선 ✓ 유효(평의회E) · 계정 ack 동기 = 타 기기도 조용(운영자 260717)
+  t.querySelector('[data-bt="ack"]').onclick = ev => { ev.stopPropagation(); _freshAckTs = Date.now(); try { localStorage.setItem(FRESH_ACK_KEY, String(_freshAckTs)); } catch {} t.classList.remove('show'); };   // 메모리 미러 선기록 = 저장 실패해도 이 접속에선 ✓ 유효(평의회E)
   t.querySelector('[data-bt="x"]').onclick = ev => { ev.stopPropagation(); _freshMute = true; t.classList.remove('show'); };
   requestAnimationFrame(() => t.classList.add('show'));   // 상주형(자동닫힘 없음) = "처리 완료 체크까지 뜸" — 긴급 토스트 8s 자동닫힘과 다른 점(의도)
 }
