@@ -169,6 +169,7 @@ ${LEDGER:-(비어 있음 — 전부 새 이슈)}
 [데이터 = SNS 결과(여기서 원인을 역추적)]
 $BODY"
 
+claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 — 실측: 침묵 행은 본선 600s를 통째로 태움 · 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft)
 out=""
 for _try in 1 2 3 4; do
   out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
