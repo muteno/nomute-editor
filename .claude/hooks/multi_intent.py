@@ -58,9 +58,38 @@ def append_ledger(root, sid, segs, stamp):
     return True
 
 
+def _nested_claude():
+    """중첩 가드(260717): 조상 프로세스 체인에 claude가 2개+ = 세션 안에서 띄운 중첩 claude(-p 실험·자동화 봇).
+    바깥 세션의 훅 = 조상 claude 1개(정상 — 캡처 유지) / 중첩 런의 훅 = 2개+(스킵 — 봇 프롬프트는 지시가 아님).
+    근거 사고 = 260716 21:28 실험 6런이 분석 프롬프트를 원장에 4블록 오등재(GITHUB_ACTIONS 가드의 컨테이너판 구멍).
+    ⚠️ '-p/--print 플래그 감지'는 금지 축 — CCR 원격 세션 자체가 stream-json 헤드리스 인자로 떠서(실측 260717
+    pid 계보: claude --output-format=stream-json …) 플래그 기준이면 진짜 지시 캡처까지 죽는다.
+    /proc 부재·파싱 실패 = False(fail-soft = 현행 유지 · 오차단 0 철학 동축)."""
+    try:
+        n, pid = 0, os.getppid()
+        for _ in range(24):   # 조상 24단 상한(무한루프 방어 — 통상 체인 ≤ 8)
+            if not pid or pid <= 1:
+                break
+            with open('/proc/%d/cmdline' % pid, 'rb') as f:
+                argv = f.read().split(b'\0')
+            base = os.path.basename(argv[0].decode('utf-8', 'ignore')) if argv and argv[0] else ''
+            arg1 = os.path.basename(argv[1].decode('utf-8', 'ignore')) if len(argv) > 1 and argv[1] else ''
+            if base == 'claude' or (base in ('node', 'bun') and arg1 == 'claude'):
+                n += 1
+                if n >= 2:
+                    return True
+            with open('/proc/%d/stat' % pid) as f:   # "pid (comm) state ppid …" — comm의 공백·괄호 안전 파싱
+                pid = int(f.read().rsplit(')', 1)[1].split()[1])
+        return False
+    except Exception:
+        return False
+
+
 def main():
-    if os.environ.get('GITHUB_ACTIONS') == 'true':
-        sys.exit(0)   # 러너 가드(260714): 파이프 봇의 claude -p 프롬프트(명령 어미 다수)가 다중 지시로 오탐돼 요구사항_큐.md를 수정 → analyze push 거부·분석물 유실의 근본 사슬(04:08 run 실측 잔여물 = M docs/요구사항_큐.md). 러너엔 T0 주입·원장 캡처 둘 다 무의미 = 무주입 통과.
+    if os.environ.get('GITHUB_ACTIONS') == 'true' or os.environ.get('CI') == 'true':
+        sys.exit(0)   # 러너 가드(260714 · CI 일반화 260717): 파이프 봇의 claude -p 프롬프트(명령 어미 다수)가 다중 지시로 오탐돼 요구사항_큐.md를 수정 → analyze push 거부·분석물 유실의 근본 사슬(04:08 run 실측 잔여물 = M docs/요구사항_큐.md). 러너엔 T0 주입·원장 캡처 둘 다 무의미 = 무주입 통과.
+    if _nested_claude():
+        sys.exit(0)   # 중첩 claude 런 = 봇 프롬프트(위 docstring) — T0·캡처 둘 다 무의미 = 무주입 통과.
     try:
         data = json.load(sys.stdin)
     except Exception:
