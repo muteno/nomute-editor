@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이미지 스튜디오 · 화질↑(업스케일) 배치 플레이그라운드 v1</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-2:#d8ff3d;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --fs-label:13px; --fs-sm:12px; --fs-body:15px; --fw-b:700; --fw-x:800;
+    --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px; --sp-1:6px; --sp-2:12px; --sp-3:18px;
+    --font:'Pretendard Variable',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0d0d0d;color:var(--fg);font-family:var(--font);font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:19px;font-weight:800;margin:6px 0 2px}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+  .sub b{color:var(--accent)}
+
+  /* ── 미리보기 고정(sticky) ── */
+  .preview{position:sticky;top:0;z-index:5;background:#0d0d0d;padding:12px 0 14px;border-bottom:1px solid var(--line)}
+  .studio{background:#161719;border:1px solid var(--line);border-radius:var(--r-l);padding:14px 16px 16px;position:relative;overflow:hidden}
+  .studio-tag{position:absolute;top:10px;right:12px;font-size:11px;color:var(--mut);letter-spacing:.02em}
+  .phbar{display:flex;align-items:center;gap:8px;margin:2px 0 4px;font-size:12px;color:var(--mut)}
+  .phchip{display:inline-flex;align-items:center;gap:6px;background:#1d1f22;border:1px solid var(--line);border-radius:var(--r-pill);padding:4px 10px;color:var(--fg);font-size:11.5px}
+  .phchip .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+  /* ── 정본 재현: .csec / .onoff (thumb.html 실측 계승) ── */
+  .csec{display:flex;align-items:center;gap:6px;font-size:var(--fs-label);font-weight:var(--fw-x);color:var(--fg);margin:16px 0 9px}
+  .csec::before{content:'•';color:var(--accent);font-weight:var(--fw-b)}
+  .csec .onoff{cursor:pointer;font-weight:800;font-size:12px;letter-spacing:.03em;color:var(--mut);padding:3px 5px;margin-top:-3px;margin-bottom:-3px;position:relative;top:-.3px;user-select:none;transition:color .15s,transform .1s;-webkit-tap-highlight-color:transparent}
+  .csec .onoff.on{color:var(--accent)}
+  .csec .onoff:active{transform:scale(.92)}
+  .csec .ovsep{color:var(--mut);font-weight:400;margin:0 5px}
+  .gs-lbl{color:var(--mut);font-weight:700;font-size:12px}
+  .gs-v{color:var(--mut);font-size:12px}
+  .gs-v.on{color:var(--accent);font-weight:700}
+  .ie-off{opacity:.5;pointer-events:none}
+
+  /* 신규 화질↑ 행 강조(시안 표식 — 실제 배선엔 없음) */
+  .newrow{position:relative;border-radius:8px;outline:1.5px dashed rgba(0,238,210,.5);outline-offset:3px;background:rgba(0,238,210,.04)}
+  .newtag{position:absolute;top:-9px;left:8px;background:#0d0d0d;color:var(--accent);font-size:9.5px;font-weight:800;letter-spacing:.04em;padding:0 5px}
+
+  /* ── 컨트롤 ── */
+  .ctl{margin-top:20px}
+  .lbl{font-size:12px;color:var(--mut);font-weight:700;margin:18px 0 8px;letter-spacing:.02em}
+  .presets{display:flex;flex-wrap:wrap;gap:8px}
+  .pbtn{background:#17181b;border:1px solid var(--line);color:var(--fg);border-radius:var(--r-m);padding:10px 13px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit;text-align:left;flex:1 1 200px}
+  .pbtn .pd{display:block;color:var(--mut);font-weight:400;font-size:11.5px;margin-top:3px;line-height:1.4}
+  .pbtn:hover{border-color:rgba(255,255,255,.2)}
+  .pbtn.sel{border-color:var(--accent);background:rgba(0,238,210,.08);box-shadow:0 0 0 1px var(--accent) inset}
+  .pbtn .rec{color:var(--accent-2);font-size:10px;font-weight:800;margin-left:5px}
+
+  .slrow{display:flex;align-items:center;gap:14px;background:#141517;border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px}
+  .slrow input[type=range]{flex:1;accent-color:var(--accent)}
+  .slval{font-weight:800;color:var(--accent);min-width:96px;text-align:right;font-size:13px}
+
+  .copybox{display:flex;gap:8px;align-items:stretch;margin-top:8px}
+  .copybox textarea{flex:1;background:#0f1012;border:1px solid var(--line);color:var(--fg);border-radius:var(--r-s);padding:11px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.55;resize:vertical;min-height:118px}
+  .copybtn{background:var(--accent);color:#04211d;border:0;border-radius:var(--r-s);padding:0 16px;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px;white-space:nowrap}
+  .copybtn:active{transform:scale(.96)}
+
+  .foot{margin-top:22px;padding-top:14px;border-top:1px solid var(--line);color:var(--mut);font-size:12px;line-height:1.7}
+  .foot b{color:var(--fg);font-weight:700}
+  .foot ul{margin:6px 0 0;padding-left:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>이미지 스튜디오 · 화질↑(업스케일) 배치 시안</h1>
+  <p class="sub">엔진 <b>Real-ESRGAN</b>은 main 머지 완료. 남은 건 <b>이미지 스튜디오에서 부를 자리</b> — 3안 중 골라줘. 미리보기는 실제 편집(app2) 옵션 구역을 정본 토큰으로 재현했고, <b>점선 강조 = 신설되는 화질↑ 행</b>.</p>
+
+  <!-- 고정 미리보기 -->
+  <div class="preview">
+    <div class="studio">
+      <span class="studio-tag">썸네일 스튜디오 · 편집(app2)</span>
+      <div class="phbar"><span class="phchip"><span class="dot"></span>사진 첨부됨</span><span>= 편집 옵션 활성(사진 전엔 흐리게 잠금)</span></div>
+
+      <div class="csec">옵션</div>
+      <div class="csec" style="gap:5px"><span class="gs-lbl">배경</span><span class="gs-v">OFF</span><span class="ovsep">|</span><span class="gs-lbl">OPA</span><span class="gs-v on">60</span><span class="gs-v">+30</span><span class="ovsep">|</span><span class="gs-lbl">축약</span><span class="gs-v on">ON</span></div>
+
+      <!-- 비율(리사이즈 = app7) -->
+      <div class="csec" id="rowRatio">비율 <span class="onoff on" id="ratioTog">원본</span><span class="ovsep subup" style="display:none">|</span><span class="gs-lbl subup" style="display:none">화질</span><span class="onoff subup" id="subUp" style="display:none">2배</span></div>
+
+      <!-- 모자이크(app8) -->
+      <div class="csec" id="rowMosaic">모자이크 <span class="onoff" id="mosTog">OFF</span></div>
+
+      <!-- 화질↑(신설 · app9) — 안 A/B 에서 독립 행 -->
+      <div class="csec newrow" id="rowUps"><span class="newtag">신설</span>화질↑ <span class="onoff on" id="upsTog">2배</span></div>
+
+      <div class="csec">저작권 <span class="onoff">OFF</span></div>
+      <div class="csec">안내문 <span class="onoff">OFF</span></div>
+    </div>
+  </div>
+
+  <!-- 프리셋(§5 ① 방식 N안) -->
+  <div class="ctl">
+    <div class="lbl">① 배치 방식 (프리셋)</div>
+    <div class="presets" id="presets">
+      <button class="pbtn sel" data-v="A">독립 행 · 순환값<span class="rec">추천</span>
+        <span class="pd">모자이크 아래 새 행 “화질↑ 원본→2배→4배”. 비율의 순환 토글과 동일 문법 = 학습비용 0.</span></button>
+      <button class="pbtn" data-v="B">독립 행 · ON/OFF
+        <span class="pd">모자이크처럼 “화질↑ OFF/ON” 토글. ON=기본 배율 고정. 가장 단순.</span></button>
+      <button class="pbtn" data-v="C">리사이즈 행에 합침
+        <span class="pd">새 행 없이 비율 행에 “| 화질 2배” 서브 토글. 행 수 최소, 단 리사이즈와 개념 혼재.</span></button>
+    </div>
+
+    <div class="lbl">② 기본 배율</div>
+    <div class="slrow">
+      <input type="range" id="scale" min="2" max="4" step="1" value="2">
+      <span class="slval" id="scalev">2배 (진입 기본)</span>
+    </div>
+
+    <div class="lbl">③ 선택값 복사 (배선 스펙)</div>
+    <div class="copybox">
+      <textarea id="spec" readonly></textarea>
+      <button class="copybtn" id="copy">복사</button>
+    </div>
+
+    <div class="foot">
+      <b>한계·전제 각주</b>
+      <ul>
+        <li><b>엔진</b>: Real-ESRGAN(CPU) = 저화질 이미지 스위트스팟. 큰 이미지는 auto 가드가 FSRCNN/Lanczos로 자동 우회(느림 방지) — <b>이미지 스튜디오 소스는 대개 저화질이라 딱 맞음</b>.</li>
+        <li><b>배율</b>: 4배 = Real-ESRGAN 네이티브. 2·3배 = 4배 후 축소(품질 그대로, 파일만 작게).</li>
+        <li><b>발사 백엔드(선택 후 배선)</b>: 신규 <code>api/upscale.js</code> + <code>img-upscale.yml</code> = 기존 리사이즈 3층 미러. 워크플로에 <code>FX_ESRGAN=1</code>로 sha256 핀 모델 드롭. 잡·폴링·이력 = 리사이즈/모자이크 계승.</li>
+        <li>이 페이지는 <b>배치 시안</b>만 — 발사·잡·폴링은 자리 확정 후 붙인다. 점선 강조는 시안 표식(실제 UI엔 없음).</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  var V='A', SCALE=2;
+  var rowUps=document.getElementById('rowUps'), upsTog=document.getElementById('upsTog');
+  var subEls=document.querySelectorAll('.subup'), subUp=document.getElementById('subUp');
+  var scaleName={2:'2배',3:'3배',4:'4배'};
+
+  function apply(){
+    // 화질↑ 노출 방식
+    if(V==='C'){ rowUps.style.display='none'; subEls.forEach(function(e){e.style.display=''}); }
+    else{ rowUps.style.display=''; subEls.forEach(function(e){e.style.display='none'}); }
+    // 배율 반영
+    if(V==='B'){ upsTog.textContent='ON'; upsTog.classList.add('on'); }
+    else { upsTog.textContent=scaleName[SCALE]; upsTog.classList.add('on'); }
+    subUp.textContent=scaleName[SCALE];
+    document.getElementById('scalev').textContent=scaleName[SCALE]+' (진입 기본)';
+    writeSpec();
+  }
+  function writeSpec(){
+    var pos, row, launch='selApp(\'9\')  // 신규 app9 = fx_upscale(engine=auto→Real-ESRGAN)';
+    if(V==='A'){ pos='#ieTogRow(모자이크) 바로 아래'; row='<div class="csec none ie-off" id="upsRow">화질↑ <span class="onoff on" id="upsCyc" role="button" tabindex="0" title="탭=원본→2배→4배 순환">원본</span></div>'; }
+    else if(V==='B'){ pos='#ieTogRow(모자이크) 바로 아래'; row='<div class="csec none ie-off" id="upsRow">화질↑ <span class="onoff" id="upsTog" role="button" tabindex="0" title="탭=업스케일 ON/OFF">OFF</span></div>'; }
+    else { pos='#rszBox(비율) 행 안 · 비율 오른쪽'; row='… 비율 행에 서브 토글 추가: <span class="ovsep">|</span><span class="gs-lbl">화질</span><span class="onoff" id="upsSub">'+scaleName[SCALE]+'</span>'; launch='비율 발사(selApp 7)에 upscale 옵션 동승'; }
+    document.getElementById('spec').value =
+      '화질↑(업스케일) 배치 = 안 '+V+'\n'+
+      '위치: '+pos+'\n'+
+      '기본 배율: '+scaleName[SCALE]+(V==='A'?'  (순환 원본→2배→4배)':V==='B'?'  (ON 시)':'')+'\n'+
+      '행 마크업:\n'+row+'\n'+
+      '발사: '+launch+'\n'+
+      '백엔드: api/upscale.js → img-upscale.yml(FX_ESRGAN=1) → apps/fx/fx_upscale.py  [리사이즈 3층 미러]';
+  }
+  document.getElementById('presets').addEventListener('click',function(e){
+    var b=e.target.closest('.pbtn'); if(!b)return;
+    V=b.dataset.v;
+    document.querySelectorAll('.pbtn').forEach(function(x){x.classList.toggle('sel',x===b)});
+    apply();
+  });
+  document.getElementById('scale').addEventListener('input',function(e){ SCALE=+e.target.value; apply(); });
+  upsTog.addEventListener('click',function(){ if(V==='B'){var on=upsTog.textContent==='OFF';upsTog.textContent=on?'ON':'OFF';upsTog.classList.toggle('on',on);} else {SCALE=SCALE>=4?2:SCALE+1;document.getElementById('scale').value=SCALE;apply();}});
+  document.getElementById('copy').addEventListener('click',function(){
+    var t=document.getElementById('spec'); t.select();
+    navigator.clipboard&&navigator.clipboard.writeText(t.value);
+    var b=document.getElementById('copy'); b.textContent='복사됨'; setTimeout(function(){b.textContent='복사'},1200);
+  });
+  apply();
+</script>
+</body>
+</html>
