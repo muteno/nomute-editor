@@ -6755,14 +6755,14 @@ function renderMsgBadge() {
   if (badge) badge.textContent = n > 99 ? '99+' : String(n);
   const bc = $('#msgbtncnt'); if (bc) bc.textContent = visible.length ? `(${visible.length})` : '';   // pmenu 라벨 = 전체 표시 수(읽음 무관)
 }
-// 메시지 삭제 = 로컬 감춤(localStorage) — 서버 메시지(md 영구)는 이 기기에서만 숨김(읽은 알림 정리용 · 운영자 260704)
+// 메시지 삭제(치움) = 로컬 즉시 + 계정 md축 동기(260717 소급 감사 — 구 "이 기기에서만 숨김"은 계정 종속 룰[CLAUDE.md [4]] 확립 전 결정 → 전 기기 숨김으로 승격) · 서버 메시지 원본(md 파일)은 불변
 const MSG_DISMISS_KEY = 'nomute_msg_dismissed';
-function msgDismissed() { try { return new Set(JSON.parse(localStorage.getItem(MSG_DISMISS_KEY) || '[]')); } catch { return new Set(); } }
-function msgDismiss(id) { if (!id) return; const s = msgDismissed(); s.add(String(id)); try { localStorage.setItem(MSG_DISMISS_KEY, JSON.stringify([...s])); } catch {} }
-// 메시지 읽음 = 로컬 기록(localStorage) — 메시지함 열면 현재 메시지 다 읽음 처리 → 배지·링 사라짐(운영자 260704: 읽으면 알림 사라져야). 목록엔 남음(삭제와 별개).
+function msgDismissed() { try { const s = new Set(JSON.parse(localStorage.getItem(MSG_DISMISS_KEY) || '[]')); TF_SRV.md.forEach(id => s.add(id)); return s; } catch { return new Set(TF_SRV.md); } }   // 로컬(즉시성 캐시) ∪ 계정(md축 — 폰에서 치우면 PC도 · 계정 종속 소급 감사 260717 · CLAUDE.md [4] 룰)
+function msgDismiss(id) { if (!id) return; const s = msgDismissed(); s.add(String(id)); try { localStorage.setItem(MSG_DISMISS_KEY, JSON.stringify([...s])); } catch {} postSeenIds('md', [String(id)]); }
+// 메시지 읽음 = 로컬 즉시 + 계정 mr축 동기(260717) — 메시지함 열면 표시분 일괄 읽음 → 배지·링 소등이 전 기기 전파(운영자 260704 "읽으면 사라짐"의 계정 완성형)
 const MSG_READ_KEY = 'nomute_msg_read';
-function msgReadSet() { try { return new Set(JSON.parse(localStorage.getItem(MSG_READ_KEY) || '[]')); } catch { return new Set(); } }
-function msgMarkAllRead() { const dis = msgDismissed(), read = msgReadSet(); allMsgs().forEach(m => { if (m.id && !dis.has(String(m.id))) read.add(String(m.id)); }); try { localStorage.setItem(MSG_READ_KEY, JSON.stringify([...read])); } catch {} }
+function msgReadSet() { try { const s = new Set(JSON.parse(localStorage.getItem(MSG_READ_KEY) || '[]')); TF_SRV.mr.forEach(id => s.add(id)); return s; } catch { return new Set(TF_SRV.mr); } }   // 로컬 ∪ 계정(mr축 — 폰에서 읽으면 PC 배지도 소등 · 260717)
+function msgMarkAllRead() { const dis = msgDismissed(), read = msgReadSet(); const fresh = []; allMsgs().forEach(m => { if (m.id && !dis.has(String(m.id)) && !read.has(String(m.id))) fresh.push(String(m.id)); if (m.id && !dis.has(String(m.id))) read.add(String(m.id)); }); try { localStorage.setItem(MSG_READ_KEY, JSON.stringify([...read])); } catch {} postSeenIds('mr', fresh); }
 function unreadCount() { const dis = msgDismissed(), read = msgReadSet(); return allMsgs().filter(m => m.id && !dis.has(String(m.id)) && !read.has(String(m.id))).length; }   // 안 읽은 메시지 수(프로필 클릭 시 메뉴→메시지함 촤르륵 판정 · 운영자 260704)
 // 리스트 행 삭제 = 접힘+페이드 후 실제 제거(운영자 260704: 확 사라지지 말고 자연스럽게·.24s). reduced-motion=즉시. 발행본·메시지함·향후 다른 삭제 버튼 공용(.qrow).
 function animateRowOut(row, done) {
@@ -7972,8 +7972,9 @@ function detectBreaking() {
 // 긴급 토스트 seen = 로컬(brkTSeen·즉시) + 계정(TF_SRV·viewer/toast-seen.json) 이중 — 운영자 260712 "한번 뜬 거는 플랫폼 바꿔서 접속해도 안 떠야 · 뜬 거/체크 = 계정 종속".
 //   ✓체크 = 확인 = 수집함 acked 동기화(ratings acked + postRate 원장 · toggleAck 불변) + 계정 seen · 만료/이동도 계정 seen 기록.
 //   계정 축 전파 = api/seen 직접 커밋 → Pages 배포(1~2분) — 그 사이 타 기기 1회 중복 표시는 허용 오차(로컬이 그 기기 재알림은 차단).
-let TF_SRV = { t: new Set(), f: new Set(), s: new Set() };   // 계정 seen(t=긴급·f=실패·s=시스템 경보 ack:/rearm: 이벤트) — toast-seen.json 적재
-async function loadToastSeen() { try { const r = await fetch('toast-seen.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); TF_SRV = { t: new Set(d.t || []), f: new Set(d.f || []), s: new Set(d.s || []) }; } } catch { /* 없으면 로컬만 */ } }
+let TF_SRV = { t: new Set(), f: new Set(), s: new Set(), mr: new Set(), md: new Set() };   // 계정 seen(t=긴급·f=실패·s=시스템 경보 ack:/rearm: 이벤트·mr=메시지 읽음·md=메시지 치움) — toast-seen.json 적재
+async function loadToastSeen() { try { const r = await fetch('toast-seen.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); TF_SRV = { t: new Set(d.t || []), f: new Set(d.f || []), s: new Set(d.s || []), mr: new Set(d.mr || []), md: new Set(d.md || []) }; renderMsgBadge(); } } catch { /* 없으면 로컬만 */ } }   // 적재 후 배지 재계산 = 타 기기 읽음/치움이 60s 폴에 반영(계정 종속 소급 감사 260717)
+function postSeenIds(axis, ids) { const fresh = (ids || []).filter(id => id && !TF_SRV[axis].has(id)); if (!fresh.length) return; fresh.forEach(id => TF_SRV[axis].add(id)); fetch('api/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [axis]: fresh.slice(0, 50) }) }).catch(() => {}); }   // 다건 계정 동기(postSeen 문법 미러 — 낙관 add·fail-soft·서버 50/축 상한 정합)
 // 시스템 경보 계정 ack(운영자 260717 "계정 종속이 이런 거에 모두 걸려야" — 260712 계정 종속 확립의 일반화): 이벤트형(append-only 롤링) 스키마에 '상태+재무장'을 싣기 위해
 //   ack:<epochMs>(✓ 처리 완료)·rearm:<epochMs>(확실 회복 = 재무장) 페어로 기록 — 유효 계정 ack = 최신 ack가 최신 rearm보다 뒤일 때만(삭제 없는 스토어에서 상태 되돌림 표현).
 const srvSysMax = () => { const lim = Date.now() + 1800e3; let a = 0, r = 0; TF_SRV.s.forEach(v => { const m = /^(ack|rearm):(\d+)$/.exec(v); if (!m) return; const e = +m[2]; if (e > lim) return; if (m[1] === 'ack') { if (e > a) a = e; } else if (e > r) r = e; }); return { a, r }; };   // +30분 초과 미래 epoch = 무효 스킵(평의회③ — 시계 크게 빠른 기기의 ✓ 한 번이 '미래 ack'로 전 기기 영구 침묵 + rearm이 영원히 못 이기는 자가복구 불능 차단 · 선의 스큐 ≤30분 허용 · 서버 클램프와 이중)
