@@ -10,10 +10,12 @@ export async function onRequestPost({ request, env }) {
 
   let body; try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
   const clean = a => Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x).map(x => x.slice(0, 200)))].slice(0, 50) : [];
-  const addT = clean(body.t), addF = clean(body.f);
+  const AXES = ['t', 'f', 's', 'mr', 'md'];   // t=긴급 seen · f=실패 seen · s=시스템 경보 이벤트 · mr=메시지 읽음 · md=메시지 치움(계정 종속 소급 감사 260717 — CLAUDE.md [4] 룰) — 축 추가 = 이 배열에만
   const _sCap = Date.now() + 5 * 60e3;   // s축 미래 epoch 클램프(평의회③) — 시계 빠른 기기·악의 주입의 '미래 ack 폭탄'(rearm이 영원히 못 이겨 전 기기 영구 침묵)을 서버 수신 시각+5분으로 치환(클라 +30분 무효 스킵과 이중 방어)
-  const addS = clean(body.s).map(v => { const m = /^(ack|rearm):(\d+)$/.exec(v); return m && +m[2] > _sCap ? m[1] + ':' + Date.now() : v; });   // s = 시스템 경보 이벤트(ack:<epoch>·rearm:<epoch> — 계정 종속 일반화 · 운영자 260717)
-  if (!addT.length && !addF.length && !addS.length) return json({ error: '추가할 항목 없음' }, 400);
+  const add = {};
+  for (const k of AXES) add[k] = clean(body[k]);
+  add.s = add.s.map(v => { const m = /^(ack|rearm):(\d+)$/.exec(v); return m && +m[2] > _sCap ? m[1] + ':' + Date.now() : v; });
+  if (!AXES.some(k => add[k].length)) return json({ error: '추가할 항목 없음' }, 400);
 
   const H = {
     authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github+json',
@@ -22,7 +24,7 @@ export async function onRequestPost({ request, env }) {
   const url = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    let cur = { t: [], f: [], s: [] }, sha;   // 3축 스키마 명시(평의회② — 아래 가드가 받아주지만 미래 축 추가 시 누락 실수 차단)
+    let cur = Object.fromEntries(AXES.map(k => [k, []])), sha;   // 전축 스키마 명시(평의회② 취지 유지 — AXES 단일 출처)
     const g = await fetch(`${url}?ref=main`, { headers: H });
     if (g.ok) {
       const j = await g.json(); sha = j.sha;
@@ -30,18 +32,18 @@ export async function onRequestPost({ request, env }) {
     } else if (g.status !== 404) {
       return json({ error: `GitHub read ${g.status}` }, 502);
     }
-    const merge = (old, add) => { const s = [...new Set([...(Array.isArray(old) ? old : []), ...add])]; return s.slice(-CAP); };
-    const next = { t: merge(cur.t, addT), f: merge(cur.f, addF), s: merge(cur.s, addS) };
+    const merge = (old, a) => { const s = [...new Set([...(Array.isArray(old) ? old : []), ...a])]; return s.slice(-CAP); };
+    const next = Object.fromEntries(AXES.map(k => [k, merge(cur[k], add[k])]));
     // fresh = 이번에 *처음* 기록된 id — 클라 선점(claim) 판정용: fresh에 있으면 그 기기가 첫 표시권(운영자 260712 "같은 알림 2번 금지" = 표시 전 선점·정확히 1회)
-    const had = { t: new Set(cur.t || []), f: new Set(cur.f || []), s: new Set(cur.s || []) };
-    const fresh = { t: addT.filter(x => !had.t.has(x)), f: addF.filter(x => !had.f.has(x)), s: addS.filter(x => !had.s.has(x)) };
-    if (!fresh.t.length && !fresh.f.length && !fresh.s.length) return json({ ok: true, noop: true, fresh });
+    const had = Object.fromEntries(AXES.map(k => [k, new Set(cur[k] || [])]));
+    const fresh = Object.fromEntries(AXES.map(k => [k, add[k].filter(x => !had[k].has(x))]));
+    if (!AXES.some(k => fresh[k].length)) return json({ ok: true, noop: true, fresh });
 
     const bytes = new TextEncoder().encode(JSON.stringify(next));
     let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
     const put = await fetch(url, {
       method: 'PUT', headers: H,
-      body: JSON.stringify({ message: `seen: 토스트 계정 seen 동기(t+${addT.length}·f+${addF.length}·s+${addS.length})`, content: btoa(bin), branch: 'main', ...(sha ? { sha } : {}) }),
+      body: JSON.stringify({ message: `seen: 계정 seen 동기(${AXES.filter(k => add[k].length).map(k => k + '+' + add[k].length).join('\u00b7')})`, content: btoa(bin), branch: 'main', ...(sha ? { sha } : {}) }),
     });
     if (put.ok) return json({ ok: true, fresh });
     if (put.status === 409) continue;   // sha 경합(동시 기기) → 재읽기·재판정(선점 원자성의 핵심 — 진 쪽은 fresh서 빠짐)
