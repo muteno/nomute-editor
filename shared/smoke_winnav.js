@@ -10,13 +10,12 @@
 //           SMOKE_WINNAV_STRICT=1 node …           (대기 어서션까지 합격 요구 — 잔차 통일 반영 후 상비 전환)
 //
 // 2티어(정직 신고 · smoke_preview 규약 그대로):
-//   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 헤더 셸 4종(패딩 11×16·--modal-head-bg·blur22·--line2) 균일 ·
+//   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 헤더 셸 4종(패딩 11×16·min-height 53·--modal-head-bg·blur22·--line2) 균일 ·
 //          타이틀 15/800/ls-.2 · X = 30px 글래스 r9 + SVG 글리프 15px(문자 × 금지 = check_refs와 이중 방어) ·
-//          원문 이동 = 새탭(target=_blank·rel noopener) · #src(뉴스요약 원문) = 픽토그램 온리+ic-src 액티브 배선 실존
-//   [대기] 260717 실측 드리프트 백로그(승인 대기 — 원장 세션 9346f1e1 Q01·Q02) : W1 X 글리프 stroke 1.8 통일(도구 #toolX·#toolMin = 인라인 2 잔존) ·
-//          W2 X 세로중심 = 띠 중앙 Δ≤0.5(dlg-x 모달군 = +2.5px 하향) · W3 X 우측 여백 균일(도구 17 vs dlg-x 15) ·
-//          W4 원문 이동 = 픽토그램 버튼 통일(#tvOpen·#trefOpen = 텍스트 잔존 · 정본 = #src 픽토+액티브)
-//          오늘은 FAIL이어도 exit 0 · 잔차가 반영되면 그 어서션을 코어로 승격(대기가 PASS로 뒤집히면 XPASS 승격 경고 자동 출력).
+//          원문 이동 = 새탭(target=_blank·rel noopener) · #src(뉴스요약 원문) = 픽토그램 온리+ic-src 액티브 배선 실존 ·
+//          C6~C9 = 260717 잔차 통일과 동시 대기→코어 승격(운영자 "ㄱㄱ"): X·유틸 stroke 1.8 통일 · X 세로중심 Δ≤0.5 ·
+//          X 우측 여백 균일(17) · 원문 이동 = 픽토그램 통일(#tvOpen·#trefOpen = #src 계승)
+//   [대기] 잔여 0 — 다음 드리프트 등재 시 W번호·XPASS 승격 규약 재사용(FAIL이어도 exit 0 · PASS 뒤집힘 = 승격 경고 자동 출력).
 //
 // 리스크 통제: 기하(rect)+computedStyle+DOM 계약만 — 환경 간 스크린샷 베이스라인 diff 금지 ·
 //   동일 런 2회 결과 동일해야 결정론 인정 · 라이브 코드 무접촉(정적 dialog showModal 실호출) · 서버 자체 종료(잔류 0) ·
@@ -158,14 +157,13 @@ function judge(m, errs) {
     opens.map(([id, o]) => id + ':' + o.blank + '/' + o.noopener).join(' ') + (m.src ? ' src:' + m.src.blank + '/' + m.src.noopener : ''));
   // C5 뉴스요약 원문 #src = 픽토그램 온리 + 액티브 배선(ic-src) 실존 — 원문 이동 정본
   C('C5 #src = 픽토 온리+액티브 배선+X SVG', !!m.src && m.src.exists && m.src.isPicto && m.src.active && m.src.xIsSvg, JSON.stringify(m.src));
-
-  // ── 대기(승인 대기 드리프트 백로그 — 운영자 260717 잔차) ──
+  // ── C6~C9 = 260717 잔차 통일 반영과 동시 대기→코어 승격(운영자 "ㄱㄱ" · XPASS 규약) ──
   const sws = [...xs.map((x, i) => [ids[i] + ':X', x && x.svg && x.svg.sw]), ['tooldlg:−', g('tooldlg').min && g('tooldlg').min.svg && g('tooldlg').min.svg.sw]];
-  W('W1 X·유틸 글리프 stroke 1.8 통일', sws.every(([, sw]) => sw === '1.8px'), sws.map(([k, sw]) => k + '=' + sw).join(' '));
-  W('W2 X 세로중심 = 띠 중앙 Δ≤' + XPAD, xs.every(x => Math.abs(x.centerYDelta) <= XPAD), xs.map((x, i) => ids[i] + ':Δ' + x.centerYDelta).join(' '));
+  C('C6 X·유틸 글리프 stroke 1.8 통일', sws.every(([, sw]) => sw === '1.8px'), sws.map(([k, sw]) => k + '=' + sw).join(' '));
+  C('C7 X 세로중심 = 띠 중앙 Δ≤' + XPAD, xs.every(x => Math.abs(x.centerYDelta) <= XPAD), xs.map((x, i) => ids[i] + ':Δ' + x.centerYDelta).join(' '));
   const gaps = xs.map(x => x.rightGap);
-  W('W3 X 우측 여백 균일', new Set(gaps).size === 1, gaps.map((v, i) => ids[i] + ':' + v).join(' '));
-  W('W4 원문 이동 = 픽토그램 통일(정본 #src)', opens.every(([, o]) => o.isPicto), opens.map(([id, o]) => id + ':' + (o.isPicto ? '픽토' : '텍스트"' + o.text + '"')).join(' '));
+  C('C8 X 우측 여백 균일', new Set(gaps).size === 1, gaps.map((v, i) => ids[i] + ':' + v).join(' '));
+  C('C9 원문 이동 = 픽토그램 통일(정본 #src)', opens.every(([, o]) => o.isPicto), opens.map(([id, o]) => id + ':' + (o.isPicto ? '픽토' : '텍스트"' + o.text + '"')).join(' '));
   return { core, resv };
 }
 

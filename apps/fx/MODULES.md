@@ -9,7 +9,7 @@
 - 3) **실패 계약** — 예외 = rc≠0 + stderr 마지막 줄이 사유 한 줄(부착층 fail-soft 소비). 캡 초과 = 정직 거절(몰래 자르지 않음).
 - 4) **음량 재구현 금지** — loudnorm은 `shared/audio_norm.py` SSOT 후처리 전담(FX1·FX6도 동일).
 - 5) **타임아웃 필수** — 전 호출 `FX_TIMEOUT`(기본 1500s = CARD_TIMEOUT 계승), 무한 행 금지(§9-1).
-- 6) **모델 무해시 자동 다운로드 금지** — FX10 FSRCNN 모델은 수동 드롭인(track setup 정신). rembg u2net은 옵션 설치 시 라이브러리 자체 캐시(러너 7일 캐시 권장).
+- 6) **모델 무해시 자동 다운로드 금지** — FX10 FSRCNN=수동 드롭인 · Real-ESRGAN(ONNX)=setup.sh `FX_ESRGAN=1` 이 sha256 핀 드롭(둘 다 track setup 정신). rembg u2net은 옵션 설치 시 라이브러리 자체 캐시(러너 7일 캐시 권장).
 
 ## 2. 모듈 계약표
 
@@ -24,7 +24,7 @@
 | FX7 | `fx_frame.py` | `best_frames` | 스틸 추출(수동 스크럽) | 영상 | PNG N장+JSON | `--n 3` `--min-gap 1.5` | 샘플 ≤120프레임 · 암전/백화 감점 | OpenCV |
 | FX8 | `fx_cutout.py` | `cutout` | 포토샵 피사체 선택(누끼)·배경 교체 | 이미지 | PNG(투명)/합성본 | `--engine auto/rembg/grabcut` `--bg-color` `--bg-img` `--bg-blur` | 투명 산출 = .png만 · grabcut = 품질 낮음 정직 표기 | OpenCV(+옵션 rembg) |
 | FX9 | `fx_erase.py` | `erase` | 콘텐츠 어웨어 필(소형) | 이미지+마스크/rect | 이미지 | `--mask`(흰=지움) `--rect x,y,w,h` `--method telea/ns` `--radius 6` | 영역 0 거절 · 대형 영역 품질 한계(고품질 = imgedit 제미나이 경로) | OpenCV |
-| FX10 | `fx_upscale.py` | `upscale` | 이미지 업스케일 | 이미지 | 이미지 | `--scale 2/3/4` `--engine auto/fsrcnn/lanczos` | 산출 ≤6000² · FSRCNN 모델 없으면 Lanczos+언샤프 | OpenCV |
+| FX10 | `fx_upscale.py` | `upscale` | 이미지 업스케일 | 이미지 | 이미지 | `--scale 2/3/4` `--engine auto/realesrgan/fsrcnn/lanczos` | 산출 ≤6000² · 사다리 Real-ESRGAN>FSRCNN>Lanczos(모델 없으면 자동 폴백) · auto 발동 상한 `FX_ESRGAN_MAX_MP`(1.0) | OpenCV(+옵션 onnxruntime) |
 | CH1 | `fx_chain.py` | `chain` | 베스트컷 썸네일 체인(FX7→FX10 합성) | 영상 | PNG N장+JSON | `--n 1~3` `--scale 2/3` | FX7·FX10 캡 상속 | OpenCV |
 
 공통: `fx_common.py`(러너·probe·캡·JSON 계약) · 성공 stdout 마지막 줄 = `{"module":"FXn","out":...}` JSON.
@@ -53,3 +53,4 @@
 - 4) FX5 디졸브: 전 클립 재인코딩(veryfast crf20) = 클립 수만큼 비용. cut은 규격 통일 후 stream copy.
 - 5) FX4 smooth: minterpolate 고비용(0.30s/출력프레임 실측 계승) → 60s 캡. 순수 프레임업은 편집기 60i 카드 전담(중복 금지).
 - 6) 테스트: 로컬(컨테이너 ffmpeg 6.1·cv2 5.0) 합성 미디어 스모크 실측 — 러너(ubuntu-latest) 재검증은 부착 시 카나리아 1건(§8-3-e 절차 계승).
+- 7) FX10 Real-ESRGAN(Upscayl 알맹이 = RRDBNet x4): CPU 추론 = 입력 화소 비례 느림(4코어 ≈ 6.9s/65k px 실측) → auto 는 입력 ≤`FX_ESRGAN_MAX_MP`(기본 1.0MP)에서만 발동(저화질 소스 = 스위트스팟), 큰 이미지는 FSRCNN/Lanczos 로 빠르게. 큰 입력은 오버랩 타일로 메모리 바운드. 4배 고정 모델 → scale 2/3 = 4배 후 INTER_AREA 축소. GPU 없는 러너 = Vulkan 불가라 ONNX CPU 경로 채택(Upscayl 데스크톱 ncnn-vulkan 바이너리 대신 · 동일 모델 계열).

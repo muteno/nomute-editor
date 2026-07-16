@@ -13,7 +13,7 @@
 //   → 재고장에도 침묵(경계 진동 플리커 가드 = 재무장 히스테리시스) → S5 확실 회복(≥임계×2) = ack 자동 해제
 //   → 재고장 = 재발화 → S6 ✗ 접속 숨김 + 확실 회복 후 재고장 = 재발화(뮤트 재무장)
 //   → S7 가족 토스트(#nmToast.show) 점유 = 양보 소등·해제 = 재점등 → S8 수집함 탭 = 소등·이탈 = 재점등
-//   → S9 야간(KST 03시) = 표시 억제(ack 무접촉 = 야간≠회복)
+//   → S9 야간(KST 03시) = 표시 억제(ack 무접촉 = 야간≠회복) → S10 계정 ack(api/seen s축) = 억제·rearm 페어 = 재발화(운영자 260717 계정 종속)
 //
 // 동작: smoke_geni.js 하네스 원문 계승 — ① playwright-core OS 임시 캐시 부트스트랩(레포 무접촉)
 //       ② python3 http.server 정적 서빙(포트 8801~8805 = 상비 스모크 포트대와 분리) ③ 종료 시 서버 킬.
@@ -213,6 +213,19 @@ async function startServer() {
     return new Promise(res => setTimeout(() => res({ hidAtNight, ackUntouched, refireAtNoon: window.__show() }), 350));
   });
   ok('S9 야간 = 억제·ack 무접촉·주간 = 재점등', s9.hidAtNight && s9.ackUntouched && s9.refireAtNoon, JSON.stringify(s9));
+
+  // S10 계정 ack(타 기기 ✓) = 억제 · rearm 페어(확실 회복 이벤트) = 재발화 — TF_SRV.s 직주입(api 무호출 · 운영자 260717 계정 종속)
+  const s10 = await page.evaluate(() => {
+    try { localStorage.removeItem('nmFreshAck'); } catch (e) {}
+    _freshAckTs = 0; _freshMute = false;
+    TF_SRV.s = new Set(['ack:' + (Date.now() - 3600e3)]);   // 타 기기가 1시간 전 ✓
+    checkFreshLane();
+    const silentBySrvAck = !window.__show();
+    TF_SRV.s.add('rearm:' + (Date.now() - 1800e3));          // 그 뒤 어느 기기가 확실 회복 관측 = 재무장 이벤트
+    checkFreshLane();
+    return new Promise(res => setTimeout(() => res({ silentBySrvAck, refireAfterRearm: window.__show() }), 350));
+  });
+  ok('S10 계정 ack = 억제·rearm = 재발화', s10.silentBySrvAck && s10.refireAfterRearm, JSON.stringify(s10));
 
   ok('S1b 시나리오 주행 중 JS예외 0', jsErrs.length === 0, JSON.stringify(jsErrs));
 

@@ -220,6 +220,64 @@ def gtrends(limit=10, geo="KR"):
         return []
 
 
+def gtrends_api(geo="KR", hours=24):
+    """구글 '트렌딩 나우' 내부 API(batchexecute · 무키 POST 1방) — RSS 10개 상한 돌파(운영자 260717 Q05 실사격 = KR 202개).
+    반환 = [{"query","vol"(검색량 버킷 int·100~100000),"started"(iso KST)}] · 순서 = 트렌드 페이지 기본 노출순(관련도 블렌드).
+    ⚠ 비공식 API = 예고 없는 변동 리스크 → 어떤 실패든 [] (fail-soft — merge_gtrends가 RSS 단독 종전 동작으로 폴백 = 급상승 공백 불가)."""
+    try:
+        inner = json.dumps([None, None, geo, 0, "ko", hours, 1])
+        body = "f.req=" + urllib.parse.quote(json.dumps([[["i0OFE", inner, None, "generic"]]]))
+        req = urllib.request.Request("https://trends.google.com/_/TrendsUi/data/batchexecute",
+                                     data=body.encode("utf-8"),
+                                     headers={**UA, "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"})
+        raw = urllib.request.urlopen(req, timeout=15, context=CTX).read().decode("utf-8", "ignore")
+        out = []
+        for line in raw.splitlines():                      # 봉투 = )]}' 프리픽스 + 라인별 JSON 청크 → wrb.fr 라인만
+            line = line.strip()
+            if not line.startswith('[["wrb.fr"'):
+                continue
+            data = json.loads(json.loads(line)[0][2])      # [0][2] = 페이로드(JSON 문자열 이중 인코딩)
+            for it in (data[1] or []):
+                ts = it[3][0] if it[3] else 0
+                out.append({"query": (it[0] or "").strip(), "vol": int(it[6] or 0),
+                            "started": datetime.fromtimestamp(ts, KST).isoformat(timespec="seconds") if ts else ""})
+            break
+        return [o for o in out if o["query"]]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::gtrends_api 수집 실패(RSS 단독 폴백): {e}", file=sys.stderr)
+        return []
+
+
+def merge_gtrends(rss, api, keep=25):
+    """하이브리드 병합(운영자 260717 Q06 "기존의 부분에서 이미지만 가져와서 대응") —
+    · 1~10위 = RSS 종전 순위·커버(picture)·뉴스 그대로 계승(시각 무회귀 · og 백필도 이 축 그대로 동작)
+    · 매칭분(query 소문자 일치) = API 정밀 검색량 승급("200+" 저단위 → "20000+" → 뷰어 tfmt "2만+" 무수정 호환)
+    · 11위~keep = API 노출순 꼬리 확장(커버 무 = 뷰어 로고 타일·검색 링크 기존 폴백)
+    · pool = API 전량 콤팩트(q·vol·started) — 실검 교차 부스트 원료(소비처 생기기 전 = 데이터 축만)
+    · API 죽으면 (rss, []) = 종전과 바이트 동일."""
+    if not api:
+        return rss, []
+    byq = {a["query"].lower(): a for a in api}
+    seen, out = set(), []
+    for g in rss:
+        a = byq.get((g.get("query") or "").lower())
+        if a:
+            if a["vol"] > 0:
+                g["traffic"] = "%d+" % a["vol"]
+            g["vol"], g["started"] = a["vol"], a["started"]
+        seen.add((g.get("query") or "").lower())
+        out.append(g)
+    for a in api:
+        if len(out) >= keep:
+            break
+        if a["query"].lower() in seen:
+            continue
+        seen.add(a["query"].lower())
+        out.append({"query": a["query"], "traffic": ("%d+" % a["vol"]) if a["vol"] else "",
+                    "picture": "", "news": [], "vol": a["vol"], "started": a["started"]})
+    return out, [{"q": a["query"], "vol": a["vol"], "started": a["started"]} for a in api]
+
+
 def og_image(url, timeout=6):
     """기사 og:image 1회 추출 — 구글 검색어 관련이미지(picture) 결측 백필용(운영자 260716 "백필 ㄱ").
     property/name · content 선후 양어순 매치 · //스킴·상대경로 보정 · 실패 = "" (fail-soft · 백필이 수집을 못 깨뜨림)."""
@@ -671,9 +729,33 @@ def hackernews(limit=10):
 
 
 def finance():
-    """⑬ 금융 = 환율(open.er-api.com 무키·USD 베이스 → 원화 환산) + 암호화폐(Upbit 무키 KRW 시세).
-    각 독립 fail-soft. 반환 {rates:[{code,name,krw}], coins:[{code,krw,chg}]}. 운영자 260713 "주식·환율"."""
+    """⑬ 금융 = 환율(open.er-api.com 무키·USD 베이스 → 원화 환산 · 등락률 = Frankfurter 직전 거래일 종가 대비) + 암호화폐(Upbit 무키 KRW 시세 · 전일 종가 대비).
+    각 독립 fail-soft. 반환 {rates:[{code,name,krw,chg?}], coins:[{code,krw,chg}]}. 운영자 260713 "주식·환율" · 260716 등락률·기준점 부착."""
     rates, coins = [], []
+    # 환율 등락률(기준점 = 직전 거래일 종가) — 표시값은 er-api 유지하고 등락만 Frankfurter(ECB·무키·주말/공휴일 자동 스킵)
+    # 시계열 마지막 2거래일로 산출. 값·등락 소스를 섞으면 소스 격차가 가짜 등락으로 새므로, 등락은 동일 소스(Frankfurter) 2일 비교로 격리(운영자 260716).
+    fx_chg = {}
+    try:
+        since = (datetime.now(KST) - timedelta(days=7)).strftime("%Y-%m-%d")
+        fj = json.loads(_get(f"https://api.frankfurter.dev/v1/{since}..?base=USD&symbols=KRW,EUR,JPY,CNY"))
+        series = fj.get("rates") or {}
+        days = sorted(series)
+        if len(days) >= 2:
+            cur_d, prv_d = series[days[-1]], series[days[-2]]
+            def _kpu(d, code):   # 통화 1단위당 원화(USD 베이스 → KRW/해당통화)
+                k = d.get("KRW")
+                if not k:
+                    return None
+                if code == "USD":
+                    return k
+                rt = d.get(code)
+                return (k / rt) if rt else None
+            for code in ("USD", "EUR", "JPY", "CNY"):
+                a, b = _kpu(cur_d, code), _kpu(prv_d, code)
+                if a and b:
+                    fx_chg[code] = round((a - b) / b * 100, 2)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::환율 등락 실패(스킵): {e}", file=sys.stderr)
     try:
         j = json.loads(_get("https://open.er-api.com/v6/latest/USD"))
         r = j.get("rates") or {}
@@ -682,9 +764,14 @@ def finance():
             for code, name in (("USD", "미국 달러"), ("EUR", "유로"), ("JPY", "일본 엔"), ("CNY", "중국 위안")):
                 rate = r.get(code)
                 if code == "USD":
-                    rates.append({"code": code, "name": name, "krw": round(krw, 2)})
+                    row = {"code": code, "name": name, "krw": round(krw, 2)}
                 elif rate:
-                    rates.append({"code": code, "name": name, "krw": round(krw / rate, 4)})   # 1단위당 원화(엔·위안 = 소수)
+                    row = {"code": code, "name": name, "krw": round(krw / rate, 4)}   # 1단위당 원화(엔·위안 = 소수)
+                else:
+                    continue
+                if code in fx_chg:
+                    row["chg"] = fx_chg[code]   # 직전 거래일 종가 대비 %(전일 대비)
+                rates.append(row)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::환율 실패(스킵): {e}", file=sys.stderr)
     try:
@@ -693,7 +780,7 @@ def finance():
             if not isinstance(c, dict):
                 continue
             coins.append({"code": (c.get("market") or "").replace("KRW-", ""), "krw": _i(c.get("trade_price")),
-                          "chg": round((c.get("signed_change_rate") or 0) * 100, 2)})   # 24h 변동률 %
+                          "chg": round((c.get("signed_change_rate") or 0) * 100, 2)})   # 전일 종가 대비 %(업비트 signed_change_rate)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::코인 실패(스킵): {e}", file=sys.stderr)
     return {"rates": rates, "coins": coins}
@@ -845,7 +932,8 @@ def main():
     if not yt_all:
         yt_all = youtube_innertube()   # 무키 폴백(검색 파생 근사) — 키 등록 시 이 줄 미도달 = 공식 자동 승격
         yt_src = "innertube" if yt_all else ""
-    gt = gtrends(limit=20)   # KR 상한 완화(운영자 260717 "최대한 수집") — RSS 원천 실측 10개 = 이미 전량 수용·구글이 늘리면 자동 추종(월드 축 = 종전 10)
+    gt_rss = gtrends(limit=20)   # 종전 RSS 축 = 이미지·뉴스 도너 + API 사망 시 단독 폴백 본체(운영자 260717 "최대한 수집" — RSS 원천 10개 상한)
+    gt, gt_pool = merge_gtrends(gt_rss, gtrends_api())   # 하이브리드(운영자 260717 Q06) — RSS 커버 계승 + API 검색량 승급·25위 꼬리·전량 풀(월드 축 = 종전 RSS)
     tk = tiktok()
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
@@ -997,6 +1085,7 @@ def main():
         "youtube_src": yt_src or prev.get("youtube_src") or "",   # "api"(공식 차트)/"innertube"(검색 파생) 정직 표기
         "youtube_news": yt_news or prev.get("youtube_news") or [],
         "gtrends": gt or prev.get("gtrends") or [],
+        "gtrends_pool": gt_pool or prev.get("gtrends_pool") or [],   # 트렌딩나우 API 전량 풀(~200 · q·vol·started 콤팩트) — 실검 교차 부스트 원료(운영자 260717 · 실패 = 직전분)
         "gtrends_gl": gt_gl or prev.get("gtrends_gl") or [],   # 월드 축(KR 제외 주요국 병합 · 실패 = 직전분 · 운영자 260712)
         "youtube_gl": yt_gl or prev.get("youtube_gl") or [],   # 월드 축(공식 API 경로만 · 실패/무키 = 직전분)
         # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
