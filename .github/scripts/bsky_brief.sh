@@ -72,6 +72,7 @@ PROMPT="아래는 블루스카이(주로 영어권 SNS) 인기 게시물이다. 
 [게시물 — '번호<탭>@계정<탭>원문']
 ${POSTS}"
 
+claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 — 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft)
 out=""
 for _try in 1 2 3 4; do
   out="$(printf '%s' "$PROMPT" | timeout 300 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 1 \
