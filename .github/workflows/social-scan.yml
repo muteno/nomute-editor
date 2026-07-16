@@ -53,7 +53,14 @@ jobs:
       - name: Publish to viewer SNS lane
         run: |
           mkdir -p viewer
-          cp scraper/out/social_candidates.json viewer/social_candidates.json 2>/dev/null || echo '[]' > viewer/social_candidates.json
+          # 직전분 보존(운영자 260716 "네이트판 없애되 그 기능 유지") — 신규 수집이 0건이면(issuelink 레이아웃 변경+RSS 차단 = 전례) 커밋된 직전 viewer 유지.
+          # 네이트판 제거 전엔 sns_trends.json(레포 상주+prev.get 폴백)의 pann이 그룹① 비상 채움을 겸했음 → 그 받침을 social 본연에 이식(sns_trends 직전분 보존 철학 통일).
+          NEW=$(python3 -c "import json; print(len(json.load(open('scraper/out/social_candidates.json'))))" 2>/dev/null || echo 0)
+          if [ "${NEW:-0}" -gt 0 ]; then
+            cp scraper/out/social_candidates.json viewer/social_candidates.json
+          else
+            echo "::warning::social 수집 0/실패 — 직전분 보존(viewer 미갱신)"
+          fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add viewer/social_candidates.json
