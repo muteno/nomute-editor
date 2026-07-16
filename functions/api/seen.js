@@ -10,7 +10,9 @@ export async function onRequestPost({ request, env }) {
 
   let body; try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
   const clean = a => Array.isArray(a) ? [...new Set(a.filter(x => typeof x === 'string' && x).map(x => x.slice(0, 200)))].slice(0, 50) : [];
-  const addT = clean(body.t), addF = clean(body.f), addS = clean(body.s);   // s = 시스템 경보 이벤트(ack:<epoch>·rearm:<epoch> — 계정 종속 일반화 · 운영자 260717)
+  const addT = clean(body.t), addF = clean(body.f);
+  const _sCap = Date.now() + 5 * 60e3;   // s축 미래 epoch 클램프(평의회③) — 시계 빠른 기기·악의 주입의 '미래 ack 폭탄'(rearm이 영원히 못 이겨 전 기기 영구 침묵)을 서버 수신 시각+5분으로 치환(클라 +30분 무효 스킵과 이중 방어)
+  const addS = clean(body.s).map(v => { const m = /^(ack|rearm):(\d+)$/.exec(v); return m && +m[2] > _sCap ? m[1] + ':' + Date.now() : v; });   // s = 시스템 경보 이벤트(ack:<epoch>·rearm:<epoch> — 계정 종속 일반화 · 운영자 260717)
   if (!addT.length && !addF.length && !addS.length) return json({ error: '추가할 항목 없음' }, 400);
 
   const H = {
@@ -20,7 +22,7 @@ export async function onRequestPost({ request, env }) {
   const url = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    let cur = { t: [], f: [] }, sha;
+    let cur = { t: [], f: [], s: [] }, sha;   // 3축 스키마 명시(평의회② — 아래 가드가 받아주지만 미래 축 추가 시 누락 실수 차단)
     const g = await fetch(`${url}?ref=main`, { headers: H });
     if (g.ok) {
       const j = await g.json(); sha = j.sha;

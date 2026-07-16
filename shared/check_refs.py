@@ -888,8 +888,26 @@ def check_candidates_size():
     return 0   # WARN-only
 
 
+def check_conflict_markers():
+    """병합 충돌 마커 잔존 게이트(평의회⑧ 260717 — #2368이 큐 원장에 마커 3줄 남긴 실사고 재발 방지).
+    docs/*.md·CLAUDE.md·viewer/*.html에서 줄머리 '<<<<<<< '/'>>>>>>> ' 검출(정의적 마커만 — ======= 단독은 정상 문서와 충돌 가능해 제외)."""
+    import glob as _g
+    bad = []
+    l7, r7 = '<' * 7 + ' ', '>' * 7 + ' '
+    targets = _g.glob(os.path.join(ROOT, 'docs', '*.md')) + _g.glob(os.path.join(ROOT, 'viewer', '*.html')) + [os.path.join(ROOT, 'CLAUDE.md')]
+    for path in targets:
+        try:
+            with open(path, encoding='utf-8') as f:
+                for i, ln in enumerate(f, 1):
+                    if ln.startswith(l7) or ln.startswith(r7):
+                        bad.append('%s:%d 병합 충돌 마커 잔존 — 양측 내용 보존 후 마커만 제거하라' % (os.path.relpath(path, ROOT), i))
+        except Exception:
+            pass
+    return bad
+
+
 def main():
-    fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers()
+    fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
     if fails:
         print('❌ check_refs 실패 %d건:' % len(fails))
