@@ -1,0 +1,91 @@
+name: 기틀 훅킷 전파 (kit-fanout)
+
+# nomute-editor의 기틀 훅킷을 등록된 전 레포로 전파한다.
+# 소스 정본 = docs/reports/260716_기틀훅킷_v2.sh
+# 동작: 각 대상 레포를 체크아웃 → 킷 --install 재실행 → .claude/ 변경 있으면 PR 생성.
+#        머지 = 기본 리뷰모드(사람이 머지) · automerge=true 명시 dispatch일 때만 자동 스쿼시머지(B).
+# 인증 = secrets.KIT_SYNC_TOKEN (대상 레포들에 Contents:RW + Pull requests:RW 파인그레인드 PAT).
+# v1 = 수동 실행(workflow_dispatch)만. 검증되면 push 트리거는 별건으로 추가.
+
+on:
+  workflow_dispatch:
+    inputs:
+      automerge:
+        description: "PR 자동 머지 여부. 기본 false=리뷰모드(PR만 열고 사람이 머지) · true=하우스 자동머지(B, 명시 opt-in)."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kit-fanout
+  cancel-in-progress: false
+
+jobs:
+  fanout:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo:
+          - yeulmaru-promo
+          - YETA
+          - TS
+          - nomute_homepage
+          - Saju
+          - nomute-editor
+    env:
+      GH_TOKEN: ${{ secrets.KIT_SYNC_TOKEN }}
+      TARGET: muteno/${{ matrix.repo }}
+      SYNC_BRANCH: kit-sync/foundation-hook
+      KIT_REL: docs/reports/260716_기틀훅킷_v2.sh
+    steps:
+      - name: 소스(킷) 체크아웃
+        uses: actions/checkout@v4
+        with:
+          path: _source
+
+      - name: 대상 레포 체크아웃
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET }}
+          token: ${{ secrets.KIT_SYNC_TOKEN }}
+          path: _target
+          fetch-depth: 0
+
+      - name: 킷 --install (대상에 설치/갱신)
+        run: |
+          set -euo pipefail
+          CLAUDE_PROJECT_DIR="$GITHUB_WORKSPACE/_target" bash "$GITHUB_WORKSPACE/_source/$KIT_REL" --install
+
+      - name: 변경 있으면 PR 생성(+자동머지)
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/_target"
+          if [ -z "$(git status --porcelain .claude)" ]; then
+            echo "✅ $TARGET : 이미 최신 — 변경 없음(스킵)"; exit 0
+          fi
+          git config user.name "kit-fanout[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$SYNC_BRANCH"
+          git add .claude
+          git commit -m "chore(.claude): 기틀 훅킷 동기화 (자동 팬아웃 · nomute-editor발)"
+          git push -f origin "$SYNC_BRANCH"
+          PRNUM="$(gh pr list --repo "$TARGET" --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)"
+          if [ -z "$PRNUM" ] || [ "$PRNUM" = "null" ]; then
+            URL="$(gh pr create --repo "$TARGET" --base main --head "$SYNC_BRANCH" \
+              --title '기틀 훅킷 동기화 — foundation_hook 갱신' \
+              --body 'nomute-editor 기틀 훅킷 변경 자동 전파(kit-fanout). 변경은 .claude/ 한정.')"
+            PRNUM="$(echo "$URL" | grep -oE '[0-9]+$' || true)"
+          fi
+          echo "📮 $TARGET : PR #$PRNUM ( $SYNC_BRANCH → main )"
+          AM="${{ github.event.inputs.automerge }}"
+          [ -z "$AM" ] && AM=false
+          if [ "$AM" = "true" ]; then
+            gh pr merge "$PRNUM" --repo "$TARGET" --squash --delete-branch \
+              && echo "🟢 $TARGET : 자동 머지 완료" \
+              || echo "⚠ $TARGET : 자동 머지 실패(브랜치 보호?) — PR #$PRNUM 수동 머지 필요"
+          else
+            echo "🔎 $TARGET : automerge=false — PR #$PRNUM 열어둠(검토 대기)"
+          fi
