@@ -221,6 +221,25 @@ def gtrends(limit=10, geo="KR"):
         return []
 
 
+def og_image(url, timeout=6):
+    """기사 og:image 1회 추출 — 구글 검색어 관련이미지(picture) 결측 백필용(운영자 260716 "백필 ㄱ").
+    property/name · content 선후 양어순 매치 · //스킴·상대경로 보정 · 실패 = "" (fail-soft · 백필이 수집을 못 깨뜨림)."""
+    try:
+        body = _get(url.replace("&amp;", "&"), timeout=timeout)
+        m = (re.search(r'<meta[^>]+(?:property|name)=["\']og:image(?::secure_url|:url)?["\'][^>]+content=["\']([^"\'>]+)', body, re.I)
+             or re.search(r'<meta[^>]+content=["\']([^"\'>]+)["\'][^>]+(?:property|name)=["\']og:image(?::secure_url|:url)?["\']', body, re.I))
+        if not m:
+            return ""
+        u = m.group(1).strip().replace("&amp;", "&")
+        if u.startswith("//"):
+            u = "https:" + u
+        elif not u.startswith(("http://", "https://")):
+            u = urllib.parse.urljoin(url, u)
+        return u if u.startswith(("http://", "https://")) else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def tiktok(limit=15, calls=6):
     """틱톡 인기 피드 — tikwm 무료 공개 API(무키·서명 대행 · 외부 도구 이식 260711).
     피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup 상위 limit.
@@ -864,6 +883,18 @@ def main():
             _seen_q.add(_qk)
             g2["geo"] = _gg
             gt_gl.append(g2)
+    # 구글 카드 커버 백필(운영자 260716 승인 "백필 ㄱ") — RSS picture 결측분만 딸린 뉴스(news[0]) og:image 1회 보충.
+    # 뷰어 노출 상위(각 축 8)만 대상 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호 · 실패 = 공란 종전(뷰어 = 로고 타일 폴백) · 있는 picture는 무접촉.
+    _og_budget = 10
+    for _g in (gt[:8] + gt_gl[:8]):
+        if _og_budget <= 0:
+            break
+        if _g.get("picture") or not (_g.get("news") and _g["news"][0].get("url")):
+            continue
+        _og_budget -= 1
+        _p = og_image(_g["news"][0]["url"])
+        if _p:
+            _g["picture"] = _p
     yt_gl, _seen_v = [], {v.get("id") for v in (yt_all or [])}
     if YT_KEY and yt_all:
         for _gg in W_GEOS:
