@@ -859,13 +859,16 @@ def main():
             _seen_q.add(_qk)
             g2["geo"] = _gg
             gt_gl.append(g2)
-    # 구글 카드 커버 백필(운영자 260716 승인 "백필 ㄱ") — RSS picture 결측분만 딸린 뉴스(news[0]) og:image 1회 보충.
-    # 뷰어 노출 상위(각 축 8)만 대상 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호 · 실패 = 공란 종전(뷰어 = 로고 타일 폴백) · 있는 picture는 무접촉.
+    # 구글 카드 커버 백필+화질업(운영자 260716 "백필 ㄱ" → "한수 적용 100% 나은거 아닌지 진행 ㄱㄱ") —
+    # 대상 = ① picture 결측 ② gstatic 저해상 썸네일(구글 RSS산 = 카드 확대 시 흐림). 딸린 뉴스(news[0]) og:image로 보충/승급.
+    # 뷰어 노출 상위(각 축 8)만 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호 · og 실패 = 기존 picture 유지(저해상 > 무이미지 = 리스크 0 fail-soft).
     _og_budget = 10
     for _g in (gt[:8] + gt_gl[:8]):
         if _og_budget <= 0:
             break
-        if _g.get("picture") or not (_g.get("news") and _g["news"][0].get("url")):
+        _pic = _g.get("picture") or ""
+        _low = ("gstatic.com" in _pic) or ("googleusercontent.com" in _pic)   # 구글 썸네일 도메인 = 저해상 축(실측 260716 — RSS ht:picture 전량 이 축)
+        if (_pic and not _low) or not (_g.get("news") and _g["news"][0].get("url")):
             continue
         _og_budget -= 1
         _p = og_image(_g["news"][0]["url"])
