@@ -845,7 +845,7 @@ def main():
     if not yt_all:
         yt_all = youtube_innertube()   # 무키 폴백(검색 파생 근사) — 키 등록 시 이 줄 미도달 = 공식 자동 승격
         yt_src = "innertube" if yt_all else ""
-    gt = gtrends()
+    gt = gtrends(limit=20)   # KR 상한 완화(운영자 260717 "최대한 수집") — RSS 원천 실측 10개 = 이미 전량 수용·구글이 늘리면 자동 추종(월드 축 = 종전 10)
     tk = tiktok()
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
@@ -861,9 +861,9 @@ def main():
             gt_gl.append(g2)
     # 구글 카드 커버 백필+화질업(운영자 260716 "백필 ㄱ" → "한수 적용 100% 나은거 아닌지 진행 ㄱㄱ") —
     # 대상 = ① picture 결측 ② gstatic 저해상 썸네일(구글 RSS산 = 카드 확대 시 흐림). 딸린 뉴스(news[0]) og:image로 보충/승급.
-    # 뷰어 노출 상위(각 축 8)만 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호 · og 실패 = 기존 picture 유지(저해상 > 무이미지 = 리스크 0 fail-soft).
+    # 뷰어 노출 상위(KR 10 · 월드 병합분 8)만 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호 · og 실패 = 기존 picture 유지(저해상 > 무이미지 = 리스크 0 fail-soft).
     _og_budget = 10
-    for _g in (gt[:8] + gt_gl[:8]):
+    for _g in (gt[:10] + gt_gl[:8]):
         if _og_budget <= 0:
             break
         _pic = _g.get("picture") or ""
