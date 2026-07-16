@@ -886,8 +886,7 @@
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
   /* ── 채널 브리프 기간 책갈피(운영자 260714 "3일·7일·28일·3개월·전체 우상단 세그 · 3일 기본·선택 강조 · 마인드셋") — 세그 = 일일추이 .ch-rangeseg 정본 계승(일치) · 우측 정렬 = 카드 우상단 ── */
-  .tb-segrow { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-1) var(--sp-2); flex-wrap:wrap; margin:0; }   /* 세그 행 = 분석시각과 한 행 합체(좌 시각·우 세그 · 운영자 260716 "칩 내려서 빈공간 삭제" — 구 단독 행의 좌측 빈 띠 제거) · 한 행 문법 = 일일추이 .ch-seg(좌 레일·우 세그) 계승 · 협폭 = wrap fail-soft */
-  .tb-segrow .tbrief-tm { margin-top:0; }   /* 행 합체 시 단독 리듬(margin-top 5) 해제 — 세그와 수직 중앙 정렬([4] 높이 중앙) */
+  .tb-segrow { display:flex; justify-content:flex-end; margin:0 0 var(--sp-2); }   /* 세그 행 = 우상단(운영자) · 하단 리듬 = 분석시각과 sp-2 */
   .tb-div { border-top:1px solid var(--line2); margin:var(--sp-2) 0; }   /* 구분선 = .tbrief-prop 상단선(line2) 문법 계승 — 운영자 "구분선" 명시 요소 */
   .tb-allwrap[hidden] { display:none; }   /* (3) 전체 총론 = '전체' 탭 선택 시 (2)와 중복 → 숨김(JS hidden 토글) */
   /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
@@ -10135,11 +10134,11 @@ function renderChan() {
   const bsegs = bsecs ? bsecs.filter(s => s.k !== 'overview') : null;   // 세그 = 기간 5창(3일~전체 · overview 제외)
   if (bsegs && !bsegs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsegs[0].k;   // 결측·overview 방어(생성분 일부만 와도 첫 탭으로 · CHAN_BSEC이 세그 밖 값 차단)
   const bhasAll = bsegs && bsegs.some(s => s.k === 'all');   // (3) 폴백(overview 부재 시 all) 노출 근거
-  const btm = CHANB ? `<span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span>` : '';   // 분석 시각 — 세그 있으면 세그 행 좌측에 합체 · 없으면(구 단일 text) 단독 종전(fail-soft)
   if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', 'AI 요약', `<div class="tbrief">` +
-    // ① 분석시각+기간 책갈피 세그 = 한 행(좌 시각·우 세그 · 운영자 260716 "칩 내려서 빈공간 삭제" · 구 260714 세그 단독 행 폐지) · 세그 = .ch-rangeseg 정본 계승(일일추이와 일치) · .tb-seg 마커로 data-bs 핸들러 분기 · overview(총론) 제외
-    (bsegs ? `<div class="tb-segrow">${btm}<span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</span></div>` : btm) +
-    // ② 구분선 → ③ (2) 선택 기간 분석+제안(기간 스왑)
+    // ① 기간 책갈피 세그(우상단 · 운영자 260714 "3일|7일|28일|3개월|전체 · 3일 기본·선택 강조") = .ch-rangeseg 정본 계승(일일추이와 일치) · .tb-seg 마커로 data-bs 핸들러 분기 · overview(총론) 제외
+    (bsegs ? `<div class="tb-segrow"><span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</span></div>` : '') +
+    // ② 분석 시각 → ③ 구분선 → ④ (2) 선택 기간 분석+제안(기간 스왑)
+    `<span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span>` +
     (bsecs ? `<div class="tb-div"></div>` : '') +
     `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div>` +
     // ⑤ (3) 총론 = 항상 고정 노출(운영자 260714 "채널 전체 아우르는 비전·방향성·미션 큰 그림 · 마인드셋 · 기간 무관") — 총론(overview)은 세그 '전체'(기간 분석)와 별개 글이라 어느 탭에서도 안 숨김 · 구 데이터(overview 부재) = all 폴백 + '전체' 선택 시 중복 숨김(하위호환)
