@@ -392,6 +392,18 @@ def check_curation_constants():
             bad.append('%s: 추출실패(code=%s·doc=%s)' % (name, code_v, doc_v)); continue
         if float(code_v) != float(doc_v):
             bad.append('%s: viewer=%s ≠ §★문서=%s (코드↔문서 드리프트/자기-revert 의심)' % (name, code_v, doc_v))
+    # FRESH_KEEP_H(scraper/to_candidates.py) ↔ §신규 레인 아사 봉합 "기본 Nh" 정합(평의회9 260716) — 신설 상수가 기계 대조 사각이 되지 않게 같은 게이트에 편입(스크레이퍼 상수 1호).
+    try:
+        s = open(os.path.join(ROOT, 'scraper', 'to_candidates.py'), encoding='utf-8').read()
+        code_f = re.search(r'CAND_FRESH_KEEP_H",\s*"(\d+)"', s)
+        doc_f = re.search(r'FRESH_KEEP_H`\(기본 (\d+)h', d)
+        if code_f and doc_f:
+            if float(code_f.group(1)) != float(doc_f.group(1)):
+                bad.append('FRESH_KEEP_H: scraper=%s ≠ §신규레인 문서=%s (코드↔문서 드리프트)' % (code_f.group(1), doc_f.group(1)))
+        else:
+            bad.append('FRESH_KEEP_H: 추출실패(code=%s·doc=%s)' % (bool(code_f), bool(doc_f)))
+    except Exception as e:
+        print('⚠️ FRESH_KEEP_H 대조 스킵(파일):', e)
     if bad:
         print('❌ 큐레이션 상수↔문서 정합 실패(C8 게이트):')
         for b in bad: print('  -', b)

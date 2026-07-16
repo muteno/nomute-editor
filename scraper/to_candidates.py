@@ -23,6 +23,7 @@ TTL_HOURS = int(os.environ.get("CAND_TTL_HOURS", "240"))  # 보관기간: 마지
 CAP = int(os.environ.get("CAND_CAP", "800"))              # 보관한도: 수집함 최대 사건 수. 3000=3.45MB로 api/candidates가 GitHub 1MB 한도 초과→빈 [] 반환→수집함 텅빔 실측(260714) → 800≈0.9MB로 감량(1MB 서빙 한도 방어). ⚠️ 800 = TTL(10일) 풀보다 작아 상시 포화 — cross 단독 컷이면 하한이 6까지 올라 갓 발행(cross 2~5) 사건이 진입 즉시 잘려 '신규<4h' 레인 아사 실측(260716) → FRESH_KEEP_H 1군 보호와 반드시 세트.
 MIN_CROSS = int(os.environ.get("CAND_MIN_CROSS", "2"))    # 교차등장 최소 매체 수(2=2개 이상 매체에 뜬 것만 = 뉴스성)
 FRESH_KEEP_H = int(os.environ.get("CAND_FRESH_KEEP_H", "6"))  # CAP 컷 1군 보호창(h): 발행 N시간 내 신선건은 cross 낮아도 컷 면제 — 신규<4h 레인 공급 보장(4h 창 + 판정·전이 여유 2h · 260716 신규 아사 봉합).
+MAX_BYTES = int(os.environ.get("CAND_MAX_BYTES", str(950 * 1024)))  # 직렬화 바이트 하드예산: api/candidates 1MB(MiB) 서빙 한도 방어(초과 = 빈[] = 수집함 전체 텅빔 260714). CAP(건수)와 별개 축 — 실측 800건 = 0.99MiB(잔여 1%↓)·신선건이 평균 +210B 무거워(cluster_members 상시 보유) 건수 불변에도 돌파 가능(평의회2 260716) → 컷 후 예산 초과분은 정렬 꼬리(2군 저cross)부터 기계적 제거.
 # ── 속보(velocity·태그) 1차 게이트 — burst(15분 내 동시 매체) OR [속보] 제목 태그. 2차 내용판정은 별도(Claude breaking_judge). ──
 BREAKING_BURST = int(os.environ.get("BREAKING_BURST", "3"))          # 속보 후보: burst 이 값 이상(다수 동시 보도)
 BREAKING_TAG = re.compile(r"\[\s*(속보|상보|긴급)\s*\]")             # 제목 태그 = 1~2매체여도 속보 후보 → AI 내용검증(언론고시 기자 = 낚시 안 씀)
@@ -341,7 +342,12 @@ def main():
             except Exception:
                 fs = 999   # 실패 = 승격 스킵(보수) — TTL age_h의 0.0(보존)과 방향이 다르지만 각자 그 맥락의 안전측(아래 주석)
             if fs < GRADE3_PROMOTE_H:
-                c["breaking_candidate"] = True
+                try:   # 발행시각도 함께 <N시간 요구(auto_pick '둘 다 <4h' 원칙 260623과 동형) — CAP 컷 탈락→재진입으로 first_seen이 리셋된 묵은 사건(발행 7h+)이 '신선' 위장해 breaking 오승격하던 구멍 봉합(평의회5 260716). 발행 무효·결측 = first_seen만 폴백(옛 동작 유지).
+                    pub_h = (now - _ts(c.get("published"))).total_seconds() / 3600 if c.get("published") else fs
+                except Exception:
+                    pub_h = fs
+                if pub_h < GRADE3_PROMOTE_H:
+                    c["breaking_candidate"] = True
 
     # 속보 강등(만료): burst 가 1차 게이트(≥BREAKING_BURST) 밑으로 떨어진 사건은 굳은 breaking 플래그 해제.
     # burst 2 vs 3 = 넘사벽 — 급증 끝난 사건이 🚨로 눌어붙던 버그 차단. rubric 도 비워 재급증 시 재판정.
@@ -361,13 +367,34 @@ def main():
 
     kept = [c for c in merged.values()
             if age_h(c) <= TTL_HOURS and not is_excluded_title(c.get("title") or "")]   # 증권/시황 노이즈 = 기존 수집분도 정리(운영자 260701)
-    def fresh_tier(c):   # CAP 컷 1군(=1) = 발행 FRESH_KEEP_H 내 신선건 — cross 낮아도(2~5) 컷 면제해 '신규<4h' 레인 공급 보장(260716 아사 봉합: CAP 800 상시포화 + cross 단독컷 = 하한 6 → 신규 즉시 탈락이던 회귀).
-        try:             #   기준 = published(뷰어 신규 판정 scTs와 동축 · 결측 시 first_seen 폴백 = 갓 진입건 보호 · 미래 오기록[KST+00 매체]은 신선 취급 = 최대 9h 점유로 유계·무해) · 파싱 실패 = 구군(보수 — 손상 published의 1군 영구 점유 차단).
-            return 1 if (now - _ts(c.get("published") or c.get("first_seen") or nowiso)).total_seconds() / 3600 < FRESH_KEEP_H else 0
-        except Exception:
-            return 0
-    kept.sort(key=lambda c: (fresh_tier(c), c.get("cross") or 0, c.get("published") or ""), reverse=True)   # 1군(신선) 먼저 생존 → 2군 = 종전 cross·발행 내림차(누적 상위 유지 불변) — CAP 컷은 2군 꼬리만 침
+    def _age_h_first(*cands):   # 첫 '파싱 성공' 후보의 나이(h) — 빈값·쓰레기 포맷은 다음 후보로 넘어가 폴백을 살림(평의회1 260716: truthy 쓰레기 published가 or-체인에서 first_seen 폴백을 차단하던 구멍). 전부 실패 = None.
+        for v in cands:
+            if not v:
+                continue
+            try:
+                return (now - _ts(v)).total_seconds() / 3600
+            except Exception:
+                continue
+        return None
+
+    def fresh_tier(c):   # CAP 컷 1군(=1) = 발행 FRESH_KEEP_H 내 신선건 + 확정 긴급 — cross 낮아도(2~5) 컷 면제해 '신규<4h' 레인 공급 보장(260716 아사 봉합: CAP 800 상시포화 + cross 단독컷 = 하한 6 → 신규 즉시 탈락이던 회귀). 기준 = published(뷰어 scTs 동축) → first_seen 순차 폴백.
+        if c.get("breaking"):   # 확정 긴급(AI 도장)은 cross<8·비신선이어도 CAP 컷 면제 — "긴급이었던 건 누적 합류 보장"(운영자 260617 기틀)이 TTL 경로(325행)에만 있고 CAP 경로에 없던 구멍 봉합(평의회3 · 현존 4건 = 슬롯 비용 ≈0).
+            return 1
+        age = _age_h_first(c.get("published"), c.get("first_seen"))
+        return 1 if age is not None and -10 <= age < FRESH_KEEP_H else 0   # -10h 하한 = 선의 KST+00 스큐(≤9h 미래)만 신선 허용 — 임의 미래값(2099 등)이 TTL(10일)까지 1군 영구 점유하는 슬롯 고갈 벡터 차단(평의회6) · 양측 결측·전부 파싱실패 = 구군(보수 — 옛 nowiso 폴백의 '불멸 1군' 구멍 폐쇄 · 평의회1·4)
+    kept.sort(key=lambda c: (fresh_tier(c), c.get("cross") or 0, c.get("published") or ""), reverse=True)   # 1군(신선·긴급) 먼저 생존 → 2군 = 종전 cross·발행 내림차(누적 상위 유지 불변) — CAP 컷은 2군 꼬리만 침
     kept = kept[:CAP]
+    # 바이트 하드예산(평의회2·8 독립 수렴 260716): 건수 CAP 통과해도 직렬화가 MAX_BYTES 초과면 정렬 꼬리(2군 저cross)부터 기계적 제거 —
+    #   api/candidates 1MB 초과 = 빈[] = 수집함 전체 텅빔(260714 사고)의 재발을 쓰기 지점이 직접 봉쇄(check_refs 1MB 가드 = WARN-only + 스크랩 자동커밋은 게이트 밖 = 이빨 없음 실측).
+    #   실측 800건 = 0.99MiB(잔여 1%↓) · 신선건 평균 +210B 무거움(cluster_members 상시 보유) = 건수 불변에도 돌파 가능하던 것. 1군은 정렬상 머리라 최후까지 보존.
+    trimmed = 0
+    blob = json.dumps(kept, ensure_ascii=False)
+    while kept and len(blob.encode("utf-8")) > MAX_BYTES:
+        over = len(blob.encode("utf-8")) - MAX_BYTES
+        drop = max(1, over // 1600)   # 평균 엔트리 ~1.3KB — 보수 나눔(1.6KB)으로 과컷 방지 · 부족분은 재실측 루프가 마저 컷
+        del kept[-drop:]
+        trimmed += drop
+        blob = json.dumps(kept, ensure_ascii=False)
 
     nbreak = sum(1 for c in kept if c.get("breaking_candidate"))
     DST.parent.mkdir(parents=True, exist_ok=True)
@@ -375,11 +402,14 @@ def main():
     import tempfile
     _fd, _tmp = tempfile.mkstemp(dir=str(DST.parent), suffix=".tmp")
     with os.fdopen(_fd, "w", encoding="utf-8") as _f:
-        _f.write(json.dumps(kept, ensure_ascii=False))
+        _f.write(blob)   # 위 바이트 예산 루프가 실측한 직렬화 그대로(재직렬화 = 예산 검증 무효화 금지)
     os.replace(_tmp, DST)
+    t1 = [c for c in kept if fresh_tier(c)]   # 1군 발효 계기판(평의회7): 신선 1군 건수·최소 cross — 아사 봉합 발효(min<5)와 침묵 회귀(env 오버라이드)를 원장 로그에서 즉시 감지.
+    t1min = min(((c.get("cross") or 0) for c in t1), default=0)
     print(f"수집함: 사건 {len(kept)}건 (신규 {len(fresh)} · 기존 {len(existing)}) · "
           f"보관한도 {CAP} · 보관기간 {TTL_HOURS}h(약 {TTL_HOURS // 24}일) · 교차≥{MIN_CROSS} · "
-          f"🚨속보후보(burst≥{BREAKING_BURST}) {nbreak}건")
+          f"🚨속보후보(burst≥{BREAKING_BURST}) {nbreak}건 · "
+          f"신선1군 {len(t1)}건(최소 cross {t1min}) · 바이트예산 {len(blob.encode('utf-8'))}B/{MAX_BYTES}B 트림 {trimmed}건")
 
 
 if __name__ == "__main__":
