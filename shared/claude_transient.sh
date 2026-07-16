@@ -83,6 +83,30 @@ claude_failover_force() {
   return 1
 }
 
+# claude_preflight(모델): 본선(수백초 timeout LLM 콜) 직전 60초 미니 핑으로 '산 계정'을 먼저 골라 탑승(운영자 260717
+#   "몇십분 통째로 안태우게 공회전 없애게 ㄱㄱ" — 실측 7/16 run 87487242035: 죽은 활성계정은 쿼터 문구 없이 *침묵 행*이라
+#   첫 시도가 본선 timeout 600s를 통째로 태우고, 서브계정은 2초 만에 '한도' 즉답 = 공회전이 사고 증폭기).
+#   동작: 현재 계정에 1턴 핑(timeout PREFLIGHT_TIMEOUT 기본 60s·effort low·툴 0 = 최소비) → 성공 = 0 반환(본선 GO) ·
+#   쿼터 문구 = claude_failover(sticky·승격 신호) · 침묵/그외 = claude_failover_force(임시 카운트) → 다음 계정 재핑, 체인 소진까지.
+#   전 계정 실패 = 1 반환하되 마지막 계정 토큰 유지 → 호출부는 그대로 본선 강행(fail-soft — 핑과 본선은 성격이 달라 본선이 살 수도 · 종전 동작 보존).
+#   비용: 산 계정 = 수초·수십 토큰(본선 대비 0급) · 죽은 계정 = 60s(종전 600~900s 공회전의 1/10~1/15) · 모델 = 본선과 동일 인자 필수(쿼터·부하가 모델축과 얽혀 딴 모델 핑 = 무효 신호).
+claude_preflight() {
+  local _pf_model="${1:?claude_preflight: 본선과 동일한 모델 인자 필수}"
+  local _pf_to="${PREFLIGHT_TIMEOUT:-60}" _pf_out _pf_rc
+  while :; do
+    _pf_out="$(printf 'preflight: ok 한 단어만 답해' | timeout "$_pf_to" claude -p --model "$_pf_model" --effort low --safe-mode --max-turns 1 \
+      --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,WebFetch,WebSearch,NotebookEdit,TodoWrite" 2>&1)"; _pf_rc=$?
+    if [ "$_pf_rc" -eq 0 ] && [ -n "$_pf_out" ] && ! is_quota "$_pf_out"; then
+      return 0   # 산 계정 확보 — 본선 GO
+    fi
+    echo "  🩺 프리플라이트: 계정 응답 이상(rc=$_pf_rc) — 다음 계정 핑"
+    claude_failover "$_pf_out" && continue        # 쿼터 문구 = sticky 전환 + 승격 신호(종전 회계 그대로)
+    claude_failover_force && continue             # 침묵 행/그외 = 임시 전환(_FORCE_SWAPS 계상 = reset 회계 일관)
+    echo "::warning::프리플라이트 전 계정 무응답 — 마지막 계정으로 본선 강행(fail-soft)"
+    return 1
+  done
+}
+
 # 계정 슬롯(0=primary·1=ALT·2=ALT2·3=ALT3) → 토큰. primary = 이 파일 source 시점의 CLAUDE_CODE_OAUTH_TOKEN(활성계정) 스냅샷.
 : "${_CLAUDE_TOK0:=${CLAUDE_CODE_OAUTH_TOKEN:-}}"
 _claude_slot_token() { case "${1:-0}" in 0) printf '%s' "${_CLAUDE_TOK0:-}";; 1) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT:-}";; 2) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT2:-}";; 3) printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN_ALT3:-}";; esac; }

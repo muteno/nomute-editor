@@ -253,6 +253,7 @@ ${PREV_BLOCK}
 [데이터 = 이 채널의 실제 지표]
 $BODY"
 
+claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 · 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft) — 핑 소요는 벽시계 캡 안에서 소화
 out=""; _to_tried=0   # _to_tried = 타임아웃(rc=124) 강제 계정 전환 1회 소진 플래그(analyze.sh 계승)
 for _try in 1 2 3 4; do
   # 누적 벽시계 캡(평의회6 260714 · analyze.sh ANALYZE_JOB_DEADLINE 관용구 계승 · 260717 예산 재산정): 정상 생성 실측 ~9분(260714 성공 런 9m07s)이라
