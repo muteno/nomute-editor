@@ -20,7 +20,7 @@
 //
 // 리스크 통제: 기하+computedStyle+동일 런 픽셀 프로브만(환경 간 스크린샷 베이스라인 diff 금지 · [15]) ·
 //   측정 전용 DOM(스테이지)은 캡처 후 제거 = 라이브 코드 무접촉 · 서버 자체 종료(잔류 0) ·
-//   훅·pre-commit 편입 금지(수동 실행 전용 · CLAUDE.md [15]) · 포트 8806~8810(geni 8791~/preview 8796~/winnav 8801~와 분리).
+//   훅·pre-commit 편입 금지(수동 실행 전용 · CLAUDE.md [15]) · 포트 8811~8815(geni 8791~/preview 8796~/winnav 8801~/dlclip 8806~와 분리).
 // 유지보수: 대상 필·문자열 = TARGETS만 갱신(산탄 금지) · 보정값 재튜닝 시 이 스모크가 수치 판정.
 // ═══════════════════════════════════════════════════════════════════════════════
 'use strict';
@@ -49,7 +49,7 @@ function chromiumPath() {
   return cands.find(Boolean);
 }
 async function startServer() {
-  for (const port of [8806, 8807, 8808, 8809, 8810]) {
+  for (const port of [8811, 8812, 8813, 8814, 8815]) {
     const srv = spawn('python3', ['-m', 'http.server', String(port), '-d', VIEWER], { stdio: 'ignore' });
     const ok = await new Promise(res => {
       let done = false;
@@ -63,7 +63,7 @@ async function startServer() {
     if (ok) return { srv, port };
     try { srv.kill(); } catch (_) {}
   }
-  throw new Error('정적 서버 기동 실패(8806~8810 전부 불가)');
+  throw new Error('정적 서버 기동 실패(8811~8815 전부 불가)');
 }
 // 정본 필 4종 — 家족 대표(1자리·2자리)만: 글리프 베어링 편차의 양극단(260717 실측 = 중간 자릿수는 사이 값)
 const TARGETS = [
