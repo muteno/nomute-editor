@@ -885,8 +885,9 @@
   .tbrief-t b.tb-em, .tbrief-prop li b.tb-em { color:var(--fg); font-weight:var(--fw-b); }   /* **별표2** 강조 = 강조색 없이 볼드만(2층 = 어느정도 중요 · 본문색 유지·700 = 강조색 800보다 한 단 아래 · 운영자 260714 "강조색 볼드만큼은 아니지만 볼드로") */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
-  /* ── 채널 브리프 기간 책갈피 = 좌측 세로 내비 미니바(운영자 260716 "옵션 선택지를 세부 NAV에" · 이력: 260714 우상단 세그 → 260716 시각 행 합체 → 세로 내비 이관·.tb-segrow 폐지) — 셸·버튼·점등 = .trail/.trail-i 정본 계승(메뉴3 지역 미니바 문법) ── */
-  .trail-bs .trail-i { width:auto; min-width:22px; padding:0 4px; border-radius:var(--r-pill); }   /* raw-ok: 22 = .trail-i 원치수 계승·pad4 = 텍스트 라벨 광학 여백 — 라벨(3일~3개월)이라 폭만 가변 · 최장 '3개월' 우변(≈43px)도 폰 카드 텍스트 시작선(x≈44) 안 = 충돌 0 */
+  /* ── 채널 브리프 기간 책갈피(운영자 260714 "3일·7일·28일·3개월·전체 우상단 세그 · 3일 기본·선택 강조 · 마인드셋") — 세그 = 일일추이 .ch-rangeseg 정본 계승(일치) · 우측 정렬 = 카드 우상단 ── */
+  .tb-segrow { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-1) var(--sp-2); flex-wrap:wrap; margin:0; }   /* 세그 행 = 분석시각과 한 행 합체(좌 시각·우 세그 · 운영자 260716 "칩 내려서 빈공간 삭제" — 구 단독 행의 좌측 빈 띠 제거) · 한 행 문법 = 일일추이 .ch-seg(좌 레일·우 세그) 계승 · 협폭 = wrap fail-soft */
+  .tb-segrow .tbrief-tm { margin-top:0; }   /* 행 합체 시 단독 리듬(margin-top 5) 해제 — 세그와 수직 중앙 정렬([4] 높이 중앙) */
   .tb-div { border-top:1px solid var(--line2); margin:var(--sp-2) 0; }   /* 구분선 = .tbrief-prop 상단선(line2) 문법 계승 — 운영자 "구분선" 명시 요소 */
   .tb-allwrap[hidden] { display:none; }   /* (3) 전체 총론 = '전체' 탭 선택 시 (2)와 중복 → 숨김(JS hidden 토글) */
   /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
@@ -10134,10 +10135,12 @@ function renderChan() {
   const bsegs = bsecs ? bsecs.filter(s => s.k !== 'overview') : null;   // 세그 = 기간 5창(3일~전체 · overview 제외)
   if (bsegs && !bsegs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsegs[0].k;   // 결측·overview 방어(생성분 일부만 와도 첫 탭으로 · CHAN_BSEC이 세그 밖 값 차단)
   const bhasAll = bsegs && bsegs.some(s => s.k === 'all');   // (3) 폴백(overview 부재 시 all) 노출 근거
-  const bt12 = s => { s = String(s || ''); const mo = +s.slice(5, 7), dd = +s.slice(8, 10), H = +s.slice(11, 13); return (mo && dd && Number.isFinite(H)) ? `${mo}월 ${dd}일 ${H % 12 || 12}:${s.slice(14, 16)}${H < 12 ? 'AM' : 'PM'}` : ''; };   // 분석 시각 표기 = "7월 16일 2:18PM"(운영자 260716 "0월 00일 2:00PM 이런식으로만") — KST ISO 문자열 직파싱(naive new Date() 금지 = 기기 TZ 무관 · CLAUDE.md [12]) · 무효 = '' fail-soft
-  const btm = CHANB && bt12(CHANB.updated) ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(bt12(CHANB.updated))}</span>` : '';   // 분석 시각 = 단위 헤더 합류(운영자 260716 "표기한대로 가장 위로") — prof 단위 .tdash-time 정본 계승 · stale = 수집 26h+ 죽음 warn(:has 빛멎음(#779)과 동축 = hdr-stale 이중 안전)
-  if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약${btm}`, `<div class="tbrief">` +
-    // 구 ① 분석시각+세그 행(.tb-segrow) 폐지(운영자 260716 "가장 위로 + 옵션 선택지는 세부 NAV로") — 시각 = 헤더 · 기간 세그 = 좌측 세로 내비 미니바(아래 bsNav) 이관 · 본문 = 분석 텍스트부터 즉시 시작(상단 구분선도 동반 제거)
+  const btm = CHANB ? `<span class="tbrief-tm">${esc(String(CHANB.updated || '').slice(11, 16))} 분석</span>` : '';   // 분석 시각 — 세그 있으면 세그 행 좌측에 합체 · 없으면(구 단일 text) 단독 종전(fail-soft)
+  if (CHANB && (CHANB.text || bsecs)) h += gsec('brief', 'AI 요약', `<div class="tbrief">` +
+    // ① 분석시각+기간 책갈피 세그 = 한 행(좌 시각·우 세그 · 운영자 260716 "칩 내려서 빈공간 삭제" · 구 260714 세그 단독 행 폐지) · 세그 = .ch-rangeseg 정본 계승(일일추이와 일치) · .tb-seg 마커로 data-bs 핸들러 분기 · overview(총론) 제외
+    (bsegs ? `<div class="tb-segrow">${btm}<span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</span></div>` : btm) +
+    // ② 구분선 → ③ (2) 선택 기간 분석+제안(기간 스왑)
+    (bsecs ? `<div class="tb-div"></div>` : '') +
     `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div>` +
     // ⑤ (3) 총론 = 항상 고정 노출(운영자 260714 "채널 전체 아우르는 비전·방향성·미션 큰 그림 · 마인드셋 · 기간 무관") — 총론(overview)은 세그 '전체'(기간 분석)와 별개 글이라 어느 탭에서도 안 숨김 · 구 데이터(overview 부재) = all 폴백 + '전체' 선택 시 중복 숨김(하위호환)
     (bov ? `<div class="tb-allwrap"><div class="tb-div"></div><span class="tbrief-lbl">총론</span><p class="tbrief-t tb-allt"></p></div>`
@@ -10190,9 +10193,8 @@ function renderChan() {
   const th = (d.thumbs || []).filter(x => x.th).slice(0, 12);
   if (th.length) h += gsec('recent', '최근 게시물', '<div class="ch-grid">' + th.map(x => `<a class="ch-th" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener"><img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(x.th)}" onerror="this.parentNode.style.display='none'" alt=""></a>`).join('') + '</div>');
   // 좌측 책갈피 레일 = 메뉴3 .trailwrap/.trail 원문 계승(운영자 260713 "일치할수록 좋아" — CSS 클래스 공유 = 신규 스타일 0 · fixed는 chanview[hidden] 조상 연동 자동 소거 = trendview 동일 메커니즘) · 버튼 = TOP 위화살(정본 SVG path 동일) + 단위 순번 숫자(헤더 배지 정체성 · 숫자 = 문자 렌더 허용 축)
-  const bsNav = bsegs ? `<nav class="trail trail-bs" id="chanBsRail" aria-label="AI 요약 기간">${bsegs.map(s => `<button type="button" class="trail-i${s.k === CHAN_BSEC ? ' on' : ''}" data-bs="${esc(s.k)}">${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</nav>` : '';   // 기간 책갈피 = 세로 내비 미니바 이관(운영자 260716 "옵션 선택지를 세부 NAV에") — 메뉴3 지역 미니바 '세로 내비 위에 하나 더'(260713) 문법 계승 · on·누름 = .trail-i 공용 · data-bs 핸들러(#10253) 종전 그대로 공유
-  box.innerHTML = ((RAIL.length > 1 || bsNav) ? `<div class="trailwrap">${bsNav}` + (RAIL.length > 1 ? '<nav class="trail" id="chanRail" aria-label="단위 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
-    RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav>' : '') + '</div>' : '') + h;
+  box.innerHTML = (RAIL.length > 1 ? '<div class="trailwrap"><nav class="trail" id="chanRail" aria-label="단위 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
+    RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + h;
   box.querySelector('.ch-nm').textContent = '@' + (p.username || '');
   const bt = box.querySelector('.tbrief-t');   // 브리프 본문 주입 = *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href 검증만 = XSS 안전 · 메뉴3 파서 미러 — 스크랩 refs 축만 제외 · 줄바꿈 = .tbrief-t pre-line)
   if (bt && CHANB) {
@@ -10248,7 +10250,7 @@ function renderChan() {
   // 추이 차트 배선(지표 칩·기간 세그·crosshair 툴팁 — 재렌더 = 스크롤 보존)
   box.querySelectorAll('#chMetRail [data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 지표 레일(#chMetRail) 옵션 = 화풍 .geni-opt 계승 · [data-m] 한정(브리프 data-bs 오염 방지 260714)
   geniRailSetup('#chMetRail'); geniRailUpd($('#chMetRail'));   // 지표 레일 = 화풍 레일 배선 계승(드래그·‹›·끝선 페이드 · geniRailSetup 범용 재사용 · 재렌더마다 새 노드라 _railSet 가드 자동 통과)
-  box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체) — [data-bs] 통합 셀렉터(우상단 세그→세로 내비 미니바 이관(260716)에도 불변) · 재렌더·스크롤 보존
+  box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체 · 운영자 260714 세그=.tb-seg 계승) — [data-bs] 통합 셀렉터(칩→세그 전환 무관) · 재렌더·스크롤 보존
   box.querySelectorAll('.ch-rangeseg:not(.tb-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그(data-r 없음)가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
   const wrap = $('#chChartWrap'), tip = $('#chTip'), dot = $('#chDot');
   if (wrap && tip) {
