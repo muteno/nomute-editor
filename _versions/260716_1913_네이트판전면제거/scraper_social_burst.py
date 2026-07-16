@@ -82,7 +82,7 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 COMMUNITY_NAMES = {
     "fmkorea": "에펨코리아", "mlbpark": "엠팍", "theqoo": "더쿠", "clien": "클리앙", "bobae": "보배드림",
     "ppomppu": "뽐뿌", "ruliweb": "루리웹", "82cook": "82쿡", "instiz": "인스티즈", "dcinside": "디시",
-    "todayhumor": "오유", "humoruniv": "웃대", "humorbest": "웃대", "inven": "인벤",
+    "todayhumor": "오유", "humoruniv": "웃대", "humorbest": "웃대", "natepann": "네이트판", "inven": "인벤",
     "slrclub": "SLR", "slr": "SLR", "ygosu": "와이고수", "etoland": "이토랜드", "ppomppued": "뽐뿌",
 }
 
@@ -276,8 +276,6 @@ def fetch_issuelink(now):
             if not am:
                 continue
             src, url, inner = am.groups()
-            if src == "natepann":   # 네이트판 = 전면 배제(운영자 260716 "다 없애")
-                continue
             title = _html.unescape(re.sub(r"<[^>]+>", "", inner)).strip()
             title = re.sub(r"\s*\[\d+\]\s*$", "", title).strip()   # 말미 댓글수 [11] 제거
             if len(title) < 4:
