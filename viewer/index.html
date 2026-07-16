@@ -9261,7 +9261,7 @@ function showTab(tab) {
   const wp = $('.wrap'), sv = $('#scrapview'), snv = $('#snsview'), tv = $('#trendview');   // 옛 .filterbar 제거(칩→필터 오버레이) · 필터 버튼(#filterBtn·우측 클러스터)은 CSS body[data-tab=feed]로 표시(260706 3차 8)
   if (wp) wp.hidden = (tab !== 'feed');
   if (sv) sv.hidden = (tab !== 'scrap');
-  if (snv) snv.hidden = (tab !== 'trend');   // 구 메뉴2 = 트렌드 그룹① 국내 커뮤니티로 reparent(운영자 260713)
+  if (snv) snv.hidden = (tab !== 'trend') || !snv.closest('#snsHost');   // 구 메뉴2 = 트렌드 그룹① 국내 커뮤니티로 reparent(운영자 260713) · 신규 구조(#snsHost) 장착 전 = 계속 숨김(운영자 260716 "이전 버전이 안뜨게" — 트렌드 도착 전 구버전 맨몸 노출 차단 · 해금 = renderSnsTrends 장착 시)
   if (tv) tv.hidden = (tab !== 'trend');
   const cv = $('#chanview'); if (cv) cv.hidden = (tab !== 'chan');   // 메뉴4 채널 요약(운영자 260713)
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
@@ -9549,7 +9549,7 @@ function renderSnsTrends() {
   h += GRPS.map(g => gsec(g[0], g[1], g[2])).join('');
   const _sv2 = $('#snsview'); if (_sv2 && box.contains(_sv2)) $('#trendview').appendChild(_sv2);   // 재구축 전 대피(innerHTML 소실 방지)
   box.innerHTML = h;
-  const _kh = box.querySelector('#snsHost'); if (_kh && _sv2) _kh.appendChild(_sv2);   // 국내 커뮤니티 그룹① 본체 장착
+  const _kh = box.querySelector('#snsHost'); if (_kh && _sv2) { _kh.appendChild(_sv2); _sv2.hidden = false; } else if (_sv2) _sv2.hidden = true;   // 국내 커뮤니티 그룹① 본체 장착 + 해금(운영자 260716 "이전 버전이 안뜨게" — 장착 = 노출·미장착(그룹① 부재 재구축) = 재숨김 · showTab 게이트와 짝 = 구버전 맨몸 노출 불가침)
   box._trSig = _trSig;   // 시그니처 커밋(렌더 완료 시점 — 실패·조기 return엔 미커밋 = 다음 호출 재시도)
   // 텍스트 주입(XSS 안전) — 전부 섹션 스코프(구 전역 카운터 qs[k] 체인 폐지 = 순서 결합 버그 축 제거)
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
