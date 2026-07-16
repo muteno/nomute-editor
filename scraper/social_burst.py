@@ -276,7 +276,7 @@ def fetch_issuelink(now):
             if not am:
                 continue
             src, url, inner = am.groups()
-            if src == "natepann":   # 네이트판 = 전면 배제(운영자 260716 "다 없애")
+            if src.lower() == "natepann":   # 네이트판 = 전면 배제(운영자 260716 "다 없애" · rel 케이싱 변형도 차단)
                 continue
             title = _html.unescape(re.sub(r"<[^>]+>", "", inner)).strip()
             title = re.sub(r"\s*\[\d+\]\s*$", "", title).strip()   # 말미 댓글수 [11] 제거
