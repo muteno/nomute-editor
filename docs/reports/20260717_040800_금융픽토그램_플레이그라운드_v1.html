@@ -1,0 +1,163 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>금융 행 픽토그램 — 3안 플레이그라운드</title>
+<style>
+:root{
+  --bg:#121212; --glass2:rgba(18,19,22,.55); --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#7cf5c8; --accent-3:#e23b2a; --bias-l2:#3a6ddb; --fg:#eef7f0; --mut:#8fa697;
+  --r-l:16px; --r-m:11px; --r-pill:999px; --sp-3:18px;
+  --fs-label:13px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;padding:26px;-webkit-font-smoothing:antialiased;}
+h1{font-size:16px;font-weight:800;margin:0 0 4px;}
+.sub{color:var(--mut);font-size:12px;margin:0 0 18px;line-height:1.65;max-width:900px;}
+.sub b{color:var(--fg);}
+/* 컨트롤 */
+.ctl{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:0 0 20px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--glass2);position:sticky;top:12px;z-index:5;backdrop-filter:blur(8px);}
+.seg{display:flex;gap:4px;}
+.seg button{background:none;border:1px solid var(--line);color:var(--mut);padding:6px 12px;border-radius:var(--r-pill);font:700 12px inherit;cursor:pointer;}
+.seg button.on{color:var(--bg);background:var(--accent);border-color:var(--accent);}
+.ctl label{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:8px;}
+.pick{margin-left:auto;font-size:12px;color:var(--fg);font-weight:700;}
+.pick code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:6px;}
+/* 정본 계승 CSS */
+.tgroup{border:1px solid var(--line);border-radius:var(--r-l);background:var(--glass2);padding:16px 18px;max-width:840px;}
+.tgroup-h{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;margin:0 0 14px;}
+.tgroup-h i{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.06);font-size:12px;font-weight:800;font-style:normal;color:var(--mut);}
+.fin-split{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);align-items:start;}
+.trend-lbl{display:flex;align-items:center;gap:6px;font-size:var(--fs-label);font-weight:var(--fw-x);color:var(--fg);margin:2px 0 9px;}
+.trend-unit{color:var(--mut);font-weight:400;font-size:var(--fs-xs);}
+.fin-base{opacity:.7;}
+.fin-rows{display:flex;flex-direction:column;gap:2px;}
+.fin-row{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:var(--fs-sm);color:var(--fg);}
+.fin-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fin-v{flex:none;font-variant-numeric:tabular-nums;font-weight:var(--fw-b);}
+.fin-v i{color:var(--mut);font-style:normal;font-size:var(--fs-xs);margin-left:1px;}
+.fin-chg{flex:none;min-width:52px;text-align:right;font-size:var(--fs-xs);font-variant-numeric:tabular-nums;color:var(--mut);}
+.fin-chg.up{color:var(--accent-3);}
+.fin-chg.dn{color:var(--bias-l2);}
+/* ── 픽토그램(신규 후보) — 중앙높이정렬 = align-self:center(baseline 행 안 1개만 광학 중앙) ── */
+.fin-ico{flex:none;align-self:center;display:inline-flex;align-items:center;justify-content:center;
+  width:var(--ico,18px);height:var(--ico,18px);border-radius:var(--r-pill);
+  background:rgba(255,255,255,.06);color:var(--mut);font-weight:800;overflow:hidden;}
+.fin-ico svg{width:64%;height:64%;display:block;}
+.fin-ico .g{font-size:calc(var(--ico,18px) * .62);line-height:1;}
+/* 안 B 모노그램 = 살짝 강조 톤(코드 첫 글자) */
+.mode-b .fin-ico{color:var(--fg);background:rgba(124,245,200,.12);}
+/* 안 C SVG = 칩 없이 라인 픽토(옵션) 또는 칩+SVG */
+.mode-c .fin-ico{background:rgba(255,255,255,.05);color:var(--fg);}
+/* 표시 전환 */
+.mode-a .ico-b,.mode-a .ico-c{display:none;}
+.mode-b .ico-a,.mode-b .ico-c{display:none;}
+.mode-c .ico-a,.mode-c .ico-b{display:none;}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px;}
+.foot{margin:22px 0 0;color:var(--mut);font-size:11px;line-height:1.75;max-width:900px;border-top:1px solid var(--line);padding-top:12px;}
+.foot b{color:var(--fg);}
+.risk{color:#e8b84b;}
+</style></head>
+<body>
+<h1>금융 행 픽토그램 — 3안 (환율·코인 앞에 심볼, 중앙높이정렬)</h1>
+<p class="sub">레포에 통화/코인 전용 픽토그램이 <b>없어서</b> 신규 제작이야. 문제는 <b class="risk">XRP·SOL은 표준 유니코드 심볼이 없고</b>, ₿·Ξ·元도 폰트(Noto Sans KR) 표시가 안 보장돼 — 그래서 "글리프로 넣기 vs SVG 제작"이 갈려. 아래 토글로 실제 금융 행에 얹어 비교해봐. 색·마진·칩은 전부 정본 토큰 계승.</p>
+
+<div class="ctl">
+  <div class="seg" id="seg">
+    <button data-m="a" class="on">안 A · 텍스트 심볼</button>
+    <button data-m="b">안 B · 모노그램</button>
+    <button data-m="c">안 C · SVG(추천)</button>
+  </div>
+  <label>칩 크기 <input type="range" id="sz" min="14" max="24" value="18"> <span id="szv">18px</span></label>
+  <div class="pick">선택: <code id="pickv">안 A · 텍스트 심볼</code></div>
+</div>
+
+<div class="grid2" id="stage">
+<div class="tgroup mode-a" id="card">
+  <div class="tgroup-h"><i>7</i>금융</div>
+  <div class="fin-split">
+    <!-- 환율 -->
+    <div>
+      <div class="trend-lbl">환율 <span class="trend-unit">· 원화 <span class="fin-base">· 07/17 00:00 대비</span></span></div>
+      <div class="fin-rows" id="fx"></div>
+    </div>
+    <!-- 코인 -->
+    <div>
+      <div class="trend-lbl">암호화폐 <span class="trend-unit">· 업비트 <span class="fin-base">· 07/17 00:00 대비</span></span></div>
+      <div class="fin-rows" id="cc"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<p class="foot">
+<b>3안 요약</b><br>
+· <b>안 A 텍스트 심볼</b> — 원형 칩에 통화기호($ € ¥ ¥) + 코인(₿ Ξ · XRP/SOL은 폴백문자 X·◎). 가장 빠름. <span class="risk">단점: ₿·◎ 폰트 미표시 리스크, XRP는 심볼 부재라 대용 문자.</span><br>
+· <b>안 B 모노그램</b> — 원형 칩에 통일 문자(달러 $, 유로 €, BTC=B, XRP=X…). 100% 안정·통일감. 단점: 심볼보다 인식성 약간 낮음(B가 비트코인인지 학습 필요).<br>
+· <b>안 C SVG 픽토그램 (추천)</b> — 통화·코인 마크를 SVG로. 폰트 무관 100% 표시·§3-1(도형=SVG) 준수·최고 인식성. 아래 샘플은 <b>초안</b>이라 채택 시 획 다듬기 + §3-4 픽셀 중앙정렬 실측(십자선 증빙) 후 반영.<br>
+<b>공통</b> — 칩은 <code>--r-pill</code> 원형·<code>--mut</code>·rgba(255,255,255,.06) 계승, 행 baseline 유지하고 칩만 <code>align-self:center</code>로 광학 중앙높이정렬. 이름(미국 달러·BTC)은 그대로.<br>
+<b>기준점 캡션</b>은 이미 반영됨(「· 07/17 00:00 대비」 = 오늘 자정 기준).
+</p>
+
+<script>
+// 실제 금융 값(260717 실측) — chg = 오늘 00:00 대비
+var FX = [
+  {code:'USD', name:'미국 달러', krw:'1,488', chg:-0.85},
+  {code:'EUR', name:'유로',      krw:'1,704', chg:-0.32},
+  {code:'JPY', name:'일본 엔',   krw:'9.1783',chg:-0.74},
+  {code:'CNY', name:'중국 위안', krw:'220',   chg:-0.74},
+];
+var CC = [
+  {code:'BTC', krw:'945,250,000', chg:-0.64},
+  {code:'ETH', krw:'27,580,000',  chg:-2.09},
+  {code:'XRP', krw:'16,080',      chg:-1.65},
+  {code:'SOL', krw:'1,113,000',   chg:-1.94},
+];
+// 안 A 텍스트 심볼
+var GLYPH = {USD:'$', EUR:'€', JPY:'¥', CNY:'¥', BTC:'₿', ETH:'Ξ', XRP:'✕', SOL:'◎'};
+// 안 B 모노그램(통일 문자)
+var MONO  = {USD:'$', EUR:'€', JPY:'¥', CNY:'元', BTC:'B', ETH:'E', XRP:'X', SOL:'S'};
+// 안 C SVG(초안 · currentColor stroke) — 통화·코인 간이 마크
+var SVG = {
+  USD:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M16 7.5a3 3 0 00-3-2.5h-2a2.6 2.6 0 000 5.2h2.2a2.6 2.6 0 010 5.3H11a3 3 0 01-3-2.5"/></svg>',
+  EUR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7a6 6 0 100 10"/><path d="M5 10.5h8"/><path d="M5 13.5h7"/></svg>',
+  JPY:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 5l5 6 5-6"/><path d="M12 11v8"/><path d="M8 13.5h8"/><path d="M8 16.5h8"/></svg>',
+  CNY:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h12"/><path d="M12 6v13"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>',
+  BTC:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v16"/><path d="M12.5 4v16"/><path d="M8 5h6a3 3 0 010 6H8"/><path d="M8 11h7a3 3 0 010 6H8"/></svg>',
+  ETH:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l6 9-6 3.2L6 12z"/><path d="M6 13.4l6 3.4 6-3.4-6 7.6z"/></svg>',
+  XRP:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6c2.5 3 4 4 7 4s4.5-1 7-4"/><path d="M5 18c2.5-3 4-4 7-4s4.5 1 7 4"/></svg>',
+  SOL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7.5h10l-3 0"/><path d="M7 7.5h10"/><path d="M17 12H7"/><path d="M7 16.5h10"/></svg>',
+};
+function ico(code){
+  return '<span class="fin-ico">'
+    + '<span class="ico-a g">'+ (GLYPH[code]||'') +'</span>'
+    + '<span class="ico-b g">'+ (MONO[code]||'') +'</span>'
+    + '<span class="ico-c">'+ (SVG[code]||'') +'</span>'
+    + '</span>';
+}
+function rowFX(x){
+  return '<div class="fin-row">'+ico(x.code)+'<span class="fin-nm">'+x.name+'</span>'
+    + '<span class="fin-v">'+x.krw+'<i>원</i></span>'
+    + '<span class="fin-chg '+(x.chg>0?'up':x.chg<0?'dn':'')+'">'+(x.chg>0?'+':'')+x.chg+'%</span></div>';
+}
+function rowCC(c){
+  return '<div class="fin-row">'+ico(c.code)+'<span class="fin-nm">'+c.code+'</span>'
+    + '<span class="fin-v">'+c.krw+'<i>원</i></span>'
+    + '<span class="fin-chg '+(c.chg>0?'up':c.chg<0?'dn':'')+'">'+(c.chg>0?'+':'')+c.chg+'%</span></div>';
+}
+document.getElementById('fx').innerHTML = FX.map(rowFX).join('');
+document.getElementById('cc').innerHTML = CC.map(rowCC).join('');
+var LB = {a:'안 A · 텍스트 심볼', b:'안 B · 모노그램', c:'안 C · SVG(추천)'};
+var card = document.getElementById('card');
+document.getElementById('seg').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#seg button').forEach(function(x){x.classList.remove('on');});
+  b.classList.add('on');
+  var m = b.dataset.m;
+  card.className = 'tgroup mode-'+m;
+  document.getElementById('pickv').textContent = LB[m];
+});
+var sz = document.getElementById('sz');
+sz.addEventListener('input', function(){
+  document.documentElement.style.setProperty('--ico', sz.value+'px');
+  document.getElementById('szv').textContent = sz.value+'px';
+});
+</script>
+</body></html>
