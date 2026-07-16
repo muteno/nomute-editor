@@ -792,6 +792,7 @@
   .tpc-rank { position:absolute; top:5px; left:5px; display:inline-flex; align-items:center; box-sizing:border-box; height:15px; padding:0 6.67px 1px 5.33px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); color:var(--fg); font-size:10px; font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }   /* raw-ok: 광학 정렬 1회성 보정(운영자 260717 Q04 — DPR3 정수 스테이지 실측: 하단 1px = 세로 Δ0.00 · 가로 = 자릿수별 잉크 편차 1px(글리프 베어링·단일 패딩으로 동시 0 물리 불가) → 5.33/6.67 미니맥스 = 1·2자리 |Δ|≤0.5 균형 · 합 12 전폭 불변) · 10px = 기존 확정값(h15/fs10 운영자 선택 유지) — .tcard-rank 톤 계승 */
   .tpc-rank.top { color:var(--accent); }
   .tpc-new { position:absolute; top:5px; right:5px; color:var(--hist-accent); font-size:9.5px; font-weight:var(--fw-x); letter-spacing:.06em; font-family:var(--font-status); padding:1px 5px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); }   /* 변동 = NEW만(운영자 260712 "+1 필요없음" — ▲▼·스파크 폐지·rh 수집은 유지) */
+  .tpc-geo { position:absolute; bottom:5px; left:5px; color:rgba(255,255,255,.9); font-size:9.5px; font-weight:var(--fw-x); font-family:var(--font-status); padding:1px 5px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); }   /* raw-ok: 바로 위 .tpc-new 형제 배지 규격 픽셀 동일 계승(9.5px·1px 5px·bg .55 = 자매 필 통일 · --fs-xs 11px 토큰화 시 형제 크기 불일치 = 계약[4] 위반) — 지역 표식(운영자 260716 "배지 ㄱ") = 국내 모드 인기에 섞인 해외 인기 영상 구분 · tpc-new(우상단 NEW) 위치 미러 = 좌하단(rank 좌상단·NEW 우상단과 무충돌) · 색 중립(NEW=hist-accent와 구분) */
   .tpc-bd { display:block; margin-top:6px; min-width:0; }
   .tpc-cat { display:block; font-size:var(--fs-xs); font-weight:var(--fw-x); margin-bottom:2px; }   /* 구분자행 = 플랫폼(색 = TR_PCOL cat 재지정 · fs11 = --fs-xs 계승) */
   .tpc-t { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-xs); line-height:1.35; word-break:break-word; font-weight:400; min-height:calc(1.35em * 2); }   /* 제목 2줄 11px(운영자 선택 = --fs-xs 계승) · min-height = 2줄 예약 — 1줄 제목도 메타행(.tpc-m) 시작 y 통일(운영자 260712) */
@@ -9472,7 +9473,7 @@ function renderSnsTrends() {
   const tpc = (it, i, cat) =>   // TOP 카드(운영자 260712 선택값: 1:1 커버·r-s·순위 필 h15/fs10·구분자행(cat색)→제목 2줄→원시 조회+우측 시간 · 변동 = NEW만) — 제목 = textContent 후주입(XSS 안전) · 로고 = img 밑층 폴백
     `<a class="tpc" data-ri="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener">` +
     `<span class="tpc-cov"><b>${TR_LOGO[it.mono] || ''}</b>${it.th ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(it.th)}" onerror="this.style.display='none'" alt="">` : ''}` +
-    `<span class="tpc-rank${i < 3 ? ' top' : ''}">${i + 1}</span>${(it.x && it.x.isNew) ? '<span class="tpc-new">NEW</span>' : ''}</span>` +
+    `<span class="tpc-rank${i < 3 ? ' top' : ''}">${i + 1}</span>${(it.x && it.x.isNew) ? '<span class="tpc-new">NEW</span>' : ''}${it.geo ? `<span class="tpc-geo">${esc(it.geo)}</span>` : ''}</span>` +
     `<span class="tpc-bd">${cat ? `<span class="tpc-cat" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span>` : ''}<span class="tpc-t"></span>` +
     `<span class="tpc-m"><span>${esc(it.rv || '')}</span>${it.ago ? `<span class="tpc-tm">${esc(it.ago)}</span>` : ''}</span></span></a>`;
   const row = (i, url, right, x, thumb, pt) =>   // 공용 행(썸네일 유무·pt=세로 커버) — 순서 = [썸네일] 랭크 제목 변동배지 수치
@@ -9540,7 +9541,7 @@ function renderSnsTrends() {
   if (aiL.length) gYT += sec('ai', 'AI 영상', '· 조회수', aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
     row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
-  const mktk = t => ({ url: t.url || '', t: t.title || ('@' + (t.account || '')), rv: t.views ? vfmt(t.views) : '', th: t.cover || '', mono: 'tk', plat: '틱톡', x: t, ago: relT(t), pt: 1 });   // 틱톡 = 유튜브와 동일 카드 레일(운영자 260716 "틱톡도 유튜브처럼") — TOP 10 lane 매핑 미러 · pt = 세로 커버 표식(TOP 문법)
+  const mktk = t => ({ url: t.url || '', t: t.title || ('@' + (t.account || '')), rv: t.views ? vfmt(t.views) : '', th: t.cover || '', mono: 'tk', plat: '틱톡', x: t, ago: relT(t), pt: 1, geo: (t.region && t.region !== 'KR') ? '해외' : '' });   // 틱톡 = 유튜브와 동일 카드 레일(운영자 260716 "틱톡도 유튜브처럼") — TOP 10 lane 매핑 미러 · pt = 세로 커버 표식(TOP 문법) · geo = 국내 모드 보충된 해외 인기 구분 배지(운영자 260716 "배지 ㄱ" · 한국=기본 무표시)
   const tkZ = zig(tkL.map((t, i) => [t, i]));
   if (tkL.length) gTK += sec('tk', '인기', '· 조회수', tkL.length, sortbar('tk', V3, tkS) + '<div class="tpg">' + tkZ.map(z => tpc(mktk(z[0]), z[1], 0)).join('') + '</div>');   // 구 3/4 쇼츠 그리드 → tpg 2행 카드 레일(유튜브 '인기' 원문 계승 · 운영자 260716) · 정렬바 존치 · 단위 라벨 = '· 조회수'(유튜브 동일) · 개수 = tkL(한국 우선+국내 보충)
   else if (tkv.length) gTK += sec('tk', '인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
