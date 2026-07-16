@@ -1,0 +1,80 @@
+# 이미지 업스케일(화질↑) v1 — workflow_dispatch 전용(토큰 0 · 순수 연산 · resize 3층 미러)
+# 발사 = functions/api/upscale.js(uploads/<id>/src 선커밋 → src_sha 레이스 가드 → dispatch)
+# 엔진 = apps/fx/fx_upscale FX10(Real-ESRGAN>FSRCNN>Lanczos) · FX_ESRGAN=1 이 onnxruntime+sha256 핀 모델 드롭.
+# 산출 = R2 upscale/<id>/ (또는 git viewer/gen_out/) + viewer/gen_out/upscale.json → 뷰어 폴링.
+name: img-upscale
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id (uploads/<id>/)'
+        required: true
+        type: string
+      src:
+        description: '업로드 원본 경로 (uploads/<id>/src.ext)'
+        required: true
+        type: string
+      src_sha:
+        description: '업로드 커밋 SHA — dispatch 레이스 가드(resize 계승)'
+        required: false
+        type: string
+      opts:
+        description: '옵션 JSON {scale:2|3|4}'
+        required: false
+        type: string
+
+permissions:
+  contents: write   # 결과 커밋 push
+
+concurrency:
+  group: img-upscale-${{ inputs.id }}
+  cancel-in-progress: false
+
+jobs:
+  upscale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FX_ESRGAN: '1'   # setup.sh = onnxruntime + sha256 핀 Real-ESRGAN 모델 드롭(합성 액션은 job env 상속)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.src_sha || 'main' }}   # 업로드 src 커밋 직접 체크아웃 = dispatch 레이스 원천 차단(resize 계승)
+
+      - name: FX 환경 (cv2+onnxruntime+모델 · pip/모델 7일 캐시)
+        timeout-minutes: 10
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/fx/setup.sh
+
+      - name: Upscale
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          UPSCALE_ID: ${{ inputs.id }}
+          UPSCALE_SRC: ${{ inputs.src }}
+          UPSCALE_OPTS: ${{ inputs.opts || '{}' }}
+        run: python3 .github/scripts/upscale_image.py
+
+      - name: Commit results
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add viewer/gen_out/ 2>/dev/null || true
+          git diff --cached --quiet && { echo "산출 없음(no-op)"; exit 0; }
+          git commit -m "upscale: 화질↑ 산출 (${{ inputs.id }})"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            # upscale.json 유실 봉합 — rebase -X ours(원격 승) 시 신규 항목 드랍 → /tmp 임시본 재병합(resize 계승)
+            if [ -f /tmp/upscale_new.json ]; then
+              python3 -c 'import json,os;p="viewer/gen_out/upscale.json";new=json.load(open("/tmp/upscale_new.json"));cur=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else [];urls=set(i.get("url") for i in cur);json.dump(([i for i in new if i.get("url") not in urls]+cur)[:24],open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)'
+              git add viewer/gen_out/ 2>/dev/null || true
+              git commit --amend --no-edit 2>/dev/null || true
+            fi
+            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::error::push 실패(재시도 소진) — 산출 유실"; exit 1
+          # push = HEAD:main (src_sha detached HEAD 대응 · resize/comp 3형제 동일)
