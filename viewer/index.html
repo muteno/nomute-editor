@@ -703,6 +703,7 @@
   .fin-chg { flex:none; min-width:52px; text-align:right; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; color:var(--mut); }
   .fin-chg.up { color:var(--accent-3); }   /* 상승 = 레드(한국 관례) · 하락 = 딥블루 */
   .fin-chg.dn { color:var(--bias-l2); }
+  .fin-base { opacity:.7; }   /* ⑬ 기준점 캡션(· 전일 대비) = 단위 라벨(.trend-unit) 안 종속 · 소스(원화·업비트)보다 한 톤 낮춰 속삭임(운영자 260716 "기준점 미려하게") */
   .trend-tags { display:flex; flex-wrap:wrap; gap:4px 8px; padding-top:2px; }
   .trend-tag { color:var(--accent); font-size:var(--fs-sm); }
   /* ── 구 트렌드 헤더 행(.trend-head·.trend-regseg) CSS 삭제(운영자 260713 "세로 내비 위에 하나 더") — 지역 세그 = 좌측 세로 미니바(.trail-rg)로·계정 = 설정 메뉴(#linkpop)로 이관 · 지역 픽토 15px·off dim은 .trail-rg 규칙으로 이전 · on 강조색은 공용 .trail-i.on 계승 ── */
@@ -9551,8 +9552,9 @@ function renderSnsTrends() {
   const hnL = hnl.slice(0, 12);
   if (hnL.length) gHN += sec('hn', '톱 스토리', '· 해커뉴스', hnL.length, hnL.map((p2, i) => row(i, p2.url || p2.hn || '#', p2.score ? TRI_UP_SVG + p2.score.toLocaleString() : '', p2, '')).join(''));   // HN 스코어 = 원값(만단위 변환 부적합 = 점수대 낮음)
   let gFI = '';   // ⑬ 금융 그룹(환율·코인 = 시세 행 · sec 문법 · 표시 전용) — 순위/변동배지 무의미 = 커스텀 행
-  const fxSec = finR.length ? sec('fin-fx', '환율', '· 원화', finR.length, '<div class="fin-rows">' + finR.map(x => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(x.krw >= 100 ? Math.round(x.krw).toLocaleString() : x.krw)}<i>원</i></span></div>`).join('') + '</div>') : '';
-  const ccSec = finC.length ? sec('fin-cc', '암호화폐', '· 업비트', finC.length, '<div class="fin-rows">' + finC.map(c => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(Math.round(c.krw).toLocaleString())}<i>원</i></span><span class="fin-chg ${c.chg > 0 ? 'up' : c.chg < 0 ? 'dn' : ''}">${c.chg > 0 ? '+' : ''}${esc(c.chg)}%</span></div>`).join('') + '</div>') : '';
+  const fxHasChg = finR.some(x => typeof x.chg === 'number');   // ⑬ 환율 등락(직전 거래일 종가 대비 · Frankfurter) — 결측(첫 수집·소스 실패) = 등락 열·기준점 캡션 미표기(fail-soft)
+  const fxSec = finR.length ? sec('fin-fx', '환율', '· 원화' + (fxHasChg ? ' <span class="fin-base">· 전일 대비</span>' : ''), finR.length, '<div class="fin-rows">' + finR.map(x => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(x.krw >= 100 ? Math.round(x.krw).toLocaleString() : x.krw)}<i>원</i></span>${fxHasChg ? `<span class="fin-chg ${x.chg > 0 ? 'up' : x.chg < 0 ? 'dn' : ''}">${typeof x.chg === 'number' ? (x.chg > 0 ? '+' : '') + esc(x.chg) + '%' : ''}</span>` : ''}</div>`).join('') + '</div>') : '';
+  const ccSec = finC.length ? sec('fin-cc', '암호화폐', '· 업비트 <span class="fin-base">· 전일 대비</span>', finC.length, '<div class="fin-rows">' + finC.map(c => `<div class="fin-row"><span class="fin-nm"></span><span class="fin-v">${esc(Math.round(c.krw).toLocaleString())}<i>원</i></span><span class="fin-chg ${c.chg > 0 ? 'up' : c.chg < 0 ? 'dn' : ''}">${c.chg > 0 ? '+' : ''}${esc(c.chg)}%</span></div>`).join('') + '</div>') : '';
   gFI = (fxSec && ccSec) ? '<div class="fin-split">' + fxSec + ccSec + '</div>' : fxSec + ccSec;   // 환율(좌)·암호화폐(우) 좌우 2열(운영자 260713) — 둘 다 있을 때만 반갈, 하나면 그대로
   let gSF = '';   // ⑭⑯ 재난·안전 그룹(재난문자·고속도로 돌발 = 팩트 신호 · 키 게이트라 키 없으면 미등장)
   if (dsl.length) gSF += sec('dis', '재난문자', '· 안전', Math.min(dsl.length, 10), dsl.slice(0, 10).map((p2, i) => row(i, p2.url || '#', esc(p2.area || ''), p2, '')).join(''));

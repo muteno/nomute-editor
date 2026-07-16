@@ -671,9 +671,33 @@ def hackernews(limit=10):
 
 
 def finance():
-    """⑬ 금융 = 환율(open.er-api.com 무키·USD 베이스 → 원화 환산) + 암호화폐(Upbit 무키 KRW 시세).
-    각 독립 fail-soft. 반환 {rates:[{code,name,krw}], coins:[{code,krw,chg}]}. 운영자 260713 "주식·환율"."""
+    """⑬ 금융 = 환율(open.er-api.com 무키·USD 베이스 → 원화 환산 · 등락률 = Frankfurter 직전 거래일 종가 대비) + 암호화폐(Upbit 무키 KRW 시세 · 전일 종가 대비).
+    각 독립 fail-soft. 반환 {rates:[{code,name,krw,chg?}], coins:[{code,krw,chg}]}. 운영자 260713 "주식·환율" · 260716 등락률·기준점 부착."""
     rates, coins = [], []
+    # 환율 등락률(기준점 = 직전 거래일 종가) — 표시값은 er-api 유지하고 등락만 Frankfurter(ECB·무키·주말/공휴일 자동 스킵)
+    # 시계열 마지막 2거래일로 산출. 값·등락 소스를 섞으면 소스 격차가 가짜 등락으로 새므로, 등락은 동일 소스(Frankfurter) 2일 비교로 격리(운영자 260716).
+    fx_chg = {}
+    try:
+        since = (datetime.now(KST) - timedelta(days=7)).strftime("%Y-%m-%d")
+        fj = json.loads(_get(f"https://api.frankfurter.dev/v1/{since}..?base=USD&symbols=KRW,EUR,JPY,CNY"))
+        series = fj.get("rates") or {}
+        days = sorted(series)
+        if len(days) >= 2:
+            cur_d, prv_d = series[days[-1]], series[days[-2]]
+            def _kpu(d, code):   # 통화 1단위당 원화(USD 베이스 → KRW/해당통화)
+                k = d.get("KRW")
+                if not k:
+                    return None
+                if code == "USD":
+                    return k
+                rt = d.get(code)
+                return (k / rt) if rt else None
+            for code in ("USD", "EUR", "JPY", "CNY"):
+                a, b = _kpu(cur_d, code), _kpu(prv_d, code)
+                if a and b:
+                    fx_chg[code] = round((a - b) / b * 100, 2)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::환율 등락 실패(스킵): {e}", file=sys.stderr)
     try:
         j = json.loads(_get("https://open.er-api.com/v6/latest/USD"))
         r = j.get("rates") or {}
@@ -682,9 +706,14 @@ def finance():
             for code, name in (("USD", "미국 달러"), ("EUR", "유로"), ("JPY", "일본 엔"), ("CNY", "중국 위안")):
                 rate = r.get(code)
                 if code == "USD":
-                    rates.append({"code": code, "name": name, "krw": round(krw, 2)})
+                    row = {"code": code, "name": name, "krw": round(krw, 2)}
                 elif rate:
-                    rates.append({"code": code, "name": name, "krw": round(krw / rate, 4)})   # 1단위당 원화(엔·위안 = 소수)
+                    row = {"code": code, "name": name, "krw": round(krw / rate, 4)}   # 1단위당 원화(엔·위안 = 소수)
+                else:
+                    continue
+                if code in fx_chg:
+                    row["chg"] = fx_chg[code]   # 직전 거래일 종가 대비 %(전일 대비)
+                rates.append(row)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::환율 실패(스킵): {e}", file=sys.stderr)
     try:
@@ -693,7 +722,7 @@ def finance():
             if not isinstance(c, dict):
                 continue
             coins.append({"code": (c.get("market") or "").replace("KRW-", ""), "krw": _i(c.get("trade_price")),
-                          "chg": round((c.get("signed_change_rate") or 0) * 100, 2)})   # 24h 변동률 %
+                          "chg": round((c.get("signed_change_rate") or 0) * 100, 2)})   # 전일 종가 대비 %(업비트 signed_change_rate)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::코인 실패(스킵): {e}", file=sys.stderr)
     return {"rates": rates, "coins": coins}
