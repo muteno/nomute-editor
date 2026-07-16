@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>미리보기 하단 가림·높이 — 플레이그라운드</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  노뮤트 플레이그라운드 템플릿 v1 (운영자 260713 정본 · §플레이그라운드 0-1)
+  ─ 사용법: 이 파일을 docs/reports/{yymmdd}_{라벨}_플레이그라운드.html로 복사한 뒤
+    맨 아래 "CONFIG(세션이 채우는 전부)" 블록만 교체한다.
+  ─ 동결 엔진(수정 금지): 컨트롤 빌더 · near() 계승판정 · 프리셋 양방향 동기 ·
+    선택값 복사 모달(역제안) · 재렌더 스크롤 보존 · 한글 열맞춤.
+    골격을 손으로 다시 쓰면 위반 = check_refs.check_playground() 게이트(rc=1).
+  ─ 철학(운영자): 완제품을 부품으로 쪼개 미세조정 = 무의미.
+    부품 1개당 "방식 N가지"를 실물로 나란히(변형 갤러리 = 발산) → 선택 → 7축 미세조정(수렴).
+    핵심 7축 = 자간 · 폰트 크기 · 위치 · 불투명도 · 블러 · 라인 · 액티브 효과.
+  ─ 색·값: 아래 --pg-*는 viewer/index.html :root 실측값의 복사(자기완결 스냅샷 · §핵심명령 3-c).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer :root 실측 사본(값 복사 = 계승 · 임의 창작 금지) */
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px; --pg-r-modal:22px;
+}
+*{box-sizing:border-box;margin:0} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--pg-bg);color:var(--pg-fg);font:14px/1.5 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;padding:14px}
+h1{font-size:17px}.sub{color:var(--pg-mut);font-size:11.5px;margin:3px 0 12px}
+.wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stagewrap{position:sticky;top:10px;flex:0 0 300px}
+.frame{width:300px;height:560px;border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow-y:auto;overflow-x:hidden;background:#0d1012;position:relative}
+.frame .app,.frame .baseline{min-height:100%}
+.frame .baseline{display:none}
+.frame.showcur .app{display:none}.frame.showcur .baseline{display:block}
+.stagebar{display:flex;gap:6px;margin-top:8px;align-items:center}
+.vseg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font-size:11.5px}
+.vseg button{padding:5px 12px;color:var(--pg-mut)}
+.vseg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.finfo{color:var(--pg-mut);font-size:10.5px;font-variant-numeric:tabular-nums}
+.console{flex:1;min-width:320px;max-width:560px}
+.csec{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.csec>h2{font-size:12.5px;font-weight:800;margin-bottom:9px}
+.csec>h2 .b{color:var(--pg-accent)}
+.pill{display:inline-block;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--pg-mut);margin:0 6px 6px 0}
+.pill.on{border-color:rgba(var(--pg-accent-rgb),.55);color:var(--pg-accent);background:rgba(var(--pg-accent-rgb),.08)}
+.pill .st{color:var(--pg-warn)}
+/* 변형 갤러리 = 부품 1개당 방식 N개를 실물로 나란히 */
+.gal{margin-bottom:10px}
+.gal-t{font-size:11.5px;color:var(--pg-mut);margin-bottom:7px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid rgba(255,255,255,.11);border-radius:var(--pg-r-m);padding:10px 8px 8px;text-align:center;cursor:pointer;position:relative;background:rgba(255,255,255,.02)}
+.gcard.on{border-color:rgba(var(--pg-accent-rgb),.6);background:rgba(var(--pg-accent-rgb),.06)}
+.gcard .gnm{font-size:11px;margin-top:8px}
+.gcard .gtag{font-size:9.5px;color:var(--pg-mut);margin-top:2px}
+.gcard.on .gnm{color:var(--pg-accent)}
+.gcard .demo{min-height:44px;display:flex;align-items:center;justify-content:center}
+/* 축 컨트롤 */
+.grp-t{font-size:10.5px;color:var(--pg-mut);letter-spacing:.06em;margin:12px 0 6px;text-transform:uppercase}
+.axis{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;flex-wrap:wrap}
+.axis .nm{flex:0 0 96px}
+.axis input[type=range]{flex:1;min-width:110px;accent-color:var(--pg-accent)}
+.axis .v{font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--pg-accent)}
+.axis .v.warn{color:var(--pg-warn)}
+.axis .tok{flex-basis:100%;font-size:10px;color:var(--pg-mut);padding-left:96px}
+.axis .seg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.axis .seg button{padding:4px 10px;font-size:11px;color:var(--pg-mut)}
+.axis .seg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.axis select{background:#14171a;color:var(--pg-fg);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:4px 8px;font-size:11.5px}
+/* 출력·복사 */
+#outtxt{white-space:pre-wrap;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0d1012;border:1px solid rgba(255,255,255,.1);border-radius:var(--pg-r-m);padding:10px;max-height:260px;overflow:auto}
+.copybtn{margin-top:8px;border:1px solid rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent);border-radius:999px;padding:7px 16px;font-size:12px}
+.copybtn.done{border-color:rgba(255,255,255,.2);color:var(--pg-mut)}
+.note{font-size:11px;color:var(--pg-mut);line-height:1.6}
+/* 복사 경고 모달(역제안) */
+#cmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
+#cmodal.on{display:flex}
+#cmodal .box{background:#14171a;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-modal);padding:16px;max-width:340px;font-size:12.5px}
+#cmodal .box h3{font-size:13px;margin-bottom:8px}
+#cmodal .box .ls{color:var(--pg-warn);font-size:11.5px;margin-bottom:10px;white-space:pre-wrap}
+#cmodal .box .row{display:flex;gap:8px;flex-wrap:wrap}
+#cmodal .box button{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:11.5px}
+#cmodal .box button.pri{border-color:rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}
+/* ── 샘플 미리보기 전용(세션이 renderPreview와 함께 교체하는 영역) ── */
+.mock{padding:14px;font-size:13px}
+.mock .mh{display:flex;justify-content:space-between;align-items:center;color:var(--pg-mut);font-size:11px;margin-bottom:12px}
+.mock .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.mock .inrow{display:flex;gap:8px;align-items:flex-end}
+.mock .fakein{flex:1;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-m);padding:9px 10px;color:var(--pg-mut);font-size:12px;min-height:38px}
+.sendbtn{position:relative;overflow:hidden;border-radius:var(--pg-r-m);padding:9px 14px;min-width:64px;
+  font-size:var(--t-fs,13px);letter-spacing:var(--t-ls,0em);opacity:var(--t-op,1);
+  transform:translateY(var(--t-posY,0px));
+  border:1px solid rgba(var(--pg-accent-rgb),var(--t-line,.35));color:var(--pg-accent);
+  background:rgba(var(--pg-accent-rgb),.10);transition:transform .12s ease}
+.sendbtn:active{transform:translateY(var(--t-posY,0px)) scale(var(--t-fx,.94))}
+.sendbtn.v-gauge::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--pg-accent)}
+.sendbtn.v-gauge.go::after{animation:pgGauge .72s ease forwards}
+@keyframes pgGauge{to{width:100%}}
+.sendbtn.v-pop.go{animation:pgPop .3s ease}
+@keyframes pgPop{40%{transform:translateY(var(--t-posY,0px)) scale(.85)}}
+.sendbtn.v-ring.go::before{content:'';position:absolute;inset:-2px;border-radius:inherit;border:2px solid rgba(var(--pg-accent-rgb),.7);animation:pgRing .5s ease forwards}
+@keyframes pgRing{to{inset:-10px;opacity:0}}
+.sendbtn.v-check.go .lb{visibility:hidden}
+.sendbtn.v-check.go::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;animation:pgCheck .4s ease}
+@keyframes pgCheck{from{transform:scale(.4);opacity:0}}
+.sendbtn.v-glow.go{animation:pgGlow .6s ease}
+@keyframes pgGlow{40%{box-shadow:0 0 18px rgba(var(--pg-accent-rgb),.55)}}
+.mock .blurpanel{margin-top:12px;border-radius:var(--pg-r-m);padding:10px;font-size:11px;color:var(--pg-mut);
+  background:rgba(255,255,255,.05);backdrop-filter:blur(var(--t-blur,14px));-webkit-backdrop-filter:blur(var(--t-blur,14px));border:1px solid rgba(255,255,255,var(--t-line,.12))}
+</style>
+</head>
+<body data-pg-template="v1">
+<h1>썸네일 미리보기 <span style="color:var(--pg-accent)">하단 가림 · 높이</span></h1>
+<p class="sub">가림 방식 선택(갤러리) → 축 미세조정 → 선택값 복사. 기본값 = 현행 실측 · 미리보기 프레임을 스크롤해 하단 가림을 체감해라.</p>
+<div class="wrap">
+  <section class="stagewrap">
+    <div class="frame" data-pg-scrollhost id="frame">
+      <div class="app" data-pg-preview id="pv"></div>
+      <div class="baseline" data-pg-baseline id="bl"></div>
+    </div>
+    <div class="stagebar">
+      <div class="vseg" id="vseg"><button data-v="prop" class="on">제안</button><button data-v="cur">현행(비교)</button></div>
+      <span class="finfo" id="finfo"></span>
+    </div>
+  </section>
+  <aside class="console">
+    <section class="csec" id="psec"><h2><span class="b">•</span> 프리셋</h2><div id="presets" data-pg-presets></div></section>
+    <section class="csec"><h2><span class="b">•</span> 변형 갤러리 — 부품별 방식 선택</h2><div id="gallery"></div></section>
+    <section class="csec"><h2><span class="b">•</span> 미세조정 (7축)</h2><div id="axes" data-pg-controls></div></section>
+    <section class="csec" data-pg-copy><h2><span class="b">•</span> 선택값 <span id="warnN" style="color:var(--pg-warn);font-size:10.5px"></span></h2>
+      <pre id="outtxt"></pre><button class="copybtn" id="copy">선택값 복사</button></section>
+    <section class="csec" data-pg-note><h2><span class="b">•</span> 재현 한계 각주</h2><div class="note" id="notes"></div></section>
+  </aside>
+</div>
+<div id="cmodal" data-pg-warnmodal><div class="box">
+  <h3>⚠ 확립 사다리 밖 값 포함</h3><div class="ls" id="cmLs"></div>
+  <div class="row"><button class="pri" id="cInc">역제안 포함 복사</button><button id="cOnly">계승분만 복사</button><button id="cNo">취소</button></div>
+</div></div>
+
+<script>
+/* ═══════════ 동결 엔진 v1 — 여기부터 CONFIG 전까지 수정 금지 ═══════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const near=(a,b,eps)=>Math.abs((+a)-(+b))<=((eps==null)?.26:eps);          // 계승판정(축별 eps)
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>127?2:1),0);   // 한글 2칸 폭
+const padK=(s,w)=>String(s)+' '.repeat(Math.max(0,w-kw(s)));
+const state={v:{},a:{}};
+function scrollGuard(fn){const h=$('#frame');const y=h?h.scrollTop:0;fn();if(h)h.scrollTop=y;} // 재렌더 스크롤 보존(§7-1-6)
+function initState(){CONFIG.AXES.forEach(ax=>state.a[ax.k]=CONFIG.DEFAULTS[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=CONFIG.DEFAULTS['v_'+g.comp]);}
+function fmt(ax,v){return (ax.step&&ax.step<1)?(+v).toFixed(ax.step<.01?3:2):String(v)}
+function applyAll(structural){
+  const pv=$('#pv');
+  CONFIG.AXES.forEach(ax=>pv.style.setProperty('--t-'+ax.k, state.a[ax.k]+(ax.u||'')));
+  if(structural){scrollGuard(()=>{pv.innerHTML=CONFIG.renderPreview(state);});}
+  syncPresets(); warnAxes(); buildOut();
+}
+function buildGallery(){
+  $('#gallery').innerHTML=CONFIG.GALLERY.map(g=>
+    '<div class="gal"><div class="gal-t">'+g.nm+(g.desc?' — '+g.desc:'')+'</div><div class="gal-grid">'+
+    g.variants.map(v=>'<div class="gcard'+(state.v[g.comp]===v.id?' on':'')+'" data-comp="'+g.comp+'" data-id="'+v.id+'">'+
+      '<div class="demo">'+v.r(state)+'</div><div class="gnm">'+v.nm+(v.id===(CONFIG.DEFAULTS['v_'+g.comp])?' <span style="color:var(--pg-mut)">(현행)</span>':'')+'</div>'+
+      (v.tag?'<div class="gtag">'+v.tag+'</div>':'')+'</div>').join('')+'</div></div>').join('');
+}
+function buildControls(){
+  let html='',grp='';
+  CONFIG.AXES.forEach(ax=>{
+    if(ax.grp!==grp){grp=ax.grp;html+='<div class="grp-t">'+grp+'</div>';}
+    html+='<div class="axis" data-k="'+ax.k+'"><span class="nm">'+ax.nm+'</span>';
+    if(ax.type==='seg'){html+='<div class="seg">'+ax.sg.map(o=>'<button data-val="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>';}
+    else if(ax.type==='select'){html+='<select>'+ (ax.pal||[]).map(o=>'<option value="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';}
+    else{const lid=ax.lad?('lad-'+ax.k):'';
+      html+='<input type="range" min="'+ax.min+'" max="'+ax.max+'" step="'+(ax.step||1)+'" value="'+state.a[ax.k]+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+ax.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')
+        +'<span class="v">'+fmt(ax,state.a[ax.k])+(ax.u||'')+'</span>';}
+    if(ax.tok)html+='<span class="tok">'+ax.tok+'</span>';
+    html+='</div>';});
+  $('#axes').innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
+}
+function presetMatch(p){
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
+  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+    && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
+}
+function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
+function offLadder(ax,v){return ax.lad&&!ax.lad.some(l=>near(l,v,ax.eps));}
+function warnAxes(){
+  const ws=[];
+  CONFIG.AXES.forEach(ax=>{const v=state.a[ax.k];
+    const el=$('#axes .axis[data-k="'+ax.k+'"] .v');
+    const off=offLadder(ax,v);
+    if(el){el.classList.toggle('warn',!!off);el.textContent=fmt(ax,v)+(ax.u||'');}
+    if(off)ws.push({ax,v});});
+  $('#warnN').textContent=ws.length?('⚠ 사다리 밖 '+ws.length+'축'):'';
+  return ws;
+}
+function lineOut(ax){
+  const v=state.a[ax.k], cur=CONFIG.DEFAULTS[ax.k];
+  let judge;
+  if(ax.tokv!=null&&near(v,ax.tokv,ax.eps)) judge='계승 var('+ax.tokn+')';
+  else if(ax.lad&&!offLadder(ax,v)) judge='계승(확립 사다리)';
+  else if(ax.free) judge='자유(알파 변주)';
+  else judge='갱신 후보 ⚠';
+  return padK(ax.k,10)+': '+fmt(ax,v)+(ax.u||'')+'  [현행 '+fmt(ax,cur)+(ax.u||'')+'] · '+judge;
+}
+function buildOut(){
+  const L=['# '+CONFIG.META.label+' — 선택값 ('+new Date().toISOString().slice(0,10)+')','## 방식(변형 갤러리)'];
+  CONFIG.GALLERY.forEach(g=>{const v=g.variants.find(x=>x.id===state.v[g.comp]);
+    L.push(padK(g.comp,10)+': '+(v?v.nm:'-')+(state.v[g.comp]===CONFIG.DEFAULTS['v_'+g.comp]?'  [현행 유지]':'  [변경]'));});
+  L.push('## 미세조정(7축)');
+  CONFIG.AXES.forEach(ax=>L.push(lineOut(ax)));
+  $('#outtxt').textContent=L.join('\n');
+}
+function counterBlock(ws){
+  return '\n## ⚠ 기틀 갱신 역제안(사다리 밖 값 — 회신 = (갱신) 승인 정문)\n'+
+    ws.map(w=>'- '+w.ax.nm+'('+w.ax.k+') = '+fmt(w.ax,w.v)+(w.ax.u||'')+' — 근접: '+(w.ax.lad?w.ax.lad.join('/'):'-')+(w.ax.u||'')).join('\n');
+}
+function doCopy(txt,btn){
+  const done=()=>{btn.classList.add('done');btn.textContent='복사됨 ✓';setTimeout(()=>{btn.classList.remove('done');btn.textContent='선택값 복사';},1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));}
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();}
+/* 이벤트 위임(동결) */
+$('#gallery').addEventListener('click',e=>{const c=e.target.closest('.gcard');if(!c)return;
+  state.v[c.dataset.comp]=c.dataset.id;buildGallery();applyAll(true);});
+$('#gallery').addEventListener('pointerdown',e=>{const d=e.target.closest('.gcard .demo>*');if(d){d.classList.remove('go');void d.offsetWidth;d.classList.add('go');}});
+$('#axes').addEventListener('input',e=>{const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis')?.dataset.k);if(!ax)return;
+  state.a[ax.k]=e.target.value;applyAll(false);});
+$('#axes').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+  const ax=CONFIG.AXES.find(a=>a.k===b.closest('.axis').dataset.k);state.a[ax.k]=b.dataset.val;buildControls();applyAll(true);});
+$('#axes').addEventListener('change',e=>{if(e.target.tagName!=='SELECT')return;
+  const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis').dataset.k);state.a[ax.k]=e.target.value;applyAll(true);});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;
+  const p=CONFIG.PRESETS[+b.dataset.p];Object.assign(state.a,{},CONFIG.DEFAULTS,p.st||{});
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});CONFIG.AXES.forEach(ax=>state.a[ax.k]=st[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]);
+  buildGallery();buildControls();applyAll(true);});
+$('#vseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#frame').classList.toggle('showcur',b.dataset.v==='cur');});
+$('#copy').addEventListener('click',()=>{
+  const ws=warnAxes(), base=$('#outtxt').textContent;
+  if(!ws.length){doCopy(base,$('#copy'));return;}
+  $('#cmLs').textContent=ws.map(w=>w.ax.nm+' = '+fmt(w.ax,w.v)+(w.ax.u||'')+' (사다리: '+(w.ax.lad||[]).join('/')+')').join('\n');
+  $('#cmodal').classList.add('on');
+  $('#cInc').onclick=()=>{doCopy(base+counterBlock(ws),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cOnly').onclick=()=>{doCopy(base.split('\n').filter(l=>!l.includes('갱신 후보')).join('\n'),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cNo').onclick=()=>$('#cmodal').classList.remove('on');
+});
+function boot(){initState();buildPresets();buildGallery();buildControls();
+  $('#bl').innerHTML=CONFIG.renderBaseline?CONFIG.renderBaseline():CONFIG.renderPreview(Object.assign({},{v:Object.fromEntries(CONFIG.GALLERY.map(g=>[g.comp,CONFIG.DEFAULTS['v_'+g.comp]])),a:Object.assign({},CONFIG.DEFAULTS)}));
+  $('#notes').innerHTML=(CONFIG.META.notes||[]).map(n=>'· '+n).join('<br>');
+  $('#finfo').textContent=CONFIG.META.frame.w+'×'+CONFIG.META.frame.h+' · SSOT='+CONFIG.META.ssot;
+  applyAll(true);}
+/* ═══════════ CONFIG — 세션이 채우는 전부(아래 샘플을 통째 교체) ═══════════ */
+const CONFIG={
+  META:{label:'썸네일 미리보기 — 하단 가림·높이', frame:{w:300,h:560}, ssot:'viewer/thumb.html .cpprev/.cpprev-box',
+    notes:[
+      '스코프 = 딱 2축: ① 하단에서 콘텐츠가 가려지는 순간의 처리(방식 갤러리) ② 미리보기 높이. 액자 색·좌우 채움·정렬 등 나머지 = 확립분(운영자 260716)이라 이 판에 안 실음.',
+      '프레임 560px = 폰 세로 근사(1svh≈5.6px 환산) — 실기기 svh·주소창 동작은 근사. 값 정본은 채택 후 라이브 실측.',
+      '프레임을 아래로 스크롤해야 하단 가림이 체감된다(입력행들이 액자 밑으로 들어오는 순간을 봐라).',
+      '글래스(블러) 방식은 iOS서 backdrop-filter 비용 있음 — 채택 시 저사양 체감 1회 확인 권장.',
+      '높이 축 = "반반 활용(메인 축소)" 전 단계의 캡 조정 — 채택값은 .cpprev-box height:min(Xsvh,Ypx)로 이식.',
+      '스테이지 = 포스트(4:5) 고정 근사(비율은 가림·높이와 독립이라 판 밖) · 여기 정립값 = 이후 각 스튜디오 쉘 복제의 정본(운영자 260716 "정립 후 복제").'
+    ]},
+  GALLERY:[
+    {comp:'edge', nm:'하단 가림 — 콘텐츠가 액자 밑으로 들어오는 순간', desc:'미리보기 프레임을 스크롤해 체감', variants:[
+      {id:'cut',  nm:'하드 컷', tag:'액자 밑변에서 싹둑', r:()=>'<div class="edemo"><i class="ed-row"></i><i class="ed-mat"></i></div>'},
+      {id:'fade', nm:'페이드 스커트', tag:'그라데 띠 = 서서히 잠김', r:()=>'<div class="edemo"><i class="ed-row"></i><i class="ed-mat"></i><i class="ed-sk"></i></div>'},
+      {id:'blur', nm:'글래스 스커트', tag:'잠기며 흐려짐(블러)', r:()=>'<div class="edemo"><i class="ed-row"></i><i class="ed-mat"></i><i class="ed-sk ed-bl"></i></div>'},
+      {id:'pad',  nm:'딥 패딩', tag:'가림선을 도형에서 멀리', r:()=>'<div class="edemo"><i class="ed-row"></i><i class="ed-mat ed-deep"></i></div>'},
+    ]},
+  ],
+  AXES:[
+    {k:'skirtH', nm:'스커트 높이', grp:'하단 가림', type:'range', min:0, max:48, step:2, u:'px', tok:'페이드·글래스 전용(신규 축 — 채택 = 갱신 등재)', eps:1},
+    {k:'fadeOp', nm:'스커트 시작 농도', grp:'하단 가림', type:'range', min:0.4, max:1, step:0.05, u:'', free:true, tok:'액자색(#121212) 알파 변주 = 자유', eps:0.02},
+    {k:'blurPx', nm:'스커트 블러', grp:'하단 가림', type:'range', min:0, max:28, step:1, u:'px', lad:[0,8,14,20,28], tokn:'--blur-m', tokv:14, tok:'--blur-s/m/l/xl(8/14/20/28) · 글래스 전용', eps:0.26},
+    {k:'padB', nm:'액자 하단 패딩', grp:'하단 가림', type:'range', min:8, max:40, step:2, u:'px', tokn:'균등 액자 16', tokv:16, tok:'현행 = 상하좌우 균등 16 · 딥 패딩 방식의 레버', eps:0.26},
+    {k:'hVh', nm:'높이 캡(svh)', grp:'미리보기 높이', type:'range', min:20, max:60, step:1, u:'', tokn:'현행 46svh', tokv:46, tok:'.cpprev-box height:min(Xsvh,Ypx)의 X — 판에선 1svh≈5.6px 환산', eps:0.26},
+    {k:'hPx', nm:'높이 상한(px)', grp:'미리보기 높이', type:'range', min:200, max:430, step:5, u:'', tokn:'현행 340px', tokv:340, tok:'.cpprev-box height:min(Xsvh,Ypx)의 Y', eps:0.26},
+  ],
+  DEFAULTS:{skirtH:0, fadeOp:1, blurPx:0, padB:16, hVh:46, hPx:340, v_edge:'cut'},
+  PRESETS:[
+    {nm:'현행(비교 기준)', st:{}},
+    {nm:'페이드 잠김', star:1, st:{v_edge:'fade', skirtH:24}},
+    {nm:'글래스 잠김', st:{v_edge:'blur', skirtH:24, blurPx:14, fadeOp:0.7}},
+    {nm:'딥 패딩', st:{v_edge:'pad', padB:28}},
+    {nm:'컴팩트 높이', st:{hVh:34, hPx:260}},
+    {nm:'페이드+컴팩트', st:{v_edge:'fade', skirtH:24, hVh:36, hPx:280}},
+  ],
+  renderPreview(s){
+    const v=s.v?s.v.edge:state.v.edge;
+    const rows=[...Array(12)].map((_,i)=>'<div class="trow'+(i%4===3?' tall':'')+'"></div>').join('');
+    return '<style>'+
+      '.tapp{background:#0b0d0e;min-height:100%;}'+
+      '.tmat{position:sticky;top:0;z-index:6;background:#121212;padding:16px 16px var(--t-padB,16px);}'+
+      '.tbox{position:relative;height:min(calc(var(--t-hVh,46)*5.6px),calc(var(--t-hPx,340)*1px));background:#121212;border:1px solid rgba(255,255,255,.10);border-radius:9px;overflow:hidden;}'+
+      '.tstage{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);aspect-ratio:4/5;height:100%;width:auto;background:#000;display:flex;align-items:center;justify-content:center;color:#00EED2;}'+
+      '.tsk{position:absolute;left:0;right:0;top:100%;height:var(--t-skirtH,0px);pointer-events:none;background:linear-gradient(180deg,rgba(18,18,18,var(--t-fadeOp,1)),rgba(18,18,18,0));}'+
+      '.tsk.bl{backdrop-filter:blur(var(--t-blurPx,0px));-webkit-backdrop-filter:blur(var(--t-blurPx,0px));-webkit-mask-image:linear-gradient(180deg,#000 30%,transparent);mask-image:linear-gradient(180deg,#000 30%,transparent);}'+
+      '.tform{padding:12px 16px 60px;}'+
+      '.tlbl{font-size:10.5px;color:#9aa39d;margin:14px 0 6px;}.tlbl b{color:#b18cff}'+
+      '.trow{height:38px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(255,255,255,.03);margin-bottom:9px;}'+
+      '.trow.tall{height:104px;}'+
+      '.edemo{position:relative;width:100%;height:44px;overflow:hidden;border-radius:6px;background:#0b0d0e}'+
+      '.ed-mat{position:absolute;left:0;right:0;top:0;height:16px;background:#121212;display:block}'+
+      '.ed-mat.ed-deep{height:26px}'+
+      '.ed-sk{position:absolute;left:0;right:0;top:16px;height:13px;display:block;background:linear-gradient(180deg,rgba(18,18,18,1),rgba(18,18,18,0))}'+
+      '.ed-sk.ed-bl{backdrop-filter:blur(2.5px);-webkit-backdrop-filter:blur(2.5px);-webkit-mask-image:linear-gradient(180deg,#000 30%,transparent);mask-image:linear-gradient(180deg,#000 30%,transparent)}'+
+      '.ed-row{position:absolute;left:8px;right:8px;top:20px;height:11px;border-radius:4px;background:rgba(255,255,255,.10);display:block}'+
+      '</style>'+
+      '<div class="tapp"><div class="tmat v-'+v+'">'+
+      '<div class="tbox"><div class="tstage"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></div></div>'+
+      ((v==='fade'||v==='blur')?'<i class="tsk'+(v==='blur'?' bl':'')+'"></i>':'')+
+      '</div><div class="tform">'+
+      '<div class="tlbl"><b>•</b> 헤더</div><div class="trow"></div><div class="trow"></div>'+
+      '<div class="tlbl"><b>•</b> 오버레이</div><div class="trow tall"></div>'+
+      '<div class="tlbl"><b>•</b> 옵션</div>'+rows+'</div></div>';
+  },
+};
+boot();
+</script>
+</body>
+</html>
