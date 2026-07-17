@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="ko" data-pg-template="v2">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>라디얼 스크림 플레이그라운드 — 260717 (조정 50축)</title>
+<style>
+/* ── 토큰 사본(viewer/index.html :root 실측 260717 — 사본임·정본 아님) ── */
+:root{ --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08); --glass2:rgba(18,19,22,.55);
+--accent:#00EED2; --accent-rgb:0,238,210; --accent-4:#FFE13D; --accent-6:#FF5EC8; --bias-l1:#38C6FF; --bias-l1-rgb:56,198,255;
+--r-m:11px; --ease:cubic-bezier(.2,.7,.3,1); }
+*{box-sizing:border-box} html,body{margin:0;background:#0d0f0e;color:var(--fg);font:14px/1.55 -apple-system,'Pretendard','Malgun Gothic',sans-serif}
+h1{font-size:17px;margin:14px 16px 2px} .sub{color:var(--mut);font-size:12px;margin:0 16px 10px}
+/* 스티키 미리보기(규칙[5] — 화면 고정) */
+#stage{position:sticky;top:0;z-index:9;background:rgba(13,15,14,.97);border-bottom:1px solid var(--line);padding:8px 12px 6px;backdrop-filter:blur(6px)}
+.panes{display:flex;gap:10px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.holder{overflow:hidden;border:1px solid var(--line);border-radius:10px;position:relative;background:#000}
+.holder .cap{position:absolute;top:6px;left:8px;z-index:8;font-size:11px;font-weight:800;color:var(--mut);background:rgba(0,0,0,.55);padding:2px 7px;border-radius:20px;pointer-events:none}
+.win{width:560px;position:relative;overflow:hidden;transform-origin:0 0;background:linear-gradient(180deg,#0e1a17,#0b100e 55%,#0a0d0c)}
+/* 목업 콘텐츠 */
+.statrow{display:flex;gap:10px;padding:14px 16px 0}
+.stat{flex:1;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat b{font-size:19px} .stat i{font-style:normal;color:var(--mut);font-size:11px;display:block;margin-top:2px}
+.spark{height:26px;margin-top:8px} .spark polyline{fill:none;stroke:var(--accent);stroke-width:2}
+.feedcard{margin:10px 16px 0;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12px}
+.feedcard .tt{font-weight:700} .feedcard .mm{color:var(--mut);font-size:11px;margin-top:3px}
+.win.lite{background:linear-gradient(180deg,#dfe8e4,#cfd8d3)} .win.lite .stat,.win.lite .feedcard{background:rgba(255,255,255,.72);border-color:rgba(0,0,0,.08);color:#15201c}
+.win.lite .stat i,.win.lite .feedcard .mm{color:#5b6e66}
+.win.white{background:#f2f4f3} .win.white .stat,.win.white .feedcard{background:#fff;border-color:rgba(0,0,0,.08);color:#15201c}
+/* 스크림 = 실물 셀렉터 계승(.rad-scrim 구조 사본) */
+.pv-scrim{position:absolute;left:0;right:0;pointer-events:none;z-index:3}
+.pv-scrim::after{content:'';position:absolute;inset:0}
+.pv-breath{position:absolute;left:0;right:0;bottom:0;pointer-events:none;z-index:4}
+/* 라디얼 목업(радbtn 정본 형상 근사 — 검정 30% 원 + blur 유리) */
+.pv-rad{position:absolute;left:50%;bottom:41px;width:0;height:0;z-index:6}
+.pv-it{position:absolute;left:-35px;top:-26px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.pv-btn{width:70px;height:70px;border-radius:50%;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;backdrop-filter:blur(10px)}
+.pv-lab{font-size:11px;font-weight:800;color:var(--fg);letter-spacing:-.2px;text-shadow:0 1px 5px rgba(0,0,0,.85);white-space:nowrap}
+.pv-x{position:absolute;left:-26px;top:-26px;width:52px;height:52px;border-radius:50%;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;backdrop-filter:blur(10px)}
+.pv-nav{position:absolute;left:0;right:0;bottom:0;height:50px;display:flex;align-items:center;justify-content:space-around;z-index:5;font-size:12.5px;font-weight:800;color:var(--mut)}
+.pv-nav .on{color:var(--accent)} .pv-nav .on::before{content:'';display:block;width:26px;height:3px;border-radius:3px;background:var(--accent);margin:0 auto 5px}
+.safeline{position:absolute;left:0;right:0;z-index:7;border-top:1px dashed rgba(255,94,200,.85);font-size:10px;color:#FF5EC8;pointer-events:none}
+.safeline span{background:rgba(0,0,0,.6);padding:1px 6px;border-radius:8px}
+.gridov{position:absolute;inset:0;z-index:7;pointer-events:none;background:repeating-linear-gradient(to top,transparent 0 49px,rgba(0,238,210,.18) 49px 50px)}
+.warnchip{position:absolute;right:8px;top:6px;z-index:8;background:#3a1220;border:1px solid #FF5EC8;color:#ffb9e2;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;display:none}
+/* 프리셋 · 컨트롤 */
+#presets{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0 2px}
+.pchip{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--fg);border-radius:20px;padding:5px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.pchip.on{background:rgba(var(--accent-rgb),.14);border-color:var(--accent);color:var(--accent)}
+#ctrls{max-width:1180px;margin:12px auto;padding:0 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:8px 14px}
+.grp{grid-column:1/-1;margin:12px 0 0;font-size:12.5px;font-weight:800;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:4px}
+.grp small{color:var(--mut);font-weight:400;margin-left:8px}
+.ctl{display:grid;grid-template-columns:1fr 74px;gap:2px 8px;align-items:center;font-size:12px}
+.ctl label{color:#cfe0d6;display:flex;gap:5px;align-items:center;min-height:17px}
+.ctl output{font-variant-numeric:tabular-nums;text-align:right;color:var(--fg);font-weight:700;font-size:11.5px}
+.ctl .cur{grid-column:1/-1;color:var(--mut);font-size:10.5px;margin-top:-3px}
+.ctl input[type=range]{width:100%;accent-color:var(--accent);height:20px}
+.ctl select{grid-column:1/-1;background:#161a18;color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:4px 6px;font-size:12px}
+.wb{background:#3a2b10;color:#ffd77a;border:1px solid #b98a2e;border-radius:6px;font-size:9.5px;font-weight:800;padding:0 4px}
+.tk{background:rgba(var(--accent-rgb),.12);color:var(--accent);border-radius:6px;font-size:9.5px;font-weight:800;padding:0 4px}
+/* 출력 */
+#out{max-width:1180px;margin:10px auto 40px;padding:0 14px}
+#spec{width:100%;min-height:170px;background:#0a0c0b;color:#cfe0d6;border:1px solid var(--line);border-radius:10px;font:11.5px/1.6 ui-monospace,Consolas,monospace;padding:10px;white-space:pre;overflow:auto}
+#copybtn{background:var(--accent);color:#032322;border:none;border-radius:9px;font-weight:800;font-size:13px;padding:9px 18px;cursor:pointer;margin:8px 0}
+#warnbox{display:none;background:#231a08;border:1px solid #b98a2e;border-radius:10px;padding:9px 12px;font-size:12px;color:#ffd77a;margin:6px 0}
+.note{color:var(--mut);font-size:11.5px;border-top:1px dashed var(--line);margin-top:14px;padding-top:10px}
+.note b{color:#cfe0d6}
+@media (max-width:1180px){.holder{zoom:.8}}
+</style>
+</head>
+<body>
+<h1>라디얼(＋) 스크림 플레이그라운드 <span style="color:var(--mut);font-weight:400">— 조정 50축 · 좌 = 현행(머지본 6d8b8d4) 고정 · 우 = 조정본</span></h1>
+<p class="sub">목적: "위쪽 검정 안개/경계" 체감 제거 — 짧은 창(546px)에서 스크림 400px = 화면 73% 문제 포함. 값 바꾸면 우측만 변함 → 맘에 들면 [선택값 복사] 눌러 답장에 붙여줘(그 값 그대로 배선함).</p>
+
+<div id="stage">
+  <div class="panes">
+    <div class="holder" id="holdA"><span class="cap">현행(고정 · 비교 기준)</span><div class="win" id="winA" data-pg-baseline></div></div>
+    <div class="holder" id="holdB"><span class="cap" id="capB">조정본</span><div class="win" id="winB" data-pg-preview></div><span class="warnchip" id="warnchip">⚠ solid&lt;147px — 라디얼 버튼이 페이드에 걸침</span></div>
+  </div>
+  <div id="presets" data-pg-presets></div>
+</div>
+
+<div id="ctrls"></div>
+
+<div id="out" data-pg-copy>
+  <div id="warnbox"></div>
+  <button id="copybtn">📋 선택값 복사</button>
+  <textarea id="spec" readonly spellcheck="false"></textarea>
+  <div class="note" data-pg-note>
+    <b>재현 한계 각주</b> — ① 실앱의 움직이는 물결 배경(#wavebg)·피드 실데이터는 정지 목업으로 근사(밝기 3종 스위치로 대체). ② SW 셸캐시·Cloudflare Access·배포 전파는 여기서 재현 불가 — 화면이 "그대로"면 값 이전에 <b>구버전 셸</b>부터 의심(Ctrl+F5). ③ backdrop-blur 계열 프리셋은 실기기 성능 검증 필요(260701 라디얼 blur 렉 이력). ④ 커브 엔진의 스톱 배치는 균등 t 근사 — 머지본(곡률 가중 7스톱)과 ±1% 내 오차. ⑤ 브리딩 위상은 실앱과 비동기(정지 토글로 비교). 폰트·스크롤바 차이 무시.
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ── 현행 실측값(머지본 260717 6d8b8d4 · viewer/index.html .rad-scrim) ── */
+const CUR = { bottom:0, solid:210, fade:400, solidVh:100, fadeVh:100, safearea:1,
+  op:.94, curve:'cubic', gamma:3, stops:7, cutoff:.005, lastStop:78, softland:1,
+  brPeak:.24, brEnd:75, brCurve:'smooth', brPeriod:2.1, brMin:.35, brColor:'bias-l1', brRun:1,
+  inMs:150, inTy:24, inEase:'ease',
+  mode:'grad', blur:0, blurOp:.55, vigX:50, vigR:70,
+  vh:546, bgKind:'chan', scrollY:0, gridOv:0, abMix:0,
+  safeShow:1, warnShow:1, clampOn:0,
+  labSh:.85, labFs:11, btnPl:.30,
+  t2:0, t3:0, t4:0, t5:0, t6:0,
+  navChrome:1, navBack:.94, scColor:'bg', sat:1, dither:0, rmAlpha:.5 };
+let S = Object.assign({}, CUR);
+
+/* 확립 축(⚠ = 260716 운영자 확정·사다리) · 팔레트 폐쇄 목록 */
+const LADDER = { solid:[98,150,210], fade:[293,340,400,460], bottom:[0,50], op:[.72,.94], labFs:[10,11,12,13] };
+const PAL = { 'bias-l1':'56,198,255', 'accent':'0,238,210', 'accent-4':'255,225,61', 'accent-6':'255,94,200', 'mut':'143,166,151' };
+const SCCOL = { 'bg':'18,18,18', 'black':'0,0,0', 'glass2':'18,19,22' };
+
+/* 컨트롤 명세 50개 */
+const C = [
+ ['A. 본체 기하','확정 사다리 = ⚠ 축(98/150/210 · 293/340/400/460)'],
+ {k:'solid',n:'① 불투명 밴드 끝 px',t:'r',mi:0,ma:340,st:1,u:'px',warn:1,lad:'solid'},
+ {k:'fade',n:'② 완전 투명 끝점 px',t:'r',mi:240,ma:660,st:5,u:'px',warn:1,lad:'fade'},
+ {k:'bottom',n:'③ 아래끝 px',t:'r',mi:0,ma:60,st:1,u:'px',warn:1,lad:'bottom'},
+ {k:'solidVh',n:'④ 밴드 vh캡 %(100=끔)',t:'r',mi:20,ma:100,st:1,u:'%'},
+ {k:'fadeVh',n:'⑤ 끝점 vh캡 %(100=끔)',t:'r',mi:30,ma:100,st:1,u:'%'},
+ {k:'safearea',n:'⑥ safe-area 반영',t:'b'},
+ ['B. 농도 · 커브',''],
+ {k:'op',n:'⑦ 시작 불투명도',t:'r',mi:.4,ma:1,st:.01,warn:1,lad:'op'},
+ {k:'curve',n:'⑧ 커브 종류',t:'s',o:['linear:선형(구형)','quad:이즈아웃²','cubic:이즈아웃³(현행)','quart:이즈아웃⁴','quint:이즈아웃⁵','smooth:스무스스텝','smoother:스무더스텝','sine:사인']},
+ {k:'gamma',n:'⑨ 지수 γ(지수커브만)',t:'r',mi:.8,ma:5,st:.1},
+ {k:'stops',n:'⑩ 스톱 수',t:'r',mi:3,ma:12,st:1},
+ {k:'cutoff',n:'⑪ 저알파 컷(이하=0)',t:'r',mi:0,ma:.05,st:.001},
+ ['C. 상단 경계',''],
+ {k:'lastStop',n:'⑫ 마지막 유색 스톱 위치 %',t:'r',mi:60,ma:100,st:1,u:'%'},
+ {k:'softland',n:'⑬ 끝단 소프트랜딩(기울기0)',t:'b'},
+ ['D. 브리딩 레이어(::after)',''],
+ {k:'brPeak',n:'⑭ 피크 알파',t:'r',mi:0,ma:.5,st:.01},
+ {k:'brEnd',n:'⑮ 끝점 %',t:'r',mi:40,ma:100,st:1,u:'%'},
+ {k:'brCurve',n:'⑯ 커브',t:'s',o:['linear:선형(구형)','smooth:스무스 착지(현행)','cubic:이즈아웃³']},
+ {k:'brPeriod',n:'⑰ 주기 s',t:'r',mi:1,ma:6,st:.1,u:'s'},
+ {k:'brMin',n:'⑱ 최저 밝기',t:'r',mi:0,ma:1,st:.05},
+ {k:'brColor',n:'⑲ 색(팔레트 폐쇄)',t:'s',o:['bias-l1:스카이시안 --bias-l1(현행)','accent:터쿼이즈 --accent ⚠역할재지정','accent-4:형광레몬 --accent-4 ⚠','accent-6:네온핑크 --accent-6 ⚠','mut:무채 --mut ⚠'],warn:0},
+ {k:'brRun',n:'⑳ 브리딩 재생',t:'b'},
+ ['E. 열림 전환',''],
+ {k:'inMs',n:'㉑ 페이드인 ms',t:'r',mi:60,ma:600,st:10,u:'ms'},
+ {k:'inTy',n:'㉒ 등장 translateY px',t:'r',mi:0,ma:60,st:1,u:'px'},
+ {k:'inEase',n:'㉓ 이징',t:'s',o:['ease:ease(현행)','tok:var(--ease) 토큰','linear:linear','out:ease-out']},
+ ['F. 방식 자체(N안)','그라데이션 말고 다른 길'],
+ {k:'mode',n:'㉔ 스크림 모드',t:'s',o:['grad:그라데이션(현행)','gradblur:그라데이션+blur','blur:blur 위주(저알파)','vig:라디얼 비네트','dim:콘텐츠 dim(오버레이 없음)']},
+ {k:'blur',n:'㉕ blur px',t:'r',mi:0,ma:24,st:1,u:'px'},
+ {k:'blurOp',n:'㉖ blur 모드 시 op 보정',t:'r',mi:.2,ma:1,st:.01},
+ {k:'vigX',n:'㉗ 비네트 중심 X %',t:'r',mi:0,ma:100,st:1,u:'%'},
+ {k:'vigR',n:'㉘ 비네트 반경 %',t:'r',mi:30,ma:140,st:1,u:'%'},
+ ['G. 미리보기 시뮬','값 출력엔 미포함(비교 조건) — 양쪽 동시 적용'],
+ {k:'vh',n:'㉙ 창 높이 CSS px',t:'s',o:['455:455(150% 배율급)','546:546(운영자 스샷 역산)','683:683(DPR1)','800:800(데스크탑)'],sim:1},
+ {k:'bgKind',n:'㉚ 뒤 콘텐츠',t:'s',o:['chan:채널요약(어두움)','feed:밝은 피드','white:흰 배경 극단'],sim:1},
+ {k:'scrollY',n:'㉛ 콘텐츠 스크롤 y',t:'r',mi:0,ma:200,st:5,u:'px',sim:1},
+ {k:'gridOv',n:'㉜ 50px 그리드 오버레이',t:'b',sim:1},
+ {k:'abMix',n:'㉝ 구형(선형) 겹쳐보기 %',t:'r',mi:0,ma:100,st:5,u:'%',sim:1},
+ ['H. 안전선 · 검사',''],
+ {k:'safeShow',n:'㉞ 라디얼 147px 안전선 표시',t:'b',sim:1},
+ {k:'warnShow',n:'㉟ 위반 경고칩 표시',t:'b',sim:1},
+ {k:'clampOn',n:'㊱ solid<147 자동 클램프',t:'b'},
+ ['I. 라벨 · 버튼 가독',''],
+ {k:'labSh',n:'㊲ 라벨 그림자 강도',t:'r',mi:0,ma:1,st:.05},
+ {k:'labFs',n:'㊳ 라벨 크기 px',t:'r',mi:10,ma:13,st:.5,u:'px',warn:1,lad:'labFs'},
+ {k:'btnPl',n:'㊴ 버튼 플레이트 알파',t:'r',mi:0,ma:.6,st:.01},
+ ['J. 커브 미세(스톱별 알파 보정 ±)','엔진 산출값에 가산 — 0 = 무보정'],
+ {k:'t2',n:'㊵ 스톱2 보정',t:'r',mi:-.08,ma:.08,st:.005},
+ {k:'t3',n:'㊶ 스톱3 보정',t:'r',mi:-.08,ma:.08,st:.005},
+ {k:'t4',n:'㊷ 스톱4 보정',t:'r',mi:-.08,ma:.08,st:.005},
+ {k:'t5',n:'㊸ 스톱5 보정',t:'r',mi:-.08,ma:.08,st:.005},
+ {k:'t6',n:'㊹ 스톱6 보정',t:'r',mi:-.08,ma:.08,st:.005},
+ ['K. 네비 일체형 · 질감',''],
+ {k:'navChrome',n:'㊺ 열림 중 네비 크롬 제거',t:'b'},
+ {k:'navBack',n:'㊻ 네비 뒤 받침 알파',t:'r',mi:.6,ma:1,st:.01},
+ {k:'scColor',n:'㊼ 스크림 색(폐쇄)',t:'s',o:['bg:--bg #121212(현행)','black:순검정 #000 ⚠','glass2:글래스톤 18,19,22 ⚠'],warn:0},
+ {k:'sat',n:'㊽ blur 세츄레이트',t:'r',mi:1,ma:1.5,st:.05},
+ {k:'dither',n:'㊾ 노이즈 디더(밴딩 완화)',t:'b'},
+ {k:'rmAlpha',n:'㊿ reduce-motion 고정 밝기',t:'r',mi:0,ma:1,st:.05}
+];
+
+/* 커브 엔진 */
+function fcurve(t, kind, g){
+  const gf = (g||3)/3;   /* γ = 지수커브 배율(기본 3 = 현행 그대로) */
+  if(kind==='linear') return 1-t;
+  if(kind==='quad') return Math.pow(1-t,2*gf);
+  if(kind==='cubic') return Math.pow(1-t,3*gf);
+  if(kind==='quart') return Math.pow(1-t,4*gf);
+  if(kind==='quint') return Math.pow(1-t,5*gf);
+  if(kind==='smooth'){const s=3*t*t-2*t*t*t;return 1-s}
+  if(kind==='smoother'){const s=6*t**5-15*t**4+10*t**3;return 1-s}
+  if(kind==='sine') return 1-Math.sin(t*Math.PI/2);
+  return Math.pow(1-t,g||3);
+}
+const isPow = k=>['quad','cubic','quart','quint'].includes(k);
+function near(a,b,tol){ return Math.abs(a-b) <= (tol==null?0.5:tol); }   /* 계승 판정 — 사다리·현행 대비 */
+
+/* 기하 산출(vh캡·클램프 반영) */
+function geom(st, vh){
+  let solid = Math.min(st.solid, st.solidVh<100 ? vh*st.solidVh/100 : 1e4);
+  let fade  = Math.min(st.fade,  st.fadeVh<100 ? vh*st.fadeVh/100  : 1e4);
+  if(st.clampOn && solid<147) solid = 147;
+  if(fade < solid+40) fade = solid+40;
+  return {solid, fade};
+}
+/* 그라데이션 문자열 생성 */
+function grad(st, vh){
+  const {solid,fade} = geom(st,vh); const ramp = fade-solid; const rgb = SCCOL[st.scColor];
+  const N = Math.round(st.stops); const trims=[0,st.t2,st.t3,st.t4,st.t5,st.t6];
+  let eff = st.mode==='blur' ? st.op*.35 : (st.mode==='gradblur' ? st.op*st.blurOp : st.op);
+  const parts = [`rgba(${rgb},${eff.toFixed(3)}) 0px`, `rgba(${rgb},${eff.toFixed(3)}) ${(solid-st.bottom).toFixed(0)}px`];
+  for(let i=1;i<N-1;i++){
+    const t = i/(N-1) * (st.lastStop/100);
+    let a = eff * fcurve(t, st.curve, st.gamma);
+    a += (trims[i]||0);
+    if(a < st.cutoff) a = 0;
+    parts.push(`rgba(${rgb},${Math.max(0,a).toFixed(4)}) ${(solid-st.bottom+ramp*t).toFixed(1)}px`);
+  }
+  if(st.softland){ const t=st.lastStop/100*.96+.04; parts.push(`rgba(${rgb},0) ${(solid-st.bottom+ramp*Math.min(1,t)).toFixed(1)}px`); }
+  parts.push('transparent');
+  return {css:`linear-gradient(to top, ${parts.join(', ')})`, solid, fade};
+}
+function brGrad(st){
+  const rgb = PAL[st.brColor]; const N=5; const parts=[`rgba(${rgb},${st.brPeak})`];
+  for(let i=1;i<N;i++){ const t=i/(N-1); const f = st.brCurve==='linear' ? 1-t : fcurve(t, st.brCurve==='smooth'?'smooth':'cubic'); parts.push(`rgba(${rgb},${(st.brPeak*f).toFixed(3)}) ${(t*st.brEnd).toFixed(1)}%`); }
+  return `linear-gradient(to top, ${parts.join(', ')})`;
+}
+
+/* 목업 DOM(1회 구축 — 재렌더 없음 = 스크롤 보존, 이후 style만 갱신) */
+function buildWin(el){
+  const sy = el.scrollTop;   /* 재렌더 스크롤 보존(§플레이그라운드 — 1회 구축이지만 규약 준수) */
+  el.innerHTML = `
+   <div class="cnt"><div class="statrow">
+    <div class="stat"><b>6.3만</b> <i>팔로워</i><svg class="spark" width="100%" viewBox="0 0 120 26"><polyline points="2,20 30,19 55,18 70,6 84,20 116,20"/></svg></div>
+    <div class="stat"><b>85.7만</b> <i>조회수</i><svg class="spark" width="100%" viewBox="0 0 120 26"><polyline points="2,10 40,14 70,16 96,6 116,7"/></svg></div>
+    <div class="stat"><b>51.7만</b> <i>도달</i><svg class="spark" width="100%" viewBox="0 0 120 26"><polyline points="2,18 55,17 76,7 96,9 116,18"/></svg></div></div>
+   <div class="statrow"><div class="stat"><b>1.1만</b><i>공유</i></div><div class="stat"><b>594</b><i>저장</i></div><div class="stat"><b>1745</b><i>프로필 방문</i></div></div>
+   <div class="feedcard"><div class="tt">일일 추이</div><div class="mm">내역 확인 · 조회수 · 도달 · 방문 · 팔로우</div></div>
+   <div class="feedcard"><div class="tt">문제작 '호프', 개봉 첫날 33만 돌파</div><div class="mm">문화 · 15 · 7시간 전</div></div>
+   <div class="feedcard"><div class="tt">부산 북구 아파트서 화재…1명 연기 흡입</div><div class="mm">사회 · 5 · 2시간 전</div></div></div>
+   <div class="pv-scrim"></div><div class="pv-breath"></div>
+   <div class="pv-rad">
+     <div class="pv-it" style="transform:translate(-104px,-74px)"><div class="pv-btn" style="color:var(--accent)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></div><span class="pv-lab">요약 요청</span></div>
+     <div class="pv-it" style="transform:translate(0px,-118px)"><div class="pv-btn" style="color:var(--accent-4)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg></div><span class="pv-lab">이미지</span></div>
+     <div class="pv-it" style="transform:translate(104px,-74px)"><div class="pv-btn" style="color:var(--accent-6)"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/></svg></div><span class="pv-lab">영상</span></div>
+     <div class="pv-x" style="transform:translate(0,-22px)"><svg width="20" height="20" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" fill="none"><path d="M6 6 18 18M18 6 6 18"/></svg></div>
+   </div>
+   <div class="pv-nav"><span>LEGACY MEDIA</span><span>뉴스 요약</span><span>SNS DIGEST</span><span class="on">채널 요약</span></div>
+   <div class="safeline"><span>라디얼 최상단 147px 안전선</span></div><div class="gridov" style="display:none"></div>
+   <div class="ab-old pv-scrim" style="z-index:4"></div>`;
+  el.scrollTop = sy;
+}
+
+/* 적용 */
+let kfSeq = 0;
+function apply(el, st, isBase){
+  const vh = +S.vh;                       /* 시뮬 축은 항상 공유 */
+  el.style.height = vh+'px';
+  /* 홀더 = 고정 460px 표시창 — 창 높이가 커져도 스케일로 수납(스티키 미리보기 비대 방지) */
+  const sc0 = 460/vh; el.style.transform = `scale(${sc0.toFixed(4)})`;
+  el.parentElement.style.width = (560*sc0).toFixed(0)+'px'; el.parentElement.style.height = '460px';
+  el.classList.toggle('lite', S.bgKind==='feed'); el.classList.toggle('white', S.bgKind==='white');
+  el.querySelector('.cnt').style.transform = `translateY(${-S.scrollY}px)`;
+  const g = grad(st, vh);
+  const sc = el.querySelector('.pv-scrim');
+  sc.style.bottom = (st.safearea? st.bottom : st.bottom)+'px';
+  sc.style.height = (g.fade - st.bottom)+'px';
+  sc.style.background = st.mode==='vig'
+    ? `radial-gradient(ellipse ${st.vigR}% ${st.vigR}% at ${st.vigX}% 100%, rgba(${SCCOL[st.scColor]},${st.op}) 0%, rgba(${SCCOL[st.scColor]},${(st.op*.55).toFixed(2)}) 55%, transparent 100%)`
+    : (st.mode==='dim' ? 'none' : g.css);
+  sc.style.backdropFilter = (st.mode==='gradblur'||st.mode==='blur') ? `blur(${st.blur}px) saturate(${st.sat})` : 'none';
+  el.querySelector('.cnt').style.filter = st.mode==='dim' ? `brightness(${1-st.op*.62}) saturate(.8)` : 'none';
+  /* 브리딩 */
+  const br = el.querySelector('.pv-breath');
+  br.style.height = (g.fade - st.bottom)+'px'; br.style.background = brGrad(st);
+  const kf = 'br'+(kfSeq++);
+  if(st.brRun){ injectKf(kf, st.brMin); br.style.animation = `${kf} ${st.brPeriod}s ease-in-out infinite alternate`; }
+  else { br.style.animation='none'; br.style.opacity = st.rmAlpha; }
+  /* 구형 겹쳐보기(조정 pane만) */
+  const ab = el.querySelector('.ab-old');
+  if(!isBase && S.abMix>0){ const lin = {...st, curve:'linear', stops:3, t2:0,t3:0,t4:0,t5:0,t6:0}; ab.style.height=(g.fade-st.bottom)+'px'; ab.style.background = grad(lin,vh).css; ab.style.opacity = S.abMix/100; }
+  else ab.style.opacity = 0;
+  /* 안전선·경고·그리드 */
+  const sl = el.querySelector('.safeline'); sl.style.display = S.safeShow?'block':'none'; sl.style.bottom='147px';
+  el.querySelector('.gridov').style.display = S.gridOv?'block':'none';
+  /* 라벨·버튼 */
+  el.querySelectorAll('.pv-lab').forEach(x=>{ x.style.textShadow=`0 1px 5px rgba(0,0,0,${st.labSh})`; x.style.fontSize=st.labFs+'px'; });
+  el.querySelectorAll('.pv-btn,.pv-x').forEach(x=>{ x.style.background=`rgba(0,0,0,${st.btnPl})`; });
+  el.querySelector('.pv-nav').style.background = st.navChrome ? 'transparent' : 'rgba(0,0,0,.3)';
+  if(!isBase){ const w=document.getElementById('warnchip'); const bad = geom(st,vh).solid<147; w.style.display = (S.warnShow&&bad)?'block':'none'; }
+  return g;
+}
+const KFS = document.createElement('style'); document.head.appendChild(KFS);
+function injectKf(name,min){ while(KFS.sheet.cssRules.length>160){ KFS.sheet.deleteRule(0); } KFS.sheet.insertRule(`@keyframes ${name}{from{opacity:${min}}to{opacity:1}}`, KFS.sheet.cssRules.length); }
+
+/* 컨트롤 렌더 */
+const ctrls = document.getElementById('ctrls');
+C.forEach(c=>{
+  if(Array.isArray(c)){ const d=document.createElement('div'); d.className='grp'; d.innerHTML=c[0]+(c[1]?`<small>${c[1]}</small>`:''); ctrls.appendChild(d); return; }
+  const d=document.createElement('div'); d.className='ctl';
+  const warn = c.warn ? ' <span class="wb">⚠기틀</span>' : (c.sim?' <span class="tk">시뮬</span>':'');
+  if(c.t==='r'){
+    const lid='i_'+c.k, lad = c.lad?`<datalist id="dl_${c.k}">${LADDER[c.lad].map(v=>`<option value="${v}">`).join('')}</datalist>`:'';
+    d.innerHTML=`<label>${c.n}${warn}</label><output id="o_${c.k}"></output><input id="${lid}" type="range" min="${c.mi}" max="${c.ma}" step="${c.st}" ${c.lad?`list="dl_${c.k}"`:''}>${lad}<span class="cur">현행 ${CUR[c.k]}${c.u||''}</span>`;
+    ctrls.appendChild(d);
+    const inp=d.querySelector('input'); inp.value=S[c.k];
+    inp.addEventListener('input',()=>{ S[c.k]=+inp.value; render(); });
+  } else if(c.t==='s'){
+    d.innerHTML=`<label>${c.n}${warn}</label><output id="o_${c.k}"></output><select id="i_${c.k}">${c.o.map(o=>{const[v,l]=o.split(':');return `<option value="${v}">${l}</option>`}).join('')}</select><span class="cur">현행 ${CUR[c.k]}</span>`;
+    ctrls.appendChild(d);
+    const sel=d.querySelector('select'); sel.value=String(S[c.k]);
+    sel.addEventListener('change',()=>{ S[c.k] = (c.k==='vh') ? +sel.value : sel.value; render(); });
+  } else {
+    d.innerHTML=`<label>${c.n}${warn}</label><output id="o_${c.k}"></output><input id="i_${c.k}" type="range" min="0" max="1" step="1"><span class="cur">현행 ${CUR[c.k]?'켬':'끔'}</span>`;
+    ctrls.appendChild(d);
+    const inp=d.querySelector('input'); inp.value=S[c.k];
+    inp.addEventListener('input',()=>{ S[c.k]=+inp.value; render(); });
+  }
+});
+
+/* 프리셋(현행 포함 4) */
+const PRESETS = {
+ '현행(머지본)': {},
+ '★ 짧은창 적응(추천)': { fadeVh:66, solidVh:36, clampOn:1, curve:'quart', op:.9 },
+ '옅은 안개+blur': { mode:'gradblur', blur:10, blurOp:.6, op:.82 },
+ '구형(선형·비교용)': { curve:'linear', stops:3, softland:0 }
+};
+const pr = document.getElementById('presets');
+Object.keys(PRESETS).forEach((name,i)=>{
+  const b=document.createElement('button'); b.className='pchip'+(i===0?' on':''); b.textContent=name;
+  b.addEventListener('click',()=>{ S=Object.assign({},CUR,PRESETS[name]); document.querySelectorAll('.pchip').forEach(x=>x.classList.remove('on')); b.classList.add('on'); syncInputs(); render(); });
+  pr.appendChild(b);
+});
+function syncInputs(){ C.forEach(c=>{ if(Array.isArray(c))return; const el=document.getElementById('i_'+c.k); if(el) el.value=S[c.k]; }); }
+
+/* 출력 명세(계승/갱신 판정 = near) */
+function buildSpec(){
+  const vh=+S.vh; const g=grad(S,vh); const warns=[];
+  const lines=[`[라디얼 스크림 선택값 — 260717 플레이그라운드]`,`(시뮬 조건: 창 ${vh}px · 배경 ${S.bgKind} — 값 아님)`,''];
+  C.forEach(c=>{ if(Array.isArray(c))return; if(c.sim)return;
+    const v=S[c.k], cur=CUR[c.k]; if(String(v)===String(cur)) return;
+    let tag='갱신 후보';
+    if(c.lad && LADDER[c.lad].some(x=>near(x,+v,0.001))) tag='계승(사다리)';
+    if(c.warn){ tag+=' ⚠기틀축'; warns.push(`${c.n}: ${cur} → ${v}`); }
+    lines.push(`${c.n}: ${v}${c.u||''}  (현행 ${cur}${c.u||''} · ${tag})`);
+  });
+  if(lines.length===3) lines.push('(현행과 동일 — 전 축 계승)');
+  lines.push('','[완성 CSS — .rad-scrim background]', g.css, '', '[::after 브리딩]', brGrad(S));
+  if(warns.length){ lines.push('','⚠ 기틀 갱신 역제안 — 아래 확정값(260716) 이탈분은 회신 시 기틀 갱신 승인으로 처리:'); warns.forEach(w=>lines.push('  · '+w)); }
+  const wb=document.getElementById('warnbox');
+  wb.style.display = warns.length?'block':'none';
+  wb.textContent = warns.length? '⚠ 확정 사다리 밖 값 '+warns.length+'건 — 복사 시 「기틀 갱신 역제안」 블록이 포함됨(회신 = 승인 경로)':'';
+  return lines.join('\n');
+}
+
+/* 렌더(미리보기 = style 갱신만 · innerHTML 재렌더 없음 → 스크롤 보존) */
+function render(){
+  apply(document.getElementById('winA'), CUR, true);
+  apply(document.getElementById('winB'), S, false);
+  document.getElementById('spec').value = buildSpec();
+  C.forEach(c=>{ if(Array.isArray(c))return; const o=document.getElementById('o_'+c.k); if(o) o.textContent = (c.t==='b'? (S[c.k]?'켬':'끔') : S[c.k]+(c.u||'')); });
+  document.getElementById('capB').textContent = '조정본 — solid ' + geom(S,+S.vh).solid.toFixed(0) + 'px · fade ' + geom(S,+S.vh).fade.toFixed(0) + 'px';
+}
+document.getElementById('copybtn').addEventListener('click', async ()=>{
+  const t=document.getElementById('spec'); t.select();
+  try{ await navigator.clipboard.writeText(t.value); }catch(e){ document.execCommand('copy'); }
+  const b=document.getElementById('copybtn'); const o=b.textContent; b.textContent='✅ 복사됨 — 답장에 붙여줘'; setTimeout(()=>b.textContent=o,1400);
+});
+buildWin(document.getElementById('winA')); buildWin(document.getElementById('winB'));
+render();
+</script>
+</body>
+</html>
