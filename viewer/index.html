@@ -1523,11 +1523,20 @@
     --scrim-op:0.94;       /* ⓑ 하단 시작 불투명도 = 거의 불투명(운영자 260716 플레이그라운드 확정 재조정 — "요약요청 위까지 확실히 가리되 반투명 검정안개로 덮지 말 것" · 구 .72는 피드가 비쳐 얇은 검정 베일감 → .94 클린 커버) · ↓낮추면 하단 비침 · 버튼 가독 = solid≥147 보장(아래 ⓑ′) */
     --scrim-solid:210px;   /* ⓑ′ 불투명 밴드 끝 = 바닥부터 여기까지 균일 불투명(--scrim-op) → 이 위부터 투명 램프. ⚠️불변(재발방지 260711): 라디얼 최상단 버튼(화면바닥 147px = .radmenu bottom 41 + --rad-r 106)보다 반드시 높게 유지 — 낮으면 버튼이 페이드 구간에 걸쳐 밝은 피드 위에 반투명 검정 안개가 얹힘(=PC 검정 버그) · PC/모바일 공통값(뷰포트 미디어쿼리 분기 금지 = 한쪽만 조정돼 재발) · 98→150→210 상향(운영자 260716 플레이그라운드 확정 "요약요청 위까지 가림" = 버튼 위 여유까지 클린 불투명 · 147 안전선 초과 유지) */
     --scrim-fade:400px;    /* ⓒ 여기서 완전 투명(끝점) · solid~fade = 위로 갈수록 투명 램프(190px 확보 · 운영자 260716 플레이그라운드 확정) · PC/모바일 공통(460→400 = solid 210 상향에 맞춰 램프 정리) */
+    --scrim-ramp:calc(var(--scrim-fade) - var(--scrim-solid));   /* ⓒ′ 램프 길이 = 파생값(ⓑ′·ⓒ에서 자동 산출 — 직접 조절 금지, 조절은 위 ⓐ~ⓒ만) */
     position:fixed; z-index:calc(var(--z-nav) - 1); left:0; right:0; bottom:calc(var(--scrim-bottom) + env(safe-area-inset-bottom)); height:calc(var(--scrim-fade) - var(--scrim-bottom));   /* z = 네비(z-nav 35) 아래·피드 위 → 피드만 가리고 ＋·네비·라디얼 버튼은 모두 스크림 앞(안 가려짐·운영자 260705) */
-    background:linear-gradient(to top, color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 100%), transparent) 0, color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 100%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom)), transparent);   /* 2단 램프: 바닥~ⓑ′ = 불투명 밴드(운영자 260710 "새로 생긴 맨아래쪽 불투명") → ⓑ′~ⓒ = 위로 갈수록 투명(260707 "위로 투명" 램프는 이 구간에 유지) · --bg 계승(color-mix 토큰 · raw 0) · 스톱 = 화면바닥 기준 px라 ⓐ 차감 · 미지원 브라우저 = 배경 무시=스크림 없음 그레이스풀 · 색은 아래 브리딩 ::after가 담당 */
+    background:linear-gradient(to top,
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 100%), transparent) 0,
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 100%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom)),
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 68%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom) + var(--scrim-ramp) * .12),
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 42%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom) + var(--scrim-ramp) * .25),
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 22%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom) + var(--scrim-ramp) * .4),
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 7%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom) + var(--scrim-ramp) * .58),
+      color-mix(in srgb, var(--bg) calc(var(--scrim-op) * 1%), transparent) calc(var(--scrim-solid) - var(--scrim-bottom) + var(--scrim-ramp) * .78),
+      transparent);   /* 2단 램프: 바닥~ⓑ′ = 불투명 밴드(운영자 260710 "새로 생긴 맨아래쪽 불투명") → ⓑ′~ⓒ = 이즈아웃 큐빅 램프((1-t)³ 7스톱 근사 · 운영자 260717 "위로 갈수록 불투명도 0 수렴 + 이징") — 구 '선형' 램프는 중턱 잔존 알파(예: 300px서 .47)가 밝은 피드 위 검정 안개 + 끝점 기울기 단절(마하 밴드)이 윗변 검정 경계로 인지 = 재발 방지: 선형 복원 금지·스톱 증감은 (1-t)³ 곡선값으로만 · 알파 = --scrim-op 배율·위치 = --scrim-ramp 파생이라 ⓐ~ⓒ 조절점 종전 동작 · --bg 계승(color-mix 토큰 · raw 0) · 스톱 = 화면바닥 기준 px라 ⓐ 차감 · 미지원 브라우저 = 배경 무시=스크림 없음 그레이스풀 · 색은 아래 브리딩 ::after가 담당 */
     opacity:0; transform:translateY(24px); transition:opacity .15s ease, transform .15s ease; pointer-events:none; }   /* 아래→위 페이드인·빠르게(.15s = raditem .34s보다 먼저 깔림) */
   .rad-scrim::after { content:''; position:absolute; inset:0; opacity:0;
-    background:linear-gradient(to top, rgba(var(--bias-l1-rgb),.24), transparent 75%); }   /* 브리딩 레이어 = 스카이시안(--bias-l1) 그라데이션이 아래서 숨쉬듯 밝아졌다 잦아듦(운영자 260706 "안개 터쿼이즈 → 시안톤" = 최근접 토큰 계승 · 구 --accent-rgb 대체 · 모션 브리딩·속도 2×는 260705 확정 유지) */
+    background:linear-gradient(to top, rgba(var(--bias-l1-rgb),.24), rgba(var(--bias-l1-rgb),.2) 19%, rgba(var(--bias-l1-rgb),.12) 37.5%, rgba(var(--bias-l1-rgb),.04) 56%, transparent 75%); }   /* 브리딩 레이어 = 스카이시안(--bias-l1) 그라데이션이 아래서 숨쉬듯 밝아졌다 잦아듦(운영자 260706 "안개 터쿼이즈 → 시안톤" = 최근접 토큰 계승 · 구 --accent-rgb 대체 · 모션 브리딩·속도 2×는 260705 확정 유지) · 보간 = 스무스스텝 착지(피크 .24·끝점 75% 불변 — 본체 램프와 같은 축: 브리딩 피크 때 75% 경계선 인지 제거 · 운영자 260717 이징 조치 동행) */
   .radmenu.open ~ .rad-scrim { opacity:1; transform:translateY(0); }   /* 스크림 = bpop 밖 형제 → 형제 결합자로 열림 연동(z 낮춰 ＋·네비 앞 유지) */
   .radmenu.open ~ .rad-scrim::after { animation:radBreath 2.1s ease-in-out infinite alternate; }   /* 2.1s = 기준 4.2s ÷ 속도 2×(플레이그라운드 확정) · 열림 동안만 가동 */
   @keyframes radBreath { from { opacity:.35; } to { opacity:1; } }
