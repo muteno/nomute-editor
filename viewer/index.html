@@ -746,7 +746,8 @@
   .xcard-tx { display:-webkit-box; -webkit-line-clamp:7; -webkit-box-orient:vertical; overflow:hidden; font-size:var(--fs-sm); line-height:1.5; white-space:pre-line; word-break:break-word; }
   /* ⑦ 블루스카이 번역 카드(운영자 260713) — 부제(주제) → 제목(번역) → 계정·원문(mut) · 셋 간격 = 계정↔원문 5px 계승 · xcard 셸 상속 */
   .bcard-topic { display:flex; align-items:center; gap:7px; margin-bottom:5px; min-width:0; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--accent); }
-  .bcard-topic b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .bcard-topic b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; color:var(--fg); }   /* 주제 타이틀 = 흰색 기본(운영자 260717 "블스도 X처럼 타이틀 흰색") — 컨테이너 accent 상속 되받아치기 · 랭크 배지·변동배지 색은 자체 정의라 무영향 */
+  .xcard.r3 .xcard-h b, .bcard.r3 .bcard-topic b { color:var(--accent); }   /* 1~3위만 강조색(운영자 260717 "1위부터 3위까지만 강조색") — X·블스 공통 · r3 = i<3 마커(랭크 필 .top과 동축) */
   .bcard-topic:empty { display:none; }
   .bcard-title { margin-bottom:5px; font-size:var(--fs-sm); line-height:1.5; color:var(--fg); font-weight:var(--fw-b); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
   .bcard-src { font-size:var(--fs-xs); line-height:1.5; color:var(--mut); display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; filter:grayscale(1); }   /* filter = 원문 속 컬러 이모지 톤다운(운영자 260713) — 텍스트(원문 mut·계정 흰색)는 무채라 무영향, 이모지만 회색화 → 브랜드 톤 통일·원문 내용 보존(제거 아님) */
@@ -9617,11 +9618,11 @@ function renderSnsTrends() {
     `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
     `<span class="tcard-t"></span><span class="tcard-m">${t.metricHtml != null ? t.metricHtml : (t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : '')}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에") · metricHtml = 사전조립 지표(구글 검색량 등 · 미정의 = 조회수 폴백 = 쇼츠·뉴스·AI 무영향)
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
-    `<a class="xcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
+    `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
     `<span class="xcard-tx"></span><span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)
   const bcard = (t, i) =>   // ⑦ 블루스카이 번역 카드(운영자 260713) — [순위]주제(부제) → 번역(제목) → @계정·원문(mut) → 메타 · 미번역(ko 없음) = 원문 폴백 · xcard 셸 상속
-    `<a class="xcard bcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
+    `<a class="xcard bcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="bcard-topic"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
     `<span class="bcard-title"></span><span class="bcard-src"><b></b><span class="bcard-orig"></span></span>` +
     `<span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;
