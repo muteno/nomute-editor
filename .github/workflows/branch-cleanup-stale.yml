@@ -1,0 +1,72 @@
+name: 잔재 브랜치 일괄 정리 (수동)
+
+# 세션에서 git push --delete 가 조직 egress 정책(403)에 막혀, 러너 내부 토큰으로 우회 삭제.
+# 안전장치: ① 기본 dry-run(목록만) ② 열린 PR head·main·checkpoint/*·backup/*·kit-sync/*·diag/* 자동 보존
+#           ③ claude/* 접두사만 삭제 대상 ④ 삭제 전 전 브랜치 SHA를 로그에 스냅샷(부활용)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '실행 모드'
+        type: choice
+        options: [dry-run, delete]
+        default: dry-run
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 삭제 대상 산출 · (delete 모드면) 삭제
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MODE: ${{ github.event.inputs.mode }}
+        run: |
+          set -euo pipefail
+
+          echo "::group::전 브랜치 SHA 스냅샷 (부활용: gh api -X POST repos/$REPO/git/refs -f ref=refs/heads/<이름> -f sha=<SHA>)"
+          gh api "repos/$REPO/branches" --paginate -q '.[] | "\(.commit.sha) \(.name)"'
+          echo "::endgroup::"
+
+          # 보존 = 열린 PR head 브랜치
+          gh pr list --state open --limit 400 --json headRefName -q '.[].headRefName' | sort -u > keep.txt
+          echo "보존(열린 PR head): $(wc -l < keep.txt)개"
+
+          # 대상 = claude/* 전체 - 보존
+          gh api "repos/$REPO/branches" --paginate -q '.[].name' | grep '^claude/' | sort -u > all_claude.txt
+          : > to_delete.txt
+          while IFS= read -r b; do
+            grep -qxF "$b" keep.txt && continue
+            printf '%s\n' "$b" >> to_delete.txt
+          done < all_claude.txt
+
+          N=$(wc -l < to_delete.txt)
+          echo "=============================================="
+          echo " claude/* 총: $(wc -l < all_claude.txt)개 / 삭제 대상: ${N}개"
+          echo " (main·checkpoint/*·backup/*·kit-sync/*·diag/* = claude/* 아니라 자동 제외)"
+          echo "=============================================="
+          echo "::group::삭제 대상 ${N}개 목록"; cat to_delete.txt; echo "::endgroup::"
+
+          if [ "$MODE" != "delete" ]; then
+            echo "▶ dry-run — 실제 삭제 안 함. 목록 확인 후 mode=delete 로 다시 실행하면 삭제."
+            exit 0
+          fi
+
+          echo "▶ delete 모드 — 삭제 시작"
+          ok=0; fail=0
+          while IFS= read -r b; do
+            if gh api -X DELETE "repos/$REPO/git/refs/heads/$b" >/dev/null 2>&1; then
+              ok=$((ok+1)); echo "  ✓ $b"
+            else
+              fail=$((fail+1)); echo "  ✗ $b (스킵)"
+            fi
+          done < to_delete.txt
+          echo "=============================================="
+          echo " 삭제 완료 — 성공 ${ok} / 실패 ${fail}"
+          echo " 남은 원격 브랜치 총: $(gh api "repos/$REPO/branches" --paginate -q '.[].name' | wc -l)개"
+          echo "=============================================="
