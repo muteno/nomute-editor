@@ -95,6 +95,18 @@
 - **4개 이상**은 미도입(현 최대 3) — 필요 시 같은 규칙(최우측=X열·30px씩 왼쪽) 연장, 단 행폭·제목 잠식 커지면 운영자 확인.
 - 정본 셀렉터 = `.qpop .qh-xcell`·`.qrow .qact`·`.pubpop .pub-acts`(위 「팝업 행-액션 정렬」 행). 시각 정본 = `docs/reports/260704_메시지함_팝업정렬_교과서.html`. 강제 = `check_refs check_design`(raw px baseline).
 
+## 🧩 상호작용→정본 부품 표 (운영자 260717 · 평의회 7:1 — CLAUDE.md [4-1] 완료선의 계승 앵커)
+> 새 컨트롤을 만들 때 이 표에서 골라 계승한다(생김새 창작 금지). **기존 표면 = 레거시 동결** — 이 표는 소급 통일 명령이 아니다(소급 전용 작업 금지 · 정렬은 그 파일을 다른 일로 만질 때만 곁들임 = touch-then-align).
+
+| 상호작용 종류 | 정본 부품(셀렉터) | 비고 |
+|---|---|---|
+| 새 '화면(뷰어)' 신설 — 제작 폼 골격 | index `#genidlg`의 `.geni-row`/`.geni-opt` | 운영자 260714 "만드는 화면 전부 이 기틀 계승" — sb.html이 실증(헤더 "원본 k.html·바이트 동일"+geni 계승) |
+| 기존 화면 안 N택1(여럿 중 하나 고르기) | **그 화면의 확립 문법** — k `.axchip`(알약)·edit `.prow .pc` 칩·sb `.geni-opt` | 표면 계승(위 「단독 필터 토글」 행의 '계승 소스 = 배치 맥락·표면' 동축) · 형제 없으면 폴백 = k `.axchip` |
+| ON/OFF 옵션 | 그 화면 토글 문법(edit 옵션 카드·k `.ktg` 등) | 단독(형제 없는) 토글에 텍스트-온리 `.chip` 금지(위 행 룰 그대로) |
+| 연속값(크기·위치·%) | `<input type=range>` 슬라이더(edit `.grow` 결) | **칩으로 억지 통일 금지** — 상호작용 종류가 다르면 생김새가 다른 게 정답 |
+
+- 파일 간 문법 차이(edit 카드 vs ly 칩 vs sb 글자토글 vs k 박스) = **결함 아님·동결 정본**(각 탭 = 그날 운영자 승인 스펙 · 260717 평의회 7:1). 파일을 넘는 부품 통일·공용 부품 CSS 신설·문법 자동게이트 = 비채택.
+
 ## 적용 절차 (새 컴포넌트·이식)
 1. 이 표에서 해당 행 찾기 → **정본 셀렉터를 그대로 계승**(클래스 추가만, 재설계 금지).
 2. 표에 없는 새 컴포넌트면 → 위 표기 규칙대로 만들고 **이 표에 행 추가**(인덱스 갱신 = 등재).
@@ -108,7 +120,7 @@
 - ✅ **:active 눌림 효과 토큰화**(260628 · PR #1133·1135 · 분신술 10인) — 14개 임의 scale → 4뷰어 `:root` 5토큰 사다리(`--press-pico/xs/s/m/l` = `.55/.82/.85/.9/.95`, 기존 우세값 스냅·델타 ≤.03) + `scale(var(--press-*,fallback))` + reduced-motion 무효화 블록(`--press-*:1`). **픽토온리 = `:active svg{scale}`로 강제**(배경 plate 안 따라움직임 — `.vh-fbtn`·`.jvar-dl` 버그픽스). **제외=셀렉터 화이트리스트**(값 기반 금지 — `.mergebox(.95)`·`.rev-fab(.9)` 충돌): 게이지(`.go/.mkbtn/.ed-go/.edattach/.sc-pick/.unmerge-go/.hist-clr/.asksend`[.97=전송·수정·기록·발행 공용·260704 등재])·보라(`.mergebox/.mb-x/#histRemote/.rev-fab`)·카드(`.card/.abadd .99`). 색플래시(복사 형광) 보존. ⚠️ 4뷰어 `:root` 독립(상속 0) → 토큰 4곳 각각·index만 거울 대상. ⏳ 잔여 = 이모지 SVG도 nm-svg 편입 검토 · `check_press_tokens` 게이트(raw scale 재등장 차단).
 - ✅ **게이지 채움 곡선 통일 = `--gauge-ease` SSOT**(260704) — glive·goFill·pickGauge 전 게이지 곡선을 raw `linear` → `--gauge-ease`(센 ease-out `cubic-bezier(.12,.9,.22,1)`) 단일토큰 계승 · `build_design_mirror` `--gauge` 접두 추가로 tokens.css에 실어 **4뷰어(index+thumb/k/ly/comp) 공유 전파**. **재생성(`.mkbtn`)도 goFill 고정 .72s → glive 점근 전환**(전송·수정과 동일 기틀 · `gaugeStart/gaugeDone/gaugeClear` 공용 · '다 차고 멈칫' 제거). 강제 = design_gate(raw 미토큰) + 거울. 새 게이지도 `--gauge-ease` 계승(제각각 금지).
 - ⏳ P2 = `tokens.css` 공유 `<link>` + `build_design_mirror` 확장(thumb/ly/k에 `--r/sp/blur/btn/z` 주입).
-- ⏳ P3 = `구성도/00_컴포넌트_인덱스.html` 시각본 + (선택) `build_components_index.py`로 표↔코드 diff 하드게이트(`build_library` 패턴).
+- ❌ P3 = `구성도/00_컴포넌트_인덱스.html` 시각본 + (선택) `build_components_index.py`로 표↔코드 diff 하드게이트(`build_library` 패턴) — **폐기(운영자 260717 · 평의회 7:1)**: 컨트롤 문법 일치는 의미 판단이라 diff 게이트 = 오탐·유지비 > 효용. 대체 = 위 「상호작용→정본 부품 표」 계승(pay-on-build) + CLAUDE.md [4-1] 완료선.
 - ⏳ 잔여 = 닫기 X 액티브(회전180+`--accent` 형광) 전역 통일 완료(260704 · 모양은 원형/둥근네모 2종 의도유지 = 형태 단일화 폐기) · 토스트 토큰화+`role=alert` · z충돌(`.totop`/`.nm-top`) · radius/gap 토큰화.
 
 - ✅ **genidlg UX 재배치 = 그룹 4군 + 카메라·구도 접기 + 고정 푸터**(260707 · 평의회 3인) — 그룹 소머리 = `.cref-lbl` 계승(`.geni-sechead` 래퍼 · §표기표준 e "부제=섹션 헤더" 의미를 폼 관례상 소머리 `•`로 실현 = 절충 명시) · 접기 = `.pm-chev` 쉐브론 계승 + **grid-template-rows 0fr↔1fr**(적대검증 260707: 구 max-height:900 하드코딩 = 접힘 140ms 지연·잠재 클리핑 → grid-rows로 지연0·내용무관) + **접힘 시 `inert`**(tab-order·SR 제거 = 원본 `.pmenu-sub[hidden]` A11y 핵심 복원 · 구 max-height:0만 = 거짓 계승 실버그였음) + cardIn 스태거 · reduced-motion 무효 · 접힘 활성 배지 = `.qbadge` 값 계승(`.geni-n` · 내부 non-auto 개수 · 숫자만 = §디자인 e) · 고정 푸터 = tooldlg flex column 문법(`.geni-foot` — CTA 전 기종 below-the-fold 해소) · 프리셋 = GENI_RESET 스프레드(부분 병합 stale 오발사 봉합). 신규 팝업 그룹핑도 이 패턴 계승.
