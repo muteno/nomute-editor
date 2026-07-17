@@ -346,7 +346,6 @@
   #lyOptPv.nosrc ~ .cpv-photobtn { display:grid; }
   .lysh-box .cpv-photobtn svg { width:26px; height:26px; display:block; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }   /* raw-ok: 26px·.14s 탄성 = thumb .cpv-photobtn svg 정본값 그대로(창작 아님) */
   .lysh-box .cpv-photobtn:active svg { transform:scale(var(--press-xs,.8)); }
-  .lysh-box.dropping { border-color:rgba(var(--accent-rgb),.35); }   /* 드래그 오버 = 첨부 가능 힌트(운영자 260717 "드롭 ㄱ — 베껴오면 통일") — thumb .cpprev-box.dropping 원문 동문 · 알파 .35 계승 */
   .lyoptpv[hidden] { display:none; }
   .lyoptpv .pvb { position:absolute; left:50%; bottom:calc(2% + var(--lypv-pos, 57) * .82%); transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; width:max-content; max-width:92%; font-weight:800; line-height:1.35; text-align:center; color:rgba(255,255,255,1); letter-spacing:-.2px; }   /* 자막 블록(원문+한글 세로 스택 · 260710 언어 모드 미러) — 위치 = 번인 MarginV 공식 그대로(margin_v = h×(0.02+0.0082×pos) → bottom 2%+0.82%×pos) · align 중앙 = ASS \an2 동일 · max-width 92% 초과 = 랩 */
   .lyoptpv .pvt { position:relative; max-width:100%; font-size:calc(var(--lypv-size, .035) * 430px); }   /* 주 줄(한글 · src 모드 = 원문) — 크기 = 번인 fs=h×size_frac 미러(아래 @supports cqh가 정본 · 430px = cqh 미지원 폴백 근사 = 높이 캡과 동일 기준) · position:relative = 카라오케 두 겹 앵커 */
@@ -1751,12 +1750,6 @@ async function lyRestoreLast() {
   ub.addEventListener('click',()=>openUrl($('#srcUrl').hidden));
   const fb=$('#srcFileBtn'); if(fb) fb.addEventListener('click',()=>{ const fi=$('#file'); if(fi) fi.click(); });   // 파일 픽토 = input#file 대리 클릭(카드 행 도먼트 · 첨부/추출 로직 불변)
   const eb=document.querySelector('.lysh-box .cpv-photobtn'); if(eb) eb.addEventListener('click',()=>{ const fi=$('#file'); if(fi) fi.click(); });   // 빈 무대 첨부 픽토 = 동일 위임(Q18)
-  const bx=document.querySelector('.lysh-box');   // 무대 드롭존(운영자 260717 "드롭 ㄱ — 베껴오면 통일") = edit .pvsec 드롭 원문 계승(DataTransfer → input#file → change = 업로드 로직 무접촉) · 타입 게이트 = input accept 미러
-  if(bx){
-    bx.addEventListener('dragover',e=>{ const t=e.dataTransfer; if(t&&Array.from(t.types||[]).includes('Files')){ e.preventDefault(); t.dropEffect='copy'; bx.classList.add('dropping'); } });
-    bx.addEventListener('dragleave',e=>{ if(!bx.contains(e.relatedTarget)) bx.classList.remove('dropping'); });
-    bx.addEventListener('drop',e=>{ e.preventDefault(); bx.classList.remove('dropping'); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(!f) return; if(!(/^(video|audio|text)\//.test(f.type||'')||/\.(mp4|mov|m4v|webm|mkv|avi|3gp|mp3|m4a|wav|ogg|oga|aac|flac|opus|txt|srt|vtt)$/i.test(f.name))) return; const inp=$('#file'); try{ const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; }catch(_){ return; } inp.dispatchEvent(new Event('change')); });
-  }
   const close=()=>{ pop.hidden=true; pb.setAttribute('aria-expanded','false'); };
   const msg=t=>{ list.innerHTML='<div class="lp-empty">'+esc(t)+'</div>'; };
   pb.addEventListener('click', async()=>{
