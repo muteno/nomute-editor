@@ -9839,15 +9839,15 @@ function renderSnsTrends() {
     };
     box._tsDraw = () => {   // 부분 재렌더(스택만 — 페이지 스크롤 무간섭 §7-1-6 정신)
       const O = box._tsO, i0 = sIdx(O);
-      const tail = box._tsMore && i0 === sN() - 1;   // 확장 꼬리 끝 = 다음 없음 → > 가 ↻(처음부터)로 전환(운영자 260716 "> 가 안먹히게 하고 그거로 바뀌면")
+      const rk = i0 + 1;   // 전역 1-based 순위(top 10·확장 30 공통 = i0+1)
+      const home5 = rk >= 10 && rk % 5 === 0;   // '처음으로' ↻ = 10위부터 5위 간격(10·15·20·25·30위 · 운영자 260717 "5위 단위") · 그 사이(11~14 등)는 < > 만
       const mAt = off => (box._tsMore && i0 + off >= sN()) ? null : sAt(O + off);   // 확장 모드 꼬리 = 랩 채움 금지(빈 셀) · 1~10 순환 = 종전 랩
       stkEl.innerHTML =
         `<div class="tstk-g">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), sIdx(O + 1), 'mini')}${skCard(mAt(2), sIdx(O + 2), 'mini')}${skCard(mAt(3), sIdx(O + 3), 'mini')}</div>` +
-        `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` +
-        (box._tsMore && i0 >= 10 ? `<span class="tstk-cnt">${i0 + 1}/${sN()}</span>` : '') +   // 11위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — ↻ 미니와 > 사이 열 축 · 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30)
-        (box._tsMore && i0 >= 10 && !tail ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음부터">${Q_REFR}</button>` : '') +   // 11위+ = 넘김 버튼 위 2/3 ↻ 미니(운영자 260716 Q03 — 같은 열 축·픽토 중심 일치는 CSS right 정합) · 꼬리 끝 = 본 버튼이 ↻라 숨김(중복 회피) · -sm = 크기 축(메인 ↻ 전환과 분리)
-        (tail ? `<button class="feednav next tstk-rst" type="button" data-go="0" aria-label="처음부터">${Q_REFR}</button>`
-              : `<button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button>`) + `</div>`;   // 좌우 넘김 화살표(운영자 260713) = .feednav 정본 계승 · 꼬리 끝 = ↻ 전환(누르면 처음 복귀 · data-nav 부재 = 넘김 축 자동 차단)
+        (i0 > 0 ? `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` : '') +   // 1위 = ◀ 숨김(뒤 없음 · 운영자 260717) · 2위+ = 종전 ◀
+        (box._tsMore && i0 >= 10 ? `<span class="tstk-cnt">${rk}/${sN()}</span>` : '') +   // 11위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30)
+        (home5 ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음으로" title="처음으로">${Q_REFR}</button>` : '') +   // 10·15·20·25위 = > 위 '처음으로' ↻(운영자 260717) · ↻ = 새로고침 픽토 차용일 뿐 뜻 = 1위 복귀 · 같은 열 축·픽토 중심 CSS right 정합
+        `<button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button>` + `</div>`;   // > = 항상 노출 · 꼬리 끝 = 전진 로직이 처음 랩(_tsAdv · 운영자 260717) · .feednav 정본 계승(운영자 260713)
       const ts2 = [sAt(O), mAt(1), mAt(2), mAt(3)].filter(Boolean);
       stkEl.querySelectorAll('.tsk-t').forEach((el2, k2) => { el2.textContent = ts2[k2] ? ts2[k2].t : ''; });
       const g = stkEl.querySelector('.tstk-g');
