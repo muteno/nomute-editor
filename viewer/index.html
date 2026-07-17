@@ -9859,7 +9859,7 @@ function renderSnsTrends() {
       if (a.dataset.pt === '1' || a.closest('[data-sec=sh]')) emb.k = 'pt';   // 쇼츠 = 유튜브 임베드지만 세로 프레임(대시보드 행 = data-pt 마커)
       e.preventDefault();
       const si = a.dataset.si !== undefined ? +a.dataset.si : -1;   // 대시보드 항목 = 시퀀스 컨텍스트(모달 위로 넘김 = 다음 순위 인라인 · 운영자 260712)
-      let seq = si >= 0 ? { arr: (box._tsMore ? box._tsSeqX : box._tsSeq) || [], i: si } : null;
+      let seq = si >= 0 ? { arr: box._tsSeqX || box._tsSeq || [], i: si } : null;   // 스택/리스트 = _tsSeqX 절대 인덱스(첫N = topShow 동일참조라 정규/확장 공통 · data-si 절대화와 짝 · 운영자 260717 랩 봉합)
       if (!seq) {   // 쇼츠 루프 보편화(운영자 260712 "보기 편한 형식 다른 것들도" · 평의회④ 베스트픽) — 섹션 그리드/행도 같은 섹션 내 항목을 즉석 시퀀스로(임베드 불가 항목 = tvNav가 스킵)
         const secEl = a.closest('details.trend-sec, details.tgroup');
         const sibs = secEl ? [...secEl.querySelectorAll('a.tcard, a.trend-row, a.xcard')] : [];
@@ -9926,9 +9926,15 @@ function renderSnsTrends() {
       const rk = i0 + 1;   // 히어로(큰 카드) 1-based 순위
       const lead = rk + 3;   // 오른쪽 끝(선두) 카드 순위 = 히어로 + 미니 3칸
       const home5 = lead % 5 === 0 && lead >= 10 && lead <= sN();   // '처음으로' ↻ = 오른쪽 끝 카드가 10·15·20·25·30위일 때(운영자 260717 "3~4개 빼고 계산" = 선두 기준 · ↻ 바로 옆 카드가 딱 그 숫자) · lead<=sN = 짧은 플랫폼(구글8 등) 헛발 차단
-      const mAt = off => (box._tsMore && i0 + off >= sN()) ? null : sAt(O + off);   // 확장 모드 꼬리 = 랩 채움 금지(빈 셀) · 1~10 순환 = 종전 랩
+      const hasX = box._tsSeqX.length > sN();   // 11+ 확장분 존재 = 정규 모드 미리보기 연속 게이트(없으면 N위 루프 = 종전 랩 유지)
+      const mAt = off => {   // 미니 look-ahead 콘텐츠 — 정규 모드도 상위N 경계 너머는 확장(11,12,13)으로 이어봄(운영자 260717 "10 다음 1,2,3 랩" 봉합) · 확장 모드·무확장 = 종전
+        if (box._tsMore) return (i0 + off >= sN()) ? null : sAt(O + off);   // 확장 = 꼬리 랩 채움 금지(빈 셀)
+        if (hasX) { const p = i0 + off; return p < box._tsSeqX.length ? box._tsSeqX[p] : null; }   // 정규+확장 = 절대전진 연속(소진 = 빈 셀)
+        return sAt(O + off);   // 무확장(≤N) = 종전 N위 루프 미리보기(랩)
+      };
+      const mRk = off => (!box._tsMore && hasX) ? (i0 + off) : sIdx(O + off);   // 미니 순위·data-si = 콘텐츠 정합(연속 = 절대 인덱스 · 그 외 = 종전 wrap) — 클릭 핸들러 _tsSeqX 절대참조와 짝
       stkEl.innerHTML =
-        `<div class="tstk-g roll">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), sIdx(O + 1), 'mini')}${skCard(mAt(2), sIdx(O + 2), 'mini')}${skCard(mAt(3), sIdx(O + 3), 'mini')}</div>` +
+        `<div class="tstk-g roll">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), mRk(1), 'mini')}${skCard(mAt(2), mRk(2), 'mini')}${skCard(mAt(3), mRk(3), 'mini')}</div>` +
         (i0 > 0 ? `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` : '') +   // 1위 = ◀ 숨김(뒤 없음 · 운영자 260717) · 2위+ = 종전 ◀
         (box._tsMore && i0 >= 10 ? `<span class="tstk-cnt">${rk}/${sN()}</span>` : '') +   // 11위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30)
         (home5 ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음으로" title="처음으로">${Q_REFR}</button>` : '') +   // 10·15·20·25위 = > 위 '처음으로' ↻(운영자 260717) · ↻ = 새로고침 픽토 차용일 뿐 뜻 = 1위 복귀 · 같은 열 축·픽토 중심 CSS right 정합
