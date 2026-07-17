@@ -28,9 +28,18 @@ self.addEventListener('fetch', event => {
     const key = url.origin + url.pathname;   // 쿼리 제거 정규화 = 딥링크(?a=·?msg=) 변형이 캐시를 늘리지도 가르지도 않음
     const cache = await caches.open(SHELL_CACHE);
     const cached = await cache.match(key);
-    const netP = fetch(req).then(res => {
+    const cachedClone = cached ? cached.clone() : null;   // 새버전 감지(본문 폴백)용 = 반환 전 클론(스트림 락 회피 · text()는 필요 시만)
+    const netP = fetch(req).then(async res => {
       if (res.ok && !res.redirected && res.type === 'basic') {
-        return cache.put(key, res.clone()).then(() => res, () => res);   // put을 프라미스 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1) · 거부 시에도 res 반환 = put 실패(quota 등)가 첫 방문 정상 응답을 폐기하지 않음(재검증 지적)
+        let changed = false;   // 새 index 셸 배포 감지(옛≠새) → 열린 페이지에 nm-shell-updated 통지(운영자 260717 새버전 토스트)
+        if (cached) {
+          const oe = cached.headers.get('etag'), ne = res.headers.get('etag');
+          if (oe && ne) changed = oe !== ne;   // ETag 우선 = 배포당 안정·경량(본문 per-request 변이 오탐 회피)
+          else { const [a, b] = await Promise.all([cachedClone.text().catch(() => null), res.clone().text().catch(() => null)]); changed = a != null && b != null && a !== b; }   // ETag 없으면 본문 비교 폴백
+        }
+        await cache.put(key, res.clone()).then(() => {}, () => {});   // put을 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1) · 실패(quota 등)해도 진행 = 정상 응답 폐기 안 함
+        if (changed) self.clients.matchAll({ type: 'window' }).then(list => list.forEach(c => c.postMessage({ type: 'nm-shell-updated' })));   // 갱신 완료 후 통지 = 탭→reload가 새 셸 서빙 보장
+        return res;
       }
       if (cached && (res.redirected || res.type === 'opaqueredirect' || res.status === 401 || res.status === 403)) {
         // Access 세션 만료 추정 — 캐시는 안 덮고(로그인 페이지 오염 방지) 열린 페이지에 통지
