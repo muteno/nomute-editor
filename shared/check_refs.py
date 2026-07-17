@@ -433,6 +433,27 @@ def check_fast_max_h_parity():
     return 0
 
 
+def check_shell_cache_parity():
+    """SW 셸 캐시명 viewer/index.html(applyShellUpdate caches.open) ↔ viewer/sw.js(SHELL_CACHE) 패리티
+    (260717 평의회 1·9 — 캐시 계약 리터럴이 두 파일에 복제된 유일 지점. sw.js만 v2로 버전업하면 페이지 put이
+    activate가 지우는 죽은 캐시에 쓰고 형제 키 갱신도 무효 = '두 곳 동시 갱신' 주석 규율을 커밋 시점 기계
+    게이트로 승격). index에 다른 용도 caches.open이 생기면 이 게이트가 fail = 그때 축 분리 갱신. fail-closed."""
+    try:
+        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        sw = open(os.path.join(ROOT, 'viewer', 'sw.js'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_shell_cache_parity 파일 읽기 실패(fail-closed):', e); return 1
+    ms = re.search(r"const SHELL_CACHE\s*=\s*'([^']+)'", sw)
+    mv = re.findall(r"caches\.open\('([^']+)'\)", v)
+    if not ms or not mv:
+        print('❌ 셸캐시 리터럴 추출 실패(sw.js=%s·viewer=%s곳) — 선언 형태 변경 시 이 게이트도 갱신' % (bool(ms), len(mv))); return 1
+    bad = [x for x in mv if x != ms.group(1)]
+    if bad:
+        print('❌ 셸캐시명 드리프트: viewer caches.open %s ≠ sw.js SHELL_CACHE %r (두 곳 동시 갱신 계약 위반 — 죽은 캐시 쓰기)' % (bad, ms.group(1))); return 1
+    print('✅ 셸캐시 패리티 — viewer caches.open(%d곳) = sw.js SHELL_CACHE %r 동일.' % (len(mv), ms.group(1)))
+    return 0
+
+
 _CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
 
 
@@ -973,6 +994,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_fast_max_h_parity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_shell_cache_parity() != 0:   # SW 셸 캐시명 viewer↔sw.js 패리티(하드 게이트 — 한쪽만 버전업 = 죽은 캐시 쓰기·260717 평의회 1·9)
+            rc = 1
+    except Exception as e:
+        print('❌ check_shell_cache_parity 예외(fail-closed):', e); rc = 1
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1
