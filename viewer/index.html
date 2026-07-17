@@ -6855,15 +6855,26 @@ function hardReload() {
 
 // ── 새 버전 토스트(운영자 260717) — SW가 백그라운드로 새 index 셸을 받아 캐시 갱신할 때(옛≠새) 통지 → "새 버전 · 탭하면 반영" 안내.
 //    SWR 특성상 배포가 *다음 진입*까지 지연 노출되던 것(§파이프라인 5-a · 시각 튜닝마다 '옛 화면' 헷갈림)을 가시화. sw.js nm-shell-updated postMessage와 한 쌍(nm-auth-stale 패턴 계승).
-//    탭 = location.reload()(새 셸은 이미 캐시 갱신됨 = 최신 로드) · ✗ = 이번 접속만 숨김(다음 배포 감지 시 재알림) · 긴급/경보 토스트 표시 중 = 양보(같은 자리·z 겹침 차단 = checkFreshLane 양보 패턴 계승) · 접속당 1회.
-let _shellUpdShown = false, _shellUpdT = 0;
+//    탭 = applyShellUpdate(최신 셸 '지금' 재확보 → SW 캐시 갱신 → reload = 중첩 배포 N건도 한 탭 일괄 해소 · 운영자 260717 "5건이면 5번 눌러야되네") · ✗ = 이번 접속만 숨김(다음 배포 감지 시 재알림) · 긴급/경보 토스트 표시 중 = 양보(같은 자리·z 겹침 차단 = checkFreshLane 양보 패턴 계승) · 접속당 1회.
+let _shellUpdShown = false, _shellUpdT = 0, _shellUpdApplying = false;
+// 탭 = 통지 시점 캐시가 아니라 '탭 시점 네트워크 최신'으로 직행 — 통지 후 배포가 더 쌓이면(중첩) reload마다 재검증이 또 옛≠새를 감지해
+//   토스트가 배포 수만큼 반복되던 것(1탭=1세대 전진)을, 최신 셸을 직접 fetch→SW 캐시에 꽂고 reload = 몇 건이든 1탭 종결로 교정(운영자 260717).
+async function applyShellUpdate(t) {
+  if (_shellUpdApplying) return; _shellUpdApplying = true;   // 더블탭 = fetch 중복 발사 차단(reload 직전 짧은 창 · 리셋 불요 = 어차피 reload)
+  const m = t && t.querySelector('.ft-msg'); if (m) m.innerHTML = '반영 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';   // 처리중 = gdots 점모션 정본 계승(§디자인 g · pushToggle '변경중' 문법) — 느린 망에서 탭이 먹통처럼 안 보이게
+  try {
+    const res = await fetch(location.pathname, { cache: 'no-store', signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined });   // 비내비게이션 fetch = SW fetch 핸들러 불간섭(mode≠navigate) = 순수 네트워크 최신 · 4s 상한 = 무한 대기 차단
+    if (res.ok && !res.redirected && res.type === 'basic') await (await caches.open('nm-shell-v1')).put(location.origin + location.pathname, res);   // 가드 = sw.js ⓐ 동일(Access 로그인 리다이렉트로 캐시 오염 차단) · 키 = sw.js 쿼리 제거 정규화 동일 · 'nm-shell-v1' = sw.js SHELL_CACHE와 짝(교체 시 두 곳 동시 갱신 · VAPID_PUB 선례)
+  } catch {}   // 오프라인·quota·타임아웃 = 캐시 무접촉 → 아래 reload가 통지 시점 셸로 종전과 동일 동작(fail-soft · 최소 1세대는 전진)
+  location.reload();   // 성공 = 방금 꽂은 '현재 최신' 셸 즉시 서빙 + SWR 재검증도 동일 바이트 = 재알림 없음
+}
 function showUpdateToast() {
   if (_shellUpdShown) return;   // 표시 중 1회 = 중복 postMessage·재검증 반복 무해화(✗ 누르면 해제 = 다음 배포 재알림)
   if (_toastC || document.querySelector('#nmToast.show, #sysFreshToast.show, #nmFailToast.show')) { clearTimeout(_shellUpdT); _shellUpdT = setTimeout(showUpdateToast, 4000); return; }   // 긴급·경보 우선 = 양보 후 재시도(단일 타이머 clear→set = 다중 메시지 재시도 체인 중첩 차단·평의회 260717)
   _shellUpdShown = true;
   let t = document.getElementById('nmUpdateToast');
   if (!t) { t = document.createElement('div'); t.id = 'nmUpdateToast'; t.className = 'nm-toast upd'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }   // role=status·polite = 비긴급(긴급 토스트 role=alert·assertive와 분리)
-  t.onclick = () => location.reload();   // 본체 탭 = 새 셸로 새로고침(이미 캐시 갱신됨 = 최신)
+  t.onclick = () => applyShellUpdate(t);   // 본체 탭 = 최신 셸 재확보 후 새로고침(중첩 N건 일괄 해소)
   t.innerHTML = '<span class="tg">' + Q_REFR + '</span><span class="ft-msg">새 버전이 있어요 · 탭하면 반영</span>'
     + '<button class="sbtn ft-act" type="button" data-bt="x" aria-label="닫기" title="닫기 — 이번 접속 동안만 숨김">' + X_TOAST_SVG + '</button>';
   t.querySelector('[data-bt="x"]').onclick = ev => { ev.stopPropagation(); t.classList.remove('show'); _shellUpdShown = false; };   // ✗ = 숨김 + 래치 해제 = 다음 배포(재검증) 감지 시 재알림(주석·의도 정합·평의회 260717)
