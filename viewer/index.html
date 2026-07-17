@@ -9644,12 +9644,18 @@ function renderSnsTrends() {
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
-  const lane = (plat, mono, arr, n, f, scN) => { const s = arr.slice(0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r) => { const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) — 슬라이스(n)를 늘려도 점수 정규화는 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
-  lane('구글', 'gg', gt, 25, g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) }), 10);   // 슬라이스 25(gt 최대 25 = 급상승 그룹 동일 소스 · 운영자 260717 "구글 10개밖에 안 나와 · 11,12 쭉") · scN=10 = 혼합 TOP 점수 분모 고정(#2454 "10으로 맞춰줘" 캡10 기준선 계승 → 통합 TOP 10 현행 불변) · 구글 필터·스택만 25위까지(처음으로↻ 15·20·25 정상 등장) · 검색어 = 검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백) · 시간 = first_seen 도장
+  const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
+  const tkMap = v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백
+  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
+  // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
+  lane('구글', 'gg', gt, 10, ggMap, 10);   // 구글 코어 1~10(#2454 "10으로 맞춰줘" 캡10 계승 · scN=10 = 혼합 TOP 점수 분모 → 통합 TOP 10 현행 불변)
   lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
   lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
   lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relT(v) }));
-  lane('틱톡', 'tk', tkv, 15, v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) }), 10);   // 슬라이스 10→15(월드 모드 최대 15까지 쭉 · 국내는 데이터 KR 9로 자연 한도 = 불변) · scN=10 = 점수 분모 고정(통합 TOP 불변) · published = 수집기 create_time(260712 추가) — 구 데이터 = first_seen 폴백
+  lane('틱톡', 'tk', tkv, 10, tkMap, 10);   // 틱톡 코어 1~10(국내 데이터 9 = 자연 한도)
+  // 확장 레인(플랫폼 필터·스택 심화 전용 · 코어 전원 뒤 = 확장 항목이 경쟁 레인 URL 선점 불가) — 구글 11~25·틱톡 11~15, sc≤0(정렬 최하위 침강 = pcap4가 통합 진입 차단 · 필터/스택만 소비)
+  lane('구글', 'gg', gt, 25, ggMap, 10, 10);   // 구글 11~25위(급상승 그룹 gt.slice(0,25) 동일 소스 · 운영자 260717 "구글 10개밖에 · 11,12 쭉 · 처음으로↻ 15·20·25")
+  lane('틱톡', 'tk', tkv, 15, tkMap, 10, 10);   // 틱톡 11~15위(월드 모드 최대 15 · 국내 9 = off 10 초과분 없어 무변)
   pool.sort((a, b2) => (b2.sc - a.sc) || (b2.ht - a.ht));
   const top = [], pcap = {};
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
