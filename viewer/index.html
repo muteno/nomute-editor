@@ -9578,7 +9578,10 @@ function renderSnsTrends() {
   let stale = false;   // 수집 65분+ 밀림 = 크론 지연/사망(정직 신호 · 평의회6 — 크론 주기 30분×2 + 지터 여유)
   if (d.updated) { const am = (Date.now() - new Date(d.updated).getTime()) / 60000; stale = am > 65; }
   // 순위 변동 배지(직전 스냅샷 대비 · 평의회4) — isNew=신규진입 / delta>0=상승 / delta<0=하락 / 유지=미표시
-  const chg = x => x.isNew ? '<span class="trend-chg nw"><i>NEW</i></span>'
+  const chg = x => x.state ? (x.state === 'n' ? '<span class="trend-chg nw"><i>NEW</i></span>'
+      : x.state === '+' ? `<span class="trend-chg up"><i>${TRI_UP_SVG}</i></span>`
+        : x.state === '-' ? `<span class="trend-chg dn"><i>${TRI_DN_SVG}</i></span>` : '')   // ⑨ 실검(signal) = source 순위 상태 정본(운영자 260717 — n=신규 NEW·+=상승·-=하락·s=유지 미표기) · signal만 state 보유라 타 섹션 무영향 · 상승/하락은 수치 없는 방향 배지(변동 크기 미제공 소스)
+    : x.isNew ? '<span class="trend-chg nw"><i>NEW</i></span>'
     : (x.delta > 0 ? `<span class="trend-chg up"><i>${TRI_UP_SVG}${x.delta}</i></span>`
       : (x.delta < 0 ? `<span class="trend-chg dn"><i>${TRI_DN_SVG}${-x.delta}</i></span>` : ''));   // 이너 <i> = 잉크 전용 서브픽셀 보정 앵커(운영자 260717 Q06 — 세로 잉크는 베이스라인 1px 스냅이라 패딩 무력·transform만 통과 실측) · 플렉스 문법(gap1)은 .trend-chg > i가 계승
   const cma = n => String(n || 0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');   // (미사용 260712 #6 — TOP 10 조회수도 vfmt 000만 통일 · 정의는 폴백 보존)
