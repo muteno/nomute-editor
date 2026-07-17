@@ -4,6 +4,7 @@
 #       마커 없는/훼손(개수≠1) 레포 = 경고 후 스킵(최초 이식은 수동 1회 — CLAUDE.md 이식 노트 참조) ·
 #       레포당 고정 브랜치(claude-sync/common)를 매 실행 base로 강제 갱신 + 열린 PR 1개 롤링 유지
 #       (평의회 260717: 브랜치 잔존 재시도 덫·중복 PR 누적·stale sha 해소) ·
+#       AUTOMERGE=true(기본 · 운영자 260717 Q61 승인) = PR 즉시 스쿼시 머지(무접촉) · false = 리뷰모드 ·
 #       실패 1건이라도 있으면 rc=1(빨간 빌드 — 침묵 실패 금지 · 401/403 = PAT 만료/권한 의심).
 import base64
 import json
@@ -19,6 +20,7 @@ SRC_SHA = os.environ.get("GITHUB_SHA", "manual")[:7]
 START = "<!-- SYNC-COMMON-START -->"
 END = "<!-- SYNC-COMMON-END -->"
 BRANCH = "claude-sync/common"
+AUTOMERGE = os.environ.get("AUTOMERGE", "true").strip().lower() == "true"
 
 
 def gh(method, path, body=None):
@@ -108,31 +110,43 @@ def sync_one(repo, block):
         print(f"::warning::{repo}: 파일 커밋 실패({s}) — 스킵")
         return False
 
-    # 열린 롤링 PR이 없을 때만 생성(있으면 방금 force-push로 내용이 이미 갱신됨)
+    # 열린 롤링 PR 확보(있으면 방금 force-push로 내용이 이미 갱신됨 · 없으면 생성)
+    prnum, prurl = None, ""
     s, prs = gh("GET", f"/repos/{repo}/pulls?state=open&head={owner}:{BRANCH}")
     if s == 200 and isinstance(prs, list) and prs:
-        print(f"{repo}: 기존 PR #{prs[0]['number']} 갱신 ✅ {prs[0].get('html_url','')}")
+        prnum, prurl = prs[0]["number"], prs[0].get("html_url", "")
+        print(f"{repo}: 기존 PR #{prnum} 갱신 ✅ {prurl}")
+    else:
+        s, pr = gh(
+            "POST",
+            f"/repos/{repo}/pulls",
+            {
+                "title": "🔁 CLAUDE.md 공통 골격 동기화 (자동 전파)",
+                "head": BRANCH,
+                "base": base,
+                "body": (
+                    f"자동 전파 PR — 원본 = muteno/nomute-editor CLAUDE.md의 SYNC-COMMON 마커 구간(최신 반영 커밋 = @{SRC_SHA}).\n\n"
+                    "- 마커 안만 교체한다(레포 고유 절·【레포 바인딩】 무접촉).\n"
+                    "- 기본 = 자동 머지(무접촉 · 운영자 260717 Q61 승인). 리뷰모드 = nomute-editor에서 dispatch automerge=false.\n"
+                    "- 내용 이견이 있으면 이 PR을 고치지 말 것 — muteno/nomute-editor CLAUDE.md에서 고쳐 재전파(여기서 고치면 다음 전파가 덮는다).\n"
+                    "- 생성 주체 = nomute-editor `.github/workflows/claude-sync.yml`."
+                ),
+            },
+        )
+        if s != 201:
+            print(f"::warning::{repo}: PR 생성 실패({s}) {pr.get('message','')}")
+            return False
+        prnum, prurl = pr["number"], pr.get("html_url", "")
+        print(f"{repo}: PR #{prnum} 생성 ✅ {prurl}")
+
+    if not AUTOMERGE:
+        print(f"{repo}: 리뷰모드 — PR #{prnum} 열어둠(수동 머지 대기)")
         return True
-    s, pr = gh(
-        "POST",
-        f"/repos/{repo}/pulls",
-        {
-            "title": "🔁 CLAUDE.md 공통 골격 동기화 (자동 전파)",
-            "head": BRANCH,
-            "base": base,
-            "body": (
-                f"자동 전파 PR — 원본 = muteno/nomute-editor CLAUDE.md의 SYNC-COMMON 마커 구간(최신 반영 커밋 = @{SRC_SHA}).\n\n"
-                "- 마커 안만 교체한다(레포 고유 절·【레포 바인딩】 무접촉).\n"
-                "- 정본이 다시 바뀌면 이 PR이 자동 갱신된다(레포당 롤링 PR 1개).\n"
-                "- 내용 이견이 있으면 이 PR을 고치지 말 것 — muteno/nomute-editor CLAUDE.md에서 고쳐 재전파(여기서 고치면 다음 전파가 덮는다).\n"
-                "- 생성 주체 = nomute-editor `.github/workflows/claude-sync.yml`."
-            ),
-        },
-    )
-    if s == 201:
-        print(f"{repo}: PR #{pr['number']} 생성 ✅ {pr.get('html_url','')}")
+    s, m = gh("PUT", f"/repos/{repo}/pulls/{prnum}/merge", {"merge_method": "squash"})
+    if s == 200:
+        print(f"{repo}: PR #{prnum} 자동 머지 ✅ (무접촉 반영)")
         return True
-    print(f"::warning::{repo}: PR 생성 실패({s}) {pr.get('message','')}")
+    print(f"::warning::{repo}: 자동 머지 실패({s}) {m.get('message','')} — PR #{prnum} 수동 머지 필요 {prurl}")
     return False
 
 
