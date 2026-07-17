@@ -1,0 +1,31 @@
+# claude-sync — CLAUDE.md 공통 골격(SYNC-COMMON 마커 구간) 전 레포 자동 전파
+# 정본 = 이 레포 CLAUDE.md 마커 구간. main에 CLAUDE.md 변경이 머지되면 타 레포에 교체 PR을 자동 생성한다.
+# 직접 push 금지 설계 — 타 레포 반영은 언제나 PR(운영자 머지)로만. 시크릿 SYNC_PAT 필요(없으면 경고 후 스킵).
+name: claude-sync
+on:
+  push:
+    branches: [main]
+    paths: [CLAUDE.md]
+  workflow_dispatch: {}
+concurrency:
+  group: claude-sync
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  fanout:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Seoul
+      GH_TOKEN: ${{ secrets.SYNC_PAT }}
+      TARGETS: muteno/YETA muteno/Saju muteno/yeulmaru-promo muteno/nomute_homepage muteno/TS
+    steps:
+      - uses: actions/checkout@v4
+      - name: 공통 골격 전파
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning::SYNC_PAT 시크릿 미설정 — 전파 스킵. 등록: https://github.com/muteno/nomute-editor/settings/secrets/actions (이름 SYNC_PAT · fine-grained PAT: muteno 전 레포 Contents/Pull requests = Read and write)"
+            exit 0
+          fi
+          python3 .github/scripts/claude_sync.py
