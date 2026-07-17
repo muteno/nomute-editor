@@ -199,7 +199,7 @@
   /* ── 메시지 팝업(프로필 근처) ── */
   /* 메시지함 = 발행본(qpop) 표 계승(운영자 260704): qpop 클래스로 qh/qrow/qlist·glass 상속 + 이 규칙은 msgpop 고유(위치앵커·radius·shadow) · 폭/정렬/구분색 오버라이드는 발행본 CSS 뒤(qpop보다 뒤 선언 = 소스순 이김) · 행=renderMsgList가 .qrow 렌더 */
   /* ── 앵커 팝업 셸 글래스 = 필터 창(.filterpop) 기준 단일 SSOT (운영자 260706 "필터 창을 메인으로 · 설정·메세지함·발행본·앞으로 만들 내부 팝업 다 동일") — 배경·블러·테두리·그림자만 여기(위치·radius·padding·애니는 각 팝업 개별). 새 앵커 팝업 = 이 셀렉터에 클래스 추가하면 자동 통일. 값 바꿀 땐 여기 한 곳. · saturate = var(--anchor-sat) 기본 1.05 → 무채색 팝업(.sc-rsn 사유 메뉴)만 --anchor-sat:0 오버라이드(뒤 색 비침 차단·§🎨 무채색 글래스 기틀). .sc-rsn 편입(운영자 260708) = 옛 불투명 톤(rgba(20,20,20,.94)) 폐지·설정 팝업과 톤 통일. ── */
-  .pmenu, .msgpop, .filterpop, .pubpop, #linkpop, .sc-rsn, .min-pick {
+  .pmenu, .msgpop, .filterpop, .pubpop, #linkpop, .sc-rsn, .min-pick, .failmenu {
     background:var(--modal-glass-anchor);
     backdrop-filter:blur(24px) saturate(var(--anchor-sat,1.05)); -webkit-backdrop-filter:blur(24px) saturate(var(--anchor-sat,1.05));
     border:1px solid rgba(255,255,255,.14);
@@ -1625,10 +1625,9 @@
     opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; }
   .qflash .ft-msg { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }   /* 한 줄 말줄임 = 가족 룰(운영자 260712) */
   .qflash.show { opacity:1; transform:translateY(0); }
-  /* Failed 칩 컨텍스트 메뉴(길게/우클릭) — .bpop 글래스 계승, 칩 옆 고정 위치(JS). 항목 2개: 실패 사유·내용 입력. */
-  .failmenu { position:fixed; z-index:var(--z-remote-pop); min-width:152px; padding:6px; display:flex; flex-direction:column; gap:2px; transform-origin:top center;
-    background:linear-gradient(165deg, rgba(24,25,28,.98), rgba(15,16,18,.98)); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);   /* 무채화 = 초록 워시 제거(운영자 260704 · green_wash) */
-    border:1px solid var(--line); border-radius:13px; box-shadow:0 18px 46px rgba(0,0,0,.62); animation:popIn .14s cubic-bezier(.22,.61,.36,1) both; }
+  /* Failed 칩 컨텍스트 메뉴(길게/우클릭) — 앵커 팝업 셸 SSOT 프로스트 계승, 칩 옆 고정 위치(JS). 항목 2개: 실패 사유·내용 입력. */
+  .failmenu { position:fixed; z-index:var(--z-remote-pop); min-width:152px; padding:var(--sp-1); display:flex; flex-direction:column; gap:2px; transform-origin:top center;   /* raw-ok: gap:2px·min-width:152px = 항목 간격·최소폭 광학값 유지(줄 재작성 diff 오인·값 불변) */
+    border-radius:var(--r-l); animation:popIn .14s cubic-bezier(.22,.61,.36,1) both; }   /* 글래스(배경·블러·테두리·그림자) = 앵커 팝업 셸 SSOT(.pmenu 그룹 편입·운영자 260717 · .min-pick과 동일 교정) = 형제 팝업과 프로스트 통일(옛 자체 불투명 rgba(.98) '홀로 솔리드 다크' 교정 · 구 '.bpop 계승'은 260706 SSOT 이전 기준) · radius 13→--r-l · padding 6→--sp-1 · 여기는 위치·radius·padding·애니만 */
   .failmenu[hidden] { display:none; }
   .failmenu-it { display:flex; align-items:center; gap:9px; width:100%; padding:9px 11px; border-radius:9px; border:none; cursor:pointer;
     background:none; color:var(--fg); font-family:inherit; font-size:13px; font-weight:700; text-align:left; transition:color .14s, background .14s; }
@@ -3516,7 +3515,7 @@ try {
   <div class="qpage" id="pubpopPage"></div>
 </div>
 
-<!-- Failed 칩 컨텍스트 메뉴 — 길게 누르거나(480ms) 우클릭. 실패 사유(진단 MD 다운로드) · 내용 입력(전문 붙여넣기 재분석). .bpop 글래스 계승. -->
+<!-- Failed 칩 컨텍스트 메뉴 — 길게 누르거나(480ms) 우클릭. 실패 사유(진단 MD 다운로드) · 내용 입력(전문 붙여넣기 재분석). 앵커 팝업 셸 SSOT 프로스트 계승. -->
 <div class="failmenu" id="failmenu" hidden role="menu" aria-label="실패 처리">
   <button class="failmenu-it" data-act="diag" type="button" role="menuitem"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>실패 사유</button>
   <button class="failmenu-it" data-act="paste" type="button" role="menuitem"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>내용 입력</button>
