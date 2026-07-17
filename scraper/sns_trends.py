@@ -220,6 +220,36 @@ def gtrends(limit=10, geo="KR"):
         return []
 
 
+_IMG_RE = re.compile(r'\.(?:jpe?g|png|webp|gif|avif)(?:\?|$)', re.I)
+
+
+def _trend_media(it):
+    """트렌드 API 항목(중첩 배열)에서 관련기사 썸네일·기사URL 재귀 추출 (운영자 260718 "매칭해서 가져와야함" ·
+    Q111) — 인덱스 역공학 회피(스키마 시프트 견고 = 위치 아닌 패턴 매칭) · 이미지 = 파일확장자 ∥ 구글 이미지CDN
+    (encrypted-tbn·gstatic images·googleusercontent) · 기사 = 외부 http(비구글·비스키마). 반환 = (pic, art).
+    이미지 우선순위 = 실기사 CDN(고해상) > 구글 썸네일(저해상). fail-soft = 무매칭 시 ('','')."""
+    imgs, arts = [], []
+
+    def walk(n):
+        if isinstance(n, str):
+            if n.startswith("http"):
+                low = n.lower()
+                if _IMG_RE.search(low) or "encrypted-tbn" in low or "gstatic.com/images" in low or "googleusercontent" in low:
+                    imgs.append(n)
+                elif "google.com" not in low and "gstatic" not in low and "schema.org" not in low and "w3.org" not in low:
+                    arts.append(n)
+        elif isinstance(n, list):
+            for x in n:
+                walk(x)
+        elif isinstance(n, dict):
+            for x in n.values():
+                walk(x)
+
+    walk(it)
+    imgs.sort(key=lambda u: ("encrypted-tbn" in u.lower() or "gstatic" in u.lower() or "googleusercontent" in u.lower()))   # 실CDN(False) 먼저 = 고해상 선호
+    return (imgs[0] if imgs else ""), (arts[0] if arts else "")
+
+
 def gtrends_api(geo="KR", hours=24):
     """구글 '트렌딩 나우' 내부 API(batchexecute · 무키 POST 1방) — RSS 10개 상한 돌파(운영자 260717 Q05 실사격 = KR 202개).
     반환 = [{"query","vol"(검색량 버킷 int·100~100000),"started"(iso KST)}] · 순서 = 트렌드 페이지 기본 노출순(관련도 블렌드).
@@ -243,8 +273,10 @@ def gtrends_api(geo="KR", hours=24):
                     vol = int(it[6] or 0)
                     if not 0 <= vol <= 2000000:   # 검색량 버킷 새니티 — 스키마 시프트(int→int 인덱스 이동)가 '조용한 오표기' 대신 해당 건 드랍으로 강등
                         continue
+                    _pic, _art = _trend_media(it)   # 관련기사 썸네일·기사URL 재귀 추출(Q111 · 꼬리 항목 이미지원)
                     out.append({"query": (it[0] or "").strip(), "vol": vol,
-                                "started": datetime.fromtimestamp(ts, KST).isoformat(timespec="seconds") if ts else ""})
+                                "started": datetime.fromtimestamp(ts, KST).isoformat(timespec="seconds") if ts else "",
+                                "pic": _pic, "art": _art})
                 except Exception:  # noqa: BLE001
                     continue
             break
@@ -258,7 +290,7 @@ def merge_gtrends(rss, api, keep=25):
     """하이브리드 병합(운영자 260717 Q06 "기존의 부분에서 이미지만 가져와서 대응") —
     · 1~10위 = RSS 종전 순위·커버(picture)·뉴스 그대로 계승(시각 무회귀 · og 백필도 이 축 그대로 동작)
     · 매칭분(query 소문자 일치) = API 정밀 검색량 승급("200+" 저단위 → "20000+" → 뷰어 tfmt "2만+" 무수정 호환)
-    · 11위~keep = API 노출순 꼬리 확장(커버 무 = 뷰어 로고 타일·검색 링크 기존 폴백)
+    · 11위~keep = API 노출순 꼬리 확장(커버 = API 재귀 추출 썸네일 pic·기사 art · 무매칭 = 로고 타일 폴백 · Q111)
     · pool = API 콤팩트(q·vol·started · vol≥500 또는 6h내 신선분만 = 저신호 오탄착 원료·json 비대 절감 · 평의회 260717) — 실검 교차 부스트 원료
     · API 죽으면 (rss, []) → gtrends 키 = 종전 동일(풀 키는 호출측 prev 승계) · RSS 죽으면 ([], pool) = 종전 직전분 보존 폴백 유지(하루누적 꼬리가 '급상승' 행세 차단 · 평의회 컨센서스)."""
     if not api:
@@ -285,7 +317,9 @@ def merge_gtrends(rss, api, keep=25):
             continue
         seen.add(a["query"].lower())
         out.append({"query": a["query"], "traffic": ("%d+" % a["vol"]) if a["vol"] else "",
-                    "picture": "", "news": [], "vol": a["vol"], "started": a["started"]})
+                    "picture": a.get("pic") or "",   # Q111 = API 재귀 추출 썸네일(무매칭 = "" → 뷰어 로고 타일 폴백)
+                    "news": ([{"title": "", "url": a["art"], "source": ""}] if a.get("art") else []),   # 기사URL = og:image 백필 원료 + 카드 클릭 링크
+                    "vol": a["vol"], "started": a["started"]})
     return out, pool
 
 
@@ -1032,11 +1066,11 @@ def main():
             _seen_q.add(_qk)
             g2["geo"] = _gg
             gt_gl.append(g2)
-    # 구글 카드 커버 백필+화질업(운영자 260716 "백필 ㄱ" → "한수 적용 100% 나은거 아닌지 진행 ㄱㄱ") —
-    # 대상 = ① picture 결측 ② gstatic 저해상 썸네일(구글 RSS산 = 카드 확대 시 흐림). 딸린 뉴스(news[0]) og:image로 보충/승급.
-    # 뷰어 노출 상위(KR 10 · 월드 병합분 8)만 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호 · og 실패 = 기존 picture 유지(저해상 > 무이미지 = 리스크 0 fail-soft).
+    # 구글 카드 커버 백필+화질업(운영자 260716 "백필 ㄱ" → "한수 적용 100% 나은거 아닌지 진행 ㄱㄱ" · 260718 Q111 꼬리 확장) —
+    # 대상 = ① picture 결측 ② gstatic 저해상 썸네일(구글 RSS산·API tbn = 카드 확대 시 흐림). 딸린 뉴스(news[0]) og:image로 보충/승급.
+    # 범위 = KR 18위(꼬리 API 항목이 art로 news[0] 확보 → 백필 대상 편입 · 스택 노출대 커버) + 월드 8 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호(슬라이스 확장해도 예산 10이 총 fetch 상한 = 런타임 무증가) · og 실패 = 기존 picture 유지(저해상/API 썸네일 > 무이미지 = 리스크 0 fail-soft).
     _og_budget = 10
-    for _g in (gt[:10] + gt_gl[:8]):
+    for _g in (gt[:18] + gt_gl[:8]):
         if _og_budget <= 0:
             break
         _pic = _g.get("picture") or ""
