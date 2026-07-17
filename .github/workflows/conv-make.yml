@@ -35,6 +35,7 @@ concurrency:
 
 permissions:
   contents: write
+  checks: read   # 배포 게이트(deploy-then-notify) — Pages 'Cloudflare Pages' 체크런 조회용(thumb/edit-make 정본 계승 · §완료알림 기틀)
 
 jobs:
   conv:
@@ -161,6 +162,34 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
+      # 배포 게이트(deploy-then-notify · §완료알림 기틀 · thumb/edit-make 정본 계승 · 운영자 260717 "나머지 도구도 같은 로직") —
+      #   알림이 배포보다 먼저 도착해 '탭했는데 결과 미전파'가 되던 것 차단: 산출 커밋(video.json/error.log)이 포함된 Pages 빌드 완료 확인 후에만 푸시.
+      #   신호 = 커밋의 'Cloudflare Pages' 체크런(이 레포는 Deployment 미생성·체크런만). 산출 커밋 또는 그걸 포함한 후속 커밋 success면 통과. 전 경로 exit 0 = 비치명.
+      - name: 배포 게이트 (Pages 반영 확인)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse HEAD)
+          DEADLINE=$((SECONDS+480)); SEEN=0
+          chk() {
+            local out; out=$(gh api "repos/${{ github.repository }}/commits/$1/check-runs?per_page=50" \
+              --jq '[.check_runs[] | select(.name=="Cloudflare Pages")][0] | (.status//"")+"/"+(.conclusion//"")' 2>/dev/null || echo '')
+            [ -n "$out" ] && [ "$out" != "/" ] && SEEN=1
+            [ "$out" = "completed/success" ]
+          }
+          while [ $SECONDS -lt $DEADLINE ]; do
+            chk "$SHA" && { echo "배포 확인 — 산출 커밋 빌드 success (${SECONDS}s)"; exit 0; }
+            git fetch -q origin main 2>/dev/null || true
+            H=$(git rev-parse origin/main 2>/dev/null || echo '')
+            if [ -n "$H" ] && [ "$H" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$H" 2>/dev/null; then
+              chk "$H" && { echo "배포 확인 — 후속 커밋($H) 빌드에 포함 success (${SECONDS}s)"; exit 0; }
+            fi
+            [ $SECONDS -ge 180 ] && [ $SEEN -eq 0 ] && { echo "::warning::Cloudflare Pages 체크런 미관측 — 180s 폴백 통과(뷰어 재시도 사다리가 커버)"; exit 0; }
+            sleep 15
+          done
+          echo "::warning::배포 success 8분 미확인 — 폴백 통과(뷰어 재시도 사다리가 커버)"
+
       # 변환 완료/실패 푸시 — 60i 보간(최대 25분) 등 긴 잡이라 창 닫아도 통지(편집기 완료 푸시와 동일 문법 · 운영자 260711).
       #   탭 = /conv.html(진행 pend가 24h 내 결과 자동 복원) · 잡별 tag · 비치명.
       - name: 변환 완료 푸시 (pywebpush)
@@ -178,7 +207,7 @@ jobs:
           if [ -s "$VJ" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$VJ')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
           if [ "$OK" != "1" ] && [ -s "$EL" ]; then MSG="$(head -c 60 "$EL")"; fi
           if [ "$OK" = "1" ]; then BODY="변환 완료 — 탭해서 확인"; else BODY="변환 실패 — ${MSG:-로그 확인}"; fi
-          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/conv.html" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
+          python3 .github/scripts/push_send.py --notify "변환" "$BODY" --url "/conv.html" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
 
       - name: 업로드 브랜치 정리
         if: ${{ always() && inputs.up_branch != '' }}

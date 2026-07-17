@@ -45,6 +45,7 @@ concurrency:
 
 permissions:
   contents: write
+  checks: read   # 배포 게이트(deploy-then-notify) — Pages 'Cloudflare Pages' 체크런 조회용(thumb-make 정본 계승 · §완료알림 기틀)
 
 jobs:
   edit:
@@ -345,8 +346,38 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
+      # 배포 게이트(deploy-then-notify · §완료알림 기틀 · thumb-make 정본 계승 · 운영자 260717 "알림을 무조건 퍼졌을때") —
+      #   알림이 배포보다 먼저 도착해 '편집 화면만 열리고 영상 없음(video.json 미전파)'이 되던 것 차단: 산출 커밋(video.json/error.log)이
+      #   포함된 Pages 빌드 완료를 확인한 *뒤에만* 완료 푸시로 진행. 신호 = 커밋의 'Cloudflare Pages' 체크런(이 레포는 Deployment 미생성·체크런만).
+      #   산출 커밋 자체 또는 그걸 포함한 후속 main 커밋(빌드 병합 대비)의 success면 통과. 게이트는 절대 잡을 실패시키지 않음(모든 경로 exit 0 = 비치명).
+      #   if: always() = 성공(video.json)·실패(error.log) 둘 다 전파 후 통지(실패 알림 탭도 사유 화면 착지 보장 · 편집기 딥링크는 error.log도 openJob이 표시).
+      - name: 배포 게이트 (Pages 반영 확인)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse HEAD)   # 산출 커밋(커밋 no-op 재실행이면 기존 HEAD = 이미 배포됐을 가능성 → 즉시 통과)
+          DEADLINE=$((SECONDS+480)); SEEN=0   # 상한 8분(평시 배포 30~90s) · 체크런 자체가 안 보이면 180s 폴백(연동 변경 대비)
+          chk() {   # $1=sha → 그 커밋의 'Cloudflare Pages' 체크런이 completed/success면 0
+            local out; out=$(gh api "repos/${{ github.repository }}/commits/$1/check-runs?per_page=50" \
+              --jq '[.check_runs[] | select(.name=="Cloudflare Pages")][0] | (.status//"")+"/"+(.conclusion//"")' 2>/dev/null || echo '')
+            [ -n "$out" ] && [ "$out" != "/" ] && SEEN=1
+            [ "$out" = "completed/success" ]
+          }
+          while [ $SECONDS -lt $DEADLINE ]; do
+            chk "$SHA" && { echo "배포 확인 — 산출 커밋 빌드 success (${SECONDS}s)"; exit 0; }
+            git fetch -q origin main 2>/dev/null || true
+            H=$(git rev-parse origin/main 2>/dev/null || echo '')
+            if [ -n "$H" ] && [ "$H" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$H" 2>/dev/null; then
+              chk "$H" && { echo "배포 확인 — 후속 커밋($H) 빌드에 포함 success (${SECONDS}s)"; exit 0; }   # 산출 커밋 빌드가 후속 커밋에 병합·대체돼도 그 빌드가 우리 내용 포함
+            fi
+            [ $SECONDS -ge 180 ] && [ $SEEN -eq 0 ] && { echo "::warning::Cloudflare Pages 체크런 미관측(연동 변경?) — 180s 폴백 통과(뷰어 재시도 사다리가 커버)"; exit 0; }
+            sleep 15
+          done
+          echo "::warning::배포 success 8분 미확인 — 폴백 통과(뷰어 재시도 사다리가 커버)"
+
       # 편집 완료/실패 푸시 — 편집기 잡은 길다(60i 보간 수십 분) → 창 닫아도 완성·실패를 구독자(프로필 알림 ON)에게 통지.
-      #   thumb 제작완료 푸시 문법 계승(#done=<id> 딥링크 · 잡별 고유 tag = 알림 누적) + 실패도 통지(장시간 잡 = 부재 중 실패 표면화).
+      #   thumb 제작완료 푸시 문법 계승(?done=<id> 딥링크 = Access 재로그인 생존 · 잡별 고유 tag = 알림 누적) + 실패도 통지(장시간 잡 = 부재 중 실패 표면화).
       #   비치명(|| true 계열) · 운영자 260711 "웹푸시까지 해줘".
       - name: 편집 완료 푸시 (pywebpush)
         if: always()
@@ -362,7 +393,7 @@ jobs:
           if [ -s "$CJ" ]; then   # 클리퍼 스캔 = clips.json이 산출(video.json 없음) — 실패면 clips.json 부재 → 아래 error.log 경로가 받음
             N="$(python3 -c "import json;print(len(json.load(open('$CJ')).get('clips') or []))" 2>/dev/null || echo 0)"
             if [ "$N" -gt 0 ] 2>/dev/null; then BODY="클립 후보 ${N}개 — 탭해서 고르기"; else BODY="클립 후보 없음 — 다른 영상으로"; fi
-            python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/edit.html?done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
+            python3 .github/scripts/push_send.py --notify "영상" "$BODY" --url "/edit.html?done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
             exit 0
           fi
           VJ="viewer/ly_out/${IN_ID}/video.json"; EL="viewer/ly_out/${IN_ID}/error.log"
@@ -377,8 +408,8 @@ jobs:
             META="$(python3 -c "import json;d=json.load(open('$VJ'));du=d.get('dur');print(('1' if d.get('sub') else '0')+' '+(str(int(round(du))) if isinstance(du,(int,float)) and du>0 else ''))" 2>/dev/null || echo '0 ')"
             SUB="${META%% *}"; DUR="${META#* }"; SP=""; [ -n "$DUR" ] && SP=" · ${DUR}초"
             if [ "$SUB" = "1" ]; then BODY="영상 완성 · 자막 삽입 완료${SP} — 탭해서 확인"; else BODY="영상 완성${SP} — 탭해서 확인"; fi
-          else BODY="편집 실패 — ${MSG:-로그 확인}"; fi
-          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/edit.html?done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
+          else BODY="영상 실패 — ${MSG:-로그 확인}"; fi   # 성공("영상 완성")과 프레이밍 통일 = '영상 알람'(운영자 260717 "편집 알람이 아니라 영상 알람")
+          python3 .github/scripts/push_send.py --notify "영상" "$BODY" --url "/edit.html?done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
 
       - name: 업로드 브랜치 정리
         if: ${{ always() && inputs.up_branch != '' }}

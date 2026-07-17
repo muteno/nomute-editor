@@ -51,6 +51,7 @@ concurrency:
 
 permissions:
   contents: write
+  checks: read   # 배포 게이트(deploy-then-notify) — Pages 'Cloudflare Pages' 체크런 조회용(thumb/edit-make 정본 계승 · §완료알림 기틀)
 
 jobs:
   voice:
@@ -169,6 +170,33 @@ jobs:
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
+      # 배포 게이트(deploy-then-notify · §완료알림 기틀 · thumb/edit-make 정본 계승 · 운영자 260717 "나머지 도구도 같은 로직") —
+      #   산출 커밋(song.json/error.log) 포함 Pages 빌드 완료 확인 후에만 푸시 = 탭 시 결과 미전파 멈춤 차단. 전 경로 exit 0 = 비치명.
+      - name: 배포 게이트 (Pages 반영 확인)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse HEAD)
+          DEADLINE=$((SECONDS+480)); SEEN=0
+          chk() {
+            local out; out=$(gh api "repos/${{ github.repository }}/commits/$1/check-runs?per_page=50" \
+              --jq '[.check_runs[] | select(.name=="Cloudflare Pages")][0] | (.status//"")+"/"+(.conclusion//"")' 2>/dev/null || echo '')
+            [ -n "$out" ] && [ "$out" != "/" ] && SEEN=1
+            [ "$out" = "completed/success" ]
+          }
+          while [ $SECONDS -lt $DEADLINE ]; do
+            chk "$SHA" && { echo "배포 확인 — 산출 커밋 빌드 success (${SECONDS}s)"; exit 0; }
+            git fetch -q origin main 2>/dev/null || true
+            H=$(git rev-parse origin/main 2>/dev/null || echo '')
+            if [ -n "$H" ] && [ "$H" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$H" 2>/dev/null; then
+              chk "$H" && { echo "배포 확인 — 후속 커밋($H) 빌드에 포함 success (${SECONDS}s)"; exit 0; }
+            fi
+            [ $SECONDS -ge 180 ] && [ $SEEN -eq 0 ] && { echo "::warning::Cloudflare Pages 체크런 미관측 — 180s 폴백 통과(뷰어 재시도 사다리가 커버)"; exit 0; }
+            sleep 15
+          done
+          echo "::warning::배포 success 8분 미확인 — 폴백 통과(뷰어 재시도 사다리가 커버)"
+
       # 클로닝 완료 푸시(학습 = 수십 분 잡이라 필수 · 입히기 동반) — track-make 푸시 문법 미러 · 비치명
       - name: 완료 푸시 (pywebpush)
         if: always()
@@ -192,7 +220,7 @@ jobs:
             if [ "$OK" = "1" ]; then BODY="보이스 커버 완성 — 탭해서 듣기"; else
               MSG=""; [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"; BODY="보이스 입히기 실패 — ${MSG:-로그 확인}"; fi
           fi
-          python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/song.html" --tag "nomute-voice-${IN_ID}-${VC_MODE}" || echo "::warning::완료 푸시 실패(비치명)"
+          python3 .github/scripts/push_send.py --notify "보이스" "$BODY" --url "/song.html" --tag "nomute-voice-${IN_ID}-${VC_MODE}" || echo "::warning::완료 푸시 실패(비치명)"
 
       # 업로드 일회용 브랜치 삭제(성공·실패 무관) — track/ly-make 동일(가드 = up-* 만)
       - name: 업로드 브랜치 정리
