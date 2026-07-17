@@ -9680,11 +9680,9 @@ function renderSnsTrends() {
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
-  const mkgg = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', mono: 'gg', plat: '구글', x: g, ago: relT(g) });   // 구글 = 유튜브와 동일 카드 레일(운영자 260716 "구글도 관련이미지로 동일한 형태") — 커버 = 수집기 관련이미지(picture · TOP 10 lane과 동일 매핑) · 없으면 tpc 로고 밑층 폴백(onerror 은닉 = 로고 타일)
-  const gtR = gt.slice(0, 25).map((g, i) => [g, i]);   // [항목, 원순위 index] · 25위 유지(운영자 260717 "25위 ㄱ")
-  const ggGridSrc = gtR.filter(z => z[0].picture), ggTailSrc = gtR.filter(z => !z[0].picture);   // 분기 기준 = 커버(picture) 유무(매직 인덱스 아님 · 적대검증 260717 — RSS 커버 개수는 구글이 통제·10 보장 아님이라 인덱스 분기는 무커버 카드 재출현 위험 → 커버 있음=card 그리드·없음=텍스트 행으로 자기정렬 = 무커버 타일 원천 차단)
-  const mkGrid = g => ({ ...g, url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), cover: g.picture || '', metricHtml: g.traffic ? '<span>' + esc(tfmt(g.traffic)) + '</span>' : '' });
-  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 25), '<div class="trend-grid wd">' + ggGridSrc.map(z => card(mkGrid(z[0]), z[1], 1)).join('') + '</div>' + ggTailSrc.map(z => row(z[1], (z[0].news && z[0].news[0] && z[0].news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(z[0].query || '')), tfmt(z[0].traffic), z[0], '')).join(''));   // 혼합(머지 합성) = 커버 있는 항목 card 16:9 wd 그리드(운영자 260717 "구글 검색도 16:9" · AI영상 계승) + 커버 없는 항목 텍스트 행(무커버 타일 대신 row() = 아래 실시간 검색어 계승 · 운영자 260717 "구글 이미지 안 들어와져" 봉합) · 원순위 z[1] 보존 · 우측 = 검색량 tfmt · 배지 chg/시간 relT(started) 계승 · 신규 요소 0(기존 card·row·fillT 조합)
+  const ggUrl = g => (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));   // 구글 클릭 = 대표 뉴스 ∥ 구글 검색 폴백(관용구)
+  const gtR = gt.slice(0, 10).map((g, i) => [g, i]);   // [항목, 원순위 index] · 1~10위(운영자 260718 "이미지 그냥 빼고 1~10위만" — 키워드성 검색어는 정확한 관련이미지 확보난 → 썸네일 카드 폐지)
+  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 10), gtR.map(z => row(z[1], ggUrl(z[0]), tfmt(z[0].traffic), z[0], '')).join(''));   // 이미지 제거(운영자 260718 첨부4) = 아래 실시간 검색어(시그널)·레딧과 동일 텍스트 행 계승(썸네일 인자 '' = 무커버) — 좌: 순위·검색어 / 우: 변동배지·검색량 tfmt·시각 relT(started) · 신규 컴포넌트 0(기존 row·fillT 조합)
   const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relT(v) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
   const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = ytn.slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   const ytGrid = yt.slice(0, 10).map(v => ({ ...v, cover: v.thumb }));
@@ -9816,8 +9814,7 @@ function renderSnsTrends() {
       lh.addEventListener('click', () => { const op = lh.getAttribute('aria-expanded') === 'true'; lh.setAttribute('aria-expanded', String(!op)); lw.toggleAttribute('inert', op); });   // 개폐 = grid-rows CSS 전이 · inert = 접힘 시 SR/tab 제거(.geni-camsub 계승) · ⚠ 채널 브리프로 이식 시 id=tbLedL 파생 필수(tbLedL-chan 등 — 평의회 호환성)
     }
   }
-  fillT('gt', '.tcard-t', ggGridSrc.map(z => z[0].query || ''));   // 구글 card 그리드 제목(커버 있는 항목 · main #2452 출력형식 통일 계승)
-  fillT('gt', '.trend-q', ggTailSrc.map(z => z[0].query || ''));   // 구글 커버 없는 항목 텍스트 행 검색어(카드=.tcard-t·행=.trend-q라 선택자 안 겹침 · textContent = XSS 안전)
+  fillT('gt', '.trend-q', gtR.map(z => z[0].query || ''));   // 구글 급상승 = 전량 텍스트 행 검색어(운영자 260718 이미지 제거 · .trend-q = 실검/레딧 계승 · textContent = XSS 안전)
   fillT('sig', '.trend-q', sig.slice(0, 10).map(g => g.query || ''));   // ⑨ 시그널 실검(운영자 260712)
   fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.query || ''));   // ⑩ X 실시간 트렌드
   fillT('yt', '.tcard-t', yt.slice(0, 10).map(v => v.title || ''));   // 유튜브 인기 그리드 제목 = 자연순서(출력형식 통일 260717)
